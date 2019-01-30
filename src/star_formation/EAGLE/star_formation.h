@@ -66,11 +66,11 @@ struct star_formation {
   /*! Critical overdensity */
   double min_over_den;
 
-  /*! Solar mass per square parsec */
-  double Msunpsquaredpc;
-
   /*! Temperature threshold */
   double Temperature_threshold;
+
+  /*! Dalla Vecchia & Schaye temperature criteria */
+  double temperature_margin_threshold_dex;
 
   /*! gas fraction */
   float fgas;
@@ -200,8 +200,16 @@ INLINE static int star_formation_potential_to_become_star(
   const double temperature = cooling_get_temperature(phys_const, hydro_props,
                                                      us, cosmo, cooling, p, xp);
 
+  const double temperature_eos = starform->EOS_pressure_norm 
+      / phys_const->const_boltzmann_k * pow(particle_density *
+      p->chemistry_data.smoothed_metal_mass_fraction[0], 
+      starform->polytropic_index - 1.f) * pow(starform->EOS_density_norm, 
+      starform->polytropic_index);
+
   /* Check the last criteria, if the temperature is satisfied */
-  return (temperature < starform->Temperature_threshold);
+  //return (temperature < starform->Temperature_threshold);
+  return (log10(temperature) < log10(temperature_eos) 
+      + starform->temperature_margin_threshold_dex);
 }
 
 /**
@@ -247,12 +255,8 @@ INLINE static int star_formation_convert_to_star(
       /* Calculate the star formation rate */
       SFRpergasmass =
           starform->SF_normalization * pow(pressure, starform->SF_power_law);
-      // SFRpergasmass = starform->KS_normalization *
-      // pow(starform->Msunpsquaredpc,-starform->KS_power_law)*
-      //    pow(hydro_gamma * starform->fgas / phys_const->const_newton_G *
-      //    pressure, (starform->KS_power_law-1.f)/2.f );
-    } else if ( starform->max_gas_density_on && (hydro_get_physical_density(p, cosmo) > 
-        starform->max_gas_density * phys_const->const_proton_mass) ) {
+    } else if (hydro_get_physical_density(p, cosmo) > 
+        starform->max_gas_density * phys_const->const_proton_mass) {
       return 1.f;
     } else {
       SFRpergasmass = starform->SF_high_den_normalization *
@@ -367,7 +371,6 @@ INLINE static void starformation_init_backend(
       phys_const->const_solar_mass /
       (phys_const->const_parsec * phys_const->const_parsec);
 
-  starform->Msunpsquaredpc = M_per_pc2;
   /* Calculate inverse of RAND_MAX for the random numbers */
   starform->inv_RAND_MAX = 1.f / RAND_MAX;
 
@@ -386,6 +389,9 @@ INLINE static void starformation_init_backend(
   /* Read the critical temperature from the parameter file */
   starform->Temperature_threshold =
       parser_get_param_double(parameter_file, "SchayeSF:thresh_temp");
+  starform->temperature_margin_threshold_dex = 
+      parser_get_param_double(parameter_file, 
+      "SchayeSF:temperature_margin_threshold_dex");
 
   /* Read the gas fraction from the file */
   starform->fgas = parser_get_param_double(parameter_file, "SchayeSF:fg");
@@ -494,15 +500,13 @@ INLINE static void starformation_init_backend(
 
   /* If we want to run with a maximum critical density which instantly converts
    * a gas particle to a star */
-  starform->max_gas_density_on = parser_get_param_int(parameter_file, "SchayeSF:thresh_MaxPhysDensOn");
   
-  if (starform->max_gas_density_on) {
-    /* Get the maximum physical density */
-    starform->max_gas_density_HpCM3 = parser_get_param_double(parameter_file, "SchayeSF:max_gas_density_HpCM3");
+  /* Get the maximum physical density */
+  starform->max_gas_density_HpCM3 = parser_get_opt_param_double(parameter_file, 
+      "SchayeSF:max_gas_density_HpCM3", FLT_MAX);
 
-    /* Calculate the maximum physical density in internal units */
-    starform->max_gas_density = starform->max_gas_density_HpCM3 * conversion_numb_density;
-  }
+  /* Calculate the maximum physical density in internal units */
+  starform->max_gas_density = starform->max_gas_density_HpCM3 * conversion_numb_density;
 }
 
 /**
