@@ -896,7 +896,7 @@ void runner_doself_subset_density_vec(struct runner *r, struct cell *restrict c,
   if (cell_cache->count < count) cache_init(cell_cache, count);
 
   /* Read the particles from the cell and store them locally in the cache. */
-  const int count_align = cache_read_particles(c, cell_cache);
+  const int count_align = cache_read_particles_subset_self(c, cell_cache);
 
   /* Create secondary cache to store particle interactions. */
   struct c2_cache int_cache;
@@ -1763,7 +1763,7 @@ void runner_dopair_subset_density_vec(struct runner *r,
         runner_shift_x, runner_shift_y, runner_shift_z, sort_j, max_index_i, 0);
 
     /* Read the particles from the cell and store them locally in the cache. */
-    cache_read_particles_subset(cj, cj_cache, sort_j, 0, &last_pj, ci->loc, 0);
+    cache_read_particles_subset_pair(cj, cj_cache, sort_j, 0, &last_pj, ci->loc, 0);
 
     const double dj_min = sort_j[0].d;
 
@@ -1899,7 +1899,7 @@ void runner_dopair_subset_density_vec(struct runner *r,
         runner_shift_x, runner_shift_y, runner_shift_z, sort_j, max_index_i, 1);
 
     /* Read the particles from the cell and store them locally in the cache. */
-    cache_read_particles_subset(cj, cj_cache, sort_j, &first_pj, 0, ci->loc, 1);
+    cache_read_particles_subset_pair(cj, cj_cache, sort_j, &first_pj, 0, ci->loc, 1);
 
     /* Get the number of particles read into the ci cache. */
     const int cj_cache_count = count_j - first_pj;
