@@ -891,7 +891,8 @@ if test "$with_hdf5" = "yes"; then
         AC_MSG_CHECKING([for HDF5 parallel support])
 
 	# Check if the library is capable, the header should define H5_HAVE_PARALLEL.
-
+        old_CPPFLAGS="$CPPFLAGS"
+        CPPFLAGS="$CPPFLAGS $HDF5_CPPFLAGS"
         AC_COMPILE_IFELSE([AC_LANG_SOURCE([[
         #include "hdf5.h"
         #ifndef H5_HAVE_PARALLEL
@@ -903,6 +904,7 @@ if test "$with_hdf5" = "yes"; then
             AC_DEFINE([HAVE_PARALLEL_HDF5],1,[HDF5 library supports parallel access])
         fi
         AC_MSG_RESULT($parallel)
+        CPPFLAGS="$old_CPPFLAGS"
     fi
 fi
 AM_CONDITIONAL([HAVEPARALLELHDF5],[test "$have_parallel_hdf5" = "yes"])
