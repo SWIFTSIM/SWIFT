@@ -91,6 +91,7 @@ SchayeSF:
   SchmidtLawExponent:               1.4     # The power law of the Kennicutt-Schmidt law
   SchmidtLawHighDensExponent:       2.0     # The high density exponent for the Kennicutt-Schmidt law
   SchmidtLawHighDens_thresh_HpCM3:  1e3
+  temperature_margin_threshold_dex: 0.5
   Schaye2004:                       1       # whether to use the metallicity dependent critical star formation of Schaye (2004) (1) or not (0).
   thresh_norm_HpCM3:                0.1      # Critical sf normalization to use (is not a normalization when Schaye2004=0, than it is the value.
   thresh_max_norm_HpCM3:            10.0    # Maximum norm of the critical sf density

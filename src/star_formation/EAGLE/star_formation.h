@@ -66,9 +66,6 @@ struct star_formation {
   /*! Critical overdensity */
   double min_over_den;
 
-  /*! Temperature threshold */
-  double Temperature_threshold;
-
   /*! Dalla Vecchia & Schaye temperature criteria */
   double temperature_margin_threshold_dex;
 
@@ -125,9 +122,6 @@ struct star_formation {
 
   /*! EOS density norm in user units */
   float EOS_density_norm_HpCM3;
-
-  /*! Max physical density on or off? */
-  int max_gas_density_on;
 
   /*! Max physical density physical units*/
   double max_gas_density_HpCM3;
@@ -207,7 +201,6 @@ INLINE static int star_formation_potential_to_become_star(
       starform->polytropic_index);
 
   /* Check the last criteria, if the temperature is satisfied */
-  //return (temperature < starform->Temperature_threshold);
   return (log10(temperature) < log10(temperature_eos) 
       + starform->temperature_margin_threshold_dex);
 }
@@ -257,6 +250,10 @@ INLINE static int star_formation_convert_to_star(
           starform->SF_normalization * pow(pressure, starform->SF_power_law);
     } else if (hydro_get_physical_density(p, cosmo) > 
         starform->max_gas_density * phys_const->const_proton_mass) {
+      /* We give the star formation tracers values of the mass and -1 for sSFR
+       * to be able to trace them, we don't want random variables there*/
+      xp->sf_data.SFR = p->mass;
+      xp->sf_data.sSFR = -1.f;
       return 1.f;
     } else {
       SFRpergasmass = starform->SF_high_den_normalization *
@@ -274,9 +271,6 @@ INLINE static int star_formation_convert_to_star(
 
     /* Generate a random number between 0 and 1. */
     const double randomnumber = rand_r(&seed) * starform->inv_RAND_MAX;
-
-    // message("Passed whole boundary thing! random number = %e, prop = %e
-    // dt_star %e", randomnumber, prop,dt_star);
 
     /* Calculate if we form a star */
     return (prop > randomnumber);
@@ -387,8 +381,6 @@ INLINE static void starformation_init_backend(
       parser_get_param_double(parameter_file, "SchayeSF:thresh_MinOverDens");
 
   /* Read the critical temperature from the parameter file */
-  starform->Temperature_threshold =
-      parser_get_param_double(parameter_file, "SchayeSF:thresh_temp");
   starform->temperature_margin_threshold_dex = 
       parser_get_param_double(parameter_file, 
       "SchayeSF:temperature_margin_threshold_dex");
@@ -540,12 +532,10 @@ INLINE static void starformation_print_backend(
       starform->density_threshold_HpCM3, starform->n_Z0, starform->Z0,
       starform->density_threshold_max_HpCM3);
   message("Temperature threshold is given by Dalla Vecchia and Schaye (2012)");
-  message("The temperature threshold is given by: %e K",
-          starform->Temperature_threshold);
-  if (starform->max_gas_density_on) {
-    message("Running with a maximum gas density given by: %e #/cm^3", 
-        starform->max_gas_density_HpCM3);
-  }
+  message("The temperature threshold offset from the EOS is given by: %e dex",
+          starform->temperature_margin_threshold_dex);
+  message("Running with a maximum gas density given by: %e #/cm^3", 
+      starform->max_gas_density_HpCM3);
 }
 
 /* Starformation history struct */
