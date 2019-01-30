@@ -83,7 +83,7 @@ HernquistPotential:
   epsilon:         0.01      # Softening size (internal units)
  
 # Schaye and Dalla Vecchia 2008 star formation
-SchayeSF:
+EAGLEStarFormation:
   thresh_MinOverDens:               57.7      # The critical density contrast to form stars
   thresh_temp:                      1e5     # The critical temperature to form stars
   fg:                               0.3    # The mass fraction in gas
