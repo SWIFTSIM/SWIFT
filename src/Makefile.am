@@ -50,7 +50,7 @@ include_HEADERS = space.h runner.h queue.h task.h lock.h cell.h part.h const.h \
     chemistry.h chemistry_io.h chemistry_struct.h cosmology.h restart.h space_getsid.h utilities.h \
     mesh_gravity.h cbrt.h exp10.h velociraptor_interface.h swift_velociraptor_part.h outputlist.h \
     logger_io.h tracers_io.h tracers.h tracers_struct.h sftracers_io.h sftracers.h \
-    sftracers_struct.h starformation.h velociraptor_struct.h velociraptor_io.h
+    sftracers_struct.h star_formation.h velociraptor_struct.h velociraptor_io.h
 
 # source files for EAGLE cooling
 EAGLE_COOLING_SOURCES =
@@ -64,7 +64,7 @@ AM_SOURCES = space.c runner.c queue.c task.c cell.c engine.c engine_maketasks.c 
     proxy.c parallel_io.c units.c common_io.c single_io.c multipole.c version.c map.c \
     kernel_hydro.c tools.c part.c partition.c clocks.c parser.c \
     physical_constants.c potential.c hydro_properties.c \
-    threadpool.c cooling.c starformation.c \
+    threadpool.c cooling.c star_formation.c \
     statistics.c runner_doiact_vec.c profiler.c dump.c logger.c \
     part_type.c xmf.c gravity_properties.c gravity.c \
     collectgroup.c hydro_space.c equation_of_state.c \
@@ -141,7 +141,7 @@ nobase_noinst_HEADERS = align.h approx_math.h atomic.h barrier.h cycle.h error.h
 	         potential/none/potential.h potential/point_mass/potential.h \
                  potential/isothermal/potential.h potential/disc_patch/potential.h \
                  potential/sine_wave/potential.h \
-		 starformation/none/starformation.h starformation/schaye08/starformation.h \
+		 star_formation/none/star_formation.h star_formation/schaye08/star_formation.h \
 		 cooling/none/cooling.h cooling/none/cooling_struct.h \
                  cooling/none/cooling_io.h \
 		 cooling/Compton/cooling.h cooling/Compton/cooling_struct.h \

@@ -67,7 +67,7 @@
 #include "serial_io.h"
 #include "single_io.h"
 #include "space.h"
-#include "starformation.h"
+#include "star_formation.h"
 #include "stars.h"
 #include "stars_io.h"
 #include "task.h"

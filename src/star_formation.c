@@ -23,7 +23,7 @@
 /* This object's header. */
 #include "part.h"
 #include "restart.h"
-#include "starformation.h"
+#include "star_formation.h"
 #include "units.h"
 
 /**

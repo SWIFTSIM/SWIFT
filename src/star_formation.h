@@ -29,9 +29,9 @@
 
 /* Import the right star formation law definition */
 #if defined(STAR_FORMATION_NONE)
-#include "./starformation/none/starformation.h"
+#include "./star_formation/none/star_formation.h"
 #elif defined(STAR_FORMATION_SCHAYE)
-#include "./starformation/schaye08/starformation.h"
+#include "./star_formation/schaye08/star_formation.h"
 #else
 #error "Invalid choice of star formation law"
 #endif
