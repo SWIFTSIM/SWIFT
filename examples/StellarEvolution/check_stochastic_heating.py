@@ -6,6 +6,15 @@ import os.path
 import numpy as np
 import glob
 
+
+# Function to determine distance between part and spart
+# p: part coordinates
+# s: spart coordinates
+def distance(p,s):
+        dist2 = (p[0] - s[0]) * (p[0] - s[0]) + (p[1] - s[1]) * (p[1] - s[1]) +(p[2] - s[2]) * (p[2] - s[2])
+        return sqrt(dist2)
+
+
 # Number of snapshots and elements
 newest_snap_name = max(glob.glob('stellar_evolution_*.hdf5'), key=os.path.getctime)
 n_snapshots = int(newest_snap_name.replace('stellar_evolution_','').replace('.hdf5','')) + 1
@@ -116,6 +125,16 @@ for i in range(n_snapshots):
 # Check that the total amount of enrichment is as expected.
 # Define tolerance
 eps = 0.01
+
+#print smoothing length maximums 
+for i in range(n_snapshots):
+	max_smoothing_length_parts = np.max(smoothing_length_parts[:,i]*unit_length_in_cgs)
+	max_smoothing_length_sparts = np.max(smoothing_length_sparts[i]*unit_length_in_cgs)
+	for j in range(n_parts):
+		distances[j,i] = distance(coord_parts[j,:,i],coord_sparts[:,i])
+	min_distance_to_spart = np.min(distances[:,i])
+	print("snapshot "+ str(i) + " max smoothing length parts cgs " + str(max_smoothing_length_parts) + " max smoothing length sparts cgs " + str(max_smoothing_length_sparts) + " boxsize " + str(boxSize * unit_length_in_cgs) + " min distance to spart " + str(min_distance_to_spart))
+
 
 # Stochastic heating
 vel2 = zeros((n_parts,n_snapshots))
