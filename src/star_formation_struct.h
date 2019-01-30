@@ -16,8 +16,8 @@
  * along with this program.  If not, see <http://www.gnu.org/licenses/>.
  *
  ******************************************************************************/
-#ifndef SWIFT_SFTRACERS_STRUCT_H
-#define SWIFT_SFTRACERS_STRUCT_H
+#ifndef SWIFT_STAR_FORMATION_STRUCT_H
+#define SWIFT_STAR_FORMATION_STRUCT_H
 
 /**
  * @file src/tracers_struct.h
@@ -28,12 +28,12 @@
 #include "../config.h"
 
 /* Import the right cooling definition */
-#if defined(SFTRACERS_NONE)
-#include "./sftracers/none/sftracers_struct.h"
-#elif defined(SFTRACERS_EAGLE)
-#include "./sftracers/EAGLE/sftracers_struct.h"
+#if defined(STAR_FORMATION_NONE)
+#include "./star_formation/none/star_formation_struct.h"
+#elif defined(STAR_FORMATION_EAGLE)
+#include "./star_formation/EAGLE/star_formation_struct.h"
 #else
-#error "Invalid choice of star formation tracers."
+#error "Invalid choice of star formation structure."
 #endif
 
-#endif /* SWIFT_SFTRACERS_STRUCT_H */
+#endif /* SWIFT_STAR_FORMATION_STRUCT_H */

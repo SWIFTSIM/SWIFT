@@ -1,6 +1,6 @@
 /*******************************************************************************
  * This file is part of SWIFT.
- * Copyright (c) 2019 Folkert Nobels (nobels@strw.leidenuniv.nl)
+ * Copyright (c) 2018 Folkert Nobels (nobels@strw.leidenuniv.nl)
  *
  * This program is free software: you can redistribute it and/or modify
  * it under the terms of the GNU Lesser General Public License as published
@@ -16,24 +16,19 @@
  * along with this program.  If not, see <http://www.gnu.org/licenses/>.
  *
  ******************************************************************************/
-#ifndef SWIFT_SFTRACERS_H
-#define SWIFT_SFTRACERS_H
+#ifndef SWIFT_EAGLE_STAR_FORMATION_STRUCT_H
+#define SWIFT_EAGLE_STAR_FORMATION_STRUCT_H
 
 /**
- * @file src/sftracers.h
- * @brief Branches between the different particle data star formation tracers
+ * @brief Properties of the tracers stored in the extended particle data.
  */
+struct star_formation_xpart_data {
 
-/* Config parameters. */
-#include "../config.h"
+  /*! Star formation rate */
+  float SFR;
 
-/* Import the right cooling definition */
-#if defined(SFTRACERS_NONE)
-#include "./sftracers/none/sftracers.h"
-#elif defined(SFTRACERS_EAGLE)
-#include "./sftracers/EAGLE/sftracers.h"
-#else
-#error "Invalid choice of star formation tracers."
-#endif
+  /*! Specific star formation rate */
+  float sSFR;
+};
 
-#endif /* SWIFT_SFTRACERS_H */
+#endif /* SWIFT_EAGLE_STAR_FORMATION_STRUCT_H */

@@ -1188,7 +1188,6 @@ with_subgrid_entropy_floor=none
 with_subgrid_stars=none
 with_subgrid_star_formation=none
 with_subgrid_feedback=none
-with_subgrid_sftracers=none
 
 case "$with_subgrid" in
    yes)
@@ -1204,7 +1203,6 @@ case "$with_subgrid" in
 	with_subgrid_stars=GEAR
 	with_subgrid_star_formation=none
 	with_subgrid_feedback=thermal
-  with_subgrid_sftracers=none
    ;;
    EAGLE)
 	with_subgrid_cooling=EAGLE
@@ -1214,7 +1212,6 @@ case "$with_subgrid" in
 	with_subgrid_stars=EAGLE
 	with_subgrid_star_formation=EAGLE
 	with_subgrid_feedback=none
-  with_subgrid_sftracers=EAGLE
    ;;
    *)
       AC_MSG_ERROR([Unknown subgrid choice: $with_subgrid])
@@ -1579,35 +1576,6 @@ case "$with_tracers" in
    ;;
 esac
 
-#  Particle Star formation tracers
-AC_ARG_WITH([sftracers],
-   [AS_HELP_STRING([--with-sftracers=<function>],
-      [star formation tracer function @<:@none, EAGLE default: none@:>@]
-   )],
-   [with_sftracers="$withval"],
-   [with_sftracers="none"]
-)
-
-if test "$with_subgrid" != "none"; then
-   if test "$with_sftracers" != "none"; then
-      AC_MSG_ERROR([Cannot provide with-subgrid and with-sftracers together])
-   else
-      with_sftracers="$with_subgrid_sftracers"
-   fi
-fi
-
-case "$with_sftracers" in
-   none)
-      AC_DEFINE([SFTRACERS_NONE], [1], [No star formation tracers function])
-   ;;
-   EAGLE)
-      AC_DEFINE([SFTRACERS_EAGLE], [1], [Star Formation tracers taken from the EAGLE model])
-   ;;
-   *)
-      AC_MSG_ERROR([Unknown star formation tracers choice: $with_tracers])
-   ;;
-esac
-
 # Stellar model.
 AC_ARG_WITH([stars],
    [AS_HELP_STRING([--with-stars=<model>],
@@ -1858,14 +1826,13 @@ AC_MSG_RESULT([
    Make gravity glass  : $gravity_glass_making
    External potential  : $with_potential
 
-   Entropy floor          : $with_entropy_floor
-   Cooling function       : $with_cooling
-   Chemistry              : $with_chemistry
-   Tracers                : $with_tracers
-   Star Formation Tracers : $with_sftracers
-   Stellar model          : $with_stars
-   Star formation model   : $with_star_formation
-   Feedback model         : $with_feedback
+   Entropy floor        : $with_entropy_floor
+   Cooling function     : $with_cooling
+   Chemistry            : $with_chemistry
+   Tracers              : $with_tracers
+   Stellar model        : $with_stars
+   Star formation model : $with_star_formation
+   Feedback model       : $with_feedback
 
    Individual timers           : $enable_timers
    Task debugging              : $enable_task_debugging

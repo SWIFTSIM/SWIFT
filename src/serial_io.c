@@ -52,7 +52,7 @@
 #include "kernel_hydro.h"
 #include "part.h"
 #include "part_type.h"
-#include "sftracers_io.h"
+#include "star_formation_io.h"
 #include "stars_io.h"
 #include "tracers_io.h"
 #include "units.h"
@@ -931,7 +931,6 @@ void write_output_serial(struct engine* e, const char* baseName,
     cooling_write_flavour(h_grp, e->cooling_func);
     chemistry_write_flavour(h_grp);
     tracers_write_flavour(h_grp);
-    sftracers_write_flavour(h_grp);
     H5Gclose(h_grp);
 
     /* Print the gravity parameters */
@@ -1124,7 +1123,7 @@ void write_output_serial(struct engine* e, const char* baseName,
               }
               num_fields += tracers_write_particles(
                   parts, xparts, list + num_fields, with_cosmology);
-              num_fields += sftracers_write_particles(
+              num_fields += star_formation_write_particles(
                   parts, xparts, list + num_fields, with_cosmology);
 
             } else {
@@ -1161,9 +1160,9 @@ void write_output_serial(struct engine* e, const char* baseName,
               num_fields +=
                   tracers_write_particles(parts_written, xparts_written,
                                           list + num_fields, with_cosmology);
-              num_fields +=
-                  sftracers_write_particles(parts_written, xparts_written,
-                                            list + num_fields, with_cosmology);
+              num_fields += star_formation_write_particles(
+                  parts_written, xparts_written, list + num_fields,
+                  with_cosmology);
             }
           } break;
 

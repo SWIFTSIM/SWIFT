@@ -16,18 +16,24 @@
  * along with this program.  If not, see <http://www.gnu.org/licenses/>.
  *
  ******************************************************************************/
-#ifndef SWIFT_SFTRACERS_STRUCT_EAGLE_H
-#define SWIFT_SFTRACERS_STRUCT_EAGLE_H
+#ifndef SWIFT_STAR_FORMATION_IO_H
+#define SWIFT_STAR_FORMATION_IO_H
 
 /**
- * @brief Properties of the tracers stored in the extended particle data.
+ * @file src/sftracers_io.h
+ * @brief Branches between the different particle data star formation tracers
  */
-struct sftracers_xpart_data {
-  /*! Star formation rate */
-  float SFR;
 
-  /*! Specific star formation rate */
-  float sSFR;
-};
+/* Config parameters. */
+#include "../config.h"
 
-#endif /* SWIFT_SFTRACERS_STRUCT_EAGLE_H */
+/* Import the right cooling definition */
+#if defined(STAR_FORMATION_NONE)
+#include "./star_formation/none/star_formation_io.h"
+#elif defined(STAR_FORMATION_EAGLE)
+#include "./star_formation/EAGLE/star_formation_io.h"
+#else
+#error "Invalid choice of star formation model."
+#endif
+
+#endif /* SWIFT_STAR_FORMATION_IO_H */

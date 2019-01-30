@@ -16,30 +16,14 @@
  * along with this program.  If not, see <http://www.gnu.org/licenses/>.
  *
  ******************************************************************************/
-#ifndef SWIFT_SFTRACERS_NONE_IO_H
-#define SWIFT_SFTRACERS_NONE_IO_H
+#ifndef SWIFT_STAR_FORMATION_NONE_IO_H
+#define SWIFT_STAR_FORMATION_NONE_IO_H
 
 /* Config parameters. */
 #include "../config.h"
 
 /* Local includes */
 #include "io_properties.h"
-#include "tracers.h"
-
-#ifdef HAVE_HDF5
-
-/**
- * @brief Writes the current model of tracers to the file.
- *
- * @param h_grp The HDF5 group in which to write
- * @param tracers The #tracers_function_data
- */
-__attribute__((always_inline)) INLINE static void sftracers_write_flavour(
-    hid_t h_grp) {
-
-  io_write_attribute_s(h_grp, "Star formation tracers", "none");
-}
-#endif
 
 /**
  * @brief Specifies which particle fields to write to a dataset
@@ -50,11 +34,11 @@ __attribute__((always_inline)) INLINE static void sftracers_write_flavour(
  *
  * @return Returns the number of fields to write.
  */
-__attribute__((always_inline)) INLINE static int sftracers_write_particles(
+__attribute__((always_inline)) INLINE static int star_formation_write_particles(
     const struct part* parts, const struct xpart* xparts, struct io_props* list,
     const int with_cosmology) {
 
   return 0;
 }
 
-#endif /* SWIFT_SFTRACERS_NONE_IO_H */
+#endif /* SWIFT_STAR_FORMATION_NONE_IO_H */
