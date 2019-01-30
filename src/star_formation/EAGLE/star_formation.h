@@ -125,6 +125,15 @@ struct star_formation {
 
   /*! EOS density norm in user units */
   float EOS_density_norm_HpCM3;
+
+  /*! Max physical density on or off? */
+  int max_gas_density_on;
+
+  /*! Max physical density physical units*/
+  double max_gas_density_HpCM3;
+
+  /*! Max physical density in internal units */
+  double max_gas_density;
 };
 
 /**
@@ -242,6 +251,9 @@ INLINE static int star_formation_convert_to_star(
       // pow(starform->Msunpsquaredpc,-starform->KS_power_law)*
       //    pow(hydro_gamma * starform->fgas / phys_const->const_newton_G *
       //    pressure, (starform->KS_power_law-1.f)/2.f );
+    } else if ( starform->max_gas_density_on && (hydro_get_physical_density(p, cosmo) > 
+        starform->max_gas_density * phys_const->const_proton_mass) ) {
+      return 1.f;
     } else {
       SFRpergasmass = starform->SF_high_den_normalization *
                       pow(pressure, starform->SF_high_den_power_law);
@@ -479,6 +491,18 @@ INLINE static void starformation_init_backend(
       starform->density_threshold_max_HpCM3 * conversion_numb_density;
   /* Claculate 1 over the metallicity */
   starform->Z0_inv = 1 / starform->Z0;
+
+  /* If we want to run with a maximum critical density which instantly converts
+   * a gas particle to a star */
+  starform->max_gas_density_on = parser_get_param_int(parameter_file, "SchayeSF:thresh_MaxPhysDensOn");
+  
+  if (starform->max_gas_density_on) {
+    /* Get the maximum physical density */
+    starform->max_gas_density_HpCM3 = parser_get_param_double(parameter_file, "SchayeSF:max_gas_density_HpCM3");
+
+    /* Calculate the maximum physical density in internal units */
+    starform->max_gas_density = starform->max_gas_density_HpCM3 * conversion_numb_density;
+  }
 }
 
 /**
@@ -514,39 +538,10 @@ INLINE static void starformation_print_backend(
   message("Temperature threshold is given by Dalla Vecchia and Schaye (2012)");
   message("The temperature threshold is given by: %e K",
           starform->Temperature_threshold);
-  message("DEBUG: PRINT COMPLETE STRUCT");
-  message("KS_normalization = %e", starform->KS_normalization);
-  // message("KS_normalization_MSUNpYRpKPC2 = %e",
-  // starform->KS_normalization_MSUNpYRpKPC2);  message("KS_power_law = %e",
-  // starform->KS_power_law);  message("KS_high_den_power_law = %e",
-  // starform->KS_high_den_power_law);
-  message("KS_high_den_thresh = %e", starform->KS_high_den_thresh);
-  message("KS_high_den_normalization = %e",
-          starform->KS_high_den_normalization);
-  // message("min_over_den = %e", starform->min_over_den);
-  // message("Temperature_threshold = %e", starform->Temperature_threshold);
-  // message("fgas = %e", starform->fgas);
-  // message("SF_power_law = %e", starform->SF_power_law);
-  message("SF_normalization = %e", starform->SF_normalization);
-  // message("SF_high_den_power_law = %e", starform->SF_high_den_power_law);
-  message("SF_high_den_normalization = %e",
-          starform->SF_high_den_normalization);
-  // message("inv_RAND_MAX = %e", starform->inv_RAND_MAX);
-  message("density_threshold = %e", starform->density_threshold);
-  // message("density_threshold_HpCM3 = %e", starform->density_threshold_HpCM3);
-  message("density_threshold_max = %e", starform->density_threshold_max);
-  // message("density_threshold_max_HpCM3 = %e",
-  // starform->density_threshold_max_HpCM3);  message("Z0 = %e", starform->Z0);
-  // message("Z0_inv = %e", starform->Z0_inv);
-  // message("n_Z0 = %e", starform->n_Z0);
-  // message("polytropic_index = %e", starform->polytropic_index);
-  message("EOS_pressure_norm = %e", starform->EOS_pressure_norm);
-  // message("EOS_temperature_norm = %e", starform->EOS_temperature_norm);
-  message("EOS_density_norm = %e", starform->EOS_density_norm);
-  // message("EOS_density_norm_HpCM3 = %e", starform->EOS_density_norm_HpCM3);
-  message("SFR normalization = %e",
-          pow(starform->EOS_pressure_norm, starform->polytropic_index / 5.f) *
-              starform->SF_normalization);
+  if (starform->max_gas_density_on) {
+    message("Running with a maximum gas density given by: %e #/cm^3", 
+        starform->max_gas_density_HpCM3);
+  }
 }
 
 /* Starformation history struct */
