@@ -56,18 +56,18 @@ unit_time_in_cgs = f["/Units"].attrs["Unit time in cgs (U_t)"]
 G = G_in_cgs * ( unit_length_in_cgs**3 / unit_mass_in_cgs / unit_time_in_cgs**2)**(-1)
 
 # Read parameters of the model
-KS_law_slope = float(f["/Parameters"].attrs["SchayeSF:SchmidtLawExponent"])
-KS_law_norm = float(f["/Parameters"].attrs["SchayeSF:SchmidtLawCoeff_MSUNpYRpKPC2"])
-KS_thresh_Z0 = float(f["/Parameters"].attrs["SchayeSF:MetDep_Z0"])
-KS_thresh_slope = float(f["/Parameters"].attrs["SchayeSF:MetDep_SFthresh_Slope"])
-KS_thresh_norm = float(f["/Parameters"].attrs["SchayeSF:thresh_norm_HpCM3"])
-KS_gas_fraction = float(f["/Parameters"].attrs["SchayeSF:fg"])
-KS_thresh_max_norm = float(f["/Parameters"].attrs["SchayeSF:thresh_max_norm_HpCM3"])
+KS_law_slope = float(f["/Parameters"].attrs["EAGLEStarFormation:SchmidtLawExponent"])
+KS_law_norm = float(f["/Parameters"].attrs["EAGLEStarFormation:SchmidtLawCoeff_MSUNpYRpKPC2"])
+KS_thresh_Z0 = float(f["/Parameters"].attrs["EAGLEStarFormation:MetDep_Z0"])
+KS_thresh_slope = float(f["/Parameters"].attrs["EAGLEStarFormation:MetDep_SFthresh_Slope"])
+KS_thresh_norm = float(f["/Parameters"].attrs["EAGLEStarFormation:thresh_norm_HpCM3"])
+KS_gas_fraction = float(f["/Parameters"].attrs["EAGLEStarFormation:fg"])
+KS_thresh_max_norm = float(f["/Parameters"].attrs["EAGLEStarFormation:thresh_max_norm_HpCM3"])
 KS_gamma_effective = float(
     f["/Parameters"].attrs["EAGLEEntropyFloor:Jeans_gamma_effective"]
 )
-KS_high_den_thresh = float(f["/Parameters"].attrs["SchayeSF:SchmidtLawHighDens_thresh_HpCM3"])
-KS_law_slope_high_den = float(f["/Parameters"].attrs["SchayeSF:SchmidtLawHighDensExponent"])
+KS_high_den_thresh = float(f["/Parameters"].attrs["EAGLEStarFormation:SchmidtLawHighDens_thresh_HpCM3"])
+KS_law_slope_high_den = float(f["/Parameters"].attrs["EAGLEStarFormation:SchmidtLawHighDensExponent"])
 EAGLE_Z = float(f["/Parameters"].attrs["EAGLEChemistry:init_abundance_metal"])
 EAGLEfloor_rho_norm = float(f["/Parameters"].attrs["EAGLEEntropyFloor:Jeans_density_threshold_H_p_cm3"])
 EAGLEfloor_T = float(f["/Parameters"].attrs["EAGLEEntropyFloor:Jeans_temperature_norm_K"])
@@ -93,11 +93,18 @@ gas_sSFR = f["/PartType0/sSFR"][:]
 # Read the Star properties
 stars_pos = f["/PartType4/Coordinates"][:, :]
 stars_BirthDensity = f["/PartType4/BirthDensity"][:]
+stars_BirthFlag = f["/PartType4/NewStarFlag"][:]
+stars_BirthTime = f["/PartType4/Birth_time"][:]
+stars_XH = f["/PartType4/ElementAbundance"][:,0]
 
 # Centre the box
 gas_pos[:, 0] -= centre[0]
 gas_pos[:, 1] -= centre[1]
 gas_pos[:, 2] -= centre[2]
+
+stars_pos[:,0] -= centre[0]
+stars_pos[:,1] -= centre[1]
+stars_pos[:,2] -= centre[2]
 
 # Turn the mass into better units
 gas_mass *= unit_mass_in_cgs / Msun_in_cgs
@@ -112,9 +119,9 @@ gas_nH = gas_rho * unit_mass_in_cgs / unit_length_in_cgs ** 3
 gas_nH /= mH_in_cgs
 gas_nH *= gas_XH
 
-stars_BirthDensity = gas_rho * unit_mass_in_cgs / unit_length_in_cgs ** 3
+stars_BirthDensity *= unit_mass_in_cgs / unit_length_in_cgs ** 3
 stars_BirthDensity /= mH_in_cgs
-stars_BirthDensity *= gas_XH
+stars_BirthDensity *= stars_XH
 
 # Equations of state
 eos_cool_rho = np.logspace(-5, 5, 1000)
@@ -160,10 +167,22 @@ savefig("rho_SFR.png", dpi=200)
 
 ########################################################################3
 
+star_mask = (
+    (stars_pos[:, 0] > -15)
+    & (stars_pos[:, 0] < 15)
+    & (stars_pos[:, 1] > -15)
+    & (stars_pos[:, 1] < 15)
+    & (stars_pos[:, 2] < 1.0)
+    & (stars_pos[:, 2] > -1.0)
+)
+
+stars_BirthDensity = stars_BirthDensity[star_mask] 
+stars_BirthFlag = stars_BirthFlag[star_mask]
+stars_BirthTime = stars_BirthTime[star_mask]
 # Histogram of the birth density
 figure()
 subplot(111, xscale="linear", yscale="linear")
-hist(np.log10(stars_BirthDensity),density=True,bins=100)
+hist(np.log10(stars_BirthDensity),density=True,bins=20,range=[-2,5])
 xlabel("${\\rm Birth Density}~n_{\\rm H}~[{\\rm cm^{-3}}]$", labelpad=0)
 ylabel("Probability", labelpad=-7)
 savefig("BirthDensity.png", dpi=200)
@@ -207,6 +226,7 @@ gas_T = gas_T[mask]
 gas_mass = gas_mass[mask]
 gas_Z = gas_Z[mask]
 gas_hsml = gas_hsml[mask]
+
 
 # Make a crude map of the gas
 figure()
