@@ -327,7 +327,7 @@ struct engine {
 
   /* Average number of tasks per cell. Used to estimate the sizes
    * of the various task arrays. */
-  size_t tasks_per_cell;
+  float tasks_per_cell;
 
   /* Average number of links per tasks. This number is used before
      the creation of communication tasks so needs to be large enough. */

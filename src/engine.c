@@ -1911,8 +1911,8 @@ void engine_print_task_counts(const struct engine *e) {
     else
       counts[(int)tasks[k].type] += 1;
   }
-  message("Total = %d  (per cell = %d)", nr_tasks,
-          (int)ceil((double)nr_tasks / e->s->tot_cells));
+  message("Total = %d  (per cell = %.2f)", nr_tasks,
+          (float)nr_tasks / e->s->tot_cells);
 #ifdef WITH_MPI
   printf("[%04i] %s engine_print_task_counts: task counts are [ %s=%i",
          e->nodeID, clocks_get_timesincestart(), taskID_names[0], counts[0]);
@@ -1937,7 +1937,7 @@ void engine_print_task_counts(const struct engine *e) {
  * @brief if necessary, estimate the number of tasks required given
  *        the current tasks in use and the numbers of cells.
  *
- * If e->tasks_per_cell is set greater than 0 then that value is used
+ * If e->tasks_per_cell is set greater than 0.0 then that value is used
  * as the estimate of the average number of tasks per cell,
  * otherwise we attempt an estimate.
  *
@@ -1947,8 +1947,13 @@ void engine_print_task_counts(const struct engine *e) {
  */
 int engine_estimate_nr_tasks(const struct engine *e) {
 
-  int tasks_per_cell = e->tasks_per_cell;
-  if (tasks_per_cell > 0) return e->s->tot_cells * tasks_per_cell;
+  float tasks_per_cell = e->tasks_per_cell;
+  if (tasks_per_cell > 0.0f) {
+      if (e->verbose)
+          message("tasks per cell given as: %.2f, so maximum tasks: %d",
+                  e->tasks_per_cell, (int)(e->s->tot_cells * tasks_per_cell));
+      return (int)(e->s->tot_cells * tasks_per_cell);
+  }
 
   /* Our guess differs depending on the types of tasks we are using, but we
    * basically use a formula <n1>*ntopcells + <n2>*(totcells - ntopcells).
@@ -2053,15 +2058,15 @@ int engine_estimate_nr_tasks(const struct engine *e) {
   int ncells = e->s->tot_cells;
 #endif
 
-  double ntasks = n1 * ntop + n2 * (ncells - ntop);
+  float ntasks = n1 * ntop + n2 * (ncells - ntop);
   if (ncells > 0) tasks_per_cell = ceil(ntasks / ncells);
 
-  if (tasks_per_cell < 1.0) tasks_per_cell = 1.0;
+  if (tasks_per_cell < 1.0f) tasks_per_cell = 1.0f;
   if (e->verbose)
-    message("tasks per cell estimated as: %d, maximum tasks: %d",
-            tasks_per_cell, ncells * tasks_per_cell);
+    message("tasks per cell estimated as: %.2f, maximum tasks: %d",
+            tasks_per_cell, (int) (ncells * tasks_per_cell));
 
-  return ncells * tasks_per_cell;
+  return (int) (ncells * tasks_per_cell);
 }
 
 /**
@@ -4689,8 +4694,8 @@ void engine_config(int restart, struct engine *e, struct swift_params *params,
    * On restart this number cannot be estimated (no cells yet), so we recover
    * from the end of the dumped run. Can be changed on restart. */
   e->tasks_per_cell =
-      parser_get_opt_param_int(params, "Scheduler:tasks_per_cell", 0);
-  int maxtasks = 0;
+      parser_get_opt_param_float(params, "Scheduler:tasks_per_cell", 0.0);
+  float maxtasks = 0;
   if (restart)
     maxtasks = e->restart_max_tasks;
   else
