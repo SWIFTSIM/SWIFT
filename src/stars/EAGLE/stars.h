@@ -74,6 +74,26 @@ __attribute__((always_inline)) INLINE static void stars_init_spart(
 }
 
 /**
+ * @brief Predict additional particle fields forward in time when drifting
+ *
+ * @param p The particle
+ * @param dt_drift The drift time-step for positions.
+ */
+__attribute__((always_inline)) INLINE static void stars_predict_extra(
+    struct spart *restrict sp, float dt_drift) {
+
+  const float h_inv = 1.f / sp->h;
+
+  /* Predict smoothing length */
+  const float w1 = sp->feedback.h_dt * h_inv * dt_drift;
+  if (fabsf(w1) < 0.2f)
+    sp->h *= approx_expf(w1); /* 4th order expansion of exp(w) */
+  else
+    sp->h *= expf(w1);
+
+}
+
+/**
  * @brief Sets the values to be predicted in the drifts to their values at a
  * kick time
  *
@@ -89,7 +109,7 @@ __attribute__((always_inline)) INLINE static void stars_reset_predicted_values(
  *
  * @param sp The particle to act upon
  */
-__attribute__((always_inline)) INLINE static void stars_end_force(
+__attribute__((always_inline)) INLINE static void stars_end_feedback(
     struct spart* sp) {}
 
 /**
@@ -139,6 +159,21 @@ __attribute__((always_inline)) INLINE static void stars_spart_has_no_neighbours(
   /* Re-set problematic values */
   sp->density.wcount = kernel_root * h_inv_dim;
   sp->density.wcount_dh = 0.f;
+}
+
+/**
+ * @brief Reset acceleration fields of a particle
+ *
+ * This is the equivalent of hydro_reset_acceleration.
+ * We do not compute the acceleration on star, therefore no need to use it.
+ *
+ * @param p The particle to act upon
+ */
+__attribute__((always_inline)) INLINE static void stars_reset_acceleration(
+    struct spart* restrict p) {
+#ifdef DEBUG_INTERACTIONS_STARS
+  p->num_ngb_force = 0;
+#endif
 }
 
 // -------------------- Work in progress ------------------------------
@@ -741,7 +776,7 @@ inline static void compute_stellar_evolution(const struct stars_props *restrict 
  */
 __attribute__((always_inline)) INLINE static void stars_evolve_spart(
     struct spart* restrict sp, const struct stars_props* stars_properties,
-    const struct cosmology* cosmo) {
+    const struct cosmology* cosmo, double dt) {
 
     sp->num_snia = 0;
     // get mass and initial mass of particle to pass to evolution function
@@ -761,7 +796,6 @@ __attribute__((always_inline)) INLINE static void stars_evolve_spart(
     sp->chemistry_data.iron_mass_fraction_from_SNIa = 0;
 
     // Evolve the star
-    float dt = 1.0; // temporary, for compilation. Should probably be passed in.
     compute_stellar_evolution(stars_properties, sp, dt);
     
     // set_particle_metal_content

@@ -43,6 +43,9 @@ struct spart {
 
   /* Offset between current position and position at last tree rebuild. */
   float x_diff[3];
+  
+  /* Offset between current position and position at last tree rebuild. */
+  float x_diff_sort[3];
 
   /*! Particle velocity. */
   float v[3];
@@ -70,6 +73,33 @@ struct spart {
     float wcount_dh;
 
   } density;
+
+  struct {
+    /* Change in smoothing length over time. */
+    float h_dt;
+
+  } feedback;
+
+  struct {
+    /* Mass of ejecta */
+    float mass;
+
+    /* Mass fractions of ejecta */
+    struct chemistry_part_data chemistry_data;
+
+    float ejecta_specific_thermal_energy;
+
+    /* Number of type 1a SNe per unit mass */
+    float num_SNIa;
+
+  } to_distribute;
+
+  /* kernel normalisation factor (equivalent to metalweight_norm in eagle_enrich.c:811, TODO: IMPROVE COMMENT) */
+  float omega_normalisation_inv;
+
+  /* total mass of neighbouring gas particles */
+  float ngb_mass;
+
 
   /*! Chemistry structure */
   struct chemistry_part_data chemistry_data;
@@ -161,6 +191,40 @@ struct stars_props {
 
   /*! Maximal change of h over one time-step */
   float log_max_h_change;
+
+  /* Flag to switch between continuous and stochastic heating */
+  int continuous_heating;
+
+  /* Fraction of energy in SNIa (Note: always set to 1 in EAGLE, so may be not necessary) */
+  float SNIa_energy_fraction;
+
+  /* Desired temperature increase due to supernovae */
+  float SNe_deltaT_desired;
+
+  /* Conversion factor from temperature to internal energy */
+  float temp_to_u_factor;
+
+  /* Energy released by one supernova */
+  float total_energy_SNe;
+
+  /* Temperature and energy times h due to SNe (corresponding to units_factor1, units_factor2 in EAGLE) */
+  float SNe_temperature_h;
+  float SNe_energy_h;
+
+  /* Timescale for feedback (used only for testing in const feedback model) */
+  float feedback_timescale;
+
+  /* Number of supernovae per solar mass (used only for testing in const feedback model) */
+  float sn_per_msun;
+
+  /* Solar mass (used only for testing in const feedback model) */
+  float const_solar_mass;
+
+  /* Flag for testing energy injection */
+  int const_feedback_energy_testing;
+
+  // CHANGE THIS TO BE CONSISTENT WITH RAND MAX USED IN STAR FORMATION
+  double inv_rand_max;
 
   /* Yield tables for AGB and SNII  */
   struct yield_table yield_AGB;
