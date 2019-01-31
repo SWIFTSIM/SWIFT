@@ -27,7 +27,7 @@
 #include "./stars/const/stars.h"
 #include "./stars/const/stars_part.h"
 #include "./stars/const/stars_iact.h"
-#if defined(STARS_EAGLE)
+#elif defined(STARS_EAGLE)
 #include "./stars/EAGLE/stars.h"
 #include "./stars/EAGLE/stars_iact.h"
 #else
