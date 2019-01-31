@@ -255,7 +255,8 @@ __attribute__((always_inline)) INLINE int cache_read_particles(
 }
 
 /**
- * @brief Populate cache by reading in the particles in unsorted order for doself_subset.
+ * @brief Populate cache by reading in the particles in unsorted order for
+ * doself_subset.
  *
  * @param ci The #cell.
  * @param ci_cache The cache.
