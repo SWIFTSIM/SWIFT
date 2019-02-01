@@ -1,3 +1,21 @@
+/*******************************************************************************
+ * This file is part of SWIFT.
+ * Copyright (c) 2019 Loic Hausammann (loic.hausammann@epfl.ch)
+ *
+ * This program is free software: you can redistribute it and/or modify
+ * it under the terms of the GNU Lesser General Public License as published
+ * by the Free Software Foundation, either version 3 of the License, or
+ * (at your option) any later version.
+ *
+ * This program is distributed in the hope that it will be useful,
+ * but WITHOUT ANY WARRANTY; without even the implied warranty of
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+ * GNU General Public License for more details.
+ *
+ * You should have received a copy of the GNU Lesser General Public License
+ * along with this program.  If not, see <http://www.gnu.org/licenses/>.
+ *
+ ******************************************************************************/
 #include "logger_header.h"
 
 #include "logger_io.h"
@@ -8,29 +26,29 @@
 #include <string.h>
 
 /**
- * @brief print a header struct
+ * @brief Print the properties of the header to stdout.
  *
- * @param h The #header
+ * @param h The #header.
  */
 void header_print(const struct header *h) {
 #ifdef SWIFT_DEBUG_CHECKS
-  printf("Debug checks enabled\n");
+  message("Debug checks enabled\n");
 #endif
-  printf("Version:          %s\n", h->version);
-  printf("First Offset:     %lu\n", h->offset_first);
+  message("Version:          %s\n", h->version);
+  message("First Offset:     %lu\n", h->offset_first);
   char direction[20];
   if (h->forward_offset)
     strcpy(direction, "Forward");
   else
     strcpy(direction, "Backward");
-  printf("Offset direction: %s\n", direction);
-  printf("Number masks:     %lu\n", h->nber_mask);
+  message("Offset direction: %s\n", direction);
+  message("Number masks:     %lu\n", h->number_mask);
 
-  for (size_t i = 0; i < h->nber_mask; i++) {
-    printf("\tMask:  %s\n", h->masks_name[i]);
-    printf("\tValue: %lu\n", h->masks[i]);
-    printf("\tSize:  %lu\n", h->masks_size[i]);
-    printf("\n");
+  for (size_t i = 0; i < h->number_mask; i++) {
+    message("\tMask:  %s\n", h->masks[i].name);
+    message("\tValue: %u\n", h->masks[i].mask);
+    message("\tSize:  %i\n", h->masks[i].size);
+    message("\n");
   }
 };
 
@@ -39,34 +57,23 @@ void header_print(const struct header *h) {
  *
  * @param h The #header
  */
-void header_free(struct header *h) {
-  for (size_t i = 0; i < h->nber_mask; i++) {
-    free(h->masks_name[i]);
-  }
-  free(h->masks_name);
-  free(h->masks);
-  free(h->masks_size);
-};
+void header_free(struct header *h) { free(h->masks); };
 
 /**
- * @brief check if field is present in header
+ * @brief Check if a field is present in the header.
  *
- * @param h The #header
- * @param field name of the requested field
- * @param ind (return value) indice of the requested field
+ * @param h The #header.
+ * @param field name of the requested field.
+ * @return Index of the field (-1 if not found).
  */
-int header_field_is_present(const struct header *h, const char *field,
-			    size_t *ind) {
-  for (size_t i = 0; i < h->nber_mask; i++) {
-    if (strcmp(h->masks_name[i], field) == 0) {
-      if (ind != NULL) {
-        *ind = i;
-      }
-      return 1;
+int header_get_field_index(const struct header *h, const char *field) {
+  for (size_t i = 0; i < h->number_mask; i++) {
+    if (strcmp(h->masks[i].name, field) == 0) {
+      return i;
     }
   }
 
-  return 0;
+  return -1;
 };
 
 /**
@@ -80,7 +87,7 @@ void header_change_offset_direction(struct header *h, void *map) {
   h->forward_offset = !h->forward_offset;
   size_t offset = LOGGER_VERSION_SIZE;
 
-  io_write_data(map, LOGGER_NBER_SIZE, &h->forward_offset, &offset);
+  io_write_data(map, LOGGER_NUMBER_SIZE, &h->forward_offset, &offset);
 }
 
 /**
@@ -97,54 +104,49 @@ void header_read(struct header *h, void *map) {
 
   /* read offset direction */
   h->forward_offset = 0;
-  io_read_data(map, LOGGER_NBER_SIZE, &h->forward_offset, &offset);
+  io_read_data(map, LOGGER_NUMBER_SIZE, &h->forward_offset, &offset);
 
   if (h->forward_offset != 0 && h->forward_offset != 1)
-    error("Non boolean value for the offset direction (%i)",
-          h->forward_offset);
+    error("Non boolean value for the offset direction (%i)", h->forward_offset);
 
   /* read offset to first data */
   h->offset_first = 0;
   io_read_data(map, LOGGER_OFFSET_SIZE, &h->offset_first, &offset);
 
   /* read name size */
-  h->name = 0;
-  io_read_data(map, LOGGER_NBER_SIZE, &h->name, &offset);
+  h->name_length = 0;
+  io_read_data(map, LOGGER_NUMBER_SIZE, &h->name_length, &offset);
 
   /* check if value defined in this file is large enough */
-  if (STRING_SIZE < h->name) {
+  if (STRING_SIZE < h->name_length) {
     error("Name too large in dump file");
   }
 
   /* read number of masks */
-  h->nber_mask = 0;
-  io_read_data(map, LOGGER_NBER_SIZE, &h->nber_mask, &offset);
+  h->number_mask = 0;
+  io_read_data(map, LOGGER_NUMBER_SIZE, &h->number_mask, &offset);
 
   /* allocate memory */
-  h->masks = malloc(sizeof(size_t) * h->nber_mask);
-  h->masks_name = malloc(sizeof(void *) * h->nber_mask);
-  h->masks_size = malloc(sizeof(size_t) * h->nber_mask);
+  h->masks = malloc(sizeof(struct mask_data) * h->number_mask);
 
   /* loop over all masks */
-  for (size_t i = 0; i < h->nber_mask; i++) {
+  for (size_t i = 0; i < h->number_mask; i++) {
     /* read mask name */
-    h->masks_name[i] = malloc(h->name);
-    io_read_data(map, h->name, h->masks_name[i], &offset);
+    io_read_data(map, h->name_length, h->masks[i].name, &offset);
 
     /* get mask value */
-    h->masks[i] = 1 << i;
+    h->masks[i].mask = 1 << i;
 
     /* read mask data size */
-    h->masks_size[i] = 0;
-    io_read_data(map, LOGGER_NBER_SIZE, &h->masks_size[i], &offset);
+    h->masks[i].size = 0;
+    io_read_data(map, LOGGER_NUMBER_SIZE, &h->masks[i].size, &offset);
   }
 
   if (offset != h->offset_first) {
     header_print(h);
-    error("Wrong header size (in header %li, current %li)",
-          h->offset_first, offset);
+    error("Wrong header size (in header %li, current %li)", h->offset_first,
+          offset);
   }
-
 };
 
 /**
@@ -157,9 +159,9 @@ void header_read(struct header *h, void *map) {
  */
 size_t header_get_mask_size(const struct header *h, const size_t mask) {
   size_t count = 0;
-  for (size_t i = 0; i < h->nber_mask; i++) {
-    if (mask & h->masks[i]) {
-      count += h->masks_size[i];
+  for (size_t i = 0; i < h->number_mask; i++) {
+    if (mask & h->masks[i].mask) {
+      count += h->masks[i].size;
     }
   }
   return count;

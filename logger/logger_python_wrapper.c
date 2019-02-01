@@ -1,8 +1,26 @@
+/*******************************************************************************
+ * This file is part of SWIFT.
+ * Copyright (c) 2019 Loic Hausammann (loic.hausammann@epfl.ch)
+ *
+ * This program is free software: you can redistribute it and/or modify
+ * it under the terms of the GNU Lesser General Public License as published
+ * by the Free Software Foundation, either version 3 of the License, or
+ * (at your option) any later version.
+ *
+ * This program is distributed in the hope that it will be useful,
+ * but WITHOUT ANY WARRANTY; without even the implied warranty of
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+ * GNU General Public License for more details.
+ *
+ * You should have received a copy of the GNU Lesser General Public License
+ * along with this program.  If not, see <http://www.gnu.org/licenses/>.
+ *
+ ******************************************************************************/
 #include "logger_header.h"
 #include "logger_io.h"
 #include "logger_particle.h"
-#include "logger_time.h"
 #include "logger_reader.h"
+#include "logger_time.h"
 
 #define NPY_NO_DEPRECATED_API NPY_1_7_API_VERSION
 
@@ -45,7 +63,7 @@ static PyObject *loadFromIndex(__attribute__((unused)) PyObject *self,
   /* parse arguments */
 
   if (!PyArg_ParseTuple(args, "OsL|i", &offset, &filename, &time_offset,
-			&verbose))
+                        &verbose))
     return NULL;
 
   if (!PyArray_Check(offset)) {
@@ -98,34 +116,34 @@ static PyObject *loadFromIndex(__attribute__((unused)) PyObject *self,
   dim[1] = DIM;
 
   /* init output */
-  if (header_field_is_present(&h, "positions", /* ind */ NULL)) {
+  if (header_get_field_index(&h, "positions") != -1) {
     pos = (PyArrayObject *)PyArray_SimpleNew(2, dim, NPY_DOUBLE);
   }
 
-  if (header_field_is_present(&h, "velocities", /* ind */ NULL)) {
+  if (header_get_field_index(&h, "velocities") != -1) {
     vel = (PyArrayObject *)PyArray_SimpleNew(2, dim, NPY_FLOAT);
   }
 
-  if (header_field_is_present(&h, "accelerations", /* ind */ NULL)) {
+  if (header_get_field_index(&h, "accelerations") != -1) {
     acc = (PyArrayObject *)PyArray_SimpleNew(2, dim, NPY_FLOAT);
   }
 
-  if (header_field_is_present(&h, "entropy", /* ind */ NULL)) {
+  if (header_get_field_index(&h, "entropy") != -1) {
     entropy =
         (PyArrayObject *)PyArray_SimpleNew(1, PyArray_DIMS(offset), NPY_FLOAT);
   }
 
-  if (header_field_is_present(&h, "smoothing length", /* ind */ NULL)) {
+  if (header_get_field_index(&h, "smoothing length") != -1) {
     h_sph =
         (PyArrayObject *)PyArray_SimpleNew(1, PyArray_DIMS(offset), NPY_FLOAT);
   }
 
-  if (header_field_is_present(&h, "density", /* ind */ NULL)) {
+  if (header_get_field_index(&h, "density") != -1) {
     rho =
         (PyArrayObject *)PyArray_SimpleNew(1, PyArray_DIMS(offset), NPY_FLOAT);
   }
 
-  if (header_field_is_present(&h, "consts", /* ind */ NULL)) {
+  if (header_get_field_index(&h, "consts") != -1) {
     mass =
         (PyArrayObject *)PyArray_SimpleNew(1, PyArray_DIMS(offset), NPY_FLOAT);
     id = (PyArrayObject *)PyArray_SimpleNew(1, PyArray_DIMS(offset), NPY_ULONG);
@@ -133,12 +151,12 @@ static PyObject *loadFromIndex(__attribute__((unused)) PyObject *self,
 
   /* loop over all particles */
   for (npy_intp i = 0; i < PyArray_DIMS(offset)[0]; i++) {
-    struct particle part;
+    struct logger_particle part;
 
     size_t *offset_particle = (size_t *)PyArray_GETPTR1(offset, i);
 
-    particle_read(&part, &h, map, offset_particle, time,
-		  reader_lin, &times);
+    logger_particle_read(&part, &h, map, offset_particle, time,
+                         logger_reader_lin, &times);
 
     double *dtmp;
     float *ftmp;
@@ -253,7 +271,7 @@ static PyObject *pyReverseOffset(__attribute__((unused)) PyObject *self,
   if (!PyArg_ParseTuple(args, "s|i", &filename, &verbose)) return NULL;
 
   reverse_offset(filename, verbose);
-  
+
   return Py_BuildValue("");
 }
 

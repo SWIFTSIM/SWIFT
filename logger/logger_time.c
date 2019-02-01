@@ -1,3 +1,21 @@
+/*******************************************************************************
+ * This file is part of SWIFT.
+ * Copyright (c) 2019 Loic Hausammann (loic.hausammann@epfl.ch)
+ *
+ * This program is free software: you can redistribute it and/or modify
+ * it under the terms of the GNU Lesser General Public License as published
+ * by the Free Software Foundation, either version 3 of the License, or
+ * (at your option) any later version.
+ *
+ * This program is distributed in the hope that it will be useful,
+ * but WITHOUT ANY WARRANTY; without even the implied warranty of
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+ * GNU General Public License for more details.
+ *
+ * You should have received a copy of the GNU Lesser General Public License
+ * along with this program.  If not, see <http://www.gnu.org/licenses/>.
+ *
+ ******************************************************************************/
 #include "logger_time.h"
 #include "logger_io.h"
 
@@ -11,7 +29,7 @@
  * @param offset In: position in the file, Out: shifted by the timestamp
  */
 void time_read(integertime_t *timestamp, double *time, const struct header *h,
-              void *map, size_t *offset) {
+               void *map, size_t *offset) {
   size_t mask = 0;
   size_t prev_offset = 0;
   *timestamp = 0;
@@ -21,21 +39,19 @@ void time_read(integertime_t *timestamp, double *time, const struct header *h,
   io_read_mask(h, map, offset, &mask, &prev_offset);
 
 #ifdef SWIFT_DEBUG_CHECKS
-  size_t ind = 0;
 
   /* check if timestamp is present */
-  if (!header_field_is_present(h, "timestamp", &ind))
-    error("Header does not contain a timestamp");
+  int ind = header_get_field_index(h, "timestamp");
+  if (ind == -1) error("Header does not contain a timestamp");
 
   /* check if timestamp */
-  if (h->masks[ind] != mask) error("Not a timestamp");
+  if (h->masks[ind].mask != mask) error("Not a timestamp");
 #endif
 
   /* read data */
   // TODO
   io_read_data(map, sizeof(unsigned long long int), timestamp, offset);
   io_read_data(map, sizeof(double), time, offset);
-
 }
 
 /**
@@ -49,16 +65,15 @@ void time_read(integertime_t *timestamp, double *time, const struct header *h,
 void time_first_timestamp(const struct header *h, void *map, size_t *offset) {
   *offset = h->offset_first;
 
-  size_t i;
+  int i = header_get_field_index(h, "timestamp");
 
-  if (!header_field_is_present(h, "timestamp", &i))
-    error("Time stamp not present in header");
+  if (i == -1) error("Time stamp not present in header");
 
   size_t tmp = *offset;
   size_t mask = 0;
   io_read_mask(h, map, offset, &mask, NULL);
 
-  if (mask != h->masks[i]) error("Dump should begin by timestep");
+  if (mask != h->masks[i].mask) error("Dump should begin by timestep");
 
   *offset = tmp;
 }
@@ -72,7 +87,7 @@ void time_first_timestamp(const struct header *h, void *map, size_t *offset) {
  * @param fd file id
  */
 void time_array_init(struct time_array *t, const struct header *h, void *map,
-                    int fd) {
+                     int fd) {
 
   t->next = NULL;
   t->prev = NULL;
@@ -99,8 +114,7 @@ void time_array_init(struct time_array *t, const struct header *h, void *map,
 
     /* get next chunk */
     int test = tools_get_next_chunk(h, map, &offset, fd);
-    if (test == -1)
-      break;
+    if (test == -1) break;
 
     /* allocate next time_array */
     struct time_array *tmp = malloc(sizeof(struct time_array));

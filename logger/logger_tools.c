@@ -1,3 +1,21 @@
+/*******************************************************************************
+ * This file is part of SWIFT.
+ * Copyright (c) 2019 Loic Hausammann (loic.hausammann@epfl.ch)
+ *
+ * This program is free software: you can redistribute it and/or modify
+ * it under the terms of the GNU Lesser General Public License as published
+ * by the Free Software Foundation, either version 3 of the License, or
+ * (at your option) any later version.
+ *
+ * This program is distributed in the hope that it will be useful,
+ * but WITHOUT ANY WARRANTY; without even the implied warranty of
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+ * GNU General Public License for more details.
+ *
+ * You should have received a copy of the GNU Lesser General Public License
+ * along with this program.  If not, see <http://www.gnu.org/licenses/>.
+ *
+ ******************************************************************************/
 #include "logger_tools.h"
 #include "logger_header.h"
 #include "logger_io.h"
@@ -73,7 +91,7 @@ int _tools_get_next_chunk_backward(const struct header *h, void *map,
     size_t mask = 0;
     size_t prev_offset;
     io_read_mask(h, map, &current_offset, &mask, &prev_offset);
-    
+
     prev_offset = current_offset - prev_offset - chunk_header;
     if (*offset == prev_offset) {
       *offset = current_offset - chunk_header;
@@ -132,7 +150,6 @@ void tools_reverse_offset(const struct header *h, void *map, size_t *offset) {
           prev_mask, prev_offset);
 
 #endif  // SWIFT_DEBUG_CHECKS
-
 }
 
 /**
@@ -158,14 +175,14 @@ void tools_check_offset(const struct header *h, void *map, size_t *offset) {
 
   /* read mask + offset */
   io_read_mask(h, map, offset, &mask, &pointed_offset);
-  
+
   /* get absolute offset */
   if (h->forward_offset)
     pointed_offset += tmp;
   else {
     if (tmp < pointed_offset)
-      error("Offset too large (%lu) at %lu with mask %lu", pointed_offset,
-            tmp, mask);
+      error("Offset too large (%lu) at %lu with mask %lu", pointed_offset, tmp,
+            mask);
     pointed_offset = tmp - pointed_offset;
   }
 
@@ -188,15 +205,13 @@ void tools_check_offset(const struct header *h, void *map, size_t *offset) {
 
   if (pointed_mask == 128) return;
 
-  struct particle part;
-  particle_read(&part, h, map, &tmp, 0, reader_const, NULL);
+  struct logger_particle part;
+  logger_particle_read(&part, h, map, &tmp, 0, logger_reader_const, NULL);
 
   size_t id = part.id;
   tmp = pointed_offset - LOGGER_MASK_SIZE - LOGGER_OFFSET_SIZE;
-  particle_read(&part, h, map, &tmp, 0, reader_const, NULL);
+  logger_particle_read(&part, h, map, &tmp, 0, logger_reader_const, NULL);
 
   if (id != part.id)
-    error("Offset wrong, id incorrect (%lu != %lu) at %lu", id, part.id,
-          tmp);
-
+    error("Offset wrong, id incorrect (%lu != %lu) at %lu", id, part.id, tmp);
 }
