@@ -260,10 +260,10 @@ EAGLEEntropyFloor:
   Jeans_over_density_threshold:    10.       # Overdensity above which the EAGLE Jeans limiter entropy floor can kick in.
   Jeans_temperature_norm_K:        8000      # Temperature of the EAGLE Jeans limiter entropy floor at the density threshold expressed in Kelvin.
   Jeans_gamma_effective:           1.3333333 # Slope the of the EAGLE Jeans limiter entropy floor
-  Cool_density_threshold_H_p_cm3: 1e-5       # Physical density above which the EAGLE Cool limiter entropy floor kicks in expressed in Hydrogen atoms per cm^3.
-  Cool_over_density_threshold:    10.        # Overdensity above which the EAGLE Cool limiter entropy floor can kick in.
-  Cool_temperature_norm_K:        8000       # Temperature of the EAGLE Cool limiter entropy floor at the density threshold expressed in Kelvin.
-  Cool_gamma_effective:           1.         # Slope the of the EAGLE Cool limiter entropy floor
+  Cool_density_threshold_H_p_cm3:  1e-5      # Physical density above which the EAGLE Cool limiter entropy floor kicks in expressed in Hydrogen atoms per cm^3.
+  Cool_over_density_threshold:     10.       # Overdensity above which the EAGLE Cool limiter entropy floor can kick in.
+  Cool_temperature_norm_K:         8000      # Temperature of the EAGLE Cool limiter entropy floor at the density threshold expressed in Kelvin.
+  Cool_gamma_effective:            1.        # Slope the of the EAGLE Cool limiter entropy floor
   
 # Parameters related to cooling function  ----------------------------------------------
 
@@ -319,22 +319,21 @@ EAGLEChemistry:
 
 # Parameters related to star formation models  -----------------------------------------------
 
-# Schaye and Dalla Vecchia 2008 star formation
-SchayeSF:
-  thresh_MinOverDens:               57.7      # The critical density contrast to form stars
-  thresh_temp:                      1e5     # The critical temperature to form stars
-  fg:                               0.25    # The mass fraction in gas
-  SchmidtLawCoeff_MSUNpYRpKPC2:     1.515e-4  # The normalization of the Kennicutt-Schmidt law
-  SchmidtLawExponent:               1.4     # The power law of the Kennicutt-Schmidt law
-  SchmidtLawHighDensExponent:       2.0     # The high density exponent for the Kennicutt-Schmidt law
-  SchmidtLawHighDens_thresh_HpCM3:  1e3
-  thresh_norm_HpCM3:                0.1      # Critical sf normalization to use 
-  thresh_max_norm_HpCM3:            10.0    # Maximum norm of the critical sf density
-  MetDep_Z0:                        0.002   # Scale metallicity to use for the equation 
-  MetDep_SFthresh_Slope:            -0.64   # Scaling of the critical density with the metallicity 
-  thresh_MaxPhysDensOn:             0       # Default is 0.
-  thresh_MaxOverDens_HpCM3:         1e5     # Density at which the SF law changes
-  EOS_Jeans_GammaEffective:         1.33333 # The polytropic index
-  EOS_Jeans_TemperatureNorm_K:      1e3     # No idea how this works
-  EOS_JEANS_DensityNorm_HpCM3:      0.1      # No idea what the value is.
-
+# EAGLE star formation model (Schaye and Dalla Vecchia 2008)
+EAGLEStarFormation:
+  EOS_density_norm_H_p_cm3:          0.1       # Physical density used for the normalisation of the EOS assumed for the star-forming gas in Hydrogen atoms per cm^3.
+  EOS_temperature_norm_K:            8000      # Temperature om the polytropic EOS assumed for star-forming gas at the density normalisation in Kelvin.
+  EOS_gamma_effective:               1.3333333 # Slope the of the polytropic EOS assumed for the star-forming gas.
+  gas_fraction:                      0.25      # (Optional) The gas fraction used internally by the model (Defaults to 1).
+  KS_normalisation:                  1.515e-4  # The normalization of the Kennicutt-Schmidt law in Msun / kpc^2 / yr.
+  KS_exponent:                       1.4       # The exponent of the Kennicutt-Schmidt law.
+  KS_min_over_density:               57.7      # The over-density above which star-formation is allowed.
+  KS_high_density_threshold_H_p_cm3: 1e3       # Hydrogen number density above which the Kennicut-Schmidt law changes slope in Hydrogen atoms per cm^3.
+  KS_high_density_exponent:          2.0       # Slope of the Kennicut-Schmidt law above the high-density threshold.
+  KS_max_density_threshold_H_p_cm3:  1e5       # (Optional) Density above which a gas particle gets automatically turned into a star in Hydrogen atoms per cm^3 (Defaults to FLT_MAX).
+  KS_temperature_margin:             0.5       # (Optional) Logarithm base 10 of the maximal temperature difference above the EOS allowed to form stars (Defaults to FLT_MAX).
+  threshold_norm_H_p_cm3:            0.1       # Normalisation of the metal-dependant density threshold for star formation in Hydrogen atoms per cm^3.
+  threshold_Z0:                      0.002     # Reference metallicity (metal mass fraction) for the metal-dependant threshold for star formation.
+  threshold_slope:                   -0.64     # Slope of the metal-dependant star formation threshold
+  threshold_max_density_H_p_cm3:     10.0      # Maximal density of the metal-dependant density threshold for star formation in Hydrogen atoms per cm^3.  
+  
