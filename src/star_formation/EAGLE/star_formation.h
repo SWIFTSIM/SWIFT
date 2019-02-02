@@ -43,88 +43,88 @@
 struct star_formation {
 
   /*! Normalization of the KS star formation law (internal units) */
-  double KS_normalization;
+  float KS_normalization;
 
   /*! Normalization of the KS star formation law (Msun / kpc^2 / yr) */
-  double KS_normalization_MSUNpYRpKPC2;
+  float KS_normalization_MSUNpYRpKPC2;
 
   /*! Slope of the KS law */
-  double KS_power_law;
+  float KS_power_law;
 
   /*! Slope of the high density KS law */
-  double KS_high_den_power_law;
+  float KS_high_den_power_law;
 
   /*! KS law High density threshold (internal units) */
-  double KS_high_den_thresh;
+  float KS_high_den_thresh;
 
   /*! KS high density normalization (internal units) */
-  double KS_high_den_normalization;
+  float KS_high_den_normalization;
 
   /*! KS high density normalization (H atoms per cm^3)  */
-  double KS_high_den_thresh_HpCM3;
+  float KS_high_den_thresh_HpCM3;
 
   /*! Critical overdensity */
-  double min_over_den;
+  float min_over_den;
 
   /*! Dalla Vecchia & Schaye temperature criteria */
-  double temperature_margin_threshold_dex;
+  float temperature_margin_threshold_dex;
 
   /*! gas fraction */
   float fgas;
 
   /*! Star formation law slope */
-  double SF_power_law;
+  float SF_power_law;
 
-  /*! star formation normalization of schaye+08 (internal units) */
-  double SF_normalization;
+  /*! star formation normalization (internal units) */
+  float SF_normalization;
 
   /*! star formation high density slope */
-  double SF_high_den_power_law;
+  float SF_high_den_power_law;
 
   /*! Star formation high density normalization (internal units) */
-  double SF_high_den_normalization;
+  float SF_high_den_normalization;
 
   /*! Density threshold to form stars (internal units) */
-  double density_threshold;
+  float density_threshold;
 
   /*! Density threshold to form stars in user units */
   float density_threshold_HpCM3;
 
   /*! Maximum density threshold to form stars (internal units) */
-  double density_threshold_max;
+  float density_threshold_max;
 
   /*! Maximum density threshold to form stars (H atoms per cm^3) */
   float density_threshold_max_HpCM3;
 
   /*! Reference metallicity for metal-dependant threshold */
-  double Z0;
+  float Z0;
 
   /*! Inverse of reference metallicity */
-  double Z0_inv;
+  float Z0_inv;
 
   /*! critical density Metallicity power law (internal units) */
-  double n_Z0;
+  float n_Z0;
 
   /*! Polytropic index */
-  double polytropic_index;
+  float polytropic_index;
 
   /*! EOS pressure norm (internal units) */
-  double EOS_pressure_norm;
+  float EOS_pressure_norm;
 
   /*! EOS Temperature norm (internal units)  */
-  double EOS_temperature_norm;
+  float EOS_temperature_norm;
 
   /*! EOS density norm (internal units) */
-  double EOS_density_norm;
+  float EOS_density_norm;
 
   /*! EOS density norm (H atoms per cm^3) */
   float EOS_density_norm_HpCM3;
 
   /*! Max physical density (H atoms per cm^3)*/
-  double max_gas_density_HpCM3;
+  float max_gas_density_HpCM3;
 
   /*! Max physical density (internal units) */
-  double max_gas_density;
+  float max_gas_density;
 };
 
 /**
@@ -349,35 +349,35 @@ INLINE static void starformation_init_backend(
     struct star_formation* starform) {
 
   /* Get the Gravitational constant */
-  const double G_newton = phys_const->const_newton_G;
+  const float G_newton = phys_const->const_newton_G;
 
   /* Initial Hydrogen abundance (mass fraction) */
-  const double X_H = hydro_props->hydrogen_mass_fraction;
+  const float X_H = hydro_props->hydrogen_mass_fraction;
 
   /* Mean molecular weight assuming neutral gas */
   const float mean_molecular_weight = hydro_props->mu_neutral;
-  
+
   /* Get the surface density unit Msun / pc^2 in internal units */
-  const double Msun_per_pc2 =
+  const float Msun_per_pc2 =
       phys_const->const_solar_mass /
       (phys_const->const_parsec * phys_const->const_parsec);
 
   /* Get the SF surface density unit Msun / pc^2 / yr in internal units */
-  const double Msun_per_pc2_per_year = Msun_per_pc2 / phys_const->const_year;
+  const float Msun_per_pc2_per_year = Msun_per_pc2 / phys_const->const_year;
 
   /* Conversion of number density from cgs */
-  const double number_density_from_cgs =
+  const float number_density_from_cgs =
       1. / units_cgs_conversion_factor(us, UNIT_CONV_NUMBER_DENSITY);
 
   /* Quantities that have to do with the Normal Kennicutt-
    * Schmidt law will be read in this part of the code*/
 
   /* Load the equation of state for this model */
-  starform->polytropic_index = parser_get_param_double(
+  starform->polytropic_index = parser_get_param_float(
       parameter_file, "EAGLEStarFormation:EOS_gamma_effective");
-  starform->EOS_temperature_norm = parser_get_param_double(
+  starform->EOS_temperature_norm = parser_get_param_float(
       parameter_file, "EAGLEStarFormation:EOS_temperature_norm_K");
-  starform->EOS_density_norm_HpCM3 = parser_get_param_double(
+  starform->EOS_density_norm_HpCM3 = parser_get_param_float(
       parameter_file, "EAGLEStarFormation:EOS_density_threshold_H_p_cm3");
   starform->EOS_density_norm =
       starform->EOS_density_norm_HpCM3 * number_density_from_cgs;
@@ -386,28 +386,28 @@ INLINE static void starformation_init_backend(
   starform->EOS_pressure_norm =
       starform->EOS_density_norm * starform->EOS_temperature_norm *
       phys_const->const_boltzmann_k / mean_molecular_weight / X_H;
-  
+
   /* Read the critical density contrast from the parameter file*/
-  starform->min_over_den = parser_get_param_double(
+  starform->min_over_den = parser_get_param_float(
       parameter_file, "EAGLEStarFormation:KS_min_over_density");
 
   /* Read the critical temperature from the parameter file */
-  starform->temperature_margin_threshold_dex = parser_get_param_double(
+  starform->temperature_margin_threshold_dex = parser_get_param_float(
       parameter_file, "EAGLEStarFormation:temperature_margin_threshold_dex");
 
   /* Read the gas fraction from the file */
-  starform->fgas = parser_get_opt_param_double(
-      parameter_file, "EAGLEStarFormation:gas_fraction", 1.);
+  starform->fgas = parser_get_opt_param_float(
+      parameter_file, "EAGLEStarFormation:gas_fraction", 1.f);
 
   /* Read the Kennicutt-Schmidt power law exponent */
   starform->KS_power_law =
-      parser_get_param_double(parameter_file, "EAGLEStarFormation:KS_exponent");
+      parser_get_param_float(parameter_file, "EAGLEStarFormation:KS_exponent");
 
   /* Calculate the power law of the corresponding star formation Schmidt law */
-  starform->SF_power_law = (starform->KS_power_law - 1.) / 2.;
+  starform->SF_power_law = (starform->KS_power_law - 1.f) / 2.f;
 
   /* Read the normalization of the KS law in KS law units */
-  starform->KS_normalization_MSUNpYRpKPC2 = parser_get_param_double(
+  starform->KS_normalization_MSUNpYRpKPC2 = parser_get_param_float(
       parameter_file, "EAGLEStarFormation:KS_normalisation");
 
   /* Convert to internal units */
@@ -421,7 +421,7 @@ INLINE static void starformation_init_backend(
       pow(hydro_gamma * starform->fgas / G_newton, starform->SF_power_law);
 
   /* Read the high density Kennicutt-Schmidt power law exponent */
-  starform->KS_high_den_power_law = parser_get_param_double(
+  starform->KS_high_den_power_law = parser_get_param_float(
       parameter_file, "EAGLEStarFormation:KS_high_density_exponent");
 
   /* Calculate the SF high density power law */
@@ -429,22 +429,23 @@ INLINE static void starformation_init_backend(
       (starform->KS_high_den_power_law - 1.f) / 2.f;
 
   /* Read the high density criteria for the KS law in number density per cm^3 */
-  starform->KS_high_den_thresh_HpCM3 =
-      parser_get_param_double(parameter_file, "KS_high_density_threshold");
+  starform->KS_high_den_thresh_HpCM3 = parser_get_param_float(
+      parameter_file, "EAGLEStarFormation:KS_high_density_threshold_H_p_cm3");
 
   /* Transform the KS high density criteria to simulation units */
   starform->KS_high_den_thresh =
       starform->KS_high_den_thresh_HpCM3 * number_density_from_cgs;
 
   /* Pressure at the high-density threshold */
-  const double EOS_high_den_pressure =
+  const float EOS_high_den_pressure =
       starform->EOS_pressure_norm *
       pow(starform->KS_high_den_thresh / starform->EOS_density_norm,
           starform->polytropic_index);
 
-  /* Calculate the KS high density normalization 
+  /* Calculate the KS high density normalization
    * We want the SF law to be continous so the normalisation of the second
-   * power-law is the value of the first power-law at the high-density threshold */
+   * power-law is the value of the first power-law at the high-density threshold
+   */
   starform->KS_high_den_normalization =
       starform->KS_normalization *
       pow(Msun_per_pc2,
@@ -460,20 +461,20 @@ INLINE static void starformation_init_backend(
           starform->SF_high_den_power_law);
 
   /* Get the maximum physical density for SF */
-  starform->max_gas_density_HpCM3 = parser_get_opt_param_double(
-      parameter_file, "EAGLEStarFormation:KS_max_density_threshold", FLT_MAX);
+  starform->max_gas_density_HpCM3 = parser_get_opt_param_float(
+      parameter_file, "EAGLEStarFormation:KS_max_density_threshold_H_p_cm3",
+      FLT_MAX);
 
   /* Convert the maximum physical density to internal units */
   starform->max_gas_density =
       starform->max_gas_density_HpCM3 * number_density_from_cgs;
 
-  starform->temperature_margin_threshold_dex =
-    parser_get_opt_param_float(parameter_file, "EAGLEStarFormation:KS_temperature_margin",
-			       FLT_MAX);
-  
+  starform->temperature_margin_threshold_dex = parser_get_opt_param_float(
+      parameter_file, "EAGLEStarFormation:KS_temperature_margin", FLT_MAX);
+
   /* Read the normalization of the metallicity dependent critical
    * density*/
-  starform->density_threshold_HpCM3 = parser_get_param_double(
+  starform->density_threshold_HpCM3 = parser_get_param_float(
       parameter_file, "EAGLEStarFormation:threshold_norm_H_p_cm3");
 
   /* Convert to internal units */
@@ -481,22 +482,21 @@ INLINE static void starformation_init_backend(
       starform->density_threshold_HpCM3 * number_density_from_cgs;
 
   /* Read the scale metallicity Z0 */
-  starform->Z0 =
-      parser_get_param_double(parameter_file, "EAGLEStarFormation:threshold_Z0");
+  starform->Z0 = parser_get_param_float(parameter_file,
+                                         "EAGLEStarFormation:threshold_Z0");
+  starform->Z0_inv = 1.f / starform->Z0;
 
   /* Read the power law of the critical density scaling */
-  starform->n_Z0 = parser_get_param_double(
+  starform->n_Z0 = parser_get_param_float(
       parameter_file, "EAGLEStarFormation:threshold_slope");
 
   /* Read the maximum allowed density for star formation */
-  starform->density_threshold_max_HpCM3 = parser_get_param_double(
+  starform->density_threshold_max_HpCM3 = parser_get_param_float(
       parameter_file, "EAGLEStarFormation:threshold_max_density_H_p_cm3");
 
+  /* Convert to internal units */
   starform->density_threshold_max =
       starform->density_threshold_max_HpCM3 * number_density_from_cgs;
-
-  /* Claculate 1 over the metallicity */
-  starform->Z0_inv = 1 / starform->Z0;
 }
 
 /**
@@ -507,7 +507,7 @@ INLINE static void starformation_init_backend(
 INLINE static void starformation_print_backend(
     const struct star_formation* starform) {
 
-  message("Star formation law is Schaye and Dalla Vecchia (2008)");
+  message("Star formation law is EAGLE (Schaye & Dalla Vecchia 2008)");
   message(
       "With properties: normalization = %e Msun/kpc^2/yr, slope of the"
       "Kennicutt-Schmidt law = %e and gas fraction = %e ",
@@ -518,11 +518,10 @@ INLINE static void starformation_print_backend(
   message(
       "The effective equation of state is given by: polytropic "
       "index = %e , normalization density = %e #/cm^3 and normalization "
-      "temperature = "
-      "%e K",
+      "temperature = %e K",
       starform->polytropic_index, starform->EOS_density_norm_HpCM3,
       starform->EOS_temperature_norm);
-  message("Density threshold is given by Schaye (2004)");
+  message("Density threshold follows Schaye (2004)");
   message(
       "the normalization of the density threshold is given by"
       " %e #/cm^3, with metallicity slope of %e, and metallicity normalization"
@@ -535,23 +534,5 @@ INLINE static void starformation_print_backend(
   message("Running with a maximum gas density given by: %e #/cm^3",
           starform->max_gas_density_HpCM3);
 }
-
-/* Starformation history struct */
-struct star_formation_history {
-  /*! Numb of stars */
-  unsigned long int N_stars;
-
-  /*! Total new stellar mass */
-  float new_stellar_mass;
-
-  /*! Time union */
-  union {
-    /*! Time */
-    float time;
-
-    /*! Scale factor */
-    float scale_factor;
-  };
-};
 
 #endif /* SWIFT_EAGLE_STAR_FORMATION_H */
