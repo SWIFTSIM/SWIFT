@@ -128,6 +128,36 @@ struct star_formation {
 };
 
 /**
+ * @brief Computes the density threshold for star-formation fo a given total
+ * metallicity.
+ *
+ * Follows Schaye (2004) eq. 19 and 24 (see also Schaye et al. 2015, eq. 2).
+ *
+ * @param Z The metallicity (metal mass fraction).
+ * @param starform The properties of the star formation model.
+ * @param phys_const The physical constants.
+ * @return The physical density threshold for star formation in internal units.
+ */
+INLINE static float star_formation_threshold(
+    const float Z, const struct star_formation* starform,
+    const struct phys_const* phys_const) {
+
+  float density_threshold;
+
+  /* Schaye (2004), eq. 19 and 24 */
+  if (Z > 0.f) {
+    density_threshold = starform->density_threshold *
+                        powf(Z * starform->Z0_inv, starform->n_Z0);
+    density_threshold = min(density_threshold, starform->density_threshold_max);
+  } else {
+    density_threshold = starform->density_threshold_max;
+  }
+
+  /* Convert to mass density */
+  return density_threshold * phys_const->const_proton_mass;
+}
+
+/**
  * @brief Calculate if the gas has the potential of becoming
  * a star.
  *
@@ -149,11 +179,12 @@ INLINE static int star_formation_potential_to_become_star(
     const struct unit_system* restrict us,
     const struct cooling_function_data* restrict cooling) {
 
-  /* Read the critical overdensity factor and the critical density of
-   * the universe to determine the critical density to form stars*/
+  /* Minimal density (converted from critical density) for star formation */
   const double rho_crit_times_min_over_den =
       cosmo->critical_density * starform->min_over_den;
-  const double particle_density = hydro_get_physical_density(p, cosmo);
+
+  /* Physical density of the particle */
+  const double physical_density = hydro_get_physical_density(p, cosmo);
 
   /* Deside whether we should form stars or not,
    * first we deterime if we have the correct over density
@@ -161,45 +192,35 @@ INLINE static int star_formation_potential_to_become_star(
    * threshold is reached or if the metallicity dependent
    * threshold is reached, after this we calculate if the
    * temperature is appropriate */
-  if (particle_density < rho_crit_times_min_over_den) return 0;
+  if (physical_density < rho_crit_times_min_over_den) return 0;
 
   /* In this case there are actually multiple possibilities
    * because we also need to check if the physical density exceeded
    * the appropriate limit */
 
-  const double Z = p->chemistry_data.smoothed_metal_mass_fraction_total;
-  double density_threshold_metal_dep;
-  if (Z > 0) {
-    density_threshold_metal_dep =
-        starform->density_threshold * pow(Z * starform->Z0_inv, starform->n_Z0);
-  } else {
-    density_threshold_metal_dep = starform->density_threshold_max;
-  }
+  const float Z = p->chemistry_data.smoothed_metal_mass_fraction_total;
+  const float X_H = p->chemistry_data.smoothed_metal_mass_fraction[0];
 
-  /* Calculate the maximum between both and convert to mass density instead of
-   * number density*/
-  const double density_threshold_current =
-      min(density_threshold_metal_dep, starform->density_threshold_max) *
-      phys_const->const_proton_mass;
+  /* Get the density threshold */
+  const float density_threshold =
+      star_formation_threshold(Z, starform, phys_const);
 
-  /* Check if it exceeded the maximum density */
-  if (particle_density * p->chemistry_data.smoothed_metal_mass_fraction[0] <
-      density_threshold_current)
-    return 0;
+  /* Check if it exceeded the minimum density */
+  if (physical_density * X_H < density_threshold) return 0;
 
   /* Calculate the temperature */
   const double temperature = cooling_get_temperature(phys_const, hydro_props,
                                                      us, cosmo, cooling, p, xp);
 
+  /* Temperature on the equation of state */
   const double temperature_eos =
       starform->EOS_pressure_norm / phys_const->const_boltzmann_k *
-      pow(particle_density * p->chemistry_data.smoothed_metal_mass_fraction[0],
-          starform->polytropic_index - 1.f) *
+      pow(physical_density * X_H, starform->polytropic_index - 1.f) *
       pow(starform->EOS_density_norm, starform->polytropic_index);
 
   /* Check the last criteria, if the temperature is satisfied */
-  return (log10(temperature) <
-          log10(temperature_eos) + starform->temperature_margin_threshold_dex);
+  return (temperature <
+          temperature_eos * exp10(starform->temperature_margin_threshold_dex));
 }
 
 /**
@@ -482,13 +503,13 @@ INLINE static void starformation_init_backend(
       starform->density_threshold_HpCM3 * number_density_from_cgs;
 
   /* Read the scale metallicity Z0 */
-  starform->Z0 = parser_get_param_float(parameter_file,
-                                         "EAGLEStarFormation:threshold_Z0");
+  starform->Z0 =
+      parser_get_param_float(parameter_file, "EAGLEStarFormation:threshold_Z0");
   starform->Z0_inv = 1.f / starform->Z0;
 
   /* Read the power law of the critical density scaling */
-  starform->n_Z0 = parser_get_param_float(
-      parameter_file, "EAGLEStarFormation:threshold_slope");
+  starform->n_Z0 = parser_get_param_float(parameter_file,
+                                          "EAGLEStarFormation:threshold_slope");
 
   /* Read the maximum allowed density for star formation */
   starform->density_threshold_max_HpCM3 = parser_get_param_float(

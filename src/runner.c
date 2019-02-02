@@ -522,7 +522,6 @@ void runner_do_star_formation(struct runner *r, struct cell *c, int timer) {
           dt_star = get_timestep(p->time_bin, time_base);
         }
 
-        // const float rho = hydro_get_physical_density(p, cosmo);
         if (star_formation_convert_to_star(e, starform, p, xp, constants, cosmo,
                                            hydro_props, us, cooling, dt_star,
                                            with_cosmology)) {
