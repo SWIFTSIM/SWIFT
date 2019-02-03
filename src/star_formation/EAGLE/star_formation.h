@@ -443,8 +443,10 @@ INLINE static void starformation_init_backend(
       phys_const->const_solar_mass /
       (phys_const->const_parsec * phys_const->const_parsec);
 
-  /* Get the SF surface density unit Msun / pc^2 / yr in internal units */
-  const double Msun_per_pc2_per_year = Msun_per_pc2 / phys_const->const_year;
+  /* Get the SF surface density unit Msun / kpc^2 / yr in internal units */
+  const double kpc = 1000. * phys_const->const_parsec;
+  const double Msun_per_kpc2_per_year =
+      phys_const->const_solar_mass / (kpc * kpc) / phys_const->const_year;
 
   /* Conversion of number density from cgs */
   const double number_density_from_cgs =
@@ -495,7 +497,7 @@ INLINE static void starformation_init_backend(
 
   /* Convert to internal units */
   starform->KS_normalization =
-      starform->KS_normalization_MSUNpYRpKPC2 * Msun_per_pc2_per_year;
+      starform->KS_normalization_MSUNpYRpKPC2 * Msun_per_kpc2_per_year;
 
   /* Calculate the starformation pre-factor (eq. 12 of Schaye & Dalla Vecchia
    * 2008) */
