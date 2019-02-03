@@ -50,7 +50,7 @@ SPH:
   H_ionization_temperature: 1e4   # (Optional) Temperature of the transition from neutral to ionized Hydrogen for primoridal gas.
 
 EAGLECooling:
-  dir_name:                ../coolingtables/  # Location of the Wiersma+08 cooling tables
+  dir_name:                ./coolingtables/  # Location of the Wiersma+08 cooling tables
   H_reion_z:               11.5              # Redshift of Hydrogen re-ionization
   He_reion_z_centre:       3.5               # Redshift of the centre of the Helium re-ionization Gaussian
   He_reion_z_sigma:        0.5               # Spread in redshift of the  Helium re-ionization Gaussian
@@ -82,24 +82,23 @@ HernquistPotential:
   timestep_mult:   0.01     # Dimensionless pre-factor for the time-step condition, basically determines the fraction of the orbital time we use to do the time integration
   epsilon:         0.01      # Softening size (internal units)
  
-# Schaye and Dalla Vecchia 2008 star formation
+# EAGLE star formation parameters
 EAGLEStarFormation:
-  thresh_MinOverDens:               57.7      # The critical density contrast to form stars
-  thresh_temp:                      1e5     # The critical temperature to form stars
-  fg:                               0.3    # The mass fraction in gas
-  SchmidtLawCoeff_MSUNpYRpKPC2:     1.515e-4  # The normalization of the Kennicutt-Schmidt law
-  SchmidtLawExponent:               1.4     # The power law of the Kennicutt-Schmidt law
-  SchmidtLawHighDensExponent:       2.0     # The high density exponent for the Kennicutt-Schmidt law
-  SchmidtLawHighDens_thresh_HpCM3:  1e3
-  temperature_margin_threshold_dex: 0.5
-  Schaye2004:                       1       # whether to use the metallicity dependent critical star formation of Schaye (2004) (1) or not (0).
-  thresh_norm_HpCM3:                0.1      # Critical sf normalization to use (is not a normalization when Schaye2004=0, than it is the value.
-  thresh_max_norm_HpCM3:            10.0    # Maximum norm of the critical sf density
-  MetDep_Z0:                        0.002   # Scale metallicity to use for the equation (not used for Schaye2004=0)
-  MetDep_SFthresh_Slope:            -0.64   # Scaling of the critical density with the metallicity (not used for Schaye2004=0)
-  thresh_MaxPhysDensOn:             0       # Default is 0.
-  thresh_MaxOverDens_HpCM3:         1e5     # Density at which the SF law changes
-
+  EOS_density_norm_H_p_cm3:          0.1       # Physical density used for the normalisation of the EOS assumed for the star-forming gas in Hydrogen atoms per cm^3.
+  EOS_temperature_norm_K:            8000      # Temperature om the polytropic EOS assumed for star-forming gas at the density normalisation in Kelvin.
+  EOS_gamma_effective:               1.3333333 # Slope the of the polytropic EOS assumed for the star-forming gas.
+  gas_fraction:                      0.3       # The gas fraction used internally by the model.
+  KS_normalisation:                  1.515e-4  # The normalization of the Kennicutt-Schmidt law in Msun / kpc^2 / yr.
+  KS_exponent:                       1.4       # The exponent of the Kennicutt-Schmidt law.
+  KS_min_over_density:               57.7      # The over-density above which star-formation is allowed.
+  KS_high_density_threshold_H_p_cm3: 1e3       # Hydrogen number density above which the Kennicut-Schmidt law changes slope in Hydrogen atoms per cm^3.
+  KS_high_density_exponent:          2.0       # Slope of the Kennicut-Schmidt law above the high-density threshold.
+  KS_temperature_margin_dex:         0.5       # Logarithm base 10 of the maximal temperature difference above the EOS allowed to form stars.
+  threshold_norm_H_p_cm3:            0.1       # Normalisation of the metal-dependant density threshold for star formation in Hydrogen atoms per cm^3.
+  threshold_Z0:                      0.002     # Reference metallicity (metal mass fraction) for the metal-dependant threshold for star formation.
+  threshold_slope:                   -0.64     # Slope of the metal-dependant star formation threshold
+  threshold_max_density_H_p_cm3:     10.0      # Maximal density of the metal-dependant density threshold for star formation in Hydrogen atoms per cm^3.
+  
 # Parameters for the EAGLE "equation of state"
 EAGLEEntropyFloor:
   Jeans_density_threshold_H_p_cm3: 0.1       # Physical density above which the EAGLE Jeans limiter entropy floor kicks in expressed in Hydrogen atoms per cm^3.
