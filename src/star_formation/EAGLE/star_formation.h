@@ -29,6 +29,7 @@
 #include "parser.h"
 #include "part.h"
 #include "physical_constants.h"
+#include "random.h"
 #include "stars.h"
 #include "units.h"
 
@@ -296,23 +297,25 @@ INLINE static int star_formation_convert_to_star(
     const double X_H = p->chemistry_data.smoothed_metal_mass_fraction[0];
     const double n_H = physical_density * X_H / phys_const->const_proton_mass;
 
+    /* Are we above the threshold for automatic star formation? */
+    if (physical_density >
+        starform->max_gas_density * phys_const->const_proton_mass) {
+      return 1;
+    }
+
     /* Pressure on the EOS for this particle */
     const double pressure = EOS_pressure(n_H, starform);
 
+    /* Calculate the specific star formation rate */
     double SFRpergasmass;
     if (hydro_get_physical_density(p, cosmo) <
         starform->KS_high_den_thresh * phys_const->const_proton_mass) {
-      /* Calculate the star formation rate */
+
       SFRpergasmass =
           starform->SF_normalization * pow(pressure, starform->SF_power_law);
-    } else if (hydro_get_physical_density(p, cosmo) >
-               starform->max_gas_density * phys_const->const_proton_mass) {
-      /* We give the star formation tracers values of the mass and -1 for sSFR
-       * to be able to trace them, we don't want random variables there*/
-      xp->sf_data.SFR = p->mass;
-      xp->sf_data.sSFR = -1.f;
-      return 1.f;
+
     } else {
+
       SFRpergasmass = starform->SF_high_den_normalization *
                       pow(pressure, starform->SF_high_den_power_law);
     }
@@ -320,18 +323,16 @@ INLINE static int star_formation_convert_to_star(
     /* Store the SFR */
     xp->sf_data.SFR = SFRpergasmass * p->mass;
     xp->sf_data.sSFR = SFRpergasmass;
+
     /* Calculate the propability of forming a star */
     const double prop = SFRpergasmass * dt_star;
 
-    /* Calculate the seed */
-    unsigned int seed = (p->id + e->ti_current) % 8191;
+    /* Get a random number between 0 and 1 for star formation */
+    const double random_number = random_unit_interval(
+        p->id, e->ti_current, random_number_star_formation);
 
-    /* Generate a random number between 0 and 1. */
-    const double randomnumber =
-        rand_r(&seed);  // MATTHIEU: * starform->inv_RAND_MAX;
-
-    /* Calculate if we form a star */
-    return (prop > randomnumber);
+    /* Have we been lucky and need to form a star? */
+    return (prop > random_number);
   }
 
   /* Check if it is the first time steps after star formation */
