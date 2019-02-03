@@ -294,7 +294,7 @@ INLINE static void star_formation_compute_SFR(
   if (physical_density >
       starform->max_gas_density * phys_const->const_proton_mass) {
 
-    xp->sf_data.SFR = p->mass / dt_star;
+    xp->sf_data.SFR = hydro_get_mass(p) / dt_star;
     return;
   }
 
@@ -316,7 +316,7 @@ INLINE static void star_formation_compute_SFR(
   }
 
   /* Store the SFR */
-  xp->sf_data.SFR = SFRpergasmass * p->mass;
+  xp->sf_data.SFR = SFRpergasmass * hydro_get_mass(p);
 }
 
 /**
@@ -338,7 +338,7 @@ INLINE static int star_formation_should_convert_to_star(
     const double dt_star) {
 
   /* Calculate the propability of forming a star */
-  const double prob = xp->sf_data.SFR * dt_star / p->mass;
+  const double prob = xp->sf_data.SFR * dt_star / hydro_get_mass(p);
 
   /* Get a unique random number between 0 and 1 for star formation */
   const double random_number =
@@ -393,10 +393,10 @@ INLINE static void star_formation_copy_properties(
     const struct cosmology* cosmo, const int with_cosmology) {
 
   /* Store the current mass */
-  sp->mass = p->mass;
+  sp->mass = hydro_get_mass(p);
 
   /* Store the current mass as the initial mass */
-  sp->mass_init = p->mass;
+  sp->mass_init = hydro_get_mass(p);
 
   /* Store either the birth_scale_factor or birth_time depending  */
   if (with_cosmology) {

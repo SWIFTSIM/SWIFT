@@ -48,8 +48,8 @@ __attribute__((always_inline)) INLINE static void runner_iact_chemistry(
   float wj;
 
   /* Get the masses. */
-  const float mi = pi->mass;
-  const float mj = pj->mass;
+  const float mi = hydro_get_mass(pi);
+  const float mj = hydro_get_mass(pj);
 
   /* Get r */
   const float r = sqrtf(r2);
@@ -106,7 +106,7 @@ __attribute__((always_inline)) INLINE static void runner_iact_nonsym_chemistry(
   float wi;
 
   /* Get the masses. */
-  const float mj = pj->mass;
+  const float mj = hydro_get_mass(pj);
 
   /* Get r */
   const float r = sqrtf(r2);
