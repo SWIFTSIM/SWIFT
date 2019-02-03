@@ -9,6 +9,13 @@ This section of the documentation gives a brief description of the
 different components of the EAGLE sub-grid model. We mostly focus on
 the parameters and values output in the snapshots.
 
+.. _EAGLE_entropy_floors:
+
+Entropy floors
+~~~~~~~~~~~~~~
+
+
+
 .. _EAGLE_chemical_tracers:
 
 Chemical tracers
