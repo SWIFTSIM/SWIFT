@@ -70,9 +70,6 @@ struct spart {
   /*! Birth density */
   float birth_density;
 
-  /*! New star flag */
-  int new_star_flag;
-
   /*! Tracer structure */
   struct tracers_xpart_data tracers_data;
 

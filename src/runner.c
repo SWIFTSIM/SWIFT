@@ -522,9 +522,9 @@ void runner_do_star_formation(struct runner *r, struct cell *c, int timer) {
           dt_star = get_timestep(p->time_bin, time_base);
         }
 
-        if (star_formation_convert_to_star(e, starform, p, xp, constants, cosmo,
-                                           hydro_props, us, cooling, dt_star,
-                                           with_cosmology)) {
+        if (star_formation_should_convert_to_star(
+                e, starform, p, xp, constants, cosmo, hydro_props, us, cooling,
+                dt_star, with_cosmology)) {
           /* Convert your particle to a star */
           struct spart *sp = cell_convert_part_to_spart(e, c, p, xp);
 

@@ -212,7 +212,7 @@ INLINE static float EOS_temperature(const float n_H,
  * @param cooling The cooling data struct.
  *
  */
-INLINE static int star_formation_potential_to_become_star(
+INLINE static int star_formation_is_star_forming(
     const struct star_formation* starform, const struct part* restrict p,
     const struct xpart* restrict xp, const struct phys_const* const phys_const,
     const struct cosmology* cosmo,
@@ -277,7 +277,7 @@ INLINE static int star_formation_potential_to_become_star(
  * @param dt_star The time-step of this particle.
  * @param with_cosmology Are we running with cosmology on?
  */
-INLINE static int star_formation_convert_to_star(
+INLINE static int star_formation_should_convert_to_star(
     const struct engine* e, const struct star_formation* starform,
     const struct part* restrict p, struct xpart* restrict xp,
     const struct phys_const* const phys_const, const struct cosmology* cosmo,
@@ -287,10 +287,12 @@ INLINE static int star_formation_convert_to_star(
     const int with_cosmology) {
 
   /* Abort early if time-step size is 0 */
-  if (dt_star == 0.f) return 0;
+  if (dt_star == 0.f) {
+    return 0;
+  }
 
-  if (star_formation_potential_to_become_star(
-          starform, p, xp, phys_const, cosmo, hydro_props, us, cooling)) {
+  if (star_formation_is_star_forming(starform, p, xp, phys_const, cosmo,
+                                     hydro_props, us, cooling)) {
 
     /* Hydrogen number density of this particle */
     const double physical_density = hydro_get_physical_density(p, cosmo);
@@ -322,7 +324,6 @@ INLINE static int star_formation_convert_to_star(
 
     /* Store the SFR */
     xp->sf_data.SFR = SFRpergasmass * p->mass;
-    xp->sf_data.sSFR = SFRpergasmass;
 
     /* Calculate the propability of forming a star */
     const double prop = SFRpergasmass * dt_star;
@@ -339,10 +340,8 @@ INLINE static int star_formation_convert_to_star(
   if (xp->sf_data.SFR > 0.f) {
     if (with_cosmology) {
       xp->sf_data.SFR = -cosmo->a;
-      xp->sf_data.sSFR = 0.f;
     } else {
       xp->sf_data.SFR = -e->time;
-      xp->sf_data.sSFR = 0.f;
     }
   }
 
@@ -389,10 +388,6 @@ INLINE static void star_formation_copy_properties(
 
   /* Store the birth density in the star particle */
   sp->birth_density = hydro_get_physical_density(p, cosmo);
-
-  sp->new_star_flag = 1;
-
-  message("A star has been formed!");
 }
 
 /**

@@ -27,9 +27,6 @@ struct star_formation_xpart_data {
 
   /*! Star formation rate */
   float SFR;
-
-  /*! Specific star formation rate */
-  float sSFR;
 };
 
 #endif /* SWIFT_EAGLE_STAR_FORMATION_STRUCT_H */
