@@ -106,19 +106,25 @@ struct star_formation {
   float n_Z0;
 
   /*! Polytropic index */
-  float polytropic_index;
-
-  /*! EOS pressure norm (internal units) */
-  float EOS_pressure_norm;
-
-  /*! EOS Temperature norm (internal units)  */
-  float EOS_temperature_norm;
-
-  /*! EOS density norm (internal units) */
-  float EOS_density_norm;
+  float EOS_polytropic_index;
 
   /*! EOS density norm (H atoms per cm^3) */
   float EOS_density_norm_HpCM3;
+
+  /*! EOS Temperature norm (Kelvin)  */
+  float EOS_temperature_norm_K;
+
+  /*! EOS pressure norm, eq. 13 of Schaye & Dalla Vecchia 2008 (internal units)
+   */
+  float EOS_pressure_c;
+
+  /*! EOS Temperarure norm, eq. 13 of Schaye & Dalla Vecchia 2008 (internal
+   * units) */
+  float EOS_temperature_c;
+
+  /*! EOS density norm, eq. 13 of Schaye & Dalla Vecchia 2008 (internal units)
+   */
+  float EOS_density_c;
 
   /*! Max physical density (H atoms per cm^3)*/
   float max_gas_density_HpCM3;
@@ -155,6 +161,40 @@ INLINE static float star_formation_threshold(
 
   /* Convert to mass density */
   return density_threshold * phys_const->const_proton_mass;
+}
+
+/**
+ * @brief Compute the pressure on the polytropic equation of state for a given
+ * Hydrogen number density.
+ *
+ * Schaye & Dalla Vecchia 2008, eq. 13.
+ *
+ * @param n_H The Hydrogen number density in internal units.
+ * @param starform The properties of the star formation model.
+ * @return The pressure on the equation of state in internal units.
+ */
+INLINE static float EOS_pressure(const float n_H,
+                                 const struct star_formation* starform) {
+
+  return starform->EOS_pressure_c *
+         pow(n_H / starform->EOS_density_c, starform->EOS_polytropic_index);
+}
+
+/**
+ * @brief Compute the temperarue on the polytropic equation of state for a given
+ * Hydrogen number density.
+ *
+ * Schaye & Dalla Vecchia 2008, eq. 13 rewritten for temperature
+ *
+ * @param n_H The Hydrogen number density in internal units.
+ * @param starform The properties of the star formation model.
+ * @return The temperature on the equation of state in internal units.
+ */
+INLINE static float EOS_temperature(const float n_H,
+                                    const struct star_formation* starform) {
+
+  return starform->EOS_temperature_c *
+         pow(n_H, starform->EOS_polytropic_index - 1.f);
 }
 
 /**
@@ -200,25 +240,23 @@ INLINE static int star_formation_potential_to_become_star(
 
   const float Z = p->chemistry_data.smoothed_metal_mass_fraction_total;
   const float X_H = p->chemistry_data.smoothed_metal_mass_fraction[0];
+  const float n_H = physical_density * X_H;
 
   /* Get the density threshold */
   const float density_threshold =
       star_formation_threshold(Z, starform, phys_const);
 
   /* Check if it exceeded the minimum density */
-  if (physical_density * X_H < density_threshold) return 0;
+  if (n_H < density_threshold) return 0;
 
   /* Calculate the temperature */
   const double temperature = cooling_get_temperature(phys_const, hydro_props,
                                                      us, cosmo, cooling, p, xp);
 
   /* Temperature on the equation of state */
-  const double temperature_eos =
-      starform->EOS_pressure_norm / phys_const->const_boltzmann_k *
-      pow(physical_density * X_H, starform->polytropic_index - 1.f) *
-      pow(starform->EOS_density_norm, starform->polytropic_index);
+  const double temperature_eos = EOS_temperature(n_H, starform);
 
-  /* Check the last criteria, if the temperature is satisfied */
+  /* Check the Scahye & Dalla Vecchia 2012 EOS-based temperature critrion */
   return (temperature <
           temperature_eos * exp10(starform->temperature_margin_threshold_dex));
 }
@@ -247,18 +285,19 @@ INLINE static int star_formation_convert_to_star(
     const struct cooling_function_data* restrict cooling, const double dt_star,
     const int with_cosmology) {
 
+  /* Abort early if time-step size is 0 */
   if (dt_star == 0.f) return 0;
 
   if (star_formation_potential_to_become_star(
           starform, p, xp, phys_const, cosmo, hydro_props, us, cooling)) {
-    /* Get the pressure */
 
-    const double pressure =
-        starform->EOS_pressure_norm *
-        pow(hydro_get_physical_density(p, cosmo) *
-                p->chemistry_data.smoothed_metal_mass_fraction[0] /
-                starform->EOS_density_norm / phys_const->const_proton_mass,
-            starform->polytropic_index);
+    /* Hydrogen number density of this particle */
+    const double physical_density = hydro_get_physical_density(p, cosmo);
+    const double X_H = p->chemistry_data.smoothed_metal_mass_fraction[0];
+    const double n_H = physical_density * X_H / phys_const->const_proton_mass;
+
+    /* Pressure on the EOS for this particle */
+    const double pressure = EOS_pressure(n_H, starform);
 
     double SFRpergasmass;
     if (hydro_get_physical_density(p, cosmo) <
@@ -394,19 +433,25 @@ INLINE static void starformation_init_backend(
    * Schmidt law will be read in this part of the code*/
 
   /* Load the equation of state for this model */
-  starform->polytropic_index = parser_get_param_float(
+  starform->EOS_polytropic_index = parser_get_param_float(
       parameter_file, "EAGLEStarFormation:EOS_gamma_effective");
-  starform->EOS_temperature_norm = parser_get_param_float(
+  starform->EOS_temperature_norm_K = parser_get_param_float(
       parameter_file, "EAGLEStarFormation:EOS_temperature_norm_K");
   starform->EOS_density_norm_HpCM3 = parser_get_param_float(
       parameter_file, "EAGLEStarFormation:EOS_density_threshold_H_p_cm3");
-  starform->EOS_density_norm =
+  starform->EOS_density_c =
       starform->EOS_density_norm_HpCM3 * number_density_from_cgs;
 
   /* Calculate the EOS pressure normalization */
-  starform->EOS_pressure_norm =
-      starform->EOS_density_norm * starform->EOS_temperature_norm *
+  starform->EOS_pressure_c =
+      starform->EOS_density_c * starform->EOS_temperature_norm_K *
       phys_const->const_boltzmann_k / mean_molecular_weight / X_H;
+
+  /* Normalisation of the temperature in the EOS calculatio */
+  starform->EOS_temperature_c =
+      starform->EOS_pressure_c / phys_const->const_boltzmann_k;
+  starform->EOS_temperature_c *=
+      pow(starform->EOS_density_c, starform->EOS_polytropic_index);
 
   /* Read the critical density contrast from the parameter file*/
   starform->min_over_den = parser_get_param_float(
@@ -459,9 +504,7 @@ INLINE static void starformation_init_backend(
 
   /* Pressure at the high-density threshold */
   const float EOS_high_den_pressure =
-      starform->EOS_pressure_norm *
-      pow(starform->KS_high_den_thresh / starform->EOS_density_norm,
-          starform->polytropic_index);
+      EOS_pressure(starform->KS_high_den_thresh, starform);
 
   /* Calculate the KS high density normalization
    * We want the SF law to be continous so the normalisation of the second
@@ -540,8 +583,8 @@ INLINE static void starformation_print_backend(
       "The effective equation of state is given by: polytropic "
       "index = %e , normalization density = %e #/cm^3 and normalization "
       "temperature = %e K",
-      starform->polytropic_index, starform->EOS_density_norm_HpCM3,
-      starform->EOS_temperature_norm);
+      starform->EOS_polytropic_index, starform->EOS_density_norm_HpCM3,
+      starform->EOS_temperature_norm_K);
   message("Density threshold follows Schaye (2004)");
   message(
       "the normalization of the density threshold is given by"
