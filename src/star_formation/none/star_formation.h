@@ -32,11 +32,11 @@
 struct star_formation {};
 
 /**
- * @brief Calculates if the gas particle gets converted
- *        The gas will never be converted in none, so always returns 0.
- *        So this code does not produce star formation.
+ * @brief Calculate if the gas has the potential of becoming
+ * a star.
  *
- * @param the #engine
+ * No star formation should occur, so return 0.
+ *
  * @param starform the star formation law properties to use.
  * @param p the gas particles.
  * @param xp the additional properties of the gas particles.
@@ -45,34 +45,92 @@ struct star_formation {};
  * @param hydro_props The properties of the hydro scheme.
  * @param us The internal system of units.
  * @param cooling The cooling data struct.
+ *
  */
-INLINE static int star_formation_convert_to_star(
-    const struct engine* e, const struct star_formation* starform,
+INLINE static int star_formation_is_star_forming(
     const struct part* restrict p, const struct xpart* restrict xp,
-    const struct phys_const* const phys_const, const struct cosmology* cosmo,
+    const struct star_formation* starform, const struct phys_const* phys_const,
+    const struct cosmology* cosmo,
     const struct hydro_props* restrict hydro_props,
     const struct unit_system* restrict us,
-    const struct cooling_function_data* restrict cooling, const double dt_star,
-    const int with_cosmology) {
+    const struct cooling_function_data* restrict cooling) {
 
   return 0;
 }
 
 /**
- * @brief Calculate if the gas particle is converted, which
- * should never happen in this model
+ * @brief Compute the star-formation rate of a given particle and store
+ * it into the #xpart.
  *
- * @param starform the star formation struct
- * @param p the gas particles with their properties
- * @param xp the additional gas particle properties
- * @param cosmo the cosmological properties
+ * Nothing to do here.
  *
+ * @param p #part.
+ * @param xp the #xpart.
+ * @param starform the star formation law properties to use
+ * @param phys_const the physical constants in internal units.
+ * @param cosmo the cosmological parameters and properties.
+ * @param dt_star The time-step of this particle.
+ */
+INLINE static void star_formation_compute_SFR(
+    const struct part* restrict p, struct xpart* restrict xp,
+    const struct star_formation* starform, const struct phys_const* phys_const,
+    const struct cosmology* cosmo, const double dt_star) {}
+
+/**
+ * @brief Decides whether a particle should be converted into a
+ * star or not.
+ *
+ * No SF should occur, so return 0.
+ *
+ * @param p The #part.
+ * @param xp The #xpart.
+ * @param starform The properties of the star formation model.
+ * @param e The #engine (for random numbers).
+ * @param dt_star The time-step of this particle
+ * @return 1 if a conversion should be done, 0 otherwise.
+ */
+INLINE static int star_formation_should_convert_to_star(
+    const struct part* p, const struct xpart* xp,
+    const struct star_formation* starform, const struct engine* e,
+    const double dt_star) {
+
+  return 0;
+}
+
+/**
+ * @brief Update the SF properties of a particle that is not star forming.
+ *
+ * Nothing to do here.
+ *
+ * @param p The #part.
+ * @param xp The #xpart.
+ * @param e The #engine.
+ * @param starform The properties of the star formation model.
+ * @param with_cosmology Are we running with cosmology switched on?
+ */
+INLINE static void star_formation_update_part_not_SFR(
+    struct part* p, struct xpart* xp, const struct engine* e,
+    const struct star_formation* starform, const int with_cosmology) {}
+
+/**
+ * @brief Copies the properties of the gas particle over to the
+ * star particle.
+ *
+ * Nothing to do here.
+ *
+ * @param e The #engine
+ * @param p the gas particles.
+ * @param xp the additional properties of the gas particles.
+ * @param sp the new created star particle with its properties.
+ * @param starform the star formation law properties to use.
+ * @param phys_const the physical constants in internal units.
+ * @param cosmo the cosmological parameters and properties.
+ * @param with_cosmology if we run with cosmology.
  */
 INLINE static void star_formation_copy_properties(
-    const struct engine* e, const struct part* p, const struct xpart* xp,
-    struct spart* sp, const struct star_formation* starform,
-    const struct phys_const* const phys_const, const struct cosmology* cosmo,
-    const int with_cosmology) {}
+    const struct part* p, const struct xpart* xp, struct spart* sp,
+    const struct engine* e, const struct star_formation* starform,
+    const struct cosmology* cosmo, const int with_cosmology) {}
 
 /**
  * @brief initialization of the star formation law
