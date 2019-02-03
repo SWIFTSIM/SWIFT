@@ -475,8 +475,8 @@ void runner_do_star_formation(struct runner *r, struct cell *c, int timer) {
 
   struct engine *e = r->e;
   const struct cosmology *cosmo = e->cosmology;
-  const struct star_formation *starform = e->star_formation;
-  const struct phys_const *constants = e->physical_constants;
+  const struct star_formation *sf_props = e->star_formation;
+  const struct phys_const *phys_const = e->physical_constants;
   const int count = c->hydro.count;
   struct part *restrict parts = c->hydro.parts;
   struct xpart *restrict xparts = c->hydro.xparts;
@@ -505,35 +505,52 @@ void runner_do_star_formation(struct runner *r, struct cell *c, int timer) {
       struct part *restrict p = &parts[k];
       struct xpart *restrict xp = &xparts[k];
 
+      /* Only work on active particles */
       if (part_is_active(p, e)) {
 
-        /* Calculate the time step of the current particle for cosmo and no
-         * cosmo*/
-        double dt_star;
-        if (with_cosmology) {
-          const integertime_t ti_step = get_integer_timestep(p->time_bin);
-          const integertime_t ti_begin =
-              get_integer_time_begin(ti_current - 1, p->time_bin);
+        /* Is this particle star forming? */
+        if (star_formation_is_star_forming(p, xp, sf_props, phys_const, cosmo,
+                                           hydro_props, us, cooling)) {
 
-          dt_star =
-              cosmology_get_delta_time(cosmo, ti_begin, ti_begin + ti_step);
+          /* Time-step size for this particle */
+          double dt_star;
+          if (with_cosmology) {
+            const integertime_t ti_step = get_integer_timestep(p->time_bin);
+            const integertime_t ti_begin =
+                get_integer_time_begin(ti_current - 1, p->time_bin);
 
-        } else {
-          dt_star = get_timestep(p->time_bin, time_base);
-        }
+            dt_star =
+                cosmology_get_delta_time(cosmo, ti_begin, ti_begin + ti_step);
 
-        if (star_formation_should_convert_to_star(
-                e, starform, p, xp, constants, cosmo, hydro_props, us, cooling,
-                dt_star, with_cosmology)) {
-          /* Convert your particle to a star */
-          struct spart *sp = cell_convert_part_to_spart(e, c, p, xp);
+          } else {
+            dt_star = get_timestep(p->time_bin, time_base);
+          }
 
-          /* Copy the properties of the gas particle to the star particle */
-          star_formation_copy_properties(e, p, xp, sp, starform, constants,
-                                         cosmo, with_cosmology);
-        }
-      }
-    }
+          /* Compute the SF rate of the particle */
+          star_formation_compute_SFR(p, xp, sf_props, phys_const, cosmo,
+                                     dt_star);
+
+          /* Are we forming a star particle from this SF rate? */
+          if (star_formation_should_convert_to_star(p, xp, sf_props, e,
+                                                    dt_star)) {
+
+            /* Convert the gas particle to a star particle */
+            struct spart *sp = cell_convert_part_to_spart(e, c, p, xp);
+
+            /* Copy the properties of the gas particle to the star particle */
+            star_formation_copy_properties(p, xp, sp, e, sf_props, cosmo,
+                                           with_cosmology);
+          }
+
+        } else { /* Are we not star-forming? */
+
+          /* Update the particle to flag it as not star-forming */
+          star_formation_update_part_not_SFR(p, xp, e, sf_props,
+                                             with_cosmology);
+
+        } /* Not Star-forming? */
+      }   /* is active? */
+    }     /* Loop over particles */
   }
 
   if (timer) TIMER_TOC(timer_do_star_formation);

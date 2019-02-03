@@ -44,7 +44,8 @@ enum random_number_type {
  *
  * @param id The ID of the particle for which to generate a number.
  * @param ti_current The time (on the time-line) for which to generate a number.
- * @prarm type The #random_number_type to generate.
+ * @param type The #random_number_type to generate.
+ * @return a random number in the interval [0, 1.[.
  */
 INLINE static double random_unit_interval(const long long int id,
                                           const integertime_t ti_current,
