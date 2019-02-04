@@ -8,6 +8,7 @@
 #include "../config.h"
 
 #include "argparse.h"
+
 #include <assert.h>
 #include <errno.h>
 #include <stdio.h>
