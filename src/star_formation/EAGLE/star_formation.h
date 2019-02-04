@@ -130,6 +130,9 @@ struct star_formation {
    */
   double EOS_density_c;
 
+  /*! Inverse of EOS density norm (internal units) */
+  double EOS_density_c_inv;
+
   /*! Max physical density (H atoms per cm^3)*/
   double max_gas_density_HpCM3;
 
@@ -181,7 +184,7 @@ INLINE static double EOS_pressure(const double n_H,
                                   const struct star_formation* starform) {
 
   return starform->EOS_pressure_c *
-         pow(n_H / starform->EOS_density_c, starform->EOS_polytropic_index);
+         pow(n_H * starform->EOS_density_c_inv, starform->EOS_polytropic_index);
 }
 
 /**
@@ -467,6 +470,7 @@ INLINE static void starformation_init_backend(
       parameter_file, "EAGLEStarFormation:EOS_density_norm_H_p_cm3");
   starform->EOS_density_c =
       starform->EOS_density_norm_HpCM3 * number_density_from_cgs;
+  starform->EOS_density_c_inv = 1. / starform->EOS_density_c;
 
   /* Calculate the EOS pressure normalization */
   starform->EOS_pressure_c =
