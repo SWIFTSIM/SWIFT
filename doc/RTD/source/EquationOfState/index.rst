@@ -78,8 +78,8 @@ schemes.
 The Tillotson sound speed was derived using 
 \\(c_s^2 = \\left. \\dfrac{\\partial P}{\\partial \\rho} \\right|_S \\)
 as described in Kegerreis et al. (2019).
-The table .txt files for the HM80 and SESAME-style EoS can be downloaded from 
-http://astro.dur.ac.uk/~cklv53/swift_planet_examples/ .
+The table files for the HM80 and SESAME-style EoS can be downloaded using 
+the ``examples/EoSTables/get_eos_tables.sh`` script.
 
 
 How to Implement a New Equation of State
