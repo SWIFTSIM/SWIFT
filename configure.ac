@@ -1055,8 +1055,16 @@ fi
 AC_SUBST([NUMA_LIBS])
 
 # Check for Intel and PowerPC intrinsics header optionally used by vector.h.
-AC_CHECK_HEADERS([immintrin.h])
-AC_CHECK_HEADERS([altivec.h])
+AC_CHECK_HEADERS([immintrin.h], [], [],
+[#ifdef HAVE_IMMINTRIN_H
+# include <immintrin.h>
+#endif
+])
+AC_CHECK_HEADERS([altivec.h], [], [],
+[#ifdef HAVE_ALTIVEC_H
+# include <altivec.h.h>
+#endif
+])
 
 # Check for timing functions needed by cycle.h.
 AC_HEADER_TIME
