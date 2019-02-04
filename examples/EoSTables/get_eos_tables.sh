@@ -1,6 +1,5 @@
 #!/bin/bash
 wget http://virgodb.cosma.dur.ac.uk/swift-webstorage/EoS/HM80_HHe.txt
-wget http://virgodb.cosma.dur.ac.uk/swift-webstorage/EoS/HM80_HHe.txt
 wget http://virgodb.cosma.dur.ac.uk/swift-webstorage/EoS/HM80_ice.txt
 wget http://virgodb.cosma.dur.ac.uk/swift-webstorage/EoS/HM80_rock.txt
 
