@@ -57,7 +57,7 @@ Scheduler:
 
 # Parameters related to the equation of state
 EoS:
-    planetary_use_HM80:             1               # Whether to initialise the Hubbard & MacFarlane (1980) EOS
-    planetary_HM80_HHe_table_file:  HM80_HHe.txt    # Table file paths
-    planetary_HM80_ice_table_file:  HM80_ice.txt
-    planetary_HM80_rock_table_file: HM80_rock.txt
+    planetary_use_HM80:             1   # Whether to initialise the Hubbard & MacFarlane (1980) EOS
+    planetary_HM80_HHe_table_file:  ../EoSTables/HM80_HHe.txt
+    planetary_HM80_ice_table_file:  ../EoSTables/HM80_ice.txt
+    planetary_HM80_rock_table_file: ../EoSTables/HM80_rock.txt

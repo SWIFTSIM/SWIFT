@@ -8,11 +8,13 @@ then
 fi
 
 # Get the EoS tables if they are not present.
+cd ../EoSTables
 if [ ! -e HM80_HHe.txt ] || [ ! -e HM80_ice.txt ] || [ ! -e HM80_rock.txt ] 
 then
     echo "Fetching equations of state tables for the Uranus impact example..."
     ./get_eos_tables.sh
 fi
+cd ../GiantImpactUranus
 
 # Run SWIFT
 ../swift -s -G -t 8 uranus_1e6.yml 2>&1 | tee output.log
