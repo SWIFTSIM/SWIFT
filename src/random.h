@@ -59,7 +59,7 @@ INLINE static double random_unit_interval(const long long int id,
   unsigned int seed = (id + ti_current + (long long)type) % seed_range;
 
   /* Generate a random number between 0 and 1. */
-  return rand_r(&seed) / RAND_MAX_inv;
+  return rand_r(&seed) * RAND_MAX_inv;
 }
 
 #endif /* SWIFT_RANDOM_H */
