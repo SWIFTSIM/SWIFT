@@ -1,0 +1,9 @@
+input:
+  - uranus_1e6.yml
+  - output_list.txt
+
+output:
+  - uranus_1e6.pdf
+
+swift_parameters:   -s -G
+swift_threads:      8

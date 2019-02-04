@@ -27,6 +27,7 @@ examples/swift_mpi
 examples/*/*.xmf
 examples/*/*.h5
 examples/*/*.png
+examples/*/*.pdf
 examples/*/*.mp4
 examples/*/*.txt
 examples/*/dependency_graph.csv

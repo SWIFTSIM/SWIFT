@@ -18,7 +18,7 @@
 
 # -- Project information -----------------------------------------------------
 
-project = 'SWIFT: SPH WIth Fine-grained inter-dependent Tasking'
+project = 'SWIFT: SPH With Inter-dependent Fine-grained Tasking'
 copyright = '2018, SWIFT Collaboration'
 author = 'SWIFT Team'
 
