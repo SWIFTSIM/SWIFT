@@ -72,7 +72,7 @@ struct star_formation {
 
   /*! 10^Tdex of Dalla Vecchia & SChaye temperature criteria */
   double ten_to_temperature_margin_threshold_dex;
-  
+
   /*! gas fraction */
   double fgas;
 
@@ -561,8 +561,8 @@ INLINE static void starformation_init_backend(
   starform->temperature_margin_threshold_dex = parser_get_opt_param_double(
       parameter_file, "EAGLEStarFormation:KS_temperature_margin_dex", FLT_MAX);
 
-  starform->ten_to_temperature_margin_threshold_dex = exp10(
-      starform->temperature_margin_threshold_dex);
+  starform->ten_to_temperature_margin_threshold_dex =
+      exp10(starform->temperature_margin_threshold_dex);
 
   /* Read the normalization of the metallicity dependent critical
    * density*/
