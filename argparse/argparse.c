@@ -5,6 +5,8 @@
  * Use of this source code is governed by a MIT-style license that can be found
  * in the LICENSE file.
  */
+#include "../config.h"
+
 #include "argparse.h"
 #include <assert.h>
 #include <errno.h>
