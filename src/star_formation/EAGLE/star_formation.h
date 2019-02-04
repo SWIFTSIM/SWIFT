@@ -70,6 +70,9 @@ struct star_formation {
   /*! Dalla Vecchia & Schaye temperature criteria */
   double temperature_margin_threshold_dex;
 
+  /*! 10^Tdex of Dalla Vecchia & SChaye temperature criteria */
+  double ten_to_temperature_margin_threshold_dex;
+  
   /*! gas fraction */
   double fgas;
 
@@ -259,7 +262,7 @@ INLINE static int star_formation_is_star_forming(
 
   /* Check the Scahye & Dalla Vecchia 2012 EOS-based temperature critrion */
   return (temperature <
-          temperature_eos * exp10(starform->temperature_margin_threshold_dex));
+          temperature_eos * starform->ten_to_temperature_margin_threshold_dex);
 }
 
 /**
@@ -553,6 +556,9 @@ INLINE static void starformation_init_backend(
 
   starform->temperature_margin_threshold_dex = parser_get_opt_param_double(
       parameter_file, "EAGLEStarFormation:KS_temperature_margin_dex", FLT_MAX);
+
+  starform->ten_to_temperature_margin_threshold_dex = exp10(
+      starform->temperature_margin_threshold_dex);
 
   /* Read the normalization of the metallicity dependent critical
    * density*/
