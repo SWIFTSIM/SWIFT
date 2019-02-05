@@ -401,7 +401,7 @@
 #define vec_fnma(a, b, c) vec_sub(c, vec_mul(a, b))
 #endif
 
-#elif __ARM_NEON_FP /* HAVE_SSE2 */
+#elif __ARM_NEON /* HAVE_SSE2 */
 #include <arm_neon.h>
 #define VEC_SIZE 4
 #define VEC_FLOAT float32x4_t
