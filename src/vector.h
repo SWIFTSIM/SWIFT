@@ -401,9 +401,64 @@
 #define vec_fnma(a, b, c) vec_sub(c, vec_mul(a, b))
 #endif
 
-#else
+#elif __ARM_NEON_FP /* HAVE_SSE2 */
+#include <arm_neon.h>
 #define VEC_SIZE 4
-#endif /* HAVE_SSE2 */
+#define VEC_FLOAT float32x4_t
+#define VEC_DB float64x2
+#define VEC_INT int32x4_t
+#define vec_load(a) vld1q_f32(a)
+#define vec_store(a, adds) vst1q_f32(addr,a)
+#define vec_set_zero() vmovq_n_f32(0.0f)
+#define vec_set1(a) vld1q_dup_f32(a)
+#define vec_add(a, b) vaddq_f32(a,b)
+#define vec_add_mask(a, b, mask) vec_add(a, ((vector)vec_and(((vector)b).m,mask)).v)
+#define vec_sub(a, b) vsubq_f32(a, b)
+#define vec_mask_sub(a, b, mask) vec_sub(a, ((vector)vec_and(((vector)b).m,mask)).v)
+#define vec_mul(a, b) vmulq_f32(a, b)
+#define vec_div(a, b) vdivq_f32(a, b)
+#define vec_sqrt(a) vsqrt_f32(a)
+#define vec_rcp(a) vrecpeq_f32(a)
+#define vec_rsqrt(a) vrsqrte_f32(a)
+#define vec_ftoi(a) vcvtq_s32_f32(a)
+#define vec_fmin(a, b) vpmin_f32(a, b)
+#define vec_fmax(a, b) vpmax_f32(q, b)
+#define vec_fabs(a) vabsq_f32(a)
+#define vec_floor(a) vcvtq_f32_s32(vcvtmq_s32_f32(a))
+#define vec_cmp_gt(a, b) vcgtzq_f32(vec_sub(a,b))
+#define vec_cmp_gte(a, b) vcgezq_f32(vec_sub(a,b)) 
+/* No less than on neon so we need to reverse the arguments and do greater than */
+#define vec_cmp_lt(a, b) vcgtzq_f32(vec_sub(b,a))
+#define vec_cmp_lte(a, b) vcgezq_f32(vec_sub(b,a))
+#define vec_cmp_result(a) vec_not(vceqzq_f32(a))
+#define vec_is_mask_true(a) vec_not(vceqzq_f32(a.v))
+#define vec_and(a, b) vandq_s32(a, b)
+#define vec_mask_and(a, b) vec_and(a.v, b.v)
+#define vec_and_mask(a, mask) vec_and( ((vector)a).v, mask )
+#define vec_init_mask_true(mask) mask.m = vec_setint1(0xFFFFFFFF)
+#define vec_combine_masks(mask1, mask2) \
+	({ mask1.v = vec_mask_and(mask1,mask2); })
+#define vec_zero_mask(mask) mask.v = vec_setzero()
+#define vec_pad_mask(mask, pad) \
+  for(int i = VEC_SIZE - (pad); i < VEC_SIZE; i++) mask.i[i] = 0
+#define vec_blend(mask, a, b) \
+  ((vector)vec_or( vec_and(mask.m, ((vector)b).m ), vec_and(vec_not(mask.v), ((vector)a).m  ).v)
+#define vec_or(a, b) vorrq_u32(a, b)
+#define vec_not(a) vmvnq_u32(a)
+
+#define FILL_VEC(a) \
+{ .f[0] = a, .f[1] = a, .f[2] = a, .f[3] = a}
+
+#define VEC_HADD(a,b) b += vaddvq_f32(a)
+
+#define VEC_HMAX(a,b) b = max(b,vmaxvq_f32(a))
+
+#define vec_fma(a, b, c) vec_add(vec_mul(a,b),c)
+#define vec_fnma(a,b,c) vec_sub(c, vec_mul(a,b))
+
+#else /* __ARM_NEON_FP */
+#define VEC_SIZE 4
+#endif 
 
 /* Define the composite types for element access. */
 typedef union {
