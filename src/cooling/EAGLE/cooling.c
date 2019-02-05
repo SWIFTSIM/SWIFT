@@ -56,7 +56,7 @@ static const float explicit_tolerance = 0.05;
 static const float newton_tolerance = 1.0e-4;
 static const float bisection_tolerance = 1.0e-6;
 static const float rounding_tolerance = 1.0e-4;
-static const double bracket_factor = 1.0488088481701515; /* sqrt(1.1) */
+static const double bracket_factor = 1.5; /* sqrt(1.1) */
 static const double newton_log_u_guess_cgs = 12.30103;   /* log10(2e12) */
 
 /**

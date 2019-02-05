@@ -11,8 +11,9 @@ The test may be run by:
 python plot_cooling_rates.py
 
 where X is the redshift at which the cooling rates are evaluated and Y
-is the base 10 logarithm of the hydrogen number density. Different
-metallicities may be specified in testCooling.yml
+is the base 10 logarithm of the hydrogen number density expressed in
+cgs (i.e. cm^-3). Different metallicities may be specified in
+testCooling.yml
 
 Running with -z 3 -d -4 should reproduce the Fig.4 of Wiersma+09 with
 the added Compton cooling contribution.
