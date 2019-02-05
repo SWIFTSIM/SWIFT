@@ -1385,28 +1385,6 @@ void DOSUB_PAIR1_STARS(struct runner *r, struct cell *ci, struct cell *cj,
       /* Do any of the cells need to be sorted first? */
       if (!(ci->stars.sorted & (1 << sid)) ||
           ci->stars.dx_max_sort_old > ci->dmin * space_maxreldx) {
-	message("%i %i %i %i %p %p", ci->cellID, cj->cellID,
-		ci->nodeID, cj->nodeID, ci->hydro.super, ci->super);
-	if (ci->hydro.super) {
-	  message("%p", ci->hydro.super->stars.sorts_foreign);
-	  if (ci->hydro.super->stars.sorts_foreign) {
-	    for (struct cell *parent = ci->parent;
-		 parent != NULL;
-		 parent = parent->parent) {
-	      message("%i", parent->stars.do_sub_sort);
-	      if (parent == ci->hydro.super)
-		break;
-	    }
-	    message("%i", ci->hydro.super->stars.sorts_foreign->skip);
-	    message("%i, %i", ci->hydro.super->stars.sorts_foreign->skip,
-		    ci->hydro.super->stars.do_sub_sort);
-	    message("%i %i", ci->stars.sorted, ci->hydro.super->stars.sorted);
-	    message("%p", ci->stars.sort[sid]);
-	    message("%p %p", ci->stars.density, ci->hydro.super->stars.density);
-	    message("%p %p", ci->stars.feedback, ci->hydro.super->stars.feedback);
-	  }
-	}
-	message("%i", sid);
         error("Interacting unsorted cell (sparts).");
       }
 
@@ -1432,7 +1410,6 @@ void DOSUB_PAIR1_STARS(struct runner *r, struct cell *ci, struct cell *cj,
 
       if (!(cj->stars.sorted & (1 << sid)) ||
           cj->stars.dx_max_sort_old > cj->dmin * space_maxreldx) {
-	message("%i %i %p %p", cj->cellID, ci->cellID, cj->hydro.super, cj->super);
         error("Interacting unsorted cell (sparts).");
       }
     }
@@ -1452,7 +1429,7 @@ void DOSUB_SELF1_STARS(struct runner *r, struct cell *ci, int gettimer) {
 
 #ifdef SWIFT_DEBUG_CHECKS
   if (ci->nodeID != engine_rank)
-    error("This function should not be called on local cells");
+    error("This function should not be called on foreign cells");
 #endif
   /* Should we even bother? */
   if (ci->hydro.count == 0 || ci->stars.count == 0 ||
