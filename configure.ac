@@ -703,8 +703,8 @@ if test "x$with_arm_fftw" != "xno"; then
 
    # Was FFTW's location specifically given?
    if test "x$with_arm_fftw" != "xyes" -a "x$with_arm_fftw" != "xtest" -a "x$with_arm_fftw" != "x"; then
-      FFTW_LIBS="-L$with_fftw/lib -larmpl_lp64"
-      FFTW_INCS="-I$with_fftw/include"
+      FFTW_LIBS="-L$with_arm_fftw/lib -larmpl_lp64"
+      FFTW_INCS="-I$with_arm_fftw/include"
    else
       FFTW_LIBS="-larmpl_lp64"
       FFTW_INCS=""
@@ -734,9 +734,9 @@ if test "x$with_arm_fftw" != "xno"; then
    if test "x$have_arm_fftw" = "xyes"; then
 
       # Was FFTW's location specifically given?
-      if test "x$with_arm_fftw" != "xyes" -a "x$with_fftw" != "xtest" -a "x$with_fftw" != "x"; then
-        FFTW_THREADED_LIBS="-L$with_fftw/lib -larmpl_lp64_threads -larmpl_lp64"
-        FFTW_THREADED_INCS="-I$with_fftw/include"
+      if test "x$with_arm_fftw" != "xyes" -a "x$with_arm_fftw" != "xtest" -a "x$with_arm_fftw" != "x"; then
+        FFTW_THREADED_LIBS="-L$with_arm_fftw/lib -larmpl_lp64_threads -larmpl_lp64"
+        FFTW_THREADED_INCS="-I$with_arm_fftw/include"
       else
         FFTW_THREADED_LIBS="-larmpl_lp64_threads -larmpl_lp64"
         FFTW_THREADED_INCS=""
