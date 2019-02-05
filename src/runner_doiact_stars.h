@@ -1385,14 +1385,34 @@ void DOSUB_PAIR1_STARS(struct runner *r, struct cell *ci, struct cell *cj,
       /* Do any of the cells need to be sorted first? */
       if (!(ci->stars.sorted & (1 << sid)) ||
           ci->stars.dx_max_sort_old > ci->dmin * space_maxreldx) {
-	cell_activate_stars_sorts(ci, sid, &r->e->sched);
-        error("Interacting unsorted cell (sparts). %p %p %i %i %i %i %i %i %i %i %i %i", ci->stars.density, cj->stars.density, ci->stars.sorted, 1 << sid, cj->nodeID, ci->nodeID, ci->super->stars.sorts_foreign->skip,
-	      ci->stars.count, ci->hydro.count, cj->stars.count, cj->hydro.count, ci->stars.do_sort);
+	message("%i %i %i %i %p %p", ci->cellID, cj->cellID,
+		ci->nodeID, cj->nodeID, ci->hydro.super, ci->super);
+	if (ci->hydro.super) {
+	  message("%p", ci->hydro.super->stars.sorts_foreign);
+	  if (ci->hydro.super->stars.sorts_foreign) {
+	    for (struct cell *parent = ci->parent;
+		 parent != NULL;
+		 parent = parent->parent) {
+	      message("%i", parent->stars.do_sub_sort);
+	      if (parent == ci->hydro.super)
+		break;
+	    }
+	    message("%i", ci->hydro.super->stars.sorts_foreign->skip);
+	    message("%i, %i", ci->hydro.super->stars.sorts_foreign->skip,
+		    ci->hydro.super->stars.do_sub_sort);
+	    message("%i %i", ci->stars.sorted, ci->hydro.super->stars.sorted);
+	    message("%p", ci->stars.sort[sid]);
+	    message("%p %p", ci->stars.density, ci->hydro.super->stars.density);
+	    message("%p %p", ci->stars.feedback, ci->hydro.super->stars.feedback);
+	  }
+	}
+	message("%i", sid);
+        error("Interacting unsorted cell (sparts).");
       }
 
       if (!(cj->hydro.sorted & (1 << sid)) ||
           cj->hydro.dx_max_sort_old > cj->dmin * space_maxreldx)
-        error("Interacting unsorted cell (parts). %i", cj->nodeID);
+        error("Interacting unsorted cell (parts).");
     }
 
     if (do_cj) {
@@ -1407,16 +1427,14 @@ void DOSUB_PAIR1_STARS(struct runner *r, struct cell *ci, struct cell *cj,
       /* Do any of the cells need to be sorted first? */
       if (!(ci->hydro.sorted & (1 << sid)) ||
           ci->hydro.dx_max_sort_old > ci->dmin * space_maxreldx) {
-	message("%i %i: %g %g %g", ci->hydro.sorted, 1 << sid, ci->hydro.dx_max_sort_old, ci->dmin, space_maxreldx);
-	message("%p %p", ci->super, cj->super);
-        error("Interacting unsorted cell (parts). %i %i sorts=%i %i %i %i %i %p", ci->nodeID, cj->nodeID, ci->super->hydro.sorts->skip, ci->hydro.count, ci->stars.count, cj->hydro.count,
-	      cj->stars.count, ci->super->stars.density);
+        error("Interacting unsorted cell (parts).");
       }
 
       if (!(cj->stars.sorted & (1 << sid)) ||
-          cj->stars.dx_max_sort_old > cj->dmin * space_maxreldx)
-        error("Interacting unsorted cell (sparts). %i %i %i %i %i %i %i", cj->nodeID, ci->nodeID, ci->stars.sorts_foreign->skip,
-	      ci->stars.count, ci->hydro.count, cj->stars.count, cj->hydro.count);
+          cj->stars.dx_max_sort_old > cj->dmin * space_maxreldx) {
+	message("%i %i %p %p", cj->cellID, ci->cellID, cj->hydro.super, cj->super);
+        error("Interacting unsorted cell (sparts).");
+      }
     }
 
     if (do_ci || do_cj) DOPAIR1_BRANCH_STARS(r, ci, cj);

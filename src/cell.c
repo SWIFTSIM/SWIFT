@@ -2002,7 +2002,7 @@ void cell_activate_hydro_sorts(struct cell *c, int sid, struct scheduler *s) {
  */
 void cell_activate_stars_sorts_up(struct cell *c, struct scheduler *s) {
 
-  if (c == c->super) {
+  if (c == c->hydro.super) {
 #ifdef SWIFT_DEBUG_CHECKS
     if ((c->nodeID == engine_rank && c->stars.sorts_local == NULL) ||
         (c->nodeID != engine_rank && c->stars.sorts_foreign == NULL))
@@ -2023,18 +2023,18 @@ void cell_activate_stars_sorts_up(struct cell *c, struct scheduler *s) {
          parent != NULL && !parent->stars.do_sub_sort;
          parent = parent->parent) {
       parent->stars.do_sub_sort = 1;
-      if (parent == c->super) {
+      if (parent == c->hydro.super) {
 #ifdef SWIFT_DEBUG_CHECKS
-        if ((c->nodeID == engine_rank && parent->stars.sorts_local == NULL) ||
-            (c->nodeID != engine_rank && parent->stars.sorts_foreign == NULL))
+        if ((parent->nodeID == engine_rank && parent->stars.sorts_local == NULL) ||
+            (parent->nodeID != engine_rank && parent->stars.sorts_foreign == NULL))
           error("Trying to activate un-existing parents->stars.sorts");
 #endif
-        if (c->nodeID == engine_rank) {
+        if (parent->nodeID == engine_rank) {
           scheduler_activate(s, parent->stars.sorts_local);
           cell_activate_drift_part(parent, s);
           cell_activate_drift_spart(parent, s);
         }
-        if (c->nodeID != engine_rank) {
+        if (parent->nodeID != engine_rank) {
           scheduler_activate(s, parent->stars.sorts_foreign);
         }
         break;
@@ -2776,10 +2776,8 @@ void cell_activate_subcell_stars_tasks(struct cell *ci, struct cell *cj,
 
     /* Otherwise, activate the sorts and drifts. */
     else {
-      const int do_ci = cell_is_active_stars(ci, e);
-      const int do_cj = cell_is_active_stars(cj, e);
 
-      if (do_ci) {
+      if (cell_is_active_stars(ci, e)) {
         /* We are going to interact this pair, so store some values. */
         atomic_or(&cj->hydro.requires_sorts, 1 << sid);
         atomic_or(&ci->stars.requires_sorts, 1 << sid);
@@ -2796,7 +2794,7 @@ void cell_activate_subcell_stars_tasks(struct cell *ci, struct cell *cj,
         cell_activate_stars_sorts(ci, sid, s);
       }
 
-      if (do_cj) {
+      if (cell_is_active_stars(cj, e)) {
         /* We are going to interact this pair, so store some values. */
         atomic_or(&cj->stars.requires_sorts, 1 << sid);
         atomic_or(&ci->hydro.requires_sorts, 1 << sid);
@@ -3345,7 +3343,7 @@ int cell_unskip_stars_tasks(struct cell *c, struct scheduler *s) {
   struct engine *e = s->space->e;
   const int nodeID = e->nodeID;
   int rebuild = 0;
-
+  
   /* Un-skip the density tasks involved with this cell. */
   for (struct link *l = c->stars.density; l != NULL; l = l->next) {
     struct task *t = l->t;

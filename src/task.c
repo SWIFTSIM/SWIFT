@@ -305,6 +305,9 @@ float task_overlap(const struct task *restrict ta,
     if (tb->ci != NULL) size_union += tb->ci->stars.count;
     if (tb->cj != NULL) size_union += tb->cj->stars.count;
 
+    if (size_union == 0)
+      return 0.f;
+
     /* Compute the intersection of the cell data. */
     const size_t size_intersect = task_cell_overlap_spart(ta->ci, tb->ci) +
                                   task_cell_overlap_spart(ta->ci, tb->cj) +
