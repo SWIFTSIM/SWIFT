@@ -794,7 +794,8 @@ void task_dump_all(struct engine *e, int step) {
   /* Add some information to help with the plots and conversion of ticks to
    * seconds. */
   fprintf(file_thread, " %d %d %d %d %lld %lld %lld %lld %lld %d %lld\n", -2,
-          -1, -1, 1, e->tic_step, e->toc_step, e->updates, e->g_updates,
+          -1, -1, 1, (unsigned long long)e->tic_step,
+          (unsigned long long)e->toc_step, e->updates, e->g_updates,
           e->s_updates, 0, cpufreq);
   for (int l = 0; l < e->sched.nr_tasks; l++) {
     if (!e->sched.tasks[l].implicit && e->sched.tasks[l].toc != 0) {
