@@ -193,6 +193,7 @@ static void split_vector(struct space *s, int nregions, int *samplecells) {
  * but each rank needs a different xadj when using ParMETIS.
  *
  * @param s the space of cells.
+ * @param periodic whether to assume a periodic space (fixed 26 edges).
  * @param adjncy the adjncy array to fill, must be of size 26 * the number of
  *               cells in the space.
  * @param nadjcny number of adjncy elements used, can be less if not periodic.
@@ -200,12 +201,12 @@ static void split_vector(struct space *s, int nregions, int *samplecells) {
  *             number of cells in space + 1. NULL for not used.
  * @param nxadj the number of xadj element used.
  */
-static void graph_init(struct space *s, idx_t *adjncy, int *nadjcny,
-                       idx_t *xadj, int *nxadj) {
+static void graph_init(struct space *s, int periodic, idx_t *adjncy,
+                       int *nadjcny, idx_t *xadj, int *nxadj) {
 
   /* Loop over all cells in the space. */
   *nadjcny = 0;
-  if (s->periodic) {
+  if (periodic) {
     int cid = 0;
     for (int l = 0; l < s->cdim[0]; l++) {
       for (int m = 0; m < s->cdim[1]; m++) {
@@ -258,7 +259,7 @@ static void graph_init(struct space *s, idx_t *adjncy, int *nadjcny,
   } else {
 
     /* Non periodic. */
-    size_t ind = 0;
+    int ind = 0;
     int cid = 0;
     if (xadj != NULL) xadj[0] = 0;
 
@@ -289,7 +290,7 @@ static void graph_init(struct space *s, idx_t *adjncy, int *nadjcny,
               }
             }
           }
-          message("cell id = %d, offset = %d", cid, p);
+          //message("cell id = %d, offset = %d", cid, p);
 
           /* Keep xadj in sync. */
           if (xadj != NULL) {
@@ -304,13 +305,13 @@ static void graph_init(struct space *s, idx_t *adjncy, int *nadjcny,
   }
 }
 
-static void graph_init_with_weights(struct space *s, idx_t *weights_e,
-                                    idx_t *adjncy, int *nadjcny, idx_t *xadj,
-                                    int *nxadj) {
+static void graph_init_with_weights(struct space *s, int periodic, 
+                                    idx_t *weights_e, idx_t *adjncy,
+                                    int *nadjcny, idx_t *xadj, int *nxadj) {
 
   /* Loop over all cells in the space. */
   *nadjcny = 0;
-  if (!s->periodic) {
+  if (periodic) {
     int cid = 0;
     for (int l = 0; l < s->cdim[0]; l++) {
       for (int m = 0; m < s->cdim[1]; m++) {
@@ -363,7 +364,7 @@ static void graph_init_with_weights(struct space *s, idx_t *weights_e,
   } else {
 
     /* Non periodic. */
-    size_t ind = 0;
+    int ind = 0;
     int cid = 0;
     if (xadj != NULL) xadj[0] = 0;
 
@@ -392,7 +393,6 @@ static void graph_init_with_weights(struct space *s, idx_t *weights_e,
                         int oldp = ((i + 1) * 9 + (j + 1) * 3 + (k + 1));
                         oldp = oldp - (oldp / 14);
                         weights_e[ind] = weights_e[cid * 26 + oldp];
-
                         ind++;
                         p++;
                       }
@@ -402,7 +402,7 @@ static void graph_init_with_weights(struct space *s, idx_t *weights_e,
               }
             }
           }
-          message("cell id = %d, offset = %d", cid, p);
+          //message("cell id = %d, offset = %d", cid, p);
 
           /* Keep xadj in sync. */
           if (xadj != NULL) {
@@ -809,7 +809,7 @@ static void pick_parmetis(int nodeID, struct space *s, int nregions,
     /* Define the cell graph. */
     int nadjcny = 0;
     int nxadj = 0;
-    graph_init(s, full_adjncy, &nadjcny, NULL, &nxadj);
+    graph_init(s, s->periodic, full_adjncy, &nadjcny, NULL, &nxadj);
 
     /* xadj is set for each rank, different to serial version in that each
      * rank starts with 0 */
@@ -1284,10 +1284,12 @@ static void pick_metis(int nodeID, struct space *s, int nregions,
     /* Define the cell graph. Keeping the edge weights association. */
     int nadjcny = 0;
     int nxadj = 0;
-    if (weights_e != NULL)
-        graph_init_with_weights(s, weights_e, adjncy, &nadjcny, xadj, &nxadj);
-    else 
-        graph_init(s, adjncy, &nadjcny, xadj, &nxadj);
+    if (weights_e != NULL) {
+        graph_init_with_weights(s, s->periodic, weights_e, adjncy, &nadjcny,
+                                xadj, &nxadj);
+    } else {
+        graph_init(s, s->periodic, adjncy, &nadjcny, xadj, &nxadj);
+    }
 
     /* Set the METIS options. */
     idx_t options[METIS_NOPTIONS];
@@ -1439,7 +1441,8 @@ static void partition_gather_weights(void *map_data, int num_elements,
 
     /* Pair? */
     else if (t->type == task_type_pair || (t->type == task_type_sub_pair)) {
-      /* In-cell pair? */
+
+     /* In-cell pair? */
       if (ci == cj) {
         /* Add weight to vertex for ci. */
         if (vweights) atomic_add_d(&weights_v[cid], w);
@@ -1448,6 +1451,7 @@ static void partition_gather_weights(void *map_data, int num_elements,
 
       /* Distinct cells. */
       else {
+
         /* Index of the jth cell. */
         int cjd = cj - cells;
 
@@ -1478,6 +1482,7 @@ static void partition_gather_weights(void *map_data, int num_elements,
               break;
             }
           }
+
           if (ik != -1 && jk != -1) {
 
             if (timebins) {
@@ -1537,7 +1542,7 @@ static void repart_edge_metis(int vweights, int eweights, int timebins,
     error("Failed to allocate the inds array");
   int nadjcny = 0;
   int nxadj = 0;
-  graph_init(s, inds, &nadjcny, NULL, &nxadj);
+  graph_init(s, 1/* 26 edges per cell */, inds, &nadjcny, NULL, &nxadj);
 
   /* Allocate and init weights. */
   double *weights_v = NULL;
