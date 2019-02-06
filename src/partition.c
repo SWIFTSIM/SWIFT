@@ -195,57 +195,225 @@ static void split_vector(struct space *s, int nregions, int *samplecells) {
  * @param s the space of cells.
  * @param adjncy the adjncy array to fill, must be of size 26 * the number of
  *               cells in the space.
+ * @param nadjcny number of adjncy elements used, can be less if not periodic.
  * @param xadj the METIS xadj array to fill, must be of size
  *             number of cells in space + 1. NULL for not used.
+ * @param nxadj the number of xadj element used.
  */
-static void graph_init(struct space *s, idx_t *adjncy, idx_t *xadj) {
+static void graph_init(struct space *s, idx_t *adjncy, int *nadjcny,
+                       idx_t *xadj, int *nxadj) {
 
   /* Loop over all cells in the space. */
-  int cid = 0;
-  for (int l = 0; l < s->cdim[0]; l++) {
-    for (int m = 0; m < s->cdim[1]; m++) {
-      for (int n = 0; n < s->cdim[2]; n++) {
+  *nadjcny = 0;
+  if (s->periodic) {
+    int cid = 0;
+    for (int l = 0; l < s->cdim[0]; l++) {
+      for (int m = 0; m < s->cdim[1]; m++) {
+        for (int n = 0; n < s->cdim[2]; n++) {
 
-        /* Visit all neighbours of this cell, wrapping space at edges. */
-        int p = 0;
-        for (int i = -1; i <= 1; i++) {
-          int ii = l + i;
-          if (ii < 0)
-            ii += s->cdim[0];
-          else if (ii >= s->cdim[0])
-            ii -= s->cdim[0];
-          for (int j = -1; j <= 1; j++) {
-            int jj = m + j;
-            if (jj < 0)
-              jj += s->cdim[1];
-            else if (jj >= s->cdim[1])
-              jj -= s->cdim[1];
-            for (int k = -1; k <= 1; k++) {
-              int kk = n + k;
-              if (kk < 0)
-                kk += s->cdim[2];
-              else if (kk >= s->cdim[2])
-                kk -= s->cdim[2];
+          /* Visit all neighbours of this cell, wrapping space at edges. */
+          int p = 0;
+          for (int i = -1; i <= 1; i++) {
+            int ii = l + i;
+            if (ii < 0)
+              ii += s->cdim[0];
+            else if (ii >= s->cdim[0])
+              ii -= s->cdim[0];
+            for (int j = -1; j <= 1; j++) {
+              int jj = m + j;
+              if (jj < 0)
+                jj += s->cdim[1];
+              else if (jj >= s->cdim[1])
+                jj -= s->cdim[1];
+              for (int k = -1; k <= 1; k++) {
+                int kk = n + k;
+                if (kk < 0)
+                  kk += s->cdim[2];
+                else if (kk >= s->cdim[2])
+                  kk -= s->cdim[2];
 
-              /* If not self, record id of neighbour. */
-              if (i || j || k) {
-                adjncy[cid * 26 + p] = cell_getid(s->cdim, ii, jj, kk);
-                p++;
+                /* If not self, record id of neighbour. */
+                if (i || j || k) {
+                  adjncy[cid * 26 + p] = cell_getid(s->cdim, ii, jj, kk);
+                  p++;
+                }
               }
             }
           }
-        }
 
-        /* Next cell. */
-        cid++;
+          /* Next cell. */
+          cid++;
+        }
       }
     }
-  }
+    *nadjcny = cid * 26;
 
-  /* If given set METIS xadj. */
-  if (xadj != NULL) {
-    xadj[0] = 0;
-    for (int k = 0; k < s->nr_cells; k++) xadj[k + 1] = xadj[k] + 26;
+    /* If given set METIS xadj. */
+    if (xadj != NULL) {
+      xadj[0] = 0;
+      for (int k = 0; k < s->nr_cells; k++) xadj[k + 1] = xadj[k] + 26;
+      *nxadj = s->nr_cells;
+    }
+
+  } else {
+
+    /* Non periodic. */
+    size_t ind = 0;
+    int cid = 0;
+    if (xadj != NULL) xadj[0] = 0;
+
+    for (int l = 0; l < s->cdim[0]; l++) {
+      for (int m = 0; m < s->cdim[1]; m++) {
+        for (int n = 0; n < s->cdim[2]; n++) {
+
+          /* Visit all neighbours of this cell. */
+          int p = 0;
+          for (int i = -1; i <= 1; i++) {
+            int ii = l + i;
+            if (ii >= 0 && ii < s->cdim[0]) {
+              for (int j = -1; j <= 1; j++) {
+                int jj = m + j;
+                if (jj >= 0 && jj < s->cdim[1]) {
+                  for (int k = -1; k <= 1; k++) {
+                    int kk = n + k;
+                    if (kk >= 0 && kk < s->cdim[2]) {
+                      /* If not self, record id of neighbour. */
+                      if (i || j || k) {
+                        adjncy[ind] = cell_getid(s->cdim, ii, jj, kk);
+                        ind++;
+                        p++;
+                      }
+                    }
+                  }
+                }
+              }
+            }
+          }
+          message("cell id = %d, offset = %d", cid, p);
+
+          /* Keep xadj in sync. */
+          if (xadj != NULL) {
+            xadj[cid + 1] = xadj[cid] + p;
+            cid++;
+          }
+        }
+      }
+    }
+    *nadjcny = ind;
+    *nxadj = cid;
+  }
+}
+
+static void graph_init_with_weights(struct space *s, idx_t *weights_e,
+                                    idx_t *adjncy, int *nadjcny, idx_t *xadj,
+                                    int *nxadj) {
+
+  /* Loop over all cells in the space. */
+  *nadjcny = 0;
+  if (!s->periodic) {
+    int cid = 0;
+    for (int l = 0; l < s->cdim[0]; l++) {
+      for (int m = 0; m < s->cdim[1]; m++) {
+        for (int n = 0; n < s->cdim[2]; n++) {
+
+          /* Visit all neighbours of this cell, wrapping space at edges. */
+          int p = 0;
+          for (int i = -1; i <= 1; i++) {
+            int ii = l + i;
+            if (ii < 0)
+              ii += s->cdim[0];
+            else if (ii >= s->cdim[0])
+              ii -= s->cdim[0];
+            for (int j = -1; j <= 1; j++) {
+              int jj = m + j;
+              if (jj < 0)
+                jj += s->cdim[1];
+              else if (jj >= s->cdim[1])
+                jj -= s->cdim[1];
+              for (int k = -1; k <= 1; k++) {
+                int kk = n + k;
+                if (kk < 0)
+                  kk += s->cdim[2];
+                else if (kk >= s->cdim[2])
+                  kk -= s->cdim[2];
+
+                /* If not self, record id of neighbour. */
+                if (i || j || k) {
+                  adjncy[cid * 26 + p] = cell_getid(s->cdim, ii, jj, kk);
+                  p++;
+                }
+              }
+            }
+          }
+
+          /* Next cell. */
+          cid++;
+        }
+      }
+    }
+    *nadjcny = cid * 26;
+
+    /* If given set METIS xadj. */
+    if (xadj != NULL) {
+      xadj[0] = 0;
+      for (int k = 0; k < s->nr_cells; k++) xadj[k + 1] = xadj[k] + 26;
+      *nxadj = s->nr_cells;
+    }
+
+  } else {
+
+    /* Non periodic. */
+    size_t ind = 0;
+    int cid = 0;
+    if (xadj != NULL) xadj[0] = 0;
+
+    for (int l = 0; l < s->cdim[0]; l++) {
+      for (int m = 0; m < s->cdim[1]; m++) {
+        for (int n = 0; n < s->cdim[2]; n++) {
+
+          /* Visit all neighbours of this cell. */
+          int p = 0;
+          for (int i = -1; i <= 1; i++) {
+            int ii = l + i;
+            if (ii >= 0 && ii < s->cdim[0]) {
+              for (int j = -1; j <= 1; j++) {
+                int jj = m + j;
+                if (jj >= 0 && jj < s->cdim[1]) {
+                  for (int k = -1; k <= 1; k++) {
+                    int kk = n + k;
+                    if (kk >= 0 && kk < s->cdim[2]) {
+
+                      /* If not self, record id of neighbour. */
+                      if (i || j || k) {
+                        adjncy[ind] = cell_getid(s->cdim, ii, jj, kk);
+
+                        /* Keep this weight, need index for periodic version
+                         * for input weights... */
+                        int oldp = ((i + 1) * 9 + (j + 1) * 3 + (k + 1));
+                        oldp = oldp - (oldp / 14);
+                        weights_e[ind] = weights_e[cid * 26 + oldp];
+
+                        ind++;
+                        p++;
+                      }
+                    }
+                  }
+                }
+              }
+            }
+          }
+          message("cell id = %d, offset = %d", cid, p);
+
+          /* Keep xadj in sync. */
+          if (xadj != NULL) {
+            xadj[cid + 1] = xadj[cid] + p;
+            cid++;
+          }
+        }
+      }
+    }
+    *nadjcny = ind;
+    *nxadj = cid;
   }
 }
 #endif
@@ -389,7 +557,7 @@ static void split_metis(struct space *s, int nregions, int *celllist) {
   for (int i = 0; i < s->nr_cells; i++) s->cells_top[i].nodeID = celllist[i];
 
   /* To check or visualise the partition dump all the cells. */
-  /*dumpCellRanks("metis_partition", s->cells_top, s->nr_cells);*/
+  dumpCellRanks("metis_partition", s->cells_top, s->nr_cells);
 }
 #endif
 
@@ -639,7 +807,9 @@ static void pick_parmetis(int nodeID, struct space *s, int nregions,
     }
 
     /* Define the cell graph. */
-    graph_init(s, full_adjncy, NULL);
+    int nadjcny = 0;
+    int nxadj = 0;
+    graph_init(s, full_adjncy, &nadjcny, NULL, &nxadj);
 
     /* xadj is set for each rank, different to serial version in that each
      * rank starts with 0 */
@@ -714,7 +884,7 @@ static void pick_parmetis(int nodeID, struct space *s, int nregions,
 
     /* Dump graphs to disk files for testing. ParMETIS xadj isn't right for
      * a dump, so make a serial-like version. */
-    /*{
+    {
       idx_t *tmp_xadj =
           (idx_t *)malloc(sizeof(idx_t) * (ncells + nregions + 1));
       tmp_xadj[0] = 0;
@@ -722,7 +892,7 @@ static void pick_parmetis(int nodeID, struct space *s, int nregions,
       dumpMETISGraph("parmetis_graph", ncells, 1, tmp_xadj, full_adjncy,
                      full_weights_v, NULL, full_weights_e);
       free(tmp_xadj);
-      }*/
+    }
 
     /* Send ranges to the other ranks and keep our own. */
     for (int rank = 0, j1 = 0, j2 = 0, j3 = 0; rank < nregions; rank++) {
@@ -1036,7 +1206,7 @@ static void pick_metis(int nodeID, struct space *s, int nregions,
   /* Only one node needs to calculate this. */
   if (nodeID == 0) {
 
-    /* Allocate weights and adjacency arrays . */
+    /* Allocate adjacency and weights arrays . */
     idx_t *xadj;
     if ((xadj = (idx_t *)malloc(sizeof(idx_t) * (ncells + 1))) == NULL)
       error("Failed to allocate xadj buffer.");
@@ -1055,16 +1225,13 @@ static void pick_metis(int nodeID, struct space *s, int nregions,
     if ((regionid = (idx_t *)malloc(sizeof(idx_t) * ncells)) == NULL)
       error("Failed to allocate regionid array");
 
-    /* Define the cell graph. */
-    graph_init(s, adjncy, xadj);
-
     /* Init the vertex weights array. */
     if (vertexw != NULL) {
       for (int k = 0; k < ncells; k++) {
         if (vertexw[k] > 1) {
           weights_v[k] = vertexw[k];
         } else {
-          weights_v[k] = 1;
+          weights_v[k] = 0;
         }
       }
 
@@ -1076,7 +1243,7 @@ static void pick_metis(int nodeID, struct space *s, int nregions,
           message("Input vertex weight out of range: %ld", (long)vertexw[k]);
           failed++;
         }
-        if (weights_v[k] < 1) {
+        if (weights_v[k] < 0) {
           message("Used vertex weight  out of range: %" PRIDX, weights_v[k]);
           failed++;
         }
@@ -1114,6 +1281,14 @@ static void pick_metis(int nodeID, struct space *s, int nregions,
 #endif
     }
 
+    /* Define the cell graph. Keeping the edge weights association. */
+    int nadjcny = 0;
+    int nxadj = 0;
+    if (weights_e != NULL)
+        graph_init_with_weights(s, weights_e, adjncy, &nadjcny, xadj, &nxadj);
+    else 
+        graph_init(s, adjncy, &nadjcny, xadj, &nxadj);
+
     /* Set the METIS options. */
     idx_t options[METIS_NOPTIONS];
     METIS_SetDefaultOptions(options);
@@ -1130,8 +1305,8 @@ static void pick_metis(int nodeID, struct space *s, int nregions,
     idx_t objval;
 
     /* Dump graph in METIS format */
-    /*dumpMETISGraph("metis_graph", idx_ncells, one, xadj, adjncy, weights_v,
-      NULL, weights_e);*/
+    dumpMETISGraph("metis_graph", idx_ncells, one, xadj, adjncy, weights_v,
+                   NULL, weights_e);
 
     if (METIS_PartGraphKway(&idx_ncells, &one, xadj, adjncy, weights_v, NULL,
                             weights_e, &idx_nregions, NULL, NULL, options,
@@ -1360,7 +1535,9 @@ static void repart_edge_metis(int vweights, int eweights, int timebins,
   idx_t *inds;
   if ((inds = (idx_t *)malloc(sizeof(idx_t) * 26 * nr_cells)) == NULL)
     error("Failed to allocate the inds array");
-  graph_init(s, inds, NULL);
+  int nadjcny = 0;
+  int nxadj = 0;
+  graph_init(s, inds, &nadjcny, NULL, &nxadj);
 
   /* Allocate and init weights. */
   double *weights_v = NULL;
