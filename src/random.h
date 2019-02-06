@@ -29,10 +29,10 @@
  * @brief The categories of random number generated.
  */
 enum random_number_type {
-  random_number_star_formation = 0,
-  random_number_stellar_feedback,
-  random_number_stellar_enrichment,
-  random_number_BH_feedback
+  random_number_star_formation = 7,
+  random_number_stellar_feedback = 53,
+  random_number_stellar_enrichment = 197,
+  random_number_BH_feedback = 491
 };
 
 /**
@@ -52,11 +52,11 @@ INLINE static double random_unit_interval(const long long int id,
                                           const enum random_number_type type) {
 
   /* Range used for the seeds. Best if prime */
-  static const long long seed_range = 131071LL;
+  static const long long seed_range = RAND_MAX;
   static const double RAND_MAX_inv = 1. / ((double)RAND_MAX);
 
   /* Calculate the seed */
-  unsigned int seed = (id + ti_current + (long long)type) % seed_range;
+  unsigned int seed = ((937LL*id+1109LL)%2147987LL + (ti_current-1) % 1514917LL + (long long)type) % seed_range;
 
   /* Generate a random number between 0 and 1. */
   return rand_r(&seed) * RAND_MAX_inv;
