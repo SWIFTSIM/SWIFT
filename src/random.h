@@ -27,6 +27,10 @@
 
 /**
  * @brief The categories of random number generated.
+ *
+ * The values of the fields are carefully chose prime
+ * numbers. Only change them if you know what you are
+ * doing!
  */
 enum random_number_type {
   random_number_star_formation = 7,
@@ -39,8 +43,9 @@ enum random_number_type {
  * @brief Returns a pseudo-random number in the range [0, 1[.
  *
  * We generate numbers that are always reproducible for a given particle ID and
- * simulation time. If more than one number per time-step per particle is
- * needed, additional randomness can be obtained by using the type argument.
+ * simulation time (on the integer time-line). If more than one number per
+ * time-step per particle is needed, additional randomness can be obtained by
+ * using the type argument.
  *
  * @param id The ID of the particle for which to generate a number.
  * @param ti_current The time (on the time-line) for which to generate a number.
@@ -56,6 +61,10 @@ INLINE static double random_unit_interval(const long long int id,
   static const double RAND_MAX_inv = 1. / ((double)RAND_MAX);
 
   /* Calculate the seed */
+  /* WARNING: Only change the math if you really know what you are doing!
+     The numbers are carefully chosen prime numbers that prevent correlation
+     with either the current integer time or the particle IDs.
+     The calculation overflows on purpose.  */
   unsigned int seed = ((937LL * id + 1109LL) % 2147987LL +
                        (ti_current - 1) % 1514917LL + (long long)type) %
                       seed_range;
