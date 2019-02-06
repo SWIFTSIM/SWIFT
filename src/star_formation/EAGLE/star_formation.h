@@ -389,7 +389,6 @@ INLINE static void star_formation_update_part_not_SFR(
  * @param xp the additional properties of the gas particles.
  * @param sp the new created star particle with its properties.
  * @param starform the star formation law properties to use.
- * @param phys_const the physical constants in internal units.
  * @param cosmo the cosmological parameters and properties.
  * @param with_cosmology if we run with cosmology.
  */
