@@ -16,8 +16,8 @@
  * along with this program.  If not, see <http://www.gnu.org/licenses/>.
  *
  ******************************************************************************/
-#ifndef SWIFT_TRACERS_EAGLE_IO_H
-#define SWIFT_TRACERS_EAGLE_IO_H
+#ifndef SWIFT_TRACERS_NONE_IO_H
+#define SWIFT_TRACERS_NONE_IO_H
 
 /* Config parameters. */
 #include "../config.h"
@@ -57,4 +57,10 @@ __attribute__((always_inline)) INLINE static int tracers_write_particles(
   return 0;
 }
 
-#endif /* SWIFT_TRACERS_EAGLE_IO_H */
+__attribute__((always_inline)) INLINE static int tracers_write_sparticles(
+    const struct spart* sparts, struct io_props* list,
+    const int with_cosmology) {
+
+  return 0;
+}
+#endif /* SWIFT_TRACERS_NONE_IO_H */
