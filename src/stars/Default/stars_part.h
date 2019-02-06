@@ -22,6 +22,10 @@
 /* Some standard headers. */
 #include <stdlib.h>
 
+/* Read chemistry */
+#include "chemistry_struct.h"
+#include "tracers_struct.h"
+
 /**
  * @brief Particle fields for the star particles.
  *
@@ -64,6 +68,12 @@ struct spart {
     float wcount_dh;
 
   } density;
+
+  /*! Tracer structure */
+  struct tracers_xpart_data tracers_data;
+
+  /*! Chemistry structure */
+  struct chemistry_part_data chemistry_data;
 
 #ifdef SWIFT_DEBUG_CHECKS
 

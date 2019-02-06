@@ -58,21 +58,6 @@ struct spart {
   /*! Initial star mass */
   float mass_init;
 
-  /*! Union for the birth time and birht scale factor */
-  union {
-    /*! Birth time */
-    float birth_time;
-
-    /*! Birth scale factor */
-    float birth_scale_factor;
-  };
-
-  /*! Birth density */
-  float birth_density;
-
-  /*! Tracer structure */
-  struct tracers_xpart_data tracers_data;
-
   /* Particle cutoff radius. */
   float h;
 
@@ -87,6 +72,21 @@ struct spart {
     float wcount_dh;
 
   } density;
+
+  /*! Union for the birth time and birht scale factor */
+  union {
+    /*! Birth time */
+    float birth_time;
+
+    /*! Birth scale factor */
+    float birth_scale_factor;
+  };
+
+  /*! Birth density */
+  float birth_density;
+
+  /*! Tracer structure */
+  struct tracers_xpart_data tracers_data;
 
   /*! Chemistry structure */
   struct chemistry_part_data chemistry_data;
