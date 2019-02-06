@@ -56,7 +56,9 @@ INLINE static double random_unit_interval(const long long int id,
   static const double RAND_MAX_inv = 1. / ((double)RAND_MAX);
 
   /* Calculate the seed */
-  unsigned int seed = ((937LL*id+1109LL)%2147987LL + (ti_current-1) % 1514917LL + (long long)type) % seed_range;
+  unsigned int seed = ((937LL * id + 1109LL) % 2147987LL +
+                       (ti_current - 1) % 1514917LL + (long long)type) %
+                      seed_range;
 
   /* Generate a random number between 0 and 1. */
   return rand_r(&seed) * RAND_MAX_inv;
