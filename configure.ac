@@ -104,9 +104,17 @@ if test "$enable_ipo" = "yes"; then
    elif test "$ax_cv_c_compiler_vendor" = "gnu"; then
       CFLAGS="$CFLAGS -flto"
       LDFLAGS="$LDFLAGS -flto"
+      AX_COMPARE_VERSION($ax_cv_c_compiler_version, [ge], [5.0.0],
+                          [
+      : ${AR="gcc-ar"}
+      : ${RANLIB="gcc-ranlib"}
+                          ], [:] )
       AC_MSG_RESULT([added GCC interprocedural optimization support])
    elif test "$ax_cv_c_compiler_vendor" = "clang"; then
-      CFLAGS="$CFLAGS -emit-llvm"
+      CFLAGS="$CFLAGS -flto"
+      : ${AR="llvm-ar"}
+      : ${LD="llvm-ld"}
+      : ${RANLIB="llvm-ranlib"}
       AC_MSG_RESULT([added LLVM interprocedural optimization support])
    else
       AC_MSG_WARN([Compiler does not support interprocedural optimization])
