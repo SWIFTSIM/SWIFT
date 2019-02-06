@@ -385,13 +385,13 @@ int main(int argc, char *argv[]) {
 
 /* Choke on FP-exceptions */
 #ifdef HAVE_FE_ENABLE_EXCEPT
-  feenableexcept(FE_DIVBYZERO | FE_INVALID | FE_OVERFLOW);
+  //feenableexcept(FE_DIVBYZERO | FE_INVALID | FE_OVERFLOW);
 #endif
 
   /* Get some randomness going */
   srand(0);
 
-  char c;
+  signed char c;
   while ((c = getopt(argc, argv, "m:s:h:p:n:r:t:d:f:v:")) != -1) {
     switch (c) {
       case 'h':
@@ -594,11 +594,11 @@ int main(int argc, char *argv[]) {
   ticks face_time = timings[4] + timings[10] + timings[12] + timings[14] +
                     timings[16] + timings[22];
 
-  message("Corner calculations took       : %15lli ticks.", corner_time / runs);
-  message("Edge calculations took         : %15lli ticks.", edge_time / runs);
-  message("Face calculations took         : %15lli ticks.", face_time / runs);
-  message("Self calculations took         : %15lli ticks.", timings[13] / runs);
-  message("SWIFT calculation took         : %15lli ticks.", time / runs);
+  message("Corner calculations took       : %15lu ticks.", corner_time / runs);
+  message("Edge calculations took         : %15lu ticks.", edge_time / runs);
+  message("Face calculations took         : %15lu ticks.", face_time / runs);
+  message("Self calculations took         : %15lu ticks.", timings[13] / runs);
+  message("SWIFT calculation took         : %15lu ticks.", time / runs);
 
   /* Now perform a brute-force version for accuracy tests */
 
@@ -624,7 +624,7 @@ int main(int argc, char *argv[]) {
   dump_particle_fields(outputFileName, main_cell, cells);
 
   /* Output timing */
-  message("Brute force calculation took : %15lli ticks.", toc - tic);
+  message("Brute force calculation took : %15lu ticks.", toc - tic);
 
   /* Clean things to make the sanitizer happy ... */
   for (int i = 0; i < 27; ++i) clean_up(cells[i]);

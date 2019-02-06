@@ -3903,61 +3903,61 @@ void engine_split(struct engine *e, struct partition *initial_partition) {
  * @param e The #engine.
  */
 void engine_dump_snapshot(struct engine *e) {
-
-  struct clocks_time time1, time2;
-  clocks_gettime(&time1);
-
-#ifdef SWIFT_DEBUG_CHECKS
-  /* Check that all cells have been drifted to the current time.
-   * That can include cells that have not
-   * previously been active on this rank. */
-  space_check_drift_point(e->s, e->ti_current, /* check_mpole=*/0);
-
-  /* Be verbose about this */
-  if (e->nodeID == 0) {
-    if (e->policy & engine_policy_cosmology)
-      message("Dumping snapshot at a=%e",
-              exp(e->ti_current * e->time_base) * e->cosmology->a_begin);
-    else
-      message("Dumping snapshot at t=%e",
-              e->ti_current * e->time_base + e->time_begin);
-  }
-#else
-  if (e->verbose) {
-    if (e->policy & engine_policy_cosmology)
-      message("Dumping snapshot at a=%e",
-              exp(e->ti_current * e->time_base) * e->cosmology->a_begin);
-    else
-      message("Dumping snapshot at t=%e",
-              e->ti_current * e->time_base + e->time_begin);
-  }
-#endif
-
-/* Dump... */
-#if defined(HAVE_HDF5)
-#if defined(WITH_MPI)
-#if defined(HAVE_PARALLEL_HDF5)
-  write_output_parallel(e, e->snapshot_base_name, e->internal_units,
-                        e->snapshot_units, e->nodeID, e->nr_nodes,
-                        MPI_COMM_WORLD, MPI_INFO_NULL);
-#else
-  write_output_serial(e, e->snapshot_base_name, e->internal_units,
-                      e->snapshot_units, e->nodeID, e->nr_nodes, MPI_COMM_WORLD,
-                      MPI_INFO_NULL);
-#endif
-#else
-  write_output_single(e, e->snapshot_base_name, e->internal_units,
-                      e->snapshot_units);
-#endif
-#endif
-
-  /* Flag that we dumped a snapshot */
-  e->step_props |= engine_step_prop_snapshot;
-
-  clocks_gettime(&time2);
-  if (e->verbose)
-    message("writing particle properties took %.3f %s.",
-            (float)clocks_diff(&time1, &time2), clocks_getunit());
+//
+//  struct clocks_time time1, time2;
+//  clocks_gettime(&time1);
+//
+//#ifdef SWIFT_DEBUG_CHECKS
+//  /* Check that all cells have been drifted to the current time.
+//   * That can include cells that have not
+//   * previously been active on this rank. */
+//  space_check_drift_point(e->s, e->ti_current, /* check_mpole=*/0);
+//
+//  /* Be verbose about this */
+//  if (e->nodeID == 0) {
+//    if (e->policy & engine_policy_cosmology)
+//      message("Dumping snapshot at a=%e",
+//              exp(e->ti_current * e->time_base) * e->cosmology->a_begin);
+//    else
+//      message("Dumping snapshot at t=%e",
+//              e->ti_current * e->time_base + e->time_begin);
+//  }
+//#else
+//  if (e->verbose) {
+//    if (e->policy & engine_policy_cosmology)
+//      message("Dumping snapshot at a=%e",
+//              exp(e->ti_current * e->time_base) * e->cosmology->a_begin);
+//    else
+//      message("Dumping snapshot at t=%e",
+//              e->ti_current * e->time_base + e->time_begin);
+//  }
+//#endif
+//
+///* Dump... */
+//#if defined(HAVE_HDF5)
+//#if defined(WITH_MPI)
+//#if defined(HAVE_PARALLEL_HDF5)
+//  write_output_parallel(e, e->snapshot_base_name, e->internal_units,
+//                        e->snapshot_units, e->nodeID, e->nr_nodes,
+//                        MPI_COMM_WORLD, MPI_INFO_NULL);
+//#else
+//  write_output_serial(e, e->snapshot_base_name, e->internal_units,
+//                      e->snapshot_units, e->nodeID, e->nr_nodes, MPI_COMM_WORLD,
+//                      MPI_INFO_NULL);
+//#endif
+//#else
+//  write_output_single(e, e->snapshot_base_name, e->internal_units,
+//                      e->snapshot_units);
+//#endif
+//#endif
+//
+//  /* Flag that we dumped a snapshot */
+//  e->step_props |= engine_step_prop_snapshot;
+//
+//  clocks_gettime(&time2);
+//  if (e->verbose)
+//    message("writing particle properties took %.3f %s.",
+//            (float)clocks_diff(&time1, &time2), clocks_getunit());
 }
 
 /**

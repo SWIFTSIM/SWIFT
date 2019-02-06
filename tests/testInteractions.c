@@ -405,9 +405,9 @@ void test_interactions(struct part test_part, struct part *parts, size_t count,
   if (check_results(pi_serial, pj_serial, pi_vec, pj_vec, count))
     message("Differences found...");
 
-  message("The serial interactions took     : %15lli ticks.",
+  message("The serial interactions took     : %15lu ticks.",
           serial_time / runs);
-  message("The vectorised interactions took : %15lli ticks.", vec_time / runs);
+  message("The vectorised interactions took : %15lu ticks.", vec_time / runs);
   message("Speed up: %15fx.", (double)(serial_time) / vec_time);
 }
 
@@ -677,9 +677,9 @@ void test_force_interactions(struct part test_part, struct part *parts,
   if (check_results(pi_serial, pj_serial, pi_vec, pj_vec, count))
     message("Differences found...");
 
-  message("The serial interactions took     : %15lli ticks.",
+  message("The serial interactions took     : %15lu ticks.",
           serial_time / runs);
-  message("The vectorised interactions took : %15lli ticks.", vec_time / runs);
+  message("The vectorised interactions took : %15lu ticks.", vec_time / runs);
   message("Speed up: %15fx.", (double)(serial_time) / vec_time);
 }
 
@@ -693,7 +693,7 @@ int main(int argc, char *argv[]) {
   /* Get some randomness going */
   srand(0);
 
-  char c;
+  signed char c;
   while ((c = getopt(argc, argv, "h:s:n:r:")) != -1) {
     switch (c) {
       case 'h':

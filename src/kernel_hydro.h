@@ -517,6 +517,7 @@ __attribute__((always_inline)) INLINE static void kernel_deval_1_vec(
    * when the mask is 0.*/
   w->v = vec_blend(mask_reg, w->v, w2.v);
   dw_dx->v = vec_blend(mask_reg, dw_dx->v, dw_dx2.v);
+  print_vector(*w);
 
 #else
 #error "Vectorisation not supported for this kernel!!!"

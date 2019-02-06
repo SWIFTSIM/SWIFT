@@ -1491,6 +1491,7 @@ void runner_dopair1_density_vec(struct runner *r, struct cell *ci,
         v_r2.v = vec_mul(v_dx.v, v_dx.v);
         v_r2.v = vec_fma(v_dy.v, v_dy.v, v_r2.v);
         v_r2.v = vec_fma(v_dz.v, v_dz.v, v_r2.v);
+        print_vector(v_r2);
 
         mask_t v_doi_mask;
 
