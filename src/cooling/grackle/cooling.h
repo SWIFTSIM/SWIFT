@@ -58,7 +58,12 @@
  */
 INLINE static void cooling_update(const struct cosmology* cosmo,
                                   struct cooling_function_data* cooling) {
-  // Add content if required.
+  /* set current time */
+  if (cooling->redshift == -1)
+    cooling->units.a_value = cosmo->a;
+  else
+    cooling->units.a_value = 1. / (1. + cooling->redshift);
+
 }
 
 /* prototypes */
@@ -505,18 +510,8 @@ __attribute__((always_inline)) INLINE static gr_float cooling_rate(
     const struct cooling_function_data* restrict cooling,
     const struct part* restrict p, struct xpart* restrict xp, double dt) {
 
-  if (cosmo->Omega_m != 0. || cosmo->Omega_r != 0. || cosmo->Omega_k != 0. ||
-      cosmo->Omega_lambda != 0. || cosmo->Omega_b != 0.)
-    error(
-        "Check cosmology factors (physical vs. co-moving and drifted vs. "
-        "un-drifted)!");
-
   /* set current time */
   code_units units = cooling->units;
-  if (cooling->redshift == -1)
-    units.a_value = cosmo->a;
-  else
-    units.a_value = 1. / (1. + cooling->redshift);
 
   /* initialize data */
   grackle_field_data data;
@@ -663,12 +658,6 @@ __attribute__((always_inline)) INLINE static void cooling_cool_part(
     const struct cooling_function_data* restrict cooling,
     struct part* restrict p, struct xpart* restrict xp, double dt,
     double dt_therm) {
-
-  if (cosmo->Omega_m != 0. || cosmo->Omega_r != 0. || cosmo->Omega_k != 0. ||
-      cosmo->Omega_lambda != 0. || cosmo->Omega_b != 0.)
-    error(
-        "Check cosmology factors (physical vs. co-moving and drifted vs. "
-        "un-drifted)!");
 
   if (dt == 0.) return;
 
