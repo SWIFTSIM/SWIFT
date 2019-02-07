@@ -11,13 +11,13 @@ Gravity:
   mesh_side_length:       32        # Number of cells along each axis for the periodic gravity mesh.
   eta:          0.025               # Constant dimensionless multiplier for time integration.
   theta:        0.7                 # Opening angle (Multipole acceptance criterion).
-  comoving_softening:     0.01 # Comoving softening length (in internal units).
-  max_physical_softening: 0.01    # Physical softening length (in internal units).
+  comoving_softening:     0.01      # Comoving softening length (in internal units).
+  max_physical_softening: 0.01      # Physical softening length (in internal units).
 
 # Parameters governing the time integration (Set dt_min and dt_max to the same value for a fixed time-step run.)
 TimeIntegration:
   time_begin:        0.    # The starting time of the simulation (in internal units).
-  time_end:          0.1    # The end time of the simulation (in internal units).
+  time_end:          0.1   # The end time of the simulation (in internal units).
   dt_min:            1e-9  # The minimal time-step size of the simulation (in internal units).
   dt_max:            1e-2  # The maximal time-step size of the simulation (in internal units).
 
@@ -35,20 +35,17 @@ Statistics:
 
 # Parameters related to the initial conditions
 InitialConditions:
-  file_name:  fid.hdf5 # The file to read
+  file_name:               fid.hdf5 # The file to read
   periodic:                    0    # Are we running with periodic ICs?
 
 # Parameters for the hydrodynamics scheme
 SPH:
   resolution_eta:        1.2348   # Target smoothing length in units of the mean inter-particle separation (1.2348 == 48Ngbs with the cubic spline kernel).
   CFL_condition:         0.1      # Courant-Friedrich-Levy condition for time integration.
-  h_tolerance:           1e-4     # (Optional) Relative accuracy of the Netwon-Raphson scheme for the smoothing lengths.
-  h_max:                 10.      # (Optional) Maximal allowed smoothing length in internal units. Defaults to FLT_MAX if unspecified.
-  max_volume_change:     1.4      # (Optional) Maximal allowed change of kernel volume over one time-step.
-  max_ghost_iterations:  30       # (Optional) Maximal number of iterations allowed to converge towards the smoothing length.
-  minimal_temperature:   100        # (Optional) Minimal temperature (in internal units) allowed for the gas particles. Value is ignored if set to 0.
-  H_ionization_temperature: 1e4   # (Optional) Temperature of the transition from neutral to ionized Hydrogen for primoridal gas.
+  h_min_ratio:           0.1      # Minimal smoothing in units of softening.
+  h_max:                 10.
 
+# Standard EAGLE cooling options
 EAGLECooling:
   dir_name:                ./coolingtables/  # Location of the Wiersma+08 cooling tables
   H_reion_z:               11.5              # Redshift of Hydrogen re-ionization

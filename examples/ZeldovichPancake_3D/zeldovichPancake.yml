@@ -35,6 +35,7 @@ Statistics:
 SPH:
   resolution_eta:        1.2348   # Target smoothing length in units of the mean inter-particle separation 
   CFL_condition:         0.1      # Courant-Friedrich-Levy condition for time integration.
+  h_min_ratio:           0.1
 
 # Parameters related to the initial conditions
 InitialConditions:

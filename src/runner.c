@@ -1230,6 +1230,7 @@ void runner_do_ghost(struct runner *r, struct cell *c, int timer) {
   const struct cosmology *cosmo = e->cosmology;
   const struct chemistry_global_data *chemistry = e->chemistry;
   const float hydro_h_max = e->hydro_properties->h_max;
+  const float hydro_h_min = e->hydro_properties->h_min;
   const float eps = e->hydro_properties->h_tolerance;
   const float hydro_eta_dim =
       pow_dimension(e->hydro_properties->eta_neighbours);
@@ -1294,6 +1295,7 @@ void runner_do_ghost(struct runner *r, struct cell *c, int timer) {
         const float h_old = p->h;
         const float h_old_dim = pow_dimension(h_old);
         const float h_old_dim_minus_one = pow_dimension_minus_one(h_old);
+
         float h_new;
         int has_no_neighbours = 0;
 
@@ -1330,11 +1332,13 @@ void runner_do_ghost(struct runner *r, struct cell *c, int timer) {
 #endif
 
           /* Skip if h is already h_max and we don't have enough neighbours */
-          if ((p->h >= hydro_h_max) && (f < 0.f)) {
+          if (((p->h >= hydro_h_max) && (f < 0.f)) ||
+              ((p->h <= hydro_h_min) && (f > 0.f))) {
 
           /* We have a particle whose smoothing length is already set (wants
-           * to be larger but has already hit the maximum). So, just tidy up
-           * as if the smoothing length had converged correctly  */
+           * to be larger but has already hit the maximum OR wants to be smaller
+           * but has already reached the minimum). So, just tidy up as if the
+           * smoothing length had converged correctly  */
 
 #ifdef EXTRA_HYDRO_LOOP
 
@@ -1436,8 +1440,8 @@ void runner_do_ghost(struct runner *r, struct cell *c, int timer) {
             p->h = h_new;
           }
 
-          /* If below the absolute maximum, try again */
-          if (p->h < hydro_h_max) {
+          /* If within the allowed range, try again */
+          if (p->h < hydro_h_max && p->h > hydro_h_min) {
 
             /* Flag for another round of fun */
             pid[redo] = pid[i];
@@ -1453,7 +1457,18 @@ void runner_do_ghost(struct runner *r, struct cell *c, int timer) {
             /* Off we go ! */
             continue;
 
-          } else {
+          } else if (p->h <= hydro_h_min) {
+
+            /* Ok, this particle is a lost cause... */
+            p->h = hydro_h_min;
+
+            /* Do some damage control if no neighbours at all were found */
+            if (has_no_neighbours) {
+              hydro_part_has_no_neighbours(p, xp, cosmo);
+              chemistry_part_has_no_neighbours(p, xp, chemistry, cosmo);
+            }
+
+          } else if (p->h >= hydro_h_max) {
 
             /* Ok, this particle is a lost cause... */
             p->h = hydro_h_max;

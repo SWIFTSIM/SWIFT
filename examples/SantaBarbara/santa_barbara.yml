@@ -46,6 +46,7 @@ Gravity:
 # Parameters of the hydro scheme
 SPH:
   resolution_eta:      1.2348   # "48 Ngb" with the cubic spline kernel
+  h_min_ratio:         0.1
   CFL_condition:       0.1
   initial_temperature: 1200.    # (1 + z_ini)^2 * 2.72K
   minimal_temperature: 100.
