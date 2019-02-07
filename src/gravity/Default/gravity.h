@@ -40,7 +40,7 @@ __attribute__((always_inline)) INLINE static float gravity_get_mass(
 }
 
 /**
- * @brief Returns the softening of a particle
+ * @brief Returns the current co-moving softening of a particle
  *
  * @param gp The particle of interest
  * @param grav_props The global gravity properties.
