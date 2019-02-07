@@ -16,6 +16,9 @@
  * along with this program.  If not, see <http://www.gnu.org/licenses/>.
  *
  ******************************************************************************/
+/**
+ * @brief This file contains the C function shown to the external user.
+ */
 #ifndef __LOGGER_LOGGER_READER_H__
 #define __LOGGER_LOGGER_READER_H__
 

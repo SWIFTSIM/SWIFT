@@ -16,6 +16,9 @@
  * along with this program.  If not, see <http://www.gnu.org/licenses/>.
  *
  ******************************************************************************/
+/**
+ * @brief This file contains basic IO function.
+ */
 #ifndef __LOGGER_LOGGER_IO_H__
 #define __LOGGER_LOGGER_IO_H__
 

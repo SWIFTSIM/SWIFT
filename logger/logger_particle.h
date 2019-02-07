@@ -28,6 +28,22 @@
 
 #define DIM 3
 
+/**
+ * @brief Store the data from a chunk.
+ *
+ * This structure contains all the required fields
+ * present in a file.
+ *
+ * As we need only a single particle, no need to keep
+ * it small.
+ *
+ * The particle is initialized with @logger_particle_init
+ * and can be updated with a chunk through @logger_particle_read.
+ *
+ * In @logger_particle_read, we use @logger_particle_read_field on
+ * each field and @logger_particle_interpolate if a linear
+ * interpolation is required.
+ */
 struct logger_particle {
   /* position */
   double pos[DIM];
@@ -57,9 +73,12 @@ struct logger_particle {
   double time;
 };
 
+/**
+ * @brief Defines the type of interpolation
+ */
 enum logger_reader_type {
-  logger_reader_const,
-  logger_reader_lin,
+  logger_reader_const, /* Constant interpolation */
+  logger_reader_lin, /* Linear interpolation */
 };
 
 void logger_particle_print(const struct logger_particle *p);

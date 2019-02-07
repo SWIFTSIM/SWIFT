@@ -30,6 +30,17 @@
 #define LOGGER_OFFSET_SIZE 7
 #define LOGGER_MASK_SIZE 1
 
+/**
+ * @brief This structure contains everything from the file header.
+ *
+ * This structure is initialized by @header_read and need to be freed
+ * with @header_free.
+ *
+ * The information contained by the header can be easily access with
+ * the functions @header_get_mask_size and @header_get_field_index.
+ *
+ * The only function that modify the file is @header_change_offset_direction.
+ */
 struct header {
   /* Logger version */
   char version[STRING_SIZE];

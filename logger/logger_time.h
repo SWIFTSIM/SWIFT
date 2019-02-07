@@ -25,6 +25,23 @@
 typedef char timebin_t;
 typedef long long integertime_t;
 
+/**
+ * @brief This structure contains all the timestamp.
+ *
+ * In order to obtain easily the time step of a chunk,
+ * this structure is required. It contains all the time step
+ * with their timestamp and position in the file.
+ *
+ * This structure is initialized with @time_array_init and
+ * freed with @time_array_free.
+ *
+ * The time step of an offset can be obtained with
+ * @time_array_get_integertime, @time_array_get_time and
+ * @time_array_get_time_array.
+ *
+ * The size of the time array can be accessed with
+ * @time_array_count.
+ */
 struct time_array {
   /* Pointer to next element */
   void *next;
@@ -42,8 +59,6 @@ struct time_array {
   size_t offset;
 };
 
-double time_convert_to_double(const integertime_t ti, const double timeBase);
-integertime_t time_convert_to_integer(const double ti, const double timeBase);
 void time_read(integertime_t *timestamp, double *time, const struct header *h,
                void *map, size_t *offset);
 void time_array_init(struct time_array *t, const struct header *h, void *map,

@@ -16,6 +16,9 @@
  * along with this program.  If not, see <http://www.gnu.org/licenses/>.
  *
  ******************************************************************************/
+/**
+ * @brief This file contains functions that help to navigate in the dumps.
+ */
 #ifndef __LOGGER_LOGGER_TOOLS_H__
 #define __LOGGER_LOGGER_TOOLS_H__
 
