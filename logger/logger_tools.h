@@ -24,6 +24,10 @@
 
 #include "../config.h"
 
+/* Swift include */
+#include "../src/inline.h"
+#include "../src/logger.h"
+
 #ifdef HAVE_PYTHON
 #define NPY_NO_DEPRECATED_API NPY_1_7_API_VERSION
 #include <Python.h>

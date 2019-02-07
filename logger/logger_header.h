@@ -19,7 +19,6 @@
 #ifndef __LOGGER_LOGGER_HEADER_H__
 #define __LOGGER_LOGGER_HEADER_H__
 
-#include "../src/logger.h"
 #include "logger_tools.h"
 
 #include <stdio.h>
