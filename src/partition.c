@@ -402,12 +402,12 @@ static void graph_init_with_weights(struct space *s, int periodic,
               }
             }
           }
+          cid++;
           //message("cell id = %d, offset = %d", cid, p);
 
           /* Keep xadj in sync. */
           if (xadj != NULL) {
             xadj[cid + 1] = xadj[cid] + p;
-            cid++;
           }
         }
       }
