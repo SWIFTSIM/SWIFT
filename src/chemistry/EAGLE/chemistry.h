@@ -92,7 +92,7 @@ __attribute__((always_inline)) INLINE static void chemistry_end_density(
   const float h = p->h;
   const float h_inv = 1.0f / h;                       /* 1/h */
   const float factor = pow_dimension(h_inv) / p->rho; /* 1 / h^d * rho */
-  const float m = p->mass;
+  const float m = hydro_get_mass(p);
 
   struct chemistry_part_data* cpd = &p->chemistry_data;
 

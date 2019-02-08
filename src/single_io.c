@@ -41,6 +41,7 @@
 #include "cooling_io.h"
 #include "dimension.h"
 #include "engine.h"
+#include "entropy_floor.h"
 #include "error.h"
 #include "gravity_io.h"
 #include "gravity_properties.h"
@@ -50,6 +51,7 @@
 #include "kernel_hydro.h"
 #include "part.h"
 #include "part_type.h"
+#include "star_formation_io.h"
 #include "stars_io.h"
 #include "tracers_io.h"
 #include "units.h"
@@ -777,6 +779,7 @@ void write_output_single(struct engine* e, const char* baseName,
   h_grp = H5Gcreate(h_file, "/SubgridScheme", H5P_DEFAULT, H5P_DEFAULT,
                     H5P_DEFAULT);
   if (h_grp < 0) error("Error while creating subgrid group");
+  entropy_floor_write_flavour(h_grp);
   cooling_write_flavour(h_grp, e->cooling_func);
   chemistry_write_flavour(h_grp);
   tracers_write_flavour(h_grp);
@@ -923,6 +926,8 @@ void write_output_single(struct engine* e, const char* baseName,
           }
           num_fields += tracers_write_particles(
               parts, xparts, list + num_fields, with_cosmology);
+          num_fields +=
+              star_formation_write_particles(parts, xparts, list + num_fields);
 
         } else {
 
@@ -957,6 +962,8 @@ void write_output_single(struct engine* e, const char* baseName,
           }
           num_fields += tracers_write_particles(
               parts_written, xparts_written, list + num_fields, with_cosmology);
+          num_fields += star_formation_write_particles(
+              parts_written, xparts_written, list + num_fields);
         }
       } break;
 
@@ -1009,6 +1016,9 @@ void write_output_single(struct engine* e, const char* baseName,
           /* No inhibted particles: easy case */
           N = Nstars;
           stars_write_particles(sparts, list, &num_fields);
+          num_fields += chemistry_write_sparticles(sparts, list + num_fields);
+          num_fields += tracers_write_sparticles(sparts, list + num_fields,
+                                                 with_cosmology);
           if (with_stf) {
             num_fields += velociraptor_write_sparts(sparts, list + num_fields);
           }
@@ -1028,6 +1038,10 @@ void write_output_single(struct engine* e, const char* baseName,
 
           /* Select the fields to write */
           stars_write_particles(sparts_written, list, &num_fields);
+          num_fields +=
+              chemistry_write_sparticles(sparts_written, list + num_fields);
+          num_fields += tracers_write_sparticles(
+              sparts_written, list + num_fields, with_cosmology);
           if (with_stf) {
             num_fields +=
                 velociraptor_write_sparts(sparts_written, list + num_fields);

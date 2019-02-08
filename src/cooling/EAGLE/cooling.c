@@ -56,8 +56,8 @@ static const float explicit_tolerance = 0.05;
 static const float newton_tolerance = 1.0e-4;
 static const float bisection_tolerance = 1.0e-6;
 static const float rounding_tolerance = 1.0e-4;
-static const double bracket_factor = 1.0488088481701515;    /* sqrt(1.1) */
-static const double newton_log_u_guess_cgs = 1.414213562e6; /* log10(2e12) */
+static const double bracket_factor = 1.5;              /* sqrt(1.1) */
+static const double newton_log_u_guess_cgs = 12.30103; /* log10(2e12) */
 
 /**
  * @brief Find the index of the current redshift along the redshift dimension
@@ -769,7 +769,7 @@ void cooling_init_backend(struct swift_params *parameter_file,
   cooling->He_reion_z_sigma =
       parser_get_param_float(parameter_file, "EAGLECooling:He_reion_z_sigma");
   cooling->He_reion_heat_cgs =
-      parser_get_param_float(parameter_file, "EAGLECooling:He_reion_ev_p_H");
+      parser_get_param_float(parameter_file, "EAGLECooling:He_reion_eV_p_H");
 
   /* Optional parameters to correct the abundances */
   cooling->Ca_over_Si_ratio_in_solar = parser_get_opt_param_float(

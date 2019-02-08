@@ -104,9 +104,17 @@ if test "$enable_ipo" = "yes"; then
    elif test "$ax_cv_c_compiler_vendor" = "gnu"; then
       CFLAGS="$CFLAGS -flto"
       LDFLAGS="$LDFLAGS -flto"
+      AX_COMPARE_VERSION($ax_cv_c_compiler_version, [ge], [5.0.0],
+                          [
+      : ${AR="gcc-ar"}
+      : ${RANLIB="gcc-ranlib"}
+                          ], [:] )
       AC_MSG_RESULT([added GCC interprocedural optimization support])
    elif test "$ax_cv_c_compiler_vendor" = "clang"; then
-      CFLAGS="$CFLAGS -emit-llvm"
+      CFLAGS="$CFLAGS -flto"
+      : ${AR="llvm-ar"}
+      : ${LD="llvm-ld"}
+      : ${RANLIB="llvm-ranlib"}
       AC_MSG_RESULT([added LLVM interprocedural optimization support])
    else
       AC_MSG_WARN([Compiler does not support interprocedural optimization])
@@ -891,7 +899,8 @@ if test "$with_hdf5" = "yes"; then
         AC_MSG_CHECKING([for HDF5 parallel support])
 
 	# Check if the library is capable, the header should define H5_HAVE_PARALLEL.
-
+        old_CPPFLAGS="$CPPFLAGS"
+        CPPFLAGS="$CPPFLAGS $HDF5_CPPFLAGS"
         AC_COMPILE_IFELSE([AC_LANG_SOURCE([[
         #include "hdf5.h"
         #ifndef H5_HAVE_PARALLEL
@@ -903,6 +912,7 @@ if test "$with_hdf5" = "yes"; then
             AC_DEFINE([HAVE_PARALLEL_HDF5],1,[HDF5 library supports parallel access])
         fi
         AC_MSG_RESULT($parallel)
+        CPPFLAGS="$old_CPPFLAGS"
     fi
 fi
 AM_CONDITIONAL([HAVEPARALLELHDF5],[test "$have_parallel_hdf5" = "yes"])
@@ -1184,8 +1194,9 @@ AC_ARG_WITH([subgrid],
 with_subgrid_cooling=none
 with_subgrid_chemistry=none
 with_subgrid_tracers=none
-with_subgrid_hydro=none
+with_subgrid_entropy_floor=none
 with_subgrid_stars=none
+with_subgrid_star_formation=none
 with_subgrid_feedback=none
 
 case "$with_subgrid" in
@@ -1198,16 +1209,18 @@ case "$with_subgrid" in
 	with_subgrid_cooling=grackle
 	with_subgrid_chemistry=GEAR
 	with_subgrid_tracers=none
-	with_subgrid_hydro=gadget2
+	with_subgrid_entropy_floor=none
 	with_subgrid_stars=GEAR
+	with_subgrid_star_formation=none
 	with_subgrid_feedback=thermal
    ;;
    EAGLE)
 	with_subgrid_cooling=EAGLE
 	with_subgrid_chemistry=EAGLE
 	with_subgrid_tracers=EAGLE
-	with_subgrid_hydro=gadget2
-	with_subgrid_stars=none
+	with_subgrid_entropy_floor=EAGLE
+	with_subgrid_stars=EAGLE
+	with_subgrid_star_formation=EAGLE
 	with_subgrid_feedback=none
    ;;
    *)
@@ -1244,14 +1257,6 @@ AC_ARG_WITH([hydro],
    [with_hydro="$withval"],
    [with_hydro="gadget2"]
 )
-
-if test "$with_subgrid" != "none"; then
-   if test "$with_hydro" != "gadget2"; then
-      AC_MSG_ERROR([Cannot provide with-subgrid and with-hydro together])
-   else
-      with_hydro="$with_subgrid_hydro"
-   fi
-fi
 
 case "$with_hydro" in
    gadget2)
@@ -1584,7 +1589,7 @@ esac
 # Stellar model.
 AC_ARG_WITH([stars],
    [AS_HELP_STRING([--with-stars=<model>],
-      [Stellar model to use @<:@none, GEAR, debug default: none@:>@]
+      [Stellar model to use @<:@none, EAGLE, GEAR, debug default: none@:>@]
    )],
    [with_stars="$withval"],
    [with_stars="none"]
@@ -1599,10 +1604,14 @@ if test "$with_subgrid" != "none"; then
 fi
 
 case "$with_stars" in
+   EAGLE)
+      AC_DEFINE([STARS_EAGLE], [1], [EAGLE stellar model])
+   ;;
    GEAR)
       AC_DEFINE([STARS_GEAR], [1], [GEAR stellar model])
    ;;
    none)
+      AC_DEFINE([STARS_NONE], [1], [None stellar model])
    ;;
 
    *)
@@ -1682,6 +1691,62 @@ case "$with_potential" in
       AC_MSG_ERROR([Unknown external potential: $with_potential])
    ;;
 esac
+
+#  Entropy floor
+AC_ARG_WITH([entropy-floor], 
+    [AS_HELP_STRING([--with-entropy-floor=<floor>],
+       [entropy floor @<:@none, EAGLE, default: none@:>@] 
+    )],
+    [with_entropy_floor="$withval"],
+    [with_entropy_floor="none"]
+)
+if test "$with_subgrid" != "none"; then
+   if test "$with_entropy_floor" != "none"; then
+      AC_MSG_ERROR([Cannot provide with-subgrid and with-entropy-floor together])
+   else
+      with_entropy_floor="$with_subgrid_entropy_floor"
+   fi
+fi
+
+case "$with_entropy_floor" in
+   none)
+      AC_DEFINE([ENTROPY_FLOOR_NONE], [1], [No entropy floor])
+   ;;
+   EAGLE)
+      AC_DEFINE([ENTROPY_FLOOR_EAGLE], [1], [EAGLE entropy floor])
+   ;;
+   *)
+      AC_MSG_ERROR([Unknown entropy floor model])
+   ;;
+esac 
+
+#  Star formation
+AC_ARG_WITH([star-formation], 
+    [AS_HELP_STRING([--with-star-formation=<sfm>],
+       [star formation @<:@none, EAGLE, default: none@:>@] 
+    )],
+    [with_star_formation="$withval"],
+    [with_star_formation="none"]
+)
+if test "$with_subgrid" != "none"; then
+   if test "$with_star_formation" != "none"; then
+      AC_MSG_ERROR([Cannot provide with-subgrid and with-star-formation together])
+   else
+      with_star_formation="$with_subgrid_star_formation"
+   fi
+fi
+
+case "$with_star_formation" in
+   none)
+      AC_DEFINE([STAR_FORMATION_NONE], [1], [No star formation])
+   ;;
+   EAGLE)
+      AC_DEFINE([STAR_FORMATION_EAGLE], [1], [EAGLE star formation model (Schaye and Dalla Vecchia (2008))])
+   ;;
+   *)
+      AC_MSG_ERROR([Unknown star formation model])
+   ;;
+esac 
 
 #  Gravity multipole order
 AC_ARG_WITH([multipole-order],
@@ -1774,11 +1839,13 @@ AC_MSG_RESULT([
    Make gravity glass  : $gravity_glass_making
    External potential  : $with_potential
 
-   Cooling function   : $with_cooling
-   Chemistry          : $with_chemistry
-   Tracers            : $with_tracers
-   Stellar model      : $with_stars
-   Feedback model     : $with_feedback
+   Entropy floor        : $with_entropy_floor
+   Cooling function     : $with_cooling
+   Chemistry            : $with_chemistry
+   Tracers              : $with_tracers
+   Stellar model        : $with_stars
+   Star formation model : $with_star_formation
+   Feedback model       : $with_feedback
 
    Individual timers           : $enable_timers
    Task debugging              : $enable_task_debugging

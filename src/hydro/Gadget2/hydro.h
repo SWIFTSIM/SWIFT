@@ -306,10 +306,11 @@ hydro_get_physical_internal_energy_dt(const struct part *restrict p,
  * We assume a constant density for the conversion to entropy.
  *
  * @param p The particle of interest.
- * @param du_dt The new time derivative of the internal energy.
+ * @param du_dt The new time derivative of the comoving internal energy.
  */
 __attribute__((always_inline)) INLINE static void
-hydro_set_comoving_internal_energy_dt(struct part *restrict p, float du_dt) {
+hydro_set_comoving_internal_energy_dt(struct part *restrict p,
+                                      const float du_dt) {
 
   p->entropy_dt = gas_entropy_from_internal_energy(p->rho, du_dt);
 }
@@ -321,14 +322,29 @@ hydro_set_comoving_internal_energy_dt(struct part *restrict p, float du_dt) {
  *
  * @param p The particle of interest.
  * @param cosmo Cosmology data structure
- * @param du_dt The time derivative of the internal energy.
+ * @param du_dt The time derivative of the physical internal energy.
  */
 __attribute__((always_inline)) INLINE static void
 hydro_set_physical_internal_energy_dt(struct part *restrict p,
                                       const struct cosmology *restrict cosmo,
-                                      float du_dt) {
+                                      const float du_dt) {
   p->entropy_dt =
       gas_entropy_from_internal_energy(p->rho * cosmo->a3_inv, du_dt);
+}
+/**
+ * @brief Sets the physical entropy of a particle
+ *
+ * @param p The particle of interest.
+ * @param xp The extended particle data.
+ * @param cosmo Cosmology data structure
+ * @param entropy The physical entropy
+ */
+__attribute__((always_inline)) INLINE static void hydro_set_physical_entropy(
+    struct part *p, struct xpart *xp, const struct cosmology *cosmo,
+    const float entropy) {
+
+  /* Note there is no conversion from physical to comoving entropy */
+  xp->entropy_full = entropy;
 }
 
 /**
