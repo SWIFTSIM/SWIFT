@@ -1462,12 +1462,6 @@ void runner_do_ghost(struct runner *r, struct cell *c, int timer) {
             /* Ok, this particle is a lost cause... */
             p->h = hydro_h_min;
 
-            /* Do some damage control if no neighbours at all were found */
-            if (has_no_neighbours) {
-              hydro_part_has_no_neighbours(p, xp, cosmo);
-              chemistry_part_has_no_neighbours(p, xp, chemistry, cosmo);
-            }
-
           } else if (p->h >= hydro_h_max) {
 
             /* Ok, this particle is a lost cause... */
