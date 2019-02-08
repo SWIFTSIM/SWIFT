@@ -156,7 +156,7 @@ INLINE static void stars_props_init(struct stars_props *sp,
   sp->feedback_timescale = parser_get_opt_param_float(params, "Stars:feedback_timescale", 4e-5);
   
   /* Calculate number of supernovae per solar mass (used only for testing in const feedback model) */
-  sp->sn_per_msun = sp->feedback_timescale * units_cgs_conversion_factor(us, UNIT_CONV_TIME) * 1.0e-15 * 0.01; // timescale convert to cgs per 40 Myr (~10^15s). 0.01 solar masses per supernova.
+  sp->sn_per_msun = sp->feedback_timescale * units_cgs_conversion_factor(us, UNIT_CONV_TIME) / 3.154e14 * 0.01; // timescale convert to cgs per 10 Myr (~3e14s). 0.01 solar masses per supernova.
 
   /* Copy over solar mass (used only for testing in const feedback model) */
   sp->const_solar_mass = phys_const->const_solar_mass;

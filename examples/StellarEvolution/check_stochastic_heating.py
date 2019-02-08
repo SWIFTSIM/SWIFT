@@ -99,8 +99,8 @@ smoothing_length_sparts = zeros(n_snapshots)
 time = zeros(n_snapshots)
 
 # Read fields we are checking from snapshots
-#for i in [0,n_snapshots-1]:
-for i in range(n_snapshots):
+for i in [0,n_snapshots-1]:
+#for i in range(n_snapshots):
 	sim = h5py.File("stellar_evolution_%04d.hdf5"%i, "r")
 	print('reading snapshot '+str(i))
 	abundances[:,:,i] = sim["/PartType0/ElementAbundance"]
@@ -127,13 +127,13 @@ for i in range(n_snapshots):
 eps = 0.01
 
 #print smoothing length maximums 
-for i in range(n_snapshots):
-	max_smoothing_length_parts = np.max(smoothing_length_parts[:,i]*unit_length_in_cgs)
-	max_smoothing_length_sparts = np.max(smoothing_length_sparts[i]*unit_length_in_cgs)
-	for j in range(n_parts):
-		distances[j,i] = distance(coord_parts[j,:,i],coord_sparts[:,i])
-	min_distance_to_spart = np.min(distances[:,i])
-	print("snapshot "+ str(i) + " max smoothing length parts cgs " + str(max_smoothing_length_parts) + " max smoothing length sparts cgs " + str(max_smoothing_length_sparts) + " boxsize " + str(boxSize * unit_length_in_cgs) + " min distance to spart " + str(min_distance_to_spart))
+#for i in range(n_snapshots):
+#	max_smoothing_length_parts = np.max(smoothing_length_parts[:,i]*unit_length_in_cgs)
+#	max_smoothing_length_sparts = np.max(smoothing_length_sparts[i]*unit_length_in_cgs)
+#	for j in range(n_parts):
+#		distances[j,i] = distance(coord_parts[j,:,i],coord_sparts[:,i])
+#	min_distance_to_spart = np.min(distances[:,i])
+#	print("snapshot "+ str(i) + " max smoothing length parts cgs " + str(max_smoothing_length_parts) + " max smoothing length sparts cgs " + str(max_smoothing_length_sparts) + " boxsize " + str(boxSize * unit_length_in_cgs) + " min distance to spart " + str(min_distance_to_spart))
 
 
 # Stochastic heating
@@ -145,14 +145,27 @@ total_energy_released = total_energy[n_snapshots-1] - total_energy[0] + total_ki
 
 # Find out how many total sn should go off in simulation time
 feedback_data = "feedback_properties.dat"
+heating_probability = 0
+energy_released = 0
+num_heating_events = 0
 with open(feedback_data) as f:
 	num_sn = float(f.readline().strip())
 	total_time = float(f.readline().strip())
+	# Find out how many heating  events occurred 
+	while True:
+		num = f.readline().strip()
+		if not num:
+			break
+		heating_probability += float(num.split()[0])
+		energy_released += float(num.split()[1])
+		num_heating_events += 1
 total_sn = num_sn * time[n_snapshots-1]/total_time
+print("total sn " + str(total_sn) + " fraction time elapsed " + str(time[n_snapshots-1]/total_time))
 
 # Calculate energy released
 energy_per_sn = 1.0e51 / unit_energy_in_cgs
 expected_energy_released = total_sn * energy_per_sn
+print("heating probability " + str(heating_probability) + " energy released " + str(energy_released) + " num_heating_events*energy_per_sn " + str(num_heating_events*energy_per_sn) + " expected energy released " + str(expected_energy_released))
 
 # Did we get it right?
 if abs(total_energy_released - expected_energy_released)/expected_energy_released < eps:
