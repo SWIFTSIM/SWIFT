@@ -601,7 +601,7 @@ int main(int argc, char *argv[]) {
   hp.eta_neighbours = h;
   hp.h_tolerance = 1e0;
   hp.h_max = FLT_MAX;
-  hp.h_min = 0.f;
+  hp.h_min = h / 1e6;
   hp.h_min_ratio = 0.f;
   hp.max_smoothing_iterations = 10;
   hp.CFL_condition = 0.1;
