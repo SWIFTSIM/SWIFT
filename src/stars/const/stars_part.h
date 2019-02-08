@@ -97,6 +97,12 @@ struct spart {
   /* total mass of neighbouring gas particles */
   float ngb_mass;
 
+  /*! Tracer structure */
+  struct tracers_xpart_data tracers_data;
+
+  /*! Chemistry structure */
+  struct chemistry_part_data chemistry_data;
+
 #ifdef SWIFT_DEBUG_CHECKS
 
   /* Time of the last drift */

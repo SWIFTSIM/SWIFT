@@ -2490,10 +2490,7 @@ void cell_activate_subcell_stars_tasks(struct cell *ci, struct cell *cj,
   else {
 
     /* Should we even bother? */
-    const int should_do_ci = ci->stars.count != 0 && cj->hydro.count != 0 &&
-      cell_is_active_stars(ci, e);
-    const int should_do_cj = cj->stars.count != 0 && ci->hydro.count != 0 &&
-      cell_is_active_stars(cj, e);
+    if (!cell_is_active_stars(ci, e) && !cell_is_active_stars(cj, e)) return;
 
     /* Get the orientation of the pair. */
     double shift[3];
@@ -2779,8 +2776,6 @@ void cell_activate_subcell_stars_tasks(struct cell *ci, struct cell *cj,
 
     /* Otherwise, activate the sorts and drifts. */
     else {
-      const int do_ci = cell_is_active_stars(ci, e);
-      const int do_cj = cell_is_active_stars(cj, e);
 
       if (cell_is_active_stars(ci, e)) {
         /* We are going to interact this pair, so store some values. */

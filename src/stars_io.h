@@ -23,14 +23,14 @@
 #include "./const.h"
 
 /* Load the correct star type */
-#if defined(STARS_NONE)
+#if defined(FEEDBACK_CONST)
+#include "./stars/const/stars_io.h"
+#elif defined(STARS_NONE)
 #include "./stars/Default/stars_io.h"
 #elif defined(STARS_EAGLE)
 #include "./stars/EAGLE/stars_io.h"
 #elif defined(STARS_GEAR)
 #include "./stars/GEAR/stars_io.h"
-#elif defined(FEEDBACK_CONST)
-#include "./stars/const/stars_io.h"
 #else
 #error "Invalid choice of star model"
 #endif

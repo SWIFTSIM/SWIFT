@@ -23,7 +23,10 @@
 #include "../config.h"
 
 /* Select the correct star model */
-#if defined(STARS_NONE)
+#if defined(FEEDBACK_CONST)
+#include "./stars/const/stars.h"
+#include "./stars/const/stars_iact.h"
+#elif defined(STARS_NONE)
 #include "./stars/Default/stars.h"
 #include "./stars/Default/stars_iact.h"
 #elif defined(STARS_EAGLE)
@@ -32,10 +35,6 @@
 #elif defined(STARS_GEAR)
 #include "./stars/GEAR/stars.h"
 #include "./stars/GEAR/stars_iact.h"
-#elif defined(FEEDBACK_CONST)
-#include "./stars/const/stars.h"
-#include "./stars/const/stars_part.h"
-#include "./stars/const/stars_iact.h"
 #else
 #error "Invalid choice of star model"
 #endif
