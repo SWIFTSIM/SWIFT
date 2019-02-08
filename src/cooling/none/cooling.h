@@ -46,8 +46,7 @@
  * @param cooling The #cooling_function_data used in the run.
  */
 INLINE static void cooling_update(const struct cosmology* cosmo,
-                                  struct cooling_function_data* cooling,
-                                  const int restart_flag) {
+                                  struct cooling_function_data* cooling) {
   // Add content if required.
 }
 
@@ -192,18 +191,6 @@ static INLINE void cooling_init_backend(struct swift_params* parameter_file,
 }
 
 /**
- * @brief Restore cooling tables (if applicable) after
- * restart
- *
- * Nothing to do here
- *
- * @param cooling the cooling_function_data structure
- * @param cosmo cosmology structure
- */
-static INLINE void cooling_restore_tables(struct cooling_function_data* cooling,
-                                          const struct cosmology* cosmo) {}
-
-/**
  * @brief Prints the properties of the cooling model to stdout.
  *
  * @param cooling The properties of the cooling function.
@@ -220,5 +207,30 @@ static INLINE void cooling_print_backend(
  * @param cooling the cooling data structure.
  */
 static INLINE void cooling_clean(struct cooling_function_data* cooling) {}
+
+/**
+ * @brief Write a cooling struct to the given FILE as a stream of bytes.
+ *
+ * Empty structure so nothing to do here.
+ *
+ * @param cooling the struct
+ * @param stream the file stream
+ */
+static INLINE void cooling_struct_dump(
+    const struct cooling_function_data* cooling, FILE* stream) {}
+
+/**
+ * @brief Restore a hydro_props struct from the given FILE as a stream of
+ * bytes.
+ *
+ * Empty structure so nothing to do here.
+ *
+ * @param cooling the struct
+ * @param stream the file stream
+ * @param cosmo #cosmology structure
+ */
+static INLINE void cooling_struct_restore(struct cooling_function_data* cooling,
+                                          FILE* stream,
+                                          const struct cosmology* cosmo) {}
 
 #endif /* SWIFT_COOLING_NONE_H */

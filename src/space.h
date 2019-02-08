@@ -35,6 +35,7 @@
 #include "lock.h"
 #include "parser.h"
 #include "part.h"
+#include "velociraptor_struct.h"
 
 /* Avoid cyclic inclusions */
 struct cell;
@@ -52,8 +53,6 @@ struct cosmology;
 #define space_subsize_self_hydro_default 32000
 #define space_subsize_pair_grav_default 256000000
 #define space_subsize_self_grav_default 32000
-#define space_subsize_pair_stars_default 256000000
-#define space_subsize_self_stars_default 32000
 #define space_subdepth_diff_grav_default 4
 #define space_max_top_level_cells_default 12
 #define space_stretch 1.10f
@@ -233,6 +232,9 @@ struct space {
 
   /*! The associated engine. */
   struct engine *e;
+
+  /*! The group information returned by VELOCIraptor for each #gpart. */
+  struct velociraptor_gpart_data *gpart_group_data;
 
 #ifdef WITH_MPI
 

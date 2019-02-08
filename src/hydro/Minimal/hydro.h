@@ -334,7 +334,24 @@ hydro_set_physical_internal_energy_dt(struct part *restrict p,
                                       const struct cosmology *cosmo,
                                       float du_dt) {
 
-  p->u_dt = du_dt * cosmo->a_factor_internal_energy;
+  p->u_dt = du_dt / cosmo->a_factor_internal_energy;
+}
+
+/**
+ * @brief Sets the physical entropy of a particle
+ *
+ * @param p The particle of interest.
+ * @param xp The extended particle data.
+ * @param cosmo Cosmology data structure
+ * @param entropy The physical entropy
+ */
+__attribute__((always_inline)) INLINE static void hydro_set_physical_entropy(
+    struct part *p, struct xpart *xp, const struct cosmology *cosmo,
+    const float entropy) {
+
+  /* Note there is no conversion from physical to comoving entropy */
+  const float comoving_entropy = entropy;
+  xp->u_full = gas_internal_energy_from_entropy(p->rho, comoving_entropy);
 }
 
 /**

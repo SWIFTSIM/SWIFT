@@ -98,6 +98,14 @@ int cell_getsize(struct cell *c) {
  */
 int cell_link_parts(struct cell *c, struct part *parts) {
 
+#ifdef SWIFT_DEBUG_CHECKS
+  if (c->nodeID == engine_rank)
+    error("Linking foreign particles in a local cell!");
+
+  if (c->hydro.parts != NULL)
+    error("Linking parts into a cell that was already linked");
+#endif
+
   c->hydro.parts = parts;
 
   /* Fill the progeny recursively, depth-first. */
@@ -122,6 +130,14 @@ int cell_link_parts(struct cell *c, struct part *parts) {
  * @return The number of particles linked.
  */
 int cell_link_gparts(struct cell *c, struct gpart *gparts) {
+
+#ifdef SWIFT_DEBUG_CHECKS
+  if (c->nodeID == engine_rank)
+    error("Linking foreign particles in a local cell!");
+
+  if (c->grav.parts != NULL)
+    error("Linking gparts into a cell that was already linked");
+#endif
 
   c->grav.parts = gparts;
 
@@ -148,6 +164,14 @@ int cell_link_gparts(struct cell *c, struct gpart *gparts) {
  */
 int cell_link_sparts(struct cell *c, struct spart *sparts) {
 
+#ifdef SWIFT_DEBUG_CHECKS
+  if (c->nodeID == engine_rank)
+    error("Linking foreign particles in a local cell!");
+
+  if (c->stars.parts != NULL)
+    error("Linking sparts into a cell that was already linked");
+#endif
+
   c->stars.parts = sparts;
 
   /* Fill the progeny recursively, depth-first. */
@@ -161,6 +185,182 @@ int cell_link_sparts(struct cell *c, struct spart *sparts) {
 
   /* Return the total number of linked particles. */
   return c->stars.count;
+}
+
+/**
+ * @brief Recurse down foreign cells until reaching one with hydro
+ * tasks; then trigger the linking of the #part array from that
+ * level.
+ *
+ * @param c The #cell.
+ * @param parts The #part array.
+ *
+ * @return The number of particles linked.
+ */
+int cell_link_foreign_parts(struct cell *c, struct part *parts) {
+
+#ifdef WITH_MPI
+
+#ifdef SWIFT_DEBUG_CHECKS
+  if (c->nodeID == engine_rank)
+    error("Linking foreign particles in a local cell!");
+#endif
+
+  /* Do we have a hydro task at this level? */
+  if (c->mpi.hydro.recv_xv != NULL) {
+
+    /* Recursively attach the parts */
+    const int counts = cell_link_parts(c, parts);
+#ifdef SWIFT_DEBUG_CHECKS
+    if (counts != c->hydro.count)
+      error("Something is wrong with the foreign counts");
+#endif
+    return counts;
+  }
+
+  /* Go deeper to find the level where the tasks are */
+  if (c->split) {
+    int count = 0;
+    for (int k = 0; k < 8; k++) {
+      if (c->progeny[k] != NULL) {
+        count += cell_link_foreign_parts(c->progeny[k], &parts[count]);
+      }
+    }
+    return count;
+  } else {
+    return 0;
+  }
+
+#else
+  error("Calling linking of foregin particles in non-MPI mode.");
+#endif
+}
+
+/**
+ * @brief Recurse down foreign cells until reaching one with gravity
+ * tasks; then trigger the linking of the #gpart array from that
+ * level.
+ *
+ * @param c The #cell.
+ * @param gparts The #gpart array.
+ *
+ * @return The number of particles linked.
+ */
+int cell_link_foreign_gparts(struct cell *c, struct gpart *gparts) {
+
+#ifdef WITH_MPI
+
+#ifdef SWIFT_DEBUG_CHECKS
+  if (c->nodeID == engine_rank)
+    error("Linking foreign particles in a local cell!");
+#endif
+
+  /* Do we have a hydro task at this level? */
+  if (c->mpi.grav.recv != NULL) {
+
+    /* Recursively attach the gparts */
+    const int counts = cell_link_gparts(c, gparts);
+#ifdef SWIFT_DEBUG_CHECKS
+    if (counts != c->grav.count)
+      error("Something is wrong with the foreign counts");
+#endif
+    return counts;
+  }
+
+  /* Go deeper to find the level where the tasks are */
+  if (c->split) {
+    int count = 0;
+    for (int k = 0; k < 8; k++) {
+      if (c->progeny[k] != NULL) {
+        count += cell_link_foreign_gparts(c->progeny[k], &gparts[count]);
+      }
+    }
+    return count;
+  } else {
+    return 0;
+  }
+
+#else
+  error("Calling linking of foregin particles in non-MPI mode.");
+#endif
+}
+
+/**
+ * @brief Recursively count the number of #part in foreign cells that
+ * are in cells with hydro-related tasks.
+ *
+ * @param c The #cell.
+ *
+ * @return The number of particles linked.
+ */
+int cell_count_parts_for_tasks(const struct cell *c) {
+
+#ifdef WITH_MPI
+
+#ifdef SWIFT_DEBUG_CHECKS
+  if (c->nodeID == engine_rank)
+    error("Counting foreign particles in a local cell!");
+#endif
+
+  /* Do we have a hydro task at this level? */
+  if (c->mpi.hydro.recv_xv != NULL) {
+    return c->hydro.count;
+  }
+
+  if (c->split) {
+    int count = 0;
+    for (int k = 0; k < 8; ++k) {
+      if (c->progeny[k] != NULL) {
+        count += cell_count_parts_for_tasks(c->progeny[k]);
+      }
+    }
+    return count;
+  } else {
+    return 0;
+  }
+
+#else
+  error("Calling linking of foregin particles in non-MPI mode.");
+#endif
+}
+
+/**
+ * @brief Recursively count the number of #gpart in foreign cells that
+ * are in cells with gravity-related tasks.
+ *
+ * @param c The #cell.
+ *
+ * @return The number of particles linked.
+ */
+int cell_count_gparts_for_tasks(const struct cell *c) {
+
+#ifdef WITH_MPI
+
+#ifdef SWIFT_DEBUG_CHECKS
+  if (c->nodeID == engine_rank)
+    error("Counting foreign particles in a local cell!");
+#endif
+
+  /* Do we have a hydro task at this level? */
+  if (c->mpi.grav.recv != NULL) {
+    return c->grav.count;
+  }
+
+  if (c->split) {
+    int count = 0;
+    for (int k = 0; k < 8; ++k) {
+      if (c->progeny[k] != NULL) {
+        count += cell_count_gparts_for_tasks(c->progeny[k]);
+      }
+    }
+    return count;
+  } else {
+    return 0;
+  }
+
+#else
+  error("Calling linking of foregin particles in non-MPI mode.");
+#endif
 }
 
 /**
@@ -1802,7 +2002,7 @@ void cell_activate_hydro_sorts(struct cell *c, int sid, struct scheduler *s) {
  */
 void cell_activate_stars_sorts_up(struct cell *c, struct scheduler *s) {
 
-  if (c == c->super) {
+  if (c == c->hydro.super) {
 #ifdef SWIFT_DEBUG_CHECKS
     if ((c->nodeID == engine_rank && c->stars.sorts_local == NULL) ||
         (c->nodeID != engine_rank && c->stars.sorts_foreign == NULL))
@@ -1823,18 +2023,18 @@ void cell_activate_stars_sorts_up(struct cell *c, struct scheduler *s) {
          parent != NULL && !parent->stars.do_sub_sort;
          parent = parent->parent) {
       parent->stars.do_sub_sort = 1;
-      if (parent == c->super) {
+      if (parent == c->hydro.super) {
 #ifdef SWIFT_DEBUG_CHECKS
-        if ((c->nodeID == engine_rank && parent->stars.sorts_local == NULL) ||
-            (c->nodeID != engine_rank && parent->stars.sorts_foreign == NULL))
+        if ((parent->nodeID == engine_rank && parent->stars.sorts_local == NULL) ||
+            (parent->nodeID != engine_rank && parent->stars.sorts_foreign == NULL))
           error("Trying to activate un-existing parents->stars.sorts");
 #endif
-        if (c->nodeID == engine_rank) {
+        if (parent->nodeID == engine_rank) {
           scheduler_activate(s, parent->stars.sorts_local);
           cell_activate_drift_part(parent, s);
           cell_activate_drift_spart(parent, s);
         }
-        if (c->nodeID != engine_rank) {
+        if (parent->nodeID != engine_rank) {
           scheduler_activate(s, parent->stars.sorts_foreign);
         }
         break;
@@ -2247,10 +2447,14 @@ void cell_activate_subcell_stars_tasks(struct cell *ci, struct cell *cj,
   /* Store the current dx_max and h_max values. */
   ci->stars.dx_max_part_old = ci->stars.dx_max_part;
   ci->stars.h_max_old = ci->stars.h_max;
+  ci->hydro.dx_max_part_old = ci->hydro.dx_max_part;
+  ci->hydro.h_max_old = ci->hydro.h_max;
 
   if (cj != NULL) {
     cj->stars.dx_max_part_old = cj->stars.dx_max_part;
     cj->stars.h_max_old = cj->stars.h_max;
+    cj->hydro.dx_max_part_old = cj->hydro.dx_max_part;
+    cj->hydro.h_max_old = cj->hydro.h_max;
   }
 
   /* Self interaction? */
@@ -2290,8 +2494,6 @@ void cell_activate_subcell_stars_tasks(struct cell *ci, struct cell *cj,
       cell_is_active_stars(ci, e);
     const int should_do_cj = cj->stars.count != 0 && ci->hydro.count != 0 &&
       cell_is_active_stars(cj, e);
-
-    if (!should_do_ci && !should_do_cj) return;
 
     /* Get the orientation of the pair. */
     double shift[3];
@@ -2580,7 +2782,7 @@ void cell_activate_subcell_stars_tasks(struct cell *ci, struct cell *cj,
       const int do_ci = cell_is_active_stars(ci, e);
       const int do_cj = cell_is_active_stars(cj, e);
 
-      if (do_ci) {
+      if (cell_is_active_stars(ci, e)) {
         /* We are going to interact this pair, so store some values. */
         atomic_or(&cj->hydro.requires_sorts, 1 << sid);
         atomic_or(&ci->stars.requires_sorts, 1 << sid);
@@ -2597,7 +2799,7 @@ void cell_activate_subcell_stars_tasks(struct cell *ci, struct cell *cj,
         cell_activate_stars_sorts(ci, sid, s);
       }
 
-      if (do_cj) {
+      if (cell_is_active_stars(cj, e)) {
         /* We are going to interact this pair, so store some values. */
         atomic_or(&cj->stars.requires_sorts, 1 << sid);
         atomic_or(&ci->hydro.requires_sorts, 1 << sid);
@@ -3146,7 +3348,7 @@ int cell_unskip_stars_tasks(struct cell *c, struct scheduler *s) {
   struct engine *e = s->space->e;
   const int nodeID = e->nodeID;
   int rebuild = 0;
-
+  
   /* Un-skip the density tasks involved with this cell. */
   for (struct link *l = c->stars.density; l != NULL; l = l->next) {
     struct task *t = l->t;

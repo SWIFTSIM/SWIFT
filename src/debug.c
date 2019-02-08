@@ -60,6 +60,8 @@
 #include "./hydro/Shadowswift/hydro_debug.h"
 #elif defined(PLANETARY_SPH)
 #include "./hydro/Planetary/hydro_debug.h"
+#elif defined(ANARCHY_PU_SPH)
+#include "./hydro/AnarchyPU/hydro_debug.h"
 #else
 #error "Invalid choice of SPH variant"
 #endif

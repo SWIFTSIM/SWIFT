@@ -32,7 +32,8 @@
 /**
  * @brief Converts physical constants to the internal unit system
  *
- * Some constants can be overwritten by the YAML file values.
+ * Some constants can be overwritten by the YAML file values. If the
+ * param argument is NULL, no overwriting is done.
  *
  * @param us The current internal system of units.
  * @param params The parsed parameter file.
@@ -48,8 +49,10 @@ void phys_const_init(const struct unit_system *us, struct swift_params *params,
       const_newton_G_cgs / units_general_cgs_conversion_factor(us, dimension_G);
 
   /* Overwrite G if present in the file */
-  internal_const->const_newton_G = parser_get_opt_param_double(
-      params, "PhysicalConstants:G", internal_const->const_newton_G);
+  if (params != NULL) {
+    internal_const->const_newton_G = parser_get_opt_param_double(
+        params, "PhysicalConstants:G", internal_const->const_newton_G);
+  }
 
   const float dimension_c[5] = {0, 1, -1, 0, 0}; /* [cm s^-1] */
   internal_const->const_speed_light_c =

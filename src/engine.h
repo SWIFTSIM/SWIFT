@@ -91,7 +91,8 @@ enum engine_step_properties {
   engine_step_prop_statistics = (1 << 3),
   engine_step_prop_snapshot = (1 << 4),
   engine_step_prop_restarts = (1 << 5),
-  engine_step_prop_logger_index = (1 << 6)
+  engine_step_prop_stf = (1 << 6),
+  engine_step_prop_logger_index = (1 << 7)
 };
 
 /* Some constants */
@@ -101,6 +102,7 @@ enum engine_step_properties {
 #define engine_max_proxy_centre_frac 0.2
 #define engine_redistribute_alloc_margin 1.2
 #define engine_rebuild_link_alloc_margin 1.2
+#define engine_foreign_alloc_margin 1.05
 #define engine_default_energy_file_name "energy"
 #define engine_default_timesteps_file_name "timesteps"
 #define engine_max_parts_per_ghost 1000
@@ -224,9 +226,6 @@ struct engine {
   /* The internal system of units */
   const struct unit_system *internal_units;
 
-  /* Top-level cell locations for VELOCIraptor. */
-  struct cell_loc *cell_loc;
-
   /* Snapshot information */
   double a_first_snapshot;
   double time_first_snapshot;
@@ -241,12 +240,11 @@ struct engine {
   char snapshot_base_name[PARSER_MAX_LINE_SIZE];
   int snapshot_compression;
   int snapshot_int_time_label_on;
+  int snapshot_invoke_stf;
   struct unit_system *snapshot_units;
   int snapshot_output_count;
 
   /* Structure finding information */
-  enum io_stf_output_format stf_output_freq_format;
-  int delta_step_stf;
   double a_first_stf_output;
   double time_first_stf_output;
   double delta_time_stf;
@@ -257,7 +255,9 @@ struct engine {
   /* Integer time of the next stf output */
   integertime_t ti_next_stf;
 
-  char stfBaseName[PARSER_MAX_LINE_SIZE];
+  char stf_config_file_name[PARSER_MAX_LINE_SIZE];
+  char stf_base_name[PARSER_MAX_LINE_SIZE];
+  int stf_output_count;
 
   /* Statistics information */
   double a_first_statistics;
@@ -290,10 +290,8 @@ struct engine {
   struct proxy *proxies;
   int nr_proxies, *proxy_ind;
 
-#ifdef SWIFT_DEBUG_TASKS
   /* Tic/toc at the start/end of a step. */
   ticks tic_step, toc_step;
-#endif
 
 #ifdef WITH_MPI
   /* CPU time of the last step. */
@@ -347,6 +345,9 @@ struct engine {
   /* Properties of the hydro scheme */
   const struct hydro_props *hydro_properties;
 
+  /* Properties of the entropy floor */
+  const struct entropy_floor_properties *entropy_floor;
+
   /* Properties of the star model */
   const struct stars_props *stars_properties;
 
@@ -361,6 +362,9 @@ struct engine {
 
   /* Properties of the cooling scheme */
   struct cooling_function_data *cooling_func;
+
+  /* Properties of the starformation law */
+  const struct star_formation *star_formation;
 
   /* Properties of the chemistry model */
   const struct chemistry_global_data *chemistry;
@@ -405,6 +409,7 @@ void engine_unskip(struct engine *e);
 void engine_drift_all(struct engine *e, const int drift_mpoles);
 void engine_drift_top_multipoles(struct engine *e);
 void engine_reconstruct_multipoles(struct engine *e);
+void engine_allocate_foreign_particles(struct engine *e);
 void engine_print_stats(struct engine *e);
 void engine_check_for_dumps(struct engine *e);
 void engine_dump_snapshot(struct engine *e);
@@ -415,10 +420,12 @@ void engine_init(struct engine *e, struct space *s, struct swift_params *params,
                  const struct unit_system *internal_units,
                  const struct phys_const *physical_constants,
                  struct cosmology *cosmo, const struct hydro_props *hydro,
+                 const struct entropy_floor_properties *entropy_floor,
                  struct gravity_props *gravity, const struct stars_props *stars,
                  struct pm_mesh *mesh,
                  const struct external_potential *potential,
                  struct cooling_function_data *cooling_func,
+                 const struct star_formation *starform,
                  const struct chemistry_global_data *chemistry);
 void engine_config(int restart, struct engine *e, struct swift_params *params,
                    int nr_nodes, int nodeID, int nr_threads, int with_aff,

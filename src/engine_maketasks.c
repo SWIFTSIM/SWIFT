@@ -273,7 +273,7 @@ void engine_addtasks_send_stars(struct engine *e, struct cell *ci,
       scheduler_addunlock(s, t_feed, ci->super->end_force);
 
       /* Ghost before you send */
-      scheduler_addunlock(s, ci->super->stars.ghost_out, t_feed);
+      scheduler_addunlock(s, ci->hydro.super->stars.ghost_out, t_feed);
     }
 
     if (hydro == NULL) {
@@ -479,7 +479,7 @@ void engine_addtasks_recv_stars(struct engine *e, struct cell *c,
                                c->mpi.tag, 0, c, NULL);
 
     /* Need to sort task before feedback loop */
-    scheduler_addunlock(s, t_feed, c->super->stars.sorts_foreign);
+    scheduler_addunlock(s, t_feed, c->hydro.super->stars.sorts_foreign);
   }
 
   c->mpi.hydro.recv_xv = t_xv;
@@ -956,7 +956,7 @@ void engine_make_hierarchical_tasks_stars(struct engine *e, struct cell *c) {
   struct scheduler *s = &e->sched;
 
   /* Are we in a super-cell ? */
-  if (c->super == c) {
+  if (c->hydro.super == c) {
     /* Foreign tasks only */
     if (c->nodeID != e->nodeID) {
       c->stars.sorts_foreign = scheduler_addtask(
@@ -978,14 +978,8 @@ void engine_make_hierarchical_tasks_stars(struct engine *e, struct cell *c) {
       engine_add_stars_ghosts(e, c, c->stars.ghost_in, c->stars.ghost_out);
 
       /* Need to compute the gas density before moving to the feedback */
-      struct task *hydro_ghost = NULL;
-      if (c->hydro.super)
-	hydro_ghost = c->hydro.super->hydro.ghost_out;
-
-      if (hydro_ghost) {
-	scheduler_addunlock(s, hydro_ghost,
-			    c->super->stars.ghost_out);
-      }
+      scheduler_addunlock(s, c->hydro.super->hydro.ghost_out,
+			  c->hydro.super->stars.ghost_out);
     }
   } else { /* We are above the super-cell so need to go deeper */
 
@@ -1522,8 +1516,10 @@ void engine_link_gravity_tasks(struct engine *e) {
  * @param density The density task to link.
  * @param gradient The gradient task to link.
  * @param force The force task to link.
+ * @param limiter The limiter task to link.
  * @param c The cell.
  * @param with_cooling Do we have a cooling task ?
+ * @param with_limiter Do we have a time-step limiter ?
  */
 static inline void engine_make_hydro_loops_dependencies(
     struct scheduler *sched, struct task *density, struct task *gradient,
@@ -1574,8 +1570,8 @@ static inline void engine_make_stars_loops_dependencies(struct scheduler *sched,
                                                         struct task *feedback,
                                                         struct cell *c) {
   /* density loop --> ghost --> feedback loop*/
-  scheduler_addunlock(sched, density, c->super->stars.ghost_in);
-  scheduler_addunlock(sched, c->super->stars.ghost_out, feedback);
+  scheduler_addunlock(sched, density, c->hydro.super->stars.ghost_in);
+  scheduler_addunlock(sched, c->hydro.super->stars.ghost_out, feedback);
 }
 
 /**
@@ -2044,7 +2040,7 @@ void engine_make_extra_starsloop_tasks_mapper(void *map_data, int num_elements,
 
       if (t->ci->nodeID == engine_rank) {
         scheduler_addunlock(sched, t->ci->super->grav.drift, t);
-        scheduler_addunlock(sched, t->ci->super->stars.sorts_local, t);
+        scheduler_addunlock(sched, t->ci->hydro.super->stars.sorts_local, t);
       }
 
       if (t->ci->hydro.super != t->cj->hydro.super) {
@@ -2053,11 +2049,13 @@ void engine_make_extra_starsloop_tasks_mapper(void *map_data, int num_elements,
         scheduler_addunlock(sched, t->cj->hydro.super->hydro.sorts, t);
       }
 
-      if (t->ci->super != t->cj->super) {
-        if (t->cj->nodeID == engine_rank) {
-          scheduler_addunlock(sched, t->cj->super->grav.drift, t);
-          scheduler_addunlock(sched, t->cj->super->stars.sorts_local, t);
+      if (t->cj->nodeID == engine_rank) {
+	if (t->ci->hydro.super != t->cj->hydro.super) {
+          scheduler_addunlock(sched, t->cj->hydro.super->stars.sorts_local, t);
         }
+	if (t->ci->super != t->cj->super) {
+          scheduler_addunlock(sched, t->cj->super->grav.drift, t);
+	}
       }
 
       /* Start by constructing the task for the second stars loop */
@@ -2067,11 +2065,11 @@ void engine_make_extra_starsloop_tasks_mapper(void *map_data, int num_elements,
 
       /* Add sort before feedback loop */
       if (t->ci->nodeID != engine_rank) {
-        scheduler_addunlock(sched, t->ci->super->stars.sorts_foreign, t2);
+        scheduler_addunlock(sched, t->ci->hydro.super->stars.sorts_foreign, t2);
       }
-      if (t->ci->super != t->cj->super) {
+      if (t->ci->hydro.super != t->cj->hydro.super) {
         if (t->cj->nodeID != engine_rank) {
-          scheduler_addunlock(sched, t->cj->super->stars.sorts_foreign, t2);
+          scheduler_addunlock(sched, t->cj->hydro.super->stars.sorts_foreign, t2);
         }
       }
 
@@ -2085,8 +2083,10 @@ void engine_make_extra_starsloop_tasks_mapper(void *map_data, int num_elements,
         scheduler_addunlock(sched, t2, t->ci->super->end_force);
       }
       if (t->cj->nodeID == nodeID) {
-        if (t->ci->super != t->cj->super) {
+        if (t->ci->hydro.super != t->cj->hydro.super) {
           engine_make_stars_loops_dependencies(sched, t, t2, t->cj);
+	}
+        if (t->ci->super != t->cj->super) {
           scheduler_addunlock(sched, t2, t->cj->super->end_force);
         }
       }
@@ -2101,7 +2101,7 @@ void engine_make_extra_starsloop_tasks_mapper(void *map_data, int num_elements,
       scheduler_addunlock(sched, t->ci->hydro.super->hydro.drift, t);
       scheduler_addunlock(sched, t->ci->hydro.super->hydro.sorts, t);
       scheduler_addunlock(sched, t->ci->super->grav.drift, t);
-      scheduler_addunlock(sched, t->ci->super->stars.sorts_local, t);
+      scheduler_addunlock(sched, t->ci->hydro.super->stars.sorts_local, t);
 
       /* Start by constructing the task for the second stars loop */
       struct task *t2 = scheduler_addtask(sched, task_type_sub_self,
@@ -2130,7 +2130,7 @@ void engine_make_extra_starsloop_tasks_mapper(void *map_data, int num_elements,
 
       if (t->cj->nodeID == engine_rank) {
         scheduler_addunlock(sched, t->cj->super->grav.drift, t);
-        scheduler_addunlock(sched, t->cj->super->stars.sorts_local, t);
+        scheduler_addunlock(sched, t->cj->hydro.super->stars.sorts_local, t);
       }
 
       if (t->ci->hydro.super != t->cj->hydro.super) {
@@ -2139,11 +2139,13 @@ void engine_make_extra_starsloop_tasks_mapper(void *map_data, int num_elements,
         scheduler_addunlock(sched, t->ci->hydro.super->hydro.sorts, t);
       }
 
-      if (t->ci->super != t->cj->super) {
-        if (t->ci->nodeID == engine_rank) {
+      if (t->ci->nodeID == engine_rank) {
+	if (t->ci->super != t->cj->super) {
           scheduler_addunlock(sched, t->ci->super->grav.drift, t);
-          scheduler_addunlock(sched, t->ci->super->stars.sorts_local, t);
-        }
+	}
+	if (t->ci->hydro.super != t->cj->hydro.super) {
+          scheduler_addunlock(sched, t->ci->hydro.super->stars.sorts_local, t);
+	}
       }
 
       /* Start by constructing the task for the second stars loop */
@@ -2153,11 +2155,11 @@ void engine_make_extra_starsloop_tasks_mapper(void *map_data, int num_elements,
 
       /* Add the sort before feedback */
       if (t->cj->nodeID != engine_rank) {
-        scheduler_addunlock(sched, t->cj->super->stars.sorts_foreign, t2);
+        scheduler_addunlock(sched, t->cj->hydro.super->stars.sorts_foreign, t2);
       }
-      if (t->ci->super != t->cj->super) {
+      if (t->ci->hydro.super != t->cj->hydro.super) {
         if (t->ci->nodeID != engine_rank) {
-          scheduler_addunlock(sched, t->ci->super->stars.sorts_foreign, t2);
+          scheduler_addunlock(sched, t->ci->hydro.super->stars.sorts_foreign, t2);
         }
       }
 
@@ -2171,7 +2173,7 @@ void engine_make_extra_starsloop_tasks_mapper(void *map_data, int num_elements,
         scheduler_addunlock(sched, t2, t->ci->super->end_force);
       }
       if (t->cj->nodeID == nodeID) {
-        if (t->ci->super != t->cj->super)
+        if (t->ci->hydro.super != t->cj->hydro.super)
           engine_make_stars_loops_dependencies(sched, t, t2, t->cj);
         if (t->ci->super != t->cj->super)
           scheduler_addunlock(sched, t2, t->cj->super->end_force);
@@ -2741,6 +2743,10 @@ void engine_maketasks(struct engine *e) {
       message("Creating recv tasks took %.3f %s.",
               clocks_from_ticks(getticks() - tic2), clocks_getunit());
   }
+
+  /* Allocate memory for foreign particles */
+  engine_allocate_foreign_particles(e);
+
 #endif
 
   /* Report the number of tasks we actually used */

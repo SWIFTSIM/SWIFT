@@ -1031,16 +1031,15 @@ static void scheduler_splittask_stars(struct task *t, struct scheduler *s) {
 
     /* Empty task? */
     /* Need defines in order to evaluate after check for t->ci == NULL */
-#define pair_no_part                                          \
-  t->type == task_type_pair &&                                \
-      (t->ci->stars.count == 0 || t->cj->hydro.count == 0) && \
-      (t->cj->stars.count == 0 || t->ci->hydro.count == 0)
-#define self_no_part           \
-  t->type == task_type_self && \
-      (t->ci->stars.count == 0 || t->ci->hydro.count == 0)
+    const int self = (t->ci != NULL) && t->type == task_type_self &&
+      t->ci->stars.count != 0 && t->ci->hydro.count != 0;
 
-    if ((t->ci == NULL) || (t->type == task_type_pair && t->cj == NULL) ||
-        (self_no_part) || (pair_no_part)) {
+    const int pair = (t->ci != NULL) && (t->cj != NULL) &&
+      t->type == task_type_pair &&
+      ((t->ci->stars.count != 0 && t->cj->hydro.count != 0) ||
+       (t->cj->stars.count != 0 && t->ci->hydro.count != 0));
+ 
+    if (!self && !pair) {
       t->type = task_type_none;
       t->subtype = task_subtype_none;
       t->cj = NULL;
@@ -1064,7 +1063,7 @@ static void scheduler_splittask_stars(struct task *t, struct scheduler *s) {
       if (cell_can_split_self_stars_task(ci)) {
 
         /* Make a sub? */
-        if (scheduler_dosub && ci->stars.count < space_subsize_self_stars) {
+        if (scheduler_dosub && ci->hydro.count < space_subsize_self_hydro) {
 
           /* convert to a self-subtask. */
           t->type = task_type_sub_self;
@@ -1080,7 +1079,8 @@ static void scheduler_splittask_stars(struct task *t, struct scheduler *s) {
           while (ci->progeny[first_child] == NULL) first_child++;
           t->ci = ci->progeny[first_child];
           for (int k = first_child + 1; k < 8; k++)
-            if (ci->progeny[k] != NULL && ci->progeny[k]->stars.count)
+            if (ci->progeny[k] != NULL && ci->progeny[k]->stars.count != 0 &&
+		ci->progeny[k]->hydro.count != 0)
               scheduler_splittask_stars(
                   scheduler_addtask(s, task_type_self, t->subtype, 0, 0,
                                     ci->progeny[k], NULL),
@@ -1088,11 +1088,11 @@ static void scheduler_splittask_stars(struct task *t, struct scheduler *s) {
 
           /* Make a task for each pair of progeny */
           for (int j = 0; j < 8; j++)
-            if (ci->progeny[j] != NULL &&
-                (ci->progeny[j]->stars.count || ci->progeny[j]->hydro.count))
+            if (ci->progeny[j] != NULL)
               for (int k = j + 1; k < 8; k++)
-                if (ci->progeny[k] != NULL && (ci->progeny[k]->stars.count ||
-                                               ci->progeny[k]->hydro.count))
+                if (ci->progeny[k] != NULL &&
+		    ((ci->progeny[k]->stars.count != 0 && ci->progeny[j]->hydro.count != 0) ||
+		     (ci->progeny[j]->stars.count != 0 && ci->progeny[k]->hydro.count != 0)))
                   scheduler_splittask_stars(
                       scheduler_addtask(s, task_type_pair, t->subtype,
                                         sub_sid_flag[j][k], 0, ci->progeny[j],
@@ -1127,24 +1127,19 @@ static void scheduler_splittask_stars(struct task *t, struct scheduler *s) {
               t->flags);
 #endif
 
-      /* Compute number of interactions */
-      const int ci_interaction = (ci->stars.count * cj->hydro.count);
-      const int cj_interaction = (cj->stars.count * ci->hydro.count);
-
-      const int number_interactions = (ci_interaction + cj_interaction);
-
       /* Should this task be split-up? */
       if (cell_can_split_pair_stars_task(ci, cj) &&
-          cell_can_split_pair_stars_task(ci, cj)) {
+          cell_can_split_pair_stars_task(cj, ci)) {
 
         /* Replace by a single sub-task? */
-        if (scheduler_dosub &&
-            number_interactions * sid_scale[sid] < space_subsize_pair_stars &&
-            !sort_is_corner(sid)) {
+	if (scheduler_dosub && /* Use division to avoid integer overflow. */
+	    ci->hydro.count * sid_scale[sid] <
+	    space_subsize_pair_hydro / cj->hydro.count &&
+	    !sort_is_corner(sid)) {
 
-          /* Make this task a sub task. */
+	  /* Make this task a sub task. */
           t->type = task_type_sub_pair;
-
+	
           /* Otherwise, split it. */
         } else {
           /* Take a step back (we're going to recycle the current task)... */
@@ -1487,7 +1482,7 @@ static void scheduler_splittask_stars(struct task *t, struct scheduler *s) {
 
         /* Otherwise, break it up if it is too large? */
       } else if (scheduler_doforcesplit && ci->split && cj->split &&
-                 (number_interactions > space_maxsize)) {
+                 (ci->hydro.count > space_maxsize / cj->hydro.count)) {
 
         /* Replace the current task. */
         t->type = task_type_none;
@@ -1757,9 +1752,9 @@ struct task *scheduler_addtask(struct scheduler *s, enum task_types type,
   t->nr_unlock_tasks = 0;
 #ifdef SWIFT_DEBUG_TASKS
   t->rid = -1;
+#endif
   t->tic = 0;
   t->toc = 0;
-#endif
 
   /* Add an index for it. */
   // lock_lock( &s->lock );
@@ -1978,17 +1973,12 @@ void scheduler_reweight(struct scheduler *s, int verbose) {
   /* Run through the tasks backwards and set their weights. */
   for (int k = nr_tasks - 1; k >= 0; k--) {
     struct task *t = &tasks[tid[k]];
+    float cost = 0.f;
     t->weight = 0.f;
-#if defined(WITH_MPI) && (defined(HAVE_PARMETIS) || defined(HAVE_METIS))
-    t->cost = 0.f;
-#endif
+
     for (int j = 0; j < t->nr_unlock_tasks; j++)
       if (t->unlock_tasks[j]->weight > t->weight)
         t->weight = t->unlock_tasks[j]->weight;
-    float cost = 0.f;
-#if defined(WITH_MPI) && (defined(HAVE_PARMETIS) || defined(HAVE_METIS))
-    int partcost = 1;
-#endif
 
     const float count_i = (t->ci != NULL) ? t->ci->hydro.count : 0.f;
     const float count_j = (t->cj != NULL) ? t->cj->hydro.count : 0.f;
@@ -2010,9 +2000,9 @@ void scheduler_reweight(struct scheduler *s, int verbose) {
         break;
 
       case task_type_self:
-        if (t->subtype == task_subtype_grav)
+        if (t->subtype == task_subtype_grav) {
           cost = 1.f * (wscale * gcount_i) * gcount_i;
-        else if (t->subtype == task_subtype_external_grav)
+        } else if (t->subtype == task_subtype_external_grav)
           cost = 1.f * wscale * gcount_i;
         else if (t->subtype == task_subtype_stars_density)
           cost = 1.f * wscale * scount_i * count_i;
@@ -2112,18 +2102,12 @@ void scheduler_reweight(struct scheduler *s, int verbose) {
         cost = wscale * count_i + wscale * gcount_i;
         break;
       case task_type_send:
-#if defined(WITH_MPI) && (defined(HAVE_PARMETIS) || defined(HAVE_METIS))
-        partcost = 0;
-#endif
         if (count_i < 1e5)
           cost = 10.f * (wscale * count_i) * count_i;
         else
           cost = 2e9;
         break;
       case task_type_recv:
-#if defined(WITH_MPI) && (defined(HAVE_PARMETIS) || defined(HAVE_METIS))
-        partcost = 0;
-#endif
         if (count_i < 1e5)
           cost = 5.f * (wscale * count_i) * count_i;
         else
@@ -2133,10 +2117,6 @@ void scheduler_reweight(struct scheduler *s, int verbose) {
         cost = 0;
         break;
     }
-
-#if defined(WITH_MPI) && (defined(HAVE_PARMETIS) || defined(HAVE_METIS))
-    if (partcost) t->cost = cost;
-#endif
     t->weight += cost;
   }
 
@@ -2209,14 +2189,14 @@ void scheduler_enqueue_mapper(void *map_data, int num_elements,
  */
 void scheduler_start(struct scheduler *s) {
 
-/* Reset all task debugging timers */
-#ifdef SWIFT_DEBUG_TASKS
+  /* Reset all task timers. */
   for (int i = 0; i < s->nr_tasks; ++i) {
     s->tasks[i].tic = 0;
     s->tasks[i].toc = 0;
+#ifdef SWIFT_DEBUG_TASKS
     s->tasks[i].rid = -1;
-  }
 #endif
+  }
 
   /* Re-wait the tasks. */
   if (s->active_count > 1000) {
@@ -2469,9 +2449,7 @@ struct task *scheduler_done(struct scheduler *s, struct task *t) {
 
   /* Task definitely done, signal any sleeping runners. */
   if (!t->implicit) {
-#ifdef SWIFT_DEBUG_TASKS
     t->toc = getticks();
-#endif
     pthread_mutex_lock(&s->sleep_mutex);
     atomic_dec(&s->waiting);
     pthread_cond_broadcast(&s->sleep_cond);
@@ -2512,9 +2490,7 @@ struct task *scheduler_unlock(struct scheduler *s, struct task *t) {
 
   /* Task definitely done. */
   if (!t->implicit) {
-#ifdef SWIFT_DEBUG_TASKS
     t->toc = getticks();
-#endif
     pthread_mutex_lock(&s->sleep_mutex);
     atomic_dec(&s->waiting);
     pthread_cond_broadcast(&s->sleep_cond);
@@ -2598,13 +2574,13 @@ struct task *scheduler_gettask(struct scheduler *s, int qid,
     }
   }
 
-#ifdef SWIFT_DEBUG_TASKS
   /* Start the timer on this task, if we got one. */
   if (res != NULL) {
     res->tic = getticks();
+#ifdef SWIFT_DEBUG_TASKS
     res->rid = qid;
-  }
 #endif
+  }
 
   /* No milk today. */
   return res;

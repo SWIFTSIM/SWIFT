@@ -22,19 +22,11 @@
 /* Config parameters. */
 #include "../config.h"
 
-/**
- * @brief The different formats for when to run structure finding.
- */
-enum io_stf_output_format {
-  io_stf_steps = 0, /*!< Output every N steps */
-  io_stf_time       /*!< Output at fixed time intervals */
-};
-
 /* Forward declaration */
 struct engine;
 
 /* VELOCIraptor wrapper functions. */
 void velociraptor_init(struct engine *e);
-void velociraptor_invoke(struct engine *e);
+void velociraptor_invoke(struct engine *e, const int linked_with_snap);
 
 #endif /* SWIFT_VELOCIRAPTOR_INTERFACE_H */

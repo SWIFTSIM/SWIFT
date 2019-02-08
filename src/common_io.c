@@ -809,6 +809,28 @@ void io_convert_part_d_mapper(void* restrict temp, int N,
 }
 
 /**
+ * @brief Mapper function to copy #part into a buffer of doubles using a
+ * conversion function.
+ */
+void io_convert_part_l_mapper(void* restrict temp, int N,
+                              void* restrict extra_data) {
+
+  const struct io_props props = *((const struct io_props*)extra_data);
+  const struct part* restrict parts = props.parts;
+  const struct xpart* restrict xparts = props.xparts;
+  const struct engine* e = props.e;
+  const size_t dim = props.dimension;
+
+  /* How far are we with this chunk? */
+  long long* restrict temp_l = (long long*)temp;
+  const ptrdiff_t delta = (temp_l - props.start_temp_l) / dim;
+
+  for (int i = 0; i < N; i++)
+    props.convert_part_l(e, parts + delta + i, xparts + delta + i,
+                         &temp_l[i * dim]);
+}
+
+/**
  * @brief Mapper function to copy #gpart into a buffer of floats using a
  * conversion function.
  */
@@ -849,6 +871,26 @@ void io_convert_gpart_d_mapper(void* restrict temp, int N,
 }
 
 /**
+ * @brief Mapper function to copy #gpart into a buffer of doubles using a
+ * conversion function.
+ */
+void io_convert_gpart_l_mapper(void* restrict temp, int N,
+                               void* restrict extra_data) {
+
+  const struct io_props props = *((const struct io_props*)extra_data);
+  const struct gpart* restrict gparts = props.gparts;
+  const struct engine* e = props.e;
+  const size_t dim = props.dimension;
+
+  /* How far are we with this chunk? */
+  long long* restrict temp_l = (long long*)temp;
+  const ptrdiff_t delta = (temp_l - props.start_temp_l) / dim;
+
+  for (int i = 0; i < N; i++)
+    props.convert_gpart_l(e, gparts + delta + i, &temp_l[i * dim]);
+}
+
+/**
  * @brief Mapper function to copy #spart into a buffer of floats using a
  * conversion function.
  */
@@ -886,6 +928,26 @@ void io_convert_spart_d_mapper(void* restrict temp, int N,
 
   for (int i = 0; i < N; i++)
     props.convert_spart_d(e, sparts + delta + i, &temp_d[i * dim]);
+}
+
+/**
+ * @brief Mapper function to copy #spart into a buffer of doubles using a
+ * conversion function.
+ */
+void io_convert_spart_l_mapper(void* restrict temp, int N,
+                               void* restrict extra_data) {
+
+  const struct io_props props = *((const struct io_props*)extra_data);
+  const struct spart* restrict sparts = props.sparts;
+  const struct engine* e = props.e;
+  const size_t dim = props.dimension;
+
+  /* How far are we with this chunk? */
+  long long* restrict temp_l = (long long*)temp;
+  const ptrdiff_t delta = (temp_l - props.start_temp_l) / dim;
+
+  for (int i = 0; i < N; i++)
+    props.convert_spart_l(e, sparts + delta + i, &temp_l[i * dim]);
 }
 
 /**
@@ -945,6 +1007,18 @@ void io_copy_temp_buffer(void* temp, const struct engine* e,
                      io_convert_part_d_mapper, temp_d, N, copySize, 0,
                      (void*)&props);
 
+    } else if (props.convert_part_l != NULL) {
+
+      /* Prepare some parameters */
+      long long* temp_l = (long long*)temp;
+      props.start_temp_l = (long long*)temp;
+      props.e = e;
+
+      /* Copy the whole thing into a buffer */
+      threadpool_map((struct threadpool*)&e->threadpool,
+                     io_convert_part_l_mapper, temp_l, N, copySize, 0,
+                     (void*)&props);
+
     } else if (props.convert_gpart_f != NULL) {
 
       /* Prepare some parameters */
@@ -969,6 +1043,18 @@ void io_copy_temp_buffer(void* temp, const struct engine* e,
                      io_convert_gpart_d_mapper, temp_d, N, copySize, 0,
                      (void*)&props);
 
+    } else if (props.convert_gpart_l != NULL) {
+
+      /* Prepare some parameters */
+      long long* temp_l = (long long*)temp;
+      props.start_temp_l = (long long*)temp;
+      props.e = e;
+
+      /* Copy the whole thing into a buffer */
+      threadpool_map((struct threadpool*)&e->threadpool,
+                     io_convert_gpart_l_mapper, temp_l, N, copySize, 0,
+                     (void*)&props);
+
     } else if (props.convert_spart_f != NULL) {
 
       /* Prepare some parameters */
@@ -991,6 +1077,18 @@ void io_copy_temp_buffer(void* temp, const struct engine* e,
       /* Copy the whole thing into a buffer */
       threadpool_map((struct threadpool*)&e->threadpool,
                      io_convert_spart_d_mapper, temp_d, N, copySize, 0,
+                     (void*)&props);
+
+    } else if (props.convert_spart_l != NULL) {
+
+      /* Prepare some parameters */
+      long long* temp_l = (long long*)temp;
+      props.start_temp_l = (long long*)temp;
+      props.e = e;
+
+      /* Copy the whole thing into a buffer */
+      threadpool_map((struct threadpool*)&e->threadpool,
+                     io_convert_spart_l_mapper, temp_l, N, copySize, 0,
                      (void*)&props);
 
     } else {
@@ -1254,15 +1352,21 @@ void io_collect_sparts_to_write(const struct spart* restrict sparts,
  * @brief Copy every non-inhibited DM #gpart into the gparts_written array.
  *
  * @param gparts The array of #gpart containing all particles.
+ * @param vr_data The array of gpart-related VELOCIraptor output.
  * @param gparts_written The array of #gpart to fill with particles we want to
  * write.
+ * @param vr_data_written The array of gpart-related VELOCIraptor with particles
+ * we want to write.
  * @param Ngparts The total number of #part.
  * @param Ngparts_written The total number of #part to write.
+ * @param with_stf Are we running with STF? i.e. do we want to collect vr data?
  */
-void io_collect_gparts_to_write(const struct gpart* restrict gparts,
-                                struct gpart* restrict gparts_written,
-                                const size_t Ngparts,
-                                const size_t Ngparts_written) {
+void io_collect_gparts_to_write(
+    const struct gpart* restrict gparts,
+    const struct velociraptor_gpart_data* restrict vr_data,
+    struct gpart* restrict gparts_written,
+    struct velociraptor_gpart_data* restrict vr_data_written,
+    const size_t Ngparts, const size_t Ngparts_written, const int with_stf) {
 
   size_t count = 0;
 
@@ -1274,6 +1378,8 @@ void io_collect_gparts_to_write(const struct gpart* restrict gparts,
         (gparts[i].time_bin != time_bin_not_created) &&
         (gparts[i].type == swift_type_dark_matter)) {
 
+      if (with_stf) vr_data_written[count] = vr_data[i];
+
       gparts_written[count] = gparts[i];
       count++;
     }
@@ -1281,7 +1387,7 @@ void io_collect_gparts_to_write(const struct gpart* restrict gparts,
 
   /* Check that everything is fine */
   if (count != Ngparts_written)
-    error("Collected the wrong number of s-particles (%zu vs. %zu expected)",
+    error("Collected the wrong number of g-particles (%zu vs. %zu expected)",
           count, Ngparts_written);
 }
 

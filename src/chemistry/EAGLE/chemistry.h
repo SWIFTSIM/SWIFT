@@ -92,7 +92,7 @@ __attribute__((always_inline)) INLINE static void chemistry_end_density(
   const float h = p->h;
   const float h_inv = 1.0f / h;                       /* 1/h */
   const float factor = pow_dimension(h_inv) / p->rho; /* 1 / h^d * rho */
-  const float m = p->mass;
+  const float m = hydro_get_mass(p);
 
   struct chemistry_part_data* cpd = &p->chemistry_data;
 
@@ -129,7 +129,21 @@ chemistry_part_has_no_neighbours(struct part* restrict p,
                                  struct xpart* restrict xp,
                                  const struct chemistry_global_data* cd,
                                  const struct cosmology* cosmo) {
-  error("Needs implementing!");
+
+  /* Just make all the smoothed fields default to the un-smoothed values */
+  struct chemistry_part_data* cpd = &p->chemistry_data;
+
+  /* Total metal mass fraction */
+  cpd->smoothed_metal_mass_fraction_total = cpd->metal_mass_fraction_total;
+
+  /* Iron frac from SNIa */
+  cpd->smoothed_iron_mass_fraction_from_SNIa =
+      cpd->iron_mass_fraction_from_SNIa;
+
+  /* Individual metal mass fractions */
+  for (int i = 0; i < chemistry_element_count; i++) {
+    cpd->smoothed_metal_mass_fraction[i] = cpd->metal_mass_fraction[i];
+  }
 }
 
 /**

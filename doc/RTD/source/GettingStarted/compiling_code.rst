@@ -41,9 +41,9 @@ FFTW
 ~~~~
 Version 3.3.x or higher is required for periodic gravity.
 
-METIS
-~~~~~
-METIS is used for domain decomposition and load balancing.
+ParMETIS or METIS
+~~~~~~~~~~~~~~~~~
+One is required for domain decomposition and load balancing.
 
 libNUMA
 ~~~~~~~

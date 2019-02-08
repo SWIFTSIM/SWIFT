@@ -42,6 +42,7 @@
 
 /* Local headers. */
 #include "atomic.h"
+#include "engine.h"
 #include "error.h"
 #include "inline.h"
 #include "lock.h"
@@ -303,6 +304,9 @@ float task_overlap(const struct task *restrict ta,
     if (ta->cj != NULL) size_union += ta->cj->stars.count;
     if (tb->ci != NULL) size_union += tb->ci->stars.count;
     if (tb->cj != NULL) size_union += tb->cj->stars.count;
+
+    if (size_union == 0)
+      return 0.f;
 
     /* Compute the intersection of the cell data. */
     const size_t size_intersect = task_cell_overlap_spart(ta->ci, tb->ci) +
@@ -715,3 +719,240 @@ void task_create_mpi_comms(void) {
   }
 }
 #endif
+
+/**
+ * @brief dump all the tasks of all the known engines into a file for
+ * postprocessing.
+ *
+ * Dumps the information to a file "thread_info-stepn.dat" where n is the
+ * given step value, or "thread_info_MPI-stepn.dat", if we are running
+ * under MPI. Note if running under MPIU all the ranks are dumped into this
+ * one file, which has an additional field to identify the rank.
+ *
+ * @param e the #engine
+ * @param step the current step.
+ */
+void task_dump_all(struct engine *e, int step) {
+
+#ifdef SWIFT_DEBUG_TASKS
+
+  /* Need this to convert ticks to seconds. */
+  unsigned long long cpufreq = clocks_get_cpufreq();
+
+#ifdef WITH_MPI
+  /* Make sure output file is empty, only on one rank. */
+  char dumpfile[35];
+  snprintf(dumpfile, sizeof(dumpfile), "thread_info_MPI-step%d.dat", step);
+  FILE *file_thread;
+  if (engine_rank == 0) {
+    file_thread = fopen(dumpfile, "w");
+    fclose(file_thread);
+  }
+  MPI_Barrier(MPI_COMM_WORLD);
+
+  for (int i = 0; i < e->nr_nodes; i++) {
+
+    /* Rank 0 decides the index of the writing node, this happens
+     * one-by-one. */
+    int kk = i;
+    MPI_Bcast(&kk, 1, MPI_INT, 0, MPI_COMM_WORLD);
+
+    if (i == engine_rank) {
+
+      /* Open file and position at end. */
+      file_thread = fopen(dumpfile, "a");
+
+      /* Add some information to help with the plots and conversion of ticks to
+       * seconds. */
+      fprintf(file_thread, " %03d 0 0 0 0 %lld %lld %lld %lld %lld 0 0 %lld\n",
+              engine_rank, e->tic_step, e->toc_step, e->updates, e->g_updates,
+              e->s_updates, cpufreq);
+      int count = 0;
+      for (int l = 0; l < e->sched.nr_tasks; l++) {
+        if (!e->sched.tasks[l].implicit && e->sched.tasks[l].toc != 0) {
+          fprintf(
+              file_thread, " %03i %i %i %i %i %lli %lli %i %i %i %i %lli %i\n",
+              engine_rank, e->sched.tasks[l].rid, e->sched.tasks[l].type,
+              e->sched.tasks[l].subtype, (e->sched.tasks[l].cj == NULL),
+              e->sched.tasks[l].tic, e->sched.tasks[l].toc,
+              (e->sched.tasks[l].ci != NULL) ? e->sched.tasks[l].ci->hydro.count
+                                             : 0,
+              (e->sched.tasks[l].cj != NULL) ? e->sched.tasks[l].cj->hydro.count
+                                             : 0,
+              (e->sched.tasks[l].ci != NULL) ? e->sched.tasks[l].ci->grav.count
+                                             : 0,
+              (e->sched.tasks[l].cj != NULL) ? e->sched.tasks[l].cj->grav.count
+                                             : 0,
+              e->sched.tasks[l].flags, e->sched.tasks[l].sid);
+        }
+        count++;
+      }
+      fclose(file_thread);
+    }
+
+    /* And we wait for all to synchronize. */
+    MPI_Barrier(MPI_COMM_WORLD);
+  }
+
+#else
+  /* Non-MPI, so just a single engine's worth of tasks to dump. */
+  char dumpfile[32];
+  snprintf(dumpfile, sizeof(dumpfile), "thread_info-step%d.dat", step);
+  FILE *file_thread;
+  file_thread = fopen(dumpfile, "w");
+
+  /* Add some information to help with the plots and conversion of ticks to
+   * seconds. */
+  fprintf(file_thread, " %d %d %d %d %lld %lld %lld %lld %lld %d %lld\n", -2,
+          -1, -1, 1, (unsigned long long)e->tic_step,
+          (unsigned long long)e->toc_step, e->updates, e->g_updates,
+          e->s_updates, 0, cpufreq);
+  for (int l = 0; l < e->sched.nr_tasks; l++) {
+    if (!e->sched.tasks[l].implicit && e->sched.tasks[l].toc != 0) {
+      fprintf(
+          file_thread, " %i %i %i %i %lli %lli %i %i %i %i %i\n",
+          e->sched.tasks[l].rid, e->sched.tasks[l].type,
+          e->sched.tasks[l].subtype, (e->sched.tasks[l].cj == NULL),
+          e->sched.tasks[l].tic, e->sched.tasks[l].toc,
+          (e->sched.tasks[l].ci == NULL) ? 0
+                                         : e->sched.tasks[l].ci->hydro.count,
+          (e->sched.tasks[l].cj == NULL) ? 0
+                                         : e->sched.tasks[l].cj->hydro.count,
+          (e->sched.tasks[l].ci == NULL) ? 0 : e->sched.tasks[l].ci->grav.count,
+          (e->sched.tasks[l].cj == NULL) ? 0 : e->sched.tasks[l].cj->grav.count,
+          e->sched.tasks[l].sid);
+    }
+  }
+  fclose(file_thread);
+#endif  // WITH_MPI
+#endif  // SWIFT_DEBUG_TASKS
+}
+
+/**
+ * @brief Generate simple statistics about the times used by the tasks of
+ *        all the engines and write these into two format, a human readable
+ *        version for debugging and one intented for inclusion as the fixed
+ *        costs for repartitioning.
+ *
+ * Note that when running under MPI all the tasks can be summed into this single
+ * file. In the fuller, human readable file, the statistics included are the
+ * number of task of each type/subtype followed by the minimum, maximum, mean
+ * and total time, in millisec and then the fixed costs value.
+ *
+ * If header is set, only the fixed costs value is written into the output
+ * file in a format that is suitable for inclusion in SWIFT (as
+ * partition_fixed_costs.h).
+ *
+ * @param dumpfile name of the file for the output.
+ * @param e the #engine
+ * @param header whether to write a header include file.
+ * @param allranks do the statistics over all ranks, if not just the current
+ *                 one, only used if header is false.
+ */
+void task_dump_stats(const char *dumpfile, struct engine *e, int header,
+                     int allranks) {
+
+  /* Need arrays for sum, min and max across all types and subtypes. */
+  double sum[task_type_count][task_subtype_count];
+  double min[task_type_count][task_subtype_count];
+  double max[task_type_count][task_subtype_count];
+  int count[task_type_count][task_subtype_count];
+
+  for (int j = 0; j < task_type_count; j++) {
+    for (int k = 0; k < task_subtype_count; k++) {
+      sum[j][k] = 0.0;
+      count[j][k] = 0;
+      min[j][k] = DBL_MAX;
+      max[j][k] = 0.0;
+    }
+  }
+
+  double total[1] = {0.0};
+  for (int l = 0; l < e->sched.nr_tasks; l++) {
+    int type = e->sched.tasks[l].type;
+
+    /* Skip implicit tasks, tasks that didn't run and MPI send/recv as these
+     * are not interesting (or meaningfully measured). */
+    if (!e->sched.tasks[l].implicit && e->sched.tasks[l].toc != 0 &&
+        type != task_type_send && type != task_type_recv) {
+      int subtype = e->sched.tasks[l].subtype;
+
+      double dt = e->sched.tasks[l].toc - e->sched.tasks[l].tic;
+      sum[type][subtype] += dt;
+      count[type][subtype] += 1;
+      if (dt < min[type][subtype]) {
+        min[type][subtype] = dt;
+      }
+      if (dt > max[type][subtype]) {
+        max[type][subtype] = dt;
+      }
+      total[0] += dt;
+    }
+  }
+
+#ifdef WITH_MPI
+  if (allranks || header) {
+    /* Get these from all ranks for output from rank 0. Could wrap these into a
+     * single operation. */
+    size_t size = task_type_count * task_subtype_count;
+    int res = MPI_Reduce((engine_rank == 0 ? MPI_IN_PLACE : sum), sum, size,
+                         MPI_DOUBLE, MPI_SUM, 0, MPI_COMM_WORLD);
+    if (res != MPI_SUCCESS) mpi_error(res, "Failed to reduce task sums");
+
+    res = MPI_Reduce((engine_rank == 0 ? MPI_IN_PLACE : count), count, size,
+                     MPI_INT, MPI_SUM, 0, MPI_COMM_WORLD);
+    if (res != MPI_SUCCESS) mpi_error(res, "Failed to reduce task counts");
+
+    res = MPI_Reduce((engine_rank == 0 ? MPI_IN_PLACE : min), min, size,
+                     MPI_DOUBLE, MPI_MIN, 0, MPI_COMM_WORLD);
+    if (res != MPI_SUCCESS) mpi_error(res, "Failed to reduce task minima");
+
+    res = MPI_Reduce((engine_rank == 0 ? MPI_IN_PLACE : max), max, size,
+                     MPI_DOUBLE, MPI_MAX, 0, MPI_COMM_WORLD);
+    if (res != MPI_SUCCESS) mpi_error(res, "Failed to reduce task maxima");
+
+    res = MPI_Reduce((engine_rank == 0 ? MPI_IN_PLACE : total), total, 1,
+                     MPI_DOUBLE, MPI_SUM, 0, MPI_COMM_WORLD);
+    if (res != MPI_SUCCESS) mpi_error(res, "Failed to reduce task total time");
+  }
+
+  if (!allranks || (engine_rank == 0 && (allranks || header))) {
+#endif
+
+    FILE *dfile = fopen(dumpfile, "w");
+    if (header) {
+      fprintf(dfile, "/* use as src/partition_fixed_costs.h */\n");
+      fprintf(dfile, "#define HAVE_FIXED_COSTS 1\n");
+    } else {
+      fprintf(dfile, "# task ntasks min max sum mean percent fixed_cost\n");
+    }
+
+    for (int j = 0; j < task_type_count; j++) {
+      const char *taskID = taskID_names[j];
+      for (int k = 0; k < task_subtype_count; k++) {
+        if (sum[j][k] > 0.0) {
+          double mean = sum[j][k] / (double)count[j][k];
+          double perc = 100.0 * sum[j][k] / total[0];
+
+          /* Fixed cost is in .1ns as we want to compare between runs in
+           * some absolute units. */
+          int fixed_cost = (int)(clocks_from_ticks(mean) * 10000.f);
+          if (header) {
+            fprintf(dfile, "repartition_costs[%d][%d] = %10d; /* %s/%s */\n", j,
+                    k, fixed_cost, taskID, subtaskID_names[k]);
+          } else {
+            fprintf(dfile,
+                    "%15s/%-10s %10d %14.4f %14.4f %14.4f %14.4f %14.4f %10d\n",
+                    taskID, subtaskID_names[k], count[j][k],
+                    clocks_from_ticks(min[j][k]), clocks_from_ticks(max[j][k]),
+                    clocks_from_ticks(sum[j][k]), clocks_from_ticks(mean), perc,
+                    fixed_cost);
+          }
+        }
+      }
+    }
+    fclose(dfile);
+#ifdef WITH_MPI
+  }
+#endif
+}

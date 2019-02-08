@@ -23,9 +23,6 @@
 /* This object's header. */
 #include "runner_doiact_vec.h"
 
-/* Local headers. */
-#include "active.h"
-
 #if defined(WITH_VECTORIZATION) && defined(GADGET2_SPH)
 
 static const vector kernel_gamma2_vec = FILL_VEC(kernel_gamma2);
@@ -68,8 +65,6 @@ __attribute__((always_inline)) INLINE static void calcRemInteractions(
     vector *v_curlvzSum, vector v_hi_inv, vector v_vix, vector v_viy,
     vector v_viz, int *icount_align) {
 
-  mask_t int_mask, int_mask2;
-
   /* Work out the number of remainder interactions and pad secondary cache. */
   *icount_align = icount;
   int rem = icount % (NUM_VEC_PROC * VEC_SIZE);
@@ -78,6 +73,7 @@ __attribute__((always_inline)) INLINE static void calcRemInteractions(
     *icount_align += pad;
 
     /* Initialise masks to true. */
+    mask_t int_mask, int_mask2;
     vec_init_mask_true(int_mask);
     vec_init_mask_true(int_mask2);
 
@@ -654,7 +650,6 @@ void runner_doself1_density_vec(struct runner *r, struct cell *restrict c) {
 
   /* Get some local variables */
   const struct engine *e = r->e;
-  const timebin_t max_active_bin = e->max_active_bin;
   struct part *restrict parts = c->hydro.parts;
   const int count = c->hydro.count;
 
@@ -663,12 +658,13 @@ void runner_doself1_density_vec(struct runner *r, struct cell *restrict c) {
   /* Anything to do here? */
   if (!cell_is_active_hydro(c, e)) return;
 
+  /* Check that everybody was drifted here */
   if (!cell_are_part_drifted(c, e)) error("Interacting undrifted cell.");
 
 #ifdef SWIFT_DEBUG_CHECKS
   for (int i = 0; i < count; i++) {
     /* Check that particles have been drifted to the current time */
-    if (parts[i].ti_drift != e->ti_current)
+    if (parts[i].ti_drift != e->ti_current && !part_is_inhibited(&parts[i], e))
       error("Particle pi not drifted to current time");
   }
 #endif
@@ -679,7 +675,7 @@ void runner_doself1_density_vec(struct runner *r, struct cell *restrict c) {
   if (cell_cache->count < count) cache_init(cell_cache, count);
 
   /* Read the particles from the cell and store them locally in the cache. */
-  cache_read_particles(c, cell_cache);
+  const int count_align = cache_read_particles(c, cell_cache);
 
   /* Create secondary cache to store particle interactions. */
   struct c2_cache int_cache;
@@ -690,25 +686,23 @@ void runner_doself1_density_vec(struct runner *r, struct cell *restrict c) {
     /* Get a pointer to the ith particle. */
     struct part *restrict pi = &parts[pid];
 
-    /* Is the ith particle active? */
-    if (!part_is_active_no_debug(pi, max_active_bin)) continue;
-
-    const float hi = cell_cache->h[pid];
+    /* Is the i^th particle active? */
+    if (!part_is_active(pi, e)) continue;
 
     /* Fill particle pi vectors. */
     const vector v_pix = vector_set1(cell_cache->x[pid]);
     const vector v_piy = vector_set1(cell_cache->y[pid]);
     const vector v_piz = vector_set1(cell_cache->z[pid]);
-    const vector v_hi = vector_set1(hi);
+    const vector v_hi = vector_set1(cell_cache->h[pid]);
     const vector v_vix = vector_set1(cell_cache->vx[pid]);
     const vector v_viy = vector_set1(cell_cache->vy[pid]);
     const vector v_viz = vector_set1(cell_cache->vz[pid]);
 
+    /* Some useful mulitples of h */
+    const float hi = cell_cache->h[pid];
     const float hig2 = hi * hi * kernel_gamma2;
     const vector v_hig2 = vector_set1(hig2);
-
-    /* Get the inverse of hi. */
-    vector v_hi_inv = vec_reciprocal(v_hi);
+    const vector v_hi_inv = vec_reciprocal(v_hi);
 
     /* Reset cumulative sums of update vectors. */
     vector v_rhoSum = vector_setzero();
@@ -719,21 +713,6 @@ void runner_doself1_density_vec(struct runner *r, struct cell *restrict c) {
     vector v_curlvxSum = vector_setzero();
     vector v_curlvySum = vector_setzero();
     vector v_curlvzSum = vector_setzero();
-
-    /* Pad cache if there is a serial remainder. */
-    int count_align = count;
-    const int rem = count % (NUM_VEC_PROC * VEC_SIZE);
-    if (rem != 0) {
-      count_align += (NUM_VEC_PROC * VEC_SIZE) - rem;
-
-      /* Set positions to the same as particle pi so when the r2 > 0 mask is
-       * applied these extra contributions are masked out.*/
-      for (int i = count; i < count_align; i++) {
-        cell_cache->x[i] = v_pix.f[0];
-        cell_cache->y[i] = v_piy.f[0];
-        cell_cache->z[i] = v_piz.f[0];
-      }
-    }
 
     /* The number of interactions for pi and the padded version of it to
      * make it a multiple of VEC_SIZE. */
@@ -771,8 +750,8 @@ void runner_doself1_density_vec(struct runner *r, struct cell *restrict c) {
       v_r2_2.v = vec_fma(v_dz_2.v, v_dz_2.v, v_r2_2.v);
 
       /* Form a mask from r2 < hig2 and r2 > 0.*/
-      mask_t v_doi_mask, v_doi_mask_self_check, v_doi_mask2,
-          v_doi_mask2_self_check;
+      mask_t v_doi_mask, v_doi_mask2;
+      mask_t v_doi_mask_self_check, v_doi_mask2_self_check;
 
       /* Form r2 > 0 mask and r2 < hig2 mask. */
       vec_create_mask(v_doi_mask_self_check, vec_cmp_gt(v_r2.v, vec_setzero()));
@@ -788,6 +767,25 @@ void runner_doself1_density_vec(struct runner *r, struct cell *restrict c) {
                            vec_is_mask_true(v_doi_mask_self_check);
       const int doi_mask2 = vec_is_mask_true(v_doi_mask2) &
                             vec_is_mask_true(v_doi_mask2_self_check);
+
+#ifdef SWIFT_DEBUG_CHECKS
+      /* Verify that we have no inhibited particles in the interaction cache */
+      for (int bit_index = 0; bit_index < VEC_SIZE; bit_index++) {
+        if (doi_mask & (1 << bit_index)) {
+          if (parts[pjd + bit_index].time_bin >= time_bin_inhibited) {
+            error("Inhibited particle in interaction cache!");
+          }
+        }
+      }
+      for (int bit_index = 0; bit_index < VEC_SIZE; bit_index++) {
+        if (doi_mask2 & (1 << bit_index)) {
+          if (parts[pjd + VEC_SIZE + bit_index].time_bin >=
+              time_bin_inhibited) {
+            error("Inhibited particle in interaction cache2!");
+          }
+        }
+      }
+#endif
 
 #ifdef DEBUG_INTERACTIONS_SPH
       for (int bit_index = 0; bit_index < VEC_SIZE; bit_index++) {
@@ -837,7 +835,7 @@ void runner_doself1_density_vec(struct runner *r, struct cell *restrict c) {
     vec_init_mask_true(int_mask);
     vec_init_mask_true(int_mask2);
 
-    /* Perform interaction with 2 vectors. */
+    /* Perform interaction with NUM_VEC_PROC vectors. */
     for (int pjd = 0; pjd < icount_align; pjd += (NUM_VEC_PROC * VEC_SIZE)) {
       runner_iact_nonsym_2_vec_density(
           &int_cache.r2q[pjd], &int_cache.dxq[pjd], &int_cache.dyq[pjd],
@@ -848,8 +846,7 @@ void runner_doself1_density_vec(struct runner *r, struct cell *restrict c) {
           &v_curlvzSum, int_mask, int_mask2, 0);
     }
 
-    /* Perform horizontal adds on vector sums and store result in particle pi.
-     */
+    /* Perform horizontal adds on vector sums and store result in pi. */
     VEC_HADD(v_rhoSum, pi->rho);
     VEC_HADD(v_rho_dhSum, pi->density.rho_dh);
     VEC_HADD(v_wcountSum, pi->density.wcount);
@@ -899,7 +896,7 @@ void runner_doself_subset_density_vec(struct runner *r, struct cell *restrict c,
   if (cell_cache->count < count) cache_init(cell_cache, count);
 
   /* Read the particles from the cell and store them locally in the cache. */
-  cache_read_particles(c, cell_cache);
+  const int count_align = cache_read_particles_subset_self(c, cell_cache);
 
   /* Create secondary cache to store particle interactions. */
   struct c2_cache int_cache;
@@ -941,23 +938,6 @@ void runner_doself_subset_density_vec(struct runner *r, struct cell *restrict c,
     vector v_curlvxSum = vector_setzero();
     vector v_curlvySum = vector_setzero();
     vector v_curlvzSum = vector_setzero();
-
-    /* Pad cache if there is a serial remainder. */
-    int count_align = count;
-    const int rem = count % (NUM_VEC_PROC * VEC_SIZE);
-    if (rem != 0) {
-      const int pad = (NUM_VEC_PROC * VEC_SIZE) - rem;
-
-      count_align += pad;
-
-      /* Set positions to the same as particle pi so when the r2 > 0 mask is
-       * applied these extra contributions are masked out.*/
-      for (int i = count; i < count_align; i++) {
-        cell_cache->x[i] = v_pix.f[0];
-        cell_cache->y[i] = v_piy.f[0];
-        cell_cache->z[i] = v_piz.f[0];
-      }
-    }
 
     /* The number of interactions for pi and the padded version of it to
      * make it a multiple of VEC_SIZE. */
@@ -1015,9 +995,33 @@ void runner_doself_subset_density_vec(struct runner *r, struct cell *restrict c,
       const int doi_mask2 = vec_is_mask_true(v_doi_mask2) &
                             vec_is_mask_true(v_doi_mask2_self_check);
 
-#ifdef DEBUG_INTERACTIONS_SPH
-      struct part *restrict parts_i = c->hydro.parts;
+#ifdef SWIFT_DEBUG_CHECKS
+      /* Verify that we have no inhibited particles in the interaction cache */
       for (int bit_index = 0; bit_index < VEC_SIZE; bit_index++) {
+        struct part *restrict parts_i = c->hydro.parts;
+
+        if (doi_mask & (1 << bit_index)) {
+          if (parts_i[pjd + bit_index].time_bin >= time_bin_inhibited) {
+            error("Inhibited particle in interaction cache!");
+          }
+        }
+      }
+      for (int bit_index = 0; bit_index < VEC_SIZE; bit_index++) {
+        struct part *restrict parts_i = c->hydro.parts;
+
+        if (doi_mask2 & (1 << bit_index)) {
+          if (parts_i[pjd + VEC_SIZE + bit_index].time_bin >=
+              time_bin_inhibited) {
+            error("Inhibited particle in interaction cache2!");
+          }
+        }
+      }
+#endif
+
+#ifdef DEBUG_INTERACTIONS_SPH
+      for (int bit_index = 0; bit_index < VEC_SIZE; bit_index++) {
+        struct part *restrict parts_i = c->hydro.parts;
+
         if (doi_mask & (1 << bit_index)) {
           if (pi->num_ngb_density < MAX_NUM_OF_NEIGHBOURS)
             pi->ids_ngbs_density[pi->num_ngb_density] =
@@ -1112,7 +1116,6 @@ void runner_doself2_force_vec(struct runner *r, struct cell *restrict c) {
 
   const struct engine *e = r->e;
   const struct cosmology *restrict cosmo = e->cosmology;
-  const timebin_t max_active_bin = e->max_active_bin;
   struct part *restrict parts = c->hydro.parts;
   const int count = c->hydro.count;
 
@@ -1126,7 +1129,7 @@ void runner_doself2_force_vec(struct runner *r, struct cell *restrict c) {
 #ifdef SWIFT_DEBUG_CHECKS
   for (int i = 0; i < count; i++) {
     /* Check that particles have been drifted to the current time */
-    if (parts[i].ti_drift != e->ti_current)
+    if (parts[i].ti_drift != e->ti_current && !part_is_inhibited(&parts[i], e))
       error("Particle pi not drifted to current time");
   }
 #endif
@@ -1138,7 +1141,7 @@ void runner_doself2_force_vec(struct runner *r, struct cell *restrict c) {
   if (cell_cache->count < count) cache_init(cell_cache, count);
 
   /* Read the particles from the cell and store them locally in the cache. */
-  cache_read_force_particles(c, cell_cache);
+  const int count_align = cache_read_force_particles(c, cell_cache);
 
   /* Cosmological terms */
   const float a = cosmo->a;
@@ -1150,16 +1153,14 @@ void runner_doself2_force_vec(struct runner *r, struct cell *restrict c) {
     /* Get a pointer to the ith particle. */
     struct part *restrict pi = &parts[pid];
 
-    /* Is the ith particle active? */
-    if (!part_is_active_no_debug(pi, max_active_bin)) continue;
-
-    const float hi = cell_cache->h[pid];
+    /* Is the i^th particle active? */
+    if (!part_is_active(pi, e)) continue;
 
     /* Fill particle pi vectors. */
     const vector v_pix = vector_set1(cell_cache->x[pid]);
     const vector v_piy = vector_set1(cell_cache->y[pid]);
     const vector v_piz = vector_set1(cell_cache->z[pid]);
-    const vector v_hi = vector_set1(hi);
+    const vector v_hi = vector_set1(cell_cache->h[pid]);
     const vector v_vix = vector_set1(cell_cache->vx[pid]);
     const vector v_viy = vector_set1(cell_cache->vy[pid]);
     const vector v_viz = vector_set1(cell_cache->vz[pid]);
@@ -1170,11 +1171,11 @@ void runner_doself2_force_vec(struct runner *r, struct cell *restrict c) {
     const vector v_balsara_i = vector_set1(cell_cache->balsara[pid]);
     const vector v_ci = vector_set1(cell_cache->soundspeed[pid]);
 
+    /* Some useful powers of h */
+    const float hi = cell_cache->h[pid];
     const float hig2 = hi * hi * kernel_gamma2;
     const vector v_hig2 = vector_set1(hig2);
-
-    /* Get the inverse of hi. */
-    vector v_hi_inv = vec_reciprocal(v_hi);
+    const vector v_hi_inv = vec_reciprocal(v_hi);
 
     /* Reset cumulative sums of update vectors. */
     vector v_a_hydro_xSum = vector_setzero();
@@ -1184,39 +1185,18 @@ void runner_doself2_force_vec(struct runner *r, struct cell *restrict c) {
     vector v_sigSum = vector_set1(pi->force.v_sig);
     vector v_entropy_dtSum = vector_setzero();
 
-    /* Pad cache if there is a serial remainder. */
-    int count_align = count;
-    int rem = count % VEC_SIZE;
-    if (rem != 0) {
-      int pad = VEC_SIZE - rem;
-
-      count_align += pad;
-
-      /* Set positions to the same as particle pi so when the r2 > 0 mask is
-       * applied these extra contributions are masked out.*/
-      for (int i = count; i < count_align; i++) {
-        cell_cache->x[i] = v_pix.f[0];
-        cell_cache->y[i] = v_piy.f[0];
-        cell_cache->z[i] = v_piz.f[0];
-        cell_cache->h[i] = 1.f;
-        cell_cache->rho[i] = 1.f;
-        cell_cache->grad_h[i] = 1.f;
-        cell_cache->pOrho2[i] = 1.f;
-        cell_cache->balsara[i] = 1.f;
-        cell_cache->soundspeed[i] = 1.f;
-      }
-    }
-
     /* Find all of particle pi's interacions and store needed values in the
      * secondary cache.*/
     for (int pjd = 0; pjd < count_align; pjd += VEC_SIZE) {
 
       /* Load 1 set of vectors from the particle cache. */
-      vector hjg2;
       const vector v_pjx = vector_load(&cell_cache->x[pjd]);
       const vector v_pjy = vector_load(&cell_cache->y[pjd]);
       const vector v_pjz = vector_load(&cell_cache->z[pjd]);
       const vector hj = vector_load(&cell_cache->h[pjd]);
+
+      /* (hj * gamma)^2 */
+      vector hjg2;
       hjg2.v = vec_mul(vec_mul(hj.v, hj.v), kernel_gamma2_vec.v);
 
       /* Compute the pairwise distance. */
@@ -1229,19 +1209,32 @@ void runner_doself2_force_vec(struct runner *r, struct cell *restrict c) {
       v_r2.v = vec_fma(v_dy.v, v_dy.v, v_r2.v);
       v_r2.v = vec_fma(v_dz.v, v_dz.v, v_r2.v);
 
-      /* Form r2 > 0 mask, r2 < hig2 mask and r2 < hjg2 mask. */
-      mask_t v_doi_mask, v_doi_mask_self_check;
-
-      /* Form r2 > 0 mask.*/
+      /* Form r2 > 0 mask.
+       * This is used to avoid self-interctions */
+      mask_t v_doi_mask_self_check;
       vec_create_mask(v_doi_mask_self_check, vec_cmp_gt(v_r2.v, vec_setzero()));
 
-      /* Form a mask from r2 < hig2 mask and r2 < hjg2 mask. */
-      vector v_h2;
-      v_h2.v = vec_fmax(v_hig2.v, hjg2.v);
-      vec_create_mask(v_doi_mask, vec_cmp_lt(v_r2.v, v_h2.v));
+      /* Form a mask from r2 < hig2 mask and r2 < hjg2 mask.
+       * This is writen as r2 < max(hig2, hjg2) */
+      mask_t v_doi_mask;
+      vec_create_mask(v_doi_mask,
+                      vec_cmp_lt(v_r2.v, vec_fmax(v_hig2.v, hjg2.v)));
 
-      /* Combine all 3 masks. */
+      /* Combine both masks. */
       vec_combine_masks(v_doi_mask, v_doi_mask_self_check);
+
+#ifdef SWIFT_DEBUG_CHECKS
+      /* Verify that we have no inhibited particles in the interaction cache */
+      for (int bit_index = 0; bit_index < VEC_SIZE; bit_index++) {
+        if (vec_is_mask_true(v_doi_mask) & (1 << bit_index)) {
+          if ((pjd + bit_index < count) &&
+              (parts[pjd + bit_index].time_bin >= time_bin_inhibited)) {
+            error("Inhibited particle in interaction cache! id=%lld",
+                  parts[pjd + bit_index].id);
+          }
+        }
+      }
+#endif
 
 #ifdef DEBUG_INTERACTIONS_SPH
       for (int bit_index = 0; bit_index < VEC_SIZE; bit_index++) {
@@ -1255,10 +1248,14 @@ void runner_doself2_force_vec(struct runner *r, struct cell *restrict c) {
 
       /* If there are any interactions perform them. */
       if (vec_is_mask_true(v_doi_mask)) {
-        vector v_hj_inv = vec_reciprocal(hj);
 
-        /* To stop floating point exceptions for when particle separations are
-         * 0. */
+        /* 1 / hj */
+        const vector v_hj_inv = vec_reciprocal(hj);
+
+        /* To stop floating point exceptions when particle separations are 0.
+         * Note that the results for r2==0 are masked out but may still raise
+         * an FPE as only the final operaion is masked, not the whole math
+         * operations sequence. */
         v_r2.v = vec_add(v_r2.v, vec_set1(FLT_MIN));
 
         runner_iact_nonsym_1_vec_force(
@@ -1278,8 +1275,9 @@ void runner_doself2_force_vec(struct runner *r, struct cell *restrict c) {
     VEC_HADD(v_a_hydro_ySum, pi->a_hydro[1]);
     VEC_HADD(v_a_hydro_zSum, pi->a_hydro[2]);
     VEC_HADD(v_h_dtSum, pi->force.h_dt);
-    VEC_HMAX(v_sigSum, pi->force.v_sig);
     VEC_HADD(v_entropy_dtSum, pi->entropy_dt);
+
+    VEC_HMAX(v_sigSum, pi->force.v_sig);
 
   } /* loop over all particles. */
 
@@ -1341,10 +1339,12 @@ void runner_dopair1_density_vec(struct runner *r, struct cell *ci,
 #ifdef SWIFT_DEBUG_CHECKS
   /* Check that particles have been drifted to the current time */
   for (int pid = 0; pid < count_i; pid++)
-    if (parts_i[pid].ti_drift != e->ti_current)
+    if (parts_i[pid].ti_drift != e->ti_current &&
+        !part_is_inhibited(&parts_i[pid], e))
       error("Particle pi not drifted to current time");
   for (int pjd = 0; pjd < count_j; pjd++)
-    if (parts_j[pjd].ti_drift != e->ti_current)
+    if (parts_j[pjd].ti_drift != e->ti_current &&
+        !part_is_inhibited(&parts_j[pjd], e))
       error("Particle pj not drifted to current time");
 #endif
 
@@ -1497,6 +1497,21 @@ void runner_dopair1_density_vec(struct runner *r, struct cell *ci,
         /* Form r2 < hig2 mask. */
         vec_create_mask(v_doi_mask, vec_cmp_lt(v_r2.v, v_hig2.v));
 
+#ifdef SWIFT_DEBUG_CHECKS
+        /* Verify that we have no inhibited particles in the interaction cache
+         */
+        for (int bit_index = 0; bit_index < VEC_SIZE; bit_index++) {
+          if (vec_is_mask_true(v_doi_mask) & (1 << bit_index)) {
+            if ((pjd + bit_index < count_j) &&
+                (parts_j[sort_j[pjd + bit_index].i].time_bin >=
+                 time_bin_inhibited)) {
+              error("Inhibited particle in interaction cache! id=%lld",
+                    parts_j[sort_j[pjd + bit_index].i].id);
+            }
+          }
+        }
+#endif
+
 #ifdef DEBUG_INTERACTIONS_SPH
         for (int bit_index = 0; bit_index < VEC_SIZE; bit_index++) {
           if (vec_is_mask_true(v_doi_mask) & (1 << bit_index)) {
@@ -1623,6 +1638,21 @@ void runner_dopair1_density_vec(struct runner *r, struct cell *ci,
         /* Form r2 < hig2 mask. */
         vec_create_mask(v_doj_mask, vec_cmp_lt(v_r2.v, v_hjg2.v));
 
+#ifdef SWIFT_DEBUG_CHECKS
+        /* Verify that we have no inhibited particles in the interaction cache
+         */
+        for (int bit_index = 0; bit_index < VEC_SIZE; bit_index++) {
+          if (vec_is_mask_true(v_doj_mask) & (1 << bit_index)) {
+            if ((ci_cache_idx + first_pi + bit_index < count_i) &&
+                (parts_i[sort_i[ci_cache_idx + first_pi + bit_index].i]
+                     .time_bin >= time_bin_inhibited)) {
+              error("Inhibited particle in interaction cache! id=%lld",
+                    parts_i[sort_i[ci_cache_idx + first_pi + bit_index].i].id);
+            }
+          }
+        }
+#endif
+
 #ifdef DEBUG_INTERACTIONS_SPH
         for (int bit_index = 0; bit_index < VEC_SIZE; bit_index++) {
           if (vec_is_mask_true(v_doj_mask) & (1 << bit_index)) {
@@ -1733,7 +1763,8 @@ void runner_dopair_subset_density_vec(struct runner *r,
         runner_shift_x, runner_shift_y, runner_shift_z, sort_j, max_index_i, 0);
 
     /* Read the particles from the cell and store them locally in the cache. */
-    cache_read_particles_subset(cj, cj_cache, sort_j, 0, &last_pj, ci->loc, 0);
+    cache_read_particles_subset_pair(cj, cj_cache, sort_j, 0, &last_pj, ci->loc,
+                                     0);
 
     const double dj_min = sort_j[0].d;
 
@@ -1805,9 +1836,27 @@ void runner_dopair_subset_density_vec(struct runner *r,
         mask_t v_doi_mask;
         vec_create_mask(v_doi_mask, vec_cmp_lt(v_r2.v, v_hig2.v));
 
-#ifdef DEBUG_INTERACTIONS_SPH
-        struct part *restrict parts_j = cj->hydro.parts;
+#ifdef SWIFT_DEBUG_CHECKS
+        /* Verify that we have no inhibited particles in the interaction cache
+         */
         for (int bit_index = 0; bit_index < VEC_SIZE; bit_index++) {
+          struct part *restrict parts_j = cj->hydro.parts;
+
+          if (vec_is_mask_true(v_doi_mask) & (1 << bit_index)) {
+            if ((pjd + bit_index < count_j) &&
+                (parts_j[sort_j[pjd + bit_index].i].time_bin >=
+                 time_bin_inhibited)) {
+              error("Inhibited particle in interaction cache! id=%lld",
+                    parts_j[sort_j[pjd + bit_index].i].id);
+            }
+          }
+        }
+#endif
+
+#ifdef DEBUG_INTERACTIONS_SPH
+        for (int bit_index = 0; bit_index < VEC_SIZE; bit_index++) {
+          struct part *restrict parts_j = cj->hydro.parts;
+
           if (vec_is_mask_true(v_doi_mask) & (1 << bit_index)) {
             if (pi->num_ngb_density < MAX_NUM_OF_NEIGHBOURS) {
               pi->ids_ngbs_density[pi->num_ngb_density] =
@@ -1851,7 +1900,8 @@ void runner_dopair_subset_density_vec(struct runner *r,
         runner_shift_x, runner_shift_y, runner_shift_z, sort_j, max_index_i, 1);
 
     /* Read the particles from the cell and store them locally in the cache. */
-    cache_read_particles_subset(cj, cj_cache, sort_j, &first_pj, 0, ci->loc, 1);
+    cache_read_particles_subset_pair(cj, cj_cache, sort_j, &first_pj, 0,
+                                     ci->loc, 1);
 
     /* Get the number of particles read into the ci cache. */
     const int cj_cache_count = count_j - first_pj;
@@ -1934,9 +1984,27 @@ void runner_dopair_subset_density_vec(struct runner *r,
         mask_t v_doi_mask;
         vec_create_mask(v_doi_mask, vec_cmp_lt(v_r2.v, v_hig2.v));
 
-#ifdef DEBUG_INTERACTIONS_SPH
-        struct part *restrict parts_j = cj->hydro.parts;
+#ifdef SWIFT_DEBUG_CHECKS
+        /* Verify that we have no inhibited particles in the interaction cache
+         */
         for (int bit_index = 0; bit_index < VEC_SIZE; bit_index++) {
+          struct part *restrict parts_j = cj->hydro.parts;
+
+          if (vec_is_mask_true(v_doi_mask) & (1 << bit_index)) {
+            if ((cj_cache_idx + bit_index < count_j) &&
+                (parts_j[sort_j[cj_cache_idx + first_pj + bit_index].i]
+                     .time_bin >= time_bin_inhibited)) {
+              error("Inhibited particle in interaction cache! id=%lld",
+                    parts_j[sort_j[cj_cache_idx + first_pj + bit_index].i].id);
+            }
+          }
+        }
+#endif
+
+#ifdef DEBUG_INTERACTIONS_SPH
+        for (int bit_index = 0; bit_index < VEC_SIZE; bit_index++) {
+          struct part *restrict parts_j = cj->hydro.parts;
+
           if (vec_is_mask_true(v_doi_mask) & (1 << bit_index)) {
             if (pi->num_ngb_density < MAX_NUM_OF_NEIGHBOURS) {
               pi->ids_ngbs_density[pi->num_ngb_density] =
@@ -2032,10 +2100,12 @@ void runner_dopair2_force_vec(struct runner *r, struct cell *ci,
 #ifdef SWIFT_DEBUG_CHECKS
   /* Check that particles have been drifted to the current time */
   for (int pid = 0; pid < count_i; pid++)
-    if (parts_i[pid].ti_drift != e->ti_current)
+    if (parts_i[pid].ti_drift != e->ti_current &&
+        !part_is_inhibited(&parts_i[pid], e))
       error("Particle pi not drifted to current time");
   for (int pjd = 0; pjd < count_j; pjd++)
-    if (parts_j[pjd].ti_drift != e->ti_current)
+    if (parts_j[pjd].ti_drift != e->ti_current &&
+        !part_is_inhibited(&parts_j[pjd], e))
       error("Particle pj not drifted to current time");
 #endif
 
@@ -2200,6 +2270,21 @@ void runner_dopair2_force_vec(struct runner *r, struct cell *ci,
         v_h2.v = vec_fmax(v_hig2.v, v_hjg2.v);
         vec_create_mask(v_doi_mask, vec_cmp_lt(v_r2.v, v_h2.v));
 
+#ifdef SWIFT_DEBUG_CHECKS
+        /* Verify that we have no inhibited particles in the interaction cache
+         */
+        for (int bit_index = 0; bit_index < VEC_SIZE; bit_index++) {
+          if (vec_is_mask_true(v_doi_mask) & (1 << bit_index)) {
+            if ((pjd + bit_index < count_j) &&
+                (parts_j[sort_j[pjd + bit_index].i].time_bin >=
+                 time_bin_inhibited)) {
+              error("Inhibited particle in interaction cache! id=%lld",
+                    parts_j[sort_j[pjd + bit_index].i].id);
+            }
+          }
+        }
+#endif
+
 #ifdef DEBUG_INTERACTIONS_SPH
         for (int bit_index = 0; bit_index < VEC_SIZE; bit_index++) {
           if (vec_is_mask_true(v_doi_mask) & (1 << bit_index)) {
@@ -2335,6 +2420,21 @@ void runner_dopair2_force_vec(struct runner *r, struct cell *ci,
         vector v_h2;
         v_h2.v = vec_fmax(v_hjg2.v, v_hig2.v);
         vec_create_mask(v_doj_mask, vec_cmp_lt(v_r2.v, v_h2.v));
+
+#ifdef SWIFT_DEBUG_CHECKS
+        /* Verify that we have no inhibited particles in the interaction cache
+         */
+        for (int bit_index = 0; bit_index < VEC_SIZE; bit_index++) {
+          if (vec_is_mask_true(v_doj_mask) & (1 << bit_index)) {
+            if ((ci_cache_idx + first_pi + bit_index < count_i) &&
+                (parts_i[sort_i[ci_cache_idx + first_pi + bit_index].i]
+                     .time_bin >= time_bin_inhibited)) {
+              error("Inhibited particle in interaction cache! id=%lld",
+                    parts_i[sort_i[ci_cache_idx + first_pi + bit_index].i].id);
+            }
+          }
+        }
+#endif
 
 #ifdef DEBUG_INTERACTIONS_SPH
         for (int bit_index = 0; bit_index < VEC_SIZE; bit_index++) {
