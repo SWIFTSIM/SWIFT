@@ -3040,7 +3040,9 @@ void engine_step(struct engine *e) {
         e->step, e->time, e->cosmology->a, e->cosmology->z, e->time_step,
         e->min_active_bin, e->max_active_bin, e->updates, e->g_updates,
         e->s_updates, e->wallclock_time, e->step_props);
+#ifdef SWIFT_DEBUG_CHECKS
     fflush(stdout);
+#endif
 
     if (!e->restarting)
       fprintf(
@@ -3050,7 +3052,9 @@ void engine_step(struct engine *e) {
           e->step, e->time, e->cosmology->a, e->cosmology->z, e->time_step,
           e->min_active_bin, e->max_active_bin, e->updates, e->g_updates,
           e->s_updates, e->wallclock_time, e->step_props);
+#ifdef SWIFT_DEBUG_CHECKS
     fflush(e->file_timesteps);
+#endif
   }
 
   /* We need some cells to exist but not the whole task stuff. */
