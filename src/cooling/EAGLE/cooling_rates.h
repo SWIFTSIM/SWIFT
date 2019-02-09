@@ -265,7 +265,7 @@ __attribute__((always_inline)) INLINE double eagle_convert_u_to_temp(
 
     /* The temperature is multiplied by u / 10^T[0]
      * where T[0] is the first entry in the table */
-    log_10_T += log10_u_cgs - cooling->Temp[0];
+    log_10_T += log_10_u_cgs - cooling->Temp[0];
   }
 
   return log_10_T;
