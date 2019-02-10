@@ -209,7 +209,8 @@ void runner_do_stars_ghost(struct runner *r, struct cell *c, int timer) {
           /* Skip if h is already h_max and we don't have enough neighbours */
           if ((sp->h >= stars_h_max) && (f < 0.f)) {
 
-            stars_reset_acceleration(sp);
+            stars_reset_feedback(sp);
+
             /* Ok, we are done with this particle */
             continue;
           }
@@ -260,7 +261,7 @@ void runner_do_stars_ghost(struct runner *r, struct cell *c, int timer) {
         }
 
         /* We now have a particle whose smoothing length has converged */
-        stars_reset_acceleration(sp);
+        stars_reset_feedback(sp);
 
         /* Compute the stellar evolution  */
         stars_evolve_spart(sp, stars_properties, cosmo);

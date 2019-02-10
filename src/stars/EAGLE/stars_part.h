@@ -65,6 +65,7 @@ struct spart {
   timebin_t time_bin;
 
   struct {
+
     /* Number of neighbours. */
     float wcount;
 
@@ -73,8 +74,16 @@ struct spart {
 
   } density;
 
+  struct {
+
+    /* Change in smoothing length over time. */
+    float h_dt;
+
+  } feedback;
+
   /*! Union for the birth time and birht scale factor */
   union {
+
     /*! Birth time */
     float birth_time;
 

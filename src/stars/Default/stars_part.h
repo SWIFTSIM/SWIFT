@@ -61,6 +61,7 @@ struct spart {
   timebin_t time_bin;
 
   struct {
+
     /* Number of neighbours. */
     float wcount;
 
@@ -69,17 +70,18 @@ struct spart {
 
   } density;
 
+  struct {
+
+    /* Change in smoothing length over time. */
+    float h_dt;
+
+  } feedback;
+
   /*! Tracer structure */
   struct tracers_xpart_data tracers_data;
 
   /*! Chemistry structure */
   struct chemistry_part_data chemistry_data;
-
-  struct {
-    /* Change in smoothing length over time. */
-    float h_dt;
-
-  } feedback;
 
 #ifdef SWIFT_DEBUG_CHECKS
 

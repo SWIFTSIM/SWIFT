@@ -100,6 +100,7 @@ __attribute__((always_inline)) INLINE static void stars_reset_predicted_values(
  */
 __attribute__((always_inline)) INLINE static void stars_end_feedback(
     struct spart* sp) {
+
   sp->feedback.h_dt *= sp->h * hydro_dimension_inv;
 }
 
@@ -174,7 +175,7 @@ __attribute__((always_inline)) INLINE static void stars_evolve_spart(
  *
  * @param p The particle to act upon
  */
-__attribute__((always_inline)) INLINE static void stars_reset_acceleration(
+__attribute__((always_inline)) INLINE static void stars_reset_feedback(
     struct spart* restrict p) {
 
   /* Reset time derivative */
@@ -186,4 +187,5 @@ __attribute__((always_inline)) INLINE static void stars_reset_acceleration(
   p->num_ngb_force = 0;
 #endif
 }
+
 #endif /* SWIFT_DEFAULT_STARS_H */
