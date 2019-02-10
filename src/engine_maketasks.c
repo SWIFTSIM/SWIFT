@@ -496,17 +496,14 @@ void engine_addtasks_recv_stars(struct engine *e, struct cell *c,
   }
 
   struct task *recv_rho = NULL;
-  if (c->mpi.hydro.recv_rho != NULL)
-    recv_rho = c->mpi.hydro.recv_rho;
+  if (c->mpi.hydro.recv_rho != NULL) recv_rho = c->mpi.hydro.recv_rho;
 
   for (struct link *l = c->stars.feedback; l != NULL; l = l->next) {
     scheduler_addunlock(s, t_feed, l->t);
 
     /* Need gas density before feedback */
-    if (recv_rho != NULL)
-      scheduler_addunlock(s, c->mpi.hydro.recv_rho, l->t);
+    if (recv_rho != NULL) scheduler_addunlock(s, c->mpi.hydro.recv_rho, l->t);
   }
-
 
   /* Recurse? */
   if (c->split)
@@ -979,7 +976,7 @@ void engine_make_hierarchical_tasks_stars(struct engine *e, struct cell *c) {
 
       /* Need to compute the gas density before moving to the feedback */
       scheduler_addunlock(s, c->hydro.super->hydro.ghost_out,
-			  c->hydro.super->stars.ghost_out);
+                          c->hydro.super->stars.ghost_out);
     }
   } else { /* We are above the super-cell so need to go deeper */
 
@@ -2050,12 +2047,12 @@ void engine_make_extra_starsloop_tasks_mapper(void *map_data, int num_elements,
       }
 
       if (t->cj->nodeID == engine_rank) {
-	if (t->ci->hydro.super != t->cj->hydro.super) {
+        if (t->ci->hydro.super != t->cj->hydro.super) {
           scheduler_addunlock(sched, t->cj->hydro.super->stars.sorts_local, t);
         }
-	if (t->ci->super != t->cj->super) {
+        if (t->ci->super != t->cj->super) {
           scheduler_addunlock(sched, t->cj->super->grav.drift, t);
-	}
+        }
       }
 
       /* Start by constructing the task for the second stars loop */
@@ -2069,7 +2066,8 @@ void engine_make_extra_starsloop_tasks_mapper(void *map_data, int num_elements,
       }
       if (t->ci->hydro.super != t->cj->hydro.super) {
         if (t->cj->nodeID != engine_rank) {
-          scheduler_addunlock(sched, t->cj->hydro.super->stars.sorts_foreign, t2);
+          scheduler_addunlock(sched, t->cj->hydro.super->stars.sorts_foreign,
+                              t2);
         }
       }
 
@@ -2085,7 +2083,7 @@ void engine_make_extra_starsloop_tasks_mapper(void *map_data, int num_elements,
       if (t->cj->nodeID == nodeID) {
         if (t->ci->hydro.super != t->cj->hydro.super) {
           engine_make_stars_loops_dependencies(sched, t, t2, t->cj);
-	}
+        }
         if (t->ci->super != t->cj->super) {
           scheduler_addunlock(sched, t2, t->cj->super->end_force);
         }
@@ -2140,12 +2138,12 @@ void engine_make_extra_starsloop_tasks_mapper(void *map_data, int num_elements,
       }
 
       if (t->ci->nodeID == engine_rank) {
-	if (t->ci->super != t->cj->super) {
+        if (t->ci->super != t->cj->super) {
           scheduler_addunlock(sched, t->ci->super->grav.drift, t);
-	}
-	if (t->ci->hydro.super != t->cj->hydro.super) {
+        }
+        if (t->ci->hydro.super != t->cj->hydro.super) {
           scheduler_addunlock(sched, t->ci->hydro.super->stars.sorts_local, t);
-	}
+        }
       }
 
       /* Start by constructing the task for the second stars loop */
@@ -2159,7 +2157,8 @@ void engine_make_extra_starsloop_tasks_mapper(void *map_data, int num_elements,
       }
       if (t->ci->hydro.super != t->cj->hydro.super) {
         if (t->ci->nodeID != engine_rank) {
-          scheduler_addunlock(sched, t->ci->hydro.super->stars.sorts_foreign, t2);
+          scheduler_addunlock(sched, t->ci->hydro.super->stars.sorts_foreign,
+                              t2);
         }
       }
 
@@ -2248,8 +2247,7 @@ void engine_make_starsloop_tasks_mapper(void *map_data, int num_elements,
           struct cell *cj = &cells[cjd];
 
           /* Is that neighbour local and does it have particles ? */
-          if (cid >= cjd ||
-              (cj->stars.count == 0 && cj->hydro.count == 0) ||
+          if (cid >= cjd || (cj->stars.count == 0 && cj->hydro.count == 0) ||
               (ci->nodeID != nodeID && cj->nodeID != nodeID))
             continue;
 

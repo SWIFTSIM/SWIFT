@@ -991,8 +991,8 @@ void DOSUB_SUBSET_STARS(struct runner *r, struct cell *ci, struct spart *sparts,
 
       /* Do any of the cells need to be drifted first? */
       if (cell_is_active_stars(ci, e)) {
-	if (!cell_are_spart_drifted(ci, e)) error("Cell should be drifted!");
-	if (!cell_are_part_drifted(cj, e)) error("Cell should be drifted!");
+        if (!cell_are_spart_drifted(ci, e)) error("Cell should be drifted!");
+        if (!cell_are_part_drifted(cj, e)) error("Cell should be drifted!");
       }
 
       DOPAIR1_SUBSET_BRANCH_STARS(r, ci, sparts, ind, scount, cj);
@@ -1146,9 +1146,9 @@ void DOSUB_PAIR1_STARS(struct runner *r, struct cell *ci, struct cell *cj,
 
   /* Should we even bother? */
   const int should_do_ci = ci->stars.count != 0 && cj->hydro.count != 0 &&
-                  cell_is_active_stars(ci, e);
+                           cell_is_active_stars(ci, e);
   const int should_do_cj = cj->stars.count != 0 && ci->hydro.count != 0 &&
-               cell_is_active_stars(cj, e);
+                           cell_is_active_stars(cj, e);
   if (!should_do_ci && !should_do_cj) return;
 
   /* Get the type of pair if not specified explicitly. */

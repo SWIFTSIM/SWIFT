@@ -1032,13 +1032,13 @@ static void scheduler_splittask_stars(struct task *t, struct scheduler *s) {
     /* Empty task? */
     /* Need defines in order to evaluate after check for t->ci == NULL */
     const int self = (t->ci != NULL) && t->type == task_type_self &&
-      t->ci->stars.count != 0 && t->ci->hydro.count != 0;
+                     t->ci->stars.count != 0 && t->ci->hydro.count != 0;
 
     const int pair = (t->ci != NULL) && (t->cj != NULL) &&
-      t->type == task_type_pair &&
-      ((t->ci->stars.count != 0 && t->cj->hydro.count != 0) ||
-       (t->cj->stars.count != 0 && t->ci->hydro.count != 0));
- 
+                     t->type == task_type_pair &&
+                     ((t->ci->stars.count != 0 && t->cj->hydro.count != 0) ||
+                      (t->cj->stars.count != 0 && t->ci->hydro.count != 0));
+
     if (!self && !pair) {
       t->type = task_type_none;
       t->subtype = task_subtype_none;
@@ -1080,7 +1080,7 @@ static void scheduler_splittask_stars(struct task *t, struct scheduler *s) {
           t->ci = ci->progeny[first_child];
           for (int k = first_child + 1; k < 8; k++)
             if (ci->progeny[k] != NULL && ci->progeny[k]->stars.count != 0 &&
-		ci->progeny[k]->hydro.count != 0)
+                ci->progeny[k]->hydro.count != 0)
               scheduler_splittask_stars(
                   scheduler_addtask(s, task_type_self, t->subtype, 0, 0,
                                     ci->progeny[k], NULL),
@@ -1091,8 +1091,10 @@ static void scheduler_splittask_stars(struct task *t, struct scheduler *s) {
             if (ci->progeny[j] != NULL)
               for (int k = j + 1; k < 8; k++)
                 if (ci->progeny[k] != NULL &&
-		    ((ci->progeny[k]->stars.count != 0 && ci->progeny[j]->hydro.count != 0) ||
-		     (ci->progeny[j]->stars.count != 0 && ci->progeny[k]->hydro.count != 0)))
+                    ((ci->progeny[k]->stars.count != 0 &&
+                      ci->progeny[j]->hydro.count != 0) ||
+                     (ci->progeny[j]->stars.count != 0 &&
+                      ci->progeny[k]->hydro.count != 0)))
                   scheduler_splittask_stars(
                       scheduler_addtask(s, task_type_pair, t->subtype,
                                         sub_sid_flag[j][k], 0, ci->progeny[j],
@@ -1132,14 +1134,14 @@ static void scheduler_splittask_stars(struct task *t, struct scheduler *s) {
           cell_can_split_pair_stars_task(cj, ci)) {
 
         /* Replace by a single sub-task? */
-	if (scheduler_dosub && /* Use division to avoid integer overflow. */
-	    ci->hydro.count * sid_scale[sid] <
-	    space_subsize_pair_hydro / cj->hydro.count &&
-	    !sort_is_corner(sid)) {
+        if (scheduler_dosub && /* Use division to avoid integer overflow. */
+            ci->hydro.count * sid_scale[sid] <
+                space_subsize_pair_hydro / cj->hydro.count &&
+            !sort_is_corner(sid)) {
 
-	  /* Make this task a sub task. */
+          /* Make this task a sub task. */
           t->type = task_type_sub_pair;
-	
+
           /* Otherwise, split it. */
         } else {
           /* Take a step back (we're going to recycle the current task)... */

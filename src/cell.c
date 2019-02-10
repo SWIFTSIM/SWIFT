@@ -2025,8 +2025,10 @@ void cell_activate_stars_sorts_up(struct cell *c, struct scheduler *s) {
       parent->stars.do_sub_sort = 1;
       if (parent == c->hydro.super) {
 #ifdef SWIFT_DEBUG_CHECKS
-        if ((parent->nodeID == engine_rank && parent->stars.sorts_local == NULL) ||
-            (parent->nodeID != engine_rank && parent->stars.sorts_foreign == NULL))
+        if ((parent->nodeID == engine_rank &&
+             parent->stars.sorts_local == NULL) ||
+            (parent->nodeID != engine_rank &&
+             parent->stars.sorts_foreign == NULL))
           error("Trying to activate un-existing parents->stars.sorts");
 #endif
         if (parent->nodeID == engine_rank) {
@@ -3343,7 +3345,7 @@ int cell_unskip_stars_tasks(struct cell *c, struct scheduler *s) {
   struct engine *e = s->space->e;
   const int nodeID = e->nodeID;
   int rebuild = 0;
-  
+
   /* Un-skip the density tasks involved with this cell. */
   for (struct link *l = c->stars.density; l != NULL; l = l->next) {
     struct task *t = l->t;
@@ -3354,11 +3356,10 @@ int cell_unskip_stars_tasks(struct cell *c, struct scheduler *s) {
     const int ci_nodeID = ci->nodeID;
     const int cj_nodeID = (cj != NULL) ? cj->nodeID : -1;
 
-    if (t->type == task_type_self &&
-	ci_active && ci->nodeID == nodeID) {
+    if (t->type == task_type_self && ci_active && ci->nodeID == nodeID) {
 
-	cell_activate_drift_part(ci, s);
-	cell_activate_drift_spart(ci, s);
+      cell_activate_drift_part(ci, s);
+      cell_activate_drift_spart(ci, s);
     }
 
     /* Activate cells that contains either a density or a feedback task */
@@ -3430,21 +3431,21 @@ int cell_unskip_stars_tasks(struct cell *c, struct scheduler *s) {
         if (cj_active) {
           scheduler_activate(s, ci->mpi.hydro.recv_xv);
 
-	  /* If the local cell is active, more stuff will be needed.
-	   */
+          /* If the local cell is active, more stuff will be needed.
+           */
           scheduler_activate_send(s, cj->mpi.stars.send, ci_nodeID);
 
-	  /* If the local cell is active, send its ti_end values. */
-	  scheduler_activate_send(s, cj->mpi.send_ti, ci_nodeID);
-	}
+          /* If the local cell is active, send its ti_end values. */
+          scheduler_activate_send(s, cj->mpi.send_ti, ci_nodeID);
+        }
 
         if (ci_active) {
           scheduler_activate(s, ci->mpi.stars.recv);
 
-	  /* If the foreign cell is active, we want its ti_end values. */
-	  scheduler_activate(s, ci->mpi.recv_ti);
+          /* If the foreign cell is active, we want its ti_end values. */
+          scheduler_activate(s, ci->mpi.recv_ti);
 
-	  /* Is the foreign cell active and will need stuff from us? */
+          /* Is the foreign cell active and will need stuff from us? */
           scheduler_activate_send(s, cj->mpi.hydro.send_xv, ci_nodeID);
 
           /* Drift the cell which will be sent; note that not all sent
@@ -3458,28 +3459,27 @@ int cell_unskip_stars_tasks(struct cell *c, struct scheduler *s) {
         if (ci_active) {
           scheduler_activate(s, cj->mpi.hydro.recv_xv);
 
-	  /* If the local cell is active, more stuff will be needed.
-	   */
+          /* If the local cell is active, more stuff will be needed.
+           */
           scheduler_activate_send(s, ci->mpi.stars.send, cj_nodeID);
 
-	  /* If the local cell is active, send its ti_end values. */
-	  scheduler_activate_send(s, ci->mpi.send_ti, cj_nodeID);
+          /* If the local cell is active, send its ti_end values. */
+          scheduler_activate_send(s, ci->mpi.send_ti, cj_nodeID);
         }
 
         if (cj_active) {
           scheduler_activate(s, cj->mpi.stars.recv);
 
-	  /* If the foreign cell is active, we want its ti_end values. */
-	  scheduler_activate(s, cj->mpi.recv_ti);
+          /* If the foreign cell is active, we want its ti_end values. */
+          scheduler_activate(s, cj->mpi.recv_ti);
 
-        /* Is the foreign cell active and will need stuff from us? */
+          /* Is the foreign cell active and will need stuff from us? */
           scheduler_activate_send(s, ci->mpi.hydro.send_xv, cj_nodeID);
 
           /* Drift the cell which will be sent; note that not all sent
              particles will be drifted, only those that are needed. */
           cell_activate_drift_part(ci, s);
         }
-
       }
 #endif
     }

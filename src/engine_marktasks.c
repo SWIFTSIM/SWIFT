@@ -114,13 +114,12 @@ void engine_activate_stars_mpi(struct engine *e, struct scheduler *s,
       scheduler_activate(s, cj->mpi.recv_ti);
 
       struct link *l =
-	scheduler_activate_send(s, ci->mpi.hydro.send_xv, cj_nodeID);
+          scheduler_activate_send(s, ci->mpi.hydro.send_xv, cj_nodeID);
 
       /* Drift the cell which will be sent at the level at which it is
          sent, i.e. drift the cell specified in the send task (l->t)
          itself. */
       cell_activate_drift_part(l->t->ci, s);
-
     }
   }
 }
@@ -241,7 +240,7 @@ void engine_marktasks_mapper(void *map_data, int num_elements,
                t_subtype == task_subtype_stars_feedback) {
         if (cell_is_active_stars(ci, e)) {
           scheduler_activate(s, t);
-	  cell_activate_subcell_stars_tasks(ci, NULL, s);
+          cell_activate_subcell_stars_tasks(ci, NULL, s);
         }
       }
 
@@ -333,8 +332,8 @@ void engine_marktasks_mapper(void *map_data, int num_elements,
 
       /* Stars density and feedback */
       if ((t_subtype == task_subtype_stars_density ||
-	   t_subtype == task_subtype_stars_feedback) &&
-	  (ci_active_stars || cj_active_stars)) {
+           t_subtype == task_subtype_stars_feedback) &&
+          (ci_active_stars || cj_active_stars)) {
 
         scheduler_activate(s, t);
 

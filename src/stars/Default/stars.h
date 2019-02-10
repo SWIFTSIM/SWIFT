@@ -72,7 +72,7 @@ __attribute__((always_inline)) INLINE static void stars_init_spart(
  * @param dt_drift The drift time-step for positions.
  */
 __attribute__((always_inline)) INLINE static void stars_predict_extra(
-    struct spart *restrict sp, float dt_drift) {
+    struct spart* restrict sp, float dt_drift) {
 
   const float h_inv = 1.f / sp->h;
 
@@ -82,7 +82,6 @@ __attribute__((always_inline)) INLINE static void stars_predict_extra(
     sp->h *= approx_expf(w1); /* 4th order expansion of exp(w) */
   else
     sp->h *= expf(w1);
-
 }
 
 /**
@@ -180,7 +179,7 @@ __attribute__((always_inline)) INLINE static void stars_reset_acceleration(
 
   /* Reset time derivative */
   p->feedback.h_dt = 0.f;
-  
+
 #ifdef DEBUG_INTERACTIONS_STARS
   for (int i = 0; i < MAX_NUM_OF_NEIGHBOURS_STARS; ++i)
     p->ids_ngbs_force[i] = -1;
