@@ -2888,9 +2888,8 @@ void runner_do_recv_spart(struct runner *r, struct cell *c, int clear_sorts,
 
   TIMER_TIC;
 
-  integertime_t ti_gravity_end_min = max_nr_timesteps;
-  integertime_t ti_gravity_end_max = 0;
   integertime_t ti_stars_end_min = max_nr_timesteps;
+  integertime_t ti_stars_end_max = 0;
   timebin_t time_bin_min = num_time_bins;
   timebin_t time_bin_max = 0;
   float h_max = 0.f;
@@ -2917,9 +2916,8 @@ void runner_do_recv_spart(struct runner *r, struct cell *c, int clear_sorts,
     }
 
     /* Convert into a time */
-    ti_gravity_end_min = get_integer_time_end(ti_current, time_bin_min);
-    ti_gravity_end_max = get_integer_time_end(ti_current, time_bin_max);
     ti_stars_end_min = get_integer_time_end(ti_current, time_bin_min);
+    ti_stars_end_max = get_integer_time_end(ti_current, time_bin_max);
   }
 
   /* Otherwise, recurse and collect. */
@@ -2927,12 +2925,10 @@ void runner_do_recv_spart(struct runner *r, struct cell *c, int clear_sorts,
     for (int k = 0; k < 8; k++) {
       if (c->progeny[k] != NULL && c->progeny[k]->stars.count > 0) {
         runner_do_recv_spart(r, c->progeny[k], clear_sorts, 0);
-        ti_gravity_end_min =
-            min(ti_gravity_end_min, c->progeny[k]->grav.ti_end_min);
-        ti_gravity_end_max =
-            max(ti_gravity_end_max, c->progeny[k]->grav.ti_end_max);
         ti_stars_end_min =
             min(ti_stars_end_min, c->progeny[k]->stars.ti_end_min);
+        ti_stars_end_max =
+            max(ti_stars_end_max, c->progeny[k]->grav.ti_end_max);
         h_max = max(h_max, c->progeny[k]->stars.h_max);
       }
     }
