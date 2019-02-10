@@ -17,10 +17,9 @@
  * along with this program.  If not, see <http://www.gnu.org/licenses/>.
  *
  ******************************************************************************/
+#include "../config.h"
 
-#include <math.h>
-#include <stdio.h>
-#include <string.h>
+/* Includes. */
 #include "swift.h"
 
 #define Ntest 3
