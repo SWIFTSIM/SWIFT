@@ -61,6 +61,7 @@
 #include "potential.h"
 #include "profiler.h"
 #include "queue.h"
+#include "random.h"
 #include "restart.h"
 #include "runner.h"
 #include "scheduler.h"
