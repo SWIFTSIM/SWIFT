@@ -168,6 +168,17 @@ static INLINE void entropy_floor_init(struct entropy_floor_properties *props,
   props->Cool_gamma_effective =
       parser_get_param_float(params, "EAGLEEntropyFloor:Cool_gamma_effective");
 
+  /* Cross-check that the input makes sense */
+  if (props->Cool_density_threshold_H_p_cm3 >=
+      props->Jeans_density_threshold_H_p_cm3) {
+    error(
+        "Invalid values for the entrop floor density thresholds. The 'Jeans' "
+        "threshold (%e cm^-3) should be at a higher density than the 'Cool' "
+        "threshold (%e cm^-3)",
+        props->Jeans_density_threshold_H_p_cm3,
+        props->Cool_density_threshold_H_p_cm3);
+  }
+
   /* Initial Hydrogen abundance (mass fraction) */
   const double X_H = hydro_props->hydrogen_mass_fraction;
 
