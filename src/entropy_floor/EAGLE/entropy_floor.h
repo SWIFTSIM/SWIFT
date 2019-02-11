@@ -105,7 +105,8 @@ static INLINE float entropy_floor(
   const float rho_crit = cosmo->critical_density;
   const float rho_crit_baryon = cosmo->Omega_b * rho_crit;
 
-  float pressure = 0.;
+  /* Physical pressure */
+  float pressure = 0.f;
 
   /* Are we in the regime of the Jeans equation of state? */
   if ((rho >= rho_crit_baryon * props->Jeans_over_density_threshold) &&
@@ -183,7 +184,7 @@ static INLINE void entropy_floor_init(struct entropy_floor_properties *props,
   /* Initial Hydrogen abundance (mass fraction) */
   const double X_H = hydro_props->hydrogen_mass_fraction;
 
-  /* Now convert to internal units */
+  /* Now convert to internal units assuming primodial Hydrogen abundance */
   props->Jeans_temperature_norm =
       props->Jeans_temperature_norm_K /
       units_cgs_conversion_factor(us, UNIT_CONV_TEMPERATURE);
