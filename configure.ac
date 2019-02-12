@@ -111,9 +111,10 @@ if test "$enable_ipo" = "yes"; then
                           ], [:] )
       AC_MSG_RESULT([added GCC interprocedural optimization support])
    elif test "$ax_cv_c_compiler_vendor" = "clang"; then
-      CFLAGS="$CFLAGS -flto"
+      CFLAGS="$CFLAGS -flto -fuse-ld=gold"
+      LDFLAGS="$LDFLAGS -XCClinker -fuse-ld=gold"
       : ${AR="llvm-ar"}
-      : ${LD="llvm-ld"}
+      : ${LD="ld.gold"}
       : ${RANLIB="llvm-ranlib"}
       AC_MSG_RESULT([added LLVM interprocedural optimization support])
    else
