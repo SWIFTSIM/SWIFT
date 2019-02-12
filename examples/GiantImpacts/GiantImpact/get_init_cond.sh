@@ -1,2 +1,2 @@
 #!/bin/bash
-wget http://virgodb.cosma.dur.ac.uk/swift-webstorage/ICs/uranus_1e6.hdf5
+wget http://virgodb.cosma.dur.ac.uk/swift-webstorage/ICs/GiantImpacts/uranus_1e6.hdf5
