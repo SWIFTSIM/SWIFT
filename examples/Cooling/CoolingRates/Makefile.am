@@ -28,5 +28,5 @@ bin_PROGRAMS = cooling_rates
 # Sources
 cooling_rates_SOURCES = cooling_rates.c
 cooling_rates_CFLAGS = $(MYFLAGS) $(AM_CFLAGS)
-cooling_rates_LDADD =  ../../src/.libs/libswiftsim.a $(EXTRA_LIBS)
+cooling_rates_LDADD =  ../../../src/.libs/libswiftsim.a $(EXTRA_LIBS)
 
