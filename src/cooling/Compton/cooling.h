@@ -178,7 +178,7 @@ __attribute__((always_inline)) INLINE static void cooling_cool_part(
    * this step 1/2 kick + another 1/2 kick that could potentially be for
    * a time-step twice as big. We hence check for 1.5 delta_t. */
   if (u_old + total_du_dt * 1.5 * dt_therm < u_limit) {
-    total_du_dt = (u_floor - u_old) / (1.5f * dt_therm);
+    total_du_dt = (u_limit - u_old) / (1.5f * dt_therm);
   }
 
   /* Second, check whether the energy used in the prediction could get negative.
