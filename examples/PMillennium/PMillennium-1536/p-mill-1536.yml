@@ -45,7 +45,7 @@ Gravity:
   
 # Parameters related to the initial conditions
 InitialConditions:
-  file_name:                   ics.hdf5
+  file_name:                   PMill-1536.hdf5
   periodic:                    1
   cleanup_h_factors:           1    
   cleanup_velocity_factors:    1  

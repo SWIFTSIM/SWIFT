@@ -41,11 +41,11 @@ Gravity:
   theta:                  0.5          
   comoving_softening:     0.08333  # 83.333 kpc = 1/25 mean inter-particle separation
   max_physical_softening: 0.08333  # 83.333 kpc = 1/25 mean inter-particle separation
-  mesh_side_length:       128
+  mesh_side_length:       64
   
 # Parameters related to the initial conditions
 InitialConditions:
-  file_name:                   ics.hdf5
+  file_name:                   PMill-384.hdf5
   periodic:                    1
   cleanup_h_factors:           1    
   cleanup_velocity_factors:    1  
