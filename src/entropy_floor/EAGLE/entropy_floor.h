@@ -21,6 +21,7 @@
 
 #include "adiabatic_index.h"
 #include "cosmology.h"
+#include "hydro.h"
 #include "hydro_properties.h"
 #include "parser.h"
 #include "units.h"
