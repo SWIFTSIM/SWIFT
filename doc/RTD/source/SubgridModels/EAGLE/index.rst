@@ -26,9 +26,9 @@ low-density high-metallicity particles to cool below the warm phase because
 of over-cooling induced by the absence of metal diffusion. This limit plays
 only a small role in practice. The second limit, labelled as ``Jeans``, is
 used to prevent the fragmentation of high-density gas into clumps that
-cannot be resolved by the solver. The two limits are sketched on the
-following figure. An additional over-density criterion is applied to
-prevent gas not collapsed into structures from being affected.
+cannot be resolved by the coupled hydro+gravity solver. The two limits are
+sketched on the following figure. An additional over-density criterion is
+applied to prevent gas not collapsed into structures from being affected.
 
 .. figure:: EAGLE_entropy_floor.svg
     :width: 400px
@@ -68,6 +68,9 @@ EAGLE run, that section of the parameter file reads:
      Cool_temperature_norm_K:         8000      # Temperature of the EAGLE Cool limiter entropy floor at the density threshold, expressed in Kelvin.
      Cool_gamma_effective:            1.        # Slope the of the EAGLE Cool limiter entropy floor
 
+
+Note that the model only makes sense if the ``Cool`` threshold is at a lower
+density than the ``Jeans`` threshold.
 
 .. _EAGLE_chemical_tracers:
 

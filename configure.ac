@@ -111,9 +111,10 @@ if test "$enable_ipo" = "yes"; then
                           ], [:] )
       AC_MSG_RESULT([added GCC interprocedural optimization support])
    elif test "$ax_cv_c_compiler_vendor" = "clang"; then
-      CFLAGS="$CFLAGS -flto"
+      CFLAGS="$CFLAGS -flto -fuse-ld=gold"
+      LDFLAGS="$LDFLAGS -XCClinker -fuse-ld=gold"
       : ${AR="llvm-ar"}
-      : ${LD="llvm-ld"}
+      : ${LD="ld.gold"}
       : ${RANLIB="llvm-ranlib"}
       AC_MSG_RESULT([added LLVM interprocedural optimization support])
    else
@@ -333,6 +334,9 @@ elif test "$no_gravity_below_id" != "no"; then
    AC_DEFINE_UNQUOTED([SWIFT_NO_GRAVITY_BELOW_ID], [$enableval] ,[Particles with smaller ID than this will have zero gravity forces])
 fi
 
+# Check whether we have any of the ARM v8.1 tick timers
+AX_ASM_ARM_PMCCNTR
+AX_ASM_ARM_CNTVCT
 
 # Define HAVE_POSIX_MEMALIGN if it works.
 AX_FUNC_POSIX_MEMALIGN
@@ -700,6 +704,71 @@ if test "x$with_fftw" != "xno"; then
       fi
    fi
 fi
+
+AC_ARG_WITH([arm-fftw],
+    [AS_HELP_STRING([--with-arm-fftw=PATH],
+      [root directory where arm fft library is installed @<:@yes/no@:>@]
+    )],
+    [with_arm_fftw="$withval"],
+    [with_arm_fftw=no]
+)
+if test "x$with_arm_fftw" != "xno"; then
+
+   # Was FFTW's location specifically given?
+   if test "x$with_arm_fftw" != "xyes" -a "x$with_arm_fftw" != "xtest" -a "x$with_arm_fftw" != "x"; then
+      FFTW_LIBS="-L$with_arm_fftw/lib -larmpl_lp64"
+      FFTW_INCS="-I$with_arm_fftw/include"
+   else
+      FFTW_LIBS="-larmpl_lp64"
+      FFTW_INCS=""
+   fi
+
+   #  FFTW is not specified, so just check if we have it.
+   if test "x$with_arm_fftw" = "xtest"; then
+      AC_CHECK_LIB([armpl_lp64],[fftw_malloc],[have_fftw="yes"],[have_fftw="no"],$FFTW_LIBS)
+      if test "x$have_arm_fftw" != "xno"; then
+      	 AC_DEFINE([HAVE_FFTW],1,[The FFTW library appears to be present.])
+	 have_fftw="yes - ARM"
+      fi
+   # FFTW was specified, check that it was a valid location.
+   else
+      AC_CHECK_LIB([armpl_lp64],[fftw_malloc],
+         AC_DEFINE([HAVE_FFTW],1,[The FFTW library appears to be present.]),
+         AC_MSG_ERROR(something is wrong with the FFTW library!), $FFTW_LIBS)
+      have_fftw="yes - ARM"
+   fi
+
+   # FFTW was requested not to be used.
+   if test "$have_arm_fftw" = "no"; then
+      FFTW_LIBS=""
+      FFTW_INCS=""
+   fi
+
+   # Now, check whether we have the threaded version of FFTW
+   if test "x$have_arm_fftw" = "xyes"; then
+
+      # Was FFTW's location specifically given?
+      if test "x$with_arm_fftw" != "xyes" -a "x$with_arm_fftw" != "xtest" -a "x$with_arm_fftw" != "x"; then
+        FFTW_THREADED_LIBS="-L$with_arm_fftw/lib -larmpl_lp64_threads -larmpl_lp64"
+        FFTW_THREADED_INCS="-I$with_arm_fftw/include"
+      else
+        FFTW_THREADED_LIBS="-larmpl_lp64_threads -larmpl_lp64"
+        FFTW_THREADED_INCS=""
+      fi
+
+      # Verify that the library is threaded
+      AC_CHECK_LIB([armpl_lp64],[fftw_init_threads],[have_threaded_fftw="yes"],
+                  [have_threaded_fftw="no"], $FFTW_THREADED_LIBS)
+
+      # If found, update things
+      if test "x$have_threaded_fftw" = "xyes"; then
+         AC_DEFINE([HAVE_THREADED_FFTW],1,[The threaded FFTW library appears to be present.])
+         FFTW_LIBS=$FFTW_THREADED_LIBS
+         FFTW_INCS=$FFTW_THREADED_INCS
+         have_fftw="yes - ARM - threaded"
+      fi
+   fi
+fi
 AC_SUBST([FFTW_LIBS])
 AC_SUBST([FFTW_INCS])
 AM_CONDITIONAL([HAVEFFTW],[test -n "$FFTW_LIBS"])
@@ -1063,8 +1132,16 @@ fi
 AC_SUBST([NUMA_LIBS])
 
 # Check for Intel and PowerPC intrinsics header optionally used by vector.h.
-AC_CHECK_HEADERS([immintrin.h])
-AC_CHECK_HEADERS([altivec.h])
+AC_CHECK_HEADERS([immintrin.h], [], [],
+[#ifdef HAVE_IMMINTRIN_H
+# include <immintrin.h>
+#endif
+])
+AC_CHECK_HEADERS([altivec.h], [], [],
+[#ifdef HAVE_ALTIVEC_H
+# include <altivec.h>
+#endif
+])
 
 # Check for timing functions needed by cycle.h.
 AC_HEADER_TIME
@@ -1085,17 +1162,7 @@ AC_LINK_IFELSE([AC_LANG_PROGRAM(
 [AC_DEFINE(HAVE__RTC,1,[Define if you have the UNICOS _rtc() intrinsic.])],[rtc_ok=no])
 AC_MSG_RESULT($rtc_ok)
 
-# Special timers for the ARM v7 and ARM v8 platforms (taken from FFTW-3 to match their cycle.h)
-AC_ARG_ENABLE(armv8-pmccntr-el0, [AC_HELP_STRING([--enable-armv8-pmccntr-el0],[enable the cycle counter on ARMv8 via the PMCCNTR_EL0 register])], have_armv8pmccntrel0=$enableval)
-if test "$have_armv8pmccntrel0"x = "yes"x; then
-	AC_DEFINE(HAVE_ARMV8_PMCCNTR_EL0,1,[Define if you have enabled the PMCCNTR_EL0 cycle counter on ARMv8])
-fi
-
-AC_ARG_ENABLE(armv8-cntvct-el0, [AC_HELP_STRING([--enable-armv8-cntvct-el0],[enable the cycle counter on ARMv8 via the CNTVCT_EL0 register])], have_armv8cntvctel0=$enableval)
-if test "$have_armv8cntvctel0"x = "yes"x; then
-	AC_DEFINE(HAVE_ARMV8_CNTVCT_EL0,1,[Define if you have enabled the CNTVCT_EL0 cycle counter on ARMv8])
-fi
-
+# Special timers for the ARM v7 platforms (taken from FFTW-3 to match their cycle.h)
 AC_ARG_ENABLE(armv7a-cntvct, [AC_HELP_STRING([--enable-armv7a-cntvct],[enable the cycle counter on Armv7a via the CNTVCT register])], have_armv7acntvct=$enableval)
 if test "$have_armv7acntvct"x = "yes"x; then
 	AC_DEFINE(HAVE_ARMV7A_CNTVCT,1,[Define if you have enabled the CNTVCT cycle counter on ARMv7a])
@@ -1767,7 +1834,7 @@ AM_CONDITIONAL([HAVE_DOXYGEN], [test "$ac_cv_path_ac_pt_DX_DOXYGEN" != ""])
 AM_CONDITIONAL([HAVEEAGLECOOLING], [test $with_cooling = "EAGLE"])
 
 # Handle .in files.
-AC_CONFIG_FILES([Makefile src/Makefile examples/Makefile examples/CoolingRates/Makefile doc/Makefile doc/Doxyfile tests/Makefile])
+AC_CONFIG_FILES([Makefile src/Makefile examples/Makefile examples/Cooling/CoolingRates/Makefile doc/Makefile doc/Doxyfile tests/Makefile])
 AC_CONFIG_FILES([argparse/Makefile tools/Makefile])
 AC_CONFIG_FILES([tests/testReading.sh], [chmod +x tests/testReading.sh])
 AC_CONFIG_FILES([tests/testActivePair.sh], [chmod +x tests/testActivePair.sh])

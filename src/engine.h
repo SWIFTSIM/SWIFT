@@ -343,7 +343,7 @@ struct engine {
   struct cosmology *cosmology;
 
   /* Properties of the hydro scheme */
-  const struct hydro_props *hydro_properties;
+  struct hydro_props *hydro_properties;
 
   /* Properties of the entropy floor */
   const struct entropy_floor_properties *entropy_floor;
@@ -419,7 +419,7 @@ void engine_init(struct engine *e, struct space *s, struct swift_params *params,
                  int policy, int verbose, struct repartition *reparttype,
                  const struct unit_system *internal_units,
                  const struct phys_const *physical_constants,
-                 struct cosmology *cosmo, const struct hydro_props *hydro,
+                 struct cosmology *cosmo, struct hydro_props *hydro,
                  const struct entropy_floor_properties *entropy_floor,
                  struct gravity_props *gravity, const struct stars_props *stars,
                  struct pm_mesh *mesh,

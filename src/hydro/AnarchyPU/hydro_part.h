@@ -201,7 +201,7 @@ struct part {
   timebin_t time_bin;
 
   /* Need waking up ? */
-  char wakeup;
+  timebin_t wakeup;
 
 #ifdef SWIFT_DEBUG_CHECKS
 

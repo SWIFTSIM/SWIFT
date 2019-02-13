@@ -30,12 +30,16 @@
 #include "dimension.h"
 #include "equation_of_state.h"
 #include "error.h"
+#include "gravity_properties.h"
 #include "hydro.h"
 #include "kernel_hydro.h"
+#include "parser.h"
+#include "units.h"
 
 #define hydro_props_default_max_iterations 30
 #define hydro_props_default_volume_change 1.4f
 #define hydro_props_default_h_max FLT_MAX
+#define hydro_props_default_h_min_ratio 0.f
 #define hydro_props_default_h_tolerance 1e-4
 #define hydro_props_default_init_temp 0.f
 #define hydro_props_default_min_temp 0.f
@@ -103,6 +107,13 @@ void hydro_props_init(struct hydro_props *p,
   /* Maximal smoothing length */
   p->h_max = parser_get_opt_param_float(params, "SPH:h_max",
                                         hydro_props_default_h_max);
+
+  /* Minimal smoothing length ratio to softening */
+  p->h_min_ratio = parser_get_opt_param_float(params, "SPH:h_min_ratio",
+                                              hydro_props_default_h_min_ratio);
+
+  /* Temporarily set the minimal softening to 0. */
+  p->h_min = 0.f;
 
   /* Number of iterations to converge h */
   p->max_smoothing_iterations = parser_get_opt_param_int(
@@ -317,6 +328,7 @@ void hydro_props_print_snapshot(hid_t h_grpsph, const struct hydro_props *p) {
  * @param p the struct
  */
 void hydro_props_init_no_hydro(struct hydro_props *p) {
+
   p->eta_neighbours = 1.2348;
   p->h_tolerance = hydro_props_default_h_tolerance;
   p->target_neighbours = pow_dimension(p->eta_neighbours) * kernel_norm;
@@ -325,6 +337,8 @@ void hydro_props_init_no_hydro(struct hydro_props *p) {
       (pow_dimension(delta_eta) - pow_dimension(p->eta_neighbours)) *
       kernel_norm;
   p->h_max = hydro_props_default_h_max;
+  p->h_min = 0.f;
+  p->h_min_ratio = hydro_props_default_h_min_ratio;
   p->max_smoothing_iterations = hydro_props_default_max_iterations;
   p->CFL_condition = 0.1;
   p->log_max_h_change = logf(powf(1.4, hydro_dimension_inv));
@@ -350,6 +364,20 @@ void hydro_props_init_no_hydro(struct hydro_props *p) {
   p->diffusion.beta = hydro_props_default_diffusion_beta;
   p->diffusion.alpha_max = hydro_props_default_diffusion_alpha_max;
   p->diffusion.alpha_min = hydro_props_default_diffusion_alpha_min;
+}
+
+/**
+ * @brief Update the global properties of the hydro scheme for that time-step.
+ *
+ * @param p The properties to update.
+ * @param gp The properties of the gravity scheme.
+ * @param cosmo The cosmological model.
+ */
+void hydro_props_update(struct hydro_props *p, const struct gravity_props *gp,
+                        const struct cosmology *cosmo) {
+
+  /* Update the minimal allowed smoothing length */
+  p->h_min = p->h_min_ratio * gp->epsilon_cur;
 }
 
 /**
