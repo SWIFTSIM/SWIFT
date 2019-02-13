@@ -136,7 +136,7 @@ INLINE static void stars_props_init(struct stars_props *sp,
   sp->const_feedback_energy_testing = parser_get_opt_param_int(params, "Stars:energy_testing", 0);
 
   /* Set temperature increase due to supernovae */
-  sp->SNe_deltaT_desired = 3.16228e7 / units_cgs_conversion_factor(us,UNIT_CONV_TEMPERATURE);
+  sp->SNe_deltaT_desired = 3.16228e4 / units_cgs_conversion_factor(us,UNIT_CONV_TEMPERATURE);
 
   /* Calculate temperature to internal energy conversion factor */
   sp->temp_to_u_factor = phys_const->const_boltzmann_k / (p->mu_ionised * (hydro_gamma_minus_one) * phys_const->const_proton_mass);
@@ -149,8 +149,7 @@ INLINE static void stars_props_init(struct stars_props *sp,
   sp->total_energy_SNe = 1.0e51/units_cgs_conversion_factor(us,UNIT_CONV_ENERGY);
 
   /* energy and temperature times h */
-  sp->SNe_energy_h = sp->total_energy_SNe * cosmo->h; // units_factor2 in EAGLE
-  sp->SNe_temperature_h = sp->SNe_energy_h / sp->temp_to_u_factor; // units_factor1 in EAGLE
+  sp->SNe_temperature = sp->total_energy_SNe / sp->temp_to_u_factor; // units_factor1 in EAGLE
 
   /* Find out timescale for feedback (used only for testing in const feedback model) */
   sp->feedback_timescale = parser_get_opt_param_float(params, "Stars:feedback_timescale", 4e-5);
@@ -160,10 +159,6 @@ INLINE static void stars_props_init(struct stars_props *sp,
 
   /* Copy over solar mass (used only for testing in const feedback model) */
   sp->const_solar_mass = phys_const->const_solar_mass;
-
-  // CHANGE THIS TO BE CONSISTENT WITH RAND MAX USED IN STAR FORMATION
-  sp->inv_rand_max = 1.0/RAND_MAX;
-
 
 }
 

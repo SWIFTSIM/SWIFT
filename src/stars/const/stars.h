@@ -206,8 +206,6 @@ __attribute__((always_inline)) INLINE static void stars_evolve_spart(
   /* Set feedback to constant values */
   const float total_sn = sp->mass_init / stars_properties->const_solar_mass * stars_properties->sn_per_msun;
 
-  if (dt == 0) message("events expected %.5e", total_sn/sp->mass_init*stars_properties->const_solar_mass/stars_properties->feedback_timescale*3.154e14/3.086e19);
-
   /* Print total_sn and timescale to be read by test script for checking stochastic energy injection */
   if (dt == 0) {
     FILE *feedback_output = fopen("feedback_properties.dat","w");

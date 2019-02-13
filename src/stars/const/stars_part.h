@@ -164,9 +164,8 @@ struct stars_props {
   /* Energy released by one supernova */
   float total_energy_SNe;
 
-  /* Temperature and energy times h due to SNe (corresponding to units_factor1, units_factor2 in EAGLE) */
-  float SNe_temperature_h;
-  float SNe_energy_h;
+  /* Temperature due to SNe (corresponding to units_factor1 in EAGLE) */
+  float SNe_temperature;
 
   /* Timescale for feedback (used only for testing in const feedback model) */
   float feedback_timescale;

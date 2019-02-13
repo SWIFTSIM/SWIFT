@@ -1,3 +1,5 @@
+#include "random.h"
+
 /**
  * @brief Density interaction between two particles (non-symmetric).
  *
@@ -188,22 +190,18 @@ runner_iact_nonsym_stars_feedback(float r2, const float *dx, float hi, float hj,
       thermal_feedback(du,pj,xp,cosmo);
     } else {
       // We're doing stochastic heating
-      heating_probability = stars_properties->SNe_temperature_h * si->to_distribute.num_SNIa *
+      heating_probability = stars_properties->SNe_temperature * si->to_distribute.num_SNIa *
                             stars_properties->SNIa_energy_fraction /
                             (stars_properties->SNe_deltaT_desired * si->ngb_mass);
       du = stars_properties->SNe_deltaT_desired * stars_properties->temp_to_u_factor;
       if (heating_probability >= 1) {
-        du = stars_properties->SNe_energy_h * si->to_distribute.num_SNIa / si->ngb_mass;
+        du = stars_properties->total_energy_SNe * si->to_distribute.num_SNIa / si->ngb_mass;
         heating_probability = 1; 
       }
     }
   }
 
-  /* pick random number to see if we do stochastic heating */
-  // Temporary assignment of random seed. Discuss with Matthieu for better 
-  // way of generating random numbers
-  unsigned int seed = (pj->id + ti_current) % 8191;
-  double random_num = rand_r(&seed) * stars_properties->inv_rand_max;
+  double random_num = random_unit_interval(pj->id,ti_current,random_number_stellar_feedback);
   if (random_num < heating_probability) {
     message("we did some heating! id %llu probability %.5e random_num %.5e du %.5e initial u %.5e", pj->id, heating_probability, random_num, du, hydro_get_physical_internal_energy(pj,xp,cosmo));
     thermal_feedback(du, pj, xp, cosmo);

@@ -125,6 +125,7 @@ with open(feedback_data) as f:
         num_sn = float(f.readline().strip())
         total_time = float(f.readline().strip())
 total_sn = num_sn * time[n_snapshots-1]/total_time
+print("total_sn " + str(total_sn))
 
 # Continuous heating
 vel2 = zeros((n_parts,n_snapshots))
