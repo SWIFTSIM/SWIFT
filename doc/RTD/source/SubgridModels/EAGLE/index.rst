@@ -62,12 +62,21 @@ EAGLE run, that section of the parameter file reads:
      Jeans_density_threshold_H_p_cm3: 0.1       # Physical density above which the EAGLE Jeans limiter entropy floor kicks in, expressed in Hydrogen atoms per cm^3.
      Jeans_over_density_threshold:    10.       # Overdensity above which the EAGLE Jeans limiter entropy floor can kick in.
      Jeans_temperature_norm_K:        8000      # Temperature of the EAGLE Jeans limiter entropy floor at the density threshold, expressed in Kelvin.
-     Jeans_gamma_effective:           1.3333333 # Slope the of the EAGLE Jeans limiter entropy floor
+     Jeans_gamma_effective:           1.3333333 # Slope of the EAGLE Jeans limiter entropy floor
      Cool_density_threshold_H_p_cm3:  1e-5      # Physical density above which the EAGLE Cool limiter entropy floor kicks in, expressed in Hydrogen atoms per cm^3.
      Cool_over_density_threshold:     10.       # Overdensity above which the EAGLE Cool limiter entropy floor can kick in.
      Cool_temperature_norm_K:         8000      # Temperature of the EAGLE Cool limiter entropy floor at the density threshold, expressed in Kelvin.
-     Cool_gamma_effective:            1.        # Slope the of the EAGLE Cool limiter entropy floor
+     Cool_gamma_effective:            1.        # Slope of the EAGLE Cool limiter entropy floor
 
+SWIFT will convert the temperature normalisations and Hydrogen number
+density thresholds into internal energies and densities respectively
+assuming a neutral gas with primoridal abundance pattern. This implies
+that the floor may not be exactly at the position given in the YAML
+file if the gas has different properties. This is especially the case
+for the temperature limit which will often be lower than the imposed
+floor by a factor :math:`\frac{\mu_{\rm neutral}}{\mu_{ionised}}
+\approx \frac{1.22}{0.59} \approx 2` due to the different ionisation
+states of the gas.
 
 Note that the model only makes sense if the ``Cool`` threshold is at a lower
 density than the ``Jeans`` threshold.
