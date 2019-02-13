@@ -1399,9 +1399,7 @@ size_t fof_search_foreign_cells(struct space *s, size_t **local_roots) {
   free(global_group_size);
   free(global_group_mass);
   free(global_group_id);
-#ifndef UNION_BY_SIZE_OVER_MPI
   free(orig_global_group_size);
-#endif
 
   message("Rank %d finished linking local roots to foreign roots.",
           engine_rank);
