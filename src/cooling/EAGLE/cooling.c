@@ -445,6 +445,7 @@ INLINE static double bisection_iter(
  * @param us The internal system of units.
  * @param cosmo The current cosmological model.
  * @param hydro_properties the hydro_props struct
+ * @param floor_props Properties of the entropy floor.
  * @param cooling The #cooling_function_data used in the run.
  * @param p Pointer to the particle data.
  * @param xp Pointer to the extended particle data.
