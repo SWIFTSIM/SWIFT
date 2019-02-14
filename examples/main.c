@@ -347,7 +347,17 @@ int main(int argc, char *argv[]) {
     if (myrank == 0) {
       argparse_usage(&argparse);
       printf(
-          "\nError: Cannot process feedback without stars, -S must be "
+          "\nError: Cannot process feedback without stars, --stars must be "
+          "chosen.\n");
+    }
+    return 1;
+  }
+
+  if (!with_hydro && with_feedback) {
+    if (myrank == 0) {
+      argparse_usage(&argparse);
+      printf(
+          "\nError: Cannot process feedback without gas, --hydro must be "
           "chosen.\n");
     }
     return 1;
