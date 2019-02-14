@@ -19,6 +19,14 @@
 #ifndef SWIFT_COOLING_COMPTON_H
 #define SWIFT_COOLING_COMPTON_H
 
+/**
+ * @file src/cooling/Compton/cooling.h
+ * @brief Routines related to the "Compton" cooling function.
+ *
+ * This model compute the cooling rate from the Compton interaction with
+ * the CMB photons.
+ */
+
 /* Config parameters. */
 #include "../config.h"
 
