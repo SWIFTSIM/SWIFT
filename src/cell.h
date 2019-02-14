@@ -483,10 +483,11 @@ struct cell {
 
     /*! The task computing this cell's sorts before the density. */
     struct task *sorts_local;
-
-    /*! The task computing this cell's sorts before the feedback. */
     struct task *sorts_foreign;
 
+    /*! The drift task for sparts */    
+    struct task *drift;
+    
     /*! Max smoothing length in this cell. */
     double h_max;
 
