@@ -1622,504 +1622,497 @@ void engine_make_extra_hydroloop_tasks_mapper(void *map_data, int num_elements,
   struct task *t_star_feedback = NULL;
 
   for (int ind = 0; ind < num_elements; ind++) {
+
     struct task *t = &((struct task *)map_data)[ind];
+    const enum task_types t_type = t->type;
+    const enum task_subtypes t_subtype = t->subtype;
+    const int flags = t->flags;
+    struct cell *ci = t->ci;
+    struct cell *cj = t->cj;
 
     /* Sort tasks depend on the drift of the cell (gas version). */
-    if (t->type == task_type_sort && t->ci->nodeID == engine_rank) {
-      scheduler_addunlock(sched, t->ci->hydro.super->hydro.drift, t);
+    if (t_type == task_type_sort && ci->nodeID == nodeID) {
+      scheduler_addunlock(sched, ci->hydro.super->hydro.drift, t);
     }
 
     /* Sort tasks depend on the drift of the cell (stars version). */
-    else if (t->type == task_type_stars_sort && t->ci->nodeID == engine_rank) {
-      scheduler_addunlock(sched, t->ci->hydro.super->stars.drift, t);
+    else if (t_type == task_type_stars_sort && ci->nodeID == nodeID) {
+      scheduler_addunlock(sched, ci->hydro.super->stars.drift, t);
     }
 
     /* Self-interaction? */
-    else if (t->type == task_type_self && t->subtype == task_subtype_density) {
+    else if (t_type == task_type_self && t_subtype == task_subtype_density) {
 
       /* Make the self-density tasks depend on the drift only. */
-      scheduler_addunlock(sched, t->ci->hydro.super->hydro.drift, t);
+      scheduler_addunlock(sched, ci->hydro.super->hydro.drift, t);
 
       /* Task for the second hydro loop, */
-      t_force = scheduler_addtask(sched, task_type_self, task_subtype_force, 0,
-                                  0, t->ci, NULL);
+      t_force = scheduler_addtask(sched, task_type_self, task_subtype_force,
+                                  flags, 0, ci, NULL);
 
       /* the task for the time-step limiter */
       if (with_limiter) {
         t_limiter = scheduler_addtask(sched, task_type_self,
-                                      task_subtype_limiter, 0, 0, t->ci, NULL);
+                                      task_subtype_limiter, flags, 0, ci, NULL);
       }
 
       /* The stellar feedback tasks */
       if (with_feedback) {
         t_star_density =
             scheduler_addtask(sched, task_type_self, task_subtype_stars_density,
-                              0, 0, t->ci, NULL);
+                              flags, 0, ci, NULL);
         t_star_feedback =
             scheduler_addtask(sched, task_type_self,
-                              task_subtype_stars_feedback, 0, 0, t->ci, NULL);
+                              task_subtype_stars_feedback, flags, 0, ci, NULL);
       }
 
       /* Link the tasks to the cells */
-      engine_addlink(e, &t->ci->hydro.force, t_force);
+      engine_addlink(e, &ci->hydro.force, t_force);
       if (with_limiter) {
-        engine_addlink(e, &t->ci->hydro.limiter, t_limiter);
+        engine_addlink(e, &ci->hydro.limiter, t_limiter);
       }
       if (with_feedback) {
-        engine_addlink(e, &t->ci->stars.density, t_star_density);
-        engine_addlink(e, &t->ci->stars.feedback, t_star_feedback);
+        engine_addlink(e, &ci->stars.density, t_star_density);
+        engine_addlink(e, &ci->stars.feedback, t_star_feedback);
       }
 
 #ifdef EXTRA_HYDRO_LOOP
 
       /* Same work for the additional hydro loop */
       t_gradient = scheduler_addtask(sched, task_type_self,
-                                     task_subtype_gradient, 0, 0, t->ci, NULL);
+                                     task_subtype_gradient, flags, 0, ci, NULL);
 
       /* Add the link between the new loops and the cell */
-      engine_addlink(e, &t->ci->hydro.gradient, t_gradient);
+      engine_addlink(e, &ci->hydro.gradient, t_gradient);
 
       /* Now, build all the dependencies for the hydro */
       engine_make_hydro_loops_dependencies(sched, t, t_gradient, t_force,
-                                           t_limiter, t->ci, with_cooling,
+                                           t_limiter, ci, with_cooling,
                                            with_limiter);
 #else
 
       /* Now, build all the dependencies for the hydro */
-      engine_make_hydro_loops_dependencies(sched, t, t_force, t_limiter, t->ci,
+      engine_make_hydro_loops_dependencies(sched, t, t_force, t_limiter, ci,
                                            with_cooling, with_limiter);
 #endif
 
       /* Create the task dependencies */
-      scheduler_addunlock(sched, t_force, t->ci->super->end_force);
+      scheduler_addunlock(sched, t_force, ci->super->end_force);
 
       if (with_feedback) {
 
         if (with_star_formation) {
-          scheduler_addunlock(sched, t->ci->super->hydro.star_formation,
+          scheduler_addunlock(sched, ci->super->hydro.star_formation,
                               t_star_density);
         } else {
-          scheduler_addunlock(sched, t->ci->super->kick2, t_star_density);
+          scheduler_addunlock(sched, ci->super->kick2, t_star_density);
         }
-        scheduler_addunlock(sched, t_star_density, t->ci->super->stars.ghost);
-        scheduler_addunlock(sched, t->ci->super->stars.ghost, t_star_feedback);
-        scheduler_addunlock(sched, t_star_feedback, t->ci->super->timestep);
+        scheduler_addunlock(sched, t_star_density, ci->super->stars.ghost);
+        scheduler_addunlock(sched, ci->super->stars.ghost, t_star_feedback);
+        scheduler_addunlock(sched, t_star_feedback, ci->super->timestep);
       }
 
       if (with_limiter) {
-        scheduler_addunlock(sched, t->ci->super->kick2, t_limiter);
-        scheduler_addunlock(sched, t_limiter, t->ci->super->timestep);
-        scheduler_addunlock(sched, t_limiter, t->ci->super->timestep_limiter);
+        scheduler_addunlock(sched, ci->super->kick2, t_limiter);
+        scheduler_addunlock(sched, t_limiter, ci->super->timestep);
+        scheduler_addunlock(sched, t_limiter, ci->super->timestep_limiter);
       }
     }
 
     /* Otherwise, pair interaction? */
-    else if (t->type == task_type_pair && t->subtype == task_subtype_density) {
+    else if (t_type == task_type_pair && t_subtype == task_subtype_density) {
 
       /* Make all density tasks depend on the drift */
-      if (t->ci->nodeID == nodeID) {
-        scheduler_addunlock(sched, t->ci->hydro.super->hydro.drift, t);
+      if (ci->nodeID == nodeID) {
+        scheduler_addunlock(sched, ci->hydro.super->hydro.drift, t);
       }
-      if ((t->cj->nodeID == nodeID) &&
-          (t->ci->hydro.super != t->cj->hydro.super)) {
-        scheduler_addunlock(sched, t->cj->hydro.super->hydro.drift, t);
+      if ((cj->nodeID == nodeID) && (ci->hydro.super != cj->hydro.super)) {
+        scheduler_addunlock(sched, cj->hydro.super->hydro.drift, t);
       }
 
       /* Make all density tasks depend on the sorts */
-      scheduler_addunlock(sched, t->ci->hydro.super->hydro.sorts, t);
-      if (t->ci->hydro.super != t->cj->hydro.super) {
-        scheduler_addunlock(sched, t->cj->hydro.super->hydro.sorts, t);
+      scheduler_addunlock(sched, ci->hydro.super->hydro.sorts, t);
+      if (ci->hydro.super != cj->hydro.super) {
+        scheduler_addunlock(sched, cj->hydro.super->hydro.sorts, t);
       }
 
       /* New task for the force */
-      t_force = scheduler_addtask(sched, task_type_pair, task_subtype_force, 0,
-                                  0, t->ci, t->cj);
+      t_force = scheduler_addtask(sched, task_type_pair, task_subtype_force,
+                                  flags, 0, ci, cj);
 
       /* and the task for the time-step limiter */
       if (with_limiter) {
         t_limiter = scheduler_addtask(sched, task_type_pair,
-                                      task_subtype_limiter, 0, 0, t->ci, t->cj);
+                                      task_subtype_limiter, flags, 0, ci, cj);
       }
 
       /* The stellar feedback tasks */
       if (with_feedback) {
         t_star_density =
             scheduler_addtask(sched, task_type_pair, task_subtype_stars_density,
-                              0, 0, t->ci, t->cj);
+                              flags, 0, ci, cj);
         t_star_feedback =
             scheduler_addtask(sched, task_type_pair,
-                              task_subtype_stars_feedback, 0, 0, t->ci, t->cj);
+                              task_subtype_stars_feedback, flags, 0, ci, cj);
       }
 
-      engine_addlink(e, &t->ci->hydro.force, t_force);
-      engine_addlink(e, &t->cj->hydro.force, t_force);
+      engine_addlink(e, &ci->hydro.force, t_force);
+      engine_addlink(e, &cj->hydro.force, t_force);
       if (with_limiter) {
-        engine_addlink(e, &t->ci->hydro.limiter, t_limiter);
-        engine_addlink(e, &t->cj->hydro.limiter, t_limiter);
+        engine_addlink(e, &ci->hydro.limiter, t_limiter);
+        engine_addlink(e, &cj->hydro.limiter, t_limiter);
       }
       if (with_feedback) {
-        engine_addlink(e, &t->ci->stars.density, t_star_density);
-        engine_addlink(e, &t->cj->stars.density, t_star_density);
-        engine_addlink(e, &t->ci->stars.feedback, t_star_feedback);
-        engine_addlink(e, &t->cj->stars.feedback, t_star_feedback);
+        engine_addlink(e, &ci->stars.density, t_star_density);
+        engine_addlink(e, &cj->stars.density, t_star_density);
+        engine_addlink(e, &ci->stars.feedback, t_star_feedback);
+        engine_addlink(e, &cj->stars.feedback, t_star_feedback);
       }
 
 #ifdef EXTRA_HYDRO_LOOP
 
       /* Start by constructing the task for the second and third hydro loop */
       t_gradient = scheduler_addtask(sched, task_type_pair,
-                                     task_subtype_gradient, 0, 0, t->ci, t->cj);
+                                     task_subtype_gradient, flags, 0, ci, cj);
 
       /* Add the link between the new loop and both cells */
-      engine_addlink(e, &t->ci->hydro.gradient, t_gradient);
-      engine_addlink(e, &t->cj->hydro.gradient, t_gradient);
+      engine_addlink(e, &ci->hydro.gradient, t_gradient);
+      engine_addlink(e, &cj->hydro.gradient, t_gradient);
 
       /* Now, build all the dependencies for the hydro for the cells */
       /* that are local and are not descendant of the same super_hydro-cells */
-      if (t->ci->nodeID == nodeID) {
+      if (ci->nodeID == nodeID) {
         engine_make_hydro_loops_dependencies(sched, t, t_gradient, t_force,
-                                             t_limiter, t->ci, with_cooling,
+                                             t_limiter, ci, with_cooling,
                                              with_limiter);
       }
-      if ((t->cj->nodeID == nodeID) &&
-          (t->ci->hydro.super != t->cj->hydro.super)) {
+      if ((cj->nodeID == nodeID) && (ci->hydro.super != cj->hydro.super)) {
         engine_make_hydro_loops_dependencies(sched, t, t_gradient, t_force,
-                                             t_limiter, t->cj, with_cooling,
+                                             t_limiter, cj, with_cooling,
                                              with_limiter);
       }
 #else
 
       /* Now, build all the dependencies for the hydro for the cells */
       /* that are local and are not descendant of the same super_hydro-cells */
-      if (t->ci->nodeID == nodeID) {
-        engine_make_hydro_loops_dependencies(sched, t, t_force, t_limiter,
-                                             t->ci, with_cooling, with_limiter);
+      if (ci->nodeID == nodeID) {
+        engine_make_hydro_loops_dependencies(sched, t, t_force, t_limiter, ci,
+                                             with_cooling, with_limiter);
       }
-      if ((t->cj->nodeID == nodeID) &&
-          (t->ci->hydro.super != t->cj->hydro.super)) {
-        engine_make_hydro_loops_dependencies(sched, t, t_force, t_limiter,
-                                             t->cj, with_cooling, with_limiter);
+      if ((cj->nodeID == nodeID) && (ci->hydro.super != cj->hydro.super)) {
+        engine_make_hydro_loops_dependencies(sched, t, t_force, t_limiter, cj,
+                                             with_cooling, with_limiter);
       }
 #endif
 
-      if (t->ci->nodeID == nodeID) {
-        scheduler_addunlock(sched, t_force, t->ci->super->end_force);
+      if (ci->nodeID == nodeID) {
+        scheduler_addunlock(sched, t_force, ci->super->end_force);
 
         if (with_feedback) {
 
-          scheduler_addunlock(sched, t->ci->hydro.super->stars.drift,
+          scheduler_addunlock(sched, ci->hydro.super->stars.drift,
                               t_star_density);
-          scheduler_addunlock(sched, t->ci->hydro.super->stars.sorts_local,
+          scheduler_addunlock(sched, ci->hydro.super->stars.sorts_local,
                               t_star_density);
-          scheduler_addunlock(sched, t->ci->hydro.super->hydro.drift,
+          scheduler_addunlock(sched, ci->hydro.super->hydro.drift,
                               t_star_density);
-          scheduler_addunlock(sched, t->ci->hydro.super->hydro.sorts,
+          scheduler_addunlock(sched, ci->hydro.super->hydro.sorts,
                               t_star_density);
 
           if (with_star_formation) {
-            scheduler_addunlock(sched, t->ci->super->hydro.star_formation,
+            scheduler_addunlock(sched, ci->super->hydro.star_formation,
                                 t_star_density);
           } else {
-            scheduler_addunlock(sched, t->ci->super->kick2, t_star_density);
+            scheduler_addunlock(sched, ci->super->kick2, t_star_density);
           }
-          scheduler_addunlock(sched, t_star_density, t->ci->super->stars.ghost);
-          scheduler_addunlock(sched, t->ci->super->stars.ghost,
-                              t_star_feedback);
-          scheduler_addunlock(sched, t_star_feedback, t->ci->super->timestep);
+          scheduler_addunlock(sched, t_star_density, ci->super->stars.ghost);
+          scheduler_addunlock(sched, ci->super->stars.ghost, t_star_feedback);
+          scheduler_addunlock(sched, t_star_feedback, ci->super->timestep);
         }
 
         if (with_limiter) {
-          scheduler_addunlock(sched, t->ci->super->kick2, t_limiter);
-          scheduler_addunlock(sched, t_limiter, t->ci->super->timestep);
-          scheduler_addunlock(sched, t_limiter, t->ci->super->timestep_limiter);
+          scheduler_addunlock(sched, ci->super->kick2, t_limiter);
+          scheduler_addunlock(sched, t_limiter, ci->super->timestep);
+          scheduler_addunlock(sched, t_limiter, ci->super->timestep_limiter);
         }
       }
 
-      if ((t->cj->nodeID == nodeID) && (t->ci->super != t->cj->super)) {
+      if ((cj->nodeID == nodeID) && (ci->super != cj->super)) {
 
-        scheduler_addunlock(sched, t_force, t->cj->super->end_force);
+        scheduler_addunlock(sched, t_force, cj->super->end_force);
 
         if (with_feedback) {
 
-          scheduler_addunlock(sched, t->cj->hydro.super->stars.drift,
+          scheduler_addunlock(sched, cj->hydro.super->stars.drift,
                               t_star_density);
-          scheduler_addunlock(sched, t->cj->hydro.super->stars.sorts_local,
+          scheduler_addunlock(sched, cj->hydro.super->stars.sorts_local,
                               t_star_density);
-          scheduler_addunlock(sched, t->cj->hydro.super->hydro.drift,
+          scheduler_addunlock(sched, cj->hydro.super->hydro.drift,
                               t_star_density);
-          scheduler_addunlock(sched, t->cj->hydro.super->hydro.sorts,
+          scheduler_addunlock(sched, cj->hydro.super->hydro.sorts,
                               t_star_density);
 
           if (with_star_formation) {
-            scheduler_addunlock(sched, t->cj->super->hydro.star_formation,
+            scheduler_addunlock(sched, cj->super->hydro.star_formation,
                                 t_star_density);
           } else {
-            scheduler_addunlock(sched, t->cj->super->kick2, t_star_density);
+            scheduler_addunlock(sched, cj->super->kick2, t_star_density);
           }
-          scheduler_addunlock(sched, t_star_density, t->cj->super->stars.ghost);
-          scheduler_addunlock(sched, t->cj->super->stars.ghost,
-                              t_star_feedback);
-          scheduler_addunlock(sched, t_star_feedback, t->cj->super->timestep);
+          scheduler_addunlock(sched, t_star_density, cj->super->stars.ghost);
+          scheduler_addunlock(sched, cj->super->stars.ghost, t_star_feedback);
+          scheduler_addunlock(sched, t_star_feedback, cj->super->timestep);
         }
 
         if (with_limiter) {
-          scheduler_addunlock(sched, t->cj->super->kick2, t_limiter);
-          scheduler_addunlock(sched, t_limiter, t->cj->super->timestep);
-          scheduler_addunlock(sched, t_limiter, t->cj->super->timestep_limiter);
+          scheduler_addunlock(sched, cj->super->kick2, t_limiter);
+          scheduler_addunlock(sched, t_limiter, cj->super->timestep);
+          scheduler_addunlock(sched, t_limiter, cj->super->timestep_limiter);
         }
       }
     }
 
     /* Otherwise, sub-self interaction? */
-    else if (t->type == task_type_sub_self &&
-             t->subtype == task_subtype_density) {
+    else if (t_type == task_type_sub_self &&
+             t_subtype == task_subtype_density) {
 
       /* Make all density tasks depend on the drift and sorts. */
-      scheduler_addunlock(sched, t->ci->hydro.super->hydro.drift, t);
-      scheduler_addunlock(sched, t->ci->hydro.super->hydro.sorts, t);
+      scheduler_addunlock(sched, ci->hydro.super->hydro.drift, t);
+      scheduler_addunlock(sched, ci->hydro.super->hydro.sorts, t);
 
       /* Start by constructing the task for the second hydro loop */
       t_force = scheduler_addtask(sched, task_type_sub_self, task_subtype_force,
-                                  t->flags, 0, t->ci, NULL);
+                                  flags, 0, ci, NULL);
 
       /* and the task for the time-step limiter */
       if (with_limiter) {
-        t_limiter =
-            scheduler_addtask(sched, task_type_sub_self, task_subtype_limiter,
-                              t->flags, 0, t->ci, NULL);
+        t_limiter = scheduler_addtask(sched, task_type_sub_self,
+                                      task_subtype_limiter, flags, 0, ci, NULL);
       }
 
       /* The stellar feedback tasks */
       if (with_feedback) {
-        t_star_density = scheduler_addtask(sched, task_type_sub_self,
-                                           task_subtype_stars_density, t->flags,
-                                           0, t->ci, NULL);
-        t_star_feedback = scheduler_addtask(sched, task_type_sub_self,
-                                            task_subtype_stars_feedback,
-                                            t->flags, 0, t->ci, NULL);
+        t_star_density =
+            scheduler_addtask(sched, task_type_sub_self,
+                              task_subtype_stars_density, flags, 0, ci, NULL);
+        t_star_feedback =
+            scheduler_addtask(sched, task_type_sub_self,
+                              task_subtype_stars_feedback, flags, 0, ci, NULL);
       }
 
       /* Add the link between the new loop and the cell */
-      engine_addlink(e, &t->ci->hydro.force, t_force);
+      engine_addlink(e, &ci->hydro.force, t_force);
       if (with_limiter) {
-        engine_addlink(e, &t->ci->hydro.limiter, t_limiter);
+        engine_addlink(e, &ci->hydro.limiter, t_limiter);
       }
       if (with_feedback) {
-        engine_addlink(e, &t->ci->stars.density, t_star_density);
-        engine_addlink(e, &t->ci->stars.feedback, t_star_feedback);
+        engine_addlink(e, &ci->stars.density, t_star_density);
+        engine_addlink(e, &ci->stars.feedback, t_star_feedback);
       }
 
 #ifdef EXTRA_HYDRO_LOOP
 
       /* Start by constructing the task for the second and third hydro loop */
-      t_gradient =
-          scheduler_addtask(sched, task_type_sub_self, task_subtype_gradient,
-                            t->flags, 0, t->ci, NULL);
+      t_gradient = scheduler_addtask(sched, task_type_sub_self,
+                                     task_subtype_gradient, flags, 0, ci, NULL);
 
       /* Add the link between the new loop and the cell */
-      engine_addlink(e, &t->ci->hydro.gradient, t_gradient);
+      engine_addlink(e, &ci->hydro.gradient, t_gradient);
 
       /* Now, build all the dependencies for the hydro for the cells */
       /* that are local and are not descendant of the same super_hydro-cells */
       engine_make_hydro_loops_dependencies(sched, t, t_gradient, t_force,
-                                           t_limiter, t->ci, with_cooling,
+                                           t_limiter, ci, with_cooling,
                                            with_limiter);
 #else
 
       /* Now, build all the dependencies for the hydro for the cells */
       /* that are local and are not descendant of the same super_hydro-cells */
-      engine_make_hydro_loops_dependencies(sched, t, t_force, t_limiter, t->ci,
+      engine_make_hydro_loops_dependencies(sched, t, t_force, t_limiter, ci,
                                            with_cooling, with_limiter);
 #endif
 
       /* Create the task dependencies */
-      scheduler_addunlock(sched, t_force, t->ci->super->end_force);
+      scheduler_addunlock(sched, t_force, ci->super->end_force);
 
       if (with_feedback) {
 
-        scheduler_addunlock(sched, t->ci->hydro.super->stars.drift,
+        scheduler_addunlock(sched, ci->hydro.super->stars.drift,
                             t_star_density);
-        scheduler_addunlock(sched, t->ci->hydro.super->stars.sorts_local,
+        scheduler_addunlock(sched, ci->hydro.super->stars.sorts_local,
                             t_star_density);
-        scheduler_addunlock(sched, t->ci->hydro.super->hydro.drift,
+        scheduler_addunlock(sched, ci->hydro.super->hydro.drift,
                             t_star_density);
-        scheduler_addunlock(sched, t->ci->hydro.super->hydro.sorts,
+        scheduler_addunlock(sched, ci->hydro.super->hydro.sorts,
                             t_star_density);
 
         if (with_star_formation) {
-          scheduler_addunlock(sched, t->ci->super->hydro.star_formation,
+          scheduler_addunlock(sched, ci->super->hydro.star_formation,
                               t_star_density);
         } else {
-          scheduler_addunlock(sched, t->ci->super->kick2, t_star_density);
+          scheduler_addunlock(sched, ci->super->kick2, t_star_density);
         }
-        scheduler_addunlock(sched, t_star_density, t->ci->super->stars.ghost);
-        scheduler_addunlock(sched, t->ci->super->stars.ghost, t_star_feedback);
-        scheduler_addunlock(sched, t_star_feedback, t->ci->super->timestep);
+        scheduler_addunlock(sched, t_star_density, ci->super->stars.ghost);
+        scheduler_addunlock(sched, ci->super->stars.ghost, t_star_feedback);
+        scheduler_addunlock(sched, t_star_feedback, ci->super->timestep);
       }
 
       if (with_limiter) {
-        scheduler_addunlock(sched, t->ci->super->kick2, t_limiter);
-        scheduler_addunlock(sched, t_limiter, t->ci->super->timestep);
-        scheduler_addunlock(sched, t_limiter, t->ci->super->timestep_limiter);
+        scheduler_addunlock(sched, ci->super->kick2, t_limiter);
+        scheduler_addunlock(sched, t_limiter, ci->super->timestep);
+        scheduler_addunlock(sched, t_limiter, ci->super->timestep_limiter);
       }
 
     }
 
     /* Otherwise, sub-pair interaction? */
-    else if (t->type == task_type_sub_pair &&
-             t->subtype == task_subtype_density) {
+    else if (t_type == task_type_sub_pair &&
+             t_subtype == task_subtype_density) {
 
       /* Make all density tasks depend on the drift */
-      if (t->ci->nodeID == nodeID) {
-        scheduler_addunlock(sched, t->ci->hydro.super->hydro.drift, t);
+      if (ci->nodeID == nodeID) {
+        scheduler_addunlock(sched, ci->hydro.super->hydro.drift, t);
       }
-      if ((t->cj->nodeID == nodeID) &&
-          (t->ci->hydro.super != t->cj->hydro.super)) {
-        scheduler_addunlock(sched, t->cj->hydro.super->hydro.drift, t);
+      if ((cj->nodeID == nodeID) && (ci->hydro.super != cj->hydro.super)) {
+        scheduler_addunlock(sched, cj->hydro.super->hydro.drift, t);
       }
 
       /* Make all density tasks depend on the sorts */
-      scheduler_addunlock(sched, t->ci->hydro.super->hydro.sorts, t);
-      if (t->ci->hydro.super != t->cj->hydro.super) {
-        scheduler_addunlock(sched, t->cj->hydro.super->hydro.sorts, t);
+      scheduler_addunlock(sched, ci->hydro.super->hydro.sorts, t);
+      if (ci->hydro.super != cj->hydro.super) {
+        scheduler_addunlock(sched, cj->hydro.super->hydro.sorts, t);
       }
 
       /* New task for the force */
       t_force = scheduler_addtask(sched, task_type_sub_pair, task_subtype_force,
-                                  0, 0, t->ci, t->cj);
+                                  flags, 0, ci, cj);
 
       /* and the task for the time-step limiter */
       if (with_limiter) {
         t_limiter = scheduler_addtask(sched, task_type_sub_pair,
-                                      task_subtype_limiter, 0, 0, t->ci, t->cj);
+                                      task_subtype_limiter, flags, 0, ci, cj);
       }
 
       /* The stellar feedback tasks */
       if (with_feedback) {
         t_star_density =
             scheduler_addtask(sched, task_type_sub_pair,
-                              task_subtype_stars_density, 0, 0, t->ci, t->cj);
+                              task_subtype_stars_density, flags, 0, ci, cj);
         t_star_feedback =
             scheduler_addtask(sched, task_type_sub_pair,
-                              task_subtype_stars_feedback, 0, 0, t->ci, t->cj);
+                              task_subtype_stars_feedback, flags, 0, ci, cj);
       }
 
-      engine_addlink(e, &t->ci->hydro.force, t_force);
-      engine_addlink(e, &t->cj->hydro.force, t_force);
+      engine_addlink(e, &ci->hydro.force, t_force);
+      engine_addlink(e, &cj->hydro.force, t_force);
       if (with_limiter) {
-        engine_addlink(e, &t->ci->hydro.limiter, t_limiter);
-        engine_addlink(e, &t->cj->hydro.limiter, t_limiter);
+        engine_addlink(e, &ci->hydro.limiter, t_limiter);
+        engine_addlink(e, &cj->hydro.limiter, t_limiter);
       }
       if (with_feedback) {
-        engine_addlink(e, &t->ci->stars.density, t_star_density);
-        engine_addlink(e, &t->cj->stars.density, t_star_density);
-        engine_addlink(e, &t->ci->stars.feedback, t_star_feedback);
-        engine_addlink(e, &t->cj->stars.feedback, t_star_feedback);
+        engine_addlink(e, &ci->stars.density, t_star_density);
+        engine_addlink(e, &cj->stars.density, t_star_density);
+        engine_addlink(e, &ci->stars.feedback, t_star_feedback);
+        engine_addlink(e, &cj->stars.feedback, t_star_feedback);
       }
 
 #ifdef EXTRA_HYDRO_LOOP
 
       /* Start by constructing the task for the second and third hydro loop */
-      t_gradient =
-          scheduler_addtask(sched, task_type_sub_pair, task_subtype_gradient,
-                            t->flags, 0, t->ci, t->cj);
+      t_gradient = scheduler_addtask(sched, task_type_sub_pair,
+                                     task_subtype_gradient, flags, 0, ci, cj);
 
       /* Add the link between the new loop and both cells */
-      engine_addlink(e, &t->ci->hydro.gradient, t_gradient);
-      engine_addlink(e, &t->cj->hydro.gradient, t_gradient);
+      engine_addlink(e, &ci->hydro.gradient, t_gradient);
+      engine_addlink(e, &cj->hydro.gradient, t_gradient);
 
       /* Now, build all the dependencies for the hydro for the cells */
       /* that are local and are not descendant of the same super_hydro-cells */
-      if (t->ci->nodeID == nodeID) {
+      if (ci->nodeID == nodeID) {
         engine_make_hydro_loops_dependencies(sched, t, t_gradient, t_force,
-                                             t_limiter, t->ci, with_cooling,
+                                             t_limiter, ci, with_cooling,
                                              with_limiter);
       }
-      if ((t->cj->nodeID == nodeID) &&
-          (t->ci->hydro.super != t->cj->hydro.super)) {
+      if ((cj->nodeID == nodeID) && (ci->hydro.super != cj->hydro.super)) {
         engine_make_hydro_loops_dependencies(sched, t, t_gradient, t_force,
-                                             t_limiter, t->cj, with_cooling,
+                                             t_limiter, cj, with_cooling,
                                              with_limiter);
       }
 #else
 
       /* Now, build all the dependencies for the hydro for the cells */
       /* that are local and are not descendant of the same super_hydro-cells */
-      if (t->ci->nodeID == nodeID) {
-        engine_make_hydro_loops_dependencies(sched, t, t_force, t_limiter,
-                                             t->ci, with_cooling, with_limiter);
+      if (ci->nodeID == nodeID) {
+        engine_make_hydro_loops_dependencies(sched, t, t_force, t_limiter, ci,
+                                             with_cooling, with_limiter);
       }
-      if ((t->cj->nodeID == nodeID) &&
-          (t->ci->hydro.super != t->cj->hydro.super)) {
-        engine_make_hydro_loops_dependencies(sched, t, t_force, t_limiter,
-                                             t->cj, with_cooling, with_limiter);
+      if ((cj->nodeID == nodeID) && (ci->hydro.super != cj->hydro.super)) {
+        engine_make_hydro_loops_dependencies(sched, t, t_force, t_limiter, cj,
+                                             with_cooling, with_limiter);
       }
 #endif
 
-      if (t->ci->nodeID == nodeID) {
-        scheduler_addunlock(sched, t_force, t->ci->super->end_force);
+      if (ci->nodeID == nodeID) {
+        scheduler_addunlock(sched, t_force, ci->super->end_force);
 
         if (with_feedback) {
 
-          scheduler_addunlock(sched, t->ci->hydro.super->stars.drift,
+          scheduler_addunlock(sched, ci->hydro.super->stars.drift,
                               t_star_density);
-          scheduler_addunlock(sched, t->ci->hydro.super->stars.sorts_local,
+          scheduler_addunlock(sched, ci->hydro.super->stars.sorts_local,
                               t_star_density);
-          scheduler_addunlock(sched, t->ci->hydro.super->hydro.drift,
+          scheduler_addunlock(sched, ci->hydro.super->hydro.drift,
                               t_star_density);
-          scheduler_addunlock(sched, t->ci->hydro.super->hydro.sorts,
+          scheduler_addunlock(sched, ci->hydro.super->hydro.sorts,
                               t_star_density);
 
           if (with_star_formation) {
-            scheduler_addunlock(sched, t->ci->super->hydro.star_formation,
+            scheduler_addunlock(sched, ci->super->hydro.star_formation,
                                 t_star_density);
           } else {
-            scheduler_addunlock(sched, t->ci->super->kick2, t_star_density);
+            scheduler_addunlock(sched, ci->super->kick2, t_star_density);
           }
-          scheduler_addunlock(sched, t_star_density, t->ci->super->stars.ghost);
-          scheduler_addunlock(sched, t->ci->super->stars.ghost,
-                              t_star_feedback);
-          scheduler_addunlock(sched, t_star_feedback, t->ci->super->timestep);
+          scheduler_addunlock(sched, t_star_density, ci->super->stars.ghost);
+          scheduler_addunlock(sched, ci->super->stars.ghost, t_star_feedback);
+          scheduler_addunlock(sched, t_star_feedback, ci->super->timestep);
         }
 
         if (with_limiter) {
-          scheduler_addunlock(sched, t->ci->super->kick2, t_limiter);
-          scheduler_addunlock(sched, t_limiter, t->ci->super->timestep);
-          scheduler_addunlock(sched, t_limiter, t->ci->super->timestep_limiter);
+          scheduler_addunlock(sched, ci->super->kick2, t_limiter);
+          scheduler_addunlock(sched, t_limiter, ci->super->timestep);
+          scheduler_addunlock(sched, t_limiter, ci->super->timestep_limiter);
         }
       }
 
-      if ((t->cj->nodeID == nodeID) && (t->ci->super != t->cj->super)) {
+      if ((cj->nodeID == nodeID) && (ci->super != cj->super)) {
 
-        scheduler_addunlock(sched, t_force, t->cj->super->end_force);
+        scheduler_addunlock(sched, t_force, cj->super->end_force);
 
         if (with_feedback) {
 
-          scheduler_addunlock(sched, t->cj->hydro.super->stars.drift,
+          scheduler_addunlock(sched, cj->hydro.super->stars.drift,
                               t_star_density);
-          scheduler_addunlock(sched, t->cj->hydro.super->stars.sorts_local,
+          scheduler_addunlock(sched, cj->hydro.super->stars.sorts_local,
                               t_star_density);
-          scheduler_addunlock(sched, t->cj->hydro.super->hydro.drift,
+          scheduler_addunlock(sched, cj->hydro.super->hydro.drift,
                               t_star_density);
-          scheduler_addunlock(sched, t->cj->hydro.super->hydro.sorts,
+          scheduler_addunlock(sched, cj->hydro.super->hydro.sorts,
                               t_star_density);
 
           if (with_star_formation) {
-            scheduler_addunlock(sched, t->cj->super->hydro.star_formation,
+            scheduler_addunlock(sched, cj->super->hydro.star_formation,
                                 t_star_density);
           } else {
-            scheduler_addunlock(sched, t->cj->super->kick2, t_star_density);
+            scheduler_addunlock(sched, cj->super->kick2, t_star_density);
           }
-          scheduler_addunlock(sched, t_star_density, t->cj->super->stars.ghost);
-          scheduler_addunlock(sched, t->cj->super->stars.ghost,
-                              t_star_feedback);
-          scheduler_addunlock(sched, t_star_feedback, t->cj->super->timestep);
+          scheduler_addunlock(sched, t_star_density, cj->super->stars.ghost);
+          scheduler_addunlock(sched, cj->super->stars.ghost, t_star_feedback);
+          scheduler_addunlock(sched, t_star_feedback, cj->super->timestep);
         }
 
         if (with_limiter) {
-          scheduler_addunlock(sched, t->cj->super->kick2, t_limiter);
-          scheduler_addunlock(sched, t_limiter, t->cj->super->timestep);
-          scheduler_addunlock(sched, t_limiter, t->cj->super->timestep_limiter);
+          scheduler_addunlock(sched, cj->super->kick2, t_limiter);
+          scheduler_addunlock(sched, t_limiter, cj->super->timestep);
+          scheduler_addunlock(sched, t_limiter, cj->super->timestep_limiter);
         }
       }
     }
