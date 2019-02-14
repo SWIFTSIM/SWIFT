@@ -3512,6 +3512,8 @@ void space_first_init_sparts_mapper(void *restrict map_data, int count,
   const ptrdiff_t delta = sp - s->sparts;
 #endif
 
+  const float initial_h = s->initial_spart_h;
+
   const int with_feedback = (e->policy & engine_policy_feedback);
 
   const struct cosmology *cosmo = e->cosmology;
@@ -3523,6 +3525,11 @@ void space_first_init_sparts_mapper(void *restrict map_data, int count,
     sp[k].v[0] *= a_factor_vel;
     sp[k].v[1] *= a_factor_vel;
     sp[k].v[2] *= a_factor_vel;
+
+    /* Imposed smoothing length from parameter file */
+    if (initial_h != -1.f) {
+      sp[k].h = initial_h;
+    }
 
 #ifdef HYDRO_DIMENSION_2D
     sp[k].x[2] = 0.f;
@@ -3847,6 +3854,13 @@ void space_init(struct space *s, struct swift_params *params,
   if (scaling != 1.0 && !dry_run) {
     message("Re-scaling smoothing lengths by a factor %e", scaling);
     for (size_t k = 0; k < Npart; k++) parts[k].h *= scaling;
+  }
+
+  /* Read in imposed star smoothing length */
+  s->initial_spart_h = parser_get_opt_param_float(
+	params, "InitialConditions:stars_smoothing_length", -1.f);
+  if (s->initial_spart_h != -1.f) {
+    message("Imposing a star smoothing length of %e", s->initial_spart_h);
   }
 
   /* Apply shift */

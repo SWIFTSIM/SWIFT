@@ -224,6 +224,9 @@ struct space {
   /*! Sum of the norm of the velocity of all the #spart */
   float sum_spart_vel_norm;
 
+  /*! Initial value of the smoothing length read from the parameter file */
+  float initial_spart_h;
+
   /*! General-purpose lock for this space. */
   swift_lock_type lock;
 
