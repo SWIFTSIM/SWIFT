@@ -3118,7 +3118,7 @@ void *runner_main(void *data) {
           /* Reset the sort flags as our work here is done. */
           t->flags = 0;
           break;
-      case task_type_stars_sort:
+        case task_type_stars_sort:
           /* Cleanup only if any of the indices went stale. */
           runner_do_stars_sort(
               r, ci, t->flags,

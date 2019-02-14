@@ -695,14 +695,14 @@ void engine_make_hierarchical_tasks_common(struct engine *e, struct cell *c) {
 
         scheduler_addunlock(s, c->kick2, c->hydro.star_formation);
 
-	if (!with_feedback) {
-	  scheduler_addunlock(s, c->hydro.star_formation, c->timestep);
-	}
+        if (!with_feedback) {
+          scheduler_addunlock(s, c->hydro.star_formation, c->timestep);
+        }
 
       } else {
-	if (!with_feedback) {
-	  scheduler_addunlock(s, c->kick2, c->timestep);
-	}
+        if (!with_feedback) {
+          scheduler_addunlock(s, c->kick2, c->timestep);
+        }
       }
 
       scheduler_addunlock(s, c->timestep, c->kick1);
@@ -902,7 +902,7 @@ void engine_make_hierarchical_tasks_hydro(struct engine *e, struct cell *c) {
 
   struct scheduler *s = &e->sched;
   const int with_feedback = (e->policy & engine_policy_feedback);
-  
+
   /* Are we in a super-cell ? */
   if (c->hydro.super == c) {
 
@@ -911,11 +911,10 @@ void engine_make_hierarchical_tasks_hydro(struct engine *e, struct cell *c) {
         scheduler_addtask(s, task_type_sort, task_subtype_none, 0, 0, c, NULL);
 
     if (with_feedback) {
-      c->stars.sorts_local =
-        scheduler_addtask(s, task_type_stars_sort, task_subtype_none, 0, 0, c, NULL);
+      c->stars.sorts_local = scheduler_addtask(
+          s, task_type_stars_sort, task_subtype_none, 0, 0, c, NULL);
     }
-    
-    
+
     /* Local tasks only... */
     if (c->nodeID == e->nodeID) {
 
@@ -923,10 +922,10 @@ void engine_make_hierarchical_tasks_hydro(struct engine *e, struct cell *c) {
       c->hydro.drift = scheduler_addtask(s, task_type_drift_part,
                                          task_subtype_none, 0, 0, c, NULL);
       if (with_feedback) {
-	c->stars.drift = scheduler_addtask(s, task_type_drift_spart,
-					   task_subtype_none, 0, 0, c, NULL);
+        c->stars.drift = scheduler_addtask(s, task_type_drift_spart,
+                                           task_subtype_none, 0, 0, c, NULL);
       }
-      
+
       /* Generate the ghost tasks. */
       c->hydro.ghost_in =
           scheduler_addtask(s, task_type_ghost_in, task_subtype_none, 0,
@@ -936,9 +935,9 @@ void engine_make_hierarchical_tasks_hydro(struct engine *e, struct cell *c) {
                             /* implicit = */ 1, c, NULL);
       engine_add_ghosts(e, c, c->hydro.ghost_in, c->hydro.ghost_out);
 
-      c->stars.ghost = scheduler_addtask(s, task_type_stars_ghost, task_subtype_none, 0,
-					 0, c, NULL);
-      
+      c->stars.ghost = scheduler_addtask(s, task_type_stars_ghost,
+                                         task_subtype_none, 0, 0, c, NULL);
+
 #ifdef EXTRA_HYDRO_LOOP
       /* Generate the extra ghost task. */
       c->hydro.extra_ghost = scheduler_addtask(
@@ -968,7 +967,8 @@ void engine_make_hierarchical_tasks_hydro(struct engine *e, struct cell *c) {
  * @param e The #engine.
  * @param c The #cell.
  */
-/* void engine_make_hierarchical_tasks_stars(struct engine *e, struct cell *c) { */
+/* void engine_make_hierarchical_tasks_stars(struct engine *e, struct cell *c) {
+ */
 
 /*   struct scheduler *s = &e->sched; */
 
@@ -977,24 +977,30 @@ void engine_make_hierarchical_tasks_hydro(struct engine *e, struct cell *c) {
 /*     /\* Foreign tasks only *\/ */
 /*     if (c->nodeID != e->nodeID) { */
 /*       c->stars.sorts_foreign = scheduler_addtask( */
-/*           s, task_type_stars_sort_foreign, task_subtype_none, 0, 0, c, NULL); */
+/*           s, task_type_stars_sort_foreign, task_subtype_none, 0, 0, c, NULL);
+ */
 /*     } */
 
 /*     /\* Local tasks only... *\/ */
 /*     if (c->nodeID == e->nodeID) { */
 /*       c->stars.sorts_local = scheduler_addtask( */
-/*           s, task_type_stars_sort_local, task_subtype_none, 0, 0, c, NULL); */
+/*           s, task_type_stars_sort_local, task_subtype_none, 0, 0, c, NULL);
+ */
 
 /*       /\* Generate the ghost tasks. *\/ */
 /*       c->stars.ghost_in = */
-/*           scheduler_addtask(s, task_type_stars_ghost_in, task_subtype_none, 0, */
+/*           scheduler_addtask(s, task_type_stars_ghost_in, task_subtype_none,
+ * 0, */
 /*                             /\* implicit = *\/ 1, c, NULL); */
 /*       c->stars.ghost_out = */
-/*           scheduler_addtask(s, task_type_stars_ghost_out, task_subtype_none, 0, */
+/*           scheduler_addtask(s, task_type_stars_ghost_out, task_subtype_none,
+ * 0, */
 /*                             /\* implicit = *\/ 1, c, NULL); */
-/*       engine_add_stars_ghosts(e, c, c->stars.ghost_in, c->stars.ghost_out); */
+/*       engine_add_stars_ghosts(e, c, c->stars.ghost_in, c->stars.ghost_out);
+ */
 
-/*       /\* Need to compute the gas density before moving to the feedback *\/ */
+/*       /\* Need to compute the gas density before moving to the feedback *\/
+ */
 /*       scheduler_addunlock(s, c->hydro.super->hydro.ghost_out, */
 /*                           c->hydro.super->stars.ghost_out); */
 /*     } */
@@ -1575,9 +1581,12 @@ static inline void engine_make_hydro_loops_dependencies(
  * @param feedback The star feedback task to link.
  * @param c The cell.
  */
-/* static inline void engine_make_stars_loops_dependencies(struct scheduler *sched, */
-/*                                                         struct task *density, */
-/*                                                         struct task *feedback, */
+/* static inline void engine_make_stars_loops_dependencies(struct scheduler
+ * *sched, */
+/*                                                         struct task *density,
+ */
+/*                                                         struct task
+ * *feedback, */
 /*                                                         struct cell *c) { */
 /*   /\* density loop --> ghost --> feedback loop*\/ */
 /*   scheduler_addunlock(sched, density, c->hydro.super->stars.ghost_in); */
@@ -1624,7 +1633,7 @@ void engine_make_extra_hydroloop_tasks_mapper(void *map_data, int num_elements,
     else if (t->type == task_type_stars_sort && t->ci->nodeID == engine_rank) {
       scheduler_addunlock(sched, t->ci->hydro.super->stars.drift, t);
     }
-    
+
     /* Self-interaction? */
     else if (t->type == task_type_self && t->subtype == task_subtype_density) {
 
@@ -1637,36 +1646,39 @@ void engine_make_extra_hydroloop_tasks_mapper(void *map_data, int num_elements,
 
       /* the task for the time-step limiter */
       if (with_limiter) {
-        t_limiter = scheduler_addtask(sched, task_type_self, task_subtype_limiter, 0, 0, t->ci, NULL);
+        t_limiter = scheduler_addtask(sched, task_type_self,
+                                      task_subtype_limiter, 0, 0, t->ci, NULL);
       }
 
       /* The stellar feedback tasks */
       if (with_feedback) {
-	t_star_density = scheduler_addtask(sched, task_type_self,
-					   task_subtype_stars_density, 0, 0, t->ci, NULL);
-	t_star_feedback = scheduler_addtask(sched, task_type_self,
-					   task_subtype_stars_feedback, 0, 0, t->ci, NULL);
+        t_star_density =
+            scheduler_addtask(sched, task_type_self, task_subtype_stars_density,
+                              0, 0, t->ci, NULL);
+        t_star_feedback =
+            scheduler_addtask(sched, task_type_self,
+                              task_subtype_stars_feedback, 0, 0, t->ci, NULL);
       }
-      
+
       /* Link the tasks to the cells */
       engine_addlink(e, &t->ci->hydro.force, t_force);
       if (with_limiter) {
-	engine_addlink(e, &t->ci->hydro.limiter, t_limiter);
+        engine_addlink(e, &t->ci->hydro.limiter, t_limiter);
       }
-      if (with_feedback){
-	engine_addlink(e, &t->ci->stars.density, t_star_density);
-	engine_addlink(e, &t->ci->stars.feedback, t_star_feedback);
+      if (with_feedback) {
+        engine_addlink(e, &t->ci->stars.density, t_star_density);
+        engine_addlink(e, &t->ci->stars.feedback, t_star_feedback);
       }
-      
+
 #ifdef EXTRA_HYDRO_LOOP
 
       /* Same work for the additional hydro loop */
       t_gradient = scheduler_addtask(sched, task_type_self,
                                      task_subtype_gradient, 0, 0, t->ci, NULL);
-      
+
       /* Add the link between the new loops and the cell */
       engine_addlink(e, &t->ci->hydro.gradient, t_gradient);
-      
+
       /* Now, build all the dependencies for the hydro */
       engine_make_hydro_loops_dependencies(sched, t, t_gradient, t_force,
                                            t_limiter, t->ci, with_cooling,
@@ -1683,36 +1695,43 @@ void engine_make_extra_hydroloop_tasks_mapper(void *map_data, int num_elements,
 
       if (with_feedback) {
 
-	if (with_star_formation) {
-	  scheduler_addunlock(sched, t->ci->super->hydro.star_formation, t_star_density);
-	} else { 
-	  scheduler_addunlock(sched, t->ci->super->kick2, t_star_density);
-	}
-	scheduler_addunlock(sched, t_star_density, t->ci->super->stars.ghost);
-	scheduler_addunlock(sched, t->ci->super->stars.ghost, t_star_feedback);
-	scheduler_addunlock(sched, t_star_feedback, t->ci->super->timestep);
+        if (with_star_formation) {
+          scheduler_addunlock(sched, t->ci->super->hydro.star_formation,
+                              t_star_density);
+        } else {
+          scheduler_addunlock(sched, t->ci->super->kick2, t_star_density);
+        }
+        scheduler_addunlock(sched, t_star_density, t->ci->super->stars.ghost);
+        scheduler_addunlock(sched, t->ci->super->stars.ghost, t_star_feedback);
+        scheduler_addunlock(sched, t_star_feedback, t->ci->super->timestep);
       }
 
       if (with_limiter) {
         scheduler_addunlock(sched, t->ci->super->kick2, t_limiter);
         scheduler_addunlock(sched, t_limiter, t->ci->super->timestep);
-	scheduler_addunlock(sched, t_limiter, t->ci->super->timestep_limiter);
+        scheduler_addunlock(sched, t_limiter, t->ci->super->timestep_limiter);
       }
     }
 
     /* Otherwise, pair interaction? */
     else if (t->type == task_type_pair && t->subtype == task_subtype_density) {
 
-      /* Make all density tasks depend on the drift and the sorts. */
-      if (t->ci->nodeID == engine_rank)
+      /* Make all density tasks depend on the drift */
+      if (t->ci->nodeID == nodeID) {
         scheduler_addunlock(sched, t->ci->hydro.super->hydro.drift, t);
+      }
+      if ((t->cj->nodeID == nodeID) &&
+          (t->ci->hydro.super != t->cj->hydro.super)) {
+        scheduler_addunlock(sched, t->cj->hydro.super->hydro.drift, t);
+      }
+
+      /* Make all density tasks depend on the sorts */
       scheduler_addunlock(sched, t->ci->hydro.super->hydro.sorts, t);
       if (t->ci->hydro.super != t->cj->hydro.super) {
-        if (t->cj->nodeID == engine_rank)
-          scheduler_addunlock(sched, t->cj->hydro.super->hydro.drift, t);
         scheduler_addunlock(sched, t->cj->hydro.super->hydro.sorts, t);
       }
 
+      /* New task for the force */
       t_force = scheduler_addtask(sched, task_type_pair, task_subtype_force, 0,
                                   0, t->ci, t->cj);
 
@@ -1722,13 +1741,29 @@ void engine_make_extra_hydroloop_tasks_mapper(void *map_data, int num_elements,
                                       task_subtype_limiter, 0, 0, t->ci, t->cj);
       }
 
+      /* The stellar feedback tasks */
+      if (with_feedback) {
+        t_star_density =
+            scheduler_addtask(sched, task_type_pair, task_subtype_stars_density,
+                              0, 0, t->ci, t->cj);
+        t_star_feedback =
+            scheduler_addtask(sched, task_type_pair,
+                              task_subtype_stars_feedback, 0, 0, t->ci, t->cj);
+      }
+
       engine_addlink(e, &t->ci->hydro.force, t_force);
       engine_addlink(e, &t->cj->hydro.force, t_force);
       if (with_limiter) {
-	engine_addlink(e, &t->ci->hydro.limiter, t_limiter);
-	engine_addlink(e, &t->cj->hydro.limiter, t_limiter);
+        engine_addlink(e, &t->ci->hydro.limiter, t_limiter);
+        engine_addlink(e, &t->cj->hydro.limiter, t_limiter);
       }
-      
+      if (with_feedback) {
+        engine_addlink(e, &t->ci->stars.density, t_star_density);
+        engine_addlink(e, &t->cj->stars.density, t_star_density);
+        engine_addlink(e, &t->ci->stars.feedback, t_star_feedback);
+        engine_addlink(e, &t->cj->stars.feedback, t_star_feedback);
+      }
+
 #ifdef EXTRA_HYDRO_LOOP
 
       /* Start by constructing the task for the second and third hydro loop */
@@ -1746,9 +1781,10 @@ void engine_make_extra_hydroloop_tasks_mapper(void *map_data, int num_elements,
                                              t_limiter, t->ci, with_cooling,
                                              with_limiter);
       }
-      if ((t->cj->nodeID == nodeID) && (t->ci->super != t->cj->super)) {
+      if ((t->cj->nodeID == nodeID) &&
+          (t->ci->hydro.super != t->cj->hydro.super)) {
         engine_make_hydro_loops_dependencies(sched, t, t_gradient, t_force,
-                                             t_limiter, t->ci, with_cooling,
+                                             t_limiter, t->cj, with_cooling,
                                              with_limiter);
       }
 #else
@@ -1759,30 +1795,78 @@ void engine_make_extra_hydroloop_tasks_mapper(void *map_data, int num_elements,
         engine_make_hydro_loops_dependencies(sched, t, t_force, t_limiter,
                                              t->ci, with_cooling, with_limiter);
       }
-      if ((t->cj->nodeID == nodeID) && (t->ci->super != t->cj->super)) {
+      if ((t->cj->nodeID == nodeID) &&
+          (t->ci->hydro.super != t->cj->hydro.super)) {
         engine_make_hydro_loops_dependencies(sched, t, t_force, t_limiter,
-                                             t->ci, with_cooling, with_limiter);
+                                             t->cj, with_cooling, with_limiter);
       }
 #endif
 
-      
       if (t->ci->nodeID == nodeID) {
-	scheduler_addunlock(sched, t_force, t->ci->super->end_force);
+        scheduler_addunlock(sched, t_force, t->ci->super->end_force);
 
-	if (with_limiter) {
-	  scheduler_addunlock(sched, t->ci->super->kick2, t_limiter);
-	  scheduler_addunlock(sched, t_limiter, t->ci->super->timestep);
-	  scheduler_addunlock(sched, t_limiter, t->ci->super->timestep_limiter);
-	}
+        if (with_feedback) {
+
+          scheduler_addunlock(sched, t->ci->hydro.super->stars.drift,
+                              t_star_density);
+          scheduler_addunlock(sched, t->ci->hydro.super->stars.sorts_local,
+                              t_star_density);
+          scheduler_addunlock(sched, t->ci->hydro.super->hydro.drift,
+                              t_star_density);
+          scheduler_addunlock(sched, t->ci->hydro.super->hydro.sorts,
+                              t_star_density);
+
+          if (with_star_formation) {
+            scheduler_addunlock(sched, t->ci->super->hydro.star_formation,
+                                t_star_density);
+          } else {
+            scheduler_addunlock(sched, t->ci->super->kick2, t_star_density);
+          }
+          scheduler_addunlock(sched, t_star_density, t->ci->super->stars.ghost);
+          scheduler_addunlock(sched, t->ci->super->stars.ghost,
+                              t_star_feedback);
+          scheduler_addunlock(sched, t_star_feedback, t->ci->super->timestep);
+        }
+
+        if (with_limiter) {
+          scheduler_addunlock(sched, t->ci->super->kick2, t_limiter);
+          scheduler_addunlock(sched, t_limiter, t->ci->super->timestep);
+          scheduler_addunlock(sched, t_limiter, t->ci->super->timestep_limiter);
+        }
       }
-      
+
       if ((t->cj->nodeID == nodeID) && (t->ci->super != t->cj->super)) {
-	
-	if (with_limiter) {
-	  scheduler_addunlock(sched, t->cj->super->kick2, t_limiter);
-	  scheduler_addunlock(sched, t_limiter, t->cj->super->timestep);
-	  scheduler_addunlock(sched, t_limiter, t->cj->super->timestep_limiter);
-	}
+
+        scheduler_addunlock(sched, t_force, t->cj->super->end_force);
+
+        if (with_feedback) {
+
+          scheduler_addunlock(sched, t->cj->hydro.super->stars.drift,
+                              t_star_density);
+          scheduler_addunlock(sched, t->cj->hydro.super->stars.sorts_local,
+                              t_star_density);
+          scheduler_addunlock(sched, t->cj->hydro.super->hydro.drift,
+                              t_star_density);
+          scheduler_addunlock(sched, t->cj->hydro.super->hydro.sorts,
+                              t_star_density);
+
+          if (with_star_formation) {
+            scheduler_addunlock(sched, t->cj->super->hydro.star_formation,
+                                t_star_density);
+          } else {
+            scheduler_addunlock(sched, t->cj->super->kick2, t_star_density);
+          }
+          scheduler_addunlock(sched, t_star_density, t->cj->super->stars.ghost);
+          scheduler_addunlock(sched, t->cj->super->stars.ghost,
+                              t_star_feedback);
+          scheduler_addunlock(sched, t_star_feedback, t->cj->super->timestep);
+        }
+
+        if (with_limiter) {
+          scheduler_addunlock(sched, t->cj->super->kick2, t_limiter);
+          scheduler_addunlock(sched, t_limiter, t->cj->super->timestep);
+          scheduler_addunlock(sched, t_limiter, t->cj->super->timestep_limiter);
+        }
       }
     }
 
@@ -1805,25 +1889,26 @@ void engine_make_extra_hydroloop_tasks_mapper(void *map_data, int num_elements,
                               t->flags, 0, t->ci, NULL);
       }
 
-
       /* The stellar feedback tasks */
       if (with_feedback) {
-	t_star_density = scheduler_addtask(sched, task_type_sub_self,
-					   task_subtype_stars_density, t->flags, 0, t->ci, NULL);
-	t_star_feedback = scheduler_addtask(sched, task_type_sub_self,
-					   task_subtype_stars_feedback, t->flags, 0, t->ci, NULL);
+        t_star_density = scheduler_addtask(sched, task_type_sub_self,
+                                           task_subtype_stars_density, t->flags,
+                                           0, t->ci, NULL);
+        t_star_feedback = scheduler_addtask(sched, task_type_sub_self,
+                                            task_subtype_stars_feedback,
+                                            t->flags, 0, t->ci, NULL);
       }
-      
+
       /* Add the link between the new loop and the cell */
       engine_addlink(e, &t->ci->hydro.force, t_force);
       if (with_limiter) {
-	engine_addlink(e, &t->ci->hydro.limiter, t_limiter);
+        engine_addlink(e, &t->ci->hydro.limiter, t_limiter);
       }
-      if (with_feedback){
-	engine_addlink(e, &t->ci->stars.density, t_star_density);
-	engine_addlink(e, &t->ci->stars.feedback, t_star_feedback);
+      if (with_feedback) {
+        engine_addlink(e, &t->ci->stars.density, t_star_density);
+        engine_addlink(e, &t->ci->stars.feedback, t_star_feedback);
       }
-      
+
 #ifdef EXTRA_HYDRO_LOOP
 
       /* Start by constructing the task for the second and third hydro loop */
@@ -1837,14 +1922,14 @@ void engine_make_extra_hydroloop_tasks_mapper(void *map_data, int num_elements,
       /* Now, build all the dependencies for the hydro for the cells */
       /* that are local and are not descendant of the same super_hydro-cells */
       engine_make_hydro_loops_dependencies(sched, t, t_gradient, t_force,
-					   t_limiter, t->ci, with_cooling,
-					   with_limiter);
+                                           t_limiter, t->ci, with_cooling,
+                                           with_limiter);
 #else
 
       /* Now, build all the dependencies for the hydro for the cells */
       /* that are local and are not descendant of the same super_hydro-cells */
-      engine_make_hydro_loops_dependencies(sched, t, t_force, t_limiter,
-					   t->ci, with_cooling, with_limiter);
+      engine_make_hydro_loops_dependencies(sched, t, t_force, t_limiter, t->ci,
+                                           with_cooling, with_limiter);
 #endif
 
       /* Create the task dependencies */
@@ -1852,25 +1937,30 @@ void engine_make_extra_hydroloop_tasks_mapper(void *map_data, int num_elements,
 
       if (with_feedback) {
 
-	scheduler_addunlock(sched, t->ci->hydro.super->stars.drift, t_star_density);
-	scheduler_addunlock(sched, t->ci->hydro.super->stars.sorts_local, t_star_density);
-	scheduler_addunlock(sched, t->ci->hydro.super->hydro.drift, t_star_density);
-	scheduler_addunlock(sched, t->ci->hydro.super->hydro.sorts, t_star_density);
-	
-	if (with_star_formation) {
-	  scheduler_addunlock(sched, t->ci->super->hydro.star_formation, t_star_density);
-	} else { 
-	  scheduler_addunlock(sched, t->ci->super->kick2, t_star_density);
-	}
-	scheduler_addunlock(sched, t_star_density, t->ci->super->stars.ghost);
-	scheduler_addunlock(sched, t->ci->super->stars.ghost, t_star_feedback);
-	scheduler_addunlock(sched, t_star_feedback, t->ci->super->timestep);
+        scheduler_addunlock(sched, t->ci->hydro.super->stars.drift,
+                            t_star_density);
+        scheduler_addunlock(sched, t->ci->hydro.super->stars.sorts_local,
+                            t_star_density);
+        scheduler_addunlock(sched, t->ci->hydro.super->hydro.drift,
+                            t_star_density);
+        scheduler_addunlock(sched, t->ci->hydro.super->hydro.sorts,
+                            t_star_density);
+
+        if (with_star_formation) {
+          scheduler_addunlock(sched, t->ci->super->hydro.star_formation,
+                              t_star_density);
+        } else {
+          scheduler_addunlock(sched, t->ci->super->kick2, t_star_density);
+        }
+        scheduler_addunlock(sched, t_star_density, t->ci->super->stars.ghost);
+        scheduler_addunlock(sched, t->ci->super->stars.ghost, t_star_feedback);
+        scheduler_addunlock(sched, t_star_feedback, t->ci->super->timestep);
       }
-      
+
       if (with_limiter) {
-	scheduler_addunlock(sched, t->ci->super->kick2, t_limiter);
-	scheduler_addunlock(sched, t_limiter, t->ci->super->timestep);
-	scheduler_addunlock(sched, t_limiter, t->ci->super->timestep_limiter);
+        scheduler_addunlock(sched, t->ci->super->kick2, t_limiter);
+        scheduler_addunlock(sched, t_limiter, t->ci->super->timestep);
+        scheduler_addunlock(sched, t_limiter, t->ci->super->timestep_limiter);
       }
 
     }
@@ -2008,7 +2098,8 @@ void engine_make_extra_hydroloop_tasks_mapper(void *map_data, int num_elements,
  * With all the relevant tasks for a given cell available, we construct
  * all the dependencies for that cell.
  */
-/* void engine_make_extra_starsloop_tasks_mapper(void *map_data, int num_elements, */
+/* void engine_make_extra_starsloop_tasks_mapper(void *map_data, int
+ * num_elements, */
 /*                                               void *extra_data) { */
 
 /*   struct engine *e = (struct engine *)extra_data; */
@@ -2028,13 +2119,15 @@ void engine_make_extra_hydroloop_tasks_mapper(void *map_data, int num_elements,
 /*     else if (t->type == task_type_self && */
 /*              t->subtype == task_subtype_stars_density) { */
 
-/*       /\* Make the self-density tasks depend on the drift and gravity drift. *\/ */
+/*       /\* Make the self-density tasks depend on the drift and gravity drift.
+ * *\/ */
 /*       scheduler_addunlock(sched, t->ci->hydro.super->hydro.drift, t); */
 /*       scheduler_addunlock(sched, t->ci->super->grav.drift, t); */
 
 /*       /\* Start by constructing the task for the second stars loop *\/ */
 /*       struct task *t2 = */
-/*           scheduler_addtask(sched, task_type_self, task_subtype_stars_feedback, */
+/*           scheduler_addtask(sched, task_type_self,
+ * task_subtype_stars_feedback, */
 /*                             0, 0, t->ci, NULL); */
 
 /*       /\* Add the link between the new loop and the cell *\/ */
@@ -2051,7 +2144,8 @@ void engine_make_extra_hydroloop_tasks_mapper(void *map_data, int num_elements,
 /*     else if (t->type == task_type_pair && */
 /*              t->subtype == task_subtype_stars_density) { */
 
-/*       /\* Make all stars density tasks depend on the hydro drift and sorts, */
+/*       /\* Make all stars density tasks depend on the hydro drift and sorts,
+ */
 /*        * gravity drift and star sorts. *\/ */
 /*       if (t->ci->nodeID == engine_rank) */
 /*         scheduler_addunlock(sched, t->ci->hydro.super->hydro.drift, t); */
@@ -2059,7 +2153,8 @@ void engine_make_extra_hydroloop_tasks_mapper(void *map_data, int num_elements,
 
 /*       if (t->ci->nodeID == engine_rank) { */
 /*         scheduler_addunlock(sched, t->ci->super->grav.drift, t); */
-/*         scheduler_addunlock(sched, t->ci->hydro.super->stars.sorts_local, t); */
+/*         scheduler_addunlock(sched, t->ci->hydro.super->stars.sorts_local, t);
+ */
 /*       } */
 
 /*       if (t->ci->hydro.super != t->cj->hydro.super) { */
@@ -2070,7 +2165,8 @@ void engine_make_extra_hydroloop_tasks_mapper(void *map_data, int num_elements,
 
 /*       if (t->cj->nodeID == engine_rank) { */
 /*         if (t->ci->hydro.super != t->cj->hydro.super) { */
-/*           scheduler_addunlock(sched, t->cj->hydro.super->stars.sorts_local, t); */
+/*           scheduler_addunlock(sched, t->cj->hydro.super->stars.sorts_local,
+ * t); */
 /*         } */
 /*         if (t->ci->super != t->cj->super) { */
 /*           scheduler_addunlock(sched, t->cj->super->grav.drift, t); */
@@ -2079,16 +2175,19 @@ void engine_make_extra_hydroloop_tasks_mapper(void *map_data, int num_elements,
 
 /*       /\* Start by constructing the task for the second stars loop *\/ */
 /*       struct task *t2 = */
-/*           scheduler_addtask(sched, task_type_pair, task_subtype_stars_feedback, */
+/*           scheduler_addtask(sched, task_type_pair,
+ * task_subtype_stars_feedback, */
 /*                             0, 0, t->ci, t->cj); */
 
 /*       /\* Add sort before feedback loop *\/ */
 /*       if (t->ci->nodeID != engine_rank) { */
-/*         scheduler_addunlock(sched, t->ci->hydro.super->stars.sorts_foreign, t2); */
+/*         scheduler_addunlock(sched, t->ci->hydro.super->stars.sorts_foreign,
+ * t2); */
 /*       } */
 /*       if (t->ci->hydro.super != t->cj->hydro.super) { */
 /*         if (t->cj->nodeID != engine_rank) { */
-/*           scheduler_addunlock(sched, t->cj->hydro.super->stars.sorts_foreign, */
+/*           scheduler_addunlock(sched, t->cj->hydro.super->stars.sorts_foreign,
+ */
 /*                               t2); */
 /*         } */
 /*       } */
@@ -2116,16 +2215,19 @@ void engine_make_extra_hydroloop_tasks_mapper(void *map_data, int num_elements,
 /*     else if (t->type == task_type_sub_self && */
 /*              t->subtype == task_subtype_stars_density) { */
 
-/*       /\* Make all stars density tasks depend on the hydro drift and sorts, */
+/*       /\* Make all stars density tasks depend on the hydro drift and sorts,
+ */
 /*        * gravity drift and star sorts. *\/ */
 /*       scheduler_addunlock(sched, t->ci->hydro.super->hydro.drift, t); */
 /*       scheduler_addunlock(sched, t->ci->hydro.super->hydro.sorts, t); */
 /*       scheduler_addunlock(sched, t->ci->super->grav.drift, t); */
-/*       scheduler_addunlock(sched, t->ci->hydro.super->stars.sorts_local, t); */
+/*       scheduler_addunlock(sched, t->ci->hydro.super->stars.sorts_local, t);
+ */
 
 /*       /\* Start by constructing the task for the second stars loop *\/ */
 /*       struct task *t2 = scheduler_addtask(sched, task_type_sub_self, */
-/*                                           task_subtype_stars_feedback, t->flags, */
+/*                                           task_subtype_stars_feedback,
+ * t->flags, */
 /*                                           0, t->ci, t->cj); */
 
 /*       /\* Add the link between the new loop and the cell *\/ */
@@ -2142,7 +2244,8 @@ void engine_make_extra_hydroloop_tasks_mapper(void *map_data, int num_elements,
 /*     else if (t->type == task_type_sub_pair && */
 /*              t->subtype == task_subtype_stars_density) { */
 
-/*       /\* Make all stars density tasks depend on the hydro drift and sorts, */
+/*       /\* Make all stars density tasks depend on the hydro drift and sorts,
+ */
 /*        * gravity drift and star sorts. *\/ */
 /*       if (t->cj->nodeID == engine_rank) */
 /*         scheduler_addunlock(sched, t->cj->hydro.super->hydro.drift, t); */
@@ -2150,7 +2253,8 @@ void engine_make_extra_hydroloop_tasks_mapper(void *map_data, int num_elements,
 
 /*       if (t->cj->nodeID == engine_rank) { */
 /*         scheduler_addunlock(sched, t->cj->super->grav.drift, t); */
-/*         scheduler_addunlock(sched, t->cj->hydro.super->stars.sorts_local, t); */
+/*         scheduler_addunlock(sched, t->cj->hydro.super->stars.sorts_local, t);
+ */
 /*       } */
 
 /*       if (t->ci->hydro.super != t->cj->hydro.super) { */
@@ -2164,22 +2268,26 @@ void engine_make_extra_hydroloop_tasks_mapper(void *map_data, int num_elements,
 /*           scheduler_addunlock(sched, t->ci->super->grav.drift, t); */
 /*         } */
 /*         if (t->ci->hydro.super != t->cj->hydro.super) { */
-/*           scheduler_addunlock(sched, t->ci->hydro.super->stars.sorts_local, t); */
+/*           scheduler_addunlock(sched, t->ci->hydro.super->stars.sorts_local,
+ * t); */
 /*         } */
 /*       } */
 
 /*       /\* Start by constructing the task for the second stars loop *\/ */
 /*       struct task *t2 = scheduler_addtask(sched, task_type_sub_pair, */
-/*                                           task_subtype_stars_feedback, t->flags, */
+/*                                           task_subtype_stars_feedback,
+ * t->flags, */
 /*                                           0, t->ci, t->cj); */
 
 /*       /\* Add the sort before feedback *\/ */
 /*       if (t->cj->nodeID != engine_rank) { */
-/*         scheduler_addunlock(sched, t->cj->hydro.super->stars.sorts_foreign, t2); */
+/*         scheduler_addunlock(sched, t->cj->hydro.super->stars.sorts_foreign,
+ * t2); */
 /*       } */
 /*       if (t->ci->hydro.super != t->cj->hydro.super) { */
 /*         if (t->ci->nodeID != engine_rank) { */
-/*           scheduler_addunlock(sched, t->ci->hydro.super->stars.sorts_foreign, */
+/*           scheduler_addunlock(sched, t->ci->hydro.super->stars.sorts_foreign,
+ */
 /*                               t2); */
 /*         } */
 /*       } */
@@ -2229,7 +2337,8 @@ void engine_make_extra_hydroloop_tasks_mapper(void *map_data, int num_elements,
 /*   const int *cdim = s->cdim; */
 /*   struct cell *cells = s->cells_top; */
 
-/*   /\* Loop through the elements, which are just byte offsets from NULL. *\/ */
+/*   /\* Loop through the elements, which are just byte offsets from NULL. *\/
+ */
 /*   for (int ind = 0; ind < num_elements; ind++) { */
 
 /*     /\* Get the cell index. *\/ */
@@ -2246,7 +2355,8 @@ void engine_make_extra_hydroloop_tasks_mapper(void *map_data, int num_elements,
 
 /*     /\* If the cells is local build a self-interaction *\/ */
 /*     if (ci->nodeID == nodeID) { */
-/*       scheduler_addtask(sched, task_type_self, task_subtype_stars_density, 0, 0, */
+/*       scheduler_addtask(sched, task_type_self, task_subtype_stars_density, 0,
+ * 0, */
 /*                         ci, NULL); */
 /*     } */
 
@@ -2269,13 +2379,16 @@ void engine_make_extra_hydroloop_tasks_mapper(void *map_data, int num_elements,
 /*           struct cell *cj = &cells[cjd]; */
 
 /*           /\* Is that neighbour local and does it have particles ? *\/ */
-/*           if (cid >= cjd || (cj->stars.count == 0 && cj->hydro.count == 0) || */
+/*           if (cid >= cjd || (cj->stars.count == 0 && cj->hydro.count == 0) ||
+ */
 /*               (ci->nodeID != nodeID && cj->nodeID != nodeID)) */
 /*             continue; */
 
 /*           /\* Construct the pair task *\/ */
-/*           const int sid = sortlistID[(kk + 1) + 3 * ((jj + 1) + 3 * (ii + 1))]; */
-/*           scheduler_addtask(sched, task_type_pair, task_subtype_stars_density, */
+/*           const int sid = sortlistID[(kk + 1) + 3 * ((jj + 1) + 3 * (ii +
+ * 1))]; */
+/*           scheduler_addtask(sched, task_type_pair,
+ * task_subtype_stars_density, */
 /*                             sid, 0, ci, cj); */
 
 /* #ifdef SWIFT_DEBUG_CHECKS */
@@ -2287,7 +2400,8 @@ void engine_make_extra_hydroloop_tasks_mapper(void *map_data, int num_elements,
 /*             /\* Find the proxy for this node *\/ */
 /*             const int proxy_id = e->proxy_ind[cj->nodeID]; */
 /*             if (proxy_id < 0) */
-/*               error("No proxy exists for that foreign node %d!", cj->nodeID); */
+/*               error("No proxy exists for that foreign node %d!", cj->nodeID);
+ */
 
 /*             const struct proxy *p = &e->proxies[proxy_id]; */
 
@@ -2297,7 +2411,8 @@ void engine_make_extra_hydroloop_tasks_mapper(void *map_data, int num_elements,
 /*               if (p->cells_in[n] == cj) break; */
 /*             if (n == p->nr_cells_in) */
 /*               error( */
-/*                   "Cell %d not found in the proxy but trying to construct " */
+/*                   "Cell %d not found in the proxy but trying to construct "
+ */
 /*                   "stars task!", */
 /*                   cjd); */
 /*           } else if (cj->nodeID == nodeID && ci->nodeID != engine_rank) { */
@@ -2305,7 +2420,8 @@ void engine_make_extra_hydroloop_tasks_mapper(void *map_data, int num_elements,
 /*             /\* Find the proxy for this node *\/ */
 /*             const int proxy_id = e->proxy_ind[ci->nodeID]; */
 /*             if (proxy_id < 0) */
-/*               error("No proxy exists for that foreign node %d!", ci->nodeID); */
+/*               error("No proxy exists for that foreign node %d!", ci->nodeID);
+ */
 
 /*             const struct proxy *p = &e->proxies[proxy_id]; */
 
@@ -2315,7 +2431,8 @@ void engine_make_extra_hydroloop_tasks_mapper(void *map_data, int num_elements,
 /*               if (p->cells_in[n] == ci) break; */
 /*             if (n == p->nr_cells_in) */
 /*               error( */
-/*                   "Cell %d not found in the proxy but trying to construct " */
+/*                   "Cell %d not found in the proxy but trying to construct "
+ */
 /*                   "stars task!", */
 /*                   cid); */
 /*           } */
@@ -2554,7 +2671,8 @@ void engine_maketasks(struct engine *e) {
 
   /* Construct the stars hydro loop over neighbours */
   /* if (e->policy & engine_policy_feedback) { */
-  /*   threadpool_map(&e->threadpool, engine_make_starsloop_tasks_mapper, NULL, */
+  /*   threadpool_map(&e->threadpool, engine_make_starsloop_tasks_mapper, NULL,
+   */
   /*                  s->nr_cells, 1, 0, e); */
   /* } */
 
@@ -2664,8 +2782,10 @@ void engine_maketasks(struct engine *e) {
      task. Each stars feedback task depends on the stars ghosts and unlocks the
      kick task of its super-cell. */
   if (e->policy & engine_policy_stars) {
-    /* threadpool_map(&e->threadpool, engine_make_extra_starsloop_tasks_mapper, */
-    /*                sched->tasks, sched->nr_tasks, sizeof(struct task), 0, e); */
+    /* threadpool_map(&e->threadpool, engine_make_extra_starsloop_tasks_mapper,
+     */
+    /*                sched->tasks, sched->nr_tasks, sizeof(struct task), 0, e);
+     */
   }
 
   if (e->verbose)

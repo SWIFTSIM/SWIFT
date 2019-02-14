@@ -61,7 +61,7 @@ const char *taskID_names[task_type_count] = {"none",
                                              "ghost_out",
                                              "extra_ghost",
                                              "drift_part",
-					     "drift_spart",
+                                             "drift_spart",
                                              "drift_gpart",
                                              "drift_gpart_out",
                                              "end_force",
@@ -268,7 +268,7 @@ float task_overlap(const struct task *restrict ta,
 
     // MATTHIEU: This should not be necessary
     if (size_union == 0) return 0.f;
-    
+
     /* Compute the intersection of the cell data. */
     const size_t size_intersect = task_cell_overlap_part(ta->ci, tb->ci) +
                                   task_cell_overlap_part(ta->ci, tb->cj) +

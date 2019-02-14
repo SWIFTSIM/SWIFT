@@ -3859,7 +3859,7 @@ void space_init(struct space *s, struct swift_params *params,
 
   /* Read in imposed star smoothing length */
   s->initial_spart_h = parser_get_opt_param_float(
-	params, "InitialConditions:stars_smoothing_length", -1.f);
+      params, "InitialConditions:stars_smoothing_length", -1.f);
   if (s->initial_spart_h != -1.f) {
     message("Imposing a star smoothing length of %e", s->initial_spart_h);
   }

@@ -485,9 +485,9 @@ struct cell {
     struct task *sorts_local;
     struct task *sorts_foreign;
 
-    /*! The drift task for sparts */    
+    /*! The drift task for sparts */
     struct task *drift;
-    
+
     /*! Max smoothing length in this cell. */
     double h_max;
 
