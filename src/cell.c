@@ -1907,7 +1907,7 @@ void cell_activate_drift_spart(struct cell *c, struct scheduler *s) {
  */
 void cell_activate_limiter(struct cell *c, struct scheduler *s) {
 
-  /* If this cell is already marked for drift, quit early. */
+  /* If this cell is already marked for limiting, quit early. */
   if (c->hydro.do_limiter) return;
 
   /* Mark this cell for limiting. */
