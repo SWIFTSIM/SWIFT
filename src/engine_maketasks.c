@@ -1713,25 +1713,31 @@ void engine_make_extra_hydroloop_tasks_mapper(void *map_data, int num_elements,
         scheduler_addunlock(sched, t->cj->hydro.super->hydro.sorts, t);
       }
 
-#ifdef EXTRA_HYDRO_LOOP
-      /* Start by constructing the task for the second and third hydro loop */
-      t_gradient = scheduler_addtask(sched, task_type_pair,
-                                     task_subtype_gradient, 0, 0, t->ci, t->cj);
       t_force = scheduler_addtask(sched, task_type_pair, task_subtype_force, 0,
                                   0, t->ci, t->cj);
 
       /* and the task for the time-step limiter */
-      if (with_limiter)
+      if (with_limiter) {
         t_limiter = scheduler_addtask(sched, task_type_pair,
                                       task_subtype_limiter, 0, 0, t->ci, t->cj);
+      }
+
+      engine_addlink(e, &t->ci->hydro.force, t_force);
+      engine_addlink(e, &t->cj->hydro.force, t_force);
+      if (with_limiter) {
+	engine_addlink(e, &t->ci->hydro.limiter, t_limiter);
+	engine_addlink(e, &t->cj->hydro.limiter, t_limiter);
+      }
+      
+#ifdef EXTRA_HYDRO_LOOP
+
+      /* Start by constructing the task for the second and third hydro loop */
+      t_gradient = scheduler_addtask(sched, task_type_pair,
+                                     task_subtype_gradient, 0, 0, t->ci, t->cj);
 
       /* Add the link between the new loop and both cells */
       engine_addlink(e, &t->ci->hydro.gradient, t_gradient);
       engine_addlink(e, &t->cj->hydro.gradient, t_gradient);
-      engine_addlink(e, &t->ci->hydro.force, t_force);
-      engine_addlink(e, &t->cj->hydro.force, t_force);
-      if (with_limiter) engine_addlink(e, &t->ci->hydro.limiter, t_limiter);
-      if (with_limiter) engine_addlink(e, &t->cj->hydro.limiter, t_limiter);
 
       /* Now, build all the dependencies for the hydro for the cells */
       /* that are local and are not descendant of the same super_hydro-cells */
@@ -1739,83 +1745,45 @@ void engine_make_extra_hydroloop_tasks_mapper(void *map_data, int num_elements,
         engine_make_hydro_loops_dependencies(sched, t, t_gradient, t_force,
                                              t_limiter, t->ci, with_cooling,
                                              with_limiter);
-        scheduler_addunlock(sched, t_force, t->ci->super->end_force);
-        if (with_limiter)
-          scheduler_addunlock(sched, t->ci->super->kick2, t_limiter);
-        if (with_limiter)
-          scheduler_addunlock(sched, t_limiter, t->ci->super->timestep);
-        if (with_limiter)
-          scheduler_addunlock(sched, t_limiter, t->ci->super->timestep_limiter);
       }
-      if (t->cj->nodeID == nodeID) {
-        if (t->ci->hydro.super != t->cj->hydro.super) {
-          engine_make_hydro_loops_dependencies(sched, t, t_gradient, t_force,
-                                               t_limiter, t->cj, with_cooling,
-                                               with_limiter);
-        }
-
-        if (t->ci->super != t->cj->super) {
-          scheduler_addunlock(sched, t_force, t->cj->super->end_force);
-          if (with_limiter)
-            scheduler_addunlock(sched, t->cj->super->kick2, t_limiter);
-          if (with_limiter)
-            scheduler_addunlock(sched, t_limiter, t->cj->super->timestep);
-          if (with_limiter)
-            scheduler_addunlock(sched, t_limiter,
-                                t->cj->super->timestep_limiter);
-        }
+      if ((t->cj->nodeID == nodeID) && (t->ci->super != t->cj->super)) {
+        engine_make_hydro_loops_dependencies(sched, t, t_gradient, t_force,
+                                             t_limiter, t->ci, with_cooling,
+                                             with_limiter);
       }
-
 #else
-
-      /* Start by constructing the task for the second hydro loop */
-      t_force = scheduler_addtask(sched, task_type_pair, task_subtype_force, 0,
-                                  0, t->ci, t->cj);
-
-      /* and the task for the time-step limiter */
-      if (with_limiter)
-        t_limiter = scheduler_addtask(sched, task_type_pair,
-                                      task_subtype_limiter, 0, 0, t->ci, t->cj);
-
-      /* Add the link between the new loop and both cells */
-      engine_addlink(e, &t->ci->hydro.force, t_force);
-      engine_addlink(e, &t->cj->hydro.force, t_force);
-      if (with_limiter) engine_addlink(e, &t->ci->hydro.limiter, t_limiter);
-      if (with_limiter) engine_addlink(e, &t->cj->hydro.limiter, t_limiter);
 
       /* Now, build all the dependencies for the hydro for the cells */
       /* that are local and are not descendant of the same super_hydro-cells */
       if (t->ci->nodeID == nodeID) {
         engine_make_hydro_loops_dependencies(sched, t, t_force, t_limiter,
                                              t->ci, with_cooling, with_limiter);
-        scheduler_addunlock(sched, t_force, t->ci->super->end_force);
-        if (with_limiter)
-          scheduler_addunlock(sched, t->ci->super->kick2, t_limiter);
-        if (with_limiter)
-          scheduler_addunlock(sched, t_limiter, t->ci->super->timestep);
-        if (with_limiter)
-          scheduler_addunlock(sched, t_limiter, t->ci->super->timestep_limiter);
       }
-      if (t->cj->nodeID == nodeID) {
-        if (t->ci->hydro.super != t->cj->hydro.super) {
-          engine_make_hydro_loops_dependencies(
-              sched, t, t_force, t_limiter, t->cj, with_cooling, with_limiter);
-        }
-
-        if (t->ci->super != t->cj->super) {
-          scheduler_addunlock(sched, t_force, t->cj->super->end_force);
-          if (with_limiter)
-            scheduler_addunlock(sched, t->cj->super->kick2, t_limiter);
-          if (with_limiter)
-            scheduler_addunlock(sched, t_limiter, t->cj->super->timestep);
-          if (with_limiter)
-            scheduler_addunlock(sched, t_limiter,
-                                t->cj->super->timestep_limiter);
-        }
+      if ((t->cj->nodeID == nodeID) && (t->ci->super != t->cj->super)) {
+        engine_make_hydro_loops_dependencies(sched, t, t_force, t_limiter,
+                                             t->ci, with_cooling, with_limiter);
       }
-
 #endif
 
+      
+      if (t->ci->nodeID == nodeID) {
+	scheduler_addunlock(sched, t_force, t->ci->super->end_force);
+
+	if (with_limiter) {
+	  scheduler_addunlock(sched, t->ci->super->kick2, t_limiter);
+	  scheduler_addunlock(sched, t_limiter, t->ci->super->timestep);
+	  scheduler_addunlock(sched, t_limiter, t->ci->super->timestep_limiter);
+	}
+      }
+      
+      if ((t->cj->nodeID == nodeID) && (t->ci->super != t->cj->super)) {
+	
+	if (with_limiter) {
+	  scheduler_addunlock(sched, t->cj->super->kick2, t_limiter);
+	  scheduler_addunlock(sched, t_limiter, t->cj->super->timestep);
+	  scheduler_addunlock(sched, t_limiter, t->cj->super->timestep_limiter);
+	}
+      }
     }
 
     /* Otherwise, sub-self interaction? */
