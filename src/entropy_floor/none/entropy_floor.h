@@ -25,6 +25,10 @@
  * floors.
  */
 
+struct cosmology;
+struct hydro_props;
+struct part;
+
 /**
  * @brief Properties of the entropy floor.
  *

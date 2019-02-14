@@ -21,6 +21,7 @@
 
 #include "adiabatic_index.h"
 #include "cosmology.h"
+#include "hydro.h"
 #include "hydro_properties.h"
 #include "parser.h"
 #include "units.h"
@@ -103,11 +104,13 @@ static INLINE float entropy_floor(
   /* Critical density at this redshift.
    * Recall that this is 0 in a non-cosmological run */
   const float rho_crit = cosmo->critical_density;
+  const float rho_crit_baryon = cosmo->Omega_b * rho_crit;
 
-  float pressure = 0.;
+  /* Physical pressure */
+  float pressure = 0.f;
 
   /* Are we in the regime of the Jeans equation of state? */
-  if ((rho >= rho_crit * props->Jeans_over_density_threshold) &&
+  if ((rho >= rho_crit_baryon * props->Jeans_over_density_threshold) &&
       (rho >= props->Jeans_density_threshold)) {
 
     const float pressure_Jeans = props->Jeans_pressure_norm *
@@ -118,7 +121,7 @@ static INLINE float entropy_floor(
   }
 
   /* Are we in the regime of the Cool equation of state? */
-  if ((rho >= rho_crit * props->Cool_over_density_threshold) &&
+  if ((rho >= rho_crit_baryon * props->Cool_over_density_threshold) &&
       (rho >= props->Cool_density_threshold)) {
 
     const float pressure_Cool = props->Cool_pressure_norm *
@@ -168,10 +171,21 @@ static INLINE void entropy_floor_init(struct entropy_floor_properties *props,
   props->Cool_gamma_effective =
       parser_get_param_float(params, "EAGLEEntropyFloor:Cool_gamma_effective");
 
+  /* Cross-check that the input makes sense */
+  if (props->Cool_density_threshold_H_p_cm3 >=
+      props->Jeans_density_threshold_H_p_cm3) {
+    error(
+        "Invalid values for the entrop floor density thresholds. The 'Jeans' "
+        "threshold (%e cm^-3) should be at a higher density than the 'Cool' "
+        "threshold (%e cm^-3)",
+        props->Jeans_density_threshold_H_p_cm3,
+        props->Cool_density_threshold_H_p_cm3);
+  }
+
   /* Initial Hydrogen abundance (mass fraction) */
   const double X_H = hydro_props->hydrogen_mass_fraction;
 
-  /* Now convert to internal units */
+  /* Now convert to internal units assuming primodial Hydrogen abundance */
   props->Jeans_temperature_norm =
       props->Jeans_temperature_norm_K /
       units_cgs_conversion_factor(us, UNIT_CONV_TEMPERATURE);
@@ -197,13 +211,13 @@ static INLINE void entropy_floor_init(struct entropy_floor_properties *props,
 
   /* P_norm = (k_B * T) / (m_p * mu) * rho_threshold */
   props->Jeans_pressure_norm =
-      (phys_const->const_boltzmann_k * props->Jeans_temperature_norm) /
-      (phys_const->const_proton_mass * mean_molecular_weight) *
+      ((phys_const->const_boltzmann_k * props->Jeans_temperature_norm) /
+       (phys_const->const_proton_mass * mean_molecular_weight)) *
       props->Jeans_density_threshold;
 
   props->Cool_pressure_norm =
-      (phys_const->const_boltzmann_k * props->Cool_temperature_norm) /
-      (phys_const->const_proton_mass * mean_molecular_weight) *
+      ((phys_const->const_boltzmann_k * props->Cool_temperature_norm) /
+       (phys_const->const_proton_mass * mean_molecular_weight)) *
       props->Cool_density_threshold;
 }
 

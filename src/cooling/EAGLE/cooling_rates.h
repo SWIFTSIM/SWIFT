@@ -260,6 +260,14 @@ __attribute__((always_inline)) INLINE double eagle_convert_u_to_temp(
         (exp(M_LN10 * log_10_T_high) - exp(M_LN10 * log_10_T_low)) / delta_u;
   }
 
+  /* Special case for temperatures below the start of the table */
+  if (u_index == 0 && d_u == 0.f) {
+
+    /* The temperature is multiplied by u / 10^T[0]
+     * where T[0] is the first entry in the table */
+    log_10_T += log_10_u_cgs - cooling->Temp[0];
+  }
+
   return log_10_T;
 }
 

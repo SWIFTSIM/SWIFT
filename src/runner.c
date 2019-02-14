@@ -443,6 +443,7 @@ void runner_do_cooling(struct runner *r, struct cell *c, int timer) {
   const struct phys_const *constants = e->physical_constants;
   const struct unit_system *us = e->internal_units;
   const struct hydro_props *hydro_props = e->hydro_properties;
+  const struct entropy_floor_properties *entropy_floor_props = e->entropy_floor;
   const double time_base = e->time_base;
   const integertime_t ti_current = e->ti_current;
   struct part *restrict parts = c->hydro.parts;
@@ -486,8 +487,9 @@ void runner_do_cooling(struct runner *r, struct cell *c, int timer) {
         }
 
         /* Let's cool ! */
-        cooling_cool_part(constants, us, cosmo, hydro_props, cooling_func, p,
-                          xp, dt_cool, dt_therm);
+        cooling_cool_part(constants, us, cosmo, hydro_props,
+                          entropy_floor_props, cooling_func, p, xp, dt_cool,
+                          dt_therm);
       }
     }
   }
@@ -1262,6 +1264,7 @@ void runner_do_ghost(struct runner *r, struct cell *c, int timer) {
   const struct cosmology *cosmo = e->cosmology;
   const struct chemistry_global_data *chemistry = e->chemistry;
   const float hydro_h_max = e->hydro_properties->h_max;
+  const float hydro_h_min = e->hydro_properties->h_min;
   const float eps = e->hydro_properties->h_tolerance;
   const float hydro_eta_dim =
       pow_dimension(e->hydro_properties->eta_neighbours);
@@ -1326,6 +1329,7 @@ void runner_do_ghost(struct runner *r, struct cell *c, int timer) {
         const float h_old = p->h;
         const float h_old_dim = pow_dimension(h_old);
         const float h_old_dim_minus_one = pow_dimension_minus_one(h_old);
+
         float h_new;
         int has_no_neighbours = 0;
 
@@ -1362,11 +1366,13 @@ void runner_do_ghost(struct runner *r, struct cell *c, int timer) {
 #endif
 
           /* Skip if h is already h_max and we don't have enough neighbours */
-          if ((p->h >= hydro_h_max) && (f < 0.f)) {
+          if (((p->h >= hydro_h_max) && (f < 0.f)) ||
+              ((p->h <= hydro_h_min) && (f > 0.f))) {
 
           /* We have a particle whose smoothing length is already set (wants
-           * to be larger but has already hit the maximum). So, just tidy up
-           * as if the smoothing length had converged correctly  */
+           * to be larger but has already hit the maximum OR wants to be smaller
+           * but has already reached the minimum). So, just tidy up as if the
+           * smoothing length had converged correctly  */
 
 #ifdef EXTRA_HYDRO_LOOP
 
@@ -1468,8 +1474,8 @@ void runner_do_ghost(struct runner *r, struct cell *c, int timer) {
             p->h = h_new;
           }
 
-          /* If below the absolute maximum, try again */
-          if (p->h < hydro_h_max) {
+          /* If within the allowed range, try again */
+          if (p->h < hydro_h_max && p->h > hydro_h_min) {
 
             /* Flag for another round of fun */
             pid[redo] = pid[i];
@@ -1485,7 +1491,12 @@ void runner_do_ghost(struct runner *r, struct cell *c, int timer) {
             /* Off we go ! */
             continue;
 
-          } else {
+          } else if (p->h <= hydro_h_min) {
+
+            /* Ok, this particle is a lost cause... */
+            p->h = hydro_h_min;
+
+          } else if (p->h >= hydro_h_max) {
 
             /* Ok, this particle is a lost cause... */
             p->h = hydro_h_max;

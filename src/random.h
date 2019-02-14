@@ -66,7 +66,7 @@ INLINE static double random_unit_interval(const long long int id,
      with either the current integer time or the particle IDs.
      The calculation overflows on purpose.  */
   unsigned int seed = ((937LL * id + 1109LL) % 2147987LL +
-                       (ti_current - 1) % 1514917LL + (long long)type) %
+                       (ti_current - 1LL) % 1514917LL + (long long)type) %
                       seed_range;
 
   /* Generate a random number between 0 and 1. */

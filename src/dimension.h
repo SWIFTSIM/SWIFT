@@ -316,7 +316,7 @@ __attribute__((always_inline)) INLINE static vector pow_dimension_vec(
 #else
 
   error("The dimension is not defined !");
-  return vec_set(0.f);
+  return vec_set1(0.f);
 
 #endif
 }
@@ -346,7 +346,7 @@ __attribute__((always_inline)) INLINE static vector pow_dimension_plus_one_vec(
 #else
 
   error("The dimension is not defined !");
-  return vec_set(0.f);
+  return vec_set1(0.f);
 
 #endif
 }

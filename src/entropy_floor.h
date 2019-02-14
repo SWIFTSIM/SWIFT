@@ -27,6 +27,10 @@
 /* Config parameters. */
 #include "../config.h"
 
+#include "common_io.h"
+#include "error.h"
+#include "inline.h"
+
 /* Import the right entropy floor definition */
 #if defined(ENTROPY_FLOOR_NONE)
 #include "./entropy_floor/none/entropy_floor.h"
