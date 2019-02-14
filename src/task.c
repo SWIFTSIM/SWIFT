@@ -81,8 +81,7 @@ const char *taskID_names[task_type_count] = {"none",
                                              "stars_ghost_in",
                                              "stars_ghost",
                                              "stars_ghost_out",
-                                             "stars_sort_local",
-                                             "stars_sort_foreign"};
+                                             "stars_sort"};
 
 /* Sub-task type names. */
 const char *subtaskID_names[task_subtype_count] = {
@@ -152,8 +151,7 @@ __attribute__((always_inline)) INLINE static enum task_actions task_acts_on(
       return task_action_all;
 
     case task_type_stars_ghost:
-    case task_type_stars_sort_local:
-    case task_type_stars_sort_foreign:
+    case task_type_stars_sort:
       return task_action_spart;
       break;
 
@@ -355,8 +353,7 @@ void task_unlock(struct task *t) {
       cell_gunlocktree(ci);
       break;
 
-    case task_type_stars_sort_local:
-    case task_type_stars_sort_foreign:
+    case task_type_stars_sort:
       cell_sunlocktree(ci);
       break;
 
@@ -479,8 +476,7 @@ int task_lock(struct task *t) {
       if (cell_locktree(ci) != 0) return 0;
       break;
 
-    case task_type_stars_sort_local:
-    case task_type_stars_sort_foreign:
+    case task_type_stars_sort:
       if (ci->stars.hold) return 0;
       if (cell_slocktree(ci) != 0) return 0;
       break;
