@@ -185,8 +185,9 @@ runner_iact_nonsym_stars_feedback(float r2, const float *dx, float hi, float hj,
   if (stars_properties->const_feedback_energy_testing) {
     if (stars_properties->continuous_heating) {
       // We're doing ONLY continuous heating 
-      d_energy += si->to_distribute.num_SNIa * stars_properties->total_energy_SNe * omega_frac * si->mass_init;
+      d_energy += si->to_distribute.num_SNIa * stars_properties->total_energy_SNe * omega_frac;
       du = d_energy/hydro_get_mass(pj);
+      if (du > 0) message("id %llu du %.5e initial u %.5e", pj->id, du, hydro_get_physical_internal_energy(pj,xp,cosmo));
       thermal_feedback(du,pj,xp,cosmo);
     } else {
       // We're doing stochastic heating
