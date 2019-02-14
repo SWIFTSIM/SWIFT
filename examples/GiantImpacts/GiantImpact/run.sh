@@ -14,7 +14,7 @@ then
     echo "Fetching equations of state tables for the Uranus impact example..."
     ./get_eos_tables.sh
 fi
-cd ../GiantImpactUranus
+cd ../GiantImpact
 
 # Run SWIFT
 ../../swift -s -G -t 8 uranus_1e6.yml 2>&1 | tee output.log
