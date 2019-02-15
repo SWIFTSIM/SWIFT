@@ -157,7 +157,7 @@ void engine_marktasks_mapper(void *map_data, int num_elements,
       /* Local pointer. */
       struct cell *ci = t->ci;
 
-      if (ci->nodeID != engine_rank) error("Non-local self task found");
+      if (ci->nodeID != nodeID) error("Non-local self task found");
 
       /* Activate the hydro drift */
       if (t_type == task_type_self && t_subtype == task_subtype_density) {
@@ -197,7 +197,6 @@ void engine_marktasks_mapper(void *map_data, int num_elements,
         if (cell_is_active_hydro(ci, e)) scheduler_activate(s, t);
       }
 
-#ifdef EXTRA_HYDRO_LOOP
       else if (t_type == task_type_self && t_subtype == task_subtype_gradient) {
         if (cell_is_active_hydro(ci, e)) scheduler_activate(s, t);
       }
@@ -206,7 +205,6 @@ void engine_marktasks_mapper(void *map_data, int num_elements,
                t_subtype == task_subtype_gradient) {
         if (cell_is_active_hydro(ci, e)) scheduler_activate(s, t);
       }
-#endif
 
       /* Activate the star density */
       else if (t_type == task_type_self &&
@@ -227,7 +225,6 @@ void engine_marktasks_mapper(void *map_data, int num_elements,
         }
       }
 
-      /* Activate the star feedback */
       else if (t_type == task_type_self &&
                t_subtype == task_subtype_stars_feedback) {
         if (cell_is_active_stars(ci, e)) {
@@ -235,13 +232,9 @@ void engine_marktasks_mapper(void *map_data, int num_elements,
         }
       }
 
-      /* Store current values of dx_max and h_max. */
       else if (t_type == task_type_sub_self &&
                t_subtype == task_subtype_stars_feedback) {
-        if (cell_is_active_stars(ci, e)) {
-          scheduler_activate(s, t);
-          cell_activate_subcell_stars_tasks(ci, NULL, s);
-        }
+        if (cell_is_active_stars(ci, e))  scheduler_activate(s, t);
       }
 
       /* Activate the gravity drift */
@@ -332,8 +325,9 @@ void engine_marktasks_mapper(void *map_data, int num_elements,
 
       /* Stars density and feedback */
       if ((t_subtype == task_subtype_stars_density ||
-           t_subtype == task_subtype_stars_feedback) &&
-          (ci_active_stars || cj_active_stars)) {
+	  t_subtype == task_subtype_stars_feedback) &&
+          ((ci_active_stars && ci_nodeID == nodeID) ||
+	   (cj_active_stars && cj_nodeID == nodeID))) {  // MATTHIEU: check MPI condition here
 
         scheduler_activate(s, t);
 
@@ -351,12 +345,12 @@ void engine_marktasks_mapper(void *map_data, int num_elements,
 
             /* Activate the hydro drift tasks. */
             if (ci_nodeID == nodeID) cell_activate_drift_spart(ci, s);
-
             if (cj_nodeID == nodeID) cell_activate_drift_part(cj, s);
 
+	    message("do ci flags=%lld", t->flags);
+	    
             /* Check the sorts and activate them if needed. */
             cell_activate_hydro_sorts(cj, t->flags, s);
-
             cell_activate_stars_sorts(ci, t->flags, s);
           }
 
@@ -371,9 +365,11 @@ void engine_marktasks_mapper(void *map_data, int num_elements,
 
             /* Activate the hydro drift tasks. */
             if (ci_nodeID == nodeID) cell_activate_drift_part(ci, s);
-
             if (cj_nodeID == nodeID) cell_activate_drift_spart(cj, s);
 
+
+	    message("do cj flags=%lld", t->flags);
+	    
             /* Check the sorts and activate them if needed. */
             cell_activate_hydro_sorts(ci, t->flags, s);
             cell_activate_stars_sorts(cj, t->flags, s);
@@ -381,8 +377,10 @@ void engine_marktasks_mapper(void *map_data, int num_elements,
         }
 
         /* Store current values of dx_max and h_max. */
-        else if (t_type == task_type_sub_pair) {
+        else if (t_type == task_type_sub_pair &&
+		 t_subtype == task_subtype_stars_density) {
           cell_activate_subcell_stars_tasks(t->ci, t->cj, s);
+	  cell_activate_subcell_hydro_tasks(t->ci, t->cj, s);
         }
       }
 
@@ -506,8 +504,8 @@ void engine_marktasks_mapper(void *map_data, int num_elements,
       if (t->subtype == task_subtype_stars_density) {
 
         /* Too much particle movement? */
-        if (cell_need_rebuild_for_stars_pair(ci, cj)) *rebuild_space = 1;
-        if (cell_need_rebuild_for_stars_pair(cj, ci)) *rebuild_space = 1;
+        //if (cell_need_rebuild_for_stars_pair(ci, cj)) *rebuild_space = 1;
+        //if (cell_need_rebuild_for_stars_pair(cj, ci)) *rebuild_space = 1;
 
 #ifdef WITH_MPI
         engine_activate_stars_mpi(e, s, ci, cj);

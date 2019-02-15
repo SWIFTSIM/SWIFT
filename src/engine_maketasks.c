@@ -479,7 +479,7 @@ void engine_addtasks_recv_stars(struct engine *e, struct cell *c,
                                c->mpi.tag, 0, c, NULL);
 
     /* Need to sort task before feedback loop */
-    scheduler_addunlock(s, t_feed, c->hydro.super->stars.sorts_foreign);
+    scheduler_addunlock(s, t_feed, c->hydro.super->stars.sorts);
   }
 
   c->mpi.hydro.recv_xv = t_xv;
@@ -911,7 +911,7 @@ void engine_make_hierarchical_tasks_hydro(struct engine *e, struct cell *c) {
         scheduler_addtask(s, task_type_sort, task_subtype_none, 0, 0, c, NULL);
 
     if (with_feedback) {
-      c->stars.sorts_local = scheduler_addtask(
+      c->stars.sorts = scheduler_addtask(
           s, task_type_stars_sort, task_subtype_none, 0, 0, c, NULL);
     }
 
@@ -1261,8 +1261,8 @@ void engine_count_and_link_tasks_mapper(void *map_data, int num_elements,
     if (t_type == task_type_stars_sort) {
       for (struct cell *finger = t->ci->parent; finger != NULL;
            finger = finger->parent) {
-        if (finger->stars.sorts_local != NULL)
-          scheduler_addunlock(sched, t, finger->stars.sorts_local);
+        if (finger->stars.sorts != NULL)
+          scheduler_addunlock(sched, t, finger->stars.sorts);
       }
     }
 
@@ -1626,7 +1626,7 @@ void engine_make_extra_hydroloop_tasks_mapper(void *map_data, int num_elements,
     struct task *t = &((struct task *)map_data)[ind];
     const enum task_types t_type = t->type;
     const enum task_subtypes t_subtype = t->subtype;
-    const int flags = t->flags;
+    const long long flags = t->flags;
     struct cell *ci = t->ci;
     struct cell *cj = t->cj;
 
@@ -1812,7 +1812,7 @@ void engine_make_extra_hydroloop_tasks_mapper(void *map_data, int num_elements,
 
           scheduler_addunlock(sched, ci->hydro.super->stars.drift,
                               t_star_density);
-          scheduler_addunlock(sched, ci->hydro.super->stars.sorts_local,
+          scheduler_addunlock(sched, ci->hydro.super->stars.sorts,
                               t_star_density);
           scheduler_addunlock(sched, ci->hydro.super->hydro.drift,
                               t_star_density);
@@ -1845,7 +1845,7 @@ void engine_make_extra_hydroloop_tasks_mapper(void *map_data, int num_elements,
 
           scheduler_addunlock(sched, cj->hydro.super->stars.drift,
                               t_star_density);
-          scheduler_addunlock(sched, cj->hydro.super->stars.sorts_local,
+          scheduler_addunlock(sched, cj->hydro.super->stars.sorts,
                               t_star_density);
           scheduler_addunlock(sched, cj->hydro.super->hydro.drift,
                               t_star_density);
@@ -1938,7 +1938,7 @@ void engine_make_extra_hydroloop_tasks_mapper(void *map_data, int num_elements,
 
         scheduler_addunlock(sched, ci->hydro.super->stars.drift,
                             t_star_density);
-        scheduler_addunlock(sched, ci->hydro.super->stars.sorts_local,
+        scheduler_addunlock(sched, ci->hydro.super->stars.sorts,
                             t_star_density);
         scheduler_addunlock(sched, ci->hydro.super->hydro.drift,
                             t_star_density);
@@ -2058,7 +2058,7 @@ void engine_make_extra_hydroloop_tasks_mapper(void *map_data, int num_elements,
 
           scheduler_addunlock(sched, ci->hydro.super->stars.drift,
                               t_star_density);
-          scheduler_addunlock(sched, ci->hydro.super->stars.sorts_local,
+          scheduler_addunlock(sched, ci->hydro.super->stars.sorts,
                               t_star_density);
           scheduler_addunlock(sched, ci->hydro.super->hydro.drift,
                               t_star_density);
@@ -2091,7 +2091,7 @@ void engine_make_extra_hydroloop_tasks_mapper(void *map_data, int num_elements,
 
           scheduler_addunlock(sched, cj->hydro.super->stars.drift,
                               t_star_density);
-          scheduler_addunlock(sched, cj->hydro.super->stars.sorts_local,
+          scheduler_addunlock(sched, cj->hydro.super->stars.sorts,
                               t_star_density);
           scheduler_addunlock(sched, cj->hydro.super->hydro.drift,
                               t_star_density);

@@ -1990,8 +1990,11 @@ void cell_activate_hydro_sorts(struct cell *c, int sid, struct scheduler *s) {
     }
   }
 
+  //message("c->hydro.sorted=%d", c->hydro.sorted);
+  
   /* Has this cell been sorted at all for the given sid? */
   if (!(c->hydro.sorted & (1 << sid)) || c->nodeID != engine_rank) {
+
     atomic_or(&c->hydro.do_sort, (1 << sid));
     cell_activate_hydro_sorts_up(c, s);
   }
@@ -2004,18 +2007,13 @@ void cell_activate_stars_sorts_up(struct cell *c, struct scheduler *s) {
 
   if (c == c->hydro.super) {
 #ifdef SWIFT_DEBUG_CHECKS
-    if ((c->nodeID == engine_rank && c->stars.sorts_local == NULL) ||
-        (c->nodeID != engine_rank && c->stars.sorts_foreign == NULL))
+    if (c->stars.sorts == NULL)
       error("Trying to activate un-existing c->stars.sorts");
 #endif
+    scheduler_activate(s, c->stars.sorts);
     if (c->nodeID == engine_rank) {
-      scheduler_activate(s, c->stars.sorts_local);
       // MATTHIEU: to do: do we actually need both drifts here?
-      cell_activate_drift_part(c, s);
       cell_activate_drift_spart(c, s);
-    }
-    if (c->nodeID != engine_rank) {
-      scheduler_activate(s, c->stars.sorts_foreign);
     }
   } else {
 
@@ -2025,20 +2023,11 @@ void cell_activate_stars_sorts_up(struct cell *c, struct scheduler *s) {
       parent->stars.do_sub_sort = 1;
       if (parent == c->hydro.super) {
 #ifdef SWIFT_DEBUG_CHECKS
-        if ((parent->nodeID == engine_rank &&
-             parent->stars.sorts_local == NULL) ||
-            (parent->nodeID != engine_rank &&
-             parent->stars.sorts_foreign == NULL))
+        if (parent->stars.sorts == NULL) 
           error("Trying to activate un-existing parents->stars.sorts");
 #endif
-        if (parent->nodeID == engine_rank) {
-          scheduler_activate(s, parent->stars.sorts_local);
-          cell_activate_drift_part(parent, s);
-          cell_activate_drift_spart(parent, s);
-        }
-        if (parent->nodeID != engine_rank) {
-          scheduler_activate(s, parent->stars.sorts_foreign);
-        }
+	scheduler_activate(s, parent->stars.sorts);
+	if (parent->nodeID == engine_rank) cell_activate_drift_spart(parent, s);
         break;
       }
     }
@@ -2063,8 +2052,13 @@ void cell_activate_stars_sorts(struct cell *c, int sid, struct scheduler *s) {
     }
   }
 
+  //message("c->stars.sorted=%d", c->stars.sorted);
+  
   /* Has this cell been sorted at all for the given sid? */
   if (!(c->stars.sorted & (1 << sid)) || c->nodeID != engine_rank) {
+
+    //message("bbb");
+    
     atomic_or(&c->stars.do_sort, (1 << sid));
     cell_activate_stars_sorts_up(c, s);
   }
