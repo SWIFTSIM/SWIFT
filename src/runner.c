@@ -484,7 +484,7 @@ void runner_do_cooling(struct runner *r, struct cell *c, int timer) {
 /**
  *
  */
-void runner_do_star_formation(struct runner *r, struct cell *c, int timer) {
+void runner_do_star_formation(struct runner *r, struct cell *c, int timer, int* formed_stars) {
 
   struct engine *e = r->e;
   const struct cosmology *cosmo = e->cosmology;
@@ -508,7 +508,7 @@ void runner_do_star_formation(struct runner *r, struct cell *c, int timer) {
   /* Recurse? */
   if (c->split) {
     for (int k = 0; k < 8; k++)
-      if (c->progeny[k] != NULL) runner_do_star_formation(r, c->progeny[k], 0);
+      if (c->progeny[k] != NULL) runner_do_star_formation(r, c->progeny[k], 0, formed_stars);
   } else {
 
     /* Loop over the gas particles in this cell. */
@@ -553,6 +553,9 @@ void runner_do_star_formation(struct runner *r, struct cell *c, int timer) {
             /* Copy the properties of the gas particle to the star particle */
             star_formation_copy_properties(p, xp, sp, e, sf_props, cosmo,
                                            with_cosmology);
+
+	    message("STAR FORMED!!!! super->ID=%d", c->super->cellID);
+	    (*formed_stars)++;
           }
 
         } else { /* Are we not star-forming? */
@@ -566,6 +569,10 @@ void runner_do_star_formation(struct runner *r, struct cell *c, int timer) {
     }     /* Loop over particles */
   }
 
+  if (timer && *formed_stars > 0) {
+    runner_do_stars_sort(r, c, 0x1FFF, 0, 0);
+  }
+  
   if (timer) TIMER_TOC(timer_do_star_formation);
 }
 
@@ -3210,7 +3217,10 @@ void *runner_main(void *data) {
           runner_do_cooling(r, t->ci, 1);
           break;
         case task_type_star_formation:
-          runner_do_star_formation(r, t->ci, 1);
+	  {
+	    int formed_stars = 0;
+	    runner_do_star_formation(r, t->ci, 1, &formed_stars);
+	  }
           break;
         default:
           error("Unknown/invalid task type (%d).", t->type);
