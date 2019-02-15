@@ -779,8 +779,8 @@ static void pick_parmetis(int nodeID, struct space *s, int nregions,
     graph_init(s, s->periodic, full_weights_e, full_adjncy, &nadjcny, std_xadj, &nxadj);
 
     /* Dump graphs to disk files for testing. */
-    dumpMETISGraph("parmetis_graph", ncells, 1, std_xadj, full_adjncy,
-                   full_weights_v, NULL, full_weights_e);
+    /*dumpMETISGraph("parmetis_graph", ncells, 1, std_xadj, full_adjncy,
+      full_weights_v, NULL, full_weights_e);*/
 
     /* xadj is set for each rank, different to serial version in that each
      * rank starts with 0, so we need to re-offset. */
@@ -804,8 +804,6 @@ static void pick_parmetis(int nodeID, struct space *s, int nregions,
     for (int rank = 0, j1 = 0, j2 = 0, j3 = 0; rank < nregions; rank++) {
       int nvt = vtxdist[rank + 1] - vtxdist[rank];
       int nedge = std_xadj[vtxdist[rank + 1]] - std_xadj[vtxdist[rank]];
-      message("nedge = %d (%d)", nedge, nvt *26);
-
 
       if (refine)
         for (int i = 0; i < nvt; i++) full_regionid[j3 + i] = celllist[j3 + i];
@@ -1822,15 +1820,12 @@ void partition_initial_partition(struct partition *initial_partition,
       error("Grid size does not match number of nodes.");
 
     /* Run through the cells and set their nodeID. */
-    // message("s->dim = [%e,%e,%e]", s->dim[0], s->dim[1], s->dim[2]);
     for (k = 0; k < s->nr_cells; k++) {
       c = &s->cells_top[k];
       for (j = 0; j < 3; j++)
         ind[j] = c->loc[j] / s->dim[j] * initial_partition->grid[j];
       c->nodeID = ind[0] + initial_partition->grid[0] *
                                (ind[1] + initial_partition->grid[1] * ind[2]);
-      // message("cell at [%e,%e,%e]: ind = [%i,%i,%i], nodeID = %i", c->loc[0],
-      // c->loc[1], c->loc[2], ind[0], ind[1], ind[2], c->nodeID);
     }
 
     /* The grid technique can fail, so check for this before proceeding. */
