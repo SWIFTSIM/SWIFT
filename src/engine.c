@@ -62,6 +62,7 @@
 #include "cosmology.h"
 #include "cycle.h"
 #include "debug.h"
+#include "entropy_floor.h"
 #include "equation_of_state.h"
 #include "error.h"
 #include "gravity.h"
@@ -83,6 +84,7 @@
 #include "serial_io.h"
 #include "single_io.h"
 #include "sort_part.h"
+#include "star_formation.h"
 #include "stars_io.h"
 #include "statistics.h"
 #include "timers.h"
@@ -2681,6 +2683,7 @@ void engine_skip_force_and_kick(struct engine *e) {
         t->type == task_type_end_force ||
         t->type == task_type_grav_long_range || t->type == task_type_grav_mm ||
         t->type == task_type_grav_down || t->type == task_type_cooling ||
+        t->type == task_type_star_formation ||
         t->type == task_type_extra_ghost || t->subtype == task_subtype_gradient)
       t->skip = 1;
   }
@@ -2789,7 +2792,12 @@ void engine_init_particles(struct engine *e, int flag_entropy_ICs,
 
   /* Update the softening lengths */
   if (e->policy & engine_policy_self_gravity)
-    gravity_update(e->gravity_properties, e->cosmology);
+    gravity_props_update(e->gravity_properties, e->cosmology);
+
+  /* Udpate the hydro properties */
+  if (e->policy & engine_policy_hydro)
+    hydro_props_update(e->hydro_properties, e->gravity_properties,
+                       e->cosmology);
 
   /* Start by setting the particles in a good state */
   if (e->nodeID == 0) message("Setting particles to a valid state...");
@@ -3032,7 +3040,9 @@ void engine_step(struct engine *e) {
         e->step, e->time, e->cosmology->a, e->cosmology->z, e->time_step,
         e->min_active_bin, e->max_active_bin, e->updates, e->g_updates,
         e->s_updates, e->wallclock_time, e->step_props);
+#ifdef SWIFT_DEBUG_CHECKS
     fflush(stdout);
+#endif
 
     if (!e->restarting)
       fprintf(
@@ -3042,7 +3052,9 @@ void engine_step(struct engine *e) {
           e->step, e->time, e->cosmology->a, e->cosmology->z, e->time_step,
           e->min_active_bin, e->max_active_bin, e->updates, e->g_updates,
           e->s_updates, e->wallclock_time, e->step_props);
+#ifdef SWIFT_DEBUG_CHECKS
     fflush(e->file_timesteps);
+#endif
   }
 
   /* We need some cells to exist but not the whole task stuff. */
@@ -3082,7 +3094,12 @@ void engine_step(struct engine *e) {
 
   /* Update the softening lengths */
   if (e->policy & engine_policy_self_gravity)
-    gravity_update(e->gravity_properties, e->cosmology);
+    gravity_props_update(e->gravity_properties, e->cosmology);
+
+  /* Udpate the hydro properties */
+  if (e->policy & engine_policy_hydro)
+    hydro_props_update(e->hydro_properties, e->gravity_properties,
+                       e->cosmology);
 
   /* Trigger a tree-rebuild if we passed the frequency threshold */
   if ((e->policy & engine_policy_self_gravity) &&
@@ -4071,11 +4088,13 @@ void engine_unpin(void) {
  * @param physical_constants The #phys_const used for this run.
  * @param cosmo The #cosmology used for this run.
  * @param hydro The #hydro_props used for this run.
+ * @param entropy_floor The #entropy_floor_properties for this run.
  * @param gravity The #gravity_props used for this run.
  * @param stars The #stars_props used for this run.
  * @param mesh The #pm_mesh used for the long-range periodic forces.
  * @param potential The properties of the external potential.
  * @param cooling_func The properties of the cooling function.
+ * @param starform The #star_formation model of this run.
  * @param chemistry The chemistry information.
  */
 void engine_init(struct engine *e, struct space *s, struct swift_params *params,
@@ -4083,11 +4102,13 @@ void engine_init(struct engine *e, struct space *s, struct swift_params *params,
                  int policy, int verbose, struct repartition *reparttype,
                  const struct unit_system *internal_units,
                  const struct phys_const *physical_constants,
-                 struct cosmology *cosmo, const struct hydro_props *hydro,
+                 struct cosmology *cosmo, struct hydro_props *hydro,
+                 const struct entropy_floor_properties *entropy_floor,
                  struct gravity_props *gravity, const struct stars_props *stars,
                  struct pm_mesh *mesh,
                  const struct external_potential *potential,
                  struct cooling_function_data *cooling_func,
+                 const struct star_formation *starform,
                  const struct chemistry_global_data *chemistry) {
 
   /* Clean-up everything */
@@ -4148,11 +4169,13 @@ void engine_init(struct engine *e, struct space *s, struct swift_params *params,
   e->physical_constants = physical_constants;
   e->cosmology = cosmo;
   e->hydro_properties = hydro;
+  e->entropy_floor = entropy_floor;
   e->gravity_properties = gravity;
   e->stars_properties = stars;
   e->mesh = mesh;
   e->external_potential = potential;
   e->cooling_func = cooling_func;
+  e->star_formation = starform;
   e->chemistry = chemistry;
   e->parameter_file = params;
 #ifdef WITH_MPI
@@ -4469,8 +4492,10 @@ void engine_config(int restart, struct engine *e, struct swift_params *params,
   engine_print_policy(e);
 
   /* Print information about the hydro scheme */
-  if (e->policy & engine_policy_hydro)
+  if (e->policy & engine_policy_hydro) {
     if (e->nodeID == 0) hydro_props_print(e->hydro_properties);
+    if (e->nodeID == 0) entropy_floor_print(e->entropy_floor);
+  }
 
   /* Print information about the gravity scheme */
   if (e->policy & engine_policy_self_gravity)
@@ -5264,11 +5289,13 @@ void engine_struct_dump(struct engine *e, FILE *stream) {
 
   phys_const_struct_dump(e->physical_constants, stream);
   hydro_props_struct_dump(e->hydro_properties, stream);
+  entropy_floor_struct_dump(e->entropy_floor, stream);
   gravity_props_struct_dump(e->gravity_properties, stream);
   stars_props_struct_dump(e->stars_properties, stream);
   pm_mesh_struct_dump(e->mesh, stream);
   potential_struct_dump(e->external_potential, stream);
   cooling_struct_dump(e->cooling_func, stream);
+  starformation_struct_dump(e->star_formation, stream);
   chemistry_struct_dump(e->chemistry, stream);
   parser_struct_dump(e->parameter_file, stream);
   if (e->output_list_snapshots)
@@ -5335,6 +5362,12 @@ void engine_struct_restore(struct engine *e, FILE *stream) {
   hydro_props_struct_restore(hydro_properties, stream);
   e->hydro_properties = hydro_properties;
 
+  struct entropy_floor_properties *entropy_floor =
+      (struct entropy_floor_properties *)malloc(
+          sizeof(struct entropy_floor_properties));
+  entropy_floor_struct_restore(entropy_floor, stream);
+  e->entropy_floor = entropy_floor;
+
   struct gravity_props *gravity_properties =
       (struct gravity_props *)malloc(sizeof(struct gravity_props));
   gravity_props_struct_restore(gravity_properties, stream);
@@ -5359,6 +5392,11 @@ void engine_struct_restore(struct engine *e, FILE *stream) {
           sizeof(struct cooling_function_data));
   cooling_struct_restore(cooling_func, stream, e->cosmology);
   e->cooling_func = cooling_func;
+
+  struct star_formation *star_formation =
+      (struct star_formation *)malloc(sizeof(struct star_formation));
+  starformation_struct_restore(star_formation, stream);
+  e->star_formation = star_formation;
 
   struct chemistry_global_data *chemistry =
       (struct chemistry_global_data *)malloc(

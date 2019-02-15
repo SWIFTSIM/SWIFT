@@ -34,6 +34,7 @@
 
 #include "chemistry_struct.h"
 #include "cooling_struct.h"
+#include "star_formation_struct.h"
 #include "tracers_struct.h"
 
 /**
@@ -63,8 +64,11 @@ struct xpart {
   /*! Additional data used to record cooling information */
   struct cooling_xpart_data cooling_data;
 
-  /* Additional data used by the tracers */
+  /*! Additional data used by the tracers */
   struct tracers_xpart_data tracers_data;
+
+  /*! Additional data used by the star formation */
+  struct star_formation_xpart_data sf_data;
 
 } SWIFT_STRUCT_ALIGN;
 
@@ -177,7 +181,7 @@ struct part {
   timebin_t time_bin;
 
   /* Need waking-up ? */
-  char wakeup;
+  timebin_t wakeup;
 
 #ifdef SWIFT_DEBUG_CHECKS
 

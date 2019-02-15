@@ -343,7 +343,10 @@ struct engine {
   struct cosmology *cosmology;
 
   /* Properties of the hydro scheme */
-  const struct hydro_props *hydro_properties;
+  struct hydro_props *hydro_properties;
+
+  /* Properties of the entropy floor */
+  const struct entropy_floor_properties *entropy_floor;
 
   /* Properties of the star model */
   const struct stars_props *stars_properties;
@@ -359,6 +362,9 @@ struct engine {
 
   /* Properties of the cooling scheme */
   struct cooling_function_data *cooling_func;
+
+  /* Properties of the starformation law */
+  const struct star_formation *star_formation;
 
   /* Properties of the chemistry model */
   const struct chemistry_global_data *chemistry;
@@ -413,11 +419,13 @@ void engine_init(struct engine *e, struct space *s, struct swift_params *params,
                  int policy, int verbose, struct repartition *reparttype,
                  const struct unit_system *internal_units,
                  const struct phys_const *physical_constants,
-                 struct cosmology *cosmo, const struct hydro_props *hydro,
+                 struct cosmology *cosmo, struct hydro_props *hydro,
+                 const struct entropy_floor_properties *entropy_floor,
                  struct gravity_props *gravity, const struct stars_props *stars,
                  struct pm_mesh *mesh,
                  const struct external_potential *potential,
                  struct cooling_function_data *cooling_func,
+                 const struct star_formation *starform,
                  const struct chemistry_global_data *chemistry);
 void engine_config(int restart, struct engine *e, struct swift_params *params,
                    int nr_nodes, int nodeID, int nr_threads, int with_aff,

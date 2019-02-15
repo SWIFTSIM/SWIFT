@@ -1,0 +1,108 @@
+# Define the system of units to use internally.
+InternalUnitSystem:
+  UnitMass_in_cgs:     1.9891E43   # 10^10 solar masses 
+  UnitLength_in_cgs:   3.08567758E21   # 1 kpc 
+  UnitVelocity_in_cgs: 1E5   # km/s
+  UnitCurrent_in_cgs:  1   # Amperes
+  UnitTemp_in_cgs:     1   # Kelvin
+
+# Parameters for the self-gravity scheme
+Gravity:
+  mesh_side_length:       32        # Number of cells along each axis for the periodic gravity mesh.
+  eta:          0.025               # Constant dimensionless multiplier for time integration.
+  theta:        0.7                 # Opening angle (Multipole acceptance criterion).
+  comoving_softening:     0.01      # Comoving softening length (in internal units).
+  max_physical_softening: 0.01      # Physical softening length (in internal units).
+
+# Parameters governing the time integration (Set dt_min and dt_max to the same value for a fixed time-step run.)
+TimeIntegration:
+  time_begin:        0.    # The starting time of the simulation (in internal units).
+  time_end:          0.1   # The end time of the simulation (in internal units).
+  dt_min:            1e-9  # The minimal time-step size of the simulation (in internal units).
+  dt_max:            1e-2  # The maximal time-step size of the simulation (in internal units).
+
+# Parameters governing the snapshots
+Snapshots:
+  basename:   output      # Common part of the name of output files
+  time_first: 0.          # (Optional) Time of the first output if non-cosmological time-integration (in internal units)
+  delta_time: 0.001        # Time difference between consecutive outputs (in internal units)
+
+  
+# Parameters governing the conserved quantities statistics
+Statistics:
+  delta_time:           1e-2     # Time between statistics output
+  time_first:             0.     # (Optional) Time of the first stats output if non-cosmological time-integration (in internal units)
+
+# Parameters related to the initial conditions
+InitialConditions:
+  file_name:               fid.hdf5 # The file to read
+  periodic:                    0    # Are we running with periodic ICs?
+
+# Parameters for the hydrodynamics scheme
+SPH:
+  resolution_eta:        1.2348   # Target smoothing length in units of the mean inter-particle separation (1.2348 == 48Ngbs with the cubic spline kernel).
+  CFL_condition:         0.1      # Courant-Friedrich-Levy condition for time integration.
+  h_min_ratio:           0.1      # Minimal smoothing in units of softening.
+  h_max:                 10.
+
+# Standard EAGLE cooling options
+EAGLECooling:
+  dir_name:                ./coolingtables/  # Location of the Wiersma+08 cooling tables
+  H_reion_z:               11.5              # Redshift of Hydrogen re-ionization
+  He_reion_z_centre:       3.5               # Redshift of the centre of the Helium re-ionization Gaussian
+  He_reion_z_sigma:        0.5               # Spread in redshift of the  Helium re-ionization Gaussian
+  He_reion_eV_p_H:         2.0               # Energy inject by Helium re-ionization in electron-volt per Hydrogen atom
+
+# Primordial abundances
+EAGLEChemistry:
+  init_abundance_metal:     0.0129          # Inital fraction of particle mass in *all* metals
+  init_abundance_Hydrogen:  0.7065       # Inital fraction of particle mass in Hydrogen
+  init_abundance_Helium:    0.2806        # Inital fraction of particle mass in Helium
+  init_abundance_Carbon:    0.00207        # Inital fraction of particle mass in Carbon
+  init_abundance_Nitrogen:  0.000836        # Inital fraction of particle mass in Nitrogen
+  init_abundance_Oxygen:    0.00549        # Inital fraction of particle mass in Oxygen
+  init_abundance_Neon:      0.00141        # Inital fraction of particle mass in Neon
+  init_abundance_Magnesium: 0.000591        # Inital fraction of particle mass in Magnesium
+  init_abundance_Silicon:   0.000683        # Inital fraction of particle mass in Silicon
+  init_abundance_Iron:      0.0011        # Inital fraction of particle mass in Iron
+
+# Hernquist potential parameters
+HernquistPotential:
+  useabspos:       0        # 0 -> positions based on centre, 1 -> absolute positions 
+  position:        [0.,0.,0.]    # Location of centre of isothermal potential with respect to centre of the box (if 0) otherwise absolute (if 1) (internal units)
+  idealizeddisk:   1        # Run with an idealized galaxy disk
+  M200:            137.0   # M200 of the galaxy disk
+  h:               0.704    # reduced Hubble constant (value does not specify the used units!)
+  concentration:   9.0      # concentration of the Halo
+  diskfraction:              0.040   # Disk mass fraction
+  bulgefraction:              0.014   # Bulge mass fraction
+  timestep_mult:   0.01     # Dimensionless pre-factor for the time-step condition, basically determines the fraction of the orbital time we use to do the time integration
+  epsilon:         0.01      # Softening size (internal units)
+ 
+# EAGLE star formation parameters
+EAGLEStarFormation:
+  EOS_density_norm_H_p_cm3:          0.1       # Physical density used for the normalisation of the EOS assumed for the star-forming gas in Hydrogen atoms per cm^3.
+  EOS_temperature_norm_K:            8000      # Temperature om the polytropic EOS assumed for star-forming gas at the density normalisation in Kelvin.
+  EOS_gamma_effective:               1.3333333 # Slope the of the polytropic EOS assumed for the star-forming gas.
+  gas_fraction:                      0.3       # The gas fraction used internally by the model.
+  KS_normalisation:                  1.515e-4  # The normalization of the Kennicutt-Schmidt law in Msun / kpc^2 / yr.
+  KS_exponent:                       1.4       # The exponent of the Kennicutt-Schmidt law.
+  KS_min_over_density:               57.7      # The over-density above which star-formation is allowed.
+  KS_high_density_threshold_H_p_cm3: 1e3       # Hydrogen number density above which the Kennicut-Schmidt law changes slope in Hydrogen atoms per cm^3.
+  KS_high_density_exponent:          2.0       # Slope of the Kennicut-Schmidt law above the high-density threshold.
+  KS_temperature_margin_dex:         0.5       # Logarithm base 10 of the maximal temperature difference above the EOS allowed to form stars.
+  threshold_norm_H_p_cm3:            0.1       # Normalisation of the metal-dependant density threshold for star formation in Hydrogen atoms per cm^3.
+  threshold_Z0:                      0.002     # Reference metallicity (metal mass fraction) for the metal-dependant threshold for star formation.
+  threshold_slope:                   -0.64     # Slope of the metal-dependant star formation threshold
+  threshold_max_density_H_p_cm3:     10.0      # Maximal density of the metal-dependant density threshold for star formation in Hydrogen atoms per cm^3.
+  
+# Parameters for the EAGLE "equation of state"
+EAGLEEntropyFloor:
+  Jeans_density_threshold_H_p_cm3: 0.1       # Physical density above which the EAGLE Jeans limiter entropy floor kicks in expressed in Hydrogen atoms per cm^3.
+  Jeans_over_density_threshold:    10.       # Overdensity above which the EAGLE Jeans limiter entropy floor can kick in.
+  Jeans_temperature_norm_K:        8000      # Temperature of the EAGLE Jeans limiter entropy floor at the density threshold expressed in Kelvin.
+  Jeans_gamma_effective:           1.3333333 # Slope the of the EAGLE Jeans limiter entropy floor
+  Cool_density_threshold_H_p_cm3: 1e-5       # Physical density above which the EAGLE Cool limiter entropy floor kicks in expressed in Hydrogen atoms per cm^3.
+  Cool_over_density_threshold:    10.        # Overdensity above which the EAGLE Cool limiter entropy floor can kick in.
+  Cool_temperature_norm_K:        8000       # Temperature of the EAGLE Cool limiter entropy floor at the density threshold expressed in Kelvin.
+  Cool_gamma_effective:           1.         # Slope the of the EAGLE Cool limiter entropy floor

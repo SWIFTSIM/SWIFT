@@ -1327,8 +1327,10 @@ void engine_link_gravity_tasks(struct engine *e) {
  * @param density The density task to link.
  * @param gradient The gradient task to link.
  * @param force The force task to link.
+ * @param limiter The limiter task to link.
  * @param c The cell.
  * @param with_cooling Do we have a cooling task ?
+ * @param with_limiter Do we have a time-step limiter ?
  */
 static inline void engine_make_hydro_loops_dependencies(
     struct scheduler *sched, struct task *density, struct task *gradient,

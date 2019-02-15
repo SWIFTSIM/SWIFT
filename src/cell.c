@@ -3642,6 +3642,7 @@ void cell_drift_part(struct cell *c, const struct engine *e, int force) {
   const double dim[3] = {e->s->dim[0], e->s->dim[1], e->s->dim[2]};
   const int with_cosmology = (e->policy & engine_policy_cosmology);
   const float hydro_h_max = e->hydro_properties->h_max;
+  const float hydro_h_min = e->hydro_properties->h_min;
   const integertime_t ti_old_part = c->hydro.ti_old_part;
   const integertime_t ti_current = e->ti_current;
   struct part *const parts = c->hydro.parts;
@@ -3776,6 +3777,7 @@ void cell_drift_part(struct cell *c, const struct engine *e, int force) {
 
       /* Limit h to within the allowed range */
       p->h = min(p->h, hydro_h_max);
+      p->h = max(p->h, hydro_h_min);
 
       /* Compute (square of) motion since last cell construction */
       const float dx2 = xp->x_diff[0] * xp->x_diff[0] +

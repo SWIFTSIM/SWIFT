@@ -18,7 +18,7 @@
  ******************************************************************************/
 
 /* Some standard headers. */
-#include <stdlib.h>
+#include "../config.h"
 
 /* Includes. */
 #include "swift.h"

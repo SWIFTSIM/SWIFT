@@ -25,10 +25,10 @@
 /* Some standard headers. */
 #include <math.h>
 
+#ifndef __GNUC__
+
 /* Local headers. */
 #include "inline.h"
-
-#ifndef __GNUC__
 
 /**
  * @brief Raises 10 to the power of the argument.

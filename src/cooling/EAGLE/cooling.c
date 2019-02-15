@@ -36,6 +36,7 @@
 #include "cooling_rates.h"
 #include "cooling_struct.h"
 #include "cooling_tables.h"
+#include "entropy_floor.h"
 #include "error.h"
 #include "exp10.h"
 #include "hydro.h"
@@ -56,8 +57,8 @@ static const float explicit_tolerance = 0.05;
 static const float newton_tolerance = 1.0e-4;
 static const float bisection_tolerance = 1.0e-6;
 static const float rounding_tolerance = 1.0e-4;
-static const double bracket_factor = 1.0488088481701515; /* sqrt(1.1) */
-static const double newton_log_u_guess_cgs = 12.30103;   /* log10(2e12) */
+static const double bracket_factor = 1.5;              /* sqrt(1.1) */
+static const double newton_log_u_guess_cgs = 12.30103; /* log10(2e12) */
 
 /**
  * @brief Find the index of the current redshift along the redshift dimension
@@ -444,17 +445,19 @@ INLINE static double bisection_iter(
  * @param us The internal system of units.
  * @param cosmo The current cosmological model.
  * @param hydro_properties the hydro_props struct
+ * @param floor_props Properties of the entropy floor.
  * @param cooling The #cooling_function_data used in the run.
  * @param p Pointer to the particle data.
  * @param xp Pointer to the extended particle data.
  * @param dt The cooling time-step of this particle.
  * @param dt_therm The hydro time-step of this particle.
  */
-void cooling_cool_part(const struct phys_const *restrict phys_const,
-                       const struct unit_system *restrict us,
-                       const struct cosmology *restrict cosmo,
-                       const struct hydro_props *restrict hydro_properties,
-                       const struct cooling_function_data *restrict cooling,
+void cooling_cool_part(const struct phys_const *phys_const,
+                       const struct unit_system *us,
+                       const struct cosmology *cosmo,
+                       const struct hydro_props *hydro_properties,
+                       const struct entropy_floor_properties *floor_props,
+                       const struct cooling_function_data *cooling,
                        struct part *restrict p, struct xpart *restrict xp,
                        const float dt, const float dt_therm) {
 
@@ -596,11 +599,22 @@ void cooling_cool_part(const struct phys_const *restrict phys_const,
 
   /* We now need to check that we are not going to go below any of the limits */
 
+  /* Limit imposed by the entropy floor */
+  const double A_floor = entropy_floor(p, cosmo, floor_props);
+  const double rho = hydro_get_physical_density(p, cosmo);
+  const double u_floor = gas_internal_energy_from_entropy(rho, A_floor);
+
+  /* Absolute minimum */
+  const double u_minimal = hydro_properties->minimal_internal_energy;
+
+  /* Largest of both limits */
+  const double u_limit = max(u_minimal, u_floor);
+
   /* First, check whether we may end up below the minimal energy after
    * this step 1/2 kick + another 1/2 kick that could potentially be for
    * a time-step twice as big. We hence check for 1.5 delta_u. */
-  if (u_start + 1.5 * delta_u < hydro_properties->minimal_internal_energy) {
-    delta_u = (hydro_properties->minimal_internal_energy - u_start) / 1.5;
+  if (u_start + 1.5 * delta_u < u_limit) {
+    delta_u = (u_limit - u_start) / 1.5;
   }
 
   /* Second, check whether the energy used in the prediction could get negative.
@@ -769,7 +783,7 @@ void cooling_init_backend(struct swift_params *parameter_file,
   cooling->He_reion_z_sigma =
       parser_get_param_float(parameter_file, "EAGLECooling:He_reion_z_sigma");
   cooling->He_reion_heat_cgs =
-      parser_get_param_float(parameter_file, "EAGLECooling:He_reion_ev_p_H");
+      parser_get_param_float(parameter_file, "EAGLECooling:He_reion_eV_p_H");
 
   /* Optional parameters to correct the abundances */
   cooling->Ca_over_Si_ratio_in_solar = parser_get_opt_param_float(

@@ -28,17 +28,20 @@
  * This is the simplest possible cooling function. A constant cooling rate
  * (du/dt) with a minimal energy floor is applied. Should be used as a template
  * for more realistic functions.
+ *
+ * This cooling model does NOT include cosmological terms and will hence yield
+ * an incorrect answer when running in co-moving coordinates.
  */
 
 /* Config parameters. */
 #include "../config.h"
 
 /* Some standard headers. */
+#include <float.h>
 #include <math.h>
 
 /* Local includes. */
-#include "const.h"
-#include "error.h"
+#include "entropy_floor.h"
 #include "hydro.h"
 #include "parser.h"
 #include "part.h"
@@ -51,7 +54,6 @@
  *
  * @param cosmo The current cosmological model.
  * @param cooling The #cooling_function_data used in the run.
- * @param restart_flag Are we calling this directly after a restart?
  */
 INLINE static void cooling_update(const struct cosmology* cosmo,
                                   struct cooling_function_data* cooling) {
@@ -68,6 +70,7 @@ INLINE static void cooling_update(const struct cosmology* cosmo,
  * @param us The internal system of units.
  * @param cosmo The current cosmological model.
  * @param hydro_props The properties of the hydro scheme.
+ * @param floor_props Properties of the entropy floor.
  * @param cooling The #cooling_function_data used in the run.
  * @param p Pointer to the particle data.
  * @param xp Pointer to the extended particle data.
@@ -79,6 +82,7 @@ __attribute__((always_inline)) INLINE static void cooling_cool_part(
     const struct unit_system* restrict us,
     const struct cosmology* restrict cosmo,
     const struct hydro_props* hydro_props,
+    const struct entropy_floor_properties* floor_props,
     const struct cooling_function_data* restrict cooling,
     struct part* restrict p, struct xpart* restrict xp, const float dt,
     const float dt_therm) {

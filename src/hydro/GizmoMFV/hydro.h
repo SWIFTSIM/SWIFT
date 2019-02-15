@@ -988,6 +988,80 @@ __attribute__((always_inline)) INLINE static void hydro_get_drifted_velocities(
 }
 
 /**
+ * @brief Returns the time derivative of co-moving internal energy of a particle
+ *
+ * We assume a constant density.
+ *
+ * @param p The particle of interest
+ */
+__attribute__((always_inline)) INLINE static float
+hydro_get_comoving_internal_energy_dt(const struct part* restrict p) {
+
+  error("Needs implementing");
+  return 0.f;
+}
+
+/**
+ * @brief Returns the time derivative of physical internal energy of a particle
+ *
+ * We assume a constant density.
+ *
+ * @param p The particle of interest.
+ * @param cosmo The cosmological model.
+ */
+__attribute__((always_inline)) INLINE static float
+hydro_get_physical_internal_energy_dt(const struct part* restrict p,
+                                      const struct cosmology* cosmo) {
+  error("Needs implementing");
+  return 0.f;
+}
+
+/**
+ * @brief Sets the time derivative of the co-moving internal energy of a
+ * particle
+ *
+ * We assume a constant density for the conversion to entropy.
+ *
+ * @param p The particle of interest.
+ * @param du_dt The new time derivative of the comoving internal energy.
+ */
+__attribute__((always_inline)) INLINE static void
+hydro_set_comoving_internal_energy_dt(struct part* restrict p,
+                                      const float du_dt) {
+  error("Needs implementing");
+}
+
+/**
+ * @brief Sets the time derivative of the physical internal energy of a particle
+ *
+ * We assume a constant density for the conversion to entropy.
+ *
+ * @param p The particle of interest.
+ * @param cosmo Cosmology data structure
+ * @param du_dt The time derivative of the physical internal energy.
+ */
+__attribute__((always_inline)) INLINE static void
+hydro_set_physical_internal_energy_dt(struct part* restrict p,
+                                      const struct cosmology* restrict cosmo,
+                                      const float du_dt) {
+  error("Needs implementing");
+}
+/**
+ * @brief Sets the physical entropy of a particle
+ *
+ * @param p The particle of interest.
+ * @param xp The extended particle data.
+ * @param cosmo Cosmology data structure
+ * @param entropy The physical entropy
+ */
+__attribute__((always_inline)) INLINE static void hydro_set_physical_entropy(
+    struct part* p, struct xpart* xp, const struct cosmology* cosmo,
+    const float entropy) {
+
+  error("Needs implementing");
+}
+
+/**
  * @brief Returns the comoving density of a particle
  *
  * @param p The particle of interest

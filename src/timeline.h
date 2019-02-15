@@ -27,9 +27,10 @@
 #include "intrinsics.h"
 
 #include <math.h>
+#include <stdint.h>
 
 typedef long long integertime_t;
-typedef char timebin_t;
+typedef int8_t timebin_t;
 
 /*! The number of time bins */
 #define num_time_bins 56
