@@ -305,6 +305,8 @@ static void graph_init(struct space *s, int periodic, idx_t *adjncy,
   }
 }
 
+
+//  Same as above, but keep edge weights, based on periodic sums, in sync.
 static void graph_init_with_weights(struct space *s, int periodic,
                                     idx_t *weights_e, idx_t *adjncy,
                                     int *nadjcny, idx_t *xadj, int *nxadj) {
@@ -557,7 +559,7 @@ static void split_metis(struct space *s, int nregions, int *celllist) {
   for (int i = 0; i < s->nr_cells; i++) s->cells_top[i].nodeID = celllist[i];
 
   /* To check or visualise the partition dump all the cells. */
-  dumpCellRanks("metis_partition", s->cells_top, s->nr_cells);
+  /*dumpCellRanks("metis_partition", s->cells_top, s->nr_cells);*/
 }
 #endif
 
@@ -786,44 +788,51 @@ static void pick_parmetis(int nodeID, struct space *s, int nregions,
     idx_t *full_xadj = NULL;
     if ((full_xadj =
              (idx_t *)malloc(sizeof(idx_t) * (ncells + nregions + 1))) == NULL)
-      error("Failed to allocate xadj buffer.");
+      error("Failed to allocate full xadj buffer.");
+    idx_t *std_xadj = NULL;
+    if ((std_xadj =
+             (idx_t *)malloc(sizeof(idx_t) * (ncells + 1))) == NULL)
+      error("Failed to allocate std xadj buffer.");
     idx_t *full_adjncy = NULL;
     if ((full_adjncy = (idx_t *)malloc(sizeof(idx_t) * 26 * ncells)) == NULL)
-      error("Failed to allocate adjncy array.");
+      error("Failed to allocate full adjncy array.");
     idx_t *full_weights_v = NULL;
     if (weights_v != NULL)
       if ((full_weights_v = (idx_t *)malloc(sizeof(idx_t) * ncells)) == NULL)
-        error("Failed to allocate vertex weights array");
+        error("Failed to allocate full vertex weights array");
     idx_t *full_weights_e = NULL;
     if (weights_e != NULL)
       if ((full_weights_e = (idx_t *)malloc(26 * sizeof(idx_t) * ncells)) ==
           NULL)
-        error("Failed to allocate edge weights array");
+        error("Failed to allocate full edge weights array");
 
     idx_t *full_regionid = NULL;
     if (refine) {
       if ((full_regionid = (idx_t *)malloc(sizeof(idx_t) * ncells)) == NULL)
-        error("Failed to allocate regionid array");
+        error("Failed to allocate full regionid array");
     }
 
-    /* Define the cell graph. */
+    /* Define the cell graph. XXX weights_e remap. */
     int nadjcny = 0;
     int nxadj = 0;
-    graph_init(s, s->periodic, full_adjncy, &nadjcny, NULL, &nxadj);
+    graph_init(s, s->periodic, full_adjncy, &nadjcny, std_xadj, &nxadj);
 
     /* xadj is set for each rank, different to serial version in that each
-     * rank starts with 0 */
-    for (int rank = 0, j = 0; rank < nregions; rank++) {
+     * rank starts with 0, so we need to re-offset. */
+    for (int rank = 0, i = 0, j = 0; rank < nregions; rank++) {
 
       /* Number of vertices for this rank. */
       int nvt = vtxdist[rank + 1] - vtxdist[rank];
 
-      /* Start from 0, and step forward 26 edges each value. */
-      full_xadj[j] = 0;
-      for (int k = 0; k <= nvt; k++) {
-        full_xadj[j + 1] = full_xadj[j] + 26; // XXX fix
-        j++;
+      /* Each xadj section starts at 0 and terminates like a complete one. */
+      int offset = std_xadj[j];
+      for (int k = 0; k < nvt; k++) {
+          full_xadj[i] = std_xadj[j] - offset;
+          j++;
+          i++;
       }
+      full_xadj[i] = std_xadj[j] - offset;
+      i++;
     }
 
     /* Init the vertex weights array. */
@@ -856,7 +865,7 @@ static void pick_parmetis(int nodeID, struct space *s, int nregions,
 
     /* Init the edges weights array. */
     if (edgew != NULL) {
-      for (int k = 0; k < 26 * ncells; k++) {
+      for (int k = 0; k < nadjcny; k++) {
         if (edgew[k] > 1) {
           full_weights_e[k] = edgew[k];
         } else {
@@ -867,7 +876,7 @@ static void pick_parmetis(int nodeID, struct space *s, int nregions,
 #ifdef SWIFT_DEBUG_CHECKS
       /* Check weights are all in range. */
       int failed = 0;
-      for (int k = 0; k < 26 * ncells; k++) {
+      for (int k = 0; k < nadjcny; k++) {
 
         if ((idx_t)edgew[k] < 0) {
           message("Input edge weight out of range: %ld", (long)edgew[k]);
@@ -892,20 +901,23 @@ static void pick_parmetis(int nodeID, struct space *s, int nregions,
       dumpMETISGraph("parmetis_graph", ncells, 1, tmp_xadj, full_adjncy,
                      full_weights_v, NULL, full_weights_e);
       free(tmp_xadj);
-    }
+     }
 
     /* Send ranges to the other ranks and keep our own. */
     for (int rank = 0, j1 = 0, j2 = 0, j3 = 0; rank < nregions; rank++) {
       int nvt = vtxdist[rank + 1] - vtxdist[rank];
+      int nedge = std_xadj[vtxdist[rank + 1]] - std_xadj[vtxdist[rank]];
+      message("nedge = %d (%d)", nedge, nvt *26);
+
 
       if (refine)
         for (int i = 0; i < nvt; i++) full_regionid[j3 + i] = celllist[j3 + i];
 
       if (rank == 0) {
         memcpy(xadj, &full_xadj[j1], sizeof(idx_t) * (nvt + 1));
-        memcpy(adjncy, &full_adjncy[j2], sizeof(idx_t) * nvt * 26);// XXX fix
+        memcpy(adjncy, &full_adjncy[j2], sizeof(idx_t) * nedge);
         if (weights_e != NULL)
-          memcpy(weights_e, &full_weights_e[j2], sizeof(idx_t) * nvt * 26); // XXX fix
+          memcpy(weights_e, &full_weights_e[j2], sizeof(idx_t) * nedge);
         if (weights_v != NULL)
           memcpy(weights_v, &full_weights_v[j3], sizeof(idx_t) * nvt);
         if (refine) memcpy(regionid, full_regionid, sizeof(idx_t) * nvt);
@@ -915,10 +927,10 @@ static void pick_parmetis(int nodeID, struct space *s, int nregions,
                         &reqs[5 * rank + 0]);
         if (res == MPI_SUCCESS)
           res = MPI_Isend(&full_adjncy[j2], nvt * 26, IDX_T, rank, 1, comm,
-                          &reqs[5 * rank + 1]); // XXX fix
+                          &reqs[5 * rank + 1]);
         if (res == MPI_SUCCESS && weights_e != NULL)
           res = MPI_Isend(&full_weights_e[j2], nvt * 26, IDX_T, rank, 2, comm,
-                          &reqs[5 * rank + 2]); // XXX fix
+                          &reqs[5 * rank + 2]);
         if (res == MPI_SUCCESS && weights_v != NULL)
           res = MPI_Isend(&full_weights_v[j3], nvt, IDX_T, rank, 3, comm,
                           &reqs[5 * rank + 3]);
@@ -928,7 +940,9 @@ static void pick_parmetis(int nodeID, struct space *s, int nregions,
         if (res != MPI_SUCCESS) mpi_error(res, "Failed to send graph data");
       }
       j1 += nvt + 1;
-      j2 += nvt * 26; // XXX fix
+
+      /* Note we send 26 edges, but only increment by the correct number. */
+      j2 += nedge;
       j3 += nvt;
     }
 
@@ -948,6 +962,7 @@ static void pick_parmetis(int nodeID, struct space *s, int nregions,
     if (weights_v != NULL) free(full_weights_v);
     if (weights_e != NULL) free(full_weights_e);
     free(full_xadj);
+    free(std_xadj);
     free(full_adjncy);
     if (refine) free(full_regionid);
 
@@ -956,9 +971,9 @@ static void pick_parmetis(int nodeID, struct space *s, int nregions,
     /* Receive stuff from rank 0. */
     res = MPI_Irecv(xadj, nverts + 1, IDX_T, 0, 0, comm, &reqs[0]);
     if (res == MPI_SUCCESS)
-        res = MPI_Irecv(adjncy, nverts * 26, IDX_T, 0, 1, comm, &reqs[1]);// XXX fix
+        res = MPI_Irecv(adjncy, nverts * 26, IDX_T, 0, 1, comm, &reqs[1]);
     if (res == MPI_SUCCESS && weights_e != NULL)
-        res = MPI_Irecv(weights_e, nverts * 26, IDX_T, 0, 2, comm, &reqs[2]);// XXX fix
+        res = MPI_Irecv(weights_e, nverts * 26, IDX_T, 0, 2, comm, &reqs[2]);
     if (res == MPI_SUCCESS && weights_v != NULL)
       res = MPI_Irecv(weights_v, nverts, IDX_T, 0, 3, comm, &reqs[3]);
     if (refine && res == MPI_SUCCESS)
@@ -1307,8 +1322,8 @@ static void pick_metis(int nodeID, struct space *s, int nregions,
     idx_t objval;
 
     /* Dump graph in METIS format */
-    dumpMETISGraph("metis_graph", idx_ncells, one, xadj, adjncy, weights_v,
-                   NULL, weights_e);
+    /*dumpMETISGraph("metis_graph", idx_ncells, one, xadj, adjncy, weights_v,
+      NULL, weights_e);*/
 
     if (METIS_PartGraphKway(&idx_ncells, &one, xadj, adjncy, weights_v, NULL,
                             weights_e, &idx_nregions, NULL, NULL, options,
@@ -1681,7 +1696,7 @@ static void repart_edge_metis(int vweights, int eweights, int timebins,
 
     /* And repartition/ partition, using both weights or not as requested. */
 #ifdef HAVE_PARMETIS
-  if (repartition->usemetis || !s->periodic) {
+  if (repartition->usemetis) {
     pick_metis(nodeID, s, nr_nodes, weights_v, weights_e,
                repartition->celllist);
   } else {
@@ -1785,7 +1800,7 @@ static void repart_memory_metis(struct repartition *repartition, int nodeID,
 
     /* And repartition. */
 #ifdef HAVE_PARMETIS
-  if (repartition->usemetis || !s->periodic) {
+  if (repartition->usemetis) {
     pick_metis(nodeID, s, nr_nodes, weights, NULL, repartition->celllist);
   } else {
     pick_parmetis(nodeID, s, nr_nodes, weights, NULL, refine,
@@ -1963,7 +1978,7 @@ void partition_initial_partition(struct partition *initial_partition,
     if ((celllist = (int *)malloc(sizeof(int) * s->nr_cells)) == NULL)
       error("Failed to allocate celllist");
 #ifdef HAVE_PARMETIS
-    if (initial_partition->usemetis || !s->periodic) {
+    if (initial_partition->usemetis) {
       pick_metis(nodeID, s, nr_nodes, weights, NULL, celllist);
     } else {
       pick_parmetis(nodeID, s, nr_nodes, weights, NULL, 0, 0, 0.0f, celllist);
