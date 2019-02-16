@@ -1707,8 +1707,10 @@ void engine_make_extra_hydroloop_tasks_mapper(void *map_data, int num_elements,
         } else {
           scheduler_addunlock(sched, ci->super->kick2, t_star_density);
         }
-        scheduler_addunlock(sched, t_star_density, ci->super->stars.ghost);
-        scheduler_addunlock(sched, ci->super->stars.ghost, t_star_feedback);
+        scheduler_addunlock(sched, t_star_density,
+                            ci->hydro.super->stars.ghost);
+        scheduler_addunlock(sched, ci->hydro.super->stars.ghost,
+                            t_star_feedback);
         scheduler_addunlock(sched, t_star_feedback, ci->super->timestep);
       }
 
@@ -1825,8 +1827,10 @@ void engine_make_extra_hydroloop_tasks_mapper(void *map_data, int num_elements,
           } else {
             scheduler_addunlock(sched, ci->super->kick2, t_star_density);
           }
-          scheduler_addunlock(sched, t_star_density, ci->super->stars.ghost);
-          scheduler_addunlock(sched, ci->super->stars.ghost, t_star_feedback);
+          scheduler_addunlock(sched, t_star_density,
+                              ci->hydro.super->stars.ghost);
+          scheduler_addunlock(sched, ci->hydro.super->stars.ghost,
+                              t_star_feedback);
           scheduler_addunlock(sched, t_star_feedback, ci->super->timestep);
         }
 
@@ -1858,8 +1862,10 @@ void engine_make_extra_hydroloop_tasks_mapper(void *map_data, int num_elements,
           } else {
             scheduler_addunlock(sched, cj->super->kick2, t_star_density);
           }
-          scheduler_addunlock(sched, t_star_density, cj->super->stars.ghost);
-          scheduler_addunlock(sched, cj->super->stars.ghost, t_star_feedback);
+          scheduler_addunlock(sched, t_star_density,
+                              cj->hydro.super->stars.ghost);
+          scheduler_addunlock(sched, cj->hydro.super->stars.ghost,
+                              t_star_feedback);
           scheduler_addunlock(sched, t_star_feedback, cj->super->timestep);
         }
 
@@ -1951,8 +1957,10 @@ void engine_make_extra_hydroloop_tasks_mapper(void *map_data, int num_elements,
         } else {
           scheduler_addunlock(sched, ci->super->kick2, t_star_density);
         }
-        scheduler_addunlock(sched, t_star_density, ci->super->stars.ghost);
-        scheduler_addunlock(sched, ci->super->stars.ghost, t_star_feedback);
+        scheduler_addunlock(sched, t_star_density,
+                            ci->hydro.super->stars.ghost);
+        scheduler_addunlock(sched, ci->hydro.super->stars.ghost,
+                            t_star_feedback);
         scheduler_addunlock(sched, t_star_feedback, ci->super->timestep);
       }
 
@@ -2071,8 +2079,10 @@ void engine_make_extra_hydroloop_tasks_mapper(void *map_data, int num_elements,
           } else {
             scheduler_addunlock(sched, ci->super->kick2, t_star_density);
           }
-          scheduler_addunlock(sched, t_star_density, ci->super->stars.ghost);
-          scheduler_addunlock(sched, ci->super->stars.ghost, t_star_feedback);
+          scheduler_addunlock(sched, t_star_density,
+                              ci->hydro.super->stars.ghost);
+          scheduler_addunlock(sched, ci->hydro.super->stars.ghost,
+                              t_star_feedback);
           scheduler_addunlock(sched, t_star_feedback, ci->super->timestep);
         }
 
@@ -2104,8 +2114,10 @@ void engine_make_extra_hydroloop_tasks_mapper(void *map_data, int num_elements,
           } else {
             scheduler_addunlock(sched, cj->super->kick2, t_star_density);
           }
-          scheduler_addunlock(sched, t_star_density, cj->super->stars.ghost);
-          scheduler_addunlock(sched, cj->super->stars.ghost, t_star_feedback);
+          scheduler_addunlock(sched, t_star_density,
+                              cj->hydro.super->stars.ghost);
+          scheduler_addunlock(sched, cj->hydro.super->stars.ghost,
+                              t_star_feedback);
           scheduler_addunlock(sched, t_star_feedback, cj->super->timestep);
         }
 
