@@ -490,6 +490,9 @@ struct cell {
     /*! Max smoothing length in this cell. */
     double h_max;
 
+    /*! Last (integer) time the cell's spart were drifted forward in time. */
+    integertime_t ti_old_part;
+
     /*! Spin lock for various uses (#spart case). */
     swift_lock_type lock;
 
@@ -540,6 +543,12 @@ struct cell {
 
     /*! Is the #spart data of this cell being used in a sub-cell? */
     int hold;
+
+    /*! Does this cell need to be drifted (stars)? */
+    char do_drift;
+
+    /*! Do any of this cell's sub-cells need to be drifted (stars)? */
+    char do_sub_drift;
 
 #ifdef SWIFT_DEBUG_CHECKS
     /*! Last (integer) time the cell's sort arrays were updated. */
@@ -720,6 +729,7 @@ int cell_unskip_gravity_tasks(struct cell *c, struct scheduler *s);
 void cell_set_super(struct cell *c, struct cell *super);
 void cell_drift_part(struct cell *c, const struct engine *e, int force);
 void cell_drift_gpart(struct cell *c, const struct engine *e, int force);
+void cell_drift_spart(struct cell *c, const struct engine *e, int force);
 void cell_drift_multipole(struct cell *c, const struct engine *e);
 void cell_drift_all_multipoles(struct cell *c, const struct engine *e);
 void cell_check_timesteps(struct cell *c);
@@ -912,7 +922,8 @@ __attribute__((always_inline)) INLINE static int cell_can_split_pair_hydro_task(
   /* Note that since tasks are create after a rebuild no need to take */
   /* into account any part motion (i.e. dx_max == 0 here) */
   return c->split &&
-         (space_stretch * kernel_gamma * c->hydro.h_max < 0.5f * c->dmin);
+         (space_stretch * kernel_gamma * c->hydro.h_max < 0.5f * c->dmin) &&
+         (space_stretch * kernel_gamma * c->stars.h_max < 0.5f * c->dmin);
 }
 
 /**
@@ -930,7 +941,8 @@ __attribute__((always_inline)) INLINE static int cell_can_split_self_hydro_task(
   /* Note: No need for more checks here as all the sub-pairs and sub-self */
   /* tasks will be created. So no need to check for h_max */
   return c->split &&
-         (space_stretch * kernel_gamma * c->hydro.h_max < 0.5f * c->dmin);
+         (space_stretch * kernel_gamma * c->hydro.h_max < 0.5f * c->dmin) &&
+         (space_stretch * kernel_gamma * c->stars.h_max < 0.5f * c->dmin);
 }
 
 /**

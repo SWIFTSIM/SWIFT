@@ -1775,6 +1775,21 @@ void runner_do_drift_gpart(struct runner *r, struct cell *c, int timer) {
 }
 
 /**
+ * @brief Drift all spart in a cell.
+ *
+ * @param r The runner thread.
+ * @param c The cell.
+ * @param timer Are we timing this ?
+ */
+void runner_do_drift_spart(struct runner *r, struct cell *c, int timer) {
+
+  TIMER_TIC;
+
+  cell_drift_spart(c, r->e, 0);
+
+  if (timer) TIMER_TOC(timer_drift_spart);
+}
+/**
  * @brief Perform the first half-kick on all the active particles in a cell.
  *
  * @param r The runner thread.
@@ -3161,6 +3176,9 @@ void *runner_main(void *data) {
           break;
         case task_type_drift_part:
           runner_do_drift_part(r, ci, 1);
+          break;
+        case task_type_drift_spart:
+          runner_do_drift_spart(r, ci, 1);
           break;
         case task_type_drift_gpart:
           runner_do_drift_gpart(r, ci, 1);

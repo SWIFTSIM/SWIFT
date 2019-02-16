@@ -3830,15 +3830,9 @@ void cell_drift_gpart(struct cell *c, const struct engine *e, int force) {
   const int periodic = e->s->periodic;
   const double dim[3] = {e->s->dim[0], e->s->dim[1], e->s->dim[2]};
   const int with_cosmology = (e->policy & engine_policy_cosmology);
-  const float stars_h_max = e->stars_properties->h_max;
   const integertime_t ti_old_gpart = c->grav.ti_old_part;
   const integertime_t ti_current = e->ti_current;
   struct gpart *const gparts = c->grav.parts;
-  struct spart *const sparts = c->stars.parts;
-
-  float dx_max = 0.f, dx2_max = 0.f;
-  float dx_max_sort = 0.0f, dx2_max_sort = 0.f;
-  float cell_h_max = 0.f;
 
   /* Drift irrespective of cell flags? */
   force |= c->grav.do_drift;
@@ -3876,18 +3870,8 @@ void cell_drift_gpart(struct cell *c, const struct engine *e, int force) {
 
         /* Recurse */
         cell_drift_gpart(cp, e, force);
-
-        /* Update */
-        dx_max = max(dx_max, cp->stars.dx_max_part);
-        dx_max_sort = max(dx_max_sort, cp->stars.dx_max_sort);
-        cell_h_max = max(cell_h_max, cp->stars.h_max);
       }
     }
-
-    /* Store the values */
-    c->stars.h_max = cell_h_max;
-    c->stars.dx_max_part = dx_max;
-    c->stars.dx_max_sort = dx_max_sort;
 
     /* Update the time of the last drift */
     c->grav.ti_old_part = ti_current;
@@ -3946,6 +3930,99 @@ void cell_drift_gpart(struct cell *c, const struct engine *e, int force) {
       }
     }
 
+    /* Update the time of the last drift */
+    c->grav.ti_old_part = ti_current;
+  }
+
+  /* Clear the drift flags. */
+  c->grav.do_drift = 0;
+  c->grav.do_sub_drift = 0;
+}
+
+/**
+ * @brief Recursively drifts the #spart in a cell hierarchy.
+ *
+ * @param c The #cell.
+ * @param e The #engine (to get ti_current).
+ * @param force Drift the particles irrespective of the #cell flags.
+ */
+void cell_drift_spart(struct cell *c, const struct engine *e, int force) {
+
+  const int periodic = e->s->periodic;
+  const double dim[3] = {e->s->dim[0], e->s->dim[1], e->s->dim[2]};
+  const int with_cosmology = (e->policy & engine_policy_cosmology);
+  const float stars_h_max = e->stars_properties->h_max;
+  const integertime_t ti_old_spart = c->stars.ti_old_part;
+  const integertime_t ti_current = e->ti_current;
+  struct spart *const sparts = c->stars.parts;
+
+  float dx_max = 0.f, dx2_max = 0.f;
+  float dx_max_sort = 0.0f, dx2_max_sort = 0.f;
+  float cell_h_max = 0.f;
+
+  /* Drift irrespective of cell flags? */
+  force |= c->stars.do_drift;
+
+#ifdef SWIFT_DEBUG_CHECKS
+  /* Check that we only drift local cells. */
+  if (c->nodeID != engine_rank) error("Drifting a foreign cell is nope.");
+
+  /* Check that we are actually going to move forward. */
+  if (ti_current < ti_old_spart) error("Attempt to drift to the past");
+#endif
+
+  /* Early abort? */
+  if (c->stars.count == 0) {
+
+    /* Clear the drift flags. */
+    c->stars.do_drift = 0;
+    c->stars.do_sub_drift = 0;
+
+    /* Update the time of the last drift */
+    c->stars.ti_old_part = ti_current;
+
+    return;
+  }
+
+  /* Ok, we have some particles somewhere in the hierarchy to drift */
+
+  /* Are we not in a leaf ? */
+  if (c->split && (force || c->stars.do_sub_drift)) {
+
+    /* Loop over the progeny and collect their data. */
+    for (int k = 0; k < 8; k++) {
+      if (c->progeny[k] != NULL) {
+        struct cell *cp = c->progeny[k];
+
+        /* Recurse */
+        cell_drift_gpart(cp, e, force);
+
+        /* Update */
+        dx_max = max(dx_max, cp->stars.dx_max_part);
+        dx_max_sort = max(dx_max_sort, cp->stars.dx_max_sort);
+        cell_h_max = max(cell_h_max, cp->stars.h_max);
+      }
+    }
+
+    /* Store the values */
+    c->stars.h_max = cell_h_max;
+    c->stars.dx_max_part = dx_max;
+    c->stars.dx_max_sort = dx_max_sort;
+
+    /* Update the time of the last drift */
+    c->stars.ti_old_part = ti_current;
+
+  } else if (!c->split && force && ti_current > ti_old_spart) {
+
+    /* Drift from the last time the cell was drifted to the current time */
+    double dt_drift;
+    if (with_cosmology) {
+      dt_drift =
+          cosmology_get_drift_factor(e->cosmology, ti_old_spart, ti_current);
+    } else {
+      dt_drift = (ti_current - ti_old_spart) * e->time_base;
+    }
+
     /* Loop over all the star particles in the cell */
     const size_t nr_sparts = c->stars.count;
     for (size_t k = 0; k < nr_sparts; k++) {
@@ -3957,7 +4034,7 @@ void cell_drift_gpart(struct cell *c, const struct engine *e, int force) {
       if (spart_is_inhibited(sp, e)) continue;
 
       /* Drift... */
-      drift_spart(sp, dt_drift, ti_old_gpart, ti_current);
+      drift_spart(sp, dt_drift, ti_old_spart, ti_current);
 
 #ifdef SWIFT_DEBUG_CHECKS
       /* Make sure the particle does not drift by more than a box length. */
@@ -4009,7 +4086,7 @@ void cell_drift_gpart(struct cell *c, const struct engine *e, int force) {
       if (spart_is_active(sp, e)) {
         stars_init_spart(sp);
       }
-    } /* Note: no need to compute dx_max as all spart have a gpart */
+    }
 
     /* Now, get the maximal particle motion from its square */
     dx_max = sqrtf(dx2_max);
@@ -4021,12 +4098,12 @@ void cell_drift_gpart(struct cell *c, const struct engine *e, int force) {
     c->stars.dx_max_sort = dx_max_sort;
 
     /* Update the time of the last drift */
-    c->grav.ti_old_part = ti_current;
+    c->stars.ti_old_part = ti_current;
   }
 
   /* Clear the drift flags. */
-  c->grav.do_drift = 0;
-  c->grav.do_sub_drift = 0;
+  c->stars.do_drift = 0;
+  c->stars.do_sub_drift = 0;
 }
 
 /**

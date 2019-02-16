@@ -1434,6 +1434,7 @@ void DOSUB_SELF1_STARS(struct runner *r, struct cell *ci, int gettimer) {
   if (ci->nodeID != engine_rank)
     error("This function should not be called on foreign cells");
 #endif
+
   /* Should we even bother? */
   if (ci->hydro.count == 0 || ci->stars.count == 0 ||
       !cell_is_active_stars(ci, r->e))
