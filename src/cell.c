@@ -390,6 +390,7 @@ int cell_pack(struct cell *restrict c, struct pcell *restrict pc,
   pc->hydro.ti_old_part = c->hydro.ti_old_part;
   pc->grav.ti_old_part = c->grav.ti_old_part;
   pc->grav.ti_old_multipole = c->grav.ti_old_multipole;
+  pc->stars.ti_old_part = c->stars.ti_old_part;
   pc->hydro.count = c->hydro.count;
   pc->grav.count = c->grav.count;
   pc->stars.count = c->stars.count;
@@ -495,6 +496,7 @@ int cell_unpack(struct pcell *restrict pc, struct cell *restrict c,
   c->hydro.ti_old_part = pc->hydro.ti_old_part;
   c->grav.ti_old_part = pc->grav.ti_old_part;
   c->grav.ti_old_multipole = pc->grav.ti_old_multipole;
+  c->stars.ti_old_part = pc->stars.ti_old_part;
   c->hydro.count = pc->hydro.count;
   c->grav.count = pc->grav.count;
   c->stars.count = pc->stars.count;
@@ -1477,7 +1479,7 @@ void cell_check_part_drift_point(struct cell *c, void *data) {
 }
 
 /**
- * @brief Checks that the #gpart and #spart in a cell are at the
+ * @brief Checks that the #gpart in a cell are at the
  * current point in time
  *
  * Calls error() if the cell is not at the current time.
@@ -1508,11 +1510,42 @@ void cell_check_gpart_drift_point(struct cell *c, void *data) {
         c->grav.parts[i].time_bin != time_bin_inhibited)
       error("g-part in an incorrect time-zone! gp->ti_drift=%lld ti_drift=%lld",
             c->grav.parts[i].ti_drift, ti_drift);
+#else
+  error("Calling debugging code without debugging flag activated.");
+#endif
+}
+
+/**
+ * @brief Checks that the #spart in a cell are at the
+ * current point in time
+ *
+ * Calls error() if the cell is not at the current time.
+ *
+ * @param c Cell to act upon
+ * @param data The current time on the integer time-line
+ */
+void cell_check_spart_drift_point(struct cell *c, void *data) {
+
+#ifdef SWIFT_DEBUG_CHECKS
+
+  const integertime_t ti_drift = *(integertime_t *)data;
+
+  /* Only check local cells */
+  if (c->nodeID != engine_rank) return;
+
+  /* Only check cells with content */
+  if (c->stars.count == 0) return;
+
+  if (c->stars.ti_old_part != ti_drift)
+    error(
+        "Cell in an incorrect time-zone! c->stars.ti_old_part=%lld "
+        "ti_drift=%lld",
+        c->stars.ti_old_part, ti_drift);
 
   for (int i = 0; i < c->stars.count; ++i)
     if (c->stars.parts[i].ti_drift != ti_drift &&
         c->stars.parts[i].time_bin != time_bin_inhibited)
-      error("s-part in an incorrect time-zone! sp->ti_drift=%lld ti_drift=%lld",
+      error("g-part in an incorrect time-zone! gp->ti_drift=%lld ti_drift=%lld",
             c->stars.parts[i].ti_drift, ti_drift);
 #else
   error("Calling debugging code without debugging flag activated.");
@@ -1802,6 +1835,8 @@ void cell_clear_drift_flags(struct cell *c, void *data) {
   c->hydro.do_sub_drift = 0;
   c->grav.do_drift = 0;
   c->grav.do_sub_drift = 0;
+  c->stars.do_drift = 0;
+  c->stars.do_sub_drift = 0;
 }
 
 /**
@@ -1898,8 +1933,39 @@ void cell_activate_drift_gpart(struct cell *c, struct scheduler *s) {
  * @brief Activate the #spart drifts on the given cell.
  */
 void cell_activate_drift_spart(struct cell *c, struct scheduler *s) {
-  // MATTHIEU: This will need changing
-  cell_activate_drift_gpart(c, s);
+
+  /* If this cell is already marked for drift, quit early. */
+  if (c->stars.do_drift) return;
+
+  /* Mark this cell for drifting. */
+  c->stars.do_drift = 1;
+
+  /* Set the do_stars_sub_drifts all the way up and activate the super drift
+     if this has not yet been done. */
+  if (c == c->hydro.super) {
+#ifdef SWIFT_DEBUG_CHECKS
+    if (c->stars.drift == NULL)
+      error("Trying to activate un-existing c->stars.drift");
+#endif
+    scheduler_activate(s, c->stars.drift);
+  } else {
+    for (struct cell *parent = c->parent;
+         parent != NULL && !parent->stars.do_sub_drift;
+         parent = parent->parent) {
+
+      /* Mark this cell for drifting */
+      parent->stars.do_sub_drift = 1;
+
+      if (parent == c->hydro.super) {
+#ifdef SWIFT_DEBUG_CHECKS
+        if (parent->stars.drift == NULL)
+          error("Trying to activate un-existing parent->stars.drift");
+#endif
+        scheduler_activate(s, parent->stars.drift);
+        break;
+      }
+    }
+  }
 }
 
 /**
@@ -3995,7 +4061,7 @@ void cell_drift_spart(struct cell *c, const struct engine *e, int force) {
         struct cell *cp = c->progeny[k];
 
         /* Recurse */
-        cell_drift_gpart(cp, e, force);
+        cell_drift_spart(cp, e, force);
 
         /* Update */
         dx_max = max(dx_max, cp->stars.dx_max_part);

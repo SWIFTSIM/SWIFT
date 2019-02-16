@@ -242,8 +242,9 @@ void space_rebuild_recycle_mapper(void *map_data, int num_elements,
     c->stars.parts = NULL;
     c->hydro.do_sub_sort = 0;
     c->stars.do_sub_sort = 0;
-    c->grav.do_sub_drift = 0;
     c->hydro.do_sub_drift = 0;
+    c->grav.do_sub_drift = 0;
+    c->stars.do_sub_drift = 0;
     c->hydro.do_sub_limiter = 0;
     c->hydro.do_limiter = 0;
     c->hydro.ti_end_min = -1;
@@ -540,6 +541,7 @@ void space_regrid(struct space *s, int verbose) {
           c->grav.super = c;
           c->hydro.ti_old_part = ti_current;
           c->grav.ti_old_part = ti_current;
+          c->stars.ti_old_part = ti_current;
           c->grav.ti_old_multipole = ti_current;
 #ifdef WITH_MPI
           c->mpi.tag = -1;
@@ -1529,6 +1531,7 @@ void space_rebuild(struct space *s, int repartitioned, int verbose) {
     c->hydro.ti_old_part = ti_current;
     c->grav.ti_old_part = ti_current;
     c->grav.ti_old_multipole = ti_current;
+    c->stars.ti_old_part = ti_current;
 
 #ifdef SWIFT_DEBUG_CHECKS
     c->cellID = -last_cell_id;
@@ -2688,6 +2691,7 @@ void space_split_recursive(struct space *s, struct cell *c,
       cp->hydro.ti_old_part = c->hydro.ti_old_part;
       cp->grav.ti_old_part = c->grav.ti_old_part;
       cp->grav.ti_old_multipole = c->grav.ti_old_multipole;
+      cp->stars.ti_old_part = c->stars.ti_old_part;
       cp->loc[0] = c->loc[0];
       cp->loc[1] = c->loc[1];
       cp->loc[2] = c->loc[2];
@@ -2715,6 +2719,7 @@ void space_split_recursive(struct space *s, struct cell *c,
       cp->stars.do_sub_sort = 0;
       cp->grav.do_sub_drift = 0;
       cp->hydro.do_sub_drift = 0;
+      cp->stars.do_sub_drift = 0;
       cp->hydro.do_sub_limiter = 0;
       cp->hydro.do_limiter = 0;
 #ifdef WITH_MPI
@@ -4292,6 +4297,7 @@ void space_check_drift_point(struct space *s, integertime_t ti_drift,
   /* Recursively check all cells */
   space_map_cells_pre(s, 1, cell_check_part_drift_point, &ti_drift);
   space_map_cells_pre(s, 1, cell_check_gpart_drift_point, &ti_drift);
+  space_map_cells_pre(s, 1, cell_check_spart_drift_point, &ti_drift);
   if (multipole)
     space_map_cells_pre(s, 1, cell_check_multipole_drift_point, &ti_drift);
 #else

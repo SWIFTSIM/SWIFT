@@ -150,6 +150,9 @@ struct pcell {
     /*! Minimal integer end-of-timestep in this cell for stars tasks */
     integertime_t ti_end_min;
 
+    /*! Integer time of the last drift of the #spart in this cell */
+    integertime_t ti_old_part;
+
   } stars;
 
   /*! Maximal depth in that part of the tree */
@@ -721,6 +724,7 @@ void cell_check_foreign_multipole(const struct cell *c);
 void cell_clean(struct cell *c);
 void cell_check_part_drift_point(struct cell *c, void *data);
 void cell_check_gpart_drift_point(struct cell *c, void *data);
+void cell_check_spart_drift_point(struct cell *c, void *data);
 void cell_check_multipole_drift_point(struct cell *c, void *data);
 void cell_reset_task_counters(struct cell *c);
 int cell_unskip_hydro_tasks(struct cell *c, struct scheduler *s);
