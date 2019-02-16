@@ -1043,9 +1043,12 @@ void DOSELF1_BRANCH_STARS(struct runner *r, struct cell *c) {
             "cj->nodeID=%d "                                                \
             "ci->nodeID=%d d=%e sort_j[pjd].d=%e cj->" #TYPE                \
             ".dx_max_sort=%e "                                              \
-            "cj->" #TYPE ".dx_max_sort_old=%e, %i",                         \
+            "cj->" #TYPE                                                    \
+            ".dx_max_sort_old=%e, cellID=%i super->cellID=%i"               \
+            "cj->depth=%d cj->maxdepth=%d",                                 \
             cj->nodeID, ci->nodeID, d, sort_j[pjd].d, cj->TYPE.dx_max_sort, \
-            cj->TYPE.dx_max_sort_old, cj->cellID);                          \
+            cj->TYPE.dx_max_sort_old, cj->cellID, cj->hydro.super->cellID,  \
+            cj->depth, cj->maxdepth);                                       \
     }                                                                       \
   })
 
@@ -1113,12 +1116,12 @@ void DOPAIR1_BRANCH_STARS(struct runner *r, struct cell *ci, struct cell *cj) {
 
 #ifdef SWIFT_DEBUG_CHECKS
   if (do_ci) {
-    RUNNER_CHECK_SORT(hydro, part, cj, ci, sid);
+    // RUNNER_CHECK_SORT(hydro, part, cj, ci, sid);
     RUNNER_CHECK_SORT(stars, spart, ci, cj, sid);
   }
 
   if (do_cj) {
-    RUNNER_CHECK_SORT(hydro, part, ci, cj, sid);
+    // RUNNER_CHECK_SORT(hydro, part, ci, cj, sid);
     RUNNER_CHECK_SORT(stars, spart, cj, ci, sid);
   }
 #endif /* SWIFT_DEBUG_CHECKS */

@@ -1990,8 +1990,8 @@ void cell_activate_hydro_sorts(struct cell *c, int sid, struct scheduler *s) {
     }
   }
 
-  //message("c->hydro.sorted=%d", c->hydro.sorted);
-  
+  // message("c->hydro.sorted=%d", c->hydro.sorted);
+
   /* Has this cell been sorted at all for the given sid? */
   if (!(c->hydro.sorted & (1 << sid)) || c->nodeID != engine_rank) {
 
@@ -2023,11 +2023,11 @@ void cell_activate_stars_sorts_up(struct cell *c, struct scheduler *s) {
       parent->stars.do_sub_sort = 1;
       if (parent == c->hydro.super) {
 #ifdef SWIFT_DEBUG_CHECKS
-        if (parent->stars.sorts == NULL) 
+        if (parent->stars.sorts == NULL)
           error("Trying to activate un-existing parents->stars.sorts");
 #endif
-	scheduler_activate(s, parent->stars.sorts);
-	if (parent->nodeID == engine_rank) cell_activate_drift_spart(parent, s);
+        scheduler_activate(s, parent->stars.sorts);
+        if (parent->nodeID == engine_rank) cell_activate_drift_spart(parent, s);
         break;
       }
     }
@@ -2052,13 +2052,13 @@ void cell_activate_stars_sorts(struct cell *c, int sid, struct scheduler *s) {
     }
   }
 
-  //message("c->stars.sorted=%d", c->stars.sorted);
-  
+  // message("c->stars.sorted=%d", c->stars.sorted);
+
   /* Has this cell been sorted at all for the given sid? */
   if (!(c->stars.sorted & (1 << sid)) || c->nodeID != engine_rank) {
 
-    //message("bbb");
-    
+    // message("bbb");
+
     atomic_or(&c->stars.do_sort, (1 << sid));
     cell_activate_stars_sorts_up(c, s);
   }

@@ -1410,7 +1410,7 @@ void DOPAIR2(struct runner *r, struct cell *ci, struct cell *cj, const int sid,
         /* Compute the pairwise distance. */
         const float dx[3] = {pjx - pix, pjy - piy, pjz - piz};
         const float r2 = dx[0] * dx[0] + dx[1] * dx[1] + dx[2] * dx[2];
-	
+
 #ifdef SWIFT_DEBUG_CHECKS
         /* Check that particles are in the correct frame after the shifts */
         if (pix > shift_threshold_x || pix < -shift_threshold_x)

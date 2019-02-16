@@ -1910,8 +1910,9 @@ void engine_print_task_counts(const struct engine *e) {
   for (int k = 0; k < nr_tasks; k++) {
     if (tasks[k].skip) {
       counts[task_type_count] += 1;
-      //if (e->step == 0) message("Skipped %s/%s", taskID_names[tasks[k].type], subtaskID_names[tasks[k].subtype]);
-    }    else
+      // if (e->step == 0) message("Skipped %s/%s", taskID_names[tasks[k].type],
+      // subtaskID_names[tasks[k].subtype]);
+    } else
       counts[(int)tasks[k].type] += 1;
   }
   message("Total = %d  (per cell = %d)", nr_tasks,
@@ -2676,9 +2677,8 @@ void engine_skip_force_and_kick(struct engine *e) {
 
     /* Skip everything that updates the particles */
     if (t->type == task_type_drift_part || t->type == task_type_drift_gpart ||
-	t->type == task_type_drift_spart ||
-        t->type == task_type_kick1 || t->type == task_type_kick2 ||
-        t->type == task_type_timestep ||
+        t->type == task_type_drift_spart || t->type == task_type_kick1 ||
+        t->type == task_type_kick2 || t->type == task_type_timestep ||
         t->type == task_type_timestep_limiter ||
         t->subtype == task_subtype_force ||
         t->subtype == task_subtype_limiter || t->subtype == task_subtype_grav ||
@@ -2712,8 +2712,8 @@ void engine_skip_drift(struct engine *e) {
     struct task *t = &tasks[i];
 
     /* Skip everything that moves the particles */
-    if (t->type == task_type_drift_part || t->type == task_type_drift_gpart
-	|| t->type == task_type_drift_spart)
+    if (t->type == task_type_drift_part || t->type == task_type_drift_gpart ||
+        t->type == task_type_drift_spart)
       t->skip = 1;
   }
 

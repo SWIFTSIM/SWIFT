@@ -119,6 +119,8 @@
 #include "runner_doiact_stars.h"
 #undef FUNCTION
 
+int emergency_sort = 0;
+
 /**
  * @brief Intermediate task after the density to check that the smoothing
  * lengths are correct.
@@ -481,10 +483,31 @@ void runner_do_cooling(struct runner *r, struct cell *c, int timer) {
   if (timer) TIMER_TOC(timer_do_cooling);
 }
 
+void runner_clear_stars_sort_flags(struct runner *r, struct cell *c) {
+
+  if (c->split) {
+    for (int k = 0; k < 8; k++)
+      if (c->progeny[k] != NULL)
+        runner_clear_stars_sort_flags(r, c->progeny[k]);
+  }
+
+  c->stars.sorted = 0;
+  for (int i = 0; i < 13; i++) {
+    c->stars.sort[i] = NULL;
+  }
+
+  if (c->hydro.super == c) {
+    for (int i = 0; i < 13; i++) {
+      free(c->stars.sort[i]);
+    }
+  }
+}
+
 /**
  *
  */
-void runner_do_star_formation(struct runner *r, struct cell *c, int timer, int* formed_stars) {
+void runner_do_star_formation(struct runner *r, struct cell *c, int timer,
+                              int *formed_stars) {
 
   struct engine *e = r->e;
   const struct cosmology *cosmo = e->cosmology;
@@ -508,7 +531,8 @@ void runner_do_star_formation(struct runner *r, struct cell *c, int timer, int* 
   /* Recurse? */
   if (c->split) {
     for (int k = 0; k < 8; k++)
-      if (c->progeny[k] != NULL) runner_do_star_formation(r, c->progeny[k], 0, formed_stars);
+      if (c->progeny[k] != NULL)
+        runner_do_star_formation(r, c->progeny[k], 0, formed_stars);
   } else {
 
     /* Loop over the gas particles in this cell. */
@@ -554,8 +578,12 @@ void runner_do_star_formation(struct runner *r, struct cell *c, int timer, int* 
             star_formation_copy_properties(p, xp, sp, e, sf_props, cosmo,
                                            with_cosmology);
 
-	    message("STAR FORMED!!!! super->ID=%d", c->super->cellID);
-	    (*formed_stars)++;
+            message(
+                "STAR FORMED!!!! c->ID=%d super->ID=%d c->depth=%d"
+                "c->maxdepth=%d",
+                c->cellID, c->super->cellID, c->depth, c->maxdepth);
+
+            (*formed_stars)++;
           }
 
         } else { /* Are we not star-forming? */
@@ -570,9 +598,17 @@ void runner_do_star_formation(struct runner *r, struct cell *c, int timer, int* 
   }
 
   if (timer && *formed_stars > 0) {
-    runner_do_stars_sort(r, c, 0x1FFF, 0, 0);
+    message(
+        "Emergency sort! c->ID=%d c->depth=%d c->maxdepth=%d c=%p c->super=%p",
+        c->cellID, c->depth, c->maxdepth, c, c->hydro.super);
+
+    runner_clear_stars_sort_flags(r, c);
+
+    emergency_sort = 0;
+    runner_do_stars_sort(r, c, 0x1FFF, 1, 0);
+    emergency_sort = 0;
   }
-  
+
   if (timer) TIMER_TOC(timer_do_star_formation);
 }
 
@@ -955,6 +991,8 @@ void runner_do_stars_sort(struct runner *r, struct cell *c, int flags,
   if (c->stars.sorted == 0) c->stars.ti_sort = r->e->ti_current;
 #endif
 
+  if (emergency_sort) message("flag=%d", flags);
+
   /* start by allocating the entry arrays in the requested dimensions. */
   for (int j = 0; j < 13; j++) {
     if ((flags & (1 << j)) && c->stars.sort[j] == NULL) {
@@ -984,6 +1022,10 @@ void runner_do_stars_sort(struct runner *r, struct cell *c, int flags,
     }
     c->stars.dx_max_sort = dx_max_sort;
     c->stars.dx_max_sort_old = dx_max_sort_old;
+
+    if (emergency_sort) {
+      message("c->id=%d (split) sorting", c->cellID);
+    }
 
     /* Loop over the 13 different sort arrays. */
     for (int j = 0; j < 13; j++) {
@@ -1055,6 +1097,13 @@ void runner_do_stars_sort(struct runner *r, struct cell *c, int flags,
 
   /* Otherwise, just sort. */
   else {
+
+    if (emergency_sort) {
+      message("c->id=%d (leaf) sorting", c->cellID);
+      /* for (int j = 0; j < 13; j++) */
+      /* 	if (flags & (1 << j)) */
+      /* 	  message("Sorting direction %d", j); */
+    }
 
     /* Reset the sort distance */
     if (c->stars.sorted == 0) {
@@ -3216,12 +3265,10 @@ void *runner_main(void *data) {
         case task_type_cooling:
           runner_do_cooling(r, t->ci, 1);
           break;
-        case task_type_star_formation:
-	  {
-	    int formed_stars = 0;
-	    runner_do_star_formation(r, t->ci, 1, &formed_stars);
-	  }
-          break;
+        case task_type_star_formation: {
+          int formed_stars = 0;
+          runner_do_star_formation(r, t->ci, 1, &formed_stars);
+        } break;
         default:
           error("Unknown/invalid task type (%d).", t->type);
       }

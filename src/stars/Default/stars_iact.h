@@ -78,8 +78,8 @@ runner_iact_nonsym_stars_feedback(float r2, const float *dx, float hi, float hj,
   /* Get the time derivative for h. */
   si->feedback.h_dt -= mj * dvdr * ri / rhoj * wi_dr;
 
-  //message("Feedback!");
-  
+  // message("Feedback!");
+
 #ifdef DEBUG_INTERACTIONS_STARS
   /* Update ngb counters */
   if (si->num_ngb_force < MAX_NUM_OF_NEIGHBOURS_STARS)

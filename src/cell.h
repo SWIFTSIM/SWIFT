@@ -1007,19 +1007,19 @@ cell_can_split_self_gravity_task(const struct cell *c) {
  */
 __attribute__((always_inline)) INLINE static int
 cell_need_rebuild_for_hydro_pair(const struct cell *ci, const struct cell *cj) {
-  
+
   /* Is the cut-off radius plus the max distance the parts in both cells have */
   /* moved larger than the cell size ? */
   /* Note ci->dmin == cj->dmin */
   /*return*/
 
-  if(kernel_gamma * max(ci->hydro.h_max, cj->hydro.h_max) +
-     ci->hydro.dx_max_part + cj->hydro.dx_max_part >
-     cj->dmin){
-    //error("Need rebuild hydro!");
+  if (kernel_gamma * max(ci->hydro.h_max, cj->hydro.h_max) +
+          ci->hydro.dx_max_part + cj->hydro.dx_max_part >
+      cj->dmin) {
+    // error("Need rebuild hydro!");
     return 1;
   }
-return 0;
+  return 0;
 }
 /**
  * @brief Have star particles in a pair of cells moved too much and require a
@@ -1036,12 +1036,11 @@ cell_need_rebuild_for_stars_pair(const struct cell *ci, const struct cell *cj) {
   /* Note ci->dmin == cj->dmin */
   /* return */
 
-  if(kernel_gamma * max(ci->stars.h_max, cj->hydro.h_max) +
-              ci->stars.dx_max_part + cj->hydro.dx_max_part >
-     cj->dmin) {
-    //error("Need rebuild stars!");
+  if (kernel_gamma * max(ci->stars.h_max, cj->hydro.h_max) +
+          ci->stars.dx_max_part + cj->hydro.dx_max_part >
+      cj->dmin) {
+    // error("Need rebuild stars!");
     return 1;
-
   }
   return 0;
 }
