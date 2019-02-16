@@ -151,6 +151,7 @@ __attribute__((always_inline)) INLINE static enum task_actions task_acts_on(
     case task_type_star_formation:
       return task_action_all;
 
+    case task_type_drift_spart:
     case task_type_stars_ghost:
     case task_type_stars_sort:
       return task_action_spart;
@@ -180,7 +181,10 @@ __attribute__((always_inline)) INLINE static enum task_actions task_acts_on(
           break;
 
         default:
-          error("Unknow task_action for task");
+#ifdef SWIFT_DEBUG_CHECKS
+          error("Unknown task_action for task %s/%s", taskID_names[t->type],
+                subtaskID_names[t->subtype]);
+#endif
           return task_action_none;
           break;
       }
@@ -199,8 +203,11 @@ __attribute__((always_inline)) INLINE static enum task_actions task_acts_on(
         return task_action_part;
       else if (t->ci->grav.count > 0)
         return task_action_gpart;
-      else
+      else {
+#ifdef SWIFT_DEBUG_CHECKS
         error("Task without particles");
+#endif
+      }
       break;
 
     case task_type_init_grav:
@@ -216,13 +223,19 @@ __attribute__((always_inline)) INLINE static enum task_actions task_acts_on(
       break;
 
     default:
-      error("Unknown task_action for task");
+#ifdef SWIFT_DEBUG_CHECKS
+      error("Unknown task_action for task %s/%s", taskID_names[t->type],
+            subtaskID_names[t->subtype]);
+#endif
       return task_action_none;
       break;
   }
 
-  /* Silence compiler warnings */
-  error("Unknown task_action for task");
+#ifdef SWIFT_DEBUG_CHECKS
+  error("Unknown task_action for task %s/%s", taskID_names[t->type],
+        subtaskID_names[t->subtype]);
+#endif
+  /* Silence compiler warnings. We should never get here. */
   return task_action_none;
 }
 
