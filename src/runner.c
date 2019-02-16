@@ -223,7 +223,9 @@ void runner_do_stars_ghost(struct runner *r, struct cell *c, int timer) {
 #ifdef SWIFT_DEBUG_CHECKS
           if ((f > 0.f && h_new > h_old) || (f < 0.f && h_new < h_old))
             error(
-                "Smoothing length correction not going in the right direction");
+                "Smoothing length correction not going in the right direction"
+                "sp->id=%lld sp->h=%e",
+                sp->id, sp->h);
 #endif
 
           /* Safety check: truncate to the range [ h_old/2 , 2h_old ]. */

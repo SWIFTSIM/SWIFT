@@ -58,8 +58,11 @@ struct spart {
   /*! Initial star mass */
   float mass_init;
 
-  /* Particle cutoff radius. */
+  /*! Particle smoothing length. */
   float h;
+
+  /*! Density of the gas surrounding the star. */
+  float rho_gas;
 
   /*! Particle time bin */
   timebin_t time_bin;

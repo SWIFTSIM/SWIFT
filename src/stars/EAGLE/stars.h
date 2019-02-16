@@ -34,21 +34,6 @@ __attribute__((always_inline)) INLINE static float stars_compute_timestep(
 }
 
 /**
- * @brief Initialises the s-particles for the first time
- *
- * This function is called only once just after the ICs have been
- * read in to do some conversions.
- *
- * @param sp The particle to act upon
- */
-__attribute__((always_inline)) INLINE static void stars_first_init_spart(
-    struct spart* sp) {
-
-  sp->time_bin = 0;
-  sp->birth_density = -1.f;
-}
-
-/**
  * @brief Prepares a s-particle for its interactions
  *
  * @param sp The particle to act upon
@@ -64,6 +49,24 @@ __attribute__((always_inline)) INLINE static void stars_init_spart(
 
   sp->density.wcount = 0.f;
   sp->density.wcount_dh = 0.f;
+  sp->rho_gas = 0.f;
+}
+
+/**
+ * @brief Initialises the s-particles for the first time
+ *
+ * This function is called only once just after the ICs have been
+ * read in to do some conversions.
+ *
+ * @param sp The particle to act upon
+ */
+__attribute__((always_inline)) INLINE static void stars_first_init_spart(
+    struct spart* sp) {
+
+  sp->time_bin = 0;
+  sp->birth_density = -1.f;
+
+  stars_init_spart(sp);
 }
 
 /**
@@ -132,6 +135,7 @@ __attribute__((always_inline)) INLINE static void stars_end_density(
   const float h_inv_dim_plus_one = h_inv_dim * h_inv; /* 1/h^(d+1) */
 
   /* Finish the calculation by inserting the missing h-factors */
+  sp->rho_gas *= h_inv_dim;
   sp->density.wcount *= h_inv_dim;
   sp->density.wcount_dh *= h_inv_dim_plus_one;
 }
@@ -146,14 +150,10 @@ __attribute__((always_inline)) INLINE static void stars_end_density(
 __attribute__((always_inline)) INLINE static void stars_spart_has_no_neighbours(
     struct spart* restrict sp, const struct cosmology* cosmo) {
 
-  /* Some smoothing length multiples. */
-  const float h = sp->h;
-  const float h_inv = 1.0f / h;                 /* 1/h */
-  const float h_inv_dim = pow_dimension(h_inv); /* 1/h^d */
-
   /* Re-set problematic values */
-  sp->density.wcount = kernel_root * h_inv_dim;
+  sp->density.wcount = 0.f;
   sp->density.wcount_dh = 0.f;
+  sp->rho_gas = 0.f;
 }
 
 /**
