@@ -85,9 +85,16 @@ __attribute__((always_inline)) INLINE static int cell_are_gpart_drifted(
 __attribute__((always_inline)) INLINE static int cell_are_spart_drifted(
     const struct cell *c, const struct engine *e) {
 
-  /* Currently just use the gpart drift
-   * This function is just for clarity */
-  return cell_are_gpart_drifted(c, e);
+#ifdef SWIFT_DEBUG_CHECKS
+  if (c->stars.ti_old_part > e->ti_current)
+    error(
+        "Cell has been drifted too far forward in time! c->ti_old=%lld (t=%e) "
+        "and e->ti_current=%lld (t=%e)",
+        c->stars.ti_old_part, c->stars.ti_old_part * e->time_base,
+        e->ti_current, e->ti_current * e->time_base);
+#endif
+
+  return (c->stars.ti_old_part == e->ti_current);
 }
 
 /* Are cells / particles active for regular tasks ? */
