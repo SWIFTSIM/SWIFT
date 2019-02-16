@@ -348,8 +348,6 @@ void engine_marktasks_mapper(void *map_data, int num_elements,
             if (ci_nodeID == nodeID) cell_activate_drift_spart(ci, s);
             if (cj_nodeID == nodeID) cell_activate_drift_part(cj, s);
 
-            message("do ci flags=%lld", t->flags);
-
             /* Check the sorts and activate them if needed. */
             cell_activate_hydro_sorts(cj, t->flags, s);
             cell_activate_stars_sorts(ci, t->flags, s);
@@ -367,8 +365,6 @@ void engine_marktasks_mapper(void *map_data, int num_elements,
             /* Activate the hydro drift tasks. */
             if (ci_nodeID == nodeID) cell_activate_drift_part(ci, s);
             if (cj_nodeID == nodeID) cell_activate_drift_spart(cj, s);
-
-            message("do cj flags=%lld", t->flags);
 
             /* Check the sorts and activate them if needed. */
             cell_activate_hydro_sorts(ci, t->flags, s);
