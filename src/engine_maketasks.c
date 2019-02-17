@@ -936,8 +936,8 @@ void engine_make_hierarchical_tasks_hydro(struct engine *e, struct cell *c) {
       engine_add_ghosts(e, c, c->hydro.ghost_in, c->hydro.ghost_out);
 
       if (with_feedback) {
-	c->stars.ghost = scheduler_addtask(s, task_type_stars_ghost,
-					   task_subtype_none, 0, 0, c, NULL);
+        c->stars.ghost = scheduler_addtask(s, task_type_stars_ghost,
+                                           task_subtype_none, 0, 0, c, NULL);
       }
 
 #ifdef EXTRA_HYDRO_LOOP

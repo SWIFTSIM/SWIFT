@@ -376,7 +376,6 @@ void engine_marktasks_mapper(void *map_data, int num_elements,
         else if (t_type == task_type_sub_pair &&
                  t_subtype == task_subtype_stars_density) {
           cell_activate_subcell_stars_tasks(t->ci, t->cj, s);
-          cell_activate_subcell_hydro_tasks(t->ci, t->cj, s);
         }
       }
 
