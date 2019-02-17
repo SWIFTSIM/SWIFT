@@ -270,11 +270,10 @@ void engine_addtasks_send_stars(struct engine *e, struct cell *ci,
                                  ci->mpi.tag, 0, ci, cj);
 
       /* The send_stars task should unlock the super_cell's kick task. */
-      // scheduler_addunlock(s, t_feed, ci->super->end_force);
-      error("need implementing");
+      scheduler_addunlock(s, t_feed, ci->hydro.super->stars.stars_out);
 
       /* Ghost before you send */
-      // scheduler_addunlock(s, ci->hydro.super->stars.ghost_out, t_feed);
+      scheduler_addunlock(s, ci->hydro.super->stars.ghost, t_feed);
     }
 
     if (hydro == NULL) {
@@ -2755,7 +2754,7 @@ void engine_maketasks(struct engine *e) {
 
   /* Free the old list of cell-task links. */
   if (e->links != NULL) free(e->links);
-  e->size_links = e->sched.nr_tasks * e->links_per_tasks;
+  e->size_links = e->sched.nr_tasks * e->links_per_tasks * 2;
 
   /* Make sure that we have space for more links than last time. */
   if (e->size_links < e->nr_links * engine_rebuild_link_alloc_margin)

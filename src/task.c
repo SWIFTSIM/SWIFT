@@ -681,10 +681,9 @@ void task_get_group_name(int type, int subtype, char *cluster) {
       break;
     case task_subtype_gradient:
       if (type == task_type_send || type == task_type_recv) {
-	strcpy(cluster, "None");
-      }
-      else {
-	strcpy(cluster, "Gradient");
+        strcpy(cluster, "None");
+      } else {
+        strcpy(cluster, "Gradient");
       }
       break;
     case task_subtype_force:
