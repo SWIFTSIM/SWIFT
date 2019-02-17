@@ -55,7 +55,7 @@ enum task_types {
   task_type_drift_spart,
   task_type_drift_gpart,
   task_type_drift_gpart_out, /* Implicit */
-  task_type_end_force,
+  task_type_end_hydro_force,
   task_type_kick1,
   task_type_kick2,
   task_type_timestep,
@@ -67,9 +67,12 @@ enum task_types {
   task_type_grav_down_in, /* Implicit */
   task_type_grav_down,
   task_type_grav_mesh,
+  task_type_end_grav_force,
   task_type_cooling,
   task_type_star_formation,
   task_type_logger,
+  task_type_stars_in,       /* Implicit */
+  task_type_stars_out,      /* Implicit */
   task_type_stars_ghost_in, /* Implicit */
   task_type_stars_ghost,
   task_type_stars_ghost_out, /* Implicit */

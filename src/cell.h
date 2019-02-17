@@ -281,6 +281,9 @@ struct cell {
     /*! The extra ghost task for complex hydro schemes */
     struct task *extra_ghost;
 
+    /*! The task to end the force calculation */
+    struct task *end_force;
+
     /*! Task for cooling */
     struct task *cooling;
 
@@ -412,6 +415,9 @@ struct cell {
     /*! Task propagating the multipole to the particles */
     struct task *down;
 
+    /*! The task to end the force calculation */
+    struct task *end_force;
+
     /*! Minimum end of (integer) time step in this cell for gravity tasks. */
     integertime_t ti_end_min;
 
@@ -469,12 +475,6 @@ struct cell {
     /*! Pointer to the #spart data. */
     struct spart *parts;
 
-    /*! Dependency implicit task for the star ghost  (in->ghost->out)*/
-    struct task *ghost_in;
-
-    /*! Dependency implicit task for the star ghost  (in->ghost->out)*/
-    struct task *ghost_out;
-
     /*! The star ghost task itself */
     struct task *ghost;
 
@@ -489,6 +489,10 @@ struct cell {
 
     /*! The drift task for sparts */
     struct task *drift;
+
+    struct task *stars_in;
+
+    struct task *stars_out;
 
     /*! Max smoothing length in this cell. */
     double h_max;
@@ -630,9 +634,6 @@ struct cell {
 
   } mpi;
 #endif
-
-  /*! The task to end the force calculation */
-  struct task *end_force;
 
   /*! The first kick task */
   struct task *kick1;

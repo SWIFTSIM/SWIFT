@@ -214,8 +214,6 @@ void space_rebuild_recycle_mapper(void *map_data, int num_elements,
     c->hydro.ghost_in = NULL;
     c->hydro.ghost_out = NULL;
     c->hydro.ghost = NULL;
-    c->stars.ghost_in = NULL;
-    c->stars.ghost_out = NULL;
     c->stars.ghost = NULL;
     c->stars.density = NULL;
     c->stars.feedback = NULL;
@@ -223,9 +221,11 @@ void space_rebuild_recycle_mapper(void *map_data, int num_elements,
     c->kick2 = NULL;
     c->timestep = NULL;
     c->timestep_limiter = NULL;
-    c->end_force = NULL;
+    c->hydro.end_force = NULL;
     c->hydro.drift = NULL;
     c->stars.drift = NULL;
+    c->stars.stars_in = NULL;
+    c->stars.stars_out = NULL;
     c->grav.drift = NULL;
     c->grav.drift_out = NULL;
     c->hydro.cooling = NULL;
@@ -233,6 +233,7 @@ void space_rebuild_recycle_mapper(void *map_data, int num_elements,
     c->grav.down_in = NULL;
     c->grav.down = NULL;
     c->grav.mesh = NULL;
+    c->grav.end_force = NULL;
     c->super = c;
     c->hydro.super = c;
     c->grav.super = c;

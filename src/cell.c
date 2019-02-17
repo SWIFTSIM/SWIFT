@@ -3226,7 +3226,7 @@ int cell_unskip_hydro_tasks(struct cell *c, struct scheduler *s) {
     if (c->kick1 != NULL) scheduler_activate(s, c->kick1);
     if (c->kick2 != NULL) scheduler_activate(s, c->kick2);
     if (c->timestep != NULL) scheduler_activate(s, c->timestep);
-    if (c->end_force != NULL) scheduler_activate(s, c->end_force);
+    if (c->hydro.end_force != NULL) scheduler_activate(s, c->hydro.end_force);
     if (c->hydro.cooling != NULL) scheduler_activate(s, c->hydro.cooling);
     if (c->hydro.star_formation != NULL)
       scheduler_activate(s, c->hydro.star_formation);
@@ -3374,11 +3374,11 @@ int cell_unskip_gravity_tasks(struct cell *c, struct scheduler *s) {
     if (c->kick1 != NULL) scheduler_activate(s, c->kick1);
     if (c->kick2 != NULL) scheduler_activate(s, c->kick2);
     if (c->timestep != NULL) scheduler_activate(s, c->timestep);
-    if (c->end_force != NULL) scheduler_activate(s, c->end_force);
     if (c->grav.down != NULL) scheduler_activate(s, c->grav.down);
     if (c->grav.down_in != NULL) scheduler_activate(s, c->grav.down_in);
     if (c->grav.mesh != NULL) scheduler_activate(s, c->grav.mesh);
     if (c->grav.long_range != NULL) scheduler_activate(s, c->grav.long_range);
+    if (c->grav.end_force != NULL) scheduler_activate(s, c->grav.end_force);
     if (c->logger != NULL) scheduler_activate(s, c->logger);
 
     /* Subgrid tasks */
@@ -3561,9 +3561,9 @@ int cell_unskip_stars_tasks(struct cell *c, struct scheduler *s) {
   /* Unskip all the other task types. */
   if (c->nodeID == nodeID && cell_is_active_stars(c, e)) {
 
-    if (c->stars.ghost_in != NULL) scheduler_activate(s, c->stars.ghost_in);
-    if (c->stars.ghost_out != NULL) scheduler_activate(s, c->stars.ghost_out);
     if (c->stars.ghost != NULL) scheduler_activate(s, c->stars.ghost);
+    if (c->stars.stars_in != NULL) scheduler_activate(s, c->stars.stars_in);
+    if (c->stars.stars_out != NULL) scheduler_activate(s, c->stars.stars_out);
     if (c->logger != NULL) scheduler_activate(s, c->logger);
   }
 
@@ -3578,8 +3578,9 @@ int cell_unskip_stars_tasks(struct cell *c, struct scheduler *s) {
  */
 void cell_set_super(struct cell *c, struct cell *super) {
 
-  /* Are we in a cell with some kind of self/pair task ? */
-  if (super == NULL && (c->nr_tasks > 0 || c->grav.nr_mm_tasks > 0)) super = c;
+  /* Are we in a cell which is either the hydro or gravity super? */
+  if (super == NULL && (c->hydro.super != NULL || c->grav.super != NULL))
+    super = c;
 
   /* Set the super-cell */
   c->super = super;

@@ -152,6 +152,8 @@ def taskIsHydro(name):
         return True
     if "rho" in name:
         return True
+    if "gradient" in name:
+        return True
     if "force" in name:
         return True
     if "xv" in name:
@@ -162,6 +164,9 @@ def taskIsHydro(name):
         "ghost_in",
         "ghost",
         "ghost_out",
+        "extra_ghost",
+        "cooling",
+        "star_formation"
     ]
     if name in task_name:
         return True

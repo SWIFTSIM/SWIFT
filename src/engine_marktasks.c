@@ -564,11 +564,16 @@ void engine_marktasks_mapper(void *map_data, int num_elements,
       }
     }
 
-    /* End force ? */
-    else if (t_type == task_type_end_force) {
+    /* End force for hydro ? */
+    else if (t_type == task_type_end_hydro_force) {
 
-      if (cell_is_active_hydro(t->ci, e) || cell_is_active_gravity(t->ci, e))
-        scheduler_activate(s, t);
+      if (cell_is_active_hydro(t->ci, e)) scheduler_activate(s, t);
+    }
+
+    /* End force for gravity ? */
+    else if (t_type == task_type_end_grav_force) {
+
+      if (cell_is_active_gravity(t->ci, e)) scheduler_activate(s, t);
     }
 
     /* Kick ? */
@@ -623,9 +628,12 @@ void engine_marktasks_mapper(void *map_data, int num_elements,
     }
 
     /* Star ghost tasks ? */
-    else if (t_type == task_type_stars_ghost ||
-             t_type == task_type_stars_ghost_in ||
-             t_type == task_type_stars_ghost_out) {
+    else if (t_type == task_type_stars_ghost) {
+      if (cell_is_active_stars(t->ci, e)) scheduler_activate(s, t);
+    }
+
+    /* Feedback implicit tasks? */
+    else if (t_type == task_type_stars_in || t_type == task_type_stars_out) {
       if (cell_is_active_stars(t->ci, e)) scheduler_activate(s, t);
     }
 

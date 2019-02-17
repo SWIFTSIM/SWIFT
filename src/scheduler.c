@@ -100,7 +100,9 @@ static void scheduler_extend_unlocks(struct scheduler *s) {
 void scheduler_addunlock(struct scheduler *s, struct task *ta,
                          struct task *tb) {
 #ifdef SWIFT_DEBUG_CHECKS
-  if (ta == NULL) error("Unlocking task is NULL.");
+  if (ta == NULL)
+    error("Unlocking task is NULL. tb=%s/%s", taskID_names[tb->type],
+          subtaskID_names[tb->subtype]);
   if (tb == NULL) error("Unlocked task is NULL.");
 #endif
 
@@ -2090,8 +2092,8 @@ void scheduler_reweight(struct scheduler *s, int verbose) {
       case task_type_grav_mm:
         cost = wscale * (gcount_i + gcount_j);
         break;
-      case task_type_end_force:
-        cost = wscale * count_i + wscale * gcount_i;
+      case task_type_end_hydro_force:
+        cost = wscale * count_i;
         break;
       case task_type_kick1:
         cost = wscale * count_i + wscale * gcount_i;

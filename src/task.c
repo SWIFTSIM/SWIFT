@@ -64,7 +64,7 @@ const char *taskID_names[task_type_count] = {"none",
                                              "drift_spart",
                                              "drift_gpart",
                                              "drift_gpart_out",
-                                             "end_force",
+                                             "end_hydro_force",
                                              "kick1",
                                              "kick2",
                                              "timestep",
@@ -76,9 +76,12 @@ const char *taskID_names[task_type_count] = {"none",
                                              "grav_down_in",
                                              "grav_down",
                                              "grav_mesh",
+                                             "grav_end_force",
                                              "cooling",
                                              "star_formation",
                                              "logger",
+                                             "stars_in",
+                                             "stars_out",
                                              "stars_ghost_in",
                                              "stars_ghost",
                                              "stars_ghost_out",
@@ -145,6 +148,7 @@ __attribute__((always_inline)) INLINE static enum task_actions task_acts_on(
     case task_type_extra_ghost:
     case task_type_timestep_limiter:
     case task_type_cooling:
+    case task_type_end_hydro_force:
       return task_action_part;
       break;
 
@@ -190,7 +194,6 @@ __attribute__((always_inline)) INLINE static enum task_actions task_acts_on(
       }
       break;
 
-    case task_type_end_force:
     case task_type_kick1:
     case task_type_kick2:
     case task_type_logger:
@@ -218,6 +221,7 @@ __attribute__((always_inline)) INLINE static enum task_actions task_acts_on(
 
     case task_type_drift_gpart:
     case task_type_grav_down:
+    case task_type_end_grav_force:
     case task_type_grav_mesh:
       return task_action_gpart;
       break;
@@ -349,7 +353,6 @@ void task_unlock(struct task *t) {
   /* Act based on task type. */
   switch (type) {
 
-    case task_type_end_force:
     case task_type_kick1:
     case task_type_kick2:
     case task_type_logger:
@@ -361,12 +364,14 @@ void task_unlock(struct task *t) {
     case task_type_drift_part:
     case task_type_sort:
     case task_type_ghost:
+    case task_type_end_hydro_force:
     case task_type_timestep_limiter:
       cell_unlocktree(ci);
       break;
 
     case task_type_drift_gpart:
     case task_type_grav_mesh:
+    case task_type_end_grav_force:
       cell_gunlocktree(ci);
       break;
 
@@ -472,7 +477,6 @@ int task_lock(struct task *t) {
 #endif
       break;
 
-    case task_type_end_force:
     case task_type_kick1:
     case task_type_kick2:
     case task_type_logger:
@@ -488,6 +492,7 @@ int task_lock(struct task *t) {
     case task_type_drift_part:
     case task_type_sort:
     case task_type_ghost:
+    case task_type_end_hydro_force:
     case task_type_timestep_limiter:
       if (ci->hydro.hold) return 0;
       if (cell_locktree(ci) != 0) return 0;
@@ -499,6 +504,7 @@ int task_lock(struct task *t) {
       break;
 
     case task_type_drift_gpart:
+    case task_type_end_grav_force:
     case task_type_grav_mesh:
       if (ci->grav.phold) return 0;
       if (cell_glocktree(ci) != 0) return 0;

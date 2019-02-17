@@ -2610,45 +2610,31 @@ void runner_do_limiter(struct runner *r, struct cell *c, int force, int timer) {
 }
 
 /**
- * @brief End the force calculation of all active particles in a cell
+ * @brief End the hydro force calculation of all active particles in a cell
  * by multiplying the acccelerations by the relevant constants
  *
  * @param r The #runner thread.
  * @param c The #cell.
  * @param timer Are we timing this ?
  */
-void runner_do_end_force(struct runner *r, struct cell *c, int timer) {
+void runner_do_end_hydro_force(struct runner *r, struct cell *c, int timer) {
 
   const struct engine *e = r->e;
-  const struct space *s = e->s;
-  const struct cosmology *cosmo = e->cosmology;
-  const int count = c->hydro.count;
-  const int gcount = c->grav.count;
-  const int scount = c->stars.count;
-  struct part *restrict parts = c->hydro.parts;
-  struct gpart *restrict gparts = c->grav.parts;
-  struct spart *restrict sparts = c->stars.parts;
-  const int periodic = s->periodic;
-  const float G_newton = e->physical_constants->const_newton_G;
 
   TIMER_TIC;
 
-  /* Potential normalisation in the case of periodic gravity */
-  float potential_normalisation = 0.;
-  if (periodic && (e->policy & engine_policy_self_gravity)) {
-    const double volume = s->dim[0] * s->dim[1] * s->dim[2];
-    const double r_s = e->mesh->r_s;
-    potential_normalisation = 4. * M_PI * e->total_mass * r_s * r_s / volume;
-  }
-
   /* Anything to do here? */
-  if (!cell_is_active_hydro(c, e) && !cell_is_active_gravity(c, e)) return;
+  if (!cell_is_active_hydro(c, e)) return;
 
   /* Recurse? */
   if (c->split) {
     for (int k = 0; k < 8; k++)
-      if (c->progeny[k] != NULL) runner_do_end_force(r, c->progeny[k], 0);
+      if (c->progeny[k] != NULL) runner_do_end_hydro_force(r, c->progeny[k], 0);
   } else {
+
+    const struct cosmology *cosmo = e->cosmology;
+    const int count = c->hydro.count;
+    struct part *restrict parts = c->hydro.parts;
 
     /* Loop over the gas particles in this cell. */
     for (int k = 0; k < count; k++) {
@@ -2662,6 +2648,48 @@ void runner_do_end_force(struct runner *r, struct cell *c, int timer) {
         hydro_end_force(p, cosmo);
       }
     }
+  }
+
+  if (timer) TIMER_TOC(timer_end_hydro_force);
+}
+
+/**
+ * @brief End the gravity force calculation of all active particles in a cell
+ * by multiplying the acccelerations by the relevant constants
+ *
+ * @param r The #runner thread.
+ * @param c The #cell.
+ * @param timer Are we timing this ?
+ */
+void runner_do_end_grav_force(struct runner *r, struct cell *c, int timer) {
+
+  const struct engine *e = r->e;
+
+  TIMER_TIC;
+
+  /* Anything to do here? */
+  if (!cell_is_active_gravity(c, e)) return;
+
+  /* Recurse? */
+  if (c->split) {
+    for (int k = 0; k < 8; k++)
+      if (c->progeny[k] != NULL) runner_do_end_grav_force(r, c->progeny[k], 0);
+  } else {
+
+    const struct space *s = e->s;
+    const int periodic = s->periodic;
+    const float G_newton = e->physical_constants->const_newton_G;
+
+    /* Potential normalisation in the case of periodic gravity */
+    float potential_normalisation = 0.;
+    if (periodic && (e->policy & engine_policy_self_gravity)) {
+      const double volume = s->dim[0] * s->dim[1] * s->dim[2];
+      const double r_s = e->mesh->r_s;
+      potential_normalisation = 4. * M_PI * e->total_mass * r_s * r_s / volume;
+    }
+
+    const int gcount = c->grav.count;
+    struct gpart *restrict gparts = c->grav.parts;
 
     /* Loop over the g-particles in this cell. */
     for (int k = 0; k < gcount; k++) {
@@ -2736,24 +2764,31 @@ void runner_do_end_force(struct runner *r, struct cell *c, int timer) {
                 e->total_nr_gparts, e->s->nr_gparts, e->count_inhibited_gparts);
           }
         }
+      }
 #endif
-      }
-    }
-
-    /* Loop over the stars particles in this cell. */
-    for (int k = 0; k < scount; k++) {
-
-      /* Get a handle on the spart. */
-      struct spart *restrict sp = &sparts[k];
-      if (spart_is_active(sp, e)) {
-
-        /* Finish the force loop */
-        stars_end_feedback(sp);
-      }
     }
   }
 
-  if (timer) TIMER_TOC(timer_endforce);
+  if (timer) TIMER_TOC(timer_end_grav_force);
+}
+
+void end_gravity(struct runner *r, struct cell *c, int timer) {
+
+  const struct engine *e = r->e;
+  const int scount = c->stars.count;
+  struct spart *restrict sparts = c->stars.parts;
+
+  /* Loop over the stars particles in this cell. */
+  for (int k = 0; k < scount; k++) {
+
+    /* Get a handle on the spart. */
+    struct spart *restrict sp = &sparts[k];
+    if (spart_is_active(sp, e)) {
+
+      /* Finish the force loop */
+      stars_end_feedback(sp);
+    }
+  }
 }
 
 /**
@@ -2835,7 +2870,7 @@ void runner_do_recv_part(struct runner *r, struct cell *c, int clear_sorts,
   if (timer) TIMER_TOC(timer_dorecv_part);
 
 #else
-  error("SWIFT was not compiled with MPI support.");
+    error("SWIFT was not compiled with MPI support.");
 #endif
 }
 
@@ -2909,7 +2944,7 @@ void runner_do_recv_gpart(struct runner *r, struct cell *c, int timer) {
   if (timer) TIMER_TOC(timer_dorecv_gpart);
 
 #else
-  error("SWIFT was not compiled with MPI support.");
+    error("SWIFT was not compiled with MPI support.");
 #endif
 }
 
@@ -2995,7 +3030,7 @@ void runner_do_recv_spart(struct runner *r, struct cell *c, int clear_sorts,
   if (timer) TIMER_TOC(timer_dorecv_spart);
 
 #else
-  error("SWIFT was not compiled with MPI support.");
+    error("SWIFT was not compiled with MPI support.");
 #endif
 }
 
@@ -3189,8 +3224,11 @@ void *runner_main(void *data) {
         case task_type_kick2:
           runner_do_kick2(r, ci, 1);
           break;
-        case task_type_end_force:
-          runner_do_end_force(r, ci, 1);
+        case task_type_end_hydro_force:
+          runner_do_end_hydro_force(r, ci, 1);
+          break;
+        case task_type_end_grav_force:
+          runner_do_end_grav_force(r, ci, 1);
           break;
         case task_type_logger:
           runner_do_logger(r, ci, 1);
@@ -3343,6 +3381,6 @@ void runner_do_logger(struct runner *r, struct cell *c, int timer) {
   if (timer) TIMER_TOC(timer_logger);
 
 #else
-  error("Logger disabled, please enable it during configuration");
+    error("Logger disabled, please enable it during configuration");
 #endif
 }
