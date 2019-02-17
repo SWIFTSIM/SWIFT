@@ -153,7 +153,7 @@ void engine_addtasks_send_hydro(struct engine *e, struct cell *ci,
 
 #ifdef EXTRA_HYDRO_LOOP
 
-      scheduler_addunlock(s, t_gradient, ci->super->kick2);
+      scheduler_addunlock(s, t_gradient, ci->hydro.super->hydro.end_force);
 
       scheduler_addunlock(s, ci->hydro.super->hydro.extra_ghost, t_gradient);
 
@@ -169,7 +169,7 @@ void engine_addtasks_send_hydro(struct engine *e, struct cell *ci,
 
 #else
       /* The send_rho task should unlock the super_hydro-cell's kick task. */
-      scheduler_addunlock(s, t_rho, ci->super->end_force);
+      scheduler_addunlock(s, t_rho, ci->hydro.super->hydro.end_force);
 
       /* The send_rho task depends on the cell's ghost task. */
       scheduler_addunlock(s, ci->hydro.super->hydro.ghost_out, t_rho);
