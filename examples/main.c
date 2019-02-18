@@ -902,10 +902,11 @@ int main(int argc, char *argv[]) {
     if (myrank == 0) cooling_print(&cooling_func);
 
     /* Initialise the star formation law and its properties */
+    bzero(&starform, sizeof(struct star_formation));
     if (with_star_formation)
       starformation_init(params, &prog_const, &us, &hydro_properties,
                          &starform);
-    if (myrank == 0) starformation_print(&starform);
+    if (with_star_formation && myrank == 0) starformation_print(&starform);
 
     /* Initialise the chemistry */
     bzero(&chemistry, sizeof(struct chemistry_global_data));
