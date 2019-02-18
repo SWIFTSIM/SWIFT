@@ -1,7 +1,7 @@
 from h5py import File
 import numpy as np
 import matplotlib
-# matplotlib.use("Agg")
+matplotlib.use("Agg")
 import matplotlib.pyplot as plt
 
 # Plot parameters
@@ -107,5 +107,4 @@ plt.legend(loc="upper right", fontsize=8, frameon=False,
 plt.xlabel("${\\rm{Time~[Myr]}}$", labelpad=0)
 plt.ylabel("${\\rm{Temperature~[K]}}$")
 
-plt.show()
-# plt.savefig("temperature.png", dpi=200)
+plt.savefig("temperature.png", dpi=200)
