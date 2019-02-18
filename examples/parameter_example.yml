@@ -299,7 +299,6 @@ GrackleCooling:
   ProvideVolumetricHeatingRates: 0      # (optional) User provide volumetric heating rates
   ProvideSpecificHeatingRates: 0        # (optional) User provide specific heating rates
   SelfShieldingMethod: 0                # (optional) Grackle (<= 3) or Gear self shielding method
-  OutputMode: 0                         # (optional) Write in output corresponding primordial chemistry mode
   MaxSteps: 10000                       # (optional) Max number of step when computing the initial composition
   ConvergenceLimit: 1e-2                # (optional) Convergence threshold (relative) for initial composition
 
