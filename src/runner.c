@@ -1816,7 +1816,7 @@ void runner_do_kick1(struct runner *r, struct cell *c, int timer) {
   TIMER_TIC;
 
   /* Anything to do here? */
-  if (!cell_is_starting_hydro(c, e) && !cell_is_starting_gravity(c, e)) return;
+  if (!cell_is_starting_hydro(c, e) && !cell_is_starting_gravity(c, e) && !cell_is_starting_stars(c, e)) return;
 
   /* Recurse? */
   if (c->split) {
@@ -1998,7 +1998,7 @@ void runner_do_kick2(struct runner *r, struct cell *c, int timer) {
   TIMER_TIC;
 
   /* Anything to do here? */
-  if (!cell_is_active_hydro(c, e) && !cell_is_active_gravity(c, e)) return;
+  if (!cell_is_active_hydro(c, e) && !cell_is_active_gravity(c, e) && !cell_is_active_stars(c, e)) return;
 
   /* Recurse? */
   if (c->split) {
@@ -2205,7 +2205,8 @@ void runner_do_timestep(struct runner *r, struct cell *c, int timer) {
                 ti_hydro_beg_max = 0;
   integertime_t ti_gravity_end_min = max_nr_timesteps, ti_gravity_end_max = 0,
                 ti_gravity_beg_max = 0;
-  integertime_t ti_stars_end_min = max_nr_timesteps;
+  integertime_t ti_stars_end_min = max_nr_timesteps, ti_stars_end_max = 0,
+                ti_stars_beg_max = 0;
 
   /* No children? */
   if (!c->split) {
@@ -2383,15 +2384,15 @@ void runner_do_timestep(struct runner *r, struct cell *c, int timer) {
         s_updated++;
         g_updated++;
 
-        /* What is the next sync-point ? */
-        ti_gravity_end_min = min(ti_current + ti_new_step, ti_gravity_end_min);
-        ti_gravity_end_max = max(ti_current + ti_new_step, ti_gravity_end_max);
-
         ti_stars_end_min = min(ti_current + ti_new_step, ti_stars_end_min);
+        ti_stars_end_max = max(ti_current + ti_new_step, ti_stars_end_max);
+	ti_gravity_end_min = min(ti_end, ti_gravity_end_min);
+	ti_gravity_end_max = max(ti_end, ti_gravity_end_max);
 
         /* What is the next starting point for this cell ? */
-        ti_gravity_beg_max = max(ti_current, ti_gravity_beg_max);
-
+        ti_stars_beg_max = max(ti_current, ti_stars_beg_max);
+	ti_gravity_beg_max = max(ti_current, ti_gravity_beg_max);
+	
         /* star particle is inactive but not inhibited */
       } else {
 
@@ -2401,26 +2402,26 @@ void runner_do_timestep(struct runner *r, struct cell *c, int timer) {
         const integertime_t ti_end =
             get_integer_time_end(ti_current, sp->time_bin);
 
-        /* What is the next sync-point ? */
-        ti_gravity_end_min = min(ti_end, ti_gravity_end_min);
-        ti_gravity_end_max = max(ti_end, ti_gravity_end_max);
-
         ti_stars_end_min = min(ti_end, ti_stars_end_min);
+        ti_stars_end_max = max(ti_end, ti_stars_end_max);
+	ti_gravity_end_min = min(ti_end, ti_gravity_end_min);
+	ti_gravity_end_max = max(ti_end, ti_gravity_end_max);
 
         const integertime_t ti_beg =
-            get_integer_time_begin(ti_current + 1, sp->time_bin);
-
+	  get_integer_time_begin(ti_current + 1, sp->time_bin);
+	
         /* What is the next starting point for this cell ? */
-        ti_gravity_beg_max = max(ti_beg, ti_gravity_beg_max);
+        ti_stars_beg_max = max(ti_beg, ti_stars_beg_max);
+	ti_gravity_beg_max = max(ti_beg, ti_gravity_beg_max);
       }
     }
   } else {
 
     /* Loop over the progeny. */
-    for (int k = 0; k < 8; k++)
+    for (int k = 0; k < 8; k++) {
       if (c->progeny[k] != NULL) {
         struct cell *restrict cp = c->progeny[k];
-
+	
         /* Recurse */
         runner_do_timestep(r, cp, 0);
 
@@ -2438,7 +2439,10 @@ void runner_do_timestep(struct runner *r, struct cell *c, int timer) {
         ti_gravity_end_max = max(cp->grav.ti_end_max, ti_gravity_end_max);
         ti_gravity_beg_max = max(cp->grav.ti_beg_max, ti_gravity_beg_max);
         ti_stars_end_min = min(cp->stars.ti_end_min, ti_stars_end_min);
+        ti_stars_end_max = max(cp->grav.ti_end_max, ti_stars_end_max);
+        ti_stars_beg_max = max(cp->grav.ti_beg_max, ti_stars_beg_max);
       }
+    }
   }
 
   /* Store the values. */
@@ -2455,6 +2459,8 @@ void runner_do_timestep(struct runner *r, struct cell *c, int timer) {
   c->grav.ti_end_max = ti_gravity_end_max;
   c->grav.ti_beg_max = ti_gravity_beg_max;
   c->stars.ti_end_min = ti_stars_end_min;
+  c->stars.ti_end_max = ti_stars_end_max;
+  c->stars.ti_beg_max = ti_stars_beg_max;
 
 #ifdef SWIFT_DEBUG_CHECKS
   if (c->hydro.ti_end_min == e->ti_current &&

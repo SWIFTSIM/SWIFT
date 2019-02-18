@@ -384,7 +384,7 @@ void engine_addtasks_recv_hydro(struct engine *e, struct cell *c,
 
   /* Add dependencies. */
   if (c->hydro.sorts != NULL) scheduler_addunlock(s, t_xv, c->hydro.sorts);
-  if (c->stars.sorts != NULL) scheduler_addunlock(s, t_rho, c->stars.sorts);
+  if (c->stars.sorts != NULL) scheduler_addunlock(s, t_xv, c->stars.sorts);
 
   for (struct link *l = c->hydro.density; l != NULL; l = l->next) {
     scheduler_addunlock(s, t_xv, l->t);
@@ -821,6 +821,7 @@ void engine_add_ghosts(struct engine *e, struct cell *c, struct task *ghost_in,
 void engine_make_hierarchical_tasks_hydro(struct engine *e, struct cell *c) {
 
   struct scheduler *s = &e->sched;
+  const int with_stars = (e->policy & engine_policy_stars);
   const int with_feedback = (e->policy & engine_policy_feedback);
   const int with_cooling = (e->policy & engine_policy_cooling);
   const int with_star_formation = (e->policy & engine_policy_star_formation);
@@ -863,6 +864,15 @@ void engine_make_hierarchical_tasks_hydro(struct engine *e, struct cell *c) {
           s, task_type_extra_ghost, task_subtype_none, 0, 0, c, NULL);
 #endif
 
+      /* Stars */
+      if (with_stars) {
+	c->stars.drift = scheduler_addtask(s, task_type_drift_spart,
+                                           task_subtype_none, 0, 0, c, NULL);
+	if(!with_feedback) {
+	  scheduler_addunlock(s, c->stars.drift, c->super->kick2);
+	}
+      }
+      
       /* Subgrid tasks: cooling */
       if (with_cooling) {
 
@@ -897,8 +907,6 @@ void engine_make_hierarchical_tasks_hydro(struct engine *e, struct cell *c) {
             scheduler_addtask(s, task_type_stars_out, task_subtype_none, 0,
                               /* implicit = */ 1, c, NULL);
 
-        c->stars.drift = scheduler_addtask(s, task_type_drift_spart,
-                                           task_subtype_none, 0, 0, c, NULL);
         c->stars.ghost = scheduler_addtask(s, task_type_stars_ghost,
                                            task_subtype_none, 0, 0, c, NULL);
 

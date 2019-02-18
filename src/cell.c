@@ -387,6 +387,7 @@ int cell_pack(struct cell *restrict c, struct pcell *restrict pc,
   pc->grav.ti_end_min = c->grav.ti_end_min;
   pc->grav.ti_end_max = c->grav.ti_end_max;
   pc->stars.ti_end_min = c->stars.ti_end_min;
+  pc->stars.ti_end_max = c->stars.ti_end_max;
   pc->hydro.ti_old_part = c->hydro.ti_old_part;
   pc->grav.ti_old_part = c->grav.ti_old_part;
   pc->grav.ti_old_multipole = c->grav.ti_old_multipole;
@@ -493,6 +494,7 @@ int cell_unpack(struct pcell *restrict pc, struct cell *restrict c,
   c->grav.ti_end_min = pc->grav.ti_end_min;
   c->grav.ti_end_max = pc->grav.ti_end_max;
   c->stars.ti_end_min = pc->stars.ti_end_min;
+  c->stars.ti_end_max = pc->stars.ti_end_max;
   c->hydro.ti_old_part = pc->hydro.ti_old_part;
   c->grav.ti_old_part = pc->grav.ti_old_part;
   c->grav.ti_old_multipole = pc->grav.ti_old_multipole;
@@ -623,6 +625,7 @@ int cell_pack_end_step(struct cell *restrict c,
   pcells[0].grav.ti_end_min = c->grav.ti_end_min;
   pcells[0].grav.ti_end_max = c->grav.ti_end_max;
   pcells[0].stars.ti_end_min = c->stars.ti_end_min;
+  pcells[0].stars.ti_end_max = c->stars.ti_end_max;
   pcells[0].hydro.dx_max_part = c->hydro.dx_max_part;
   pcells[0].stars.dx_max_part = c->stars.dx_max_part;
 
@@ -661,6 +664,7 @@ int cell_unpack_end_step(struct cell *restrict c,
   c->grav.ti_end_min = pcells[0].grav.ti_end_min;
   c->grav.ti_end_max = pcells[0].grav.ti_end_max;
   c->stars.ti_end_min = pcells[0].stars.ti_end_min;
+  c->stars.ti_end_max = pcells[0].stars.ti_end_max;
   c->hydro.dx_max_part = pcells[0].hydro.dx_max_part;
   c->stars.dx_max_part = pcells[0].stars.dx_max_part;
 
@@ -3400,6 +3404,7 @@ int cell_unskip_gravity_tasks(struct cell *c, struct scheduler *s) {
  * @return 1 If the space needs rebuilding. 0 otherwise.
  */
 int cell_unskip_stars_tasks(struct cell *c, struct scheduler *s) {
+  
   struct engine *e = s->space->e;
   const int nodeID = e->nodeID;
   int rebuild = 0;
@@ -3559,6 +3564,7 @@ int cell_unskip_stars_tasks(struct cell *c, struct scheduler *s) {
   /* Unskip all the other task types. */
   if (c->nodeID == nodeID && cell_is_active_stars(c, e)) {
 
+    if (c->stars.drift != NULL) scheduler_activate(s, c->stars.drift);
     if (c->stars.ghost != NULL) scheduler_activate(s, c->stars.ghost);
     if (c->stars.stars_in != NULL) scheduler_activate(s, c->stars.stars_in);
     if (c->stars.stars_out != NULL) scheduler_activate(s, c->stars.stars_out);

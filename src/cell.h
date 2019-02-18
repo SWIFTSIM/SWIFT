@@ -150,6 +150,9 @@ struct pcell {
     /*! Minimal integer end-of-timestep in this cell for stars tasks */
     integertime_t ti_end_min;
 
+    /*! Maximal integer end-of-timestep in this cell for stars tasks */
+    integertime_t ti_end_max;
+
     /*! Integer time of the last drift of the #spart in this cell */
     integertime_t ti_old_part;
 
@@ -201,11 +204,14 @@ struct pcell_step {
   /*! Stars variables */
   struct {
 
-    /*! Maximal distance any #part has travelled since last rebuild */
-    float dx_max_part;
-
     /*! Minimal integer end-of-timestep in this cell (stars) */
     integertime_t ti_end_min;
+
+    /*! Maximal integer end-of-timestep in this cell (stars) */
+    integertime_t ti_end_max;
+    
+    /*! Maximal distance any #part has travelled since last rebuild */
+    float dx_max_part;
 
   } stars;
 };
@@ -542,6 +548,13 @@ struct cell {
     /*! Maximum end of (integer) time step in this cell for gravity tasks. */
     integertime_t ti_end_min;
 
+    /*! Maximum end of (integer) time step in this cell for star tasks. */
+    integertime_t ti_end_max;
+
+    /*! Maximum beginning of (integer) time step in this cell for star tasks.
+     */
+    integertime_t ti_beg_max;
+    
     /*! Number of #spart updated in this cell. */
     int updated;
 
