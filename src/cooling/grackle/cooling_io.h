@@ -19,9 +19,6 @@
 #ifndef SWIFT_COOLING_GRACKLE_IO_H
 #define SWIFT_COOLING_GRACKLE_IO_H
 
-/* Config parameters. */
-#include "../config.h"
-
 /* Local includes */
 #include "cooling_struct.h"
 #include "io_properties.h"

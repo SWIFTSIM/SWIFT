@@ -19,8 +19,6 @@
 #ifndef SWIFT_COOLING_STRUCT_GRACKLE_H
 #define SWIFT_COOLING_STRUCT_GRACKLE_H
 
-#include "../config.h"
-
 /* include grackle */
 #include <grackle.h>
 
