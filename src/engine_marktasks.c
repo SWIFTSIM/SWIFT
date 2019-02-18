@@ -73,14 +73,16 @@ void engine_activate_stars_mpi(struct engine *e, struct scheduler *s,
       scheduler_activate(s, ci->mpi.hydro.recv_xv);
 
       /* If the local cell is active, more stuff will be needed. */
-      scheduler_activate_send(s, cj->mpi.stars.send, ci_nodeID);
+      //MATTHIEU
+      //scheduler_activate_send(s, cj->mpi.stars.send, ci_nodeID);
 
       /* If the local cell is active, send its ti_end values. */
       scheduler_activate_send(s, cj->mpi.send_ti, ci_nodeID);
     }
 
     if (ci_active_stars) {
-      scheduler_activate(s, ci->mpi.stars.recv);
+      //MATTHIEU
+      //scheduler_activate(s, ci->mpi.stars.recv);
 
       /* If the foreign cell is active, we want its ti_end values. */
       scheduler_activate(s, ci->mpi.recv_ti);
@@ -102,13 +104,16 @@ void engine_activate_stars_mpi(struct engine *e, struct scheduler *s,
       scheduler_activate(s, cj->mpi.hydro.recv_xv);
 
       /* If the local cell is active, more stuff will be needed. */
-      scheduler_activate_send(s, ci->mpi.stars.send, cj_nodeID);
+      //MATTHIEU
+      //scheduler_activate_send(s, ci->mpi.stars.send, cj_nodeID);
 
       /* If the local cell is active, send its ti_end values. */
       scheduler_activate_send(s, ci->mpi.send_ti, cj_nodeID);
     }
     if (cj_active_stars) {
-      scheduler_activate(s, cj->mpi.stars.recv);
+
+      //MATTHIEU
+      //scheduler_activate(s, cj->mpi.stars.recv);
 
       /* If the foreign cell is active, we want its ti_end values. */
       scheduler_activate(s, cj->mpi.recv_ti);
@@ -499,6 +504,7 @@ void engine_marktasks_mapper(void *map_data, int num_elements,
       if (t->subtype == task_subtype_stars_density) {
 
       /* Too much particle movement? */
+      // MATTHIEU
       // if (cell_need_rebuild_for_stars_pair(ci, cj)) *rebuild_space = 1;
       // if (cell_need_rebuild_for_stars_pair(cj, ci)) *rebuild_space = 1;
 

@@ -2056,8 +2056,6 @@ void cell_activate_hydro_sorts(struct cell *c, int sid, struct scheduler *s) {
     }
   }
 
-  // message("c->hydro.sorted=%d", c->hydro.sorted);
-
   /* Has this cell been sorted at all for the given sid? */
   if (!(c->hydro.sorted & (1 << sid)) || c->nodeID != engine_rank) {
 

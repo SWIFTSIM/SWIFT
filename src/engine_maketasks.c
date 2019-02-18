@@ -210,83 +210,51 @@ void engine_addtasks_send_hydro(struct engine *e, struct cell *ci,
  * @param ci The sending #cell.
  * @param cj Dummy cell containing the nodeID of the receiving node.
  * @param t_xv The send_xv #task, if it has already been created.
- * @param t_feed The send_feed #task, if it has already been created.
+ * @param t_feedback The send_feed #task, if it has already been created.
  */
 void engine_addtasks_send_stars(struct engine *e, struct cell *ci,
                                 struct cell *cj, struct task *t_xv,
-                                struct task *t_feed) {
+                                struct task *t_feedback) {
 
 #ifdef WITH_MPI
+
   struct link *l = NULL;
   struct scheduler *s = &e->sched;
   const int nodeID = cj->nodeID;
 
   /* Check if any of the density tasks are for the target node. */
-  for (l = ci->hydro.density; l != NULL; l = l->next)
+  for (l = ci->stars.density; l != NULL; l = l->next)
     if (l->t->ci->nodeID == nodeID ||
-        (l->t->cj != NULL && l->t->cj->nodeID == nodeID))
+	(l->t->cj != NULL && l->t->cj->nodeID == nodeID))
       break;
-
-  /* Check for stars now */
-  if (l == NULL) {
-    for (l = ci->stars.density; l != NULL; l = l->next)
-      if (l->t->ci->nodeID == nodeID ||
-          (l->t->cj != NULL && l->t->cj->nodeID == nodeID))
-        break;
-  }
 
   /* If so, attach send tasks. */
   if (l != NULL) {
-    /* Get the task if created in hydro part */
-    struct link *hydro = NULL;
-    for (hydro = ci->mpi.hydro.send_xv; hydro != NULL; hydro = hydro->next) {
-      if (hydro->t->ci->nodeID == nodeID ||
-          (hydro->t->cj != NULL && hydro->t->cj->nodeID == nodeID)) {
-        break;
-      }
-    }
-
-    if (t_xv == NULL) {
+    
+    if (t_feedback == NULL) {
+      
       /* Make sure this cell is tagged. */
       cell_ensure_tagged(ci);
 
-      /* Already exists, just need to get it */
-      if (hydro != NULL) {
-        t_xv = hydro->t;
-
-        /* This task does not exists, need to create it */
-      } else {
-
-        /* Create the tasks and their dependencies? */
-        t_xv = scheduler_addtask(s, task_type_send, task_subtype_xv,
-                                 ci->mpi.tag, 0, ci, cj);
-
-        /* Drift before you send */
-        scheduler_addunlock(s, ci->hydro.super->hydro.drift, t_xv);
-      }
-
       /* Create the tasks and their dependencies? */
-      t_feed = scheduler_addtask(s, task_type_send, task_subtype_spart,
-                                 ci->mpi.tag, 0, ci, cj);
-
+      t_feedback = scheduler_addtask(s, task_type_send, task_subtype_spart,
+				     ci->mpi.tag, 0, ci, cj);
+      
       /* The send_stars task should unlock the super_cell's kick task. */
-      scheduler_addunlock(s, t_feed, ci->hydro.super->stars.stars_out);
+      scheduler_addunlock(s, t_feedback, ci->hydro.super->stars.stars_out);
 
       /* Ghost before you send */
-      scheduler_addunlock(s, ci->hydro.super->stars.ghost, t_feed);
+      scheduler_addunlock(s, ci->hydro.super->stars.ghost, t_feedback);
     }
 
-    if (hydro == NULL) {
-      engine_addlink(e, &ci->mpi.hydro.send_xv, t_xv);
-    }
-    engine_addlink(e, &ci->mpi.stars.send, t_feed);
+    engine_addlink(e, &ci->mpi.stars.send, t_feedback);
   }
 
   /* Recurse? */
   if (ci->split)
     for (int k = 0; k < 8; k++)
       if (ci->progeny[k] != NULL)
-        engine_addtasks_send_stars(e, ci->progeny[k], cj, t_xv, t_feed);
+        engine_addtasks_send_stars(e, ci->progeny[k], cj, t_xv, t_feedback);
 
 #else
   error("SWIFT was not compiled with MPI support.");
@@ -416,6 +384,7 @@ void engine_addtasks_recv_hydro(struct engine *e, struct cell *c,
 
   /* Add dependencies. */
   if (c->hydro.sorts != NULL) scheduler_addunlock(s, t_xv, c->hydro.sorts);
+  if (c->stars.sorts != NULL) scheduler_addunlock(s, t_rho, c->stars.sorts);
 
   for (struct link *l = c->hydro.density; l != NULL; l = l->next) {
     scheduler_addunlock(s, t_xv, l->t);
@@ -426,13 +395,19 @@ void engine_addtasks_recv_hydro(struct engine *e, struct cell *c,
     scheduler_addunlock(s, t_rho, l->t);
     scheduler_addunlock(s, l->t, t_gradient);
   }
-  for (struct link *l = c->hydro.force; l != NULL; l = l->next)
+  for (struct link *l = c->hydro.force; l != NULL; l = l->next) {
     scheduler_addunlock(s, t_gradient, l->t);
+  }
 #else
-  for (struct link *l = c->hydro.force; l != NULL; l = l->next)
+  for (struct link *l = c->hydro.force; l != NULL; l = l->next) {
     scheduler_addunlock(s, t_rho, l->t);
+  }
 #endif
 
+  for (struct link *l = c->stars.density; l != NULL; l = l->next) {
+    scheduler_addunlock(s, t_rho, l->t);
+  }
+    
   /* Recurse? */
   if (c->split)
     for (int k = 0; k < 8; k++)
@@ -453,14 +428,13 @@ void engine_addtasks_recv_hydro(struct engine *e, struct cell *c,
  * @param t_feed The recv_feed #task, if it has already been created.
  */
 void engine_addtasks_recv_stars(struct engine *e, struct cell *c,
-                                struct task *t_xv, struct task *t_feed) {
+                                struct task *t_xv, struct task *t_feedback) {
 
 #ifdef WITH_MPI
   struct scheduler *s = &e->sched;
-  int new_task = 0;
 
-  /* Have we reached a level where there are any stars (or hydro) tasks ? */
-  if (t_xv == NULL && (c->stars.density != NULL || c->hydro.density != NULL)) {
+  /* Have we reached a level where there are any stars tasks ? */
+  if (t_feedback == NULL && c->stars.density != NULL) {
 
 #ifdef SWIFT_DEBUG_CHECKS
     /* Make sure this cell has a valid tag. */
@@ -468,48 +442,25 @@ void engine_addtasks_recv_stars(struct engine *e, struct cell *c,
 #endif  // SWIFT_DEBUG_CHECKS
 
     /* Create the tasks. */
-    if (c->mpi.hydro.recv_xv == NULL) {
-      new_task = 1;
-      t_xv = scheduler_addtask(s, task_type_recv, task_subtype_xv, c->mpi.tag,
-                               0, c, NULL);
-    } else {
-      t_xv = c->mpi.hydro.recv_xv;
-    }
-    t_feed = scheduler_addtask(s, task_type_recv, task_subtype_spart,
+    t_feedback = scheduler_addtask(s, task_type_recv, task_subtype_spart,
                                c->mpi.tag, 0, c, NULL);
-
-    /* Need to sort task before feedback loop */
-    scheduler_addunlock(s, t_feed, c->hydro.super->stars.sorts);
   }
 
-  c->mpi.hydro.recv_xv = t_xv;
-  c->mpi.stars.recv = t_feed;
-
-  /* Add dependencies. */
-  if (c->hydro.sorts != NULL && new_task) {
-    scheduler_addunlock(s, t_xv, c->hydro.sorts);
-  }
+  c->mpi.stars.recv = t_feedback;
 
   for (struct link *l = c->stars.density; l != NULL; l = l->next) {
-    scheduler_addunlock(s, t_xv, l->t);
-    scheduler_addunlock(s, l->t, t_feed);
+    scheduler_addunlock(s, l->t, t_feedback);
   }
-
-  struct task *recv_rho = NULL;
-  if (c->mpi.hydro.recv_rho != NULL) recv_rho = c->mpi.hydro.recv_rho;
-
+  
   for (struct link *l = c->stars.feedback; l != NULL; l = l->next) {
-    scheduler_addunlock(s, t_feed, l->t);
-
-    /* Need gas density before feedback */
-    if (recv_rho != NULL) scheduler_addunlock(s, c->mpi.hydro.recv_rho, l->t);
+    scheduler_addunlock(s, t_feedback, l->t);
   }
 
   /* Recurse? */
   if (c->split)
     for (int k = 0; k < 8; k++)
       if (c->progeny[k] != NULL)
-        engine_addtasks_recv_stars(e, c->progeny[k], t_xv, t_feed);
+        engine_addtasks_recv_stars(e, c->progeny[k], t_xv, t_feedback);
 
 #else
   error("SWIFT was not compiled with MPI support.");
@@ -1820,6 +1771,21 @@ void engine_make_extra_hydroloop_tasks_mapper(void *map_data, int num_elements,
       }
 #endif
 
+      if (with_feedback) {
+          scheduler_addunlock(sched, ci->hydro.super->stars.sorts,
+                              t_star_density);
+          scheduler_addunlock(sched, ci->hydro.super->hydro.sorts,
+                              t_star_density);
+	  
+	  if (ci->hydro.super != cj->hydro.super) {
+          scheduler_addunlock(sched, cj->hydro.super->stars.sorts,
+                              t_star_density);
+          scheduler_addunlock(sched, cj->hydro.super->hydro.sorts,
+                              t_star_density);
+
+	  }
+      }
+      
       if (ci->nodeID == nodeID) {
         scheduler_addunlock(sched, t_force, ci->hydro.super->hydro.end_force);
 
@@ -1827,11 +1793,7 @@ void engine_make_extra_hydroloop_tasks_mapper(void *map_data, int num_elements,
 
           scheduler_addunlock(sched, ci->hydro.super->stars.drift,
                               t_star_density);
-          scheduler_addunlock(sched, ci->hydro.super->stars.sorts,
-                              t_star_density);
           scheduler_addunlock(sched, ci->hydro.super->hydro.drift,
-                              t_star_density);
-          scheduler_addunlock(sched, ci->hydro.super->hydro.sorts,
                               t_star_density);
           scheduler_addunlock(sched, ci->hydro.super->stars.stars_in,
                               t_star_density);
@@ -1858,11 +1820,7 @@ void engine_make_extra_hydroloop_tasks_mapper(void *map_data, int num_elements,
 
           scheduler_addunlock(sched, cj->hydro.super->stars.drift,
                               t_star_density);
-          scheduler_addunlock(sched, cj->hydro.super->stars.sorts,
-                              t_star_density);
           scheduler_addunlock(sched, cj->hydro.super->hydro.drift,
-                              t_star_density);
-          scheduler_addunlock(sched, cj->hydro.super->hydro.sorts,
                               t_star_density);
           scheduler_addunlock(sched, cj->hydro.super->stars.stars_in,
                               t_star_density);
@@ -2060,6 +2018,19 @@ void engine_make_extra_hydroloop_tasks_mapper(void *map_data, int num_elements,
       }
 #endif
 
+      if (with_feedback) {
+	scheduler_addunlock(sched, ci->hydro.super->stars.sorts,
+			    t_star_density);
+	scheduler_addunlock(sched, ci->hydro.super->hydro.sorts,
+			    t_star_density);
+	if (ci->hydro.super != cj->hydro.super) {
+	  scheduler_addunlock(sched, cj->hydro.super->stars.sorts,
+	  		      t_star_density);
+	  scheduler_addunlock(sched, cj->hydro.super->hydro.sorts,
+			      t_star_density);
+	}
+      }
+      
       if (ci->nodeID == nodeID) {
         scheduler_addunlock(sched, t_force, ci->hydro.super->hydro.end_force);
 
@@ -2067,11 +2038,7 @@ void engine_make_extra_hydroloop_tasks_mapper(void *map_data, int num_elements,
 
           scheduler_addunlock(sched, ci->hydro.super->stars.drift,
                               t_star_density);
-          scheduler_addunlock(sched, ci->hydro.super->stars.sorts,
-                              t_star_density);
           scheduler_addunlock(sched, ci->hydro.super->hydro.drift,
-                              t_star_density);
-          scheduler_addunlock(sched, ci->hydro.super->hydro.sorts,
                               t_star_density);
           scheduler_addunlock(sched, ci->hydro.super->stars.stars_in,
                               t_star_density);
@@ -2098,11 +2065,7 @@ void engine_make_extra_hydroloop_tasks_mapper(void *map_data, int num_elements,
 
           scheduler_addunlock(sched, cj->hydro.super->stars.drift,
                               t_star_density);
-          scheduler_addunlock(sched, cj->hydro.super->stars.sorts,
-                              t_star_density);
           scheduler_addunlock(sched, cj->hydro.super->hydro.drift,
-                              t_star_density);
-          scheduler_addunlock(sched, cj->hydro.super->hydro.sorts,
                               t_star_density);
           scheduler_addunlock(sched, cj->hydro.super->stars.stars_in,
                               t_star_density);
