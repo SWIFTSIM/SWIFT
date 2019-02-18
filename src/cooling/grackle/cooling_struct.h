@@ -59,9 +59,6 @@ struct cooling_function_data {
   /* Self shielding method (<= 3) means grackle modes */
   int self_shielding_method;
 
-  /* Output mode (correspond to primordial chemistry mode */
-  int output_mode;
-
   /* convergence limit for first init */
   float convergence_limit;
 

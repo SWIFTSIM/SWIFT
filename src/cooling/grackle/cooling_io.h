@@ -61,8 +61,6 @@ __attribute__((always_inline)) INLINE static int cooling_write_particles(
 
   int num = 0;
 
-  if (cooling->output_mode == 0) return num;
-
 #if COOLING_GRACKLE_MODE >= 1
   /* List what we want to write */
   list[0] = io_make_output_field("HI", FLOAT, 1, UNIT_CONV_NO_UNITS, xparts,
@@ -86,8 +84,6 @@ __attribute__((always_inline)) INLINE static int cooling_write_particles(
   num += 6;
 #endif
 
-  if (cooling->output_mode == 1) return num;
-
 #if COOLING_GRACKLE_MODE >= 2
   list += num;
 
@@ -102,8 +98,6 @@ __attribute__((always_inline)) INLINE static int cooling_write_particles(
 
   num += 3;
 #endif
-
-  if (cooling->output_mode == 2) return num;
 
 #if COOLING_GRACKLE_MODE >= 3
   list += num;
@@ -152,9 +146,6 @@ __attribute__((always_inline)) INLINE static void cooling_read_parameters(
 
   cooling->self_shielding_method = parser_get_opt_param_int(
       parameter_file, "GrackleCooling:SelfShieldingMethod", 0);
-
-  cooling->output_mode =
-      parser_get_opt_param_int(parameter_file, "GrackleCooling:OutputMode", 0);
 
   cooling->max_step = parser_get_opt_param_int(
       parameter_file, "GrackleCooling:MaxSteps", 10000);
