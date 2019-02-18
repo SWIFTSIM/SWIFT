@@ -136,7 +136,7 @@ INLINE static void stars_props_init(struct stars_props *sp,
   sp->const_feedback_energy_testing = parser_get_opt_param_int(params, "Stars:energy_testing", 0);
 
   /* Set temperature increase due to supernovae */
-  sp->SNe_deltaT_desired = 3.16228e4 / units_cgs_conversion_factor(us,UNIT_CONV_TEMPERATURE);
+  sp->SNe_deltaT_desired = 3.16228e7 / units_cgs_conversion_factor(us,UNIT_CONV_TEMPERATURE);
 
   /* Calculate temperature to internal energy conversion factor */
   sp->temp_to_u_factor = phys_const->const_boltzmann_k / (p->mu_ionised * (hydro_gamma_minus_one) * phys_const->const_proton_mass);

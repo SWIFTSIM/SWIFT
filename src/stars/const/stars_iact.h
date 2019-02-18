@@ -205,7 +205,7 @@ runner_iact_nonsym_stars_feedback(float r2, const float *dx, float hi, float hj,
   double random_num = random_unit_interval(pj->id,ti_current,random_number_stellar_feedback);
   if (random_num < heating_probability) {
     message("we did some heating! id %llu probability %.5e random_num %.5e du %.5e initial u %.5e", pj->id, heating_probability, random_num, du, hydro_get_physical_internal_energy(pj,xp,cosmo));
-    thermal_feedback(du, pj, xp, cosmo);
+    //thermal_feedback(du, pj, xp, cosmo);
     FILE *feedback_output = fopen("feedback_properties.dat","a");
     fprintf(feedback_output,"%.5e %.5e\n", heating_probability, du * hydro_get_mass(pj));
     fclose(feedback_output);
