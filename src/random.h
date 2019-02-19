@@ -1,6 +1,7 @@
 /*******************************************************************************
  * This file is part of SWIFT.
  * Copyright (c) 2018 Matthieu Schaller (schaller@strw.leidenuniv.nl)
+ *               2019 Folkert Nobels    (nobels@strw.leidenuniv.nl)
  *
  * This program is free software: you can redistribute it and/or modify
  * it under the terms of the GNU Lesser General Public License as published
@@ -84,7 +85,7 @@ INLINE static double random_unit_interval(const long long int id,
   number ^= number << 21;
   number ^= number >> 35;
   number ^= number << 4;
-  const unsigned long long idpart = 3457LL * id + 593LL * id;
+  const unsigned long long idpart = 3457LL * id + 593LL * id * ti_current;
   unsigned int seed = (937LL * number + 5171LL * number * number + idpart + 1109LL)%9996361LL % seed_range;
   /* Generate a random number between 0 and 1. */
   return rand_r(&seed) * RAND_MAX_inv;
