@@ -868,9 +868,7 @@ void engine_make_hierarchical_tasks_hydro(struct engine *e, struct cell *c) {
       if (with_stars) {
         c->stars.drift = scheduler_addtask(s, task_type_drift_spart,
                                            task_subtype_none, 0, 0, c, NULL);
-        if (!with_feedback) {
-          scheduler_addunlock(s, c->stars.drift, c->super->kick2);
-        }
+        scheduler_addunlock(s, c->stars.drift, c->super->kick2);
       }
 
       /* Subgrid tasks: cooling */
