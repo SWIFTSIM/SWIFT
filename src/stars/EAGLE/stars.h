@@ -78,14 +78,15 @@ __attribute__((always_inline)) INLINE static void stars_first_init_spart(
 __attribute__((always_inline)) INLINE static void stars_predict_extra(
     struct spart* restrict sp, float dt_drift) {
 
-  const float h_inv = 1.f / sp->h;
+  // MATTHIEU
+  /* const float h_inv = 1.f / sp->h; */
 
-  /* Predict smoothing length */
-  const float w1 = sp->feedback.h_dt * h_inv * dt_drift;
-  if (fabsf(w1) < 0.2f)
-    sp->h *= approx_expf(w1); /* 4th order expansion of exp(w) */
-  else
-    sp->h *= expf(w1);
+  /* /\* Predict smoothing length *\/ */
+  /* const float w1 = sp->feedback.h_dt * h_inv * dt_drift; */
+  /* if (fabsf(w1) < 0.2f) */
+  /*   sp->h *= approx_expf(w1); /\* 4th order expansion of exp(w) *\/ */
+  /* else */
+  /*   sp->h *= expf(w1); */
 }
 
 /**
