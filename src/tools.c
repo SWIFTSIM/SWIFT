@@ -45,8 +45,8 @@
 #include "part.h"
 #include "periodic.h"
 #include "runner.h"
-#include "stars.h"
 #include "star_formation_iact.h"
+#include "stars.h"
 
 /**
  *  Factorize a given integer, attempts to keep larger pair of factors.

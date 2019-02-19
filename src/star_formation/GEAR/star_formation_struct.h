@@ -28,5 +28,4 @@ struct star_formation_xpart_data {};
 /* Starformation struct */
 struct star_formation {};
 
-
 #endif /* SWIFT_GEAR_STAR_FORMATION_STRUCT_H */

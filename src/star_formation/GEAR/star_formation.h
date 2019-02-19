@@ -175,13 +175,13 @@ __attribute__((always_inline)) INLINE static void star_formation_end_density(
  */
 __attribute__((always_inline)) INLINE static void
 star_formation_part_has_no_neighbours(struct part* restrict p,
-                                 struct xpart* restrict xp,
-                                 const struct star_formation* cd,
-                                 const struct cosmology* cosmo) {}
+                                      struct xpart* restrict xp,
+                                      const struct star_formation* cd,
+                                      const struct cosmology* cosmo) {}
 
 /**
- * @brief Sets the star_formation properties of the (x-)particles to a valid start
- * state.
+ * @brief Sets the star_formation properties of the (x-)particles to a valid
+ * start state.
  *
  * Nothing to do here.
  *
@@ -192,16 +192,17 @@ star_formation_part_has_no_neighbours(struct part* restrict p,
  * @param p Pointer to the particle data.
  * @param xp Pointer to the extended particle data.
  */
-__attribute__((always_inline)) INLINE static void star_formation_first_init_part(
-    const struct phys_const* restrict phys_const,
-    const struct unit_system* restrict us,
-    const struct cosmology* restrict cosmo,
-    const struct star_formation* data, const struct part* restrict p,
-    struct xpart* restrict xp) {}
+__attribute__((always_inline)) INLINE static void
+star_formation_first_init_part(const struct phys_const* restrict phys_const,
+                               const struct unit_system* restrict us,
+                               const struct cosmology* restrict cosmo,
+                               const struct star_formation* data,
+                               const struct part* restrict p,
+                               struct xpart* restrict xp) {}
 
 /**
- * @brief Sets the star_formation properties of the (x-)particles to a valid start
- * state.
+ * @brief Sets the star_formation properties of the (x-)particles to a valid
+ * start state.
  *
  * Nothing to do here.
  *

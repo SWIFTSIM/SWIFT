@@ -40,8 +40,8 @@ __attribute__((always_inline)) INLINE static void runner_iact_star_formation(
     struct part *restrict pj, float a, float H) {}
 
 /**
- * @brief do star_formation computation after the runner_iact_density (non symmetric
- * version)
+ * @brief do star_formation computation after the runner_iact_density (non
+ * symmetric version)
  *
  * @param r2 Comoving square distance between the two particles.
  * @param dx Comoving vector separating both particles (pi - pj).
@@ -52,8 +52,10 @@ __attribute__((always_inline)) INLINE static void runner_iact_star_formation(
  * @param a Current scale factor.
  * @param H Current Hubble parameter.
  */
-__attribute__((always_inline)) INLINE static void runner_iact_nonsym_star_formation(
-    float r2, const float *dx, float hi, float hj, struct part *restrict pi,
-    const struct part *restrict pj, float a, float H) {}
+__attribute__((always_inline)) INLINE static void
+runner_iact_nonsym_star_formation(float r2, const float *dx, float hi, float hj,
+                                  struct part *restrict pi,
+                                  const struct part *restrict pj, float a,
+                                  float H) {}
 
 #endif /* SWIFT_NONE_STAR_FORMATION_IACT_H */

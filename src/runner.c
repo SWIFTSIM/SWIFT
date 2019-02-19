@@ -1316,7 +1316,7 @@ void runner_do_ghost(struct runner *r, struct cell *c, int timer) {
           /* Finish the density calculation */
           hydro_end_density(p, cosmo);
           chemistry_end_density(p, chemistry, cosmo);
-	  star_formation_end_density(p, star_formation, cosmo);
+          star_formation_end_density(p, star_formation, cosmo);
 
           /* Compute one step of the Newton-Raphson scheme */
           const float n_sum = p->density.wcount * h_old_dim;
@@ -1477,7 +1477,8 @@ void runner_do_ghost(struct runner *r, struct cell *c, int timer) {
             if (has_no_neighbours) {
               hydro_part_has_no_neighbours(p, xp, cosmo);
               chemistry_part_has_no_neighbours(p, xp, chemistry, cosmo);
-              star_formation_part_has_no_neighbours(p, xp, star_formation, cosmo);
+              star_formation_part_has_no_neighbours(p, xp, star_formation,
+                                                    cosmo);
             }
           }
         }
