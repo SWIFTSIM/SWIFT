@@ -3406,8 +3406,14 @@ int cell_unskip_gravity_tasks(struct cell *c, struct scheduler *s) {
 int cell_unskip_stars_tasks(struct cell *c, struct scheduler *s) {
 
   struct engine *e = s->space->e;
+  const int with_feedback = (e->policy & engine_policy_feedback);
   const int nodeID = e->nodeID;
   int rebuild = 0;
+
+  if (!with_feedback && c->stars.drift != NULL && cell_is_active_stars(c, e) &&
+      c->nodeID == nodeID) {
+    cell_activate_drift_spart(c, s);
+  }
 
   /* Un-skip the density tasks involved with this cell. */
   for (struct link *l = c->stars.density; l != NULL; l = l->next) {
@@ -3564,7 +3570,6 @@ int cell_unskip_stars_tasks(struct cell *c, struct scheduler *s) {
   /* Unskip all the other task types. */
   if (c->nodeID == nodeID && cell_is_active_stars(c, e)) {
 
-    if (c->stars.drift != NULL) scheduler_activate(s, c->stars.drift);
     if (c->stars.ghost != NULL) scheduler_activate(s, c->stars.ghost);
     if (c->stars.stars_in != NULL) scheduler_activate(s, c->stars.stars_in);
     if (c->stars.stars_out != NULL) scheduler_activate(s, c->stars.stars_out);
