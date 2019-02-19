@@ -2386,8 +2386,8 @@ void runner_do_timestep(struct runner *r, struct cell *c, int timer) {
 
         ti_stars_end_min = min(ti_current + ti_new_step, ti_stars_end_min);
         ti_stars_end_max = max(ti_current + ti_new_step, ti_stars_end_max);
-	ti_gravity_end_min = min(ti_end, ti_gravity_end_min);
-	ti_gravity_end_max = max(ti_end, ti_gravity_end_max);
+	ti_gravity_end_min = min(ti_current + ti_new_step, ti_gravity_end_min);
+	ti_gravity_end_max = max(ti_current + ti_new_step, ti_gravity_end_max);
 
         /* What is the next starting point for this cell ? */
         ti_stars_beg_max = max(ti_current, ti_stars_beg_max);
@@ -2402,13 +2402,13 @@ void runner_do_timestep(struct runner *r, struct cell *c, int timer) {
         const integertime_t ti_end =
             get_integer_time_end(ti_current, sp->time_bin);
 
+        const integertime_t ti_beg =
+	  get_integer_time_begin(ti_current + 1, sp->time_bin);
+	
         ti_stars_end_min = min(ti_end, ti_stars_end_min);
         ti_stars_end_max = max(ti_end, ti_stars_end_max);
 	ti_gravity_end_min = min(ti_end, ti_gravity_end_min);
 	ti_gravity_end_max = max(ti_end, ti_gravity_end_max);
-
-        const integertime_t ti_beg =
-	  get_integer_time_begin(ti_current + 1, sp->time_bin);
 	
         /* What is the next starting point for this cell ? */
         ti_stars_beg_max = max(ti_beg, ti_stars_beg_max);
