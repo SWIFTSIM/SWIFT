@@ -1,6 +1,7 @@
 from h5py import File
 import numpy as np
 import matplotlib
+from glob import glob
 matplotlib.use("Agg")
 import matplotlib.pyplot as plt
 
@@ -80,10 +81,12 @@ radiated_energy_cgs = radiated_energy / total_mass[0]
 radiated_energy_cgs = energyUnits(radiated_energy_cgs)
 
 # Read snapshots
-temp_snap = np.zeros(25)
-time_snap_cgs = np.zeros(25)
-for i in range(25):
-    snap = File("coolingBox_%0.4d.hdf5" % i, 'r')
+files = glob("coolingBox_*.hdf5")
+N = len(files)
+temp_snap = np.zeros(N)
+time_snap_cgs = np.zeros(N)
+for i in range(N):
+    snap = File(files[i], 'r')
     u = snap["/PartType0/InternalEnergy"][:] * snap["/PartType0/Masses"][:]
     u = sum(u) / total_mass[0]
     temp_snap[i] = energyUnits(u)
