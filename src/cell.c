@@ -3404,7 +3404,7 @@ int cell_unskip_gravity_tasks(struct cell *c, struct scheduler *s) {
  * @return 1 If the space needs rebuilding. 0 otherwise.
  */
 int cell_unskip_stars_tasks(struct cell *c, struct scheduler *s) {
-  
+
   struct engine *e = s->space->e;
   const int nodeID = e->nodeID;
   int rebuild = 0;

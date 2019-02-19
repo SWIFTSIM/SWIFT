@@ -209,7 +209,7 @@ struct pcell_step {
 
     /*! Maximal integer end-of-timestep in this cell (stars) */
     integertime_t ti_end_max;
-    
+
     /*! Maximal distance any #part has travelled since last rebuild */
     float dx_max_part;
 
@@ -554,7 +554,7 @@ struct cell {
     /*! Maximum beginning of (integer) time step in this cell for star tasks.
      */
     integertime_t ti_beg_max;
-    
+
     /*! Number of #spart updated in this cell. */
     int updated;
 

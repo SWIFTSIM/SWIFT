@@ -225,21 +225,21 @@ void engine_addtasks_send_stars(struct engine *e, struct cell *ci,
   /* Check if any of the density tasks are for the target node. */
   for (l = ci->stars.density; l != NULL; l = l->next)
     if (l->t->ci->nodeID == nodeID ||
-	(l->t->cj != NULL && l->t->cj->nodeID == nodeID))
+        (l->t->cj != NULL && l->t->cj->nodeID == nodeID))
       break;
 
   /* If so, attach send tasks. */
   if (l != NULL) {
-    
+
     if (t_feedback == NULL) {
-      
+
       /* Make sure this cell is tagged. */
       cell_ensure_tagged(ci);
 
       /* Create the tasks and their dependencies? */
       t_feedback = scheduler_addtask(s, task_type_send, task_subtype_spart,
-				     ci->mpi.tag, 0, ci, cj);
-      
+                                     ci->mpi.tag, 0, ci, cj);
+
       /* The send_stars task should unlock the super_cell's kick task. */
       scheduler_addunlock(s, t_feedback, ci->hydro.super->stars.stars_out);
 
@@ -407,7 +407,7 @@ void engine_addtasks_recv_hydro(struct engine *e, struct cell *c,
   for (struct link *l = c->stars.density; l != NULL; l = l->next) {
     scheduler_addunlock(s, t_rho, l->t);
   }
-    
+
   /* Recurse? */
   if (c->split)
     for (int k = 0; k < 8; k++)
@@ -443,7 +443,7 @@ void engine_addtasks_recv_stars(struct engine *e, struct cell *c,
 
     /* Create the tasks. */
     t_feedback = scheduler_addtask(s, task_type_recv, task_subtype_spart,
-                               c->mpi.tag, 0, c, NULL);
+                                   c->mpi.tag, 0, c, NULL);
   }
 
   c->mpi.stars.recv = t_feedback;
@@ -451,7 +451,7 @@ void engine_addtasks_recv_stars(struct engine *e, struct cell *c,
   for (struct link *l = c->stars.density; l != NULL; l = l->next) {
     scheduler_addunlock(s, l->t, t_feedback);
   }
-  
+
   for (struct link *l = c->stars.feedback; l != NULL; l = l->next) {
     scheduler_addunlock(s, t_feedback, l->t);
   }
@@ -866,13 +866,13 @@ void engine_make_hierarchical_tasks_hydro(struct engine *e, struct cell *c) {
 
       /* Stars */
       if (with_stars) {
-	c->stars.drift = scheduler_addtask(s, task_type_drift_spart,
+        c->stars.drift = scheduler_addtask(s, task_type_drift_spart,
                                            task_subtype_none, 0, 0, c, NULL);
-	if(!with_feedback) {
-	  scheduler_addunlock(s, c->stars.drift, c->super->kick2);
-	}
+        if (!with_feedback) {
+          scheduler_addunlock(s, c->stars.drift, c->super->kick2);
+        }
       }
-      
+
       /* Subgrid tasks: cooling */
       if (with_cooling) {
 
@@ -1780,20 +1780,19 @@ void engine_make_extra_hydroloop_tasks_mapper(void *map_data, int num_elements,
 #endif
 
       if (with_feedback) {
-          scheduler_addunlock(sched, ci->hydro.super->stars.sorts,
-                              t_star_density);
-          scheduler_addunlock(sched, ci->hydro.super->hydro.sorts,
-                              t_star_density);
-	  
-	  if (ci->hydro.super != cj->hydro.super) {
+        scheduler_addunlock(sched, ci->hydro.super->stars.sorts,
+                            t_star_density);
+        scheduler_addunlock(sched, ci->hydro.super->hydro.sorts,
+                            t_star_density);
+
+        if (ci->hydro.super != cj->hydro.super) {
           scheduler_addunlock(sched, cj->hydro.super->stars.sorts,
                               t_star_density);
           scheduler_addunlock(sched, cj->hydro.super->hydro.sorts,
                               t_star_density);
-
-	  }
+        }
       }
-      
+
       if (ci->nodeID == nodeID) {
         scheduler_addunlock(sched, t_force, ci->hydro.super->hydro.end_force);
 
@@ -2027,18 +2026,18 @@ void engine_make_extra_hydroloop_tasks_mapper(void *map_data, int num_elements,
 #endif
 
       if (with_feedback) {
-	scheduler_addunlock(sched, ci->hydro.super->stars.sorts,
-			    t_star_density);
-	scheduler_addunlock(sched, ci->hydro.super->hydro.sorts,
-			    t_star_density);
-	if (ci->hydro.super != cj->hydro.super) {
-	  scheduler_addunlock(sched, cj->hydro.super->stars.sorts,
-	  		      t_star_density);
-	  scheduler_addunlock(sched, cj->hydro.super->hydro.sorts,
-			      t_star_density);
-	}
+        scheduler_addunlock(sched, ci->hydro.super->stars.sorts,
+                            t_star_density);
+        scheduler_addunlock(sched, ci->hydro.super->hydro.sorts,
+                            t_star_density);
+        if (ci->hydro.super != cj->hydro.super) {
+          scheduler_addunlock(sched, cj->hydro.super->stars.sorts,
+                              t_star_density);
+          scheduler_addunlock(sched, cj->hydro.super->hydro.sorts,
+                              t_star_density);
+        }
       }
-      
+
       if (ci->nodeID == nodeID) {
         scheduler_addunlock(sched, t_force, ci->hydro.super->hydro.end_force);
 

@@ -412,7 +412,6 @@ __attribute__((always_inline)) INLINE static int cell_is_starting_stars(
   return (c->stars.ti_beg_max == e->ti_current);
 }
 
-
 /**
  * @brief Is this particle starting its time-step now ?
  *

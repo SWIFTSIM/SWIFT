@@ -331,9 +331,11 @@ void space_regrid(struct space *s, int verbose) {
         const struct cell *c =
             &s->cells_top[s->local_cells_with_particles_top[k]];
         if (c->hydro.h_max > h_max) {
+          message("hydro h_max=%e", c->hydro.h_max);
           h_max = c->hydro.h_max;
         }
         if (c->stars.h_max > h_max) {
+          message("stars h_max=%e", c->stars.h_max);
           h_max = c->stars.h_max;
         }
       }
@@ -2773,8 +2775,8 @@ void space_split_recursive(struct space *s, struct cell *c,
         ti_gravity_end_max = max(ti_gravity_end_max, cp->grav.ti_end_max);
         ti_gravity_beg_max = max(ti_gravity_beg_max, cp->grav.ti_beg_max);
         ti_stars_end_min = min(ti_stars_end_min, cp->stars.ti_end_min);
-	ti_stars_end_max = min(ti_stars_end_max, cp->stars.ti_end_max);
-	ti_stars_beg_max = min(ti_stars_beg_max, cp->stars.ti_beg_max);
+        ti_stars_end_max = min(ti_stars_end_max, cp->stars.ti_end_max);
+        ti_stars_beg_max = min(ti_stars_beg_max, cp->stars.ti_beg_max);
 
         /* Increase the depth */
         if (cp->maxdepth > maxdepth) maxdepth = cp->maxdepth;
