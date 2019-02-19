@@ -41,6 +41,8 @@ int main(int argc, char* argv[]) {
   message("Seed = %d", seed);
   srand(seed);
 
+  
+
   /* Time-step size */
   const int time_bin = 29;
 
@@ -51,9 +53,20 @@ int main(int argc, char* argv[]) {
     const integertime_t increment = (1LL << time_bin);
 
     message("Testing id=%lld time_bin=%d", id, time_bin);
+    char buffer[32];
+    snprintf(buffer, sizeof(char)*32, "fileII%i.txt", i);
+
+    FILE *fp;
+    fp = fopen(buffer,"w");
 
     double total = 0., total2 = 0.;
     int count = 0;
+
+    /* Pearson correlation variables */
+    double sum_previous_current = 0.;
+    double previous = 0.;
+    
+    message("Max nr timesteps = %lld",max_nr_timesteps);
 
     /* Check that the numbers are uniform over the full-range of useful
      * time-steps */
@@ -68,18 +81,30 @@ int main(int argc, char* argv[]) {
       total += r;
       total2 += r * r;
       count++;
+      const unsigned int test = 127LL*(ti_current - 1LL) + 124429LL;
+      fprintf(fp, "%f   %lld    %lld\n", r, (test) % 1514917LL, ti_current );
+
+      /* For the pearson correlation */
+      sum_previous_current += r * previous;
+      previous = r;
     }
 
+    fclose(fp);
     const double mean = total / (double)count;
     const double var = total2 / (double)count - mean * mean;
 
+    double mean_xy = sum_previous_current / ( (double)count -1.f);
+    double correlation = (mean_xy-mean*mean)/var;
+    message("Correlation = %f", correlation);
+
     /* Verify that the mean and variance match the expected values for a uniform
      * distribution */
-    if ((fabs(mean - 0.5) / 0.5 > 1e-4) ||
-        (fabs(var - 1. / 12.) / (1. / 12.) > 1e-4)) {
+    if ((fabs(mean - 0.5) / 0.5 > 2e-4) ||
+        (fabs(var - 1. / 12.) / (1. / 12.) > 1e-3) ||
+        (fabs(correlation) > 3e-4)) {
       message("Test failed!");
-      message("Result:    count=%d mean=%f var=%f", count, mean, var);
-      message("Expected:  count=%d mean=%f var=%f", count, 0.5f, 1. / 12.);
+      message("Result:    count=%d mean=%f var=%f, correlation=%f", count, mean, var, correlation);
+      message("Expected:  count=%d mean=%f var=%f, correlation=%f", count, 0.5f, 1. / 12., 0.);
       return 1;
     }
   }
