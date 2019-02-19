@@ -76,7 +76,6 @@ INLINE static void cooling_update(const struct cosmology* cosmo,
     cooling->units.a_value = cosmo->a;
   else
     cooling->units.a_value = 1. / (1. + cooling->redshift);
-
 }
 
 /**
@@ -293,8 +292,8 @@ __attribute__((always_inline)) INLINE static void cooling_print_backend(
   message("\tLength       = %g", cooling->units.length_units);
   message("\tDensity      = %g", cooling->units.density_units);
   message("\tTime         = %g", cooling->units.time_units);
-  message("\tScale Factor = %g (units: %g)",
-	  cooling->units.a_value, cooling->units.a_units);
+  message("\tScale Factor = %g (units: %g)", cooling->units.a_value,
+          cooling->units.a_units);
 }
 
 /**
@@ -491,7 +490,8 @@ __attribute__((always_inline)) INLINE static void cooling_print_backend(
   cooling_copy_from_grackle3(data, p, xp, rho);
 
 /**
- * @brief Compute the energy of a particle after dt and update the particle chemistry data
+ * @brief Compute the energy of a particle after dt and update the particle
+ * chemistry data
  *
  * @param phys_const The physical constants in internal units.
  * @param us The internal system of units.
@@ -529,8 +529,7 @@ __attribute__((always_inline)) INLINE static gr_float cooling_new_energy(
 
   /* general particle data */
   gr_float density = hydro_get_physical_density(p, cosmo);
-  const float energy_before =
-    hydro_get_physical_internal_energy(p, xp, cosmo);
+  const float energy_before = hydro_get_physical_internal_energy(p, xp, cosmo);
   gr_float energy = energy_before;
 
   /* initialize density */
@@ -548,9 +547,9 @@ __attribute__((always_inline)) INLINE static gr_float cooling_new_energy(
   cooling_copy_to_grackle(data, p, xp, density);
 
   /* solve chemistry */
-  chemistry_data chemistry_grackle = cooling->chemistry;  
-  if (local_solve_chemistry(&chemistry_grackle, &grackle_rates,
-			    &units, &data, dt) == 0) {
+  chemistry_data chemistry_grackle = cooling->chemistry;
+  if (local_solve_chemistry(&chemistry_grackle, &grackle_rates, &units, &data,
+                            dt) == 0) {
     error("Error in solve_chemistry.");
   }
 
@@ -581,7 +580,7 @@ __attribute__((always_inline)) INLINE static gr_float cooling_time(
 
   /* initialize data */
   grackle_field_data data;
-  
+
   /* set values */
   /* grid */
   int grid_dimension[GRACKLE_RANK] = {GRACKLE_NPART, 1, 1};
@@ -595,7 +594,7 @@ __attribute__((always_inline)) INLINE static gr_float cooling_time(
 
   /* general particle data */
   const gr_float energy_before =
-    hydro_get_physical_internal_energy(p, xp, cosmo);
+      hydro_get_physical_internal_energy(p, xp, cosmo);
   gr_float density = hydro_get_physical_density(p, cosmo);
   gr_float energy = energy_before;
 
@@ -662,8 +661,9 @@ __attribute__((always_inline)) INLINE static void cooling_cool_part(
   const float hydro_du_dt = hydro_get_physical_internal_energy_dt(p, cosmo);
 
   /* Calculate energy after dt */
-  gr_float u_new = cooling_new_energy(phys_const, us, cosmo, cooling, p, xp, dt);
-  
+  gr_float u_new =
+      cooling_new_energy(phys_const, us, cosmo, cooling, p, xp, dt);
+
   float delta_u = u_new - u_old + hydro_du_dt * dt_therm;
 
   /* We now need to check that we are not going to go below any of the limits */
@@ -750,13 +750,12 @@ __attribute__((always_inline)) INLINE static void cooling_init_units(
 
   /* then units */
   cooling->units.density_units =
-    units_cgs_conversion_factor(us, UNIT_CONV_DENSITY);
+      units_cgs_conversion_factor(us, UNIT_CONV_DENSITY);
   cooling->units.length_units =
-    units_cgs_conversion_factor(us, UNIT_CONV_LENGTH);
-  cooling->units.time_units =
-    units_cgs_conversion_factor(us, UNIT_CONV_TIME);
+      units_cgs_conversion_factor(us, UNIT_CONV_LENGTH);
+  cooling->units.time_units = units_cgs_conversion_factor(us, UNIT_CONV_TIME);
   cooling->units.velocity_units =
-    units_cgs_conversion_factor(us, UNIT_CONV_VELOCITY);
+      units_cgs_conversion_factor(us, UNIT_CONV_VELOCITY);
 }
 
 /**
