@@ -41,8 +41,6 @@ int main(int argc, char* argv[]) {
   message("Seed = %d", seed);
   srand(seed);
 
-  
-
   /* Time-step size */
   const int time_bin = 29;
 
@@ -54,11 +52,6 @@ int main(int argc, char* argv[]) {
     const long long idoffset = id + 2;
 
     message("Testing id=%lld time_bin=%d", id, time_bin);
-    //char buffer[32];
-    //snprintf(buffer, sizeof(char)*32, "fileII%i.txt", i);
-
-    //FILE *fp;
-    //fp = fopen(buffer,"w");
 
     double total = 0., total2 = 0.;
     int count = 0;
@@ -71,8 +64,6 @@ int main(int argc, char* argv[]) {
     double pearsonIDs = 0.;
     double totalID = 0.;
     double total2ID = 0.;
-    
-    //message("Max nr timesteps = %lld",max_nr_timesteps);
 
     /* Check that the numbers are uniform over the full-range of useful
      * time-steps */
@@ -90,8 +81,6 @@ int main(int argc, char* argv[]) {
       total += r;
       total2 += r * r;
       count++;
-      //const unsigned int test = 127LL*(ti_current - 1LL) + 124429LL;
-      //fprintf(fp, "%f   %lld    %lld\n", r, (test) % 1514917LL, ti_current );
 
       /* For the pearson correlation of time i and i-1 */
       sum_previous_current += r * previous;
@@ -101,17 +90,14 @@ int main(int argc, char* argv[]) {
       pearsonIDs += r * r_2ndid;
       totalID += r_2ndid;
       total2ID += r_2ndid * r_2ndid;
-  
     }
 
-    //fclose(fp);
     const double mean = total / (double)count;
     const double var = total2 / (double)count - mean * mean;
 
     /* Pearson correlation calculation for different times */
     const double mean_xy = sum_previous_current / ( (double)count -1.f);
     const double correlation = (mean_xy-mean*mean)/var;
-    message("Correlation = %f", correlation);
     
     /* Pearson correlation for different IDs */
     const double meanID = totalID / (double)count;
@@ -119,9 +105,6 @@ int main(int argc, char* argv[]) {
 
     const double meanID_xy = pearsonIDs / (double)count;
     const double correlationID = (meanID_xy - mean*meanID) / pow(var * varID, .5f);
-
-    message("Correlation ID = %f", correlationID);
-
 
     /* Verify that the mean and variance match the expected values for a uniform
      * distribution */
