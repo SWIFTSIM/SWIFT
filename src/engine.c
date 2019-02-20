@@ -1904,6 +1904,35 @@ void engine_print_task_counts(const struct engine *e) {
   const int nr_tasks = sched->nr_tasks;
   const struct task *const tasks = sched->tasks;
 
+  /* Global tasks and cells when using MPI. */
+#ifdef WITH_MPI
+  if (e->nodeID == 0 && e->total_nr_tasks > 0)
+    printf(
+        "[%04i] %s engine_print_task_counts: System total: %lld,"
+        " no. cells: %lld\n",
+        e->nodeID, clocks_get_timesincestart(), e->total_nr_tasks,
+        e->total_nr_cells);
+  fflush(stdout);
+#endif
+
+  /* Report value that can be used to estimate the task_per_cells parameter. */
+  float tasks_per_cell = (float)nr_tasks / (float)e->s->tot_cells;
+
+#ifdef WITH_MPI
+  message("Total = %d (per cell = %.2f)", nr_tasks, tasks_per_cell);
+
+  /* And the system maximum on rank 0, only after first step, increase by our
+   * margin to allow for some variation in repartitioning. */
+  if (e->nodeID == 0 && e->total_nr_tasks > 0) {
+    message("Total = %d (maximum per cell = %.2f)", nr_tasks,
+            e->tasks_per_cell_max * engine_tasks_per_cell_margin);
+  }
+
+#else
+  message("Total = %d (per cell = %.2f)", nr_tasks, tasks_per_cell);
+#endif
+  fflush(stdout);
+
   /* Count and print the number of each task type. */
   int counts[task_type_count + 1];
   for (int k = 0; k <= task_type_count; k++) counts[k] = 0;
@@ -1913,8 +1942,7 @@ void engine_print_task_counts(const struct engine *e) {
     else
       counts[(int)tasks[k].type] += 1;
   }
-  message("Total = %d  (per cell = %d)", nr_tasks,
-          (int)ceil((double)nr_tasks / e->s->tot_cells));
+
 #ifdef WITH_MPI
   printf("[%04i] %s engine_print_task_counts: task counts are [ %s=%i",
          e->nodeID, clocks_get_timesincestart(), taskID_names[0], counts[0]);
@@ -1939,7 +1967,7 @@ void engine_print_task_counts(const struct engine *e) {
  * @brief if necessary, estimate the number of tasks required given
  *        the current tasks in use and the numbers of cells.
  *
- * If e->tasks_per_cell is set greater than 0 then that value is used
+ * If e->tasks_per_cell is set greater than 0.0 then that value is used
  * as the estimate of the average number of tasks per cell,
  * otherwise we attempt an estimate.
  *
@@ -1949,8 +1977,13 @@ void engine_print_task_counts(const struct engine *e) {
  */
 int engine_estimate_nr_tasks(const struct engine *e) {
 
-  int tasks_per_cell = e->tasks_per_cell;
-  if (tasks_per_cell > 0) return e->s->tot_cells * tasks_per_cell;
+  float tasks_per_cell = e->tasks_per_cell;
+  if (tasks_per_cell > 0.0f) {
+    if (e->verbose)
+      message("tasks per cell given as: %.2f, so maximum tasks: %d",
+              e->tasks_per_cell, (int)(e->s->tot_cells * tasks_per_cell));
+    return (int)(e->s->tot_cells * tasks_per_cell);
+  }
 
   /* Our guess differs depending on the types of tasks we are using, but we
    * basically use a formula <n1>*ntopcells + <n2>*(totcells - ntopcells).
@@ -2055,15 +2088,15 @@ int engine_estimate_nr_tasks(const struct engine *e) {
   int ncells = e->s->tot_cells;
 #endif
 
-  double ntasks = n1 * ntop + n2 * (ncells - ntop);
+  float ntasks = n1 * ntop + n2 * (ncells - ntop);
   if (ncells > 0) tasks_per_cell = ceil(ntasks / ncells);
 
-  if (tasks_per_cell < 1.0) tasks_per_cell = 1.0;
+  if (tasks_per_cell < 1.0f) tasks_per_cell = 1.0f;
   if (e->verbose)
-    message("tasks per cell estimated as: %d, maximum tasks: %d",
-            tasks_per_cell, ncells * tasks_per_cell);
+    message("tasks per cell estimated as: %.2f, maximum tasks: %d",
+            tasks_per_cell, (int)(ncells * tasks_per_cell));
 
-  return ncells * tasks_per_cell;
+  return (int)(ncells * tasks_per_cell);
 }
 
 /**
@@ -2513,7 +2546,9 @@ void engine_collect_end_of_step(struct engine *e, int apply) {
       &e->collect_group1, data.updated, data.g_updated, data.s_updated,
       data.inhibited, data.g_inhibited, data.s_inhibited, data.ti_hydro_end_min,
       data.ti_hydro_end_max, data.ti_hydro_beg_max, data.ti_gravity_end_min,
-      data.ti_gravity_end_max, data.ti_gravity_beg_max, e->forcerebuild);
+      data.ti_gravity_end_max, data.ti_gravity_beg_max, e->forcerebuild,
+      e->s->tot_cells, e->sched.nr_tasks,
+      (float)e->sched.nr_tasks / (float)e->s->tot_cells);
 
 /* Aggregate collective data from the different nodes for this step. */
 #ifdef WITH_MPI
@@ -4256,6 +4291,8 @@ void engine_init(struct engine *e, struct space *s, struct swift_params *params,
   e->cputime_last_step = 0;
   e->last_repartition = 0;
 #endif
+  e->total_nr_cells = 0;
+  e->total_nr_tasks = 0;
 
 #if defined(WITH_LOGGER)
   e->logger = (struct logger *)malloc(sizeof(struct logger));
@@ -4788,8 +4825,10 @@ void engine_config(int restart, struct engine *e, struct swift_params *params,
    * On restart this number cannot be estimated (no cells yet), so we recover
    * from the end of the dumped run. Can be changed on restart. */
   e->tasks_per_cell =
-      parser_get_opt_param_int(params, "Scheduler:tasks_per_cell", 0);
-  int maxtasks = 0;
+      parser_get_opt_param_float(params, "Scheduler:tasks_per_cell", 0.0);
+  e->tasks_per_cell_max = 0.0f;
+
+  float maxtasks = 0;
   if (restart)
     maxtasks = e->restart_max_tasks;
   else
