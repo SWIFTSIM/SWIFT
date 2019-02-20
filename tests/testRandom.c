@@ -51,22 +51,28 @@ int main(int argc, char* argv[]) {
 
     const long long id = rand() * (1LL << 31) + rand();
     const integertime_t increment = (1LL << time_bin);
+    const long long idoffset = id + 2;
 
     message("Testing id=%lld time_bin=%d", id, time_bin);
-    char buffer[32];
-    snprintf(buffer, sizeof(char)*32, "fileII%i.txt", i);
+    //char buffer[32];
+    //snprintf(buffer, sizeof(char)*32, "fileII%i.txt", i);
 
-    FILE *fp;
-    fp = fopen(buffer,"w");
+    //FILE *fp;
+    //fp = fopen(buffer,"w");
 
     double total = 0., total2 = 0.;
     int count = 0;
 
-    /* Pearson correlation variables */
+    /* Pearson correlation variables for different times */
     double sum_previous_current = 0.;
     double previous = 0.;
+
+    /* Pearson correlation for two different IDs */
+    double pearsonIDs = 0.;
+    double totalID = 0.;
+    double total2ID = 0.;
     
-    message("Max nr timesteps = %lld",max_nr_timesteps);
+    //message("Max nr timesteps = %lld",max_nr_timesteps);
 
     /* Check that the numbers are uniform over the full-range of useful
      * time-steps */
@@ -78,33 +84,54 @@ int main(int argc, char* argv[]) {
       const double r =
           random_unit_interval(id, ti_current, random_number_star_formation);
 
+      const double r_2ndid =
+          random_unit_interval(idoffset, ti_current, random_number_star_formation);
+
       total += r;
       total2 += r * r;
       count++;
-      const unsigned int test = 127LL*(ti_current - 1LL) + 124429LL;
-      fprintf(fp, "%f   %lld    %lld\n", r, (test) % 1514917LL, ti_current );
+      //const unsigned int test = 127LL*(ti_current - 1LL) + 124429LL;
+      //fprintf(fp, "%f   %lld    %lld\n", r, (test) % 1514917LL, ti_current );
 
-      /* For the pearson correlation */
+      /* For the pearson correlation of time i and i-1 */
       sum_previous_current += r * previous;
       previous = r;
+
+      /* Pearson correlation for small different IDs */
+      pearsonIDs += r * r_2ndid;
+      totalID += r_2ndid;
+      total2ID += r_2ndid * r_2ndid;
+  
     }
 
-    fclose(fp);
+    //fclose(fp);
     const double mean = total / (double)count;
     const double var = total2 / (double)count - mean * mean;
 
-    double mean_xy = sum_previous_current / ( (double)count -1.f);
-    double correlation = (mean_xy-mean*mean)/var;
+    /* Pearson correlation calculation for different times */
+    const double mean_xy = sum_previous_current / ( (double)count -1.f);
+    const double correlation = (mean_xy-mean*mean)/var;
     message("Correlation = %f", correlation);
+    
+    /* Pearson correlation for different IDs */
+    const double meanID = totalID / (double)count;
+    const double varID = total2ID / (double)count - meanID * meanID;
+
+    const double meanID_xy = pearsonIDs / (double)count;
+    const double correlationID = (meanID_xy - mean*meanID) / pow(var * varID, .5f);
+
+    message("Correlation ID = %f", correlationID);
+
 
     /* Verify that the mean and variance match the expected values for a uniform
      * distribution */
     if ((fabs(mean - 0.5) / 0.5 > 2e-4) ||
         (fabs(var - 1. / 12.) / (1. / 12.) > 1e-3) ||
-        (fabs(correlation) > 3e-4)) {
+        (fabs(correlation) > 3e-4) ||
+        (fabs(correlationID) > 3e-4) ) {
       message("Test failed!");
-      message("Result:    count=%d mean=%f var=%f, correlation=%f", count, mean, var, correlation);
-      message("Expected:  count=%d mean=%f var=%f, correlation=%f", count, 0.5f, 1. / 12., 0.);
+      message("Result:    count=%d mean=%f var=%f, correlation=%f ID correlation=%f", count, mean, var, correlation, correlationID);
+      message("Expected:  count=%d mean=%f var=%f, correlation=%f ID correlation=%f", count, 0.5f, 1. / 12., 0., 0.);
       return 1;
     }
   }
