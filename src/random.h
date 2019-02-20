@@ -60,33 +60,35 @@ INLINE static double random_unit_interval(const long long int id,
   /* Range used for the seeds. Best if prime */
   static const long long seed_range = RAND_MAX;
   static const double RAND_MAX_inv = 1. / ((double)RAND_MAX);
-  static const long long mwc_number =(int)pow(2,32) - 1;
+  static const long long mwc_number = (int)pow(2, 32) - 1;
 
   /* Calculate the seed */
   /* WARNING: Only change the math if you really know what you are doing!
    * The numbers are carefully chosen prime numbers that prevent correlation
-   * with either the current integer time or the particle IDs. The current 
-   * method also prevents any correlation between different random number 
+   * with either the current integer time or the particle IDs. The current
+   * method also prevents any correlation between different random number
    * types.
-   * The calculation overflows on purpose.  
+   * The calculation overflows on purpose.
    * 1. The first step is calculating the seed by using a multiply with carry
-   * (MWC) method, this method depends on the type of random number and 
-   * this therefore also prevents that there is any correlation between 
+   * (MWC) method, this method depends on the type of random number and
+   * this therefore also prevents that there is any correlation between
    * the different types of random numbers.
    * 2. After this we use the 64 bit Xorshift method to randomize the seeds
-   * even more. 
+   * even more.
    * 3. We calculate a prime multiplication for the id with a quadratic
    * term.
    * 4. We calculate the seed by using a Quadratic congruential generator,
    * in which we use the id part and the current time step bin.
    */
   unsigned long long number = ti_current;
-  number = type * ( number & (mwc_number)) + (number >> 32);
+  number = type * (number & (mwc_number)) + (number >> 32);
   number ^= number << 21;
   number ^= number >> 35;
   number ^= number << 4;
   const unsigned long long idpart = 3457LL * id + 593LL * id * ti_current;
-  unsigned int seed = (937LL * number + 5171LL * number * number + idpart + 1109LL)%9996361LL % seed_range;
+  unsigned int seed =
+      (937LL * number + 5171LL * number * number + idpart + 1109LL) %
+      9996361LL % seed_range;
   /* Generate a random number between 0 and 1. */
   return rand_r(&seed) * RAND_MAX_inv;
 }
