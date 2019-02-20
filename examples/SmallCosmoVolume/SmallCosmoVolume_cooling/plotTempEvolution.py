@@ -164,7 +164,9 @@ legend(loc="upper left", frameon=False, handlelength=1.5)
 if cooling_model == "Constant Lambda":
     text(1e-2, 6e4, "$\Lambda_{\\rm const}/n_{\\rm H}^2 = %.1f\\times10^{%d}~[\\rm{cgs}]$"%(Lambda/10.**(int(log10(Lambda))), log10(Lambda)), fontsize=7)
 elif cooling_model == "EAGLE":
-    text(1e-2, 6e4, "EAGLE (Wiersma et al. (2009)")
+    text(1e-2, 6e4, "EAGLE (Wiersma et al. 2009)")
+elif cooling_model == b"Grackle":
+    text(1e-2, 6e4, "Grackle (Smith et al. 2016)")
 else:
     text(1e-2, 6e4, "No cooling")
     
@@ -187,7 +189,7 @@ minorticks_off()
 xlabel("${\\rm Redshift}~z$", labelpad=0)
 ylabel("${\\rm Temperature}~T~[{\\rm K}]$", labelpad=0)
 xlim(9e-3, 1.1)
-ylim(20, 2.5e7)
+ylim(5, 2.5e7)
 
 savefig("Temperature_evolution.png", dpi=200)
 
