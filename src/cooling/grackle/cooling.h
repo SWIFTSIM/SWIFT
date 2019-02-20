@@ -42,8 +42,6 @@
 #include "physical_constants.h"
 #include "units.h"
 
-static const float rounding_tolerance = 1.0e-4;
-
 /* need to rework (and check) code if changed */
 #define GRACKLE_NPART 1
 #define GRACKLE_RANK 3
@@ -681,6 +679,8 @@ __attribute__((always_inline)) INLINE static void cooling_cool_part(
    * for 2.5 delta_u but this time against 0 energy not the minimum.
    * To avoid numerical rounding bringing us below 0., we add a tiny tolerance.
    */
+  const float rounding_tolerance = 1.0e-4;
+
   if (u_old + 2.5 * delta_u < 0.) {
     delta_u = -u_old / (2.5 + rounding_tolerance);
   }
