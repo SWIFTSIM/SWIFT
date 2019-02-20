@@ -1,6 +1,7 @@
 /*******************************************************************************
  * This file is part of SWIFT.
  * Copyright (C) 2019 Matthieu Schaller (schaller@strw.leidenuniv.nl)
+ *               2019 Folkert Nobels    (nobels@strw.leidenuniv.nl)
  *
  * This program is free software: you can redistribute it and/or modify
  * it under the terms of the GNU Lesser General Public License as published
@@ -75,8 +76,8 @@ int main(int argc, char* argv[]) {
       const double r =
           random_unit_interval(id, ti_current, random_number_star_formation);
 
-      const double r_2ndid =
-          random_unit_interval(idoffset, ti_current, random_number_star_formation);
+      const double r_2ndid = random_unit_interval(idoffset, ti_current,
+                                                  random_number_star_formation);
 
       total += r;
       total2 += r * r;
@@ -96,25 +97,31 @@ int main(int argc, char* argv[]) {
     const double var = total2 / (double)count - mean * mean;
 
     /* Pearson correlation calculation for different times */
-    const double mean_xy = sum_previous_current / ( (double)count -1.f);
-    const double correlation = (mean_xy-mean*mean)/var;
-    
+    const double mean_xy = sum_previous_current / ((double)count - 1.f);
+    const double correlation = (mean_xy - mean * mean) / var;
+
     /* Pearson correlation for different IDs */
     const double meanID = totalID / (double)count;
     const double varID = total2ID / (double)count - meanID * meanID;
 
     const double meanID_xy = pearsonIDs / (double)count;
-    const double correlationID = (meanID_xy - mean*meanID) / pow(var * varID, .5f);
+    const double correlationID =
+        (meanID_xy - mean * meanID) / pow(var * varID, .5f);
 
     /* Verify that the mean and variance match the expected values for a uniform
      * distribution */
     if ((fabs(mean - 0.5) / 0.5 > 2e-4) ||
         (fabs(var - 1. / 12.) / (1. / 12.) > 1e-3) ||
-        (fabs(correlation) > 3e-4) ||
-        (fabs(correlationID) > 3e-4) ) {
+        (fabs(correlation) > 3e-4) || (fabs(correlationID) > 3e-4)) {
       message("Test failed!");
-      message("Result:    count=%d mean=%f var=%f, correlation=%f ID correlation=%f", count, mean, var, correlation, correlationID);
-      message("Expected:  count=%d mean=%f var=%f, correlation=%f ID correlation=%f", count, 0.5f, 1. / 12., 0., 0.);
+      message(
+          "Result:    count=%d mean=%f var=%f, correlation=%f ID "
+          "correlation=%f",
+          count, mean, var, correlation, correlationID);
+      message(
+          "Expected:  count=%d mean=%f var=%f, correlation=%f ID "
+          "correlation=%f",
+          count, 0.5f, 1. / 12., 0., 0.);
       return 1;
     }
   }
