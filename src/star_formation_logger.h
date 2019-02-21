@@ -20,14 +20,14 @@
 #define SWIFT_STAR_FORMATION_LOGGER_H
 
 /**
- * @file src/star_formation_io.h
- * @brief Branches between the i/o routines for the SF code.
+ * @file src/star_formation_logger.h
+ * @brief Branches between the SFH logger routines for the SF code.
  */
 
 /* Config parameters. */
 #include "../config.h"
 
-/* Import the right cooling definition */
+/* Import the right SFH logger definition */
 #if defined(STAR_FORMATION_NONE)
 #include "./star_formation/none/star_formation_logger.h"
 #elif defined(STAR_FORMATION_EAGLE)
