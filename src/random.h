@@ -60,7 +60,7 @@ INLINE static double random_unit_interval(const long long int id,
   /* Range used for the seeds. Best if prime */
   static const long long seed_range = RAND_MAX;
   static const double RAND_MAX_inv = 1. / ((double)RAND_MAX);
-  static const long long mwc_number = (int)pow(2, 32) - 1;
+  static const long long mwc_number = (1LL << 32) - 1LL;
 
   /* Calculate the seed */
   /* WARNING: Only change the math if you really know what you are doing!
