@@ -359,7 +359,24 @@ hydro_set_physical_internal_energy_dt(struct part *restrict p,
                                       const struct cosmology *cosmo,
                                       float du_dt) {
 
-  p->u_dt = du_dt * cosmo->a_factor_internal_energy;
+  p->u_dt = du_dt / cosmo->a_factor_internal_energy;
+}
+
+/**
+ * @brief Sets the physical entropy of a particle
+ *
+ * @param p The particle of interest.
+ * @param xp The extended particle data.
+ * @param cosmo Cosmology data structure
+ * @param entropy The physical entropy
+ */
+__attribute__((always_inline)) INLINE static void hydro_set_physical_entropy(
+    struct part *p, struct xpart *xp, const struct cosmology *cosmo,
+    const float entropy) {
+
+  /* Note there is no conversion from physical to comoving entropy */
+  const float comoving_entropy = entropy;
+  xp->u_full = gas_internal_energy_from_entropy(p->rho, comoving_entropy);
 }
 
 /**
@@ -535,7 +552,7 @@ __attribute__((always_inline)) INLINE static void hydro_prepare_force(
     const struct cosmology *cosmo, const struct hydro_props *hydro_props,
     const float dt_alpha) {
 
-  const float fac_mu = cosmo->a_factor_mu;
+  const float fac_B = cosmo->a_factor_Balsara_eps;
 
   /* Compute the norm of the curl */
   const float curl_v = sqrtf(p->density.rot_v[0] * p->density.rot_v[0] +
@@ -551,7 +568,7 @@ __attribute__((always_inline)) INLINE static void hydro_prepare_force(
   /* Compute the Balsara switch */
   const float balsara =
       hydro_props->viscosity.alpha * abs_div_v /
-      (abs_div_v + curl_v + 0.0001f * soundspeed * fac_mu / p->h);
+      (abs_div_v + curl_v + 0.0001f * soundspeed * fac_B / p->h);
 
   /* Compute the "grad h" term */
   const float common_factor = p->h / (hydro_dimension * p->density.wcount);
@@ -763,6 +780,7 @@ __attribute__((always_inline)) INLINE static void hydro_first_init_part(
     struct part *restrict p, struct xpart *restrict xp) {
 
   p->time_bin = 0;
+  p->wakeup = time_bin_not_awake;
   xp->v_full[0] = p->v[0];
   xp->v_full[1] = p->v[1];
   xp->v_full[2] = p->v[2];
@@ -792,4 +810,14 @@ hydro_set_init_internal_energy(struct part *p, float u_init) {
   p->u = u_init;
 }
 
-#endif /* SWIFT_MINIMAL_HYDRO_H */
+/**
+ * @brief Operations performed when a particle gets removed from the
+ * simulation volume.
+ *
+ * @param p The particle.
+ * @param xp The extended particle data.
+ */
+__attribute__((always_inline)) INLINE static void hydro_remove_part(
+    const struct part *p, const struct xpart *xp) {}
+
+#endif /* SWIFT_PRESSURE_ENERGY_HYDRO_H */

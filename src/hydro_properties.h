@@ -32,10 +32,14 @@
 #endif
 
 /* Local includes. */
-#include "parser.h"
-#include "physical_constants.h"
 #include "restart.h"
-#include "units.h"
+
+/* Forward declarations */
+struct cosmology;
+struct swift_params;
+struct gravity_props;
+struct phys_const;
+struct unit_system;
 
 /**
  * @brief Contains all the constants and parameters of the hydro scheme
@@ -56,6 +60,12 @@ struct hydro_props {
 
   /*! Maximal smoothing length */
   float h_max;
+
+  /*! Minimal smoothing length expressed as ratio to softening length */
+  float h_min_ratio;
+
+  /*! Minimal smoothing length */
+  float h_min;
 
   /*! Maximal number of iterations to converge h */
   int max_smoothing_iterations;
@@ -84,6 +94,12 @@ struct hydro_props {
   /*! Temperature of the neutral to ionized transition of Hydrogen */
   float hydrogen_ionization_temperature;
 
+  /*! Mean molecular weight below hydrogen ionization temperature */
+  float mu_neutral;
+
+  /*! Mean molecular weight above hydrogen ionization temperature */
+  float mu_ionised;
+
   /*! Artificial viscosity parameters */
   struct {
     /*! For the fixed, simple case. Also used to set the initial AV
@@ -99,6 +115,24 @@ struct hydro_props {
     /*! The decay length of the artificial viscosity (used in M&M, etc.) */
     float length;
   } viscosity;
+
+  /*! Thermal diffusion parameters */
+  struct {
+
+    /*! Initialisation value, or the case for constant thermal diffusion coeffs
+     */
+    float alpha;
+
+    /*! Tuning parameter for speed of ramp up/down */
+    float beta;
+
+    /*! Maximal value for alpha_diff */
+    float alpha_max;
+
+    /*! Minimal value for alpha_diff */
+    float alpha_min;
+
+  } diffusion;
 };
 
 void hydro_props_print(const struct hydro_props *p);
@@ -106,6 +140,9 @@ void hydro_props_init(struct hydro_props *p,
                       const struct phys_const *phys_const,
                       const struct unit_system *us,
                       struct swift_params *params);
+
+void hydro_props_update(struct hydro_props *p, const struct gravity_props *gp,
+                        const struct cosmology *cosmo);
 
 #if defined(HAVE_HDF5)
 void hydro_props_print_snapshot(hid_t h_grpsph, const struct hydro_props *p);

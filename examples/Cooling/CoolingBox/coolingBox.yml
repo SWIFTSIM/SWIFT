@@ -1,0 +1,75 @@
+# Define the system of units to use internally. 
+InternalUnitSystem:
+  UnitMass_in_cgs:     2.0e33     # Solar masses
+  UnitLength_in_cgs:   3.0857e21  # Kiloparsecs
+  UnitVelocity_in_cgs: 1.0e5      # Kilometers per second
+  UnitCurrent_in_cgs:  1          # Amperes
+  UnitTemp_in_cgs:     1          # Kelvin
+
+# Parameters governing the time integration
+TimeIntegration:
+  time_begin: 0.    # The starting time of the simulation (in internal units).
+  time_end:   0.25  # The end time of the simulation (in internal units).
+  dt_min:     1e-5  # The minimal time-step size of the simulation (in internal units).
+  dt_max:     1e-2  # The maximal time-step size of the simulation (in internal units).
+
+# Parameters governing the snapshots
+Snapshots:
+  basename:            coolingBox # Common part of the name of output files
+  time_first:          0.         # Time of the first output (in internal units)
+  delta_time:          1e-2       # Time difference between consecutive outputs (in internal units)
+
+# Parameters governing the conserved quantities statistics
+Statistics:
+  delta_time:          1e-3 # Time between statistics output
+
+# Parameters for the hydrodynamics scheme
+SPH:
+  resolution_eta:        1.2348   # Target smoothing length in units of the mean inter-particle separation (1.2348 == 48Ngbs with the cubic spline kernel).
+  CFL_condition:         0.1      # Courant-Friedrich-Levy condition for time integration.
+  minimal_temperature: 100.       # Kelvin
+  
+# Parameters related to the initial conditions
+InitialConditions:
+  file_name:  ./coolingBox.hdf5     # The file to read
+  periodic:   1
+  
+# Dimensionless pre-factor for the time-step condition
+LambdaCooling:
+  lambda_nH2_cgs:              1e-22 # Cooling rate divided by square Hydrogen number density (in cgs units [erg * s^-1 * cm^3])
+  cooling_tstep_mult:          1.0        # Dimensionless pre-factor for the time-step condition
+
+# Cooling with Grackle 2.0
+GrackleCooling:
+  CloudyTable: CloudyData_UVB=HM2012.h5 # Name of the Cloudy Table (available on the grackle bitbucket repository)
+  WithUVbackground: 0 # Enable or not the UV background
+  Redshift: 0 # Redshift to use (-1 means time based redshift)
+  WithMetalCooling: 1 # Enable or not the metal cooling
+  ProvideVolumetricHeatingRates: 0 # User provide volumetric heating rates
+  ProvideSpecificHeatingRates: 0 # User provide specific heating rates
+  SelfShieldingMethod: 0 # Grackle (<= 3) or Gear self shielding method
+  OutputMode: 1 # Write in output corresponding primordial chemistry mode
+  MaxSteps: 1000
+  ConvergenceLimit: 1e-2
+  
+EAGLECooling:
+  dir_name:                ./coolingtables/
+  H_reion_z:               11.5
+  He_reion_z_center:       3.5
+  He_reion_z_sigma:        0.5
+  He_reion_eV_p_H:         2.0
+
+EAGLEChemistry:             # Solar abundances
+  init_abundance_metal:     0.014
+  init_abundance_Hydrogen:  0.70649785
+  init_abundance_Helium:    0.28055534
+  init_abundance_Carbon:    2.0665436e-3
+  init_abundance_Nitrogen:  8.3562563e-4
+  init_abundance_Oxygen:    5.4926244e-3
+  init_abundance_Neon:      1.4144605e-3
+  init_abundance_Magnesium: 5.907064e-4
+  init_abundance_Silicon:   6.825874e-4
+  init_abundance_Iron:      1.1032152e-3
+
+GearChemistry:
+  InitialMetallicity: 0.01295

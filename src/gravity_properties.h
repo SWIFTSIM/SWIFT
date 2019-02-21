@@ -73,7 +73,7 @@ struct gravity_props {
   /*! Maxium physical softening */
   double epsilon_max_physical;
 
-  /*! Current sftening length */
+  /*! Current softening length */
   float epsilon_cur;
 
   /*! Square of current softening length */
@@ -90,7 +90,8 @@ void gravity_props_print(const struct gravity_props *p);
 void gravity_props_init(struct gravity_props *p, struct swift_params *params,
                         const struct cosmology *cosmo, int with_cosmology,
                         int periodic);
-void gravity_update(struct gravity_props *p, const struct cosmology *cosmo);
+void gravity_props_update(struct gravity_props *p,
+                          const struct cosmology *cosmo);
 
 #if defined(HAVE_HDF5)
 void gravity_props_print_snapshot(hid_t h_grpsph,

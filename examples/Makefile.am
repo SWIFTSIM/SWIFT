@@ -19,12 +19,15 @@
 MYFLAGS = 
 
 # Add the source directory and the non-standard paths to the included library headers to CFLAGS
-AM_CFLAGS = -I$(top_srcdir)/src $(HDF5_CPPFLAGS) $(GSL_INCS) $(FFTW_INCS) $(GRACKLE_INCS)
+AM_CFLAGS = -I$(top_srcdir)/src -I$(top_srcdir)/argparse $(HDF5_CPPFLAGS) \
+	$(GSL_INCS) $(FFTW_INCS) $(NUMA_INCS) $(GRACKLE_INCS)
 
 AM_LDFLAGS = $(HDF5_LDFLAGS)
 
 # Extra libraries.
-EXTRA_LIBS = $(HDF5_LIBS) $(FFTW_LIBS) $(PROFILER_LIBS) $(TCMALLOC_LIBS) $(JEMALLOC_LIBS) $(TBBMALLOC_LIBS) $(GRACKLE_LIBS) $(VELOCIRAPTOR_LIBS) $(GSL_LIBS)
+EXTRA_LIBS = $(HDF5_LIBS) $(FFTW_LIBS) $(NUMA_LIBS) $(PROFILER_LIBS) \
+	$(TCMALLOC_LIBS) $(JEMALLOC_LIBS) $(TBBMALLOC_LIBS) $(GRACKLE_LIBS) \
+	$(VELOCIRAPTOR_LIBS) $(GSL_LIBS)
 
 # MPI libraries.
 MPI_LIBS = $(PARMETIS_LIBS) $(METIS_LIBS) $(MPI_THREAD_LIBS)
@@ -51,12 +54,12 @@ endif
 # Sources for swift
 swift_SOURCES = main.c
 swift_CFLAGS = $(MYFLAGS) $(AM_CFLAGS) -DENGINE_POLICY="engine_policy_keep $(ENGINE_POLICY_SETAFFINITY)"
-swift_LDADD =  ../src/.libs/libswiftsim.a $(EXTRA_LIBS)
+swift_LDADD =  ../src/.libs/libswiftsim.a ../argparse/.libs/libargparse.a $(EXTRA_LIBS)
 
 # Sources for swift_mpi, do we need an affinity policy for MPI?
 swift_mpi_SOURCES = main.c
 swift_mpi_CFLAGS = $(MYFLAGS) $(AM_CFLAGS) $(MPI_FLAGS) -DENGINE_POLICY="engine_policy_keep $(ENGINE_POLICY_SETAFFINITY)"
-swift_mpi_LDADD =  ../src/.libs/libswiftsim_mpi.a $(MPI_LIBS) $(EXTRA_LIBS)
+swift_mpi_LDADD =  ../src/.libs/libswiftsim_mpi.a ../argparse/.libs/libargparse.a $(MPI_LIBS) $(EXTRA_LIBS)
 
 # Sources for fof
 fof_SOURCES = main_fof.c
@@ -69,52 +72,51 @@ fof_mpi_CFLAGS = $(MYFLAGS) $(AM_CFLAGS) $(MPI_FLAGS) -DENGINE_POLICY="engine_po
 fof_mpi_LDADD =  ../src/.libs/libswiftsim_mpi.a $(MPI_LIBS) $(EXTRA_LIBS)
 
 # Scripts to generate ICs
-EXTRA_DIST = CoolingBox/coolingBox.yml CoolingBox/energy_plot.py CoolingBox/makeIC.py CoolingBox/run.sh \
-             ConstantCosmoVolume/run.sh ConstantCosmoVolume/makeIC.py ConstantCosmoVolume/plotSolution.py ConstantCosmoVolume/constant_volume.yml \
-	     EAGLE_6/eagle_6.yml EAGLE_6/getIC.sh EAGLE_6/README EAGLE_6/run.sh \
-	     EAGLE_12/eagle_12.yml EAGLE_12/getIC.sh EAGLE_12/README EAGLE_12/run.sh \
-	     EAGLE_25/eagle_25.yml EAGLE_25/getIC.sh EAGLE_25/README EAGLE_25/run.sh \
-	     EAGLE_50/eagle_50.yml EAGLE_50/getIC.sh EAGLE_50/README EAGLE_50/run.sh \
-	     EAGLE_100/eagle_100.yml EAGLE_100/getIC.sh EAGLE_100/README EAGLE_100/run.sh \
-	     EAGLE_DMO_12/eagle_12.yml EAGLE_DMO_12/getIC.sh EAGLE_DMO_12/README EAGLE_DMO_12/run.sh \
-	     EAGLE_DMO_25/eagle_25.yml EAGLE_DMO_25/getIC.sh EAGLE_DMO_25/README EAGLE_DMO_25/run.sh \
-	     EAGLE_DMO_50/eagle_50.yml EAGLE_DMO_50/getIC.sh EAGLE_DMO_50/README EAGLE_DMO_50/run.sh \
-	     EAGLE_DMO_100/eagle_100.yml EAGLE_DMO_100/getIC.sh EAGLE_DMO_100/README EAGLE_DMO_100/run.sh \
-	     EvrardCollapse_3D/evrard.yml EvrardCollapse_3D/makeIC.py EvrardCollapse_3D/plotSolution.py EvrardCollapse_3D/run.sh EvrardCollapse_3D/getReference.sh \
-	     ExternalPointMass/externalPointMass.yml ExternalPointMass/makeIC.py ExternalPointMass/run.sh ExternalPointMass/energy_plot.py \
-	     GreshoVortex_2D/getGlass.sh GreshoVortex_2D/gresho.yml GreshoVortex_2D/makeIC.py GreshoVortex_2D/plotSolution.py GreshoVortex_2D/run.sh \
-	     GreshoVortex_3D/getGlass.sh GreshoVortex_3D/gresho.yml GreshoVortex_3D/makeIC.py GreshoVortex_3D/plotSolution.py GreshoVortex_3D/run.sh \
-	     HydrostaticHalo/README HydrostaticHalo/hydrostatic.yml HydrostaticHalo/makeIC.py HydrostaticHalo/run.sh \
-	     HydrostaticHalo/density_profile.py HydrostaticHalo/velocity_profile.py HydrostaticHalo/internal_energy_profile.py HydrostaticHalo/test_energy_conservation.py \
-	     InteractingBlastWaves_1D/run.sh InteractingBlastWaves_1D/makeIC.py InteractingBlastWaves_1D/plotSolution.py InteractingBlastWaves_1D/interactingBlastWaves.yml InteractingBlastWaves_1D/getReference.sh \
-	     IsothermalPotential/README IsothermalPotential/run.sh IsothermalPotential/energy_plot.py IsothermalPotential/isothermal.yml IsothermalPotential/makeIC.py \
-	     KelvinHelmholtz_2D/kelvinHelmholtz.yml KelvinHelmholtz_2D/makeIC.py KelvinHelmholtz_2D/plotSolution.py KelvinHelmholtz_2D/run.sh \
-	     MultiTypes/makeIC.py  MultiTypes/multiTypes.yml MultiTypes/run.sh \
-             Noh_1D/makeIC.py Noh_1D/noh.yml Noh_1D/plotSolution.py Noh_1D/run.sh \
-             Noh_2D/makeIC.py Noh_2D/noh.yml Noh_2D/plotSolution.py Noh_2D/run.sh Noh_2D/getGlass.sh \
-             Noh_3D/makeIC.py Noh_3D/noh.yml Noh_3D/plotSolution.py Noh_3D/run.sh Noh_3D/getGlass.sh \
-	     PerturbedBox_2D/makeIC.py PerturbedBox_2D/perturbedPlane.yml \
-	     PerturbedBox_3D/makeIC.py PerturbedBox_3D/perturbedBox.yml PerturbedBox_3D/run.sh \
-	     PMillennium-384/p-mill-384.yml \
-	     PMillennium-768/p-mill-768.yml \
-	     SantaBarbara/README SantaBarbara/getIC.sh SantaBarbara/santa_barbara.yml SantaBarbara/run.sh \
-	     SantaBarbara_low/README SantaBarbara_low/getIC.sh SantaBarbara_low/santa_barbara.yml SantaBarbara_low/run.sh \
-	     SedovBlast_1D/makeIC.py SedovBlast_1D/plotSolution.py SedovBlast_1D/run.sh SedovBlast_1D/sedov.yml \
-	     SedovBlast_2D/getGlass.sh SedovBlast_2D/makeIC.py SedovBlast_2D/plotSolution.py SedovBlast_2D/run.sh SedovBlast_2D/sedov.yml \
-	     SedovBlast_3D/getGlass.sh SedovBlast_3D/makeIC.py SedovBlast_3D/plotSolution.py SedovBlast_3D/run.sh SedovBlast_3D/sedov.yml \
-             SineWavePotential_1D/makeIC.py SineWavePotential_1D/plotSolution.py SineWavePotential_1D/run.sh SineWavePotential_1D/sineWavePotential.yml \
-             SineWavePotential_2D/makeIC.py SineWavePotential_2D/plotSolution.py SineWavePotential_2D/run.sh SineWavePotential_2D/sineWavePotential.yml \
-             SineWavePotential_3D/makeIC.py SineWavePotential_3D/plotSolution.py SineWavePotential_3D/run.sh SineWavePotential_3D/sineWavePotential.yml \
-             SmallCosmoVolume/README SmallCosmoVolume/getIC.sh SmallCosmoVolume/run.sh SmallCosmoVolume/small_cosmo_volume.yml SmallCosmoVolume/plotTempEvolution.py \
-             SmallCosmoVolume_DM/README SmallCosmoVolume_DM/getIC.sh SmallCosmoVolume_DM/run.sh SmallCosmoVolume_DM/small_cosmo_volume_dm.yml SmallCosmoVolume_DM/stf_input_6dfof_dmonly_sub.cfg \
-	     SodShock_1D/makeIC.py SodShock_1D/plotSolution.py SodShock_1D/run.sh SodShock_1D/sodShock.yml \
-	     SodShock_2D/getGlass.sh SodShock_2D/makeIC.py SodShock_2D/plotSolution.py SodShock_2D/run.sh SodShock_2D/sodShock.yml \
-	     SodShock_3D/getGlass.sh SodShock_3D/makeIC.py SodShock_3D/plotSolution.py SodShock_3D/run.sh SodShock_3D/sodShock.yml \
-	     SquareTest_2D/makeIC.py SquareTest_2D/plotSolution.py SquareTest_2D/run.sh SquareTest_2D/square.yml \
-	     UniformBox_2D/makeIC.py UniformBox_2D/run.sh UniformBox_2D/uniformPlane.yml \
-	     UniformBox_3D/makeICbig.py UniformBox_3D/makeIC.py UniformBox_3D/run.sh UniformBox_3D/uniformBox.yml \
-	     Gravity_glass/makeIC.py Gravity_glass/README Gravity_glass/uniform_DM_box.yml \
-             ZeldovichPancake_3D/makeIC.py ZeldovichPancake_3D/zeldovichPancake.yml ZeldovichPancake_3D/run.sh ZeldovichPancake_3D/plotSolution.py
+EXTRA_DIST = Cooling/CoolingBox/coolingBox.yml Cooling/CoolingBox/energy_plot.py Cooling/CoolingBox/makeIC.py Cooling/CoolingBox/run.sh \
+             Cosmology/ConstantCosmoVolume/run.sh Cosmology/ConstantCosmoVolume/makeIC.py Cosmology/ConstantCosmoVolume/plotSolution.py Cosmology/ConstantCosmoVolume/constant_volume.yml \
+             Cosmology/ZeldovichPancake_3D/makeIC.py Cosmology/ZeldovichPancake_3D/zeldovichPancake.yml Cosmology/ZeldovichPancake_3D/run.sh Cosmology/ZeldovichPancake_3D/plotSolution.py \
+             EAGLE_low_z/EAGLE_6/eagle_6.yml EAGLE_low_z/EAGLE_6/getIC.sh EAGLE_low_z/EAGLE_6/README EAGLE_low_z/EAGLE_6/run.sh \
+	     EAGLE_low_z/EAGLE_12/eagle_12.yml EAGLE_low_z/EAGLE_12/getIC.sh EAGLE_low_z/EAGLE_12/README EAGLE_low_z/EAGLE_12/run.sh \
+	     EAGLE_low_z/EAGLE_25/eagle_25.yml EAGLE_low_z/EAGLE_25/getIC.sh EAGLE_low_z/EAGLE_25/README EAGLE_low_z/EAGLE_25/run.sh \
+	     EAGLE_low_z/EAGLE_50/eagle_50.yml EAGLE_low_z/EAGLE_50/getIC.sh EAGLE_low_z/EAGLE_50/README EAGLE_low_z/EAGLE_50/run.sh \
+	     EAGLE_low_z/EAGLE_100/eagle_100.yml EAGLE_low_z/EAGLE_100/getIC.sh EAGLE_low_z/EAGLE_100/README EAGLE_low_z/EAGLE_100/run.sh \
+	     EAGLE_DMO_low_z/EAGLE_DMO_12/eagle_12.yml EAGLE_DMO_low_z/EAGLE_DMO_12/getIC.sh EAGLE_DMO_low_z/EAGLE_DMO_12/README EAGLE_DMO_low_z/EAGLE_DMO_12/run.sh \
+	     EAGLE_DMO_low_z/EAGLE_DMO_25/eagle_25.yml EAGLE_DMO_low_z/EAGLE_DMO_25/getIC.sh EAGLE_DMO_low_z/EAGLE_DMO_25/README EAGLE_DMO_low_z/EAGLE_DMO_25/run.sh \
+	     EAGLE_DMO_low_z/EAGLE_DMO_50/eagle_50.yml EAGLE_DMO_low_z/EAGLE_DMO_50/getIC.sh EAGLE_DMO_low_z/EAGLE_DMO_50/README EAGLE_DMO_low_z/EAGLE_DMO_50/run.sh \
+	     EAGLE_DMO_low_z/EAGLE_DMO_100/eagle_100.yml EAGLE_DMO_low_z/EAGLE_DMO_100/getIC.sh EAGLE_DMO_low_z/EAGLE_DMO_100/README EAGLE_DMO_low_z/EAGLE_DMO_100/run.sh \
+	     GravityTests/ExternalPointMass/externalPointMass.yml GravityTests/ExternalPointMass/makeIC.py GravityTests/ExternalPointMass/run.sh GravityTests/ExternalPointMass/energy_plot.py \
+	     GravityTests/HydrostaticHalo/README GravityTests/HydrostaticHalo/hydrostatic.yml GravityTests/HydrostaticHalo/makeIC.py GravityTests/HydrostaticHalo/run.sh \
+	     GravityTests/HydrostaticHalo/density_profile.py GravityTests/HydrostaticHalo/velocity_profile.py GravityTests/HydrostaticHalo/internal_energy_profile.py GravityTests/HydrostaticHalo/test_energy_conservation.py \
+             GravityTests/IsothermalPotential/README GravityTests/IsothermalPotential/run.sh GravityTests/IsothermalPotential/energy_plot.py GravityTests/IsothermalPotential/isothermal.yml GravityTests/IsothermalPotential/makeIC.py \
+	     HydroTests/GreshoVortex_2D/getGlass.sh HydroTests/GreshoVortex_2D/gresho.yml HydroTests/GreshoVortex_2D/makeIC.py HydroTests/GreshoVortex_2D/plotSolution.py HydroTests/GreshoVortex_2D/run.sh \
+	     HydroTests/GreshoVortex_3D/getGlass.sh HydroTests/GreshoVortex_3D/gresho.yml HydroTests/GreshoVortex_3D/makeIC.py HydroTests/GreshoVortex_3D/plotSolution.py HydroTests/GreshoVortex_3D/run.sh \
+	     HydroTests/EvrardCollapse_3D/evrard.yml HydroTests/EvrardCollapse_3D/makeIC.py HydroTests/EvrardCollapse_3D/plotSolution.py HydroTests/EvrardCollapse_3D/run.sh HydroTests/EvrardCollapse_3D/getReference.sh \
+	     HydroTests/InteractingBlastWaves_1D/run.sh HydroTests/InteractingBlastWaves_1D/makeIC.py HydroTests/InteractingBlastWaves_1D/plotSolution.py HydroTests/InteractingBlastWaves_1D/interactingBlastWaves.yml HydroTests/InteractingBlastWaves_1D/getReference.sh \
+	     HydroTests/KelvinHelmholtz_2D/kelvinHelmholtz.yml HydroTests/KelvinHelmholtz_2D/makeIC.py HydroTests/KelvinHelmholtz_2D/plotSolution.py HydroTests/KelvinHelmholtz_2D/run.sh \
+             HydroTests/Noh_1D/makeIC.py HydroTests/Noh_1D/noh.yml HydroTests/Noh_1D/plotSolution.py HydroTests/Noh_1D/run.sh \
+             HydroTests/Noh_2D/makeIC.py HydroTests/Noh_2D/noh.yml HydroTests/Noh_2D/plotSolution.py HydroTests/Noh_2D/run.sh HydroTests/Noh_2D/getGlass.sh \
+             HydroTests/Noh_3D/makeIC.py HydroTests/Noh_3D/noh.yml HydroTests/Noh_3D/plotSolution.py HydroTests/Noh_3D/run.sh HydroTests/Noh_3D/getGlass.sh \
+	     HydroTests/PerturbedBox_2D/makeIC.py HydroTests/PerturbedBox_2D/perturbedPlane.yml \
+	     HydroTests/PerturbedBox_3D/makeIC.py HydroTests/PerturbedBox_3D/perturbedBox.yml HydroTests/PerturbedBox_3D/run.sh \
+	     HydroTests/SedovBlast_1D/makeIC.py HydroTests/SedovBlast_1D/plotSolution.py HydroTests/SedovBlast_1D/run.sh HydroTests/SedovBlast_1D/sedov.yml \
+	     HydroTests/SedovBlast_2D/getGlass.sh HydroTests/SedovBlast_2D/makeIC.py HydroTests/SedovBlast_2D/plotSolution.py HydroTests/SedovBlast_2D/run.sh HydroTests/SedovBlast_2D/sedov.yml \
+	     HydroTests/SedovBlast_3D/getGlass.sh HydroTests/SedovBlast_3D/makeIC.py HydroTests/SedovBlast_3D/plotSolution.py HydroTests/SedovBlast_3D/run.sh HydroTests/SedovBlast_3D/sedov.yml \
+             HydroTests/SineWavePotential_1D/makeIC.py HydroTests/SineWavePotential_1D/plotSolution.py HydroTests/SineWavePotential_1D/run.sh HydroTests/SineWavePotential_1D/sineWavePotential.yml \
+             HydroTests/SineWavePotential_2D/makeIC.py HydroTests/SineWavePotential_2D/plotSolution.py HydroTests/SineWavePotential_2D/run.sh HydroTests/SineWavePotential_2D/sineWavePotential.yml \
+             HydroTests/SineWavePotential_3D/makeIC.py HydroTests/SineWavePotential_3D/plotSolution.py HydroTests/SineWavePotential_3D/run.sh HydroTests/SineWavePotential_3D/sineWavePotential.yml \
+	     HydroTests/SodShock_1D/makeIC.py HydroTests/SodShock_1D/plotSolution.py HydroTests/SodShock_1D/run.sh HydroTests/SodShock_1D/sodShock.yml \
+	     HydroTests/SodShock_2D/getGlass.sh HydroTests/SodShock_2D/makeIC.py HydroTests/SodShock_2D/plotSolution.py HydroTests/SodShock_2D/run.sh HydroTests/SodShock_2D/sodShock.yml \
+	     HydroTests/SodShock_3D/getGlass.sh HydroTests/SodShock_3D/makeIC.py HydroTests/SodShock_3D/plotSolution.py HydroTests/SodShock_3D/run.sh HydroTests/SodShock_3D/sodShock.yml \
+	     HydroTests/SquareTest_2D/makeIC.py HydroTests/SquareTest_2D/plotSolution.py HydroTests/SquareTest_2D/run.sh HydroTests/SquareTest_2D/square.yml \
+	     HydroTests/UniformBox_2D/makeIC.py HydroTests/UniformBox_2D/run.sh HydroTests/UniformBox_2D/uniformPlane.yml \
+	     HydroTests/UniformBox_3D/makeICbig.py HydroTests/UniformBox_3D/makeIC.py HydroTests/UniformBox_3D/run.sh HydroTests/UniformBox_3D/uniformBox.yml \
+             SmallCosmoVolume/SmallCosmoVolume_hydro/README SmallCosmoVolume/SmallCosmoVolume_hydro/getIC.sh SmallCosmoVolume/SmallCosmoVolume_hydro/run.sh SmallCosmoVolume/SmallCosmoVolume_hydro/small_cosmo_volume.yml SmallCosmoVolume/SmallCosmoVolume_hydro/plotTempEvolution.py \
+             SmallCosmoVolume/SmallCosmoVolume_DM/README SmallCosmoVolume/SmallCosmoVolume_DM/getIC.sh SmallCosmoVolume/SmallCosmoVolume_DM/run.sh SmallCosmoVolume/SmallCosmoVolume_DM/small_cosmo_volume_dm.yml SmallCosmoVolume/SmallCosmoVolume_DM/stf_input_6dfof_dmonly_sub.cfg \
+	     PMillennium/PMillennium-384/p-mill-384.yml \
+             PMillennium/PMillennium-768/p-mill-768.yml \
+             PMillennium/PMillennium-1536/p-mill-1536.yml \
+	     SantaBarbara/SantaBarbara-256/README SantaBarbara/SantaBarbara-256/getIC.sh SantaBarbara/SantaBarbara-256/santa_barbara.yml SantaBarbara/SantaBarbara-256/run.sh \
+	     SantaBarbara/SantaBarbara-128/README SantaBarbara/SantaBarbara-128/getIC.sh SantaBarbara/SantaBarbara-128/santa_barbara.yml SantaBarbara/SantaBarbara-128/run.sh
 
 # Default parameter file
 EXTRA_DIST += parameter_example.yml

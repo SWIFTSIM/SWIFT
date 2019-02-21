@@ -26,9 +26,8 @@ system (i.e. over MPI on several nodes). Here are some recommendations:
 + Run with threads pinned. You can do this by passing the ``-a`` flag to the
   SWIFT binary. This ensures that processes stay on the same core that spawned
   them, ensuring that cache is accessed more efficiently.
-+ Ensure that you compile with METIS. More information is available in an
-  upcoming paper, but using METIS allows for work to be distributed in a
-  more efficient way between your nodes.
++ Ensure that you compile with ParMETIS or METIS. These are required if
+  want to load balance between MPI ranks.
 
 Your batch script should look something like the following (to run on 16 nodes
 each with 2x16 core processors for a total of 512 cores):
@@ -38,5 +37,5 @@ each with 2x16 core processors for a total of 512 cores):
    #SBATCH -N 16  # Number of nodes to run on
    #SBATCH --tasks-per-node=2  # This system has 2 chips per node
    
-   mpirun -np 32 swift_mpi -t 16 -a parameter.yml
+   mpirun -np 32 swift_mpi --threads=16 --pin parameter.yml
 

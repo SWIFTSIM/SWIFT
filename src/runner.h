@@ -69,8 +69,10 @@ struct runner {
 /* Function prototypes. */
 void runner_do_ghost(struct runner *r, struct cell *c, int timer);
 void runner_do_extra_ghost(struct runner *r, struct cell *c, int timer);
-void runner_do_sort(struct runner *r, struct cell *c, int flag, int cleanup,
-                    int clock);
+void runner_do_hydro_sort(struct runner *r, struct cell *c, int flag,
+                          int cleanup, int clock);
+void runner_do_stars_sort(struct runner *r, struct cell *c, int flag,
+                          int cleanup, int clock);
 void runner_do_drift_part(struct runner *r, struct cell *c, int timer);
 void runner_do_drift_gpart(struct runner *r, struct cell *c, int timer);
 void runner_do_kick1(struct runner *r, struct cell *c, int timer);

@@ -28,6 +28,7 @@ SPH:
   CFL_condition:         0.1      # Courant-Friedrich-Levy condition for time integration.
   h_tolerance:           1e-4     # (Optional) Relative accuracy of the Netwon-Raphson scheme for the smoothing lengths.
   h_max:                 10.      # (Optional) Maximal allowed smoothing length in internal units. Defaults to FLT_MAX if unspecified.
+  h_min_ratio:           0.       # (Optional) Minimal allowed smoothing length in units of the softening. Defaults to 0 if unspecified.
   max_volume_change:     1.4      # (Optional) Maximal allowed change of kernel volume over one time-step.
   max_ghost_iterations:  30       # (Optional) Maximal number of iterations allowed to converge towards the smoothing length.
   initial_temperature:   0        # (Optional) Initial temperature (in internal units) to set the gas particles at start-up. Value is ignored if set to 0.
@@ -35,9 +36,14 @@ SPH:
   H_mass_fraction:       0.755    # (Optional) Hydrogen mass fraction used for initial conversion from temp to internal energy. Default value is derived from the physical constants.
   H_ionization_temperature: 1e4   # (Optional) Temperature of the transition from neutral to ionized Hydrogen for primoridal gas.
   viscosity_alpha:       0.8      # (Optional) Override for the initial value of the artificial viscosity. In schemes that have a fixed AV, this remains as alpha throughout the run.
-  viscosity_alpha_max:   2.0      # (Optional) Maximal value for the artificial viscosity in schemes that allow alpha to vary
-  viscosity_alpha_min:   0.1      # (Optional) Minimal value for the artificial viscosity in schemes that allow alpha to vary
-  viscosity_length:      0.1      # (Optional) Decay length for the artificial viscosity in schemes that allow alpha to vary
+  viscosity_alpha_max:   2.0      # (Optional) Maximal value for the artificial viscosity in schemes that allow alpha to vary.
+  viscosity_alpha_min:   0.1      # (Optional) Minimal value for the artificial viscosity in schemes that allow alpha to vary.
+  viscosity_length:      0.1      # (Optional) Decay length for the artificial viscosity in schemes that allow alpha to vary.
+  diffusion_alpha:       0.0      # (Optional) Override the initial value for the thermal diffusion coefficient in schemes with thermal diffusion.
+  diffusion_beta:        0.01     # (Optional) Override the decay/rise rate tuning parameter for the thermal diffusion.
+  diffusion_alpha_max:   1.0      # (Optional) Override the maximal thermal diffusion coefficient that is allowed for a given particle.
+  diffusion_alpha_min:   0.0      # (Optional) Override the minimal thermal diffusion coefficient that is allowed for a given particle.
+
 
 # Parameters for the self-gravity scheme
 Gravity:
@@ -63,8 +69,12 @@ Scheduler:
   cell_sub_size_self_stars:  32000     # (Optional) Maximal number of interactions per sub-self stars task  (this is the default value).
   cell_split_size:           400       # (Optional) Maximal number of particles per cell (this is the default value).
   cell_subdepth_diff_grav:   4         # (Optional) Maximal depth difference between leaves and a cell that gravity tasks can be pushed down to (this is the default value).
+  cell_extra_parts:          0         # (Optional) Number of spare parts per top-level allocated at rebuild time for on-the-fly creation.
+  cell_extra_gparts:         0         # (Optional) Number of spare gparts per top-level allocated at rebuild time for on-the-fly creation.
+  cell_extra_sparts:         400       # (Optional) Number of spare sparts per top-level allocated at rebuild time for on-the-fly creation.
   max_top_level_cells:       12        # (Optional) Maximal number of top-level cells in any dimension. The number of top-level cells will be the cube of this (this is the default value).
-  tasks_per_cell:            0         # (Optional) The average number of tasks per cell. If not large enough the simulation will fail (means guess...).
+  tasks_per_cell:            0.0       # (Optional) The average number of tasks per cell. If not large enough the simulation will fail (means guess...).
+  links_per_tasks:           10        # (Optional) The average number of links per tasks (before adding the communication tasks). If not large enough the simulation will fail (means guess...). Defaults to 10.
   mpi_message_limit:         4096      # (Optional) Maximum MPI task message size to send non-buffered, KB.
 
 # Parameters governing the time integration (Set dt_min and dt_max to the same value for a fixed time-step run.)
@@ -81,6 +91,7 @@ Snapshots:
   scale_factor_first: 0.1 # (Optional) Scale-factor of the first snapshot if cosmological time-integration.
   time_first: 0.          # (Optional) Time of the first output if non-cosmological time-integration (in internal units)
   delta_time: 0.01        # Time difference between consecutive outputs (in internal units)
+  invoke_stf: 0           # (Optional) Call VELOCIraptor every time a snapshot is written irrespective of the VELOCIraptor output strategy.
   compression: 0          # (Optional) Set the level of compression of the HDF5 datasets [0-9]. 0 does no compression.
   int_time_label_on:   0  # (Optional) Enable to label the snapshots using the time rounded to an integer (in internal units)
   UnitMass_in_cgs:     1  # (Optional) Unit system for the outputs (Grams)
@@ -135,23 +146,34 @@ Restarts:
 
 # Parameters governing domain decomposition
 DomainDecomposition:
-  initial_type:     memory  # (Optional) The initial decomposition strategy: "grid",
-                            #            "region", "memory", or "vectorized".
-  initial_grid: [10,10,10]  # (Optional) Grid sizes if the "grid" strategy is chosen.
+  initial_type:     memory    # (Optional) The initial decomposition strategy: "grid",
+                              #            "region", "memory", or "vectorized".
+  initial_grid: [10,10,10]    # (Optional) Grid sizes if the "grid" strategy is chosen.
 
-  repartition_type: costs/costs # (Optional) The re-decomposition strategy, one of:
-                            # "none/none", "costs/costs", "none/costs", "costs/none" or "costs/time".
-                            # These are vertex/edge weights with "costs" as task timing
-                            # and "time" as the expected time of the next updates
+  repartition_type: fullcosts # (Optional) The re-decomposition strategy, one of:
+                              # "none", "fullcosts", "edgecosts", "memory" or
+                              # "timecosts".
+  trigger:          0.05      # (Optional) Fractional (<1) CPU time difference between MPI ranks required to trigger a
+                              # new decomposition, or number of steps (>1) between decompositions
+  minfrac:          0.9       # (Optional) Fractional of all particles that should be updated in previous step when
+                              # using CPU time trigger
+  usemetis:         0         # Use serial METIS when ParMETIS is also available.
+  adaptive:         1         # Use adaptive repartition when ParMETIS is available, otherwise simple refinement.
+  itr:              100       # When adaptive defines the ratio of inter node communication time to data redistribution time, in the range 0.00001 to 10000000.0.
+                              # Lower values give less data movement during redistributions, at the cost of global balance which may require more communication.
+  use_fixed_costs:  0         # If 1 then use any compiled in fixed costs for
+                              # task weights in first repartition, if 0 only use task timings, if > 1 only use
+                              # fixed costs, unless none are available.
 
-  trigger:          0.05    # (Optional) Fractional (<1) CPU time difference between MPI ranks required to trigger a
-                            # new decomposition, or number of steps (>1) between decompositions
-  minfrac:          0.9     # (Optional) Fractional of all particles that should be updated in previous step when
-                            # using CPU time trigger
-  usemetis:         0       # Use serial METIS when ParMETIS is also available.
-  adaptive:         1       # Use adaptive repartition when ParMETIS is available, otherwise simple refinement.
-  itr:              100     # When adaptive defines the ratio of inter node communication time to data redistribution time, in the range 0.00001 to 10000000.0.
-                            # Lower values give less data movement during redistributions, at the cost of global balance which may require more communication.
+# Structure finding options (requires velociraptor)
+StructureFinding:
+  config_file_name:     stf_input.cfg # Name of the STF config file.
+  basename:             ./stf         # Common part of the name of output files.
+  scale_factor_first:   0.92          # (Optional) Scale-factor of the first snaphot (cosmological run)
+  time_first:           0.01          # (Optional) Time of the first structure finding output (in internal units).
+  delta_time:           1.10          # (Optional) Time difference between consecutive structure finding outputs (in internal units) in simulation time intervals.
+  output_list_on:       0   	      # (Optional) Enable the output list
+  output_list:          stflist.txt   # (Optional) File containing the output times (see documentation in "Parameter File" section)
 
 # Parameters related to the equation of state ------------------------------------------
 
@@ -163,13 +185,13 @@ EoS:
   planetary_use_ANEOS:  0   # (Optional) Whether to prepare the ANEOS EOS
   planetary_use_SESAME: 0   # (Optional) Whether to prepare the SESAME EOS
                             # (Optional) Table file paths
-  planetary_HM80_HHe_table_file:        ./equation_of_state/planetary_HM80_HHe.txt
-  planetary_HM80_ice_table_file:        ./equation_of_state/planetary_HM80_ice.txt
-  planetary_HM80_rock_table_file:       ./equation_of_state/planetary_HM80_rock.txt
-  planetary_SESAME_iron_table_file:     ./equation_of_state/planetary_SESAME_iron_2140.txt
-  planetary_SESAME_basalt_table_file:   ./equation_of_state/planetary_SESAME_basalt_7530.txt
-  planetary_SESAME_water_table_file:    ./equation_of_state/planetary_SESAME_water_7154.txt
-  planetary_SS08_water_table_file:      ./equation_of_state/planetary_SS08_water.txt
+  planetary_HM80_HHe_table_file:        ./EoSTables/planetary_HM80_HHe.txt
+  planetary_HM80_ice_table_file:        ./EoSTables/planetary_HM80_ice.txt
+  planetary_HM80_rock_table_file:       ./EoSTables/planetary_HM80_rock.txt
+  planetary_SESAME_iron_table_file:     ./EoSTables/planetary_SESAME_iron_2140.txt
+  planetary_SESAME_basalt_table_file:   ./EoSTables/planetary_SESAME_basalt_7530.txt
+  planetary_SESAME_water_table_file:    ./EoSTables/planetary_SESAME_water_7154.txt
+  planetary_SS08_water_table_file:      ./EoSTables/planetary_SS08_water.txt
 
 # Parameters related to external potentials --------------------------------------------
 
@@ -193,8 +215,17 @@ IsothermalPotential:
 HernquistPotential:
   useabspos:       0        # 0 -> positions based on centre, 1 -> absolute positions 
   position:        [100.,100.,100.]    # Location of centre of isothermal potential with respect to centre of the box (if 0) otherwise absolute (if 1) (internal units)
-  mass:            1e10     # Mass of the Hernquist potential
-  scalelength:     10.0     # Scale length of the potential
+  idealizeddisk:   0        # (Optional) Whether to run with idealizeddisk or without, 0 used the mass and scalelength as mandatory parameters, while 1 uses more advanced disk dependent paramters
+  mass:            1e10     # (Optional 0) default parameter, Mass of the Hernquist potential
+  scalelength:     10.0     # (Optional 0) default parameter, Scale length of the potential
+                            # If multiple X200 values are given, only one is used, in the order M200 > V200 > R200.
+  M200:            3e11     # (Optional 1a) M200 of the galaxy+halo (when used V200 and R200 are not used)
+  V200:            100.     # (Optional 1b) V200 of the galaxy+halo (when used M200 and R200 are not used, if M200 is given M200 is used)
+  R200:            10.      # (Optional 1c) R200 of the galaxy+halo (when used M200 and V200 are not used, if M200 or V200 are given they are used)
+  h:               0.704    # (Optional 1) reduced Hubble constant
+  concentration:   7.1      # (Optional 1) concentration of the Halo
+  diskfraction:              0.0434370991372   # (Optional 1) Disk mass fraction (equal to MD in MakeNewDisk and GalIC)
+  bulgefraction:              0.00705852860979  # (Optional 1) Bulge mass fraction (equal to MB in MakeNewDisk and GalIC)
   timestep_mult:   0.01     # Dimensionless pre-factor for the time-step condition, basically determines the fraction of the orbital time we use to do the time integration
   epsilon:         0.1      # Softening size (internal units)
  
@@ -223,6 +254,18 @@ SineWavePotential:
   timestep_limit:   1.      # Time-step dimensionless pre-factor.
   growth_time:      0.      # (Optional) Time for the potential to grow to its final size.
 
+# Parameters related to entropy floors    ----------------------------------------------
+
+EAGLEEntropyFloor:
+  Jeans_density_threshold_H_p_cm3: 0.1       # Physical density above which the EAGLE Jeans limiter entropy floor kicks in expressed in Hydrogen atoms per cm^3.
+  Jeans_over_density_threshold:    10.       # Overdensity above which the EAGLE Jeans limiter entropy floor can kick in.
+  Jeans_temperature_norm_K:        8000      # Temperature of the EAGLE Jeans limiter entropy floor at the density threshold expressed in Kelvin.
+  Jeans_gamma_effective:           1.3333333 # Slope the of the EAGLE Jeans limiter entropy floor
+  Cool_density_threshold_H_p_cm3:  1e-5      # Physical density above which the EAGLE Cool limiter entropy floor kicks in expressed in Hydrogen atoms per cm^3.
+  Cool_over_density_threshold:     10.       # Overdensity above which the EAGLE Cool limiter entropy floor can kick in.
+  Cool_temperature_norm_K:         8000      # Temperature of the EAGLE Cool limiter entropy floor at the density threshold expressed in Kelvin.
+  Cool_gamma_effective:            1.        # Slope the of the EAGLE Cool limiter entropy floor
+  
 # Parameters related to cooling function  ----------------------------------------------
 
 # Constant du/dt cooling function
@@ -236,6 +279,17 @@ LambdaCooling:
   lambda_nH2_cgs:              1e-22 # Cooling rate divided by square Hydrogen number density (in cgs units [erg * s^-1 * cm^3])
   cooling_tstep_mult:          1.0   # (Optional) Dimensionless pre-factor for the time-step condition.
 
+# Parameters of the EAGLE cooling model (Wiersma+08 cooling tables).
+EAGLECooling:
+  dir_name:                  ./coolingtables/  # Location of the Wiersma+08 cooling tables
+  H_reion_z:                 8.5               # Redshift of Hydrogen re-ionization
+  He_reion_z_centre:         3.5               # Redshift of the centre of the Helium re-ionization Gaussian
+  He_reion_z_sigma:          0.5               # Spread in redshift of the  Helium re-ionization Gaussian
+  He_reion_eV_p_H:           2.0               # Energy inject by Helium re-ionization in electron-volt per Hydrogen atom
+  newton_integration:        0                 # (Optional) Set to 1 to use the Newton-Raphson method to solve the xplicit cooling problem.
+  Ca_over_Si_in_solar:       1.                # (Optional) Ratio of Ca/Si to use in units of solar. If set to 1, the code uses [Ca/Si] = 0, i.e. Ca/Si = 0.0941736.
+  S_over_Si_in_solar:        1.                # (Optional) Ratio of S/Si to use in units of solar. If set to 1, the code uses [S/Si] = 0, i.e. S/Si = 0.6054160.
+  
 # Cooling with Grackle 3.0
 GrackleCooling:
   CloudyTable: CloudyData_UVB=HM2012.h5 # Name of the Cloudy Table (available on the grackle bitbucket repository)
@@ -253,27 +307,34 @@ GrackleCooling:
 
 # EAGLE model
 EAGLEChemistry:
-  InitMetallicity:         0.           # Inital fraction of particle mass in *all* metals
-  InitAbundance_Hydrogen:  0.752        # Inital fraction of particle mass in Hydrogen
-  InitAbundance_Helium:    0.248        # Inital fraction of particle mass in Helium
-  InitAbundance_Carbon:    0.000        # Inital fraction of particle mass in Carbon
-  InitAbundance_Nitrogen:  0.000        # Inital fraction of particle mass in Nitrogen
-  InitAbundance_Oxygen:    0.000        # Inital fraction of particle mass in Oxygen
-  InitAbundance_Neon:      0.000        # Inital fraction of particle mass in Neon
-  InitAbundance_Magnesium: 0.000        # Inital fraction of particle mass in Magnesium
-  InitAbundance_Silicon:   0.000        # Inital fraction of particle mass in Silicon
-  InitAbundance_Iron:      0.000        # Inital fraction of particle mass in Iron
-  CalciumOverSilicon:      0.0941736    # Constant ratio of Calcium over Silicon abundance
-  SulphurOverSilicon:      0.6054160    # Constant ratio of Sulphur over Silicon abundance
+  init_abundance_metal:     0.           # Inital fraction of particle mass in *all* metals
+  init_abundance_Hydrogen:  0.752        # Inital fraction of particle mass in Hydrogen
+  init_abundance_Helium:    0.248        # Inital fraction of particle mass in Helium
+  init_abundance_Carbon:    0.000        # Inital fraction of particle mass in Carbon
+  init_abundance_Nitrogen:  0.000        # Inital fraction of particle mass in Nitrogen
+  init_abundance_Oxygen:    0.000        # Inital fraction of particle mass in Oxygen
+  init_abundance_Neon:      0.000        # Inital fraction of particle mass in Neon
+  init_abundance_Magnesium: 0.000        # Inital fraction of particle mass in Magnesium
+  init_abundance_Silicon:   0.000        # Inital fraction of particle mass in Silicon
+  init_abundance_Iron:      0.000        # Inital fraction of particle mass in Iron
 
-# Structure finding options (requires velociraptor)
-StructureFinding:
-  config_file_name:     stf_input.cfg # Name of the STF config file.
-  basename:             ./stf         # Common part of the name of output files.
-  output_time_format:   0             # Specifies the frequency format of structure finding. 0 for simulation steps (delta_step) and 1 for simulation time intervals (delta_time).
-  scale_factor_first:   0.92          # Scale-factor of the first snaphot (cosmological run)
-  time_first:           0.01          # Time of the first structure finding output (in internal units).
-  delta_step:           1000          # Time difference between consecutive structure finding outputs (in internal units) in simulation steps.
-  delta_time:           1.10          # Time difference between consecutive structure finding outputs (in internal units) in simulation time intervals.
-  output_list_on:      0   	      # (Optional) Enable the output list
-  output_list:         stflist.txt    # (Optional) File containing the output times (see documentation in "Parameter File" section)
+# Parameters related to star formation models  -----------------------------------------------
+
+# EAGLE star formation model (Schaye and Dalla Vecchia 2008)
+EAGLEStarFormation:
+  EOS_density_norm_H_p_cm3:          0.1       # Physical density used for the normalisation of the EOS assumed for the star-forming gas in Hydrogen atoms per cm^3.
+  EOS_temperature_norm_K:            8000      # Temperature om the polytropic EOS assumed for star-forming gas at the density normalisation in Kelvin.
+  EOS_gamma_effective:               1.3333333 # Slope the of the polytropic EOS assumed for the star-forming gas.
+  gas_fraction:                      0.25      # (Optional) The gas fraction used internally by the model (Defaults to 1).
+  KS_normalisation:                  1.515e-4  # The normalization of the Kennicutt-Schmidt law in Msun / kpc^2 / yr.
+  KS_exponent:                       1.4       # The exponent of the Kennicutt-Schmidt law.
+  KS_min_over_density:               57.7      # The over-density above which star-formation is allowed.
+  KS_high_density_threshold_H_p_cm3: 1e3       # Hydrogen number density above which the Kennicut-Schmidt law changes slope in Hydrogen atoms per cm^3.
+  KS_high_density_exponent:          2.0       # Slope of the Kennicut-Schmidt law above the high-density threshold.
+  KS_max_density_threshold_H_p_cm3:  1e5       # (Optional) Density above which a gas particle gets automatically turned into a star in Hydrogen atoms per cm^3 (Defaults to FLT_MAX).
+  KS_temperature_margin_dex:         0.5       # (Optional) Logarithm base 10 of the maximal temperature difference above the EOS allowed to form stars (Defaults to FLT_MAX).
+  threshold_norm_H_p_cm3:            0.1       # Normalisation of the metal-dependant density threshold for star formation in Hydrogen atoms per cm^3.
+  threshold_Z0:                      0.002     # Reference metallicity (metal mass fraction) for the metal-dependant threshold for star formation.
+  threshold_slope:                   -0.64     # Slope of the metal-dependant star formation threshold
+  threshold_max_density_H_p_cm3:     10.0      # Maximal density of the metal-dependant density threshold for star formation in Hydrogen atoms per cm^3.  
+  

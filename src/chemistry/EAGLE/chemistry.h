@@ -60,7 +60,17 @@ chemistry_get_element_name(enum chemistry_element elem) {
  * @param cd #chemistry_global_data containing chemistry informations.
  */
 __attribute__((always_inline)) INLINE static void chemistry_init_part(
-    struct part* restrict p, const struct chemistry_global_data* cd) {}
+    struct part* restrict p, const struct chemistry_global_data* cd) {
+
+  struct chemistry_part_data* cpd = &p->chemistry_data;
+
+  for (int i = 0; i < chemistry_element_count; i++) {
+    cpd->smoothed_metal_mass_fraction[i] = 0.f;
+  }
+
+  cpd->smoothed_metal_mass_fraction_total = 0.f;
+  cpd->smoothed_iron_mass_fraction_from_SNIa = 0.f;
+}
 
 /**
  * @brief Finishes the smooth metal calculation.
@@ -76,7 +86,35 @@ __attribute__((always_inline)) INLINE static void chemistry_init_part(
  */
 __attribute__((always_inline)) INLINE static void chemistry_end_density(
     struct part* restrict p, const struct chemistry_global_data* cd,
-    const struct cosmology* cosmo) {}
+    const struct cosmology* cosmo) {
+
+  /* Some smoothing length multiples. */
+  const float h = p->h;
+  const float h_inv = 1.0f / h;                       /* 1/h */
+  const float factor = pow_dimension(h_inv) / p->rho; /* 1 / h^d * rho */
+  const float m = hydro_get_mass(p);
+
+  struct chemistry_part_data* cpd = &p->chemistry_data;
+
+  for (int i = 0; i < chemistry_element_count; i++) {
+    /* Final operation on the density (add self-contribution). */
+    cpd->smoothed_metal_mass_fraction[i] +=
+        m * cpd->metal_mass_fraction[i] * kernel_root;
+
+    /* Finish the calculation by inserting the missing h-factors */
+    cpd->smoothed_metal_mass_fraction[i] *= factor;
+  }
+
+  /* Smooth mass fraction of all metals */
+  cpd->smoothed_metal_mass_fraction_total +=
+      m * cpd->metal_mass_fraction_total * kernel_root;
+  cpd->smoothed_metal_mass_fraction_total *= factor;
+
+  /* Smooth iron mass fraction from SNIa */
+  cpd->smoothed_iron_mass_fraction_from_SNIa +=
+      m * cpd->iron_mass_fraction_from_SNIa * kernel_root;
+  cpd->smoothed_iron_mass_fraction_from_SNIa *= factor;
+}
 
 /**
  * @brief Sets all particle fields to sensible values when the #part has 0 ngbs.
@@ -91,7 +129,21 @@ chemistry_part_has_no_neighbours(struct part* restrict p,
                                  struct xpart* restrict xp,
                                  const struct chemistry_global_data* cd,
                                  const struct cosmology* cosmo) {
-  error("Needs implementing!");
+
+  /* Just make all the smoothed fields default to the un-smoothed values */
+  struct chemistry_part_data* cpd = &p->chemistry_data;
+
+  /* Total metal mass fraction */
+  cpd->smoothed_metal_mass_fraction_total = cpd->metal_mass_fraction_total;
+
+  /* Iron frac from SNIa */
+  cpd->smoothed_iron_mass_fraction_from_SNIa =
+      cpd->iron_mass_fraction_from_SNIa;
+
+  /* Individual metal mass fractions */
+  for (int i = 0; i < chemistry_element_count; i++) {
+    cpd->smoothed_metal_mass_fraction[i] = cpd->metal_mass_fraction[i];
+  }
 }
 
 /**
@@ -112,11 +164,16 @@ __attribute__((always_inline)) INLINE static void chemistry_first_init_part(
     const struct chemistry_global_data* data, struct part* restrict p,
     struct xpart* restrict xp) {
 
-  p->chemistry_data.metal_mass_fraction_total =
-      data->initial_metal_mass_fraction_total;
-  for (int elem = 0; elem < chemistry_element_count; ++elem)
-    p->chemistry_data.metal_mass_fraction[elem] =
-        data->initial_metal_mass_fraction[elem];
+  // Add initialization of all other fields in chemistry_part_data struct.
+  if (data->initial_metal_mass_fraction_total != -1) {
+    p->chemistry_data.metal_mass_fraction_total =
+        data->initial_metal_mass_fraction_total;
+
+    for (int elem = 0; elem < chemistry_element_count; ++elem)
+      p->chemistry_data.metal_mass_fraction[elem] =
+          data->initial_metal_mass_fraction[elem];
+  }
+  chemistry_init_part(p, data);
 }
 
 /**
@@ -133,24 +190,20 @@ static INLINE void chemistry_init_backend(struct swift_params* parameter_file,
                                           struct chemistry_global_data* data) {
 
   /* Read the total metallicity */
-  data->initial_metal_mass_fraction_total =
-      parser_get_param_float(parameter_file, "EAGLEChemistry:InitMetallicity");
+  data->initial_metal_mass_fraction_total = parser_get_opt_param_float(
+      parameter_file, "EAGLEChemistry:init_abundance_metal", -1);
 
-  /* Read the individual mass fractions */
-  for (int elem = 0; elem < chemistry_element_count; ++elem) {
-    char buffer[50];
-    sprintf(buffer, "EAGLEChemistry:InitAbundance_%s",
-            chemistry_get_element_name((enum chemistry_element)elem));
+  if (data->initial_metal_mass_fraction_total != -1) {
+    /* Read the individual mass fractions */
+    for (int elem = 0; elem < chemistry_element_count; ++elem) {
+      char buffer[50];
+      sprintf(buffer, "EAGLEChemistry:init_abundance_%s",
+              chemistry_get_element_name((enum chemistry_element)elem));
 
-    data->initial_metal_mass_fraction[elem] =
-        parser_get_param_float(parameter_file, buffer);
+      data->initial_metal_mass_fraction[elem] =
+          parser_get_param_float(parameter_file, buffer);
+    }
   }
-
-  /* Read the constant ratios */
-  data->calcium_over_silicon_ratio = parser_get_param_float(
-      parameter_file, "EAGLEChemistry:CalciumOverSilicon");
-  data->sulphur_over_silicon_ratio = parser_get_param_float(
-      parameter_file, "EAGLEChemistry:SulphurOverSilicon");
 }
 
 /**

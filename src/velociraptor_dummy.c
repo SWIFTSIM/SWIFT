@@ -20,9 +20,6 @@
 /* Config parameters. */
 #include "../config.h"
 
-/* Some standard headers. */
-#include <stddef.h>
-
 /* Local includes. */
 #include "error.h"
 #include "swift_velociraptor_part.h"
@@ -36,19 +33,41 @@ struct unitinfo {};
 struct cell_loc {};
 struct siminfo {};
 
+/*
 int InitVelociraptor(char *config_name, char *output_name,
                      struct cosmoinfo cosmo_info, struct unitinfo unit_info,
-                     struct siminfo sim_info) {
+                     struct siminfo sim_info, const int numthreads) {
 
   error("This is only a dummy. Call the real one!");
   return 0;
 }
+
 int InvokeVelociraptor(const size_t num_gravity_parts,
-                       const size_t num_hydro_parts,
+                       const size_t num_hydro_parts, const int snapnum,
                        struct swift_vel_part *swift_parts,
-                       const int *cell_node_ids, char *output_name) {
+                       const int *cell_node_ids, char *output_name,
+                       const int numthreads) {
 
   error("This is only a dummy. Call the real one!");
   return 0;
 }
+*/
+int InitVelociraptor(char *config_name, struct unitinfo unit_info,
+                     struct siminfo sim_info, const int numthreads) {
+
+  error("This is only a dummy. Call the real one!");
+  return 0;
+}
+
+struct groupinfo *InvokeVelociraptor(
+    const int snapnum, char *output_name, struct cosmoinfo cosmo_info,
+    struct siminfo sim_info, const size_t num_gravity_parts,
+    const size_t num_hydro_parts, const size_t num_star_parts,
+    struct swift_vel_part *swift_parts, const int *cell_node_ids,
+    const int numthreads, const int return_group_flags,
+    int *const num_in_groups) {
+  error("This is only a dummy. Call the real one!");
+  return 0;
+}
+
 #endif /* HAVE_DUMMY_VELOCIRAPTOR */

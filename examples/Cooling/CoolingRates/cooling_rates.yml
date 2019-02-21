@@ -1,0 +1,36 @@
+# Define the system of units to use internally. 
+InternalUnitSystem:
+  UnitMass_in_cgs:     1.989e43      # 10^10 M_sun in grams
+  UnitLength_in_cgs:   3.085678e24   # Mpc in centimeters
+  UnitVelocity_in_cgs: 1e5           # km/s in centimeters per second
+  UnitCurrent_in_cgs:  1             # Amperes
+  UnitTemp_in_cgs:     1             # Kelvin
+
+# Cosmological parameters
+Cosmology:
+  h:              0.6777        # Reduced Hubble constant
+  a_begin:        0.04          # Initial scale-factor of the simulation
+  a_end:          1.0           # Final scale factor of the simulation
+  Omega_m:        0.307         # Matter density parameter
+  Omega_lambda:   0.693         # Dark-energy density parameter
+  Omega_b:        0.0455        # Baryon density parameter
+
+EAGLEChemistry:
+  init_abundance_metal:     0.014
+  init_abundance_Hydrogen:  0.70649785
+  init_abundance_Helium:    0.28055534
+  init_abundance_Carbon:    2.0665436e-3
+  init_abundance_Nitrogen:  8.3562563e-4
+  init_abundance_Oxygen:    5.4926244e-3
+  init_abundance_Neon:      1.4144605e-3
+  init_abundance_Magnesium: 5.907064e-4
+  init_abundance_Silicon:   6.825874e-4
+  init_abundance_Iron:      1.1032152e-3
+
+EAGLECooling:
+  dir_name:                ./coolingtables/
+  H_reion_z:               11.5
+  He_reion_z_centre:       3.5
+  He_reion_z_sigma:        0.5
+  He_reion_eV_p_H:         2.0
+

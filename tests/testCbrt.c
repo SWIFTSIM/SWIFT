@@ -38,7 +38,9 @@ int main(int argc, char *argv[]) {
   clocks_set_cpufreq(cpufreq);
 
   /* Choke on FP-exceptions */
+#ifdef HAVE_FE_ENABLE_EXCEPT
   feenableexcept(FE_DIVBYZERO | FE_INVALID | FE_OVERFLOW);
+#endif
 
   /* Some constants for this test. */
   const int num_vals = 200000000;
@@ -59,8 +61,8 @@ int main(int argc, char *argv[]) {
   for (int k = 0; k < num_vals; k++) {
     const double exact = cbrt(data[k]);  // computed in double just to be sure.
     const float ours = 1.0f / icbrtf(data[k]);
-    const float err_abs = fabsf(exact - ours);
-    const float err_rel = 0.5f * fabsf(exact - ours) / (exact + ours);
+    const float err_abs = fabs(exact - ours);
+    const float err_rel = 0.5f * fabs(exact - ours) / (exact + ours);
 
     if (err_rel > err_rel_tol && data[k] != 0.f)
       error(

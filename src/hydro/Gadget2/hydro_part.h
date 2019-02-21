@@ -34,6 +34,8 @@
 #include "chemistry_struct.h"
 #include "cooling_struct.h"
 #include "logger.h"
+#include "star_formation_struct.h"
+#include "tracers_struct.h"
 
 /* Extra particle data not needed during the SPH loops over neighbours. */
 struct xpart {
@@ -55,6 +57,12 @@ struct xpart {
 
   /* Additional data used to record cooling information */
   struct cooling_xpart_data cooling_data;
+
+  /* Additional data used by the tracers */
+  struct tracers_xpart_data tracers_data;
+
+  /* Additional data used by the star formation */
+  struct star_formation_xpart_data sf_data;
 
 #ifdef WITH_LOGGER
   /* Additional data for the particle logger */
@@ -145,6 +153,9 @@ struct part {
 
   /* Time-step length */
   timebin_t time_bin;
+
+  /* Need waking-up ? */
+  timebin_t wakeup;
 
 #ifdef SWIFT_DEBUG_CHECKS
 

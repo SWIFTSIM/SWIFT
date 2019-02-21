@@ -27,6 +27,12 @@
 /* Config parameters. */
 #include "../config.h"
 
+/* Local includes */
+#include "parser.h"
+#include "physical_constants.h"
+#include "restart.h"
+#include "units.h"
+
 /* Import the right cooling definition */
 #if defined(COOLING_NONE)
 #include "./cooling/none/cooling.h"
@@ -55,7 +61,7 @@ void cooling_print(const struct cooling_function_data* cooling);
 /* Dump/restore. */
 void cooling_struct_dump(const struct cooling_function_data* cooling,
                          FILE* stream);
-void cooling_struct_restore(const struct cooling_function_data* cooling,
-                            FILE* stream);
+void cooling_struct_restore(struct cooling_function_data* cooling, FILE* stream,
+                            const struct cosmology* cosmo);
 
 #endif /* SWIFT_COOLING_H */

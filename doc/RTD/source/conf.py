@@ -18,14 +18,14 @@
 
 # -- Project information -----------------------------------------------------
 
-project = 'SWIFT: SPH WIth Fine-grained inter-dependent Tasking'
+project = 'SWIFT: SPH With Inter-dependent Fine-grained Tasking'
 copyright = '2018, SWIFT Collaboration'
 author = 'SWIFT Team'
 
 # The short X.Y version
-version = '0.7'
+version = '0.8'
 # The full version, including alpha/beta/rc tags
-release = '0.7.0'
+release = '0.8.0'
 
 
 # -- General configuration ---------------------------------------------------
@@ -87,7 +87,7 @@ html_theme = 'sphinx_rtd_theme'
 # Add any paths that contain custom static files (such as style sheets) here,
 # relative to this directory. They are copied after the builtin static files,
 # so a file named "default.css" will overwrite the builtin "default.css".
-html_static_path = ['.static']
+# html_static_path = ['.static']
 
 # Custom sidebar templates, must be a dictionary that maps document names
 # to template names.

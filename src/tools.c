@@ -217,7 +217,7 @@ void pairs_all_density(struct runner *r, struct cell *ci, struct cell *cj) {
       }
 
       /* Hit or miss? */
-      if (r2 < hig2) {
+      if (r2 < hig2 && !part_is_inhibited(pj, e)) {
 
         /* Interact */
         runner_iact_nonsym_density(r2, dx, hi, pj->h, pi, pj, a, H);
@@ -249,7 +249,7 @@ void pairs_all_density(struct runner *r, struct cell *ci, struct cell *cj) {
       }
 
       /* Hit or miss? */
-      if (r2 < hjg2) {
+      if (r2 < hjg2 && !part_is_inhibited(pi, e)) {
 
         /* Interact */
         runner_iact_nonsym_density(r2, dx, hj, pi->h, pj, pi, a, H);
@@ -258,6 +258,85 @@ void pairs_all_density(struct runner *r, struct cell *ci, struct cell *cj) {
     }
   }
 }
+
+#ifdef EXTRA_HYDRO_LOOP
+void pairs_all_gradient(struct runner *r, struct cell *ci, struct cell *cj) {
+
+  float r2, hi, hj, hig2, hjg2, dx[3];
+  struct part *pi, *pj;
+  const double dim[3] = {r->e->s->dim[0], r->e->s->dim[1], r->e->s->dim[2]};
+  const struct engine *e = r->e;
+  const struct cosmology *cosmo = e->cosmology;
+  const float a = cosmo->a;
+  const float H = cosmo->H;
+
+  /* Implements a double-for loop and checks every interaction */
+  for (int i = 0; i < ci->hydro.count; ++i) {
+
+    pi = &ci->hydro.parts[i];
+    hi = pi->h;
+    hig2 = hi * hi * kernel_gamma2;
+
+    /* Skip inactive particles. */
+    if (!part_is_active(pi, e)) continue;
+
+    for (int j = 0; j < cj->hydro.count; ++j) {
+
+      pj = &cj->hydro.parts[j];
+      hj = pj->h;
+      hjg2 = hj * hj * kernel_gamma2;
+
+      /* Pairwise distance */
+      r2 = 0.0f;
+      for (int k = 0; k < 3; k++) {
+        dx[k] = ci->hydro.parts[i].x[k] - cj->hydro.parts[j].x[k];
+        dx[k] = nearest(dx[k], dim[k]);
+        r2 += dx[k] * dx[k];
+      }
+
+      /* Hit or miss? */
+      if (r2 < hig2 && !part_is_inhibited(pj, e)) {
+
+        /* Interact */
+        runner_iact_nonsym_gradient(r2, dx, hi, hj, pi, pj, a, H);
+      }
+    }
+  }
+
+  /* Reverse double-for loop and checks every interaction */
+  for (int j = 0; j < cj->hydro.count; ++j) {
+
+    pj = &cj->hydro.parts[j];
+    hj = pj->h;
+    hjg2 = hj * hj * kernel_gamma2;
+
+    /* Skip inactive particles. */
+    if (!part_is_active(pj, e)) continue;
+
+    for (int i = 0; i < ci->hydro.count; ++i) {
+
+      pi = &ci->hydro.parts[i];
+      hi = pi->h;
+      hig2 = hi * hi * kernel_gamma2;
+
+      /* Pairwise distance */
+      r2 = 0.0f;
+      for (int k = 0; k < 3; k++) {
+        dx[k] = cj->hydro.parts[j].x[k] - ci->hydro.parts[i].x[k];
+        dx[k] = nearest(dx[k], dim[k]);
+        r2 += dx[k] * dx[k];
+      }
+
+      /* Hit or miss? */
+      if (r2 < hjg2 && !part_is_inhibited(pi, e)) {
+
+        /* Interact */
+        runner_iact_nonsym_gradient(r2, dx, hj, pi->h, pj, pi, a, H);
+      }
+    }
+  }
+}
+#endif /* EXTRA_HDYRO_LOOP */
 
 void pairs_all_force(struct runner *r, struct cell *ci, struct cell *cj) {
 
@@ -438,7 +517,7 @@ void self_all_density(struct runner *r, struct cell *ci) {
       }
 
       /* Hit or miss? */
-      if (r2 < hig2 && part_is_active(pi, e)) {
+      if (r2 < hig2 && part_is_active(pi, e) && !part_is_inhibited(pj, e)) {
 
         /* Interact */
         runner_iact_nonsym_density(r2, dxi, hi, hj, pi, pj, a, H);
@@ -446,7 +525,7 @@ void self_all_density(struct runner *r, struct cell *ci) {
       }
 
       /* Hit or miss? */
-      if (r2 < hjg2 && part_is_active(pj, e)) {
+      if (r2 < hjg2 && part_is_active(pj, e) && !part_is_inhibited(pi, e)) {
 
         dxi[0] = -dxi[0];
         dxi[1] = -dxi[1];
@@ -459,6 +538,59 @@ void self_all_density(struct runner *r, struct cell *ci) {
     }
   }
 }
+
+#ifdef EXTRA_HYDRO_LOOP
+void self_all_gradient(struct runner *r, struct cell *ci) {
+  float r2, hi, hj, hig2, hjg2, dxi[3];  //, dxj[3];
+  struct part *pi, *pj;
+  const struct engine *e = r->e;
+  const struct cosmology *cosmo = e->cosmology;
+  const float a = cosmo->a;
+  const float H = cosmo->H;
+
+  /* Implements a double-for loop and checks every interaction */
+  for (int i = 0; i < ci->hydro.count; ++i) {
+
+    pi = &ci->hydro.parts[i];
+    hi = pi->h;
+    hig2 = hi * hi * kernel_gamma2;
+
+    for (int j = i + 1; j < ci->hydro.count; ++j) {
+
+      pj = &ci->hydro.parts[j];
+      hj = pj->h;
+      hjg2 = hj * hj * kernel_gamma2;
+
+      if (pi == pj) continue;
+
+      /* Pairwise distance */
+      r2 = 0.0f;
+      for (int k = 0; k < 3; k++) {
+        dxi[k] = ci->hydro.parts[i].x[k] - ci->hydro.parts[j].x[k];
+        r2 += dxi[k] * dxi[k];
+      }
+
+      /* Hit or miss? */
+      if (r2 < hig2 && part_is_active(pi, e) && !part_is_inhibited(pj, e)) {
+
+        /* Interact */
+        runner_iact_nonsym_gradient(r2, dxi, hi, hj, pi, pj, a, H);
+      }
+
+      /* Hit or miss? */
+      if (r2 < hjg2 && part_is_active(pj, e) && !part_is_inhibited(pi, e)) {
+
+        dxi[0] = -dxi[0];
+        dxi[1] = -dxi[1];
+        dxi[2] = -dxi[2];
+
+        /* Interact */
+        runner_iact_nonsym_gradient(r2, dxi, hj, hi, pj, pi, a, H);
+      }
+    }
+  }
+}
+#endif /* EXTRA_HYDRO_LOOP */
 
 void self_all_force(struct runner *r, struct cell *ci) {
   float r2, hi, hj, hig2, hjg2, dxi[3];  //, dxj[3];
@@ -714,7 +846,7 @@ int compare_values(double a, double b, double threshold, double *absDiff,
  *
  * @return 1 if difference found, 0 otherwise
  */
-int compare_particles(struct part a, struct part b, double threshold) {
+int compare_particles(struct part *a, struct part *b, double threshold) {
 
 #ifdef GADGET2_SPH
 
@@ -722,117 +854,117 @@ int compare_particles(struct part a, struct part b, double threshold) {
   double absDiff = 0.0, absSum = 0.0, relDiff = 0.0;
 
   for (int k = 0; k < 3; k++) {
-    if (compare_values(a.x[k], b.x[k], threshold, &absDiff, &absSum,
+    if (compare_values(a->x[k], b->x[k], threshold, &absDiff, &absSum,
                        &relDiff)) {
       message(
           "Relative difference (%e) larger than tolerance (%e) for x[%d] of "
           "particle %lld.",
-          relDiff, threshold, k, a.id);
-      message("a = %e, b = %e", a.x[k], b.x[k]);
+          relDiff, threshold, k, a->id);
+      message("a = %e, b = %e", a->x[k], b->x[k]);
       result = 1;
     }
   }
   for (int k = 0; k < 3; k++) {
-    if (compare_values(a.v[k], b.v[k], threshold, &absDiff, &absSum,
+    if (compare_values(a->v[k], b->v[k], threshold, &absDiff, &absSum,
                        &relDiff)) {
       message(
           "Relative difference (%e) larger than tolerance (%e) for v[%d] of "
           "particle %lld.",
-          relDiff, threshold, k, a.id);
-      message("a = %e, b = %e", a.v[k], b.v[k]);
+          relDiff, threshold, k, a->id);
+      message("a = %e, b = %e", a->v[k], b->v[k]);
       result = 1;
     }
   }
   for (int k = 0; k < 3; k++) {
-    if (compare_values(a.a_hydro[k], b.a_hydro[k], threshold, &absDiff, &absSum,
-                       &relDiff)) {
+    if (compare_values(a->a_hydro[k], b->a_hydro[k], threshold, &absDiff,
+                       &absSum, &relDiff)) {
       message(
           "Relative difference (%e) larger than tolerance (%e) for a_hydro[%d] "
           "of particle %lld.",
-          relDiff, threshold, k, a.id);
-      message("a = %e, b = %e", a.a_hydro[k], b.a_hydro[k]);
+          relDiff, threshold, k, a->id);
+      message("a = %e, b = %e", a->a_hydro[k], b->a_hydro[k]);
       result = 1;
     }
   }
-  if (compare_values(a.rho, b.rho, threshold, &absDiff, &absSum, &relDiff)) {
+  if (compare_values(a->rho, b->rho, threshold, &absDiff, &absSum, &relDiff)) {
     message(
         "Relative difference (%e) larger than tolerance (%e) for rho of "
         "particle %lld.",
-        relDiff, threshold, a.id);
-    message("a = %e, b = %e", a.rho, b.rho);
+        relDiff, threshold, a->id);
+    message("a = %e, b = %e", a->rho, b->rho);
     result = 1;
   }
-  if (compare_values(a.density.rho_dh, b.density.rho_dh, threshold, &absDiff,
+  if (compare_values(a->density.rho_dh, b->density.rho_dh, threshold, &absDiff,
                      &absSum, &relDiff)) {
     message(
         "Relative difference (%e) larger than tolerance (%e) for rho_dh of "
         "particle %lld.",
-        relDiff, threshold, a.id);
-    message("a = %e, b = %e", a.density.rho_dh, b.density.rho_dh);
+        relDiff, threshold, a->id);
+    message("a = %e, b = %e", a->density.rho_dh, b->density.rho_dh);
     result = 1;
   }
-  if (compare_values(a.density.wcount, b.density.wcount, threshold, &absDiff,
+  if (compare_values(a->density.wcount, b->density.wcount, threshold, &absDiff,
                      &absSum, &relDiff)) {
     message(
         "Relative difference (%e) larger than tolerance (%e) for wcount of "
         "particle %lld.",
-        relDiff, threshold, a.id);
-    message("a = %e, b = %e", a.density.wcount, b.density.wcount);
+        relDiff, threshold, a->id);
+    message("a = %e, b = %e", a->density.wcount, b->density.wcount);
     result = 1;
   }
-  if (compare_values(a.density.wcount_dh, b.density.wcount_dh, threshold,
+  if (compare_values(a->density.wcount_dh, b->density.wcount_dh, threshold,
                      &absDiff, &absSum, &relDiff)) {
     message(
         "Relative difference (%e) larger than tolerance (%e) for wcount_dh of "
         "particle %lld.",
-        relDiff, threshold, a.id);
-    message("a = %e, b = %e", a.density.wcount_dh, b.density.wcount_dh);
+        relDiff, threshold, a->id);
+    message("a = %e, b = %e", a->density.wcount_dh, b->density.wcount_dh);
     result = 1;
   }
-  if (compare_values(a.force.h_dt, b.force.h_dt, threshold, &absDiff, &absSum,
+  if (compare_values(a->force.h_dt, b->force.h_dt, threshold, &absDiff, &absSum,
                      &relDiff)) {
     message(
         "Relative difference (%e) larger than tolerance (%e) for h_dt of "
         "particle %lld.",
-        relDiff, threshold, a.id);
-    message("a = %e, b = %e", a.force.h_dt, b.force.h_dt);
+        relDiff, threshold, a->id);
+    message("a = %e, b = %e", a->force.h_dt, b->force.h_dt);
     result = 1;
   }
-  if (compare_values(a.force.v_sig, b.force.v_sig, threshold, &absDiff, &absSum,
-                     &relDiff)) {
+  if (compare_values(a->force.v_sig, b->force.v_sig, threshold, &absDiff,
+                     &absSum, &relDiff)) {
     message(
         "Relative difference (%e) larger than tolerance (%e) for v_sig of "
         "particle %lld.",
-        relDiff, threshold, a.id);
-    message("a = %e, b = %e", a.force.v_sig, b.force.v_sig);
+        relDiff, threshold, a->id);
+    message("a = %e, b = %e", a->force.v_sig, b->force.v_sig);
     result = 1;
   }
-  if (compare_values(a.entropy_dt, b.entropy_dt, threshold, &absDiff, &absSum,
+  if (compare_values(a->entropy_dt, b->entropy_dt, threshold, &absDiff, &absSum,
                      &relDiff)) {
     message(
         "Relative difference (%e) larger than tolerance (%e) for entropy_dt of "
         "particle %lld.",
-        relDiff, threshold, a.id);
-    message("a = %e, b = %e", a.entropy_dt, b.entropy_dt);
+        relDiff, threshold, a->id);
+    message("a = %e, b = %e", a->entropy_dt, b->entropy_dt);
     result = 1;
   }
-  if (compare_values(a.density.div_v, b.density.div_v, threshold, &absDiff,
+  if (compare_values(a->density.div_v, b->density.div_v, threshold, &absDiff,
                      &absSum, &relDiff)) {
     message(
         "Relative difference (%e) larger than tolerance (%e) for div_v of "
         "particle %lld.",
-        relDiff, threshold, a.id);
-    message("a = %e, b = %e", a.density.div_v, b.density.div_v);
+        relDiff, threshold, a->id);
+    message("a = %e, b = %e", a->density.div_v, b->density.div_v);
     result = 1;
   }
   for (int k = 0; k < 3; k++) {
-    if (compare_values(a.density.rot_v[k], b.density.rot_v[k], threshold,
+    if (compare_values(a->density.rot_v[k], b->density.rot_v[k], threshold,
                        &absDiff, &absSum, &relDiff)) {
       message(
           "Relative difference (%e) larger than tolerance (%e) for rot_v[%d] "
           "of particle %lld.",
-          relDiff, threshold, k, a.id);
-      message("a = %e, b = %e", a.density.rot_v[k], b.density.rot_v[k]);
+          relDiff, threshold, k, a->id);
+      message("a = %e, b = %e", a->density.rot_v[k], b->density.rot_v[k]);
       result = 1;
     }
   }

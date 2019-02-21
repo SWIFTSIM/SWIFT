@@ -1,7 +1,7 @@
 #!/usr/bin/env python
 """
 Usage:
-    combine_ics.py input_file.0.hdf5 merged_file.hdf5
+    combine_ics.py input_file.0.hdf5 merged_file.hdf5 gzip_level
 
 This file combines Gadget-2 type 2 (i.e. hdf5) initial condition files
 into a single file that can be digested by SWIFT. 
@@ -11,6 +11,9 @@ the DM particles is handled. No unit conversions are applied nor are
 any scale-factors or h-factors changed.
 The script applies some compression and checksum filters to the output
 to save disk space. 
+The last argument `gzip_level` is used to specify the level of compression
+to apply to all the fields in the file. Use 0 to cancel all coompression.
+The default value is `4`.
 
 This file is part of SWIFT.
 Copyright (C) 2016 Matthieu Schaller (matthieu.schaller@durham.ac.uk)
@@ -35,6 +38,11 @@ import sys
 import h5py as h5
 import numpy as np
 
+# Store the compression level
+gzip_level = 4
+if len(sys.argv) > 3:
+    gzip_level = sys.argv[3]
+
 # First, we need to collect some information from the master file
 main_file_name = str(sys.argv[1])[:-7]
 print("Merging snapshots files with name", main_file_name)
@@ -45,18 +53,18 @@ grp_header = master_file["/Header"]
 
 num_files = grp_header.attrs["NumFilesPerSnapshot"]
 tot_num_parts = grp_header.attrs["NumPart_Total"]
-tot_num_parts_high_word = grp_header.attrs["NumPart_Total"]
+tot_num_parts_high_word = grp_header.attrs["NumPart_Total_HighWord"]
 entropy_flag = grp_header.attrs["Flag_Entropy_ICs"]
 box_size = grp_header.attrs["BoxSize"]
 time = grp_header.attrs["Time"]
 
 # Combine the low- and high-words
+tot_num_parts = tot_num_parts.astype(np.int64)
 for i in range(6):
-    tot_num_parts[i] += np.int64(tot_num_parts_high_word[i]) << 32
+    tot_num_parts[i] += (np.int64(tot_num_parts_high_word[i]) << 32)
 
 # Some basic information
 print("Reading", tot_num_parts, "particles from", num_files, "files.")
-
 
 # Check whether there is a mass table
 DM_mass = 0.0
@@ -105,7 +113,7 @@ def create_set(grp, name, size, dim, dtype):
             dtype=dtype,
             chunks=True,
             compression="gzip",
-            compression_opts=4,
+            compression_opts=gzip_level,
             shuffle=True,
             fletcher32=True,
             maxshape=(size,),
@@ -117,7 +125,7 @@ def create_set(grp, name, size, dim, dtype):
             dtype=dtype,
             chunks=True,
             compression="gzip",
-            compression_opts=4,
+            compression_opts=gzip_level,
             shuffle=True,
             fletcher32=True,
             maxshape=(size, dim),

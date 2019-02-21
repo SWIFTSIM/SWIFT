@@ -112,7 +112,7 @@ void set_energy_state(struct part *part, enum pressure_field press, float size,
 #elif defined(DEFAULT_SPH)
   part->u = pressure / (hydro_gamma_minus_one * density);
 #elif defined(MINIMAL_SPH) || defined(HOPKINS_PU_SPH) || \
-    defined(HOPKINS_PU_SPH_MONAGHAN)
+    defined(HOPKINS_PU_SPH_MONAGHAN) || defined(ANARCHY_PU_SPH)
   part->u = pressure / (hydro_gamma_minus_one * density);
 #elif defined(PLANETARY_SPH)
   part->u = pressure / (hydro_gamma_minus_one * density);
@@ -401,10 +401,13 @@ void dump_particle_fields(char *fileName, struct cell *main_cell,
             main_cell->hydro.parts[pid].v[0], main_cell->hydro.parts[pid].v[1],
             main_cell->hydro.parts[pid].v[2], main_cell->hydro.parts[pid].h,
             hydro_get_comoving_density(&main_cell->hydro.parts[pid]),
-#if defined(MINIMAL_SPH) || defined(PLANETARY_SPH) ||   \
-    defined(GIZMO_MFV_SPH) || defined(SHADOWFAX_SPH) || \
-    defined(HOPKINS_PU_SPH) || defined(HOPKINS_PU_SPH_MONAGHAN)
+#if defined(MINIMAL_SPH) || defined(PLANETARY_SPH) ||              \
+    defined(GIZMO_MFV_SPH) || defined(SHADOWFAX_SPH) ||            \
+    defined(HOPKINS_PU_SPH) || defined(HOPKINS_PU_SPH_MONAGHAN) || \
+    defined(ANARCHY_PU_SPH)
             0.f,
+#elif defined(ANARCHY_PU_SPH)
+            main_cell->hydro.parts[pid].viscosity.div_v,
 #else
             main_cell->hydro.parts[pid].density.div_v,
 #endif
@@ -426,6 +429,9 @@ void dump_particle_fields(char *fileName, struct cell *main_cell,
 #elif defined(MINIMAL_SPH) || defined(HOPKINS_PU_SPH) || \
     defined(HOPKINS_PU_SPH_MONAGHAN)
             main_cell->hydro.parts[pid].force.v_sig, 0.f,
+            main_cell->hydro.parts[pid].u_dt
+#elif defined(ANARCHY_PU_SPH)
+            main_cell->hydro.parts[pid].viscosity.v_sig, 0.f,
             main_cell->hydro.parts[pid].u_dt
 #else
             0.f, 0.f, 0.f
@@ -459,9 +465,15 @@ void dump_particle_fields(char *fileName, struct cell *main_cell,
 /* Just a forward declaration... */
 void runner_dopair1_branch_density(struct runner *r, struct cell *ci,
                                    struct cell *cj);
-void runner_doself1_density(struct runner *r, struct cell *ci);
+void runner_doself1_branch_density(struct runner *r, struct cell *ci);
+#ifdef EXTRA_HYDRO_LOOP
+void runner_dopair1_branch_gradient(struct runner *r, struct cell *ci,
+                                    struct cell *cj);
+void runner_doself1_branch_gradient(struct runner *r, struct cell *ci);
+#endif /* EXTRA_HYDRO LOOP */
 void runner_dopair2_branch_force(struct runner *r, struct cell *ci,
                                  struct cell *cj);
+void runner_doself2_branch_force(struct runner *r, struct cell *ci);
 void runner_doself2_force(struct runner *r, struct cell *ci);
 void runner_doself2_force_vec(struct runner *r, struct cell *ci);
 
@@ -589,7 +601,9 @@ int main(int argc, char *argv[]) {
   hp.eta_neighbours = h;
   hp.h_tolerance = 1e0;
   hp.h_max = FLT_MAX;
-  hp.max_smoothing_iterations = 1;
+  hp.h_min = 0.f;
+  hp.h_min_ratio = 0.f;
+  hp.max_smoothing_iterations = 10;
   hp.CFL_condition = 0.1;
 
   struct engine engine;
@@ -663,7 +677,7 @@ int main(int argc, char *argv[]) {
 
     /* First, sort stuff */
     for (int j = 0; j < 125; ++j)
-      runner_do_sort(&runner, cells[j], 0x1FFF, 0, 0);
+      runner_do_hydro_sort(&runner, cells[j], 0x1FFF, 0, 0);
 
       /* Do the density calculation */
 
@@ -675,7 +689,7 @@ int main(int argc, char *argv[]) {
     cache_init(&runner.cj_cache, 512);
 #endif
 
-    /* Run all the pairs (only once !)*/
+    /* Run all the  (only once !)*/
     for (int i = 0; i < 5; i++) {
       for (int j = 0; j < 5; j++) {
         for (int k = 0; k < 5; k++) {
@@ -707,10 +721,55 @@ int main(int argc, char *argv[]) {
 
     /* And now the self-interaction for the central cells*/
     for (int j = 0; j < 27; ++j)
-      runner_doself1_density(&runner, inner_cells[j]);
+      runner_doself1_branch_density(&runner, inner_cells[j]);
 
     /* Ghost to finish everything on the central cells */
     for (int j = 0; j < 27; ++j) runner_do_ghost(&runner, inner_cells[j], 0);
+
+#ifdef EXTRA_HYDRO_LOOP
+    /* We need to do the gradient loop and the extra ghost! */
+    message(
+        "Extra hydro loop detected, running gradient loop in test125cells.");
+
+    /* Run all the pairs (only once !)*/
+    for (int i = 0; i < 5; i++) {
+      for (int j = 0; j < 5; j++) {
+        for (int k = 0; k < 5; k++) {
+
+          struct cell *ci = cells[i * 25 + j * 5 + k];
+
+          for (int ii = -1; ii < 2; ii++) {
+            int iii = i + ii;
+            if (iii < 0 || iii >= 5) continue;
+            iii = (iii + 5) % 5;
+            for (int jj = -1; jj < 2; jj++) {
+              int jjj = j + jj;
+              if (jjj < 0 || jjj >= 5) continue;
+              jjj = (jjj + 5) % 5;
+              for (int kk = -1; kk < 2; kk++) {
+                int kkk = k + kk;
+                if (kkk < 0 || kkk >= 5) continue;
+                kkk = (kkk + 5) % 5;
+
+                struct cell *cj = cells[iii * 25 + jjj * 5 + kkk];
+
+                if (cj > ci) runner_dopair1_branch_gradient(&runner, ci, cj);
+              }
+            }
+          }
+        }
+      }
+    }
+
+    /* And now the self-interaction for the central cells */
+    for (int j = 0; j < 27; ++j)
+      runner_doself1_branch_gradient(&runner, inner_cells[j]);
+
+    /* Extra ghost to finish everything on the central cells */
+    for (int j = 0; j < 27; ++j)
+      runner_do_extra_ghost(&runner, inner_cells[j], 0);
+
+#endif /* EXTRA_HYDRO_LOOP */
 
       /* Do the force calculation */
 
@@ -745,7 +804,7 @@ int main(int argc, char *argv[]) {
     ticks self_tic = getticks();
 
     /* And now the self-interaction for the main cell */
-    runner_doself2_force(&runner, main_cell);
+    runner_doself2_branch_force(&runner, main_cell);
 
     timings[26] += getticks() - self_tic;
 
@@ -780,11 +839,11 @@ int main(int argc, char *argv[]) {
 
   ticks self_time = timings[26];
 
-  message("Corner calculations took       : %15lli ticks.", corner_time / runs);
-  message("Edge calculations took         : %15lli ticks.", edge_time / runs);
-  message("Face calculations took         : %15lli ticks.", face_time / runs);
-  message("Self calculations took         : %15lli ticks.", self_time / runs);
-  message("SWIFT calculation took         : %15lli ticks.", time / runs);
+  message("Corner calculations took:     %15lli ticks.", corner_time / runs);
+  message("Edge calculations took:       %15lli ticks.", edge_time / runs);
+  message("Face calculations took:       %15lli ticks.", face_time / runs);
+  message("Self calculations took:       %15lli ticks.", self_time / runs);
+  message("SWIFT calculation took:       %15lli ticks.", time / runs);
 
   for (int j = 0; j < 125; ++j)
     reset_particles(cells[j], &space.hs, vel, press, size, rho);
@@ -841,6 +900,48 @@ int main(int argc, char *argv[]) {
   /* Ghost to finish everything on the central cells */
   for (int j = 0; j < 27; ++j) runner_do_ghost(&runner, inner_cells[j], 0);
 
+#ifdef EXTRA_HYDRO_LOOP
+  /* We need to do the gradient loop and the extra ghost! */
+
+  /* Run all the pairs (only once !)*/
+  for (int i = 0; i < 5; i++) {
+    for (int j = 0; j < 5; j++) {
+      for (int k = 0; k < 5; k++) {
+
+        struct cell *ci = cells[i * 25 + j * 5 + k];
+
+        for (int ii = -1; ii < 2; ii++) {
+          int iii = i + ii;
+          if (iii < 0 || iii >= 5) continue;
+          iii = (iii + 5) % 5;
+          for (int jj = -1; jj < 2; jj++) {
+            int jjj = j + jj;
+            if (jjj < 0 || jjj >= 5) continue;
+            jjj = (jjj + 5) % 5;
+            for (int kk = -1; kk < 2; kk++) {
+              int kkk = k + kk;
+              if (kkk < 0 || kkk >= 5) continue;
+              kkk = (kkk + 5) % 5;
+
+              struct cell *cj = cells[iii * 25 + jjj * 5 + kkk];
+
+              if (cj > ci) pairs_all_gradient(&runner, ci, cj);
+            }
+          }
+        }
+      }
+    }
+  }
+
+  /* And now the self-interaction for the central cells */
+  for (int j = 0; j < 27; ++j) self_all_gradient(&runner, inner_cells[j]);
+
+  /* Extra ghost to finish everything on the central cells */
+  for (int j = 0; j < 27; ++j)
+    runner_do_extra_ghost(&runner, inner_cells[j], 0);
+
+#endif /* EXTRA_HYDRO_LOOP */
+
   /* Do the force calculation */
 
   /* Do the pairs (for the central 27 cells) */
@@ -865,7 +966,7 @@ int main(int argc, char *argv[]) {
   const ticks toc = getticks();
 
   /* Output timing */
-  message("Brute force calculation took : %15lli ticks.", toc - tic);
+  message("Brute force calculation took: %15lli ticks.", toc - tic);
 
   sprintf(outputFileName, "brute_force_125_%.150s.dat",
           outputFileNameExtension);

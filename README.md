@@ -49,9 +49,9 @@ are highly encouraged.
  Welcome to the cosmological hydrodynamical code
     ______       _________________
    / ___/ |     / /  _/ ___/_  __/
-   \__ \| | /| / // // /_   / /   
-  ___/ /| |/ |/ // // __/  / /    
- /____/ |__/|__/___/_/    /_/     
+   \__ \| | /| / // // /_   / /
+  ___/ /| |/ |/ // // __/  / /
+ /____/ |__/|__/___/_/    /_/
  SPH With Inter-dependent Fine-grained Tasking
 
  Website: www.swiftsim.com
@@ -59,38 +59,63 @@ are highly encouraged.
 
 See INSTALL.swift for install instructions.
 
-Usage: swift [OPTION]... PARAMFILE
-       swift_mpi [OPTION]... PARAMFILE
+Usage: swift [options] [[--] param-file]
+   or: swift [options] param-file
+   or: swift_mpi [options] [[--] param-file]
+   or: swift_mpi [options] param-file
 
-Valid options are:
-  -a                Pin runners using processor affinity.
-  -c                Run with cosmological time integration.
-  -C                Run with cooling.
-  -d                Dry run. Read the parameter file, allocate memory but does not read
-                    the particles from ICs and exit before the start of time integration.
-                    Allows user to check validity of parameter and IC files as well as memory limits.
-  -D                Always drift all particles even the ones far from active particles. This emulates
-                    Gadget-[23] and GIZMO's default behaviours.
-  -e                Enable floating-point exceptions (debugging mode).
-  -f          {int} Overwrite the CPU frequency (Hz) to be used for time measurements.
-  -g                Run with an external gravitational potential.
-  -G                Run with self-gravity.
-  -M                Reconstruct the multipoles every time-step.
-  -n          {int} Execute a fixed number of time steps. When unset use the time_end parameter to stop.
-  -o          {str} Generate a default output parameter file.
-  -P  {sec:par:val} Set parameter value and overwrites values read from the parameters file. Can be used more than once.
-  -r                Continue using restart files.
-  -s                Run with hydrodynamics.
-  -S                Run with stars.
-  -t          {int} The number of threads to use on each MPI rank. Defaults to 1 if not specified.
-  -T                Print timers every time-step.
-  -v           [12] Increase the level of verbosity:
-                    1: MPI-rank 0 writes,
-                    2: All MPI-ranks write.
-  -x                Run with structure finding.
-  -y          {int} Time-step frequency at which task graphs are dumped.
-  -Y          {int} Time-step frequency at which threadpool tasks are dumped.
-  -h                Print this help message and exit.
+Parameters:
+
+    -h, --help                        show this help message and exit
+
+  Simulation options:
+  
+    -b, --feedback                    Run with stars feedback.
+    -c, --cosmology                   Run with cosmological time integration.
+    --temperature                     Run with temperature calculation.
+    -C, --cooling                     Run with cooling (also switches on --with-temperature).
+    -D, --drift-all                   Always drift all particles even the ones
+                                      far from active particles. This emulates
+                                      Gadget-[23] and GIZMO's default behaviours.
+    -F, --star-formation	      Run with star formation.
+    -g, --external-gravity            Run with an external gravitational potential.
+    -G, --self-gravity                Run with self-gravity.
+    -M, --multipole-reconstruction    Reconstruct the multipoles every time-step.
+    -s, --hydro                       Run with hydrodynamics.
+    -S, --stars                       Run with stars.
+    -x, --velociraptor                Run with structure finding.
+    --limiter                         Run with time-step limiter.
+
+  Control options:
+  
+    -a, --pin                         Pin runners using processor affinity.
+    -d, --dry-run                     Dry run. Read the parameter file, allocates
+                                      memory but does not read the particles
+                                      from ICs. Exits before the start of time
+                                      integration. Checks the validity of
+                                      parameters and IC files as well as memory
+                                      limits.
+    -e, --fpe                         Enable floating-point exceptions (debugging
+                                      mode).
+    -f, --cpu-frequency=<str>         Overwrite the CPU frequency (Hz) to be
+                                      used for time measurements.
+    -n, --steps=<int>                 Execute a fixed number of time steps.
+                                      When unset use the time_end parameter
+                                      to stop.
+    -o, --output-params=<str>         Generate a default output parameter
+                                      file.
+    -P, --param=<str>                 Set parameter value, overiding the value
+                                      read from the parameter file. Can be used
+                                      more than once {sec:par:value}.
+    -r, --restart                     Continue using restart files.
+    -t, --threads=<int>               The number of threads to use on each MPI
+                                      rank. Defaults to 1 if not specified.
+    -T, --timers=<int>                Print timers every time-step.
+    -v, --verbose=<int>               Run in verbose mode, in MPI mode 2 outputs
+                                      from all ranks.
+    -y, --task-dumps=<int>            Time-step frequency at which task analysis
+                                      files and/or tasks are dumped.
+    -Y, --threadpool-dumps=<int>      Time-step frequency at which threadpool
+                                      tasks are dumped.
 
 See the file examples/parameter_example.yml for an example of parameter file.
-```

@@ -26,35 +26,26 @@ examples/swift
 examples/swift_mpi
 examples/fof
 examples/fof_mpi
-examples/*/*.xmf
-examples/*/*.h5
-examples/*/*.png
-examples/*/*.mp4
-examples/*/*.txt
-examples/*/*.dot
-examples/*/restart/*
-examples/*/used_parameters.yml
-examples/*/unused_parameters.yml
 examples/*/*/*.xmf
 examples/*/*/*.png
 examples/*/*/*.mp4
 examples/*/*/*.txt
-examples/*/*/*.dot
 examples/*/*/*.rst
 examples/*/*/*.hdf5
-examples/*/snapshots*
-examples/*/restart/*
+examples/*/*/restart/*
 examples/*/*/used_parameters.yml
-examples/*/err_file*
-examples/*/out_file*
 examples/*/stf_output*
 examples/*/stf.*
-examples/*/*.slurm
 examples/*/fof_output*
 examples/*/log*
 examples/*/*/unused_parameters.yml
 examples/*/*.mpg
-examples/*/gravity_checks_*.dat
+examples/*/*/gravity_checks_*.dat
+examples/*/*/coolingtables.tar.gz
+examples/*/*/coolingtables
+examples/Cooling/CoolingRates/cooling_rates
+examples/Cooling/CoolingRates/cooling_element_*.dat
+examples/Cooling/CoolingRates/cooling_output.dat
 
 tests/testActivePair
 tests/testActivePair.sh
@@ -110,6 +101,7 @@ tests/testInteractions
 tests/testInteractions.sh
 tests/testSymmetry
 tests/testMaths
+tests/testRandom
 tests/testThreadpool
 tests/testParser
 tests/parser_output.yml
@@ -148,6 +140,7 @@ tests/testCosmology
 tests/testOutputList
 tests/testCbrt
 tests/testFormat.sh
+tests/testCooling
 
 theory/latex/swift.pdf
 theory/SPH/Kernels/kernels.pdf
@@ -164,6 +157,7 @@ theory/Multipoles/potential_long.pdf
 theory/Multipoles/potential_short.pdf
 theory/Multipoles/force_short.pdf
 theory/Cosmology/cosmology.pdf
+theory/Cooling/eagle_cooling.pdf
 
 m4/libtool.m4
 m4/ltoptions.m4

@@ -55,6 +55,13 @@ __attribute__((always_inline)) INLINE static void runner_iact_density(
   float wj, wj_dx;
   float dv[3], curlvr[3];
 
+#ifdef SWIFT_DEBUG_CHECKS
+  if (pi->time_bin >= time_bin_inhibited)
+    error("Inhibited pi in interaction function!");
+  if (pj->time_bin >= time_bin_inhibited)
+    error("Inhibited pj in interaction function!");
+#endif
+
   /* Get the masses. */
   const float mi = pi->mass;
   const float mj = pj->mass;
@@ -144,6 +151,13 @@ __attribute__((always_inline)) INLINE static void runner_iact_nonsym_density(
 
   float wi, wi_dx;
   float dv[3], curlvr[3];
+
+#ifdef SWIFT_DEBUG_CHECKS
+  if (pi->time_bin >= time_bin_inhibited)
+    error("Inhibited pi in interaction function!");
+  if (pj->time_bin >= time_bin_inhibited)
+    error("Inhibited pj in interaction function!");
+#endif
 
   /* Get the masses. */
   const float mj = pj->mass;
@@ -279,7 +293,7 @@ runner_iact_nonsym_2_vec_density(float *R2, float *Dx, float *Dy, float *Dz,
                                  vector *wcountSum, vector *wcount_dhSum,
                                  vector *div_vSum, vector *curlvxSum,
                                  vector *curlvySum, vector *curlvzSum,
-                                 mask_t mask, mask_t mask2, short mask_cond) {
+                                 mask_t mask, mask_t mask2, int mask_cond) {
 
   vector r, ri, ui, wi, wi_dx;
   vector dvx, dvy, dvz;
@@ -436,6 +450,13 @@ __attribute__((always_inline)) INLINE static void runner_iact_force(
 
   float wi, wj, wi_dx, wj_dx;
 
+#ifdef SWIFT_DEBUG_CHECKS
+  if (pi->time_bin >= time_bin_inhibited)
+    error("Inhibited pi in interaction function!");
+  if (pj->time_bin >= time_bin_inhibited)
+    error("Inhibited pj in interaction function!");
+#endif
+
   /* Cosmological factors entering the EoMs */
   const float fac_mu = pow_three_gamma_minus_five_over_two(a);
   const float a2_Hubble = a * a * H;
@@ -557,6 +578,13 @@ __attribute__((always_inline)) INLINE static void runner_iact_nonsym_force(
     const struct part *restrict pj, float a, float H) {
 
   float wi, wj, wi_dx, wj_dx;
+
+#ifdef SWIFT_DEBUG_CHECKS
+  if (pi->time_bin >= time_bin_inhibited)
+    error("Inhibited pi in interaction function!");
+  if (pj->time_bin >= time_bin_inhibited)
+    error("Inhibited pj in interaction function!");
+#endif
 
   /* Cosmological factors entering the EoMs */
   const float fac_mu = pow_three_gamma_minus_five_over_two(a);
@@ -1022,5 +1050,35 @@ runner_iact_nonsym_2_vec_force(
 }
 
 #endif
+
+/**
+ * @brief Timestep limiter loop
+ */
+__attribute__((always_inline)) INLINE static void runner_iact_limiter(
+    float r2, const float *dx, float hi, float hj, struct part *restrict pi,
+    struct part *restrict pj, float a, float H) {
+
+  /* Nothing to do here if both particles are active */
+}
+
+/**
+ * @brief Timestep limiter loop (non-symmetric version)
+ */
+__attribute__((always_inline)) INLINE static void runner_iact_nonsym_limiter(
+    float r2, const float *dx, float hi, float hj, struct part *restrict pi,
+    struct part *restrict pj, float a, float H) {
+
+  /* Wake up the neighbour? */
+  if (pi->force.v_sig > const_limiter_max_v_sig_ratio * pj->force.v_sig) {
+
+    pj->wakeup = time_bin_awake;
+
+    // MATTHIEU
+    // if (pj->wakeup == time_bin_not_awake)
+    // pj->wakeup = time_bin_awake;
+    // else if (pj->wakeup > 0)
+    // pj->wakeup = -pj->wakeup;
+  }
+}
 
 #endif /* SWIFT_GADGET2_HYDRO_IACT_H */

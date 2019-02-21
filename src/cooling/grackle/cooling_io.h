@@ -59,7 +59,7 @@ __attribute__((always_inline)) INLINE static void cooling_write_flavour(
  * @return Returns the number of fields to write.
  */
 __attribute__((always_inline)) INLINE static int cooling_write_particles(
-    const struct xpart* xparts, struct io_props* list,
+    const struct part* parts, const struct xpart* xparts, struct io_props* list,
     const struct cooling_function_data* cooling) {
 
   int num = 0;

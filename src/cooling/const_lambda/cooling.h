@@ -37,12 +37,25 @@
 
 /* Local includes. */
 #include "const.h"
+#include "entropy_floor.h"
 #include "error.h"
 #include "hydro.h"
 #include "parser.h"
 #include "part.h"
 #include "physical_constants.h"
 #include "units.h"
+
+/**
+ * @brief Common operations performed on the cooling function at a
+ * given time-step or redshift.
+ *
+ * @param cosmo The current cosmological model.
+ * @param cooling The #cooling_function_data used in the run.
+ */
+INLINE static void cooling_update(const struct cosmology* cosmo,
+                                  struct cooling_function_data* cooling) {
+  // Add content if required.
+}
 
 /**
  * @brief Calculates du/dt in CGS units for a particle.
@@ -87,6 +100,7 @@ __attribute__((always_inline)) INLINE static double cooling_rate_cgs(
  * @param us The internal system of units.
  * @param cosmo The current cosmological model.
  * @param hydro_props The properties of the hydro scheme.
+ * @param floor_props Properties of the entropy floor.
  * @param cooling The #cooling_function_data used in the run.
  * @param p Pointer to the particle data.
  * @param xp Pointer to the particle' extended data.
@@ -98,15 +112,13 @@ __attribute__((always_inline)) INLINE static void cooling_cool_part(
     const struct unit_system* restrict us,
     const struct cosmology* restrict cosmo,
     const struct hydro_props* hydro_props,
+    const struct entropy_floor_properties* floor_props,
     const struct cooling_function_data* restrict cooling,
     struct part* restrict p, struct xpart* restrict xp, const float dt,
     const float dt_therm) {
 
   /* Nothing to do here? */
   if (dt == 0.) return;
-
-  /* Internal energy floor */
-  const float u_floor = hydro_props->minimal_internal_energy;
 
   /* Current energy */
   const float u_old = hydro_get_physical_internal_energy(p, xp, cosmo);
@@ -129,11 +141,22 @@ __attribute__((always_inline)) INLINE static void cooling_cool_part(
 
   /* We now need to check that we are not going to go below any of the limits */
 
+  /* Limit imposed by the entropy floor */
+  const float A_floor = entropy_floor(p, cosmo, floor_props);
+  const float rho = hydro_get_physical_density(p, cosmo);
+  const float u_floor = gas_internal_energy_from_entropy(rho, A_floor);
+
+  /* Absolute minimum */
+  const float u_minimal = hydro_props->minimal_internal_energy;
+
+  /* Largest of both limits */
+  const float u_limit = max(u_minimal, u_floor);
+
   /* First, check whether we may end up below the minimal energy after
    * this step 1/2 kick + another 1/2 kick that could potentially be for
    * a time-step twice as big. We hence check for 1.5 delta_t. */
-  if (u_old + total_du_dt * 1.5 * dt_therm < u_floor) {
-    total_du_dt = (u_floor - u_old) / (1.5f * dt_therm);
+  if (u_old + total_du_dt * 1.5 * dt_therm < u_limit) {
+    total_du_dt = (u_limit - u_old) / (1.5f * dt_therm);
   }
 
   /* Second, check whether the energy used in the prediction could get negative.
@@ -217,6 +240,49 @@ __attribute__((always_inline)) INLINE static void cooling_first_init_part(
 }
 
 /**
+ * @brief Compute the temperature of a #part based on the cooling function.
+ *
+ * @param phys_const #phys_const data structure.
+ * @param hydro_props The properties of the hydro scheme.
+ * @param us The internal system of units.
+ * @param cosmo #cosmology data structure.
+ * @param cooling #cooling_function_data struct.
+ * @param p #part data.
+ * @param xp Pointer to the #xpart data.
+ */
+INLINE static float cooling_get_temperature(
+    const struct phys_const* restrict phys_const,
+    const struct hydro_props* restrict hydro_props,
+    const struct unit_system* restrict us,
+    const struct cosmology* restrict cosmo,
+    const struct cooling_function_data* restrict cooling,
+    const struct part* restrict p, const struct xpart* restrict xp) {
+
+  /* Physical constants */
+  const double m_H = phys_const->const_proton_mass;
+  const double k_B = phys_const->const_boltzmann_k;
+
+  /* Gas properties */
+  const double T_transition = hydro_props->hydrogen_ionization_temperature;
+  const double mu_neutral = hydro_props->mu_neutral;
+  const double mu_ionised = hydro_props->mu_ionised;
+
+  /* Particle temperature */
+  const double u = hydro_get_physical_internal_energy(p, xp, cosmo);
+
+  /* Temperature over mean molecular weight */
+  const double T_over_mu = hydro_gamma_minus_one * u * m_H / k_B;
+
+  /* Are we above or below the HII -> HI transition? */
+  if (T_over_mu > (T_transition + 1.) / mu_ionised)
+    return T_over_mu * mu_ionised;
+  else if (T_over_mu < (T_transition - 1.) / mu_neutral)
+    return T_over_mu * mu_neutral;
+  else
+    return T_transition;
+}
+
+/**
  * @brief Returns the total radiated energy by this particle.
  *
  * @param xp The extended particle data
@@ -260,6 +326,18 @@ static INLINE void cooling_init_backend(struct swift_params* parameter_file,
 }
 
 /**
+ * @brief Restore cooling tables (if applicable) after
+ * restart
+ *
+ * Nothing to do here
+ *
+ * @param cooling the cooling_function_data structure
+ * @param cosmo cosmology structure
+ */
+static INLINE void cooling_restore_tables(struct cooling_function_data* cooling,
+                                          const struct cosmology* cosmo) {}
+
+/**
  * @brief Prints the properties of the cooling model to stdout.
  *
  * @param cooling The properties of the cooling function.
@@ -278,6 +356,44 @@ static INLINE void cooling_print_backend(
   else
     message("Cooling function time-step size limited to %f of u/(du/dt)",
             cooling->cooling_tstep_mult);
+}
+
+/**
+ * @brief Clean-up the memory allocated for the cooling routines
+ *
+ * @param cooling the cooling data structure.
+ */
+static INLINE void cooling_clean(struct cooling_function_data* cooling) {}
+
+/**
+ * @brief Write a cooling struct to the given FILE as a stream of bytes.
+ *
+ * Nothing to do beyond writing the structure from the stream.
+ *
+ * @param cooling the struct
+ * @param stream the file stream
+ */
+static INLINE void cooling_struct_dump(
+    const struct cooling_function_data* cooling, FILE* stream) {
+  restart_write_blocks((void*)cooling, sizeof(struct cooling_function_data), 1,
+                       stream, "cooling", "cooling function");
+}
+
+/**
+ * @brief Restore a hydro_props struct from the given FILE as a stream of
+ * bytes.
+ *
+ * Nothing to do beyond reading the structure from the stream.
+ *
+ * @param cooling the struct
+ * @param stream the file stream
+ * @param cosmo #cosmology structure
+ */
+static INLINE void cooling_struct_restore(struct cooling_function_data* cooling,
+                                          FILE* stream,
+                                          const struct cosmology* cosmo) {
+  restart_read_blocks((void*)cooling, sizeof(struct cooling_function_data), 1,
+                      stream, NULL, "cooling function");
 }
 
 #endif /* SWIFT_COOLING_CONST_LAMBDA_H */

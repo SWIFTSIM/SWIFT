@@ -37,6 +37,7 @@
 /* Local includes. */
 #include "chemistry.h"
 #include "cooling_io.h"
+#include "entropy_floor.h"
 #include "error.h"
 #include "hydro.h"
 #include "parser.h"
@@ -47,6 +48,18 @@
 /* need to rework (and check) code if changed */
 #define GRACKLE_NPART 1
 #define GRACKLE_RANK 3
+
+/**
+ * @brief Common operations performed on the cooling function at a
+ * given time-step or redshift.
+ *
+ * @param cosmo The current cosmological model.
+ * @param cooling The #cooling_function_data used in the run.
+ */
+INLINE static void cooling_update(const struct cosmology* cosmo,
+                                  struct cooling_function_data* cooling) {
+  // Add content if required.
+}
 
 /* prototypes */
 static gr_float cooling_time(
@@ -637,12 +650,16 @@ __attribute__((always_inline)) INLINE static gr_float cooling_time(
  * @param cooling The #cooling_function_data used in the run.
  * @param p Pointer to the particle data.
  * @param dt The time-step of this particle.
+ * @param hydro_properties the hydro_props struct, used for
+ * getting the minimal internal energy allowed in by SWIFT.
+ * Read from yml file into engine struct.
  */
 __attribute__((always_inline)) INLINE static void cooling_cool_part(
     const struct phys_const* restrict phys_const,
     const struct unit_system* restrict us,
     const struct cosmology* restrict cosmo,
     const struct hydro_props* hydro_props,
+    const struct entropy_floor_properties* floor_props,
     const struct cooling_function_data* restrict cooling,
     struct part* restrict p, struct xpart* restrict xp, double dt,
     double dt_therm) {
@@ -666,6 +683,18 @@ __attribute__((always_inline)) INLINE static void cooling_cool_part(
 
   /* Update the internal energy */
   hydro_set_physical_internal_energy_dt(p, cosmo, hydro_du_dt + du_dt);
+}
+
+static INLINE float cooling_get_temperature(
+    const struct phys_const* restrict phys_const,
+    const struct hydro_props* restrict hydro_props,
+    const struct unit_system* restrict us,
+    const struct cosmology* restrict cosmo,
+    const struct cooling_function_data* restrict cooling,
+    const struct part* restrict p, const struct xpart* restrict xp) {
+
+  error("This function needs implementing!!");
+  return 0.;
 }
 
 /**
@@ -796,6 +825,47 @@ __attribute__((always_inline)) INLINE static void cooling_init_backend(
   cooling_init_units(us, cooling);
 
   cooling_init_grackle(cooling);
+}
+
+/**
+ * @brief Clean-up the memory allocated for the cooling routines
+ *
+ * @param cooling the cooling data structure.
+ */
+static INLINE void cooling_clean(struct cooling_function_data* cooling) {
+
+  // MATTHIEU: To do: free stuff here
+}
+
+/**
+ * @brief Write a cooling struct to the given FILE as a stream of bytes.
+ *
+ * Nothing to do beyond writing the structure from the stream.
+ *
+ * @param cooling the struct
+ * @param stream the file stream
+ */
+static INLINE void cooling_struct_dump(
+    const struct cooling_function_data* cooling, FILE* stream) {
+  restart_write_blocks((void*)cooling, sizeof(struct cooling_function_data), 1,
+                       stream, "cooling", "cooling function");
+}
+
+/**
+ * @brief Restore a hydro_props struct from the given FILE as a stream of
+ * bytes.
+ *
+ * Nothing to do beyond reading the structure from the stream.
+ *
+ * @param cooling the struct
+ * @param stream the file stream
+ * @param cosmo #cosmology structure
+ */
+static INLINE void cooling_struct_restore(struct cooling_function_data* cooling,
+                                          FILE* stream,
+                                          const struct cosmology* cosmo) {
+  restart_read_blocks((void*)cooling, sizeof(struct cooling_function_data), 1,
+                      stream, NULL, "cooling function");
 }
 
 #endif /* SWIFT_COOLING_GRACKLE_H */

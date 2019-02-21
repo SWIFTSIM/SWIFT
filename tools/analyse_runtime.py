@@ -53,90 +53,55 @@ threshold = 0.008
 num_files = len(sys.argv) - 1
 
 labels = [
-    "Gpart assignment",
-    "Mesh comunication",
-    "Forward Fourier transform",
-    "Green function",
-    "Backwards Fourier transform",
-    "engine_recompute_displacement_constraint:",
-    "engine_exchange_top_multipoles:",
-    "updating particle counts",
-    "Making gravity tasks",
-    "Making hydro tasks",
-    "Splitting tasks",
-    "Counting and linking tasks",
-    "Setting super-pointers",
-    "Making extra hydroloop tasks",
-    "Linking gravity tasks",
-    "Creating send tasks",
-    "Exchanging cell tags",
-    "Creating recv tasks",
-    "Setting unlocks",
-    "Ranking the tasks",
-    "scheduler_reweight:",
-    "space_list_useful_top_level_cells:",
-    "space_rebuild:",
-    "engine_drift_all:",
-    "engine_unskip:",
-    "engine_collect_end_of_step:",
-    "engine_launch:",
-    "writing particle properties",
-    "engine_repartition:",
-    "engine_exchange_cells:",
-    "Dumping restart files",
-    "engine_print_stats:",
-    "engine_marktasks:",
-    "Reading initial conditions",
-    "engine_print_task_counts:",
-    "engine_drift_top_multipoles:",
-    "Communicating rebuild flag",
-    "engine_split:",
-    "space_init",
-    "engine_init",
-    "engine_repartition_trigger"
-]
-is_rebuild = [
-    1,
-    1,
-    1,
-    1,
-    1,
-    1,
-    1,
-    1,
-    1,
-    1,
-    1,
-    1,
-    1,
-    1,
-    1,
-    1,
-    1,
-    1,
-    1,
-    1,
-    1,
-    1,
-    1,
-    0,
-    0,
-    0,
-    0,
-    0,
-    0,
-    1,
-    0,
-    0,
-    1,
-    0,
-    0,
-    0,
-    0,
-    0,
-    0,
-    0,
-    0
+    ["Gpart assignment", 1],
+    ["Mesh comunication", 1],
+    ["Forward Fourier transform", 1],
+    ["Green function", 1],
+    ["Backwards Fourier transform", 1],
+    ["engine_recompute_displacement_constraint:", 1],
+    ["engine_exchange_top_multipoles:", 1],
+    ["updating particle counts", 1],
+    ["engine_estimate_nr_tasks:", 1],
+    ["Making gravity tasks", 1],
+    ["Making hydro tasks", 1],
+    ["Splitting tasks", 1],
+    ["Counting and linking tasks", 1],
+    ["Setting super-pointers", 1],
+    ["Making extra hydroloop tasks", 1],
+    ["Making extra starsloop tasks", 1],
+    ["Linking gravity tasks", 1],
+    ["Creating send tasks", 1],
+    ["Exchanging cell tags", 1],
+    ["Creating recv tasks", 1],
+    ["Counting number of foreign particles", 1],
+    ["Recursively linking foreign arrays", 1],
+    ["Setting unlocks", 1],
+    ["Ranking the tasks", 1],
+    ["scheduler_reweight:", 1],
+    ["space_list_useful_top_level_cells:", 1],
+    ["space_rebuild:", 1],
+    ["engine_drift_all:", 0],
+    ["engine_unskip:", 0],
+    ["engine_collect_end_of_step:", 0],
+    ["engine_launch:", 0],
+    ["writing particle properties", 0],
+    ["engine_repartition:", 0],
+    ["engine_exchange_cells:", 1],
+    ["Dumping restart files", 0],
+    ["engine_print_stats:", 0],
+    ["engine_marktasks:", 1],
+    ["Reading initial conditions", 0],
+    ["engine_print_task_counts:", 0],
+    ["engine_drift_top_multipoles:", 0],
+    ["Communicating rebuild flag", 0],
+    ["engine_split:", 0],
+    ["space_init", 0],
+    ["engine_init", 0],
+    ["engine_repartition_trigger:", 0],
+    ["VR Collecting top-level cell info", 0],
+    ["VR Collecting particle info", 0],
+    ["VR Invokation of velociraptor", 0],
+    ["VR Copying group information back", 0]
 ]
 times = np.zeros(len(labels))
 counts = np.zeros(len(labels))
@@ -176,20 +141,20 @@ for i in range(num_files):
         for i in range(len(labels)):
 
             # Extract the different blocks
-            if re.search("%s took" % labels[i], line):
+            if re.search("%s took" % labels[i][0], line):
                 counts[i] += 1.0
                 times[i] += float(
                     re.findall(r"[+-]?((\d+\.?\d*)|(\.\d+))", line)[-1][0]
                 )
 
-        # Find the last line with meaningful output (avoid crash report, batch system stuf....)
+        # Find the last line with meaningful output (avoid crash report, batch system stuff....)
         if re.findall(r"\[[0-9]{4}\][ ]\[*", line) or re.findall(
             r"^\[[0-9]*[.][0-9]+\][ ]", line
         ):
             lastline = line
 
     # Total run time
-    total_time += float(re.findall(r"[+-]?([0-9]*[.])?[0-9]+", lastline)[1])
+    total_time += float(re.findall(r"[+-]?(\[[0-9]\])?(\[[0-9]*[.][0-9]*\])+", lastline)[0][1][1:-1])
 
 # Conver to seconds
 times /= 1000.0
@@ -205,35 +170,33 @@ time_ratios = times / total_time
 
 # Better looking labels
 for i in range(len(labels)):
-    labels[i] = labels[i].replace("_", " ")
-    labels[i] = labels[i].replace(":", "")
-    labels[i] = labels[i].title()
+    labels[i][0] = labels[i][0].replace("_", " ")
+    labels[i][0] = labels[i][0].replace(":", "")
+    labels[i][0] = labels[i][0].title()
 
 times = np.array(times)
 time_ratios = np.array(time_ratios)
-is_rebuild = np.array(is_rebuild)
 
 # Sort in order of importance
 order = np.argsort(-times)
 times = times[order]
 counts = counts[order]
 time_ratios = time_ratios[order]
-is_rebuild = is_rebuild[order]
-labels = np.take(labels, order)
+labels = [labels[i] for i in order]
 
 # Keep only the important components
 important_times = [0.0]
 important_ratios = [0.0]
-important_labels = ["Others (all below %.1f\%%)" % (threshold * 100)]
 important_is_rebuild = [0]
+important_labels = ["Others (all below %.1f\%%)" % (threshold * 100)]
 need_print = True
 print("Time spent in the different code sections:")
 for i in range(len(labels)):
     if time_ratios[i] > threshold:
         important_times.append(times[i])
         important_ratios.append(time_ratios[i])
-        important_labels.append(labels[i])
-        important_is_rebuild.append(is_rebuild[i])
+        important_is_rebuild.append(labels[i][1])
+        important_labels.append(labels[i][0])
     else:
         if need_print:
             print("Elements in 'Other' category (<%.1f%%):" % (threshold * 100))
@@ -241,7 +204,7 @@ for i in range(len(labels)):
         important_times[0] += times[i]
         important_ratios[0] += time_ratios[i]
 
-    print(" - '%-40s' (%5d calls): %.4f%%" % (labels[i], counts[i], time_ratios[i] * 100))
+    print(" - '%-40s' (%5d calls, time: %.4fs): %.4f%%" % (labels[i][0], counts[i], times[i], time_ratios[i] * 100))
 
 # Anything unaccounted for?
 print(
@@ -252,8 +215,8 @@ print(
 important_ratios = np.array(important_ratios)
 important_is_rebuild = np.array(important_is_rebuild)
 
-figure()
 
+figure()
 
 def func(pct):
     return "$%4.2f\\%%$" % pct

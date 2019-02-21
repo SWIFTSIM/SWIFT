@@ -90,6 +90,34 @@ __attribute__((always_inline)) INLINE static float pow_dimension(float x) {
 }
 
 /**
+ * @brief Returns the argument to the power given by the inverse of the
+ * dimension
+ *
+ * Computes \f$x^{1/d}\f$.
+ */
+__attribute__((always_inline)) INLINE static float pow_inv_dimension(float x) {
+
+#if defined(HYDRO_DIMENSION_3D)
+
+  return cbrtf(x);
+
+#elif defined(HYDRO_DIMENSION_2D)
+
+  return sqrtf(x);
+
+#elif defined(HYDRO_DIMENSION_1D)
+
+  return x;
+
+#else
+
+  error("The dimension is not defined !");
+  return 0.f;
+
+#endif
+}
+
+/**
  * @brief Returns the argument to the power given by the dimension plus one
  *
  * Computes \f$x^{d+1}\f$.
@@ -288,7 +316,7 @@ __attribute__((always_inline)) INLINE static vector pow_dimension_vec(
 #else
 
   error("The dimension is not defined !");
-  return vec_set(0.f);
+  return vec_set1(0.f);
 
 #endif
 }
@@ -318,7 +346,7 @@ __attribute__((always_inline)) INLINE static vector pow_dimension_plus_one_vec(
 #else
 
   error("The dimension is not defined !");
-  return vec_set(0.f);
+  return vec_set1(0.f);
 
 #endif
 }

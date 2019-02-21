@@ -275,7 +275,8 @@ void dump_particle_fields(char *fileName, struct cell *main_cell,
             hydro_get_comoving_density(&main_cell->hydro.parts[pid]),
 #if defined(GIZMO_MFV_SPH) || defined(SHADOWFAX_SPH)
             0.f,
-#elif defined(HOPKINS_PU_SPH) || defined(HOPKINS_PU_SPH_MONAGHAN)
+#elif defined(HOPKINS_PU_SPH) || defined(HOPKINS_PU_SPH_MONAGHAN) || \
+    defined(ANARCHY_PU_SPH)
             main_cell->hydro.parts[pid].density.pressure_bar_dh,
 #else
             main_cell->hydro.parts[pid].density.rho_dh,
@@ -285,6 +286,12 @@ void dump_particle_fields(char *fileName, struct cell *main_cell,
 #if defined(GADGET2_SPH) || defined(DEFAULT_SPH) || defined(HOPKINS_PE_SPH) || \
     defined(HOPKINS_PU_SPH) || defined(HOPKINS_PU_SPH_MONAGHAN)
             main_cell->hydro.parts[pid].density.div_v,
+            main_cell->hydro.parts[pid].density.rot_v[0],
+            main_cell->hydro.parts[pid].density.rot_v[1],
+            main_cell->hydro.parts[pid].density.rot_v[2]
+#elif defined(ANARCHY_PU_SPH)
+            /* this is required because of the variable AV scheme */
+            main_cell->hydro.parts[pid].viscosity.div_v,
             main_cell->hydro.parts[pid].density.rot_v[0],
             main_cell->hydro.parts[pid].density.rot_v[1],
             main_cell->hydro.parts[pid].density.rot_v[2]
@@ -324,6 +331,12 @@ void dump_particle_fields(char *fileName, struct cell *main_cell,
               cj->hydro.parts[pjd].density.wcount_dh,
 #if defined(GADGET2_SPH) || defined(DEFAULT_SPH) || defined(HOPKINS_PE_SPH)
               cj->hydro.parts[pjd].density.div_v,
+              cj->hydro.parts[pjd].density.rot_v[0],
+              cj->hydro.parts[pjd].density.rot_v[1],
+              cj->hydro.parts[pjd].density.rot_v[2]
+#elif defined(ANARCHY_PU_SPH)
+              /* this is required because of the variable AV scheme */
+              cj->hydro.parts[pjd].viscosity.div_v,
               cj->hydro.parts[pjd].density.rot_v[0],
               cj->hydro.parts[pjd].density.rot_v[1],
               cj->hydro.parts[pjd].density.rot_v[2]
@@ -492,7 +505,7 @@ int main(int argc, char *argv[]) {
 
         runner_do_drift_part(&runner, cells[i * 9 + j * 3 + k], 0);
 
-        runner_do_sort(&runner, cells[i * 9 + j * 3 + k], 0x1FFF, 0, 0);
+        runner_do_hydro_sort(&runner, cells[i * 9 + j * 3 + k], 0x1FFF, 0, 0);
       }
     }
   }

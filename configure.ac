@@ -16,8 +16,24 @@
 # along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
 # Init the project.
-AC_INIT([SWIFT],[0.7.0],[https://gitlab.cosma.dur.ac.uk/swift/swiftsim])
+AC_INIT([SWIFT],[0.8.0],[https://gitlab.cosma.dur.ac.uk/swift/swiftsim])
 swift_config_flags="$*"
+
+#  We want to stop when given unrecognised options. No subdirs so this is safe.
+enable_option_checking=${enable_option_checking:-fatal}
+if test -n "$ac_unrecognized_opts"; then
+    case $enable_option_checking in
+        no)
+        ;;
+        fatal)
+            { $as_echo "$as_me: error: unrecognized options: $ac_unrecognized_opts" >&2
+              { (exit 1); exit 1; }; }
+        ;;
+        *)
+            $as_echo "$as_me: WARNING: unrecognized options: $ac_unrecognized_opts" >&2
+        ;;
+    esac
+fi
 
 AC_COPYRIGHT
 AC_CONFIG_SRCDIR([src/space.c])
@@ -88,9 +104,18 @@ if test "$enable_ipo" = "yes"; then
    elif test "$ax_cv_c_compiler_vendor" = "gnu"; then
       CFLAGS="$CFLAGS -flto"
       LDFLAGS="$LDFLAGS -flto"
+      AX_COMPARE_VERSION($ax_cv_c_compiler_version, [ge], [5.0.0],
+                          [
+      : ${AR="gcc-ar"}
+      : ${RANLIB="gcc-ranlib"}
+                          ], [:] )
       AC_MSG_RESULT([added GCC interprocedural optimization support])
    elif test "$ax_cv_c_compiler_vendor" = "clang"; then
-      CFLAGS="$CFLAGS -emit-llvm"
+      CFLAGS="$CFLAGS -flto -fuse-ld=gold"
+      LDFLAGS="$LDFLAGS -XCClinker -fuse-ld=gold"
+      : ${AR="llvm-ar"}
+      : ${LD="ld.gold"}
+      : ${RANLIB="llvm-ranlib"}
       AC_MSG_RESULT([added LLVM interprocedural optimization support])
    else
       AC_MSG_WARN([Compiler does not support interprocedural optimization])
@@ -199,7 +224,7 @@ fi
 # Check if task debugging is on.
 AC_ARG_ENABLE([task-debugging],
    [AS_HELP_STRING([--enable-task-debugging],
-     [Store task timing information and generate task dump files @<:@yes/no@:>@]
+     [Store extra information for generating task dump files @<:@yes/no@:>@]
    )],
    [enable_task_debugging="$enableval"],
    [enable_task_debugging="no"]
@@ -309,6 +334,9 @@ elif test "$no_gravity_below_id" != "no"; then
    AC_DEFINE_UNQUOTED([SWIFT_NO_GRAVITY_BELOW_ID], [$enableval] ,[Particles with smaller ID than this will have zero gravity forces])
 fi
 
+# Check whether we have any of the ARM v8.1 tick timers
+AX_ASM_ARM_PMCCNTR
+AX_ASM_ARM_CNTVCT
 
 # Define HAVE_POSIX_MEMALIGN if it works.
 AX_FUNC_POSIX_MEMALIGN
@@ -335,7 +363,7 @@ AC_ARG_ENABLE([vec],
    [enable_vec="yes"]
 )
 
-#  Disable hand written vectorisation. Slightly odd implementation as want 
+#  Disable hand written vectorisation. Slightly odd implementation as want
 # to describe as --disable-hand-vec, but macro is enable (there is no enable action).
 AC_ARG_ENABLE([hand-vec],
    [AS_HELP_STRING([--disable-hand-vec],
@@ -676,6 +704,71 @@ if test "x$with_fftw" != "xno"; then
       fi
    fi
 fi
+
+AC_ARG_WITH([arm-fftw],
+    [AS_HELP_STRING([--with-arm-fftw=PATH],
+      [root directory where arm fft library is installed @<:@yes/no@:>@]
+    )],
+    [with_arm_fftw="$withval"],
+    [with_arm_fftw=no]
+)
+if test "x$with_arm_fftw" != "xno"; then
+
+   # Was FFTW's location specifically given?
+   if test "x$with_arm_fftw" != "xyes" -a "x$with_arm_fftw" != "xtest" -a "x$with_arm_fftw" != "x"; then
+      FFTW_LIBS="-L$with_arm_fftw/lib -larmpl_lp64"
+      FFTW_INCS="-I$with_arm_fftw/include"
+   else
+      FFTW_LIBS="-larmpl_lp64"
+      FFTW_INCS=""
+   fi
+
+   #  FFTW is not specified, so just check if we have it.
+   if test "x$with_arm_fftw" = "xtest"; then
+      AC_CHECK_LIB([armpl_lp64],[fftw_malloc],[have_fftw="yes"],[have_fftw="no"],$FFTW_LIBS)
+      if test "x$have_arm_fftw" != "xno"; then
+      	 AC_DEFINE([HAVE_FFTW],1,[The FFTW library appears to be present.])
+	 have_fftw="yes - ARM"
+      fi
+   # FFTW was specified, check that it was a valid location.
+   else
+      AC_CHECK_LIB([armpl_lp64],[fftw_malloc],
+         AC_DEFINE([HAVE_FFTW],1,[The FFTW library appears to be present.]),
+         AC_MSG_ERROR(something is wrong with the FFTW library!), $FFTW_LIBS)
+      have_fftw="yes - ARM"
+   fi
+
+   # FFTW was requested not to be used.
+   if test "$have_arm_fftw" = "no"; then
+      FFTW_LIBS=""
+      FFTW_INCS=""
+   fi
+
+   # Now, check whether we have the threaded version of FFTW
+   if test "x$have_arm_fftw" = "xyes"; then
+
+      # Was FFTW's location specifically given?
+      if test "x$with_arm_fftw" != "xyes" -a "x$with_arm_fftw" != "xtest" -a "x$with_arm_fftw" != "x"; then
+        FFTW_THREADED_LIBS="-L$with_arm_fftw/lib -larmpl_lp64_threads -larmpl_lp64"
+        FFTW_THREADED_INCS="-I$with_arm_fftw/include"
+      else
+        FFTW_THREADED_LIBS="-larmpl_lp64_threads -larmpl_lp64"
+        FFTW_THREADED_INCS=""
+      fi
+
+      # Verify that the library is threaded
+      AC_CHECK_LIB([armpl_lp64],[fftw_init_threads],[have_threaded_fftw="yes"],
+                  [have_threaded_fftw="no"], $FFTW_THREADED_LIBS)
+
+      # If found, update things
+      if test "x$have_threaded_fftw" = "xyes"; then
+         AC_DEFINE([HAVE_THREADED_FFTW],1,[The threaded FFTW library appears to be present.])
+         FFTW_LIBS=$FFTW_THREADED_LIBS
+         FFTW_INCS=$FFTW_THREADED_INCS
+         have_fftw="yes - ARM - threaded"
+      fi
+   fi
+fi
 AC_SUBST([FFTW_LIBS])
 AC_SUBST([FFTW_INCS])
 AM_CONDITIONAL([HAVEFFTW],[test -n "$FFTW_LIBS"])
@@ -875,7 +968,8 @@ if test "$with_hdf5" = "yes"; then
         AC_MSG_CHECKING([for HDF5 parallel support])
 
 	# Check if the library is capable, the header should define H5_HAVE_PARALLEL.
-
+        old_CPPFLAGS="$CPPFLAGS"
+        CPPFLAGS="$CPPFLAGS $HDF5_CPPFLAGS"
         AC_COMPILE_IFELSE([AC_LANG_SOURCE([[
         #include "hdf5.h"
         #ifndef H5_HAVE_PARALLEL
@@ -887,6 +981,7 @@ if test "$with_hdf5" = "yes"; then
             AC_DEFINE([HAVE_PARALLEL_HDF5],1,[HDF5 library supports parallel access])
         fi
         AC_MSG_RESULT($parallel)
+        CPPFLAGS="$old_CPPFLAGS"
     fi
 fi
 AM_CONDITIONAL([HAVEPARALLELHDF5],[test "$have_parallel_hdf5" = "yes"])
@@ -941,7 +1036,7 @@ if test "x$with_velociraptor" != "xno"; then
    AC_PROG_FC
    AC_FC_LIBRARY_LDFLAGS
    if test "x$with_velociraptor" != "xyes" -a "x$with_velociraptor" != "x"; then
-      VELOCIRAPTOR_LIBS="-L$with_velociraptor -lstf -lstdc++ -lhdf5_cpp"
+      VELOCIRAPTOR_LIBS="-L$with_velociraptor -lvelociraptor -lmpi -lstdc++ -lhdf5_cpp"
       CFLAGS="$CFLAGS -fopenmp"
    else
       VELOCIRAPTOR_LIBS=""
@@ -950,7 +1045,7 @@ if test "x$with_velociraptor" != "xno"; then
    have_velociraptor="yes"
 
    AC_CHECK_LIB(
-      [stf],
+      [velociraptor],
       [InitVelociraptor],
       [AC_DEFINE([HAVE_VELOCIRAPTOR],1,[The VELOCIraptor library appears to be present.])],
       [AC_MSG_ERROR(Cannot find VELOCIraptor library at $with_velociraptor or incompatible HDF5 library loaded.)],
@@ -986,20 +1081,67 @@ AC_CHECK_FUNC(pthread_setaffinity_np, AC_DEFINE([HAVE_SETAFFINITY],[1],
 AM_CONDITIONAL(HAVESETAFFINITY,
     [test "$ac_cv_func_pthread_setaffinity_np" = "yes"])
 
+# If available check for NUMA as well. There is a problem with the headers of
+# this library, mainly that they do not pass the strict prototypes check when
+# installed outside of the system directories. So we actually do this check
+# in two phases. The basic ones first (before strict-prototypes is added to CFLAGS).
 have_numa="no"
-if test "$ac_cv_func_pthread_setaffinity_np" = "yes"; then
-  # Check for libnuma.
-  AC_CHECK_HEADER([numa.h])
-  if test "$ac_cv_header_numa_h" = "yes"; then
-    AC_CHECK_LIB([numa], [numa_available])
-    have_numa="yes"
-  fi
-fi
+AC_ARG_WITH([numa],
+    [AS_HELP_STRING([--with-numa=PATH],
+       [Directory where the NUMA library exists @<:@yes/no@:>@]
+    )],
+    [with_numa="$withval"],
+    [with_numa="yes"]
+)
+if test "$ac_cv_func_pthread_setaffinity_np" = "yes" -a "x$with_numa" != "xno"; then
 
+    if test "x$with_numa" != "xyes" -a "x$with_numa" != "x"; then
+        NUMA_LIBS="-L$with_numa/lib -lnuma"
+        NUMA_INCS="-I$with_numa/include"
+    else
+        NUMA_LIBS="-lnuma"
+        NUMA_INCS=""
+    fi
+
+    #  Test for header file.
+    old_CPPFLAGS="$CPPFLAGS"
+    CPPFLAGS="$CPPFLAGS $NUMA_INCS"
+    AC_CHECK_HEADER([numa.h])
+    CPPFLAGS="$old_CPPFLAGS"
+    if test "$ac_cv_header_numa_h" = "yes"; then
+
+        #  If NUMA location is specified check if we have it.
+        if test "x$with_numa" != "xyes" -a "x$with_numa" != "x"; then
+            AC_CHECK_LIB([numa],[numa_available],
+                AC_DEFINE([HAVE_LIBNUMA],1,[The NUMA library appears to be present.]),
+                AC_MSG_ERROR(something is wrong with the NUMA library!), $NUMA_LIBS)
+            have_numa="yes"
+        else
+            AC_CHECK_LIB([numa],[numa_available],[have_numa="yes"],[have_numa="no"],$NUMA_LIBS)
+            if test "x$have_numa" != "xno"; then
+                AC_DEFINE([HAVE_LIBNUMA],1,[The NUMA library appears to be present.])
+            fi
+        fi
+    fi
+
+    #  We can live without this.
+    if test "$have_numa" = "no"; then
+       NUMA_LIBS=""
+    fi
+fi
+AC_SUBST([NUMA_LIBS])
 
 # Check for Intel and PowerPC intrinsics header optionally used by vector.h.
-AC_CHECK_HEADERS([immintrin.h])
-AC_CHECK_HEADERS([altivec.h])
+AC_CHECK_HEADERS([immintrin.h], [], [],
+[#ifdef HAVE_IMMINTRIN_H
+# include <immintrin.h>
+#endif
+])
+AC_CHECK_HEADERS([altivec.h], [], [],
+[#ifdef HAVE_ALTIVEC_H
+# include <altivec.h>
+#endif
+])
 
 # Check for timing functions needed by cycle.h.
 AC_HEADER_TIME
@@ -1020,17 +1162,7 @@ AC_LINK_IFELSE([AC_LANG_PROGRAM(
 [AC_DEFINE(HAVE__RTC,1,[Define if you have the UNICOS _rtc() intrinsic.])],[rtc_ok=no])
 AC_MSG_RESULT($rtc_ok)
 
-# Special timers for the ARM v7 and ARM v8 platforms (taken from FFTW-3 to match their cycle.h)
-AC_ARG_ENABLE(armv8-pmccntr-el0, [AC_HELP_STRING([--enable-armv8-pmccntr-el0],[enable the cycle counter on ARMv8 via the PMCCNTR_EL0 register])], have_armv8pmccntrel0=$enableval)
-if test "$have_armv8pmccntrel0"x = "yes"x; then
-	AC_DEFINE(HAVE_ARMV8_PMCCNTR_EL0,1,[Define if you have enabled the PMCCNTR_EL0 cycle counter on ARMv8])
-fi
-
-AC_ARG_ENABLE(armv8-cntvct-el0, [AC_HELP_STRING([--enable-armv8-cntvct-el0],[enable the cycle counter on ARMv8 via the CNTVCT_EL0 register])], have_armv8cntvctel0=$enableval)
-if test "$have_armv8cntvctel0"x = "yes"x; then
-	AC_DEFINE(HAVE_ARMV8_CNTVCT_EL0,1,[Define if you have enabled the CNTVCT_EL0 cycle counter on ARMv8])
-fi
-
+# Special timers for the ARM v7 platforms (taken from FFTW-3 to match their cycle.h)
 AC_ARG_ENABLE(armv7a-cntvct, [AC_HELP_STRING([--enable-armv7a-cntvct],[enable the cycle counter on Armv7a via the CNTVCT register])], have_armv7acntvct=$enableval)
 if test "$have_armv7acntvct"x = "yes"x; then
 	AC_DEFINE(HAVE_ARMV7A_CNTVCT,1,[Define if you have enabled the CNTVCT cycle counter on ARMv7a])
@@ -1082,6 +1214,35 @@ if test "$enable_warn" != "no"; then
                           [CFLAGS="$CFLAGS"],[$CFLAGS],[AC_LANG_SOURCE([int main(void){return 0;}])])
 fi
 
+# Second part of the NUMA library checks. We now decide if we need to use
+# -isystem to get around the strict-prototypes problem. Assumes isystem
+# is available when strict-prototypes is.
+if test "$have_numa" != "no"; then
+    if test "x$with_numa" != "xyes" -a "x$with_numa" != "x"; then
+        case "$CFLAGS" in
+            *strict-prototypes*)
+                NUMA_INCS="-isystem$with_numa/include"
+                # This may still fail if CPATH is used, so we check if the
+                # headers are usable.
+                AS_UNSET(ac_cv_header_numa_h)
+                old_CPPFLAGS="$CPPFLAGS"
+                CPPFLAGS="$CPPFLAGS $NUMA_INCS"
+                numa_failed="no"
+                AC_CHECK_HEADER([numa.h],[numa_failed="no"],
+                                [numa_failed="yes"])
+                if test "$numa_failed" = "yes"; then
+                    AC_MSG_ERROR([Failed to compile the numa.h header file: you may need to set --enable-compiler-warnings to yes or no])
+                fi
+                CPPFLAGS="$old_CPPFLAGS"
+            ;;
+            *)
+                NUMA_INCS="-I$with_numa/include"
+            ;;
+        esac
+   fi
+fi
+AC_SUBST([NUMA_INCS])
+
 # Various package configuration options.
 
 # Master subgrid options
@@ -1099,7 +1260,11 @@ AC_ARG_WITH([subgrid],
 # Default values
 with_subgrid_cooling=none
 with_subgrid_chemistry=none
-with_subgrid_hydro=none
+with_subgrid_tracers=none
+with_subgrid_entropy_floor=none
+with_subgrid_stars=none
+with_subgrid_star_formation=none
+with_subgrid_feedback=none
 
 case "$with_subgrid" in
    yes)
@@ -1110,15 +1275,19 @@ case "$with_subgrid" in
    GEAR)
 	with_subgrid_cooling=grackle
 	with_subgrid_chemistry=GEAR
-	with_subgrid_hydro=gadget2
+	with_subgrid_tracers=none
+	with_subgrid_entropy_floor=none
 	with_subgrid_stars=GEAR
+	with_subgrid_star_formation=none
 	with_subgrid_feedback=thermal
    ;;
    EAGLE)
 	with_subgrid_cooling=EAGLE
 	with_subgrid_chemistry=EAGLE
-	with_subgrid_hydro=gadget2
-	with_subgrid_stars=none
+	with_subgrid_tracers=EAGLE
+	with_subgrid_entropy_floor=EAGLE
+	with_subgrid_stars=EAGLE
+	with_subgrid_star_formation=EAGLE
 	with_subgrid_feedback=none
    ;;
    *)
@@ -1150,19 +1319,11 @@ esac
 # Hydro scheme.
 AC_ARG_WITH([hydro],
    [AS_HELP_STRING([--with-hydro=<scheme>],
-      [Hydro dynamics to use @<:@gadget2, minimal, pressure-entropy, pressure-energy, pressure-energy-monaghan, default, gizmo-mfv, gizmo-mfm, shadowfax, planetary, debug default: gadget2@:>@]
+      [Hydro dynamics to use @<:@gadget2, minimal, pressure-entropy, pressure-energy, pressure-energy-monaghan, default, gizmo-mfv, gizmo-mfm, shadowfax, planetary, anarchy-pu debug default: gadget2@:>@]
    )],
    [with_hydro="$withval"],
    [with_hydro="gadget2"]
 )
-
-if test "$with_subgrid" != "none"; then
-   if test "$with_hydro" != "gadget2"; then
-      AC_MSG_ERROR([Cannot provide with-subgrid and with-hydro together])
-   else
-      with_hydro="$with_subgrid_hydro"
-   fi
-fi
 
 case "$with_hydro" in
    gadget2)
@@ -1194,6 +1355,9 @@ case "$with_hydro" in
    ;;
    planetary)
       AC_DEFINE([PLANETARY_SPH], [1], [Planetary SPH])
+   ;;
+   anarchy-pu)
+      AC_DEFINE([ANARCHY_PU_SPH], [1], [ANARCHY (PU) SPH])
    ;;
 
 
@@ -1460,10 +1624,39 @@ case "$with_chemistry" in
    ;;
 esac
 
+#  Particle tracers
+AC_ARG_WITH([tracers],
+   [AS_HELP_STRING([--with-tracers=<function>],
+      [chemistry function @<:@none, EAGLE default: none@:>@]
+   )],
+   [with_tracers="$withval"],
+   [with_tracers="none"]
+)
+
+if test "$with_subgrid" != "none"; then
+   if test "$with_tracers" != "none"; then
+      AC_MSG_ERROR([Cannot provide with-subgrid and with-tracers together])
+   else
+      with_tracers="$with_subgrid_tracers"
+   fi
+fi
+
+case "$with_tracers" in
+   none)
+      AC_DEFINE([TRACERS_NONE], [1], [No tracers function])
+   ;;
+   EAGLE)
+      AC_DEFINE([TRACERS_EAGLE], [1], [Tracers taken from the EAGLE model])
+   ;;
+   *)
+      AC_MSG_ERROR([Unknown tracers choice: $with_tracers])
+   ;;
+esac
+
 # Stellar model.
 AC_ARG_WITH([stars],
    [AS_HELP_STRING([--with-stars=<model>],
-      [Stellar model to use @<:@none, GEAR, debug default: none@:>@]
+      [Stellar model to use @<:@none, EAGLE, GEAR, debug default: none@:>@]
    )],
    [with_stars="$withval"],
    [with_stars="none"]
@@ -1478,10 +1671,14 @@ if test "$with_subgrid" != "none"; then
 fi
 
 case "$with_stars" in
+   EAGLE)
+      AC_DEFINE([STARS_EAGLE], [1], [EAGLE stellar model])
+   ;;
    GEAR)
       AC_DEFINE([STARS_GEAR], [1], [GEAR stellar model])
    ;;
    none)
+      AC_DEFINE([STARS_NONE], [1], [None stellar model])
    ;;
 
    *)
@@ -1559,6 +1756,62 @@ case "$with_potential" in
    ;;
 esac
 
+#  Entropy floor
+AC_ARG_WITH([entropy-floor], 
+    [AS_HELP_STRING([--with-entropy-floor=<floor>],
+       [entropy floor @<:@none, EAGLE, default: none@:>@] 
+    )],
+    [with_entropy_floor="$withval"],
+    [with_entropy_floor="none"]
+)
+if test "$with_subgrid" != "none"; then
+   if test "$with_entropy_floor" != "none"; then
+      AC_MSG_ERROR([Cannot provide with-subgrid and with-entropy-floor together])
+   else
+      with_entropy_floor="$with_subgrid_entropy_floor"
+   fi
+fi
+
+case "$with_entropy_floor" in
+   none)
+      AC_DEFINE([ENTROPY_FLOOR_NONE], [1], [No entropy floor])
+   ;;
+   EAGLE)
+      AC_DEFINE([ENTROPY_FLOOR_EAGLE], [1], [EAGLE entropy floor])
+   ;;
+   *)
+      AC_MSG_ERROR([Unknown entropy floor model])
+   ;;
+esac 
+
+#  Star formation
+AC_ARG_WITH([star-formation], 
+    [AS_HELP_STRING([--with-star-formation=<sfm>],
+       [star formation @<:@none, EAGLE, default: none@:>@] 
+    )],
+    [with_star_formation="$withval"],
+    [with_star_formation="none"]
+)
+if test "$with_subgrid" != "none"; then
+   if test "$with_star_formation" != "none"; then
+      AC_MSG_ERROR([Cannot provide with-subgrid and with-star-formation together])
+   else
+      with_star_formation="$with_subgrid_star_formation"
+   fi
+fi
+
+case "$with_star_formation" in
+   none)
+      AC_DEFINE([STAR_FORMATION_NONE], [1], [No star formation])
+   ;;
+   EAGLE)
+      AC_DEFINE([STAR_FORMATION_EAGLE], [1], [EAGLE star formation model (Schaye and Dalla Vecchia (2008))])
+   ;;
+   *)
+      AC_MSG_ERROR([Unknown star formation model])
+   ;;
+esac 
+
 #  Gravity multipole order
 AC_ARG_WITH([multipole-order],
    [AS_HELP_STRING([--with-multipole-order=<order>],
@@ -1577,9 +1830,12 @@ AC_SUBST([GIT_CMD])
 DX_INIT_DOXYGEN(libswift,doc/Doxyfile,doc/)
 AM_CONDITIONAL([HAVE_DOXYGEN], [test "$ac_cv_path_ac_pt_DX_DOXYGEN" != ""])
 
+# Check if using EAGLE cooling
+AM_CONDITIONAL([HAVEEAGLECOOLING], [test $with_cooling = "EAGLE"])
+
 # Handle .in files.
-AC_CONFIG_FILES([Makefile src/Makefile examples/Makefile doc/Makefile doc/Doxyfile tests/Makefile])
-AC_CONFIG_FILES([tools/Makefile])
+AC_CONFIG_FILES([Makefile src/Makefile examples/Makefile examples/Cooling/CoolingRates/Makefile doc/Makefile doc/Doxyfile tests/Makefile])
+AC_CONFIG_FILES([argparse/Makefile tools/Makefile])
 AC_CONFIG_FILES([tests/testReading.sh], [chmod +x tests/testReading.sh])
 AC_CONFIG_FILES([tests/testActivePair.sh], [chmod +x tests/testActivePair.sh])
 AC_CONFIG_FILES([tests/test27cells.sh], [chmod +x tests/test27cells.sh])
@@ -1647,10 +1903,13 @@ AC_MSG_RESULT([
    Make gravity glass  : $gravity_glass_making
    External potential  : $with_potential
 
-   Cooling function   : $with_cooling
-   Chemistry          : $with_chemistry
-   Stellar model      : $with_stars
-   Feedback model     : $with_feedback
+   Entropy floor        : $with_entropy_floor
+   Cooling function     : $with_cooling
+   Chemistry            : $with_chemistry
+   Tracers              : $with_tracers
+   Stellar model        : $with_stars
+   Star formation model : $with_star_formation
+   Feedback model       : $with_feedback
 
    Individual timers           : $enable_timers
    Task debugging              : $enable_task_debugging

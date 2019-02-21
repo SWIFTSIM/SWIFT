@@ -32,7 +32,8 @@
 /**
  * @brief Converts physical constants to the internal unit system
  *
- * Some constants can be overwritten by the YAML file values.
+ * Some constants can be overwritten by the YAML file values. If the
+ * param argument is NULL, no overwriting is done.
  *
  * @param us The current internal system of units.
  * @param params The parsed parameter file.
@@ -48,8 +49,10 @@ void phys_const_init(const struct unit_system *us, struct swift_params *params,
       const_newton_G_cgs / units_general_cgs_conversion_factor(us, dimension_G);
 
   /* Overwrite G if present in the file */
-  internal_const->const_newton_G = parser_get_opt_param_double(
-      params, "PhysicalConstants:G", internal_const->const_newton_G);
+  if (params != NULL) {
+    internal_const->const_newton_G = parser_get_opt_param_double(
+        params, "PhysicalConstants:G", internal_const->const_newton_G);
+  }
 
   const float dimension_c[5] = {0, 1, -1, 0, 0}; /* [cm s^-1] */
   internal_const->const_speed_light_c =
@@ -131,6 +134,11 @@ void phys_const_init(const struct unit_system *us, struct swift_params *params,
   internal_const->const_primordial_He_fraction =
       const_primordial_He_fraction_cgs /
       units_general_cgs_conversion_factor(us, dimension_Yp);
+
+  const float dimension_reduced_hubble[5] = {0, 0, -1, 0, 0}; /* [s^-1] */
+  internal_const->const_reduced_hubble =
+      const_reduced_hubble_cgs /
+      units_general_cgs_conversion_factor(us, dimension_reduced_hubble);
 }
 
 /**
@@ -153,6 +161,7 @@ void phys_const_print(const struct phys_const *internal_const) {
           internal_const->const_astronomical_unit);
   message("%25s = %e", "Parsec", internal_const->const_parsec);
   message("%25s = %e", "Solar mass", internal_const->const_solar_mass);
+  message("%25s = %e", "km/s/Mpc", internal_const->const_reduced_hubble);
 }
 
 /**

@@ -111,9 +111,10 @@ struct part *make_particles(size_t count, double *offset, double spacing,
  */
 void prepare_force(struct part *parts, size_t count) {
 
-#if !defined(GIZMO_MFV_SPH) && !defined(SHADOWFAX_SPH) && \
-    !defined(MINIMAL_SPH) && !defined(PLANETARY_SPH) &&   \
-    !defined(HOPKINS_PU_SPH) && !defined(HOPKINS_PU_SPH_MONAGHAN)
+#if !defined(GIZMO_MFV_SPH) && !defined(SHADOWFAX_SPH) &&            \
+    !defined(MINIMAL_SPH) && !defined(PLANETARY_SPH) &&              \
+    !defined(HOPKINS_PU_SPH) && !defined(HOPKINS_PU_SPH_MONAGHAN) && \
+    !defined(ANARCHY_PU_SPH)
   struct part *p;
   for (size_t i = 0; i < count; ++i) {
     p = &parts[i];
@@ -154,7 +155,7 @@ void dump_indv_particle_fields(char *fileName, struct part *p) {
 #elif defined(DEFAULT_SPH)
           p->force.v_sig, 0.f, p->force.u_dt
 #elif defined(MINIMAL_SPH) || defined(HOPKINS_PU_SPH) || \
-    defined(HOPKINS_PU_SPH_MONAGHAN)
+    defined(HOPKINS_PU_SPH_MONAGHAN) || defined(ANARCHY_PU_SPH)
           p->force.v_sig, 0.f, p->u_dt
 #else
           0.f, 0.f, 0.f
@@ -197,10 +198,10 @@ int check_results(struct part serial_test_part, struct part *serial_parts,
                   struct part vec_test_part, struct part *vec_parts,
                   int count) {
   int result = 0;
-  result += compare_particles(serial_test_part, vec_test_part, ACC_THRESHOLD);
+  result += compare_particles(&serial_test_part, &vec_test_part, ACC_THRESHOLD);
 
   for (int i = 0; i < count; i++)
-    result += compare_particles(serial_parts[i], vec_parts[i], ACC_THRESHOLD);
+    result += compare_particles(&serial_parts[i], &vec_parts[i], ACC_THRESHOLD);
 
   return result;
 }
@@ -558,7 +559,8 @@ void test_force_interactions(struct part test_part, struct part *parts,
       vizq[i] = pi_vec.v[2];
       rhoiq[i] = pi_vec.rho;
       grad_hiq[i] = pi_vec.force.f;
-#if !defined(HOPKINS_PU_SPH) && !defined(HOPKINS_PU_SPH_MONAGHAN)
+#if !defined(HOPKINS_PU_SPH) && !defined(HOPKINS_PU_SPH_MONAGHAN) && \
+    !defined(ANARCHY_PU_SPH)
       pOrhoi2q[i] = pi_vec.force.P_over_rho2;
 #endif
       balsaraiq[i] = pi_vec.force.balsara;
@@ -571,7 +573,8 @@ void test_force_interactions(struct part test_part, struct part *parts,
       vjzq[i] = pj_vec[i].v[2];
       rhojq[i] = pj_vec[i].rho;
       grad_hjq[i] = pj_vec[i].force.f;
-#if !defined(HOPKINS_PU_SPH) && !defined(HOPKINS_PU_SPH_MONAGHAN)
+#if !defined(HOPKINS_PU_SPH) && !defined(HOPKINS_PU_SPH_MONAGHAN) && \
+    !defined(ANARCHY_PU_SPH)
       pOrhoj2q[i] = pj_vec[i].force.P_over_rho2;
 #endif
       balsarajq[i] = pj_vec[i].force.balsara;
@@ -653,7 +656,8 @@ void test_force_interactions(struct part test_part, struct part *parts,
     VEC_HADD(a_hydro_zSum, piq[0]->a_hydro[2]);
     VEC_HADD(h_dtSum, piq[0]->force.h_dt);
     VEC_HMAX(v_sigSum, piq[0]->force.v_sig);
-#if !defined(HOPKINS_PU_SPH) && !defined(HOPKINS_PU_SPH_MONAGHAN)
+#if !defined(HOPKINS_PU_SPH) && !defined(HOPKINS_PU_SPH_MONAGHAN) && \
+    !defined(ANARCHY_PU_SPH)
     VEC_HADD(entropy_dtSum, piq[0]->entropy_dt);
 #endif
 

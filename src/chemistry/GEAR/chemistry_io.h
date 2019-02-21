@@ -87,6 +87,32 @@ INLINE static int chemistry_write_particles(const struct part* parts,
   return 3;
 }
 
+/**
+ * @brief Specifies which sparticle fields to write to a dataset
+ *
+ * @param sparts The sparticle array.
+ * @param list The list of i/o properties to write.
+ *
+ * @return Returns the number of fields to write.
+ */
+INLINE static int chemistry_write_sparticles(const struct spart* sparts,
+                                             struct io_props* list) {
+
+  /* List what we want to write */
+  list[0] = io_make_output_field(
+      "SmoothedElementAbundance", FLOAT, chemistry_element_count,
+      UNIT_CONV_NO_UNITS, sparts, chemistry_data.smoothed_metal_mass_fraction);
+
+  list[1] = io_make_output_field("Z", FLOAT, 1, UNIT_CONV_NO_UNITS, sparts,
+                                 chemistry_data.Z);
+
+  list[2] = io_make_output_field("ElementAbundance", FLOAT,
+                                 chemistry_element_count, UNIT_CONV_NO_UNITS,
+                                 sparts, chemistry_data.metal_mass_fraction);
+
+  return 3;
+}
+
 #ifdef HAVE_HDF5
 
 /**

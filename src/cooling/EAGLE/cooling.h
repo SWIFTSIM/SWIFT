@@ -21,116 +21,65 @@
 
 /**
  * @file src/cooling/EAGLE/cooling.h
- * @brief EAGLE cooling function
+ * @brief EAGLE cooling function declarations
  */
-
-/* Config parameters. */
-#include "../config.h"
-
-/* Some standard headers. */
-#include <float.h>
-#include <math.h>
 
 /* Local includes. */
-#include "error.h"
-#include "hydro.h"
-#include "parser.h"
-#include "part.h"
-#include "physical_constants.h"
-#include "units.h"
+#include "cooling_struct.h"
 
-/**
- * @brief Apply the cooling function to a particle.
- *
- * @param phys_const The physical constants in internal units.
- * @param us The internal system of units.
- * @param cosmo The current cosmological model.
- * @param cooling The #cooling_function_data used in the run.
- * @param p Pointer to the particle data.
- * @param xp Pointer to the extended particle data.
- * @param dt The time-step of this particle.
- */
-__attribute__((always_inline)) INLINE static void cooling_cool_part(
-    const struct phys_const* restrict phys_const,
-    const struct unit_system* restrict us,
-    const struct cosmology* restrict cosmo,
-    const struct hydro_props* hydro_props,
-    const struct cooling_function_data* restrict cooling,
-    struct part* restrict p, struct xpart* restrict xp, const float dt,
-    const float dt_therm) {}
+struct part;
+struct xpart;
+struct cosmology;
+struct hydro_props;
+struct entropy_floor_properties;
 
-/**
- * @brief Computes the cooling time-step.
- *
- * @param cooling The #cooling_function_data used in the run.
- * @param phys_const The physical constants in internal units.
- * @param us The internal system of units.
- * @param cosmo The current cosmological model.
- * @param p Pointer to the particle data.
- */
-__attribute__((always_inline)) INLINE static float cooling_timestep(
-    const struct cooling_function_data* restrict cooling,
-    const struct phys_const* restrict phys_const,
-    const struct cosmology* restrict cosmo,
-    const struct unit_system* restrict us,
-    const struct hydro_props* hydro_props, const struct part* restrict p,
-    const struct xpart* restrict xp) {
+void cooling_update(const struct cosmology *cosmo,
+                    struct cooling_function_data *cooling);
 
-  return FLT_MAX;
-}
+void cooling_cool_part(const struct phys_const *phys_const,
+                       const struct unit_system *us,
+                       const struct cosmology *cosmo,
+                       const struct hydro_props *hydro_properties,
+                       const struct entropy_floor_properties *floor_props,
+                       const struct cooling_function_data *cooling,
+                       struct part *restrict p, struct xpart *restrict xp,
+                       const float dt, const float dt_therm);
 
-/**
- * @brief Sets the cooling properties of the (x-)particles to a valid start
- * state.
- *
- * @param phys_const The physical constants in internal units.
- * @param us The internal system of units.
- * @param cosmo The current cosmological model.
- * @param cooling The properties of the cooling function.
- * @param p Pointer to the particle data.
- * @param xp Pointer to the extended particle data.
- */
-__attribute__((always_inline)) INLINE static void cooling_first_init_part(
-    const struct phys_const* restrict phys_const,
-    const struct unit_system* restrict us,
-    const struct cosmology* restrict cosmo,
-    const struct cooling_function_data* restrict cooling,
-    const struct part* restrict p, struct xpart* restrict xp) {}
+float cooling_timestep(const struct cooling_function_data *restrict cooling,
+                       const struct phys_const *restrict phys_const,
+                       const struct cosmology *restrict cosmo,
+                       const struct unit_system *restrict us,
+                       const struct hydro_props *hydro_props,
+                       const struct part *restrict p,
+                       const struct xpart *restrict xp);
 
-/**
- * @brief Returns the total radiated energy by this particle.
- *
- * @param xp The extended particle data
- */
-__attribute__((always_inline)) INLINE static float cooling_get_radiated_energy(
-    const struct xpart* restrict xp) {
+void cooling_first_init_part(
+    const struct phys_const *restrict phys_const,
+    const struct unit_system *restrict us,
+    const struct cosmology *restrict cosmo,
+    const struct cooling_function_data *restrict cooling,
+    const struct part *restrict p, struct xpart *restrict xp);
 
-  return 0.f;
-}
+float cooling_get_temperature(
+    const struct phys_const *restrict phys_const,
+    const struct hydro_props *restrict hydro_props,
+    const struct unit_system *restrict us,
+    const struct cosmology *restrict cosmo,
+    const struct cooling_function_data *restrict cooling,
+    const struct part *restrict p, const struct xpart *restrict xp);
 
-/**
- * @brief Initialises the cooling properties.
- *
- * @param parameter_file The parsed parameter file.
- * @param us The current internal system of units.
- * @param phys_const The physical constants in internal units.
- * @param cooling The cooling properties to initialize
- */
-static INLINE void cooling_init_backend(struct swift_params* parameter_file,
-                                        const struct unit_system* us,
-                                        const struct phys_const* phys_const,
-                                        struct cooling_function_data* cooling) {
-}
+float cooling_get_radiated_energy(const struct xpart *restrict xp);
 
-/**
- * @brief Prints the properties of the cooling model to stdout.
- *
- * @param cooling The properties of the cooling function.
- */
-static INLINE void cooling_print_backend(
-    const struct cooling_function_data* cooling) {
+void cooling_init_backend(struct swift_params *parameter_file,
+                          const struct unit_system *us,
+                          const struct phys_const *phys_const,
+                          struct cooling_function_data *cooling);
 
-  message("Cooling function is 'EAGLE'.");
-}
+void cooling_restore_tables(struct cooling_function_data *cooling,
+                            const struct cosmology *cosmo);
+
+void cooling_print_backend(const struct cooling_function_data *cooling);
+
+void cooling_clean(struct cooling_function_data *data);
 
 #endif /* SWIFT_COOLING_EAGLE_H */

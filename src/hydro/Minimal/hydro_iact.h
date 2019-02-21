@@ -54,9 +54,9 @@ __attribute__((always_inline)) INLINE static void runner_iact_density(
   float wi, wj, wi_dx, wj_dx;
 
 #ifdef SWIFT_DEBUG_CHECKS
-  if (pi->time_bin == time_bin_inhibited)
+  if (pi->time_bin >= time_bin_inhibited)
     error("Inhibited pi in interaction function!");
-  if (pj->time_bin == time_bin_inhibited)
+  if (pj->time_bin >= time_bin_inhibited)
     error("Inhibited pj in interaction function!");
 #endif
 
@@ -135,9 +135,9 @@ __attribute__((always_inline)) INLINE static void runner_iact_nonsym_density(
   float wi, wi_dx;
 
 #ifdef SWIFT_DEBUG_CHECKS
-  if (pi->time_bin == time_bin_inhibited)
+  if (pi->time_bin >= time_bin_inhibited)
     error("Inhibited pi in interaction function!");
-  if (pj->time_bin == time_bin_inhibited)
+  if (pj->time_bin >= time_bin_inhibited)
     error("Inhibited pj in interaction function!");
 #endif
 
@@ -196,9 +196,9 @@ __attribute__((always_inline)) INLINE static void runner_iact_force(
     struct part *restrict pj, float a, float H) {
 
 #ifdef SWIFT_DEBUG_CHECKS
-  if (pi->time_bin == time_bin_inhibited)
+  if (pi->time_bin >= time_bin_inhibited)
     error("Inhibited pi in interaction function!");
-  if (pj->time_bin == time_bin_inhibited)
+  if (pj->time_bin >= time_bin_inhibited)
     error("Inhibited pj in interaction function!");
 #endif
 
@@ -323,9 +323,9 @@ __attribute__((always_inline)) INLINE static void runner_iact_nonsym_force(
     const struct part *restrict pj, float a, float H) {
 
 #ifdef SWIFT_DEBUG_CHECKS
-  if (pi->time_bin == time_bin_inhibited)
+  if (pi->time_bin >= time_bin_inhibited)
     error("Inhibited pi in interaction function!");
-  if (pj->time_bin == time_bin_inhibited)
+  if (pj->time_bin >= time_bin_inhibited)
     error("Inhibited pj in interaction function!");
 #endif
 
@@ -422,6 +422,30 @@ __attribute__((always_inline)) INLINE static void runner_iact_nonsym_force(
 
   /* Update the signal velocity. */
   pi->force.v_sig = max(pi->force.v_sig, v_sig);
+}
+
+/**
+ * @brief Timestep limiter loop
+ */
+__attribute__((always_inline)) INLINE static void runner_iact_limiter(
+    float r2, const float *dx, float hi, float hj, struct part *restrict pi,
+    struct part *restrict pj, float a, float H) {
+
+  /* Nothing to do here if both particles are active */
+}
+
+/**
+ * @brief Timestep limiter loop (non-symmetric version)
+ */
+__attribute__((always_inline)) INLINE static void runner_iact_nonsym_limiter(
+    float r2, const float *dx, float hi, float hj, struct part *restrict pi,
+    struct part *restrict pj, float a, float H) {
+
+  /* Wake up the neighbour? */
+  if (pi->force.v_sig > const_limiter_max_v_sig_ratio * pj->force.v_sig) {
+
+    pj->wakeup = time_bin_awake;
+  }
 }
 
 #endif /* SWIFT_MINIMAL_HYDRO_IACT_H */

@@ -327,6 +327,21 @@ hydro_set_physical_internal_energy_dt(struct part *restrict p,
   p->entropy_dt =
       gas_entropy_from_internal_energy(p->rho_bar * cosmo->a3_inv, du_dt);
 }
+/**
+ * @brief Sets the physical entropy of a particle
+ *
+ * @param p The particle of interest.
+ * @param xp The extended particle data.
+ * @param cosmo Cosmology data structure
+ * @param entropy The physical entropy
+ */
+__attribute__((always_inline)) INLINE static void hydro_set_physical_entropy(
+    struct part *p, struct xpart *xp, const struct cosmology *cosmo,
+    const float entropy) {
+
+  /* Note there is no conversion from physical to comoving entropy */
+  xp->entropy_full = entropy;
+}
 
 /**
  * @brief Computes the hydro time-step of a given particle
@@ -730,6 +745,7 @@ __attribute__((always_inline)) INLINE static void hydro_first_init_part(
     struct part *restrict p, struct xpart *restrict xp) {
 
   p->time_bin = 0;
+  p->wakeup = time_bin_not_awake;
   p->rho_bar = 0.f;
   p->entropy_one_over_gamma = pow_one_over_gamma(p->entropy);
   xp->v_full[0] = p->v[0];
@@ -759,5 +775,15 @@ hydro_set_init_internal_energy(struct part *p, float u_init) {
 
   p->entropy = u_init;
 }
+
+/**
+ * @brief Operations performed when a particle gets removed from the
+ * simulation volume.
+ *
+ * @param p The particle.
+ * @param xp The extended particle data.
+ */
+__attribute__((always_inline)) INLINE static void hydro_remove_part(
+    const struct part *p, const struct xpart *xp) {}
 
 #endif /* SWIFT_PRESSURE_ENTROPY_HYDRO_H */

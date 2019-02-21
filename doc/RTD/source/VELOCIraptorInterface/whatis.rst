@@ -12,7 +12,7 @@ What is VELOCIraptor?
 
 In SWIFT it is possible to run a cosmological simulation and at the same time
 do on the fly halo finding at specific predefined intervals. For finding the 
-Halos SWIFT uses VELOCIraptor (Elahi, Thacker and Widrow; 2011) [#velo]_, this 
+halos SWIFT uses VELOCIraptor (Elahi, Thacker and Widrow; 2011) [#velo]_, this 
 is a C++ halo finder that can use MPI. It differs from other halo finder 
 algorithms in the sense that it uses the velocity distributions of the 
 particles in the simulations and the the positions of the particles to get
@@ -22,7 +22,7 @@ whether there are substructures in halos.
 The Algorithm
 -------------
 
-The VELOCIraptor algorithm consist basically off the following steps [#ref]_:
+The VELOCIraptor algorithm consists basically of the following steps [#ref]_:
 
 1. A kd-tree is constructed based on the maximization of the Shannon-entropy,
    this means that every level in the kd-tree an equal number of particles 
@@ -32,21 +32,21 @@ The VELOCIraptor algorithm consist basically off the following steps [#ref]_:
    takes into account the absolute positions of the particles.
 2. The next part is calculating the the centre of mass velocity and the 
    velocity distribution for every individual node in the kd-tree. 
-3. Than the algorithm estimates the background velocity density function for
+3. Then the algorithm estimates the background velocity density function for
    every particle based on the cell of the particle and the six nearest
    neighbour cells. This prevents the background velocity density function 
    to be over sensitive for variations between different cells due to dominant
    halo features in the velocity density function. 
 4. After this the algorithm searches for the nearest velocity neighbours 
    (:math:`N_v`) from a set of nearest position neighbours (:math:`N_x>N_v`).
-   The position neighbours do not need to be in the cell of the particles, in
+   The neighbours' positions do not need to be in the cell of the particles, in
    general the set of nearest position neighbours is substantially larger than
    the nearest velocity neighbours, the default is set as :math:`N_x=32 N_v`.
 5. The individual local velocity density function is calculated for every 
    particle.
 6. The fractional difference is calculated between the local velocity density 
    function and the background velocity density function.
-7. Based on the calculated ratio outliers are picked and the outliers are  
+7. Based on the calculated ratio, outliers are picked and the outliers are  
    grouped together in halos and subhalos.
   
 
@@ -55,7 +55,7 @@ The VELOCIraptor algorithm consist basically off the following steps [#ref]_:
 
 .. 1. The algorithm is mostly sensitive to substructures that are on the tail
    of the Gaussian velocity density function, this means that VELOCIraptor
-   is most sensitive for subhalos which are cold (slow ratating) but have 
+   is most sensitive for subhalos which are cold (slow rotating) but have 
    a large bulk velocity
 
 

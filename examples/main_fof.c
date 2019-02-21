@@ -132,14 +132,15 @@ int main(int argc, char *argv[]) {
   struct cooling_function_data cooling_func;
   struct cosmology cosmo;
   struct external_potential potential;
+  struct star_formation starform;
   struct pm_mesh mesh;
   struct gpart *gparts = NULL;
   struct gravity_props gravity_properties;
   struct hydro_props hydro_properties;
   struct stars_props stars_properties;
+  struct entropy_floor_properties entropy_floor;
   struct part *parts = NULL;
   struct phys_const prog_const;
-  struct sourceterms sourceterms;
   struct space s;
   struct spart *sparts = NULL;
   struct unit_system us;
@@ -195,6 +196,7 @@ int main(int argc, char *argv[]) {
   int with_hydro = 0;
   int with_stars = 0;
   int with_fof = 1;
+  int with_star_formation = 0;
   int with_feedback = 0;
   int with_fp_exceptions = 0;
   int with_drift_all = 0;
@@ -729,6 +731,13 @@ int main(int argc, char *argv[]) {
     else
       bzero(&eos, sizeof(struct eos_parameters));
 
+    /* Initialise the entropy floor */
+    if (with_hydro)
+      entropy_floor_init(&entropy_floor, &prog_const, &us, &hydro_properties,
+                         params);
+    else
+      bzero(&entropy_floor, sizeof(struct entropy_floor_properties));
+
     /* Initialise the stars properties */
     if (with_stars)
       stars_props_init(&stars_properties, &prog_const, &us, params,
@@ -828,7 +837,7 @@ int main(int argc, char *argv[]) {
     if (myrank == 0) clocks_gettime(&tic);
     space_init(&s, params, &cosmo, dim, parts, gparts, sparts, Ngas, Ngpart,
                Nspart, periodic, replicate, generate_gas_in_ics, with_hydro,
-               with_self_gravity, talking, dry_run);
+               with_self_gravity, with_star_formation, talking, dry_run);
 
     if (myrank == 0) {
       clocks_gettime(&toc);
@@ -905,13 +914,15 @@ int main(int argc, char *argv[]) {
     if (with_cooling) cooling_init(params, &us, &prog_const, &cooling_func);
     if (myrank == 0) cooling_print(&cooling_func);
 
+    /* Initialise the star formation law and its properties */
+    if (with_star_formation)
+      starformation_init(params, &prog_const, &us, &hydro_properties,
+                         &starform);
+    if (myrank == 0) starformation_print(&starform);
+
     /* Initialise the chemistry */
     chemistry_init(params, &us, &prog_const, &chemistry);
     if (myrank == 0) chemistry_print(&chemistry);
-
-    /* Initialise the feedback properties */
-    if (with_sourceterms) sourceterms_init(params, &us, &sourceterms);
-    if (with_sourceterms && myrank == 0) sourceterms_print(&sourceterms);
 
     /* Construct the engine policy */
     int engine_policies = ENGINE_POLICY | engine_policy_steal;
@@ -924,7 +935,6 @@ int main(int argc, char *argv[]) {
       engine_policies |= engine_policy_external_gravity;
     if (with_cosmology) engine_policies |= engine_policy_cosmology;
     if (with_cooling) engine_policies |= engine_policy_cooling;
-    if (with_sourceterms) engine_policies |= engine_policy_sourceterms;
     if (with_stars) engine_policies |= engine_policy_stars;
     if (with_fof) engine_policies |= engine_policy_fof;
     if (with_feedback) engine_policies |= engine_policy_feedback;
@@ -936,8 +946,9 @@ int main(int argc, char *argv[]) {
     if (myrank == 0) clocks_gettime(&tic);
     engine_init(&e, &s, params, N_total[0], N_total[1], N_total[2],
                 engine_policies, talking, &reparttype, &us, &prog_const, &cosmo,
-                &hydro_properties, &gravity_properties, &stars_properties,
-                &mesh, &potential, &cooling_func, &chemistry, &sourceterms);
+                &hydro_properties, &entropy_floor, &gravity_properties,
+                &stars_properties, &mesh, &potential, &cooling_func, &starform,
+                &chemistry);
     engine_config(0, &e, params, nr_nodes, myrank, nr_threads, with_aff,
                   talking, restart_file);
 
@@ -1066,7 +1077,7 @@ int main(int argc, char *argv[]) {
   parser_write_params_to_file(params, "unused_parameters.yml", 0);
 
   /* Write final output. */
-  engine_drift_all(&e);
+  engine_drift_all(&e, /*drift_mpole=*/0);
   engine_print_stats(&e);
   engine_dump_snapshot(&e);
 

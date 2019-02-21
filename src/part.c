@@ -139,8 +139,9 @@ void part_verify_links(struct part *parts, struct gpart *gparts,
 
   for (size_t k = 0; k < nr_gparts; ++k) {
 
-    /* We have a DM particle */
-    if (gparts[k].type == swift_type_dark_matter) {
+    /* We have a real DM particle */
+    if (gparts[k].type == swift_type_dark_matter &&
+        gparts[k].time_bin != time_bin_not_created) {
 
       /* Check that it's not linked */
       if (gparts[k].id_or_neg_offset <= 0)
