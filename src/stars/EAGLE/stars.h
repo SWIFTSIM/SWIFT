@@ -745,7 +745,7 @@ inline static void compute_stellar_evolution(const struct stars_props *restrict 
   // Convert dt from internal units to Gyr. (Do correct conversion!)
   float convert_time_to_Gyr = 1.0;
   float dt_Gyr = dt*convert_time_to_Gyr;
-  float age_of_star_Gyr = sp->age*convert_time_to_Gyr; // This should be same as age_of_star_in_Gyr_begstep in EAGLE, check. 
+  float age_of_star_Gyr = sp->birth_time*convert_time_to_Gyr; // This should be same as age_of_star_in_Gyr_begstep in EAGLE, check. Also, make sure it works with cosmology, might need to use birth_scale_factor.
 
   // set max and min mass of dying stars
   float log10_max_dying_mass =
