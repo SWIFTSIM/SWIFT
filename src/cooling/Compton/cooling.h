@@ -19,6 +19,14 @@
 #ifndef SWIFT_COOLING_COMPTON_H
 #define SWIFT_COOLING_COMPTON_H
 
+/**
+ * @file src/cooling/Compton/cooling.h
+ * @brief Routines related to the "Compton" cooling function.
+ *
+ * This model compute the cooling rate from the Compton interaction with
+ * the CMB photons.
+ */
+
 /* Config parameters. */
 #include "../config.h"
 
@@ -27,7 +35,7 @@
 #include <math.h>
 
 /* Local includes. */
-#include "const.h"
+#include "entropy_floor.h"
 #include "error.h"
 #include "hydro.h"
 #include "parser.h"
@@ -41,7 +49,6 @@
  *
  * @param cosmo The current cosmological model.
  * @param cooling The #cooling_function_data used in the run.
- * @param restart_flag Are we calling this directly after a restart?
  */
 INLINE static void cooling_update(const struct cosmology* cosmo,
                                   struct cooling_function_data* cooling) {
@@ -123,6 +130,7 @@ __attribute__((always_inline)) INLINE static double Compton_cooling_rate_cgs(
  * @param us The internal system of units.
  * @param cosmo The current cosmological model.
  * @param hydro_props The properties of the hydro scheme.
+ * @param floor_props Properties of the entropy floor.
  * @param cooling The #cooling_function_data used in the run.
  * @param p Pointer to the particle data.
  * @param xp Pointer to the particle' extended data.
@@ -134,15 +142,13 @@ __attribute__((always_inline)) INLINE static void cooling_cool_part(
     const struct unit_system* restrict us,
     const struct cosmology* restrict cosmo,
     const struct hydro_props* hydro_props,
+    const struct entropy_floor_properties* floor_props,
     const struct cooling_function_data* restrict cooling,
     struct part* restrict p, struct xpart* restrict xp, const float dt,
     const float dt_therm) {
 
   /* Nothing to do here? */
   if (dt == 0.) return;
-
-  /* Internal energy floor */
-  const float u_floor = hydro_props->minimal_internal_energy;
 
   /* Current energy */
   const float u_old = hydro_get_physical_internal_energy(p, xp, cosmo);
@@ -165,11 +171,22 @@ __attribute__((always_inline)) INLINE static void cooling_cool_part(
 
   /* We now need to check that we are not going to go below any of the limits */
 
+  /* Limit imposed by the entropy floor */
+  const float A_floor = entropy_floor(p, cosmo, floor_props);
+  const float rho = hydro_get_physical_density(p, cosmo);
+  const float u_floor = gas_internal_energy_from_entropy(rho, A_floor);
+
+  /* Absolute minimum */
+  const float u_minimal = hydro_props->minimal_internal_energy;
+
+  /* Largest of both limits */
+  const float u_limit = max(u_minimal, u_floor);
+
   /* First, check whether we may end up below the minimal energy after
    * this step 1/2 kick + another 1/2 kick that could potentially be for
    * a time-step twice as big. We hence check for 1.5 delta_t. */
-  if (u_old + total_du_dt * 1.5 * dt_therm < u_floor) {
-    total_du_dt = (u_floor - u_old) / (1.5f * dt_therm);
+  if (u_old + total_du_dt * 1.5 * dt_therm < u_limit) {
+    total_du_dt = (u_limit - u_old) / (1.5f * dt_therm);
   }
 
   /* Second, check whether the energy used in the prediction could get negative.

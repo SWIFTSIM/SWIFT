@@ -1,0 +1,19 @@
+This is a test that produces a plot of the contribution to the cooling
+rate from each of the elements depending on internal energy, density
+and redshift based on the EAGLE tables. To do so, the function in
+src/cooling/EAGLE returning the cooling rate is run for multiple
+values of the internal energy. The resulting cooling rates are written
+to files and plotted with a python script (cooling_rates_plot.py).
+
+The test may be run by:
+./getCoolingTables.sh
+./cooling_rates -z X -d Y
+python plot_cooling_rates.py
+
+where X is the redshift at which the cooling rates are evaluated and Y
+is the base 10 logarithm of the hydrogen number density expressed in
+cgs (i.e. cm^-3). Different metallicities may be specified in
+testCooling.yml
+
+Running with -z 3 -d -4 should reproduce the Fig.4 of Wiersma+09 with
+the added Compton cooling contribution.

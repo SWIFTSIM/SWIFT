@@ -48,6 +48,7 @@
 #include "debug.h"
 #include "drift.h"
 #include "engine.h"
+#include "entropy_floor.h"
 #include "error.h"
 #include "gravity.h"
 #include "hydro.h"
@@ -60,6 +61,7 @@
 #include "sort_part.h"
 #include "space.h"
 #include "space_getsid.h"
+#include "star_formation.h"
 #include "stars.h"
 #include "task.h"
 #include "timers.h"
@@ -441,6 +443,7 @@ void runner_do_cooling(struct runner *r, struct cell *c, int timer) {
   const struct phys_const *constants = e->physical_constants;
   const struct unit_system *us = e->internal_units;
   const struct hydro_props *hydro_props = e->hydro_properties;
+  const struct entropy_floor_properties *entropy_floor_props = e->entropy_floor;
   const double time_base = e->time_base;
   const integertime_t ti_current = e->ti_current;
   struct part *restrict parts = c->hydro.parts;
@@ -484,8 +487,9 @@ void runner_do_cooling(struct runner *r, struct cell *c, int timer) {
         }
 
         /* Let's cool ! */
-        cooling_cool_part(constants, us, cosmo, hydro_props, cooling_func, p,
-                          xp, dt_cool, dt_therm);
+        cooling_cool_part(constants, us, cosmo, hydro_props,
+                          entropy_floor_props, cooling_func, p, xp, dt_cool,
+                          dt_therm);
       }
     }
   }
@@ -500,9 +504,17 @@ void runner_do_star_formation(struct runner *r, struct cell *c, int timer) {
 
   struct engine *e = r->e;
   const struct cosmology *cosmo = e->cosmology;
+  const struct star_formation *sf_props = e->star_formation;
+  const struct phys_const *phys_const = e->physical_constants;
   const int count = c->hydro.count;
   struct part *restrict parts = c->hydro.parts;
   struct xpart *restrict xparts = c->hydro.xparts;
+  const int with_cosmology = (e->policy & engine_policy_cosmology);
+  const struct hydro_props *restrict hydro_props = e->hydro_properties;
+  const struct unit_system *restrict us = e->internal_units;
+  struct cooling_function_data *restrict cooling = e->cooling_func;
+  const double time_base = e->time_base;
+  const integertime_t ti_current = e->ti_current;
 
   TIMER_TIC;
 
@@ -522,25 +534,52 @@ void runner_do_star_formation(struct runner *r, struct cell *c, int timer) {
       struct part *restrict p = &parts[k];
       struct xpart *restrict xp = &xparts[k];
 
+      /* Only work on active particles */
       if (part_is_active(p, e)) {
 
-        const float rho = hydro_get_physical_density(p, cosmo);
+        /* Is this particle star forming? */
+        if (star_formation_is_star_forming(p, xp, sf_props, phys_const, cosmo,
+                                           hydro_props, us, cooling)) {
 
-        // MATTHIEU: Temporary star-formation law
-        // Do not use this at home.
-        if (rho > 1.7e7 && e->step > 2) {
-          message("Removing particle id=%lld rho=%e", p->id, rho);
+          /* Time-step size for this particle */
+          double dt_star;
+          if (with_cosmology) {
+            const integertime_t ti_step = get_integer_timestep(p->time_bin);
+            const integertime_t ti_begin =
+                get_integer_time_begin(ti_current - 1, p->time_bin);
 
-          struct spart *sp = cell_convert_part_to_spart(e, c, p, xp);
+            dt_star =
+                cosmology_get_delta_time(cosmo, ti_begin, ti_begin + ti_step);
 
-          /* Did we run out of fresh particles? */
-          if (sp == NULL) continue;
+          } else {
+            dt_star = get_timestep(p->time_bin, time_base);
+          }
 
-          /* Set everything to a valid state */
-          stars_init_spart(sp);
-        }
-      }
-    }
+          /* Compute the SF rate of the particle */
+          star_formation_compute_SFR(p, xp, sf_props, phys_const, cosmo,
+                                     dt_star);
+
+          /* Are we forming a star particle from this SF rate? */
+          if (star_formation_should_convert_to_star(p, xp, sf_props, e,
+                                                    dt_star)) {
+
+            /* Convert the gas particle to a star particle */
+            struct spart *sp = cell_convert_part_to_spart(e, c, p, xp);
+
+            /* Copy the properties of the gas particle to the star particle */
+            star_formation_copy_properties(p, xp, sp, e, sf_props, cosmo,
+                                           with_cosmology);
+          }
+
+        } else { /* Are we not star-forming? */
+
+          /* Update the particle to flag it as not star-forming */
+          star_formation_update_part_not_SFR(p, xp, e, sf_props,
+                                             with_cosmology);
+
+        } /* Not Star-forming? */
+      }   /* is active? */
+    }     /* Loop over particles */
   }
 
   if (timer) TIMER_TOC(timer_do_star_formation);
@@ -1225,6 +1264,7 @@ void runner_do_ghost(struct runner *r, struct cell *c, int timer) {
   const struct cosmology *cosmo = e->cosmology;
   const struct chemistry_global_data *chemistry = e->chemistry;
   const float hydro_h_max = e->hydro_properties->h_max;
+  const float hydro_h_min = e->hydro_properties->h_min;
   const float eps = e->hydro_properties->h_tolerance;
   const float hydro_eta_dim =
       pow_dimension(e->hydro_properties->eta_neighbours);
@@ -1289,6 +1329,7 @@ void runner_do_ghost(struct runner *r, struct cell *c, int timer) {
         const float h_old = p->h;
         const float h_old_dim = pow_dimension(h_old);
         const float h_old_dim_minus_one = pow_dimension_minus_one(h_old);
+
         float h_new;
         int has_no_neighbours = 0;
 
@@ -1325,11 +1366,13 @@ void runner_do_ghost(struct runner *r, struct cell *c, int timer) {
 #endif
 
           /* Skip if h is already h_max and we don't have enough neighbours */
-          if ((p->h >= hydro_h_max) && (f < 0.f)) {
+          if (((p->h >= hydro_h_max) && (f < 0.f)) ||
+              ((p->h <= hydro_h_min) && (f > 0.f))) {
 
           /* We have a particle whose smoothing length is already set (wants
-           * to be larger but has already hit the maximum). So, just tidy up
-           * as if the smoothing length had converged correctly  */
+           * to be larger but has already hit the maximum OR wants to be smaller
+           * but has already reached the minimum). So, just tidy up as if the
+           * smoothing length had converged correctly  */
 
 #ifdef EXTRA_HYDRO_LOOP
 
@@ -1413,7 +1456,7 @@ void runner_do_ghost(struct runner *r, struct cell *c, int timer) {
         }
 
         /* Check whether the particle has an inappropriate smoothing length */
-        if (fabsf(h_new - h_old) > eps * h_init) {
+        if (fabsf(h_new - h_old) > eps * h_old) {
 
           /* Ok, correct then */
 
@@ -1431,8 +1474,8 @@ void runner_do_ghost(struct runner *r, struct cell *c, int timer) {
             p->h = h_new;
           }
 
-          /* If below the absolute maximum, try again */
-          if (p->h < hydro_h_max) {
+          /* If within the allowed range, try again */
+          if (p->h < hydro_h_max && p->h > hydro_h_min) {
 
             /* Flag for another round of fun */
             pid[redo] = pid[i];
@@ -1448,7 +1491,12 @@ void runner_do_ghost(struct runner *r, struct cell *c, int timer) {
             /* Off we go ! */
             continue;
 
-          } else {
+          } else if (p->h <= hydro_h_min) {
+
+            /* Ok, this particle is a lost cause... */
+            p->h = hydro_h_min;
+
+          } else if (p->h >= hydro_h_max) {
 
             /* Ok, this particle is a lost cause... */
             p->h = hydro_h_max;
@@ -1739,6 +1787,7 @@ void runner_do_kick1(struct runner *r, struct cell *c, int timer) {
   const struct engine *e = r->e;
   const struct cosmology *cosmo = e->cosmology;
   const struct hydro_props *hydro_props = e->hydro_properties;
+  const struct entropy_floor_properties *entropy_floor = e->entropy_floor;
   const int with_cosmology = (e->policy & engine_policy_cosmology);
   struct part *restrict parts = c->hydro.parts;
   struct xpart *restrict xparts = c->hydro.xparts;
@@ -1813,7 +1862,7 @@ void runner_do_kick1(struct runner *r, struct cell *c, int timer) {
 
         /* do the kick */
         kick_part(p, xp, dt_kick_hydro, dt_kick_grav, dt_kick_therm,
-                  dt_kick_corr, cosmo, hydro_props, ti_begin,
+                  dt_kick_corr, cosmo, hydro_props, entropy_floor, ti_begin,
                   ti_begin + ti_step / 2);
 
         /* Update the accelerations to be used in the drift for hydro */
@@ -1920,6 +1969,7 @@ void runner_do_kick2(struct runner *r, struct cell *c, int timer) {
   const struct engine *e = r->e;
   const struct cosmology *cosmo = e->cosmology;
   const struct hydro_props *hydro_props = e->hydro_properties;
+  const struct entropy_floor_properties *entropy_floor = e->entropy_floor;
   const int with_cosmology = (e->policy & engine_policy_cosmology);
   const int count = c->hydro.count;
   const int gcount = c->grav.count;
@@ -2004,8 +2054,8 @@ void runner_do_kick2(struct runner *r, struct cell *c, int timer) {
 
         /* Finish the time-step with a second half-kick */
         kick_part(p, xp, dt_kick_hydro, dt_kick_grav, dt_kick_therm,
-                  dt_kick_corr, cosmo, hydro_props, ti_begin + ti_step / 2,
-                  ti_end);
+                  dt_kick_corr, cosmo, hydro_props, entropy_floor,
+                  ti_begin + ti_step / 2, ti_end);
 
 #ifdef SWIFT_DEBUG_CHECKS
         /* Check that kick and the drift are synchronized */

@@ -149,21 +149,18 @@ INLINE static void stars_props_init(struct stars_props *sp,
   sp->total_energy_SNe = 1.0e51/units_cgs_conversion_factor(us,UNIT_CONV_ENERGY);
 
   /* energy and temperature times h */
-  sp->SNe_energy_h = sp->total_energy_SNe * cosmo->h; // units_factor2 in EAGLE
-  sp->SNe_temperature_h = sp->SNe_energy_h / sp->temp_to_u_factor; // units_factor1 in EAGLE
+  sp->SNe_temperature = sp->total_energy_SNe / sp->temp_to_u_factor; // units_factor1 in EAGLE
 
   /* Find out timescale for feedback (used only for testing in const feedback model) */
   sp->feedback_timescale = parser_get_opt_param_float(params, "Stars:feedback_timescale", 4e-5);
   
   /* Calculate number of supernovae per solar mass (used only for testing in const feedback model) */
-  sp->sn_per_msun = sp->feedback_timescale * units_cgs_conversion_factor(us, UNIT_CONV_TIME) * 1.0e-15 * 0.01; // timescale convert to cgs per 40 Myr (~10^15s). 0.01 solar masses per supernova.
+  const float ten_Myr_in_cgs = 3.154e14;
+  const float SN_per_msun_factor = 0.01;
+  sp->sn_per_msun = sp->feedback_timescale * units_cgs_conversion_factor(us, UNIT_CONV_TIME) / ten_Myr_in_cgs * SN_per_msun_factor; // timescale convert to cgs per 10 Myr (~3e14s). 0.01 solar masses per supernova.
 
   /* Copy over solar mass (used only for testing in const feedback model) */
   sp->const_solar_mass = phys_const->const_solar_mass;
-
-  // CHANGE THIS TO BE CONSISTENT WITH RAND MAX USED IN STAR FORMATION
-  sp->inv_rand_max = 1.0/RAND_MAX;
-
 
 }
 

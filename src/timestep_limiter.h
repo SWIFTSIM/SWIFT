@@ -109,8 +109,8 @@ __attribute__((always_inline)) INLINE static integertime_t timestep_limit_part(
   }
 
   kick_part(p, xp, dt_kick_hydro, dt_kick_grav, dt_kick_therm, dt_kick_corr,
-            e->cosmology, e->hydro_properties, old_ti_beg + old_dti / 2,
-            old_ti_beg);
+            e->cosmology, e->hydro_properties, e->entropy_floor,
+            old_ti_beg + old_dti / 2, old_ti_beg);
 
   /* ...and apply the new one (dt is positiive) */
   if (with_cosmology) {
@@ -130,7 +130,7 @@ __attribute__((always_inline)) INLINE static integertime_t timestep_limit_part(
   }
 
   kick_part(p, xp, dt_kick_hydro, dt_kick_grav, dt_kick_therm, dt_kick_corr,
-            e->cosmology, e->hydro_properties, new_ti_beg,
+            e->cosmology, e->hydro_properties, e->entropy_floor, new_ti_beg,
             new_ti_beg + new_dti / 2);
 
   /* Remember the old time-bin */

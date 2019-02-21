@@ -305,6 +305,9 @@ float task_overlap(const struct task *restrict ta,
     if (tb->ci != NULL) size_union += tb->ci->stars.count;
     if (tb->cj != NULL) size_union += tb->cj->stars.count;
 
+    if (size_union == 0)
+      return 0.f;
+
     /* Compute the intersection of the cell data. */
     const size_t size_intersect = task_cell_overlap_spart(ta->ci, tb->ci) +
                                   task_cell_overlap_spart(ta->ci, tb->cj) +
@@ -762,7 +765,8 @@ void task_dump_all(struct engine *e, int step) {
       /* Add some information to help with the plots and conversion of ticks to
        * seconds. */
       fprintf(file_thread, " %03d 0 0 0 0 %lld %lld %lld %lld %lld 0 0 %lld\n",
-              engine_rank, e->tic_step, e->toc_step, e->updates, e->g_updates,
+              engine_rank, (long long int)e->tic_step,
+              (long long int)e->toc_step, e->updates, e->g_updates,
               e->s_updates, cpufreq);
       int count = 0;
       for (int l = 0; l < e->sched.nr_tasks; l++) {
@@ -771,7 +775,8 @@ void task_dump_all(struct engine *e, int step) {
               file_thread, " %03i %i %i %i %i %lli %lli %i %i %i %i %lli %i\n",
               engine_rank, e->sched.tasks[l].rid, e->sched.tasks[l].type,
               e->sched.tasks[l].subtype, (e->sched.tasks[l].cj == NULL),
-              e->sched.tasks[l].tic, e->sched.tasks[l].toc,
+              (long long int)e->sched.tasks[l].tic,
+              (long long int)e->sched.tasks[l].toc,
               (e->sched.tasks[l].ci != NULL) ? e->sched.tasks[l].ci->hydro.count
                                              : 0,
               (e->sched.tasks[l].cj != NULL) ? e->sched.tasks[l].cj->hydro.count
@@ -801,7 +806,8 @@ void task_dump_all(struct engine *e, int step) {
   /* Add some information to help with the plots and conversion of ticks to
    * seconds. */
   fprintf(file_thread, " %d %d %d %d %lld %lld %lld %lld %lld %d %lld\n", -2,
-          -1, -1, 1, e->tic_step, e->toc_step, e->updates, e->g_updates,
+          -1, -1, 1, (unsigned long long)e->tic_step,
+          (unsigned long long)e->toc_step, e->updates, e->g_updates,
           e->s_updates, 0, cpufreq);
   for (int l = 0; l < e->sched.nr_tasks; l++) {
     if (!e->sched.tasks[l].implicit && e->sched.tasks[l].toc != 0) {
@@ -809,7 +815,8 @@ void task_dump_all(struct engine *e, int step) {
           file_thread, " %i %i %i %i %lli %lli %i %i %i %i %i\n",
           e->sched.tasks[l].rid, e->sched.tasks[l].type,
           e->sched.tasks[l].subtype, (e->sched.tasks[l].cj == NULL),
-          e->sched.tasks[l].tic, e->sched.tasks[l].toc,
+          (unsigned long long)e->sched.tasks[l].tic,
+          (unsigned long long)e->sched.tasks[l].toc,
           (e->sched.tasks[l].ci == NULL) ? 0
                                          : e->sched.tasks[l].ci->hydro.count,
           (e->sched.tasks[l].cj == NULL) ? 0

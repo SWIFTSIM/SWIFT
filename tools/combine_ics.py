@@ -40,7 +40,7 @@ import numpy as np
 
 # Store the compression level
 gzip_level = 4
-if sys.argc > 3:
+if len(sys.argv) > 3:
     gzip_level = sys.argv[3]
 
 # First, we need to collect some information from the master file

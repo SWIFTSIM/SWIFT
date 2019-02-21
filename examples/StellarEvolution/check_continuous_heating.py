@@ -90,7 +90,8 @@ smoothing_length_sparts = zeros(n_snapshots)
 time = zeros(n_snapshots)
 
 # Read fields we are checking from snapshots
-for i in [0,n_snapshots-1]:
+#for i in [0,n_snapshots-1]:
+for i in range(n_snapshots):
 	sim = h5py.File("stellar_evolution_%04d.hdf5"%i, "r")
 	print('reading snapshot '+str(i))
 	abundances[:,:,i] = sim["/PartType0/ElementAbundance"]
@@ -125,6 +126,7 @@ with open(feedback_data) as f:
         num_sn = float(f.readline().strip())
         total_time = float(f.readline().strip())
 total_sn = num_sn * time[n_snapshots-1]/total_time
+print("total_sn " + str(total_sn))
 
 # Continuous heating
 vel2 = zeros((n_parts,n_snapshots))
@@ -133,7 +135,10 @@ total_kinetic_energy = np.sum(np.multiply(vel2,masses)*0.5,axis = 0)
 total_energy = np.sum(np.multiply(internal_energy,masses),axis = 0)
 total_energy_released = total_energy[n_snapshots-1] - total_energy[0] + total_kinetic_energy[n_snapshots-1] - total_kinetic_energy[0]
 
-expected_energy_released = total_sn * star_initial_mass * energy_per_SNe
+for i in range(n_snapshots):
+	print("snapshot " + str(i) + " max velocity " + str(np.max(sqrt(vel2[:,i])*unit_vel_in_cgs)))
+
+expected_energy_released = total_sn * energy_per_SNe
 if abs(total_energy_released - expected_energy_released)/expected_energy_released < eps:
 	print("total continuous energy release consistent with expectation")
 else:

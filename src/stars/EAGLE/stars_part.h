@@ -1,6 +1,7 @@
 /*******************************************************************************
  * This file is part of SWIFT.
  * Copyright (c) 2016 Matthieu Schaller (matthieu.schaller@durham.ac.uk)
+ *               2018 Folkert Nobels (nobels@strw.leidenuniv.nl)
  *
  * This program is free software: you can redistribute it and/or modify
  * it under the terms of the GNU Lesser General Public License as published
@@ -23,7 +24,8 @@
 #include <stdlib.h>
 
 /* Read chemistry */
-#include "chemistry_struct.h" 
+#include "chemistry_struct.h"
+#include "tracers_struct.h"
 
 /**
  * @brief Particle fields for the star particles.
@@ -55,9 +57,6 @@ struct spart {
 
   /*! Initial star mass */
   float mass_init;
-
-  /*! Stellar age */
-  float age;
 
   /* Particle cutoff radius. */
   float h;
@@ -100,6 +99,20 @@ struct spart {
   /* total mass of neighbouring gas particles */
   float ngb_mass;
 
+  /*! Union for the birth time and birht scale factor */
+  union {
+    /*! Birth time */
+    float birth_time;
+
+    /*! Birth scale factor */
+    float birth_scale_factor;
+  };
+
+  /*! Birth density */
+  float birth_density;
+
+  /*! Tracer structure */
+  struct tracers_xpart_data tracers_data;
 
   /*! Chemistry structure */
   struct chemistry_part_data chemistry_data;

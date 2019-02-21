@@ -2002,7 +2002,7 @@ void cell_activate_hydro_sorts(struct cell *c, int sid, struct scheduler *s) {
  */
 void cell_activate_stars_sorts_up(struct cell *c, struct scheduler *s) {
 
-  if (c == c->super) {
+  if (c == c->hydro.super) {
 #ifdef SWIFT_DEBUG_CHECKS
     if ((c->nodeID == engine_rank && c->stars.sorts_local == NULL) ||
         (c->nodeID != engine_rank && c->stars.sorts_foreign == NULL))
@@ -2023,18 +2023,18 @@ void cell_activate_stars_sorts_up(struct cell *c, struct scheduler *s) {
          parent != NULL && !parent->stars.do_sub_sort;
          parent = parent->parent) {
       parent->stars.do_sub_sort = 1;
-      if (parent == c->super) {
+      if (parent == c->hydro.super) {
 #ifdef SWIFT_DEBUG_CHECKS
-        if ((c->nodeID == engine_rank && parent->stars.sorts_local == NULL) ||
-            (c->nodeID != engine_rank && parent->stars.sorts_foreign == NULL))
+        if ((parent->nodeID == engine_rank && parent->stars.sorts_local == NULL) ||
+            (parent->nodeID != engine_rank && parent->stars.sorts_foreign == NULL))
           error("Trying to activate un-existing parents->stars.sorts");
 #endif
-        if (c->nodeID == engine_rank) {
+        if (parent->nodeID == engine_rank) {
           scheduler_activate(s, parent->stars.sorts_local);
           cell_activate_drift_part(parent, s);
           cell_activate_drift_spart(parent, s);
         }
-        if (c->nodeID != engine_rank) {
+        if (parent->nodeID != engine_rank) {
           scheduler_activate(s, parent->stars.sorts_foreign);
         }
         break;
@@ -2447,10 +2447,14 @@ void cell_activate_subcell_stars_tasks(struct cell *ci, struct cell *cj,
   /* Store the current dx_max and h_max values. */
   ci->stars.dx_max_part_old = ci->stars.dx_max_part;
   ci->stars.h_max_old = ci->stars.h_max;
+  ci->hydro.dx_max_part_old = ci->hydro.dx_max_part;
+  ci->hydro.h_max_old = ci->hydro.h_max;
 
   if (cj != NULL) {
     cj->stars.dx_max_part_old = cj->stars.dx_max_part;
     cj->stars.h_max_old = cj->stars.h_max;
+    cj->hydro.dx_max_part_old = cj->hydro.dx_max_part;
+    cj->hydro.h_max_old = cj->hydro.h_max;
   }
 
   /* Self interaction? */
@@ -2486,12 +2490,7 @@ void cell_activate_subcell_stars_tasks(struct cell *ci, struct cell *cj,
   else {
 
     /* Should we even bother? */
-    const int should_do_ci = ci->stars.count != 0 && cj->hydro.count != 0 &&
-      cell_is_active_stars(ci, e);
-    const int should_do_cj = cj->stars.count != 0 && ci->hydro.count != 0 &&
-      cell_is_active_stars(cj, e);
-
-    if (!should_do_ci && !should_do_cj) return;
+    if (!cell_is_active_stars(ci, e) && !cell_is_active_stars(cj, e)) return;
 
     /* Get the orientation of the pair. */
     double shift[3];
@@ -2777,10 +2776,8 @@ void cell_activate_subcell_stars_tasks(struct cell *ci, struct cell *cj,
 
     /* Otherwise, activate the sorts and drifts. */
     else {
-      const int do_ci = cell_is_active_stars(ci, e);
-      const int do_cj = cell_is_active_stars(cj, e);
 
-      if (do_ci) {
+      if (cell_is_active_stars(ci, e)) {
         /* We are going to interact this pair, so store some values. */
         atomic_or(&cj->hydro.requires_sorts, 1 << sid);
         atomic_or(&ci->stars.requires_sorts, 1 << sid);
@@ -2797,7 +2794,7 @@ void cell_activate_subcell_stars_tasks(struct cell *ci, struct cell *cj,
         cell_activate_stars_sorts(ci, sid, s);
       }
 
-      if (do_cj) {
+      if (cell_is_active_stars(cj, e)) {
         /* We are going to interact this pair, so store some values. */
         atomic_or(&cj->stars.requires_sorts, 1 << sid);
         atomic_or(&ci->hydro.requires_sorts, 1 << sid);
@@ -3346,7 +3343,7 @@ int cell_unskip_stars_tasks(struct cell *c, struct scheduler *s) {
   struct engine *e = s->space->e;
   const int nodeID = e->nodeID;
   int rebuild = 0;
-
+  
   /* Un-skip the density tasks involved with this cell. */
   for (struct link *l = c->stars.density; l != NULL; l = l->next) {
     struct task *t = l->t;
@@ -3649,6 +3646,7 @@ void cell_drift_part(struct cell *c, const struct engine *e, int force) {
   const double dim[3] = {e->s->dim[0], e->s->dim[1], e->s->dim[2]};
   const int with_cosmology = (e->policy & engine_policy_cosmology);
   const float hydro_h_max = e->hydro_properties->h_max;
+  const float hydro_h_min = e->hydro_properties->h_min;
   const integertime_t ti_old_part = c->hydro.ti_old_part;
   const integertime_t ti_current = e->ti_current;
   struct part *const parts = c->hydro.parts;
@@ -3755,7 +3753,7 @@ void cell_drift_part(struct cell *c, const struct engine *e, int force) {
       if (fabs(xp->v_full[0] * dt_drift) > e->s->dim[0] ||
           fabs(xp->v_full[1] * dt_drift) > e->s->dim[1] ||
           fabs(xp->v_full[2] * dt_drift) > e->s->dim[2]) {
-        error("Particle drifts by more than a box length!");
+        error("Particle drifts by more than a box length! id %llu xp->v_full %.5e %.5e %.5e p->v %.5e %.5e %.5e", p->id, xp->v_full[0], xp->v_full[1], xp->v_full[2], p->v[0], p->v[1], p->v[2]);
       }
 #endif
 
@@ -3783,6 +3781,7 @@ void cell_drift_part(struct cell *c, const struct engine *e, int force) {
 
       /* Limit h to within the allowed range */
       p->h = min(p->h, hydro_h_max);
+      p->h = max(p->h, hydro_h_min);
 
       /* Compute (square of) motion since last cell construction */
       const float dx2 = xp->x_diff[0] * xp->x_diff[0] +
@@ -3928,7 +3927,7 @@ void cell_drift_gpart(struct cell *c, const struct engine *e, int force) {
       if (fabs(gp->v_full[0] * dt_drift) > e->s->dim[0] ||
           fabs(gp->v_full[1] * dt_drift) > e->s->dim[1] ||
           fabs(gp->v_full[2] * dt_drift) > e->s->dim[2]) {
-        error("Particle drifts by more than a box length!");
+        error("Particle drifts by more than a box length! gp->v_full %.5e %.5e %.5e", gp->v_full[0], gp->v_full[1], gp->v_full[2]);
       }
 #endif
 

@@ -255,6 +255,83 @@ __attribute__((always_inline)) INLINE int cache_read_particles(
 }
 
 /**
+ * @brief Populate cache by reading in the particles in unsorted order for
+ * doself_subset.
+ *
+ * @param ci The #cell.
+ * @param ci_cache The cache.
+ * @return uninhibited_count The no. of uninhibited particles.
+ */
+__attribute__((always_inline)) INLINE int cache_read_particles_subset_self(
+    const struct cell *restrict const ci,
+    struct cache *restrict const ci_cache) {
+
+#if defined(GADGET2_SPH)
+
+  /* Let the compiler know that the data is aligned and create pointers to the
+   * arrays inside the cache. */
+  swift_declare_aligned_ptr(float, x, ci_cache->x, SWIFT_CACHE_ALIGNMENT);
+  swift_declare_aligned_ptr(float, y, ci_cache->y, SWIFT_CACHE_ALIGNMENT);
+  swift_declare_aligned_ptr(float, z, ci_cache->z, SWIFT_CACHE_ALIGNMENT);
+  swift_declare_aligned_ptr(float, m, ci_cache->m, SWIFT_CACHE_ALIGNMENT);
+  swift_declare_aligned_ptr(float, vx, ci_cache->vx, SWIFT_CACHE_ALIGNMENT);
+  swift_declare_aligned_ptr(float, vy, ci_cache->vy, SWIFT_CACHE_ALIGNMENT);
+  swift_declare_aligned_ptr(float, vz, ci_cache->vz, SWIFT_CACHE_ALIGNMENT);
+
+  const int count = ci->hydro.count;
+  const struct part *restrict parts = ci->hydro.parts;
+  const double loc[3] = {ci->loc[0], ci->loc[1], ci->loc[2]};
+  const double max_dx = ci->hydro.dx_max_part;
+  const float pos_padded[3] = {-(2. * ci->width[0] + max_dx),
+                               -(2. * ci->width[1] + max_dx),
+                               -(2. * ci->width[2] + max_dx)};
+
+  /* Shift the particles positions to a local frame so single precision can be
+   * used instead of double precision. */
+  for (int i = 0; i < count; i++) {
+
+    /* Pad inhibited particles. */
+    if (parts[i].time_bin >= time_bin_inhibited) {
+      x[i] = pos_padded[0];
+      y[i] = pos_padded[1];
+      z[i] = pos_padded[2];
+
+      continue;
+    }
+
+    x[i] = (float)(parts[i].x[0] - loc[0]);
+    y[i] = (float)(parts[i].x[1] - loc[1]);
+    z[i] = (float)(parts[i].x[2] - loc[2]);
+    m[i] = parts[i].mass;
+    vx[i] = parts[i].v[0];
+    vy[i] = parts[i].v[1];
+    vz[i] = parts[i].v[2];
+  }
+
+  /* Pad cache if the no. of particles is not a multiple of double the vector
+   * length. */
+  int count_align = count;
+  const int rem = count % (NUM_VEC_PROC * VEC_SIZE);
+  if (rem != 0) {
+    count_align += (NUM_VEC_PROC * VEC_SIZE) - rem;
+
+    /* Set positions to something outside of the range of any particle */
+    for (int i = count; i < count_align; i++) {
+      x[i] = pos_padded[0];
+      y[i] = pos_padded[1];
+      z[i] = pos_padded[2];
+    }
+  }
+
+  return count_align;
+
+#else
+  error("Can't call the cache reading function with this flavour of SPH!");
+  return 0;
+#endif
+}
+
+/**
  * @brief Populate cache by only reading particles that are within range of
  * each other within the adjoining cell. Also read the particles into the cache
  * in sorted order.
@@ -268,7 +345,7 @@ __attribute__((always_inline)) INLINE int cache_read_particles(
  * @param loc The cell location to remove from the particle positions.
  * @param flipped Flag to check whether the cells have been flipped or not.
  */
-__attribute__((always_inline)) INLINE void cache_read_particles_subset(
+__attribute__((always_inline)) INLINE void cache_read_particles_subset_pair(
     const struct cell *restrict const ci, struct cache *restrict const ci_cache,
     const struct entry *restrict sort_i, int *first_pi, int *last_pi,
     const double *loc, const int flipped) {
@@ -280,7 +357,6 @@ __attribute__((always_inline)) INLINE void cache_read_particles_subset(
   swift_declare_aligned_ptr(float, x, ci_cache->x, SWIFT_CACHE_ALIGNMENT);
   swift_declare_aligned_ptr(float, y, ci_cache->y, SWIFT_CACHE_ALIGNMENT);
   swift_declare_aligned_ptr(float, z, ci_cache->z, SWIFT_CACHE_ALIGNMENT);
-  swift_declare_aligned_ptr(float, h, ci_cache->h, SWIFT_CACHE_ALIGNMENT);
   swift_declare_aligned_ptr(float, m, ci_cache->m, SWIFT_CACHE_ALIGNMENT);
   swift_declare_aligned_ptr(float, vx, ci_cache->vx, SWIFT_CACHE_ALIGNMENT);
   swift_declare_aligned_ptr(float, vy, ci_cache->vy, SWIFT_CACHE_ALIGNMENT);
@@ -303,7 +379,6 @@ __attribute__((always_inline)) INLINE void cache_read_particles_subset(
     const float pos_padded[3] = {-(2. * ci->width[0] + max_dx),
                                  -(2. * ci->width[1] + max_dx),
                                  -(2. * ci->width[2] + max_dx)};
-    const float h_padded = ci->hydro.h_max / 4.;
 
     /* Shift the particles positions to a local frame so single precision can be
      * used instead of double precision. */
@@ -315,8 +390,6 @@ __attribute__((always_inline)) INLINE void cache_read_particles_subset(
         x[i] = pos_padded[0];
         y[i] = pos_padded[1];
         z[i] = pos_padded[2];
-        h[i] = h_padded;
-
         m[i] = 1.f;
         vx[i] = 1.f;
         vy[i] = 1.f;
@@ -328,7 +401,6 @@ __attribute__((always_inline)) INLINE void cache_read_particles_subset(
       x[i] = (float)(parts[idx].x[0] - loc[0]);
       y[i] = (float)(parts[idx].x[1] - loc[1]);
       z[i] = (float)(parts[idx].x[2] - loc[2]);
-      h[i] = parts[idx].h;
       m[i] = parts[idx].mass;
       vx[i] = parts[idx].v[0];
       vy[i] = parts[idx].v[1];
@@ -342,7 +414,6 @@ __attribute__((always_inline)) INLINE void cache_read_particles_subset(
       x[i] = pos_padded[0];
       y[i] = pos_padded[1];
       z[i] = pos_padded[2];
-      h[i] = h_padded;
 
       m[i] = 1.f;
       vx[i] = 1.f;
@@ -366,7 +437,6 @@ __attribute__((always_inline)) INLINE void cache_read_particles_subset(
     const float pos_padded[3] = {-(2. * ci->width[0] + max_dx),
                                  -(2. * ci->width[1] + max_dx),
                                  -(2. * ci->width[2] + max_dx)};
-    const float h_padded = ci->hydro.h_max / 4.;
 
     /* Shift the particles positions to a local frame so single precision can be
      * used instead of double precision. */
@@ -378,7 +448,6 @@ __attribute__((always_inline)) INLINE void cache_read_particles_subset(
         x[i] = pos_padded[0];
         y[i] = pos_padded[1];
         z[i] = pos_padded[2];
-        h[i] = h_padded;
 
         m[i] = 1.f;
         vx[i] = 1.f;
@@ -391,7 +460,6 @@ __attribute__((always_inline)) INLINE void cache_read_particles_subset(
       x[i] = (float)(parts[idx].x[0] - loc[0]);
       y[i] = (float)(parts[idx].x[1] - loc[1]);
       z[i] = (float)(parts[idx].x[2] - loc[2]);
-      h[i] = parts[idx].h;
       m[i] = parts[idx].mass;
       vx[i] = parts[idx].v[0];
       vy[i] = parts[idx].v[1];
@@ -406,7 +474,6 @@ __attribute__((always_inline)) INLINE void cache_read_particles_subset(
       x[i] = pos_padded[0];
       y[i] = pos_padded[1];
       z[i] = pos_padded[2];
-      h[i] = h_padded;
 
       m[i] = 1.f;
       vx[i] = 1.f;

@@ -67,8 +67,6 @@ int space_subsize_pair_hydro = space_subsize_pair_hydro_default;
 int space_subsize_self_hydro = space_subsize_self_hydro_default;
 int space_subsize_pair_grav = space_subsize_pair_grav_default;
 int space_subsize_self_grav = space_subsize_self_grav_default;
-int space_subsize_pair_stars = space_subsize_pair_stars_default;
-int space_subsize_self_stars = space_subsize_self_stars_default;
 int space_subdepth_diff_grav = space_subdepth_diff_grav_default;
 int space_maxsize = space_maxsize_default;
 
@@ -3356,6 +3354,10 @@ void space_first_init_parts_mapper(void *restrict map_data, int count,
 
   const struct hydro_props *hydro_props = s->e->hydro_properties;
   const float u_init = hydro_props->initial_internal_energy;
+  const float hydro_h_min_ratio = e->hydro_properties->h_min_ratio;
+
+  const struct gravity_props *grav_props = s->e->gravity_properties;
+  const int with_gravity = e->policy & engine_policy_self_gravity;
 
   const struct chemistry_global_data *chemistry = e->chemistry;
   const struct cooling_function_data *cool_func = e->cooling_func;
@@ -3365,6 +3367,12 @@ void space_first_init_parts_mapper(void *restrict map_data, int count,
     if (p[k].h <= 0.)
       error("Invalid value of smoothing length for part %lld h=%e", p[k].id,
             p[k].h);
+
+    if (with_gravity) {
+      const struct gpart *gp = p[k].gpart;
+      const float softening = gravity_get_softening(gp, grav_props);
+      p->h = max(p->h, softening * hydro_h_min_ratio);
+    }
   }
 
   /* Convert velocities to internal units */
@@ -3814,12 +3822,6 @@ void space_init(struct space *s, struct swift_params *params,
   space_subsize_self_grav =
       parser_get_opt_param_int(params, "Scheduler:cell_sub_size_self_grav",
                                space_subsize_self_grav_default);
-  space_subsize_pair_stars =
-      parser_get_opt_param_int(params, "Scheduler:cell_sub_size_pair_stars",
-                               space_subsize_pair_stars_default);
-  space_subsize_self_stars =
-      parser_get_opt_param_int(params, "Scheduler:cell_sub_size_self_stars",
-                               space_subsize_self_stars_default);
   space_splitsize = parser_get_opt_param_int(
       params, "Scheduler:cell_split_size", space_splitsize_default);
   space_subdepth_diff_grav =
@@ -3840,8 +3842,6 @@ void space_init(struct space *s, struct swift_params *params,
             space_subsize_pair_hydro, space_subsize_self_hydro);
     message("sub_size_pair_grav set to %d, sub_size_self_grav set to %d",
             space_subsize_pair_grav, space_subsize_self_grav);
-    message("sub_size_pair_stars set to %d, sub_size_self_stars set to %d",
-            space_subsize_pair_stars, space_subsize_self_stars);
   }
 
   /* Apply h scaling */

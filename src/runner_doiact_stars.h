@@ -1381,9 +1381,7 @@ void DOSUB_PAIR1_STARS(struct runner *r, struct cell *ci, struct cell *cj,
       /* Do any of the cells need to be sorted first? */
       if (!(ci->stars.sorted & (1 << sid)) ||
           ci->stars.dx_max_sort_old > ci->dmin * space_maxreldx) {
-	cell_activate_stars_sorts(ci, sid, &r->e->sched);
-        error("Interacting unsorted cell (sparts). %p %p %i %i %i %i %i %i %i %i %i %i", ci->stars.density, cj->stars.density, ci->stars.sorted, 1 << sid, cj->nodeID, ci->nodeID, ci->super->stars.sorts_foreign->skip,
-	      ci->stars.count, ci->hydro.count, cj->stars.count, cj->hydro.count, ci->stars.do_sort);
+        error("Interacting unsorted cell (sparts).");
       }
 
       if (!(cj->hydro.sorted & (1 << sid)) ||
@@ -1402,14 +1400,14 @@ void DOSUB_PAIR1_STARS(struct runner *r, struct cell *ci, struct cell *cj,
 
       /* Do any of the cells need to be sorted first? */
       if (!(ci->hydro.sorted & (1 << sid)) ||
-          ci->hydro.dx_max_sort_old > ci->dmin * space_maxreldx)
-        error("Interacting unsorted cell (parts). %i %i %p %i %i %i %i", ci->nodeID, cj->nodeID, ci->super->hydro.sorts, ci->hydro.count, ci->stars.count, cj->hydro.count,
-	      cj->stars.count);
+          ci->hydro.dx_max_sort_old > ci->dmin * space_maxreldx) {
+        error("Interacting unsorted cell (parts).");
+      }
 
       if (!(cj->stars.sorted & (1 << sid)) ||
-          cj->stars.dx_max_sort_old > cj->dmin * space_maxreldx)
-        error("Interacting unsorted cell (sparts). %i %i %i %i %i %i %i", cj->nodeID, ci->nodeID, ci->stars.sorts_foreign->skip,
-	      ci->stars.count, ci->hydro.count, cj->stars.count, cj->hydro.count);
+          cj->stars.dx_max_sort_old > cj->dmin * space_maxreldx) {
+        error("Interacting unsorted cell (sparts).");
+      }
     }
 
     if (do_ci || do_cj) DOPAIR1_BRANCH_STARS(r, ci, cj);
@@ -1427,7 +1425,7 @@ void DOSUB_SELF1_STARS(struct runner *r, struct cell *ci, int gettimer) {
 
 #ifdef SWIFT_DEBUG_CHECKS
   if (ci->nodeID != engine_rank)
-    error("This function should not be called on local cells");
+    error("This function should not be called on foreign cells");
 #endif
   /* Should we even bother? */
   if (ci->hydro.count == 0 || ci->stars.count == 0 ||

@@ -22,7 +22,7 @@ fi
 #
 #python check_stochastic_heating.py
 
-../swift --limiter --feedback --stars --hydro --external-gravity --threads=4 --param=Stars:energy_testing:1 stellar_evolution.yml 2>&1 | tee output_stochastic_2.log
+../swift --limiter --feedback --stars --hydro --external-gravity --threads=4 --param=Stars:energy_testing:1 stellar_evolution.yml 2>&1 | tee output.log
 
 python check_stochastic_heating.py
 #

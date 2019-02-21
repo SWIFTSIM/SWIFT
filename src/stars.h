@@ -22,17 +22,21 @@
 /* Config parameters. */
 #include "../config.h"
 
-/* Straight-forward import */
+/* Select the correct star model */
 #if defined(FEEDBACK_CONST)
 #include "./stars/const/stars.h"
-#include "./stars/const/stars_part.h"
 #include "./stars/const/stars_iact.h"
+#elif defined(STARS_NONE)
+#include "./stars/Default/stars.h"
+#include "./stars/Default/stars_iact.h"
 #elif defined(STARS_EAGLE)
 #include "./stars/EAGLE/stars.h"
 #include "./stars/EAGLE/stars_iact.h"
+#elif defined(STARS_GEAR)
+#include "./stars/GEAR/stars.h"
+#include "./stars/GEAR/stars_iact.h"
 #else
-#include "./stars/Default/stars.h"
-#include "./stars/Default/stars_iact.h"
+#error "Invalid choice of star model"
 #endif
 
 #endif

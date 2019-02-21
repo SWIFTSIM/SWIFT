@@ -28,6 +28,7 @@ SPH:
   CFL_condition:         0.1      # Courant-Friedrich-Levy condition for time integration.
   h_tolerance:           1e-4     # (Optional) Relative accuracy of the Netwon-Raphson scheme for the smoothing lengths.
   h_max:                 10.      # (Optional) Maximal allowed smoothing length in internal units. Defaults to FLT_MAX if unspecified.
+  h_min_ratio:           0.       # (Optional) Minimal allowed smoothing length in units of the softening. Defaults to 0 if unspecified.
   max_volume_change:     1.4      # (Optional) Maximal allowed change of kernel volume over one time-step.
   max_ghost_iterations:  30       # (Optional) Maximal number of iterations allowed to converge towards the smoothing length.
   initial_temperature:   0        # (Optional) Initial temperature (in internal units) to set the gas particles at start-up. Value is ignored if set to 0.
@@ -72,7 +73,7 @@ Scheduler:
   cell_extra_gparts:         0         # (Optional) Number of spare gparts per top-level allocated at rebuild time for on-the-fly creation.
   cell_extra_sparts:         400       # (Optional) Number of spare sparts per top-level allocated at rebuild time for on-the-fly creation.
   max_top_level_cells:       12        # (Optional) Maximal number of top-level cells in any dimension. The number of top-level cells will be the cube of this (this is the default value).
-  tasks_per_cell:            0         # (Optional) The average number of tasks per cell. If not large enough the simulation will fail (means guess...).
+  tasks_per_cell:            0.0       # (Optional) The average number of tasks per cell. If not large enough the simulation will fail (means guess...).
   links_per_tasks:           10        # (Optional) The average number of links per tasks (before adding the communication tasks). If not large enough the simulation will fail (means guess...). Defaults to 10.
   mpi_message_limit:         4096      # (Optional) Maximum MPI task message size to send non-buffered, KB.
 
@@ -160,7 +161,7 @@ DomainDecomposition:
   adaptive:         1         # Use adaptive repartition when ParMETIS is available, otherwise simple refinement.
   itr:              100       # When adaptive defines the ratio of inter node communication time to data redistribution time, in the range 0.00001 to 10000000.0.
                               # Lower values give less data movement during redistributions, at the cost of global balance which may require more communication.
-  use_fixed_costs:  1         # If 1 then use any compiled in fixed costs for
+  use_fixed_costs:  0         # If 1 then use any compiled in fixed costs for
                               # task weights in first repartition, if 0 only use task timings, if > 1 only use
                               # fixed costs, unless none are available.
 
@@ -184,13 +185,13 @@ EoS:
   planetary_use_ANEOS:  0   # (Optional) Whether to prepare the ANEOS EOS
   planetary_use_SESAME: 0   # (Optional) Whether to prepare the SESAME EOS
                             # (Optional) Table file paths
-  planetary_HM80_HHe_table_file:        ./equation_of_state/planetary_HM80_HHe.txt
-  planetary_HM80_ice_table_file:        ./equation_of_state/planetary_HM80_ice.txt
-  planetary_HM80_rock_table_file:       ./equation_of_state/planetary_HM80_rock.txt
-  planetary_SESAME_iron_table_file:     ./equation_of_state/planetary_SESAME_iron_2140.txt
-  planetary_SESAME_basalt_table_file:   ./equation_of_state/planetary_SESAME_basalt_7530.txt
-  planetary_SESAME_water_table_file:    ./equation_of_state/planetary_SESAME_water_7154.txt
-  planetary_SS08_water_table_file:      ./equation_of_state/planetary_SS08_water.txt
+  planetary_HM80_HHe_table_file:        ./EoSTables/planetary_HM80_HHe.txt
+  planetary_HM80_ice_table_file:        ./EoSTables/planetary_HM80_ice.txt
+  planetary_HM80_rock_table_file:       ./EoSTables/planetary_HM80_rock.txt
+  planetary_SESAME_iron_table_file:     ./EoSTables/planetary_SESAME_iron_2140.txt
+  planetary_SESAME_basalt_table_file:   ./EoSTables/planetary_SESAME_basalt_7530.txt
+  planetary_SESAME_water_table_file:    ./EoSTables/planetary_SESAME_water_7154.txt
+  planetary_SS08_water_table_file:      ./EoSTables/planetary_SS08_water.txt
 
 # Parameters related to external potentials --------------------------------------------
 
@@ -253,6 +254,18 @@ SineWavePotential:
   timestep_limit:   1.      # Time-step dimensionless pre-factor.
   growth_time:      0.      # (Optional) Time for the potential to grow to its final size.
 
+# Parameters related to entropy floors    ----------------------------------------------
+
+EAGLEEntropyFloor:
+  Jeans_density_threshold_H_p_cm3: 0.1       # Physical density above which the EAGLE Jeans limiter entropy floor kicks in expressed in Hydrogen atoms per cm^3.
+  Jeans_over_density_threshold:    10.       # Overdensity above which the EAGLE Jeans limiter entropy floor can kick in.
+  Jeans_temperature_norm_K:        8000      # Temperature of the EAGLE Jeans limiter entropy floor at the density threshold expressed in Kelvin.
+  Jeans_gamma_effective:           1.3333333 # Slope the of the EAGLE Jeans limiter entropy floor
+  Cool_density_threshold_H_p_cm3:  1e-5      # Physical density above which the EAGLE Cool limiter entropy floor kicks in expressed in Hydrogen atoms per cm^3.
+  Cool_over_density_threshold:     10.       # Overdensity above which the EAGLE Cool limiter entropy floor can kick in.
+  Cool_temperature_norm_K:         8000      # Temperature of the EAGLE Cool limiter entropy floor at the density threshold expressed in Kelvin.
+  Cool_gamma_effective:            1.        # Slope the of the EAGLE Cool limiter entropy floor
+  
 # Parameters related to cooling function  ----------------------------------------------
 
 # Constant du/dt cooling function
@@ -286,7 +299,6 @@ GrackleCooling:
   ProvideVolumetricHeatingRates: 0      # (optional) User provide volumetric heating rates
   ProvideSpecificHeatingRates: 0        # (optional) User provide specific heating rates
   SelfShieldingMethod: 0                # (optional) Grackle (<= 3) or Gear self shielding method
-  OutputMode: 0                         # (optional) Write in output corresponding primordial chemistry mode
   MaxSteps: 10000                       # (optional) Max number of step when computing the initial composition
   ConvergenceLimit: 1e-2                # (optional) Convergence threshold (relative) for initial composition
 
@@ -304,3 +316,24 @@ EAGLEChemistry:
   init_abundance_Magnesium: 0.000        # Inital fraction of particle mass in Magnesium
   init_abundance_Silicon:   0.000        # Inital fraction of particle mass in Silicon
   init_abundance_Iron:      0.000        # Inital fraction of particle mass in Iron
+
+# Parameters related to star formation models  -----------------------------------------------
+
+# EAGLE star formation model (Schaye and Dalla Vecchia 2008)
+EAGLEStarFormation:
+  EOS_density_norm_H_p_cm3:          0.1       # Physical density used for the normalisation of the EOS assumed for the star-forming gas in Hydrogen atoms per cm^3.
+  EOS_temperature_norm_K:            8000      # Temperature om the polytropic EOS assumed for star-forming gas at the density normalisation in Kelvin.
+  EOS_gamma_effective:               1.3333333 # Slope the of the polytropic EOS assumed for the star-forming gas.
+  gas_fraction:                      0.25      # (Optional) The gas fraction used internally by the model (Defaults to 1).
+  KS_normalisation:                  1.515e-4  # The normalization of the Kennicutt-Schmidt law in Msun / kpc^2 / yr.
+  KS_exponent:                       1.4       # The exponent of the Kennicutt-Schmidt law.
+  KS_min_over_density:               57.7      # The over-density above which star-formation is allowed.
+  KS_high_density_threshold_H_p_cm3: 1e3       # Hydrogen number density above which the Kennicut-Schmidt law changes slope in Hydrogen atoms per cm^3.
+  KS_high_density_exponent:          2.0       # Slope of the Kennicut-Schmidt law above the high-density threshold.
+  KS_max_density_threshold_H_p_cm3:  1e5       # (Optional) Density above which a gas particle gets automatically turned into a star in Hydrogen atoms per cm^3 (Defaults to FLT_MAX).
+  KS_temperature_margin_dex:         0.5       # (Optional) Logarithm base 10 of the maximal temperature difference above the EOS allowed to form stars (Defaults to FLT_MAX).
+  threshold_norm_H_p_cm3:            0.1       # Normalisation of the metal-dependant density threshold for star formation in Hydrogen atoms per cm^3.
+  threshold_Z0:                      0.002     # Reference metallicity (metal mass fraction) for the metal-dependant threshold for star formation.
+  threshold_slope:                   -0.64     # Slope of the metal-dependant star formation threshold
+  threshold_max_density_H_p_cm3:     10.0      # Maximal density of the metal-dependant density threshold for star formation in Hydrogen atoms per cm^3.  
+  
