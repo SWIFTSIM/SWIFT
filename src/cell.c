@@ -3422,26 +3422,36 @@ int cell_unskip_stars_tasks(struct cell *c, struct scheduler *s) {
     struct cell *cj = t->cj;
     const int ci_active = cell_is_active_stars(ci, e);
     const int cj_active = (cj != NULL) ? cell_is_active_stars(cj, e) : 0;
+#ifdef WITH_MPI
     const int ci_nodeID = ci->nodeID;
     const int cj_nodeID = (cj != NULL) ? cj->nodeID : -1;
+#else
+    const int ci_nodeID = nodeID;
+    const int cj_nodeID = nodeID;
+#endif
 
-    if (t->type == task_type_self && ci_active && ci->nodeID == nodeID) {
-
-      cell_activate_drift_part(ci, s);
-      cell_activate_drift_spart(ci, s);
-    }
-
-    /* Activate cells that contains either a density or a feedback task */
-    if ((ci_active || cj_active) &&
-        (ci_nodeID == nodeID || cj_nodeID == nodeID)) {
-
-      /* Only activate tasks that involve a local active cell. */
+    /* Only activate tasks that involve a local active cell. */
+    if ((ci_active && ci_nodeID == nodeID) ||
+        (cj_active && cj_nodeID == nodeID)) {
       scheduler_activate(s, t);
 
+      /* Activate the drifts */
+      if (t->type == task_type_self) {
+        if (ci_nodeID == nodeID) cell_activate_drift_part(ci, s);
+        if (ci_nodeID == nodeID) cell_activate_drift_spart(ci, s);
+      }
+
+      /* Store current values of dx_max and h_max. */
+      else if (t->type == task_type_sub_pair || t->type == task_type_sub_self) {
+        cell_activate_subcell_stars_tasks(t->ci, t->cj, s);
+      }
+
       /* Set the correct sorting flags and activate hydro drifts */
-      if (t->type == task_type_pair) {
+      else if (t->type == task_type_pair) {
+
         /* Do ci */
         if (ci_active) {
+
           /* stars for ci */
           atomic_or(&ci->stars.requires_sorts, 1 << t->flags);
           ci->stars.dx_max_sort_old = ci->stars.dx_max_sort;
@@ -3461,6 +3471,7 @@ int cell_unskip_stars_tasks(struct cell *c, struct scheduler *s) {
 
         /* Do cj */
         if (cj_active) {
+
           /* hydro for ci */
           atomic_or(&ci->hydro.requires_sorts, 1 << t->flags);
           ci->hydro.dx_max_sort_old = ci->hydro.dx_max_sort;
@@ -3477,11 +3488,6 @@ int cell_unskip_stars_tasks(struct cell *c, struct scheduler *s) {
           cell_activate_hydro_sorts(ci, t->flags, s);
           cell_activate_stars_sorts(cj, t->flags, s);
         }
-
-      }
-      /* Store current values of dx_max and h_max. */
-      else if (t->type == task_type_sub_pair || t->type == task_type_sub_self) {
-        cell_activate_subcell_stars_tasks(t->ci, t->cj, s);
       }
     }
 
@@ -3560,11 +3566,30 @@ int cell_unskip_stars_tasks(struct cell *c, struct scheduler *s) {
     struct cell *cj = l->t->cj;
     const int ci_active = cell_is_active_stars(ci, e);
     const int cj_active = (cj != NULL) ? cell_is_active_stars(cj, e) : 0;
+#ifdef WITH_MPI
     const int ci_nodeID = ci->nodeID;
-    const int cj_nodeID = (cj != NULL) ? cj->nodeID : nodeID;
+    const int cj_nodeID = (cj != NULL) ? cj->nodeID : -1;
+#else
+    const int ci_nodeID = nodeID;
+    const int cj_nodeID = nodeID;
+#endif
+
     if ((ci_active && cj_nodeID == nodeID) ||
-        (cj_active && ci_nodeID == nodeID))
+        (cj_active && ci_nodeID == nodeID)) {
       scheduler_activate(s, l->t);
+
+      if (t->type == task_type_self) {
+        /* Nothing to do here, all was drifted already */
+      }
+
+      else if (t->type == task_type_sub_pair || t->type == task_type_sub_self) {
+        /* Nothing to do here, all was drifted already */
+      }
+
+      /* Set the correct sorting flags and activate hydro drifts */
+      else if (t->type == task_type_pair) {
+      }
+    }
   }
 
   /* Unskip all the other task types. */
