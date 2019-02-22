@@ -2196,7 +2196,7 @@ void runner_do_timestep(struct runner *r, struct cell *c, int timer) {
   TIMER_TIC;
 
   /* Anything to do here? */
-  if (!cell_is_active_hydro(c, e) && !cell_is_active_gravity(c, e)) {
+  if (!cell_is_active_hydro(c, e) && !cell_is_active_gravity(c, e) && !cell_is_active_stars(c,e)) {
     c->hydro.updated = 0;
     c->grav.updated = 0;
     c->stars.updated = 0;
