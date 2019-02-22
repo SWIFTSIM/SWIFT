@@ -3449,45 +3449,37 @@ int cell_unskip_stars_tasks(struct cell *c, struct scheduler *s) {
       /* Set the correct sorting flags and activate hydro drifts */
       else if (t->type == task_type_pair) {
 
-        /* Do ci */
-        if (ci_active) {
-
-          /* stars for ci */
-          atomic_or(&ci->stars.requires_sorts, 1 << t->flags);
-          ci->stars.dx_max_sort_old = ci->stars.dx_max_sort;
-
-          /* hydro for cj */
-          atomic_or(&cj->hydro.requires_sorts, 1 << t->flags);
-          cj->hydro.dx_max_sort_old = cj->hydro.dx_max_sort;
-
-          /* Activate the drift tasks. */
-          if (ci->nodeID == nodeID) cell_activate_drift_spart(ci, s);
-          if (cj->nodeID == nodeID) cell_activate_drift_part(cj, s);
-
-          /* Check the sorts and activate them if needed. */
-          cell_activate_stars_sorts(ci, t->flags, s);
-          cell_activate_hydro_sorts(cj, t->flags, s);
-        }
-
-        /* Do cj */
-        if (cj_active) {
-
-          /* hydro for ci */
-          atomic_or(&ci->hydro.requires_sorts, 1 << t->flags);
-          ci->hydro.dx_max_sort_old = ci->hydro.dx_max_sort;
-
-          /* stars for cj */
-          atomic_or(&cj->stars.requires_sorts, 1 << t->flags);
-          cj->stars.dx_max_sort_old = cj->stars.dx_max_sort;
-
-          /* Activate the drift tasks. */
-          if (cj->nodeID == nodeID) cell_activate_drift_spart(cj, s);
-          if (ci->nodeID == nodeID) cell_activate_drift_part(ci, s);
-
-          /* Check the sorts and activate them if needed. */
-          cell_activate_hydro_sorts(ci, t->flags, s);
-          cell_activate_stars_sorts(cj, t->flags, s);
-        }
+	/* Activate the drift tasks. */
+	if (ci->nodeID == nodeID) {
+	  cell_activate_drift_part(ci, s);
+	  cell_activate_drift_spart(ci, s);
+	}
+	if (cj->nodeID == nodeID) {
+	  cell_activate_drift_part(cj, s);
+	  cell_activate_drift_spart(cj, s);
+	}
+	
+	/* stars for ci */
+	atomic_or(&ci->stars.requires_sorts, 1 << t->flags);
+	ci->stars.dx_max_sort_old = ci->stars.dx_max_sort;
+	
+	/* hydro for cj */
+	atomic_or(&cj->hydro.requires_sorts, 1 << t->flags);
+	cj->hydro.dx_max_sort_old = cj->hydro.dx_max_sort;
+	
+	/* hydro for ci */
+	atomic_or(&ci->hydro.requires_sorts, 1 << t->flags);
+	ci->hydro.dx_max_sort_old = ci->hydro.dx_max_sort;
+	
+	/* stars for cj */
+	atomic_or(&cj->stars.requires_sorts, 1 << t->flags);
+	cj->stars.dx_max_sort_old = cj->stars.dx_max_sort;
+	
+	/* Check the sorts and activate them if needed. */
+	cell_activate_hydro_sorts(ci, t->flags, s);
+	cell_activate_hydro_sorts(cj, t->flags, s);
+	cell_activate_stars_sorts(ci, t->flags, s);
+	cell_activate_stars_sorts(cj, t->flags, s);
       }
     }
 
@@ -3504,11 +3496,13 @@ int cell_unskip_stars_tasks(struct cell *c, struct scheduler *s) {
       if (ci_nodeID != nodeID) {
 
         if (cj_active) {
-          scheduler_activate(s, ci->mpi.hydro.recv_xv);
-
+          scheduler_activate(s, ci->mpi.hydro.recv_rho);
+	  scheduler_activate(s, ci->mpi.stars.recv);
+	  
           /* If the local cell is active, more stuff will be needed.
            */
           scheduler_activate_send(s, cj->mpi.stars.send, ci_nodeID);
+          scheduler_activate_send(s, cj->mpi.hydro.send, ci_nodeID);
 
           /* If the local cell is active, send its ti_end values. */
           scheduler_activate_send(s, cj->mpi.send_ti, ci_nodeID);
@@ -3521,7 +3515,7 @@ int cell_unskip_stars_tasks(struct cell *c, struct scheduler *s) {
           scheduler_activate(s, ci->mpi.recv_ti);
 
           /* Is the foreign cell active and will need stuff from us? */
-          scheduler_activate_send(s, cj->mpi.hydro.send_xv, ci_nodeID);
+          scheduler_activate_send(s, cj->mpi.hydro.send_rho, ci_nodeID);
 
           /* Drift the cell which will be sent; note that not all sent
              particles will be drifted, only those that are needed. */
@@ -3531,7 +3525,7 @@ int cell_unskip_stars_tasks(struct cell *c, struct scheduler *s) {
       } else if (cj_nodeID != nodeID) {
 
         /* If the local cell is active, receive data from the foreign cell. */
-        if (ci_active) {
+        if (ci_active) {  
           scheduler_activate(s, cj->mpi.hydro.recv_xv);
 
           /* If the local cell is active, more stuff will be needed.
