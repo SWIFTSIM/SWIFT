@@ -3562,8 +3562,9 @@ int cell_unskip_stars_tasks(struct cell *c, struct scheduler *s) {
 
   /* Un-skip the feedback tasks involved with this cell. */
   for (struct link *l = c->stars.feedback; l != NULL; l = l->next) {
-    struct cell *ci = l->t->ci;
-    struct cell *cj = l->t->cj;
+    struct task *t = l->t;
+    struct cell *ci = t->ci;
+    struct cell *cj = t->cj;
     const int ci_active = cell_is_active_stars(ci, e);
     const int cj_active = (cj != NULL) ? cell_is_active_stars(cj, e) : 0;
 #ifdef WITH_MPI
@@ -3576,7 +3577,7 @@ int cell_unskip_stars_tasks(struct cell *c, struct scheduler *s) {
 
     if ((ci_active && cj_nodeID == nodeID) ||
         (cj_active && ci_nodeID == nodeID)) {
-      scheduler_activate(s, l->t);
+      scheduler_activate(s, t);
 
       if (t->type == task_type_self) {
         /* Nothing to do here, all was drifted already */
