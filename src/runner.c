@@ -134,11 +134,12 @@ void runner_do_stars_ghost(struct runner *r, struct cell *c, int timer) {
   struct spart *restrict sparts = c->stars.parts;
   const struct engine *e = r->e;
   const struct cosmology *cosmo = e->cosmology;
-  const struct stars_props *stars_properties = e->stars_properties;
-  const float stars_h_max = stars_properties->h_max;
-  const float eps = stars_properties->h_tolerance;
-  const float stars_eta_dim = pow_dimension(stars_properties->eta_neighbours);
-  const int max_smoothing_iter = stars_properties->max_smoothing_iterations;
+  const float stars_h_max = e->hydro_properties->h_max;
+  const float stars_h_min = e->hydro_properties->h_min;
+  const float eps = e->stars_properties->h_tolerance;
+  const float stars_eta_dim =
+      pow_dimension(e->stars_properties->eta_neighbours);
+  const int max_smoothing_iter = e->stars_properties->max_smoothing_iterations;
   int redo = 0, scount = 0;
 
   TIMER_TIC;
@@ -154,11 +155,23 @@ void runner_do_stars_ghost(struct runner *r, struct cell *c, int timer) {
 
     /* Init the list of active particles that have to be updated. */
     int *sid = NULL;
+    float *h_0 = NULL;
+    float *left = NULL;
+    float *right = NULL;
     if ((sid = (int *)malloc(sizeof(int) * c->stars.count)) == NULL)
       error("Can't allocate memory for sid.");
+    if ((h_0 = (float *)malloc(sizeof(float) * c->hydro.count)) == NULL)
+      error("Can't allocate memory for h_0.");
+    if ((left = (float *)malloc(sizeof(float) * c->hydro.count)) == NULL)
+      error("Can't allocate memory for left.");
+    if ((right = (float *)malloc(sizeof(float) * c->hydro.count)) == NULL)
+      error("Can't allocate memory for right.");
     for (int k = 0; k < c->stars.count; k++)
       if (spart_is_active(&sparts[k], e)) {
         sid[scount] = k;
+        h_0[scount] = sparts[k].h;
+        left[scount] = 0.f;
+        right[scount] = stars_h_max;
         ++scount;
       }
 
@@ -182,9 +195,11 @@ void runner_do_stars_ghost(struct runner *r, struct cell *c, int timer) {
 #endif
 
         /* Get some useful values */
+        const float h_init = h_0[i];
         const float h_old = sp->h;
         const float h_old_dim = pow_dimension(h_old);
         const float h_old_dim_minus_one = pow_dimension_minus_one(h_old);
+
         float h_new;
         int has_no_neighbours = 0;
 
@@ -195,6 +210,7 @@ void runner_do_stars_ghost(struct runner *r, struct cell *c, int timer) {
 
           /* Double h and try again */
           h_new = 2.f * h_old;
+
         } else {
 
           /* Finish the density calculation */
@@ -208,8 +224,20 @@ void runner_do_stars_ghost(struct runner *r, struct cell *c, int timer) {
               sp->density.wcount_dh * h_old_dim +
               hydro_dimension * sp->density.wcount * h_old_dim_minus_one;
 
+          /* Improve the bisection bounds */
+          if (n_sum < n_target) left[i] = max(left[i], h_old);
+          if (n_sum > n_target) right[i] = min(right[i], h_old);
+
+#ifdef SWIFT_DEBUG_CHECKS
+          /* Check the validity of the left and right bounds */
+          if (left[i] > right[i])
+            error("Invalid left (%e) and right (%e)", left[i], right[i]);
+#endif
+
           /* Skip if h is already h_max and we don't have enough neighbours */
-          if ((sp->h >= stars_h_max) && (f < 0.f)) {
+          /* Same if we are below h_min */
+          if (((sp->h >= stars_h_max) && (f < 0.f)) ||
+              ((sp->h <= stars_h_min) && (f > 0.f))) {
 
             stars_reset_feedback(sp);
 
@@ -218,32 +246,63 @@ void runner_do_stars_ghost(struct runner *r, struct cell *c, int timer) {
           }
 
           /* Normal case: Use Newton-Raphson to get a better value of h */
+
           /* Avoid floating point exception from f_prime = 0 */
           h_new = h_old - f / (f_prime + FLT_MIN);
+
+          /* Be verbose about the particles that struggle to converge */
+          if (num_reruns > max_smoothing_iter - 10) {
+
+            message(
+                "Smoothing length convergence problem: iter=%d p->id=%lld "
+                "h_init=%12.8e h_old=%12.8e h_new=%12.8e f=%f f_prime=%f "
+                "n_sum=%12.8e n_target=%12.8e left=%12.8e right=%12.8e",
+                num_reruns, sp->id, h_init, h_old, h_new, f, f_prime, n_sum,
+                n_target, left[i], right[i]);
+          }
+
 #ifdef SWIFT_DEBUG_CHECKS
           if ((f > 0.f && h_new > h_old) || (f < 0.f && h_new < h_old))
             error(
-                "Smoothing length correction not going in the right direction"
-                "sp->id=%lld sp->h=%e",
-                sp->id, sp->h);
+                "Smoothing length correction not going in the right direction");
 #endif
 
           /* Safety check: truncate to the range [ h_old/2 , 2h_old ]. */
           h_new = min(h_new, 2.f * h_old);
           h_new = max(h_new, 0.5f * h_old);
+
+          /* Verify that we are actually progrssing towards the answer */
+          h_new = max(h_new, left[i]);
+          h_new = min(h_new, right[i]);
         }
 
         /* Check whether the particle has an inappropriate smoothing length */
         if (fabsf(h_new - h_old) > eps * h_old) {
 
           /* Ok, correct then */
-          sp->h = h_new;
+
+          /* Case where we have been oscillating around the solution */
+          if ((h_new == left[i] && h_old == right[i]) ||
+              (h_old == left[i] && h_new == right[i])) {
+
+            /* Bissect the remaining interval */
+            sp->h = pow_inv_dimension(
+                0.5f * (pow_dimension(left[i]) + pow_dimension(right[i])));
+
+          } else {
+
+            /* Normal case */
+            sp->h = h_new;
+          }
 
           /* If below the absolute maximum, try again */
-          if (sp->h < stars_h_max) {
+          if (sp->h < stars_h_max && sp->h > stars_h_min) {
 
             /* Flag for another round of fun */
             sid[redo] = sid[i];
+            h_0[redo] = h_0[i];
+            left[redo] = left[i];
+            right[redo] = right[i];
             redo += 1;
 
             /* Re-initialise everything */
@@ -252,7 +311,12 @@ void runner_do_stars_ghost(struct runner *r, struct cell *c, int timer) {
             /* Off we go ! */
             continue;
 
-          } else {
+          } else if (sp->h <= stars_h_min) {
+
+            /* Ok, this particle is a lost cause... */
+            sp->h = stars_h_min;
+
+          } else if (sp->h >= stars_h_max) {
 
             /* Ok, this particle is a lost cause... */
             sp->h = stars_h_max;
@@ -261,6 +325,11 @@ void runner_do_stars_ghost(struct runner *r, struct cell *c, int timer) {
             if (has_no_neighbours) {
               stars_spart_has_no_neighbours(sp, cosmo);
             }
+
+          } else {
+            error(
+                "Fundamental problem with the smoothing length iteration "
+                "logic.");
           }
         }
 
@@ -268,7 +337,7 @@ void runner_do_stars_ghost(struct runner *r, struct cell *c, int timer) {
         stars_reset_feedback(sp);
 
         /* Compute the stellar evolution  */
-        stars_evolve_spart(sp, stars_properties, cosmo);
+        stars_evolve_spart(sp, e->stars_properties, cosmo);
       }
 
       /* We now need to treat the particles whose smoothing length had not
@@ -332,7 +401,10 @@ void runner_do_stars_ghost(struct runner *r, struct cell *c, int timer) {
     }
 
     /* Be clean */
+    free(left);
+    free(right);
     free(sid);
+    free(h_0);
   }
 
   if (timer) TIMER_TOC(timer_dostars_ghost);
@@ -1360,6 +1432,7 @@ void runner_do_ghost(struct runner *r, struct cell *c, int timer) {
 #endif
 
           /* Skip if h is already h_max and we don't have enough neighbours */
+          /* Same if we are below h_min */
           if (((p->h >= hydro_h_max) && (f < 0.f)) ||
               ((p->h <= hydro_h_min) && (f > 0.f))) {
 
@@ -1500,6 +1573,11 @@ void runner_do_ghost(struct runner *r, struct cell *c, int timer) {
               hydro_part_has_no_neighbours(p, xp, cosmo);
               chemistry_part_has_no_neighbours(p, xp, chemistry, cosmo);
             }
+
+          } else {
+            error(
+                "Fundamental problem with the smoothing length iteration "
+                "logic.");
           }
         }
 

@@ -126,9 +126,6 @@ struct stars_props {
   /*! Tolerance on neighbour number  (for info only)*/
   float delta_neighbours;
 
-  /*! Maximal smoothing length */
-  float h_max;
-
   /*! Maximal number of iterations to converge h */
   int max_smoothing_iterations;
 

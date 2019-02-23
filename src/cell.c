@@ -4044,7 +4044,8 @@ void cell_drift_spart(struct cell *c, const struct engine *e, int force) {
   const int periodic = e->s->periodic;
   const double dim[3] = {e->s->dim[0], e->s->dim[1], e->s->dim[2]};
   const int with_cosmology = (e->policy & engine_policy_cosmology);
-  const float stars_h_max = e->stars_properties->h_max;
+  const float stars_h_max = e->hydro_properties->h_max;
+  const float stars_h_min = e->hydro_properties->h_min;
   const integertime_t ti_old_spart = c->stars.ti_old_part;
   const integertime_t ti_current = e->ti_current;
   struct spart *const sparts = c->stars.parts;
@@ -4159,6 +4160,7 @@ void cell_drift_spart(struct cell *c, const struct engine *e, int force) {
 
       /* Limit h to within the allowed range */
       sp->h = min(sp->h, stars_h_max);
+      sp->h = max(sp->h, stars_h_min);
 
       /* Compute (square of) motion since last cell construction */
       const float dx2 = sp->x_diff[0] * sp->x_diff[0] +
