@@ -1413,10 +1413,7 @@ void DOSUB_PAIR1_STARS(struct runner *r, struct cell *ci, struct cell *cj,
 
       if (!(cj->stars.sorted & (1 << sid)) ||
           cj->stars.dx_max_sort_old > cj->dmin * space_maxreldx) {
-        error(
-            "Interacting unsorted cell (sparts)."
-            "c->stars.count=%d c->cellID=%d",
-            cj->stars.count, cj->cellID);
+        error("Interacting unsorted cell (sparts).");
       }
     }
 

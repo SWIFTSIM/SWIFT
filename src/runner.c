@@ -558,11 +558,6 @@ void runner_do_star_formation(struct runner *r, struct cell *c, int timer) {
             /* Copy the properties of the gas particle to the star particle */
             star_formation_copy_properties(p, xp, sp, e, sf_props, cosmo,
                                            with_cosmology);
-
-            message(
-                "STAR FORMED!!!! c->ID=%d super->ID=%d c->depth=%d"
-                "c->maxdepth=%d",
-                c->cellID, c->super->cellID, c->depth, c->maxdepth);
           }
 
         } else { /* Are we not star-forming? */
@@ -576,11 +571,9 @@ void runner_do_star_formation(struct runner *r, struct cell *c, int timer) {
     }     /* Loop over particles */
   }
 
+  /* If we formed any stars, the star sorts are now invalid. We need to
+   * re-compute them. */
   if ((c == c->hydro.super) && (current_stars_count != c->stars.count)) {
-    message(
-        "Emergency sort! c->ID=%d c->depth=%d c->maxdepth=%d c=%p c->super=%p",
-        c->cellID, c->depth, c->maxdepth, c, c->hydro.super);
-
     cell_clear_stars_sort_flags(c, /*is_super=*/1);
     runner_do_stars_sort(r, c, 0x1FFF, /*cleanup=*/0, /*timer=*/0);
   }
@@ -2775,11 +2768,10 @@ void runner_do_end_grav_force(struct runner *r, struct cell *c, int timer) {
                 e->total_nr_gparts, e->s->nr_gparts, e->count_inhibited_gparts);
           }
         }
-      }
 #endif
+      }
     }
   }
-
   if (timer) TIMER_TOC(timer_end_grav_force);
 }
 
@@ -2793,7 +2785,6 @@ void runner_do_end_grav_force(struct runner *r, struct cell *c, int timer) {
  */
 void runner_do_recv_part(struct runner *r, struct cell *c, int clear_sorts,
                          int timer) {
-
 #ifdef WITH_MPI
 
   const struct part *restrict parts = c->hydro.parts;
@@ -2862,7 +2853,7 @@ void runner_do_recv_part(struct runner *r, struct cell *c, int clear_sorts,
   if (timer) TIMER_TOC(timer_dorecv_part);
 
 #else
-    error("SWIFT was not compiled with MPI support.");
+  error("SWIFT was not compiled with MPI support.");
 #endif
 }
 
@@ -2936,7 +2927,7 @@ void runner_do_recv_gpart(struct runner *r, struct cell *c, int timer) {
   if (timer) TIMER_TOC(timer_dorecv_gpart);
 
 #else
-    error("SWIFT was not compiled with MPI support.");
+  error("SWIFT was not compiled with MPI support.");
 #endif
 }
 
@@ -3022,7 +3013,7 @@ void runner_do_recv_spart(struct runner *r, struct cell *c, int clear_sorts,
   if (timer) TIMER_TOC(timer_dorecv_spart);
 
 #else
-    error("SWIFT was not compiled with MPI support.");
+  error("SWIFT was not compiled with MPI support.");
 #endif
 }
 
@@ -3373,6 +3364,6 @@ void runner_do_logger(struct runner *r, struct cell *c, int timer) {
   if (timer) TIMER_TOC(timer_logger);
 
 #else
-    error("Logger disabled, please enable it during configuration");
+  error("Logger disabled, please enable it during configuration");
 #endif
 }

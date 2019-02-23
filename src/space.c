@@ -331,11 +331,9 @@ void space_regrid(struct space *s, int verbose) {
         const struct cell *c =
             &s->cells_top[s->local_cells_with_particles_top[k]];
         if (c->hydro.h_max > h_max) {
-          message("hydro h_max=%e", c->hydro.h_max);
           h_max = c->hydro.h_max;
         }
         if (c->stars.h_max > h_max) {
-          message("stars h_max=%e", c->stars.h_max);
           h_max = c->stars.h_max;
         }
       }
