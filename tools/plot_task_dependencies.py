@@ -5,10 +5,25 @@ This file generates a graphviz file that represents the SWIFT tasks
 
 Example: ./plot_task_dependencies.py dependency_graph_*.csv
 """
-import sys
 from pandas import read_csv
 import numpy as np
 from subprocess import call
+from optparse import OptionParser
+
+
+def parseOption():
+    parser = OptionParser()
+
+    parser.add_option(
+        "-c", "--with-calls", dest="with_calls",
+        help="Add the function calls in the graph",
+        action="store_true")
+
+    opt, files = parser.parse_args()
+    if len(files) != 1:
+        raise Exception("You need to provide one file")
+
+    return opt, files
 
 
 def getGitVersion(f, git):
@@ -190,7 +205,63 @@ def taskIsGravity(name):
     return False
 
 
-def writeTask(f, name, implicit, mpi):
+def getFunctionCalls(name):
+    txt = None
+    if name == "ghost":
+        txt = """hydro_end_density, chemistry_end_density,<br/>
+        hydro_prepare_gradient, hydro_reset_gradient,<br/>
+        hydro_prepare_force, hydro_reset_acceleration,<br/>
+        hydro_init_part, chemistry_init_part,<br/>
+        hydro_has_no_neighbours, chemistry_part_has_no_neighbours
+        """
+
+    elif name == "cooling":
+        txt = "cooling_cool_part"
+
+    elif name == "timestep":
+        txt = "tracers_after_timestep"
+
+    elif name == "drift_part":
+        txt = """drift_part, tracers_after_drift,<br/>
+        hydro_init_part, chemistry_init_part,<br/>
+        tracers_after_init
+        """
+
+    elif name == "kick1":
+        txt = "kick_part, kick_gpart, kick_spart"
+
+    elif name == "kick2":
+        txt = """kick_part, kick_gpart, kick_spart,<br/>
+        hydro_reset_predicted_values,
+        gravity_reset_predicted_Values,<br/>
+        stars_reset_predicted_values,
+        """
+
+    elif name == "end_force":
+        txt = """hydro_end_force, gravity_end_force,<br/>
+        stars_end_force"""
+
+    elif name == "drift_gpart":
+        txt = """drift_gpart, gravity_init_gpart,<br/>
+        drift_spart
+        """
+
+    if "density" in name and "stars" not in name:
+        txt = """runner_iact_nonsym_chemistry, runner_iact_chemistry,<br/>
+        runner_iact_nonsym_density, runner_iact_density"""
+
+    if "force" in name and "end" not in name:
+        txt = "runner_iact_nonsym_density, runner_iact_density"
+
+    if txt is None:
+        return None
+    else:
+        pre = "<" + name + "<BR/> <Font POINT-SIZE='10'>Calls: "
+        app = "</Font>>"
+        return pre + txt + app
+
+
+def writeTask(f, name, implicit, mpi, with_calls):
     """
     Write the special task (e.g. implicit and mpi)
 
@@ -208,6 +279,9 @@ def writeTask(f, name, implicit, mpi):
 
     mpi: int
         Is the task MPI related
+
+    with_calls: bool
+        if true, write down the function calls
     """
     # generate text
     txt = "\t " + name + "["
@@ -226,6 +300,11 @@ def writeTask(f, name, implicit, mpi):
     if taskIsGravity(name):
         txt += "color=red3,"
 
+    if with_calls:
+        func = getFunctionCalls(name)
+        if func is not None:
+            txt += "label=" + func + ","
+
     # remove extra ','
     if txt[-1] == ",":
         txt = txt[:-1]
@@ -235,7 +314,7 @@ def writeTask(f, name, implicit, mpi):
     f.write(txt)
 
 
-def writeHeader(f, data, git):
+def writeHeader(f, data, git, opt):
     """
     Write the header and the special tasks
 
@@ -250,6 +329,9 @@ def writeHeader(f, data, git):
 
     git: str
         The git version
+
+    opt: object
+        The options provided to this script
     """
     # write header
     f.write("digraph task_dep {\n")
@@ -272,7 +354,8 @@ def writeHeader(f, data, git):
             continue
 
         written.append(ta)
-        writeTask(f, ta, data["implicit_in"][i], data["mpi_in"][i])
+        writeTask(f, ta, data["implicit_in"][i], data["mpi_in"][i],
+                  opt.with_calls)
 
     # do task out
     for i in range(N):
@@ -281,7 +364,8 @@ def writeHeader(f, data, git):
             continue
 
         written.append(tb)
-        writeTask(f, tb, data["implicit_out"][i], data["mpi_out"][i])
+        writeTask(f, tb, data["implicit_out"][i], data["mpi_out"][i],
+                  opt.with_calls)
 
     f.write("\n")
 
@@ -402,10 +486,8 @@ def writeFooter(f):
 
 
 if __name__ == "__main__":
-    # get input
-    filenames = sys.argv[1:]
-    if len(filenames) < 1:
-        raise Exception("You should provide at least a file name")
+
+    opt, files = parseOption()
 
     # output
     dot_output = "dependency_graph.dot"
@@ -414,7 +496,7 @@ if __name__ == "__main__":
     # read files
     data = []
     git = None
-    for f in filenames:
+    for f in files:
         tmp = read_csv(f, delimiter=",", comment="#")
         git = getGitVersion(f, git)
         data.append(tmp)
@@ -423,7 +505,7 @@ if __name__ == "__main__":
 
     # write output
     with open(dot_output, "w") as f:
-        writeHeader(f, data, git)
+        writeHeader(f, data, git, opt)
 
         writeClusters(f, data)
 
@@ -434,3 +516,7 @@ if __name__ == "__main__":
     call(["dot", "-Tpng", dot_output, "-o", png_output])
 
     print("You will find the graph in %s" % png_output)
+
+    if opt.with_calls:
+        print("We recommand to use the python package xdot available on pypi:")
+        print("  python -m xdot %s" % dot_output)
