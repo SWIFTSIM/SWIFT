@@ -245,6 +245,9 @@ void engine_addtasks_send_stars(struct engine *e, struct cell *ci,
 
       /* Ghost before you send */
       scheduler_addunlock(s, ci->hydro.super->stars.ghost, t_feedback);
+
+      /* Drift before you send */
+      scheduler_addunlock(s, ci->hydro.super->stars.drift, t_feedback);
     }
 
     engine_addlink(e, &ci->mpi.stars.send, t_feedback);
@@ -404,6 +407,7 @@ void engine_addtasks_recv_hydro(struct engine *e, struct cell *c,
 #endif
 
   for (struct link *l = c->stars.density; l != NULL; l = l->next) {
+    scheduler_addunlock(s, t_xv, l->t);
     scheduler_addunlock(s, t_rho, l->t);
   }
 
@@ -447,7 +451,9 @@ void engine_addtasks_recv_stars(struct engine *e, struct cell *c,
 
   c->mpi.stars.recv = t_feedback;
 
+#ifdef SWIFT_DEBUG_CHECKS
   if (c->nodeID == e->nodeID) error("Local cell!");
+#endif
   if (c->stars.sorts != NULL)
     scheduler_addunlock(s, t_feedback, c->stars.sorts);
 
