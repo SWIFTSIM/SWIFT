@@ -496,7 +496,8 @@ struct cell {
     /*! The drift task for sparts */
     struct task *drift;
 
-    /*! Implicit tasks marking the entry of the stellar physics block of tasks */
+    /*! Implicit tasks marking the entry of the stellar physics block of tasks
+     */
     struct task *stars_in;
 
     /*! Implicit tasks marking the exit of the stellar physics block of tasks */
