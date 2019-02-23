@@ -68,7 +68,7 @@ __attribute__((always_inline)) INLINE static void stars_init_spart(
 /**
  * @brief Predict additional particle fields forward in time when drifting
  *
- * @param p The particle
+ * @param sp The particle
  * @param dt_drift The drift time-step for positions.
  */
 __attribute__((always_inline)) INLINE static void stars_predict_extra(

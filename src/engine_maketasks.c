@@ -427,11 +427,10 @@ void engine_addtasks_recv_hydro(struct engine *e, struct cell *c,
  *
  * @param e The #engine.
  * @param c The foreign #cell.
- * @param t_xv The recv_xv #task, if it has already been created.
- * @param t_feed The recv_feed #task, if it has already been created.
+ * @param t_feedback The recv_feed #task, if it has already been created.
  */
 void engine_addtasks_recv_stars(struct engine *e, struct cell *c,
-                                struct task *t_xv, struct task *t_feedback) {
+                                struct task *t_feedback) {
 
 #ifdef WITH_MPI
   struct scheduler *s = &e->sched;
@@ -469,7 +468,7 @@ void engine_addtasks_recv_stars(struct engine *e, struct cell *c,
   if (c->split)
     for (int k = 0; k < 8; k++)
       if (c->progeny[k] != NULL)
-        engine_addtasks_recv_stars(e, c->progeny[k], t_xv, t_feedback);
+        engine_addtasks_recv_stars(e, c->progeny[k], t_feedback);
 
 #else
   error("SWIFT was not compiled with MPI support.");
@@ -761,34 +760,6 @@ void engine_make_hierarchical_tasks_gravity(struct engine *e, struct cell *c) {
 }
 
 /**
- * @brief Recursively add non-implicit star ghost tasks to a cell hierarchy.
- */
-/* void engine_add_stars_ghosts(struct engine *e, struct cell *c, */
-/*                              struct task *stars_ghost_in, */
-/*                              struct task *stars_ghost_out) { */
-
-/*   /\* Abort as there are no star particles here? *\/ */
-/*   if (c->stars.count_total == 0) return; */
-
-/*   /\* If we have reached the leaf OR have to few particles to play with*\/ */
-/*   if (!c->split || c->stars.count_total < engine_max_sparts_per_ghost) { */
-
-/*     /\* Add the ghost task and its dependencies *\/ */
-/*     struct scheduler *s = &e->sched; */
-/*     c->stars.ghost = scheduler_addtask(s, task_type_stars_ghost, */
-/*                                        task_subtype_none, 0, 0, c, NULL); */
-/*     scheduler_addunlock(s, stars_ghost_in, c->stars.ghost); */
-/*     scheduler_addunlock(s, c->stars.ghost, stars_ghost_out); */
-/*   } else { */
-/*     /\* Keep recursing *\/ */
-/*     for (int k = 0; k < 8; k++) */
-/*       if (c->progeny[k] != NULL) */
-/*         engine_add_stars_ghosts(e, c->progeny[k], stars_ghost_in, */
-/*                                 stars_ghost_out); */
-/*   } */
-/* } */
-
-/**
  * @brief Recursively add non-implicit ghost tasks to a cell hierarchy.
  */
 void engine_add_ghosts(struct engine *e, struct cell *c, struct task *ghost_in,
@@ -934,64 +905,27 @@ void engine_make_hierarchical_tasks_hydro(struct engine *e, struct cell *c) {
   }
 }
 
-/**
- * @brief Generate the stars hierarchical tasks for a hierarchy of cells -
- * i.e. all the O(Npart) tasks -- star version
- *
- * Tasks are only created here. The dependencies will be added later on.
- *
- * Note that there is no need to recurse below the super-cell. Note also
- * that we only add tasks if the relevant particles are present in the cell.
- *
- * @param e The #engine.
- * @param c The #cell.
- */
-/* void engine_make_hierarchical_tasks_stars(struct engine *e, struct cell *c) {
- */
+void engine_make_hierarchical_tasks_mapper(void *map_data, int num_elements,
+                                           void *extra_data) {
+  struct engine *e = (struct engine *)extra_data;
+  const int is_with_hydro = (e->policy & engine_policy_hydro);
+  const int is_with_self_gravity = (e->policy & engine_policy_self_gravity);
+  const int is_with_external_gravity =
+      (e->policy & engine_policy_external_gravity);
+  /* const int is_with_feedback = (e->policy & engine_policy_feedback); */
 
-/*   struct scheduler *s = &e->sched; */
-
-/*   /\* Are we in a super-cell ? *\/ */
-/*   if (c->hydro.super == c) { */
-/*     /\* Foreign tasks only *\/ */
-/*     if (c->nodeID != e->nodeID) { */
-/*       c->stars.sorts_foreign = scheduler_addtask( */
-/*           s, task_type_stars_sort_foreign, task_subtype_none, 0, 0, c, NULL);
- */
-/*     } */
-
-/*     /\* Local tasks only... *\/ */
-/*     if (c->nodeID == e->nodeID) { */
-/*       c->stars.sorts_local = scheduler_addtask( */
-/*           s, task_type_stars_sort_local, task_subtype_none, 0, 0, c, NULL);
- */
-
-/*       /\* Generate the ghost tasks. *\/ */
-/*       c->stars.ghost_in = */
-/*           scheduler_addtask(s, task_type_stars_ghost_in, task_subtype_none,
- * 0, */
-/*                             /\* implicit = *\/ 1, c, NULL); */
-/*       c->stars.ghost_out = */
-/*           scheduler_addtask(s, task_type_stars_ghost_out, task_subtype_none,
- * 0, */
-/*                             /\* implicit = *\/ 1, c, NULL); */
-/*       engine_add_stars_ghosts(e, c, c->stars.ghost_in, c->stars.ghost_out);
- */
-
-/*       /\* Need to compute the gas density before moving to the feedback *\/
- */
-/*       scheduler_addunlock(s, c->hydro.super->hydro.ghost_out, */
-/*                           c->hydro.super->stars.ghost_out); */
-/*     } */
-/*   } else { /\* We are above the super-cell so need to go deeper *\/ */
-
-/*     /\* Recurse. *\/ */
-/*     if (c->split) */
-/*       for (int k = 0; k < 8; k++) */
-/*         if (c->progeny[k] != NULL) */
-/*           engine_make_hierarchical_tasks_stars(e, c->progeny[k]); */
-/*   } */
-/* } */
+  for (int ind = 0; ind < num_elements; ind++) {
+    struct cell *c = &((struct cell *)map_data)[ind];
+    /* Make the common tasks (time integration) */
+    engine_make_hierarchical_tasks_common(e, c);
+    /* Add the hydro stuff */
+    if (is_with_hydro) engine_make_hierarchical_tasks_hydro(e, c);
+    /* And the gravity stuff */
+    if (is_with_self_gravity || is_with_external_gravity)
+      engine_make_hierarchical_tasks_gravity(e, c);
+    /* if (is_with_feedback) engine_make_hierarchical_tasks_stars(e, c); */
+  }
+}
 
 /**
  * @brief Constructs the top-level tasks for the short-range gravity
@@ -1153,28 +1087,6 @@ void engine_make_self_gravity_tasks_mapper(void *map_data, int num_elements,
         }
       }
     }
-  }
-}
-
-void engine_make_hierarchical_tasks_mapper(void *map_data, int num_elements,
-                                           void *extra_data) {
-  struct engine *e = (struct engine *)extra_data;
-  const int is_with_hydro = (e->policy & engine_policy_hydro);
-  const int is_with_self_gravity = (e->policy & engine_policy_self_gravity);
-  const int is_with_external_gravity =
-      (e->policy & engine_policy_external_gravity);
-  /* const int is_with_feedback = (e->policy & engine_policy_feedback); */
-
-  for (int ind = 0; ind < num_elements; ind++) {
-    struct cell *c = &((struct cell *)map_data)[ind];
-    /* Make the common tasks (time integration) */
-    engine_make_hierarchical_tasks_common(e, c);
-    /* Add the hydro stuff */
-    if (is_with_hydro) engine_make_hierarchical_tasks_hydro(e, c);
-    /* And the gravity stuff */
-    if (is_with_self_gravity || is_with_external_gravity)
-      engine_make_hierarchical_tasks_gravity(e, c);
-    /* if (is_with_feedback) engine_make_hierarchical_tasks_stars(e, c); */
   }
 }
 
@@ -1552,25 +1464,6 @@ static inline void engine_make_hydro_loops_dependencies(
 }
 
 #endif
-/**
- * @brief Creates the dependency network for the stars tasks of a given cell.
- *
- * @param sched The #scheduler.
- * @param density The star density task to link.
- * @param feedback The star feedback task to link.
- * @param c The cell.
- */
-/* static inline void engine_make_stars_loops_dependencies(struct scheduler
- * *sched, */
-/*                                                         struct task *density,
- */
-/*                                                         struct task
- * *feedback, */
-/*                                                         struct cell *c) { */
-/*   /\* density loop --> ghost --> feedback loop*\/ */
-/*   scheduler_addunlock(sched, density, c->hydro.super->stars.ghost_in); */
-/*   scheduler_addunlock(sched, c->hydro.super->stars.ghost_out, feedback); */
-/* } */
 
 /**
  * @brief Duplicates the first hydro loop and construct all the
@@ -2652,6 +2545,7 @@ void engine_addtasks_send_mapper(void *map_data, int num_elements,
 
 void engine_addtasks_recv_mapper(void *map_data, int num_elements,
                                  void *extra_data) {
+
   struct engine *e = (struct engine *)extra_data;
   const int with_limiter = (e->policy & engine_policy_limiter);
   struct cell_type_pair *cell_type_pairs = (struct cell_type_pair *)map_data;
@@ -2671,7 +2565,7 @@ void engine_addtasks_recv_mapper(void *map_data, int num_elements,
     /* Add the recv tasks for the cells in the proxy that have a stars
      * connection. */
     if ((e->policy & engine_policy_feedback) && (type & proxy_cell_type_hydro))
-      engine_addtasks_recv_stars(e, ci, NULL, NULL);
+      engine_addtasks_recv_stars(e, ci, NULL);
 
     /* Add the recv tasks for the cells in the proxy that have a gravity
      * connection. */
