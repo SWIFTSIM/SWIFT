@@ -2196,7 +2196,8 @@ void runner_do_timestep(struct runner *r, struct cell *c, int timer) {
   TIMER_TIC;
 
   /* Anything to do here? */
-  if (!cell_is_active_hydro(c, e) && !cell_is_active_gravity(c, e) && !cell_is_active_stars(c,e)) {
+  if (!cell_is_active_hydro(c, e) && !cell_is_active_gravity(c, e) &&
+      !cell_is_active_stars(c, e)) {
     c->hydro.updated = 0;
     c->grav.updated = 0;
     c->stars.updated = 0;
@@ -2780,25 +2781,6 @@ void runner_do_end_grav_force(struct runner *r, struct cell *c, int timer) {
   }
 
   if (timer) TIMER_TOC(timer_end_grav_force);
-}
-
-void end_gravity(struct runner *r, struct cell *c, int timer) {
-
-  const struct engine *e = r->e;
-  const int scount = c->stars.count;
-  struct spart *restrict sparts = c->stars.parts;
-
-  /* Loop over the stars particles in this cell. */
-  for (int k = 0; k < scount; k++) {
-
-    /* Get a handle on the spart. */
-    struct spart *restrict sp = &sparts[k];
-    if (spart_is_active(sp, e)) {
-
-      /* Finish the force loop */
-      stars_end_feedback(sp);
-    }
-  }
 }
 
 /**
