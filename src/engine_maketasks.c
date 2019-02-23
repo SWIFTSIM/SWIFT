@@ -907,23 +907,21 @@ void engine_make_hierarchical_tasks_hydro(struct engine *e, struct cell *c) {
 
 void engine_make_hierarchical_tasks_mapper(void *map_data, int num_elements,
                                            void *extra_data) {
+
   struct engine *e = (struct engine *)extra_data;
-  const int is_with_hydro = (e->policy & engine_policy_hydro);
-  const int is_with_self_gravity = (e->policy & engine_policy_self_gravity);
-  const int is_with_external_gravity =
-      (e->policy & engine_policy_external_gravity);
-  /* const int is_with_feedback = (e->policy & engine_policy_feedback); */
+  const int with_hydro = (e->policy & engine_policy_hydro);
+  const int with_self_gravity = (e->policy & engine_policy_self_gravity);
+  const int with_ext_gravity = (e->policy & engine_policy_external_gravity);
 
   for (int ind = 0; ind < num_elements; ind++) {
     struct cell *c = &((struct cell *)map_data)[ind];
     /* Make the common tasks (time integration) */
     engine_make_hierarchical_tasks_common(e, c);
     /* Add the hydro stuff */
-    if (is_with_hydro) engine_make_hierarchical_tasks_hydro(e, c);
+    if (with_hydro) engine_make_hierarchical_tasks_hydro(e, c);
     /* And the gravity stuff */
-    if (is_with_self_gravity || is_with_external_gravity)
+    if (with_self_gravity || with_ext_gravity)
       engine_make_hierarchical_tasks_gravity(e, c);
-    /* if (is_with_feedback) engine_make_hierarchical_tasks_stars(e, c); */
   }
 }
 
@@ -2446,7 +2444,7 @@ void engine_make_hydroloop_tasks_mapper(void *map_data, int num_elements,
           struct cell *cj = &cells[cjd];
 
           /* Is that neighbour local and does it have particles ? */
-          if (cid >= cjd || cj->hydro.count == 0 ||
+          if (cid >= cjd || (cj->hydro.count == 0) ||
               (ci->nodeID != nodeID && cj->nodeID != nodeID))
             continue;
 
@@ -2511,6 +2509,7 @@ struct cell_type_pair {
 
 void engine_addtasks_send_mapper(void *map_data, int num_elements,
                                  void *extra_data) {
+
   struct engine *e = (struct engine *)extra_data;
   const int with_limiter = (e->policy & engine_policy_limiter);
   struct cell_type_pair *cell_type_pairs = (struct cell_type_pair *)map_data;
@@ -2600,19 +2599,6 @@ void engine_maketasks(struct engine *e) {
 
   if (e->verbose)
     message("Making hydro tasks took %.3f %s.",
-            clocks_from_ticks(getticks() - tic2), clocks_getunit());
-
-  tic2 = getticks();
-
-  /* Construct the stars hydro loop over neighbours */
-  /* if (e->policy & engine_policy_feedback) { */
-  /*   threadpool_map(&e->threadpool, engine_make_starsloop_tasks_mapper, NULL,
-   */
-  /*                  s->nr_cells, 1, 0, e); */
-  /* } */
-
-  if (e->verbose)
-    message("Making stellar feedback tasks took %.3f %s.",
             clocks_from_ticks(getticks() - tic2), clocks_getunit());
 
   tic2 = getticks();
@@ -2709,22 +2695,6 @@ void engine_maketasks(struct engine *e) {
 
   if (e->verbose)
     message("Making extra hydroloop tasks took %.3f %s.",
-            clocks_from_ticks(getticks() - tic2), clocks_getunit());
-
-  tic2 = getticks();
-
-  /* Run through the tasks and make stars feedback tasks for each stars density
-     task. Each stars feedback task depends on the stars ghosts and unlocks the
-     kick task of its super-cell. */
-  if (e->policy & engine_policy_stars) {
-    /* threadpool_map(&e->threadpool, engine_make_extra_starsloop_tasks_mapper,
-     */
-    /*                sched->tasks, sched->nr_tasks, sizeof(struct task), 0, e);
-     */
-  }
-
-  if (e->verbose)
-    message("Making extra starsloop tasks took %.3f %s.",
             clocks_from_ticks(getticks() - tic2), clocks_getunit());
 
   tic2 = getticks();
