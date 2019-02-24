@@ -132,7 +132,7 @@ __attribute__((always_inline)) INLINE static int cell_is_all_active_hydro(
     const struct cell *c, const struct engine *e) {
 
 #ifdef SWIFT_DEBUG_CHECKS
-  if (c->hydro.ti_end_max < e->ti_current)
+  if (c->hydro.count > 0 && c->hydro.ti_end_max < e->ti_current)
     error(
         "cell in an impossible time-zone! c->ti_end_max=%lld "
         "e->ti_current=%lld",
@@ -188,7 +188,7 @@ __attribute__((always_inline)) INLINE static int cell_is_all_active_gravity(
     const struct cell *c, const struct engine *e) {
 
 #ifdef SWIFT_DEBUG_CHECKS
-  if (c->grav.ti_end_max < e->ti_current)
+  if (c->grav.count > 0 && c->grav.ti_end_max < e->ti_current)
     error(
         "cell in an impossible time-zone! c->ti_end_max=%lld "
         "e->ti_current=%lld",
