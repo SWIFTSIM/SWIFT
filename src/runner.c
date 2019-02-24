@@ -160,11 +160,11 @@ void runner_do_stars_ghost(struct runner *r, struct cell *c, int timer) {
     float *right = NULL;
     if ((sid = (int *)malloc(sizeof(int) * c->stars.count)) == NULL)
       error("Can't allocate memory for sid.");
-    if ((h_0 = (float *)malloc(sizeof(float) * c->hydro.count)) == NULL)
+    if ((h_0 = (float *)malloc(sizeof(float) * c->stars.count)) == NULL)
       error("Can't allocate memory for h_0.");
-    if ((left = (float *)malloc(sizeof(float) * c->hydro.count)) == NULL)
+    if ((left = (float *)malloc(sizeof(float) * c->stars.count)) == NULL)
       error("Can't allocate memory for left.");
-    if ((right = (float *)malloc(sizeof(float) * c->hydro.count)) == NULL)
+    if ((right = (float *)malloc(sizeof(float) * c->stars.count)) == NULL)
       error("Can't allocate memory for right.");
     for (int k = 0; k < c->stars.count; k++)
       if (spart_is_active(&sparts[k], e)) {
@@ -225,8 +225,10 @@ void runner_do_stars_ghost(struct runner *r, struct cell *c, int timer) {
               hydro_dimension * sp->density.wcount * h_old_dim_minus_one;
 
           /* Improve the bisection bounds */
-          if (n_sum < n_target) left[i] = max(left[i], h_old);
-          if (n_sum > n_target) right[i] = min(right[i], h_old);
+          if (n_sum < n_target)
+            left[i] = max(left[i], h_old);
+          else if (n_sum > n_target)
+            right[i] = min(right[i], h_old);
 
 #ifdef SWIFT_DEBUG_CHECKS
           /* Check the validity of the left and right bounds */
@@ -1422,8 +1424,10 @@ void runner_do_ghost(struct runner *r, struct cell *c, int timer) {
               hydro_dimension * p->density.wcount * h_old_dim_minus_one;
 
           /* Improve the bisection bounds */
-          if (n_sum < n_target) left[i] = max(left[i], h_old);
-          if (n_sum > n_target) right[i] = min(right[i], h_old);
+          if (n_sum < n_target)
+            left[i] = max(left[i], h_old);
+          else if (n_sum > n_target)
+            right[i] = min(right[i], h_old);
 
 #ifdef SWIFT_DEBUG_CHECKS
           /* Check the validity of the left and right bounds */
