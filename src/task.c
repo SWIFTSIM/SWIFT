@@ -283,7 +283,6 @@ float task_overlap(const struct task *restrict ta,
     if (tb->ci != NULL) size_union += tb->ci->hydro.count;
     if (tb->cj != NULL) size_union += tb->cj->hydro.count;
 
-    // MATTHIEU: This should not be necessary
     if (size_union == 0) return 0.f;
 
     /* Compute the intersection of the cell data. */
@@ -304,6 +303,8 @@ float task_overlap(const struct task *restrict ta,
     if (ta->cj != NULL) size_union += ta->cj->grav.count;
     if (tb->ci != NULL) size_union += tb->ci->grav.count;
     if (tb->cj != NULL) size_union += tb->cj->grav.count;
+
+    if (size_union == 0) return 0.f;
 
     /* Compute the intersection of the cell data. */
     const size_t size_intersect = task_cell_overlap_gpart(ta->ci, tb->ci) +
