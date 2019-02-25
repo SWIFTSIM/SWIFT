@@ -1937,11 +1937,9 @@ void engine_print_task_counts(const struct engine *e) {
   int counts[task_type_count + 1];
   for (int k = 0; k <= task_type_count; k++) counts[k] = 0;
   for (int k = 0; k < nr_tasks; k++) {
-    if (tasks[k].skip) {
+    if (tasks[k].skip)
       counts[task_type_count] += 1;
-      // if (e->step == 0) message("Skipped %s/%s", taskID_names[tasks[k].type],
-      // subtaskID_names[tasks[k].subtype]);
-    } else
+    else
       counts[(int)tasks[k].type] += 1;
   }
 

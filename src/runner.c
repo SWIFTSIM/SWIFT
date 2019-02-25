@@ -119,8 +119,6 @@
 #include "runner_doiact_stars.h"
 #undef FUNCTION
 
-int emergency_sort = 0;
-
 /**
  * @brief Intermediate task after the density to check that the smoothing
  * lengths are correct.
