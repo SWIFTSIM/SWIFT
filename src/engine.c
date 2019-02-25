@@ -3972,9 +3972,8 @@ void engine_collect_stars_counter(struct engine *e) {
   /* Get number of sparticles for each rank */
   size_t *n_sparts = (size_t *)malloc(e->nr_nodes * sizeof(size_t));
 
-#define MPI_size MPI_UNSIGNED_LONG
-  int err = MPI_Allgather(&e->s->nr_sparts_foreign, 1, MPI_size, n_sparts, 1,
-                          MPI_size, MPI_COMM_WORLD);
+  int err = MPI_Allgather(&e->s->nr_sparts_foreign, 1, MPI_UNSIGNED_LONG, n_sparts, 1,
+                          MPI_UNSIGNED_LONG, MPI_COMM_WORLD);
   if (err != MPI_SUCCESS) error("Communication failed");
 
   /* Compute derivated quantities */
@@ -4020,6 +4019,10 @@ void engine_collect_stars_counter(struct engine *e) {
       }
     }
   }
+
+  free(n_sparts);
+  free(n_sparts_in);
+  free(sparts);
 #endif
 }
 
