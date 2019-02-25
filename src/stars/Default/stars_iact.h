@@ -76,8 +76,7 @@ runner_iact_nonsym_stars_feedback(float r2, const float *dx, float hi, float hj,
   float wi_dr = hid_inv * wi_dx;
 
   /* Compute dv dot r */
-  float dvdr = (si->v[0] - pj->v[0]) * dx[0] +
-               (si->v[1] - pj->v[1]) * dx[1] +
+  float dvdr = (si->v[0] - pj->v[0]) * dx[0] + (si->v[1] - pj->v[1]) * dx[1] +
                (si->v[2] - pj->v[2]) * dx[2];
 
   /* Get the time derivative for h. */

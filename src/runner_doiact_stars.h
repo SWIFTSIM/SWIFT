@@ -987,8 +987,8 @@ void DOSUB_SUBSET_STARS(struct runner *r, struct cell *ci, struct spart *sparts,
 
       /* Do any of the cells need to be drifted first? */
       if (cell_is_active_stars(ci, e)) {
-	if (!cell_are_spart_drifted(ci, e)) error("Cell should be drifted!");
-	if (!cell_are_part_drifted(cj, e)) error("Cell should be drifted!");
+        if (!cell_are_spart_drifted(ci, e)) error("Cell should be drifted!");
+        if (!cell_are_part_drifted(cj, e)) error("Cell should be drifted!");
       }
 
       DOPAIR1_SUBSET_BRANCH_STARS(r, ci, sparts, ind, scount, cj);
@@ -1039,9 +1039,12 @@ void DOSELF1_BRANCH_STARS(struct runner *r, struct cell *c) {
             "cj->nodeID=%d "                                                \
             "ci->nodeID=%d d=%e sort_j[pjd].d=%e cj->" #TYPE                \
             ".dx_max_sort=%e "                                              \
-            "cj->" #TYPE ".dx_max_sort_old=%e, %i",                         \
+            "cj->" #TYPE                                                    \
+            ".dx_max_sort_old=%e, cellID=%i super->cellID=%i"               \
+            "cj->depth=%d cj->maxdepth=%d",                                 \
             cj->nodeID, ci->nodeID, d, sort_j[pjd].d, cj->TYPE.dx_max_sort, \
-            cj->TYPE.dx_max_sort_old, cj->cellID);                          \
+            cj->TYPE.dx_max_sort_old, cj->cellID, cj->hydro.super->cellID,  \
+            cj->depth, cj->maxdepth);                                       \
     }                                                                       \
   })
 
@@ -1058,6 +1061,11 @@ void DOSELF1_BRANCH_STARS(struct runner *r, struct cell *c) {
 void DOPAIR1_BRANCH_STARS(struct runner *r, struct cell *ci, struct cell *cj) {
 
   const struct engine *restrict e = r->e;
+
+  /* Get the sort ID. */
+  double shift[3] = {0.0, 0.0, 0.0};
+  const int sid = space_getsid(e->s, &ci, &cj, shift);
+
   const int ci_active = cell_is_active_stars(ci, e);
   const int cj_active = cell_is_active_stars(cj, e);
 #ifdef UPDATE_STARS
@@ -1075,10 +1083,6 @@ void DOPAIR1_BRANCH_STARS(struct runner *r, struct cell *ci, struct cell *cj) {
 
   /* Anything to do here? */
   if (!do_ci && !do_cj) return;
-
-  /* Get the sort ID. */
-  double shift[3] = {0.0, 0.0, 0.0};
-  const int sid = space_getsid(e->s, &ci, &cj, shift);
 
   /* Check that cells are drifted. */
   if (do_ci &&
@@ -1142,9 +1146,9 @@ void DOSUB_PAIR1_STARS(struct runner *r, struct cell *ci, struct cell *cj,
 
   /* Should we even bother? */
   const int should_do_ci = ci->stars.count != 0 && cj->hydro.count != 0 &&
-                  cell_is_active_stars(ci, e);
+                           cell_is_active_stars(ci, e);
   const int should_do_cj = cj->stars.count != 0 && ci->hydro.count != 0 &&
-               cell_is_active_stars(cj, e);
+                           cell_is_active_stars(cj, e);
   if (!should_do_ci && !should_do_cj) return;
 
   /* Get the type of pair if not specified explicitly. */
@@ -1427,6 +1431,7 @@ void DOSUB_SELF1_STARS(struct runner *r, struct cell *ci, int gettimer) {
   if (ci->nodeID != engine_rank)
     error("This function should not be called on foreign cells");
 #endif
+
   /* Should we even bother? */
   if (ci->hydro.count == 0 || ci->stars.count == 0 ||
       !cell_is_active_stars(ci, r->e))

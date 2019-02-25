@@ -68,21 +68,21 @@ __attribute__((always_inline)) INLINE static void stars_init_spart(
 /**
  * @brief Predict additional particle fields forward in time when drifting
  *
- * @param p The particle
+ * @param sp The particle
  * @param dt_drift The drift time-step for positions.
  */
 __attribute__((always_inline)) INLINE static void stars_predict_extra(
-    struct spart *restrict sp, float dt_drift) {
+    struct spart* restrict sp, float dt_drift) {
 
-  const float h_inv = 1.f / sp->h;
+  // MATTHIEU
+  /* const float h_inv = 1.f / sp->h; */
 
-  /* Predict smoothing length */
-  const float w1 = sp->feedback.h_dt * h_inv * dt_drift;
-  if (fabsf(w1) < 0.2f)
-    sp->h *= approx_expf(w1); /* 4th order expansion of exp(w) */
-  else
-    sp->h *= expf(w1);
-
+  /* /\* Predict smoothing length *\/ */
+  /* const float w1 = sp->feedback.h_dt * h_inv * dt_drift; */
+  /* if (fabsf(w1) < 0.2f) */
+  /*   sp->h *= approx_expf(w1); /\* 4th order expansion of exp(w) *\/ */
+  /* else */
+  /*   sp->h *= expf(w1); */
 }
 
 /**
@@ -101,6 +101,7 @@ __attribute__((always_inline)) INLINE static void stars_reset_predicted_values(
  */
 __attribute__((always_inline)) INLINE static void stars_end_feedback(
     struct spart* sp) {
+
   sp->feedback.h_dt *= sp->h * hydro_dimension_inv;
 }
 
@@ -175,16 +176,17 @@ __attribute__((always_inline)) INLINE static void stars_evolve_spart(
  *
  * @param p The particle to act upon
  */
-__attribute__((always_inline)) INLINE static void stars_reset_acceleration(
+__attribute__((always_inline)) INLINE static void stars_reset_feedback(
     struct spart* restrict p) {
 
   /* Reset time derivative */
   p->feedback.h_dt = 0.f;
-  
+
 #ifdef DEBUG_INTERACTIONS_STARS
   for (int i = 0; i < MAX_NUM_OF_NEIGHBOURS_STARS; ++i)
     p->ids_ngbs_force[i] = -1;
   p->num_ngb_force = 0;
 #endif
 }
+
 #endif /* SWIFT_DEFAULT_STARS_H */

@@ -1937,9 +1937,11 @@ void engine_print_task_counts(const struct engine *e) {
   int counts[task_type_count + 1];
   for (int k = 0; k <= task_type_count; k++) counts[k] = 0;
   for (int k = 0; k < nr_tasks; k++) {
-    if (tasks[k].skip)
+    if (tasks[k].skip) {
       counts[task_type_count] += 1;
-    else
+      // if (e->step == 0) message("Skipped %s/%s", taskID_names[tasks[k].type],
+      // subtaskID_names[tasks[k].subtype]);
+    } else
       counts[(int)tasks[k].type] += 1;
   }
 
@@ -2710,17 +2712,21 @@ void engine_skip_force_and_kick(struct engine *e) {
 
     /* Skip everything that updates the particles */
     if (t->type == task_type_drift_part || t->type == task_type_drift_gpart ||
-        t->type == task_type_kick1 || t->type == task_type_kick2 ||
-        t->type == task_type_timestep ||
+        t->type == task_type_drift_spart || t->type == task_type_kick1 ||
+        t->type == task_type_kick2 || t->type == task_type_timestep ||
         t->type == task_type_timestep_limiter ||
         t->subtype == task_subtype_force ||
         t->subtype == task_subtype_limiter || t->subtype == task_subtype_grav ||
-        t->type == task_type_end_force ||
+        t->type == task_type_end_hydro_force ||
+        t->type == task_type_end_grav_force ||
         t->type == task_type_grav_long_range || t->type == task_type_grav_mm ||
-        t->type == task_type_grav_down || t->type == task_type_cooling ||
+        t->type == task_type_grav_down || t->type == task_type_grav_down_in ||
+        t->type == task_type_drift_gpart_out || t->type == task_type_cooling ||
+        t->type == task_type_stars_in || t->type == task_type_stars_out ||
         t->type == task_type_star_formation ||
-        t->type == task_type_extra_ghost || t->subtype == task_subtype_gradient ||
-	t->subtype == task_subtype_stars_feedback)
+        t->type == task_type_extra_ghost ||
+        t->subtype == task_subtype_gradient ||
+        t->subtype == task_subtype_stars_feedback)
       t->skip = 1;
   }
 
@@ -2744,7 +2750,8 @@ void engine_skip_drift(struct engine *e) {
     struct task *t = &tasks[i];
 
     /* Skip everything that moves the particles */
-    if (t->type == task_type_drift_part || t->type == task_type_drift_gpart)
+    if (t->type == task_type_drift_part || t->type == task_type_drift_gpart ||
+        t->type == task_type_drift_spart)
       t->skip = 1;
   }
 
@@ -3966,9 +3973,8 @@ void engine_collect_stars_counter(struct engine *e) {
   /* Get number of sparticles for each rank */
   size_t *n_sparts = (size_t *)malloc(e->nr_nodes * sizeof(size_t));
 
-#define MPI_size MPI_UNSIGNED_LONG
-  int err = MPI_Allgather(&e->s->nr_sparts_foreign, 1, MPI_size, n_sparts, 1,
-                          MPI_size, MPI_COMM_WORLD);
+  int err = MPI_Allgather(&e->s->nr_sparts_foreign, 1, MPI_UNSIGNED_LONG, n_sparts, 1,
+                          MPI_UNSIGNED_LONG, MPI_COMM_WORLD);
   if (err != MPI_SUCCESS) error("Communication failed");
 
   /* Compute derivated quantities */
@@ -4014,6 +4020,10 @@ void engine_collect_stars_counter(struct engine *e) {
       }
     }
   }
+
+  free(n_sparts);
+  free(n_sparts_in);
+  free(sparts);
 #endif
 }
 

@@ -126,9 +126,6 @@ INLINE static void stars_props_init(struct stars_props *sp,
       (pow_dimension(delta_eta) - pow_dimension(sp->eta_neighbours)) *
       kernel_norm;
 
-  /* Maximal smoothing length */
-  sp->h_max = parser_get_opt_param_float(params, "Stars:h_max", p->h_max);
-
   /* Number of iterations to converge h */
   sp->max_smoothing_iterations = parser_get_opt_param_int(
       params, "Stars:max_ghost_iterations", p->max_smoothing_iterations);
@@ -161,9 +158,6 @@ INLINE static void stars_props_print(const struct stars_props *sp) {
       "(max|dlog(h)/dt|=%f).",
       pow_dimension(expf(sp->log_max_h_change)), sp->log_max_h_change);
 
-  if (sp->h_max != FLT_MAX)
-    message("Maximal smoothing length allowed: %.4f", sp->h_max);
-
   message("Maximal iterations in ghost task set to %d",
           sp->max_smoothing_iterations);
 }
@@ -179,7 +173,6 @@ INLINE static void stars_props_print_snapshot(hid_t h_grpstars,
   io_write_attribute_f(h_grpstars, "Kernel eta", sp->eta_neighbours);
   io_write_attribute_f(h_grpstars, "Smoothing length tolerance",
                        sp->h_tolerance);
-  io_write_attribute_f(h_grpstars, "Maximal smoothing length", sp->h_max);
   io_write_attribute_f(h_grpstars, "Volume log(max(delta h))",
                        sp->log_max_h_change);
   io_write_attribute_f(h_grpstars, "Volume max change time-step",

@@ -20,6 +20,9 @@ runner_iact_nonsym_stars_density(float r2, const float *dx, float hi, float hj,
 				 const struct stars_props *restrict stars_properties,
 				 struct xpart *restrict xp, integertime_t ti_current) {
 
+  /* Get the gas mass. */
+  const float mj = pj->mass;
+
   float wi, wi_dx;
 
   /* Get r and 1/r. */
@@ -45,6 +48,9 @@ runner_iact_nonsym_stars_density(float r2, const float *dx, float hi, float hj,
 
   /* Add contribution of pj to normalisation of kernel (TODO: IMPROVE COMMENT?) */
   si->omega_normalisation_inv += wj / hydro_get_physical_density(pj,cosmo);
+  
+  /* Compute contribution to the density */
+  si->rho_gas += mj * wi;
 
 #ifdef DEBUG_INTERACTIONS_STARS
   /* Update ngb counters */

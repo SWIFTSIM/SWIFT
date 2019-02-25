@@ -181,8 +181,7 @@ void space_rebuild_recycle_mapper(void *map_data, int num_elements,
       space_recycle_list(s, cell_rec_begin, cell_rec_end, multipole_rec_begin,
                          multipole_rec_end);
     c->hydro.sorts = NULL;
-    c->stars.sorts_local = NULL;
-    c->stars.sorts_foreign = NULL;
+    c->stars.sorts = NULL;
     c->nr_tasks = 0;
     c->grav.nr_mm_tasks = 0;
     c->hydro.density = NULL;
@@ -215,8 +214,6 @@ void space_rebuild_recycle_mapper(void *map_data, int num_elements,
     c->hydro.ghost_in = NULL;
     c->hydro.ghost_out = NULL;
     c->hydro.ghost = NULL;
-    c->stars.ghost_in = NULL;
-    c->stars.ghost_out = NULL;
     c->stars.ghost = NULL;
     c->stars.density = NULL;
     c->stars.feedback = NULL;
@@ -224,8 +221,11 @@ void space_rebuild_recycle_mapper(void *map_data, int num_elements,
     c->kick2 = NULL;
     c->timestep = NULL;
     c->timestep_limiter = NULL;
-    c->end_force = NULL;
+    c->hydro.end_force = NULL;
     c->hydro.drift = NULL;
+    c->stars.drift = NULL;
+    c->stars.stars_in = NULL;
+    c->stars.stars_out = NULL;
     c->grav.drift = NULL;
     c->grav.drift_out = NULL;
     c->hydro.cooling = NULL;
@@ -233,6 +233,7 @@ void space_rebuild_recycle_mapper(void *map_data, int num_elements,
     c->grav.down_in = NULL;
     c->grav.down = NULL;
     c->grav.mesh = NULL;
+    c->grav.end_force = NULL;
     c->super = c;
     c->hydro.super = c;
     c->grav.super = c;
@@ -242,8 +243,9 @@ void space_rebuild_recycle_mapper(void *map_data, int num_elements,
     c->stars.parts = NULL;
     c->hydro.do_sub_sort = 0;
     c->stars.do_sub_sort = 0;
-    c->grav.do_sub_drift = 0;
     c->hydro.do_sub_drift = 0;
+    c->grav.do_sub_drift = 0;
+    c->stars.do_sub_drift = 0;
     c->hydro.do_sub_limiter = 0;
     c->hydro.do_limiter = 0;
     c->hydro.ti_end_min = -1;
@@ -251,6 +253,7 @@ void space_rebuild_recycle_mapper(void *map_data, int num_elements,
     c->grav.ti_end_min = -1;
     c->grav.ti_end_max = -1;
     c->stars.ti_end_min = -1;
+    c->stars.ti_end_max = -1;
 #ifdef SWIFT_DEBUG_CHECKS
     c->cellID = 0;
 #endif
@@ -540,6 +543,7 @@ void space_regrid(struct space *s, int verbose) {
           c->grav.super = c;
           c->hydro.ti_old_part = ti_current;
           c->grav.ti_old_part = ti_current;
+          c->stars.ti_old_part = ti_current;
           c->grav.ti_old_multipole = ti_current;
 #ifdef WITH_MPI
           c->mpi.tag = -1;
@@ -1529,6 +1533,7 @@ void space_rebuild(struct space *s, int repartitioned, int verbose) {
     c->hydro.ti_old_part = ti_current;
     c->grav.ti_old_part = ti_current;
     c->grav.ti_old_multipole = ti_current;
+    c->stars.ti_old_part = ti_current;
 
 #ifdef SWIFT_DEBUG_CHECKS
     c->cellID = -last_cell_id;
@@ -2595,7 +2600,8 @@ void space_split_recursive(struct space *s, struct cell *c,
                 ti_hydro_beg_max = 0;
   integertime_t ti_gravity_end_min = max_nr_timesteps, ti_gravity_end_max = 0,
                 ti_gravity_beg_max = 0;
-  integertime_t ti_stars_end_min = max_nr_timesteps;
+  integertime_t ti_stars_end_min = max_nr_timesteps, ti_stars_end_max = 0,
+                ti_stars_beg_max = 0;
   struct part *parts = c->hydro.parts;
   struct gpart *gparts = c->grav.parts;
   struct spart *sparts = c->stars.parts;
@@ -2688,6 +2694,7 @@ void space_split_recursive(struct space *s, struct cell *c,
       cp->hydro.ti_old_part = c->hydro.ti_old_part;
       cp->grav.ti_old_part = c->grav.ti_old_part;
       cp->grav.ti_old_multipole = c->grav.ti_old_multipole;
+      cp->stars.ti_old_part = c->stars.ti_old_part;
       cp->loc[0] = c->loc[0];
       cp->loc[1] = c->loc[1];
       cp->loc[2] = c->loc[2];
@@ -2715,6 +2722,7 @@ void space_split_recursive(struct space *s, struct cell *c,
       cp->stars.do_sub_sort = 0;
       cp->grav.do_sub_drift = 0;
       cp->hydro.do_sub_drift = 0;
+      cp->stars.do_sub_drift = 0;
       cp->hydro.do_sub_limiter = 0;
       cp->hydro.do_limiter = 0;
 #ifdef WITH_MPI
@@ -2765,6 +2773,8 @@ void space_split_recursive(struct space *s, struct cell *c,
         ti_gravity_end_max = max(ti_gravity_end_max, cp->grav.ti_end_max);
         ti_gravity_beg_max = max(ti_gravity_beg_max, cp->grav.ti_beg_max);
         ti_stars_end_min = min(ti_stars_end_min, cp->stars.ti_end_min);
+        ti_stars_end_max = min(ti_stars_end_max, cp->stars.ti_end_max);
+        ti_stars_beg_max = min(ti_stars_beg_max, cp->stars.ti_beg_max);
 
         /* Increase the depth */
         if (cp->maxdepth > maxdepth) maxdepth = cp->maxdepth;
@@ -2993,6 +3003,8 @@ void space_split_recursive(struct space *s, struct cell *c,
   c->grav.ti_end_max = ti_gravity_end_max;
   c->grav.ti_beg_max = ti_gravity_beg_max;
   c->stars.ti_end_min = ti_stars_end_min;
+  c->stars.ti_end_max = ti_stars_end_max;
+  c->stars.ti_beg_max = ti_stars_beg_max;
   c->stars.h_max = stars_h_max;
   c->maxdepth = maxdepth;
 
@@ -3512,6 +3524,8 @@ void space_first_init_sparts_mapper(void *restrict map_data, int count,
   const ptrdiff_t delta = sp - s->sparts;
 #endif
 
+  const float initial_h = s->initial_spart_h;
+
   const int with_feedback = (e->policy & engine_policy_feedback);
 
   const struct cosmology *cosmo = e->cosmology;
@@ -3524,8 +3538,10 @@ void space_first_init_sparts_mapper(void *restrict map_data, int count,
     sp[k].v[1] *= a_factor_vel;
     sp[k].v[2] *= a_factor_vel;
 
-    // MATTHIEU: TO DO: Read smoothing lengths from ICs!!!!
-    //sp[k].h = s->dim[0] / 10. / kernel_gamma;
+    /* Imposed smoothing length from parameter file */
+    if (initial_h != -1.f) {
+      sp[k].h = initial_h;
+    }
 
 #ifdef HYDRO_DIMENSION_2D
     sp[k].x[2] = 0.f;
@@ -3850,6 +3866,13 @@ void space_init(struct space *s, struct swift_params *params,
   if (scaling != 1.0 && !dry_run) {
     message("Re-scaling smoothing lengths by a factor %e", scaling);
     for (size_t k = 0; k < Npart; k++) parts[k].h *= scaling;
+  }
+
+  /* Read in imposed star smoothing length */
+  s->initial_spart_h = parser_get_opt_param_float(
+      params, "InitialConditions:stars_smoothing_length", -1.f);
+  if (s->initial_spart_h != -1.f) {
+    message("Imposing a star smoothing length of %e", s->initial_spart_h);
   }
 
   /* Apply shift */
@@ -4281,6 +4304,7 @@ void space_check_drift_point(struct space *s, integertime_t ti_drift,
   /* Recursively check all cells */
   space_map_cells_pre(s, 1, cell_check_part_drift_point, &ti_drift);
   space_map_cells_pre(s, 1, cell_check_gpart_drift_point, &ti_drift);
+  space_map_cells_pre(s, 1, cell_check_spart_drift_point, &ti_drift);
   if (multipole)
     space_map_cells_pre(s, 1, cell_check_multipole_drift_point, &ti_drift);
 #else
