@@ -1065,6 +1065,11 @@ void DOSELF1_BRANCH_STARS(struct runner *r, struct cell *c) {
 void DOPAIR1_BRANCH_STARS(struct runner *r, struct cell *ci, struct cell *cj) {
 
   const struct engine *restrict e = r->e;
+
+  /* Get the sort ID. */
+  double shift[3] = {0.0, 0.0, 0.0};
+  const int sid = space_getsid(e->s, &ci, &cj, shift);
+
   const int ci_active = cell_is_active_stars(ci, e);
   const int cj_active = cell_is_active_stars(cj, e);
 #ifdef UPDATE_STARS
@@ -1082,10 +1087,6 @@ void DOPAIR1_BRANCH_STARS(struct runner *r, struct cell *ci, struct cell *cj) {
 
   /* Anything to do here? */
   if (!do_ci && !do_cj) return;
-
-  /* Get the sort ID. */
-  double shift[3] = {0.0, 0.0, 0.0};
-  const int sid = space_getsid(e->s, &ci, &cj, shift);
 
   /* Check that cells are drifted. */
   if (do_ci &&
@@ -1116,12 +1117,12 @@ void DOPAIR1_BRANCH_STARS(struct runner *r, struct cell *ci, struct cell *cj) {
 
 #ifdef SWIFT_DEBUG_CHECKS
   if (do_ci) {
-    // RUNNER_CHECK_SORT(hydro, part, cj, ci, sid);
+    RUNNER_CHECK_SORT(hydro, part, cj, ci, sid);
     RUNNER_CHECK_SORT(stars, spart, ci, cj, sid);
   }
 
   if (do_cj) {
-    // RUNNER_CHECK_SORT(hydro, part, ci, cj, sid);
+    RUNNER_CHECK_SORT(hydro, part, ci, cj, sid);
     RUNNER_CHECK_SORT(stars, spart, cj, ci, sid);
   }
 #endif /* SWIFT_DEBUG_CHECKS */
