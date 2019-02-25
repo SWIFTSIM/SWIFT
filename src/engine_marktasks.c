@@ -63,29 +63,27 @@ void engine_activate_stars_mpi(struct engine *e, struct scheduler *s,
   const int nodeID = e->nodeID;
   const int ci_nodeID = ci->nodeID;
   const int cj_nodeID = cj->nodeID;
-  const int ci_active_stars = cell_is_active_stars(ci, e);
-  const int cj_active_stars = cell_is_active_stars(cj, e);
+  const int ci_active_stars = cell_is_active_stars(ci, e) &&
+                              ci->stars.count != 0 && cj->hydro.count != 0;
+  const int cj_active_stars = cell_is_active_stars(cj, e) &&
+                              cj->stars.count != 0 && ci->hydro.count != 0;
 
   /* Activate the send/recv tasks. */
   if (ci_nodeID != nodeID) {
 
     if (cj_active_stars) {
       scheduler_activate(s, ci->mpi.hydro.recv_xv);
-
-      /* If the local cell is active, more stuff will be needed. */
-      scheduler_activate_send(s, cj->mpi.stars.send, ci_nodeID);
-
-      /* If the local cell is active, send its ti_end values. */
-      scheduler_activate_send(s, cj->mpi.send_ti, ci_nodeID);
     }
-
     if (ci_active_stars) {
       scheduler_activate(s, ci->mpi.stars.recv);
+    }
 
-      /* If the foreign cell is active, we want its ti_end values. */
-      scheduler_activate(s, ci->mpi.recv_ti);
+    /* If the foreign cell is active, we want its ti_end values. */
+    if (ci_active_stars) scheduler_activate(s, ci->mpi.recv_ti);
 
-      /* Is the foreign cell active and will need stuff from us? */
+    /* Is the foreign cell active and will need stuff from us? */
+    if (ci_active_stars) {
+
       struct link *l =
           scheduler_activate_send(s, cj->mpi.hydro.send_xv, ci_nodeID);
 
@@ -94,37 +92,50 @@ void engine_activate_stars_mpi(struct engine *e, struct scheduler *s,
          itself. */
       cell_activate_drift_part(l->t->ci, s);
     }
+    /* If the local cell is active, more stuff will be needed. */
+    if (cj_active_stars) {
+      scheduler_activate_send(s, cj->mpi.stars.send, ci_nodeID);
+    }
+
+    /* If the local cell is active, send its ti_end values. */
+    if (cj_active_stars) {
+      scheduler_activate_send(s, cj->mpi.send_ti, ci_nodeID);
+    }
 
   } else if (cj_nodeID != nodeID) {
-
+    /* If the local cell is active, receive data from the foreign cell. */
     if (ci_active_stars) {
-      /* If the local cell is active, receive data from the foreign cell. */
       scheduler_activate(s, cj->mpi.hydro.recv_xv);
-
-      /* If the local cell is active, more stuff will be needed. */
-      scheduler_activate_send(s, ci->mpi.stars.send, cj_nodeID);
-
-      /* If the local cell is active, send its ti_end values. */
-      scheduler_activate_send(s, ci->mpi.send_ti, cj_nodeID);
     }
     if (cj_active_stars) {
       scheduler_activate(s, cj->mpi.stars.recv);
+    }
 
-      /* If the foreign cell is active, we want its ti_end values. */
-      scheduler_activate(s, cj->mpi.recv_ti);
+    /* If the foreign cell is active, we want its ti_end values. */
+    if (cj_active_stars) scheduler_activate(s, cj->mpi.recv_ti);
+
+    /* Is the foreign cell active and will need stuff from us? */
+    if (cj_active_stars) {
 
       struct link *l =
-	scheduler_activate_send(s, ci->mpi.hydro.send_xv, cj_nodeID);
+          scheduler_activate_send(s, ci->mpi.hydro.send_xv, cj_nodeID);
 
       /* Drift the cell which will be sent at the level at which it is
          sent, i.e. drift the cell specified in the send task (l->t)
          itself. */
       cell_activate_drift_part(l->t->ci, s);
+    }
+    /* If the local cell is active, more stuff will be needed. */
+    if (ci_active_stars) {
+      scheduler_activate_send(s, ci->mpi.stars.send, cj_nodeID);
+    }
 
+    /* If the local cell is active, send its ti_end values. */
+    if (ci_active_stars) {
+      scheduler_activate_send(s, ci->mpi.send_ti, cj_nodeID);
     }
   }
 }
-
 #endif
 
 /**
@@ -332,9 +343,15 @@ void engine_marktasks_mapper(void *map_data, int num_elements,
       }
 
       /* Stars density and feedback */
-      if ((t_subtype == task_subtype_stars_density ||
-	   t_subtype == task_subtype_stars_feedback) &&
-	  (ci_active_stars || cj_active_stars)) {
+      const int stars_density =
+	t_subtype == task_subtype_stars_density;
+
+      const int stars_feedback =
+	t_subtype == task_subtype_stars_feedback;
+
+      const int active = ci_active_stars || cj_active_stars;
+
+      if ((stars_density || stars_feedback) && active) {
 
         scheduler_activate(s, t);
 
