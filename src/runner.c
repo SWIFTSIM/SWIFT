@@ -3180,9 +3180,9 @@ void *runner_main(void *data) {
           else if (t->subtype == task_subtype_external_grav)
             runner_do_grav_external(r, ci, 1);
           else if (t->subtype == task_subtype_stars_density)
-            runner_doself_stars_density(r, ci, 1);
+            runner_doself_branch_stars_density(r, ci);
           else if (t->subtype == task_subtype_stars_feedback)
-            runner_doself_stars_feedback(r, ci, 1);
+            runner_doself_branch_stars_feedback(r, ci);
           else
             error("Unknown/invalid task subtype (%d).", t->subtype);
           break;
@@ -3201,9 +3201,9 @@ void *runner_main(void *data) {
           else if (t->subtype == task_subtype_grav)
             runner_dopair_recursive_grav(r, ci, cj, 1);
           else if (t->subtype == task_subtype_stars_density)
-            runner_dopair_stars_density(r, ci, cj, 1);
+            runner_dopair_branch_stars_density(r, ci, cj);
           else if (t->subtype == task_subtype_stars_feedback)
-            runner_dopair_stars_feedback(r, ci, cj, 1);
+            runner_dopair_branch_stars_feedback(r, ci, cj);
           else
             error("Unknown/invalid task subtype (%d).", t->subtype);
           break;
