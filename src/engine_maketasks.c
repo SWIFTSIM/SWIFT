@@ -2395,6 +2395,7 @@ void engine_make_hydroloop_tasks_mapper(void *map_data, int num_elements,
   /* Extract the engine pointer. */
   struct engine *e = (struct engine *)extra_data;
   const int periodic = e->s->periodic;
+  const int with_feedback = (e->policy & engine_policy_feedback);
 
   struct space *s = e->s;
   struct scheduler *sched = &e->sched;
@@ -2416,8 +2417,10 @@ void engine_make_hydroloop_tasks_mapper(void *map_data, int num_elements,
     /* Get the cell */
     struct cell *ci = &cells[cid];
 
-    /* Skip cells without hydro particles */
-    if (ci->hydro.count == 0) continue;
+    /* Skip cells without hydro or star particles */
+    if ((ci->hydro.count_total == 0) &&
+        (with_feedback && ci->stars.count_total == 0))
+      continue;
 
     /* If the cell is local build a self-interaction */
     if (ci->nodeID == nodeID) {
@@ -2443,8 +2446,10 @@ void engine_make_hydroloop_tasks_mapper(void *map_data, int num_elements,
           const int cjd = cell_getid(cdim, iii, jjj, kkk);
           struct cell *cj = &cells[cjd];
 
-          /* Is that neighbour local and does it have particles ? */
-          if (cid >= cjd || (cj->hydro.count == 0) ||
+          /* Is that neighbour local and does it have gas or star particles ? */
+          if ((cid >= cjd) ||
+              ((cj->hydro.count_total == 0) &&
+               (with_feedback && cj->stars.count_total == 0)) ||
               (ci->nodeID != nodeID && cj->nodeID != nodeID))
             continue;
 
