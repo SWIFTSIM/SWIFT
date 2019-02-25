@@ -1817,6 +1817,7 @@ void runner_do_unskip_mapper(void *map_data, int num_elements,
     }
   }
 }
+
 /**
  * @brief Drift all part in a cell.
  *

@@ -2120,12 +2120,8 @@ void cell_activate_stars_sorts(struct cell *c, int sid, struct scheduler *s) {
     }
   }
 
-  // message("c->stars.sorted=%d", c->stars.sorted);
-
   /* Has this cell been sorted at all for the given sid? */
   if (!(c->stars.sorted & (1 << sid)) || c->nodeID != engine_rank) {
-
-    // message("bbb");
 
     atomic_or(&c->stars.do_sort, (1 << sid));
     cell_activate_stars_sorts_up(c, s);
@@ -3410,8 +3406,7 @@ int cell_unskip_stars_tasks(struct cell *c, struct scheduler *s) {
   const int nodeID = e->nodeID;
   int rebuild = 0;
 
-  if (!with_feedback && c->stars.drift != NULL && cell_is_active_stars(c, e) &&
-      c->nodeID == nodeID) {
+  if (!with_feedback && c->stars.drift != NULL && cell_is_active_stars(c, e)) {
     cell_activate_drift_spart(c, s);
   }
 

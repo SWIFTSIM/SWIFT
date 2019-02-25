@@ -848,7 +848,10 @@ void engine_make_hierarchical_tasks_hydro(struct engine *e, struct cell *c) {
       if (with_stars) {
         c->stars.drift = scheduler_addtask(s, task_type_drift_spart,
                                            task_subtype_none, 0, 0, c, NULL);
-        scheduler_addunlock(s, c->stars.drift, c->super->kick2);
+
+        if (!with_feedback) {
+          scheduler_addunlock(s, c->stars.drift, c->super->kick2);
+        }
       }
 
       /* Subgrid tasks: cooling */
@@ -891,8 +894,9 @@ void engine_make_hierarchical_tasks_hydro(struct engine *e, struct cell *c) {
         scheduler_addunlock(s, c->super->kick2, c->stars.stars_in);
         scheduler_addunlock(s, c->stars.stars_out, c->super->timestep);
 
-        if (with_star_formation)
+        if (with_star_formation) {
           scheduler_addunlock(s, c->hydro.star_formation, c->stars.stars_in);
+        }
       }
     }
   } else { /* We are above the super-cell so need to go deeper */
@@ -2286,7 +2290,7 @@ void engine_maketasks(struct engine *e) {
 
   /* Free the old list of cell-task links. */
   if (e->links != NULL) free(e->links);
-  e->size_links = e->sched.nr_tasks * e->links_per_tasks * 2;
+  e->size_links = e->sched.nr_tasks * e->links_per_tasks;
 
   /* Make sure that we have space for more links than last time. */
   if (e->size_links < e->nr_links * engine_rebuild_link_alloc_margin)
