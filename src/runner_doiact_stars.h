@@ -152,7 +152,7 @@ void DO_NONSYM_PAIR1_STARS_NAIVE(struct runner *r, struct cell *restrict ci,
 				 struct cell *restrict cj) {
 
 #ifdef SWIFT_DEBUG_CHECKS
-#ifdef UPDATE_STARS
+#if (FUNCTION_TASK_LOOP == TASK_LOOP_DENSITY)
   if (ci->nodeID != engine_rank) error("Should be run on a different node");
 #else
   if (cj->nodeID != engine_rank) error("Should be run on a different node");
@@ -339,8 +339,8 @@ void DO_NONSYM_PAIR1_STARS(struct runner *r, struct cell *ci, struct cell *cj, c
               pjz, ci->width[2]);
 
         /* Check that particles have been drifted to the current time */
-        if (pi->ti_drift != e->ti_current)
-          error("Particle pi not drifted to current time");
+        if (spi->ti_drift != e->ti_current)
+          error("Particle spi not drifted to current time");
         if (pj->ti_drift != e->ti_current)
           error("Particle pj not drifted to current time");
 #endif
@@ -359,17 +359,17 @@ void DO_NONSYM_PAIR1_STARS(struct runner *r, struct cell *ci, struct cell *cj, c
 void DOPAIR1_STARS_NAIVE(struct runner *r, struct cell *restrict ci,
                    struct cell *restrict cj, int timer) {
 
-#ifdef UPDATE_STARS
-  const int ci_local = ci->nodeID == engine_rank;
-  const int cj_local = cj->nodeID == engine_rank;
+#if (FUNCTION_TASK_LOOP == TASK_LOOP_DENSITY)
+  const int do_ci_stars = ci->nodeID == engine_rank;
+  const int do_cj_stars = cj->nodeID == engine_rank;
 #else
   /* here we are updating the hydro -> switch ci, cj */
-  const int ci_local = cj->nodeID == engine_rank;
-  const int cj_local = ci->nodeID == engine_rank;
+  const int do_ci_stars = cj->nodeID == engine_rank;
+  const int do_cj_stars = ci->nodeID == engine_rank;
 #endif
-  if (ci_local && ci->stars.count != 0 && cj->hydro.count != 0)
+  if (do_ci_stars && ci->stars.count != 0 && cj->hydro.count != 0)
     DO_NONSYM_PAIR1_STARS_NAIVE(r, ci, cj);
-  if (cj_local && cj->stars.count != 0 && ci->hydro.count != 0)
+  if (do_cj_stars && cj->stars.count != 0 && ci->hydro.count != 0)
     DO_NONSYM_PAIR1_STARS_NAIVE(r, cj, ci);
 }
 
@@ -377,17 +377,17 @@ void DOPAIR1_STARS(struct runner *r, struct cell *restrict ci,
                    struct cell *restrict cj, const int sid,
 		   const double *shift, int timer) {
 
-#ifdef UPDATE_STARS
-  const int ci_local = ci->nodeID == engine_rank;
-  const int cj_local = cj->nodeID == engine_rank;
+#if (FUNCTION_TASK_LOOP == TASK_LOOP_DENSITY)
+  const int do_ci_stars = ci->nodeID == engine_rank;
+  const int do_cj_stars = cj->nodeID == engine_rank;
 #else
   /* here we are updating the hydro -> switch ci, cj */
-  const int ci_local = cj->nodeID == engine_rank;
-  const int cj_local = ci->nodeID == engine_rank;
+  const int do_ci_stars = cj->nodeID == engine_rank;
+  const int do_cj_stars = ci->nodeID == engine_rank;
 #endif
-  if (ci_local && ci->stars.count != 0 && cj->hydro.count != 0)
+  if (do_ci_stars && ci->stars.count != 0 && cj->hydro.count != 0)
     DO_NONSYM_PAIR1_STARS(r, ci, cj, sid, shift);
-  if (cj_local && cj->stars.count != 0 && ci->hydro.count != 0)
+  if (do_cj_stars && cj->stars.count != 0 && ci->hydro.count != 0)
     DO_NONSYM_PAIR1_STARS(r, cj, ci, sid, shift);
 }
 
@@ -1234,18 +1234,18 @@ void DOPAIR1_BRANCH_STARS(struct runner *r, struct cell *ci, struct cell *cj) {
 
   const int ci_active = cell_is_active_stars(ci, e);
   const int cj_active = cell_is_active_stars(cj, e);
-#ifdef UPDATE_STARS
-  const int ci_local = ci->nodeID == engine_rank;
-  const int cj_local = cj->nodeID == engine_rank;
+#if (FUNCTION_TASK_LOOP == TASK_LOOP_DENSITY)
+  const int do_ci_stars = ci->nodeID == engine_rank;
+  const int do_cj_stars = cj->nodeID == engine_rank;
 #else
   /* here we are updating the hydro -> switch ci, cj */
-  const int ci_local = cj->nodeID == engine_rank;
-  const int cj_local = ci->nodeID == engine_rank;
+  const int do_ci_stars = cj->nodeID == engine_rank;
+  const int do_cj_stars = ci->nodeID == engine_rank;
 #endif
   const int do_ci =
-      (ci->stars.count != 0 && cj->hydro.count != 0 && ci_active && ci_local);
+      (ci->stars.count != 0 && cj->hydro.count != 0 && ci_active && do_ci_stars);
   const int do_cj =
-      (cj->stars.count != 0 && ci->hydro.count != 0 && cj_active && cj_local);
+      (cj->stars.count != 0 && ci->hydro.count != 0 && cj_active && do_cj_stars);
 
   /* Anything to do here? */
   if (!do_ci && !do_cj) return;
@@ -1530,18 +1530,18 @@ void DOSUB_PAIR1_STARS(struct runner *r, struct cell *ci, struct cell *cj,
   /* Otherwise, compute the pair directly. */
   else {
 
-#ifdef UPDATE_STARS
-    const int ci_local = ci->nodeID == engine_rank;
-    const int cj_local = cj->nodeID == engine_rank;
+#if (FUNCTION_TASK_LOOP == TASK_LOOP_DENSITY)
+  const int do_ci_stars = ci->nodeID == engine_rank;
+  const int do_cj_stars = cj->nodeID == engine_rank;
 #else
-    /* here we are updating the hydro -> switch ci, cj */
-    const int ci_local = cj->nodeID == engine_rank;
-    const int cj_local = ci->nodeID == engine_rank;
+  /* here we are updating the hydro -> switch ci, cj */
+  const int do_ci_stars = cj->nodeID == engine_rank;
+  const int do_cj_stars = ci->nodeID == engine_rank;
 #endif
     const int do_ci = ci->stars.count != 0 && cj->hydro.count != 0 &&
-                      cell_is_active_stars(ci, e) && ci_local;
+                      cell_is_active_stars(ci, e) && do_ci_stars;
     const int do_cj = cj->stars.count != 0 && ci->hydro.count != 0 &&
-                      cell_is_active_stars(cj, e) && cj_local;
+                      cell_is_active_stars(cj, e) && do_cj_stars;
 
     if (do_ci) {
 
