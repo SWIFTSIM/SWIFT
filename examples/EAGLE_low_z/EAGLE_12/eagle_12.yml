@@ -57,7 +57,6 @@ InitialConditions:
   periodic:   1
   cleanup_h_factors: 1               # Remove the h-factors inherited from Gadget
   cleanup_velocity_factors: 1        # Remove the sqrt(a) factor in the velocities inherited from Gadget
-  #stars_smoothing_length:      0.3
   
 EAGLEChemistry: 	     # Solar abundances
   init_abundance_metal:      0.014
