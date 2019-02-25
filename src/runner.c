@@ -133,6 +133,7 @@ void runner_do_stars_ghost(struct runner *r, struct cell *c, int timer) {
 
   struct spart *restrict sparts = c->stars.parts;
   const struct engine *e = r->e;
+  const int with_cosmology = (e->policy & engine_policy_cosmology);
   const struct cosmology *cosmo = e->cosmology;
   const float stars_h_max = e->hydro_properties->h_max;
   const float stars_h_min = e->hydro_properties->h_min;
@@ -193,11 +194,11 @@ void runner_do_stars_ghost(struct runner *r, struct cell *c, int timer) {
         if (with_cosmology) {
           const integertime_t ti_step = get_integer_timestep(sp->time_bin);
           const integertime_t ti_begin =
-              get_integer_time_begin(ti_current - 1, sp->time_bin);
+              get_integer_time_begin(e->ti_current - 1, sp->time_bin);
           dt = cosmology_get_therm_kick_factor(e->cosmology, ti_begin,
                                                      ti_begin + ti_step);
         } else {
-          dt = get_timestep(sp->time_bin, time_base);
+          dt = get_timestep(sp->time_bin, e->time_base);
         }
 
 #ifdef SWIFT_DEBUG_CHECKS
