@@ -85,7 +85,7 @@ INLINE static double random_unit_interval(const long long int id,
   number ^= number << 21;
   number ^= number >> 35;
   number ^= number << 4;
-  const unsigned long long idpart = 3457LL * id + 593LL * id * ti_current;
+  const unsigned long long idpart = 3457LL * id + 593LL * id * ti_current + 5417LL * id * id;
   unsigned int seed =
       (937LL * number + 5171LL * number * number + idpart + 1109LL) %
       9996361LL % seed_range;
