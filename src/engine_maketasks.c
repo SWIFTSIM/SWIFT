@@ -209,12 +209,10 @@ void engine_addtasks_send_hydro(struct engine *e, struct cell *ci,
  * @param e The #engine.
  * @param ci The sending #cell.
  * @param cj Dummy cell containing the nodeID of the receiving node.
- * @param t_xv The send_xv #task, if it has already been created.
  * @param t_feedback The send_feed #task, if it has already been created.
  */
 void engine_addtasks_send_stars(struct engine *e, struct cell *ci,
-                                struct cell *cj, struct task *t_xv,
-                                struct task *t_feedback) {
+                                struct cell *cj, struct task *t_feedback) {
 
 #ifdef WITH_MPI
 
@@ -257,7 +255,7 @@ void engine_addtasks_send_stars(struct engine *e, struct cell *ci,
   if (ci->split)
     for (int k = 0; k < 8; k++)
       if (ci->progeny[k] != NULL)
-        engine_addtasks_send_stars(e, ci->progeny[k], cj, t_xv, t_feedback);
+        engine_addtasks_send_stars(e, ci->progeny[k], cj, t_feedback);
 
 #else
   error("SWIFT was not compiled with MPI support.");
@@ -2180,14 +2178,13 @@ void engine_addtasks_send_mapper(void *map_data, int num_elements,
     /* Add the send tasks for the cells in the proxy that have a stars
      * connection. */
     if ((e->policy & engine_policy_feedback) && (type & proxy_cell_type_hydro))
-      engine_addtasks_send_stars(e, ci, cj, /*t_xv=*/NULL,
-                                 /*t_rho=*/NULL);
+      engine_addtasks_send_stars(e, ci, cj, /*t_rho=*/NULL);
 
     /* Add the send tasks for the cells in the proxy that have a gravity
      * connection. */
     if ((e->policy & engine_policy_self_gravity) &&
         (type & proxy_cell_type_gravity))
-      engine_addtasks_send_gravity(e, ci, cj, NULL);
+      engine_addtasks_send_gravity(e, ci, cj, /*t_feedback=*/NULL);
   }
 }
 
