@@ -92,7 +92,6 @@ __attribute__((always_inline)) INLINE static void drift_part(
   p->x[2] += xp->v_full[2] * dt_drift;
 
   /* Predict velocities (for hydro terms) */
-  if (p->id == 145267) message("id %llu v_old %.5e %.5e %.5e a_hydro %.5e %.5e %.5e dt_kick_hydro %.5e v_new %.5e %.5e %.5e", p->id, p->v[0], p->v[1], p->v[2], p->a_hydro[0], p->a_hydro[1], p->a_hydro[2], dt_kick_hydro, p->v[0] + p->a_hydro[0] * dt_kick_hydro, p->v[1] + p->a_hydro[1] * dt_kick_hydro, p->v[2] + p->a_hydro[2] * dt_kick_hydro);
   p->v[0] += p->a_hydro[0] * dt_kick_hydro;
   p->v[1] += p->a_hydro[1] * dt_kick_hydro;
   p->v[2] += p->a_hydro[2] * dt_kick_hydro;

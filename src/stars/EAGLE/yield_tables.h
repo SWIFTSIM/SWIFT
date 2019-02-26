@@ -351,7 +351,7 @@ inline static void read_yield_tables(struct stars_props *restrict stars){
 }
 
 inline static void allocate_yield_tables(struct stars_props *restrict stars){
-  
+
   /* Allocate SNIa arrays */
   if (posix_memalign((void **)&stars->yields_SNIa, SWIFT_STRUCT_ALIGNMENT, stars->SNIa_n_elements * sizeof(double)) !=0) {
     error("Failed to allocate SNIa yields array");

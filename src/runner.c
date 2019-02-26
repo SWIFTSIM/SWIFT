@@ -133,6 +133,7 @@ void runner_do_stars_ghost(struct runner *r, struct cell *c, int timer) {
 
   struct spart *restrict sparts = c->stars.parts;
   const struct engine *e = r->e;
+  const struct unit_system *us = e->internal_units;
   const int with_cosmology = (e->policy & engine_policy_cosmology);
   const struct cosmology *cosmo = e->cosmology;
   const float stars_h_max = e->hydro_properties->h_max;
@@ -351,8 +352,11 @@ void runner_do_stars_ghost(struct runner *r, struct cell *c, int timer) {
         /* We now have a particle whose smoothing length has converged */
         stars_reset_feedback(sp);
 
+	// Get current time
+	float current_time_begin = get_integer_time_begin(e->ti_current - 1, sp->time_bin) * e->time_base;
+
         /* Compute the stellar evolution  */
-        stars_evolve_spart(sp, e->stars_properties, cosmo, dt);
+        stars_evolve_spart(sp, e->stars_properties, cosmo, us, current_time_begin, dt);
       }
 
       /* We now need to treat the particles whose smoothing length had not

@@ -213,7 +213,7 @@ inline static void init_imf(struct stars_props *restrict star_properties){
       star_properties->imf_mass_bin_log10[i] = log_solar_mass;
     }
   } else {
-    error("Invalid IMF model. Valid models are: PowerLaw and Chabrier\n");
+    error("Invalid IMF model %s. Valid models are: PowerLaw and Chabrier\n", star_properties->IMF_Model);
   }
 
   norm = integrate_imf(log_imf_min_solar_mass, log_imf_max_solar_mass,

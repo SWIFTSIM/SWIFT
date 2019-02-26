@@ -47,11 +47,6 @@ Scheduler:
   max_top_level_cells: 4
   cell_split_size:     50
 
-Stars:
-  feedback_timescale: 1e-4
-  continuous_heating: 0         # decide whether using continuous heating in feedback (1) or stochastic (0)
-  energy_testing:     1         # Are we testing energy injection? (1: yes, 0: no)
-  
 Gravity:
   mesh_side_length:   32
   eta: 0.025
@@ -59,3 +54,10 @@ Gravity:
   r_cut_max: 5.
   comoving_softening: 0.001
   max_physical_softening: 0.001
+
+Stars:
+  feedback_timescale: 1.e-4
+
+EagleStellarEvolution:
+  filename:     /cosma5/data/Eagle/BG_Tables/YieldTables/
+  imf_model:    Chabrier

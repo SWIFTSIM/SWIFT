@@ -441,8 +441,9 @@ inline static void determine_bin_yield(int *iz_low, int *iz_high, float *dz, flo
 
 inline static void evolve_SNIa(float log10_min_mass, float log10_max_mass,
 			      const struct stars_props *restrict stars,
-			      struct spart *restrict sp, float dt_Gyr){
-  int i;
+			      struct spart *restrict sp,
+			      const struct unit_system* us,
+			      float star_age_Gyr, float dt_Gyr){
 
   /* Check if we're outside the mass range for SNIa */
   if (log10_min_mass >= log10_SNIa_max_mass_msun) return;
@@ -451,56 +452,49 @@ inline static void evolve_SNIa(float log10_min_mass, float log10_max_mass,
   if (log10_max_mass > log10_SNIa_max_mass_msun) {
     log10_max_mass = log10_SNIa_max_mass_msun;
     float lifetime_Gyr = lifetime_in_Gyr(exp(M_LN10 * log10_SNIa_max_mass_msun), sp->chemistry_data.metal_mass_fraction_total, stars);
-    dt_Gyr = sp->time_since_enrich_Gyr + dt_Gyr - lifetime_Gyr;
-    sp->time_since_enrich_Gyr = lifetime_Gyr;
+    dt_Gyr = star_age_Gyr + dt_Gyr - lifetime_Gyr;
+    star_age_Gyr = lifetime_Gyr;
   }
 
-  /* compute the fraction of white dwarfs */
-  float num_of_SNIa_per_msun;
+  /* compute the number of SNIa per solar mass */
   /* Efolding (Forster 2006) */
-  num_of_SNIa_per_msun =
+  sp->to_distribute.num_SNIa =
       stars->SNIa_efficiency *
-      (exp(-sp->time_since_enrich_Gyr / stars->SNIa_timescale) -
-       exp(-(sp->time_since_enrich_Gyr + dt_Gyr) / stars->SNIa_timescale));
+      (exp(-star_age_Gyr / stars->SNIa_timescale) -
+       exp(-(star_age_Gyr + dt_Gyr) / stars->SNIa_timescale));
 
-  // switch included in EAGLE but there don't seem to be any alternatives.
-  //switch (stars->SNIa_mode) {
-  //  case 2:
-  //    /* Efolding (Forster 2006) */
-  //    num_of_SNIa_per_msun =
-  //        stars->SNIa_efficiency *
-  //        (exp(-sp->time_since_enrich_Gyr / stars->SNIa_timescale) -
-  //         exp(-(sp->time_since_enrich_Gyr + dt_Gyr) / stars->SNIa_timescale));
-  //    break;
-  //  default:
-  //    error("SNIa mode not defined yet %d\n", stars->SNIa_mode);
-  //    break;
-  //}
+  /* compute total mass released by SNIa */
+  sp->to_distribute.mass += sp->to_distribute.num_SNIa * stars->yield_SNIa_total_metals_SPH; // / units_cgs_conversion_factor(us, UNIT_CONV_MASS);
+  message("num_snia %.5e mass %.5e", sp->to_distribute.num_SNIa, sp->to_distribute.mass);
 
-  sp->num_snia = num_of_SNIa_per_msun;
-
-  if (stars->SNIa_mass_transfer == 1) {
-    for (i = 0; i < chemistry_element_count; i++) {
-      sp->metals_released[i] += num_of_SNIa_per_msun * stars->yield_SNIa_SPH[i];
-    }
-
-    sp->chemistry_data.mass_from_SNIa += num_of_SNIa_per_msun * stars->yield_SNIa_total_metals_SPH;
-    sp->chemistry_data.metal_mass_fraction_from_SNIa += num_of_SNIa_per_msun * stars->yield_SNIa_total_metals_SPH;
-
-    sp->metal_mass_released += num_of_SNIa_per_msun * stars->yield_SNIa_total_metals_SPH;
-
-    // Make sure chemistry_element_Fe corresponds to the iron_index used in EAGLE!!!
-    sp->chemistry_data.iron_mass_fraction_from_SNIa += num_of_SNIa_per_msun * stars->yield_SNIa_SPH[chemistry_element_Fe];
-
-    /* metal_mass_released is the yield of ALL metals, not just the
-       11 tabulated in the code.  SNIa remnants inject no H or He
-       so chemistry_data.mass_from_SNIa == chemistry_data.metal_mass_fraction_from_SNIa */
-
-  } else {
-    sp->chemistry_data.iron_mass_fraction_from_SNIa = 0;
-    sp->chemistry_data.metal_mass_fraction_from_SNIa = 0;
-    sp->chemistry_data.mass_from_SNIa = 0;
+  /* compute mass fractions of each metal */
+  for (int i = 0; i < chemistry_element_count; i++) {
+    sp->to_distribute.chemistry_data.metal_mass_fraction[i] += sp->to_distribute.num_SNIa * stars->yield_SNIa_SPH[i] / sp->to_distribute.mass;
   }
+
+  // For diagnostics according to Richard
+  //if (stars->SNIa_mass_transfer == 1) {
+  //  for (i = 0; i < chemistry_element_count; i++) {
+  //    sp->metals_released[i] += num_of_SNIa_per_msun * stars->yield_SNIa_SPH[i];
+  //  }
+
+  //  sp->chemistry_data.mass_from_SNIa += num_of_SNIa_per_msun * stars->yield_SNIa_total_metals_SPH;
+  //  sp->chemistry_data.metal_mass_fraction_from_SNIa += num_of_SNIa_per_msun * stars->yield_SNIa_total_metals_SPH;
+
+  //  sp->metal_mass_released += num_of_SNIa_per_msun * stars->yield_SNIa_total_metals_SPH;
+
+  //  // Make sure chemistry_element_Fe corresponds to the iron_index used in EAGLE!!!
+  //  sp->chemistry_data.iron_mass_fraction_from_SNIa += num_of_SNIa_per_msun * stars->yield_SNIa_SPH[chemistry_element_Fe];
+
+  //  /* metal_mass_released is the yield of ALL metals, not just the
+  //     11 tabulated in the code.  SNIa remnants inject no H or He
+  //     so chemistry_data.mass_from_SNIa == chemistry_data.metal_mass_fraction_from_SNIa */
+
+  //} else {
+  //  sp->chemistry_data.iron_mass_fraction_from_SNIa = 0;
+  //  sp->chemistry_data.metal_mass_fraction_from_SNIa = 0;
+  //  sp->chemistry_data.mass_from_SNIa = 0;
+  //}
 }
 
 inline static void evolve_SNII(float log10_min_mass, float log10_max_mass,
@@ -743,27 +737,30 @@ inline static void evolve_AGB(float log10_min_mass, float log10_max_mass,
 
 // Analogue of eagle_do_stellar_evolution...
 inline static void compute_stellar_evolution(const struct stars_props *restrict star_properties, 
-					     struct spart *restrict sp, float dt) {
+					     struct spart *restrict sp,
+					     const struct unit_system* us,
+					     float age, float dt) {
   
   // Convert dt from internal units to Gyr. (Do correct conversion!)
-  float convert_time_to_Gyr = 1.0;
-  float dt_Gyr = dt*convert_time_to_Gyr;
-  float age_of_star_Gyr = sp->birth_time*convert_time_to_Gyr; // This should be same as age_of_star_in_Gyr_begstep in EAGLE, check. Also, make sure it works with cosmology, might need to use birth_scale_factor.
+  const float Gyr_in_cgs = 3.154e16;
+  float dt_Gyr = dt * units_cgs_conversion_factor(us, UNIT_CONV_TIME) / Gyr_in_cgs;
+  float star_age_Gyr = age * units_cgs_conversion_factor(us, UNIT_CONV_TIME) / Gyr_in_cgs; // This should be same as age_of_star_in_Gyr_begstep in EAGLE, check. Also, make sure it works with cosmology, might need to use birth_scale_factor.
 
   // set max and min mass of dying stars
   float log10_max_dying_mass =
-      log10(dying_mass_msun(age_of_star_Gyr, sp->chemistry_data.metal_mass_fraction_total, star_properties));
+      log10(dying_mass_msun(star_age_Gyr, sp->chemistry_data.metal_mass_fraction_total, star_properties));
   float log10_min_dying_mass = log10(
-      dying_mass_msun(age_of_star_Gyr + dt_Gyr, sp->chemistry_data.metal_mass_fraction_total, star_properties));
+      dying_mass_msun(star_age_Gyr + dt_Gyr, sp->chemistry_data.metal_mass_fraction_total, star_properties));
 
   if (log10_min_dying_mass > log10_max_dying_mass) error("min dying mass is greater than max dying mass");
+  message("age %.5e age of star %.5e log10 min max dying mass %.5e %.5e", age, star_age_Gyr, log10_min_dying_mass, log10_max_dying_mass);
 
   /* integration interval is zero - this can happen if minimum and maximum
    * dying masses are above imf_max_mass_msun */
   if (log10_min_dying_mass == log10_max_dying_mass) return;
 
   /* Evolve SNIa, SNII, AGB */
-  evolve_SNIa(log10_min_dying_mass,log10_max_dying_mass,star_properties,sp,dt_Gyr);
+  evolve_SNIa(log10_min_dying_mass,log10_max_dying_mass,star_properties,sp,us,star_age_Gyr,dt_Gyr);
   evolve_SNII(log10_min_dying_mass,log10_max_dying_mass,star_properties,sp); 
   evolve_AGB(log10_min_dying_mass,log10_max_dying_mass,star_properties,sp);
 
@@ -781,9 +778,14 @@ inline static void compute_stellar_evolution(const struct stars_props *restrict 
  */
 __attribute__((always_inline)) INLINE static void stars_evolve_spart(
     struct spart* restrict sp, const struct stars_props* stars_properties,
-    const struct cosmology* cosmo, double dt) {
+    const struct cosmology* cosmo, const struct unit_system* us, float current_time, double dt) {
 
-    sp->num_snia = 0;
+    // Set birth time for testing purposes
+    sp->birth_time = 0;
+    float star_age = current_time - sp->birth_time;
+
+    sp->to_distribute.num_SNIa = 0;
+    sp->to_distribute.mass = 0;
     // get mass and initial mass of particle to pass to evolution function
     // except we're working in mass fraction so maybe not necessary...
     //float mass = hydro_get_mass(p);
@@ -801,9 +803,8 @@ __attribute__((always_inline)) INLINE static void stars_evolve_spart(
     sp->chemistry_data.iron_mass_fraction_from_SNIa = 0;
 
     // Evolve the star
-    compute_stellar_evolution(stars_properties, sp, dt);
-    
-    // set_particle_metal_content
+    compute_stellar_evolution(stars_properties, sp, us, star_age, dt);
+
 }
 
 inline static void stars_evolve_init(struct swift_params *params, struct stars_props* restrict stars){
@@ -825,11 +826,9 @@ inline static void stars_evolve_init(struct swift_params *params, struct stars_p
   stars->AGB_mass_transfer = 1;
   stars->SNII_mass_transfer = 1;
 
-  /* Which stellar lifetime model are we using? (To do: read from yml file)  */
-  stars->stellar_lifetime_flag = 2;
-
   /* Yield table filepath  */
   parser_get_param_string(params, "EagleStellarEvolution:filename", stars->yield_table_path);
+  parser_get_param_string(params, "EagleStellarEvolution:imf_model", stars->IMF_Model);
 
   //stars->yield_SNIa_total_metals_SPH = ;
 
@@ -847,6 +846,8 @@ inline static void stars_evolve_init(struct swift_params *params, struct stars_p
 
   /* Further calculation on tables to convert them to log10 and compute yields for each element  */
   compute_yields(stars);
+
+  message("initialized stellar feedback");
 
 }
 

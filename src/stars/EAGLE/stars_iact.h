@@ -1,3 +1,5 @@
+#include "random.h"
+
 /**
  * @brief Density interaction between two particles (non-symmetric).
  *
@@ -120,8 +122,9 @@ runner_iact_nonsym_stars_feedback(float r2, const float *dx, float hi, float hj,
   /* Update particle mass */
   const float current_mass = hydro_get_mass(pj);
   float new_mass = current_mass + si->to_distribute.mass*omega_frac;
-  if (stars_properties->const_feedback_energy_testing) new_mass = current_mass;
   hydro_set_mass(pj,new_mass);
+
+  message("particle %llu new mass %.5e old mass %.5e star distributed mass %.5e omega_frac %.5e", pj->id, new_mass, current_mass, si->to_distribute.mass, omega_frac);
   
   /* Decrease the mass of star particle */
   si->mass -= si->to_distribute.mass*omega_frac;
@@ -185,31 +188,24 @@ runner_iact_nonsym_stars_feedback(float r2, const float *dx, float hi, float hj,
   d_energy = si->to_distribute.mass * (si->to_distribute.ejecta_specific_thermal_energy 
      + 0.5*(si->v[0]*si->v[0] + si->v[1]*si->v[1] + si->v[2]*si->v[2]) * cosmo->a2_inv);
 
-  // If statement temporary for testing, in practice would always be on.
-  if (stars_properties->const_feedback_energy_testing) {
-    if (stars_properties->continuous_heating) {
-      // We're doing ONLY continuous heating 
-      d_energy += si->to_distribute.num_SNIa * stars_properties->total_energy_SNe * omega_frac * si->mass_init;
-      du = d_energy/hydro_get_mass(pj);
-      thermal_feedback(du,pj,xp,cosmo);
-    } else {
-      // We're doing stochastic heating
-      heating_probability = stars_properties->SNe_temperature_h * si->to_distribute.num_SNIa *
-                            stars_properties->SNIa_energy_fraction /
-                            (stars_properties->SNe_deltaT_desired * si->ngb_mass);
-      du = stars_properties->SNe_deltaT_desired * stars_properties->temp_to_u_factor;
-      if (heating_probability >= 1) {
-        du = stars_properties->SNe_energy_h * si->to_distribute.num_SNIa / si->ngb_mass;
-        heating_probability = 1; 
-      }
+  if (stars_properties->continuous_heating) {
+    // We're doing ONLY continuous heating 
+    d_energy += si->to_distribute.num_SNIa * stars_properties->total_energy_SNe * omega_frac * si->mass_init;
+    du = d_energy/hydro_get_mass(pj);
+    thermal_feedback(du,pj,xp,cosmo);
+  } else {
+    // We're doing stochastic heating
+    heating_probability = stars_properties->SNe_temperature_h * si->to_distribute.num_SNIa *
+                          stars_properties->SNIa_energy_fraction /
+                          (stars_properties->SNe_deltaT_desired * si->ngb_mass);
+    du = stars_properties->SNe_deltaT_desired * stars_properties->temp_to_u_factor;
+    if (heating_probability >= 1) {
+      du = stars_properties->SNe_energy_h * si->to_distribute.num_SNIa / si->ngb_mass;
+      heating_probability = 1; 
     }
   }
 
-  /* pick random number to see if we do stochastic heating */
-  // Temporary assignment of random seed. Discuss with Matthieu for better 
-  // way of generating random numbers
-  unsigned int seed = 3*(pj->id + ti_current) % 8191;
-  double random_num = rand_r(&seed) * stars_properties->inv_rand_max;
+  double random_num = random_unit_interval(pj->id, ti_current, random_number_stellar_feedback);
   if (random_num < heating_probability) {
     message("we did some heating! id %llu probability %.5e random_num %.5e du %.5e du/ini %.5e", pj->id, heating_probability, random_num, du, du/hydro_get_physical_internal_energy(pj,xp,cosmo));
     thermal_feedback(du, pj, xp, cosmo);

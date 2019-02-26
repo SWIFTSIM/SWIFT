@@ -184,7 +184,7 @@ __attribute__((always_inline)) INLINE static void stars_reset_acceleration(
  */
 __attribute__((always_inline)) INLINE static void stars_evolve_spart(
     struct spart* restrict sp, const struct stars_props* stars_properties,
-    const struct cosmology* cosmo, double dt) {
+    const struct cosmology* cosmo, const struct unit_system* us, float current_time, double dt) {
   
   /* Proportion of quantities to be released each timestep */
   float feedback_factor = dt/stars_properties->feedback_timescale;
@@ -220,5 +220,30 @@ __attribute__((always_inline)) INLINE static void stars_evolve_spart(
   sp->to_distribute.ejecta_specific_thermal_energy = 1.0e-3;
 
 }
+
+inline static void stars_evolve_init(struct swift_params *params, struct stars_props* restrict stars){}
+
+
+/**
+ * @brief Reset acceleration fields of a particle
+ *
+ * This is the equivalent of hydro_reset_acceleration.
+ * We do not compute the acceleration on star, therefore no need to use it.
+ *
+ * @param p The particle to act upon
+ */
+__attribute__((always_inline)) INLINE static void stars_reset_feedback(
+    struct spart* restrict p) {
+
+  /* Reset time derivative */
+  p->feedback.h_dt = 0.f;
+
+#ifdef DEBUG_INTERACTIONS_STARS
+  for (int i = 0; i < MAX_NUM_OF_NEIGHBOURS_STARS; ++i)
+    p->ids_ngbs_force[i] = -1;
+  p->num_ngb_force = 0;
+#endif
+}
+
 
 #endif /* SWIFT_CONST_STARS_H */
