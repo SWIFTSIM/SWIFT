@@ -34,10 +34,10 @@
  * doing!
  */
 enum random_number_type {
-  random_number_star_formation = 4294957665,
-  random_number_stellar_feedback = 3947008974,
-  random_number_stellar_enrichment = 2936881968,
-  random_number_BH_feedback = 1640531364
+  random_number_star_formation = 4294957665LL,
+  random_number_stellar_feedback = 3947008974LL,
+  random_number_stellar_enrichment = 2936881968LL,
+  random_number_BH_feedback = 1640531364LL
 };
 
 /**
