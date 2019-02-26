@@ -299,10 +299,10 @@ AC_ARG_ENABLE([naive-interactions-stars],
    [AS_HELP_STRING([--enable-naive-interactions-stars],
      [Activate use of naive cell interaction functions for stars @<:@yes/no@:>@]
    )],
-   [enable_naive_interactions-stars="$enableval"],
-   [enable_naive_interactions-stars="no"]
+   [enable_naive_interactions_stars="$enableval"],
+   [enable_naive_interactions_stars="no"]
 )
-if test "$enable_naive_interactions-stars" = "yes"; then
+if test "$enable_naive_interactions_stars" = "yes"; then
    AC_DEFINE([SWIFT_USE_NAIVE_INTERACTIONS_STARS],1,[Enable use of naive cell interaction functions for stars])
 fi
 
