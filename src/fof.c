@@ -884,33 +884,48 @@ void fof_find_foreign_links_mapper(void *map_data, int num_elements,
 
     /* Copy the local links to the global list. */
     for (int i = 0; i < local_link_count; i++) {
-      (*group_links)[*group_link_count + i].group_i =
+
+      int found = 0;
+
+      /* Check that the links have not already been added to the list by another thread. */
+      for(int l=0; l<*group_link_count; l++) {
+        if((*group_links)[l].group_i == local_group_links[i].group_i && (*group_links)[l].group_j == local_group_links[i].group_j) {
+          found = 1;
+          break;
+        }
+      }
+
+      if(!found) {
+
+        (*group_links)[*group_link_count].group_i =
           local_group_links[i].group_i;
-      (*group_links)[*group_link_count + i].group_i_size =
+        (*group_links)[*group_link_count].group_i_size =
           local_group_links[i].group_i_size;
-      (*group_links)[*group_link_count + i].group_i_mass =
+        (*group_links)[*group_link_count].group_i_mass =
           local_group_links[i].group_i_mass;
-      (*group_links)[*group_link_count + i].group_i_CoM.x =
+        (*group_links)[*group_link_count].group_i_CoM.x =
           local_group_links[i].group_i_CoM.x;
-      (*group_links)[*group_link_count + i].group_i_CoM.y =
+        (*group_links)[*group_link_count].group_i_CoM.y =
           local_group_links[i].group_i_CoM.y;
-      (*group_links)[*group_link_count + i].group_i_CoM.z =
+        (*group_links)[*group_link_count].group_i_CoM.z =
           local_group_links[i].group_i_CoM.z;
 
-      (*group_links)[*group_link_count + i].group_j =
+        (*group_links)[*group_link_count].group_j =
           local_group_links[i].group_j;
-      (*group_links)[*group_link_count + i].group_j_size =
+        (*group_links)[*group_link_count].group_j_size =
           local_group_links[i].group_j_size;
-      (*group_links)[*group_link_count + i].group_j_mass =
+        (*group_links)[*group_link_count].group_j_mass =
           local_group_links[i].group_j_mass;
-      (*group_links)[*group_link_count + i].group_j_CoM.x =
+        (*group_links)[*group_link_count].group_j_CoM.x =
           local_group_links[i].group_j_CoM.x;
-      (*group_links)[*group_link_count + i].group_j_CoM.y =
+        (*group_links)[*group_link_count].group_j_CoM.y =
           local_group_links[i].group_j_CoM.y;
-      (*group_links)[*group_link_count + i].group_j_CoM.z =
+        (*group_links)[*group_link_count].group_j_CoM.z =
           local_group_links[i].group_j_CoM.z;
+
+        (*group_link_count) = (*group_link_count) + 1;
+      }
     }
-    (*group_link_count) += local_link_count;
   }
 
   /* Release lock. */
