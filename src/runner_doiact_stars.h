@@ -40,6 +40,9 @@
 #define _DOPAIR1_SUBSET_STARS(f) PASTE(runner_dopair_subset_stars, f)
 #define DOPAIR1_SUBSET_STARS _DOPAIR1_SUBSET_STARS(FUNCTION)
 
+#define _DOPAIR1_SUBSET_STARS_NAIVE(f) PASTE(runner_dopair_subset_stars_naive, f)
+#define DOPAIR1_SUBSET_STARS_NAIVE _DOPAIR1_SUBSET_STARS_NAIVE(FUNCTION)
+
 #define _DOSELF1_SUBSET_STARS(f) PASTE(runner_doself_subset_stars, f)
 #define DOSELF1_SUBSET_STARS _DOSELF1_SUBSET_STARS(FUNCTION)
 
@@ -517,9 +520,146 @@ void DOPAIR1_STARS_NAIVE(struct runner *r, struct cell *restrict ci,
  * @param ind The list of indices of particles in @c ci to interact with.
  * @param scount The number of particles in @c ind.
  * @param cj The second #cell.
+ * @param sid The direction of the pair.
+ * @param flipped Flag to check whether the cells have been flipped or not.
  * @param shift The shift vector to apply to the particles in ci.
  */
 void DOPAIR1_SUBSET_STARS(struct runner *r, struct cell *restrict ci,
+                          struct spart *restrict sparts_i, int *restrict ind,
+                          int scount, struct cell *restrict cj, const int sid,
+			  const int flipped, const double *shift) {
+
+  const struct engine *e = r->e;
+  const struct cosmology *cosmo = e->cosmology;
+
+  const int count_j = cj->hydro.count;
+  struct part *restrict parts_j = cj->hydro.parts;
+
+  /* Cosmological terms */
+  const float a = cosmo->a;
+  const float H = cosmo->H;
+
+  /* Pick-out the sorted lists. */
+  const struct entry *restrict sort_j = cj->hydro.sort[sid];
+  const float dxj = cj->hydro.dx_max_sort;
+
+  /* Sparts are on the left? */
+  if (!flipped) {
+
+    /* Loop over the sparts_i. */
+    for (int pid = 0; pid < scount; pid++) {
+
+      /* Get a hold of the ith spart in ci. */
+      struct spart *restrict spi = &sparts_i[ind[pid]];
+      const double pix = spi->x[0] - (shift[0]);
+      const double piy = spi->x[1] - (shift[1]);
+      const double piz = spi->x[2] - (shift[2]);
+      const float hi = spi->h;
+      const float hig2 = hi * hi * kernel_gamma2;
+      const double di = hi * kernel_gamma + dxj + pix * runner_shift[sid][0] +
+                        piy * runner_shift[sid][1] + piz * runner_shift[sid][2];
+
+      /* Loop over the parts in cj. */
+      for (int pjd = 0; pjd < count_j && sort_j[pjd].d < di; pjd++) {
+
+        /* Get a pointer to the jth particle. */
+        struct part *restrict pj = &parts_j[sort_j[pjd].i];
+
+        /* Skip inhibited particles. */
+        if (part_is_inhibited(pj, e)) continue;
+
+        const double pjx = pj->x[0];
+        const double pjy = pj->x[1];
+        const double pjz = pj->x[2];
+
+        /* Compute the pairwise distance. */
+        float dx[3] = {(float)(pix - pjx), (float)(piy - pjy),
+                       (float)(piz - pjz)};
+        const float r2 = dx[0] * dx[0] + dx[1] * dx[1] + dx[2] * dx[2];
+
+#ifdef SWIFT_DEBUG_CHECKS
+        /* Check that particles have been drifted to the current time */
+        if (spi->ti_drift != e->ti_current)
+          error("Particle pi not drifted to current time");
+        if (pj->ti_drift != e->ti_current)
+          error("Particle pj not drifted to current time");
+#endif
+
+        /* Hit or miss? */
+        if (r2 < hig2) {
+	  IACT_STARS(r2, dx, hi, pj->h, spi, pj, a, H);
+        }
+      } /* loop over the parts in cj. */
+    }   /* loop over the sparts in ci. */
+  }
+
+  /* Sparts are on the right. */
+  else {
+
+    /* Loop over the sparts_i. */
+    for (int pid = 0; pid < scount; pid++) {
+
+      /* Get a hold of the ith spart in ci. */
+      struct spart *restrict spi = &sparts_i[ind[pid]];
+      const double pix = spi->x[0] - (shift[0]);
+      const double piy = spi->x[1] - (shift[1]);
+      const double piz = spi->x[2] - (shift[2]);
+      const float hi = spi->h;
+      const float hig2 = hi * hi * kernel_gamma2;
+      const double di = -hi * kernel_gamma - dxj + pix * runner_shift[sid][0] +
+                        piy * runner_shift[sid][1] + piz * runner_shift[sid][2];
+
+      /* Loop over the parts in cj. */
+      for (int pjd = count_j - 1; pjd >= 0 && di < sort_j[pjd].d; pjd--) {
+
+        /* Get a pointer to the jth particle. */
+        struct part *restrict pj = &parts_j[sort_j[pjd].i];
+
+        /* Skip inhibited particles. */
+        if (part_is_inhibited(pj, e)) continue;
+
+        const double pjx = pj->x[0];
+        const double pjy = pj->x[1];
+        const double pjz = pj->x[2];
+
+        /* Compute the pairwise distance. */
+        float dx[3] = {(float)(pix - pjx), (float)(piy - pjy),
+                       (float)(piz - pjz)};
+        const float r2 = dx[0] * dx[0] + dx[1] * dx[1] + dx[2] * dx[2];
+
+#ifdef SWIFT_DEBUG_CHECKS
+        /* Check that particles have been drifted to the current time */
+        if (pi->ti_drift != e->ti_current)
+          error("Particle pi not drifted to current time");
+        if (pj->ti_drift != e->ti_current)
+          error("Particle pj not drifted to current time");
+#endif
+
+        /* Hit or miss? */
+        if (r2 < hig2) {
+	  IACT_STARS(r2, dx, hi, pj->h, spi, pj, a, H);
+        }
+      } /* loop over the parts in cj. */
+    }   /* loop over the sparts in ci. */
+  }
+
+
+}
+/**
+ * @brief Compute the interactions between a cell pair, but only for the
+ *      given indices in ci.
+ *
+ * Version using a brute-force algorithm.
+ *
+ * @param r The #runner.
+ * @param ci The first #cell.
+ * @param sparts_i The #part to interact with @c cj.
+ * @param ind The list of indices of particles in @c ci to interact with.
+ * @param scount The number of particles in @c ind.
+ * @param cj The second #cell.
+ * @param shift The shift vector to apply to the particles in ci.
+ */
+void DOPAIR1_SUBSET_STARS_NAIVE(struct runner *r, struct cell *restrict ci,
                           struct spart *restrict sparts_i, int *restrict ind,
                           int scount, struct cell *restrict cj,
                           const double *shift) {
@@ -696,7 +836,27 @@ void DOPAIR1_SUBSET_BRANCH_STARS(struct runner *r, struct cell *restrict ci,
       shift[k] = -e->s->dim[k];
   }
 
-  DOPAIR1_SUBSET_STARS(r, ci, sparts_i, ind, scount, cj, shift);
+#ifdef SWIFT_USE_NAIVE_INTERACTIONS_STARS
+  DOPAIR1_SUBSET_STARS_NAIVE(r, ci, sparts_i, ind, scount, cj, shift);
+#else
+  /* Get the sorting index. */
+  int sid = 0;
+  for (int k = 0; k < 3; k++)
+    sid = 3 * sid + ((cj->loc[k] - ci->loc[k] + shift[k] < 0)
+                         ? 0
+                         : (cj->loc[k] - ci->loc[k] + shift[k] > 0) ? 2 : 1);
+
+  /* Switch the cells around? */
+  const int flipped = runner_flip[sid];
+  sid = sortlistID[sid];
+
+  /* Has the cell cj been sorted? */
+  if (!(cj->hydro.sorted & (1 << sid)) ||
+      cj->hydro.dx_max_sort_old > space_maxreldx * cj->dmin)
+    error("Interacting unsorted cells.");
+
+  DOPAIR1_SUBSET_STARS(r, ci, sparts_i, ind, scount, cj, sid, flipped, shift);
+#endif
 }
 
 void DOSUB_SUBSET_STARS(struct runner *r, struct cell *ci, struct spart *sparts,
