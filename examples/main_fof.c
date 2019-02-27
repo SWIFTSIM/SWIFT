@@ -190,7 +190,6 @@ int main(int argc, char *argv[]) {
   int restart = 0;
   int with_cosmology = 0;
   int with_external_gravity = 0;
-  int with_sourceterms = 0;
   int with_cooling = 0;
   int with_self_gravity = 0;
   int with_hydro = 0;
@@ -251,9 +250,6 @@ int main(int argc, char *argv[]) {
           if (myrank == 0) print_help_message();
           return 1;
         }
-        break;
-      case 'F':
-        with_sourceterms = 1;
         break;
       case 'g':
         with_external_gravity = 1;

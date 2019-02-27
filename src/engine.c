@@ -3311,10 +3311,6 @@ void engine_check_for_dumps(struct engine *e) {
     }
   }
 
-  /* Do we want to perform a FOF search? */
-  int run_fof = 0;
-  if (e->policy & engine_policy_fof) run_fof = 1;
-
   /* Do we want to perform structure finding? */
   if (with_stf) {
     if (e->ti_end_min > e->ti_next_stf && e->ti_next_stf > 0) {
