@@ -63,6 +63,7 @@
 #include "space_getsid.h"
 #include "star_formation.h"
 #include "star_formation_iact.h"
+#include "star_formation_logger.h"
 #include "stars.h"
 #include "task.h"
 #include "timers.h"

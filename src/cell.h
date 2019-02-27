@@ -38,7 +38,7 @@
 #include "space.h"
 #include "task.h"
 #include "timeline.h"
-#include "star_formation_logger.h"
+//#include "star_formation_logger.h"
 
 /* Avoid cyclic inclusions */
 struct engine;
