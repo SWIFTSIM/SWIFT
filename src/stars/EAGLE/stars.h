@@ -58,6 +58,9 @@ __attribute__((always_inline)) INLINE static void stars_init_spart(
   sp->density.wcount = 0.f;
   sp->density.wcount_dh = 0.f;
   sp->rho_gas = 0.f;
+
+  sp->omega_normalisation_inv = 0.f;
+  sp->ngb_mass = 0.f;
 }
 
 /**

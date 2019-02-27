@@ -91,8 +91,6 @@ struct spart {
     /* Mass fractions of ejecta */
     struct chemistry_part_data chemistry_data;
 
-    float ejecta_specific_thermal_energy;
-
     /* Number of type 1a SNe per unit mass */
     float num_SNIa;
 
@@ -222,6 +220,9 @@ struct stars_props {
 
   /* Energy released by one supernova */
   float total_energy_SNe;
+
+  /* Kinetic energy of SN ejecta per unit mass (check name with Richard)*/
+  float ejecta_specific_thermal_energy;
 
   /* Temperature and energy times h due to SNe (corresponding to units_factor1, units_factor2 in EAGLE) */
   float SNe_temperature;

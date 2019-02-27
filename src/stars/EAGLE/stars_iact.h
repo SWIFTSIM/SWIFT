@@ -46,7 +46,7 @@ runner_iact_nonsym_stars_density(float r2, const float *dx, float hi, float hj,
   si->density.wcount_dh -= (hydro_dimension * wi + ui * wi_dx);
 
   /* Add mass of pj to neighbour mass of si  */
-  si->ngb_mass += hydro_get_mass(pj) / stars_properties->const_solar_mass;
+  si->ngb_mass += hydro_get_mass(pj);// / stars_properties->const_solar_mass;
 
   /* Add contribution of pj to normalisation of kernel (TODO: IMPROVE COMMENT?) */
   si->omega_normalisation_inv += wj / hydro_get_physical_density(pj,cosmo);
@@ -124,7 +124,7 @@ runner_iact_nonsym_stars_feedback(float r2, const float *dx, float hi, float hj,
   float new_mass = current_mass + si->to_distribute.mass*omega_frac;
   hydro_set_mass(pj,new_mass);
 
-  //message("particle %llu new mass %.5e old mass %.5e star distributed mass %.5e omega_frac %.5e", pj->id, new_mass, current_mass, si->to_distribute.mass, omega_frac);
+  //message("particle %llu new mass %.5e old mass %.5e star distributed mass %.5e omega_frac %.5e norm %.5e ngb_mass %.5e", pj->id, new_mass, current_mass, si->to_distribute.mass, omega_frac, si->omega_normalisation_inv, si->ngb_mass);
   
   /* Decrease the mass of star particle */
   si->mass -= si->to_distribute.mass*omega_frac;
@@ -185,7 +185,7 @@ runner_iact_nonsym_stars_feedback(float r2, const float *dx, float hi, float hj,
 
   /* Energy feedback */
   float heating_probability = -1.f, du = 0.f, d_energy = 0.f;
-  d_energy = si->to_distribute.mass * (si->to_distribute.ejecta_specific_thermal_energy 
+  d_energy = si->to_distribute.mass * (stars_properties->ejecta_specific_thermal_energy 
      + 0.5*(si->v[0]*si->v[0] + si->v[1]*si->v[1] + si->v[2]*si->v[2]) * cosmo->a2_inv);
 
   if (stars_properties->continuous_heating) {
@@ -197,10 +197,10 @@ runner_iact_nonsym_stars_feedback(float r2, const float *dx, float hi, float hj,
     // We're doing stochastic heating
     heating_probability = stars_properties->units_factor1 * si->to_distribute.num_SNIa *
                           stars_properties->SNIa_energy_fraction /
-                          (stars_properties->SNe_deltaT_desired * si->ngb_mass);
+                          (stars_properties->SNe_deltaT_desired * si->ngb_mass / stars_properties->const_solar_mass);
     du = stars_properties->SNe_deltaT_desired * stars_properties->temp_to_u_factor;
     if (heating_probability >= 1) {
-      du = stars_properties->units_factor2 * si->to_distribute.num_SNIa / si->ngb_mass;
+      du = stars_properties->units_factor2 * si->to_distribute.num_SNIa / si->ngb_mass * stars_properties->const_solar_mass;
       heating_probability = 1; 
     }
   }

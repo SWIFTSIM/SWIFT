@@ -151,6 +151,10 @@ INLINE static void stars_props_init(struct stars_props *sp,
   /* Set the temperature to use in stochastic heating */
   sp->SNe_deltaT_desired = 3.16228e7 / units_cgs_conversion_factor(us,UNIT_CONV_TEMPERATURE);
 
+  /* Set ejecta thermal energy */
+  const float ejecta_velocity = 1.0e6 / units_cgs_conversion_factor(us,UNIT_CONV_SPEED); // EAGLE parameter is 10 km/s
+  sp->ejecta_specific_thermal_energy = 0.5 * ejecta_velocity * ejecta_velocity;
+
   /* Energy released by supernova */
   sp->total_energy_SNe = 1.0e51/units_cgs_conversion_factor(us,UNIT_CONV_ENERGY);
 
