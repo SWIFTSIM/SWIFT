@@ -26,6 +26,13 @@
 /* Local headers. */
 #include "swift.h"
 
+double pearsonfunc(double mean1, double mean2, double total12, double var1, double var2, int counter) {
+  
+  const double mean12 = total12 / (double)counter;
+  const double correlation = (mean12 - mean1 * mean2)/ pow(var1 * var2, .5f);
+  return correlation; 
+}
+
 int main(int argc, char* argv[]) {
 
   /* Initialize CPU frequency, this also starts time. */
@@ -66,6 +73,23 @@ int main(int argc, char* argv[]) {
     double totalID = 0.;
     double total2ID = 0.;
 
+    /* Pearson correlation for different processes */
+    double pearson_star_sf = 0.;
+    double pearson_star_se = 0.;
+    double pearson_star_bh = 0.;
+    double pearson_sf_se = 0.;
+    double pearson_sf_bh = 0.;
+    double pearson_se_bh = 0.;
+
+    /* Calculate the mean and <x^2> for these processes */
+    double total_sf = 0.;
+    double total_se = 0.;
+    double total_bh = 0.;
+
+    double total2_sf = 0.;
+    double total2_se = 0.;
+    double total2_bh = 0.;
+
     /* Check that the numbers are uniform over the full-range of useful
      * time-steps */
     for (integertime_t ti_current = 0LL; ti_current < max_nr_timesteps;
@@ -76,21 +100,51 @@ int main(int argc, char* argv[]) {
       const double r =
           random_unit_interval(id, ti_current, random_number_star_formation);
 
-      const double r_2ndid = random_unit_interval(idoffset, ti_current,
-                                                  random_number_star_formation);
-
       total += r;
       total2 += r * r;
       count++;
 
-      /* For the pearson correlation of time i and i-1 */
+      /* Calculate for correlation between time.
+       * For this we use the pearson correlation of time i and i-1 */
       sum_previous_current += r * previous;
       previous = r;
+
+      /* Calculate if there is a correlation between different ids */
+      const double r_2ndid = random_unit_interval(idoffset, ti_current,
+                                                  random_number_star_formation);
 
       /* Pearson correlation for small different IDs */
       pearsonIDs += r * r_2ndid;
       totalID += r_2ndid;
       total2ID += r_2ndid * r_2ndid;
+
+      /* Calculate random numbers for the different processes and check
+       * that they are uncorrelated */
+      
+      const double r_sf = 
+          random_unit_interval(id, ti_current, random_number_stellar_feedback);
+
+      const double r_se = 
+          random_unit_interval(id, ti_current, random_number_stellar_enrichment);
+
+      const double r_bh = 
+          random_unit_interval(id, ti_current, random_number_BH_feedback);
+
+      /* Calculate the correlation between the different processes */
+      total_sf += r_sf;
+      total_se += r_se;
+      total_bh += r_bh;
+
+      total2_sf += r_sf * r_sf;
+      total2_se += r_se * r_se;
+      total2_bh += r_bh * r_bh;
+
+      pearson_star_sf += r * r_sf;
+      pearson_star_se += r * r_se;
+      pearson_star_bh += r * r_bh;
+      pearson_sf_se += r_sf * r_se;
+      pearson_sf_bh += r_sf * r_bh;
+      pearson_se_bh += r_se * r_bh;
     }
 
     const double mean = total / (double)count;
@@ -100,14 +154,33 @@ int main(int argc, char* argv[]) {
     const double mean_xy = sum_previous_current / ((double)count - 1.f);
     const double correlation = (mean_xy - mean * mean) / var;
 
-    /* Pearson correlation for different IDs */
+    /* Mean for different IDs */
     const double meanID = totalID / (double)count;
     const double varID = total2ID / (double)count - meanID * meanID;
 
+    /* Pearson correlation between different IDs*/
     const double meanID_xy = pearsonIDs / (double)count;
     const double correlationID =
         (meanID_xy - mean * meanID) / pow(var * varID, .5f);
 
+    /* Mean and <x^2> for different processes */
+    const double mean_sf = total_sf / (double)count;
+    const double mean_se = total_se / (double)count;
+    const double mean_bh = total_bh / (double)count;
+    
+    const double var_sf = total2_sf / (double)count - mean_sf * mean_sf;
+    const double var_se = total2_se / (double)count - mean_se * mean_se;
+    const double var_bh = total2_bh / (double)count - mean_bh * mean_bh;
+
+    /* Correlation between different processes */
+    const double corr_star_sf = pearsonfunc(mean,mean_sf,pearson_star_sf, var, var_sf, count);
+    const double corr_star_se = pearsonfunc(mean,mean_se,pearson_star_se, var, var_se, count);
+    const double corr_star_bh = pearsonfunc(mean,mean_bh,pearson_star_bh, var, var_bh, count);
+    const double corr_sf_se = pearsonfunc(mean_sf,mean_se,pearson_sf_se, var_sf, var_se, count);
+    const double corr_sf_bh = pearsonfunc(mean_sf,mean_bh,pearson_sf_bh, var_sf, var_bh, count);
+    const double corr_se_bh = pearsonfunc(mean_se,mean_bh,pearson_se_bh, var_se, var_bh, count);
+    message("%e %e %e %e %e %e",corr_star_sf, corr_star_se, corr_star_bh, corr_sf_se, corr_sf_bh, corr_se_bh);
+    
     /* Verify that the mean and variance match the expected values for a uniform
      * distribution */
     if ((fabs(mean - 0.5) / 0.5 > 2e-4) ||
