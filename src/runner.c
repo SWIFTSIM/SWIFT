@@ -931,7 +931,7 @@ void runner_do_hydro_sort(struct runner *r, struct cell *c, int flags,
 
     /* Fill the sort array. */
     for (int k = 0; k < count; k++) {
-      const double px[3] = {parts[k].x[0], parts[k].x[1], parts[k].x[2]};      
+      const double px[3] = {parts[k].x[0], parts[k].x[1], parts[k].x[2]};
       for (int j = 0; j < 13; j++)
         if (flags & (1 << j)) {
           c->hydro.sort[j][k].i = k;
@@ -3273,7 +3273,7 @@ void *runner_main(void *data) {
           break;
 #endif
         case task_type_stars_ghost:
-	  runner_do_stars_ghost(r, ci, 1);
+          runner_do_stars_ghost(r, ci, 1);
           break;
         case task_type_drift_part:
           runner_do_drift_part(r, ci, 1);
@@ -3322,7 +3322,7 @@ void *runner_main(void *data) {
           } else if (t->subtype == task_subtype_gradient) {
             runner_do_recv_part(r, ci, 0, 1);
           } else if (t->subtype == task_subtype_force) {
-            error("oo");runner_do_recv_part(r, ci, 0, 1);
+            runner_do_recv_part(r, ci, 0, 1);
           } else if (t->subtype == task_subtype_limiter) {
             runner_do_recv_part(r, ci, 0, 1);
           } else if (t->subtype == task_subtype_gpart) {
