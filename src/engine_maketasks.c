@@ -153,8 +153,8 @@ void engine_addtasks_send_hydro(struct engine *e, struct cell *ci,
                                      ci->mpi.tag, 0, ci, cj);
 #endif
 
-      t_force = scheduler_addtask(s, task_type_send, task_subtype_force,
-                                  ci->mpi.tag, 0, ci, cj);
+      /* t_force = scheduler_addtask(s, task_type_send, task_subtype_force, */
+      /*                             ci->mpi.tag, 0, ci, cj); */
 
 #ifdef EXTRA_HYDRO_LOOP
 
@@ -184,8 +184,9 @@ void engine_addtasks_send_hydro(struct engine *e, struct cell *ci,
 
 #endif
 
-      scheduler_addunlock(s, ci->hydro.super->hydro.end_force, t_force);
-      scheduler_addunlock(s, ci->hydro.super->hydro.drift, t_force);
+      //scheduler_addunlock(s, ci->hydro.super->hydro.end_force, t_force);
+      //scheduler_addunlock(s, ci->hydro.super->hydro.drift, t_force);
+      scheduler_addunlock(s, ci->hydro.super->hydro.drift, t_rho);
 
       /* Drift before you send */
       scheduler_addunlock(s, ci->hydro.super->hydro.drift, t_xv);
@@ -197,7 +198,7 @@ void engine_addtasks_send_hydro(struct engine *e, struct cell *ci,
 #ifdef EXTRA_HYDRO_LOOP
     engine_addlink(e, &ci->mpi.hydro.send_gradient, t_gradient);
 #endif
-    engine_addlink(e, &ci->mpi.hydro.send_force, t_force);
+    //engine_addlink(e, &ci->mpi.hydro.send_force, t_force);
   }
 
   /* Recurse? */
@@ -387,19 +388,20 @@ void engine_addtasks_recv_hydro(struct engine *e, struct cell *c,
                                    c->mpi.tag, 0, c, NULL);
 #endif
 
-    t_force = scheduler_addtask(s, task_type_recv, task_subtype_force,
-                                c->mpi.tag, 0, c, NULL);
+    /* t_force = scheduler_addtask(s, task_type_recv, task_subtype_force, */
+    /*                             c->mpi.tag, 0, c, NULL); */
   }
 
   c->mpi.hydro.recv_xv = t_xv;
   c->mpi.hydro.recv_rho = t_rho;
   c->mpi.hydro.recv_gradient = t_gradient;
-  c->mpi.hydro.recv_force = t_force;
+  //c->mpi.hydro.recv_force = t_force;
 
   /* Add dependencies. */
   if (c->hydro.sorts != NULL) {
     scheduler_addunlock(s, t_xv, c->hydro.sorts);
-    scheduler_addunlock(s, c->hydro.sorts, t_force);
+    scheduler_addunlock(s, c->hydro.sorts, t_rho);
+    //scheduler_addunlock(s, c->hydro.sorts, t_force);
   }
 
   for (struct link *l = c->hydro.density; l != NULL; l = l->next) {
@@ -420,12 +422,12 @@ void engine_addtasks_recv_hydro(struct engine *e, struct cell *c,
   }
 #endif
 
-  for (struct link *l = c->hydro.force; l != NULL; l = l->next) {
-    scheduler_addunlock(s, l->t, t_force);
-  }
+  /* for (struct link *l = c->hydro.force; l != NULL; l = l->next) { */
+  /*   scheduler_addunlock(s, l->t, t_force); */
+  /* } */
 
   for (struct link *l = c->stars.density; l != NULL; l = l->next) {
-    scheduler_addunlock(s, t_force, l->t);
+    scheduler_addunlock(s, t_rho, l->t);
   }
 
   /* Recurse? */

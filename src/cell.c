@@ -3497,7 +3497,7 @@ int cell_unskip_stars_tasks(struct cell *c, struct scheduler *s) {
 
         if (cj_active) {
           scheduler_activate(s, ci->mpi.hydro.recv_xv);
-          scheduler_activate(s, ci->mpi.hydro.recv_force);
+          scheduler_activate(s, ci->mpi.hydro.recv_rho);
 
           /* If the local cell is active, more stuff will be needed. */
           scheduler_activate_send(s, cj->mpi.stars.send, ci_nodeID);
@@ -3515,7 +3515,7 @@ int cell_unskip_stars_tasks(struct cell *c, struct scheduler *s) {
 
           /* Is the foreign cell active and will need stuff from us? */
           scheduler_activate_send(s, cj->mpi.hydro.send_xv, ci_nodeID);
-          scheduler_activate_send(s, cj->mpi.hydro.send_force, ci_nodeID);
+          scheduler_activate_send(s, cj->mpi.hydro.send_rho, ci_nodeID);
 
           /* Drift the cell which will be sent; note that not all sent
              particles will be drifted, only those that are needed. */
@@ -3527,7 +3527,7 @@ int cell_unskip_stars_tasks(struct cell *c, struct scheduler *s) {
         /* If the local cell is active, receive data from the foreign cell. */
         if (ci_active) {
           scheduler_activate(s, cj->mpi.hydro.recv_xv);
-          scheduler_activate(s, cj->mpi.hydro.recv_force);
+          scheduler_activate(s, cj->mpi.hydro.recv_rho);
 
           /* If the local cell is active, more stuff will be needed. */
           scheduler_activate_send(s, ci->mpi.stars.send, cj_nodeID);
@@ -3545,7 +3545,7 @@ int cell_unskip_stars_tasks(struct cell *c, struct scheduler *s) {
 
           /* Is the foreign cell active and will need stuff from us? */
           scheduler_activate_send(s, ci->mpi.hydro.send_xv, cj_nodeID);
-          scheduler_activate_send(s, ci->mpi.hydro.send_force, cj_nodeID);
+          scheduler_activate_send(s, ci->mpi.hydro.send_rho, cj_nodeID);
 
           /* Drift the cell which will be sent; note that not all sent
              particles will be drifted, only those that are needed. */
