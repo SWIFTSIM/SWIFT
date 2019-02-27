@@ -866,8 +866,7 @@ void engine_make_hierarchical_tasks_hydro(struct engine *e, struct cell *c) {
       if (with_stars) {
         c->stars.drift = scheduler_addtask(s, task_type_drift_spart,
                                            task_subtype_none, 0, 0, c, NULL);
-
-        scheduler_addunlock(s, c->stars.drift, c->super->kick2);
+	scheduler_addunlock(s, c->stars.drift, c->super->kick2);
       }
 
       /* Subgrid tasks: cooling */
@@ -2198,13 +2197,13 @@ void engine_addtasks_send_mapper(void *map_data, int num_elements,
     /* Add the send tasks for the cells in the proxy that have a stars
      * connection. */
     if ((e->policy & engine_policy_feedback) && (type & proxy_cell_type_hydro))
-      engine_addtasks_send_stars(e, ci, cj, /*t_rho=*/NULL);
+      engine_addtasks_send_stars(e, ci, cj, /*t_feedback=*/NULL);
 
     /* Add the send tasks for the cells in the proxy that have a gravity
      * connection. */
     if ((e->policy & engine_policy_self_gravity) &&
         (type & proxy_cell_type_gravity))
-      engine_addtasks_send_gravity(e, ci, cj, /*t_feedback=*/NULL);
+      engine_addtasks_send_gravity(e, ci, cj, NULL);
   }
 }
 
