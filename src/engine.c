@@ -132,7 +132,7 @@ struct end_of_step_data {
   integertime_t ti_gravity_end_min, ti_gravity_end_max, ti_gravity_beg_max;
   integertime_t ti_stars_end_min;
   struct engine *e;
-  //struct star_formation_history *sfh;
+  struct star_formation_history *sfh;
 };
 
 /**
