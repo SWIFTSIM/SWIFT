@@ -46,7 +46,7 @@ runner_iact_nonsym_stars_density(float r2, const float *dx, float hi, float hj,
   si->density.wcount_dh -= (hydro_dimension * wi + ui * wi_dx);
 
   /* Add mass of pj to neighbour mass of si  */
-  si->ngb_mass += hydro_get_mass(pj);
+  si->ngb_mass += hydro_get_mass(pj) / stars_properties->const_solar_mass;
 
   /* Add contribution of pj to normalisation of kernel (TODO: IMPROVE COMMENT?) */
   si->omega_normalisation_inv += wj / hydro_get_physical_density(pj,cosmo);
@@ -124,7 +124,7 @@ runner_iact_nonsym_stars_feedback(float r2, const float *dx, float hi, float hj,
   float new_mass = current_mass + si->to_distribute.mass*omega_frac;
   hydro_set_mass(pj,new_mass);
 
-  message("particle %llu new mass %.5e old mass %.5e star distributed mass %.5e omega_frac %.5e", pj->id, new_mass, current_mass, si->to_distribute.mass, omega_frac);
+  //message("particle %llu new mass %.5e old mass %.5e star distributed mass %.5e omega_frac %.5e", pj->id, new_mass, current_mass, si->to_distribute.mass, omega_frac);
   
   /* Decrease the mass of star particle */
   si->mass -= si->to_distribute.mass*omega_frac;
@@ -195,15 +195,17 @@ runner_iact_nonsym_stars_feedback(float r2, const float *dx, float hi, float hj,
     thermal_feedback(du,pj,xp,cosmo);
   } else {
     // We're doing stochastic heating
-    heating_probability = stars_properties->SNe_temperature_h * si->to_distribute.num_SNIa *
+    heating_probability = stars_properties->units_factor1 * si->to_distribute.num_SNIa *
                           stars_properties->SNIa_energy_fraction /
                           (stars_properties->SNe_deltaT_desired * si->ngb_mass);
     du = stars_properties->SNe_deltaT_desired * stars_properties->temp_to_u_factor;
     if (heating_probability >= 1) {
-      du = stars_properties->SNe_energy_h * si->to_distribute.num_SNIa / si->ngb_mass;
+      du = stars_properties->units_factor2 * si->to_distribute.num_SNIa / si->ngb_mass;
       heating_probability = 1; 
     }
   }
+
+  message("du %.5e heating_probability %.5e units1 %.5e num_SNIa %.5e deltaT %.5e ngb_mass %.5e", du, heating_probability, stars_properties->units_factor1, si->to_distribute.num_SNIa, stars_properties->SNe_deltaT_desired, si->ngb_mass);
 
   double random_num = random_unit_interval(pj->id, ti_current, random_number_stellar_feedback);
   if (random_num < heating_probability) {

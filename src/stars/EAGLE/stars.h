@@ -461,15 +461,15 @@ inline static void evolve_SNIa(float log10_min_mass, float log10_max_mass,
   sp->to_distribute.num_SNIa =
       stars->SNIa_efficiency *
       (exp(-star_age_Gyr / stars->SNIa_timescale) -
-       exp(-(star_age_Gyr + dt_Gyr) / stars->SNIa_timescale));
+       exp(-(star_age_Gyr + dt_Gyr) / stars->SNIa_timescale))
+      * sp->mass_init / stars->const_solar_mass;
 
   /* compute total mass released by SNIa */
-  sp->to_distribute.mass += sp->to_distribute.num_SNIa * stars->yield_SNIa_total_metals_SPH; // / units_cgs_conversion_factor(us, UNIT_CONV_MASS);
-  message("num_snia %.5e mass %.5e", sp->to_distribute.num_SNIa, sp->to_distribute.mass);
+  sp->to_distribute.mass += sp->to_distribute.num_SNIa * stars->yield_SNIa_total_metals_SPH * stars->const_solar_mass; 
 
   /* compute mass fractions of each metal */
   for (int i = 0; i < chemistry_element_count; i++) {
-    sp->to_distribute.chemistry_data.metal_mass_fraction[i] += sp->to_distribute.num_SNIa * stars->yield_SNIa_SPH[i] / sp->to_distribute.mass;
+    sp->to_distribute.chemistry_data.metal_mass_fraction[i] += sp->to_distribute.num_SNIa * stars->yield_SNIa_SPH[i] * stars->const_solar_mass / sp->to_distribute.mass;
   }
 
   // For diagnostics according to Richard
@@ -741,7 +741,7 @@ inline static void compute_stellar_evolution(const struct stars_props *restrict 
 					     const struct unit_system* us,
 					     float age, float dt) {
   
-  // Convert dt from internal units to Gyr. (Do correct conversion!)
+  // Convert dt from internal units to Gyr.
   const float Gyr_in_cgs = 3.154e16;
   float dt_Gyr = dt * units_cgs_conversion_factor(us, UNIT_CONV_TIME) / Gyr_in_cgs;
   float star_age_Gyr = age * units_cgs_conversion_factor(us, UNIT_CONV_TIME) / Gyr_in_cgs; // This should be same as age_of_star_in_Gyr_begstep in EAGLE, check. Also, make sure it works with cosmology, might need to use birth_scale_factor.
@@ -753,7 +753,7 @@ inline static void compute_stellar_evolution(const struct stars_props *restrict 
       dying_mass_msun(star_age_Gyr + dt_Gyr, sp->chemistry_data.metal_mass_fraction_total, star_properties));
 
   if (log10_min_dying_mass > log10_max_dying_mass) error("min dying mass is greater than max dying mass");
-  message("age %.5e age of star %.5e log10 min max dying mass %.5e %.5e", age, star_age_Gyr, log10_min_dying_mass, log10_max_dying_mass);
+  //message("age %.5e age of star %.5e log10 min max dying mass %.5e %.5e", age, star_age_Gyr, log10_min_dying_mass, log10_max_dying_mass);
 
   /* integration interval is zero - this can happen if minimum and maximum
    * dying masses are above imf_max_mass_msun */
@@ -786,10 +786,6 @@ __attribute__((always_inline)) INLINE static void stars_evolve_spart(
 
     sp->to_distribute.num_SNIa = 0;
     sp->to_distribute.mass = 0;
-    // get mass and initial mass of particle to pass to evolution function
-    // except we're working in mass fraction so maybe not necessary...
-    //float mass = hydro_get_mass(p);
-    //float initial_mass = ;
 
     // Set elements released to zero
     for(int i = 0; i < chemistry_element_count; i++) sp->metals_released[i] = 0;

@@ -35,7 +35,7 @@ INLINE static void stars_read_particles(struct spart *sparts,
                                         int *num_fields) {
 
   /* Say how much we want to read */
-  *num_fields = 5;
+  *num_fields = 6;
 
   /* List what we want to read */
   list[0] = io_make_input_field("Coordinates", DOUBLE, 3, COMPULSORY,
@@ -48,6 +48,8 @@ INLINE static void stars_read_particles(struct spart *sparts,
                                 UNIT_CONV_NO_UNITS, sparts, id);
   list[4] = io_make_input_field("SmoothingLength", FLOAT, 1, OPTIONAL,
                                 UNIT_CONV_LENGTH, sparts, h);
+  list[5] = io_make_input_field("Masses", FLOAT, 1, COMPULSORY, UNIT_CONV_MASS,
+                                sparts, mass_init);
 }
 
 /**
@@ -140,6 +142,27 @@ INLINE static void stars_props_init(struct stars_props *sp,
       params, "EAGLEFeedback:SNIa_timescale", 2.f);
   sp->SNIa_efficiency = parser_get_opt_param_float( 
       params, "EAGLEFeedback:SNIa_efficiency", 2.e-3);
+  sp->continuous_heating = parser_get_opt_param_int( 
+      params, "EAGLEFeedback:continuous_heating_switch", 0);
+
+  // ALEXEI: find out where this gets set in EAGLE
+  sp->SNIa_energy_fraction = 1.0;
+
+  /* Set the temperature to use in stochastic heating */
+  sp->SNe_deltaT_desired = 3.16228e7 / units_cgs_conversion_factor(us,UNIT_CONV_TEMPERATURE);
+
+  /* Energy released by supernova */
+  sp->total_energy_SNe = 1.0e51/units_cgs_conversion_factor(us,UNIT_CONV_ENERGY);
+
+  /* Calculate temperature to internal energy conversion factor */
+  sp->temp_to_u_factor = phys_const->const_boltzmann_k / (p->mu_ionised * (hydro_gamma_minus_one) * phys_const->const_proton_mass);
+
+  /* units_factor definitions from EAGLE */
+  sp->units_factor2 = sp->total_energy_SNe * units_cgs_conversion_factor(us,UNIT_CONV_ENERGY) / units_cgs_conversion_factor(us,UNIT_CONV_MASS);
+  sp->units_factor1 = sp->units_factor2 / sp->temp_to_u_factor; 
+
+  /* Copy over solar mass */
+  sp->const_solar_mass = phys_const->const_solar_mass;
 }
 
 /**

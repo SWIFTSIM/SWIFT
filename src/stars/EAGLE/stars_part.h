@@ -224,8 +224,9 @@ struct stars_props {
   float total_energy_SNe;
 
   /* Temperature and energy times h due to SNe (corresponding to units_factor1, units_factor2 in EAGLE) */
-  float SNe_temperature_h;
-  float SNe_energy_h;
+  float SNe_temperature;
+  float units_factor1;
+  float units_factor2;
 
   /* Timescale for feedback (used only for testing in const feedback model) */
   float feedback_timescale;
@@ -233,7 +234,7 @@ struct stars_props {
   /* Number of supernovae per solar mass (used only for testing in const feedback model) */
   float sn_per_msun;
 
-  /* Solar mass (used only for testing in const feedback model) */
+  /* Solar mass */
   float const_solar_mass;
 
   /* Flag for testing energy injection */
@@ -300,6 +301,7 @@ struct stars_props {
 
   /* Array for storing stellar yields for computation in IMF (clarify name, comment) */
   float *stellar_yield;
+
 };
 
 #endif /* SWIFT_EAGLE_STAR_PART_H */
