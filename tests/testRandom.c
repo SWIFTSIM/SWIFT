@@ -30,7 +30,7 @@ double pearsonfunc(double mean1, double mean2, double total12, double var1, doub
   
   const double mean12 = total12 / (double)counter;
   const double correlation = (mean12 - mean1 * mean2)/ pow(var1 * var2, .5f);
-  return correlation; 
+  return fabs(correlation); 
 }
 
 int main(int argc, char* argv[]) {
@@ -151,17 +151,16 @@ int main(int argc, char* argv[]) {
     const double var = total2 / (double)count - mean * mean;
 
     /* Pearson correlation calculation for different times */
-    const double mean_xy = sum_previous_current / ((double)count - 1.f);
-    const double correlation = (mean_xy - mean * mean) / var;
+    //const double mean_xy = sum_previous_current / ((double)count - 1.f);
+    //const double correlation = (mean_xy - mean * mean) / var;
+    const double correlation = pearsonfunc(mean,mean, sum_previous_current, var, var, count-1);
 
     /* Mean for different IDs */
     const double meanID = totalID / (double)count;
     const double varID = total2ID / (double)count - meanID * meanID;
 
     /* Pearson correlation between different IDs*/
-    const double meanID_xy = pearsonIDs / (double)count;
-    const double correlationID =
-        (meanID_xy - mean * meanID) / pow(var * varID, .5f);
+    const double correlationID = pearsonfunc(mean, meanID, pearsonIDs, var, varID, count);
 
     /* Mean and <x^2> for different processes */
     const double mean_sf = total_sf / (double)count;
@@ -183,18 +182,54 @@ int main(int argc, char* argv[]) {
     
     /* Verify that the mean and variance match the expected values for a uniform
      * distribution */
-    if ((fabs(mean - 0.5) / 0.5 > 2e-4) ||
-        (fabs(var - 1. / 12.) / (1. / 12.) > 1e-3) ||
-        (fabs(correlation) > 3e-4) || (fabs(correlationID) > 3e-4)) {
+    const double tolmean = 2e-4;
+    const double tolvar = 1e-3;
+    const double tolcorr = 3e-4;
+
+    if ((fabs(mean - 0.5) / 0.5 > tolmean) ||
+        (fabs(var - 1. / 12.) / (1. / 12.) > tolvar) ||
+        (correlation > tolcorr) || (correlationID > tolcorr) ||
+        (fabs(meanID - 0.5) / 0.5 > tolmean) ||
+        (fabs(varID - 1. / 12.) / (1. / 12.) > tolvar) || 
+        (corr_star_sf > tolcorr) || (corr_star_se > tolcorr) ||
+        (corr_star_bh > tolcorr) || (corr_sf_se > tolcorr) ||
+        (corr_sf_bh > tolcorr) || (corr_se_bh > tolcorr) || 
+        (fabs(mean_sf - 0.5) / 0.5 > tolmean) ||
+        (fabs(mean_se - 0.5) / 0.5 > tolmean) ||
+        (fabs(mean_bh - 0.5) / 0.5 > tolmean) ||
+        (fabs(var_sf - 1. / 12.) / (1. / 12.) > tolvar) || 
+        (fabs(var_se - 1. / 12.) / (1. / 12.) > tolvar) || 
+        (fabs(var_bh - 1. / 12.) / (1. / 12.) > tolvar)) {
       message("Test failed!");
+      message("Global result:");
       message(
-          "Result:    count=%d mean=%f var=%f, correlation=%f ID "
-          "correlation=%f",
-          count, mean, var, correlation, correlationID);
+          "Result:    count=%d mean=%f var=%f, correlation=%f",
+          count, mean, var, correlation);
       message(
-          "Expected:  count=%d mean=%f var=%f, correlation=%f ID "
-          "correlation=%f",
-          count, 0.5f, 1. / 12., 0., 0.);
+          "Expected:  count=%d mean=%f var=%f, correlation=%f",
+          count, 0.5f, 1. / 12., 0.);
+      message("ID part");
+      message("Result:     count%d mean=%f var=%f"
+          " correlation=%f", count, meanID, varID, correlationID);
+      message("Expected:   count%d mean=%f var=%f"
+          " correlation=%f", count, .5f, 1. / 12., 0.);
+      message("Different physical processes:");
+      message("Means:    stars=%f stellar feedback=%f stellar "
+          " enrichement=%f black holes=%f", mean, mean_sf, mean_se,
+          mean_bh);
+      message("Expected: stars=%f stellar feedback=%f stellar "
+          " enrichement=%f black holes=%f", .5f, .5f, .5f, .5f);
+      message("Var:      stars=%f stellar feedback=%f stellar "
+          " enrichement=%f black holes=%f", var, var_sf, var_se,
+          var_bh);
+      message("Expected: stars=%f stellar feedback=%f stellar "
+          " enrichement=%f black holes=%f", 1./12., 1./12., 1/12.,
+          1./12.);
+      message("Correlation: stars-sf=%f stars-se=%f stars-bh=%f"
+          "sf-se=%f sf-bh=%f se-bh=%f", corr_star_sf, corr_star_se,
+          corr_star_bh, corr_sf_se, corr_sf_bh, corr_se_bh);
+      message("Expected:    stars-sf=%f stars-se=%f stars-bh=%f"
+          "sf-se=%f sf-bh=%f se-bh=%f", 0., 0., 0., 0., 0., 0.);
       return 1;
     }
   }
