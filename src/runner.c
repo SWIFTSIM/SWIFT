@@ -587,13 +587,25 @@ void runner_do_star_formation(struct runner *r, struct cell *c, int timer) {
 
   TIMER_TIC;
 
+  /* Initialize the star formation tracers */
+  starformation_init_SFH(c->stars.sfh, cosmo, with_cosmology);
+
   /* Anything to do here? */
   if (!cell_is_active_hydro(c, e)) return;
 
   /* Recurse? */
   if (c->split) {
     for (int k = 0; k < 8; k++)
-      if (c->progeny[k] != NULL) runner_do_star_formation(r, c->progeny[k], 0);
+      if (c->progeny[k] != NULL) {
+        /* Load the child cell */
+        struct cell *restrict cp = c->progeny[k];
+
+        /* Do the recursion */
+        runner_do_star_formation(r, cp, 0);
+
+        /* Update current cell using child cells */
+        starformation_add_progeny_SFH(c->stars.sfh, cp->stars.sfh, cosmo, with_cosmology);
+      }
   } else {
 
     /* Loop over the gas particles in this cell. */
@@ -639,6 +651,9 @@ void runner_do_star_formation(struct runner *r, struct cell *c, int timer) {
             /* Copy the properties of the gas particle to the star particle */
             star_formation_copy_properties(p, xp, sp, e, sf_props, cosmo,
                                            with_cosmology);
+
+            /* Update the Star formation history */
+            starformation_update_SFH(sp, c->stars.sfh, cosmo, with_cosmology);
           }
 
         } else { /* Are we not star-forming? */
