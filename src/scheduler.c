@@ -1849,8 +1849,7 @@ void scheduler_enqueue(struct scheduler *s, struct task *t) {
                           subtaskMPI_comms[t->subtype], &t->req);
         } else if (t->subtype == task_subtype_xv ||
                    t->subtype == task_subtype_rho ||
-                   t->subtype == task_subtype_gradient ||
-                   t->subtype == task_subtype_force) {
+                   t->subtype == task_subtype_gradient) {
           err = MPI_Irecv(t->ci->hydro.parts, t->ci->hydro.count, part_mpi_type,
                           t->ci->nodeID, t->flags, subtaskMPI_comms[t->subtype],
                           &t->req);
@@ -1898,8 +1897,7 @@ void scheduler_enqueue(struct scheduler *s, struct task *t) {
                              subtaskMPI_comms[t->subtype], &t->req);
         } else if (t->subtype == task_subtype_xv ||
                    t->subtype == task_subtype_rho ||
-                   t->subtype == task_subtype_gradient ||
-                   t->subtype == task_subtype_force) {
+                   t->subtype == task_subtype_gradient) {
           if ((t->ci->hydro.count * sizeof(struct part)) > s->mpi_message_limit)
             err = MPI_Isend(t->ci->hydro.parts, t->ci->hydro.count,
                             part_mpi_type, t->cj->nodeID, t->flags,

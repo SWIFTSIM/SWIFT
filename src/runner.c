@@ -3321,8 +3321,6 @@ void *runner_main(void *data) {
             runner_do_recv_part(r, ci, 0, 1);
           } else if (t->subtype == task_subtype_gradient) {
             runner_do_recv_part(r, ci, 0, 1);
-          } else if (t->subtype == task_subtype_force) {
-            runner_do_recv_part(r, ci, 0, 1);
           } else if (t->subtype == task_subtype_limiter) {
             runner_do_recv_part(r, ci, 0, 1);
           } else if (t->subtype == task_subtype_gpart) {
