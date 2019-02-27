@@ -688,7 +688,11 @@ void task_get_group_name(int type, int subtype, char *cluster) {
       }
       break;
     case task_subtype_force:
-      strcpy(cluster, "Force");
+      if (type == task_type_send || type == task_type_recv) {
+        strcpy(cluster, "None");
+      } else {
+	strcpy(cluster, "Force");
+      }
       break;
     case task_subtype_grav:
       strcpy(cluster, "Gravity");

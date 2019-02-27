@@ -54,7 +54,7 @@ extern int engine_rank;
     fprintf(stderr, "[%04i] %s %s:%s():%i: " s "\n", engine_rank,          \
             clocks_get_timesincestart(), __FILE__, __FUNCTION__, __LINE__, \
             ##__VA_ARGS__);                                                \
-    MPI_Abort(MPI_COMM_WORLD, -1);                                         \
+    swift_abort(-1);                                                       \
   })
 #else
 #define error(s, ...)                                                      \

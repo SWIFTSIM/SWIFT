@@ -594,6 +594,9 @@ struct cell {
       /* Task receiving hydro data (gradient). */
       struct task *recv_gradient;
 
+      /* Task receiving hydro data (force). */
+      struct task *recv_force;
+
       /* Linked list for sending hydro data (positions). */
       struct link *send_xv;
 
@@ -602,6 +605,9 @@ struct cell {
 
       /* Linked list for sending hydro data (gradient). */
       struct link *send_gradient;
+
+      /* Linked list for sending hydro data (force). */
+      struct link *send_force;
 
     } hydro;
 

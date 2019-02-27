@@ -85,7 +85,7 @@ __attribute__((always_inline)) INLINE static void drift_part(
 
   p->ti_drift = ti_current;
 #endif
-
+  
   /* Drift... */
   p->x[0] += xp->v_full[0] * dt_drift;
   p->x[1] += xp->v_full[1] * dt_drift;

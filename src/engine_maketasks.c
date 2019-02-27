@@ -120,7 +120,8 @@ void engine_addtasks_send_gravity(struct engine *e, struct cell *ci,
  */
 void engine_addtasks_send_hydro(struct engine *e, struct cell *ci,
                                 struct cell *cj, struct task *t_xv,
-                                struct task *t_rho, struct task *t_gradient) {
+                                struct task *t_rho, struct task *t_gradient,
+                                struct task *t_force) {
 
 #ifdef WITH_MPI
   struct link *l = NULL;
@@ -146,10 +147,14 @@ void engine_addtasks_send_hydro(struct engine *e, struct cell *ci,
                                0, ci, cj);
       t_rho = scheduler_addtask(s, task_type_send, task_subtype_rho,
                                 ci->mpi.tag, 0, ci, cj);
+
 #ifdef EXTRA_HYDRO_LOOP
       t_gradient = scheduler_addtask(s, task_type_send, task_subtype_gradient,
                                      ci->mpi.tag, 0, ci, cj);
 #endif
+
+      t_force = scheduler_addtask(s, task_type_send, task_subtype_force,
+                                  ci->mpi.tag, 0, ci, cj);
 
 #ifdef EXTRA_HYDRO_LOOP
 
@@ -179,6 +184,9 @@ void engine_addtasks_send_hydro(struct engine *e, struct cell *ci,
 
 #endif
 
+      scheduler_addunlock(s, ci->hydro.super->hydro.end_force, t_force);
+      scheduler_addunlock(s, ci->hydro.super->hydro.drift, t_force);
+
       /* Drift before you send */
       scheduler_addunlock(s, ci->hydro.super->hydro.drift, t_xv);
     }
@@ -189,6 +197,7 @@ void engine_addtasks_send_hydro(struct engine *e, struct cell *ci,
 #ifdef EXTRA_HYDRO_LOOP
     engine_addlink(e, &ci->mpi.hydro.send_gradient, t_gradient);
 #endif
+    engine_addlink(e, &ci->mpi.hydro.send_force, t_force);
   }
 
   /* Recurse? */
@@ -196,7 +205,7 @@ void engine_addtasks_send_hydro(struct engine *e, struct cell *ci,
     for (int k = 0; k < 8; k++)
       if (ci->progeny[k] != NULL)
         engine_addtasks_send_hydro(e, ci->progeny[k], cj, t_xv, t_rho,
-                                   t_gradient);
+                                   t_gradient, t_force);
 
 #else
   error("SWIFT was not compiled with MPI support.");
@@ -355,7 +364,7 @@ void engine_addtasks_send_timestep(struct engine *e, struct cell *ci,
  */
 void engine_addtasks_recv_hydro(struct engine *e, struct cell *c,
                                 struct task *t_xv, struct task *t_rho,
-                                struct task *t_gradient) {
+                                struct task *t_gradient, struct task *t_force) {
 
 #ifdef WITH_MPI
   struct scheduler *s = &e->sched;
@@ -377,14 +386,21 @@ void engine_addtasks_recv_hydro(struct engine *e, struct cell *c,
     t_gradient = scheduler_addtask(s, task_type_recv, task_subtype_gradient,
                                    c->mpi.tag, 0, c, NULL);
 #endif
+
+    t_force = scheduler_addtask(s, task_type_recv, task_subtype_force,
+                                c->mpi.tag, 0, c, NULL);
   }
 
   c->mpi.hydro.recv_xv = t_xv;
   c->mpi.hydro.recv_rho = t_rho;
   c->mpi.hydro.recv_gradient = t_gradient;
+  c->mpi.hydro.recv_force = t_force;
 
   /* Add dependencies. */
-  if (c->hydro.sorts != NULL) scheduler_addunlock(s, t_xv, c->hydro.sorts);
+  if (c->hydro.sorts != NULL) {
+    scheduler_addunlock(s, t_xv, c->hydro.sorts);
+    scheduler_addunlock(s, c->hydro.sorts, t_force);
+  }
 
   for (struct link *l = c->hydro.density; l != NULL; l = l->next) {
     scheduler_addunlock(s, t_xv, l->t);
@@ -404,16 +420,20 @@ void engine_addtasks_recv_hydro(struct engine *e, struct cell *c,
   }
 #endif
 
+  for (struct link *l = c->hydro.force; l != NULL; l = l->next) {
+    scheduler_addunlock(s, l->t, t_force);
+  }
+
   for (struct link *l = c->stars.density; l != NULL; l = l->next) {
-    scheduler_addunlock(s, t_xv, l->t);
-    scheduler_addunlock(s, t_rho, l->t);
+    scheduler_addunlock(s, t_force, l->t);
   }
 
   /* Recurse? */
   if (c->split)
     for (int k = 0; k < 8; k++)
       if (c->progeny[k] != NULL)
-        engine_addtasks_recv_hydro(e, c->progeny[k], t_xv, t_rho, t_gradient);
+        engine_addtasks_recv_hydro(e, c->progeny[k], t_xv, t_rho, t_gradient,
+                                   t_force);
 
 #else
   error("SWIFT was not compiled with MPI support.");
@@ -847,7 +867,7 @@ void engine_make_hierarchical_tasks_hydro(struct engine *e, struct cell *c) {
         c->stars.drift = scheduler_addtask(s, task_type_drift_spart,
                                            task_subtype_none, 0, 0, c, NULL);
 
-	scheduler_addunlock(s, c->stars.drift, c->super->kick2);
+        scheduler_addunlock(s, c->stars.drift, c->super->kick2);
       }
 
       /* Subgrid tasks: cooling */
@@ -2173,7 +2193,7 @@ void engine_addtasks_send_mapper(void *map_data, int num_elements,
      * connection. */
     if ((e->policy & engine_policy_hydro) && (type & proxy_cell_type_hydro))
       engine_addtasks_send_hydro(e, ci, cj, /*t_xv=*/NULL,
-                                 /*t_rho=*/NULL, /*t_gradient=*/NULL);
+                                 /*t_rho=*/NULL, /*t_gradient=*/NULL, NULL);
 
     /* Add the send tasks for the cells in the proxy that have a stars
      * connection. */
@@ -2205,7 +2225,7 @@ void engine_addtasks_recv_mapper(void *map_data, int num_elements,
     /* Add the recv tasks for the cells in the proxy that have a hydro
      * connection. */
     if ((e->policy & engine_policy_hydro) && (type & proxy_cell_type_hydro))
-      engine_addtasks_recv_hydro(e, ci, NULL, NULL, NULL);
+      engine_addtasks_recv_hydro(e, ci, NULL, NULL, NULL, NULL);
 
     /* Add the recv tasks for the cells in the proxy that have a stars
      * connection. */

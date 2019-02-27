@@ -275,6 +275,7 @@ void space_rebuild_recycle_mapper(void *map_data, int num_elements,
     c->mpi.hydro.recv_xv = NULL;
     c->mpi.hydro.recv_rho = NULL;
     c->mpi.hydro.recv_gradient = NULL;
+    c->mpi.hydro.recv_force = NULL;
     c->mpi.grav.recv = NULL;
     c->mpi.stars.recv = NULL;
     c->mpi.recv_ti = NULL;
@@ -283,6 +284,7 @@ void space_rebuild_recycle_mapper(void *map_data, int num_elements,
     c->mpi.hydro.send_xv = NULL;
     c->mpi.hydro.send_rho = NULL;
     c->mpi.hydro.send_gradient = NULL;
+    c->mpi.hydro.send_force = NULL;
     c->mpi.grav.send = NULL;
     c->mpi.stars.send = NULL;
     c->mpi.send_ti = NULL;
@@ -550,9 +552,11 @@ void space_regrid(struct space *s, int verbose) {
           c->mpi.hydro.recv_xv = NULL;
           c->mpi.hydro.recv_rho = NULL;
           c->mpi.hydro.recv_gradient = NULL;
+          c->mpi.hydro.recv_force = NULL;
           c->mpi.hydro.send_xv = NULL;
           c->mpi.hydro.send_rho = NULL;
           c->mpi.hydro.send_gradient = NULL;
+          c->mpi.hydro.send_force = NULL;
           c->mpi.stars.send = NULL;
           c->mpi.stars.recv = NULL;
           c->mpi.grav.recv = NULL;
