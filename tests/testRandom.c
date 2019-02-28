@@ -178,7 +178,6 @@ int main(int argc, char* argv[]) {
     const double corr_sf_se = pearsonfunc(mean_sf,mean_se,pearson_sf_se, var_sf, var_se, count);
     const double corr_sf_bh = pearsonfunc(mean_sf,mean_bh,pearson_sf_bh, var_sf, var_bh, count);
     const double corr_se_bh = pearsonfunc(mean_se,mean_bh,pearson_se_bh, var_se, var_bh, count);
-    message("%e %e %e %e %e %e",corr_star_sf, corr_star_se, corr_star_bh, corr_sf_se, corr_sf_bh, corr_se_bh);
     
     /* Verify that the mean and variance match the expected values for a uniform
      * distribution */
