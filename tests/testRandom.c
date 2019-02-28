@@ -26,7 +26,7 @@
 /* Local headers. */
 #include "swift.h"
 
-/** 
+/* 
  * @brief Compute the Pearson correlation coefficient for two sets of numbers
  *
  * The pearson correlation coefficient between two sets of numbers can be
@@ -47,6 +47,7 @@
  * @param var1 variance of the first series of numbers
  * @param var2 variance of the second series of numbers
  * @param number of elements in both series
+ * @return the Pearson correlation coefficient
  * */
 double pearsonfunc(double mean1, double mean2, double total12, double var1, double var2, int counter) {
   
