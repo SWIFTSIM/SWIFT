@@ -26,7 +26,7 @@
 /* Local headers. */
 #include "swift.h"
 
-/*
+/**
  * @brief Compute the Pearson correlation coefficient for two sets of numbers
  *
  * The pearson correlation coefficient between two sets of numbers can be
