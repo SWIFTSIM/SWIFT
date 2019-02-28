@@ -29,9 +29,17 @@
 /**
  * @brief The categories of random number generated.
  *
- * The values of the fields are carefully chose prime
- * numbers. Only change them if you know what you are
- * doing!
+ * The values of the fields are carefully chose numbers
+ * These are values adviced by NR to use on page 
+ * 348 in the first table. We used selected 4 numbers 
+ * and know that they produce no correlation at all 
+ * for the 4 different processes.
+ * Only change when you know what you are doing, changing 
+ * the numbers to bad values will break the random number
+ * generator.
+ * In case new numbers need to be added other possible 
+ * numbers could be:
+ * 4162943475, 3874257210, 2654432763
  */
 enum random_number_type {
   random_number_star_formation = 4294957665LL,
