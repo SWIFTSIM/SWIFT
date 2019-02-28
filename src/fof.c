@@ -173,7 +173,12 @@ void fof_init(struct space *s) {
 int cmp_func(const void *a, const void *b) {
   struct group_length *a_group_size = (struct group_length *)a;
   struct group_length *b_group_size = (struct group_length *)b;
-  return (b_group_size->size > a_group_size->size);
+  if(b_group_size->size > a_group_size->size)
+    return 1;
+  else if(b_group_size->size < a_group_size->size)
+    return -1;
+  else
+    return 0;
 }
 
 /* Finds the global root ID of the group a particle exists in. */
