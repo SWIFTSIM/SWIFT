@@ -26,6 +26,28 @@
 /* Local headers. */
 #include "swift.h"
 
+/** 
+ * @brief Compute the Pearson correlation coefficient for two sets of numbers
+ *
+ * The pearson correlation coefficient between two sets of numbers can be
+ * calculated as:
+ * 
+ *           <x*y> - <x>*<y>
+ * r_xy = ----------------------
+ *         (var(x) * var(y))^.5
+ *
+ * In the case that both sets are purely uncorrelated the value of the 
+ * Pearson correlation function is expected to be close to 0. In the case that 
+ * there is positive correlation r_xy > 0 and in the case of negative 
+ * correlation, the function has r_xy < 0.
+ *
+ * @param mean1 average of first series of numbers
+ * @param mean2 average of second series of numbers
+ * @param total12 sum of x_i * y_i of both series of numbers
+ * @param var1 variance of the first series of numbers
+ * @param var2 variance of the second series of numbers
+ * @param number of elements in both series
+ * */
 double pearsonfunc(double mean1, double mean2, double total12, double var1, double var2, int counter) {
   
   const double mean12 = total12 / (double)counter;
