@@ -29,7 +29,7 @@
 double pearsonfunc(double mean1, double mean2, double total12, double var1, double var2, int counter) {
   
   const double mean12 = total12 / (double)counter;
-  const double correlation = (mean12 - mean1 * mean2)/ pow(var1 * var2, .5f);
+  const double correlation = (mean12 - mean1 * mean2)/ sqrt(var1 * var2);
   return fabs(correlation); 
 }
 
