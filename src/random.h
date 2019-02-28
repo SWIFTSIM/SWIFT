@@ -30,14 +30,14 @@
  * @brief The categories of random number generated.
  *
  * The values of the fields are carefully chose numbers
- * These are values adviced by NR to use on page 
- * 348 in the first table. We used selected 4 numbers 
- * and know that they produce no correlation at all 
+ * These are values adviced by NR to use on page
+ * 348 in the first table. We used selected 4 numbers
+ * and know that they produce no correlation at all
  * for the 4 different processes.
- * Only change when you know what you are doing, changing 
+ * Only change when you know what you are doing, changing
  * the numbers to bad values will break the random number
  * generator.
- * In case new numbers need to be added other possible 
+ * In case new numbers need to be added other possible
  * numbers could be:
  * 4162943475, 3874257210, 2654432763
  */
@@ -96,7 +96,8 @@ INLINE static double random_unit_interval(const long long int id,
   number ^= number >> 35;
   number ^= number << 4;
   /* Nonlinear congruential generator */
-  const unsigned long long idpart = 3457LL * id + 593LL * id * ti_current + 5417LL * id * id;
+  const unsigned long long idpart =
+      3457LL * id + 593LL * id * ti_current + 5417LL * id * id;
   unsigned int seed =
       (937LL * number + 5171LL * number * number + idpart + 1109LL) %
       9996361LL % seed_range;
