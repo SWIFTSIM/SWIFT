@@ -80,6 +80,7 @@ double pearsonfunc(double mean1, double mean2, double total12, double var1, doub
  * the function pearsonfunc above this function.
  *
  * @param none
+ * @return 0 if everything is fine, 1 if random numbers are not random enough.
  */
 int main(int argc, char* argv[]) {
 
