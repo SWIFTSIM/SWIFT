@@ -42,7 +42,7 @@
  * 4162943475, 3874257210, 2654432763
  */
 enum random_number_type {
-  random_number_star_formation = 4294957665LL,
+  random_number_star_formation = 0LL, //4294957665LL,
   random_number_stellar_feedback = 3947008974LL,
   random_number_stellar_enrichment = 2936881968LL,
   random_number_BH_feedback = 1640531364LL
@@ -90,14 +90,16 @@ INLINE static double random_unit_interval(const long long int id,
    */
   unsigned long long number = ti_current;
   /* Multiply with carry (MWC) */
-  number = type * (number & (mwc_number)) + (number >> 32);
+  number = 4294957665LL * (number & (mwc_number)) + (number >> 32);
   /* 64-bit Xorshift (adviced variables by NR) */
   number ^= number << 21;
   number ^= number >> 35;
   number ^= number << 4;
+  /* Add constant to ID */
+  const unsigned long long idt = id + type;
   /* Nonlinear congruential generator */
   const unsigned long long idpart =
-      3457LL * id + 593LL * id * ti_current + 5417LL * id * id;
+      3457LL * idt + 593LL * idt * ti_current + 5417LL * idt * idt;
   unsigned int seed =
       (937LL * number + 5171LL * number * number + idpart + 1109LL) %
       9996361LL % seed_range;
