@@ -764,8 +764,8 @@ inline static void compute_stellar_evolution(const struct stars_props *restrict 
 
   /* Evolve SNIa, SNII, AGB */
   evolve_SNIa(log10_min_dying_mass,log10_max_dying_mass,star_properties,sp,us,star_age_Gyr,dt_Gyr);
-  evolve_SNII(log10_min_dying_mass,log10_max_dying_mass,star_properties,sp); 
-  evolve_AGB(log10_min_dying_mass,log10_max_dying_mass,star_properties,sp);
+  //evolve_SNII(log10_min_dying_mass,log10_max_dying_mass,star_properties,sp); 
+  //evolve_AGB(log10_min_dying_mass,log10_max_dying_mass,star_properties,sp);
 
 }
 

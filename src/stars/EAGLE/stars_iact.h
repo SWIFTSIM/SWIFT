@@ -195,17 +195,15 @@ runner_iact_nonsym_stars_feedback(float r2, const float *dx, float hi, float hj,
     thermal_feedback(du,pj,xp,cosmo);
   } else {
     // We're doing stochastic heating
-    heating_probability = stars_properties->units_factor1 * si->to_distribute.num_SNIa *
+    heating_probability = stars_properties->total_energy_SNe / stars_properties->temp_to_u_factor * si->to_distribute.num_SNIa *
                           stars_properties->SNIa_energy_fraction /
-                          (stars_properties->SNe_deltaT_desired * si->ngb_mass / stars_properties->const_solar_mass);
+                          (stars_properties->SNe_deltaT_desired * si->ngb_mass);
     du = stars_properties->SNe_deltaT_desired * stars_properties->temp_to_u_factor;
     if (heating_probability >= 1) {
-      du = stars_properties->units_factor2 * si->to_distribute.num_SNIa / si->ngb_mass * stars_properties->const_solar_mass;
+      du = stars_properties->total_energy_SNe * si->to_distribute.num_SNIa / si->ngb_mass;
       heating_probability = 1; 
     }
   }
-
-  message("du %.5e heating_probability %.5e units1 %.5e num_SNIa %.5e deltaT %.5e ngb_mass %.5e", du, heating_probability, stars_properties->units_factor1, si->to_distribute.num_SNIa, stars_properties->SNe_deltaT_desired, si->ngb_mass);
 
   double random_num = random_unit_interval(pj->id, ti_current, random_number_stellar_feedback);
   if (random_num < heating_probability) {

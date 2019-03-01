@@ -224,11 +224,6 @@ struct stars_props {
   /* Kinetic energy of SN ejecta per unit mass (check name with Richard)*/
   float ejecta_specific_thermal_energy;
 
-  /* Temperature and energy times h due to SNe (corresponding to units_factor1, units_factor2 in EAGLE) */
-  float SNe_temperature;
-  float units_factor1;
-  float units_factor2;
-
   /* Timescale for feedback (used only for testing in const feedback model) */
   float feedback_timescale;
 
