@@ -30,7 +30,7 @@
  * @brief The categories of random number generated.
  *
  * The values of the fields are carefully chose numbers
- * the numbers are very large primes such that the IDs 
+ * the numbers are very large primes such that the IDs
  * will not have a prime factorization with this coefficient
  * this results in a very high period for the random number
  * generator.
@@ -39,10 +39,10 @@
  * generator.
  * In case new numbers need to be added other possible
  * numbers could be:
- * 4947009007, 5947309451, 6977309513 
+ * 4947009007, 5947309451, 6977309513
  */
 enum random_number_type {
-  random_number_star_formation = 0LL, 
+  random_number_star_formation = 0LL,
   random_number_stellar_feedback = 3947008991LL,
   random_number_stellar_enrichment = 2936881973LL,
   random_number_BH_feedback = 1640531371LL
@@ -89,20 +89,25 @@ INLINE static double random_unit_interval(const long long int id,
    * in which we use the id part and the current time step bin.
    */
   unsigned long long number = ti_current;
+
   /* Multiply with carry (MWC), (adviced variables by NR) */
   number = 4294957665LL * (number & (mwc_number)) + (number >> 32);
+
   /* 64-bit Xorshift (adviced variables by NR) */
   number ^= number << 21;
   number ^= number >> 35;
   number ^= number << 4;
+
   /* Add constant to ID */
   const unsigned long long idt = id + type;
+
   /* Nonlinear congruential generator */
   const unsigned long long idpart =
       3457LL * idt + 593LL * idt * ti_current + 5417LL * idt * idt;
   unsigned int seed =
       (937LL * number + 5171LL * number * number + idpart + 1109LL) %
       9996361LL % seed_range;
+
   /* Generate a random number between 0 and 1. */
   return rand_r(&seed) * RAND_MAX_inv;
 }
