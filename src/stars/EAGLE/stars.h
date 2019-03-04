@@ -608,11 +608,12 @@ inline static void evolve_SNII(float log10_min_mass, float log10_max_mass,
   /* normalize the yields */
   if (stars->SNII_mass_transfer == 1) {
     if (norm1 > 0) {
-      // Is this really the right way around? mass += metals and metals += mass? Maybe rename variables?
       for (i = 0; i < chemistry_element_count; i++) {
         sp->metals_released[i] += metals[i] * norm_factor;
-        sp->chemistry_data.mass_from_SNII += metals[i] * norm_factor;
+        sp->chemistry_data.mass_from_SNII += sp->metals_released[i];
       }
+      //sp->to_distribute.mass += mass * norm_factor;
+      message("SNII mass to distribute %.5e initial mass %.5e norm mass %.5e mass %.5e norm_factor %.5e ", sp->to_distribute.mass, sp->mass_init, mass*norm_factor, mass, norm_factor);
       sp->metal_mass_released += mass * norm_factor;
       sp->chemistry_data.metal_mass_fraction_from_SNII += mass * norm_factor;
     } else {
@@ -722,7 +723,7 @@ inline static void evolve_AGB(float log10_min_mass, float log10_max_mass,
     for (i = 0; i < chemistry_element_count; i++) metals[i] *= (norm0 / norm1);
     mass *= (norm0 / norm1);
 
-    // Is this really the right way around? mass += metals and metals += mass? Maybe rename variables?
+    // ALEXEI: check this.
     for (i = 0; i < chemistry_element_count; i++) {
       sp->metals_released[i] += metals[i];
       sp->chemistry_data.mass_from_AGB += metals[i];
@@ -771,7 +772,9 @@ inline static float compute_SNe(struct spart* sp,
 			 const struct stars_props* stars_properties,
 			 float age, double dt) {
   if (age <= stars_properties->SNII_wind_delay &&  age + dt > stars_properties->SNII_wind_delay) {
-    return stars_properties->num_SNII_per_msun * sp->mass_init / stars_properties->const_solar_mass;
+    // ALEXEI: commented for debugging
+    //return stars_properties->num_SNII_per_msun * sp->mass_init / stars_properties->const_solar_mass;
+    return 0;
   } else {
     return 0;
   }
