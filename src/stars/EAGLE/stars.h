@@ -506,10 +506,6 @@ inline static void evolve_SNII(float log10_min_mass, float log10_max_mass,
   // come up with more descriptive index names
   int ilow, ihigh, imass, i = 0;
 
-  // start counting SNII. This should probably be passed in as a pointer.
-  // GCC complains about not using num_SNII. temporarily commented out.
-  //float num_SNII = 0.;
-
   /* determine integration range: make sure all these stars actually become SN
   * of type II */
   if (log10_min_mass < log10_SNII_min_mass_msun)
@@ -530,8 +526,7 @@ inline static void evolve_SNII(float log10_min_mass, float log10_max_mass,
 //   else
 //     *Number_of_SNII = integrate_imf(log10_min_mass, log10_max_mass, 0.0, 0);
 // #else
-  // GCC complains about not using num_SNII. temporarily commented out.
-  //num_SNII = integrate_imf(log10_min_mass, log10_max_mass, 0.0, 0, stars->stellar_yield,stars);
+  sp->to_distribute.num_SNII = integrate_imf(log10_min_mass, log10_max_mass, 0.0, 0, stars->stellar_yield,stars);
 // #endif
 
   /* determine yield of these bins (not equally spaced bins) */
@@ -608,17 +603,18 @@ inline static void evolve_SNII(float log10_min_mass, float log10_max_mass,
 
   /* compute the total mass ejected */
   norm1 = mass + metals[chemistry_element_H] + metals[chemistry_element_He];
+  const float norm_factor = norm0/norm1;
 
   /* normalize the yields */
   if (stars->SNII_mass_transfer == 1) {
     if (norm1 > 0) {
       // Is this really the right way around? mass += metals and metals += mass? Maybe rename variables?
       for (i = 0; i < chemistry_element_count; i++) {
-        sp->metals_released[i] += metals[i] * (norm0 / norm1);
-        sp->chemistry_data.mass_from_SNII += metals[i] * (norm0 / norm1);
+        sp->metals_released[i] += metals[i] * norm_factor;
+        sp->chemistry_data.mass_from_SNII += metals[i] * norm_factor;
       }
-      sp->metal_mass_released += mass * (norm0 / norm1);
-      sp->chemistry_data.metal_mass_fraction_from_SNII += mass * (norm0 / norm1);
+      sp->metal_mass_released += mass * norm_factor;
+      sp->chemistry_data.metal_mass_fraction_from_SNII += mass * norm_factor;
     } else {
       error("wrong normalization!!!! norm1 = %e\n", norm1);
     }
@@ -764,9 +760,21 @@ inline static void compute_stellar_evolution(const struct stars_props *restrict 
 
   /* Evolve SNIa, SNII, AGB */
   evolve_SNIa(log10_min_dying_mass,log10_max_dying_mass,star_properties,sp,us,star_age_Gyr,dt_Gyr);
-  //evolve_SNII(log10_min_dying_mass,log10_max_dying_mass,star_properties,sp); 
+  evolve_SNII(log10_min_dying_mass,log10_max_dying_mass,star_properties,sp); 
   //evolve_AGB(log10_min_dying_mass,log10_max_dying_mass,star_properties,sp);
+  
+  sp->to_distribute.chemistry_data.metal_mass_fraction_total = 1.f - sp->to_distribute.chemistry_data.metal_mass_fraction[0] - sp->to_distribute.chemistry_data.metal_mass_fraction[1];
 
+}
+
+inline static float compute_SNe(struct spart* sp,
+			 const struct stars_props* stars_properties,
+			 float age, double dt) {
+  if (age <= stars_properties->SNII_wind_delay &&  age + dt > stars_properties->SNII_wind_delay) {
+    return stars_properties->num_SNII_per_msun * sp->mass_init / stars_properties->const_solar_mass;
+  } else {
+    return 0;
+  }
 }
 
 /**
@@ -788,6 +796,7 @@ __attribute__((always_inline)) INLINE static void stars_evolve_spart(
     float star_age = current_time - sp->birth_time;
 
     sp->to_distribute.num_SNIa = 0;
+    sp->to_distribute.num_SNII = 0;
     sp->to_distribute.mass = 0;
 
     // Set elements released to zero
@@ -803,6 +812,9 @@ __attribute__((always_inline)) INLINE static void stars_evolve_spart(
 
     // Evolve the star
     compute_stellar_evolution(stars_properties, sp, us, star_age, dt);
+
+    /* Compute the number of type II SNe that went off */
+    sp->to_distribute.num_SNe = compute_SNe(sp,stars_properties,star_age,dt);
 
 }
 
@@ -845,6 +857,9 @@ inline static void stars_evolve_init(struct swift_params *params, struct stars_p
 
   /* Further calculation on tables to convert them to log10 and compute yields for each element  */
   compute_yields(stars);
+
+  /* Calculate number of type II SN per solar mass */
+  stars->num_SNII_per_msun = integrate_imf(stars->log10_SNII_min_mass_msun,stars->log10_SNII_max_mass_msun, 0, 0, stars->stellar_yield, stars);
 
   message("initialized stellar feedback");
 

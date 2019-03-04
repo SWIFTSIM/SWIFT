@@ -144,6 +144,9 @@ INLINE static void stars_props_init(struct stars_props *sp,
       params, "EAGLEFeedback:SNIa_efficiency", 2.e-3);
   sp->continuous_heating = parser_get_opt_param_int( 
       params, "EAGLEFeedback:continuous_heating_switch", 0);
+  const float Gyr_in_cgs = 3.154e16;
+  sp->SNII_wind_delay = parser_get_opt_param_int( 
+      params, "EAGLEFeedback:SNII_wind_delay_Gyr", 0.03) * Gyr_in_cgs / units_cgs_conversion_factor(us,UNIT_CONV_TIME);
 
   // ALEXEI: find out where this gets set in EAGLE
   sp->SNIa_energy_fraction = 1.0;
@@ -160,6 +163,10 @@ INLINE static void stars_props_init(struct stars_props *sp,
 
   /* Calculate temperature to internal energy conversion factor */
   sp->temp_to_u_factor = phys_const->const_boltzmann_k / (p->mu_ionised * (hydro_gamma_minus_one) * phys_const->const_proton_mass);
+
+  /* Calculate number of type II SN per solar mass */
+  sp->log10_SNII_min_mass_msun = 0.77815125f; // log10(6).
+  sp->log10_SNII_max_mass_msun = 2.f; // log10(100).
 
   /* Copy over solar mass */
   sp->const_solar_mass = phys_const->const_solar_mass;

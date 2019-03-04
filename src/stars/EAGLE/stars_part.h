@@ -91,8 +91,14 @@ struct spart {
     /* Mass fractions of ejecta */
     struct chemistry_part_data chemistry_data;
 
-    /* Number of type 1a SNe per unit mass */
+    /* Number of type Ia SNe per unit mass */
     float num_SNIa;
+
+    /* Number of type II SNe per unit mass */
+    float num_SNII;
+
+    /* Number of SNe in timestep  */
+    float num_SNe;
 
   } to_distribute;
 
@@ -297,6 +303,16 @@ struct stars_props {
 
   /* Array for storing stellar yields for computation in IMF (clarify name, comment) */
   float *stellar_yield;
+
+  /* number of type II supernovae per solar mass */
+  float num_SNII_per_msun;
+
+  /* wind delay time for SNII */
+  float SNII_wind_delay;
+
+  /* log10 min, max mass in SNII tables */
+  float log10_SNII_min_mass_msun;
+  float log10_SNII_max_mass_msun;
 
 };
 

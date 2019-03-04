@@ -124,7 +124,7 @@ runner_iact_nonsym_stars_feedback(float r2, const float *dx, float hi, float hj,
   float new_mass = current_mass + si->to_distribute.mass*omega_frac;
   hydro_set_mass(pj,new_mass);
 
-  //message("particle %llu new mass %.5e old mass %.5e star distributed mass %.5e omega_frac %.5e norm %.5e ngb_mass %.5e", pj->id, new_mass, current_mass, si->to_distribute.mass, omega_frac, si->omega_normalisation_inv, si->ngb_mass);
+  message("particle %llu new mass %.5e old mass %.5e star distributed mass %.5e omega_frac %.5e norm %.5e ngb_mass %.5e", pj->id, new_mass, current_mass, si->to_distribute.mass, omega_frac, si->omega_normalisation_inv, si->ngb_mass);
   
   /* Decrease the mass of star particle */
   si->mass -= si->to_distribute.mass*omega_frac;
@@ -195,7 +195,7 @@ runner_iact_nonsym_stars_feedback(float r2, const float *dx, float hi, float hj,
     thermal_feedback(du,pj,xp,cosmo);
   } else {
     // We're doing stochastic heating
-    heating_probability = stars_properties->total_energy_SNe / stars_properties->temp_to_u_factor * si->to_distribute.num_SNIa *
+    heating_probability = stars_properties->total_energy_SNe / stars_properties->temp_to_u_factor * si->to_distribute.num_SNe *
                           stars_properties->SNIa_energy_fraction /
                           (stars_properties->SNe_deltaT_desired * si->ngb_mass);
     du = stars_properties->SNe_deltaT_desired * stars_properties->temp_to_u_factor;

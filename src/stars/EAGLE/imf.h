@@ -55,6 +55,7 @@ inline static void determine_imf_bins(double log_min_dying_mass, double log_max_
   *ihigh = i2;
 }
 
+// Change this function to not pass in stellar_yields as that is in star_properties.
 inline static float integrate_imf(float log_min_mass, float log_max_mass, float m2, int mode, float *stellar_yields,
                            const struct stars_props *restrict star_properties){
 
