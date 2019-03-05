@@ -2443,7 +2443,7 @@ void engine_collect_end_of_step_mapper(void *map_data, int num_elements,
   const struct engine *e = data->e;
   struct space *s = e->s;
   int *local_cells = (int *)map_data;
-  struct star_formation_history *sfhp = &data->sfh;
+  struct star_formation_history *sfh_top = &data->sfh;
 
   /* Local collectible */
   size_t updated = 0, g_updated = 0, s_updated = 0;
@@ -2490,10 +2490,17 @@ void engine_collect_end_of_step_mapper(void *map_data, int num_elements,
       g_inhibited += c->grav.inhibited;
       s_inhibited += c->stars.inhibited;
 
+      /* Get the star formation history from the current cell and store it in 
+       * the star formation history struct */
+      star_formation_get_total_cell(c, &sfh_updated, cosmo, with_cosmology);
+
       /* Collected, so clear for next time. */
       c->hydro.updated = 0;
       c->grav.updated = 0;
       c->stars.updated = 0;
+
+      /* Clear the star formation history in the cell */
+      star_formation_clear_total_cell(c);
     }
   }
 
@@ -2507,6 +2514,9 @@ void engine_collect_end_of_step_mapper(void *map_data, int num_elements,
     data->inhibited += inhibited;
     data->g_inhibited += g_inhibited;
     data->s_inhibited += s_inhibited;
+
+    /* Add the SFH information to the global data */
+    star_formation_add_progeny_SFH(sfh_top, &sfh_updated);
 
     if (ti_hydro_end_min > e->ti_current)
       data->ti_hydro_end_min = min(ti_hydro_end_min, data->ti_hydro_end_min);
