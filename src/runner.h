@@ -75,6 +75,7 @@ void runner_do_stars_sort(struct runner *r, struct cell *c, int flag,
                           int cleanup, int clock);
 void runner_do_drift_part(struct runner *r, struct cell *c, int timer);
 void runner_do_drift_gpart(struct runner *r, struct cell *c, int timer);
+void runner_do_drift_spart(struct runner *r, struct cell *c, int timer);
 void runner_do_kick1(struct runner *r, struct cell *c, int timer);
 void runner_do_kick2(struct runner *r, struct cell *c, int timer);
 void runner_do_end_hydro_force(struct runner *r, struct cell *c, int timer);
