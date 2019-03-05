@@ -588,8 +588,8 @@ void runner_do_star_formation(struct runner *r, struct cell *c, int timer) {
 
   TIMER_TIC;
 
-  /* Initialize the star formation tracers */
-  starformation_init_SFH(c->stars.sfh, cosmo, with_cosmology);
+  /* Initialize the star formation logger information */
+  starformation_init_SFH(c->stars.sfh);
 
   /* Anything to do here? */
   if (!cell_is_active_hydro(c, e)) return;

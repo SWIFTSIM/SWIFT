@@ -56,8 +56,7 @@ INLINE static void starformation_update_SFH(struct spart* sp, struct star_format
 
 }
 
-INLINE static void starformation_init_SFH(struct star_formation_history* sf, const struct cosmology* cosmo, 
-    const int with_cosmology){ 
+INLINE static void starformation_init_SFH(struct star_formation_history* sf){ 
   /* Initialize the stellar mass to zero*/
   sf->new_stellar_mass = 0.f;
 
