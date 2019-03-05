@@ -23,16 +23,10 @@
 #include <stdlib.h>
 
 /* Local includes */
-#include "adiabatic_index.h"
-#include "cooling.h"
 #include "cosmology.h"
 #include "cell.h"
-#include "equation_of_state.h"
 #include "hydro.h"
 #include "part.h"
-#include "physical_constants.h"
-#include "stars.h"
-#include "units.h"
 
 /* Starformation history struct */
 struct star_formation_history {
