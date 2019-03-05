@@ -31,6 +31,9 @@
 /* Forward declaration of engine struct (to avoid cyclic include). */
 struct engine;
 
+/* Forward declaration of star_formation_history struct (to avoid cyclic include) */
+struct star_formation_history;
+
 /* A collection of global quantities that can be processed at the same time. */
 struct collectgroup1 {
 
@@ -39,6 +42,9 @@ struct collectgroup1 {
 
   /* Number of particles inhibited */
   long long inhibited, g_inhibited, s_inhibited;
+
+  /* SFH logger */
+  struct star_formation_history *sfh;
 
   /* Times for the time-step */
   integertime_t ti_hydro_end_min, ti_hydro_end_max, ti_hydro_beg_max;
