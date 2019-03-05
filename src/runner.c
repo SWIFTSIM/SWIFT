@@ -62,6 +62,7 @@
 #include "space.h"
 #include "space_getsid.h"
 #include "star_formation.h"
+#include "star_formation_iact.h"
 #include "stars.h"
 #include "task.h"
 #include "timers.h"
@@ -1329,6 +1330,7 @@ void runner_do_ghost(struct runner *r, struct cell *c, int timer) {
   const struct hydro_space *hs = &s->hs;
   const struct cosmology *cosmo = e->cosmology;
   const struct chemistry_global_data *chemistry = e->chemistry;
+  const struct star_formation *star_formation = e->star_formation;
   const float hydro_h_max = e->hydro_properties->h_max;
   const float hydro_h_min = e->hydro_properties->h_min;
   const float eps = e->hydro_properties->h_tolerance;
@@ -1412,6 +1414,7 @@ void runner_do_ghost(struct runner *r, struct cell *c, int timer) {
           /* Finish the density calculation */
           hydro_end_density(p, cosmo);
           chemistry_end_density(p, chemistry, cosmo);
+          star_formation_end_density(p, star_formation, cosmo);
 
           /* Compute one step of the Newton-Raphson scheme */
           const float n_sum = p->density.wcount * h_old_dim;
@@ -1556,6 +1559,7 @@ void runner_do_ghost(struct runner *r, struct cell *c, int timer) {
             /* Re-initialise everything */
             hydro_init_part(p, hs);
             chemistry_init_part(p, chemistry);
+            star_formation_init_part(p, star_formation);
 
             /* Off we go ! */
             continue;
@@ -1574,6 +1578,8 @@ void runner_do_ghost(struct runner *r, struct cell *c, int timer) {
             if (has_no_neighbours) {
               hydro_part_has_no_neighbours(p, xp, cosmo);
               chemistry_part_has_no_neighbours(p, xp, chemistry, cosmo);
+              star_formation_part_has_no_neighbours(p, xp, star_formation,
+                                                    cosmo);
             }
 
           } else {

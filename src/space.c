@@ -56,6 +56,7 @@
 #include "multipole.h"
 #include "restart.h"
 #include "sort_part.h"
+#include "star_formation.h"
 #include "stars.h"
 #include "threadpool.h"
 #include "tools.h"
@@ -3372,6 +3373,7 @@ void space_first_init_parts_mapper(void *restrict map_data, int count,
   const int with_gravity = e->policy & engine_policy_self_gravity;
 
   const struct chemistry_global_data *chemistry = e->chemistry;
+  const struct star_formation *star_formation = e->star_formation;
   const struct cooling_function_data *cool_func = e->cooling_func;
 
   /* Check that the smoothing lengths are non-zero */
@@ -3417,6 +3419,10 @@ void space_first_init_parts_mapper(void *restrict map_data, int count,
 
     /* Also initialise the chemistry */
     chemistry_first_init_part(phys_const, us, cosmo, chemistry, &p[k], &xp[k]);
+
+    /* Also initialise the star formation */
+    star_formation_first_init_part(phys_const, us, cosmo, star_formation, &p[k],
+                                   &xp[k]);
 
     /* And the cooling */
     cooling_first_init_part(phys_const, us, cosmo, cool_func, &p[k], &xp[k]);

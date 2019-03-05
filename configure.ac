@@ -1278,7 +1278,7 @@ case "$with_subgrid" in
 	with_subgrid_tracers=none
 	with_subgrid_entropy_floor=none
 	with_subgrid_stars=GEAR
-	with_subgrid_star_formation=none
+	with_subgrid_star_formation=GEAR
 	with_subgrid_feedback=thermal
    ;;
    EAGLE)
@@ -1787,7 +1787,7 @@ esac
 #  Star formation
 AC_ARG_WITH([star-formation], 
     [AS_HELP_STRING([--with-star-formation=<sfm>],
-       [star formation @<:@none, EAGLE, default: none@:>@] 
+       [star formation @<:@none, EAGLE, GEAR, default: none@:>@] 
     )],
     [with_star_formation="$withval"],
     [with_star_formation="none"]
@@ -1806,6 +1806,9 @@ case "$with_star_formation" in
    ;;
    EAGLE)
       AC_DEFINE([STAR_FORMATION_EAGLE], [1], [EAGLE star formation model (Schaye and Dalla Vecchia (2008))])
+   ;;
+   GEAR)
+      AC_DEFINE([STAR_FORMATION_GEAR], [1], [GEAR star formation model (Revaz and Jablonka (2018))])
    ;;
    *)
       AC_MSG_ERROR([Unknown star formation model])
