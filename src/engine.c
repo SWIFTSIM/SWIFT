@@ -85,6 +85,7 @@
 #include "single_io.h"
 #include "sort_part.h"
 #include "star_formation.h"
+#include "star_formation_logger.h"
 #include "stars_io.h"
 #include "statistics.h"
 #include "timers.h"
@@ -132,7 +133,7 @@ struct end_of_step_data {
   integertime_t ti_gravity_end_min, ti_gravity_end_max, ti_gravity_beg_max;
   integertime_t ti_stars_end_min;
   struct engine *e;
-  struct star_formation_history *sfh;
+  struct star_formation_history sfh;
 };
 
 /**
@@ -2531,6 +2532,8 @@ void engine_collect_end_of_step(struct engine *e, int apply) {
   data.ti_gravity_end_min = max_nr_timesteps, data.ti_gravity_end_max = 0,
   data.ti_gravity_beg_max = 0;
   data.e = e;
+  star_formation_init_SFH_engine(&data.sfh);
+  //data.sfh = 0;
 
   /* Collect information from the local top-level cells */
   threadpool_map(&e->threadpool, engine_collect_end_of_step_mapper,

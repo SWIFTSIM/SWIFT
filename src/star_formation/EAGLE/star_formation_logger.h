@@ -92,4 +92,10 @@ INLINE static void star_formation_get_total_cell(const struct cell *c, struct st
   sf->N_stars += sfcell->new_stellar_mass;
 }
 
+INLINE static void star_formation_init_SFH_engine(struct star_formation_history *sfh){
+  sfh->new_stellar_mass = 0.f;
+
+  sfh->N_stars = 0;
+}
+
 #endif /* SWIFT_SCHAYE_STARFORMATION_LOGGER_H */
