@@ -35,15 +35,6 @@ struct star_formation_history {
 
   /*! Total new stellar mass */
   float new_stellar_mass;
-
-  /*! Time union */
-  union {
-    /*! Time */
-    float time;
-
-    /*! Scale factor */
-    float scale_factor;
-  };
 };
 
 INLINE static void starformation_update_SFH(struct spart* sp, struct star_formation_history* sf, const struct cosmology* cosmo, 
