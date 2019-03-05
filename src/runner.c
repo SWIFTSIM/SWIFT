@@ -605,7 +605,7 @@ void runner_do_star_formation(struct runner *r, struct cell *c, int timer) {
         runner_do_star_formation(r, cp, 0);
 
         /* Update current cell using child cells */
-        starformation_add_progeny_SFH(c->stars.sfh, cp->stars.sfh, cosmo, with_cosmology);
+        star_formation_add_progeny_SFH(c->stars.sfh, cp->stars.sfh);
       }
   } else {
 

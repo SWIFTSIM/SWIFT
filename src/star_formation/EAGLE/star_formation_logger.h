@@ -66,16 +66,6 @@ INLINE static void starformation_init_SFH(struct star_formation_history* sf, con
 
 }
 
-INLINE static void starformation_add_progeny_SFH(struct star_formation_history* sf, 
-    const struct star_formation_history* sfprogeny, const struct cosmology* cosmo, 
-    const int with_cosmology){
-  /* Add the new stellar mass from the progeny */
-  sf->new_stellar_mass = sf->new_stellar_mass + sfprogeny->new_stellar_mass;
-
-  /* Increase amount of new stars formed */
-  sf->N_stars = sf->N_stars + sfprogeny->N_stars;
-}
-
 INLINE static void star_formation_add_progeny_SFH(struct star_formation_history* sf, 
     const struct star_formation_history* sfprogeny){
   /* Add the new stellar mass from the progeny */
