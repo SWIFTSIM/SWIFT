@@ -2419,7 +2419,7 @@ void engine_collect_end_of_step_recurse(struct cell *c,
   c->stars.inhibited = s_inhibited;
 
   /* Store the star formation history in the parent cell */
-  star_formation_add_to_parent_cell(cp, &sfh_updated);
+  star_formation_add_to_parent_cell(c, &sfh_updated);
 }
 
 /**
@@ -2489,7 +2489,7 @@ void engine_collect_end_of_step_mapper(void *map_data, int num_elements,
 
       /* Get the star formation history from the current cell and store it in 
        * the star formation history struct */
-      star_formation_get_total_cell(c, &sfh_updated, cosmo, with_cosmology);
+      star_formation_get_total_cell(c, &sfh_updated);
 
       /* Collected, so clear for next time. */
       c->hydro.updated = 0;
