@@ -92,29 +92,6 @@ inline static float integrate_imf(float log_min_mass, float log_max_mass, float 
           f * star_properties->imf_by_number[index] /
           star_properties->imf_mass_bin[index]; /* integrate number * f(u) / M  ... type Ia SN */
     }
-#ifdef BG_DOUBLE_IMF
-  else if (mode == 4)
-    for (index = ilow; index < ihigh + 1; index++)
-      integrand[index] =
-          star_properties->imf_by_number1[index] * star_properties->imf_mass_bin[index]; /* integrate by number */
-  else if (mode == 5)
-    for (index = ilow; index < ihigh + 1; index++)
-      integrand[index] = star_properties->imf_by_number1[index] * star_properties->imf_mass_bin[index] *
-                         star_properties->imf_mass_bin[index]; /* integrate by mass */
-  else if (mode == 6)
-    for (index = ilow; index < ihigh + 1; index++)
-      integrand[index] =
-          stellar_yields[index] * star_properties->imf_by_number1[index] *
-          star_properties->imf_mass_bin[index]; /* integrate number * yield weighted */
-  else if (mode == 7)
-    for (index = ilow; index < ihigh + 1; index++) {
-      u = m2 / star_properties->imf_mass_bin[index];
-      f = pow(2.0, gamma_SNIa + 1) * (gamma_SNIa + 1) * pow(u, gamma_SNIa);
-      integrand[index] =
-          f * star_properties->imf_by_number1[index] /
-          star_properties->imf_mass_bin[index]; /* integrate number * f(u) / M  ... type Ia SN */
-    }
-#endif
   else {
     error("invalid mode in integrate_imf = %d\n", mode);
   }
@@ -148,12 +125,21 @@ inline static float integrate_imf(float log_min_mass, float log_max_mass, float 
   result *= dlm * log(10.0); /* log(10) since mass function tabulated as
                                 function of log_10(mass) */
 
+  float running_total = 0.f;
+  if (result < 0) {
+    for (index = ilow; index < ihigh+1; index++) {
+      running_total += integrand[index];
+      message("index %d running sum %.5e integrand %.5e stellar_yield %.5e imf_number %.5e imf_mass_bin %.5e", index, running_total, integrand[index], stellar_yields[index], star_properties->imf_by_number[index], star_properties->imf_mass_bin[index]);
+    }
+    message("dlm %.5e", dlm);
+  }
   return result;
 
 }
 
 inline static void init_imf(struct stars_props *restrict star_properties){
 
+  // ALEXEI: use better names for solar_mass, log_solar_mass
   float norm = 0, solar_mass, log_solar_mass;
   const float dlm = (log_imf_max_solar_mass - log_imf_min_solar_mass) / (double)(N_imf_mass_bins - 1);
 
@@ -178,14 +164,10 @@ inline static void init_imf(struct stars_props *restrict star_properties){
 
     for (int i = 0; i < N_imf_mass_bins; i++) {
       log_solar_mass = log_imf_min_solar_mass + i * dlm;
-      solar_mass = pow(10, log_solar_mass);
+      solar_mass = exp(M_LN10 * log_solar_mass);
 
       // can these pows be replaced with some trick?
       star_properties->imf_by_number[i] = pow(solar_mass, -star_properties->IMF_Exponent);
-
-#ifdef BG_DOUBLE_IMF
-      star_properties->imf_by_number1[i] = pow(solar_mass, -star_properties->IMF_Exponent1);
-#endif
 
       star_properties->imf_mass_bin[i] = solar_mass;
       star_properties->imf_mass_bin_log10[i] = log_solar_mass;
@@ -206,10 +188,6 @@ inline static void init_imf(struct stars_props *restrict star_properties){
                                (-2.0 * pow(0.69, 2))) /
                            solar_mass;
 
-#ifdef BG_DOUBLE_IMF
-      star_properties->imf_by_number1[i] = 1.0 / pow(solar_mass, All.IMF_Exponent1);
-#endif
-
       star_properties->imf_mass_bin[i] = solar_mass;
       star_properties->imf_mass_bin_log10[i] = log_solar_mass;
     }
@@ -221,13 +199,6 @@ inline static void init_imf(struct stars_props *restrict star_properties){
                        0.0, 1, &dummy_stellar_fields, star_properties);
 
   for (int i = 0; i < N_imf_mass_bins; i++) star_properties->imf_by_number[i] /= norm;
-
-#ifdef BG_DOUBLE_IMF
-  norm = integrate_imf(log_imf_min_solar_mass, log_imf_max_solar_mass,
-                       0.0, 5, &dummy_stellar_fields, star_properties);
-
-  for (int i = 0; i < N_imf_mass_bins; i++) star_properties->imf_by_number1[i] /= norm;
-#endif
 
 }
 

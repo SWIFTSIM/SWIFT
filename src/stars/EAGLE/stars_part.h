@@ -284,6 +284,9 @@ struct stars_props {
   int AGB_n_elements;
   int AGB_n_z;
 
+  /* Array of mass bins for yield calculations */
+  double *yield_mass_bins;
+
   /* Parameters for IMF  */
   char IMF_Model[10];
   float IMF_Exponent;

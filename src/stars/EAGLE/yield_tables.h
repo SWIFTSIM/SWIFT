@@ -25,7 +25,7 @@
 #include "chemistry.h"
 
 static const float log_min_metallicity = -20;
-static const int n_mass_bins = 10; // temporary, put in correct value and move elsewhere.
+static const int n_mass_bins = 11; // temporary, put in correct value and move elsewhere.
 
 // Temporary, these functions need to be somewhere else
 inline static char *mystrdup(const char *s) {
@@ -445,6 +445,11 @@ inline static void allocate_yield_tables(struct stars_props *restrict stars){
   for(int i = 0; i < stars->AGB_n_elements; i++){
     stars->AGB_element_names[i] = (char *)malloc(stars->element_name_length * sizeof(char));
   }
+  
+  /* Allocate array of mass bins for yield and ejecta calculation */
+  if (posix_memalign((void **)&stars->yield_mass_bins, SWIFT_STRUCT_ALIGNMENT, n_mass_bins * sizeof(double)) !=0) {
+    error("Failed to allocate yield mass bins array");
+  }
 }
 
 inline static void compute_yields(struct stars_props *restrict stars){
@@ -485,10 +490,7 @@ inline static void compute_yields(struct stars_props *restrict stars){
   AGB_spline_ptr = gsl_spline_alloc(gsl_interp_linear, stars->AGB_n_mass);
   double SNII_yield[stars->SNII_n_mass];
   double AGB_yield[stars->AGB_n_mass];
-  float yield_mass_bin[n_mass_bins];
   float result;
-  // temoporary initialise yield_mass_bin, should be done elsewhere...
-  for (int k = 0; k < n_mass_bins; k++) yield_mass_bin[k] = 0;
 
 
   /* Loop over elements tracked in EAGLE  */
@@ -509,16 +511,16 @@ inline static void compute_yields(struct stars_props *restrict stars){
       gsl_spline_init(SNII_spline_ptr, stars->yield_SNII.mass, SNII_yield, stars->SNII_n_mass);
 
       for (int k = 0; k < n_mass_bins; k++) {
-        if (yield_mass_bin[k] < stars->yield_SNII.mass[0])
+        if (stars->yield_mass_bins[k] < stars->yield_SNII.mass[0])
           result = SNII_yield[0];
-        else if (yield_mass_bin[k] > stars->yield_SNII.mass[stars->SNII_n_mass - 1])
+        else if (stars->yield_mass_bins[k] > stars->yield_SNII.mass[stars->SNII_n_mass - 1])
           result = SNII_yield[stars->SNII_n_mass - 1];
         else
           result =
-              gsl_spline_eval(SNII_spline_ptr, yield_mass_bin[k], accel_ptr);
+              gsl_spline_eval(SNII_spline_ptr, stars->yield_mass_bins[k], accel_ptr);
 
         index = row_major_index_3d(i,eagle_elem,k,stars->SNII_n_z,chemistry_element_count,n_mass_bins);
-        stars->yield_SNII.SPH[index] = exp(M_LN10 * yield_mass_bin[k]) * result;
+        stars->yield_SNII.SPH[index] = exp(M_LN10 * stars->yield_mass_bins[k]) * result;
       }
     }
 
@@ -555,16 +557,16 @@ inline static void compute_yields(struct stars_props *restrict stars){
         gsl_spline_init(AGB_spline_ptr, stars->yield_AGB.mass, AGB_yield, stars->AGB_n_mass);
 
         for (int j = 0; j < n_mass_bins; j++) {
-          if (yield_mass_bin[j] < stars->yield_AGB.mass[0])
+          if (stars->yield_mass_bins[j] < stars->yield_AGB.mass[0])
             result = AGB_yield[0];
-          else if (yield_mass_bin[j] > stars->yield_AGB.mass[stars->AGB_n_mass - 1])
+          else if (stars->yield_mass_bins[j] > stars->yield_AGB.mass[stars->AGB_n_mass - 1])
             result = AGB_yield[stars->AGB_n_mass - 1];
           else
             result =
-                gsl_spline_eval(AGB_spline_ptr, yield_mass_bin[j], accel_ptr);
+                gsl_spline_eval(AGB_spline_ptr, stars->yield_mass_bins[j], accel_ptr);
 
           index = row_major_index_3d(i,eagle_elem,j,stars->AGB_n_z,chemistry_element_count,n_mass_bins);
-          stars->yield_AGB.SPH[index] = exp(M_LN10 * yield_mass_bin[j]) * result;
+          stars->yield_AGB.SPH[index] = exp(M_LN10 * stars->yield_mass_bins[j]) * result;
         }
       }
     }
@@ -574,5 +576,119 @@ inline static void compute_yields(struct stars_props *restrict stars){
   gsl_interp_accel_free(accel_ptr);
 
 }
+
+inline static void compute_ejecta(struct stars_props *restrict stars) {
+  
+  gsl_interp_accel *accel_ptr;
+
+  gsl_spline *SNII_spline_ptr, *AGB_spline_ptr;
+
+  // Do we really need SNII_yield and AGB_yield, they're not used simultaneously, so can use only one?
+  double SNII_yield[stars->SNII_n_mass];
+  double AGB_yield[stars->AGB_n_mass];
+  float result;
+  
+  accel_ptr = gsl_interp_accel_alloc();                                                                            
+  SNII_spline_ptr = gsl_spline_alloc(gsl_interp_linear, stars->SNII_n_mass);                                             
+
+  int index;
+    
+  for (int i = 0; i < stars->SNII_n_z; i++) {
+    for (int k = 0; k < stars->SNII_n_mass; k++) {
+      index = row_major_index_2d(i,k,stars->SNII_n_z,stars->SNII_n_mass);
+      SNII_yield[k] = stars->yield_SNII.ejecta[index] * exp(M_LN10 * (-stars->yield_SNII.mass[k]));                                             
+    }
+
+    gsl_spline_init(SNII_spline_ptr, stars->yield_SNII.mass, SNII_yield, stars->SNII_n_mass);                                        
+    
+    for (int k = 0; k < n_mass_bins; k++) {                                                                                
+      if (stars->yield_mass_bins[k] < stars->yield_SNII.mass[0])                                                                     
+        result = SNII_yield[0];
+      else if (stars->yield_mass_bins[k] > stars->yield_SNII.mass[stars->SNII_n_mass - 1])                                            
+        result = SNII_yield[stars->SNII_n_mass - 1];
+      else
+        result =                                                                                                      
+            gsl_spline_eval(SNII_spline_ptr, stars->yield_mass_bins[k], accel_ptr);
+            
+      index = row_major_index_2d(i,k,stars->SNII_n_z,stars->SNII_n_mass);
+      stars->yield_SNII.ejecta_SPH[index] = exp(M_LN10 * stars->yield_mass_bins[k]) * result;                                            
+    } 
+  }       
+    
+  for (int i = 0; i < stars->SNII_n_z; i++) {                                                      
+    for (int k = 0; k < stars->SNII_n_mass; k++) {
+      index = row_major_index_2d(i,k,stars->SNII_n_z,stars->SNII_n_mass);
+      SNII_yield[k] = stars->yield_SNII.total_metals[index] * exp(M_LN10 * (-stars->yield_SNII.mass[k]));                                        
+    }
+    
+    gsl_spline_init(SNII_spline_ptr, stars->yield_SNII.mass, SNII_yield, stars->SNII_n_mass);                                        
+      
+    for (int k = 0; k < n_mass_bins; k++) {
+      if (stars->yield_mass_bins[k] < stars->yield_SNII.mass[0])                                                                     
+        result = SNII_yield[0];                                                                                            
+      else if (stars->yield_mass_bins[k] > stars->yield_SNII.mass[stars->SNII_n_mass - 1])                                            
+        result = SNII_yield[stars->SNII_n_mass - 1];                                                                        
+      else 
+        result =
+            gsl_spline_eval(SNII_spline_ptr, stars->yield_mass_bins[k], accel_ptr);                                          
+          
+      index = row_major_index_2d(i,k,stars->SNII_n_z,stars->SNII_n_mass);
+      stars->yield_SNII.total_metals_SPH[index] = exp(M_LN10 * stars->yield_mass_bins[k]) * result;                                       
+    }       
+  }                                                                                                                   
+
+  gsl_spline_free(SNII_spline_ptr);
+
+  /* AGB yields */
+  AGB_spline_ptr = gsl_spline_alloc(gsl_interp_linear, stars->AGB_n_mass);
+
+  for (int i = 0; i < stars->AGB_n_z; i++) {
+    for (int k = 0; k < stars->AGB_n_mass; k++) {
+      index = row_major_index_2d(i,k,stars->SNII_n_z,stars->SNII_n_mass);
+      AGB_yield[k] = stars->yield_AGB.ejecta[index] / exp(M_LN10 * stars->yield_AGB.mass[k]);
+    }
+
+    gsl_spline_init(AGB_spline_ptr, stars->yield_AGB.mass, AGB_yield, stars->AGB_n_mass);
+
+    for (int k = 0; k < n_mass_bins; k++) {
+      if (stars->yield_mass_bins[k] < stars->yield_AGB.mass[0])
+        result = AGB_yield[0];
+      else if (stars->yield_mass_bins[k] > stars->yield_AGB.mass[stars->AGB_n_mass - 1])
+        result = AGB_yield[stars->AGB_n_mass - 1];
+      else
+        result =
+            gsl_spline_eval(AGB_spline_ptr, stars->yield_mass_bins[k], accel_ptr);
+
+      index = row_major_index_2d(i,k,stars->SNII_n_z,stars->SNII_n_mass);
+      stars->yield_AGB.ejecta_SPH[index] = exp(M_LN10 * stars->yield_mass_bins[k]) * result;
+    }
+  }
+
+  for (int i = 0; i < stars->AGB_n_z; i++) {
+    for (int k = 0; k < stars->AGB_n_mass; k++) {
+      index = row_major_index_2d(i,k,stars->SNII_n_z,stars->SNII_n_mass);
+      AGB_yield[k] = stars->yield_AGB.total_metals[index] * exp(M_LN10 * (-stars->yield_AGB.mass[k]));
+    }
+
+    gsl_spline_init(AGB_spline_ptr, stars->yield_AGB.mass, AGB_yield, stars->AGB_n_mass);
+
+    for (int k = 0; k < n_mass_bins; k++) {
+      if (stars->yield_mass_bins[k] < stars->yield_AGB.mass[0])
+        result = AGB_yield[0];
+      else if (stars->yield_mass_bins[k] > stars->yield_AGB.mass[stars->AGB_n_mass - 1])
+        result = AGB_yield[stars->AGB_n_mass - 1];
+      else
+        result =
+            gsl_spline_eval(AGB_spline_ptr, stars->yield_mass_bins[k], accel_ptr);
+
+      index = row_major_index_2d(i,k,stars->SNII_n_z,stars->SNII_n_mass);
+      stars->yield_AGB.total_metals_SPH[index] = exp(M_LN10 * stars->yield_mass_bins[k]) * result;
+    }
+  }
+
+  gsl_spline_free(AGB_spline_ptr);
+  gsl_interp_accel_free(accel_ptr);
+}
+
 
 #endif
