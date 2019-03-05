@@ -102,8 +102,7 @@ INLINE static void star_formation_add_progeny_SFH(struct star_formation_history*
  * @param cosmo the cosmology struct
  * @param with_cosmology if we run with cosmology
  */
-INLINE static void star_formation_get_total_cell(const struct cell *c, struct star_formation_history *sf, 
-    const struct cosmology* cosmo, const int with_cosmology){
+INLINE static void star_formation_get_total_cell(const struct cell *c, struct star_formation_history *sf){
   /* Get the star formation history from the cell */
   struct star_formation_history *sfcell = c->stars.sfh;
   sf->new_stellar_mass += sfcell->new_stellar_mass;

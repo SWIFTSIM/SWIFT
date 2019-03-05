@@ -2347,9 +2347,6 @@ void engine_collect_end_of_step_recurse(struct cell *c,
   if (c->timestep != NULL) return;
 #endif /* WITH_MPI */
 
-  const struct cosmology *cosmo = e->cosmology;
-  const int with_cosmology = (e->policy & engine_policy_cosmology);
-
   /* Counters for the different quantities. */
   size_t updated = 0, g_updated = 0, s_updated = 0;
   size_t inhibited = 0, g_inhibited = 0, s_inhibited = 0;
@@ -2394,7 +2391,7 @@ void engine_collect_end_of_step_recurse(struct cell *c,
       s_inhibited += cp->stars.inhibited;
 
       /* Add the star formation history in this cell to sfh_updated */
-      star_formation_get_total_cell(cp, &sfh_updated, cosmo, with_cosmology);
+      star_formation_get_total_cell(cp, &sfh_updated);
 
       /* Clear the star formation in this cell for next time */
       star_formation_clear_total_cell(cp);
