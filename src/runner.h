@@ -77,7 +77,7 @@ void runner_do_drift_part(struct runner *r, struct cell *c, int timer);
 void runner_do_drift_gpart(struct runner *r, struct cell *c, int timer);
 void runner_do_kick1(struct runner *r, struct cell *c, int timer);
 void runner_do_kick2(struct runner *r, struct cell *c, int timer);
-void runner_do_end_force(struct runner *r, struct cell *c, int timer);
+void runner_do_end_hydro_force(struct runner *r, struct cell *c, int timer);
 void runner_do_init(struct runner *r, struct cell *c, int timer);
 void runner_do_cooling(struct runner *r, struct cell *c, int timer);
 void runner_do_grav_external(struct runner *r, struct cell *c, int timer);
