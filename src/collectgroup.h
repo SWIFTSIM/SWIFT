@@ -27,6 +27,7 @@
 
 /* Local headers. */
 #include "timeline.h"
+#include "star_formation_logger.h"
 
 /* Forward declaration of engine struct (to avoid cyclic include). */
 struct engine;
