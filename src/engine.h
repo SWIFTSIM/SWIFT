@@ -50,6 +50,7 @@
 #include "task.h"
 #include "units.h"
 #include "velociraptor_interface.h"
+#include "star_formation_logger.h"
 
 /**
  * @brief The different policies the #engine can follow.
@@ -205,6 +206,9 @@ struct engine {
   long long updates_since_rebuild;
   long long g_updates_since_rebuild;
   long long s_updates_since_rebuild;
+
+  /* Star formation logger information */
+  struct star_formation_history sfh;
 
   /* Properties of the previous step */
   int step_props;

@@ -99,6 +99,7 @@ void collectgroup1_apply(struct collectgroup1 *grp1, struct engine *e) {
   e->total_nr_cells = grp1->total_nr_cells;
   e->total_nr_tasks = grp1->total_nr_tasks;
   e->tasks_per_cell_max = grp1->tasks_per_cell_max;
+  e->sfh = grp1->sfh;
 }
 
 /**
@@ -139,7 +140,7 @@ void collectgroup1_init(
     integertime_t ti_hydro_beg_max, integertime_t ti_gravity_end_min,
     integertime_t ti_gravity_end_max, integertime_t ti_gravity_beg_max,
     int forcerebuild, long long total_nr_cells, long long total_nr_tasks,
-    float tasks_per_cell) {
+    float tasks_per_cell, struct star_formation_history sfh) {
 
   grp1->updated = updated;
   grp1->g_updated = g_updated;
@@ -157,6 +158,7 @@ void collectgroup1_init(
   grp1->total_nr_cells = total_nr_cells;
   grp1->total_nr_tasks = total_nr_tasks;
   grp1->tasks_per_cell_max = tasks_per_cell;
+  grp1->sfh = sfh; 
 }
 
 /**

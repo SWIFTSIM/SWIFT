@@ -2583,7 +2583,7 @@ void engine_collect_end_of_step(struct engine *e, int apply) {
       data.ti_hydro_end_max, data.ti_hydro_beg_max, data.ti_gravity_end_min,
       data.ti_gravity_end_max, data.ti_gravity_beg_max, e->forcerebuild,
       e->s->tot_cells, e->sched.nr_tasks,
-      (float)e->sched.nr_tasks / (float)e->s->tot_cells);
+      (float)e->sched.nr_tasks / (float)e->s->tot_cells, data.sfh);
 
 /* Aggregate collective data from the different nodes for this step. */
 #ifdef WITH_MPI
