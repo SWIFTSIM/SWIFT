@@ -37,7 +37,11 @@
  */
 __attribute__((always_inline)) INLINE static void runner_iact_star_formation(
     float r2, const float *dx, float hi, float hj, struct part *restrict pi,
-    struct part *restrict pj, float a, float H) {}
+    struct part *restrict pj, float a, float H) {
+
+  /* Nothing to do here. We do not need to compute any quantity in the hydro
+     density loop for the EAGLE star formation model. */
+}
 
 /**
  * @brief do star_formation computation after the runner_iact_density (non
@@ -56,6 +60,10 @@ __attribute__((always_inline)) INLINE static void
 runner_iact_nonsym_star_formation(float r2, const float *dx, float hi, float hj,
                                   struct part *restrict pi,
                                   const struct part *restrict pj, float a,
-                                  float H) {}
+                                  float H) {
+
+  /* Nothing to do here. We do not need to compute any quantity in the hydro
+     density loop for the EAGLE star formation model. */
+}
 
 #endif /* SWIFT_EAGLE_STAR_FORMATION_IACT_H */

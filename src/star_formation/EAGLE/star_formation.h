@@ -629,6 +629,9 @@ INLINE static void starformation_print_backend(
 /**
  * @brief Finishes the density calculation.
  *
+ * Nothing to do here. We do not need to compute any quantity in the hydro
+ * density loop for the EAGLE star formation model.
+ *
  * @param p The particle to act upon
  * @param cd The global star_formation information.
  * @param cosmo The current cosmological model.
@@ -639,6 +642,9 @@ __attribute__((always_inline)) INLINE static void star_formation_end_density(
 
 /**
  * @brief Sets all particle fields to sensible values when the #part has 0 ngbs.
+ *
+ * Nothing to do here. We do not need to compute any quantity in the hydro
+ * density loop for the EAGLE star formation model.
  *
  * @param p The particle to act upon
  * @param xp The extended particle data to act upon
@@ -676,7 +682,8 @@ star_formation_first_init_part(const struct phys_const* restrict phys_const,
  * @brief Sets the star_formation properties of the (x-)particles to a valid
  * start state.
  *
- * Nothing to do here.
+ * Nothing to do here. We do not need to compute any quantity in the hydro
+ * density loop for the EAGLE star formation model.
  *
  * @param p Pointer to the particle data.
  * @param data The global star_formation information.
