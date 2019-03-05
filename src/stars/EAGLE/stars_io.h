@@ -145,7 +145,7 @@ INLINE static void stars_props_init(struct stars_props *sp,
   sp->continuous_heating = parser_get_opt_param_int( 
       params, "EAGLEFeedback:continuous_heating_switch", 0);
   const float Gyr_in_cgs = 3.154e16;
-  sp->SNII_wind_delay = parser_get_opt_param_int( 
+  sp->SNII_wind_delay = parser_get_opt_param_float( 
       params, "EAGLEFeedback:SNII_wind_delay_Gyr", 0.03) * Gyr_in_cgs / units_cgs_conversion_factor(us,UNIT_CONV_TIME);
 
   // ALEXEI: find out where this gets set in EAGLE
