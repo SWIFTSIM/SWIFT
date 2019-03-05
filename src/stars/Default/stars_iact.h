@@ -35,6 +35,8 @@ runner_iact_nonsym_stars_density(float r2, const float *dx, float hi, float hj,
   /* Update ngb counters */
   if (si->num_ngb_density < MAX_NUM_OF_NEIGHBOURS_STARS)
     si->ids_ngbs_density[si->num_ngb_density] = pj->id;
+
+  /* Update ngb counters */
   ++si->num_ngb_density;
 #endif
 }
@@ -54,4 +56,34 @@ runner_iact_nonsym_stars_density(float r2, const float *dx, float hi, float hj,
 __attribute__((always_inline)) INLINE static void
 runner_iact_nonsym_stars_feedback(float r2, const float *dx, float hi, float hj,
                                   struct spart *restrict si,
-                                  struct part *restrict pj, float a, float H) {}
+                                  struct part *restrict pj, float a, float H) {
+
+  const float mj = pj->mass;
+  const float rhoj = pj->rho;
+  const float r = sqrtf(r2);
+  const float ri = 1.f / r;
+
+  /* Get the kernel for hi. */
+  float hi_inv = 1.0f / hi;
+  float hid_inv = pow_dimension_plus_one(hi_inv); /* 1/h^(d+1) */
+  float xi = r * hi_inv;
+  float wi, wi_dx;
+  kernel_deval(xi, &wi, &wi_dx);
+  float wi_dr = hid_inv * wi_dx;
+
+  /* Compute dv dot r */
+  float dvdr = (si->v[0] - pj->v[0]) * dx[0] + (si->v[1] - pj->v[1]) * dx[1] +
+               (si->v[2] - pj->v[2]) * dx[2];
+
+  /* Get the time derivative for h. */
+  si->feedback.h_dt -= mj * dvdr * ri / rhoj * wi_dr;
+
+#ifdef DEBUG_INTERACTIONS_STARS
+  /* Update ngb counters */
+  if (si->num_ngb_force < MAX_NUM_OF_NEIGHBOURS_STARS)
+    si->ids_ngbs_force[si->num_ngb_force] = pj->id;
+
+  /* Update ngb counters */
+  ++si->num_ngb_force;
+#endif
+}

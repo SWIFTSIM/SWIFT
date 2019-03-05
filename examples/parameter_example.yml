@@ -65,8 +65,6 @@ Scheduler:
   cell_sub_size_self_hydro:  32000     # (Optional) Maximal number of interactions per sub-self hydro task  (this is the default value).
   cell_sub_size_pair_grav:   256000000 # (Optional) Maximal number of interactions per sub-pair gravity task  (this is the default value).
   cell_sub_size_self_grav:   32000     # (Optional) Maximal number of interactions per sub-self gravity task  (this is the default value).
-  cell_sub_size_pair_stars:  256000000 # (Optional) Maximal number of interactions per sub-pair stars task  (this is the default value).
-  cell_sub_size_self_stars:  32000     # (Optional) Maximal number of interactions per sub-self stars task  (this is the default value).
   cell_split_size:           400       # (Optional) Maximal number of particles per cell (this is the default value).
   cell_subdepth_diff_grav:   4         # (Optional) Maximal depth difference between leaves and a cell that gravity tasks can be pushed down to (this is the default value).
   cell_extra_parts:          0         # (Optional) Number of spare parts per top-level allocated at rebuild time for on-the-fly creation.
@@ -299,7 +297,6 @@ GrackleCooling:
   ProvideVolumetricHeatingRates: 0      # (optional) User provide volumetric heating rates
   ProvideSpecificHeatingRates: 0        # (optional) User provide specific heating rates
   SelfShieldingMethod: 0                # (optional) Grackle (<= 3) or Gear self shielding method
-  OutputMode: 0                         # (optional) Write in output corresponding primordial chemistry mode
   MaxSteps: 10000                       # (optional) Max number of step when computing the initial composition
   ConvergenceLimit: 1e-2                # (optional) Convergence threshold (relative) for initial composition
 

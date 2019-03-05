@@ -382,7 +382,6 @@ int main(int argc, char *argv[]) {
   struct stars_props stars_p;
   stars_p.eta_neighbours = h;
   stars_p.h_tolerance = 1e0;
-  stars_p.h_max = FLT_MAX;
   stars_p.max_smoothing_iterations = 1;
 
   struct engine engine;

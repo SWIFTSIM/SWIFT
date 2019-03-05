@@ -2710,16 +2710,21 @@ void engine_skip_force_and_kick(struct engine *e) {
 
     /* Skip everything that updates the particles */
     if (t->type == task_type_drift_part || t->type == task_type_drift_gpart ||
-        t->type == task_type_kick1 || t->type == task_type_kick2 ||
-        t->type == task_type_timestep ||
+        t->type == task_type_drift_spart || t->type == task_type_kick1 ||
+        t->type == task_type_kick2 || t->type == task_type_timestep ||
         t->type == task_type_timestep_limiter ||
         t->subtype == task_subtype_force ||
         t->subtype == task_subtype_limiter || t->subtype == task_subtype_grav ||
-        t->type == task_type_end_force ||
+        t->type == task_type_end_hydro_force ||
+        t->type == task_type_end_grav_force ||
         t->type == task_type_grav_long_range || t->type == task_type_grav_mm ||
-        t->type == task_type_grav_down || t->type == task_type_cooling ||
+        t->type == task_type_grav_down || t->type == task_type_grav_down_in ||
+        t->type == task_type_drift_gpart_out || t->type == task_type_cooling ||
+        t->type == task_type_stars_in || t->type == task_type_stars_out ||
         t->type == task_type_star_formation ||
-        t->type == task_type_extra_ghost || t->subtype == task_subtype_gradient)
+        t->type == task_type_extra_ghost ||
+        t->subtype == task_subtype_gradient ||
+        t->subtype == task_subtype_stars_feedback)
       t->skip = 1;
   }
 
@@ -2743,7 +2748,8 @@ void engine_skip_drift(struct engine *e) {
     struct task *t = &tasks[i];
 
     /* Skip everything that moves the particles */
-    if (t->type == task_type_drift_part || t->type == task_type_drift_gpart)
+    if (t->type == task_type_drift_part || t->type == task_type_drift_gpart ||
+        t->type == task_type_drift_spart)
       t->skip = 1;
   }
 
@@ -2757,7 +2763,6 @@ void engine_skip_drift(struct engine *e) {
  * @param e The #engine.
  */
 void engine_launch(struct engine *e) {
-
   const ticks tic = getticks();
 
 #ifdef SWIFT_DEBUG_CHECKS
@@ -3949,6 +3954,78 @@ void engine_split(struct engine *e, struct partition *initial_partition) {
 #endif
 }
 
+#ifdef DEBUG_INTERACTIONS_STARS
+/**
+ * @brief Exchange the feedback counters between stars
+ * @param e The #engine.
+ */
+void engine_collect_stars_counter(struct engine *e) {
+
+#ifdef WITH_MPI
+  if (e->total_nr_sparts > 1e5) {
+    message("WARNING: too many sparts, skipping exchange of counters");
+    return;
+  }
+
+  /* Get number of sparticles for each rank */
+  size_t *n_sparts = (size_t *)malloc(e->nr_nodes * sizeof(size_t));
+
+  int err = MPI_Allgather(&e->s->nr_sparts_foreign, 1, MPI_UNSIGNED_LONG,
+                          n_sparts, 1, MPI_UNSIGNED_LONG, MPI_COMM_WORLD);
+  if (err != MPI_SUCCESS) error("Communication failed");
+
+  /* Compute derivated quantities */
+  int total = 0;
+  int *n_sparts_int = (int *)malloc(e->nr_nodes * sizeof(int));
+  int *displs = (int *)malloc(e->nr_nodes * sizeof(int));
+  for (int i = 0; i < e->nr_nodes; i++) {
+    displs[i] = total;
+    total += n_sparts[i];
+    n_sparts_int[i] = n_sparts[i];
+  }
+
+  /* Get all sparticles */
+  struct spart *sparts = (struct spart *)malloc(total * sizeof(struct spart));
+  err = MPI_Allgatherv(e->s->sparts_foreign, e->s->nr_sparts_foreign,
+                       spart_mpi_type, sparts, n_sparts_int, displs,
+                       spart_mpi_type, MPI_COMM_WORLD);
+  if (err != MPI_SUCCESS) error("Communication failed");
+
+  /* Reset counters */
+  for (size_t i = 0; i < e->s->nr_sparts_foreign; i++) {
+    e->s->sparts_foreign[i].num_ngb_force = 0;
+  }
+
+  /* Update counters */
+  struct spart *local_sparts = e->s->sparts;
+  for (size_t i = 0; i < e->s->nr_sparts; i++) {
+    const long long id_i = local_sparts[i].id;
+
+    for (int j = 0; j < total; j++) {
+      const long long id_j = sparts[j].id;
+
+      if (id_j == id_i) {
+        if (j >= displs[engine_rank] &&
+            j < displs[engine_rank] + n_sparts_int[engine_rank]) {
+          error(
+              "Found a local spart in foreign cell ID=%lli: j=%i, displs=%i, "
+              "n_sparts=%i",
+              id_j, j, displs[engine_rank], n_sparts_int[engine_rank]);
+        }
+
+        local_sparts[i].num_ngb_force += sparts[j].num_ngb_force;
+      }
+    }
+  }
+
+  free(n_sparts);
+  free(n_sparts_in);
+  free(sparts);
+#endif
+}
+
+#endif
+
 /**
  * @brief Writes a snapshot with the current state of the engine
  *
@@ -3983,6 +4060,10 @@ void engine_dump_snapshot(struct engine *e) {
       message("Dumping snapshot at t=%e",
               e->ti_current * e->time_base + e->time_begin);
   }
+#endif
+
+#ifdef DEBUG_INTERACTIONS_STARS
+  engine_collect_stars_counter(e);
 #endif
 
 /* Dump... */

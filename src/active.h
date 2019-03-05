@@ -85,9 +85,16 @@ __attribute__((always_inline)) INLINE static int cell_are_gpart_drifted(
 __attribute__((always_inline)) INLINE static int cell_are_spart_drifted(
     const struct cell *c, const struct engine *e) {
 
-  /* Currently just use the gpart drift
-   * This function is just for clarity */
-  return cell_are_gpart_drifted(c, e);
+#ifdef SWIFT_DEBUG_CHECKS
+  if (c->stars.ti_old_part > e->ti_current)
+    error(
+        "Cell has been drifted too far forward in time! c->ti_old=%lld (t=%e) "
+        "and e->ti_current=%lld (t=%e)",
+        c->stars.ti_old_part, c->stars.ti_old_part * e->time_base,
+        e->ti_current, e->ti_current * e->time_base);
+#endif
+
+  return (c->stars.ti_old_part == e->ti_current);
 }
 
 /* Are cells / particles active for regular tasks ? */
@@ -125,7 +132,7 @@ __attribute__((always_inline)) INLINE static int cell_is_all_active_hydro(
     const struct cell *c, const struct engine *e) {
 
 #ifdef SWIFT_DEBUG_CHECKS
-  if (c->hydro.ti_end_max < e->ti_current)
+  if (c->hydro.count > 0 && c->hydro.ti_end_max < e->ti_current)
     error(
         "cell in an impossible time-zone! c->ti_end_max=%lld "
         "e->ti_current=%lld",
@@ -181,7 +188,7 @@ __attribute__((always_inline)) INLINE static int cell_is_all_active_gravity(
     const struct cell *c, const struct engine *e) {
 
 #ifdef SWIFT_DEBUG_CHECKS
-  if (c->grav.ti_end_max < e->ti_current)
+  if (c->grav.count > 0 && c->grav.ti_end_max < e->ti_current)
     error(
         "cell in an impossible time-zone! c->ti_end_max=%lld "
         "e->ti_current=%lld",
@@ -381,6 +388,28 @@ __attribute__((always_inline)) INLINE static int cell_is_starting_gravity(
 #endif
 
   return (c->grav.ti_beg_max == e->ti_current);
+}
+
+/**
+ * @brief Does a cell contain any s-particle starting their time-step now ?
+ *
+ * @param c The #cell.
+ * @param e The #engine containing information about the current time.
+ * @return 1 if the #cell contains at least an active particle, 0 otherwise.
+ */
+__attribute__((always_inline)) INLINE static int cell_is_starting_stars(
+    const struct cell *c, const struct engine *e) {
+
+#ifdef SWIFT_DEBUG_CHECKS
+  if (c->stars.ti_beg_max > e->ti_current)
+    error(
+        "cell in an impossible time-zone! c->ti_beg_max=%lld (t=%e) and "
+        "e->ti_current=%lld (t=%e, a=%e)",
+        c->stars.ti_beg_max, c->stars.ti_beg_max * e->time_base, e->ti_current,
+        e->ti_current * e->time_base, e->cosmology->a);
+#endif
+
+  return (c->stars.ti_beg_max == e->ti_current);
 }
 
 /**

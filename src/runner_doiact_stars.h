@@ -74,6 +74,11 @@
  * @param timer 1 if the time is to be recorded.
  */
 void DOSELF1_STARS(struct runner *r, struct cell *c, int timer) {
+
+#ifdef SWIFT_DEBUG_CHECKS
+  if (c->nodeID != engine_rank) error("Should be run on a different node");
+#endif
+
   const struct engine *e = r->e;
   const struct cosmology *cosmo = e->cosmology;
 
@@ -95,6 +100,8 @@ void DOSELF1_STARS(struct runner *r, struct cell *c, int timer) {
 
     /* Get a hold of the ith spart in ci. */
     struct spart *restrict si = &sparts[sid];
+    if (!spart_is_active(si, e) || spart_is_inhibited(si, e)) continue;
+
     const float hi = si->h;
     const float hig2 = hi * hi * kernel_gamma2;
     const float six[3] = {(float)(si->x[0] - c->loc[0]),
@@ -138,6 +145,14 @@ void DOSELF1_STARS(struct runner *r, struct cell *c, int timer) {
 void DO_NONSYM_PAIR1_STARS(struct runner *r, struct cell *restrict ci,
                            struct cell *restrict cj) {
 
+#ifdef SWIFT_DEBUG_CHECKS
+#ifdef UPDATE_STARS
+  if (ci->nodeID != engine_rank) error("Should be run on a different node");
+#else
+  if (cj->nodeID != engine_rank) error("Should be run on a different node");
+#endif
+#endif
+
   const struct engine *e = r->e;
   const struct cosmology *cosmo = e->cosmology;
 
@@ -167,6 +182,7 @@ void DO_NONSYM_PAIR1_STARS(struct runner *r, struct cell *restrict ci,
 
     /* Get a hold of the ith spart in ci. */
     struct spart *restrict si = &sparts_i[sid];
+    if (!spart_is_active(si, e) || spart_is_inhibited(si, e)) continue;
     const float hi = si->h;
     const float hig2 = hi * hi * kernel_gamma2;
     const float six[3] = {(float)(si->x[0] - (cj->loc[0] + shift[0])),
@@ -202,9 +218,17 @@ void DO_NONSYM_PAIR1_STARS(struct runner *r, struct cell *restrict ci,
 void DOPAIR1_STARS(struct runner *r, struct cell *restrict ci,
                    struct cell *restrict cj, int timer) {
 
-  if (ci->stars.count != 0 && cj->hydro.count != 0)
+#ifdef UPDATE_STARS
+  const int ci_local = ci->nodeID == engine_rank;
+  const int cj_local = cj->nodeID == engine_rank;
+#else
+  /* here we are updating the hydro -> switch ci, cj */
+  const int ci_local = cj->nodeID == engine_rank;
+  const int cj_local = ci->nodeID == engine_rank;
+#endif
+  if (ci_local && ci->stars.count != 0 && cj->hydro.count != 0)
     DO_NONSYM_PAIR1_STARS(r, ci, cj);
-  if (cj->stars.count != 0 && ci->hydro.count != 0)
+  if (cj_local && cj->stars.count != 0 && ci->hydro.count != 0)
     DO_NONSYM_PAIR1_STARS(r, cj, ci);
 }
 
@@ -227,6 +251,9 @@ void DOPAIR1_SUBSET_STARS(struct runner *r, struct cell *restrict ci,
                           int scount, struct cell *restrict cj,
                           const double *shift) {
 
+#ifdef SWIFT_DEBUG_CHECKS
+  if (ci->nodeID != engine_rank) error("Should be run on a different node");
+#endif
   const struct engine *e = r->e;
   const struct cosmology *cosmo = e->cosmology;
 
@@ -292,6 +319,10 @@ void DOPAIR1_SUBSET_STARS(struct runner *r, struct cell *restrict ci,
 void DOSELF1_SUBSET_STARS(struct runner *r, struct cell *restrict ci,
                           struct spart *restrict sparts, int *restrict ind,
                           int scount) {
+
+#ifdef SWIFT_DEBUG_CHECKS
+  if (ci->nodeID != engine_rank) error("Should be run on a different node");
+#endif
 
   const struct engine *e = r->e;
   const struct cosmology *cosmo = e->cosmology;
@@ -446,8 +477,8 @@ void DOSUB_SUBSET_STARS(struct runner *r, struct cell *ci, struct spart *sparts,
   else {
 
     /* Recurse? */
-    if (cell_can_recurse_in_pair_stars_task(ci) &&
-        cell_can_recurse_in_pair_stars_task(cj)) {
+    if (cell_can_recurse_in_pair_stars_task(ci, cj) &&
+        cell_can_recurse_in_pair_stars_task(cj, ci)) {
 
       /* Get the type of pair if not specified explicitly. */
       double shift[3] = {0.0, 0.0, 0.0};
@@ -956,10 +987,13 @@ void DOSUB_SUBSET_STARS(struct runner *r, struct cell *ci, struct spart *sparts,
     }
 
     /* Otherwise, compute the pair directly. */
-    else if (cell_is_active_stars(ci, e) || cell_is_active_stars(cj, e)) {
+    else if (cell_is_active_stars(ci, e)) {
 
       /* Do any of the cells need to be drifted first? */
-      if (!cell_are_part_drifted(cj, e)) error("Cell should be drifted!");
+      if (cell_is_active_stars(ci, e)) {
+        if (!cell_are_spart_drifted(ci, e)) error("Cell should be drifted!");
+        if (!cell_are_part_drifted(cj, e)) error("Cell should be drifted!");
+      }
 
       DOPAIR1_SUBSET_BRANCH_STARS(r, ci, sparts, ind, scount, cj);
     }
@@ -980,6 +1014,9 @@ void DOSELF1_BRANCH_STARS(struct runner *r, struct cell *c) {
   const struct engine *restrict e = r->e;
 
   /* Anything to do here? */
+  if (c->stars.count == 0) return;
+
+  /* Anything to do here? */
   if (!cell_is_active_stars(c, e)) return;
 
   /* Did we mess up the recursion? */
@@ -995,6 +1032,8 @@ void DOSELF1_BRANCH_STARS(struct runner *r, struct cell *c) {
                                                                             \
     for (int pjd = 0; pjd < cj->TYPE.count; pjd++) {                        \
       const struct PART *p = &cj->TYPE.parts[sort_j[pjd].i];                \
+      if (PART##_is_inhibited(p, e)) continue;                              \
+                                                                            \
       const float d = p->x[0] * runner_shift[sid][0] +                      \
                       p->x[1] * runner_shift[sid][1] +                      \
                       p->x[2] * runner_shift[sid][2];                       \
@@ -1007,9 +1046,12 @@ void DOSELF1_BRANCH_STARS(struct runner *r, struct cell *c) {
             "cj->nodeID=%d "                                                \
             "ci->nodeID=%d d=%e sort_j[pjd].d=%e cj->" #TYPE                \
             ".dx_max_sort=%e "                                              \
-            "cj->" #TYPE ".dx_max_sort_old=%e",                             \
+            "cj->" #TYPE                                                    \
+            ".dx_max_sort_old=%e, cellID=%i super->cellID=%i"               \
+            "cj->depth=%d cj->maxdepth=%d",                                 \
             cj->nodeID, ci->nodeID, d, sort_j[pjd].d, cj->TYPE.dx_max_sort, \
-            cj->TYPE.dx_max_sort_old);                                      \
+            cj->TYPE.dx_max_sort_old, cj->cellID, cj->hydro.super->cellID,  \
+            cj->depth, cj->maxdepth);                                       \
     }                                                                       \
   })
 
@@ -1026,17 +1068,28 @@ void DOSELF1_BRANCH_STARS(struct runner *r, struct cell *c) {
 void DOPAIR1_BRANCH_STARS(struct runner *r, struct cell *ci, struct cell *cj) {
 
   const struct engine *restrict e = r->e;
-  const int ci_active = cell_is_active_stars(ci, e);
-  const int cj_active = cell_is_active_stars(cj, e);
-  const int do_ci = (ci->stars.count != 0 && cj->hydro.count != 0 && ci_active);
-  const int do_cj = (cj->stars.count != 0 && ci->hydro.count != 0 && cj_active);
-
-  /* Anything to do here? */
-  if (!do_ci && !do_cj) return;
 
   /* Get the sort ID. */
   double shift[3] = {0.0, 0.0, 0.0};
   const int sid = space_getsid(e->s, &ci, &cj, shift);
+
+  const int ci_active = cell_is_active_stars(ci, e);
+  const int cj_active = cell_is_active_stars(cj, e);
+#ifdef UPDATE_STARS
+  const int ci_local = ci->nodeID == engine_rank;
+  const int cj_local = cj->nodeID == engine_rank;
+#else
+  /* here we are updating the hydro -> switch ci, cj */
+  const int ci_local = cj->nodeID == engine_rank;
+  const int cj_local = ci->nodeID == engine_rank;
+#endif
+  const int do_ci =
+      (ci->stars.count != 0 && cj->hydro.count != 0 && ci_active && ci_local);
+  const int do_cj =
+      (cj->stars.count != 0 && ci->hydro.count != 0 && cj_active && cj_local);
+
+  /* Anything to do here? */
+  if (!do_ci && !do_cj) return;
 
   /* Check that cells are drifted. */
   if (do_ci &&
@@ -1099,19 +1152,19 @@ void DOSUB_PAIR1_STARS(struct runner *r, struct cell *ci, struct cell *cj,
   const struct engine *e = r->e;
 
   /* Should we even bother? */
-  int should_do = ci->stars.count != 0 && cj->hydro.count != 0 &&
-                  cell_is_active_stars(ci, e);
-  should_do |= cj->stars.count != 0 && ci->hydro.count != 0 &&
-               cell_is_active_stars(cj, e);
-  if (!should_do) return;
+  const int should_do_ci = ci->stars.count != 0 && cj->hydro.count != 0 &&
+                           cell_is_active_stars(ci, e);
+  const int should_do_cj = cj->stars.count != 0 && ci->hydro.count != 0 &&
+                           cell_is_active_stars(cj, e);
+  if (!should_do_ci && !should_do_cj) return;
 
   /* Get the type of pair if not specified explicitly. */
   double shift[3];
   sid = space_getsid(s, &ci, &cj, shift);
 
   /* Recurse? */
-  if (cell_can_recurse_in_pair_stars_task(ci) &&
-      cell_can_recurse_in_pair_stars_task(cj)) {
+  if (cell_can_recurse_in_pair_stars_task(ci, cj) &&
+      cell_can_recurse_in_pair_stars_task(cj, ci)) {
 
     /* Different types of flags. */
     switch (sid) {
@@ -1314,10 +1367,18 @@ void DOSUB_PAIR1_STARS(struct runner *r, struct cell *ci, struct cell *cj,
   /* Otherwise, compute the pair directly. */
   else {
 
+#ifdef UPDATE_STARS
+    const int ci_local = ci->nodeID == engine_rank;
+    const int cj_local = cj->nodeID == engine_rank;
+#else
+    /* here we are updating the hydro -> switch ci, cj */
+    const int ci_local = cj->nodeID == engine_rank;
+    const int cj_local = ci->nodeID == engine_rank;
+#endif
     const int do_ci = ci->stars.count != 0 && cj->hydro.count != 0 &&
-                      cell_is_active_stars(ci, e);
+                      cell_is_active_stars(ci, e) && ci_local;
     const int do_cj = cj->stars.count != 0 && ci->hydro.count != 0 &&
-                      cell_is_active_stars(cj, e);
+                      cell_is_active_stars(cj, e) && cj_local;
 
     if (do_ci) {
 
@@ -1330,8 +1391,9 @@ void DOSUB_PAIR1_STARS(struct runner *r, struct cell *ci, struct cell *cj,
 
       /* Do any of the cells need to be sorted first? */
       if (!(ci->stars.sorted & (1 << sid)) ||
-          ci->stars.dx_max_sort_old > ci->dmin * space_maxreldx)
+          ci->stars.dx_max_sort_old > ci->dmin * space_maxreldx) {
         error("Interacting unsorted cell (sparts).");
+      }
 
       if (!(cj->hydro.sorted & (1 << sid)) ||
           cj->hydro.dx_max_sort_old > cj->dmin * space_maxreldx)
@@ -1349,12 +1411,14 @@ void DOSUB_PAIR1_STARS(struct runner *r, struct cell *ci, struct cell *cj,
 
       /* Do any of the cells need to be sorted first? */
       if (!(ci->hydro.sorted & (1 << sid)) ||
-          ci->hydro.dx_max_sort_old > ci->dmin * space_maxreldx)
+          ci->hydro.dx_max_sort_old > ci->dmin * space_maxreldx) {
         error("Interacting unsorted cell (parts).");
+      }
 
       if (!(cj->stars.sorted & (1 << sid)) ||
-          cj->stars.dx_max_sort_old > cj->dmin * space_maxreldx)
+          cj->stars.dx_max_sort_old > cj->dmin * space_maxreldx) {
         error("Interacting unsorted cell (sparts).");
+      }
     }
 
     if (do_ci || do_cj) DOPAIR1_BRANCH_STARS(r, ci, cj);
@@ -1369,6 +1433,11 @@ void DOSUB_PAIR1_STARS(struct runner *r, struct cell *ci, struct cell *cj,
  * @param gettimer Do we have a timer ?
  */
 void DOSUB_SELF1_STARS(struct runner *r, struct cell *ci, int gettimer) {
+
+#ifdef SWIFT_DEBUG_CHECKS
+  if (ci->nodeID != engine_rank)
+    error("This function should not be called on foreign cells");
+#endif
 
   /* Should we even bother? */
   if (ci->hydro.count == 0 || ci->stars.count == 0 ||

@@ -347,7 +347,17 @@ int main(int argc, char *argv[]) {
     if (myrank == 0) {
       argparse_usage(&argparse);
       printf(
-          "\nError: Cannot process feedback without stars, -S must be "
+          "\nError: Cannot process feedback without stars, --stars must be "
+          "chosen.\n");
+    }
+    return 1;
+  }
+
+  if (!with_hydro && with_feedback) {
+    if (myrank == 0) {
+      argparse_usage(&argparse);
+      printf(
+          "\nError: Cannot process feedback without gas, --hydro must be "
           "chosen.\n");
     }
     return 1;
@@ -460,7 +470,6 @@ int main(int argc, char *argv[]) {
 #ifdef WITH_MPI
   if (with_mpole_reconstruction && nr_nodes > 1)
     error("Cannot reconstruct m-poles every step over MPI (yet).");
-  if (with_feedback) error("Can't run with feedback over MPI (yet).");
   if (with_star_formation)
     error("Can't run with star formation over MPI (yet)");
   if (with_limiter) error("Can't run with time-step limiter over MPI (yet)");
@@ -893,10 +902,11 @@ int main(int argc, char *argv[]) {
     if (myrank == 0) cooling_print(&cooling_func);
 
     /* Initialise the star formation law and its properties */
+    bzero(&starform, sizeof(struct star_formation));
     if (with_star_formation)
       starformation_init(params, &prog_const, &us, &hydro_properties,
                          &starform);
-    if (myrank == 0) starformation_print(&starform);
+    if (with_star_formation && myrank == 0) starformation_print(&starform);
 
     /* Initialise the chemistry */
     bzero(&chemistry, sizeof(struct chemistry_global_data));

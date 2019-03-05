@@ -34,21 +34,6 @@ __attribute__((always_inline)) INLINE static float stars_compute_timestep(
 }
 
 /**
- * @brief Initialises the s-particles for the first time
- *
- * This function is called only once just after the ICs have been
- * read in to do some conversions.
- *
- * @param sp The particle to act upon
- */
-__attribute__((always_inline)) INLINE static void stars_first_init_spart(
-    struct spart* sp) {
-
-  sp->time_bin = 0;
-  sp->birth_density = -1.f;
-}
-
-/**
  * @brief Prepares a s-particle for its interactions
  *
  * @param sp The particle to act upon
@@ -64,6 +49,45 @@ __attribute__((always_inline)) INLINE static void stars_init_spart(
 
   sp->density.wcount = 0.f;
   sp->density.wcount_dh = 0.f;
+  sp->rho_gas = 0.f;
+}
+
+/**
+ * @brief Initialises the s-particles for the first time
+ *
+ * This function is called only once just after the ICs have been
+ * read in to do some conversions.
+ *
+ * @param sp The particle to act upon
+ */
+__attribute__((always_inline)) INLINE static void stars_first_init_spart(
+    struct spart* sp) {
+
+  sp->time_bin = 0;
+  sp->birth_density = -1.f;
+  sp->birth_time = -1.f;
+
+  stars_init_spart(sp);
+}
+
+/**
+ * @brief Predict additional particle fields forward in time when drifting
+ *
+ * @param sp The particle
+ * @param dt_drift The drift time-step for positions.
+ */
+__attribute__((always_inline)) INLINE static void stars_predict_extra(
+    struct spart* restrict sp, float dt_drift) {
+
+  // MATTHIEU
+  /* const float h_inv = 1.f / sp->h; */
+
+  /* /\* Predict smoothing length *\/ */
+  /* const float w1 = sp->feedback.h_dt * h_inv * dt_drift; */
+  /* if (fabsf(w1) < 0.2f) */
+  /*   sp->h *= approx_expf(w1); /\* 4th order expansion of exp(w) *\/ */
+  /* else */
+  /*   sp->h *= expf(w1); */
 }
 
 /**
@@ -82,8 +106,11 @@ __attribute__((always_inline)) INLINE static void stars_reset_predicted_values(
  *
  * @param sp The particle to act upon
  */
-__attribute__((always_inline)) INLINE static void stars_end_force(
-    struct spart* sp) {}
+__attribute__((always_inline)) INLINE static void stars_end_feedback(
+    struct spart* sp) {
+
+  sp->feedback.h_dt *= sp->h * hydro_dimension_inv;
+}
 
 /**
  * @brief Kick the additional variables
@@ -110,6 +137,7 @@ __attribute__((always_inline)) INLINE static void stars_end_density(
   const float h_inv_dim_plus_one = h_inv_dim * h_inv; /* 1/h^(d+1) */
 
   /* Finish the calculation by inserting the missing h-factors */
+  sp->rho_gas *= h_inv_dim;
   sp->density.wcount *= h_inv_dim;
   sp->density.wcount_dh *= h_inv_dim_plus_one;
 }
@@ -124,14 +152,10 @@ __attribute__((always_inline)) INLINE static void stars_end_density(
 __attribute__((always_inline)) INLINE static void stars_spart_has_no_neighbours(
     struct spart* restrict sp, const struct cosmology* cosmo) {
 
-  /* Some smoothing length multiples. */
-  const float h = sp->h;
-  const float h_inv = 1.0f / h;                 /* 1/h */
-  const float h_inv_dim = pow_dimension(h_inv); /* 1/h^d */
-
   /* Re-set problematic values */
-  sp->density.wcount = kernel_root * h_inv_dim;
+  sp->density.wcount = 0.f;
   sp->density.wcount_dh = 0.f;
+  sp->rho_gas = 0.f;
 }
 
 /**
@@ -147,5 +171,26 @@ __attribute__((always_inline)) INLINE static void stars_spart_has_no_neighbours(
 __attribute__((always_inline)) INLINE static void stars_evolve_spart(
     struct spart* restrict sp, const struct stars_props* stars_properties,
     const struct cosmology* cosmo) {}
+
+/**
+ * @brief Reset acceleration fields of a particle
+ *
+ * This is the equivalent of hydro_reset_acceleration.
+ * We do not compute the acceleration on star, therefore no need to use it.
+ *
+ * @param p The particle to act upon
+ */
+__attribute__((always_inline)) INLINE static void stars_reset_feedback(
+    struct spart* restrict p) {
+
+  /* Reset time derivative */
+  p->feedback.h_dt = 0.f;
+
+#ifdef DEBUG_INTERACTIONS_STARS
+  for (int i = 0; i < MAX_NUM_OF_NEIGHBOURS_STARS; ++i)
+    p->ids_ngbs_force[i] = -1;
+  p->num_ngb_force = 0;
+#endif
+}
 
 #endif /* SWIFT_EAGLE_STARS_H */
