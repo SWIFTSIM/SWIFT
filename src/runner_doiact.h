@@ -803,6 +803,9 @@ void DOPAIR_SUBSET_BRANCH(struct runner *r, struct cell *restrict ci,
 
   const struct engine *e = r->e;
 
+  /* Anything to do here? */
+  if (cj->hydro.count == 0) return;
+
   /* Get the relative distance between the pairs, wrapping. */
   double shift[3] = {0.0, 0.0, 0.0};
   for (int k = 0; k < 3; k++) {
@@ -1186,6 +1189,9 @@ void DOPAIR1(struct runner *r, struct cell *ci, struct cell *cj, const int sid,
 void DOPAIR1_BRANCH(struct runner *r, struct cell *ci, struct cell *cj) {
 
   const struct engine *restrict e = r->e;
+
+  /* Anything to do here? */
+  if (ci->hydro.count == 0 || cj->hydro.count == 0) return;
 
   /* Anything to do here? */
   if (!cell_is_active_hydro(ci, e) && !cell_is_active_hydro(cj, e)) return;
@@ -1726,6 +1732,9 @@ void DOPAIR2_BRANCH(struct runner *r, struct cell *ci, struct cell *cj) {
   const struct engine *restrict e = r->e;
 
   /* Anything to do here? */
+  if (ci->hydro.count == 0 || cj->hydro.count == 0) return;
+
+  /* Anything to do here? */
   if (!cell_is_active_hydro(ci, e) && !cell_is_active_hydro(cj, e)) return;
 
   /* Check that cells are drifted. */
@@ -1972,6 +1981,9 @@ void DOSELF1_BRANCH(struct runner *r, struct cell *c) {
   const struct engine *restrict e = r->e;
 
   /* Anything to do here? */
+  if (c->hydro.count == 0) return;
+
+  /* Anything to do here? */
   if (!cell_is_active_hydro(c, e)) return;
 
   /* Did we mess up the recursion? */
@@ -2144,6 +2156,9 @@ void DOSELF2(struct runner *r, struct cell *restrict c) {
 void DOSELF2_BRANCH(struct runner *r, struct cell *c) {
 
   const struct engine *restrict e = r->e;
+
+  /* Anything to do here? */
+  if (c->hydro.count == 0) return;
 
   /* Anything to do here? */
   if (!cell_is_active_hydro(c, e)) return;

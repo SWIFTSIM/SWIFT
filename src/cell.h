@@ -150,6 +150,12 @@ struct pcell {
     /*! Minimal integer end-of-timestep in this cell for stars tasks */
     integertime_t ti_end_min;
 
+    /*! Maximal integer end-of-timestep in this cell for stars tasks */
+    integertime_t ti_end_max;
+
+    /*! Integer time of the last drift of the #spart in this cell */
+    integertime_t ti_old_part;
+
   } stars;
 
   /*! Maximal depth in that part of the tree */
@@ -198,11 +204,14 @@ struct pcell_step {
   /*! Stars variables */
   struct {
 
-    /*! Maximal distance any #part has travelled since last rebuild */
-    float dx_max_part;
-
     /*! Minimal integer end-of-timestep in this cell (stars) */
     integertime_t ti_end_min;
+
+    /*! Maximal integer end-of-timestep in this cell (stars) */
+    integertime_t ti_end_max;
+
+    /*! Maximal distance any #part has travelled since last rebuild */
+    float dx_max_part;
 
   } stars;
 };
@@ -277,6 +286,9 @@ struct cell {
 
     /*! The extra ghost task for complex hydro schemes */
     struct task *extra_ghost;
+
+    /*! The task to end the force calculation */
+    struct task *end_force;
 
     /*! Task for cooling */
     struct task *cooling;
@@ -409,6 +421,9 @@ struct cell {
     /*! Task propagating the multipole to the particles */
     struct task *down;
 
+    /*! The task to end the force calculation */
+    struct task *end_force;
+
     /*! Minimum end of (integer) time step in this cell for gravity tasks. */
     integertime_t ti_end_min;
 
@@ -466,12 +481,6 @@ struct cell {
     /*! Pointer to the #spart data. */
     struct spart *parts;
 
-    /*! Dependency implicit task for the star ghost  (in->ghost->out)*/
-    struct task *ghost_in;
-
-    /*! Dependency implicit task for the star ghost  (in->ghost->out)*/
-    struct task *ghost_out;
-
     /*! The star ghost task itself */
     struct task *ghost;
 
@@ -481,11 +490,24 @@ struct cell {
     /*! Linked list of the tasks computing this cell's star feedback. */
     struct link *feedback;
 
-    /*! The task computing this cell's sorts. */
+    /*! The task computing this cell's sorts before the density. */
     struct task *sorts;
+
+    /*! The drift task for sparts */
+    struct task *drift;
+
+    /*! Implicit tasks marking the entry of the stellar physics block of tasks
+     */
+    struct task *stars_in;
+
+    /*! Implicit tasks marking the exit of the stellar physics block of tasks */
+    struct task *stars_out;
 
     /*! Max smoothing length in this cell. */
     double h_max;
+
+    /*! Last (integer) time the cell's spart were drifted forward in time. */
+    integertime_t ti_old_part;
 
     /*! Spin lock for various uses (#spart case). */
     swift_lock_type lock;
@@ -529,6 +551,13 @@ struct cell {
     /*! Maximum end of (integer) time step in this cell for gravity tasks. */
     integertime_t ti_end_min;
 
+    /*! Maximum end of (integer) time step in this cell for star tasks. */
+    integertime_t ti_end_max;
+
+    /*! Maximum beginning of (integer) time step in this cell for star tasks.
+     */
+    integertime_t ti_beg_max;
+
     /*! Number of #spart updated in this cell. */
     int updated;
 
@@ -537,6 +566,12 @@ struct cell {
 
     /*! Is the #spart data of this cell being used in a sub-cell? */
     int hold;
+
+    /*! Does this cell need to be drifted (stars)? */
+    char do_drift;
+
+    /*! Do any of this cell's sub-cells need to be drifted (stars)? */
+    char do_sub_drift;
 
 #ifdef SWIFT_DEBUG_CHECKS
     /*! Last (integer) time the cell's sort arrays were updated. */
@@ -580,11 +615,18 @@ struct cell {
     } grav;
 
     struct {
-
-      /* Task receiving gpart data. */
+      /* Task receiving spart data. */
       struct task *recv;
 
-      /* Linked list for sending gpart data. */
+      /* Linked list for sending spart data. */
+      struct link *send;
+    } stars;
+
+    struct {
+      /* Task receiving limiter data. */
+      struct task *recv;
+
+      /* Linked list for sending limiter data. */
       struct link *send;
     } limiter;
 
@@ -608,9 +650,6 @@ struct cell {
 
   } mpi;
 #endif
-
-  /*! The task to end the force calculation */
-  struct task *end_force;
 
   /*! The first kick task */
   struct task *kick1;
@@ -702,6 +741,7 @@ void cell_check_foreign_multipole(const struct cell *c);
 void cell_clean(struct cell *c);
 void cell_check_part_drift_point(struct cell *c, void *data);
 void cell_check_gpart_drift_point(struct cell *c, void *data);
+void cell_check_spart_drift_point(struct cell *c, void *data);
 void cell_check_multipole_drift_point(struct cell *c, void *data);
 void cell_reset_task_counters(struct cell *c);
 int cell_unskip_hydro_tasks(struct cell *c, struct scheduler *s);
@@ -710,6 +750,7 @@ int cell_unskip_gravity_tasks(struct cell *c, struct scheduler *s);
 void cell_set_super(struct cell *c, struct cell *super);
 void cell_drift_part(struct cell *c, const struct engine *e, int force);
 void cell_drift_gpart(struct cell *c, const struct engine *e, int force);
+void cell_drift_spart(struct cell *c, const struct engine *e, int force);
 void cell_drift_multipole(struct cell *c, const struct engine *e);
 void cell_drift_all_multipoles(struct cell *c, const struct engine *e);
 void cell_check_timesteps(struct cell *c);
@@ -733,6 +774,7 @@ void cell_clear_limiter_flags(struct cell *c, void *data);
 void cell_set_super_mapper(void *map_data, int num_elements, void *extra_data);
 void cell_check_spart_pos(const struct cell *c,
                           const struct spart *global_sparts);
+void cell_clear_stars_sort_flags(struct cell *c, const int is_super);
 int cell_has_tasks(struct cell *c);
 void cell_remove_part(const struct engine *e, struct cell *c, struct part *p,
                       struct xpart *xp);
@@ -854,17 +896,22 @@ cell_can_recurse_in_self_hydro_task(const struct cell *c) {
  * @brief Can a sub-pair star task recurse to a lower level based
  * on the status of the particles in the cell.
  *
- * @param c The #cell.
+ * @param ci The #cell with stars.
+ * @param cj The #cell with hydro parts.
  */
 __attribute__((always_inline)) INLINE static int
-cell_can_recurse_in_pair_stars_task(const struct cell *c) {
+cell_can_recurse_in_pair_stars_task(const struct cell *ci,
+                                    const struct cell *cj) {
 
   /* Is the cell split ? */
   /* If so, is the cut-off radius plus the max distance the parts have moved */
   /* smaller than the sub-cell sizes ? */
   /* Note: We use the _old values as these might have been updated by a drift */
-  return c->split && ((kernel_gamma * c->stars.h_max_old +
-                       c->stars.dx_max_part_old) < 0.5f * c->dmin);
+  return ci->split && cj->split &&
+         ((kernel_gamma * ci->stars.h_max_old + ci->stars.dx_max_part_old) <
+          0.5f * ci->dmin) &&
+         ((kernel_gamma * cj->hydro.h_max_old + cj->hydro.dx_max_part_old) <
+          0.5f * cj->dmin);
 }
 
 /**
@@ -877,7 +924,8 @@ __attribute__((always_inline)) INLINE static int
 cell_can_recurse_in_self_stars_task(const struct cell *c) {
 
   /* Is the cell split and not smaller than the smoothing length? */
-  return c->split && (kernel_gamma * c->stars.h_max_old < 0.5f * c->dmin);
+  return c->split && (kernel_gamma * c->stars.h_max_old < 0.5f * c->dmin) &&
+         (kernel_gamma * c->hydro.h_max_old < 0.5f * c->dmin);
 }
 
 /**
@@ -895,7 +943,8 @@ __attribute__((always_inline)) INLINE static int cell_can_split_pair_hydro_task(
   /* Note that since tasks are create after a rebuild no need to take */
   /* into account any part motion (i.e. dx_max == 0 here) */
   return c->split &&
-         (space_stretch * kernel_gamma * c->hydro.h_max < 0.5f * c->dmin);
+         (space_stretch * kernel_gamma * c->hydro.h_max < 0.5f * c->dmin) &&
+         (space_stretch * kernel_gamma * c->stars.h_max < 0.5f * c->dmin);
 }
 
 /**
@@ -913,42 +962,7 @@ __attribute__((always_inline)) INLINE static int cell_can_split_self_hydro_task(
   /* Note: No need for more checks here as all the sub-pairs and sub-self */
   /* tasks will be created. So no need to check for h_max */
   return c->split &&
-         (space_stretch * kernel_gamma * c->hydro.h_max < 0.5f * c->dmin);
-}
-
-/**
- * @brief Can a pair stars task associated with a cell be split into smaller
- * sub-tasks.
- *
- * @param c The #cell.
- */
-__attribute__((always_inline)) INLINE static int cell_can_split_pair_stars_task(
-    const struct cell *c) {
-
-  /* Is the cell split ? */
-  /* If so, is the cut-off radius with some leeway smaller than */
-  /* the sub-cell sizes ? */
-  /* Note that since tasks are create after a rebuild no need to take */
-  /* into account any part motion (i.e. dx_max == 0 here) */
-  return c->split &&
-         (space_stretch * kernel_gamma * c->stars.h_max < 0.5f * c->dmin);
-}
-
-/**
- * @brief Can a self stars task associated with a cell be split into smaller
- * sub-tasks.
- *
- * @param c The #cell.
- */
-__attribute__((always_inline)) INLINE static int cell_can_split_self_stars_task(
-    const struct cell *c) {
-
-  /* Is the cell split ? */
-  /* If so, is the cut-off radius with some leeway smaller than */
-  /* the sub-cell sizes ? */
-  /* Note: No need for more checks here as all the sub-pairs and sub-self */
-  /* tasks will be created. So no need to check for h_max */
-  return c->split &&
+         (space_stretch * kernel_gamma * c->hydro.h_max < 0.5f * c->dmin) &&
          (space_stretch * kernel_gamma * c->stars.h_max < 0.5f * c->dmin);
 }
 
@@ -992,15 +1006,16 @@ cell_need_rebuild_for_hydro_pair(const struct cell *ci, const struct cell *cj) {
   /* Is the cut-off radius plus the max distance the parts in both cells have */
   /* moved larger than the cell size ? */
   /* Note ci->dmin == cj->dmin */
-  return (kernel_gamma * max(ci->hydro.h_max, cj->hydro.h_max) +
-              ci->hydro.dx_max_part + cj->hydro.dx_max_part >
-          cj->dmin);
+  if (kernel_gamma * max(ci->hydro.h_max, cj->hydro.h_max) +
+          ci->hydro.dx_max_part + cj->hydro.dx_max_part >
+      cj->dmin) {
+    return 1;
+  }
+  return 0;
 }
-
 /**
  * @brief Have star particles in a pair of cells moved too much and require a
- * rebuild
- * ?
+ * rebuild?
  *
  * @param ci The first #cell.
  * @param cj The second #cell.
@@ -1011,9 +1026,12 @@ cell_need_rebuild_for_stars_pair(const struct cell *ci, const struct cell *cj) {
   /* Is the cut-off radius plus the max distance the parts in both cells have */
   /* moved larger than the cell size ? */
   /* Note ci->dmin == cj->dmin */
-  return (kernel_gamma * max(ci->stars.h_max, cj->stars.h_max) +
-              ci->stars.dx_max_part + cj->stars.dx_max_part >
-          cj->dmin);
+  if (kernel_gamma * max(ci->stars.h_max, cj->hydro.h_max) +
+          ci->stars.dx_max_part + cj->hydro.dx_max_part >
+      cj->dmin) {
+    return 1;
+  }
+  return 0;
 }
 
 /**

@@ -123,8 +123,7 @@ __attribute__((always_inline)) INLINE void cache_init(struct cache *c,
                                                       size_t count) {
 
   /* Align cache on correct byte boundary and pad cache size to be a multiple of
-   * the vector size
-   * and include 2 vector lengths for remainder operations. */
+   * the vector size and include 2 vector lengths for remainder operations. */
   size_t pad = 2 * VEC_SIZE, rem = count % VEC_SIZE;
   if (rem > 0) pad += VEC_SIZE - rem;
   size_t sizeBytes = (count + pad) * sizeof(float);

@@ -61,9 +61,10 @@ const char *taskID_names[task_type_count] = {"none",
                                              "ghost_out",
                                              "extra_ghost",
                                              "drift_part",
+                                             "drift_spart",
                                              "drift_gpart",
                                              "drift_gpart_out",
-                                             "end_force",
+                                             "end_hydro_force",
                                              "kick1",
                                              "kick2",
                                              "timestep",
@@ -75,9 +76,12 @@ const char *taskID_names[task_type_count] = {"none",
                                              "grav_down_in",
                                              "grav_down",
                                              "grav_mesh",
+                                             "grav_end_force",
                                              "cooling",
                                              "star_formation",
                                              "logger",
+                                             "stars_in",
+                                             "stars_out",
                                              "stars_ghost_in",
                                              "stars_ghost",
                                              "stars_ghost_out",
@@ -144,12 +148,14 @@ __attribute__((always_inline)) INLINE static enum task_actions task_acts_on(
     case task_type_extra_ghost:
     case task_type_timestep_limiter:
     case task_type_cooling:
+    case task_type_end_hydro_force:
       return task_action_part;
       break;
 
     case task_type_star_formation:
       return task_action_all;
 
+    case task_type_drift_spart:
     case task_type_stars_ghost:
     case task_type_stars_sort:
       return task_action_spart;
@@ -179,13 +185,15 @@ __attribute__((always_inline)) INLINE static enum task_actions task_acts_on(
           break;
 
         default:
-          error("Unknow task_action for task");
+#ifdef SWIFT_DEBUG_CHECKS
+          error("Unknown task_action for task %s/%s", taskID_names[t->type],
+                subtaskID_names[t->subtype]);
+#endif
           return task_action_none;
           break;
       }
       break;
 
-    case task_type_end_force:
     case task_type_kick1:
     case task_type_kick2:
     case task_type_logger:
@@ -198,8 +206,11 @@ __attribute__((always_inline)) INLINE static enum task_actions task_acts_on(
         return task_action_part;
       else if (t->ci->grav.count > 0)
         return task_action_gpart;
-      else
+      else {
+#ifdef SWIFT_DEBUG_CHECKS
         error("Task without particles");
+#endif
+      }
       break;
 
     case task_type_init_grav:
@@ -210,18 +221,25 @@ __attribute__((always_inline)) INLINE static enum task_actions task_acts_on(
 
     case task_type_drift_gpart:
     case task_type_grav_down:
+    case task_type_end_grav_force:
     case task_type_grav_mesh:
       return task_action_gpart;
       break;
 
     default:
-      error("Unknown task_action for task");
+#ifdef SWIFT_DEBUG_CHECKS
+      error("Unknown task_action for task %s/%s", taskID_names[t->type],
+            subtaskID_names[t->subtype]);
+#endif
       return task_action_none;
       break;
   }
 
-  /* Silence compiler warnings */
-  error("Unknown task_action for task");
+#ifdef SWIFT_DEBUG_CHECKS
+  error("Unknown task_action for task %s/%s", taskID_names[t->type],
+        subtaskID_names[t->subtype]);
+#endif
+  /* Silence compiler warnings. We should never get here. */
   return task_action_none;
 }
 
@@ -265,6 +283,8 @@ float task_overlap(const struct task *restrict ta,
     if (tb->ci != NULL) size_union += tb->ci->hydro.count;
     if (tb->cj != NULL) size_union += tb->cj->hydro.count;
 
+    if (size_union == 0) return 0.f;
+
     /* Compute the intersection of the cell data. */
     const size_t size_intersect = task_cell_overlap_part(ta->ci, tb->ci) +
                                   task_cell_overlap_part(ta->ci, tb->cj) +
@@ -284,6 +304,8 @@ float task_overlap(const struct task *restrict ta,
     if (tb->ci != NULL) size_union += tb->ci->grav.count;
     if (tb->cj != NULL) size_union += tb->cj->grav.count;
 
+    if (size_union == 0) return 0.f;
+
     /* Compute the intersection of the cell data. */
     const size_t size_intersect = task_cell_overlap_gpart(ta->ci, tb->ci) +
                                   task_cell_overlap_gpart(ta->ci, tb->cj) +
@@ -302,6 +324,8 @@ float task_overlap(const struct task *restrict ta,
     if (ta->cj != NULL) size_union += ta->cj->stars.count;
     if (tb->ci != NULL) size_union += tb->ci->stars.count;
     if (tb->cj != NULL) size_union += tb->cj->stars.count;
+
+    if (size_union == 0) return 0.f;
 
     /* Compute the intersection of the cell data. */
     const size_t size_intersect = task_cell_overlap_spart(ta->ci, tb->ci) +
@@ -330,7 +354,6 @@ void task_unlock(struct task *t) {
   /* Act based on task type. */
   switch (type) {
 
-    case task_type_end_force:
     case task_type_kick1:
     case task_type_kick2:
     case task_type_logger:
@@ -342,12 +365,14 @@ void task_unlock(struct task *t) {
     case task_type_drift_part:
     case task_type_sort:
     case task_type_ghost:
+    case task_type_end_hydro_force:
     case task_type_timestep_limiter:
       cell_unlocktree(ci);
       break;
 
     case task_type_drift_gpart:
     case task_type_grav_mesh:
+    case task_type_end_grav_force:
       cell_gunlocktree(ci);
       break;
 
@@ -453,7 +478,6 @@ int task_lock(struct task *t) {
 #endif
       break;
 
-    case task_type_end_force:
     case task_type_kick1:
     case task_type_kick2:
     case task_type_logger:
@@ -469,6 +493,7 @@ int task_lock(struct task *t) {
     case task_type_drift_part:
     case task_type_sort:
     case task_type_ghost:
+    case task_type_end_hydro_force:
     case task_type_timestep_limiter:
       if (ci->hydro.hold) return 0;
       if (cell_locktree(ci) != 0) return 0;
@@ -480,6 +505,7 @@ int task_lock(struct task *t) {
       break;
 
     case task_type_drift_gpart:
+    case task_type_end_grav_force:
     case task_type_grav_mesh:
       if (ci->grav.phold) return 0;
       if (cell_glocktree(ci) != 0) return 0;
@@ -655,7 +681,11 @@ void task_get_group_name(int type, int subtype, char *cluster) {
       strcpy(cluster, "Density");
       break;
     case task_subtype_gradient:
-      strcpy(cluster, "Gradient");
+      if (type == task_type_send || type == task_type_recv) {
+        strcpy(cluster, "None");
+      } else {
+        strcpy(cluster, "Gradient");
+      }
       break;
     case task_subtype_force:
       strcpy(cluster, "Force");
@@ -667,7 +697,10 @@ void task_get_group_name(int type, int subtype, char *cluster) {
       strcpy(cluster, "Timestep_limiter");
       break;
     case task_subtype_stars_density:
-      strcpy(cluster, "Stars");
+      strcpy(cluster, "StarsDensity");
+      break;
+    case task_subtype_stars_feedback:
+      strcpy(cluster, "StarsFeedback");
       break;
     default:
       strcpy(cluster, "None");

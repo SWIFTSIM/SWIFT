@@ -58,13 +58,17 @@ struct spart {
   /*! Initial star mass */
   float mass_init;
 
-  /* Particle cutoff radius. */
+  /*! Particle smoothing length. */
   float h;
+
+  /*! Density of the gas surrounding the star. */
+  float rho_gas;
 
   /*! Particle time bin */
   timebin_t time_bin;
 
   struct {
+
     /* Number of neighbours. */
     float wcount;
 
@@ -73,8 +77,16 @@ struct spart {
 
   } density;
 
+  struct {
+
+    /* Change in smoothing length over time. */
+    float h_dt;
+
+  } feedback;
+
   /*! Union for the birth time and birht scale factor */
   union {
+
     /*! Birth time */
     float birth_time;
 
@@ -127,9 +139,6 @@ struct stars_props {
 
   /*! Tolerance on neighbour number  (for info only)*/
   float delta_neighbours;
-
-  /*! Maximal smoothing length */
-  float h_max;
 
   /*! Maximal number of iterations to converge h */
   int max_smoothing_iterations;

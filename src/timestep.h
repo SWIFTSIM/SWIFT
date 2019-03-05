@@ -201,8 +201,14 @@ __attribute__((always_inline)) INLINE static integertime_t get_spart_timestep(
     new_dt_self = gravity_compute_timestep_self(
         sp->gpart, a_hydro, e->gravity_properties, e->cosmology);
 
+  /* Limit change in smoothing length */
+  const float dt_h_change = (sp->feedback.h_dt != 0.0f)
+                                ? fabsf(e->stars_properties->log_max_h_change *
+                                        sp->h / sp->feedback.h_dt)
+                                : FLT_MAX;
+
   /* Take the minimum of all */
-  float new_dt = min3(new_dt_stars, new_dt_self, new_dt_ext);
+  float new_dt = min4(new_dt_stars, new_dt_self, new_dt_ext, dt_h_change);
 
   /* Apply the maximal displacement constraint (FLT_MAX  if non-cosmological)*/
   new_dt = min(new_dt, e->dt_max_RMS_displacement);
@@ -212,9 +218,10 @@ __attribute__((always_inline)) INLINE static integertime_t get_spart_timestep(
 
   /* Limit timestep within the allowed range */
   new_dt = min(new_dt, e->dt_max);
-  if (new_dt < e->dt_min)
+  if (new_dt < e->dt_min) {
     error("spart (id=%lld) wants a time-step (%e) below dt_min (%e)", sp->id,
           new_dt, e->dt_min);
+  }
 
   /* Convert to integer time */
   const integertime_t new_dti = make_integer_timestep(

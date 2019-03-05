@@ -53,8 +53,6 @@ struct cosmology;
 #define space_subsize_self_hydro_default 32000
 #define space_subsize_pair_grav_default 256000000
 #define space_subsize_self_grav_default 32000
-#define space_subsize_pair_stars_default 256000000
-#define space_subsize_self_stars_default 32000
 #define space_subdepth_diff_grav_default 4
 #define space_max_top_level_cells_default 12
 #define space_stretch 1.10f
@@ -225,6 +223,9 @@ struct space {
 
   /*! Sum of the norm of the velocity of all the #spart */
   float sum_spart_vel_norm;
+
+  /*! Initial value of the smoothing length read from the parameter file */
+  float initial_spart_h;
 
   /*! General-purpose lock for this space. */
   swift_lock_type lock;
