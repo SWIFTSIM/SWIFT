@@ -654,7 +654,7 @@ void runner_do_star_formation(struct runner *r, struct cell *c, int timer) {
                                            with_cosmology);
 
             /* Update the Star formation history */
-            starformation_update_SFH(sp, c->stars.sfh, cosmo, with_cosmology);
+            starformation_update_SFH(sp, c->stars.sfh);
           }
 
         } else { /* Are we not star-forming? */

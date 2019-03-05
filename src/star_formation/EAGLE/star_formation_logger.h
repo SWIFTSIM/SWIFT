@@ -37,8 +37,7 @@ struct star_formation_history {
   float new_stellar_mass;
 };
 
-INLINE static void starformation_update_SFH(struct spart* sp, struct star_formation_history* sf, const struct cosmology* cosmo, 
-    const int with_cosmology){ 
+INLINE static void starformation_update_SFH(struct spart* sp, struct star_formation_history* sf){ 
   /* Add mass of created sparticle to the total stellar mass in this cell*/
   sf->new_stellar_mass = sf->new_stellar_mass + sp->mass;
 
