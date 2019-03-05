@@ -92,6 +92,11 @@ INLINE static void star_formation_get_total_cell(const struct cell *c, struct st
   sf->N_stars += sfcell->new_stellar_mass;
 }
 
+/** 
+ * @brief Initialize the star formation history structure
+ *
+ * @param The pointer to the star formation history structure
+ * */
 INLINE static void star_formation_init_SFH_engine(struct star_formation_history *sfh){
   sfh->new_stellar_mass = 0.f;
 
