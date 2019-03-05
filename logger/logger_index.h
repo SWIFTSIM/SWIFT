@@ -17,34 +17,16 @@
  *
  ******************************************************************************/
 
-#include "logger_reader.h"
+/**
+ * @brief This file deals with the index files.
+ */
+#ifndef __LOGGER_LOGGER_INDEX_H__
+#define __LOGGER_LOGGER_INDEX_H__
 
 /**
- * @brief Initialize the reader.
- *
- * @param reader The #logger_reader.
- * @param filename The dump filename.
- * @param verbose The verbose level.
+ * @brief This structure will contain the data related to
+ *   the index file.
  */
-void logger_reader_init(struct logger_reader *reader, char *filename, int verbose) {
-  if (verbose > 1)
-    message("Initializing the reader");
-  /* Initialize the reader variables */
-  reader->verbose = verbose;
+struct logger_index {};
 
-  /* Initialize the dump */
-  logger_dump_init(&reader->dump, filename, reader);
-
-  if (verbose > 1)
-    message("Initialization done.");
-}
-
-/**
- * @brief Free the reader.
- *
- * @param reader The #logger_reader.
- */
-void logger_reader_free(struct logger_reader *reader) {
-  /* Free the dump */
-  logger_dump_free(&reader->dump);
-}
+#endif // __LOGGER_LOGGER_INDEX_H__

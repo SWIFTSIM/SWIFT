@@ -30,16 +30,18 @@
  * @param h #header structure of the file
  * @param map file mapping
  * @param offset In: initial offset, Out: offset of the next chunk
- * @param fd file id
+ * @param file_size The file size.
  *
  * @return -1 if no next chunk, otherwise 0
  */
 int tools_get_next_chunk(const struct header *h, void *map, size_t *offset,
-                         int fd) {
-  if (h->forward_offset)
+                         size_t file_size) {
+  if (header_are_offset_forward(h))
     return _tools_get_next_chunk_forward(h, map, offset);
+  if (header_are_offset_backward(h))
+    return _tools_get_next_chunk_backward(h, map, offset, file_size);
   else
-    return _tools_get_next_chunk_backward(h, map, offset, fd);
+    error("Offsets are corrupted");
 }
 
 /**
@@ -72,20 +74,17 @@ int _tools_get_next_chunk_forward(const struct header *h, void *map,
  * @param h #header structure of the file
  * @param map file mapping
  * @param offset In: initial offset, Out: offset of the next chunk
- * @param fd file id
+ * @param file_size The file size.
  *
  * @return error code, -1 if no next chunk
  */
 int _tools_get_next_chunk_backward(const struct header *h, void *map,
-                                   size_t *offset, int fd) {
+                                   size_t *offset, size_t file_size) {
 #ifndef SWIFT_DEBUG_CHECKS
   error("Should not be used, method too slow");
 #endif
   size_t current_offset = *offset;
   size_t chunk_header = LOGGER_MASK_SIZE + LOGGER_OFFSET_SIZE;
-
-  size_t file_size = 0;
-  io_get_file_size(fd, &file_size);
 
   while (current_offset < file_size) {
     size_t mask = 0;
@@ -177,13 +176,16 @@ void tools_check_offset(const struct header *h, void *map, size_t *offset) {
   io_read_mask(h, map, offset, &mask, &pointed_offset);
 
   /* get absolute offset */
-  if (h->forward_offset)
+  if (header_are_offset_forward(h))
     pointed_offset += tmp;
-  else {
+  if (header_are_offset_backward(h)) {
     if (tmp < pointed_offset)
       error("Offset too large (%lu) at %lu with mask %lu", pointed_offset, tmp,
             mask);
     pointed_offset = tmp - pointed_offset;
+  }
+  else {
+    error("Offset are corrupted");
   }
 
   /* set offset after current chunk */

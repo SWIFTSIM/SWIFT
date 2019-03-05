@@ -41,8 +41,6 @@
 static PyObject *loadFromIndex(__attribute__((unused)) PyObject *self,
                                PyObject *args) {
 
-  struct header h;
-
   /* input */
   PyArrayObject *offset = NULL;
   char *filename = NULL;
@@ -76,87 +74,64 @@ static PyObject *loadFromIndex(__attribute__((unused)) PyObject *self,
     error("Offset does not contain unsigned int");
   }
 
-  /* open file */
-  int fd;
-  void *map;
-  io_open_file(filename, &fd, &map);
-
-  /* read header */
-  header_read(&h, map);
-
-  /* reverse offset if needed */
-  if (!h.forward_offset) {
-    io_close_file(&fd, &map);
-
-    reverse_offset(filename, verbose);
-
-    io_open_file(filename, &fd, &map);
-
-    /* Reset header */
-    header_free(&h);
-
-    header_read(&h, map);
-  }
-
-  /* read timestamps */
-  struct time_array times;
-
-  time_array_init(&times, &h, map, fd);
-
-  if (verbose > 0) {
-    time_array_print(&times);
-  }
-
-  /* get required time */
-  double time = time_array_get_time(&times, time_offset);
+  /* initialize the reader */
+  verbose = 2;
+  struct logger_reader reader;
+  logger_reader_init(&reader, filename, verbose);
+  struct header *h = &reader.dump.header;
 
   /* init array */
   npy_intp dim[2];
   dim[0] = PyArray_DIMS(offset)[0];
   dim[1] = DIM;
 
+  /* Get required time. */
+  double time = time_array_get_time(&reader.dump.times, time_offset);
+
   /* init output */
-  if (header_get_field_index(&h, "positions") != -1) {
+  if (header_get_field_index(h, "positions") != -1) {
     pos = (PyArrayObject *)PyArray_SimpleNew(2, dim, NPY_DOUBLE);
   }
 
-  if (header_get_field_index(&h, "velocities") != -1) {
+  if (header_get_field_index(h, "velocities") != -1) {
     vel = (PyArrayObject *)PyArray_SimpleNew(2, dim, NPY_FLOAT);
   }
 
-  if (header_get_field_index(&h, "accelerations") != -1) {
+  if (header_get_field_index(h, "accelerations") != -1) {
     acc = (PyArrayObject *)PyArray_SimpleNew(2, dim, NPY_FLOAT);
   }
 
-  if (header_get_field_index(&h, "entropy") != -1) {
+  if (header_get_field_index(h, "entropy") != -1) {
     entropy =
         (PyArrayObject *)PyArray_SimpleNew(1, PyArray_DIMS(offset), NPY_FLOAT);
   }
 
-  if (header_get_field_index(&h, "smoothing length") != -1) {
+  if (header_get_field_index(h, "smoothing length") != -1) {
     h_sph =
         (PyArrayObject *)PyArray_SimpleNew(1, PyArray_DIMS(offset), NPY_FLOAT);
   }
 
-  if (header_get_field_index(&h, "density") != -1) {
+  if (header_get_field_index(h, "density") != -1) {
     rho =
         (PyArrayObject *)PyArray_SimpleNew(1, PyArray_DIMS(offset), NPY_FLOAT);
   }
 
-  if (header_get_field_index(&h, "consts") != -1) {
+  if (header_get_field_index(h, "consts") != -1) {
     mass =
         (PyArrayObject *)PyArray_SimpleNew(1, PyArray_DIMS(offset), NPY_FLOAT);
     id = (PyArrayObject *)PyArray_SimpleNew(1, PyArray_DIMS(offset), NPY_ULONG);
   }
 
+  if (verbose > 1)
+    message("Reading particles.");
   /* loop over all particles */
   for (npy_intp i = 0; i < PyArray_DIMS(offset)[0]; i++) {
     struct logger_particle part;
 
     size_t *offset_particle = (size_t *)PyArray_GETPTR1(offset, i);
 
-    logger_particle_read(&part, &h, map, offset_particle, time,
-                         logger_reader_lin, &times);
+    logger_particle_read(&part, &reader.dump.header, reader.dump.dump.map, offset_particle, time,
+                         logger_reader_lin, &reader.dump.times);
 
     double *dtmp;
     float *ftmp;
@@ -206,7 +181,8 @@ static PyObject *loadFromIndex(__attribute__((unused)) PyObject *self,
     }
   }
 
-  header_free(&h);
+  /* Free the memory */
+  logger_reader_free(&reader);
 
   /* construct return */
   PyObject *dict = PyDict_New();
@@ -248,8 +224,6 @@ static PyObject *loadFromIndex(__attribute__((unused)) PyObject *self,
     PyDict_SetItem(dict, key, PyArray_Return(id));
   }
 
-  io_close_file(&fd, &map);
-
   return dict;
 }
 
@@ -270,7 +244,12 @@ static PyObject *pyReverseOffset(__attribute__((unused)) PyObject *self,
 
   if (!PyArg_ParseTuple(args, "s|i", &filename, &verbose)) return NULL;
 
-  reverse_offset(filename, verbose);
+  /* initialize the reader (and reverse the offset if necessary) */
+  struct logger_reader reader;
+  logger_reader_init(&reader, filename, verbose);
+
+  /* Free the reader */
+  logger_reader_free(&reader);
 
   return Py_BuildValue("");
 }

@@ -18,6 +18,8 @@
  ******************************************************************************/
 #include "logger_time.h"
 #include "logger_io.h"
+#include "logger_dump.h"
+#include "logger_reader.h"
 
 /**
  * @brief read a time stamp
@@ -79,41 +81,37 @@ void time_first_timestamp(const struct header *h, void *map, size_t *offset) {
 }
 
 /**
- * @brief Initialize a time array
+ * @brief Initialize a time array.
  *
- * @param t #time_array to initialize
- * @param h #header file structure
- * @param map file mapping
- * @param fd file id
+ * @param t #time_array to initialize.
+ * @param dump The #logger_dump.
  */
-void time_array_init(struct time_array *t, const struct header *h, void *map,
-                     int fd) {
+void time_array_init(struct time_array *t, struct logger_dump *dump) {
 
   t->next = NULL;
   t->prev = NULL;
 
   /* get first time stamp */
   size_t offset = 0;
-  time_first_timestamp(h, map, &offset);
+  time_first_timestamp(&dump->header, dump->dump.map, &offset);
 
   integertime_t timestamp = 0;
   double time = 0;
 
   /* get file size */
-  size_t file_size;
-  io_get_file_size(fd, &file_size);
+  size_t file_size = dump->dump.file_size;
 
   while (offset < file_size) {
-
     /* read time */
     t->offset = offset;
     size_t tmp_offset = offset;
-    time_read(&timestamp, &time, h, map, &tmp_offset);
+    time_read(&timestamp, &time, &dump->header, dump->dump.map, &tmp_offset);
     t->timestamp = timestamp;
     t->time = time;
 
     /* get next chunk */
-    int test = tools_get_next_chunk(h, map, &offset, fd);
+    int test = tools_get_next_chunk(&dump->header, dump->dump.map, &offset,
+				    dump->dump.file_size);
     if (test == -1) break;
 
     /* allocate next time_array */

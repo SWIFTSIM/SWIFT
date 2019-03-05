@@ -29,8 +29,8 @@
 #include <stdlib.h>
 
 void io_get_file_size(int fd, size_t *size);
-void io_open_file(char *filename, int *fd, void **map);
-void io_close_file(int *fd, void **map);
+void *io_mmap_file(char *filename, size_t *file_size);
+void io_munmap_file(void *map, size_t file_size);
 
 /**
  * @brief read a mask with its offset

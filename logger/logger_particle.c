@@ -152,7 +152,9 @@ void logger_particle_read(struct logger_particle *part, const struct header *h,
   /* read next particle */
   struct logger_particle part_next;
 
-  if (!h->forward_offset) error("TODO");
+  if (!header_are_offset_forward(h)) {
+    error("Cannot read a particle with non forward offsets.");
+  }
 
   if (h_offset == 0) return;
   /* get absolute offset of next particle */

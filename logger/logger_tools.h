@@ -57,9 +57,9 @@ struct header;
   })
 
 int tools_get_next_chunk(const struct header *h, void *map, size_t *offset,
-                         int fd);
+                         size_t file_size);
 int _tools_get_next_chunk_backward(const struct header *h, void *map,
-                                   size_t *offset, int fd);
+                                   size_t *offset, size_t file_size);
 int _tools_get_next_chunk_forward(const struct header *h, void *map,
                                   size_t *offset);
 void tools_reverse_offset(const struct header *h, void *map, size_t *offset);

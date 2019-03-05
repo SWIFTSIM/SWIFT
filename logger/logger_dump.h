@@ -16,35 +16,49 @@
  * along with this program.  If not, see <http://www.gnu.org/licenses/>.
  *
  ******************************************************************************/
+/**
+ * @brief This file contains the high level function for the dump.
+ */
+#ifndef __LOGGER_LOGGER_DUMP_H__
+#define __LOGGER_LOGGER_DUMP_H__
 
-#include "logger_reader.h"
+#include "logger_header.h"
+#include "logger_time.h"
+
+struct logger_reader;
 
 /**
- * @brief Initialize the reader.
- *
- * @param reader The #logger_reader.
- * @param filename The dump filename.
- * @param verbose The verbose level.
+ * @brief This structure deals with the dump file.
  */
-void logger_reader_init(struct logger_reader *reader, char *filename, int verbose) {
-  if (verbose > 1)
-    message("Initializing the reader");
-  /* Initialize the reader variables */
-  reader->verbose = verbose;
+struct logger_dump {
 
-  /* Initialize the dump */
-  logger_dump_init(&reader->dump, filename, reader);
+  /* Information contained in the header. */
+  struct header header;
 
-  if (verbose > 1)
-    message("Initialization done.");
-}
+  /* The reader that is using this dump. */
+  struct logger_reader *reader;
 
-/**
- * @brief Free the reader.
- *
- * @param reader The #logger_reader.
- */
-void logger_reader_free(struct logger_reader *reader) {
-  /* Free the dump */
-  logger_dump_free(&reader->dump);
-}
+  /* Information about the time chunks */
+  struct time_array times;
+
+  /* Dump's filename */
+  char *filename;
+
+  /* The dump's variables. */
+  struct {
+    /* Mapped data */
+    void *map;
+
+    /* File size */
+    size_t file_size;
+
+  } dump;
+
+};
+
+
+void logger_dump_init(struct logger_dump *dump, char *filename, struct logger_reader *reader);
+void logger_dump_reverse_offset(struct logger_dump *dump);
+void logger_dump_free(struct logger_dump *dump);
+
+#endif // __LOGGER_LOGGER_DUMP_H__

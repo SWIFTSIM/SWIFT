@@ -61,8 +61,7 @@ struct time_array {
 
 void time_read(integertime_t *timestamp, double *time, const struct header *h,
                void *map, size_t *offset);
-void time_array_init(struct time_array *t, const struct header *h, void *map,
-                     int fd);
+void time_array_init(struct time_array *t, struct logger_dump *dump);
 integertime_t time_array_get_integertime(struct time_array *t,
                                          const size_t offset);
 double time_array_get_time(struct time_array *t, const size_t offset);

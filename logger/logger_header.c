@@ -20,10 +20,18 @@
 
 #include "logger_io.h"
 #include "logger_tools.h"
+#include "logger_dump.h"
 
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
+
+/* Task type names. */
+const char *logger_offset_name[logger_offset_count] = {
+  "Forward", "Backward", "Corrupted",
+};
+
+
 
 /**
  * @brief Print the properties of the header to stdout.
@@ -32,23 +40,18 @@
  */
 void header_print(const struct header *h) {
 #ifdef SWIFT_DEBUG_CHECKS
-  message("Debug checks enabled\n");
+  message("Debug checks enabled");
 #endif
-  message("Version:          %s\n", h->version);
-  message("First Offset:     %lu\n", h->offset_first);
-  char direction[20];
-  if (h->forward_offset)
-    strcpy(direction, "Forward");
-  else
-    strcpy(direction, "Backward");
-  message("Offset direction: %s\n", direction);
-  message("Number masks:     %lu\n", h->number_mask);
+  message("Version:          %s", h->version);
+  message("First Offset:     %lu", h->offset_first);
+  message("Offset direction: %s", logger_offset_name[h->offset_direction]);
+  message("Number masks:     %lu", h->number_mask);
 
   for (size_t i = 0; i < h->number_mask; i++) {
-    message("\tMask:  %s\n", h->masks[i].name);
-    message("\tValue: %u\n", h->masks[i].mask);
-    message("\tSize:  %i\n", h->masks[i].size);
-    message("\n");
+    message("\tMask:  %s", h->masks[i].name);
+    message("\tValue: %u", h->masks[i].mask);
+    message("\tSize:  %i", h->masks[i].size);
+    message("");
   }
 };
 
@@ -80,14 +83,14 @@ int header_get_field_index(const struct header *h, const char *field) {
  * @brief Inverse the offset direction
  *
  * @param h #header file structure
- * @param map file mapping
+ * @param new_value The new value to write
  *
  */
-void header_change_offset_direction(struct header *h, void *map) {
-  h->forward_offset = !h->forward_offset;
+void header_change_offset_direction(struct header *h, int new_value) {
+  h->offset_direction = new_value;
   size_t offset = LOGGER_VERSION_SIZE;
 
-  io_write_data(map, LOGGER_NUMBER_SIZE, &h->forward_offset, &offset);
+  io_write_data(h->dump->dump.map, LOGGER_NUMBER_SIZE, &new_value, &offset);
 }
 
 /**
@@ -96,18 +99,23 @@ void header_change_offset_direction(struct header *h, void *map) {
  * @param h out: header
  * @param map file mapping
  */
-void header_read(struct header *h, void *map) {
+void header_read(struct header *h, struct logger_dump *dump) {
   size_t offset = 0;
+  void *map = dump->dump.map;
+
+  /* Set pointer to dump */
+  h->dump = dump;
 
   /* read version */
   io_read_data(map, LOGGER_VERSION_SIZE, &h->version, &offset);
 
   /* read offset direction */
-  h->forward_offset = 0;
-  io_read_data(map, LOGGER_NUMBER_SIZE, &h->forward_offset, &offset);
+  h->offset_direction = -1;
+  io_read_data(map, LOGGER_NUMBER_SIZE, &h->offset_direction, &offset);
 
-  if (h->forward_offset != 0 && h->forward_offset != 1)
-    error("Non boolean value for the offset direction (%i)", h->forward_offset);
+  if (!header_are_offset_forward(h) && !header_are_offset_backward(h) &&
+      !header_are_offset_corrupted(h))
+    error("Wrong offset value in the header (%i)", h->offset_direction);
 
   /* read offset to first data */
   h->offset_first = 0;

@@ -29,6 +29,22 @@
 #define LOGGER_OFFSET_SIZE 7
 #define LOGGER_MASK_SIZE 1
 
+enum logger_offset_direction {
+  logger_offset_backward = 0,
+  logger_offset_forward,
+  logger_offset_corrupted,
+  /* Number of offset type */
+  logger_offset_count,
+};
+
+/**
+ * @brief Names of the offset directions.
+ */
+extern const char *logger_offset_name[];
+
+
+struct logger_dump;
+
 /**
  * @brief This structure contains everything from the file header.
  *
@@ -41,30 +57,61 @@
  * The only function that modify the file is @header_change_offset_direction.
  */
 struct header {
-  /* Logger version */
+  /* Logger version. */
   char version[STRING_SIZE];
 
-  /* offset of the first header */
+  /* Offset of the first header. */
   size_t offset_first;
 
-  /* Number of bytes for names */
+  /* Number of bytes for names. */
   size_t name_length;
 
-  /* number of masks */
+  /* Number of masks. */
   size_t number_mask;
 
-  /* list of masks */
+  /* List of masks. */
   struct mask_data *masks;
 
-  /* offset direction */
-  int forward_offset;
+  /* Direction of the offset in the chunks. */
+  int offset_direction;
+
+  /* The corresponding dump */
+  struct logger_dump *dump;
 };
 
 void header_print(const struct header *h);
 void header_free(struct header *h);
 int header_get_field_index(const struct header *h, const char *field);
-void header_read(struct header *h, void *map);
+void header_read(struct header *h, struct logger_dump *dump);
 size_t header_get_mask_size(const struct header *h, const size_t mask);
-void header_change_offset_direction(struct header *h, void *map);
+void header_change_offset_direction(struct header *h, int new_value);
+
+
+/**
+ * @brief Check if the offset are forward.
+ * @param h The #header.
+ */
+__attribute__((always_inline)) INLINE static int header_are_offset_forward(
+    const struct header *h) {
+  return h->offset_direction == logger_offset_forward;
+}
+
+/**
+ * @brief Check if the offset are backward.
+ * @param h The #header.
+ */
+__attribute__((always_inline)) INLINE static int header_are_offset_backward(
+    const struct header *h) {
+  return h->offset_direction == logger_offset_backward;
+}
+
+/**
+ * @brief Check if the offset are corrupted.
+ * @param h The #header.
+ */
+__attribute__((always_inline)) INLINE static int header_are_offset_corrupted(
+    const struct header *h) {
+  return h->offset_direction == logger_offset_corrupted;
+}
 
 #endif  // __LOGGER_LOGGER_HEADER_H__

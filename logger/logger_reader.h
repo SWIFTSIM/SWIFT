@@ -22,6 +22,28 @@
 #ifndef __LOGGER_LOGGER_READER_H__
 #define __LOGGER_LOGGER_READER_H__
 
-void reverse_offset(char *filename, int verbose);
+#include "logger_dump.h"
+#include "logger_index.h"
+
+/**
+ * @brief Main structure of the logger.
+ *
+ * This structure contains all the variables required for the logger.
+ * It should be the only structure that the user see.
+ */
+struct logger_reader {
+
+  /* Information contained in the index file */
+  struct logger_index index;
+  
+  /* Informations contained in the file header */
+  struct logger_dump dump;
+
+  /* Level of verbosity */
+  int verbose;
+};
+
+void logger_reader_init(struct logger_reader *reader, char *filename, int verbose);
+void logger_reader_free(struct logger_reader *reader);
 
 #endif  // __LOGGER_LOGGER_READER_H__
