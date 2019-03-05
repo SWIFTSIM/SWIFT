@@ -102,6 +102,33 @@ INLINE static void star_formation_get_total_cell(const struct cell *c, struct st
   sf->N_stars += sfcell->new_stellar_mass;
 }
 
+/**
+ * @brief Clear the total star formation in this cell 
+ * 
+ * @param c the cell of which we want to know the star formation
+ */
+INLINE static void star_formation_clear_total_cell(const struct cell *c){
+  /* Get the star formation history from the cell */
+  struct star_formation_history *sfcell = c->stars.sfh;
+  sfcell->new_stellar_mass = 0.f;
+  
+  sfcell->N_stars = 0;
+}
+
+/**
+ * @brief add the star formation to the parent cell 
+ * 
+ * @param c the cell for which we want to add the star formation
+ * @param sf the combined star formation history of the progeny
+ */
+INLINE static void star_formation_add_to_parent_cell(const struct cell *c, struct star_formation_history *sf){
+  /* Get the star formation history from the cell */
+  struct star_formation_history *sfcell = c->stars.sfh;
+  sfcell->new_stellar_mass = sf->new_stellar_mass;
+  
+  sfcell->N_stars = sf->N_stars;
+}
+
 /** 
  * @brief Initialize the star formation history structure
  *

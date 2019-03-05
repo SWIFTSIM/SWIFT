@@ -2396,6 +2396,9 @@ void engine_collect_end_of_step_recurse(struct cell *c,
       /* Add the star formation history in this cell to sfh_updated */
       star_formation_get_total_cell(cp, &sfh_updated, cosmo, with_cosmology);
 
+      /* Clear the star formation in this cell for next time */
+      star_formation_clear_total_cell(cp);
+
       /* Collected, so clear for next time. */
       cp->hydro.updated = 0;
       cp->grav.updated = 0;
@@ -2417,6 +2420,9 @@ void engine_collect_end_of_step_recurse(struct cell *c,
   c->hydro.inhibited = inhibited;
   c->grav.inhibited = g_inhibited;
   c->stars.inhibited = s_inhibited;
+
+  /* Store the star formation history in the parent cell */
+  star_formation_add_to_parent_cell(cp, &sfh_updated);
 }
 
 /**
