@@ -20,18 +20,20 @@
 #define SWIFT_STAR_FORMATION_LOGGER_STRUCT_H
 
 /**
- * @file src/star_formation_struct.h
- * @brief Branches between the different particle data SF tracers
+ * @file src/star_formation_logger_struct.h
+ * @brief Branches between the different SFH loggers
  */
 
 /* Config parameters. */
 #include "../config.h"
 
-/* Import the right cooling definition */
+/* Import the right SFH logger struct definition */
 #if defined(STAR_FORMATION_NONE)
 #include "./star_formation/none/star_formation_logger_struct.h"
 #elif defined(STAR_FORMATION_EAGLE)
 #include "./star_formation/EAGLE/star_formation_logger_struct.h"
+#elif defined(STAR_FORMATION_GEAR)
+#include "./star_formation/GEAR/star_formation_logger_struct.h"
 #else
 #error "Invalid choice of star formation structure."
 #endif

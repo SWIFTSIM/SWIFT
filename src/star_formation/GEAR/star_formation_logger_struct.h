@@ -16,26 +16,10 @@
  * along with this program.  If not, see <http://www.gnu.org/licenses/>.
  *
  ******************************************************************************/
-#ifndef SWIFT_STAR_FORMATION_LOGGER_H
-#define SWIFT_STAR_FORMATION_LOGGER_H
+#ifndef SWIFT_GEAR_STAR_FORMATION_LOGGER_STRUCT_H
+#define SWIFT_GEAR_STAR_FORMATION_LOGGER_STRUCT_H
 
-/**
- * @file src/star_formation_logger.h
- * @brief Branches between the SFH logger routines for the SF code.
- */
+/* Starformation history struct */
+struct star_formation_history {};
 
-/* Config parameters. */
-#include "../config.h"
-
-/* Import the right SFH logger definition */
-#if defined(STAR_FORMATION_NONE)
-#include "./star_formation/none/star_formation_logger.h"
-#elif defined(STAR_FORMATION_EAGLE)
-#include "./star_formation/EAGLE/star_formation_logger.h"
-#elif defined(STAR_FORMATION_GEAR)
-#include "./star_formation/GEAR/star_formation_logger.h"
-#else
-#error "Invalid choice of star formation model."
-#endif
-
-#endif /* SWIFT_STAR_FORMATION_LOGGER_H */
+#endif /* SWIFT_NONE_STAR_FORMATION_STRUCT_H */
