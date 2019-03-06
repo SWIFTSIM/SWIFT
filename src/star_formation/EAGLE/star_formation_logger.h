@@ -27,15 +27,7 @@
 #include "cell.h"
 #include "hydro.h"
 #include "part.h"
-
-/* Starformation history struct */
-struct star_formation_history {
-  /*! Numb of stars */
-  unsigned long int N_stars;
-
-  /*! Total new stellar mass */
-  float new_stellar_mass;
-};
+#include "star_formation_logger_struct.h"
 
 INLINE static void star_formation_update_SFH(struct spart* sp, struct star_formation_history* sf){ 
   /* Add mass of created sparticle to the total stellar mass in this cell*/
@@ -74,9 +66,9 @@ INLINE static void star_formation_add_progeny_SFH(struct star_formation_history*
  * @param cosmo the cosmology struct
  * @param with_cosmology if we run with cosmology
  */
-INLINE static void star_formation_get_total_cell(const struct cell *c, struct star_formation_history *sf){
+INLINE static void star_formation_get_total_cell(struct cell *c, struct star_formation_history *sf){
   /* Get the star formation history from the cell */
-  struct star_formation_history *sfcell = c->stars.sfh;
+  struct star_formation_history *sfcell = &c->stars.sfh;
   sf->new_stellar_mass += sfcell->new_stellar_mass;
   
   sf->N_stars += sfcell->new_stellar_mass;
@@ -87,9 +79,9 @@ INLINE static void star_formation_get_total_cell(const struct cell *c, struct st
  * 
  * @param c the cell of which we want to know the star formation
  */
-INLINE static void star_formation_clear_total_cell(const struct cell *c){
+INLINE static void star_formation_clear_total_cell(struct cell *c){
   /* Get the star formation history from the cell */
-  struct star_formation_history *sfcell = c->stars.sfh;
+  struct star_formation_history *sfcell = &c->stars.sfh;
   sfcell->new_stellar_mass = 0.f;
   
   sfcell->N_stars = 0;
@@ -101,9 +93,9 @@ INLINE static void star_formation_clear_total_cell(const struct cell *c){
  * @param c the cell for which we want to add the star formation
  * @param sf the combined star formation history of the progeny
  */
-INLINE static void star_formation_add_to_parent_cell(const struct cell *c, struct star_formation_history *sf){
+INLINE static void star_formation_add_to_parent_cell(struct cell *c, struct star_formation_history *sf){
   /* Get the star formation history from the cell */
-  struct star_formation_history *sfcell = c->stars.sfh;
+  struct star_formation_history *sfcell = &c->stars.sfh;
   sfcell->new_stellar_mass = sf->new_stellar_mass;
   
   sfcell->N_stars = sf->N_stars;

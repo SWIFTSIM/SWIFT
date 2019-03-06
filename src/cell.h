@@ -38,12 +38,12 @@
 #include "space.h"
 #include "task.h"
 #include "timeline.h"
-//#include "star_formation_logger.h"
+#include "star_formation_logger_struct.h"
 
 /* Avoid cyclic inclusions */
 struct engine;
 struct scheduler;
-struct star_formation_history;
+//struct star_formation_history;
 
 /* Max tag size set to 2^29 to take into account some MPI implementations
  * that use 2^31 as the upper bound on MPI tags and the fact that
@@ -576,7 +576,7 @@ struct cell {
     char do_sub_drift;
 
     /*! Star formation history struct */
-    struct star_formation_history *sfh;
+    struct star_formation_history sfh;
 
 #ifdef SWIFT_DEBUG_CHECKS
     /*! Last (integer) time the cell's sort arrays were updated. */
