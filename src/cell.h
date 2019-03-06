@@ -36,14 +36,14 @@
 #include "multipole.h"
 #include "part.h"
 #include "space.h"
+#include "star_formation_logger_struct.h"
 #include "task.h"
 #include "timeline.h"
-#include "star_formation_logger_struct.h"
 
 /* Avoid cyclic inclusions */
 struct engine;
 struct scheduler;
-//struct star_formation_history;
+// struct star_formation_history;
 
 /* Max tag size set to 2^29 to take into account some MPI implementations
  * that use 2^31 as the upper bound on MPI tags and the fact that

@@ -26,13 +26,14 @@
 #include <stddef.h>
 
 /* Local headers. */
-#include "timeline.h"
 #include "star_formation_logger.h"
+#include "timeline.h"
 
 /* Forward declaration of engine struct (to avoid cyclic include). */
 struct engine;
 
-/* Forward declaration of star_formation_history struct (to avoid cyclic include) */
+/* Forward declaration of star_formation_history struct (to avoid cyclic
+ * include) */
 struct star_formation_history;
 
 /* A collection of global quantities that can be processed at the same time. */

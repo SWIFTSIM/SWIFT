@@ -2488,7 +2488,7 @@ void engine_collect_end_of_step_mapper(void *map_data, int num_elements,
       g_inhibited += c->grav.inhibited;
       s_inhibited += c->stars.inhibited;
 
-      /* Get the star formation history from the current cell and store it in 
+      /* Get the star formation history from the current cell and store it in
        * the star formation history struct */
       star_formation_get_total_cell(c, &sfh_updated);
 
@@ -3122,8 +3122,9 @@ void engine_step(struct engine *e) {
 #ifdef SWIFT_DEBUG_CHECKS
     fflush(stdout);
 #endif
-    /* Write the star formation information to the file */ 
-    star_formation_write_to_file(e->time, e->cosmology->a, e->cosmology->z, e->sfh);
+    /* Write the star formation information to the file */
+    star_formation_write_to_file(e->time, e->cosmology->a, e->cosmology->z,
+                                 e->sfh);
 
     if (!e->restarting)
       fprintf(
@@ -3381,7 +3382,7 @@ void engine_check_for_dumps(struct engine *e) {
 #endif
         }
 
-          /* Dump... */
+        /* Dump... */
 #ifdef WITH_LOGGER
         /* Write a file containing the offsets in the particle logger. */
         engine_dump_index(e);

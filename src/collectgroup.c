@@ -158,7 +158,7 @@ void collectgroup1_init(
   grp1->total_nr_cells = total_nr_cells;
   grp1->total_nr_tasks = total_nr_tasks;
   grp1->tasks_per_cell_max = tasks_per_cell;
-  grp1->sfh = sfh; 
+  grp1->sfh = sfh;
 }
 
 /**

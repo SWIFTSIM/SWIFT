@@ -23,8 +23,8 @@
 #include <stdlib.h>
 
 /* Local includes */
-#include "cosmology.h"
 #include "cell.h"
+#include "cosmology.h"
 #include "hydro.h"
 #include "part.h"
 #include "star_formation_logger_struct.h"
@@ -36,14 +36,15 @@
  * @param sp new created star particle
  * @param sf the star_formation_history struct of the current cell
  */
-INLINE static void star_formation_update_SFH(struct spart* sp, struct star_formation_history* sf){}
+INLINE static void star_formation_update_SFH(
+    struct spart *sp, struct star_formation_history *sf) {}
 
 /**
  * @brief Initialize the star formation history struct
  *
  * @param sf the star_formation_history struct we want to initialize
  */
-INLINE static void star_formation_init_SFH(struct star_formation_history* sf){}
+INLINE static void star_formation_init_SFH(struct star_formation_history *sf) {}
 
 /**
  * @brief function to add the progeny SFH to the parent SFH.
@@ -51,52 +52,58 @@ INLINE static void star_formation_init_SFH(struct star_formation_history* sf){}
  * @param sf parent SFH struct
  * @param sfprogeny progeny SFH struct
  */
-INLINE static void star_formation_add_progeny_SFH(struct star_formation_history* sf, 
-    const struct star_formation_history* sfprogeny){}
+INLINE static void star_formation_add_progeny_SFH(
+    struct star_formation_history *sf,
+    const struct star_formation_history *sfprogeny) {}
 
 /**
- * @brief Get the total star formation in this cell and add it to the star 
+ * @brief Get the total star formation in this cell and add it to the star
  * formation history struct
  *
  * @param c the cell of which we want to know the star formation
- * @param sf the star formation structure to which we want to add the star 
+ * @param sf the star formation structure to which we want to add the star
  * formation
  * @param cosmo the cosmology struct
  * @param with_cosmology if we run with cosmology
  */
-INLINE static void star_formation_get_total_cell(struct cell *c, struct star_formation_history *sf){}
+INLINE static void star_formation_get_total_cell(
+    struct cell *c, struct star_formation_history *sf) {}
 
 /**
- * @brief Clear the total star formation in this cell 
- * 
+ * @brief Clear the total star formation in this cell
+ *
  * @param c the cell of which we want to know the star formation
  */
-INLINE static void star_formation_clear_total_cell(struct cell *c){}
+INLINE static void star_formation_clear_total_cell(struct cell *c) {}
 
 /**
- * @brief add the star formation to the parent cell 
- * 
+ * @brief add the star formation to the parent cell
+ *
  * @param c the cell for which we want to add the star formation
  * @param sf the combined star formation history of the progeny
  */
-INLINE static void star_formation_add_to_parent_cell(struct cell *c, struct star_formation_history *sf){}
+INLINE static void star_formation_add_to_parent_cell(
+    struct cell *c, struct star_formation_history *sf) {}
 
-/** 
+/**
  * @brief Initialize the star formation history structure
  *
  * @param The pointer to the star formation history structure
  * */
-INLINE static void star_formation_init_SFH_engine(struct star_formation_history *sfh){}
+INLINE static void star_formation_init_SFH_engine(
+    struct star_formation_history *sfh) {}
 
 /**
- * @brief Write the final SFH to a file 
+ * @brief Write the final SFH to a file
  *
  * @param time the simulation time
  * @param a the scale factor
  * @param z the redshift
  * @param sf the star_formation_history struct
  */
-INLINE static void star_formation_write_to_file(const double time, const double a, const double z, struct star_formation_history sf){}
+INLINE static void star_formation_write_to_file(
+    const double time, const double a, const double z,
+    struct star_formation_history sf) {}
 
 /**
  * @brief Initialize the SFH logger file

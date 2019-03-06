@@ -47,10 +47,10 @@
 #include "runner.h"
 #include "scheduler.h"
 #include "space.h"
+#include "star_formation_logger.h"
 #include "task.h"
 #include "units.h"
 #include "velociraptor_interface.h"
-#include "star_formation_logger.h"
 
 /**
  * @brief The different policies the #engine can follow.
