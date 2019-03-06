@@ -26,6 +26,12 @@ struct star_formation_history {
 
   /*! Total new stellar mass */
   float new_stellar_mass;
+
+  /*! SFR of all particles */
+  float SFR;
+
+  /*! SFR of active particles */
+  float SFR_active;
 };
 
 #endif /* SWIFT_EAGLE_STAR_FORMATION_LOGGER_STRUCT_H */
