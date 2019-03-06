@@ -130,4 +130,20 @@ INLINE static void star_formation_init_SFH_engine(struct star_formation_history 
   sfh->N_stars = 0;
 }
 
+/**
+ * @brief Write the final SFH to a file 
+ *
+ * @param time the simulation time
+ * @param a the scale factor
+ * @param z the redshift
+ * @param sf the star_formation_history struct
+ */
+INLINE static void star_formation_write_to_file(const double time, const double a, const double z, struct star_formation_history sf){
+  FILE *fp;
+  fp = fopen("./SFH.txt", "a");
+  fprintf(fp, "%14e %12.7f %12.7f %10lu %14e\n", time, a,
+      z, sf.N_stars, sf.new_stellar_mass);
+  fclose(fp);
+}
+
 #endif /* SWIFT_SCHAYE_STARFORMATION_LOGGER_H */

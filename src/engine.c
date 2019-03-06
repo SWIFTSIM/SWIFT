@@ -3126,11 +3126,7 @@ void engine_step(struct engine *e) {
     fflush(stdout);
 #endif
     /* Write the star formation information to the file */ 
-    FILE *fp;
-    fp = fopen("./SFH.txt", "a");
-    fprintf(fp, "%14e %12.7f %12.7f %10lu %14e\n", e->time, e->cosmology->a, 
-        e->cosmology->z, e->sfh.N_stars, e->sfh.new_stellar_mass);
-    fclose(fp);
+    star_formation_write_to_file(e->time, e->cosmology->a, e->cosmology->z, e->sfh);
 
     if (!e->restarting)
       fprintf(
