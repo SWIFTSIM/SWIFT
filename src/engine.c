@@ -2906,8 +2906,8 @@ void engine_init_particles(struct engine *e, int flag_entropy_ICs,
   /* Now time to get ready for the first time-step */
   if (e->nodeID == 0) message("Running initial fake time-step.");
 
-  /* Prepare all the tasks again for a new round */
-  engine_marktasks(e);
+  /* Construct all cells again for a new round (need to update h_max) */
+  engine_rebuild(e, 0, 0);
 
   /* No drift this time */
   engine_skip_drift(e);
