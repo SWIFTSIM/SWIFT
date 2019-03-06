@@ -146,4 +146,16 @@ INLINE static void star_formation_write_to_file(const double time, const double 
   fclose(fp);
 }
 
+/**
+ * @brief Initialize the SFH logger file
+ *
+ * @param none
+ */
+INLINE static void star_formation_init_file_writer(void) {
+  FILE *fp;
+  fp = fopen("./SFH.txt", "w");
+  fprintf(fp, "#     Time            a            z       N_stars    total M_stars\n");
+  fclose(fp);
+}
+
 #endif /* SWIFT_SCHAYE_STARFORMATION_LOGGER_H */
