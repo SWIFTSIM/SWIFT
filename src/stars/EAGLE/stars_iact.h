@@ -1,3 +1,24 @@
+/*******************************************************************************
+ * This file is part of SWIFT.
+ * Copyright (c) 2018 Matthieu Schaller (matthieu.schaller@durham.ac.uk)
+ *
+ * This program is free software: you can redistribute it and/or modify
+ * it under the terms of the GNU Lesser General Public License as published
+ * by the Free Software Foundation, either version 3 of the License, or
+ * (at your option) any later version.
+ *
+ * This program is distributed in the hope that it will be useful,
+ * but WITHOUT ANY WARRANTY; without even the implied warranty of
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+ * GNU General Public License for more details.
+ *
+ * You should have received a copy of the GNU Lesser General Public License
+ * along with this program.  If not, see <http://www.gnu.org/licenses/>.
+ *
+ ******************************************************************************/
+#ifndef SWIFT_EAGLE_STARS_IACT_H
+#define SWIFT_EAGLE_STARS_IACT_H
+
 /**
  * @brief Density interaction between two particles (non-symmetric).
  *
@@ -17,7 +38,7 @@ runner_iact_nonsym_stars_density(float r2, const float *dx, float hi, float hj,
                                  float H) {
 
   /* Get the gas mass. */
-  const float mj = pj->mass;
+  const float mj = hydro_get_mass(pj);
 
   float wi, wi_dx;
 
@@ -61,3 +82,5 @@ __attribute__((always_inline)) INLINE static void
 runner_iact_nonsym_stars_feedback(float r2, const float *dx, float hi, float hj,
                                   struct spart *restrict si,
                                   struct part *restrict pj, float a, float H) {}
+
+#endif /* SWIFT_EAGLE_STARS_IACT_H */
