@@ -3120,7 +3120,7 @@ void engine_step(struct engine *e) {
         e->min_active_bin, e->max_active_bin, e->updates, e->g_updates,
         e->s_updates, e->wallclock_time, e->step_props);
     printf(
-        "SFH logger: time=%14e a=%12.7f z=%12.7f N=%lu M=%14e",
+        "SFH logger: time=%14e a=%12.7f z=%12.7f N=%lu M=%14e \n",
         e->time, e->cosmology->a, e->cosmology->z, e->sfh.N_stars, e->sfh.new_stellar_mass);
 #ifdef SWIFT_DEBUG_CHECKS
     fflush(stdout);
