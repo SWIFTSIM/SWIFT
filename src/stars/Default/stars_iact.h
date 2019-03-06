@@ -81,7 +81,7 @@ runner_iact_nonsym_stars_feedback(float r2, const float *dx, float hi, float hj,
                                   struct part *restrict pj, float a, float H) {
 
   const float mj = hydro_get_mass(pj);
-  const float rhoj = pj->rho;
+  const float rhoj = hydro_get_comoving_density(pj);
   const float r = sqrtf(r2);
   const float ri = 1.f / r;
 
