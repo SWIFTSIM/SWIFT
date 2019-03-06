@@ -41,7 +41,7 @@ INLINE static void star_formation_update_SFH(struct spart* sp, struct star_forma
   sf->new_stellar_mass = sf->new_stellar_mass + sp->mass;
 
   /* Increase the counter */
-  sf->N_stars++;
+  sf->N_stars = sf->N_stars + 1;
 
 }
 
