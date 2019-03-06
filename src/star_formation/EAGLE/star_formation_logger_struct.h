@@ -22,10 +22,10 @@
 /* Starformation history struct */
 struct star_formation_history {
   /*! Numb of stars */
-  unsigned long int N_stars;
+  long long int N_stars;
 
   /*! Total new stellar mass */
   float new_stellar_mass;
 };
 
-#endif /* SWIFT_EAGLE_STAR_FORMATION_STRUCT_H */
+#endif /* SWIFT_EAGLE_STAR_FORMATION_LOGGER_STRUCT_H */
