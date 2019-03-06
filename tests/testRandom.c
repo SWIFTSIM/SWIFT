@@ -46,7 +46,7 @@
  * @param total12 sum of x_i * y_i of both series of numbers
  * @param var1 variance of the first series of numbers
  * @param var2 variance of the second series of numbers
- * @param number of elements in both series
+ * @param counter number of elements in both series
  * @return the Pearson correlation coefficient
  * */
 double pearsonfunc(double mean1, double mean2, double total12, double var1,
@@ -80,7 +80,8 @@ double pearsonfunc(double mean1, double mean2, double total12, double var1,
  * More information about the Pearson correlation coefficient can be found in
  * the function pearsonfunc above this function.
  *
- * @param none
+ * @param argc Unused
+ * @param argv Unused
  * @return 0 if everything is fine, 1 if random numbers are not random enough.
  */
 int main(int argc, char* argv[]) {
