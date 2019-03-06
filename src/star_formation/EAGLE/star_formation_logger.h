@@ -29,6 +29,13 @@
 #include "part.h"
 #include "star_formation_logger_struct.h"
 
+/**
+ * @brief Update the star foramtion history in the current cell after creating
+ * the new star particle spart sp
+ *
+ * @param sp new created star particle
+ * @param sf the star_formation_history struct of the current cell
+ */
 INLINE static void star_formation_update_SFH(struct spart* sp, struct star_formation_history* sf){ 
   /* Add mass of created sparticle to the total stellar mass in this cell*/
   sf->new_stellar_mass = sf->new_stellar_mass + sp->mass;
@@ -38,6 +45,11 @@ INLINE static void star_formation_update_SFH(struct spart* sp, struct star_forma
 
 }
 
+/**
+ * @brief Initialize the star formation history struct
+ *
+ * @param sf the star_formation_history struct we want to initialize
+ */
 INLINE static void star_formation_init_SFH(struct star_formation_history* sf){ 
   /* Initialize the stellar mass to zero*/
   sf->new_stellar_mass = 0.f;
@@ -47,6 +59,12 @@ INLINE static void star_formation_init_SFH(struct star_formation_history* sf){
 
 }
 
+/**
+ * @brief function to add the progeny SFH to the parent SFH.
+ *
+ * @param sf parent SFH struct
+ * @param sfprogeny progeny SFH struct
+ */
 INLINE static void star_formation_add_progeny_SFH(struct star_formation_history* sf, 
     const struct star_formation_history* sfprogeny){
   /* Add the new stellar mass from the progeny */
