@@ -32,6 +32,9 @@ struct star_formation_history {
 
   /*! SFR of active particles */
   float SFR_active;
+
+  /*! SFR*dt of active particles */
+  float SFRdt_active;
 };
 
 #endif /* SWIFT_EAGLE_STAR_FORMATION_LOGGER_STRUCT_H */

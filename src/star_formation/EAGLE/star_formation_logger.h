@@ -56,6 +56,12 @@ INLINE static void star_formation_init_SFH(struct star_formation_history *sf) {
 
   /* Initialize the counter at zero */
   sf->N_stars = 0;
+
+  /* Initialize the active SFR */
+  sf->SFR_active = 0.f;
+
+  /* Initialize the SFR*dt active */
+  sf->SFRdt_active = 0.f;
 }
 
 /**
@@ -72,6 +78,12 @@ INLINE static void star_formation_add_progeny_SFH(
 
   /* Increase amount of new stars formed */
   sf->N_stars = sf->N_stars + sfprogeny->N_stars;
+
+  /* Add the SFR of the progeny */
+  sf->SFR_active += sfprogeny->SFR_active;
+
+  /* Add the SFR * dt of the progeny */
+  sf->SFRdt_active += sfprogeny->SFRdt_active;
 }
 
 /**
@@ -91,6 +103,8 @@ INLINE static void star_formation_get_total_cell(
   sf->new_stellar_mass += sfcell->new_stellar_mass;
 
   sf->N_stars += sfcell->new_stellar_mass;
+  
+  sf->SFR_active += sfcell->SFR_active;
 }
 
 /**
@@ -104,6 +118,8 @@ INLINE static void star_formation_clear_total_cell(struct cell *c) {
   sfcell->new_stellar_mass = 0.f;
 
   sfcell->N_stars = 0;
+
+  sfcell->SFR_active = 0.f;
 }
 
 /**
@@ -116,9 +132,11 @@ INLINE static void star_formation_add_to_parent_cell(
     struct cell *c, struct star_formation_history *sf) {
   /* Get the star formation history from the cell */
   struct star_formation_history *sfcell = &c->stars.sfh;
-  sfcell->new_stellar_mass = sf->new_stellar_mass;
+  sfcell->new_stellar_mass += sf->new_stellar_mass;
 
-  sfcell->N_stars = sf->N_stars;
+  sfcell->N_stars += sf->N_stars;
+
+  sfcell->SFR_active += sf->SFR_active;
 }
 
 /**
@@ -131,6 +149,8 @@ INLINE static void star_formation_init_SFH_engine(
   sfh->new_stellar_mass = 0.f;
 
   sfh->N_stars = 0;
+
+  sfh->SFR_active = 0.f;
 }
 
 /**
@@ -146,8 +166,8 @@ INLINE static void star_formation_write_to_file(
     struct star_formation_history sf) {
   FILE *fp;
   fp = fopen("./SFH.txt", "a");
-  fprintf(fp, "%15e %12.7f %12.7f %10lld %14e\n", time, a, z, sf.N_stars,
-          sf.new_stellar_mass);
+  fprintf(fp, "%16e %12.7f %12.7f %10lld %14e %14e\n", time, a, z, sf.N_stars,
+          sf.new_stellar_mass, sf.SFR_active);
   fclose(fp);
 }
 
@@ -161,8 +181,25 @@ INLINE static void star_formation_init_file_writer(void) {
   fp = fopen("./SFH.txt", "w");
   fprintf(
       fp,
-      "#     Time            a            z       N_stars    total M_stars\n");
+      "#     Time            a            z       N_stars    total M_stars    SFR (active) SFR*dt (active)\n");
   fclose(fp);
+}
+
+/**
+ * @brief Add the SFR tracer to the total active SFR of this cell
+ *
+ * @param p the #part
+ * @param xp the #xpart 
+ * @param sf the SFH logger struct 
+ */
+INLINE static void star_formation_log_for_active_particles(
+    const struct part* p, const struct xpart* xp, struct star_formation_history *sf, const double dt_star){
+
+  /* Add the SFR to the logger file */
+  sf->SFR_active += xp->sf_data.SFR;
+
+  /* Update the active SFR*dt */
+  sf->SFRdt_active += xp->sf_data.SFR * dt_star;
 }
 
 #endif /* SWIFT_SCHAYE_STARFORMATION_LOGGER_H */
