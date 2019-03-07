@@ -671,7 +671,9 @@ void runner_do_star_formation(struct runner *r, struct cell *c, int timer) {
                                              with_cosmology);
 
         } /* Not Star-forming? */
-      }   /* is active? */
+      } else {  /* is active? */
+        star_formation_log_for_inactive_particles(p, xp, &c->stars.sfh);
+      }
     }     /* Loop over particles */
   }
 

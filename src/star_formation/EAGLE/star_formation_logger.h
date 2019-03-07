@@ -231,7 +231,7 @@ INLINE static void star_formation_init_file_writer(void) {
   fp = fopen("./SFH.txt", "w");
   fprintf(
       fp,
-      "#     Time            a            z       N_stars    total M_stars    SFR (active) SFR*dt (active)\n");
+      "#     Time            a            z       N_stars    total M_stars    SFR (active) SFR*dt (active)  SFR (total)\n");
   fclose(fp);
 }
 
@@ -250,6 +250,13 @@ INLINE static void star_formation_log_for_active_particles(
 
   /* Update the active SFR*dt */
   sf->SFRdt_active += xp->sf_data.SFR * dt_star;
+}
+
+INLINE static void star_formation_log_for_inactive_particles(
+    const struct part* p, const struct xpart* xp, struct star_formation_history *sf){
+
+  /* Add the SFR to the logger file */
+  sf->SFR_inactive += xp->sf_data.SFR;
 }
 
 #endif /* SWIFT_SCHAYE_STARFORMATION_LOGGER_H */
