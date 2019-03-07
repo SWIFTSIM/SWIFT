@@ -592,7 +592,11 @@ void runner_do_star_formation(struct runner *r, struct cell *c, int timer) {
   star_formation_init_SFH(&c->stars.sfh);
 
   /* Anything to do here? */
-  if (!cell_is_active_hydro(c, e)) return;
+  if (!cell_is_active_hydro(c, e)) {
+    star_formation_init_SFH_inactive(&c->stars.sfh); 
+    return;
+  }
+  star_formation_init_SFH_active(&c->stars.sfh);
 
   /* Recurse? */
   if (c->split) {
@@ -642,7 +646,7 @@ void runner_do_star_formation(struct runner *r, struct cell *c, int timer) {
           star_formation_compute_SFR(p, xp, sf_props, phys_const, cosmo,
                                      dt_star);
 
-          /* Add the SFR to the SFH struct of this cell */
+          /* Add the SFR and SFR*dt to the SFH struct of this cell */
           star_formation_log_for_active_particles(p, xp, &c->stars.sfh, dt_star);
 
           /* Are we forming a star particle from this SF rate? */

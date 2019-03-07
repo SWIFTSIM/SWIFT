@@ -28,7 +28,7 @@ struct star_formation_history {
   float new_stellar_mass;
 
   /*! SFR of all particles */
-  float SFR;
+  float SFR_inactive;
 
   /*! SFR of active particles */
   float SFR_active;
