@@ -25,7 +25,7 @@
 #include "chemistry.h"
 
 static const float log_min_metallicity = -20;
-static const int n_mass_bins = 11; // temporary, put in correct value and move elsewhere.
+static const int n_mass_bins = 200; // temporary, put in correct value and move elsewhere.
 
 // Temporary, these functions need to be somewhere else
 inline static char *mystrdup(const char *s) {
@@ -367,19 +367,19 @@ inline static void allocate_yield_tables(struct stars_props *restrict stars){
   if (posix_memalign((void **)&stars->yield_AGB.metallicity, SWIFT_STRUCT_ALIGNMENT, stars->AGB_n_z * sizeof(double)) !=0) {
     error("Failed to allocate AGB metallicity array");
   }
-  if (posix_memalign((void **)&stars->yield_AGB.SPH, SWIFT_STRUCT_ALIGNMENT, stars->AGB_n_z * stars->AGB_n_mass * stars->AGB_n_elements * sizeof(double)) !=0) {
+  if (posix_memalign((void **)&stars->yield_AGB.SPH, SWIFT_STRUCT_ALIGNMENT, stars->AGB_n_z * n_mass_bins * stars->AGB_n_elements * sizeof(double)) !=0) {
     error("Failed to allocate AGB SPH array");
   }
   if (posix_memalign((void **)&stars->yield_AGB.yield, SWIFT_STRUCT_ALIGNMENT, stars->AGB_n_z * stars->AGB_n_mass * stars->AGB_n_elements * sizeof(double)) !=0) {
     error("Failed to allocate AGB yield array");
   }
-  if (posix_memalign((void **)&stars->yield_AGB.ejecta_SPH, SWIFT_STRUCT_ALIGNMENT, stars->AGB_n_z * stars->AGB_n_mass * sizeof(double)) !=0) {
+  if (posix_memalign((void **)&stars->yield_AGB.ejecta_SPH, SWIFT_STRUCT_ALIGNMENT, stars->AGB_n_z * n_mass_bins * sizeof(double)) !=0) {
     error("Failed to allocate AGB ejecta SPH array");
   }
   if (posix_memalign((void **)&stars->yield_AGB.ejecta, SWIFT_STRUCT_ALIGNMENT, stars->AGB_n_z * stars->AGB_n_mass * sizeof(double)) !=0) {
     error("Failed to allocate AGB ejecta array");
   }
-  if (posix_memalign((void **)&stars->yield_AGB.total_metals_SPH, SWIFT_STRUCT_ALIGNMENT, stars->AGB_n_z * stars->AGB_n_mass * sizeof(double)) !=0) {
+  if (posix_memalign((void **)&stars->yield_AGB.total_metals_SPH, SWIFT_STRUCT_ALIGNMENT, stars->AGB_n_z * n_mass_bins * sizeof(double)) !=0) {
     error("Failed to allocate AGB total metals SPH array");
   }
   if (posix_memalign((void **)&stars->yield_AGB.total_metals, SWIFT_STRUCT_ALIGNMENT, stars->AGB_n_z * stars->AGB_n_mass * sizeof(double)) !=0) {
@@ -393,19 +393,19 @@ inline static void allocate_yield_tables(struct stars_props *restrict stars){
   if (posix_memalign((void **)&stars->yield_SNII.metallicity, SWIFT_STRUCT_ALIGNMENT, stars->SNII_n_z * sizeof(double)) !=0) {
     error("Failed to allocate SNII metallicity array");
   }
-  if (posix_memalign((void **)&stars->yield_SNII.SPH, SWIFT_STRUCT_ALIGNMENT, stars->SNII_n_z * stars->SNII_n_mass * stars->SNII_n_elements * sizeof(double)) !=0) {
+  if (posix_memalign((void **)&stars->yield_SNII.SPH, SWIFT_STRUCT_ALIGNMENT, stars->SNII_n_z * n_mass_bins * stars->SNII_n_elements * sizeof(double)) !=0) {
     error("Failed to allocate SNII SPH array");
   }
   if (posix_memalign((void **)&stars->yield_SNII.yield, SWIFT_STRUCT_ALIGNMENT, stars->SNII_n_z * stars->SNII_n_mass * stars->SNII_n_elements * sizeof(double)) !=0) {
     error("Failed to allocate SNII yield array");
   }
-  if (posix_memalign((void **)&stars->yield_SNII.ejecta_SPH, SWIFT_STRUCT_ALIGNMENT, stars->SNII_n_z * stars->SNII_n_mass * sizeof(double)) !=0) {
+  if (posix_memalign((void **)&stars->yield_SNII.ejecta_SPH, SWIFT_STRUCT_ALIGNMENT, stars->SNII_n_z * n_mass_bins * sizeof(double)) !=0) {
     error("Failed to allocate SNII ejecta SPH array");
   }
   if (posix_memalign((void **)&stars->yield_SNII.ejecta, SWIFT_STRUCT_ALIGNMENT, stars->SNII_n_z * stars->SNII_n_mass * sizeof(double)) !=0) {
     error("Failed to allocate SNII ejecta array");
   }
-  if (posix_memalign((void **)&stars->yield_SNII.total_metals_SPH, SWIFT_STRUCT_ALIGNMENT, stars->SNII_n_z * stars->SNII_n_mass * sizeof(double)) !=0) {
+  if (posix_memalign((void **)&stars->yield_SNII.total_metals_SPH, SWIFT_STRUCT_ALIGNMENT, stars->SNII_n_z * n_mass_bins * sizeof(double)) !=0) {
     error("Failed to allocate SNII total metals SPH array");
   }
   if (posix_memalign((void **)&stars->yield_SNII.total_metals, SWIFT_STRUCT_ALIGNMENT, stars->SNII_n_z * stars->SNII_n_mass * sizeof(double)) !=0) {
@@ -452,6 +452,24 @@ inline static void allocate_yield_tables(struct stars_props *restrict stars){
   }
 }
 
+inline static double interpolate_1D(double *array_x, double *array_y, int size, double value){
+  
+  double result;
+
+  if (value < array_x[0]) 
+    error("interpolating value less than array min. value %.5e array min %.5e", value, array_x[0]);
+  else if (value > array_x[size-1]) 
+    error("interpolating value greater than array max. value %.5e array max %.5e", value, array_x[size-1]);
+  else {
+    int index = 0;
+    while (array_x[index] <= value) index++;
+    double offset = (array_x[index] - value)/(array_x[index] - array_x[index-1]);
+    result = offset*array_y[index-1] + (1 - offset)*array_y[index];
+  }
+
+  return result;
+}
+
 inline static void compute_yields(struct stars_props *restrict stars){
 
   int index, index_2d;
@@ -495,6 +513,7 @@ inline static void compute_yields(struct stars_props *restrict stars){
 
   /* Loop over elements tracked in EAGLE  */
   int element_index = 0;
+  // ALEXEI: better name for eagle_elem?
   for (enum chemistry_element eagle_elem = chemistry_element_H; eagle_elem < chemistry_element_count; eagle_elem++) {
     /* SNIa  */
     element_index = get_element_index(chemistry_get_element_name(eagle_elem), stars->SNIa_element_names, stars->SNIa_n_elements);
@@ -505,8 +524,15 @@ inline static void compute_yields(struct stars_props *restrict stars){
     for (int i = 0; i < stars->SNII_n_z; i++) {
       for (int j = 0; j < stars->SNII_n_mass; j++) {
         index = row_major_index_3d(i, element_index, j, stars->SNII_n_z, stars->SNII_n_elements, stars->SNII_n_mass);
-	SNII_yield[j] = stars->yield_SNII.yield[index] / exp(M_LN10 * stars->yield_SNII.mass[j]);
+	SNII_yield[j] = stars->yield_SNII.yield[index] * exp(M_LN10 * (-stars->yield_SNII.mass[j]));
+	//if (SNII_yield[j] < 0) error("SNII_yield negative %.5e z_i %d element_index %d mass_i %d table yield %.5e factor %.5e", SNII_yield[j], i, element_index, j, stars->yield_SNII.yield[index], exp(M_LN10 * (-stars->yield_SNII.mass[j])));
       }
+
+      // ALEXEI: for some reason need to define another accel_ptr so that it doesn't crash due to thinking we're trying to interpolate out of bounds when we're not. Investigate more?
+      //gsl_interp_accel *SNII_accel_ptr;
+      //gsl_spline *SNII_spline_ptr2;
+      //SNII_accel_ptr = gsl_interp_accel_alloc();
+      //SNII_spline_ptr2 = gsl_spline_alloc(gsl_interp_linear, stars->SNII_n_mass);
 
       gsl_spline_init(SNII_spline_ptr, stars->yield_SNII.mass, SNII_yield, stars->SNII_n_mass);
 
@@ -515,13 +541,20 @@ inline static void compute_yields(struct stars_props *restrict stars){
           result = SNII_yield[0];
         else if (stars->yield_mass_bins[k] > stars->yield_SNII.mass[stars->SNII_n_mass - 1])
           result = SNII_yield[stars->SNII_n_mass - 1];
-        else
-          result =
-              gsl_spline_eval(SNII_spline_ptr, stars->yield_mass_bins[k], accel_ptr);
+        else {
+	  //message("k %d yield_mass %.5e min max mass %.5e %.5e n_mass %d", k, stars->yield_mass_bins[k], stars->yield_SNII.mass[0], stars->yield_SNII.mass[stars->SNII_n_mass - 1], stars->SNII_n_mass);
+          //result =
+          //    gsl_spline_eval(SNII_spline_ptr, stars->yield_mass_bins[k], accel_ptr);
+	  result = interpolate_1D(stars->yield_SNII.mass,SNII_yield, stars->SNII_n_mass,stars->yield_mass_bins[k]);
+	  //message("result %.5e", result);
+	}
 
         index = row_major_index_3d(i,eagle_elem,k,stars->SNII_n_z,chemistry_element_count,n_mass_bins);
         stars->yield_SNII.SPH[index] = exp(M_LN10 * stars->yield_mass_bins[k]) * result;
       }
+
+      //gsl_interp_accel_free(SNII_accel_ptr);
+      //gsl_spline_free(SNII_spline_ptr2);
     }
 
     for (int i = 0; i < stars->SNII_n_z; i++) {
@@ -611,7 +644,7 @@ inline static void compute_ejecta(struct stars_props *restrict stars) {
             gsl_spline_eval(SNII_spline_ptr, stars->yield_mass_bins[k], accel_ptr);
             
       index = row_major_index_2d(i,k,stars->SNII_n_z,stars->SNII_n_mass);
-      stars->yield_SNII.ejecta_SPH[index] = exp(M_LN10 * stars->yield_mass_bins[k]) * result;                                            
+      stars->yield_SNII.ejecta_SPH[index] = exp(M_LN10 * stars->yield_mass_bins[k]) * result;
     } 
   }       
     

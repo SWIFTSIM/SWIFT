@@ -46,10 +46,12 @@ inline static void determine_imf_bins(double log_min_dying_mass, double log_max_
 
   for (i1 = 0;
        i1 < N_imf_mass_bins - 2 && star_properties->imf_mass_bin_log10[i1 + 1] < log_min_dying_mass;
-       i1++);
+       i1++);// message("i1 %d N_imf_mass_bins-2 %d imf_mass %.5e min_dying_mass %.5e", i1,N_imf_mass_bins - 2, star_properties->imf_mass_bin_log10[i1 + 1], log_min_dying_mass);
 
   for (i2 = 1;
        i2 < N_imf_mass_bins - 1 && star_properties->imf_mass_bin_log10[i2] < log_max_dying_mass; i2++);
+       //message("i2 %d N_imf_mass_bins-1 %d imf_mass %.5e max_dying_mass %.5e", i2,N_imf_mass_bins - 1, star_properties->imf_mass_bin_log10[i2], log_max_dying_mass);
+
 
   *ilow = i1;
   *ihigh = i2;
@@ -125,14 +127,14 @@ inline static float integrate_imf(float log_min_mass, float log_max_mass, float 
   result *= dlm * log(10.0); /* log(10) since mass function tabulated as
                                 function of log_10(mass) */
 
-  float running_total = 0.f;
-  if (result < 0) {
-    for (index = ilow; index < ihigh+1; index++) {
-      running_total += integrand[index];
-      message("index %d running sum %.5e integrand %.5e stellar_yield %.5e imf_number %.5e imf_mass_bin %.5e", index, running_total, integrand[index], stellar_yields[index], star_properties->imf_by_number[index], star_properties->imf_mass_bin[index]);
-    }
-    message("dlm %.5e", dlm);
-  }
+  //float running_total = 0.f;
+  //if (result < 0) {
+  //  for (index = ilow; index < ihigh+1; index++) {
+  //    running_total += integrand[index];
+  //    message("index %d running sum %.5e integrand %.5e stellar_yield %.5e imf_number %.5e imf_mass_bin %.5e", index, running_total, integrand[index], stellar_yields[index], star_properties->imf_by_number[index], star_properties->imf_mass_bin[index]);
+  //  }
+  //  message("dlm %.5e", dlm);
+  //}
   return result;
 
 }

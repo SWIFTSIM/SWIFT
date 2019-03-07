@@ -27,8 +27,8 @@
 static const float log10_SNII_min_mass_msun = 0.77815125f; // log10(6).
 static const float log10_SNII_max_mass_msun = 2.f; // log10(100).
 static const float log10_SNIa_max_mass_msun = 0.90308999f; // log10(8).
-static const float imf_max_mass_msun = 100.f; // temporary guess.
-static const float imf_min_mass_msun = 0.1; // temporary guess.
+static const float imf_max_mass_msun = 100.f;
+static const float imf_min_mass_msun = 0.1;
 
 /**
  * @brief Computes the gravity time-step of a given star particle.
@@ -582,6 +582,7 @@ inline static void evolve_SNII(float log10_min_mass, float log10_max_mass,
                       sp->chemistry_data.metal_mass_fraction[i] * stars->yield_SNII.ejecta_SPH[low_index_2d]) +
           dz * (stars->yield_SNII.SPH[high_index_3d] +
                 sp->chemistry_data.metal_mass_fraction[i] * stars->yield_SNII.ejecta_SPH[high_index_2d]);
+    //if (stars->stellar_yield[imass] < 0) error("nz %d n_mass %d iz_low %d mass_i %d ilow %d ihigh %d element %d stellar_yield %.5e dz %.5e low, high index %d %d metals_sph %.5e %.5e mass_frac %.5e ejecta %.5e %.5e", stars->SNII_n_z, stars->SNII_n_mass, iz_low, imass, ilow, ihigh, i, stars->stellar_yield[imass], dz, low_index_2d, high_index_2d, stars->yield_SNII.SPH[low_index_2d], stars->yield_SNII.SPH[high_index_2d], sp->chemistry_data.metal_mass_fraction[i], stars->yield_SNII.ejecta_SPH[low_index_2d], stars->yield_SNII.ejecta_SPH[high_index_2d]); 
     }
 
     metals[i] = integrate_imf(log10_min_mass, log10_max_mass, 0.0, 2, stars->stellar_yield,stars);
@@ -595,7 +596,7 @@ inline static void evolve_SNII(float log10_min_mass, float log10_max_mass,
                     sp->chemistry_data.metal_mass_fraction_total * stars->yield_SNII.ejecta_SPH[low_index_2d]) +
         dz * (stars->yield_SNII.total_metals_SPH[high_index_2d] +
               sp->chemistry_data.metal_mass_fraction_total * stars->yield_SNII.ejecta_SPH[high_index_2d]);
-    message("index %d stellar_yield %.5e dz %.5e low, high index %d %d metals_sph %.5e %.5e mass_frac %.5e ejecta %.5e %.5e", imass, stars->stellar_yield[imass], dz, low_index_2d, high_index_2d, stars->yield_SNII.total_metals_SPH[low_index_2d], stars->yield_SNII.total_metals_SPH[high_index_2d], sp->chemistry_data.metal_mass_fraction_total, stars->yield_SNII.ejecta_SPH[low_index_2d], stars->yield_SNII.ejecta_SPH[high_index_2d]); 
+    //if (stars->stellar_yield[imass] < 0) error("index %d stellar_yield %.5e dz %.5e low, high index %d %d metals_sph %.5e %.5e mass_frac %.5e ejecta %.5e %.5e", imass, stars->stellar_yield[imass], dz, low_index_2d, high_index_2d, stars->yield_SNII.total_metals_SPH[low_index_2d], stars->yield_SNII.total_metals_SPH[high_index_2d], sp->chemistry_data.metal_mass_fraction_total, stars->yield_SNII.ejecta_SPH[low_index_2d], stars->yield_SNII.ejecta_SPH[high_index_2d]); 
   }
 
   mass = integrate_imf(log10_min_mass, log10_max_mass, 0.0, 2, stars->stellar_yield, stars);
@@ -846,13 +847,19 @@ inline static void stars_evolve_init(struct swift_params *params, struct stars_p
   parser_get_param_string(params, "EagleStellarEvolution:filename", stars->yield_table_path);
   parser_get_param_string(params, "EagleStellarEvolution:imf_model", stars->IMF_Model);
 
-  //stars->yield_SNIa_total_metals_SPH = ;
-
   /* Allocate yield tables  */
   allocate_yield_tables(stars);
   
-  // Find out what these factors should actually be...
-  for (int i = 0; i < chemistry_element_count; i++) stars->typeII_factor[i] = 2;
+  /* Set factors for each element adjusting SNII yield */
+  stars->typeII_factor[0] = 1.f;
+  stars->typeII_factor[1] = 1.f;
+  stars->typeII_factor[2] = 0.5f;
+  stars->typeII_factor[3] = 1.f;
+  stars->typeII_factor[4] = 1.f;
+  stars->typeII_factor[5] = 1.f;
+  stars->typeII_factor[6] = 2.f;
+  stars->typeII_factor[7] = 1.f;
+  stars->typeII_factor[8] = 0.5f;
 
   /* Read the tables  */
   read_yield_tables(stars);
@@ -869,6 +876,9 @@ inline static void stars_evolve_init(struct swift_params *params, struct stars_p
 
   /* Further calculation on tables to convert them to log10 and compute yields for each element  */
   compute_yields(stars);
+  
+  /* Further calculation on tables to compute ejecta */
+  compute_ejecta(stars);
 
   /* Calculate number of type II SN per solar mass */
   stars->num_SNII_per_msun = integrate_imf(stars->log10_SNII_min_mass_msun,stars->log10_SNII_max_mass_msun, 0, 0, stars->stellar_yield, stars);
