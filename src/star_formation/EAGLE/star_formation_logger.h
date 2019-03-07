@@ -146,7 +146,7 @@ INLINE static void star_formation_write_to_file(
     struct star_formation_history sf) {
   FILE *fp;
   fp = fopen("./SFH.txt", "a");
-  fprintf(fp, "%14e %12.7f %12.7f %10lld %14e\n", time, a, z, sf.N_stars,
+  fprintf(fp, "%15e %12.7f %12.7f %10lld %14e\n", time, a, z, sf.N_stars,
           sf.new_stellar_mass);
   fclose(fp);
 }
