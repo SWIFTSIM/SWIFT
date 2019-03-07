@@ -419,9 +419,6 @@ inline static void allocate_yield_tables(struct stars_props *restrict stars){
   if (posix_memalign((void **)&stars->lifetimes.metallicity, SWIFT_STRUCT_ALIGNMENT, stars->lifetimes.n_z * sizeof(double)) !=0) {
     error("Failed to allocate lifetime metallicity array");
   }
-  //if (posix_memalign((void **)&stars->lifetimes.dyingtime, SWIFT_STRUCT_ALIGNMENT, stars->lifetimes.n_z * stars->lifetimes.n_mass * sizeof(double)) !=0) {
-  //  error("Failed to allocate dyingtime array");
-  //}
   stars->lifetimes.dyingtime = (double **)malloc(stars->lifetimes.n_z * sizeof(double *));
   for(int i = 0; i < stars->lifetimes.n_z; i++){
     stars->lifetimes.dyingtime[i] = (double *)malloc(stars->lifetimes.n_mass * sizeof(double));
@@ -525,7 +522,6 @@ inline static void compute_yields(struct stars_props *restrict stars){
       for (int j = 0; j < stars->SNII_n_mass; j++) {
         index = row_major_index_3d(i, element_index, j, stars->SNII_n_z, stars->SNII_n_elements, stars->SNII_n_mass);
 	SNII_yield[j] = stars->yield_SNII.yield[index] * exp(M_LN10 * (-stars->yield_SNII.mass[j]));
-	//if (SNII_yield[j] < 0) error("SNII_yield negative %.5e z_i %d element_index %d mass_i %d table yield %.5e factor %.5e", SNII_yield[j], i, element_index, j, stars->yield_SNII.yield[index], exp(M_LN10 * (-stars->yield_SNII.mass[j])));
       }
 
       // ALEXEI: for some reason need to define another accel_ptr so that it doesn't crash due to thinking we're trying to interpolate out of bounds when we're not. Investigate more?
@@ -542,11 +538,9 @@ inline static void compute_yields(struct stars_props *restrict stars){
         else if (stars->yield_mass_bins[k] > stars->yield_SNII.mass[stars->SNII_n_mass - 1])
           result = SNII_yield[stars->SNII_n_mass - 1];
         else {
-	  //message("k %d yield_mass %.5e min max mass %.5e %.5e n_mass %d", k, stars->yield_mass_bins[k], stars->yield_SNII.mass[0], stars->yield_SNII.mass[stars->SNII_n_mass - 1], stars->SNII_n_mass);
           //result =
           //    gsl_spline_eval(SNII_spline_ptr, stars->yield_mass_bins[k], accel_ptr);
 	  result = interpolate_1D(stars->yield_SNII.mass,SNII_yield, stars->SNII_n_mass,stars->yield_mass_bins[k]);
-	  //message("result %.5e", result);
 	}
 
         index = row_major_index_3d(i,eagle_elem,k,stars->SNII_n_z,chemistry_element_count,n_mass_bins);

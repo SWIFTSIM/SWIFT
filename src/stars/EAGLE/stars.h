@@ -451,7 +451,6 @@ inline static void determine_bin_yield_AGB(int *iz_low, int *iz_high, float *dz,
 inline static void determine_bin_yield_SNII(int *iz_low, int *iz_high, float *dz, float log_metallicity, 
 				const struct stars_props *restrict star_properties){
 
-  message("log_metallicity %.5e log_min_metallicity %.5e", log_metallicity, log_min_metallicity);
   if (log_metallicity > log_min_metallicity) {
     int j;
     for (j = 0; j < star_properties->SNII_n_z - 1 &&
@@ -565,7 +564,6 @@ inline static void evolve_SNII(float log10_min_mass, float log10_max_mass,
   int iz_low, iz_high, low_index_3d, high_index_3d, low_index_2d, high_index_2d;
   float dz;
   determine_bin_yield_SNII(&iz_low, &iz_high, &dz, log10(sp->chemistry_data.metal_mass_fraction_total), stars);
-  message("iz_low %d iz_high %d dz %.5e log metal_frac %.5e", iz_low, iz_high, dz, log10(sp->chemistry_data.metal_mass_fraction_total));
 
   /* compute stellar_yield as function of mass */
   float metals[chemistry_element_count], mass;
@@ -582,7 +580,6 @@ inline static void evolve_SNII(float log10_min_mass, float log10_max_mass,
                       sp->chemistry_data.metal_mass_fraction[i] * stars->yield_SNII.ejecta_SPH[low_index_2d]) +
           dz * (stars->yield_SNII.SPH[high_index_3d] +
                 sp->chemistry_data.metal_mass_fraction[i] * stars->yield_SNII.ejecta_SPH[high_index_2d]);
-    //if (stars->stellar_yield[imass] < 0) error("nz %d n_mass %d iz_low %d mass_i %d ilow %d ihigh %d element %d stellar_yield %.5e dz %.5e low, high index %d %d metals_sph %.5e %.5e mass_frac %.5e ejecta %.5e %.5e", stars->SNII_n_z, stars->SNII_n_mass, iz_low, imass, ilow, ihigh, i, stars->stellar_yield[imass], dz, low_index_2d, high_index_2d, stars->yield_SNII.SPH[low_index_2d], stars->yield_SNII.SPH[high_index_2d], sp->chemistry_data.metal_mass_fraction[i], stars->yield_SNII.ejecta_SPH[low_index_2d], stars->yield_SNII.ejecta_SPH[high_index_2d]); 
     }
 
     metals[i] = integrate_imf(log10_min_mass, log10_max_mass, 0.0, 2, stars->stellar_yield,stars);
@@ -596,7 +593,6 @@ inline static void evolve_SNII(float log10_min_mass, float log10_max_mass,
                     sp->chemistry_data.metal_mass_fraction_total * stars->yield_SNII.ejecta_SPH[low_index_2d]) +
         dz * (stars->yield_SNII.total_metals_SPH[high_index_2d] +
               sp->chemistry_data.metal_mass_fraction_total * stars->yield_SNII.ejecta_SPH[high_index_2d]);
-    //if (stars->stellar_yield[imass] < 0) error("index %d stellar_yield %.5e dz %.5e low, high index %d %d metals_sph %.5e %.5e mass_frac %.5e ejecta %.5e %.5e", imass, stars->stellar_yield[imass], dz, low_index_2d, high_index_2d, stars->yield_SNII.total_metals_SPH[low_index_2d], stars->yield_SNII.total_metals_SPH[high_index_2d], sp->chemistry_data.metal_mass_fraction_total, stars->yield_SNII.ejecta_SPH[low_index_2d], stars->yield_SNII.ejecta_SPH[high_index_2d]); 
   }
 
   mass = integrate_imf(log10_min_mass, log10_max_mass, 0.0, 2, stars->stellar_yield, stars);
@@ -756,7 +752,6 @@ inline static void compute_stellar_evolution(const struct stars_props *restrict 
       dying_mass_msun(star_age_Gyr + dt_Gyr, sp->chemistry_data.metal_mass_fraction_total, star_properties));
 
   if (log10_min_dying_mass_msun > log10_max_dying_mass_msun) error("min dying mass is greater than max dying mass");
-  //message("age %.5e age of star %.5e log10 min max dying mass %.5e %.5e", age, star_age_Gyr, log10_min_dying_mass_msun, log10_max_dying_mass_msun);
 
   /* integration interval is zero - this can happen if minimum and maximum
    * dying masses are above imf_max_mass_msun */
