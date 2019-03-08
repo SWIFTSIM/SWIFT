@@ -16,11 +16,11 @@ fi
 if [ ! -e constantBox.hdf5 ]
 then
     echo "Generating initial conditions for the uniform cosmo box example..."
-    python3 makeIC.py
+    python3 new_makeIC.py
 fi
 
 # Run SWIFT
 ../swift --hydro --cosmology --cooling --threads=8 eagle_cooling_box.yml 2>&1 | tee output.log
 
 # Plot the result
-python3 plotSolution.py $i
+python3 plot_thermal_history.py eagle_cooling_box
