@@ -22,7 +22,7 @@ TimeIntegration:
 
 # Parameters governing the snapshots
 Snapshots:
-  basename:	       eagle
+  basename:	       eagle_cooling_box
   delta_time:          1.04
   scale_factor_first:  0.00991
   compression:         4

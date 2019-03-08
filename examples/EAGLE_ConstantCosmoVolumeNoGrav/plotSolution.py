@@ -45,7 +45,7 @@ params = {'axes.labelsize': 10,
 'legend.fontsize': 12,
 'xtick.labelsize': 10,
 'ytick.labelsize': 10,
-'text.usetex': True,
+'text.usetex': False,
  'figure.figsize' : (9.90,6.45),
 'figure.subplot.left'    : 0.06,
 'figure.subplot.right'   : 0.99,
@@ -102,8 +102,6 @@ data_walther = np.genfromtxt("./datasets/walther_et_al_2019_thermal_history.dat"
 
 data_schaye = data_schaye.T
 data_walther = data_walther.T
-print(np.shape(data_schaye))
-print(data_schaye[0])
 
 schaye_z_lower_error = data_schaye[0] - data_schaye[1]
 schaye_z_upper_error = data_schaye[2] - data_schaye[0]
@@ -118,7 +116,7 @@ ax.fill_between(z,T_mean - T_std,T_mean + T_std,alpha = 0.5)
 ax.plot(z,T_mean,label = "Simulation")
 ax.errorbar(data_schaye[0],data_schaye[3], xerr = [schaye_z_lower_error,schaye_z_upper_error],yerr = [schaye_T_lower_error,schaye_T_upper_error], fmt = 'ko', label = "Schaye+ 2000",zorder = 20,capsize = 4.0,capthick = 1.0,alpha = 0.9)
 ax.errorbar(data_walther[0],data_walther[1],yerr = [walther_T_lower_error,walther_T_upper_error], fmt = 'rd', label = "Walther+ 2019",zorder = 30,capsize = 4.0,capthick = 1.0,alpha = 0.7)
-ax.set_xlim(0.0,10.0)
+ax.set_xlim(0.0,15.0)
 ax.set_ylim(0.0,3.0)
 ax.set_xlabel("z")
 ax.set_ylabel(r"$T_0\,/\,10^4\,\,K$")
