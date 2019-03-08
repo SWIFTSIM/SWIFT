@@ -193,9 +193,14 @@ INLINE static void star_formation_init_SFH_engine(
 INLINE static void star_formation_write_to_file(
     const double time, const double a, const double z,
     struct star_formation_history sf, const char* baseName) {
+  static const int buffersize = 300;
+  /* File name */
+  char fileName[buffersize];
+  snprintf(fileName, buffersize, "%s_SFH_logger.txt", baseName);
+
   /* Open the file */
   FILE *fp;
-  fp = fopen("./SFH.txt", "a");
+  fp = fopen(fileName, "a");
 
   /* Calculate the total SFR */
   const float totalSFR = sf.SFR_active + sf.SFR_inactive;
@@ -210,8 +215,15 @@ INLINE static void star_formation_write_to_file(
  * @param none
  */
 INLINE static void star_formation_init_file_writer(const char* baseName) {
+  /* File name */
+  static const int buffersize = 300;
+  char fileName[buffersize];
+  snprintf(fileName, buffersize, "%s_SFH_logger.txt", baseName);
+
   FILE *fp;
-  fp = fopen("./SFH.txt", "w");
+  fp = fopen(fileName, "w");
+  fprintf(fp, "# Star Formation History Logger file\n");
+  fprintf(fp, "# When applicable units are in internal units\n");
   fprintf(
       fp,
       "#     Time            a            z         total M_stars  SFR (active)  SFR*dt (active)  SFR (total)\n");
