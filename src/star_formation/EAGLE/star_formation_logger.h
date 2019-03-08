@@ -192,7 +192,7 @@ INLINE static void star_formation_init_SFH_engine(
  */
 INLINE static void star_formation_write_to_file(
     const double time, const double a, const double z,
-    struct star_formation_history sf) {
+    struct star_formation_history sf, const char* baseName) {
   /* Open the file */
   FILE *fp;
   fp = fopen("./SFH.txt", "a");
@@ -209,7 +209,7 @@ INLINE static void star_formation_write_to_file(
  *
  * @param none
  */
-INLINE static void star_formation_init_file_writer(void) {
+INLINE static void star_formation_init_file_writer(const char* baseName) {
   FILE *fp;
   fp = fopen("./SFH.txt", "w");
   fprintf(
