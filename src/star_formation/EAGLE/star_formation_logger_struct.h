@@ -21,9 +21,6 @@
 
 /* Starformation history struct */
 struct star_formation_history {
-  /*! Numb of stars */
-  long long int N_stars;
-
   /*! Total new stellar mass */
   float new_stellar_mass;
 

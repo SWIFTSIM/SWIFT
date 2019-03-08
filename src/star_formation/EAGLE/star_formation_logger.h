@@ -40,9 +40,6 @@ INLINE static void star_formation_update_SFH(
     struct spart *sp, struct star_formation_history *sf) {
   /* Add mass of created sparticle to the total stellar mass in this cell*/
   sf->new_stellar_mass = sf->new_stellar_mass + sp->mass;
-
-  /* Increase the counter */
-  sf->N_stars = sf->N_stars + 1;
 }
 
 /**
@@ -53,9 +50,6 @@ INLINE static void star_formation_update_SFH(
 INLINE static void star_formation_init_SFH(struct star_formation_history *sf) {
   /* Initialize the stellar mass to zero*/
   sf->new_stellar_mass = 0.f;
-
-  /* Initialize the counter at zero */
-  sf->N_stars = 0;
 }
 
 /**
@@ -103,9 +97,6 @@ INLINE static void star_formation_add_progeny_SFH(
   /* Add the new stellar mass from the progeny */
   sf->new_stellar_mass = sf->new_stellar_mass + sfprogeny->new_stellar_mass;
 
-  /* Increase amount of new stars formed */
-  sf->N_stars = sf->N_stars + sfprogeny->N_stars;
-
   /* Add the SFR of the progeny */
   sf->SFR_active += sfprogeny->SFR_active;
 
@@ -131,8 +122,6 @@ INLINE static void star_formation_get_total_cell(
   /* Get the star formation history from the cell */
   struct star_formation_history *sfcell = &c->stars.sfh;
   sf->new_stellar_mass += sfcell->new_stellar_mass;
-
-  sf->N_stars += sfcell->new_stellar_mass;
   
   sf->SFR_active += sfcell->SFR_active;
 
@@ -151,13 +140,11 @@ INLINE static void star_formation_clear_total_cell(struct cell *c) {
   struct star_formation_history *sfcell = &c->stars.sfh;
   sfcell->new_stellar_mass = 0.f;
 
-  sfcell->N_stars = 0;
-
-  sfcell->SFR_active = 0.f;
+  //sfcell->SFR_active = 0.f;
 
   sfcell->SFRdt_active = 0.f;
 
-  sfcell->SFR_inactive = 0.f;
+  //sfcell->SFR_inactive = 0.f;
 }
 
 /**
@@ -171,8 +158,6 @@ INLINE static void star_formation_add_to_parent_cell(
   /* Get the star formation history from the cell */
   struct star_formation_history *sfcell = &c->stars.sfh;
   sfcell->new_stellar_mass += sf->new_stellar_mass;
-
-  sfcell->N_stars += sf->N_stars;
 
   sfcell->SFR_active += sf->SFR_active;
 
@@ -189,8 +174,6 @@ INLINE static void star_formation_add_to_parent_cell(
 INLINE static void star_formation_init_SFH_engine(
     struct star_formation_history *sfh) {
   sfh->new_stellar_mass = 0.f;
-
-  sfh->N_stars = 0;
 
   sfh->SFR_active = 0.f;
 
@@ -216,7 +199,7 @@ INLINE static void star_formation_write_to_file(
 
   /* Calculate the total SFR */
   const float totalSFR = sf.SFR_active + sf.SFR_inactive;
-  fprintf(fp, "%16e %12.7f %12.7f %10lld %14e %14e %14e %14e\n", time, a, z, sf.N_stars,
+  fprintf(fp, "%16e %12.7f %12.7f %14e %14e %14e %14e\n", time, a, z, 
           sf.new_stellar_mass, sf.SFR_active, sf.SFRdt_active, totalSFR);
   fclose(fp);
 }
@@ -231,7 +214,7 @@ INLINE static void star_formation_init_file_writer(void) {
   fp = fopen("./SFH.txt", "w");
   fprintf(
       fp,
-      "#     Time            a            z       N_stars    total M_stars    SFR (active) SFR*dt (active)  SFR (total)\n");
+      "#     Time            a            z         total M_stars  SFR (active)  SFR*dt (active)  SFR (total)\n");
   fclose(fp);
 }
 
