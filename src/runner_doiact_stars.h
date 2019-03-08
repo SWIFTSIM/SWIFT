@@ -263,6 +263,7 @@ void DO_SYM_PAIR1_STARS(struct runner *r, struct cell *ci, struct cell *cj, cons
   if (do_ci_stars) {
     /* Pick-out the sorted lists. */
     const struct entry *restrict sort_j = cj->hydro.sort[sid];
+    const struct entry *restrict sort_i = ci->stars.sort[sid];
 
 #ifdef SWIFT_DEBUG_CHECKS
     /* Some constants used to checks that the parts are in the right frame */
@@ -278,6 +279,7 @@ void DO_SYM_PAIR1_STARS(struct runner *r, struct cell *ci, struct cell *cj, cons
 #endif /* SWIFT_DEBUG_CHECKS */
 
     /* Get some other useful values. */
+    const double hi_max = ci->stars.h_max * kernel_gamma - rshift;
     const int count_i = ci->stars.count;
     const int count_j = cj->hydro.count;
     struct spart *restrict sparts_i = ci->stars.parts;
@@ -285,9 +287,12 @@ void DO_SYM_PAIR1_STARS(struct runner *r, struct cell *ci, struct cell *cj, cons
     const double dj_min = sort_j[0].d;
     const float dx_max_rshift =
       (ci->stars.dx_max_sort + cj->hydro.dx_max_sort) - rshift;
+    const float dx_max =
+      (ci->stars.dx_max_sort + cj->hydro.dx_max_sort);
 
     /* Loop over the sparts in ci. */
-    for (int pid = 0; pid < count_i; pid++) {
+    for (int pid = count_i - 1;
+         pid >= 0 && sort_i[pid].d + hi_max + dx_max > dj_min; pid--) {
 
       /* Get a hold of the ith part in ci. */
       struct spart *restrict spi = &sparts_i[pid];
@@ -378,6 +383,7 @@ void DO_SYM_PAIR1_STARS(struct runner *r, struct cell *ci, struct cell *cj, cons
   if (do_cj_stars) {
     /* Pick-out the sorted lists. */
     const struct entry *restrict sort_i = ci->hydro.sort[sid];
+    const struct entry *restrict sort_j = cj->stars.sort[sid];
 
 #ifdef SWIFT_DEBUG_CHECKS
     /* Some constants used to checks that the parts are in the right frame */
@@ -393,6 +399,7 @@ void DO_SYM_PAIR1_STARS(struct runner *r, struct cell *ci, struct cell *cj, cons
 #endif /* SWIFT_DEBUG_CHECKS */
 
     /* Get some other useful values. */
+    const double hj_max = cj->hydro.h_max * kernel_gamma;
     const int count_i = ci->hydro.count;
     const int count_j = cj->stars.count;
     struct part *restrict parts_i = ci->hydro.parts;
@@ -400,9 +407,12 @@ void DO_SYM_PAIR1_STARS(struct runner *r, struct cell *ci, struct cell *cj, cons
     const double di_max = sort_i[count_i - 1].d - rshift;
     const float dx_max_rshift =
       (ci->hydro.dx_max_sort + cj->stars.dx_max_sort) + rshift;
+    const float dx_max =
+      (ci->hydro.dx_max_sort + cj->stars.dx_max_sort);
 
     /* Loop over the parts in cj. */
-    for (int pjd = 0; pjd < count_j; pjd++) {
+    for (int pjd = 0; pjd < count_j && sort_j[pjd].d - hj_max - dx_max < di_max;
+         pjd++) {
       
       /* Get a hold of the jth part in cj. */
       struct spart *spj = &sparts_j[pjd];
