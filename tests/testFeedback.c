@@ -17,15 +17,9 @@
  *
  ******************************************************************************/
 
-#include <unistd.h>
-#include "../config.h"
-#include "hydro.h"
-#include "physical_constants.h"
 #include "swift.h"
-#include "units.h"
-#include "stars.h"
 
-int main(int argc, char **argv) {
+int main(int argc, char *argv[]) {
   /* Declare relevant structs */
   struct swift_params *params = malloc(sizeof(struct swift_params));
   struct unit_system us;
@@ -37,7 +31,7 @@ int main(int argc, char **argv) {
   struct cosmology cosmo;
   struct hydro_props hydro_properties;
   struct stars_props stars_properties;
-  char *parametersFileName = "./testStellarEvolution.yml";
+  char *parametersFileName = "./testFeedback.yml";
 
   /* Read the parameter file */
   if (params == NULL) error("Error allocating memory for the parameter file.");
@@ -63,30 +57,37 @@ int main(int argc, char **argv) {
   /* Init star properties */
   stars_props_init(&stars_properties, &phys_const, &us, params, &hydro_properties, &cosmo);
 
+  /* Read yield tables */
+  stars_evolve_init(params, &stars_properties);
+
   /* Init spart */
   stars_first_init_spart(&sp);
 
-  /* Evolve spart */
-  double dt = 1.0e-6;
-  float current_time = 0.f;
-  stars_evolve_spart(&sp, &stars_properties, &cosmo, &us, current_time, dt);
+  sp.mass_init = 4.706273e-5;
 
-  for (int i = 0; i < 9; i++) {
-    message("element %d to distribute fraction %.5e", i, sp.to_distribute.chemistry_data.metal_mass_fraction[i]);
+  for (int i = 0; i < chemistry_element_count; i++) sp.metals_released[i] = 0.f;
+  sp.chemistry_data.metal_mass_fraction_from_AGB = 0.f;
+  sp.to_distribute.mass = 0.f;
+
+  FILE *AGB_output;
+  char fname[25] = "test_feedback_AGB.txt";
+  if (!(AGB_output = fopen(fname, "w"))) {
+    error("error in opening file '%s'\n", fname);
   }
-  message("to distribute mass %.5e",sp.to_distribute.mass);
-  message("to distribute num_SNIa %.5e",sp.to_distribute.num_SNIa);
-  message("to distribute metal_mass_fraction_total %.5e",sp.to_distribute.chemistry_data.metal_mass_fraction_total);
-  message("to distribute mass_from_AGB %.5e",sp.to_distribute.chemistry_data.mass_from_AGB);
-  message("to distribute metal_mass_fraction_from_AGB %.5e",sp.to_distribute.chemistry_data.metal_mass_fraction_from_AGB);
-  message("to distribute mass_from_SNII %.5e",sp.to_distribute.chemistry_data.mass_from_SNII);
-  message("to distribute metal_mass_fraction_from_SNII %.5e",sp.to_distribute.chemistry_data.metal_mass_fraction_from_SNII);
-  message("to distribute mass_from_SNIa %.5e",sp.to_distribute.chemistry_data.mass_from_SNIa);
-  message("to distribute metal_mass_fraction_from_SNIa %.5e",sp.to_distribute.chemistry_data.metal_mass_fraction_from_SNIa);
-  message("to distribute iron_mass_fraction_from_SNIa %.5e",sp.to_distribute.chemistry_data.iron_mass_fraction_from_SNIa);
+  fprintf(AGB_output,
+          "# time[Gyr] | total mass | metal mass: total | H | He | C | N  | O  "
+          "| Ne | Mg | Si | Fe | per solar mass\n");
 
-  message("done test");
-
-  free(params);
+  float Gyr_to_s = 3.154e16;
+  float dt = 0.1 * Gyr_to_s / units_cgs_conversion_factor(&us,UNIT_CONV_TIME);
+  float max_age = 13.f * Gyr_to_s / units_cgs_conversion_factor(&us,UNIT_CONV_TIME);
+  for (float age = 0; age <= max_age; age += dt) {
+    compute_stellar_evolution(&stars_properties, &sp, &us, age, dt);
+    float age_Gyr = age * units_cgs_conversion_factor(&us,UNIT_CONV_TIME) / Gyr_to_s;
+    fprintf(AGB_output, "%f %e %e ", age_Gyr, sp.to_distribute.mass / sp.mass_init, sp.chemistry_data.metal_mass_fraction_from_AGB / sp.mass_init);
+    for (int i = 0; i < chemistry_element_count; i++)
+      fprintf(AGB_output, "%e ", sp.metals_released[i]);
+    fprintf(AGB_output, "\n");
+  }
   return 0;
 }

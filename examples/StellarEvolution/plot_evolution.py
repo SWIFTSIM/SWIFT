@@ -24,6 +24,8 @@ from pylab import *
 from scipy import stats
 import h5py
 import numpy as np
+import glob
+import os.path
 
 def find_indices(a,b):
         result = np.zeros(len(b))
@@ -56,7 +58,9 @@ rcParams.update(params)
 rc('font',**{'family':'sans-serif','sans-serif':['Times']})
 
 
-n_snapshots = 52
+# Number of snapshots and elements
+newest_snap_name = max(glob.glob('stellar_evolution_*.hdf5'), key=os.path.getctime)
+n_snapshots = int(newest_snap_name.replace('stellar_evolution_','').replace('.hdf5','')) + 1
 n_particles_to_plot = 500
 
 # Read the simulation data
@@ -152,29 +156,28 @@ ticklabel_format(style='sci', axis='y', scilimits=(0,0))
 # Masses --------------------------------
 subplot(222)
 for j in range(n_particles_to_plot):
-	plot(t * unit_time_in_cgs, masses_to_plot[j,:] * unit_mass_in_cgs / Msun_in_cgs, linewidth=0.5, color='k', ms=0.5, alpha=0.1)
+	plot(t * unit_time_in_cgs / Myr_in_cgs, masses_to_plot[j,:] * unit_mass_in_cgs / Msun_in_cgs, linewidth=0.5, color='k', ms=0.5, alpha=0.1)
 xlabel("${\\rm{Time}} (Myr)$", labelpad=0)
 ylabel("${\\rm{Mass}} (Msun)$", labelpad=2)
 ticklabel_format(style='sci', axis='y', scilimits=(0,0))
-ylim(0.9*np.max(masses_to_plot)*unit_mass_in_cgs/Msun_in_cgs, 1.1*np.max(masses_to_plot)*unit_mass_in_cgs/Msun_in_cgs)
+#ylim(0.9999*np.max(masses_to_plot)*unit_mass_in_cgs/Msun_in_cgs, 1.0001*np.max(masses_to_plot)*unit_mass_in_cgs/Msun_in_cgs)
 
 # Metallicities --------------------------------
 subplot(223)
 for j in range(n_particles_to_plot):
-	plot(t * unit_time_in_cgs, metallicities_to_plot[j,:] , linewidth=0.5, color='k', ms=0.5, alpha=0.1)
+	plot(t * unit_time_in_cgs / Myr_in_cgs, metallicities_to_plot[j,:] , linewidth=0.5, color='k', ms=0.5, alpha=0.1)
 xlabel("${\\rm{Time}} (Myr)$", labelpad=0)
 ylabel("${\\rm{Metallicity}} ()$", labelpad=2)
 ticklabel_format(style='sci', axis='y', scilimits=(0,0))
-#ylim(0.9*np.max(masses_to_plot)*unit_mass_in_cgs/Msun_in_cgs, 1.1*np.max(masses_to_plot)*unit_mass_in_cgs/Msun_in_cgs)
+#ylim(0.9999*np.max(metallicities_to_plot), 1.0001*np.max(metallicities_to_plot))
 
 # Internal energy --------------------------------
 subplot(224)
 for j in range(n_particles_to_plot):
-	plot(t * unit_time_in_cgs, internal_energies_to_plot[j,:] * unit_energy_in_cgs / unit_mass_in_cgs, linewidth=0.5, color='k', ms=0.5, alpha=0.1)
+	plot(t * unit_time_in_cgs / Myr_in_cgs, internal_energies_to_plot[j,:] * unit_energy_in_cgs / unit_mass_in_cgs, linewidth=0.5, color='k', ms=0.5, alpha=0.1)
 xlabel("${\\rm{Time}} (Myr)$", labelpad=0)
 ylabel("${\\rm{Internal energy}} (erg \cdot g^{-1})$", labelpad=2)
 ticklabel_format(style='sci', axis='y', scilimits=(0,0))
-#ylim(0.9*np.max(masses_to_plot)*unit_mass_in_cgs/Msun_in_cgs, 1.1*np.max(masses_to_plot)*unit_mass_in_cgs/Msun_in_cgs)
 
 savefig("time_evolution.png", dpi=200)
 

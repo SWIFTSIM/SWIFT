@@ -474,8 +474,6 @@ inline static void compute_yields(struct stars_props *restrict stars){
 
   gsl_spline *SNII_spline_ptr, *AGB_spline_ptr;
 
-  // check whether imf is properly normalised? present in EAGLE
-
   /* convert SNII tables to log10  */
   for (int i = 0; i < stars->SNII_n_mass; i++) {
     stars->yield_SNII.mass[i] = log10(stars->yield_SNII.mass[i]);
@@ -507,7 +505,6 @@ inline static void compute_yields(struct stars_props *restrict stars){
   double AGB_yield[stars->AGB_n_mass];
   float result;
 
-
   /* Loop over elements tracked in EAGLE  */
   int element_index = 0;
   // ALEXEI: better name for eagle_elem?
@@ -524,12 +521,6 @@ inline static void compute_yields(struct stars_props *restrict stars){
 	SNII_yield[j] = stars->yield_SNII.yield[index] * exp(M_LN10 * (-stars->yield_SNII.mass[j]));
       }
 
-      // ALEXEI: for some reason need to define another accel_ptr so that it doesn't crash due to thinking we're trying to interpolate out of bounds when we're not. Investigate more?
-      //gsl_interp_accel *SNII_accel_ptr;
-      //gsl_spline *SNII_spline_ptr2;
-      //SNII_accel_ptr = gsl_interp_accel_alloc();
-      //SNII_spline_ptr2 = gsl_spline_alloc(gsl_interp_linear, stars->SNII_n_mass);
-
       gsl_spline_init(SNII_spline_ptr, stars->yield_SNII.mass, SNII_yield, stars->SNII_n_mass);
 
       for (int k = 0; k < n_mass_bins; k++) {
@@ -538,6 +529,7 @@ inline static void compute_yields(struct stars_props *restrict stars){
         else if (stars->yield_mass_bins[k] > stars->yield_SNII.mass[stars->SNII_n_mass - 1])
           result = SNII_yield[stars->SNII_n_mass - 1];
         else {
+	  // Not working with gsl. Aborts inside the evaluation function supposedly because we're trying to interpolate a value out of bounds. Works if SNIIs changed to AGBs though. use own interpolation function for now.
           //result =
           //    gsl_spline_eval(SNII_spline_ptr, stars->yield_mass_bins[k], accel_ptr);
 	  result = interpolate_1D(stars->yield_SNII.mass,SNII_yield, stars->SNII_n_mass,stars->yield_mass_bins[k]);
@@ -546,9 +538,6 @@ inline static void compute_yields(struct stars_props *restrict stars){
         index = row_major_index_3d(i,eagle_elem,k,stars->SNII_n_z,chemistry_element_count,n_mass_bins);
         stars->yield_SNII.SPH[index] = exp(M_LN10 * stars->yield_mass_bins[k]) * result;
       }
-
-      //gsl_interp_accel_free(SNII_accel_ptr);
-      //gsl_spline_free(SNII_spline_ptr2);
     }
 
     for (int i = 0; i < stars->SNII_n_z; i++) {
@@ -578,7 +567,7 @@ inline static void compute_yields(struct stars_props *restrict stars){
       for (int i = 0; i < stars->AGB_n_z; i++) {
         for (int j = 0; j < stars->AGB_n_mass; j++) {
           index = row_major_index_3d(i, element_index, j, stars->AGB_n_z, stars->AGB_n_elements, stars->AGB_n_mass);
-          AGB_yield[j] = stars->yield_AGB.yield[index] / exp(M_LN10 * stars->yield_AGB.mass[j]);
+          AGB_yield[j] = stars->yield_AGB.yield[index] * exp(M_LN10 * (-stars->yield_AGB.mass[j]));
         }
 
         gsl_spline_init(AGB_spline_ptr, stars->yield_AGB.mass, AGB_yield, stars->AGB_n_mass);
@@ -588,12 +577,13 @@ inline static void compute_yields(struct stars_props *restrict stars){
             result = AGB_yield[0];
           else if (stars->yield_mass_bins[j] > stars->yield_AGB.mass[stars->AGB_n_mass - 1])
             result = AGB_yield[stars->AGB_n_mass - 1];
-          else
+          else 
             result =
                 gsl_spline_eval(AGB_spline_ptr, stars->yield_mass_bins[j], accel_ptr);
 
           index = row_major_index_3d(i,eagle_elem,j,stars->AGB_n_z,chemistry_element_count,n_mass_bins);
           stars->yield_AGB.SPH[index] = exp(M_LN10 * stars->yield_mass_bins[j]) * result;
+	  if (element_index == 10) message("j %d AGB SPH %.5e result %.5e exponential %.5e", j, stars->yield_AGB.SPH[index], result, exp(M_LN10 * stars->yield_mass_bins[j]) );
         }
       }
     }

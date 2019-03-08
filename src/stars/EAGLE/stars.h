@@ -618,6 +618,8 @@ inline static void evolve_SNII(float log10_min_mass, float log10_max_mass,
 
   /* compute the total mass ejected */
   norm1 = mass + metals[chemistry_element_H] + metals[chemistry_element_He];
+
+  /* Set normalisation factor. Note additional multiplication by the stellar initial mass as tables are per initial mass */
   const float norm_factor = norm0 / norm1 * sp->mass_init;
 
   /* normalize the yields */
@@ -645,9 +647,6 @@ inline static void evolve_AGB(float log10_min_mass, float log10_max_mass,
 			      struct spart *restrict sp){
   // come up with more descriptive index names
   int ilow, ihigh, imass, i = 0;
-
-  // Do we need this check?
-  if (stars->AGB_mass_transfer == 0) return;
 
   /* determine integration range, limiting to stars that become AGB stars */
   if (log10_max_mass > log10_SNII_min_mass_msun)
@@ -717,18 +716,21 @@ inline static void evolve_AGB(float log10_min_mass, float log10_max_mass,
   /* compute the total mass ejected */
   norm1 = mass + metals[chemistry_element_H] + metals[chemistry_element_He];
 
-  /* normalize the yields */
-  if (norm1 > 0) {
-    for (i = 0; i < chemistry_element_count; i++) metals[i] *= (norm0 / norm1);
-    mass *= (norm0 / norm1);
+  /* Set normalisation factor. Note additional multiplication by the stellar initial mass as tables are per initial mass */
+  const float norm_factor = norm0/norm1 * sp->mass_init;
 
-    // ALEXEI: check this.
+  /* normalize the yields (Copied from SNII) */
+  if (norm1 > 0) {
     for (i = 0; i < chemistry_element_count; i++) {
-      sp->metals_released[i] += metals[i];
-      sp->chemistry_data.mass_from_AGB += metals[i];
+      sp->metals_released[i] += metals[i] * norm_factor;
+
+      // This increment is coppied from EAGLE, however note that it is different from SNII case. Investigate?
+      sp->chemistry_data.mass_from_AGB += metals[i] * norm_factor;
     }
-    sp->metal_mass_released += mass;
-    sp->chemistry_data.metal_mass_fraction_from_AGB += mass;
+    sp->to_distribute.mass += (mass + metals[chemistry_element_H] + metals[chemistry_element_He]) * norm_factor;
+    message("AGB mass to distribute %.5e initial mass %.5e norm mass %.5e mass %.5e norm_factor %.5e ", sp->to_distribute.mass, sp->mass_init, mass*norm_factor, mass, norm_factor);
+    sp->metal_mass_released += mass * norm_factor;
+    sp->chemistry_data.metal_mass_fraction_from_AGB += mass * norm_factor;
   } else {
     error("wrong normalization!!!! norm1 = %e\n", norm1);
   }
@@ -758,9 +760,9 @@ inline static void compute_stellar_evolution(const struct stars_props *restrict 
   if (log10_min_dying_mass_msun == log10_max_dying_mass_msun) return;
 
   /* Evolve SNIa, SNII, AGB */
-  evolve_SNIa(log10_min_dying_mass_msun,log10_max_dying_mass_msun,star_properties,sp,us,star_age_Gyr,dt_Gyr);
-  evolve_SNII(log10_min_dying_mass_msun,log10_max_dying_mass_msun,star_properties,sp); 
-  //evolve_AGB(log10_min_dying_mass_msun,log10_max_dying_mass_msun,star_properties,sp);
+  //evolve_SNIa(log10_min_dying_mass_msun,log10_max_dying_mass_msun,star_properties,sp,us,star_age_Gyr,dt_Gyr);
+  //evolve_SNII(log10_min_dying_mass_msun,log10_max_dying_mass_msun,star_properties,sp); 
+  evolve_AGB(log10_min_dying_mass_msun,log10_max_dying_mass_msun,star_properties,sp);
   
   sp->to_distribute.chemistry_data.metal_mass_fraction_total = 1.f - sp->to_distribute.chemistry_data.metal_mass_fraction[0] - sp->to_distribute.chemistry_data.metal_mass_fraction[1];
 
