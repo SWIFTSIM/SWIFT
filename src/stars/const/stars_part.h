@@ -23,7 +23,7 @@
 #include <stdlib.h>
 
 /* Read chemistry */
-#include "chemistry_struct.h" 
+#include "chemistry_struct.h"
 
 /**
  * @brief Particle fields for the star particles.
@@ -83,7 +83,7 @@ struct spart {
 
     /* Mass fractions of ejecta */
     struct chemistry_part_data chemistry_data;
-  
+
     float ejecta_specific_thermal_energy;
 
     /* Number of type 1a SNe per unit mass */
@@ -91,7 +91,8 @@ struct spart {
 
   } to_distribute;
 
-  /* kernel normalisation factor (equivalent to metalweight_norm in eagle_enrich.c:811, TODO: IMPROVE COMMENT) */
+  /* kernel normalisation factor (equivalent to metalweight_norm in
+   * eagle_enrich.c:811, TODO: IMPROVE COMMENT) */
   float omega_normalisation_inv;
 
   /* total mass of neighbouring gas particles */
@@ -152,7 +153,8 @@ struct stars_props {
   /* Flag to switch between continuous and stochastic heating */
   int continuous_heating;
 
-  /* Fraction of energy in SNIa (Note: always set to 1 in EAGLE, so may be not necessary) */
+  /* Fraction of energy in SNIa (Note: always set to 1 in EAGLE, so may be not
+   * necessary) */
   float SNIa_energy_fraction;
 
   /* Desired temperature increase due to supernovae */
@@ -170,7 +172,8 @@ struct stars_props {
   /* Timescale for feedback (used only for testing in const feedback model) */
   float feedback_timescale;
 
-  /* Number of supernovae per solar mass (used only for testing in const feedback model) */
+  /* Number of supernovae per solar mass (used only for testing in const
+   * feedback model) */
   float sn_per_msun;
 
   /* Solar mass (used only for testing in const feedback model) */

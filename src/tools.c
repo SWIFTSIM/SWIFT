@@ -453,7 +453,8 @@ void pairs_all_stars_density(struct runner *r, struct cell *ci,
       /* Hit or miss? */
       if (r2 < hig2) {
         /* Interact */
-        runner_iact_nonsym_stars_density(r2, dx, hi, pj->h, spi, pj, cosmo, stars_properties, xpj, 0);
+        runner_iact_nonsym_stars_density(r2, dx, hi, pj->h, spi, pj, cosmo,
+                                         stars_properties, xpj, 0);
       }
     }
   }
@@ -484,7 +485,8 @@ void pairs_all_stars_density(struct runner *r, struct cell *ci,
       /* Hit or miss? */
       if (r2 < hjg2) {
         /* Interact */
-        runner_iact_nonsym_stars_density(r2, dx, hj, pi->h, spj, pi, cosmo, stars_properties, xpi, 0);
+        runner_iact_nonsym_stars_density(r2, dx, hj, pi->h, spj, pi, cosmo,
+                                         stars_properties, xpi, 0);
       }
     }
   }
@@ -672,7 +674,8 @@ void self_all_stars_density(struct runner *r, struct cell *ci) {
       /* Hit or miss? */
       if (r2 > 0.f && r2 < hig2) {
         /* Interact */
-        runner_iact_nonsym_stars_density(r2, dxi, hi, hj, spi, pj, cosmo, stars_properties, xpj, 0);
+        runner_iact_nonsym_stars_density(r2, dxi, hi, hj, spi, pj, cosmo,
+                                         stars_properties, xpj, 0);
       }
     }
   }

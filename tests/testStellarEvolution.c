@@ -21,9 +21,9 @@
 #include "../config.h"
 #include "hydro.h"
 #include "physical_constants.h"
+#include "stars.h"
 #include "swift.h"
 #include "units.h"
-#include "stars.h"
 
 int main(int argc, char **argv) {
   /* Declare relevant structs */
@@ -61,7 +61,8 @@ int main(int argc, char **argv) {
   hydro_props_init(&hydro_properties, &phys_const, &us, params);
 
   /* Init star properties */
-  stars_props_init(&stars_properties, &phys_const, &us, params, &hydro_properties, &cosmo);
+  stars_props_init(&stars_properties, &phys_const, &us, params,
+                   &hydro_properties, &cosmo);
 
   /* Init spart */
   stars_first_init_spart(&sp);
@@ -72,18 +73,27 @@ int main(int argc, char **argv) {
   stars_evolve_spart(&sp, &stars_properties, &cosmo, &us, current_time, dt);
 
   for (int i = 0; i < 9; i++) {
-    message("element %d to distribute fraction %.5e", i, sp.to_distribute.chemistry_data.metal_mass_fraction[i]);
+    message("element %d to distribute fraction %.5e", i,
+            sp.to_distribute.chemistry_data.metal_mass_fraction[i]);
   }
-  message("to distribute mass %.5e",sp.to_distribute.mass);
-  message("to distribute num_SNIa %.5e",sp.to_distribute.num_SNIa);
-  message("to distribute metal_mass_fraction_total %.5e",sp.to_distribute.chemistry_data.metal_mass_fraction_total);
-  message("to distribute mass_from_AGB %.5e",sp.to_distribute.chemistry_data.mass_from_AGB);
-  message("to distribute metal_mass_fraction_from_AGB %.5e",sp.to_distribute.chemistry_data.metal_mass_fraction_from_AGB);
-  message("to distribute mass_from_SNII %.5e",sp.to_distribute.chemistry_data.mass_from_SNII);
-  message("to distribute metal_mass_fraction_from_SNII %.5e",sp.to_distribute.chemistry_data.metal_mass_fraction_from_SNII);
-  message("to distribute mass_from_SNIa %.5e",sp.to_distribute.chemistry_data.mass_from_SNIa);
-  message("to distribute metal_mass_fraction_from_SNIa %.5e",sp.to_distribute.chemistry_data.metal_mass_fraction_from_SNIa);
-  message("to distribute iron_mass_fraction_from_SNIa %.5e",sp.to_distribute.chemistry_data.iron_mass_fraction_from_SNIa);
+  message("to distribute mass %.5e", sp.to_distribute.mass);
+  message("to distribute num_SNIa %.5e", sp.to_distribute.num_SNIa);
+  message("to distribute metal_mass_fraction_total %.5e",
+          sp.to_distribute.chemistry_data.metal_mass_fraction_total);
+  message("to distribute mass_from_AGB %.5e",
+          sp.to_distribute.chemistry_data.mass_from_AGB);
+  message("to distribute metal_mass_fraction_from_AGB %.5e",
+          sp.to_distribute.chemistry_data.metal_mass_fraction_from_AGB);
+  message("to distribute mass_from_SNII %.5e",
+          sp.to_distribute.chemistry_data.mass_from_SNII);
+  message("to distribute metal_mass_fraction_from_SNII %.5e",
+          sp.to_distribute.chemistry_data.metal_mass_fraction_from_SNII);
+  message("to distribute mass_from_SNIa %.5e",
+          sp.to_distribute.chemistry_data.mass_from_SNIa);
+  message("to distribute metal_mass_fraction_from_SNIa %.5e",
+          sp.to_distribute.chemistry_data.metal_mass_fraction_from_SNIa);
+  message("to distribute iron_mass_fraction_from_SNIa %.5e",
+          sp.to_distribute.chemistry_data.iron_mass_fraction_from_SNIa);
 
   message("done test");
 

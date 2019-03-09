@@ -2882,7 +2882,7 @@ void engine_init_particles(struct engine *e, int flag_entropy_ICs,
   if (!flag_entropy_ICs) {
 
     if (e->nodeID == 0) message("Converting internal energy variable.");
-    
+
     space_convert_quantities(e->s, e->verbose);
 
     /* Correct what we did (e.g. in PE-SPH, need to recompute rho_bar) */
@@ -2913,7 +2913,7 @@ void engine_init_particles(struct engine *e, int flag_entropy_ICs,
 
   /* Prepare all the tasks again for a new round */
   engine_marktasks(e);
-    
+
   /* No drift this time */
   engine_skip_drift(e);
 

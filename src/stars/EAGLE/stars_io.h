@@ -103,7 +103,7 @@ INLINE static void stars_props_init(struct stars_props *sp,
                                     const struct unit_system *us,
                                     struct swift_params *params,
                                     const struct hydro_props *p,
-				    const struct cosmology *cosmo) {
+                                    const struct cosmology *cosmo) {
 
   /* Kernel properties */
   sp->eta_neighbours = parser_get_opt_param_float(
@@ -135,38 +135,46 @@ INLINE static void stars_props_init(struct stars_props *sp,
   else
     sp->log_max_h_change = logf(powf(max_volume_change, hydro_dimension_inv));
 
-  sp->stellar_lifetime_flag = parser_get_opt_param_int(
-      params, "EAGLEFeedback:lifetime_flag", 0);
+  sp->stellar_lifetime_flag =
+      parser_get_opt_param_int(params, "EAGLEFeedback:lifetime_flag", 0);
 
-  sp->SNIa_timescale = parser_get_opt_param_float( 
-      params, "EAGLEFeedback:SNIa_timescale", 2.f);
-  sp->SNIa_efficiency = parser_get_opt_param_float( 
+  sp->SNIa_timescale =
+      parser_get_opt_param_float(params, "EAGLEFeedback:SNIa_timescale", 2.f);
+  sp->SNIa_efficiency = parser_get_opt_param_float(
       params, "EAGLEFeedback:SNIa_efficiency", 2.e-3);
-  sp->continuous_heating = parser_get_opt_param_int( 
+  sp->continuous_heating = parser_get_opt_param_int(
       params, "EAGLEFeedback:continuous_heating_switch", 0);
   const float Gyr_in_cgs = 3.154e16;
-  sp->SNII_wind_delay = parser_get_opt_param_float( 
-      params, "EAGLEFeedback:SNII_wind_delay_Gyr", 0.03) * Gyr_in_cgs / units_cgs_conversion_factor(us,UNIT_CONV_TIME);
+  sp->SNII_wind_delay = parser_get_opt_param_float(
+                            params, "EAGLEFeedback:SNII_wind_delay_Gyr", 0.03) *
+                        Gyr_in_cgs /
+                        units_cgs_conversion_factor(us, UNIT_CONV_TIME);
 
   // ALEXEI: find out where this gets set in EAGLE
   sp->SNIa_energy_fraction = 1.0;
 
   /* Set the temperature to use in stochastic heating */
-  sp->SNe_deltaT_desired = 3.16228e7 / units_cgs_conversion_factor(us,UNIT_CONV_TEMPERATURE);
+  sp->SNe_deltaT_desired =
+      3.16228e7 / units_cgs_conversion_factor(us, UNIT_CONV_TEMPERATURE);
 
   /* Set ejecta thermal energy */
-  const float ejecta_velocity = 1.0e6 / units_cgs_conversion_factor(us,UNIT_CONV_SPEED); // EAGLE parameter is 10 km/s
+  const float ejecta_velocity =
+      1.0e6 / units_cgs_conversion_factor(
+                  us, UNIT_CONV_SPEED);  // EAGLE parameter is 10 km/s
   sp->ejecta_specific_thermal_energy = 0.5 * ejecta_velocity * ejecta_velocity;
 
   /* Energy released by supernova */
-  sp->total_energy_SNe = 1.0e51/units_cgs_conversion_factor(us,UNIT_CONV_ENERGY);
+  sp->total_energy_SNe =
+      1.0e51 / units_cgs_conversion_factor(us, UNIT_CONV_ENERGY);
 
   /* Calculate temperature to internal energy conversion factor */
-  sp->temp_to_u_factor = phys_const->const_boltzmann_k / (p->mu_ionised * (hydro_gamma_minus_one) * phys_const->const_proton_mass);
+  sp->temp_to_u_factor =
+      phys_const->const_boltzmann_k /
+      (p->mu_ionised * (hydro_gamma_minus_one)*phys_const->const_proton_mass);
 
   /* Calculate number of type II SN per solar mass */
-  sp->log10_SNII_min_mass_msun = 0.77815125f; // log10(6).
-  sp->log10_SNII_max_mass_msun = 2.f; // log10(100).
+  sp->log10_SNII_min_mass_msun = 0.77815125f;  // log10(6).
+  sp->log10_SNII_max_mass_msun = 2.f;          // log10(100).
 
   /* Copy over solar mass */
   sp->const_solar_mass = phys_const->const_solar_mass;

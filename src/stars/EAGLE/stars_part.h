@@ -38,14 +38,14 @@ struct spart {
   long long id;
 
   /*! Pointer to corresponding gravity part. */
-  struct gpart* gpart;
+  struct gpart *gpart;
 
   /*! Particle position. */
   double x[3];
 
   /* Offset between current position and position at last tree rebuild. */
   float x_diff[3];
-  
+
   /* Offset between current position and position at last tree rebuild. */
   float x_diff_sort[3];
 
@@ -102,7 +102,8 @@ struct spart {
 
   } to_distribute;
 
-  /* kernel normalisation factor (equivalent to metalweight_norm in eagle_enrich.c:811, TODO: IMPROVE COMMENT) */
+  /* kernel normalisation factor (equivalent to metalweight_norm in
+   * eagle_enrich.c:811, TODO: IMPROVE COMMENT) */
   float omega_normalisation_inv;
 
   /* total mass of neighbouring gas particles */
@@ -176,18 +177,17 @@ struct yield_table {
 struct lifetime_table {
   /* number of elements, mass, and initial metallicity bins */
   int n_mass;
-  int n_z; 
+  int n_z;
 
   /* table of masses */
-  double *mass;    
+  double *mass;
 
   /* table of metallicities */
-  double *metallicity; 
+  double *metallicity;
 
   /* table of lifetimes depending on mass an metallicity */
-  double **dyingtime; 
+  double **dyingtime;
 };
-
 
 /**
  * @brief Contains all the constants and parameters of the stars scheme
@@ -215,7 +215,8 @@ struct stars_props {
   /* Flag to switch between continuous and stochastic heating */
   int continuous_heating;
 
-  /* Fraction of energy in SNIa (Note: always set to 1 in EAGLE, so may be not necessary) */
+  /* Fraction of energy in SNIa (Note: always set to 1 in EAGLE, so may be not
+   * necessary) */
   float SNIa_energy_fraction;
 
   /* Desired temperature increase due to supernovae */
@@ -233,7 +234,8 @@ struct stars_props {
   /* Timescale for feedback (used only for testing in const feedback model) */
   float feedback_timescale;
 
-  /* Number of supernovae per solar mass (used only for testing in const feedback model) */
+  /* Number of supernovae per solar mass (used only for testing in const
+   * feedback model) */
   float sn_per_msun;
 
   /* Solar mass */
@@ -256,12 +258,12 @@ struct stars_props {
   double *yield_SNIa_SPH;
   double yield_SNIa_total_metals_SPH;
   double *yields_SNIa;
-  
+
   /* Parameters to SNIa enrichment model  */
   int SNIa_mode;
   float SNIa_efficiency;
   float SNIa_timescale;
-  
+
   /* Mass transfer due to enrichment  */
   int SNIa_mass_transfer;
   int SNII_mass_transfer;
@@ -299,12 +301,14 @@ struct stars_props {
   struct lifetime_table lifetimes;
 
   /* Flag defining stellar lifetime model */
-  int stellar_lifetime_flag; // 0 for padovani & matteucci 1993, 1 for maeder & meynet 1989, 2 for portinari et al. 1998. 
+  int stellar_lifetime_flag;  // 0 for padovani & matteucci 1993, 1 for maeder &
+                              // meynet 1989, 2 for portinari et al. 1998.
 
   /* Location of yield tables */
   char yield_table_path[50];
 
-  /* Array for storing stellar yields for computation in IMF (clarify name, comment) */
+  /* Array for storing stellar yields for computation in IMF (clarify name,
+   * comment) */
   float *stellar_yield;
 
   /* number of type II supernovae per solar mass */
@@ -316,7 +320,6 @@ struct stars_props {
   /* log10 min, max mass in SNII tables */
   float log10_SNII_min_mass_msun;
   float log10_SNII_max_mass_msun;
-
 };
 
 #endif /* SWIFT_EAGLE_STAR_PART_H */

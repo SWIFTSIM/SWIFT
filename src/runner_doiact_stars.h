@@ -128,7 +128,8 @@ void DOSELF1_STARS(struct runner *r, struct cell *c, int timer) {
 #endif
 
       if (r2 > 0.f && r2 < hig2) {
-        IACT_STARS(r2, dx, hi, hj, si, pj, cosmo, stars_properties, xpj, e->ti_current);
+        IACT_STARS(r2, dx, hi, hj, si, pj, cosmo, stars_properties, xpj,
+                   e->ti_current);
       }
     } /* loop over the parts in ci. */
   }   /* loop over the sparts in ci. */
@@ -207,7 +208,9 @@ void DO_NONSYM_PAIR1_STARS(struct runner *r, struct cell *restrict ci,
         error("Particle pj not drifted to current time");
 #endif
 
-      if (r2 < hig2) IACT_STARS(r2, dx, hi, hj, si, pj, cosmo, stars_properties, xpj, e->ti_current);
+      if (r2 < hig2)
+        IACT_STARS(r2, dx, hi, hj, si, pj, cosmo, stars_properties, xpj,
+                   e->ti_current);
 
     } /* loop over the parts in cj. */
   }   /* loop over the parts in ci. */
@@ -297,7 +300,8 @@ void DOPAIR1_SUBSET_STARS(struct runner *r, struct cell *restrict ci,
 #endif
       /* Hit or miss? */
       if (r2 < hig2) {
-        IACT_STARS(r2, dx, hi, pj->h, spi, pj, cosmo, stars_properties, xpj, e->ti_current);
+        IACT_STARS(r2, dx, hi, pj->h, spi, pj, cosmo, stars_properties, xpj,
+                   e->ti_current);
       }
     } /* loop over the parts in cj. */
   }   /* loop over the parts in ci. */
@@ -368,7 +372,8 @@ void DOSELF1_SUBSET_STARS(struct runner *r, struct cell *restrict ci,
 
       /* Hit or miss? */
       if (r2 > 0.f && r2 < hig2) {
-        IACT_STARS(r2, dx, hi, hj, spi, pj, cosmo, stars_properties, xpj, e->ti_current);
+        IACT_STARS(r2, dx, hi, hj, spi, pj, cosmo, stars_properties, xpj,
+                   e->ti_current);
       }
     } /* loop over the parts in cj. */
   }   /* loop over the parts in ci. */

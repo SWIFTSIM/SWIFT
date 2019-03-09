@@ -912,10 +912,9 @@ int main(int argc, char *argv[]) {
     bzero(&chemistry, sizeof(struct chemistry_global_data));
     chemistry_init(params, &us, &prog_const, &chemistry);
     if (myrank == 0) chemistry_print(&chemistry);
-    
+
     /* Initialise the cooling function properties */
-    if (with_feedback)
-      stars_evolve_init(params, &stars_properties);
+    if (with_feedback) stars_evolve_init(params, &stars_properties);
     // ALEXEI: add print function!!!
 
     /* Construct the engine policy */

@@ -97,7 +97,7 @@ INLINE static void stars_props_init(struct stars_props *sp,
                                     const struct unit_system *us,
                                     struct swift_params *params,
                                     const struct hydro_props *p,
-				    const struct cosmology *cosmo) {
+                                    const struct cosmology *cosmo) {
 
   /* Kernel properties */
   sp->eta_neighbours = parser_get_opt_param_float(
@@ -129,39 +129,53 @@ INLINE static void stars_props_init(struct stars_props *sp,
   else
     sp->log_max_h_change = logf(powf(max_volume_change, hydro_dimension_inv));
 
-  /* Check if we are heating continuously. Set to 1 if using continuous, 0 for stochastic  */
-  sp->continuous_heating = parser_get_opt_param_int(params, "Stars:continuous_heating", 0);
+  /* Check if we are heating continuously. Set to 1 if using continuous, 0 for
+   * stochastic  */
+  sp->continuous_heating =
+      parser_get_opt_param_int(params, "Stars:continuous_heating", 0);
 
   /* Are we testing the energy injection in the constant feedback model? */
-  sp->const_feedback_energy_testing = parser_get_opt_param_int(params, "Stars:energy_testing", 0);
+  sp->const_feedback_energy_testing =
+      parser_get_opt_param_int(params, "Stars:energy_testing", 0);
 
   /* Set temperature increase due to supernovae */
-  sp->SNe_deltaT_desired = 3.16228e7 / units_cgs_conversion_factor(us,UNIT_CONV_TEMPERATURE);
+  sp->SNe_deltaT_desired =
+      3.16228e7 / units_cgs_conversion_factor(us, UNIT_CONV_TEMPERATURE);
 
   /* Calculate temperature to internal energy conversion factor */
-  sp->temp_to_u_factor = phys_const->const_boltzmann_k / (p->mu_ionised * (hydro_gamma_minus_one) * phys_const->const_proton_mass);
+  sp->temp_to_u_factor =
+      phys_const->const_boltzmann_k /
+      (p->mu_ionised * (hydro_gamma_minus_one)*phys_const->const_proton_mass);
 
   /* Fraction of energy in SNIa (?) */
   // Why is this one here? copied from EAGLE where it is always 1 ...
   sp->SNIa_energy_fraction = 1.0e0;
 
   /* Energy released by supernova */
-  sp->total_energy_SNe = 1.0e51/units_cgs_conversion_factor(us,UNIT_CONV_ENERGY);
+  sp->total_energy_SNe =
+      1.0e51 / units_cgs_conversion_factor(us, UNIT_CONV_ENERGY);
 
   /* energy and temperature times h */
-  sp->SNe_temperature = sp->total_energy_SNe / sp->temp_to_u_factor; // units_factor1 in EAGLE
+  sp->SNe_temperature =
+      sp->total_energy_SNe / sp->temp_to_u_factor;  // units_factor1 in EAGLE
 
-  /* Find out timescale for feedback (used only for testing in const feedback model) */
-  sp->feedback_timescale = parser_get_opt_param_float(params, "Stars:feedback_timescale", 4e-5);
-  
-  /* Calculate number of supernovae per solar mass (used only for testing in const feedback model) */
+  /* Find out timescale for feedback (used only for testing in const feedback
+   * model) */
+  sp->feedback_timescale =
+      parser_get_opt_param_float(params, "Stars:feedback_timescale", 4e-5);
+
+  /* Calculate number of supernovae per solar mass (used only for testing in
+   * const feedback model) */
   const float ten_Myr_in_cgs = 3.154e14;
   const float SN_per_msun_factor = 0.01;
-  sp->sn_per_msun = sp->feedback_timescale * units_cgs_conversion_factor(us, UNIT_CONV_TIME) / ten_Myr_in_cgs * SN_per_msun_factor; // timescale convert to cgs per 10 Myr (~3e14s). 0.01 solar masses per supernova.
+  sp->sn_per_msun =
+      sp->feedback_timescale * units_cgs_conversion_factor(us, UNIT_CONV_TIME) /
+      ten_Myr_in_cgs * SN_per_msun_factor;  // timescale convert to cgs per 10
+                                            // Myr (~3e14s). 0.01 solar masses
+                                            // per supernova.
 
   /* Copy over solar mass (used only for testing in const feedback model) */
   sp->const_solar_mass = phys_const->const_solar_mass;
-
 }
 
 /**

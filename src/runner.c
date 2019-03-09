@@ -179,7 +179,7 @@ void runner_do_stars_ghost(struct runner *r, struct cell *c, int timer) {
     /* While there are particles that need to be updated... */
     for (int num_reruns = 0; scount > 0 && num_reruns < max_smoothing_iter;
          num_reruns++) {
-        
+
       /* Reset the redo-count. */
       redo = 0;
 
@@ -189,14 +189,14 @@ void runner_do_stars_ghost(struct runner *r, struct cell *c, int timer) {
         /* Get a direct pointer on the part. */
         struct spart *sp = &sparts[sid[i]];
 
-	/* get particle timestep */
+        /* get particle timestep */
         double dt;
         if (with_cosmology) {
           const integertime_t ti_step = get_integer_timestep(sp->time_bin);
           const integertime_t ti_begin =
               get_integer_time_begin(e->ti_current - 1, sp->time_bin);
           dt = cosmology_get_therm_kick_factor(e->cosmology, ti_begin,
-                                                     ti_begin + ti_step);
+                                               ti_begin + ti_step);
         } else {
           dt = get_timestep(sp->time_bin, e->time_base);
         }
@@ -351,11 +351,14 @@ void runner_do_stars_ghost(struct runner *r, struct cell *c, int timer) {
         /* We now have a particle whose smoothing length has converged */
         stars_reset_feedback(sp);
 
-	// Get current time
-	float current_time_begin = get_integer_time_begin(e->ti_current - 1, sp->time_bin) * e->time_base;
+        // Get current time
+        float current_time_begin =
+            get_integer_time_begin(e->ti_current - 1, sp->time_bin) *
+            e->time_base;
 
         /* Compute the stellar evolution  */
-        stars_evolve_spart(sp, e->stars_properties, cosmo, us, current_time_begin, dt);
+        stars_evolve_spart(sp, e->stars_properties, cosmo, us,
+                           current_time_begin, dt);
       }
 
       /* We now need to treat the particles whose smoothing length had not

@@ -360,8 +360,7 @@ __attribute__((always_inline)) INLINE static void
 hydro_set_physical_internal_energy(struct part *restrict p,
                                    const struct cosmology *restrict cosmo,
                                    float u) {
-  p->entropy =
-      gas_entropy_from_internal_energy(p->rho * cosmo->a3_inv, u);
+  p->entropy = gas_entropy_from_internal_energy(p->rho * cosmo->a3_inv, u);
 }
 
 /**

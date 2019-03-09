@@ -33,12 +33,12 @@
  * @param H Current Hubble parameter.
  */
 __attribute__((always_inline)) INLINE static void
-runner_iact_nonsym_stars_density(float r2, const float *dx, float hi, float hj,
-                                 struct spart *restrict si,
-                                 const struct part *restrict pj, float a,
-                                 float H, const struct cosmology *restrict cosmo,
-                                 const struct stars_props *restrict stars_properties,
-                                 struct xpart *restrict xp) {
+runner_iact_nonsym_stars_density(
+    float r2, const float *dx, float hi, float hj, struct spart *restrict si,
+    const struct part *restrict pj, float a, float H,
+    const struct cosmology *restrict cosmo,
+    const struct stars_props *restrict stars_properties,
+    struct xpart *restrict xp) {
 
   float wi, wi_dx;
 
@@ -78,12 +78,12 @@ runner_iact_nonsym_stars_density(float r2, const float *dx, float hi, float hj,
  * @param H Current Hubble parameter.
  */
 __attribute__((always_inline)) INLINE static void
-runner_iact_nonsym_stars_feedback(float r2, const float *dx, float hi, float hj,
-                                  struct spart *restrict si,
-                                  struct part *restrict pj, float a, float H,
-                                  const struct cosmology *restrict cosmo,
-                                  const struct stars_props *restrict stars_properties,
-                                  struct xpart *restrict xp) {
+runner_iact_nonsym_stars_feedback(
+    float r2, const float *dx, float hi, float hj, struct spart *restrict si,
+    struct part *restrict pj, float a, float H,
+    const struct cosmology *restrict cosmo,
+    const struct stars_props *restrict stars_properties,
+    struct xpart *restrict xp) {
 
   const float mj = hydro_get_mass(pj);
   const float rhoj = pj->rho;

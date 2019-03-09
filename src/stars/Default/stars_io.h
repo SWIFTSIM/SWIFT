@@ -109,7 +109,7 @@ INLINE static void stars_props_init(struct stars_props *sp,
                                     const struct unit_system *us,
                                     struct swift_params *params,
                                     const struct hydro_props *p,
-				    const struct cosmology *cosmo) {
+                                    const struct cosmology *cosmo) {
 
   /* Kernel properties */
   sp->eta_neighbours = parser_get_opt_param_float(

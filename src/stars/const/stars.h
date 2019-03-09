@@ -75,7 +75,7 @@ __attribute__((always_inline)) INLINE static void stars_init_spart(
  * @param dt_drift The drift time-step for positions.
  */
 __attribute__((always_inline)) INLINE static void stars_predict_extra(
-    struct spart *restrict sp, float dt_drift) {
+    struct spart* restrict sp, float dt_drift) {
 
   const float h_inv = 1.f / sp->h;
 
@@ -85,7 +85,6 @@ __attribute__((always_inline)) INLINE static void stars_predict_extra(
     sp->h *= approx_expf(w1); /* 4th order expansion of exp(w) */
   else
     sp->h *= expf(w1);
-
 }
 
 /**
@@ -184,32 +183,42 @@ __attribute__((always_inline)) INLINE static void stars_reset_acceleration(
  */
 __attribute__((always_inline)) INLINE static void stars_evolve_spart(
     struct spart* restrict sp, const struct stars_props* stars_properties,
-    const struct cosmology* cosmo, const struct unit_system* us, float current_time, double dt) {
-  
+    const struct cosmology* cosmo, const struct unit_system* us,
+    float current_time, double dt) {
+
   /* Proportion of quantities to be released each timestep */
-  float feedback_factor = dt/stars_properties->feedback_timescale;
+  float feedback_factor = dt / stars_properties->feedback_timescale;
 
   /* Amount of mass to distribute in one step */
   sp->to_distribute.mass = sp->mass_init * feedback_factor;
 
   /* Set all enrichment quantities to constant values */
-  for (int i = 0; i < chemistry_element_count; i++) sp->to_distribute.chemistry_data.metal_mass_fraction[i] = 1.f/chemistry_element_count;
-  sp->to_distribute.chemistry_data.metal_mass_fraction_total = 1.f - 2.f/chemistry_element_count;
-  sp->to_distribute.chemistry_data.mass_from_AGB = 1.0e-2 * sp->to_distribute.mass;
+  for (int i = 0; i < chemistry_element_count; i++)
+    sp->to_distribute.chemistry_data.metal_mass_fraction[i] =
+        1.f / chemistry_element_count;
+  sp->to_distribute.chemistry_data.metal_mass_fraction_total =
+      1.f - 2.f / chemistry_element_count;
+  sp->to_distribute.chemistry_data.mass_from_AGB =
+      1.0e-2 * sp->to_distribute.mass;
   sp->to_distribute.chemistry_data.metal_mass_fraction_from_AGB = 1.0e-2;
-  sp->to_distribute.chemistry_data.mass_from_SNII = 1.0e-2 * sp->to_distribute.mass;
+  sp->to_distribute.chemistry_data.mass_from_SNII =
+      1.0e-2 * sp->to_distribute.mass;
   sp->to_distribute.chemistry_data.metal_mass_fraction_from_SNII = 1.0e-2;
-  sp->to_distribute.chemistry_data.mass_from_SNIa = 1.0e-2 * sp->to_distribute.mass;
+  sp->to_distribute.chemistry_data.mass_from_SNIa =
+      1.0e-2 * sp->to_distribute.mass;
   sp->to_distribute.chemistry_data.metal_mass_fraction_from_SNIa = 1.0e-2;
   sp->to_distribute.chemistry_data.iron_mass_fraction_from_SNIa = 1.0e-2;
 
   /* Set feedback to constant values */
-  const float total_sn = sp->mass_init / stars_properties->const_solar_mass * stars_properties->sn_per_msun;
+  const float total_sn = sp->mass_init / stars_properties->const_solar_mass *
+                         stars_properties->sn_per_msun;
 
-  /* Print total_sn and timescale to be read by test script for checking stochastic energy injection */
+  /* Print total_sn and timescale to be read by test script for checking
+   * stochastic energy injection */
   if (dt == 0) {
-    FILE *feedback_output = fopen("feedback_properties.dat","w");
-    fprintf(feedback_output,"%.5e \n%.5e \n", total_sn, stars_properties->feedback_timescale);
+    FILE* feedback_output = fopen("feedback_properties.dat", "w");
+    fprintf(feedback_output, "%.5e \n%.5e \n", total_sn,
+            stars_properties->feedback_timescale);
     fclose(feedback_output);
   }
 
@@ -218,11 +227,10 @@ __attribute__((always_inline)) INLINE static void stars_evolve_spart(
 
   /* Set ejected thermal energy */
   sp->to_distribute.ejecta_specific_thermal_energy = 1.0e-3;
-
 }
 
-inline static void stars_evolve_init(struct swift_params *params, struct stars_props* restrict stars){}
-
+inline static void stars_evolve_init(struct swift_params* params,
+                                     struct stars_props* restrict stars) {}
 
 /**
  * @brief Reset acceleration fields of a particle
@@ -244,6 +252,5 @@ __attribute__((always_inline)) INLINE static void stars_reset_feedback(
   p->num_ngb_force = 0;
 #endif
 }
-
 
 #endif /* SWIFT_CONST_STARS_H */

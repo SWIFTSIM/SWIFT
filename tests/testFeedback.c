@@ -55,7 +55,8 @@ int main(int argc, char *argv[]) {
   hydro_props_init(&hydro_properties, &phys_const, &us, params);
 
   /* Init star properties */
-  stars_props_init(&stars_properties, &phys_const, &us, params, &hydro_properties, &cosmo);
+  stars_props_init(&stars_properties, &phys_const, &us, params,
+                   &hydro_properties, &cosmo);
 
   /* Read yield tables */
   stars_evolve_init(params, &stars_properties);
@@ -79,12 +80,16 @@ int main(int argc, char *argv[]) {
           "| Ne | Mg | Si | Fe | per solar mass\n");
 
   float Gyr_to_s = 3.154e16;
-  float dt = 0.1 * Gyr_to_s / units_cgs_conversion_factor(&us,UNIT_CONV_TIME);
-  float max_age = 13.f * Gyr_to_s / units_cgs_conversion_factor(&us,UNIT_CONV_TIME);
+  float dt = 0.1 * Gyr_to_s / units_cgs_conversion_factor(&us, UNIT_CONV_TIME);
+  float max_age =
+      13.f * Gyr_to_s / units_cgs_conversion_factor(&us, UNIT_CONV_TIME);
   for (float age = 0; age <= max_age; age += dt) {
     compute_stellar_evolution(&stars_properties, &sp, &us, age, dt);
-    float age_Gyr = age * units_cgs_conversion_factor(&us,UNIT_CONV_TIME) / Gyr_to_s;
-    fprintf(AGB_output, "%f %e %e ", age_Gyr, sp.to_distribute.mass / sp.mass_init, sp.chemistry_data.metal_mass_fraction_from_AGB / sp.mass_init);
+    float age_Gyr =
+        age * units_cgs_conversion_factor(&us, UNIT_CONV_TIME) / Gyr_to_s;
+    fprintf(AGB_output, "%f %e %e ", age_Gyr,
+            sp.to_distribute.mass / sp.mass_init,
+            sp.chemistry_data.metal_mass_fraction_from_AGB / sp.mass_init);
     for (int i = 0; i < chemistry_element_count; i++)
       fprintf(AGB_output, "%e ", sp.metals_released[i]);
     fprintf(AGB_output, "\n");
