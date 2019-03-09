@@ -101,7 +101,7 @@ gas_sSFR = gas_SFR / gas_mass
 # Read the Star properties
 stars_pos = f["/PartType4/Coordinates"][:, :]
 stars_BirthDensity = f["/PartType4/BirthDensity"][:]
-stars_BirthTime = f["/PartType4/Birth_time"][:]
+stars_BirthTime = f["/PartType4/BirthTime"][:]
 stars_XH = f["/PartType4/ElementAbundance"][:,0]
 
 # Centre the box

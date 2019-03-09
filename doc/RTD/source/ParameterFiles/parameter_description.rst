@@ -269,7 +269,13 @@ time-step limited by the maximal value on top of all the other criteria that may
 apply to them (gravity acceleration, Courant condition, etc.). If a particle
 demands a time-step size smaller than the minimum, SWIFT will abort with an
 error message. This is a safe-guard against simulations that would never
-complete due to the number of steps to run being too large.
+complete due to the number of steps to run being too large. Note that in
+cosmological runs, the meaning of these variables changes slightly. They do not
+correspond to differences in time but in logarithm of the scale-factor. For
+these runs, the simulation progresses in jumps of
+:math:`\Delta\log(a)`. ``dt_max`` is then the maximally allowed change in
+:math:`\Delta\log(a)` allowed for any particle in the simulation. This behaviour
+mimics the variables of the smae name in the Gadget code.
 
 When running a non-cosmological simulation, the user also has to provide the
 time of the start and the time of the end of the simulation:

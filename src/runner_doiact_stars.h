@@ -1010,6 +1010,9 @@ void DOSELF1_BRANCH_STARS(struct runner *r, struct cell *c) {
   const struct engine *restrict e = r->e;
 
   /* Anything to do here? */
+  if (c->stars.count == 0) return;
+
+  /* Anything to do here? */
   if (!cell_is_active_stars(c, e)) return;
 
   /* Did we mess up the recursion? */

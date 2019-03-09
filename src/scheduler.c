@@ -1853,9 +1853,6 @@ void scheduler_enqueue(struct scheduler *s, struct task *t) {
           err = MPI_Irecv(t->ci->hydro.parts, t->ci->hydro.count, part_mpi_type,
                           t->ci->nodeID, t->flags, subtaskMPI_comms[t->subtype],
                           &t->req);
-          // message( "receiving %i parts with tag=%i from %i to %i." ,
-          //     t->ci->hydro.count , t->flags , t->ci->nodeID , s->nodeID );
-          // fflush(stdout);
         } else if (t->subtype == task_subtype_gpart) {
           err = MPI_Irecv(t->ci->grav.parts, t->ci->grav.count, gpart_mpi_type,
                           t->ci->nodeID, t->flags, subtaskMPI_comms[t->subtype],
@@ -1909,9 +1906,6 @@ void scheduler_enqueue(struct scheduler *s, struct task *t) {
             err = MPI_Issend(t->ci->hydro.parts, t->ci->hydro.count,
                              part_mpi_type, t->cj->nodeID, t->flags,
                              subtaskMPI_comms[t->subtype], &t->req);
-          // message( "sending %i parts with tag=%i from %i to %i." ,
-          //     t->ci->hydro.count , t->flags , s->nodeID , t->cj->nodeID );
-          // fflush(stdout);
         } else if (t->subtype == task_subtype_gpart) {
           if ((t->ci->grav.count * sizeof(struct gpart)) > s->mpi_message_limit)
             err = MPI_Isend(t->ci->grav.parts, t->ci->grav.count,

@@ -146,6 +146,7 @@ void engine_addtasks_send_hydro(struct engine *e, struct cell *ci,
                                0, ci, cj);
       t_rho = scheduler_addtask(s, task_type_send, task_subtype_rho,
                                 ci->mpi.tag, 0, ci, cj);
+
 #ifdef EXTRA_HYDRO_LOOP
       t_gradient = scheduler_addtask(s, task_type_send, task_subtype_gradient,
                                      ci->mpi.tag, 0, ci, cj);
@@ -179,6 +180,8 @@ void engine_addtasks_send_hydro(struct engine *e, struct cell *ci,
 
 #endif
 
+      scheduler_addunlock(s, ci->hydro.super->hydro.drift, t_rho);
+
       /* Drift before you send */
       scheduler_addunlock(s, ci->hydro.super->hydro.drift, t_xv);
     }
@@ -209,12 +212,10 @@ void engine_addtasks_send_hydro(struct engine *e, struct cell *ci,
  * @param e The #engine.
  * @param ci The sending #cell.
  * @param cj Dummy cell containing the nodeID of the receiving node.
- * @param t_xv The send_xv #task, if it has already been created.
  * @param t_feedback The send_feed #task, if it has already been created.
  */
 void engine_addtasks_send_stars(struct engine *e, struct cell *ci,
-                                struct cell *cj, struct task *t_xv,
-                                struct task *t_feedback) {
+                                struct cell *cj, struct task *t_feedback) {
 
 #ifdef WITH_MPI
 
@@ -257,7 +258,7 @@ void engine_addtasks_send_stars(struct engine *e, struct cell *ci,
   if (ci->split)
     for (int k = 0; k < 8; k++)
       if (ci->progeny[k] != NULL)
-        engine_addtasks_send_stars(e, ci->progeny[k], cj, t_xv, t_feedback);
+        engine_addtasks_send_stars(e, ci->progeny[k], cj, t_feedback);
 
 #else
   error("SWIFT was not compiled with MPI support.");
@@ -386,7 +387,10 @@ void engine_addtasks_recv_hydro(struct engine *e, struct cell *c,
   c->mpi.hydro.recv_gradient = t_gradient;
 
   /* Add dependencies. */
-  if (c->hydro.sorts != NULL) scheduler_addunlock(s, t_xv, c->hydro.sorts);
+  if (c->hydro.sorts != NULL) {
+    scheduler_addunlock(s, t_xv, c->hydro.sorts);
+    scheduler_addunlock(s, c->hydro.sorts, t_rho);
+  }
 
   for (struct link *l = c->hydro.density; l != NULL; l = l->next) {
     scheduler_addunlock(s, t_xv, l->t);
@@ -406,8 +410,8 @@ void engine_addtasks_recv_hydro(struct engine *e, struct cell *c,
   }
 #endif
 
+  /* Make sure the density has been computed before the stars compute theirs. */
   for (struct link *l = c->stars.density; l != NULL; l = l->next) {
-    scheduler_addunlock(s, t_xv, l->t);
     scheduler_addunlock(s, t_rho, l->t);
   }
 
@@ -894,8 +898,9 @@ void engine_make_hierarchical_tasks_hydro(struct engine *e, struct cell *c) {
         scheduler_addunlock(s, c->super->kick2, c->stars.stars_in);
         scheduler_addunlock(s, c->stars.stars_out, c->super->timestep);
 
-        if (with_star_formation)
+        if (with_star_formation) {
           scheduler_addunlock(s, c->hydro.star_formation, c->stars.stars_in);
+        }
       }
     }
   } else { /* We are above the super-cell so need to go deeper */
@@ -2020,363 +2025,6 @@ void engine_make_extra_hydroloop_tasks_mapper(void *map_data, int num_elements,
     }
   }
 }
-
-/**
- * @brief Duplicates the first stars loop and construct all the
- * dependencies for the stars part
- *
- * This is done by looping over all the previously constructed tasks
- * and adding another task involving the same cells but this time
- * corresponding to the second stars loop over neighbours.
- * With all the relevant tasks for a given cell available, we construct
- * all the dependencies for that cell.
- */
-/* void engine_make_extra_starsloop_tasks_mapper(void *map_data, int
- * num_elements, */
-/*                                               void *extra_data) { */
-
-/*   struct engine *e = (struct engine *)extra_data; */
-/*   struct scheduler *sched = &e->sched; */
-/*   const int nodeID = e->nodeID; */
-
-/*   for (int ind = 0; ind < num_elements; ind++) { */
-/*     struct task *t = &((struct task *)map_data)[ind]; */
-
-/*     /\* Sort tasks depend on the drift and gravity drift of the cell. *\/ */
-/*     if (t->type == task_type_stars_sort_local) { */
-/*       scheduler_addunlock(sched, t->ci->hydro.super->hydro.drift, t); */
-/*       scheduler_addunlock(sched, t->ci->super->grav.drift, t); */
-/*     } */
-
-/*     /\* Self-interaction? *\/ */
-/*     else if (t->type == task_type_self && */
-/*              t->subtype == task_subtype_stars_density) { */
-
-/*       /\* Make the self-density tasks depend on the drift and gravity drift.
- * *\/ */
-/*       scheduler_addunlock(sched, t->ci->hydro.super->hydro.drift, t); */
-/*       scheduler_addunlock(sched, t->ci->super->grav.drift, t); */
-
-/*       /\* Start by constructing the task for the second stars loop *\/ */
-/*       struct task *t2 = */
-/*           scheduler_addtask(sched, task_type_self,
- * task_subtype_stars_feedback, */
-/*                             0, 0, t->ci, NULL); */
-
-/*       /\* Add the link between the new loop and the cell *\/ */
-/*       engine_addlink(e, &t->ci->stars.feedback, t2); */
-
-/*       /\* Now, build all the dependencies for the stars *\/ */
-/*       engine_make_stars_loops_dependencies(sched, t, t2, t->ci); */
-
-/*       /\* end_force depends on feedback tasks *\/ */
-/*       scheduler_addunlock(sched, t2, t->ci->super->end_force); */
-/*     } */
-
-/*     /\* Otherwise, pair interaction? *\/ */
-/*     else if (t->type == task_type_pair && */
-/*              t->subtype == task_subtype_stars_density) { */
-
-/*       /\* Make all stars density tasks depend on the hydro drift and sorts,
- */
-/*        * gravity drift and star sorts. *\/ */
-/*       if (t->ci->nodeID == engine_rank) */
-/*         scheduler_addunlock(sched, t->ci->hydro.super->hydro.drift, t); */
-/*       scheduler_addunlock(sched, t->ci->hydro.super->hydro.sorts, t); */
-
-/*       if (t->ci->nodeID == engine_rank) { */
-/*         scheduler_addunlock(sched, t->ci->super->grav.drift, t); */
-/*         scheduler_addunlock(sched, t->ci->hydro.super->stars.sorts_local, t);
- */
-/*       } */
-
-/*       if (t->ci->hydro.super != t->cj->hydro.super) { */
-/*         if (t->cj->nodeID == engine_rank) */
-/*           scheduler_addunlock(sched, t->cj->hydro.super->hydro.drift, t); */
-/*         scheduler_addunlock(sched, t->cj->hydro.super->hydro.sorts, t); */
-/*       } */
-
-/*       if (t->cj->nodeID == engine_rank) { */
-/*         if (t->ci->hydro.super != t->cj->hydro.super) { */
-/*           scheduler_addunlock(sched, t->cj->hydro.super->stars.sorts_local,
- * t); */
-/*         } */
-/*         if (t->ci->super != t->cj->super) { */
-/*           scheduler_addunlock(sched, t->cj->super->grav.drift, t); */
-/*         } */
-/*       } */
-
-/*       /\* Start by constructing the task for the second stars loop *\/ */
-/*       struct task *t2 = */
-/*           scheduler_addtask(sched, task_type_pair,
- * task_subtype_stars_feedback, */
-/*                             0, 0, t->ci, t->cj); */
-
-/*       /\* Add sort before feedback loop *\/ */
-/*       if (t->ci->nodeID != engine_rank) { */
-/*         scheduler_addunlock(sched, t->ci->hydro.super->stars.sorts_foreign,
- * t2); */
-/*       } */
-/*       if (t->ci->hydro.super != t->cj->hydro.super) { */
-/*         if (t->cj->nodeID != engine_rank) { */
-/*           scheduler_addunlock(sched, t->cj->hydro.super->stars.sorts_foreign,
- */
-/*                               t2); */
-/*         } */
-/*       } */
-
-/*       /\* Add the link between the new loop and both cells *\/ */
-/*       engine_addlink(e, &t->ci->stars.feedback, t2); */
-/*       engine_addlink(e, &t->cj->stars.feedback, t2); */
-
-/*       /\* Now, build all the dependencies for the stars for the cells *\/ */
-/*       if (t->ci->nodeID == nodeID) { */
-/*         engine_make_stars_loops_dependencies(sched, t, t2, t->ci); */
-/*         scheduler_addunlock(sched, t2, t->ci->super->end_force); */
-/*       } */
-/*       if (t->cj->nodeID == nodeID) { */
-/*         if (t->ci->hydro.super != t->cj->hydro.super) { */
-/*           engine_make_stars_loops_dependencies(sched, t, t2, t->cj); */
-/*         } */
-/*         if (t->ci->super != t->cj->super) { */
-/*           scheduler_addunlock(sched, t2, t->cj->super->end_force); */
-/*         } */
-/*       } */
-/*     } */
-
-/*     /\* Otherwise, sub-self interaction? *\/ */
-/*     else if (t->type == task_type_sub_self && */
-/*              t->subtype == task_subtype_stars_density) { */
-
-/*       /\* Make all stars density tasks depend on the hydro drift and sorts,
- */
-/*        * gravity drift and star sorts. *\/ */
-/*       scheduler_addunlock(sched, t->ci->hydro.super->hydro.drift, t); */
-/*       scheduler_addunlock(sched, t->ci->hydro.super->hydro.sorts, t); */
-/*       scheduler_addunlock(sched, t->ci->super->grav.drift, t); */
-/*       scheduler_addunlock(sched, t->ci->hydro.super->stars.sorts_local, t);
- */
-
-/*       /\* Start by constructing the task for the second stars loop *\/ */
-/*       struct task *t2 = scheduler_addtask(sched, task_type_sub_self, */
-/*                                           task_subtype_stars_feedback,
- * t->flags, */
-/*                                           0, t->ci, t->cj); */
-
-/*       /\* Add the link between the new loop and the cell *\/ */
-/*       engine_addlink(e, &t->ci->stars.feedback, t2); */
-
-/*       /\* Now, build all the dependencies for the stars for the cells *\/ */
-/*       if (t->ci->nodeID == nodeID) { */
-/*         engine_make_stars_loops_dependencies(sched, t, t2, t->ci); */
-/*         scheduler_addunlock(sched, t2, t->ci->super->end_force); */
-/*       } */
-/*     } */
-
-/*     /\* Otherwise, sub-pair interaction? *\/ */
-/*     else if (t->type == task_type_sub_pair && */
-/*              t->subtype == task_subtype_stars_density) { */
-
-/*       /\* Make all stars density tasks depend on the hydro drift and sorts,
- */
-/*        * gravity drift and star sorts. *\/ */
-/*       if (t->cj->nodeID == engine_rank) */
-/*         scheduler_addunlock(sched, t->cj->hydro.super->hydro.drift, t); */
-/*       scheduler_addunlock(sched, t->cj->hydro.super->hydro.sorts, t); */
-
-/*       if (t->cj->nodeID == engine_rank) { */
-/*         scheduler_addunlock(sched, t->cj->super->grav.drift, t); */
-/*         scheduler_addunlock(sched, t->cj->hydro.super->stars.sorts_local, t);
- */
-/*       } */
-
-/*       if (t->ci->hydro.super != t->cj->hydro.super) { */
-/*         if (t->ci->nodeID == engine_rank) */
-/*           scheduler_addunlock(sched, t->ci->hydro.super->hydro.drift, t); */
-/*         scheduler_addunlock(sched, t->ci->hydro.super->hydro.sorts, t); */
-/*       } */
-
-/*       if (t->ci->nodeID == engine_rank) { */
-/*         if (t->ci->super != t->cj->super) { */
-/*           scheduler_addunlock(sched, t->ci->super->grav.drift, t); */
-/*         } */
-/*         if (t->ci->hydro.super != t->cj->hydro.super) { */
-/*           scheduler_addunlock(sched, t->ci->hydro.super->stars.sorts_local,
- * t); */
-/*         } */
-/*       } */
-
-/*       /\* Start by constructing the task for the second stars loop *\/ */
-/*       struct task *t2 = scheduler_addtask(sched, task_type_sub_pair, */
-/*                                           task_subtype_stars_feedback,
- * t->flags, */
-/*                                           0, t->ci, t->cj); */
-
-/*       /\* Add the sort before feedback *\/ */
-/*       if (t->cj->nodeID != engine_rank) { */
-/*         scheduler_addunlock(sched, t->cj->hydro.super->stars.sorts_foreign,
- * t2); */
-/*       } */
-/*       if (t->ci->hydro.super != t->cj->hydro.super) { */
-/*         if (t->ci->nodeID != engine_rank) { */
-/*           scheduler_addunlock(sched, t->ci->hydro.super->stars.sorts_foreign,
- */
-/*                               t2); */
-/*         } */
-/*       } */
-
-/*       /\* Add the link between the new loop and both cells *\/ */
-/*       engine_addlink(e, &t->ci->stars.feedback, t2); */
-/*       engine_addlink(e, &t->cj->stars.feedback, t2); */
-
-/*       /\* Now, build all the dependencies for the stars for the cells *\/ */
-/*       if (t->ci->nodeID == nodeID) { */
-/*         engine_make_stars_loops_dependencies(sched, t, t2, t->ci); */
-/*         scheduler_addunlock(sched, t2, t->ci->super->end_force); */
-/*       } */
-/*       if (t->cj->nodeID == nodeID) { */
-/*         if (t->ci->hydro.super != t->cj->hydro.super) */
-/*           engine_make_stars_loops_dependencies(sched, t, t2, t->cj); */
-/*         if (t->ci->super != t->cj->super) */
-/*           scheduler_addunlock(sched, t2, t->cj->super->end_force); */
-/*       } */
-/*     } */
-/*   } */
-/* } */
-
-/**
- * @brief Constructs the top-level pair tasks for the star loop over
- * neighbours
- *
- * Here we construct all the tasks for all possible neighbouring non-empty
- * local cells in the hierarchy. No dependencies are being added thus far.
- * Additional loop over neighbours can later be added by simply duplicating
- * all the tasks created by this function.
- *
- * @param map_data Offset of first two indices disguised as a pointer.
- * @param num_elements Number of cells to traverse.
- * @param extra_data The #engine.
- */
-/* void engine_make_starsloop_tasks_mapper(void *map_data, int num_elements, */
-/*                                         void *extra_data) { */
-
-/*   /\* Extract the engine pointer. *\/ */
-/*   struct engine *e = (struct engine *)extra_data; */
-/*   const int periodic = e->s->periodic; */
-
-/*   struct space *s = e->s; */
-/*   struct scheduler *sched = &e->sched; */
-/*   const int nodeID = e->nodeID; */
-/*   const int *cdim = s->cdim; */
-/*   struct cell *cells = s->cells_top; */
-
-/*   /\* Loop through the elements, which are just byte offsets from NULL. *\/
- */
-/*   for (int ind = 0; ind < num_elements; ind++) { */
-
-/*     /\* Get the cell index. *\/ */
-/*     const int cid = (size_t)(map_data) + ind; */
-/*     const int i = cid / (cdim[1] * cdim[2]); */
-/*     const int j = (cid / cdim[2]) % cdim[1]; */
-/*     const int k = cid % cdim[2]; */
-
-/*     /\* Get the cell *\/ */
-/*     struct cell *ci = &cells[cid]; */
-
-/*     /\* Skip cells without particles *\/ */
-/*     if (ci->stars.count == 0 && ci->hydro.count == 0) continue; */
-
-/*     /\* If the cells is local build a self-interaction *\/ */
-/*     if (ci->nodeID == nodeID) { */
-/*       scheduler_addtask(sched, task_type_self, task_subtype_stars_density, 0,
- * 0, */
-/*                         ci, NULL); */
-/*     } */
-
-/*     /\* Now loop over all the neighbours of this cell *\/ */
-/*     for (int ii = -1; ii < 2; ii++) { */
-/*       int iii = i + ii; */
-/*       if (!periodic && (iii < 0 || iii >= cdim[0])) continue; */
-/*       iii = (iii + cdim[0]) % cdim[0]; */
-/*       for (int jj = -1; jj < 2; jj++) { */
-/*         int jjj = j + jj; */
-/*         if (!periodic && (jjj < 0 || jjj >= cdim[1])) continue; */
-/*         jjj = (jjj + cdim[1]) % cdim[1]; */
-/*         for (int kk = -1; kk < 2; kk++) { */
-/*           int kkk = k + kk; */
-/*           if (!periodic && (kkk < 0 || kkk >= cdim[2])) continue; */
-/*           kkk = (kkk + cdim[2]) % cdim[2]; */
-
-/*           /\* Get the neighbouring cell *\/ */
-/*           const int cjd = cell_getid(cdim, iii, jjj, kkk); */
-/*           struct cell *cj = &cells[cjd]; */
-
-/*           /\* Is that neighbour local and does it have particles ? *\/ */
-/*           if (cid >= cjd || (cj->stars.count == 0 && cj->hydro.count == 0) ||
- */
-/*               (ci->nodeID != nodeID && cj->nodeID != nodeID)) */
-/*             continue; */
-
-/*           /\* Construct the pair task *\/ */
-/*           const int sid = sortlistID[(kk + 1) + 3 * ((jj + 1) + 3 * (ii +
- * 1))]; */
-/*           scheduler_addtask(sched, task_type_pair,
- * task_subtype_stars_density, */
-/*                             sid, 0, ci, cj); */
-
-/* #ifdef SWIFT_DEBUG_CHECKS */
-/* #ifdef WITH_MPI */
-
-/*           /\* Let's cross-check that we had a proxy for that cell *\/ */
-/*           if (ci->nodeID == nodeID && cj->nodeID != engine_rank) { */
-
-/*             /\* Find the proxy for this node *\/ */
-/*             const int proxy_id = e->proxy_ind[cj->nodeID]; */
-/*             if (proxy_id < 0) */
-/*               error("No proxy exists for that foreign node %d!", cj->nodeID);
- */
-
-/*             const struct proxy *p = &e->proxies[proxy_id]; */
-
-/*             /\* Check whether the cell exists in the proxy *\/ */
-/*             int n = 0; */
-/*             for (n = 0; n < p->nr_cells_in; n++) */
-/*               if (p->cells_in[n] == cj) break; */
-/*             if (n == p->nr_cells_in) */
-/*               error( */
-/*                   "Cell %d not found in the proxy but trying to construct "
- */
-/*                   "stars task!", */
-/*                   cjd); */
-/*           } else if (cj->nodeID == nodeID && ci->nodeID != engine_rank) { */
-
-/*             /\* Find the proxy for this node *\/ */
-/*             const int proxy_id = e->proxy_ind[ci->nodeID]; */
-/*             if (proxy_id < 0) */
-/*               error("No proxy exists for that foreign node %d!", ci->nodeID);
- */
-
-/*             const struct proxy *p = &e->proxies[proxy_id]; */
-
-/*             /\* Check whether the cell exists in the proxy *\/ */
-/*             int n = 0; */
-/*             for (n = 0; n < p->nr_cells_in; n++) */
-/*               if (p->cells_in[n] == ci) break; */
-/*             if (n == p->nr_cells_in) */
-/*               error( */
-/*                   "Cell %d not found in the proxy but trying to construct "
- */
-/*                   "stars task!", */
-/*                   cid); */
-/*           } */
-/* #endif /\* WITH_MPI *\/ */
-/* #endif /\* SWIFT_DEBUG_CHECKS *\/ */
-/*         } */
-/*       } */
-/*     } */
-/*   } */
-/* } */
-
 /**
  * @brief Constructs the top-level pair tasks for the first hydro loop over
  * neighbours
@@ -2536,8 +2184,7 @@ void engine_addtasks_send_mapper(void *map_data, int num_elements,
     /* Add the send tasks for the cells in the proxy that have a stars
      * connection. */
     if ((e->policy & engine_policy_feedback) && (type & proxy_cell_type_hydro))
-      engine_addtasks_send_stars(e, ci, cj, /*t_xv=*/NULL,
-                                 /*t_rho=*/NULL);
+      engine_addtasks_send_stars(e, ci, cj, /*t_feedback=*/NULL);
 
     /* Add the send tasks for the cells in the proxy that have a gravity
      * connection. */
@@ -2644,7 +2291,7 @@ void engine_maketasks(struct engine *e) {
 
   /* Free the old list of cell-task links. */
   if (e->links != NULL) free(e->links);
-  e->size_links = e->sched.nr_tasks * e->links_per_tasks * 2;
+  e->size_links = e->sched.nr_tasks * e->links_per_tasks;
 
   /* Make sure that we have space for more links than last time. */
   if (e->size_links < e->nr_links * engine_rebuild_link_alloc_margin)

@@ -138,6 +138,8 @@ tests/testOutputList
 tests/testCbrt
 tests/testFormat.sh
 tests/testCooling
+tests/*.png
+tests/*.txt
 
 theory/latex/swift.pdf
 theory/SPH/Kernels/kernels.pdf

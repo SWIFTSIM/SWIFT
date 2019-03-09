@@ -1937,11 +1937,9 @@ void engine_print_task_counts(const struct engine *e) {
   int counts[task_type_count + 1];
   for (int k = 0; k <= task_type_count; k++) counts[k] = 0;
   for (int k = 0; k < nr_tasks; k++) {
-    if (tasks[k].skip) {
+    if (tasks[k].skip)
       counts[task_type_count] += 1;
-      // if (e->step == 0) message("Skipped %s/%s", taskID_names[tasks[k].type],
-      // subtaskID_names[tasks[k].subtype]);
-    } else
+    else
       counts[(int)tasks[k].type] += 1;
   }
 
@@ -3973,8 +3971,8 @@ void engine_collect_stars_counter(struct engine *e) {
   /* Get number of sparticles for each rank */
   size_t *n_sparts = (size_t *)malloc(e->nr_nodes * sizeof(size_t));
 
-  int err = MPI_Allgather(&e->s->nr_sparts_foreign, 1, MPI_UNSIGNED_LONG, n_sparts, 1,
-                          MPI_UNSIGNED_LONG, MPI_COMM_WORLD);
+  int err = MPI_Allgather(&e->s->nr_sparts_foreign, 1, MPI_UNSIGNED_LONG,
+                          n_sparts, 1, MPI_UNSIGNED_LONG, MPI_COMM_WORLD);
   if (err != MPI_SUCCESS) error("Communication failed");
 
   /* Compute derivated quantities */

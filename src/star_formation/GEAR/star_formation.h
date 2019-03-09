@@ -16,8 +16,8 @@
  * along with this program.  If not, see <http://www.gnu.org/licenses/>.
  *
  *******************************************************************************/
-#ifndef SWIFT_NONE_STAR_FORMATION_H
-#define SWIFT_NONE_STAR_FORMATION_H
+#ifndef SWIFT_GEAR_STAR_FORMATION_H
+#define SWIFT_GEAR_STAR_FORMATION_H
 
 /* Local includes */
 #include "cosmology.h"
@@ -27,9 +27,6 @@
 #include "part.h"
 #include "physical_constants.h"
 #include "units.h"
-
-/* Starformation struct */
-struct star_formation {};
 
 /**
  * @brief Calculate if the gas has the potential of becoming
@@ -154,7 +151,7 @@ INLINE static void starformation_init_backend(
 INLINE static void starformation_print_backend(
     const struct star_formation* starform) {
 
-  message("Star formation law is 'No Star Formation'");
+  message("Star formation law is 'GEAR'");
 }
 
 /**
@@ -215,4 +212,4 @@ star_formation_first_init_part(const struct phys_const* restrict phys_const,
 __attribute__((always_inline)) INLINE static void star_formation_init_part(
     struct part* restrict p, const struct star_formation* data) {}
 
-#endif /* SWIFT_NONE_STAR_FORMATION_H */
+#endif /* SWIFT_GEAR_STAR_FORMATION_H */
