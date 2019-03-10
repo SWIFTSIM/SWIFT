@@ -299,7 +299,7 @@ void DO_SYM_PAIR1_STARS(struct runner *r, struct cell *ci, struct cell *cj, cons
       const float hi = spi->h;
 
       /* Skip inactive particles */
-      if (!spart_is_active(spi, e) || spart_is_inhibited(spi, e)) continue;
+      if (!spart_is_active(spi, e)) continue;
 
       /* Compute distance from the other cell. */
       const double px[3] = {spi->x[0], spi->x[1], spi->x[2]};
@@ -419,7 +419,7 @@ void DO_SYM_PAIR1_STARS(struct runner *r, struct cell *ci, struct cell *cj, cons
       const float hj = spj->h;
 
       /* Skip inactive particles */
-      if (!spart_is_active(spj, e) || spart_is_inhibited(spj, e)) continue;
+      if (!spart_is_active(spj, e)) continue;
 
 
       /* Compute distance from the other cell. */
@@ -639,7 +639,7 @@ void DOPAIR1_SUBSET_STARS(struct runner *r, struct cell *restrict ci,
 
 #ifdef SWIFT_DEBUG_CHECKS
         /* Check that particles have been drifted to the current time */
-        if (pi->ti_drift != e->ti_current)
+        if (spi->ti_drift != e->ti_current)
           error("Particle pi not drifted to current time");
         if (pj->ti_drift != e->ti_current)
           error("Particle pj not drifted to current time");
@@ -836,6 +836,9 @@ void DOPAIR1_SUBSET_BRANCH_STARS(struct runner *r, struct cell *restrict ci,
                                  struct cell *restrict cj) {
 
   const struct engine *e = r->e;
+
+  /* Anything to do here? */
+  if (cj->hydro.count == 0) return;
 
   /* Get the relative distance between the pairs, wrapping. */
   double shift[3] = {0.0, 0.0, 0.0};
