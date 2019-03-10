@@ -26,7 +26,7 @@
 #include <stdlib.h>
 #include <string.h>
 
-/* Task type names. */
+/* Offset type names. */
 const char *logger_offset_name[logger_offset_count] = {
   "Forward", "Backward", "Corrupted",
 };

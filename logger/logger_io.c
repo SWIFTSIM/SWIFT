@@ -29,14 +29,14 @@
  * @brief get the size of a file
  *
  * @param fd file id
- * @param size out: file size
  *
+ * @return file size
  */
-void io_get_file_size(int fd, size_t *size) {
+size_t io_get_file_size(int fd) {
   struct stat s;
   int status = fstat(fd, &s);
   if (status != 0) error("Unable to get file size (%s)", strerror(errno));
-  *size = s.st_size;
+  return s.st_size;
 }
 
 /**
@@ -55,8 +55,7 @@ void *io_mmap_file(char *filename, size_t *file_size) {
     error("Unable to open file %s (%s)", filename, strerror(errno));
 
   /* get file size */
-  *file_size = 0;
-  io_get_file_size(fd, file_size);
+  *file_size = io_get_file_size(fd);
 
   /* map memory */
   void *map = mmap(NULL, *file_size, PROT_WRITE | PROT_READ, MAP_SHARED, fd, 0);

@@ -29,10 +29,12 @@ struct logger_reader;
 
 /**
  * @brief This structure deals with the dump file.
+ *
+ * TODO
  */
 struct logger_dump {
 
-  /* Information contained in the header. */
+  /* Information contained in the file header. */
   struct header header;
 
   /* The reader that is using this dump. */
@@ -40,9 +42,6 @@ struct logger_dump {
 
   /* Information about the time chunks */
   struct time_array times;
-
-  /* Dump's filename */
-  char *filename;
 
   /* The dump's variables. */
   struct {

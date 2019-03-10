@@ -75,7 +75,6 @@ static PyObject *loadFromIndex(__attribute__((unused)) PyObject *self,
   }
 
   /* initialize the reader */
-  verbose = 2;
   struct logger_reader reader;
   logger_reader_init(&reader, filename, verbose);
   struct header *h = &reader.dump.header;

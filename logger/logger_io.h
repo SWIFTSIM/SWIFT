@@ -28,7 +28,7 @@
 #include <stdio.h>
 #include <stdlib.h>
 
-void io_get_file_size(int fd, size_t *size);
+size_t io_get_file_size(int fd);
 void *io_mmap_file(char *filename, size_t *file_size);
 void io_munmap_file(void *map, size_t file_size);
 
