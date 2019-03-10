@@ -38,6 +38,7 @@
 #include "engine.h"
 #include "proxy.h"
 #include "threadpool.h"
+#include "c_hashmap/hashmap.c"
 
 #ifdef WITH_MPI
 MPI_Datatype fof_mpi_type;
@@ -46,6 +47,13 @@ MPI_Datatype group_length_mpi_type;
 size_t node_offset;
 
 #define UNION_BY_SIZE_OVER_MPI 1
+#define KEY_MAX_LENGTH (256)
+
+/* Hash map element. */
+typedef struct data_struct_s {
+  char key_string[KEY_MAX_LENGTH];
+  size_t root;
+} data_struct_t;
 
 /* Initialises parameters for the FOF search. */
 void fof_init(struct space *s) {
@@ -374,6 +382,50 @@ __attribute__((always_inline)) INLINE static int is_local(
     const size_t group_id, const size_t nr_gparts) {
   return (group_id >= node_offset && group_id < node_offset + nr_gparts);
 }
+
+#ifdef WITH_MPI
+/* Add a group to the hash map. */
+__attribute__((always_inline)) INLINE static void hashmap_add_group(
+    const size_t group_id, const size_t group_offset, const map_t *mymap) {
+
+  data_struct_t* value;
+  char key_string[KEY_MAX_LENGTH];
+
+  snprintf(key_string, KEY_MAX_LENGTH, "%zu", group_id);
+
+  /* Try and retrieve the group from the hash map. */
+  int error = hashmap_get(*mymap, key_string, (void**)(&value));
+
+  /* Add the group to the hash map if it is not already an element. */
+  if(error == MAP_MISSING) {    
+    value = malloc(sizeof(data_struct_t));
+    snprintf(value->key_string, KEY_MAX_LENGTH, "%zu", group_id);
+    value->root = group_offset;
+    error = hashmap_put(*mymap, value->key_string, value);
+    if(error != MAP_OK) error("Issue with hash table. Error code: %d", error);
+  }
+  else if (error != MAP_OK) error("Issue with hash table. Error code: %d", error);
+}
+
+/* Find a group in the hash map. */
+__attribute__((always_inline)) INLINE static int hashmap_find_group_offset(
+    const size_t group_id, const map_t *mymap) {
+
+  data_struct_t* value;
+  char key_string[KEY_MAX_LENGTH];
+
+  snprintf(key_string, KEY_MAX_LENGTH, "%zu", group_id);
+
+  /* Try and retrieve the group from the hash map. */
+  int error = hashmap_get(*mymap, key_string, (void**)(&value));
+  if(error == MAP_MISSING) {
+    error("Group %zu should already be in the hash table.", group_id);
+  }
+  else if (error != MAP_OK) error("Issue with hash table. Error code: %d", error);
+
+  return value->root;
+} 
+#endif
 
 /* Recurse on a pair of cells and perform a FOF search between cells that are
  * within range. */
@@ -1240,6 +1292,8 @@ size_t fof_search_foreign_cells(struct space *s, size_t **local_roots) {
   bzero(global_group_mass, global_group_list_size * sizeof(double));
   bzero(global_group_CoM, global_group_list_size * sizeof(struct fof_CoM));
 
+  /* Create hash table. */
+  map_t mymap = hashmap_new();
   /* Store each group ID and its properties. */
   for (int i = 0; i < global_group_link_count; i++) {
 
@@ -1251,15 +1305,18 @@ size_t fof_search_foreign_cells(struct space *s, size_t **local_roots) {
     global_group_CoM[group_count].x += global_group_links[i].group_i_CoM.x;
     global_group_CoM[group_count].y += global_group_links[i].group_i_CoM.y;
     global_group_CoM[group_count].z += global_group_links[i].group_i_CoM.z;
-    global_group_id[group_count++] = group_i;
+    global_group_id[group_count] = group_i;
+    hashmap_add_group(group_i, group_count++, &mymap);
 
     global_group_size[group_count] += global_group_links[i].group_j_size;
     global_group_mass[group_count] += global_group_links[i].group_j_mass;
     global_group_CoM[group_count].x += global_group_links[i].group_j_CoM.x;
     global_group_CoM[group_count].y += global_group_links[i].group_j_CoM.y;
     global_group_CoM[group_count].z += global_group_links[i].group_j_CoM.z;
-    global_group_id[group_count++] = group_j;
-  }
+    global_group_id[group_count] = group_j;
+    hashmap_add_group(group_j, group_count++, &mymap);
+
+ }
 
   message("Global list compression took: %.3f %s.",
           clocks_from_ticks(getticks() - tic), clocks_getunit());
@@ -1287,24 +1344,9 @@ size_t fof_search_foreign_cells(struct space *s, size_t **local_roots) {
   /* Perform a union-find on the group links. */
   for (int i = 0; i < global_group_link_count; i++) {
 
-    int find_i = 0, find_j = 0;
-
-    /* TODO: Sort array to get offset or allocate array for initial root
-     * positions. */
-    /* Find group offset into global_group_id */
-    for (int j = 0; j < group_count; j++) {
-      if (global_group_id[j] == global_group_links[i].group_i) {
-        find_i = j;
-        break;
-      }
-    }
-
-    for (int j = 0; j < group_count; j++) {
-      if (global_group_id[j] == global_group_links[i].group_j) {
-        find_j = j;
-        break;
-      }
-    }
+    /* Use the hash table to find the group offsets in the index array. */
+    int find_i = hashmap_find_group_offset(global_group_links[i].group_i, &mymap);
+    int find_j = hashmap_find_group_offset(global_group_links[i].group_j, &mymap);
 
     /* Use the offset to find the group's root. */
     size_t root_i = fof_find(find_i, global_group_index);
