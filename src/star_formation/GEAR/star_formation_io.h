@@ -1,6 +1,6 @@
 /*******************************************************************************
  * This file is part of SWIFT.
- * Copyright (c) 2019 Folkert Nobels (nobels@strw.leidenuniv.nl)
+ * Copyright (c) 2018 Folkert Nobels (nobels@strw.leidenuniv.nl)
  *
  * This program is free software: you can redistribute it and/or modify
  * it under the terms of the GNU Lesser General Public License as published
@@ -16,26 +16,29 @@
  * along with this program.  If not, see <http://www.gnu.org/licenses/>.
  *
  ******************************************************************************/
-#ifndef SWIFT_STAR_FORMATION_STRUCT_H
-#define SWIFT_STAR_FORMATION_STRUCT_H
-
-/**
- * @file src/star_formation_struct.h
- * @brief Branches between the different particle data SF tracers
- */
+#ifndef SWIFT_STAR_FORMATION_GEAR_IO_H
+#define SWIFT_STAR_FORMATION_GEAR_IO_H
 
 /* Config parameters. */
 #include "../config.h"
 
-/* Import the right cooling definition */
-#if defined(STAR_FORMATION_NONE)
-#include "./star_formation/none/star_formation_struct.h"
-#elif defined(STAR_FORMATION_EAGLE)
-#include "./star_formation/EAGLE/star_formation_struct.h"
-#elif defined(STAR_FORMATION_GEAR)
-#include "./star_formation/GEAR/star_formation_struct.h"
-#else
-#error "Invalid choice of star formation structure."
-#endif
+/* Local includes */
+#include "io_properties.h"
 
-#endif /* SWIFT_STAR_FORMATION_STRUCT_H */
+/**
+ * @brief Specifies which particle fields to write to a dataset
+ *
+ * @param parts The particle array.
+ * @param xparts The extended data particle array.
+ * @param list The list of i/o properties to write.
+ *
+ * @return Returns the number of fields to write.
+ */
+__attribute__((always_inline)) INLINE static int star_formation_write_particles(
+    const struct part* parts, const struct xpart* xparts,
+    struct io_props* list) {
+
+  return 0;
+}
+
+#endif /* SWIFT_STAR_FORMATION_GEAR_IO_H */

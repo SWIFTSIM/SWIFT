@@ -13,7 +13,7 @@ name followed by a column and the value of the parameter:
 
 .. code:: YAML
 
-   ICs:        santa_barbara.hdf5	  
+   ICs:        santa_barbara.hdf5
    dt_max:     1.5
    shift:      [2., 4., 5.]
 
@@ -46,7 +46,7 @@ will be raised. The code can also read an array of values:
 .. code:: YAML
 
    shift:  [2., 4., 5.]
-	  
+
 Some options in the parameter file are optional and
 when not provided, SWIFT will run with the default value. However, if
 a compulsory parameter is missing an error will be raised at
@@ -104,8 +104,8 @@ speed, we would use:
      UnitLength_in_cgs:   3.08567758e24 # 1 Mpc in centimeters
      UnitVelocity_in_cgs: 1e5           # 1 km/s in centimeters per second
      UnitCurrent_in_cgs:  1             # 1 Ampere
-     UnitTemp_in_cgs:     1             # 1 Kelvin   
-	  
+     UnitTemp_in_cgs:     1             # 1 Kelvin
+
 Note that there are currently no variables in any of the SWIFT physics
 schemes that make use of the unit of electric current. There is also
 no incentive to use anything else than Kelvin but that makes the whole
@@ -122,7 +122,7 @@ system <https://en.wikipedia.org/wiki/FFF_system>`_ one would use
      UnitLength_in_cgs:   20116.8     # 1 Furlong (fur) in cm
      UnitVelocity_in_cgs: 0.01663095  # 1 Furlong (fur) per Fortnight (ftn) in cm/s
      UnitCurrent_in_cgs:  1           # 1 Ampere
-     UnitTemp_in_cgs:     1           # 1 Kelvin   
+     UnitTemp_in_cgs:     1           # 1 Kelvin
 
 The value of the physical constants in this system is left as an
 exercise for the reader [#f1]_.
@@ -171,10 +171,10 @@ use the following parameters:
    Cosmology:
      a_begin:        0.0078125     # z = 127
      a_end:          1.0           # z = 0
-     h:              0.6777        
-     Omega_m:        0.307         
-     Omega_lambda:   0.693         
-     Omega_b:        0.0455        
+     h:              0.6777
+     Omega_m:        0.307
+     Omega_lambda:   0.693
+     Omega_b:        0.0455
      Omega_r:        0.            # (Optional)
      w_0:            -1.0          # (Optional)
      w_a:            0.            # (Optional)
@@ -192,7 +192,7 @@ provided in the ``Gravity`` section. The theory document puts these parameters i
 context of the equations being solved. We give a brief overview here.
 
 * The Plummer-equivalent co-moving softening length used for all particles :math:`\epsilon_{com}`: ``comoving_softening``,
-* The Plummer-equivalent maximal physical softening length used for all particles :math:`\epsilon_{max}`: ``comoving_softening``, 
+* The Plummer-equivalent maximal physical softening length used for all particles :math:`\epsilon_{max}`: ``comoving_softening``,
 
 At any redshift :math:`z`, the Plummer-equivalent softening length used by the
 code will be :math:`\epsilon=\min(\epsilon_{max},
@@ -200,7 +200,7 @@ code will be :math:`\epsilon=\min(\epsilon_{max},
 
 * The opening angle (multipole acceptance criterion) used in the FMM :math:`\theta`: ``theta``,
 * The time-step size pre-factor :math:`\eta`: ``eta``,
-  
+
 The time-step of a given particle is given by :math:`\Delta t =
 \eta\sqrt{\frac{\epsilon}{|\overrightarrow{a}|}}`, where
 :math:`\overrightarrow{a}` is the particle's acceleration. `Power et al. (2003) <http://adsabs.harvard.edu/abs/2003MNRAS.338...14P>`_ recommend using :math:`\eta=0.025`.
@@ -224,31 +224,31 @@ Particle-Mesh part of the calculation. The last three are optional:
 * The scale below which the short-range forces are assumed to be exactly Newtonian (in units of
   the mesh cell-size multiplied by :math:`a_{\rm smooth}`) :math:`r_{\rm
   cut,min}`: ``r_cut_min`` (default: ``0.1``),
-  
+
 For most runs, the default values can be used. Only the number of cells along
 each axis needs to be specified. The remaining three values are best described
 in the context of the full set of equations in the theory documents.
-  
+
 As a summary, here are the values used for the EAGLE :math:`100^3~{\rm Mpc}^3`
 simulation:
 
 .. code:: YAML
-	  
+
    # Parameters for the self-gravity scheme for the EAGLE-100 box
    Gravity:
-     eta:          0.025              
-     theta:        0.7                
+     eta:          0.025
+     theta:        0.7
      comoving_softening:     0.0026994  # 0.7 proper kpc at z=2.8.
      max_physical_softening: 0.0007     # 0.7 proper kpc
      rebuild_frequency:      0.01       # Default optional value
-     mesh_side_length:       512       
+     mesh_side_length:       512
      a_smooth:     1.25                 # Default optional value
      r_cut_max:    4.5                  # Default optional value
      r_cut_min:    0.1                  # Default optional value
 
 
 .. _Parameters_SPH:
-     
+
 SPH
 ---
 
@@ -269,7 +269,13 @@ time-step limited by the maximal value on top of all the other criteria that may
 apply to them (gravity acceleration, Courant condition, etc.). If a particle
 demands a time-step size smaller than the minimum, SWIFT will abort with an
 error message. This is a safe-guard against simulations that would never
-complete due to the number of steps to run being too large.
+complete due to the number of steps to run being too large. Note that in
+cosmological runs, the meaning of these variables changes slightly. They do not
+correspond to differences in time but in logarithm of the scale-factor. For
+these runs, the simulation progresses in jumps of
+:math:`\Delta\log(a)`. ``dt_max`` is then the maximally allowed change in
+:math:`\Delta\log(a)` allowed for any particle in the simulation. This behaviour
+mimics the variables of the smae name in the Gadget code.
 
 When running a non-cosmological simulation, the user also has to provide the
 time of the start and the time of the end of the simulation:
@@ -312,7 +318,7 @@ Whilst for a cosmological run, one would need:
     max_dt_RMS_factor: 0.25     # Default optional value
 
 .. _Parameters_ICs:
-    
+
 Initial Conditions
 ------------------
 
@@ -368,21 +374,21 @@ be:
    InitialConditions:
      file_name:  my_ics.hdf5
      periodic:                    1
-     cleanup_h_factors:           1     
-     cleanup_velocity_factors:    1     
-     generate_gas_in_ics:         1     
-     cleanup_smoothing_lengths:   1  
+     cleanup_h_factors:           1
+     cleanup_velocity_factors:    1
+     generate_gas_in_ics:         1
+     cleanup_smoothing_lengths:   1
 
 
 .. _Parameters_constants:
-     
+
 Physical Constants
 ------------------
 
 For some idealised test it can be useful to overwrite the value of
 some physical constants; in particular the value of the gravitational
 constant. SWIFT offers an optional parameter to overwrite the value of
-:math:`G_N`. 
+:math:`G_N`.
 
 .. code:: YAML
 
@@ -475,7 +481,7 @@ one described above (See the :ref:`Parameters_units` section) and read:
 
 When un-specified, these all take the same value as assumed by the internal
 system of units. These are rarely used but can offer a practical alternative to
-converting data in the post-processing of the simulations. 
+converting data in the post-processing of the simulations.
 
 For a standard cosmological run with structure finding activated, the
 full section would be:
@@ -487,7 +493,7 @@ full section would be:
      scale_factor_first:  0.02    # z = 49
      delta_time:          1.02
      invoke_stf:          1
-	    
+
 Showing all the parameters for a basic hydro test-case, one would have:
 
 .. code:: YAML
@@ -513,7 +519,7 @@ following pages:
 
 
 .. _Parameters_statistics:
-  
+
 Statistics
 ----------
 
@@ -523,28 +529,28 @@ following page:
 * :ref:`Output_list_label` (to have statistics outputs not evenly spaced in time).
 
 .. _Parameters_restarts:
-  
+
 Restarts
 --------
 
 SWIFT can write check-pointing files and restart from them. The behaviour of
 this mechanism is driven by the options in the ``Restarts`` section of the YAML
 parameter file. All the parameters are optional but default to values that
-ensure a reasonable behaviour. 
+ensure a reasonable behaviour.
 
 * Whether or not to enable the dump of restart files: ``enable`` (default:
   ``1``).
 
 This parameter acts a master-switch for the check-pointing capabilities. All the
 other options require the ``enable`` parameter to be set to ``1``.
-  
+
 * Whether or not to save a copy of the previous set of check-pointing files:
   ``save`` (default: ``1``),
 * Whether or not to dump a set of restart file on regular exit: ``onexit``
   (default: ``0``),
 * The wall-clock time in hours between two sets of restart files:
   ``delta_hours`` (default: ``6.0``).
-  
+
 Note that there is no buffer time added to the ``delta_hours`` value. If the
 system's batch queue run time limit is set to 6 hours, the user must specify a
 smaller value to allow for enough time to safely dump the check-point files.
@@ -591,23 +597,119 @@ To run SWIFT, dumping check-pointing files every 6 hours and running for 24
 hours after which a shell command will be run, one would use:
 
 .. code:: YAML
-	  
+
   Restarts:
-    enable:             1          
+    enable:             1
     save:               1          # Keep copies
-    onexit:             0          
+    onexit:             0
     subdir:             restart    # Sub-directory of the directory where SWIFT is run
-    basename:           swift      
-    delta_hours:        6.0        
-    stop_steps:         100        
-    max_run_time:       24.0       # In hours 
-    resubmit_on_exit:   1          
-    resubmit_command:   ./resub.sh 
+    basename:           swift
+    delta_hours:        6.0
+    stop_steps:         100
+    max_run_time:       24.0       # In hours
+    resubmit_on_exit:   1
+    resubmit_command:   ./resub.sh
 
 .. _Parameters_scheduler:
 
 Scheduler
 ---------
+
+The Scheduler section contains various parameters that control how the cell
+tree is configured and defines some values for the related tasks.  In general
+these should be considered as tuning parameters, both for speed and memory
+use.
+
+.. code:: YAML
+
+   nr_queues: 0
+
+Defines the number of task queues used. These are normally set to one per
+thread and should be at least that number.
+
+A number of parameters decide how the cell tree will be split into sub-cells,
+according to the number of particles and their expected interaction count,
+and the type of interaction. These are:
+
+.. code:: YAML
+
+  cell_max_size:             8000000
+  cell_sub_size_pair_hydro:  256000000
+  cell_sub_size_self_hydro:  32000
+  cell_sub_size_pair_grav:   256000000
+  cell_sub_size_self_grav:   32000
+  cell_sub_size_pair_stars:  256000000
+  cell_sub_size_self_stars:  32000
+  cell_split_size:           400
+
+when possible cells that exceed these constraints will be split into a further
+level of sub-cells. So for instance a sub-cell should not contain more than
+400 particles (this number defines the scale of most `N*N` interactions).
+
+To control the number of self-gravity tasks we have the parameter:
+
+.. code:: YAML
+
+  cell_subdepth_diff_grav:   4
+
+which stops these from being done at the scale of the leaf cells, of which
+there can be a large number. In this case cells with gravity tasks must be at
+least 4 levels above the leaf cells (when possible).
+
+Extra space is required when particles are created in the system (to the time
+of the next rebuild). These are controlled by:
+
+.. code:: YAML
+
+  cell_extra_parts:          0
+  cell_extra_gparts:         0
+  cell_extra_sparts:         400
+
+
+The number of top-level cells is controlled by the parameter:
+
+.. code:: YAML
+
+  max_top_level_cells:       12
+
+this is the number per dimension, we will have 12x12x12 cells. There must be
+at least 3 top-level cells per dimension.
+
+The number of top-level cells should be set so that the number of particles
+per cell is not too large, this is particularly important when using MPI as
+this defines the maximum size of cell exchange and also the size of non-local
+cells (these are used for cell interactions with local cells), which can have
+a large influence on memory use. Best advice for this is to at least scale for
+additional nodes.
+
+The memory used for holding the task and task-link lists needs to be
+pre-allocated, but cannot be pre-calculated, so we have the two parameters:
+
+.. code:: YAML
+
+  tasks_per_cell:            0.0
+  links_per_tasks:           10
+
+which are guesses at the mean numbers of tasks per cell and number of links
+per task. The tasks_per_cell value will be conservatively guessed when set to
+0.0, but you will be able to save memory by setting a value. The way to get a
+better estimate is to run SWIFT with verbose reporting on (```--verbose=1```)
+and check for the lines that report the ```per cell``` or with MPI ``maximum
+per cell``` values. This number can vary as the balance between MPI ranks
+does, so it is probably best to leave some head room.
+
+If these are exceeded you should get an obvious error message.
+
+Finally the parameter:
+
+.. code:: YAML
+
+  mpi_message_limit:         4096
+
+Defines the size (in bytes) below which MPI communication will be sent using
+non-buffered calls. These should have lower latency, but how that works or
+is honoured is an implementation question.
+
 
 .. _Parameters_domain_decomposition:
 
@@ -766,7 +868,7 @@ large numbers of particles can be exchanged between MPI ranks, so is best
 avoided.
 
 If you are using ParMETIS there additional ways that you can tune the
-repartition process. 
+repartition process.
 
 METIS only offers the ability to create a partition from a graph, which means
 that each solution is independent of those that have already been made, that
@@ -774,12 +876,12 @@ can make the exchange of particles very large (although SWIFT attempts to
 minimize this), however, using ParMETIS we can use the existing partition to
 inform the new partition, this has two algorithms that are controlled using::
 
-    adaptive:         1       
+    adaptive:         1
 
 which means use adaptive repartition, otherwise simple refinement. The
 adaptive algorithm is further controlled by the::
 
-    itr:              100     
+    itr:              100
 
 parameter, which defines the ratio of inter node communication time to data
 redistribution time, in the range 0.00001 to 10000000.0. Lower values give
@@ -807,7 +909,7 @@ enabled). This file can then be used to replace the same file found in the
 `src/` directory and SWIFT should then be recompiled. Once you have that, you
 can use the parameter::
 
-    use_fixed_costs:  1       
+    use_fixed_costs:  1
 
 to control whether they are used or not. If enabled these will be used to
 repartition after the second step, which will generally give as good a
@@ -835,4 +937,4 @@ Structure finding (VELOCIraptor)
 	 compare runs over the same physical time but with different numbers of
 	 snapshots. Snapshots at a given time would always have the same set of
 	 digits irrespective of the number of snapshots produced before.
-	       
+

@@ -107,6 +107,7 @@ enum engine_step_properties {
 #define engine_default_timesteps_file_name "timesteps"
 #define engine_max_parts_per_ghost 1000
 #define engine_max_sparts_per_ghost 1000
+#define engine_tasks_per_cell_margin 1.2
 
 /**
  * @brief The rank of the engine as a global variable (for messages).
@@ -211,7 +212,13 @@ struct engine {
   /* Total numbers of particles in the system. */
   long long total_nr_parts, total_nr_gparts, total_nr_sparts;
 
-  /* The total number of inhibted particles in the system. */
+  /* Total numbers of cells (top-level and sub-cells) in the system. */
+  long long total_nr_cells;
+
+  /* Total numbers of tasks in the system. */
+  long long total_nr_tasks;
+
+  /* The total number of inhibited particles in the system. */
   long long nr_inhibited_parts, nr_inhibited_gparts, nr_inhibited_sparts;
 
 #ifdef SWIFT_DEBUG_CHECKS
@@ -326,8 +333,9 @@ struct engine {
   size_t nr_links, size_links;
 
   /* Average number of tasks per cell. Used to estimate the sizes
-   * of the various task arrays. */
-  size_t tasks_per_cell;
+   * of the various task arrays. Also the maximum from all ranks. */
+  float tasks_per_cell;
+  float tasks_per_cell_max;
 
   /* Average number of links per tasks. This number is used before
      the creation of communication tasks so needs to be large enough. */

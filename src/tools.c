@@ -45,6 +45,7 @@
 #include "part.h"
 #include "periodic.h"
 #include "runner.h"
+#include "star_formation_iact.h"
 #include "stars.h"
 
 /**
@@ -222,6 +223,7 @@ void pairs_all_density(struct runner *r, struct cell *ci, struct cell *cj) {
         /* Interact */
         runner_iact_nonsym_density(r2, dx, hi, pj->h, pi, pj, a, H);
         runner_iact_nonsym_chemistry(r2, dx, hi, pj->h, pi, pj, a, H);
+        runner_iact_nonsym_star_formation(r2, dx, hi, pj->h, pi, pj, a, H);
       }
     }
   }
@@ -254,6 +256,7 @@ void pairs_all_density(struct runner *r, struct cell *ci, struct cell *cj) {
         /* Interact */
         runner_iact_nonsym_density(r2, dx, hj, pi->h, pj, pi, a, H);
         runner_iact_nonsym_chemistry(r2, dx, hj, pi->h, pj, pi, a, H);
+        runner_iact_nonsym_star_formation(r2, dx, hj, pi->h, pj, pi, a, H);
       }
     }
   }
@@ -522,6 +525,7 @@ void self_all_density(struct runner *r, struct cell *ci) {
         /* Interact */
         runner_iact_nonsym_density(r2, dxi, hi, hj, pi, pj, a, H);
         runner_iact_nonsym_chemistry(r2, dxi, hi, hj, pi, pj, a, H);
+        runner_iact_nonsym_star_formation(r2, dxi, hi, hj, pi, pj, a, H);
       }
 
       /* Hit or miss? */
@@ -534,6 +538,7 @@ void self_all_density(struct runner *r, struct cell *ci) {
         /* Interact */
         runner_iact_nonsym_density(r2, dxi, hj, hi, pj, pi, a, H);
         runner_iact_nonsym_chemistry(r2, dxi, hj, hi, pj, pi, a, H);
+        runner_iact_nonsym_star_formation(r2, dxi, hj, hi, pj, pi, a, H);
       }
     }
   }

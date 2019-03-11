@@ -172,13 +172,15 @@ struct cell *make_cell(size_t n, size_t n_stars, double *offset, double size,
   cell->loc[1] = offset[1];
   cell->loc[2] = offset[2];
 
+  cell->stars.ti_old_part = 8;
+  cell->stars.ti_end_min = 8;
+  cell->stars.ti_end_max = 8;
   cell->hydro.ti_old_part = 8;
   cell->hydro.ti_end_min = 8;
   cell->hydro.ti_end_max = 8;
   cell->grav.ti_old_part = 8;
   cell->grav.ti_end_min = 8;
   cell->grav.ti_end_max = 8;
-  cell->stars.ti_end_min = 8;
   cell->nodeID = NODE_ID;
 
   shuffle_particles(cell->hydro.parts, cell->hydro.count);
@@ -186,6 +188,9 @@ struct cell *make_cell(size_t n, size_t n_stars, double *offset, double size,
 
   cell->hydro.sorted = 0;
   for (int k = 0; k < 13; k++) cell->hydro.sort[k] = NULL;
+
+  cell->stars.sorted = 0;
+  for (int k = 0; k < 13; k++) cell->stars.sort[k] = NULL;
 
   return cell;
 }
@@ -382,7 +387,6 @@ int main(int argc, char *argv[]) {
   struct stars_props stars_p;
   stars_p.eta_neighbours = h;
   stars_p.h_tolerance = 1e0;
-  stars_p.h_max = FLT_MAX;
   stars_p.max_smoothing_iterations = 1;
 
   struct engine engine;
@@ -416,6 +420,7 @@ int main(int argc, char *argv[]) {
                       perturbation, h_pert);
 
         runner_do_drift_part(&runner, cells[i * 9 + j * 3 + k], 0);
+        runner_do_drift_spart(&runner, cells[i * 9 + j * 3 + k], 0);
 
         runner_do_hydro_sort(&runner, cells[i * 9 + j * 3 + k], 0x1FFF, 0, 0);
         runner_do_stars_sort(&runner, cells[i * 9 + j * 3 + k], 0x1FFF, 0, 0);

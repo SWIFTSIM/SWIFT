@@ -84,7 +84,7 @@ void engine_marktasks_mapper(void *map_data, int num_elements,
       /* Local pointer. */
       struct cell *ci = t->ci;
 
-      if (ci->nodeID != engine_rank) error("Non-local self task found");
+      if (ci->nodeID != nodeID) error("Non-local self task found");
 
       /* Activate the hydro drift */
       if (t_type == task_type_self && t_subtype == task_subtype_density) {
@@ -124,7 +124,6 @@ void engine_marktasks_mapper(void *map_data, int num_elements,
         if (cell_is_active_hydro(ci, e)) scheduler_activate(s, t);
       }
 
-#ifdef EXTRA_HYDRO_LOOP
       else if (t_type == task_type_self && t_subtype == task_subtype_gradient) {
         if (cell_is_active_hydro(ci, e)) scheduler_activate(s, t);
       }
@@ -133,7 +132,6 @@ void engine_marktasks_mapper(void *map_data, int num_elements,
                t_subtype == task_subtype_gradient) {
         if (cell_is_active_hydro(ci, e)) scheduler_activate(s, t);
       }
-#endif
 
       /* Activate the star density */
       else if (t_type == task_type_self &&
@@ -154,7 +152,6 @@ void engine_marktasks_mapper(void *map_data, int num_elements,
         }
       }
 
-      /* Activate the star feedback */
       else if (t_type == task_type_self &&
                t_subtype == task_subtype_stars_feedback) {
         if (cell_is_active_stars(ci, e)) {
@@ -162,13 +159,9 @@ void engine_marktasks_mapper(void *map_data, int num_elements,
         }
       }
 
-      /* Store current values of dx_max and h_max. */
       else if (t_type == task_type_sub_self &&
                t_subtype == task_subtype_stars_feedback) {
-        if (cell_is_active_stars(ci, e)) {
-          scheduler_activate(s, t);
-          cell_activate_subcell_stars_tasks(ci, NULL, s);
-        }
+        if (cell_is_active_stars(ci, e)) scheduler_activate(s, t);
       }
 
       /* Activate the gravity drift */
@@ -258,14 +251,9 @@ void engine_marktasks_mapper(void *map_data, int num_elements,
       }
 
       /* Stars density */
-      if (t_subtype == task_subtype_stars_density &&
-          ((ci_active_stars && ci->nodeID == engine_rank) ||
-           (cj_active_stars && cj->nodeID == engine_rank))) {
-
-        // MATTHIEU: The logic here can be improved.
-        // If ci is active for stars but not cj, then we can only drift the
-        // stars in ci and parts in cj. (and vice-versa). The same logic can be
-        // applied in cell_unskip_stars().
+      else if ((t_subtype == task_subtype_stars_density) &&
+               (ci_active_stars || cj_active_stars) &&
+               (ci_nodeID == nodeID || cj_nodeID == nodeID)) {
 
         scheduler_activate(s, t);
 
@@ -273,59 +261,65 @@ void engine_marktasks_mapper(void *map_data, int num_elements,
         if (t_type == task_type_pair) {
 
           /* Do ci */
-          /* Store some values. */
-          atomic_or(&cj->hydro.requires_sorts, 1 << t->flags);
-          atomic_or(&ci->stars.requires_sorts, 1 << t->flags);
+          if (ci_active_stars) {
 
-          cj->hydro.dx_max_sort_old = cj->hydro.dx_max_sort;
-          ci->stars.dx_max_sort_old = ci->stars.dx_max_sort;
+            /* stars for ci */
+            atomic_or(&ci->stars.requires_sorts, 1 << t->flags);
+            ci->stars.dx_max_sort_old = ci->stars.dx_max_sort;
 
-          /* Activate the hydro drift tasks. */
-          if (ci_nodeID == nodeID) cell_activate_drift_spart(ci, s);
+            /* hydro for cj */
+            atomic_or(&cj->hydro.requires_sorts, 1 << t->flags);
+            cj->hydro.dx_max_sort_old = cj->hydro.dx_max_sort;
 
-          if (cj_nodeID == nodeID) cell_activate_drift_part(cj, s);
+            /* Activate the drift tasks. */
+            if (ci_nodeID == nodeID) cell_activate_drift_spart(ci, s);
+            if (cj_nodeID == nodeID) cell_activate_drift_part(cj, s);
 
-          /* Check the sorts and activate them if needed. */
-          cell_activate_hydro_sorts(cj, t->flags, s);
-
-          cell_activate_stars_sorts(ci, t->flags, s);
+            /* Check the sorts and activate them if needed. */
+            cell_activate_hydro_sorts(cj, t->flags, s);
+            cell_activate_stars_sorts(ci, t->flags, s);
+          }
 
           /* Do cj */
-          /* Store some values. */
-          atomic_or(&ci->hydro.requires_sorts, 1 << t->flags);
-          atomic_or(&cj->stars.requires_sorts, 1 << t->flags);
+          if (cj_active_stars) {
 
-          ci->hydro.dx_max_sort_old = ci->hydro.dx_max_sort;
-          cj->stars.dx_max_sort_old = cj->stars.dx_max_sort;
+            /* hydro for ci */
+            atomic_or(&ci->hydro.requires_sorts, 1 << t->flags);
+            ci->hydro.dx_max_sort_old = ci->hydro.dx_max_sort;
 
-          /* Activate the hydro drift tasks. */
-          if (ci_nodeID == nodeID) cell_activate_drift_part(ci, s);
+            /* stars for cj */
+            atomic_or(&cj->stars.requires_sorts, 1 << t->flags);
+            cj->stars.dx_max_sort_old = cj->stars.dx_max_sort;
 
-          if (cj_nodeID == nodeID) cell_activate_drift_spart(cj, s);
+            /* Activate the drift tasks. */
+            if (ci_nodeID == nodeID) cell_activate_drift_part(ci, s);
+            if (cj_nodeID == nodeID) cell_activate_drift_spart(cj, s);
 
-          /* Check the sorts and activate them if needed. */
-          cell_activate_hydro_sorts(ci, t->flags, s);
-          cell_activate_stars_sorts(cj, t->flags, s);
+            /* Check the sorts and activate them if needed. */
+            cell_activate_hydro_sorts(ci, t->flags, s);
+            cell_activate_stars_sorts(cj, t->flags, s);
+          }
         }
 
         /* Store current values of dx_max and h_max. */
-        else if (t_type == task_type_sub_pair) {
-          cell_activate_subcell_stars_tasks(t->ci, t->cj, s);
+        else if (t_type == task_type_sub_pair &&
+                 t_subtype == task_subtype_stars_density) {
+          cell_activate_subcell_stars_tasks(ci, cj, s);
         }
       }
 
       /* Stars feedback */
-      if (t_subtype == task_subtype_stars_feedback &&
-          ((ci_active_stars && ci->nodeID == engine_rank) ||
-           (cj_active_stars && cj->nodeID == engine_rank))) {
+      else if ((t_subtype == task_subtype_stars_feedback) &&
+               ((ci_active_stars && ci_nodeID == nodeID) ||
+                (cj_active_stars && cj_nodeID == nodeID))) {
 
         scheduler_activate(s, t);
       }
 
       /* Gravity */
-      if ((t_subtype == task_subtype_grav) &&
-          ((ci_active_gravity && ci_nodeID == nodeID) ||
-           (cj_active_gravity && cj_nodeID == nodeID))) {
+      else if ((t_subtype == task_subtype_grav) &&
+               ((ci_active_gravity && ci_nodeID == nodeID) ||
+                (cj_active_gravity && cj_nodeID == nodeID))) {
 
         scheduler_activate(s, t);
 
@@ -368,7 +362,6 @@ void engine_marktasks_mapper(void *map_data, int num_elements,
 
           /* Is the foreign cell active and will need stuff from us? */
           if (ci_active_hydro) {
-
             struct link *l =
                 scheduler_activate_send(s, cj->mpi.hydro.send_xv, ci_nodeID);
 
@@ -396,6 +389,7 @@ void engine_marktasks_mapper(void *map_data, int num_elements,
 
           /* If the local cell is active, receive data from the foreign cell. */
           if (ci_active_hydro) {
+
             scheduler_activate(s, cj->mpi.hydro.recv_xv);
             if (cj_active_hydro) {
               scheduler_activate(s, cj->mpi.hydro.recv_rho);
@@ -439,16 +433,78 @@ void engine_marktasks_mapper(void *map_data, int num_elements,
       }
 
       /* Only interested in stars_density tasks as of here. */
-      if (t->subtype == task_subtype_stars_density) {
+      else if (t->subtype == task_subtype_stars_density) {
 
         /* Too much particle movement? */
         if (cell_need_rebuild_for_stars_pair(ci, cj)) *rebuild_space = 1;
+        if (cell_need_rebuild_for_stars_pair(cj, ci)) *rebuild_space = 1;
 
-        // LOIC: Need implementing MPI case
+#ifdef WITH_MPI
+        /* Activate the send/recv tasks. */
+        if (ci_nodeID != nodeID) {
+
+          if (cj_active_stars) {
+            scheduler_activate(s, ci->mpi.hydro.recv_xv);
+            scheduler_activate(s, ci->mpi.hydro.recv_rho);
+
+            /* If the local cell is active, more stuff will be needed. */
+            scheduler_activate_send(s, cj->mpi.stars.send, ci_nodeID);
+            cell_activate_drift_spart(cj, s);
+
+            /* If the local cell is active, send its ti_end values. */
+            scheduler_activate_send(s, cj->mpi.send_ti, ci_nodeID);
+          }
+
+          if (ci_active_stars) {
+            scheduler_activate(s, ci->mpi.stars.recv);
+
+            /* If the foreign cell is active, we want its ti_end values. */
+            scheduler_activate(s, ci->mpi.recv_ti);
+
+            /* Is the foreign cell active and will need stuff from us? */
+            scheduler_activate_send(s, cj->mpi.hydro.send_xv, ci_nodeID);
+            scheduler_activate_send(s, cj->mpi.hydro.send_rho, ci_nodeID);
+
+            /* Drift the cell which will be sent; note that not all sent
+               particles will be drifted, only those that are needed. */
+            cell_activate_drift_part(cj, s);
+          }
+
+        } else if (cj_nodeID != nodeID) {
+
+          /* If the local cell is active, receive data from the foreign cell. */
+          if (ci_active_stars) {
+            scheduler_activate(s, cj->mpi.hydro.recv_xv);
+            scheduler_activate(s, cj->mpi.hydro.recv_rho);
+
+            /* If the local cell is active, more stuff will be needed. */
+            scheduler_activate_send(s, ci->mpi.stars.send, cj_nodeID);
+            cell_activate_drift_spart(ci, s);
+
+            /* If the local cell is active, send its ti_end values. */
+            scheduler_activate_send(s, ci->mpi.send_ti, cj_nodeID);
+          }
+
+          if (cj_active_stars) {
+            scheduler_activate(s, cj->mpi.stars.recv);
+
+            /* If the foreign cell is active, we want its ti_end values. */
+            scheduler_activate(s, cj->mpi.recv_ti);
+
+            /* Is the foreign cell active and will need stuff from us? */
+            scheduler_activate_send(s, ci->mpi.hydro.send_xv, cj_nodeID);
+            scheduler_activate_send(s, ci->mpi.hydro.send_rho, cj_nodeID);
+
+            /* Drift the cell which will be sent; note that not all sent
+               particles will be drifted, only those that are needed. */
+            cell_activate_drift_part(ci, s);
+          }
+        }
+#endif
       }
 
       /* Only interested in gravity tasks as of here. */
-      if (t_subtype == task_subtype_grav) {
+      else if (t_subtype == task_subtype_grav) {
 
 #ifdef WITH_MPI
         /* Activate the send/recv tasks. */
@@ -504,11 +560,16 @@ void engine_marktasks_mapper(void *map_data, int num_elements,
       }
     }
 
-    /* End force ? */
-    else if (t_type == task_type_end_force) {
+    /* End force for hydro ? */
+    else if (t_type == task_type_end_hydro_force) {
 
-      if (cell_is_active_hydro(t->ci, e) || cell_is_active_gravity(t->ci, e))
-        scheduler_activate(s, t);
+      if (cell_is_active_hydro(t->ci, e)) scheduler_activate(s, t);
+    }
+
+    /* End force for gravity ? */
+    else if (t_type == task_type_end_grav_force) {
+
+      if (cell_is_active_gravity(t->ci, e)) scheduler_activate(s, t);
     }
 
     /* Kick ? */
@@ -563,9 +624,12 @@ void engine_marktasks_mapper(void *map_data, int num_elements,
     }
 
     /* Star ghost tasks ? */
-    else if (t_type == task_type_stars_ghost ||
-             t_type == task_type_stars_ghost_in ||
-             t_type == task_type_stars_ghost_out) {
+    else if (t_type == task_type_stars_ghost) {
+      if (cell_is_active_stars(t->ci, e)) scheduler_activate(s, t);
+    }
+
+    /* Feedback implicit tasks? */
+    else if (t_type == task_type_stars_in || t_type == task_type_stars_out) {
       if (cell_is_active_stars(t->ci, e)) scheduler_activate(s, t);
     }
 

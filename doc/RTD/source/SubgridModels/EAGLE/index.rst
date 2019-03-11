@@ -28,7 +28,11 @@ only a small role in practice. The second limit, labelled as ``Jeans``, is
 used to prevent the fragmentation of high-density gas into clumps that
 cannot be resolved by the coupled hydro+gravity solver. The two limits are
 sketched on the following figure. An additional over-density criterion is
-applied to prevent gas not collapsed into structures from being affected.
+applied to prevent gas not collapsed into structures from being
+affected. This criterion demands that :math:`\rho > \Delta_{\rm floor}
+\Omega_b \rho_{\rm crit}`, with :math:`\Delta_{\rm floor}` specified by the
+user and :math:`\rho_{\rm crit}` the critical density at that redshift
+[#f1]_.
 
 .. figure:: EAGLE_entropy_floor.svg
     :width: 400px
@@ -53,7 +57,7 @@ limits. These are given in the ``EAGLEEntropyFloor`` section of the
 YAML file. The parameters are the Hydrogen number density (in
 :math:`cm^{-3}`) and temperature (in :math:`K`) of the anchor point of
 each floor as well as the power-law slope of each floor and the
-minimal over-density required to apply the limit [#f1]_. For a normal
+minimal over-density required to apply the limit. For a normal
 EAGLE run, that section of the parameter file reads:
 
 .. code:: YAML

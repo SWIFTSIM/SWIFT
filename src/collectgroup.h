@@ -46,19 +46,25 @@ struct collectgroup1 {
 
   /* Force the engine to rebuild? */
   int forcerebuild;
+
+  /* Totals of cells and tasks. */
+  long long total_nr_cells;
+  long long total_nr_tasks;
+
+  /* Maximum value of actual tasks per cell across all ranks. */
+  float tasks_per_cell_max;
 };
 
 void collectgroup_init(void);
 void collectgroup1_apply(struct collectgroup1 *grp1, struct engine *e);
-void collectgroup1_init(struct collectgroup1 *grp1, size_t updated,
-                        size_t g_updated, size_t s_updated, size_t inhibited,
-                        size_t g_inhibited, size_t s_inhibited,
-                        integertime_t ti_hydro_end_min,
-                        integertime_t ti_hydro_end_max,
-                        integertime_t ti_hydro_beg_max,
-                        integertime_t ti_gravity_end_min,
-                        integertime_t ti_gravity_end_max,
-                        integertime_t ti_gravity_beg_max, int forcerebuild);
+void collectgroup1_init(
+    struct collectgroup1 *grp1, size_t updated, size_t g_updated,
+    size_t s_updated, size_t inhibited, size_t g_inhibited, size_t s_inhibited,
+    integertime_t ti_hydro_end_min, integertime_t ti_hydro_end_max,
+    integertime_t ti_hydro_beg_max, integertime_t ti_gravity_end_min,
+    integertime_t ti_gravity_end_max, integertime_t ti_gravity_beg_max,
+    int forcerebuild, long long total_nr_cells, long long total_nr_tasks,
+    float tasks_per_cell);
 void collectgroup1_reduce(struct collectgroup1 *grp1);
 
 #endif /* SWIFT_COLLECTGROUP_H */
