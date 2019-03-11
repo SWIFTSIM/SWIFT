@@ -532,7 +532,7 @@ void cooling_cool_part(const struct phys_const *phys_const,
 
   /* Get helium and hydrogen reheating term */
   const double Helium_reion_heat_cgs = eagle_helium_reionization_extraheat(
-      cooling->z_index, delta_redshift, cooling);
+      cosmo->z, delta_redshift, cooling);
 
   /* Convert this into a rate */
   const double Lambda_He_reion_cgs =

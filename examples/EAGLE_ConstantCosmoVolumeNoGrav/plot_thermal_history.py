@@ -10,6 +10,7 @@ import numpy as np
 
 ## read command line arguments
 snapshot_name = sys.argv[1]
+plot_filename = sys.argv[2]
 
 params = {'axes.labelsize': 16,
 'axes.titlesize': 16,
@@ -115,8 +116,16 @@ d = swiftsimio.load(snap_list[0])
 code_info = d.metadata.code
 git_branch = code_info["Git Branch"].decode('UTF-8')
 git_revision = code_info["Git Revision"].decode('UTF-8')
-plot_title = git_branch + "    " + git_revision
+params = d.metadata.parameters
+z_r_H = float(params['EAGLECooling:H_reion_z'])
+z_r_He_centre = float(params['EAGLECooling:He_reion_z_centre'])
+z_r_He_sigma = float(params['EAGLECooling:He_reion_z_sigma'])
+z_r_He_heat_input = float(params['EAGLECooling:He_reion_eV_p_H'])
 
+version_info= git_branch +'/'+ git_revision + '\n'
+reion_info = "$z_{r,H} = %1.1f \; z_{r,He,mid} = %1.1f \; z_{r,He,\sigma} = %1.1f \; \Delta u_{He} = %1.1f \; eV/m_H$" %(z_r_H,z_r_He_centre,z_r_He_sigma,z_r_He_heat_input)
+
+plot_title = version_info + reion_info
 
 # Make plot of temperature evolution  --------------------------------
 fig, axes = plt.subplots(2,1,sharex = True)
@@ -129,7 +138,7 @@ axes[1].plot(z,rho_mean,label = "Simulation")
 axes[1].axhline(y = 1.0,linestyle = '--',color = 'r')
 axes[1].set_xlim(0.0,15.0)
 axes[0].set_ylim(0.0,3.0)
-axes[1].set_ylim(0.0,2.0)
+axes[1].set_ylim(0.99,1.01)
 axes[1].set_xlabel("Redshift")
 axes[0].set_ylabel(r"$T\,/\,10^4K$")
 axes[1].set_ylabel(r"$\delta_b$")
@@ -137,4 +146,4 @@ axes[0].set_title(plot_title)
 axes[0].legend(loc = 0)
 axes[1].legend(loc = 0)
 fig.tight_layout()
-fig.savefig("thermal_history.pdf",format = "pdf")
+fig.savefig(plot_filename,format = "pdf")
