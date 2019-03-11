@@ -2862,7 +2862,7 @@ void engine_init_particles(struct engine *e, int flag_entropy_ICs,
   /* Update the cooling function */
   if ((e->policy & engine_policy_cooling) ||
       (e->policy & engine_policy_temperature))
-    cooling_update(e->cosmology, e->cooling_func);
+    cooling_update(e->cosmology, e->cooling_func,e->s);
 
 #ifdef WITH_LOGGER
   /* Mark the first time step in the particle logger file. */
@@ -3126,7 +3126,7 @@ void engine_step(struct engine *e) {
   /* Update the cooling function */
   if ((e->policy & engine_policy_cooling) ||
       (e->policy & engine_policy_temperature))
-    cooling_update(e->cosmology, e->cooling_func);
+    cooling_update(e->cosmology, e->cooling_func, e->s);
 
   /*****************************************************/
   /* OK, we now know what the next end of time-step is */
@@ -5510,7 +5510,7 @@ void engine_struct_restore(struct engine *e, FILE *stream) {
   struct cooling_function_data *cooling_func =
       (struct cooling_function_data *)malloc(
           sizeof(struct cooling_function_data));
-  cooling_struct_restore(cooling_func, stream, e->cosmology);
+  cooling_struct_restore(cooling_func, stream, e->cosmology, e->s);
   e->cooling_func = cooling_func;
 
   struct star_formation *star_formation =

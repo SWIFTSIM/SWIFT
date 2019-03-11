@@ -45,6 +45,7 @@
 #include "parser.h"
 #include "part.h"
 #include "physical_constants.h"
+#include "space.h"
 #include "units.h"
 
 /* Maximum number of iterations for newton
@@ -125,9 +126,11 @@ __attribute__((always_inline)) INLINE void get_redshift_index(
  *
  * @param cosmo The current cosmological model.
  * @param cooling The #cooling_function_data used in the run.
+ * @param s The space data, including a pointer to array of particles
  */
 void cooling_update(const struct cosmology *cosmo,
-                    struct cooling_function_data *cooling) {
+                    struct cooling_function_data *cooling,
+		    struct space *s) {
 
   /* Current redshift */
   const float redshift = cosmo->z;
@@ -166,6 +169,8 @@ void cooling_update(const struct cosmology *cosmo,
 
   /* Store the currently loaded index */
   cooling->z_index = z_index;
+
+  /* Does this timestep straddle Hydrogen reionization? If so, we need to input extra heat */ 
 }
 
 /**
@@ -866,9 +871,11 @@ void cooling_init_backend(struct swift_params *parameter_file,
  *
  * @param cooling the #cooling_function_data structure
  * @param cosmo #cosmology structure
+ * @param s The space data, including a pointer to array of particles
  */
 void cooling_restore_tables(struct cooling_function_data *cooling,
-                            const struct cosmology *cosmo) {
+                            const struct cosmology *cosmo,
+			    struct space *s) {
 
   /* Read redshifts */
   get_cooling_redshifts(cooling);
@@ -884,7 +891,7 @@ void cooling_restore_tables(struct cooling_function_data *cooling,
   /* Force a re-read of the cooling tables */
   cooling->z_index = -10;
   cooling->previous_z_index = eagle_cooling_N_redshifts - 2;
-  cooling_update(cosmo, cooling);
+  cooling_update(cosmo, cooling, s);
 }
 
 /**
@@ -963,11 +970,12 @@ void cooling_struct_dump(const struct cooling_function_data *cooling,
  * @param cooling the struct
  * @param stream the file stream
  * @param cosmo #cosmology structure
+ * @param s The space data, including a pointer to array of particles
  */
 void cooling_struct_restore(struct cooling_function_data *cooling, FILE *stream,
-                            const struct cosmology *cosmo) {
+                            const struct cosmology *cosmo, struct space *s) {
   restart_read_blocks((void *)cooling, sizeof(struct cooling_function_data), 1,
                       stream, NULL, "cooling function");
 
-  cooling_restore_tables(cooling, cosmo);
+  cooling_restore_tables(cooling, cosmo, s);
 }
