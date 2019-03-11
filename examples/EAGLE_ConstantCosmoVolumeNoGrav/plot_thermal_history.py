@@ -5,6 +5,7 @@ import h5py as h5
 import swiftsimio
 import sys
 import glob
+import unyt
 import numpy as np
 
 ## read command line arguments
@@ -17,7 +18,7 @@ params = {'axes.labelsize': 16,
 'xtick.labelsize': 16,
 'ytick.labelsize': 16,
 'text.usetex': False,
-'figure.figsize' : (9,6),
+          'figure.figsize' : (9,9),
 'figure.subplot.left'    : 0.1,
 'figure.subplot.right'   : 0.95  ,
 'figure.subplot.bottom'  : 0.15  ,
@@ -52,11 +53,11 @@ walther_T_upper_error = data_walther[3] - data_walther[1]
 reg_exp = "%s*.hdf5" %snapshot_name
 snap_list = glob.glob(reg_exp)
 
-z = np.array([])
-T_mean = np.array([])
-T_std = np.array([])
-
-### loop through list
+z = []
+T_mean = []
+T_std = []
+rho_mean = []
+rho_std = []### loop through list
 for snap in snap_list:
     
     # This loads all metadata but explicitly does _not_ read any particle data yet
@@ -65,21 +66,49 @@ for snap in snap_list:
     # Get the redshift
     z = np.append(z,data.metadata.z)
     
-    # Convert gas temperatures to right units
+    # Convert gas temperatures and densities to right units
     data.gas.temperature.convert_to_cgs()
 
     # Get mean and standard deviation of temperature
-    T_mean = np.append(T_mean,np.mean(data.gas.temperature))
-    T_std = np.append(T_std,np.std(data.gas.temperature))
+    T_mean.append(np.mean(data.gas.temperature) * data.gas.temperature.units)
+    T_std.append(np.std(data.gas.temperature) * data.gas.temperature.units)
 
-T_mean /= 1.0e4
-T_std /= 1.0e4
+    # Get mean and standard deviation of density
+    rho_mean.append(np.mean(data.gas.density) * data.gas.density.units)
+    rho_std.append(np.std(data.gas.density) * data.gas.density.units)
+
+## Turn into numpy arrays
+T_mean = np.array(T_mean) * data.gas.temperature.units
+T_std = np.array(T_std) * data.gas.temperature.units
+rho_mean = np.array(rho_mean) * data.gas.density.units
+rho_std = np.array(rho_std) * data.gas.density.units
+
+
+## Put Temperature into units of 10^4 Kelvin
+T_mean /= (1.0e4 * unyt.Kelvin)
+T_std /= (1.0e4 * unyt.Kelvin)
+
+## Put Density into units of mean baryon density today
+
+# first calculate rho_bar_0 from snapshot metadata
+### from the first snapshot, get cosmology information
+d = swiftsimio.load(snap_list[0])
+cosmology = d.metadata.cosmology
+H0 = cosmology["H0 [internal units]"] / (d.units.time)
+Omega_bar = cosmology["Omega_b"]
+
+### now calculate rho_bar_0 and divide through
+rho_bar_0 = 3.0 * H0**2 / (8. * np.pi * unyt.G) * Omega_bar 
+rho_mean /= rho_bar_0
+rho_std /= rho_bar_0
 
 ### sort arrays into redshift order
 ind_sorted = np.argsort(z)
 z = z[ind_sorted]
 T_mean = T_mean[ind_sorted]
 T_std = T_std[ind_sorted]
+rho_mean = rho_mean[ind_sorted]
+rho_std = rho_std[ind_sorted]
 
 ### from the first snapshot, get code information
 d = swiftsimio.load(snap_list[0])
@@ -90,16 +119,22 @@ plot_title = git_branch + "    " + git_revision
 
 
 # Make plot of temperature evolution  --------------------------------
-fig, ax = plt.subplots()
-ax.fill_between(z,T_mean - T_std,T_mean + T_std,alpha = 0.5)
-ax.plot(z,T_mean,label = "Simulation")
-ax.errorbar(data_schaye[0],data_schaye[3], xerr = [schaye_z_lower_error,schaye_z_upper_error],yerr = [schaye_T_lower_error,schaye_T_upper_error], fmt = 'ko', label = "Schaye+ 2000",zorder = 20,capsize = 4.0,capthick = 1.0,alpha = 0.9)
-ax.errorbar(data_walther[0],data_walther[1],yerr = [walther_T_lower_error,walther_T_upper_error], fmt = 'rd', label = "Walther+ 2019",zorder = 30,capsize = 4.0,capthick = 1.0,alpha = 0.7)
-ax.set_xlim(0.0,15.0)
-ax.set_ylim(0.0,3.0)
-ax.set_xlabel("Redshift")
-ax.set_ylabel(r"$T\,/\,10^4K$")
-ax.set_title(plot_title)
-ax.legend(loc = 0)
+fig, axes = plt.subplots(2,1,sharex = True)
+axes[0].fill_between(z,T_mean - T_std,T_mean + T_std,alpha = 0.5)
+axes[0].plot(z,T_mean,label = "Simulation")
+axes[0].errorbar(data_schaye[0],data_schaye[3], xerr = [schaye_z_lower_error,schaye_z_upper_error],yerr = [schaye_T_lower_error,schaye_T_upper_error], fmt = 'ko', label = "Schaye+ 2000",zorder = 20,capsize = 4.0,capthick = 1.0,alpha = 0.9)
+axes[0].errorbar(data_walther[0],data_walther[1],yerr = [walther_T_lower_error,walther_T_upper_error], fmt = 'rd', label = "Walther+ 2019",zorder = 30,capsize = 4.0,capthick = 1.0,alpha = 0.7)
+axes[1].fill_between(z,rho_mean - rho_std,rho_mean + rho_std,alpha = 0.5)
+axes[1].plot(z,rho_mean,label = "Simulation")
+axes[1].axhline(y = 1.0,linestyle = '--',color = 'r')
+axes[1].set_xlim(0.0,15.0)
+axes[0].set_ylim(0.0,3.0)
+axes[1].set_ylim(0.0,2.0)
+axes[1].set_xlabel("Redshift")
+axes[0].set_ylabel(r"$T\,/\,10^4K$")
+axes[1].set_ylabel(r"$\delta_b$")
+axes[0].set_title(plot_title)
+axes[0].legend(loc = 0)
+axes[1].legend(loc = 0)
 fig.tight_layout()
 fig.savefig("thermal_history.pdf",format = "pdf")

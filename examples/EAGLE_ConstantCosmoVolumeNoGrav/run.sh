@@ -16,7 +16,7 @@ fi
 if [ ! -e constantBox.hdf5 ]
 then
     echo "Generating initial conditions for the uniform cosmo box example..."
-    python3 new_makeIC.py
+    python3 makeIC.py
 fi
 
 # Run SWIFT
