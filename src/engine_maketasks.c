@@ -2066,7 +2066,7 @@ void engine_make_hydroloop_tasks_mapper(void *map_data, int num_elements,
     struct cell *ci = &cells[cid];
 
     /* Skip cells without hydro or star particles */
-    if ((ci->hydro.count == 0) && (with_feedback && ci->stars.count == 0))
+    if ((ci->hydro.count == 0) && (!with_feedback || ci->stars.count == 0))
       continue;
 
     /* If the cell is local build a self-interaction */
@@ -2096,7 +2096,7 @@ void engine_make_hydroloop_tasks_mapper(void *map_data, int num_elements,
           /* Is that neighbour local and does it have gas or star particles ? */
           if ((cid >= cjd) ||
               ((cj->hydro.count == 0) &&
-               (with_feedback && cj->stars.count == 0)) ||
+               (!with_feedback || cj->stars.count == 0)) ||
               (ci->nodeID != nodeID && cj->nodeID != nodeID))
             continue;
 

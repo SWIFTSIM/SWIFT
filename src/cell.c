@@ -3596,11 +3596,15 @@ int cell_unskip_stars_tasks(struct cell *c, struct scheduler *s) {
  *
  * @param c The top-level #cell to play with.
  * @param super Pointer to the deepest cell with tasks in this part of the tree.
+ * @param with_hydro Are we running with hydrodynamics on?
+ * @param with_grav Are we running with gravity on?
  */
-void cell_set_super(struct cell *c, struct cell *super) {
+void cell_set_super(struct cell *c, struct cell *super, const int with_hydro,
+                    const int with_grav) {
 
   /* Are we in a cell which is either the hydro or gravity super? */
-  if (super == NULL && (c->hydro.super != NULL || c->grav.super != NULL))
+  if (super == NULL && ((with_hydro && c->hydro.super != NULL) ||
+                        (with_grav && c->grav.super != NULL)))
     super = c;
 
   /* Set the super-cell */
@@ -3609,7 +3613,8 @@ void cell_set_super(struct cell *c, struct cell *super) {
   /* Recurse */
   if (c->split)
     for (int k = 0; k < 8; k++)
-      if (c->progeny[k] != NULL) cell_set_super(c->progeny[k], super);
+      if (c->progeny[k] != NULL)
+        cell_set_super(c->progeny[k], super, with_hydro, with_grav);
 }
 
 /**
@@ -3668,6 +3673,10 @@ void cell_set_super_mapper(void *map_data, int num_elements, void *extra_data) {
 
   const struct engine *e = (const struct engine *)extra_data;
 
+  const int with_hydro = (e->policy & engine_policy_hydro);
+  const int with_grav = (e->policy & engine_policy_self_gravity) ||
+                        (e->policy & engine_policy_external_gravity);
+
   for (int ind = 0; ind < num_elements; ind++) {
     struct cell *c = &((struct cell *)map_data)[ind];
 
@@ -3677,15 +3686,13 @@ void cell_set_super_mapper(void *map_data, int num_elements, void *extra_data) {
 #endif
 
     /* Super-pointer for hydro */
-    if (e->policy & engine_policy_hydro) cell_set_super_hydro(c, NULL);
+    if (with_hydro) cell_set_super_hydro(c, NULL);
 
     /* Super-pointer for gravity */
-    if ((e->policy & engine_policy_self_gravity) ||
-        (e->policy & engine_policy_external_gravity))
-      cell_set_super_gravity(c, NULL);
+    if (with_grav) cell_set_super_gravity(c, NULL);
 
     /* Super-pointer for common operations */
-    cell_set_super(c, NULL);
+    cell_set_super(c, NULL, with_hydro, with_grav);
   }
 }
 
