@@ -170,7 +170,22 @@ void cooling_update(const struct cosmology *cosmo,
   /* Store the currently loaded index */
   cooling->z_index = z_index;
 
-  /* Does this timestep straddle Hydrogen reionization? If so, we need to input extra heat */ 
+  /* Does this timestep straddle Hydrogen reionization? If so, we need to input extra heat */
+  if ((redshift + dz < cooling->H_reion_z) && (redshift > cooling->H_reion_z)) {
+      
+      const float extra_heat = cooling->H_reion_heat_cgs * cooling->internal_energy_from_cgs;
+      //float old_u;
+      //float new_u;
+      size_t i;
+      //struct part *p = s->parts;
+      //struct xpart *xp = s->xparts;
+      /* Loop through particles and set new heat */
+      for (i=0; i < s->nr_parts; i++){
+	//old_u = hydro_get_physical_internal_energy(p[i],xp[i],cosmo);
+	//new_u = old_u + extra_heat;
+	hydro_reion_heating(&s->parts[i],cosmo,extra_heat);  
+      }
+  }
 }
 
 /**
@@ -783,6 +798,8 @@ void cooling_init_backend(struct swift_params *parameter_file,
                           cooling->cooling_table_path);
   cooling->H_reion_z =
       parser_get_param_float(parameter_file, "EAGLECooling:H_reion_z");
+  cooling->H_reion_heat_cgs =
+      parser_get_param_float(parameter_file, "EAGLECooling:H_reion_eV_p_H");
   cooling->He_reion_z_centre =
       parser_get_param_float(parameter_file, "EAGLECooling:He_reion_z_centre");
   cooling->He_reion_z_sigma =
@@ -797,6 +814,10 @@ void cooling_init_backend(struct swift_params *parameter_file,
       parameter_file, "EAGLECooling:S_over_Si_in_solar", 1.f);
 
   /* Convert to cgs (units used internally by the cooling routines) */
+  cooling->H_reion_heat_cgs *=
+      phys_const->const_electron_volt *
+      units_cgs_conversion_factor(us, UNIT_CONV_ENERGY);
+
   cooling->He_reion_heat_cgs *=
       phys_const->const_electron_volt *
       units_cgs_conversion_factor(us, UNIT_CONV_ENERGY);

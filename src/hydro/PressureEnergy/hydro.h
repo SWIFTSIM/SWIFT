@@ -356,10 +356,29 @@ hydro_set_comoving_internal_energy_dt(struct part *restrict p, float du_dt) {
  */
 __attribute__((always_inline)) INLINE static void
 hydro_set_physical_internal_energy_dt(struct part *restrict p,
-                                      const struct cosmology *cosmo,
-                                      float du_dt) {
+				      const struct cosmology *cosmo,
+				      float du_dt) {
 
   p->u_dt = du_dt / cosmo->a_factor_internal_energy;
+}
+
+/**
+ * @brief Inputs extra heat to a particle at redshift of reionization
+ *
+ * We assume a constant density.
+ *
+ * @param p The particle of interest.
+ * @param cosmo Cosmology data structure
+ * @param extra_heat The extra internal energy given to the particle.
+ */
+__attribute__((always_inline)) INLINE static void
+hydro_reion_heating(struct part *p,
+		    const struct cosmology *cosmo,
+		    float extra_heat) {
+  
+  const float old_u = p->u;
+  const float new_u = old_u + extra_heat;
+  p->u = new_u / cosmo->a_factor_internal_energy;
 }
 
 /**

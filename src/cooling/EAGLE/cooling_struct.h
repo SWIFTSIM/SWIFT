@@ -74,8 +74,11 @@ struct cooling_function_data {
   /*! Filepath to the directory containing the HDF5 cooling tables */
   char cooling_table_path[eagle_table_path_name_length];
 
-  /*! Redshit of H reionization */
+  /*! Redshift of H reionization */
   float H_reion_z;
+
+  /*! H reionization energy in CGS units */
+  float H_reion_heat_cgs;
 
   /*! Ca over Si abundance divided by the solar ratio for these elements */
   float Ca_over_Si_ratio_in_solar;
