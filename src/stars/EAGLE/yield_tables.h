@@ -660,16 +660,6 @@ inline static void compute_yields(struct stars_props *restrict stars) {
         }
       }
     }
-    //if (elem == chemistry_element_N) {
-    //  for (int i = 0; i < stars->AGB_n_z; i++) {
-    //    for (int j = 0; j < n_mass_bins; j++) {
-    //      index = row_major_index_3d(i, elem, j, stars->AGB_n_z,
-    //                                 chemistry_element_count, n_mass_bins);
-    //      message("%d %d %.5e", i, j, stars->yield_AGB.SPH[index]);
-    //    }
-    //  }
-    //  error("");
-    //}
   }
   gsl_spline_free(SNII_spline_ptr);
   gsl_spline_free(AGB_spline_ptr);
@@ -752,7 +742,7 @@ inline static void compute_ejecta(struct stars_props *restrict stars) {
 
   for (int i = 0; i < stars->AGB_n_z; i++) {
     for (int k = 0; k < stars->AGB_n_mass; k++) {
-      index = row_major_index_2d(i, k, stars->AGB_n_z, stars->SNII_n_mass);
+      index = row_major_index_2d(i, k, stars->AGB_n_z, stars->AGB_n_mass);
       AGB_yield[k] = stars->yield_AGB.ejecta[index] /
                      exp(M_LN10 * stars->yield_AGB.mass[k]);
     }
