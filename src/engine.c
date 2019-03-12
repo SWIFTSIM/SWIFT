@@ -192,6 +192,8 @@ static void *engine_do_redistribute(int *counts, char *parts,
           (void **)&parts_new, alignsize,
           sizeofparts * new_nr_parts * engine_redistribute_alloc_margin) != 0)
     error("Failed to allocate new particle data.");
+  memuse_report("new_parts", 
+                sizeofparts * new_nr_parts * engine_redistribute_alloc_margin);
 
   /* Prepare MPI requests for the asynchronous communications */
   MPI_Request *reqs;
@@ -1843,6 +1845,8 @@ void engine_allocate_foreign_particles(struct engine *e) {
                        sizeof(struct part) * s->size_parts_foreign) != 0)
       error("Failed to allocate foreign part data.");
   }
+  memuse_report("parts_foreign", sizeof(struct part) * s->size_parts_foreign);
+
   /* Allocate space for the foreign particles we will receive */
   if (count_gparts_in > s->size_gparts_foreign) {
     if (s->gparts_foreign != NULL) free(s->gparts_foreign);
@@ -1851,6 +1855,8 @@ void engine_allocate_foreign_particles(struct engine *e) {
                        sizeof(struct gpart) * s->size_gparts_foreign) != 0)
       error("Failed to allocate foreign gpart data.");
   }
+  memuse_report("gparts_foreign", sizeof(struct gpart) * s->size_gparts_foreign);
+
   /* Allocate space for the foreign particles we will receive */
   if (count_sparts_in > s->size_sparts_foreign) {
     if (s->sparts_foreign != NULL) free(s->sparts_foreign);
@@ -1859,6 +1865,7 @@ void engine_allocate_foreign_particles(struct engine *e) {
                        sizeof(struct spart) * s->size_sparts_foreign) != 0)
       error("Failed to allocate foreign spart data.");
   }
+  memuse_report("sparts_foreign", sizeof(struct spart) * s->size_sparts_foreign);
 
   if (e->verbose)
     message("Allocating %zd/%zd/%zd foreign part/gpart/spart (%zd/%zd/%zd MB)",

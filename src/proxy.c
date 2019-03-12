@@ -95,6 +95,8 @@ void proxy_tags_exchange(struct proxy *proxies, int num_proxies,
       posix_memalign((void **)&tags_out, SWIFT_CACHE_ALIGNMENT,
                      sizeof(int) * count_out) != 0)
     error("Failed to allocate tags buffers.");
+  memuse_report("tags_in", sizeof(int) * count_in);
+  memuse_report("tags_out", sizeof(int) * count_out);
 
   /* Pack the local tags. */
   for (int k = 0; k < s->nr_cells; k++) {
@@ -209,6 +211,8 @@ void proxy_cells_exchange_first(struct proxy *p) {
   if (posix_memalign((void **)&p->pcells_out, SWIFT_STRUCT_ALIGNMENT,
                      sizeof(struct pcell) * p->size_pcells_out) != 0)
     error("Failed to allocate pcell_out buffer.");
+  memuse_report("pcells_out", sizeof(struct pcell) * p->size_pcells_out);
+
   for (int ind = 0, k = 0; k < p->nr_cells_out; k++) {
     memcpy(&p->pcells_out[ind], p->cells_out[k]->mpi.pcell,
            sizeof(struct pcell) * p->cells_out[k]->mpi.pcell_size);
@@ -255,6 +259,7 @@ void proxy_cells_exchange_second(struct proxy *p) {
   if (posix_memalign((void **)&p->pcells_in, SWIFT_STRUCT_ALIGNMENT,
                      sizeof(struct pcell) * p->size_pcells_in) != 0)
     error("Failed to allocate pcell_in buffer.");
+  memuse_report("pcells_in", sizeof(struct pcell) * p->size_pcells_in);
 
   /* Receive the particle buffers. */
   int err = MPI_Irecv(p->pcells_in, p->size_pcells_in, pcell_mpi_type,
@@ -401,6 +406,7 @@ void proxy_cells_exchange(struct proxy *proxies, int num_proxies,
   if (posix_memalign((void **)&pcells, SWIFT_CACHE_ALIGNMENT,
                      sizeof(struct pcell) * count_out) != 0)
     error("Failed to allocate pcell buffer.");
+  memuse_report("pcells", sizeof(struct pcell) * count_out);
 
   tic2 = getticks();
 
