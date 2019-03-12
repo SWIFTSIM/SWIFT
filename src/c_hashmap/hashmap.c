@@ -7,7 +7,7 @@
 #include <stdio.h>
 #include <string.h>
 
-#define INITIAL_SIZE (256)
+#define INITIAL_SIZE (4096)
 #define MAX_CHAIN_LENGTH (8)
 
 /* We need to keep keys and values */
@@ -162,11 +162,11 @@ unsigned long crc32(const unsigned char *s, unsigned int len)
 }
 
 /*
- * Hashing function for a string
+ * Hashing function for a size_t
  */
 unsigned int hashmap_hash_int(hashmap_map * m, char* keystring){
 
-    unsigned long key = crc32((unsigned char*)(keystring), strlen(keystring));
+    unsigned long key = crc32((unsigned char*)(keystring), sizeof(size_t));
 
 	/* Robert Jenkins' 32 bit Mix Function */
 	key += (key << 12);
@@ -225,7 +225,9 @@ int hashmap_rehash(map_t in){
 
 	/* Setup the new elements */
 	hashmap_map *m = (hashmap_map *) in;
-  printf("Rehashing hashamp. Increasing size from: %ld to %ld.\n",m->table_size * sizeof(hashmap_element), 2 * m->table_size * sizeof(hashmap_element));
+	size_t new_size = 1.5 * m->table_size;
+
+  printf("Rehashing hashamp. Increasing size from: %ld to %ld.\n",m->table_size * sizeof(hashmap_element), new_size * sizeof(hashmap_element));
 	hashmap_element* temp = (hashmap_element *)
 		calloc(2 * m->table_size, sizeof(hashmap_element));
 	if(!temp) return MAP_OMEM;
