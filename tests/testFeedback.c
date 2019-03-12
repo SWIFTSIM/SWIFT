@@ -66,6 +66,14 @@ int main(int argc, char *argv[]) {
 
   sp.mass_init = 4.706273e-5;
 
+  /* Set metal mass fractions */
+  for (int i = 0; i < chemistry_element_count; i++)
+    sp.chemistry_data.metal_mass_fraction[i] = 0.f;
+  sp.chemistry_data.metal_mass_fraction[0] = 0.752;
+  sp.chemistry_data.metal_mass_fraction[1] = 0.248;
+
+  sp.chemistry_data.metal_mass_fraction_total = 0.01;
+
   for (int i = 0; i < chemistry_element_count; i++) sp.metals_released[i] = 0.f;
   sp.chemistry_data.metal_mass_fraction_from_AGB = 0.f;
   sp.to_distribute.mass = 0.f;
@@ -91,7 +99,7 @@ int main(int argc, char *argv[]) {
             sp.to_distribute.mass / sp.mass_init,
             sp.chemistry_data.metal_mass_fraction_from_AGB / sp.mass_init);
     for (int i = 0; i < chemistry_element_count; i++)
-      fprintf(AGB_output, "%e ", sp.metals_released[i]);
+      fprintf(AGB_output, "%e ", sp.metals_released[i] / sp.mass_init);
     fprintf(AGB_output, "\n");
   }
   return 0;

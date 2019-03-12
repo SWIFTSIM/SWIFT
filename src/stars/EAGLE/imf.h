@@ -50,20 +50,16 @@ inline static void determine_imf_bins(
 
   for (i1 = 0; i1 < N_imf_mass_bins - 2 &&
                star_properties->imf_mass_bin_log10[i1 + 1] < log_min_dying_mass;
-       i1++)
-    ;
-
+       i1++);
+    
   for (i2 = 1; i2 < N_imf_mass_bins - 1 &&
                star_properties->imf_mass_bin_log10[i2] < log_max_dying_mass;
-       i2++)
-    ;
-
+       i2++);
+    
   *ilow = i1;
   *ihigh = i2;
 }
 
-// Change this function to not pass in stellar_yields as that is in
-// star_properties.
 inline static float integrate_imf(
     float log_min_mass, float log_max_mass, float m2, int mode,
     float *stellar_yields, const struct stars_props *restrict star_properties) {
@@ -185,6 +181,7 @@ inline static void init_imf(struct stars_props *restrict star_properties) {
       solar_mass = exp(M_LN10 * log_solar_mass);
 
       // can these pows be replaced with some trick?
+      star_properties->IMF_Exponent = 2.35;
       star_properties->imf_by_number[i] =
           pow(solar_mass, -star_properties->IMF_Exponent);
 
