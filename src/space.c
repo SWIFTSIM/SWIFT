@@ -492,6 +492,14 @@ void space_regrid(struct space *s, int verbose) {
     /* Set cell index into list of top-level cells. */
     for (int i = 0; i < s->nr_cells; i++) s->cell_index[i] = i;
 
+    /* Allocate and initialise array of gpart indices. */
+    if (posix_memalign((void **)&s->gpart_index, 32,
+                       s->nr_gparts * sizeof(size_t)) != 0)
+      error("Failed to allocate list of gpart indices for FOF search.");
+
+    /* Set gpart index into list of gparts. */
+    for (size_t i = 0; i < s->nr_gparts; i++) s->gpart_index[i] = i;
+
     /* Allocate the indices of local cells with tasks */
     if (posix_memalign((void **)&s->local_cells_with_tasks_top,
                        SWIFT_STRUCT_ALIGNMENT, s->nr_cells * sizeof(int)) != 0)

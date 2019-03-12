@@ -243,6 +243,7 @@ struct space {
 
   /*! List of cell indices. */
   int *cell_index;
+  size_t *gpart_index;
 
   /*! The group information returned by VELOCIraptor for each #gpart. */
   struct velociraptor_gpart_data *gpart_group_data;
