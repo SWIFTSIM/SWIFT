@@ -16,13 +16,11 @@
  * along with this program.  If not, see <http://www.gnu.org/licenses/>.
  *
  ******************************************************************************/
-#ifndef SWIFT_COOLING_STRUCT_NONE_H
-#define SWIFT_COOLING_STRUCT_NONE_H
+#ifndef SWIFT_COOLING_STRUCT_GRACKLE_H
+#define SWIFT_COOLING_STRUCT_GRACKLE_H
 
 /* include grackle */
 #include <grackle.h>
-
-#include "../config.h"
 
 /**
  * @file src/cooling/none/cooling_struct.h
@@ -60,9 +58,6 @@ struct cooling_function_data {
 
   /* Self shielding method (<= 3) means grackle modes */
   int self_shielding_method;
-
-  /* Output mode (correspond to primordial chemistry mode */
-  int output_mode;
 
   /* convergence limit for first init */
   float convergence_limit;
@@ -113,4 +108,4 @@ struct cooling_xpart_data {
   float metal_frac;
 };
 
-#endif /* SWIFT_COOLING_STRUCT_NONE_H */
+#endif /* SWIFT_COOLING_STRUCT_GRACKLE_H */

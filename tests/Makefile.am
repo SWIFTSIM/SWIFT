@@ -15,31 +15,33 @@
 # along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
 # Add the source directory and the non-standard paths to the included library headers to CFLAGS
-AM_CFLAGS = -I$(top_srcdir)/src $(HDF5_CPPFLAGS) $(GSL_INCS) $(FFTW_INCS)
+AM_CFLAGS = -I$(top_srcdir)/src $(HDF5_CPPFLAGS) $(GSL_INCS) $(FFTW_INCS) $(NUMA_INCS)
 
-AM_LDFLAGS = ../src/.libs/libswiftsim.a $(HDF5_LDFLAGS) $(HDF5_LIBS) $(FFTW_LIBS) $(TCMALLOC_LIBS) $(JEMALLOC_LIBS) $(TBBMALLOC_LIBS) $(GRACKLE_LIBS) $(GSL_LIBS) $(PROFILER_LIBS)
+AM_LDFLAGS = ../src/.libs/libswiftsim.a $(HDF5_LDFLAGS) $(HDF5_LIBS) $(FFTW_LIBS) $(NUMA_LIBS) $(TCMALLOC_LIBS) $(JEMALLOC_LIBS) $(TBBMALLOC_LIBS) $(GRACKLE_LIBS) $(GSL_LIBS) $(PROFILER_LIBS)
 
 # List of programs and scripts to run in the test suite
-TESTS = testGreetings testMaths testReading.sh testSingle testKernel testSymmetry \
+TESTS = testGreetings testMaths testReading.sh testSingle testKernel \
         testActivePair.sh test27cells.sh test27cellsPerturbed.sh  \
         testParser.sh testSPHStep test125cells.sh test125cellsPerturbed.sh testFFT \
-        testAdiabaticIndex \
+        testAdiabaticIndex testRandom \
         testMatrixInversion testThreadpool testDump testLogger testInteractions.sh \
         testVoronoi1D testVoronoi2D testVoronoi3D testGravityDerivatives \
 	testPeriodicBC.sh testPeriodicBCPerturbed.sh testPotentialSelf \
 	testPotentialPair testEOS testUtilities testSelectOutput.sh \
-	testCbrt testCosmology testOutputList testFormat.sh
+	testCbrt testCosmology testOutputList testFormat.sh \
+	test27cellsStars.sh test27cellsStarsPerturbed.sh
 
 # List of test programs to compile
 check_PROGRAMS = testGreetings testReading testSingle testTimeIntegration \
 		 testSPHStep testActivePair test27cells test27cells_subset test125cells testParser \
-                 testKernel testFFT testInteractions testMaths \
+                 testKernel testFFT testInteractions testMaths testRandom \
                  testSymmetry testThreadpool \
                  testAdiabaticIndex testRiemannExact testRiemannTRRS \
                  testRiemannHLLC testMatrixInversion testDump testLogger \
 		 testVoronoi1D testVoronoi2D testVoronoi3D testPeriodicBC \
 		 testGravityDerivatives testPotentialSelf testPotentialPair testEOS testUtilities \
-		 testSelectOutput testCbrt testCosmology testOutputList
+		 testSelectOutput testCbrt testCosmology testOutputList test27cellsStars \
+		 test27cellsStars_subset testCooling
 
 # Rebuild tests when SWIFT is updated.
 $(check_PROGRAMS): ../src/.libs/libswiftsim.a
@@ -48,6 +50,8 @@ $(check_PROGRAMS): ../src/.libs/libswiftsim.a
 testGreetings_SOURCES = testGreetings.c
 
 testMaths_SOURCES = testMaths.c
+
+testRandom_SOURCES = testRandom.c
 
 testReading_SOURCES = testReading.c
 
@@ -75,6 +79,12 @@ test27cells_SOURCES = test27cells.c
 test27cells_subset_SOURCES = test27cells.c
 
 test27cells_subset_CFLAGS = $(AM_CFLAGS) -DTEST_DOSELF_SUBSET -DTEST_DOPAIR_SUBSET
+
+test27cellsStars_SOURCES = test27cellsStars.c
+
+test27cellsStars_subset_SOURCES = test27cellsStars.c
+
+test27cellsStars_subset_CFLAGS = $(AM_CFLAGS) -DTEST_DOSELF_SUBSET -DTEST_DOPAIR_SUBSET
 
 testPeriodicBC_SOURCES = testPeriodicBC.c
 
@@ -120,6 +130,8 @@ testEOS_SOURCES = testEOS.c
 
 testUtilities_SOURCES = testUtilities.c
 
+testCooling_SOURCES = testCooling.c
+
 # Files necessary for distribution
 EXTRA_DIST = testReading.sh makeInput.py testActivePair.sh \
 	     test27cells.sh test27cellsPerturbed.sh testParser.sh testPeriodicBC.sh \
@@ -130,4 +142,6 @@ EXTRA_DIST = testReading.sh makeInput.py testActivePair.sh \
 	     fft_params.yml tolerance_periodic_BC_normal.dat tolerance_periodic_BC_perturbed.dat \
 	     testEOS.sh testEOS_plot.sh testSelectOutput.sh selectOutput.yml \
              output_list_params.yml output_list_time.txt output_list_redshift.txt \
-             output_list_scale_factor.txt
+             output_list_scale_factor.txt testEOS.sh testEOS_plot.sh \
+	     test27cellsStars.sh test27cellsStarsPerturbed.sh star_tolerance_27_normal.dat \
+	     star_tolerance_27_perturbed.dat star_tolerance_27_perturbed_h.dat star_tolerance_27_perturbed_h2.dat

@@ -120,6 +120,7 @@ struct scheduler {
  */
 __attribute__((always_inline)) INLINE static void scheduler_activate(
     struct scheduler *s, struct task *t) {
+
   if (atomic_cas(&t->skip, 1, 0)) {
     t->wait = 0;
     int ind = atomic_inc(&s->active_count);
@@ -143,7 +144,9 @@ scheduler_activate_send(struct scheduler *s, struct link *link, int nodeID) {
   struct link *l = NULL;
   for (l = link; l != NULL && l->t->cj->nodeID != nodeID; l = l->next)
     ;
-  if (l == NULL) error("Missing link to send task.");
+  if (l == NULL) {
+    error("Missing link to send task.");
+  }
   scheduler_activate(s, l->t);
   return l;
 }
@@ -173,5 +176,6 @@ void scheduler_print_tasks(const struct scheduler *s, const char *fileName);
 void scheduler_clean(struct scheduler *s);
 void scheduler_free_tasks(struct scheduler *s);
 void scheduler_write_dependencies(struct scheduler *s, int verbose);
+void scheduler_write_task_level(const struct scheduler *s);
 
 #endif /* SWIFT_SCHEDULER_H */

@@ -1,0 +1,194 @@
+\subsection{Derviation of the GIZMO equations}
+
+For GIZMO and other finite volume/mass schemes, the equations of motion can no
+longer be derived from a Lagrangian. Instead, we have to explicitly transform
+the Euler equations to comoving coordinates and variables. In a physical
+coordinate frame, these equations are
+\begin{align}
+\frac{\partial{}\rho{}}{\partial{}t} +
+\nabla{} \cdot \left(\rho{} \mathbf{v}_{\rm tot} \right)
+&= 0, \\
+\frac{\partial{} \rho{} \mathbf{v}_{\rm tot} }{\partial{} t} +
+\nabla{} \cdot \left( \rho{} \mathbf{v}_{\rm tot} \mathbf{v}_{\rm tot} +
+P \mathbb{1} \right) &= 0.
+\end{align}
+\begin{multline}
+\frac{\partial{}}{\partial{} t} \left( \rho{} u + \frac{1}{2} \rho{}
+\mathbf{v}_{\rm{} tot}\cdot\mathbf{v}_{\rm{} tot} \right) +\\
+\nabla{} \cdot \left( \rho{} u \mathbf{v}_{\rm{} tot} +
+\frac{1}{2} \rho{} \left(\mathbf{v}_{\rm{} tot} \cdot \mathbf{v}_{\rm{} tot}\right)
+\mathbf{v}_{\rm{} tot} + P \mathbf{v}_{\rm{} tot} \right) = 0,
+\end{multline}
+where $\mathbb{1}$ is the unit tensor.
+For simplicity, we will rewrite the last two equations in terms of the quantities
+$\mathbf{v}_{\rm{} tot}$ and $u$:
+\begin{align}
+\frac{\partial{} \mathbf{v}_{\rm{} tot}}{\partial{} t} +
+\left(\mathbf{v}_{\rm{} tot} \cdot \nabla{} \right) \mathbf{v}_{\rm{} tot} +
+\frac{1}{\rho{}}\nabla{} P &= 0,\\
+\frac{\partial{} u}{\partial{} t} +
+\left(\mathbf{v}_{\rm{} tot} \cdot \nabla{} \right) u +
+\frac{P}{\rho{}} \nabla{} \cdot \mathbf{v}_{\rm{} tot} &= 0.
+\end{align}
+To convert to comoving coordinates, we need to take into account the
+appropriate operator transformations:
+\begin{align}
+\nabla{} &\rightarrow{} \frac{1}{a} \nabla{}', \\
+\frac{\partial{}}{\partial{} t} &\rightarrow{}
+\frac{\partial{}}{\partial{} t} - \frac{\dot{a}}{a} \mathbf{r}' \cdot \nabla{}',
+\end{align}
+the latter of which follows from the explicit time dependence of the
+comoving coordinate $\mathbf{r}'$. Substituting the definitions of the
+comoving variables and operators into the first Euler equation, we
+obtain
+\begin{equation}
+\frac{\partial{} \rho{}'}{\partial{} t} + \frac{1}{a^2} \nabla{}' \cdot \left(
+\rho{}' \mathbf{v}' \right) = 0,
+\end{equation}
+which is the same as the original continuity equation but now with an extra
+$1/a^2$ for the second term (the same correction factor that appears
+for the ``drift'' in the SPH case). For the velocity equation, we find
+\begin{multline}
+\frac{\partial{} \mathbf{v}'}{\partial{} t} + \frac{1}{a^2} \left( \mathbf{v}' \cdot
+\nabla{}' \right) \mathbf{v}' + \frac{1}{a^{3(\gamma{} - 1)}\rho{}'}
+\nabla{}' P' = \\
+- \nabla{}' \left( \frac{1}{2} a \ddot{a} \mathbf{r}'\cdot\mathbf{r}'
+\right).
+\end{multline}
+The right hand side of this equation is simply the extra term we absorb in the
+potential through the gauge transformation; the $1/a^2$ dependence in the
+second term on the left hand side again corresponds to the SPH ``drift'' factor,
+while the more complicated correction factor for the third term corresponds
+to the SPH ``kick'' factor in the equation of motion for the
+velocity. Finally, the thermal energy equation reduces to
+\begin{equation}
+\frac{\partial{} u'}{\partial{} t} + \frac{1}{a^2} \left( \mathbf{v}' .
+\nabla{}' \right) u' + \frac{1}{a^2} \frac{P'}{\rho{}'} \nabla{}' \cdot \mathbf{v}'
+= 0.
+\end{equation}
+Again, this gives us the same correction factors as used by the SPH energy
+equation.\\
+
+Unfortunately, the system of equations above is no longer consistent with the
+original equations. For the continuity equation, we can transform to a new
+time coordinate $t'$ defined by
+\begin{equation}
+\dot{t}' = \frac{1}{a^2}, \quad{} t'(t) = \int \frac{dt}{a^2(t)} + {\rm{}const,}
+\end{equation}
+and end up with the original continuity equation in comoving variables. The
+same transformation brings the thermal energy equation into its original form
+in comoving variables. Unfortunately, the same does not work for the velocity
+equation due to the $a^{-3(\gamma{}-1)}$ factor in the third term (note that
+for the specific choice $\gamma{}=5/3$ this procedure would work).
+To get around this issue, we will rewrite the velocity equation as
+\begin{multline}
+\frac{\partial{} \mathbf{v}'}{\partial{} t} + \frac{1}{a^2} \left(
+\mathbf{v}' \cdot
+\nabla{}' \right) \mathbf{v}' + \frac{1}{a^2\rho{}'}
+\nabla{}' P' = \\
+- \nabla{}' \left( \frac{1}{2} a \ddot{a} \mathbf{r}'\cdot\mathbf{r}'
+\right) - \left(\frac{1}{a^{3(\gamma{} - 1)}} - \frac{1}{a^2} \right)
+\nabla{}'P'
+\end{multline}
+and treat the extra correction term on the right hand side as a source term,
+like we do for the gravitational acceleration. This means we end up with
+a fully consistent set of comoving Euler equations, so that we can solve the
+Riemann problem in the comoving frame.
+
+If we now convert the primitive Euler equations back to their conservative form,
+we end up with the following set of equations:
+\begin{equation}
+\frac{\partial{} \rho{}'}{\partial{} t} + \frac{1}{a^2} \nabla{}' \cdot \left(
+\rho{}' \mathbf{v}' \right) = 0,
+\end{equation}
+\begin{multline}
+\frac{\partial{} \rho{}' \mathbf{v}'}{\partial{} t} + \frac{1}{a^2}
+\nabla{} \cdot \left( \rho{}' \mathbf{v}'\mathbf{v}' + P' \right) = \\
+- \rho{}' \nabla{}' \left( \frac{1}{2} a \ddot{a} \mathbf{r}'\cdot\mathbf{r}'
+\right) - \left(\frac{1}{a^{3(\gamma{} - 1)}} - \frac{1}{a^2} \right)
+\nabla{}'P',
+\end{multline}
+\begin{multline}
+\frac{\partial{}}{\partial{} t} \left( \rho{}' u' + \frac{1}{2} \rho{}'
+\mathbf{v}'\cdot\mathbf{v}' \right) +\\
+\frac{1}{a^2}\nabla{} \cdot \left( \rho{}' u' \mathbf{v}' +
+\frac{1}{2} \rho{}' \left(\mathbf{v}'\cdot \mathbf{v}'\right)
+\mathbf{v}' + P' \mathbf{v}' \right) =\\
+- \rho{}' \mathbf{v}'\cdot\nabla{}' \left( \frac{1}{2} a \ddot{a} \mathbf{r}'\cdot
+\mathbf{r}' \right) -
+\left(\frac{1}{a^{3(\gamma{} - 1)}} - \frac{1}{a^2} \right)
+\mathbf{v}'\cdot\nabla{}'P'.
+\end{multline}
+These equations tell us that the mass, comoving momentum and comoving total
+energy are conserved in the case of adiabatic expansion ($\gamma{} = 5/3$).
+For a more general $\gamma{}$, we however end up with extra source terms that
+depend on $\nabla{}'P'$. Since we already use this quantity for the gradient
+reconstruction step, adding this term is straightforward. The additional time
+step required to integrate the source term is
+\begin{multline}
+\Delta{} t_{\rm{} kick,c} \equiv \int_{a_n}^{a_{n+1}}
+\left(\frac{1}{a^{3(\gamma{} - 1)}} - \frac{1}{a^2} \right) dt \\ =
+\Delta{} t_{\rm{} kick,h} - \Delta{} t_{\rm{} drift}.
+\end{multline}
+
+The last issue we need to address is the appropriate scale factor for the
+gravitational correction term that is used by the finite volume flavour of
+GIZMO. Remember that in GIZMO we evolve the comoving conserved quantities. The
+evolution equations for the conserved quantities of particle $i$ are then
+simply given by integrating over the
+comoving ``volume'' of the particle and adding the appropriate correction terms
+(we ignore the comoving correction terms for this derivation):
+\begin{align}
+\frac{d m_i'}{dt} &= -\frac{1}{a^2} \sum_j
+\mathbf{F}_{m,ij}'\left(\rho{}'\mathbf{v}'\right),\\
+\frac{d \mathbf{p}_i'}{dt} &= -\frac{1}{a^2} \sum_j
+\mathbf{F}_{p,ij}'\left(\rho{}'\mathbf{v}'\mathbf{v}' +
+P\mathbb{1}\right) - \frac{1}{a}\nabla{}'\phi{}_i',
+\end{align}
+\begin{multline}
+\frac{d E_i'}{dt} = -\frac{1}{a^2} \sum_j
+\mathbf{F}_{E,ij}'\left( \rho{}' u' \mathbf{v}' +
+\frac{1}{2} \rho{}' \left(\mathbf{v}'\cdot \mathbf{v}'\right)
+\mathbf{v}' + P' \mathbf{v}' \right) \\
+- \frac{1}{a} \mathbf{p}_i'\cdot{}\nabla{}'\phi{}_i',
+\end{multline}
+where $\mathbf{F}_{X,ij}'(Y)$ represents the appropriately geometrically evaluated
+flux $Y$ for conserved quantity $X$ between particle $i$ and particle $j$.
+In finite volume GIZMO, the particle
+velocity $\mathbf{v}_i' = \mathbf{w}_i' + \mathbf{v}_{i,{\rm{}rel}}'$ consists of the
+actual particle movement $\mathbf{w}_i'$ and the relative movement of the fluid
+w.r.t. the particle movement, $\mathbf{v}_{i,{\rm{}rel}}'$.
+We can therefore replace the gravitational contribution
+to the energy evolution with \citep{Springel2010}
+\begin{equation}
+\mathbf{p}_i'\cdot{}\nabla{}'\phi{}_i' \rightarrow{} m_i'\mathbf{w}_i' \cdot{}
+\nabla{}'\phi{}_i' + \int{} \rho{}'\left(\mathbf{v}' -
+\mathbf{w}_i' \right)\cdot{}
+\nabla{}'\phi{}' dV
+\end{equation}
+to get a more accurate update of the total energy. If we make the following
+approximation
+\begin{equation}
+\rho{}'\left(\mathbf{v}' - \mathbf{w}_i' \right) \approx{}
+\left(\mathbf{r}' - \mathbf{r}_i'\right) \nabla{}' \cdot{}
+\left( \rho{}' \left( \mathbf{v}' - \mathbf{w}_i' \right) \right)
+\end{equation}
+and assume that the force is constant over the ``volume'' of the particle, then
+the second term in the gravity contribution reduces to
+\begin{multline}
+\int{} \rho{}'\left(\mathbf{v}' -
+\mathbf{w}_i' \right)\cdot{}
+\nabla{}'\phi{}' dV \approx{} \\\sum_j \frac{1}{2}
+\left(\mathbf{r}_j' - \mathbf{r}_i'\right)
+a^2 \mathbf{F}_{m,ij}'\left(\rho{}'\mathbf{v}'\right) \cdot{}
+\nabla{}'\phi{}'_i.
+\end{multline}
+This means that the gravitational correction term will have a total scale factor
+dependence $a$ instead of the $1/a$ for the normal gravitational contribution
+and the $1/a^2$ for the hydrodynamical flux. We hence need an additional time
+step
+\begin{equation}
+\Delta{}t_{\rm{}kick,corr} = \int_{a_n}^{a_n+1} adt = \frac{1}{H_0}
+\int_{a_n}^{a_n+1} \frac{da}{E(a)}
+\end{equation}
+that needs to be precomputed.

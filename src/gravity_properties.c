@@ -39,7 +39,8 @@
 #define gravity_props_default_rebuild_frequency 0.01f
 
 void gravity_props_init(struct gravity_props *p, struct swift_params *params,
-                        const struct cosmology *cosmo, int with_cosmology) {
+                        const struct cosmology *cosmo, int with_cosmology,
+                        int periodic) {
 
   /* Tree updates */
   p->rebuild_frequency =
@@ -50,19 +51,31 @@ void gravity_props_init(struct gravity_props *p, struct swift_params *params,
     error("Invalid tree rebuild frequency. Must be in [0., 1.]");
 
   /* Tree-PM parameters */
-  p->mesh_size = parser_get_param_int(params, "Gravity:mesh_side_length");
-  p->a_smooth = parser_get_opt_param_float(params, "Gravity:a_smooth",
-                                           gravity_props_default_a_smooth);
-  p->r_cut_max_ratio = parser_get_opt_param_float(
-      params, "Gravity:r_cut_max", gravity_props_default_r_cut_max);
-  p->r_cut_min_ratio = parser_get_opt_param_float(
-      params, "Gravity:r_cut_min", gravity_props_default_r_cut_min);
+  if (periodic) {
+    p->mesh_size = parser_get_param_int(params, "Gravity:mesh_side_length");
+    p->a_smooth = parser_get_opt_param_float(params, "Gravity:a_smooth",
+                                             gravity_props_default_a_smooth);
+    p->r_cut_max_ratio = parser_get_opt_param_float(
+        params, "Gravity:r_cut_max", gravity_props_default_r_cut_max);
+    p->r_cut_min_ratio = parser_get_opt_param_float(
+        params, "Gravity:r_cut_min", gravity_props_default_r_cut_min);
 
-  if (p->mesh_size % 2 != 0)
-    error("The mesh side-length must be an even number.");
+    /* Some basic checks of what we read */
+    if (p->mesh_size % 2 != 0)
+      error("The mesh side-length must be an even number.");
 
-  if (p->a_smooth <= 0.)
-    error("The mesh smoothing scale 'a_smooth' must be > 0.");
+    if (p->a_smooth <= 0.)
+      error("The mesh smoothing scale 'a_smooth' must be > 0.");
+
+    if (2. * p->a_smooth * p->r_cut_max_ratio > p->mesh_size)
+      error("Mesh too small given r_cut_max. Should be at least %d cells wide.",
+            (int)(2. * p->a_smooth * p->r_cut_max_ratio) + 1);
+  } else {
+    p->mesh_size = 0;
+    p->a_smooth = 0.f;
+    p->r_cut_min_ratio = 0.f;
+    p->r_cut_max_ratio = 0.f;
+  }
 
   /* Time integration */
   p->eta = parser_get_param_float(params, "Gravity:eta");
@@ -86,10 +99,11 @@ void gravity_props_init(struct gravity_props *p, struct swift_params *params,
   }
 
   /* Set the softening to the current time */
-  gravity_update(p, cosmo);
+  gravity_props_update(p, cosmo);
 }
 
-void gravity_update(struct gravity_props *p, const struct cosmology *cosmo) {
+void gravity_props_update(struct gravity_props *p,
+                          const struct cosmology *cosmo) {
 
   /* Current softening lengths */
   double softening;
@@ -157,20 +171,22 @@ void gravity_props_print_snapshot(hid_t h_grpgrav,
   io_write_attribute_s(h_grpgrav, "Softening style",
                        kernel_gravity_softening_name);
   io_write_attribute_f(
-      h_grpgrav, "Comoving softening length",
+      h_grpgrav, "Comoving softening length [internal units]",
       p->epsilon_comoving * kernel_gravity_softening_plummer_equivalent);
-  io_write_attribute_f(h_grpgrav,
-                       "Comoving Softening length (Plummer equivalent)",
-                       p->epsilon_comoving);
   io_write_attribute_f(
-      h_grpgrav, "Maximal physical softening length",
+      h_grpgrav,
+      "Comoving Softening length (Plummer equivalent)  [internal units]",
+      p->epsilon_comoving);
+  io_write_attribute_f(
+      h_grpgrav, "Maximal physical softening length  [internal units]",
       p->epsilon_max_physical * kernel_gravity_softening_plummer_equivalent);
   io_write_attribute_f(h_grpgrav,
-                       "Maximal physical softening length (Plummer equivalent)",
+                       "Maximal physical softening length (Plummer equivalent) "
+                       " [internal units]",
                        p->epsilon_max_physical);
   io_write_attribute_f(h_grpgrav, "Opening angle", p->theta_crit);
   io_write_attribute_s(h_grpgrav, "Scheme", GRAVITY_IMPLEMENTATION);
-  io_write_attribute_d(h_grpgrav, "MM order", SELF_GRAVITY_MULTIPOLE_ORDER);
+  io_write_attribute_i(h_grpgrav, "MM order", SELF_GRAVITY_MULTIPOLE_ORDER);
   io_write_attribute_f(h_grpgrav, "Mesh a_smooth", p->a_smooth);
   io_write_attribute_f(h_grpgrav, "Mesh r_cut_max ratio", p->r_cut_max_ratio);
   io_write_attribute_f(h_grpgrav, "Mesh r_cut_min ratio", p->r_cut_min_ratio);

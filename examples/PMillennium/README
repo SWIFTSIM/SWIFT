@@ -1,0 +1,9 @@
+Initial conditions for the P-Millennium simulation (Baugh et al. 2018)
+at various resolution. These are all DMONLY runs in a 800^3 Mpc^3
+volume with the cosmology given by Planck-13:
+
+ Om = 0.307, Ol = 0.693, h = 0.6777, Ob = 0.0455
+
+The ICs exist at different resolution. The Millennium simulation
+(Springel 2005) has a resolution in between the 1536^3 and 3072^3
+examples given here.

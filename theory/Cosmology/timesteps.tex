@@ -9,31 +9,38 @@ hence requiring an additional conversion.
 
 \subsubsection{Maximal displacement}
 
-to prevent particles from moving on trajectories that do not include the effects
-of the expansion of the Universe, we compute a maximal time-step for the
-particles based on their RMS peculiar motion:
+to prevent particles from moving on trajectories that do not include
+the effects of the expansion of the Universe, we compute a maximal
+time-step for the particles based on their RMS peculiar motion and
+mean inter-particle separation:
 \begin{equation}
-  \Delta t_{\rm cosmo} \equiv \mathcal{C}_{\rm RMS} \frac{a^2 d_{\rm p}}{\sqrt{\frac{1}{N_{\rm p}}\sum_i | \mathbf{v}_i' |^2}},
+  \Delta t_{\rm cosmo} \equiv \mathcal{C}_{\rm RMS} \frac{a^2}{\sqrt{\frac{1}{N_{\rm p}}\sum_i | \mathbf{v}_i' |^2}} d_{\rm p},
   \label{eq:dt_RMS}
 \end{equation}
-where the sum runs over all particles of a species $p$, $\mathcal{C}_{\rm RMS}$
-is a free parameter, $N_{\rm p}$ is the number of baryonic or non-baryonic
-particles, and $d_{\rm p}$ is the mean inter-particle separation for the
-particle with the lowest mass $m_i$ of a given species:
+where the sum runs over all particles of a species $p$,
+$\mathcal{C}_{\rm RMS}$ is a free parameter, $N_{\rm p}$ is the number
+of baryonic or non-baryonic particles, and $d_{\rm p}$ is the mean
+inter-particle separation at redshift $0$ for the particle with the
+lowest mass $m_i$ of a given species:
 \begin{equation}
-  d_{\rm baryons} \equiv \left(\frac{m_i}{\Omega_{\rm b} \rho_{\rm crit}}\right)^{1/3}, \quad d_{\rm DM} \equiv \left(\frac{m_i}{\left(\Omega_{\rm m} - \Omega_{\rm b}\right) \rho_{\rm crit}}\right)^{1/3}.
+  d_{\rm baryons} \equiv \sqrt[3]{\frac{m_i}{\Omega_{\rm b} \rho_{\rm crit, 0}}}, \quad d_{\rm DM} \equiv \sqrt[3]{\frac{m_i}{\left(\Omega_{\rm m} - \Omega_{\rm b}\right) \rho_{\rm crit, 0}}}.
   \nonumber
 \end{equation}
-We typically use $\mathcal{C}_{\rm RMS} = 0.25$ and given the slow evolution of
-this maximal time-step size, we only re-compute it every time the tree is
-reconstructed.
+We typically use $\mathcal{C}_{\rm RMS} = 0.25$ and given the slow
+evolution of this maximal time-step size, we only re-compute it every
+time the tree is reconstructed.
 
-We also apply an additional criterion based on the smoothing scale of the forces
-computed from the top-level mesh.  In eq.~\ref{eq:dt_RMS}, we replace
-$d_{\rm p}$ by $a_{\rm smooth} \frac{L_{\rm box}}{N_{\rm mesh}}$, where we used
-the definition of the mesh parameters introduced earlier. Given the rather
-coarse mesh usually used in \swift, this time-step condition rarely dominates
-the overall time-step size calculation.
+We also apply an additional criterion based on the smoothing scale of
+the forces computed from the top-level mesh.  In eq.~\ref{eq:dt_RMS},
+we replace $d_{\rm p}$ by
+$a_{\rm smooth} \frac{L_{\rm box}}{N_{\rm mesh}}$, where we used the
+definition of the mesh parameters introduced earlier. Given the rather
+coarse mesh usually used in \swift, this time-step condition rarely
+dominates the overall time-step size calculation.
 
 \subsubsection{Conversion from time to integer time-line} 
 
+\begin{equation}
+  \int_{a_n}^{a_{n+1}} H dt = \int_{a_n}^{a_{n+1}} \frac{da}{a} =
+  \log{a_{n+1}} - \log{a_n}.
+\end{equation}

@@ -33,7 +33,8 @@
 
 /* Typdef function pointer for interaction function. */
 typedef void (*interaction_func)(struct runner *, struct cell *, struct cell *);
-typedef void (*init_func)(struct cell *, const struct cosmology *);
+typedef void (*init_func)(struct cell *, const struct cosmology *,
+                          const struct hydro_props *);
 typedef void (*finalise_func)(struct cell *, const struct cosmology *);
 
 /**
@@ -62,14 +63,14 @@ struct cell *make_cell(size_t n, double *offset, double size, double h,
   struct cell *cell = (struct cell *)malloc(sizeof(struct cell));
   bzero(cell, sizeof(struct cell));
 
-  if (posix_memalign((void **)&cell->parts, part_align,
+  if (posix_memalign((void **)&cell->hydro.parts, part_align,
                      count * sizeof(struct part)) != 0) {
     error("couldn't allocate particles, no. of particles: %d", (int)count);
   }
-  bzero(cell->parts, count * sizeof(struct part));
+  bzero(cell->hydro.parts, count * sizeof(struct part));
 
   /* Construct the parts */
-  struct part *part = cell->parts;
+  struct part *part = cell->hydro.parts;
   for (size_t x = 0; x < n; ++x) {
     for (size_t y = 0; y < n; ++y) {
       for (size_t z = 0; z < n; ++z) {
@@ -110,7 +111,8 @@ struct cell *make_cell(size_t n, double *offset, double size, double h,
 /* Set the thermodynamic variable */
 #if defined(GADGET2_SPH)
         part->entropy = 1.f;
-#elif defined(MINIMAL_SPH) || defined(HOPKINS_PU_SPH)
+#elif defined(MINIMAL_SPH) || defined(HOPKINS_PU_SPH) || \
+    defined(HOPKINS_PU_SPH_MONAGHAN) || defined(ANARCHY_PU_SPH)
         part->u = 1.f;
 #elif defined(HOPKINS_PE_SPH)
         part->entropy = 1.f;
@@ -135,10 +137,10 @@ struct cell *make_cell(size_t n, double *offset, double size, double h,
 
   /* Cell properties */
   cell->split = 0;
-  cell->h_max = h_max;
-  cell->count = count;
-  cell->dx_max_part = 0.;
-  cell->dx_max_sort = 0.;
+  cell->hydro.h_max = h_max;
+  cell->hydro.count = count;
+  cell->hydro.dx_max_part = 0.;
+  cell->hydro.dx_max_sort = 0.;
   cell->width[0] = size;
   cell->width[1] = size;
   cell->width[2] = size;
@@ -146,43 +148,44 @@ struct cell *make_cell(size_t n, double *offset, double size, double h,
   cell->loc[1] = offset[1];
   cell->loc[2] = offset[2];
 
-  cell->ti_old_part = 8;
-  cell->ti_hydro_end_min = 8;
-  cell->ti_hydro_end_max = 10;
+  cell->hydro.ti_old_part = 8;
+  cell->hydro.ti_end_min = 8;
+  cell->hydro.ti_end_max = 10;
   cell->nodeID = NODE_ID;
 
-  shuffle_particles(cell->parts, cell->count);
+  shuffle_particles(cell->hydro.parts, cell->hydro.count);
 
-  cell->sorted = 0;
-  for (int k = 0; k < 13; k++) cell->sort[k] = NULL;
+  cell->hydro.sorted = 0;
+  for (int k = 0; k < 13; k++) cell->hydro.sort[k] = NULL;
 
   return cell;
 }
 
 void clean_up(struct cell *ci) {
-  free(ci->parts);
+  free(ci->hydro.parts);
   for (int k = 0; k < 13; k++)
-    if (ci->sort[k] != NULL) free(ci->sort[k]);
+    if (ci->hydro.sort[k] != NULL) free(ci->hydro.sort[k]);
   free(ci);
 }
 
 /**
  * @brief Initializes all particles field to be ready for a density calculation
  */
-void zero_particle_fields_density(struct cell *c,
-                                  const struct cosmology *cosmo) {
-  for (int pid = 0; pid < c->count; pid++) {
-    hydro_init_part(&c->parts[pid], NULL);
+void zero_particle_fields_density(struct cell *c, const struct cosmology *cosmo,
+                                  const struct hydro_props *hydro_props) {
+  for (int pid = 0; pid < c->hydro.count; pid++) {
+    hydro_init_part(&c->hydro.parts[pid], NULL);
   }
 }
 
 /**
  * @brief Initializes all particles field to be ready for a force calculation
  */
-void zero_particle_fields_force(struct cell *c, const struct cosmology *cosmo) {
-  for (int pid = 0; pid < c->count; pid++) {
-    struct part *p = &c->parts[pid];
-    struct xpart *xp = &c->xparts[pid];
+void zero_particle_fields_force(struct cell *c, const struct cosmology *cosmo,
+                                const struct hydro_props *hydro_props) {
+  for (int pid = 0; pid < c->hydro.count; pid++) {
+    struct part *p = &c->hydro.parts[pid];
+    struct xpart *xp = &c->hydro.xparts[pid];
 
 /* Mimic the result of a density calculation */
 #ifdef GADGET2_SPH
@@ -209,7 +212,8 @@ void zero_particle_fields_force(struct cell *c, const struct cosmology *cosmo) {
     p->density.wcount = 48.f / (kernel_norm * pow_dimension(p->h));
     p->density.wcount_dh = 0.f;
 #endif /* PRESSURE-ENTROPY */
-#ifdef HOPKINS_PU_SPH
+#if defined(HOPKINS_PU_SPH) || defined(HOPKINS_PU_SPH_MONAGHAN) || \
+    defined(ANARCHY_PU_SPH)
     p->rho = 1.f;
     p->pressure_bar = 0.6666666;
     p->density.rho_dh = 0.f;
@@ -217,9 +221,16 @@ void zero_particle_fields_force(struct cell *c, const struct cosmology *cosmo) {
     p->density.wcount = 48.f / (kernel_norm * pow_dimension(p->h));
     p->density.wcount_dh = 0.f;
 #endif /* PRESSURE-ENERGY */
+#if defined(ANARCHY_PU_SPH)
+    /* Initialise viscosity variables */
+    p->viscosity.alpha = 0.8;
+    p->viscosity.div_v = 0.f;
+    p->viscosity.div_v_previous_step = 0.f;
+    p->viscosity.v_sig = hydro_get_comoving_soundspeed(p);
+#endif /* ANARCHY_PU_SPH viscosity variables */
 
     /* And prepare for a round of force tasks. */
-    hydro_prepare_force(p, xp, cosmo);
+    hydro_prepare_force(p, xp, cosmo, hydro_props, 0.);
     hydro_reset_acceleration(p);
   }
 }
@@ -228,12 +239,12 @@ void zero_particle_fields_force(struct cell *c, const struct cosmology *cosmo) {
  * @brief Ends the density loop by adding the appropriate coefficients
  */
 void end_calculation_density(struct cell *c, const struct cosmology *cosmo) {
-  for (int pid = 0; pid < c->count; pid++) {
-    hydro_end_density(&c->parts[pid], cosmo);
+  for (int pid = 0; pid < c->hydro.count; pid++) {
+    hydro_end_density(&c->hydro.parts[pid], cosmo);
 
     /* Recover the common "Neighbour number" definition */
-    c->parts[pid].density.wcount *= pow_dimension(c->parts[pid].h);
-    c->parts[pid].density.wcount *= kernel_norm;
+    c->hydro.parts[pid].density.wcount *= pow_dimension(c->hydro.parts[pid].h);
+    c->hydro.parts[pid].density.wcount *= kernel_norm;
   }
 }
 
@@ -241,8 +252,8 @@ void end_calculation_density(struct cell *c, const struct cosmology *cosmo) {
  * @brief Ends the force loop by adding the appropriate coefficients
  */
 void end_calculation_force(struct cell *c, const struct cosmology *cosmo) {
-  for (int pid = 0; pid < c->count; pid++) {
-    hydro_end_force(&c->parts[pid], cosmo);
+  for (int pid = 0; pid < c->hydro.count; pid++) {
+    hydro_end_force(&c->hydro.parts[pid], cosmo);
   }
 }
 
@@ -257,16 +268,18 @@ void dump_particle_fields(char *fileName, struct cell *ci, struct cell *cj) {
 
   fprintf(file, "# ci --------------------------------------------\n");
 
-  for (int pid = 0; pid < ci->count; pid++) {
-    fprintf(file, "%6llu %13e %13e\n", ci->parts[pid].id,
-            ci->parts[pid].density.wcount, ci->parts[pid].force.h_dt);
+  for (int pid = 0; pid < ci->hydro.count; pid++) {
+    fprintf(file, "%6llu %13e %13e\n", ci->hydro.parts[pid].id,
+            ci->hydro.parts[pid].density.wcount,
+            ci->hydro.parts[pid].force.h_dt);
   }
 
   fprintf(file, "# cj --------------------------------------------\n");
 
-  for (int pjd = 0; pjd < cj->count; pjd++) {
-    fprintf(file, "%6llu %13e %13e\n", cj->parts[pjd].id,
-            cj->parts[pjd].density.wcount, cj->parts[pjd].force.h_dt);
+  for (int pjd = 0; pjd < cj->hydro.count; pjd++) {
+    fprintf(file, "%6llu %13e %13e\n", cj->hydro.parts[pjd].id,
+            cj->hydro.parts[pjd].density.wcount,
+            cj->hydro.parts[pjd].force.h_dt);
   }
 
   fclose(file);
@@ -293,12 +306,12 @@ void test_pair_interactions(struct runner *runner, struct cell **ci,
                             interaction_func vec_interaction, init_func init,
                             finalise_func finalise) {
 
-  runner_do_sort(runner, *ci, 0x1FFF, 0, 0);
-  runner_do_sort(runner, *cj, 0x1FFF, 0, 0);
+  runner_do_hydro_sort(runner, *ci, 0x1FFF, 0, 0);
+  runner_do_hydro_sort(runner, *cj, 0x1FFF, 0, 0);
 
   /* Zero the fields */
-  init(*ci, runner->e->cosmology);
-  init(*cj, runner->e->cosmology);
+  init(*ci, runner->e->cosmology, runner->e->hydro_properties);
+  init(*cj, runner->e->cosmology, runner->e->hydro_properties);
 
   /* Run the test */
   vec_interaction(runner, *ci, *cj);
@@ -313,8 +326,8 @@ void test_pair_interactions(struct runner *runner, struct cell **ci,
   /* Now perform a brute-force version for accuracy tests */
 
   /* Zero the fields */
-  init(*ci, runner->e->cosmology);
-  init(*cj, runner->e->cosmology);
+  init(*ci, runner->e->cosmology, runner->e->hydro_properties);
+  init(*cj, runner->e->cosmology, runner->e->hydro_properties);
 
   /* Run the brute-force test */
   serial_interaction(runner, *ci, *cj);
@@ -485,6 +498,7 @@ int main(int argc, char *argv[]) {
   struct space space;
   struct engine engine;
   struct cosmology cosmo;
+  struct hydro_props hydro_props;
   struct runner *runner;
   char c;
   static long long partId = 0;
@@ -569,6 +583,8 @@ int main(int argc, char *argv[]) {
 
   cosmology_init_no_cosmo(&cosmo);
   engine.cosmology = &cosmo;
+  hydro_props_init_no_hydro(&hydro_props);
+  engine.hydro_properties = &hydro_props;
 
   if (posix_memalign((void **)&runner, SWIFT_STRUCT_ALIGNMENT,
                      sizeof(struct runner)) != 0) {

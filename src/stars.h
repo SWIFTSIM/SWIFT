@@ -16,15 +16,24 @@
  * along with this program.  If not, see <http://www.gnu.org/licenses/>.
  *
  ******************************************************************************/
-#ifndef SWIFT_STAR_H
-#define SWIFT_STAR_H
+#ifndef SWIFT_STARS_H
+#define SWIFT_STARS_H
 
 /* Config parameters. */
 #include "../config.h"
 
-/* So far only one model here */
-/* Straight-forward import */
-#include "./stars/Default/star.h"
-#include "./stars/Default/star_iact.h"
+/* Select the correct star model */
+#if defined(STARS_NONE)
+#include "./stars/Default/stars.h"
+#include "./stars/Default/stars_iact.h"
+#elif defined(STARS_EAGLE)
+#include "./stars/EAGLE/stars.h"
+#include "./stars/EAGLE/stars_iact.h"
+#elif defined(STARS_GEAR)
+#include "./stars/GEAR/stars.h"
+#include "./stars/GEAR/stars_iact.h"
+#else
+#error "Invalid choice of star model"
+#endif
 
 #endif

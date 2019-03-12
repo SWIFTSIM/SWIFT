@@ -58,6 +58,9 @@ struct gpart {
   /* Time of the last kick */
   integertime_t ti_kick;
 
+  /* Has this particle been initialised? */
+  int initialised;
+
 #endif
 
 #ifdef SWIFT_GRAVITY_FORCE_CHECKS

@@ -943,6 +943,13 @@ int main(int argc, char* argv[]) {
 
     message("Testing gravity for r=(%e %e %e)", dx, dy, dz);
 
+    const double r_s = 100. * ((double)rand() / (RAND_MAX));
+    const double r_s_inv = 1. / r_s;
+
+    const int periodic = 0;
+
+    message("Mesh scale r_s=%e periodic=%d", r_s, periodic);
+
     /* Compute distance */
     const double r2 = dx * dx + dy * dy + dz * dz;
     const double r_inv = 1. / sqrt(r2);
@@ -952,8 +959,8 @@ int main(int argc, char* argv[]) {
 
     /* Compute all derivatives */
     struct potential_derivatives_M2L pot;
-    compute_potential_derivatives_M2L(dx, dy, dz, r2, r_inv, eps, eps_inv,
-                                      /*periodic*/ 0, /* 1/r_s */ 0., &pot);
+    potential_derivatives_compute_M2L(dx, dy, dz, r2, r_inv, eps, eps_inv,
+                                      periodic, r_s_inv, &pot);
 
     /* Minimal value we care about */
     const double min = 1e-9;

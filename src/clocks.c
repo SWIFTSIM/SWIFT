@@ -29,6 +29,7 @@
 #include "../config.h"
 
 /* Standard headers. */
+#include <limits.h>
 #include <stdio.h>
 #include <unistd.h>
 
@@ -263,6 +264,17 @@ const char *clocks_get_timesincestart(void) {
 }
 
 /**
+ * Returns the wall-clock time since the start of execution in hours.
+ *
+ * Need to call clocks_set_cpufreq() to mark the start of execution.
+ *
+ * @result the time since the start of the execution
+ */
+double clocks_get_hours_since_start(void) {
+  return clocks_diff_ticks(getticks(), clocks_start) / (3600. * 1000.0);
+}
+
+/**
  * @brief return the cpu time used.
  *
  * Uses the times(2) function to access the user cpu times and returns the sum
@@ -279,4 +291,24 @@ double clocks_get_cputime_used(void) {
   struct tms tmstic;
   times(&tmstic);
   return (double)(tmstic.tms_utime + tmstic.tms_cutime);
+}
+
+/**
+ * @brief Return an integer based on the current time.
+ *
+ * Normally this will be the remainder of the current number of nanoseconds
+ * so not very dissimilar in the most significant figures unless the time
+ * between calls is greater than INT_MAX nanoseconds. For faster calls use
+ * fewer figures, if that matters.
+ *
+ * @result an integer.
+ */
+int clocks_random_seed(void) {
+#ifdef HAVE_CLOCK_GETTIME
+  struct timespec timespec;
+  clock_gettime(CLOCK_REALTIME, &timespec);
+  return (timespec.tv_nsec % INT_MAX);
+#else
+  return (getticks() % INT_MAX);
+#endif
 }

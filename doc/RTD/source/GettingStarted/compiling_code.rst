@@ -24,6 +24,15 @@ MPI
 A recent implementation of MPI, such as Open MPI (v2.x or higher), is required,
 or any library that implements at least the MPI 3 standard.
 
+Running SWIFT on OmniPath atchitechtures with Open MPI
+^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+When running SWIFT on an OmniPath system we suggest that Open MPI v3.1.3 or higher
+is used. A bug in the ``psm2`` library causes communications to be lost. It is
+possible to run SWIFT with older versions (tested with v2.1.x) of Open MPI so
+long as ``psm`` is used instead of ``psm2``, i.e. that you invoke ``mpirun``
+with ``--mca btl vader,self -mca mtl psm``.
+
 Libtool
 ~~~~~~~
 The build system depends on libtool.
@@ -32,13 +41,13 @@ FFTW
 ~~~~
 Version 3.3.x or higher is required for periodic gravity.
 
-METIS
-~~~~~
-METIS is used for domain decomposition and load balancing.
+ParMETIS or METIS
+~~~~~~~~~~~~~~~~~
+One is required for domain decomposition and load balancing.
 
 libNUMA
 ~~~~~~~
-libNUMA is used to pin threads.
+libNUMA is used to pin threads (but see INSTALL.swift).
 
 GSL
 ~~~

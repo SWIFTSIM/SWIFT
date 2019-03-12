@@ -1,0 +1,76 @@
+#!/bin/bash
+
+# Test for particles with the same smoothing length
+    echo ""
+
+    rm -f star_brute_force_27_perturbed.dat swift_star_dopair_27_perturbed.dat
+
+    echo "Running ./test27cellsStars -n 6 -N 7 -r 1 -d 0.1 -f perturbed"
+    ./test27cellsStars -n 6 -N 7 -r 1 -d 0.1 -f perturbed
+
+    if [ -e star_brute_force_27_perturbed.dat ]
+    then
+	if python @srcdir@/difffloat.py star_brute_force_27_perturbed.dat swift_star_dopair_27_perturbed.dat @srcdir@/star_tolerance_27_perturbed.dat 6
+	then
+	    echo "Accuracy test passed"
+	else
+	    echo "Accuracy test failed"
+	    exit 1
+	fi
+    else
+	echo "Error Missing test output file"
+	exit 1
+    fi
+
+    echo "------------"
+
+# Test for particles with random smoothing lengths
+    echo ""
+
+    rm -f star_brute_force_27_perturbed.dat swift_star_dopair_27_perturbed.dat
+
+    echo "Running ./test27cellsStars -n 6 -N 7 -r 1 -d 0.1 -f perturbed -p 1.1"
+    ./test27cellsStars -n 6 -N 7 -r 1 -d 0.1 -f perturbed -p 1.1
+
+    if [ -e star_brute_force_27_perturbed.dat ]
+    then
+	if python @srcdir@/difffloat.py star_brute_force_27_perturbed.dat swift_star_dopair_27_perturbed.dat @srcdir@/star_tolerance_27_perturbed_h.dat 6
+	then
+	    echo "Accuracy test passed"
+	else
+	    echo "Accuracy test failed"
+	    exit 1
+	fi
+    else
+	echo "Error Missing test output file"
+	exit 1
+    fi
+
+    echo "------------"
+
+
+# Test for particles with random smoothing lengths
+    echo ""
+
+    rm -f star_brute_force_27_perturbed.dat swift_star_dopair_27_perturbed.dat
+
+    echo "Running ./test27cellsStars -n 6 -N 7 -r 1 -d 0.1 -f perturbed -p 1.3"
+    ./test27cellsStars -n 6 -N 7 -r 1 -d 0.1 -f perturbed -p 1.3
+
+    if [ -e star_brute_force_27_perturbed.dat ]
+    then
+	if python @srcdir@/difffloat.py star_brute_force_27_perturbed.dat swift_star_dopair_27_perturbed.dat @srcdir@/star_tolerance_27_perturbed_h2.dat 6
+	then
+	    echo "Accuracy test passed"
+	else
+	    echo "Accuracy test failed"
+	    exit 1
+	fi
+    else
+	echo "Error Missing test output file"
+	exit 1
+    fi
+
+    echo "------------"
+
+exit $?

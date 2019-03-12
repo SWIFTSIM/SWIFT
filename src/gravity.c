@@ -487,7 +487,7 @@ void gravity_exact_force_compute_mapper(void *map_data, int nr_gparts,
     long long id = 0;
     if (gpi->type == swift_type_gas)
       id = parts[-gpi->id_or_neg_offset].id;
-    else if (gpi->type == swift_type_star)
+    else if (gpi->type == swift_type_stars)
       id = sparts[-gpi->id_or_neg_offset].id;
     else if (gpi->type == swift_type_black_hole)
       error("Unexisting type");
@@ -676,7 +676,7 @@ void gravity_exact_force_check(struct space *s, const struct engine *e,
     long long id = 0;
     if (gpi->type == swift_type_gas)
       id = parts[-gpi->id_or_neg_offset].id;
-    else if (gpi->type == swift_type_star)
+    else if (gpi->type == swift_type_stars)
       id = sparts[-gpi->id_or_neg_offset].id;
     else if (gpi->type == swift_type_black_hole)
       error("Unexisting type");
@@ -730,7 +730,7 @@ void gravity_exact_force_check(struct space *s, const struct engine *e,
       long long id = 0;
       if (gpi->type == swift_type_gas)
         id = parts[-gpi->id_or_neg_offset].id;
-      else if (gpi->type == swift_type_star)
+      else if (gpi->type == swift_type_stars)
         id = sparts[-gpi->id_or_neg_offset].id;
       else if (gpi->type == swift_type_black_hole)
         error("Unexisting type");

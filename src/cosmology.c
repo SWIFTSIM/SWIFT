@@ -157,6 +157,8 @@ void cosmology_update(struct cosmology *c, const struct phys_const *phys_const,
       pow(a, -3. * hydro_gamma + 2.); /* 1 / a^(3*gamma - 2) */
   c->a_factor_mu =
       pow(a, 0.5 * (3. * hydro_gamma - 5.)); /* a^{(3*gamma - 5) / 2} */
+  c->a_factor_Balsara_eps =
+      pow(a, 0.5 * (1. - 3. * hydro_gamma)); /* a^{(1 - 3*gamma) / 2} */
 
   /* Redshift */
   c->z = a_inv - 1.;
@@ -487,6 +489,11 @@ void cosmology_init(struct swift_params *params, const struct unit_system *us,
   c->time_base = (c->log_a_end - c->log_a_begin) / max_nr_timesteps;
   c->time_base_inv = 1. / c->time_base;
 
+  /* If a_begin == a_end we hang */
+
+  if (c->a_begin >= c->a_end)
+    error("a_begin must be strictly before (and not equal to) a_end");
+
   /* Construct derived quantities */
 
   /* Curvature density (for closure) */
@@ -501,6 +508,10 @@ void cosmology_init(struct swift_params *params, const struct unit_system *us,
       100. * c->h * (km / (1.e6 * phys_const->const_parsec)); /* s^-1 */
   c->H0 = H0_cgs * units_cgs_conversion_factor(us, UNIT_CONV_TIME);
   c->Hubble_time = 1. / c->H0;
+
+  /* Critical density at present day */
+  c->critical_density_0 =
+      3. * c->H0 * c->H0 / (8. * M_PI * phys_const->const_newton_G);
 
   /* Initialise the interpolation tables */
   c->drift_fac_interp_table = NULL;
@@ -535,7 +546,7 @@ void cosmology_init_no_cosmo(struct cosmology *c) {
   c->w_0 = 0.;
   c->w_a = 0.;
   c->h = 1.;
-  c->w = 0.;
+  c->w = -1.;
 
   c->a_begin = 1.;
   c->a_end = 1.;
@@ -543,7 +554,9 @@ void cosmology_init_no_cosmo(struct cosmology *c) {
   c->log_a_end = 0.;
 
   c->H = 0.;
+  c->H0 = 0.;
   c->a = 1.;
+  c->z = 0.;
   c->a_inv = 1.;
   c->a2_inv = 1.;
   c->a3_inv = 1.;
@@ -551,16 +564,20 @@ void cosmology_init_no_cosmo(struct cosmology *c) {
   c->a_factor_pressure = 1.;
   c->a_factor_sound_speed = 1.;
   c->a_factor_mu = 1.;
+  c->a_factor_Balsara_eps = 1.;
   c->a_factor_hydro_accel = 1.;
   c->a_factor_grav_accel = 1.;
 
   c->critical_density = 0.;
+  c->critical_density_0 = 0.;
 
   c->time_step_factor = 1.;
 
   c->a_dot = 0.;
   c->time = 0.;
   c->universe_age_at_present_day = 0.;
+  c->Hubble_time = 0.;
+  c->lookback_time = 0.;
 
   /* Initialise the interpolation tables */
   c->drift_fac_interp_table = NULL;

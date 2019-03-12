@@ -52,11 +52,14 @@ enum task_types {
   task_type_ghost_out, /* Implicit */
   task_type_extra_ghost,
   task_type_drift_part,
+  task_type_drift_spart,
   task_type_drift_gpart,
-  task_type_end_force,
+  task_type_drift_gpart_out, /* Implicit */
+  task_type_end_hydro_force,
   task_type_kick1,
   task_type_kick2,
   task_type_timestep,
+  task_type_timestep_limiter,
   task_type_send,
   task_type_recv,
   task_type_grav_long_range,
@@ -64,8 +67,16 @@ enum task_types {
   task_type_grav_down_in, /* Implicit */
   task_type_grav_down,
   task_type_grav_mesh,
+  task_type_end_grav_force,
   task_type_cooling,
-  task_type_sourceterms,
+  task_type_star_formation,
+  task_type_logger,
+  task_type_stars_in,       /* Implicit */
+  task_type_stars_out,      /* Implicit */
+  task_type_stars_ghost_in, /* Implicit */
+  task_type_stars_ghost,
+  task_type_stars_ghost_out, /* Implicit */
+  task_type_stars_sort,
   task_type_count
 } __attribute__((packed));
 
@@ -77,6 +88,7 @@ enum task_subtypes {
   task_subtype_density,
   task_subtype_gradient,
   task_subtype_force,
+  task_subtype_limiter,
   task_subtype_grav,
   task_subtype_external_grav,
   task_subtype_tend,
@@ -85,6 +97,8 @@ enum task_subtypes {
   task_subtype_gpart,
   task_subtype_multipole,
   task_subtype_spart,
+  task_subtype_stars_density,
+  task_subtype_stars_feedback,
   task_subtype_count
 } __attribute__((packed));
 
@@ -95,6 +109,7 @@ enum task_actions {
   task_action_none,
   task_action_part,
   task_action_gpart,
+  task_action_spart,
   task_action_all,
   task_action_multipole,
   task_action_count
@@ -128,6 +143,9 @@ struct task {
   /*! List of tasks unlocked by this one */
   struct task **unlock_tasks;
 
+  /*! Flags used to carry additional information (e.g. sort directions) */
+  long long flags;
+
 #ifdef WITH_MPI
 
   /*! Buffer for this task's communications */
@@ -138,19 +156,11 @@ struct task {
 
 #endif
 
-  /*! Flags used to carry additional information (e.g. sort directions) */
-  int flags;
-
   /*! Rank of a task in the order */
   int rank;
 
   /*! Weight of the task */
   float weight;
-
-#if defined(WITH_MPI) && defined(HAVE_METIS)
-  /*! Individual cost estimate for this task. */
-  float cost;
-#endif
 
   /*! Number of tasks unlocked by this one */
   short int nr_unlock_tasks;
@@ -176,10 +186,10 @@ struct task {
 
   /*! Information about the direction of the pair task */
   short int sid;
+#endif
 
   /*! Start and end time of this task */
   ticks tic, toc;
-#endif
 
 #ifdef SWIFT_DEBUG_CHECKS
   /* When was this task last run? */
@@ -194,6 +204,12 @@ float task_overlap(const struct task *ta, const struct task *tb);
 int task_lock(struct task *t);
 void task_do_rewait(struct task *t);
 void task_print(const struct task *t);
+void task_dump_all(struct engine *e, int step);
+void task_dump_stats(const char *dumpfile, struct engine *e, int header,
+                     int allranks);
+void task_get_full_name(int type, int subtype, char *name);
+void task_get_group_name(int type, int subtype, char *cluster);
+
 #ifdef WITH_MPI
 void task_create_mpi_comms(void);
 #endif

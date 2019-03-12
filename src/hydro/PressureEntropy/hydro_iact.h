@@ -259,12 +259,11 @@ __attribute__((always_inline)) INLINE static void runner_iact_force(
   const float mu_ij = fac_mu * r_inv * omega_ij; /* This is 0 or negative */
 
   /* Signal velocity */
-  const float v_sig = ci + cj - 3.f * mu_ij;
+  const float v_sig = ci + cj - const_viscosity_beta * mu_ij;
 
   /* Now construct the full viscosity term */
   const float rho_ij = 0.5f * (rhoi + rhoj);
-  const float visc = -0.25f * const_viscosity_alpha * v_sig * mu_ij *
-                     (balsara_i + balsara_j) / rho_ij;
+  const float visc = -0.25f * v_sig * mu_ij * (balsara_i + balsara_j) / rho_ij;
 
   /* Now, convolve with the kernel */
   const float visc_term = 0.5f * visc * (wi_dr + wj_dr);
@@ -373,12 +372,11 @@ __attribute__((always_inline)) INLINE static void runner_iact_nonsym_force(
   const float mu_ij = fac_mu * r_inv * omega_ij; /* This is 0 or negative */
 
   /* Signal velocity */
-  const float v_sig = ci + cj - 3.f * mu_ij;
+  const float v_sig = ci + cj - const_viscosity_beta * mu_ij;
 
   /* Now construct the full viscosity term */
   const float rho_ij = 0.5f * (rhoi + rhoj);
-  const float visc = -0.25f * const_viscosity_alpha * v_sig * mu_ij *
-                     (balsara_i + balsara_j) / rho_ij;
+  const float visc = -0.25f * v_sig * mu_ij * (balsara_i + balsara_j) / rho_ij;
 
   /* Now, convolve with the kernel */
   const float visc_term = 0.5f * visc * (wi_dr + wj_dr);
@@ -402,6 +400,30 @@ __attribute__((always_inline)) INLINE static void runner_iact_nonsym_force(
 
   /* Change in entropy */
   pi->entropy_dt += mj * visc_term * r_inv * dvdr;
+}
+
+/**
+ * @brief Timestep limiter loop
+ */
+__attribute__((always_inline)) INLINE static void runner_iact_limiter(
+    float r2, const float *dx, float hi, float hj, struct part *restrict pi,
+    struct part *restrict pj, float a, float H) {
+
+  /* Nothing to do here if both particles are active */
+}
+
+/**
+ * @brief Timestep limiter loop (non-symmetric version)
+ */
+__attribute__((always_inline)) INLINE static void runner_iact_nonsym_limiter(
+    float r2, const float *dx, float hi, float hj, struct part *restrict pi,
+    struct part *restrict pj, float a, float H) {
+
+  /* Wake up the neighbour? */
+  if (pi->force.v_sig > const_limiter_max_v_sig_ratio * pj->force.v_sig) {
+
+    pj->wakeup = time_bin_awake;
+  }
 }
 
 #endif /* SWIFT_PRESSURE_ENTROPY_HYDRO_IACT_H */

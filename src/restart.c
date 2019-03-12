@@ -334,3 +334,17 @@ void restart_remove_previous(const char *filename) {
     }
   }
 }
+
+/**
+ * @brief Run a given command, usually to resubmit a job.
+ *
+ * No check is done on the command being run.
+ *
+ * @param command The command to run in the system's shell.
+ */
+void restart_resubmit(const char *command) {
+
+  /* Let's trust the user's command... */
+  const int result = system(command);
+  if (result != 0) message("Command returned error code %d", result);
+}

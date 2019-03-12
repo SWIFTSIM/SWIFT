@@ -27,6 +27,7 @@ __attribute__((always_inline)) INLINE static void hydro_debug_particle(
       "a=[%.3e,%.3e,%.3e], "
       "h=%.3e, "
       "time_bin=%d, "
+      "wakeup=%d, "
       "rho=%.3e, "
       "P=%.3e, "
       "gradients={"
@@ -51,7 +52,7 @@ __attribute__((always_inline)) INLINE static void hydro_debug_particle(
       "wcount_dh=%.3e, "
       "wcount=%.3e}\n",
       p->x[0], p->x[1], p->x[2], p->v[0], p->v[1], p->v[2], p->a_hydro[0],
-      p->a_hydro[1], p->a_hydro[2], p->h, p->time_bin, p->rho, p->P,
+      p->a_hydro[1], p->a_hydro[2], p->h, p->time_bin, p->wakeup, p->rho, p->P,
       p->gradients.rho[0], p->gradients.rho[1], p->gradients.rho[2],
       p->gradients.v[0][0], p->gradients.v[0][1], p->gradients.v[0][2],
       p->gradients.v[1][0], p->gradients.v[1][1], p->gradients.v[1][2],

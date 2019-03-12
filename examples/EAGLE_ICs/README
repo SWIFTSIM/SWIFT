@@ -1,0 +1,4 @@
+This directory contains initial conditions generated for
+the EAGLE suite of simulations. The cosmology, resolution
+and phases are the same as used in the original suite. The only
+difference is the file format, adapted for SWIFT.

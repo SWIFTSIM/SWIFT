@@ -21,6 +21,7 @@
 #include "../config.h"
 
 /* Some standard headers. */
+#include <math.h>
 #include <string.h>
 
 /* MPI headers. */
@@ -136,7 +137,7 @@ void stats_collect_part_mapper(void *map_data, int nr_parts, void *extra_data) {
     /* Get the particle */
     const struct part *p = &parts[k];
     const struct xpart *xp = &xparts[k];
-    const struct gpart *gp = (p->gpart != NULL) ? gp = p->gpart : NULL;
+    const struct gpart *gp = p->gpart;
 
     /* Get useful time variables */
     const integertime_t ti_beg =
@@ -166,8 +167,8 @@ void stats_collect_part_mapper(void *map_data, int nr_parts, void *extra_data) {
     hydro_get_drifted_velocities(p, xp, dt_kick_hydro, dt_kick_grav, v);
     const double x[3] = {p->x[0], p->x[1], p->x[2]};
     const float m = hydro_get_mass(p);
-    const float entropy = hydro_get_physical_entropy(p, cosmo);
-    const float u_inter = hydro_get_physical_internal_energy(p, cosmo);
+    const float entropy = hydro_get_drifted_physical_entropy(p, cosmo);
+    const float u_inter = hydro_get_drifted_physical_internal_energy(p, cosmo);
 
     /* Collect mass */
     stats.mass += m;
@@ -386,7 +387,7 @@ MPI_Op statistics_mpi_reduce_op;
 /**
  * @brief MPI reduce operator for #statistics structures.
  */
-void stats_add_MPI(void *in, void *inout, int *len, MPI_Datatype *datatype) {
+void stats_add_mpi(void *in, void *inout, int *len, MPI_Datatype *datatype) {
 
   for (int i = 0; i < *len; ++i)
     stats_add(&((struct statistics *)inout)[0],
@@ -396,7 +397,7 @@ void stats_add_MPI(void *in, void *inout, int *len, MPI_Datatype *datatype) {
 /**
  * @brief Registers MPI #statistics type and reduction function.
  */
-void stats_create_MPI_type(void) {
+void stats_create_mpi_type(void) {
 
   /* This is not the recommended way of doing this.
      One should define the structure field by field
@@ -411,6 +412,6 @@ void stats_create_MPI_type(void) {
   }
 
   /* Create the reduction operation */
-  MPI_Op_create(stats_add_MPI, 1, &statistics_mpi_reduce_op);
+  MPI_Op_create(stats_add_mpi, 1, &statistics_mpi_reduce_op);
 }
 #endif

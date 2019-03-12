@@ -83,9 +83,9 @@ int main(int argc, char *argv[]) {
   xparts[0].v_full[2] = 0.;
 
   /* Set the particle in the cell */
-  c.parts = parts;
-  c.xparts = xparts;
-  c.count = 1;
+  c.hydro.parts = parts;
+  c.hydro.xparts = xparts;
+  c.hydro.count = 1;
   c.split = 0;
 
   /* Create an engine and a fake runner */
@@ -108,11 +108,13 @@ int main(int argc, char *argv[]) {
     eng.time += dt;
 
     /* Compute gravitational acceleration */
-    float r2 =
-        c.parts[0].x[0] * c.parts[0].x[0] + c.parts[0].x[1] * c.parts[0].x[1];
+    float r2 = c.hydro.parts[0].x[0] * c.hydro.parts[0].x[0] +
+               c.hydro.parts[0].x[1] * c.hydro.parts[0].x[1];
     float r = sqrtf(r2);
-    c.parts[0].a_hydro[0] = -(G * M_sun * c.parts[0].x[0] / r * r * r);
-    c.parts[0].a_hydro[1] = -(G * M_sun * c.parts[0].x[1] / r * r * r);
+    c.hydro.parts[0].a_hydro[0] =
+        -(G * M_sun * c.hydro.parts[0].x[0] / r * r * r);
+    c.hydro.parts[0].a_hydro[1] =
+        -(G * M_sun * c.hydro.parts[0].x[1] / r * r * r);
 
     /* Kick... */
     runner_do_kick2(&run, &c, 0);

@@ -1,0 +1,107 @@
+# Define the system of units to use internally. 
+InternalUnitSystem:
+  UnitMass_in_cgs:     1.989e43      # 10^10 M_sun in grams
+  UnitLength_in_cgs:   3.085678e24   # Mpc in centimeters
+  UnitVelocity_in_cgs: 1e5           # km/s in centimeters per second
+  UnitCurrent_in_cgs:  1             # Amperes
+  UnitTemp_in_cgs:     1             # Kelvin
+
+# Cosmological parameters
+Cosmology:
+  h:              0.6777        # Reduced Hubble constant
+  a_begin:        0.1     # Initial scale-factor of the simulation
+  a_end:          1.0           # Final scale factor of the simulation
+  Omega_m:        0.307         # Matter density parameter
+  Omega_lambda:   0.693         # Dark-energy density parameter
+  Omega_b:        0.0455        # Baryon density parameter
+
+# Parameters governing the time integration
+TimeIntegration:
+  time_begin: 0.    # The starting time of the simulation (in internal units).
+  time_end:   1e-2  # The end time of the simulation (in internal units).
+  dt_min:     1e-10 # The minimal time-step size of the simulation (in internal units).
+  dt_max:     1e-7  # The maximal time-step size of the simulation (in internal units).
+  
+Scheduler:
+  max_top_level_cells:    15
+  
+# Parameters governing the snapshots
+Snapshots:
+  basename:            coolingBox # Common part of the name of output files
+  scale_factor_first: 0.142857142857  # Scale-factor of the first snaphot (cosmological run)
+  time_first:          0.01  # Time of the first output (non-cosmological run) (in internal units)
+  delta_time: 1.00002  # Time difference between consecutive outputs (in internal units)
+  compression:         1
+
+# Parameters governing the conserved quantities statistics
+Statistics:
+  scale_factor_first: 0.142857142857 # Scale-factor of the first stat dump (cosmological run)
+  time_first:          0.01 # Time of the first stat dump (non-cosmological run) (in internal units)
+  delta_time: 1.00002 # Time between statistics output
+
+# Parameters for the self-gravity scheme
+Gravity:
+  eta:                    0.025     # Constant dimensionless multiplier for time integration.
+  theta:                  0.85      # Opening angle (Multipole acceptance criterion)
+  comoving_softening:     0.0026994 # Comoving softening length (in internal units).
+  max_physical_softening: 0.0007    # Physical softening length (in internal units).
+  
+# Parameters for the hydrodynamics scheme
+SPH:
+  resolution_eta:        1.2348   # Target smoothing length in units of the mean inter-particle separation (1.2348 == 48Ngbs with the cubic spline kernel).
+  CFL_condition:         0.1      # Courant-Friedrich-Levy condition for time integration.
+  minimal_temperature: 100.       # Kelvin
+  
+# Parameters related to the initial conditions
+InitialConditions:
+  file_name:  ./coolingBox.hdf5     # The file to read
+  periodic:   1
+
+# Dimensionless pre-factor for the time-step condition
+LambdaCooling:
+  lambda_nH2_cgs:              1e-22 # Cooling rate divided by square Hydrogen number density (in cgs units [erg * s^-1 * cm^3])
+  cooling_tstep_mult:          1.0        # Dimensionless pre-factor for the time-step condition
+
+# Dimensionless constant cooling (AB 13/02/18)
+ConstCooling:
+  cooling_rate:         10000.0
+  min_energy:           0.0
+  cooling_tstep_mult:   1.0
+
+# Cooling with Grackle 2.0
+GrackleCooling:
+  CloudyTable: CloudyData_UVB=HM2012.h5 # Name of the Cloudy Table (available on the grackle bitbucket repository)
+  WithUVbackground: 0 # Enable or not the UV background
+  Redshift: 0 # Redshift to use (-1 means time based redshift)
+  WithMetalCooling: 1 # Enable or not the metal cooling
+  ProvideVolumetricHeatingRates: 0 # User provide volumetric heating rates
+  ProvideSpecificHeatingRates: 0 # User provide specific heating rates
+  SelfShieldingMethod: 0 # Grackle (<= 3) or Gear self shielding method
+  OutputMode: 1 # Write in output corresponding primordial chemistry mode
+  MaxSteps: 1000
+  ConvergenceLimit: 1e-2
+
+EagleCooling:
+  filename:                /cosma5/data/Eagle/BG_Tables/CoolingTables/
+  reionisation_redshift:   8.989
+  He_reion_z_centre:       3.5
+  He_reion_z_sigma:        0.5
+  He_reion_ev_pH:          2.0
+
+EAGLEChemistry:
+  InitMetallicity:         0.014
+  InitAbundance_Hydrogen:  0.70649785
+  InitAbundance_Helium:    0.28055534
+  InitAbundance_Carbon:    2.0665436e-3
+  InitAbundance_Nitrogen:  8.3562563e-4
+  InitAbundance_Oxygen:    5.4926244e-3
+  InitAbundance_Neon:      1.4144605e-3
+  InitAbundance_Magnesium: 5.907064e-4
+  InitAbundance_Silicon:   6.825874e-4
+  InitAbundance_Iron:      1.1032152e-3
+  CalciumOverSilicon:      0.0941736
+  SulphurOverSilicon:      0.6054160
+
+GearChemistry:
+  InitialMetallicity: 0.01295
+

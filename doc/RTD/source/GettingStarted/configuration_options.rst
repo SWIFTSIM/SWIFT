@@ -45,6 +45,6 @@ Several cooling implementations (including GRACKLE) are available.
 Many external potentials are available for use with SWIFT. You can choose
 between them at compile time. Some examples include a central potential, a
 softened central potential, and a sinusoidal potential. You will need to
-configure, for example, the mass in your parameterfile at runtime.
+configure, for example, the mass in your parameter file at runtime.
 
 

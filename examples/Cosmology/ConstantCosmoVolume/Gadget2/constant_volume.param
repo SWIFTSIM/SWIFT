@@ -1,0 +1,138 @@
+
+% System of units
+
+UnitLength_in_cm         3.08567758e24      %  1.0 Mpc
+UnitMass_in_g            1.98848e43         %  1.0e10 solar masses 
+UnitVelocity_in_cm_per_s 1e5                %  1 km/sec 
+GravityConstantInternal  4.300927e+01       %  Same value as SWIFT
+
+%  Relevant files
+InitCondFile  	   constantBox
+OutputDir          data/
+
+EnergyFile         energy.txt
+InfoFile           info.txt
+TimingsFile        timings.txt
+CpuFile            cpu.txt
+
+RestartFile        restart
+SnapshotFileBase   box
+
+OutputListFilename dummy
+
+% CPU time -limit
+
+TimeLimitCPU      360000  % = 10 hours
+ResubmitOn        0
+ResubmitCommand   my-scriptfile  
+
+
+% Code options
+
+ICFormat                 3
+SnapFormat               3
+ComovingIntegrationOn    1
+
+TypeOfTimestepCriterion  0
+OutputListOn             0
+PeriodicBoundariesOn     1
+
+%  Caracteristics of run
+
+TimeBegin             0.00990099 % z = 100
+TimeMax	              1.         % z = 0.
+
+Omega0	              1.0
+OmegaLambda           0.0
+OmegaBaryon           1.0
+HubbleParam           1.0
+BoxSize               64.
+
+% Output frequency
+
+TimeBetSnapshot        1.04
+TimeOfFirstSnapshot    0.00991
+
+CpuTimeBetRestartFile     36000.0    ; here in seconds
+TimeBetStatistics         0.05
+
+NumFilesPerSnapshot       1
+NumFilesWrittenInParallel 1
+
+% Accuracy of time integration
+
+ErrTolIntAccuracy      0.025 
+MaxRMSDisplacementFac  0.25
+CourantFac             0.1     
+MaxSizeTimestep        0.002
+MinSizeTimestep        1e-7
+
+
+% Tree algorithm, force accuracy, domain update frequency
+
+ErrTolTheta            0.3
+TypeOfOpeningCriterion 0
+ErrTolForceAcc         0.005
+
+TreeDomainUpdateFrequency    0.01
+
+%  Further parameters of SPH
+
+DesNumNgb              48
+MaxNumNgbDeviation     1.
+ArtBulkViscConst       0.8
+InitGasTemp            0.        
+MinGasTemp             0.
+
+% Memory allocation
+
+PartAllocFactor       1.6
+TreeAllocFactor       0.8
+BufferSize            30  
+
+% Softening lengths
+
+MinGasHsmlFractional 0.001
+
+SofteningGas       0.08          # 80 kpc / h = 1/25 of mean inter-particle separation
+SofteningHalo      0
+SofteningDisk      0
+SofteningBulge     0           
+SofteningStars     0
+SofteningBndry     0
+
+SofteningGasMaxPhys       0.08   # 80 kpc / h = 1/25 of mean inter-particle separation
+SofteningHaloMaxPhys      0
+SofteningDiskMaxPhys      0
+SofteningBulgeMaxPhys     0           
+SofteningStarsMaxPhys     0
+SofteningBndryMaxPhys     0
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+

@@ -16,9 +16,13 @@
  * along with this program.  If not, see <http://www.gnu.org/licenses/>.
  *
  ******************************************************************************/
+#include "../config.h"
 
+/* Some standard headers. */
 #include <stdlib.h>
 #include <string.h>
+
+/* Local headers */
 #include "const.h"
 #include "dimension.h"
 #include "error.h"

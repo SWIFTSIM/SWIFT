@@ -31,6 +31,8 @@
 #include "./hydro/PressureEntropy/hydro_io.h"
 #elif defined(HOPKINS_PU_SPH)
 #include "./hydro/PressureEnergy/hydro_io.h"
+#elif defined(HOPKINS_PU_SPH_MONAGHAN)
+#include "./hydro/PressureEnergyMorrisMonaghanAV/hydro_io.h"
 #elif defined(DEFAULT_SPH)
 #include "./hydro/Default/hydro_io.h"
 #elif defined(GIZMO_MFV_SPH)
@@ -41,6 +43,8 @@
 #include "./hydro/Shadowswift/hydro_io.h"
 #elif defined(PLANETARY_SPH)
 #include "./hydro/Planetary/hydro_io.h"
+#elif defined(ANARCHY_PU_SPH)
+#include "./hydro/AnarchyPU/hydro_io.h"
 #else
 #error "Invalid choice of SPH variant"
 #endif

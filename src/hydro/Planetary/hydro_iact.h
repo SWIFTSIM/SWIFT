@@ -25,8 +25,8 @@
  * @brief Minimal conservative implementation of SPH (Neighbour loop equations)
  *
  * The thermal variable is the internal energy (u). Simple constant
- * viscosity term without switches is implemented. No thermal conduction
- * term is implemented.
+ * viscosity term with the Balsara (1995) switch (optional).
+ * No thermal conduction term is implemented.
  *
  * This corresponds to equations (43), (44), (45), (101), (103)  and (104) with
  * \f$\beta=3\f$ and \f$\alpha_u=0\f$ of Price, D., Journal of Computational
@@ -176,11 +176,9 @@ __attribute__((always_inline)) INLINE static void runner_iact_force(
                      (pi->v[1] - pj->v[1]) * dx[1] +
                      (pi->v[2] - pj->v[2]) * dx[2] + a2_Hubble * r2;
 
-#ifdef PLANETARY_SPH_BALSARA
   /* Balsara term */
   const float balsara_i = pi->force.balsara;
   const float balsara_j = pj->force.balsara;
-#endif  // PLANETARY_SPH_BALSARA
 
   /* Are the particles moving towards each other? */
   const float omega_ij = min(dvdr, 0.f);
@@ -189,16 +187,11 @@ __attribute__((always_inline)) INLINE static void runner_iact_force(
   /* Compute sound speeds and signal velocity */
   const float ci = pi->force.soundspeed;
   const float cj = pj->force.soundspeed;
-  const float v_sig = ci + cj - 3.f * mu_ij;
+  const float v_sig = ci + cj - const_viscosity_beta * mu_ij;
 
   /* Now construct the full viscosity term */
   const float rho_ij = 0.5f * (rhoi + rhoj);
-#ifdef PLANETARY_SPH_BALSARA
-  const float visc = -0.25f * const_viscosity_alpha * v_sig * mu_ij *
-                     (balsara_i + balsara_j) / rho_ij;
-#else
-  const float visc = -0.5f * const_viscosity_alpha * v_sig * mu_ij / rho_ij;
-#endif  // PLANETARY_SPH_BALSARA
+  const float visc = -0.25f * v_sig * mu_ij * (balsara_i + balsara_j) / rho_ij;
 
   /* Convolve with the kernel */
   const float visc_acc_term = 0.5f * visc * (wi_dr + wj_dr) * r_inv;
@@ -300,11 +293,9 @@ __attribute__((always_inline)) INLINE static void runner_iact_nonsym_force(
                      (pi->v[1] - pj->v[1]) * dx[1] +
                      (pi->v[2] - pj->v[2]) * dx[2] + a2_Hubble * r2;
 
-#ifdef PLANETARY_SPH_BALSARA
   /* Balsara term */
   const float balsara_i = pi->force.balsara;
   const float balsara_j = pj->force.balsara;
-#endif  // PLANETARY_SPH_BALSARA
 
   /* Are the particles moving towards each other? */
   const float omega_ij = min(dvdr, 0.f);
@@ -315,16 +306,11 @@ __attribute__((always_inline)) INLINE static void runner_iact_nonsym_force(
   const float cj = pj->force.soundspeed;
 
   /* Signal velocity */
-  const float v_sig = ci + cj - 3.f * mu_ij;
+  const float v_sig = ci + cj - const_viscosity_beta * mu_ij;
 
   /* Construct the full viscosity term */
   const float rho_ij = 0.5f * (rhoi + rhoj);
-#ifdef PLANETARY_SPH_BALSARA
-  const float visc = -0.25f * const_viscosity_alpha * v_sig * mu_ij *
-                     (balsara_i + balsara_j) / rho_ij;
-#else
-  const float visc = -0.5f * const_viscosity_alpha * v_sig * mu_ij / rho_ij;
-#endif  // PLANETARY_SPH_BALSARA
+  const float visc = -0.25f * v_sig * mu_ij * (balsara_i + balsara_j) / rho_ij;
 
   /* Convolve with the kernel */
   const float visc_acc_term = 0.5f * visc * (wi_dr + wj_dr) * r_inv;
@@ -358,6 +344,30 @@ __attribute__((always_inline)) INLINE static void runner_iact_nonsym_force(
 
   /* Update the signal velocity. */
   pi->force.v_sig = max(pi->force.v_sig, v_sig);
+}
+
+/**
+ * @brief Timestep limiter loop
+ */
+__attribute__((always_inline)) INLINE static void runner_iact_limiter(
+    float r2, const float *dx, float hi, float hj, struct part *restrict pi,
+    struct part *restrict pj, float a, float H) {
+
+  /* Nothing to do here if both particles are active */
+}
+
+/**
+ * @brief Timestep limiter loop (non-symmetric version)
+ */
+__attribute__((always_inline)) INLINE static void runner_iact_nonsym_limiter(
+    float r2, const float *dx, float hi, float hj, struct part *restrict pi,
+    struct part *restrict pj, float a, float H) {
+
+  /* Wake up the neighbour? */
+  if (pi->force.v_sig > const_limiter_max_v_sig_ratio * pj->force.v_sig) {
+
+    pj->wakeup = time_bin_awake;
+  }
 }
 
 #endif /* SWIFT_PLANETARY_HYDRO_IACT_H */

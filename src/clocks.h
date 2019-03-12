@@ -19,8 +19,13 @@
 #ifndef SWIFT_CLOCKS_H
 #define SWIFT_CLOCKS_H
 
+/* Config parameters. */
+#include "../config.h"
+
+/* System includes. */
 #include <sys/times.h>
-#include <time.h>
+
+/* Local includes */
 #include "cycle.h"
 
 /* Struct to record a time for the clocks functions. */
@@ -42,7 +47,9 @@ double clocks_from_ticks(ticks tics);
 ticks clocks_to_ticks(double interval);
 double clocks_diff_ticks(ticks tic, ticks toc);
 const char *clocks_get_timesincestart(void);
+double clocks_get_hours_since_start(void);
 
 double clocks_get_cputime_used(void);
+int clocks_random_seed(void);
 
 #endif /* SWIFT_CLOCKS_H */

@@ -208,12 +208,20 @@ __attribute__((always_inline)) INLINE static void gravity_cache_populate(
 
   /* Fill the input caches */
   for (int i = 0; i < gcount; ++i) {
+
     x[i] = (float)(gparts[i].x[0] - shift[0]);
     y[i] = (float)(gparts[i].x[1] - shift[1]);
     z[i] = (float)(gparts[i].x[2] - shift[2]);
     epsilon[i] = gravity_get_softening(&gparts[i], grav_props);
-    m[i] = gparts[i].mass;
-    active[i] = (int)(gparts[i].time_bin <= max_active_bin);
+
+    /* Make a dummy particle out of the inhibted ones */
+    if (gparts[i].time_bin == time_bin_inhibited) {
+      m[i] = 0.f;
+      active[i] = 0;
+    } else {
+      m[i] = gparts[i].mass;
+      active[i] = (int)(gparts[i].time_bin <= max_active_bin);
+    }
 
     /* Distance to the CoM of the other cell. */
     float dx = x[i] - CoM[0];
@@ -294,8 +302,15 @@ gravity_cache_populate_no_mpole(const timebin_t max_active_bin,
     y[i] = (float)(gparts[i].x[1] - shift[1]);
     z[i] = (float)(gparts[i].x[2] - shift[2]);
     epsilon[i] = gravity_get_softening(&gparts[i], grav_props);
-    m[i] = gparts[i].mass;
-    active[i] = (int)(gparts[i].time_bin <= max_active_bin);
+
+    /* Make a dummy particle out of the inhibted ones */
+    if (gparts[i].time_bin == time_bin_inhibited) {
+      m[i] = 0.f;
+      active[i] = 0;
+    } else {
+      m[i] = gparts[i].mass;
+      active[i] = (int)(gparts[i].time_bin <= max_active_bin);
+    }
   }
 
 #ifdef SWIFT_DEBUG_CHECKS

@@ -138,14 +138,15 @@ before you can build it.
                            =====================
 
 
- - METIS:
-	a build of the METIS library can be optionally used to
-        optimize the load between MPI nodes (requires an MPI
-        library). This should be found in the standard installation
-        directories, or pointed at using the "--with-metis"
-        configuration option.  In this case the top-level installation
-        directory of the METIS build should be given. Note to use
-        METIS you should supply at least "--with-metis".
+ - METIS/ParMETIS:
+	a build of the METIS or ParMETIS library should be used to
+        optimize the load between MPI nodes. This should be found in the
+        standard installation directories, or pointed at using the
+        "--with-metis" or "--with-parmetis" configuration options.
+        In this case the top-level installation directory of the build
+        should be given. Note to use METIS or ParMETIS you should supply at
+        least "--with-metis". ParMETIS is preferred over METIS when there
+        is a choice.
 
 - libNUMA:
 	a build of the NUMA library can be used to pin the threads to
@@ -153,6 +154,12 @@ before you can build it.
         not always necessary as the OS scheduler may do a good job at
         distributing the threads among the different cores on each
         computing node.
+
+        Note that if you have libNUMA outside of the system include
+        directories it may fail to compile as the headers do not pass
+        the -Wstrict-prototype check of GCC. In that case you will need
+        to use --enable-compiler-warnings=yes configure option to stop
+        this being an error.
 
  - tcmalloc / jemalloc / TBBmalloc:
 	a build of the tcmalloc library (part of gperftools), jemalloc

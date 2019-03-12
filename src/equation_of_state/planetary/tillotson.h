@@ -243,8 +243,8 @@ INLINE static float Til_soundspeed_from_internal_energy(
     P_c = (mat->a + mat->b * w_inv) * density * u + mat->A * mu +
           mat->B * mu * mu;
   }
-  c_sq_c = P_c * rho_inv * (1.f - mat->a - mat->b * w_inv) +
-           mat->b * (w - 1.f) * w_inv_sq * (2 * u + P_c * rho_inv) +
+  c_sq_c = P_c * rho_inv * (1.f + mat->a + mat->b * w_inv) +
+           mat->b * (w - 1.f) * w_inv_sq * (2.f * u - P_c * rho_inv) +
            rho_inv * (mat->A + mat->B * (eta_sq - 1.f));
 
   c_sq_c = fmax(c_sq_c, mat->A * rho_0_inv);
@@ -253,14 +253,15 @@ INLINE static float Til_soundspeed_from_internal_energy(
   P_e = mat->a * density * u +
         (mat->b * density * u * w_inv + mat->A * mu * exp_beta) * exp_alpha;
 
-  c_sq_e = P_e * rho_inv * (1.f - mat->a) +
-           (mat->b * density * u / (w * w * eta_sq) *
-                (rho_inv / mat->u_0 * (2 * u - P_e * rho_inv * eta_sq) +
-                 2.f * mat->alpha * nu * rho_0_inv) +
-            mat->A * rho_0_inv *
-                (1 + mu / eta_sq * (mat->beta + 2.f * mat->alpha * nu - eta)) *
-                exp_beta) *
-               exp_alpha;
+  c_sq_e =
+      P_e * rho_inv * (1.f + mat->a + mat->b * w_inv * exp_alpha) +
+      (mat->b * density * u * w_inv_sq / eta_sq *
+           (rho_inv / mat->u_0 * (2.f * u - P_e * rho_inv) +
+            2.f * mat->alpha * nu * w * rho_0_inv) +
+       mat->A * rho_0_inv *
+           (1.f + mu / eta_sq * (mat->beta + 2.f * mat->alpha * nu - eta)) *
+           exp_beta) *
+          exp_alpha;
 
   // Condensed or cold state
   if ((1.f < eta) || (u < mat->u_iv)) {

@@ -1,0 +1,6 @@
+This parameter file can be used to run the exact same example
+with the Gadget-2 code.
+
+The Gadget code has to be compiled with at least the following options:
+ - PERIODIC
+ - HAVE_HDF5

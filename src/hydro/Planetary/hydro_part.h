@@ -25,8 +25,8 @@
  * @brief Minimal conservative implementation of SPH (Particle definition)
  *
  * The thermal variable is the internal energy (u). Simple constant
- * viscosity term without switches is implemented. No thermal conduction
- * term is implemented.
+ * viscosity term with the Balsara (1995) switch (optional).
+ * No thermal conduction term is implemented.
  *
  * This corresponds to equations (43), (44), (45), (101), (103)  and (104) with
  * \f$\beta=3\f$ and \f$\alpha_u=0\f$ of Price, D., Journal of Computational
@@ -36,6 +36,8 @@
 #include "chemistry_struct.h"
 #include "cooling_struct.h"
 #include "equation_of_state.h"  // For enum material_id
+#include "star_formation_struct.h"
+#include "tracers_struct.h"
 
 /**
  * @brief Particle fields not needed during the SPH loops over neighbours.
@@ -63,6 +65,12 @@ struct xpart {
 
   /*! Additional data used to record cooling information */
   struct cooling_xpart_data cooling_data;
+
+  /*! Additional data used by the tracers */
+  struct tracers_xpart_data tracers_data;
+
+  /* Additional data used by the star formation */
+  struct star_formation_xpart_data sf_data;
 
 } SWIFT_STRUCT_ALIGN;
 
@@ -126,13 +134,11 @@ struct part {
       /*! Derivative of density with respect to h */
       float rho_dh;
 
-#ifdef PLANETARY_SPH_BALSARA
       /*! Velocity divergence. */
       float div_v;
 
       /*! Velocity curl. */
       float rot_v[3];
-#endif  // PLANETARY_SPH_BALSARA
 
     } density;
 
@@ -160,10 +166,8 @@ struct part {
       /*! Time derivative of smoothing length  */
       float h_dt;
 
-#ifdef PLANETARY_SPH_BALSARA
       /*! Balsara switch */
       float balsara;
-#endif  // PLANETARY_SPH_BALSARA
 
     } force;
   };
@@ -176,6 +180,9 @@ struct part {
 
   /*! Time-step length */
   timebin_t time_bin;
+
+  /* Need waking-up ? */
+  timebin_t wakeup;
 
 #ifdef SWIFT_DEBUG_CHECKS
 

@@ -1,0 +1,69 @@
+# Define the system of units to use internally. 
+InternalUnitSystem:
+  UnitMass_in_cgs:     1.98848e43    # 10^10 M_sun
+  UnitLength_in_cgs:   3.08567758e24 # 1 Mpc
+  UnitVelocity_in_cgs: 1e5           # 1 km/s
+  UnitCurrent_in_cgs:  1             # Amperes
+  UnitTemp_in_cgs:     1             # Kelvin
+
+Cosmology:                      # WMAP9 cosmology
+  Omega_m:        0.276
+  Omega_lambda:   0.724
+  Omega_b:        0.0455
+  h:              0.703
+  a_begin:        0.019607843	# z_ini = 50.
+  a_end:          1.0		# z_end = 0.
+
+# Parameters governing the time integration
+TimeIntegration:
+  dt_min:     1e-6 
+  dt_max:     1e-2 
+
+# Parameters for the self-gravity scheme
+Gravity:
+  eta:          0.025         
+  theta:        0.3           
+  comoving_softening:     0.0889     # 1/25th of the mean inter-particle separation: 88.9 kpc
+  max_physical_softening: 0.0889     # 1/25th of the mean inter-particle separation: 88.9 kpc
+  mesh_side_length:       64
+
+# Parameters of the hydro scheme
+SPH:
+  resolution_eta:      1.2348   # "48 Ngb" with the cubic spline kernel
+  h_min_ratio:         0.1
+  CFL_condition:       0.1
+  initial_temperature: 7075.    # (1 + z_ini)^2 * 2.72K
+  minimal_temperature: 100.
+
+# Parameters governing the snapshots
+Snapshots:
+  basename:            snap
+  delta_time:          1.05
+  scale_factor_first:  0.02
+  invoke_stf:          1
+  
+# Parameters governing the conserved quantities statistics
+Statistics:
+  delta_time:          1.02
+  scale_factor_first:  0.02
+  
+Scheduler:
+  max_top_level_cells: 8
+  cell_split_size:     50
+  
+# Parameters related to the initial conditions
+InitialConditions:
+  file_name:  small_cosmo_volume.hdf5
+  periodic:                    1
+  cleanup_h_factors:           1    
+  cleanup_velocity_factors:    1  
+  generate_gas_in_ics:         1     # Generate gas particles from the DM-only ICs
+  cleanup_smoothing_lengths:   1     # Since we generate gas, make use of the (expensive) cleaning-up procedure.
+
+# Structure finding options (requires velociraptor)
+StructureFinding:
+  config_file_name:     stfconfig_input.cfg
+  basename:             ./stf
+  scale_factor_first:   0.02
+  delta_time:           1.02
+ 

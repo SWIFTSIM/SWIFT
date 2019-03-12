@@ -61,7 +61,6 @@ const char* timers_names[timer_count] = {
     "dograv_mesh",
     "dograv_top_level",
     "dograv_long_range",
-    "dosource",
     "dosub_self_density",
     "dosub_self_gradient",
     "dosub_self_force",
@@ -80,12 +79,16 @@ const char* timers_names[timer_count] = {
     "dorecv_gpart",
     "dorecv_spart",
     "do_cooling",
+    "do_star_formation",
     "gettask",
     "qget",
     "qsteal",
     "locktree",
     "runners",
     "step",
+    "do_stars_ghost",
+    "logger",
+    "do_stars_sort",
 };
 
 /* File to store the timers */

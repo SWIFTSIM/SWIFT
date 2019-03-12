@@ -124,20 +124,27 @@ static const float kernel_coeffs[(kernel_degree + 1) * (kernel_ivals + 1)]
 #define kernel_name "Wendland C2"
 #define kernel_degree 5 /* Degree of the polynomial */
 #define kernel_ivals 1  /* Number of branches */
+#if defined(HYDRO_DIMENSION_1D)
+/* Wendland C* have different form in 1D than 2D/3D */
+#define kernel_gamma ((float)(1.620185))
+#define kernel_constant ((float)(5. / 4.))
+static const float kernel_coeffs[(kernel_degree + 1) * (kernel_ivals + 1)]
+    __attribute__((aligned(16))) = {
+        0.f, -3.f, 8.f, -6.f, 0.f, 1.f, /* 0 < u < 1 */
+        0.f, 0.f,  0.f, 0.f,  0.f, 0.f};
+#else
 #if defined(HYDRO_DIMENSION_3D)
 #define kernel_gamma ((float)(1.936492))
 #define kernel_constant ((float)(21. * M_1_PI / 2.))
 #elif defined(HYDRO_DIMENSION_2D)
 #define kernel_gamma ((float)(1.897367))
 #define kernel_constant ((float)(7. * M_1_PI))
-#elif defined(HYDRO_DIMENSION_1D)
-#error "Wendland C2 kernel not defined in 1D."
 #endif
 static const float kernel_coeffs[(kernel_degree + 1) * (kernel_ivals + 1)]
     __attribute__((aligned(16))) = {
         4.f, -15.f, 20.f, -10.f, 0.f, 1.f,  /* 0 < u < 1 */
         0.f, 0.f,   0.f,  0.f,   0.f, 0.f}; /* 1 < u */
-
+#endif
 /* ------------------------------------------------------------------------- */
 #elif defined(WENDLAND_C4_KERNEL)
 

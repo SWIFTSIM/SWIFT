@@ -226,7 +226,8 @@ __attribute__((always_inline)) INLINE static void runner_iact_force(
   omega_ij = min(fac_mu * dvdr, 0.f);
 
   /* Compute signal velocity */
-  v_sig = pi->force.soundspeed + pj->force.soundspeed - 2.0f * omega_ij;
+  v_sig = pi->force.soundspeed + pj->force.soundspeed -
+          const_viscosity_beta * omega_ij;
 
   /* Compute viscosity parameter */
   alpha_ij = -0.5f * (pi->alpha + pj->alpha);
@@ -335,7 +336,8 @@ __attribute__((always_inline)) INLINE static void runner_iact_nonsym_force(
   omega_ij = min(fac_mu * dvdr, 0.f);
 
   /* Compute signal velocity */
-  v_sig = pi->force.soundspeed + pj->force.soundspeed - 2.0f * omega_ij;
+  v_sig = pi->force.soundspeed + pj->force.soundspeed -
+          const_viscosity_beta * omega_ij;
 
   /* Compute viscosity parameter */
   alpha_ij = -0.5f * (pi->alpha + pj->alpha);
@@ -374,6 +376,30 @@ __attribute__((always_inline)) INLINE static void runner_iact_nonsym_force(
 
   /* Update the signal velocity. */
   pi->force.v_sig = max(pi->force.v_sig, v_sig);
+}
+
+/**
+ * @brief Timestep limiter loop
+ */
+__attribute__((always_inline)) INLINE static void runner_iact_limiter(
+    float r2, const float *dx, float hi, float hj, struct part *restrict pi,
+    struct part *restrict pj, float a, float H) {
+
+  /* Nothing to do here if both particles are active */
+}
+
+/**
+ * @brief Timestep limiter loop (non-symmetric version)
+ */
+__attribute__((always_inline)) INLINE static void runner_iact_nonsym_limiter(
+    float r2, const float *dx, float hi, float hj, struct part *restrict pi,
+    struct part *restrict pj, float a, float H) {
+
+  /* Wake up the neighbour? */
+  if (pi->force.v_sig > const_limiter_max_v_sig_ratio * pj->force.v_sig) {
+
+    pj->wakeup = time_bin_awake;
+  }
 }
 
 #endif /* SWIFT_DEFAULT_HYDRO_IACT_H */

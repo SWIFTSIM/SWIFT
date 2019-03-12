@@ -101,14 +101,14 @@ struct cell *make_cell(size_t n, double *offset, double size, double h,
   struct cell *cell = (struct cell *)malloc(sizeof(struct cell));
   bzero(cell, sizeof(struct cell));
 
-  if (posix_memalign((void **)&cell->parts, part_align,
+  if (posix_memalign((void **)&cell->hydro.parts, part_align,
                      count * sizeof(struct part)) != 0) {
     error("couldn't allocate particles, no. of particles: %d", (int)count);
   }
-  bzero(cell->parts, count * sizeof(struct part));
+  bzero(cell->hydro.parts, count * sizeof(struct part));
 
   /* Construct the parts */
-  struct part *part = cell->parts;
+  struct part *part = cell->hydro.parts;
   for (size_t x = 0; x < n; ++x) {
     for (size_t y = 0; y < n; ++y) {
       for (size_t z = 0; z < n; ++z) {
@@ -182,10 +182,10 @@ struct cell *make_cell(size_t n, double *offset, double size, double h,
 
   /* Cell properties */
   cell->split = 0;
-  cell->h_max = h_max;
-  cell->count = count;
-  cell->dx_max_part = 0.;
-  cell->dx_max_sort = 0.;
+  cell->hydro.h_max = h_max;
+  cell->hydro.count = count;
+  cell->hydro.dx_max_part = 0.;
+  cell->hydro.dx_max_sort = 0.;
   cell->width[0] = size;
   cell->width[1] = size;
   cell->width[2] = size;
@@ -193,23 +193,23 @@ struct cell *make_cell(size_t n, double *offset, double size, double h,
   cell->loc[1] = offset[1];
   cell->loc[2] = offset[2];
 
-  cell->ti_old_part = 8;
-  cell->ti_hydro_end_min = 8;
-  cell->ti_hydro_end_max = 8;
+  cell->hydro.ti_old_part = 8;
+  cell->hydro.ti_end_min = 8;
+  cell->hydro.ti_end_max = 8;
   cell->nodeID = NODE_ID;
 
-  shuffle_particles(cell->parts, cell->count);
+  shuffle_particles(cell->hydro.parts, cell->hydro.count);
 
-  cell->sorted = 0;
-  for (int k = 0; k < 13; k++) cell->sort[k] = NULL;
+  cell->hydro.sorted = 0;
+  for (int k = 0; k < 13; k++) cell->hydro.sort[k] = NULL;
 
   return cell;
 }
 
 void clean_up(struct cell *ci) {
-  free(ci->parts);
+  free(ci->hydro.parts);
   for (int k = 0; k < 13; k++)
-    if (ci->sort[k] != NULL) free(ci->sort[k]);
+    if (ci->hydro.sort[k] != NULL) free(ci->hydro.sort[k]);
   free(ci);
 }
 
@@ -229,8 +229,8 @@ void zero_particle_fields(struct cell *c) {
 #else
   struct hydro_space *hspointer = NULL;
 #endif
-  for (int pid = 0; pid < c->count; pid++) {
-    hydro_init_part(&c->parts[pid], hspointer);
+  for (int pid = 0; pid < c->hydro.count; pid++) {
+    hydro_init_part(&c->hydro.parts[pid], hspointer);
   }
 }
 
@@ -238,12 +238,12 @@ void zero_particle_fields(struct cell *c) {
  * @brief Ends the loop by adding the appropriate coefficients
  */
 void end_calculation(struct cell *c, const struct cosmology *cosmo) {
-  for (int pid = 0; pid < c->count; pid++) {
-    hydro_end_density(&c->parts[pid], cosmo);
+  for (int pid = 0; pid < c->hydro.count; pid++) {
+    hydro_end_density(&c->hydro.parts[pid], cosmo);
 
     /* Recover the common "Neighbour number" definition */
-    c->parts[pid].density.wcount *= pow_dimension(c->parts[pid].h);
-    c->parts[pid].density.wcount *= kernel_norm;
+    c->hydro.parts[pid].density.wcount *= pow_dimension(c->hydro.parts[pid].h);
+    c->hydro.parts[pid].density.wcount *= kernel_norm;
   }
 }
 
@@ -264,30 +264,37 @@ void dump_particle_fields(char *fileName, struct cell *main_cell,
   fprintf(file, "# Main cell --------------------------------------------\n");
 
   /* Write main cell */
-  for (int pid = 0; pid < main_cell->count; pid++) {
+  for (int pid = 0; pid < main_cell->hydro.count; pid++) {
     fprintf(file,
             "%6llu %10f %10f %10f %10f %10f %10f %13e %13e %13e %13e %13e "
             "%13e %13e %13e\n",
-            main_cell->parts[pid].id, main_cell->parts[pid].x[0],
-            main_cell->parts[pid].x[1], main_cell->parts[pid].x[2],
-            main_cell->parts[pid].v[0], main_cell->parts[pid].v[1],
-            main_cell->parts[pid].v[2],
-            hydro_get_comoving_density(&main_cell->parts[pid]),
+            main_cell->hydro.parts[pid].id, main_cell->hydro.parts[pid].x[0],
+            main_cell->hydro.parts[pid].x[1], main_cell->hydro.parts[pid].x[2],
+            main_cell->hydro.parts[pid].v[0], main_cell->hydro.parts[pid].v[1],
+            main_cell->hydro.parts[pid].v[2],
+            hydro_get_comoving_density(&main_cell->hydro.parts[pid]),
 #if defined(GIZMO_MFV_SPH) || defined(SHADOWFAX_SPH)
             0.f,
-#elif defined(HOPKINS_PU_SPH)
-            main_cell->parts[pid].density.pressure_bar_dh,
+#elif defined(HOPKINS_PU_SPH) || defined(HOPKINS_PU_SPH_MONAGHAN) || \
+    defined(ANARCHY_PU_SPH)
+            main_cell->hydro.parts[pid].density.pressure_bar_dh,
 #else
-            main_cell->parts[pid].density.rho_dh,
+            main_cell->hydro.parts[pid].density.rho_dh,
 #endif
-            main_cell->parts[pid].density.wcount,
-            main_cell->parts[pid].density.wcount_dh,
+            main_cell->hydro.parts[pid].density.wcount,
+            main_cell->hydro.parts[pid].density.wcount_dh,
 #if defined(GADGET2_SPH) || defined(DEFAULT_SPH) || defined(HOPKINS_PE_SPH) || \
-    defined(HOPKINS_PU_SPH)
-            main_cell->parts[pid].density.div_v,
-            main_cell->parts[pid].density.rot_v[0],
-            main_cell->parts[pid].density.rot_v[1],
-            main_cell->parts[pid].density.rot_v[2]
+    defined(HOPKINS_PU_SPH) || defined(HOPKINS_PU_SPH_MONAGHAN)
+            main_cell->hydro.parts[pid].density.div_v,
+            main_cell->hydro.parts[pid].density.rot_v[0],
+            main_cell->hydro.parts[pid].density.rot_v[1],
+            main_cell->hydro.parts[pid].density.rot_v[2]
+#elif defined(ANARCHY_PU_SPH)
+            /* this is required because of the variable AV scheme */
+            main_cell->hydro.parts[pid].viscosity.div_v,
+            main_cell->hydro.parts[pid].density.rot_v[0],
+            main_cell->hydro.parts[pid].density.rot_v[1],
+            main_cell->hydro.parts[pid].density.rot_v[2]
 #else
             0., 0., 0., 0.
 #endif
@@ -305,23 +312,34 @@ void dump_particle_fields(char *fileName, struct cell *main_cell,
                 "# Offset: [%2d %2d %2d] -----------------------------------\n",
                 i - 1, j - 1, k - 1);
 
-        for (int pjd = 0; pjd < cj->count; pjd++) {
+        for (int pjd = 0; pjd < cj->hydro.count; pjd++) {
           fprintf(
               file,
               "%6llu %10f %10f %10f %10f %10f %10f %13e %13e %13e %13e %13e "
               "%13e %13e %13e\n",
-              cj->parts[pjd].id, cj->parts[pjd].x[0], cj->parts[pjd].x[1],
-              cj->parts[pjd].x[2], cj->parts[pjd].v[0], cj->parts[pjd].v[1],
-              cj->parts[pjd].v[2], hydro_get_comoving_density(&cj->parts[pjd]),
+              cj->hydro.parts[pjd].id, cj->hydro.parts[pjd].x[0],
+              cj->hydro.parts[pjd].x[1], cj->hydro.parts[pjd].x[2],
+              cj->hydro.parts[pjd].v[0], cj->hydro.parts[pjd].v[1],
+              cj->hydro.parts[pjd].v[2],
+              hydro_get_comoving_density(&cj->hydro.parts[pjd]),
 #if defined(GIZMO_MFV_SPH) || defined(SHADOWFAX_SPH)
               0.f,
 #else
-              main_cell->parts[pjd].density.rho_dh,
+              main_cell->hydro.parts[pjd].density.rho_dh,
 #endif
-              cj->parts[pjd].density.wcount, cj->parts[pjd].density.wcount_dh,
+              cj->hydro.parts[pjd].density.wcount,
+              cj->hydro.parts[pjd].density.wcount_dh,
 #if defined(GADGET2_SPH) || defined(DEFAULT_SPH) || defined(HOPKINS_PE_SPH)
-              cj->parts[pjd].density.div_v, cj->parts[pjd].density.rot_v[0],
-              cj->parts[pjd].density.rot_v[1], cj->parts[pjd].density.rot_v[2]
+              cj->hydro.parts[pjd].density.div_v,
+              cj->hydro.parts[pjd].density.rot_v[0],
+              cj->hydro.parts[pjd].density.rot_v[1],
+              cj->hydro.parts[pjd].density.rot_v[2]
+#elif defined(ANARCHY_PU_SPH)
+              /* this is required because of the variable AV scheme */
+              cj->hydro.parts[pjd].viscosity.div_v,
+              cj->hydro.parts[pjd].density.rot_v[0],
+              cj->hydro.parts[pjd].density.rot_v[1],
+              cj->hydro.parts[pjd].density.rot_v[2]
 #else
               0., 0., 0., 0.
 #endif
@@ -451,6 +469,7 @@ int main(int argc, char *argv[]) {
   space.dim[2] = 3.;
 
   struct hydro_props hp;
+  hydro_props_init_no_hydro(&hp);
   hp.eta_neighbours = h;
   hp.h_tolerance = 1e0;
   hp.h_max = FLT_MAX;
@@ -486,7 +505,7 @@ int main(int argc, char *argv[]) {
 
         runner_do_drift_part(&runner, cells[i * 9 + j * 3 + k], 0);
 
-        runner_do_sort(&runner, cells[i * 9 + j * 3 + k], 0x1FFF, 0, 0);
+        runner_do_hydro_sort(&runner, cells[i * 9 + j * 3 + k], 0x1FFF, 0, 0);
       }
     }
   }
@@ -514,10 +533,10 @@ int main(int argc, char *argv[]) {
 #if defined(TEST_DOSELF_SUBSET) || defined(TEST_DOPAIR_SUBSET)
     int *pid = NULL;
     int count = 0;
-    if ((pid = (int *)malloc(sizeof(int) * main_cell->count)) == NULL)
+    if ((pid = (int *)malloc(sizeof(int) * main_cell->hydro.count)) == NULL)
       error("Can't allocate memory for pid.");
-    for (int k = 0; k < main_cell->count; k++)
-      if (part_is_active(&main_cell->parts[k], &engine)) {
+    for (int k = 0; k < main_cell->hydro.count; k++)
+      if (part_is_active(&main_cell->hydro.parts[k], &engine)) {
         pid[count] = k;
         ++count;
       }
@@ -529,7 +548,7 @@ int main(int argc, char *argv[]) {
         const ticks sub_tic = getticks();
 
 #ifdef TEST_DOPAIR_SUBSET
-        DOPAIR1_SUBSET(&runner, main_cell, main_cell->parts, pid, count,
+        DOPAIR1_SUBSET(&runner, main_cell, main_cell->hydro.parts, pid, count,
                        cells[j]);
 #else
         DOPAIR1(&runner, main_cell, cells[j]);
@@ -543,7 +562,7 @@ int main(int argc, char *argv[]) {
     const ticks self_tic = getticks();
 
 #ifdef TEST_DOSELF_SUBSET
-    DOSELF1_SUBSET(&runner, main_cell, main_cell->parts, pid, count);
+    DOSELF1_SUBSET(&runner, main_cell, main_cell->hydro.parts, pid, count);
 #else
     DOSELF1(&runner, main_cell);
 #endif
@@ -609,6 +628,11 @@ int main(int argc, char *argv[]) {
 
   /* Clean things to make the sanitizer happy ... */
   for (int i = 0; i < 27; ++i) clean_up(cells[i]);
+
+#ifdef WITH_VECTORIZATION
+  cache_clean(&runner.ci_cache);
+  cache_clean(&runner.cj_cache);
+#endif
 
   return 0;
 }

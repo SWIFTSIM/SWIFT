@@ -1,5 +1,5 @@
 # ===========================================================================
-#          http://www.gnu.org/software/autoconf-archive/ax_ext.html
+#          https://www.gnu.org/software/autoconf-archive/ax_ext.html
 # ===========================================================================
 #
 # SYNOPSIS
@@ -31,12 +31,13 @@
 #     HAVE_SHA / HAVE_AES / HAVE_AVX / HAVE_FMA3 / HAVE_FMA4 / HAVE_XOP
 #     HAVE_AVX2 / HAVE_AVX512_F / HAVE_AVX512_CD / HAVE_AVX512_PF
 #     HAVE_AVX512_ER / HAVE_AVX512_VL / HAVE_AVX512_BW / HAVE_AVX512_DQ
-#     HAVE_AVX512_IFMA / HAVE_AVX512_VBMI
+#     HAVE_AVX512_IFMA / HAVE_AVX512_VBMI / HAVE_ALTIVEC / HAVE_VSX
 #
 # LICENSE
 #
 #   Copyright (c) 2007 Christophe Tournayre <turn3r@users.sourceforge.net>
 #   Copyright (c) 2013,2015 Michael Petch <mpetch@capp-sysware.com>
+#   Copyright (c) 2017 Rafael de Lucena Valle <rafaeldelucena@gmail.com>
 #
 #   Copying and distribution of this file, with or without modification, are
 #   permitted in any medium without royalty provided the copyright notice
@@ -47,7 +48,7 @@
 #   the order of the flags when more than one is used. Given that we just
 #   set SIMD_FLAGS to the most specific value, rather than all accepted ones.
 
-#serial 15
+#serial 18
 
 AC_DEFUN([AX_EXT],
 [
@@ -59,18 +60,42 @@ AC_DEFUN([AX_EXT],
 
   case $host_cpu in
     powerpc*)
-      AC_CACHE_CHECK([whether altivec is supported], [ax_cv_have_altivec_ext],
+      AC_CACHE_CHECK([whether altivec is supported for old distros], [ax_cv_have_altivec_old_ext],
           [
             if test `/usr/sbin/sysctl -a 2>/dev/null| grep -c hw.optional.altivec` != 0; then
                 if test `/usr/sbin/sysctl -n hw.optional.altivec` = 1; then
-                  ax_cv_have_altivec_ext=yes
+                  ax_cv_have_altivec_old_ext=yes
                 fi
+            fi
+          ])
+
+          if test "$ax_cv_have_altivec_old_ext" = yes; then
+            AC_DEFINE(HAVE_ALTIVEC,,[Support Altivec instructions])
+            AX_CHECK_COMPILE_FLAG(-faltivec, SIMD_FLAGS="$SIMD_FLAGS -faltivec", [])
+          fi
+
+      AC_CACHE_CHECK([whether altivec is supported], [ax_cv_have_altivec_ext],
+          [
+            if test `LD_SHOW_AUXV=1 /bin/true 2>/dev/null|grep -c altivec` != 0; then
+              ax_cv_have_altivec_ext=yes
             fi
           ])
 
           if test "$ax_cv_have_altivec_ext" = yes; then
             AC_DEFINE(HAVE_ALTIVEC,,[Support Altivec instructions])
-            AX_CHECK_COMPILE_FLAG(-faltivec, SIMD_FLAGS="$SIMD_FLAGS -faltivec", [])
+            AX_CHECK_COMPILE_FLAG(-maltivec, SIMD_FLAGS="$SIMD_FLAGS -maltivec", [])
+          fi
+
+      AC_CACHE_CHECK([whether vsx is supported], [ax_cv_have_vsx_ext],
+          [
+            if test `LD_SHOW_AUXV=1 /bin/true 2>/dev/null|grep -c vsx` != 0; then
+                ax_cv_have_vsx_ext=yes
+            fi
+          ])
+
+          if test "$ax_cv_have_vsx_ext" = yes; then
+            AC_DEFINE(HAVE_VSX,,[Support VSX instructions])
+            AX_CHECK_COMPILE_FLAG(-mvsx, SIMD_FLAGS="$SIMD_FLAGS -mvsx", [])
           fi
     ;;
 
@@ -139,7 +164,7 @@ AC_DEFUN([AX_EXT],
         ax_cv_have_sse_os_support_ext=no,
         if test "$((0x$edx_cpuid1>>25&0x01))" = 1; then
           AC_LANG_PUSH([C])
-          AC_TRY_RUN([
+          AC_RUN_IFELSE([AC_LANG_SOURCE([[
 #include <signal.h>
 #include <stdlib.h>
             /* No way at ring1 to ring3 in protected mode to check the CR0 and CR4
@@ -151,10 +176,10 @@ AC_DEFUN([AX_EXT],
               /* SSE instruction xorps  %xmm0,%xmm0 */
               __asm__ __volatile__ (".byte 0x0f, 0x57, 0xc0");
               return 0;
-            }],
-            ax_cv_have_sse_os_support_ext=yes,
-            ax_cv_have_sse_os_support_ext=no,
-            ax_cv_have_sse_os_support_ext=no)
+            }]])],
+            [ax_cv_have_sse_os_support_ext=yes],
+            [ax_cv_have_sse_os_support_ext=no],
+            [ax_cv_have_sse_os_support_ext=no])
           AC_LANG_POP([C])
         fi
       ])

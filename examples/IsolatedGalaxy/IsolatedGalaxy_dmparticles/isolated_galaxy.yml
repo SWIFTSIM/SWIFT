@@ -1,0 +1,43 @@
+# Define the system of units to use internally.
+InternalUnitSystem:
+  UnitMass_in_cgs:     1.9891E43   # 10^10 solar masses 
+  UnitLength_in_cgs:   3.08567758E21   # 1 kpc 
+  UnitVelocity_in_cgs: 1E5   # km/s
+  UnitCurrent_in_cgs:  1   # Amperes
+  UnitTemp_in_cgs:     1   # Kelvin
+
+# Parameters for the self-gravity scheme
+Gravity:
+  mesh_side_length:       32        # Number of cells along each axis for the periodic gravity mesh.
+  eta:          0.025               # Constant dimensionless multiplier for time integration.
+  theta:        0.7                 # Opening angle (Multipole acceptance criterion).
+  comoving_softening:     0.0026994 # Comoving softening length (in internal units).
+  max_physical_softening: 0.0007    # Physical softening length (in internal units).
+
+# Parameters governing the time integration (Set dt_min and dt_max to the same value for a fixed time-step run.)
+TimeIntegration:
+  time_begin:        0.    # The starting time of the simulation (in internal units).
+  time_end:          1.    # The end time of the simulation (in internal units).
+  dt_min:            1e-6  # The minimal time-step size of the simulation (in internal units).
+  dt_max:            1e-2  # The maximal time-step size of the simulation (in internal units).
+
+# Parameters governing the snapshots
+Snapshots:
+  basename:   output      # Common part of the name of output files
+  time_first: 0.          # (Optional) Time of the first output if non-cosmological time-integration (in internal units)
+  delta_time: 0.001        # Time difference between consecutive outputs (in internal units)
+
+Scheduler:
+  max_top_level_cells:  96
+  
+# Parameters governing the conserved quantities statistics
+Statistics:
+  delta_time:           1e-2     # Time between statistics output
+  time_first:             0.     # (Optional) Time of the first stats output if non-cosmological time-integration (in internal units)
+
+# Parameters related to the initial conditions
+InitialConditions:
+  file_name:  3e11-star-only-DM-halo-galaxy.hdf5  # The file to read
+  periodic:                    0    # Are we running with periodic ICs?
+
+ 

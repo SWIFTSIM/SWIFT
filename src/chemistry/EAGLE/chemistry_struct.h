@@ -45,12 +45,6 @@ struct chemistry_global_data {
 
   /*! Fraction of the particle mass in *all* metals at the start of the run */
   float initial_metal_mass_fraction_total;
-
-  /*! Constant ratio of Calcium over Silicium */
-  float calcium_over_silicon_ratio;
-
-  /*! Constant ratio of Calcium over Silicium */
-  float sulphur_over_silicon_ratio;
 };
 
 /**

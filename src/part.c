@@ -26,8 +26,10 @@
 #endif
 
 /* This object's header. */
-#include "error.h"
 #include "multipole.h"
+
+/* Local headers */
+#include "error.h"
 #include "part.h"
 
 /**
@@ -88,7 +90,7 @@ void part_relink_parts_to_gparts(struct gpart *gparts, size_t N,
 void part_relink_sparts_to_gparts(struct gpart *gparts, size_t N,
                                   struct spart *sparts) {
   for (size_t k = 0; k < N; k++) {
-    if (gparts[k].type == swift_type_star) {
+    if (gparts[k].type == swift_type_stars) {
       sparts[-gparts[k].id_or_neg_offset].gpart = &gparts[k];
     }
   }
@@ -108,7 +110,7 @@ void part_relink_all_parts_to_gparts(struct gpart *gparts, size_t N,
   for (size_t k = 0; k < N; k++) {
     if (gparts[k].type == swift_type_gas) {
       parts[-gparts[k].id_or_neg_offset].gpart = &gparts[k];
-    } else if (gparts[k].type == swift_type_star) {
+    } else if (gparts[k].type == swift_type_stars) {
       sparts[-gparts[k].id_or_neg_offset].gpart = &gparts[k];
     }
   }
@@ -133,10 +135,13 @@ void part_verify_links(struct part *parts, struct gpart *gparts,
                        struct spart *sparts, size_t nr_parts, size_t nr_gparts,
                        size_t nr_sparts, int verbose) {
 
+  ticks tic = getticks();
+
   for (size_t k = 0; k < nr_gparts; ++k) {
 
-    /* We have a DM particle */
-    if (gparts[k].type == swift_type_dark_matter) {
+    /* We have a real DM particle */
+    if (gparts[k].type == swift_type_dark_matter &&
+        gparts[k].time_bin != time_bin_not_created) {
 
       /* Check that it's not linked */
       if (gparts[k].id_or_neg_offset <= 0)
@@ -171,11 +176,11 @@ void part_verify_links(struct part *parts, struct gpart *gparts,
         error("Linked particles are not at the same time !");
     }
 
-    else if (gparts[k].type == swift_type_star) {
+    else if (gparts[k].type == swift_type_stars) {
 
       /* Check that it is linked */
       if (gparts[k].id_or_neg_offset > 0)
-        error("Star gpart not linked to anything !");
+        error("Stars gpart not linked to anything !");
 
       /* Find its link */
       const struct spart *spart = &sparts[-gparts[k].id_or_neg_offset];
@@ -246,6 +251,9 @@ void part_verify_links(struct part *parts, struct gpart *gparts,
   }
 
   if (verbose) message("All links OK");
+  if (verbose)
+    message("took %.3f %s.", clocks_from_ticks(getticks() - tic),
+            clocks_getunit());
 }
 
 #ifdef WITH_MPI
@@ -254,7 +262,6 @@ MPI_Datatype part_mpi_type;
 MPI_Datatype xpart_mpi_type;
 MPI_Datatype gpart_mpi_type;
 MPI_Datatype spart_mpi_type;
-MPI_Datatype multipole_mpi_type;
 
 /**
  * @brief Registers MPI particle types.
@@ -286,12 +293,6 @@ void part_create_mpi_types(void) {
                           MPI_BYTE, &spart_mpi_type) != MPI_SUCCESS ||
       MPI_Type_commit(&spart_mpi_type) != MPI_SUCCESS) {
     error("Failed to create MPI type for sparts.");
-  }
-  if (MPI_Type_contiguous(
-          sizeof(struct gravity_tensors) / sizeof(unsigned char), MPI_BYTE,
-          &multipole_mpi_type) != MPI_SUCCESS ||
-      MPI_Type_commit(&multipole_mpi_type) != MPI_SUCCESS) {
-    error("Failed to create MPI type for multipole.");
   }
 }
 #endif

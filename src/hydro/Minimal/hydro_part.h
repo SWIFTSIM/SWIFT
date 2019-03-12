@@ -34,6 +34,8 @@
 
 #include "chemistry_struct.h"
 #include "cooling_struct.h"
+#include "star_formation_struct.h"
+#include "tracers_struct.h"
 
 /**
  * @brief Particle fields not needed during the SPH loops over neighbours.
@@ -61,6 +63,12 @@ struct xpart {
 
   /*! Additional data used to record cooling information */
   struct cooling_xpart_data cooling_data;
+
+  /* Additional data used by the tracers */
+  struct tracers_xpart_data tracers_data;
+
+  /* Additional data used by the tracers */
+  struct star_formation_xpart_data sf_data;
 
 } SWIFT_STRUCT_ALIGN;
 
@@ -124,6 +132,12 @@ struct part {
       /*! Derivative of density with respect to h */
       float rho_dh;
 
+      /*! Velocity divergence */
+      float div_v;
+
+      /*! Velocity curl */
+      float rot_v[3];
+
     } density;
 
     /**
@@ -150,6 +164,9 @@ struct part {
       /*! Time derivative of smoothing length  */
       float h_dt;
 
+      /*! Balsara switch */
+      float balsara;
+
     } force;
   };
 
@@ -158,6 +175,9 @@ struct part {
 
   /*! Time-step length */
   timebin_t time_bin;
+
+  /* Need waking-up ? */
+  timebin_t wakeup;
 
 #ifdef SWIFT_DEBUG_CHECKS
 

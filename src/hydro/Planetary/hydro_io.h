@@ -25,8 +25,8 @@
  * @brief Minimal conservative implementation of SPH (i/o routines)
  *
  * The thermal variable is the internal energy (u). Simple constant
- * viscosity term without switches is implemented. No thermal conduction
- * term is implemented.
+ * viscosity term with the Balsara (1995) switch (optional).
+ * No thermal conduction term is implemented.
  *
  * This corresponds to equations (43), (44), (45), (101), (103)  and (104) with
  * \f$\beta=3\f$ and \f$\alpha_u=0\f$ of
@@ -76,7 +76,7 @@ INLINE static void hydro_read_particles(struct part* parts,
 INLINE static void convert_S(const struct engine* e, const struct part* p,
                              const struct xpart* xp, float* ret) {
 
-  ret[0] = hydro_get_comoving_entropy(p);
+  ret[0] = hydro_get_comoving_entropy(p, xp);
 }
 
 INLINE static void convert_P(const struct engine* e, const struct part* p,
@@ -197,14 +197,14 @@ INLINE static void hydro_write_flavour(hid_t h_grpsph) {
   /* Viscosity and thermal conduction */
   /* Nothing in this minimal model... */
   io_write_attribute_s(h_grpsph, "Thermal Conductivity Model", "No treatment");
-#ifdef PLANETARY_SPH_BALSARA
+#ifdef PLANETARY_SPH_NO_BALSARA
+  io_write_attribute_s(h_grpsph, "Viscosity Model",
+                       "Minimal treatment as in Monaghan (1992)");
+#else
   io_write_attribute_s(
       h_grpsph, "Viscosity Model",
       "as in Springel (2005), i.e. Monaghan (1992) with Balsara (1995) switch");
-#else
-  io_write_attribute_s(h_grpsph, "Viscosity Model",
-                       "Minimal treatment as in Monaghan (1992)");
-#endif  // PLANETARY_SPH_BALSARA
+#endif
 
   /* Time integration properties */
   io_write_attribute_f(h_grpsph, "Maximal Delta u change over dt",

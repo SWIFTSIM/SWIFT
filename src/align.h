@@ -44,6 +44,8 @@
  * alignment.
  *
  * Note that this turns into a no-op but gives information to the compiler.
+ * For GCC versions older than 4.6 this is ignored as the builtin does not
+ * exist.
  *
  * @param type The type of the array.
  * @param array The array.
@@ -52,11 +54,11 @@
 #if defined(__ICC)
 #define swift_align_information(type, array, alignment) \
   __assume_aligned(array, alignment);
-#elif defined(__GNUC__)
+#elif (__GNUC__ > 4) || (__GNUC__ == 4 && __GNUC_MINOR__ > 6)
 #define swift_align_information(type, array, alignment) \
   array = (type *)__builtin_assume_aligned(array, alignment);
 #else
-#define swift_align_information(array, alignment) ;
+#define swift_align_information(type, array, alignment) ;
 #endif
 
 /**

@@ -1,0 +1,122 @@
+\section{Star Formation in EAGLE}
+
+In this section we will shortly explain how the star formation in EAGLE works.
+The implemented star formation is based on the \citet{schaye2008}, instead of 
+the constant density threshold used by \citet{schaye2008}, a metallicity 
+dependent density threshold is used, following \citet{schaye2004}. An important 
+property of the implemented star formation law is the explicit reproducability 
+of the Kennicutt-Schmidt star formation law \citep{kennicutt1998}:
+\begin{align}
+ \dot{\Sigma}_\star &= A \left( \frac{\Sigma}{1 ~\text{M}_\odot ~\text{pc}^{-2}} \right)
+\end{align}
+
+\noindent In which $A$ is the normalization of the Kennicutt-Schmidt, $\dot{\Sigma}_\star$
+is the surface density of newly formed stars, $\Sigma$ is the gas surface 
+density and $n$ is the power law index. In the case of the star formation 
+implementation of \citet{schaye2008}, the star formation law is given by 
+a pressure law:
+
+\begin{align}
+\dot{m}_\star &= m_g A ( 1~\text{M}_\odot~\text{pc}^{-2})^{-n} \left( 
+\frac{\gamma}{G} f_g P \right)^{(n-1)/2}.
+\end{align}
+
+\noindent In which $m_g$ is the gas particle mass, $\gamma$ is the ratio of specific heats,
+$G$ is the gravitational constant, $f_g$ is the mass fraction of gas (unity in 
+EAGLE), and $P$ is the total pressure of the gas particle. In this equation
+$A$ and $n$ are directly constrainted from the observations of the Kennicutt-
+Schmidt law so both variables do not require tuning. Further there are 
+two constrains on the over density which should be $\Delta > 57.7$ (why this 
+specific number? \citet{schaye2008} says $\Delta \approx 60$), and the
+temperature of the gas should be atleast $T_\text{crit}<10^5 ~\text{K}$
+
+Besides this it is required that there is an effective equation of state. 
+Specifically we could take this to be equal to:
+\begin{align}
+ P &= P_\text{eos} (\rho) = P_\text{tot,c}\left( \frac{\rho_\text{g}}{\rho_\text{g,c}} \right)^{\gamma_\text{eff}}.
+\end{align}
+\noindent In which $\gamma_\text{eff}$ is the polytropic index. But the EAGLE 
+code just uses the EOS of the gas?
+
+\noindent Using this it is possible to calculate the propability that a gas particle is 
+converted to a star particle:
+\begin{align}
+ \text{Prob.} = \text{min} \left( \frac{\dot{m}_\star \Delta t}{m_g}, 1 \right) 
+ = \text{min} \left( A \left( 1 ~\text{M}_\odot ~\text{pc}^{-2} \right)^{-n} \left( \frac{\gamma}{G} f_g P_\text{tot} \right)^{(n-1)/2}, 1 \right).
+\end{align}
+
+\noindent In general we use $A=1.515 \cdot 10^{-4}~\text{M}_\odot ~\text{yr}^{-1} ~\text{kpc}^{-2}$ 
+and $n=1.4$. In the case of high densities ($n_\text{H,thresh} > 10^3 ~\text{cm}^{-3}$),
+the power law will be steaper and have a value of $n=2$ \citep{schaye2015}. This will also adjust
+the normalization of the star formation law, both need to be equal at the 
+pressure with a corresponding density. This means we have:
+\begin{align}
+\begin{split}
+ A \left( 1 ~\text{M}_\odot ~\text{pc}^{-2} \right)^{-n} \left( \frac{\gamma}{G} f_g P_\text{tot} \right)^{(n-1)/2} \\
+ = A_\text{high} \left( 1 ~\text{M}_\odot ~\text{pc}^{-2} \right)^{-n_\text{high}} \left( \frac{\gamma}{G} f_g P_\text{tot} \right)^{(n_\text{high}-1)/2}. 
+\end{split}
+\end{align}
+\begin{align}
+A_\text{high} = A \left( 1 ~\text{M}_\odot ~\text{pc}^{-2} \right)^{n_\text{high}-n} \left( \frac{\gamma}{G} f_g P_\text{tot}(\rho_{hd}) \right)^{(n-n_\text{high})/2}. 
+\end{align}
+In which $\rho_{hd}$ is the density at which both laws are equal.
+
+This is differently from the EAGLE code ($f_g=1$) which uses:
+\begin{align}
+A_\text{high} = A \left( \frac{\gamma}{G} P_\text{tot} (\rho_{hd}) \right)^{(n-n_\text{high})/2} . 
+\end{align}
+
+Besides this we also use the metallicity dependent density threshold given by \citep{schaye2004}:
+\begin{align}
+n^*_\text{H} (Z) &= n_\text{H,norm} \left( \frac{Z}{Z_0} \right)^{n_z}.
+\end{align}
+In which $n_\text{H,norm}$ is the normalization of the metallicity dependent 
+star formation law, $Z$ the metallicity, $Z_0$ the normalization metallicity,
+and $n_Z$ the power law of the metallicity dependence on density. standard 
+values we take for the EAGLE are $n_\text{H,norm} = 0.1 ~\text{cm}^{-3}$, 
+$n_Z=-0.64$ and $Z_0 = 0.002$. Also we impose that the density threshold cannot
+exceed the maximum value of $n_\text{H,max,norm}$ \citep{schaye2015}.
+
+For the initial pressure determination the EAGLE code uses (Explanation needed):
+\begin{align}
+ P_\text{cgs} &= (\gamma -1) \frac{n_\text{EOS, norm} \cdot m_H}{X} T_{EOS,jeans} \cdot \frac{k_B}{1.22 \cdot (\gamma -1) m_H } \left( \frac{n_\text{highden}}{n_\text{norm,EOS}} \right)^{\gamma_\text{eff}}.
+\end{align}
+
+To determine the pressure for the star formation law the EAGLE code uses the 
+physical pressure? Is this the effective EOS or the real EOS of the gas?
+
+Compared to the EAGLE code we can calculate a fraction of the calculations already 
+in the struct which are not depending on time, this may save some calculations. 
+
+Besides this we also use the more extended temperature criteria proposed by
+\citet{dallavecchia2012} that uses a temperature floor given by:
+\begin{align}
+ \log_{10} T < \log_{10} T_\text{eos} + 0.5.
+\end{align}
+
+\begin{table}
+\begin{tabular}{l|l|l|l}
+Variable & Parameter file name   & Default value & unit \\ \hline
+$A$    & SchmidtLawCoeff\_MSUNpYRpKPC2   & $1.515\cdot10^{-4}$    & $M_\odot ~yr^{-1} ~kpc^{-2}$ \\
+$n$  & SchmidtLawExponent                & $1.4$         & none  \\
+$\gamma$  & gamma   & $\frac{5}{3}$ & none   \\
+$G$  & No, in constants   & -  & -  \\
+$f_g$ & fg   & $1.$    & none  \\
+$n_{high}$   & SchmidtLawHighDensExponent  & $2.0$  & none  \\
+$n_{H,thresh}$ & SchmidtLawHighDens\_thresh\_HpCM3 & $10^3$ & $cm^{-3}$ \\
+$n_{H,norm}$ & thresh\_norm\_HpCM3 & $.1$ & $cm^{-3}$ \\
+$Z_0$ & MetDep\_Z0 & $0.002$ & none \\
+$n_Z$ & MetDep\_SFthresh\_Slope & $-0.64$ & none \\
+$\Delta$ & thresh\_MinOverDens & $57.7$ & none \\
+$T_{crit}$ & thresh\_temp & $10^5$ & $K$ \\
+$n_{H,max,norm}$ & thresh\_max\_norm\_HpCM3 & 10.0 & $cm^{-3}$ 
+\end{tabular}
+\end{table}
+
+Questions:
+Is rho in part mass density or number density??
+Why is the cooling\_get\_temperature() depending on so many variables?
+I would expect $P_\text{tot,c} = n k_B T$, but which $n$ and $T$?
+Is Seed in the function or declared outside of function?
+Correct Unit conversion?
+

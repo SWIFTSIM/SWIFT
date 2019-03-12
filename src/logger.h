@@ -19,11 +19,21 @@
 #ifndef SWIFT_LOGGER_H
 #define SWIFT_LOGGER_H
 
+#ifdef WITH_LOGGER
+
 /* Includes. */
-#include "part.h"
+#include "common_io.h"
+#include "dump.h"
+#include "inline.h"
+#include "timeline.h"
+#include "units.h"
 
 /* Forward declaration */
 struct dump;
+struct gpart;
+struct part;
+/* TODO remove dependency */
+struct engine;
 
 /**
  * Logger entries contain messages representing the particle data at a given
@@ -59,31 +69,111 @@ struct dump;
  * The offset refers to the relative location of the previous message for the
  * same particle or for the previous timestamp (if mask bit 7 is set). I.e.
  * the previous log entry will be at the address of the current mask byte minus
- * the unsigned value stored in the offset. An offset of zero indicates that
- * this is the first message for the given particle/timestamp.
+ * the unsigned value stored in the offset. An offset equal to the chunk offset
+ * indicated that this is the first message for the given particle/timestamp.
  */
 
 /* Some constants. */
-#define logger_mask_x 1
-#define logger_mask_v 2
-#define logger_mask_a 4
-#define logger_mask_u 8
-#define logger_mask_h 16
-#define logger_mask_rho 32
-#define logger_mask_consts 64
-#define logger_mask_timestamp 128
+enum logger_masks_number {
+  logger_x = 0,
+  logger_v = 1,
+  logger_a = 2,
+  logger_u = 3,
+  logger_h = 4,
+  logger_rho = 5,
+  logger_consts = 6,
+  logger_timestamp = 7,  /* expect it to be before count */
+  logger_count_mask = 8, /* Need to be the last */
+} __attribute__((packed));
+
+struct mask_data {
+  /* Number of bytes for a mask */
+  int size;
+  /* Mask value */
+  unsigned int mask;
+  /* name of the mask */
+  char name[100];
+};
+
+extern const struct mask_data logger_mask_data[logger_count_mask];
+
+/* Size of the strings. */
+#define logger_string_length 200
+
+/* structure containing global data */
+struct logger {
+  /* Number of particle steps between dumping a chunk of data */
+  short int delta_step;
+
+  /* Logger basename */
+  char base_name[logger_string_length];
+
+  /* Dump file */
+  struct dump dump;
+
+  /* timestamp offset for logger*/
+  size_t timestamp_offset;
+
+  /* scaling factor when buffer is too small */
+  float buffer_scale;
+
+  /* Size of a chunk if every mask are activated */
+  int max_chunk_size;
+
+} SWIFT_STRUCT_ALIGN;
+
+/* required structure for each particle type */
+struct logger_part_data {
+  /* Number of particle updates since last output */
+  int steps_since_last_output;
+
+  /* offset of last particle log entry */
+  size_t last_offset;
+};
 
 /* Function prototypes. */
-int logger_size(unsigned int mask);
-void logger_log_part(struct part *p, unsigned int mask, size_t *offset,
-                     struct dump *dump);
-void logger_log_gpart(struct gpart *p, unsigned int mask, size_t *offset,
-                      struct dump *dump);
-void logger_log_timestamp(unsigned long long int t, size_t *offset,
-                          struct dump *dump);
+int logger_compute_chunk_size(unsigned int mask);
+void logger_log_all(struct logger *log, const struct engine *e);
+void logger_log_part(struct logger *log, const struct part *p,
+                     unsigned int mask, size_t *offset);
+void logger_log_gpart(struct logger *log, const struct gpart *p,
+                      unsigned int mask, size_t *offset);
+void logger_init(struct logger *log, struct swift_params *params);
+void logger_clean(struct logger *log);
+void logger_log_timestamp(struct logger *log, integertime_t t, double time,
+                          size_t *offset);
+void logger_ensure_size(struct logger *log, size_t total_nr_parts,
+                        size_t total_nr_gparts, size_t total_nr_sparts);
+void logger_write_file_header(struct logger *log, const struct engine *e);
+
 int logger_read_part(struct part *p, size_t *offset, const char *buff);
 int logger_read_gpart(struct gpart *p, size_t *offset, const char *buff);
-int logger_read_timestamp(unsigned long long int *t, size_t *offset,
-                          const char *buff);
+int logger_read_timestamp(unsigned long long int *t, double *time,
+                          size_t *offset, const char *buff);
+
+/**
+ * @brief Initialize the logger data for a particle.
+ *
+ * @param logger The #logger_part_data.
+ */
+INLINE static void logger_part_data_init(struct logger_part_data *logger) {
+  logger->last_offset = 0;
+  logger->steps_since_last_output = INT_MAX;
+}
+
+/**
+ * @brief Should this particle write its data now ?
+ *
+ * @param xp The #xpart.
+ * @param e The #engine containing information about the current time.
+ * @return 1 if the #part should write, 0 otherwise.
+ */
+__attribute__((always_inline)) INLINE static int logger_should_write(
+    const struct logger_part_data *logger_data, const struct logger *log) {
+
+  return (logger_data->steps_since_last_output > log->delta_step);
+}
+
+#endif /* WITH_LOGGER */
 
 #endif /* SWIFT_LOGGER_H */

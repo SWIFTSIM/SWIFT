@@ -38,18 +38,16 @@ extern const char *initial_partition_name[];
 struct partition {
   enum partition_type type;
   int grid[3];
+  int usemetis;
 };
 
 /* Repartition type to use. */
 enum repartition_type {
   REPART_NONE = 0,
-  REPART_METIS_VERTEX_COSTS_EDGE_COSTS,
-  REPART_METIS_VERTEX_COUNTS,
+  REPART_METIS_VERTEX_EDGE_COSTS,
   REPART_METIS_EDGE_COSTS,
-  REPART_METIS_VERTEX_COUNTS_EDGE_COSTS,
-  REPART_METIS_VERTEX_COSTS_EDGE_TIMEBINS,
-  REPART_METIS_VERTEX_COUNTS_EDGE_TIMEBINS,
-  REPART_METIS_EDGE_TIMEBINS
+  REPART_METIS_VERTEX_COUNTS,
+  REPART_METIS_VERTEX_COSTS_TIMEBINS
 };
 
 /* Repartition preferences. */
@@ -57,8 +55,14 @@ struct repartition {
   enum repartition_type type;
   float trigger;
   float minfrac;
+  float itr;
+  int usemetis;
+  int adaptive;
 
-  /* The partition as a cell list, if used. */
+  int use_fixed_costs;
+  int use_ticks;
+
+  /* The partition as a cell-list. */
   int ncelllist;
   int *celllist;
 };

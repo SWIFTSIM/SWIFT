@@ -73,7 +73,7 @@ int main(int argc, char *argv[]) {
   for (int run = 0; run < num_runs; run++) {
 
     /* Ensure capacity. */
-    dump_ensure(&d, 7 * chunk_size);
+    dump_ensure(&d, 7 * chunk_size, 7 * chunk_size);
 
     /* Dump a few numbers. */
     printf("dumping %i chunks...\n", chunk_size);

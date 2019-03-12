@@ -1,0 +1,3 @@
+This directory contains initial conditions generated from
+the z=0.1 DMONLY snapshots of the EAGLE suite of simulations. They
+are ideal for testing the late-time behaviour of the code.

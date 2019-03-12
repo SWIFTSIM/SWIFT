@@ -1,7 +1,7 @@
 /*******************************************************************************
  * This file is part of SWIFT.
  * Copyright (c) 2016 Pedro Gonnet (pedro.gonnet@durham.ac.uk)
- *
+ *               2018 STFC (author email aidan.chalk@stfc.ac.uk)
  * This program is free software: you can redistribute it and/or modify
  * it under the terms of the GNU Lesser General Public License as published
  * by the Free Software Foundation, either version 3 of the License, or
@@ -20,6 +20,7 @@
 #define SWIFT_MEMSWAP_H
 
 /* Config parameters. */
+#include <stdint.h>
 #include "../config.h"
 
 #ifdef HAVE_IMMINTRIN_H
@@ -33,7 +34,7 @@
 #endif
 
 /* Macro for in-place swap of two values a and b of type t. a and b are
-   assumed to be of type char* so that the pointer arithmetic works. */
+   assumed to be of type uint8_t* so that the pointer arithmetic works. */
 #define swap_loop(type, a, b, count) \
   while (count >= sizeof(type)) {    \
     register type temp = *(type *)a; \
@@ -60,9 +61,10 @@
  * @param void_b Pointer to the second element.
  * @param bytes Size, in bytes, of the data pointed to by @c a and @c b.
  */
-__attribute__((always_inline)) inline void memswap(void *void_a, void *void_b,
+__attribute__((always_inline)) inline void memswap(void *restrict void_a,
+                                                   void *restrict void_b,
                                                    size_t bytes) {
-  char *a = (char *)void_a, *b = (char *)void_b;
+  int8_t *restrict a = (int8_t *)void_a, *restrict b = (int8_t *)void_b;
 #if defined(__AVX512F__) && defined(__INTEL_COMPILER)
   swap_loop(__m512i, a, b, bytes);
 #endif
@@ -75,10 +77,17 @@ __attribute__((always_inline)) inline void memswap(void *void_a, void *void_b,
 #ifdef __ALTIVEC__
   swap_loop(vector int, a, b, bytes);
 #endif
-  swap_loop(size_t, a, b, bytes);
-  swap_loop(int, a, b, bytes);
-  swap_loop(short, a, b, bytes);
-  swap_loop(char, a, b, bytes);
+  swap_loop(int_least64_t, a, b, bytes);
+  swap_loop(int_least32_t, a, b, bytes);
+  swap_loop(int_least16_t, a, b, bytes);
+  swap_loop(int_least8_t, a, b, bytes);
+
+  /* This is a known bug for the current version of clang on ARM.
+   * We add this synchronization as a temporary bug fix.
+   * See https://bugs.llvm.org/show_bug.cgi?id=40051 */
+#if defined(__clang__) && defined(__aarch64__)
+  __sync_synchronize();
+#endif
 }
 
 /**
@@ -93,10 +102,9 @@ __attribute__((always_inline)) inline void memswap(void *void_a, void *void_b,
  * @param void_b Pointer to the second element.
  * @param bytes Size, in bytes, of the data pointed to by @c a and @c b.
  */
-__attribute__((always_inline)) inline void memswap_unaligned(void *void_a,
-                                                             void *void_b,
-                                                             size_t bytes) {
-  char *a = (char *)void_a, *b = (char *)void_b;
+__attribute__((always_inline)) inline void memswap_unaligned(
+    void *restrict void_a, void *restrict void_b, size_t bytes) {
+  int8_t *restrict a = (int8_t *)void_a, *restrict b = (int8_t *)void_b;
 #ifdef __AVX512F__
   while (bytes >= sizeof(__m512i)) {
     register __m512i temp;
@@ -134,10 +142,17 @@ __attribute__((always_inline)) inline void memswap_unaligned(void *void_a,
   // Power8 supports unaligned load/stores, but not sure what it will do here.
   swap_loop(vector int, a, b, bytes);
 #endif
-  swap_loop(size_t, a, b, bytes);
-  swap_loop(int, a, b, bytes);
-  swap_loop(short, a, b, bytes);
-  swap_loop(char, a, b, bytes);
+  swap_loop(int_least64_t, a, b, bytes);
+  swap_loop(int_least32_t, a, b, bytes);
+  swap_loop(int_least16_t, a, b, bytes);
+  swap_loop(int_least8_t, a, b, bytes);
+
+  /* This is a known bug for the current version of clang on ARM.
+   * We add this synchronization as a temporary bug fix.
+   * See https://bugs.llvm.org/show_bug.cgi?id=40051 */
+#if defined(__clang__) && defined(__aarch64__)
+  __sync_synchronize();
+#endif
 }
 
 #endif /* SWIFT_MEMSWAP_H */

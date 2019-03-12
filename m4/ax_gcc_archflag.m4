@@ -65,7 +65,7 @@
 #   modified version of the Autoconf Macro, you may extend this special
 #   exception to the GPL to apply to your modified version as well.
 
-#serial 21 (modified for SWIFT)
+#serial 22 (modified for SWIFT)
 
 AC_DEFUN([AX_GCC_ARCHFLAG],
 [AC_REQUIRE([AC_PROG_CC])
@@ -109,7 +109,7 @@ case $host_cpu in
 	    *3?6[[ae]]?:*:*:*) ax_gcc_arch="ivybridge core-avx-i corei7-avx corei7 core2 pentium-m pentium3 pentiumpro" ;;
 	    *3?6[[cf]]?:*:*:*|*4?6[[56]]?:*:*:*) ax_gcc_arch="haswell core-avx2 core-avx-i corei7-avx corei7 core2 pentium-m pentium3 pentiumpro" ;;
 	    *3?6d?:*:*:*|*4?6[[7f]]?:*:*:*|*5?66?:*:*:*) ax_gcc_arch="broadwell core-avx2 core-avx-i corei7-avx corei7 core2 pentium-m pentium3 pentiumpro" ;;
-	    *4?6[[de]]?:*:*:*) ax_gcc_arch="skylake haswell sandybridge core-avx2 core-avx-i corei7-avx corei7 core2 pentium-m pentium3 pentiumpro" ;;	
+	    *4?6[[de]]?:*:*:*|*5?6[[de]]?:*:*:*) ax_gcc_arch="skylake haswell sandybridge core-avx2 core-avx-i corei7-avx corei7 core2 pentium-m pentium3 pentiumpro" ;;	
 	    *5?6[[56]]?:*:*:*) ax_gcc_arch="skylake-avx512 skylake haswell sandybridge core-avx2 core-avx-i corei7-avx corei7 core2 pentium-m pentium3 pentiumpro" ;;	
             *8?6[[de]]?:*:*:*|*9?6[[de]]?:*:*:*) ax_gcc_arch="kabylake skylake broadwell haswell sandybridge core-avx2 core-avx-i corei7-avx corei7 core2 pentium-m pentium3 pentiumpro" ;;
 	    *1?6c?:*:*:*|*2?6[[67]]?:*:*:*|*3?6[[56]]?:*:*:*) ax_gcc_arch="bonnell atom core2 pentium-m pentium3 pentiumpro" ;;
@@ -201,6 +201,10 @@ case $host_cpu in
        *POWER4*|*power4*|*gq*) ax_gcc_arch="power4 970";;
        *POWER5*|*power5*|*gr*|*gs*) ax_gcc_arch="power5 power4 970";;
        603ev|8240) ax_gcc_arch="$cputype 603e 603";;
+       *POWER7*) ax_gcc_arch="power7";;
+       *POWER8*) ax_gcc_arch="power8";;
+       *POWER9*) ax_gcc_arch="power9";;
+       *POWER10*) ax_gcc_arch="power10";;
        *) ax_gcc_arch=$cputype ;;
      esac
      ax_gcc_arch="$ax_gcc_arch powerpc"
@@ -212,15 +216,15 @@ case $host_cpu in
      case $cpuimpl in
        0x42) case $cpuarch in
                8) case $cpuvar in
-                    0x0) ax_gcc_arch="thunderx2t99 vulcan armv8.1-a armv8-a+lse armv8-a native" ;;
+                    0x0) ax_gcc_arch="native" ;;
                   esac
                   ;;
              esac
              ;;
        0x43) case $cpuarch in
                8) case $cpuvar in
-                    0x0) ax_gcc_arch="thunderx armv8-a native" ;;
-                    0x1) ax_gcc_arch="thunderx+lse armv8.1-a armv8-a+lse armv8-a native" ;;
+                    0x0) ax_gcc_arch="native" ;;
+                    0x1) ax_gcc_arch="native" ;;
                   esac
                   ;;
              esac

@@ -18,7 +18,7 @@
  ******************************************************************************/
 
 /* Some standard headers. */
-#include <stdlib.h>
+#include "../config.h"
 
 /* Includes. */
 #include "swift.h"
@@ -44,7 +44,6 @@ void select_output_engine_init(struct engine *e, struct space *s,
   e->time = 0;
   e->snapshot_output_count = 0;
   e->snapshot_compression = 0;
-  e->snapshot_label_delta = 1;
 };
 
 void select_output_space_init(struct space *s, double *dim, int periodic,
@@ -86,8 +85,8 @@ int main(int argc, char *argv[]) {
 
   char *base_name = "testSelectOutput";
   size_t Ngas = 0, Ngpart = 0, Nspart = 0;
-  int periodic = -1;
   int flag_entropy_ICs = -1;
+  int periodic = 1;
   double dim[3];
   struct part *parts = NULL;
   struct gpart *gparts = NULL;
@@ -112,8 +111,8 @@ int main(int argc, char *argv[]) {
   /* Read data */
   message("Reading initial conditions.");
   read_ic_single("input.hdf5", &us, dim, &parts, &gparts, &sparts, &Ngas,
-                 &Ngpart, &Nspart, &periodic, &flag_entropy_ICs, 1, 0, 0, 0, 0,
-                 1., 1., 1, 0);
+                 &Ngpart, &Nspart, &flag_entropy_ICs, 1, 0, 0, 0, 0, 1., 1., 1,
+                 0);
 
   /* pseudo initialization of the space */
   message("Initialization of the space.");

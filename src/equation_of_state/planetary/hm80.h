@@ -86,21 +86,19 @@ INLINE static void load_table_HM80(struct HM80_params *mat, char *table_file) {
 
   // Load table contents from file
   FILE *f = fopen(table_file, "r");
-  int c;
+  if (f == NULL) error("Failed to open the HM80 EoS file '%s'", table_file);
 
   // Ignore header lines
   char buffer[100];
   for (int i = 0; i < 4; i++) {
     if (fgets(buffer, 100, f) == NULL)
-      error("Something incorrect happening with the file header.");
+      error("Failed to read the HM80 EoS file header %s", table_file);
   }
 
   // Table properties
-  c = fscanf(f, "%f %f %d %f %f %d", &mat->log_rho_min, &mat->log_rho_max,
-             &mat->num_rho, &mat->log_u_min, &mat->log_u_max, &mat->num_u);
-  if (c != 6) {
-    error("Failed to read EOS table %s", table_file);
-  }
+  int c = fscanf(f, "%f %f %d %f %f %d", &mat->log_rho_min, &mat->log_rho_max,
+                 &mat->num_rho, &mat->log_u_min, &mat->log_u_max, &mat->num_u);
+  if (c != 6) error("Failed to read the HM80 EoS table %s", table_file);
   mat->log_rho_step =
       (mat->log_rho_max - mat->log_rho_min) / (mat->num_rho - 1);
   mat->log_u_step = (mat->log_u_max - mat->log_u_min) / (mat->num_u - 1);
@@ -115,9 +113,7 @@ INLINE static void load_table_HM80(struct HM80_params *mat, char *table_file) {
   for (int i_rho = 0; i_rho < mat->num_rho; i_rho++) {
     for (int i_u = 0; i_u < mat->num_u; i_u++) {
       c = fscanf(f, "%f", &mat->table_log_P_rho_u[i_rho * mat->num_u + i_u]);
-      if (c != 1) {
-        error("Failed to read EOS table");
-      }
+      if (c != 1) error("Failed to read the HM80 EoS table %s", table_file);
     }
   }
   fclose(f);

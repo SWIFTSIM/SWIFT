@@ -28,6 +28,7 @@
 #include "dimension.h"
 #include "hydro.h"
 #include "part.h"
+#include "stars.h"
 
 /**
  * @brief Perform the 'drift' operation on a #gpart.
@@ -137,6 +138,16 @@ __attribute__((always_inline)) INLINE static void drift_spart(
   sp->x[0] += sp->v[0] * dt_drift;
   sp->x[1] += sp->v[1] * dt_drift;
   sp->x[2] += sp->v[2] * dt_drift;
+
+  /* Predict the values of the extra fields */
+  stars_predict_extra(sp, dt_drift);
+
+  /* Compute offsets since last cell construction */
+  for (int k = 0; k < 3; k++) {
+    const float dx = sp->v[k] * dt_drift;
+    sp->x_diff[k] -= dx;
+    sp->x_diff_sort[k] -= dx;
+  }
 }
 
 #endif /* SWIFT_DRIFT_H */

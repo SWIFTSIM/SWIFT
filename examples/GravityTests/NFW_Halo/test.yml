@@ -1,0 +1,41 @@
+# Define the system of units to use internally.
+InternalUnitSystem:
+  UnitMass_in_cgs:     1.988e+33 # Solar mass
+  UnitLength_in_cgs:   3.086e+21 # kpc
+  UnitVelocity_in_cgs: 1e5       # km / s
+  UnitCurrent_in_cgs:  1         # Amperes
+  UnitTemp_in_cgs:     1         # Kelvin
+
+# Parameters governing the time integration (Set dt_min and dt_max to the same value for a fixed time-step run.)
+TimeIntegration:
+  time_begin:          0.      # The starting time of the simulation (in internal units).
+  time_end:            0.6     # The end time of the simulation (in internal units).
+  dt_min:              1e-8    # The minimal time-step size of the simulation (in internal units).
+  dt_max:              1e-1    # The maximal time-step size of the simulation (in internal units).
+
+# Parameters governing the snapshots
+Snapshots:
+  basename:            output  # Common part of the name of output files
+  time_first:          0.      # Time of the first output (in internal units)
+  delta_time:          1e-3    # Time difference between consecutive outputs (in internal units)
+
+# Parameters governing the conserved quantities statistics
+Statistics:
+  delta_time:          1e-3    # Time between statistics output
+
+# Parameters related to the initial conditions
+InitialConditions:
+  file_name:          test_nfw.hdf5 # The file to read
+  shift_x:            0.          # (Optional) A shift to apply to all particles read from the ICs (in internal units).
+  shift_y:            0.
+  shift_z:            0.
+  periodic:           0
+
+# Isothermal potential parameters
+NFWPotential:
+  useabspos:          0
+  position:           [0.0,0.0,0.0]      # Location of centre of potential with respect to centre of the box (internal units)
+  concentration:      8.
+  M_200:              2.0e+12  # Virial mass (internal units)
+  critical_density:   140      # Critical density (internal units)
+  timestep_mult:      0.01     # Dimensionless pre-factor for the time-step condition

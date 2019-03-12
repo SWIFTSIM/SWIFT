@@ -1,0 +1,41 @@
+# Define the system of units to use internally. 
+InternalUnitSystem:
+  UnitMass_in_cgs:     1.98848e39    # 10^6 solar masses
+  UnitLength_in_cgs:   3.08567758e21 # Kiloparsecs
+  UnitVelocity_in_cgs: 1e5           # Kilometres per second
+  UnitCurrent_in_cgs:  1   # Amperes
+  UnitTemp_in_cgs:     1   # Kelvin
+
+# Parameters governing the time integration
+TimeIntegration:
+  time_begin: 0.    # The starting time of the simulation (in internal units).
+  time_end:   30.   # The end time of the simulation (in internal units).
+  dt_min:     1e-6  # The minimal time-step size of the simulation (in internal units).
+  dt_max:     1e-2  # The maximal time-step size of the simulation (in internal units).
+
+# Parameters governing the conserved quantities statistics
+Statistics:
+  delta_time:          1e-2 # Time between statistics output
+  
+# Parameters governing the snapshots
+Snapshots:
+  basename:            Hydrostatic  # Common part of the name of output files
+  time_first:          0.           # Time of the first output (in internal units)
+  delta_time:          0.1          # Time difference between consecutive outputs (in internal units)
+
+# Parameters for the hydrodynamics scheme
+SPH:
+  resolution_eta:        1.2349   # Target smoothing length in units of the mean inter-particle separation (1.2349 == 48Ngbs with the cubic spline kernel).
+  CFL_condition:         0.1      # Courant-Friedrich-Levy condition for time integration.
+
+# Parameters related to the initial conditions
+InitialConditions:
+  file_name:  Hydrostatic.hdf5       # The file to read
+  periodic:   1
+  
+# External potential parameters
+IsothermalPotential:
+  vrot:            200.     # rotation speed of isothermal potential in internal units
+  epsilon:         1.0
+  timestep_mult:   0.03     # controls time step
+

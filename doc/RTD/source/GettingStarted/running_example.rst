@@ -14,19 +14,19 @@ as ``wget`` for grabbing the glass).
    cd examples/SodShock_3D
    ./getGlass.sh
    python makeIC.py
-   ../swift -s -t 4 sodShock.yml
+   ../swift --hydro --threads=4 sodShock.yml
    python plotSolution.py 1
 
 
 This will run the 'SodShock' in 3D and produce a nice plot that shows you
-how the density has varied. Try running with GIZMO (this will take
+how the density has varied. Try running with GIZMO-MFV (this will take
 _significantly_ longer than with SPH) to see the difference. For that, you
 will need to reconfigure with the following options:
 
 .. code-block:: bash
    
    ./configure \
-   --with-hydro=gizmo \
+   --with-hydro=gizmo-mfv \
    --with-riemann-solver=hllc
 
 

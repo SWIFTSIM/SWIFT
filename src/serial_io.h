@@ -31,23 +31,30 @@
 
 /* Includes. */
 #include "engine.h"
+#include "io_properties.h"
 #include "part.h"
 #include "units.h"
 
 void read_ic_serial(char* fileName, const struct unit_system* internal_units,
                     double dim[3], struct part** parts, struct gpart** gparts,
                     struct spart** sparts, size_t* Ngas, size_t* Ngparts,
-                    size_t* Nstars, int* periodic, int* flag_entropy,
-                    int with_hydro, int with_gravity, int with_stars,
-                    int cleanup_h, int cleanup_sqrt_a, double h, double a,
-                    int mpi_rank, int mpi_size, MPI_Comm comm, MPI_Info info,
-                    int nr_threads, int dry_run);
+                    size_t* Nstars, int* flag_entropy, int with_hydro,
+                    int with_gravity, int with_stars, int cleanup_h,
+                    int cleanup_sqrt_a, double h, double a, int mpi_rank,
+                    int mpi_size, MPI_Comm comm, MPI_Info info, int nr_threads,
+                    int dry_run);
 
 void write_output_serial(struct engine* e, const char* baseName,
                          const struct unit_system* internal_units,
                          const struct unit_system* snapshot_units, int mpi_rank,
                          int mpi_size, MPI_Comm comm, MPI_Info info);
 
+void writeArray(const struct engine* e, hid_t grp, char* fileName,
+                FILE* xmfFile, char* partTypeGroupName,
+                const struct io_props props, size_t N, long long N_total,
+                int mpi_rank, long long offset,
+                const struct unit_system* internal_units,
+                const struct unit_system* snapshot_units);
 #endif
 
 #endif /* SWIFT_SERIAL_IO_H */

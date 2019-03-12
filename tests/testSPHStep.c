@@ -35,19 +35,19 @@ struct cell *make_cell(size_t N, float cellSize, int offset[3], int id_offset) {
   size_t x, y, z, size;
 
   size = count * sizeof(struct part);
-  if (posix_memalign((void **)&cell->parts, part_align, size) != 0) {
+  if (posix_memalign((void **)&cell->hydro.parts, part_align, size) != 0) {
     error("couldn't allocate particles");
   }
 
   size = count * sizeof(struct xpart);
-  if (posix_memalign((void **)&cell->xparts, xpart_align, size) != 0) {
+  if (posix_memalign((void **)&cell->hydro.xparts, xpart_align, size) != 0) {
     error("couldn't allocate extended particles");
   }
 
   h = 1.2348 * cellSize / N;
 
-  part = cell->parts;
-  xpart = cell->xparts;
+  part = cell->hydro.parts;
+  xpart = cell->hydro.xparts;
   memset(part, 0, count * sizeof(struct part));
   memset(xpart, 0, count * sizeof(struct xpart));
   for (x = 0; x < N; ++x) {
@@ -68,20 +68,20 @@ struct cell *make_cell(size_t N, float cellSize, int offset[3], int id_offset) {
   }
 
   cell->split = 0;
-  cell->h_max = h;
-  cell->count = count;
-  cell->gcount = 0;
-  cell->dx_max_part = 0.;
-  cell->dx_max_sort = 0.;
+  cell->hydro.h_max = h;
+  cell->hydro.count = count;
+  cell->grav.count = 0;
+  cell->hydro.dx_max_part = 0.;
+  cell->hydro.dx_max_sort = 0.;
   cell->width[0] = cellSize;
   cell->width[1] = cellSize;
   cell->width[2] = cellSize;
 
-  cell->ti_hydro_end_min = 1;
-  cell->ti_hydro_end_max = 1;
+  cell->hydro.ti_end_min = 1;
+  cell->hydro.ti_end_max = 1;
 
-  cell->sorted = 0;
-  for (int k = 0; k < 13; k++) cell->sort[k] = NULL;
+  cell->hydro.sorted = 0;
+  for (int k = 0; k < 13; k++) cell->hydro.sort[k] = NULL;
 
   return cell;
 }
@@ -128,9 +128,9 @@ int main(int argc, char *argv[]) {
 
   /* Set particle properties */
   for (j = 0; j < 27; ++j)
-    for (i = 0; i < cells[j]->count; ++i) {
-      cells[j]->parts[i].mass = dim * dim * dim * rho / (N * N * N);
-      cells[j]->parts[i].u = P / (hydro_gamma_minus_one * rho);
+    for (i = 0; i < cells[j]->hydro.count; ++i) {
+      cells[j]->hydro.parts[i].mass = dim * dim * dim * rho / (N * N * N);
+      cells[j]->hydro.parts[i].u = P / (hydro_gamma_minus_one * rho);
     }
 
   message("m=%f", dim * dim * dim * rho / (N * N * N));
@@ -171,7 +171,7 @@ int main(int argc, char *argv[]) {
   e.ti_current = 1;
 
   /* The tracked particle */
-  p = &(ci->parts[N * N * N / 2 + N * N / 2 + N / 2]);
+  p = &(ci->hydro.parts[N * N * N / 2 + N * N / 2 + N / 2]);
 
   message("Studying particle p->id=%lld", p->id);
 
@@ -209,10 +209,10 @@ int main(int argc, char *argv[]) {
   message("ti_end=%d", p->ti_end);
 
   for (int j = 0; j < 27; ++j) {
-    free(cells[j]->parts);
-    free(cells[j]->xparts);
+    free(cells[j]->hydro.parts);
+    free(cells[j]->hydro.xparts);
     for (int k = 0; k < 13; k++)
-      if (cells[j]->sort[k] != NULL) free(cells[j]->sort[k]);
+      if (cells[j]->hydro.sort[k] != NULL) free(cells[j]->hydro.sort[k]);
     free(cells[j]);
   }
 

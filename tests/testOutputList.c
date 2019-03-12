@@ -17,10 +17,9 @@
  * along with this program.  If not, see <http://www.gnu.org/licenses/>.
  *
  ******************************************************************************/
+#include "../config.h"
 
-#include <math.h>
-#include <stdio.h>
-#include <string.h>
+/* Includes. */
 #include "swift.h"
 
 #define Ntest 3
@@ -36,9 +35,9 @@ const double time_values[Ntest] = {
 
 /* Expected values from file */
 const double a_values[Ntest] = {
-    0.5,
-    0.1,
     0.01,
+    0.1,
+    0.5,
 };
 
 void test_no_cosmo(struct engine *e, char *name, int with_assert) {
@@ -62,7 +61,7 @@ void test_no_cosmo(struct engine *e, char *name, int with_assert) {
   for (int i = 0; i < Ntest; i++) {
     /* Test last value */
     if (with_assert) {
-      assert(abs(output_time - time_values[i]) < tol);
+      assert(fabs(output_time - time_values[i]) < tol);
     }
 
     /* Set current time */
@@ -76,7 +75,7 @@ void test_no_cosmo(struct engine *e, char *name, int with_assert) {
     output_time = (double)(ti_next * e->time_base) + e->time_begin;
   }
 
-  output_list_clean(list);
+  output_list_clean(&list);
 };
 
 void test_cosmo(struct engine *e, char *name, int with_assert) {
@@ -98,7 +97,7 @@ void test_cosmo(struct engine *e, char *name, int with_assert) {
   for (int i = 0; i < Ntest; i++) {
     /* Test last value */
     if (with_assert) {
-      assert(abs(output_time - a_values[i]) < tol);
+      assert(fabs(output_time - a_values[i]) < tol);
     }
 
     /* Set current time */
@@ -112,7 +111,7 @@ void test_cosmo(struct engine *e, char *name, int with_assert) {
     output_time = (double)exp(ti_next * e->time_base) * e->cosmology->a_begin;
   }
 
-  output_list_clean(list);
+  output_list_clean(&list);
 };
 
 int main(int argc, char *argv[]) {
@@ -150,6 +149,8 @@ int main(int argc, char *argv[]) {
   test_cosmo(&e, "Redshift", with_assert);
   test_cosmo(&e, "ScaleFactor", with_assert);
   test_cosmo(&e, "Time", without_assert);
+
+  cosmology_clean(&cosmo);
 
   /* Write message and leave */
   message("Test done");

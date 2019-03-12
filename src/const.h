@@ -21,13 +21,10 @@
 #define SWIFT_CONST_H
 
 /* SPH Viscosity constants. */
-#define const_viscosity_alpha 0.8f
-#define const_viscosity_alpha_min \
-  0.1f /* Values taken from (Price,2004), not used in legacy gadget mode */
-#define const_viscosity_alpha_max \
-  2.0f /* Values taken from (Price,2004), not used in legacy gadget mode */
-#define const_viscosity_length \
-  0.1f /* Values taken from (Price,2004), not used in legacy gadget mode */
+/* Cosmology default beta=3.0. Planetary default beta=4.0
+ * Alpha can be set in the parameter file.
+ * Beta is defined as in e.g. Price (2010) Eqn (103) */
+#define const_viscosity_beta 3.0f
 
 /* SPH Thermal conductivity constants. */
 #define const_conductivity_alpha \
@@ -35,6 +32,9 @@
 
 /* Time integration constants. */
 #define const_max_u_change 0.1f
+
+/* Time-step limiter maximal difference in signal velocity */
+#define const_limiter_max_v_sig_ratio 4.1f
 
 /* Type of gradients to use (GIZMO_SPH only) */
 /* If no option is chosen, no gradients are used (first order scheme) */

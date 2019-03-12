@@ -42,6 +42,7 @@
 #include "cooling_io.h"
 #include "dimension.h"
 #include "engine.h"
+#include "entropy_floor.h"
 #include "error.h"
 #include "gravity_io.h"
 #include "gravity_properties.h"
@@ -52,8 +53,11 @@
 #include "memuse.h"
 #include "part.h"
 #include "part_type.h"
+#include "star_formation_io.h"
 #include "stars_io.h"
+#include "tracers_io.h"
 #include "units.h"
+#include "velociraptor_io.h"
 #include "xmf.h"
 
 /**
@@ -150,11 +154,41 @@ void readArray(hid_t grp, const struct io_props props, size_t N,
     /* message("Converting ! factor=%e", factor); */
 
     if (io_is_double_precision(props.type)) {
-      double* temp_d = temp;
+      double* temp_d = (double*)temp;
       for (size_t i = 0; i < num_elements; ++i) temp_d[i] *= factor;
     } else {
-      float* temp_f = temp;
-      for (size_t i = 0; i < num_elements; ++i) temp_f[i] *= factor;
+      float* temp_f = (float*)temp;
+
+#ifdef SWIFT_DEBUG_CHECKS
+      float maximum = 0.f;
+      float minimum = FLT_MAX;
+#endif
+
+      /* Loop that converts the Units */
+      for (size_t i = 0; i < num_elements; ++i) {
+
+#ifdef SWIFT_DEBUG_CHECKS
+        /* Find the absolute minimum and maximum values */
+        const float abstemp_f = fabsf(temp_f[i]);
+        if (abstemp_f != 0.f) {
+          maximum = max(maximum, abstemp_f);
+          minimum = min(minimum, abstemp_f);
+        }
+#endif
+
+        /* Convert the float units */
+        temp_f[i] *= factor;
+      }
+
+#ifdef SWIFT_DEBUG_CHECKS
+      /* The two possible errors: larger than float or smaller
+       * than float precision. */
+      if (factor * maximum > FLT_MAX) {
+        error("Unit conversion results in numbers larger than floats");
+      } else if (factor * minimum < FLT_MIN) {
+        error("Numbers smaller than float precision");
+      }
+#endif
     }
   }
 
@@ -191,7 +225,7 @@ void readArray(hid_t grp, const struct io_props props, size_t N,
   }
 
   /* Copy temporary buffer to particle data */
-  char* temp_c = temp;
+  char* temp_c = (char*)temp;
   for (size_t i = 0; i < N; ++i)
     memcpy(props.field + i * props.partSize, &temp_c[i * copySize], copySize);
 
@@ -271,8 +305,9 @@ void prepareArray(const struct engine* e, hid_t grp, char* fileName,
   if (h_data < 0) error("Error while creating dataspace '%s'.", props.name);
 
   /* Write XMF description for this data set */
-  xmf_write_line(xmfFile, fileName, partTypeGroupName, props.name, N_total,
-                 props.dimension, props.type);
+  if (xmfFile != NULL)
+    xmf_write_line(xmfFile, fileName, partTypeGroupName, props.name, N_total,
+                   props.dimension, props.type);
 
   /* Write unit conversion factors for this data set */
   char buffer[FIELD_BUFFER_SIZE];
@@ -399,7 +434,6 @@ void writeArray(const struct engine* e, hid_t grp, char* fileName,
  * @param Ngas (output) The number of #part read from the file on that node.
  * @param Ngparts (output) The number of #gpart read from the file on that node.
  * @param Nstars (output) The number of #spart read from the file on that node.
- * @param periodic (output) 1 if the volume is periodic, 0 if not.
  * @param flag_entropy (output) 1 if the ICs contained Entropy in the
  * InternalEnergy field
  * @param with_hydro Are we reading gas particles ?
@@ -428,11 +462,11 @@ void writeArray(const struct engine* e, hid_t grp, char* fileName,
 void read_ic_serial(char* fileName, const struct unit_system* internal_units,
                     double dim[3], struct part** parts, struct gpart** gparts,
                     struct spart** sparts, size_t* Ngas, size_t* Ngparts,
-                    size_t* Nstars, int* periodic, int* flag_entropy,
-                    int with_hydro, int with_gravity, int with_stars,
-                    int cleanup_h, int cleanup_sqrt_a, double h, double a,
-                    int mpi_rank, int mpi_size, MPI_Comm comm, MPI_Info info,
-                    int n_threads, int dry_run) {
+                    size_t* Nstars, int* flag_entropy, int with_hydro,
+                    int with_gravity, int with_stars, int cleanup_h,
+                    int cleanup_sqrt_a, double h, double a, int mpi_rank,
+                    int mpi_size, MPI_Comm comm, MPI_Info info, int n_threads,
+                    int dry_run) {
 
   hid_t h_file = 0, h_grp = 0;
   /* GADGET has only cubic boxes (in cosmological mode) */
@@ -445,7 +479,8 @@ void read_ic_serial(char* fileName, const struct unit_system* internal_units,
   long long offset[swift_type_count] = {0};
   int dimension = 3; /* Assume 3D if nothing is specified */
   size_t Ndm = 0;
-  struct unit_system* ic_units = malloc(sizeof(struct unit_system));
+  struct unit_system* ic_units =
+      (struct unit_system*)malloc(sizeof(struct unit_system));
 
   /* First read some information about the content */
   if (mpi_rank == 0) {
@@ -455,17 +490,6 @@ void read_ic_serial(char* fileName, const struct unit_system* internal_units,
     h_file = H5Fopen(fileName, H5F_ACC_RDONLY, H5P_DEFAULT);
     if (h_file < 0)
       error("Error while opening file '%s' for initial read.", fileName);
-
-    /* Open header to read simulation properties */
-    /* message("Reading runtime parameters..."); */
-    h_grp = H5Gopen(h_file, "/RuntimePars", H5P_DEFAULT);
-    if (h_grp < 0) error("Error while opening runtime parameters\n");
-
-    /* Read the relevant information */
-    io_read_attribute(h_grp, "PeriodicBoundariesOn", INT, periodic);
-
-    /* Close runtime parameters */
-    H5Gclose(h_grp);
 
     /* Open header to read simulation properties */
     /* message("Reading file header..."); */
@@ -480,6 +504,23 @@ void read_ic_serial(char* fileName, const struct unit_system* internal_units,
     if (dimension != hydro_dimension)
       error("ICs dimensionality (%dD) does not match code dimensionality (%dD)",
             dimension, (int)hydro_dimension);
+
+    /* Check whether the number of files is specified (if the info exists) */
+    const hid_t hid_files = H5Aexists(h_grp, "NumFilesPerSnapshot");
+    int num_files = 1;
+    if (hid_files < 0)
+      error(
+          "Error while testing the existance of 'NumFilesPerSnapshot' "
+          "attribute");
+    if (hid_files > 0)
+      io_read_attribute(h_grp, "NumFilesPerSnapshot", INT, &num_files);
+    if (num_files != 1)
+      error(
+          "ICs are split over multiples files (%d). SWIFT cannot handle this "
+          "case. The script /tools/combine_ics.py is availalbe in the "
+          "repository "
+          "to combine files into a valid input file.",
+          num_files);
 
     /* Read the relevant information and print status */
     int flag_entropy_temp[6];
@@ -561,7 +602,6 @@ void read_ic_serial(char* fileName, const struct unit_system* internal_units,
 
   /* Now need to broadcast that information to all ranks. */
   MPI_Bcast(flag_entropy, 1, MPI_INT, 0, comm);
-  MPI_Bcast(periodic, 1, MPI_INT, 0, comm);
   MPI_Bcast(&N_total, swift_type_count, MPI_LONG_LONG_INT, 0, comm);
   MPI_Bcast(dim, 3, MPI_DOUBLE, 0, comm);
   MPI_Bcast(ic_units, sizeof(struct unit_system), MPI_BYTE, 0, comm);
@@ -575,19 +615,19 @@ void read_ic_serial(char* fileName, const struct unit_system* internal_units,
   /* Allocate memory to store SPH particles */
   if (with_hydro) {
     *Ngas = N[0];
-    if (posix_memalign((void*)parts, part_align, *Ngas * sizeof(struct part)) !=
-        0)
+    if (posix_memalign((void**)parts, part_align,
+                       *Ngas * sizeof(struct part)) != 0)
       error("Error while allocating memory for SPH particles");
     bzero(*parts, *Ngas * sizeof(struct part));
     memuse_report("parts", (*Ngas) * sizeof(struct part));
   }
 
-  /* Allocate memory to store star particles */
+  /* Allocate memory to store stars particles */
   if (with_stars) {
-    *Nstars = N[swift_type_star];
-    if (posix_memalign((void*)sparts, spart_align,
+    *Nstars = N[swift_type_stars];
+    if (posix_memalign((void**)sparts, spart_align,
                        *Nstars * sizeof(struct spart)) != 0)
-      error("Error while allocating memory for star particles");
+      error("Error while allocating memory for stars particles");
     bzero(*sparts, *Nstars * sizeof(struct spart));
     memuse_report("sparts", (*Nstars) * sizeof(struct spart));
   }
@@ -597,8 +637,8 @@ void read_ic_serial(char* fileName, const struct unit_system* internal_units,
     Ndm = N[1];
     *Ngparts = (with_hydro ? N[swift_type_gas] : 0) +
                N[swift_type_dark_matter] +
-               (with_stars ? N[swift_type_star] : 0);
-    if (posix_memalign((void*)gparts, gpart_align,
+               (with_stars ? N[swift_type_stars] : 0);
+    if (posix_memalign((void**)gparts, gpart_align,
                        *Ngparts * sizeof(struct gpart)) != 0)
       error("Error while allocating memory for gravity particles");
     bzero(*gparts, *Ngparts * sizeof(struct gpart));
@@ -659,10 +699,10 @@ void read_ic_serial(char* fileName, const struct unit_system* internal_units,
             }
             break;
 
-          case swift_type_star:
+          case swift_type_stars:
             if (with_stars) {
               Nparticles = *Nstars;
-              star_read_particles(*sparts, list, &num_fields);
+              stars_read_particles(*sparts, list, &num_fields);
             }
             break;
 
@@ -704,9 +744,9 @@ void read_ic_serial(char* fileName, const struct unit_system* internal_units,
     /* Duplicate the hydro particles into gparts */
     if (with_hydro) io_duplicate_hydro_gparts(&tp, *parts, *gparts, *Ngas, Ndm);
 
-    /* Duplicate the star particles into gparts */
+    /* Duplicate the stars particles into gparts */
     if (with_stars)
-      io_duplicate_star_gparts(&tp, *sparts, *gparts, *Nstars, Ndm + *Ngas);
+      io_duplicate_stars_gparts(&tp, *sparts, *gparts, *Nstars, Ndm + *Ngas);
 
     threadpool_clean(&tp);
   }
@@ -743,35 +783,54 @@ void write_output_serial(struct engine* e, const char* baseName,
                          int mpi_size, MPI_Comm comm, MPI_Info info) {
 
   hid_t h_file = 0, h_grp = 0;
-  const size_t Ngas = e->s->nr_parts;
-  const size_t Nstars = e->s->nr_sparts;
-  const size_t Ntot = e->s->nr_gparts;
-  int periodic = e->s->periodic;
   int numFiles = 1;
   const struct part* parts = e->s->parts;
   const struct xpart* xparts = e->s->xparts;
   const struct gpart* gparts = e->s->gparts;
-  struct gpart* dmparts = NULL;
   const struct spart* sparts = e->s->sparts;
-  const struct cooling_function_data* cooling = e->cooling_func;
   struct swift_params* params = e->parameter_file;
+  const int with_cosmology = e->policy & engine_policy_cosmology;
+  const int with_cooling = e->policy & engine_policy_cooling;
+  const int with_temperature = e->policy & engine_policy_temperature;
+#ifdef HAVE_VELOCIRAPTOR
+  const int with_stf = (e->policy & engine_policy_structure_finding) &&
+                       (e->s->gpart_group_data != NULL);
+#else
+  const int with_stf = 0;
+#endif
+
   FILE* xmfFile = 0;
 
-  /* Number of unassociated gparts */
-  const size_t Ndm = Ntot > 0 ? Ntot - (Ngas + Nstars) : 0;
+  /* Number of particles currently in the arrays */
+  const size_t Ntot = e->s->nr_gparts;
+  const size_t Ngas = e->s->nr_parts;
+  const size_t Nstars = e->s->nr_sparts;
+  // const size_t Nbaryons = Ngas + Nstars;
+  // const size_t Ndm = Ntot > 0 ? Ntot - Nbaryons : 0;
+
+  /* Number of particles that we will write */
+  const size_t Ntot_written =
+      e->s->nr_gparts - e->s->nr_inhibited_gparts - e->s->nr_extra_gparts;
+  const size_t Ngas_written =
+      e->s->nr_parts - e->s->nr_inhibited_parts - e->s->nr_extra_parts;
+  const size_t Nstars_written =
+      e->s->nr_sparts - e->s->nr_inhibited_sparts - e->s->nr_extra_sparts;
+  const size_t Nbaryons_written = Ngas_written + Nstars_written;
+  const size_t Ndm_written =
+      Ntot_written > 0 ? Ntot_written - Nbaryons_written : 0;
 
   /* File name */
   char fileName[FILENAME_BUFFER_SIZE];
-  if (e->snapshot_label_delta == 1)
-    snprintf(fileName, FILENAME_BUFFER_SIZE, "%s_%04i.hdf5", baseName,
-             e->snapshot_output_count + e->snapshot_label_first);
-  else
+  if (e->snapshot_int_time_label_on)
     snprintf(fileName, FILENAME_BUFFER_SIZE, "%s_%06i.hdf5", baseName,
-             e->snapshot_output_count * e->snapshot_label_delta +
-                 e->snapshot_label_first);
+             (int)round(e->time));
+  else
+    snprintf(fileName, FILENAME_BUFFER_SIZE, "%s_%04i.hdf5", baseName,
+             e->snapshot_output_count);
 
   /* Compute offset in the file and total number of particles */
-  size_t N[swift_type_count] = {Ngas, Ndm, 0, 0, Nstars, 0};
+  size_t N[swift_type_count] = {
+      Ngas_written, Ndm_written, 0, 0, Nstars_written, 0};
   long long N_total[swift_type_count] = {0};
   long long offset[swift_type_count] = {0};
   MPI_Exscan(&N, &offset, swift_type_count, MPI_LONG_LONG_INT, MPI_SUM, comm);
@@ -802,27 +861,24 @@ void write_output_serial(struct engine* e, const char* baseName,
     if (h_file < 0) error("Error while opening file '%s'.", fileName);
 
     /* Open header to write simulation properties */
-    /* message("Writing runtime parameters..."); */
-    h_grp = H5Gcreate(h_file, "/RuntimePars", H5P_DEFAULT, H5P_DEFAULT,
-                      H5P_DEFAULT);
-    if (h_grp < 0) error("Error while creating runtime parameters group\n");
-
-    /* Write the relevant information */
-    io_write_attribute(h_grp, "PeriodicBoundariesOn", INT, &periodic, 1);
-
-    /* Close runtime parameters */
-    H5Gclose(h_grp);
-
-    /* Open header to write simulation properties */
     /* message("Writing file header..."); */
     h_grp = H5Gcreate(h_file, "/Header", H5P_DEFAULT, H5P_DEFAULT, H5P_DEFAULT);
     if (h_grp < 0) error("Error while creating file header\n");
 
+    /* Convert basic output information to snapshot units */
+    const double factor_time =
+        units_conversion_factor(internal_units, snapshot_units, UNIT_CONV_TIME);
+    const double factor_length = units_conversion_factor(
+        internal_units, snapshot_units, UNIT_CONV_LENGTH);
+    const double dblTime = e->time * factor_time;
+    const double dim[3] = {e->s->dim[0] * factor_length,
+                           e->s->dim[1] * factor_length,
+                           e->s->dim[2] * factor_length};
+
     /* Print the relevant information and print status */
-    io_write_attribute(h_grp, "BoxSize", DOUBLE, e->s->dim, 3);
-    double dblTime = e->time;
+    io_write_attribute(h_grp, "BoxSize", DOUBLE, dim, 3);
     io_write_attribute(h_grp, "Time", DOUBLE, &dblTime, 1);
-    int dimension = (int)hydro_dimension;
+    const int dimension = (int)hydro_dimension;
     io_write_attribute(h_grp, "Dimension", INT, &dimension, 1);
     io_write_attribute(h_grp, "Redshift", DOUBLE, &e->cosmology->z, 1);
     io_write_attribute(h_grp, "Scale-factor", DOUBLE, &e->cosmology->a, 1);
@@ -875,8 +931,10 @@ void write_output_serial(struct engine* e, const char* baseName,
     h_grp = H5Gcreate(h_file, "/SubgridScheme", H5P_DEFAULT, H5P_DEFAULT,
                       H5P_DEFAULT);
     if (h_grp < 0) error("Error while creating subgrid group");
-    cooling_write_flavour(h_grp);
+    entropy_floor_write_flavour(h_grp);
+    cooling_write_flavour(h_grp, e->cooling_func);
     chemistry_write_flavour(h_grp);
+    tracers_write_flavour(h_grp);
     H5Gclose(h_grp);
 
     /* Print the gravity parameters */
@@ -885,6 +943,15 @@ void write_output_serial(struct engine* e, const char* baseName,
                         H5P_DEFAULT);
       if (h_grp < 0) error("Error while creating gravity group");
       gravity_props_print_snapshot(h_grp, e->gravity_properties);
+      H5Gclose(h_grp);
+    }
+
+    /* Print the stellar parameters */
+    if (e->policy & engine_policy_stars) {
+      h_grp = H5Gcreate(h_file, "/StarsScheme", H5P_DEFAULT, H5P_DEFAULT,
+                        H5P_DEFAULT);
+      if (h_grp < 0) error("Error while creating stars group");
+      stars_props_print_snapshot(h_grp, e->stars_properties);
       H5Gclose(h_grp);
     }
 
@@ -974,6 +1041,32 @@ void write_output_serial(struct engine* e, const char* baseName,
     H5Fclose(h_file);
   }
 
+  /* Now write the top-level cell structure */
+  hid_t h_file_cells = 0, h_grp_cells = 0;
+  if (mpi_rank == 0) {
+
+    /* Open the snapshot on rank 0 */
+    h_file_cells = H5Fopen(fileName, H5F_ACC_RDWR, H5P_DEFAULT);
+    if (h_file_cells < 0)
+      error("Error while opening file '%s' on rank %d.", fileName, mpi_rank);
+
+    /* Create the group we want in the file */
+    h_grp_cells = H5Gcreate(h_file_cells, "/Cells", H5P_DEFAULT, H5P_DEFAULT,
+                            H5P_DEFAULT);
+    if (h_grp_cells < 0) error("Error while creating cells group");
+  }
+
+  /* Write the location of the particles in the arrays */
+  io_write_cell_offsets(h_grp_cells, e->s->cdim, e->s->cells_top,
+                        e->s->nr_cells, e->s->width, mpi_rank, N_total, offset,
+                        internal_units, snapshot_units);
+
+  /* Close everything */
+  if (mpi_rank == 0) {
+    H5Gclose(h_grp_cells);
+    H5Fclose(h_file_cells);
+  }
+
   /* Now loop over ranks and write the data */
   for (int rank = 0; rank < mpi_size; ++rank) {
 
@@ -1008,36 +1101,158 @@ void write_output_serial(struct engine* e, const char* baseName,
         struct io_props list[100];
         size_t Nparticles = 0;
 
+        struct part* parts_written = NULL;
+        struct xpart* xparts_written = NULL;
+        struct gpart* gparts_written = NULL;
+        struct velociraptor_gpart_data* gpart_group_data_written = NULL;
+        struct spart* sparts_written = NULL;
+
         /* Write particle fields from the particle structure */
         switch (ptype) {
 
-          case swift_type_gas:
-            Nparticles = Ngas;
-            hydro_write_particles(parts, xparts, list, &num_fields);
-            num_fields += chemistry_write_particles(parts, list + num_fields);
-            num_fields +=
-                cooling_write_particles(xparts, list + num_fields, cooling);
-            break;
+          case swift_type_gas: {
+            if (Ngas == Ngas_written) {
 
-          case swift_type_dark_matter:
-            /* Allocate temporary array */
-            if (posix_memalign((void*)&dmparts, gpart_align,
-                               Ndm * sizeof(struct gpart)) != 0)
-              error("Error while allocating temporary memory for DM particles");
-            bzero(dmparts, Ndm * sizeof(struct gpart));
+              /* No inhibted particles: easy case */
+              Nparticles = Ngas;
+              hydro_write_particles(parts, xparts, list, &num_fields);
+              num_fields += chemistry_write_particles(parts, list + num_fields);
+              if (with_cooling || with_temperature) {
+                num_fields += cooling_write_particles(
+                    parts, xparts, list + num_fields, e->cooling_func);
+              }
+              if (with_stf) {
+                num_fields +=
+                    velociraptor_write_parts(parts, xparts, list + num_fields);
+              }
+              num_fields += tracers_write_particles(
+                  parts, xparts, list + num_fields, with_cosmology);
+              num_fields += star_formation_write_particles(parts, xparts,
+                                                           list + num_fields);
 
-            /* Collect the DM particles from gpart */
-            io_collect_dm_gparts(gparts, Ntot, dmparts, Ndm);
+            } else {
 
-            /* Write DM particles */
-            Nparticles = Ndm;
-            darkmatter_write_particles(dmparts, list, &num_fields);
-            break;
+              /* Ok, we need to fish out the particles we want */
+              Nparticles = Ngas_written;
 
-          case swift_type_star:
-            Nparticles = Nstars;
-            star_write_particles(sparts, list, &num_fields);
-            break;
+              /* Allocate temporary arrays */
+              if (posix_memalign((void**)&parts_written, part_align,
+                                 Ngas_written * sizeof(struct part)) != 0)
+                error("Error while allocating temporart memory for parts");
+              if (posix_memalign((void**)&xparts_written, xpart_align,
+                                 Ngas_written * sizeof(struct xpart)) != 0)
+                error("Error while allocating temporart memory for xparts");
+
+              /* Collect the particles we want to write */
+              io_collect_parts_to_write(parts, xparts, parts_written,
+                                        xparts_written, Ngas, Ngas_written);
+
+              /* Select the fields to write */
+              hydro_write_particles(parts_written, xparts_written, list,
+                                    &num_fields);
+              num_fields +=
+                  chemistry_write_particles(parts_written, list + num_fields);
+              if (with_cooling || with_temperature) {
+                num_fields +=
+                    cooling_write_particles(parts_written, xparts_written,
+                                            list + num_fields, e->cooling_func);
+              }
+              if (with_stf) {
+                num_fields += velociraptor_write_parts(
+                    parts_written, xparts_written, list + num_fields);
+              }
+              num_fields +=
+                  tracers_write_particles(parts_written, xparts_written,
+                                          list + num_fields, with_cosmology);
+              num_fields += star_formation_write_particles(
+                  parts_written, xparts_written, list + num_fields);
+            }
+          } break;
+
+          case swift_type_dark_matter: {
+            if (Ntot == Ndm_written) {
+
+              /* This is a DM-only run without inhibited particles */
+              Nparticles = Ntot;
+              darkmatter_write_particles(gparts, list, &num_fields);
+              if (with_stf) {
+                num_fields += velociraptor_write_gparts(e->s->gpart_group_data,
+                                                        list + num_fields);
+              }
+            } else {
+
+              /* Ok, we need to fish out the particles we want */
+              Nparticles = Ndm_written;
+
+              /* Allocate temporary array */
+              if (posix_memalign((void**)&gparts_written, gpart_align,
+                                 Ndm_written * sizeof(struct gpart)) != 0)
+                error("Error while allocating temporart memory for gparts");
+
+              if (with_stf) {
+                if (posix_memalign(
+                        (void**)&gpart_group_data_written, gpart_align,
+                        Ndm_written * sizeof(struct velociraptor_gpart_data)) !=
+                    0)
+                  error(
+                      "Error while allocating temporart memory for gparts STF "
+                      "data");
+              }
+
+              /* Collect the non-inhibited DM particles from gpart */
+              io_collect_gparts_to_write(
+                  gparts, e->s->gpart_group_data, gparts_written,
+                  gpart_group_data_written, Ntot, Ndm_written, with_stf);
+
+              /* Select the fields to write */
+              darkmatter_write_particles(gparts_written, list, &num_fields);
+              if (with_stf) {
+                num_fields += velociraptor_write_gparts(
+                    gpart_group_data_written, list + num_fields);
+              }
+            }
+          } break;
+
+          case swift_type_stars: {
+            if (Nstars == Nstars_written) {
+
+              /* No inhibted particles: easy case */
+              Nparticles = Nstars;
+              stars_write_particles(sparts, list, &num_fields);
+              num_fields +=
+                  chemistry_write_sparticles(sparts, list + num_fields);
+              num_fields += tracers_write_sparticles(sparts, list + num_fields,
+                                                     with_cosmology);
+              if (with_stf) {
+                num_fields +=
+                    velociraptor_write_sparts(sparts, list + num_fields);
+              }
+            } else {
+
+              /* Ok, we need to fish out the particles we want */
+              Nparticles = Nstars_written;
+
+              /* Allocate temporary arrays */
+              if (posix_memalign((void**)&sparts_written, spart_align,
+                                 Nstars_written * sizeof(struct spart)) != 0)
+                error("Error while allocating temporart memory for sparts");
+
+              /* Collect the particles we want to write */
+              io_collect_sparts_to_write(sparts, sparts_written, Nstars,
+                                         Nstars_written);
+
+              /* Select the fields to write */
+              stars_write_particles(sparts_written, list, &num_fields);
+              num_fields +=
+                  chemistry_write_sparticles(sparts, list + num_fields);
+              num_fields += tracers_write_sparticles(sparts, list + num_fields,
+                                                     with_cosmology);
+              if (with_stf) {
+                num_fields += velociraptor_write_sparts(sparts_written,
+                                                        list + num_fields);
+              }
+            }
+          } break;
 
           default:
             error("Particle Type %d not yet supported. Aborting", ptype);
@@ -1059,10 +1274,11 @@ void write_output_serial(struct engine* e, const char* baseName,
         }
 
         /* Free temporary array */
-        if (dmparts) {
-          free(dmparts);
-          dmparts = 0;
-        }
+        if (parts_written) free(parts_written);
+        if (xparts_written) free(xparts_written);
+        if (gparts_written) free(gparts_written);
+        if (gpart_group_data_written) free(gpart_group_data_written);
+        if (sparts_written) free(sparts_written);
 
         /* Close particle group */
         H5Gclose(h_grp);

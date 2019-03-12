@@ -590,8 +590,39 @@ both sides, such that
 
 %##############################################################################
 
-\subsection{Anarchy SPH}
-Dalla Vecchia (\textit{in prep.}), also described in section 2.2.2 of
-\cite{Schaller2015}.\\
-\label{sec:sph:anarchy}
-\tbd 
+\subsection{Variable artificial viscosity}
+
+Here we consider a modified version of the Pressure-Energy scheme described
+above but one that uses a variable artificial viscosity. The prescription used
+in this scheme was originally introduced by \citet{Morris1997} and is almost
+identical to the above equations, but tracks an individual viscosity paramaeter
+$\alpha_i$ for each particle. This viscosity is then updated each time-step to
+a more appropraite value. The hope is that the artificial viscosity will be
+high in regions that contain shocks, but as low as possible in regions where it
+is uneccesary such as shear flows. This is already accomplished somewhat with
+the inclusion of a \citet{Balsara1995} switch, but a fixed $\alpha$ still leads
+to spurious transport of angular momentum and vorticity.
+
+The equation governing the growth of the viscosity is
+\begin{align}
+  \frac{\mathrm{d} \alpha_i}
+       {\mathrm{d} t} = 
+  - (\alpha_i - \alpha_{\rm min}) \ell \frac{c_{s, i}}{h},
+  \label{eq:sph:pu:alphadt}
+\end{align}
+with $\alpha_{\rm min}=0.1$ the minimal artificial viscosity parameter, and
+$\ell=0.1$ the viscosity ``length" that governs how quickly the viscosity
+decays. This equation is solved implicitly in a similar way to
+$\mathrm{d}\mathbf{v}/ \mathrm{d}t$ and $\mathrm{d}u/\mathrm{d}t$ - i.e.
+$\alpha_{i} (t+\Delta t_i) = \alpha_{i}(t) + \dot{\alpha}_i \Delta t_i$.
+
+To ensure that the scheme is conservative, the viscosity coefficients must be
+combined in a fully conservative way; this is performed by taking the mean
+viscosity parameter of the two particles that are being interacted, such that
+\begin{align}
+  \alpha_{ij} = \frac{\alpha_i + \alpha_j}{2}.
+\end{align}
+The rest of the artificial viscosity implementation, including the
+\citet{Balsara1995} switch, is the same - just with $\alpha \rightarrow
+\alpha_{ij}$.
+

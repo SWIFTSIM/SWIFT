@@ -17,8 +17,8 @@
  * along with this program.  If not, see <http://www.gnu.org/licenses/>.
  *
  ******************************************************************************/
-#ifndef SWIFT_PRESSURE_ENERGY_HYDRO_IACT_H
-#define SWIFT_PRESSURE_ENERGY_HYDRO_IACT_H
+#ifndef SWIFT_PRESSURE_ENERGY_HYDRO_IO_H
+#define SWIFT_PRESSURE_ENERGY_HYDRO_IO_H
 /**
  * @file PressureEnergy/hydro_io.h
  * @brief P-U implementation of SPH (i/o routines)
@@ -68,16 +68,10 @@ INLINE static void hydro_read_particles(struct part* parts,
                                 UNIT_CONV_DENSITY, parts, rho);
 }
 
-INLINE static void convert_u(const struct engine* e, const struct part* p,
-                             const struct xpart* xp, float* ret) {
-
-  ret[0] = hydro_get_comoving_internal_energy(p);
-}
-
 INLINE static void convert_S(const struct engine* e, const struct part* p,
                              const struct xpart* xp, float* ret) {
 
-  ret[0] = hydro_get_comoving_entropy(p);
+  ret[0] = hydro_get_comoving_entropy(p, xp);
 }
 
 INLINE static void convert_P(const struct engine* e, const struct part* p,
@@ -136,6 +130,15 @@ INLINE static void convert_part_vel(const struct engine* e,
   ret[2] *= cosmo->a_inv;
 }
 
+INLINE static void convert_part_potential(const struct engine* e,
+                                          const struct part* p,
+                                          const struct xpart* xp, float* ret) {
+  if (p->gpart != NULL)
+    ret[0] = gravity_get_comoving_potential(p->gpart);
+  else
+    ret[0] = 0.f;
+}
+
 /**
  * @brief Specifies which particle fields to write to a dataset
  *
@@ -148,7 +151,7 @@ INLINE static void hydro_write_particles(const struct part* parts,
                                          struct io_props* list,
                                          int* num_fields) {
 
-  *num_fields = 9;
+  *num_fields = 10;
 
   /* List what we want to write */
   list[0] = io_make_output_field_convert_part("Coordinates", DOUBLE, 3,
@@ -160,9 +163,8 @@ INLINE static void hydro_write_particles(const struct part* parts,
       io_make_output_field("Masses", FLOAT, 1, UNIT_CONV_MASS, parts, mass);
   list[3] = io_make_output_field("SmoothingLength", FLOAT, 1, UNIT_CONV_LENGTH,
                                  parts, h);
-  list[4] = io_make_output_field_convert_part("InternalEnergy", FLOAT, 1,
-                                              UNIT_CONV_ENERGY_PER_UNIT_MASS,
-                                              parts, xparts, convert_u);
+  list[4] = io_make_output_field("InternalEnergy", FLOAT, 1,
+                                 UNIT_CONV_ENERGY_PER_UNIT_MASS, parts, u);
   list[5] = io_make_output_field("ParticleIDs", ULONGLONG, 1,
                                  UNIT_CONV_NO_UNITS, parts, id);
   list[6] =
@@ -172,6 +174,9 @@ INLINE static void hydro_write_particles(const struct part* parts,
   list[8] = io_make_output_field_convert_part("Entropy", FLOAT, 1,
                                               UNIT_CONV_ENTROPY_PER_UNIT_MASS,
                                               parts, xparts, convert_S);
+  list[9] = io_make_output_field_convert_part("Potential", FLOAT, 1,
+                                              UNIT_CONV_POTENTIAL, parts,
+                                              xparts, convert_part_potential);
 }
 
 /**

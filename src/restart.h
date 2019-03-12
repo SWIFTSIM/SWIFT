@@ -41,4 +41,6 @@ int restart_stop_now(const char *dir, int cleanup);
 void restart_save_previous(const char *filename);
 void restart_remove_previous(const char *filename);
 
+void restart_resubmit(const char *command);
+
 #endif /* SWIFT_RESTART_H */

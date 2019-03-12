@@ -1,0 +1,38 @@
+# Define the system of units to use internally.
+InternalUnitSystem:
+  UnitMass_in_cgs:     1.988e+33    # Grams
+  UnitLength_in_cgs:   3.086e+21 # Centimeters
+  UnitVelocity_in_cgs: 1e5       # Centimeters per second
+  UnitCurrent_in_cgs:  1         # Amperes
+  UnitTemp_in_cgs:     1         # Kelvin
+
+# Parameters governing the time integration (Set dt_min and dt_max to the same value for a fixed time-step run.)
+TimeIntegration:
+  time_begin:          0.      # The starting time of the simulation (in internal units).
+  time_end:            2.0     # The end time of the simulation (in internal units).
+  dt_min:              1e-10    # The minimal time-step size of the simulation (in internal units).
+  dt_max:              1e0    # The maximal time-step size of the simulation (in internal units).
+
+# Parameters governing the snapshots
+Snapshots:
+  basename:            output  # Common part of the name of output files
+  time_first:          0.      # Time of the first output (in internal units)
+  delta_time:          1e-3    # Time difference between consecutive outputs (in internal units)
+
+# Parameters governing the conserved quantities statistics
+Statistics:
+  delta_time:          1e0    # Time between statistics output
+
+# Parameters related to the initial conditions
+InitialConditions:
+  file_name:          circularorbitshernquist.hdf5 # The file to read
+  periodic:           0
+
+# Hernquist potential parameters
+HernquistPotential:
+  useabspos:       0        # 0 -> positions based on centre, 1 -> absolute positions 
+  position:        [0.,0.,0.]    # Location of centre of isothermal potential with respect to centre of the box (if 0) otherwise absolute (if 1) (internal units)
+  mass:            2e12     # Mass of the Hernquist potential
+  scalelength:     10.0     # Scale length of the potential
+  timestep_mult:   0.005     # Dimensionless pre-factor for the time-step condition
+  epsilon:         0.1      # Softening size (internal units)

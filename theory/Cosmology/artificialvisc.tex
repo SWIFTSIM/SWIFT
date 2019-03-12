@@ -1,0 +1,75 @@
+\subsection{Cosmological factors for properties entering the artificial viscosity}
+\label{ssec:artificialvisc}
+
+There are multiple properties that enter into the more complex artificial
+viscosity schemes, such as those by \citet{Morris1997} (henceforth M\&M) and
+\citet{Cullen2010} (henceforth C\&D).
+
+\subsubsection{M\&M basic scheme}
+\label{sssec:mandm}
+
+This relies on the velocity divergence as a shock indicator, i.e. the property
+$\nabla \cdot \mathbf{v}$. The interpretation of this is the velocity divergence of
+the fluid overall, i.e. the physical velocity divergence. Starting with
+\begin{equation}
+\mathbf{v}_p = a \dot{\mathbf{r}}' + \dot{a} \mathbf{r}', \nonumber
+\end{equation}
+with the divergence,
+\begin{equation}
+\nabla \cdot \mathbf{v}_p =
+    \nabla \cdot \left(a \dot{\mathbf{r}}'\right) +
+    \nabla \cdot \left(\dot{a} \mathbf{r}'\right). \nonumber
+\end{equation}
+The quantity on the left is the one that we want to enter the source term for the
+artificial viscosity. Transforming to the co-moving derivative on the right hand side
+to enable it to be calculated in the code,
+\begin{equation}
+\nabla \cdot \mathbf{v}_p = 
+    \nabla' \cdot \dot{\mathbf{r}}' + n_d H(a),
+\label{eqn:divvwithcomovingcoordinates}
+\end{equation}
+with $n_d$ the number of spatial dimensions, and the final transformation
+being the one to internal code velocity units,
+\begin{equation}
+\nabla \cdot \mathbf{v}_p = 
+    \frac{1}{a^2} \nabla' \cdot \mathbf{v}' + n_d H(a).
+\label{eqn:divvcodeunits}
+\end{equation}
+We note that there is no similar hubble flow term in the expression for
+$\nabla \times \mathbf{v}_p$.
+
+In some more complex schemes, such as the one presented by \cite{Cullen2010},
+the time differential of the velocity divergence is used as a way to differentiate
+the pre- and post-shock region.
+
+Building on the above, we take the time differential of both sides,
+\begin{equation}
+    \frac{{\mathrm d}}{{\mathrm d} t} \nabla \cdot \mathbf{v}_p = 
+    \frac{{\mathrm d}}{{\mathrm d} t} \left(
+    	\frac{1}{a^2} \nabla' \cdot \mathbf{v}' + n_d H(a)
+    \right).
+    \nonumber
+\end{equation}
+Collecting the factors, we see
+\begin{align}
+    \frac{{\mathrm d}}{{\mathrm d} t} \nabla \cdot \mathbf{v}_p = 
+    \frac{1}{a^2} &\left(
+    	\frac{{\mathrm d}}{{\mathrm d} t} \nabla ' \cdot \mathbf{v}' -
+    	2H(a) \nabla' \cdot \mathbf{v}'
+    \right) \\
+    + n_d &\left(
+    	\frac{\ddot{a}}{a} - \frac{\dot{a}}{a^2}
+    \right).
+    \label{eqn:divvdtcodeunits}
+\end{align}
+This looks like quite a mess, but in most cases we calculate this implicitly
+from the velocity divergence itself, and so we do not actually need to take
+into account these factors; i.e. we actually calculate
+\begin{equation}
+    \frac{\mathrm d}{{\mathrm d} t} \nabla \cdot \mathbf{v}_p = 
+    \frac{
+    	\nabla \cdot \mathbf{v}_p (t + {\mathrm d}t) - \nabla \cdot \mathbf{v}_p (t)
+    }{dt},
+	\label{eqn:divvdtcodeunitsimplicit}
+\end{equation}
+meaning that the above is taken into account self-consistently.

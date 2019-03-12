@@ -1,0 +1,21 @@
+Initital conditions for the Santa-Barbara cluster comparison project.
+These have been regenerated from the orinigal Frenk et al. 1999 paper.
+
+The cosmology is Omega_m = 1, Omega_b = 0.1, h = 0.5 and sigma_8 = 0.9.
+
+The ICs are 256^3 particles in a 64^3 Mpc^3 volume. This is about 10x
+higher resolution than in the original paper. The ICs have been
+created for Gadget and the positions and box size are hence expressed
+in h-full units (e.g. box size of 32 / h Mpc). Similarly, the peculiar
+velocitites contain an extra sqrt(a) factor. 
+
+We will use SWIFT to cancel the h- and a-factors from the ICs. Gas
+particles will be generated at startup.
+
+MD5 check-sum of the ICS: 
+ba9ab4f00a70d39fa601a4a59984b343  SantaBarbara.hdf5
+
+You can use the script run_velociraptor.sh to also run a basic 3D FoF
+with VELOCIraptor on your output data. You will need to set the
+VELOCIRAPTOR_PATH environment variable to tell us where the stf-gas
+binary lives.

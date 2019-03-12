@@ -28,3 +28,9 @@ scheme it includes a Monaghan AV scheme and a Balsara switch.
 .. code-block:: bash
    
    ./configure --with-hydro="pressure-energy"
+
+Both of the above schemes use a very simple, fixed artificial viscosity, only
+the ``SPH:viscosity_alpha`` parameter has any effect for this scheme. This will
+change the strength of the artificial viscosity throughout the simulation, and
+has a default of 0.8.
+

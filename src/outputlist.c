@@ -112,6 +112,9 @@ void output_list_read_file(struct output_list *outputlist, const char *filename,
     ind += 1;
   }
 
+  /* Cleanup */
+  free(line);
+
   if (ind != outputlist->size)
     error("Did not read the correct number of output times.");
 
@@ -232,7 +235,7 @@ void output_list_init(struct output_list **list, const struct engine *e,
   sprintf(param_name, "%s:output_list", name);
   parser_get_param_string(params, param_name, filename);
 
-  message("Reading %s output file.", name);
+  if (e->verbose) message("Reading %s output file.", name);
   output_list_read_file(*list, filename, cosmo);
 
   if ((*list)->size < 2)
@@ -266,8 +269,12 @@ void output_list_print(const struct output_list *outputlist) {
 /**
  * @brief Clean an #output_list
  */
-void output_list_clean(struct output_list *outputlist) {
-  free(outputlist->times);
+void output_list_clean(struct output_list **outputlist) {
+  if (*outputlist) {
+    free((*outputlist)->times);
+    free(*outputlist);
+    *outputlist = NULL;
+  }
 }
 
 /**
