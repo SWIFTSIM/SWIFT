@@ -141,6 +141,23 @@ void cooling_update(const struct cosmology *cosmo,
   get_redshift_index(redshift, &z_index, &dz, cooling);
   cooling->dz = dz;
 
+  static int H_reion_happened = 0;
+  /* Does this timestep straddle Hydrogen reionization? If so, we need to input extra heat */
+  if ((H_reion_happened == 0) && (redshift < cooling->H_reion_z)) {
+      
+      const float extra_heat = cooling->H_reion_heat_cgs * cooling->internal_energy_from_cgs;
+      size_t i;
+
+      /* Loop through particles and set new heat */
+      for (i=0; i < s->nr_parts; i++){
+	printf("old_u = %1.2g, \t extra_heat = %1.2g \t new_u = %1.2f \n",s->parts[i].u,extra_heat,s->parts[i].u + extra_heat);
+	hydro_reion_heating(&s->parts[i],cosmo,extra_heat);  
+	printf("New internal energy = %1.2g \n" , s->parts[i].u);
+	
+      }
+      H_reion_happened = 1;
+      exit(1);
+  }
   /* Do we already have the correct tables loaded? */
   if (cooling->z_index == z_index) return;
 
@@ -169,23 +186,6 @@ void cooling_update(const struct cosmology *cosmo,
 
   /* Store the currently loaded index */
   cooling->z_index = z_index;
-
-  /* Does this timestep straddle Hydrogen reionization? If so, we need to input extra heat */
-  if ((redshift + dz < cooling->H_reion_z) && (redshift > cooling->H_reion_z)) {
-      
-      const float extra_heat = cooling->H_reion_heat_cgs * cooling->internal_energy_from_cgs;
-      //float old_u;
-      //float new_u;
-      size_t i;
-      //struct part *p = s->parts;
-      //struct xpart *xp = s->xparts;
-      /* Loop through particles and set new heat */
-      for (i=0; i < s->nr_parts; i++){
-	//old_u = hydro_get_physical_internal_energy(p[i],xp[i],cosmo);
-	//new_u = old_u + extra_heat;
-	hydro_reion_heating(&s->parts[i],cosmo,extra_heat);  
-      }
-  }
 }
 
 /**

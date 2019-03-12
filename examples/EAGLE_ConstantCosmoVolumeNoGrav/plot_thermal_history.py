@@ -13,7 +13,7 @@ snapshot_name = sys.argv[1]
 plot_filename = sys.argv[2]
 
 params = {'axes.labelsize': 16,
-'axes.titlesize': 16,
+'axes.titlesize': 12,
 'font.size': 16,
 'legend.fontsize': 12,
 'xtick.labelsize': 16,
@@ -118,12 +118,13 @@ git_branch = code_info["Git Branch"].decode('UTF-8')
 git_revision = code_info["Git Revision"].decode('UTF-8')
 params = d.metadata.parameters
 z_r_H = float(params['EAGLECooling:H_reion_z'])
+H_heat_input = float(params['EAGLECooling:H_reion_eV_p_H'])
 z_r_He_centre = float(params['EAGLECooling:He_reion_z_centre'])
 z_r_He_sigma = float(params['EAGLECooling:He_reion_z_sigma'])
-z_r_He_heat_input = float(params['EAGLECooling:He_reion_eV_p_H'])
+He_heat_input = float(params['EAGLECooling:He_reion_eV_p_H'])
 
 version_info= git_branch +'/'+ git_revision + '\n'
-reion_info = "$z_{r,H} = %1.1f \; z_{r,He,mid} = %1.1f \; z_{r,He,\sigma} = %1.1f \; \Delta u_{He} = %1.1f \; eV/m_H$" %(z_r_H,z_r_He_centre,z_r_He_sigma,z_r_He_heat_input)
+reion_info = "$z_{r,H} = %1.1f \; \Delta u_H = %1.1f \; z_{r,He,mid} = %1.1f \; z_{r,He,\sigma} = %1.1f \; \Delta u_{He} = %1.1f \; eV/m_H$" %(z_r_H,H_heat_input,z_r_He_centre,z_r_He_sigma,He_heat_input)
 
 plot_title = version_info + reion_info
 

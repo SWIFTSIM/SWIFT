@@ -23,4 +23,4 @@ fi
 ../swift --hydro --cosmology --cooling --threads=8 eagle_cooling_box.yml 2>&1 | tee output.log
 
 # Plot the result
-python3 plot_thermal_history.py eagle_cooling_box thermal_history_default.pdf
+python3 plot_thermal_history.py eagle_cooling_box thermal_history_with_H_heating.pdf
