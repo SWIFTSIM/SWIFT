@@ -2203,8 +2203,10 @@ void engine_rebuild(struct engine *e, int repartitioned,
   }
 #endif
 
+  fof_search_tree(e->s);
+
   /* Re-build the tasks. */
-  engine_maketasks(e);
+  //engine_maketasks(e);
 
   /* Make the list of top-level cells that have tasks */
   space_list_useful_top_level_cells(e->s);
@@ -2851,20 +2853,20 @@ void engine_init_particles(struct engine *e, int flag_entropy_ICs,
   /* No time integration. We just want the density and ghosts */
   engine_skip_force_and_kick(e);
 
-  struct scheduler *sched = &e->sched;
-  struct task *tasks = sched->tasks;
+  //struct scheduler *sched = &e->sched;
+  //struct task *tasks = sched->tasks;
 
   /* Activate the send and receive tasks for the gparts. */
-  for (int i = 0; i < sched->nr_tasks; i++) {
+  //for (int i = 0; i < sched->nr_tasks; i++) {
 
-    struct task *t = &tasks[i];
+  //  struct task *t = &tasks[i];
 
-    t->skip = 1;
+  //  t->skip = 1;
 
-    if (t->type == task_type_fof_self || t->type == task_type_fof_pair) {
-      t->skip = 0;
-    }
-  }
+  //  if (t->type == task_type_fof_self || t->type == task_type_fof_pair) {
+  //    t->skip = 0;
+  //  }
+  //}
 
   /* Print the number of active tasks ? */
   if (e->verbose) engine_print_task_counts(e);
@@ -2890,7 +2892,7 @@ void engine_init_particles(struct engine *e, int flag_entropy_ICs,
 
   /* Now, launch the calculation */
   TIMER_TIC;
-  engine_launch(e);
+  //engine_launch(e);
   TIMER_TOC(timer_runners);
 
   /* Apply some conversions (e.g. internal energy -> entropy) */
@@ -2954,7 +2956,7 @@ void engine_init_particles(struct engine *e, int flag_entropy_ICs,
 
   /* Run the 0th time-step */
   TIMER_TIC2;
-  engine_launch(e);
+  //engine_launch(e);
   TIMER_TOC2(timer_runners);
 
 #ifdef SWIFT_GRAVITY_FORCE_CHECKS
@@ -3223,7 +3225,7 @@ void engine_step(struct engine *e) {
 
   /* Start all the tasks. */
   TIMER_TIC;
-  engine_launch(e);
+  //engine_launch(e);
   TIMER_TOC(timer_runners);
 
 #ifdef SWIFT_GRAVITY_FORCE_CHECKS
@@ -3361,7 +3363,7 @@ void engine_check_for_dumps(struct engine *e) {
         /* Perform a FOF search. */
         if (e->run_fof) {
 
-          fof_search_tree(e->s);
+          //fof_search_tree(e->s);
           e->run_fof = 0;
         }
 
