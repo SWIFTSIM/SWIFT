@@ -702,11 +702,11 @@ inline static void evolve_SNII(float log10_min_mass, float log10_max_mass,
         sp->chemistry_data.mass_from_SNII += sp->metals_released[i];
       }
       sp->to_distribute.mass += mass * norm_factor;
-      message(
-          "SNII mass to distribute %.5e initial mass %.5e norm mass %.5e mass "
-          "%.5e norm_factor %.5e ",
-          sp->to_distribute.mass, sp->mass_init, mass * norm_factor, mass,
-          norm_factor);
+      //message(
+      //    "SNII mass to distribute %.5e initial mass %.5e norm mass %.5e mass "
+      //    "%.5e norm_factor %.5e ",
+      //    sp->to_distribute.mass, sp->mass_init, mass * norm_factor, mass,
+      //    norm_factor);
       sp->metal_mass_released += mass * norm_factor;
       sp->chemistry_data.metal_mass_fraction_from_SNII += mass * norm_factor;
     } else {
@@ -732,6 +732,7 @@ inline static void evolve_AGB(float log10_min_mass, float log10_max_mass,
 
   /* determine which mass bins will contribute */
   determine_imf_bins(log10_min_mass, log10_max_mass, &ilow, &ihigh, stars);
+  //message("log min max mass %.5e %.5e ilow ihigh %d %d", log10_min_mass, log10_max_mass, ilow, ihigh);
 
   /* determine yield of these bins (not equally spaced bins) */
   int iz_low, iz_high, low_index_3d, high_index_3d, low_index_2d, high_index_2d;
@@ -740,19 +741,17 @@ inline static void evolve_AGB(float log10_min_mass, float log10_max_mass,
                           log10(sp->chemistry_data.metal_mass_fraction_total),
                           stars);
 
-  float min_yield = 0.f, max_yield = 0.f;
+  //float min_yield = 0.f, max_yield = 0.f;
   /* compute stellar_yield as function of mass */
   float metals[chemistry_element_count], mass;
   for (i = 0; i < chemistry_element_count; i++) {
-    // change indices for Fe because different between tables and order stored in SWIFT. obviously need a better solution...
-    if (i == chemistry_element_Fe) i = 10;
     for (imass = ilow; imass < ihigh + 1; imass++) {
       low_index_3d =
           row_major_index_3d(iz_low, i, imass, stars->AGB_n_z,
-                             stars->AGB_n_elements, n_mass_bins);
+                             chemistry_element_count, n_mass_bins);
       high_index_3d =
           row_major_index_3d(iz_high, i, imass, stars->AGB_n_z,
-                             stars->AGB_n_elements, n_mass_bins);
+                             chemistry_element_count, n_mass_bins);
       low_index_2d =
           row_major_index_2d(iz_low, imass, stars->AGB_n_z, n_mass_bins);
       high_index_2d =
@@ -766,31 +765,30 @@ inline static void evolve_AGB(float log10_min_mass, float log10_max_mass,
           dz * (stars->yield_AGB.SPH[high_index_3d] +
                 sp->chemistry_data.metal_mass_fraction[i] *
                     stars->yield_AGB.ejecta_SPH[high_index_2d]);
-      if (i == 10) {
-        message("i %d stellar_yield %.5e term1 %.5e term2 %.5e dz %.5e SPH low high %.5e %.5e indices %d %d mass_frac %.5e ejecta low high %.5e %.5e indices %d %d", i, stars->stellar_yield[imass], 
-	  (1 - dz) * (stars->yield_AGB.SPH[low_index_3d] +
-                        sp->chemistry_data.metal_mass_fraction[i] *
-                            stars->yield_AGB.ejecta_SPH[low_index_2d]),
-            dz * (stars->yield_AGB.SPH[high_index_3d] +
-                  sp->chemistry_data.metal_mass_fraction[i] *
-                      stars->yield_AGB.ejecta_SPH[high_index_2d]),
-          dz,
-	  stars->yield_AGB.SPH[low_index_3d], 
-	  stars->yield_AGB.SPH[high_index_3d], 
-	  low_index_3d, high_index_3d,
-	  sp->chemistry_data.metal_mass_fraction[i],
-	  stars->yield_AGB.ejecta_SPH[low_index_2d], 
-	  stars->yield_AGB.ejecta_SPH[high_index_2d],
-	  low_index_2d, high_index_2d);
-        if (max_yield < stars->yield_AGB.ejecta_SPH[high_index_2d]) max_yield = stars->yield_AGB.ejecta_SPH[high_index_2d];
-        if (min_yield < stars->yield_AGB.ejecta_SPH[low_index_2d]) min_yield = stars->yield_AGB.ejecta_SPH[low_index_2d];
+      if (i == chemistry_element_N) {
+	//message("%d %.5e",imass,stars->stellar_yield[imass]);
+        //message("i %d stellar_yield %.5e term1 %.5e term2 %.5e dz %.5e SPH low high %.5e %.5e indices %d %d mass_frac %.5e ejecta low high %.5e %.5e indices %d %d", i, stars->stellar_yield[imass], 
+	//  (1 - dz) * (stars->yield_AGB.SPH[low_index_3d] +
+        //                sp->chemistry_data.metal_mass_fraction[i] *
+        //                    stars->yield_AGB.ejecta_SPH[low_index_2d]),
+        //    dz * (stars->yield_AGB.SPH[high_index_3d] +
+        //          sp->chemistry_data.metal_mass_fraction[i] *
+        //              stars->yield_AGB.ejecta_SPH[high_index_2d]),
+        //  dz,
+	//  stars->yield_AGB.SPH[low_index_3d], 
+	//  stars->yield_AGB.SPH[high_index_3d], 
+	//  low_index_3d, high_index_3d,
+	//  sp->chemistry_data.metal_mass_fraction[i],
+	//  stars->yield_AGB.ejecta_SPH[low_index_2d], 
+	//  stars->yield_AGB.ejecta_SPH[high_index_2d],
+	//  low_index_2d, high_index_2d);
+        //if (max_yield < stars->yield_AGB.ejecta_SPH[high_index_2d]) max_yield = stars->yield_AGB.ejecta_SPH[high_index_2d];
+        //if (min_yield < stars->yield_AGB.ejecta_SPH[low_index_2d]) min_yield = stars->yield_AGB.ejecta_SPH[low_index_2d];
       }
     }
 
-    if (i == 10) i = chemistry_element_Fe;
     metals[i] = integrate_imf(log10_min_mass, log10_max_mass, 0.0, 2,
                               stars->stellar_yield, stars);
-    if (i == 10) message("enrichment per stellar mass %.5e min max yield %.5e %.5e", metals[i], min_yield, max_yield);
   }
 
   for (imass = ilow; imass < ihigh + 1; imass++) {
@@ -843,7 +841,7 @@ inline static void evolve_AGB(float log10_min_mass, float log10_max_mass,
   /* normalize the yields (Copied from SNII) */
   if (norm1 > 0) {
     for (i = 0; i < chemistry_element_count; i++) {
-      sp->metals_released[i] += metals[i] * sp->mass_init;
+      sp->metals_released[i] += metals[i] * norm_factor;
 
       // This increment is copied from EAGLE, however note that it is different
       // from SNII case. Investigate?
@@ -853,11 +851,11 @@ inline static void evolve_AGB(float log10_min_mass, float log10_max_mass,
     //sp->to_distribute.mass +=
     //    (mass + metals[chemistry_element_H] + metals[chemistry_element_He]) *
     //    sp->mass_init;
-    message(
-        "AGB mass to distribute %.5e initial mass %.5e norm mass %.5e mass "
-        "%.5e norm_factor %.5e ",
-        sp->to_distribute.mass, sp->mass_init, mass * norm_factor, mass,
-        norm_factor);
+    //message(
+    //    "AGB mass to distribute %.5e initial mass %.5e norm mass %.5e mass "
+    //    "%.5e norm_factor %.5e ",
+    //    sp->to_distribute.mass, sp->mass_init, mass * norm_factor, mass,
+    //    norm_factor);
     sp->metal_mass_released += mass * norm_factor;
     sp->chemistry_data.metal_mass_fraction_from_AGB += mass * norm_factor;
   } else {

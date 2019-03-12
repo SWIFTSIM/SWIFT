@@ -380,7 +380,7 @@ inline static void allocate_yield_tables(struct stars_props *restrict stars) {
     error("Failed to allocate AGB metallicity array");
   }
   if (posix_memalign((void **)&stars->yield_AGB.SPH, SWIFT_STRUCT_ALIGNMENT,
-                     stars->AGB_n_z * n_mass_bins * stars->AGB_n_elements *
+                     stars->AGB_n_z * n_mass_bins * chemistry_element_count *
                          sizeof(double)) != 0) {
     error("Failed to allocate AGB SPH array");
   }
@@ -565,18 +565,17 @@ inline static void compute_yields(struct stars_props *restrict stars) {
 
   /* Loop over elements tracked in EAGLE  */
   int element_index = 0;
-  // ALEXEI: better name for eagle_elem?
-  for (enum chemistry_element eagle_elem = chemistry_element_H;
-       eagle_elem < chemistry_element_count; eagle_elem++) {
+  for (enum chemistry_element elem = chemistry_element_H;
+       elem < chemistry_element_count; elem++) {
     /* SNIa  */
     element_index =
-        get_element_index(chemistry_get_element_name(eagle_elem),
+        get_element_index(chemistry_get_element_name(elem),
                           stars->SNIa_element_names, stars->SNIa_n_elements);
-    stars->yield_SNIa_SPH[eagle_elem] = stars->yields_SNIa[element_index];
+    stars->yield_SNIa_SPH[elem] = stars->yields_SNIa[element_index];
 
     /* SNII  */
     element_index =
-        get_element_index(chemistry_get_element_name(eagle_elem),
+        get_element_index(chemistry_get_element_name(elem),
                           stars->SNII_element_names, stars->SNII_n_elements);
     for (int i = 0; i < stars->SNII_n_z; i++) {
       for (int j = 0; j < stars->SNII_n_mass; j++) {
@@ -596,19 +595,12 @@ inline static void compute_yields(struct stars_props *restrict stars) {
                  stars->yield_SNII.mass[stars->SNII_n_mass - 1])
           result = SNII_yield[stars->SNII_n_mass - 1];
         else {
-          // Not working with gsl. Aborts inside the evaluation function
-          // supposedly because we're trying to interpolate a value out of
-          // bounds. Works if SNIIs changed to AGBs though. use own
-          // interpolation function for now.
-          // result =
-          //    gsl_spline_eval(SNII_spline_ptr, stars->yield_mass_bins[k],
-          //    accel_ptr);
           result =
               interpolate_1D(stars->yield_SNII.mass, SNII_yield,
                              stars->SNII_n_mass, stars->yield_mass_bins[k]);
         }
 
-        index = row_major_index_3d(i, eagle_elem, k, stars->SNII_n_z,
+        index = row_major_index_3d(i, elem, k, stars->SNII_n_z,
                                    chemistry_element_count, n_mass_bins);
         stars->yield_SNII.SPH[index] =
             exp(M_LN10 * stars->yield_mass_bins[k]) * result;
@@ -618,32 +610,26 @@ inline static void compute_yields(struct stars_props *restrict stars) {
     for (int i = 0; i < stars->SNII_n_z; i++) {
       for (int k = 0; k < n_mass_bins; k++) {
         index_2d = row_major_index_2d(i, k, stars->SNII_n_z, n_mass_bins);
-        index = row_major_index_3d(i, eagle_elem, k, stars->SNII_n_z,
+        index = row_major_index_3d(i, elem, k, stars->SNII_n_z,
                                    chemistry_element_count, n_mass_bins);
-        if (strcmp(chemistry_get_element_name(eagle_elem), "Hydrogen") != 0 ||
-            strcmp(chemistry_get_element_name(eagle_elem), "Helium") != 0) {
+        if (strcmp(chemistry_get_element_name(elem), "Hydrogen") != 0 ||
+            strcmp(chemistry_get_element_name(elem), "Helium") != 0) {
           stars->yield_SNII.total_metals_SPH[index_2d] +=
-              (stars->typeII_factor[eagle_elem] - 1) *
+              (stars->typeII_factor[elem] - 1) *
               stars->yield_SNII.SPH[index];
         }
 
-        stars->yield_SNII.SPH[index] *= stars->typeII_factor[eagle_elem];
+        stars->yield_SNII.SPH[index] *= stars->typeII_factor[elem];
       }
     }
 
     /* AGB  */
     element_index =
-        get_element_index(chemistry_get_element_name(eagle_elem),
+        get_element_index(chemistry_get_element_name(elem),
                           stars->AGB_element_names, stars->AGB_n_elements);
 
     if (element_index < 0) {
-      for (int i = 0; i < stars->AGB_n_z; i++) {
-        for (int j = 0; j < n_mass_bins; j++) {
-          index = row_major_index_3d(i, eagle_elem, j, stars->AGB_n_z,
-                                     chemistry_element_count, n_mass_bins);
-          stars->yield_AGB.SPH[index] = 0.0;
-        }
-      }
+      error("element not tracked for AGB");
     } else {
       for (int i = 0; i < stars->AGB_n_z; i++) {
         for (int j = 0; j < stars->AGB_n_mass; j++) {
@@ -663,22 +649,27 @@ inline static void compute_yields(struct stars_props *restrict stars) {
                    stars->yield_AGB.mass[stars->AGB_n_mass - 1])
             result = AGB_yield[stars->AGB_n_mass - 1];
           else
-            result = gsl_spline_eval(AGB_spline_ptr, stars->yield_mass_bins[j],
-                                     accel_ptr);
+            result =
+                interpolate_1D(stars->yield_AGB.mass, AGB_yield,
+                               stars->AGB_n_mass, stars->yield_mass_bins[j]);
 
-          //index = row_major_index_3d(i, eagle_elem, j, stars->AGB_n_z,
-          //                           stars->AGB_n_elements, n_mass_bins);
-          index = row_major_index_3d(i, element_index, j, stars->AGB_n_z,
-                                     stars->AGB_n_elements, n_mass_bins);
+          index = row_major_index_3d(i, elem, j, stars->AGB_n_z,
+                                     chemistry_element_count, n_mass_bins);
           stars->yield_AGB.SPH[index] =
               exp(M_LN10 * stars->yield_mass_bins[j]) * result;
-          if (element_index == 10)
-            message("j %d AGB SPH %.5e result %.5e exponential %.5e", j,
-                    stars->yield_AGB.SPH[index], result,
-                    exp(M_LN10 * stars->yield_mass_bins[j]));
         }
       }
     }
+    //if (elem == chemistry_element_N) {
+    //  for (int i = 0; i < stars->AGB_n_z; i++) {
+    //    for (int j = 0; j < n_mass_bins; j++) {
+    //      index = row_major_index_3d(i, elem, j, stars->AGB_n_z,
+    //                                 chemistry_element_count, n_mass_bins);
+    //      message("%d %d %.5e", i, j, stars->yield_AGB.SPH[index]);
+    //    }
+    //  }
+    //  error("");
+    //}
   }
   gsl_spline_free(SNII_spline_ptr);
   gsl_spline_free(AGB_spline_ptr);
