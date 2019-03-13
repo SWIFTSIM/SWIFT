@@ -151,10 +151,10 @@ void cooling_update(const struct cosmology *cosmo,
       /* Loop through particles and set new heat */
       for (i=0; i < s->nr_parts; i++){
 	if (i < 10){
-	  printf("old_u = %1.2g, \t extra_heat = %1.2g \t new_u = %1.2g \n",s->parts[i].u,extra_heat,s->parts[i].u + extra_heat);}
+	  printf("old_u = %1.2g, \t extra_heat = %1.2g \t new_u = %1.2g \n",s->parts[i].u*cosmo->a_factor_internal_energy,extra_heat,s->parts[i].u*cosmo->a_factor_internal_energy + extra_heat);}
 	hydro_reion_heating(&s->parts[i],cosmo,extra_heat);  
 	if (i < 10){
-	  printf("New internal energy = %1.2g \n" , s->parts[i].u);}
+	  printf("New internal energy = %1.2g \n" , s->parts[i].u * cosmo->a_factor_internal_energy);}
 	
       }
       H_reion_happened = 1;

@@ -43,10 +43,10 @@ data_walther = data_walther.T
 
 schaye_z_lower_error = data_schaye[0] - data_schaye[1]
 schaye_z_upper_error = data_schaye[2] - data_schaye[0]
-schaye_T_lower_error = data_schaye[3] - data_schaye[4]
-schaye_T_upper_error = data_schaye[5] - data_schaye[3]
-walther_T_lower_error = data_walther[1] - data_walther[2]
-walther_T_upper_error = data_walther[3] - data_walther[1]
+schaye_T_lower_error = np.log10(data_schaye[3]*1.0e4) - np.log10(data_schaye[4]*1.0e4)
+schaye_T_upper_error = np.log10(data_schaye[5]*1.0e4) - np.log10(data_schaye[3]*1.0e4)
+walther_T_lower_error = np.log10(data_walther[1]*1.0e4) - np.log10(data_walther[2]*1.0e4)
+walther_T_upper_error = np.log10(data_walther[3]*1.0e4) - np.log10(data_walther[1]*1.0e4)
 
 ############### Read in simulation data
 
@@ -84,10 +84,6 @@ T_std = np.array(T_std) * data.gas.temperature.units
 rho_mean = np.array(rho_mean) * data.gas.density.units
 rho_std = np.array(rho_std) * data.gas.density.units
 
-
-## Put Temperature into units of 10^4 Kelvin
-T_mean /= (1.0e4 * unyt.Kelvin)
-T_std /= (1.0e4 * unyt.Kelvin)
 
 ## Put Density into units of mean baryon density today
 
@@ -130,18 +126,18 @@ plot_title = version_info + reion_info
 
 # Make plot of temperature evolution  --------------------------------
 fig, axes = plt.subplots(2,1,sharex = True)
-axes[0].fill_between(z,T_mean - T_std,T_mean + T_std,alpha = 0.5)
-axes[0].plot(z,T_mean,label = "Simulation")
-axes[0].errorbar(data_schaye[0],data_schaye[3], xerr = [schaye_z_lower_error,schaye_z_upper_error],yerr = [schaye_T_lower_error,schaye_T_upper_error], fmt = 'ko', label = "Schaye+ 2000",zorder = 20,capsize = 4.0,capthick = 1.0,alpha = 0.9)
-axes[0].errorbar(data_walther[0],data_walther[1],yerr = [walther_T_lower_error,walther_T_upper_error], fmt = 'rd', label = "Walther+ 2019",zorder = 30,capsize = 4.0,capthick = 1.0,alpha = 0.7)
+axes[0].fill_between(z,np.log10(T_mean - T_std),np.log10(T_mean + T_std),alpha = 0.5)
+axes[0].plot(z,np.log10(T_mean),label = "Simulation")
+axes[0].errorbar(data_schaye[0],np.log10(data_schaye[3]*1.0e4), xerr = [schaye_z_lower_error,schaye_z_upper_error],yerr = [schaye_T_lower_error,schaye_T_upper_error], fmt = 'ko', label = "Schaye+ 2000",zorder = 20,capsize = 4.0,capthick = 1.0,alpha = 0.9)
+axes[0].errorbar(data_walther[0],np.log10(data_walther[1]*1.0e4),yerr = [walther_T_lower_error,walther_T_upper_error], fmt = 'rd', label = "Walther+ 2019",zorder = 30,capsize = 4.0,capthick = 1.0,alpha = 0.7)
 axes[1].fill_between(z,rho_mean - rho_std,rho_mean + rho_std,alpha = 0.5)
 axes[1].plot(z,rho_mean,label = "Simulation")
 axes[1].axhline(y = 1.0,linestyle = '--',color = 'r')
 axes[1].set_xlim(0.0,15.0)
-axes[0].set_ylim(0.0,3.0)
+axes[0].set_ylim(2.0,5.0)
 axes[1].set_ylim(0.99,1.01)
 axes[1].set_xlabel("Redshift")
-axes[0].set_ylabel(r"$T\,/\,10^4K$")
+axes[0].set_ylabel(r"$\log_{10}(T/K)$")
 axes[1].set_ylabel(r"$\delta_b$")
 axes[0].set_title(plot_title)
 axes[0].legend(loc = 0)
