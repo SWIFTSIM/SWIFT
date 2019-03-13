@@ -16,13 +16,21 @@ typedef struct _hashmap_element{
 	any_t data;
 } hashmap_element;
 
+typedef struct _hashmap_chunk {
+	union {
+		size_t in_use;
+		hashmap_chunk_t *next;
+	}
+	hashmap_element[64];
+} hashmap_chunk_t;
+
 /* A hashmap has some maximum size and current size,
  * as well as the data to hold. */
 typedef struct _hashmap_map{
 	int table_size;
 	int size;
-	char *in_use;
-	hashmap_element *data;
+	hashmap_chunk_t *chunks;     // Pointer to chunks in use, but not densely populated.
+	hashmap_chunk_t *graveyard;  // Pointer to allocated, but currently unused chunks.
 } hashmap_map;
 
 /*
@@ -32,9 +40,9 @@ map_t hashmap_new(void) {
 	hashmap_map* m = (hashmap_map*) malloc(sizeof(hashmap_map));
 	if(!m) goto err;
 
-	m->data = (hashmap_element*) calloc(INITIAL_SIZE, sizeof(hashmap_element));
-	m->in_use = (char*) calloc(INITIAL_SIZE, sizeof(char));
-	if(!m->data) goto err;
+	m->chunks = (hashmap_chunk_t *) calloc(INITIAL_SIZE / 64, sizeof(hashmap_chunk_t *));  // All are NULL to begin with.
+	if(!m->chunks) goto err;
+	m->graveyard = NULL;
 
   printf("Creating hash table of size: %ld each element is %ld bytes.\n", INITIAL_SIZE * sizeof(hashmap_element), sizeof(hashmap_element));
 
@@ -206,13 +214,18 @@ int hashmap_hash(map_t in, char* key){
 
 	/* Linear probing */
 	for(i = 0; i< MAX_CHAIN_LENGTH; i++){
-		if(m->in_use[curr] == 0)
+		if (m->chunks[curr / 64] == NULL) {
+			// Get a new chunk (allocate or get from graveyard), hook it up here, and return curr;
+		} else if (!(m->chunks[curr / 64].in_use & (1 << (curr % 64)))) {
+			// Chunk is there, but the field is empty. Cool!
 			return curr;
-
-		if(m->in_use[curr] == 1 && (strcmp(m->data[curr].key,key)==0))
+		} else if (m->chunks[curr / 64].data[curr % 64].key == key) {
+			// Chunk is there, but the field is taken, it's the same element (key).
 			return curr;
-
-		curr = (curr + 1) % m->table_size;
+		} else {
+			// Collision!
+			curr = (curr + 1) % m->table_size;	// This is a terrible strategy. Re-hashing the key is better.
+		}
 	}
 
 	return MAP_FULL;
