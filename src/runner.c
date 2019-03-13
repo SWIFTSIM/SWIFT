@@ -593,7 +593,7 @@ void runner_do_star_formation(struct runner *r, struct cell *c, int timer) {
 
   /* Anything to do here? */
   if (!cell_is_active_hydro(c, e)) {
-    star_formation_init_SFH_inactive(&c->stars.sfh); 
+    star_formation_init_SFH_inactive(&c->stars.sfh);
     return;
   }
   star_formation_init_SFH_active(&c->stars.sfh);
@@ -647,7 +647,8 @@ void runner_do_star_formation(struct runner *r, struct cell *c, int timer) {
                                      dt_star);
 
           /* Add the SFR and SFR*dt to the SFH struct of this cell */
-          star_formation_log_for_active_particles(p, xp, &c->stars.sfh, dt_star);
+          star_formation_log_for_active_particles(p, xp, &c->stars.sfh,
+                                                  dt_star);
 
           /* Are we forming a star particle from this SF rate? */
           if (star_formation_should_convert_to_star(p, xp, sf_props, e,
@@ -670,11 +671,11 @@ void runner_do_star_formation(struct runner *r, struct cell *c, int timer) {
           star_formation_update_part_not_SFR(p, xp, e, sf_props,
                                              with_cosmology);
 
-        } /* Not Star-forming? */
-      } else {  /* is active? */
+        }      /* Not Star-forming? */
+      } else { /* is active? */
         star_formation_log_for_inactive_particles(p, xp, &c->stars.sfh);
       }
-    }     /* Loop over particles */
+    } /* Loop over particles */
   }
 
   /* If we formed any stars, the star sorts are now invalid. We need to

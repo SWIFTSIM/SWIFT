@@ -48,7 +48,8 @@ INLINE static void star_formation_update_stellar_mass(
  *
  * @param sf the star_formation_history struct we want to initialize
  */
-INLINE static void star_formation_init_stellar_mass(struct star_formation_history *sf) {
+INLINE static void star_formation_init_stellar_mass(
+    struct star_formation_history *sf) {
 
   /* Initialize the stellar mass to zero*/
   sf->new_stellar_mass = 0.f;
@@ -59,7 +60,8 @@ INLINE static void star_formation_init_stellar_mass(struct star_formation_histor
  *
  * @param sf the star_formation_history struct we want to initialize
  */
-INLINE static void star_formation_init_SFH_active(struct star_formation_history *sf) {
+INLINE static void star_formation_init_SFH_active(
+    struct star_formation_history *sf) {
 
   /* Initialize the active SFR */
   sf->SFR_active = 0.f;
@@ -72,12 +74,14 @@ INLINE static void star_formation_init_SFH_active(struct star_formation_history 
 }
 
 /**
- * @brief Initialize the star formation history struct in the case the cell is inactive
+ * @brief Initialize the star formation history struct in the case the cell is
+ * inactive
  *
  * @param sf the star_formation_history struct we want to initialize
  */
-INLINE static void star_formation_init_SFH_inactive(struct star_formation_history *sf) {
-  
+INLINE static void star_formation_init_SFH_inactive(
+    struct star_formation_history *sf) {
+
   /* The active SFR becomes the inactive SFR */
   sf->SFR_inactive += sf->SFR_active;
 
@@ -127,7 +131,7 @@ INLINE static void star_formation_get_total_cell(
 
   /* Update the SFH structure */
   sf->new_stellar_mass += sfcell->new_stellar_mass;
-  
+
   sf->SFR_active += sfcell->SFR_active;
 
   sf->SFRdt_active += sfcell->SFRdt_active;
@@ -185,7 +189,7 @@ INLINE static void star_formation_init_SFH_engine(
  */
 INLINE static void star_formation_write_to_file(
     const double time, const double a, const double z,
-    struct star_formation_history sf, const char* baseName) {
+    struct star_formation_history sf, const char *baseName) {
 
   /* File name */
   static const int buffersize = 300;
@@ -198,7 +202,7 @@ INLINE static void star_formation_write_to_file(
 
   /* Calculate the total SFR */
   const float totalSFR = sf.SFR_active + sf.SFR_inactive;
-  fprintf(fp, "%16e %12.7f %12.7f %14e %14e %14e %14e\n", time, a, z, 
+  fprintf(fp, "%16e %12.7f %12.7f %14e %14e %14e %14e\n", time, a, z,
           sf.new_stellar_mass, sf.SFR_active, sf.SFRdt_active, totalSFR);
   fclose(fp);
 }
@@ -208,7 +212,7 @@ INLINE static void star_formation_write_to_file(
  *
  * @param none
  */
-INLINE static void star_formation_init_file_writer(const char* baseName) {
+INLINE static void star_formation_init_file_writer(const char *baseName) {
 
   /* File name */
   static const int buffersize = 300;
@@ -222,9 +226,9 @@ INLINE static void star_formation_init_file_writer(const char* baseName) {
   /* Write some general text to the logger file */
   fprintf(fp, "# Star Formation History Logger file\n");
   fprintf(fp, "# When applicable units are in internal units\n");
-  fprintf(
-      fp,
-      "#     Time            a            z         total M_stars  SFR (active)  SFR*dt (active)  SFR (total)\n");
+  fprintf(fp,
+          "#     Time            a            z         total M_stars  SFR "
+          "(active)  SFR*dt (active)  SFR (total)\n");
   fclose(fp);
 }
 
@@ -232,11 +236,12 @@ INLINE static void star_formation_init_file_writer(const char* baseName) {
  * @brief Add the SFR tracer to the total active SFR of this cell
  *
  * @param p the #part
- * @param xp the #xpart 
- * @param sf the SFH logger struct 
+ * @param xp the #xpart
+ * @param sf the SFH logger struct
  */
 INLINE static void star_formation_log_for_active_particles(
-    const struct part* p, const struct xpart* xp, struct star_formation_history *sf, const double dt_star){
+    const struct part *p, const struct xpart *xp,
+    struct star_formation_history *sf, const double dt_star) {
 
   /* Add the SFR to the logger file */
   sf->SFR_active += xp->sf_data.SFR;
@@ -246,41 +251,45 @@ INLINE static void star_formation_log_for_active_particles(
 }
 
 /**
- * @brief Add the SFR tracer to the total inactive SFR of this cell as long as the SFR tracer is larger than 0
+ * @brief Add the SFR tracer to the total inactive SFR of this cell as long as
+ * the SFR tracer is larger than 0
  *
  * @param p the #part
- * @param xp the #xpart 
- * @param sf the SFH logger struct 
+ * @param xp the #xpart
+ * @param sf the SFH logger struct
  */
 INLINE static void star_formation_log_for_inactive_particles(
-    const struct part* p, const struct xpart* xp, struct star_formation_history *sf){
+    const struct part *p, const struct xpart *xp,
+    struct star_formation_history *sf) {
 
   /* Add the SFR to the logger file */
-  sf->SFR_inactive += max(xp->sf_data.SFR,0.f);
+  sf->SFR_inactive += max(xp->sf_data.SFR, 0.f);
 }
 
 /**
- * @brief Initialize the inactive SFR for the cells in the rebuilt 
+ * @brief Initialize the inactive SFR for the cells in the rebuilt
  *
  * @param p the #part
- * @param xp the #xpart 
- * @param sf the SFH logger struct 
+ * @param xp the #xpart
+ * @param sf the SFH logger struct
  */
-INLINE static void star_formation_SFR_rebuilt(const struct part* p, const struct xpart* xp, struct star_formation_history *sf){
+INLINE static void star_formation_SFR_rebuilt(
+    const struct part *p, const struct xpart *xp,
+    struct star_formation_history *sf) {
 
   /* Add to SFR to the sf struct (check if not tracing the last time) */
-  sf->SFR_inactive += max(xp->sf_data.SFR,0.f);
+  sf->SFR_inactive += max(xp->sf_data.SFR, 0.f);
 }
-
 
 /**
  * @brief do the recurse after the rebuilt to update the inactive SFR
  *
  * @param p the #part
- * @param xp the #xpart 
- * @param sf the SFH logger struct 
+ * @param xp the #xpart
+ * @param sf the SFH logger struct
  */
-INLINE static void star_formation_recurse_SFR_rebuilt(struct cell *c, const struct cell *cp){
+INLINE static void star_formation_recurse_SFR_rebuilt(struct cell *c,
+                                                      const struct cell *cp) {
   struct star_formation_history *sf = &c->stars.sfh;
 
   /* Increase inactive SFR by recursion */
