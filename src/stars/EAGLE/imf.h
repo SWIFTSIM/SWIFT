@@ -90,11 +90,13 @@ inline static float integrate_imf(
           star_properties->imf_mass_bin[index] *
           star_properties->imf_mass_bin[index]; /* integrate by mass */
   else if (mode == 2)
-    for (index = ilow; index < ihigh + 1; index++)
+    for (index = ilow; index < ihigh + 1; index++){
       integrand[index] =
           stellar_yields[index] * star_properties->imf_by_number[index] *
           star_properties
               ->imf_mass_bin[index]; /* integrate number * yield weighted */
+      //message("index %d low high %d %d integrand %.5e yield %.5e imf_num %.5e mass_bin %.5e", index, ilow, ihigh, integrand[index], stellar_yields[index], star_properties->imf_by_number[index], star_properties->imf_mass_bin[index]);
+    }
   else if (mode == 3)
     for (index = ilow; index < ihigh + 1; index++) {
       u = m2 / star_properties->imf_mass_bin[index];

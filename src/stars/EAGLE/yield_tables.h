@@ -421,7 +421,7 @@ inline static void allocate_yield_tables(struct stars_props *restrict stars) {
     error("Failed to allocate SNII metallicity array");
   }
   if (posix_memalign((void **)&stars->yield_SNII.SPH, SWIFT_STRUCT_ALIGNMENT,
-                     stars->SNII_n_z * n_mass_bins * stars->SNII_n_elements *
+                     stars->SNII_n_z * n_mass_bins * chemistry_element_count *
                          sizeof(double)) != 0) {
     error("Failed to allocate SNII SPH array");
   }
@@ -622,6 +622,15 @@ inline static void compute_yields(struct stars_props *restrict stars) {
         stars->yield_SNII.SPH[index] *= stars->typeII_factor[elem];
       }
     }
+    //if (elem == chemistry_element_Mg) {
+    //  for (int i = 0; i < stars->SNII_n_z; i++) {
+    //    for (int k = 0; k < n_mass_bins; k++) {
+    //      index = row_major_index_3d(i, elem, k, stars->SNII_n_z,
+    //                                 chemistry_element_count, n_mass_bins);
+    //      message("%d %d %.5e", i, k, stars->yield_SNII.SPH[index]);
+    //    }
+    //  }
+    //}
 
     /* AGB  */
     element_index =
@@ -734,6 +743,12 @@ inline static void compute_ejecta(struct stars_props *restrict stars) {
           exp(M_LN10 * stars->yield_mass_bins[k]) * result;
     }
   }
+  //for (int i = 0; i < stars->SNII_n_z; i++) {
+  //  for (int k = 0; k < n_mass_bins; k++) {
+  //    index = row_major_index_2d(i, k, stars->SNII_n_z, n_mass_bins);
+  //    message("%d %d %.5e", i, k, stars->yield_SNII.total_metals_SPH[index]);
+  //  }
+  //}
 
   gsl_spline_free(SNII_spline_ptr);
 
