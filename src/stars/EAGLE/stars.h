@@ -565,16 +565,14 @@ inline static void evolve_SNIa(float log10_min_mass, float log10_max_mass,
   sp->chemistry_data.metal_mass_fraction_from_SNIa += sp->to_distribute.num_SNIa * stars->const_solar_mass *
     stars->yield_SNIa_total_metals_SPH;
 
-  // For diagnostics according to Richard
-  //  sp->chemistry_data.mass_from_SNIa += num_of_SNIa_per_msun *
-  //  stars->yield_SNIa_total_metals_SPH;
+  sp->metal_mass_released += sp->to_distribute.num_SNIa * stars->const_solar_mass *
+    stars->yield_SNIa_total_metals_SPH;
+  
+  sp->chemistry_data.mass_from_SNIa += sp->to_distribute.num_SNIa * stars->const_solar_mass *
+    stars->yield_SNIa_total_metals_SPH;
 
-  //  sp->metal_mass_released += num_of_SNIa_per_msun *
-  //  stars->yield_SNIa_total_metals_SPH;
-
-  //  // Make sure chemistry_element_Fe corresponds to the iron_index used in
-  //  EAGLE!!! sp->chemistry_data.iron_mass_fraction_from_SNIa +=
-  //  num_of_SNIa_per_msun * stars->yield_SNIa_SPH[chemistry_element_Fe];
+  sp->chemistry_data.iron_mass_fraction_from_SNIa += sp->to_distribute.num_SNIa * stars->const_solar_mass *
+    stars->yield_SNIa_SPH[chemistry_element_Fe];
 
 }
 
@@ -849,10 +847,12 @@ inline static void compute_stellar_evolution(
   if (log10_min_dying_mass_msun == log10_max_dying_mass_msun) return;
 
   /* Evolve SNIa, SNII, AGB */
-  evolve_SNIa(log10_min_dying_mass_msun,log10_max_dying_mass_msun,star_properties,sp,us,star_age_Gyr,dt_Gyr);
-  //evolve_SNII(log10_min_dying_mass_msun,log10_max_dying_mass_msun,star_properties,sp);
-  //evolve_AGB(log10_min_dying_mass_msun, log10_max_dying_mass_msun,
-  //           star_properties, sp);
+  evolve_SNIa(log10_min_dying_mass_msun,log10_max_dying_mass_msun,
+              star_properties,sp,us,star_age_Gyr,dt_Gyr);
+  evolve_SNII(log10_min_dying_mass_msun,log10_max_dying_mass_msun,
+              star_properties,sp);
+  evolve_AGB(log10_min_dying_mass_msun, log10_max_dying_mass_msun,
+             star_properties, sp);
 
   sp->to_distribute.chemistry_data.metal_mass_fraction_total =
       1.f - sp->to_distribute.chemistry_data.metal_mass_fraction[0] -
