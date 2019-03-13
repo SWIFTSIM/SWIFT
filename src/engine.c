@@ -2394,9 +2394,6 @@ void engine_collect_end_of_step_recurse(struct cell *c,
       /* Add the star formation history in this cell to sfh_updated */
       star_formation_get_total_cell(cp, &sfh_updated);
 
-      /* Clear the star formation in this cell for next time, currently empty function */
-      //star_formation_clear_total_cell(cp);
-
       /* Collected, so clear for next time. */
       cp->hydro.updated = 0;
       cp->grav.updated = 0;
@@ -2496,9 +2493,6 @@ void engine_collect_end_of_step_mapper(void *map_data, int num_elements,
       c->hydro.updated = 0;
       c->grav.updated = 0;
       c->stars.updated = 0;
-
-      /* Clear the star formation history in the cell, currently empty function */
-      //star_formation_clear_total_cell(c);
     }
   }
 

@@ -47,9 +47,7 @@ INLINE static void star_formation_update_SFH(
  *
  * @param sf the star_formation_history struct we want to initialize
  */
-INLINE static void star_formation_init_SFH(struct star_formation_history *sf) {
-  //message("values currently stored: new_stellar_mass=%e, SFR_active=%e, SFR_inactive=%e"
-  //" SFRdt_active=%e",sf->new_stellar_mass,sf->SFR_active,sf->SFR_inactive,sf->SFRdt_active);
+INLINE static void star_formation_init_stellar_mass(struct star_formation_history *sf) {
   /* Initialize the stellar mass to zero*/
   sf->new_stellar_mass = 0.f;
 }
