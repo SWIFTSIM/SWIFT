@@ -150,13 +150,15 @@ void cooling_update(const struct cosmology *cosmo,
 
       /* Loop through particles and set new heat */
       for (i=0; i < s->nr_parts; i++){
-	printf("old_u = %1.2g, \t extra_heat = %1.2g \t new_u = %1.2f \n",s->parts[i].u,extra_heat,s->parts[i].u + extra_heat);
+	if (i < 10){
+	  printf("old_u = %1.2g, \t extra_heat = %1.2g \t new_u = %1.2g \n",s->parts[i].u,extra_heat,s->parts[i].u + extra_heat);}
 	hydro_reion_heating(&s->parts[i],cosmo,extra_heat);  
-	printf("New internal energy = %1.2g \n" , s->parts[i].u);
+	if (i < 10){
+	  printf("New internal energy = %1.2g \n" , s->parts[i].u);}
 	
       }
       H_reion_happened = 1;
-      exit(1);
+      //exit(1);
   }
   /* Do we already have the correct tables loaded? */
   if (cooling->z_index == z_index) return;
