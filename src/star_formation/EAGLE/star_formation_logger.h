@@ -256,7 +256,7 @@ INLINE static void star_formation_log_for_inactive_particles(
     const struct part* p, const struct xpart* xp, struct star_formation_history *sf){
 
   /* Add the SFR to the logger file */
-  sf->SFR_inactive += max(xp->sf_data.SFR,0);
+  sf->SFR_inactive += max(xp->sf_data.SFR,0.f);
 }
 
 /**
