@@ -95,7 +95,6 @@ inline static float integrate_imf(
           stellar_yields[index] * star_properties->imf_by_number[index] *
           star_properties
               ->imf_mass_bin[index]; /* integrate number * yield weighted */
-      //message("index %d low high %d %d integrand %.5e yield %.5e imf_num %.5e mass_bin %.5e", index, ilow, ihigh, integrand[index], stellar_yields[index], star_properties->imf_by_number[index], star_properties->imf_mass_bin[index]);
     }
   else if (mode == 3)
     for (index = ilow; index < ihigh + 1; index++) {
@@ -182,7 +181,6 @@ inline static void init_imf(struct stars_props *restrict star_properties) {
       log_solar_mass = log_imf_min_solar_mass + i * dlm;
       solar_mass = exp(M_LN10 * log_solar_mass);
 
-      // can these pows be replaced with some trick?
       star_properties->IMF_Exponent = 2.35;
       star_properties->imf_by_number[i] =
           pow(solar_mass, -star_properties->IMF_Exponent);
@@ -197,7 +195,6 @@ inline static void init_imf(struct stars_props *restrict star_properties) {
       log_solar_mass = log_imf_min_solar_mass + i * dlm;
       solar_mass = exp(M_LN10 * log_solar_mass);
 
-      // can these pows be replaced with some trick?
       if (solar_mass > 1.0)
         star_properties->imf_by_number[i] = 0.237912 * pow(solar_mass, -2.3);
       else

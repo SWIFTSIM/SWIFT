@@ -124,9 +124,6 @@ INLINE static void stars_props_init(struct stars_props *sp,
   sp->max_smoothing_iterations = parser_get_opt_param_int(
       params, "Stars:max_ghost_iterations", p->max_smoothing_iterations);
 
-  /* Initialize with solar abundance */
-  // sp->chemistry_data.smoothed_metal_mass_fraction_total =
-
   /* Time integration properties */
   const float max_volume_change =
       parser_get_opt_param_float(params, "Stars:max_volume_change", -1);
@@ -173,8 +170,8 @@ INLINE static void stars_props_init(struct stars_props *sp,
       (p->mu_ionised * (hydro_gamma_minus_one)*phys_const->const_proton_mass);
 
   /* Calculate number of type II SN per solar mass */
-  sp->log10_SNII_min_mass_msun = 0.77815125f;  // log10(6).
-  sp->log10_SNII_max_mass_msun = 2.f;          // log10(100).
+  sp->log10_SNII_min_mass_msun = 0.77815125f;  // log10(6) Copied from EAGLE.
+  sp->log10_SNII_max_mass_msun = 2.f;          // log10(100) Copied from EAGLE.
 
   /* Copy over solar mass */
   sp->const_solar_mass = phys_const->const_solar_mass;

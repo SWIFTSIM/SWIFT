@@ -104,11 +104,6 @@ inline static void read_yield_tables(struct stars_props *restrict stars) {
   status = H5Tclose(datatype);
   if (status < 0) error("error closing datatype");
 
-  // What is this for? Copied from EAGLE
-  // for (i = 0; i < stars->SNIa_n_elements; i++) {
-  //  stars->SNIa_element_names[i] = mystrdup(stars->SNIa_element_names[i]);
-  //}
-
   dataset = H5Dopen(file_id, "Yield", H5P_DEFAULT);
   status = H5Dread(dataset, H5T_NATIVE_DOUBLE, H5S_ALL, H5S_ALL, H5P_DEFAULT,
                    stars->yields_SNIa);
@@ -144,10 +139,6 @@ inline static void read_yield_tables(struct stars_props *restrict stars) {
   if (status < 0) error("error closing dataset");
   status = H5Tclose(datatype);
   if (status < 0) error("error closing datatype");
-
-  // What is this for (again)? copied from EAGLE
-  // for (i = 0; i < stars->SNII_n_elements; i++)
-  //  yieldsSNII.ElementName[i] = mystrdup(yieldsSNII.ElementName[i]);
 
   dataset = H5Dopen(file_id, "Masses", H5P_DEFAULT);
   status = H5Dread(dataset, H5T_NATIVE_DOUBLE, H5S_ALL, H5S_ALL, H5P_DEFAULT,
@@ -239,10 +230,6 @@ inline static void read_yield_tables(struct stars_props *restrict stars) {
   if (status < 0) error("error closing dataset");
   status = H5Tclose(datatype);
   if (status < 0) error("error closing datatype");
-
-  // What is this for (again)? copied from EAGLE
-  // for (i = 0; i < stars->AGB_n_elements; i++)
-  //  yieldsAGB.ElementName[i] = mystrdup(yieldsAGB.ElementName[i]);
 
   dataset = H5Dopen(file_id, "Masses", H5P_DEFAULT);
   status = H5Dread(dataset, H5T_NATIVE_DOUBLE, H5S_ALL, H5S_ALL, H5P_DEFAULT,
@@ -345,9 +332,6 @@ inline static void read_yield_tables(struct stars_props *restrict stars) {
 
   for (i = 0; i < stars->lifetimes.n_z; i++) {
     for (j = 0; j < stars->lifetimes.n_mass; j++) {
-      // index =
-      // row_major_index_2d(i,j,stars->lifetimes.n_z,stars->lifetimes.n_mass);
-      // stars->lifetimes.dyingtime[index] = log10(temptime[i][j]);
       stars->lifetimes.dyingtime[i][j] = log10(temptime[i][j]);
     }
   }
@@ -622,15 +606,6 @@ inline static void compute_yields(struct stars_props *restrict stars) {
         stars->yield_SNII.SPH[index] *= stars->typeII_factor[elem];
       }
     }
-    //if (elem == chemistry_element_Mg) {
-    //  for (int i = 0; i < stars->SNII_n_z; i++) {
-    //    for (int k = 0; k < n_mass_bins; k++) {
-    //      index = row_major_index_3d(i, elem, k, stars->SNII_n_z,
-    //                                 chemistry_element_count, n_mass_bins);
-    //      message("%d %d %.5e", i, k, stars->yield_SNII.SPH[index]);
-    //    }
-    //  }
-    //}
 
     /* AGB  */
     element_index =
@@ -743,12 +718,6 @@ inline static void compute_ejecta(struct stars_props *restrict stars) {
           exp(M_LN10 * stars->yield_mass_bins[k]) * result;
     }
   }
-  //for (int i = 0; i < stars->SNII_n_z; i++) {
-  //  for (int k = 0; k < n_mass_bins; k++) {
-  //    index = row_major_index_2d(i, k, stars->SNII_n_z, n_mass_bins);
-  //    message("%d %d %.5e", i, k, stars->yield_SNII.total_metals_SPH[index]);
-  //  }
-  //}
 
   gsl_spline_free(SNII_spline_ptr);
 

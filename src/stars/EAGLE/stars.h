@@ -632,21 +632,12 @@ inline static void evolve_SNII(float log10_min_mass, float log10_max_mass,
           dz * (stars->yield_SNII.SPH[high_index_3d] +
                 sp->chemistry_data.metal_mass_fraction[i] *
                     stars->yield_SNII.ejecta_SPH[high_index_2d]);
-      if (i == chemistry_element_H) message("iz low high %d %d imass %d dz %.5e stellar_yield %.5e SNII SPH low high %.5e %.5e mass frac %.5e ejecta_SPH low high %.5e %.5e", iz_low, iz_high, imass, dz, stars->stellar_yield[imass], stars->yield_SNII.SPH[low_index_3d], stars->yield_SNII.SPH[high_index_3d], sp->chemistry_data.metal_mass_fraction[i], stars->yield_SNII.ejecta_SPH[low_index_2d], stars->yield_SNII.ejecta_SPH[high_index_2d]);
     }
 
-    //if (i == chemistry_element_N) message("Nitrogen!");
     metals[i] = integrate_imf(log10_min_mass, log10_max_mass, 0.0, 2,
                               stars->stellar_yield, stars);
-    //message("%d %.5e %.5e %.5e", i, log10_min_mass, log10_max_mass, metals[i]);
   }
 
-  //for (int j = 0; j < stars->SNII_n_z; j++) {
-  //  for (int k = 0; k < n_mass_bins; k++) {
-  //    int index = row_major_index_2d(j,k,stars->SNII_n_z, n_mass_bins);
-  //    message("%d %d %.5e", j, k, stars->yield_SNII.total_metals_SPH[index]);
-  //  }
-  //}
   for (imass = ilow; imass < ihigh + 1; imass++) {
     low_index_2d =
         row_major_index_2d(iz_low, imass, stars->SNII_n_z, n_mass_bins);
@@ -659,7 +650,6 @@ inline static void evolve_SNII(float log10_min_mass, float log10_max_mass,
         dz * (stars->yield_SNII.total_metals_SPH[high_index_2d] +
               sp->chemistry_data.metal_mass_fraction_total *
                   stars->yield_SNII.ejecta_SPH[high_index_2d]);
-    //message("iz low high %d %d imass %d dz %.5e yield %.5e SNII total metals SPH low high %.5e %.5e ejecta SPH low high %.5e %.5e", iz_low, iz_high, imass, dz, stars->stellar_yield[imass], stars->yield_SNII.total_metals_SPH[low_index_2d], stars->yield_SNII.total_metals_SPH[high_index_2d], stars->yield_SNII.ejecta_SPH[low_index_2d], stars->yield_SNII.ejecta_SPH[high_index_2d]);
   }
 
   mass = integrate_imf(log10_min_mass, log10_max_mass, 0.0, 2,
@@ -703,12 +693,6 @@ inline static void evolve_SNII(float log10_min_mass, float log10_max_mass,
         sp->chemistry_data.mass_from_SNII += metals[i] * norm_factor;
       }
       sp->to_distribute.mass += sp->chemistry_data.mass_from_SNII;
-      //sp->to_distribute.mass += mass * norm_factor;
-      //message(
-      //    "SNII mass to distribute %.5e initial mass %.5e norm mass %.5e mass "
-      //    "%.5e norm_factor %.5e ",
-      //    sp->to_distribute.mass, sp->mass_init, mass * norm_factor, mass,
-      //    norm_factor);
       sp->metal_mass_released += mass * norm_factor;
       sp->chemistry_data.metal_mass_fraction_from_SNII += mass * norm_factor;
     } else {
@@ -734,7 +718,6 @@ inline static void evolve_AGB(float log10_min_mass, float log10_max_mass,
 
   /* determine which mass bins will contribute */
   determine_imf_bins(log10_min_mass, log10_max_mass, &ilow, &ihigh, stars);
-  //message("log min max mass %.5e %.5e ilow ihigh %d %d", log10_min_mass, log10_max_mass, ilow, ihigh);
 
   /* determine yield of these bins (not equally spaced bins) */
   int iz_low, iz_high, low_index_3d, high_index_3d, low_index_2d, high_index_2d;
