@@ -307,10 +307,6 @@ struct stars_props {
   /* Location of yield tables */
   char yield_table_path[50];
 
-  /* Array for storing stellar yields for computation in IMF (clarify name,
-   * comment) */
-  float *stellar_yield;
-
   /* number of type II supernovae per solar mass */
   float num_SNII_per_msun;
 

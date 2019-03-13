@@ -164,10 +164,6 @@ inline static void init_imf(struct stars_props *restrict star_properties) {
                      SWIFT_STRUCT_ALIGNMENT,
                      N_imf_mass_bins * sizeof(float)) != 0)
     error("Failed to allocate IMF bins table");
-  if (posix_memalign((void **)&star_properties->stellar_yield,
-                     SWIFT_STRUCT_ALIGNMENT,
-                     N_imf_mass_bins * sizeof(float)) != 0)
-    error("Failed to allocate IMF bins table");
 
   float dummy_stellar_fields;
 
