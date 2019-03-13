@@ -2394,7 +2394,7 @@ void engine_collect_end_of_step_recurse(struct cell *c,
       /* Add the star formation history in this cell to sfh_updated */
       star_formation_get_total_cell(cp, &sfh_updated);
 
-      /* Clear the star formation in this cell for next time */
+      /* Clear the star formation in this cell for next time, currently empty function */
       star_formation_clear_total_cell(cp);
 
       /* Collected, so clear for next time. */
@@ -2455,7 +2455,7 @@ void engine_collect_end_of_step_mapper(void *map_data, int num_elements,
   /* Local Star formation history properties */
   struct star_formation_history sfh_updated;
 
-  /* Initialize the star formation structs */
+  /* Initialize the star formation structs for this engine to zero */
   star_formation_init_SFH_engine(&sfh_updated);
 
   for (int ind = 0; ind < num_elements; ind++) {
@@ -2497,7 +2497,7 @@ void engine_collect_end_of_step_mapper(void *map_data, int num_elements,
       c->grav.updated = 0;
       c->stars.updated = 0;
 
-      /* Clear the star formation history in the cell */
+      /* Clear the star formation history in the cell, currently empty function */
       star_formation_clear_total_cell(c);
     }
   }
@@ -2513,7 +2513,7 @@ void engine_collect_end_of_step_mapper(void *map_data, int num_elements,
     data->g_inhibited += g_inhibited;
     data->s_inhibited += s_inhibited;
 
-    /* Add the SFH information to the global data */
+    /* Add the SFH information from this engine to the global data */
     star_formation_add_progeny_SFH(sfh_top, &sfh_updated);
 
     if (ti_hydro_end_min > e->ti_current)
@@ -2565,6 +2565,7 @@ void engine_collect_end_of_step(struct engine *e, int apply) {
   data.ti_gravity_end_min = max_nr_timesteps, data.ti_gravity_end_max = 0,
   data.ti_gravity_beg_max = 0;
   data.e = e;
+  /* Initialize the total SFH of the simulation to zero */
   star_formation_init_SFH_engine(&data.sfh);
 
   /* Collect information from the local top-level cells */

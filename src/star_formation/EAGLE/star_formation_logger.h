@@ -48,6 +48,8 @@ INLINE static void star_formation_update_SFH(
  * @param sf the star_formation_history struct we want to initialize
  */
 INLINE static void star_formation_init_SFH(struct star_formation_history *sf) {
+  message("values currently stored: new_stellar_mass=%e, SFR_active=%e, SFR_inactive=%e"
+  " SFRdt_active=%e",sf->new_stellar_mass,sf->SFR_active,sf->SFR_inactive,sf->SFRdt_active);
   /* Initialize the stellar mass to zero*/
   sf->new_stellar_mass = 0.f;
 }
@@ -75,8 +77,10 @@ INLINE static void star_formation_init_SFH_active(struct star_formation_history 
  */
 INLINE static void star_formation_init_SFH_inactive(struct star_formation_history *sf) {
   
+  //message("SFR active = %e",sf->SFR_active);
   /* The active SFR becomes the inactive SFR */
   sf->SFR_inactive += sf->SFR_active;
+  //message("SFR inactive = %e, SFR active = %e",sf->SFR_inactive, sf->SFR_active);
 
   /* Initialize the active SFR */
   sf->SFR_active = 0.f;
@@ -137,12 +141,12 @@ INLINE static void star_formation_get_total_cell(
  */
 INLINE static void star_formation_clear_total_cell(struct cell *c) {
   /* Get the star formation history from the cell */
-  struct star_formation_history *sfcell = &c->stars.sfh;
-  sfcell->new_stellar_mass = 0.f;
+  //struct star_formation_history *sfcell = &c->stars.sfh;
+  //sfcell->new_stellar_mass = 0.f;
 
   //sfcell->SFR_active = 0.f;
 
-  sfcell->SFRdt_active = 0.f;
+  //sfcell->SFRdt_active = 0.f;
 
   //sfcell->SFR_inactive = 0.f;
 }
