@@ -48,8 +48,8 @@ INLINE static void star_formation_update_SFH(
  * @param sf the star_formation_history struct we want to initialize
  */
 INLINE static void star_formation_init_SFH(struct star_formation_history *sf) {
-  message("values currently stored: new_stellar_mass=%e, SFR_active=%e, SFR_inactive=%e"
-  " SFRdt_active=%e",sf->new_stellar_mass,sf->SFR_active,sf->SFR_inactive,sf->SFRdt_active);
+  //message("values currently stored: new_stellar_mass=%e, SFR_active=%e, SFR_inactive=%e"
+  //" SFRdt_active=%e",sf->new_stellar_mass,sf->SFR_active,sf->SFR_inactive,sf->SFRdt_active);
   /* Initialize the stellar mass to zero*/
   sf->new_stellar_mass = 0.f;
 }
@@ -256,6 +256,18 @@ INLINE static void star_formation_log_for_inactive_particles(
 
   /* Add the SFR to the logger file */
   sf->SFR_inactive += xp->sf_data.SFR;
+}
+
+INLINE static void star_formation_SFR_rebuilt(const struct part* p, const struct xpart* xp, struct star_formation_history *sf){
+  /* Add to SFR to the sf struct */
+  sf->SFR_inactive += xp->sf_data.SFR;
+}
+
+INLINE static void star_formation_recurse_SFR_rebuilt(struct cell *c, const struct cell *cp){
+  struct star_formation_history *sf = &c->stars.sfh;
+  const struct star_formation_history *sfp = &cp->stars.sfh;
+  sf->SFR_inactive += sfp->SFR_inactive;
+
 }
 
 #endif /* SWIFT_SCHAYE_STARFORMATION_LOGGER_H */

@@ -57,6 +57,7 @@
 #include "restart.h"
 #include "sort_part.h"
 #include "star_formation.h"
+#include "star_formation_logger.h"
 #include "stars.h"
 #include "threadpool.h"
 #include "tools.h"
@@ -2776,6 +2777,7 @@ void space_split_recursive(struct space *s, struct cell *c,
         ti_stars_end_min = min(ti_stars_end_min, cp->stars.ti_end_min);
         ti_stars_end_max = min(ti_stars_end_max, cp->stars.ti_end_max);
         ti_stars_beg_max = min(ti_stars_beg_max, cp->stars.ti_beg_max);
+        star_formation_recurse_SFR_rebuilt(c,cp);
 
         /* Increase the depth */
         if (cp->maxdepth > maxdepth) maxdepth = cp->maxdepth;
@@ -2915,6 +2917,8 @@ void space_split_recursive(struct space *s, struct cell *c,
       hydro_time_bin_min = min(hydro_time_bin_min, parts[k].time_bin);
       hydro_time_bin_max = max(hydro_time_bin_max, parts[k].time_bin);
       h_max = max(h_max, parts[k].h);
+      /* Collect SFR from the particles after rebuilt */
+      star_formation_SFR_rebuilt(&parts[k], &xparts[k], &c->stars.sfh);
     }
 
     /* xparts: Reset x_diff */
