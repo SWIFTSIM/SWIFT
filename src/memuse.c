@@ -78,7 +78,7 @@ static size_t log_size = 0;
 static size_t log_count = 0;
 static size_t log_done = 0;
 
-#define MEMUSE_INITLOG 10000
+#define MEMUSE_INITLOG 1000000
 static void log_reallocate(size_t ind) {
 
   if (ind == 0) {
@@ -92,7 +92,6 @@ static void log_reallocate(size_t ind) {
     log_size = MEMUSE_INITLOG;
 
   } else {
-    message("reallocated");
     struct memuse_log_entry *new_log;
     if ((new_log = (struct memuse_log_entry *)
          malloc(sizeof(struct memuse_log_entry) * log_size * 2)) == NULL)
