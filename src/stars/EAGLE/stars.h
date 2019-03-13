@@ -558,16 +558,15 @@ inline static void evolve_SNIa(float log10_min_mass, float log10_max_mass,
         stars->const_solar_mass / sp->to_distribute.mass;
   }
 
-  // For diagnostics according to Richard
-  // if (stars->SNIa_mass_transfer == 1) {
-  //  for (i = 0; i < chemistry_element_count; i++) {
-  //    sp->metals_released[i] += num_of_SNIa_per_msun *
-  //    stars->yield_SNIa_SPH[i];
-  //  }
+  for (int i = 0; i < chemistry_element_count; i++) {
+    sp->metals_released[i] += sp->to_distribute.num_SNIa * stars->const_solar_mass *
+      stars->yield_SNIa_SPH[i];
+  }
+  sp->chemistry_data.metal_mass_fraction_from_SNIa += sp->to_distribute.num_SNIa * stars->const_solar_mass *
+    stars->yield_SNIa_total_metals_SPH;
 
+  // For diagnostics according to Richard
   //  sp->chemistry_data.mass_from_SNIa += num_of_SNIa_per_msun *
-  //  stars->yield_SNIa_total_metals_SPH;
-  //  sp->chemistry_data.metal_mass_fraction_from_SNIa += num_of_SNIa_per_msun *
   //  stars->yield_SNIa_total_metals_SPH;
 
   //  sp->metal_mass_released += num_of_SNIa_per_msun *
@@ -577,16 +576,6 @@ inline static void evolve_SNIa(float log10_min_mass, float log10_max_mass,
   //  EAGLE!!! sp->chemistry_data.iron_mass_fraction_from_SNIa +=
   //  num_of_SNIa_per_msun * stars->yield_SNIa_SPH[chemistry_element_Fe];
 
-  //  /* metal_mass_released is the yield of ALL metals, not just the
-  //     11 tabulated in the code.  SNIa remnants inject no H or He
-  //     so chemistry_data.mass_from_SNIa ==
-  //     chemistry_data.metal_mass_fraction_from_SNIa */
-
-  //} else {
-  //  sp->chemistry_data.iron_mass_fraction_from_SNIa = 0;
-  //  sp->chemistry_data.metal_mass_fraction_from_SNIa = 0;
-  //  sp->chemistry_data.mass_from_SNIa = 0;
-  //}
 }
 
 inline static void evolve_SNII(float log10_min_mass, float log10_max_mass,
@@ -877,8 +866,8 @@ inline static void compute_stellar_evolution(
   if (log10_min_dying_mass_msun == log10_max_dying_mass_msun) return;
 
   /* Evolve SNIa, SNII, AGB */
-  // evolve_SNIa(log10_min_dying_mass_msun,log10_max_dying_mass_msun,star_properties,sp,us,star_age_Gyr,dt_Gyr);
-  evolve_SNII(log10_min_dying_mass_msun,log10_max_dying_mass_msun,star_properties,sp);
+  evolve_SNIa(log10_min_dying_mass_msun,log10_max_dying_mass_msun,star_properties,sp,us,star_age_Gyr,dt_Gyr);
+  //evolve_SNII(log10_min_dying_mass_msun,log10_max_dying_mass_msun,star_properties,sp);
   //evolve_AGB(log10_min_dying_mass_msun, log10_max_dying_mass_msun,
   //           star_properties, sp);
 
