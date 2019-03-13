@@ -814,13 +814,11 @@ void runner_do_hydro_sort(struct runner *r, struct cell *c, int flags,
 #endif
 
   /* start by allocating the entry arrays in the requested dimensions. */
-  size_t allocated = 0;
   for (int j = 0; j < 13; j++) {
     if ((flags & (1 << j)) && c->hydro.sort[j] == NULL) {
       if ((c->hydro.sort[j] = (struct entry *)malloc(sizeof(struct entry) *
                                                      (count + 1))) == NULL)
         error("Failed to allocate sort memory.");
-      allocated += sizeof(struct entry) * (count + 1);
     }
   }
 
