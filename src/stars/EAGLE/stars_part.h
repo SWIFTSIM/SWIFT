@@ -313,9 +313,6 @@ struct stars_props {
   /* wind delay time for SNII */
   float SNII_wind_delay;
 
-  /* log10 min, max mass in SNII tables */
-  float log10_SNII_min_mass_msun;
-  float log10_SNII_max_mass_msun;
 };
 
 #endif /* SWIFT_EAGLE_STAR_PART_H */

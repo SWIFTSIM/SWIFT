@@ -27,8 +27,6 @@
 static const float log10_SNII_min_mass_msun = 0.77815125f;  // log10(6).
 static const float log10_SNII_max_mass_msun = 2.f;          // log10(100).
 static const float log10_SNIa_max_mass_msun = 0.90308999f;  // log10(8).
-static const float imf_max_mass_msun = 100.f;
-static const float imf_min_mass_msun = 0.1;
 
 /**
  * @brief Computes the gravity time-step of a given star particle.
@@ -184,266 +182,15 @@ __attribute__((always_inline)) INLINE static void stars_reset_acceleration(
 #endif
 }
 
-// -------------------- Work in progress ------------------------------
-
-// This really needs to be somewhere else
-inline static double interpol_1d(double* table, int i, float dx) {
-  double result;
-
-  result = (1 - dx) * table[i] + dx * table[i + 1];
-
-  return result;
-}
-
-inline static double interpol_2d(double** table, int i, int j, float dx,
-                                 float dy) {
-  double result;
-
-  result = (1 - dx) * (1 - dy) * table[i][j] + (1 - dx) * dy * table[i][j + 1] +
-           dx * (1 - dy) * table[i + 1][j] + dx * dy * table[i + 1][j + 1];
-
-  return result;
-}
-
-inline static float dying_mass_msun(float age_Gyr, float metallicity,
-                                    const struct stars_props* restrict
-                                        star_properties) {
-
-  // check out units for all these quantities and name them accordingly
-  float mass = 0, d_metal, d_time1 = 0, d_time2 = 0, log_age_yr, mass1, mass2;
-
-  int metal_index, i, index_time1 = -1, index_time2 = -1;
-
-  // What do we do with the constants here?
-  switch (star_properties->stellar_lifetime_flag) {
-    case 0:
-      /* padovani & matteucci 1993 */
-
-      if (age_Gyr > 0.039765318659064693)
-        mass =
-            exp(M_LN10 *
-                (7.764 - (1.79 - (1.338 - 0.1116 * (9 + log10(age_Gyr))) *
-                                     (1.338 - 0.1116 * (9 + log10(age_Gyr)))) /
-                             0.2232));
-      else if (age_Gyr > 0.003)
-        mass = pow((age_Gyr - 0.003) / 1.2, -1 / 1.85);
-      else
-        mass = imf_max_mass_msun;
-      break;
-
-    case 1:
-      /* maeder & meynet 1989 */
-
-      if (age_Gyr >= 8.4097378)
-        mass = exp(M_LN10 * (1 - log10(age_Gyr)) / 0.6545);
-      else if (age_Gyr >= 0.35207776)
-        mass = exp(M_LN10 * (1.35 - log10(age_Gyr)) / 3.7);
-      else if (age_Gyr >= 0.050931493)
-        mass = exp(M_LN10 * (0.77 - log10(age_Gyr)) / 2.51);
-      else if (age_Gyr >= 0.010529099)
-        mass = exp(M_LN10 * (0.17 - log10(age_Gyr)) / 1.78);
-      else if (age_Gyr >= 0.0037734787)
-        mass = exp(M_LN10 * (-0.94 - log10(age_Gyr)) / 0.86);
-      else if (age_Gyr > 0.003)
-        mass = pow((age_Gyr - 0.003) / 1.2, -0.54054053);
-      else
-        mass = imf_max_mass_msun;
-      break;
-
-    case 2:
-      /* portinari et al. 1998 */
-
-      if (age_Gyr <= 0) {
-        mass = imf_max_mass_msun;
-        break;
-      }
-
-      log_age_yr = log10(age_Gyr * 1.e9);
-
-      // Can we simplify this whole thing somehow to be more readable?
-      if (metallicity <= star_properties->lifetimes.metallicity[0]) {
-        metal_index = 0;
-        d_metal = 0.0;
-      } else if (metallicity >=
-                 star_properties->lifetimes
-                     .metallicity[star_properties->lifetimes.n_z - 1]) {
-        metal_index = star_properties->lifetimes.n_z - 2;
-        d_metal = 1.0;
-      } else {
-        for (metal_index = 0; metal_index < star_properties->lifetimes.n_z - 1;
-             metal_index++)
-          if (star_properties->lifetimes.metallicity[metal_index + 1] >
-              metallicity)
-            break;
-
-        d_metal = (metallicity -
-                   star_properties->lifetimes.metallicity[metal_index]) /
-                  (star_properties->lifetimes.metallicity[metal_index + 1] -
-                   star_properties->lifetimes.metallicity[metal_index]);
-      }
-
-      if (log_age_yr >= star_properties->lifetimes.dyingtime[metal_index][0]) {
-        index_time1 = 0;
-        d_time1 = 0.0;
-      } else if (log_age_yr <=
-                 star_properties->lifetimes
-                     .dyingtime[metal_index]
-                               [star_properties->lifetimes.n_mass - 1]) {
-        index_time1 = star_properties->lifetimes.n_mass - 2;
-        d_time1 = 1.0;
-      }
-
-      if (log_age_yr >=
-          star_properties->lifetimes.dyingtime[metal_index + 1][0]) {
-        index_time2 = 0;
-        d_time2 = 0.0;
-      } else if (log_age_yr <=
-                 star_properties->lifetimes
-                     .dyingtime[metal_index + 1]
-                               [star_properties->lifetimes.n_mass - 1]) {
-        index_time2 = star_properties->lifetimes.n_mass - 2;
-        d_time2 = 1.0;
-      }
-
-      i = star_properties->lifetimes.n_mass;
-      while (i >= 0 && (index_time1 == -1 || index_time2 == -1)) {
-        i--;
-        if (star_properties->lifetimes.dyingtime[metal_index][i] >=
-                log_age_yr &&
-            index_time1 == -1) {
-          index_time1 = i;
-          d_time1 =
-              (log_age_yr -
-               star_properties->lifetimes.dyingtime[metal_index][index_time1]) /
-              (star_properties->lifetimes
-                   .dyingtime[metal_index][index_time1 + 1] -
-               star_properties->lifetimes.dyingtime[metal_index][index_time1]);
-        }
-        if (star_properties->lifetimes.dyingtime[metal_index + 1][i] >=
-                log_age_yr &&
-            index_time2 == -1) {
-          index_time2 = i;
-          d_time2 =
-              (log_age_yr - star_properties->lifetimes
-                                .dyingtime[metal_index + 1][index_time2]) /
-              (star_properties->lifetimes
-                   .dyingtime[metal_index + 1][index_time2 + 1] -
-               star_properties->lifetimes
-                   .dyingtime[metal_index + 1][index_time2]);
-        }
-      }
-
-      mass1 =
-          interpol_1d(star_properties->lifetimes.mass, index_time1, d_time1);
-      mass2 =
-          interpol_1d(star_properties->lifetimes.mass, index_time2, d_time2);
-
-      mass = (1.0 - d_metal) * mass1 + d_metal * mass2;
-      break;
-
-    default:
-      error("stellar lifetimes not defined\n");
-  }
-  if (mass > imf_max_mass_msun) mass = imf_max_mass_msun;
-
-  return mass;
-}
-
-inline static float lifetime_in_Gyr(float mass, float metallicity,
-                                    const struct stars_props* restrict
-                                        star_properties) {
-
-  double time = 0, d_mass, d_metal;
-
-  int mass_index, metal_index;
-
-  switch (star_properties->stellar_lifetime_flag) {
-    case 0:
-      /* PM93 (Padovani & Matteucci 1993) */
-
-      if (mass <= 0.6)
-        time = 160.0;
-      else if (mass <= 6.6)
-        time =
-            pow(10.0, (0.334 - sqrt(1.790 - 0.2232 * (7.764 - log10(mass)))) /
-                          0.1116);
-      else
-        time = 1.2 * pow(mass, -1.85) + 0.003;
-      break;
-
-    case 1:
-      /* MM89 (Maeder & Meynet 1989) */
-
-      if (mass <= 1.3)
-        time = pow(10.0, -0.6545 * log10(mass) + 1.0);
-      else if (mass <= 3.0)
-        time = pow(10.0, -3.7 * log10(mass) + 1.35);
-      else if (mass <= 7.0)
-        time = pow(10.0, -2.51 * log10(mass) + 0.77);
-      else if (mass <= 15.0)
-        time = pow(10.0, -1.78 * log10(mass) + 0.17);
-      else if (mass <= 60.0)
-        time = pow(10.0, -0.86 * log10(mass) - 0.94);
-      else
-        time = 1.2 * pow(mass, -1.85) + 0.003;
-      break;
-
-    case 2:
-      /* P98 (Portinari et al. 1998) */
-
-      if (mass <= star_properties->lifetimes.mass[0]) {
-        mass_index = 0;
-        d_mass = 0.0;
-      } else if (mass >= star_properties->lifetimes
-                             .mass[star_properties->lifetimes.n_mass - 1]) {
-        mass_index = star_properties->lifetimes.n_mass - 2;
-        d_mass = 1.0;
-      } else {
-        for (mass_index = 0; mass_index < star_properties->lifetimes.n_mass - 1;
-             mass_index++)
-          if (star_properties->lifetimes.mass[mass_index + 1] > mass) break;
-
-        d_mass = (mass - star_properties->lifetimes.mass[mass_index]) /
-                 (star_properties->lifetimes.mass[mass_index + 1] -
-                  star_properties->lifetimes.mass[mass_index]);
-      }
-
-      if (metallicity <= star_properties->lifetimes.metallicity[0]) {
-        metal_index = 0;
-        d_metal = 0.0;
-      } else if (metallicity >=
-                 star_properties->lifetimes
-                     .metallicity[star_properties->lifetimes.n_z - 1]) {
-        metal_index = star_properties->lifetimes.n_z - 2;
-        d_metal = 1.0;
-      } else {
-        for (metal_index = 0; metal_index < star_properties->lifetimes.n_z - 1;
-             metal_index++)
-          if (star_properties->lifetimes.metallicity[metal_index + 1] >
-              metallicity)
-            break;
-
-        d_metal = (metallicity -
-                   star_properties->lifetimes.metallicity[metal_index]) /
-                  (star_properties->lifetimes.metallicity[metal_index + 1] -
-                   star_properties->lifetimes.metallicity[metal_index]);
-      }
-
-      /* time in Gyr */
-      time =
-          exp(M_LN10 * interpol_2d(star_properties->lifetimes.dyingtime,
-                                   metal_index, mass_index, d_metal, d_mass)) /
-          1.0e9;
-
-      break;
-
-    default:
-      error("stellar lifetimes not defined");
-  }
-
-  return time;
-}
-
+/**
+ * @brief determine which metallicity bin star belongs to for AGB, compute bin indices and offsets
+ *
+ * @param iz_low 
+ * @param iz_high
+ * @param dz metallicity bin offset
+ * @param log_metallicity log of star metallicity  (ALEXEI: check if this is base 10 !!!)
+ * @param star_properties stars_props data structure
+ */
 inline static void determine_bin_yield_AGB(
     int* iz_low, int* iz_high, float* dz, float log_metallicity,
     const struct stars_props* restrict star_properties) {
@@ -481,6 +228,15 @@ inline static void determine_bin_yield_AGB(
   }
 }
 
+/**
+ * @brief determine which metallicity bin star belongs to for SNII, compute bin indices and offsets
+ *
+ * @param iz_low 
+ * @param iz_high
+ * @param dz metallicity bin offset
+ * @param log_metallicity log of star metallicity  (ALEXEI: check if this is base 10 !!!)
+ * @param star_properties stars_props data structure
+ */
 inline static void determine_bin_yield_SNII(
     int* iz_low, int* iz_high, float* dz, float log_metallicity,
     const struct stars_props* restrict star_properties) {
@@ -873,9 +629,9 @@ inline static float compute_SNe(struct spart* sp,
   if (age <= stars_properties->SNII_wind_delay &&
       age + dt > stars_properties->SNII_wind_delay) {
     // ALEXEI: commented for debugging
-    // return stars_properties->num_SNII_per_msun * sp->mass_init /
-    // stars_properties->const_solar_mass;
-    return 0;
+    return stars_properties->num_SNII_per_msun * sp->mass_init /
+      stars_properties->const_solar_mass;
+    //return 0;
   } else {
     return 0;
   }
@@ -986,8 +742,8 @@ inline static void stars_evolve_init(struct swift_params* params,
   /* Calculate number of type II SN per solar mass 
    * Note: since we are integrating the IMF without weighting it by the yields
    * pass NULL pointer for stellar_yields array */
-  stars->num_SNII_per_msun = integrate_imf(stars->log10_SNII_min_mass_msun,
-                                           stars->log10_SNII_max_mass_msun, 0,
+  stars->num_SNII_per_msun = integrate_imf(log10_SNII_min_mass_msun,
+                                           log10_SNII_max_mass_msun, 0,
                                            0, /*(stellar_yields=)*/ NULL, stars);
 
   message("initialized stellar feedback");

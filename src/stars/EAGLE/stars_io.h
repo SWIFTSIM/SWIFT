@@ -169,10 +169,6 @@ INLINE static void stars_props_init(struct stars_props *sp,
       phys_const->const_boltzmann_k /
       (p->mu_ionised * (hydro_gamma_minus_one)*phys_const->const_proton_mass);
 
-  /* Calculate number of type II SN per solar mass */
-  sp->log10_SNII_min_mass_msun = 0.77815125f;  // log10(6) Copied from EAGLE.
-  sp->log10_SNII_max_mass_msun = 2.f;          // log10(100) Copied from EAGLE.
-
   /* Copy over solar mass */
   sp->const_solar_mass = phys_const->const_solar_mass;
 }
