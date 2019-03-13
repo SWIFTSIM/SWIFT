@@ -36,7 +36,7 @@
  * @param sp new created star particle
  * @param sf the star_formation_history struct of the current cell
  */
-INLINE static void star_formation_update_SFH(
+INLINE static void star_formation_update_stellar_mass(
     struct spart *sp, struct star_formation_history *sf) {
   /* Add mass of created sparticle to the total stellar mass in this cell*/
   sf->new_stellar_mass = sf->new_stellar_mass + sp->mass;
@@ -253,12 +253,12 @@ INLINE static void star_formation_log_for_inactive_particles(
     const struct part* p, const struct xpart* xp, struct star_formation_history *sf){
 
   /* Add the SFR to the logger file */
-  sf->SFR_inactive += xp->sf_data.SFR;
+  sf->SFR_inactive += max(xp->sf_data.SFR,0);
 }
 
 INLINE static void star_formation_SFR_rebuilt(const struct part* p, const struct xpart* xp, struct star_formation_history *sf){
-  /* Add to SFR to the sf struct */
-  sf->SFR_inactive += xp->sf_data.SFR;
+  /* Add to SFR to the sf struct (check if not tracing the last time) */
+  sf->SFR_inactive += max(xp->sf_data.SFR,0.f);
 }
 
 INLINE static void star_formation_recurse_SFR_rebuilt(struct cell *c, const struct cell *cp){
