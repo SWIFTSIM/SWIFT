@@ -43,7 +43,6 @@
 /* Avoid cyclic inclusions */
 struct engine;
 struct scheduler;
-// struct star_formation_history;
 
 /* Max tag size set to 2^29 to take into account some MPI implementations
  * that use 2^31 as the upper bound on MPI tags and the fact that
