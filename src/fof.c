@@ -934,8 +934,7 @@ void fof_calc_group_props_mapper(void *map_data, int num_elements,
   //for(int i=0; i<hashmap_length(mymap); i++) {
   for(int i=0; i<m->table_size; i++) {
 
-    if(m->data[i].in_use != 0) { 
-    //if(m->in_use[i] != 0) { 
+    if(m->in_use[i] != 0) { 
       
       data_struct_t* element = NULL;
       element = (data_struct_t *) m->data[i].data;

@@ -13,7 +13,6 @@
 /* We need to keep keys and values */
 typedef struct _hashmap_element{
 	char* key;
-	int in_use;
 	any_t data;
 } hashmap_element;
 
@@ -22,6 +21,7 @@ typedef struct _hashmap_element{
 typedef struct _hashmap_map{
 	int table_size;
 	int size;
+	char *in_use;
 	hashmap_element *data;
 } hashmap_map;
 
@@ -33,7 +33,10 @@ map_t hashmap_new(void) {
 	if(!m) goto err;
 
 	m->data = (hashmap_element*) calloc(INITIAL_SIZE, sizeof(hashmap_element));
+	m->in_use = (char*) calloc(INITIAL_SIZE, sizeof(char));
 	if(!m->data) goto err;
+
+  printf("Creating hash table of size: %ld each element is %ld bytes.\n", INITIAL_SIZE * sizeof(hashmap_element), sizeof(hashmap_element));
 
 	m->table_size = INITIAL_SIZE;
 	m->size = 0;
@@ -203,10 +206,10 @@ int hashmap_hash(map_t in, char* key){
 
 	/* Linear probing */
 	for(i = 0; i< MAX_CHAIN_LENGTH; i++){
-		if(m->data[curr].in_use == 0)
+		if(m->in_use[curr] == 0)
 			return curr;
 
-		if(m->data[curr].in_use == 1 && (strcmp(m->data[curr].key,key)==0))
+		if(m->in_use[curr] == 1 && (strcmp(m->data[curr].key,key)==0))
 			return curr;
 
 		curr = (curr + 1) % m->table_size;
@@ -222,19 +225,26 @@ int hashmap_rehash(map_t in){
 	int i;
 	int old_size;
 	hashmap_element* curr;
+  char *curr_in_use;
 
 	/* Setup the new elements */
 	hashmap_map *m = (hashmap_map *) in;
 	size_t new_size = 1.5 * m->table_size;
 
-  printf("Rehashing hashamp. Increasing size from: %ld to %ld.\n",m->table_size * sizeof(hashmap_element), new_size * sizeof(hashmap_element));
+  printf("Rehashing hashamp. Increasing size from: %ld to %ld.\n", m->table_size * sizeof(hashmap_element), new_size * sizeof(hashmap_element));
 	hashmap_element* temp = (hashmap_element *)
 		calloc(2 * m->table_size, sizeof(hashmap_element));
 	if(!temp) return MAP_OMEM;
 
-	/* Update the array */
+	char* temp_in_use = (char *)
+		calloc(2 * m->table_size, sizeof(char));
+	
+  /* Update the array */
 	curr = m->data;
 	m->data = temp;
+
+  curr_in_use = m->in_use;
+  m->in_use = temp_in_use;
 
 	/* Update the size */
 	old_size = m->table_size;
@@ -245,7 +255,7 @@ int hashmap_rehash(map_t in){
 	for(i = 0; i < old_size; i++){
         int status;
 
-        if (curr[i].in_use == 0)
+        if (curr_in_use[i] == 0)
             continue;
             
 		status = hashmap_put(m, curr[i].key, curr[i].data);
@@ -254,6 +264,7 @@ int hashmap_rehash(map_t in){
 	}
 
 	free(curr);
+	free(curr_in_use);
 
 	return MAP_OK;
 }
@@ -280,7 +291,7 @@ int hashmap_put(map_t in, char* key, any_t value){
 	/* Set the data */
 	m->data[index].data = value;
 	m->data[index].key = key;
-	m->data[index].in_use = 1;
+	m->in_use[index] = 1;
 	m->size++; 
 
 	return MAP_OK;
@@ -303,7 +314,7 @@ int hashmap_get(map_t in, char* key, any_t *arg){
 	/* Linear probing, if necessary */
 	for(i = 0; i<MAX_CHAIN_LENGTH; i++){
 
-        int in_use = m->data[curr].in_use;
+        int in_use = m->in_use[curr];
         if (in_use == 1){
             if (strcmp(m->data[curr].key,key)==0){
                 *arg = (m->data[curr].data);
@@ -337,7 +348,7 @@ int hashmap_iterate(map_t in, PFany f, any_t item) {
 
 	/* Linear probing */
 	for(i = 0; i< m->table_size; i++)
-		if(m->data[i].in_use != 0) {
+		if(m->in_use[i] != 0) {
 			any_t data = (any_t) (m->data[i].data);
 			int status = f(item, data);
 			if (status != MAP_OK) {
@@ -365,11 +376,11 @@ int hashmap_remove(map_t in, char* key){
 	/* Linear probing, if necessary */
 	for(i = 0; i<MAX_CHAIN_LENGTH; i++){
 
-        int in_use = m->data[curr].in_use;
+        int in_use = m->in_use[curr];
         if (in_use == 1){
             if (strcmp(m->data[curr].key,key)==0){
                 /* Blank out the fields */
-                m->data[curr].in_use = 0;
+                m->in_use[curr] = 0;
                 m->data[curr].data = NULL;
                 m->data[curr].key = NULL;
 
@@ -389,6 +400,7 @@ int hashmap_remove(map_t in, char* key){
 void hashmap_free(map_t in){
 	hashmap_map* m = (hashmap_map*) in;
 	free(m->data);
+	free(m->in_use);
 	free(m);
 }
 
