@@ -30,7 +30,7 @@
 #include "star_formation_logger_struct.h"
 
 /**
- * @brief Update the star foramtion history in the current cell after creating
+ * @brief Update the stellar mass in the current cell after creating
  * the new star particle spart sp
  *
  * @param sp new created star particle
@@ -38,26 +38,29 @@
  */
 INLINE static void star_formation_update_stellar_mass(
     struct spart *sp, struct star_formation_history *sf) {
+
   /* Add mass of created sparticle to the total stellar mass in this cell*/
   sf->new_stellar_mass = sf->new_stellar_mass + sp->mass;
 }
 
 /**
- * @brief Initialize the star formation history struct
+ * @brief Initialize the star formation history struct for the stellar mass only
  *
  * @param sf the star_formation_history struct we want to initialize
  */
 INLINE static void star_formation_init_stellar_mass(struct star_formation_history *sf) {
+
   /* Initialize the stellar mass to zero*/
   sf->new_stellar_mass = 0.f;
 }
 
 /**
- * @brief Initialize the star formation history struct
+ * @brief Initialize the star formation history struct if the cell is active
  *
  * @param sf the star_formation_history struct we want to initialize
  */
 INLINE static void star_formation_init_SFH_active(struct star_formation_history *sf) {
+
   /* Initialize the active SFR */
   sf->SFR_active = 0.f;
 
@@ -69,16 +72,14 @@ INLINE static void star_formation_init_SFH_active(struct star_formation_history 
 }
 
 /**
- * @brief Initialize the star formation history struct
+ * @brief Initialize the star formation history struct in the case the cell is inactive
  *
  * @param sf the star_formation_history struct we want to initialize
  */
 INLINE static void star_formation_init_SFH_inactive(struct star_formation_history *sf) {
   
-  //message("SFR active = %e",sf->SFR_active);
   /* The active SFR becomes the inactive SFR */
   sf->SFR_inactive += sf->SFR_active;
-  //message("SFR inactive = %e, SFR active = %e",sf->SFR_inactive, sf->SFR_active);
 
   /* Initialize the active SFR */
   sf->SFR_active = 0.f;
@@ -96,6 +97,7 @@ INLINE static void star_formation_init_SFH_inactive(struct star_formation_histor
 INLINE static void star_formation_add_progeny_SFH(
     struct star_formation_history *sf,
     const struct star_formation_history *sfprogeny) {
+
   /* Add the new stellar mass from the progeny */
   sf->new_stellar_mass = sf->new_stellar_mass + sfprogeny->new_stellar_mass;
 
@@ -111,18 +113,19 @@ INLINE static void star_formation_add_progeny_SFH(
 
 /**
  * @brief Get the total star formation in this cell and add it to the star
- * formation history struct
+ * formation history struct in the #engine
  *
  * @param c the cell of which we want to know the star formation
  * @param sf the star formation structure to which we want to add the star
  * formation
- * @param cosmo the cosmology struct
- * @param with_cosmology if we run with cosmology
  */
 INLINE static void star_formation_get_total_cell(
     struct cell *c, struct star_formation_history *sf) {
-  /* Get the star formation history from the cell */
+
+  /* Get the star formation history struct from the cell */
   struct star_formation_history *sfcell = &c->stars.sfh;
+
+  /* Update the SFH structure */
   sf->new_stellar_mass += sfcell->new_stellar_mass;
   
   sf->SFR_active += sfcell->SFR_active;
@@ -133,32 +136,18 @@ INLINE static void star_formation_get_total_cell(
 }
 
 /**
- * @brief Clear the total star formation in this cell
- *
- * @param c the cell of which we want to know the star formation
- */
-INLINE static void star_formation_clear_total_cell(struct cell *c) {
-  /* Get the star formation history from the cell */
-  //struct star_formation_history *sfcell = &c->stars.sfh;
-  //sfcell->new_stellar_mass = 0.f;
-
-  //sfcell->SFR_active = 0.f;
-
-  //sfcell->SFRdt_active = 0.f;
-
-  //sfcell->SFR_inactive = 0.f;
-}
-
-/**
- * @brief add the star formation to the parent cell
+ * @brief add the star formation to the parent cell in the #engine
  *
  * @param c the cell for which we want to add the star formation
  * @param sf the combined star formation history of the progeny
  */
 INLINE static void star_formation_add_to_parent_cell(
     struct cell *c, struct star_formation_history *sf) {
+
   /* Get the star formation history from the cell */
   struct star_formation_history *sfcell = &c->stars.sfh;
+
+  /* Update the SFH structure */
   sfcell->new_stellar_mass += sf->new_stellar_mass;
 
   sfcell->SFR_active += sf->SFR_active;
@@ -169,12 +158,14 @@ INLINE static void star_formation_add_to_parent_cell(
 }
 
 /**
- * @brief Initialize the star formation history structure
+ * @brief Initialize the star formation history structure in the #engine
  *
  * @param The pointer to the star formation history structure
  * */
 INLINE static void star_formation_init_SFH_engine(
     struct star_formation_history *sfh) {
+
+  /* Initialize the collecting SFH structure to zero */
   sfh->new_stellar_mass = 0.f;
 
   sfh->SFR_active = 0.f;
@@ -195,8 +186,9 @@ INLINE static void star_formation_init_SFH_engine(
 INLINE static void star_formation_write_to_file(
     const double time, const double a, const double z,
     struct star_formation_history sf, const char* baseName) {
-  static const int buffersize = 300;
+
   /* File name */
+  static const int buffersize = 300;
   char fileName[buffersize];
   snprintf(fileName, buffersize, "%s_SFH_logger.txt", baseName);
 
@@ -217,13 +209,17 @@ INLINE static void star_formation_write_to_file(
  * @param none
  */
 INLINE static void star_formation_init_file_writer(const char* baseName) {
+
   /* File name */
   static const int buffersize = 300;
   char fileName[buffersize];
   snprintf(fileName, buffersize, "%s_SFH_logger.txt", baseName);
 
+  /* Open the file */
   FILE *fp;
   fp = fopen(fileName, "w");
+
+  /* Write some general text to the logger file */
   fprintf(fp, "# Star Formation History Logger file\n");
   fprintf(fp, "# When applicable units are in internal units\n");
   fprintf(
@@ -249,6 +245,13 @@ INLINE static void star_formation_log_for_active_particles(
   sf->SFRdt_active += xp->sf_data.SFR * dt_star;
 }
 
+/**
+ * @brief Add the SFR tracer to the total inactive SFR of this cell as long as the SFR tracer is larger than 0
+ *
+ * @param p the #part
+ * @param xp the #xpart 
+ * @param sf the SFH logger struct 
+ */
 INLINE static void star_formation_log_for_inactive_particles(
     const struct part* p, const struct xpart* xp, struct star_formation_history *sf){
 
@@ -256,16 +259,33 @@ INLINE static void star_formation_log_for_inactive_particles(
   sf->SFR_inactive += max(xp->sf_data.SFR,0);
 }
 
+/**
+ * @brief Initialize the inactive SFR for the cells in the rebuilt 
+ *
+ * @param p the #part
+ * @param xp the #xpart 
+ * @param sf the SFH logger struct 
+ */
 INLINE static void star_formation_SFR_rebuilt(const struct part* p, const struct xpart* xp, struct star_formation_history *sf){
+
   /* Add to SFR to the sf struct (check if not tracing the last time) */
   sf->SFR_inactive += max(xp->sf_data.SFR,0.f);
 }
 
+
+/**
+ * @brief do the recurse after the rebuilt to update the inactive SFR
+ *
+ * @param p the #part
+ * @param xp the #xpart 
+ * @param sf the SFH logger struct 
+ */
 INLINE static void star_formation_recurse_SFR_rebuilt(struct cell *c, const struct cell *cp){
   struct star_formation_history *sf = &c->stars.sfh;
+
+  /* Increase inactive SFR by recursion */
   const struct star_formation_history *sfp = &cp->stars.sfh;
   sf->SFR_inactive += sfp->SFR_inactive;
-
 }
 
 #endif /* SWIFT_SCHAYE_STARFORMATION_LOGGER_H */
