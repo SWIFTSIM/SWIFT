@@ -144,7 +144,7 @@ void memuse_log_dump(const char *filename) {
     error("Failed to create memuse log file '%s'.", filename);
 
   /* Write a header. */
-  fprintf(fd, "# Current use: %s\n", memuse_process());
+  fprintf(fd, "# Current use: %s\n", memuse_process(1));
   fprintf(fd, "# cpufreq: %lld\n", clocks_get_cpufreq());
   fprintf(fd, "# tic adr rank step allocated label size\n");
 
@@ -158,6 +158,7 @@ void memuse_log_dump(const char *filename) {
   log_count = 0;
 
   /* Close the file. */
+  fflush(fd);
   fclose(fd);
 }
 
@@ -254,10 +255,12 @@ void memuse_use(long *size, long *resident, long *share, long *trs, long *lrs,
  *
  * Not thread safe.
  *
+ * @param inmb if true then report in MB, not KB.
+ *
  * @result the memory use of the process, note make a copy if not used
  * immediately.
  */
-const char *memuse_process() {
+const char *memuse_process(int inmb) {
   static char buffer[256];
   long size;
   long resident;
@@ -268,9 +271,16 @@ const char *memuse_process() {
   long dt;
   memuse_use(&size, &resident, &share, &trs, &lrs, &drs, &dt);
 
-  snprintf(buffer, 256,
-           "VIRT = %ld SHR = %ld CODE = %ld DATA = %ld "
-           "RES = %ld",
-           size, share, trs, drs, resident);
+  if (inmb) {
+      snprintf(buffer, 256,
+               "VIRT = %f SHR = %f CODE = %f DATA = %f "
+               "RES = %f (MB)",
+               size/1024.0, share/1024.0, trs/1024.0, drs/1024.0, resident/1024.0);
+  } else {
+      snprintf(buffer, 256,
+               "VIRT = %ld SHR = %ld CODE = %ld DATA = %ld "
+               "RES = %ld (KB)",
+               size, share, trs, drs, resident);
+  }
   return buffer;
 }

@@ -29,7 +29,7 @@ void swift_free(const char *label, void *ptr);
 
 void memuse_use(long *size, long *resident, long *share, long *trs, long *lrs,
                 long *drs, long *dt);
-const char *memuse_process(void);
+const char *memuse_process(int inmb);
 
 #ifdef SWIFT_MEMUSE_REPORTS
 void memuse_log_dump(const char *filename);
