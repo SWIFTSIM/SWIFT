@@ -27,8 +27,8 @@ int swift_memalign(const char *label, void **memptr, size_t alignment,
                    size_t size);
 void swift_free(const char *label, void *ptr);
 
-void memuse_use(long *size, long *resident, long *share, long *trs, long *lrs,
-                long *drs, long *dt);
+void memuse_use(long *size, long *resident, long *shared, long *text,
+                long *data, long *library, long *dirty);
 const char *memuse_process(int inmb);
 
 #ifdef SWIFT_MEMUSE_REPORTS

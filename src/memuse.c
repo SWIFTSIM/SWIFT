@@ -205,22 +205,24 @@ void swift_free(const char *label, void *ptr) {
  * @brief parse the process /proc/self/statm file to get the process
  *        memory use (in KB). Top field in ().
  *
- * @param size     total virtual memory (VIRT)
- * @param resident resident non-swapped memory (RES)
- * @param share    shared (mmap'd) memory  (SHR)
- * @param trs      text (exe) resident set (CODE)
- * @param lrs      library resident set
- * @param drs      data+stack resident set (DATA)
- * @param dt       dirty pages (nDRT)
+ * @param size     total virtual memory (VIRT/VmSize)
+ * @param resident resident non-swapped memory (RES/VmRSS)
+ * @param shared   shared (mmap'd) memory  (SHR, RssFile+RssShmem)
+ * @param text     text (exe) resident set (CODE, note also includes data
+ *                 segment, so is considered broken for Linux)
+ * @param data     data+stack resident set (DATA, note also includes library,
+ *                 so is considered broken for Linux)
+ * @param library  library resident set (0 for Linux)
+ * @param dirty    dirty pages (nDRT = 0 for Linux)
  */
-void memuse_use(long *size, long *resident, long *share, long *trs, long *lrs,
-                long *drs, long *dt) {
+void memuse_use(long *size, long *resident, long *shared, long *text,
+                long *data, long *library, long *dirty) {
 
   /* Open the file. */
   FILE *file = fopen("/proc/self/statm", "r");
   if (file != NULL) {
     int nscan = fscanf(file, "%ld %ld %ld %ld %ld %ld %ld", size, resident,
-                       share, trs, lrs, drs, dt);
+                       shared, text, library, data, dirty);
 
     if (nscan == 7) {
       /* Convert pages into bytes. Usually 4096, but could be 512 on some
@@ -228,19 +230,19 @@ void memuse_use(long *size, long *resident, long *share, long *trs, long *lrs,
       long sz = sysconf(_SC_PAGESIZE);
       *size *= sz;
       *resident *= sz;
-      *share *= sz;
-      *trs *= sz;
-      *lrs *= sz;
-      *drs *= sz;
-      *dt *= sz;
+      *shared *= sz;
+      *text *= sz;
+      *library *= sz;
+      *data *= sz;
+      *dirty *= sz;
 
       *size /= 1024;
       *resident /= 1024;
-      *share /= 1024;
-      *trs /= 1024;
-      *lrs /= 1024;
-      *drs /= 1024;
-      *dt /= 1024;
+      *shared /= 1024;
+      *text /= 1024;
+      *library /= 1024;
+      *data /= 1024;
+      *dirty /= 1024;
     } else {
       error("Failed to read sufficient fields from /proc/self/statm");
     }
@@ -264,23 +266,22 @@ const char *memuse_process(int inmb) {
   static char buffer[256];
   long size;
   long resident;
-  long share;
-  long trs;
-  long lrs;
-  long drs;
-  long dt;
-  memuse_use(&size, &resident, &share, &trs, &lrs, &drs, &dt);
+  long shared;
+  long text;
+  long library;
+  long data;
+  long dirty;
+  memuse_use(&size, &resident, &shared, &text, &data, &library, &dirty);
 
   if (inmb) {
       snprintf(buffer, 256,
-               "VIRT = %f SHR = %f CODE = %f DATA = %f "
-               "RES = %f (MB)",
-               size/1024.0, share/1024.0, trs/1024.0, drs/1024.0, resident/1024.0);
+               "VIRT = %.3f SHR = %.3f CODE = %.3f DATA = %.3f "
+               "RES = %.3f (MB)", size/1024.0, shared/1024.0,
+               text/1024.0, data/1024.0, resident/1024.0);
   } else {
       snprintf(buffer, 256,
                "VIRT = %ld SHR = %ld CODE = %ld DATA = %ld "
-               "RES = %ld (KB)",
-               size, share, trs, drs, resident);
+               "RES = %ld (KB)", size, shared, text, data, resident);
   }
   return buffer;
 }
