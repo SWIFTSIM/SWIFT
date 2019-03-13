@@ -90,13 +90,11 @@ void proxy_tags_exchange(struct proxy *proxies, int num_proxies,
   /* Allocate the tags. */
   int *tags_in = NULL;
   int *tags_out = NULL;
-  if (posix_memalign((void **)&tags_in, SWIFT_CACHE_ALIGNMENT,
+  if (swift_memalign("tags_in", (void **)&tags_in, SWIFT_CACHE_ALIGNMENT,
                      sizeof(int) * count_in) != 0 ||
-      posix_memalign((void **)&tags_out, SWIFT_CACHE_ALIGNMENT,
+      swift_memalign("tags_out", (void **)&tags_out, SWIFT_CACHE_ALIGNMENT,
                      sizeof(int) * count_out) != 0)
     error("Failed to allocate tags buffers.");
-  memuse_report("tags_in", sizeof(int) * count_in);
-  memuse_report("tags_out", sizeof(int) * count_out);
 
   /* Pack the local tags. */
   for (int k = 0; k < s->nr_cells; k++) {
@@ -170,8 +168,8 @@ void proxy_tags_exchange(struct proxy *proxies, int num_proxies,
     error("MPI_Waitall on sends failed.");
 
   /* Clean up. */
-  free(tags_in);
-  free(tags_out);
+  swift_free("tags_in", tags_in);
+  swift_free("tags_out", tags_out);
   free(reqs_in);
   free(cids_in);
 
@@ -207,11 +205,10 @@ void proxy_cells_exchange_first(struct proxy *p) {
   // p->size_pcells_out , p->mynodeID , p->nodeID ); fflush(stdout);
 
   /* Allocate and fill the pcell buffer. */
-  if (p->pcells_out != NULL) free(p->pcells_out);
-  if (posix_memalign((void **)&p->pcells_out, SWIFT_STRUCT_ALIGNMENT,
+  if (p->pcells_out != NULL) swift_free("pcells_out", p->pcells_out);
+  if (swift_memalign("pcells_out", (void **)&p->pcells_out, SWIFT_STRUCT_ALIGNMENT,
                      sizeof(struct pcell) * p->size_pcells_out) != 0)
     error("Failed to allocate pcell_out buffer.");
-  memuse_report("pcells_out", sizeof(struct pcell) * p->size_pcells_out);
 
   for (int ind = 0, k = 0; k < p->nr_cells_out; k++) {
     memcpy(&p->pcells_out[ind], p->cells_out[k]->mpi.pcell,
@@ -255,11 +252,10 @@ void proxy_cells_exchange_second(struct proxy *p) {
 #ifdef WITH_MPI
 
   /* Re-allocate the pcell_in buffer. */
-  if (p->pcells_in != NULL) free(p->pcells_in);
-  if (posix_memalign((void **)&p->pcells_in, SWIFT_STRUCT_ALIGNMENT,
+  if (p->pcells_in != NULL) swift_free("pcells_in", p->pcells_in);
+  if (swift_memalign("pcells_in", (void **)&p->pcells_in, SWIFT_STRUCT_ALIGNMENT,
                      sizeof(struct pcell) * p->size_pcells_in) != 0)
     error("Failed to allocate pcell_in buffer.");
-  memuse_report("pcells_in", sizeof(struct pcell) * p->size_pcells_in);
 
   /* Receive the particle buffers. */
   int err = MPI_Irecv(p->pcells_in, p->size_pcells_in, pcell_mpi_type,
@@ -403,10 +399,9 @@ void proxy_cells_exchange(struct proxy *proxies, int num_proxies,
 
   /* Allocate the pcells. */
   struct pcell *pcells = NULL;
-  if (posix_memalign((void **)&pcells, SWIFT_CACHE_ALIGNMENT,
+  if (swift_memalign("pcells", (void **)&pcells, SWIFT_CACHE_ALIGNMENT,
                      sizeof(struct pcell) * count_out) != 0)
     error("Failed to allocate pcell buffer.");
-  memuse_report("pcells", sizeof(struct pcell) * count_out);
 
   tic2 = getticks();
 
@@ -474,7 +469,7 @@ void proxy_cells_exchange(struct proxy *proxies, int num_proxies,
 
   /* Clean up. */
   free(reqs);
-  free(pcells);
+  swift_free("pcells", pcells);
 
 #else
   error("SWIFT was not compiled with MPI support.");
@@ -482,9 +477,6 @@ void proxy_cells_exchange(struct proxy *proxies, int num_proxies,
 }
 
 /**
-  memuse_report("pcells_out", sizeof(struct pcell) * p->size_pcells_out);
-
-  memuse_report("pcells_in", sizeof(struct pcell) * p->size_pcells_in);
  * @brief Add a cell to the given proxy's input list.
  *
  * @param p The #proxy.

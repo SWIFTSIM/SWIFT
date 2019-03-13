@@ -1036,6 +1036,20 @@ int main(int argc, char *argv[]) {
   /* unused parameters */
   parser_write_params_to_file(params, "unused_parameters.yml", 0);
 
+  /* Dump memory use report if collected for the 0 step. */
+#ifdef SWIFT_MEMUSE_REPORTS
+  {
+    char dumpfile[40];
+#ifdef WITH_MPI
+    snprintf(dumpfile, 40, "memuse_report-rank%d-step%d.dat", engine_rank, 0);
+#else
+    snprintf(dumpfile, 40, "memuse_report-step%d.dat", 0);
+#endif  // WITH_MPI
+    memuse_log_dump(dumpfile);
+  }
+#endif
+
+
   /* Main simulation loop */
   /* ==================== */
   int force_stop = 0, resubmit = 0;
@@ -1082,6 +1096,20 @@ int main(int argc, char *argv[]) {
       snprintf(dumpfile, 40, "thread_stats-step%d.dat", j + 1);
       task_dump_stats(dumpfile, &e, /* header = */ 0, /* allranks = */ 1);
     }
+
+    /* Dump memory use report if collected. */
+#ifdef SWIFT_MEMUSE_REPORTS
+    {
+      char dumpfile[40];
+#ifdef WITH_MPI
+      snprintf(dumpfile, 40, "memuse_report-rank%d-step%d.dat", engine_rank,
+               j + 1);
+#else
+      snprintf(dumpfile, 40, "memuse_report-step%d.dat", j + 1);
+#endif  // WITH_MPI
+      memuse_log_dump(dumpfile);
+    }
+#endif
 
 #ifdef SWIFT_DEBUG_THREADPOOL
     /* Dump the task data using the given frequency. */

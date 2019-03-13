@@ -23,25 +23,16 @@
 #include "../config.h"
 
 /* Public API. */
+int swift_memalign(const char *label, void **memptr, size_t alignment,
+                   size_t size);
+void swift_free(const char *label, void *ptr);
+
 void memuse_use(long *size, long *resident, long *share, long *trs, long *lrs,
                 long *drs, long *dt);
 const char *memuse_process(void);
 
-/* Reports are a no-op unless wanted. */
 #ifdef SWIFT_MEMUSE_REPORTS
-void memuse_report__(const char *what, const char *file, const char *function,
-                     int line, size_t bytes);
-void memuse_report_str__(const char *what, const char *file,
-                         const char *function, int line,
-                         const char *description);
-
-#define memuse_report(what, size) \
-  memuse_report__(what, __FILE__, __FUNCTION__, __LINE__, size)
-#define memuse_report_str(what, description) \
-  memuse_report_str__(what, __FILE__, __FUNCTION__, __LINE__, description)
-#else
-#define memuse_report(what, size)
-#define memuse_report_str(what, description)
+void memuse_log_dump(const char *filename);
 #endif
 
 #endif /* SWIFT_MEMUSE_H */
