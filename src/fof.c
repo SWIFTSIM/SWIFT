@@ -38,6 +38,7 @@
 #include "engine.h"
 #include "proxy.h"
 #include "threadpool.h"
+#include "c_hashmap/hashmap.h"
 #include "c_hashmap/hashmap.c"
 
 #ifdef WITH_MPI
@@ -45,11 +46,6 @@ MPI_Datatype fof_mpi_type;
 MPI_Datatype group_length_mpi_type;
 #endif
 size_t node_offset;
-
-typedef struct data_struct_s {
-  size_t group_id;
-  size_t group_size;
-} data_struct_t;
 
 #define UNION_BY_SIZE_OVER_MPI 1
 
@@ -850,7 +846,7 @@ void fof_calc_group_props_mapper(void *map_data, int num_elements,
   //const ptrdiff_t offset = (ptrdiff_t)(gparts - s->gparts);
 
   map_t mymap;
-  data_struct_t* value;
+  hashmap_element *value = NULL;
   
   mymap = hashmap_new();
 
@@ -864,12 +860,12 @@ void fof_calc_group_props_mapper(void *map_data, int num_elements,
     //double z = gparts[ind].x[2];
     //double mass = gparts[ind].mass;
       
-    int error = hashmap_get(mymap, (char *)&root, (void**)(&value));
+    int error = hashmap_get(mymap, root, value);
     if(error == MAP_MISSING) {
-      value = malloc(sizeof(data_struct_t));
-      value->group_id = root;
-      value->group_size = 1;
-      error = hashmap_put(mymap, (char *)&value->group_id, value);
+      hashmap_element new_value;
+      new_value.key = root;
+      new_value.group_size = 1;
+      error = hashmap_put(mymap, new_value.key, new_value);
       if(error != MAP_OK) error("Issue with hash table. Error code: %d", error);
     }
     else if (error == MAP_OK) {
@@ -934,14 +930,13 @@ void fof_calc_group_props_mapper(void *map_data, int num_elements,
   //for(int i=0; i<hashmap_length(mymap); i++) {
   for(int i=0; i<m->table_size; i++) {
 
-    if(m->in_use[i] != 0) { 
+    if(m->chunks[i / 64].in_use & (1 << (i % 64))) { 
       
-      data_struct_t* element = NULL;
-      element = (data_struct_t *) m->data[i].data;
+      hashmap_element *element = NULL;
+      element = (hashmap_element *) &(m->chunks[i / 64].data[i % 64]);
 
-      atomic_add(&group_size[element->group_id], element->group_size);
+      atomic_add(&group_size[element->key], element->group_size);
 
-      free(element);
     }
   }
     
@@ -1666,7 +1661,7 @@ void fof_search_tree(struct space *s) {
   message("Searching %zu gravity particles for links with l_x2: %lf", nr_gparts,
           s->l_x2);
   
-  message("Size of hash table element: %ld", sizeof(data_struct_t));
+  message("Size of hash table element: %ld", sizeof(hashmap_element));
 
   node_offset = 0;
 

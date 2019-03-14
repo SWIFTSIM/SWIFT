@@ -14,6 +14,12 @@
 #define MAP_OMEM -1 	/* Out of Memory */
 #define MAP_OK 0 	/* OK */
 
+/* We need to keep keys and values */
+typedef struct _hashmap_element{
+	size_t key;
+	size_t group_size;
+} hashmap_element;
+
 /*
  * any_t is a pointer.  This allows you to put arbitrary structures in
  * the hashmap.
@@ -50,17 +56,17 @@ extern int hashmap_iterate(map_t in, PFany f, any_t item);
 /*
  * Add an element to the hashmap. Return MAP_OK or MAP_OMEM.
  */
-extern int hashmap_put(map_t in, char* key, any_t value);
+extern int hashmap_put(map_t in, size_t key, hashmap_element value);
 
 /*
  * Get an element from the hashmap. Return MAP_OK or MAP_MISSING.
  */
-extern int hashmap_get(map_t in, char* key, any_t *arg);
+extern int hashmap_get(map_t in, size_t key, hashmap_element *arg);
 
 /*
  * Remove an element from the hashmap. Return MAP_OK or MAP_MISSING.
  */
-extern int hashmap_remove(map_t in, char* key);
+extern int hashmap_remove(map_t in, size_t key);
 
 /*
  * Get any element. Return MAP_OK or MAP_MISSING.

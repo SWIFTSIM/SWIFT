@@ -10,18 +10,13 @@
 #define INITIAL_SIZE (4096)
 #define MAX_CHAIN_LENGTH (8)
 
-/* We need to keep keys and values */
-typedef struct _hashmap_element{
-	char* key;
-	any_t data;
-} hashmap_element;
 
 typedef struct _hashmap_chunk {
-	union {
+	//union {
 		size_t in_use;
-		hashmap_chunk_t *next;
-	}
-	hashmap_element[64];
+	//	hashmap_element *next;
+	//};
+	hashmap_element data[64];
 } hashmap_chunk_t;
 
 /* A hashmap has some maximum size and current size,
@@ -175,9 +170,9 @@ unsigned long crc32(const unsigned char *s, unsigned int len)
 /*
  * Hashing function for a size_t
  */
-unsigned int hashmap_hash_int(hashmap_map * m, char* keystring){
+unsigned int hashmap_hash_int(hashmap_map * m, size_t keystring){
 
-    unsigned long key = crc32((unsigned char*)(keystring), sizeof(size_t));
+    unsigned long key = crc32((unsigned char*)(&keystring), sizeof(size_t));
 
 	/* Robert Jenkins' 32 bit Mix Function */
 	key += (key << 12);
@@ -199,7 +194,7 @@ unsigned int hashmap_hash_int(hashmap_map * m, char* keystring){
  * Return the integer of the location in data
  * to store the point to the item, or MAP_FULL.
  */
-int hashmap_hash(map_t in, char* key){
+int hashmap_hash(map_t in, size_t key){
 	int curr;
 	int i;
 
@@ -214,7 +209,7 @@ int hashmap_hash(map_t in, char* key){
 
 	/* Linear probing */
 	for(i = 0; i< MAX_CHAIN_LENGTH; i++){
-		if (m->chunks[curr / 64] == NULL) {
+		if (&m->chunks[curr / 64] == NULL) {
 			// Get a new chunk (allocate or get from graveyard), hook it up here, and return curr;
 		} else if (!(m->chunks[curr / 64].in_use & (1 << (curr % 64)))) {
 			// Chunk is there, but the field is empty. Cool!
@@ -235,49 +230,49 @@ int hashmap_hash(map_t in, char* key){
  * Doubles the size of the hashmap, and rehashes all the elements
  */
 int hashmap_rehash(map_t in){
-	int i;
-	int old_size;
-	hashmap_element* curr;
-  char *curr_in_use;
+	//int i;
+	//int old_size;
+	//hashmap_element* curr;
+  //char *curr_in_use;
 
-	/* Setup the new elements */
-	hashmap_map *m = (hashmap_map *) in;
-	size_t new_size = 1.5 * m->table_size;
+	///* Setup the new elements */
+	//hashmap_map *m = (hashmap_map *) in;
+	//size_t new_size = 1.5 * m->table_size;
 
-  printf("Rehashing hashamp. Increasing size from: %ld to %ld.\n", m->table_size * sizeof(hashmap_element), new_size * sizeof(hashmap_element));
-	hashmap_element* temp = (hashmap_element *)
-		calloc(2 * m->table_size, sizeof(hashmap_element));
-	if(!temp) return MAP_OMEM;
+  //printf("Rehashing hashamp. Increasing size from: %ld to %ld.\n", m->table_size * sizeof(hashmap_element), new_size * sizeof(hashmap_element));
+	//hashmap_element* temp = (hashmap_element *)
+	//	calloc(2 * m->table_size, sizeof(hashmap_element));
+	//if(!temp) return MAP_OMEM;
 
-	char* temp_in_use = (char *)
-		calloc(2 * m->table_size, sizeof(char));
-	
-  /* Update the array */
-	curr = m->data;
-	m->data = temp;
+	//char* temp_in_use = (char *)
+	//	calloc(2 * m->table_size, sizeof(char));
+	//
+  ///* Update the array */
+	//curr = m->data;
+	//m->data = temp;
 
-  curr_in_use = m->in_use;
-  m->in_use = temp_in_use;
+  //curr_in_use = m->in_use;
+  //m->in_use = temp_in_use;
 
-	/* Update the size */
-	old_size = m->table_size;
-	m->table_size = 2 * m->table_size;
-	m->size = 0;
+	///* Update the size */
+	//old_size = m->table_size;
+	//m->table_size = 2 * m->table_size;
+	//m->size = 0;
 
-	/* Rehash the elements */
-	for(i = 0; i < old_size; i++){
-        int status;
+	///* Rehash the elements */
+	//for(i = 0; i < old_size; i++){
+  //      int status;
 
-        if (curr_in_use[i] == 0)
-            continue;
-            
-		status = hashmap_put(m, curr[i].key, curr[i].data);
-		if (status != MAP_OK)
-			return status;
-	}
+  //      if (curr_in_use[i] == 0)
+  //          continue;
+  //          
+	//	status = hashmap_put(m, curr[i].key, curr[i].data);
+	//	if (status != MAP_OK)
+	//		return status;
+	//}
 
-	free(curr);
-	free(curr_in_use);
+	//free(curr);
+	//free(curr_in_use);
 
 	return MAP_OK;
 }
@@ -285,7 +280,7 @@ int hashmap_rehash(map_t in){
 /*
  * Add a pointer to the hashmap with some key
  */
-int hashmap_put(map_t in, char* key, any_t value){
+int hashmap_put(map_t in, size_t key, hashmap_element value){
 	int index;
 	hashmap_map* m;
 
@@ -302,9 +297,8 @@ int hashmap_put(map_t in, char* key, any_t value){
 	}
 
 	/* Set the data */
-	m->data[index].data = value;
-	m->data[index].key = key;
-	m->in_use[index] = 1;
+	m->chunks[index / 64].data[index / 64] = value;
+	m->chunks[index / 64].in_use |= (1 << (index % 64));
 	m->size++; 
 
 	return MAP_OK;
@@ -313,7 +307,7 @@ int hashmap_put(map_t in, char* key, any_t value){
 /*
  * Get your pointer out of the hashmap with a key
  */
-int hashmap_get(map_t in, char* key, any_t *arg){
+int hashmap_get(map_t in, size_t key, hashmap_element *arg){
 	int curr;
 	int i;
 	hashmap_map* m;
@@ -327,10 +321,11 @@ int hashmap_get(map_t in, char* key, any_t *arg){
 	/* Linear probing, if necessary */
 	for(i = 0; i<MAX_CHAIN_LENGTH; i++){
 
-        int in_use = m->in_use[curr];
+        //int in_use = m->chunks[curr / 64].in_use & (1 << (curr % 64));
+        int in_use = m->chunks[curr / 64].in_use & (1 << (curr % 64));
         if (in_use == 1){
-            if (strcmp(m->data[curr].key,key)==0){
-                *arg = (m->data[curr].data);
+            if (m->chunks[curr / 64].data[curr % 64].key == key){
+                *arg = m->chunks[curr % 64].data[curr % 64];
                 return MAP_OK;
             }
 		}
@@ -338,7 +333,7 @@ int hashmap_get(map_t in, char* key, any_t *arg){
 		curr = (curr + 1) % m->table_size;
 	}
 
-	*arg = NULL;
+	arg = NULL;
 
 	/* Not found */
 	return MAP_MISSING;
@@ -361,8 +356,8 @@ int hashmap_iterate(map_t in, PFany f, any_t item) {
 
 	/* Linear probing */
 	for(i = 0; i< m->table_size; i++)
-		if(m->in_use[i] != 0) {
-			any_t data = (any_t) (m->data[i].data);
+		if(m->chunks[i / 64].in_use & (1 << (i % 64))) {
+			any_t data = (any_t) &(m->chunks[i / 64].data[i % 64]);
 			int status = f(item, data);
 			if (status != MAP_OK) {
 				return status;
@@ -375,7 +370,7 @@ int hashmap_iterate(map_t in, PFany f, any_t item) {
 /*
  * Remove an element with that key from the map
  */
-int hashmap_remove(map_t in, char* key){
+int hashmap_remove(map_t in, size_t key){
 	int i;
 	int curr;
 	hashmap_map* m;
@@ -389,13 +384,13 @@ int hashmap_remove(map_t in, char* key){
 	/* Linear probing, if necessary */
 	for(i = 0; i<MAX_CHAIN_LENGTH; i++){
 
-        int in_use = m->in_use[curr];
+        int in_use = m->chunks[curr / 64].in_use & (1 << (curr % 64));
         if (in_use == 1){
-            if (strcmp(m->data[curr].key,key)==0){
+            if (m->chunks[curr / 64].data[curr % 64].key == key){
                 /* Blank out the fields */
-                m->in_use[curr] = 0;
-                m->data[curr].data = NULL;
-                m->data[curr].key = NULL;
+                m->chunks[curr / 64].in_use &= ~(1 << (curr % 64));
+                m->chunks[curr / 64].data[curr % 64].key = 0;
+                m->chunks[curr / 64].data[curr % 64].group_size = 0;
 
                 /* Reduce the size */
                 m->size--;
@@ -412,8 +407,8 @@ int hashmap_remove(map_t in, char* key){
 /* Deallocate the hashmap */
 void hashmap_free(map_t in){
 	hashmap_map* m = (hashmap_map*) in;
-	free(m->data);
-	free(m->in_use);
+	free(m->chunks);
+	free(m->graveyard);
 	free(m);
 }
 
