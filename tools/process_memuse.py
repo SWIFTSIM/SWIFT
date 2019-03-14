@@ -35,12 +35,15 @@ if len(sys.argv) != 2:
 memuse = OrderedDict()
 labels = {}
 totalmem = 0
+process_use = ""
+peak = 0.0
 
 with open(sys.argv[1]) as infile:
+    print "# tic label MB"
     for line in infile:
         if line[0] == "#":
             if "# Current use:" in line:
-                print line
+                process_use = line[14:-1]
         else:
             tic , adr, rank, step, allocated, label, size = line.split()
             rank = int(rank)
@@ -70,6 +73,8 @@ with open(sys.argv[1]) as infile:
                     #  Unmatched free, skip for now.
                     doprint = False
             if doprint:
+                if totalmem > peak:
+                    peak = totalmem
                 print tic, label, totalmem/(1048576.0)
 
 totals = {}
@@ -81,8 +86,15 @@ for adr in labels:
         else:
             totals[labels[adr]] = memuse[adr][0]
 
-print "# Memory use by label"
+print "# Aligned memory use by label"
+total = 0.0
 for label in sorted(totals):
-    print "## ", label, totals[label]/(1048576.0)
-
+    mem = totals[label]/(1048576.0)
+    total = total + mem
+    print "## ", label, '{:.3f}'.format(mem)
+print "# Total aligned memory still in use : ", '{:.3f}'.format(total), " (MB)"
+print "# Peak aligned memory usage         : ", '{:.3f}'.format(peak/1048576.0), " (MB)"
+if process_use != "":
+    print "#"
+    print "# Memory use by process (all/system):", process_use
 sys.exit(0)
