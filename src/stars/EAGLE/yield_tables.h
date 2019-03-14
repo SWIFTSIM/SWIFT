@@ -62,11 +62,17 @@ __attribute__((always_inline)) INLINE int row_major_index_3d(int i, int j,
   return i * ny * nz + j * nz + k;
 }
 
+/**
+ * @brief returns index of element_name within array of element names (element_array)
+ *
+ * @param element_name name of element
+ * @param element_array array of element names
+ * @param n_elements size of element_array 
+ */
 inline static int get_element_index(const char *element_name,
                                     char **element_array, int n_elements) {
 
-  /* Compare element name we are trying to index to every name in element array
-   */
+  /* Compare element name we are trying to index to names in element_array */
   for (int i = 0; i < n_elements; i++) {
     if (strcmp(element_array[i], element_name) == 0) return i;
   }
@@ -75,11 +81,18 @@ inline static int get_element_index(const char *element_name,
   return -1;
 }
 
+/**
+ * @brief read yield tables and store them in stars_props data struct
+ *
+ * @param stars the #stars_props data structure 
+ */
 inline static void read_yield_tables(struct stars_props *restrict stars) {
 #ifdef HAVE_HDF5
 
+  // ALEXEI: sort out index names
   int i, j, k, index;
 
+  /* filenames to read HDF5 files */
   char fname[256], setname[100];
 
   hid_t file_id, dataset, datatype;
@@ -140,6 +153,7 @@ inline static void read_yield_tables(struct stars_props *restrict stars) {
   status = H5Tclose(datatype);
   if (status < 0) error("error closing datatype");
 
+  /* read array of masses */
   dataset = H5Dopen(file_id, "Masses", H5P_DEFAULT);
   status = H5Dread(dataset, H5T_NATIVE_DOUBLE, H5S_ALL, H5S_ALL, H5P_DEFAULT,
                    stars->yield_SNII.mass);
@@ -147,6 +161,7 @@ inline static void read_yield_tables(struct stars_props *restrict stars) {
   status = H5Dclose(dataset);
   if (status < 0) error("error closing dataset");
 
+  /* read array of metallicities */
   dataset = H5Dopen(file_id, "Metallicities", H5P_DEFAULT);
   status = H5Dread(dataset, H5T_NATIVE_DOUBLE, H5S_ALL, H5S_ALL, H5P_DEFAULT,
                    stars->yield_SNII.metallicity);
@@ -154,12 +169,12 @@ inline static void read_yield_tables(struct stars_props *restrict stars) {
   status = H5Dclose(dataset);
   if (status < 0) error("error closing dataset");
 
+  /* declare temporary arrays to read data from HDF5 files */
   double tempyield1[stars->SNII_n_elements][stars->SNII_n_mass];
-
   double tempej1[stars->SNII_n_mass], tempmet1[stars->SNII_n_mass];
-
   char *tempname1[stars->SNII_n_z];
 
+  /* read metallicity names */
   datatype = H5Tcopy(H5T_C_S1);
   H5Tset_size(datatype, H5T_VARIABLE);
   dataset = H5Dopen(file_id, "Yield_names", H5P_DEFAULT);
@@ -170,7 +185,9 @@ inline static void read_yield_tables(struct stars_props *restrict stars) {
   status = H5Tclose(datatype);
   if (status < 0) error("error closing datatype");
 
+  /* read SNII yield tables */
   for (i = 0; i < stars->SNII_n_z; i++) {
+    /* read yields to temporary array */
     sprintf(setname, "/Yields/%s/Yield", tempname1[i]);
     dataset = H5Dopen(file_id, setname, H5P_DEFAULT);
     status = H5Dread(dataset, H5T_NATIVE_DOUBLE, H5S_ALL, H5S_ALL, H5P_DEFAULT,
@@ -179,6 +196,7 @@ inline static void read_yield_tables(struct stars_props *restrict stars) {
     status = H5Dclose(dataset);
     if (status < 0) error("error closing dataset");
 
+    /* read mass ejected table to temporary array */
     sprintf(setname, "/Yields/%s/Ejected_mass", tempname1[i]);
     dataset = H5Dopen(file_id, setname, H5P_DEFAULT);
     status = H5Dread(dataset, H5T_NATIVE_DOUBLE, H5S_ALL, H5S_ALL, H5P_DEFAULT,
@@ -187,6 +205,7 @@ inline static void read_yield_tables(struct stars_props *restrict stars) {
     status = H5Dclose(dataset);
     if (status < 0) error("error closing dataset");
 
+    /* read total metals table to temporary array */
     sprintf(setname, "/Yields/%s/Total_Metals", tempname1[i]);
     dataset = H5Dopen(file_id, setname, H5P_DEFAULT);
     status = H5Dread(dataset, H5T_NATIVE_DOUBLE, H5S_ALL, H5S_ALL, H5P_DEFAULT,
@@ -195,6 +214,7 @@ inline static void read_yield_tables(struct stars_props *restrict stars) {
     status = H5Dclose(dataset);
     if (status < 0) error("error closing dataset");
 
+    /* Flatten the temporary tables that were read, store in stars_props */
     for (k = 0; k < stars->SNII_n_mass; k++) {
       index = row_major_index_2d(i, k, stars->SNII_n_z, stars->SNII_n_mass);
       stars->yield_SNII.ejecta[index] = tempej1[k];
@@ -231,6 +251,7 @@ inline static void read_yield_tables(struct stars_props *restrict stars) {
   status = H5Tclose(datatype);
   if (status < 0) error("error closing datatype");
 
+  /* read array of masses */
   dataset = H5Dopen(file_id, "Masses", H5P_DEFAULT);
   status = H5Dread(dataset, H5T_NATIVE_DOUBLE, H5S_ALL, H5S_ALL, H5P_DEFAULT,
                    stars->yield_AGB.mass);
@@ -238,6 +259,7 @@ inline static void read_yield_tables(struct stars_props *restrict stars) {
   status = H5Dclose(dataset);
   if (status < 0) error("error closing dataset");
 
+  /* read array of metallicities */
   dataset = H5Dopen(file_id, "Metallicities", H5P_DEFAULT);
   status = H5Dread(dataset, H5T_NATIVE_DOUBLE, H5S_ALL, H5S_ALL, H5P_DEFAULT,
                    stars->yield_AGB.metallicity);
@@ -245,12 +267,12 @@ inline static void read_yield_tables(struct stars_props *restrict stars) {
   status = H5Dclose(dataset);
   if (status < 0) error("error closing dataset");
 
+  /* declare temporary arrays to read data from HDF5 files */
   double tempyield2[stars->AGB_n_elements][stars->AGB_n_mass];
-
   double tempej2[stars->AGB_n_mass], tempmet2[stars->AGB_n_mass];
-
   char *tempname2[stars->AGB_n_z];
 
+  /* read metallicity names */
   datatype = H5Tcopy(H5T_C_S1);
   H5Tset_size(datatype, H5T_VARIABLE);
   dataset = H5Dopen(file_id, "Yield_names", H5P_DEFAULT);
@@ -261,7 +283,9 @@ inline static void read_yield_tables(struct stars_props *restrict stars) {
   status = H5Tclose(datatype);
   if (status < 0) error("error closing datatype");
 
+  /* read AGB yield tables */
   for (i = 0; i < stars->AGB_n_z; i++) {
+    /* read yields to temporary array */
     sprintf(setname, "/Yields/%s/Yield", tempname2[i]);
     dataset = H5Dopen(file_id, setname, H5P_DEFAULT);
     status = H5Dread(dataset, H5T_NATIVE_DOUBLE, H5S_ALL, H5S_ALL, H5P_DEFAULT,
@@ -270,6 +294,7 @@ inline static void read_yield_tables(struct stars_props *restrict stars) {
     status = H5Dclose(dataset);
     if (status < 0) error("error closing dataset");
 
+    /* read mass ejected table to temporary array */
     sprintf(setname, "/Yields/%s/Ejected_mass", tempname2[i]);
     dataset = H5Dopen(file_id, setname, H5P_DEFAULT);
     status = H5Dread(dataset, H5T_NATIVE_DOUBLE, H5S_ALL, H5S_ALL, H5P_DEFAULT,
@@ -278,6 +303,7 @@ inline static void read_yield_tables(struct stars_props *restrict stars) {
     status = H5Dclose(dataset);
     if (status < 0) error("error closing dataset");
 
+    /* read total metals table to temporary array */
     sprintf(setname, "/Yields/%s/Total_Metals", tempname2[i]);
     dataset = H5Dopen(file_id, setname, H5P_DEFAULT);
     status = H5Dread(dataset, H5T_NATIVE_DOUBLE, H5S_ALL, H5S_ALL, H5P_DEFAULT,
@@ -286,6 +312,7 @@ inline static void read_yield_tables(struct stars_props *restrict stars) {
     status = H5Dclose(dataset);
     if (status < 0) error("error closing dataset");
 
+    /* Flatten the temporary tables that were read, store in stars_props */
     for (k = 0; k < stars->AGB_n_mass; k++) {
       index = row_major_index_2d(i, k, stars->AGB_n_z, stars->AGB_n_mass);
       stars->yield_AGB.ejecta[index] = tempej2[k];
@@ -303,7 +330,6 @@ inline static void read_yield_tables(struct stars_props *restrict stars) {
   if (status < 0) error("error closing file");
 
   /* Read lifetimes table */
-
   sprintf(fname, "%s/Lifetimes.hdf5", stars->yield_table_path);
 
   file_id = H5Fopen(fname, H5F_ACC_RDONLY, H5P_DEFAULT);
@@ -485,29 +511,6 @@ inline static void allocate_yield_tables(struct stars_props *restrict stars) {
   }
 }
 
-inline static double interpolate_1D(double *array_x, double *array_y, int size,
-                                    double value) {
-
-  double result;
-
-  if (value < array_x[0])
-    error("interpolating value less than array min. value %.5e array min %.5e",
-          value, array_x[0]);
-  else if (value > array_x[size - 1])
-    error(
-        "interpolating value greater than array max. value %.5e array max %.5e",
-        value, array_x[size - 1]);
-  else {
-    int index = 0;
-    while (array_x[index] <= value) index++;
-    double offset =
-        (array_x[index] - value) / (array_x[index] - array_x[index - 1]);
-    result = offset * array_y[index - 1] + (1 - offset) * array_y[index];
-  }
-
-  return result;
-}
-
 inline static void compute_yields(struct stars_props *restrict stars) {
 
   int index, index_2d;
@@ -580,7 +583,7 @@ inline static void compute_yields(struct stars_props *restrict stars) {
           result = SNII_yield[stars->SNII_n_mass - 1];
         else {
           result =
-              interpolate_1D(stars->yield_SNII.mass, SNII_yield,
+              interpolate_1D_non_uniform(stars->yield_SNII.mass, SNII_yield,
                              stars->SNII_n_mass, stars->yield_mass_bins[k]);
         }
 
@@ -634,7 +637,7 @@ inline static void compute_yields(struct stars_props *restrict stars) {
             result = AGB_yield[stars->AGB_n_mass - 1];
           else
             result =
-                interpolate_1D(stars->yield_AGB.mass, AGB_yield,
+                interpolate_1D_non_uniform(stars->yield_AGB.mass, AGB_yield,
                                stars->AGB_n_mass, stars->yield_mass_bins[j]);
 
           index = row_major_index_3d(i, elem, j, stars->AGB_n_z,

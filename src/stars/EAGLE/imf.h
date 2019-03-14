@@ -390,9 +390,9 @@ inline static float dying_mass_msun(float age_Gyr, float metallicity,
       }
 
       mass1 =
-          interpol_1d(star_properties->lifetimes.mass, index_time1, d_time1);
+          interpolate_1d(star_properties->lifetimes.mass, index_time1, d_time1);
       mass2 =
-          interpol_1d(star_properties->lifetimes.mass, index_time2, d_time2);
+          interpolate_1d(star_properties->lifetimes.mass, index_time2, d_time2);
 
       mass = (1.0 - d_metal) * mass1 + d_metal * mass2;
       break;
@@ -496,7 +496,7 @@ inline static float lifetime_in_Gyr(float mass, float metallicity,
 
       /* time in Gyr */
       time =
-          exp(M_LN10 * interpol_2d(star_properties->lifetimes.dyingtime,
+          exp(M_LN10 * interpolate_2d(star_properties->lifetimes.dyingtime,
                                    metal_index, mass_index, d_metal, d_mass)) /
           1.0e9;
 
