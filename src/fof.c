@@ -39,7 +39,6 @@
 #include "proxy.h"
 #include "threadpool.h"
 #include "c_hashmap/hashmap.h"
-#include "c_hashmap/hashmap.c"
 
 #ifdef WITH_MPI
 MPI_Datatype fof_mpi_type;
