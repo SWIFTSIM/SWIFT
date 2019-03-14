@@ -820,6 +820,11 @@ void cooling_init_backend(struct swift_params *parameter_file,
       parameter_file, "EAGLECooling:S_over_Si_in_solar", 1.f);
 
   /* Convert to cgs (units used internally by the cooling routines) */
+
+  printf("ElectronVolt in cgs = %1.5g \n" , phys_const->const_electron_volt);
+  printf("CGS conversion factor = %1.5g \n" , units_cgs_conversion_factor(us, UNIT_CONV_ENERGY));
+  printf("H reionization heating in eV/m_H = %1.5g \n" , cooling->H_reion_heat_cgs);
+  
   cooling->H_reion_heat_cgs *=
       phys_const->const_electron_volt *
       units_cgs_conversion_factor(us, UNIT_CONV_ENERGY);
