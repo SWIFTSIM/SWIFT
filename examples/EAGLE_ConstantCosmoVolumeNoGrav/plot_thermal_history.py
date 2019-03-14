@@ -112,6 +112,8 @@ d = swiftsimio.load(snap_list[0])
 code_info = d.metadata.code
 git_branch = code_info["Git Branch"].decode('UTF-8')
 git_revision = code_info["Git Revision"].decode('UTF-8')
+hydro_metadata = d.metadata.hydro_scheme
+scheme = hydro_metadata["Scheme"].decode('UTF-8')
 params = d.metadata.parameters
 z_r_H = float(params['EAGLECooling:H_reion_z'])
 H_heat_input = float(params['EAGLECooling:H_reion_eV_p_H'])
@@ -120,9 +122,10 @@ z_r_He_sigma = float(params['EAGLECooling:He_reion_z_sigma'])
 He_heat_input = float(params['EAGLECooling:He_reion_eV_p_H'])
 
 version_info= git_branch +'/'+ git_revision + '\n'
+hydro_info = scheme + '\n'
 reion_info = "$z_{r,H} = %1.1f \; \Delta u_H = %1.1f \; z_{r,He,mid} = %1.1f \; z_{r,He,\sigma} = %1.1f \; \Delta u_{He} = %1.1f \; eV/m_H$" %(z_r_H,H_heat_input,z_r_He_centre,z_r_He_sigma,He_heat_input)
 
-plot_title = version_info + reion_info
+plot_title = version_info + hydro_info +  reion_info
 
 # Make plot of temperature evolution  --------------------------------
 fig, axes = plt.subplots(2,1,sharex = True)
@@ -133,7 +136,7 @@ axes[0].errorbar(data_walther[0],np.log10(data_walther[1]*1.0e4),yerr = [walther
 axes[1].fill_between(z,rho_mean - rho_std,rho_mean + rho_std,alpha = 0.5)
 axes[1].plot(z,rho_mean,label = "Simulation")
 axes[1].axhline(y = 1.0,linestyle = '--',color = 'r')
-axes[1].set_xlim(0.0,15.0)
+axes[1].set_xlim(0.0,12.0)
 axes[0].set_ylim(2.0,5.0)
 axes[1].set_ylim(0.99,1.01)
 axes[1].set_xlabel("Redshift")

@@ -3,7 +3,7 @@
 # Generate the initial conditions if they are not present.
 if [ ! -e gravity_glassCube_32.hdf5 ]
 then
-    echo "Fetching initial grvity glass file for the constant cosmological box example..."
+    echo "Fetching initial gravity glass file for the constant cosmological box example..."
     ./getGlass.sh
 fi
 
@@ -23,4 +23,4 @@ fi
 ../swift --hydro --cosmology --cooling --threads=8 eagle_cooling_box.yml 2>&1 | tee output.log
 
 # Plot the result
-python3 plot_thermal_history.py eagle_cooling_box thermal_history_default.pdf
+python3 plot_thermal_history.py eagle_cooling_box thermal_history_no_extra_heating_gadget2.pdf

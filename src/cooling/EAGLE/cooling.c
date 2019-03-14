@@ -151,7 +151,7 @@ void cooling_update(const struct cosmology *cosmo,
 
       /* Loop through particles and set new heat */
       for (i=0; i < s->nr_parts; i++){
-	hydro_reion_heating(&s->xparts[i],cosmo,extra_heat); 
+	hydro_reion_heating(&s->parts[i],&s->xparts[i],cosmo,extra_heat); 
       }
       H_reion_happened = 1;
   }
