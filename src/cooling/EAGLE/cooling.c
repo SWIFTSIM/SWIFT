@@ -146,6 +146,10 @@ void cooling_update(const struct cosmology *cosmo,
   if ((H_reion_happened == 0) && (redshift < cooling->H_reion_z)) {
       
       const float extra_heat = cooling->H_reion_heat_cgs * cooling->internal_energy_from_cgs;
+      printf("H_reion_heat_cgs = %1.5g \n" , cooling->H_reion_heat_cgs);
+      printf("Conversion factor = %1.5g \n" , cooling->internal_energy_from_cgs);
+      printf("extra_heat_internal_units = %1.5g \n" , extra_heat);
+      printf("He_reion_heat_cgs = %1.5g \n" , cooling->He_reion_heat_cgs);
       size_t i;
 
       /* Loop through particles and set new heat */
@@ -158,7 +162,7 @@ void cooling_update(const struct cosmology *cosmo,
 	
       }
       H_reion_happened = 1;
-      //exit(1);
+      exit(1);
   }
   /* Do we already have the correct tables loaded? */
   if (cooling->z_index == z_index) return;
