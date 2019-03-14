@@ -146,23 +146,14 @@ void cooling_update(const struct cosmology *cosmo,
   if ((H_reion_happened == 0) && (redshift < cooling->H_reion_z)) {
       
       const float extra_heat = cooling->H_reion_heat_cgs * cooling->internal_energy_from_cgs;
-      printf("H_reion_heat_cgs = %1.5g \n" , cooling->H_reion_heat_cgs);
-      printf("Conversion factor = %1.5g \n" , cooling->internal_energy_from_cgs);
-      printf("extra_heat_internal_units = %1.5g \n" , extra_heat);
-      printf("He_reion_heat_cgs = %1.5g \n" , cooling->He_reion_heat_cgs);
+      
       size_t i;
 
       /* Loop through particles and set new heat */
       for (i=0; i < s->nr_parts; i++){
-	if (i < 10){
-	  printf("old_u = %1.2g, \t extra_heat = %1.2g \t new_u = %1.2g \n",s->parts[i].u*cosmo->a_factor_internal_energy,extra_heat,s->parts[i].u*cosmo->a_factor_internal_energy + extra_heat);}
-	hydro_reion_heating(&s->parts[i],cosmo,extra_heat);  
-	if (i < 10){
-	  printf("New internal energy = %1.2g \n" , s->parts[i].u * cosmo->a_factor_internal_energy);}
-	
+	hydro_reion_heating(&s->xparts[i],cosmo,extra_heat); 
       }
       H_reion_happened = 1;
-      exit(1);
   }
   /* Do we already have the correct tables loaded? */
   if (cooling->z_index == z_index) return;
@@ -192,6 +183,7 @@ void cooling_update(const struct cosmology *cosmo,
 
   /* Store the currently loaded index */
   cooling->z_index = z_index;
+
 }
 
 /**
@@ -800,6 +792,10 @@ void cooling_init_backend(struct swift_params *parameter_file,
                           struct cooling_function_data *cooling) {
 
   /* read some parameters */
+
+  /* Despite the names, the values of H_reion_heat_cgs and He_reion_heat_cgs that are read in
+     are actually in units of electron volts per proton mass. We later convert to cgs units */
+
   parser_get_param_string(parameter_file, "EAGLECooling:dir_name",
                           cooling->cooling_table_path);
   cooling->H_reion_z =
@@ -819,19 +815,18 @@ void cooling_init_backend(struct swift_params *parameter_file,
   cooling->S_over_Si_ratio_in_solar = parser_get_opt_param_float(
       parameter_file, "EAGLECooling:S_over_Si_in_solar", 1.f);
 
-  /* Convert to cgs (units used internally by the cooling routines) */
-
-  printf("ElectronVolt in cgs = %1.5g \n" , phys_const->const_electron_volt);
-  printf("CGS conversion factor = %1.5g \n" , units_cgs_conversion_factor(us, UNIT_CONV_ENERGY));
-  printf("H reionization heating in eV/m_H = %1.5g \n" , cooling->H_reion_heat_cgs);
+  /* Convert H_reion_heat_cgs and He_reion_heat_cgs to cgs 
+     (units used internally by the cooling routines). This is done by multiplying by 'eV/m_H' 
+     in internal units, then converting to cgs units. Note that the dimensions of these quantities
+     are energy/mass = velocity^2 */
   
   cooling->H_reion_heat_cgs *=
-      phys_const->const_electron_volt *
-      units_cgs_conversion_factor(us, UNIT_CONV_ENERGY);
+      phys_const->const_electron_volt / phys_const->const_proton_mass *
+      units_cgs_conversion_factor(us, UNIT_CONV_ENERGY_PER_UNIT_MASS);
 
   cooling->He_reion_heat_cgs *=
-      phys_const->const_electron_volt *
-      units_cgs_conversion_factor(us, UNIT_CONV_ENERGY);
+      phys_const->const_electron_volt / phys_const->const_proton_mass *
+      units_cgs_conversion_factor(us, UNIT_CONV_ENERGY_PER_UNIT_MASS);
 
   /* Read in the list of redshifts */
   get_cooling_redshifts(cooling);

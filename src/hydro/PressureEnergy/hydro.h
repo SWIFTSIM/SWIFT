@@ -372,13 +372,13 @@ hydro_set_physical_internal_energy_dt(struct part *restrict p,
  * @param extra_heat The extra internal energy given to the particle.
  */
 __attribute__((always_inline)) INLINE static void
-hydro_reion_heating(struct part *p,
+hydro_reion_heating(struct xpart *xp,
 		    const struct cosmology *cosmo,
 		    float extra_heat) {
   
-  const float old_u = p->u * cosmo->a_factor_internal_energy;
+  const float old_u = xp->u_full * cosmo->a_factor_internal_energy;
   const float new_u = old_u + extra_heat;
-  p->u = new_u / cosmo->a_factor_internal_energy;
+  xp->u_full = new_u / cosmo->a_factor_internal_energy;
 }
 
 /**
