@@ -206,7 +206,8 @@ void proxy_cells_exchange_first(struct proxy *p) {
 
   /* Allocate and fill the pcell buffer. */
   if (p->pcells_out != NULL) swift_free("pcells_out", p->pcells_out);
-  if (swift_memalign("pcells_out", (void **)&p->pcells_out, SWIFT_STRUCT_ALIGNMENT,
+  if (swift_memalign("pcells_out", (void **)&p->pcells_out,
+                     SWIFT_STRUCT_ALIGNMENT,
                      sizeof(struct pcell) * p->size_pcells_out) != 0)
     error("Failed to allocate pcell_out buffer.");
 
@@ -253,7 +254,8 @@ void proxy_cells_exchange_second(struct proxy *p) {
 
   /* Re-allocate the pcell_in buffer. */
   if (p->pcells_in != NULL) swift_free("pcells_in", p->pcells_in);
-  if (swift_memalign("pcells_in", (void **)&p->pcells_in, SWIFT_STRUCT_ALIGNMENT,
+  if (swift_memalign("pcells_in", (void **)&p->pcells_in,
+                     SWIFT_STRUCT_ALIGNMENT,
                      sizeof(struct pcell) * p->size_pcells_in) != 0)
     error("Failed to allocate pcell_in buffer.");
 

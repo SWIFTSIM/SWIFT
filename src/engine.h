@@ -117,7 +117,7 @@ extern int engine_rank;
 /**
  * @brief The current step as a global variable (for messages).
  */
-extern int engine_cstep;
+extern int engine_current_step;
 
 /* Data structure for the engine. */
 struct engine {

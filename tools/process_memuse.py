@@ -3,9 +3,8 @@
 Usage:
     process_memuse.py output.dat
 
-Parse the output of a run of SWIFT to convert the memuse output dumps
-into a timeseries of memory use. Also outputs use in memory per labelled
-type.
+Parse the output of a run of SWIFT to convert the memuse output dumps into a
+timeseries of memory use. Also outputs use in memory per labelled type.
 
 This file is part of SWIFT.
 Copyright (c) 2019 Peter W. Draper (p.w.draper@durham.ac.uk)
@@ -59,7 +58,7 @@ with open(sys.argv[1]) as infile:
                     memuse[adr] = [size]
                     labels[adr] = label
                 else:
-                    memuse[adr] = memuse[adr].append(size)
+                    memuse[adr].append(size)
             else:
                 #  Free, locate allocation.
                 if adr in memuse:

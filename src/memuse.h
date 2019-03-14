@@ -22,17 +22,56 @@
 /* Config parameters. */
 #include "../config.h"
 
-/* Public API. */
-int swift_memalign(const char *label, void **memptr, size_t alignment,
-                   size_t size);
-void swift_free(const char *label, void *ptr);
+/* Includes. */
+#include <stdlib.h>
 
+/* API. */
 void memuse_use(long *size, long *resident, long *shared, long *text,
                 long *data, long *library, long *dirty);
 const char *memuse_process(int inmb);
 
 #ifdef SWIFT_MEMUSE_REPORTS
 void memuse_log_dump(const char *filename);
+void memuse_log_allocation(const char *label, void *ptr, int allocated,
+                           size_t size);
 #endif
+
+/**
+ * @brief allocate aligned memory. The use and results are the same as the
+ *        posix_memalign function.
+ *
+ * @param label a symbolic label for the memory, i.e. "parts".
+ * @param memptr pointer to the allocated memory.
+ * @param alignment alignment boundary.
+ * @param size the quantity of bytes to allocate.
+ * @result zero on success, otherwise an error code.
+ */
+__attribute__((always_inline)) inline int swift_memalign(const char *label,
+                                                         void **memptr,
+                                                         size_t alignment,
+                                                         size_t size) {
+  int result = posix_memalign(memptr, alignment, size);
+#ifdef SWIFT_MEMUSE_REPORTS
+  if (result == 0) memuse_log_allocation(label, *memptr, 1, size);
+#endif
+  return result;
+}
+
+/**
+ * @brief free aligned memory. The use and results are the same as the
+ *        free function.
+ *
+ * @param label a symbolic label for the memory, i.e. "parts", should match
+ *              call used to allocate the memory.
+ * @param ptr pointer to the allocated memory.
+ */
+__attribute__((always_inline)) inline void swift_free(const char *label,
+                                                      void *ptr) {
+  free(ptr);
+#ifdef SWIFT_MEMUSE_REPORTS
+  memuse_log_allocation(label, ptr, 0, 0);
+#endif
+  return;
+}
 
 #endif /* SWIFT_MEMUSE_H */

@@ -122,7 +122,7 @@ int main(int argc, char *argv[]) {
 
   /* Make sure messages are stamped with the correct rank and step. */
   engine_rank = myrank;
-  engine_cstep = 0;
+  engine_current_step = 0;
 
   if ((res = MPI_Comm_set_errhandler(MPI_COMM_WORLD, MPI_ERRORS_RETURN)) !=
       MPI_SUCCESS)
@@ -1049,7 +1049,6 @@ int main(int argc, char *argv[]) {
   }
 #endif
 
-
   /* Main simulation loop */
   /* ==================== */
   int force_stop = 0, resubmit = 0;
@@ -1097,7 +1096,7 @@ int main(int argc, char *argv[]) {
       task_dump_stats(dumpfile, &e, /* header = */ 0, /* allranks = */ 1);
     }
 
-    /* Dump memory use report if collected. */
+      /* Dump memory use report if collected. */
 #ifdef SWIFT_MEMUSE_REPORTS
     {
       char dumpfile[40];

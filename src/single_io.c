@@ -936,10 +936,12 @@ void write_output_single(struct engine* e, const char* baseName,
           N = Ngas_written;
 
           /* Allocate temporary arrays */
-          if (swift_memalign("parts_written", (void**)&parts_written, part_align,
+          if (swift_memalign("parts_written", (void**)&parts_written,
+                             part_align,
                              Ngas_written * sizeof(struct part)) != 0)
             error("Error while allocating temporart memory for parts");
-          if (swift_memalign("xparts_written", (void**)&xparts_written, xpart_align,
+          if (swift_memalign("xparts_written", (void**)&xparts_written,
+                             xpart_align,
                              Ngas_written * sizeof(struct xpart)) != 0)
             error("Error while allocating temporart memory for xparts");
 
@@ -984,13 +986,15 @@ void write_output_single(struct engine* e, const char* baseName,
           N = Ndm_written;
 
           /* Allocate temporary array */
-          if (swift_memalign("gparts_written", (void**)&gparts_written, gpart_align,
+          if (swift_memalign("gparts_written", (void**)&gparts_written,
+                             gpart_align,
                              Ndm_written * sizeof(struct gpart)) != 0)
             error("Error while allocating temporart memory for gparts");
 
           if (with_stf) {
-            if (swift_memalign("gpart_group_written",
-                    (void**)&gpart_group_data_written, gpart_align,
+            if (swift_memalign(
+                    "gpart_group_written", (void**)&gpart_group_data_written,
+                    gpart_align,
                     Ndm_written * sizeof(struct velociraptor_gpart_data)) != 0)
               error(
                   "Error while allocating temporart memory for gparts STF "
@@ -1029,7 +1033,8 @@ void write_output_single(struct engine* e, const char* baseName,
           N = Nstars_written;
 
           /* Allocate temporary arrays */
-          if (swift_memalign("sparts_written", (void**)&sparts_written, spart_align,
+          if (swift_memalign("sparts_written", (void**)&sparts_written,
+                             spart_align,
                              Nstars_written * sizeof(struct spart)) != 0)
             error("Error while allocating temporart memory for sparts");
 
@@ -1072,7 +1077,8 @@ void write_output_single(struct engine* e, const char* baseName,
     if (parts_written) swift_free("parts_written", parts_written);
     if (xparts_written) swift_free("xparts_written", xparts_written);
     if (gparts_written) swift_free("gparts_written", gparts_written);
-    if (gpart_group_data_written) swift_free("gpart_group_written", gpart_group_data_written);
+    if (gpart_group_data_written)
+      swift_free("gpart_group_written", gpart_group_data_written);
     if (sparts_written) swift_free("sparts_written", sparts_written);
 
     /* Close particle group */

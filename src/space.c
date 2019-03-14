@@ -452,7 +452,8 @@ void space_regrid(struct space *s, int verbose) {
       swift_free("local_cells_with_tasks_top", s->local_cells_with_tasks_top);
       swift_free("local_cells_top", s->local_cells_top);
       swift_free("cells_with_particles_top", s->cells_with_particles_top);
-      swift_free("local_cells_with_particles_top", s->local_cells_with_particles_top);
+      swift_free("local_cells_with_particles_top",
+                 s->local_cells_with_particles_top);
       swift_free("cells_top", s->cells_top);
       swift_free("multipoles_top", s->multipoles_top);
     }
@@ -479,32 +480,36 @@ void space_regrid(struct space *s, int verbose) {
 
     /* Allocate the multipoles for the top-level cells. */
     if (s->with_self_gravity) {
-      if (swift_memalign("multipoles_top", (void **)&s->multipoles_top, multipole_align,
+      if (swift_memalign("multipoles_top", (void **)&s->multipoles_top,
+                         multipole_align,
                          s->nr_cells * sizeof(struct gravity_tensors)) != 0)
         error("Failed to allocate top-level multipoles.");
       bzero(s->multipoles_top, s->nr_cells * sizeof(struct gravity_tensors));
     }
 
     /* Allocate the indices of local cells */
-    if (swift_memalign("local_cells_top", (void **)&s->local_cells_top, SWIFT_STRUCT_ALIGNMENT,
-                       s->nr_cells * sizeof(int)) != 0)
+    if (swift_memalign("local_cells_top", (void **)&s->local_cells_top,
+                       SWIFT_STRUCT_ALIGNMENT, s->nr_cells * sizeof(int)) != 0)
       error("Failed to allocate indices of local top-level cells.");
     bzero(s->local_cells_top, s->nr_cells * sizeof(int));
 
     /* Allocate the indices of local cells with tasks */
-    if (swift_memalign("local_cells_with_tasks_top",(void **)&s->local_cells_with_tasks_top,
+    if (swift_memalign("local_cells_with_tasks_top",
+                       (void **)&s->local_cells_with_tasks_top,
                        SWIFT_STRUCT_ALIGNMENT, s->nr_cells * sizeof(int)) != 0)
       error("Failed to allocate indices of local top-level cells with tasks.");
     bzero(s->local_cells_with_tasks_top, s->nr_cells * sizeof(int));
 
     /* Allocate the indices of cells with particles */
-    if (swift_memalign("cells_with_particles_top",(void **)&s->cells_with_particles_top,
+    if (swift_memalign("cells_with_particles_top",
+                       (void **)&s->cells_with_particles_top,
                        SWIFT_STRUCT_ALIGNMENT, s->nr_cells * sizeof(int)) != 0)
       error("Failed to allocate indices of top-level cells with particles.");
     bzero(s->cells_with_particles_top, s->nr_cells * sizeof(int));
 
     /* Allocate the indices of local cells with particles */
-    if (swift_memalign("local_cells_with_particles_top",(void **)&s->local_cells_with_particles_top,
+    if (swift_memalign("local_cells_with_particles_top",
+                       (void **)&s->local_cells_with_particles_top,
                        SWIFT_STRUCT_ALIGNMENT, s->nr_cells * sizeof(int)) != 0)
       error(
           "Failed to allocate indices of local top-level cells with "
@@ -3183,8 +3188,8 @@ void space_getcells(struct space *s, int nr_cells, struct cell **cells) {
 
     /* Is the multipole buffer empty? */
     if (s->with_self_gravity && s->multipoles_sub == NULL) {
-      if (swift_memalign("multipoles_sub",
-              (void **)&s->multipoles_sub, multipole_align,
+      if (swift_memalign(
+              "multipoles_sub", (void **)&s->multipoles_sub, multipole_align,
               space_cellallocchunk * sizeof(struct gravity_tensors)) != 0)
         error("Failed to allocate more multipoles.");
 
@@ -3953,7 +3958,7 @@ void space_init(struct space *s, struct swift_params *params,
 
   /* Allocate the extra parts array for the gas particles. */
   if (Npart > 0) {
-      if (swift_memalign("xparts", (void **)&s->xparts, xpart_align,
+    if (swift_memalign("xparts", (void **)&s->xparts, xpart_align,
                        Npart * sizeof(struct xpart)) != 0)
       error("Failed to allocate xparts.");
     bzero(s->xparts, Npart * sizeof(struct xpart));
@@ -4419,7 +4424,8 @@ void space_clean(struct space *s) {
   swift_free("local_cells_top", s->local_cells_top);
   swift_free("local_cells_with_tasks_top", s->local_cells_with_tasks_top);
   swift_free("cells_with_particles_top", s->cells_with_particles_top);
-  swift_free("local_cells_with_particles_top", s->local_cells_with_particles_top);
+  swift_free("local_cells_with_particles_top",
+             s->local_cells_with_particles_top);
   swift_free("parts", s->parts);
   swift_free("xparts", s->xparts);
   swift_free("gparts", s->gparts);

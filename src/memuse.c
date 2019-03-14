@@ -44,7 +44,7 @@
 
 /* Also recorded in logger. */
 extern int engine_rank;
-extern int engine_cstep;
+extern int engine_current_step;
 
 /* Entry for logger of memory allocations and deallocations in a step. */
 #define MEMUSE_MAXLAB 64
@@ -74,60 +74,74 @@ struct memuse_log_entry {
 
 /* The log of allocations and frees. */
 static struct memuse_log_entry *memuse_log = NULL;
-static size_t log_size = 0;
-static size_t log_count = 0;
-static size_t log_done = 0;
+static volatile size_t memuse_log_size = 0;
+static volatile size_t memuse_log_count = 0;
+static volatile size_t memuse_log_done = 0;
 
 #define MEMUSE_INITLOG 1000000
-static void log_reallocate(size_t ind) {
+static void memuse_log_reallocate(size_t ind) {
 
   if (ind == 0) {
 
     /* Need to perform initialization. Be generous. */
-    if ((memuse_log = (struct memuse_log_entry *)
-         malloc(sizeof(struct memuse_log_entry) * MEMUSE_INITLOG)) == NULL)
+    if ((memuse_log = (struct memuse_log_entry *)malloc(
+             sizeof(struct memuse_log_entry) * MEMUSE_INITLOG)) == NULL)
       error("Failed to allocate memuse log.");
 
     /* Last action. */
-    log_size = MEMUSE_INITLOG;
+    memuse_log_size = MEMUSE_INITLOG;
 
   } else {
     struct memuse_log_entry *new_log;
-    if ((new_log = (struct memuse_log_entry *)
-         malloc(sizeof(struct memuse_log_entry) * log_size * 2)) == NULL)
+    if ((new_log = (struct memuse_log_entry *)malloc(
+             sizeof(struct memuse_log_entry) * memuse_log_size * 2)) == NULL)
       error("Failed to re-allocate memuse log.");
 
     /* Wait for all writes to the old buffer to complete. */
-    while (log_done < log_size);
+    while (memuse_log_done < memuse_log_size)
+      ;
 
     /* Copy to new buffer. */
-    memcpy(new_log, memuse_log, sizeof(struct memuse_log_entry) * log_count);
+    memcpy(new_log, memuse_log,
+           sizeof(struct memuse_log_entry) * memuse_log_count);
     free(memuse_log);
     memuse_log = new_log;
 
     /* Last action. */
-    log_size *= 2;
+    memuse_log_size *= 2;
   }
 }
 
-static void log_allocation(const char *label, void *ptr, int allocated,
+/**
+ * @brief Log an allocation or deallocation of memory.
+ *
+ * @param label the label associated with the memory.
+ * @param ptr the memory pointer.
+ * @param allocated whether this is an allocation or deallocation.
+ * @param size the size in byte of memory allocated, set to 0 when
+ *             deallocating.
+ */
+void memuse_log_allocation(const char *label, void *ptr, int allocated,
                            size_t size) {
-  size_t ind = atomic_inc(&log_count);
-  if (ind == log_size) log_reallocate(ind);
+  size_t ind = atomic_inc(&memuse_log_count);
+
+  /* If we are at the current size we need more space. */
+  if (ind == memuse_log_size) memuse_log_reallocate(ind);
 
   /* Other threads wait for space. */
-  while (ind > log_size);
+  while (ind > memuse_log_size)
+    ;
 
   /* Record the log. */
   memuse_log[ind].rank = engine_rank;
-  memuse_log[ind].step = engine_cstep;
+  memuse_log[ind].step = engine_current_step;
   memuse_log[ind].allocated = allocated;
   memuse_log[ind].size = size;
   memuse_log[ind].ptr = ptr;
   strncpy(memuse_log[ind].label, label, MEMUSE_MAXLAB);
   memuse_log[ind].label[MEMUSE_MAXLAB] = '\0';
   memuse_log[ind].tic = getticks();
-  atomic_inc(&log_done);
+  atomic_inc(&memuse_log_done);
 }
 
 /**
@@ -136,7 +150,7 @@ static void log_allocation(const char *label, void *ptr, int allocated,
 void memuse_log_dump(const char *filename) {
 
   /* Skip if nothing allocated this step. */
-  if (log_count == 0) return;
+  if (memuse_log_count == 0) return;
 
   /* Open the output file. */
   FILE *fd;
@@ -148,14 +162,14 @@ void memuse_log_dump(const char *filename) {
   fprintf(fd, "# cpufreq: %lld\n", clocks_get_cpufreq());
   fprintf(fd, "# tic adr rank step allocated label size\n");
 
-  for (size_t k = 0; k < log_count; k++) {
+  for (size_t k = 0; k < memuse_log_count; k++) {
     fprintf(fd, "%lld %p %d %d %d %s %zd\n", memuse_log[k].tic,
             memuse_log[k].ptr, memuse_log[k].rank, memuse_log[k].step,
             memuse_log[k].allocated, memuse_log[k].label, memuse_log[k].size);
   }
 
   /* Clear the log. */
-  log_count = 0;
+  memuse_log_count = 0;
 
   /* Close the file. */
   fflush(fd);
@@ -163,43 +177,6 @@ void memuse_log_dump(const char *filename) {
 }
 
 #endif /* SWIFT_MEMUSE_REPORTS */
-
-/**
- * @brief allocate aligned memory. The use and results are the same as the
- *        posix_memalign function.
- *
- * @param label a symbolic label for the memory, i.e. "parts".
- * @param memptr pointer to the allocated memory.
- * @param alignment alignment boundary.
- * @param size the quantity of bytes to allocate.
- * @result zero on success, otherwise an error code.
- */
-int swift_memalign(const char *label, void **memptr, size_t alignment,
-                   size_t size) {
-  int result = posix_memalign(memptr, alignment, size);
-
-#ifdef SWIFT_MEMUSE_REPORTS
-  if (result == 0) log_allocation(label, *memptr, 1, size);
-#endif
-  return result;
-}
-
-/**
- * @brief free aligned memory. The use and results are the same as the
- *        free function.
- *
- * @param label a symbolic label for the memory, i.e. "parts", should match
- *              call used to allocate the memory.
- * @param ptr pointer to the allocated memory.
- */
-void swift_free(const char *label, void *ptr) {
-  free(ptr);
-
-#ifdef SWIFT_MEMUSE_REPORTS
-  log_allocation(label, ptr, 0, 0);
-#endif
-  return;
-}
 
 /**
  * @brief parse the process /proc/self/statm file to get the process
@@ -274,14 +251,16 @@ const char *memuse_process(int inmb) {
   memuse_use(&size, &resident, &shared, &text, &data, &library, &dirty);
 
   if (inmb) {
-      snprintf(buffer, 256,
-               "VIRT = %.3f SHR = %.3f CODE = %.3f DATA = %.3f "
-               "RES = %.3f (MB)", size/1024.0, shared/1024.0,
-               text/1024.0, data/1024.0, resident/1024.0);
+    snprintf(buffer, 256,
+             "VIRT = %.3f SHR = %.3f CODE = %.3f DATA = %.3f "
+             "RES = %.3f (MB)",
+             size / 1024.0, shared / 1024.0, text / 1024.0, data / 1024.0,
+             resident / 1024.0);
   } else {
-      snprintf(buffer, 256,
-               "VIRT = %ld SHR = %ld CODE = %ld DATA = %ld "
-               "RES = %ld (KB)", size, shared, text, data, resident);
+    snprintf(buffer, 256,
+             "VIRT = %ld SHR = %ld CODE = %ld DATA = %ld "
+             "RES = %ld (KB)",
+             size, shared, text, data, resident);
   }
   return buffer;
 }

@@ -123,7 +123,7 @@ const char *engine_policy_names[] = {"none",
 int engine_rank;
 
 /** The current step of the engine as a global variable (for messages). */
-int engine_cstep;
+int engine_current_step;
 
 /**
  * @brief Data collected from the cells at the end of a time-step
@@ -182,15 +182,15 @@ void engine_addlink(struct engine *e, struct link **l, struct task *t) {
  * @result new particle data constructed from all the exchanges with the
  *         given alignment.
  */
-static void *engine_do_redistribute(const char * label, int *counts, char *parts,
+static void *engine_do_redistribute(const char *label, int *counts, char *parts,
                                     size_t new_nr_parts, size_t sizeofparts,
                                     size_t alignsize, MPI_Datatype mpi_type,
                                     int nr_nodes, int nodeID) {
 
   /* Allocate a new particle array with some extra margin */
   char *parts_new = NULL;
-  if (swift_memalign(label,
-          (void **)&parts_new, alignsize,
+  if (swift_memalign(
+          label, (void **)&parts_new, alignsize,
           sizeofparts * new_nr_parts * engine_redistribute_alloc_margin) != 0)
     error("Failed to allocate new particle data.");
 
@@ -865,34 +865,34 @@ void engine_redistribute(struct engine *e) {
    * under control. */
 
   /* SPH particles. */
-  void *new_parts = engine_do_redistribute("parts",
-      counts, (char *)s->parts, nr_parts_new, sizeof(struct part), part_align,
-      part_mpi_type, nr_nodes, nodeID);
+  void *new_parts = engine_do_redistribute(
+      "parts", counts, (char *)s->parts, nr_parts_new, sizeof(struct part),
+      part_align, part_mpi_type, nr_nodes, nodeID);
   swift_free("parts", s->parts);
   s->parts = (struct part *)new_parts;
   s->nr_parts = nr_parts_new;
   s->size_parts = engine_redistribute_alloc_margin * nr_parts_new;
 
   /* Extra SPH particle properties. */
-  new_parts = engine_do_redistribute("xparts", counts, (char *)s->xparts, nr_parts_new,
-                                     sizeof(struct xpart), xpart_align,
-                                     xpart_mpi_type, nr_nodes, nodeID);
+  new_parts = engine_do_redistribute(
+      "xparts", counts, (char *)s->xparts, nr_parts_new, sizeof(struct xpart),
+      xpart_align, xpart_mpi_type, nr_nodes, nodeID);
   swift_free("xparts", s->xparts);
   s->xparts = (struct xpart *)new_parts;
 
   /* Gravity particles. */
-  new_parts = engine_do_redistribute("gparts", g_counts, (char *)s->gparts, nr_gparts_new,
-                                     sizeof(struct gpart), gpart_align,
-                                     gpart_mpi_type, nr_nodes, nodeID);
+  new_parts = engine_do_redistribute(
+      "gparts", g_counts, (char *)s->gparts, nr_gparts_new,
+      sizeof(struct gpart), gpart_align, gpart_mpi_type, nr_nodes, nodeID);
   swift_free("gparts", s->gparts);
   s->gparts = (struct gpart *)new_parts;
   s->nr_gparts = nr_gparts_new;
   s->size_gparts = engine_redistribute_alloc_margin * nr_gparts_new;
 
   /* Star particles. */
-  new_parts = engine_do_redistribute("sparts", s_counts, (char *)s->sparts, nr_sparts_new,
-                                     sizeof(struct spart), spart_align,
-                                     spart_mpi_type, nr_nodes, nodeID);
+  new_parts = engine_do_redistribute(
+      "sparts", s_counts, (char *)s->sparts, nr_sparts_new,
+      sizeof(struct spart), spart_align, spart_mpi_type, nr_nodes, nodeID);
   swift_free("sparts", s->sparts);
   s->sparts = (struct spart *)new_parts;
   s->nr_sparts = nr_sparts_new;
@@ -1661,12 +1661,14 @@ void engine_exchange_proxy_multipoles(struct engine *e) {
 
   /* Allocate the buffers for the packed data */
   struct gravity_tensors *buffer_send = NULL;
-  if (swift_memalign("send_gravity_tensors", (void **)&buffer_send, SWIFT_CACHE_ALIGNMENT,
+  if (swift_memalign("send_gravity_tensors", (void **)&buffer_send,
+                     SWIFT_CACHE_ALIGNMENT,
                      count_send_cells * sizeof(struct gravity_tensors)) != 0)
     error("Unable to allocate memory for multipole transactions");
 
   struct gravity_tensors *buffer_recv = NULL;
-  if (swift_memalign("recv_gravity_tensors", (void **)&buffer_recv, SWIFT_CACHE_ALIGNMENT,
+  if (swift_memalign("recv_gravity_tensors", (void **)&buffer_recv,
+                     SWIFT_CACHE_ALIGNMENT,
                      count_recv_cells * sizeof(struct gravity_tensors)) != 0)
     error("Unable to allocate memory for multipole transactions");
 
@@ -1827,7 +1829,8 @@ void engine_allocate_foreign_particles(struct engine *e) {
 
   /* Allocate space for the foreign particles we will receive */
   if (count_parts_in > s->size_parts_foreign) {
-    if (s->parts_foreign != NULL) swift_free("sparts_foreign", s->parts_foreign);
+    if (s->parts_foreign != NULL)
+      swift_free("sparts_foreign", s->parts_foreign);
     s->size_parts_foreign = engine_foreign_alloc_margin * count_parts_in;
     if (swift_memalign("parts_foreign", (void **)&s->parts_foreign, part_align,
                        sizeof(struct part) * s->size_parts_foreign) != 0)
@@ -1836,18 +1839,22 @@ void engine_allocate_foreign_particles(struct engine *e) {
 
   /* Allocate space for the foreign particles we will receive */
   if (count_gparts_in > s->size_gparts_foreign) {
-    if (s->gparts_foreign != NULL) swift_free("gparts_foreign", s->gparts_foreign);
+    if (s->gparts_foreign != NULL)
+      swift_free("gparts_foreign", s->gparts_foreign);
     s->size_gparts_foreign = engine_foreign_alloc_margin * count_gparts_in;
-    if (swift_memalign("gparts_foreign", (void **)&s->gparts_foreign, gpart_align,
+    if (swift_memalign("gparts_foreign", (void **)&s->gparts_foreign,
+                       gpart_align,
                        sizeof(struct gpart) * s->size_gparts_foreign) != 0)
       error("Failed to allocate foreign gpart data.");
   }
 
   /* Allocate space for the foreign particles we will receive */
   if (count_sparts_in > s->size_sparts_foreign) {
-    if (s->sparts_foreign != NULL) swift_free("sparts_foreign", s->sparts_foreign);
+    if (s->sparts_foreign != NULL)
+      swift_free("sparts_foreign", s->sparts_foreign);
     s->size_sparts_foreign = engine_foreign_alloc_margin * count_sparts_in;
-    if (swift_memalign("sparts_foreign", (void **)&s->sparts_foreign, spart_align,
+    if (swift_memalign("sparts_foreign", (void **)&s->sparts_foreign,
+                       spart_align,
                        sizeof(struct spart) * s->size_sparts_foreign) != 0)
       error("Failed to allocate foreign spart data.");
   }
@@ -3115,7 +3122,7 @@ void engine_step(struct engine *e) {
   e->max_active_bin = get_max_active_bin(e->ti_end_min);
   e->min_active_bin = get_min_active_bin(e->ti_current, e->ti_old);
   e->step += 1;
-  engine_cstep = e->step;
+  engine_current_step = e->step;
   e->step_props = engine_step_prop_none;
 
   /* When restarting, move everyone to the current time. */
