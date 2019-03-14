@@ -286,6 +286,10 @@ struct stars_props {
   int AGB_n_elements;
   int AGB_n_z;
 
+  float log10_SNII_min_mass_msun;
+  float log10_SNII_max_mass_msun;
+  float log10_SNIa_max_mass_msun;
+
   /* Array of mass bins for yield calculations */
   double *yield_mass_bins;
 
@@ -293,7 +297,6 @@ struct stars_props {
   char IMF_Model[10];
   float IMF_Exponent;
   float *imf_by_number;
-  float *imf_by_number1;
   float *imf_mass_bin;
   float *imf_mass_bin_log10;
 

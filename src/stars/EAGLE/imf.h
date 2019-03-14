@@ -30,44 +30,65 @@ static const float log_imf_max_solar_mass = 2;
 static const int N_imf_mass_bins = 200;
 static const int gamma_SNIa = 2;
 
+/**
+ * @brief determine which IMF mass bins the upper and lower input mass bounds belong to
+ *
+ * @param log_min_mass Lower mass bound
+ * @param log_max_mass Upper mass bound
+ * @param ilow pointer to index of IMF mass bin containing log_min_mass
+ * @param ihigh pointer to index of IMF mass bin containing log_max_mass
+ * @param star_properties the #stars_props data struct */
 // do we need doubles in signature?
 inline static void determine_imf_bins(
-    double log_min_dying_mass, double log_max_dying_mass, int *ilow, int *ihigh,
+    double log_min_mass, double log_max_mass, int *ilow, int *ihigh,
     const struct stars_props *restrict star_properties) {
   int i1, i2;
 
-  if (log_min_dying_mass < star_properties->imf_mass_bin_log10[0])
-    log_min_dying_mass = star_properties->imf_mass_bin_log10[0];
-
-  if (log_min_dying_mass >
+  /* Check whether lower mass is within the IMF mass bin range */
+  if (log_min_mass < star_properties->imf_mass_bin_log10[0])
+    log_min_mass = star_properties->imf_mass_bin_log10[0];
+  if (log_min_mass >
       star_properties->imf_mass_bin_log10[N_imf_mass_bins - 1])
-    log_min_dying_mass =
+    log_min_mass =
         star_properties->imf_mass_bin_log10[N_imf_mass_bins - 1];
 
-  if (log_max_dying_mass < star_properties->imf_mass_bin_log10[0])
-    log_max_dying_mass = star_properties->imf_mass_bin_log10[0];
-
-  if (log_max_dying_mass >
+  /* Check whether upper mass is within the IMF mass bin range */
+  if (log_max_mass < star_properties->imf_mass_bin_log10[0])
+    log_max_mass = star_properties->imf_mass_bin_log10[0];
+  if (log_max_mass >
       star_properties->imf_mass_bin_log10[N_imf_mass_bins - 1])
-    log_max_dying_mass =
+    log_max_mass =
         star_properties->imf_mass_bin_log10[N_imf_mass_bins - 1];
 
+  /* Find mass bin to which lower mass belongs (ALEXEI: Can we do this in a better way?) */
   for (i1 = 0; i1 < N_imf_mass_bins - 2 &&
-               star_properties->imf_mass_bin_log10[i1 + 1] < log_min_dying_mass;
+               star_properties->imf_mass_bin_log10[i1 + 1] < log_min_mass;
        i1++);
     
+  /* Find mass bin to which upper mass belongs (ALEXEI: Can we do this in a better way?) */
   for (i2 = 1; i2 < N_imf_mass_bins - 1 &&
-               star_properties->imf_mass_bin_log10[i2] < log_max_dying_mass;
+               star_properties->imf_mass_bin_log10[i2] < log_max_mass;
        i2++);
     
   *ilow = i1;
   *ihigh = i2;
 }
 
+/**
+ * @brief Integrate the IMF between a minimum and maximum mass using the trapezoidal rule. The IMF may be weighted by various quantities, as specified by the variable, mode, including an input array, stellar_yields.
+ *
+ * @param log_min_mass log10 mass lower integration bound
+ * @param log_max_mass log10 mass upper integration bound
+ * @param m2 ALEXEI: I have no idea. Check if it is ever used
+ * @param mode Flag to specify weighting used for integrating IMF
+ * @param stellar_yields Array of weights based on yields. Used with mode=2
+ * @param star_properties the #stars_props data structure
+ */
 inline static float integrate_imf(
     float log_min_mass, float log_max_mass, float m2, int mode,
     float *stellar_yields, const struct stars_props *restrict star_properties) {
 
+  // ALEXEI: come up with better names for indices
   double result, u, f;
 
   int ilow, ihigh, index;
@@ -77,30 +98,36 @@ inline static float integrate_imf(
   dlm = star_properties->imf_mass_bin_log10[1] -
         star_properties->imf_mass_bin_log10[0]; /* dlog(m) */
 
+  /* Determine bins to integrate over based on integration bounds */
   determine_imf_bins(log_min_mass, log_max_mass, &ilow, &ihigh,
                      star_properties);
 
+  // ALEXEI: rewrite this function so that adding on the fly and don't need to use the array.
   float integrand[N_imf_mass_bins];
 
+  /* Add up the contribution from each of the IMF mass bins */
   if (mode == 0)
+    /* Integrate IMF on its own */
     for (index = ilow; index < ihigh + 1; index++)
       integrand[index] =
           star_properties->imf_by_number[index] *
-          star_properties->imf_mass_bin[index]; /* integrate by number */
+          star_properties->imf_mass_bin[index]; 
   else if (mode == 1)
+    /* Integrate IMF weighted by mass */
     for (index = ilow; index < ihigh + 1; index++)
       integrand[index] =
           star_properties->imf_by_number[index] *
           star_properties->imf_mass_bin[index] *
-          star_properties->imf_mass_bin[index]; /* integrate by mass */
+          star_properties->imf_mass_bin[index]; 
   else if (mode == 2)
-    for (index = ilow; index < ihigh + 1; index++){
+    /* Integrate IMF weighted by yields */
+    for (index = ilow; index < ihigh + 1; index++)
       integrand[index] =
           stellar_yields[index] * star_properties->imf_by_number[index] *
           star_properties
-              ->imf_mass_bin[index]; /* integrate number * yield weighted */
-    }
+              ->imf_mass_bin[index]; 
   else if (mode == 3)
+    /* ALEXEI: should we keep this? */
     for (index = ilow; index < ihigh + 1; index++) {
       u = m2 / star_properties->imf_mass_bin[index];
       f = pow(2.0, gamma_SNIa + 1) * (gamma_SNIa + 1) * pow(u, gamma_SNIa);
@@ -113,13 +140,14 @@ inline static float integrate_imf(
     error("invalid mode in integrate_imf = %d\n", mode);
   }
 
-  /* integrate using trapezoidal rule */
+  /* integrate using trapezoidal rule (ALEXEI: Remove when adding on the fly)*/
   result = 0;
   for (index = ilow; index < ihigh + 1; index++) result += integrand[index];
 
+  /* Update end bins since contribution was overcounted when summing up all entries */
   result = result - 0.5 * integrand[ilow] - 0.5 * integrand[ihigh];
 
-  /* correct first bin */
+  /* correct first bin (ALEXEI: why are we doing this? (just to clarify comment))*/
   dm = (log_min_mass - star_properties->imf_mass_bin_log10[ilow]) / dlm;
 
   if (dm < 0.5)
@@ -139,39 +167,44 @@ inline static float integrate_imf(
     result -= (1 - dm) * integrand[ihigh];
   }
 
-  result *= dlm * log(10.0); /* log(10) since mass function tabulated as
-                                function of log_10(mass) */
+  /* The IMF is tabulated in log10 so undo to get regular units */
+  result *= dlm * log(10.0); 
 
   return result;
 }
 
+/**
+ * @brief Allocate and compute IMF
+ *
+ * @param star_properties #stars_props data structure */
 inline static void init_imf(struct stars_props *restrict star_properties) {
 
   // ALEXEI: use better names for solar_mass, log_solar_mass
   float norm = 0, solar_mass, log_solar_mass;
+
+  /* Compute size of mass bins in log10 space */
   const float dlm = (log_imf_max_solar_mass - log_imf_min_solar_mass) /
                     (double)(N_imf_mass_bins - 1);
 
+  /* Allocate IMF array */
   if (posix_memalign((void **)&star_properties->imf_by_number,
                      SWIFT_STRUCT_ALIGNMENT,
                      N_imf_mass_bins * sizeof(float)) != 0)
     error("Failed to allocate IMF bins table");
+
+  /* Allocate array to store IMF mass bins */
   if (posix_memalign((void **)&star_properties->imf_mass_bin,
                      SWIFT_STRUCT_ALIGNMENT,
                      N_imf_mass_bins * sizeof(float)) != 0)
     error("Failed to allocate IMF bins table");
+
+  /* Allocate array to store IMF mass bins in log10 space */
   if (posix_memalign((void **)&star_properties->imf_mass_bin_log10,
                      SWIFT_STRUCT_ALIGNMENT,
                      N_imf_mass_bins * sizeof(float)) != 0)
     error("Failed to allocate IMF bins table");
-  if (posix_memalign((void **)&star_properties->imf_by_number1,
-                     SWIFT_STRUCT_ALIGNMENT,
-                     N_imf_mass_bins * sizeof(float)) != 0)
-    error("Failed to allocate IMF bins table");
 
-  float dummy_stellar_fields;
-
-  /* Power-law IMF (Salpeter for IMF_EXPONENT = 2.35) */
+  /* Set Power-law IMF (Salpeter for IMF_EXPONENT = 2.35) */
   if (strcmp(star_properties->IMF_Model, "PowerLaw") == 0) {
     if (star_properties->IMF_Exponent < 0) {
       error("imf_exponent is supposed to be > 0\n");
@@ -189,7 +222,7 @@ inline static void init_imf(struct stars_props *restrict star_properties) {
       star_properties->imf_mass_bin_log10[i] = log_solar_mass;
     }
   }
-  /* Chabrier 2003 */
+  /* Set IMF from Chabrier 2003 */
   else if (strcmp(star_properties->IMF_Model, "Chabrier") == 0) {
     for (int i = 0; i < N_imf_mass_bins; i++) {
       log_solar_mass = log_imf_min_solar_mass + i * dlm;
@@ -212,23 +245,32 @@ inline static void init_imf(struct stars_props *restrict star_properties) {
           star_properties->IMF_Model);
   }
 
+  /* Normalize the IMF */
   norm = integrate_imf(log_imf_min_solar_mass, log_imf_max_solar_mass, 0.0, 1,
-                       &dummy_stellar_fields, star_properties);
+                       /*(stellar_yields=)*/ NULL, star_properties);
 
   for (int i = 0; i < N_imf_mass_bins; i++)
     star_properties->imf_by_number[i] /= norm;
 }
 
+/**
+ * @brief Calculate mass (in solar masses) of stars that died from the star particle's birth up to its current age (in Gyr)
+ *
+ * @param age_Gyr age of star in Gyr
+ * @param metallicity Star's metallicity
+ * @param star_properties the #stars_props data structure
+ */
 inline static float dying_mass_msun(float age_Gyr, float metallicity,
                                     const struct stars_props* restrict
                                         star_properties) {
 
-  // check out units for all these quantities and name them accordingly
+  // ALEXEI: check out units for all these quantities and name them accordingly
   float mass = 0, d_metal, d_time1 = 0, d_time2 = 0, log_age_yr, mass1, mass2;
 
   int metal_index, i, index_time1 = -1, index_time2 = -1;
 
-  // What do we do with the constants here?
+  /* Calculate star mass that dies based on one of several analytical models */
+  // ALEXEI: What do we do with the constants here?
   switch (star_properties->stellar_lifetime_flag) {
     case 0:
       /* padovani & matteucci 1993 */
@@ -274,7 +316,7 @@ inline static float dying_mass_msun(float age_Gyr, float metallicity,
 
       log_age_yr = log10(age_Gyr * 1.e9);
 
-      // Can we simplify this whole thing somehow to be more readable?
+      // ALEXEI: Simply copied from EAGLE, can we simplify this whole thing somehow to be more readable?
       if (metallicity <= star_properties->lifetimes.metallicity[0]) {
         metal_index = 0;
         d_metal = 0.0;
@@ -358,11 +400,20 @@ inline static float dying_mass_msun(float age_Gyr, float metallicity,
     default:
       error("stellar lifetimes not defined\n");
   }
+
+  /* Check that we haven't killed too many stars */
   if (mass > imf_max_mass_msun) mass = imf_max_mass_msun;
 
   return mass;
 }
 
+/**
+ * @brief
+ *
+ * @param mass
+ * @param metallicity
+ * @param star_properties the #stars_props data struct
+ */
 inline static float lifetime_in_Gyr(float mass, float metallicity,
                                     const struct stars_props* restrict
                                         star_properties) {
