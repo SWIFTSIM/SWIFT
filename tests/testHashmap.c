@@ -14,9 +14,6 @@ int main(int argc, char *argv[]) {
   message("Initialising hash table...");
   hashmap_init(&m);
   
-  message("Allocating chunks for the hash table...");
-  hashmap_allocate_chunks(&m, INITIAL_NUM_CHUNKS);
-
   message("Populating hash table...");
   for(size_t key=0; key<NUM_KEYS; key++) {
     hashmap_put(&m, key, key);
@@ -29,6 +26,9 @@ int main(int argc, char *argv[]) {
     if(value != key) error("Incorrect value (%zu) found for key: %zu", value, key);
     //else message("Retrieved element, Key: %zu Value: %zu", key, value);
   }
+
+  message("Checking for invalid key..."); 
+  if(hashmap_get(&m, NUM_KEYS + 1, 0) != NULL) error("Key: %d shouldn't exist or be created.", NUM_KEYS + 1);
 
   message("Freeing hash table...");
   hashmap_free(&m);
