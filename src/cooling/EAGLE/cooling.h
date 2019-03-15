@@ -35,8 +35,7 @@ struct entropy_floor_properties;
 struct space;
 
 void cooling_update(const struct cosmology *cosmo,
-                    struct cooling_function_data *cooling,
-		    struct space *s);
+                    struct cooling_function_data *cooling, struct space *s);
 
 void cooling_cool_part(const struct phys_const *phys_const,
                        const struct unit_system *us,
@@ -78,8 +77,7 @@ void cooling_init_backend(struct swift_params *parameter_file,
                           struct cooling_function_data *cooling);
 
 void cooling_restore_tables(struct cooling_function_data *cooling,
-                            const struct cosmology *cosmo,
-			    struct space *s);
+                            const struct cosmology *cosmo, struct space *s);
 
 void cooling_print_backend(const struct cooling_function_data *cooling);
 

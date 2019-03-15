@@ -129,8 +129,7 @@ __attribute__((always_inline)) INLINE void get_redshift_index(
  * @param s The space data, including a pointer to array of particles
  */
 void cooling_update(const struct cosmology *cosmo,
-                    struct cooling_function_data *cooling,
-		    struct space *s) {
+                    struct cooling_function_data *cooling, struct space *s) {
 
   /* Current redshift */
   const float redshift = cosmo->z;
@@ -142,18 +141,20 @@ void cooling_update(const struct cosmology *cosmo,
   cooling->dz = dz;
 
   static int H_reion_happened = 0;
-  /* Does this timestep straddle Hydrogen reionization? If so, we need to input extra heat */
+  /* Does this timestep straddle Hydrogen reionization? If so, we need to input
+   * extra heat */
   if ((H_reion_happened == 0) && (redshift < cooling->H_reion_z)) {
-      
-      const float extra_heat = cooling->H_reion_heat_cgs * cooling->internal_energy_from_cgs;
-      
-      size_t i;
 
-      /* Loop through particles and set new heat */
-      for (i=0; i < s->nr_parts; i++){
-	hydro_reion_heating(&s->parts[i],&s->xparts[i],cosmo,extra_heat); 
-      }
-      H_reion_happened = 1;
+    const float extra_heat =
+        cooling->H_reion_heat_cgs * cooling->internal_energy_from_cgs;
+
+    size_t i;
+
+    /* Loop through particles and set new heat */
+    for (i = 0; i < s->nr_parts; i++) {
+      hydro_reion_heating(&s->parts[i], &s->xparts[i], cosmo, extra_heat);
+    }
+    H_reion_happened = 1;
   }
   /* Do we already have the correct tables loaded? */
   if (cooling->z_index == z_index) return;
@@ -183,7 +184,6 @@ void cooling_update(const struct cosmology *cosmo,
 
   /* Store the currently loaded index */
   cooling->z_index = z_index;
-
 }
 
 /**
@@ -549,8 +549,8 @@ void cooling_cool_part(const struct phys_const *phys_const,
      re-ionization as this needs to be added on no matter what */
 
   /* Get helium and hydrogen reheating term */
-  const double Helium_reion_heat_cgs = eagle_helium_reionization_extraheat(
-      cosmo->z, delta_redshift, cooling);
+  const double Helium_reion_heat_cgs =
+      eagle_helium_reionization_extraheat(cosmo->z, delta_redshift, cooling);
 
   /* Convert this into a rate */
   const double Lambda_He_reion_cgs =
@@ -793,8 +793,9 @@ void cooling_init_backend(struct swift_params *parameter_file,
 
   /* read some parameters */
 
-  /* Despite the names, the values of H_reion_heat_cgs and He_reion_heat_cgs that are read in
-     are actually in units of electron volts per proton mass. We later convert to cgs units */
+  /* Despite the names, the values of H_reion_heat_cgs and He_reion_heat_cgs
+     that are read in are actually in units of electron volts per proton mass.
+     We later convert to cgs units */
 
   parser_get_param_string(parameter_file, "EAGLECooling:dir_name",
                           cooling->cooling_table_path);
@@ -815,11 +816,12 @@ void cooling_init_backend(struct swift_params *parameter_file,
   cooling->S_over_Si_ratio_in_solar = parser_get_opt_param_float(
       parameter_file, "EAGLECooling:S_over_Si_in_solar", 1.f);
 
-  /* Convert H_reion_heat_cgs and He_reion_heat_cgs to cgs 
-     (units used internally by the cooling routines). This is done by multiplying by 'eV/m_H' 
-     in internal units, then converting to cgs units. Note that the dimensions of these quantities
-     are energy/mass = velocity^2 */
-  
+  /* Convert H_reion_heat_cgs and He_reion_heat_cgs to cgs
+     (units used internally by the cooling routines). This is done by
+     multiplying by 'eV/m_H' in internal units, then converting to cgs units.
+     Note that the dimensions of these quantities are energy/mass = velocity^2
+   */
+
   cooling->H_reion_heat_cgs *=
       phys_const->const_electron_volt / phys_const->const_proton_mass *
       units_cgs_conversion_factor(us, UNIT_CONV_ENERGY_PER_UNIT_MASS);
@@ -901,8 +903,7 @@ void cooling_init_backend(struct swift_params *parameter_file,
  * @param s The space data, including a pointer to array of particles
  */
 void cooling_restore_tables(struct cooling_function_data *cooling,
-                            const struct cosmology *cosmo,
-			    struct space *s) {
+                            const struct cosmology *cosmo, struct space *s) {
 
   /* Read redshifts */
   get_cooling_redshifts(cooling);

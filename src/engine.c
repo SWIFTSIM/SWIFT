@@ -2862,7 +2862,7 @@ void engine_init_particles(struct engine *e, int flag_entropy_ICs,
   /* Update the cooling function */
   if ((e->policy & engine_policy_cooling) ||
       (e->policy & engine_policy_temperature))
-    cooling_update(e->cosmology, e->cooling_func,e->s);
+    cooling_update(e->cosmology, e->cooling_func, e->s);
 
 #ifdef WITH_LOGGER
   /* Mark the first time step in the particle logger file. */

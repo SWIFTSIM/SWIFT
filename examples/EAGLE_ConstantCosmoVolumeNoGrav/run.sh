@@ -20,7 +20,7 @@ then
 fi
 
 # Run SWIFT
-../swift --hydro --cosmology --cooling --threads=8 eagle_cooling_box.yml 2>&1 | tee output.log
+../swift --threads=2 --hydro --cosmology --cooling --threads=8 eagle_cooling_box.yml 2>&1 | tee output.log
 
 # Plot the result
 python3 plot_thermal_history.py eagle_cooling_box thermal_history_default_gadget2.pdf

@@ -356,12 +356,11 @@ hydro_set_comoving_internal_energy_dt(struct part *restrict p, float du_dt) {
  */
 __attribute__((always_inline)) INLINE static void
 hydro_set_physical_internal_energy_dt(struct part *restrict p,
-				      const struct cosmology *cosmo,
-				      float du_dt) {
+                                      const struct cosmology *cosmo,
+                                      float du_dt) {
 
   p->u_dt = du_dt / cosmo->a_factor_internal_energy;
 }
-
 
 /**
  * @brief Sets the physical entropy of a particle
@@ -830,16 +829,13 @@ __attribute__((always_inline)) INLINE static void hydro_remove_part(
  * @param cosmo Cosmology data structure
  * @param extra_heat The extra internal energy given to the particle.
  */
-__attribute__((always_inline)) INLINE static void
-hydro_reion_heating(struct part *p,
-		    struct xpart *xp,
-		    const struct cosmology *cosmo,
-		    float extra_heat) {
-  
+__attribute__((always_inline)) INLINE static void hydro_reion_heating(
+    struct part *p, struct xpart *xp, const struct cosmology *cosmo,
+    float extra_heat) {
+
   const float old_u = xp->u_full * cosmo->a_factor_internal_energy;
   const float new_u = old_u + extra_heat;
   xp->u_full = new_u / cosmo->a_factor_internal_energy;
 }
-
 
 #endif /* SWIFT_PRESSURE_ENERGY_HYDRO_H */

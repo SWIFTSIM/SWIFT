@@ -816,17 +816,15 @@ __attribute__((always_inline)) INLINE static void hydro_remove_part(
  * @param cosmo Cosmology data structure
  * @param extra_heat The extra internal energy given to the particle.
  */
-__attribute__((always_inline)) INLINE static void
-hydro_reion_heating(struct part *p,
-		    struct xpart *xp,
-		    const struct cosmology *cosmo,
-		    float extra_heat) {
-  
-  const float old_u = gas_internal_energy_from_entropy(p->rho * cosmo->a3_inv,
-						       xp->entropy_full);
-  const float new_u = old_u + extra_heat;
-  xp->entropy_full = gas_entropy_from_internal_energy(p->rho * cosmo->a3_inv,new_u);
-}
+__attribute__((always_inline)) INLINE static void hydro_reion_heating(
+    struct part *p, struct xpart *xp, const struct cosmology *cosmo,
+    float extra_heat) {
 
+  const float old_u = gas_internal_energy_from_entropy(p->rho * cosmo->a3_inv,
+                                                       xp->entropy_full);
+  const float new_u = old_u + extra_heat;
+  xp->entropy_full =
+      gas_entropy_from_internal_energy(p->rho * cosmo->a3_inv, new_u);
+}
 
 #endif /* SWIFT_GADGET2_HYDRO_H */
