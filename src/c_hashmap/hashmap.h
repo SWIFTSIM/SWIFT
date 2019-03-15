@@ -13,17 +13,13 @@
 #include <stddef.h>
 #include <stdbool.h>
 
-/* Hashmap constants. */
-#define MAP_MISSING -3  /* No such element */
-#define MAP_FULL -2 	/* Hashmap is full */
-#define MAP_OMEM -1 	/* Out of Memory */
-#define MAP_OK 0 	/* OK */
-
+// Type used for chunk bitmasks.
 typedef size_t hashmap_mask_t;
 
 #define HASHMAP_BITS_PER_MASK ((int)sizeof(hashmap_mask_t) * 8)
 #define HASHMAP_MASKS_PER_CHUNK 4
 #define HASHMAP_ELEMENTS_PER_CHUNK (HASHMAP_BITS_PER_MASK * HASHMAP_MASKS_PER_CHUNK)
+#define CHUNKS_PER_ALLOC 8
 
 /* We need to keep keys and values */
 typedef struct _hashmap_element{
@@ -40,13 +36,20 @@ typedef struct _hashmap_chunk {
 	hashmap_element_t data[HASHMAP_ELEMENTS_PER_CHUNK];
 } hashmap_chunk_t;
 
+struct _hashmap_alloc {
+  hashmap_chunk chunks[CHUNKS_PER_ALLOC];
+  void *next;
+} hashmap_alloc_t;
+
 /* A hashmap has some maximum size and current size,
  * as well as the data to hold. */
 typedef struct _hashmap_map{
 	int table_size;
 	int size;
+	int num_chunks;
 	hashmap_chunk_t **chunks;    // Pointer to chunks in use, but not densely populated.
 	hashmap_chunk_t *graveyard;  // Pointer to allocated, but currently unused chunks.
+    hashmap_alloc_t *allocs;	// Pointer to the allocated chunks of chunks, needed for cleanup.
 } hashmap_t;
 
 /*
@@ -73,16 +76,6 @@ typedef any_t map_t;
  */
 void hashmap_init(hashmap_t *m);
 
-/**
- * brief: Pre-allocate a number of chunks for the graveyard.
- */
-extern void hashmap_allocate_chunks(hashmap_t *m, int num_chunks);
-
-/*
- * Return an empty hashmap. Returns NULL if empty.
-*/
-extern map_t hashmap_new(void);
-
 /*
  * Iteratively call f with argument (item, data) for
  * each element data in the hashmap. The function must
@@ -100,7 +93,8 @@ extern void hashmap_put(hashmap_t *m, size_t key, size_t value);
 /*
  * Get an element from the hashmap. Return MAP_OK or MAP_MISSING.
  */
-extern size_t* hashmap_get(hashmap_t *m, size_t key, int create_new);
+extern size_t* hashmap_get(hashmap_t *m, size_t key);
+extern size_t* hashmap_lookup(hashmap_t *m, size_t key);
 
 /*
  * Remove an element from the hashmap. Return MAP_OK or MAP_MISSING.

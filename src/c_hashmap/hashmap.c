@@ -8,33 +8,34 @@
 #include "../error.h"
 #include "hashmap.h"
 
-#define INITIAL_SIZE (4096)
+#define INITIAL_SIZE (1024)
 #define MAX_CHAIN_LENGTH (8)
-//#define CHUNKS_PER_ALLOC 8
-#define CHUNKS_PER_ALLOC 1
-#define HASHMAP_GROWTH_FACTOR 2
+#define HASHMAP_GROWTH_FACTOR (2)
 
 /**
  * brief: Pre-allocate a number of chunks for the graveyard.
  */
-void hashmap_allocate_chunks(hashmap_t *m, int num_chunks) {
+void hashmap_allocate_chunks(hashmap_t *m) {
   /* Allocate a fresh set of chunks. */
-  hashmap_chunk_t *chunks;
-  if ((chunks = (hashmap_chunk_t *)calloc(num_chunks,
-                                          sizeof(hashmap_chunk_t))) == NULL) {
+  hashmap_alloc_t *alloc;
+  if ((alloc = (_hashmap_alloc *)calloc(1, sizeof(_hashmap_alloc))) == NULL) {
     error("Unable to allocate chunks.");
   }
 
+  /* Hook up the alloc, so that we can clean it up later. */
+  alloc->next = m->allocs;
+  m->allocs = alloc;
+
   /* Link the chunks together. */
-  for (int k = 0; k < num_chunks - 1; k++) {
-    chunks[k].next = &chunks[k + 1];
+  for (int k = 0; k < CHUNKS_PER_ALLOC - 1; k++) {
+    alloc->chunks[k].next = &alloc->chunks[k + 1];
   }
 
   /* Last chunk points to current graveyard. */
-  chunks[num_chunks - 1].next = m->graveyard;
+  alloc->chunks[num_chunks - 1].next = m->graveyard;
 
   /* Graveyard points to first new chunk. */
-  m->graveyard = chunks;
+  m->graveyard = &alloc->chunks[0];
 }
 
 /**
@@ -42,17 +43,18 @@ void hashmap_allocate_chunks(hashmap_t *m, int num_chunks) {
  */
 void hashmap_init(hashmap_t *m) {
   /* Allocate the first (empty) list of chunks. */
-  const int nr_chunks = INITIAL_SIZE / HASHMAP_ELEMENTS_PER_CHUNK;
+  m->nr_chunks = (INITIAL_SIZE + HASHMAP_ELEMENTS_PER_CHUNK - 1) / HASHMAP_ELEMENTS_PER_CHUNK;
   if ((m->chunks = (hashmap_chunk_t **)calloc(
-           nr_chunks, sizeof(hashmap_chunk_t *))) == NULL) {
+           m->nr_chunks, sizeof(hashmap_chunk_t *))) == NULL) {
     error("Unable to allocate hashmap chunks.");
   }
 
   /* The graveyard is currently empty. */
   m->graveyard = NULL;
+  m->allocs = NULL;
 
   /* Set initial sizes. */
-  m->table_size = INITIAL_SIZE;
+  m->table_size = m->nr_chunks * HASHMAP_ELEMENTS_PER_CHUNK;
   m->size = 0;
 
   /* Inform the men. */
@@ -69,7 +71,7 @@ void hashmap_release_chunk(hashmap_t *m, hashmap_chunk_t *chunk) {
 
   /* Hook it up with the other stiffs in the graveyard. */
   chunk->next = m->graveyard;
-  m->graveyard = chunk->next;
+  m->graveyard = chunk;
 }
 
 /**
@@ -77,7 +79,7 @@ void hashmap_release_chunk(hashmap_t *m, hashmap_chunk_t *chunk) {
  */
 hashmap_chunk_t *hashmap_get_chunk(hashmap_t *m) {
   if (m->graveyard == NULL) {
-    hashmap_allocate_chunks(m, CHUNKS_PER_ALLOC);
+    hashmap_allocate_chunks(m);
   }
 
   hashmap_chunk_t *res = m->graveyard;
@@ -172,9 +174,9 @@ void hashmap_grow(hashmap_t *m) {
 
   /* Re-allocate the chunk array. */
   m->table_size = HASHMAP_GROWTH_FACTOR * m->table_size;
-  const int nr_chunks = m->table_size / HASHMAP_ELEMENTS_PER_CHUNK;
+  m->nr_chunks = m->table_size / HASHMAP_ELEMENTS_PER_CHUNK;
   if ((m->chunks = (hashmap_chunk_t **)calloc(
-           nr_chunks, sizeof(hashmap_chunk_t *))) == NULL) {
+           m->nr_chunks, sizeof(hashmap_chunk_t *))) == NULL) {
     error("Unable to allocate hashmap chunks.");
   }
 
@@ -211,6 +213,9 @@ void hashmap_grow(hashmap_t *m) {
     /* We're through with this chunk, recycle it. */
     hashmap_release_chunk(m, chunk);
   }
+
+  /* Free the old list of chunks. */
+  free(old_chunks);
 }
 
 /**
@@ -230,29 +235,31 @@ void hashmap_put(hashmap_t *m, size_t key, size_t value) {
 }
 
 /**
- * @brief Get the value for a given key. If no value exists and create_new is true,
- * a new one will be created.
+ * @brief Get the value for a given key. If no value exists a new one will be created.
  *
  * Note that the returned pointer is volatile and will be invalidated if the hashmap
  * is re-hashed!
  */
-size_t* hashmap_get(hashmap_t *m, size_t key, int create_new) {
+size_t* hashmap_get(hashmap_t *m, size_t key) {
   /* Look for the given key. */
-  hashmap_element_t *element = hashmap_find(m, key, create_new);
-
-  /* If we weren't asked to create a new entry, return NULL if the key was not found. */
-  if (!create_new) {
-    return element ? &element->value : NULL;
+  hashmap_element_t *element = hashmap_find(m, key, /*create_new=*/1);
+  while (!element) {
+    hashmap_grow(m);
+    element = hashmap_find(m, key, /*create_new=*/1);
   }
+  return &element->value;
+}
 
-  /* Otherwise, re-hash and repeat. */
-  else {
-    while (!element) {
-      hashmap_grow(m);
-      element = hashmap_find(m, key, /*create_new=*/1);
-    }
-    return &element->value;
-  }
+/**
+ * @brief Look for the given key and return a pointer to its value or NULL if 
+ * it is not in the hashmap.
+ *
+ * Note that the returned pointer is volatile and will be invalidated if the hashmap
+ * is re-hashed!
+ */
+size_t* hashmap_lookup(hashmap_t *m, size_t key) {
+  hashmap_element_t *element = hashmap_find(m, key, /*create_new=*/0);
+  return element ? &element->value : NULL;
 }
 
 /*
@@ -284,31 +291,20 @@ int hashmap_iterate(map_t in, PFany f, any_t item) {
 
 /* Deallocate the hashmap */
 void hashmap_free(hashmap_t *m) {
-
-  const int num_chunks = (m->table_size + HASHMAP_ELEMENTS_PER_CHUNK - 1) / HASHMAP_ELEMENTS_PER_CHUNK;  
-  
-  message("No. of chunks being freed: %d", num_chunks);
-
-  for(int k=0; k<num_chunks; k++) {
-    if(m->chunks[k]) free(m->chunks[k]);
-  }
-  
+  /* Free the list of active chunks. Note that the actual chunks will be freed
+     as part of the allocs below. */
   free(m->chunks);
  
-  /* Free chunks */ 
-  hashmap_chunk_t *head = m->graveyard;
-  hashmap_chunk_t *tmp;
-  while(head != NULL) {
-  
-    tmp = head;
-    head = head->next;
+  /* Free the chunk allocs. */ 
+  while (m->allocs) {
+    hashmap_alloc_t *tmp = m->allocs;
+    m->allocs = tmp->next;
     free(tmp);
-
   }
 }
 
-/* Return the length of the hashmap */
-int hashmap_length(hashmap_t *m) {
+/* Return the size of the hashmap */
+int hashmap_size(hashmap_t *m) {
   if (m != NULL)
     return m->size;
   else
