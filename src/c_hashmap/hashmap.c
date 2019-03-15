@@ -11,6 +11,7 @@
 #define INITIAL_SIZE (4096)
 #define MAX_CHAIN_LENGTH (8)
 #define CHUNKS_PER_ALLOC 8
+#define HASHMAP_GROWTH_FACTOR 2
 
 /**
  * brief: Pre-allocate a number of chunks for the graveyard.
@@ -98,7 +99,7 @@ hashmap_chunk_t *hashmap_get_chunk(hashmap_t *m) {
  * key to obtain a new offset *within the same bucket*. This is repeated for at most
  * MAX_CHAIN_LENGTH steps, at which point insertion fails.
  */
-hashmap_element_t *hashmap_find(hashmap_t *m, size_t key) {
+hashmap_element_t *hashmap_find(hashmap_t *m, size_t key, int create_new) {
   /* If full, return immediately */
   if (m->size >= (m->table_size / 2)) return MAP_FULL;
 
@@ -112,6 +113,10 @@ hashmap_element_t *hashmap_find(hashmap_t *m, size_t key) {
 
   /* Allocate the chunk if needed. */
   if (m->chunks[chunk_offset] == NULL) {
+    /* Quit here if we don't want to create a new entry. */
+    if (!create_new) return NULL;
+
+    /* Get a new chunk for this offset. */
     m->chunks[chunk_offset] = hashmap_get_chunk(m);
   }
   hashmap_chunk_t *chunk = m->chunks[chunk_offset];
@@ -126,6 +131,9 @@ hashmap_element_t *hashmap_find(hashmap_t *m, size_t key) {
     /* Is the offset empty? */
     hashmap_mask_t search_mask = ((hashmap_mask_t)1) << offset_in_mask;
     if (!(chunk->masks[mask_offset] & search_mask)) {
+      /* Quit here if we don't want to create a new element. */
+      if (!create_new) return NULL;
+
       /* Mark this element as taken and increase the size counter. */
       chunk->masks[mask_offset] |= search_mask;
       m->size += 1;
@@ -156,13 +164,13 @@ hashmap_element_t *hashmap_find(hashmap_t *m, size_t key) {
 /**
  * @brief Grows the hashmap and rehashes all the elements
  */
-void hashmap_resize(hashmap_t *m, int new_table_size) {
+void hashmap_grow(hashmap_t *m) {
   /* Hold on to the old data. */
   const int old_table_size = m->table_size;
   hashmap_chunk_t **old_chunks = m->chunks;
 
   /* Re-allocate the chunk array. */
-  m->table_size = new_table_size;
+  m->table_size = HASHMAP_GROWTH_FACTOR * m->table_size;
   const int nr_chunks = m->table_size / HASHMAP_ELEMENTS_PER_CHUNK;
   if ((m->chunks = (hashmap_chunk_t **)calloc(
            nr_chunks, sizeof(hashmap_chunk_t *))) == NULL) {
@@ -189,10 +197,12 @@ void hashmap_resize(hashmap_t *m, int new_table_size) {
               &chunk->data[mid * HASHMAP_BITS_PER_MASK + eid];
 
           /* Copy the element over to the new hashmap. */
-          if (!hashmap_insert(m, element->key, element->value)) {
+          hashmap_element_t *new_element = hashmap_find(m, element->key, /*create_new=*/1);
+          if (!new_element) {
             /* TODO(pedro): Deal with this type of failure more elegantly. */
             error("Failed to re-hash element.");
           }
+          new_element->value = element->value;
         }
       }
     }
@@ -206,52 +216,42 @@ void hashmap_resize(hashmap_t *m, int new_table_size) {
  * @brief Add a key/value pair to the hashmap, overwriting whatever was previously there.
  */
 void hashmap_put(hashmap_t *m, size_t key, size_t value) {
-  /* Loop around, trying to find our place in the world. */
-  while (1) {
-    /* Try to find an element for the given key. */
-    hashmap_element_t *element = hashmap_find(m, key);
-    
-    /* If we found one, set the value and leave. */
-    if (element) {
-      element->value = value;
-      break;
-    }
+    hashmap_element_t *element = hashmap_find(m, key, /*create_new=*/1);
 
-    /* Otherwise, if finding failed, re-hash. */
-    else (element == NULL) {
-      hashmap_rehash(m);
-    } 
+  /* Loop around, trying to find our place in the world. */
+  while (!element) {
+    hashmap_grow(m);
+    element = hashmap_find(m, key, /*create_new=*/1
   }
+
+  /* Set the value. */
+  element->value = value;
 }
 
-/*
- * Get your pointer out of the hashmap with a key
+/**
+ * @brief Get the value for a given key. If no value exists and create_new is true,
+ * a new one will be created.
+ *
+ * Note that the returned pointer is volatile and will be invalidated if the hashmap
+ * is re-hashed!
  */
-int hashmap_get(hashmap_t *m, size_t key, hashmap_element_t *arg) {
-  int curr;
-  int i;
+size_t* hashmap_get(hashmap_t *m, size_t key, int create_new) {
+  /* Look for the given key. */
+  hashmap_element_t element = hashmap_find(m, key, create_new);
 
-  /* Find data location */
-  curr = hashmap_hash_int(m, key);
-
-  /* Linear probing, if necessary */
-  for (i = 0; i < MAX_CHAIN_LENGTH; i++) {
-    // int in_use = m->chunks[curr / 64].in_use & (1 << (curr % 64));
-    int in_use = m->chunks[curr / 64].in_use & (1 << (curr % 64));
-    if (in_use == 1) {
-      if (m->chunks[curr / 64].data[curr % 64].key == key) {
-        *arg = m->chunks[curr % 64].data[curr % 64];
-        return MAP_OK;
-      }
-    }
-
-    curr = (curr + 1) % m->table_size;
+  /* If we weren't asked to create a new entry, return NULL if the key was not found. */
+  if (!create_new) {
+    return element ? &element->value : NULL;
   }
 
-  arg = NULL;
-
-  /* Not found */
-  return MAP_MISSING;
+  /* Otherwise, re-hash and repeat. */
+  else {
+    while (!element) {
+      hashmap_grow(m);
+      element = hashmap_find(m, key, /*create_new=*/1);
+    }
+    return &element->value;
+  }
 }
 
 /*
