@@ -84,7 +84,7 @@
 void DOSELF1_STARS(struct runner *r, struct cell *c, int timer) {
 
 #ifdef SWIFT_DEBUG_CHECKS
-  if (c->nodeID != engine_rank) error("Should be run on a different node");
+  if (c->nodeID != e->nodeID) error("Should be run on a different node");
 #endif
 
   const struct engine *e = r->e;
@@ -167,6 +167,7 @@ void DO_NONSYM_PAIR1_STARS_NAIVE(struct runner *r, struct cell *restrict ci,
   const struct cosmology *cosmo = e->cosmology;
 
   /* Anything to do here? */
+  if (cj->hydro.count == 0 || ci->stars.count == 0) return;
   if (!cell_is_active_stars(ci, e)) return;
 
   const int scount_i = ci->stars.count;
@@ -192,7 +193,8 @@ void DO_NONSYM_PAIR1_STARS_NAIVE(struct runner *r, struct cell *restrict ci,
 
     /* Get a hold of the ith spart in ci. */
     struct spart *restrict si = &sparts_i[sid];
-    if (!spart_is_active(si, e) || spart_is_inhibited(si, e)) continue;
+    if (!spart_is_active(si, e)) continue;
+
     const float hi = si->h;
     const float hig2 = hi * hi * kernel_gamma2;
     const float six[3] = {(float)(si->x[0] - (cj->loc[0] + shift[0])),
@@ -251,19 +253,20 @@ void DO_SYM_PAIR1_STARS(struct runner *r, struct cell *ci, struct cell *cj,
   const float H = cosmo->H;
 
 #if (FUNCTION_TASK_LOOP == TASK_LOOP_DENSITY)
-  const int do_ci_stars = ci->nodeID == engine_rank && ci->stars.count != 0 &&
-                          cj->hydro.count != 0 && cell_is_active_stars(ci, e);
-  const int do_cj_stars = cj->nodeID == engine_rank && cj->stars.count != 0 &&
-                          ci->hydro.count != 0 && cell_is_active_stars(cj, e);
+  const int do_ci_stars = (ci->nodeID == e->nodeID) && (ci->stars.count != 0) &&
+                          (cj->hydro.count != 0) && cell_is_active_stars(ci, e);
+  const int do_cj_stars = (cj->nodeID == e->nodeID) && (cj->stars.count != 0) &&
+                          (ci->hydro.count != 0) && cell_is_active_stars(cj, e);
 #else
   /* here we are updating the hydro -> switch ci, cj for local */
-  const int do_ci_stars = cj->nodeID == engine_rank && ci->stars.count != 0 &&
-                          cj->hydro.count != 0 && cell_is_active_stars(ci, e);
-  const int do_cj_stars = ci->nodeID == engine_rank && cj->stars.count != 0 &&
-                          ci->hydro.count != 0 && cell_is_active_stars(cj, e);
+  const int do_ci_stars = (cj->nodeID == e->nodeID) && (ci->stars.count != 0) &&
+                          (cj->hydro.count != 0) && cell_is_active_stars(ci, e);
+  const int do_cj_stars = (ci->nodeID == e->nodeID) && (cj->stars.count != 0) &&
+                          (ci->hydro.count != 0) && cell_is_active_stars(cj, e);
 #endif
 
   if (do_ci_stars) {
+
     /* Pick-out the sorted lists. */
     const struct entry *restrict sort_j = cj->hydro.sort[sid];
     const struct entry *restrict sort_i = ci->stars.sort[sid];
@@ -500,12 +503,12 @@ void DOPAIR1_STARS_NAIVE(struct runner *r, struct cell *restrict ci,
                          struct cell *restrict cj, int timer) {
 
 #if (FUNCTION_TASK_LOOP == TASK_LOOP_DENSITY)
-  const int do_ci_stars = ci->nodeID == engine_rank;
-  const int do_cj_stars = cj->nodeID == engine_rank;
+  const int do_ci_stars = ci->nodeID == r->e->nodeID;
+  const int do_cj_stars = cj->nodeID == r->e->nodeID;
 #else
   /* here we are updating the hydro -> switch ci, cj */
-  const int do_ci_stars = cj->nodeID == engine_rank;
-  const int do_cj_stars = ci->nodeID == engine_rank;
+  const int do_ci_stars = cj->nodeID == r->e->nodeID;
+  const int do_cj_stars = ci->nodeID == r->e->nodeID;
 #endif
   if (do_ci_stars && ci->stars.count != 0 && cj->hydro.count != 0)
     DO_NONSYM_PAIR1_STARS_NAIVE(r, ci, cj);
@@ -539,6 +542,9 @@ void DOPAIR1_SUBSET_STARS(struct runner *r, struct cell *restrict ci,
 
   const int count_j = cj->hydro.count;
   struct part *restrict parts_j = cj->hydro.parts;
+
+  /* Early abort? */
+  if (count_j == 0) return;
 
   /* Cosmological terms */
   const float a = cosmo->a;
@@ -648,6 +654,7 @@ void DOPAIR1_SUBSET_STARS(struct runner *r, struct cell *restrict ci,
     }   /* loop over the sparts in ci. */
   }
 }
+
 /**
  * @brief Compute the interactions between a cell pair, but only for the
  *      given indices in ci.
@@ -675,6 +682,9 @@ void DOPAIR1_SUBSET_STARS_NAIVE(struct runner *r, struct cell *restrict ci,
 
   const int count_j = cj->hydro.count;
   struct part *restrict parts_j = cj->hydro.parts;
+
+  /* Early abort? */
+  if (count_j == 0) return;
 
   /* Cosmological terms */
   const float a = cosmo->a;
@@ -1523,12 +1533,12 @@ void DOPAIR1_BRANCH_STARS(struct runner *r, struct cell *ci, struct cell *cj) {
   const int ci_active = cell_is_active_stars(ci, e);
   const int cj_active = cell_is_active_stars(cj, e);
 #if (FUNCTION_TASK_LOOP == TASK_LOOP_DENSITY)
-  const int do_ci_stars = ci->nodeID == engine_rank;
-  const int do_cj_stars = cj->nodeID == engine_rank;
+  const int do_ci_stars = ci->nodeID == e->nodeID;
+  const int do_cj_stars = cj->nodeID == e->nodeID;
 #else
   /* here we are updating the hydro -> switch ci, cj */
-  const int do_ci_stars = cj->nodeID == engine_rank;
-  const int do_cj_stars = ci->nodeID == engine_rank;
+  const int do_ci_stars = cj->nodeID == e->nodeID;
+  const int do_cj_stars = ci->nodeID == e->nodeID;
 #endif
   const int do_ci = (ci->stars.count != 0 && cj->hydro.count != 0 &&
                      ci_active && do_ci_stars);
@@ -1819,12 +1829,12 @@ void DOSUB_PAIR1_STARS(struct runner *r, struct cell *ci, struct cell *cj,
   else {
 
 #if (FUNCTION_TASK_LOOP == TASK_LOOP_DENSITY)
-    const int do_ci_stars = ci->nodeID == engine_rank;
-    const int do_cj_stars = cj->nodeID == engine_rank;
+    const int do_ci_stars = ci->nodeID == e->nodeID;
+    const int do_cj_stars = cj->nodeID == e->nodeID;
 #else
     /* here we are updating the hydro -> switch ci, cj */
-    const int do_ci_stars = cj->nodeID == engine_rank;
-    const int do_cj_stars = ci->nodeID == engine_rank;
+    const int do_ci_stars = cj->nodeID == e->nodeID;
+    const int do_cj_stars = ci->nodeID == e->nodeID;
 #endif
     const int do_ci = ci->stars.count != 0 && cj->hydro.count != 0 &&
                       cell_is_active_stars(ci, e) && do_ci_stars;
