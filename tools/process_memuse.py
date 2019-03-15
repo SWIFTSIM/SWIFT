@@ -38,7 +38,7 @@ process_use = ""
 peak = 0.0
 
 with open(sys.argv[1]) as infile:
-    print "# tic label MB"
+    print '# {:<18s} {:>30s} {:>9s} {:s}'.format("tic", "label", "allocated", "MB")
     for line in infile:
         if line[0] == "#":
             if "# Current use:" in line:
@@ -69,28 +69,35 @@ with open(sys.argv[1]) as infile:
                     else:
                         del memuse[adr]
                 else:
-                    #  Unmatched free, skip for now.
+                    #  Unmatched free, complain and skip.
+                    print "### unmatched free: ", label, adr
                     doprint = False
             if doprint:
                 if totalmem > peak:
                     peak = totalmem
-                print tic, label, totalmem/(1048576.0)
+                print '{:<20s} {:>30s} {:9d} {:.3f}'.format(tic, label, allocated, totalmem/(1048576.0))
 
 totals = {}
+numactive = {}
 for adr in labels:
     #  If any remaining allocations.
     if adr in memuse:
         if labels[adr] in totals:
             totals[labels[adr]] = totals[labels[adr]] + memuse[adr][0]
+            numactive[labels[adr]] = numactive[labels[adr]] + 1
         else:
             totals[labels[adr]] = memuse[adr][0]
+            numactive[labels[adr]] = 1
 
-print "# Aligned memory use by label"
+print "# Aligned memory use by label:"
+print "## ", '{:<30s} {:>16s} {:>16s}'.format("label", "MB", "numactive")
+print "## "
 total = 0.0
 for label in sorted(totals):
     mem = totals[label]/(1048576.0)
     total = total + mem
-    print "## ", label, '{:.3f}'.format(mem)
+    print "## ", '{:<30s} {:16.3f} {:16d}'.format(label, mem, numactive[label])
+print "## "
 print "# Total aligned memory still in use : ", '{:.3f}'.format(total), " (MB)"
 print "# Peak aligned memory usage         : ", '{:.3f}'.format(peak/1048576.0), " (MB)"
 if process_use != "":
