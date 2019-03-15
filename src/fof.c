@@ -723,8 +723,7 @@ void fof_search_pair_cells_foreign(struct space *s, struct cell *ci,
             /* If the group_links array is not big enough re-allocate it. */
             if (*link_count + 1 > *group_links_size) {
 
-              int new_size =
-                  *group_links_size + ceil(0.1 * (double)(*group_links_size));
+              int new_size = 2 * (*group_links_size);
 
               *group_links_size = new_size;
 
@@ -1006,16 +1005,16 @@ void fof_find_foreign_links_mapper(void *map_data, int num_elements,
     /* If the global group_links array is not big enough re-allocate it. */
     if (*group_link_count + local_link_count > *group_links_size) {
 
-      int new_size =
-          *group_links_size + ceil(0.1 * (double)(*group_links_size));
-
-      *group_links_size = new_size;
+      const int old_size = *group_links_size; 
+      const int new_size = max(*group_link_count + local_link_count, 2 * old_size);
 
       (*group_links) = (struct fof_mpi *)realloc(
           *group_links, new_size * sizeof(struct fof_mpi));
+      
+      *group_links_size = new_size;
 
       message("Re-allocating global group links from %d to %d elements.",
-              *group_link_count, new_size);
+              old_size, new_size);
     }
 
     /* Copy the local links to the global list. */
@@ -1101,7 +1100,6 @@ size_t fof_search_foreign_cells(struct space *s, size_t **local_roots) {
   /* Make group IDs globally unique. */
   for (size_t i = 0; i < nr_gparts; i++) group_index[i] += node_offset;
 
-  struct fof_mpi *group_links = s->fof_data.group_links;
   struct cell_pair_indices *cell_pairs = NULL;
   int group_link_count = 0;
   int cell_pair_count = 0;
@@ -1136,8 +1134,6 @@ size_t fof_search_foreign_cells(struct space *s, size_t **local_roots) {
                      s->fof_data.group_links_size * sizeof(struct fof_mpi)) !=
       0)
     error("Error while allocating memory for FOF links over an MPI domain");
-
-  group_links = s->fof_data.group_links;
 
   if (posix_memalign((void **)&cell_pairs, SWIFT_STRUCT_ALIGNMENT,
                      cell_pair_size * sizeof(struct cell_pair_indices)) != 0)
@@ -1314,13 +1310,13 @@ size_t fof_search_foreign_cells(struct space *s, size_t **local_roots) {
     displ[i] = displ[i - 1] + group_link_counts[i - 1];
 
   /* Gather the global link list on all ranks. */
-  MPI_Allgatherv(group_links, group_link_count, fof_mpi_type,
+  MPI_Allgatherv(s->fof_data.group_links, group_link_count, fof_mpi_type,
                  global_group_links, group_link_counts, displ, fof_mpi_type,
                  MPI_COMM_WORLD);
 
   /* Clean up memory. */
   free(displ);
-  free(group_links);
+  free(s->fof_data.group_links);
 
   message("Communication took: %.3f %s.",
           clocks_from_ticks(getticks() - comms_tic), clocks_getunit());
@@ -1549,6 +1545,7 @@ size_t fof_search_foreign_cells(struct space *s, size_t **local_roots) {
   free(global_group_index);
   free(global_group_size);
   free(global_group_mass);
+  free(global_group_CoM);
   free(global_group_id);
   free(orig_global_group_size);
 
@@ -1751,6 +1748,9 @@ void fof_search_tree(struct space *s) {
   //  group_CoM[root].y += gparts[i].mass * y;
   //  group_CoM[root].z += gparts[i].mass * z;
   //}
+
+  free(group_bc);
+  free(com_set);
 
 #ifdef WITH_MPI
   size_t num_local_roots = 0;
