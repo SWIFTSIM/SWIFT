@@ -10,7 +10,8 @@
 
 #define INITIAL_SIZE (4096)
 #define MAX_CHAIN_LENGTH (8)
-#define CHUNKS_PER_ALLOC 8
+//#define CHUNKS_PER_ALLOC 8
+#define CHUNKS_PER_ALLOC 1
 #define HASHMAP_GROWTH_FACTOR 2
 
 /**
@@ -280,42 +281,6 @@ int hashmap_iterate(map_t in, PFany f, any_t item) {
 //
   return MAP_OK;
 }
-
-/*
- * Remove an element with that key from the map
- */
-//int hashmap_remove(map_t in, size_t key) {
-//  int i;
-//  int curr;
-//  hashmap_map *m;
-//
-//  /* Cast the hashmap */
-//  m = (hashmap_map *)in;
-//
-//  /* Find key */
-//  curr = hashmap_hash_int(m, key);
-//
-//  /* Linear probing, if necessary */
-//  for (i = 0; i < MAX_CHAIN_LENGTH; i++) {
-//    int in_use = m->chunks[curr / 64].in_use & (1 << (curr % 64));
-//    if (in_use == 1) {
-//      if (m->chunks[curr / 64].data[curr % 64].key == key) {
-//        /* Blank out the fields */
-//        m->chunks[curr / 64].in_use &= ~(1 << (curr % 64));
-//        m->chunks[curr / 64].data[curr % 64].key = 0;
-//        m->chunks[curr / 64].data[curr % 64].group_size = 0;
-//
-//        /* Reduce the size */
-//        m->size--;
-//        return MAP_OK;
-//      }
-//    }
-//    curr = (curr + 1) % m->table_size;
-//  }
-//
-//  /* Data not found */
-//  return MAP_MISSING;
-//}
 
 /* Deallocate the hashmap */
 void hashmap_free(hashmap_t *m) {
