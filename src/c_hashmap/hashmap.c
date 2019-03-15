@@ -59,6 +59,18 @@ void hashmap_init(hashmap_t *m) {
 }
 
 /**
+ * @brief Put a used chunk back into the recycling bin.
+ */
+void hashmap_release_chunk(hashmap_t *m, hashmap_chunk_t *chunk) {
+  /* Clear all the chunk's data. */
+  memset(chunk, 0, sizeof(hashmap_chunk_t));
+
+  /* Hook it up with the other stiffs in the graveyard. */
+  chunk->next = m->graveyard;
+  m->graveyard = chunk->next;
+}
+
+/**
  * @brief Return a new chunk, either recycled or freshly allocated.
  */
 hashmap_chunk_t *hashmap_get_chunk(hashmap_t *m) {
