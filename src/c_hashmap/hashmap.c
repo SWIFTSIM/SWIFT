@@ -183,10 +183,9 @@ void hashmap_grow(hashmap_t *m) {
   /* Iterate over the chunks and add their entries to the new table. */
   for (int cid = 0; cid < old_table_size / HASHMAP_ELEMENTS_PER_CHUNK; cid++) {
     /* Skip empty chunks. */
-    if (old_chunks[cid] == NULL) continue;
-
     hashmap_chunk_t *chunk = old_chunks[cid];
-
+    if (!chunk) continue;
+    
     /* Loop over the masks in this chunk. */
     for (int mid = 0; mid < HASHMAP_MASKS_PER_CHUNK; mid++) {
       /* Skip empty masks. */
@@ -262,31 +261,38 @@ size_t* hashmap_lookup(hashmap_t *m, size_t key) {
   return element ? &element->value : NULL;
 }
 
-/*
- * Iterate the function parameter over each element in the hashmap.  The
- * additional any_t argument is passed to the function as its first
- * argument and the hashmap element is the second.
+/**
+ * @brief Iterate the function parameter over each element in the hashmap.
+ * 
+ * The function `f` takes three arguments, the first and second are the element
+ * key and a pointer to the correspondig value, respectively, while the third
+ * is the `void *data` argument.
  */
-int hashmap_iterate(map_t in, PFany f, any_t item) {
-//  int i;
-//
-//  /* Cast the hashmap */
-//  hashmap_t *m = (hashmap_t *)in;
-//
-//  /* On empty hashmap, return immediately */
-//  if (hashmap_length(m) <= 0) return MAP_MISSING;
-//
-//  /* Linear probing */
-//  for (i = 0; i < m->table_size; i++)
-//    if (m->chunks[i / 64].in_use & (1 << (i % 64))) {
-//      any_t data = (any_t) & (m->chunks[i / 64].data[i % 64]);
-//      int status = f(item, data);
-//      if (status != MAP_OK) {
-//        return status;
-//      }
-//    }
-//
-  return MAP_OK;
+void hashmap_iterate(hashmap_t *m, hashmap_mapper_t f, void *data) {
+  /* Loop over the chunks. */
+  for (int cid = 0; cid < m->nr_chunks; cid++) {
+    hashmap_chunk_t *chunk = m->cunks[cid];
+    if (!chunk) continue;
+
+    /* Loop over the masks. */
+    for (int mid = 0; mid < HASHMAP_MASKS_PER_CHUNK; mid++) {
+      hashmap_mask_t mask = chunk->masks[mid];
+      if (!mask) continue;
+
+      /* Loop over each element in the mask. */
+      for (ind eid = 0; 
+           eid < HASHMAP_BITS_PER_MASK && 
+               mid * HASHMAP_BITS_PER_MASK + ei < HASHMAP_ELEMENTS_PER_CHUNK; 
+           eid++) {
+
+        /* If the element exists, call the function on it. */
+        if (mask & (((hashmap_mask_t)1) << eid)) {
+          hashmap_element_t *element = &chunk->element[mid * HASHMAP_BITS_PER_MASK + eid];
+          f(element->key, &element->value, data);
+        }
+      }
+    }
+  }
 }
 
 /* Deallocate the hashmap */

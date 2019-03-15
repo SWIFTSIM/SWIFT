@@ -52,38 +52,22 @@ typedef struct _hashmap_map{
     hashmap_alloc_t *allocs;	// Pointer to the allocated chunks of chunks, needed for cleanup.
 } hashmap_t;
 
-/*
- * any_t is a pointer.  This allows you to put arbitrary structures in
- * the hashmap.
+/**
+ * Pointer to a function that can take a key, a pointer to a value, and a
+ * void pointer extra data payload.
  */
-typedef void *any_t;
-
-/*
- * PFany is a pointer to a function that can take two any_t arguments
- * and return an integer. Returns status code..
- */
-typedef int (*PFany)(any_t, any_t);
-
-/*
- * map_t is a pointer to an internally maintained data structure.
- * Clients of this package do not need to know how hashmaps are
- * represented.  They see and manipulate only map_t's.
- */
-typedef any_t map_t;
+typedef void (*hashmap_mapper_t)(size_t, size_t *, void *);
 
 /**
  * @brief Initialize a hashmap.
  */
 void hashmap_init(hashmap_t *m);
 
-/*
- * Iteratively call f with argument (item, data) for
- * each element data in the hashmap. The function must
- * return a map status code. If it returns anything other
- * than MAP_OK the traversal is terminated. f must
- * not reenter any hashmap functions, or deadlock may arise.
+/**
+ * Whatever. I should copy the function descriptions from the hashmap.c
+ * file.
  */
-extern int hashmap_iterate(map_t in, PFany f, any_t item);
+extern int hashmap_iterate(hashmap_t *m, hashmap_mapper_t f, void *data);
 
 /*
  * Add an element to the hashmap. Return MAP_OK or MAP_OMEM.
@@ -100,12 +84,6 @@ extern size_t* hashmap_lookup(hashmap_t *m, size_t key);
  * Remove an element from the hashmap. Return MAP_OK or MAP_MISSING.
  */
 extern int hashmap_remove(hashmap_t *m, size_t key);
-
-/*
- * Get any element. Return MAP_OK or MAP_MISSING.
- * remove - should the element be removed from the hashmap
- */
-extern int hashmap_get_one(map_t in, any_t *arg, int remove);
 
 /*
  * Free the hashmap
