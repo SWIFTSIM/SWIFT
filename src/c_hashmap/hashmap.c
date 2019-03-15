@@ -99,7 +99,7 @@ hashmap_element_t *hashmap_find(hashmap_t *m, size_t key) {
   }
   hashmap_chunk_t *chunk = m->chunks[chunk_offset];
 
-  /* Linear probing */
+  /* Linear probing (well, not really). */
   for (int i = 0; i < MAX_CHAIN_LENGTH; i++) {
     /* Compute the offsets within the masks of this chunk. */
     const int mask_offset = offset_in_chunk / HASHMAP_BITS_PER_MASK;
@@ -112,6 +112,9 @@ hashmap_element_t *hashmap_find(hashmap_t *m, size_t key) {
       /* Mark this element as taken and increase the size counter. */
       chunk->masks[mask_offset] |= search_mask;
       m->size += 1;
+
+      /* Set the key. */
+      chunk->data[offset_in_chunk].key = key;
 
       /* Return a pointer to the new element. */
       return &chunk->data[offset_in_chunk];
@@ -179,27 +182,26 @@ void hashmap_resize(hashmap_t *m, int new_table_size) {
   }
 }
 
-/*
- * Add a pointer to the hashmap with some key
+/**
+ * @brief Add a key/value pair to the hashmap, overwriting whatever was previously there.
  */
-int hashmap_put(hashmap_t *m, size_t key, hashmap_element_t value) {
-  int index;
-
-  /* Find a place to put our value */
-  index = hashmap_hash(in, key);
-  while (index == MAP_FULL) {
-    if (hashmap_rehash(in) == MAP_OMEM) {
-      return MAP_OMEM;
+void hashmap_put(hashmap_t *m, size_t key, size_t value) {
+  /* Loop around, trying to find our place in the world. */
+  while (1) {
+    /* Try to find an element for the given key. */
+    hashmap_element_t *element = hashmap_find(m, key);
+    
+    /* If we found one, set the value and leave. */
+    if (element) {
+      element->value = value;
+      break;
     }
-    index = hashmap_hash(in, key);
+
+    /* Otherwise, if finding failed, re-hash. */
+    else (element == NULL) {
+      hashmap_rehash(m);
+    } 
   }
-
-  /* Set the data */
-  m->chunks[index / 64].data[index / 64] = value;
-  m->chunks[index / 64].in_use |= (1 << (index % 64));
-  m->size++;
-
-  return MAP_OK;
 }
 
 /*
