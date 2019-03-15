@@ -64,35 +64,46 @@ typedef void (*hashmap_mapper_t)(size_t, size_t *, void *);
 void hashmap_init(hashmap_t *m);
 
 /**
- * Whatever. I should copy the function descriptions from the hashmap.c
- * file.
- */
-extern int hashmap_iterate(hashmap_t *m, hashmap_mapper_t f, void *data);
-
-/*
- * Add an element to the hashmap. Return MAP_OK or MAP_OMEM.
+ * @brief Add a key/value pair to the hashmap, overwriting whatever was previously there.
  */
 extern void hashmap_put(hashmap_t *m, size_t key, size_t value);
 
-/*
- * Get an element from the hashmap. Return MAP_OK or MAP_MISSING.
+/**
+ * @brief Get the value for a given key. If no value exists a new one will be created.
+ *
+ * Note that the returned pointer is volatile and will be invalidated if the hashmap
+ * is re-hashed!
  */
 extern size_t* hashmap_get(hashmap_t *m, size_t key);
+
+/**
+ * @brief Look for the given key and return a pointer to its value or NULL if 
+ * it is not in the hashmap.
+ *
+ * Note that the returned pointer is volatile and will be invalidated if the hashmap
+ * is re-hashed!
+ */
 extern size_t* hashmap_lookup(hashmap_t *m, size_t key);
 
-/*
- * Remove an element from the hashmap. Return MAP_OK or MAP_MISSING.
+/**
+ * @brief Iterate the function parameter over each element in the hashmap.
+ * 
+ * The function `f` takes three arguments, the first and second are the element
+ * key and a pointer to the correspondig value, respectively, while the third
+ * is the `void *data` argument.
  */
-extern int hashmap_remove(hashmap_t *m, size_t key);
+extern int hashmap_iterate(hashmap_t *m, hashmap_mapper_t f, void *data);
 
-/*
- * Free the hashmap
+/**
+ * @brief De-allocate memory associated with this hashmap, clears all the entries.
+ *
+ * After a call to `hashmap_free`, the hashmap cna be re-initialized with `hashmap_init`.
  */
 extern void hashmap_free(hashmap_t *m);
 
-/*
+/**
  * Get the current size of a hashmap
  */
-extern int hashmap_length(hashmap_t *m);
+extern int hashmap_size(hashmap_t *m);
 
 #endif /*__HASHMAP_H__*/

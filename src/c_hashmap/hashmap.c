@@ -38,9 +38,6 @@ void hashmap_allocate_chunks(hashmap_t *m) {
   m->graveyard = &alloc->chunks[0];
 }
 
-/**
- * @brief Initialize a hashmap.
- */
 void hashmap_init(hashmap_t *m) {
   /* Allocate the first (empty) list of chunks. */
   m->nr_chunks = (INITIAL_SIZE + HASHMAP_ELEMENTS_PER_CHUNK - 1) / HASHMAP_ELEMENTS_PER_CHUNK;
@@ -124,7 +121,7 @@ hashmap_element_t *hashmap_find(hashmap_t *m, size_t key, int create_new) {
   }
   hashmap_chunk_t *chunk = m->chunks[chunk_offset];
 
-  /* Linear probing (well, not really). */
+  /* Linear probing (well, not really, but whatever). */
   for (int i = 0; i < MAX_CHAIN_LENGTH; i++) {
     /* Compute the offsets within the masks of this chunk. */
     const int mask_offset = offset_in_chunk / HASHMAP_BITS_PER_MASK;
@@ -217,11 +214,9 @@ void hashmap_grow(hashmap_t *m) {
   free(old_chunks);
 }
 
-/**
- * @brief Add a key/value pair to the hashmap, overwriting whatever was previously there.
- */
 void hashmap_put(hashmap_t *m, size_t key, size_t value) {
-    hashmap_element_t *element = hashmap_find(m, key, /*create_new=*/1);
+  /* Try to find an element for the given key. */
+  hashmap_element_t *element = hashmap_find(m, key, /*create_new=*/1);
 
   /* Loop around, trying to find our place in the world. */
   while (!element) {
@@ -233,12 +228,6 @@ void hashmap_put(hashmap_t *m, size_t key, size_t value) {
   element->value = value;
 }
 
-/**
- * @brief Get the value for a given key. If no value exists a new one will be created.
- *
- * Note that the returned pointer is volatile and will be invalidated if the hashmap
- * is re-hashed!
- */
 size_t* hashmap_get(hashmap_t *m, size_t key) {
   /* Look for the given key. */
   hashmap_element_t *element = hashmap_find(m, key, /*create_new=*/1);
@@ -249,25 +238,11 @@ size_t* hashmap_get(hashmap_t *m, size_t key) {
   return &element->value;
 }
 
-/**
- * @brief Look for the given key and return a pointer to its value or NULL if 
- * it is not in the hashmap.
- *
- * Note that the returned pointer is volatile and will be invalidated if the hashmap
- * is re-hashed!
- */
 size_t* hashmap_lookup(hashmap_t *m, size_t key) {
   hashmap_element_t *element = hashmap_find(m, key, /*create_new=*/0);
   return element ? &element->value : NULL;
 }
 
-/**
- * @brief Iterate the function parameter over each element in the hashmap.
- * 
- * The function `f` takes three arguments, the first and second are the element
- * key and a pointer to the correspondig value, respectively, while the third
- * is the `void *data` argument.
- */
 void hashmap_iterate(hashmap_t *m, hashmap_mapper_t f, void *data) {
   /* Loop over the chunks. */
   for (int cid = 0; cid < m->nr_chunks; cid++) {
@@ -295,11 +270,17 @@ void hashmap_iterate(hashmap_t *m, hashmap_mapper_t f, void *data) {
   }
 }
 
-/* Deallocate the hashmap */
 void hashmap_free(hashmap_t *m) {
   /* Free the list of active chunks. Note that the actual chunks will be freed
      as part of the allocs below. */
   free(m->chunks);
+
+  /* Re-set some pointers and values, just in case. */
+  m->chunks = NULL;
+  m->graveyard = NULL;
+  m->size = 0;
+  m->table_size = 0;
+  m->nr_chunks = 0;
  
   /* Free the chunk allocs. */ 
   while (m->allocs) {
@@ -309,7 +290,6 @@ void hashmap_free(hashmap_t *m) {
   }
 }
 
-/* Return the size of the hashmap */
 int hashmap_size(hashmap_t *m) {
   if (m != NULL)
     return m->size;
