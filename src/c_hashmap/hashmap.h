@@ -31,7 +31,6 @@ typedef struct _hashmap_element{
 	size_t value;
 } hashmap_element_t;
 
-
 /* A chunk of hashmap_element, with the corresponding bitmask. */
 typedef struct _hashmap_chunk {
 	union {
@@ -40,7 +39,6 @@ typedef struct _hashmap_chunk {
 	};
 	hashmap_element_t data[HASHMAP_ELEMENTS_PER_CHUNK];
 } hashmap_chunk_t;
-
 
 /* A hashmap has some maximum size and current size,
  * as well as the data to hold. */
@@ -70,6 +68,16 @@ typedef int (*PFany)(any_t, any_t);
  */
 typedef any_t map_t;
 
+/**
+ * @brief Initialize a hashmap.
+ */
+void hashmap_init(hashmap_t *m);
+
+/**
+ * brief: Pre-allocate a number of chunks for the graveyard.
+ */
+extern void hashmap_allocate_chunks(hashmap_t *m, int num_chunks);
+
 /*
  * Return an empty hashmap. Returns NULL if empty.
 */
@@ -87,12 +95,12 @@ extern int hashmap_iterate(map_t in, PFany f, any_t item);
 /*
  * Add an element to the hashmap. Return MAP_OK or MAP_OMEM.
  */
-extern int hashmap_put(hashmap_t *m, size_t key, hashmap_element_t value);
+extern void hashmap_put(hashmap_t *m, size_t key, size_t value);
 
 /*
  * Get an element from the hashmap. Return MAP_OK or MAP_MISSING.
  */
-extern int hashmap_get(hashmap_t *m, size_t key, hashmap_element_t *arg);
+extern size_t* hashmap_get(hashmap_t *m, size_t key, int create_new);
 
 /*
  * Remove an element from the hashmap. Return MAP_OK or MAP_MISSING.
@@ -108,11 +116,11 @@ extern int hashmap_get_one(map_t in, any_t *arg, int remove);
 /*
  * Free the hashmap
  */
-extern void hashmap_free(map_t in);
+extern void hashmap_free(hashmap_t *m);
 
 /*
  * Get the current size of a hashmap
  */
-extern int hashmap_length(map_t in);
+extern int hashmap_length(hashmap_t *m);
 
 #endif /*__HASHMAP_H__*/

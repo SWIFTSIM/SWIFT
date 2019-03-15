@@ -55,8 +55,8 @@ void hashmap_init(hashmap_t *m) {
   m->size = 0;
 
   /* Inform the men. */
-  message("Created hash table of size: %ld each element is %ld bytes.\n",
-          INITIAL_SIZE * sizeof(hashmap_element_t), sizeof(hashmap_element_t));
+  message("Created hash table of size: %ld each element is %ld bytes. Allocated %d empty chunks.",
+          INITIAL_SIZE * sizeof(hashmap_element_t), sizeof(hashmap_element_t), nr_chunks);
 }
 
 /**
@@ -101,7 +101,7 @@ hashmap_chunk_t *hashmap_get_chunk(hashmap_t *m) {
  */
 hashmap_element_t *hashmap_find(hashmap_t *m, size_t key, int create_new) {
   /* If full, return immediately */
-  if (m->size >= (m->table_size / 2)) return MAP_FULL;
+  if (m->size >= (m->table_size / 2)) return NULL;
 
   /* We will use rand_r as our hash function. */
   unsigned int curr = (unsigned int)key;
@@ -221,7 +221,7 @@ void hashmap_put(hashmap_t *m, size_t key, size_t value) {
   /* Loop around, trying to find our place in the world. */
   while (!element) {
     hashmap_grow(m);
-    element = hashmap_find(m, key, /*create_new=*/1
+    element = hashmap_find(m, key, /*create_new=*/1);
   }
 
   /* Set the value. */
@@ -237,7 +237,7 @@ void hashmap_put(hashmap_t *m, size_t key, size_t value) {
  */
 size_t* hashmap_get(hashmap_t *m, size_t key, int create_new) {
   /* Look for the given key. */
-  hashmap_element_t element = hashmap_find(m, key, create_new);
+  hashmap_element_t *element = hashmap_find(m, key, create_new);
 
   /* If we weren't asked to create a new entry, return NULL if the key was not found. */
   if (!create_new) {
@@ -260,74 +260,81 @@ size_t* hashmap_get(hashmap_t *m, size_t key, int create_new) {
  * argument and the hashmap element is the second.
  */
 int hashmap_iterate(map_t in, PFany f, any_t item) {
-  int i;
-
-  /* Cast the hashmap */
-  hashmap_map *m = (hashmap_map *)in;
-
-  /* On empty hashmap, return immediately */
-  if (hashmap_length(m) <= 0) return MAP_MISSING;
-
-  /* Linear probing */
-  for (i = 0; i < m->table_size; i++)
-    if (m->chunks[i / 64].in_use & (1 << (i % 64))) {
-      any_t data = (any_t) & (m->chunks[i / 64].data[i % 64]);
-      int status = f(item, data);
-      if (status != MAP_OK) {
-        return status;
-      }
-    }
-
+//  int i;
+//
+//  /* Cast the hashmap */
+//  hashmap_t *m = (hashmap_t *)in;
+//
+//  /* On empty hashmap, return immediately */
+//  if (hashmap_length(m) <= 0) return MAP_MISSING;
+//
+//  /* Linear probing */
+//  for (i = 0; i < m->table_size; i++)
+//    if (m->chunks[i / 64].in_use & (1 << (i % 64))) {
+//      any_t data = (any_t) & (m->chunks[i / 64].data[i % 64]);
+//      int status = f(item, data);
+//      if (status != MAP_OK) {
+//        return status;
+//      }
+//    }
+//
   return MAP_OK;
 }
 
 /*
  * Remove an element with that key from the map
  */
-int hashmap_remove(map_t in, size_t key) {
-  int i;
-  int curr;
-  hashmap_map *m;
-
-  /* Cast the hashmap */
-  m = (hashmap_map *)in;
-
-  /* Find key */
-  curr = hashmap_hash_int(m, key);
-
-  /* Linear probing, if necessary */
-  for (i = 0; i < MAX_CHAIN_LENGTH; i++) {
-    int in_use = m->chunks[curr / 64].in_use & (1 << (curr % 64));
-    if (in_use == 1) {
-      if (m->chunks[curr / 64].data[curr % 64].key == key) {
-        /* Blank out the fields */
-        m->chunks[curr / 64].in_use &= ~(1 << (curr % 64));
-        m->chunks[curr / 64].data[curr % 64].key = 0;
-        m->chunks[curr / 64].data[curr % 64].group_size = 0;
-
-        /* Reduce the size */
-        m->size--;
-        return MAP_OK;
-      }
-    }
-    curr = (curr + 1) % m->table_size;
-  }
-
-  /* Data not found */
-  return MAP_MISSING;
-}
+//int hashmap_remove(map_t in, size_t key) {
+//  int i;
+//  int curr;
+//  hashmap_map *m;
+//
+//  /* Cast the hashmap */
+//  m = (hashmap_map *)in;
+//
+//  /* Find key */
+//  curr = hashmap_hash_int(m, key);
+//
+//  /* Linear probing, if necessary */
+//  for (i = 0; i < MAX_CHAIN_LENGTH; i++) {
+//    int in_use = m->chunks[curr / 64].in_use & (1 << (curr % 64));
+//    if (in_use == 1) {
+//      if (m->chunks[curr / 64].data[curr % 64].key == key) {
+//        /* Blank out the fields */
+//        m->chunks[curr / 64].in_use &= ~(1 << (curr % 64));
+//        m->chunks[curr / 64].data[curr % 64].key = 0;
+//        m->chunks[curr / 64].data[curr % 64].group_size = 0;
+//
+//        /* Reduce the size */
+//        m->size--;
+//        return MAP_OK;
+//      }
+//    }
+//    curr = (curr + 1) % m->table_size;
+//  }
+//
+//  /* Data not found */
+//  return MAP_MISSING;
+//}
 
 /* Deallocate the hashmap */
-void hashmap_free(map_t in) {
-  hashmap_map *m = (hashmap_map *)in;
+void hashmap_free(hashmap_t *m) {
   free(m->chunks);
-  free(m->graveyard);
-  free(m);
+ 
+  /* Free chunks */ 
+  hashmap_chunk_t *head = m->graveyard;
+  hashmap_chunk_t *tmp;
+  while(head != NULL) {
+  
+    tmp = head;
+    head = head->next;
+    free(tmp);
+
+  }
 }
 
 /* Return the length of the hashmap */
-int hashmap_length(map_t in) {
-  hashmap_map *m = (hashmap_map *)in;
+int hashmap_length(hashmap_t *m) {
   if (m != NULL)
     return m->size;
   else
