@@ -844,10 +844,9 @@ void fof_calc_group_props_mapper(void *map_data, int num_elements,
   size_t *const offset = s->gpart_index + (ptrdiff_t)(gparts - s->gparts);
   //const ptrdiff_t offset = (ptrdiff_t)(gparts - s->gparts);
 
-  map_t mymap;
-  hashmap_element *value = NULL;
+  hashmap_t map;
   
-  mymap = hashmap_new();
+  hashmap_init(&map);
 
   /* Loop over particles and find which cells are in range of each other to perform
    * the FOF search. */
@@ -858,21 +857,11 @@ void fof_calc_group_props_mapper(void *map_data, int num_elements,
     //double y = gparts[ind].x[1];
     //double z = gparts[ind].x[2];
     //double mass = gparts[ind].mass;
-      
-    int error = hashmap_get(mymap, root, value);
-    if(error == MAP_MISSING) {
-      hashmap_element new_value;
-      new_value.key = root;
-      new_value.group_size = 1;
-      error = hashmap_put(mymap, new_value.key, new_value);
-      if(error != MAP_OK) error("Issue with hash table. Error code: %d", error);
-    }
-    else if (error == MAP_OK) {
-      value->group_size++;
-    }
-    else {
-      error("Issue with hash table. Error code: %d", error);
-    }
+    
+    size_t *size = hashmap_get(&map, root, /*create_new=*/1);
+    
+    if(size != NULL) (*size)++;
+    else error("Couldn't find key (%zu) or create new one.", root);
 
     /* Use the CoM location set by the first particle added to the group. */
     //if (com_set[root]) {
@@ -921,25 +910,38 @@ void fof_calc_group_props_mapper(void *map_data, int num_elements,
     
   }
   
-  hashmap_map *m = (hashmap_map *) mymap;
+	if (map.size <= 0)
+		error("Hash table is empty!");	
 
-	if (hashmap_length(m) <= 0)
-		error("Empty");	
+  /* Iterate over the chunks and add their entries to the new table. */
+  for (int cid = 0; cid < map.table_size / HASHMAP_ELEMENTS_PER_CHUNK; cid++) {
 
-  //for(int i=0; i<hashmap_length(mymap); i++) {
-  for(int i=0; i<m->table_size; i++) {
+    /* Skip empty chunks. */
+    if (map.chunks[cid] == NULL) continue;
 
-    if(m->chunks[i / 64].in_use & (1 << (i % 64))) { 
-      
-      hashmap_element *element = NULL;
-      element = (hashmap_element *) &(m->chunks[i / 64].data[i % 64]);
+    hashmap_chunk_t *chunk = map.chunks[cid];
 
-      atomic_add(&group_size[element->key], element->group_size);
+    /* Loop over the masks in this chunk. */
+    for (int mid = 0; mid < HASHMAP_MASKS_PER_CHUNK; mid++) {
 
+      /* Skip empty masks. */
+      if (chunk->masks[mid] == 0) continue;
+
+      /* Loop over the mask entries. */
+      for (int eid = 0; eid < HASHMAP_BITS_PER_MASK; eid++) {
+        hashmap_mask_t element_mask = ((hashmap_mask_t)1) << eid;
+
+        if (chunk->masks[mid] & element_mask) {
+          hashmap_element_t *element =
+            &chunk->data[mid * HASHMAP_BITS_PER_MASK + eid];
+
+          atomic_add(&group_size[element->key], element->value);
+
+        }
+      }
     }
   }
-    
-  hashmap_free(mymap);
+  hashmap_free(&map);
 
 }
 
@@ -1660,7 +1662,7 @@ void fof_search_tree(struct space *s) {
   message("Searching %zu gravity particles for links with l_x2: %lf", nr_gparts,
           s->l_x2);
   
-  message("Size of hash table element: %ld", sizeof(hashmap_element));
+  message("Size of hash table element: %ld", sizeof(hashmap_element_t));
 
   node_offset = 0;
 
