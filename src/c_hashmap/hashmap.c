@@ -92,6 +92,11 @@ hashmap_chunk_t *hashmap_get_chunk(hashmap_t *m) {
  * newly-reseverd element initialized to zero.
  *
  * If the hashmap is full, NULL is returned.
+ *
+ * We use `rand_r` as a hashing function. The key is first hashed to obtain an initial
+ * global position. If there is a collision, the hashing function is re-applied to the
+ * key to obtain a new offset *within the same bucket*. This is repeated for at most
+ * MAX_CHAIN_LENGTH steps, at which point insertion fails.
  */
 hashmap_element_t *hashmap_find(hashmap_t *m, size_t key) {
   /* If full, return immediately */
