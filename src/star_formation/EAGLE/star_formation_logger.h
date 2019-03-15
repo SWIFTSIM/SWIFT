@@ -37,7 +37,7 @@
  * @param sf the star_formation_history struct of the current cell
  */
 INLINE static void star_formation_update_stellar_mass(
-    struct spart *sp, struct star_formation_history *sf) {
+    const struct spart *sp, struct star_formation_history *sf) {
 
   /* Add mass of created sparticle to the total stellar mass in this cell*/
   sf->new_stellar_mass = sf->new_stellar_mass + sp->mass;
@@ -146,7 +146,7 @@ INLINE static void star_formation_get_total_cell(
  * @param sf the combined star formation history of the progeny
  */
 INLINE static void star_formation_add_to_parent_cell(
-    struct cell *c, struct star_formation_history *sf) {
+    struct cell *c, const struct star_formation_history *sf) {
 
   /* Get the star formation history from the cell */
   struct star_formation_history *sfcell = &c->stars.sfh;
@@ -189,7 +189,7 @@ INLINE static void star_formation_init_SFH_engine(
  */
 INLINE static void star_formation_write_to_file(
     const double time, const double a, const double z,
-    struct star_formation_history sf, const char *baseName) {
+    const struct star_formation_history sf, const char *baseName) {
 
   /* File name */
   static const int buffersize = 300;
