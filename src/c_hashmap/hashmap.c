@@ -285,13 +285,13 @@ int hashmap_iterate(map_t in, PFany f, any_t item) {
 /* Deallocate the hashmap */
 void hashmap_free(hashmap_t *m) {
 
-  int num_chunks = m->table_size / sizeof(hashmap_chunk_t);
+  const int num_chunks = (m->table_size + HASHMAP_ELEMENTS_PER_CHUNK - 1) / HASHMAP_ELEMENTS_PER_CHUNK;  
   
   message("No. of chunks being freed: %d", num_chunks);
 
-  //for(int k=0; k<num_chunks; k++) {
-  //  if(m->chunks[k]) free(m->chunks[k]);
-  //}
+  for(int k=0; k<num_chunks; k++) {
+    if(m->chunks[k]) free(m->chunks[k]);
+  }
   
   free(m->chunks);
  
