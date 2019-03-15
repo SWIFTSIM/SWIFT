@@ -204,10 +204,9 @@ void DO_NONSYM_PAIR1_STARS_NAIVE(struct runner *r, struct cell *restrict ci,
 
       /* Get a pointer to the jth particle. */
       struct part *restrict pj = &parts_j[pjd];
+
       /* Skip inhibited particles. */
       if (part_is_inhibited(pj, e)) continue;
-
-      const float hj = pj->h;
 
       /* Compute the pairwise distance. */
       const float pjx[3] = {(float)(pj->x[0] - cj->loc[0]),
@@ -222,7 +221,7 @@ void DO_NONSYM_PAIR1_STARS_NAIVE(struct runner *r, struct cell *restrict ci,
         error("Particle pj not drifted to current time");
 #endif
 
-      if (r2 < hig2) IACT_STARS(r2, dx, hi, hj, si, pj, a, H);
+      if (r2 < hig2) IACT_STARS(r2, dx, hi, pj->h, si, pj, a, H);
 
     } /* loop over the parts in cj. */
   }   /* loop over the parts in ci. */
@@ -701,6 +700,9 @@ void DOPAIR1_SUBSET_STARS_NAIVE(struct runner *r, struct cell *restrict ci,
 
       /* Get a pointer to the jth particle. */
       struct part *restrict pj = &parts_j[pjd];
+
+      /* Skip inhibited particles */
+      if (part_is_inhibited(pj, e)) continue;
 
       /* Compute the pairwise distance. */
       float r2 = 0.0f;
