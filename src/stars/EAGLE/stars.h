@@ -71,6 +71,9 @@ __attribute__((always_inline)) INLINE static void stars_first_init_spart(
   sp->time_bin = 0;
   sp->birth_density = -1.f;
   sp->birth_time = -1.f;
+  
+  // ALEXEI: specify birth time for running StellarEvolution test
+  //sp->birth_time = 0.f;
 
   stars_init_spart(sp);
 }
@@ -370,6 +373,9 @@ inline static void evolve_SNII(float log10_min_mass, float log10_max_mass,
   if (log10_max_mass > stars->log10_SNII_max_mass_msun)
     log10_max_mass = stars->log10_SNII_max_mass_msun;
 
+  /* Don't do anything if the stellar mass hasn't decreased by the end of the step */
+  if (log10_min_mass >= log10_max_mass) return;
+
   /* determine which IMF mass bins contribute to the integral */
   determine_imf_bins(log10_min_mass, log10_max_mass, &ilow, &ihigh, stars);
 
@@ -496,6 +502,9 @@ inline static void evolve_AGB(float log10_min_mass, float log10_max_mass,
   /* If mass at end of step is greater than tabulated lower bound for IMF, limit it.*/
   if (log10_max_mass > stars->log10_SNII_min_mass_msun)
     log10_max_mass = stars->log10_SNII_min_mass_msun;
+
+  /* Don't do anything if the stellar mass hasn't decreased by the end of the step */
+  if (log10_min_mass >= log10_max_mass) return;
 
   /* determine which IMF mass bins contribute to the integral */
   determine_imf_bins(log10_min_mass, log10_max_mass, &ilow, &ihigh, stars);

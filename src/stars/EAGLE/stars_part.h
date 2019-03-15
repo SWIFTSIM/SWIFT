@@ -244,9 +244,6 @@ struct stars_props {
   /* Flag for testing energy injection */
   int const_feedback_energy_testing;
 
-  // CHANGE THIS TO BE CONSISTENT WITH RAND MAX USED IN STAR FORMATION
-  double inv_rand_max;
-
   /* Yield tables for AGB and SNII  */
   struct yield_table yield_AGB;
   struct yield_table yield_SNII;

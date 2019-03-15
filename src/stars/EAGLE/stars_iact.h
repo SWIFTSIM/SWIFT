@@ -70,7 +70,7 @@ runner_iact_nonsym_stars_density(
 
   /* Add contribution of pj to normalisation of kernel (TODO: IMPROVE COMMENT?)
    */
-  si->omega_normalisation_inv += wj / hydro_get_physical_density(pj, cosmo);
+  si->omega_normalisation_inv += wj / hydro_get_physical_density(pj,cosmo);
 
   /* Compute contribution to the density */
   si->rho_gas += mj * wi;
@@ -139,8 +139,13 @@ runner_iact_nonsym_stars_feedback(
   kernel_eval(uj, &wj);
 
   /* Compute weighting for distributing feedback quantities */
-  const float omega_frac = wj / (hydro_get_physical_density(pj, cosmo) *
-                                 si->omega_normalisation_inv);
+  float omega_frac;
+  float rho = hydro_get_physical_density(pj,cosmo);
+  if (rho * si->omega_normalisation_inv != 0) {
+    omega_frac = wj / (rho * si->omega_normalisation_inv);
+  } else {
+    omega_frac = 0.f;
+  }
 
   /* Update particle mass */
   const float current_mass = hydro_get_mass(pj);
