@@ -191,6 +191,9 @@ void hashmap_resize(hashmap_t *m, int new_table_size) {
         }
       }
     }
+
+    /* We're through with this chunk, recycle it. */
+    hashmap_release_chunk(m, chunk);
   }
 }
 
