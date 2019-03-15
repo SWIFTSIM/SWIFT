@@ -31,7 +31,8 @@
 #define _DO_SYM_PAIR1_STARS(f) PASTE(runner_do_sym_pair_stars, f)
 #define DO_SYM_PAIR1_STARS _DO_SYM_PAIR1_STARS(FUNCTION)
 
-#define _DO_NONSYM_PAIR1_STARS_NAIVE(f) PASTE(runner_do_nonsym_pair_stars_naive, f)
+#define _DO_NONSYM_PAIR1_STARS_NAIVE(f) \
+  PASTE(runner_do_nonsym_pair_stars_naive, f)
 #define DO_NONSYM_PAIR1_STARS_NAIVE _DO_NONSYM_PAIR1_STARS_NAIVE(FUNCTION)
 
 #define _DOPAIR1_STARS_NAIVE(f) PASTE(runner_dopair_stars_naive, f)
@@ -40,7 +41,8 @@
 #define _DOPAIR1_SUBSET_STARS(f) PASTE(runner_dopair_subset_stars, f)
 #define DOPAIR1_SUBSET_STARS _DOPAIR1_SUBSET_STARS(FUNCTION)
 
-#define _DOPAIR1_SUBSET_STARS_NAIVE(f) PASTE(runner_dopair_subset_stars_naive, f)
+#define _DOPAIR1_SUBSET_STARS_NAIVE(f) \
+  PASTE(runner_dopair_subset_stars_naive, f)
 #define DOPAIR1_SUBSET_STARS_NAIVE _DOPAIR1_SUBSET_STARS_NAIVE(FUNCTION)
 
 #define _DOSELF1_SUBSET_STARS(f) PASTE(runner_doself_subset_stars, f)
@@ -149,7 +151,7 @@ void DOSELF1_STARS(struct runner *r, struct cell *c, int timer) {
  * @param cj The second #cell
  */
 void DO_NONSYM_PAIR1_STARS_NAIVE(struct runner *r, struct cell *restrict ci,
-				 struct cell *restrict cj) {
+                                 struct cell *restrict cj) {
 
 #ifdef SWIFT_DEBUG_CHECKS
 #if (FUNCTION_TASK_LOOP == TASK_LOOP_DENSITY)
@@ -233,8 +235,8 @@ void DO_NONSYM_PAIR1_STARS_NAIVE(struct runner *r, struct cell *restrict ci,
  * @param sid The direction of the pair.
  * @param shift The shift vector to apply to the particles in ci.
  */
-void DO_SYM_PAIR1_STARS(struct runner *r, struct cell *ci, struct cell *cj, const int sid,
-			const double *shift) {
+void DO_SYM_PAIR1_STARS(struct runner *r, struct cell *ci, struct cell *cj,
+                        const int sid, const double *shift) {
 
   const struct engine *restrict e = r->e;
   const struct cosmology *restrict cosmo = e->cosmology;
@@ -248,16 +250,16 @@ void DO_SYM_PAIR1_STARS(struct runner *r, struct cell *ci, struct cell *cj, cons
   const float H = cosmo->H;
 
 #if (FUNCTION_TASK_LOOP == TASK_LOOP_DENSITY)
-  const int do_ci_stars = ci->nodeID == engine_rank &&
-    ci->stars.count != 0 && cj->hydro.count != 0 && cell_is_active_stars(ci, e);
-  const int do_cj_stars = cj->nodeID == engine_rank &&
-    cj->stars.count != 0 && ci->hydro.count != 0 && cell_is_active_stars(cj, e);
+  const int do_ci_stars = ci->nodeID == engine_rank && ci->stars.count != 0 &&
+                          cj->hydro.count != 0 && cell_is_active_stars(ci, e);
+  const int do_cj_stars = cj->nodeID == engine_rank && cj->stars.count != 0 &&
+                          ci->hydro.count != 0 && cell_is_active_stars(cj, e);
 #else
   /* here we are updating the hydro -> switch ci, cj for local */
-  const int do_ci_stars = cj->nodeID == engine_rank &&
-    ci->stars.count != 0 && cj->hydro.count != 0 && cell_is_active_stars(ci, e);
-  const int do_cj_stars = ci->nodeID == engine_rank &&
-    cj->stars.count != 0 && ci->hydro.count != 0 && cell_is_active_stars(cj, e);
+  const int do_ci_stars = cj->nodeID == engine_rank && ci->stars.count != 0 &&
+                          cj->hydro.count != 0 && cell_is_active_stars(ci, e);
+  const int do_cj_stars = ci->nodeID == engine_rank && cj->stars.count != 0 &&
+                          ci->hydro.count != 0 && cell_is_active_stars(cj, e);
 #endif
 
   if (do_ci_stars) {
@@ -268,14 +270,14 @@ void DO_SYM_PAIR1_STARS(struct runner *r, struct cell *ci, struct cell *cj, cons
 #ifdef SWIFT_DEBUG_CHECKS
     /* Some constants used to checks that the parts are in the right frame */
     const float shift_threshold_x =
-      2. * ci->width[0] +
-      2. * max(ci->stars.dx_max_part, cj->hydro.dx_max_part);
+        2. * ci->width[0] +
+        2. * max(ci->stars.dx_max_part, cj->hydro.dx_max_part);
     const float shift_threshold_y =
-      2. * ci->width[1] +
-      2. * max(ci->stars.dx_max_part, cj->hydro.dx_max_part);
+        2. * ci->width[1] +
+        2. * max(ci->stars.dx_max_part, cj->hydro.dx_max_part);
     const float shift_threshold_z =
-      2. * ci->width[2] +
-      2. * max(ci->stars.dx_max_part, cj->hydro.dx_max_part);
+        2. * ci->width[2] +
+        2. * max(ci->stars.dx_max_part, cj->hydro.dx_max_part);
 #endif /* SWIFT_DEBUG_CHECKS */
 
     /* Get some other useful values. */
@@ -286,9 +288,8 @@ void DO_SYM_PAIR1_STARS(struct runner *r, struct cell *ci, struct cell *cj, cons
     struct part *restrict parts_j = cj->hydro.parts;
     const double dj_min = sort_j[0].d;
     const float dx_max_rshift =
-      (ci->stars.dx_max_sort + cj->hydro.dx_max_sort) - rshift;
-    const float dx_max =
-      (ci->stars.dx_max_sort + cj->hydro.dx_max_sort);
+        (ci->stars.dx_max_sort + cj->hydro.dx_max_sort) - rshift;
+    const float dx_max = (ci->stars.dx_max_sort + cj->hydro.dx_max_sort);
 
     /* Loop over the sparts in ci. */
     for (int pid = count_i - 1;
@@ -303,10 +304,9 @@ void DO_SYM_PAIR1_STARS(struct runner *r, struct cell *ci, struct cell *cj, cons
 
       /* Compute distance from the other cell. */
       const double px[3] = {spi->x[0], spi->x[1], spi->x[2]};
-      float dist = px[0] * runner_shift[sid][0] +
-	           px[1] * runner_shift[sid][1] +
+      float dist = px[0] * runner_shift[sid][0] + px[1] * runner_shift[sid][1] +
                    px[2] * runner_shift[sid][2];
-      
+
       /* Is there anything we need to interact with ? */
       const double di = dist + hi * kernel_gamma + dx_max_rshift;
       if (di < dj_min) continue;
@@ -320,65 +320,63 @@ void DO_SYM_PAIR1_STARS(struct runner *r, struct cell *ci, struct cell *cj, cons
       /* Loop over the parts in cj. */
       for (int pjd = 0; pjd < count_j && sort_j[pjd].d < di; pjd++) {
 
-	/* Recover pj */
-	struct part *pj = &parts_j[sort_j[pjd].i];
+        /* Recover pj */
+        struct part *pj = &parts_j[sort_j[pjd].i];
 
-	/* Skip inhibited particles. */
-	if (part_is_inhibited(pj, e)) continue;
+        /* Skip inhibited particles. */
+        if (part_is_inhibited(pj, e)) continue;
 
-	const float hj = pj->h;
-	const float pjx = pj->x[0] - cj->loc[0];
-	const float pjy = pj->x[1] - cj->loc[1];
-	const float pjz = pj->x[2] - cj->loc[2];
+        const float hj = pj->h;
+        const float pjx = pj->x[0] - cj->loc[0];
+        const float pjy = pj->x[1] - cj->loc[1];
+        const float pjz = pj->x[2] - cj->loc[2];
 
-	/* Compute the pairwise distance. */
-	float dx[3] = {pix - pjx, piy - pjy, piz - pjz};
-	const float r2 = dx[0] * dx[0] + dx[1] * dx[1] + dx[2] * dx[2];
+        /* Compute the pairwise distance. */
+        float dx[3] = {pix - pjx, piy - pjy, piz - pjz};
+        const float r2 = dx[0] * dx[0] + dx[1] * dx[1] + dx[2] * dx[2];
 
 #ifdef SWIFT_DEBUG_CHECKS
-	/* Check that particles are in the correct frame after the shifts */
-	if (pix > shift_threshold_x || pix < -shift_threshold_x)
-	  error(
-		"Invalid particle position in X for pi (pix=%e ci->width[0]=%e)",
-		pix, ci->width[0]);
-	if (piy > shift_threshold_y || piy < -shift_threshold_y)
-	  error(
-		"Invalid particle position in Y for pi (piy=%e ci->width[1]=%e)",
-		piy, ci->width[1]);
-	if (piz > shift_threshold_z || piz < -shift_threshold_z)
-	  error(
-		"Invalid particle position in Z for pi (piz=%e ci->width[2]=%e)",
-		piz, ci->width[2]);
-	if (pjx > shift_threshold_x || pjx < -shift_threshold_x)
-	  error(
-		"Invalid particle position in X for pj (pjx=%e ci->width[0]=%e)",
-		pjx, ci->width[0]);
-	if (pjy > shift_threshold_y || pjy < -shift_threshold_y)
-	  error(
-		"Invalid particle position in Y for pj (pjy=%e ci->width[1]=%e)",
-		pjy, ci->width[1]);
-	if (pjz > shift_threshold_z || pjz < -shift_threshold_z)
-	  error(
-		"Invalid particle position in Z for pj (pjz=%e ci->width[2]=%e)",
-		pjz, ci->width[2]);
-	
-	/* Check that particles have been drifted to the current time */
-	if (spi->ti_drift != e->ti_current)
-	  error("Particle spi not drifted to current time");
-	if (pj->ti_drift != e->ti_current)
-	  error("Particle pj not drifted to current time");
+        /* Check that particles are in the correct frame after the shifts */
+        if (pix > shift_threshold_x || pix < -shift_threshold_x)
+          error(
+              "Invalid particle position in X for pi (pix=%e ci->width[0]=%e)",
+              pix, ci->width[0]);
+        if (piy > shift_threshold_y || piy < -shift_threshold_y)
+          error(
+              "Invalid particle position in Y for pi (piy=%e ci->width[1]=%e)",
+              piy, ci->width[1]);
+        if (piz > shift_threshold_z || piz < -shift_threshold_z)
+          error(
+              "Invalid particle position in Z for pi (piz=%e ci->width[2]=%e)",
+              piz, ci->width[2]);
+        if (pjx > shift_threshold_x || pjx < -shift_threshold_x)
+          error(
+              "Invalid particle position in X for pj (pjx=%e ci->width[0]=%e)",
+              pjx, ci->width[0]);
+        if (pjy > shift_threshold_y || pjy < -shift_threshold_y)
+          error(
+              "Invalid particle position in Y for pj (pjy=%e ci->width[1]=%e)",
+              pjy, ci->width[1]);
+        if (pjz > shift_threshold_z || pjz < -shift_threshold_z)
+          error(
+              "Invalid particle position in Z for pj (pjz=%e ci->width[2]=%e)",
+              pjz, ci->width[2]);
+
+        /* Check that particles have been drifted to the current time */
+        if (spi->ti_drift != e->ti_current)
+          error("Particle spi not drifted to current time");
+        if (pj->ti_drift != e->ti_current)
+          error("Particle pj not drifted to current time");
 #endif
 
-	/* Hit or miss? */
-	if (r2 < hig2) {
+        /* Hit or miss? */
+        if (r2 < hig2) {
 
-	  IACT_STARS(r2, dx, hi, hj, spi, pj, a, H);
-	}
+          IACT_STARS(r2, dx, hi, hj, spi, pj, a, H);
+        }
       } /* loop over the parts in cj. */
     }   /* loop over the parts in ci. */
   }     /* do_ci_stars */
-
-  
 
   if (do_cj_stars) {
     /* Pick-out the sorted lists. */
@@ -388,14 +386,14 @@ void DO_SYM_PAIR1_STARS(struct runner *r, struct cell *ci, struct cell *cj, cons
 #ifdef SWIFT_DEBUG_CHECKS
     /* Some constants used to checks that the parts are in the right frame */
     const float shift_threshold_x =
-      2. * ci->width[0] +
-      2. * max(ci->hydro.dx_max_part, cj->stars.dx_max_part);
+        2. * ci->width[0] +
+        2. * max(ci->hydro.dx_max_part, cj->stars.dx_max_part);
     const float shift_threshold_y =
-      2. * ci->width[1] +
-      2. * max(ci->hydro.dx_max_part, cj->stars.dx_max_part);
+        2. * ci->width[1] +
+        2. * max(ci->hydro.dx_max_part, cj->stars.dx_max_part);
     const float shift_threshold_z =
-      2. * ci->width[2] +
-      2. * max(ci->hydro.dx_max_part, cj->stars.dx_max_part);
+        2. * ci->width[2] +
+        2. * max(ci->hydro.dx_max_part, cj->stars.dx_max_part);
 #endif /* SWIFT_DEBUG_CHECKS */
 
     /* Get some other useful values. */
@@ -406,14 +404,13 @@ void DO_SYM_PAIR1_STARS(struct runner *r, struct cell *ci, struct cell *cj, cons
     struct spart *restrict sparts_j = cj->stars.parts;
     const double di_max = sort_i[count_i - 1].d - rshift;
     const float dx_max_rshift =
-      (ci->hydro.dx_max_sort + cj->stars.dx_max_sort) + rshift;
-    const float dx_max =
-      (ci->hydro.dx_max_sort + cj->stars.dx_max_sort);
+        (ci->hydro.dx_max_sort + cj->stars.dx_max_sort) + rshift;
+    const float dx_max = (ci->hydro.dx_max_sort + cj->stars.dx_max_sort);
 
     /* Loop over the parts in cj. */
     for (int pjd = 0; pjd < count_j && sort_j[pjd].d - hj_max - dx_max < di_max;
          pjd++) {
-      
+
       /* Get a hold of the jth part in cj. */
       struct spart *spj = &sparts_j[pjd];
       const float hj = spj->h;
@@ -421,11 +418,9 @@ void DO_SYM_PAIR1_STARS(struct runner *r, struct cell *ci, struct cell *cj, cons
       /* Skip inactive particles */
       if (!spart_is_active(spj, e)) continue;
 
-
       /* Compute distance from the other cell. */
       const double px[3] = {spj->x[0], spj->x[1], spj->x[2]};
-      float dist = px[0] * runner_shift[sid][0] +
-	           px[1] * runner_shift[sid][1] +
+      float dist = px[0] * runner_shift[sid][0] + px[1] * runner_shift[sid][1] +
                    px[2] * runner_shift[sid][2];
 
       /* Is there anything we need to interact with ? */
@@ -498,11 +493,10 @@ void DO_SYM_PAIR1_STARS(struct runner *r, struct cell *ci, struct cell *cj, cons
       } /* loop over the parts in ci. */
     }   /* loop over the parts in cj. */
   }     /* Cell cj is active */
-
 }
 
 void DOPAIR1_STARS_NAIVE(struct runner *r, struct cell *restrict ci,
-                   struct cell *restrict cj, int timer) {
+                         struct cell *restrict cj, int timer) {
 
 #if (FUNCTION_TASK_LOOP == TASK_LOOP_DENSITY)
   const int do_ci_stars = ci->nodeID == engine_rank;
@@ -537,7 +531,7 @@ void DOPAIR1_STARS_NAIVE(struct runner *r, struct cell *restrict ci,
 void DOPAIR1_SUBSET_STARS(struct runner *r, struct cell *restrict ci,
                           struct spart *restrict sparts_i, int *restrict ind,
                           int scount, struct cell *restrict cj, const int sid,
-			  const int flipped, const double *shift) {
+                          const int flipped, const double *shift) {
 
   const struct engine *e = r->e;
   const struct cosmology *cosmo = e->cosmology;
@@ -597,7 +591,7 @@ void DOPAIR1_SUBSET_STARS(struct runner *r, struct cell *restrict ci,
 
         /* Hit or miss? */
         if (r2 < hig2) {
-	  IACT_STARS(r2, dx, hi, pj->h, spi, pj, a, H);
+          IACT_STARS(r2, dx, hi, pj->h, spi, pj, a, H);
         }
       } /* loop over the parts in cj. */
     }   /* loop over the sparts in ci. */
@@ -647,13 +641,11 @@ void DOPAIR1_SUBSET_STARS(struct runner *r, struct cell *restrict ci,
 
         /* Hit or miss? */
         if (r2 < hig2) {
-	  IACT_STARS(r2, dx, hi, pj->h, spi, pj, a, H);
+          IACT_STARS(r2, dx, hi, pj->h, spi, pj, a, H);
         }
       } /* loop over the parts in cj. */
     }   /* loop over the sparts in ci. */
   }
-
-
 }
 /**
  * @brief Compute the interactions between a cell pair, but only for the
@@ -670,9 +662,9 @@ void DOPAIR1_SUBSET_STARS(struct runner *r, struct cell *restrict ci,
  * @param shift The shift vector to apply to the particles in ci.
  */
 void DOPAIR1_SUBSET_STARS_NAIVE(struct runner *r, struct cell *restrict ci,
-                          struct spart *restrict sparts_i, int *restrict ind,
-                          int scount, struct cell *restrict cj,
-                          const double *shift) {
+                                struct spart *restrict sparts_i,
+                                int *restrict ind, int scount,
+                                struct cell *restrict cj, const double *shift) {
 
 #ifdef SWIFT_DEBUG_CHECKS
   if (ci->nodeID != engine_rank) error("Should be run on a different node");
@@ -1529,10 +1521,10 @@ void DOPAIR1_BRANCH_STARS(struct runner *r, struct cell *ci, struct cell *cj) {
   const int do_ci_stars = cj->nodeID == engine_rank;
   const int do_cj_stars = ci->nodeID == engine_rank;
 #endif
-  const int do_ci =
-      (ci->stars.count != 0 && cj->hydro.count != 0 && ci_active && do_ci_stars);
-  const int do_cj =
-      (cj->stars.count != 0 && ci->hydro.count != 0 && cj_active && do_cj_stars);
+  const int do_ci = (ci->stars.count != 0 && cj->hydro.count != 0 &&
+                     ci_active && do_ci_stars);
+  const int do_cj = (cj->stars.count != 0 && ci->hydro.count != 0 &&
+                     cj_active && do_cj_stars);
 
   /* Anything to do here? */
   if (!do_ci && !do_cj) return;
@@ -1818,12 +1810,12 @@ void DOSUB_PAIR1_STARS(struct runner *r, struct cell *ci, struct cell *cj,
   else {
 
 #if (FUNCTION_TASK_LOOP == TASK_LOOP_DENSITY)
-  const int do_ci_stars = ci->nodeID == engine_rank;
-  const int do_cj_stars = cj->nodeID == engine_rank;
+    const int do_ci_stars = ci->nodeID == engine_rank;
+    const int do_cj_stars = cj->nodeID == engine_rank;
 #else
-  /* here we are updating the hydro -> switch ci, cj */
-  const int do_ci_stars = cj->nodeID == engine_rank;
-  const int do_cj_stars = ci->nodeID == engine_rank;
+    /* here we are updating the hydro -> switch ci, cj */
+    const int do_ci_stars = cj->nodeID == engine_rank;
+    const int do_cj_stars = ci->nodeID == engine_rank;
 #endif
     const int do_ci = ci->stars.count != 0 && cj->hydro.count != 0 &&
                       cell_is_active_stars(ci, e) && do_ci_stars;
