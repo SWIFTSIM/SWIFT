@@ -632,7 +632,7 @@ void engine_redistribute(struct engine *e) {
     error("Failed to allocate counts temporary buffer.");
 
   int *dest;
-  if ((dest = (int *)malloc(sizeof(int) * nr_parts)) == NULL)
+  if ((dest = (int *)swift_malloc("dest", sizeof(int) * nr_parts)) == NULL)
     error("Failed to allocate dest temporary buffer.");
 
   /* Simple index of node IDs, used for mappers over nodes. */
@@ -695,7 +695,7 @@ void engine_redistribute(struct engine *e) {
     threadpool_map(&e->threadpool, engine_redistribute_savelink_mapper_part,
                    nodes, nr_nodes, sizeof(int), 0, &savelink_data);
   }
-  free(dest);
+  swift_free("dest", dest);
 
   /* Get destination of each s-particle */
   int *s_counts;
@@ -703,7 +703,7 @@ void engine_redistribute(struct engine *e) {
     error("Failed to allocate s_counts temporary buffer.");
 
   int *s_dest;
-  if ((s_dest = (int *)malloc(sizeof(int) * nr_sparts)) == NULL)
+  if ((s_dest = (int *)swift_malloc("s_dest", sizeof(int) * nr_sparts)) == NULL)
     error("Failed to allocate s_dest temporary buffer.");
 
   redist_data.counts = s_counts;
@@ -753,7 +753,7 @@ void engine_redistribute(struct engine *e) {
     threadpool_map(&e->threadpool, engine_redistribute_savelink_mapper_spart,
                    nodes, nr_nodes, sizeof(int), 0, &savelink_data);
   }
-  free(s_dest);
+  swift_free("s_dest", s_dest);
 
   /* Get destination of each g-particle */
   int *g_counts;
@@ -761,7 +761,7 @@ void engine_redistribute(struct engine *e) {
     error("Failed to allocate g_gcount temporary buffer.");
 
   int *g_dest;
-  if ((g_dest = (int *)malloc(sizeof(int) * nr_gparts)) == NULL)
+  if ((g_dest = (int *)swift_malloc("g_dest", sizeof(int) * nr_gparts)) == NULL)
     error("Failed to allocate g_dest temporary buffer.");
 
   redist_data.counts = g_counts;
@@ -801,7 +801,7 @@ void engine_redistribute(struct engine *e) {
   }
 #endif
 
-  free(g_dest);
+  swift_free("g_dest", g_dest);
 
   /* Get all the counts from all the nodes. */
   if (MPI_Allreduce(MPI_IN_PLACE, counts, nr_nodes * nr_nodes, MPI_INT, MPI_SUM,
@@ -4005,7 +4005,8 @@ void engine_collect_stars_counter(struct engine *e) {
   }
 
   /* Get all sparticles */
-  struct spart *sparts = (struct spart *)malloc(total * sizeof(struct spart));
+  struct spart *sparts =
+      (struct spart *)swift_malloc("sparts", total * sizeof(struct spart));
   err = MPI_Allgatherv(e->s->sparts_foreign, e->s->nr_sparts_foreign,
                        spart_mpi_type, sparts, n_sparts_int, displs,
                        spart_mpi_type, MPI_COMM_WORLD);
@@ -5392,7 +5393,7 @@ void engine_clean(struct engine *e) {
   output_list_clean(&e->output_list_stats);
   output_list_clean(&e->output_list_stf);
 
-  free(e->links);
+  swift_free("links", e->links);
 #if defined(WITH_LOGGER)
   logger_clean(e->logger);
   free(e->logger);

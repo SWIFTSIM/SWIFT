@@ -34,11 +34,16 @@ const char *memuse_process(int inmb);
 void memuse_log_dump(const char *filename);
 void memuse_log_allocation(const char *label, void *ptr, int allocated,
                            size_t size);
+#else
+
+/* No-op when not reporting. */
+#define memuse_log_allocation(label, ptr, allocated, size)
 #endif
 
 /**
  * @brief allocate aligned memory. The use and results are the same as the
- *        posix_memalign function.
+ *        posix_memalign function. This function should be used for any
+ *        significant allocations and consistently labelled.
  *
  * @param label a symbolic label for the memory, i.e. "parts".
  * @param memptr pointer to the allocated memory.
@@ -58,11 +63,31 @@ __attribute__((always_inline)) inline int swift_memalign(const char *label,
 }
 
 /**
- * @brief free aligned memory. The use and results are the same as the
- *        free function.
+ * @brief allocate memory. The use and results are the same as the
+ *        malloc function. This function should be used for any
+ *        _significant_ allocations and consistently labelled.
+ *        Do not use this function for small or high frequency
+ *        allocations in production code.
  *
- * @param label a symbolic label for the memory, i.e. "parts", should match
- *              call used to allocate the memory.
+ * @param label a symbolic label for the memory, i.e. "parts".
+ * @param size the quantity of bytes to allocate.
+ * @result pointer to the allocated memory or NULL on failure.
+ */
+__attribute__((always_inline)) inline void *swift_malloc(const char *label,
+                                                         size_t size) {
+  void *memptr = malloc(size);
+#ifdef SWIFT_MEMUSE_REPORTS
+  if (memptr != NULL) memuse_log_allocation(label, memptr, 1, size);
+#endif
+  return memptr;
+}
+
+/**
+ * @brief free aligned memory. The use and results are the same as the
+ *        free function. The label should match a prior call to swift_memalign
+ *        or swift_malloc.
+ *
+ * @param label a symbolic label for the memory, i.e. "parts".
  * @param ptr pointer to the allocated memory.
  */
 __attribute__((always_inline)) inline void swift_free(const char *label,

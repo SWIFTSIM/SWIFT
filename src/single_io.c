@@ -241,7 +241,7 @@ void writeArray(const struct engine* e, hid_t grp, char* fileName,
 
   /* Allocate temporary buffer */
   void* temp = NULL;
-  if (swift_memalign("temp", (void**)&temp, IO_BUFFER_ALIGNMENT,
+  if (swift_memalign("writetemp", (void**)&temp, IO_BUFFER_ALIGNMENT,
                      num_elements * typeSize) != 0)
     error("Unable to allocate temporary i/o buffer");
 
@@ -333,7 +333,7 @@ void writeArray(const struct engine* e, hid_t grp, char* fileName,
   io_write_attribute_s(h_data, "Conversion factor", buffer);
 
   /* Free and close everything */
-  free(temp);
+  swift_free("writetemp", temp);
   H5Pclose(h_prop);
   H5Dclose(h_data);
   H5Sclose(h_space);

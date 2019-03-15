@@ -1815,14 +1815,14 @@ void cell_clean(struct cell *c) {
   /* Hydro */
   for (int i = 0; i < 13; i++)
     if (c->hydro.sort[i] != NULL) {
-      free(c->hydro.sort[i]);
+      swift_free("hydro.sorts", c->hydro.sort[i]);
       c->hydro.sort[i] = NULL;
     }
 
   /* Stars */
   for (int i = 0; i < 13; i++)
     if (c->stars.sort[i] != NULL) {
-      free(c->stars.sort[i]);
+      swift_free("stars.sort", c->stars.sort[i]);
       c->stars.sort[i] = NULL;
     }
 
@@ -4299,7 +4299,7 @@ void cell_clear_stars_sort_flags(struct cell *c, const int is_super) {
 #endif
 
     for (int i = 0; i < 13; i++) {
-      free(c->stars.sort[i]);
+      swift_free("stars.sort", c->stars.sort[i]);
     }
   }
 

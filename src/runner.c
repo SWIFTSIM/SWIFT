@@ -816,8 +816,9 @@ void runner_do_hydro_sort(struct runner *r, struct cell *c, int flags,
   /* start by allocating the entry arrays in the requested dimensions. */
   for (int j = 0; j < 13; j++) {
     if ((flags & (1 << j)) && c->hydro.sort[j] == NULL) {
-      if ((c->hydro.sort[j] = (struct entry *)malloc(sizeof(struct entry) *
-                                                     (count + 1))) == NULL)
+      if ((c->hydro.sort[j] = (struct entry *)
+           swift_malloc("hydro.sort", sizeof(struct entry) *
+                        (count + 1))) == NULL)
         error("Failed to allocate sort memory.");
     }
   }
@@ -1041,8 +1042,8 @@ void runner_do_stars_sort(struct runner *r, struct cell *c, int flags,
   /* start by allocating the entry arrays in the requested dimensions. */
   for (int j = 0; j < 13; j++) {
     if ((flags & (1 << j)) && c->stars.sort[j] == NULL) {
-      if ((c->stars.sort[j] = (struct entry *)malloc(sizeof(struct entry) *
-                                                     (count + 1))) == NULL)
+      if ((c->stars.sort[j] = (struct entry *)swift_malloc(
+               "stars.sort", sizeof(struct entry) * (count + 1))) == NULL)
         error("Failed to allocate sort memory.");
     }
   }

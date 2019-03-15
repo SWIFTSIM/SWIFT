@@ -650,30 +650,30 @@ void proxy_parts_exchange_second(struct proxy *p) {
     do {
       p->size_parts_in *= proxy_buffgrow;
     } while (p->nr_parts_in > p->size_parts_in);
-    free(p->parts_in);
-    free(p->xparts_in);
-    if ((p->parts_in = (struct part *)malloc(sizeof(struct part) *
-                                             p->size_parts_in)) == NULL ||
-        (p->xparts_in = (struct xpart *)malloc(sizeof(struct xpart) *
-                                               p->size_parts_in)) == NULL)
+    swift_free("parts_in", p->parts_in);
+    swift_free("xparts_in", p->xparts_in);
+    if ((p->parts_in = (struct part *)swift_malloc(
+             "parts_in", sizeof(struct part) * p->size_parts_in)) == NULL ||
+        (p->xparts_in = (struct xpart *)swift_malloc(
+             "xparts_in", sizeof(struct xpart) * p->size_parts_in)) == NULL)
       error("Failed to re-allocate parts_in buffers.");
   }
   if (p->nr_gparts_in > p->size_gparts_in) {
     do {
       p->size_gparts_in *= proxy_buffgrow;
     } while (p->nr_gparts_in > p->size_gparts_in);
-    free(p->gparts_in);
-    if ((p->gparts_in = (struct gpart *)malloc(sizeof(struct gpart) *
-                                               p->size_gparts_in)) == NULL)
+    swift_free("gparts_in", p->gparts_in);
+    if ((p->gparts_in = (struct gpart *)swift_malloc(
+             "gparts_in", sizeof(struct gpart) * p->size_gparts_in)) == NULL)
       error("Failed to re-allocate gparts_in buffers.");
   }
   if (p->nr_sparts_in > p->size_sparts_in) {
     do {
       p->size_sparts_in *= proxy_buffgrow;
     } while (p->nr_sparts_in > p->size_sparts_in);
-    free(p->sparts_in);
-    if ((p->sparts_in = (struct spart *)malloc(sizeof(struct spart) *
-                                               p->size_sparts_in)) == NULL)
+    swift_free("sparts_in", p->sparts_in);
+    if ((p->sparts_in = (struct spart *)swift_malloc(
+             "sparts_in", sizeof(struct spart) * p->size_sparts_in)) == NULL)
       error("Failed to re-allocate sparts_in buffers.");
   }
 
@@ -729,15 +729,15 @@ void proxy_parts_load(struct proxy *p, const struct part *parts,
     } while (p->nr_parts_out + N > p->size_parts_out);
     struct part *tp = NULL;
     struct xpart *txp = NULL;
-    if ((tp = (struct part *)malloc(sizeof(struct part) * p->size_parts_out)) ==
-            NULL ||
-        (txp = (struct xpart *)malloc(sizeof(struct xpart) *
-                                      p->size_parts_out)) == NULL)
+    if ((tp = (struct part *)swift_malloc(
+             "parts_out", sizeof(struct part) * p->size_parts_out)) == NULL ||
+        (txp = (struct xpart *)swift_malloc(
+             "xparts_out", sizeof(struct xpart) * p->size_parts_out)) == NULL)
       error("Failed to re-allocate parts_out buffers.");
     memcpy(tp, p->parts_out, sizeof(struct part) * p->nr_parts_out);
     memcpy(txp, p->xparts_out, sizeof(struct xpart) * p->nr_parts_out);
-    free(p->parts_out);
-    free(p->xparts_out);
+    swift_free("parts_out", p->parts_out);
+    swift_free("xparts_out", p->xparts_out);
     p->parts_out = tp;
     p->xparts_out = txp;
   }
@@ -765,11 +765,11 @@ void proxy_gparts_load(struct proxy *p, const struct gpart *gparts, int N) {
       p->size_gparts_out *= proxy_buffgrow;
     } while (p->nr_gparts_out + N > p->size_gparts_out);
     struct gpart *tp;
-    if ((tp = (struct gpart *)malloc(sizeof(struct gpart) *
-                                     p->size_gparts_out)) == NULL)
+    if ((tp = (struct gpart *)swift_malloc(
+             "gparts_out", sizeof(struct gpart) * p->size_gparts_out)) == NULL)
       error("Failed to re-allocate gparts_out buffers.");
     memcpy(tp, p->gparts_out, sizeof(struct gpart) * p->nr_gparts_out);
-    free(p->gparts_out);
+    swift_free("gparts_out", p->gparts_out);
     p->gparts_out = tp;
   }
 
@@ -795,11 +795,11 @@ void proxy_sparts_load(struct proxy *p, const struct spart *sparts, int N) {
       p->size_sparts_out *= proxy_buffgrow;
     } while (p->nr_sparts_out + N > p->size_sparts_out);
     struct spart *tp;
-    if ((tp = (struct spart *)malloc(sizeof(struct spart) *
-                                     p->size_sparts_out)) == NULL)
+    if ((tp = (struct spart *)swift_malloc(
+             "sparts_out", sizeof(struct spart) * p->size_sparts_out)) == NULL)
       error("Failed to re-allocate sparts_out buffers.");
     memcpy(tp, p->sparts_out, sizeof(struct spart) * p->nr_sparts_out);
-    free(p->sparts_out);
+    swift_free("sparts_out", p->sparts_out);
     p->sparts_out = tp;
   }
 
@@ -848,19 +848,19 @@ void proxy_init(struct proxy *p, int mynodeID, int nodeID) {
   /* Allocate the part send and receive buffers, if needed. */
   if (p->parts_in == NULL) {
     p->size_parts_in = proxy_buffinit;
-    if ((p->parts_in = (struct part *)malloc(sizeof(struct part) *
-                                             p->size_parts_in)) == NULL ||
-        (p->xparts_in = (struct xpart *)malloc(sizeof(struct xpart) *
-                                               p->size_parts_in)) == NULL)
+    if ((p->parts_in = (struct part *)swift_malloc(
+             "parts_in", sizeof(struct part) * p->size_parts_in)) == NULL ||
+        (p->xparts_in = (struct xpart *)swift_malloc(
+             "xparts_in", sizeof(struct xpart) * p->size_parts_in)) == NULL)
       error("Failed to allocate parts_in buffers.");
   }
   p->nr_parts_in = 0;
   if (p->parts_out == NULL) {
     p->size_parts_out = proxy_buffinit;
-    if ((p->parts_out = (struct part *)malloc(sizeof(struct part) *
-                                              p->size_parts_out)) == NULL ||
-        (p->xparts_out = (struct xpart *)malloc(sizeof(struct xpart) *
-                                                p->size_parts_out)) == NULL)
+    if ((p->parts_out = (struct part *)swift_malloc(
+             "parts_out", sizeof(struct part) * p->size_parts_out)) == NULL ||
+        (p->xparts_out = (struct xpart *)swift_malloc(
+             "xparts_out", sizeof(struct xpart) * p->size_parts_out)) == NULL)
       error("Failed to allocate parts_out buffers.");
   }
   p->nr_parts_out = 0;
@@ -868,15 +868,15 @@ void proxy_init(struct proxy *p, int mynodeID, int nodeID) {
   /* Allocate the gpart send and receive buffers, if needed. */
   if (p->gparts_in == NULL) {
     p->size_gparts_in = proxy_buffinit;
-    if ((p->gparts_in = (struct gpart *)malloc(sizeof(struct gpart) *
-                                               p->size_gparts_in)) == NULL)
+    if ((p->gparts_in = (struct gpart *)swift_malloc(
+             "gparts_in", sizeof(struct gpart) * p->size_gparts_in)) == NULL)
       error("Failed to allocate gparts_in buffers.");
   }
   p->nr_gparts_in = 0;
   if (p->gparts_out == NULL) {
     p->size_gparts_out = proxy_buffinit;
-    if ((p->gparts_out = (struct gpart *)malloc(sizeof(struct gpart) *
-                                                p->size_gparts_out)) == NULL)
+    if ((p->gparts_out = (struct gpart *)swift_malloc(
+             "gparts_out", sizeof(struct gpart) * p->size_gparts_out)) == NULL)
       error("Failed to allocate gparts_out buffers.");
   }
   p->nr_gparts_out = 0;
@@ -884,15 +884,15 @@ void proxy_init(struct proxy *p, int mynodeID, int nodeID) {
   /* Allocate the spart send and receive buffers, if needed. */
   if (p->sparts_in == NULL) {
     p->size_sparts_in = proxy_buffinit;
-    if ((p->sparts_in = (struct spart *)malloc(sizeof(struct spart) *
-                                               p->size_sparts_in)) == NULL)
+    if ((p->sparts_in = (struct spart *)swift_malloc(
+             "sparts_in", sizeof(struct spart) * p->size_sparts_in)) == NULL)
       error("Failed to allocate sparts_in buffers.");
   }
   p->nr_sparts_in = 0;
   if (p->sparts_out == NULL) {
     p->size_sparts_out = proxy_buffinit;
-    if ((p->sparts_out = (struct spart *)malloc(sizeof(struct spart) *
-                                                p->size_sparts_out)) == NULL)
+    if ((p->sparts_out = (struct spart *)swift_malloc(
+             "sparts_out", sizeof(struct spart) * p->size_sparts_out)) == NULL)
       error("Failed to allocate sparts_out buffers.");
   }
   p->nr_sparts_out = 0;

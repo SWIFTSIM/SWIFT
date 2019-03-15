@@ -389,6 +389,8 @@ void pm_mesh_compute_potential(struct pm_mesh* mesh, const struct space* s,
       (fftw_complex*)fftw_malloc(sizeof(fftw_complex) * N * N * (N_half + 1));
   if (frho == NULL)
     error("Error allocating memory for transform of density mesh");
+  memuse_log_allocation("fftw_frho", frho, 1,
+                        sizeof(fftw_complex) * N * N * (N_half + 1));
 
   /* Prepare the FFT library */
   fftw_plan forward_plan = fftw_plan_dft_r2c_3d(
@@ -537,6 +539,7 @@ void pm_mesh_compute_potential(struct pm_mesh* mesh, const struct space* s,
   /* Clean-up the mess */
   fftw_destroy_plan(forward_plan);
   fftw_destroy_plan(inverse_plan);
+  memuse_log_allocation("fftw_frho", frho, 0, 0);
   fftw_free(frho);
 
 #else
@@ -636,6 +639,9 @@ void pm_mesh_init(struct pm_mesh* mesh, const struct gravity_props* props,
   mesh->potential = (double*)fftw_malloc(sizeof(double) * N * N * N);
   if (mesh->potential == NULL)
     error("Error allocating memory for the long-range gravity mesh.");
+  memuse_log_allocation("fftw_mesh.potential", mesh->potential, 1,
+                        sizeof(double) * N * N * N);
+
 #else
   error("No FFTW library found. Cannot compute periodic long-range forces.");
 #endif
@@ -674,7 +680,10 @@ void pm_mesh_clean(struct pm_mesh* mesh) {
   fftw_cleanup_threads();
 #endif
 
-  if (mesh->potential) free(mesh->potential);
+  if (mesh->potential) {
+    memuse_log_allocation("fftw_mesh.potential", mesh->potential, 0, 0);
+    free(mesh->potential);
+  }
   mesh->potential = 0;
 }
 
@@ -718,6 +727,8 @@ void pm_mesh_struct_restore(struct pm_mesh* mesh, FILE* stream) {
     mesh->potential = (double*)fftw_malloc(sizeof(double) * N * N * N);
     if (mesh->potential == NULL)
       error("Error allocating memory for the long-range gravity mesh.");
+    memuse_log_allocation("fftw_mesh.potential", mesh->potential, 1,
+                          sizeof(double) * N * N * N);
 #else
     error("No FFTW library found. Cannot compute periodic long-range forces.");
 #endif

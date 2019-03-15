@@ -261,13 +261,14 @@ void space_rebuild_recycle_mapper(void *map_data, int num_elements,
 #endif
     if (s->with_self_gravity)
       bzero(c->grav.multipole, sizeof(struct gravity_tensors));
+
     for (int i = 0; i < 13; i++) {
       if (c->hydro.sort[i] != NULL) {
-        free(c->hydro.sort[i]);
+        swift_free("hydro.sort", c->hydro.sort[i]);
         c->hydro.sort[i] = NULL;
       }
       if (c->stars.sort[i] != NULL) {
-        free(c->stars.sort[i]);
+        swift_free("stars.sort", c->stars.sort[i]);
         c->stars.sort[i] = NULL;
       }
     }
@@ -416,7 +417,8 @@ void space_regrid(struct space *s, int verbose) {
     oldwidth[1] = s->width[1];
     oldwidth[2] = s->width[2];
 
-    if ((oldnodeIDs = (int *)malloc(sizeof(int) * s->nr_cells)) == NULL)
+    if ((oldnodeIDs =
+             (int *)swift_malloc("nodeIDs", sizeof(int) * s->nr_cells)) == NULL)
       error("Failed to allocate temporary nodeIDs.");
 
     int cid = 0;
@@ -609,7 +611,7 @@ void space_regrid(struct space *s, int verbose) {
       engine_makeproxies(s->e);
 
       /* Finished with these. */
-      free(oldnodeIDs);
+      swift_free("nodeIDs", oldnodeIDs);
 
     } else if (no_regrid && s->e != NULL) {
       /* If we have created the top-levels cells and not done an initial
@@ -1033,16 +1035,19 @@ void space_rebuild(struct space *s, int repartitioned, int verbose) {
   /* Allocate arrays to store the indices of the cells where particles
      belong. We allocate extra space to allow for particles we may
      receive from other nodes */
-  int *h_index = (int *)malloc(sizeof(int) * h_index_size);
-  int *g_index = (int *)malloc(sizeof(int) * g_index_size);
-  int *s_index = (int *)malloc(sizeof(int) * s_index_size);
+  int *h_index = (int *)swift_malloc("h_index", sizeof(int) * h_index_size);
+  int *g_index = (int *)swift_malloc("g_index", sizeof(int) * g_index_size);
+  int *s_index = (int *)swift_malloc("s_index", sizeof(int) * s_index_size);
   if (h_index == NULL || g_index == NULL || s_index == NULL)
     error("Failed to allocate temporary particle indices.");
 
   /* Allocate counters of particles that will land in each cell */
-  int *cell_part_counts = (int *)malloc(sizeof(int) * s->nr_cells);
-  int *cell_gpart_counts = (int *)malloc(sizeof(int) * s->nr_cells);
-  int *cell_spart_counts = (int *)malloc(sizeof(int) * s->nr_cells);
+  int *cell_part_counts =
+      (int *)swift_malloc("cell_part_counts", sizeof(int) * s->nr_cells);
+  int *cell_gpart_counts =
+      (int *)swift_malloc("cell_gpart_counts", sizeof(int) * s->nr_cells);
+  int *cell_spart_counts =
+      (int *)swift_malloc("cell_spart_counts", sizeof(int) * s->nr_cells);
   if (cell_part_counts == NULL || cell_gpart_counts == NULL ||
       cell_spart_counts == NULL)
     error("Failed to allocate cell particle count buffer.");
@@ -1288,20 +1293,22 @@ void space_rebuild(struct space *s, int repartitioned, int verbose) {
   /* Re-allocate the index array for the parts if needed.. */
   if (s->nr_parts + 1 > h_index_size) {
     int *ind_new;
-    if ((ind_new = (int *)malloc(sizeof(int) * (s->nr_parts + 1))) == NULL)
+    if ((ind_new = (int *)swift_malloc(
+             "h_index", sizeof(int) * (s->nr_parts + 1))) == NULL)
       error("Failed to allocate temporary particle indices.");
     memcpy(ind_new, h_index, sizeof(int) * nr_parts);
-    free(h_index);
+    swift_free("h_index", h_index);
     h_index = ind_new;
   }
 
   /* Re-allocate the index array for the sparts if needed.. */
   if (s->nr_sparts + 1 > s_index_size) {
     int *sind_new;
-    if ((sind_new = (int *)malloc(sizeof(int) * (s->nr_sparts + 1))) == NULL)
+    if ((sind_new = (int *)swift_malloc(
+             "s_index", sizeof(int) * (s->nr_sparts + 1))) == NULL)
       error("Failed to allocate temporary s-particle indices.");
     memcpy(sind_new, s_index, sizeof(int) * nr_sparts);
-    free(s_index);
+    swift_free("s_index", s_index);
     s_index = sind_new;
   }
 
@@ -1430,20 +1437,21 @@ void space_rebuild(struct space *s, int repartitioned, int verbose) {
   }
 
   /* We no longer need the indices as of here. */
-  free(h_index);
-  free(cell_part_counts);
-  free(s_index);
-  free(cell_spart_counts);
+  swift_free("h_index", h_index);
+  swift_free("cell_part_counts", cell_part_counts);
+  swift_free("s_index", s_index);
+  swift_free("cell_spart_counts", cell_spart_counts);
 
 #ifdef WITH_MPI
 
   /* Re-allocate the index array for the gparts if needed.. */
   if (s->nr_gparts + 1 > g_index_size) {
     int *gind_new;
-    if ((gind_new = (int *)malloc(sizeof(int) * (s->nr_gparts + 1))) == NULL)
+    if ((gind_new = (int *)swift_malloc(
+             "g_index", sizeof(int) * (s->nr_gparts + 1))) == NULL)
       error("Failed to allocate temporary g-particle indices.");
     memcpy(gind_new, g_index, sizeof(int) * nr_gparts);
-    free(g_index);
+    swift_free("g_index", g_index);
     g_index = gind_new;
   }
 
@@ -1517,8 +1525,8 @@ void space_rebuild(struct space *s, int repartitioned, int verbose) {
   }
 
   /* We no longer need the indices as of here. */
-  free(g_index);
-  free(cell_gpart_counts);
+  swift_free("g_index", g_index);
+  swift_free("cell_gpart_counts", cell_gpart_counts);
 
 #ifdef SWIFT_DEBUG_CHECKS
   /* Verify that the links are correct */
@@ -2430,11 +2438,11 @@ void space_map_clearsort(struct cell *c, void *data) {
 
   for (int i = 0; i < 13; i++) {
     if (c->hydro.sort[i] != NULL) {
-      free(c->hydro.sort[i]);
+      swift_free("hydro.sort", c->hydro.sort[i]);
       c->hydro.sort[i] = NULL;
     }
     if (c->stars.sort[i] != NULL) {
-      free(c->stars.sort[i]);
+      swift_free("hydro.sort", c->stars.sort[i]);
       c->stars.sort[i] = NULL;
     }
   }
@@ -3217,8 +3225,8 @@ void space_getcells(struct space *s, int nr_cells, struct cell **cells) {
   /* Init some things in the cell we just got. */
   for (int j = 0; j < nr_cells; j++) {
     for (int k = 0; k < 13; k++) {
-      if (cells[j]->hydro.sort[k] != NULL) free(cells[j]->hydro.sort[k]);
-      if (cells[j]->stars.sort[k] != NULL) free(cells[j]->stars.sort[k]);
+      if (cells[j]->hydro.sort[k] != NULL) swift_free("hydro.sort", cells[j]->hydro.sort[k]);
+      if (cells[j]->stars.sort[k] != NULL) swift_free("stars.sort", cells[j]->stars.sort[k]);
     }
     struct gravity_tensors *temp = cells[j]->grav.multipole;
     bzero(cells[j], sizeof(struct cell));
@@ -3242,11 +3250,11 @@ void space_free_buff_sort_indices(struct space *s) {
        finger = finger->next) {
     for (int k = 0; k < 13; k++) {
       if (finger->hydro.sort[k] != NULL) {
-        free(finger->hydro.sort[k]);
+        swift_free("hydro.sort", finger->hydro.sort[k]);
         finger->hydro.sort[k] = NULL;
       }
       if (finger->stars.sort[k] != NULL) {
-        free(finger->stars.sort[k]);
+        swift_free("stars.sort", finger->stars.sort[k]);
         finger->stars.sort[k] = NULL;
       }
     }

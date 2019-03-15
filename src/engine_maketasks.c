@@ -2289,7 +2289,7 @@ void engine_maketasks(struct engine *e) {
 #endif
 
   /* Free the old list of cell-task links. */
-  if (e->links != NULL) free(e->links);
+  if (e->links != NULL) swift_free("links", e->links);
   e->size_links = e->sched.nr_tasks * e->links_per_tasks;
 
   /* Make sure that we have space for more links than last time. */
@@ -2297,8 +2297,8 @@ void engine_maketasks(struct engine *e) {
     e->size_links = e->nr_links * engine_rebuild_link_alloc_margin;
 
   /* Allocate the new link list */
-  if ((e->links = (struct link *)malloc(sizeof(struct link) * e->size_links)) ==
-      NULL)
+  if ((e->links = (struct link *)swift_malloc(
+           "links", sizeof(struct link) * e->size_links)) == NULL)
     error("Failed to allocate cell-task links.");
   e->nr_links = 0;
 
