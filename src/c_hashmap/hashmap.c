@@ -74,10 +74,14 @@ hashmap_chunk_t *hashmap_get_chunk(hashmap_t *m) {
 }
 
 /**
- * @brief Attempts to store the key/value pair in the hashmap, returns
- * true if successful, false if full.
+ * @brief Looks for the given key and retuns a pointer to the corresponding element.
+ *
+ * The returned element is either the one that already existed in the hashmap, or a
+ * newly-reseverd element initialized to zero.
+ *
+ * If the hashmap is full, NULL is returned.
  */
-bool hashmap_insert(hashmap_t *m, size_t key, size_t value) {
+hashmap_element_t *hashmap_find(hashmap_t *m, size_t key) {
   /* If full, return immediately */
   if (m->size >= (m->table_size / 2)) return MAP_FULL;
 
@@ -105,17 +109,17 @@ bool hashmap_insert(hashmap_t *m, size_t key, size_t value) {
     /* Is the offset empty? */
     hashmap_mask_t search_mask = ((hashmap_mask_t)1) << offset_in_mask;
     if (!(chunk->masks[mask_offset] & search_mask)) {
+      /* Mark this element as taken and increase the size counter. */
       chunk->masks[mask_offset] |= search_mask;
-      hashmap_element_t *element = &chunk->data[offset_in_chunk];
-      element->key = key;
-      element->value = value;
-      return true;
+      m->size += 1;
+
+      /* Return a pointer to the new element. */
+      return &chunk->data[offset_in_chunk];
     }
 
     /* Does the offset by chance contain the key we are looking for? */
     else if (chunk->data[offset_in_chunk].key == key) {
-      chunk->data[offset_in_chunk].value = value;
-      return true;
+      return &chunk->data[offset_in_chunk];
     }
 
     /* None of the above, so this is a collision. Re-hash, but within the same
@@ -125,7 +129,8 @@ bool hashmap_insert(hashmap_t *m, size_t key, size_t value) {
     }
   }
 
-  return false;
+  /* We lucked out, so return nothing. */
+  return NULL;
 }
 
 /**
