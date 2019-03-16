@@ -138,7 +138,7 @@ if cooling_model == 'EAGLE':
     plt.plot([z_r_H, z_r_H], [3.4, 4.4], 'k--', alpha=0.5, lw=0.7)
     plt.text(z_r_H + 0.1, 3.55, "H reion.", rotation=90, alpha=0.5, fontsize=7, va="bottom")
     plt.plot([z_r_He_centre, z_r_He_centre], [3.4, 4.4], 'k--', alpha=0.5, lw=0.7)
-    plt.text(z_r_He_centre + 0.1, 3.55, "He reion.", rotation=90, alpha=0.5, fontsize=7, va="bottom")
+    plt.text(z_r_He_centre + 0.1, 3.55, "HeII reion.", rotation=90, alpha=0.5, fontsize=7, va="bottom")
     
 # Plot observational data
 plt.errorbar(data_schaye[0],
