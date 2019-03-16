@@ -354,7 +354,7 @@ __attribute__((always_inline)) INLINE static void hydro_set_physical_entropy(
  * @param p The particle of interest.
  * @param xp The extended particle data.
  * @param cosmo Cosmology data structure
- * @param u The physical entropy
+ * @param u The physical internal energy
  */
 __attribute__((always_inline)) INLINE static void
 hydro_set_physical_internal_energy(struct part *p, struct xpart *xp,
@@ -369,9 +369,8 @@ hydro_set_physical_internal_energy(struct part *p, struct xpart *xp,
  * @brief Sets the drifted physical internal energy of a particle
  *
  * @param p The particle of interest.
- * @param xp The extended particle data.
  * @param cosmo Cosmology data structure
- * @param u The physical entropy
+ * @param u The physical internal energy
  */
 __attribute__((always_inline)) INLINE static void
 hydro_set_drifted_physical_internal_energy(struct part *p,
