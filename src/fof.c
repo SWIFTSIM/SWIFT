@@ -913,7 +913,7 @@ void fof_calc_group_props_mapper(void *map_data, int num_elements,
 		error("Hash table is empty!");	
 
   /* Iterate over the chunks and add their entries to the new table. */
-  for (int cid = 0; cid < map.table_size / HASHMAP_ELEMENTS_PER_CHUNK; cid++) {
+  for (size_t cid = 0; cid < map.table_size / HASHMAP_ELEMENTS_PER_CHUNK; cid++) {
 
     hashmap_chunk_t *chunk = map.chunks[cid];
     

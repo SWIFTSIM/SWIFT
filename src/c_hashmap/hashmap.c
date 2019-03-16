@@ -55,7 +55,7 @@ void hashmap_init(hashmap_t *m) {
   m->size = 0;
 
   /* Inform the men. */
-  message("Created hash table of size: %ld each element is %ld bytes. Allocated %d empty chunks.",
+  message("Created hash table of size: %zu each element is %zu bytes. Allocated %zu empty chunks.",
           INITIAL_SIZE * sizeof(hashmap_element_t), sizeof(hashmap_element_t), m->nr_chunks);
 }
 
@@ -107,9 +107,9 @@ hashmap_element_t *hashmap_find(hashmap_t *m, size_t key, int create_new) {
   unsigned int curr = (unsigned int)key;
 
   /* Get offsets to the entry, its chunk, it's mask, etc. */
-  const int offset = rand_r(&curr) % m->table_size;
-  const int chunk_offset = offset / HASHMAP_ELEMENTS_PER_CHUNK;
-  int offset_in_chunk = offset - chunk_offset * HASHMAP_ELEMENTS_PER_CHUNK;
+  const size_t offset = rand_r(&curr) % m->table_size;
+  const size_t chunk_offset = offset / HASHMAP_ELEMENTS_PER_CHUNK;
+  size_t offset_in_chunk = offset - chunk_offset * HASHMAP_ELEMENTS_PER_CHUNK;
 
   /* Allocate the chunk if needed. */
   if (m->chunks[chunk_offset] == NULL) {
@@ -166,7 +166,7 @@ hashmap_element_t *hashmap_find(hashmap_t *m, size_t key, int create_new) {
  */
 void hashmap_grow(hashmap_t *m) {
   /* Hold on to the old data. */
-  const int old_table_size = m->table_size;
+  const size_t old_table_size = m->table_size;
   hashmap_chunk_t **old_chunks = m->chunks;
 
   /* Re-allocate the chunk array. */
@@ -178,7 +178,7 @@ void hashmap_grow(hashmap_t *m) {
   }
 
   /* Iterate over the chunks and add their entries to the new table. */
-  for (int cid = 0; cid < old_table_size / HASHMAP_ELEMENTS_PER_CHUNK; cid++) {
+  for (size_t cid = 0; cid < old_table_size / HASHMAP_ELEMENTS_PER_CHUNK; cid++) {
     /* Skip empty chunks. */
     hashmap_chunk_t *chunk = old_chunks[cid];
     if (!chunk) continue;
@@ -245,7 +245,7 @@ size_t* hashmap_lookup(hashmap_t *m, size_t key) {
 
 void hashmap_iterate(hashmap_t *m, hashmap_mapper_t f, void *data) {
   /* Loop over the chunks. */
-  for (int cid = 0; cid < m->nr_chunks; cid++) {
+  for (size_t cid = 0; cid < m->nr_chunks; cid++) {
     hashmap_chunk_t *chunk = m->chunks[cid];
     if (!chunk) continue;
 
@@ -290,7 +290,7 @@ void hashmap_free(hashmap_t *m) {
   }
 }
 
-int hashmap_size(hashmap_t *m) {
+size_t hashmap_size(hashmap_t *m) {
   if (m != NULL)
     return m->size;
   else

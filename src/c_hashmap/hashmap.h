@@ -44,9 +44,9 @@ typedef struct _hashmap_alloc {
 /* A hashmap has some maximum size and current size,
  * as well as the data to hold. */
 typedef struct _hashmap_map{
-	int table_size;
-	int size;
-	int nr_chunks;
+	size_t table_size;
+	size_t size;
+	size_t nr_chunks;
 	hashmap_chunk_t **chunks;    // Pointer to chunks in use, but not densely populated.
 	hashmap_chunk_t *graveyard;  // Pointer to allocated, but currently unused chunks.
     hashmap_alloc_t *allocs;	// Pointer to the allocated chunks of chunks, needed for cleanup.
@@ -104,6 +104,6 @@ extern void hashmap_free(hashmap_t *m);
 /**
  * Get the current size of a hashmap
  */
-extern int hashmap_size(hashmap_t *m);
+extern size_t hashmap_size(hashmap_t *m);
 
 #endif /*__HASHMAP_H__*/
