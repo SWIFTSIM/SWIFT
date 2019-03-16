@@ -841,18 +841,17 @@ void fof_calc_group_props_mapper(void *map_data, int num_elements,
   //double *group_mass = s->fof_data.group_mass;
   //struct fof_CoM *group_CoM = s->fof_data.group_CoM;
 
-  size_t *const offset = s->gpart_index + (ptrdiff_t)(gparts - s->gparts);
-  //const ptrdiff_t offset = (ptrdiff_t)(gparts - s->gparts);
+  size_t *const group_index_offset = group_index + (ptrdiff_t)(gparts - s->gparts);
 
+  /* Create hash table. */
   hashmap_t map;
-  
   hashmap_init(&map);
 
   /* Loop over particles and find which cells are in range of each other to perform
    * the FOF search. */
   for (int ind = 0; ind < num_elements; ind++) {
 
-    size_t root = fof_find(offset[ind], group_index);
+    size_t root = fof_find(group_index_offset[ind], group_index);
     //double x = gparts[ind].x[0];
     //double y = gparts[ind].x[1];
     //double z = gparts[ind].x[2];
@@ -1723,6 +1722,13 @@ void fof_search_tree(struct space *s) {
   engine_launch(s->e);
 
   /* Perform local FOF using the threadpool. */
+  /* Allocate and initialise array of cell indices. */
+  //if (posix_memalign((void **)&s->cell_index, 32,
+  //      s->nr_cells * sizeof(int)) != 0)
+  //  error("Failed to allocate list of cells for FOF search.");
+
+  ///* Set cell index into list of top-level cells. */
+  //for (int i = 0; i < s->nr_cells; i++) s->cell_index[i] = i;
   //threadpool_map(&s->e->threadpool, fof_search_tree_mapper,
   //s->local_cells_top,
   //              s->nr_local_cells, sizeof(int), 1, s);
@@ -2070,6 +2076,8 @@ void fof_search_tree(struct space *s) {
 #else
   fof_dump_group_data(output_file_name, s, high_group_sizes);
 #endif
+
+  free(high_group_sizes);
 
   if (engine_rank == 0) {
     message(
