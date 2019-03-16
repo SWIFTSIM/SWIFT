@@ -124,6 +124,8 @@ __attribute__((always_inline)) INLINE void get_redshift_index(
  * given time-step or redshift. Predominantly used to read cooling tables
  * above and below the current redshift, if not already read in.
  *
+ * Also calls the additional H reionisation energy injection if need be.
+ *
  * @param cosmo The current cosmological model.
  * @param cooling The #cooling_function_data used in the run.
  * @param s The space data, including a pointer to array of particles
@@ -140,22 +142,19 @@ void cooling_update(const struct cosmology *cosmo,
   get_redshift_index(redshift, &z_index, &dz, cooling);
   cooling->dz = dz;
 
-  static int H_reion_happened = 0;
   /* Does this timestep straddle Hydrogen reionization? If so, we need to input
    * extra heat */
-  if ((H_reion_happened == 0) && (redshift < cooling->H_reion_z)) {
+  if (!cooling->H_reion_done && (redshift < cooling->H_reion_z)) {
 
-    const float extra_heat =
-        cooling->H_reion_heat_cgs * cooling->internal_energy_from_cgs;
+    if (s == NULL) error("Trying to do H reionization on an empty space!");
 
-    size_t i;
+    /* Inject energy to all particles */
+    cooling_Hydrogen_reionization(cooling, cosmo, s);
 
-    /* Loop through particles and set new heat */
-    for (i = 0; i < s->nr_parts; i++) {
-      hydro_reion_heating(&s->parts[i], &s->xparts[i], cosmo, extra_heat);
-    }
-    H_reion_happened = 1;
+    /* Flag that reionization happened */
+    cooling->H_reion_done = 1;
   }
+
   /* Do we already have the correct tables loaded? */
   if (cooling->z_index == z_index) return;
 
@@ -778,6 +777,23 @@ __attribute__((always_inline)) INLINE float cooling_get_radiated_energy(
   return xp->cooling_data.radiated_energy;
 }
 
+void cooling_Hydrogen_reionization(const struct cooling_function_data *cooling,
+                                   const struct cosmology *cosmo,
+                                   struct space *s) {
+
+  struct part *parts = s->parts;
+  struct xpart *xparts = s->xparts;
+
+  /* Energy to inject in internal units */
+  const float extra_heat =
+      cooling->H_reion_heat_cgs * cooling->internal_energy_from_cgs;
+
+  /* Loop through particles and set new heat */
+  for (size_t i = 0; i < s->nr_parts; i++) {
+    hydro_reion_heating(&parts[i], &xparts[i], cosmo, extra_heat);
+  }
+}
+
 /**
  * @brief Initialises properties stored in the cooling_function_data struct
  *
@@ -799,6 +815,8 @@ void cooling_init_backend(struct swift_params *parameter_file,
 
   parser_get_param_string(parameter_file, "EAGLECooling:dir_name",
                           cooling->cooling_table_path);
+
+  cooling->H_reion_done = 0;
   cooling->H_reion_z =
       parser_get_param_float(parameter_file, "EAGLECooling:H_reion_z");
   cooling->H_reion_heat_cgs =
@@ -900,10 +918,9 @@ void cooling_init_backend(struct swift_params *parameter_file,
  *
  * @param cooling the #cooling_function_data structure
  * @param cosmo #cosmology structure
- * @param s The space data, including a pointer to array of particles
  */
 void cooling_restore_tables(struct cooling_function_data *cooling,
-                            const struct cosmology *cosmo, struct space *s) {
+                            const struct cosmology *cosmo) {
 
   /* Read redshifts */
   get_cooling_redshifts(cooling);
@@ -919,7 +936,7 @@ void cooling_restore_tables(struct cooling_function_data *cooling,
   /* Force a re-read of the cooling tables */
   cooling->z_index = -10;
   cooling->previous_z_index = eagle_cooling_N_redshifts - 2;
-  cooling_update(cosmo, cooling, s);
+  cooling_update(cosmo, cooling, /*space=*/NULL);
 }
 
 /**
@@ -998,12 +1015,11 @@ void cooling_struct_dump(const struct cooling_function_data *cooling,
  * @param cooling the struct
  * @param stream the file stream
  * @param cosmo #cosmology structure
- * @param s The space data, including a pointer to array of particles
  */
 void cooling_struct_restore(struct cooling_function_data *cooling, FILE *stream,
-                            const struct cosmology *cosmo, struct space *s) {
+                            const struct cosmology *cosmo) {
   restart_read_blocks((void *)cooling, sizeof(struct cooling_function_data), 1,
                       stream, NULL, "cooling function");
 
-  cooling_restore_tables(cooling, cosmo, s);
+  cooling_restore_tables(cooling, cosmo);
 }

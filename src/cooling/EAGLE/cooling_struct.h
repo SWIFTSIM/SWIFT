@@ -80,6 +80,9 @@ struct cooling_function_data {
   /*! H reionization energy in CGS units */
   float H_reion_heat_cgs;
 
+  /*! Have we already done H reioisation? */
+  int H_reion_done;
+
   /*! Ca over Si abundance divided by the solar ratio for these elements */
   float Ca_over_Si_ratio_in_solar;
 

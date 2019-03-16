@@ -9,7 +9,7 @@ InternalUnitSystem:
 # Cosmological parameters
 Cosmology:
   h:              0.6777        # Reduced Hubble constant
-  a_begin:        0.0099         # Initial scale-factor of the simulation (z = 100.0)
+  a_begin:        0.0099        # Initial scale-factor of the simulation (z = 100.0)
   a_end:          1.0           # Final scale factor of the simulation
   Omega_m:        0.307         # Matter density parameter
   Omega_lambda:   0.693         # Dark-energy density parameter
@@ -32,21 +32,12 @@ Statistics:
   scale_factor_first:  0.00991
   delta_time:          1.1
 
-# Parameters for the self-gravity scheme
-Gravity:
-  eta:                    0.025    # Constant dimensionless multiplier for time integration.
-  theta:                  0.7      # Opening angle (Multipole acceptance criterion)
-  comoving_softening:     0.0026994 # Comoving softening length (in internal units).
-  max_physical_softening: 0.0007    # Physical softening length (in internal units).
-  mesh_side_length:       16
-
 # Parameters for the hydrodynamics scheme
 SPH:
   resolution_eta:        1.2348   # Target smoothing length in units of the mean inter-particle separation (1.2348 == 48Ngbs with the cubic spline kernel).
-  h_min_ratio:           0.1      # Minimal smoothing in units of softening.
   CFL_condition:         0.1      # Courant-Friedrich-Levy condition for time integration.
-  minimal_temperature:   100      # (internal units)
-
+  minimal_temperature:   100      # K
+  
 # Parameters related to the initial conditions
 InitialConditions:
   file_name:  ./constantBox.hdf5     # The file to read

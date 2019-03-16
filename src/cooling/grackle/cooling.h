@@ -70,7 +70,7 @@ static gr_float cooling_new_energy(
  */
 INLINE static void cooling_update(const struct cosmology* cosmo,
                                   struct cooling_function_data* cooling,
-				  struct space *s) {
+                                  struct space* s) {
   /* set current time */
   if (cooling->redshift == -1)
     cooling->units.a_value = cosmo->a;

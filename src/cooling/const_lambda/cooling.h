@@ -55,7 +55,7 @@
  */
 INLINE static void cooling_update(const struct cosmology* cosmo,
                                   struct cooling_function_data* cooling,
-				  struct space *s) {
+                                  struct space* s) {
   // Add content if required.
 }
 
