@@ -858,7 +858,7 @@ void fof_calc_group_props_mapper(void *map_data, int num_elements,
     //double z = gparts[ind].x[2];
     //double mass = gparts[ind].mass;
     
-    size_t *size = hashmap_get(&map, root, /*create_new=*/1);
+    size_t *size = hashmap_get(&map, root);
     
     if(size != NULL) (*size)++;
     else error("Couldn't find key (%zu) or create new one.", root);
@@ -916,22 +916,24 @@ void fof_calc_group_props_mapper(void *map_data, int num_elements,
   /* Iterate over the chunks and add their entries to the new table. */
   for (int cid = 0; cid < map.table_size / HASHMAP_ELEMENTS_PER_CHUNK; cid++) {
 
-    /* Skip empty chunks. */
-    if (map.chunks[cid] == NULL) continue;
-
     hashmap_chunk_t *chunk = map.chunks[cid];
+    
+    /* Skip empty chunks. */
+    if (chunk == NULL) continue;
 
     /* Loop over the masks in this chunk. */
     for (int mid = 0; mid < HASHMAP_MASKS_PER_CHUNK; mid++) {
 
+      hashmap_mask_t mask = chunk->masks[mid];
+      
       /* Skip empty masks. */
-      if (chunk->masks[mid] == 0) continue;
+      if (mask == 0) continue;
 
       /* Loop over the mask entries. */
       for (int eid = 0; eid < HASHMAP_BITS_PER_MASK; eid++) {
         hashmap_mask_t element_mask = ((hashmap_mask_t)1) << eid;
 
-        if (chunk->masks[mid] & element_mask) {
+        if (mask & element_mask) {
           hashmap_element_t *element =
             &chunk->data[mid * HASHMAP_BITS_PER_MASK + eid];
 
