@@ -348,6 +348,57 @@ __attribute__((always_inline)) INLINE static void hydro_set_physical_entropy(
 }
 
 /**
+ * @brief Sets the physical internal energy of a particle
+ *
+ * @param p The particle of interest.
+ * @param xp The extended particle data.
+ * @param cosmo Cosmology data structure
+ * @param u The physical entropy
+ */
+__attribute__((always_inline)) INLINE static void
+hydro_set_physical_internal_energy(struct part *p, struct xpart *xp,
+                                   const struct cosmology *cosmo,
+                                   const float u) {
+
+  xp->entropy_full =
+      gas_entropy_from_internal_energy(p->rho * cosmo->a3_inv, u);
+}
+
+/**
+ * @brief Sets the drifted physical internal energy of a particle
+ *
+ * @param p The particle of interest.
+ * @param xp The extended particle data.
+ * @param cosmo Cosmology data structure
+ * @param u The physical entropy
+ */
+__attribute__((always_inline)) INLINE static void
+hydro_set_drifted_physical_internal_energy(struct part *p,
+                                           const struct cosmology *cosmo,
+                                           const float u) {
+
+  p->entropy = gas_entropy_from_internal_energy(p->rho * cosmo->a3_inv, u);
+
+  /* Now recompute the extra quantities */
+
+  /* Inverse of the co-moving density */
+  const float rho_inv = 1.f / p->rho;
+
+  /* Compute the pressure */
+  const float pressure = gas_pressure_from_entropy(p->rho, p->entropy);
+
+  /* Compute the sound speed */
+  const float soundspeed = gas_soundspeed_from_pressure(p->rho, pressure);
+
+  /* Divide the pressure by the density squared to get the SPH term */
+  const float P_over_rho2 = pressure * rho_inv * rho_inv;
+
+  /* Update variables. */
+  p->force.P_over_rho2 = P_over_rho2;
+  p->force.soundspeed = soundspeed;
+}
+
+/**
  * @brief Computes the hydro time-step of a given particle
  *
  * @param p Pointer to the particle data
@@ -805,26 +856,5 @@ hydro_set_init_internal_energy(struct part *p, float u_init) {
  */
 __attribute__((always_inline)) INLINE static void hydro_remove_part(
     const struct part *p, const struct xpart *xp) {}
-
-/**
- * @brief Inputs extra heat to a particle at redshift of reionization
- *
- * We assume a constant density.
- *
- * @param p The particle of interest.
- * @param xp The extended particle data
- * @param cosmo Cosmology data structure
- * @param extra_heat The extra internal energy given to the particle.
- */
-__attribute__((always_inline)) INLINE static void hydro_reion_heating(
-    struct part *p, struct xpart *xp, const struct cosmology *cosmo,
-    float extra_heat) {
-
-  const float old_u = gas_internal_energy_from_entropy(p->rho * cosmo->a3_inv,
-                                                       xp->entropy_full);
-  const float new_u = old_u + extra_heat;
-  xp->entropy_full =
-      gas_entropy_from_internal_energy(p->rho * cosmo->a3_inv, new_u);
-}
 
 #endif /* SWIFT_GADGET2_HYDRO_H */

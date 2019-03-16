@@ -790,7 +790,15 @@ void cooling_Hydrogen_reionization(const struct cooling_function_data *cooling,
 
   /* Loop through particles and set new heat */
   for (size_t i = 0; i < s->nr_parts; i++) {
-    hydro_reion_heating(&parts[i], &xparts[i], cosmo, extra_heat);
+
+    struct part *p = &parts[i];
+    struct xpart *xp = &xparts[i];
+
+    const float old_u = hydro_get_physical_internal_energy(p, xp, cosmo);
+    const float new_u = old_u + extra_heat;
+
+    hydro_set_physical_internal_energy(p, xp, cosmo, new_u);
+    hydro_set_drifted_physical_internal_energy(p, cosmo, new_u);
   }
 }
 
