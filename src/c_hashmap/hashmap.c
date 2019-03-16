@@ -18,7 +18,7 @@
 void hashmap_allocate_chunks(hashmap_t *m) {
   /* Allocate a fresh set of chunks. */
   hashmap_alloc_t *alloc;
-  if ((alloc = (_hashmap_alloc *)calloc(1, sizeof(_hashmap_alloc))) == NULL) {
+  if ((alloc = (hashmap_alloc_t *)calloc(1, sizeof(hashmap_alloc_t))) == NULL) {
     error("Unable to allocate chunks.");
   }
 
@@ -32,7 +32,7 @@ void hashmap_allocate_chunks(hashmap_t *m) {
   }
 
   /* Last chunk points to current graveyard. */
-  alloc->chunks[num_chunks - 1].next = m->graveyard;
+  alloc->chunks[CHUNKS_PER_ALLOC - 1].next = m->graveyard;
 
   /* Graveyard points to first new chunk. */
   m->graveyard = &alloc->chunks[0];
@@ -56,7 +56,7 @@ void hashmap_init(hashmap_t *m) {
 
   /* Inform the men. */
   message("Created hash table of size: %ld each element is %ld bytes. Allocated %d empty chunks.",
-          INITIAL_SIZE * sizeof(hashmap_element_t), sizeof(hashmap_element_t), nr_chunks);
+          INITIAL_SIZE * sizeof(hashmap_element_t), sizeof(hashmap_element_t), m->nr_chunks);
 }
 
 /**
@@ -246,7 +246,7 @@ size_t* hashmap_lookup(hashmap_t *m, size_t key) {
 void hashmap_iterate(hashmap_t *m, hashmap_mapper_t f, void *data) {
   /* Loop over the chunks. */
   for (int cid = 0; cid < m->nr_chunks; cid++) {
-    hashmap_chunk_t *chunk = m->cunks[cid];
+    hashmap_chunk_t *chunk = m->chunks[cid];
     if (!chunk) continue;
 
     /* Loop over the masks. */
@@ -255,14 +255,14 @@ void hashmap_iterate(hashmap_t *m, hashmap_mapper_t f, void *data) {
       if (!mask) continue;
 
       /* Loop over each element in the mask. */
-      for (ind eid = 0; 
+      for (int eid = 0; 
            eid < HASHMAP_BITS_PER_MASK && 
-               mid * HASHMAP_BITS_PER_MASK + ei < HASHMAP_ELEMENTS_PER_CHUNK; 
+               mid * HASHMAP_BITS_PER_MASK + eid < HASHMAP_ELEMENTS_PER_CHUNK; 
            eid++) {
 
         /* If the element exists, call the function on it. */
         if (mask & (((hashmap_mask_t)1) << eid)) {
-          hashmap_element_t *element = &chunk->element[mid * HASHMAP_BITS_PER_MASK + eid];
+          hashmap_element_t *element = &chunk->data[mid * HASHMAP_BITS_PER_MASK + eid];
           f(element->key, &element->value, data);
         }
       }

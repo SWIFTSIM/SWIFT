@@ -36,8 +36,8 @@ typedef struct _hashmap_chunk {
 	hashmap_element_t data[HASHMAP_ELEMENTS_PER_CHUNK];
 } hashmap_chunk_t;
 
-struct _hashmap_alloc {
-  hashmap_chunk chunks[CHUNKS_PER_ALLOC];
+typedef struct _hashmap_alloc {
+  hashmap_chunk_t chunks[CHUNKS_PER_ALLOC];
   void *next;
 } hashmap_alloc_t;
 
@@ -46,7 +46,7 @@ struct _hashmap_alloc {
 typedef struct _hashmap_map{
 	int table_size;
 	int size;
-	int num_chunks;
+	int nr_chunks;
 	hashmap_chunk_t **chunks;    // Pointer to chunks in use, but not densely populated.
 	hashmap_chunk_t *graveyard;  // Pointer to allocated, but currently unused chunks.
     hashmap_alloc_t *allocs;	// Pointer to the allocated chunks of chunks, needed for cleanup.
@@ -92,7 +92,7 @@ extern size_t* hashmap_lookup(hashmap_t *m, size_t key);
  * key and a pointer to the correspondig value, respectively, while the third
  * is the `void *data` argument.
  */
-extern int hashmap_iterate(hashmap_t *m, hashmap_mapper_t f, void *data);
+extern void hashmap_iterate(hashmap_t *m, hashmap_mapper_t f, void *data);
 
 /**
  * @brief De-allocate memory associated with this hashmap, clears all the entries.
