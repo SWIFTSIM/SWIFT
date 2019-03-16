@@ -826,8 +826,8 @@ void cooling_init_backend(struct swift_params *parameter_file,
   /* read some parameters */
 
   /* Despite the names, the values of H_reion_heat_cgs and He_reion_heat_cgs
-     that are read in are actually in units of electron volts per proton mass.
-     We later convert to cgs units */
+   * that are read in are actually in units of electron volts per proton mass.
+   * We later convert to units just below */
 
   parser_get_param_string(parameter_file, "EAGLECooling:dir_name",
                           cooling->cooling_table_path);
@@ -851,9 +851,9 @@ void cooling_init_backend(struct swift_params *parameter_file,
       parameter_file, "EAGLECooling:S_over_Si_in_solar", 1.f);
 
   /* Convert H_reion_heat_cgs and He_reion_heat_cgs to cgs
-     (units used internally by the cooling routines). This is done by
-     multiplying by 'eV/m_H' in internal units, then converting to cgs units.
-     Note that the dimensions of these quantities are energy/mass = velocity^2
+   * (units used internally by the cooling routines). This is done by
+   * multiplying by 'eV/m_H' in internal units, then converting to cgs units.
+   * Note that the dimensions of these quantities are energy/mass = velocity^2
    */
 
   cooling->H_reion_heat_cgs *=

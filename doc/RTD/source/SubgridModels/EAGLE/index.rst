@@ -280,7 +280,7 @@ these elements from the abundance of `Si`. More specifically, we assume that
 their abundance by mass relative to the table's solar abundance pattern is the
 same as the relative abundance of `Si` (i.e. :math:`[Ca/Si] = 0` and
 :math:`[S/Si] = 0`). Users can optionally modify the ratios used for `S` and
-`Ca`.
+`Ca`. Note that we use the *smoothed* abundances of elements for all calculations.
 
 Above the redshift of Hydrogen re-ionization we use the extra table containing
 net cooling rates for gas exposed to the CMB and a UV + X-ray background at
@@ -288,9 +288,13 @@ redshift nine truncated above 1 Rydberg. At the redshift or re-ionization, we
 additionally inject a fixed user-defined amount of energy per unit mass to all
 the gas particles.
 
-In addition to the tables we inject extra energy from Helium re-ionization using
-a Gaussian model with a user-defined redshift for the centre, width and total
-amount of energy injected per unit mass.
+In addition to the tables we inject extra energy from Helium II re-ionization
+using a Gaussian model with a user-defined redshift for the centre, width and
+total amount of energy injected per unit mass. Additional energy is also
+injected instantaneously for Hydrogen re-ionisation to all particles (active and
+inactive) to make sure the whole Universe reaches the expected temperature
+quickly (i.e not just via the interaction with the now much stronger UV
+background).
 
 For non-cosmological run, we use the :math:`z = 0` table and the interpolation
 along the redshift dimension then becomes a trivial operation.
@@ -326,7 +330,7 @@ they are listed for every gas particle:
 +---------------------+-------------------------------------+-----------+-------------------------------------+
 
 Note that if one is running without cooling switched on at runtime, the
-temperatures can be computed by passing the ``--temparature`` runtime flag (see
+temperatures can be computed by passing the ``--temperature`` runtime flag (see
 :ref:`cmdline-options`). Note that the tables then have to be available as in
 the case with cooling switched on.
 
@@ -341,9 +345,10 @@ implicit problem. A valid section of the YAML file looks like:
    EAGLECooling:
      dir_name:     /path/to/the/Wiersma/tables/directory # Absolute or relative path
      H_reion_z:            11.5      # Redhift of Hydrogen re-ionization
+     H_reion_ev_p_H:        2.0      # Energy injected in eV per Hydrogen atom for Hydrogen re-ionization.
      He_reion_z_centre:     3.5      # Centre of the Gaussian used for Helium re-ionization
      He_reion_z_sigma:      0.5      # Width of the Gaussian used for Helium re-ionization
-     He_reion_ev_p_H:       2.0      # Energy injected in eV per Hydrogen atom for Helium re-ionization.
+     He_reion_ev_p_H:       2.0      # Energy injected in eV per Hydrogen atom for Helium II re-ionization.
 
 And the optional parameters are:
 
