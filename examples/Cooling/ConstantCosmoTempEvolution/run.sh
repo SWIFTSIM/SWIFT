@@ -9,7 +9,7 @@ fi
 if [ ! -e coolingtables ]
 then
     echo "Fetching EAGLE Cooling Tables"
-    ./getCoolingTable.sh
+    ../getEagleCoolingTable.sh
 fi
 
 # Fetch the cooling tables
@@ -20,7 +20,7 @@ then
 fi
 
 # Run SWIFT
-../swift --hydro --cosmology --cooling --threads=4 eagle_cooling_box.yml 2>&1 | tee output.log
+../../swift --hydro --cosmology --cooling --threads=4 const_cosmo_temp_evol.yml 2>&1 | tee output.log
 
 # Plot the result
-python3 plot_thermal_history.py eagle_cooling_box thermal_history_default_gadget2.pdf
+python3 plot_thermal_history.py cooling_box
