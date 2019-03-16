@@ -70,7 +70,7 @@ with open(sys.argv[1]) as infile:
                         del memuse[adr]
                 else:
                     #  Unmatched free, complain and skip.
-                    print "### unmatched free: ", label, adr
+                    #print "### unmatched free: ", label, adr
                     doprint = False
             if doprint:
                 if totalmem > peak:
@@ -89,7 +89,7 @@ for adr in labels:
             totals[labels[adr]] = memuse[adr][0]
             numactive[labels[adr]] = 1
 
-print "# Aligned memory use by label:"
+print "# Memory use by label:"
 print "## ", '{:<30s} {:>16s} {:>16s}'.format("label", "MB", "numactive")
 print "## "
 total = 0.0
@@ -98,8 +98,8 @@ for label in sorted(totals):
     total = total + mem
     print "## ", '{:<30s} {:16.3f} {:16d}'.format(label, mem, numactive[label])
 print "## "
-print "# Total aligned memory still in use : ", '{:.3f}'.format(total), " (MB)"
-print "# Peak aligned memory usage         : ", '{:.3f}'.format(peak/1048576.0), " (MB)"
+print "# Total memory still in use : ", '{:.3f}'.format(total), " (MB)"
+print "# Peak memory usage         : ", '{:.3f}'.format(peak/1048576.0), " (MB)"
 if process_use != "":
     print "#"
     print "# Memory use by process (all/system):", process_use
