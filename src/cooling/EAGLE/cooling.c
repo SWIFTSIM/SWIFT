@@ -209,7 +209,8 @@ INLINE static float newton_iter(
   const float log_table_bound_low = (cooling->Therm[0] + 0.05) / M_LOG10E;
 
   /* convert Hydrogen mass fraction in Hydrogen number density */
-  const float XH = p->chemistry_data.metal_mass_fraction[chemistry_element_H];
+  const float XH =
+      p->chemistry_data.smoothed_metal_mass_fraction[chemistry_element_H];
   const double n_H =
       hydro_get_physical_density(p, cosmo) * XH / phys_const->const_proton_mass;
   const double n_H_cgs = n_H * cooling->number_density_to_cgs;
@@ -501,8 +502,10 @@ void cooling_cool_part(const struct phys_const *phys_const,
   abundance_ratio_to_solar(p, cooling, abundance_ratio);
 
   /* Get the Hydrogen and Helium mass fractions */
-  const float XH = p->chemistry_data.metal_mass_fraction[chemistry_element_H];
-  const float XHe = p->chemistry_data.metal_mass_fraction[chemistry_element_He];
+  const float XH =
+      p->chemistry_data.smoothed_metal_mass_fraction[chemistry_element_H];
+  const float XHe =
+      p->chemistry_data.smoothed_metal_mass_fraction[chemistry_element_He];
 
   /* Get the Helium mass fraction. Note that this is He / (H + He), i.e. a
    * metal-free Helium mass fraction as per the Wiersma+08 definition */
@@ -719,8 +722,10 @@ float cooling_get_temperature(
   const double u_cgs = u * cooling->internal_energy_to_cgs;
 
   /* Get the Hydrogen and Helium mass fractions */
-  const float XH = p->chemistry_data.metal_mass_fraction[chemistry_element_H];
-  const float XHe = p->chemistry_data.metal_mass_fraction[chemistry_element_He];
+  const float XH =
+      p->chemistry_data.smoothed_metal_mass_fraction[chemistry_element_H];
+  const float XHe =
+      p->chemistry_data.smoothed_metal_mass_fraction[chemistry_element_He];
 
   /* Get the Helium mass fraction. Note that this is He / (H + He), i.e. a
    * metal-free Helium mass fraction as per the Wiersma+08 definition */
