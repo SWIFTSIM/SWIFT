@@ -777,6 +777,14 @@ __attribute__((always_inline)) INLINE float cooling_get_radiated_energy(
   return xp->cooling_data.radiated_energy;
 }
 
+/**
+ * @brief Inject a fixed amount of energy to each particle in the simulation
+ * to mimic Hydrogen reionization.
+ *
+ * @param cooling The properties of the cooling model.
+ * @param cosmo The cosmological model.
+ * @param s The #space containing the particles.
+ */
 void cooling_Hydrogen_reionization(const struct cooling_function_data *cooling,
                                    const struct cosmology *cosmo,
                                    struct space *s) {

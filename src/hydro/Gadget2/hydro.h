@@ -331,6 +331,7 @@ hydro_set_physical_internal_energy_dt(struct part *restrict p,
   p->entropy_dt =
       gas_entropy_from_internal_energy(p->rho * cosmo->a3_inv, du_dt);
 }
+
 /**
  * @brief Sets the physical entropy of a particle
  *
