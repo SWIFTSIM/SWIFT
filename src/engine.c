@@ -5510,7 +5510,7 @@ void engine_struct_restore(struct engine *e, FILE *stream) {
   struct cooling_function_data *cooling_func =
       (struct cooling_function_data *)malloc(
           sizeof(struct cooling_function_data));
-  cooling_struct_restore(cooling_func, stream, e->cosmology, e->s);
+  cooling_struct_restore(cooling_func, stream, e->cosmology);
   e->cooling_func = cooling_func;
 
   struct star_formation *star_formation =

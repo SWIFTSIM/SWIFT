@@ -63,6 +63,6 @@ void cooling_print(const struct cooling_function_data* cooling);
 void cooling_struct_dump(const struct cooling_function_data* cooling,
                          FILE* stream);
 void cooling_struct_restore(struct cooling_function_data* cooling, FILE* stream,
-                            const struct cosmology* cosmo, struct space* s);
+                            const struct cosmology* cosmo);
 
 #endif /* SWIFT_COOLING_H */

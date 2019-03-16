@@ -66,9 +66,11 @@ static gr_float cooling_new_energy(
  *
  * @param cosmo The current cosmological model.
  * @param cooling The #cooling_function_data used in the run.
+ * @param s The #space containing all the particles.
  */
 INLINE static void cooling_update(const struct cosmology* cosmo,
-                                  struct cooling_function_data* cooling) {
+                                  struct cooling_function_data* cooling,
+				  struct space *s) {
   /* set current time */
   if (cooling->redshift == -1)
     cooling->units.a_value = cosmo->a;
