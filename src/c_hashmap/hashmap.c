@@ -336,7 +336,7 @@ void hashmap_print_stats(hashmap_t *m) {
   message("populated chunks: %i (%z kb), graveyard chunks: %i (%z kb), allocs: %i (%z kb)",
           chunk_counter, sizeof(hashmap_chunk_t) * chunk_counter / 1024,
           graveyard_counter, sizeof(hashmap_chunk_t) * graveyard_counter / 1024,
-          alloc_counter, sizeof(alloc_counter) * alloc_counter);
+          alloc_counter, sizeof(hashmap_alloc_t) * alloc_counter);
   if (chunk_counter + graveyard_counter != alloc_counter * HASHMAP_CHUNKS_PER_ALLOC) {
     message("warning: chunk count different from number of allocated chunks!");
   }
