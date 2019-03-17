@@ -29,7 +29,7 @@ typedef size_t hashmap_mask_t;
 #define HASHMAP_BITS_PER_MASK ((int)sizeof(hashmap_mask_t) * 8)
 #define HASHMAP_MASKS_PER_CHUNK 4
 #define HASHMAP_ELEMENTS_PER_CHUNK (HASHMAP_BITS_PER_MASK * HASHMAP_MASKS_PER_CHUNK)
-#define CHUNKS_PER_ALLOC 8
+#define HASHMAP_CHUNKS_PER_ALLOC 8
 
 /* We need to keep keys and values */
 typedef struct _hashmap_element{
@@ -47,7 +47,7 @@ typedef struct _hashmap_chunk {
 } hashmap_chunk_t;
 
 typedef struct _hashmap_alloc {
-  hashmap_chunk_t chunks[CHUNKS_PER_ALLOC];
+  hashmap_chunk_t chunks[HASHMAP_CHUNKS_PER_ALLOC];
   void *next;
 } hashmap_alloc_t;
 
@@ -115,5 +115,10 @@ extern void hashmap_free(hashmap_t *m);
  * Get the current size of a hashmap
  */
 extern size_t hashmap_size(hashmap_t *m);
+
+/**
+ * @brief Print all sorts of stats on the given hashmap.
+ */
+void hashmap_print_stats(hashmap_t *m);
 
 #endif /*__HASHMAP_H__*/

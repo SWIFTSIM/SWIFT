@@ -11,9 +11,46 @@
 #define INITIAL_SIZE (1024)
 #define MAX_CHAIN_LENGTH (8)
 #define HASHMAP_GROWTH_FACTOR (2)
+#define HASHMAP_DEBUG_OUTPUT (1)
+
+void hashmap_print_stats(hashmap_t *m) {
+  /* Basic stats. */
+  message("size: %z, table_size: %z, nr_chunks: %z.", m->size, m->table_size, m->nr_chunks);
+
+  /* Count the number of populated chunks, graveyard chunks, and allocs. */
+  int chunk_counter = 0;
+  for (size_t k = 0; k < m->nr_chunks; k++) {
+    if (m->chunks[k]) chunk_counter += 1;
+  }
+  int graveyard_counter = 0;
+  for (hashmap_chunk_t *finger = m->graveyard; finger != NULL; finger = finger->next) {
+    graveyard_counter += 1;
+  }
+  int alloc_counter = 0;
+  for (hashmap_alloc_t *finger = m->allocs; finger != NULL; finger = finger->next) {
+    alloc_counter += 1;
+  }
+  message("populated chunks: %i (%z kb), graveyard chunks: %i (%z kb), allocs: %i (%z kb)",
+          chunk_counter, sizeof(hashmap_chunk_t) * chunk_counter / 1024,
+          graveyard_counter, sizeof(hashmap_chunk_t) * graveyard_counter / 1024,
+          alloc_counter, sizeof(alloc_counter) * alloc_counter);
+  if (chunk_counter + graveyard_counter != alloc_counter * HASHMAP_CHUNKS_PER_ALLOC) {
+    message("warning: chunk count different from number of allocated chunks!");
+  }
+
+  /* Print fill ratios. */
+  message("element-wise fill ratio: %.2f%%, chunk-wise fill ratio: %.2f%%",
+    ((double)m->size) / m->table_size,
+    ((double)m->chunk_counter) / m->nr_chunks);
+
+  /* Print struct sizes. */
+  message("sizeof(hashmap_element_t): %z", sizeof(hashmap_element_t));
+  message("sizeof(hashmap_chunk_t): %z", sizeof(hashmap_chunk_t));
+  message("sizeof(hashmap_alloc_t): %z", sizeof(hashmap_alloc_t));
+}
 
 /**
- * brief: Pre-allocate a number of chunks for the graveyard.
+ * @brief Pre-allocate a number of chunks for the graveyard.
  */
 void hashmap_allocate_chunks(hashmap_t *m) {
   /* Allocate a fresh set of chunks. */
@@ -27,12 +64,12 @@ void hashmap_allocate_chunks(hashmap_t *m) {
   m->allocs = alloc;
 
   /* Link the chunks together. */
-  for (int k = 0; k < CHUNKS_PER_ALLOC - 1; k++) {
+  for (int k = 0; k < HASHMAP_CHUNKS_PER_ALLOC - 1; k++) {
     alloc->chunks[k].next = &alloc->chunks[k + 1];
   }
 
   /* Last chunk points to current graveyard. */
-  alloc->chunks[CHUNKS_PER_ALLOC - 1].next = m->graveyard;
+  alloc->chunks[HASHMAP_CHUNKS_PER_ALLOC - 1].next = m->graveyard;
 
   /* Graveyard points to first new chunk. */
   m->graveyard = &alloc->chunks[0];
