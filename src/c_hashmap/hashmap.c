@@ -9,45 +9,7 @@
 #include "hashmap.h"
 
 #define INITIAL_SIZE (1024)
-#define MAX_CHAIN_LENGTH (8)
 #define HASHMAP_GROWTH_FACTOR (2)
-#define HASHMAP_DEBUG_OUTPUT (1)
-
-void hashmap_print_stats(hashmap_t *m) {
-  /* Basic stats. */
-  message("size: %z, table_size: %z, nr_chunks: %z.", m->size, m->table_size, m->nr_chunks);
-
-  /* Count the number of populated chunks, graveyard chunks, and allocs. */
-  int chunk_counter = 0;
-  for (size_t k = 0; k < m->nr_chunks; k++) {
-    if (m->chunks[k]) chunk_counter += 1;
-  }
-  int graveyard_counter = 0;
-  for (hashmap_chunk_t *finger = m->graveyard; finger != NULL; finger = finger->next) {
-    graveyard_counter += 1;
-  }
-  int alloc_counter = 0;
-  for (hashmap_alloc_t *finger = m->allocs; finger != NULL; finger = finger->next) {
-    alloc_counter += 1;
-  }
-  message("populated chunks: %i (%z kb), graveyard chunks: %i (%z kb), allocs: %i (%z kb)",
-          chunk_counter, sizeof(hashmap_chunk_t) * chunk_counter / 1024,
-          graveyard_counter, sizeof(hashmap_chunk_t) * graveyard_counter / 1024,
-          alloc_counter, sizeof(alloc_counter) * alloc_counter);
-  if (chunk_counter + graveyard_counter != alloc_counter * HASHMAP_CHUNKS_PER_ALLOC) {
-    message("warning: chunk count different from number of allocated chunks!");
-  }
-
-  /* Print fill ratios. */
-  message("element-wise fill ratio: %.2f%%, chunk-wise fill ratio: %.2f%%",
-    ((double)m->size) / m->table_size,
-    ((double)m->chunk_counter) / m->nr_chunks);
-
-  /* Print struct sizes. */
-  message("sizeof(hashmap_element_t): %z", sizeof(hashmap_element_t));
-  message("sizeof(hashmap_chunk_t): %z", sizeof(hashmap_chunk_t));
-  message("sizeof(hashmap_alloc_t): %z", sizeof(hashmap_alloc_t));
-}
 
 /**
  * @brief Pre-allocate a number of chunks for the graveyard.
@@ -134,9 +96,9 @@ hashmap_chunk_t *hashmap_get_chunk(hashmap_t *m) {
  * We use `rand_r` as a hashing function. The key is first hashed to obtain an initial
  * global position. If there is a collision, the hashing function is re-applied to the
  * key to obtain a new offset *within the same bucket*. This is repeated for at most
- * MAX_CHAIN_LENGTH steps, at which point insertion fails.
+ * HASHMAP_MAX_CHAIN_LENGTH steps, at which point insertion fails.
  */
-hashmap_element_t *hashmap_find(hashmap_t *m, hashmap_key_t key, int create_new) {
+hashmap_element_t *hashmap_find(hashmap_t *m, hashmap_key_t key, int create_new, int *chain_length) {
   /* If full, return immediately */
   if (m->size >= (m->table_size / 2)) {
     if (HASHMAP_DEBUG_OUTPUT) {
@@ -164,7 +126,10 @@ hashmap_element_t *hashmap_find(hashmap_t *m, hashmap_key_t key, int create_new)
   hashmap_chunk_t *chunk = m->chunks[chunk_offset];
 
   /* Linear probing (well, not really, but whatever). */
-  for (int i = 0; i < MAX_CHAIN_LENGTH; i++) {
+  for (int i = 0; i < HASHMAP_MAX_CHAIN_LENGTH; i++) {
+    /* Record the chain_length, if not NULL. */
+    if (chain_length) *chain_length = i;
+
     /* Compute the offsets within the masks of this chunk. */
     const int mask_offset = offset_in_chunk / HASHMAP_BITS_PER_MASK;
     const int offset_in_mask =
@@ -241,7 +206,7 @@ void hashmap_grow(hashmap_t *m) {
               &chunk->data[mid * HASHMAP_BITS_PER_MASK + eid];
 
           /* Copy the element over to the new hashmap. */
-          hashmap_element_t *new_element = hashmap_find(m, element->key, /*create_new=*/1);
+          hashmap_element_t *new_element = hashmap_find(m, element->key, /*create_new=*/1, /*chain_length=*/NULL);
           if (!new_element) {
             /* TODO(pedro): Deal with this type of failure more elegantly. */
             error("Failed to re-hash element.");
@@ -261,12 +226,12 @@ void hashmap_grow(hashmap_t *m) {
 
 void hashmap_put(hashmap_t *m, hashmap_key_t key, hashmap_value_t value) {
   /* Try to find an element for the given key. */
-  hashmap_element_t *element = hashmap_find(m, key, /*create_new=*/1);
+  hashmap_element_t *element = hashmap_find(m, key, /*create_new=*/1, /*chain_length=*/NULL);
 
   /* Loop around, trying to find our place in the world. */
   while (!element) {
     hashmap_grow(m);
-    element = hashmap_find(m, key, /*create_new=*/1);
+    element = hashmap_find(m, key, /*create_new=*/1, /*chain_length=*/NULL);
   }
 
   /* Set the value. */
@@ -275,16 +240,16 @@ void hashmap_put(hashmap_t *m, hashmap_key_t key, hashmap_value_t value) {
 
 hashmap_value_t *hashmap_get(hashmap_t *m, hashmap_key_t key) {
   /* Look for the given key. */
-  hashmap_element_t *element = hashmap_find(m, key, /*create_new=*/1);
+  hashmap_element_t *element = hashmap_find(m, key, /*create_new=*/1, /*chain_length=*/NULL);
   while (!element) {
     hashmap_grow(m);
-    element = hashmap_find(m, key, /*create_new=*/1);
+    element = hashmap_find(m, key, /*create_new=*/1, /*chain_length=*/NULL);
   }
   return &element->value;
 }
 
 hashmap_value_t *hashmap_lookup(hashmap_t *m, hashmap_key_t key) {
-  hashmap_element_t *element = hashmap_find(m, key, /*create_new=*/0);
+  hashmap_element_t *element = hashmap_find(m, key, /*create_new=*/0, /*chain_length=*/NULL);
   return element ? &element->value : NULL;
 }
 
@@ -341,3 +306,62 @@ size_t hashmap_size(hashmap_t *m) {
   else
     return 0;
 }
+
+#if HASHMAP_DEBUG_OUTPUT
+void hashmap_count_chain_lengths(hashmap_key_t key, hashmap_value_t *value, void *data) {
+  hashmap_t *m = (hashmap_t *)data;
+  int count = 0;
+  hashmap_find(m, key, /*create_entry=*/0, &count);
+  m->chain_length_counts[count] += 1;
+}
+#endif
+
+void hashmap_print_stats(hashmap_t *m) {
+  /* Basic stats. */
+  message("size: %z, table_size: %z, nr_chunks: %z.", m->size, m->table_size, m->nr_chunks);
+
+  /* Count the number of populated chunks, graveyard chunks, and allocs. */
+  int chunk_counter = 0;
+  for (size_t k = 0; k < m->nr_chunks; k++) {
+    if (m->chunks[k]) chunk_counter += 1;
+  }
+  int graveyard_counter = 0;
+  for (hashmap_chunk_t *finger = m->graveyard; finger != NULL; finger = finger->next) {
+    graveyard_counter += 1;
+  }
+  int alloc_counter = 0;
+  for (hashmap_alloc_t *finger = m->allocs; finger != NULL; finger = finger->next) {
+    alloc_counter += 1;
+  }
+  message("populated chunks: %i (%z kb), graveyard chunks: %i (%z kb), allocs: %i (%z kb)",
+          chunk_counter, sizeof(hashmap_chunk_t) * chunk_counter / 1024,
+          graveyard_counter, sizeof(hashmap_chunk_t) * graveyard_counter / 1024,
+          alloc_counter, sizeof(alloc_counter) * alloc_counter);
+  if (chunk_counter + graveyard_counter != alloc_counter * HASHMAP_CHUNKS_PER_ALLOC) {
+    message("warning: chunk count different from number of allocated chunks!");
+  }
+
+  /* Print fill ratios. */
+  message("element-wise fill ratio: %.2f%%, chunk-wise fill ratio: %.2f%%",
+    (100.0 * m->size) / m->table_size,
+    (100.0 * m->chunk_counter) / m->nr_chunks);
+  
+#if HASHMAP_DEBUG_OUTPUT
+  /* Compute the chain lengths. */
+  size_t chain_length_counts[HASHMAP_MAX_CHAIN_LENGTH];
+  for (int k = 0; k < HASHMAP_MAX_CHAIN_LENGTH; k++) {
+    m->chain_length_counts[k] = 0;
+  }
+  hashmap_iterate(m, hashmap_count_chain_lengths, m);
+  message("chain lengths:");
+  for (int k = 0; k < HASHMAP_MAX_CHAIN_LENGTH; k++) {
+    message("  chain_length_counts[%i]: %z (%.2f%%)", k, m->chain_length_counts[k], (100.0 * m->chain_length_counts[k]) / m->size);
+  }
+#endif
+
+  /* Print struct sizes. */
+  message("sizeof(hashmap_element_t): %z", sizeof(hashmap_element_t));
+  message("sizeof(hashmap_chunk_t): %z", sizeof(hashmap_chunk_t));
+  message("sizeof(hashmap_alloc_t): %z", sizeof(hashmap_alloc_t));
+}
+
