@@ -16,6 +16,16 @@
 // Type used for chunk bitmasks.
 typedef size_t hashmap_mask_t;
 
+// Type used for the hashmap keys (must have a valid '==' operation).
+#ifndef hashmap_key_t
+#define hashmap_key_t size_t
+#endif
+
+// Type used for the hashmap values (must have a valid '==' operation).
+#ifndef hashmap_value_t
+#define hashmap_value_t size_t
+#endif
+
 #define HASHMAP_BITS_PER_MASK ((int)sizeof(hashmap_mask_t) * 8)
 #define HASHMAP_MASKS_PER_CHUNK 4
 #define HASHMAP_ELEMENTS_PER_CHUNK (HASHMAP_BITS_PER_MASK * HASHMAP_MASKS_PER_CHUNK)
@@ -23,8 +33,8 @@ typedef size_t hashmap_mask_t;
 
 /* We need to keep keys and values */
 typedef struct _hashmap_element{
-	size_t key;
-	size_t value;
+	hashmap_key_t key;
+	hashmap_value_t value;
 } hashmap_element_t;
 
 /* A chunk of hashmap_element, with the corresponding bitmask. */
@@ -56,7 +66,7 @@ typedef struct _hashmap_map{
  * Pointer to a function that can take a key, a pointer to a value, and a
  * void pointer extra data payload.
  */
-typedef void (*hashmap_mapper_t)(size_t, size_t *, void *);
+typedef void (*hashmap_mapper_t)(hashmap_key_t, hashmap_value_t *, void *);
 
 /**
  * @brief Initialize a hashmap.
@@ -66,7 +76,7 @@ void hashmap_init(hashmap_t *m);
 /**
  * @brief Add a key/value pair to the hashmap, overwriting whatever was previously there.
  */
-extern void hashmap_put(hashmap_t *m, size_t key, size_t value);
+extern void hashmap_put(hashmap_t *m, hashmap_key_t key, hashmap_value_t value);
 
 /**
  * @brief Get the value for a given key. If no value exists a new one will be created.
@@ -74,7 +84,7 @@ extern void hashmap_put(hashmap_t *m, size_t key, size_t value);
  * Note that the returned pointer is volatile and will be invalidated if the hashmap
  * is re-hashed!
  */
-extern size_t* hashmap_get(hashmap_t *m, size_t key);
+extern size_t* hashmap_get(hashmap_t *m, hashmap_key_t key);
 
 /**
  * @brief Look for the given key and return a pointer to its value or NULL if 
@@ -83,7 +93,7 @@ extern size_t* hashmap_get(hashmap_t *m, size_t key);
  * Note that the returned pointer is volatile and will be invalidated if the hashmap
  * is re-hashed!
  */
-extern size_t* hashmap_lookup(hashmap_t *m, size_t key);
+extern size_t* hashmap_lookup(hashmap_t *m, hashmap_key_t key);
 
 /**
  * @brief Iterate the function parameter over each element in the hashmap.

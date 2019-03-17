@@ -99,7 +99,7 @@ hashmap_chunk_t *hashmap_get_chunk(hashmap_t *m) {
  * key to obtain a new offset *within the same bucket*. This is repeated for at most
  * MAX_CHAIN_LENGTH steps, at which point insertion fails.
  */
-hashmap_element_t *hashmap_find(hashmap_t *m, size_t key, int create_new) {
+hashmap_element_t *hashmap_find(hashmap_t *m, hashmap_key_t key, int create_new) {
   /* If full, return immediately */
   if (m->size >= (m->table_size / 2)) return NULL;
 
@@ -214,7 +214,7 @@ void hashmap_grow(hashmap_t *m) {
   free(old_chunks);
 }
 
-void hashmap_put(hashmap_t *m, size_t key, size_t value) {
+void hashmap_put(hashmap_t *m, hashmap_key_t key, hashmap_value_t value) {
   /* Try to find an element for the given key. */
   hashmap_element_t *element = hashmap_find(m, key, /*create_new=*/1);
 
@@ -228,7 +228,7 @@ void hashmap_put(hashmap_t *m, size_t key, size_t value) {
   element->value = value;
 }
 
-size_t* hashmap_get(hashmap_t *m, size_t key) {
+hashmap_value_t *hashmap_get(hashmap_t *m, hashmap_key_t key) {
   /* Look for the given key. */
   hashmap_element_t *element = hashmap_find(m, key, /*create_new=*/1);
   while (!element) {
@@ -238,7 +238,7 @@ size_t* hashmap_get(hashmap_t *m, size_t key) {
   return &element->value;
 }
 
-size_t* hashmap_lookup(hashmap_t *m, size_t key) {
+hashmap_value_t *hashmap_lookup(hashmap_t *m, hashmap_key_t key) {
   hashmap_element_t *element = hashmap_find(m, key, /*create_new=*/0);
   return element ? &element->value : NULL;
 }
