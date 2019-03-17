@@ -138,7 +138,12 @@ hashmap_chunk_t *hashmap_get_chunk(hashmap_t *m) {
  */
 hashmap_element_t *hashmap_find(hashmap_t *m, hashmap_key_t key, int create_new) {
   /* If full, return immediately */
-  if (m->size >= (m->table_size / 2)) return NULL;
+  if (m->size >= (m->table_size / 2)) {
+    if (HASHMAP_DEBUG_OUTPUT) {
+      message("hashmap is more than 50%% full, re-hashing.")
+    }
+    return NULL;
+  }
 
   /* We will use rand_r as our hash function. */
   unsigned int curr = (unsigned int)key;
@@ -195,6 +200,9 @@ hashmap_element_t *hashmap_find(hashmap_t *m, hashmap_key_t key, int create_new)
   }
 
   /* We lucked out, so return nothing. */
+  if (HASHMAP_DEBUG_OUTPUT) {
+    message("maximum chain length exceeded, re-hashing.")
+  }
   return NULL;
 }
 
@@ -208,7 +216,7 @@ void hashmap_grow(hashmap_t *m) {
 
   /* Re-allocate the chunk array. */
   m->table_size = HASHMAP_GROWTH_FACTOR * m->table_size;
-  m->nr_chunks = m->table_size / HASHMAP_ELEMENTS_PER_CHUNK;
+  m->nr_chunks = (m->table_size + HASHMAP_ELEMENTS_PER_CHUNK - 1) / HASHMAP_ELEMENTS_PER_CHUNK;
   if ((m->chunks = (hashmap_chunk_t **)calloc(
            m->nr_chunks, sizeof(hashmap_chunk_t *))) == NULL) {
     error("Unable to allocate hashmap chunks.");
