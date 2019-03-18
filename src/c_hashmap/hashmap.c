@@ -10,7 +10,7 @@
 
 #define INITIAL_NUM_CHUNKS (1)
 #define HASHMAP_GROWTH_FACTOR (2)
-#define HASHMAP_MAX_FILL_RATIO (0.5)
+#define HASHMAP_MAX_FILL_RATIO (1.0)
 #define HASHMAP_MAX_CHUNK_FILL_RATIO (0.5)
 
 /**
@@ -145,8 +145,11 @@ hashmap_element_t *hashmap_find(hashmap_t *m, hashmap_key_t key, int create_new,
   if (create_new &&
       chunk_count > HASHMAP_ELEMENTS_PER_CHUNK * HASHMAP_MAX_CHUNK_FILL_RATIO) {
     if (HASHMAP_DEBUG_OUTPUT) {
-      message("chunk %zu is too full (%i of %i elements used), re-hashing.",
-              chunk_offset, chunk_count, HASHMAP_ELEMENTS_PER_CHUNK);
+      message(
+          "chunk %zu is too full (%i of %i elements used, fill ratio is "
+          "%.2f%%), re-hashing.",
+          chunk_offset, chunk_count, HASHMAP_ELEMENTS_PER_CHUNK,
+          (100.0 * m->size) / m->table_size);
     }
     return NULL;
   }
@@ -211,9 +214,9 @@ void hashmap_grow(hashmap_t *m) {
                  HASHMAP_ELEMENTS_PER_CHUNK;
   m->table_size = m->nr_chunks * HASHMAP_ELEMENTS_PER_CHUNK;
 
-  message("Increasing hash table size from %zu (%zu bytes) to %zu (%zu bytes).",
-          old_table_size, old_table_size * sizeof(hashmap_element_t),
-          m->table_size, m->table_size * sizeof(hashmap_element_t));
+  message("Increasing hash table size from %zu (%zu kb) to %zu (%zu kb).",
+          old_table_size, old_table_size * sizeof(hashmap_element_t) / 1024,
+          m->table_size, m->table_size * sizeof(hashmap_element_t) / 1024);
 
   if ((m->chunks = (hashmap_chunk_t **)calloc(
            m->nr_chunks, sizeof(hashmap_chunk_t *))) == NULL) {
@@ -310,7 +313,6 @@ void hashmap_iterate(hashmap_t *m, hashmap_mapper_t f, void *data) {
            eid < HASHMAP_BITS_PER_MASK &&
            mid * HASHMAP_BITS_PER_MASK + eid < HASHMAP_ELEMENTS_PER_CHUNK;
            eid++) {
-
         /* If the element exists, call the function on it. */
         if (mask & (((hashmap_mask_t)1) << eid)) {
           hashmap_element_t *element =
