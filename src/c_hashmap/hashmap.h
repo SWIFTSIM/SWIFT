@@ -63,7 +63,7 @@ typedef struct _hashmap_map{
 	size_t nr_chunks;
 	hashmap_chunk_t **chunks;    // Pointer to chunks in use, but not densely populated.
 	hashmap_chunk_t *graveyard;  // Pointer to allocated, but currently unused chunks.
-    hashmap_alloc_t *allocs;	// Pointer to the allocated chunks of chunks, needed for cleanup.
+  hashmap_alloc_t *allocs;	// Pointer to the allocated chunks of chunks, needed for cleanup.
 
 #if HASHMAP_DEBUG_OUTPUT
 	/* Chain lengths, used for debugging only. */

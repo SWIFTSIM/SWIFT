@@ -102,7 +102,7 @@ hashmap_element_t *hashmap_find(hashmap_t *m, hashmap_key_t key, int create_new,
   /* If full, return immediately */
   if (m->size >= (m->table_size / 2)) {
     if (HASHMAP_DEBUG_OUTPUT) {
-      message("hashmap is more than 50%% full, re-hashing.")
+      message("hashmap is more than 50%% full, re-hashing.");
     }
     return NULL;
   }
@@ -166,7 +166,7 @@ hashmap_element_t *hashmap_find(hashmap_t *m, hashmap_key_t key, int create_new,
 
   /* We lucked out, so return nothing. */
   if (HASHMAP_DEBUG_OUTPUT) {
-    message("maximum chain length exceeded, re-hashing.")
+    message("maximum chain length exceeded, re-hashing.");
   }
   return NULL;
 }
@@ -318,7 +318,7 @@ void hashmap_count_chain_lengths(hashmap_key_t key, hashmap_value_t *value, void
 
 void hashmap_print_stats(hashmap_t *m) {
   /* Basic stats. */
-  message("size: %z, table_size: %z, nr_chunks: %z.", m->size, m->table_size, m->nr_chunks);
+  message("size: %zu, table_size: %zu, nr_chunks: %zu.", m->size, m->table_size, m->nr_chunks);
 
   /* Count the number of populated chunks, graveyard chunks, and allocs. */
   int chunk_counter = 0;
@@ -333,7 +333,7 @@ void hashmap_print_stats(hashmap_t *m) {
   for (hashmap_alloc_t *finger = m->allocs; finger != NULL; finger = finger->next) {
     alloc_counter += 1;
   }
-  message("populated chunks: %i (%z kb), graveyard chunks: %i (%z kb), allocs: %i (%z kb)",
+  message("populated chunks: %i (%zu kb), graveyard chunks: %i (%zu kb), allocs: %i (%zu kb)",
           chunk_counter, sizeof(hashmap_chunk_t) * chunk_counter / 1024,
           graveyard_counter, sizeof(hashmap_chunk_t) * graveyard_counter / 1024,
           alloc_counter, sizeof(hashmap_alloc_t) * alloc_counter);
@@ -344,24 +344,23 @@ void hashmap_print_stats(hashmap_t *m) {
   /* Print fill ratios. */
   message("element-wise fill ratio: %.2f%%, chunk-wise fill ratio: %.2f%%",
     (100.0 * m->size) / m->table_size,
-    (100.0 * m->chunk_counter) / m->nr_chunks);
+    (100.0 * chunk_counter) / m->nr_chunks);
   
 #if HASHMAP_DEBUG_OUTPUT
   /* Compute the chain lengths. */
-  size_t chain_length_counts[HASHMAP_MAX_CHAIN_LENGTH];
   for (int k = 0; k < HASHMAP_MAX_CHAIN_LENGTH; k++) {
     m->chain_length_counts[k] = 0;
   }
   hashmap_iterate(m, hashmap_count_chain_lengths, m);
   message("chain lengths:");
   for (int k = 0; k < HASHMAP_MAX_CHAIN_LENGTH; k++) {
-    message("  chain_length_counts[%i]: %z (%.2f%%)", k, m->chain_length_counts[k], (100.0 * m->chain_length_counts[k]) / m->size);
+    message("  chain_length_counts[%i]: %zu (%.2f%%)", k, m->chain_length_counts[k], (100.0 * m->chain_length_counts[k]) / m->size);
   }
 #endif
 
   /* Print struct sizes. */
-  message("sizeof(hashmap_element_t): %z", sizeof(hashmap_element_t));
-  message("sizeof(hashmap_chunk_t): %z", sizeof(hashmap_chunk_t));
-  message("sizeof(hashmap_alloc_t): %z", sizeof(hashmap_alloc_t));
+  message("sizeof(hashmap_element_t): %zu", sizeof(hashmap_element_t));
+  message("sizeof(hashmap_chunk_t): %zu", sizeof(hashmap_chunk_t));
+  message("sizeof(hashmap_alloc_t): %zu", sizeof(hashmap_alloc_t));
 }
 
