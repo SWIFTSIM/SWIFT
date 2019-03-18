@@ -411,6 +411,33 @@ void hashmap_print_stats(hashmap_t *m) {
   }
 #endif
 
+  /* Compute chunk fill ratios. */
+  size_t chunk_fill_ratio_counts[11];
+  for (int k = 0; k < 11; k++) {
+    chunk_fill_ratio_counts[k] = 0;
+  }
+  for (size_t k = 0; k < m->nr_chunks; k++) {
+    hashmap_chunk_t *chunk = m->chunks[k];
+    if (!chunk) {
+      chunk_fill_ratio_counts[0] += 1;
+    } else {
+      int count = 0;
+      for (int j = 0; j < HASHMAP_MASKS_PER_CHUNK; j++) {
+        count += __builtin_popcountll(chunk->masks[j]);
+      }
+      chunk_fill_ratio_counts[(int)(10 * count / HASHMAP_MAX_CHUNK_FILL_RATIO /
+                                    HASHMAP_ELEMENTS_PER_CHUNK)] += 1;
+    }
+  }
+  message("chunk fill ratios:");
+  for (int k = 0; k < 11; k++) {
+    message("  %3i%% - %3i%%: %zu (%.2f%%)",
+            (int)(k * 10 * HASHMAP_MAX_CHUNK_FILL_RATIO),
+            (int)((k + 1) * 10 * HASHMAP_MAX_CHUNK_FILL_RATIO),
+            chunk_fill_ratio_counts[k],
+            (100.0 * chunk_fill_ratio_counts[k]) / m->nr_chunks);
+  }
+
   /* Print struct sizes. */
   message("sizeof(hashmap_element_t): %zu", sizeof(hashmap_element_t));
   message("sizeof(hashmap_chunk_t): %zu", sizeof(hashmap_chunk_t));
