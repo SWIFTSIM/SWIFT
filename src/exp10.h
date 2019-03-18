@@ -26,6 +26,7 @@
 #include <math.h>
 
 #if !defined(__GNUC__)
+/* Note that clang also defines __GNUC__ */
 
 /* Local headers. */
 #include "inline.h"
@@ -61,6 +62,9 @@ __attribute__((always_inline, const)) INLINE static float exp10f(
 #endif /* __GNUC__ */
 
 #if defined(__clang__)
+/* Clang does have the exp10 and exp10f functions built in as SIMD
+ * variants, but these must be exposed to the code as they begin
+ * as hidden. */
 
 #define exp10 __exp10
 #define exp10f __exp10f
