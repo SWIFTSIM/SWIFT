@@ -404,10 +404,30 @@ Star formation: Schaye+2008 modified for EAGLE
     parameters indicated on the figure. These are the slope of the
     dependency, its position on the metallicity-axis and normalisation
     (black circle) as well as the maximal threshold density allowed. For
-    reference, the black arrow indicates the typical solar metallicity
-    :math:`Z_\odot=0.014`. The values used to produce this figure are the
-    ones assumed in the reference EAGLE model.
+    reference, the black arrow indicates the value typically assumed for
+    solar metallicity :math:`Z_\odot=0.014` (note, however, that this value
+    does *not* enter the model at all). The values used to produce this
+    figure are the ones assumed in the reference EAGLE model.
 
+.. code:: YAML
+
+   # EAGLE star formation parameters
+   EAGLEStarFormation:
+     EOS_density_norm_H_p_cm3:          0.1       # Physical density used for the normalisation of the EOS assumed for the star-forming gas in Hydrogen atoms per cm^3.
+     EOS_temperature_norm_K:            8000      # Temperature om the polytropic EOS assumed for star-forming gas at the density normalisation in Kelvin.
+     EOS_gamma_effective:               1.3333333 # Slope the of the polytropic EOS assumed for the star-forming gas.
+     KS_normalisation:                  1.515e-4  # The normalization of the Kennicutt-Schmidt law in Msun / kpc^2 / yr.
+     KS_exponent:                       1.4       # The exponent of the Kennicutt-Schmidt law.
+     KS_min_over_density:               57.7      # The over-density above which star-formation is allowed.
+     KS_high_density_threshold_H_p_cm3: 1e3       # Hydrogen number density above which the Kennicut-Schmidt law changes slope in Hydrogen atoms per cm^3.
+     KS_high_density_exponent:          2.0       # Slope of the Kennicut-Schmidt law above the high-density threshold.
+     KS_temperature_margin_dex:         0.5       # Logarithm base 10 of the maximal temperature difference above the EOS allowed to form stars.
+     KS_max_density_threshold_H_p_cm3:  1e5       # Hydrogen number density above which a particle gets automatically turned into a star in Hydrogen atoms per cm^3.
+     threshold_norm_H_p_cm3:            0.1       # Normalisation of the metal-dependant density threshold for star formation in Hydrogen atoms per cm^3.
+     threshold_Z0:                      0.002     # Reference metallicity (metal mass fraction) for the metal-dependant threshold for star formation.
+     threshold_slope:                   -0.64     # Slope of the metal-dependant star formation threshold
+     threshold_max_density_H_p_cm3:     10.0      # Maximal density of the metal-dependant density threshold for star formation in Hydrogen atoms per cm^3.
+     gas_fraction:                      0.1       # The gas fraction used internally by the model.
 
 .. _EAGLE_enrichment:
 
