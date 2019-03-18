@@ -129,9 +129,9 @@ void fof_init(struct space *s) {
   for (size_t i = 0; i < nr_local_gparts; i++) {
     s->fof_data.group_index[i] = i;
     s->gparts[i].group_id = default_id;
+    s->fof_data.group_size[i] = 1;
   }
 
-  bzero(s->fof_data.group_size, nr_local_gparts * sizeof(size_t));
   bzero(s->fof_data.group_mass, nr_local_gparts * sizeof(double));
   bzero(s->fof_data.group_CoM, nr_local_gparts * sizeof(struct fof_CoM));
 
@@ -841,6 +841,9 @@ void fof_calc_group_props_mapper(void *map_data, int num_elements,
   //double *group_mass = s->fof_data.group_mass;
   //struct fof_CoM *group_CoM = s->fof_data.group_CoM;
 
+  /* Offset into gparts array. */
+  ptrdiff_t gparts_offset = (ptrdiff_t)(gparts - s->gparts);
+
   size_t *const group_index_offset = group_index + (ptrdiff_t)(gparts - s->gparts);
 
   /* Create hash table. */
@@ -856,11 +859,14 @@ void fof_calc_group_props_mapper(void *map_data, int num_elements,
     //double y = gparts[ind].x[1];
     //double z = gparts[ind].x[2];
     //double mass = gparts[ind].mass;
-    
-    hashmap_value_t *size = hashmap_get(&map, root);
-    
-    if(size != NULL) (*size)++;
-    else error("Couldn't find key (%zu) or create new one.", root);
+  
+    /* Only add particles which aren't the root of a group. Stops groups of size 1 being added to the hash table. */ 
+    if(root != (gparts_offset + ind)) { 
+      hashmap_value_t *size = hashmap_get(&map, root);
+
+      if(size != NULL) (*size)++;
+      else error("Couldn't find key (%zu) or create new one.", root);
+    }
 
     /* Use the CoM location set by the first particle added to the group. */
     //if (com_set[root]) {
@@ -911,35 +917,34 @@ void fof_calc_group_props_mapper(void *map_data, int num_elements,
  
   hashmap_print_stats(&map);
 
-	if (map.size <= 0)
-		error("Hash table is empty!");	
+  if (map.size > 0) {
+    /* Iterate over the chunks and add their entries to the new table. */
+    for (size_t cid = 0; cid < map.table_size / HASHMAP_ELEMENTS_PER_CHUNK; cid++) {
 
-  /* Iterate over the chunks and add their entries to the new table. */
-  for (size_t cid = 0; cid < map.table_size / HASHMAP_ELEMENTS_PER_CHUNK; cid++) {
+      hashmap_chunk_t *chunk = map.chunks[cid];
 
-    hashmap_chunk_t *chunk = map.chunks[cid];
-    
-    /* Skip empty chunks. */
-    if (chunk == NULL) continue;
+      /* Skip empty chunks. */
+      if (chunk == NULL) continue;
 
-    /* Loop over the masks in this chunk. */
-    for (int mid = 0; mid < HASHMAP_MASKS_PER_CHUNK; mid++) {
+      /* Loop over the masks in this chunk. */
+      for (int mid = 0; mid < HASHMAP_MASKS_PER_CHUNK; mid++) {
 
-      hashmap_mask_t mask = chunk->masks[mid];
-      
-      /* Skip empty masks. */
-      if (mask == 0) continue;
+        hashmap_mask_t mask = chunk->masks[mid];
 
-      /* Loop over the mask entries. */
-      for (int eid = 0; eid < HASHMAP_BITS_PER_MASK; eid++) {
-        hashmap_mask_t element_mask = ((hashmap_mask_t)1) << eid;
+        /* Skip empty masks. */
+        if (mask == 0) continue;
 
-        if (mask & element_mask) {
-          hashmap_element_t *element =
-            &chunk->data[mid * HASHMAP_BITS_PER_MASK + eid];
+        /* Loop over the mask entries. */
+        for (int eid = 0; eid < HASHMAP_BITS_PER_MASK; eid++) {
+          hashmap_mask_t element_mask = ((hashmap_mask_t)1) << eid;
 
-          atomic_add(&group_size[element->key], element->value);
+          if (mask & element_mask) {
+            hashmap_element_t *element =
+              &chunk->data[mid * HASHMAP_BITS_PER_MASK + eid];
 
+            atomic_add(&group_size[element->key], element->value);
+
+          }
         }
       }
     }
