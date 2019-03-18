@@ -62,7 +62,7 @@ __attribute__((always_inline, const)) INLINE static float exp10f(
 #endif /* __GNUC__ */
 
 #if defined(__clang__) && defined(__APPLE__)
-/* Apple-clang does have the exp10 and exp10f functions built in as SIMD
+/* Apple-clang does have the exp10 and exp10f functions built in
  * variants, but these must be exposed to the code as they begin
  * as hidden. */
 
