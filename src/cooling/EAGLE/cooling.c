@@ -45,6 +45,7 @@
 #include "parser.h"
 #include "part.h"
 #include "physical_constants.h"
+#include "space.h"
 #include "units.h"
 
 /* Maximum number of iterations for newton
@@ -123,11 +124,14 @@ __attribute__((always_inline)) INLINE void get_redshift_index(
  * given time-step or redshift. Predominantly used to read cooling tables
  * above and below the current redshift, if not already read in.
  *
+ * Also calls the additional H reionisation energy injection if need be.
+ *
  * @param cosmo The current cosmological model.
  * @param cooling The #cooling_function_data used in the run.
+ * @param s The space data, including a pointer to array of particles
  */
 void cooling_update(const struct cosmology *cosmo,
-                    struct cooling_function_data *cooling) {
+                    struct cooling_function_data *cooling, struct space *s) {
 
   /* Current redshift */
   const float redshift = cosmo->z;
@@ -137,6 +141,19 @@ void cooling_update(const struct cosmology *cosmo,
   float dz = 0.f;
   get_redshift_index(redshift, &z_index, &dz, cooling);
   cooling->dz = dz;
+
+  /* Does this timestep straddle Hydrogen reionization? If so, we need to input
+   * extra heat */
+  if (!cooling->H_reion_done && (redshift < cooling->H_reion_z)) {
+
+    if (s == NULL) error("Trying to do H reionization on an empty space!");
+
+    /* Inject energy to all particles */
+    cooling_Hydrogen_reionization(cooling, cosmo, s);
+
+    /* Flag that reionization happened */
+    cooling->H_reion_done = 1;
+  }
 
   /* Do we already have the correct tables loaded? */
   if (cooling->z_index == z_index) return;
@@ -534,8 +551,8 @@ void cooling_cool_part(const struct phys_const *phys_const,
      re-ionization as this needs to be added on no matter what */
 
   /* Get helium and hydrogen reheating term */
-  const double Helium_reion_heat_cgs = eagle_helium_reionization_extraheat(
-      cooling->z_index, delta_redshift, cooling);
+  const double Helium_reion_heat_cgs =
+      eagle_helium_reionization_extraheat(cosmo->z, delta_redshift, cooling);
 
   /* Convert this into a rate */
   const double Lambda_He_reion_cgs =
@@ -766,6 +783,39 @@ __attribute__((always_inline)) INLINE float cooling_get_radiated_energy(
 }
 
 /**
+ * @brief Inject a fixed amount of energy to each particle in the simulation
+ * to mimic Hydrogen reionization.
+ *
+ * @param cooling The properties of the cooling model.
+ * @param cosmo The cosmological model.
+ * @param s The #space containing the particles.
+ */
+void cooling_Hydrogen_reionization(const struct cooling_function_data *cooling,
+                                   const struct cosmology *cosmo,
+                                   struct space *s) {
+
+  struct part *parts = s->parts;
+  struct xpart *xparts = s->xparts;
+
+  /* Energy to inject in internal units */
+  const float extra_heat =
+      cooling->H_reion_heat_cgs * cooling->internal_energy_from_cgs;
+
+  /* Loop through particles and set new heat */
+  for (size_t i = 0; i < s->nr_parts; i++) {
+
+    struct part *p = &parts[i];
+    struct xpart *xp = &xparts[i];
+
+    const float old_u = hydro_get_physical_internal_energy(p, xp, cosmo);
+    const float new_u = old_u + extra_heat;
+
+    hydro_set_physical_internal_energy(p, xp, cosmo, new_u);
+    hydro_set_drifted_physical_internal_energy(p, cosmo, new_u);
+  }
+}
+
+/**
  * @brief Initialises properties stored in the cooling_function_data struct
  *
  * @param parameter_file The parsed parameter file
@@ -779,10 +829,19 @@ void cooling_init_backend(struct swift_params *parameter_file,
                           struct cooling_function_data *cooling) {
 
   /* read some parameters */
+
+  /* Despite the names, the values of H_reion_heat_cgs and He_reion_heat_cgs
+   * that are read in are actually in units of electron volts per proton mass.
+   * We later convert to units just below */
+
   parser_get_param_string(parameter_file, "EAGLECooling:dir_name",
                           cooling->cooling_table_path);
+
+  cooling->H_reion_done = 0;
   cooling->H_reion_z =
       parser_get_param_float(parameter_file, "EAGLECooling:H_reion_z");
+  cooling->H_reion_heat_cgs =
+      parser_get_param_float(parameter_file, "EAGLECooling:H_reion_eV_p_H");
   cooling->He_reion_z_centre =
       parser_get_param_float(parameter_file, "EAGLECooling:He_reion_z_centre");
   cooling->He_reion_z_sigma =
@@ -796,10 +855,19 @@ void cooling_init_backend(struct swift_params *parameter_file,
   cooling->S_over_Si_ratio_in_solar = parser_get_opt_param_float(
       parameter_file, "EAGLECooling:S_over_Si_in_solar", 1.f);
 
-  /* Convert to cgs (units used internally by the cooling routines) */
+  /* Convert H_reion_heat_cgs and He_reion_heat_cgs to cgs
+   * (units used internally by the cooling routines). This is done by
+   * multiplying by 'eV/m_H' in internal units, then converting to cgs units.
+   * Note that the dimensions of these quantities are energy/mass = velocity^2
+   */
+
+  cooling->H_reion_heat_cgs *=
+      phys_const->const_electron_volt / phys_const->const_proton_mass *
+      units_cgs_conversion_factor(us, UNIT_CONV_ENERGY_PER_UNIT_MASS);
+
   cooling->He_reion_heat_cgs *=
-      phys_const->const_electron_volt *
-      units_cgs_conversion_factor(us, UNIT_CONV_ENERGY);
+      phys_const->const_electron_volt / phys_const->const_proton_mass *
+      units_cgs_conversion_factor(us, UNIT_CONV_ENERGY_PER_UNIT_MASS);
 
   /* Read in the list of redshifts */
   get_cooling_redshifts(cooling);
@@ -889,7 +957,7 @@ void cooling_restore_tables(struct cooling_function_data *cooling,
   /* Force a re-read of the cooling tables */
   cooling->z_index = -10;
   cooling->previous_z_index = eagle_cooling_N_redshifts - 2;
-  cooling_update(cosmo, cooling);
+  cooling_update(cosmo, cooling, /*space=*/NULL);
 }
 
 /**
