@@ -80,6 +80,7 @@ EAGLEChemistry:
 EAGLECooling:
   dir_name:                ./coolingtables/
   H_reion_z:               11.5 
+  H_reion_eV_p_H:          2.0
   He_reion_z_centre:       3.5
   He_reion_z_sigma:        0.5
   He_reion_eV_p_H:         2.0
