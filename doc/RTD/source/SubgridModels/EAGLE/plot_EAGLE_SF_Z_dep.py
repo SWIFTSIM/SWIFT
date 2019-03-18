@@ -53,13 +53,13 @@ scatter([Z_0], [norm], s=4, color='k')
 annotate('', xy=(0.014, 1e-3), xytext=(0.014, 3e-4), arrowprops=dict(facecolor='black', shrink=0., width=0.1, headwidth=3., headlength=5.))
 text(0.016, 3.5e-4, "${Z_\\odot}$", fontsize=9)
 
-text(3e-3, 0.4, "$Z~\\widehat{}~{\\tt threshold\\_slope}$", va="top", rotation=-42, fontsize=7)
+text(3e-3, 0.4, "$Z~\\widehat{}~{\\tt threshold\\_slope}$", va="top", rotation=-41, fontsize=7)
 text(3e-5, 12., "${\\tt threshold\\_max\\_density\\_H\\_p\\_cm3}$", fontsize=7)
-text(3e-7, 0.12, "${\\tt threshold\\_Z0}$", fontsize=7)
-text(0.0018, 0.0004, "${\\tt threshold\\_norm\\_H\\_p\\_cm3}$", rotation=90, va="bottom", ha="right", fontsize=7)
+text(3e-7, 0.12, "${\\tt threshold\\_norm\\_H\\_p\\_cm3}$", fontsize=7)
+text(0.0018, 0.0004, "${\\tt threshold\\_Z0}$", rotation=90, va="bottom", ha="right", fontsize=7)
 
 xlabel("${\\rm Metallicity~(metal~mass~fraction)}~Z~[-]$", labelpad=2)
-ylabel("${\\rm SF~density~threshold}~n_{\\rm H, thresh}~[{\\rm cm^{-3}}]$", labelpad=-1)
+ylabel("${\\rm SF~threshold~number~density}~n_{\\rm H, thresh}~[{\\rm cm^{-3}}]$", labelpad=-1)
 
 xlim(1e-7, 1.0)
 ylim(0.0002, 50)
