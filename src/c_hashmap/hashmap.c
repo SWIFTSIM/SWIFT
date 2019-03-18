@@ -181,11 +181,17 @@ void hashmap_grow(hashmap_t *m) {
 
   /* Re-allocate the chunk array. */
   m->table_size = HASHMAP_GROWTH_FACTOR * m->table_size;
+
+  message("Increasing hash table size from %zu (%zu bytes) to %zu (%zu bytes).",old_table_size, old_table_size * sizeof(hashmap_element_t), m->table_size, m->table_size * sizeof(hashmap_element_t));
+
   m->nr_chunks = (m->table_size + HASHMAP_ELEMENTS_PER_CHUNK - 1) / HASHMAP_ELEMENTS_PER_CHUNK;
   if ((m->chunks = (hashmap_chunk_t **)calloc(
            m->nr_chunks, sizeof(hashmap_chunk_t *))) == NULL) {
     error("Unable to allocate hashmap chunks.");
   }
+
+  /* Reset size. */
+  m->size = 0;
 
   /* Iterate over the chunks and add their entries to the new table. */
   for (size_t cid = 0; cid < old_table_size / HASHMAP_ELEMENTS_PER_CHUNK; cid++) {
