@@ -389,8 +389,25 @@ the snapshots for each gas and star particle:
 
 .. _EAGLE_star_formation:
 
-Star formation: Schaye+2008
-~~~~~~~~~~~~~~~~~~~~~~~~~~~
+Star formation: Schaye+2008 modified for EAGLE
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+.. figure:: EAGLE_SF_Z_dep.svg
+    :width: 400px
+    :align: center
+    :figclass: align-center
+    :alt: Metal-dependance of the threshold for star formation in the
+	  EAGLE model.
+
+    The dependency of the SF threshold density on the metallicty of the gas
+    in the EAGLE model (black line). The function is described by the four
+    parameters indicated on the figure. These are the slope of the
+    dependency, its position on the metallicity-axis and normalisation
+    (black circle) as well as the maximal threshold density allowed. For
+    reference, the black arrow indicates the typical solar metallicity
+    :math:`Z_\odot=0.014`. The values used to produce this figure are the
+    ones assumed in the reference EAGLE model.
+
 
 .. _EAGLE_enrichment:
 
