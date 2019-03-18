@@ -25,6 +25,7 @@
 #include "cosmology.h"
 #include "engine.h"
 #include "equation_of_state.h"
+#include "exp10.h"
 #include "hydro.h"
 #include "parser.h"
 #include "part.h"
