@@ -31,8 +31,10 @@ typedef size_t hashmap_mask_t;
 #define HASHMAP_ELEMENTS_PER_CHUNK (HASHMAP_BITS_PER_MASK * HASHMAP_MASKS_PER_CHUNK)
 #define HASHMAP_CHUNKS_PER_ALLOC (8)
 
-#define HASHMAP_MAX_CHAIN_LENGTH (8)
+#define HASHMAP_MAX_CHAIN_LENGTH (HASHMAP_ELEMENTS_PER_CHUNK / 8)
+#ifndef HASHMAP_DEBUG_OUTPUT
 #define HASHMAP_DEBUG_OUTPUT (1)
+#endif	// HASHMAP_DEBUG_OUTPUT
 
 
 /* We need to keep keys and values */
@@ -57,13 +59,13 @@ typedef struct _hashmap_alloc {
 
 /* A hashmap has some maximum size and current size,
  * as well as the data to hold. */
-typedef struct _hashmap_map{
+typedef struct _hashmap {
 	size_t table_size;
 	size_t size;
 	size_t nr_chunks;
 	hashmap_chunk_t **chunks;    // Pointer to chunks in use, but not densely populated.
 	hashmap_chunk_t *graveyard;  // Pointer to allocated, but currently unused chunks.
-  hashmap_alloc_t *allocs;	// Pointer to the allocated chunks of chunks, needed for cleanup.
+	hashmap_alloc_t *allocs;	// Pointer to the allocated chunks of chunks, needed for cleanup.
 
 #if HASHMAP_DEBUG_OUTPUT
 	/* Chain lengths, used for debugging only. */

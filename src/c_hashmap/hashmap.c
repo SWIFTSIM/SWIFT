@@ -8,8 +8,10 @@
 #include "../error.h"
 #include "hashmap.h"
 
-#define INITIAL_SIZE (1024)
+#define INITIAL_NUM_CHUNKS (1)
 #define HASHMAP_GROWTH_FACTOR (2)
+#define HASHMAP_MAX_FILL_RATIO (0.5)
+#define HASHMAP_MAX_CHUNK_FILL_RATIO (0.5)
 
 /**
  * @brief Pre-allocate a number of chunks for the graveyard.
@@ -39,7 +41,7 @@ void hashmap_allocate_chunks(hashmap_t *m) {
 
 void hashmap_init(hashmap_t *m) {
   /* Allocate the first (empty) list of chunks. */
-  m->nr_chunks = (INITIAL_SIZE + HASHMAP_ELEMENTS_PER_CHUNK - 1) / HASHMAP_ELEMENTS_PER_CHUNK;
+  m->nr_chunks = INITIAL_NUM_CHUNKS;
   if ((m->chunks = (hashmap_chunk_t **)calloc(
            m->nr_chunks, sizeof(hashmap_chunk_t *))) == NULL) {
     error("Unable to allocate hashmap chunks.");
@@ -54,8 +56,10 @@ void hashmap_init(hashmap_t *m) {
   m->size = 0;
 
   /* Inform the men. */
-  message("Created hash table of size: %zu each element is %zu bytes. Allocated %zu empty chunks.",
+  if (HASHMAP_DEBUG_OUTPUT) {
+    message("Created hash table of size: %zu each element is %zu bytes. Allocated %zu empty chunks.",
           INITIAL_SIZE * sizeof(hashmap_element_t), sizeof(hashmap_element_t), m->nr_chunks);
+  }
 }
 
 /**
@@ -100,9 +104,9 @@ hashmap_chunk_t *hashmap_get_chunk(hashmap_t *m) {
  */
 hashmap_element_t *hashmap_find(hashmap_t *m, hashmap_key_t key, int create_new, int *chain_length) {
   /* If full, return immediately */
-  if (m->size >= (m->table_size / 2)) {
+  if (create_new && m->size > m->table_size * HASHMAP_MAX_FILL_RATIO) {
     if (HASHMAP_DEBUG_OUTPUT) {
-      message("hashmap is more than 50%% full, re-hashing.");
+      message("hashmap is too full (%zu of %zu elements used), re-hashing.", m->size, m->table_size);
     }
     return NULL;
   }
@@ -124,6 +128,19 @@ hashmap_element_t *hashmap_find(hashmap_t *m, hashmap_key_t key, int create_new,
     m->chunks[chunk_offset] = hashmap_get_chunk(m);
   }
   hashmap_chunk_t *chunk = m->chunks[chunk_offset];
+
+  /* Count the number of free elements in this chunk and bail if it is too low. */
+  int chunk_count = 0;
+  for (int k = 0; k < HASHMAP_MASKS_PER_CHUNK; k++) {
+    chunk_count += __builtin_popcountll(chunk->masks[k]);
+  }
+  if (create_new && chunk_count > HASHMAP_ELEMENTS_PER_CHUNK * HASHMAP_MAX_CHUNK_FILL_RATIO) {
+    if (HASHMAP_DEBUG_OUTPUT) {
+      message("chunk %zu is too full (%i of %i elements used), re-hashing.",
+              chunk_offset, chunk_count, HASHMAP_ELEMENTS_PER_CHUNK);
+    }
+    return NULL;
+  }
 
   /* Linear probing (well, not really, but whatever). */
   for (int i = 0; i < HASHMAP_MAX_CHAIN_LENGTH; i++) {
@@ -180,11 +197,14 @@ void hashmap_grow(hashmap_t *m) {
   hashmap_chunk_t **old_chunks = m->chunks;
 
   /* Re-allocate the chunk array. */
-  m->table_size = HASHMAP_GROWTH_FACTOR * m->table_size;
-
-  message("Increasing hash table size from %zu (%zu bytes) to %zu (%zu bytes).",old_table_size, old_table_size * sizeof(hashmap_element_t), m->table_size, m->table_size * sizeof(hashmap_element_t));
-
+  m->table_size *= HASHMAP_GROWTH_FACTOR;
   m->nr_chunks = (m->table_size + HASHMAP_ELEMENTS_PER_CHUNK - 1) / HASHMAP_ELEMENTS_PER_CHUNK;
+  m->table_size = m->nr_chunks * HASHMAP_ELEMENTS_PER_CHUNK;
+
+  message("Increasing hash table size from %zu (%zu bytes) to %zu (%zu bytes).",
+          old_table_size, old_table_size * sizeof(hashmap_element_t), m->table_size, 
+          m->table_size * sizeof(hashmap_element_t));
+
   if ((m->chunks = (hashmap_chunk_t **)calloc(
            m->nr_chunks, sizeof(hashmap_chunk_t *))) == NULL) {
     error("Unable to allocate hashmap chunks.");
