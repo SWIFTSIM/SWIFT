@@ -93,7 +93,7 @@ extern void hashmap_put(hashmap_t *m, hashmap_key_t key, hashmap_value_t value);
  * Note that the returned pointer is volatile and will be invalidated if the hashmap
  * is re-hashed!
  */
-extern size_t* hashmap_get(hashmap_t *m, hashmap_key_t key);
+extern hashmap_value_t* hashmap_get(hashmap_t *m, hashmap_key_t key);
 
 /**
  * @brief Look for the given key and return a pointer to its value or NULL if 
@@ -102,7 +102,7 @@ extern size_t* hashmap_get(hashmap_t *m, hashmap_key_t key);
  * Note that the returned pointer is volatile and will be invalidated if the hashmap
  * is re-hashed!
  */
-extern size_t* hashmap_lookup(hashmap_t *m, hashmap_key_t key);
+extern hashmap_value_t* hashmap_lookup(hashmap_t *m, hashmap_key_t key);
 
 /**
  * @brief Iterate the function parameter over each element in the hashmap.

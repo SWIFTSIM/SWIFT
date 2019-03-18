@@ -851,13 +851,13 @@ void fof_calc_group_props_mapper(void *map_data, int num_elements,
    * the FOF search. */
   for (int ind = 0; ind < num_elements; ind++) {
 
-    size_t root = fof_find(group_index_offset[ind], group_index);
+    hashmap_key_t root = (hashmap_key_t)fof_find(group_index_offset[ind], group_index);
     //double x = gparts[ind].x[0];
     //double y = gparts[ind].x[1];
     //double z = gparts[ind].x[2];
     //double mass = gparts[ind].mass;
     
-    size_t *size = hashmap_get(&map, root);
+    hashmap_value_t *size = hashmap_get(&map, root);
     
     if(size != NULL) (*size)++;
     else error("Couldn't find key (%zu) or create new one.", root);
@@ -908,7 +908,9 @@ void fof_calc_group_props_mapper(void *map_data, int num_elements,
     //atomic_add_d(&group_CoM[root].z, mass * z);
     
   }
-  
+ 
+  hashmap_print_stats(&map);
+
 	if (map.size <= 0)
 		error("Hash table is empty!");	
 
