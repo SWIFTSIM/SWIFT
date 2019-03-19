@@ -84,28 +84,6 @@ runner_iact_nonsym_stars_density(
 }
 
 /**
- * @brief Increases thermal energy of particle due
- * to feedback by specified amount
- *
- * @param du change in internal energy
- * @param p Particle we're acting on
- * @param xp Extra particle data
- * @param cosmo Cosmology struct
- */
-static inline void thermal_feedback(float du, struct part *restrict p,
-                                    struct xpart *restrict xp,
-                                    const struct cosmology *restrict cosmo) {
-
-  float u = hydro_get_physical_internal_energy(p, xp, cosmo);
-  hydro_set_physical_internal_energy(p, cosmo, u + du);
-  // Just setting p->entropy is not enough because xp->entropy_full gets updated
-  // with p->entropy_dt
-  // TODO: ADD HYDRO FUNCTIONS FOR UPDATING DRIFTED AND NON DRIFTED INTERNAL
-  // ENERGY AND GET RID OF THE ENTROPY UPDATE HERE.
-  xp->entropy_full = p->entropy;
-}
-
-/**
  * @brief Feedback interaction between two particles (non-symmetric).
  * Used for updating properties of gas particles neighbouring a star particle
  *
@@ -245,6 +223,7 @@ runner_iact_nonsym_stars_feedback(
   }
 
   /* Energy feedback */
+  float u_init = hydro_get_physical_internal_energy(pj,xp,cosmo);
   float heating_probability = -1.f, du = 0.f, d_energy = 0.f;
   d_energy =
       si->to_distribute.mass *
@@ -257,7 +236,8 @@ runner_iact_nonsym_stars_feedback(
     d_energy += si->to_distribute.num_SNIa *
                 stars_properties->feedback.total_energy_SNe * omega_frac * si->mass_init;
     du = d_energy / hydro_get_mass(pj);
-    thermal_feedback(du, pj, xp, cosmo);
+    hydro_set_physical_internal_energy(pj,xp,cosmo,u_init + du);
+    hydro_set_drifted_physical_internal_energy(pj,cosmo,u_init + du);
   } else {
     // We're doing stochastic heating
     heating_probability = stars_properties->feedback.total_energy_SNe /
@@ -282,7 +262,8 @@ runner_iact_nonsym_stars_feedback(
         "du/ini %.5e",
         pj->id, heating_probability, random_num, du,
         du / hydro_get_physical_internal_energy(pj, xp, cosmo));
-    thermal_feedback(du, pj, xp, cosmo);
+    hydro_set_physical_internal_energy(pj,xp,cosmo,u_init + du);
+    hydro_set_drifted_physical_internal_energy(pj,cosmo,u_init + du);
   }
 }
 
