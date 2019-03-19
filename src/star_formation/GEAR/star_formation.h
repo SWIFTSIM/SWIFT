@@ -27,6 +27,7 @@
 #include "part.h"
 #include "physical_constants.h"
 #include "units.h"
+#include "entropy_floor.h"
 
 /**
  * @brief Calculate if the gas has the potential of becoming
@@ -50,7 +51,8 @@ INLINE static int star_formation_is_star_forming(
     const struct cosmology* cosmo,
     const struct hydro_props* restrict hydro_props,
     const struct unit_system* restrict us,
-    const struct cooling_function_data* restrict cooling) {
+    const struct cooling_function_data* restrict cooling, 
+    const struct entropy_floor_properties* restrict entropy) {
 
   return 0;
 }
