@@ -25,7 +25,7 @@
 
 #include "../src/c_hashmap/hashmap.h"
 
-#define NUM_KEYS 50000
+#define NUM_KEYS (26 * 1000 * 1000)
 
 int main(int argc, char *argv[]) {
 
@@ -38,6 +38,9 @@ int main(int argc, char *argv[]) {
   for(hashmap_value_t key=0; key<NUM_KEYS; key++) {
     hashmap_put(&m, key, key);
   }
+
+  message("Dumping hashmap stats.");
+  hashmap_print_stats(&m);
 
   message("Retrieving elements from the hash table...");
   for(hashmap_value_t key=0; key<NUM_KEYS; key++) {
