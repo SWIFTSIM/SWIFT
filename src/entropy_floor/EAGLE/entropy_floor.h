@@ -136,6 +136,48 @@ static INLINE float entropy_floor(
   return gas_entropy_from_pressure(rho, pressure);
 }
 
+static INLINE float entropy_floor_temperature(
+    const struct part *p, const struct cosmology *cosmo,
+    const struct entropy_floor_properties *props){
+
+  /* Physical density in internal units */
+  const float rho = hydro_get_physical_density(p, cosmo);
+
+  /* Critical density at this redshift.
+   * Recall that this is 0 in a non-cosmological run */
+  const float rho_crit = cosmo->critical_density;
+  const float rho_crit_baryon = cosmo->Omega_b * rho_crit;
+  
+  /* Physical temperature */
+  float temperature = 0.f;
+
+  /* Are we in the regime of the Jeans equation of state? */
+  if ((rho >= rho_crit_baryon * props->Jeans_over_density_threshold) &&
+      (rho >= props->Jeans_density_threshold)) {
+
+    const float jeans_slope = props->Jeans_gamma_effective - 1.f;
+
+    const float temperature_Jeans = props->Jeans_temperature_norm * 
+      pow(rho * props->Jeans_density_threshold_inv, jeans_slope);
+
+    temperature = max(temperature, temperature_Jeans);
+  }
+
+  /* Are we in the regime of the Cool equation of state? */
+  if ((rho >= rho_crit_baryon * props->Cool_over_density_threshold) &&
+      (rho >= props->Cool_density_threshold)) {
+
+    const float cool_slope = props->Cool_gamma_effective - 1.f;
+
+    const float temperature_Cool = props->Cool_temperature_norm *
+      pow(rho * props->Cool_density_threshold_inv, cool_slope); 
+
+    temperature = max(temperature, temperature_Cool);
+  }
+  
+  return temperature;
+}
+
 /**
  * @brief Initialise the entropy floor by reading the parameters and converting
  * to internal units.

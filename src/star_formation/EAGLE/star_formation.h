@@ -32,6 +32,7 @@
 #include "random.h"
 #include "stars.h"
 #include "units.h"
+#include "entropy_floor.h"
 
 /**
  * @file src/star_formation/EAGLE/star_formation.h
@@ -224,7 +225,8 @@ INLINE static int star_formation_is_star_forming(
     const struct cosmology* cosmo,
     const struct hydro_props* restrict hydro_props,
     const struct unit_system* restrict us,
-    const struct cooling_function_data* restrict cooling) {
+    const struct cooling_function_data* restrict cooling,
+    const struct entropy_floor_properties* restrict entropy) {
 
   /* Minimal density (converted from critical density) for star formation */
   const double rho_crit_times_min_over_den =
@@ -261,7 +263,7 @@ INLINE static int star_formation_is_star_forming(
                                                      us, cosmo, cooling, p, xp);
 
   /* Temperature on the equation of state */
-  const double temperature_eos = EOS_temperature(n_H, starform);
+  const double temperature_eos = entropy_floor_temperature(p,cosmo,entropy); 
 
   /* Check the Scahye & Dalla Vecchia 2012 EOS-based temperature critrion */
   return (temperature <
