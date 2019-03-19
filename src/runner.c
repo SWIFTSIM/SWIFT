@@ -593,6 +593,7 @@ void runner_do_star_formation(struct runner *r, struct cell *c, int timer) {
   struct part *restrict parts = c->hydro.parts;
   struct xpart *restrict xparts = c->hydro.xparts;
   const int with_cosmology = (e->policy & engine_policy_cosmology);
+  const int with_feedback = (e->policy & engine_policy_feedback);
   const struct hydro_props *restrict hydro_props = e->hydro_properties;
   const struct unit_system *restrict us = e->internal_units;
   struct cooling_function_data *restrict cooling = e->cooling_func;
@@ -668,7 +669,8 @@ void runner_do_star_formation(struct runner *r, struct cell *c, int timer) {
 
   /* If we formed any stars, the star sorts are now invalid. We need to
    * re-compute them. */
-  if ((c == c->hydro.super) && (current_stars_count != c->stars.count)) {
+  if (with_feedback && (c == c->hydro.super) &&
+      (current_stars_count != c->stars.count)) {
     cell_clear_stars_sort_flags(c, /*is_super=*/1);
     runner_do_stars_sort(r, c, 0x1FFF, /*cleanup=*/0, /*timer=*/0);
   }

@@ -1,0 +1,18 @@
+This example runs a cosmological simulation using 32^3 particles with
+the gas density set to the mean baryonic density and no fluctuations
+(i.e. sigma_8 == 0). The simulation is run without gravity to prevent
+any numerical fluctuation from growing. 
+
+The gas is cooling/heating via its interaction with the UV background
+set by the cooling model. In practice, the gas will follow the
+equilibirum temperature of the model at all z and only be affected by
+reionization. Assuming primoridal abundance, the temperature of the
+gas at different redshifts can be compared to temperatures inferred
+from observations of the Lyman-alpha forrest. The plotting script runs
+this comparison once the simulation has completed.
+
+Within the EAGLE cooling model, interesting changes are to switch
+on/off the Helium II reionisation (or change its redshift) as well as
+the position and amount of energy injected by Hydrogen
+reionisation. The parameters given the YAML file are the ones used for
+actual EAGLE galaxy formation runs.

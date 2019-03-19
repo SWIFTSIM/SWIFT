@@ -2862,7 +2862,7 @@ void engine_init_particles(struct engine *e, int flag_entropy_ICs,
   /* Update the cooling function */
   if ((e->policy & engine_policy_cooling) ||
       (e->policy & engine_policy_temperature))
-    cooling_update(e->cosmology, e->cooling_func);
+    cooling_update(e->cosmology, e->cooling_func, e->s);
 
 #ifdef WITH_LOGGER
   /* Mark the first time step in the particle logger file. */
@@ -2911,8 +2911,8 @@ void engine_init_particles(struct engine *e, int flag_entropy_ICs,
   /* Now time to get ready for the first time-step */
   if (e->nodeID == 0) message("Running initial fake time-step.");
 
-  /* Prepare all the tasks again for a new round */
-  engine_marktasks(e);
+  /* Construct all cells again for a new round (need to update h_max) */
+  engine_rebuild(e, 0, 0);
 
   /* No drift this time */
   engine_skip_drift(e);
@@ -3126,7 +3126,7 @@ void engine_step(struct engine *e) {
   /* Update the cooling function */
   if ((e->policy & engine_policy_cooling) ||
       (e->policy & engine_policy_temperature))
-    cooling_update(e->cosmology, e->cooling_func);
+    cooling_update(e->cosmology, e->cooling_func, e->s);
 
   /*****************************************************/
   /* OK, we now know what the next end of time-step is */

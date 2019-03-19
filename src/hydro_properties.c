@@ -317,6 +317,12 @@ void hydro_props_print_snapshot(hid_t h_grpsph, const struct hydro_props *p) {
   io_write_attribute_f(h_grpsph, "Beta viscosity", const_viscosity_beta);
   io_write_attribute_f(h_grpsph, "Max v_sig ratio (limiter)",
                        const_limiter_max_v_sig_ratio);
+  io_write_attribute_f(h_grpsph, "Diffusion alpha", p->diffusion.alpha);
+  io_write_attribute_f(h_grpsph, "Diffusion alpha (max)",
+                       p->diffusion.alpha_max);
+  io_write_attribute_f(h_grpsph, "Diffusion alpha (min)",
+                       p->diffusion.alpha_min);
+  io_write_attribute_f(h_grpsph, "Diffusion beta", p->diffusion.beta);
 }
 #endif
 

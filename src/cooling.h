@@ -31,6 +31,7 @@
 #include "parser.h"
 #include "physical_constants.h"
 #include "restart.h"
+#include "space.h"
 #include "units.h"
 
 /* Import the right cooling definition */

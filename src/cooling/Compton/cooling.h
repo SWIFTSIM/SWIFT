@@ -49,9 +49,11 @@
  *
  * @param cosmo The current cosmological model.
  * @param cooling The #cooling_function_data used in the run.
+ * @param s The #space containing all the particles.
  */
 INLINE static void cooling_update(const struct cosmology* cosmo,
-                                  struct cooling_function_data* cooling) {
+                                  struct cooling_function_data* cooling,
+                                  struct space* s) {
   // Add content if required.
 }
 

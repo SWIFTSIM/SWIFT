@@ -9,11 +9,11 @@ fi
 if [ ! -e constantBox.hdf5 ]
 then
     echo "Generating initial conditions for the uniform cosmo box example..."
-    python makeIC.py
+    python3 makeIC.py
 fi
 
 # Run SWIFT
 ../../swift --hydro --cosmology --self-gravity --threads=8 constant_volume.yml 2>&1 | tee output.log
 
 # Plot the result
-python plotSolution.py $i
+python3 plotSolution.py $i
