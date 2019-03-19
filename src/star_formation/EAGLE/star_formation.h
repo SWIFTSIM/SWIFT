@@ -189,23 +189,6 @@ INLINE static double EOS_pressure(const double n_H,
 }
 
 /**
- * @brief Compute the temperarue on the polytropic equation of state for a given
- * Hydrogen number density.
- *
- * Schaye & Dalla Vecchia 2008, eq. 13 rewritten for temperature
- *
- * @param n_H The Hydrogen number density in internal units.
- * @param starform The properties of the star formation model.
- * @return The temperature on the equation of state in internal units.
- */
-INLINE static double EOS_temperature(const double n_H,
-                                     const struct star_formation* starform) {
-
-  return starform->EOS_temperature_c *
-         pow(n_H, starform->EOS_polytropic_index - 1.);
-}
-
-/**
  * @brief Calculate if the gas has the potential of becoming
  * a star.
  *
