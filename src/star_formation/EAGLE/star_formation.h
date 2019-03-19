@@ -24,6 +24,7 @@
 #include "cooling.h"
 #include "cosmology.h"
 #include "engine.h"
+#include "entropy_floor.h"
 #include "equation_of_state.h"
 #include "hydro.h"
 #include "parser.h"
@@ -32,7 +33,6 @@
 #include "random.h"
 #include "stars.h"
 #include "units.h"
-#include "entropy_floor.h"
 
 /**
  * @file src/star_formation/EAGLE/star_formation.h
@@ -246,7 +246,7 @@ INLINE static int star_formation_is_star_forming(
                                                      us, cosmo, cooling, p, xp);
 
   /* Temperature on the equation of state */
-  const double temperature_eos = entropy_floor_temperature(p,cosmo,entropy); 
+  const double temperature_eos = entropy_floor_temperature(p, cosmo, entropy);
 
   /* Check the Scahye & Dalla Vecchia 2012 EOS-based temperature critrion */
   return (temperature <

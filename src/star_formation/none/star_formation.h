@@ -21,13 +21,13 @@
 
 /* Local includes */
 #include "cosmology.h"
+#include "entropy_floor.h"
 #include "error.h"
 #include "hydro_properties.h"
 #include "parser.h"
 #include "part.h"
 #include "physical_constants.h"
 #include "units.h"
-#include "entropy_floor.h"
 
 /* Starformation struct */
 struct star_formation {};
@@ -54,7 +54,7 @@ INLINE static int star_formation_is_star_forming(
     const struct cosmology* cosmo,
     const struct hydro_props* restrict hydro_props,
     const struct unit_system* restrict us,
-    const struct cooling_function_data* restrict cooling, 
+    const struct cooling_function_data* restrict cooling,
     const struct entropy_floor_properties* restrict entropy) {
 
   return 0;

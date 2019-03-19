@@ -138,7 +138,7 @@ static INLINE float entropy_floor(
 
 static INLINE float entropy_floor_temperature(
     const struct part *p, const struct cosmology *cosmo,
-    const struct entropy_floor_properties *props){
+    const struct entropy_floor_properties *props) {
 
   /* Physical density in internal units */
   const float rho = hydro_get_physical_density(p, cosmo);
@@ -147,7 +147,7 @@ static INLINE float entropy_floor_temperature(
    * Recall that this is 0 in a non-cosmological run */
   const float rho_crit = cosmo->critical_density;
   const float rho_crit_baryon = cosmo->Omega_b * rho_crit;
-  
+
   /* Physical temperature */
   float temperature = 0.f;
 
@@ -157,8 +157,9 @@ static INLINE float entropy_floor_temperature(
 
     const float jeans_slope = props->Jeans_gamma_effective - 1.f;
 
-    const float temperature_Jeans = props->Jeans_temperature_norm * 
-      pow(rho * props->Jeans_density_threshold_inv, jeans_slope);
+    const float temperature_Jeans =
+        props->Jeans_temperature_norm *
+        pow(rho * props->Jeans_density_threshold_inv, jeans_slope);
 
     temperature = max(temperature, temperature_Jeans);
   }
@@ -169,12 +170,13 @@ static INLINE float entropy_floor_temperature(
 
     const float cool_slope = props->Cool_gamma_effective - 1.f;
 
-    const float temperature_Cool = props->Cool_temperature_norm *
-      pow(rho * props->Cool_density_threshold_inv, cool_slope); 
+    const float temperature_Cool =
+        props->Cool_temperature_norm *
+        pow(rho * props->Cool_density_threshold_inv, cool_slope);
 
     temperature = max(temperature, temperature_Cool);
   }
-  
+
   return temperature;
 }
 
