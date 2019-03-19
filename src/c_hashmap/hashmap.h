@@ -17,6 +17,8 @@
 // Type used for chunk bitmasks.
 typedef size_t hashmap_mask_t;
 
+#define HASHMAP_BITS_PER_MASK ((int)sizeof(hashmap_mask_t) * 8)
+
 // Type used for the hashmap keys (must have a valid '==' operation).
 #ifndef hashmap_key_t
 #define hashmap_key_t size_t
@@ -27,22 +29,28 @@ typedef size_t hashmap_mask_t;
 #define hashmap_value_t size_t
 #endif
 
-#define HASHMAP_BITS_PER_MASK ((int)sizeof(hashmap_mask_t) * 8)
-#define HASHMAP_MASKS_PER_CHUNK (4)
-#define HASHMAP_ELEMENTS_PER_CHUNK \
-  (HASHMAP_BITS_PER_MASK * HASHMAP_MASKS_PER_CHUNK)
-#define HASHMAP_CHUNKS_PER_ALLOC (8)
-
-#define HASHMAP_MAX_CHAIN_LENGTH (HASHMAP_ELEMENTS_PER_CHUNK / 8)
-#ifndef HASHMAP_DEBUG_OUTPUT
-#define HASHMAP_DEBUG_OUTPUT (1)
-#endif  // HASHMAP_DEBUG_OUTPUT
-
 /* We need to keep keys and values */
 typedef struct _hashmap_element {
   hashmap_key_t key;
   hashmap_value_t value;
 } hashmap_element_t;
+
+/* Make sure a chunk fits in a given size. */
+#define HASHMAP_TARGET_CHUNK_BYTES (4 * 1024)
+#define HASHMAP_BITS_PER_ELEMENT ((int)sizeof(hashmap_element_t) * 8 + 1)
+#define HASHMAP_ELEMENTS_PER_CHUNK \
+  ((HASHMAP_TARGET_CHUNK_BYTES * 8) / HASHMAP_BITS_PER_ELEMENT)
+#define HASHMAP_MASKS_PER_CHUNK                               \
+  ((HASHMAP_ELEMENTS_PER_CHUNK + HASHMAP_BITS_PER_MASK - 1) / \
+   HASHMAP_BITS_PER_MASK)
+
+#define HASHMAP_ALLOCS_INITIAL_SIZE (8)
+#define HASHMAP_ALLOC_SIZE_FRACTION (0.1)
+
+#define HASHMAP_MAX_CHAIN_LENGTH (HASHMAP_ELEMENTS_PER_CHUNK / 8)
+#ifndef HASHMAP_DEBUG_OUTPUT
+#define HASHMAP_DEBUG_OUTPUT (1)
+#endif  // HASHMAP_DEBUG_OUTPUT
 
 /* A chunk of hashmap_element, with the corresponding bitmask. */
 typedef struct _hashmap_chunk {
@@ -52,11 +60,6 @@ typedef struct _hashmap_chunk {
   };
   hashmap_element_t data[HASHMAP_ELEMENTS_PER_CHUNK];
 } hashmap_chunk_t;
-
-typedef struct _hashmap_alloc {
-  hashmap_chunk_t chunks[HASHMAP_CHUNKS_PER_ALLOC];
-  void *next;
-} hashmap_alloc_t;
 
 /* A hashmap has some maximum size and current size,
  * as well as the data to hold. */
@@ -68,8 +71,10 @@ typedef struct _hashmap {
       *chunks;  // Pointer to chunks in use, but not densely populated.
   hashmap_chunk_t
       *graveyard;  // Pointer to allocated, but currently unused chunks.
-  hashmap_alloc_t *
-      allocs;  // Pointer to the allocated chunks of chunks, needed for cleanup.
+
+  void **allocs;        // Pointers to allocated blocks of chunks.
+  size_t allocs_size;   // Size of the allocs array.
+  size_t allocs_count;  // Number of elements in the allocs array.
 
 #if HASHMAP_DEBUG_OUTPUT
   /* Chain lengths, used for debugging only. */
