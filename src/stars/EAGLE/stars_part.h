@@ -88,8 +88,32 @@ struct spart {
     /* Mass of ejecta */
     float mass;
 
-    /* Mass fractions of ejecta */
-    struct chemistry_part_data chemistry_data;
+    /* Total metal mass released per unit initial stellar mass */
+    float total_metal_mass;
+
+    /* Total mass released by element per unit initial stellar mass */
+    float metal_mass[chemistry_element_count];
+    
+    /*! Mass coming from SNIa */
+    float mass_from_SNIa;
+
+    /*! Fraction of total gas mass in metals coming from SNIa */
+    float metal_mass_from_SNIa;
+
+    /*! Mass coming from AGB */
+    float mass_from_AGB;
+
+    /*! Fraction of total gas mass in metals coming from AGB */
+    float metal_mass_from_AGB;
+
+    /*! Mass coming from SNII */
+    float mass_from_SNII;
+
+    /*! Fraction of total gas mass in metals coming from SNII */
+    float metal_mass_from_SNII;
+
+    /*! Fraction of total gas mass in Iron coming from SNIa */
+    float Fe_mass_from_SNIa;
 
     /* Number of type Ia SNe per unit mass */
     float num_SNIa;
@@ -146,14 +170,6 @@ struct spart {
   int num_ngb_density;
 #endif
 
-  /* Variables to track enrichment */
-  float metal_mass_released;
-  float metals_released[chemistry_element_count];
-  float num_snia;
-
-  /* Time since last enrichment  */
-  float time_since_enrich_Gyr;
-
 } SWIFT_STRUCT_ALIGN;
 
 /**
@@ -165,9 +181,9 @@ struct yield_table {
   double *metallicity;
   double *SPH;
   double *yield;
-  double *ejecta_SPH;
+  double *ejecta_IMF_resampled;
   double *ejecta;
-  double *total_metals_SPH;
+  double *total_metals_IMF_resampled;
   double *total_metals;
 };
 
@@ -212,6 +228,7 @@ struct stars_props {
   /*! Maximal change of h over one time-step */
   float log_max_h_change;
 
+  struct {
   /* Flag to switch between continuous and stochastic heating */
   int continuous_heating;
 
@@ -252,8 +269,8 @@ struct stars_props {
   double *typeII_factor;
 
   /* Yield tables for SNIa  */
-  double *yield_SNIa_SPH;
-  double yield_SNIa_total_metals_SPH;
+  double *yield_SNIa_IMF_resampled;
+  double yield_SNIa_total_metals_IMF_resampled;
   double *yields_SNIa;
 
   /* Parameters to SNIa enrichment model  */
@@ -312,6 +329,7 @@ struct stars_props {
 
   /* wind delay time for SNII */
   float SNII_wind_delay;
+  } feedback;
 
 };
 

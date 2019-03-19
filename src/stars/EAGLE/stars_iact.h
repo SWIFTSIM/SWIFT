@@ -66,7 +66,7 @@ runner_iact_nonsym_stars_density(
   si->density.wcount_dh -= (hydro_dimension * wi + ui * wi_dx);
 
   /* Add mass of pj to neighbour mass of si  */
-  si->ngb_mass += hydro_get_mass(pj);  // / stars_properties->const_solar_mass;
+  si->ngb_mass += hydro_get_mass(pj);  // / stars_properties->feedback.const_solar_mass;
 
   /* Add contribution of pj to normalisation of kernel (TODO: IMPROVE COMMENT?)
    */
@@ -161,8 +161,7 @@ runner_iact_nonsym_stars_feedback(
       pj->chemistry_data.metal_mass_fraction_total * current_mass;
   const float new_metal_mass_total =
       current_metal_mass_total +
-      si->to_distribute.chemistry_data.metal_mass_fraction_total *
-          si->to_distribute.mass * omega_frac;
+      si->to_distribute.total_metal_mass * omega_frac;
   pj->chemistry_data.metal_mass_fraction_total =
       new_metal_mass_total / new_mass;
 
@@ -172,8 +171,7 @@ runner_iact_nonsym_stars_feedback(
         pj->chemistry_data.metal_mass_fraction[elem] * current_mass;
     const float new_metal_mass =
         current_metal_mass +
-        si->to_distribute.chemistry_data.metal_mass_fraction[elem] *
-            si->to_distribute.mass * omega_frac;
+        si->to_distribute.metal_mass[elem] * omega_frac;
     pj->chemistry_data.metal_mass_fraction[elem] = new_metal_mass / new_mass;
   }
 
@@ -182,50 +180,61 @@ runner_iact_nonsym_stars_feedback(
       pj->chemistry_data.iron_mass_fraction_from_SNIa * current_mass;
   const float new_iron_from_SNIa_mass =
       current_iron_from_SNIa_mass +
-      si->to_distribute.chemistry_data.iron_mass_fraction_from_SNIa *
-          si->to_distribute.mass * omega_frac;
+      si->to_distribute.Fe_mass_from_SNIa* omega_frac;
   pj->chemistry_data.iron_mass_fraction_from_SNIa =
       new_iron_from_SNIa_mass / new_mass;
 
-  /* Update mass from SNIa */
-  pj->chemistry_data.mass_from_SNIa +=
-      si->to_distribute.chemistry_data.mass_from_SNIa * omega_frac;
+  /* Update mass fraction from SNIa  */
+  const float current_mass_from_SNIa =
+      pj->chemistry_data.mass_from_SNIa * current_mass;
+  const float new_mass_from_SNIa =
+      current_mass_from_SNIa +
+      si->to_distribute.mass_from_SNIa * omega_frac;
+  pj->chemistry_data.mass_from_SNIa =
+      new_mass_from_SNIa / new_mass;
 
   /* Update metal mass fraction from SNIa */
   const float current_metal_mass_fraction_from_SNIa =
       pj->chemistry_data.metal_mass_fraction_from_SNIa * current_mass;
   const float new_metal_mass_fraction_from_SNIa =
       current_metal_mass_fraction_from_SNIa +
-      si->to_distribute.chemistry_data.metal_mass_fraction_from_SNIa *
-          si->to_distribute.mass * omega_frac;
+      si->to_distribute.metal_mass_from_SNIa * omega_frac;
   pj->chemistry_data.metal_mass_fraction_from_SNIa =
       new_metal_mass_fraction_from_SNIa / new_mass;
 
-  /* Update mass from SNII */
-  pj->chemistry_data.mass_from_SNII +=
-      si->to_distribute.chemistry_data.mass_from_SNII * omega_frac;
+  /* Update mass fraction from SNII  */
+  const float current_mass_from_SNII =
+      pj->chemistry_data.mass_from_SNII * current_mass;
+  const float new_mass_from_SNII =
+      current_mass_from_SNII +
+      si->to_distribute.mass_from_SNII * omega_frac;
+  pj->chemistry_data.mass_from_SNII =
+      new_mass_from_SNII / new_mass;
 
   /* Update metal mass fraction from SNII */
   const float current_metal_mass_fraction_from_SNII =
       pj->chemistry_data.metal_mass_fraction_from_SNII * current_mass;
   const float new_metal_mass_fraction_from_SNII =
       current_metal_mass_fraction_from_SNII +
-      si->to_distribute.chemistry_data.metal_mass_fraction_from_SNII *
-          si->to_distribute.mass * omega_frac;
+      si->to_distribute.metal_mass_from_SNII * omega_frac;
   pj->chemistry_data.metal_mass_fraction_from_SNII =
       new_metal_mass_fraction_from_SNII / new_mass;
 
-  /* Update mass from AGB */
-  pj->chemistry_data.mass_from_AGB +=
-      si->to_distribute.chemistry_data.mass_from_AGB * omega_frac;
+  /* Update mass fraction from AGB  */
+  const float current_mass_from_AGB =
+      pj->chemistry_data.mass_from_AGB * current_mass;
+  const float new_mass_from_AGB =
+      current_mass_from_AGB +
+      si->to_distribute.mass_from_AGB * omega_frac;
+  pj->chemistry_data.mass_from_AGB =
+      new_mass_from_AGB / new_mass;
 
   /* Update metal mass fraction from AGB */
   const float current_metal_mass_fraction_from_AGB =
       pj->chemistry_data.metal_mass_fraction_from_AGB * current_mass;
   const float new_metal_mass_fraction_from_AGB =
       current_metal_mass_fraction_from_AGB +
-      si->to_distribute.chemistry_data.metal_mass_fraction_from_AGB *
-          si->to_distribute.mass * omega_frac;
+      si->to_distribute.metal_mass_from_AGB * omega_frac;
   pj->chemistry_data.metal_mass_fraction_from_AGB =
       new_metal_mass_fraction_from_AGB / new_mass;
 
@@ -239,27 +248,27 @@ runner_iact_nonsym_stars_feedback(
   float heating_probability = -1.f, du = 0.f, d_energy = 0.f;
   d_energy =
       si->to_distribute.mass *
-      (stars_properties->ejecta_specific_thermal_energy +
+      (stars_properties->feedback.ejecta_specific_thermal_energy +
        0.5 * (si->v[0] * si->v[0] + si->v[1] * si->v[1] + si->v[2] * si->v[2]) *
            cosmo->a2_inv);
 
-  if (stars_properties->continuous_heating) {
+  if (stars_properties->feedback.continuous_heating) {
     // We're doing ONLY continuous heating
     d_energy += si->to_distribute.num_SNIa *
-                stars_properties->total_energy_SNe * omega_frac * si->mass_init;
+                stars_properties->feedback.total_energy_SNe * omega_frac * si->mass_init;
     du = d_energy / hydro_get_mass(pj);
     thermal_feedback(du, pj, xp, cosmo);
   } else {
     // We're doing stochastic heating
-    heating_probability = stars_properties->total_energy_SNe /
-                          stars_properties->temp_to_u_factor *
+    heating_probability = stars_properties->feedback.total_energy_SNe /
+                          stars_properties->feedback.temp_to_u_factor *
                           si->to_distribute.num_SNe *
-                          stars_properties->SNIa_energy_fraction /
-                          (stars_properties->SNe_deltaT_desired * si->ngb_mass);
-    du = stars_properties->SNe_deltaT_desired *
-         stars_properties->temp_to_u_factor;
+                          stars_properties->feedback.SNIa_energy_fraction /
+                          (stars_properties->feedback.SNe_deltaT_desired * si->ngb_mass);
+    du = stars_properties->feedback.SNe_deltaT_desired *
+         stars_properties->feedback.temp_to_u_factor;
     if (heating_probability >= 1) {
-      du = stars_properties->total_energy_SNe * si->to_distribute.num_SNIa /
+      du = stars_properties->feedback.total_energy_SNe * si->to_distribute.num_SNIa /
            si->ngb_mass;
       heating_probability = 1;
     }
