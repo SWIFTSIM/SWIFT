@@ -46,7 +46,7 @@
 
 /* If reporting memory usage, try to dump that when exiting in error. */
 #ifdef SWIFT_MEMUSE_REPORTS
-#define memdump(rank) memuse_log_dump("memuse-error-report.txt");
+#define memdump(rank) memuse_log_dump_error(rank);
 #else
 #define memdump(rank)
 #endif

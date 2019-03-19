@@ -146,6 +146,8 @@ void memuse_log_allocation(const char *label, void *ptr, int allocated,
 
 /**
  * @brief dump the log to a file and reset, if anything to dump.
+ *
+ * @param filename name of file for log dump.
  */
 void memuse_log_dump(const char *filename) {
 
@@ -174,6 +176,18 @@ void memuse_log_dump(const char *filename) {
   /* Close the file. */
   fflush(fd);
   fclose(fd);
+}
+
+/**
+ * @brief dump the log for using the given rank to generate a standard
+ *        name for the output. Used when exiting in error.
+ *
+ * @param rank the rank exiting in error.
+ */
+void memuse_log_dump_error(int rank) {
+    char filename[60];
+    sprintf(filename, "memuse-error-report-rank%d.txt", rank);
+    memuse_log_dump(filename);
 }
 
 #endif /* SWIFT_MEMUSE_REPORTS */

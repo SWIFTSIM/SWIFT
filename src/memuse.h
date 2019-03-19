@@ -32,6 +32,7 @@ const char *memuse_process(int inmb);
 
 #ifdef SWIFT_MEMUSE_REPORTS
 void memuse_log_dump(const char *filename);
+void memuse_log_dump_error(int rank);
 void memuse_log_allocation(const char *label, void *ptr, int allocated,
                            size_t size);
 #else
@@ -57,7 +58,12 @@ __attribute__((always_inline)) inline int swift_memalign(const char *label,
                                                          size_t size) {
   int result = posix_memalign(memptr, alignment, size);
 #ifdef SWIFT_MEMUSE_REPORTS
-  if (result == 0) memuse_log_allocation(label, *memptr, 1, size);
+  if (result == 0) {
+    memuse_log_allocation(label, *memptr, 1, size);
+  } else {
+    /* Failed allocations are interesting as well. */
+    memuse_log_allocation(label, NULL, 1, size);
+  }
 #endif
   return result;
 }
@@ -77,7 +83,12 @@ __attribute__((always_inline)) inline void *swift_malloc(const char *label,
                                                          size_t size) {
   void *memptr = malloc(size);
 #ifdef SWIFT_MEMUSE_REPORTS
-  if (memptr != NULL) memuse_log_allocation(label, memptr, 1, size);
+  if (memptr != NULL) {
+    memuse_log_allocation(label, memptr, 1, size);
+  } else {
+    /* Failed allocations are interesting as well. */
+    memuse_log_allocation(label, NULL, 1, size);
+  }
 #endif
   return memptr;
 }
