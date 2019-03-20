@@ -590,7 +590,7 @@ void runner_do_star_formation(struct runner *r, struct cell *c, int timer) {
 
   /* Anything to do here? */
   if (!cell_is_active_hydro(c, e)) {
-    star_formation_init_SFH_inactive(&c->stars.sfh);
+    star_formation_logger_log_inactive_cell(&c->stars.sfh);
     return;
   }
   star_formation_logger_log_active_cell(&c->stars.sfh);
@@ -606,7 +606,7 @@ void runner_do_star_formation(struct runner *r, struct cell *c, int timer) {
         runner_do_star_formation(r, cp, 0);
 
         /* Update current cell using child cells */
-        star_formation_add_progeny_SFH(&c->stars.sfh, &cp->stars.sfh);
+        star_formation_logger_log_progeny_cell(&c->stars.sfh, &cp->stars.sfh);
       }
   } else {
 
@@ -644,7 +644,7 @@ void runner_do_star_formation(struct runner *r, struct cell *c, int timer) {
                                      dt_star);
 
           /* Add the SFR and SFR*dt to the SFH struct of this cell */
-          star_formation_log_for_active_particles(p, xp, &c->stars.sfh,
+          star_formation_logger_log_active_part(p, xp, &c->stars.sfh,
                                                   dt_star);
 
           /* Are we forming a star particle from this SF rate? */
@@ -659,7 +659,7 @@ void runner_do_star_formation(struct runner *r, struct cell *c, int timer) {
                                            with_cosmology);
 
             /* Update the Star formation history */
-            star_formation_update_stellar_mass(sp, &c->stars.sfh);
+            star_formation_logger_log_new_spart(sp, &c->stars.sfh);
           }
 
         } else { /* Are we not star-forming? */
@@ -670,7 +670,7 @@ void runner_do_star_formation(struct runner *r, struct cell *c, int timer) {
 
         }      /* Not Star-forming? */
       } else { /* is active? */
-        star_formation_log_for_inactive_particles(p, xp, &c->stars.sfh);
+        star_formation_logger_log_inactive_part(p, xp, &c->stars.sfh);
       }
     } /* Loop over particles */
   }

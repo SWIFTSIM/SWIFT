@@ -35,7 +35,7 @@
  * @param sp new created star particle
  * @param sf the star_formation_history struct of the current cell
  */
-INLINE static void star_formation_update_stellar_mass(
+INLINE static void star_formation_logger_log_new_spart(
     struct spart *sp, struct star_formation_history *sf) {}
 
 /**
@@ -60,7 +60,7 @@ INLINE static void star_formation_logger_log_active_cell(
  *
  * @param sf the star_formation_history struct we want to initialize
  */
-INLINE static void star_formation_init_SFH_inactive(
+INLINE static void star_formation_logger_log_inactive_cell(
     struct star_formation_history *sf) {}
 
 /**
@@ -69,7 +69,7 @@ INLINE static void star_formation_init_SFH_inactive(
  * @param sf parent SFH struct
  * @param sfprogeny progeny SFH struct
  */
-INLINE static void star_formation_add_progeny_SFH(
+INLINE static void star_formation_logger_log_progeny_cell(
     struct star_formation_history *sf,
     const struct star_formation_history *sfprogeny) {}
 
@@ -81,7 +81,7 @@ INLINE static void star_formation_add_progeny_SFH(
  * @param sf the star formation structure to which we want to add the star
  * formation
  */
-INLINE static void star_formation_get_total_cell(
+INLINE static void star_formation_logger_add(
     struct cell *c, struct star_formation_history *sf) {}
 
 /**
@@ -90,7 +90,7 @@ INLINE static void star_formation_get_total_cell(
  * @param c the cell for which we want to add the star formation
  * @param sf the combined star formation history of the progeny
  */
-INLINE static void star_formation_add_to_parent_cell(
+INLINE static void star_formation_logger_assign(
     struct cell *c, struct star_formation_history *sf) {}
 
 /**
@@ -127,7 +127,7 @@ INLINE static void star_formation_init_file_writer(const char *baseName) {}
  * @param xp the #xpart
  * @param sf the SFH logger struct
  */
-INLINE static void star_formation_log_for_active_particles(
+INLINE static void star_formation_logger_log_active_part(
     const struct part *p, const struct xpart *xp,
     struct star_formation_history *sf, const double dt_star) {}
 
@@ -139,7 +139,7 @@ INLINE static void star_formation_log_for_active_particles(
  * @param xp the #xpart
  * @param sf the SFH logger struct
  */
-INLINE static void star_formation_log_for_inactive_particles(
+INLINE static void star_formation_logger_log_inactive_part(
     const struct part *p, const struct xpart *xp,
     struct star_formation_history *sf) {}
 
@@ -150,7 +150,7 @@ INLINE static void star_formation_log_for_inactive_particles(
  * @param xp the #xpart
  * @param sf the SFH logger struct
  */
-INLINE static void star_formation_SFR_rebuilt(
+INLINE static void star_formation_logger_log_part_rebuild(
     const struct part *p, const struct xpart *xp,
     struct star_formation_history *sf) {}
 
@@ -161,7 +161,7 @@ INLINE static void star_formation_SFR_rebuilt(
  * @param xp the #xpart
  * @param sf the SFH logger struct
  */
-INLINE static void star_formation_recurse_SFR_rebuilt(struct cell *c,
+INLINE static void star_formation_logger_recurse_SFR_rebuild(struct cell *c,
                                                       const struct cell *cp) {}
 
 #endif /* SWIFT_GEAR_STARFORMATION_LOGGER_H */

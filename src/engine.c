@@ -2392,7 +2392,7 @@ void engine_collect_end_of_step_recurse(struct cell *c,
       s_inhibited += cp->stars.inhibited;
 
       /* Add the star formation history in this cell to sfh_updated */
-      star_formation_get_total_cell(cp, &sfh_updated);
+      star_formation_logger_add(cp, &sfh_updated);
 
       /* Collected, so clear for next time. */
       cp->hydro.updated = 0;
@@ -2417,7 +2417,7 @@ void engine_collect_end_of_step_recurse(struct cell *c,
   c->stars.inhibited = s_inhibited;
 
   /* Store the star formation history in the parent cell */
-  star_formation_add_to_parent_cell(c, &sfh_updated);
+  star_formation_logger_assign(c, &sfh_updated);
 }
 
 /**
@@ -2487,7 +2487,7 @@ void engine_collect_end_of_step_mapper(void *map_data, int num_elements,
 
       /* Get the star formation history from the current cell and store it in
        * the star formation history struct */
-      star_formation_get_total_cell(c, &sfh_updated);
+      star_formation_logger_add(c, &sfh_updated);
 
       /* Collected, so clear for next time. */
       c->hydro.updated = 0;
@@ -2508,7 +2508,7 @@ void engine_collect_end_of_step_mapper(void *map_data, int num_elements,
     data->s_inhibited += s_inhibited;
 
     /* Add the SFH information from this engine to the global data */
-    star_formation_add_progeny_SFH(sfh_top, &sfh_updated);
+    star_formation_logger_log_progeny_cell(sfh_top, &sfh_updated);
 
     if (ti_hydro_end_min > e->ti_current)
       data->ti_hydro_end_min = min(ti_hydro_end_min, data->ti_hydro_end_min);
