@@ -577,7 +577,7 @@ void runner_do_star_formation(struct runner *r, struct cell *c, int timer) {
   const struct hydro_props *restrict hydro_props = e->hydro_properties;
   const struct unit_system *restrict us = e->internal_units;
   struct cooling_function_data *restrict cooling = e->cooling_func;
-  const struct entropy_floor_properties *entropy = e->entropy_floor;
+  const struct entropy_floor_properties *entropy_floor = e->entropy_floor;
   const double time_base = e->time_base;
   const integertime_t ti_current = e->ti_current;
   const int current_stars_count = c->stars.count;
@@ -605,7 +605,7 @@ void runner_do_star_formation(struct runner *r, struct cell *c, int timer) {
 
         /* Is this particle star forming? */
         if (star_formation_is_star_forming(p, xp, sf_props, phys_const, cosmo,
-                                           hydro_props, us, cooling, entropy)) {
+                                           hydro_props, us, cooling, entropy_floor)) {
 
           /* Time-step size for this particle */
           double dt_star;
