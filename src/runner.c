@@ -74,6 +74,7 @@
 #define TASK_LOOP_GRADIENT 1
 #define TASK_LOOP_FORCE 2
 #define TASK_LOOP_LIMITER 3
+#define TASK_LOOP_FEEDBACK 4
 
 /* Import the density loop functions. */
 #define FUNCTION density
@@ -110,14 +111,16 @@
 
 /* Import the stars density loop functions. */
 #define FUNCTION density
-#define UPDATE_STARS 1
+#define FUNCTION_TASK_LOOP TASK_LOOP_DENSITY
 #include "runner_doiact_stars.h"
-#undef UPDATE_STARS
+#undef FUNCTION_TASK_LOOP
 #undef FUNCTION
 
 /* Import the stars feedback loop functions. */
 #define FUNCTION feedback
+#define FUNCTION_TASK_LOOP TASK_LOOP_FEEDBACK
 #include "runner_doiact_stars.h"
+#undef FUNCTION_TASK_LOOP
 #undef FUNCTION
 
 /**
