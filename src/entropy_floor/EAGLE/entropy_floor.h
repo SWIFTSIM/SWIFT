@@ -139,7 +139,10 @@ static INLINE float entropy_floor(
 /**
  * @brief Compute the temperature from the entropy floor for a given #part
  *
- * Calculate the EOS temperature, the particle is not updated.
+ * Calculate the EoS temperature, the particle is not updated.
+ * This is the temperature exactly corresponding to the imposed EoS shape.
+ * It only matches the entropy returned by the entropy_floor() function
+ * for a neutral gas with primoridal abundance.
  *
  * @param p The #part.
  * @param cosmo The cosmological model.
@@ -157,7 +160,7 @@ static INLINE float entropy_floor_temperature(
   const float rho_crit = cosmo->critical_density;
   const float rho_crit_baryon = cosmo->Omega_b * rho_crit;
 
-  /* Physical temperature */
+  /* Physical */
   float temperature = 0.f;
 
   /* Are we in the regime of the Jeans equation of state? */
@@ -192,6 +195,9 @@ static INLINE float entropy_floor_temperature(
 /**
  * @brief Initialise the entropy floor by reading the parameters and converting
  * to internal units.
+ *
+ * The input temperatures and number densities are converted to entropy and
+ * density assuming a neutral gas of primoridal abundance.
  *
  * @param params The YAML parameter file.
  * @param us The system of units used internally.
