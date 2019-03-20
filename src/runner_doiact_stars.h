@@ -84,7 +84,7 @@
 void DOSELF1_STARS(struct runner *r, struct cell *c, int timer) {
 
 #ifdef SWIFT_DEBUG_CHECKS
-  if (c->nodeID != e->nodeID) error("Should be run on a different node");
+  if (c->nodeID != engine_rank) error("Should be run on a different node");
 #endif
 
   const struct engine *e = r->e;
