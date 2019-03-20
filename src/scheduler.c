@@ -465,7 +465,7 @@ void scheduler_write_dependencies(struct scheduler *s, int verbose) {
 
   if (s->nodeID == 0) {
     /* Create file */
-    char *filename = "dependency_graph.csv";
+    const char *filename = "dependency_graph.csv";
     FILE *f = fopen(filename, "w");
     if (f == NULL) error("Error opening dependency graph file.");
 
