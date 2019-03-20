@@ -593,7 +593,7 @@ void runner_do_star_formation(struct runner *r, struct cell *c, int timer) {
     star_formation_init_SFH_inactive(&c->stars.sfh);
     return;
   }
-  star_formation_init_SFH_active(&c->stars.sfh);
+  star_formation_logger_log_active_cell(&c->stars.sfh);
 
   /* Recurse? */
   if (c->split) {

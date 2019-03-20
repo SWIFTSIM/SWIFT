@@ -51,7 +51,7 @@ INLINE static void star_formation_init_stellar_mass(
  *
  * @param sf the star_formation_history struct we want to initialize
  */
-INLINE static void star_formation_init_SFH_active(
+INLINE static void star_formation_logger_log_active_cell(
     struct star_formation_history *sf) {}
 
 /**
