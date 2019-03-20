@@ -48,7 +48,6 @@
 #include "space.h"
 #include "units.h"
 
-
 /* Maximum number of iterations for newton
  * and bisection integration schemes */
 static const int newton_max_iterations = 15;
@@ -560,8 +559,8 @@ void cooling_cool_part(const struct phys_const *phys_const,
       Helium_reion_heat_cgs / (dt_cgs * ratefact_cgs);
 
   /* Let's compute the internal energy at the end of the step */
-  /* Initialise to the initial energy to appease compiler; this will never not be
-     overwritten. */
+  /* Initialise to the initial energy to appease compiler; this will never not
+     be overwritten. */
   double u_final_cgs = u_0_cgs;
 
   /* First try an explicit integration (note we ignore the derivative) */
