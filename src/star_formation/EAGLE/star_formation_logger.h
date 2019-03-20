@@ -159,7 +159,7 @@ INLINE static void star_formation_logger_assign(
  *
  * @param The pointer to the star formation history structure
  * */
-INLINE static void star_formation_init_SFH_engine(
+INLINE static void star_formation_logger_init_engine(
     struct star_formation_history *sfh) {
 
   /* Initialize the collecting SFH structure to zero */
@@ -180,7 +180,7 @@ INLINE static void star_formation_init_SFH_engine(
  * @param z the redshift
  * @param sf the star_formation_history struct
  */
-INLINE static void star_formation_write_to_file(
+INLINE static void star_formation_logger_write_to_log_file(
     const double time, const double a, const double z,
     const struct star_formation_history sf, const char *baseName) {
 
@@ -205,7 +205,7 @@ INLINE static void star_formation_write_to_file(
  *
  * @param none
  */
-INLINE static void star_formation_init_file_writer(const char *baseName) {
+INLINE static void star_formation_logger_init_log_file(const char *baseName) {
 
   /* File name */
   static const int buffersize = 300;

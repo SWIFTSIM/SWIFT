@@ -2361,7 +2361,7 @@ void engine_collect_end_of_step_recurse(struct cell *c,
   struct star_formation_history sfh_updated;
 
   /* Initialize the star formation structs */
-  star_formation_init_SFH_engine(&sfh_updated);
+  star_formation_logger_init_engine(&sfh_updated);
 
   /* Collect the values from the progeny. */
   for (int k = 0; k < 8; k++) {
@@ -2453,7 +2453,7 @@ void engine_collect_end_of_step_mapper(void *map_data, int num_elements,
   struct star_formation_history sfh_updated;
 
   /* Initialize the star formation structs for this engine to zero */
-  star_formation_init_SFH_engine(&sfh_updated);
+  star_formation_logger_init_engine(&sfh_updated);
 
   for (int ind = 0; ind < num_elements; ind++) {
     struct cell *c = &s->cells_top[local_cells[ind]];
@@ -2560,7 +2560,7 @@ void engine_collect_end_of_step(struct engine *e, int apply) {
   data.ti_gravity_beg_max = 0;
   data.e = e;
   /* Initialize the total SFH of the simulation to zero */
-  star_formation_init_SFH_engine(&data.sfh);
+  star_formation_logger_init_engine(&data.sfh);
 
   /* Collect information from the local top-level cells */
   threadpool_map(&e->threadpool, engine_collect_end_of_step_mapper,
@@ -3118,7 +3118,7 @@ void engine_step(struct engine *e) {
     fflush(stdout);
 #endif
     /* Write the star formation information to the file */
-    star_formation_write_to_file(e->time, e->cosmology->a, e->cosmology->z,
+    star_formation_logger_write_to_log_file(e->time, e->cosmology->a, e->cosmology->z,
                                  e->sfh, e->snapshot_base_name);
 
     if (!e->restarting)
@@ -4339,7 +4339,7 @@ void engine_init(struct engine *e, struct space *s, struct swift_params *params,
   e->total_nr_tasks = 0;
 
   /* Initialize the SFH logger */
-  star_formation_init_file_writer(e->snapshot_base_name);
+  star_formation_logger_init_log_file(e->snapshot_base_name);
 
 #if defined(WITH_LOGGER)
   e->logger = (struct logger *)malloc(sizeof(struct logger));
