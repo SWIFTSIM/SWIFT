@@ -82,7 +82,7 @@ int space_extra_gparts = space_extra_gparts_default;
 
 /*! Expected maximal number of strays received at a rebuild */
 int space_expected_max_nr_strays = space_expected_max_nr_strays_default;
-#ifdef SWIFT_DEBUG_CHECKS
+#if defined(SWIFT_DEBUG_CHECKS) || defined(SWIFT_CELL_GRAPH)
 int last_cell_id;
 #endif
 
@@ -255,7 +255,7 @@ void space_rebuild_recycle_mapper(void *map_data, int num_elements,
     c->grav.ti_end_max = -1;
     c->stars.ti_end_min = -1;
     c->stars.ti_end_max = -1;
-#ifdef SWIFT_DEBUG_CHECKS
+#if defined(SWIFT_DEBUG_CHECKS) || defined(SWIFT_CELL_GRAPH)
     c->cellID = 0;
 #endif
     if (s->with_self_gravity)
@@ -560,7 +560,7 @@ void space_regrid(struct space *s, int verbose) {
           c->mpi.grav.send = NULL;
 #endif  // WITH_MPI
           if (s->with_self_gravity) c->grav.multipole = &s->multipoles_top[cid];
-#ifdef SWIFT_DEBUG_CHECKS
+#if defined(SWIFT_DEBUG_CHECKS) || defined(SWIFT_CELL_GRAPH)
           c->cellID = -last_cell_id;
           last_cell_id++;
 #endif
@@ -1536,7 +1536,7 @@ void space_rebuild(struct space *s, int repartitioned, int verbose) {
     c->grav.ti_old_multipole = ti_current;
     c->stars.ti_old_part = ti_current;
 
-#ifdef SWIFT_DEBUG_CHECKS
+#if defined(SWIFT_DEBUG_CHECKS) || defined(SWIFT_CELL_GRAPH)
     c->cellID = -last_cell_id;
     last_cell_id++;
 #endif
@@ -2729,7 +2729,7 @@ void space_split_recursive(struct space *s, struct cell *c,
 #ifdef WITH_MPI
       cp->mpi.tag = -1;
 #endif  // WITH_MPI
-#ifdef SWIFT_DEBUG_CHECKS
+#if defined(SWIFT_DEBUG_CHECKS) || defined(SWIFT_CELL_GRAPH)
       cp->cellID = last_cell_id++;
 #endif
     }
@@ -3962,7 +3962,7 @@ void space_init(struct space *s, struct swift_params *params,
   /* Init the space lock. */
   if (lock_init(&s->lock) != 0) error("Failed to create space spin-lock.");
 
-#ifdef SWIFT_DEBUG_CHECKS
+#if defined(SWIFT_DEBUG_CHECKS) || defined(SWIFT_CELL_GRAPH)
   last_cell_id = 1;
 #endif
 
@@ -4534,5 +4534,87 @@ void space_struct_restore(struct space *s, FILE *stream) {
   /* Verify that everything is correct */
   part_verify_links(s->parts, s->gparts, s->sparts, s->nr_parts, s->nr_gparts,
                     s->nr_sparts, 1);
+#endif
+}
+
+#define root_cell_id 0
+/**
+ * @brief write a single cell in a csv file.
+ *
+ * @param s The #space.
+ * @param f The file to use (already open).
+ * @param c The current #cell.
+ */
+void space_write_cell(const struct space *s, FILE *f, const struct cell *c) {
+#ifdef SWIFT_CELL_GRAPH
+
+  if (c == NULL) return;
+
+  /* Get parent ID */
+  int parent = root_cell_id;
+  if (c->parent != NULL) parent = c->parent->cellID;
+
+  /* Get super ID */
+  char superID[100] = "";
+  if (c->super != NULL) sprintf(superID, "%i", c->super->cellID);
+
+  /* Get hydro super ID */
+  char hydro_superID[100] = "";
+  if (c->hydro.super != NULL)
+    sprintf(hydro_superID, "%i", c->hydro.super->cellID);
+
+  /* Write line for current cell */
+  fprintf(f, "%i,%i,%i,", c->cellID, parent, c->nodeID);
+  fprintf(f, "%i,%i,%i,%s,%s,%g,%g,%g,%g,%g,%g, ", c->hydro.count,
+          c->stars.count, c->grav.count, superID, hydro_superID, c->loc[0],
+          c->loc[1], c->loc[2], c->width[0], c->width[1], c->width[2]);
+  fprintf(f, "%g, %g\n", c->hydro.h_max, c->stars.h_max);
+
+  /* Write children */
+  for (int i = 0; i < 8; i++) {
+    space_write_cell(s, f, c->progeny[i]);
+  }
+#endif
+}
+
+/**
+ * @brief Write a csv file containing the cell hierarchy
+ *
+ * @param s The #space.
+ */
+void space_write_cell_hierarchy(const struct space *s) {
+
+#ifdef SWIFT_CELL_GRAPH
+
+  /* Open file */
+  char filename[200];
+  sprintf(filename, "cell_hierarchy_%04i.csv", engine_rank);
+  FILE *f = fopen(filename, "w");
+  if (f == NULL) error("Error opening task level file.");
+
+  const int root_id = root_cell_id;
+  /* Write header */
+  if (engine_rank == 0) {
+    fprintf(f, "name,parent,mpi_rank,");
+    fprintf(f,
+            "hydro_count,stars_count,gpart_count,super,hydro_super,"
+            "loc1,loc2,loc3,width1,width2,width3,");
+    fprintf(f, "hydro_h_max,stars_h_max\n");
+
+    /* Write root data */
+    fprintf(f, "%i, ,-1,", root_id);
+    fprintf(f, "%li,%li,%li, , , , , , , , , ", s->nr_parts, s->nr_sparts,
+            s->nr_gparts);
+    fprintf(f, ",\n");
+  }
+
+  /* Write all the top level cells (and their children) */
+  for (int i = 0; i < s->nr_cells; i++) {
+    struct cell *c = &s->cells_top[i];
+    if (c->nodeID == engine_rank) space_write_cell(s, f, c);
+  }
+
+  /* Cleanup */
+  fclose(f);
 #endif
 }

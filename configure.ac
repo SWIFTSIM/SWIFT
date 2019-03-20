@@ -270,6 +270,18 @@ if test "$enable_debugging_checks" = "yes"; then
    AC_DEFINE([SWIFT_DEBUG_CHECKS],1,[Enable expensive debugging])
 fi
 
+# Check if cell graph is on.
+AC_ARG_ENABLE([cell-graph],
+   [AS_HELP_STRING([--enable-cell-graph],
+     [Activate the cell graph @<:@yes/no@:>@]
+   )],
+   [enable_cell_graph="$enableval"],
+   [enable_cell_graph="no"]
+)
+if test "$enable_cell_graph" = "yes"; then
+   AC_DEFINE([SWIFT_CELL_GRAPH],1,[Enable cell graph])
+fi
+
 # Check if using our custom icbrtf is enalbled.
 AC_ARG_ENABLE([custom-icbrtf],
    [AS_HELP_STRING([--enable-custom-icbrtf],
