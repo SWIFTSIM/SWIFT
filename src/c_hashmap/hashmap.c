@@ -16,27 +16,34 @@
 /**
  * @brief Pre-allocate a number of chunks for the graveyard.
  */
-void hashmap_allocate_chunks(hashmap_t *m) {
+void hashmap_allocate_chunks(hashmap_t *m, int num_chunks) {
   /* Allocate a fresh set of chunks. */
-  hashmap_alloc_t *alloc;
-  if ((alloc = (hashmap_alloc_t *)calloc(1, sizeof(hashmap_alloc_t))) == NULL) {
+  hashmap_chunk_t *alloc;
+  if ((alloc = (hashmap_chunk_t *)calloc(num_chunks,
+                                         sizeof(hashmap_chunk_t))) == NULL) {
     error("Unable to allocate chunks.");
   }
 
   /* Hook up the alloc, so that we can clean it up later. */
-  alloc->next = m->allocs;
-  m->allocs = alloc;
+  if (m->allocs_count == m->allocs_size) {
+    m->allocs_size *= 2;
+    void **new_allocs = (void **)malloc(sizeof(void *) * m->allocs_size);
+    memcpy(new_allocs, m->allocs, sizeof(void *) * m->allocs_count);
+    free(m->allocs);
+    m->allocs = new_allocs;
+  }
+  m->allocs[m->allocs_count++] = alloc;
 
   /* Link the chunks together. */
-  for (int k = 0; k < HASHMAP_CHUNKS_PER_ALLOC - 1; k++) {
-    alloc->chunks[k].next = &alloc->chunks[k + 1];
+  for (int k = 0; k < num_chunks - 1; k++) {
+    alloc[k].next = &alloc[k + 1];
   }
 
   /* Last chunk points to current graveyard. */
-  alloc->chunks[HASHMAP_CHUNKS_PER_ALLOC - 1].next = m->graveyard;
+  alloc[num_chunks - 1].next = m->graveyard;
 
   /* Graveyard points to first new chunk. */
-  m->graveyard = &alloc->chunks[0];
+  m->graveyard = alloc;
 }
 
 void hashmap_init(hashmap_t *m) {
@@ -50,6 +57,13 @@ void hashmap_init(hashmap_t *m) {
   /* The graveyard is currently empty. */
   m->graveyard = NULL;
   m->allocs = NULL;
+
+  /* Init the array of allocations. */
+  m->allocs_size = HASHMAP_ALLOCS_INITIAL_SIZE;
+  if ((m->allocs = (void **)malloc(sizeof(void *) * m->allocs_size)) == NULL) {
+    error("Unable to allocate allocs pointer array.");
+  }
+  m->allocs_count = 0;
 
   /* Set initial sizes. */
   m->table_size = m->nr_chunks * HASHMAP_ELEMENTS_PER_CHUNK;
@@ -81,8 +95,10 @@ void hashmap_release_chunk(hashmap_t *m, hashmap_chunk_t *chunk) {
  * @brief Return a new chunk, either recycled or freshly allocated.
  */
 hashmap_chunk_t *hashmap_get_chunk(hashmap_t *m) {
+  int num_chunks = m->nr_chunks * HASHMAP_ALLOC_SIZE_FRACTION;
+  if (!num_chunks) num_chunks = 1;
   if (m->graveyard == NULL) {
-    hashmap_allocate_chunks(m);
+    hashmap_allocate_chunks(m, num_chunks);
   }
 
   hashmap_chunk_t *res = m->graveyard;
@@ -337,11 +353,10 @@ void hashmap_free(hashmap_t *m) {
   m->nr_chunks = 0;
 
   /* Free the chunk allocs. */
-  while (m->allocs) {
-    hashmap_alloc_t *tmp = m->allocs;
-    m->allocs = tmp->next;
-    free(tmp);
+  for (size_t k = 0; k < m->allocs_count; k++) {
+    free(m->allocs[k]);
   }
+  free(m->allocs);
 }
 
 size_t hashmap_size(hashmap_t *m) {
@@ -376,21 +391,12 @@ void hashmap_print_stats(hashmap_t *m) {
        finger = finger->next) {
     graveyard_counter += 1;
   }
-  int alloc_counter = 0;
-  for (hashmap_alloc_t *finger = m->allocs; finger != NULL;
-       finger = finger->next) {
-    alloc_counter += 1;
-  }
   message(
       "populated chunks: %i (%zu kb), graveyard chunks: %i (%zu kb), allocs: "
-      "%i (%zu kb)",
+      "%zu",
       chunk_counter, sizeof(hashmap_chunk_t) * chunk_counter / 1024,
       graveyard_counter, sizeof(hashmap_chunk_t) * graveyard_counter / 1024,
-      alloc_counter, sizeof(hashmap_alloc_t) * alloc_counter);
-  if (chunk_counter + graveyard_counter !=
-      alloc_counter * HASHMAP_CHUNKS_PER_ALLOC) {
-    message("warning: chunk count different from number of allocated chunks!");
-  }
+      m->allocs_count);
 
   /* Print fill ratios. */
   message("element-wise fill ratio: %.2f%%, chunk-wise fill ratio: %.2f%%",
@@ -441,5 +447,8 @@ void hashmap_print_stats(hashmap_t *m) {
   /* Print struct sizes. */
   message("sizeof(hashmap_element_t): %zu", sizeof(hashmap_element_t));
   message("sizeof(hashmap_chunk_t): %zu", sizeof(hashmap_chunk_t));
-  message("sizeof(hashmap_alloc_t): %zu", sizeof(hashmap_alloc_t));
+  message("HASHMAP_TARGET_CHUNK_BYTES: %i", HASHMAP_TARGET_CHUNK_BYTES);
+  message("HASHMAP_BITS_PER_ELEMENT: %i", HASHMAP_BITS_PER_ELEMENT);
+  message("HASHMAP_ELEMENTS_PER_CHUNK: %i", HASHMAP_ELEMENTS_PER_CHUNK);
+  message("HASHMAP_MASKS_PER_CHUNK: %i", HASHMAP_MASKS_PER_CHUNK);
 }
