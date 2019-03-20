@@ -605,7 +605,8 @@ void runner_do_star_formation(struct runner *r, struct cell *c, int timer) {
 
         /* Is this particle star forming? */
         if (star_formation_is_star_forming(p, xp, sf_props, phys_const, cosmo,
-                                           hydro_props, us, cooling, entropy_floor)) {
+                                           hydro_props, us, cooling,
+                                           entropy_floor)) {
 
           /* Time-step size for this particle */
           double dt_star;

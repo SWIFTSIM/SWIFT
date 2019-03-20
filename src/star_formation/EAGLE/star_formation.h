@@ -246,7 +246,8 @@ INLINE static int star_formation_is_star_forming(
                                                      us, cosmo, cooling, p, xp);
 
   /* Temperature on the equation of state */
-  const double temperature_eos = entropy_floor_temperature(p, cosmo, entropy_floor);
+  const double temperature_eos =
+      entropy_floor_temperature(p, cosmo, entropy_floor);
 
   /* Check the Scahye & Dalla Vecchia 2012 EOS-based temperature critrion */
   return (temperature <
