@@ -136,6 +136,15 @@ static INLINE float entropy_floor(
   return gas_entropy_from_pressure(rho, pressure);
 }
 
+/**
+ * @brief Compute the temperature from the entropy floor for a given #part
+ *
+ * Calculate the EOS temperature, the particle is not updated.
+ *
+ * @param p The #part.
+ * @param cosmo The cosmological model.
+ * @param props The properties of the entropy floor.
+ */
 static INLINE float entropy_floor_temperature(
     const struct part *p, const struct cosmology *cosmo,
     const struct entropy_floor_properties *props) {
