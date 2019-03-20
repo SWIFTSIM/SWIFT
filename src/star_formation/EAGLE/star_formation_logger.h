@@ -97,7 +97,7 @@ INLINE static void star_formation_add_progeny_SFH(
     const struct star_formation_history *sfprogeny) {
 
   /* Add the new stellar mass from the progeny */
-  sf->new_stellar_mass = sf->new_stellar_mass + sfprogeny->new_stellar_mass;
+  sf->new_stellar_mass += sfprogeny->new_stellar_mass;
 
   /* Add the SFR of the progeny */
   sf->SFR_active += sfprogeny->SFR_active;
