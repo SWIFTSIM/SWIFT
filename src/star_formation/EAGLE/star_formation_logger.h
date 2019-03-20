@@ -24,7 +24,6 @@
 
 /* Local includes */
 #include "cell.h"
-#include "cosmology.h"
 #include "hydro.h"
 #include "part.h"
 #include "star_formation_logger_struct.h"
