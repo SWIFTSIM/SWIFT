@@ -52,6 +52,12 @@ static INLINE float entropy_floor(
   return 0.f;
 }
 
+static INLINE float entropy_floor_temperature(
+    const struct part *p, const struct cosmology *cosmo,
+    const struct entropy_floor_properties *props){
+  return 0.f;
+}
+
 /**
  * @brief Initialise the entropy floor by reading the parameters and converting
  * to internal units.
