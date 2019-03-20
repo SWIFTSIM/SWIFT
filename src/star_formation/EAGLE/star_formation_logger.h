@@ -44,24 +44,15 @@ INLINE static void star_formation_update_stellar_mass(
 }
 
 /**
- * @brief Initialize the star formation history struct for the stellar mass only
- *
- * @param sf the star_formation_history struct we want to initialize
- */
-INLINE static void star_formation_init_stellar_mass(
-    struct star_formation_history *sf) {
-
-  /* Initialize the stellar mass to zero*/
-  sf->new_stellar_mass = 0.f;
-}
-
-/**
  * @brief Initialize the star formation history struct if the cell is active
  *
  * @param sf the star_formation_history struct we want to initialize
  */
 INLINE static void star_formation_init_SFH_active(
     struct star_formation_history *sf) {
+
+  /* Initialize the stellar mass to zero*/
+  sf->new_stellar_mass = 0.f;
 
   /* Initialize the active SFR */
   sf->SFR_active = 0.f;
@@ -81,6 +72,9 @@ INLINE static void star_formation_init_SFH_active(
  */
 INLINE static void star_formation_init_SFH_inactive(
     struct star_formation_history *sf) {
+
+  /* Initialize the stellar mass to zero*/
+  sf->new_stellar_mass = 0.f;
 
   /* The active SFR becomes the inactive SFR */
   sf->SFR_inactive += sf->SFR_active;
