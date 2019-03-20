@@ -28,7 +28,7 @@
 /* Local headers. */
 #include "inline.h"
 
-#if !defined(HAVE_EXP10) && !defined(HAVE___EXP10))
+#if !defined(HAVE_EXP10) && !defined(HAVE___EXP10)
 
 /**
  * @brief Raises 10 to the power of the argument.
@@ -46,7 +46,7 @@ __attribute__((always_inline, const)) INLINE static double exp10(
 
 #endif
 
-#if !defined(HAVE_EXP10F) && !defined(HAVE___EXP10F))
+#if !defined(HAVE_EXP10F) && !defined(HAVE___EXP10F)
 
 /**
  * @brief Raises 10 to the power of the argument.
@@ -65,23 +65,12 @@ __attribute__((always_inline, const)) INLINE static float exp10f(
 #endif
 
 /* Use the __exp10 and __exp10f versions if needed. */
-#if !defined(HAVE_EXP10) && defined(HAVE___EXP10))
+#if !defined(HAVE_EXP10) && defined(HAVE___EXP10)
 #define exp10(x) __exp10(x)
 #endif
 
-#if !defined(HAVE_EXP10F) && defined(HAVE___EXP10F))
+#if !defined(HAVE_EXP10F) && defined(HAVE___EXP10F)
 #define exp10f(x) __exp10f(x)
 #endif
-
-
-#if defined(__clang__) && defined(__APPLE__)
-/* Apple-clang does have the exp10 and exp10f functions built in
- * variants, but these must be exposed to the code as they begin
- * as hidden. */
-
-#define exp10 __exp10
-#define exp10f __exp10f
-
-#endif /* __clang__ */
 
 #endif /* SWIFT_EXP10_H */
