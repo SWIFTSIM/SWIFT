@@ -844,7 +844,7 @@ void fof_calc_group_props_mapper(void *map_data, int num_elements,
   /* Offset into gparts array. */
   ptrdiff_t gparts_offset = (ptrdiff_t)(gparts - s->gparts);
 
-  size_t *const group_index_offset = group_index + (ptrdiff_t)(gparts - s->gparts);
+  size_t *const group_index_offset = group_index + gparts_offset;
 
   /* Create hash table. */
   hashmap_t map;
@@ -859,9 +859,11 @@ void fof_calc_group_props_mapper(void *map_data, int num_elements,
     //double y = gparts[ind].x[1];
     //double z = gparts[ind].x[2];
     //double mass = gparts[ind].mass;
-  
+ 
+    const size_t gpart_index = gparts_offset + ind;
+
     /* Only add particles which aren't the root of a group. Stops groups of size 1 being added to the hash table. */ 
-    if(root != (gparts_offset + ind)) { 
+    if(root != gpart_index) { 
       hashmap_value_t *size = hashmap_get(&map, root);
 
       if(size != NULL) (*size)++;
