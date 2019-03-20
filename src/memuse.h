@@ -62,7 +62,7 @@ __attribute__((always_inline)) inline int swift_memalign(const char *label,
     memuse_log_allocation(label, *memptr, 1, size);
   } else {
     /* Failed allocations are interesting as well. */
-    memuse_log_allocation(label, NULL, 1, size);
+    memuse_log_allocation(label, NULL, -11, size);
   }
 #endif
   return result;
@@ -87,7 +87,7 @@ __attribute__((always_inline)) inline void *swift_malloc(const char *label,
     memuse_log_allocation(label, memptr, 1, size);
   } else {
     /* Failed allocations are interesting as well. */
-    memuse_log_allocation(label, NULL, 1, size);
+    memuse_log_allocation(label, NULL, -1, size);
   }
 #endif
   return memptr;
