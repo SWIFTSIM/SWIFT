@@ -577,6 +577,7 @@ void runner_do_star_formation(struct runner *r, struct cell *c, int timer) {
   const struct hydro_props *restrict hydro_props = e->hydro_properties;
   const struct unit_system *restrict us = e->internal_units;
   struct cooling_function_data *restrict cooling = e->cooling_func;
+  const struct entropy_floor_properties *entropy_floor = e->entropy_floor;
   const double time_base = e->time_base;
   const integertime_t ti_current = e->ti_current;
   const int current_stars_count = c->stars.count;
@@ -604,7 +605,8 @@ void runner_do_star_formation(struct runner *r, struct cell *c, int timer) {
 
         /* Is this particle star forming? */
         if (star_formation_is_star_forming(p, xp, sf_props, phys_const, cosmo,
-                                           hydro_props, us, cooling)) {
+                                           hydro_props, us, cooling,
+                                           entropy_floor)) {
 
           /* Time-step size for this particle */
           double dt_star;
@@ -1444,9 +1446,9 @@ void runner_do_ghost(struct runner *r, struct cell *c, int timer) {
               ((p->h <= hydro_h_min) && (f > 0.f))) {
 
           /* We have a particle whose smoothing length is already set (wants
-           * to be larger but has already hit the maximum OR wants to be smaller
-           * but has already reached the minimum). So, just tidy up as if the
-           * smoothing length had converged correctly  */
+           * to be larger but has already hit the maximum OR wants to be
+           * smaller but has already reached the minimum). So, just tidy up as
+           * if the smoothing length had converged correctly  */
 
 #ifdef EXTRA_HYDRO_LOOP
 

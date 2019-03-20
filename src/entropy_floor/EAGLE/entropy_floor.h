@@ -137,8 +137,67 @@ static INLINE float entropy_floor(
 }
 
 /**
+ * @brief Compute the temperature from the entropy floor for a given #part
+ *
+ * Calculate the EoS temperature, the particle is not updated.
+ * This is the temperature exactly corresponding to the imposed EoS shape.
+ * It only matches the entropy returned by the entropy_floor() function
+ * for a neutral gas with primoridal abundance.
+ *
+ * @param p The #part.
+ * @param cosmo The cosmological model.
+ * @param props The properties of the entropy floor.
+ */
+static INLINE float entropy_floor_temperature(
+    const struct part *p, const struct cosmology *cosmo,
+    const struct entropy_floor_properties *props) {
+
+  /* Physical density in internal units */
+  const float rho = hydro_get_physical_density(p, cosmo);
+
+  /* Critical density at this redshift.
+   * Recall that this is 0 in a non-cosmological run */
+  const float rho_crit = cosmo->critical_density;
+  const float rho_crit_baryon = cosmo->Omega_b * rho_crit;
+
+  /* Physical */
+  float temperature = 0.f;
+
+  /* Are we in the regime of the Jeans equation of state? */
+  if ((rho >= rho_crit_baryon * props->Jeans_over_density_threshold) &&
+      (rho >= props->Jeans_density_threshold)) {
+
+    const float jeans_slope = props->Jeans_gamma_effective - 1.f;
+
+    const float temperature_Jeans =
+        props->Jeans_temperature_norm *
+        pow(rho * props->Jeans_density_threshold_inv, jeans_slope);
+
+    temperature = max(temperature, temperature_Jeans);
+  }
+
+  /* Are we in the regime of the Cool equation of state? */
+  if ((rho >= rho_crit_baryon * props->Cool_over_density_threshold) &&
+      (rho >= props->Cool_density_threshold)) {
+
+    const float cool_slope = props->Cool_gamma_effective - 1.f;
+
+    const float temperature_Cool =
+        props->Cool_temperature_norm *
+        pow(rho * props->Cool_density_threshold_inv, cool_slope);
+
+    temperature = max(temperature, temperature_Cool);
+  }
+
+  return temperature;
+}
+
+/**
  * @brief Initialise the entropy floor by reading the parameters and converting
  * to internal units.
+ *
+ * The input temperatures and number densities are converted to entropy and
+ * density assuming a neutral gas of primoridal abundance.
  *
  * @param params The YAML parameter file.
  * @param us The system of units used internally.
