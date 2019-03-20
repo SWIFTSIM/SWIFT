@@ -46,7 +46,8 @@ MPI_Datatype group_length_mpi_type;
 #endif
 size_t node_offset;
 
-#define UNION_BY_SIZE_OVER_MPI 1
+#define UNION_BY_SIZE_OVER_MPI (1)
+#define FOF_COMPRESS_PATHS_MIN_LENGTH (4)
 
 /* Initialises parameters for the FOF search. */
 void fof_init(struct space *s) {
@@ -210,21 +211,18 @@ __attribute__((always_inline)) INLINE static size_t fof_find(
     const size_t i, size_t *group_index) {
 
   size_t root = i;
+  size_t tree_depth = 0;
   while (root != group_index[root]) {
 #ifdef PATH_HALVING
     atomic_cas(&group_index[root], group_index[root],
                group_index[group_index[root]]);
 #endif
     root = group_index[root];
+    tree_depth++;
   }
 
-  /* Perform path compression. */
-  // int index = i;
-  // while(index != root) {
-  //  int next = group_index[index];
-  //  group_index[index] = root;
-  //  index = next;
-  //}
+  /* Only perform path compression on trees with a depth of FOF_COMPRESS_PATHS_MIN_LENGTH or higher. */
+  if(tree_depth >= FOF_COMPRESS_PATHS_MIN_LENGTH) atomic_cas(&group_index[i], group_index[i], root);
 
   return root;
 }
@@ -917,7 +915,7 @@ void fof_calc_group_props_mapper(void *map_data, int num_elements,
     
   }
  
-  hashmap_print_stats(&map);
+  //hashmap_print_stats(&map);
 
   if (map.size > 0) {
     /* Iterate over the chunks and add their entries to the new table. */
@@ -1670,12 +1668,17 @@ void fof_search_tree(struct space *s) {
   //  if(group_index[i] == i) local_roots[root_count++] = i;
   //}
 
+  ticks tic_calc_group_size = getticks();
+
   threadpool_map(&s->e->threadpool, fof_calc_group_props_mapper,
                  gparts, nr_gparts, sizeof(struct gpart), nr_gparts / s->e->nr_threads, s);
-
-  //threadpool_map(&s->e->threadpool, fof_calc_group_props_new_mapper,
-  //               local_roots, root_count, sizeof(size_t), 1, s);
-
+  
+  message("FOF calc group size took (scaling): %.3f %s.",
+      clocks_from_ticks(getticks() - tic_calc_group_size), clocks_getunit());
+  
+  message("FOF search took (scaling): %.3f %s.",
+      clocks_from_ticks(getticks() - tic_total), clocks_getunit());
+  
   //struct fof_CoM *group_bc = NULL;
   //int *com_set = NULL;
   //const double dim[3] = {s->dim[0], s->dim[1], s->dim[2]};
