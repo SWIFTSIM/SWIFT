@@ -379,7 +379,7 @@ inline static void allocate_yield_tables(struct stars_props *restrict stars) {
   /* Allocate array to store SNIa yield table resampled by IMF mass bins */
   if (posix_memalign((void **)&stars->feedback.yield_SNIa_IMF_resampled, SWIFT_STRUCT_ALIGNMENT,
                      stars->feedback.SNIa_n_elements * sizeof(double)) != 0) {
-    error("Failed to allocate SNIa SPH yields array");
+    error("Failed to allocate SNIa IMF resampled yields array");
   }
 
   /* Allocate array for AGB mass bins */
@@ -403,10 +403,10 @@ inline static void allocate_yield_tables(struct stars_props *restrict stars) {
   }
 
   /* Allocate array to store AGB yield table resampled by IMF mass bins */
-  if (posix_memalign((void **)&stars->feedback.yield_AGB.SPH, SWIFT_STRUCT_ALIGNMENT,
+  if (posix_memalign((void **)&stars->feedback.yield_AGB.yield_IMF_resampled, SWIFT_STRUCT_ALIGNMENT,
                      stars->feedback.AGB_n_z * n_mass_bins * chemistry_element_count *
                          sizeof(double)) != 0) {
-    error("Failed to allocate AGB SPH array");
+    error("Failed to allocate AGB IMF resampled array");
   }
 
   /* Allocate array to store AGB ejecta tables */
@@ -420,7 +420,7 @@ inline static void allocate_yield_tables(struct stars_props *restrict stars) {
   if (posix_memalign((void **)&stars->feedback.yield_AGB.ejecta_IMF_resampled,
                      SWIFT_STRUCT_ALIGNMENT,
                      stars->feedback.AGB_n_z * n_mass_bins * sizeof(double)) != 0) {
-    error("Failed to allocate AGB ejecta SPH array");
+    error("Failed to allocate AGB ejecta IMF resampled array");
   }
   
   /* Allocate array to store table of total metals released by AGB */
@@ -434,7 +434,7 @@ inline static void allocate_yield_tables(struct stars_props *restrict stars) {
   if (posix_memalign((void **)&stars->feedback.yield_AGB.total_metals_IMF_resampled,
                      SWIFT_STRUCT_ALIGNMENT,
                      stars->feedback.AGB_n_z * n_mass_bins * sizeof(double)) != 0) {
-    error("Failed to allocate AGB total metals SPH array");
+    error("Failed to allocate AGB total metals IMF resampled array");
   }
 
   /* Allocate array for SNII mass bins */
@@ -458,10 +458,10 @@ inline static void allocate_yield_tables(struct stars_props *restrict stars) {
   }
 
   /* Allocate array to store SNII yield table resampled by IMF mass bins */
-  if (posix_memalign((void **)&stars->feedback.yield_SNII.SPH, SWIFT_STRUCT_ALIGNMENT,
+  if (posix_memalign((void **)&stars->feedback.yield_SNII.yield_IMF_resampled, SWIFT_STRUCT_ALIGNMENT,
                      stars->feedback.SNII_n_z * n_mass_bins * chemistry_element_count *
                          sizeof(double)) != 0) {
-    error("Failed to allocate SNII SPH array");
+    error("Failed to allocate SNII IMF resampled array");
   }
 
   /* Allocate array to store SNII ejecta tables */
@@ -475,7 +475,7 @@ inline static void allocate_yield_tables(struct stars_props *restrict stars) {
   if (posix_memalign((void **)&stars->feedback.yield_SNII.ejecta_IMF_resampled,
                      SWIFT_STRUCT_ALIGNMENT,
                      stars->feedback.SNII_n_z * n_mass_bins * sizeof(double)) != 0) {
-    error("Failed to allocate SNII ejecta SPH array");
+    error("Failed to allocate SNII ejecta IMF resampled array");
   }
 
   /* Allocate array to store table of total metals released by SNII */
@@ -489,7 +489,7 @@ inline static void allocate_yield_tables(struct stars_props *restrict stars) {
   if (posix_memalign((void **)&stars->feedback.yield_SNII.total_metals_IMF_resampled,
                      SWIFT_STRUCT_ALIGNMENT,
                      stars->feedback.SNII_n_z * n_mass_bins * sizeof(double)) != 0) {
-    error("Failed to allocate SNII total metals SPH array");
+    error("Failed to allocate SNII total metals IMF resampled array");
   }
 
   /* Allocate array for lifetimes mass bins */
@@ -621,7 +621,7 @@ inline static void compute_yields(struct stars_props *restrict stars) {
 
         index = row_major_index_3d(i, elem, k, stars->feedback.SNII_n_z,
                                    chemistry_element_count, n_mass_bins);
-        stars->feedback.yield_SNII.SPH[index] =
+        stars->feedback.yield_SNII.yield_IMF_resampled[index] =
             exp(M_LN10 * stars->feedback.yield_mass_bins[k]) * result;
       }
     }
@@ -635,10 +635,10 @@ inline static void compute_yields(struct stars_props *restrict stars) {
             strcmp(chemistry_get_element_name(elem), "Helium") != 0) {
           stars->feedback.yield_SNII.total_metals_IMF_resampled[index_2d] +=
               (stars->feedback.typeII_factor[elem] - 1) *
-              stars->feedback.yield_SNII.SPH[index];
+              stars->feedback.yield_SNII.yield_IMF_resampled[index];
         }
 
-        stars->feedback.yield_SNII.SPH[index] *= stars->feedback.typeII_factor[elem];
+        stars->feedback.yield_SNII.yield_IMF_resampled[index] *= stars->feedback.typeII_factor[elem];
       }
     }
 
@@ -671,7 +671,7 @@ inline static void compute_yields(struct stars_props *restrict stars) {
 
           index = row_major_index_3d(i, elem, j, stars->feedback.AGB_n_z,
                                      chemistry_element_count, n_mass_bins);
-          stars->feedback.yield_AGB.SPH[index] =
+          stars->feedback.yield_AGB.yield_IMF_resampled[index] =
               exp(M_LN10 * stars->feedback.yield_mass_bins[j]) * result;
         }
       }

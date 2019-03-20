@@ -70,7 +70,7 @@ runner_iact_nonsym_stars_density(
 
   /* Add contribution of pj to normalisation of kernel (TODO: IMPROVE COMMENT?)
    */
-  si->omega_normalisation_inv += wj / hydro_get_physical_density(pj,cosmo);
+  si->density_weight_frac_normalisation_inv += wj / hydro_get_physical_density(pj,cosmo);
 
   /* Compute contribution to the density */
   si->rho_gas += mj * wi;
@@ -117,21 +117,21 @@ runner_iact_nonsym_stars_feedback(
   kernel_eval(uj, &wj);
 
   /* Compute weighting for distributing feedback quantities */
-  float omega_frac;
+  float density_weight_frac;
   float rho = hydro_get_physical_density(pj,cosmo);
-  if (rho * si->omega_normalisation_inv != 0) {
-    omega_frac = wj / (rho * si->omega_normalisation_inv);
+  if (rho * si->density_weight_frac_normalisation_inv != 0) {
+    density_weight_frac = wj / (rho * si->density_weight_frac_normalisation_inv);
   } else {
-    omega_frac = 0.f;
+    density_weight_frac = 0.f;
   }
 
   /* Update particle mass */
   const float current_mass = hydro_get_mass(pj);
-  float new_mass = current_mass + si->to_distribute.mass * omega_frac;
+  float new_mass = current_mass + si->to_distribute.mass * density_weight_frac;
   hydro_set_mass(pj, new_mass);
 
   /* Decrease the mass of star particle */
-  si->mass -= si->to_distribute.mass * omega_frac;
+  si->mass -= si->to_distribute.mass * density_weight_frac;
 
   // ALEXEI: do we want to use the smoothed mass fraction?
   /* Update total metallicity */
@@ -139,7 +139,7 @@ runner_iact_nonsym_stars_feedback(
       pj->chemistry_data.metal_mass_fraction_total * current_mass;
   const float new_metal_mass_total =
       current_metal_mass_total +
-      si->to_distribute.total_metal_mass * omega_frac;
+      si->to_distribute.total_metal_mass * density_weight_frac;
   pj->chemistry_data.metal_mass_fraction_total =
       new_metal_mass_total / new_mass;
 
@@ -149,7 +149,7 @@ runner_iact_nonsym_stars_feedback(
         pj->chemistry_data.metal_mass_fraction[elem] * current_mass;
     const float new_metal_mass =
         current_metal_mass +
-        si->to_distribute.metal_mass[elem] * omega_frac;
+        si->to_distribute.metal_mass[elem] * density_weight_frac;
     pj->chemistry_data.metal_mass_fraction[elem] = new_metal_mass / new_mass;
   }
 
@@ -158,7 +158,7 @@ runner_iact_nonsym_stars_feedback(
       pj->chemistry_data.iron_mass_fraction_from_SNIa * current_mass;
   const float new_iron_from_SNIa_mass =
       current_iron_from_SNIa_mass +
-      si->to_distribute.Fe_mass_from_SNIa* omega_frac;
+      si->to_distribute.Fe_mass_from_SNIa* density_weight_frac;
   pj->chemistry_data.iron_mass_fraction_from_SNIa =
       new_iron_from_SNIa_mass / new_mass;
 
@@ -167,7 +167,7 @@ runner_iact_nonsym_stars_feedback(
       pj->chemistry_data.mass_from_SNIa * current_mass;
   const float new_mass_from_SNIa =
       current_mass_from_SNIa +
-      si->to_distribute.mass_from_SNIa * omega_frac;
+      si->to_distribute.mass_from_SNIa * density_weight_frac;
   pj->chemistry_data.mass_from_SNIa =
       new_mass_from_SNIa / new_mass;
 
@@ -176,7 +176,7 @@ runner_iact_nonsym_stars_feedback(
       pj->chemistry_data.metal_mass_fraction_from_SNIa * current_mass;
   const float new_metal_mass_fraction_from_SNIa =
       current_metal_mass_fraction_from_SNIa +
-      si->to_distribute.metal_mass_from_SNIa * omega_frac;
+      si->to_distribute.metal_mass_from_SNIa * density_weight_frac;
   pj->chemistry_data.metal_mass_fraction_from_SNIa =
       new_metal_mass_fraction_from_SNIa / new_mass;
 
@@ -185,7 +185,7 @@ runner_iact_nonsym_stars_feedback(
       pj->chemistry_data.mass_from_SNII * current_mass;
   const float new_mass_from_SNII =
       current_mass_from_SNII +
-      si->to_distribute.mass_from_SNII * omega_frac;
+      si->to_distribute.mass_from_SNII * density_weight_frac;
   pj->chemistry_data.mass_from_SNII =
       new_mass_from_SNII / new_mass;
 
@@ -194,7 +194,7 @@ runner_iact_nonsym_stars_feedback(
       pj->chemistry_data.metal_mass_fraction_from_SNII * current_mass;
   const float new_metal_mass_fraction_from_SNII =
       current_metal_mass_fraction_from_SNII +
-      si->to_distribute.metal_mass_from_SNII * omega_frac;
+      si->to_distribute.metal_mass_from_SNII * density_weight_frac;
   pj->chemistry_data.metal_mass_fraction_from_SNII =
       new_metal_mass_fraction_from_SNII / new_mass;
 
@@ -203,7 +203,7 @@ runner_iact_nonsym_stars_feedback(
       pj->chemistry_data.mass_from_AGB * current_mass;
   const float new_mass_from_AGB =
       current_mass_from_AGB +
-      si->to_distribute.mass_from_AGB * omega_frac;
+      si->to_distribute.mass_from_AGB * density_weight_frac;
   pj->chemistry_data.mass_from_AGB =
       new_mass_from_AGB / new_mass;
 
@@ -212,14 +212,14 @@ runner_iact_nonsym_stars_feedback(
       pj->chemistry_data.metal_mass_fraction_from_AGB * current_mass;
   const float new_metal_mass_fraction_from_AGB =
       current_metal_mass_fraction_from_AGB +
-      si->to_distribute.metal_mass_from_AGB * omega_frac;
+      si->to_distribute.metal_mass_from_AGB * density_weight_frac;
   pj->chemistry_data.metal_mass_fraction_from_AGB =
       new_metal_mass_fraction_from_AGB / new_mass;
 
   /* Update momentum */
   for (int i = 0; i < 3; i++) {
     // Do we need to calculate relative velocities here?
-    pj->v[i] += si->to_distribute.mass * omega_frac * si->v[i];
+    pj->v[i] += si->to_distribute.mass * density_weight_frac * si->v[i];
   }
 
   /* Energy feedback */
@@ -234,7 +234,7 @@ runner_iact_nonsym_stars_feedback(
   if (stars_properties->feedback.continuous_heating) {
     // We're doing ONLY continuous heating
     d_energy += si->to_distribute.num_SNIa *
-                stars_properties->feedback.total_energy_SNe * omega_frac * si->mass_init;
+                stars_properties->feedback.total_energy_SNe * density_weight_frac * si->mass_init;
     du = d_energy / hydro_get_mass(pj);
     hydro_set_physical_internal_energy(pj,xp,cosmo,u_init + du);
     hydro_set_drifted_physical_internal_energy(pj,cosmo,u_init + du);

@@ -53,7 +53,7 @@ __attribute__((always_inline)) INLINE static void stars_init_spart(
   sp->density.wcount_dh = 0.f;
   sp->rho_gas = 0.f;
 
-  sp->omega_normalisation_inv = 0.f;
+  sp->density_weight_frac_normalisation_inv = 0.f;
   sp->ngb_mass = 0.f;
 }
 
@@ -73,7 +73,7 @@ __attribute__((always_inline)) INLINE static void stars_first_init_spart(
   sp->birth_time = -1.f;
   
   // ALEXEI: specify birth time for running StellarEvolution test
-  //sp->birth_time = 0.f;
+  sp->birth_time = 0.f;
 
   stars_init_spart(sp);
 }
@@ -305,36 +305,38 @@ inline static void evolve_SNIa(float log10_min_mass, float log10_max_mass,
 
   /* compute the number of SNIa */
   /* Efolding (Forster 2006) */
-  sp->to_distribute.num_SNIa =
+  float num_SNIa_per_msun =
       stars->feedback.SNIa_efficiency *
       (exp(-star_age_Gyr / stars->feedback.SNIa_timescale) -
        exp(-(star_age_Gyr + dt_Gyr) / stars->feedback.SNIa_timescale))
        * sp->mass_init;
+  
+  sp->to_distribute.num_SNIa = num_SNIa_per_msun * stars->feedback.const_solar_mass;
 
   /* compute total mass released by SNIa */
-  sp->to_distribute.mass += sp->to_distribute.num_SNIa *
+  sp->to_distribute.mass += num_SNIa_per_msun *
                             stars->feedback.yield_SNIa_total_metals_IMF_resampled;
 
   /* compute mass fractions of each metal */
   for (int i = 0; i < chemistry_element_count; i++) {
     sp->to_distribute.metal_mass[i] +=
-        sp->to_distribute.num_SNIa * stars->feedback.yield_SNIa_IMF_resampled[i];
+        num_SNIa_per_msun * stars->feedback.yield_SNIa_IMF_resampled[i];
   }
 
   /* Update the metallicity of the material released */
-  sp->to_distribute.metal_mass_from_SNIa += sp->to_distribute.num_SNIa *
+  sp->to_distribute.metal_mass_from_SNIa += num_SNIa_per_msun *
     stars->feedback.yield_SNIa_total_metals_IMF_resampled;
 
   /* Update the metal mass produced */
-  sp->to_distribute.total_metal_mass += sp->to_distribute.num_SNIa * 
+  sp->to_distribute.total_metal_mass += num_SNIa_per_msun * 
     stars->feedback.yield_SNIa_total_metals_IMF_resampled;
   
   /* Compute the mass produced by SNIa */
-  sp->to_distribute.mass_from_SNIa += sp->to_distribute.num_SNIa * 
+  sp->to_distribute.mass_from_SNIa += num_SNIa_per_msun * 
     stars->feedback.yield_SNIa_total_metals_IMF_resampled;
 
   /* Compute the iron mass produced */
-  sp->to_distribute.Fe_mass_from_SNIa += sp->to_distribute.num_SNIa * 
+  sp->to_distribute.Fe_mass_from_SNIa += num_SNIa_per_msun * 
     stars->feedback.yield_SNIa_IMF_resampled[chemistry_element_Fe];
 
 }
@@ -369,10 +371,10 @@ inline static void evolve_SNII(float log10_min_mass, float log10_max_mass,
   /* determine which IMF mass bins contribute to the integral */
   determine_imf_bins(log10_min_mass, log10_max_mass, &ilow, &ihigh, stars);
 
-  /* Integrate IMF to determine number of SNII
-   * ALEXEI: check if this is per unit initial stellar mass */
+  /* Integrate IMF to determine number of SNII */
   sp->to_distribute.num_SNII = integrate_imf(
-      log10_min_mass, log10_max_mass, 0.0, 0, stellar_yields, stars);
+      log10_min_mass, log10_max_mass, 0.0, 0, stellar_yields, stars) *
+      stars->feedback.const_solar_mass;
 
   /* determine which metallicity bin and offset this star belongs to */
   int iz_low, iz_high, low_index_3d, high_index_3d, low_index_2d, high_index_2d;
@@ -396,10 +398,10 @@ inline static void evolve_SNII(float log10_min_mass, float log10_max_mass,
       high_index_2d = row_major_index_2d(iz_high, imass, stars->feedback.SNII_n_z,
                                          n_mass_bins);
       stellar_yields[imass] =
-          (1 - dz) * (stars->feedback.yield_SNII.SPH[low_index_3d] +
+          (1 - dz) * (stars->feedback.yield_SNII.yield_IMF_resampled[low_index_3d] +
                       sp->chemistry_data.metal_mass_fraction[i] *
                           stars->feedback.yield_SNII.ejecta_IMF_resampled[low_index_2d]) +
-          dz * (stars->feedback.yield_SNII.SPH[high_index_3d] +
+          dz * (stars->feedback.yield_SNII.yield_IMF_resampled[high_index_3d] +
                 sp->chemistry_data.metal_mass_fraction[i] *
                     stars->feedback.yield_SNII.ejecta_IMF_resampled[high_index_2d]);
     }
@@ -460,7 +462,9 @@ inline static void evolve_SNII(float log10_min_mass, float log10_max_mass,
   if (norm1 > 0) {
     for (i = 0; i < chemistry_element_count; i++) {
       sp->to_distribute.metal_mass[i] += metals[i] * norm_factor;
-      sp->to_distribute.mass_from_SNII += metals[i] * norm_factor;
+    }
+    for (i = 0; i < chemistry_element_count; i++) {
+      sp->to_distribute.mass_from_SNII += sp->to_distribute.metal_mass[i];
     }
     sp->to_distribute.mass += sp->to_distribute.mass_from_SNII;
     sp->to_distribute.total_metal_mass += mass * norm_factor;
@@ -473,7 +477,7 @@ inline static void evolve_SNII(float log10_min_mass, float log10_max_mass,
 /**
  * @brief compute enrichment and feedback due to AGB. To do this, integrate the IMF weighted by the yields read from tables for each of the quantities of interest.
  *
- * @param log10_min_mass log10 mass at the end of step ALEXEI: clarify log10_{min,max}_mass variable names, what these variables mean throughout code
+ * @param log10_min_mass log10 mass at the end of step 
  * @param log10_max_mass log10 mass at the beginning of step
  * @param stellar_yields array to store calculated yields for passing to integrate_imf
  * @param stars star properties data structure
@@ -518,10 +522,10 @@ inline static void evolve_AGB(float log10_min_mass, float log10_max_mass,
       high_index_2d =
           row_major_index_2d(iz_high, imass, stars->feedback.AGB_n_z, n_mass_bins);
       stellar_yields[imass] =
-          (1 - dz) * (stars->feedback.yield_AGB.SPH[low_index_3d] +
+          (1 - dz) * (stars->feedback.yield_AGB.yield_IMF_resampled[low_index_3d] +
                       sp->chemistry_data.metal_mass_fraction[i] *
                           stars->feedback.yield_AGB.ejecta_IMF_resampled[low_index_2d]) +
-          dz * (stars->feedback.yield_AGB.SPH[high_index_3d] +
+          dz * (stars->feedback.yield_AGB.yield_IMF_resampled[high_index_3d] +
                 sp->chemistry_data.metal_mass_fraction[i] *
                     stars->feedback.yield_AGB.ejecta_IMF_resampled[high_index_2d]);
     }

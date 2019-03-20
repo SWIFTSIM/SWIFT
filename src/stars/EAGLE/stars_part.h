@@ -126,9 +126,8 @@ struct spart {
 
   } to_distribute;
 
-  /* kernel normalisation factor (equivalent to metalweight_norm in
-   * eagle_enrich.c:811, TODO: IMPROVE COMMENT) */
-  float omega_normalisation_inv;
+  /* Normalisation factor for density weight fraction for feedback (equivalent to metalweight_norm in EAGLE, see eagle_enrich.c:811) */
+  float density_weight_frac_normalisation_inv;
 
   /* total mass of neighbouring gas particles */
   float ngb_mass;
@@ -179,7 +178,7 @@ struct yield_table {
   // insert comments to differentiate between sph and non-sph fields
   double *mass;
   double *metallicity;
-  double *SPH;
+  double *yield_IMF_resampled;
   double *yield;
   double *ejecta_IMF_resampled;
   double *ejecta;
