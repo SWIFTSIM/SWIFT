@@ -17,9 +17,10 @@ Entropy floors
 The gas particles in the EAGLE model are prevented from cooling below a
 certain temperature. The temperature limit depends on the density of the
 particles. Two floors are used in conjonction. Both are implemented as
-polytropic "equations of states" :math:`P = P_c
-\left(\rho/\rho_c\right)^\gamma`, with the constants derived from the user
-input given in terms of temperature and Hydrogen number density.
+polytropic "equations of states":math:`P = P_c
+\left(\rho/\rho_c\right)^\gamma` (all done in physical coordinates), with
+the constants derived from the user input given in terms of temperature and
+Hydrogen number density.
 
 The first limit, labelled as ``Cool``, is typically used to prevent
 low-density high-metallicity particles to cool below the warm phase because
@@ -27,12 +28,7 @@ of over-cooling induced by the absence of metal diffusion. This limit plays
 only a small role in practice. The second limit, labelled as ``Jeans``, is
 used to prevent the fragmentation of high-density gas into clumps that
 cannot be resolved by the coupled hydro+gravity solver. The two limits are
-sketched on the following figure. An additional over-density criterion is
-applied to prevent gas not collapsed into structures from being
-affected. This criterion demands that :math:`\rho > \Delta_{\rm floor}
-\Omega_b \rho_{\rm crit}`, with :math:`\Delta_{\rm floor}` specified by the
-user and :math:`\rho_{\rm crit}` the critical density at that redshift
-[#f1]_.
+sketched on the following figure.
 
 .. figure:: EAGLE_entropy_floor.svg
     :width: 400px
@@ -51,6 +47,15 @@ user and :math:`\rho_{\rm crit}` the critical density at that redshift
     the figure for clarity reasons, typical values for EAGLE runs place
     both anchors at the same temperature.
 
+An additional over-density criterion above the mean baryonic density is
+applied to prevent gas not collapsed into structures from being
+affected. To be precise, this criterion demands that the floor is applied
+only if :math:`\rho_{\rm com} > \Delta_{\rm floor}\bar{\rho_b} =
+\Delta_{\rm floor} \Omega_b \rho_{\rm crit,0}`, with :math:`\Delta_{\rm
+floor}` specified by the user, :math:`\rho_{\rm crit,0} = 3H_0/8\pi G` the
+critical density at redshift zero [#f1]_, and :math:`\rho_{\rm com}` the
+gas co-moving density. Typical values for :math:`\Delta_{\rm floor}` are of
+order 10.
 
 The model is governed by 4 parameters for each of the two
 limits. These are given in the ``EAGLEEntropyFloor`` section of the
