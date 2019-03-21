@@ -144,6 +144,8 @@ void runner_do_stars_ghost(struct runner *r, struct cell *c, int timer) {
   const int max_smoothing_iter = e->stars_properties->max_smoothing_iterations;
   int redo = 0, scount = 0;
 
+  double h_max = c->stars.h_max;
+
   TIMER_TIC;
 
   /* Anything to do here? */
@@ -338,7 +340,12 @@ void runner_do_stars_ghost(struct runner *r, struct cell *c, int timer) {
         }
 
         /* We now have a particle whose smoothing length has converged */
-        stars_reset_feedback(sp);
+
+	/* Check if h_max is increased */
+	if (h_max < sp->h)
+	  h_max = sp->h;
+
+	stars_reset_feedback(sp);
 
         /* Compute the stellar evolution  */
         stars_evolve_spart(sp, e->stars_properties, cosmo);
@@ -410,6 +417,8 @@ void runner_do_stars_ghost(struct runner *r, struct cell *c, int timer) {
     free(sid);
     free(h_0);
   }
+
+  cell_update_stars_h_max(c, h_max);
 
   if (timer) TIMER_TOC(timer_dostars_ghost);
 }
@@ -1346,6 +1355,8 @@ void runner_do_ghost(struct runner *r, struct cell *c, int timer) {
   const int max_smoothing_iter = e->hydro_properties->max_smoothing_iterations;
   int redo = 0, count = 0;
 
+  double h_max = c->hydro.h_max;
+
   TIMER_TIC;
 
   /* Anything to do here? */
@@ -1598,6 +1609,11 @@ void runner_do_ghost(struct runner *r, struct cell *c, int timer) {
 
           /* We now have a particle whose smoothing length has converged */
 
+	/* Check if h_max is increased */
+	if (h_max < p->h) {
+	  h_max = p->h;
+	}
+
 #ifdef EXTRA_HYDRO_LOOP
 
         /* As of here, particle gradient variables will be set. */
@@ -1709,6 +1725,8 @@ void runner_do_ghost(struct runner *r, struct cell *c, int timer) {
     free(pid);
     free(h_0);
   }
+
+  cell_update_hydro_h_max(c, h_max);
 
   if (timer) TIMER_TOC(timer_do_ghost);
 }

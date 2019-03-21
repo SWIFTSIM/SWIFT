@@ -4999,3 +4999,45 @@ int cell_can_use_pair_mm_rebuild(const struct cell *ci, const struct cell *cj,
   return gravity_M2L_accept(multi_i->r_max_rebuild, multi_j->r_max_rebuild,
                             theta_crit2, r2);
 }
+
+
+/**
+ * @brief Updates the hydro h_max in all the cell above.
+ *
+ * This function is used when h_max is updated in the ghost.
+ *
+ * @param c The #cell to update.
+ * @param h_max The new h_max.
+ */
+void cell_update_hydro_h_max(struct cell *c, double h_max) {
+
+  /* Check if new h_max is larger */
+  if (h_max > c->hydro.h_max) {
+    c->hydro.h_max = h_max;
+
+    /* Update parents */
+    if (c->parent != NULL)
+      cell_update_hydro_h_max(c->parent, h_max);
+  }
+}
+
+
+/**
+ * @brief Updates the stars h_max in all the cell above.
+ *
+ * This function is used when h_max is updated in the ghost.
+ *
+ * @param c The #cell to update.
+ * @param h_max The new h_max.
+ */
+void cell_update_stars_h_max(struct cell *c, double h_max) {
+
+  /* Check if new h_max is larger */
+  if (h_max > c->stars.h_max) {
+    c->stars.h_max = h_max;
+
+    /* Update parents */
+    if (c->parent != NULL)
+      cell_update_stars_h_max(c->parent, h_max);
+  }
+}
