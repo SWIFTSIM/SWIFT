@@ -27,6 +27,7 @@
 #include "hydro.h"
 #include "part.h"
 #include "star_formation_logger_struct.h"
+#include "units.h"
 
 /**
  * @brief Update the stellar mass in the current cell after creating
@@ -205,7 +206,7 @@ INLINE static void star_formation_logger_write_to_log_file(
  *
  * @param none
  */
-INLINE static void star_formation_logger_init_log_file(const char *baseName) {
+INLINE static void star_formation_logger_init_log_file(const char *baseName, const struct unit_system* restrict us) {
 
   /* File name */
   static const int buffersize = 300;
@@ -216,9 +217,46 @@ INLINE static void star_formation_logger_init_log_file(const char *baseName) {
   FILE *fp;
   fp = fopen(fileName, "w");
 
+  const double Msol = 1.98848e33;
+  const double Myr = 3.15569252e7*1e6;
+  const double yr = 3.15569252e7;
+
   /* Write some general text to the logger file */
   fprintf(fp, "# Star Formation History Logger file\n");
-  fprintf(fp, "# When applicable units are in internal units\n");
+  fprintf(fp, "######################################################\n");
+  fprintf(fp, "# The units are all given in internal physical units!\n");
+  fprintf(fp, "#\n");
+  fprintf(fp, "# (1) Time\n");
+  fprintf(fp, "#     Unit = %e seconds\n",us->UnitTime_in_cgs);
+  fprintf(fp, "#     Unit = %e Myr \n", us->UnitTime_in_cgs/(Myr));
+  fprintf(fp, "# (2) Scale factor (no unit)\n");
+  fprintf(fp, "# (3) Redshift     (no unit)\n");
+  fprintf(fp, "# (4) Total mass stars formed at current time\n");
+  fprintf(fp, "#     Unit = %e gram\n",us->UnitMass_in_cgs);
+  fprintf(fp, "#     Unit = %e solar mass\n",us->UnitMass_in_cgs/(Msol));
+  fprintf(fp, "# (5) The total SFR of all the active particles\n");
+  fprintf(fp, "#     Unit = %e gram/s\n",us->UnitMass_in_cgs/us->UnitTime_in_cgs);
+  fprintf(fp, "#     Unit = %e Msol/yr\n",us->UnitMass_in_cgs/us->UnitTime_in_cgs*yr/Msol);
+  fprintf(fp, "# (6) The active star formation rate (SFR) times their time steps\n");
+  fprintf(fp, "#     Unit = %e gram\n",us->UnitMass_in_cgs);
+  fprintf(fp, "#     Unit = %e solar mass\n",us->UnitMass_in_cgs/(Msol));
+  fprintf(fp, "# (7) The total SFR of all the particles in the simulation\n");
+  fprintf(fp, "#     Unit = %e gram/s\n",us->UnitMass_in_cgs/us->UnitTime_in_cgs);
+  fprintf(fp, "#     Unit = %e Msol/yr\n",us->UnitMass_in_cgs/us->UnitTime_in_cgs*yr/Msol);
+  fprintf(fp, "#\n");
+  fprintf(fp, "# NOTE: As a consistency check (4) and (6) need to have a cumulative summation\n");
+  fprintf(fp, "# that is very close to each other.\n");
+  fprintf(fp, "#\n");
+  fprintf(fp, "# Internal Units:\n");
+  fprintf(fp, "# Unit mass in cgs:   %e gram\n",us->UnitMass_in_cgs);
+  fprintf(fp, "# Unit length in cgs: %e cm\n",us->UnitLength_in_cgs);
+  fprintf(fp, "# Unit time in cgs:   %e seconds\n",us->UnitTime_in_cgs);
+  fprintf(fp, "# Unit current in cgs:%e Ampere\n",us->UnitCurrent_in_cgs);
+  fprintf(fp, "# Unit Temp in cgs:   %e Kelvin\n",us->UnitTemperature_in_cgs);
+  fprintf(fp, "#\n");
+  fprintf(fp,
+          "#      (1)           (2)          (3)             (4)           "
+          " (5)            (6)             (7)\n");
   fprintf(fp,
           "#     Time            a            z         total M_stars  SFR "
           "(active)  SFR*dt (active)  SFR (total)\n");

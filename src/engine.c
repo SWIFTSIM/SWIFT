@@ -4342,7 +4342,7 @@ void engine_init(struct engine *e, struct space *s, struct swift_params *params,
 
   /* Initialize the SFH logger if running with star formation */
   if (e->policy & engine_policy_star_formation) {
-    star_formation_logger_init_log_file(e->snapshot_base_name);
+    star_formation_logger_init_log_file(e->snapshot_base_name, e->internal_units);
   }
 
 #if defined(WITH_LOGGER)
