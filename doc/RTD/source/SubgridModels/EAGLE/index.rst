@@ -409,6 +409,22 @@ Star formation: Schaye+2008 modified for EAGLE
     does *not* enter the model at all). The values used to produce this
     figure are the ones assumed in the reference EAGLE model.
 
+.. figure:: EAGLE_SF_EOS.svg
+    :width: 400px
+    :align: center
+    :figclass: align-center
+    :alt: Equation-of-state assumed for the star-forming gas
+
+    The equation-of-state assumed for the star-forming gas in the EAGLE
+    model (black line). The function is described by the three parameters
+    indicated on the figure. These are the slope of the relation, the
+    position of the normalisation point on the density axis and the
+    temperature expected at this density. Note that this is a normalisation
+    and *not* a threshold. Gas at densities lower than the normalisation
+    point will also be put on this equation of state when computing its
+    star formation rate. The values used to produce this figure are the
+    ones assumed in the reference EAGLE model.
+    
 .. code:: YAML
 
    # EAGLE star formation parameters
