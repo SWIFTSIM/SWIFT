@@ -4020,7 +4020,7 @@ void engine_collect_stars_counter(struct engine *e) {
   }
 
   free(n_sparts);
-  free(n_sparts_in);
+  free(n_sparts_int);
   free(sparts);
 #endif
 }

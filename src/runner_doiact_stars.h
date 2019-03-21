@@ -300,7 +300,7 @@ void DO_SYM_PAIR1_STARS(struct runner *r, struct cell *ci, struct cell *cj,
          pid >= 0 && sort_i[pid].d + hi_max + dx_max > dj_min; pid--) {
 
       /* Get a hold of the ith part in ci. */
-      struct spart *restrict spi = &sparts_i[pid];
+      struct spart *restrict spi = &sparts_i[sort_i[pid].i];
       const float hi = spi->h;
 
       /* Skip inactive particles */
@@ -416,7 +416,7 @@ void DO_SYM_PAIR1_STARS(struct runner *r, struct cell *ci, struct cell *cj,
          pjd++) {
 
       /* Get a hold of the jth part in cj. */
-      struct spart *spj = &sparts_j[pjd];
+      struct spart *spj = &sparts_j[sort_j[pjd].i];
       const float hj = spj->h;
 
       /* Skip inactive particles */
