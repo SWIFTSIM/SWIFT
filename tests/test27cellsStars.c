@@ -70,6 +70,7 @@ struct cell *make_cell(size_t n, size_t n_stars, double *offset, double size,
   const size_t count = n * n * n;
   const size_t scount = n_stars * n_stars * n_stars;
   float h_max = 0.f;
+  float stars_h_max = 0.f;
   struct cell *cell = (struct cell *)malloc(sizeof(struct cell));
   bzero(cell, sizeof(struct cell));
 
@@ -143,7 +144,7 @@ struct cell *make_cell(size_t n, size_t n_stars, double *offset, double size,
           spart->h = size * h * random_uniform(1.f, h_pert) / (float)n_stars;
         else
           spart->h = size * h / (float)n_stars;
-        h_max = fmaxf(h_max, spart->h);
+        stars_h_max = fmaxf(stars_h_max, spart->h);
         spart->id = ++(*spartId);
 
         spart->time_bin = 1;
@@ -161,6 +162,7 @@ struct cell *make_cell(size_t n, size_t n_stars, double *offset, double size,
   cell->split = 0;
   cell->hydro.h_max = h_max;
   cell->hydro.count = count;
+  cell->stars.h_max = stars_h_max;
   cell->stars.count = scount;
   cell->hydro.dx_max_part = 0.;
   cell->hydro.dx_max_sort = 0.;
