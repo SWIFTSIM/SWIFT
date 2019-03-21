@@ -3118,8 +3118,10 @@ void engine_step(struct engine *e) {
     fflush(stdout);
 #endif
     /* Write the star formation information to the file */
-    star_formation_logger_write_to_log_file(e->time, e->cosmology->a, e->cosmology->z,
-                                 e->sfh, e->snapshot_base_name);
+    if (e->policy & engine_policy_star_formation) {
+      star_formation_logger_write_to_log_file(e->time, e->cosmology->a, e->cosmology->z,
+                                   e->sfh, e->snapshot_base_name);
+    }
 
     if (!e->restarting)
       fprintf(
@@ -4338,8 +4340,10 @@ void engine_init(struct engine *e, struct space *s, struct swift_params *params,
   e->total_nr_cells = 0;
   e->total_nr_tasks = 0;
 
-  /* Initialize the SFH logger */
-  star_formation_logger_init_log_file(e->snapshot_base_name);
+  /* Initialize the SFH logger if running with star formation */
+  if (e->policy & engine_policy_star_formation) {
+    star_formation_logger_init_log_file(e->snapshot_base_name);
+  }
 
 #if defined(WITH_LOGGER)
   e->logger = (struct logger *)malloc(sizeof(struct logger));
