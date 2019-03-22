@@ -2918,7 +2918,7 @@ void space_split_recursive(struct space *s, struct cell *c,
       hydro_time_bin_max = max(hydro_time_bin_max, parts[k].time_bin);
       h_max = max(h_max, parts[k].h);
       /* Collect SFR from the particles after rebuilt */
-      star_formation_logger_log_part_rebuild(&parts[k], &xparts[k], &c->stars.sfh);
+      star_formation_logger_log_inactive_part(&parts[k], &xparts[k], &c->stars.sfh);
     }
 
     /* xparts: Reset x_diff */

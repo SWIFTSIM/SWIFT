@@ -267,21 +267,6 @@ INLINE static void star_formation_logger_log_inactive_part(
 }
 
 /**
- * @brief Initialize the inactive SFR for the cells in the rebuilt
- *
- * @param p the #part
- * @param xp the #xpart
- * @param sf the SFH logger struct
- */
-INLINE static void star_formation_logger_log_part_rebuild(
-    const struct part *p, const struct xpart *xp,
-    struct star_formation_history *sf) {
-
-  /* Add to SFR to the sf struct (check if not tracing the last time) */
-  sf->SFR_inactive += max(xp->sf_data.SFR, 0.f);
-}
-
-/**
  * @brief do the recurse after the rebuilt to update the inactive SFR
  *
  * @param p the #part

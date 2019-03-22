@@ -144,17 +144,6 @@ INLINE static void star_formation_logger_log_inactive_part(
     struct star_formation_history *sf) {}
 
 /**
- * @brief Initialize the inactive SFR for the cells in the rebuilt
- *
- * @param p the #part
- * @param xp the #xpart
- * @param sf the SFH logger struct
- */
-INLINE static void star_formation_logger_log_part_rebuild(
-    const struct part *p, const struct xpart *xp,
-    struct star_formation_history *sf) {}
-
-/**
  * @brief do the recurse after the rebuilt to update the inactive SFR
  *
  * @param p the #part
