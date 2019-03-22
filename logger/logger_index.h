@@ -23,10 +23,38 @@
 #ifndef __LOGGER_LOGGER_INDEX_H__
 #define __LOGGER_LOGGER_INDEX_H__
 
+struct logger_reader;
+
 /**
  * @brief This structure will contain the data related to
  *   the index file.
  */
-struct logger_index {};
+struct logger_index {
+  /* The reader */
+  struct logger_reader *reader;
+
+  /* List of the time for each file */
+  double *times;
+
+  /* Number of files */
+  int number_files;
+
+  /* List of all the index files */
+  char **filenames;
+
+  /* Offsets */
+  size_t *offsets;
+
+  /* ids */
+  long long ids;
+};
+
+void logger_index_init(struct logger_index *index, struct logger_reader *reader,
+		       char *basename);
+void logger_index_read_file(struct logger_index *index, int i);
+
+void logger_index_free(struct logger_index *index);
+
+void logger_index_free_current_file(struct logger_index *index);
 
 #endif // __LOGGER_LOGGER_INDEX_H__
