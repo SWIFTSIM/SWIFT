@@ -60,6 +60,10 @@ if test "x$ax_enable_debug" != "xno"; then
    AC_DEFINE([SWIFT_DEVELOP_MODE],1,[Enable developer code options])
 fi
 
+# C++ in GCC 6 and above has an issue with undefined the min() and max()
+# macros. This hack works around that.
+AC_DEFINE([_GLIBCXX_INCLUDE_NEXT_C_HEADERS],1,[Hack for min() and max() using g++ 6+])
+
 # Enable POSIX and platform extension preprocessor macros.
 AC_USE_SYSTEM_EXTENSIONS
 
