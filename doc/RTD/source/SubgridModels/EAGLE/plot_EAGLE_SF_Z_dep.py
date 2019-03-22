@@ -69,4 +69,4 @@ ylim(0.0002, 50)
 #ax2.set_xlim(1e-7 / 0.014, 1/0.014)
 #ax2.set_xlabel('$Z/{Z_\\odot}~[-]$', labelpad=2)
 
-savefig("EAGLE_SF_Z_dep.png", dpi=200)
+savefig("EAGLE_SF_Z_dep.svg", dpi=200)

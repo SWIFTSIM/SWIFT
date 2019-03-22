@@ -48,4 +48,4 @@ xlabel("${\\rm Hydrogen~number~density}~n_{\\rm H}~[{\\rm cm^{-3}}]$", labelpad=
 ylabel("${\\rm Temperature}~T~[{\\rm K}]$", labelpad=2)
 xlim(3e-8, 3e3)
 ylim(20., 2e5)
-savefig("EAGLE_SF_EOS.png", dpi=200)
+savefig("EAGLE_SF_EOS.svg", dpi=200)
