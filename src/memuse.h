@@ -62,7 +62,7 @@ __attribute__((always_inline)) inline int swift_memalign(const char *label,
     memuse_log_allocation(label, *memptr, 1, size);
   } else {
     /* Failed allocations are interesting as well. */
-    memuse_log_allocation(label, NULL, -11, size);
+    memuse_log_allocation(label, NULL, -1, size);
   }
 #endif
   return result;
@@ -88,6 +88,33 @@ __attribute__((always_inline)) inline void *swift_malloc(const char *label,
   } else {
     /* Failed allocations are interesting as well. */
     memuse_log_allocation(label, NULL, -1, size);
+  }
+#endif
+  return memptr;
+}
+
+/**
+ * @brief allocate zeroed memory. The use and results are the same as the
+ *        calloc function. This function should be used for any
+ *        _significant_ allocations and consistently labelled.
+ *        Do not use this function for small or high frequency
+ *        allocations in production code.
+ *
+ * @param label a symbolic label for the memory, i.e. "parts".
+ * @param nmemb number of element to allocate.
+ * @param size the size of each element in bytes.
+ * @result pointer to the allocated memory or NULL on failure.
+ */
+__attribute__((always_inline)) inline void *swift_calloc(const char *label,
+                                                         size_t nmemb,
+                                                         size_t size) {
+    void *memptr = calloc(nmemb, size);
+#ifdef SWIFT_MEMUSE_REPORTS
+  if (memptr != NULL) {
+    memuse_log_allocation(label, memptr, 1, size * nmemb);
+  } else {
+    /* Failed allocations are interesting as well. */
+    memuse_log_allocation(label, NULL, -1, size * nmemb);
   }
 #endif
   return memptr;
