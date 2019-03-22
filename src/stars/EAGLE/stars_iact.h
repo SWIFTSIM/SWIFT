@@ -129,6 +129,8 @@ runner_iact_nonsym_stars_feedback(
   const float current_mass = hydro_get_mass(pj);
   float new_mass = current_mass + si->to_distribute.mass * density_weight_frac;
   hydro_set_mass(pj, new_mass);
+  //DEBUGGING
+  //message("pj %llu old new mass %e %e to_distribute mass %e weight frac %e", pj->id, current_mass, new_mass, si->to_distribute.mass, density_weight_frac);
 
   /* Decrease the mass of star particle */
   si->mass -= si->to_distribute.mass * density_weight_frac;

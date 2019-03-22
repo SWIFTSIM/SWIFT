@@ -259,7 +259,7 @@ inline static void init_imf(struct stars_props *restrict star_properties) {
  * @param metallicity Star's metallicity
  * @param star_properties the #stars_props data structure
  */
-inline static float dying_mass_msun(float age_Gyr, float metallicity,
+inline static double dying_mass_msun(double age_Gyr, float metallicity,
                                     const struct stars_props* restrict
                                         star_properties) {
 
