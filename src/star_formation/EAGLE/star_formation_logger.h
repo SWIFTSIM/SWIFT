@@ -182,23 +182,13 @@ INLINE static void star_formation_logger_init_engine(
  * @param sf the star_formation_history struct
  */
 INLINE static void star_formation_logger_write_to_log_file(
-    const double time, const double a, const double z,
-    const struct star_formation_history sf, const char *baseName) {
-
-  /* File name */
-  static const int buffersize = 300;
-  char fileName[buffersize];
-  snprintf(fileName, buffersize, "%s_SFH_logger.txt", baseName);
-
-  /* Open the file */
-  FILE *fp;
-  fp = fopen(fileName, "a");
+    FILE *fp, const double time, const double a, const double z,
+    const struct star_formation_history sf) {
 
   /* Calculate the total SFR */
   const float totalSFR = sf.SFR_active + sf.SFR_inactive;
   fprintf(fp, "%16e %12.7f %12.7f %14e %14e %14e %14e\n", time, a, z,
           sf.new_stellar_mass, sf.SFR_active, sf.SFRdt_active, totalSFR);
-  fclose(fp);
 }
 
 /**
@@ -206,16 +196,7 @@ INLINE static void star_formation_logger_write_to_log_file(
  *
  * @param none
  */
-INLINE static void star_formation_logger_init_log_file(const char *baseName, const struct unit_system* restrict us, const struct phys_const* phys_const) {
-
-  /* File name */
-  static const int buffersize = 300;
-  char fileName[buffersize];
-  snprintf(fileName, buffersize, "%s_SFH_logger.txt", baseName);
-
-  /* Open the file */
-  FILE *fp;
-  fp = fopen(fileName, "w");
+INLINE static void star_formation_logger_init_log_file(FILE *fp, const struct unit_system* restrict us, const struct phys_const* phys_const) {
 
   /* Write some general text to the logger file */
   fprintf(fp, "# Star Formation History Logger file\n");
@@ -249,7 +230,6 @@ INLINE static void star_formation_logger_init_log_file(const char *baseName, con
   fprintf(fp,
           "#     Time             a            z        total M_stars  SFR "
           "(active)  SFR*dt (active)  SFR (total)\n");
-  fclose(fp);
 }
 
 /**
