@@ -96,8 +96,8 @@ void header_change_offset_direction(struct header *h, int new_value) {
 /**
  * @brief read the logger header
  *
- * @param h out: header
- * @param map file mapping
+ * @param h out: The #header.
+ * @param dump The #logger_dump.
  */
 void header_read(struct header *h, struct logger_dump *dump) {
   size_t offset = 0;
@@ -110,7 +110,6 @@ void header_read(struct header *h, struct logger_dump *dump) {
   offset = io_read_data(map, LOGGER_VERSION_SIZE, &h->version, offset);
 
   /* read offset direction */
-  h->offset_direction = -1;
   offset = io_read_data(map, LOGGER_NUMBER_SIZE, &h->offset_direction, offset);
 
   if (!header_is_forward(h) && !header_is_backward(h) &&
@@ -118,11 +117,9 @@ void header_read(struct header *h, struct logger_dump *dump) {
     error("Wrong offset value in the header (%i)", h->offset_direction);
 
   /* read offset to first data */
-  h->offset_first = 0;
   offset = io_read_data(map, LOGGER_OFFSET_SIZE, &h->offset_first, offset);
 
   /* read name size */
-  h->name_length = 0;
   offset = io_read_data(map, LOGGER_NUMBER_SIZE, &h->name_length, offset);
 
   /* check if value defined in this file is large enough */
@@ -131,7 +128,6 @@ void header_read(struct header *h, struct logger_dump *dump) {
   }
 
   /* read number of masks */
-  h->number_mask = 0;
   offset = io_read_data(map, LOGGER_NUMBER_SIZE, &h->number_mask, offset);
 
   /* allocate memory */
@@ -142,17 +138,16 @@ void header_read(struct header *h, struct logger_dump *dump) {
     /* read mask name */
     offset = io_read_data(map, h->name_length, h->masks[i].name, offset);
 
-    /* get mask value */
+    /* set mask value */
     h->masks[i].mask = 1 << i;
 
     /* read mask data size */
-    h->masks[i].size = 0;
     offset = io_read_data(map, LOGGER_NUMBER_SIZE, &h->masks[i].size, offset);
   }
 
   if (offset != h->offset_first) {
     header_print(h);
-    error("Wrong header size (in header %li, current %li)", h->offset_first,
+    error("Wrong header size (in header %zi, current %zi)", h->offset_first,
           offset);
   }
 };

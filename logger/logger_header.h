@@ -48,13 +48,13 @@ struct logger_dump;
 /**
  * @brief This structure contains everything from the file header.
  *
- * This structure is initialized by @header_read and need to be freed
- * with @header_free.
+ * This structure is initialized by #header_read and need to be freed
+ * with #header_free.
  *
  * The information contained by the header can be easily access with
- * the functions @header_get_mask_size and @header_get_field_index.
+ * the functions #header_get_mask_size and #header_get_field_index.
  *
- * The only function that modify the file is @header_change_offset_direction.
+ * The only function that modify the file is #header_change_offset_direction.
  */
 struct header {
   /* Logger version. */
@@ -73,7 +73,7 @@ struct header {
   struct mask_data *masks;
 
   /* Direction of the offset in the chunks. */
-  int offset_direction;
+  enum logger_offset_direction offset_direction;
 
   /* The corresponding dump */
   struct logger_dump *dump;

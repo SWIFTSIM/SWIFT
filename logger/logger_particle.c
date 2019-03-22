@@ -67,7 +67,7 @@ void logger_particle_init(struct logger_particle *part) {
  * @brief Read a single field for a particle.
  *
  * @param part The #logger_particle to update.
- * @param data Pointer to the data to read.
+ * @param map The mapped data.
  * @param offset position to read.
  * @param field field to read.
  * @param size number of bits to read.

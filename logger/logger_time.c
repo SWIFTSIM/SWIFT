@@ -89,7 +89,6 @@ size_t time_first_timestamp(const struct header *h) {
  * @brief Initialize an empty time array.
  *
  * @param t #time_array to initialize.
- * @param dump The #logger_dump.
  */
 void time_array_init_to_zero(struct time_array *t) {
   t->next = NULL;
@@ -221,7 +220,7 @@ void time_array_print(const struct time_array *t) {
   for(size_t i = 1; i < n; i++) {
     /* The last time_array does not have a next */
     if (!t->next)
-      error("Next pointer not initialized %li", i);
+      error("Next pointer not initialized %zi", i);
 
     t = t->next;
     if (i < threshold || i > up_threshold)

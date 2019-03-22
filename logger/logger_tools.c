@@ -110,7 +110,7 @@ int _tools_get_next_chunk_backward(const struct header *h, void *map,
  * From current chunk, switch side of the offset of the previous one.
  * @param h #header structure of the file.
  * @param map file mapping.
- * @param position of the record.
+ * @param offset position of the record.
  *
  * @return position after the record.
  */

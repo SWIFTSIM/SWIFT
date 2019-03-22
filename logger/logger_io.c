@@ -42,7 +42,7 @@ size_t io_get_file_size(int fd) {
 /**
  * @brief Map a file.
  *
- * @io_munmap_file should be called to unmap the file.
+ * #io_munmap_file should be called to unmap the file.
  *
  * @param filename file to read.
  * @param file_size (out) size of the file.

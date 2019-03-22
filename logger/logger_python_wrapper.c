@@ -33,10 +33,11 @@
 /**
  * @brief load data from the offset without any interpolation
  *
- * @param offset PyArrayObject list of offset for each particle
- * @param filename string filename of the dump file
- * @param verbose Verbose level
- * @return dictionnary containing the data read
+ * <b>offset</b> PyArrayObject list of offset for each particle
+ * <b>filename</b> string filename of the dump file
+ * <b>verbose</b> Verbose level
+ *
+ * <b>returns</b> dictionnary containing the data read
  */
 static PyObject *loadFromIndex(__attribute__((unused)) PyObject *self,
                                PyObject *args) {
@@ -229,8 +230,8 @@ static PyObject *loadFromIndex(__attribute__((unused)) PyObject *self,
 /**
  * @brief Reverse offset in dump file
  *
- * @param filename string filename of the dump file
- * @param verbose Verbose level
+ * <b>filename</b> string filename of the dump file
+ * <b>verbose</b> Verbose level
  */
 static PyObject *pyReverseOffset(__attribute__((unused)) PyObject *self,
                                  PyObject *args) {

@@ -39,11 +39,11 @@ struct logger_reader;
  * As we need only a single particle, no need to keep
  * it small.
  *
- * The particle is initialized with @logger_particle_init
- * and can be updated with a chunk through @logger_particle_read.
+ * The particle is initialized with #logger_particle_init
+ * and can be updated with a chunk through #logger_particle_read.
  *
- * In @logger_particle_read, we use @logger_particle_read_field on
- * each field and @logger_particle_interpolate if a linear
+ * In #logger_particle_read, we use #logger_particle_read_field on
+ * each field and #logger_particle_interpolate if a linear
  * interpolation is required.
  */
 struct logger_particle {

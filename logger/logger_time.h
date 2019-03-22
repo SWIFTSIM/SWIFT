@@ -34,15 +34,15 @@ struct logger_reader;
  * this structure is required. It contains all the time step
  * with their timestamp and position in the file.
  *
- * This structure is initialized with @time_array_init and
- * freed with @time_array_free.
+ * This structure is initialized with #time_array_init and
+ * freed with #time_array_free.
  *
  * The time step of an offset can be obtained with
- * @time_array_get_integertime, @time_array_get_time and
- * @time_array_get_time_array.
+ * #time_array_get_integertime, #time_array_get_time and
+ * #time_array_get_time_array.
  *
  * The size of the time array can be accessed with
- * @time_array_count.
+ * #time_array_count.
  */
 struct time_array {
   /* Pointer to next element */
