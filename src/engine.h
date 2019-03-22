@@ -378,6 +378,9 @@ struct engine {
   /* Properties of the starformation law */
   const struct star_formation *star_formation;
 
+  /* File pointer to the SFH logger file */
+  FILE *sfh_logger;
+
   /* Properties of the chemistry model */
   const struct chemistry_global_data *chemistry;
 

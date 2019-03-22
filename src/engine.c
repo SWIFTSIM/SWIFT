@@ -4342,6 +4342,12 @@ void engine_init(struct engine *e, struct space *s, struct swift_params *params,
 
   /* Initialize the SFH logger if running with star formation */
   if (e->policy & engine_policy_star_formation) {
+    const int buffersize = 300;
+    char SFH_logger_fileName[buffersize];
+    snprintf(SFH_logger_fileName, buffersize, "%s_SFH_logger2.txt", e->snapshot_base_name);
+
+    e->sfh_logger = fopen(SFH_logger_fileName, "w");
+
     star_formation_logger_init_log_file(e->snapshot_base_name, e->internal_units, e->physical_constants);
   }
 
