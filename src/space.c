@@ -2777,7 +2777,7 @@ void space_split_recursive(struct space *s, struct cell *c,
         ti_stars_end_min = min(ti_stars_end_min, cp->stars.ti_end_min);
         ti_stars_end_max = min(ti_stars_end_max, cp->stars.ti_end_max);
         ti_stars_beg_max = min(ti_stars_beg_max, cp->stars.ti_beg_max);
-        star_formation_logger_recurse_SFR_rebuild(c, cp);
+        star_formation_logger_assign(c,&cp->stars.sfh);
 
         /* Increase the depth */
         if (cp->maxdepth > maxdepth) maxdepth = cp->maxdepth;

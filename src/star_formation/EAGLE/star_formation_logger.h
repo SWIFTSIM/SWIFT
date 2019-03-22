@@ -266,20 +266,4 @@ INLINE static void star_formation_logger_log_inactive_part(
   sf->SFR_inactive += max(xp->sf_data.SFR, 0.f);
 }
 
-/**
- * @brief do the recurse after the rebuilt to update the inactive SFR
- *
- * @param p the #part
- * @param xp the #xpart
- * @param sf the SFH logger struct
- */
-INLINE static void star_formation_logger_recurse_SFR_rebuild(struct cell *c,
-                                                      const struct cell *cp) {
-  struct star_formation_history *sf = &c->stars.sfh;
-
-  /* Increase inactive SFR by recursion */
-  const struct star_formation_history *sfp = &cp->stars.sfh;
-  sf->SFR_inactive += sfp->SFR_inactive;
-}
-
 #endif /* SWIFT_SCHAYE_STARFORMATION_LOGGER_H */
