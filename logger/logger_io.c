@@ -26,11 +26,11 @@
 #include "logger_tools.h"
 
 /**
- * @brief get the size of a file
+ * @brief get the size of a file.
  *
- * @param fd file id
+ * @param fd file id.
  *
- * @return file size
+ * @return file size.
  */
 size_t io_get_file_size(int fd) {
   struct stat s;
@@ -69,9 +69,9 @@ void *io_mmap_file(char *filename, size_t *file_size) {
 }
 
 /**
- * @brief Unmap a file
+ * @brief Unmap a file.
  *
- * @param map file mapping
+ * @param map file mapping.
  * @param file_size The file size.
  *
  */

@@ -26,21 +26,26 @@
 #include <stdio.h>
 #include <stdlib.h>
 
+#if defined(HYDRO_DIMENSION_1D)
+#define DIM 1
+#elif defined(HYDRO_DIMENSION_2D)
+#define DIM 2
+#elif defined(HYDRO_DIMENSION_3D)
 #define DIM 3
+#endif
 
 struct logger_reader;
 
 /**
- * @brief Store the data from a chunk.
+ * @brief Store the data from a record.
  *
  * This structure contains all the required fields
  * present in a file.
  *
- * As we need only a single particle, no need to keep
- * it small.
+ * As we need only a few particles, no need to keep it small.
  *
  * The particle is initialized with #logger_particle_init
- * and can be updated with a chunk through #logger_particle_read.
+ * and can be updated with a record through #logger_particle_read.
  *
  * In #logger_particle_read, we use #logger_particle_read_field on
  * each field and #logger_particle_interpolate if a linear

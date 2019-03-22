@@ -23,7 +23,7 @@
  * @brief Initialize the reader.
  *
  * @param reader The #logger_reader.
- * @param filename The dump filename.
+ * @param filename The log filename.
  * @param verbose The verbose level.
  */
 void logger_reader_init(struct logger_reader *reader, char *filename, int verbose) {
@@ -32,8 +32,8 @@ void logger_reader_init(struct logger_reader *reader, char *filename, int verbos
   /* Initialize the reader variables */
   reader->verbose = verbose;
 
-  /* Initialize the dump */
-  logger_dump_init(&reader->dump, filename, reader);
+  /* Initialize the log */
+  logger_logfile_init(&reader->log, filename, reader);
 
   if (verbose > 1)
     message("Initialization done.");
@@ -45,6 +45,6 @@ void logger_reader_init(struct logger_reader *reader, char *filename, int verbos
  * @param reader The #logger_reader.
  */
 void logger_reader_free(struct logger_reader *reader) {
-  /* Free the dump */
-  logger_dump_free(&reader->dump);
+  /* Free the log */
+  logger_logfile_free(&reader->log);
 }

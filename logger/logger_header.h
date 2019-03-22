@@ -43,7 +43,7 @@ enum logger_offset_direction {
 extern const char *logger_offset_name[];
 
 
-struct logger_dump;
+struct logger_logfile;
 
 /**
  * @brief This structure contains everything from the file header.
@@ -60,8 +60,8 @@ struct header {
   /* Logger version. */
   char version[STRING_SIZE];
 
-  /* Offset of the first header. */
-  size_t offset_first;
+  /* Offset of the first record. */
+  size_t offset_first_record;
 
   /* Number of bytes for names. */
   size_t name_length;
@@ -72,19 +72,19 @@ struct header {
   /* List of masks. */
   struct mask_data *masks;
 
-  /* Direction of the offset in the chunks. */
+  /* Direction of the offset in the records. */
   enum logger_offset_direction offset_direction;
 
-  /* The corresponding dump */
-  struct logger_dump *dump;
+  /* The corresponding log */
+  struct logger_logfile *log;
 };
 
 void header_print(const struct header *h);
 void header_free(struct header *h);
 int header_get_field_index(const struct header *h, const char *field);
-void header_read(struct header *h, struct logger_dump *dump);
+void header_read(struct header *h, struct logger_logfile *log);
 size_t header_get_mask_size(const struct header *h, const size_t mask);
-void header_change_offset_direction(struct header *h, int new_value);
+void header_change_offset_direction(struct header *h, enum logger_offset_direction new_value);
 
 
 /**

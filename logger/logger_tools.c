@@ -26,35 +26,35 @@
 #include <stdio.h>
 
 /**
- * @brief get the offset of the next corresponding chunk
+ * @brief get the offset of the next corresponding record.
  *
  * @param h #header structure of the file
  * @param map file mapping
- * @param offset In: initial offset, Out: offset of the next chunk
+ * @param offset In: initial offset, Out: offset of the next record
  * @param file_size The file size.
  *
- * @return -1 if no next chunk, otherwise 0
+ * @return -1 if no next record, otherwise 0
  */
-int tools_get_next_chunk(const struct header *h, void *map, size_t *offset,
-                         size_t file_size) {
+int tools_get_next_record(const struct header *h, void *map, size_t *offset,
+			  size_t file_size) {
   if (header_is_forward(h))
-    return _tools_get_next_chunk_forward(h, map, offset);
+    return _tools_get_next_record_forward(h, map, offset);
   if (header_is_backward(h))
-    return _tools_get_next_chunk_backward(h, map, offset, file_size);
+    return _tools_get_next_record_backward(h, map, offset, file_size);
   else
     error("Offsets are corrupted");
 }
 
 /**
- * @brief internal function of #tools_get_next_chunk. Should not be used outside
+ * @brief internal function of #tools_get_next_record. Should not be used outside.
  *
  * @param h #header structure of the file
  * @param map file mapping
- * @param offset In: initial offset, Out: offset of the next chunk
+ * @param offset In: initial offset, Out: offset of the next record
  *
- * @return error code, -1 if no next chunk
+ * @return error code, -1 if no next record
  */
-int _tools_get_next_chunk_forward(const struct header *h, void *map,
+int _tools_get_next_record_forward(const struct header *h, void *map,
                                   size_t *offset) {
   size_t diff_offset = 0;
 
@@ -69,32 +69,32 @@ int _tools_get_next_chunk_forward(const struct header *h, void *map,
 }
 
 /**
- * @brief internal function of #tools_get_next_chunk. Should not be used (very
+ * @brief internal function of #tools_get_next_record. Should not be used (very
  * slow)
  *
  * @param h #header structure of the file
  * @param map file mapping
- * @param offset In: initial offset, Out: offset of the next chunk
+ * @param offset In: initial offset, Out: offset of the next record
  * @param file_size The file size.
  *
- * @return error code, -1 if no next chunk
+ * @return error code, -1 if no next record
  */
-int _tools_get_next_chunk_backward(const struct header *h, void *map,
+int _tools_get_next_record_backward(const struct header *h, void *map,
                                    size_t *offset, size_t file_size) {
 #ifndef SWIFT_DEBUG_CHECKS
   error("Should not be used, method too slow");
 #endif
   size_t current_offset = *offset;
-  size_t chunk_header = LOGGER_MASK_SIZE + LOGGER_OFFSET_SIZE;
+  size_t record_header = LOGGER_MASK_SIZE + LOGGER_OFFSET_SIZE;
 
   while (current_offset < file_size) {
     size_t mask = 0;
     size_t prev_offset;
     current_offset = io_read_mask(h, map, current_offset, &mask, &prev_offset);
 
-    prev_offset = current_offset - prev_offset - chunk_header;
+    prev_offset = current_offset - prev_offset - record_header;
     if (*offset == prev_offset) {
-      *offset = current_offset - chunk_header;
+      *offset = current_offset - record_header;
       return 0;
     }
 
@@ -107,7 +107,7 @@ int _tools_get_next_chunk_backward(const struct header *h, void *map,
 /**
  * @brief switch side offset.
  *
- * From current chunk, switch side of the offset of the previous one.
+ * From current record, switch side of the offset of the previous one.
  * @param h #header structure of the file.
  * @param map file mapping.
  * @param offset position of the record.
@@ -122,15 +122,15 @@ size_t tools_reverse_offset(const struct header *h, void *map, size_t offset) {
   /* read mask + offset */
   offset = io_read_mask(h, map, offset, &mask, &prev_offset);
 
-  /* write offset of zero (in case it is the last chunk) */
+  /* write offset of zero (in case it is the last record) */
   const size_t zero = 0;
   offset -= LOGGER_OFFSET_SIZE;
   offset = io_write_data(map, LOGGER_OFFSET_SIZE, &zero, offset);
 
-  /* set offset after current chunk */
+  /* set offset after current record */
   offset += header_get_mask_size(h, mask);
 
-  /* first chunks do not have a previous partner */
+  /* first records do not have a previous partner */
   if (prev_offset == cur_offset)
     return offset;
 
@@ -157,23 +157,23 @@ size_t tools_reverse_offset(const struct header *h, void *map, size_t offset) {
 }
 
 /**
- * @brief debugging function checking the offset of a chunk
+ * @brief debugging function checking the offset and the mask of a record.
  *
  * Compare the mask with the one pointed by the header.
- * if the chunk is a particle, check the id too.
+ * if the record is a particle, check the id too.
  *
  * @param reader The #logger_reader.
  * @param offset position of the record.
  *
  * @return position after the record.
  */
-size_t tools_check_offset(const struct logger_reader *reader, size_t offset) {
+size_t tools_check_record_consistency(const struct logger_reader *reader, size_t offset) {
 #ifndef SWIFT_DEBUG_CHECKS
   error("Should not check in non debug mode");
 #endif
 
-  const struct header *h = &reader->dump.header;
-  void *map = reader->dump.dump.map;
+  const struct header *h = &reader->log.header;
+  void *map = reader->log.log.map;
 
   size_t tmp = offset;
 
@@ -196,13 +196,13 @@ size_t tools_check_offset(const struct logger_reader *reader, size_t offset) {
     error("Offset are corrupted");
   }
 
-  /* set offset after current chunk */
+  /* set offset after current record */
   offset += header_get_mask_size(h, mask);
 
   if (pointed_offset == tmp || pointed_offset == 0)
     return offset;
 
-  /* read mask of the pointed chunk */
+  /* read mask of the pointed record */
   size_t pointed_mask = 0;
   pointed_offset = io_read_mask(h, map, pointed_offset, &pointed_mask, NULL);
 

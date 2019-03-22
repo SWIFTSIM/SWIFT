@@ -33,16 +33,16 @@ void *io_mmap_file(char *filename, size_t *file_size);
 void io_munmap_file(void *map, size_t file_size);
 
 /**
- * @brief read a mask with its offset
+ * @brief read a mask with its offset.
  *
- * @param h #header file structure
+ * @param h #header file structure.
  * @param data Pointer to the data to read.
- * @param offset position in the file, Out: shifted by the mask + offset
- * size
- * @param mask mask read
- * @param diff_offset offset difference to previous/next corresponding chunk
+ * @param offset position in the file.
+ * @param mask mask read from the data.
+ * @param diff_offset offset difference to previous/next corresponding record read.
+ * from the data.
  *
- * @return offset after the record header
+ * @return offset after the record header.
  */
 __attribute__((always_inline)) INLINE static size_t io_read_mask(
     const struct header *h, void *data, size_t offset, size_t *mask,
@@ -68,11 +68,11 @@ __attribute__((always_inline)) INLINE static size_t io_read_mask(
  * @brief read a single value in a file.
  *
  * @param data Pointer to the data to read.
- * @param size size of the chunk to read.
+ * @param size size of the data to read.
  * @param p pointer where to store the data.
  * @param offset position to read.
 
- * @return offset after the record.
+ * @return offset after the data written.
  */
 __attribute__((always_inline)) INLINE static size_t io_read_data(
     void *data, const size_t size, void *p, size_t offset) {
@@ -84,7 +84,7 @@ __attribute__((always_inline)) INLINE static size_t io_read_data(
  * @brief write a single value in a file.
  *
  * @param data Pointer to the data to read.
- * @param size size of the chunk to write.
+ * @param size size of the data to write.
  * @param p pointer to the data.
  * @param offset position to write.
  *

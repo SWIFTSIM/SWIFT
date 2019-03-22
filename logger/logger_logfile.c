@@ -16,62 +16,62 @@
  * along with this program.  If not, see <http://www.gnu.org/licenses/>.
  *
  ******************************************************************************/
-#include "logger_dump.h"
+#include "logger_logfile.h"
 #include "logger_reader.h"
 #include "logger_io.h"
 
 /**
- * @brief Initialize the #logger_dump.
+ * @brief Initialize the #logger_logfile.
  *
  * If required this function will also reverse the offsets.
- * @param dump The #logger_dump.
- * @param filename the dump's filename.
+ * @param log The #logger_logfile.
+ * @param filename the log's filename.
  * @param reader The #logger_reader.
  */
-void logger_dump_init(
-    struct logger_dump *dump, char *filename,
+void logger_logfile_init(
+    struct logger_logfile *log, char *filename,
     struct logger_reader *reader) {
 
   /* Set the pointer to the reader. */
-  dump->reader = reader;
+  log->reader = reader;
 
   /* Set pointers to zero */
-  time_array_init_to_zero(&dump->times);
+  time_array_init_to_zero(&log->times);
 
   /* Open file, map it and get its size. */
   if (reader->verbose > 1)
-    message("Mapping the dump file.");
-  dump->dump.map = io_mmap_file(filename, &dump->dump.file_size);
+    message("Mapping the log file.");
+  log->log.map = io_mmap_file(filename, &log->log.file_size);
 
   /* Read header. */
   if (reader->verbose > 1)
     message("Reading the header.");
-  header_read(&dump->header, dump);
+  header_read(&log->header, log);
 
   /* Print the header. */
   if (reader->verbose > 0) {
-    header_print(&dump->header);
+    header_print(&log->header);
   }
 
   /* Check if the offset are corrupted */
-  if (header_is_corrupted(&dump->header)) {
+  if (header_is_corrupted(&log->header)) {
     error("The offsets have been corrupted");
   }
 
   /* Reverse offset direction */
   if (reader->verbose > 1)
     message("Checking if offsets need to be reversed.");
-  if (header_is_backward(&dump->header)) {
-    logger_dump_reverse_offset(dump);
+  if (header_is_backward(&log->header)) {
+    logger_logfile_reverse_offset(log);
   }
 
   /* Initialize the time array */
   if (reader->verbose > 1)
     message("Reading the time stamps.");
-  time_array_init(&dump->times, dump);
+  time_array_init(&log->times, log);
 
   if (reader->verbose > 0) {
-    time_array_print(&dump->times);
+    time_array_print(&log->times);
   }
 
 }
@@ -79,23 +79,23 @@ void logger_dump_init(
 /**
  * @brief Free the allocated memory and unmap the file.
  *
- * @param dump The #logger_dump.
+ * @param log The #logger_logfile.
  */
-void logger_dump_free(struct logger_dump *dump) {
-  io_munmap_file(dump->dump.map, dump->dump.file_size);
+void logger_logfile_free(struct logger_logfile *log) {
+  io_munmap_file(log->log.map, log->log.file_size);
 
 }
 
 
 /**
- * @brief Reverse offset in dump file
+ * @brief Reverse offset in log file
  *
- * @param dump The #logger_dump
+ * @param log The #logger_logfile
  */
-void logger_dump_reverse_offset(struct logger_dump *dump) {
+void logger_logfile_reverse_offset(struct logger_logfile *log) {
 
-  struct header *header = &dump->header;
-  const struct logger_reader *reader = dump->reader;
+  struct header *header = &log->header;
+  const struct logger_reader *reader = log->reader;
 
   if (!header_is_backward(header)) {
     error("The offset are already reversed.");
@@ -108,9 +108,9 @@ void logger_dump_reverse_offset(struct logger_dump *dump) {
     message("Check offsets...");
   }
 
-  for(size_t offset_debug = header->offset_first;
-      offset_debug < dump->dump.file_size;
-      offset_debug = tools_check_offset(reader, offset_debug)) {}
+  for(size_t offset_debug = header->offset_first_record;
+      offset_debug < log->log.file_size;
+      offset_debug = tools_check_record_consistency(reader, offset_debug)) {}
 
   if (reader->verbose > 0) {
     message("Check done");
@@ -120,14 +120,14 @@ void logger_dump_reverse_offset(struct logger_dump *dump) {
   /* reverse header offset */
   header_change_offset_direction(header, logger_offset_corrupted);
   
-  /* reverse chunks */
+  /* reverse record */
   if (reader->verbose > 0) {
     message("Reversing offsets...");
   }
 
-  for(size_t offset = header->offset_first;
-      offset < dump->dump.file_size;
-      offset = tools_reverse_offset(header, dump->dump.map, offset)) {}
+  for(size_t offset = header->offset_first_record;
+      offset < log->log.file_size;
+      offset = tools_reverse_offset(header, log->log.map, offset)) {}
 
   if (reader->verbose > 0) {
     message("Reversing done");
@@ -142,9 +142,9 @@ void logger_dump_reverse_offset(struct logger_dump *dump) {
     message("Check offsets...");
   }
 
-  for(size_t offset_debug = header->offset_first;
-      offset_debug < dump->dump.file_size;
-      offset_debug = tools_check_offset(reader, offset_debug)) {}
+  for(size_t offset_debug = header->offset_first_record;
+      offset_debug < log->log.file_size;
+      offset_debug = tools_check_record_consistency(reader, offset_debug)) {}
 
   if (reader->verbose > 0) {
     message("Check done");

@@ -33,11 +33,13 @@
 /**
  * @brief load data from the offset without any interpolation
  *
- * <b>offset</b> PyArrayObject list of offset for each particle
- * <b>filename</b> string filename of the dump file
- * <b>verbose</b> Verbose level
+ * <b>offset</b> PyArrayObject list of offset for each particle.
  *
- * <b>returns</b> dictionnary containing the data read
+ * <b>filename</b> string filename of the log file.
+ *
+ * <b>verbose</b> Verbose level.
+ *
+ * <b>returns</b> dictionnary containing the data read.
  */
 static PyObject *loadFromIndex(__attribute__((unused)) PyObject *self,
                                PyObject *args) {
@@ -78,7 +80,7 @@ static PyObject *loadFromIndex(__attribute__((unused)) PyObject *self,
   /* initialize the reader */
   struct logger_reader reader;
   logger_reader_init(&reader, filename, verbose);
-  struct header *h = &reader.dump.header;
+  struct header *h = &reader.log.header;
 
   /* init array */
   npy_intp dim[2];
@@ -86,7 +88,7 @@ static PyObject *loadFromIndex(__attribute__((unused)) PyObject *self,
   dim[1] = DIM;
 
   /* Get required time. */
-  double time = time_array_get_time(&reader.dump.times, time_offset);
+  double time = time_array_get_time(&reader.log.times, time_offset);
 
   /* init output */
   if (header_get_field_index(h, "positions") != -1) {
@@ -184,7 +186,7 @@ static PyObject *loadFromIndex(__attribute__((unused)) PyObject *self,
   /* Free the memory */
   logger_reader_free(&reader);
 
-  /* construct return */
+  /* construct return value */
   PyObject *dict = PyDict_New();
   PyObject *key = PyUnicode_FromString("positions");
   PyDict_SetItem(dict, key, PyArray_Return(pos));
@@ -228,9 +230,9 @@ static PyObject *loadFromIndex(__attribute__((unused)) PyObject *self,
 }
 
 /**
- * @brief Reverse offset in dump file
+ * @brief Reverse offset in log file
  *
- * <b>filename</b> string filename of the dump file
+ * <b>filename</b> string filename of the log file
  * <b>verbose</b> Verbose level
  */
 static PyObject *pyReverseOffset(__attribute__((unused)) PyObject *self,

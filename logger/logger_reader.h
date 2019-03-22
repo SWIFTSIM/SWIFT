@@ -41,7 +41,7 @@
 #ifndef __LOGGER_LOGGER_READER_H__
 #define __LOGGER_LOGGER_READER_H__
 
-#include "logger_dump.h"
+#include "logger_logfile.h"
 #include "logger_index.h"
 
 /**
@@ -56,7 +56,7 @@ struct logger_reader {
   struct logger_index index;
   
   /* Informations contained in the file header */
-  struct logger_dump dump;
+  struct logger_logfile log;
 
   /* Level of verbosity */
   int verbose;

@@ -64,7 +64,7 @@ void logger_particle_init(struct logger_particle *part) {
 }
 
 /**
- * @brief Read a single field for a particle.
+ * @brief Read a single named entry for a particle.
  *
  * @param part The #logger_particle to update.
  * @param map The mapped data.
@@ -79,6 +79,7 @@ size_t logger_particle_read_field(struct logger_particle *part, void *map,
 				  const size_t size) {
   void *p = NULL;
 
+  /* Get the correct pointer */
   if (strcmp("positions", field) == 0) {
     p = &part->pos;
   } else if (strcmp("velocities", field) == 0) {
@@ -97,8 +98,10 @@ size_t logger_particle_read_field(struct logger_particle *part, void *map,
     error("Type %s not defined", field);
   }
 
+  /* read the data */
   offset = io_read_data(map, size, p, offset);
 
+  /* Split the required fields */
   if (strcmp("consts", field) == 0) {
     part->mass = 0;
     part->id = 0;
@@ -113,13 +116,12 @@ size_t logger_particle_read_field(struct logger_particle *part, void *map,
 }
 
 /**
- * @brief Read a particle in the dump file.
+ * @brief Read a particle entry in the log file.
  *
  * @param reader The #logger_reader.
  * @param part The #logger_particle to update.
- * @param offset offset of the chunk to read.
- * @param time time to interpolate (if #logger_reader_type is an interpolating
- * one).
+ * @param offset offset of the record to read.
+ * @param time time to interpolate.
  * @param reader_type #logger_reader_type.
  *
  * @return position after the record.
@@ -128,10 +130,10 @@ size_t logger_particle_read(struct logger_particle *part, const struct logger_re
 			    size_t offset, const double time,
 			    const enum logger_reader_type reader_type) {
 
-  const struct header *h = &reader->dump.header;
-  void *map = reader->dump.dump.map;
+  const struct header *h = &reader->log.header;
+  void *map = reader->log.log.map;
 
-  const struct time_array *times = &reader->dump.times;
+  const struct time_array *times = &reader->log.times;
 
   size_t mask = 0;
   size_t h_offset = 0;
@@ -150,7 +152,7 @@ size_t logger_particle_read(struct logger_particle *part, const struct logger_re
   }
 
   if (times) {
-    /* move offset by 1 in order to be in the required chunk */
+    /* move offset by 1 in order to be in the required record */
     part->time = time_array_get_time(times, offset - 1);
   }
   else
@@ -194,9 +196,9 @@ size_t logger_particle_read(struct logger_particle *part, const struct logger_re
  * @param time interpolation time
  *
  */
-void logger_particle_interpolate(struct logger_particle *part_curr,
-                                 const struct logger_particle *part_next,
-                                 const double time) {
+void logger_particle_interpolate(
+    struct logger_particle *part_curr, const struct logger_particle *part_next,
+    const double time) {
 
   if (!part_curr) error("part_curr is NULL");
   if (!part_next) error("part_next is NULL");
@@ -206,7 +208,7 @@ void logger_particle_interpolate(struct logger_particle *part_curr,
     error("Wrong particle order (next before current)");
   if ((time < part_curr->time) || (part_next->time < time))
     error(
-        "Interpolating, not extrapolating (particle time: %f, "
+        "Cannot extrapolate (particle time: %f, "
         "interpolating time: %f, next particle time: %f)",
         part_curr->time, time, part_next->time);
 #endif

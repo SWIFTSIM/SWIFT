@@ -17,7 +17,7 @@
  *
  ******************************************************************************/
 /**
- * @brief This file contains functions that help to navigate in the dumps.
+ * @brief This file contains functions that help to navigate in the logs.
  */
 #ifndef __LOGGER_LOGGER_TOOLS_H__
 #define __LOGGER_LOGGER_TOOLS_H__
@@ -25,6 +25,7 @@
 #include "../config.h"
 
 /* Swift include */
+#include "../src/dimension.h"
 #include "../src/inline.h"
 #include "../src/logger.h"
 
@@ -51,19 +52,26 @@ struct logger_reader;
     abort();                                                                 \
   })
 
+#ifdef SWIFT_DEBUG_CHECKS
 #define message(s, ...)                                             \
   ({                                                                \
     printf("%s:%s():%i: " s "\n", __FILE__, __FUNCTION__, __LINE__, \
            ##__VA_ARGS__);                                          \
   })
+#else
+({								    \
+    printf("%s(): " s "\n", __FUNCTION__,			    \
+           ##__VA_ARGS__);                                          \
+  })
+#endif
 
-int tools_get_next_chunk(const struct header *h, void *map, size_t *offset,
+int tools_get_next_record(const struct header *h, void *map, size_t *offset,
                          size_t file_size);
-int _tools_get_next_chunk_backward(const struct header *h, void *map,
+int _tools_get_next_record_backward(const struct header *h, void *map,
                                    size_t *offset, size_t file_size);
-int _tools_get_next_chunk_forward(const struct header *h, void *map,
+int _tools_get_next_record_forward(const struct header *h, void *map,
                                   size_t *offset);
 size_t tools_reverse_offset(const struct header *h, void *map, size_t offset);
-size_t tools_check_offset(const struct logger_reader *reader, size_t offset);
+size_t tools_check_record_consistency(const struct logger_reader *reader, size_t offset);
 
 #endif  //__LOGGER_LOGGER_TOOLS_H__

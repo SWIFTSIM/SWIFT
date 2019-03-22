@@ -18,71 +18,71 @@
  ******************************************************************************/
 #include "logger_time.h"
 #include "logger_io.h"
-#include "logger_dump.h"
+#include "logger_logfile.h"
 #include "logger_reader.h"
 
 /**
- * @brief read a time stamp
+ * @brief read a time record.
  *
- * @param timestamp timestamp read
- * @param time time read
- * @param reader The #logger_reader
- * @param offset position in the file
+ * @param int_time integer time read.
+ * @param time time read.
+ * @param reader The #logger_reader.
+ * @param offset position in the file.
  *
- * @return position after the timestamp
+ * @return position after the time record.
  */
-size_t time_read(integertime_t *timestamp, double *time, const struct logger_reader *reader,
+size_t time_read(integertime_t *int_time, double *time, const struct logger_reader *reader,
                size_t offset) {
 
-  const struct header *h = &reader->dump.header;
-  void *map = h->dump->dump.map;
+  const struct header *h = &reader->log.header;
+  void *map = h->log->log.map;
 
   size_t mask = 0;
   size_t prev_offset = 0;
-  *timestamp = 0;
+  *int_time = 0;
   *time = 0;
 
-  /* read chunck header */
+  /* read record header */
   offset = io_read_mask(h, map, offset, &mask, &prev_offset);
 
 #ifdef SWIFT_DEBUG_CHECKS
 
-  /* check if timestamp is present */
+  /* check if time mask is present in log file header. */
   int ind = header_get_field_index(h, "timestamp");
-  if (ind == -1) error("Header does not contain a timestamp");
+  if (ind == -1) error("File header does not contain a mask for time");
 
-  /* check if timestamp */
-  if (h->masks[ind].mask != mask) error("Not a timestamp");
+  /* check if reading a time record. */
+  if (h->masks[ind].mask != mask) error("Not a time record");
 #endif
 
   /* read data */
-  offset = io_read_data(map, sizeof(unsigned long long int), timestamp, offset);
+  offset = io_read_data(map, sizeof(unsigned long long int), int_time, offset);
   offset = io_read_data(map, sizeof(double), time, offset);
 
   return offset;
 }
 
 /**
- * @brief get offset of first timestamp
+ * @brief get offset of first time record
  *
  * @param h file #header
- * @return offset of first timestamp
+ * @return offset of first time record
  *
  */
-size_t time_first_timestamp(const struct header *h) {
-  size_t offset = h->offset_first;
-  void *map = h->dump->dump.map;
+size_t time_offset_first_record(const struct header *h) {
+  size_t offset = h->offset_first_record;
+  void *map = h->log->log.map;
 
   int i = header_get_field_index(h, "timestamp");
 
-  if (i == -1) error("Time stamp not present in header");
+  if (i == -1) error("Time mask not present in the log file header");
 
   size_t mask = 0;
   io_read_mask(h, map, offset, &mask, NULL);
 
-  if (mask != h->masks[i].mask) error("Dump should begin by timestep");
+  if (mask != h->masks[i].mask) error("Log file should begin by timestep");
 
-  return h->offset_first;
+  return h->offset_first_record;
 }
 
 /**
@@ -99,32 +99,32 @@ void time_array_init_to_zero(struct time_array *t) {
  * @brief Initialize a time array.
  *
  * @param t #time_array to initialize.
- * @param dump The #logger_dump.
+ * @param log The #logger_logfile.
  */
-void time_array_init(struct time_array *t, struct logger_dump *dump) {
+void time_array_init(struct time_array *t, struct logger_logfile *log) {
 
   t->next = NULL;
   t->prev = NULL;
 
-  integertime_t timestamp = 0;
+  integertime_t int_time = 0;
   double time = 0;
 
   /* get file size */
-  size_t file_size = dump->dump.file_size;
+  size_t file_size = log->log.file_size;
 
   /* get first time stamp */
-  size_t offset = time_first_timestamp(&dump->header);
+  size_t offset = time_offset_first_record(&log->header);
   while (offset < file_size) {
     /* read time */
     t->offset = offset;
     size_t tmp_offset = offset;
-    tmp_offset = time_read(&timestamp, &time, dump->reader, tmp_offset);
-    t->timestamp = timestamp;
+    tmp_offset = time_read(&int_time, &time, log->reader, tmp_offset);
+    t->int_time = int_time;
     t->time = time;
 
-    /* get next chunk */
-    int test = tools_get_next_chunk(&dump->header, dump->dump.map, &offset,
-				    dump->dump.file_size);
+    /* get next record */
+    int test = tools_get_next_record(&log->header, log->log.map, &offset,
+				    log->log.file_size);
     if (test == -1) break;
 
     /* allocate next time_array */
@@ -142,26 +142,26 @@ void time_array_init(struct time_array *t, struct logger_dump *dump) {
 }
 
 /**
- * @brief access the time of a given chunk (by its offset)
+ * @brief access the time of a given record (by its offset)
  *
  * @param t #time_array to access
- * @param offset offset of the chunk
+ * @param offset offset of the record
  *
- * @return integer time of the chunk
+ * @return integer time of the record
  */
 integertime_t time_array_get_integertime(struct time_array *t,
                                          const size_t offset) {
   const struct time_array *tmp = time_array_get_time_array(t, offset);
-  return tmp->timestamp;
+  return tmp->int_time;
 }
 
 /**
- * @brief access the time of a given chunk (by its offset)
+ * @brief access the time of a given record (by its offset)
  *
  * @param t #time_array to access
- * @param offset offset of the chunk
+ * @param offset offset of the record
  *
- * @return time of the chunk
+ * @return time of the record
  */
 double time_array_get_time(const struct time_array *t, const size_t offset) {
   const struct time_array *tmp = time_array_get_time_array(t, offset);
@@ -169,10 +169,10 @@ double time_array_get_time(const struct time_array *t, const size_t offset) {
 }
 
 /**
- * @brief access the #time_array of a given chunk (by its offset)
+ * @brief access the #time_array of a given record (by its offset)
  *
- * @param t #time_array to access
- * @param offset offset of the chunk
+ * @param t #time_array to access.
+ * @param offset offset of the record.
  *
  * @return pointer to the requested #time_array
  */
@@ -215,7 +215,7 @@ void time_array_print(const struct time_array *t) {
   size_t n = time_array_count(t);
   size_t up_threshold = n - threshold;
 
-  printf("Times (size %lu): [%lli (%g)", n, t->timestamp, t->time);
+  printf("Times (size %lu): [%lli (%g)", n, t->int_time, t->time);
 
   for(size_t i = 1; i < n; i++) {
     /* The last time_array does not have a next */
@@ -224,7 +224,7 @@ void time_array_print(const struct time_array *t) {
 
     t = t->next;
     if (i < threshold || i > up_threshold)
-      printf(", %lli (%g)", t->timestamp, t->time);
+      printf(", %lli (%g)", t->int_time, t->time);
 
     if (i == threshold) printf(", ...");
   }

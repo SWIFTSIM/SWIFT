@@ -17,10 +17,10 @@
  *
  ******************************************************************************/
 /**
- * @brief This file contains the high level function for the dump.
+ * @brief This file contains the high level function for the log.
  */
-#ifndef __LOGGER_LOGGER_DUMP_H__
-#define __LOGGER_LOGGER_DUMP_H__
+#ifndef __LOGGER_LOGGER_LOGFILE_H__
+#define __LOGGER_LOGGER_LOGFILE_H__
 
 #include "logger_header.h"
 #include "logger_time.h"
@@ -28,22 +28,22 @@
 struct logger_reader;
 
 /**
- * @brief This structure deals with the dump file.
+ * @brief This structure deals with the log file.
  *
  * TODO
  */
-struct logger_dump {
+struct logger_logfile {
 
   /* Information contained in the file header. */
   struct header header;
 
-  /* The reader that is using this dump. */
+  /* The reader that is using this log file. */
   struct logger_reader *reader;
 
-  /* Information about the time chunks */
+  /* Information about the time records */
   struct time_array times;
 
-  /* The dump's variables. */
+  /* The log's variables. */
   struct {
     /* Mapped data */
     void *map;
@@ -51,13 +51,13 @@ struct logger_dump {
     /* File size */
     size_t file_size;
 
-  } dump;
+  } log;
 
 };
 
 
-void logger_dump_init(struct logger_dump *dump, char *filename, struct logger_reader *reader);
-void logger_dump_reverse_offset(struct logger_dump *dump);
-void logger_dump_free(struct logger_dump *dump);
+void logger_logfile_init(struct logger_logfile *log, char *filename, struct logger_reader *reader);
+void logger_logfile_reverse_offset(struct logger_logfile *log);
+void logger_logfile_free(struct logger_logfile *log);
 
-#endif // __LOGGER_LOGGER_DUMP_H__
+#endif // __LOGGER_LOGGER_LOGFILE_H__

@@ -54,8 +54,8 @@
 /* number bytes for an offset */
 #define logger_offset_size logger_header_bytes - logger_mask_size
 
-/* number of bytes for the version information */
-#define logger_version_size 20
+/* number of bytes for the file format information */
+#define logger_format_size 20
 
 /* number of bytes for the labels in the header */
 #define logger_label_size 20
@@ -63,7 +63,7 @@
 /* number of bytes for the number in the header */
 #define logger_number_size 4
 
-char logger_version[logger_version_size] = "0.1";
+char logger_file_format[logger_format_size] = "SWIFT_LOGGER";
 
 const struct mask_data logger_mask_data[logger_count_mask] = {
     /* Particle's position */
@@ -471,8 +471,16 @@ void logger_write_file_header(struct logger *log, const struct engine *e) {
         "The logger is not empty."
         "This function should be called before writing anything in the logger");
 
-  /* Write version information */
-  logger_write_data(dump, &file_offset, logger_version_size, &logger_version);
+  /* Write format information */
+  logger_write_data(dump, &file_offset, logger_format_size, &logger_file_format);
+
+  /* Write the major version number */
+  int major = logger_major_version;
+  logger_write_data(dump, &file_offset, sizeof(int), &major);
+
+  /* Write the minor version number */
+  int minor = logger_minor_version;
+  logger_write_data(dump, &file_offset, sizeof(int), &minor);
 
   /* write offset direction */
   const int reversed = 0;

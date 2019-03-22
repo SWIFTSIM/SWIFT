@@ -35,6 +35,9 @@ struct part;
 /* TODO remove dependency */
 struct engine;
 
+#define logger_major_version 0
+#define logger_minor_version 1
+
 /**
  * Logger entries contain messages representing the particle data at a given
  * point in time during the simulation.

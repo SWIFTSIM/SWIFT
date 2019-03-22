@@ -43,11 +43,11 @@ lib_LTLIBRARIES = liblogger.la
 
 # List required headers
 include_HEADERS = logger_header.h logger_io.h logger_particle.h logger_time.h logger_tools.h logger_reader.h \
-	logger_index.h logger_dump.h
+	logger_index.h logger_logfile.h
 
 # Common source files
 AM_SOURCES = logger_header.c logger_io.c logger_particle.c logger_time.c logger_tools.c logger_reader.c \
-	logger_dump.c
+	logger_logfile.c
 if HAVEPYTHON
 AM_SOURCES += logger_python_wrapper.c
 endif
