@@ -120,7 +120,9 @@ INLINE static void star_formation_logger_write_to_log_file(
  * @param us The current internal system of units.
  * @param phys_const Physical constants in internal units
  */
-INLINE static void star_formation_logger_init_log_file(FILE *fp, const struct unit_system* restrict us, const struct phys_const* phys_const) {}
+INLINE static void star_formation_logger_init_log_file(
+    FILE *fp, const struct unit_system *restrict us,
+    const struct phys_const *phys_const) {}
 
 /**
  * @brief Add the SFR tracer to the total active SFR of this cell

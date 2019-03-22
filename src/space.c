@@ -754,7 +754,7 @@ void space_allocate_extras(struct space *s, int verbose) {
       s->gparts[i].id_or_neg_offset = -1;
     }
 
-      /* Put the spare particles in their correct cell */
+    /* Put the spare particles in their correct cell */
 #ifdef WITH_MPI
     error("Need to do this correctly over MPI for only the local cells.");
 #endif
@@ -843,7 +843,7 @@ void space_allocate_extras(struct space *s, int verbose) {
       s->parts[i].id = -1;
     }
 
-      /* Put the spare particles in their correct cell */
+    /* Put the spare particles in their correct cell */
 #ifdef WITH_MPI
     error("Need to do this correctly over MPI for only the local cells.");
 #endif
@@ -922,7 +922,7 @@ void space_allocate_extras(struct space *s, int verbose) {
       s->sparts[i].id = -42;
     }
 
-      /* Put the spare particles in their correct cell */
+    /* Put the spare particles in their correct cell */
 #ifdef WITH_MPI
     error("Need to do this correctly over MPI for only the local cells.");
 #endif
@@ -2777,7 +2777,7 @@ void space_split_recursive(struct space *s, struct cell *c,
         ti_stars_end_min = min(ti_stars_end_min, cp->stars.ti_end_min);
         ti_stars_end_max = min(ti_stars_end_max, cp->stars.ti_end_max);
         ti_stars_beg_max = min(ti_stars_beg_max, cp->stars.ti_beg_max);
-        star_formation_logger_assign(c,&cp->stars.sfh);
+        star_formation_logger_assign(c, &cp->stars.sfh);
 
         /* Increase the depth */
         if (cp->maxdepth > maxdepth) maxdepth = cp->maxdepth;
@@ -2918,7 +2918,8 @@ void space_split_recursive(struct space *s, struct cell *c,
       hydro_time_bin_max = max(hydro_time_bin_max, parts[k].time_bin);
       h_max = max(h_max, parts[k].h);
       /* Collect SFR from the particles after rebuilt */
-      star_formation_logger_log_inactive_part(&parts[k], &xparts[k], &c->stars.sfh);
+      star_formation_logger_log_inactive_part(&parts[k], &xparts[k],
+                                              &c->stars.sfh);
     }
 
     /* xparts: Reset x_diff */

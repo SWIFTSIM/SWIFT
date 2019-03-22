@@ -644,8 +644,7 @@ void runner_do_star_formation(struct runner *r, struct cell *c, int timer) {
                                      dt_star);
 
           /* Add the SFR and SFR*dt to the SFH struct of this cell */
-          star_formation_logger_log_active_part(p, xp, &c->stars.sfh,
-                                                  dt_star);
+          star_formation_logger_log_active_part(p, xp, &c->stars.sfh, dt_star);
 
           /* Are we forming a star particle from this SF rate? */
           if (star_formation_should_convert_to_star(p, xp, sf_props, e,
@@ -1471,10 +1470,10 @@ void runner_do_ghost(struct runner *r, struct cell *c, int timer) {
           if (((p->h >= hydro_h_max) && (f < 0.f)) ||
               ((p->h <= hydro_h_min) && (f > 0.f))) {
 
-          /* We have a particle whose smoothing length is already set (wants
-           * to be larger but has already hit the maximum OR wants to be
-           * smaller but has already reached the minimum). So, just tidy up as
-           * if the smoothing length had converged correctly  */
+            /* We have a particle whose smoothing length is already set (wants
+             * to be larger but has already hit the maximum OR wants to be
+             * smaller but has already reached the minimum). So, just tidy up as
+             * if the smoothing length had converged correctly  */
 
 #ifdef EXTRA_HYDRO_LOOP
 
@@ -1619,7 +1618,7 @@ void runner_do_ghost(struct runner *r, struct cell *c, int timer) {
           }
         }
 
-          /* We now have a particle whose smoothing length has converged */
+        /* We now have a particle whose smoothing length has converged */
 
 #ifdef EXTRA_HYDRO_LOOP
 

@@ -3119,8 +3119,8 @@ void engine_step(struct engine *e) {
 #endif
     /* Write the star formation information to the file */
     if (e->policy & engine_policy_star_formation) {
-      star_formation_logger_write_to_log_file(e->sfh_logger,e->time, e->cosmology->a, e->cosmology->z,
-                                   e->sfh);
+      star_formation_logger_write_to_log_file(
+          e->sfh_logger, e->time, e->cosmology->a, e->cosmology->z, e->sfh);
     }
 
     if (!e->restarting)
@@ -3379,7 +3379,7 @@ void engine_check_for_dumps(struct engine *e) {
 #endif
         }
 
-          /* Dump... */
+        /* Dump... */
 #ifdef WITH_LOGGER
         /* Write a file containing the offsets in the particle logger. */
         engine_dump_index(e);
@@ -4344,11 +4344,13 @@ void engine_init(struct engine *e, struct space *s, struct swift_params *params,
   if (e->policy & engine_policy_star_formation) {
     const int buffersize = 300;
     char SFH_logger_fileName[buffersize];
-    snprintf(SFH_logger_fileName, buffersize, "%s_SFH_logger.txt", e->snapshot_base_name);
+    snprintf(SFH_logger_fileName, buffersize, "%s_SFH_logger.txt",
+             e->snapshot_base_name);
 
     e->sfh_logger = fopen(SFH_logger_fileName, "w");
 
-    star_formation_logger_init_log_file(e->sfh_logger, e->internal_units, e->physical_constants);
+    star_formation_logger_init_log_file(e->sfh_logger, e->internal_units,
+                                        e->physical_constants);
   }
 
 #if defined(WITH_LOGGER)
