@@ -1,7 +1,7 @@
 #!/usr/bin/env python
 """
 Usage:
-    process_memuse.py output.dat
+    process_memuse.py memuse_report1.dat [memuse_report2.dat] ...
 
 Parse the output of a run of SWIFT to convert the memuse output dumps into a
 timeseries of memory use. Also outputs use in memory per labelled type.
@@ -27,8 +27,8 @@ import sys
 from collections import OrderedDict
 
 #  Command-line arguments.
-if len(sys.argv) != 2:
-    print "usage: ", sys.argv[0], " memuse_report<>.dat"
+if len(sys.argv) < 2:
+    print "usage: ", sys.argv[0], " memuse_report1.dat [memuse_report2.dat] ..."
     sys.exit(1)
 
 memuse = OrderedDict()
@@ -37,45 +37,47 @@ totalmem = 0
 process_use = ""
 peak = 0.0
 
-with open(sys.argv[1]) as infile:
-    print '# {:<18s} {:>30s} {:>9s} {:s}'.format("tic", "label", "allocated", "MB")
-    for line in infile:
-        if line[0] == "#":
-            if "# Current use:" in line:
-                process_use = line[14:-1]
-        else:
-            tic , adr, rank, step, allocated, label, size = line.split()
-            rank = int(rank)
-            step = int(step)
-            allocated = int(allocated)
-            size = int(size)
-
-            doprint = True
-            if allocated == 1:
-                #  Allocation.
-                totalmem = totalmem + size
-                if not adr in memuse:
-                    memuse[adr] = [size]
-                    labels[adr] = label
-                else:
-                    memuse[adr].append(size)
+for filename in sys.argv[1:]:
+    print "## Processing: ", filename
+    with open(filename) as infile:
+        print '# {:<18s} {:>30s} {:>9s} {:>9s} {:s}'.format("tic", "label", "allocated", "step", "MB")
+        for line in infile:
+            if line[0] == "#":
+                if "# Current use:" in line:
+                    process_use = line[14:-1]
             else:
-                #  Free, locate allocation.
-                if adr in memuse:
-                    allocs = memuse[adr]
-                    totalmem = totalmem - allocs[0]
-                    if len(allocs) > 1:
-                        memuse[adr] = allocs[1:]
+                tic , adr, rank, step, allocated, label, size = line.split()
+                rank = int(rank)
+                step = int(step)
+                allocated = int(allocated)
+                size = int(size)
+
+                doprint = True
+                if allocated == 1:
+                    #  Allocation.
+                    totalmem = totalmem + size
+                    if not adr in memuse:
+                        memuse[adr] = [size]
+                        labels[adr] = label
                     else:
-                        del memuse[adr]
+                        memuse[adr].append(size)
                 else:
-                    #  Unmatched free, complain and skip.
-                    #print "### unmatched free: ", label, adr
-                    doprint = False
-            if doprint:
-                if totalmem > peak:
-                    peak = totalmem
-                print '{:<20s} {:>30s} {:9d} {:.3f}'.format(tic, label, allocated, totalmem/(1048576.0))
+                    #  Free, locate allocation.
+                    if adr in memuse:
+                        allocs = memuse[adr]
+                        totalmem = totalmem - allocs[0]
+                        if len(allocs) > 1:
+                            memuse[adr] = allocs[1:]
+                        else:
+                            del memuse[adr]
+                    else:
+                        #  Unmatched free, complain and skip.
+                        #print "### unmatched free: ", label, adr
+                        doprint = False
+                if doprint:
+                    if totalmem > peak:
+                        peak = totalmem
+                    print '{:<20s} {:>30s} {:9d} {:9d} {:.3f}'.format(tic, label, allocated, step, totalmem/(1048576.0))
 
 totals = {}
 numactive = {}
