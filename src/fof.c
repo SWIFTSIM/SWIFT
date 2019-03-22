@@ -243,13 +243,14 @@ __attribute__((always_inline)) INLINE static size_t fof_find_global(
   Here we assume that the input i is a local index and we
   return the local index of the root.
 */
-__attribute__((always_inline)) INLINE static size_t fof_find_local(
-    const size_t i, size_t *group_index) {
-
+__attribute__((always_inline)) INLINE static size_t fof_find_local(const size_t i, 
+                                                                   const size_t nr_gparts, 
+                                                                   size_t *group_index) {
   size_t root = node_offset + i;
 
   while ((group_index[root - node_offset] != root) && 
-         (group_index[root - node_offset] >= node_offset)) {
+         (group_index[root - node_offset] >= node_offset) &&
+         (group_index[root - node_offset] < node_offset + nr_gparts)) {
     root = group_index[root - node_offset];
   }
 
@@ -1783,18 +1784,24 @@ void fof_search_tree(struct space *s) {
     error("Failed to create MPI type for fof_final_index.");
   }
 
-  /* Identify local roots with global root on another node and large enough group_size.
-     Store index of the local and global roots in these cases. */
+  /* 
+     Identify local roots with global root on another node and large enough group_size.
+     Store index of the local and global roots in these cases.
+  
+     NOTE: if group_size only contains the total FoF mass for global roots,
+     then we have to communicate ALL fragments where the global root is not
+     on this node. Hence the commented out extra conditions below.
+  */
   size_t nsend = 0;
   for(size_t i=0; i<nr_gparts;i+=1) {
-    if((!is_local(group_index[i], nr_gparts)) && (group_size[i] >= min_group_size)) {
+    if((!is_local(group_index[i], nr_gparts))){ /* && (group_size[i] >= min_group_size)) { */
       nsend += 1;
     }
   }
   struct fof_final_index *fof_index_send = malloc(sizeof(struct fof_final_index)*nsend);
   nsend = 0;
   for(size_t i=0; i<nr_gparts;i+=1) {
-    if((!is_local(group_index[i], nr_gparts)) && (group_size[i] >= min_group_size)) {
+    if((!is_local(group_index[i], nr_gparts))){ /* && (group_size[i] >= min_group_size)) { */
       fof_index_send[nsend].local_root  = node_offset + i;
       fof_index_send[nsend].global_root = group_index[i];
       nsend += 1;
@@ -1805,9 +1812,9 @@ void fof_search_tree(struct space *s) {
   qsort(fof_index_send, nsend, sizeof(struct fof_final_index), 
         compare_fof_final_index_global_root);
 
-  /* Determine number of entries on each node */
+  /* Determine range of global indexes (i.e. particles) on each node */
   size_t *num_on_node = malloc(nr_nodes*sizeof(size_t));
-  MPI_Allgather(&nsend,      sizeof(size_t), MPI_BYTE,
+  MPI_Allgather(&nr_gparts,  sizeof(size_t), MPI_BYTE,
                 num_on_node, sizeof(size_t), MPI_BYTE,
                 MPI_COMM_WORLD);
   size_t *first_on_node = malloc(nr_nodes*sizeof(size_t));
@@ -1823,6 +1830,8 @@ void fof_search_tree(struct space *s) {
   for(size_t i=0;i<nsend;i+=1) {
     while((fof_index_send[i].global_root >= first_on_node[dest] + num_on_node[dest]) || (num_on_node[dest]==0))
       dest += 1;
+    if(dest>=nr_nodes)
+      error("Node index out of range!");
     sendcount[dest] += 1;
   } 
 
@@ -1884,11 +1893,10 @@ void fof_search_tree(struct space *s) {
 
 #endif /* WITH_MPI */
 
-  /* Assign every particle in a large enough group the group_id of its local root */
+  /* Assign every particle the group_id of its local root. */
   for (size_t i = 0; i < nr_gparts; i++) {
-    const size_t root = fof_find_local(i, group_index);
-    if (group_size[root] >= min_group_size)
-      gparts[i].group_id = gparts[root].group_id;
+    const size_t root = fof_find_local(i, nr_gparts, group_index);
+    gparts[i].group_id = gparts[root].group_id;
   }
 
   message("Group sorting took: %.3f %s.", clocks_from_ticks(getticks() - tic),
