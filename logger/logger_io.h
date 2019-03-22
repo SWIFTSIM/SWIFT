@@ -37,57 +37,64 @@ void io_munmap_file(void *map, size_t file_size);
  *
  * @param h #header file structure
  * @param data Pointer to the data to read.
- * @param offset In: position in the file, Out: shifted by the mask + offset
+ * @param offset position in the file, Out: shifted by the mask + offset
  * size
  * @param mask mask read
  * @param diff_offset offset difference to previous/next corresponding chunk
  *
+ * @return offset after the record header
  */
-__attribute__((always_inline)) INLINE static void io_read_mask(
-    const struct header *h, void *data, size_t *offset, size_t *mask,
+__attribute__((always_inline)) INLINE static size_t io_read_mask(
+    const struct header *h, void *data, size_t offset, size_t *mask,
     size_t *diff_offset) {
   /* read mask */
   if (mask) {
     *mask = 0;
-    memcpy(mask, data + *offset, LOGGER_MASK_SIZE);
+    memcpy(mask, data + offset, LOGGER_MASK_SIZE);
   }
-  *offset += LOGGER_MASK_SIZE;
+  offset += LOGGER_MASK_SIZE;
 
   /* read offset */
   if (diff_offset) {
     *diff_offset = 0;
-    memcpy(diff_offset, data + *offset, LOGGER_OFFSET_SIZE);
+    memcpy(diff_offset, data + offset, LOGGER_OFFSET_SIZE);
   }
-  *offset += LOGGER_OFFSET_SIZE;
+  offset += LOGGER_OFFSET_SIZE;
+
+  return offset;
 }
 
 /**
- * @brief read a single value in a file
+ * @brief read a single value in a file.
  *
  * @param data Pointer to the data to read.
- * @param size size of the chunk to read
- * @param p pointer where to store the data
- * @param offset In: position to read, Out: shifted by size
+ * @param size size of the chunk to read.
+ * @param p pointer where to store the data.
+ * @param offset position to read.
+
+ * @return offset after the record.
  */
-__attribute__((always_inline)) INLINE static void io_read_data(
-    void *data, const size_t size, void *p, size_t *offset) {
-  memcpy(p, data + *offset, size);
-  *offset += size;
+__attribute__((always_inline)) INLINE static size_t io_read_data(
+    void *data, const size_t size, void *p, size_t offset) {
+  memcpy(p, data + offset, size);
+  return offset + size;
 };
 
 /**
- * @brief write a single value in a file
+ * @brief write a single value in a file.
  *
  * @param data Pointer to the data to read.
- * @param size size of the chunk to write
- * @param p pointer to the data
- * @param offset In: position to write, Out: shifted by size
+ * @param size size of the chunk to write.
+ * @param p pointer to the data.
+ * @param offset position to write.
  *
+ * @return offset after the data written.
  */
-__attribute__((always_inline)) INLINE static void io_write_data(
-    void *data, const size_t size, const void *p, size_t *offset) {
-  memcpy(data + *offset, p, size);
-  *offset += size;
+__attribute__((always_inline)) INLINE static size_t io_write_data(
+    void *data, const size_t size, const void *p, size_t offset) {
+  memcpy(data + offset, p, size);
+
+  return offset + size;
 };
 
 #endif  // __LOGGER_LOGGER_IO_H__

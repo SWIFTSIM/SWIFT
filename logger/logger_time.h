@@ -25,6 +25,8 @@
 typedef char timebin_t;
 typedef long long integertime_t;
 
+struct logger_reader;
+
 /**
  * @brief This structure contains all the timestamp.
  *
@@ -59,18 +61,26 @@ struct time_array {
   size_t offset;
 };
 
-void time_read(integertime_t *timestamp, double *time, const struct header *h,
-               void *map, size_t *offset);
+size_t time_read(integertime_t *timestamp, double *time,
+	       const struct logger_reader *reader, size_t offset);
+
+void time_array_init_to_zero(struct time_array *t);
 void time_array_init(struct time_array *t, struct logger_dump *dump);
-integertime_t time_array_get_integertime(struct time_array *t,
-                                         const size_t offset);
-double time_array_get_time(struct time_array *t, const size_t offset);
-struct time_array *time_array_get_time_array(struct time_array *t,
-                                             const size_t offset);
+
+integertime_t time_array_get_integertime(struct time_array *t, const size_t offset);
+
+double time_array_get_time(const struct time_array *t, const size_t offset);
+
+struct time_array *time_array_get_time_array(const struct time_array *t, const size_t offset);
+
 void time_array_free(struct time_array *t);
+
 void time_array_print(const struct time_array *t);
+
 void time_array_print_offset(const struct time_array *t);
+
 size_t time_array_count(const struct time_array *t);
-void time_first_timestamp(const struct header *h, void *map, size_t *offset);
+
+size_t time_first_timestamp(const struct header *h);
 
 #endif  // __LOGGER_LOGGER_TIMELINE_H__

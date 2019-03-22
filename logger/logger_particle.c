@@ -19,6 +19,7 @@
 #include "logger_particle.h"
 #include "logger_header.h"
 #include "logger_io.h"
+#include "logger_reader.h"
 #include "logger_time.h"
 #include "logger_tools.h"
 
@@ -63,19 +64,19 @@ void logger_particle_init(struct logger_particle *part) {
 }
 
 /**
- * @brief Read a single field for a particle
+ * @brief Read a single field for a particle.
  *
- * @param part The #logger_particle to update
+ * @param part The #logger_particle to update.
  * @param data Pointer to the data to read.
- * @param offset In: read position, Out: input shifted by the required amount of
- * data
- * @param field field to read
- * @param size number of bits to read
+ * @param offset position to read.
+ * @param field field to read.
+ * @param size number of bits to read.
  *
+ * @return position after the data read.
  */
-void logger_particle_read_field(struct logger_particle *part, void *map,
-                                size_t *offset, const char *field,
-                                const size_t size) {
+size_t logger_particle_read_field(struct logger_particle *part, void *map,
+				  size_t offset, const char *field,
+				  const size_t size) {
   void *p = NULL;
 
   if (strcmp("positions", field) == 0) {
@@ -96,7 +97,7 @@ void logger_particle_read_field(struct logger_particle *part, void *map,
     error("Type %s not defined", field);
   }
 
-  io_read_data(map, size, p, offset);
+  offset = io_read_data(map, size, p, offset);
 
   if (strcmp("consts", field) == 0) {
     part->mass = 0;
@@ -107,67 +108,81 @@ void logger_particle_read_field(struct logger_particle *part, void *map,
     p -= sizeof(float);
     free(p);
   }
+
+  return offset;
 }
 
 /**
  * @brief Read a particle in the dump file.
  *
+ * @param reader The #logger_reader.
  * @param part The #logger_particle to update.
- * @param h #header structure of the file
- * @param map file mapping
- * @param offset offset of the chunk to read (update it to the end of the chunk)
+ * @param offset offset of the chunk to read.
  * @param time time to interpolate (if #logger_reader_type is an interpolating
- * one)
- * @param reader #logger_reader_type
- * @param times #time_array times in the dump
+ * one).
+ * @param reader_type #logger_reader_type.
  *
+ * @return position after the record.
  */
-void logger_particle_read(struct logger_particle *part, const struct header *h,
-                          void *map, size_t *offset, const double time,
-                          const int reader, struct time_array *times) {
+size_t logger_particle_read(struct logger_particle *part, const struct logger_reader *reader,
+			    size_t offset, const double time,
+			    const enum logger_reader_type reader_type) {
+
+  const struct header *h = &reader->dump.header;
+  void *map = reader->dump.dump.map;
+
+  const struct time_array *times = &reader->dump.times;
+
   size_t mask = 0;
   size_t h_offset = 0;
 
   logger_particle_init(part);
 
-  io_read_mask(h, map, offset, &mask, &h_offset);
+  offset = io_read_mask(h, map, offset, &mask, &h_offset);
 
   if (mask != 127) error("Unexpected mask: %lu", mask);
 
   for (size_t i = 0; i < h->number_mask; i++) {
     if (mask & h->masks[i].mask) {
-      logger_particle_read_field(part, map, offset, h->masks[i].name,
-                                 h->masks[i].size);
+      offset = logger_particle_read_field(part, map, offset, h->masks[i].name,
+					  h->masks[i].size);
     }
   }
 
-  if (times) /* move offset by 1 in order to be in the required chunk */
-    part->time = time_array_get_time(times, *offset - 1);
+  if (times) {
+    /* move offset by 1 in order to be in the required chunk */
+    part->time = time_array_get_time(times, offset - 1);
+  }
   else
     part->time = -1;
 
   /* end of const case */
-  if (reader == logger_reader_const) return;
+  if (reader_type == logger_reader_const)
+    return offset;
 
   /* read next particle */
   struct logger_particle part_next;
 
-  if (!header_are_offset_forward(h)) {
+  if (!header_is_forward(h)) {
     error("Cannot read a particle with non forward offsets.");
   }
 
-  if (h_offset == 0) return;
+  if (h_offset == 0)
+    return offset;
+
   /* get absolute offset of next particle */
-  h_offset += *offset - header_get_mask_size(h, mask) - LOGGER_MASK_SIZE -
+  h_offset += offset - header_get_mask_size(h, mask) - LOGGER_MASK_SIZE -
               LOGGER_OFFSET_SIZE;
 
   part_next.time = time_array_get_time(times, h_offset);
 
   /* previous part exists */
-  logger_particle_read(&part_next, h, map, &h_offset, part_next.time,
-                       logger_reader_const, times);
+  h_offset = logger_particle_read(&part_next, reader, h_offset, part_next.time,
+				  logger_reader_const);
 
   logger_particle_interpolate(part, &part_next, time);
+
+  return offset;
 }
 
 /**

@@ -91,7 +91,7 @@ void header_change_offset_direction(struct header *h, int new_value);
  * @brief Check if the offset are forward.
  * @param h The #header.
  */
-__attribute__((always_inline)) INLINE static int header_are_offset_forward(
+__attribute__((always_inline)) INLINE static int header_is_forward(
     const struct header *h) {
   return h->offset_direction == logger_offset_forward;
 }
@@ -100,7 +100,7 @@ __attribute__((always_inline)) INLINE static int header_are_offset_forward(
  * @brief Check if the offset are backward.
  * @param h The #header.
  */
-__attribute__((always_inline)) INLINE static int header_are_offset_backward(
+__attribute__((always_inline)) INLINE static int header_is_backward(
     const struct header *h) {
   return h->offset_direction == logger_offset_backward;
 }
@@ -109,7 +109,7 @@ __attribute__((always_inline)) INLINE static int header_are_offset_backward(
  * @brief Check if the offset are corrupted.
  * @param h The #header.
  */
-__attribute__((always_inline)) INLINE static int header_are_offset_corrupted(
+__attribute__((always_inline)) INLINE static int header_is_corrupted(
     const struct header *h) {
   return h->offset_direction == logger_offset_corrupted;
 }

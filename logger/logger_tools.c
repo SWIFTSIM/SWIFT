@@ -19,6 +19,7 @@
 #include "logger_tools.h"
 #include "logger_header.h"
 #include "logger_io.h"
+#include "logger_reader.h"
 
 #include "logger_particle.h"
 
@@ -36,9 +37,9 @@
  */
 int tools_get_next_chunk(const struct header *h, void *map, size_t *offset,
                          size_t file_size) {
-  if (header_are_offset_forward(h))
+  if (header_is_forward(h))
     return _tools_get_next_chunk_forward(h, map, offset);
-  if (header_are_offset_backward(h))
+  if (header_is_backward(h))
     return _tools_get_next_chunk_backward(h, map, offset, file_size);
   else
     error("Offsets are corrupted");
@@ -58,7 +59,7 @@ int _tools_get_next_chunk_forward(const struct header *h, void *map,
   size_t diff_offset = 0;
 
   /* read offset */
-  io_read_mask(h, map, offset, NULL, &diff_offset);
+  *offset = io_read_mask(h, map, *offset, NULL, &diff_offset);
 
   if (diff_offset == 0) return -1;
 
@@ -89,7 +90,7 @@ int _tools_get_next_chunk_backward(const struct header *h, void *map,
   while (current_offset < file_size) {
     size_t mask = 0;
     size_t prev_offset;
-    io_read_mask(h, map, &current_offset, &mask, &prev_offset);
+    current_offset = io_read_mask(h, map, current_offset, &mask, &prev_offset);
 
     prev_offset = current_offset - prev_offset - chunk_header;
     if (*offset == prev_offset) {
@@ -104,32 +105,34 @@ int _tools_get_next_chunk_backward(const struct header *h, void *map,
 }
 
 /**
- * @brief switch side offset
+ * @brief switch side offset.
  *
  * From current chunk, switch side of the offset of the previous one.
- * @param h #header structure of the file
- * @param map file mapping
- * @param offset In: initial offset, Out: offset of next chunk
+ * @param h #header structure of the file.
+ * @param map file mapping.
+ * @param position of the record.
  *
+ * @return position after the record.
  */
-void tools_reverse_offset(const struct header *h, void *map, size_t *offset) {
+size_t tools_reverse_offset(const struct header *h, void *map, size_t offset) {
   size_t mask = 0;
   size_t prev_offset = 0;
-  const size_t cur_offset = *offset;
+  const size_t cur_offset = offset;
 
   /* read mask + offset */
-  io_read_mask(h, map, offset, &mask, &prev_offset);
+  offset = io_read_mask(h, map, offset, &mask, &prev_offset);
 
   /* write offset of zero (in case it is the last chunk) */
   const size_t zero = 0;
-  *offset -= LOGGER_OFFSET_SIZE;
-  io_write_data(map, LOGGER_OFFSET_SIZE, &zero, offset);
+  offset -= LOGGER_OFFSET_SIZE;
+  offset = io_write_data(map, LOGGER_OFFSET_SIZE, &zero, offset);
 
   /* set offset after current chunk */
-  *offset += header_get_mask_size(h, mask);
+  offset += header_get_mask_size(h, mask);
 
   /* first chunks do not have a previous partner */
-  if (prev_offset == cur_offset) return;
+  if (prev_offset == cur_offset)
+    return offset;
 
   if (prev_offset > cur_offset)
     error("Unexpected offset, header %lu, current %lu", prev_offset,
@@ -137,18 +140,20 @@ void tools_reverse_offset(const struct header *h, void *map, size_t *offset) {
 
   /* modify previous offset */
   size_t abs_prev_offset = cur_offset - prev_offset + LOGGER_MASK_SIZE;
-  io_write_data(map, LOGGER_OFFSET_SIZE, &prev_offset, &abs_prev_offset);
+  abs_prev_offset = io_write_data(map, LOGGER_OFFSET_SIZE, &prev_offset, abs_prev_offset);
 
 #ifdef SWIFT_DEBUG_CHECKS
   size_t prev_mask = 0;
   abs_prev_offset -= LOGGER_MASK_SIZE + LOGGER_OFFSET_SIZE;
-  io_read_mask(h, map, &abs_prev_offset, &prev_mask, NULL);
+  abs_prev_offset = io_read_mask(h, map, abs_prev_offset, &prev_mask, NULL);
 
   if (prev_mask != mask)
-    error("Unexpected mask: %lu (at %lu), got %lu (at %lu)", mask, *offset,
+    error("Unexpected mask: %lu (at %lu), got %lu (at %lu)", mask, offset,
           prev_mask, prev_offset);
 
 #endif  // SWIFT_DEBUG_CHECKS
+
+  return offset;
 }
 
 /**
@@ -156,29 +161,32 @@ void tools_reverse_offset(const struct header *h, void *map, size_t *offset) {
  *
  * Compare the mask with the one pointed by the header.
  * if the chunk is a particle, check the id too.
- * @param h #header structure of the file
- * @param map file mapping
- * @param offset In: chunk offset, Out: offset after the chunk
  *
- * @return error code
+ * @param reader The #logger_reader.
+ * @param offset position of the record.
+ *
+ * @return position after the record.
  */
-void tools_check_offset(const struct header *h, void *map, size_t *offset) {
+size_t tools_check_offset(const struct logger_reader *reader, size_t offset) {
 #ifndef SWIFT_DEBUG_CHECKS
   error("Should not check in non debug mode");
 #endif
 
-  size_t tmp = *offset;
+  const struct header *h = &reader->dump.header;
+  void *map = reader->dump.dump.map;
+
+  size_t tmp = offset;
 
   size_t mask;
   size_t pointed_offset;
 
   /* read mask + offset */
-  io_read_mask(h, map, offset, &mask, &pointed_offset);
+  offset = io_read_mask(h, map, offset, &mask, &pointed_offset);
 
   /* get absolute offset */
-  if (header_are_offset_forward(h))
+  if (header_is_forward(h))
     pointed_offset += tmp;
-  if (header_are_offset_backward(h)) {
+  else if (header_is_backward(h)) {
     if (tmp < pointed_offset)
       error("Offset too large (%lu) at %lu with mask %lu", pointed_offset, tmp,
             mask);
@@ -189,31 +197,36 @@ void tools_check_offset(const struct header *h, void *map, size_t *offset) {
   }
 
   /* set offset after current chunk */
-  *offset += header_get_mask_size(h, mask);
+  offset += header_get_mask_size(h, mask);
 
-  if (pointed_offset == tmp || pointed_offset == 0) return;
+  if (pointed_offset == tmp || pointed_offset == 0)
+    return offset;
 
   /* read mask of the pointed chunk */
   size_t pointed_mask = 0;
-  io_read_mask(h, map, &pointed_offset, &pointed_mask, NULL);
+  pointed_offset = io_read_mask(h, map, pointed_offset, &pointed_mask, NULL);
 
   /* check masks */
   if (pointed_mask != mask)
     error("Error in the offset (mask %lu != %lu) at %lu and %lu", mask,
           pointed_mask,
-          *offset - header_get_mask_size(h, mask) - LOGGER_MASK_SIZE -
-              LOGGER_OFFSET_SIZE,
+          offset - header_get_mask_size(h, mask) - LOGGER_MASK_SIZE -
+	  LOGGER_OFFSET_SIZE,
           pointed_offset - LOGGER_MASK_SIZE - LOGGER_OFFSET_SIZE);
 
-  if (pointed_mask == 128) return;
+  if (pointed_mask == 128)
+    return offset;
 
   struct logger_particle part;
-  logger_particle_read(&part, h, map, &tmp, 0, logger_reader_const, NULL);
+  tmp = logger_particle_read(&part, reader, tmp, 0, logger_reader_const);
 
   size_t id = part.id;
   tmp = pointed_offset - LOGGER_MASK_SIZE - LOGGER_OFFSET_SIZE;
-  logger_particle_read(&part, h, map, &tmp, 0, logger_reader_const, NULL);
+  tmp = logger_particle_read(&part, reader, tmp, 0, logger_reader_const);
 
   if (id != part.id)
     error("Offset wrong, id incorrect (%lu != %lu) at %lu", id, part.id, tmp);
+
+  return offset;
 }
+

@@ -28,6 +28,8 @@
 
 #define DIM 3
 
+struct logger_reader;
+
 /**
  * @brief Store the data from a chunk.
  *
@@ -83,14 +85,14 @@ enum logger_reader_type {
 
 void logger_particle_print(const struct logger_particle *p);
 
-void logger_particle_read(struct logger_particle *part, const struct header *h,
-                          void *map, size_t *offset, const double time,
-                          const int reader, struct time_array *times);
+size_t logger_particle_read(struct logger_particle *part, const struct logger_reader *reader,
+			  size_t offset, const double time,
+			  const enum logger_reader_type reader_type);
 
 void logger_particle_init(struct logger_particle *part);
 
-void logger_particle_read_field(struct logger_particle *part, void *map,
-                                size_t *offset, const char *field,
+size_t logger_particle_read_field(struct logger_particle *part, void *map,
+                                size_t offset, const char *field,
                                 const size_t size);
 
 void logger_particle_interpolate(struct logger_particle *part_curr,

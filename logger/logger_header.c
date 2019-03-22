@@ -90,7 +90,7 @@ void header_change_offset_direction(struct header *h, int new_value) {
   h->offset_direction = new_value;
   size_t offset = LOGGER_VERSION_SIZE;
 
-  io_write_data(h->dump->dump.map, LOGGER_NUMBER_SIZE, &new_value, &offset);
+  io_write_data(h->dump->dump.map, LOGGER_NUMBER_SIZE, &new_value, offset);
 }
 
 /**
@@ -107,23 +107,23 @@ void header_read(struct header *h, struct logger_dump *dump) {
   h->dump = dump;
 
   /* read version */
-  io_read_data(map, LOGGER_VERSION_SIZE, &h->version, &offset);
+  offset = io_read_data(map, LOGGER_VERSION_SIZE, &h->version, offset);
 
   /* read offset direction */
   h->offset_direction = -1;
-  io_read_data(map, LOGGER_NUMBER_SIZE, &h->offset_direction, &offset);
+  offset = io_read_data(map, LOGGER_NUMBER_SIZE, &h->offset_direction, offset);
 
-  if (!header_are_offset_forward(h) && !header_are_offset_backward(h) &&
-      !header_are_offset_corrupted(h))
+  if (!header_is_forward(h) && !header_is_backward(h) &&
+      !header_is_corrupted(h))
     error("Wrong offset value in the header (%i)", h->offset_direction);
 
   /* read offset to first data */
   h->offset_first = 0;
-  io_read_data(map, LOGGER_OFFSET_SIZE, &h->offset_first, &offset);
+  offset = io_read_data(map, LOGGER_OFFSET_SIZE, &h->offset_first, offset);
 
   /* read name size */
   h->name_length = 0;
-  io_read_data(map, LOGGER_NUMBER_SIZE, &h->name_length, &offset);
+  offset = io_read_data(map, LOGGER_NUMBER_SIZE, &h->name_length, offset);
 
   /* check if value defined in this file is large enough */
   if (STRING_SIZE < h->name_length) {
@@ -132,7 +132,7 @@ void header_read(struct header *h, struct logger_dump *dump) {
 
   /* read number of masks */
   h->number_mask = 0;
-  io_read_data(map, LOGGER_NUMBER_SIZE, &h->number_mask, &offset);
+  offset = io_read_data(map, LOGGER_NUMBER_SIZE, &h->number_mask, offset);
 
   /* allocate memory */
   h->masks = malloc(sizeof(struct mask_data) * h->number_mask);
@@ -140,14 +140,14 @@ void header_read(struct header *h, struct logger_dump *dump) {
   /* loop over all masks */
   for (size_t i = 0; i < h->number_mask; i++) {
     /* read mask name */
-    io_read_data(map, h->name_length, h->masks[i].name, &offset);
+    offset = io_read_data(map, h->name_length, h->masks[i].name, offset);
 
     /* get mask value */
     h->masks[i].mask = 1 << i;
 
     /* read mask data size */
     h->masks[i].size = 0;
-    io_read_data(map, LOGGER_NUMBER_SIZE, &h->masks[i].size, &offset);
+    offset = io_read_data(map, LOGGER_NUMBER_SIZE, &h->masks[i].size, offset);
   }
 
   if (offset != h->offset_first) {

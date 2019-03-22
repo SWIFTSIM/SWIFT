@@ -35,6 +35,9 @@ void logger_dump_init(
   /* Set the pointer to the reader. */
   dump->reader = reader;
 
+  /* Set pointers to zero */
+  time_array_init_to_zero(&dump->times);
+
   /* Open file, map it and get its size. */
   if (reader->verbose > 1)
     message("Mapping the dump file.");
@@ -51,14 +54,14 @@ void logger_dump_init(
   }
 
   /* Check if the offset are corrupted */
-  if (header_are_offset_corrupted(&dump->header)) {
+  if (header_is_corrupted(&dump->header)) {
     error("The offsets have been corrupted");
   }
 
   /* Reverse offset direction */
   if (reader->verbose > 1)
     message("Checking if offsets need to be reversed.");
-  if (header_are_offset_backward(&dump->header)) {
+  if (header_is_backward(&dump->header)) {
     logger_dump_reverse_offset(dump);
   }
 
@@ -94,7 +97,7 @@ void logger_dump_reverse_offset(struct logger_dump *dump) {
   struct header *header = &dump->header;
   const struct logger_reader *reader = dump->reader;
 
-  if (!header_are_offset_backward(header)) {
+  if (!header_is_backward(header)) {
     error("The offset are already reversed.");
   }
 
@@ -102,31 +105,32 @@ void logger_dump_reverse_offset(struct logger_dump *dump) {
 #ifdef SWIFT_DEBUG_CHECKS
   /* check offset */
   if (reader->verbose > 0) {
-    message("Check offsets...\n");
+    message("Check offsets...");
   }
-  size_t offset_debug = header->offset_first;
-  while (offset_debug < dump->dump.file_size) {
-    tools_check_offset(header, dump->dump.map, &offset_debug);
-  }
+
+  for(size_t offset_debug = header->offset_first;
+      offset_debug < dump->dump.file_size;
+      offset_debug = tools_check_offset(reader, offset_debug)) {}
+
   if (reader->verbose > 0) {
-    message("Check done\n");
+    message("Check done");
   }
 #endif
 
   /* reverse header offset */
   header_change_offset_direction(header, logger_offset_corrupted);
   
-  size_t offset = header->offset_first;
-
   /* reverse chunks */
   if (reader->verbose > 0) {
-    message("Reversing offsets...\n");
+    message("Reversing offsets...");
   }
-  while (offset < dump->dump.file_size) {
-    tools_reverse_offset(header, dump->dump.map, &offset);
-  }
+
+  for(size_t offset = header->offset_first;
+      offset < dump->dump.file_size;
+      offset = tools_reverse_offset(header, dump->dump.map, offset)) {}
+
   if (reader->verbose > 0) {
-    message("Reversing done\n");
+    message("Reversing done");
   }
 
   /* reverse header offset */
@@ -135,14 +139,15 @@ void logger_dump_reverse_offset(struct logger_dump *dump) {
 #ifdef SWIFT_DEBUG_CHECKS
   /* check offset */
   if (reader->verbose > 0) {
-    message("Check offsets...\n");
+    message("Check offsets...");
   }
-  offset_debug = header->offset_first;
-  while (offset_debug < dump->dump.file_size) {
-    tools_check_offset(header, dump->dump.map, &offset_debug);
-  }
+
+  for(size_t offset_debug = header->offset_first;
+      offset_debug < dump->dump.file_size;
+      offset_debug = tools_check_offset(reader, offset_debug)) {}
+
   if (reader->verbose > 0) {
-    message("Check done\n");
+    message("Check done");
   }
 #endif
 

@@ -26,19 +26,24 @@
  *
  * @param timestamp timestamp read
  * @param time time read
- * @param h #header file structure
- * @param map file mapping
- * @param offset In: position in the file, Out: shifted by the timestamp
+ * @param reader The #logger_reader
+ * @param offset position in the file
+ *
+ * @return position after the timestamp
  */
-void time_read(integertime_t *timestamp, double *time, const struct header *h,
-               void *map, size_t *offset) {
+size_t time_read(integertime_t *timestamp, double *time, const struct logger_reader *reader,
+               size_t offset) {
+
+  const struct header *h = &reader->dump.header;
+  void *map = h->dump->dump.map;
+
   size_t mask = 0;
   size_t prev_offset = 0;
   *timestamp = 0;
   *time = 0;
 
   /* read chunck header */
-  io_read_mask(h, map, offset, &mask, &prev_offset);
+  offset = io_read_mask(h, map, offset, &mask, &prev_offset);
 
 #ifdef SWIFT_DEBUG_CHECKS
 
@@ -51,33 +56,44 @@ void time_read(integertime_t *timestamp, double *time, const struct header *h,
 #endif
 
   /* read data */
-  // TODO
-  io_read_data(map, sizeof(unsigned long long int), timestamp, offset);
-  io_read_data(map, sizeof(double), time, offset);
+  offset = io_read_data(map, sizeof(unsigned long long int), timestamp, offset);
+  offset = io_read_data(map, sizeof(double), time, offset);
+
+  return offset;
 }
 
 /**
  * @brief get offset of first timestamp
  *
  * @param h file #header
- * @param map file mapping
- * @param offset out: offset of first timestamp
+ * @return offset of first timestamp
  *
  */
-void time_first_timestamp(const struct header *h, void *map, size_t *offset) {
-  *offset = h->offset_first;
+size_t time_first_timestamp(const struct header *h) {
+  size_t offset = h->offset_first;
+  void *map = h->dump->dump.map;
 
   int i = header_get_field_index(h, "timestamp");
 
   if (i == -1) error("Time stamp not present in header");
 
-  size_t tmp = *offset;
   size_t mask = 0;
   io_read_mask(h, map, offset, &mask, NULL);
 
   if (mask != h->masks[i].mask) error("Dump should begin by timestep");
 
-  *offset = tmp;
+  return h->offset_first;
+}
+
+/**
+ * @brief Initialize an empty time array.
+ *
+ * @param t #time_array to initialize.
+ * @param dump The #logger_dump.
+ */
+void time_array_init_to_zero(struct time_array *t) {
+  t->next = NULL;
+  t->prev = NULL;
 }
 
 /**
@@ -91,21 +107,19 @@ void time_array_init(struct time_array *t, struct logger_dump *dump) {
   t->next = NULL;
   t->prev = NULL;
 
-  /* get first time stamp */
-  size_t offset = 0;
-  time_first_timestamp(&dump->header, dump->dump.map, &offset);
-
   integertime_t timestamp = 0;
   double time = 0;
 
   /* get file size */
   size_t file_size = dump->dump.file_size;
 
+  /* get first time stamp */
+  size_t offset = time_first_timestamp(&dump->header);
   while (offset < file_size) {
     /* read time */
     t->offset = offset;
     size_t tmp_offset = offset;
-    time_read(&timestamp, &time, &dump->header, dump->dump.map, &tmp_offset);
+    tmp_offset = time_read(&timestamp, &time, dump->reader, tmp_offset);
     t->timestamp = timestamp;
     t->time = time;
 
@@ -150,7 +164,7 @@ integertime_t time_array_get_integertime(struct time_array *t,
  *
  * @return time of the chunk
  */
-double time_array_get_time(struct time_array *t, const size_t offset) {
+double time_array_get_time(const struct time_array *t, const size_t offset) {
   const struct time_array *tmp = time_array_get_time_array(t, offset);
   return tmp->time;
 }
@@ -163,22 +177,19 @@ double time_array_get_time(struct time_array *t, const size_t offset) {
  *
  * @return pointer to the requested #time_array
  */
-struct time_array *time_array_get_time_array(struct time_array *t,
+struct time_array *time_array_get_time_array(const struct time_array *t,
                                              const size_t offset) {
 
 #ifdef SWIFT_DEBUG_CHECKS
-  if (!t) return 0;
+  if (!t) error("NULL pointer");
 #endif
-  while (t->next) {
-    if (t->offset > offset) break;
+  const struct time_array *tmp;
+  for(tmp = t; tmp->next && tmp->offset <= offset; tmp = tmp->next)
+    {}
 
-    t = t->next;
-  }
+  if (tmp->prev == NULL) return (struct time_array *) tmp;
 
-  if (t->prev == NULL) return t;
-
-  struct time_array *tmp = t->prev;
-  return tmp;
+  return (struct time_array *) tmp->prev;
 }
 
 /**
@@ -188,10 +199,9 @@ struct time_array *time_array_get_time_array(struct time_array *t,
  */
 void time_array_free(struct time_array *t) {
   struct time_array *tmp;
-  while (t->next) {
+  for(tmp = t; t->next; t = tmp) {
     tmp = t->next;
     free(t);
-    t = tmp;
   }
 }
 
@@ -204,13 +214,15 @@ void time_array_print(const struct time_array *t) {
   size_t threshold = 4;
 
   size_t n = time_array_count(t);
-  size_t i = 0;
   size_t up_threshold = n - threshold;
 
   printf("Times (size %lu): [%lli (%g)", n, t->timestamp, t->time);
 
-  while (t->next) {
-    i += 1;
+  for(size_t i = 1; i < n; i++) {
+    /* The last time_array does not have a next */
+    if (!t->next)
+      error("Next pointer not initialized %li", i);
+
     t = t->next;
     if (i < threshold || i > up_threshold)
       printf(", %lli (%g)", t->timestamp, t->time);
@@ -230,13 +242,12 @@ void time_array_print_offset(const struct time_array *t) {
   size_t threshold = 4;
 
   size_t n = time_array_count(t);
-  size_t i = 0;
   size_t up_threshold = n - threshold;
 
   printf("Times (size %lu): [%lu", n, t->offset);
 
-  while (t->next) {
-    i += 1;
+  
+  for(size_t i = 1; i < n; i++) {
     t = t->next;
     if (i < threshold || i > up_threshold) printf(", %lu", t->offset);
 
@@ -255,8 +266,7 @@ void time_array_print_offset(const struct time_array *t) {
  */
 size_t time_array_count(const struct time_array *t) {
   size_t count = 1;
-  while (t->next) {
-    t = t->next;
+  for(; t->next; t = t->next) {
     count += 1;
   }
 

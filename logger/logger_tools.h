@@ -41,6 +41,7 @@
 #define STRING_SIZE 200
 
 struct header;
+struct logger_reader;
 
 #define error(s, ...)                                                        \
   ({                                                                         \
@@ -62,7 +63,7 @@ int _tools_get_next_chunk_backward(const struct header *h, void *map,
                                    size_t *offset, size_t file_size);
 int _tools_get_next_chunk_forward(const struct header *h, void *map,
                                   size_t *offset);
-void tools_reverse_offset(const struct header *h, void *map, size_t *offset);
-void tools_check_offset(const struct header *h, void *map, size_t *offset);
+size_t tools_reverse_offset(const struct header *h, void *map, size_t offset);
+size_t tools_check_offset(const struct logger_reader *reader, size_t offset);
 
 #endif  //__LOGGER_LOGGER_TOOLS_H__

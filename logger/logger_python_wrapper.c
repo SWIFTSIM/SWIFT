@@ -56,7 +56,7 @@ static PyObject *loadFromIndex(__attribute__((unused)) PyObject *self,
   PyArrayObject *id = NULL;
 
   size_t time_offset;
-  int verbose = 0;
+  int verbose = 2;
 
   /* parse arguments */
 
@@ -123,14 +123,14 @@ static PyObject *loadFromIndex(__attribute__((unused)) PyObject *self,
 
   if (verbose > 1)
     message("Reading particles.");
+
   /* loop over all particles */
   for (npy_intp i = 0; i < PyArray_DIMS(offset)[0]; i++) {
     struct logger_particle part;
 
-    size_t *offset_particle = (size_t *)PyArray_GETPTR1(offset, i);
+    size_t offset_particle = *(size_t *)PyArray_GETPTR1(offset, i);
 
-    logger_particle_read(&part, &reader.dump.header, reader.dump.dump.map, offset_particle, time,
-                         logger_reader_lin, &reader.dump.times);
+    logger_particle_read(&part, &reader, offset_particle, time, logger_reader_lin);
 
     double *dtmp;
     float *ftmp;
