@@ -1749,9 +1749,6 @@ void fof_search_tree(struct space *s) {
   //  group_CoM[root].z += gparts[i].mass * z;
   //}
 
-  free(group_bc);
-  free(com_set);
-
 #ifdef WITH_MPI
   size_t num_local_roots = 0;
   size_t *local_roots = NULL;
