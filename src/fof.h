@@ -92,6 +92,14 @@ struct group_length {
 
 } SWIFT_STRUCT_ALIGN;
 
+#ifdef WITH_MPI
+/* Struct used to find final group ID when using MPI */
+struct fof_final_index {
+  size_t local_root;
+  size_t global_root;
+} SWIFT_STRUCT_ALIGN;
+#endif
+
 /* Store local and foreign cell indices that touch. */
 struct cell_pair_indices {
 
@@ -109,7 +117,7 @@ void fof_search_pair_cells_foreign(struct space *s, struct cell *ci,
                                    int *group_links_size);
 void fof_search_tree(struct space *s);
 void fof_dump_group_data(char *out_file, struct space *s,
-                         struct group_length *group_sizes);
+                         int num_groups, struct group_length *group_sizes);
 void rec_fof_search_self(struct cell *c, struct space *s, const double dim[3],
                          const double search_r2);
 void rec_fof_search_pair(struct cell *restrict ci, struct cell *restrict cj,
