@@ -142,17 +142,21 @@ void cooling_update(const struct cosmology *cosmo,
   get_redshift_index(redshift, &z_index, &dz, cooling);
   cooling->dz = dz;
 
-  /* Does this timestep straddle Hydrogen reionization? If so, we need to input
-   * extra heat */
-  if (!cooling->H_reion_done && (redshift < cooling->H_reion_z)) {
+  /* Extra energy for reionization? */
+  if (!cooling->H_reion_done) {
 
-    if (s == NULL) error("Trying to do H reionization on an empty space!");
+    /* Does this timestep straddle Hydrogen reionization? If so, we need to
+     * input extra heat */
+    if (cosmo->z <= cooling->H_reion_z && cosmo->z_old > cooling->H_reion_z) {
 
-    /* Inject energy to all particles */
-    cooling_Hydrogen_reionization(cooling, cosmo, s);
+      if (s == NULL) error("Trying to do H reionization on an empty space!");
 
-    /* Flag that reionization happened */
-    cooling->H_reion_done = 1;
+      /* Inject energy to all particles */
+      cooling_Hydrogen_reionization(cooling, cosmo, s);
+
+      /* Flag that reionization happened */
+      cooling->H_reion_done = 1;
+    }
   }
 
   /* Do we already have the correct tables loaded? */
