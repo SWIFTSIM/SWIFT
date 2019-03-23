@@ -58,8 +58,8 @@ static const float explicit_tolerance = 0.05;
 static const float newton_tolerance = 1.0e-4;
 static const float bisection_tolerance = 1.0e-6;
 static const float rounding_tolerance = 1.0e-4;
-static const double bracket_factor = 1.5;              /* sqrt(1.1) */
-static const double newton_log_u_guess_cgs = 12.30103; /* log10(2e12) */
+static const double bracket_factor = 1.5;
+static const double newton_log_u_guess_cgs = 12;
 
 /**
  * @brief Find the index of the current redshift along the redshift dimension
@@ -802,6 +802,8 @@ void cooling_Hydrogen_reionization(const struct cooling_function_data *cooling,
   /* Energy to inject in internal units */
   const float extra_heat =
       cooling->H_reion_heat_cgs * cooling->internal_energy_from_cgs;
+
+  message("Applying extra energy for H reionization!");
 
   /* Loop through particles and set new heat */
   for (size_t i = 0; i < s->nr_parts; i++) {
