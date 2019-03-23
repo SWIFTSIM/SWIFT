@@ -201,7 +201,7 @@ INLINE static double EOS_pressure(const double n_H,
  * @param hydro_props The properties of the hydro scheme.
  * @param us The internal system of units.
  * @param cooling The cooling data struct.
- *
+ * @param entropy_floor The entropy floor assumed in this run.
  */
 INLINE static int star_formation_is_star_forming(
     const struct part* restrict p, const struct xpart* restrict xp,
