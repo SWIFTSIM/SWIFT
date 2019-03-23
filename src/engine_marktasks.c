@@ -642,17 +642,13 @@ void engine_marktasks_mapper(void *map_data, int num_elements,
         scheduler_activate(s, t);
     }
 
-    /* Subgrid tasks: cooling */
+    /* Subgrid tasks */
     else if (t_type == task_type_cooling) {
-      if (cell_is_active_hydro(t->ci, e)) scheduler_activate(s, t);
-    }
-
-    /* Subgrid tasks: star formation */
-    else if (t_type == task_type_star_formation) {
-      if (cell_is_active_hydro(t->ci, e)) {
+      if (cell_is_active_hydro(t->ci, e) || cell_is_active_gravity(t->ci, e))
         scheduler_activate(s, t);
-        cell_activate_drift_spart(t->ci, s);
-      }
+    } else if (t_type == task_type_star_formation) {
+      if (cell_is_active_hydro(t->ci, e) || cell_is_active_gravity(t->ci, e))
+        scheduler_activate(s, t);
     }
   }
 }
