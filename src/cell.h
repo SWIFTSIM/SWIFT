@@ -799,8 +799,6 @@ int cell_can_use_pair_mm(const struct cell *ci, const struct cell *cj,
                          const struct engine *e, const struct space *s);
 int cell_can_use_pair_mm_rebuild(const struct cell *ci, const struct cell *cj,
                                  const struct engine *e, const struct space *s);
-void cell_update_hydro_h_max(struct cell *c, double h_max);
-void cell_update_stars_h_max(struct cell *c, double h_max);
 
 /**
  * @brief Compute the square of the minimal distance between any two points in

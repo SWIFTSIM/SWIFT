@@ -154,7 +154,13 @@ void runner_do_stars_ghost(struct runner *r, struct cell *c, int timer) {
   /* Recurse? */
   if (c->split) {
     for (int k = 0; k < 8; k++)
-      if (c->progeny[k] != NULL) runner_do_stars_ghost(r, c->progeny[k], 0);
+      if (c->progeny[k] != NULL) {
+	runner_do_stars_ghost(r, c->progeny[k], 0);
+
+	/* update h_max */
+	if (c->progeny[k]->stars.h_max > c->stars.h_max)
+	  c->stars.h_max = c->progeny[k]->stars.h_max;
+      }
   } else {
 
     /* Init the list of active particles that have to be updated. */
@@ -418,7 +424,9 @@ void runner_do_stars_ghost(struct runner *r, struct cell *c, int timer) {
     free(h_0);
   }
 
-  cell_update_stars_h_max(c, h_max);
+  /* update h_max */
+  if (h_max > c->stars.h_max)
+    c->stars.h_max = h_max;
 
   if (timer) TIMER_TOC(timer_dostars_ghost);
 }
@@ -1365,7 +1373,12 @@ void runner_do_ghost(struct runner *r, struct cell *c, int timer) {
   /* Recurse? */
   if (c->split) {
     for (int k = 0; k < 8; k++)
-      if (c->progeny[k] != NULL) runner_do_ghost(r, c->progeny[k], 0);
+      if (c->progeny[k] != NULL) {
+	runner_do_ghost(r, c->progeny[k], 0);
+	/* update h_max */
+	if (c->progeny[k]->hydro.h_max > c->hydro.h_max)
+	  c->hydro.h_max = c->progeny[k]->hydro.h_max;
+      }
   } else {
 
     /* Init the list of active particles that have to be updated and their
@@ -1726,7 +1739,9 @@ void runner_do_ghost(struct runner *r, struct cell *c, int timer) {
     free(h_0);
   }
 
-  cell_update_hydro_h_max(c, h_max);
+  /* Update h_max */
+  if (h_max > c->hydro.h_max)
+    c->hydro.h_max = h_max;
 
   if (timer) TIMER_TOC(timer_do_ghost);
 }
