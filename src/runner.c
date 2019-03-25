@@ -158,8 +158,8 @@ void runner_do_stars_ghost(struct runner *r, struct cell *c, int timer) {
 	runner_do_stars_ghost(r, c->progeny[k], 0);
 
 	/* update h_max */
-	if (c->progeny[k]->stars.h_max > c->stars.h_max)
-	  c->stars.h_max = c->progeny[k]->stars.h_max;
+	if (c->progeny[k]->stars.h_max > h_max)
+	  h_max = c->progeny[k]->stars.h_max;
       }
   } else {
 
@@ -428,6 +428,16 @@ void runner_do_stars_ghost(struct runner *r, struct cell *c, int timer) {
   if (h_max > c->stars.h_max)
     c->stars.h_max = h_max;
 
+  /* The ghost may not always be at the top level.
+   * Therefore we need to update h_max above the ghost */
+  if (c->stars.ghost) {
+    for(struct cell *tmp = c->parent; tmp != NULL; tmp = tmp->parent) {
+      if (h_max > tmp->stars.h_max)
+	tmp->stars.h_max = h_max;
+    }
+  }
+
+  
   if (timer) TIMER_TOC(timer_dostars_ghost);
 }
 
@@ -1376,8 +1386,9 @@ void runner_do_ghost(struct runner *r, struct cell *c, int timer) {
       if (c->progeny[k] != NULL) {
 	runner_do_ghost(r, c->progeny[k], 0);
 	/* update h_max */
-	if (c->progeny[k]->hydro.h_max > c->hydro.h_max)
-	  c->hydro.h_max = c->progeny[k]->hydro.h_max;
+	if (c->progeny[k]->hydro.h_max > h_max) {
+	  h_max = c->progeny[k]->hydro.h_max;
+	}
       }
   } else {
 
@@ -1740,8 +1751,18 @@ void runner_do_ghost(struct runner *r, struct cell *c, int timer) {
   }
 
   /* Update h_max */
-  if (h_max > c->hydro.h_max)
+  if (h_max > c->hydro.h_max) {
     c->hydro.h_max = h_max;
+  }
+
+  /* The ghost may not always be at the top level.
+   * Therefore we need to update h_max above the ghost */
+  if (c->hydro.ghost) {
+    for(struct cell *tmp = c->parent; tmp != NULL; tmp = tmp->parent) {
+      if (h_max > tmp->hydro.h_max)
+	tmp->hydro.h_max = h_max;
+    }
+  }
 
   if (timer) TIMER_TOC(timer_do_ghost);
 }
