@@ -1495,32 +1495,12 @@ void fof_search_tree(struct space *s) {
 
 #ifdef WITH_MPI
   const size_t group_id_default = s->fof_data.group_id_default;
-  if (nr_nodes > 1) {
 
-    int *global_nr_gparts = NULL;
-
-    /* Find the total no. of particles on each node and calculate your unique
-     * offset. */
-    if (posix_memalign((void **)&global_nr_gparts, SWIFT_STRUCT_ALIGNMENT,
-                       nr_nodes * sizeof(int)) != 0)
-      error("Error while allocating memory for global_nr_gparts array.");
-
-    bzero(global_nr_gparts, nr_nodes * sizeof(int));
-
-    MPI_Allgather(&s->nr_gparts, 1, MPI_INT, global_nr_gparts, 1, MPI_INT,
-                  MPI_COMM_WORLD);
-
-    if (engine_rank == 0) {
-      printf("No. of particles: [%d", global_nr_gparts[0]);
-      for (int i = 1; i < nr_nodes; i++) printf(", %d", global_nr_gparts[i]);
-      printf("]\n");
-    }
-
-    for (int i = 0; i < engine_rank; i++) node_offset += global_nr_gparts[i];
-
-    /* Clean up memory. */
-    free(global_nr_gparts);
-  }
+  /* Determine number of gparts on lower numbered MPI ranks */
+  long long nr_gparts_cumulative;
+  long long nr_gparts_local = s->nr_gparts;
+  MPI_Scan(&nr_gparts_local, &nr_gparts_cumulative, 1, MPI_LONG_LONG, MPI_SUM, MPI_COMM_WORLD); 
+  node_offset = nr_gparts_cumulative - nr_gparts_local;
 
   snprintf(output_file_name + strlen(output_file_name), FILENAME_BUFFER_SIZE,
            "_mpi_rank_%d.dat", engine_rank);
