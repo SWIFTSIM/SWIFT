@@ -2878,7 +2878,7 @@ void engine_init_particles(struct engine *e, int flag_entropy_ICs,
   /* Update the cooling function */
   if ((e->policy & engine_policy_cooling) ||
       (e->policy & engine_policy_temperature))
-    cooling_update(e->cosmology, e->cooling_func);
+    cooling_update(e->cosmology, e->cooling_func, e->s);
 
 #ifdef WITH_LOGGER
   /* Mark the first time step in the particle logger file. */
@@ -2948,6 +2948,7 @@ void engine_init_particles(struct engine *e, int flag_entropy_ICs,
 #endif
 
   scheduler_write_dependencies(&e->sched, e->verbose);
+  space_write_cell_hierarchy(e->s);
   if (e->nodeID == 0) scheduler_write_task_level(&e->sched);
 
   /* Run the 0th time-step */
@@ -3143,7 +3144,7 @@ void engine_step(struct engine *e) {
   /* Update the cooling function */
   if ((e->policy & engine_policy_cooling) ||
       (e->policy & engine_policy_temperature))
-    cooling_update(e->cosmology, e->cooling_func);
+    cooling_update(e->cosmology, e->cooling_func, e->s);
 
   /*****************************************************/
   /* OK, we now know what the next end of time-step is */
@@ -4040,7 +4041,7 @@ void engine_collect_stars_counter(struct engine *e) {
   }
 
   free(n_sparts);
-  free(n_sparts_in);
+  free(n_sparts_int);
   swift_free("sparts", sparts);
 #endif
 }

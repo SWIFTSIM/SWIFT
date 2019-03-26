@@ -25,10 +25,10 @@
 /* Some standard headers. */
 #include <math.h>
 
-#ifndef __GNUC__
-
 /* Local headers. */
 #include "inline.h"
+
+#if !defined(HAVE_EXP10) && !defined(HAVE___EXP10)
 
 /**
  * @brief Raises 10 to the power of the argument.
@@ -44,6 +44,10 @@ __attribute__((always_inline, const)) INLINE static double exp10(
   return exp(x * M_LN10);
 }
 
+#endif
+
+#if !defined(HAVE_EXP10F) && !defined(HAVE___EXP10F)
+
 /**
  * @brief Raises 10 to the power of the argument.
  *
@@ -58,6 +62,15 @@ __attribute__((always_inline, const)) INLINE static float exp10f(
   return expf(x * (float)M_LN10);
 }
 
-#endif /* __GNUC__ */
+#endif
+
+/* Use the __exp10 and __exp10f versions if needed. */
+#if !defined(HAVE_EXP10) && defined(HAVE___EXP10)
+#define exp10(x) __exp10(x)
+#endif
+
+#if !defined(HAVE_EXP10F) && defined(HAVE___EXP10F)
+#define exp10f(x) __exp10f(x)
+#endif
 
 #endif /* SWIFT_EXP10_H */

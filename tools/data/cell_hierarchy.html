@@ -1,0 +1,387 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8">
+    
+    <title>Cell Hierarchy</title>
+
+    <style>
+
+      div.tooltip {
+	  position: absolute;
+	  text-align: left;
+	  width: 180px;
+	  height: 80px;
+	  padding: 2px;
+	  font: 12px sans-serif;
+	  background: lightsteelblue;
+	  border: 0px;
+	  border-radius: 8px;
+	  pointer-events: none;
+      }	
+      .node {
+	  cursor: pointer;
+      }
+      
+      .node circle {
+	  fill: #fff;
+	  stroke: steelblue;
+	  stroke-width: 3px;
+      }
+
+      .node text {
+	  font: 12px sans-serif;
+      }
+
+      .link {
+	  fill: none;
+	  stroke: #ccc;
+	  stroke-width: 2px;
+      }
+
+    </style>
+
+  </head>
+
+  <div class="ui-widget">
+    <input id="search">
+    <button type="button" onclick="searchNode()">Search</button>
+    <progress value="0" max="100" id="progress">0</progress>
+  </div>
+  <body>
+
+<!-- load the d3.js library -->	
+<script src="https://d3js.org/d3.v5.min.js"></script>
+	
+<script>
+  // ************** Generate the tree diagram	 *****************
+  var margin = {top: 20, right: 60, bottom: 20, left: 60},
+      width = 1800 - margin.right - margin.left,
+      height = 900 - margin.top - margin.bottom;
+  
+  var i = 0,
+      duration = 750,
+      root;
+
+  var tree = d3.tree()
+      .size([10*width, height]);
+
+  // append the svg object to the body of the page
+  // appends a 'group' element to 'svg'
+  // moves the 'group' element to the top left margin
+  var svg = d3.select("body").append("svg")
+      .attr("width", width + margin.right + margin.left)
+      .attr("height", height + margin.top + margin.bottom)
+      .call(d3.zoom().on("zoom", function () {
+	  svg.attr("transform", d3.event.transform)
+      }))
+      .append("g")
+      .attr("transform", "translate("
+            + margin.left + "," + margin.top + ")")
+  
+  // load the external data
+  d3.csv("cell_hierarchy.csv").then(function(data) {
+
+      // *********** Convert flat data into a nice tree ***************
+      // create a name: node map
+      var dataMap = data.reduce(function(map, node) {
+	  map[node.name] = node;
+	  return map;
+      }, {});
+	
+      // create the tree array
+      var treeData = [];
+      data.forEach(function(node) {
+	  // add to parent
+	  var parent = dataMap[node.parent];
+	  if (parent) {
+	      // create child array if it doesn't exist
+	      (parent.children || (parent.children = []))
+	      // add node to child array
+		  .push(node);
+	  } else {
+	      // parent is null or missing
+	      treeData.push(node);
+	  }
+      });
+
+      root = d3.hierarchy(treeData[0], function(d) { return d.children; });
+
+      root.x0 = width / 2;
+      root.y0 = 0;
+
+      // Collapse after the second level
+      root.children.forEach(collapse);
+      update(root);
+      
+      var N = root.children.length
+      var size = 1.
+      if (N > 64)
+	  size = 15 * N / 1664
+      tree = tree.size([size * width, height]);
+      update(root)
+  
+  });
+
+  d3.select(self.frameElement).style("height", "500px");
+
+  function update(source) {
+
+      // Assigns the x and y position for the nodes
+      var treeData = tree(root);
+
+      // Compute the new tree layout.
+      var nodes = treeData.descendants(),
+	  links = treeData.descendants().slice(1);
+
+      // Normalize for fixed-depth.
+      nodes.forEach(function(d){ d.y = d.depth * 100});
+
+      // ****************** Nodes section ***************************
+
+      // Update the nodes...
+      var node = svg.selectAll('g.node')
+	  .data(nodes, function(d) {return d.id || (d.id = ++i); });
+
+      // Enter any new modes at the parent's previous position.
+      var nodeEnter = node.enter().append('g')
+	  .attr('class', 'node')
+	  .attr("transform", function(d) {
+              return "translate(" + source.x0 + "," + source.y0 + ")";
+	  })
+	  .on('click', click)
+
+      // add tool tip for ps -eo pid,ppid,pcpu,size,comm,ruser,s
+	  .on("mouseover", function(d) {
+	      var n = d.data
+              div.transition()
+		  .duration(200)
+		  .style("opacity", .9);
+              div .html(
+		  "ID: " + n.name + "<br/>" +
+		      "MPI rank:" + n.mpi_rank + "<br/>" + 
+		      "Part: " + n.hydro_count + "<br/>" + 
+		      "Spart: " + n.stars_count + "<br/>" +
+		      "Super: " + n.super + "<br/>" +
+		      "Super Hydro: " + n.hydro_super + "<br/>" +
+		      "Loc: " + n.loc1 + ", " + n.loc2 + ", " + n.loc3 + "<br/>" +
+		      "Width: " + n.width1 + ", " + n.width2 + ", " + n.width3 + "<br/>" +
+		      "Hydro h_max: " + n.hydro_h_max + "<br/>" +
+		      "Stars h_max: " + n.stars_h_max + "<br/>"
+              )
+		  .style("left", (d3.event.pageX) + "px")
+		  .style("top", (d3.event.pageY - 28) + "px")
+	      // change here to change the tool tip box size
+		  .style("height", 180 + "px");
+	  })
+	  .on("mouseout", function(d) {
+              div.transition()
+		  .duration(500)
+		  .style("opacity", 0);
+	  });
+
+      // Add Circle for the nodes
+      nodeEnter.append('circle')
+	  .attr('class', 'node')
+	  .attr('r', 1e-6)
+	  .style("fill", function(d) {
+              return d._children ? "lightsteelblue" : "#fff";
+	  });
+
+      // Add labels for the nodes
+      nodeEnter.append('text')
+	  .attr("dy", ".35em")
+	  .attr("x",  -55)
+	  .attr("text-anchor", "start")
+	  .attr("transform", "rotate(90)")
+	  .text(function(d) { return d.data.name; });
+      
+      // add the tool tip
+      var div = d3.select("body").append("div")
+	  .attr("class", "tooltip")
+	  .style("opacity", 0);
+
+      // UPDATE
+      var nodeUpdate = nodeEnter.merge(node);
+
+      // Transition to the proper position for the node
+      nodeUpdate.transition()
+	  .duration(duration)
+	  .attr("transform", function(d) { 
+              return "translate(" + d.x + "," + d.y + ")";
+	  });
+
+      // Update the node attributes and style
+      nodeUpdate.select('circle.node')
+	  .attr('r', 10)
+	  .style("fill", function(d) {
+              return d._children ? "lightsteelblue" : "#fff";
+	  })
+	  .attr('cursor', 'pointer');
+
+
+      // Remove any exiting nodes
+      var nodeExit = node.exit().transition()
+	  .duration(duration)
+	  .attr("transform", function(d) {
+              return "translate(" + source.x + "," + source.y + ")";
+	  })
+	  .remove();
+
+      // On exit reduce the node circles size to 0
+      nodeExit.select('circle')
+	  .attr('r', 1e-6);
+
+      // On exit reduce the opacity of text labels
+      nodeExit.select('text')
+	  .style('fill-opacity', 1e-6);
+
+      // ****************** links section ***************************
+
+      // Update the links...
+      var link = svg.selectAll('path.link')
+	  .data(links, function(d) { return d.id; });
+
+      // Enter any new links at the parent's previous position.
+      var linkEnter = link.enter().insert('path', "g")
+	  .attr("class", "link")
+	  .attr('d', function(d){
+              var o = {x: source.x0, y: source.y0}
+              return diagonal(o, o)
+	  });
+      
+      // UPDATE
+      var linkUpdate = linkEnter.merge(link);
+      
+      // Transition back to the parent element position
+      linkUpdate.transition()
+	  .duration(duration)
+	  .attr('d', function(d){ return diagonal(d, d.parent) });
+      
+      // Remove any exiting links
+      var linkExit = link.exit().transition()
+	  .duration(duration)
+	  .attr('d', function(d) {
+              var o = {x: source.x, y: source.y}
+              return diagonal(o, o)
+	  })
+	  .remove();
+
+      // Store the old positions for transition.
+      nodes.forEach(function(d){
+	  d.x0 = d.x;
+	  d.y0 = d.y;
+      });
+
+      // Creates a curved (diagonal) path from parent to the child nodes
+      function diagonal(s, d) {
+
+	  path = `M ${s.x} ${s.y}
+            C ${(s.x + d.x) / 2} ${s.y},
+              ${(s.x + d.x) / 2} ${d.y},
+              ${d.x} ${d.y}`
+
+	  return path
+      }
+
+      // Toggle children on click.
+      function click(d) {
+	  if (d.children) {
+              d._children = d.children;
+              d.children = null;
+	  } else {
+              d.children = d._children;
+              d._children = null;
+	  }
+	  update(d);
+      }
+  }
+
+
+  // Collapse the node and all it's children
+  function collapse(d) {
+      if(d.children) {
+	  d._children = d.children
+	  d._children.forEach(collapse)
+	  d.children = null
+      }
+  }
+
+  // open the node and all it's parent
+  function openNode(d) {
+      if (d._children) {
+ 	  d.children = d._children
+	  d._children = null
+      }
+      if (d.parent)
+	  openNode(d.parent)
+  }
+
+  var selectedVal;
+  
+  function searchSubNode(node) {
+      if (node.data.name == selectedVal) {
+	  openNode(node)
+	  update(root)
+	  return true
+      }
+
+      var found = false
+      if (node.children) {
+	  var N = node.children.length
+	  for(var i = 0; i < N; i++) {
+	      found = searchSubNode(node.children[i])
+	      if (found) {
+		  break
+	      }
+	  }
+      }
+
+      if (found)
+	  return found
+
+      if (node._children) {
+	  var N = node._children.length
+	  for(var i = 0; i < N; i++) {
+	      found = searchSubNode(node._children[i])
+	      if (found) {
+		  break
+	      }
+	  }
+
+      }
+
+      return found
+      
+  }
+
+  function searchNode() {
+      //find the node
+      selectedVal = document.getElementById('search').value;
+      var progress = document.getElementById("progress");
+      progress.innerHTML = "0%"
+      progress.value = 0
+      
+      var N = root.children.length
+      for(var i = 0; i < N; i++) {
+	  var found = searchSubNode(root.children[i], selectedVal)
+
+	  if (found) {
+	      progress.innerHTML = "100%"
+	      progress.value = 100
+	      return
+	  }
+	  else {
+	      progress.innerHTML = 100 * i / (N - 1.) + "%"
+	      progress.value = 100 * i / (N - 1.)
+	  }
+      }
+
+      console.log("Not found")
+  }
+
+
+</script>
+	
+  </body>
+</html>
