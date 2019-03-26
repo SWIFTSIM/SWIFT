@@ -1077,6 +1077,11 @@ int main(int argc, char *argv[]) {
   engine_print_stats(&e);
   engine_dump_snapshot(&e);
 
+#ifdef WITH_MPI
+  if ((res = MPI_Finalize()) != MPI_SUCCESS)
+    error("call to MPI_Finalize failed with error %i.", res);
+#endif
+
   /* Clean everything */
   if (with_verbose_timers) timers_close_file();
   if (with_cosmology) cosmology_clean(&cosmo);
