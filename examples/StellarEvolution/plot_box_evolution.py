@@ -98,9 +98,9 @@ element_mass = zeros((n_snapshots,n_elements))
 t = zeros(n_snapshots)
 
 # Read expected yields from EAGLE
-#filename = "/cosma/home/dp004/dc-bori1/Eagle/data1/StellarEvolutionTotal.txt"
+filename = "/cosma/home/dp004/dc-bori1/Eagle/data1/StellarEvolutionTotal.txt"
 #filename = "/cosma/home/dp004/dc-bori1/Eagle/data1/StellarEvolutionIa.txt"
-filename = "/cosma/home/dp004/dc-bori1/Eagle/data1/StellarEvolutionII.txt"
+#filename = "/cosma/home/dp004/dc-bori1/Eagle/data1/StellarEvolutionII.txt"
 #filename = "/cosma/home/dp004/dc-bori1/Eagle/data1/StellarEvolutionAGB.txt"
 
 with open(filename) as f:

@@ -18,9 +18,9 @@ Cosmology:
 # Parameters governing the time integration
 TimeIntegration:
   time_begin: 0.    # The starting time of the simulation (in internal units).
-  time_end:   1e-4  # The end time of the simulation (in internal units).
+  time_end:   5e-3  # The end time of the simulation (in internal units).
   dt_min:     1e-12 # The minimal time-step size of the simulation (in internal units).
-  dt_max:     1e-5  # The maximal time-step size of the simulation (in internal units).
+  dt_max:     5e-7  # The maximal time-step size of the simulation (in internal units).
 
 # Parameters governing the snapshots
 Snapshots:
@@ -73,3 +73,6 @@ EAGLEChemistry:              # Solar abundances
 EagleStellarEvolution:
   filename:     /cosma5/data/Eagle/BG_Tables/YieldTables/
   imf_model:    Chabrier
+
+EAGLEFeedback:
+  lifetime_flag:  2

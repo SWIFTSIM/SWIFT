@@ -121,10 +121,12 @@ inline static float integrate_imf(
           star_properties->feedback.imf_mass_bin[index]; 
   else if (mode == 2)
     /* Integrate IMF weighted by yields */
-    for (index = ilow; index < ihigh + 1; index++)
+    for (index = ilow; index < ihigh + 1; index++){
       integrand[index] =
           stellar_yields[index] * star_properties->feedback.imf_by_number[index] *
           star_properties->feedback.imf_mass_bin[index]; 
+      //message("index %d low high %d %d integrand %.5e yield %.5e imf %.5e mass_bin %.5e", index, ilow, ihigh, integrand[index], stellar_yields[index], star_properties->feedback.imf_by_number[index], star_properties->feedback.imf_mass_bin[index]);
+    }
   else if (mode == 3)
     /* ALEXEI: should we keep this? */
     for (index = ilow; index < ihigh + 1; index++) {
@@ -394,6 +396,7 @@ inline static double dying_mass_msun(double age_Gyr, float metallicity,
           interpolate_1d(star_properties->feedback.lifetimes.mass, index_time2, d_time2);
 
       mass = (1.0 - d_metal) * mass1 + d_metal * mass2;
+      //message("age_Gyr %.5e mass %.5e", age_Gyr, mass);
       break;
 
     default:

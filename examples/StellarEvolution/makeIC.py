@@ -29,7 +29,7 @@ boltzmann_k_cgs = 1.38e-16
 # Parameters
 gamma = 5./3.      				# Gas adiabatic index
 rho_cgs = mp_cgs        			# Background density
-u0_cgs = 1.2e12					# Desired initial internal energy (1.2e12 ~ 10^4K)
+u0_cgs = 1.2e10					# Desired initial internal energy (1.2e12 ~ 10^4K)
 P_cgs = rho_cgs*u0_cgs*(gamma - 1.)          	# Background pressure
 fileName = "stellar_evolution.hdf5" 
 
@@ -45,7 +45,7 @@ boxsize_cgs = 1.0e1*kpc_in_cm
 vol_cgs = boxsize_cgs**3
 
 #---------------------------------------------------
-glass = h5py.File("glassCube_64.hdf5", "r")
+glass = h5py.File("glassCube_32.hdf5", "r")
 
 # Read particle positions and h from the glass
 pos = glass["/PartType0/Coordinates"][:,:]

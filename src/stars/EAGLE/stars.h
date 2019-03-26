@@ -75,6 +75,8 @@ __attribute__((always_inline)) INLINE static void stars_first_init_spart(
   // ALEXEI: specify birth time for running StellarEvolution test
   sp->birth_time = 0.f;
   sp->chemistry_data.metal_mass_fraction_total = 0.01;
+  sp->chemistry_data.metal_mass_fraction[chemistry_element_H] = 0.752;
+  sp->chemistry_data.metal_mass_fraction[chemistry_element_He] = 0.248;
 
   stars_init_spart(sp);
 }
@@ -404,10 +406,12 @@ inline static void evolve_SNII(float log10_min_mass, float log10_max_mass,
           dz * (stars->feedback.yield_SNII.yield_IMF_resampled[high_index_3d] +
                 sp->chemistry_data.metal_mass_fraction[i] *
                     stars->feedback.yield_SNII.ejecta_IMF_resampled[high_index_2d]);
+      //message("i %d imass %d stellar_yield %.5e dz %.5e mass_frac %.5e low high 2d index %d %d low high 3d index %d %d", i, imass, stellar_yields[imass], dz, sp->chemistry_data.metal_mass_fraction[i], low_index_2d, high_index_2d, low_index_3d, high_index_3d);
     }
 
     metals[i] = integrate_imf(log10_min_mass, log10_max_mass, 0.0, 2,
                               stellar_yields, stars);
+    //message("index %d log10 min max mass %.5e %.5e metals %.5e mass fraction %.5e", i, log10_min_mass, log10_max_mass, metals[i], sp->chemistry_data.metal_mass_fraction[i]);
   }
 
   /* Compute mass produced */
@@ -458,6 +462,8 @@ inline static void evolve_SNII(float log10_min_mass, float log10_max_mass,
    * initial mass as tables are per initial mass */
   const float norm_factor = norm0 / norm1 * sp->mass_init;
 
+  //message("norm 0 1 %.5e %.5e mass %.5e H %.5e He %.5e norm_factor %.5e mass_init %.5e", norm0, norm1, mass, metals[chemistry_element_H], metals[chemistry_element_He], norm_factor, sp->mass_init);
+
   /* normalize the yields */
   if (norm1 > 0) {
     for (i = 0; i < chemistry_element_count; i++) {
@@ -472,6 +478,9 @@ inline static void evolve_SNII(float log10_min_mass, float log10_max_mass,
   } else {
     error("wrong normalization!!!! norm1 = %e\n", norm1);
   }
+
+  //DEBUGGING
+  //message("log10 min max mass %.5e %.5e to_distribute mass %.5e sum total metals + H, He %.5e", log10_min_mass, log10_max_mass, sp->to_distribute.mass, sp->to_distribute.total_metal_mass + sp->to_distribute.metal_mass[0] + sp->to_distribute.metal_mass[1]);
 }
 
 /**
@@ -638,15 +647,14 @@ inline static void compute_stellar_evolution(
   if (log10_min_dying_mass_msun == log10_max_dying_mass_msun) return;
 
   /* Evolve SNIa, SNII, AGB */
-  //evolve_SNIa(log10_min_dying_mass_msun,log10_max_dying_mass_msun,
-  //            star_properties,sp,star_age_Gyr,dt_Gyr);
+  evolve_SNIa(log10_min_dying_mass_msun,log10_max_dying_mass_msun,
+              star_properties,sp,star_age_Gyr,dt_Gyr);
   evolve_SNII(log10_min_dying_mass_msun,log10_max_dying_mass_msun,
               stellar_yields, star_properties,sp);
-  //evolve_AGB(log10_min_dying_mass_msun, log10_max_dying_mass_msun,
-  //           stellar_yields, star_properties, sp);
+  evolve_AGB(log10_min_dying_mass_msun, log10_max_dying_mass_msun,
+             stellar_yields, star_properties, sp);
 
-  //DEBUGGING
-  //sp->to_distribute.mass = sp->to_distribute.total_metal_mass + sp->to_distribute.metal_mass[0] + sp->to_distribute.metal_mass[1];
+  sp->to_distribute.mass = sp->to_distribute.total_metal_mass + sp->to_distribute.metal_mass[0] + sp->to_distribute.metal_mass[1];
 
   free(stellar_yields);
 }
