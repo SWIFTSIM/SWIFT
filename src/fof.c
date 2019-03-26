@@ -1850,11 +1850,13 @@ void fof_search_tree(struct space *s) {
   fof_dump_group_data(output_file_name, s, high_group_sizes);
 #endif
 
+  /* Free the left-overs */
+  free(high_group_sizes);
+
   if (engine_rank == 0) {
     message(
         "No. of groups: %d. No. of particles in groups: %d. No. of particles "
-        "not "
-        "in groups: %lld.",
+        "not in groups: %lld.",
         num_groups, num_parts_in_groups,
         s->e->total_nr_gparts - num_parts_in_groups);
 
