@@ -58,6 +58,18 @@ Gravity:
 Stars:
   feedback_timescale: 1.e-4
 
+EAGLEChemistry:              # Solar abundances
+  init_abundance_metal:      0.01
+  init_abundance_Hydrogen:   0.752
+  init_abundance_Helium:     0.248
+  init_abundance_Carbon:     0.0
+  init_abundance_Nitrogen:   0.0
+  init_abundance_Oxygen:     0.0
+  init_abundance_Neon:       0.0
+  init_abundance_Magnesium:  0.0
+  init_abundance_Silicon:    0.0
+  init_abundance_Iron:       0.0
+
 EagleStellarEvolution:
   filename:     /cosma5/data/Eagle/BG_Tables/YieldTables/
   imf_model:    Chabrier
