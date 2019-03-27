@@ -2724,7 +2724,9 @@ void engine_skip_force_and_kick(struct engine *e) {
         t->type == task_type_star_formation ||
         t->type == task_type_extra_ghost ||
         t->subtype == task_subtype_gradient ||
-        t->subtype == task_subtype_stars_feedback)
+        t->subtype == task_subtype_stars_feedback ||
+        t->subtype == task_subtype_tend || t->subtype == task_subtype_rho ||
+        t->subtype == task_subtype_gpart)
       t->skip = 1;
   }
 
