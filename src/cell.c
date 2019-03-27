@@ -4816,6 +4816,17 @@ void cell_reorder_extra_parts(struct cell *c, const ptrdiff_t parts_offset) {
         parts[i].gpart->id_or_neg_offset = -(i + parts_offset);
     }
   }
+
+#ifdef SWIFT_DEBUG_CHECKS
+  for (int i = 0; i < c->hydro.count_total; ++i) {
+    if (parts[i].time_bin == time_bin_not_created && i < c->hydro.count) {
+      error("Extra particle before the end of the regular array");
+    }
+    if (parts[i].time_bin != time_bin_not_created && i >= c->hydro.count) {
+      error("Regular particle after the end of the regular array");
+    }
+  }
+#endif
 }
 
 /**
@@ -4862,6 +4873,17 @@ void cell_reorder_extra_sparts(struct cell *c, const ptrdiff_t sparts_offset) {
 #endif
     }
   }
+
+#ifdef SWIFT_DEBUG_CHECKS
+  for (int i = 0; i < c->stars.count_total; ++i) {
+    if (sparts[i].time_bin == time_bin_not_created && i < c->stars.count) {
+      error("Extra particle before the end of the regular array");
+    }
+    if (sparts[i].time_bin != time_bin_not_created && i >= c->stars.count) {
+      error("Regular particle after the end of the regular array");
+    }
+  }
+#endif
 }
 
 /**
@@ -4907,6 +4929,17 @@ void cell_reorder_extra_gparts(struct cell *c, struct part *parts,
       }
     }
   }
+
+#ifdef SWIFT_DEBUG_CHECKS
+  for (int i = 0; i < c->grav.count_total; ++i) {
+    if (gparts[i].time_bin == time_bin_not_created && i < c->grav.count) {
+      error("Extra particle before the end of the regular array");
+    }
+    if (gparts[i].time_bin != time_bin_not_created && i >= c->grav.count) {
+      error("Regular particle after the end of the regular array");
+    }
+  }
+#endif
 }
 
 /**
