@@ -49,7 +49,7 @@ typedef struct _hashmap_element {
 
 #define HASHMAP_MAX_CHAIN_LENGTH (HASHMAP_ELEMENTS_PER_CHUNK / 8)
 #ifndef HASHMAP_DEBUG_OUTPUT
-#define HASHMAP_DEBUG_OUTPUT (1)
+#define HASHMAP_DEBUG_OUTPUT (0)
 #endif  // HASHMAP_DEBUG_OUTPUT
 
 /* A chunk of hashmap_element, with the corresponding bitmask. */

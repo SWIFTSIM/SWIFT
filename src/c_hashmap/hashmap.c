@@ -230,9 +230,11 @@ void hashmap_grow(hashmap_t *m) {
                  HASHMAP_ELEMENTS_PER_CHUNK;
   m->table_size = m->nr_chunks * HASHMAP_ELEMENTS_PER_CHUNK;
 
-  message("Increasing hash table size from %zu (%zu kb) to %zu (%zu kb).",
-          old_table_size, old_table_size * sizeof(hashmap_element_t) / 1024,
-          m->table_size, m->table_size * sizeof(hashmap_element_t) / 1024);
+  if (HASHMAP_DEBUG_OUTPUT) {
+    message("Increasing hash table size from %zu (%zu kb) to %zu (%zu kb).",
+        old_table_size, old_table_size * sizeof(hashmap_element_t) / 1024,
+        m->table_size, m->table_size * sizeof(hashmap_element_t) / 1024);
+  }
 
   if ((m->chunks = (hashmap_chunk_t **)calloc(
            m->nr_chunks, sizeof(hashmap_chunk_t *))) == NULL) {
