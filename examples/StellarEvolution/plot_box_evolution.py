@@ -98,10 +98,26 @@ element_mass = zeros((n_snapshots,n_elements))
 t = zeros(n_snapshots)
 
 # Read expected yields from EAGLE
-filename = "/cosma/home/dp004/dc-bori1/Eagle/data1/StellarEvolutionTotal.txt"
-#filename = "/cosma/home/dp004/dc-bori1/Eagle/data1/StellarEvolutionIa.txt"
-#filename = "/cosma/home/dp004/dc-bori1/Eagle/data1/StellarEvolutionII.txt"
-#filename = "/cosma/home/dp004/dc-bori1/Eagle/data1/StellarEvolutionAGB.txt"
+#filename = "/cosma/home/dp004/dc-bori1/Eagle/data1/z_0.0001/StellarEvolutionTotal.txt"
+#filename = "/cosma/home/dp004/dc-bori1/Eagle/data1/z_0.0001/StellarEvolutionIa.txt"
+#filename = "/cosma/home/dp004/dc-bori1/Eagle/data1/z_0.0001/StellarEvolutionII.txt"
+#filename = "/cosma/home/dp004/dc-bori1/Eagle/data1/z_0.0001/StellarEvolutionAGB.txt"
+#filename = "/cosma/home/dp004/dc-bori1/Eagle/data1/z_0.001/StellarEvolutionTotal.txt"
+#filename = "/cosma/home/dp004/dc-bori1/Eagle/data1/z_0.001/StellarEvolutionIa.txt"
+#filename = "/cosma/home/dp004/dc-bori1/Eagle/data1/z_0.001/StellarEvolutionII.txt"
+#filename = "/cosma/home/dp004/dc-bori1/Eagle/data1/z_0.001/StellarEvolutionAGB.txt"
+#filename = "/cosma/home/dp004/dc-bori1/Eagle/data1/z_0.01/StellarEvolutionTotal.txt"
+#filename = "/cosma/home/dp004/dc-bori1/Eagle/data1/z_0.01/StellarEvolutionIa.txt"
+#filename = "/cosma/home/dp004/dc-bori1/Eagle/data1/z_0.01/StellarEvolutionII.txt"
+#filename = "/cosma/home/dp004/dc-bori1/Eagle/data1/z_0.01/StellarEvolutionAGB.txt"
+#filename = "/cosma/home/dp004/dc-bori1/Eagle/data1/z_0.04/StellarEvolutionTotal.txt"
+#filename = "/cosma/home/dp004/dc-bori1/Eagle/data1/z_0.04/StellarEvolutionIa.txt"
+#filename = "/cosma/home/dp004/dc-bori1/Eagle/data1/z_0.04/StellarEvolutionII.txt"
+#filename = "/cosma/home/dp004/dc-bori1/Eagle/data1/z_0.04/StellarEvolutionAGB.txt"
+filename = "/cosma/home/dp004/dc-bori1/Eagle/data1/z_0.08/StellarEvolutionTotal.txt"
+#filename = "/cosma/home/dp004/dc-bori1/Eagle/data1/z_0.08/StellarEvolutionIa.txt"
+#filename = "/cosma/home/dp004/dc-bori1/Eagle/data1/z_0.08/StellarEvolutionII.txt"
+#filename = "/cosma/home/dp004/dc-bori1/Eagle/data1/z_0.08/StellarEvolutionAGB.txt"
 
 with open(filename) as f:
 	eagle_categories = f.readline()

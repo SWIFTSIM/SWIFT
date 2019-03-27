@@ -74,9 +74,9 @@ __attribute__((always_inline)) INLINE static void stars_first_init_spart(
   
   // ALEXEI: specify birth time for running StellarEvolution test
   sp->birth_time = 0.f;
-  sp->chemistry_data.metal_mass_fraction_total = 0.01;
-  sp->chemistry_data.metal_mass_fraction[chemistry_element_H] = 0.752;
-  sp->chemistry_data.metal_mass_fraction[chemistry_element_He] = 0.248;
+  //sp->chemistry_data.metal_mass_fraction_total = 0.001;
+  //sp->chemistry_data.metal_mass_fraction[chemistry_element_H] = 0.752;
+  //sp->chemistry_data.metal_mass_fraction[chemistry_element_He] = 0.248;
 
   stars_init_spart(sp);
 }
