@@ -47,7 +47,7 @@ MPI_Datatype group_length_mpi_type;
 size_t node_offset;
 
 #define UNION_BY_SIZE_OVER_MPI (1)
-#define FOF_COMPRESS_PATHS_MIN_LENGTH (4)
+#define FOF_COMPRESS_PATHS_MIN_LENGTH (2)
 
 /* Initialises parameters for the FOF search. */
 void fof_init(struct space *s) {
