@@ -473,7 +473,7 @@ void writeArray_chunk(struct engine* e, hid_t h_data,
 
   /* Allocate temporary buffer */
   void* temp = NULL;
-  if (swift_memalign("writetemp", (void**)&temp, IO_BUFFER_ALIGNMENT,
+  if (swift_memalign("writebuff", (void**)&temp, IO_BUFFER_ALIGNMENT,
                      num_elements * typeSize) != 0)
     error("Unable to allocate temporary i/o buffer");
 
@@ -557,7 +557,7 @@ void writeArray_chunk(struct engine* e, hid_t h_data,
 #endif
 
   /* Free and close everything */
-  swift_free("writetemp", temp);
+  swift_free("writebuff", temp);
   H5Sclose(h_memspace);
   H5Sclose(h_filespace);
 }

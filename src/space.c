@@ -313,17 +313,17 @@ void space_free_foreign_parts(struct space *s) {
 
 #ifdef WITH_MPI
   if (s->parts_foreign != NULL) {
-    free(s->parts_foreign);
+    swift_free("parts_foreign", s->parts_foreign);
     s->size_parts_foreign = 0;
     s->parts_foreign = NULL;
   }
   if (s->gparts_foreign != NULL) {
-    free(s->gparts_foreign);
+    swift_free("gparts_foreign", s->gparts_foreign);
     s->size_gparts_foreign = 0;
     s->gparts_foreign = NULL;
   }
   if (s->sparts_foreign != NULL) {
-    free(s->sparts_foreign);
+    swift_free("sparts_foreign", s->sparts_foreign);
     s->size_sparts_foreign = 0;
     s->sparts_foreign = NULL;
   }
@@ -2277,7 +2277,7 @@ void space_parts_sort(struct part *parts, struct xpart *xparts,
                       ptrdiff_t parts_offset) {
   /* Create the offsets array. */
   size_t *offsets = NULL;
-  if (swift_memalign("offsets", (void **)&offsets, SWIFT_STRUCT_ALIGNMENT,
+  if (swift_memalign("parts_offsets", (void **)&offsets, SWIFT_STRUCT_ALIGNMENT,
                      sizeof(size_t) * (num_bins + 1)) != 0)
     error("Failed to allocate temporary cell offsets array.");
 
@@ -2322,7 +2322,7 @@ void space_parts_sort(struct part *parts, struct xpart *xparts,
       error("Bad offsets after shuffle.");
 #endif /* SWIFT_DEBUG_CHECKS */
 
-  swift_free("offsets", offsets);
+  swift_free("parts_offsets", offsets);
 }
 
 /**
@@ -2340,7 +2340,7 @@ void space_sparts_sort(struct spart *sparts, int *restrict ind,
                        ptrdiff_t sparts_offset) {
   /* Create the offsets array. */
   size_t *offsets = NULL;
-  if (swift_memalign("offsets", (void **)&offsets, SWIFT_STRUCT_ALIGNMENT,
+  if (swift_memalign("sparts_offsets", (void **)&offsets, SWIFT_STRUCT_ALIGNMENT,
                      sizeof(size_t) * (num_bins + 1)) != 0)
     error("Failed to allocate temporary cell offsets array.");
 
@@ -2382,7 +2382,7 @@ void space_sparts_sort(struct spart *sparts, int *restrict ind,
       error("Bad offsets after shuffle.");
 #endif /* SWIFT_DEBUG_CHECKS */
 
-  swift_free("offsets", offsets);
+  swift_free("sparts_offsets", offsets);
 }
 
 /**
@@ -2400,7 +2400,7 @@ void space_gparts_sort(struct gpart *gparts, struct part *parts,
                        int *restrict counts, int num_bins) {
   /* Create the offsets array. */
   size_t *offsets = NULL;
-  if (swift_memalign("offsets", (void **)&offsets, SWIFT_STRUCT_ALIGNMENT,
+  if (swift_memalign("gparts_offsets", (void **)&offsets, SWIFT_STRUCT_ALIGNMENT,
                      sizeof(size_t) * (num_bins + 1)) != 0)
     error("Failed to allocate temporary cell offsets array.");
 
@@ -2448,7 +2448,7 @@ void space_gparts_sort(struct gpart *gparts, struct part *parts,
       error("Bad offsets after shuffle.");
 #endif /* SWIFT_DEBUG_CHECKS */
 
-  swift_free("offsets", offsets);
+  swift_free("gparts_offsets", offsets);
 }
 
 /**
