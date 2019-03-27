@@ -81,7 +81,8 @@ int header_get_field_index(const struct header *h, const char *field) {
 };
 
 /**
- * @brief Inverse the offset direction.
+ * @brief Update the offset direction in the structure and
+ * write it to the logfile.
  *
  * @param h #header file structure.
  * @param new_value The new value to write.
