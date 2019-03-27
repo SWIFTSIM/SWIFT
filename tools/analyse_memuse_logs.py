@@ -37,6 +37,8 @@ totalmem = 0
 process_use = ""
 peak = 0.0
 
+blacklist = ["sort", "temp"]
+
 for filename in sys.argv[1:]:
     sys.stderr.write("## Processing: " + filename + "\n")
     with open(filename) as infile:
@@ -47,6 +49,11 @@ for filename in sys.argv[1:]:
                     process_use = line[14:-1]
             else:
                 tic, adr, rank, step, allocated, label, size = line.split()
+
+                #  Skip blacklisted allocations, these can swamp the signal...
+                for item in blacklist:
+                    if item in label:
+                        continue
                 rank = int(rank)
                 step = int(step)
                 allocated = int(allocated)
