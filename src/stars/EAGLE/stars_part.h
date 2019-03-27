@@ -228,106 +228,106 @@ struct stars_props {
   float log_max_h_change;
 
   struct {
-  /* Flag to switch between continuous and stochastic heating */
-  int continuous_heating;
+    /* Flag to switch between continuous and stochastic heating */
+    int continuous_heating;
 
-  /* Fraction of energy in SNIa (Note: always set to 1 in EAGLE, so may be not
-   * necessary) */
-  float SNIa_energy_fraction;
+    /* Fraction of energy in SNIa (Note: always set to 1 in EAGLE, so may be not
+     * necessary) */
+    float SNIa_energy_fraction;
 
-  /* Desired temperature increase due to supernovae */
-  float SNe_deltaT_desired;
+    /* Desired temperature increase due to supernovae */
+    float SNe_deltaT_desired;
 
-  /* Conversion factor from temperature to internal energy */
-  float temp_to_u_factor;
+    /* Conversion factor from temperature to internal energy */
+    float temp_to_u_factor;
 
-  /* Energy released by one supernova */
-  float total_energy_SNe;
+    /* Energy released by one supernova */
+    float total_energy_SNe;
 
-  /* Kinetic energy of SN ejecta per unit mass (check name with Richard)*/
-  float ejecta_specific_thermal_energy;
+    /* Kinetic energy of SN ejecta per unit mass (check name with Richard)*/
+    float ejecta_specific_thermal_energy;
 
-  /* Timescale for feedback (used only for testing in const feedback model) */
-  float feedback_timescale;
+    /* Timescale for feedback (used only for testing in const feedback model) */
+    float feedback_timescale;
 
-  /* Number of supernovae per solar mass (used only for testing in const
-   * feedback model) */
-  float sn_per_msun;
+    /* Number of supernovae per solar mass (used only for testing in const
+     * feedback model) */
+    float sn_per_msun;
 
-  /* Solar mass */
-  float const_solar_mass;
+    /* Solar mass */
+    float const_solar_mass;
 
-  /* Flag for testing energy injection */
-  int const_feedback_energy_testing;
+    /* Flag for testing energy injection */
+    int const_feedback_energy_testing;
 
-  /* Yield tables for AGB and SNII  */
-  struct yield_table yield_AGB;
-  struct yield_table yield_SNII;
+    /* Yield tables for AGB and SNII  */
+    struct yield_table yield_AGB;
+    struct yield_table yield_SNII;
 
-  /* Array of adjustment factors for SNII  */
-  double *typeII_factor;
+    /* Array of adjustment factors for SNII  */
+    double *typeII_factor;
 
-  /* Yield tables for SNIa  */
-  double *yield_SNIa_IMF_resampled;
-  double yield_SNIa_total_metals_IMF_resampled;
-  double *yields_SNIa;
+    /* Yield tables for SNIa  */
+    double *yield_SNIa_IMF_resampled;
+    double yield_SNIa_total_metals_IMF_resampled;
+    double *yields_SNIa;
 
-  /* Parameters to SNIa enrichment model  */
-  int SNIa_mode;
-  float SNIa_efficiency;
-  float SNIa_timescale;
+    /* Parameters to SNIa enrichment model  */
+    int SNIa_mode;
+    float SNIa_efficiency;
+    float SNIa_timescale;
 
-  /* Mass transfer due to enrichment  */
-  int SNIa_mass_transfer;
-  int SNII_mass_transfer;
-  int AGB_mass_transfer;
+    /* Mass transfer due to enrichment  */
+    int SNIa_mass_transfer;
+    int SNII_mass_transfer;
+    int AGB_mass_transfer;
 
-  /* Arrays for elements being tracked */
-  char **SNIa_element_names;
-  char **SNII_element_names;
-  char **AGB_element_names;
+    /* Arrays for elements being tracked */
+    char **SNIa_element_names;
+    char **SNII_element_names;
+    char **AGB_element_names;
 
-  /* Element name string length */
-  int element_name_length;
+    /* Element name string length */
+    int element_name_length;
 
-  /* Dimensions of arrays in yield tables */
-  int SNIa_n_elements;
-  int SNII_n_mass;
-  int SNII_n_elements;
-  int SNII_n_z;
-  int AGB_n_mass;
-  int AGB_n_elements;
-  int AGB_n_z;
+    /* Dimensions of arrays in yield tables */
+    int SNIa_n_elements;
+    int SNII_n_mass;
+    int SNII_n_elements;
+    int SNII_n_z;
+    int AGB_n_mass;
+    int AGB_n_elements;
+    int AGB_n_z;
 
-  float log10_SNII_min_mass_msun;
-  float log10_SNII_max_mass_msun;
-  float log10_SNIa_max_mass_msun;
+    float log10_SNII_min_mass_msun;
+    float log10_SNII_max_mass_msun;
+    float log10_SNIa_max_mass_msun;
 
-  /* Array of mass bins for yield calculations */
-  double *yield_mass_bins;
+    /* Array of mass bins for yield calculations */
+    double *yield_mass_bins;
 
-  /* Parameters for IMF  */
-  char IMF_Model[10];
-  float IMF_Exponent;
-  float *imf_by_number;
-  float *imf_mass_bin;
-  float *imf_mass_bin_log10;
+    /* Parameters for IMF  */
+    char IMF_Model[10];
+    float IMF_Exponent;
+    float *imf_by_number;
+    float *imf_mass_bin;
+    float *imf_mass_bin_log10;
 
-  /* Table of lifetime values */
-  struct lifetime_table lifetimes;
+    /* Table of lifetime values */
+    struct lifetime_table lifetimes;
 
-  /* Flag defining stellar lifetime model */
-  int stellar_lifetime_flag;  // 0 for padovani & matteucci 1993, 1 for maeder &
-                              // meynet 1989, 2 for portinari et al. 1998.
+    /* Flag defining stellar lifetime model */
+    int stellar_lifetime_flag;  // 0 for padovani & matteucci 1993, 1 for maeder &
+                                // meynet 1989, 2 for portinari et al. 1998.
 
-  /* Location of yield tables */
-  char yield_table_path[50];
+    /* Location of yield tables */
+    char yield_table_path[50];
 
-  /* number of type II supernovae per solar mass */
-  float num_SNII_per_msun;
+    /* number of type II supernovae per solar mass */
+    float num_SNII_per_msun;
 
-  /* wind delay time for SNII */
-  float SNII_wind_delay;
+    /* wind delay time for SNII */
+    float SNII_wind_delay;
   } feedback;
 
 };

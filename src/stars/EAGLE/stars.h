@@ -74,9 +74,6 @@ __attribute__((always_inline)) INLINE static void stars_first_init_spart(
   
   // ALEXEI: specify birth time for running StellarEvolution test
   sp->birth_time = 0.f;
-  //sp->chemistry_data.metal_mass_fraction_total = 0.001;
-  //sp->chemistry_data.metal_mass_fraction[chemistry_element_H] = 0.752;
-  //sp->chemistry_data.metal_mass_fraction[chemistry_element_He] = 0.248;
 
   stars_init_spart(sp);
 }
@@ -644,12 +641,12 @@ inline static void compute_stellar_evolution(
   /* Evolve SNIa, SNII, AGB */
   evolve_SNIa(log10_min_dying_mass_msun,log10_max_dying_mass_msun,
               star_properties,sp,star_age_Gyr,dt_Gyr);
-  evolve_SNII(log10_min_dying_mass_msun,log10_max_dying_mass_msun,
-              stellar_yields, star_properties,sp);
-  evolve_AGB(log10_min_dying_mass_msun, log10_max_dying_mass_msun,
-             stellar_yields, star_properties, sp);
+  //evolve_SNII(log10_min_dying_mass_msun,log10_max_dying_mass_msun,
+  //            stellar_yields, star_properties,sp);
+  //evolve_AGB(log10_min_dying_mass_msun, log10_max_dying_mass_msun,
+  //           stellar_yields, star_properties, sp);
 
-  sp->to_distribute.mass = sp->to_distribute.total_metal_mass + sp->to_distribute.metal_mass[0] + sp->to_distribute.metal_mass[1];
+  //sp->to_distribute.mass = sp->to_distribute.total_metal_mass + sp->to_distribute.metal_mass[0] + sp->to_distribute.metal_mass[1];
 
   free(stellar_yields);
 }
