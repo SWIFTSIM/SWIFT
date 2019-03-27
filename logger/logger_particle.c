@@ -130,6 +130,7 @@ size_t logger_particle_read(struct logger_particle *part, const struct logger_re
 			    size_t offset, const double time,
 			    const enum logger_reader_type reader_type) {
 
+  /* Get a few pointers */
   const struct header *h = &reader->log.header;
   void *map = reader->log.log.map;
 
@@ -140,10 +141,13 @@ size_t logger_particle_read(struct logger_particle *part, const struct logger_re
 
   logger_particle_init(part);
 
+  /* Read the record mask */
   offset = io_read_mask(h, map, offset, &mask, &h_offset);
 
+  /* Check if it is not a time record */
   if (mask != 127) error("Unexpected mask: %lu", mask);
 
+  /* Read all the fields */
   for (size_t i = 0; i < h->number_mask; i++) {
     if (mask & h->masks[i].mask) {
       offset = logger_particle_read_field(part, map, offset, h->masks[i].name,
@@ -151,37 +155,42 @@ size_t logger_particle_read(struct logger_particle *part, const struct logger_re
     }
   }
 
+  /* Get the time of current record. */
   if (times) {
-    /* move offset by 1 in order to be in the required record */
+    /* move offset by 1 in order to be in the required record. */
     part->time = time_array_get_time(times, offset - 1);
   }
   else
     part->time = -1;
 
-  /* end of const case */
+  /* Check if an interpolation is required. */
   if (reader_type == logger_reader_const)
     return offset;
 
-  /* read next particle */
+  /* Start reading next record. */
   struct logger_particle part_next;
 
+  /* Check that the offset are in the correct direction. */
   if (!header_is_forward(h)) {
     error("Cannot read a particle with non forward offsets.");
   }
 
+  /* No next particle. */
   if (h_offset == 0)
     return offset;
 
-  /* get absolute offset of next particle */
-  h_offset += offset - header_get_mask_size(h, mask) - LOGGER_MASK_SIZE -
+  /* get absolute offset of next particle. */
+  h_offset += offset - header_get_record_size_from_mask(h, mask) - LOGGER_MASK_SIZE -
               LOGGER_OFFSET_SIZE;
 
+  /* Get time of next record */
   part_next.time = time_array_get_time(times, h_offset);
 
-  /* previous part exists */
+  /* Read next record. */
   h_offset = logger_particle_read(&part_next, reader, h_offset, part_next.time,
 				  logger_reader_const);
 
+  /* Interpolate the two particles. */
   logger_particle_interpolate(part, &part_next, time);
 
   return offset;
@@ -200,10 +209,12 @@ void logger_particle_interpolate(
     struct logger_particle *part_curr, const struct logger_particle *part_next,
     const double time) {
 
+  /* Check that a particle is provided. */
   if (!part_curr) error("part_curr is NULL");
   if (!part_next) error("part_next is NULL");
 
 #ifdef SWIFT_DEBUG_CHECKS
+  /* Check the particle order. */
   if (part_next->time <= part_curr->time)
     error("Wrong particle order (next before current)");
   if ((time < part_curr->time) || (part_next->time < time))
@@ -213,6 +224,7 @@ void logger_particle_interpolate(
         part_curr->time, time, part_next->time);
 #endif
 
+  /* Compute the interpolation scaling. */
   double scaling = part_next->time - part_curr->time;
 
   scaling = (time - part_curr->time) / scaling;

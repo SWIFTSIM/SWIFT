@@ -29,10 +29,11 @@
 void logger_reader_init(struct logger_reader *reader, char *filename, int verbose) {
   if (verbose > 1)
     message("Initializing the reader");
+
   /* Initialize the reader variables */
   reader->verbose = verbose;
 
-  /* Initialize the log */
+  /* Initialize the log file */
   logger_logfile_init(&reader->log, filename, reader);
 
   if (verbose > 1)

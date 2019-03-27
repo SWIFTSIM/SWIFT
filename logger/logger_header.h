@@ -52,7 +52,7 @@ struct logger_logfile;
  * with #header_free.
  *
  * The information contained by the header can be easily access with
- * the functions #header_get_mask_size and #header_get_field_index.
+ * the functions #header_get_record_size_from_mask and #header_get_field_index.
  *
  * The only function that modify the file is #header_change_offset_direction.
  */
@@ -63,8 +63,8 @@ struct header {
   /* Offset of the first record. */
   size_t offset_first_record;
 
-  /* Number of bytes for names. */
-  size_t name_length;
+  /* Number of bytes for strings. */
+  size_t string_length;
 
   /* Number of masks. */
   size_t number_mask;
@@ -83,7 +83,7 @@ void header_print(const struct header *h);
 void header_free(struct header *h);
 int header_get_field_index(const struct header *h, const char *field);
 void header_read(struct header *h, struct logger_logfile *log);
-size_t header_get_mask_size(const struct header *h, const size_t mask);
+size_t header_get_record_size_from_mask(const struct header *h, const size_t mask);
 void header_change_offset_direction(struct header *h, enum logger_offset_direction new_value);
 
 

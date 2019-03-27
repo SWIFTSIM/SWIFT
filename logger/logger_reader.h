@@ -49,6 +49,9 @@
  *
  * This structure contains all the variables required for the logger.
  * It should be the only structure that the user see.
+ *
+ * It is initialized with #logger_reader_init and freed with
+ * #logger_reader_free.
  */
 struct logger_reader {
 

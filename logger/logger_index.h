@@ -18,6 +18,7 @@
  ******************************************************************************/
 
 /**
+ * @file logger_index.h
  * @brief This file deals with the index files.
  */
 #ifndef __LOGGER_LOGGER_INDEX_H__
@@ -28,6 +29,12 @@ struct logger_reader;
 /**
  * @brief This structure will contain the data related to
  *   the index file.
+ *
+ * It is initialized with #logger_index_init and freed with
+ * #logger_index_free.
+ *
+ * The files are read with #logger_index_read_file and
+ * can be freed with #logger_index_free_current_file.
  */
 struct logger_index {
   /* The reader */
@@ -39,14 +46,20 @@ struct logger_index {
   /* Number of files */
   int number_files;
 
-  /* List of all the index files */
+  /* List of all the index filenames */
   char **filenames;
 
-  /* Offsets */
+  /* Index of current file */
+  int current_file;
+
+  /* Offsets of the particles in current file */
   size_t *offsets;
 
-  /* ids */
-  long long ids;
+  /* ids of the particles in current file */
+  long long *ids;
+
+  /* Number of particles */
+  size_t number_of_particles;
 };
 
 void logger_index_init(struct logger_index *index, struct logger_reader *reader,

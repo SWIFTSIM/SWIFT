@@ -49,20 +49,21 @@ size_t io_get_file_size(int fd) {
  *
  */
 void *io_mmap_file(char *filename, size_t *file_size) {
-  /* open file */
+  /* open the file. */
   int fd = open(filename, O_RDWR);
   if (fd == -1)
     error("Unable to open file %s (%s)", filename, strerror(errno));
 
-  /* get file size */
+  /* get the file size. */
   *file_size = io_get_file_size(fd);
 
-  /* map memory */
+  /* map the memory. */
   void *map = mmap(NULL, *file_size, PROT_WRITE | PROT_READ, MAP_SHARED, fd, 0);
   if (map == MAP_FAILED)
     error("Failed to allocate map of size %zi bytes. (%s)", *file_size,
           strerror(errno));
 
+  /* Close the file. */
   close(fd);
 
   return map;

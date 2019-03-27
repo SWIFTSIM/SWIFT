@@ -17,6 +17,7 @@
  *
  ******************************************************************************/
 /**
+ * @file logger_logfile.h
  * @brief This file contains the high level function for the log.
  */
 #ifndef __LOGGER_LOGGER_LOGFILE_H__
@@ -30,7 +31,12 @@ struct logger_reader;
 /**
  * @brief This structure deals with the log file.
  *
- * TODO
+ * This structure is initialized by the #logger_reader
+ * and deals with the log file.
+ * It maps it, reverse the offsets (if required) and unmap it.
+ *
+ * The structure is initialized with #logger_logfile_init and
+ * freed with #logger_logfile_free.
  */
 struct logger_logfile {
 

@@ -17,6 +17,7 @@
  *
  ******************************************************************************/
 /**
+ * @file logger_io.h
  * @brief This file contains basic IO function.
  */
 #ifndef __LOGGER_LOGGER_IO_H__
