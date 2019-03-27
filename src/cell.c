@@ -1813,18 +1813,10 @@ void cell_check_multipole(struct cell *c) {
 void cell_clean(struct cell *c) {
 
   /* Hydro */
-  for (int i = 0; i < 13; i++)
-    if (c->hydro.sort[i] != NULL) {
-      swift_free("hydro.sorts", c->hydro.sort[i]);
-      c->hydro.sort[i] = NULL;
-    }
+  cell_free_hydro_sorts(c);
 
   /* Stars */
-  for (int i = 0; i < 13; i++)
-    if (c->stars.sort[i] != NULL) {
-      swift_free("stars.sort", c->stars.sort[i]);
-      c->stars.sort[i] = NULL;
-    }
+  cell_free_stars_sorts(c);
 
   /* Recurse */
   for (int k = 0; k < 8; k++)
@@ -4300,10 +4292,7 @@ void cell_clear_stars_sort_flags(struct cell *c, const int is_super) {
 #ifdef SWIFT_DEBUG_CHECKS
     if (c != c->hydro.super) error("Cell is not a super-cell!!!");
 #endif
-
-    for (int i = 0; i < 13; i++) {
-      swift_free("stars.sort", c->stars.sort[i]);
-    }
+    cell_free_stars_sorts(c);
   }
 
   /* Indicate that the cell is not sorted and cancel the pointer sorting arrays.

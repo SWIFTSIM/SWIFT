@@ -262,16 +262,8 @@ void space_rebuild_recycle_mapper(void *map_data, int num_elements,
     if (s->with_self_gravity)
       bzero(c->grav.multipole, sizeof(struct gravity_tensors));
 
-    for (int i = 0; i < 13; i++) {
-      if (c->hydro.sort[i] != NULL) {
-        swift_free("hydro.sort", c->hydro.sort[i]);
-        c->hydro.sort[i] = NULL;
-      }
-      if (c->stars.sort[i] != NULL) {
-        swift_free("stars.sort", c->stars.sort[i]);
-        c->stars.sort[i] = NULL;
-      }
-    }
+    cell_free_hydro_sorts(c);
+    cell_free_stars_sorts(c);
 #if WITH_MPI
     c->mpi.tag = -1;
 
@@ -2436,16 +2428,8 @@ void space_gparts_sort(struct gpart *gparts, struct part *parts,
  */
 void space_map_clearsort(struct cell *c, void *data) {
 
-  for (int i = 0; i < 13; i++) {
-    if (c->hydro.sort[i] != NULL) {
-      swift_free("hydro.sort", c->hydro.sort[i]);
-      c->hydro.sort[i] = NULL;
-    }
-    if (c->stars.sort[i] != NULL) {
-      swift_free("hydro.sort", c->stars.sort[i]);
-      c->stars.sort[i] = NULL;
-    }
-  }
+  cell_free_hydro_sorts(c);
+  cell_free_stars_sorts(c);
 }
 
 /**
@@ -3224,10 +3208,9 @@ void space_getcells(struct space *s, int nr_cells, struct cell **cells) {
 
   /* Init some things in the cell we just got. */
   for (int j = 0; j < nr_cells; j++) {
-    for (int k = 0; k < 13; k++) {
-      if (cells[j]->hydro.sort[k] != NULL) swift_free("hydro.sort", cells[j]->hydro.sort[k]);
-      if (cells[j]->stars.sort[k] != NULL) swift_free("stars.sort", cells[j]->stars.sort[k]);
-    }
+    cell_free_hydro_sorts(cells[j]);
+    cell_free_stars_sorts(cells[j]);
+
     struct gravity_tensors *temp = cells[j]->grav.multipole;
     bzero(cells[j], sizeof(struct cell));
     cells[j]->grav.multipole = temp;
@@ -3248,16 +3231,8 @@ void space_getcells(struct space *s, int nr_cells, struct cell **cells) {
 void space_free_buff_sort_indices(struct space *s) {
   for (struct cell *finger = s->cells_sub; finger != NULL;
        finger = finger->next) {
-    for (int k = 0; k < 13; k++) {
-      if (finger->hydro.sort[k] != NULL) {
-        swift_free("hydro.sort", finger->hydro.sort[k]);
-        finger->hydro.sort[k] = NULL;
-      }
-      if (finger->stars.sort[k] != NULL) {
-        swift_free("stars.sort", finger->stars.sort[k]);
-        finger->stars.sort[k] = NULL;
-      }
-    }
+    cell_free_hydro_sorts(finger);
+    cell_free_stars_sorts(finger);
   }
 }
 
