@@ -1628,7 +1628,22 @@ void fof_search_tree(struct space *s) {
   ticks tic = getticks();
 
   engine_maketasks(s->e);
-  engine_marktasks(s->e);
+  //engine_marktasks(s->e);
+ 
+  struct scheduler *sched = &s->e->sched;
+  struct task *tasks = sched->tasks;
+
+  /* Activate the self and pair FOF tasks. */
+  for (int i = 0; i < sched->nr_tasks; i++) {
+
+    struct task *t = &tasks[i];
+
+    if (t->type == task_type_fof_self || t->type == task_type_fof_pair) {
+      scheduler_activate(sched, t);
+    }
+
+  }
+
   engine_print_task_counts(s->e);
 
   message("Making FOF tasks took: %.3f %s.", clocks_from_ticks(getticks() - tic),
@@ -1652,18 +1667,6 @@ void fof_search_tree(struct space *s) {
 
   message("Local FOF took: %.3f %s.", clocks_from_ticks(getticks() - tic),
           clocks_getunit());
-
-  //size_t *local_roots = NULL;
-
-  //if (posix_memalign((void **)&local_roots, SWIFT_STRUCT_ALIGNMENT,
-  //                   nr_gparts * sizeof(size_t)) != 0)
-  //  error("Error while allocating memory for local roots");
-
-  //size_t root_count = 0;
-
-  //for (size_t i = 0; i < nr_gparts; i++) {
-  //  if(group_index[i] == i) local_roots[root_count++] = i;
-  //}
 
   ticks tic_calc_group_size = getticks();
 
