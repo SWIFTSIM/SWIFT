@@ -4495,7 +4495,8 @@ struct spart *cell_add_spart(struct engine *e, struct cell *const c) {
    * current cell*/
   cell_recursively_shift_sparts(top, progeny, /* main_branch=*/1);
 
-  /* Make sure the gravity will be recomputed for this particle in the next step */
+  /* Make sure the gravity will be recomputed for this particle in the next step
+   */
   struct cell *top2 = c;
   while (top2->parent != NULL) {
     top2->grav.ti_end_min = e->ti_current;

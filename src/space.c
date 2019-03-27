@@ -3124,7 +3124,7 @@ void space_recycle_list(struct space *s, struct cell *cell_list_begin,
     /* Clear the cell. */
     if (lock_destroy(&c->lock) != 0 || lock_destroy(&c->grav.plock) != 0 ||
         lock_destroy(&c->mlock) != 0 || lock_destroy(&c->stars.lock) != 0 ||
-	lock_destroy(&c->stars.star_formation_lock))
+        lock_destroy(&c->stars.star_formation_lock))
       error("Failed to destroy spinlocks.");
 
     /* Count this cell. */
@@ -3225,7 +3225,7 @@ void space_getcells(struct space *s, int nr_cells, struct cell **cells) {
         lock_init(&cells[j]->grav.plock) != 0 ||
         lock_init(&cells[j]->grav.mlock) != 0 ||
         lock_init(&cells[j]->stars.lock) != 0 ||
-	lock_init(&cells[j]->stars.star_formation_lock) != 0)
+        lock_init(&cells[j]->stars.star_formation_lock) != 0)
       error("Failed to initialize cell spinlocks.");
   }
 }
