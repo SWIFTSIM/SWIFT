@@ -926,7 +926,7 @@ int main(int argc, char *argv[]) {
     if (with_mpole_reconstruction)
       engine_policies |= engine_policy_reconstruct_mpoles;
     if (with_hydro) engine_policies |= engine_policy_hydro;
-    //if (with_self_gravity) engine_policies |= engine_policy_self_gravity;
+    if (with_self_gravity) engine_policies |= engine_policy_self_gravity;
     if (with_external_gravity)
       engine_policies |= engine_policy_external_gravity;
     if (with_cosmology) engine_policies |= engine_policy_cosmology;
