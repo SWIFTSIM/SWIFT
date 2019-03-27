@@ -51,9 +51,13 @@ for filename in sys.argv[1:]:
                 tic, adr, rank, step, allocated, label, size = line.split()
 
                 #  Skip blacklisted allocations, these can swamp the signal...
+                skip = False
                 for item in blacklist:
                     if item in label:
-                        continue
+                        skip = True
+                        break
+                if skip:
+                    continue
                 rank = int(rank)
                 step = int(step)
                 allocated = int(allocated)
