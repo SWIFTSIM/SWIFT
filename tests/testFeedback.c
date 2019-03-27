@@ -94,13 +94,11 @@ int main(int argc, char *argv[]) {
   //        "| Ne | Mg | Si | Fe | per solar mass\n");
 
   //for (float age = 0; age <= max_age; age += dt) {
-  //  sp.to_distribute.mass_from_AGB = 0.f;
   //  compute_stellar_evolution(&stars_properties, &sp, &us, age, dt);
-  //  float total_mass_released = sp.to_distribute.total_metal_mass + sp.to_distribute.metal_mass[0] + sp.to_distribute.metal_mass[1];
   //  float age_Gyr =
   //      age * units_cgs_conversion_factor(&us, UNIT_CONV_TIME) / Gyr_to_s;
   //  fprintf(AGB_output, "%f %e %e ", age_Gyr,
-  //          total_mass_released / sp.mass_init,
+  //          sp.to_distribute.mass_from_AGB / sp.mass_init,
   //          sp.to_distribute.metal_mass_from_AGB / sp.mass_init);
   //  for (int i = 0; i < chemistry_element_count; i++)
   //    fprintf(AGB_output, "%e ", sp.to_distribute.metal_mass[i] / sp.mass_init);
@@ -121,13 +119,12 @@ int main(int argc, char *argv[]) {
   //        "| Ne | Mg | Si | Fe | Number of SNII per solar mass\n");
 
   //for (float age = 0; age <= max_age; age += dt) {
-  //  sp.to_distribute.mass_from_SNII = 0.f;
   //  sp.to_distribute.num_SNII = 0.f;
   //  compute_stellar_evolution(&stars_properties, &sp, &us, age, dt);
   //  float age_Gyr =
   //      age * units_cgs_conversion_factor(&us, UNIT_CONV_TIME) / Gyr_to_s;
   //  fprintf(SNII_output, "%f %e %e ", age_Gyr,
-  //          sp.to_distribute.mass / sp.mass_init,
+  //          sp.to_distribute.mass_from_SNII / sp.mass_init,
   //          sp.to_distribute.metal_mass_from_SNII / sp.mass_init);
   //  for (int i = 0; i < chemistry_element_count; i++)
   //    fprintf(SNII_output, "%e ", sp.to_distribute.metal_mass[i] / sp.mass_init);
@@ -135,73 +132,73 @@ int main(int argc, char *argv[]) {
   //  fprintf(SNII_output, "\n");
   //}
   
-  for (int i = 0; i < chemistry_element_count; i++) sp.to_distribute.metal_mass[i] = 0.f;
-  sp.to_distribute.metal_mass_from_SNIa = 0.f;
-  sp.to_distribute.mass = 0.f;
-
-  FILE *SNIa_output;
-  const char SNIa_fname[25] = "test_feedback_SNIa.txt";
-  if (!(SNIa_output = fopen(SNIa_fname, "w"))) {
-    error("error in opening file '%s'\n", SNIa_fname);
-  }
-  fprintf(SNIa_output,
-          "# time[Gyr] | total mass | metal mass: total | H | He | C | N  | O  "
-          "| Ne | Mg | Si | Fe | Number of SNIa per solar mass\n");
-
-  for (float age = 0; age <= max_age; age += dt) {
-    sp.to_distribute.mass_from_SNIa = 0.f;
-    sp.to_distribute.num_SNIa = 0.f;
-    compute_stellar_evolution(&stars_properties, &sp, &us, age, dt);
-    float age_Gyr =
-        age * units_cgs_conversion_factor(&us, UNIT_CONV_TIME) / Gyr_to_s;
-    fprintf(SNIa_output, "%f %e %e ", age_Gyr,
-            sp.to_distribute.mass / sp.mass_init,
-            sp.to_distribute.metal_mass_from_SNIa / sp.mass_init);
-    for (int i = 0; i < chemistry_element_count; i++)
-      fprintf(SNIa_output, "%e ", sp.to_distribute.metal_mass[i] / sp.mass_init);
-    fprintf(SNIa_output, "%e ", sp.to_distribute.num_SNIa / (sp.mass_init * stars_properties.feedback.const_solar_mass));
-    fprintf(SNIa_output, "\n");
-  }
-  
   //for (int i = 0; i < chemistry_element_count; i++) sp.to_distribute.metal_mass[i] = 0.f;
   //sp.to_distribute.metal_mass_from_SNIa = 0.f;
-  //sp.to_distribute.metal_mass_from_SNII = 0.f;
-  //sp.to_distribute.metal_mass_from_AGB = 0.f;
-  //sp.to_distribute.mass_from_AGB = 0.f;
-  //sp.to_distribute.mass_from_SNII = 0.f;
-  //sp.to_distribute.mass_from_SNIa = 0.f;
-  //sp.to_distribute.Fe_mass_from_SNIa = 0.f;
   //sp.to_distribute.mass = 0.f;
 
-  //FILE *Total_output;
-  //const char Total_fname[25] = "test_feedback_total.txt";
-  //if (!(Total_output = fopen(Total_fname, "w"))) {
-  //  error("error in opening file '%s'\n", Total_fname);
+  //FILE *SNIa_output;
+  //const char SNIa_fname[25] = "test_feedback_SNIa.txt";
+  //if (!(SNIa_output = fopen(SNIa_fname, "w"))) {
+  //  error("error in opening file '%s'\n", SNIa_fname);
   //}
-  //fprintf(Total_output,
+  //fprintf(SNIa_output,
   //        "# time[Gyr] | total mass | metal mass: total | H | He | C | N  | O  "
-  //        "| Ne | Mg | Si | Fe | per solar mass (m,z)_AGB (m,z)_SNII (m,z,M_fe)_SNIa \n");
+  //        "| Ne | Mg | Si | Fe | Number of SNIa per solar mass\n");
 
   //for (float age = 0; age <= max_age; age += dt) {
+  //  sp.to_distribute.mass_from_SNIa = 0.f;
+  //  sp.to_distribute.num_SNIa = 0.f;
   //  compute_stellar_evolution(&stars_properties, &sp, &us, age, dt);
-
   //  float age_Gyr =
   //      age * units_cgs_conversion_factor(&us, UNIT_CONV_TIME) / Gyr_to_s;
-  //  float total_mass_released = sp.to_distribute.total_metal_mass + sp.to_distribute.metal_mass[0] + sp.to_distribute.metal_mass[1];
-  //  fprintf(Total_output, "%f %e %e ", age_Gyr,
-  //          total_mass_released / sp.mass_init,
-  //          sp.to_distribute.total_metal_mass / sp.mass_init);
+  //  fprintf(SNIa_output, "%f %e %e ", age_Gyr,
+  //          sp.to_distribute.mass / sp.mass_init,
+  //          sp.to_distribute.metal_mass_from_SNIa / sp.mass_init);
   //  for (int i = 0; i < chemistry_element_count; i++)
-  //    fprintf(Total_output, "%e ", sp.to_distribute.metal_mass[i] / sp.mass_init);
-  //  fprintf(Total_output, " %e %e %e %e %e %e %e", sp.to_distribute.mass_from_AGB / sp.mass_init, 
-  //          sp.to_distribute.metal_mass_from_AGB / sp.mass_init,
-  //          sp.to_distribute.mass_from_SNII / sp.mass_init, 
-  //          sp.to_distribute.metal_mass_from_SNII / sp.mass_init, 
-  //          sp.to_distribute.mass_from_SNIa / sp.mass_init, 
-  //          sp.to_distribute.metal_mass_from_SNIa / sp.mass_init,
-  //          sp.to_distribute.Fe_mass_from_SNIa / sp.mass_init);
-  //  fprintf(Total_output, "\n");
+  //    fprintf(SNIa_output, "%e ", sp.to_distribute.metal_mass[i] / sp.mass_init);
+  //  fprintf(SNIa_output, "%e ", sp.to_distribute.num_SNIa / (sp.mass_init * stars_properties.feedback.const_solar_mass));
+  //  fprintf(SNIa_output, "\n");
   //}
+  
+  for (int i = 0; i < chemistry_element_count; i++) sp.to_distribute.metal_mass[i] = 0.f;
+  sp.to_distribute.metal_mass_from_SNIa = 0.f;
+  sp.to_distribute.metal_mass_from_SNII = 0.f;
+  sp.to_distribute.metal_mass_from_AGB = 0.f;
+  sp.to_distribute.mass_from_AGB = 0.f;
+  sp.to_distribute.mass_from_SNII = 0.f;
+  sp.to_distribute.mass_from_SNIa = 0.f;
+  sp.to_distribute.Fe_mass_from_SNIa = 0.f;
+  sp.to_distribute.total_metal_mass = 0.f;
+  sp.to_distribute.mass = 0.f;
+
+  FILE *Total_output;
+  const char Total_fname[25] = "test_feedback_total.txt";
+  if (!(Total_output = fopen(Total_fname, "w"))) {
+    error("error in opening file '%s'\n", Total_fname);
+  }
+  fprintf(Total_output,
+          "# time[Gyr] | total mass | metal mass: total | H | He | C | N  | O  "
+          "| Ne | Mg | Si | Fe | per solar mass (m,z)_AGB (m,z)_SNII (m,z,M_fe)_SNIa \n");
+
+  for (float age = 0; age <= max_age; age += dt) {
+    compute_stellar_evolution(&stars_properties, &sp, &us, age, dt);
+
+    float age_Gyr =
+        age * units_cgs_conversion_factor(&us, UNIT_CONV_TIME) / Gyr_to_s;
+    fprintf(Total_output, "%f %e %e ", age_Gyr,
+            sp.to_distribute.mass / sp.mass_init,
+            sp.to_distribute.total_metal_mass / sp.mass_init);
+    for (int i = 0; i < chemistry_element_count; i++)
+      fprintf(Total_output, "%e ", sp.to_distribute.metal_mass[i] / sp.mass_init);
+    fprintf(Total_output, " %e %e %e %e %e %e %e", sp.to_distribute.mass_from_AGB / sp.mass_init, 
+            sp.to_distribute.metal_mass_from_AGB / sp.mass_init,
+            sp.to_distribute.mass_from_SNII / sp.mass_init, 
+            sp.to_distribute.metal_mass_from_SNII / sp.mass_init, 
+            sp.to_distribute.mass_from_SNIa / sp.mass_init, 
+            sp.to_distribute.metal_mass_from_SNIa / sp.mass_init,
+            sp.to_distribute.Fe_mass_from_SNIa / sp.mass_init);
+    fprintf(Total_output, "\n");
+  }
 
   return 0;
 }

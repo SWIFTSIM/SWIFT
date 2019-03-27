@@ -313,10 +313,6 @@ inline static void evolve_SNIa(float log10_min_mass, float log10_max_mass,
   
   sp->to_distribute.num_SNIa = num_SNIa_per_msun * stars->feedback.const_solar_mass;
 
-  /* compute total mass released by SNIa */
-  sp->to_distribute.mass += num_SNIa_per_msun *
-                            stars->feedback.yield_SNIa_total_metals_IMF_resampled;
-
   /* compute mass fractions of each metal */
   for (int i = 0; i < chemistry_element_count; i++) {
     sp->to_distribute.metal_mass[i] +=
@@ -466,7 +462,6 @@ inline static void evolve_SNII(float log10_min_mass, float log10_max_mass,
     for (i = 0; i < chemistry_element_count; i++) {
       sp->to_distribute.mass_from_SNII += sp->to_distribute.metal_mass[i];
     }
-    sp->to_distribute.mass += sp->to_distribute.mass_from_SNII;
     sp->to_distribute.total_metal_mass += mass * norm_factor;
     sp->to_distribute.metal_mass_from_SNII += mass * norm_factor;
   } else {
@@ -591,7 +586,6 @@ inline static void evolve_AGB(float log10_min_mass, float log10_max_mass,
     }
     sp->to_distribute.total_metal_mass += mass * norm_factor;
     sp->to_distribute.metal_mass_from_AGB += mass * norm_factor;
-    sp->to_distribute.mass += sp->to_distribute.total_metal_mass + sp->to_distribute.metal_mass[0] + sp->to_distribute.metal_mass[1];
   } else {
     error("wrong normalization!!!! norm1 = %e\n", norm1);
   }
@@ -615,7 +609,7 @@ inline static void compute_stellar_evolution(
   stellar_yields = malloc(n_mass_bins * sizeof(float));
 
   /* Convert dt and stellar age from internal units to Gyr. */
-  const double Gyr_in_cgs = 3.155e16;
+  const double Gyr_in_cgs = 3.154e16;
   double dt_Gyr =
       dt * units_cgs_conversion_factor(us, UNIT_CONV_TIME) / Gyr_in_cgs;
   double star_age_Gyr =
@@ -641,12 +635,12 @@ inline static void compute_stellar_evolution(
   /* Evolve SNIa, SNII, AGB */
   evolve_SNIa(log10_min_dying_mass_msun,log10_max_dying_mass_msun,
               star_properties,sp,star_age_Gyr,dt_Gyr);
-  //evolve_SNII(log10_min_dying_mass_msun,log10_max_dying_mass_msun,
-  //            stellar_yields, star_properties,sp);
-  //evolve_AGB(log10_min_dying_mass_msun, log10_max_dying_mass_msun,
-  //           stellar_yields, star_properties, sp);
+  evolve_SNII(log10_min_dying_mass_msun,log10_max_dying_mass_msun,
+              stellar_yields, star_properties,sp);
+  evolve_AGB(log10_min_dying_mass_msun, log10_max_dying_mass_msun,
+             stellar_yields, star_properties, sp);
 
-  //sp->to_distribute.mass = sp->to_distribute.total_metal_mass + sp->to_distribute.metal_mass[0] + sp->to_distribute.metal_mass[1];
+  sp->to_distribute.mass = sp->to_distribute.total_metal_mass + sp->to_distribute.metal_mass[0] + sp->to_distribute.metal_mass[1];
 
   free(stellar_yields);
 }

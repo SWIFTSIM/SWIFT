@@ -15,60 +15,10 @@ Cosmology:
   Omega_lambda:   0.693         # Dark-energy density parameter
   Omega_b:        0.0455        # Baryon density parameter
 
-# Parameters governing the time integration
-TimeIntegration:
-  time_begin: 0.    # The starting time of the simulation (in internal units).
-  time_end:   1e-4  # The end time of the simulation (in internal units).
-  dt_min:     1e-12 # The minimal time-step size of the simulation (in internal units).
-  dt_max:     1e-5  # The maximal time-step size of the simulation (in internal units).
-
-# Parameters governing the snapshots
-Snapshots:
-  basename:            stellar_evolution # Common part of the name of output files
-  time_first:          0.       # Time of the first output (in internal units)
-  delta_time:          6.738281e-06     # Time difference between consecutive outputs without cosmology (internal units)
-  compression:         4
-
-# Parameters governing the conserved quantities statistics
-Statistics:
-  delta_time:          6.738281e-06  # non cosmology time between statistics output
-
 # Parameters for the hydrodynamics scheme
 SPH:
   resolution_eta:        1.2348   # Target smoothing length in units of the mean inter-particle separation 
   CFL_condition:         0.1      # Courant-Friedrich-Levy condition for time integration.
-
-# Parameters related to the initial conditions
-InitialConditions:
-  file_name:  ./stellar_evolution.hdf5       # The file to read
-  periodic:   1
-  
-Scheduler:
-  max_top_level_cells: 4
-  cell_split_size:     50
-
-Gravity:
-  mesh_side_length:   32
-  eta: 0.025
-  theta: 0.3
-  r_cut_max: 5.
-  comoving_softening: 0.001
-  max_physical_softening: 0.001
-
-Stars:
-  feedback_timescale: 1.e-4
-
-EAGLEChemistry:              # Solar abundances
-  init_abundance_metal:      0.01
-  init_abundance_Hydrogen:   0.752
-  init_abundance_Helium:     0.248
-  init_abundance_Carbon:     0.0
-  init_abundance_Nitrogen:   0.0
-  init_abundance_Oxygen:     0.0
-  init_abundance_Neon:       0.0
-  init_abundance_Magnesium:  0.0
-  init_abundance_Silicon:    0.0
-  init_abundance_Iron:       0.0
 
 EagleStellarEvolution:
   filename:     /cosma5/data/Eagle/BG_Tables/YieldTables/

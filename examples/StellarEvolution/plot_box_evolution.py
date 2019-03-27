@@ -139,32 +139,6 @@ for line in eagle_data:
 	total_element_mass[i,0] = float(enrich_to_date[3]) * stellar_mass / Msun_in_cgs * unit_mass_in_cgs 
 	i += 1
 
-# Read expected yields from SWIFT test
-#swift_test_filename = "../../tests/test_feedback_total.txt"
-##swift_test_filename = "../../tests/test_feedback_SNIa.txt"
-##swift_test_filename = "../../tests/test_feedback_SNII.txt"
-##swift_test_filename = "../../tests/test_feedback_AGB.txt"
-#
-#with open(swift_test_filename) as f:
-#	swift_categories = f.readline()
-#	swift_data = f.readlines()
-#
-#swift_data = [x.strip() for x in swift_data]
-#
-#i = 0
-#swift_test_time_Gyr = zeros(len(swift_data))
-#swift_test_total_mass = zeros(len(swift_data))
-#swift_test_total_metal_mass = zeros(len(swift_data))
-#swift_test_total_element_mass = zeros((len(swift_data),n_elements))
-#
-#for line in swift_data:
-#	enrich_to_date = line.split(' ')
-#	swift_test_time_Gyr[i] = float(enrich_to_date[0])
-#	swift_test_total_mass[i] = float(enrich_to_date[1]) * stellar_mass / Msun_in_cgs * unit_mass_in_cgs
-#	swift_test_total_metal_mass[i] = float(enrich_to_date[2]) * stellar_mass / Msun_in_cgs * unit_mass_in_cgs 
-#	swift_test_total_element_mass[i,0] = float(enrich_to_date[3]) * stellar_mass / Msun_in_cgs * unit_mass_in_cgs 
-#	i += 1
-
 # Read data from snapshots
 for i in range(n_snapshots):
 	print("reading snapshot "+str(i))
@@ -177,10 +151,10 @@ for i in range(n_snapshots):
 	box_mass[i] = np.sum(masses)
 	#masses_sort = np.concatenate(ids,masses,axis = 0)
 	#masses_sort = np.sort(masses_sort,axis = 0)
-	#
-	#metallicities = sim["/PartType0/Metallicity"][:]
-	#box_metal_mass[i] = np.sum(metallicities * masses)
-	#
+	
+	metallicities = sim["/PartType0/Metallicity"][:]
+	box_metal_mass[i] = np.sum(metallicities * masses)
+	
 	#abundance[:,:,i] = np.concatetenate((ids,sim["/PartType0/ElementAbundance"][:,:]),axis = 0)
 	#abundance[:,:,i] = np.sort(abundance[:,:,i],axis = 0)
 	#for j in range(n_parts):
@@ -189,34 +163,15 @@ for i in range(n_snapshots):
 	#print(np.count_nonzero(abundance))
 	#print(np.count_nonzero(element_mass[i,0]))
 
-# Read data from output
-#swift_output_file = "swift-feedback.out"
-#swift_time = [0]
-#swift_enrich_mass = [0]
-#with open(swift_output_file) as f:
-#	for line in f:
-#		str_pos = line.find('stars_evolve_spart')
-#		if str_pos != -1:
-#			line = line[(str_pos+19):]
-#			line = line.strip()
-#			swift_output_data = line.split(' ')
-#			swift_time.append(float(swift_output_data[0]))
-#			swift_enrich_mass.append(swift_enrich_mass[-1] + float(swift_output_data[1]))
-
 # Plot the interesting quantities
 figure()
 
 # Box mass --------------------------------
-#subplot(221)
-subplot(111)
+subplot(121)
 plot(t[1:] * unit_time_in_cgs / Gyr_in_cgs, (box_mass[1:] - box_mass[0])* unit_mass_in_cgs / Msun_in_cgs, linewidth=0.5, color='k', marker = "*", ms=0.5, label='swift')
 plot(time_Gyr[1:],total_mass[:-1],linewidth=0.5,color='r',label='eagle test total')
-#plot(swift_test_time_Gyr[1:],swift_test_total_mass[:-1],linewidth=0.5,color='c',label='swift test total')
-plot(time_Gyr[1:],total_mass[:-1] - total_metal_mass[:-1],linewidth=0.5,color='g',label='eagle test total - metals')
-#plot(swift_time,swift_enrich_mass * unit_mass_in_cgs / Msun_in_cgs,linewidth=0.5,color='b',label='swift output')
 xlabel("${\\rm{Time}} (Gyr)$", labelpad=0)
 ylabel("Change in total gas particle mass (Msun)", labelpad=2)
-#ylabel("Ratio swift/eagle change in mass", labelpad=2)
 ticklabel_format(style='sci', axis='y', scilimits=(0,0))
 legend()
 
@@ -228,14 +183,14 @@ legend()
 #ticklabel_format(style='sci', axis='y', scilimits=(0,0))
 
 # Box metal mass --------------------------------
-#subplot(222)
-#plot(t * unit_time_in_cgs / Gyr_in_cgs, (box_metal_mass - box_metal_mass[0])* unit_mass_in_cgs / Msun_in_cgs, linewidth=0.5, color='k', ms=0.5, label='swift')
-#plot(time_Gyr,total_metal_mass,linewidth=0.5,color='r',label='eagle test')
-#xlabel("${\\rm{Time}} (Gyr)$", labelpad=0)
-#ylabel("Change in total metal mass of gas particles (Msun)", labelpad=2)
-#ticklabel_format(style='sci', axis='y', scilimits=(0,0))
+subplot(122)
+plot(t[1:] * unit_time_in_cgs / Gyr_in_cgs, (box_metal_mass[1:] - box_metal_mass[0])* unit_mass_in_cgs / Msun_in_cgs, linewidth=0.5, color='k', ms=0.5, label='swift')
+plot(time_Gyr[1:],total_metal_mass[:-1],linewidth=0.5,color='r',label='eagle test')
+xlabel("${\\rm{Time}} (Gyr)$", labelpad=0)
+ylabel("Change in total metal mass of gas particles (Msun)", labelpad=2)
+ticklabel_format(style='sci', axis='y', scilimits=(0,0))
 #legend()
-#
+
 ## Box element mass --------------------------------
 #subplot(223)
 #plot(t * unit_time_in_cgs / Gyr_in_cgs, (element_mass[:,0] - element_mass[0,0]) * unit_mass_in_cgs / Msun_in_cgs, linewidth=0.5, color='k', ms=0.5, label='swift')
