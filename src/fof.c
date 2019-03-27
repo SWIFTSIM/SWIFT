@@ -374,6 +374,37 @@ __attribute__((always_inline)) INLINE static int is_local(
   return (group_id >= node_offset && group_id < node_offset + nr_gparts);
 }
 
+#ifdef WITH_MPI
+/* Add a group to the hash table. */
+__attribute__((always_inline)) INLINE static void hashmap_add_group(
+    const size_t group_id, const size_t group_offset, hashmap_t *map) {
+
+  hashmap_value_t *value = hashmap_get(map, group_id);
+
+  if(value != NULL) {
+
+    /* If the value has not been set then a new element in the hash table has been created. */
+    /* TODO: think of a better way to do this. As an element with a value of 0 will also trigger this. */
+    if(*value == 0)
+      (*value) = group_offset;
+  }
+  else error("Couldn't find key (%zu) or create new one.", group_id);
+
+ }
+
+/* Find a group in the hash table. */
+__attribute__((always_inline)) INLINE static size_t hashmap_find_group_offset(
+    const size_t group_id, hashmap_t *map) {
+
+  hashmap_value_t *value = hashmap_get(map, group_id);
+
+  if(value == NULL)
+    error("Couldn't find key (%zu) or create new one.", group_id);
+
+  return (size_t)(*value);
+} 
+#endif
+
 /* Recurse on a pair of cells and perform a FOF search between cells that are
  * within range. */
 void rec_fof_search_pair(struct cell *restrict ci, struct cell *restrict cj,
@@ -1367,6 +1398,10 @@ size_t fof_search_foreign_cells(struct space *s, size_t **local_roots) {
   bzero(global_group_mass, global_group_list_size * sizeof(double));
   bzero(global_group_CoM, global_group_list_size * sizeof(struct fof_CoM));
 
+  /* Create hash table. */
+  hashmap_t map;
+  hashmap_init(&map);
+
   /* Store each group ID and its properties. */
   for (int i = 0; i < global_group_link_count; i++) {
 
@@ -1378,14 +1413,16 @@ size_t fof_search_foreign_cells(struct space *s, size_t **local_roots) {
     global_group_CoM[group_count].x += global_group_links[i].group_i_CoM.x;
     global_group_CoM[group_count].y += global_group_links[i].group_i_CoM.y;
     global_group_CoM[group_count].z += global_group_links[i].group_i_CoM.z;
-    global_group_id[group_count++] = group_i;
-
+    global_group_id[group_count] = group_i;
+    hashmap_add_group(group_i, group_count++, &map);
+      
     global_group_size[group_count] += global_group_links[i].group_j_size;
     global_group_mass[group_count] += global_group_links[i].group_j_mass;
     global_group_CoM[group_count].x += global_group_links[i].group_j_CoM.x;
     global_group_CoM[group_count].y += global_group_links[i].group_j_CoM.y;
     global_group_CoM[group_count].z += global_group_links[i].group_j_CoM.z;
-    global_group_id[group_count++] = group_j;
+    global_group_id[group_count] = group_j;
+    hashmap_add_group(group_j, group_count++, &map);
   }
 
   message("Global list compression took: %.3f %s.",
@@ -1414,24 +1451,9 @@ size_t fof_search_foreign_cells(struct space *s, size_t **local_roots) {
   /* Perform a union-find on the group links. */
   for (int i = 0; i < global_group_link_count; i++) {
 
-    int find_i = 0, find_j = 0;
-
-    /* TODO: Sort array to get offset or allocate array for initial root
-     * positions. */
-    /* Find group offset into global_group_id */
-    for (int j = 0; j < group_count; j++) {
-      if (global_group_id[j] == global_group_links[i].group_i) {
-        find_i = j;
-        break;
-      }
-    }
-
-    for (int j = 0; j < group_count; j++) {
-      if (global_group_id[j] == global_group_links[i].group_j) {
-        find_j = j;
-        break;
-      }
-    }
+    /* Use the hash table to find the group offsets in the index array. */
+    size_t find_i = hashmap_find_group_offset(global_group_links[i].group_i, &map);
+    size_t find_j = hashmap_find_group_offset(global_group_links[i].group_j, &map);
 
     /* Use the offset to find the group's root. */
     size_t root_i = fof_find(find_i, global_group_index);
@@ -1463,6 +1485,8 @@ size_t fof_search_foreign_cells(struct space *s, size_t **local_roots) {
     }
 #endif
   }
+
+  hashmap_free(&map);
 
   message("global_group_index construction took: %.3f %s.",
           clocks_from_ticks(getticks() - tic), clocks_getunit());
