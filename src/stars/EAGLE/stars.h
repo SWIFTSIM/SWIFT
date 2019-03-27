@@ -406,12 +406,10 @@ inline static void evolve_SNII(float log10_min_mass, float log10_max_mass,
           dz * (stars->feedback.yield_SNII.yield_IMF_resampled[high_index_3d] +
                 sp->chemistry_data.metal_mass_fraction[i] *
                     stars->feedback.yield_SNII.ejecta_IMF_resampled[high_index_2d]);
-      //message("i %d imass %d stellar_yield %.5e dz %.5e mass_frac %.5e low high 2d index %d %d low high 3d index %d %d", i, imass, stellar_yields[imass], dz, sp->chemistry_data.metal_mass_fraction[i], low_index_2d, high_index_2d, low_index_3d, high_index_3d);
     }
 
     metals[i] = integrate_imf(log10_min_mass, log10_max_mass, 0.0, 2,
                               stellar_yields, stars);
-    //message("index %d log10 min max mass %.5e %.5e metals %.5e mass fraction %.5e", i, log10_min_mass, log10_max_mass, metals[i], sp->chemistry_data.metal_mass_fraction[i]);
   }
 
   /* Compute mass produced */
@@ -462,7 +460,6 @@ inline static void evolve_SNII(float log10_min_mass, float log10_max_mass,
    * initial mass as tables are per initial mass */
   const float norm_factor = norm0 / norm1 * sp->mass_init;
 
-  //message("norm 0 1 %.5e %.5e mass %.5e H %.5e He %.5e norm_factor %.5e mass_init %.5e", norm0, norm1, mass, metals[chemistry_element_H], metals[chemistry_element_He], norm_factor, sp->mass_init);
 
   /* normalize the yields */
   if (norm1 > 0) {
@@ -479,8 +476,6 @@ inline static void evolve_SNII(float log10_min_mass, float log10_max_mass,
     error("wrong normalization!!!! norm1 = %e\n", norm1);
   }
 
-  //DEBUGGING
-  //message("log10 min max mass %.5e %.5e to_distribute mass %.5e sum total metals + H, He %.5e", log10_min_mass, log10_max_mass, sp->to_distribute.mass, sp->to_distribute.total_metal_mass + sp->to_distribute.metal_mass[0] + sp->to_distribute.metal_mass[1]);
 }
 
 /**
@@ -674,7 +669,7 @@ inline static float compute_SNe(struct spart* sp,
       age + dt > stars_properties->feedback.SNII_wind_delay) {
     //return stars_properties->feedback.num_SNII_per_msun * sp->mass_init /
     //  stars_properties->feedback.const_solar_mass;
-    // DEBUGGING 
+    // For running tests of mass enrichment we want to set energy injection to zero to run faster. Remove before merging 
     return 0;
   } else {
     return 0;
