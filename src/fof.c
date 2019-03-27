@@ -801,63 +801,6 @@ void fof_search_pair_cells_foreign(struct space *s, struct cell *ci,
  * @param num_elements Chunk size.
  * @param extra_data Pointer to a #space.
  */
-void fof_search_tree_mapper(void *map_data, int num_elements,
-                            void *extra_data) {
-
-  /* Retrieve mapped data. */
-  struct space *s = (struct space *)extra_data;
-  int *local_cells = (int *)map_data;
-
-  const size_t nr_local_cells = s->nr_local_cells;
-  const double dim[3] = {s->dim[0], s->dim[1], s->dim[2]};
-  const double search_r2 = s->l_x2;
-
-  /* Make a list of cell offsets into the local top-level cell array. */
-  int *const offset =
-      s->cell_index + (ptrdiff_t)(local_cells - s->local_cells_top);
-
-  /* Loop over cells and find which cells are in range of each other to perform
-   * the FOF search. */
-  for (int ind = 0; ind < num_elements; ind++) {
-
-    /* Get the cell. */
-    struct cell *restrict ci = &s->cells_top[local_cells[ind]];
-
-    /* Only perform FOF search on local cells. */
-    if (ci->nodeID == engine_rank) {
-
-      /* Skip empty cells. */
-      if (ci->grav.count == 0) continue;
-
-      /* Perform FOF search on local particles within the cell. */
-      rec_fof_search_self(ci, s, dim, search_r2);
-
-      /* Loop over all top-level cells skipping over the cells already searched.
-       */
-      for (size_t cjd = offset[ind] + 1; cjd < nr_local_cells; cjd++) {
-
-        struct cell *restrict cj = &s->cells_top[s->local_cells_top[cjd]];
-
-        /* Only perform FOF search on local cells. */
-        if (cj->nodeID == engine_rank) {
-
-          /* Skip empty cells. */
-          if (cj->grav.count == 0) continue;
-
-          rec_fof_search_pair(ci, cj, s, dim, search_r2);
-        }
-      }
-    }
-  }
-}
-
-/**
- * @brief Mapper function to perform FOF search.
- *
- * @param map_data An array of #cell%s.
- * @param num_elements Chunk size.
- * @param extra_data Pointer to a #space.
- */
 void fof_calc_group_props_mapper(void *map_data, int num_elements,
                             void *extra_data) {
 
@@ -866,8 +809,6 @@ void fof_calc_group_props_mapper(void *map_data, int num_elements,
   struct gpart *gparts = (struct gpart *)map_data;
   size_t *group_index = s->fof_data.group_index;
   size_t *group_size = s->fof_data.group_size;
-  //double *group_mass = s->fof_data.group_mass;
-  //struct fof_CoM *group_CoM = s->fof_data.group_CoM;
 
   /* Offset into gparts array. */
   ptrdiff_t gparts_offset = (ptrdiff_t)(gparts - s->gparts);
@@ -883,11 +824,6 @@ void fof_calc_group_props_mapper(void *map_data, int num_elements,
   for (int ind = 0; ind < num_elements; ind++) {
 
     hashmap_key_t root = (hashmap_key_t)fof_find(group_index_offset[ind], group_index);
-    //double x = gparts[ind].x[0];
-    //double y = gparts[ind].x[1];
-    //double z = gparts[ind].x[2];
-    //double mass = gparts[ind].mass;
- 
     const size_t gpart_index = gparts_offset + ind;
 
     /* Only add particles which aren't the root of a group. Stops groups of size 1 being added to the hash table. */ 
@@ -898,57 +834,10 @@ void fof_calc_group_props_mapper(void *map_data, int num_elements,
       else error("Couldn't find key (%zu) or create new one.", root);
     }
 
-    /* Use the CoM location set by the first particle added to the group. */
-    //if (com_set[root]) {
-
-    //  /* Periodically wrap particle positions if they are located on the other
-    //   * side of the domain than the CoM location. */
-    //  if (group_bc[root].x > 0.5 * dim[0] && x < 0.5 * dim[0])
-    //    x += dim[0];
-    //  else if (group_bc[root].x == 0.0 && x > 0.5 * dim[0])
-    //    x -= dim[0];
-
-    //  if (group_bc[root].y > 0.5 * dim[1] && y < 0.5 * dim[1])
-    //    y += dim[1];
-    //  else if (group_bc[root].y == 0.0 && y > 0.5 * dim[1])
-    //    y -= dim[1];
-
-    //  if (group_bc[root].z > 0.5 * dim[2] && z < 0.5 * dim[2])
-    //    z += dim[2];
-    //  else if (group_bc[root].z == 0.0 && z > 0.5 * dim[2])
-    //    z -= dim[2];
-
-    //} else {
-
-    //  com_set[root] = 1;
-
-    //  /* Use the first particle to set the CoM location in the domain. */
-    //  if (x > 0.5 * dim[0])
-    //    group_bc[root].x = dim[0];
-    //  else
-    //    group_bc[root].x = 0.0;
-
-    //  if (y > 0.5 * dim[1])
-    //    group_bc[root].y = dim[1];
-    //  else
-    //    group_bc[root].y = 0.0;
-
-    //  if (z > 0.5 * dim[2])
-    //    group_bc[root].z = dim[2];
-    //  else
-    //    group_bc[root].z = 0.0;
-    //}
-
-    //atomic_add_d(&group_CoM[root].x, mass * x);
-    //atomic_add_d(&group_CoM[root].y, mass * y);
-    //atomic_add_d(&group_CoM[root].z, mass * z);
-    
   }
  
-  //hashmap_print_stats(&map);
-
   if (map.size > 0) {
-    /* Iterate over the chunks and add their entries to the new table. */
+    /* Iterate over the chunks and find elements in use. */
     for (size_t cid = 0; cid < map.table_size / HASHMAP_ELEMENTS_PER_CHUNK; cid++) {
 
       hashmap_chunk_t *chunk = map.chunks[cid];
@@ -1677,18 +1566,6 @@ void fof_search_tree(struct space *s) {
 
   engine_launch(s->e);
 
-  /* Perform local FOF using the threadpool. */
-  /* Allocate and initialise array of cell indices. */
-  //if (posix_memalign((void **)&s->cell_index, 32,
-  //      s->nr_cells * sizeof(int)) != 0)
-  //  error("Failed to allocate list of cells for FOF search.");
-
-  ///* Set cell index into list of top-level cells. */
-  //for (int i = 0; i < s->nr_cells; i++) s->cell_index[i] = i;
-  //threadpool_map(&s->e->threadpool, fof_search_tree_mapper,
-  //s->local_cells_top,
-  //              s->nr_local_cells, sizeof(int), 1, s);
-
   message("Local FOF took: %.3f %s.", clocks_from_ticks(getticks() - tic),
           clocks_getunit());
 
@@ -1702,79 +1579,6 @@ void fof_search_tree(struct space *s) {
   
   message("FOF search took (scaling): %.3f %s.",
       clocks_from_ticks(getticks() - tic_total), clocks_getunit());
-  
-  //struct fof_CoM *group_bc = NULL;
-  //int *com_set = NULL;
-  //const double dim[3] = {s->dim[0], s->dim[1], s->dim[2]};
-
-  ///* Allocate and initialise a group boundary condition array. */
-  //if (posix_memalign((void **)&group_bc, 32,
-  //                   nr_gparts * sizeof(struct fof_CoM)) != 0)
-  //  error("Failed to allocate list of group CoM for FOF search.");
-
-  //if (posix_memalign((void **)&com_set, 32, nr_gparts * sizeof(int)) != 0)
-  //  error("Failed to allocate list of whether the CoM has been initialised.");
-
-  //bzero(group_bc, nr_gparts * sizeof(struct fof_CoM));
-  //bzero(com_set, nr_gparts * sizeof(int));
-
-  ///* Calculate the total number of particles in each group, group mass, group ID
-  // and group CoM. */
-  //for (size_t i = 0; i < nr_gparts; i++) {
-  //  size_t root = fof_find(i, group_index);
-
-  //  group_size[root]++;
-  //  group_mass[root] += gparts[i].mass;
-
-  //  double x = gparts[i].x[0];
-  //  double y = gparts[i].x[1];
-  //  double z = gparts[i].x[2];
-
-  //  /* Use the CoM location set by the first particle added to the group. */
-  //  if (com_set[root]) {
-
-  //    /* Periodically wrap particle positions if they are located on the other
-  //     * side of the domain than the CoM location. */
-  //    if (group_bc[root].x > 0.5 * dim[0] && x < 0.5 * dim[0])
-  //      x += dim[0];
-  //    else if (group_bc[root].x == 0.0 && x > 0.5 * dim[0])
-  //      x -= dim[0];
-
-  //    if (group_bc[root].y > 0.5 * dim[1] && y < 0.5 * dim[1])
-  //      y += dim[1];
-  //    else if (group_bc[root].y == 0.0 && y > 0.5 * dim[1])
-  //      y -= dim[1];
-
-  //    if (group_bc[root].z > 0.5 * dim[2] && z < 0.5 * dim[2])
-  //      z += dim[2];
-  //    else if (group_bc[root].z == 0.0 && z > 0.5 * dim[2])
-  //      z -= dim[2];
-
-  //  } else {
-
-  //    com_set[root] = 1;
-
-  //    /* Use the first particle to set the CoM location in the domain. */
-  //    if (x > 0.5 * dim[0])
-  //      group_bc[root].x = dim[0];
-  //    else
-  //      group_bc[root].x = 0.0;
-
-  //    if (y > 0.5 * dim[1])
-  //      group_bc[root].y = dim[1];
-  //    else
-  //      group_bc[root].y = 0.0;
-
-  //    if (z > 0.5 * dim[2])
-  //      group_bc[root].z = dim[2];
-  //    else
-  //      group_bc[root].z = 0.0;
-  //  }
-
-  //  group_CoM[root].x += gparts[i].mass * x;
-  //  group_CoM[root].y += gparts[i].mass * y;
-  //  group_CoM[root].z += gparts[i].mass * z;
-  //}
 
 #ifdef WITH_MPI
   size_t num_local_roots = 0;

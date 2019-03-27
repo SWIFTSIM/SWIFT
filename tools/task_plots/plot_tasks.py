@@ -445,11 +445,11 @@ for rank in ranks:
             if ("fof" in tasktype):
                 tasks[thread][-1]["colour"] = TASKCOLOURS[tasktype]
             elif(
-                    "self" in tasktype
-                    or "pair" in tasktype
-                    or "recv" in tasktype
-                    or "send" in tasktype
-                    ):
+                 "self" in tasktype
+                 or "pair" in tasktype
+                 or "recv" in tasktype
+                 or "send" in tasktype
+            ):
                 fulltype = tasktype + "/" + subtype
                 if fulltype in SUBCOLOURS:
                     tasks[thread][-1]["colour"] = SUBCOLOURS[fulltype]
