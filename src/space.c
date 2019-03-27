@@ -288,6 +288,8 @@ void space_rebuild_recycle_mapper(void *map_data, int num_elements,
 
 /**
  * @brief Free up any allocated cells.
+ *
+ * @param s The #space.
  */
 void space_free_cells(struct space *s) {
 
@@ -300,6 +302,32 @@ void space_free_cells(struct space *s) {
   if (s->e->verbose)
     message("took %.3f %s.", clocks_from_ticks(getticks() - tic),
             clocks_getunit());
+}
+
+/**
+ * @brief Free any memory in use for foreign particles.
+ *
+ * @param s The #space.
+ */
+void space_free_foreign_parts(struct space *s) {
+
+#ifdef WITH_MPI
+  if (s->parts_foreign != NULL) {
+    free(s->parts_foreign);
+    s->size_parts_foreign = 0;
+    s->parts_foreign = NULL;
+  }
+  if (s->gparts_foreign != NULL) {
+    free(s->gparts_foreign);
+    s->size_gparts_foreign = 0;
+    s->gparts_foreign = NULL;
+  }
+  if (s->sparts_foreign != NULL) {
+    free(s->sparts_foreign);
+    s->size_sparts_foreign = 0;
+    s->sparts_foreign = NULL;
+  }
+#endif
 }
 
 /**
