@@ -65,8 +65,8 @@ struct memuse_log_entry {
   /* Address of memory. */
   void *ptr;
 
-  /* Time of this action. */
-  ticks tic;
+  /* Relative time of this action. */
+  ticks dtic;
 
   /* Label associated with the memory. */
   char label[MEMUSE_MAXLAB + 1];
@@ -140,7 +140,7 @@ void memuse_log_allocation(const char *label, void *ptr, int allocated,
   memuse_log[ind].ptr = ptr;
   strncpy(memuse_log[ind].label, label, MEMUSE_MAXLAB);
   memuse_log[ind].label[MEMUSE_MAXLAB] = '\0';
-  memuse_log[ind].tic = getticks();
+  memuse_log[ind].dtic = getticks() - clocks_start_ticks;
   atomic_inc(&memuse_log_done);
 }
 
@@ -162,10 +162,10 @@ void memuse_log_dump(const char *filename) {
   /* Write a header. */
   fprintf(fd, "# Current use: %s\n", memuse_process(1));
   fprintf(fd, "# cpufreq: %lld\n", clocks_get_cpufreq());
-  fprintf(fd, "# tic adr rank step allocated label size\n");
+  fprintf(fd, "# dtic adr rank step allocated label size\n");
 
   for (size_t k = 0; k < memuse_log_count; k++) {
-    fprintf(fd, "%lld %p %d %d %d %s %zd\n", memuse_log[k].tic,
+    fprintf(fd, "%lld %p %d %d %d %s %zd\n", memuse_log[k].dtic,
             memuse_log[k].ptr, memuse_log[k].rank, memuse_log[k].step,
             memuse_log[k].allocated, memuse_log[k].label, memuse_log[k].size);
   }
