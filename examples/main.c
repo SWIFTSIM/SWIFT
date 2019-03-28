@@ -343,6 +343,16 @@ int main(int argc, char *argv[]) {
     return 1;
   }
 
+  if (!with_stars && with_star_formation) {
+    if (myrank == 0) {
+      argparse_usage(&argparse);
+      printf(
+          "\nError: Cannot process star formation without stars, --stars must "
+          "be chosen.\n");
+    }
+    return 1;
+  }
+
   if (!with_stars && with_feedback) {
     if (myrank == 0) {
       argparse_usage(&argparse);
