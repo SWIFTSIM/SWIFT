@@ -379,14 +379,15 @@ __attribute__((always_inline)) INLINE static int is_local(
 __attribute__((always_inline)) INLINE static void hashmap_add_group(
     const size_t group_id, const size_t group_offset, hashmap_t *map) {
 
-  hashmap_value_t *value = hashmap_get(map, group_id);
+  int new_element = 0;
+  hashmap_value_t *value = hashmap_get_new(map, group_id, &new_element);
 
   if(value != NULL) {
 
-    /* If the value has not been set then a new element in the hash table has been created. */
-    /* TODO: think of a better way to do this. As an element with a value of 0 will also trigger this. */
-    if(*value == 0)
-      (*value) = group_offset;
+    /* If the element is a new entry set its value. */
+    if(new_element) {
+      *value = group_offset;
+    }
   }
   else error("Couldn't find key (%zu) or create new one.", group_id);
 
