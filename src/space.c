@@ -2340,7 +2340,8 @@ void space_sparts_sort(struct spart *sparts, int *restrict ind,
                        ptrdiff_t sparts_offset) {
   /* Create the offsets array. */
   size_t *offsets = NULL;
-  if (swift_memalign("sparts_offsets", (void **)&offsets, SWIFT_STRUCT_ALIGNMENT,
+  if (swift_memalign("sparts_offsets", (void **)&offsets,
+                     SWIFT_STRUCT_ALIGNMENT,
                      sizeof(size_t) * (num_bins + 1)) != 0)
     error("Failed to allocate temporary cell offsets array.");
 
@@ -2400,7 +2401,8 @@ void space_gparts_sort(struct gpart *gparts, struct part *parts,
                        int *restrict counts, int num_bins) {
   /* Create the offsets array. */
   size_t *offsets = NULL;
-  if (swift_memalign("gparts_offsets", (void **)&offsets, SWIFT_STRUCT_ALIGNMENT,
+  if (swift_memalign("gparts_offsets", (void **)&offsets,
+                     SWIFT_STRUCT_ALIGNMENT,
                      sizeof(size_t) * (num_bins + 1)) != 0)
     error("Failed to allocate temporary cell offsets array.");
 

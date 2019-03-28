@@ -185,9 +185,9 @@ void memuse_log_dump(const char *filename) {
  * @param rank the rank exiting in error.
  */
 void memuse_log_dump_error(int rank) {
-    char filename[60];
-    sprintf(filename, "memuse-error-report-rank%d.txt", rank);
-    memuse_log_dump(filename);
+  char filename[60];
+  sprintf(filename, "memuse-error-report-rank%d.txt", rank);
+  memuse_log_dump(filename);
 }
 
 #endif /* SWIFT_MEMUSE_REPORTS */

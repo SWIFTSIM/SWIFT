@@ -1062,15 +1062,14 @@ __attribute__((always_inline)) INLINE static void cell_ensure_tagged(
 #endif  // WITH_MPI
 }
 
-
 /**
  * @brief Allocate hydro sort memory for cell.
  *
  * @param c The #cell that will require sorting.
  * @param flags Cell flags.
  */
-__attribute__((always_inline)) INLINE static void
-  cell_malloc_hydro_sorts(struct cell *c, int flags) {
+__attribute__((always_inline)) INLINE static void cell_malloc_hydro_sorts(
+    struct cell *c, int flags) {
 
   /* Count the memory needed for all active dimensions. */
   int count = 0;
@@ -1081,8 +1080,8 @@ __attribute__((always_inline)) INLINE static void
 
   /* Allocate as a single chunk. */
   struct entry *memptr = NULL;
-  if ((memptr = (struct entry *)
-       swift_malloc("hydro.sort", sizeof(struct entry) * count)) == NULL)
+  if ((memptr = (struct entry *)swift_malloc(
+           "hydro.sort", sizeof(struct entry) * count)) == NULL)
     error("Failed to allocate sort memory.");
 
   c->hydro.sortptr = memptr;
@@ -1101,8 +1100,8 @@ __attribute__((always_inline)) INLINE static void
  *
  * @param c The #cell.
  */
-__attribute__((always_inline)) INLINE static void
-  cell_free_hydro_sorts(struct cell *c) {
+__attribute__((always_inline)) INLINE static void cell_free_hydro_sorts(
+    struct cell *c) {
 
   /* Note only one allocation for the dimensions. */
   if (c->hydro.sortptr != NULL) {
@@ -1118,8 +1117,8 @@ __attribute__((always_inline)) INLINE static void
  * @param c The #cell that will require sorting.
  * @param flags Cell flags.
  */
-__attribute__((always_inline)) INLINE static void
-  cell_malloc_stars_sorts(struct cell *c, int flags) {
+__attribute__((always_inline)) INLINE static void cell_malloc_stars_sorts(
+    struct cell *c, int flags) {
 
   /* Count the memory needed for all active dimensions. */
   int count = 0;
@@ -1130,8 +1129,8 @@ __attribute__((always_inline)) INLINE static void
 
   /* Allocate as a single chunk. */
   struct entry *memptr = NULL;
-  if ((memptr = (struct entry *)
-       swift_malloc("stars.sort", sizeof(struct entry) * count)) == NULL)
+  if ((memptr = (struct entry *)swift_malloc(
+           "stars.sort", sizeof(struct entry) * count)) == NULL)
     error("Failed to allocate sort memory.");
 
   c->stars.sortptr = memptr;
@@ -1150,8 +1149,8 @@ __attribute__((always_inline)) INLINE static void
  *
  * @param c The #cell.
  */
-__attribute__((always_inline)) INLINE static void
-  cell_free_stars_sorts(struct cell *c) {
+__attribute__((always_inline)) INLINE static void cell_free_stars_sorts(
+    struct cell *c) {
 
   /* Note only one allocation for the dimensions. */
   if (c->stars.sortptr != NULL) {

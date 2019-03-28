@@ -108,7 +108,7 @@ __attribute__((always_inline)) inline void *swift_malloc(const char *label,
 __attribute__((always_inline)) inline void *swift_calloc(const char *label,
                                                          size_t nmemb,
                                                          size_t size) {
-    void *memptr = calloc(nmemb, size);
+  void *memptr = calloc(nmemb, size);
 #ifdef SWIFT_MEMUSE_REPORTS
   if (memptr != NULL) {
     memuse_log_allocation(label, memptr, 1, size * nmemb);
