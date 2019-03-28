@@ -551,7 +551,8 @@ void engine_redistribute(struct engine *e) {
 
   /* Start by moving inhibited particles to the end of the arrays */
   for (size_t k = 0; k < nr_parts; /* void */) {
-    if (parts[k].time_bin == time_bin_inhibited) {
+    if (parts[k].time_bin == time_bin_inhibited ||
+        parts[k].time_bin == time_bin_not_created) {
       nr_parts -= 1;
 
       /* Swap the particle */
@@ -574,7 +575,8 @@ void engine_redistribute(struct engine *e) {
 
   /* Now move inhibited star particles to the end of the arrays */
   for (size_t k = 0; k < nr_sparts; /* void */) {
-    if (sparts[k].time_bin == time_bin_inhibited) {
+    if (sparts[k].time_bin == time_bin_inhibited ||
+        sparts[k].time_bin == time_bin_not_created) {
       nr_sparts -= 1;
 
       /* Swap the particle */
@@ -594,7 +596,8 @@ void engine_redistribute(struct engine *e) {
 
   /* Finally do the same with the gravity particles */
   for (size_t k = 0; k < nr_gparts; /* void */) {
-    if (gparts[k].time_bin == time_bin_inhibited) {
+    if (gparts[k].time_bin == time_bin_inhibited ||
+        gparts[k].time_bin == time_bin_not_created) {
       nr_gparts -= 1;
 
       /* Swap the particle */
@@ -659,6 +662,12 @@ void engine_redistribute(struct engine *e) {
   for (size_t k = 0; k < nr_parts; k++) {
     const struct part *p = &s->parts[k];
 
+    if (p->time_bin == time_bin_inhibited)
+      error("Inhibited particle found after sorting!");
+
+    if (p->time_bin == time_bin_not_created)
+      error("Inhibited particle found after sorting!");
+
     /* New cell index */
     const int new_cid =
         cell_getid(s->cdim, p->x[0] * s->iwidth[0], p->x[1] * s->iwidth[1],
@@ -718,6 +727,12 @@ void engine_redistribute(struct engine *e) {
   for (size_t k = 0; k < nr_sparts; k++) {
     const struct spart *sp = &s->sparts[k];
 
+    if (sp->time_bin == time_bin_inhibited)
+      error("Inhibited particle found after sorting!");
+
+    if (sp->time_bin == time_bin_not_created)
+      error("Inhibited particle found after sorting!");
+
     /* New cell index */
     const int new_cid =
         cell_getid(s->cdim, sp->x[0] * s->iwidth[0], sp->x[1] * s->iwidth[1],
@@ -775,6 +790,12 @@ void engine_redistribute(struct engine *e) {
   /* Verify that the gpart have been sorted correctly. */
   for (size_t k = 0; k < nr_gparts; k++) {
     const struct gpart *gp = &s->gparts[k];
+
+    if (gp->time_bin == time_bin_inhibited)
+      error("Inhibited particle found after sorting!");
+
+    if (gp->time_bin == time_bin_not_created)
+      error("Inhibited particle found after sorting!");
 
     /* New cell index */
     const int new_cid =
@@ -946,6 +967,7 @@ void engine_redistribute(struct engine *e) {
   /* Verify that the links are correct */
   part_verify_links(s->parts, s->gparts, s->sparts, nr_parts_new, nr_gparts_new,
                     nr_sparts_new, e->verbose);
+
 #endif
 
   /* Be verbose about what just happened. */
@@ -956,6 +978,11 @@ void engine_redistribute(struct engine *e) {
     message("node %i now has %zu parts, %zu sparts and %zu gparts in %i cells.",
             nodeID, nr_parts_new, nr_sparts_new, nr_gparts_new, my_cells);
   }
+
+  /* Flag that we do not have any extra particles any more */
+  s->nr_extra_parts = 0;
+  s->nr_extra_gparts = 0;
+  s->nr_extra_sparts = 0;
 
   /* Flag that a redistribute has taken place */
   e->step_props |= engine_step_prop_redistribute;
