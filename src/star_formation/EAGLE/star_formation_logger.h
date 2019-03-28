@@ -206,39 +206,34 @@ INLINE static void star_formation_logger_init_log_file(
   /* Write some general text to the logger file */
   fprintf(fp, "# Star Formation History Logger file\n");
   fprintf(fp, "######################################################\n");
-  fprintf(fp, "# The units are all given in internal physical units!\n");
+  fprintf(fp, "# The quantities are all given in internal physical units!\n");
   fprintf(fp, "#\n");
-  fprintf(fp, "# (1) Time\n");
+  fprintf(fp, "# (1) Time since Big Bang (cosmological run), Time since start of the simulation (non-cosmological run).\n");
   fprintf(fp, "#     Unit = %e seconds\n", us->UnitTime_in_cgs);
   fprintf(fp, "#     Unit = %e yr or %e Myr\n", 1.f / phys_const->const_year,
           1.f / phys_const->const_year / 1e6);
   fprintf(fp, "# (2) Scale factor (no unit)\n");
   fprintf(fp, "# (3) Redshift     (no unit)\n");
-  fprintf(fp, "# (4) Total mass stars formed at current time\n");
+  fprintf(fp, "# (4) Total mass stars formed in the current time-step.\n");
   fprintf(fp, "#     Unit = %e gram\n", us->UnitMass_in_cgs);
   fprintf(fp, "#     Unit = %e solar mass\n",
           1.f / phys_const->const_solar_mass);
-  fprintf(fp, "# (5) The total SFR of all the active particles\n");
+  fprintf(fp, "# (5) The total SFR of all the active particles.\n");
   fprintf(fp, "#     Unit = %e gram/s\n",
           us->UnitMass_in_cgs / us->UnitTime_in_cgs);
   fprintf(fp, "#     Unit = %e Msol/yr\n",
           phys_const->const_year / phys_const->const_solar_mass);
   fprintf(
       fp,
-      "# (6) The active star formation rate (SFR) times their time steps\n");
+      "# (6) The star formation rate (SFR) of active particles multiplied by their time-step size.\n");
   fprintf(fp, "#     Unit = %e gram\n", us->UnitMass_in_cgs);
   fprintf(fp, "#     Unit = %e solar mass\n",
           1.f / phys_const->const_solar_mass);
-  fprintf(fp, "# (7) The total SFR of all the particles in the simulation\n");
+  fprintf(fp, "# (7) The total SFR of all the particles in the simulation.\n");
   fprintf(fp, "#     Unit = %e gram/s\n",
           us->UnitMass_in_cgs / us->UnitTime_in_cgs);
   fprintf(fp, "#     Unit = %e Msol/yr\n",
           phys_const->const_year / phys_const->const_solar_mass);
-  fprintf(fp, "#\n");
-  fprintf(fp,
-          "# NOTE: As a consistency check (4) and (6) need to have a "
-          "cumulative summation\n");
-  fprintf(fp, "# that is very close to each other.\n");
   fprintf(fp, "#\n");
   fprintf(fp,
           "#      (1)            (2)          (3)            (4)           "
