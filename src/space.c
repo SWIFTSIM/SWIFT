@@ -989,6 +989,9 @@ void space_allocate_extras(struct space *s, int verbose) {
     part_verify_links(s->parts, s->gparts, s->sparts, nr_parts, nr_gparts,
                       nr_sparts, verbose);
 #endif
+
+  /* Free the list of local cells */
+  free(local_cells);
 }
 
 /**
