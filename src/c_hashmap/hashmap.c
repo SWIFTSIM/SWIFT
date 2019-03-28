@@ -124,7 +124,7 @@ hashmap_chunk_t *hashmap_get_chunk(hashmap_t *m) {
  * insertion fails.
  */
 hashmap_element_t *hashmap_find(hashmap_t *m, hashmap_key_t key, int create_new,
-                                int *chain_length, int *new_element) {
+                                int *chain_length, int *created_new_element) {
   /* If full, return immediately */
   if (create_new && m->size > m->table_size * HASHMAP_MAX_FILL_RATIO) {
     if (HASHMAP_DEBUG_OUTPUT) {
@@ -189,7 +189,7 @@ hashmap_element_t *hashmap_find(hashmap_t *m, hashmap_key_t key, int create_new,
       /* Mark this element as taken and increase the size counter. */
       chunk->masks[mask_offset] |= search_mask;
       m->size += 1;
-      *new_element = 1;
+      if(created_new_element) *created_new_element = 1;
 
       /* Set the key. */
       chunk->data[offset_in_chunk].key = key;
@@ -264,10 +264,9 @@ void hashmap_grow(hashmap_t *m) {
           hashmap_element_t *element =
               &chunk->data[mid * HASHMAP_BITS_PER_MASK + eid];
 
-          int new_flag = 0;
           /* Copy the element over to the new hashmap. */
           hashmap_element_t *new_element = hashmap_find(
-              m, element->key, /*create_new=*/1, /*chain_length=*/NULL, &new_flag);
+              m, element->key, /*create_new=*/1, /*chain_length=*/NULL, /*created_new_element=*/NULL);
           if (!new_element) {
             /* TODO(pedro): Deal with this type of failure more elegantly. */
             error("Failed to re-hash element.");
@@ -287,15 +286,14 @@ void hashmap_grow(hashmap_t *m) {
 
 void hashmap_put(hashmap_t *m, hashmap_key_t key, hashmap_value_t value) {
   
-  int new_flag = 0;
   /* Try to find an element for the given key. */
   hashmap_element_t *element =
-      hashmap_find(m, key, /*create_new=*/1, /*chain_length=*/NULL, &new_flag);
+      hashmap_find(m, key, /*create_new=*/1, /*chain_length=*/NULL, /*created_new_element=*/NULL);
 
   /* Loop around, trying to find our place in the world. */
   while (!element) {
     hashmap_grow(m);
-    element = hashmap_find(m, key, /*create_new=*/1, /*chain_length=*/NULL, &new_flag);
+    element = hashmap_find(m, key, /*create_new=*/1, /*chain_length=*/NULL, /*created_new_element=*/NULL);
   }
 
   /* Set the value. */
@@ -304,32 +302,30 @@ void hashmap_put(hashmap_t *m, hashmap_key_t key, hashmap_value_t value) {
 
 hashmap_value_t *hashmap_get(hashmap_t *m, hashmap_key_t key) {
           
-  int new_flag = 0;
   /* Look for the given key. */
   hashmap_element_t *element =
-      hashmap_find(m, key, /*create_new=*/1, /*chain_length=*/NULL, &new_flag);
+      hashmap_find(m, key, /*create_new=*/1, /*chain_length=*/NULL, /*created_new_element=*/NULL);
   while (!element) {
     hashmap_grow(m);
-    element = hashmap_find(m, key, /*create_new=*/1, /*chain_length=*/NULL, &new_flag);
+    element = hashmap_find(m, key, /*create_new=*/1, /*chain_length=*/NULL, /*created_new_element=*/NULL);
   }
   return &element->value;
 }
 
-hashmap_value_t *hashmap_get_new(hashmap_t *m, hashmap_key_t key, int *new_element) {
+hashmap_value_t *hashmap_get_new(hashmap_t *m, hashmap_key_t key, int *created_new_element) {
   /* Look for the given key. */
   hashmap_element_t *element =
-      hashmap_find(m, key, /*create_new=*/1, /*chain_length=*/NULL, new_element);
+      hashmap_find(m, key, /*create_new=*/1, /*chain_length=*/NULL, created_new_element);
   while (!element) {
     hashmap_grow(m);
-    element = hashmap_find(m, key, /*create_new=*/1, /*chain_length=*/NULL, new_element);
+    element = hashmap_find(m, key, /*create_new=*/1, /*chain_length=*/NULL, created_new_element);
   }
   return &element->value;
 }
 
 hashmap_value_t *hashmap_lookup(hashmap_t *m, hashmap_key_t key) {
-  int new_flag = 0;
   hashmap_element_t *element =
-      hashmap_find(m, key, /*create_new=*/0, /*chain_length=*/NULL, &new_flag);
+      hashmap_find(m, key, /*create_new=*/0, /*chain_length=*/NULL, /*created_new_element=*/NULL);
   return element ? &element->value : NULL;
 }
 
@@ -391,8 +387,7 @@ void hashmap_count_chain_lengths(hashmap_key_t key, hashmap_value_t *value,
                                  void *data) {
   hashmap_t *m = (hashmap_t *)data;
   int count = 0;
-  int new_flag = 0;
-  hashmap_find(m, key, /*create_entry=*/0, &count, &new_flag);
+  hashmap_find(m, key, /*create_entry=*/0, &count, /*created_new_element=*/NULL);
   m->chain_length_counts[count] += 1;
 }
 #endif

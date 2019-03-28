@@ -379,13 +379,13 @@ __attribute__((always_inline)) INLINE static int is_local(
 __attribute__((always_inline)) INLINE static void hashmap_add_group(
     const size_t group_id, const size_t group_offset, hashmap_t *map) {
 
-  int new_element = 0;
-  hashmap_value_t *value = hashmap_get_new(map, group_id, &new_element);
+  int created_new_element = 0;
+  hashmap_value_t *value = hashmap_get_new(map, group_id, &created_new_element);
 
   if(value != NULL) {
 
     /* If the element is a new entry set its value. */
-    if(new_element) {
+    if(created_new_element) {
       *value = group_offset;
     }
   }

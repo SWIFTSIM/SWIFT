@@ -115,7 +115,7 @@ extern hashmap_value_t *hashmap_get(hashmap_t *m, hashmap_key_t key);
  * Note that the returned pointer is volatile and will be invalidated if the
  * hashmap is re-hashed!
  */
-extern hashmap_value_t *hashmap_get_new(hashmap_t *m, hashmap_key_t key, int *new_element);
+extern hashmap_value_t *hashmap_get_new(hashmap_t *m, hashmap_key_t key, int *created_new_element);
 
 /**
  * @brief Look for the given key and return a pointer to its value or NULL if
