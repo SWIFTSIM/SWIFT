@@ -109,6 +109,15 @@ extern void hashmap_put(hashmap_t *m, hashmap_key_t key, hashmap_value_t value);
 extern hashmap_value_t *hashmap_get(hashmap_t *m, hashmap_key_t key);
 
 /**
+ * @brief Get the value for a given key. If no value exists a new one will be
+ * created. Return a flag indicating whether a new element has been added.
+ *
+ * Note that the returned pointer is volatile and will be invalidated if the
+ * hashmap is re-hashed!
+ */
+extern hashmap_value_t *hashmap_get_new(hashmap_t *m, hashmap_key_t key, int *new_element);
+
+/**
  * @brief Look for the given key and return a pointer to its value or NULL if
  * it is not in the hashmap.
  *
