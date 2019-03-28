@@ -40,7 +40,7 @@ INLINE static void star_formation_logger_log_new_spart(
     const struct spart *sp, struct star_formation_history *sf) {
 
   /* Add mass of created sparticle to the total stellar mass in this cell*/
-  sf->new_stellar_mass = sf->new_stellar_mass + sp->mass;
+  sf->new_stellar_mass += sp->mass;
 }
 
 /**
