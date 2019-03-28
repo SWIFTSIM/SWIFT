@@ -241,9 +241,6 @@ struct space {
   /*! The FOF group data. */
   struct fof fof_data;
 
-  /*! List of cell indices. */
-  int *cell_index;
-
   /*! The group information returned by VELOCIraptor for each #gpart. */
   struct velociraptor_gpart_data *gpart_group_data;
 

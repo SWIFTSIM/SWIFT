@@ -1025,31 +1025,17 @@ int main(int argc, char *argv[]) {
 #endif
   }
 
+  /* Dump the task data using the given frequency. */
+  if (dump_tasks) {
 #ifdef SWIFT_DEBUG_TASKS
-  char dumpfile[32];
-  snprintf(dumpfile, sizeof(dumpfile), "thread_info-step%d.dat", 1);
-  FILE *file_thread;
-  file_thread = fopen(dumpfile, "w");
-  /* Add some information to help with the plots */
-  fprintf(file_thread, " %d %d %d %d %lld %lld %lld %lld %lld %d %lld\n", -2,
-          -1, -1, 1, e.tic_step, e.toc_step, e.updates, e.g_updates,
-          e.s_updates, 0, cpufreq);
-  for (int l = 0; l < e.sched.nr_tasks; l++) {
-    if (!e.sched.tasks[l].implicit && e.sched.tasks[l].toc != 0) {
-      fprintf(
-          file_thread, " %i %i %i %i %lli %lli %i %i %i %i %i\n",
-          e.sched.tasks[l].rid, e.sched.tasks[l].type, e.sched.tasks[l].subtype,
-          (e.sched.tasks[l].cj == NULL), e.sched.tasks[l].tic,
-          e.sched.tasks[l].toc,
-          (e.sched.tasks[l].ci == NULL) ? 0 : e.sched.tasks[l].ci->hydro.count,
-          (e.sched.tasks[l].cj == NULL) ? 0 : e.sched.tasks[l].cj->hydro.count,
-          (e.sched.tasks[l].ci == NULL) ? 0 : e.sched.tasks[l].ci->grav.count,
-          (e.sched.tasks[l].cj == NULL) ? 0 : e.sched.tasks[l].cj->grav.count,
-          e.sched.tasks[l].sid);
-    }
+    task_dump_all(&e, 0);
+#endif
+
+    /* Generate the task statistics. */
+    char dumpfile[40];
+    snprintf(dumpfile, 40, "thread_stats-step%d.dat", 0);
+    task_dump_stats(dumpfile, &e, /* header = */ 0, /* allranks = */ 1);
   }
-  fclose(file_thread);
-#endif  // SWIFT_DEBUG_TASKS
 
 #ifdef SWIFT_DEBUG_THREADPOOL
   /* Dump the task data using the given frequency. */
@@ -1076,6 +1062,11 @@ int main(int argc, char *argv[]) {
   engine_drift_all(&e, /*drift_mpole=*/0);
   engine_print_stats(&e);
   engine_dump_snapshot(&e);
+
+#ifdef WITH_MPI
+  if ((res = MPI_Finalize()) != MPI_SUCCESS)
+    error("call to MPI_Finalize failed with error %i.", res);
+#endif
 
   /* Clean everything */
   if (with_verbose_timers) timers_close_file();
