@@ -1519,37 +1519,6 @@ void fof_search_tree(struct space *s) {
   group_mass = s->fof_data.group_mass;
   group_CoM = s->fof_data.group_CoM;
 
-  ticks tic = getticks();
-
-  engine_maketasks(s->e);
-  //engine_marktasks(s->e);
- 
-  struct scheduler *sched = &s->e->sched;
-  struct task *tasks = sched->tasks;
-
-  /* Activate the self and pair FOF tasks. */
-  for (int i = 0; i < sched->nr_tasks; i++) {
-
-    struct task *t = &tasks[i];
-
-    if (t->type == task_type_fof_self || t->type == task_type_fof_pair) {
-      scheduler_activate(sched, t);
-    }
-
-  }
-
-  engine_print_task_counts(s->e);
-
-  message("Making FOF tasks took: %.3f %s.", clocks_from_ticks(getticks() - tic),
-      clocks_getunit());
-
-  tic = getticks();
-
-  engine_launch(s->e);
-
-  message("Local FOF took: %.3f %s.", clocks_from_ticks(getticks() - tic),
-          clocks_getunit());
-
   ticks tic_calc_group_size = getticks();
 
   threadpool_map(&s->e->threadpool, fof_calc_group_props_mapper,
@@ -1558,12 +1527,6 @@ void fof_search_tree(struct space *s) {
   message("FOF calc group size took (scaling): %.3f %s.",
       clocks_from_ticks(getticks() - tic_calc_group_size), clocks_getunit());
   
-  message("FOF search took (scaling): %.3f %s.",
-      clocks_from_ticks(getticks() - tic_total), clocks_getunit());
-
-  free(group_bc);
-  free(com_set);
-
 #ifdef WITH_MPI
   size_t num_local_roots = 0;
   size_t *local_roots = NULL;
@@ -1631,7 +1594,7 @@ void fof_search_tree(struct space *s) {
 
   message("Sorting groups...");
 
-  tic = getticks();
+  ticks tic = getticks();
 
   /* Find global properties. */
 #ifdef WITH_MPI

@@ -4388,7 +4388,6 @@ void space_clean(struct space *s) {
   free(s->multipoles_top);
   free(s->local_cells_top);
   free(s->local_cells_with_tasks_top);
-  free(s->cell_index);
   free(s->cells_with_particles_top);
   free(s->local_cells_with_particles_top);
   free(s->parts);

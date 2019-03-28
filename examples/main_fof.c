@@ -1018,7 +1018,7 @@ int main(int argc, char *argv[]) {
 #endif
 
     /* Perform first FOF search after the first snapshot dump. */
-    //fof_search_tree(&s);
+    fof_search_tree(&s);
 
 #ifdef WITH_MPI
     MPI_Barrier(MPI_COMM_WORLD);
