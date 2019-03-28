@@ -41,7 +41,7 @@ import numpy as np
 # Store the compression level
 gzip_level = 4
 if len(sys.argv) > 3:
-    gzip_level = sys.argv[3]
+    gzip_level = int(sys.argv[3])
 
 # First, we need to collect some information from the master file
 main_file_name = str(sys.argv[1])[:-7]
