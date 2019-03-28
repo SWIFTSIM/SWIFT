@@ -4447,11 +4447,23 @@ struct spart *cell_add_spart(struct engine *e, struct cell *const c) {
      each level */
   struct cell *top = c;
   while (top->parent != NULL) {
+
+    /* What is the progeny index of the cell? */
     for (int k = 0; k < 8; ++k) {
       if (top->parent->progeny[k] == top) {
         progeny[(int)top->parent->depth] = k;
       }
     }
+
+      /* Check that the cell was indeed drifted to this point to avoid future
+       * issues */
+#ifdef SWIFT_DEBUG_CHECKS
+    if (top->stars.count > 0 && top->stars.ti_old_part != e->ti_current) {
+      error("Cell had not been correctly drifted before star formation");
+    }
+#endif
+
+    /* Climb up */
     top = top->parent;
   }
 
@@ -4500,9 +4512,11 @@ struct spart *cell_add_spart(struct engine *e, struct cell *const c) {
   struct cell *top2 = c;
   while (top2->parent != NULL) {
     top2->grav.ti_end_min = e->ti_current;
+    top2->stars.ti_old_part = e->ti_current;
     top2 = top2->parent;
   }
   top2->grav.ti_end_min = e->ti_current;
+  top2->stars.ti_old_part = e->ti_current;
 
   /* Release the lock */
   if (lock_unlock(&top->stars.star_formation_lock) != 0)
