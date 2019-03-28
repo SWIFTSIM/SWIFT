@@ -18,15 +18,17 @@
 #
 ################################################################################
 import matplotlib
+
 matplotlib.use("Agg")
 import h5py as h5
 import numpy as np
 import matplotlib.pyplot as plt
 
 # check if we have tqdm installed
-#try:
+# try:
 from tqdm import tqdm
-#except ImportError:
+
+# except ImportError:
 #    raised_info = False
 #    def tqdm(x, *args, **kwargs):
 #        global raised_info
@@ -39,31 +41,30 @@ from tqdm import tqdm
 
 # Plot parameters
 params = {
-#    "axes.labelsize": 20,
-#    "axes.titlesize": 20,
-#    "font.size": 16,
-#    "legend.fontsize": 16,
-#    "xtick.labelsize": 20,
-#    "ytick.labelsize": 20,
+    #    "axes.labelsize": 20,
+    #    "axes.titlesize": 20,
+    #    "font.size": 16,
+    #    "legend.fontsize": 16,
+    #    "xtick.labelsize": 20,
+    #    "ytick.labelsize": 20,
     "text.usetex": True,
     "figure.figsize": (7.5, 7.5),
-#    "figure.subplot.left": 0.15,
-#    "figure.subplot.right": 0.99,
-#    "figure.subplot.bottom": 0.13,
-#    "figure.subplot.top": 0.99,
-#    "figure.subplot.wspace": 0.15,
-#    "figure.subplot.hspace": 0.12,
-#    "lines.markersize": 6,
+    #    "figure.subplot.left": 0.15,
+    #    "figure.subplot.right": 0.99,
+    #    "figure.subplot.bottom": 0.13,
+    #    "figure.subplot.top": 0.99,
+    #    "figure.subplot.wspace": 0.15,
+    #    "figure.subplot.hspace": 0.12,
+    #    "lines.markersize": 6,
     "lines.linewidth": 2.0,
-#    "text.latex.unicode": True,
+    #    "text.latex.unicode": True,
 }
 plt.rcParams.update(params)
 plt.rc("font", **{"family": "sans-serif", "sans-serif": ["Times"]})
 
 
-
-def getSFH(filename,points):
-    weightfac = 1e2*points
+def getSFH(filename, points):
+    weightfac = 1e2 * points
 
     # Read the data
     with h5.File(filename, "r") as f:
@@ -82,23 +83,25 @@ def getSFH(filename,points):
         & ((coordinates[:, 1] - box_size / 2.0) < absmaxxy)
         & ((coordinates[:, 2] - box_size / 2.0) > -absmaxz)
         & ((coordinates[:, 2] - box_size / 2.0) < absmaxz)
-        & (birth_time > 0.)
+        & (birth_time > 0.0)
     )  # & (flag==1)
 
     birth_time = birth_time[part_mask]
     mass = mass[part_mask]
 
-    histogram = np.histogram(birth_time, bins=points, weights=mass * weightfac, range=[0, 0.1])
+    histogram = np.histogram(
+        birth_time, bins=points, weights=mass * weightfac, range=[0, 0.1]
+    )
     values = histogram[0]
     xvalues = (histogram[1][:-1] + histogram[1][1:]) / 2.0
     return xvalues, values
 
 
 def getsfrsnapwide(numbsnaps):
-    ''' Get the SFH from all the individual snaps
-    '''
+    """ Get the SFH from all the individual snaps
+    """
 
-    #time = np.arange(1, 101, 1)
+    # time = np.arange(1, 101, 1)
     time = np.zeros(numbsnaps)
     SFR_gparticles = np.zeros(numbsnaps)
     previous_mass = 0
@@ -134,103 +137,116 @@ def getsfrsnapwide(numbsnaps):
 
     return time, SFR_gparticles
 
+
 # run the main script
 if __name__ == "__main__":
-    # Read the logger file 
-    logdata = np.loadtxt('output_SFH_logger.txt')
-    timelog = logdata[:,0]*9.778131e+2
+    # Read the logger file
+    logdata = np.loadtxt("output_SFH_logger.txt")
+    timelog = logdata[:, 0] * 9.778131e2
     # Store plot of the logger SFH
-    plt.plot(timelog,logdata[:,6]*1.023009e+01)
-    plt.xlabel('Time (Myr)')
-    plt.ylabel('SFH [$\\rm M_\odot \\rm yr^{-1}$]')
-    plt.xlim(0,100)
-    plt.savefig('SFH_logger.png')
+    plt.plot(timelog, logdata[:, 6] * 1.023009e01)
+    plt.xlabel("Time (Myr)")
+    plt.ylabel("SFH [$\\rm M_\odot \\rm yr^{-1}$]")
+    plt.xlim(0, 100)
+    plt.savefig("SFH_logger.png")
     plt.close()
 
     # Calculate the cumulative sum of the elements of active sfh and formed stars
-    CSFH_Mstar = np.cumsum(logdata[:,3]*1e10)
-    CSFH_SFRdt = np.cumsum(logdata[:,5]*1e10)
+    CSFH_Mstar = np.cumsum(logdata[:, 3] * 1e10)
+    CSFH_SFRdt = np.cumsum(logdata[:, 5] * 1e10)
 
     # plot the CSFH of the logger
-    plt.plot(timelog,CSFH_Mstar,label='Stars formed')
-    plt.plot(timelog,CSFH_SFRdt,label='Active gas particles')
-    plt.xlabel('Time (Myr)')
-    plt.ylabel('CSFH [$\\rm M_\odot$]')
-    plt.xlim(0,100)
-    plt.ylim(0,1.2e9)
+    plt.plot(timelog, CSFH_Mstar, label="Stars formed")
+    plt.plot(timelog, CSFH_SFRdt, label="Active gas particles")
+    plt.xlabel("Time (Myr)")
+    plt.ylabel("CSFH [$\\rm M_\odot$]")
+    plt.xlim(0, 100)
+    plt.ylim(0, 1.2e9)
     plt.legend()
-    plt.savefig('CSFH_logger.png')
+    plt.savefig("CSFH_logger.png")
     plt.close()
 
     # Calculate the Cumulative sum of the particles from the log file
-    f = h5.File('./output_0999.hdf5', 'r')
-    birthtime = f['/PartType4/BirthTime'][:]*9.778131e+2
-    mass = f['/PartType4/Masses'][:]*1e10
-    CSFH_birth = np.zeros(len(logdata[:,0]))
+    f = h5.File("./output_0999.hdf5", "r")
+    birthtime = f["/PartType4/BirthTime"][:] * 9.778131e2
+    mass = f["/PartType4/Masses"][:] * 1e10
+    CSFH_birth = np.zeros(len(logdata[:, 0]))
     for i in tqdm(range(len(timelog))):
-        mask = (birthtime > 0) & (birthtime <=timelog[i])
+        mask = (birthtime > 0) & (birthtime <= timelog[i])
         CSFH_birth[i] = np.sum(mass[mask])
 
-    # Plot the CSFH of the logger + from the birth time 
-    plt.plot(timelog,CSFH_Mstar,label='Stars formed')
-    plt.plot(timelog,CSFH_SFRdt,label='Active gas particles')
-    plt.plot(timelog,CSFH_birth,label='Birth time')
-    plt.xlabel('Time (Myr)')
-    plt.ylabel('CSFH [$\\rm M_\odot$]')
+    # Plot the CSFH of the logger + from the birth time
+    plt.plot(timelog, CSFH_Mstar, label="Stars formed")
+    plt.plot(timelog, CSFH_SFRdt, label="Active gas particles")
+    plt.plot(timelog, CSFH_birth, label="Birth time")
+    plt.xlabel("Time (Myr)")
+    plt.ylabel("CSFH [$\\rm M_\odot$]")
     plt.legend()
-    plt.xlim(0,100)
-    plt.ylim(0,1.2e9)
-    plt.savefig('CSFH_all.png')
+    plt.xlim(0, 100)
+    plt.ylim(0, 1.2e9)
+    plt.savefig("CSFH_all.png")
     plt.close()
 
     # Plot of the fractional difference between the different measures
-    plt.yscale('log')
-    plt.plot(timelog,np.abs(CSFH_Mstar-CSFH_SFRdt)/CSFH_Mstar,label='$\\frac{M_{log}-SFHdt_{log}}{M_{log}}$')
-    plt.plot(timelog,np.abs(CSFH_Mstar-CSFH_birth)/CSFH_Mstar,label='$\\frac{M_{log}-M_{birth}}{M_{birth}}$')
-    plt.plot(timelog,np.abs(CSFH_birth-CSFH_SFRdt)/CSFH_birth,label='$\\frac{M_{birth}-SFHdt_{log}}{M_{birth}}$')
-    plt.xlabel('Time (Myr)')
-    plt.ylabel('Fractional difference')
-    plt.xlim(0,100)
-    plt.ylim(1e-4,1e0)
+    plt.yscale("log")
+    plt.plot(
+        timelog,
+        np.abs(CSFH_Mstar - CSFH_SFRdt) / CSFH_Mstar,
+        label="$\\frac{M_{log}-SFHdt_{log}}{M_{log}}$",
+    )
+    plt.plot(
+        timelog,
+        np.abs(CSFH_Mstar - CSFH_birth) / CSFH_Mstar,
+        label="$\\frac{M_{log}-M_{birth}}{M_{birth}}$",
+    )
+    plt.plot(
+        timelog,
+        np.abs(CSFH_birth - CSFH_SFRdt) / CSFH_birth,
+        label="$\\frac{M_{birth}-SFHdt_{log}}{M_{birth}}$",
+    )
+    plt.xlabel("Time (Myr)")
+    plt.ylabel("Fractional difference")
+    plt.xlim(0, 100)
+    plt.ylim(1e-4, 1e0)
     plt.legend()
-    plt.savefig('CSFH_fractional_diff.png')
+    plt.savefig("CSFH_fractional_diff.png")
     plt.close()
 
-
     # calculate the SFH from the last snapshot
-    time_birth0, SFR_birth0 = getSFH("output_%04d.hdf5" % 999,100)
-    time_birth1, SFR_birth1 = getSFH("output_%04d.hdf5" % 999,200)
-    time_birth2, SFR_birth2 = getSFH("output_%04d.hdf5" % 999,1000)
-    time_birth3, SFR_birth3 = getSFH("output_%04d.hdf5" % 999,4000)
+    time_birth0, SFR_birth0 = getSFH("output_%04d.hdf5" % 999, 100)
+    time_birth1, SFR_birth1 = getSFH("output_%04d.hdf5" % 999, 200)
+    time_birth2, SFR_birth2 = getSFH("output_%04d.hdf5" % 999, 1000)
+    time_birth3, SFR_birth3 = getSFH("output_%04d.hdf5" % 999, 4000)
 
     # make a plot of the different number of bins in the star formation routine
-    plt.plot(time_birth3,SFR_birth3,label='4000 bins')
-    plt.plot(time_birth2,SFR_birth2,label='1000 bins')
-    plt.plot(time_birth1,SFR_birth1,label='200 bins')
-    plt.plot(time_birth0,SFR_birth0,label='100 bins')
-    plt.xlabel('Time (Myr)')
-    plt.ylabel('SFH [$\\rm M_\odot \\rm yr^{-1}$]')
-    plt.savefig('SFH_birth_time.png')
+    plt.plot(time_birth3, SFR_birth3, label="4000 bins")
+    plt.plot(time_birth2, SFR_birth2, label="1000 bins")
+    plt.plot(time_birth1, SFR_birth1, label="200 bins")
+    plt.plot(time_birth0, SFR_birth0, label="100 bins")
+    plt.xlabel("Time (Myr)")
+    plt.ylabel("SFH [$\\rm M_\odot \\rm yr^{-1}$]")
+    plt.savefig("SFH_birth_time.png")
     plt.close()
 
     # Make a plot of the SFH from the snaps
     timesnap, SFRsnap = getsfrsnapwide(1000)  # , SFR2, SFR_error = getsfrsnapwide()
-    np.savetxt('SnapSFH.txt',np.transpose([timesnap,SFRsnap]))
-    plt.plot(timesnap*9.778131e+2, SFRsnap*1.022690e1, label="SFH gas tracers")
+    np.savetxt("SnapSFH.txt", np.transpose([timesnap, SFRsnap]))
+    plt.plot(timesnap * 9.778131e2, SFRsnap * 1.022690e1, label="SFH gas tracers")
     plt.xlabel("Time (Myr)")
     plt.ylabel("SFH ($\\rm M_\odot \\rm yr^{-1}$)")
     plt.ylim(0, 20)
-    plt.xlim(0,100)
+    plt.xlim(0, 100)
     plt.savefig("SFH_snapshots.png")
     plt.close()
 
     # Make a plot of the SFH from the snaps and from the log file
-    plt.plot(timelog,logdata[:,6]*1.023009e+01,label='SFH log file')
-    plt.plot(timesnap[:-1]*9.778131e+2, SFRsnap[:-1]*1.022690e1, label="SFH gas tracers")
+    plt.plot(timelog, logdata[:, 6] * 1.023009e01, label="SFH log file")
+    plt.plot(
+        timesnap[:-1] * 9.778131e2, SFRsnap[:-1] * 1.022690e1, label="SFH gas tracers"
+    )
     plt.xlabel("Time (Myr)")
     plt.ylabel("SFH ($\\rm M_\odot \\rm yr^{-1}$)")
     plt.ylim(0, 20)
-    plt.xlim(0,100)
+    plt.xlim(0, 100)
     plt.legend()
     plt.savefig("SFH_all.png")
-
