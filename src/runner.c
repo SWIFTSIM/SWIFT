@@ -636,9 +636,13 @@ void runner_do_star_formation(struct runner *r, struct cell *c, int timer) {
             /* Convert the gas particle to a star particle */
             struct spart *sp = cell_convert_part_to_spart(e, c, p, xp);
 
-            /* Copy the properties of the gas particle to the star particle */
-            star_formation_copy_properties(p, xp, sp, e, sf_props, cosmo,
-                                           with_cosmology);
+            /* Did we get a star? (Or did we run out of spare ones?) */
+            if (sp != NULL) {
+
+              /* Copy the properties of the gas particle to the star particle */
+              star_formation_copy_properties(p, xp, sp, e, sf_props, cosmo,
+                                             with_cosmology);
+            }
           }
 
         } else { /* Are we not star-forming? */
@@ -1878,6 +1882,7 @@ void runner_do_drift_spart(struct runner *r, struct cell *c, int timer) {
 
   if (timer) TIMER_TOC(timer_drift_spart);
 }
+
 /**
  * @brief Perform the first half-kick on all the active particles in a cell.
  *
