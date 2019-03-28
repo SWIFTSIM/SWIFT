@@ -490,14 +490,6 @@ void space_regrid(struct space *s, int verbose) {
       error("Failed to allocate indices of local top-level cells with tasks.");
     bzero(s->local_cells_with_tasks_top, s->nr_cells * sizeof(int));
 
-    /* Allocate and initialise array of cell indices. */
-    if (posix_memalign((void **)&s->cell_index, 32,
-                       s->nr_cells * sizeof(int)) != 0)
-      error("Failed to allocate list of cells for FOF search.");
-
-    /* Set cell index into list of top-level cells. */
-    for (int i = 0; i < s->nr_cells; i++) s->cell_index[i] = i;
-
     /* Allocate the indices of cells with particles */
     if (posix_memalign((void **)&s->cells_with_particles_top,
                        SWIFT_STRUCT_ALIGNMENT, s->nr_cells * sizeof(int)) != 0)

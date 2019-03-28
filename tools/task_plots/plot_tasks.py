@@ -256,8 +256,6 @@ colours = [
     "sienna",
     "aquamarine",
     "bisque",
-    "blue",
-    "green",
     "lightgreen",
     "brown",
     "purple",
@@ -283,6 +281,8 @@ colours = [
     "firebrick",
     "magenta",
     "hotpink",
+    "blue",
+    "green",
     "pink",
     "orange",
     "lightgreen",
@@ -442,11 +442,13 @@ for rank in ranks:
             toc = int(data[line, toccol]) / CPU_CLOCK
             tasks[thread][-1]["tic"] = tic
             tasks[thread][-1]["toc"] = toc
-            if (
-                "self" in tasktype
-                or "pair" in tasktype
-                or "recv" in tasktype
-                or "send" in tasktype
+            if ("fof" in tasktype):
+                tasks[thread][-1]["colour"] = TASKCOLOURS[tasktype]
+            elif(
+                 "self" in tasktype
+                 or "pair" in tasktype
+                 or "recv" in tasktype
+                 or "send" in tasktype
             ):
                 fulltype = tasktype + "/" + subtype
                 if fulltype in SUBCOLOURS:
