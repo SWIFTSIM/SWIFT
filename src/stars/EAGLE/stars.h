@@ -74,6 +74,7 @@ __attribute__((always_inline)) INLINE static void stars_first_init_spart(
   
   // ALEXEI: specify birth time for running StellarEvolution test
   sp->birth_time = 0.f;
+  //sp->birth_scale_factor = 0.25;
 
   stars_init_spart(sp);
 }
@@ -680,10 +681,7 @@ inline static float compute_SNe(struct spart* sp,
 __attribute__((always_inline)) INLINE static void stars_evolve_spart(
     struct spart* restrict sp, const struct stars_props* stars_properties,
     const struct cosmology* cosmo, const struct unit_system* us,
-    float current_time, double dt) {
-
-  /* Determine the age of the star */
-  float star_age = current_time - sp->birth_time;
+    double star_age, double dt) {
 
   /* Zero the number of SN and amount of mass that is distributed */
   sp->to_distribute.num_SNIa = 0;

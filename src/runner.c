@@ -351,14 +351,25 @@ void runner_do_stars_ghost(struct runner *r, struct cell *c, int timer) {
         /* We now have a particle whose smoothing length has converged */
         stars_reset_feedback(sp);
 
-        // Get current time
-        float current_time_begin =
+        // Calculate star age
+	double star_age, current_time_begin = -1;
+	if (with_cosmology) {
+	  star_age = cosmology_get_delta_time_from_scale_factors(cosmo, sp->birth_scale_factor, cosmo->a);
+	} else {
+          current_time_begin =
             get_integer_time_begin(e->ti_current - 1, sp->time_bin) *
-            e->time_base;
+            e->time_base + e->time_begin;
+	  star_age = current_time_begin - sp->birth_time;
+	}
+  	
+	// DEBUGGING
+	const float Gyr_in_s = 3.154e16;
+	//if (dt > 0) message("star age %.5e birth current a %.5e %.5e", star_age * units_cgs_conversion_factor(us, UNIT_CONV_TIME) / Gyr_in_s, sp->birth_scale_factor, cosmo->a);
+	if (dt > 0) message("star age %.5e birth current time %.5e %.5e", star_age * units_cgs_conversion_factor(us, UNIT_CONV_TIME) / Gyr_in_s, sp->birth_time * units_cgs_conversion_factor(us, UNIT_CONV_TIME) / Gyr_in_s, current_time_begin * units_cgs_conversion_factor(us, UNIT_CONV_TIME) / Gyr_in_s);
 
         /* Compute the stellar evolution  */
         stars_evolve_spart(sp, e->stars_properties, cosmo, us,
-                           current_time_begin, dt);
+                           star_age, dt);
       }
 
       /* We now need to treat the particles whose smoothing length had not
