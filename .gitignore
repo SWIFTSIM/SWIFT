@@ -27,6 +27,7 @@ examples/swift_mpi
 examples/fof
 examples/fof_mpi
 examples/*/*/*.xmf
+examples/*/*/*.dat
 examples/*/*/*.png
 examples/*/*/*.mp4
 examples/*/*/*.txt
