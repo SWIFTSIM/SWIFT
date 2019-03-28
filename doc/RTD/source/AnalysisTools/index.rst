@@ -53,6 +53,9 @@ inclusion of a "label", this should match between allocations and frees and
 ideally should be a short label that describes the use of the memory, i.e.
 "parts", "gparts", "hydro.sort" etc.
 
+Calls to external libraries that make allocations you'd also like to log
+can be made by calling the ``memuse_log_allocation()`` function directly.
+
 The output files are called ``memuse_report-step<n>.dat`` or
 ``memuse_report-rank<m>-step<n>.dat`` if running using MPI. These have a line
 for each allocation or free that records the time, memory address, step,
