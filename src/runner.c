@@ -362,11 +362,6 @@ void runner_do_stars_ghost(struct runner *r, struct cell *c, int timer) {
 	  star_age = current_time_begin - sp->birth_time;
 	}
   	
-	// DEBUGGING
-	const float Gyr_in_s = 3.154e16;
-	//if (dt > 0) message("star age %.5e birth current a %.5e %.5e", star_age * units_cgs_conversion_factor(us, UNIT_CONV_TIME) / Gyr_in_s, sp->birth_scale_factor, cosmo->a);
-	if (dt > 0) message("star age %.5e birth current time %.5e %.5e", star_age * units_cgs_conversion_factor(us, UNIT_CONV_TIME) / Gyr_in_s, sp->birth_time * units_cgs_conversion_factor(us, UNIT_CONV_TIME) / Gyr_in_s, current_time_begin * units_cgs_conversion_factor(us, UNIT_CONV_TIME) / Gyr_in_s);
-
         /* Compute the stellar evolution  */
         stars_evolve_spart(sp, e->stars_properties, cosmo, us,
                            star_age, dt);
