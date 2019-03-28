@@ -228,7 +228,6 @@ __attribute__((always_inline)) INLINE static size_t fof_find_global(
   return root;
 }
 
-
 /*
   Finds the local root ID of the group a particle exists in
   when group_index contains globally unique identifiers -
@@ -414,7 +413,6 @@ __attribute__((always_inline)) INLINE static double cell_min_dist(
   return r2;
 }
 
-
 #ifdef WITH_MPI
 /* Checks whether the group is on the local node. */
 __attribute__((always_inline)) INLINE static int is_local(
@@ -422,7 +420,6 @@ __attribute__((always_inline)) INLINE static int is_local(
   return (group_id >= node_offset && group_id < node_offset + nr_gparts);
 }
 
-#ifdef WITH_MPI
 /* Add a group to the hash table. */
 __attribute__((always_inline)) INLINE static void hashmap_add_group(
     const size_t group_id, const size_t group_offset, hashmap_t *map) {
