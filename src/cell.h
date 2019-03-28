@@ -514,6 +514,9 @@ struct cell {
     /*! Spin lock for various uses (#spart case). */
     swift_lock_type lock;
 
+    /*! Spin lock for star formation use. */
+    swift_lock_type star_formation_lock;
+
     /*! Nr of #spart in this cell. */
     int count;
 
