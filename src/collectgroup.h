@@ -26,7 +26,6 @@
 #include <stddef.h>
 
 /* Local headers. */
-#include "star_formation_logger.h"
 #include "star_formation_logger_struct.h"
 #include "timeline.h"
 
