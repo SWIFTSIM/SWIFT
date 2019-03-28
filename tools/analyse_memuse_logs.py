@@ -1,7 +1,7 @@
 #!/usr/bin/env python
 """
 Usage:
-    process_memuse.py memuse_report1.dat [memuse_report2.dat] ...
+    process_memuse.py [options] memuse_report1.dat [memuse_report2.dat] ...
 
 Parse the output of a run of SWIFT to convert the memuse output dumps into a
 timeseries of memory use. Also outputs use in memory per labelled type.
@@ -23,13 +23,24 @@ You should have received a copy of the GNU Lesser General Public License
 along with this program.  If not, see <http://www.gnu.org/licenses/>.
 """
 
-import sys
 from collections import OrderedDict
+import argparse
+import sys
 
 #  Command-line arguments.
-if len(sys.argv) < 2:
-    print "usage: ", sys.argv[0], " memuse_report1.dat [memuse_report2.dat] ..."
-    sys.exit(1)
+parser = argparse.ArgumentParser(description="Analyse memory usage reports")
+
+parser.add_argument("memuse_report", nargs='+',
+                    help="Memory usage reports (order by step if using more than one)")
+parser.add_argument(
+    "-b",
+    "--blacklist",
+    dest="blacklist",
+    help="substring of allocations to ignore (maybe be repeated)",
+    default=None,
+    action='append'
+)
+args = parser.parse_args()
 
 memuse = OrderedDict()
 labels = {}
@@ -37,9 +48,7 @@ totalmem = 0
 process_use = ""
 peak = 0.0
 
-blacklist = ["sort", "temp"]
-
-for filename in sys.argv[1:]:
+for filename in args.memuse_report:
     sys.stderr.write("## Processing: " + filename + "\n")
     with open(filename) as infile:
         print '# {:<18s} {:>30s} {:>9s} {:>9s} {:s}'.format("tic", "label", "allocated", "step", "MB")
@@ -51,13 +60,15 @@ for filename in sys.argv[1:]:
                 tic, adr, rank, step, allocated, label, size = line.split()
 
                 #  Skip blacklisted allocations, these can swamp the signal...
-                skip = False
-                for item in blacklist:
-                    if item in label:
-                        skip = True
-                        break
-                if skip:
-                    continue
+                if args.blacklist != None:
+                    skip = False
+                    for item in args.blacklist:
+                        if item in label:
+                            skip = True
+                            break
+                    if skip:
+                        continue
+
                 rank = int(rank)
                 step = int(step)
                 allocated = int(allocated)
