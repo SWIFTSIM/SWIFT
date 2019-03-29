@@ -45,23 +45,11 @@ struct fof_mpi {
   /* The local group's size.*/
   size_t group_i_size;
 
-  /* The local group's mass.*/
-  double group_i_mass;
-
-  /* The local group's CoM.*/
-  struct fof_CoM group_i_CoM;
-
   /* The foreign particle's root ID.*/
   size_t group_j;
 
   /* The local group's size.*/
   size_t group_j_size;
-
-  /* The local group's mass.*/
-  double group_j_mass;
-
-  /* The local group's CoM.*/
-  struct fof_CoM group_j_CoM;
 
 } SWIFT_STRUCT_ALIGN;
 
@@ -69,8 +57,6 @@ struct fof {
 
   size_t *group_index;
   size_t *group_size;
-  double *group_mass;
-  struct fof_CoM *group_CoM;
   int num_groups;
   size_t min_group_size;
   size_t group_id_default;
