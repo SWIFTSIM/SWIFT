@@ -425,13 +425,13 @@ __attribute__((always_inline)) INLINE static void hashmap_add_group(
     const size_t group_id, const size_t group_offset, hashmap_t *map) {
 
   int created_new_element = 0;
-  hashmap_value_t *value = hashmap_get_new(map, group_id, &created_new_element);
+  hashmap_value_t *offset = hashmap_get_new(map, group_id, &created_new_element);
 
-  if(value != NULL) {
+  if(offset != NULL) {
 
     /* If the element is a new entry set its value. */
     if(created_new_element) {
-      *value = group_offset;
+      (*offset).value_st = group_offset;
     }
   }
   else error("Couldn't find key (%zu) or create new one.", group_id);
@@ -442,12 +442,12 @@ __attribute__((always_inline)) INLINE static void hashmap_add_group(
 __attribute__((always_inline)) INLINE static size_t hashmap_find_group_offset(
     const size_t group_id, hashmap_t *map) {
 
-  hashmap_value_t *value = hashmap_get(map, group_id);
+  hashmap_value_t *group_offset = hashmap_get(map, group_id);
 
-  if(value == NULL)
+  if(group_offset == NULL)
     error("Couldn't find key (%zu) or create new one.", group_id);
 
-  return (size_t)(*value);
+  return (size_t)(*group_offset).value_st;
 } 
 #endif
 
@@ -841,9 +841,9 @@ void fof_search_pair_cells_foreign(struct space *s, struct cell *ci,
 }
 
 /**
- * @brief Mapper function to perform FOF search.
+ * @brief Mapper function to calculate the group sizes.
  *
- * @param map_data An array of #cell%s.
+ * @param map_data An array of #gpart%s.
  * @param num_elements Chunk size.
  * @param extra_data Pointer to a #space.
  */
@@ -876,7 +876,7 @@ void fof_calc_group_props_mapper(void *map_data, int num_elements,
     if(root != gpart_index) { 
       hashmap_value_t *size = hashmap_get(&map, root);
 
-      if(size != NULL) (*size)++;
+      if(size != NULL) (*size).value_st++;
       else error("Couldn't find key (%zu) or create new one.", root);
     }
 
@@ -907,7 +907,7 @@ void fof_calc_group_props_mapper(void *map_data, int num_elements,
             hashmap_element_t *element =
               &chunk->data[mid * HASHMAP_BITS_PER_MASK + eid];
 
-            atomic_add(&group_size[element->key], element->value);
+            atomic_add(&group_size[element->key], element->value.value_st);
 
           }
         }
