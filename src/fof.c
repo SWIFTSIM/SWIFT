@@ -205,16 +205,22 @@ int compare_fof_final_index_global_root(const void *a, const void *b) {
 }
 #endif
 
+/* Checks whether the group is on the local node. */
+__attribute__((always_inline)) INLINE static int is_local(
+    const size_t group_id, const size_t nr_gparts) {
+  return (group_id >= node_offset && group_id < node_offset + nr_gparts);
+}
+
 /* Finds the global root ID of the group a particle exists in. */
 __attribute__((always_inline)) INLINE static size_t fof_find_global(
-    const size_t i, size_t *group_index) {
+    const size_t i, size_t *group_index, const size_t nr_gparts) {
 
   size_t root = node_offset + i;
-  if (root < node_offset) return root;
+  if (!is_local(root, nr_gparts)) return root;
 
   while (root != group_index[root - node_offset]) {
     root = group_index[root - node_offset];
-    if (root < node_offset) break;
+    if (!is_local(root, nr_gparts)) break;
   }
 
   /* Perform path compression. */
@@ -414,12 +420,6 @@ __attribute__((always_inline)) INLINE static double cell_min_dist(
 }
 
 #ifdef WITH_MPI
-/* Checks whether the group is on the local node. */
-__attribute__((always_inline)) INLINE static int is_local(
-    const size_t group_id, const size_t nr_gparts) {
-  return (group_id >= node_offset && group_id < node_offset + nr_gparts);
-}
-
 /* Add a group to the hash table. */
 __attribute__((always_inline)) INLINE static void hashmap_add_group(
     const size_t group_id, const size_t group_offset, hashmap_t *map) {
@@ -763,7 +763,7 @@ void fof_search_pair_cells_foreign(struct space *s, struct cell *ci,
 
       /* Find the root of pi. */
       const size_t root_i =
-          fof_find_global(offset_i[i] - node_offset, group_index);
+          fof_find_global(offset_i[i] - node_offset, group_index, s->nr_gparts);
 
       for (size_t j = 0; j < count_j; j++) {
 
@@ -1157,7 +1157,7 @@ void fof_search_foreign_cells(struct space *s) {
       /* Set each particle's root and group properties found in the local FOF.*/
       for (int k = 0; k < local_cell->grav.count; k++) {
         const size_t root =
-            fof_find_global(offset[k] - node_offset, group_index);
+            fof_find_global(offset[k] - node_offset, group_index, nr_gparts);
         gparts[k].group_id = root;
         gparts[k].group_size = group_size[root - node_offset];
         gparts[k].group_mass = group_mass[root - node_offset];
