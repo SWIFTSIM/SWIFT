@@ -115,16 +115,6 @@ void fof_init(struct space *s) {
                      nr_local_gparts * sizeof(size_t)) != 0)
     error("Failed to allocate list of group size for FOF search.");
 
-  /* Allocate and initialise a group mass array. */
-  if (posix_memalign((void **)&s->fof_data.group_mass, 32,
-                     nr_local_gparts * sizeof(double)) != 0)
-    error("Failed to allocate list of group masses for FOF search.");
-
-  /* Allocate and initialise a group mass array. */
-  if (posix_memalign((void **)&s->fof_data.group_CoM, 32,
-                     nr_local_gparts * sizeof(struct fof_CoM)) != 0)
-    error("Failed to allocate list of group CoM for FOF search.");
-
   /* Set initial group index to particle offset into array and set default group
    * ID. */
   for (size_t i = 0; i < nr_local_gparts; i++) {
@@ -132,9 +122,6 @@ void fof_init(struct space *s) {
     s->gparts[i].group_id = default_id;
     s->fof_data.group_size[i] = 1;
   }
-
-  bzero(s->fof_data.group_mass, nr_local_gparts * sizeof(double));
-  bzero(s->fof_data.group_CoM, nr_local_gparts * sizeof(struct fof_CoM));
 
 #ifdef WITH_MPI
   /* Check size of linking length against the top-level cell dimensions. */
@@ -718,8 +705,6 @@ void fof_search_pair_cells_foreign(struct space *s, struct cell *ci,
   const double l_x2 = s->l_x2;
   size_t *group_index = s->fof_data.group_index;
   size_t *group_size = s->fof_data.group_size;
-  double *group_mass = s->fof_data.group_mass;
-  struct fof_CoM *group_CoM = s->fof_data.group_CoM;
 
   /* Make a list of particle offsets into the global gparts array. */
   size_t *const offset_i = group_index + (ptrdiff_t)(gparts_i - s->gparts);
@@ -815,21 +800,9 @@ void fof_search_pair_cells_foreign(struct space *s, struct cell *ci,
             (*group_links)[*link_count].group_i = root_i;
             (*group_links)[*link_count].group_i_size =
                 group_size[root_i - node_offset];
-            (*group_links)[*link_count].group_i_mass =
-                group_mass[root_i - node_offset];
-            (*group_links)[*link_count].group_i_CoM.x =
-                group_CoM[root_i - node_offset].x;
-            (*group_links)[*link_count].group_i_CoM.y =
-                group_CoM[root_i - node_offset].y;
-            (*group_links)[*link_count].group_i_CoM.z =
-                group_CoM[root_i - node_offset].z;
 
             (*group_links)[*link_count].group_j = pj->group_id;
             (*group_links)[*link_count].group_j_size = pj->group_size;
-            (*group_links)[*link_count].group_j_mass = pj->group_mass;
-            (*group_links)[*link_count].group_j_CoM.x = pj->group_CoM.x;
-            (*group_links)[*link_count].group_j_CoM.y = pj->group_CoM.y;
-            (*group_links)[*link_count].group_j_CoM.z = pj->group_CoM.z;
 
             (*link_count)++;
           }
@@ -1002,27 +975,11 @@ void fof_find_foreign_links_mapper(void *map_data, int num_elements,
           local_group_links[i].group_i;
         (*group_links)[*group_link_count].group_i_size =
           local_group_links[i].group_i_size;
-        (*group_links)[*group_link_count].group_i_mass =
-          local_group_links[i].group_i_mass;
-        (*group_links)[*group_link_count].group_i_CoM.x =
-          local_group_links[i].group_i_CoM.x;
-        (*group_links)[*group_link_count].group_i_CoM.y =
-          local_group_links[i].group_i_CoM.y;
-        (*group_links)[*group_link_count].group_i_CoM.z =
-          local_group_links[i].group_i_CoM.z;
 
         (*group_links)[*group_link_count].group_j =
           local_group_links[i].group_j;
         (*group_links)[*group_link_count].group_j_size =
           local_group_links[i].group_j_size;
-        (*group_links)[*group_link_count].group_j_mass =
-          local_group_links[i].group_j_mass;
-        (*group_links)[*group_link_count].group_j_CoM.x =
-          local_group_links[i].group_j_CoM.x;
-        (*group_links)[*group_link_count].group_j_CoM.y =
-          local_group_links[i].group_j_CoM.y;
-        (*group_links)[*group_link_count].group_j_CoM.z =
-          local_group_links[i].group_j_CoM.z;
 
         (*group_link_count) = (*group_link_count) + 1;
       }
@@ -1049,8 +1006,6 @@ void fof_search_foreign_cells(struct space *s) {
   struct engine *e = s->e;
   size_t *group_index = s->fof_data.group_index;
   size_t *group_size = s->fof_data.group_size;
-  double *group_mass = s->fof_data.group_mass;
-  struct fof_CoM *group_CoM = s->fof_data.group_CoM;
   const size_t nr_gparts = s->nr_gparts;
   const double dim[3] = {s->dim[0], s->dim[1], s->dim[2]};
   const double search_r2 = s->l_x2;
@@ -1160,10 +1115,6 @@ void fof_search_foreign_cells(struct space *s) {
             fof_find_global(offset[k] - node_offset, group_index, nr_gparts);
         gparts[k].group_id = root;
         gparts[k].group_size = group_size[root - node_offset];
-        gparts[k].group_mass = group_mass[root - node_offset];
-        gparts[k].group_CoM.x = group_CoM[root - node_offset].x;
-        gparts[k].group_CoM.y = group_CoM[root - node_offset].y;
-        gparts[k].group_CoM.z = group_CoM[root - node_offset].z;
       }
     }
   }
@@ -1292,8 +1243,6 @@ void fof_search_foreign_cells(struct space *s) {
    * union-find can be performed. */
   size_t *global_group_index = NULL, *global_group_id = NULL,
          *global_group_size = NULL;
-  double *global_group_mass = NULL;
-  struct fof_CoM *global_group_CoM = NULL;
   const int global_group_list_size = 2 * global_group_link_count;
   int group_count = 0;
 
@@ -1315,19 +1264,7 @@ void fof_search_foreign_cells(struct space *s) {
         "Error while allocating memory for the displacement in memory for the "
         "global group link list");
 
-  if (posix_memalign((void **)&global_group_mass, SWIFT_STRUCT_ALIGNMENT,
-                     global_group_list_size * sizeof(double)) != 0)
-    error(
-        "Error while allocating memory for the displacement in memory for the "
-        "global group link list");
-
-  if (posix_memalign((void **)&global_group_CoM, SWIFT_STRUCT_ALIGNMENT,
-                     global_group_list_size * sizeof(struct fof_CoM)) != 0)
-    error("Error while allocating memory for the global group CoM.");
-
   bzero(global_group_size, global_group_list_size * sizeof(size_t));
-  bzero(global_group_mass, global_group_list_size * sizeof(double));
-  bzero(global_group_CoM, global_group_list_size * sizeof(struct fof_CoM));
 
   /* Create hash table. */
   hashmap_t map;
@@ -1340,18 +1277,10 @@ void fof_search_foreign_cells(struct space *s) {
     size_t group_j = global_group_links[i].group_j;
 
     global_group_size[group_count] += global_group_links[i].group_i_size;
-    global_group_mass[group_count] += global_group_links[i].group_i_mass;
-    global_group_CoM[group_count].x += global_group_links[i].group_i_CoM.x;
-    global_group_CoM[group_count].y += global_group_links[i].group_i_CoM.y;
-    global_group_CoM[group_count].z += global_group_links[i].group_i_CoM.z;
     global_group_id[group_count] = group_i;
     hashmap_add_group(group_i, group_count++, &map);
       
     global_group_size[group_count] += global_group_links[i].group_j_size;
-    global_group_mass[group_count] += global_group_links[i].group_j_mass;
-    global_group_CoM[group_count].x += global_group_links[i].group_j_CoM.x;
-    global_group_CoM[group_count].y += global_group_links[i].group_j_CoM.y;
-    global_group_CoM[group_count].z += global_group_links[i].group_j_CoM.z;
     global_group_id[group_count] = group_j;
     hashmap_add_group(group_j, group_count++, &map);
   }
@@ -1435,10 +1364,6 @@ void fof_search_foreign_cells(struct space *s) {
     if (is_local(group_id, nr_gparts) && new_root != group_id) {
       group_index[group_id - node_offset] = new_root;
 
-      group_mass[group_id - node_offset] -= global_group_mass[i];
-      group_CoM[group_id - node_offset].x -= global_group_CoM[i].x;
-      group_CoM[group_id - node_offset].y -= global_group_CoM[i].y;
-      group_CoM[group_id - node_offset].z -= global_group_CoM[i].z;
       group_size[group_id - node_offset] -= orig_global_group_size[i];
 
     }
@@ -1446,42 +1371,8 @@ void fof_search_foreign_cells(struct space *s) {
     /* If the group linked to a local root update its size. */
     if (is_local(new_root, nr_gparts) && new_root != group_id) {
 
-      /* Calculate the CoM of each distinct group. */
-      double CoM_x_old = group_CoM[new_root - node_offset].x /
-                         group_mass[new_root - node_offset];
-      double CoM_y_old = group_CoM[new_root - node_offset].y /
-                         group_mass[new_root - node_offset];
-      double CoM_z_old = group_CoM[new_root - node_offset].z /
-                         group_mass[new_root - node_offset];
-      double CoM_x = global_group_CoM[i].x / global_group_mass[i];
-      double CoM_y = global_group_CoM[i].y / global_group_mass[i];
-      double CoM_z = global_group_CoM[i].z / global_group_mass[i];
-
-      /* Periodically wrap the CoM of the group being linked across the domain
-       * based upon the location of the other CoM location. */
-      if (CoM_x_old > 0.5 * dim[0] && CoM_x < 0.5 * dim[0])
-        CoM_x += dim[0];
-      else if (CoM_x_old <= 0.5 * dim[0] && CoM_x > 0.5 * dim[0])
-        CoM_x -= dim[0];
-
-      if (CoM_y_old > 0.5 * dim[1] && CoM_y < 0.5 * dim[1])
-        CoM_y += dim[1];
-      else if (CoM_y_old <= 0.5 * dim[1] && CoM_y > 0.5 * dim[1])
-        CoM_y -= dim[1];
-
-      if (CoM_z_old > 0.5 * dim[2] && CoM_z < 0.5 * dim[2])
-        CoM_z += dim[2];
-      else if (CoM_z_old <= 0.5 * dim[2] && CoM_z > 0.5 * dim[2])
-        CoM_z -= dim[2];
-
-      /* Update the CoM. */
-      group_CoM[new_root - node_offset].x += (CoM_x * global_group_mass[i]);
-      group_CoM[new_root - node_offset].y += (CoM_y * global_group_mass[i]);
-      group_CoM[new_root - node_offset].z += (CoM_z * global_group_mass[i]);
-
       /* Use group sizes before Union-Find */
       group_size[new_root - node_offset] += orig_global_group_size[i];
-      group_mass[new_root - node_offset] += global_group_mass[i];
     }
   }
 
@@ -1492,8 +1383,6 @@ void fof_search_foreign_cells(struct space *s) {
   free(global_group_links);
   free(global_group_index);
   free(global_group_size);
-  free(global_group_mass);
-  free(global_group_CoM);
   free(global_group_id);
   free(orig_global_group_size);
 
@@ -1516,10 +1405,7 @@ void fof_search_tree(struct space *s) {
 #endif
   struct gpart *gparts = s->gparts;
   size_t *group_index, *group_size;
-  double *group_mass;
-  struct fof_CoM *group_CoM;
   int num_groups = 0, num_parts_in_groups = 0, max_group_size = 0;
-  double max_group_mass = 0;
   ticks tic_total = getticks();
 
   char output_file_name[PARSER_MAX_LINE_SIZE];
@@ -1550,8 +1436,6 @@ void fof_search_tree(struct space *s) {
 
   group_index = s->fof_data.group_index;
   group_size = s->fof_data.group_size;
-  group_mass = s->fof_data.group_mass;
-  group_CoM = s->fof_data.group_CoM;
 
   ticks tic_calc_group_size = getticks();
 
@@ -1578,16 +1462,8 @@ void fof_search_tree(struct space *s) {
 
   size_t num_groups_local = 0, num_parts_in_groups_local = 0,
          max_group_size_local = 0;
-  double max_group_mass_local = 0;
 
   for (size_t i = 0; i < nr_gparts; i++) {
-
-    /* Find the group's CoM. */
-    if (group_size[i] >= min_group_size) {
-      group_CoM[i].x = group_CoM[i].x / group_mass[i];
-      group_CoM[i].y = group_CoM[i].y / group_mass[i];
-      group_CoM[i].z = group_CoM[i].z / group_mass[i];
-    }
 
     /* Find the total number of groups. */
     if (group_index[i] == i + node_offset && group_size[i] >= min_group_size)
@@ -1601,9 +1477,6 @@ void fof_search_tree(struct space *s) {
     if (group_size[i] > max_group_size_local)
       max_group_size_local = group_size[i];
 
-    /* Find the largest group by mass. */
-    if (group_mass[i] > max_group_mass_local)
-      max_group_mass_local = group_mass[i];
   }
 
   /* Sort the groups in descending order based upon size and re-label their IDs
@@ -1636,13 +1509,10 @@ void fof_search_tree(struct space *s) {
              MPI_SUM, 0, MPI_COMM_WORLD);
   MPI_Reduce(&max_group_size_local, &max_group_size, 1, MPI_INT, MPI_MAX, 0,
              MPI_COMM_WORLD);
-  MPI_Reduce(&max_group_mass_local, &max_group_mass, 1, MPI_DOUBLE, MPI_MAX, 0,
-             MPI_COMM_WORLD);
 #else
   num_groups = num_groups_local;
   num_parts_in_groups = num_parts_in_groups_local;
   max_group_size = max_group_size_local;
-  max_group_mass = max_group_mass_local;
 #endif /* WITH_MPI */
   s->fof_data.num_groups = num_groups;
 
@@ -1824,7 +1694,6 @@ void fof_search_tree(struct space *s) {
         s->e->total_nr_gparts - num_parts_in_groups);
 
     message("Largest group by size: %d", max_group_size);
-    message("Largest group by mass: %e", max_group_mass);
   }
   message("FOF search took: %.3f %s.",
           clocks_from_ticks(getticks() - tic_total), clocks_getunit());
@@ -1842,12 +1711,8 @@ void fof_dump_group_data(char *out_file, struct space *s, int num_groups,
 
   struct gpart *gparts = s->gparts;
   size_t *group_size = s->fof_data.group_size;
-  double *group_mass = s->fof_data.group_mass;
-  struct fof_CoM *group_CoM = s->fof_data.group_CoM;
-  const double dim[3] = {s->dim[0], s->dim[1], s->dim[2]};
 
-  fprintf(file, "# %8s %10s %12s %12s %12s %12s\n", "Group ID", "Group Size",
-          "Group Mass", "x CoM", "y CoM", "z CoM");
+  fprintf(file, "# %8s %10s\n", "Group ID", "Group Size");
   fprintf(file,
           "#-------------------------------------------------------------------"
           "-------------\n");
@@ -1856,18 +1721,9 @@ void fof_dump_group_data(char *out_file, struct space *s, int num_groups,
 
     const size_t group_offset = group_sizes[i].index;
 
-    /* Box wrap the CoM. */
-    const double CoM_x =
-      box_wrap(group_CoM[group_offset - node_offset].x, 0., dim[0]);
-    const double CoM_y =
-      box_wrap(group_CoM[group_offset - node_offset].y, 0., dim[1]);
-    const double CoM_z =
-      box_wrap(group_CoM[group_offset - node_offset].z, 0., dim[2]);
-
-    fprintf(file, "  %8zu %10zu %12e %12e %12e %12e\n",
+    fprintf(file, "  %8zu %10zu\n",
             gparts[group_offset - node_offset].group_id,
-            group_size[group_offset - node_offset],
-            group_mass[group_offset - node_offset], CoM_x, CoM_y, CoM_z);
+            group_size[group_offset - node_offset]);
   }
 
   fclose(file);
