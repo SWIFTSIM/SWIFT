@@ -25,19 +25,17 @@ import numpy as np
 import matplotlib.pyplot as plt
 
 # check if we have tqdm installed
-# try:
-from tqdm import tqdm
+try:
+  from tqdm import tqdm
+except ImportError:
+    raised_info = False
+    def tqdm(x, *args, **kwargs):
+        global raised_info
 
-# except ImportError:
-#    raised_info = False
-#    def tqdm(x, *args, **kwargs):
-#        global raised_info
-#
-#        if not raised_info:
-#            print("This script can display progress bars. Try `pip install tqdm`")
-#            raised_info = True
-#
-#        return xfrom tqdm import tqdm
+        if not raised_info:
+            print("This script can display progress bars. Try `pip install tqdm`")
+            raised_info = True
+        return x
 
 # Plot parameters
 params = {
