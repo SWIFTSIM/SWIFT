@@ -4472,6 +4472,10 @@ struct spart *cell_add_spart(struct engine *e, struct cell *const c) {
 
   /* Are there any extra particles left? */
   if (top->stars.count == top->stars.count_total - 1) {
+
+    /* Release the local lock before exiting. */
+    if (lock_unlock(&top->stars.star_formation_lock) != 0)
+      error("Failed to unlock the top-level cell.");
     message("We ran out of star particles!");
     atomic_inc(&e->forcerebuild);
     return NULL;
