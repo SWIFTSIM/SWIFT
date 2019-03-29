@@ -72,7 +72,7 @@ __attribute__((always_inline)) INLINE static void stars_first_init_spart(
   sp->birth_density = -1.f;
   sp->birth_time = -1.f;
   
-  // ALEXEI: specify birth time for running StellarEvolution test
+  // ALEXEI: specify birth time (or scale factor) for running StellarEvolution test
   sp->birth_time = 0.f;
   //sp->birth_scale_factor = 0.25;
 

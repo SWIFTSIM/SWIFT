@@ -71,6 +71,7 @@ runner_iact_nonsym_stars_density(
   /* Add contribution of pj to normalisation of kernel (TODO: IMPROVE COMMENT?)
    */
   si->density_weight_frac_normalisation_inv += wj / hydro_get_physical_density(pj,cosmo);
+  //message("id %llu norm %.5e weight %.5e rho %.5e", pj->id, si->density_weight_frac_normalisation_inv, wj, hydro_get_physical_density(pj,cosmo));
 
   /* Compute contribution to the density */
   si->rho_gas += mj * wi;
@@ -129,6 +130,7 @@ runner_iact_nonsym_stars_feedback(
   const float current_mass = hydro_get_mass(pj);
   float new_mass = current_mass + si->to_distribute.mass * density_weight_frac;
   hydro_set_mass(pj, new_mass);
+  //message("id %llu new current mass %.5e %.5e to_dist mass %.5e weight_frac %.5e norm %.5e", pj->id, new_mass, current_mass, si->to_distribute.mass, density_weight_frac, si->density_weight_frac_normalisation_inv);
 
   /* Decrease the mass of star particle */
   si->mass -= si->to_distribute.mass * density_weight_frac;

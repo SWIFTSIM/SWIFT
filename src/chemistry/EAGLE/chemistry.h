@@ -177,7 +177,7 @@ __attribute__((always_inline)) INLINE static void chemistry_first_init_part(
 }
 
 /**
- * @brief Sets the chemistry properties of the (x-)particles to a valid start
+ * @brief Sets the chemistry properties of the sparticles to a valid start
  * state.
  *
  * @param phys_const The physical constants in internal units.
@@ -188,11 +188,7 @@ __attribute__((always_inline)) INLINE static void chemistry_first_init_part(
  * @param xp Pointer to the extended particle data.
  */
 __attribute__((always_inline)) INLINE static void chemistry_first_init_spart(
-    const struct phys_const* restrict phys_const,
-    const struct unit_system* restrict us,
-    const struct cosmology* restrict cosmo,
-    const struct chemistry_global_data* data, struct spart* restrict sp,
-    struct xpart* restrict xp) {
+    const struct chemistry_global_data* data, struct spart* restrict sp) {
 
   /* Initialize mass fractions for total metals and each metal individually */
   if (data->initial_metal_mass_fraction_total != -1) {

@@ -3526,10 +3526,7 @@ void space_first_init_sparts_mapper(void *restrict map_data, int count,
   const struct space *restrict s = (struct space *)extra_data;
   const struct engine *e = s->e;
 
-  struct xpart *restrict xp = s->xparts;
   const struct chemistry_global_data *chemistry = e->chemistry;
-  const struct phys_const *phys_const = s->e->physical_constants;
-  const struct unit_system *us = s->e->internal_units;
 
 #ifdef SWIFT_DEBUG_CHECKS
   const ptrdiff_t delta = sp - s->sparts;
@@ -3578,7 +3575,7 @@ void space_first_init_sparts_mapper(void *restrict map_data, int count,
     stars_first_init_spart(&sp[k]);
     
     /* Also initialise the chemistry */
-    chemistry_first_init_spart(phys_const, us, cosmo, chemistry, &sp[k], &xp[k]);
+    chemistry_first_init_spart(chemistry, &sp[k]);
 
 #ifdef SWIFT_DEBUG_CHECKS
     if (sp[k].gpart && sp[k].gpart->id_or_neg_offset != -(k + delta))
