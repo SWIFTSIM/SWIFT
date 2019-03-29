@@ -1,0 +1,3 @@
+Initial conditions corresponding to the 50 Mpc volume
+of the EAGLE suite. The ICs only contain DM particles. The
+gas particles will be generated in SWIFT.

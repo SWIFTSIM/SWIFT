@@ -1007,13 +1007,17 @@ void engine_repartition(struct engine *e) {
 
   /* Partitioning requires copies of the particles, so we need to reduce the
    * memory in use to the minimum, we can free the sorting indices and the
-   * tasks as these will be regenerated at the next rebuild. */
+   * tasks as these will be regenerated at the next rebuild. Also the foreign
+   * particle arrays can go as these will be regenerated in proxy exchange. */
 
   /* Sorting indices. */
   if (e->s->cells_top != NULL) space_free_cells(e->s);
 
   /* Task arrays. */
   scheduler_free_tasks(&e->sched);
+
+  /* Foreign parts. */
+  space_free_foreign_parts(e->s);
 
   /* Now comes the tricky part: Exchange particles between all nodes.
      This is done in two steps, first allreducing a matrix of
@@ -2724,7 +2728,9 @@ void engine_skip_force_and_kick(struct engine *e) {
         t->type == task_type_star_formation ||
         t->type == task_type_extra_ghost ||
         t->subtype == task_subtype_gradient ||
-        t->subtype == task_subtype_stars_feedback)
+        t->subtype == task_subtype_stars_feedback ||
+        t->subtype == task_subtype_tend || t->subtype == task_subtype_rho ||
+        t->subtype == task_subtype_gpart)
       t->skip = 1;
   }
 
@@ -2932,6 +2938,7 @@ void engine_init_particles(struct engine *e, int flag_entropy_ICs,
 #endif
 
   scheduler_write_dependencies(&e->sched, e->verbose);
+  space_write_cell_hierarchy(e->s);
   if (e->nodeID == 0) scheduler_write_task_level(&e->sched);
 
   /* Run the 0th time-step */

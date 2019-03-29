@@ -512,6 +512,9 @@ struct cell {
     /*! Spin lock for various uses (#spart case). */
     swift_lock_type lock;
 
+    /*! Spin lock for star formation use. */
+    swift_lock_type star_formation_lock;
+
     /*! Nr of #spart in this cell. */
     int count;
 
@@ -687,9 +690,12 @@ struct cell {
   /*! The maximal depth of this cell and its progenies */
   char maxdepth;
 
-#ifdef SWIFT_DEBUG_CHECKS
+#if defined(SWIFT_DEBUG_CHECKS) || defined(SWIFT_CELL_GRAPH)
   /* Cell ID (for debugging) */
   int cellID;
+#endif
+
+#ifdef SWIFT_DEBUG_CHECKS
 
   /*! The list of tasks that have been executed on this cell */
   char tasks_executed[64];

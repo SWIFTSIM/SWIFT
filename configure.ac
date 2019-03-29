@@ -60,6 +60,10 @@ if test "x$ax_enable_debug" != "xno"; then
    AC_DEFINE([SWIFT_DEVELOP_MODE],1,[Enable developer code options])
 fi
 
+# C++ in GCC 6 and above has an issue with undefined the min() and max()
+# macros. This hack works around that.
+AC_DEFINE([_GLIBCXX_INCLUDE_NEXT_C_HEADERS],1,[Hack for min() and max() using g++ 6+])
+
 # Enable POSIX and platform extension preprocessor macros.
 AC_USE_SYSTEM_EXTENSIONS
 
@@ -270,6 +274,18 @@ if test "$enable_debugging_checks" = "yes"; then
    AC_DEFINE([SWIFT_DEBUG_CHECKS],1,[Enable expensive debugging])
 fi
 
+# Check if cell graph is on.
+AC_ARG_ENABLE([cell-graph],
+   [AS_HELP_STRING([--enable-cell-graph],
+     [Activate the cell graph @<:@yes/no@:>@]
+   )],
+   [enable_cell_graph="$enableval"],
+   [enable_cell_graph="no"]
+)
+if test "$enable_cell_graph" = "yes"; then
+   AC_DEFINE([SWIFT_CELL_GRAPH],1,[Enable cell graph])
+fi
+
 # Check if using our custom icbrtf is enalbled.
 AC_ARG_ENABLE([custom-icbrtf],
    [AS_HELP_STRING([--enable-custom-icbrtf],
@@ -292,6 +308,18 @@ AC_ARG_ENABLE([naive-interactions],
 )
 if test "$enable_naive_interactions" = "yes"; then
    AC_DEFINE([SWIFT_USE_NAIVE_INTERACTIONS],1,[Enable use of naive cell interaction functions])
+fi
+
+# Check whether we want to default to naive cell interactions (stars)
+AC_ARG_ENABLE([naive-interactions-stars],
+   [AS_HELP_STRING([--enable-naive-interactions-stars],
+     [Activate use of naive cell interaction functions for stars @<:@yes/no@:>@]
+   )],
+   [enable_naive_interactions_stars="$enableval"],
+   [enable_naive_interactions_stars="no"]
+)
+if test "$enable_naive_interactions_stars" = "yes"; then
+   AC_DEFINE([SWIFT_USE_NAIVE_INTERACTIONS_STARS],1,[Enable use of naive cell interaction functions for stars])
 fi
 
 # Check if gravity force checks are on for some particles.
@@ -1173,6 +1201,16 @@ if test "$have_armv7apmccntr"x = "yes"x; then
 	AC_DEFINE(HAVE_ARMV7A_PMCCNTR,1,[Define if you have enabled the PMCCNTR cycle counter on ARMv7a])
 fi
 
+# Check if we have native exp10 and exp10f functions. If not failback to our
+# implementations. On Apple/CLANG we have __exp10, so also check for that
+# if the compiler is clang.
+AC_CHECK_LIB([m],[exp10], [AC_DEFINE([HAVE_EXP10],1,[The exp10 function is present.])])
+AC_CHECK_LIB([m],[exp10f], [AC_DEFINE([HAVE_EXP10F],1,[The exp10f function is present.])])
+if test "$ax_cv_c_compiler_vendor" = "clang"; then
+      AC_CHECK_LIB([m],[__exp10], [AC_DEFINE([HAVE___EXP10],1,[The __exp10 function is present.])])
+      AC_CHECK_LIB([m],[__exp10f], [AC_DEFINE([HAVE___EXP10F],1,[The __exp10f function is present.])])
+fi
+
 # Add warning flags by default, if these can be used. Option =error adds
 # -Werror to GCC, clang and Intel.  Note do this last as compiler tests may
 # become errors, if that's an issue don't use CFLAGS for these, use an AC_SUBST().
@@ -1927,6 +1965,7 @@ AC_MSG_RESULT([
    Interaction debugging       : $enable_debug_interactions
    Stars interaction debugging : $enable_debug_interactions_stars
    Naive interactions          : $enable_naive_interactions
+   Naive stars interactions    : $enable_naive_interactions_stars
    Gravity checks              : $gravity_force_checks
    Custom icbrtf               : $enable_custom_icbrtf
 

@@ -3630,8 +3630,7 @@ void cell_set_super(struct cell *c, struct cell *super, const int with_hydro,
 void cell_set_super_hydro(struct cell *c, struct cell *super_hydro) {
 
   /* Are we in a cell with some kind of self/pair task ? */
-  if (super_hydro == NULL && (c->hydro.density != NULL || c->stars.count > 0))
-    super_hydro = c;
+  if (super_hydro == NULL && c->hydro.density != NULL) super_hydro = c;
 
   /* Set the super-cell */
   c->hydro.super = super_hydro;
@@ -4463,6 +4462,9 @@ struct spart *cell_add_spart(struct engine *e, struct cell *const c) {
     top = top->parent;
   }
 
+  /* Lock the top-level cell as we are going to operate on it */
+  lock_lock(&top->stars.star_formation_lock);
+
   /* Are there any extra particles left? */
   if (top->stars.count == top->stars.count_total - 1) {
     message("We ran out of star particles!");
@@ -4500,6 +4502,19 @@ struct spart *cell_add_spart(struct engine *e, struct cell *const c) {
    * current cell*/
   cell_recursively_shift_sparts(top, progeny, /* main_branch=*/1);
 
+  /* Make sure the gravity will be recomputed for this particle in the next step
+   */
+  struct cell *top2 = c;
+  while (top2->parent != NULL) {
+    top2->grav.ti_end_min = e->ti_current;
+    top2 = top2->parent;
+  }
+  top2->grav.ti_end_min = e->ti_current;
+
+  /* Release the lock */
+  if (lock_unlock(&top->stars.star_formation_lock) != 0)
+    error("Failed to unlock the top-level cell.");
+
   /* We now have an empty spart as the first particle in that cell */
   struct spart *sp = &c->stars.parts[0];
   bzero(sp, sizeof(struct spart));
@@ -4511,13 +4526,6 @@ struct spart *cell_add_spart(struct engine *e, struct cell *const c) {
 
   /* Set it to the current time-bin */
   sp->time_bin = e->min_active_bin;
-
-  top = c;
-  while (top->parent != NULL) {
-    top->grav.ti_end_min = e->ti_current;
-    top = top->parent;
-  }
-  top->grav.ti_end_min = e->ti_current;
 
 #ifdef SWIFT_DEBUG_CHECKS
   /* Specify it was drifted to this point */

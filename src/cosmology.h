@@ -93,6 +93,12 @@ struct cosmology {
   /*! Dark-energy equation of state at the current time */
   double w;
 
+  /*! Scale-factor at the previous time-step */
+  double a_old;
+
+  /*! Redshit at the previous time-step */
+  double z_old;
+
   /*------------------------------------------------------------------ */
 
   /*! Starting expansion factor */
