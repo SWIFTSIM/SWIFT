@@ -545,6 +545,7 @@ static void scheduler_splittask_hydro(struct task *t, struct scheduler *s) {
   /* Note this is not very clean as the scheduler should not really
      access the engine... */
   const int with_feedback = (s->space->e->policy & engine_policy_feedback);
+  const int with_stars = (s->space->e->policy & engine_policy_stars);
 
   /* Iterate on this task until we're done with it. */
   int redo = 1;
@@ -556,7 +557,7 @@ static void scheduler_splittask_hydro(struct task *t, struct scheduler *s) {
     /* Is this a non-empty self-task? */
     const int is_self =
         (t->type == task_type_self) && (t->ci != NULL) &&
-        ((t->ci->hydro.count > 0) || (with_feedback && t->ci->stars.count > 0));
+        ((t->ci->hydro.count > 0) || (with_stars && t->ci->stars.count > 0));
 
     /* Is this a non-empty pair-task? */
     const int is_pair =

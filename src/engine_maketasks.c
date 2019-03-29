@@ -2044,6 +2044,7 @@ void engine_make_hydroloop_tasks_mapper(void *map_data, int num_elements,
   struct engine *e = (struct engine *)extra_data;
   const int periodic = e->s->periodic;
   const int with_feedback = (e->policy & engine_policy_feedback);
+  const int with_stars = (e->policy & engine_policy_stars);
 
   struct space *s = e->s;
   struct scheduler *sched = &e->sched;
@@ -2066,7 +2067,7 @@ void engine_make_hydroloop_tasks_mapper(void *map_data, int num_elements,
     struct cell *ci = &cells[cid];
 
     /* Skip cells without hydro or star particles */
-    if ((ci->hydro.count == 0) && (!with_feedback || ci->stars.count == 0))
+    if ((ci->hydro.count == 0) && (!with_stars || ci->stars.count == 0))
       continue;
 
     /* If the cell is local build a self-interaction */
