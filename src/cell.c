@@ -3574,12 +3574,23 @@ int cell_unskip_stars_tasks(struct cell *c, struct scheduler *s) {
     const int cj_nodeID = nodeID;
 #endif
 
-    if ((ci_active && cj_nodeID == nodeID) ||
-        (cj_active && ci_nodeID == nodeID)) {
+    /* We only want to activate the task if the cell is active and is
+       going to update some gas on the *local* node */
+    if ((ci_nodeID == nodeID && cj_nodeID == nodeID) &&
+        (ci_active || cj_active)) {
+
       scheduler_activate(s, t);
 
-      /* Nothing more to do here, all drifts and sorts activated above */
+    } else if ((ci_nodeID == nodeID && cj_nodeID != nodeID) && (cj_active)) {
+
+      scheduler_activate(s, t);
+
+    } else if ((ci_nodeID != nodeID && cj_nodeID == nodeID) && (ci_active)) {
+
+      scheduler_activate(s, t);
     }
+
+    /* Nothing more to do here, all drifts and sorts activated above */
   }
 
   /* Unskip all the other task types. */
