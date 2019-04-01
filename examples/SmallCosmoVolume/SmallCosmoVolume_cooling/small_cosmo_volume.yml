@@ -16,7 +16,7 @@ Cosmology:                      # WMAP9 cosmology
 
 # Parameters governing the time integration
 TimeIntegration:
-  dt_min:     1e-6 
+  dt_min:     1e-8
   dt_max:     1e-2 
 
 # Parameters for the self-gravity scheme
@@ -67,6 +67,7 @@ LambdaCooling:
 EAGLECooling:
   dir_name:                 ./coolingtables/
   H_reion_z:               11.5
+  H_reion_eV_p_H:          2.0
   He_reion_z_centre:       3.5
   He_reion_z_sigma:        0.5
   He_reion_eV_p_H:         2.0
@@ -83,3 +84,18 @@ EAGLEChemistry:
   init_abundance_Magnesium: 0.0
   init_abundance_Silicon:   0.0
   init_abundance_Iron:      0.0
+
+# Cooling with Grackle 3.0
+GrackleCooling:
+  CloudyTable: CloudyData_UVB=HM2012.h5 # Name of the Cloudy Table (available on the grackle bitbucket repository)
+  WithUVbackground: 1                   # Enable or not the UV background
+  Redshift: -1                           # Redshift to use (-1 means time based redshift)
+  WithMetalCooling: 1                   # Enable or not the metal cooling
+  ProvideVolumetricHeatingRates: 0      # (optional) User provide volumetric heating rates
+  ProvideSpecificHeatingRates: 0        # (optional) User provide specific heating rates
+  SelfShieldingMethod: 0                # (optional) Grackle (<= 3) or Gear self shielding method
+  MaxSteps: 10000                       # (optional) Max number of step when computing the initial composition
+  ConvergenceLimit: 1e-2                # (optional) Convergence threshold (relative) for initial composition
+
+GearChemistry:
+  InitialMetallicity: 0.01295

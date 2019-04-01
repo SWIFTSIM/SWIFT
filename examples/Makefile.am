@@ -72,7 +72,7 @@ fof_mpi_CFLAGS = $(MYFLAGS) $(AM_CFLAGS) $(MPI_FLAGS) -DENGINE_POLICY="engine_po
 fof_mpi_LDADD =  ../src/.libs/libswiftsim_mpi.a $(MPI_LIBS) $(EXTRA_LIBS)
 
 # Scripts to generate ICs
-EXTRA_DIST = Cooling/CoolingBox/coolingBox.yml Cooling/CoolingBox/energy_plot.py Cooling/CoolingBox/makeIC.py Cooling/CoolingBox/run.sh \
+EXTRA_DIST = Cooling/CoolingBox/coolingBox.yml Cooling/CoolingBox/plotEnergy.py Cooling/CoolingBox/makeIC.py Cooling/CoolingBox/run.sh Cooling/CoolingBox/getGlass.sh \
              Cosmology/ConstantCosmoVolume/run.sh Cosmology/ConstantCosmoVolume/makeIC.py Cosmology/ConstantCosmoVolume/plotSolution.py Cosmology/ConstantCosmoVolume/constant_volume.yml \
              Cosmology/ZeldovichPancake_3D/makeIC.py Cosmology/ZeldovichPancake_3D/zeldovichPancake.yml Cosmology/ZeldovichPancake_3D/run.sh Cosmology/ZeldovichPancake_3D/plotSolution.py \
              EAGLE_low_z/EAGLE_6/eagle_6.yml EAGLE_low_z/EAGLE_6/getIC.sh EAGLE_low_z/EAGLE_6/README EAGLE_low_z/EAGLE_6/run.sh \

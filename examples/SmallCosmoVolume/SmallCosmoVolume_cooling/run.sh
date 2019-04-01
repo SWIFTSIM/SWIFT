@@ -7,6 +7,11 @@ then
     ./getIC.sh
 fi
 
+if [ ! -e CloudyData_UVB=HM2012.h5 ]
+then
+    ../../Cooling/getCoolingTable.sh 
+fi
+
 if [ ! -e coolingtables ]
 then
     echo "Fetching cooling tables for the small cosmological volume example..."

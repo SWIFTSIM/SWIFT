@@ -48,13 +48,16 @@ GrackleCooling:
   ProvideVolumetricHeatingRates: 0 # User provide volumetric heating rates
   ProvideSpecificHeatingRates: 0 # User provide specific heating rates
   SelfShieldingMethod: 0 # Grackle (<= 3) or Gear self shielding method
-  OutputMode: 1 # Write in output corresponding primordial chemistry mode
   MaxSteps: 1000
   ConvergenceLimit: 1e-2
   
+GearChemistry:
+  InitialMetallicity: 0.01295
+
 EAGLECooling:
   dir_name:                ./coolingtables/
   H_reion_z:               11.5
+  H_reion_eV_p_H:          2.0
   He_reion_z_center:       3.5
   He_reion_z_sigma:        0.5
   He_reion_eV_p_H:         2.0
@@ -71,5 +74,3 @@ EAGLEChemistry:             # Solar abundances
   init_abundance_Silicon:   6.825874e-4
   init_abundance_Iron:      1.1032152e-3
 
-GearChemistry:
-  InitialMetallicity: 0.01295

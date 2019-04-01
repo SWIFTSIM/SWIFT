@@ -380,6 +380,45 @@ __attribute__((always_inline)) INLINE static void hydro_set_physical_entropy(
 }
 
 /**
+ * @brief Sets the physical internal energy of a particle
+ *
+ * @param p The particle of interest.
+ * @param xp The extended particle data.
+ * @param cosmo Cosmology data structure
+ * @param u The physical internal energy
+ */
+__attribute__((always_inline)) INLINE static void
+hydro_set_physical_internal_energy(struct part *p, struct xpart *xp,
+                                   const struct cosmology *cosmo,
+                                   const float u) {
+
+  xp->u_full = u / cosmo->a_factor_internal_energy;
+}
+
+/**
+ * @brief Sets the drifted physical internal energy of a particle
+ *
+ * @param p The particle of interest.
+ * @param cosmo Cosmology data structure
+ * @param u The physical internal energy
+ */
+__attribute__((always_inline)) INLINE static void
+hydro_set_drifted_physical_internal_energy(struct part *p,
+                                           const struct cosmology *cosmo,
+                                           const float u) {
+
+  p->u = u / cosmo->a_factor_internal_energy;
+
+  /* Now recompute the extra quantities */
+
+  /* Compute the sound speed */
+  const float soundspeed = hydro_get_comoving_soundspeed(p);
+
+  /* Update variables. */
+  p->force.soundspeed = soundspeed;
+}
+
+/**
  * @brief Computes the hydro time-step of a given particle
  *
  * This function returns the time-step of a particle given its hydro-dynamical
@@ -693,11 +732,18 @@ __attribute__((always_inline)) INLINE static void hydro_prepare_force(
   const float sqrt_u = sqrtf(p->u);
   /* Calculate initial value of alpha dt before bounding */
   /* alpha_diff_dt is cosmology-less */
+  /* Evolution term: following Schaller+ 2015 */
   float alpha_diff_dt =
       hydro_props->diffusion.beta * p->h * p->diffusion.laplace_u / sqrt_u;
+  /* Decay term: not documented in Schaller+ 2015 but was present
+   * in the original EAGLE code and in Schaye+ 2015 */
+  alpha_diff_dt -=
+      (p->diffusion.alpha - hydro_props->diffusion.alpha_min) / tau;
 
-  float new_diffusion_alpha = p->diffusion.alpha + alpha_diff_dt * dt_alpha;
+  float new_diffusion_alpha = p->diffusion.alpha;
+  new_diffusion_alpha += alpha_diff_dt * dt_alpha;
 
+  /* Consistency checks to ensure min < alpha < max */
   if (new_diffusion_alpha > hydro_props->diffusion.alpha_max) {
     new_diffusion_alpha = hydro_props->diffusion.alpha_max;
   } else if (new_diffusion_alpha < hydro_props->diffusion.alpha_min) {

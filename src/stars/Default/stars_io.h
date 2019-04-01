@@ -60,10 +60,10 @@ INLINE static void stars_write_particles(const struct spart *sparts,
                                          struct io_props *list,
                                          int *num_fields) {
 
-  /* Say how much we want to read */
+  /* Say how much we want to write */
   *num_fields = 5;
 
-  /* List what we want to read */
+  /* List what we want to write */
   list[0] = io_make_output_field("Coordinates", DOUBLE, 3, UNIT_CONV_LENGTH,
                                  sparts, x);
   list[1] =
@@ -74,6 +74,23 @@ INLINE static void stars_write_particles(const struct spart *sparts,
                                  sparts, id);
   list[4] = io_make_output_field("SmoothingLength", FLOAT, 1, UNIT_CONV_LENGTH,
                                  sparts, h);
+
+#ifdef DEBUG_INTERACTIONS_STARS
+
+  list += *num_fields;
+  *num_fields += 4;
+
+  list[0] = io_make_output_field("Num_ngb_density", INT, 1, UNIT_CONV_NO_UNITS,
+                                 sparts, num_ngb_density);
+  list[1] = io_make_output_field("Num_ngb_force", INT, 1, UNIT_CONV_NO_UNITS,
+                                 sparts, num_ngb_force);
+  list[2] = io_make_output_field("Ids_ngb_density", LONGLONG,
+                                 MAX_NUM_OF_NEIGHBOURS_STARS,
+                                 UNIT_CONV_NO_UNITS, sparts, ids_ngbs_density);
+  list[3] = io_make_output_field("Ids_ngb_force", LONGLONG,
+                                 MAX_NUM_OF_NEIGHBOURS_STARS,
+                                 UNIT_CONV_NO_UNITS, sparts, ids_ngbs_force);
+#endif
 }
 
 /**
@@ -108,9 +125,6 @@ INLINE static void stars_props_init(struct stars_props *sp,
       (pow_dimension(delta_eta) - pow_dimension(sp->eta_neighbours)) *
       kernel_norm;
 
-  /* Maximal smoothing length */
-  sp->h_max = parser_get_opt_param_float(params, "Stars:h_max", p->h_max);
-
   /* Number of iterations to converge h */
   sp->max_smoothing_iterations = parser_get_opt_param_int(
       params, "Stars:max_ghost_iterations", p->max_smoothing_iterations);
@@ -143,9 +157,6 @@ INLINE static void stars_props_print(const struct stars_props *sp) {
       "(max|dlog(h)/dt|=%f).",
       pow_dimension(expf(sp->log_max_h_change)), sp->log_max_h_change);
 
-  if (sp->h_max != FLT_MAX)
-    message("Maximal smoothing length allowed: %.4f", sp->h_max);
-
   message("Maximal iterations in ghost task set to %d",
           sp->max_smoothing_iterations);
 }
@@ -161,7 +172,6 @@ INLINE static void stars_props_print_snapshot(hid_t h_grpstars,
   io_write_attribute_f(h_grpstars, "Kernel eta", sp->eta_neighbours);
   io_write_attribute_f(h_grpstars, "Smoothing length tolerance",
                        sp->h_tolerance);
-  io_write_attribute_f(h_grpstars, "Maximal smoothing length", sp->h_max);
   io_write_attribute_f(h_grpstars, "Volume log(max(delta h))",
                        sp->log_max_h_change);
   io_write_attribute_f(h_grpstars, "Volume max change time-step",

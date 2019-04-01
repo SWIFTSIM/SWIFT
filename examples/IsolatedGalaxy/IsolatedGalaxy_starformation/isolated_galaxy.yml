@@ -36,8 +36,9 @@ Statistics:
 # Parameters related to the initial conditions
 InitialConditions:
   file_name:               fid.hdf5 # The file to read
-  periodic:                    0    # Are we running with periodic ICs?
-
+  periodic:                0        # Are we running with periodic ICs?
+  stars_smoothing_length:  0.5
+  
 # Parameters for the hydrodynamics scheme
 SPH:
   resolution_eta:        1.2348   # Target smoothing length in units of the mean inter-particle separation (1.2348 == 48Ngbs with the cubic spline kernel).
@@ -49,6 +50,7 @@ SPH:
 EAGLECooling:
   dir_name:                ./coolingtables/  # Location of the Wiersma+08 cooling tables
   H_reion_z:               11.5              # Redshift of Hydrogen re-ionization
+  H_reion_eV_p_H:          2.0
   He_reion_z_centre:       3.5               # Redshift of the centre of the Helium re-ionization Gaussian
   He_reion_z_sigma:        0.5               # Spread in redshift of the  Helium re-ionization Gaussian
   He_reion_eV_p_H:         2.0               # Energy inject by Helium re-ionization in electron-volt per Hydrogen atom

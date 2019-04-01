@@ -56,6 +56,7 @@
 #include "multipole.h"
 #include "restart.h"
 #include "sort_part.h"
+#include "star_formation.h"
 #include "stars.h"
 #include "threadpool.h"
 #include "tools.h"
@@ -67,8 +68,6 @@ int space_subsize_pair_hydro = space_subsize_pair_hydro_default;
 int space_subsize_self_hydro = space_subsize_self_hydro_default;
 int space_subsize_pair_grav = space_subsize_pair_grav_default;
 int space_subsize_self_grav = space_subsize_self_grav_default;
-int space_subsize_pair_stars = space_subsize_pair_stars_default;
-int space_subsize_self_stars = space_subsize_self_stars_default;
 int space_subdepth_diff_grav = space_subdepth_diff_grav_default;
 int space_maxsize = space_maxsize_default;
 
@@ -83,7 +82,7 @@ int space_extra_gparts = space_extra_gparts_default;
 
 /*! Expected maximal number of strays received at a rebuild */
 int space_expected_max_nr_strays = space_expected_max_nr_strays_default;
-#ifdef SWIFT_DEBUG_CHECKS
+#if defined(SWIFT_DEBUG_CHECKS) || defined(SWIFT_CELL_GRAPH)
 int last_cell_id;
 #endif
 
@@ -216,8 +215,6 @@ void space_rebuild_recycle_mapper(void *map_data, int num_elements,
     c->hydro.ghost_in = NULL;
     c->hydro.ghost_out = NULL;
     c->hydro.ghost = NULL;
-    c->stars.ghost_in = NULL;
-    c->stars.ghost_out = NULL;
     c->stars.ghost = NULL;
     c->stars.density = NULL;
     c->stars.feedback = NULL;
@@ -225,8 +222,11 @@ void space_rebuild_recycle_mapper(void *map_data, int num_elements,
     c->kick2 = NULL;
     c->timestep = NULL;
     c->timestep_limiter = NULL;
-    c->end_force = NULL;
+    c->hydro.end_force = NULL;
     c->hydro.drift = NULL;
+    c->stars.drift = NULL;
+    c->stars.stars_in = NULL;
+    c->stars.stars_out = NULL;
     c->grav.drift = NULL;
     c->grav.drift_out = NULL;
     c->hydro.cooling = NULL;
@@ -234,6 +234,7 @@ void space_rebuild_recycle_mapper(void *map_data, int num_elements,
     c->grav.down_in = NULL;
     c->grav.down = NULL;
     c->grav.mesh = NULL;
+    c->grav.end_force = NULL;
     c->super = c;
     c->hydro.super = c;
     c->grav.super = c;
@@ -243,8 +244,9 @@ void space_rebuild_recycle_mapper(void *map_data, int num_elements,
     c->stars.parts = NULL;
     c->hydro.do_sub_sort = 0;
     c->stars.do_sub_sort = 0;
-    c->grav.do_sub_drift = 0;
     c->hydro.do_sub_drift = 0;
+    c->grav.do_sub_drift = 0;
+    c->stars.do_sub_drift = 0;
     c->hydro.do_sub_limiter = 0;
     c->hydro.do_limiter = 0;
     c->hydro.ti_end_min = -1;
@@ -252,7 +254,8 @@ void space_rebuild_recycle_mapper(void *map_data, int num_elements,
     c->grav.ti_end_min = -1;
     c->grav.ti_end_max = -1;
     c->stars.ti_end_min = -1;
-#ifdef SWIFT_DEBUG_CHECKS
+    c->stars.ti_end_max = -1;
+#if defined(SWIFT_DEBUG_CHECKS) || defined(SWIFT_CELL_GRAPH)
     c->cellID = 0;
 #endif
     if (s->with_self_gravity)
@@ -274,6 +277,7 @@ void space_rebuild_recycle_mapper(void *map_data, int num_elements,
     c->mpi.hydro.recv_rho = NULL;
     c->mpi.hydro.recv_gradient = NULL;
     c->mpi.grav.recv = NULL;
+    c->mpi.stars.recv = NULL;
     c->mpi.recv_ti = NULL;
     c->mpi.limiter.recv = NULL;
 
@@ -281,6 +285,7 @@ void space_rebuild_recycle_mapper(void *map_data, int num_elements,
     c->mpi.hydro.send_rho = NULL;
     c->mpi.hydro.send_gradient = NULL;
     c->mpi.grav.send = NULL;
+    c->mpi.stars.send = NULL;
     c->mpi.send_ti = NULL;
     c->mpi.limiter.send = NULL;
 #endif
@@ -289,6 +294,8 @@ void space_rebuild_recycle_mapper(void *map_data, int num_elements,
 
 /**
  * @brief Free up any allocated cells.
+ *
+ * @param s The #space.
  */
 void space_free_cells(struct space *s) {
 
@@ -301,6 +308,32 @@ void space_free_cells(struct space *s) {
   if (s->e->verbose)
     message("took %.3f %s.", clocks_from_ticks(getticks() - tic),
             clocks_getunit());
+}
+
+/**
+ * @brief Free any memory in use for foreign particles.
+ *
+ * @param s The #space.
+ */
+void space_free_foreign_parts(struct space *s) {
+
+#ifdef WITH_MPI
+  if (s->parts_foreign != NULL) {
+    free(s->parts_foreign);
+    s->size_parts_foreign = 0;
+    s->parts_foreign = NULL;
+  }
+  if (s->gparts_foreign != NULL) {
+    free(s->gparts_foreign);
+    s->size_gparts_foreign = 0;
+    s->gparts_foreign = NULL;
+  }
+  if (s->sparts_foreign != NULL) {
+    free(s->sparts_foreign);
+    s->size_sparts_foreign = 0;
+    s->sparts_foreign = NULL;
+  }
+#endif
 }
 
 /**
@@ -514,6 +547,8 @@ void space_regrid(struct space *s, int verbose) {
         error("Failed to init spinlock for multipoles.");
       if (lock_init(&s->cells_top[k].stars.lock) != 0)
         error("Failed to init spinlock for stars.");
+      if (lock_init(&s->cells_top[k].stars.star_formation_lock) != 0)
+        error("Failed to init spinlock for star formation.");
     }
 
     /* Set the cell location and sizes. */
@@ -539,6 +574,7 @@ void space_regrid(struct space *s, int verbose) {
           c->grav.super = c;
           c->hydro.ti_old_part = ti_current;
           c->grav.ti_old_part = ti_current;
+          c->stars.ti_old_part = ti_current;
           c->grav.ti_old_multipole = ti_current;
 #ifdef WITH_MPI
           c->mpi.tag = -1;
@@ -548,11 +584,13 @@ void space_regrid(struct space *s, int verbose) {
           c->mpi.hydro.send_xv = NULL;
           c->mpi.hydro.send_rho = NULL;
           c->mpi.hydro.send_gradient = NULL;
+          c->mpi.stars.send = NULL;
+          c->mpi.stars.recv = NULL;
           c->mpi.grav.recv = NULL;
           c->mpi.grav.send = NULL;
 #endif  // WITH_MPI
           if (s->with_self_gravity) c->grav.multipole = &s->multipoles_top[cid];
-#ifdef SWIFT_DEBUG_CHECKS
+#if defined(SWIFT_DEBUG_CHECKS) || defined(SWIFT_CELL_GRAPH)
           c->cellID = -last_cell_id;
           last_cell_id++;
 #endif
@@ -1526,8 +1564,9 @@ void space_rebuild(struct space *s, int repartitioned, int verbose) {
     c->hydro.ti_old_part = ti_current;
     c->grav.ti_old_part = ti_current;
     c->grav.ti_old_multipole = ti_current;
+    c->stars.ti_old_part = ti_current;
 
-#ifdef SWIFT_DEBUG_CHECKS
+#if defined(SWIFT_DEBUG_CHECKS) || defined(SWIFT_CELL_GRAPH)
     c->cellID = -last_cell_id;
     last_cell_id++;
 #endif
@@ -2592,7 +2631,8 @@ void space_split_recursive(struct space *s, struct cell *c,
                 ti_hydro_beg_max = 0;
   integertime_t ti_gravity_end_min = max_nr_timesteps, ti_gravity_end_max = 0,
                 ti_gravity_beg_max = 0;
-  integertime_t ti_stars_end_min = max_nr_timesteps;
+  integertime_t ti_stars_end_min = max_nr_timesteps, ti_stars_end_max = 0,
+                ti_stars_beg_max = 0;
   struct part *parts = c->hydro.parts;
   struct gpart *gparts = c->grav.parts;
   struct spart *sparts = c->stars.parts;
@@ -2685,6 +2725,7 @@ void space_split_recursive(struct space *s, struct cell *c,
       cp->hydro.ti_old_part = c->hydro.ti_old_part;
       cp->grav.ti_old_part = c->grav.ti_old_part;
       cp->grav.ti_old_multipole = c->grav.ti_old_multipole;
+      cp->stars.ti_old_part = c->stars.ti_old_part;
       cp->loc[0] = c->loc[0];
       cp->loc[1] = c->loc[1];
       cp->loc[2] = c->loc[2];
@@ -2712,12 +2753,13 @@ void space_split_recursive(struct space *s, struct cell *c,
       cp->stars.do_sub_sort = 0;
       cp->grav.do_sub_drift = 0;
       cp->hydro.do_sub_drift = 0;
+      cp->stars.do_sub_drift = 0;
       cp->hydro.do_sub_limiter = 0;
       cp->hydro.do_limiter = 0;
 #ifdef WITH_MPI
       cp->mpi.tag = -1;
 #endif  // WITH_MPI
-#ifdef SWIFT_DEBUG_CHECKS
+#if defined(SWIFT_DEBUG_CHECKS) || defined(SWIFT_CELL_GRAPH)
       cp->cellID = last_cell_id++;
 #endif
     }
@@ -2762,6 +2804,8 @@ void space_split_recursive(struct space *s, struct cell *c,
         ti_gravity_end_max = max(ti_gravity_end_max, cp->grav.ti_end_max);
         ti_gravity_beg_max = max(ti_gravity_beg_max, cp->grav.ti_beg_max);
         ti_stars_end_min = min(ti_stars_end_min, cp->stars.ti_end_min);
+        ti_stars_end_max = min(ti_stars_end_max, cp->stars.ti_end_max);
+        ti_stars_beg_max = min(ti_stars_beg_max, cp->stars.ti_beg_max);
 
         /* Increase the depth */
         if (cp->maxdepth > maxdepth) maxdepth = cp->maxdepth;
@@ -2990,6 +3034,8 @@ void space_split_recursive(struct space *s, struct cell *c,
   c->grav.ti_end_max = ti_gravity_end_max;
   c->grav.ti_beg_max = ti_gravity_beg_max;
   c->stars.ti_end_min = ti_stars_end_min;
+  c->stars.ti_end_max = ti_stars_end_max;
+  c->stars.ti_beg_max = ti_stars_beg_max;
   c->stars.h_max = stars_h_max;
   c->maxdepth = maxdepth;
 
@@ -3055,7 +3101,8 @@ void space_recycle(struct space *s, struct cell *c) {
 
   /* Clear the cell. */
   if (lock_destroy(&c->lock) != 0 || lock_destroy(&c->grav.plock) != 0 ||
-      lock_destroy(&c->mlock) != 0 || lock_destroy(&c->stars.lock) != 0)
+      lock_destroy(&c->mlock) != 0 || lock_destroy(&c->stars.lock) != 0 ||
+      lock_destroy(&c->stars.star_formation_lock))
     error("Failed to destroy spinlocks.");
 
   /* Lock the space. */
@@ -3104,7 +3151,8 @@ void space_recycle_list(struct space *s, struct cell *cell_list_begin,
   for (struct cell *c = cell_list_begin; c != NULL; c = c->next) {
     /* Clear the cell. */
     if (lock_destroy(&c->lock) != 0 || lock_destroy(&c->grav.plock) != 0 ||
-        lock_destroy(&c->mlock) != 0 || lock_destroy(&c->stars.lock) != 0)
+        lock_destroy(&c->mlock) != 0 || lock_destroy(&c->stars.lock) != 0 ||
+        lock_destroy(&c->stars.star_formation_lock))
       error("Failed to destroy spinlocks.");
 
     /* Count this cell. */
@@ -3204,7 +3252,8 @@ void space_getcells(struct space *s, int nr_cells, struct cell **cells) {
     if (lock_init(&cells[j]->hydro.lock) != 0 ||
         lock_init(&cells[j]->grav.plock) != 0 ||
         lock_init(&cells[j]->grav.mlock) != 0 ||
-        lock_init(&cells[j]->stars.lock) != 0)
+        lock_init(&cells[j]->stars.lock) != 0 ||
+        lock_init(&cells[j]->stars.star_formation_lock) != 0)
       error("Failed to initialize cell spinlocks.");
   }
 }
@@ -3357,6 +3406,7 @@ void space_first_init_parts_mapper(void *restrict map_data, int count,
   const int with_gravity = e->policy & engine_policy_self_gravity;
 
   const struct chemistry_global_data *chemistry = e->chemistry;
+  const struct star_formation *star_formation = e->star_formation;
   const struct cooling_function_data *cool_func = e->cooling_func;
 
   /* Check that the smoothing lengths are non-zero */
@@ -3402,6 +3452,10 @@ void space_first_init_parts_mapper(void *restrict map_data, int count,
 
     /* Also initialise the chemistry */
     chemistry_first_init_part(phys_const, us, cosmo, chemistry, &p[k], &xp[k]);
+
+    /* Also initialise the star formation */
+    star_formation_first_init_part(phys_const, us, cosmo, star_formation, &p[k],
+                                   &xp[k]);
 
     /* And the cooling */
     cooling_first_init_part(phys_const, us, cosmo, cool_func, &p[k], &xp[k]);
@@ -3509,6 +3563,8 @@ void space_first_init_sparts_mapper(void *restrict map_data, int count,
   const ptrdiff_t delta = sp - s->sparts;
 #endif
 
+  const float initial_h = s->initial_spart_h;
+
   const int with_feedback = (e->policy & engine_policy_feedback);
 
   const struct cosmology *cosmo = e->cosmology;
@@ -3520,6 +3576,11 @@ void space_first_init_sparts_mapper(void *restrict map_data, int count,
     sp[k].v[0] *= a_factor_vel;
     sp[k].v[1] *= a_factor_vel;
     sp[k].v[2] *= a_factor_vel;
+
+    /* Imposed smoothing length from parameter file */
+    if (initial_h != -1.f) {
+      sp[k].h = initial_h;
+    }
 
 #ifdef HYDRO_DIMENSION_2D
     sp[k].x[2] = 0.f;
@@ -3816,12 +3877,6 @@ void space_init(struct space *s, struct swift_params *params,
   space_subsize_self_grav =
       parser_get_opt_param_int(params, "Scheduler:cell_sub_size_self_grav",
                                space_subsize_self_grav_default);
-  space_subsize_pair_stars =
-      parser_get_opt_param_int(params, "Scheduler:cell_sub_size_pair_stars",
-                               space_subsize_pair_stars_default);
-  space_subsize_self_stars =
-      parser_get_opt_param_int(params, "Scheduler:cell_sub_size_self_stars",
-                               space_subsize_self_stars_default);
   space_splitsize = parser_get_opt_param_int(
       params, "Scheduler:cell_split_size", space_splitsize_default);
   space_subdepth_diff_grav =
@@ -3842,8 +3897,6 @@ void space_init(struct space *s, struct swift_params *params,
             space_subsize_pair_hydro, space_subsize_self_hydro);
     message("sub_size_pair_grav set to %d, sub_size_self_grav set to %d",
             space_subsize_pair_grav, space_subsize_self_grav);
-    message("sub_size_pair_stars set to %d, sub_size_self_stars set to %d",
-            space_subsize_pair_stars, space_subsize_self_stars);
   }
 
   /* Apply h scaling */
@@ -3852,6 +3905,13 @@ void space_init(struct space *s, struct swift_params *params,
   if (scaling != 1.0 && !dry_run) {
     message("Re-scaling smoothing lengths by a factor %e", scaling);
     for (size_t k = 0; k < Npart; k++) parts[k].h *= scaling;
+  }
+
+  /* Read in imposed star smoothing length */
+  s->initial_spart_h = parser_get_opt_param_float(
+      params, "InitialConditions:stars_smoothing_length", -1.f);
+  if (s->initial_spart_h != -1.f) {
+    message("Imposing a star smoothing length of %e", s->initial_spart_h);
   }
 
   /* Apply shift */
@@ -3935,7 +3995,7 @@ void space_init(struct space *s, struct swift_params *params,
   /* Init the space lock. */
   if (lock_init(&s->lock) != 0) error("Failed to create space spin-lock.");
 
-#ifdef SWIFT_DEBUG_CHECKS
+#if defined(SWIFT_DEBUG_CHECKS) || defined(SWIFT_CELL_GRAPH)
   last_cell_id = 1;
 #endif
 
@@ -4283,6 +4343,7 @@ void space_check_drift_point(struct space *s, integertime_t ti_drift,
   /* Recursively check all cells */
   space_map_cells_pre(s, 1, cell_check_part_drift_point, &ti_drift);
   space_map_cells_pre(s, 1, cell_check_gpart_drift_point, &ti_drift);
+  space_map_cells_pre(s, 1, cell_check_spart_drift_point, &ti_drift);
   if (multipole)
     space_map_cells_pre(s, 1, cell_check_multipole_drift_point, &ti_drift);
 #else
@@ -4508,5 +4569,87 @@ void space_struct_restore(struct space *s, FILE *stream) {
   /* Verify that everything is correct */
   part_verify_links(s->parts, s->gparts, s->sparts, s->nr_parts, s->nr_gparts,
                     s->nr_sparts, 1);
+#endif
+}
+
+#define root_cell_id 0
+/**
+ * @brief write a single cell in a csv file.
+ *
+ * @param s The #space.
+ * @param f The file to use (already open).
+ * @param c The current #cell.
+ */
+void space_write_cell(const struct space *s, FILE *f, const struct cell *c) {
+#ifdef SWIFT_CELL_GRAPH
+
+  if (c == NULL) return;
+
+  /* Get parent ID */
+  int parent = root_cell_id;
+  if (c->parent != NULL) parent = c->parent->cellID;
+
+  /* Get super ID */
+  char superID[100] = "";
+  if (c->super != NULL) sprintf(superID, "%i", c->super->cellID);
+
+  /* Get hydro super ID */
+  char hydro_superID[100] = "";
+  if (c->hydro.super != NULL)
+    sprintf(hydro_superID, "%i", c->hydro.super->cellID);
+
+  /* Write line for current cell */
+  fprintf(f, "%i,%i,%i,", c->cellID, parent, c->nodeID);
+  fprintf(f, "%i,%i,%i,%s,%s,%g,%g,%g,%g,%g,%g, ", c->hydro.count,
+          c->stars.count, c->grav.count, superID, hydro_superID, c->loc[0],
+          c->loc[1], c->loc[2], c->width[0], c->width[1], c->width[2]);
+  fprintf(f, "%g, %g\n", c->hydro.h_max, c->stars.h_max);
+
+  /* Write children */
+  for (int i = 0; i < 8; i++) {
+    space_write_cell(s, f, c->progeny[i]);
+  }
+#endif
+}
+
+/**
+ * @brief Write a csv file containing the cell hierarchy
+ *
+ * @param s The #space.
+ */
+void space_write_cell_hierarchy(const struct space *s) {
+
+#ifdef SWIFT_CELL_GRAPH
+
+  /* Open file */
+  char filename[200];
+  sprintf(filename, "cell_hierarchy_%04i.csv", engine_rank);
+  FILE *f = fopen(filename, "w");
+  if (f == NULL) error("Error opening task level file.");
+
+  const int root_id = root_cell_id;
+  /* Write header */
+  if (engine_rank == 0) {
+    fprintf(f, "name,parent,mpi_rank,");
+    fprintf(f,
+            "hydro_count,stars_count,gpart_count,super,hydro_super,"
+            "loc1,loc2,loc3,width1,width2,width3,");
+    fprintf(f, "hydro_h_max,stars_h_max\n");
+
+    /* Write root data */
+    fprintf(f, "%i, ,-1,", root_id);
+    fprintf(f, "%li,%li,%li, , , , , , , , , ", s->nr_parts, s->nr_sparts,
+            s->nr_gparts);
+    fprintf(f, ",\n");
+  }
+
+  /* Write all the top level cells (and their children) */
+  for (int i = 0; i < s->nr_cells; i++) {
+    struct cell *c = &s->cells_top[i];
+    if (c->nodeID == engine_rank) space_write_cell(s, f, c);
+  }
+
+  /* Cleanup */
+  fclose(f);
 #endif
 }

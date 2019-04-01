@@ -809,7 +809,7 @@ int main(int argc, char *argv[]) {
     timings[26] += getticks() - self_tic;
 
     /* Finally, give a gentle kick */
-    runner_do_end_force(&runner, main_cell, 0);
+    runner_do_end_hydro_force(&runner, main_cell, 0);
     const ticks toc = getticks();
     time += toc - tic;
 
@@ -960,7 +960,7 @@ int main(int argc, char *argv[]) {
   self_all_force(&runner, main_cell);
 
   /* Finally, give a gentle kick */
-  runner_do_end_force(&runner, main_cell, 0);
+  runner_do_end_hydro_force(&runner, main_cell, 0);
   // runner_do_kick2(&runner, main_cell, 0);
 
   const ticks toc = getticks();

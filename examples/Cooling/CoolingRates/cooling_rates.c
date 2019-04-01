@@ -16,7 +16,7 @@
  * along with this program.  If not, see <http://www.gnu.org/licenses/>.
  *
  ******************************************************************************/
-#include "../config.h"
+#include "config.h"
 
 /* Some standard headers. */
 #include <fenv.h>
@@ -166,6 +166,7 @@ int main(int argc, char **argv) {
   struct phys_const internal_const;
   struct cooling_function_data cooling;
   struct cosmology cosmo;
+  struct space s;
   const char *parametersFileName = "./cooling_rates.yml";
 
   /* Initialize CPU frequency, this also starts time. */
@@ -229,7 +230,7 @@ int main(int argc, char **argv) {
   // Init cooling
   cooling_init(params, &us, &internal_const, &cooling);
   cooling_print(&cooling);
-  cooling_update(&cosmo, &cooling);
+  cooling_update(&cosmo, &cooling, &s);
 
   // Calculate abundance ratios
   float abundance_ratio[(chemistry_element_count + 2)];

@@ -33,6 +33,8 @@ examples/*/*/*.mp4
 examples/*/*/*.txt
 examples/*/*/*.rst
 examples/*/*/*.hdf5
+examples/*/*/*.csv
+examples/*/*/*.dot
 examples/*/*/restart/*
 examples/*/*/used_parameters.yml
 examples/*/stf_output*
@@ -142,6 +144,8 @@ tests/testOutputList
 tests/testCbrt
 tests/testFormat.sh
 tests/testCooling
+tests/*.png
+tests/*.txt
 
 theory/latex/swift.pdf
 theory/SPH/Kernels/kernels.pdf

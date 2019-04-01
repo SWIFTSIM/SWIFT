@@ -24,9 +24,6 @@
  * @brief Cooling using the GRACKLE 3.0 library.
  */
 
-/* Config parameters. */
-#include "../config.h"
-
 /* Some standard headers. */
 #include <float.h>
 #include <math.h>
@@ -49,32 +46,37 @@
 #define GRACKLE_NPART 1
 #define GRACKLE_RANK 3
 
+/* prototype */
+static gr_float cooling_time(
+    const struct phys_const* restrict phys_const,
+    const struct unit_system* restrict us,
+    const struct cosmology* restrict cosmo,
+    const struct cooling_function_data* restrict cooling,
+    const struct part* restrict p, const struct xpart* restrict xp);
+static gr_float cooling_new_energy(
+    const struct phys_const* restrict phys_const,
+    const struct unit_system* restrict us,
+    const struct cosmology* restrict cosmo,
+    const struct cooling_function_data* restrict cooling,
+    const struct part* restrict p, struct xpart* restrict xp, double dt);
+
 /**
  * @brief Common operations performed on the cooling function at a
  * given time-step or redshift.
  *
  * @param cosmo The current cosmological model.
  * @param cooling The #cooling_function_data used in the run.
+ * @param s The #space containing all the particles.
  */
 INLINE static void cooling_update(const struct cosmology* cosmo,
-                                  struct cooling_function_data* cooling) {
-  // Add content if required.
+                                  struct cooling_function_data* cooling,
+                                  struct space* s) {
+  /* set current time */
+  if (cooling->redshift == -1)
+    cooling->units.a_value = cosmo->a;
+  else
+    cooling->units.a_value = 1. / (1. + cooling->redshift);
 }
-
-/* prototypes */
-static gr_float cooling_time(
-    const struct phys_const* restrict phys_const,
-    const struct unit_system* restrict us,
-    const struct cosmology* restrict cosmo,
-    const struct cooling_function_data* restrict cooling,
-    const struct part* restrict p, struct xpart* restrict xp);
-
-static double cooling_rate(const struct phys_const* restrict phys_const,
-                           const struct unit_system* restrict us,
-                           const struct cosmology* restrict cosmo,
-                           const struct cooling_function_data* restrict cooling,
-                           const struct part* restrict p,
-                           struct xpart* restrict xp, double dt);
 
 /**
  * @brief Print the chemical network
@@ -177,7 +179,7 @@ __attribute__((always_inline)) INLINE static void cooling_compute_equilibrium(
   const double alpha = 0.01;
   double dt =
       fabs(cooling_time(phys_const, us, cosmo, &cooling_tmp, &p_tmp, xp));
-  cooling_rate(phys_const, us, cosmo, &cooling_tmp, &p_tmp, xp, dt);
+  cooling_new_energy(phys_const, us, cosmo, &cooling_tmp, &p_tmp, xp, dt);
   dt = alpha *
        fabs(cooling_time(phys_const, us, cosmo, &cooling_tmp, &p_tmp, xp));
 
@@ -193,7 +195,7 @@ __attribute__((always_inline)) INLINE static void cooling_compute_equilibrium(
     old = *xp;
 
     /* update chemistry */
-    cooling_rate(phys_const, us, cosmo, &cooling_tmp, &p_tmp, xp, dt);
+    cooling_new_energy(phys_const, us, cosmo, &cooling_tmp, &p_tmp, xp, dt);
   } while (step < max_step && !cooling_converged(xp, &old, conv_limit));
 
   if (step == max_step)
@@ -290,7 +292,8 @@ __attribute__((always_inline)) INLINE static void cooling_print_backend(
   message("\tLength       = %g", cooling->units.length_units);
   message("\tDensity      = %g", cooling->units.density_units);
   message("\tTime         = %g", cooling->units.time_units);
-  message("\tScale Factor = %g", cooling->units.a_units);
+  message("\tScale Factor = %g (units: %g)", cooling->units.a_value,
+          cooling->units.a_units);
 }
 
 /**
@@ -487,7 +490,8 @@ __attribute__((always_inline)) INLINE static void cooling_print_backend(
   cooling_copy_from_grackle3(data, p, xp, rho);
 
 /**
- * @brief Compute the cooling rate and update the particle chemistry data
+ * @brief Compute the energy of a particle after dt and update the particle
+ * chemistry data
  *
  * @param phys_const The physical constants in internal units.
  * @param us The internal system of units.
@@ -498,25 +502,15 @@ __attribute__((always_inline)) INLINE static void cooling_print_backend(
  *
  * @return du / dt
  */
-__attribute__((always_inline)) INLINE static gr_float cooling_rate(
+__attribute__((always_inline)) INLINE static gr_float cooling_new_energy(
     const struct phys_const* restrict phys_const,
     const struct unit_system* restrict us,
     const struct cosmology* restrict cosmo,
     const struct cooling_function_data* restrict cooling,
     const struct part* restrict p, struct xpart* restrict xp, double dt) {
 
-  if (cosmo->Omega_m != 0. || cosmo->Omega_r != 0. || cosmo->Omega_k != 0. ||
-      cosmo->Omega_lambda != 0. || cosmo->Omega_b != 0.)
-    error(
-        "Check cosmology factors (physical vs. co-moving and drifted vs. "
-        "un-drifted)!");
-
   /* set current time */
   code_units units = cooling->units;
-  if (cooling->redshift == -1)
-    units.a_value = cosmo->a;
-  else
-    units.a_value = 1. / (1. + cooling->redshift);
 
   /* initialize data */
   grackle_field_data data;
@@ -535,8 +529,7 @@ __attribute__((always_inline)) INLINE static gr_float cooling_rate(
 
   /* general particle data */
   gr_float density = hydro_get_physical_density(p, cosmo);
-  const double energy_before =
-      hydro_get_drifted_physical_internal_energy(p, cosmo);
+  const float energy_before = hydro_get_physical_internal_energy(p, xp, cosmo);
   gr_float energy = energy_before;
 
   /* initialize density */
@@ -555,8 +548,7 @@ __attribute__((always_inline)) INLINE static gr_float cooling_rate(
 
   /* solve chemistry */
   chemistry_data chemistry_grackle = cooling->chemistry;
-  chemistry_data_storage chemistry_rates = grackle_rates;
-  if (local_solve_chemistry(&chemistry_grackle, &chemistry_rates, &units, &data,
+  if (local_solve_chemistry(&chemistry_grackle, &grackle_rates, &units, &data,
                             dt) == 0) {
     error("Error in solve_chemistry.");
   }
@@ -564,8 +556,7 @@ __attribute__((always_inline)) INLINE static gr_float cooling_rate(
   /* copy from grackle data to particle */
   cooling_copy_from_grackle(data, p, xp, density);
 
-  /* compute rate */
-  return (energy - energy_before) / dt;
+  return energy;
 }
 
 /**
@@ -582,14 +573,10 @@ __attribute__((always_inline)) INLINE static gr_float cooling_time(
     const struct unit_system* restrict us,
     const struct cosmology* restrict cosmo,
     const struct cooling_function_data* restrict cooling,
-    const struct part* restrict p, struct xpart* restrict xp) {
+    const struct part* restrict p, const struct xpart* restrict xp) {
 
   /* set current time */
   code_units units = cooling->units;
-  if (cooling->redshift == -1)
-    error("TODO time dependant redshift");
-  else
-    units.a_value = 1. / (1. + cooling->redshift);
 
   /* initialize data */
   grackle_field_data data;
@@ -607,7 +594,7 @@ __attribute__((always_inline)) INLINE static gr_float cooling_time(
 
   /* general particle data */
   const gr_float energy_before =
-      hydro_get_drifted_physical_internal_energy(p, cosmo);
+      hydro_get_physical_internal_energy(p, xp, cosmo);
   gr_float density = hydro_get_physical_density(p, cosmo);
   gr_float energy = energy_before;
 
@@ -664,25 +651,50 @@ __attribute__((always_inline)) INLINE static void cooling_cool_part(
     struct part* restrict p, struct xpart* restrict xp, double dt,
     double dt_therm) {
 
-  if (cosmo->Omega_m != 0. || cosmo->Omega_r != 0. || cosmo->Omega_k != 0. ||
-      cosmo->Omega_lambda != 0. || cosmo->Omega_b != 0.)
-    error(
-        "Check cosmology factors (physical vs. co-moving and drifted vs. "
-        "un-drifted)!");
-
+  /* Nothing to do here? */
   if (dt == 0.) return;
 
-  /* Current du_dt */
+  /* Current energy */
+  const float u_old = hydro_get_physical_internal_energy(p, xp, cosmo);
+
+  /* Current du_dt in physical coordinates (internal units) */
   const float hydro_du_dt = hydro_get_physical_internal_energy_dt(p, cosmo);
 
-  /* compute cooling rate */
-  const float du_dt = cooling_rate(phys_const, us, cosmo, cooling, p, xp, dt);
+  /* Calculate energy after dt */
+  gr_float u_new =
+      cooling_new_energy(phys_const, us, cosmo, cooling, p, xp, dt);
 
-  /* record energy lost */
-  xp->cooling_data.radiated_energy += -du_dt * dt * hydro_get_mass(p);
+  float delta_u = u_new - u_old + hydro_du_dt * dt_therm;
 
-  /* Update the internal energy */
-  hydro_set_physical_internal_energy_dt(p, cosmo, hydro_du_dt + du_dt);
+  /* We now need to check that we are not going to go below any of the limits */
+
+  /* First, check whether we may end up below the minimal energy after
+   * this step 1/2 kick + another 1/2 kick that could potentially be for
+   * a time-step twice as big. We hence check for 1.5 delta_u. */
+  if (u_old + 1.5 * delta_u < hydro_props->minimal_internal_energy) {
+    delta_u = (hydro_props->minimal_internal_energy - u_old) / 1.5;
+  }
+
+  /* Second, check whether the energy used in the prediction could get negative.
+   * We need to check for the 1/2 dt kick followed by a full time-step drift
+   * that could potentially be for a time-step twice as big. We hence check
+   * for 2.5 delta_u but this time against 0 energy not the minimum.
+   * To avoid numerical rounding bringing us below 0., we add a tiny tolerance.
+   */
+  const float rounding_tolerance = 1.0e-4;
+
+  if (u_old + 2.5 * delta_u < 0.) {
+    delta_u = -u_old / (2.5 + rounding_tolerance);
+  }
+
+  /* Turn this into a rate of change (including cosmology term) */
+  const float cooling_du_dt = delta_u / dt_therm;
+
+  /* Update the internal energy time derivative */
+  hydro_set_physical_internal_energy_dt(p, cosmo, cooling_du_dt);
+
+  /* Store the radiated energy */
+  xp->cooling_data.radiated_energy -= hydro_get_mass(p) * cooling_du_dt * dt;
 }
 
 static INLINE float cooling_get_temperature(
@@ -731,7 +743,7 @@ __attribute__((always_inline)) INLINE static void cooling_init_units(
   /* These are conversions from code units to cgs. */
 
   /* first cosmo */
-  cooling->units.a_units = 1.0;  // units for the expansion factor (1/1+zi)
+  cooling->units.a_units = 1.0;  // units for the expansion factor
   cooling->units.a_value = 1.0;
 
   /* We assume here all physical quantities to
@@ -740,12 +752,12 @@ __attribute__((always_inline)) INLINE static void cooling_init_units(
 
   /* then units */
   cooling->units.density_units =
-      us->UnitMass_in_cgs / pow(us->UnitLength_in_cgs, 3);
-  cooling->units.length_units = us->UnitLength_in_cgs;
-  cooling->units.time_units = us->UnitTime_in_cgs;
-  cooling->units.velocity_units = cooling->units.a_units *
-                                  cooling->units.length_units /
-                                  cooling->units.time_units;
+      units_cgs_conversion_factor(us, UNIT_CONV_DENSITY);
+  cooling->units.length_units =
+      units_cgs_conversion_factor(us, UNIT_CONV_LENGTH);
+  cooling->units.time_units = units_cgs_conversion_factor(us, UNIT_CONV_TIME);
+  cooling->units.velocity_units =
+      units_cgs_conversion_factor(us, UNIT_CONV_VELOCITY);
 }
 
 /**
@@ -824,6 +836,7 @@ __attribute__((always_inline)) INLINE static void cooling_init_backend(
   /* Set up the units system. */
   cooling_init_units(us, cooling);
 
+  /* Set up grackle */
   cooling_init_grackle(cooling);
 }
 

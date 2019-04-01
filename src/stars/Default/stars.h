@@ -66,6 +66,15 @@ __attribute__((always_inline)) INLINE static void stars_init_spart(
 }
 
 /**
+ * @brief Predict additional particle fields forward in time when drifting
+ *
+ * @param sp The particle
+ * @param dt_drift The drift time-step for positions.
+ */
+__attribute__((always_inline)) INLINE static void stars_predict_extra(
+    struct spart* restrict sp, float dt_drift) {}
+
+/**
  * @brief Sets the values to be predicted in the drifts to their values at a
  * kick time
  *
@@ -77,12 +86,13 @@ __attribute__((always_inline)) INLINE static void stars_reset_predicted_values(
 /**
  * @brief Finishes the calculation of (non-gravity) forces acting on stars
  *
- * Multiplies the forces and accelerations by the appropiate constants
- *
  * @param sp The particle to act upon
  */
-__attribute__((always_inline)) INLINE static void stars_end_force(
-    struct spart* sp) {}
+__attribute__((always_inline)) INLINE static void stars_end_feedback(
+    struct spart* sp) {
+
+  sp->feedback.h_dt *= sp->h * hydro_dimension_inv;
+}
 
 /**
  * @brief Kick the additional variables
@@ -146,5 +156,26 @@ __attribute__((always_inline)) INLINE static void stars_spart_has_no_neighbours(
 __attribute__((always_inline)) INLINE static void stars_evolve_spart(
     struct spart* restrict sp, const struct stars_props* stars_properties,
     const struct cosmology* cosmo) {}
+
+/**
+ * @brief Reset acceleration fields of a particle
+ *
+ * This is the equivalent of hydro_reset_acceleration.
+ * We do not compute the acceleration on star, therefore no need to use it.
+ *
+ * @param p The particle to act upon
+ */
+__attribute__((always_inline)) INLINE static void stars_reset_feedback(
+    struct spart* restrict p) {
+
+  /* Reset time derivative */
+  p->feedback.h_dt = 0.f;
+
+#ifdef DEBUG_INTERACTIONS_STARS
+  for (int i = 0; i < MAX_NUM_OF_NEIGHBOURS_STARS; ++i)
+    p->ids_ngbs_force[i] = -1;
+  p->num_ngb_force = 0;
+#endif
+}
 
 #endif /* SWIFT_DEFAULT_STARS_H */

@@ -21,6 +21,7 @@
 
 /* Local includes */
 #include "cosmology.h"
+#include "entropy_floor.h"
 #include "error.h"
 #include "hydro_properties.h"
 #include "parser.h"
@@ -53,7 +54,8 @@ INLINE static int star_formation_is_star_forming(
     const struct cosmology* cosmo,
     const struct hydro_props* restrict hydro_props,
     const struct unit_system* restrict us,
-    const struct cooling_function_data* restrict cooling) {
+    const struct cooling_function_data* restrict cooling,
+    const struct entropy_floor_properties* restrict entropy_floor) {
 
   return 0;
 }
@@ -156,5 +158,63 @@ INLINE static void starformation_print_backend(
 
   message("Star formation law is 'No Star Formation'");
 }
+
+/**
+ * @brief Finishes the density calculation.
+ *
+ * @param p The particle to act upon
+ * @param cd The global star_formation information.
+ * @param cosmo The current cosmological model.
+ */
+__attribute__((always_inline)) INLINE static void star_formation_end_density(
+    struct part* restrict p, const struct star_formation* cd,
+    const struct cosmology* cosmo) {}
+
+/**
+ * @brief Sets all particle fields to sensible values when the #part has 0 ngbs.
+ *
+ * @param p The particle to act upon
+ * @param xp The extended particle data to act upon
+ * @param cd #star_formation containing star_formation informations.
+ * @param cosmo The current cosmological model.
+ */
+__attribute__((always_inline)) INLINE static void
+star_formation_part_has_no_neighbours(struct part* restrict p,
+                                      struct xpart* restrict xp,
+                                      const struct star_formation* cd,
+                                      const struct cosmology* cosmo) {}
+
+/**
+ * @brief Sets the star_formation properties of the (x-)particles to a valid
+ * start state.
+ *
+ * Nothing to do here.
+ *
+ * @param phys_const The physical constant in internal units.
+ * @param us The unit system.
+ * @param cosmo The current cosmological model.
+ * @param data The global star_formation information used for this run.
+ * @param p Pointer to the particle data.
+ * @param xp Pointer to the extended particle data.
+ */
+__attribute__((always_inline)) INLINE static void
+star_formation_first_init_part(const struct phys_const* restrict phys_const,
+                               const struct unit_system* restrict us,
+                               const struct cosmology* restrict cosmo,
+                               const struct star_formation* data,
+                               const struct part* restrict p,
+                               struct xpart* restrict xp) {}
+
+/**
+ * @brief Sets the star_formation properties of the (x-)particles to a valid
+ * start state.
+ *
+ * Nothing to do here.
+ *
+ * @param p Pointer to the particle data.
+ * @param data The global star_formation information.
+ */
+__attribute__((always_inline)) INLINE static void star_formation_init_part(
+    struct part* restrict p, const struct star_formation* data) {}
 
 #endif /* SWIFT_NONE_STAR_FORMATION_H */
