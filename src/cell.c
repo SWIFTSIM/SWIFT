@@ -4283,34 +4283,23 @@ void cell_drift_multipole(struct cell *c, const struct engine *e) {
  * hierarchy.
  *
  * @param c The #cell to clean.
- * @param is_super Is this a super-cell?
  */
-void cell_clear_stars_sort_flags(struct cell *c, const int is_super) {
+void cell_clear_stars_sort_flags(struct cell *c) {
 
   /* Recurse if possible */
   if (c->split) {
     for (int k = 0; k < 8; k++)
-      if (c->progeny[k] != NULL)
-        cell_clear_stars_sort_flags(c->progeny[k], /*is_super=*/0);
-  }
-
-  /* Free the sorted array at the level where it was allocated */
-  if (is_super) {
-
-#ifdef SWIFT_DEBUG_CHECKS
-    if (c != c->hydro.super) error("Cell is not a super-cell!!!");
-#endif
-
-    for (int i = 0; i < 13; i++) {
-      free(c->stars.sort[i]);
-    }
+      if (c->progeny[k] != NULL) cell_clear_stars_sort_flags(c->progeny[k]);
   }
 
   /* Indicate that the cell is not sorted and cancel the pointer sorting arrays.
    */
   c->stars.sorted = 0;
   for (int i = 0; i < 13; i++) {
-    c->stars.sort[i] = NULL;
+    if (c->stars.sort[i] != NULL) {
+      free(c->stars.sort[i]);
+      c->stars.sort[i] = NULL;
+    }
   }
 }
 

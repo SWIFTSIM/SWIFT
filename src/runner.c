@@ -660,7 +660,8 @@ void runner_do_star_formation(struct runner *r, struct cell *c, int timer) {
    * re-compute them. */
   if (with_feedback && (c == c->hydro.super) &&
       (current_stars_count != c->stars.count)) {
-    cell_clear_stars_sort_flags(c, /*is_super=*/1);
+
+    cell_clear_stars_sort_flags(c);
     runner_do_stars_sort(r, c, 0x1FFF, /*cleanup=*/0, /*timer=*/0);
   }
 
