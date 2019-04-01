@@ -184,28 +184,28 @@ __attribute__((always_inline)) INLINE static void stars_reset_acceleration(
  * @param iz_low Pointer to index of metallicity bin to which the star belongs (to be calculated in this function)
  * @param iz_high Pointer to index of metallicity bin to above the star's metallicity (to be calculated in this function)
  * @param dz metallicity bin offset
- * @param log_metallicity log of star metallicity  (ALEXEI: check if this is base 10 !!!)
+ * @param log10_metallicity log10 of star metallicity 
  * @param star_properties stars_props data structure
  */
 inline static void determine_bin_yield_AGB(
-    int* iz_low, int* iz_high, float* dz, float log_metallicity,
+    int* iz_low, int* iz_high, float* dz, float log10_metallicity,
     const struct stars_props* restrict star_properties) {
 
-  if (log_metallicity > log_min_metallicity) {
+  if (log10_metallicity > log10_min_metallicity) {
     /* Find metallicity bin which contains the star's metallicity */
     int j;
     for (j = 0; j < star_properties->feedback.AGB_n_z - 1 &&
-                log_metallicity > star_properties->feedback.yield_AGB.metallicity[j + 1];
+                log10_metallicity > star_properties->feedback.yield_AGB.metallicity[j + 1];
          j++)
       ;
     *iz_low = j;
     *iz_high = *iz_low + 1;
 
     /* Compute offset */
-    if (log_metallicity >= star_properties->feedback.yield_AGB.metallicity[0] &&
-        log_metallicity <= star_properties->feedback.yield_AGB
+    if (log10_metallicity >= star_properties->feedback.yield_AGB.metallicity[0] &&
+        log10_metallicity <= star_properties->feedback.yield_AGB
                                .metallicity[star_properties->feedback.AGB_n_z - 1])
-      *dz = log_metallicity - star_properties->feedback.yield_AGB.metallicity[*iz_low];
+      *dz = log10_metallicity - star_properties->feedback.yield_AGB.metallicity[*iz_low];
     else
       *dz = 0;
 
@@ -230,29 +230,29 @@ inline static void determine_bin_yield_AGB(
  * @param iz_low Pointer to index of metallicity bin to which the star belongs (to be calculated in this function)
  * @param iz_high Pointer to index of metallicity bin to above the star's metallicity (to be calculated in this function)
  * @param dz metallicity bin offset
- * @param log_metallicity log of star metallicity  (ALEXEI: check if this is base 10 !!!)
+ * @param log10_metallicity log10 of star metallicity
  * @param star_properties stars_props data structure
  */
 inline static void determine_bin_yield_SNII(
-    int* iz_low, int* iz_high, float* dz, float log_metallicity,
+    int* iz_low, int* iz_high, float* dz, float log10_metallicity,
     const struct stars_props* restrict star_properties) {
 
-  if (log_metallicity > log_min_metallicity) {
+  if (log10_metallicity > log10_min_metallicity) {
     /* Find metallicity bin which contains the star's metallicity */
     int j;
     for (j = 0;
          j < star_properties->feedback.SNII_n_z - 1 &&
-         log_metallicity > star_properties->feedback.yield_SNII.metallicity[j + 1];
+         log10_metallicity > star_properties->feedback.yield_SNII.metallicity[j + 1];
          j++)
       ;
     *iz_low = j;
     *iz_high = *iz_low + 1;
 
     /* Compute offset */
-    if (log_metallicity >= star_properties->feedback.yield_SNII.metallicity[0] &&
-        log_metallicity <= star_properties->feedback.yield_SNII
+    if (log10_metallicity >= star_properties->feedback.yield_SNII.metallicity[0] &&
+        log10_metallicity <= star_properties->feedback.yield_SNII
                                .metallicity[star_properties->feedback.SNII_n_z - 1])
-      *dz = log_metallicity - star_properties->feedback.yield_SNII.metallicity[*iz_low];
+      *dz = log10_metallicity - star_properties->feedback.yield_SNII.metallicity[*iz_low];
     else
       *dz = 0;
 

@@ -24,18 +24,8 @@
 #include <gsl/gsl_spline.h>
 #include "chemistry.h"
 
-static const float log_min_metallicity = -20;
-static const int n_mass_bins =
-    200;  // temporary, put in correct value and move elsewhere.
-
-// Temporary, these functions need to be somewhere else
-inline static char *mystrdup(const char *s) {
-  char *p;
-
-  p = (char *)malloc(strlen(s) + 1);
-  strcpy(p, s);
-  return p;
-}
+static const float log10_min_metallicity = -20;
+static const int n_mass_bins = 200;  
 
 /**
  * @brief Returns the 1d index of element with 2d indices i,j
@@ -566,7 +556,7 @@ inline static void compute_yields(struct stars_props *restrict stars) {
       stars->feedback.yield_SNII.metallicity[i] =
           log10(stars->feedback.yield_SNII.metallicity[i]);
     } else {
-      stars->feedback.yield_SNII.metallicity[i] = log_min_metallicity;
+      stars->feedback.yield_SNII.metallicity[i] = log10_min_metallicity;
     }
   }
 
@@ -578,7 +568,7 @@ inline static void compute_yields(struct stars_props *restrict stars) {
     if (stars->feedback.yield_AGB.metallicity[i] > 0) {
       stars->feedback.yield_AGB.metallicity[i] = log10(stars->feedback.yield_AGB.metallicity[i]);
     } else {
-      stars->feedback.yield_AGB.metallicity[i] = log_min_metallicity;
+      stars->feedback.yield_AGB.metallicity[i] = log10_min_metallicity;
     }
   }
 

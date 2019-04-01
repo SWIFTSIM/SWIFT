@@ -492,7 +492,7 @@ void DO_SYM_PAIR1_STARS(struct runner *r, struct cell *ci, struct cell *cj,
         /* Hit or miss? */
         if (r2 < hjg2) {
 
-          IACT_STARS(r2, dx, hi, hj, spj, pi, cosmo, stars_properties, xpi, e->ti_current);
+          IACT_STARS(r2, dx, hj, hi, spj, pi, cosmo, stars_properties, xpi, e->ti_current);
         }
       } /* loop over the parts in ci. */
     }   /* loop over the parts in cj. */
