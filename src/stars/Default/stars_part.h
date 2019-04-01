@@ -77,6 +77,13 @@ struct spart {
 
   } feedback;
 
+  /* Not used in the default stars */
+  union {
+    double birth_time;
+
+    double birth_scale_factor;
+  };
+
   /*! Tracer structure */
   struct tracers_xpart_data tracers_data;
 
