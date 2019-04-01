@@ -358,8 +358,10 @@ void runner_do_stars_ghost(struct runner *r, struct cell *c, int timer) {
         // Calculate star age
 	double star_age, current_time_begin = -1;
 	if (with_cosmology) {
+	  if (sp->birth_scale_factor == -1) sp->birth_scale_factor = cosmo->a_begin;
 	  star_age = cosmology_get_delta_time_from_scale_factors(cosmo, sp->birth_scale_factor, cosmo->a);
 	} else {
+	  if (sp->birth_time == -1) sp->birth_time = 0;
           current_time_begin =
             get_integer_time_begin(e->ti_current - 1, sp->time_bin) *
             e->time_base + e->time_begin;

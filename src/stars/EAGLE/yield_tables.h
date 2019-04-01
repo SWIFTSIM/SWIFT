@@ -41,10 +41,12 @@ inline static char *mystrdup(const char *s) {
  * @brief Returns the 1d index of element with 2d indices i,j
  * from a flattened 2d array in row major order
  *
+ * ALEXEI: come up with different name or reconcile this function appearing in cooling
+ *
  * @param i, j Indices of element of interest
  * @param nx, ny Sizes of array dimensions
  */
-__attribute__((always_inline)) INLINE int row_major_index_2d(int i, int j,
+__attribute__((always_inline)) INLINE int feedback_row_major_index_2d(int i, int j,
                                                              int nx, int ny) {
   return i * ny + j;
 }
@@ -56,7 +58,7 @@ __attribute__((always_inline)) INLINE int row_major_index_2d(int i, int j,
  * @param i, j, k Indices of element of interest
  * @param nx, ny, nz Sizes of array dimensions
  */
-__attribute__((always_inline)) INLINE int row_major_index_3d(int i, int j,
+__attribute__((always_inline)) INLINE int feedback_row_major_index_3d(int i, int j,
                                                              int k, int nx,
                                                              int ny, int nz) {
   return i * ny * nz + j * nz + k;
@@ -214,12 +216,12 @@ inline static void read_yield_tables(struct stars_props *restrict stars) {
 
     /* Flatten the temporary tables that were read, store in stars_props */
     for (k = 0; k < stars->feedback.SNII_n_mass; k++) {
-      index = row_major_index_2d(i, k, stars->feedback.SNII_n_z, stars->feedback.SNII_n_mass);
+      index = feedback_row_major_index_2d(i, k, stars->feedback.SNII_n_z, stars->feedback.SNII_n_mass);
       stars->feedback.yield_SNII.ejecta[index] = temp_ejecta_SNII[k];
       stars->feedback.yield_SNII.total_metals[index] = tempmet1[k];
 
       for (j = 0; j < stars->feedback.SNII_n_elements; j++) {
-        index = row_major_index_3d(i, j, k, stars->feedback.SNII_n_z,
+        index = feedback_row_major_index_3d(i, j, k, stars->feedback.SNII_n_z,
                                    stars->feedback.SNII_n_elements, stars->feedback.SNII_n_mass);
         stars->feedback.yield_SNII.yield[index] = temp_yield_SNII[j][k];
       }
@@ -309,12 +311,12 @@ inline static void read_yield_tables(struct stars_props *restrict stars) {
 
     /* Flatten the temporary tables that were read, store in stars_props */
     for (k = 0; k < stars->feedback.AGB_n_mass; k++) {
-      index = row_major_index_2d(i, k, stars->feedback.AGB_n_z, stars->feedback.AGB_n_mass);
+      index = feedback_row_major_index_2d(i, k, stars->feedback.AGB_n_z, stars->feedback.AGB_n_mass);
       stars->feedback.yield_AGB.ejecta[index] = temp_ejecta_AGB[k];
       stars->feedback.yield_AGB.total_metals[index] = tempmet2[k];
 
       for (j = 0; j < stars->feedback.AGB_n_elements; j++) {
-        index = row_major_index_3d(i, j, k, stars->feedback.AGB_n_z,
+        index = feedback_row_major_index_3d(i, j, k, stars->feedback.AGB_n_z,
                                    stars->feedback.AGB_n_elements, stars->feedback.AGB_n_mass);
         stars->feedback.yield_AGB.yield[index] = temp_yield_AGB[j][k];
       }
@@ -601,7 +603,7 @@ inline static void compute_yields(struct stars_props *restrict stars) {
                           stars->feedback.SNII_element_names, stars->feedback.SNII_n_elements);
     for (int i = 0; i < stars->feedback.SNII_n_z; i++) {
       for (int j = 0; j < stars->feedback.SNII_n_mass; j++) {
-        index = row_major_index_3d(i, element_index, j, stars->feedback.SNII_n_z,
+        index = feedback_row_major_index_3d(i, element_index, j, stars->feedback.SNII_n_z,
                                    stars->feedback.SNII_n_elements, stars->feedback.SNII_n_mass);
         SNII_yield[j] = stars->feedback.yield_SNII.yield[index] *
                         exp(M_LN10 * (-stars->feedback.yield_SNII.mass[j]));
@@ -619,7 +621,7 @@ inline static void compute_yields(struct stars_props *restrict stars) {
                              stars->feedback.SNII_n_mass, stars->feedback.yield_mass_bins[k]);
         }
 
-        index = row_major_index_3d(i, elem, k, stars->feedback.SNII_n_z,
+        index = feedback_row_major_index_3d(i, elem, k, stars->feedback.SNII_n_z,
                                    chemistry_element_count, n_mass_bins);
         stars->feedback.yield_SNII.yield_IMF_resampled[index] =
             exp(M_LN10 * stars->feedback.yield_mass_bins[k]) * result;
@@ -628,8 +630,8 @@ inline static void compute_yields(struct stars_props *restrict stars) {
 
     for (int i = 0; i < stars->feedback.SNII_n_z; i++) {
       for (int k = 0; k < n_mass_bins; k++) {
-        index_2d = row_major_index_2d(i, k, stars->feedback.SNII_n_z, n_mass_bins);
-        index = row_major_index_3d(i, elem, k, stars->feedback.SNII_n_z,
+        index_2d = feedback_row_major_index_2d(i, k, stars->feedback.SNII_n_z, n_mass_bins);
+        index = feedback_row_major_index_3d(i, elem, k, stars->feedback.SNII_n_z,
                                    chemistry_element_count, n_mass_bins);
         if (strcmp(chemistry_get_element_name(elem), "Hydrogen") != 0 ||
             strcmp(chemistry_get_element_name(elem), "Helium") != 0) {
@@ -652,7 +654,7 @@ inline static void compute_yields(struct stars_props *restrict stars) {
     } else {
       for (int i = 0; i < stars->feedback.AGB_n_z; i++) {
         for (int j = 0; j < stars->feedback.AGB_n_mass; j++) {
-          index = row_major_index_3d(i, element_index, j, stars->feedback.AGB_n_z,
+          index = feedback_row_major_index_3d(i, element_index, j, stars->feedback.AGB_n_z,
                                      stars->feedback.AGB_n_elements, stars->feedback.AGB_n_mass);
           AGB_yield[j] = stars->feedback.yield_AGB.yield[index] *
                          exp(M_LN10 * (-stars->feedback.yield_AGB.mass[j]));
@@ -669,7 +671,7 @@ inline static void compute_yields(struct stars_props *restrict stars) {
                 interpolate_1D_non_uniform(stars->feedback.yield_AGB.mass, AGB_yield,
                                stars->feedback.AGB_n_mass, stars->feedback.yield_mass_bins[j]);
 
-          index = row_major_index_3d(i, elem, j, stars->feedback.AGB_n_z,
+          index = feedback_row_major_index_3d(i, elem, j, stars->feedback.AGB_n_z,
                                      chemistry_element_count, n_mass_bins);
           stars->feedback.yield_AGB.yield_IMF_resampled[index] =
               exp(M_LN10 * stars->feedback.yield_mass_bins[j]) * result;
@@ -704,7 +706,7 @@ inline static void compute_ejecta(struct stars_props *restrict stars) {
   /* Resample SNII ejecta */
   for (int i = 0; i < stars->feedback.SNII_n_z; i++) {
     for (int k = 0; k < stars->feedback.SNII_n_mass; k++) {
-      index = row_major_index_2d(i, k, stars->feedback.SNII_n_z, stars->feedback.SNII_n_mass);
+      index = feedback_row_major_index_2d(i, k, stars->feedback.SNII_n_z, stars->feedback.SNII_n_mass);
       SNII_ejecta[k] = stars->feedback.yield_SNII.ejecta[index] *
                       exp(M_LN10 * (-stars->feedback.yield_SNII.mass[k]));
     }
@@ -722,7 +724,7 @@ inline static void compute_ejecta(struct stars_props *restrict stars) {
         result = gsl_spline_eval(SNII_spline_ptr, stars->feedback.yield_mass_bins[k],
                                  accel_ptr);
 
-      index = row_major_index_2d(i, k, stars->feedback.SNII_n_z, n_mass_bins);
+      index = feedback_row_major_index_2d(i, k, stars->feedback.SNII_n_z, n_mass_bins);
       stars->feedback.yield_SNII.ejecta_IMF_resampled[index] =
           exp(M_LN10 * stars->feedback.yield_mass_bins[k]) * result;
     }
@@ -731,7 +733,7 @@ inline static void compute_ejecta(struct stars_props *restrict stars) {
   /* resample SNII total metals released */
   for (int i = 0; i < stars->feedback.SNII_n_z; i++) {
     for (int k = 0; k < stars->feedback.SNII_n_mass; k++) {
-      index = row_major_index_2d(i, k, stars->feedback.SNII_n_z, stars->feedback.SNII_n_mass);
+      index = feedback_row_major_index_2d(i, k, stars->feedback.SNII_n_z, stars->feedback.SNII_n_mass);
       SNII_ejecta[k] = stars->feedback.yield_SNII.total_metals[index] *
                       exp(M_LN10 * (-stars->feedback.yield_SNII.mass[k]));
     }
@@ -749,7 +751,7 @@ inline static void compute_ejecta(struct stars_props *restrict stars) {
         result = gsl_spline_eval(SNII_spline_ptr, stars->feedback.yield_mass_bins[k],
                                  accel_ptr);
 
-      index = row_major_index_2d(i, k, stars->feedback.SNII_n_z, n_mass_bins);
+      index = feedback_row_major_index_2d(i, k, stars->feedback.SNII_n_z, n_mass_bins);
       stars->feedback.yield_SNII.total_metals_IMF_resampled[index] =
           exp(M_LN10 * stars->feedback.yield_mass_bins[k]) * result;
     }
@@ -762,7 +764,7 @@ inline static void compute_ejecta(struct stars_props *restrict stars) {
 
   for (int i = 0; i < stars->feedback.AGB_n_z; i++) {
     for (int k = 0; k < stars->feedback.AGB_n_mass; k++) {
-      index = row_major_index_2d(i, k, stars->feedback.AGB_n_z, stars->feedback.AGB_n_mass);
+      index = feedback_row_major_index_2d(i, k, stars->feedback.AGB_n_z, stars->feedback.AGB_n_mass);
       AGB_ejecta[k] = stars->feedback.yield_AGB.ejecta[index] /
                      exp(M_LN10 * stars->feedback.yield_AGB.mass[k]);
     }
@@ -780,7 +782,7 @@ inline static void compute_ejecta(struct stars_props *restrict stars) {
         result = gsl_spline_eval(AGB_spline_ptr, stars->feedback.yield_mass_bins[k],
                                  accel_ptr);
 
-      index = row_major_index_2d(i, k, stars->feedback.AGB_n_z, n_mass_bins);
+      index = feedback_row_major_index_2d(i, k, stars->feedback.AGB_n_z, n_mass_bins);
       stars->feedback.yield_AGB.ejecta_IMF_resampled[index] =
           exp(M_LN10 * stars->feedback.yield_mass_bins[k]) * result;
     }
@@ -788,7 +790,7 @@ inline static void compute_ejecta(struct stars_props *restrict stars) {
 
   for (int i = 0; i < stars->feedback.AGB_n_z; i++) {
     for (int k = 0; k < stars->feedback.AGB_n_mass; k++) {
-      index = row_major_index_2d(i, k, stars->feedback.AGB_n_z, stars->feedback.AGB_n_mass);
+      index = feedback_row_major_index_2d(i, k, stars->feedback.AGB_n_z, stars->feedback.AGB_n_mass);
       AGB_ejecta[k] = stars->feedback.yield_AGB.total_metals[index] *
                      exp(M_LN10 * (-stars->feedback.yield_AGB.mass[k]));
     }
@@ -806,7 +808,7 @@ inline static void compute_ejecta(struct stars_props *restrict stars) {
         result = gsl_spline_eval(AGB_spline_ptr, stars->feedback.yield_mass_bins[k],
                                  accel_ptr);
 
-      index = row_major_index_2d(i, k, stars->feedback.AGB_n_z, n_mass_bins);
+      index = feedback_row_major_index_2d(i, k, stars->feedback.AGB_n_z, n_mass_bins);
       stars->feedback.yield_AGB.total_metals_IMF_resampled[index] =
           exp(M_LN10 * stars->feedback.yield_mass_bins[k]) * result;
     }

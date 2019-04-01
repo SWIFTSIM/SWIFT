@@ -20,13 +20,13 @@ TimeIntegration:
   time_begin: 0     # The starting time of the simulation (in internal units).
   time_end:   5e-3  # The end time of the simulation (in internal units).
   dt_min:     1e-12 # The minimal time-step size of the simulation (in internal units).
-  dt_max:     5e-7  # The maximal time-step size of the simulation (in internal units).
+  dt_max:     5e-6  # The maximal time-step size of the simulation (in internal units).
 
 # Parameters governing the snapshots
 Snapshots:
   basename:            stellar_evolution # Common part of the name of output files
   time_first:          0.       # Time of the first output (in internal units)
-  delta_time:          1.e-5     # Time difference between consecutive outputs without cosmology (internal units)
+  delta_time:          1.e-4     # Time difference between consecutive outputs without cosmology (internal units)
   #delta_time:          1.02     # Time difference between consecutive outputs with cosmology (internal units)
   scale_factor_first:  0.5
   compression:         4
@@ -34,7 +34,7 @@ Snapshots:
 # Parameters governing the conserved quantities statistics
 Statistics:
   time_first:          0.
-  delta_time:          1.e-5  # non cosmology time between statistics output
+  delta_time:          1.e-4  # non cosmology time between statistics output
   #delta_time:          1.02  # cosmology time between statistics output
   scale_factor_first:  0.5
 
@@ -60,11 +60,18 @@ Gravity:
   comoving_softening: 0.001
   max_physical_softening: 0.001
 
+# Parameters controlling restarts
+Restarts:
+  enable:             1          # (Optional) whether to enable dumping restarts at fixed intervals.
+  subdir:             restart    # (Optional) name of subdirectory for restart files.
+  basename:           swift      # (Optional) prefix used in naming restart files.
+  delta_hours:        0.008333        # (Optional) decimal hours between dumps of restart files.
+
 Stars:
   feedback_timescale: 1.e-4
 
 EAGLEChemistry:              # Solar abundances
-  init_abundance_metal:      0.08
+  init_abundance_metal:      0.01
   init_abundance_Hydrogen:   0.752
   init_abundance_Helium:     0.248
   init_abundance_Carbon:     0.0
