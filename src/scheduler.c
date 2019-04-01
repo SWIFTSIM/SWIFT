@@ -46,6 +46,7 @@
 #include "error.h"
 #include "intrinsics.h"
 #include "kernel_hydro.h"
+#include "memuse.h"
 #include "queue.h"
 #include "sort_part.h"
 #include "space.h"
@@ -67,9 +68,10 @@ static void scheduler_extend_unlocks(struct scheduler *s) {
 
   /* Allocate the new buffer. */
   const int size_unlocks_new = s->size_unlocks * 2;
-  struct task **unlocks_new =
-      (struct task **)malloc(sizeof(struct task *) * size_unlocks_new);
-  int *unlock_ind_new = (int *)malloc(sizeof(int) * size_unlocks_new);
+  struct task **unlocks_new = (struct task **)swift_malloc(
+      "unlocks", sizeof(struct task *) * size_unlocks_new);
+  int *unlock_ind_new =
+      (int *)swift_malloc("unlock_ind", sizeof(int) * size_unlocks_new);
   if (unlocks_new == NULL || unlock_ind_new == NULL)
     error("Failed to re-allocate unlocks.");
 
@@ -80,8 +82,8 @@ static void scheduler_extend_unlocks(struct scheduler *s) {
   /* Copy the buffers. */
   memcpy(unlocks_new, s->unlocks, sizeof(struct task *) * s->size_unlocks);
   memcpy(unlock_ind_new, s->unlock_ind, sizeof(int) * s->size_unlocks);
-  free(s->unlocks);
-  free(s->unlock_ind);
+  swift_free("unlocks", s->unlocks);
+  swift_free("unlock_ind", s->unlock_ind);
   s->unlocks = unlocks_new;
   s->unlock_ind = unlock_ind_new;
 
@@ -1393,7 +1395,8 @@ void scheduler_set_unlocks(struct scheduler *s) {
 
   /* Store the counts for each task. */
   short int *counts;
-  if ((counts = (short int *)malloc(sizeof(short int) * s->nr_tasks)) == NULL)
+  if ((counts = (short int *)swift_malloc(
+           "counts", sizeof(short int) * s->nr_tasks)) == NULL)
     error("Failed to allocate temporary counts array.");
   bzero(counts, sizeof(short int) * s->nr_tasks);
   for (int k = 0; k < s->nr_unlocks; k++) {
@@ -1411,7 +1414,8 @@ void scheduler_set_unlocks(struct scheduler *s) {
 
   /* Compute the offset for each unlock block. */
   int *offsets;
-  if ((offsets = (int *)malloc(sizeof(int) * (s->nr_tasks + 1))) == NULL)
+  if ((offsets = (int *)swift_malloc("offsets",
+                                     sizeof(int) * (s->nr_tasks + 1))) == NULL)
     error("Failed to allocate temporary offsets array.");
   offsets[0] = 0;
   for (int k = 0; k < s->nr_tasks; k++) {
@@ -1425,8 +1429,8 @@ void scheduler_set_unlocks(struct scheduler *s) {
 
   /* Create and fill a temporary array with the sorted unlocks. */
   struct task **unlocks;
-  if ((unlocks = (struct task **)malloc(sizeof(struct task *) *
-                                        s->size_unlocks)) == NULL)
+  if ((unlocks = (struct task **)swift_malloc(
+           "unlocks", sizeof(struct task *) * s->size_unlocks)) == NULL)
     error("Failed to allocate temporary unlocks array.");
   for (int k = 0; k < s->nr_unlocks; k++) {
     const int ind = s->unlock_ind[k];
@@ -1435,7 +1439,7 @@ void scheduler_set_unlocks(struct scheduler *s) {
   }
 
   /* Swap the unlocks. */
-  free(s->unlocks);
+  swift_free("unlocks", s->unlocks);
   s->unlocks = unlocks;
 
   /* Re-set the offsets. */
@@ -1467,8 +1471,8 @@ void scheduler_set_unlocks(struct scheduler *s) {
 #endif
 
   /* Clean up. */
-  free(counts);
-  free(offsets);
+  swift_free("counts", counts);
+  swift_free("offsets", offsets);
 }
 
 /**
@@ -1550,14 +1554,16 @@ void scheduler_reset(struct scheduler *s, int size) {
     scheduler_free_tasks(s);
 
     /* Allocate the new lists. */
-    if (posix_memalign((void **)&s->tasks, task_align,
+    if (swift_memalign("tasks", (void **)&s->tasks, task_align,
                        size * sizeof(struct task)) != 0)
       error("Failed to allocate task array.");
 
-    if ((s->tasks_ind = (int *)malloc(sizeof(int) * size)) == NULL)
+    if ((s->tasks_ind = (int *)swift_malloc("tasks_ind", sizeof(int) * size)) ==
+        NULL)
       error("Failed to allocate task lists.");
 
-    if ((s->tid_active = (int *)malloc(sizeof(int) * size)) == NULL)
+    if ((s->tid_active =
+             (int *)swift_malloc("tid_active", sizeof(int) * size)) == NULL)
       error("Failed to allocate aactive task lists.");
   }
 
@@ -2219,7 +2225,7 @@ void scheduler_init(struct scheduler *s, struct space *space, int nr_tasks,
   lock_init(&s->lock);
 
   /* Allocate the queues. */
-  if (posix_memalign((void **)&s->queues, queue_struct_align,
+  if (swift_memalign("queues", (void **)&s->queues, queue_struct_align,
                      sizeof(struct queue) * nr_queues) != 0)
     error("Failed to allocate queues.");
 
@@ -2232,10 +2238,11 @@ void scheduler_init(struct scheduler *s, struct space *space, int nr_tasks,
     error("Failed to initialize sleep barrier.");
 
   /* Init the unlocks. */
-  if ((s->unlocks = (struct task **)malloc(
-           sizeof(struct task *) * scheduler_init_nr_unlocks)) == NULL ||
-      (s->unlock_ind =
-           (int *)malloc(sizeof(int) * scheduler_init_nr_unlocks)) == NULL)
+  if ((s->unlocks = (struct task **)swift_malloc(
+           "unlocks", sizeof(struct task *) * scheduler_init_nr_unlocks)) ==
+          NULL ||
+      (s->unlock_ind = (int *)swift_malloc(
+           "unlock_ind", sizeof(int) * scheduler_init_nr_unlocks)) == NULL)
     error("Failed to allocate unlocks.");
   s->nr_unlocks = 0;
   s->size_unlocks = scheduler_init_nr_unlocks;
@@ -2286,10 +2293,10 @@ void scheduler_print_tasks(const struct scheduler *s, const char *fileName) {
 void scheduler_clean(struct scheduler *s) {
 
   scheduler_free_tasks(s);
-  free(s->unlocks);
-  free(s->unlock_ind);
+  swift_free("unlocks", s->unlocks);
+  swift_free("unlock_ind", s->unlock_ind);
   for (int i = 0; i < s->nr_queues; ++i) queue_clean(&s->queues[i]);
-  free(s->queues);
+  swift_free("queues", s->queues);
 }
 
 /**
@@ -2298,15 +2305,15 @@ void scheduler_clean(struct scheduler *s) {
 void scheduler_free_tasks(struct scheduler *s) {
 
   if (s->tasks != NULL) {
-    free(s->tasks);
+    swift_free("tasks", s->tasks);
     s->tasks = NULL;
   }
   if (s->tasks_ind != NULL) {
-    free(s->tasks_ind);
+    swift_free("tasks_ind", s->tasks_ind);
     s->tasks_ind = NULL;
   }
   if (s->tid_active != NULL) {
-    free(s->tid_active);
+    swift_free("tid_active", s->tid_active);
     s->tid_active = NULL;
   }
   s->size = 0;

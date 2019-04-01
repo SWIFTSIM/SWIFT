@@ -55,6 +55,7 @@
 #include "hydro_properties.h"
 #include "kick.h"
 #include "logger.h"
+#include "memuse.h"
 #include "minmax.h"
 #include "runner_doiact_vec.h"
 #include "scheduler.h"
@@ -818,14 +819,8 @@ void runner_do_hydro_sort(struct runner *r, struct cell *c, int flags,
   if (c->hydro.sorted == 0) c->hydro.ti_sort = r->e->ti_current;
 #endif
 
-  /* start by allocating the entry arrays in the requested dimensions. */
-  for (int j = 0; j < 13; j++) {
-    if ((flags & (1 << j)) && c->hydro.sort[j] == NULL) {
-      if ((c->hydro.sort[j] = (struct entry *)malloc(sizeof(struct entry) *
-                                                     (count + 1))) == NULL)
-        error("Failed to allocate sort memory.");
-    }
-  }
+  /* Allocate memory for sorting. */
+  cell_malloc_hydro_sorts(c, flags);
 
   /* Does this cell have any progeny? */
   if (c->split) {
@@ -1044,13 +1039,7 @@ void runner_do_stars_sort(struct runner *r, struct cell *c, int flags,
 #endif
 
   /* start by allocating the entry arrays in the requested dimensions. */
-  for (int j = 0; j < 13; j++) {
-    if ((flags & (1 << j)) && c->stars.sort[j] == NULL) {
-      if ((c->stars.sort[j] = (struct entry *)malloc(sizeof(struct entry) *
-                                                     (count + 1))) == NULL)
-        error("Failed to allocate sort memory.");
-    }
-  }
+  cell_malloc_stars_sorts(c, flags);
 
   /* Does this cell have any progeny? */
   if (c->split) {

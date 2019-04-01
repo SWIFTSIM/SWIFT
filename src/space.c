@@ -52,6 +52,7 @@
 #include "kernel_hydro.h"
 #include "lock.h"
 #include "memswap.h"
+#include "memuse.h"
 #include "minmax.h"
 #include "multipole.h"
 #include "restart.h"
@@ -260,16 +261,9 @@ void space_rebuild_recycle_mapper(void *map_data, int num_elements,
 #endif
     if (s->with_self_gravity)
       bzero(c->grav.multipole, sizeof(struct gravity_tensors));
-    for (int i = 0; i < 13; i++) {
-      if (c->hydro.sort[i] != NULL) {
-        free(c->hydro.sort[i]);
-        c->hydro.sort[i] = NULL;
-      }
-      if (c->stars.sort[i] != NULL) {
-        free(c->stars.sort[i]);
-        c->stars.sort[i] = NULL;
-      }
-    }
+
+    cell_free_hydro_sorts(c);
+    cell_free_stars_sorts(c);
 #if WITH_MPI
     c->mpi.tag = -1;
 
@@ -319,17 +313,17 @@ void space_free_foreign_parts(struct space *s) {
 
 #ifdef WITH_MPI
   if (s->parts_foreign != NULL) {
-    free(s->parts_foreign);
+    swift_free("parts_foreign", s->parts_foreign);
     s->size_parts_foreign = 0;
     s->parts_foreign = NULL;
   }
   if (s->gparts_foreign != NULL) {
-    free(s->gparts_foreign);
+    swift_free("gparts_foreign", s->gparts_foreign);
     s->size_gparts_foreign = 0;
     s->gparts_foreign = NULL;
   }
   if (s->sparts_foreign != NULL) {
-    free(s->sparts_foreign);
+    swift_free("sparts_foreign", s->sparts_foreign);
     s->size_sparts_foreign = 0;
     s->sparts_foreign = NULL;
   }
@@ -443,7 +437,8 @@ void space_regrid(struct space *s, int verbose) {
     oldwidth[1] = s->width[1];
     oldwidth[2] = s->width[2];
 
-    if ((oldnodeIDs = (int *)malloc(sizeof(int) * s->nr_cells)) == NULL)
+    if ((oldnodeIDs =
+             (int *)swift_malloc("nodeIDs", sizeof(int) * s->nr_cells)) == NULL)
       error("Failed to allocate temporary nodeIDs.");
 
     int cid = 0;
@@ -476,12 +471,13 @@ void space_regrid(struct space *s, int verbose) {
     /* Free the old cells, if they were allocated. */
     if (s->cells_top != NULL) {
       space_free_cells(s);
-      free(s->local_cells_with_tasks_top);
-      free(s->local_cells_top);
-      free(s->cells_with_particles_top);
-      free(s->local_cells_with_particles_top);
-      free(s->cells_top);
-      free(s->multipoles_top);
+      swift_free("local_cells_with_tasks_top", s->local_cells_with_tasks_top);
+      swift_free("local_cells_top", s->local_cells_top);
+      swift_free("cells_with_particles_top", s->cells_with_particles_top);
+      swift_free("local_cells_with_particles_top",
+                 s->local_cells_with_particles_top);
+      swift_free("cells_top", s->cells_top);
+      swift_free("multipoles_top", s->multipoles_top);
     }
 
     /* Also free the task arrays, these will be regenerated and we can use the
@@ -498,39 +494,44 @@ void space_regrid(struct space *s, int verbose) {
 
     /* Allocate the highest level of cells. */
     s->tot_cells = s->nr_cells = cdim[0] * cdim[1] * cdim[2];
-    if (posix_memalign((void **)&s->cells_top, cell_align,
+
+    if (swift_memalign("cells_top", (void **)&s->cells_top, cell_align,
                        s->nr_cells * sizeof(struct cell)) != 0)
       error("Failed to allocate top-level cells.");
     bzero(s->cells_top, s->nr_cells * sizeof(struct cell));
 
     /* Allocate the multipoles for the top-level cells. */
     if (s->with_self_gravity) {
-      if (posix_memalign((void **)&s->multipoles_top, multipole_align,
+      if (swift_memalign("multipoles_top", (void **)&s->multipoles_top,
+                         multipole_align,
                          s->nr_cells * sizeof(struct gravity_tensors)) != 0)
         error("Failed to allocate top-level multipoles.");
       bzero(s->multipoles_top, s->nr_cells * sizeof(struct gravity_tensors));
     }
 
     /* Allocate the indices of local cells */
-    if (posix_memalign((void **)&s->local_cells_top, SWIFT_STRUCT_ALIGNMENT,
-                       s->nr_cells * sizeof(int)) != 0)
+    if (swift_memalign("local_cells_top", (void **)&s->local_cells_top,
+                       SWIFT_STRUCT_ALIGNMENT, s->nr_cells * sizeof(int)) != 0)
       error("Failed to allocate indices of local top-level cells.");
     bzero(s->local_cells_top, s->nr_cells * sizeof(int));
 
     /* Allocate the indices of local cells with tasks */
-    if (posix_memalign((void **)&s->local_cells_with_tasks_top,
+    if (swift_memalign("local_cells_with_tasks_top",
+                       (void **)&s->local_cells_with_tasks_top,
                        SWIFT_STRUCT_ALIGNMENT, s->nr_cells * sizeof(int)) != 0)
       error("Failed to allocate indices of local top-level cells with tasks.");
     bzero(s->local_cells_with_tasks_top, s->nr_cells * sizeof(int));
 
     /* Allocate the indices of cells with particles */
-    if (posix_memalign((void **)&s->cells_with_particles_top,
+    if (swift_memalign("cells_with_particles_top",
+                       (void **)&s->cells_with_particles_top,
                        SWIFT_STRUCT_ALIGNMENT, s->nr_cells * sizeof(int)) != 0)
       error("Failed to allocate indices of top-level cells with particles.");
     bzero(s->cells_with_particles_top, s->nr_cells * sizeof(int));
 
     /* Allocate the indices of local cells with particles */
-    if (posix_memalign((void **)&s->local_cells_with_particles_top,
+    if (swift_memalign("local_cells_with_particles_top",
+                       (void **)&s->local_cells_with_particles_top,
                        SWIFT_STRUCT_ALIGNMENT, s->nr_cells * sizeof(int)) != 0)
       error(
           "Failed to allocate indices of local top-level cells with "
@@ -632,7 +633,7 @@ void space_regrid(struct space *s, int verbose) {
       engine_makeproxies(s->e);
 
       /* Finished with these. */
-      free(oldnodeIDs);
+      swift_free("nodeIDs", oldnodeIDs);
 
     } else if (no_regrid && s->e != NULL) {
       /* If we have created the top-levels cells and not done an initial
@@ -752,12 +753,12 @@ void space_allocate_extras(struct space *s, int verbose) {
 
       /* Create more space for parts */
       struct gpart *gparts_new = NULL;
-      if (posix_memalign((void **)&gparts_new, gpart_align,
+      if (swift_memalign("gparts", (void **)&gparts_new, gpart_align,
                          sizeof(struct gpart) * size_gparts) != 0)
         error("Failed to allocate new gpart data");
       const ptrdiff_t delta = gparts_new - s->gparts;
       memcpy(gparts_new, s->gparts, sizeof(struct gpart) * s->size_gparts);
-      free(s->gparts);
+      swift_free("gparts", s->gparts);
       s->gparts = gparts_new;
 
       /* Update the counter */
@@ -843,20 +844,20 @@ void space_allocate_extras(struct space *s, int verbose) {
 
       /* Create more space for parts */
       struct part *parts_new = NULL;
-      if (posix_memalign((void **)&parts_new, part_align,
+      if (swift_memalign("parts", (void **)&parts_new, part_align,
                          sizeof(struct part) * size_parts) != 0)
         error("Failed to allocate new part data");
       memcpy(parts_new, s->parts, sizeof(struct part) * s->size_parts);
-      free(s->parts);
+      swift_free("parts", s->parts);
       s->parts = parts_new;
 
       /* Same for xparts */
       struct xpart *xparts_new = NULL;
-      if (posix_memalign((void **)&xparts_new, xpart_align,
+      if (swift_memalign("xparts", (void **)&xparts_new, xpart_align,
                          sizeof(struct xpart) * size_parts) != 0)
         error("Failed to allocate new xpart data");
       memcpy(xparts_new, s->xparts, sizeof(struct xpart) * s->size_parts);
-      free(s->xparts);
+      swift_free("xparts", s->xparts);
       s->xparts = xparts_new;
 
       /* Update the counter */
@@ -932,11 +933,11 @@ void space_allocate_extras(struct space *s, int verbose) {
 
       /* Create more space for parts */
       struct spart *sparts_new = NULL;
-      if (posix_memalign((void **)&sparts_new, spart_align,
+      if (swift_memalign("sparts", (void **)&sparts_new, spart_align,
                          sizeof(struct spart) * size_sparts) != 0)
         error("Failed to allocate new spart data");
       memcpy(sparts_new, s->sparts, sizeof(struct spart) * s->size_sparts);
-      free(s->sparts);
+      swift_free("sparts", s->sparts);
       s->sparts = sparts_new;
 
       /* Update the counter */
@@ -1056,16 +1057,19 @@ void space_rebuild(struct space *s, int repartitioned, int verbose) {
   /* Allocate arrays to store the indices of the cells where particles
      belong. We allocate extra space to allow for particles we may
      receive from other nodes */
-  int *h_index = (int *)malloc(sizeof(int) * h_index_size);
-  int *g_index = (int *)malloc(sizeof(int) * g_index_size);
-  int *s_index = (int *)malloc(sizeof(int) * s_index_size);
+  int *h_index = (int *)swift_malloc("h_index", sizeof(int) * h_index_size);
+  int *g_index = (int *)swift_malloc("g_index", sizeof(int) * g_index_size);
+  int *s_index = (int *)swift_malloc("s_index", sizeof(int) * s_index_size);
   if (h_index == NULL || g_index == NULL || s_index == NULL)
     error("Failed to allocate temporary particle indices.");
 
   /* Allocate counters of particles that will land in each cell */
-  int *cell_part_counts = (int *)malloc(sizeof(int) * s->nr_cells);
-  int *cell_gpart_counts = (int *)malloc(sizeof(int) * s->nr_cells);
-  int *cell_spart_counts = (int *)malloc(sizeof(int) * s->nr_cells);
+  int *cell_part_counts =
+      (int *)swift_malloc("cell_part_counts", sizeof(int) * s->nr_cells);
+  int *cell_gpart_counts =
+      (int *)swift_malloc("cell_gpart_counts", sizeof(int) * s->nr_cells);
+  int *cell_spart_counts =
+      (int *)swift_malloc("cell_spart_counts", sizeof(int) * s->nr_cells);
   if (cell_part_counts == NULL || cell_gpart_counts == NULL ||
       cell_spart_counts == NULL)
     error("Failed to allocate cell particle count buffer.");
@@ -1311,20 +1315,22 @@ void space_rebuild(struct space *s, int repartitioned, int verbose) {
   /* Re-allocate the index array for the parts if needed.. */
   if (s->nr_parts + 1 > h_index_size) {
     int *ind_new;
-    if ((ind_new = (int *)malloc(sizeof(int) * (s->nr_parts + 1))) == NULL)
+    if ((ind_new = (int *)swift_malloc(
+             "h_index", sizeof(int) * (s->nr_parts + 1))) == NULL)
       error("Failed to allocate temporary particle indices.");
     memcpy(ind_new, h_index, sizeof(int) * nr_parts);
-    free(h_index);
+    swift_free("h_index", h_index);
     h_index = ind_new;
   }
 
   /* Re-allocate the index array for the sparts if needed.. */
   if (s->nr_sparts + 1 > s_index_size) {
     int *sind_new;
-    if ((sind_new = (int *)malloc(sizeof(int) * (s->nr_sparts + 1))) == NULL)
+    if ((sind_new = (int *)swift_malloc(
+             "s_index", sizeof(int) * (s->nr_sparts + 1))) == NULL)
       error("Failed to allocate temporary s-particle indices.");
     memcpy(sind_new, s_index, sizeof(int) * nr_sparts);
-    free(s_index);
+    swift_free("s_index", s_index);
     s_index = sind_new;
   }
 
@@ -1453,20 +1459,21 @@ void space_rebuild(struct space *s, int repartitioned, int verbose) {
   }
 
   /* We no longer need the indices as of here. */
-  free(h_index);
-  free(cell_part_counts);
-  free(s_index);
-  free(cell_spart_counts);
+  swift_free("h_index", h_index);
+  swift_free("cell_part_counts", cell_part_counts);
+  swift_free("s_index", s_index);
+  swift_free("cell_spart_counts", cell_spart_counts);
 
 #ifdef WITH_MPI
 
   /* Re-allocate the index array for the gparts if needed.. */
   if (s->nr_gparts + 1 > g_index_size) {
     int *gind_new;
-    if ((gind_new = (int *)malloc(sizeof(int) * (s->nr_gparts + 1))) == NULL)
+    if ((gind_new = (int *)swift_malloc(
+             "g_index", sizeof(int) * (s->nr_gparts + 1))) == NULL)
       error("Failed to allocate temporary g-particle indices.");
     memcpy(gind_new, g_index, sizeof(int) * nr_gparts);
-    free(g_index);
+    swift_free("g_index", g_index);
     g_index = gind_new;
   }
 
@@ -1540,8 +1547,8 @@ void space_rebuild(struct space *s, int repartitioned, int verbose) {
   }
 
   /* We no longer need the indices as of here. */
-  free(g_index);
-  free(cell_gpart_counts);
+  swift_free("g_index", g_index);
+  swift_free("cell_gpart_counts", cell_gpart_counts);
 
 #ifdef SWIFT_DEBUG_CHECKS
   /* Verify that the links are correct */
@@ -2272,7 +2279,7 @@ void space_parts_sort(struct part *parts, struct xpart *xparts,
                       ptrdiff_t parts_offset) {
   /* Create the offsets array. */
   size_t *offsets = NULL;
-  if (posix_memalign((void **)&offsets, SWIFT_STRUCT_ALIGNMENT,
+  if (swift_memalign("parts_offsets", (void **)&offsets, SWIFT_STRUCT_ALIGNMENT,
                      sizeof(size_t) * (num_bins + 1)) != 0)
     error("Failed to allocate temporary cell offsets array.");
 
@@ -2317,7 +2324,7 @@ void space_parts_sort(struct part *parts, struct xpart *xparts,
       error("Bad offsets after shuffle.");
 #endif /* SWIFT_DEBUG_CHECKS */
 
-  free(offsets);
+  swift_free("parts_offsets", offsets);
 }
 
 /**
@@ -2335,7 +2342,8 @@ void space_sparts_sort(struct spart *sparts, int *restrict ind,
                        ptrdiff_t sparts_offset) {
   /* Create the offsets array. */
   size_t *offsets = NULL;
-  if (posix_memalign((void **)&offsets, SWIFT_STRUCT_ALIGNMENT,
+  if (swift_memalign("sparts_offsets", (void **)&offsets,
+                     SWIFT_STRUCT_ALIGNMENT,
                      sizeof(size_t) * (num_bins + 1)) != 0)
     error("Failed to allocate temporary cell offsets array.");
 
@@ -2377,7 +2385,7 @@ void space_sparts_sort(struct spart *sparts, int *restrict ind,
       error("Bad offsets after shuffle.");
 #endif /* SWIFT_DEBUG_CHECKS */
 
-  free(offsets);
+  swift_free("sparts_offsets", offsets);
 }
 
 /**
@@ -2395,7 +2403,8 @@ void space_gparts_sort(struct gpart *gparts, struct part *parts,
                        int *restrict counts, int num_bins) {
   /* Create the offsets array. */
   size_t *offsets = NULL;
-  if (posix_memalign((void **)&offsets, SWIFT_STRUCT_ALIGNMENT,
+  if (swift_memalign("gparts_offsets", (void **)&offsets,
+                     SWIFT_STRUCT_ALIGNMENT,
                      sizeof(size_t) * (num_bins + 1)) != 0)
     error("Failed to allocate temporary cell offsets array.");
 
@@ -2443,7 +2452,7 @@ void space_gparts_sort(struct gpart *gparts, struct part *parts,
       error("Bad offsets after shuffle.");
 #endif /* SWIFT_DEBUG_CHECKS */
 
-  free(offsets);
+  swift_free("gparts_offsets", offsets);
 }
 
 /**
@@ -2451,16 +2460,8 @@ void space_gparts_sort(struct gpart *gparts, struct part *parts,
  */
 void space_map_clearsort(struct cell *c, void *data) {
 
-  for (int i = 0; i < 13; i++) {
-    if (c->hydro.sort[i] != NULL) {
-      free(c->hydro.sort[i]);
-      c->hydro.sort[i] = NULL;
-    }
-    if (c->stars.sort[i] != NULL) {
-      free(c->stars.sort[i]);
-      c->stars.sort[i] = NULL;
-    }
-  }
+  cell_free_hydro_sorts(c);
+  cell_free_stars_sorts(c);
 }
 
 /**
@@ -2644,7 +2645,7 @@ void space_split_recursive(struct space *s, struct cell *c,
   const int allocate_buffer = (buff == NULL && gbuff == NULL && sbuff == NULL);
   if (allocate_buffer) {
     if (count > 0) {
-      if (posix_memalign((void **)&buff, SWIFT_STRUCT_ALIGNMENT,
+      if (swift_memalign("tempbuff", (void **)&buff, SWIFT_STRUCT_ALIGNMENT,
                          sizeof(struct cell_buff) * count) != 0)
         error("Failed to allocate temporary indices.");
       for (int k = 0; k < count; k++) {
@@ -2660,7 +2661,7 @@ void space_split_recursive(struct space *s, struct cell *c,
       }
     }
     if (gcount > 0) {
-      if (posix_memalign((void **)&gbuff, SWIFT_STRUCT_ALIGNMENT,
+      if (swift_memalign("tempgbuff", (void **)&gbuff, SWIFT_STRUCT_ALIGNMENT,
                          sizeof(struct cell_buff) * gcount) != 0)
         error("Failed to allocate temporary indices.");
       for (int k = 0; k < gcount; k++) {
@@ -2676,7 +2677,7 @@ void space_split_recursive(struct space *s, struct cell *c,
       }
     }
     if (scount > 0) {
-      if (posix_memalign((void **)&sbuff, SWIFT_STRUCT_ALIGNMENT,
+      if (swift_memalign("tempsbuff", (void **)&sbuff, SWIFT_STRUCT_ALIGNMENT,
                          sizeof(struct cell_buff) * scount) != 0)
         error("Failed to allocate temporary indices.");
       for (int k = 0; k < scount; k++) {
@@ -3054,9 +3055,9 @@ void space_split_recursive(struct space *s, struct cell *c,
 
   /* Clean up. */
   if (allocate_buffer) {
-    if (buff != NULL) free(buff);
-    if (gbuff != NULL) free(gbuff);
-    if (sbuff != NULL) free(sbuff);
+    if (buff != NULL) swift_free("tempbuff", buff);
+    if (gbuff != NULL) swift_free("tempgbuff", gbuff);
+    if (sbuff != NULL) swift_free("tempsbuff", sbuff);
   }
 }
 
@@ -3198,7 +3199,7 @@ void space_getcells(struct space *s, int nr_cells, struct cell **cells) {
 
     /* Is the cell buffer empty? */
     if (s->cells_sub == NULL) {
-      if (posix_memalign((void **)&s->cells_sub, cell_align,
+      if (swift_memalign("cells_sub", (void **)&s->cells_sub, cell_align,
                          space_cellallocchunk * sizeof(struct cell)) != 0)
         error("Failed to allocate more cells.");
 
@@ -3213,8 +3214,8 @@ void space_getcells(struct space *s, int nr_cells, struct cell **cells) {
 
     /* Is the multipole buffer empty? */
     if (s->with_self_gravity && s->multipoles_sub == NULL) {
-      if (posix_memalign(
-              (void **)&s->multipoles_sub, multipole_align,
+      if (swift_memalign(
+              "multipoles_sub", (void **)&s->multipoles_sub, multipole_align,
               space_cellallocchunk * sizeof(struct gravity_tensors)) != 0)
         error("Failed to allocate more multipoles.");
 
@@ -3241,10 +3242,9 @@ void space_getcells(struct space *s, int nr_cells, struct cell **cells) {
 
   /* Init some things in the cell we just got. */
   for (int j = 0; j < nr_cells; j++) {
-    for (int k = 0; k < 13; k++) {
-      if (cells[j]->hydro.sort[k] != NULL) free(cells[j]->hydro.sort[k]);
-      if (cells[j]->stars.sort[k] != NULL) free(cells[j]->stars.sort[k]);
-    }
+    cell_free_hydro_sorts(cells[j]);
+    cell_free_stars_sorts(cells[j]);
+
     struct gravity_tensors *temp = cells[j]->grav.multipole;
     bzero(cells[j], sizeof(struct cell));
     cells[j]->grav.multipole = temp;
@@ -3266,16 +3266,8 @@ void space_getcells(struct space *s, int nr_cells, struct cell **cells) {
 void space_free_buff_sort_indices(struct space *s) {
   for (struct cell *finger = s->cells_sub; finger != NULL;
        finger = finger->next) {
-    for (int k = 0; k < 13; k++) {
-      if (finger->hydro.sort[k] != NULL) {
-        free(finger->hydro.sort[k]);
-        finger->hydro.sort[k] = NULL;
-      }
-      if (finger->stars.sort[k] != NULL) {
-        free(finger->stars.sort[k]);
-        finger->stars.sort[k] = NULL;
-      }
-    }
+    cell_free_hydro_sorts(finger);
+    cell_free_stars_sorts(finger);
   }
 }
 
@@ -3984,7 +3976,7 @@ void space_init(struct space *s, struct swift_params *params,
 
   /* Allocate the extra parts array for the gas particles. */
   if (Npart > 0) {
-    if (posix_memalign((void **)&s->xparts, xpart_align,
+    if (swift_memalign("xparts", (void **)&s->xparts, xpart_align,
                        Npart * sizeof(struct xpart)) != 0)
       error("Failed to allocate xparts.");
     bzero(s->xparts, Npart * sizeof(struct xpart));
@@ -4039,15 +4031,15 @@ void space_replicate(struct space *s, int replicate, int verbose) {
   struct gpart *gparts = NULL;
   struct spart *sparts = NULL;
 
-  if (posix_memalign((void **)&parts, part_align,
+  if (swift_memalign("parts", (void **)&parts, part_align,
                      s->nr_parts * sizeof(struct part)) != 0)
     error("Failed to allocate new part array.");
 
-  if (posix_memalign((void **)&gparts, gpart_align,
+  if (swift_memalign("gparts", (void **)&gparts, gpart_align,
                      s->nr_gparts * sizeof(struct gpart)) != 0)
     error("Failed to allocate new gpart array.");
 
-  if (posix_memalign((void **)&sparts, spart_align,
+  if (swift_memalign("sparts", (void **)&sparts, spart_align,
                      s->nr_sparts * sizeof(struct spart)) != 0)
     error("Failed to allocate new spart array.");
 
@@ -4109,9 +4101,9 @@ void space_replicate(struct space *s, int replicate, int verbose) {
   }
 
   /* Replace the content of the space */
-  free(s->parts);
-  free(s->gparts);
-  free(s->sparts);
+  swift_free("parts", s->parts);
+  swift_free("gparts", s->gparts);
+  swift_free("sparts", s->sparts);
   s->parts = parts;
   s->gparts = gparts;
   s->sparts = sparts;
@@ -4169,11 +4161,11 @@ void space_generate_gas(struct space *s, const struct cosmology *cosmo,
   struct part *parts = NULL;
   struct gpart *gparts = NULL;
 
-  if (posix_memalign((void **)&parts, part_align,
+  if (swift_memalign("parts", (void **)&parts, part_align,
                      s->nr_parts * sizeof(struct part)) != 0)
     error("Failed to allocate new part array.");
 
-  if (posix_memalign((void **)&gparts, gpart_align,
+  if (swift_memalign("gparts", (void **)&gparts, gpart_align,
                      s->nr_gparts * sizeof(struct gpart)) != 0)
     error("Failed to allocate new gpart array.");
 
@@ -4259,7 +4251,7 @@ void space_generate_gas(struct space *s, const struct cosmology *cosmo,
   }
 
   /* Replace the content of the space */
-  free(s->gparts);
+  swift_free("gparts", s->gparts);
   s->parts = parts;
   s->gparts = gparts;
 }
@@ -4445,16 +4437,17 @@ void space_reset_task_counters(struct space *s) {
 void space_clean(struct space *s) {
 
   for (int i = 0; i < s->nr_cells; ++i) cell_clean(&s->cells_top[i]);
-  free(s->cells_top);
-  free(s->multipoles_top);
-  free(s->local_cells_top);
-  free(s->local_cells_with_tasks_top);
-  free(s->cells_with_particles_top);
-  free(s->local_cells_with_particles_top);
-  free(s->parts);
-  free(s->xparts);
-  free(s->gparts);
-  free(s->sparts);
+  swift_free("cells_top", s->cells_top);
+  swift_free("multipoles_top", s->multipoles_top);
+  swift_free("local_cells_top", s->local_cells_top);
+  swift_free("local_cells_with_tasks_top", s->local_cells_with_tasks_top);
+  swift_free("cells_with_particles_top", s->cells_with_particles_top);
+  swift_free("local_cells_with_particles_top",
+             s->local_cells_with_particles_top);
+  swift_free("parts", s->parts);
+  swift_free("xparts", s->xparts);
+  swift_free("gparts", s->gparts);
+  swift_free("sparts", s->sparts);
   free(s->fof_data.group_index);
   free(s->fof_data.group_size);
 }
@@ -4524,10 +4517,11 @@ void space_struct_restore(struct space *s, FILE *stream) {
   if (s->nr_parts > 0) {
 
     /* Need the memory for these. */
-    if (posix_memalign((void **)&s->parts, part_align,
+    if (swift_memalign("parts", (void **)&s->parts, part_align,
                        s->size_parts * sizeof(struct part)) != 0)
       error("Failed to allocate restore part array.");
-    if (posix_memalign((void **)&s->xparts, xpart_align,
+
+    if (swift_memalign("xparts", (void **)&s->xparts, xpart_align,
                        s->size_parts * sizeof(struct xpart)) != 0)
       error("Failed to allocate restore xpart array.");
 
@@ -4538,7 +4532,7 @@ void space_struct_restore(struct space *s, FILE *stream) {
   }
   s->gparts = NULL;
   if (s->nr_gparts > 0) {
-    if (posix_memalign((void **)&s->gparts, gpart_align,
+    if (swift_memalign("gparts", (void **)&s->gparts, gpart_align,
                        s->size_gparts * sizeof(struct gpart)) != 0)
       error("Failed to allocate restore gpart array.");
 
@@ -4548,7 +4542,7 @@ void space_struct_restore(struct space *s, FILE *stream) {
 
   s->sparts = NULL;
   if (s->nr_sparts > 0) {
-    if (posix_memalign((void **)&s->sparts, spart_align,
+    if (swift_memalign("sparts", (void **)&s->sparts, spart_align,
                        s->size_sparts * sizeof(struct spart)) != 0)
       error("Failed to allocate restore spart array.");
 

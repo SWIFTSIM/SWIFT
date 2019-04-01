@@ -50,6 +50,7 @@
 #include "hydro_properties.h"
 #include "io_properties.h"
 #include "kernel_hydro.h"
+#include "memuse.h"
 #include "part.h"
 #include "part_type.h"
 #include "star_formation_io.h"
@@ -364,7 +365,7 @@ void writeArray(const struct engine* e, hid_t grp, char* fileName,
 
   /* Allocate temporary buffer */
   void* temp = NULL;
-  if (posix_memalign((void**)&temp, IO_BUFFER_ALIGNMENT,
+  if (swift_memalign("writebuff", (void**)&temp, IO_BUFFER_ALIGNMENT,
                      num_elements * typeSize) != 0)
     error("Unable to allocate temporary i/o buffer");
 
@@ -415,7 +416,7 @@ void writeArray(const struct engine* e, hid_t grp, char* fileName,
   if (h_err < 0) error("Error while writing data array '%s'.", props.name);
 
   /* Free and close everything */
-  free(temp);
+  swift_free("writebuff", temp);
   H5Dclose(h_data);
   H5Sclose(h_memspace);
   H5Sclose(h_filespace);
@@ -614,7 +615,7 @@ void read_ic_serial(char* fileName, const struct unit_system* internal_units,
   /* Allocate memory to store SPH particles */
   if (with_hydro) {
     *Ngas = N[0];
-    if (posix_memalign((void**)parts, part_align,
+    if (swift_memalign("parts", (void**)parts, part_align,
                        *Ngas * sizeof(struct part)) != 0)
       error("Error while allocating memory for SPH particles");
     bzero(*parts, *Ngas * sizeof(struct part));
@@ -623,7 +624,7 @@ void read_ic_serial(char* fileName, const struct unit_system* internal_units,
   /* Allocate memory to store stars particles */
   if (with_stars) {
     *Nstars = N[swift_type_stars];
-    if (posix_memalign((void**)sparts, spart_align,
+    if (swift_memalign("sparts", (void**)sparts, spart_align,
                        *Nstars * sizeof(struct spart)) != 0)
       error("Error while allocating memory for stars particles");
     bzero(*sparts, *Nstars * sizeof(struct spart));
@@ -635,7 +636,7 @@ void read_ic_serial(char* fileName, const struct unit_system* internal_units,
     *Ngparts = (with_hydro ? N[swift_type_gas] : 0) +
                N[swift_type_dark_matter] +
                (with_stars ? N[swift_type_stars] : 0);
-    if (posix_memalign((void**)gparts, gpart_align,
+    if (swift_memalign("gparts", (void**)gparts, gpart_align,
                        *Ngparts * sizeof(struct gpart)) != 0)
       error("Error while allocating memory for gravity particles");
     bzero(*gparts, *Ngparts * sizeof(struct gpart));
@@ -1132,10 +1133,12 @@ void write_output_serial(struct engine* e, const char* baseName,
               Nparticles = Ngas_written;
 
               /* Allocate temporary arrays */
-              if (posix_memalign((void**)&parts_written, part_align,
+              if (swift_memalign("parts_written", (void**)&parts_written,
+                                 part_align,
                                  Ngas_written * sizeof(struct part)) != 0)
                 error("Error while allocating temporart memory for parts");
-              if (posix_memalign((void**)&xparts_written, xpart_align,
+              if (swift_memalign("xparts_written", (void**)&xparts_written,
+                                 xpart_align,
                                  Ngas_written * sizeof(struct xpart)) != 0)
                 error("Error while allocating temporart memory for xparts");
 
@@ -1181,12 +1184,14 @@ void write_output_serial(struct engine* e, const char* baseName,
               Nparticles = Ndm_written;
 
               /* Allocate temporary array */
-              if (posix_memalign((void**)&gparts_written, gpart_align,
+              if (swift_memalign("gparts_written", (void**)&gparts_written,
+                                 gpart_align,
                                  Ndm_written * sizeof(struct gpart)) != 0)
                 error("Error while allocating temporart memory for gparts");
 
               if (with_stf) {
-                if (posix_memalign(
+                if (swift_memalign(
+                        "gpart_group_written",
                         (void**)&gpart_group_data_written, gpart_align,
                         Ndm_written * sizeof(struct velociraptor_gpart_data)) !=
                     0)
@@ -1229,7 +1234,8 @@ void write_output_serial(struct engine* e, const char* baseName,
               Nparticles = Nstars_written;
 
               /* Allocate temporary arrays */
-              if (posix_memalign((void**)&sparts_written, spart_align,
+              if (swift_memalign("sparts_written", (void**)&sparts_written,
+                                 spart_align,
                                  Nstars_written * sizeof(struct spart)) != 0)
                 error("Error while allocating temporart memory for sparts");
 
@@ -1270,11 +1276,12 @@ void write_output_serial(struct engine* e, const char* baseName,
         }
 
         /* Free temporary array */
-        if (parts_written) free(parts_written);
-        if (xparts_written) free(xparts_written);
-        if (gparts_written) free(gparts_written);
-        if (gpart_group_data_written) free(gpart_group_data_written);
-        if (sparts_written) free(sparts_written);
+        if (parts_written) swift_free("parts_written", parts_written);
+        if (xparts_written) swift_free("xparts_written", xparts_written);
+        if (gparts_written) swift_free("gparts_written", gparts_written);
+        if (gpart_group_data_written)
+          swift_free("gpart_group_written", gpart_group_data_written);
+        if (sparts_written) swift_free("sparts_written", sparts_written);
 
         /* Close particle group */
         H5Gclose(h_grp);

@@ -72,6 +72,7 @@
 #include "logger_io.h"
 #include "map.h"
 #include "memswap.h"
+#include "memuse.h"
 #include "minmax.h"
 #include "outputlist.h"
 #include "parallel_io.h"
@@ -122,6 +123,9 @@ const char *engine_policy_names[] = {"none",
 /** The rank of the engine as a global variable (for messages). */
 int engine_rank;
 
+/** The current step of the engine as a global variable (for messages). */
+int engine_current_step;
+
 /**
  * @brief Data collected from the cells at the end of a time-step
  */
@@ -164,6 +168,7 @@ void engine_addlink(struct engine *e, struct link **l, struct task *t) {
 /**
  * Do the exchange of one type of particles with all the other nodes.
  *
+ * @param label a label for the memory allocations of this particle type.
  * @param counts 2D array with the counts of particles to exchange with
  *               each other node.
  * @param parts the particle data to exchange
@@ -178,15 +183,15 @@ void engine_addlink(struct engine *e, struct link **l, struct task *t) {
  * @result new particle data constructed from all the exchanges with the
  *         given alignment.
  */
-static void *engine_do_redistribute(int *counts, char *parts,
+static void *engine_do_redistribute(const char *label, int *counts, char *parts,
                                     size_t new_nr_parts, size_t sizeofparts,
                                     size_t alignsize, MPI_Datatype mpi_type,
                                     int nr_nodes, int nodeID) {
 
   /* Allocate a new particle array with some extra margin */
   char *parts_new = NULL;
-  if (posix_memalign(
-          (void **)&parts_new, alignsize,
+  if (swift_memalign(
+          label, (void **)&parts_new, alignsize,
           sizeofparts * new_nr_parts * engine_redistribute_alloc_margin) != 0)
     error("Failed to allocate new particle data.");
 
@@ -628,7 +633,7 @@ void engine_redistribute(struct engine *e) {
     error("Failed to allocate counts temporary buffer.");
 
   int *dest;
-  if ((dest = (int *)malloc(sizeof(int) * nr_parts)) == NULL)
+  if ((dest = (int *)swift_malloc("dest", sizeof(int) * nr_parts)) == NULL)
     error("Failed to allocate dest temporary buffer.");
 
   /* Simple index of node IDs, used for mappers over nodes. */
@@ -691,7 +696,7 @@ void engine_redistribute(struct engine *e) {
     threadpool_map(&e->threadpool, engine_redistribute_savelink_mapper_part,
                    nodes, nr_nodes, sizeof(int), 0, &savelink_data);
   }
-  free(dest);
+  swift_free("dest", dest);
 
   /* Get destination of each s-particle */
   int *s_counts;
@@ -699,7 +704,7 @@ void engine_redistribute(struct engine *e) {
     error("Failed to allocate s_counts temporary buffer.");
 
   int *s_dest;
-  if ((s_dest = (int *)malloc(sizeof(int) * nr_sparts)) == NULL)
+  if ((s_dest = (int *)swift_malloc("s_dest", sizeof(int) * nr_sparts)) == NULL)
     error("Failed to allocate s_dest temporary buffer.");
 
   redist_data.counts = s_counts;
@@ -749,7 +754,7 @@ void engine_redistribute(struct engine *e) {
     threadpool_map(&e->threadpool, engine_redistribute_savelink_mapper_spart,
                    nodes, nr_nodes, sizeof(int), 0, &savelink_data);
   }
-  free(s_dest);
+  swift_free("s_dest", s_dest);
 
   /* Get destination of each g-particle */
   int *g_counts;
@@ -757,7 +762,7 @@ void engine_redistribute(struct engine *e) {
     error("Failed to allocate g_gcount temporary buffer.");
 
   int *g_dest;
-  if ((g_dest = (int *)malloc(sizeof(int) * nr_gparts)) == NULL)
+  if ((g_dest = (int *)swift_malloc("g_dest", sizeof(int) * nr_gparts)) == NULL)
     error("Failed to allocate g_dest temporary buffer.");
 
   redist_data.counts = g_counts;
@@ -797,7 +802,7 @@ void engine_redistribute(struct engine *e) {
   }
 #endif
 
-  free(g_dest);
+  swift_free("g_dest", g_dest);
 
   /* Get all the counts from all the nodes. */
   if (MPI_Allreduce(MPI_IN_PLACE, counts, nr_nodes * nr_nodes, MPI_INT, MPI_SUM,
@@ -862,34 +867,34 @@ void engine_redistribute(struct engine *e) {
 
   /* SPH particles. */
   void *new_parts = engine_do_redistribute(
-      counts, (char *)s->parts, nr_parts_new, sizeof(struct part), part_align,
-      part_mpi_type, nr_nodes, nodeID);
-  free(s->parts);
+      "parts", counts, (char *)s->parts, nr_parts_new, sizeof(struct part),
+      part_align, part_mpi_type, nr_nodes, nodeID);
+  swift_free("parts", s->parts);
   s->parts = (struct part *)new_parts;
   s->nr_parts = nr_parts_new;
   s->size_parts = engine_redistribute_alloc_margin * nr_parts_new;
 
   /* Extra SPH particle properties. */
-  new_parts = engine_do_redistribute(counts, (char *)s->xparts, nr_parts_new,
-                                     sizeof(struct xpart), xpart_align,
-                                     xpart_mpi_type, nr_nodes, nodeID);
-  free(s->xparts);
+  new_parts = engine_do_redistribute(
+      "xparts", counts, (char *)s->xparts, nr_parts_new, sizeof(struct xpart),
+      xpart_align, xpart_mpi_type, nr_nodes, nodeID);
+  swift_free("xparts", s->xparts);
   s->xparts = (struct xpart *)new_parts;
 
   /* Gravity particles. */
-  new_parts = engine_do_redistribute(g_counts, (char *)s->gparts, nr_gparts_new,
-                                     sizeof(struct gpart), gpart_align,
-                                     gpart_mpi_type, nr_nodes, nodeID);
-  free(s->gparts);
+  new_parts = engine_do_redistribute(
+      "gparts", g_counts, (char *)s->gparts, nr_gparts_new,
+      sizeof(struct gpart), gpart_align, gpart_mpi_type, nr_nodes, nodeID);
+  swift_free("gparts", s->gparts);
   s->gparts = (struct gpart *)new_parts;
   s->nr_gparts = nr_gparts_new;
   s->size_gparts = engine_redistribute_alloc_margin * nr_gparts_new;
 
   /* Star particles. */
-  new_parts = engine_do_redistribute(s_counts, (char *)s->sparts, nr_sparts_new,
-                                     sizeof(struct spart), spart_align,
-                                     spart_mpi_type, nr_nodes, nodeID);
-  free(s->sparts);
+  new_parts = engine_do_redistribute(
+      "sparts", s_counts, (char *)s->sparts, nr_sparts_new,
+      sizeof(struct spart), spart_align, spart_mpi_type, nr_nodes, nodeID);
+  swift_free("sparts", s->sparts);
   s->sparts = (struct spart *)new_parts;
   s->nr_sparts = nr_sparts_new;
   s->size_sparts = engine_redistribute_alloc_margin * nr_sparts_new;
@@ -1361,15 +1366,15 @@ void engine_exchange_strays(struct engine *e, const size_t offset_parts,
     s->size_parts = (offset_parts + count_parts_in) * engine_parts_size_grow;
     struct part *parts_new = NULL;
     struct xpart *xparts_new = NULL;
-    if (posix_memalign((void **)&parts_new, part_align,
+    if (swift_memalign("parts", (void **)&parts_new, part_align,
                        sizeof(struct part) * s->size_parts) != 0 ||
-        posix_memalign((void **)&xparts_new, xpart_align,
+        swift_memalign("xparts", (void **)&xparts_new, xpart_align,
                        sizeof(struct xpart) * s->size_parts) != 0)
       error("Failed to allocate new part data.");
     memcpy(parts_new, s->parts, sizeof(struct part) * offset_parts);
     memcpy(xparts_new, s->xparts, sizeof(struct xpart) * offset_parts);
-    free(s->parts);
-    free(s->xparts);
+    swift_free("parts", s->parts);
+    swift_free("xparts", s->xparts);
     s->parts = parts_new;
     s->xparts = xparts_new;
 
@@ -1380,15 +1385,16 @@ void engine_exchange_strays(struct engine *e, const size_t offset_parts,
       }
     }
   }
+
   if (offset_sparts + count_sparts_in > s->size_sparts) {
     message("re-allocating sparts array.");
     s->size_sparts = (offset_sparts + count_sparts_in) * engine_parts_size_grow;
     struct spart *sparts_new = NULL;
-    if (posix_memalign((void **)&sparts_new, spart_align,
+    if (swift_memalign("sparts", (void **)&sparts_new, spart_align,
                        sizeof(struct spart) * s->size_sparts) != 0)
       error("Failed to allocate new spart data.");
     memcpy(sparts_new, s->sparts, sizeof(struct spart) * offset_sparts);
-    free(s->sparts);
+    swift_free("sparts", s->sparts);
     s->sparts = sparts_new;
 
     /* Reset the links */
@@ -1398,15 +1404,16 @@ void engine_exchange_strays(struct engine *e, const size_t offset_parts,
       }
     }
   }
+
   if (offset_gparts + count_gparts_in > s->size_gparts) {
     message("re-allocating gparts array.");
     s->size_gparts = (offset_gparts + count_gparts_in) * engine_parts_size_grow;
     struct gpart *gparts_new = NULL;
-    if (posix_memalign((void **)&gparts_new, gpart_align,
+    if (swift_memalign("gparts", (void **)&gparts_new, gpart_align,
                        sizeof(struct gpart) * s->size_gparts) != 0)
       error("Failed to allocate new gpart data.");
     memcpy(gparts_new, s->gparts, sizeof(struct gpart) * offset_gparts);
-    free(s->gparts);
+    swift_free("gparts", s->gparts);
     s->gparts = gparts_new;
 
     /* Reset the links */
@@ -1659,12 +1666,14 @@ void engine_exchange_proxy_multipoles(struct engine *e) {
 
   /* Allocate the buffers for the packed data */
   struct gravity_tensors *buffer_send = NULL;
-  if (posix_memalign((void **)&buffer_send, SWIFT_CACHE_ALIGNMENT,
+  if (swift_memalign("send_gravity_tensors", (void **)&buffer_send,
+                     SWIFT_CACHE_ALIGNMENT,
                      count_send_cells * sizeof(struct gravity_tensors)) != 0)
     error("Unable to allocate memory for multipole transactions");
 
   struct gravity_tensors *buffer_recv = NULL;
-  if (posix_memalign((void **)&buffer_recv, SWIFT_CACHE_ALIGNMENT,
+  if (swift_memalign("recv_gravity_tensors", (void **)&buffer_recv,
+                     SWIFT_CACHE_ALIGNMENT,
                      count_recv_cells * sizeof(struct gravity_tensors)) != 0)
     error("Unable to allocate memory for multipole transactions");
 
@@ -1825,25 +1834,32 @@ void engine_allocate_foreign_particles(struct engine *e) {
 
   /* Allocate space for the foreign particles we will receive */
   if (count_parts_in > s->size_parts_foreign) {
-    if (s->parts_foreign != NULL) free(s->parts_foreign);
+    if (s->parts_foreign != NULL)
+      swift_free("sparts_foreign", s->parts_foreign);
     s->size_parts_foreign = engine_foreign_alloc_margin * count_parts_in;
-    if (posix_memalign((void **)&s->parts_foreign, part_align,
+    if (swift_memalign("parts_foreign", (void **)&s->parts_foreign, part_align,
                        sizeof(struct part) * s->size_parts_foreign) != 0)
       error("Failed to allocate foreign part data.");
   }
+
   /* Allocate space for the foreign particles we will receive */
   if (count_gparts_in > s->size_gparts_foreign) {
-    if (s->gparts_foreign != NULL) free(s->gparts_foreign);
+    if (s->gparts_foreign != NULL)
+      swift_free("gparts_foreign", s->gparts_foreign);
     s->size_gparts_foreign = engine_foreign_alloc_margin * count_gparts_in;
-    if (posix_memalign((void **)&s->gparts_foreign, gpart_align,
+    if (swift_memalign("gparts_foreign", (void **)&s->gparts_foreign,
+                       gpart_align,
                        sizeof(struct gpart) * s->size_gparts_foreign) != 0)
       error("Failed to allocate foreign gpart data.");
   }
+
   /* Allocate space for the foreign particles we will receive */
   if (count_sparts_in > s->size_sparts_foreign) {
-    if (s->sparts_foreign != NULL) free(s->sparts_foreign);
+    if (s->sparts_foreign != NULL)
+      swift_free("sparts_foreign", s->sparts_foreign);
     s->size_sparts_foreign = engine_foreign_alloc_margin * count_sparts_in;
-    if (posix_memalign((void **)&s->sparts_foreign, spart_align,
+    if (swift_memalign("sparts_foreign", (void **)&s->sparts_foreign,
+                       spart_align,
                        sizeof(struct spart) * s->size_sparts_foreign) != 0)
       error("Failed to allocate foreign spart data.");
   }
@@ -3133,6 +3149,7 @@ void engine_step(struct engine *e) {
   e->max_active_bin = get_max_active_bin(e->ti_end_min);
   e->min_active_bin = get_min_active_bin(e->ti_current, e->ti_old);
   e->step += 1;
+  engine_current_step = e->step;
   e->step_props = engine_step_prop_none;
 
   /* When restarting, move everyone to the current time. */
@@ -3385,7 +3402,7 @@ void engine_check_for_dumps(struct engine *e) {
         /* Free the memory allocated for VELOCIraptor i/o. */
         if (with_stf && e->snapshot_invoke_stf) {
 #ifdef HAVE_VELOCIRAPTOR
-          free(e->s->gpart_group_data);
+          swift_free("gpart_group_data", e->s->gpart_group_data);
           e->s->gpart_group_data = NULL;
 #endif
         }
@@ -3926,17 +3943,18 @@ void engine_split(struct engine *e, struct partition *initial_partition) {
   s->size_parts = s->nr_parts * engine_redistribute_alloc_margin;
   struct part *parts_new = NULL;
   struct xpart *xparts_new = NULL;
-  if (posix_memalign((void **)&parts_new, part_align,
+  if (swift_memalign("parts", (void **)&parts_new, part_align,
                      sizeof(struct part) * s->size_parts) != 0 ||
-      posix_memalign((void **)&xparts_new, xpart_align,
+      swift_memalign("xparts", (void **)&xparts_new, xpart_align,
                      sizeof(struct xpart) * s->size_parts) != 0)
     error("Failed to allocate new part data.");
+
   if (s->nr_parts > 0) {
     memcpy(parts_new, s->parts, sizeof(struct part) * s->nr_parts);
     memcpy(xparts_new, s->xparts, sizeof(struct xpart) * s->nr_parts);
   }
-  free(s->parts);
-  free(s->xparts);
+  swift_free("parts", s->parts);
+  swift_free("xparts", s->xparts);
   s->parts = parts_new;
   s->xparts = xparts_new;
 
@@ -3950,12 +3968,13 @@ void engine_split(struct engine *e, struct partition *initial_partition) {
             (size_t)(s->nr_sparts * engine_redistribute_alloc_margin));
   s->size_sparts = s->nr_sparts * engine_redistribute_alloc_margin;
   struct spart *sparts_new = NULL;
-  if (posix_memalign((void **)&sparts_new, spart_align,
+  if (swift_memalign("sparts", (void **)&sparts_new, spart_align,
                      sizeof(struct spart) * s->size_sparts) != 0)
     error("Failed to allocate new spart data.");
+
   if (s->nr_sparts > 0)
     memcpy(sparts_new, s->sparts, sizeof(struct spart) * s->nr_sparts);
-  free(s->sparts);
+  swift_free("sparts", s->sparts);
   s->sparts = sparts_new;
 
   /* Re-link the gparts to their sparts. */
@@ -3968,12 +3987,13 @@ void engine_split(struct engine *e, struct partition *initial_partition) {
             (size_t)(s->nr_gparts * engine_redistribute_alloc_margin));
   s->size_gparts = s->nr_gparts * engine_redistribute_alloc_margin;
   struct gpart *gparts_new = NULL;
-  if (posix_memalign((void **)&gparts_new, gpart_align,
+  if (swift_memalign("gparts", (void **)&gparts_new, gpart_align,
                      sizeof(struct gpart) * s->size_gparts) != 0)
     error("Failed to allocate new gpart data.");
+
   if (s->nr_gparts > 0)
     memcpy(gparts_new, s->gparts, sizeof(struct gpart) * s->nr_gparts);
-  free(s->gparts);
+  swift_free("gparts", s->gparts);
   s->gparts = gparts_new;
 
   /* Re-link the parts. */
@@ -4031,7 +4051,8 @@ void engine_collect_stars_counter(struct engine *e) {
   }
 
   /* Get all sparticles */
-  struct spart *sparts = (struct spart *)malloc(total * sizeof(struct spart));
+  struct spart *sparts =
+      (struct spart *)swift_malloc("sparts", total * sizeof(struct spart));
   err = MPI_Allgatherv(e->s->sparts_foreign, e->s->nr_sparts_foreign,
                        spart_mpi_type, sparts, n_sparts_int, displs,
                        spart_mpi_type, MPI_COMM_WORLD);
@@ -4066,7 +4087,7 @@ void engine_collect_stars_counter(struct engine *e) {
 
   free(n_sparts);
   free(n_sparts_int);
-  free(sparts);
+  swift_free("sparts", sparts);
 #endif
 }
 
@@ -4904,9 +4925,10 @@ void engine_config(int restart, struct engine *e, struct swift_params *params,
       parser_get_opt_param_int(params, "Scheduler:mpi_message_limit", 4) * 1024;
 
   /* Allocate and init the threads. */
-  if (posix_memalign((void **)&e->runners, SWIFT_CACHE_ALIGNMENT,
+  if (swift_memalign("runners", (void **)&e->runners, SWIFT_CACHE_ALIGNMENT,
                      e->nr_threads * sizeof(struct runner)) != 0)
     error("Failed to allocate threads array.");
+
   for (int k = 0; k < e->nr_threads; k++) {
     e->runners[k].id = k;
     e->runners[k].e = e;
@@ -5411,14 +5433,14 @@ void engine_clean(struct engine *e) {
     gravity_cache_clean(&e->runners[i].ci_gravity_cache);
     gravity_cache_clean(&e->runners[i].cj_gravity_cache);
   }
-  free(e->runners);
+  swift_free("runners", e->runners);
   free(e->snapshot_units);
 
   output_list_clean(&e->output_list_snapshots);
   output_list_clean(&e->output_list_stats);
   output_list_clean(&e->output_list_stf);
 
-  free(e->links);
+  swift_free("links", e->links);
 #if defined(WITH_LOGGER)
   logger_clean(e->logger);
   free(e->logger);

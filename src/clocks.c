@@ -42,8 +42,9 @@
 /* The CPU frequency used to convert ticks to seconds. */
 static unsigned long long clocks_cpufreq = 0;
 
-/* Ticks when the CPU frequency was initialised. Used in elapsed. */
-static ticks clocks_start = 0;
+/* Ticks when the CPU frequency was initialised, this marks the start of
+ * time. */
+ticks clocks_start_ticks = 0;
 
 /* The units of any returned times. */
 static const char *clocks_units[] = {"ms", "~ms"};
@@ -106,7 +107,7 @@ void clocks_set_cpufreq(unsigned long long freq) {
   } else {
     clocks_estimate_cpufreq();
   }
-  clocks_start = getticks();
+  clocks_start_ticks = getticks();
 }
 
 /**
@@ -258,7 +259,7 @@ const char *clocks_get_timesincestart(void) {
   static char buffer[40];
 
   sprintf(buffer, "[%07.1f]",
-          clocks_diff_ticks(getticks(), clocks_start) / 1000.0);
+          clocks_diff_ticks(getticks(), clocks_start_ticks) / 1000.0);
 
   return buffer;
 }
@@ -271,7 +272,7 @@ const char *clocks_get_timesincestart(void) {
  * @result the time since the start of the execution
  */
 double clocks_get_hours_since_start(void) {
-  return clocks_diff_ticks(getticks(), clocks_start) / (3600. * 1000.0);
+  return clocks_diff_ticks(getticks(), clocks_start_ticks) / (3600. * 1000.0);
 }
 
 /**

@@ -35,6 +35,7 @@
 #include "lock.h"
 #include "multipole.h"
 #include "part.h"
+#include "sort_part.h"
 #include "space.h"
 #include "task.h"
 #include "timeline.h"
@@ -252,6 +253,7 @@ struct cell {
 
     /*! Pointer for the sorted indices. */
     struct entry *sort[13];
+    struct entry *sortptr;
 
     /*! Super cell, i.e. the highest-level parent cell that has a hydro
      * pair/self tasks */
@@ -541,6 +543,7 @@ struct cell {
 
     /*! Pointer for the sorted indices. */
     struct entry *sort[13];
+    struct entry *sortptr;
 
     /*! Bit-mask indicating the sorted directions */
     unsigned int sorted;
@@ -1074,6 +1077,104 @@ __attribute__((always_inline)) INLINE static void cell_ensure_tagged(
 #else
   error("SWIFT was not compiled with MPI enabled.");
 #endif  // WITH_MPI
+}
+
+/**
+ * @brief Allocate hydro sort memory for cell.
+ *
+ * @param c The #cell that will require sorting.
+ * @param flags Cell flags.
+ */
+__attribute__((always_inline)) INLINE static void cell_malloc_hydro_sorts(
+    struct cell *c, int flags) {
+
+  /* Count the memory needed for all active dimensions. */
+  int count = 0;
+  for (int j = 0; j < 13; j++) {
+    if ((flags & (1 << j)) && c->hydro.sort[j] == NULL)
+      count += (c->hydro.count + 1);
+  }
+
+  /* Allocate as a single chunk. */
+  struct entry *memptr = NULL;
+  if ((memptr = (struct entry *)swift_malloc(
+           "hydro.sort", sizeof(struct entry) * count)) == NULL)
+    error("Failed to allocate sort memory.");
+
+  c->hydro.sortptr = memptr;
+
+  /* And attach spans as needed. */
+  for (int j = 0; j < 13; j++) {
+    if ((flags & (1 << j)) && c->hydro.sort[j] == NULL) {
+      c->hydro.sort[j] = memptr;
+      memptr += (c->hydro.count + 1);
+    }
+  }
+}
+
+/**
+ * @brief Free hydro sort memory for cell.
+ *
+ * @param c The #cell.
+ */
+__attribute__((always_inline)) INLINE static void cell_free_hydro_sorts(
+    struct cell *c) {
+
+  /* Note only one allocation for the dimensions. */
+  if (c->hydro.sortptr != NULL) {
+    swift_free("hydro.sort", c->hydro.sortptr);
+    c->hydro.sortptr = NULL;
+    for (int i = 0; i < 13; i++) c->hydro.sort[i] = NULL;
+  }
+}
+
+/**
+ * @brief Allocate stars sort memory for cell.
+ *
+ * @param c The #cell that will require sorting.
+ * @param flags Cell flags.
+ */
+__attribute__((always_inline)) INLINE static void cell_malloc_stars_sorts(
+    struct cell *c, int flags) {
+
+  /* Count the memory needed for all active dimensions. */
+  int count = 0;
+  for (int j = 0; j < 13; j++) {
+    if ((flags & (1 << j)) && c->stars.sort[j] == NULL)
+      count += (c->stars.count + 1);
+  }
+
+  /* Allocate as a single chunk. */
+  struct entry *memptr = NULL;
+  if ((memptr = (struct entry *)swift_malloc(
+           "stars.sort", sizeof(struct entry) * count)) == NULL)
+    error("Failed to allocate sort memory.");
+
+  c->stars.sortptr = memptr;
+
+  /* And attach spans as needed. */
+  for (int j = 0; j < 13; j++) {
+    if ((flags & (1 << j)) && c->stars.sort[j] == NULL) {
+      c->stars.sort[j] = memptr;
+      memptr += (c->stars.count + 1);
+    }
+  }
+}
+
+/**
+ * @brief Free stars sort memory for cell.
+ *
+ * @param c The #cell.
+ */
+__attribute__((always_inline)) INLINE static void cell_free_stars_sorts(
+    struct cell *c) {
+
+  /* Note only one allocation for the dimensions. */
+  if (c->stars.sortptr != NULL) {
+    swift_free("stars.sort", c->stars.sortptr);
+    c->stars.sortptr = NULL;
+    for (int i = 0; i < 13; i++) c->stars.sort[i] = NULL;
+  }
 }
 
 #endif /* SWIFT_CELL_H */
