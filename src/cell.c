@@ -3222,7 +3222,7 @@ int cell_unskip_hydro_tasks(struct cell *c, struct scheduler *s) {
     if (c->hydro.cooling != NULL) scheduler_activate(s, c->hydro.cooling);
     if (c->logger != NULL) scheduler_activate(s, c->logger);
 
-    if (c->hydro.star_formation != NULL) {
+    if (c->top->hydro.star_formation != NULL) {
       scheduler_activate(s, c->top->hydro.star_formation);
       cell_activate_drift_spart(c, s);
     }

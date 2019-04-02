@@ -671,6 +671,8 @@ void runner_do_star_formation(struct runner *r, struct cell *c, int timer) {
   if (with_feedback && (c == c->hydro.super) &&
       (current_stars_count != c->stars.count)) {
 
+    error("MATTHIEU needs to think a bit more here!");
+
     cell_clear_stars_sort_flags(c);
     runner_do_stars_sort(r, c, 0x1FFF, /*cleanup=*/0, /*timer=*/0);
   }

@@ -571,6 +571,7 @@ void space_regrid(struct space *s, int verbose) {
           c->hydro.count = 0;
           c->grav.count = 0;
           c->stars.count = 0;
+          c->top = c;
           c->super = c;
           c->hydro.super = c;
           c->grav.super = c;
@@ -2769,6 +2770,7 @@ void space_split_recursive(struct space *s, struct cell *c,
       cp->stars.dx_max_sort = 0.f;
       cp->nodeID = c->nodeID;
       cp->parent = c;
+      cp->top = c->top;
       cp->super = NULL;
       cp->hydro.super = NULL;
       cp->grav.super = NULL;
