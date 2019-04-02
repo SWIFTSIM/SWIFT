@@ -244,7 +244,7 @@ int main(int argc, char *argv[]) {
                   NULL, 0, 0),
       OPT_INTEGER('T', "timers", &with_verbose_timers,
                   "Print timers every time-step.", NULL, 0, 0),
-      OPT_INTEGER('u', "fof", &with_fof,
+      OPT_BOOLEAN('u', "fof", &with_fof,
                   "Run Friends-of-Friends algorithm.", NULL, 0, 0),
       OPT_INTEGER('v', "verbose", &verbose,
                   "Run in verbose mode, in MPI mode 2 outputs from all ranks.",
@@ -1029,8 +1029,6 @@ int main(int argc, char *argv[]) {
     /* Is there a dump before the end of the first time-step? */
     engine_check_for_dumps(&e);
 
-    /* Perform first FOF search after the first snapshot dump. */
-    if (e.policy & engine_policy_fof) fof_search_tree(&s);
   }
 
   /* Legend */
