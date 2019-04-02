@@ -130,7 +130,7 @@ struct end_of_step_data {
   size_t inhibited, g_inhibited, s_inhibited;
   integertime_t ti_hydro_end_min, ti_hydro_end_max, ti_hydro_beg_max;
   integertime_t ti_gravity_end_min, ti_gravity_end_max, ti_gravity_beg_max;
-  integertime_t ti_stars_end_min;
+  integertime_t ti_stars_end_min, ti_stars_end_max, ti_stars_beg_max;
   struct engine *e;
 };
 
@@ -2383,7 +2383,8 @@ void engine_collect_end_of_step_recurse(struct cell *c,
                 ti_hydro_beg_max = 0;
   integertime_t ti_gravity_end_min = max_nr_timesteps, ti_gravity_end_max = 0,
                 ti_gravity_beg_max = 0;
-  integertime_t ti_stars_end_min = max_nr_timesteps;
+  integertime_t ti_stars_end_min = max_nr_timesteps, ti_stars_end_max = 0,
+                ti_stars_beg_max = 0;
 
   /* Collect the values from the progeny. */
   for (int k = 0; k < 8; k++) {
@@ -2404,6 +2405,8 @@ void engine_collect_end_of_step_recurse(struct cell *c,
       ti_gravity_beg_max = max(ti_gravity_beg_max, cp->grav.ti_beg_max);
 
       ti_stars_end_min = min(ti_stars_end_min, cp->stars.ti_end_min);
+      ti_stars_end_max = max(ti_stars_end_max, cp->stars.ti_end_max);
+      ti_stars_beg_max = max(ti_stars_beg_max, cp->stars.ti_beg_max);
 
       updated += cp->hydro.updated;
       g_updated += cp->grav.updated;
@@ -2428,6 +2431,8 @@ void engine_collect_end_of_step_recurse(struct cell *c,
   c->grav.ti_end_max = ti_gravity_end_max;
   c->grav.ti_beg_max = ti_gravity_beg_max;
   c->stars.ti_end_min = ti_stars_end_min;
+  c->stars.ti_end_max = ti_stars_end_max;
+  c->stars.ti_beg_max = ti_stars_beg_max;
   c->hydro.updated = updated;
   c->grav.updated = g_updated;
   c->stars.updated = s_updated;
@@ -2462,7 +2467,8 @@ void engine_collect_end_of_step_mapper(void *map_data, int num_elements,
                 ti_hydro_beg_max = 0;
   integertime_t ti_gravity_end_min = max_nr_timesteps, ti_gravity_end_max = 0,
                 ti_gravity_beg_max = 0;
-  integertime_t ti_stars_end_min = max_nr_timesteps;
+  integertime_t ti_stars_end_min = max_nr_timesteps, ti_stars_end_max = 0,
+                ti_stars_beg_max = 0;
 
   for (int ind = 0; ind < num_elements; ind++) {
     struct cell *c = &s->cells_top[local_cells[ind]];
@@ -2485,6 +2491,8 @@ void engine_collect_end_of_step_mapper(void *map_data, int num_elements,
 
       if (c->stars.ti_end_min > e->ti_current)
         ti_stars_end_min = min(ti_stars_end_min, c->stars.ti_end_min);
+      ti_stars_end_max = max(ti_stars_end_max, c->stars.ti_end_max);
+      ti_stars_beg_max = max(ti_stars_beg_max, c->stars.ti_beg_max);
 
       updated += c->hydro.updated;
       g_updated += c->grav.updated;
@@ -2527,6 +2535,8 @@ void engine_collect_end_of_step_mapper(void *map_data, int num_elements,
 
     if (ti_stars_end_min > e->ti_current)
       data->ti_stars_end_min = min(ti_stars_end_min, data->ti_stars_end_min);
+    data->ti_stars_end_max = max(ti_stars_end_max, data->ti_stars_end_max);
+    data->ti_stars_beg_max = max(ti_stars_beg_max, data->ti_stars_beg_max);
   }
 
   if (lock_unlock(&s->lock) != 0) error("Failed to unlock the space");
@@ -2560,6 +2570,8 @@ void engine_collect_end_of_step(struct engine *e, int apply) {
   data.ti_hydro_beg_max = 0;
   data.ti_gravity_end_min = max_nr_timesteps, data.ti_gravity_end_max = 0,
   data.ti_gravity_beg_max = 0;
+  data.ti_stars_end_min = max_nr_timesteps, data.ti_stars_end_max = 0,
+  data.ti_stars_beg_max = 0;
   data.e = e;
 
   /* Collect information from the local top-level cells */
@@ -2577,7 +2589,8 @@ void engine_collect_end_of_step(struct engine *e, int apply) {
       &e->collect_group1, data.updated, data.g_updated, data.s_updated,
       data.inhibited, data.g_inhibited, data.s_inhibited, data.ti_hydro_end_min,
       data.ti_hydro_end_max, data.ti_hydro_beg_max, data.ti_gravity_end_min,
-      data.ti_gravity_end_max, data.ti_gravity_beg_max, e->forcerebuild,
+      data.ti_gravity_end_max, data.ti_gravity_beg_max, data.ti_stars_end_min,
+      data.ti_stars_end_max, data.ti_stars_beg_max, e->forcerebuild,
       e->s->tot_cells, e->sched.nr_tasks,
       (float)e->sched.nr_tasks / (float)e->s->tot_cells);
 
@@ -3528,6 +3541,12 @@ void engine_unskip(struct engine *e) {
   const ticks tic = getticks();
   struct space *s = e->s;
 
+  const int with_hydro = e->policy & engine_policy_hydro;
+  const int with_self_grav = e->policy & engine_policy_self_gravity;
+  const int with_ext_grav = e->policy & engine_policy_external_gravity;
+  const int with_grav = (with_self_grav || with_ext_grav);
+  const int with_stars = e->policy & engine_policy_stars;
+
 #ifdef WITH_PROFILER
   static int count = 0;
   char filename[100];
@@ -3541,11 +3560,9 @@ void engine_unskip(struct engine *e) {
   for (int k = 0; k < s->nr_local_cells_with_tasks; k++) {
     struct cell *c = &s->cells_top[local_cells[k]];
 
-    if ((e->policy & engine_policy_hydro && cell_is_active_hydro(c, e)) ||
-        (e->policy & engine_policy_self_gravity &&
-         cell_is_active_gravity(c, e)) ||
-        (e->policy & engine_policy_external_gravity &&
-         cell_is_active_gravity(c, e))) {
+    if ((with_hydro && cell_is_active_hydro(c, e)) ||
+        (with_grav && cell_is_active_gravity(c, e)) ||
+        (with_stars && cell_is_active_stars(c, e))) {
 
       if (num_active_cells != k)
         memswap(&local_cells[k], &local_cells[num_active_cells], sizeof(int));
