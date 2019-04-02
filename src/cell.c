@@ -1846,6 +1846,32 @@ void cell_clear_limiter_flags(struct cell *c, void *data) {
 }
 
 /**
+ * @brief Recurse down in a cell hierarchy until the hydro.super level is reached
+ * and activate the spart drift at that level.
+ *
+ * @param c The #cell to recurse into.
+ * @param s The #scheduler.
+ */
+void cell_activate_super_spart_drifts(struct cell *c, struct scheduler *s) {
+
+  if (c == c->hydro.super) {
+    cell_activate_drift_spart(c, s);
+  } else {
+    if (c->split) {
+      for (int k = 0; k < 8; ++k) {
+        if (c->progeny[k] != NULL) {
+          cell_activate_super_spart_drifts(c->progeny[k], s);
+        }
+      }
+    } else {
+#ifdef SWIFT_DEBUG_CHECKS
+      error("Reached a leaf cell without finding a hydro.super!!");
+#endif
+    }
+  }
+}
+
+/**
  * @brief Activate the #part drifts on the given cell.
  */
 void cell_activate_drift_part(struct cell *c, struct scheduler *s) {
