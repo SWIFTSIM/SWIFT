@@ -67,8 +67,8 @@ the step.
 To post process these files into a memory used timeline and get a report of
 the peak memory use, as well as the memory still in use at the end of the step
 there is an basic analysis script ``analyse_memuse_logs.py`` and two wrappers
-that process a directory of logs, these are ``./process_memuse_logs`` and
-``./process_memuse_logs_MPI`` for non-MPI and MPI runs respectively.
+that process a directory of logs, these are ``./process_memuse_logs.sh`` and
+``./process_memuse_logs_MPI.sh`` for non-MPI and MPI runs respectively.
 
 Note that the process scripts process each step individually and also process
 all the logs as a single sequence. When interpreting these some care should be
