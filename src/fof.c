@@ -1864,7 +1864,8 @@ void fof_search_tree(struct space *s) {
 
   double *group_mass = s->fof_data.group_mass;
   /* Allocate and initialise a group mass array. */
-  if (posix_memalign((void **)&group_mass, 32,
+  if (swift_memalign("group_mass",
+                     (void **)&group_mass, 32,
                      num_groups_local * sizeof(double)) != 0)
     error("Failed to allocate list of group masses for FOF search.");
 
