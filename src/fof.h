@@ -30,12 +30,6 @@
 /* Avoid cyclic inclusions */
 struct space;
 
-struct fof_CoM {
-
-  double x, y, z;
-
-} SWIFT_STRUCT_ALIGN;
-
 /* MPI message required for FOF. */
 struct fof_mpi {
 
@@ -57,6 +51,11 @@ struct fof {
 
   size_t *group_index;
   size_t *group_size;
+  double *group_mass;
+  
+  /*! The FOF linking length squared. */
+  double l_x2;
+  
   int num_groups;
   size_t min_group_size;
   size_t group_id_default;

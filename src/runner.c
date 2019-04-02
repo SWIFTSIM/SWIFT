@@ -3307,7 +3307,7 @@ void runner_do_fof_self(struct runner *r, struct cell *c, int timer) {
 
   struct space *s = r->e->s;
   const double dim[3] = {s->dim[0], s->dim[1], s->dim[2]};
-  const double search_r2 = s->l_x2;
+  const double search_r2 = s->fof_data.l_x2;
 
   rec_fof_search_self(c, s, dim, search_r2);
 
@@ -3329,7 +3329,7 @@ void runner_do_fof_pair(struct runner *r, struct cell *ci, struct cell *cj,
 
   struct space *s = r->e->s;
   const double dim[3] = {s->dim[0], s->dim[1], s->dim[2]};
-  const double search_r2 = s->l_x2;
+  const double search_r2 = s->fof_data.l_x2;
 
   rec_fof_search_pair(ci, cj, s, dim, search_r2);
 

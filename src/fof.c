@@ -99,7 +99,7 @@ void fof_init(struct space *s) {
   l_x = parser_get_opt_param_double(e->parameter_file,
                                     "FOF:absolute_linking_length", l_x);
 
-  s->l_x2 = l_x * l_x;
+  s->fof_data.l_x2 = l_x * l_x;
 
   /* Read the initial group_links array size. */
   s->fof_data.group_links_size_default = parser_get_opt_param_double(
@@ -613,7 +613,7 @@ void fof_search_cell(struct space *s, struct cell *c) {
 
   const size_t count = c->grav.count;
   struct gpart *gparts = c->grav.parts;
-  const double l_x2 = s->l_x2;
+  const double l_x2 = s->fof_data.l_x2;
   size_t *group_index = s->fof_data.group_index;
 
   /* Make a list of particle offsets into the global gparts array. */
@@ -669,7 +669,7 @@ void fof_search_pair_cells(struct space *s, struct cell *restrict ci,
   struct gpart *gparts_i = ci->grav.parts;
   struct gpart *gparts_j = cj->grav.parts;
   const double dim[3] = {s->dim[0], s->dim[1], s->dim[2]};
-  const float l_x2 = s->l_x2;
+  const float l_x2 = s->fof_data.l_x2;
   size_t *group_index = s->fof_data.group_index;
 
   /* Make a list of particle offsets into the global gparts array. */
@@ -751,7 +751,7 @@ void fof_search_pair_cells_foreign(struct space *s, struct cell *ci,
   struct gpart *gparts_i = ci->grav.parts;
   struct gpart *gparts_j = cj->grav.parts;
   const double dim[3] = {s->dim[0], s->dim[1], s->dim[2]};
-  const double l_x2 = s->l_x2;
+  const double l_x2 = s->fof_data.l_x2;
   size_t *group_index = s->fof_data.group_index;
   size_t *group_size = s->fof_data.group_size;
 
@@ -1096,7 +1096,7 @@ void fof_find_foreign_links_mapper(void *map_data, int num_elements,
   struct cell_pair_indices *cell_pairs = (struct cell_pair_indices *)map_data;
 
   const double dim[3] = {s->dim[0], s->dim[1], s->dim[2]};
-  const double search_r2 = s->l_x2;
+  const double search_r2 = s->fof_data.l_x2;
 
   /* Store links in an array local to this thread. */
   int local_link_count = 0;
@@ -1197,7 +1197,7 @@ void fof_search_foreign_cells(struct space *s) {
   size_t *group_size = s->fof_data.group_size;
   const size_t nr_gparts = s->nr_gparts;
   const double dim[3] = {s->dim[0], s->dim[1], s->dim[2]};
-  const double search_r2 = s->l_x2;
+  const double search_r2 = s->fof_data.l_x2;
 
   message("Searching foreign cells for links.");
 
@@ -1601,7 +1601,7 @@ void fof_search_tree(struct space *s) {
   snprintf(output_file_name, PARSER_MAX_LINE_SIZE, "%s", s->fof_data.base_name);
 
   message("Searching %zu gravity particles for links with l_x2: %lf", nr_gparts,
-          s->l_x2);
+          s->fof_data.l_x2);
   
   message("Size of hash table element: %ld", sizeof(hashmap_element_t));
 
@@ -1844,7 +1844,7 @@ void fof_search_tree(struct space *s) {
   message("Group sorting took: %.3f %s.", clocks_from_ticks(getticks() - tic),
           clocks_getunit());
 
-  double *group_mass;
+  double *group_mass = s->fof_data.group_mass;
   /* Allocate and initialise a group mass array. */
   if (posix_memalign((void **)&group_mass, 32,
                      num_groups_local * sizeof(double)) != 0)
