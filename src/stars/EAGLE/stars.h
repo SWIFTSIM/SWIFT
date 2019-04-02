@@ -365,7 +365,7 @@ inline static void evolve_SNII(float log10_min_mass, float log10_max_mass,
 
   /* Integrate IMF to determine number of SNII */
   sp->to_distribute.num_SNII = integrate_imf(
-      log10_min_mass, log10_max_mass, 0.0, 0, stellar_yields, stars);
+      log10_min_mass, log10_max_mass, 0, stellar_yields, stars);
 
   /* determine which metallicity bin and offset this star belongs to */
   int iz_low, iz_high, low_index_3d, high_index_3d, low_index_2d, high_index_2d;
@@ -397,7 +397,7 @@ inline static void evolve_SNII(float log10_min_mass, float log10_max_mass,
                     stars->feedback.yield_SNII.ejecta_IMF_resampled[high_index_2d]);
     }
 
-    metal_mass_released[elem] = integrate_imf(log10_min_mass, log10_max_mass, 0.0, 2,
+    metal_mass_released[elem] = integrate_imf(log10_min_mass, log10_max_mass, 2,
                               stellar_yields, stars);
   }
 
@@ -416,7 +416,7 @@ inline static void evolve_SNII(float log10_min_mass, float log10_max_mass,
                   stars->feedback.yield_SNII.ejecta_IMF_resampled[high_index_2d]);
   }
 
-  metal_mass_released_total = integrate_imf(log10_min_mass, log10_max_mass, 0.0, 2,
+  metal_mass_released_total = integrate_imf(log10_min_mass, log10_max_mass, 2,
                        stellar_yields, stars);
 
   /* yield normalization */
@@ -439,7 +439,7 @@ inline static void evolve_SNII(float log10_min_mass, float log10_max_mass,
         dz * stars->feedback.yield_SNII.ejecta_IMF_resampled[high_index_2d];
   }
 
-  norm0 = integrate_imf(log10_min_mass, log10_max_mass, 0.0, 2,
+  norm0 = integrate_imf(log10_min_mass, log10_max_mass, 2,
                         stellar_yields, stars);
 
   /* compute the total mass ejected */
@@ -521,7 +521,7 @@ inline static void evolve_AGB(float log10_min_mass, float log10_max_mass,
                     stars->feedback.yield_AGB.ejecta_IMF_resampled[high_index_2d]);
     }
 
-    metal_mass_released[elem] = integrate_imf(log10_min_mass, log10_max_mass, 0.0, 2,
+    metal_mass_released[elem] = integrate_imf(log10_min_mass, log10_max_mass, 2,
                               stellar_yields, stars);
   }
 
@@ -540,7 +540,7 @@ inline static void evolve_AGB(float log10_min_mass, float log10_max_mass,
                   stars->feedback.yield_AGB.ejecta_IMF_resampled[high_index_2d]);
   }
 
-  metal_mass_released_total = integrate_imf(log10_min_mass, log10_max_mass, 0.0, 2,
+  metal_mass_released_total = integrate_imf(log10_min_mass, log10_max_mass, 2,
                        stellar_yields, stars);
 
   /* yield normalization */
@@ -563,7 +563,7 @@ inline static void evolve_AGB(float log10_min_mass, float log10_max_mass,
         dz * stars->feedback.yield_AGB.ejecta_IMF_resampled[high_index_2d];
   }
 
-  norm0 = integrate_imf(log10_min_mass, log10_max_mass, 0.0, 2,
+  norm0 = integrate_imf(log10_min_mass, log10_max_mass, 2,
                         stellar_yields, stars);
 
   /* compute the total mass ejected */
@@ -772,7 +772,7 @@ inline static void stars_evolve_init(struct swift_params* params,
    * Note: since we are integrating the IMF without weighting it by the yields
    * pass NULL pointer for stellar_yields array */
   stars->feedback.num_SNII_per_msun = integrate_imf(stars->feedback.log10_SNII_min_mass_msun,
-                                           stars->feedback.log10_SNII_max_mass_msun, 0,
+                                           stars->feedback.log10_SNII_max_mass_msun,
                                            0, /*(stellar_yields=)*/ NULL, stars);
 
   message("initialized stellar feedback");

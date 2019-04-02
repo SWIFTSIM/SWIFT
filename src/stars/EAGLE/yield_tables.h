@@ -80,7 +80,6 @@ inline static int get_element_index(const char *element_name,
 inline static void read_yield_tables(struct stars_props *restrict stars) {
 #ifdef HAVE_HDF5
 
-  // ALEXEI: sort out index names
   int i, j, k, flat_index;
 
   /* filenames to read HDF5 files */

@@ -69,16 +69,15 @@ inline static void determine_imf_bins(
  *
  * @param log10_min_mass log10 mass lower integration bound
  * @param log10_max_mass log10 mass upper integration bound
- * @param m2 ALEXEI: I have no idea. Check if it is ever used
  * @param mode Flag to specify weighting used for integrating IMF
  * @param stellar_yields Array of weights based on yields. Used with mode=2
  * @param star_properties the #stars_props data structure
  */
 inline static float integrate_imf(
-    float log10_min_mass, float log10_max_mass, float m2, int mode,
+    float log10_min_mass, float log10_max_mass, int mode,
     float *stellar_yields, const struct stars_props *restrict star_properties) {
 
-  double result, u, f;
+  double result;
 
   int low_imf_mass_bin_index, high_imf_mass_bin_index;
 
@@ -114,18 +113,6 @@ inline static float integrate_imf(
       integrand[i] =
           stellar_yields[i] * star_properties->feedback.imf[i] *
           star_properties->feedback.imf_mass_bin[i]; 
-  else if (mode == 3) {
-    /* ALEXEI: should we keep this? */
-    int gamma_SNIa = 2;
-    for (int i = low_imf_mass_bin_index; i < high_imf_mass_bin_index + 1; i++) {
-      u = m2 / star_properties->feedback.imf_mass_bin[i];
-      f = pow(2.0, gamma_SNIa + 1) * (gamma_SNIa + 1) * pow(u, gamma_SNIa);
-      integrand[i] =
-          f * star_properties->feedback.imf[i] /
-          star_properties->feedback.imf_mass_bin[i]; /* integrate number * f(u) / M
-                                                   ... type Ia SN */
-    }
-  }
   else {
     error("invalid mode in integrate_imf = %d\n", mode);
   }
@@ -244,7 +231,7 @@ inline static void init_imf(struct stars_props *restrict star_properties) {
   }
 
   /* Normalize the IMF */
-  norm = integrate_imf(star_properties->feedback.log10_imf_min_mass_msun, star_properties->feedback.log10_imf_max_mass_msun, 0.0, 1,
+  norm = integrate_imf(star_properties->feedback.log10_imf_min_mass_msun, star_properties->feedback.log10_imf_max_mass_msun, 1,
                        /*(stellar_yields=)*/ NULL, star_properties);
 
   for (int i = 0; i < star_properties->feedback.n_imf_mass_bins; i++)
