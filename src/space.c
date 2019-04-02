@@ -1037,6 +1037,9 @@ void space_rebuild(struct space *s, int repartitioned, int verbose) {
 #ifdef SWIFT_DEBUG_CHECKS
   if (s->e->nodeID == 0 || verbose) message("(re)building space");
   fflush(stdout);
+
+  /* Reset the cell counter */
+  last_cell_id = 1;
 #endif
 
   /* Re-grid if necessary, or just re-set the cell data. */
