@@ -39,6 +39,7 @@
 #include "proxy.h"
 #include "threadpool.h"
 #include "c_hashmap/hashmap.h"
+#include "memuse.h"
 
 #ifdef WITH_MPI
 MPI_Datatype fof_mpi_type;
@@ -106,12 +107,14 @@ void fof_init(struct space *s) {
   const size_t nr_local_gparts = s->nr_gparts;
 
   /* Allocate and initialise a group index array. */
-  if (posix_memalign((void **)&s->fof_data.group_index, 32,
+  if (swift_memalign("fof_group_index",
+                     (void **)&s->fof_data.group_index, 32,
                      nr_local_gparts * sizeof(size_t)) != 0)
     error("Failed to allocate list of particle group indices for FOF search.");
 
   /* Allocate and initialise a group size array. */
-  if (posix_memalign((void **)&s->fof_data.group_size, 32,
+  if (swift_memalign("fof_group_size",
+                     (void **)&s->fof_data.group_size, 32,
                      nr_local_gparts * sizeof(size_t)) != 0)
     error("Failed to allocate list of group size for FOF search.");
 
@@ -915,7 +918,7 @@ void fof_find_foreign_links_mapper(void *map_data, int num_elements,
 
   /* Init the local group links buffer. */
   struct fof_mpi *local_group_links =
-      (struct fof_mpi *)calloc(sizeof(struct fof_mpi), local_group_links_size);
+    (struct fof_mpi *)swift_calloc("fof_local_group_links", sizeof(struct fof_mpi), local_group_links_size);
   if (local_group_links == NULL)
     error("Failed to allocate temporary group links buffer.");
 
@@ -989,7 +992,7 @@ void fof_find_foreign_links_mapper(void *map_data, int num_elements,
   /* Release lock. */
   if (lock_unlock(&s->lock) != 0) error("Failed to unlock the space");
 
-  free(local_group_links);
+  swift_free("fof_local_group_links", local_group_links);
 }
 #endif
 
@@ -1047,12 +1050,14 @@ void fof_search_foreign_cells(struct space *s) {
 
   const int cell_pair_size = num_cells_in * num_cells_out;
 
-  if (posix_memalign((void **)&s->fof_data.group_links, SWIFT_STRUCT_ALIGNMENT,
+  if (swift_memalign("fof_group_links",
+                     (void **)&s->fof_data.group_links, SWIFT_STRUCT_ALIGNMENT,
                      s->fof_data.group_links_size * sizeof(struct fof_mpi)) !=
       0)
     error("Error while allocating memory for FOF links over an MPI domain");
 
-  if (posix_memalign((void **)&cell_pairs, SWIFT_STRUCT_ALIGNMENT,
+  if (swift_memalign("fof_cell_pairs",
+                     (void **)&cell_pairs, SWIFT_STRUCT_ALIGNMENT,
                      cell_pair_size * sizeof(struct cell_pair_indices)) != 0)
     error("Error while allocating memory for FOF cell pair indices");
 
@@ -1166,7 +1171,7 @@ void fof_search_foreign_cells(struct space *s) {
   group_link_count = s->fof_data.group_link_count;
 
   /* Clean up memory. */
-  free(cell_pairs);
+  swift_free("fof_cell_pairs", cell_pairs);
 
   message("Searching for foreign links took: %.3f %s.",
           clocks_from_ticks(getticks() - tic), clocks_getunit());
@@ -1196,7 +1201,8 @@ void fof_search_foreign_cells(struct space *s) {
 
   /* Unique set of links is half of all group links as each link is found twice
    * by opposing MPI ranks. */
-  if (posix_memalign((void **)&global_group_links, SWIFT_STRUCT_ALIGNMENT,
+  if (swift_memalign("fof_global_group_links",
+                     (void **)&global_group_links, SWIFT_STRUCT_ALIGNMENT,
                      global_group_link_count * sizeof(struct fof_mpi)) != 0)
     error("Error while allocating memory for the global list of group links");
 
@@ -1229,7 +1235,7 @@ void fof_search_foreign_cells(struct space *s) {
 
   /* Clean up memory. */
   free(displ);
-  free(s->fof_data.group_links);
+  swift_free("fof_group_links", s->fof_data.group_links);
 
   message("Communication took: %.3f %s.",
           clocks_from_ticks(getticks() - comms_tic), clocks_getunit());
@@ -1246,19 +1252,22 @@ void fof_search_foreign_cells(struct space *s) {
   const int global_group_list_size = 2 * global_group_link_count;
   int group_count = 0;
 
-  if (posix_memalign((void **)&global_group_index, SWIFT_STRUCT_ALIGNMENT,
+  if (swift_memalign("fof_global_group_index",
+                     (void **)&global_group_index, SWIFT_STRUCT_ALIGNMENT,
                      global_group_list_size * sizeof(size_t)) != 0)
     error(
         "Error while allocating memory for the displacement in memory for the "
         "global group link list");
 
-  if (posix_memalign((void **)&global_group_id, SWIFT_STRUCT_ALIGNMENT,
+  if (swift_memalign("fof_global_group_id",
+                     (void **)&global_group_id, SWIFT_STRUCT_ALIGNMENT,
                      global_group_list_size * sizeof(size_t)) != 0)
     error(
         "Error while allocating memory for the displacement in memory for the "
         "global group link list");
 
-  if (posix_memalign((void **)&global_group_size, SWIFT_STRUCT_ALIGNMENT,
+  if (swift_memalign("fof_global_group_size",
+                     (void **)&global_group_size, SWIFT_STRUCT_ALIGNMENT,
                      global_group_list_size * sizeof(size_t)) != 0)
     error(
         "Error while allocating memory for the displacement in memory for the "
@@ -1299,7 +1308,8 @@ void fof_search_foreign_cells(struct space *s) {
   /* Store the original group size before incrementing in the Union-Find. */
   size_t *orig_global_group_size = NULL;
 
-  if (posix_memalign((void **)&orig_global_group_size, SWIFT_STRUCT_ALIGNMENT,
+  if (swift_memalign("fof_orig_global_group_size",
+                     (void **)&orig_global_group_size, SWIFT_STRUCT_ALIGNMENT,
                      group_count * sizeof(size_t)) != 0)
     error(
         "Error while allocating memory for the displacement in memory for the "
@@ -1380,11 +1390,11 @@ void fof_search_foreign_cells(struct space *s) {
           clocks_from_ticks(getticks() - tic), clocks_getunit());
 
   /* Clean up memory. */
-  free(global_group_links);
-  free(global_group_index);
-  free(global_group_size);
-  free(global_group_id);
-  free(orig_global_group_size);
+  swift_free("fof_global_group_links", global_group_links);
+  swift_free("fof_global_group_index", global_group_index);
+  swift_free("fof_global_group_size", global_group_size);
+  swift_free("fof_global_group_id", global_group_id);
+  swift_free("fof_orig_global_group_size", orig_global_group_size);
 
   message("Rank %d finished linking local roots to foreign roots.",
           engine_rank);
@@ -1484,7 +1494,8 @@ void fof_search_tree(struct space *s) {
   struct group_length *high_group_sizes = NULL;
   int group_count = 0;
 
-  if (posix_memalign((void **)&high_group_sizes, 32,
+  if (swift_memalign("fof_high_group_sizes",
+                     (void **)&high_group_sizes, 32,
                      num_groups_local * sizeof(struct group_length)) != 0)
     error("Failed to allocate list of large groups.");
 
@@ -1574,7 +1585,7 @@ void fof_search_tree(struct space *s) {
       nsend += 1;
     }
   }
-  struct fof_final_index *fof_index_send = malloc(sizeof(struct fof_final_index)*nsend);
+  struct fof_final_index *fof_index_send = swift_malloc("fof_index_send", sizeof(struct fof_final_index)*nsend);
   nsend = 0;
   for(size_t i=0; i<nr_gparts;i+=1) {
     if((!is_local(group_index[i], nr_gparts))){ /* && (group_size[i] >= min_group_size)) { */
@@ -1629,7 +1640,7 @@ void fof_search_tree(struct space *s) {
   size_t nrecv = 0;
   for(int i=0;i<nr_nodes;i+=1)
     nrecv += recvcount[i];
-  struct fof_final_index *fof_index_recv = malloc(nrecv*sizeof(struct fof_final_index));
+  struct fof_final_index *fof_index_recv = swift_malloc("fof_index_recv", nrecv*sizeof(struct fof_final_index));
 
   /* Exchange group indexes */
   MPI_Alltoallv(fof_index_send, sendcount, sendoffset, fof_final_index_type,
@@ -1662,8 +1673,8 @@ void fof_search_tree(struct space *s) {
   free(recvcount);
   free(sendoffset);
   free(recvoffset);
-  free(fof_index_send);
-  free(fof_index_recv);
+  swift_free("fof_index_send", fof_index_send);
+  swift_free("fof_index_recv", fof_index_recv);
   free(num_on_node);
   free(first_on_node);
 
@@ -1684,7 +1695,7 @@ void fof_search_tree(struct space *s) {
   fof_dump_group_data(output_file_name, s, num_groups_local, high_group_sizes);
 
   /* Free the left-overs */
-  free(high_group_sizes);
+  swift_free("fof_high_group_sizes", high_group_sizes);
 
   if (engine_rank == 0) {
     message(

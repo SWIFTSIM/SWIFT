@@ -1063,6 +1063,19 @@ int main(int argc, char *argv[]) {
   engine_print_stats(&e);
   engine_dump_snapshot(&e);
 
+  /* Dump memory use report */
+#ifdef SWIFT_MEMUSE_REPORTS
+  {
+    char dumpfile[40];
+#ifdef WITH_MPI
+    snprintf(dumpfile, 40, "memuse_report-rank%d-fof.dat", engine_rank);
+#else
+    snprintf(dumpfile, 40, "memuse_report-fof.dat");
+#endif  // WITH_MPI
+    memuse_log_dump(dumpfile);
+  }
+#endif
+
 #ifdef WITH_MPI
   if ((res = MPI_Finalize()) != MPI_SUCCESS)
     error("call to MPI_Finalize failed with error %i.", res);

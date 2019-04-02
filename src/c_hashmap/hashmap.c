@@ -6,6 +6,7 @@
 #include <string.h>
 
 #include "../error.h"
+#include "../memuse.h"
 #include "hashmap.h"
 
 #define INITIAL_NUM_CHUNKS (1)
@@ -19,7 +20,7 @@
 void hashmap_allocate_chunks(hashmap_t *m, int num_chunks) {
   /* Allocate a fresh set of chunks. */
   hashmap_chunk_t *alloc;
-  if ((alloc = (hashmap_chunk_t *)calloc(num_chunks,
+  if ((alloc = (hashmap_chunk_t *)swift_calloc("hashmap", num_chunks,
                                          sizeof(hashmap_chunk_t))) == NULL) {
     error("Unable to allocate chunks.");
   }
@@ -27,9 +28,9 @@ void hashmap_allocate_chunks(hashmap_t *m, int num_chunks) {
   /* Hook up the alloc, so that we can clean it up later. */
   if (m->allocs_count == m->allocs_size) {
     m->allocs_size *= 2;
-    void **new_allocs = (void **)malloc(sizeof(void *) * m->allocs_size);
+    void **new_allocs = (void **)swift_malloc("hashmap", sizeof(void *) * m->allocs_size);
     memcpy(new_allocs, m->allocs, sizeof(void *) * m->allocs_count);
-    free(m->allocs);
+    swift_free("hashmap", m->allocs);
     m->allocs = new_allocs;
   }
   m->allocs[m->allocs_count++] = alloc;
@@ -49,7 +50,7 @@ void hashmap_allocate_chunks(hashmap_t *m, int num_chunks) {
 void hashmap_init(hashmap_t *m) {
   /* Allocate the first (empty) list of chunks. */
   m->nr_chunks = INITIAL_NUM_CHUNKS;
-  if ((m->chunks = (hashmap_chunk_t **)calloc(
+  if ((m->chunks = (hashmap_chunk_t **)swift_calloc("hashmap",
            m->nr_chunks, sizeof(hashmap_chunk_t *))) == NULL) {
     error("Unable to allocate hashmap chunks.");
   }
@@ -60,7 +61,7 @@ void hashmap_init(hashmap_t *m) {
 
   /* Init the array of allocations. */
   m->allocs_size = HASHMAP_ALLOCS_INITIAL_SIZE;
-  if ((m->allocs = (void **)malloc(sizeof(void *) * m->allocs_size)) == NULL) {
+  if ((m->allocs = (void **)swift_malloc("hashmap", sizeof(void *) * m->allocs_size)) == NULL) {
     error("Unable to allocate allocs pointer array.");
   }
   m->allocs_count = 0;
@@ -237,7 +238,7 @@ void hashmap_grow(hashmap_t *m) {
         m->table_size, m->table_size * sizeof(hashmap_element_t) / 1024);
   }
 
-  if ((m->chunks = (hashmap_chunk_t **)calloc(
+  if ((m->chunks = (hashmap_chunk_t **)swift_calloc("hashmap",
            m->nr_chunks, sizeof(hashmap_chunk_t *))) == NULL) {
     error("Unable to allocate hashmap chunks.");
   }
@@ -281,7 +282,7 @@ void hashmap_grow(hashmap_t *m) {
   }
 
   /* Free the old list of chunks. */
-  free(old_chunks);
+  swift_free("hashmap", old_chunks);
 }
 
 void hashmap_put(hashmap_t *m, hashmap_key_t key, hashmap_value_t value) {
@@ -359,7 +360,7 @@ void hashmap_iterate(hashmap_t *m, hashmap_mapper_t f, void *data) {
 void hashmap_free(hashmap_t *m) {
   /* Free the list of active chunks. Note that the actual chunks will be freed
      as part of the allocs below. */
-  free(m->chunks);
+  swift_free("hashmap", m->chunks);
 
   /* Re-set some pointers and values, just in case. */
   m->chunks = NULL;
@@ -370,9 +371,9 @@ void hashmap_free(hashmap_t *m) {
 
   /* Free the chunk allocs. */
   for (size_t k = 0; k < m->allocs_count; k++) {
-    free(m->allocs[k]);
+    swift_free("hashmap", m->allocs[k]);
   }
-  free(m->allocs);
+  swift_free("hashmap", m->allocs);
 }
 
 size_t hashmap_size(hashmap_t *m) {
