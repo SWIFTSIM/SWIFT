@@ -162,9 +162,7 @@ struct cell *make_cell(size_t n, double *offset, double size, double h,
 }
 
 void clean_up(struct cell *ci) {
-  free(ci->hydro.parts);
-  for (int k = 0; k < 13; k++)
-    if (ci->hydro.sort[k] != NULL) free(ci->hydro.sort[k]);
+  cell_free_hydro_sorts(ci);
   free(ci);
 }
 
