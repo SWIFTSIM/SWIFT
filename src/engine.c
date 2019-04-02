@@ -1034,13 +1034,17 @@ void engine_repartition(struct engine *e) {
 
   /* Partitioning requires copies of the particles, so we need to reduce the
    * memory in use to the minimum, we can free the sorting indices and the
-   * tasks as these will be regenerated at the next rebuild. */
+   * tasks as these will be regenerated at the next rebuild. Also the foreign
+   * particle arrays can go as these will be regenerated in proxy exchange. */
 
   /* Sorting indices. */
   if (e->s->cells_top != NULL) space_free_cells(e->s);
 
   /* Task arrays. */
   scheduler_free_tasks(&e->sched);
+
+  /* Foreign parts. */
+  space_free_foreign_parts(e->s);
 
   /* Now comes the tricky part: Exchange particles between all nodes.
      This is done in two steps, first allreducing a matrix of

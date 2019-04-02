@@ -329,6 +329,8 @@ void space_reset_task_counters(struct space *s);
 void space_clean(struct space *s);
 void space_free_cells(struct space *s);
 
+void space_free_foreign_parts(struct space *s);
+
 void space_struct_dump(struct space *s, FILE *stream);
 void space_struct_restore(struct space *s, FILE *stream);
 void space_write_cell_hierarchy(const struct space *s);

@@ -1600,6 +1600,8 @@ void cell_reset_task_counters(struct cell *c) {
 #ifdef SWIFT_DEBUG_CHECKS
   for (int t = 0; t < task_type_count; ++t) c->tasks_executed[t] = 0;
   for (int t = 0; t < task_subtype_count; ++t) c->subtasks_executed[t] = 0;
+  for (int k = 0; k < 8; ++k)
+    if (c->progeny[k] != NULL) cell_reset_task_counters(c->progeny[k]);
 #else
   error("Calling debugging code without debugging flag activated.");
 #endif
@@ -3574,12 +3576,34 @@ int cell_unskip_stars_tasks(struct cell *c, struct scheduler *s) {
     const int cj_nodeID = nodeID;
 #endif
 
-    if ((ci_active && cj_nodeID == nodeID) ||
-        (cj_active && ci_nodeID == nodeID)) {
+    if (t->type == task_type_self && ci_active) {
       scheduler_activate(s, t);
-
-      /* Nothing more to do here, all drifts and sorts activated above */
     }
+
+    else if (t->type == task_type_sub_self && ci_active) {
+      scheduler_activate(s, t);
+    }
+
+    else if (t->type == task_type_pair || t->type == task_type_sub_pair) {
+
+      /* We only want to activate the task if the cell is active and is
+         going to update some gas on the *local* node */
+      if ((ci_nodeID == nodeID && cj_nodeID == nodeID) &&
+          (ci_active || cj_active)) {
+
+        scheduler_activate(s, t);
+
+      } else if ((ci_nodeID == nodeID && cj_nodeID != nodeID) && (cj_active)) {
+
+        scheduler_activate(s, t);
+
+      } else if ((ci_nodeID != nodeID && cj_nodeID == nodeID) && (ci_active)) {
+
+        scheduler_activate(s, t);
+      }
+    }
+
+    /* Nothing more to do here, all drifts and sorts activated above */
   }
 
   /* Unskip all the other task types. */
