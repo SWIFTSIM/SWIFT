@@ -1337,6 +1337,13 @@ void fof_search_foreign_cells(struct space *s) {
   message("MPI send/recv task activation took: %.3f %s.",
           clocks_from_ticks(getticks() - tic), clocks_getunit());
 
+  ticks local_fof_tic = getticks();
+
+  MPI_Barrier(MPI_COMM_WORLD);
+
+  message("Local FOF imbalance: %.3f %s.", clocks_from_ticks(getticks() - local_fof_tic),
+          clocks_getunit());
+
   tic = getticks();
 
   /* Perform send and receive tasks. */
