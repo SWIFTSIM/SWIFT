@@ -422,11 +422,11 @@ inline static void evolve_SNII(float log10_min_mass, float log10_max_mass,
   /* yield normalization */
   float norm0, norm1;
 
-  /* zero all negative values (ALEXEI: do we need this?)*/
+  /* zero all negative values */
   for (int i = 0; i < chemistry_element_count; i++)
-    if (metal_mass_released[i] < 0) metal_mass_released[i] = 0;
+    metal_mass_released[i] = max(metal_mass_released[i],0.f);
 
-  if (metal_mass_released_total < 0) metal_mass_released_total = 0;
+  metal_mass_released_total = max(metal_mass_released_total,0.f);
 
   /* compute the total metal mass ejected from the star*/
   for (mass_bin_index = low_imf_mass_bin_index; mass_bin_index < high_imf_mass_bin_index + 1; mass_bin_index++) {
@@ -546,11 +546,11 @@ inline static void evolve_AGB(float log10_min_mass, float log10_max_mass,
   /* yield normalization */
   float norm0, norm1;
 
-  /* zero all negative values (ALEXEI: Copied from eagle, seems like it could hide errors, should this be kept or removed?)*/
+  /* zero all negative values */
   for (int i = 0; i < chemistry_element_count; i++)
-    if (metal_mass_released[i] < 0) metal_mass_released[i] = 0;
+    metal_mass_released[i] = max(metal_mass_released[i],0.f);
 
-  if (metal_mass_released_total < 0) metal_mass_released_total = 0;
+  metal_mass_released_total = max(metal_mass_released_total,0.f);
 
   /* compute the total metal mass ejected from the star */
   for (mass_bin_index = low_imf_mass_bin_index; mass_bin_index < high_imf_mass_bin_index + 1; mass_bin_index++) {
@@ -653,6 +653,7 @@ inline static float compute_SNe(struct spart* sp,
                                 float age, double dt) {
   if (age <= stars_properties->feedback.SNII_wind_delay &&
       age + dt > stars_properties->feedback.SNII_wind_delay) {
+    // Commented out for testing. uncomment return statement for actual runs
     //return stars_properties->feedback.num_SNII_per_msun * sp->mass_init /
     //  stars_properties->feedback.const_solar_mass;
     return 0;

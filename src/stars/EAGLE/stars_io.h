@@ -132,10 +132,6 @@ INLINE static void stars_props_init(struct stars_props *sp,
   else
     sp->log_max_h_change = logf(powf(max_volume_change, hydro_dimension_inv));
 
-  /* Read which lifetime model we are using */
-  sp->feedback.stellar_lifetime_flag =
-      parser_get_opt_param_int(params, "EAGLEFeedback:lifetime_flag", 0);
-
   sp->feedback.SNIa_timescale =
       parser_get_opt_param_float(params, "EAGLEFeedback:SNIa_timescale", 2.f);
 
@@ -153,9 +149,6 @@ INLINE static void stars_props_init(struct stars_props *sp,
                             params, "EAGLEFeedback:SNII_wind_delay_Gyr", 0.03) *
                         Gyr_in_cgs /
                         units_cgs_conversion_factor(us, UNIT_CONV_TIME);
-
-  // ALEXEI: find out where this gets set in EAGLE, seems to be 1 always, should we keep it?
-  sp->feedback.SNIa_energy_fraction = 1.0;
 
   /* Set the temperature to use in stochastic heating */
   sp->feedback.SNe_deltaT_desired =

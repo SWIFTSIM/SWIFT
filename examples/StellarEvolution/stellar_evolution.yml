@@ -85,6 +85,3 @@ EAGLEChemistry:              # Solar abundances
 EagleStellarEvolution:
   filename:     /cosma5/data/Eagle/BG_Tables/YieldTables/
   imf_model:    Chabrier
-
-EAGLEFeedback:
-  lifetime_flag:  2

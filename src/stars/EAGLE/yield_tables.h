@@ -680,8 +680,6 @@ inline static void compute_ejecta(struct stars_props *restrict stars) {
 
   gsl_spline *SNII_spline_ptr, *AGB_spline_ptr;
 
-  // Do we really need SNII_ejecta and AGB_ejecta, they're not used
-  // simultaneously, so can use only one?
   double SNII_ejecta[stars->feedback.SNII_n_mass];
   double AGB_ejecta[stars->feedback.AGB_n_mass];
   float result;

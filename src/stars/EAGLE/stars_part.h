@@ -238,10 +238,6 @@ struct stars_props {
     /* Flag to switch between continuous and stochastic heating */
     int continuous_heating;
 
-    /* Fraction of energy in SNIa (Note: always set to 1 in EAGLE, so may be not
-     * necessary) */
-    float SNIa_energy_fraction;
-
     /* Desired temperature increase due to supernovae */
     float SNe_deltaT_desired;
 
@@ -321,10 +317,6 @@ struct stars_props {
 
     /* Table of lifetime values */
     struct lifetime_table lifetimes;
-
-    /* Flag defining stellar lifetime model */
-    int stellar_lifetime_flag;  // 0 for padovani & matteucci 1993, 1 for maeder &
-                                // meynet 1989, 2 for portinari et al. 1998.
 
     /* Location of yield tables */
     char yield_table_path[50];

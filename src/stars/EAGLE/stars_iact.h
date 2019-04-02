@@ -66,7 +66,7 @@ runner_iact_nonsym_stars_density(
   si->density.wcount_dh -= (hydro_dimension * wi + ui * wi_dx);
 
   /* Add mass of pj to neighbour mass of si  */
-  si->ngb_mass += hydro_get_mass(pj);  // / stars_properties->feedback.const_solar_mass;
+  si->ngb_mass += hydro_get_mass(pj);  
 
   /* Add contribution of pj to normalisation of kernel (TODO: IMPROVE COMMENT?)
    */
@@ -133,7 +133,6 @@ runner_iact_nonsym_stars_feedback(
   /* Decrease the mass of star particle */
   si->mass -= si->to_distribute.mass * density_weight_frac;
 
-  // ALEXEI: do we want to use the smoothed mass fraction?
   /* Update total metallicity */
   const float current_metal_mass_total =
       pj->chemistry_data.metal_mass_fraction_total * current_mass;
@@ -241,8 +240,7 @@ runner_iact_nonsym_stars_feedback(
     // We're doing stochastic heating
     heating_probability = stars_properties->feedback.total_energy_SNe /
                           stars_properties->feedback.temp_to_u_factor *
-                          si->to_distribute.num_SNe *
-                          stars_properties->feedback.SNIa_energy_fraction /
+                          si->to_distribute.num_SNe /
                           (stars_properties->feedback.SNe_deltaT_desired * si->ngb_mass);
     du = stars_properties->feedback.SNe_deltaT_desired *
          stars_properties->feedback.temp_to_u_factor;

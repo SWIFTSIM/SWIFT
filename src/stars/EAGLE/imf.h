@@ -124,7 +124,7 @@ inline static float integrate_imf(
   /* Update end bins since contribution was overcounted when summing up all entries */
   result = result - 0.5 * integrand[low_imf_mass_bin_index] - 0.5 * integrand[high_imf_mass_bin_index];
 
-  /* correct first bin (ALEXEI: why are we doing this? (just to clarify comment))*/
+  /* correct first bin */
   bin_offset = (log10_min_mass - star_properties->feedback.imf_mass_bin_log10[low_imf_mass_bin_index]) / imf_log10_mass_bin_size;
 
   if (bin_offset < 0.5)
@@ -240,6 +240,7 @@ inline static void init_imf(struct stars_props *restrict star_properties) {
 
 /**
  * @brief Calculate mass (in solar masses) of stars that died from the star particle's birth up to its current age (in Gyr)
+ * Approach based on Portinari et al. 1998
  *
  * @param age_Gyr age of star in Gyr
  * @param metallicity Star's metallicity
@@ -253,135 +254,90 @@ inline static double dying_mass_msun(double age_Gyr, float metallicity,
 
   int metallicity_index, i, time_index_low_metallicity = -1, time_index_high_metallicity = -1;
 
-  /* Calculate star mass that dies based on one of several analytical models */
-  switch (star_properties->feedback.stellar_lifetime_flag) {
-    case 0:
-      /* padovani & matteucci 1993 */
-
-      if (age_Gyr > 0.039765318659064693)
-        mass =
-            exp(M_LN10 *
-                (7.764 - (1.79 - (1.338 - 0.1116 * (9 + log10(age_Gyr))) *
-                                     (1.338 - 0.1116 * (9 + log10(age_Gyr)))) /
-                             0.2232));
-      else if (age_Gyr > 0.003)
-        mass = pow((age_Gyr - 0.003) / 1.2, -1 / 1.85);
-      else
-        mass = star_properties->feedback.imf_max_mass_msun;
-      break;
-
-    case 1:
-      /* maeder & meynet 1989 */
-
-      if (age_Gyr >= 8.4097378)
-        mass = exp(M_LN10 * (1 - log10(age_Gyr)) / 0.6545);
-      else if (age_Gyr >= 0.35207776)
-        mass = exp(M_LN10 * (1.35 - log10(age_Gyr)) / 3.7);
-      else if (age_Gyr >= 0.050931493)
-        mass = exp(M_LN10 * (0.77 - log10(age_Gyr)) / 2.51);
-      else if (age_Gyr >= 0.010529099)
-        mass = exp(M_LN10 * (0.17 - log10(age_Gyr)) / 1.78);
-      else if (age_Gyr >= 0.0037734787)
-        mass = exp(M_LN10 * (-0.94 - log10(age_Gyr)) / 0.86);
-      else if (age_Gyr > 0.003)
-        mass = pow((age_Gyr - 0.003) / 1.2, -0.54054053);
-      else
-        mass = star_properties->feedback.imf_max_mass_msun;
-      break;
-
-    case 2:
-      /* portinari et al. 1998 */
-
-      if (age_Gyr <= 0) {
-        mass = star_properties->feedback.imf_max_mass_msun;
-        break;
-      }
-
-      log10_age_yr = log10(age_Gyr * 1.e9);
-
-      if (metallicity <= star_properties->feedback.lifetimes.metallicity[0]) {
-        metallicity_index = 0;
-        metallicity_offset = 0.0;
-      } else if (metallicity >=
-                 star_properties->feedback.lifetimes
-                     .metallicity[star_properties->feedback.lifetimes.n_z - 1]) {
-        metallicity_index = star_properties->feedback.lifetimes.n_z - 2;
-        metallicity_offset = 1.0;
-      } else {
-        for (metallicity_index = 0; metallicity_index < star_properties->feedback.lifetimes.n_z - 1;
-             metallicity_index++)
-          if (star_properties->feedback.lifetimes.metallicity[metallicity_index + 1] >
-              metallicity)
-            break;
-
-        metallicity_offset = (metallicity -
-                   star_properties->feedback.lifetimes.metallicity[metallicity_index]) /
-                  (star_properties->feedback.lifetimes.metallicity[metallicity_index + 1] -
-                   star_properties->feedback.lifetimes.metallicity[metallicity_index]);
-      }
-
-      if (log10_age_yr >= star_properties->feedback.lifetimes.dyingtime[metallicity_index][0]) {
-        time_index_low_metallicity = 0;
-        time_offset_low_metallicity = 0.0;
-      } else if (log10_age_yr <=
-                 star_properties->feedback.lifetimes
-                     .dyingtime[metallicity_index]
-                               [star_properties->feedback.lifetimes.n_mass - 1]) {
-        time_index_low_metallicity = star_properties->feedback.lifetimes.n_mass - 2;
-        time_offset_low_metallicity = 1.0;
-      }
-
-      if (log10_age_yr >=
-          star_properties->feedback.lifetimes.dyingtime[metallicity_index + 1][0]) {
-        time_index_high_metallicity = 0;
-        time_offset_high_metallicity = 0.0;
-      } else if (log10_age_yr <=
-                 star_properties->feedback.lifetimes
-                     .dyingtime[metallicity_index + 1]
-                               [star_properties->feedback.lifetimes.n_mass - 1]) {
-        time_index_high_metallicity = star_properties->feedback.lifetimes.n_mass - 2;
-        time_offset_high_metallicity = 1.0;
-      }
-
-      i = star_properties->feedback.lifetimes.n_mass;
-      while (i >= 0 && (time_index_low_metallicity == -1 || time_index_high_metallicity == -1)) {
-        i--;
-        if (star_properties->feedback.lifetimes.dyingtime[metallicity_index][i] >=
-                log10_age_yr &&
-            time_index_low_metallicity == -1) {
-          time_index_low_metallicity = i;
-          time_offset_low_metallicity =
-              (log10_age_yr -
-               star_properties->feedback.lifetimes.dyingtime[metallicity_index][time_index_low_metallicity]) /
-              (star_properties->feedback.lifetimes
-                   .dyingtime[metallicity_index][time_index_low_metallicity + 1] -
-               star_properties->feedback.lifetimes.dyingtime[metallicity_index][time_index_low_metallicity]);
-        }
-        if (star_properties->feedback.lifetimes.dyingtime[metallicity_index + 1][i] >=
-                log10_age_yr &&
-            time_index_high_metallicity == -1) {
-          time_index_high_metallicity = i;
-          time_offset_high_metallicity =
-              (log10_age_yr - star_properties->feedback.lifetimes
-                                .dyingtime[metallicity_index + 1][time_index_high_metallicity]) /
-              (star_properties->feedback.lifetimes
-                   .dyingtime[metallicity_index + 1][time_index_high_metallicity + 1] -
-               star_properties->feedback.lifetimes
-                   .dyingtime[metallicity_index + 1][time_index_high_metallicity]);
-        }
-      }
-
-      mass_low_metallicity =
-          interpolate_1d(star_properties->feedback.lifetimes.mass, time_index_low_metallicity, time_offset_low_metallicity);
-      mass_high_metallicity =
-          interpolate_1d(star_properties->feedback.lifetimes.mass, time_index_high_metallicity, time_offset_high_metallicity);
-
-      mass = (1.0 - metallicity_offset) * mass_low_metallicity + metallicity_offset * mass_high_metallicity;
-      break;
-
-    default:
-      error("stellar lifetimes not defined\n");
+  if (age_Gyr <= 0) {
+    return star_properties->feedback.imf_max_mass_msun;
   }
+
+  log10_age_yr = log10(age_Gyr * 1.e9);
+
+  if (metallicity <= star_properties->feedback.lifetimes.metallicity[0]) {
+    metallicity_index = 0;
+    metallicity_offset = 0.0;
+  } else if (metallicity >=
+             star_properties->feedback.lifetimes
+                 .metallicity[star_properties->feedback.lifetimes.n_z - 1]) {
+    metallicity_index = star_properties->feedback.lifetimes.n_z - 2;
+    metallicity_offset = 1.0;
+  } else {
+    for (metallicity_index = 0; metallicity_index < star_properties->feedback.lifetimes.n_z - 1;
+         metallicity_index++)
+      if (star_properties->feedback.lifetimes.metallicity[metallicity_index + 1] >
+          metallicity)
+        break;
+
+    metallicity_offset = (metallicity -
+               star_properties->feedback.lifetimes.metallicity[metallicity_index]) /
+              (star_properties->feedback.lifetimes.metallicity[metallicity_index + 1] -
+               star_properties->feedback.lifetimes.metallicity[metallicity_index]);
+  }
+
+  if (log10_age_yr >= star_properties->feedback.lifetimes.dyingtime[metallicity_index][0]) {
+    time_index_low_metallicity = 0;
+    time_offset_low_metallicity = 0.0;
+  } else if (log10_age_yr <=
+             star_properties->feedback.lifetimes
+                 .dyingtime[metallicity_index]
+                           [star_properties->feedback.lifetimes.n_mass - 1]) {
+    time_index_low_metallicity = star_properties->feedback.lifetimes.n_mass - 2;
+    time_offset_low_metallicity = 1.0;
+  }
+
+  if (log10_age_yr >=
+      star_properties->feedback.lifetimes.dyingtime[metallicity_index + 1][0]) {
+    time_index_high_metallicity = 0;
+    time_offset_high_metallicity = 0.0;
+  } else if (log10_age_yr <=
+             star_properties->feedback.lifetimes
+                 .dyingtime[metallicity_index + 1]
+                           [star_properties->feedback.lifetimes.n_mass - 1]) {
+    time_index_high_metallicity = star_properties->feedback.lifetimes.n_mass - 2;
+    time_offset_high_metallicity = 1.0;
+  }
+
+  i = star_properties->feedback.lifetimes.n_mass;
+  while (i >= 0 && (time_index_low_metallicity == -1 || time_index_high_metallicity == -1)) {
+    i--;
+    if (star_properties->feedback.lifetimes.dyingtime[metallicity_index][i] >=
+            log10_age_yr &&
+        time_index_low_metallicity == -1) {
+      time_index_low_metallicity = i;
+      time_offset_low_metallicity =
+          (log10_age_yr -
+           star_properties->feedback.lifetimes.dyingtime[metallicity_index][time_index_low_metallicity]) /
+          (star_properties->feedback.lifetimes
+               .dyingtime[metallicity_index][time_index_low_metallicity + 1] -
+           star_properties->feedback.lifetimes.dyingtime[metallicity_index][time_index_low_metallicity]);
+    }
+    if (star_properties->feedback.lifetimes.dyingtime[metallicity_index + 1][i] >=
+            log10_age_yr &&
+        time_index_high_metallicity == -1) {
+      time_index_high_metallicity = i;
+      time_offset_high_metallicity =
+          (log10_age_yr - star_properties->feedback.lifetimes
+                            .dyingtime[metallicity_index + 1][time_index_high_metallicity]) /
+          (star_properties->feedback.lifetimes
+               .dyingtime[metallicity_index + 1][time_index_high_metallicity + 1] -
+           star_properties->feedback.lifetimes
+               .dyingtime[metallicity_index + 1][time_index_high_metallicity]);
+    }
+  }
+
+  mass_low_metallicity =
+      interpolate_1d(star_properties->feedback.lifetimes.mass, time_index_low_metallicity, time_offset_low_metallicity);
+  mass_high_metallicity =
+      interpolate_1d(star_properties->feedback.lifetimes.mass, time_index_high_metallicity, time_offset_high_metallicity);
+
+  mass = (1.0 - metallicity_offset) * mass_low_metallicity + metallicity_offset * mass_high_metallicity;
 
   /* Check that we haven't killed too many stars */
   if (mass > star_properties->feedback.imf_max_mass_msun) mass = star_properties->feedback.imf_max_mass_msun;
@@ -391,6 +347,7 @@ inline static double dying_mass_msun(double age_Gyr, float metallicity,
 
 /**
  * @brief Calculate lifetime of star poputlation in Gyr. Lifetime model is specified by stellar_lifetime_flag read in from yml file. 
+ * Approach based on Portinari et al. 1998
  *
  * @param mass
  * @param metallicity
@@ -404,89 +361,49 @@ inline static float lifetime_in_Gyr(float mass, float metallicity,
 
   int mass_index, metallicity_index;
 
-  switch (star_properties->feedback.stellar_lifetime_flag) {
-    case 0:
-      /* PM93 (Padovani & Matteucci 1993) */
+  if (mass <= star_properties->feedback.lifetimes.mass[0]) {
+    mass_index = 0;
+    mass_offset = 0.0;
+  } else if (mass >= star_properties->feedback.lifetimes
+                         .mass[star_properties->feedback.lifetimes.n_mass - 1]) {
+    mass_index = star_properties->feedback.lifetimes.n_mass - 2;
+    mass_offset = 1.0;
+  } else {
+    for (mass_index = 0; mass_index < star_properties->feedback.lifetimes.n_mass - 1;
+         mass_index++)
+      if (star_properties->feedback.lifetimes.mass[mass_index + 1] > mass) break;
 
-      if (mass <= 0.6)
-        time_Gyr = 160.0;
-      else if (mass <= 6.6)
-        time_Gyr =
-            pow(10.0, (0.334 - sqrt(1.790 - 0.2232 * (7.764 - log10(mass)))) /
-                          0.1116);
-      else
-        time_Gyr = 1.2 * pow(mass, -1.85) + 0.003;
-      break;
-
-    case 1:
-      /* MM89 (Maeder & Meynet 1989) */
-
-      if (mass <= 1.3)
-        time_Gyr = pow(10.0, -0.6545 * log10(mass) + 1.0);
-      else if (mass <= 3.0)
-        time_Gyr = pow(10.0, -3.7 * log10(mass) + 1.35);
-      else if (mass <= 7.0)
-        time_Gyr = pow(10.0, -2.51 * log10(mass) + 0.77);
-      else if (mass <= 15.0)
-        time_Gyr = pow(10.0, -1.78 * log10(mass) + 0.17);
-      else if (mass <= 60.0)
-        time_Gyr = pow(10.0, -0.86 * log10(mass) - 0.94);
-      else
-        time_Gyr = 1.2 * pow(mass, -1.85) + 0.003;
-      break;
-
-    case 2:
-      /* P98 (Portinari et al. 1998) */
-
-      if (mass <= star_properties->feedback.lifetimes.mass[0]) {
-        mass_index = 0;
-        mass_offset = 0.0;
-      } else if (mass >= star_properties->feedback.lifetimes
-                             .mass[star_properties->feedback.lifetimes.n_mass - 1]) {
-        mass_index = star_properties->feedback.lifetimes.n_mass - 2;
-        mass_offset = 1.0;
-      } else {
-        for (mass_index = 0; mass_index < star_properties->feedback.lifetimes.n_mass - 1;
-             mass_index++)
-          if (star_properties->feedback.lifetimes.mass[mass_index + 1] > mass) break;
-
-        mass_offset = (mass - star_properties->feedback.lifetimes.mass[mass_index]) /
-                 (star_properties->feedback.lifetimes.mass[mass_index + 1] -
-                  star_properties->feedback.lifetimes.mass[mass_index]);
-      }
-
-      if (metallicity <= star_properties->feedback.lifetimes.metallicity[0]) {
-        metallicity_index = 0;
-        metallicity_offset = 0.0;
-      } else if (metallicity >=
-                 star_properties->feedback.lifetimes
-                     .metallicity[star_properties->feedback.lifetimes.n_z - 1]) {
-        metallicity_index = star_properties->feedback.lifetimes.n_z - 2;
-        metallicity_offset = 1.0;
-      } else {
-        for (metallicity_index = 0; metallicity_index < star_properties->feedback.lifetimes.n_z - 1;
-             metallicity_index++)
-          if (star_properties->feedback.lifetimes.metallicity[metallicity_index + 1] >
-              metallicity)
-            break;
-
-        metallicity_offset = (metallicity -
-                   star_properties->feedback.lifetimes.metallicity[metallicity_index]) /
-                  (star_properties->feedback.lifetimes.metallicity[metallicity_index + 1] -
-                   star_properties->feedback.lifetimes.metallicity[metallicity_index]);
-      }
-
-      /* time in Gyr */
-      time_Gyr =
-          exp(M_LN10 * interpolate_2d(star_properties->feedback.lifetimes.dyingtime,
-                                   metallicity_index, mass_index, metallicity_offset, mass_offset)) /
-          1.0e9;
-
-      break;
-
-    default:
-      error("stellar lifetimes not defined");
+    mass_offset = (mass - star_properties->feedback.lifetimes.mass[mass_index]) /
+             (star_properties->feedback.lifetimes.mass[mass_index + 1] -
+              star_properties->feedback.lifetimes.mass[mass_index]);
   }
+
+  if (metallicity <= star_properties->feedback.lifetimes.metallicity[0]) {
+    metallicity_index = 0;
+    metallicity_offset = 0.0;
+  } else if (metallicity >=
+             star_properties->feedback.lifetimes
+                 .metallicity[star_properties->feedback.lifetimes.n_z - 1]) {
+    metallicity_index = star_properties->feedback.lifetimes.n_z - 2;
+    metallicity_offset = 1.0;
+  } else {
+    for (metallicity_index = 0; metallicity_index < star_properties->feedback.lifetimes.n_z - 1;
+         metallicity_index++)
+      if (star_properties->feedback.lifetimes.metallicity[metallicity_index + 1] >
+          metallicity)
+        break;
+
+    metallicity_offset = (metallicity -
+               star_properties->feedback.lifetimes.metallicity[metallicity_index]) /
+              (star_properties->feedback.lifetimes.metallicity[metallicity_index + 1] -
+               star_properties->feedback.lifetimes.metallicity[metallicity_index]);
+  }
+
+  /* time in Gyr */
+  time_Gyr =
+      exp(M_LN10 * interpolate_2d(star_properties->feedback.lifetimes.dyingtime,
+                               metallicity_index, mass_index, metallicity_offset, mass_offset)) /
+      1.0e9;
 
   return time_Gyr;
 }
