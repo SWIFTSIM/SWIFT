@@ -21,186 +21,185 @@
 
 #include "interpolate.h"
 
-static const float imf_max_mass_msun = 100.f;
-static const float imf_min_mass_msun = 0.1;
-static const float log_imf_min_solar_mass = -1;
-static const float log_imf_max_solar_mass = 2;
-
-// should be somewhere else maybe?
-static const int N_imf_mass_bins = 200;
-static const int gamma_SNIa = 2;
-
 /**
  * @brief determine which IMF mass bins the upper and lower input mass bounds belong to
  *
- * @param log_min_mass Lower mass bound
- * @param log_max_mass Upper mass bound
- * @param ilow pointer to index of IMF mass bin containing log_min_mass
- * @param ihigh pointer to index of IMF mass bin containing log_max_mass
+ * @param log10_min_mass Lower mass bound
+ * @param log10_max_mass Upper mass bound
+ * @param low_imf_mass_bin_index pointer to index of IMF mass bin containing log10_min_mass
+ * @param high_imf_mass_bin_index pointer to index of IMF mass bin containing log10_max_mass
  * @param star_properties the #stars_props data struct */
-// do we need doubles in signature?
 inline static void determine_imf_bins(
-    double log_min_mass, double log_max_mass, int *ilow, int *ihigh,
+    double log10_min_mass, double log10_max_mass, int *low_imf_mass_bin_index, int *high_imf_mass_bin_index,
     const struct stars_props *restrict star_properties) {
   int i1, i2;
 
   /* Check whether lower mass is within the IMF mass bin range */
-  if (log_min_mass < star_properties->feedback.imf_mass_bin_log10[0])
-    log_min_mass = star_properties->feedback.imf_mass_bin_log10[0];
-  if (log_min_mass >
-      star_properties->feedback.imf_mass_bin_log10[N_imf_mass_bins - 1])
-    log_min_mass =
-        star_properties->feedback.imf_mass_bin_log10[N_imf_mass_bins - 1];
+  if (log10_min_mass < star_properties->feedback.imf_mass_bin_log10[0])
+    log10_min_mass = star_properties->feedback.imf_mass_bin_log10[0];
+  if (log10_min_mass >
+      star_properties->feedback.imf_mass_bin_log10[star_properties->feedback.n_imf_mass_bins - 1])
+    log10_min_mass =
+        star_properties->feedback.imf_mass_bin_log10[star_properties->feedback.n_imf_mass_bins - 1];
 
   /* Check whether upper mass is within the IMF mass bin range */
-  if (log_max_mass < star_properties->feedback.imf_mass_bin_log10[0])
-    log_max_mass = star_properties->feedback.imf_mass_bin_log10[0];
-  if (log_max_mass >
-      star_properties->feedback.imf_mass_bin_log10[N_imf_mass_bins - 1])
-    log_max_mass =
-        star_properties->feedback.imf_mass_bin_log10[N_imf_mass_bins - 1];
+  if (log10_max_mass < star_properties->feedback.imf_mass_bin_log10[0])
+    log10_max_mass = star_properties->feedback.imf_mass_bin_log10[0];
+  if (log10_max_mass >
+      star_properties->feedback.imf_mass_bin_log10[star_properties->feedback.n_imf_mass_bins - 1])
+    log10_max_mass =
+        star_properties->feedback.imf_mass_bin_log10[star_properties->feedback.n_imf_mass_bins - 1];
 
-  /* Find mass bin to which lower mass belongs (ALEXEI: Can we do this in a better way?) */
-  for (i1 = 0; i1 < N_imf_mass_bins - 2 &&
-               star_properties->feedback.imf_mass_bin_log10[i1 + 1] < log_min_mass;
+  /* Find mass bin to which lower mass belongs */
+  for (i1 = 0; i1 < star_properties->feedback.n_imf_mass_bins - 2 &&
+               star_properties->feedback.imf_mass_bin_log10[i1 + 1] < log10_min_mass;
        i1++);
     
-  /* Find mass bin to which upper mass belongs (ALEXEI: Can we do this in a better way?) */
-  for (i2 = 1; i2 < N_imf_mass_bins - 1 &&
-               star_properties->feedback.imf_mass_bin_log10[i2] < log_max_mass;
+  /* Find mass bin to which upper mass belongs */
+  for (i2 = 1; i2 < star_properties->feedback.n_imf_mass_bins - 1 &&
+               star_properties->feedback.imf_mass_bin_log10[i2] < log10_max_mass;
        i2++);
     
-  *ilow = i1;
-  *ihigh = i2;
+  *low_imf_mass_bin_index = i1;
+  *high_imf_mass_bin_index = i2;
 }
 
 /**
  * @brief Integrate the IMF between a minimum and maximum mass using the trapezoidal rule. The IMF may be weighted by various quantities, as specified by the variable, mode, including an input array, stellar_yields.
  *
- * @param log_min_mass log10 mass lower integration bound
- * @param log_max_mass log10 mass upper integration bound
+ * @param log10_min_mass log10 mass lower integration bound
+ * @param log10_max_mass log10 mass upper integration bound
  * @param m2 ALEXEI: I have no idea. Check if it is ever used
  * @param mode Flag to specify weighting used for integrating IMF
  * @param stellar_yields Array of weights based on yields. Used with mode=2
  * @param star_properties the #stars_props data structure
  */
 inline static float integrate_imf(
-    float log_min_mass, float log_max_mass, float m2, int mode,
+    float log10_min_mass, float log10_max_mass, float m2, int mode,
     float *stellar_yields, const struct stars_props *restrict star_properties) {
 
-  // ALEXEI: come up with better names for indices
   double result, u, f;
 
-  int ilow, ihigh, index;
+  int low_imf_mass_bin_index, high_imf_mass_bin_index;
 
-  float dlm, dm;
+  float imf_log10_mass_bin_size, bin_offset;
 
-  dlm = star_properties->feedback.imf_mass_bin_log10[1] -
+  imf_log10_mass_bin_size = star_properties->feedback.imf_mass_bin_log10[1] -
         star_properties->feedback.imf_mass_bin_log10[0]; /* dlog(m) */
 
   /* Determine bins to integrate over based on integration bounds */
-  determine_imf_bins(log_min_mass, log_max_mass, &ilow, &ihigh,
+  determine_imf_bins(log10_min_mass, log10_max_mass, &low_imf_mass_bin_index, &high_imf_mass_bin_index,
                      star_properties);
 
   // ALEXEI: rewrite this function so that adding on the fly and don't need to use the array.
-  float integrand[N_imf_mass_bins];
+  float integrand[star_properties->feedback.n_imf_mass_bins];
 
   /* Add up the contribution from each of the IMF mass bins */
   if (mode == 0)
     /* Integrate IMF on its own */
-    for (index = ilow; index < ihigh + 1; index++)
-      integrand[index] =
-          star_properties->feedback.imf_by_number[index] *
-          star_properties->feedback.imf_mass_bin[index]; 
+    for (int i = low_imf_mass_bin_index; i < high_imf_mass_bin_index + 1; i++)
+      integrand[i] =
+          star_properties->feedback.imf[i] *
+          star_properties->feedback.imf_mass_bin[i]; 
   else if (mode == 1)
     /* Integrate IMF weighted by mass */
-    for (index = ilow; index < ihigh + 1; index++)
-      integrand[index] =
-          star_properties->feedback.imf_by_number[index] *
-          star_properties->feedback.imf_mass_bin[index] *
-          star_properties->feedback.imf_mass_bin[index]; 
+    for (int i = low_imf_mass_bin_index; i < high_imf_mass_bin_index + 1; i++)
+      integrand[i] =
+          star_properties->feedback.imf[i] *
+          star_properties->feedback.imf_mass_bin[i] *
+          star_properties->feedback.imf_mass_bin[i]; 
   else if (mode == 2)
     /* Integrate IMF weighted by yields */
-    for (index = ilow; index < ihigh + 1; index++)
-      integrand[index] =
-          stellar_yields[index] * star_properties->feedback.imf_by_number[index] *
-          star_properties->feedback.imf_mass_bin[index]; 
-  else if (mode == 3)
+    for (int i = low_imf_mass_bin_index; i < high_imf_mass_bin_index + 1; i++)
+      integrand[i] =
+          stellar_yields[i] * star_properties->feedback.imf[i] *
+          star_properties->feedback.imf_mass_bin[i]; 
+  else if (mode == 3) {
     /* ALEXEI: should we keep this? */
-    for (index = ilow; index < ihigh + 1; index++) {
-      u = m2 / star_properties->feedback.imf_mass_bin[index];
+    int gamma_SNIa = 2;
+    for (int i = low_imf_mass_bin_index; i < high_imf_mass_bin_index + 1; i++) {
+      u = m2 / star_properties->feedback.imf_mass_bin[i];
       f = pow(2.0, gamma_SNIa + 1) * (gamma_SNIa + 1) * pow(u, gamma_SNIa);
-      integrand[index] =
-          f * star_properties->feedback.imf_by_number[index] /
-          star_properties->feedback.imf_mass_bin[index]; /* integrate number * f(u) / M
+      integrand[i] =
+          f * star_properties->feedback.imf[i] /
+          star_properties->feedback.imf_mass_bin[i]; /* integrate number * f(u) / M
                                                    ... type Ia SN */
     }
+  }
   else {
     error("invalid mode in integrate_imf = %d\n", mode);
   }
 
   /* integrate using trapezoidal rule (ALEXEI: Remove when adding on the fly)*/
   result = 0;
-  for (index = ilow; index < ihigh + 1; index++) result += integrand[index];
+  for (int i = low_imf_mass_bin_index; i < high_imf_mass_bin_index + 1; i++) result += integrand[i];
 
   /* Update end bins since contribution was overcounted when summing up all entries */
-  result = result - 0.5 * integrand[ilow] - 0.5 * integrand[ihigh];
+  result = result - 0.5 * integrand[low_imf_mass_bin_index] - 0.5 * integrand[high_imf_mass_bin_index];
 
   /* correct first bin (ALEXEI: why are we doing this? (just to clarify comment))*/
-  dm = (log_min_mass - star_properties->feedback.imf_mass_bin_log10[ilow]) / dlm;
+  bin_offset = (log10_min_mass - star_properties->feedback.imf_mass_bin_log10[low_imf_mass_bin_index]) / imf_log10_mass_bin_size;
 
-  if (dm < 0.5)
-    result -= dm * integrand[ilow];
+  if (bin_offset < 0.5)
+    result -= bin_offset * integrand[low_imf_mass_bin_index];
   else {
-    result -= 0.5 * integrand[ilow];
-    result -= (dm - 0.5) * integrand[ilow + 1];
+    result -= 0.5 * integrand[low_imf_mass_bin_index];
+    result -= (bin_offset - 0.5) * integrand[low_imf_mass_bin_index + 1];
   }
 
   /* correct last bin */
-  dm = (log_max_mass - star_properties->feedback.imf_mass_bin_log10[ihigh - 1]) / dlm;
+  bin_offset = (log10_max_mass - star_properties->feedback.imf_mass_bin_log10[high_imf_mass_bin_index - 1]) / imf_log10_mass_bin_size;
 
-  if (dm < 0.5) {
-    result -= 0.5 * integrand[ihigh];
-    result -= (0.5 - dm) * integrand[ihigh - 1];
+  if (bin_offset < 0.5) {
+    result -= 0.5 * integrand[high_imf_mass_bin_index];
+    result -= (0.5 - bin_offset) * integrand[high_imf_mass_bin_index - 1];
   } else {
-    result -= (1 - dm) * integrand[ihigh];
+    result -= (1 - bin_offset) * integrand[high_imf_mass_bin_index];
   }
 
   /* The IMF is tabulated in log10 so undo to get regular units */
-  result *= dlm * log(10.0); 
+  result *= imf_log10_mass_bin_size * log(10.0); 
 
   return result;
 }
 
 /**
- * @brief Allocate and compute IMF
+ * @brief Allocate space for IMF table and compute values to populate this table.
  *
  * @param star_properties #stars_props data structure */
 inline static void init_imf(struct stars_props *restrict star_properties) {
 
-  // ALEXEI: use better names for solar_mass, log_solar_mass
-  float norm = 0, solar_mass, log_solar_mass;
+  float norm = 0, mass_msun, log10_mass_msun;
+
+  /* Define number of imf mass bins */
+  star_properties->feedback.n_imf_mass_bins = 200;
+
+  /* Define max and min imf masses */
+  star_properties->feedback.imf_max_mass_msun = 100.f;
+  star_properties->feedback.imf_min_mass_msun = 0.1;
+  star_properties->feedback.log10_imf_min_mass_msun = -1;
+  star_properties->feedback.log10_imf_max_mass_msun = 2;
 
   /* Compute size of mass bins in log10 space */
-  const float dlm = (log_imf_max_solar_mass - log_imf_min_solar_mass) /
-                    (double)(N_imf_mass_bins - 1);
+  const float imf_log10_mass_bin_size = (star_properties->feedback.log10_imf_max_mass_msun - star_properties->feedback.log10_imf_min_mass_msun) /
+                    (double)(star_properties->feedback.n_imf_mass_bins - 1);
 
   /* Allocate IMF array */
-  if (posix_memalign((void **)&star_properties->feedback.imf_by_number,
+  if (posix_memalign((void **)&star_properties->feedback.imf,
                      SWIFT_STRUCT_ALIGNMENT,
-                     N_imf_mass_bins * sizeof(float)) != 0)
+                     star_properties->feedback.n_imf_mass_bins * sizeof(float)) != 0)
     error("Failed to allocate IMF bins table");
 
   /* Allocate array to store IMF mass bins */
   if (posix_memalign((void **)&star_properties->feedback.imf_mass_bin,
                      SWIFT_STRUCT_ALIGNMENT,
-                     N_imf_mass_bins * sizeof(float)) != 0)
+                     star_properties->feedback.n_imf_mass_bins * sizeof(float)) != 0)
     error("Failed to allocate IMF bins table");
 
   /* Allocate array to store IMF mass bins in log10 space */
   if (posix_memalign((void **)&star_properties->feedback.imf_mass_bin_log10,
                      SWIFT_STRUCT_ALIGNMENT,
-                     N_imf_mass_bins * sizeof(float)) != 0)
+                     star_properties->feedback.n_imf_mass_bins * sizeof(float)) != 0)
     error("Failed to allocate IMF bins table");
 
   /* Set Power-law IMF (Salpeter for IMF_EXPONENT = 2.35) */
@@ -209,35 +208,35 @@ inline static void init_imf(struct stars_props *restrict star_properties) {
       error("imf_exponent is supposed to be > 0\n");
     }
 
-    for (int i = 0; i < N_imf_mass_bins; i++) {
-      log_solar_mass = log_imf_min_solar_mass + i * dlm;
-      solar_mass = exp(M_LN10 * log_solar_mass);
+    for (int i = 0; i < star_properties->feedback.n_imf_mass_bins; i++) {
+      log10_mass_msun = star_properties->feedback.log10_imf_min_mass_msun + i * imf_log10_mass_bin_size;
+      mass_msun = exp(M_LN10 * log10_mass_msun);
 
       star_properties->feedback.IMF_Exponent = 2.35;
-      star_properties->feedback.imf_by_number[i] =
-          pow(solar_mass, -star_properties->feedback.IMF_Exponent);
+      star_properties->feedback.imf[i] =
+          pow(mass_msun, -star_properties->feedback.IMF_Exponent);
 
-      star_properties->feedback.imf_mass_bin[i] = solar_mass;
-      star_properties->feedback.imf_mass_bin_log10[i] = log_solar_mass;
+      star_properties->feedback.imf_mass_bin[i] = mass_msun;
+      star_properties->feedback.imf_mass_bin_log10[i] = log10_mass_msun;
     }
   }
   /* Set IMF from Chabrier 2003 */
   else if (strcmp(star_properties->feedback.IMF_Model, "Chabrier") == 0) {
-    for (int i = 0; i < N_imf_mass_bins; i++) {
-      log_solar_mass = log_imf_min_solar_mass + i * dlm;
-      solar_mass = exp(M_LN10 * log_solar_mass);
+    for (int i = 0; i < star_properties->feedback.n_imf_mass_bins; i++) {
+      log10_mass_msun = star_properties->feedback.log10_imf_min_mass_msun + i * imf_log10_mass_bin_size;
+      mass_msun = exp(M_LN10 * log10_mass_msun);
 
-      if (solar_mass > 1.0)
-        star_properties->feedback.imf_by_number[i] = 0.237912 * pow(solar_mass, -2.3);
+      if (mass_msun > 1.0)
+        star_properties->feedback.imf[i] = 0.237912 * pow(mass_msun, -2.3);
       else
-        star_properties->feedback.imf_by_number[i] =
+        star_properties->feedback.imf[i] =
             0.852464 *
-            exp((log10(solar_mass) - log10(0.079)) *
-                (log10(solar_mass) - log10(0.079)) / (-2.0 * pow(0.69, 2))) /
-            solar_mass;
+            exp((log10(mass_msun) - log10(0.079)) *
+                (log10(mass_msun) - log10(0.079)) / (-2.0 * pow(0.69, 2))) /
+            mass_msun;
 
-      star_properties->feedback.imf_mass_bin[i] = solar_mass;
-      star_properties->feedback.imf_mass_bin_log10[i] = log_solar_mass;
+      star_properties->feedback.imf_mass_bin[i] = mass_msun;
+      star_properties->feedback.imf_mass_bin_log10[i] = log10_mass_msun;
     }
   } else {
     error("Invalid IMF model %s. Valid models are: PowerLaw and Chabrier\n",
@@ -245,11 +244,11 @@ inline static void init_imf(struct stars_props *restrict star_properties) {
   }
 
   /* Normalize the IMF */
-  norm = integrate_imf(log_imf_min_solar_mass, log_imf_max_solar_mass, 0.0, 1,
+  norm = integrate_imf(star_properties->feedback.log10_imf_min_mass_msun, star_properties->feedback.log10_imf_max_mass_msun, 0.0, 1,
                        /*(stellar_yields=)*/ NULL, star_properties);
 
-  for (int i = 0; i < N_imf_mass_bins; i++)
-    star_properties->feedback.imf_by_number[i] /= norm;
+  for (int i = 0; i < star_properties->feedback.n_imf_mass_bins; i++)
+    star_properties->feedback.imf[i] /= norm;
 }
 
 /**
@@ -263,13 +262,11 @@ inline static double dying_mass_msun(double age_Gyr, float metallicity,
                                     const struct stars_props* restrict
                                         star_properties) {
 
-  // ALEXEI: check out units for all these quantities and name them accordingly
-  float mass = 0, d_metal, d_time1 = 0, d_time2 = 0, log_age_yr, mass1, mass2;
+  float mass = 0, metallicity_offset, time_offset_low_metallicity = 0, time_offset_high_metallicity = 0, log10_age_yr, mass_low_metallicity, mass_high_metallicity;
 
-  int metal_index, i, index_time1 = -1, index_time2 = -1;
+  int metallicity_index, i, time_index_low_metallicity = -1, time_index_high_metallicity = -1;
 
   /* Calculate star mass that dies based on one of several analytical models */
-  // ALEXEI: What do we do with the constants here?
   switch (star_properties->feedback.stellar_lifetime_flag) {
     case 0:
       /* padovani & matteucci 1993 */
@@ -283,7 +280,7 @@ inline static double dying_mass_msun(double age_Gyr, float metallicity,
       else if (age_Gyr > 0.003)
         mass = pow((age_Gyr - 0.003) / 1.2, -1 / 1.85);
       else
-        mass = imf_max_mass_msun;
+        mass = star_properties->feedback.imf_max_mass_msun;
       break;
 
     case 1:
@@ -302,98 +299,97 @@ inline static double dying_mass_msun(double age_Gyr, float metallicity,
       else if (age_Gyr > 0.003)
         mass = pow((age_Gyr - 0.003) / 1.2, -0.54054053);
       else
-        mass = imf_max_mass_msun;
+        mass = star_properties->feedback.imf_max_mass_msun;
       break;
 
     case 2:
       /* portinari et al. 1998 */
 
       if (age_Gyr <= 0) {
-        mass = imf_max_mass_msun;
+        mass = star_properties->feedback.imf_max_mass_msun;
         break;
       }
 
-      log_age_yr = log10(age_Gyr * 1.e9);
+      log10_age_yr = log10(age_Gyr * 1.e9);
 
-      // ALEXEI: Simply copied from EAGLE, can we simplify this whole thing somehow to be more readable?
       if (metallicity <= star_properties->feedback.lifetimes.metallicity[0]) {
-        metal_index = 0;
-        d_metal = 0.0;
+        metallicity_index = 0;
+        metallicity_offset = 0.0;
       } else if (metallicity >=
                  star_properties->feedback.lifetimes
                      .metallicity[star_properties->feedback.lifetimes.n_z - 1]) {
-        metal_index = star_properties->feedback.lifetimes.n_z - 2;
-        d_metal = 1.0;
+        metallicity_index = star_properties->feedback.lifetimes.n_z - 2;
+        metallicity_offset = 1.0;
       } else {
-        for (metal_index = 0; metal_index < star_properties->feedback.lifetimes.n_z - 1;
-             metal_index++)
-          if (star_properties->feedback.lifetimes.metallicity[metal_index + 1] >
+        for (metallicity_index = 0; metallicity_index < star_properties->feedback.lifetimes.n_z - 1;
+             metallicity_index++)
+          if (star_properties->feedback.lifetimes.metallicity[metallicity_index + 1] >
               metallicity)
             break;
 
-        d_metal = (metallicity -
-                   star_properties->feedback.lifetimes.metallicity[metal_index]) /
-                  (star_properties->feedback.lifetimes.metallicity[metal_index + 1] -
-                   star_properties->feedback.lifetimes.metallicity[metal_index]);
+        metallicity_offset = (metallicity -
+                   star_properties->feedback.lifetimes.metallicity[metallicity_index]) /
+                  (star_properties->feedback.lifetimes.metallicity[metallicity_index + 1] -
+                   star_properties->feedback.lifetimes.metallicity[metallicity_index]);
       }
 
-      if (log_age_yr >= star_properties->feedback.lifetimes.dyingtime[metal_index][0]) {
-        index_time1 = 0;
-        d_time1 = 0.0;
-      } else if (log_age_yr <=
+      if (log10_age_yr >= star_properties->feedback.lifetimes.dyingtime[metallicity_index][0]) {
+        time_index_low_metallicity = 0;
+        time_offset_low_metallicity = 0.0;
+      } else if (log10_age_yr <=
                  star_properties->feedback.lifetimes
-                     .dyingtime[metal_index]
+                     .dyingtime[metallicity_index]
                                [star_properties->feedback.lifetimes.n_mass - 1]) {
-        index_time1 = star_properties->feedback.lifetimes.n_mass - 2;
-        d_time1 = 1.0;
+        time_index_low_metallicity = star_properties->feedback.lifetimes.n_mass - 2;
+        time_offset_low_metallicity = 1.0;
       }
 
-      if (log_age_yr >=
-          star_properties->feedback.lifetimes.dyingtime[metal_index + 1][0]) {
-        index_time2 = 0;
-        d_time2 = 0.0;
-      } else if (log_age_yr <=
+      if (log10_age_yr >=
+          star_properties->feedback.lifetimes.dyingtime[metallicity_index + 1][0]) {
+        time_index_high_metallicity = 0;
+        time_offset_high_metallicity = 0.0;
+      } else if (log10_age_yr <=
                  star_properties->feedback.lifetimes
-                     .dyingtime[metal_index + 1]
+                     .dyingtime[metallicity_index + 1]
                                [star_properties->feedback.lifetimes.n_mass - 1]) {
-        index_time2 = star_properties->feedback.lifetimes.n_mass - 2;
-        d_time2 = 1.0;
+        time_index_high_metallicity = star_properties->feedback.lifetimes.n_mass - 2;
+        time_offset_high_metallicity = 1.0;
       }
 
       i = star_properties->feedback.lifetimes.n_mass;
-      while (i >= 0 && (index_time1 == -1 || index_time2 == -1)) {
+      while (i >= 0 && (time_index_low_metallicity == -1 || time_index_high_metallicity == -1)) {
         i--;
-        if (star_properties->feedback.lifetimes.dyingtime[metal_index][i] >=
-                log_age_yr &&
-            index_time1 == -1) {
-          index_time1 = i;
-          d_time1 =
-              (log_age_yr -
-               star_properties->feedback.lifetimes.dyingtime[metal_index][index_time1]) /
+        if (star_properties->feedback.lifetimes.dyingtime[metallicity_index][i] >=
+                log10_age_yr &&
+            time_index_low_metallicity == -1) {
+          time_index_low_metallicity = i;
+          time_offset_low_metallicity =
+              (log10_age_yr -
+               star_properties->feedback.lifetimes.dyingtime[metallicity_index][time_index_low_metallicity]) /
               (star_properties->feedback.lifetimes
-                   .dyingtime[metal_index][index_time1 + 1] -
-               star_properties->feedback.lifetimes.dyingtime[metal_index][index_time1]);
+                   .dyingtime[metallicity_index][time_index_low_metallicity + 1] -
+               star_properties->feedback.lifetimes.dyingtime[metallicity_index][time_index_low_metallicity]);
         }
-        if (star_properties->feedback.lifetimes.dyingtime[metal_index + 1][i] >=
-                log_age_yr &&
-            index_time2 == -1) {
-          index_time2 = i;
-          d_time2 =
-              (log_age_yr - star_properties->feedback.lifetimes
-                                .dyingtime[metal_index + 1][index_time2]) /
+        if (star_properties->feedback.lifetimes.dyingtime[metallicity_index + 1][i] >=
+                log10_age_yr &&
+            time_index_high_metallicity == -1) {
+          time_index_high_metallicity = i;
+          time_offset_high_metallicity =
+              (log10_age_yr - star_properties->feedback.lifetimes
+                                .dyingtime[metallicity_index + 1][time_index_high_metallicity]) /
               (star_properties->feedback.lifetimes
-                   .dyingtime[metal_index + 1][index_time2 + 1] -
+                   .dyingtime[metallicity_index + 1][time_index_high_metallicity + 1] -
                star_properties->feedback.lifetimes
-                   .dyingtime[metal_index + 1][index_time2]);
+                   .dyingtime[metallicity_index + 1][time_index_high_metallicity]);
         }
       }
 
-      mass1 =
-          interpolate_1d(star_properties->feedback.lifetimes.mass, index_time1, d_time1);
-      mass2 =
-          interpolate_1d(star_properties->feedback.lifetimes.mass, index_time2, d_time2);
+      mass_low_metallicity =
+          interpolate_1d(star_properties->feedback.lifetimes.mass, time_index_low_metallicity, time_offset_low_metallicity);
+      mass_high_metallicity =
+          interpolate_1d(star_properties->feedback.lifetimes.mass, time_index_high_metallicity, time_offset_high_metallicity);
 
-      mass = (1.0 - d_metal) * mass1 + d_metal * mass2;
+      mass = (1.0 - metallicity_offset) * mass_low_metallicity + metallicity_offset * mass_high_metallicity;
       break;
 
     default:
@@ -401,13 +397,13 @@ inline static double dying_mass_msun(double age_Gyr, float metallicity,
   }
 
   /* Check that we haven't killed too many stars */
-  if (mass > imf_max_mass_msun) mass = imf_max_mass_msun;
+  if (mass > star_properties->feedback.imf_max_mass_msun) mass = star_properties->feedback.imf_max_mass_msun;
 
   return mass;
 }
 
 /**
- * @brief
+ * @brief Calculate lifetime of star poputlation in Gyr. Lifetime model is specified by stellar_lifetime_flag read in from yml file. 
  *
  * @param mass
  * @param metallicity
@@ -417,39 +413,39 @@ inline static float lifetime_in_Gyr(float mass, float metallicity,
                                     const struct stars_props* restrict
                                         star_properties) {
 
-  double time = 0, d_mass, d_metal;
+  double time_Gyr = 0, mass_offset, metallicity_offset;
 
-  int mass_index, metal_index;
+  int mass_index, metallicity_index;
 
   switch (star_properties->feedback.stellar_lifetime_flag) {
     case 0:
       /* PM93 (Padovani & Matteucci 1993) */
 
       if (mass <= 0.6)
-        time = 160.0;
+        time_Gyr = 160.0;
       else if (mass <= 6.6)
-        time =
+        time_Gyr =
             pow(10.0, (0.334 - sqrt(1.790 - 0.2232 * (7.764 - log10(mass)))) /
                           0.1116);
       else
-        time = 1.2 * pow(mass, -1.85) + 0.003;
+        time_Gyr = 1.2 * pow(mass, -1.85) + 0.003;
       break;
 
     case 1:
       /* MM89 (Maeder & Meynet 1989) */
 
       if (mass <= 1.3)
-        time = pow(10.0, -0.6545 * log10(mass) + 1.0);
+        time_Gyr = pow(10.0, -0.6545 * log10(mass) + 1.0);
       else if (mass <= 3.0)
-        time = pow(10.0, -3.7 * log10(mass) + 1.35);
+        time_Gyr = pow(10.0, -3.7 * log10(mass) + 1.35);
       else if (mass <= 7.0)
-        time = pow(10.0, -2.51 * log10(mass) + 0.77);
+        time_Gyr = pow(10.0, -2.51 * log10(mass) + 0.77);
       else if (mass <= 15.0)
-        time = pow(10.0, -1.78 * log10(mass) + 0.17);
+        time_Gyr = pow(10.0, -1.78 * log10(mass) + 0.17);
       else if (mass <= 60.0)
-        time = pow(10.0, -0.86 * log10(mass) - 0.94);
+        time_Gyr = pow(10.0, -0.86 * log10(mass) - 0.94);
       else
-        time = 1.2 * pow(mass, -1.85) + 0.003;
+        time_Gyr = 1.2 * pow(mass, -1.85) + 0.003;
       break;
 
     case 2:
@@ -457,46 +453,46 @@ inline static float lifetime_in_Gyr(float mass, float metallicity,
 
       if (mass <= star_properties->feedback.lifetimes.mass[0]) {
         mass_index = 0;
-        d_mass = 0.0;
+        mass_offset = 0.0;
       } else if (mass >= star_properties->feedback.lifetimes
                              .mass[star_properties->feedback.lifetimes.n_mass - 1]) {
         mass_index = star_properties->feedback.lifetimes.n_mass - 2;
-        d_mass = 1.0;
+        mass_offset = 1.0;
       } else {
         for (mass_index = 0; mass_index < star_properties->feedback.lifetimes.n_mass - 1;
              mass_index++)
           if (star_properties->feedback.lifetimes.mass[mass_index + 1] > mass) break;
 
-        d_mass = (mass - star_properties->feedback.lifetimes.mass[mass_index]) /
+        mass_offset = (mass - star_properties->feedback.lifetimes.mass[mass_index]) /
                  (star_properties->feedback.lifetimes.mass[mass_index + 1] -
                   star_properties->feedback.lifetimes.mass[mass_index]);
       }
 
       if (metallicity <= star_properties->feedback.lifetimes.metallicity[0]) {
-        metal_index = 0;
-        d_metal = 0.0;
+        metallicity_index = 0;
+        metallicity_offset = 0.0;
       } else if (metallicity >=
                  star_properties->feedback.lifetimes
                      .metallicity[star_properties->feedback.lifetimes.n_z - 1]) {
-        metal_index = star_properties->feedback.lifetimes.n_z - 2;
-        d_metal = 1.0;
+        metallicity_index = star_properties->feedback.lifetimes.n_z - 2;
+        metallicity_offset = 1.0;
       } else {
-        for (metal_index = 0; metal_index < star_properties->feedback.lifetimes.n_z - 1;
-             metal_index++)
-          if (star_properties->feedback.lifetimes.metallicity[metal_index + 1] >
+        for (metallicity_index = 0; metallicity_index < star_properties->feedback.lifetimes.n_z - 1;
+             metallicity_index++)
+          if (star_properties->feedback.lifetimes.metallicity[metallicity_index + 1] >
               metallicity)
             break;
 
-        d_metal = (metallicity -
-                   star_properties->feedback.lifetimes.metallicity[metal_index]) /
-                  (star_properties->feedback.lifetimes.metallicity[metal_index + 1] -
-                   star_properties->feedback.lifetimes.metallicity[metal_index]);
+        metallicity_offset = (metallicity -
+                   star_properties->feedback.lifetimes.metallicity[metallicity_index]) /
+                  (star_properties->feedback.lifetimes.metallicity[metallicity_index + 1] -
+                   star_properties->feedback.lifetimes.metallicity[metallicity_index]);
       }
 
       /* time in Gyr */
-      time =
+      time_Gyr =
           exp(M_LN10 * interpolate_2d(star_properties->feedback.lifetimes.dyingtime,
-                                   metal_index, mass_index, d_metal, d_mass)) /
+                                   metallicity_index, mass_index, metallicity_offset, mass_offset)) /
           1.0e9;
 
       break;
@@ -505,7 +501,7 @@ inline static float lifetime_in_Gyr(float mass, float metallicity,
       error("stellar lifetimes not defined");
   }
 
-  return time;
+  return time_Gyr;
 }
 
 #endif

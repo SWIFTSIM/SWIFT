@@ -254,13 +254,6 @@ struct stars_props {
     /* Kinetic energy of SN ejecta per unit mass (check name with Richard)*/
     float ejecta_specific_thermal_energy;
 
-    /* Timescale for feedback (used only for testing in const feedback model) */
-    float feedback_timescale;
-
-    /* Number of supernovae per solar mass (used only for testing in const
-     * feedback model) */
-    float sn_per_msun;
-
     /* Solar mass */
     float const_solar_mass;
 
@@ -306,6 +299,7 @@ struct stars_props {
     int AGB_n_elements;
     int AGB_n_z;
 
+    /* log10 of max and min allowable masses for SNII and SNIa in msun */
     float log10_SNII_min_mass_msun;
     float log10_SNII_max_mass_msun;
     float log10_SNIa_max_mass_msun;
@@ -316,9 +310,14 @@ struct stars_props {
     /* Parameters for IMF  */
     char IMF_Model[10];
     float IMF_Exponent;
-    float *imf_by_number;
+    float *imf;
     float *imf_mass_bin;
     float *imf_mass_bin_log10;
+    int n_imf_mass_bins;
+    float imf_max_mass_msun;
+    float imf_min_mass_msun;
+    float log10_imf_min_mass_msun;
+    float log10_imf_max_mass_msun;
 
     /* Table of lifetime values */
     struct lifetime_table lifetimes;

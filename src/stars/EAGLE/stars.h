@@ -347,8 +347,7 @@ inline static void evolve_SNII(float log10_min_mass, float log10_max_mass,
 			       float *stellar_yields,
                                const struct stars_props* restrict stars,
                                struct spart* restrict sp) {
-  // come up with more descriptive index names
-  int ilow, ihigh, imass, i = 0;
+  int low_imf_mass_bin_index, high_imf_mass_bin_index, mass_bin_index;
 
   /* If mass at beginning of step is less than tabulated lower bound for IMF, limit it.*/
   if (log10_min_mass < stars->feedback.log10_SNII_min_mass_msun)
@@ -362,7 +361,7 @@ inline static void evolve_SNII(float log10_min_mass, float log10_max_mass,
   if (log10_min_mass >= log10_max_mass) return;
 
   /* determine which IMF mass bins contribute to the integral */
-  determine_imf_bins(log10_min_mass, log10_max_mass, &ilow, &ihigh, stars);
+  determine_imf_bins(log10_min_mass, log10_max_mass, &low_imf_mass_bin_index, &high_imf_mass_bin_index, stars);
 
   /* Integrate IMF to determine number of SNII */
   sp->to_distribute.num_SNII = integrate_imf(
@@ -376,39 +375,39 @@ inline static void evolve_SNII(float log10_min_mass, float log10_max_mass,
                            stars);
 
   /* compute metals produced */
-  float metals[chemistry_element_count], mass;
-  for (i = 0; i < chemistry_element_count; i++) {
-    for (imass = ilow; imass < ihigh + 1; imass++) {
+  float metal_mass_released[chemistry_element_count], metal_mass_released_total;
+  for (int elem = 0; elem < chemistry_element_count; elem++) {
+    for (mass_bin_index = low_imf_mass_bin_index; mass_bin_index < high_imf_mass_bin_index + 1; mass_bin_index++) {
       low_index_3d =
-          feedback_row_major_index_3d(iz_low, i, imass, stars->feedback.SNII_n_z,
-                             chemistry_element_count, n_mass_bins);
+          feedback_row_major_index_3d(iz_low, elem, mass_bin_index, stars->feedback.SNII_n_z,
+                             chemistry_element_count, stars->feedback.n_imf_mass_bins);
       high_index_3d =
-          feedback_row_major_index_3d(iz_high, i, imass, stars->feedback.SNII_n_z,
-                             chemistry_element_count, n_mass_bins);
-      low_index_2d = feedback_row_major_index_2d(iz_low, imass, stars->feedback.SNII_n_z,
-                                        n_mass_bins);
-      high_index_2d = feedback_row_major_index_2d(iz_high, imass, stars->feedback.SNII_n_z,
-                                         n_mass_bins);
-      stellar_yields[imass] =
+          feedback_row_major_index_3d(iz_high, elem, mass_bin_index, stars->feedback.SNII_n_z,
+                             chemistry_element_count, stars->feedback.n_imf_mass_bins);
+      low_index_2d = feedback_row_major_index_2d(iz_low, mass_bin_index, stars->feedback.SNII_n_z,
+                                        stars->feedback.n_imf_mass_bins);
+      high_index_2d = feedback_row_major_index_2d(iz_high, mass_bin_index, stars->feedback.SNII_n_z,
+                                         stars->feedback.n_imf_mass_bins);
+      stellar_yields[mass_bin_index] =
           (1 - dz) * (stars->feedback.yield_SNII.yield_IMF_resampled[low_index_3d] +
-                      sp->chemistry_data.metal_mass_fraction[i] *
+                      sp->chemistry_data.metal_mass_fraction[elem] *
                           stars->feedback.yield_SNII.ejecta_IMF_resampled[low_index_2d]) +
           dz * (stars->feedback.yield_SNII.yield_IMF_resampled[high_index_3d] +
-                sp->chemistry_data.metal_mass_fraction[i] *
+                sp->chemistry_data.metal_mass_fraction[elem] *
                     stars->feedback.yield_SNII.ejecta_IMF_resampled[high_index_2d]);
     }
 
-    metals[i] = integrate_imf(log10_min_mass, log10_max_mass, 0.0, 2,
+    metal_mass_released[elem] = integrate_imf(log10_min_mass, log10_max_mass, 0.0, 2,
                               stellar_yields, stars);
   }
 
   /* Compute mass produced */
-  for (imass = ilow; imass < ihigh + 1; imass++) {
+  for (mass_bin_index = low_imf_mass_bin_index; mass_bin_index < high_imf_mass_bin_index + 1; mass_bin_index++) {
     low_index_2d =
-        feedback_row_major_index_2d(iz_low, imass, stars->feedback.SNII_n_z, n_mass_bins);
+        feedback_row_major_index_2d(iz_low, mass_bin_index, stars->feedback.SNII_n_z, stars->feedback.n_imf_mass_bins);
     high_index_2d =
-        feedback_row_major_index_2d(iz_high, imass, stars->feedback.SNII_n_z, n_mass_bins);
-    stellar_yields[imass] =
+        feedback_row_major_index_2d(iz_high, mass_bin_index, stars->feedback.SNII_n_z, stars->feedback.n_imf_mass_bins);
+    stellar_yields[mass_bin_index] =
         (1 - dz) * (stars->feedback.yield_SNII.total_metals_IMF_resampled[low_index_2d] +
                     sp->chemistry_data.metal_mass_fraction_total *
                         stars->feedback.yield_SNII.ejecta_IMF_resampled[low_index_2d]) +
@@ -417,25 +416,25 @@ inline static void evolve_SNII(float log10_min_mass, float log10_max_mass,
                   stars->feedback.yield_SNII.ejecta_IMF_resampled[high_index_2d]);
   }
 
-  mass = integrate_imf(log10_min_mass, log10_max_mass, 0.0, 2,
+  metal_mass_released_total = integrate_imf(log10_min_mass, log10_max_mass, 0.0, 2,
                        stellar_yields, stars);
 
   /* yield normalization */
   float norm0, norm1;
 
   /* zero all negative values (ALEXEI: do we need this?)*/
-  for (i = 0; i < chemistry_element_count; i++)
-    if (metals[i] < 0) metals[i] = 0;
+  for (int i = 0; i < chemistry_element_count; i++)
+    if (metal_mass_released[i] < 0) metal_mass_released[i] = 0;
 
-  if (mass < 0) mass = 0;
+  if (metal_mass_released_total < 0) metal_mass_released_total = 0;
 
   /* compute the total metal mass ejected from the star*/
-  for (imass = ilow; imass < ihigh + 1; imass++) {
+  for (mass_bin_index = low_imf_mass_bin_index; mass_bin_index < high_imf_mass_bin_index + 1; mass_bin_index++) {
     low_index_2d =
-        feedback_row_major_index_2d(iz_low, imass, stars->feedback.SNII_n_z, n_mass_bins);
+        feedback_row_major_index_2d(iz_low, mass_bin_index, stars->feedback.SNII_n_z, stars->feedback.n_imf_mass_bins);
     high_index_2d =
-        feedback_row_major_index_2d(iz_high, imass, stars->feedback.SNII_n_z, n_mass_bins);
-    stellar_yields[imass] =
+        feedback_row_major_index_2d(iz_high, mass_bin_index, stars->feedback.SNII_n_z, stars->feedback.n_imf_mass_bins);
+    stellar_yields[mass_bin_index] =
         (1 - dz) * stars->feedback.yield_SNII.ejecta_IMF_resampled[low_index_2d] +
         dz * stars->feedback.yield_SNII.ejecta_IMF_resampled[high_index_2d];
   }
@@ -444,7 +443,7 @@ inline static void evolve_SNII(float log10_min_mass, float log10_max_mass,
                         stellar_yields, stars);
 
   /* compute the total mass ejected */
-  norm1 = mass + metals[chemistry_element_H] + metals[chemistry_element_He];
+  norm1 = metal_mass_released_total + metal_mass_released[chemistry_element_H] + metal_mass_released[chemistry_element_He];
 
   /* Set normalisation factor. Note additional multiplication by the stellar
    * initial mass as tables are per initial mass */
@@ -453,14 +452,14 @@ inline static void evolve_SNII(float log10_min_mass, float log10_max_mass,
 
   /* normalize the yields */
   if (norm1 > 0) {
-    for (i = 0; i < chemistry_element_count; i++) {
-      sp->to_distribute.metal_mass[i] += metals[i] * norm_factor;
+    for (int i = 0; i < chemistry_element_count; i++) {
+      sp->to_distribute.metal_mass[i] += metal_mass_released[i] * norm_factor;
     }
-    for (i = 0; i < chemistry_element_count; i++) {
+    for (int i = 0; i < chemistry_element_count; i++) {
       sp->to_distribute.mass_from_SNII += sp->to_distribute.metal_mass[i];
     }
-    sp->to_distribute.total_metal_mass += mass * norm_factor;
-    sp->to_distribute.metal_mass_from_SNII += mass * norm_factor;
+    sp->to_distribute.total_metal_mass += metal_mass_released_total * norm_factor;
+    sp->to_distribute.metal_mass_from_SNII += metal_mass_released_total * norm_factor;
   } else {
     error("wrong normalization!!!! norm1 = %e\n", norm1);
   }
@@ -480,8 +479,7 @@ inline static void evolve_AGB(float log10_min_mass, float log10_max_mass,
 			      float *stellar_yields,
                               const struct stars_props* restrict stars,
                               struct spart* restrict sp) {
-  // ALEXEI: come up with more descriptive index names
-  int ilow, ihigh, imass, i = 0;
+  int low_imf_mass_bin_index, high_imf_mass_bin_index, mass_bin_index;
 
   /* If mass at end of step is greater than tabulated lower bound for IMF, limit it.*/
   if (log10_max_mass > stars->feedback.log10_SNII_min_mass_msun)
@@ -491,7 +489,7 @@ inline static void evolve_AGB(float log10_min_mass, float log10_max_mass,
   if (log10_min_mass >= log10_max_mass) return;
 
   /* determine which IMF mass bins contribute to the integral */
-  determine_imf_bins(log10_min_mass, log10_max_mass, &ilow, &ihigh, stars);
+  determine_imf_bins(log10_min_mass, log10_max_mass, &low_imf_mass_bin_index, &high_imf_mass_bin_index, stars);
 
   /* determine which metallicity bin and offset this star belongs to */
   int iz_low, iz_high, low_index_3d, high_index_3d, low_index_2d, high_index_2d;
@@ -501,39 +499,39 @@ inline static void evolve_AGB(float log10_min_mass, float log10_max_mass,
                           stars);
 
   /* compute metals produced */
-  float metals[chemistry_element_count], mass;
-  for (i = 0; i < chemistry_element_count; i++) {
-    for (imass = ilow; imass < ihigh + 1; imass++) {
+  float metal_mass_released[chemistry_element_count], metal_mass_released_total;
+  for (int elem = 0; elem < chemistry_element_count; elem++) {
+    for (mass_bin_index = low_imf_mass_bin_index; mass_bin_index < high_imf_mass_bin_index + 1; mass_bin_index++) {
       low_index_3d =
-          feedback_row_major_index_3d(iz_low, i, imass, stars->feedback.AGB_n_z,
-                             chemistry_element_count, n_mass_bins);
+          feedback_row_major_index_3d(iz_low, elem, mass_bin_index, stars->feedback.AGB_n_z,
+                             chemistry_element_count, stars->feedback.n_imf_mass_bins);
       high_index_3d =
-          feedback_row_major_index_3d(iz_high, i, imass, stars->feedback.AGB_n_z,
-                             chemistry_element_count, n_mass_bins);
+          feedback_row_major_index_3d(iz_high, elem, mass_bin_index, stars->feedback.AGB_n_z,
+                             chemistry_element_count, stars->feedback.n_imf_mass_bins);
       low_index_2d =
-          feedback_row_major_index_2d(iz_low, imass, stars->feedback.AGB_n_z, n_mass_bins);
+          feedback_row_major_index_2d(iz_low, mass_bin_index, stars->feedback.AGB_n_z, stars->feedback.n_imf_mass_bins);
       high_index_2d =
-          feedback_row_major_index_2d(iz_high, imass, stars->feedback.AGB_n_z, n_mass_bins);
-      stellar_yields[imass] =
+          feedback_row_major_index_2d(iz_high, mass_bin_index, stars->feedback.AGB_n_z, stars->feedback.n_imf_mass_bins);
+      stellar_yields[mass_bin_index] =
           (1 - dz) * (stars->feedback.yield_AGB.yield_IMF_resampled[low_index_3d] +
-                      sp->chemistry_data.metal_mass_fraction[i] *
+                      sp->chemistry_data.metal_mass_fraction[elem] *
                           stars->feedback.yield_AGB.ejecta_IMF_resampled[low_index_2d]) +
           dz * (stars->feedback.yield_AGB.yield_IMF_resampled[high_index_3d] +
-                sp->chemistry_data.metal_mass_fraction[i] *
+                sp->chemistry_data.metal_mass_fraction[elem] *
                     stars->feedback.yield_AGB.ejecta_IMF_resampled[high_index_2d]);
     }
 
-    metals[i] = integrate_imf(log10_min_mass, log10_max_mass, 0.0, 2,
+    metal_mass_released[elem] = integrate_imf(log10_min_mass, log10_max_mass, 0.0, 2,
                               stellar_yields, stars);
   }
 
   /* Compute mass produced */
-  for (imass = ilow; imass < ihigh + 1; imass++) {
+  for (mass_bin_index = low_imf_mass_bin_index; mass_bin_index < high_imf_mass_bin_index + 1; mass_bin_index++) {
     low_index_2d =
-        feedback_row_major_index_2d(iz_low, imass, stars->feedback.AGB_n_z, n_mass_bins);
+        feedback_row_major_index_2d(iz_low, mass_bin_index, stars->feedback.AGB_n_z, stars->feedback.n_imf_mass_bins);
     high_index_2d =
-        feedback_row_major_index_2d(iz_high, imass, stars->feedback.AGB_n_z, n_mass_bins);
-    stellar_yields[imass] =
+        feedback_row_major_index_2d(iz_high, mass_bin_index, stars->feedback.AGB_n_z, stars->feedback.n_imf_mass_bins);
+    stellar_yields[mass_bin_index] =
         (1 - dz) * (stars->feedback.yield_AGB.total_metals_IMF_resampled[low_index_2d] +
                     sp->chemistry_data.metal_mass_fraction_total *
                         stars->feedback.yield_AGB.ejecta_IMF_resampled[low_index_2d]) +
@@ -542,25 +540,25 @@ inline static void evolve_AGB(float log10_min_mass, float log10_max_mass,
                   stars->feedback.yield_AGB.ejecta_IMF_resampled[high_index_2d]);
   }
 
-  mass = integrate_imf(log10_min_mass, log10_max_mass, 0.0, 2,
+  metal_mass_released_total = integrate_imf(log10_min_mass, log10_max_mass, 0.0, 2,
                        stellar_yields, stars);
 
   /* yield normalization */
   float norm0, norm1;
 
   /* zero all negative values (ALEXEI: Copied from eagle, seems like it could hide errors, should this be kept or removed?)*/
-  for (i = 0; i < chemistry_element_count; i++)
-    if (metals[i] < 0) metals[i] = 0;
+  for (int i = 0; i < chemistry_element_count; i++)
+    if (metal_mass_released[i] < 0) metal_mass_released[i] = 0;
 
-  if (mass < 0) mass = 0;
+  if (metal_mass_released_total < 0) metal_mass_released_total = 0;
 
   /* compute the total metal mass ejected from the star */
-  for (imass = ilow; imass < ihigh + 1; imass++) {
+  for (mass_bin_index = low_imf_mass_bin_index; mass_bin_index < high_imf_mass_bin_index + 1; mass_bin_index++) {
     low_index_2d =
-        feedback_row_major_index_2d(iz_low, imass, stars->feedback.AGB_n_z, n_mass_bins);
+        feedback_row_major_index_2d(iz_low, mass_bin_index, stars->feedback.AGB_n_z, stars->feedback.n_imf_mass_bins);
     high_index_2d =
-        feedback_row_major_index_2d(iz_high, imass, stars->feedback.AGB_n_z, n_mass_bins);
-    stellar_yields[imass] =
+        feedback_row_major_index_2d(iz_high, mass_bin_index, stars->feedback.AGB_n_z, stars->feedback.n_imf_mass_bins);
+    stellar_yields[mass_bin_index] =
         (1 - dz) * stars->feedback.yield_AGB.ejecta_IMF_resampled[low_index_2d] +
         dz * stars->feedback.yield_AGB.ejecta_IMF_resampled[high_index_2d];
   }
@@ -569,7 +567,7 @@ inline static void evolve_AGB(float log10_min_mass, float log10_max_mass,
                         stellar_yields, stars);
 
   /* compute the total mass ejected */
-  norm1 = mass + metals[chemistry_element_H] + metals[chemistry_element_He];
+  norm1 = metal_mass_released_total + metal_mass_released[chemistry_element_H] + metal_mass_released[chemistry_element_He];
 
   /* Set normalisation factor. Note additional multiplication by the stellar
    * initial mass as tables are per initial mass */
@@ -577,12 +575,12 @@ inline static void evolve_AGB(float log10_min_mass, float log10_max_mass,
 
   /* normalize the yields */
   if (norm1 > 0) {
-    for (i = 0; i < chemistry_element_count; i++) {
-      sp->to_distribute.metal_mass[i] += metals[i] * norm_factor;
-      sp->to_distribute.mass_from_AGB += metals[i] * norm_factor;
+    for (int i = 0; i < chemistry_element_count; i++) {
+      sp->to_distribute.metal_mass[i] += metal_mass_released[i] * norm_factor;
+      sp->to_distribute.mass_from_AGB += metal_mass_released[i] * norm_factor;
     }
-    sp->to_distribute.total_metal_mass += mass * norm_factor;
-    sp->to_distribute.metal_mass_from_AGB += mass * norm_factor;
+    sp->to_distribute.total_metal_mass += metal_mass_released_total * norm_factor;
+    sp->to_distribute.metal_mass_from_AGB += metal_mass_released_total * norm_factor;
   } else {
     error("wrong normalization!!!! norm1 = %e\n", norm1);
   }
@@ -603,7 +601,7 @@ inline static void compute_stellar_evolution(
     double dt) {
 
   float *stellar_yields;
-  stellar_yields = malloc(n_mass_bins * sizeof(float));
+  stellar_yields = malloc(star_properties->feedback.n_imf_mass_bins * sizeof(float));
 
   /* Convert dt and stellar age from internal units to Gyr. */
   const double Gyr_in_cgs = 3.154e16;
@@ -739,6 +737,9 @@ inline static void stars_evolve_init(struct swift_params* params,
   parser_get_param_string(params, "EagleStellarEvolution:imf_model",
                           stars->feedback.IMF_Model);
 
+  /* Initialise IMF */
+  init_imf(stars);
+
   /* Allocate yield tables  */
   allocate_yield_tables(stars);
 
@@ -756,16 +757,10 @@ inline static void stars_evolve_init(struct swift_params* params,
   /* Read the tables  */
   read_yield_tables(stars);
 
-  /* Initialise IMF */
-  init_imf(stars);
-
   /* Set yield_mass_bins array */
-  const float lm_min = log10(imf_min_mass_msun); /* min mass in solar masses */
-  const float lm_max = log10(imf_max_mass_msun); /* max mass in solar masses */
-  const float dlm = (lm_max - lm_min) / (n_mass_bins - 1);
-  // ALEXEI: does yield_mass_bins really have to be double?
-  for (int i = 0; i < n_mass_bins; i++)
-    stars->feedback.yield_mass_bins[i] = dlm * i + lm_min;
+  const float imf_log10_mass_bin_size = (stars->feedback.log10_imf_max_mass_msun - stars->feedback.log10_imf_min_mass_msun) / (stars->feedback.n_imf_mass_bins - 1);
+  for (int i = 0; i < stars->feedback.n_imf_mass_bins; i++)
+    stars->feedback.yield_mass_bins[i] = imf_log10_mass_bin_size * i + stars->feedback.log10_imf_min_mass_msun;
 
   /* Resample yields from mass bins used in tables to mass bins used in IMF  */
   compute_yields(stars);

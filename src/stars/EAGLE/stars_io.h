@@ -136,7 +136,6 @@ INLINE static void stars_props_init(struct stars_props *sp,
   sp->feedback.stellar_lifetime_flag =
       parser_get_opt_param_int(params, "EAGLEFeedback:lifetime_flag", 0);
 
-  // ALEXEI: do we still need this timescale?
   sp->feedback.SNIa_timescale =
       parser_get_opt_param_float(params, "EAGLEFeedback:SNIa_timescale", 2.f);
 
