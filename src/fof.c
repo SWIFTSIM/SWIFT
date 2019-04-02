@@ -457,7 +457,34 @@ __attribute__((always_inline)) INLINE static size_t hashmap_find_group_offset(
     error("Couldn't find key (%zu) or create new one.", group_id);
 
   return (size_t)(*group_offset).value_st;
-} 
+}
+
+/* Compute send/recv offsets for MPI communication. */
+__attribute__((always_inline)) INLINE static void fof_compute_send_recv_offsets(const int nr_nodes, int *sendcount, int **recvcount, int **sendoffset, int **recvoffset, size_t *nrecv) {
+
+  /* Determine number of entries to receive */
+  *recvcount = malloc(nr_nodes * sizeof(int));
+  MPI_Alltoall(sendcount, 1, MPI_INT, *recvcount, 1, MPI_INT, MPI_COMM_WORLD);
+
+  /* Compute send/recv offsets */
+  *sendoffset = malloc(nr_nodes * sizeof(int));
+  
+  (*sendoffset)[0] = 0;
+  for(int i=1; i<nr_nodes; i++)
+    (*sendoffset)[i] = (*sendoffset)[i-1] + sendcount[i-1];
+  
+  *recvoffset = malloc(nr_nodes * sizeof(int));
+  
+  (*recvoffset)[0] = 0;
+  for(int i=1; i<nr_nodes; i++)
+    (*recvoffset)[i] = (*recvoffset)[i-1] + (*recvcount)[i-1];
+
+  /* Allocate receive buffer */
+  *nrecv = 0;
+  for(int i=0; i<nr_nodes; i++)
+    (*nrecv) += (*recvcount)[i];
+
+}
 #endif
 
 /* Recurse on a pair of cells and perform a FOF search between cells that are
@@ -989,25 +1016,12 @@ void fof_calc_group_mass(struct space *s, const size_t num_groups_local, const s
     sendcount[dest] += 1;
   } 
 
-  /* Determine number of entries to receive */
-  int *recvcount = malloc(nr_nodes*sizeof(int));
-  MPI_Alltoall(sendcount, 1, MPI_INT, recvcount, 1, MPI_INT, MPI_COMM_WORLD);
-
-  /* Compute send/recv offsets */
-  int *sendoffset = malloc(nr_nodes*sizeof(int));
-  sendoffset[0] = 0;
-  for(int i=1;i<nr_nodes;i+=1)
-    sendoffset[i] = sendoffset[i-1] + sendcount[i-1];
-  int *recvoffset = malloc(nr_nodes*sizeof(int));
-  recvoffset[0] = 0;
-  for(int i=1;i<nr_nodes;i+=1)
-    recvoffset[i] = recvoffset[i-1] + recvcount[i-1];
-
-  /* Allocate receive buffer */
+  int *recvcount = NULL, *sendoffset = NULL, *recvoffset = NULL;
   size_t nrecv = 0;
-  for(int i=0;i<nr_nodes;i+=1)
-    nrecv += recvcount[i];
-  struct fof_final_mass *fof_mass_recv = malloc(nrecv*sizeof(struct fof_final_mass));
+  
+  fof_compute_send_recv_offsets(nr_nodes, sendcount, &recvcount, &sendoffset, &recvoffset, &nrecv);
+
+  struct fof_final_mass *fof_mass_recv = malloc(nrecv * sizeof(struct fof_final_mass));
 
   /* Exchange group mass */
   MPI_Alltoallv(fof_mass_send, sendcount, sendoffset, fof_final_mass_type,
@@ -1777,25 +1791,12 @@ void fof_search_tree(struct space *s) {
       error("Node index out of range!");
     sendcount[dest] += 1;
   } 
-
-  /* Determine number of entries to receive */
-  int *recvcount = malloc(nr_nodes*sizeof(int));
-  MPI_Alltoall(sendcount, 1, MPI_INT, recvcount, 1, MPI_INT, MPI_COMM_WORLD);
-
-  /* Compute send/recv offsets */
-  int *sendoffset = malloc(nr_nodes*sizeof(int));
-  sendoffset[0] = 0;
-  for(int i=1;i<nr_nodes;i+=1)
-    sendoffset[i] = sendoffset[i-1] + sendcount[i-1];
-  int *recvoffset = malloc(nr_nodes*sizeof(int));
-  recvoffset[0] = 0;
-  for(int i=1;i<nr_nodes;i+=1)
-    recvoffset[i] = recvoffset[i-1] + recvcount[i-1];
-
-  /* Allocate receive buffer */
+  
+  int *recvcount = NULL, *sendoffset = NULL, *recvoffset = NULL;
   size_t nrecv = 0;
-  for(int i=0;i<nr_nodes;i+=1)
-    nrecv += recvcount[i];
+
+  fof_compute_send_recv_offsets(nr_nodes, sendcount, &recvcount, &sendoffset, &recvoffset, &nrecv);
+
   struct fof_final_index *fof_index_recv = malloc(nrecv*sizeof(struct fof_final_index));
 
   /* Exchange group indexes */
