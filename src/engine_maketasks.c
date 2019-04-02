@@ -608,6 +608,16 @@ void engine_make_hierarchical_tasks_common(struct engine *e, struct cell *c) {
 
   struct scheduler *s = &e->sched;
   const int with_limiter = (e->policy & engine_policy_limiter);
+  const int with_star_formation = (e->policy & engine_policy_star_formation);
+
+  /* Are we at the top-level? */
+  if (c->top == c && c->nodeID == e->nodeID) {
+
+    if (with_star_formation && c->hydro.count > 0) {
+      c->hydro.star_formation = scheduler_addtask(
+          s, task_type_star_formation, task_subtype_none, 0, 0, c, NULL);
+    }
+  }
 
   /* Are we in a super-cell ? */
   if (c->super == c) {
@@ -633,6 +643,12 @@ void engine_make_hierarchical_tasks_common(struct engine *e, struct cell *c) {
 
       scheduler_addunlock(s, c->kick2, c->timestep);
       scheduler_addunlock(s, c->timestep, c->kick1);
+
+      /* Subgrid tasks: star formation */
+      if (with_star_formation && c->hydro.count > 0) {
+        scheduler_addunlock(s, c->kick2, c->top->hydro.star_formation);
+        scheduler_addunlock(s, c->top->hydro.star_formation, c->timestep);
+      }
 
       /* Time-step limiting */
       if (with_limiter) {
@@ -868,16 +884,6 @@ void engine_make_hierarchical_tasks_hydro(struct engine *e, struct cell *c) {
         scheduler_addunlock(s, c->hydro.end_force, c->super->kick2);
       }
 
-      /* Subgrid tasks: star formation */
-      if (with_star_formation) {
-
-        c->hydro.star_formation = scheduler_addtask(
-            s, task_type_star_formation, task_subtype_none, 0, 0, c, NULL);
-
-        scheduler_addunlock(s, c->super->kick2, c->hydro.star_formation);
-        scheduler_addunlock(s, c->hydro.star_formation, c->super->timestep);
-      }
-
       /* Subgrid tasks: feedback */
       if (with_feedback) {
 
@@ -896,7 +902,8 @@ void engine_make_hierarchical_tasks_hydro(struct engine *e, struct cell *c) {
         scheduler_addunlock(s, c->stars.stars_out, c->super->timestep);
 
         if (with_star_formation) {
-          scheduler_addunlock(s, c->hydro.star_formation, c->stars.stars_in);
+          scheduler_addunlock(s, c->top->hydro.star_formation,
+                              c->stars.stars_in);
         }
       }
     }

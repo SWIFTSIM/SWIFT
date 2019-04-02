@@ -94,6 +94,8 @@ TASKTYPES = [
     "grav_end_force",
     "cooling",
     "star_formation",
+    "star_formation_in",
+    "star_formation_out",
     "logger",
     "stars_in",
     "stars_out",

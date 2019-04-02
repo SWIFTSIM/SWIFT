@@ -239,6 +239,9 @@ struct cell {
   /*! Parent cell. */
   struct cell *parent;
 
+  /*! Pointer to the top-level cell in a hierarchy */
+  struct cell *top;
+
   /*! Super cell, i.e. the highest-level parent cell with *any* task */
   struct cell *super;
 

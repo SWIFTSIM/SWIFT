@@ -589,7 +589,13 @@ void runner_do_star_formation(struct runner *r, struct cell *c, int timer) {
 
   TIMER_TIC;
 
+#ifdef SWIFT_DEBUG_CHECKS
+  if (c->nodeID != e->nodeID)
+    error("Running star formation task on a foreign node!");
+#endif
+
   /* Anything to do here? */
+  if (c->hydro.count == 0) return;
   if (!cell_is_active_hydro(c, e)) return;
 
   /* Recurse? */
@@ -640,6 +646,8 @@ void runner_do_star_formation(struct runner *r, struct cell *c, int timer) {
 
             /* Did we get a star? (Or did we run out of spare ones?) */
             if (sp != NULL) {
+
+              message("Formed a star!!!");
 
               /* Copy the properties of the gas particle to the star particle */
               star_formation_copy_properties(p, xp, sp, e, sf_props, cosmo,

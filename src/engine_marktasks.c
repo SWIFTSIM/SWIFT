@@ -665,7 +665,7 @@ void engine_marktasks_mapper(void *map_data, int num_elements,
     else if (t_type == task_type_star_formation) {
       if (cell_is_active_hydro(t->ci, e)) {
         scheduler_activate(s, t);
-        cell_activate_drift_spart(t->ci, s);
+        // cell_activate_drift_spart(t->ci, s);
       }
     }
   }
