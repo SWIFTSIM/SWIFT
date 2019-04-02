@@ -91,6 +91,14 @@ const char* timers_names[timer_count] = {
     "do_stars_sort",
     "fof_self",
     "fof_pair",
+    "dopair_limiter",
+    "doself_limiter",
+    "dosub_pair_limiter",
+    "dosub_self_limiter",
+    "drift_spart",
+    "do_limiter",
+    "end_hydro_force",
+    "end_grav_force",
 };
 
 /* File to store the timers */
