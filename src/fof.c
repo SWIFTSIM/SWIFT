@@ -158,8 +158,8 @@ void fof_init(struct space *s) {
 #endif
 
 #ifdef UNION_BY_SIZE_OVER_MPI
-  message(
-      "Performing FOF over MPI using union by size and union by rank locally.");
+  if(engine_rank == 0) 
+    message("Performing FOF over MPI using union by size and union by rank locally.");
 #else
   message("Performing FOF using union by rank.");
 #endif
