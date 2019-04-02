@@ -49,6 +49,7 @@
 #include "logger.h"
 #include "logger_io.h"
 #include "map.h"
+#include "memuse.h"
 #include "mesh_gravity.h"
 #include "multipole.h"
 #include "outputlist.h"
