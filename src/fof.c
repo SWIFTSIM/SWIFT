@@ -835,6 +835,16 @@ void fof_search_pair_cells_foreign(struct space *s, struct cell *ci,
     error("Cell ci, is not local.");
 }
 
+/* Mapper function to atomically update the group size array. */
+void fof_update_group_size_mapper(hashmap_key_t key, hashmap_value_t *value, void *data) {
+
+  size_t *group_size = (size_t *)data;
+
+  /* Use key to index into group size array. */
+  atomic_add(&group_size[key], value->value_st);
+
+}
+
 /**
  * @brief Mapper function to calculate the group sizes.
  *
@@ -842,7 +852,7 @@ void fof_search_pair_cells_foreign(struct space *s, struct cell *ci,
  * @param num_elements Chunk size.
  * @param extra_data Pointer to a #space.
  */
-void fof_calc_group_props_mapper(void *map_data, int num_elements,
+void fof_calc_group_size_mapper(void *map_data, int num_elements,
                             void *extra_data) {
 
   /* Retrieve mapped data. */
@@ -853,7 +863,6 @@ void fof_calc_group_props_mapper(void *map_data, int num_elements,
 
   /* Offset into gparts array. */
   ptrdiff_t gparts_offset = (ptrdiff_t)(gparts - s->gparts);
-
   size_t *const group_index_offset = group_index + gparts_offset;
 
   /* Create hash table. */
@@ -877,38 +886,9 @@ void fof_calc_group_props_mapper(void *map_data, int num_elements,
 
   }
  
-  if (map.size > 0) {
-    /* Iterate over the chunks and find elements in use. */
-    for (size_t cid = 0; cid < map.table_size / HASHMAP_ELEMENTS_PER_CHUNK; cid++) {
+  /* Update the group size array. */
+  if (map.size > 0) hashmap_iterate(&map, fof_update_group_size_mapper, group_size);
 
-      hashmap_chunk_t *chunk = map.chunks[cid];
-
-      /* Skip empty chunks. */
-      if (chunk == NULL) continue;
-
-      /* Loop over the masks in this chunk. */
-      for (int mid = 0; mid < HASHMAP_MASKS_PER_CHUNK; mid++) {
-
-        hashmap_mask_t mask = chunk->masks[mid];
-
-        /* Skip empty masks. */
-        if (mask == 0) continue;
-
-        /* Loop over the mask entries. */
-        for (int eid = 0; eid < HASHMAP_BITS_PER_MASK; eid++) {
-          hashmap_mask_t element_mask = ((hashmap_mask_t)1) << eid;
-
-          if (mask & element_mask) {
-            hashmap_element_t *element =
-              &chunk->data[mid * HASHMAP_BITS_PER_MASK + eid];
-
-            atomic_add(&group_size[element->key], element->value.value_st);
-
-          }
-        }
-      }
-    }
-  }
   hashmap_free(&map);
 
 }
@@ -1646,7 +1626,7 @@ void fof_search_tree(struct space *s) {
 
   ticks tic_calc_group_size = getticks();
 
-  threadpool_map(&s->e->threadpool, fof_calc_group_props_mapper,
+  threadpool_map(&s->e->threadpool, fof_calc_group_size_mapper,
                  gparts, nr_gparts, sizeof(struct gpart), nr_gparts / s->e->nr_threads, s);
   
   message("FOF calc group size took (scaling): %.3f %s.",
