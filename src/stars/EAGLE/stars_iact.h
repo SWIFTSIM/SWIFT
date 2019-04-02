@@ -218,8 +218,7 @@ runner_iact_nonsym_stars_feedback(
 
   /* Update momentum */
   for (int i = 0; i < 3; i++) {
-    // Do we need to calculate relative velocities here?
-    pj->v[i] += si->to_distribute.mass * density_weight_frac * si->v[i];
+    pj->v[i] += si->to_distribute.mass * density_weight_frac * (si->v[i] - pj->v[i]);
   }
 
   /* Energy feedback */
