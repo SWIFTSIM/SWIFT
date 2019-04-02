@@ -90,6 +90,12 @@ struct fof_final_mass {
   size_t global_root;
   double group_mass;
 } SWIFT_STRUCT_ALIGN;
+
+/* Struct used to iterate over the hash table and unpack the mass fragments of a group when using MPI */
+struct fof_mass_send_hashmap {
+  struct fof_final_mass *mass_send;
+  size_t nsend; 
+} SWIFT_STRUCT_ALIGN;
 #endif
 
 /* Store local and foreign cell indices that touch. */

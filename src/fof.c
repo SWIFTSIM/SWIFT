@@ -893,6 +893,21 @@ void fof_calc_group_size_mapper(void *map_data, int num_elements,
 
 }
 
+#ifdef WITH_MPI
+/* Mapper function to unpack hash table into array. */
+void fof_unpack_group_mass_mapper(hashmap_key_t key, hashmap_value_t *value, void *data) {
+
+  struct fof_mass_send_hashmap *fof_mass_send = (struct fof_mass_send_hashmap *)data;
+  struct fof_final_mass *mass_send = fof_mass_send->mass_send;
+  size_t *nsend = &fof_mass_send->nsend;
+
+  /* Store elements from hash table in array. */
+  mass_send[*nsend].global_root = key;
+  mass_send[(*nsend)++].group_mass = value->value_dbl;
+
+}
+#endif
+
 /* 
  * @brief Calculates the total mass of each group above min_group_size.
  */
@@ -937,48 +952,21 @@ void fof_calc_group_mass(struct space *s, const size_t num_groups_local, const s
   }
 
   size_t nsend = map.size;
-  struct fof_final_mass *fof_mass_send;
+  struct fof_mass_send_hashmap hashmap_mass_send;
 
   /* Allocate and initialise a mass array. */
-  if (posix_memalign((void **)&fof_mass_send, 32,
-                     nsend * sizeof(struct fof_final_mass)) != 0)
+  if (posix_memalign((void **)&hashmap_mass_send.mass_send, 32,
+                     nsend * sizeof(struct fof_mass_send_hashmap)) != 0)
     error("Failed to allocate list of group masses for FOF search.");
   
-  nsend = 0;
+  hashmap_mass_send.nsend = 0;
+  
+  struct fof_final_mass *fof_mass_send = hashmap_mass_send.mass_send;
 
-  /* Un-pack mass fragments and roots from hash table. */
-  if (map.size > 0) {
-    /* Iterate over the chunks and find elements in use. */
-    for (size_t cid = 0; cid < map.table_size / HASHMAP_ELEMENTS_PER_CHUNK; cid++) {
-
-      hashmap_chunk_t *chunk = map.chunks[cid];
-
-      /* Skip empty chunks. */
-      if (chunk == NULL) continue;
-
-      /* Loop over the masks in this chunk. */
-      for (int mid = 0; mid < HASHMAP_MASKS_PER_CHUNK; mid++) {
-
-        hashmap_mask_t mask = chunk->masks[mid];
-
-        /* Skip empty masks. */
-        if (mask == 0) continue;
-
-        /* Loop over the mask entries. */
-        for (int eid = 0; eid < HASHMAP_BITS_PER_MASK; eid++) {
-          hashmap_mask_t element_mask = ((hashmap_mask_t)1) << eid;
-
-          if (mask & element_mask) {
-            hashmap_element_t *element =
-              &chunk->data[mid * HASHMAP_BITS_PER_MASK + eid];
-
-            fof_mass_send[nsend].global_root = element->key;
-            fof_mass_send[nsend++].group_mass  = element->value.value_dbl;
-          }
-        }
-      }
-    }
-  }
+  /* Unpack mass fragments and roots from hash table. */
+  if (map.size > 0) hashmap_iterate(&map, fof_unpack_group_mass_mapper, &hashmap_mass_send);
+ 
+  nsend = hashmap_mass_send.nsend;
 
   if(nsend != map.size) error("No. of mass fragments to send != elements in hash table.");
 
