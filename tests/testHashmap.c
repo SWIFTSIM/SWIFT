@@ -35,18 +35,20 @@ int main(int argc, char *argv[]) {
   hashmap_init(&m);
   
   message("Populating hash table...");
-  for(hashmap_value_t key=0; key<NUM_KEYS; key++) {
-    hashmap_put(&m, key, key);
+  for(hashmap_key_t key=0; key<NUM_KEYS; key++) {
+    hashmap_value_t value;
+    value.value_st = key;
+    hashmap_put(&m, key, value);
   }
 
   message("Dumping hashmap stats.");
   hashmap_print_stats(&m);
 
   message("Retrieving elements from the hash table...");
-  for(hashmap_value_t key=0; key<NUM_KEYS; key++) {
+  for(hashmap_key_t key=0; key<NUM_KEYS; key++) {
     hashmap_value_t value = *hashmap_lookup(&m, key);
 
-    if(value != key) error("Incorrect value (%zu) found for key: %zu", value, key);
+    if(value.value_st != key) error("Incorrect value (%zu) found for key: %zu", value.value_st, key);
     //else message("Retrieved element, Key: %zu Value: %zu", key, value);
   }
 

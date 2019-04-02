@@ -4450,6 +4450,7 @@ void space_clean(struct space *s) {
   swift_free("sparts", s->sparts);
   swift_free("fof_group_index", s->fof_data.group_index);
   swift_free("fof_group_size",  s->fof_data.group_size);
+  swift_free("fof_group_mass",  s->fof_data.group_mass);
 }
 
 /**

@@ -44,6 +44,8 @@
 #ifdef WITH_MPI
 MPI_Datatype fof_mpi_type;
 MPI_Datatype group_length_mpi_type;
+MPI_Datatype fof_final_index_type;
+MPI_Datatype fof_final_mass_type;
 #endif
 size_t node_offset;
 
@@ -98,7 +100,7 @@ void fof_init(struct space *s) {
   l_x = parser_get_opt_param_double(e->parameter_file,
                                     "FOF:absolute_linking_length", l_x);
 
-  s->l_x2 = l_x * l_x;
+  s->fof_data.l_x2 = l_x * l_x;
 
   /* Read the initial group_links array size. */
   s->fof_data.group_links_size_default = parser_get_opt_param_double(
@@ -142,6 +144,16 @@ void fof_init(struct space *s) {
                           MPI_BYTE, &group_length_mpi_type) != MPI_SUCCESS ||
       MPI_Type_commit(&group_length_mpi_type) != MPI_SUCCESS) {
     error("Failed to create MPI type for group_length.");
+  }
+  /* Define type for sending fof_final_index struct */  
+  if (MPI_Type_contiguous(sizeof(struct fof_final_index), MPI_BYTE, &fof_final_index_type) != MPI_SUCCESS ||
+      MPI_Type_commit(&fof_final_index_type) != MPI_SUCCESS) {
+    error("Failed to create MPI type for fof_final_index.");
+  }
+  /* Define type for sending fof_final_mass struct */  
+  if (MPI_Type_contiguous(sizeof(struct fof_final_mass), MPI_BYTE, &fof_final_mass_type) != MPI_SUCCESS ||
+      MPI_Type_commit(&fof_final_mass_type) != MPI_SUCCESS) {
+    error("Failed to create MPI type for fof_final_mass.");
   }
 #endif
 
@@ -189,6 +201,17 @@ int compare_fof_final_index_global_root(const void *a, const void *b) {
   if(fof_final_index_b->global_root < fof_final_index_a->global_root)
     return 1;
   else if(fof_final_index_b->global_root > fof_final_index_a->global_root)
+    return -1;
+  else
+    return 0;
+}
+
+int compare_fof_final_mass_global_root(const void *a, const void *b) {
+  struct fof_final_mass *fof_final_mass_a = (struct fof_final_mass *)a;
+  struct fof_final_mass *fof_final_mass_b = (struct fof_final_mass *)b;
+  if(fof_final_mass_b->global_root < fof_final_mass_a->global_root)
+    return 1;
+  else if(fof_final_mass_b->global_root > fof_final_mass_a->global_root)
     return -1;
   else
     return 0;
@@ -245,7 +268,6 @@ __attribute__((always_inline)) INLINE static size_t fof_find_local(const size_t 
 
   return root - node_offset;
 }
-
 
 /* Finds the local root ID of the group a particle exists in. */
 __attribute__((always_inline)) INLINE static size_t fof_find(
@@ -415,13 +437,13 @@ __attribute__((always_inline)) INLINE static void hashmap_add_group(
     const size_t group_id, const size_t group_offset, hashmap_t *map) {
 
   int created_new_element = 0;
-  hashmap_value_t *value = hashmap_get_new(map, group_id, &created_new_element);
+  hashmap_value_t *offset = hashmap_get_new(map, group_id, &created_new_element);
 
-  if(value != NULL) {
+  if(offset != NULL) {
 
     /* If the element is a new entry set its value. */
     if(created_new_element) {
-      *value = group_offset;
+      (*offset).value_st = group_offset;
     }
   }
   else error("Couldn't find key (%zu) or create new one.", group_id);
@@ -432,13 +454,40 @@ __attribute__((always_inline)) INLINE static void hashmap_add_group(
 __attribute__((always_inline)) INLINE static size_t hashmap_find_group_offset(
     const size_t group_id, hashmap_t *map) {
 
-  hashmap_value_t *value = hashmap_get(map, group_id);
+  hashmap_value_t *group_offset = hashmap_get(map, group_id);
 
-  if(value == NULL)
+  if(group_offset == NULL)
     error("Couldn't find key (%zu) or create new one.", group_id);
 
-  return (size_t)(*value);
-} 
+  return (size_t)(*group_offset).value_st;
+}
+
+/* Compute send/recv offsets for MPI communication. */
+__attribute__((always_inline)) INLINE static void fof_compute_send_recv_offsets(const int nr_nodes, int *sendcount, int **recvcount, int **sendoffset, int **recvoffset, size_t *nrecv) {
+
+  /* Determine number of entries to receive */
+  *recvcount = malloc(nr_nodes * sizeof(int));
+  MPI_Alltoall(sendcount, 1, MPI_INT, *recvcount, 1, MPI_INT, MPI_COMM_WORLD);
+
+  /* Compute send/recv offsets */
+  *sendoffset = malloc(nr_nodes * sizeof(int));
+  
+  (*sendoffset)[0] = 0;
+  for(int i=1; i<nr_nodes; i++)
+    (*sendoffset)[i] = (*sendoffset)[i-1] + sendcount[i-1];
+  
+  *recvoffset = malloc(nr_nodes * sizeof(int));
+  
+  (*recvoffset)[0] = 0;
+  for(int i=1; i<nr_nodes; i++)
+    (*recvoffset)[i] = (*recvoffset)[i-1] + (*recvcount)[i-1];
+
+  /* Allocate receive buffer */
+  *nrecv = 0;
+  for(int i=0; i<nr_nodes; i++)
+    (*nrecv) += (*recvcount)[i];
+
+}
 #endif
 
 /* Recurse on a pair of cells and perform a FOF search between cells that are
@@ -567,7 +616,7 @@ void fof_search_cell(struct space *s, struct cell *c) {
 
   const size_t count = c->grav.count;
   struct gpart *gparts = c->grav.parts;
-  const double l_x2 = s->l_x2;
+  const double l_x2 = s->fof_data.l_x2;
   size_t *group_index = s->fof_data.group_index;
 
   /* Make a list of particle offsets into the global gparts array. */
@@ -623,7 +672,7 @@ void fof_search_pair_cells(struct space *s, struct cell *restrict ci,
   struct gpart *gparts_i = ci->grav.parts;
   struct gpart *gparts_j = cj->grav.parts;
   const double dim[3] = {s->dim[0], s->dim[1], s->dim[2]};
-  const float l_x2 = s->l_x2;
+  const float l_x2 = s->fof_data.l_x2;
   size_t *group_index = s->fof_data.group_index;
 
   /* Make a list of particle offsets into the global gparts array. */
@@ -705,7 +754,7 @@ void fof_search_pair_cells_foreign(struct space *s, struct cell *ci,
   struct gpart *gparts_i = ci->grav.parts;
   struct gpart *gparts_j = cj->grav.parts;
   const double dim[3] = {s->dim[0], s->dim[1], s->dim[2]};
-  const double l_x2 = s->l_x2;
+  const double l_x2 = s->fof_data.l_x2;
   size_t *group_index = s->fof_data.group_index;
   size_t *group_size = s->fof_data.group_size;
 
@@ -816,14 +865,24 @@ void fof_search_pair_cells_foreign(struct space *s, struct cell *ci,
     error("Cell ci, is not local.");
 }
 
+/* Mapper function to atomically update the group size array. */
+void fof_update_group_size_mapper(hashmap_key_t key, hashmap_value_t *value, void *data) {
+
+  size_t *group_size = (size_t *)data;
+
+  /* Use key to index into group size array. */
+  atomic_add(&group_size[key], value->value_st);
+
+}
+
 /**
- * @brief Mapper function to perform FOF search.
+ * @brief Mapper function to calculate the group sizes.
  *
- * @param map_data An array of #cell%s.
+ * @param map_data An array of #gpart%s.
  * @param num_elements Chunk size.
  * @param extra_data Pointer to a #space.
  */
-void fof_calc_group_props_mapper(void *map_data, int num_elements,
+void fof_calc_group_size_mapper(void *map_data, int num_elements,
                             void *extra_data) {
 
   /* Retrieve mapped data. */
@@ -834,7 +893,6 @@ void fof_calc_group_props_mapper(void *map_data, int num_elements,
 
   /* Offset into gparts array. */
   ptrdiff_t gparts_offset = (ptrdiff_t)(gparts - s->gparts);
-
   size_t *const group_index_offset = group_index + gparts_offset;
 
   /* Create hash table. */
@@ -852,45 +910,176 @@ void fof_calc_group_props_mapper(void *map_data, int num_elements,
     if(root != gpart_index) { 
       hashmap_value_t *size = hashmap_get(&map, root);
 
-      if(size != NULL) (*size)++;
+      if(size != NULL) (*size).value_st++;
       else error("Couldn't find key (%zu) or create new one.", root);
     }
 
   }
  
-  if (map.size > 0) {
-    /* Iterate over the chunks and find elements in use. */
-    for (size_t cid = 0; cid < map.table_size / HASHMAP_ELEMENTS_PER_CHUNK; cid++) {
+  /* Update the group size array. */
+  if (map.size > 0) hashmap_iterate(&map, fof_update_group_size_mapper, group_size);
 
-      hashmap_chunk_t *chunk = map.chunks[cid];
+  hashmap_free(&map);
 
-      /* Skip empty chunks. */
-      if (chunk == NULL) continue;
+}
 
-      /* Loop over the masks in this chunk. */
-      for (int mid = 0; mid < HASHMAP_MASKS_PER_CHUNK; mid++) {
+#ifdef WITH_MPI
+/* Mapper function to unpack hash table into array. */
+void fof_unpack_group_mass_mapper(hashmap_key_t key, hashmap_value_t *value, void *data) {
 
-        hashmap_mask_t mask = chunk->masks[mid];
+  struct fof_mass_send_hashmap *fof_mass_send = (struct fof_mass_send_hashmap *)data;
+  struct fof_final_mass *mass_send = fof_mass_send->mass_send;
+  size_t *nsend = &fof_mass_send->nsend;
 
-        /* Skip empty masks. */
-        if (mask == 0) continue;
+  /* Store elements from hash table in array. */
+  mass_send[*nsend].global_root = key;
+  mass_send[(*nsend)++].group_mass = value->value_dbl;
 
-        /* Loop over the mask entries. */
-        for (int eid = 0; eid < HASHMAP_BITS_PER_MASK; eid++) {
-          hashmap_mask_t element_mask = ((hashmap_mask_t)1) << eid;
+}
+#endif
 
-          if (mask & element_mask) {
-            hashmap_element_t *element =
-              &chunk->data[mid * HASHMAP_BITS_PER_MASK + eid];
+/* 
+ * @brief Calculates the total mass of each group above min_group_size.
+ */
+void fof_calc_group_mass(struct space *s, const size_t num_groups_local, const size_t num_groups_prev, size_t *num_on_node, size_t *first_on_node, double *group_mass) {
 
-            atomic_add(&group_size[element->key], element->value);
+  const size_t nr_gparts = s->nr_gparts;
+  struct gpart *gparts = s->gparts;
+  const size_t group_id_offset = s->fof_data.group_id_offset;
+  const size_t group_id_default = s->fof_data.group_id_default;
 
-          }
-        }
+#ifdef WITH_MPI
+  size_t *group_index = s->fof_data.group_index;
+  int nr_nodes = s->e->nr_nodes;
+
+  hashmap_t map;
+  hashmap_init(&map);
+
+  for(size_t i=0; i<nr_gparts; i++) {
+
+    /* Check if the particle is in a group above the threshold. */
+    if(gparts[i].group_id != group_id_default) {
+
+      size_t root = fof_find_global(i, group_index, nr_gparts);
+
+      /* Increment the mass of groups that are local */
+      if(is_local(root, nr_gparts)) {
+
+        size_t offset = gparts[i].group_id - group_id_offset - num_groups_prev;
+
+        group_mass[offset] += gparts[i].mass;
+
+      }
+      /* Add mass fragments of groups that have a foreign root to a hash table. */
+      else {
+      
+        hashmap_value_t *mass = hashmap_get(&map, (hashmap_key_t)root);
+
+        if(mass != NULL) (*mass).value_dbl += gparts[i].mass;
+        else error("Couldn't find key (%zu) or create new one.", root);
       }
     }
   }
+
+  size_t nsend = map.size;
+  struct fof_mass_send_hashmap hashmap_mass_send;
+
+  /* Allocate and initialise a mass array. */
+  if (posix_memalign((void **)&hashmap_mass_send.mass_send, 32,
+                     nsend * sizeof(struct fof_mass_send_hashmap)) != 0)
+    error("Failed to allocate list of group masses for FOF search.");
+  
+  hashmap_mass_send.nsend = 0;
+  
+  struct fof_final_mass *fof_mass_send = hashmap_mass_send.mass_send;
+
+  /* Unpack mass fragments and roots from hash table. */
+  if (map.size > 0) hashmap_iterate(&map, fof_unpack_group_mass_mapper, &hashmap_mass_send);
+ 
+  nsend = hashmap_mass_send.nsend;
+
+  if(nsend != map.size) error("No. of mass fragments to send != elements in hash table.");
+
   hashmap_free(&map);
+
+  /* Sort by global root - this puts the groups in order of which node they're stored on */
+  qsort(fof_mass_send, nsend, sizeof(struct fof_final_mass), 
+        compare_fof_final_mass_global_root);
+ 
+  /* Determine how many entries go to each node */
+  int *sendcount = malloc(nr_nodes*sizeof(int));
+  for(int i=0; i<nr_nodes; i+=1)
+    sendcount[i] = 0;
+  int dest = 0;
+  for(size_t i=0;i<nsend;i+=1) {
+    while((fof_mass_send[i].global_root >= first_on_node[dest] + num_on_node[dest]) || (num_on_node[dest]==0))
+      dest += 1;
+    if(dest>=nr_nodes)
+      error("Node index out of range!");
+    sendcount[dest] += 1;
+  } 
+
+  int *recvcount = NULL, *sendoffset = NULL, *recvoffset = NULL;
+  size_t nrecv = 0;
+  
+  fof_compute_send_recv_offsets(nr_nodes, sendcount, &recvcount, &sendoffset, &recvoffset, &nrecv);
+
+  struct fof_final_mass *fof_mass_recv = malloc(nrecv * sizeof(struct fof_final_mass));
+
+  /* Exchange group mass */
+  MPI_Alltoallv(fof_mass_send, sendcount, sendoffset, fof_final_mass_type,
+                fof_mass_recv, recvcount, recvoffset, fof_final_mass_type,
+                MPI_COMM_WORLD);
+
+  /* For each received global root, look up the group ID we assigned and increment the group mass */
+  for(size_t i=0; i<nrecv; i+=1) {
+    if((fof_mass_recv[i].global_root < node_offset) || (fof_mass_recv[i].global_root >= node_offset+nr_gparts)) {
+      error("Received global root index out of range!");
+    }
+    group_mass[gparts[fof_mass_recv[i].global_root - node_offset].group_id - group_id_offset - num_groups_prev] += fof_mass_recv[i].group_mass;
+  }
+  
+  /* For each received global root, look up the group ID we assigned and send the total group mass back */
+  //for(size_t i=0; i<nrecv; i+=1) {
+  //  if((fof_mass_recv[i].global_root < node_offset) || (fof_mass_recv[i].global_root >= node_offset+nr_gparts)) {
+  //    error("Received global root index out of range!");
+  //  }
+  //  fof_mass_recv[i].group_mass = group_mass[fof_mass_recv[i].global_root - node_offset];
+  //}
+
+  /* Send the result back */
+  //MPI_Alltoallv(fof_mass_recv, recvcount, recvoffset, fof_final_mass_type,
+  //              fof_mass_send, sendcount, sendoffset, fof_final_mass_type,
+  //              MPI_COMM_WORLD);
+  //  
+  ///* Update local gparts.group_id */
+  //for(size_t i=0; i<nsend; i+=1){
+  //  if((fof_mass_send[i].local_root < node_offset) || (fof_mass_send[i].local_root >= node_offset + nr_gparts)) {
+  //    error("Sent local root index out of range!");
+  //  }    
+  //  //gparts[fof_mass_send[i].local_root-node_offset].group_id = fof_mass_send[i].global_root;
+  //  group_mass[fof_mass_send[i].local_root - node_offset] += fof_mass_send[i].group_mass;
+  //}
+
+  MPI_Type_free(&fof_final_mass_type);
+  free(sendcount);
+  free(recvcount);
+  free(sendoffset);
+  free(recvoffset);
+  free(fof_mass_send);
+  free(fof_mass_recv);
+#else
+  /* Loop over particles and increment the group mass for groups above min_group_size. */
+  for(size_t i=0; i<nr_gparts; i++) {
+    
+    if(gparts[i].group_id != group_id_default) {
+      
+      group_mass[gparts[i].group_id - group_id_offset] += gparts[i].mass;
+
+    }
+  
+  }
+#endif
 
 }
 
@@ -910,7 +1099,7 @@ void fof_find_foreign_links_mapper(void *map_data, int num_elements,
   struct cell_pair_indices *cell_pairs = (struct cell_pair_indices *)map_data;
 
   const double dim[3] = {s->dim[0], s->dim[1], s->dim[2]};
-  const double search_r2 = s->l_x2;
+  const double search_r2 = s->fof_data.l_x2;
 
   /* Store links in an array local to this thread. */
   int local_link_count = 0;
@@ -1011,7 +1200,7 @@ void fof_search_foreign_cells(struct space *s) {
   size_t *group_size = s->fof_data.group_size;
   const size_t nr_gparts = s->nr_gparts;
   const double dim[3] = {s->dim[0], s->dim[1], s->dim[2]};
-  const double search_r2 = s->l_x2;
+  const double search_r2 = s->fof_data.l_x2;
 
   message("Searching foreign cells for links.");
 
@@ -1152,6 +1341,13 @@ void fof_search_foreign_cells(struct space *s) {
 
   message("MPI send/recv task activation took: %.3f %s.",
           clocks_from_ticks(getticks() - tic), clocks_getunit());
+
+  ticks local_fof_tic = getticks();
+
+  MPI_Barrier(MPI_COMM_WORLD);
+
+  message("Local FOF imbalance: %.3f %s.", clocks_from_ticks(getticks() - local_fof_tic),
+          clocks_getunit());
 
   tic = getticks();
 
@@ -1422,7 +1618,7 @@ void fof_search_tree(struct space *s) {
   snprintf(output_file_name, PARSER_MAX_LINE_SIZE, "%s", s->fof_data.base_name);
 
   message("Searching %zu gravity particles for links with l_x2: %lf", nr_gparts,
-          s->l_x2);
+          s->fof_data.l_x2);
   
   message("Size of hash table element: %ld", sizeof(hashmap_element_t));
 
@@ -1449,7 +1645,7 @@ void fof_search_tree(struct space *s) {
 
   ticks tic_calc_group_size = getticks();
 
-  threadpool_map(&s->e->threadpool, fof_calc_group_props_mapper,
+  threadpool_map(&s->e->threadpool, fof_calc_group_size_mapper,
                  gparts, nr_gparts, sizeof(struct gpart), nr_gparts / s->e->nr_threads, s);
   
   message("FOF calc group size took (scaling): %.3f %s.",
@@ -1563,14 +1759,6 @@ void fof_search_tree(struct space *s) {
      associated with that particle.
   */
   
-  /* Define type for sending fof_final_index struct */
-  
-  MPI_Datatype fof_final_index_type;
-  if (MPI_Type_contiguous(sizeof(struct fof_final_index), MPI_BYTE, &fof_final_index_type) != MPI_SUCCESS ||
-      MPI_Type_commit(&fof_final_index_type) != MPI_SUCCESS) {
-    error("Failed to create MPI type for fof_final_index.");
-  }
-
   /* 
      Identify local roots with global root on another node and large enough group_size.
      Store index of the local and global roots in these cases.
@@ -1606,12 +1794,12 @@ void fof_search_tree(struct space *s) {
                 MPI_COMM_WORLD);
   size_t *first_on_node = malloc(nr_nodes*sizeof(size_t));
   first_on_node[0] = 0;
-  for(size_t i=1;i<nr_nodes;i+=1)
+  for(int i=1;i<nr_nodes;i+=1)
     first_on_node[i] = first_on_node[i-1] + num_on_node[i-1];
 
   /* Determine how many entries go to each node */
   int *sendcount = malloc(nr_nodes*sizeof(int));
-  for(size_t i=0; i<nr_nodes; i+=1)
+  for(int i=0; i<nr_nodes; i+=1)
     sendcount[i] = 0;
   int dest = 0;
   for(size_t i=0;i<nsend;i+=1) {
@@ -1621,25 +1809,12 @@ void fof_search_tree(struct space *s) {
       error("Node index out of range!");
     sendcount[dest] += 1;
   } 
-
-  /* Determine number of entries to receive */
-  int *recvcount = malloc(nr_nodes*sizeof(int));
-  MPI_Alltoall(sendcount, 1, MPI_INT, recvcount, 1, MPI_INT, MPI_COMM_WORLD);
-
-  /* Compute send/recv offsets */
-  int *sendoffset = malloc(nr_nodes*sizeof(int));
-  sendoffset[0] = 0;
-  for(int i=1;i<nr_nodes;i+=1)
-    sendoffset[i] = sendoffset[i-1] + sendcount[i-1];
-  int *recvoffset = malloc(nr_nodes*sizeof(int));
-  recvoffset[0] = 0;
-  for(int i=1;i<nr_nodes;i+=1)
-    recvoffset[i] = recvoffset[i-1] + recvcount[i-1];
-
-  /* Allocate receive buffer */
+  
+  int *recvcount = NULL, *sendoffset = NULL, *recvoffset = NULL;
   size_t nrecv = 0;
-  for(int i=0;i<nr_nodes;i+=1)
-    nrecv += recvcount[i];
+
+  fof_compute_send_recv_offsets(nr_nodes, sendcount, &recvcount, &sendoffset, &recvoffset, &nrecv);
+
   struct fof_final_index *fof_index_recv = swift_malloc("fof_index_recv", nrecv*sizeof(struct fof_final_index));
 
   /* Exchange group indexes */
@@ -1675,8 +1850,6 @@ void fof_search_tree(struct space *s) {
   free(recvoffset);
   swift_free("fof_index_send", fof_index_send);
   swift_free("fof_index_recv", fof_index_recv);
-  free(num_on_node);
-  free(first_on_node);
 
 #endif /* WITH_MPI */
 
@@ -1689,13 +1862,30 @@ void fof_search_tree(struct space *s) {
   message("Group sorting took: %.3f %s.", clocks_from_ticks(getticks() - tic),
           clocks_getunit());
 
+  double *group_mass = s->fof_data.group_mass;
+  /* Allocate and initialise a group mass array. */
+  if (posix_memalign((void **)&group_mass, 32,
+                     num_groups_local * sizeof(double)) != 0)
+    error("Failed to allocate list of group masses for FOF search.");
+
+  bzero(group_mass, num_groups_local * sizeof(double));
+
+#ifdef WITH_MPI
+  fof_calc_group_mass(s, num_groups_local, num_groups_prev, num_on_node, first_on_node, group_mass);
+  free(num_on_node);
+  free(first_on_node);
+#else
+  fof_calc_group_mass(s, num_groups_local, num_groups_prev, NULL, NULL, group_mass);
+#endif
+
   message("Dumping data...");
 
   /* Dump group data. */
-  fof_dump_group_data(output_file_name, s, num_groups_local, high_group_sizes);
+  fof_dump_group_data(output_file_name, s, num_groups_local, high_group_sizes, group_mass);
 
   /* Free the left-overs */
   swift_free("fof_high_group_sizes", high_group_sizes);
+  swift_free("group_mass", group_mass);
 
   if (engine_rank == 0) {
     message(
@@ -1716,14 +1906,14 @@ void fof_search_tree(struct space *s) {
 
 /* Dump FOF group data. */
 void fof_dump_group_data(char *out_file, struct space *s, int num_groups, 
-                         struct group_length *group_sizes) {
+                         struct group_length *group_sizes, double *group_mass) {
 
   FILE *file = fopen(out_file, "w");
 
   struct gpart *gparts = s->gparts;
   size_t *group_size = s->fof_data.group_size;
 
-  fprintf(file, "# %8s %10s\n", "Group ID", "Group Size");
+  fprintf(file, "# %8s %10s %10s\n", "Group ID", "Group Size", "Group Mass");
   fprintf(file,
           "#-------------------------------------------------------------------"
           "-------------\n");
@@ -1732,9 +1922,10 @@ void fof_dump_group_data(char *out_file, struct space *s, int num_groups,
 
     const size_t group_offset = group_sizes[i].index;
 
-    fprintf(file, "  %8zu %10zu\n",
+    fprintf(file, "  %8zu %10zu %10lf\n",
             gparts[group_offset - node_offset].group_id,
-            group_size[group_offset - node_offset]);
+            group_size[group_offset - node_offset], 
+            group_mass[i]);
   }
 
   fclose(file);

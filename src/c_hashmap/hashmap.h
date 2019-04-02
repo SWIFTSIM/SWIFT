@@ -26,7 +26,11 @@ typedef size_t hashmap_mask_t;
 
 // Type used for the hashmap values (must have a valid '==' operation).
 #ifndef hashmap_value_t
-#define hashmap_value_t size_t
+typedef union _hashmap_union {
+  size_t value_st;
+  double value_dbl;
+} hashmap_union_t;
+#define hashmap_value_t hashmap_union_t
 #endif
 
 /* We need to keep keys and values */

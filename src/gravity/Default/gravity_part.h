@@ -47,12 +47,6 @@ struct gpart {
   /* Particle group ID and size in the FOF. */
   size_t group_id, group_size;
 
-  /* Particle group mass in the FOF. */
-  double group_mass;
-
-  /* The local group's CoM.*/
-  struct fof_CoM group_CoM;
-
 #ifdef SWIFT_DEBUG_CHECKS
 
   /* Numer of gparts this gpart interacted with */
