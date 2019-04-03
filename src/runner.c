@@ -669,7 +669,10 @@ void runner_do_star_formation(struct runner *r, struct cell *c, int timer) {
 
         }      /* Not Star-forming? */
       } else { /* is active? */
-        star_formation_logger_log_inactive_part(p, xp, &c->stars.sfh);
+        /* Check if the particle is not inhibited */
+        if (!part_is_inhibited(p,e)) {  
+          star_formation_logger_log_inactive_part(p, xp, &c->stars.sfh);
+        }
       }
     } /* Loop over particles */
   }
