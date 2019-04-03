@@ -726,12 +726,6 @@ inline static void stars_evolve_init(struct swift_params* params,
   stars->feedback.log10_SNII_max_mass_msun = 2.f;          // log10(100).
   stars->feedback.log10_SNIa_max_mass_msun = 0.90308999f;  // log10(8).
 
-  /* Turn on AGB and SNII mass transfer (Do we really need this?
-   * Should these maybe always be on? If not on they effectively
-   * turn off SNII and AGB evolution.) */
-  stars->feedback.AGB_mass_transfer = 1;
-  stars->feedback.SNII_mass_transfer = 1;
-
   /* Yield table filepath  */
   parser_get_param_string(params, "EagleStellarEvolution:filename",
                           stars->feedback.yield_table_path);

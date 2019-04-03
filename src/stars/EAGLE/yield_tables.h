@@ -19,9 +19,6 @@
 #ifndef SWIFT_EAGLE_STARS_YIELD_TABLES_H
 #define SWIFT_EAGLE_STARS_YIELD_TABLES_H
 
-#include <gsl/gsl_integration.h>
-#include <gsl/gsl_math.h>
-#include <gsl/gsl_spline.h>
 #include "chemistry.h"
 
 static const float log10_min_metallicity = -20;
@@ -676,16 +673,9 @@ inline static void compute_yields(struct stars_props *restrict stars) {
  */
 inline static void compute_ejecta(struct stars_props *restrict stars) {
 
-  gsl_interp_accel *accel_ptr;
-
-  gsl_spline *SNII_spline_ptr, *AGB_spline_ptr;
-
   double SNII_ejecta[stars->feedback.SNII_n_mass];
   double AGB_ejecta[stars->feedback.AGB_n_mass];
   float result;
-
-  accel_ptr = gsl_interp_accel_alloc();
-  SNII_spline_ptr = gsl_spline_alloc(gsl_interp_linear, stars->feedback.SNII_n_mass);
 
   int flat_index;
 
@@ -697,9 +687,6 @@ inline static void compute_ejecta(struct stars_props *restrict stars) {
                       exp(M_LN10 * (-stars->feedback.yield_SNII.mass[k]));
     }
 
-    gsl_spline_init(SNII_spline_ptr, stars->feedback.yield_SNII.mass, SNII_ejecta,
-                    stars->feedback.SNII_n_mass);
-
     for (int k = 0; k < stars->feedback.n_imf_mass_bins; k++) {
       if (stars->feedback.yield_mass_bins[k] < stars->feedback.yield_SNII.mass[0])
         result = SNII_ejecta[0];
@@ -707,8 +694,9 @@ inline static void compute_ejecta(struct stars_props *restrict stars) {
                stars->feedback.yield_SNII.mass[stars->feedback.SNII_n_mass - 1])
         result = SNII_ejecta[stars->feedback.SNII_n_mass - 1];
       else
-        result = gsl_spline_eval(SNII_spline_ptr, stars->feedback.yield_mass_bins[k],
-                                 accel_ptr);
+        result =
+            interpolate_1D_non_uniform(stars->feedback.yield_SNII.mass, SNII_ejecta,
+                           stars->feedback.SNII_n_mass, stars->feedback.yield_mass_bins[k]);
 
       flat_index = feedback_row_major_index_2d(i, k, stars->feedback.SNII_n_z, stars->feedback.n_imf_mass_bins);
       stars->feedback.yield_SNII.ejecta_IMF_resampled[flat_index] =
@@ -724,9 +712,6 @@ inline static void compute_ejecta(struct stars_props *restrict stars) {
                       exp(M_LN10 * (-stars->feedback.yield_SNII.mass[k]));
     }
 
-    gsl_spline_init(SNII_spline_ptr, stars->feedback.yield_SNII.mass, SNII_ejecta,
-                    stars->feedback.SNII_n_mass);
-
     for (int k = 0; k < stars->feedback.n_imf_mass_bins; k++) {
       if (stars->feedback.yield_mass_bins[k] < stars->feedback.yield_SNII.mass[0])
         result = SNII_ejecta[0];
@@ -734,8 +719,9 @@ inline static void compute_ejecta(struct stars_props *restrict stars) {
                stars->feedback.yield_SNII.mass[stars->feedback.SNII_n_mass - 1])
         result = SNII_ejecta[stars->feedback.SNII_n_mass - 1];
       else
-        result = gsl_spline_eval(SNII_spline_ptr, stars->feedback.yield_mass_bins[k],
-                                 accel_ptr);
+        result =
+            interpolate_1D_non_uniform(stars->feedback.yield_SNII.mass, SNII_ejecta,
+                           stars->feedback.SNII_n_mass, stars->feedback.yield_mass_bins[k]);
 
       flat_index = feedback_row_major_index_2d(i, k, stars->feedback.SNII_n_z, stars->feedback.n_imf_mass_bins);
       stars->feedback.yield_SNII.total_metals_IMF_resampled[flat_index] =
@@ -743,20 +729,13 @@ inline static void compute_ejecta(struct stars_props *restrict stars) {
     }
   }
 
-  gsl_spline_free(SNII_spline_ptr);
-
   /* AGB yields */
-  AGB_spline_ptr = gsl_spline_alloc(gsl_interp_linear, stars->feedback.AGB_n_mass);
-
   for (int i = 0; i < stars->feedback.AGB_n_z; i++) {
     for (int k = 0; k < stars->feedback.AGB_n_mass; k++) {
       flat_index = feedback_row_major_index_2d(i, k, stars->feedback.AGB_n_z, stars->feedback.AGB_n_mass);
       AGB_ejecta[k] = stars->feedback.yield_AGB.ejecta[flat_index] /
                      exp(M_LN10 * stars->feedback.yield_AGB.mass[k]);
     }
-
-    gsl_spline_init(AGB_spline_ptr, stars->feedback.yield_AGB.mass, AGB_ejecta,
-                    stars->feedback.AGB_n_mass);
 
     for (int k = 0; k < stars->feedback.n_imf_mass_bins; k++) {
       if (stars->feedback.yield_mass_bins[k] < stars->feedback.yield_AGB.mass[0])
@@ -765,8 +744,9 @@ inline static void compute_ejecta(struct stars_props *restrict stars) {
                stars->feedback.yield_AGB.mass[stars->feedback.AGB_n_mass - 1])
         result = AGB_ejecta[stars->feedback.AGB_n_mass - 1];
       else
-        result = gsl_spline_eval(AGB_spline_ptr, stars->feedback.yield_mass_bins[k],
-                                 accel_ptr);
+        result =
+            interpolate_1D_non_uniform(stars->feedback.yield_AGB.mass, AGB_ejecta,
+                           stars->feedback.AGB_n_mass, stars->feedback.yield_mass_bins[k]);
 
       flat_index = feedback_row_major_index_2d(i, k, stars->feedback.AGB_n_z, stars->feedback.n_imf_mass_bins);
       stars->feedback.yield_AGB.ejecta_IMF_resampled[flat_index] =
@@ -781,9 +761,6 @@ inline static void compute_ejecta(struct stars_props *restrict stars) {
                      exp(M_LN10 * (-stars->feedback.yield_AGB.mass[k]));
     }
 
-    gsl_spline_init(AGB_spline_ptr, stars->feedback.yield_AGB.mass, AGB_ejecta,
-                    stars->feedback.AGB_n_mass);
-
     for (int k = 0; k < stars->feedback.n_imf_mass_bins; k++) {
       if (stars->feedback.yield_mass_bins[k] < stars->feedback.yield_AGB.mass[0])
         result = AGB_ejecta[0];
@@ -791,17 +768,15 @@ inline static void compute_ejecta(struct stars_props *restrict stars) {
                stars->feedback.yield_AGB.mass[stars->feedback.AGB_n_mass - 1])
         result = AGB_ejecta[stars->feedback.AGB_n_mass - 1];
       else
-        result = gsl_spline_eval(AGB_spline_ptr, stars->feedback.yield_mass_bins[k],
-                                 accel_ptr);
+        result =
+            interpolate_1D_non_uniform(stars->feedback.yield_AGB.mass, AGB_ejecta,
+                           stars->feedback.AGB_n_mass, stars->feedback.yield_mass_bins[k]);
 
       flat_index = feedback_row_major_index_2d(i, k, stars->feedback.AGB_n_z, stars->feedback.n_imf_mass_bins);
       stars->feedback.yield_AGB.total_metals_IMF_resampled[flat_index] =
           exp(M_LN10 * stars->feedback.yield_mass_bins[k]) * result;
     }
   }
-
-  gsl_spline_free(AGB_spline_ptr);
-  gsl_interp_accel_free(accel_ptr);
 }
 
 #endif

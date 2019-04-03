@@ -182,19 +182,33 @@ struct spart {
  * @brief Stores AGB and SNII yield tables
  */
 struct yield_table {
-  // insert comments to differentiate between sph and non-sph fields
+  /* Yield table mass bins */
   double *mass;
+
+  /* Yield table metallicity bins */
   double *metallicity;
+
+  /* Array to store yield table resampled by IMF mass bins */
   double *yield_IMF_resampled;
+
+  /* Array to store yield table being read in */
   double *yield;
+
+  /* Array to store table of ejecta resampled by IMF mass bins */
   double *ejecta_IMF_resampled;
+
+  /* Array to store table of ejecta being read in */
   double *ejecta;
+
+  /* Array to store table of total mass released resampled by IMF mass bins */
   double *total_metals_IMF_resampled;
+
+  /* Array to store table of total mass released being read in */
   double *total_metals;
 };
 
 /**
- * @brief Stores tables to determine stellar lifetimes
+ * @brief Stores tables to determine stellar lifetimes. Used for calculation of IMF
  */
 struct lifetime_table {
   /* number of elements, mass, and initial metallicity bins */
@@ -219,7 +233,7 @@ struct stars_props {
   /*! Resolution parameter */
   float eta_neighbours;
 
-  /*! Target weightd number of neighbours (for info only)*/
+  /*! Target weighted number of neighbours (for info only)*/
   float target_neighbours;
 
   /*! Smoothing length tolerance */
@@ -263,7 +277,7 @@ struct stars_props {
     /* Array of adjustment factors for SNII  */
     double *typeII_factor;
 
-    /* Yield tables for SNIa  */
+    /* Arrays of yield tables for SNIa */
     double *yield_SNIa_IMF_resampled;
     double yield_SNIa_total_metals_IMF_resampled;
     double *yields_SNIa;
@@ -272,11 +286,6 @@ struct stars_props {
     int SNIa_mode;
     float SNIa_efficiency;
     float SNIa_timescale;
-
-    /* Mass transfer due to enrichment  */
-    int SNIa_mass_transfer;
-    int SNII_mass_transfer;
-    int AGB_mass_transfer;
 
     /* Arrays for elements being tracked */
     char **SNIa_element_names;
