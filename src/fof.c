@@ -55,56 +55,100 @@ size_t node_offset;
 /* Initialises parameters for the FOF search. */
 void fof_init(struct space *s) {
 
-  struct engine *e = s->e;
+  static int first_init = 1;
 
-  /* Check that we can write outputs by testing if the output
-   * directory exists and is searchable and writable. */
-  parser_get_param_string(e->parameter_file, "FOF:basename",
-                          s->fof_data.base_name);
+  /* Only read parameter file once. */
+  if(first_init) {
 
-  const char *dirp = dirname(s->fof_data.base_name);
-  if (access(dirp, W_OK | X_OK) != 0) {
-    error("Cannot write FOF outputs in directory %s (%s)", dirp,
+    first_init = 0;
+
+    struct engine *e = s->e;
+
+    /* Check that we can write outputs by testing if the output
+     * directory exists and is searchable and writable. */
+    parser_get_param_string(e->parameter_file, "FOF:basename",
+        s->fof_data.base_name);
+
+    const char *dirp = dirname(s->fof_data.base_name);
+    if (access(dirp, W_OK | X_OK) != 0) {
+      error("Cannot write FOF outputs in directory %s (%s)", dirp,
           strerror(errno));
-  }
+    }
 
-  /* Read the minimum group size. */
-  s->fof_data.min_group_size =
+    /* Read the minimum group size. */
+    s->fof_data.min_group_size =
       parser_get_opt_param_int(e->parameter_file, "FOF:min_group_size", 20);
 
-  /* Read the default group ID of particles in groups below the minimum group
-   * size. */
-  const int default_id = parser_get_opt_param_int(
-      e->parameter_file, "FOF:group_id_default", 2147483647);
+    /* Read the default group ID of particles in groups below the minimum group
+     * size. */
+    const int default_id = parser_get_opt_param_int(
+        e->parameter_file, "FOF:group_id_default", 2147483647);
 
-  /* Make sure default group ID is positive. */
-  if (default_id < 0)
-    error("The default group ID set: %d, has to be positive.", default_id);
+    /* Make sure default group ID is positive. */
+    if (default_id < 0)
+      error("The default group ID set: %d, has to be positive.", default_id);
 
-  s->fof_data.group_id_default = default_id;
+    s->fof_data.group_id_default = default_id;
 
-  /* Read the starting group ID. */
-  s->fof_data.group_id_offset =
+    /* Read the starting group ID. */
+    s->fof_data.group_id_offset =
       parser_get_opt_param_int(e->parameter_file, "FOF:group_id_offset", 1);
 
-  /* Read the linking length scale. */
-  const double l_x_scale = parser_get_opt_param_double(
-      e->parameter_file, "FOF:linking_length_scale", 0.2);
+    /* Read the linking length scale. */
+    const double l_x_scale = parser_get_opt_param_double(
+        e->parameter_file, "FOF:linking_length_scale", 0.2);
 
-  /* Calculate the particle linking length based upon the mean inter-particle
-   * spacing of the DM particles. */
-  const long long total_nr_dmparts =
+    /* Calculate the particle linking length based upon the mean inter-particle
+     * spacing of the DM particles. */
+    const long long total_nr_dmparts =
       e->total_nr_gparts - e->total_nr_parts - e->total_nr_sparts;
-  double l_x = l_x_scale * (s->dim[0] / cbrt(total_nr_dmparts));
+    double l_x = l_x_scale * (s->dim[0] / cbrt(total_nr_dmparts));
 
-  l_x = parser_get_opt_param_double(e->parameter_file,
-                                    "FOF:absolute_linking_length", l_x);
+    l_x = parser_get_opt_param_double(e->parameter_file,
+        "FOF:absolute_linking_length", l_x);
 
-  s->fof_data.l_x2 = l_x * l_x;
+    s->fof_data.l_x2 = l_x * l_x;
 
-  /* Read the initial group_links array size. */
-  s->fof_data.group_links_size_default = parser_get_opt_param_double(
-      e->parameter_file, "FOF:group_links_size_default", 20000);
+    /* Read the initial group_links array size. */
+    s->fof_data.group_links_size_default = parser_get_opt_param_double(
+        e->parameter_file, "FOF:group_links_size_default", 20000);
+
+#ifdef WITH_MPI
+    /* Check size of linking length against the top-level cell dimensions. */
+    if (l_x > s->width[0])
+      error(
+          "Linking length greater than the width of a top-level cell. Need to "
+          "check more than one layer of top-level cells for links.");
+
+    if (MPI_Type_contiguous(sizeof(struct fof_mpi) / sizeof(unsigned char),
+          MPI_BYTE, &fof_mpi_type) != MPI_SUCCESS ||
+        MPI_Type_commit(&fof_mpi_type) != MPI_SUCCESS) {
+      error("Failed to create MPI type for fof.");
+    }
+    if (MPI_Type_contiguous(sizeof(struct group_length) / sizeof(unsigned char),
+          MPI_BYTE, &group_length_mpi_type) != MPI_SUCCESS ||
+        MPI_Type_commit(&group_length_mpi_type) != MPI_SUCCESS) {
+      error("Failed to create MPI type for group_length.");
+    }
+    /* Define type for sending fof_final_index struct */  
+    if (MPI_Type_contiguous(sizeof(struct fof_final_index), MPI_BYTE, &fof_final_index_type) != MPI_SUCCESS ||
+        MPI_Type_commit(&fof_final_index_type) != MPI_SUCCESS) {
+      error("Failed to create MPI type for fof_final_index.");
+    }
+    /* Define type for sending fof_final_mass struct */  
+    if (MPI_Type_contiguous(sizeof(struct fof_final_mass), MPI_BYTE, &fof_final_mass_type) != MPI_SUCCESS ||
+        MPI_Type_commit(&fof_final_mass_type) != MPI_SUCCESS) {
+      error("Failed to create MPI type for fof_final_mass.");
+    }
+#endif
+
+#ifdef UNION_BY_SIZE_OVER_MPI
+    if(engine_rank == 0) 
+      message("Performing FOF over MPI using union by size and union by rank locally.");
+#else
+    message("Performing FOF using union by rank.");
+#endif
+  }
 
   const size_t nr_local_gparts = s->nr_gparts;
 
@@ -124,45 +168,10 @@ void fof_init(struct space *s) {
    * ID. */
   for (size_t i = 0; i < nr_local_gparts; i++) {
     s->fof_data.group_index[i] = i;
-    s->gparts[i].group_id = default_id;
+    s->gparts[i].group_id = s->fof_data.group_id_default;
     s->fof_data.group_size[i] = 1;
   }
 
-#ifdef WITH_MPI
-  /* Check size of linking length against the top-level cell dimensions. */
-  if (l_x > s->width[0])
-    error(
-        "Linking length greater than the width of a top-level cell. Need to "
-        "check more than one layer of top-level cells for links.");
-
-  if (MPI_Type_contiguous(sizeof(struct fof_mpi) / sizeof(unsigned char),
-                          MPI_BYTE, &fof_mpi_type) != MPI_SUCCESS ||
-      MPI_Type_commit(&fof_mpi_type) != MPI_SUCCESS) {
-    error("Failed to create MPI type for fof.");
-  }
-  if (MPI_Type_contiguous(sizeof(struct group_length) / sizeof(unsigned char),
-                          MPI_BYTE, &group_length_mpi_type) != MPI_SUCCESS ||
-      MPI_Type_commit(&group_length_mpi_type) != MPI_SUCCESS) {
-    error("Failed to create MPI type for group_length.");
-  }
-  /* Define type for sending fof_final_index struct */  
-  if (MPI_Type_contiguous(sizeof(struct fof_final_index), MPI_BYTE, &fof_final_index_type) != MPI_SUCCESS ||
-      MPI_Type_commit(&fof_final_index_type) != MPI_SUCCESS) {
-    error("Failed to create MPI type for fof_final_index.");
-  }
-  /* Define type for sending fof_final_mass struct */  
-  if (MPI_Type_contiguous(sizeof(struct fof_final_mass), MPI_BYTE, &fof_final_mass_type) != MPI_SUCCESS ||
-      MPI_Type_commit(&fof_final_mass_type) != MPI_SUCCESS) {
-    error("Failed to create MPI type for fof_final_mass.");
-  }
-#endif
-
-#ifdef UNION_BY_SIZE_OVER_MPI
-  if(engine_rank == 0) 
-    message("Performing FOF over MPI using union by size and union by rank locally.");
-#else
-  message("Performing FOF using union by rank.");
-#endif
 }
 
 /*
@@ -1604,7 +1613,6 @@ void fof_search_tree(struct space *s) {
 
   const size_t nr_gparts = s->nr_gparts;
   const size_t min_group_size = s->fof_data.min_group_size;
-
   const size_t group_id_offset = s->fof_data.group_id_offset;
 #ifdef WITH_MPI
   const int nr_nodes = s->e->nr_nodes;
@@ -1886,7 +1894,9 @@ void fof_search_tree(struct space *s) {
 
   /* Free the left-overs */
   swift_free("fof_high_group_sizes", high_group_sizes);
-  swift_free("group_mass", group_mass);
+  swift_free("fof_group_index", s->fof_data.group_index);
+  swift_free("fof_group_size",  s->fof_data.group_size);
+  swift_free("fof_group_mass",  s->fof_data.group_mass);
 
   if (engine_rank == 0) {
     message(
