@@ -567,7 +567,7 @@ inline static void compute_yields(struct stars_props *restrict stars) {
     }
   }
 
-  /* Declare temporary table to accumulate yields */
+  /* Declare temporary tables to accumulate yields */
   double SNII_yield[stars->feedback.SNII_n_mass];
   double AGB_yield[stars->feedback.AGB_n_mass];
   float result;
@@ -673,6 +673,7 @@ inline static void compute_yields(struct stars_props *restrict stars) {
  */
 inline static void compute_ejecta(struct stars_props *restrict stars) {
 
+  /* Declare temporary tables to accumulate yields */
   double SNII_ejecta[stars->feedback.SNII_n_mass];
   double AGB_ejecta[stars->feedback.AGB_n_mass];
   float result;

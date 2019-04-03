@@ -132,6 +132,7 @@ INLINE static void stars_props_init(struct stars_props *sp,
   else
     sp->log_max_h_change = logf(powf(max_volume_change, hydro_dimension_inv));
 
+  /* Read SNIa timscale */
   sp->feedback.SNIa_timescale =
       parser_get_opt_param_float(params, "EAGLEFeedback:SNIa_timescale", 2.f);
 

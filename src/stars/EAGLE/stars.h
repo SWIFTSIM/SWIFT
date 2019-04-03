@@ -653,10 +653,8 @@ inline static float compute_SNe(struct spart* sp,
                                 float age, double dt) {
   if (age <= stars_properties->feedback.SNII_wind_delay &&
       age + dt > stars_properties->feedback.SNII_wind_delay) {
-    // Commented out for testing. uncomment return statement for actual runs
-    //return stars_properties->feedback.num_SNII_per_msun * sp->mass_init /
-    //  stars_properties->feedback.const_solar_mass;
-    return 0;
+    return stars_properties->feedback.num_SNII_per_msun * sp->mass_init /
+      stars_properties->feedback.const_solar_mass;
   } else {
     return 0;
   }

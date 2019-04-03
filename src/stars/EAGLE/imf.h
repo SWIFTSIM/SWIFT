@@ -28,7 +28,8 @@
  * @param log10_max_mass Upper mass bound
  * @param low_imf_mass_bin_index pointer to index of IMF mass bin containing log10_min_mass
  * @param high_imf_mass_bin_index pointer to index of IMF mass bin containing log10_max_mass
- * @param star_properties the #stars_props data struct */
+ * @param star_properties the #stars_props data struct 
+ */
 inline static void determine_imf_bins(
     double log10_min_mass, double log10_max_mass, int *low_imf_mass_bin_index, int *high_imf_mass_bin_index,
     const struct stars_props *restrict star_properties) {
@@ -90,7 +91,6 @@ inline static float integrate_imf(
   determine_imf_bins(log10_min_mass, log10_max_mass, &low_imf_mass_bin_index, &high_imf_mass_bin_index,
                      star_properties);
 
-  // ALEXEI: rewrite this function so that adding on the fly and don't need to use the array.
   float integrand[star_properties->feedback.n_imf_mass_bins];
 
   /* Add up the contribution from each of the IMF mass bins */
@@ -117,7 +117,7 @@ inline static float integrate_imf(
     error("invalid mode in integrate_imf = %d\n", mode);
   }
 
-  /* integrate using trapezoidal rule (ALEXEI: Remove when adding on the fly)*/
+  /* integrate using trapezoidal rule */
   result = 0;
   for (int i = low_imf_mass_bin_index; i < high_imf_mass_bin_index + 1; i++) result += integrand[i];
 

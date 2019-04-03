@@ -287,7 +287,7 @@ struct stars_props {
     float SNIa_efficiency;
     float SNIa_timescale;
 
-    /* Arrays for elements being tracked */
+    /* Arrays for names of elements being tracked for each enrichment channel */
     char **SNIa_element_names;
     char **SNII_element_names;
     char **AGB_element_names;
@@ -295,7 +295,7 @@ struct stars_props {
     /* Element name string length */
     int element_name_length;
 
-    /* Dimensions of arrays in yield tables */
+    /* Sizes of dimensions of arrays in yield tables for each enrichment channel */
     int SNIa_n_elements;
     int SNII_n_mass;
     int SNII_n_elements;
@@ -313,11 +313,21 @@ struct stars_props {
     double *yield_mass_bins;
 
     /* Parameters for IMF  */
+
+    /* IMF model name */
     char IMF_Model[10];
+
+    /* Exponent for IMF if using power law */
     float IMF_Exponent;
+
+    /* Array to store calculated IMF */
     float *imf;
+
+    /* Arrays to store IMF mass bins */
     float *imf_mass_bin;
     float *imf_mass_bin_log10;
+
+    /* Number of IMF mass bins, maximum and minimum bins */
     int n_imf_mass_bins;
     float imf_max_mass_msun;
     float imf_min_mass_msun;

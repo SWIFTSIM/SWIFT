@@ -254,11 +254,6 @@ runner_iact_nonsym_stars_feedback(
   double random_num =
       random_unit_interval(pj->id, ti_current, random_number_stellar_feedback);
   if (random_num < heating_probability) {
-    message(
-        "we did some heating! id %llu probability %.5e random_num %.5e du %.5e "
-        "du/ini %.5e",
-        pj->id, heating_probability, random_num, du,
-        du / hydro_get_physical_internal_energy(pj, xp, cosmo));
     hydro_set_physical_internal_energy(pj,xp,cosmo,u_init + du);
     hydro_set_drifted_physical_internal_energy(pj,cosmo,u_init + du);
   }
