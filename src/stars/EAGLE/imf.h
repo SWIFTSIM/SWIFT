@@ -84,8 +84,9 @@ inline static float integrate_imf(
 
   float imf_log10_mass_bin_size, bin_offset;
 
+  /* IMF mass bin spacing in log10 space. Assumes uniform spacing. */
   imf_log10_mass_bin_size = star_properties->feedback.imf_mass_bin_log10[1] -
-        star_properties->feedback.imf_mass_bin_log10[0]; /* dlog(m) */
+        star_properties->feedback.imf_mass_bin_log10[0]; 
 
   /* Determine bins to integrate over based on integration bounds */
   determine_imf_bins(log10_min_mass, log10_max_mass, &low_imf_mass_bin_index, &high_imf_mass_bin_index,
@@ -144,7 +145,7 @@ inline static float integrate_imf(
     result -= (1 - bin_offset) * integrand[high_imf_mass_bin_index];
   }
 
-  /* The IMF is tabulated in log10 so undo to get regular units */
+  /* The IMF is tabulated in log10, multiply by log10(mass bin size) to get result of integrating IMF */
   result *= imf_log10_mass_bin_size * log(10.0); 
 
   return result;
@@ -164,8 +165,8 @@ inline static void init_imf(struct stars_props *restrict star_properties) {
   /* Define max and min imf masses */
   star_properties->feedback.imf_max_mass_msun = 100.f;
   star_properties->feedback.imf_min_mass_msun = 0.1;
-  star_properties->feedback.log10_imf_min_mass_msun = -1;
-  star_properties->feedback.log10_imf_max_mass_msun = 2;
+  star_properties->feedback.log10_imf_max_mass_msun = log10(star_properties->feedback.imf_max_mass_msun);
+  star_properties->feedback.log10_imf_min_mass_msun = log10(star_properties->feedback.imf_min_mass_msun);
 
   /* Compute size of mass bins in log10 space */
   const float imf_log10_mass_bin_size = (star_properties->feedback.log10_imf_max_mass_msun - star_properties->feedback.log10_imf_min_mass_msun) /
@@ -191,7 +192,7 @@ inline static void init_imf(struct stars_props *restrict star_properties) {
 
   /* Set Power-law IMF (Salpeter for IMF_EXPONENT = 2.35) */
   if (strcmp(star_properties->feedback.IMF_Model, "PowerLaw") == 0) {
-    if (star_properties->feedback.IMF_Exponent < 0) {
+    if (star_properties->feedback.IMF_Exponent <= 0) {
       error("imf_exponent is supposed to be > 0\n");
     }
 

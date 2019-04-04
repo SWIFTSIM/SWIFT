@@ -88,32 +88,32 @@ struct spart {
     /* Mass of ejecta */
     float mass;
 
-    /* Total metal mass released per unit initial stellar mass */
+    /* Total metal mass released */
     float total_metal_mass;
 
-    /* Total mass released by element per unit initial stellar mass */
+    /* Total mass released by element */
     float metal_mass[chemistry_element_count];
     
-    /*! Mass coming from SNIa */
+    /*! Total mass released due to SNIa */
     float mass_from_SNIa;
 
-    /*! Fraction of total gas mass in metals coming from SNIa */
+    /*! Total metal mass released due to SNIa */
     float metal_mass_from_SNIa;
 
-    /*! Mass coming from AGB */
-    float mass_from_AGB;
+    /*! Total iron mass released due to SNIa */
+    float Fe_mass_from_SNIa;
 
-    /*! Fraction of total gas mass in metals coming from AGB */
-    float metal_mass_from_AGB;
-
-    /*! Mass coming from SNII */
+    /*! Total mass released due to SNII */
     float mass_from_SNII;
 
-    /*! Fraction of total gas mass in metals coming from SNII */
+    /*! Total metal mass released due to SNII */
     float metal_mass_from_SNII;
 
-    /*! Fraction of total gas mass in Iron coming from SNIa */
-    float Fe_mass_from_SNIa;
+    /*! Total mass released due to AGB */
+    float mass_from_AGB;
+
+    /*! Total metal mass released due to AGB */
+    float metal_mass_from_AGB;
 
     /* Number of type Ia SNe per unit mass */
     float num_SNIa;
@@ -127,12 +127,12 @@ struct spart {
   } to_distribute;
 
   /* Normalisation factor for density weight fraction for feedback (equivalent to metalweight_norm in EAGLE, see eagle_enrich.c:811) */
-  float density_weight_frac_normalisation_inv;
+  float density_weighted_frac_normalisation_inv;
 
   /* total mass of neighbouring gas particles */
   float ngb_mass;
 
-  /*! Union for the birth time and birht scale factor */
+  /*! Union for the birth time and birth scale factor */
   union {
 
     /*! Birth time */

@@ -53,7 +53,7 @@ __attribute__((always_inline)) INLINE static void stars_init_spart(
   sp->density.wcount_dh = 0.f;
   sp->rho_gas = 0.f;
 
-  sp->density_weight_frac_normalisation_inv = 0.f;
+  sp->density_weighted_frac_normalisation_inv = 0.f;
   sp->ngb_mass = 0.f;
 }
 
@@ -71,6 +71,9 @@ __attribute__((always_inline)) INLINE static void stars_first_init_spart(
   sp->time_bin = 0;
   sp->birth_density = -1.f;
   sp->birth_time = -1.f;
+
+  // for debugging
+  sp->birth_time = 0;
 
   stars_init_spart(sp);
 }
@@ -445,7 +448,7 @@ inline static void evolve_SNII(float log10_min_mass, float log10_max_mass,
   /* compute the total mass ejected */
   norm1 = metal_mass_released_total + metal_mass_released[chemistry_element_H] + metal_mass_released[chemistry_element_He];
 
-  /* Set normalisation factor. Note additional multiplication by the stellar
+  /* Set normalisation factor. Note additional multiplication by the star
    * initial mass as tables are per initial mass */
   const float norm_factor = norm0 / norm1 * sp->mass_init;
 
@@ -693,6 +696,9 @@ __attribute__((always_inline)) INLINE static void stars_evolve_spart(
 
   /* Compute amount of enrichment and feedback that needs to be done in this step */
   compute_stellar_evolution(stars_properties, sp, us, star_age, dt);
+
+  /* Decrease star mass by amount of mass distributed to gas neighbours */
+  sp->mass -= sp->to_distribute.mass;
 
   /* Compute the number of type II SNe that went off */
   sp->to_distribute.num_SNe = compute_SNe(sp, stars_properties, star_age, dt);
