@@ -128,6 +128,16 @@ INLINE static void convert_part_potential(const struct engine* e,
     ret[0] = 0.f;
 }
 
+INLINE static void convert_part_group_id(const struct engine* e,
+                                         const struct part* p,
+                                         const struct xpart* xp, int* ret) {
+
+  if (p->gpart != NULL)
+    ret[0] = p->gpart->group_id;
+  else
+    ret[0] = 0;
+}
+
 /**
  * @brief Specifies which particle fields to write to a dataset
  *
@@ -141,7 +151,7 @@ INLINE static void hydro_write_particles(const struct part* parts,
                                          struct io_props* list,
                                          int* num_fields) {
 
-  *num_fields = 10;
+  *num_fields = 11;
 
   /* List what we want to write */
   list[0] = io_make_output_field_convert_part("Coordinates", DOUBLE, 3,
@@ -168,6 +178,10 @@ INLINE static void hydro_write_particles(const struct part* parts,
   list[9] = io_make_output_field_convert_part("Potential", FLOAT, 1,
                                               UNIT_CONV_POTENTIAL, parts,
                                               xparts, convert_part_potential);
+  list[10] = io_make_output_field_convert_part("GroupID", INT, 1,
+                                              UNIT_CONV_NO_UNITS, parts,
+                                              xparts, convert_part_group_id);
+
 
 #ifdef DEBUG_INTERACTIONS_SPH
 

@@ -1136,12 +1136,12 @@ void write_output_serial(struct engine* e, const char* baseName,
               if (swift_memalign("parts_written", (void**)&parts_written,
                                  part_align,
                                  Ngas_written * sizeof(struct part)) != 0)
-                error("Error while allocating temporart memory for parts");
+                error("Error while allocating temporary memory for parts");
               if (swift_memalign("xparts_written", (void**)&xparts_written,
                                  xpart_align,
                                  Ngas_written * sizeof(struct xpart)) != 0)
-                error("Error while allocating temporart memory for xparts");
-
+                error("Error while allocating temporary memory for xparts");
+              
               /* Collect the particles we want to write */
               io_collect_parts_to_write(parts, xparts, parts_written,
                                         xparts_written, Ngas, Ngas_written);
