@@ -18,6 +18,12 @@
  # 
  ##############################################################################
 
+# Script used to plot time evolution of gas particle properties. Intended to 
+# compare result of feedback due to one star placed in centre of uniform box
+# of gas with output from EAGLE feedback test. Can also use as input output
+# from SWIFT feedback test (tests/testFeedback) with the appropriate change
+# to filepath.
+
 import matplotlib
 matplotlib.use("Agg")
 from pylab import *
@@ -26,14 +32,6 @@ import h5py
 import numpy as np
 import glob
 import os.path
-
-def find_indices(a,b):
-        result = np.zeros(len(b))
-        for i in range(len(b)):
-                result[i] = ((np.where(a == b[i]))[0])[0]
-
-        return result
-
 
 # Plot parameters
 params = {'axes.labelsize': 10,
@@ -91,114 +89,93 @@ unit_entropy_in_cgs = unit_energy_in_cgs/unit_temp_in_cgs
 Gyr_in_cgs = 3.155e16
 Msun_in_cgs = 1.989e33
 
-box_mass = zeros(n_snapshots)
-box_metal_mass = zeros(n_snapshots)
-element_mass = zeros((n_snapshots,n_elements))
-#abundance = zeros((n_parts,n_elements,n_snapshots))
-t = zeros(n_snapshots)
+# Read expected yields from EAGLE. Choose which file to use based on metallicity used when
+# running SWIFT (can be specified in yml file)
 
-# Read expected yields from EAGLE
 #filename = "/cosma/home/dp004/dc-bori1/Eagle/data1/z_0.0001/StellarEvolutionTotal.txt"
-#filename = "/cosma/home/dp004/dc-bori1/Eagle/data1/z_0.0001/StellarEvolutionIa.txt"
-#filename = "/cosma/home/dp004/dc-bori1/Eagle/data1/z_0.0001/StellarEvolutionII.txt"
-#filename = "/cosma/home/dp004/dc-bori1/Eagle/data1/z_0.0001/StellarEvolutionAGB.txt"
 #filename = "/cosma/home/dp004/dc-bori1/Eagle/data1/z_0.001/StellarEvolutionTotal.txt"
-#filename = "/cosma/home/dp004/dc-bori1/Eagle/data1/z_0.001/StellarEvolutionIa.txt"
-#filename = "/cosma/home/dp004/dc-bori1/Eagle/data1/z_0.001/StellarEvolutionII.txt"
-#filename = "/cosma/home/dp004/dc-bori1/Eagle/data1/z_0.001/StellarEvolutionAGB.txt"
 filename = "/cosma/home/dp004/dc-bori1/Eagle/data1/z_0.01/StellarEvolutionTotal.txt"
-#filename = "/cosma/home/dp004/dc-bori1/Eagle/data1/z_0.01/StellarEvolutionIa.txt"
-#filename = "/cosma/home/dp004/dc-bori1/Eagle/data1/z_0.01/StellarEvolutionII.txt"
-#filename = "/cosma/home/dp004/dc-bori1/Eagle/data1/z_0.01/StellarEvolutionAGB.txt"
 #filename = "/cosma/home/dp004/dc-bori1/Eagle/data1/z_0.04/StellarEvolutionTotal.txt"
-#filename = "/cosma/home/dp004/dc-bori1/Eagle/data1/z_0.04/StellarEvolutionIa.txt"
-#filename = "/cosma/home/dp004/dc-bori1/Eagle/data1/z_0.04/StellarEvolutionII.txt"
-#filename = "/cosma/home/dp004/dc-bori1/Eagle/data1/z_0.04/StellarEvolutionAGB.txt"
 #filename = "/cosma/home/dp004/dc-bori1/Eagle/data1/z_0.08/StellarEvolutionTotal.txt"
-#filename = "/cosma/home/dp004/dc-bori1/Eagle/data1/z_0.08/StellarEvolutionIa.txt"
-#filename = "/cosma/home/dp004/dc-bori1/Eagle/data1/z_0.08/StellarEvolutionII.txt"
-#filename = "/cosma/home/dp004/dc-bori1/Eagle/data1/z_0.08/StellarEvolutionAGB.txt"
 
+# Read EAGLE test output
 with open(filename) as f:
 	eagle_categories = f.readline()
 	eagle_data = f.readlines()
 
 eagle_data = [x.strip() for x in eagle_data]
 
-i = 0
-time_Gyr = zeros(len(eagle_data))
-total_mass = zeros(len(eagle_data))
-total_metal_mass = zeros(len(eagle_data))
-total_element_mass = zeros((len(eagle_data),n_elements))
+# Declare arrays to store EAGLE test output
+eagle_time_Gyr = zeros(len(eagle_data))
+eagle_total_mass = zeros(len(eagle_data))
+eagle_total_metal_mass = zeros(len(eagle_data))
+eagle_total_element_mass = zeros((len(eagle_data),n_elements))
 
+# Populate arrays with data from EAGLE test output
+i = 0
 for line in eagle_data:
 	enrich_to_date = line.split(' ')
-	time_Gyr[i] = float(enrich_to_date[0])
-	total_mass[i] = float(enrich_to_date[1]) * stellar_mass / Msun_in_cgs * unit_mass_in_cgs
-	total_metal_mass[i] = float(enrich_to_date[2]) * stellar_mass / Msun_in_cgs * unit_mass_in_cgs 
-	total_element_mass[i,0] = float(enrich_to_date[3]) * stellar_mass / Msun_in_cgs * unit_mass_in_cgs 
+	eagle_time_Gyr[i] = float(enrich_to_date[0])
+	eagle_total_mass[i] = float(enrich_to_date[1]) * stellar_mass / Msun_in_cgs * unit_mass_in_cgs
+	eagle_total_metal_mass[i] = float(enrich_to_date[2]) * stellar_mass / Msun_in_cgs * unit_mass_in_cgs 
+	for j in range(n_elements):
+		eagle_total_element_mass[i,j] = float(enrich_to_date[3+j]) * stellar_mass / Msun_in_cgs * unit_mass_in_cgs 
 	i += 1
+
+# Declare arrays to store SWIFT data
+swift_box_mass = zeros(n_snapshots)
+swift_box_metal_mass = zeros(n_snapshots)
+swift_element_mass = zeros((n_snapshots,n_elements))
+t = zeros(n_snapshots)
 
 # Read data from snapshots
 for i in range(n_snapshots):
 	print("reading snapshot "+str(i))
-	# Read the simulation data
 	sim = h5py.File("stellar_evolution_%04d.hdf5"%i, "r")
 	t[i] = sim["/Header"].attrs["Time"][0]
-	#ids = sim["/PartType0/ParticleIDs"][:]
 	
 	masses = sim["/PartType0/Masses"][:]
-	box_mass[i] = np.sum(masses)
-	#masses_sort = np.concatenate(ids,masses,axis = 0)
-	#masses_sort = np.sort(masses_sort,axis = 0)
+	swift_box_mass[i] = np.sum(masses)
 	
 	metallicities = sim["/PartType0/Metallicity"][:]
-	box_metal_mass[i] = np.sum(metallicities * masses)
-	
-	#abundance[:,:,i] = np.concatetenate((ids,sim["/PartType0/ElementAbundance"][:,:]),axis = 0)
-	#abundance[:,:,i] = np.sort(abundance[:,:,i],axis = 0)
-	#for j in range(n_parts):
-	#	if (i > 0 && (abundance[j,0,i] - abundance[j,0,i-1]) != 0):
-	#		element_mass[i,0] += (abundance[j,0,i] - abundance[j,0,i-1])
-	#print(np.count_nonzero(abundance))
-	#print(np.count_nonzero(element_mass[i,0]))
+	swift_box_metal_mass[i] = np.sum(metallicities * masses)
 
+	element_abundances = sim["/PartType0/ElementAbundance"][:][:]
+	for j in range(n_elements):
+		swift_element_mass[i,j] = np.sum(element_abundances[:,j] * masses)
+	
 # Plot the interesting quantities
 figure()
 
 # Box mass --------------------------------
-subplot(121)
-plot(t[1:] * unit_time_in_cgs / Gyr_in_cgs, (box_mass[1:] - box_mass[0])* unit_mass_in_cgs / Msun_in_cgs, linewidth=0.5, color='k', marker = "*", ms=0.5, label='swift')
-plot(time_Gyr[1:],total_mass[:-1],linewidth=0.5,color='r',label='eagle test total')
+subplot(221)
+plot(t[1:] * unit_time_in_cgs / Gyr_in_cgs, (swift_box_mass[1:] - swift_box_mass[0])* unit_mass_in_cgs / Msun_in_cgs, linewidth=0.5, color='k', marker = "*", ms=0.5, label='swift')
+plot(eagle_time_Gyr[1:],eagle_total_mass[:-1],linewidth=0.5,color='r',label='eagle test total')
 xlabel("${\\rm{Time}} (Gyr)$", labelpad=0)
 ylabel("Change in total gas particle mass (Msun)", labelpad=2)
 ticklabel_format(style='sci', axis='y', scilimits=(0,0))
 legend()
 
-# Box mass ratio --------------------------------
-#subplot(122)
-#plot(t[1:] * unit_time_in_cgs / Gyr_in_cgs, ((box_mass[1:] - box_mass[0])* unit_mass_in_cgs / Msun_in_cgs)/total_mass[0:64], linewidth=0.5, color='k', marker = "*", ms=0.5, label='swift')
-#xlabel("${\\rm{Time}} (Gyr)$", labelpad=0)
-#ylabel("Ratio swift/eagle change in mass", labelpad=2)
-#ticklabel_format(style='sci', axis='y', scilimits=(0,0))
-
 # Box metal mass --------------------------------
-subplot(122)
-plot(t[1:] * unit_time_in_cgs / Gyr_in_cgs, (box_metal_mass[1:] - box_metal_mass[0])* unit_mass_in_cgs / Msun_in_cgs, linewidth=0.5, color='k', ms=0.5, label='swift')
-plot(time_Gyr[1:],total_metal_mass[:-1],linewidth=0.5,color='r',label='eagle test')
+subplot(222)
+plot(t[1:] * unit_time_in_cgs / Gyr_in_cgs, (swift_box_metal_mass[1:] - swift_box_metal_mass[0])* unit_mass_in_cgs / Msun_in_cgs, linewidth=0.5, color='k', marker = "*", ms=0.5, label='swift')
+plot(eagle_time_Gyr[1:],eagle_total_metal_mass[:-1],linewidth=0.5,color='r',label='eagle test')
 xlabel("${\\rm{Time}} (Gyr)$", labelpad=0)
 ylabel("Change in total metal mass of gas particles (Msun)", labelpad=2)
 ticklabel_format(style='sci', axis='y', scilimits=(0,0))
 #legend()
 
-## Box element mass --------------------------------
-#subplot(223)
-#plot(t * unit_time_in_cgs / Gyr_in_cgs, (element_mass[:,0] - element_mass[0,0]) * unit_mass_in_cgs / Msun_in_cgs, linewidth=0.5, color='k', ms=0.5, label='swift')
-#plot(time_Gyr,total_element_mass[:,0],linewidth=0.5,color='r',label='eagle test')
-#xlabel("${\\rm{Time}} (Gyr)$", labelpad=0)
-#ylabel("Change in element mass of gas particles (Msun)", labelpad=2)
-#ticklabel_format(style='sci', axis='y', scilimits=(0,0))
-#legend()
+# Box element mass --------------------------------
+colours = ['k','r','g','b','c','y','m','skyblue','plum']
+element_names = ['H','He','C','N','O','Ne','Mg','Si','Fe']
+subplot(223)
+for j in range(n_elements):
+	plot(t[1:] * unit_time_in_cgs / Gyr_in_cgs, (swift_element_mass[1:,j] - swift_element_mass[0,j]) * unit_mass_in_cgs / Msun_in_cgs, linewidth=0.5, color=colours[j], ms=0.5, label=element_names[j])
+	plot(eagle_time_Gyr[1:],eagle_total_element_mass[:-1,j],linewidth=1,color=colours[j],linestyle='--')
+xlabel("${\\rm{Time}} (Gyr)$", labelpad=0)
+ylabel("Change in element mass of gas particles (Msun)", labelpad=2)
+ticklabel_format(style='sci', axis='y', scilimits=(0,0))
+legend()
 
 savefig("box_evolution.png", dpi=200)
 
