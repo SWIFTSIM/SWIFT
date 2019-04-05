@@ -2878,18 +2878,6 @@ void engine_init_particles(struct engine *e, int flag_entropy_ICs,
   /* No time integration. We just want the density and ghosts */
   engine_skip_force_and_kick(e);
 
-  /* Activate the self and pair FOF tasks and skip all other tasks. */
-  for (int i = 0; i < e->sched.nr_tasks; i++) {
-
-    struct task *t = &e->sched.tasks[i];
-
-    t->skip = 1;
-
-    if (t->type == task_type_fof_self || t->type == task_type_fof_pair) {
-      scheduler_activate(&e->sched, t);
-    }
-  }
-
   /* Print the number of active tasks ? */
   if (e->verbose) engine_print_task_counts(e);
 
