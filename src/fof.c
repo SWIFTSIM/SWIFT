@@ -51,6 +51,8 @@ size_t node_offset;
 
 #define UNION_BY_SIZE_OVER_MPI (1)
 #define FOF_COMPRESS_PATHS_MIN_LENGTH (2)
+#define FOF_NO_GAS (-1)
+#define FOF_BLACK_HOLE (-2)
 
 /* Initialises parameters for the FOF search. */
 void fof_init(struct space *s) {
@@ -1078,13 +1080,53 @@ void fof_calc_group_mass(struct space *s, const size_t num_groups_local, const s
   free(fof_mass_send);
   free(fof_mass_recv);
 #else
+
+  struct part *parts = s->parts;
+  long long *max_part_density_index = NULL;
+  float *max_part_density = NULL;
+  /* Allocate and initialise the densest particle array. */
+  if (swift_memalign("max_part_density_index",
+                     (void **)&s->fof_data.max_part_density_index, 32,
+                     num_groups_local * sizeof(long long)) != 0)
+    error("Failed to allocate list of max group density indices for FOF search.");
+  
+  if (swift_memalign("max_part_density",
+                     (void **)&s->fof_data.max_part_density, 32,
+                     num_groups_local * sizeof(float)) != 0)
+    error("Failed to allocate list of max group densities for FOF search.");
+
+  for(size_t i=0; i<num_groups_local; i++) s->fof_data.max_part_density_index[i] = FOF_NO_GAS;
+  bzero(s->fof_data.max_part_density, num_groups_local * sizeof(float));
+
+  max_part_density_index = s->fof_data.max_part_density_index;
+  max_part_density = s->fof_data.max_part_density;
+
   /* Loop over particles and increment the group mass for groups above min_group_size. */
   for(size_t i=0; i<nr_gparts; i++) {
-    
+   
+    /* Only check groups above the minimum size. */ 
     if(gparts[i].group_id != group_id_default) {
-      
-      group_mass[gparts[i].group_id - group_id_offset] += gparts[i].mass;
 
+      size_t index = gparts[i].group_id - group_id_offset;
+   
+      /* Update group mass */   
+      group_mass[index] += gparts[i].mass;
+     
+      /* Find the densest gas particle.
+       * Account for groups that already have a black hole and groups that contain no gas. */ 
+      if(gparts[i].type == swift_type_gas && 
+         max_part_density_index[index] != FOF_BLACK_HOLE) {
+        
+        /* Update index if a denser gas particle is found. */
+        if(parts[-gparts[i].id_or_neg_offset].rho > max_part_density[index]) {
+          max_part_density_index[index] = -gparts[i].id_or_neg_offset;
+          max_part_density[index] = parts[-gparts[i].id_or_neg_offset].rho;
+        }
+      }
+      /* If there is already a black hole in the group we don't need to create a new one. */
+      else if(gparts[i].type == swift_type_black_hole) {
+        max_part_density_index[index] = FOF_BLACK_HOLE;
+      }
     }
   
   }
@@ -1870,14 +1912,15 @@ void fof_search_tree(struct space *s) {
   message("Group sorting took: %.3f %s.", clocks_from_ticks(getticks() - tic),
           clocks_getunit());
 
-  double *group_mass = s->fof_data.group_mass;
   /* Allocate and initialise a group mass array. */
   if (swift_memalign("group_mass",
-                     (void **)&group_mass, 32,
+                     (void **)&s->fof_data.group_mass, 32,
                      num_groups_local * sizeof(double)) != 0)
     error("Failed to allocate list of group masses for FOF search.");
 
-  bzero(group_mass, num_groups_local * sizeof(double));
+  bzero(s->fof_data.group_mass, num_groups_local * sizeof(double));
+  
+  double *group_mass = s->fof_data.group_mass;
 
 #ifdef WITH_MPI
   fof_calc_group_mass(s, num_groups_local, num_groups_prev, num_on_node, first_on_node, group_mass);
@@ -1890,13 +1933,15 @@ void fof_search_tree(struct space *s) {
   message("Dumping data...");
 
   /* Dump group data. */
-  fof_dump_group_data(output_file_name, s, num_groups_local, high_group_sizes, group_mass);
+  fof_dump_group_data(output_file_name, s, num_groups_local, high_group_sizes);
 
   /* Free the left-overs */
   swift_free("fof_high_group_sizes", high_group_sizes);
   swift_free("fof_group_index", s->fof_data.group_index);
   swift_free("fof_group_size",  s->fof_data.group_size);
   swift_free("fof_group_mass",  s->fof_data.group_mass);
+  swift_free("fof_max_part_density_index", s->fof_data.max_part_density_index);
+  swift_free("fof_max_part_density", s->fof_data.max_part_density);
 
   if (engine_rank == 0) {
     message(
@@ -1917,14 +1962,17 @@ void fof_search_tree(struct space *s) {
 
 /* Dump FOF group data. */
 void fof_dump_group_data(char *out_file, struct space *s, int num_groups, 
-                         struct group_length *group_sizes, double *group_mass) {
+                         struct group_length *group_sizes) {
 
   FILE *file = fopen(out_file, "w");
 
   struct gpart *gparts = s->gparts;
   size_t *group_size = s->fof_data.group_size;
+  double *group_mass = s->fof_data.group_mass;
+  long long *max_part_density_index = s->fof_data.max_part_density_index;
+  float *max_part_density = s->fof_data.max_part_density;
 
-  fprintf(file, "# %8s %10s %10s\n", "Group ID", "Group Size", "Group Mass");
+  fprintf(file, "# %8s %12s %12s %12s %18s\n", "Group ID", "Group Size", "Group Mass", "Max Density", "Max Density Index");
   fprintf(file,
           "#-------------------------------------------------------------------"
           "-------------\n");
@@ -1933,10 +1981,10 @@ void fof_dump_group_data(char *out_file, struct space *s, int num_groups,
 
     const size_t group_offset = group_sizes[i].index;
 
-    fprintf(file, "  %8zu %10zu %10lf\n",
+    fprintf(file, "  %8zu %12zu %12e %12e %18lld\n",
             gparts[group_offset - node_offset].group_id,
             group_size[group_offset - node_offset], 
-            group_mass[i]);
+            group_mass[i], max_part_density[i], max_part_density_index[i]);
   }
 
   fclose(file);

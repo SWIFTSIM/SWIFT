@@ -52,6 +52,8 @@ struct fof {
   size_t *group_index;
   size_t *group_size;
   double *group_mass;
+  long long *max_part_density_index;
+  float *max_part_density;
   
   /*! The FOF linking length squared. */
   double l_x2;
@@ -114,7 +116,7 @@ void fof_search_pair_cells_foreign(struct space *s, struct cell *ci,
                                    int *group_links_size);
 void fof_search_tree(struct space *s);
 void fof_dump_group_data(char *out_file, struct space *s,
-                         int num_groups, struct group_length *group_sizes, double *group_mass);
+                         int num_groups, struct group_length *group_sizes);
 void rec_fof_search_self(struct cell *c, struct space *s, const double dim[3],
                          const double search_r2);
 void rec_fof_search_pair(struct cell *restrict ci, struct cell *restrict cj,
