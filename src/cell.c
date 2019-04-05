@@ -4675,11 +4675,9 @@ struct spart *cell_add_spart(struct engine *e, struct cell *const c) {
    */
   struct cell *top2 = c;
   while (top2->parent != NULL) {
-    top2->grav.ti_end_min = e->ti_current;
     top2->stars.ti_old_part = e->ti_current;
     top2 = top2->parent;
   }
-  top2->grav.ti_end_min = e->ti_current;
   top2->stars.ti_old_part = e->ti_current;
 
   /* Release the lock */
