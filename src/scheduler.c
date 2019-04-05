@@ -1630,6 +1630,9 @@ void scheduler_reweight(struct scheduler *s, int verbose) {
       case task_type_drift_gpart:
         cost = wscale * gcount_i;
         break;
+      case task_type_drift_spart:
+        cost = wscale * scount_i;
+        break;
       case task_type_init_grav:
         cost = wscale * gcount_i;
         break;
@@ -1647,6 +1650,12 @@ void scheduler_reweight(struct scheduler *s, int verbose) {
         break;
       case task_type_end_grav_force:
         cost = wscale * gcount_i;
+        break;
+      case task_type_cooling:
+        cost = wscale * count_i;
+        break;
+      case task_type_star_formation:
+        cost = wscale * (count_i + scount_i);
         break;
       case task_type_kick1:
         cost = wscale * count_i + wscale * gcount_i;
