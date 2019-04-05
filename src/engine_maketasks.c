@@ -109,6 +109,35 @@ void engine_addtasks_send_gravity(struct engine *e, struct cell *ci,
 }
 
 /**
+ * @brief Run through the hydro tasks in a cell hierarchy and mark the cells
+ *        that need to be sent to the given node.
+ */
+#ifdef WITH_MPI
+void engine_mark_cells_for_hydro_send_tasks(struct engine *e, struct cell *c, int foreign_node_id, int proxy_id) {
+  /* If this cell has already been marked for send, bail. */
+  if (c->mpi.sendto & (1ULL << proxy_id)) return;
+
+  /* Look for hydro tasks involving the foreign_node_id. */
+  for (struct link *l = c->hydro.density; l != NULL; l = l->next) {
+    struct task *t = l->t;
+    /* Does this task involve the foreign cell? */
+    if (t->ci->nodeID == foreign_node_id || (t->cj != NULL && t->cj->nodeID == foreign_node_id)) {
+      /* If this is a non-sub task, mark for send and return immediately (no need to recurse further). */
+      if (t->type == task_type_pair) {
+        c->mpi.sendto &= 1ULL << proxy_id;
+        return;
+      }
+
+      /* If this is a sub-cell task, recurse on it, and only return if the current cell got marked. */
+      else if (t->type == task_type_sub_pair) {
+
+      }
+    }
+  }
+}
+#endif  // WITH_MPI
+
+/**
  * @brief Add send tasks for the hydro pairs to a hierarchy of cells.
  *
  * @param e The #engine.
