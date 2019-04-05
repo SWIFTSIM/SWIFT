@@ -838,14 +838,14 @@ void engine_redistribute(struct engine *e) {
         }
       }
       if (total > 0)
-        message("%ld of %ld (%.2f%%) of particles moved", total - unmoved,
+        message("%zu of %zu (%.2f%%) of particles moved", total - unmoved,
                 total, 100.0 * (double)(total - unmoved) / (double)total);
       if (g_total > 0)
-        message("%ld of %ld (%.2f%%) of g-particles moved", g_total - g_unmoved,
+        message("%zu of %zu (%.2f%%) of g-particles moved", g_total - g_unmoved,
                 g_total,
                 100.0 * (double)(g_total - g_unmoved) / (double)g_total);
       if (s_total > 0)
-        message("%ld of %ld (%.2f%%) of s-particles moved", s_total - s_unmoved,
+        message("%zu of %zu (%.2f%%) of s-particles moved", s_total - s_unmoved,
                 s_total,
                 100.0 * (double)(s_total - s_unmoved) / (double)s_total);
     }
