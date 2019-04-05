@@ -113,6 +113,10 @@ void engine_addtasks_send_gravity(struct engine *e, struct cell *ci,
  *        that need to be sent to the given node.
  */
 #ifdef WITH_MPI
+void engine_mark_cells_for_hydro_send_tasks_rec(struct engine *e, struct cell *ci, struct cell *cj, int foreign_node_id, int proxy_id) {
+
+}
+
 void engine_mark_cells_for_hydro_send_tasks(struct engine *e, struct cell *c, int foreign_node_id, int proxy_id) {
   /* If this cell has already been marked for send, bail. */
   if (c->mpi.sendto & (1ULL << proxy_id)) return;
@@ -130,7 +134,8 @@ void engine_mark_cells_for_hydro_send_tasks(struct engine *e, struct cell *c, in
 
       /* If this is a sub-cell task, recurse on it, and only return if the current cell got marked. */
       else if (t->type == task_type_sub_pair) {
-
+        engine_mark_cells_for_hydro_send_tasks_rec(e, c, (t->ci != c) ? t->ci : t->cj, foreign_node_id, proxy_id);
+        if (c->mpi.sendto & (1ULL << proxy_id)) return;
       }
     }
   }
