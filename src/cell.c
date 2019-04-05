@@ -614,26 +614,21 @@ int cell_unpack_tags(const int *tags, struct cell *restrict c) {
  *
  * @return The number of packed cells.
  */
-int cell_pack_end_step(struct cell *restrict c,
-                       struct pcell_step *restrict pcells) {
+int cell_pack_end_step_hydro(struct cell *restrict c,
+                             struct pcell_step_hydro *restrict pcells) {
 
 #ifdef WITH_MPI
 
   /* Pack this cell's data. */
-  pcells[0].hydro.ti_end_min = c->hydro.ti_end_min;
-  pcells[0].hydro.ti_end_max = c->hydro.ti_end_max;
-  pcells[0].grav.ti_end_min = c->grav.ti_end_min;
-  pcells[0].grav.ti_end_max = c->grav.ti_end_max;
-  pcells[0].stars.ti_end_min = c->stars.ti_end_min;
-  pcells[0].stars.ti_end_max = c->stars.ti_end_max;
-  pcells[0].hydro.dx_max_part = c->hydro.dx_max_part;
-  pcells[0].stars.dx_max_part = c->stars.dx_max_part;
+  pcells[0].ti_end_min = c->hydro.ti_end_min;
+  pcells[0].ti_end_max = c->hydro.ti_end_max;
+  pcells[0].dx_max_part = c->hydro.dx_max_part;
 
   /* Fill in the progeny, depth-first recursion. */
   int count = 1;
   for (int k = 0; k < 8; k++)
     if (c->progeny[k] != NULL) {
-      count += cell_pack_end_step(c->progeny[k], &pcells[count]);
+      count += cell_pack_end_step_hydro(c->progeny[k], &pcells[count]);
     }
 
   /* Return the number of packed values. */
@@ -653,26 +648,155 @@ int cell_pack_end_step(struct cell *restrict c,
  *
  * @return The number of cells created.
  */
-int cell_unpack_end_step(struct cell *restrict c,
-                         struct pcell_step *restrict pcells) {
+int cell_unpack_end_step_hydro(struct cell *restrict c,
+                               struct pcell_step_hydro *restrict pcells) {
 
 #ifdef WITH_MPI
 
   /* Unpack this cell's data. */
-  c->hydro.ti_end_min = pcells[0].hydro.ti_end_min;
-  c->hydro.ti_end_max = pcells[0].hydro.ti_end_max;
-  c->grav.ti_end_min = pcells[0].grav.ti_end_min;
-  c->grav.ti_end_max = pcells[0].grav.ti_end_max;
-  c->stars.ti_end_min = pcells[0].stars.ti_end_min;
-  c->stars.ti_end_max = pcells[0].stars.ti_end_max;
-  c->hydro.dx_max_part = pcells[0].hydro.dx_max_part;
-  c->stars.dx_max_part = pcells[0].stars.dx_max_part;
+  c->hydro.ti_end_min = pcells[0].ti_end_min;
+  c->hydro.ti_end_max = pcells[0].ti_end_max;
+  c->hydro.dx_max_part = pcells[0].dx_max_part;
 
   /* Fill in the progeny, depth-first recursion. */
   int count = 1;
   for (int k = 0; k < 8; k++)
     if (c->progeny[k] != NULL) {
-      count += cell_unpack_end_step(c->progeny[k], &pcells[count]);
+      count += cell_unpack_end_step_hydro(c->progeny[k], &pcells[count]);
+    }
+
+  /* Return the number of packed values. */
+  return count;
+
+#else
+  error("SWIFT was not compiled with MPI support.");
+  return 0;
+#endif
+}
+
+/**
+ * @brief Pack the time information of the given cell and all it's sub-cells.
+ *
+ * @param c The #cell.
+ * @param pcells (output) The end-of-timestep information we pack into
+ *
+ * @return The number of packed cells.
+ */
+int cell_pack_end_step_grav(struct cell *restrict c,
+                            struct pcell_step_grav *restrict pcells) {
+
+#ifdef WITH_MPI
+
+  /* Pack this cell's data. */
+  pcells[0].ti_end_min = c->grav.ti_end_min;
+  pcells[0].ti_end_max = c->grav.ti_end_max;
+
+  /* Fill in the progeny, depth-first recursion. */
+  int count = 1;
+  for (int k = 0; k < 8; k++)
+    if (c->progeny[k] != NULL) {
+      count += cell_pack_end_step_grav(c->progeny[k], &pcells[count]);
+    }
+
+  /* Return the number of packed values. */
+  return count;
+
+#else
+  error("SWIFT was not compiled with MPI support.");
+  return 0;
+#endif
+}
+
+/**
+ * @brief Unpack the time information of a given cell and its sub-cells.
+ *
+ * @param c The #cell
+ * @param pcells The end-of-timestep information to unpack
+ *
+ * @return The number of cells created.
+ */
+int cell_unpack_end_step_grav(struct cell *restrict c,
+                              struct pcell_step_grav *restrict pcells) {
+
+#ifdef WITH_MPI
+
+  /* Unpack this cell's data. */
+  c->grav.ti_end_min = pcells[0].ti_end_min;
+  c->grav.ti_end_max = pcells[0].ti_end_max;
+
+  /* Fill in the progeny, depth-first recursion. */
+  int count = 1;
+  for (int k = 0; k < 8; k++)
+    if (c->progeny[k] != NULL) {
+      count += cell_unpack_end_step_grav(c->progeny[k], &pcells[count]);
+    }
+
+  /* Return the number of packed values. */
+  return count;
+
+#else
+  error("SWIFT was not compiled with MPI support.");
+  return 0;
+#endif
+}
+
+/**
+ * @brief Pack the time information of the given cell and all it's sub-cells.
+ *
+ * @param c The #cell.
+ * @param pcells (output) The end-of-timestep information we pack into
+ *
+ * @return The number of packed cells.
+ */
+int cell_pack_end_step_stars(struct cell *restrict c,
+                             struct pcell_step_stars *restrict pcells) {
+
+#ifdef WITH_MPI
+
+  /* Pack this cell's data. */
+  pcells[0].ti_end_min = c->stars.ti_end_min;
+  pcells[0].ti_end_max = c->stars.ti_end_max;
+  pcells[0].dx_max_part = c->stars.dx_max_part;
+
+  /* Fill in the progeny, depth-first recursion. */
+  int count = 1;
+  for (int k = 0; k < 8; k++)
+    if (c->progeny[k] != NULL) {
+      count += cell_pack_end_step_stars(c->progeny[k], &pcells[count]);
+    }
+
+  /* Return the number of packed values. */
+  return count;
+
+#else
+  error("SWIFT was not compiled with MPI support.");
+  return 0;
+#endif
+}
+
+/**
+ * @brief Unpack the time information of a given cell and its sub-cells.
+ *
+ * @param c The #cell
+ * @param pcells The end-of-timestep information to unpack
+ *
+ * @return The number of cells created.
+ */
+int cell_unpack_end_step_stars(struct cell *restrict c,
+                               struct pcell_step_stars *restrict pcells) {
+
+#ifdef WITH_MPI
+
+  /* Unpack this cell's data. */
+  c->stars.ti_end_min = pcells[0].ti_end_min;
+  c->stars.ti_end_max = pcells[0].ti_end_max;
+  c->stars.dx_max_part = pcells[0].dx_max_part;
+
+  /* Fill in the progeny, depth-first recursion. */
+  int count = 1;
+  for (int k = 0; k < 8; k++)
+    if (c->progeny[k] != NULL) {
+      count += cell_unpack_end_step_stars(c->progeny[k], &pcells[count]);
     }
 
   /* Return the number of packed values. */
@@ -1846,8 +1970,8 @@ void cell_clear_limiter_flags(struct cell *c, void *data) {
 }
 
 /**
- * @brief Recurse down in a cell hierarchy until the hydro.super level is reached
- * and activate the spart drift at that level.
+ * @brief Recurse down in a cell hierarchy until the hydro.super level is
+ * reached and activate the spart drift at that level.
  *
  * @param c The #cell to recurse into.
  * @param s The #scheduler.
@@ -3146,7 +3270,8 @@ int cell_unskip_hydro_tasks(struct cell *c, struct scheduler *s) {
         }
 
         /* If the foreign cell is active, we want its ti_end values. */
-        if (ci_active || with_limiter) scheduler_activate(s, ci->mpi.recv_ti);
+        if (ci_active || with_limiter)
+          scheduler_activate(s, ci->mpi.hydro.recv_ti);
 
         if (with_limiter) scheduler_activate(s, ci->mpi.limiter.recv);
         if (with_limiter)
@@ -3174,7 +3299,7 @@ int cell_unskip_hydro_tasks(struct cell *c, struct scheduler *s) {
 
         /* If the local cell is active, send its ti_end values. */
         if (cj_active || with_limiter)
-          scheduler_activate_send(s, cj->mpi.send_ti, ci_nodeID);
+          scheduler_activate_send(s, cj->mpi.hydro.send_ti, ci_nodeID);
 
       } else if (cj_nodeID != nodeID) {
 
@@ -3191,7 +3316,8 @@ int cell_unskip_hydro_tasks(struct cell *c, struct scheduler *s) {
         }
 
         /* If the foreign cell is active, we want its ti_end values. */
-        if (cj_active || with_limiter) scheduler_activate(s, cj->mpi.recv_ti);
+        if (cj_active || with_limiter)
+          scheduler_activate(s, cj->mpi.hydro.recv_ti);
 
         if (with_limiter) scheduler_activate(s, cj->mpi.limiter.recv);
         if (with_limiter)
@@ -3220,7 +3346,7 @@ int cell_unskip_hydro_tasks(struct cell *c, struct scheduler *s) {
 
         /* If the local cell is active, send its ti_end values. */
         if (ci_active || with_limiter)
-          scheduler_activate_send(s, ci->mpi.send_ti, cj_nodeID);
+          scheduler_activate_send(s, ci->mpi.hydro.send_ti, cj_nodeID);
       }
 #endif
     }
@@ -3318,7 +3444,7 @@ int cell_unskip_gravity_tasks(struct cell *c, struct scheduler *s) {
         if (cj_active) scheduler_activate(s, ci->mpi.grav.recv);
 
         /* If the foreign cell is active, we want its ti_end values. */
-        if (ci_active) scheduler_activate(s, ci->mpi.recv_ti);
+        if (ci_active) scheduler_activate(s, ci->mpi.grav.recv_ti);
 
         /* Is the foreign cell active and will need stuff from us? */
         if (ci_active) {
@@ -3332,7 +3458,8 @@ int cell_unskip_gravity_tasks(struct cell *c, struct scheduler *s) {
         }
 
         /* If the local cell is active, send its ti_end values. */
-        if (cj_active) scheduler_activate_send(s, cj->mpi.send_ti, ci_nodeID);
+        if (cj_active)
+          scheduler_activate_send(s, cj->mpi.grav.send_ti, ci_nodeID);
 
       } else if (cj_nodeID != nodeID) {
 
@@ -3340,7 +3467,7 @@ int cell_unskip_gravity_tasks(struct cell *c, struct scheduler *s) {
         if (ci_active) scheduler_activate(s, cj->mpi.grav.recv);
 
         /* If the foreign cell is active, we want its ti_end values. */
-        if (cj_active) scheduler_activate(s, cj->mpi.recv_ti);
+        if (cj_active) scheduler_activate(s, cj->mpi.grav.recv_ti);
 
         /* Is the foreign cell active and will need stuff from us? */
         if (cj_active) {
@@ -3354,7 +3481,8 @@ int cell_unskip_gravity_tasks(struct cell *c, struct scheduler *s) {
         }
 
         /* If the local cell is active, send its ti_end values. */
-        if (ci_active) scheduler_activate_send(s, ci->mpi.send_ti, cj_nodeID);
+        if (ci_active)
+          scheduler_activate_send(s, ci->mpi.grav.send_ti, cj_nodeID);
       }
 #endif
     }
@@ -3527,14 +3655,14 @@ int cell_unskip_stars_tasks(struct cell *c, struct scheduler *s) {
           cell_activate_drift_spart(cj, s);
 
           /* If the local cell is active, send its ti_end values. */
-          scheduler_activate_send(s, cj->mpi.send_ti, ci_nodeID);
+          scheduler_activate_send(s, cj->mpi.stars.send_ti, ci_nodeID);
         }
 
         if (ci_active) {
           scheduler_activate(s, ci->mpi.stars.recv);
 
           /* If the foreign cell is active, we want its ti_end values. */
-          scheduler_activate(s, ci->mpi.recv_ti);
+          scheduler_activate(s, ci->mpi.stars.recv_ti);
 
           /* Is the foreign cell active and will need stuff from us? */
           scheduler_activate_send(s, cj->mpi.hydro.send_xv, ci_nodeID);
@@ -3557,14 +3685,14 @@ int cell_unskip_stars_tasks(struct cell *c, struct scheduler *s) {
           cell_activate_drift_spart(ci, s);
 
           /* If the local cell is active, send its ti_end values. */
-          scheduler_activate_send(s, ci->mpi.send_ti, cj_nodeID);
+          scheduler_activate_send(s, ci->mpi.stars.send_ti, cj_nodeID);
         }
 
         if (cj_active) {
           scheduler_activate(s, cj->mpi.stars.recv);
 
           /* If the foreign cell is active, we want its ti_end values. */
-          scheduler_activate(s, cj->mpi.recv_ti);
+          scheduler_activate(s, cj->mpi.stars.recv_ti);
 
           /* Is the foreign cell active and will need stuff from us? */
           scheduler_activate_send(s, ci->mpi.hydro.send_xv, cj_nodeID);
@@ -3755,7 +3883,9 @@ void cell_set_super_mapper(void *map_data, int num_elements, void *extra_data) {
 int cell_has_tasks(struct cell *c) {
 
 #ifdef WITH_MPI
-  if (c->timestep != NULL || c->mpi.recv_ti != NULL) return 1;
+  if (c->timestep != NULL || c->mpi.hydro.recv_ti != NULL ||
+      c->mpi.grav.recv_ti != NULL || c->mpi.stars.recv_ti != NULL)
+    return 1;
 #else
   if (c->timestep != NULL) return 1;
 #endif

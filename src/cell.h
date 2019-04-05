@@ -175,46 +175,37 @@ struct pcell {
 /**
  * @brief Cell information at the end of a time-step.
  */
-struct pcell_step {
+struct pcell_step_hydro {
 
-  /*! Hydro variables */
-  struct {
+  /*! Minimal integer end-of-timestep in this cell (hydro) */
+  integertime_t ti_end_min;
 
-    /*! Minimal integer end-of-timestep in this cell (hydro) */
-    integertime_t ti_end_min;
+  /*! Minimal integer end-of-timestep in this cell (hydro) */
+  integertime_t ti_end_max;
 
-    /*! Minimal integer end-of-timestep in this cell (hydro) */
-    integertime_t ti_end_max;
+  /*! Maximal distance any #part has travelled since last rebuild */
+  float dx_max_part;
+};
 
-    /*! Maximal distance any #part has travelled since last rebuild */
-    float dx_max_part;
+struct pcell_step_grav {
 
-  } hydro;
+  /*! Minimal integer end-of-timestep in this cell (gravity) */
+  integertime_t ti_end_min;
 
-  /*! Grav variables */
-  struct {
+  /*! Minimal integer end-of-timestep in this cell (gravity) */
+  integertime_t ti_end_max;
+};
 
-    /*! Minimal integer end-of-timestep in this cell (gravity) */
-    integertime_t ti_end_min;
+struct pcell_step_stars {
 
-    /*! Minimal integer end-of-timestep in this cell (gravity) */
-    integertime_t ti_end_max;
+  /*! Minimal integer end-of-timestep in this cell (stars) */
+  integertime_t ti_end_min;
 
-  } grav;
+  /*! Maximal integer end-of-timestep in this cell (stars) */
+  integertime_t ti_end_max;
 
-  /*! Stars variables */
-  struct {
-
-    /*! Minimal integer end-of-timestep in this cell (stars) */
-    integertime_t ti_end_min;
-
-    /*! Maximal integer end-of-timestep in this cell (stars) */
-    integertime_t ti_end_max;
-
-    /*! Maximal distance any #part has travelled since last rebuild */
-    float dx_max_part;
-
-  } stars;
+  /*! Maximal distance any #part has travelled since last rebuild */
+  float dx_max_part;
 };
 
 /**
@@ -603,6 +594,9 @@ struct cell {
       /* Task receiving hydro data (gradient). */
       struct task *recv_gradient;
 
+      /* Task receiving data (time-step). */
+      struct task *recv_ti;
+
       /* Linked list for sending hydro data (positions). */
       struct link *send_xv;
 
@@ -612,6 +606,9 @@ struct cell {
       /* Linked list for sending hydro data (gradient). */
       struct link *send_gradient;
 
+      /* Linked list for sending data (time-step). */
+      struct link *send_ti;
+
     } hydro;
 
     struct {
@@ -619,16 +616,30 @@ struct cell {
       /* Task receiving gpart data. */
       struct task *recv;
 
+      /* Task receiving data (time-step). */
+      struct task *recv_ti;
+
       /* Linked list for sending gpart data. */
       struct link *send;
+
+      /* Linked list for sending data (time-step). */
+      struct link *send_ti;
+
     } grav;
 
     struct {
       /* Task receiving spart data. */
       struct task *recv;
 
+      /* Task receiving data (time-step). */
+      struct task *recv_ti;
+
       /* Linked list for sending spart data. */
       struct link *send;
+
+      /* Linked list for sending data (time-step). */
+      struct link *send_ti;
+
     } stars;
 
     struct {
@@ -638,12 +649,6 @@ struct cell {
       /* Linked list for sending limiter data. */
       struct link *send;
     } limiter;
-
-    /* Task receiving data (time-step). */
-    struct task *recv_ti;
-
-    /* Linked list for sending data (time-step). */
-    struct link *send_ti;
 
     /*! Bit mask of the proxies this cell is registered with. */
     unsigned long long int sendto;
@@ -734,8 +739,12 @@ int cell_unpack(struct pcell *pc, struct cell *c, struct space *s,
                 const int with_gravity);
 int cell_pack_tags(const struct cell *c, int *tags);
 int cell_unpack_tags(const int *tags, struct cell *c);
-int cell_pack_end_step(struct cell *c, struct pcell_step *pcell);
-int cell_unpack_end_step(struct cell *c, struct pcell_step *pcell);
+int cell_pack_end_step_hydro(struct cell *c, struct pcell_step_hydro *pcell);
+int cell_unpack_end_step_hydro(struct cell *c, struct pcell_step_hydro *pcell);
+int cell_pack_end_step_grav(struct cell *c, struct pcell_step_grav *pcell);
+int cell_unpack_end_step_grav(struct cell *c, struct pcell_step_grav *pcell);
+int cell_pack_end_step_stars(struct cell *c, struct pcell_step_stars *pcell);
+int cell_unpack_end_step_stars(struct cell *c, struct pcell_step_stars *pcell);
 int cell_pack_multipoles(struct cell *c, struct gravity_tensors *m);
 int cell_unpack_multipoles(struct cell *c, struct gravity_tensors *m);
 int cell_getsize(struct cell *c);

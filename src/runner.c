@@ -3326,13 +3326,25 @@ void *runner_main(void *data) {
           break;
 #ifdef WITH_MPI
         case task_type_send:
-          if (t->subtype == task_subtype_tend) {
+          if (t->subtype == task_subtype_tend_part) {
+            free(t->buff);
+          }
+          if (t->subtype == task_subtype_tend_gpart) {
+            free(t->buff);
+          }
+          if (t->subtype == task_subtype_tend_spart) {
             free(t->buff);
           }
           break;
         case task_type_recv:
-          if (t->subtype == task_subtype_tend) {
-            cell_unpack_end_step(ci, (struct pcell_step *)t->buff);
+          if (t->subtype == task_subtype_tend_part) {
+            cell_unpack_end_step_hydro(ci, (struct pcell_step_hydro *)t->buff);
+            free(t->buff);
+          } else if (t->subtype == task_subtype_tend_gpart) {
+            cell_unpack_end_step_grav(ci, (struct pcell_step_grav *)t->buff);
+            free(t->buff);
+          } else if (t->subtype == task_subtype_tend_spart) {
+            cell_unpack_end_step_stars(ci, (struct pcell_step_stars *)t->buff);
             free(t->buff);
           } else if (t->subtype == task_subtype_xv) {
             runner_do_recv_part(r, ci, 1, 1);

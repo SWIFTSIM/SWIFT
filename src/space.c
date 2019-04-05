@@ -271,17 +271,21 @@ void space_rebuild_recycle_mapper(void *map_data, int num_elements,
     c->mpi.hydro.recv_xv = NULL;
     c->mpi.hydro.recv_rho = NULL;
     c->mpi.hydro.recv_gradient = NULL;
+    c->mpi.hydro.recv_ti = NULL;
     c->mpi.grav.recv = NULL;
+    c->mpi.grav.recv_ti = NULL;
     c->mpi.stars.recv = NULL;
-    c->mpi.recv_ti = NULL;
+    c->mpi.stars.recv_ti = NULL;
     c->mpi.limiter.recv = NULL;
 
     c->mpi.hydro.send_xv = NULL;
     c->mpi.hydro.send_rho = NULL;
     c->mpi.hydro.send_gradient = NULL;
+    c->mpi.hydro.send_ti = NULL;
     c->mpi.grav.send = NULL;
+    c->mpi.grav.send_ti = NULL;
     c->mpi.stars.send = NULL;
-    c->mpi.send_ti = NULL;
+    c->mpi.stars.send_ti = NULL;
     c->mpi.limiter.send = NULL;
 #endif
   }
