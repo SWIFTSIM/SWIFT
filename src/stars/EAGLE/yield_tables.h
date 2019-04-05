@@ -27,7 +27,7 @@ static const float log10_min_metallicity = -20;
  * @brief Returns the 1d index of element with 2d indices i,j
  * from a flattened 2d array in row major order
  *
- * ALEXEI: come up with different name or reconcile this function appearing in cooling
+ * ALEXEI: this function also appears in EAGLE cooling. Could this be done without duplication?
  *
  * @param i, j Indices of element of interest
  * @param nx, ny Sizes of array dimensions

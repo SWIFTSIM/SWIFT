@@ -199,8 +199,7 @@ inline static void determine_bin_yield_AGB(
     int j;
     for (j = 0; j < star_properties->feedback.AGB_n_z - 1 &&
                 log10_metallicity > star_properties->feedback.yield_AGB.metallicity[j + 1];
-         j++)
-      ;
+         j++);
     *iz_low = j;
     *iz_high = *iz_low + 1;
 
@@ -307,8 +306,8 @@ inline static void evolve_SNIa(float log10_min_mass, float log10_max_mass,
   /* Efolding (Forster 2006) */
   float num_SNIa_per_msun =
       stars->feedback.SNIa_efficiency *
-      (exp(-star_age_Gyr / stars->feedback.SNIa_timescale) -
-       exp(-(star_age_Gyr + dt_Gyr) / stars->feedback.SNIa_timescale))
+      (exp(-star_age_Gyr / stars->feedback.SNIa_timescale_Gyr) -
+       exp(-(star_age_Gyr + dt_Gyr) / stars->feedback.SNIa_timescale_Gyr))
        * sp->mass_init;
   
   sp->to_distribute.num_SNIa = num_SNIa_per_msun * stars->feedback.const_solar_mass;
@@ -423,7 +422,7 @@ inline static void evolve_SNII(float log10_min_mass, float log10_max_mass,
                        stellar_yields, stars);
 
   /* yield normalization */
-  float norm0, norm1;
+  float mass_ejected, mass_released;
 
   /* zero all negative values */
   for (int i = 0; i < chemistry_element_count; i++)
@@ -442,19 +441,18 @@ inline static void evolve_SNII(float log10_min_mass, float log10_max_mass,
         dz * stars->feedback.yield_SNII.ejecta_IMF_resampled[high_index_2d];
   }
 
-  norm0 = integrate_imf(log10_min_mass, log10_max_mass, 2,
+  mass_ejected = integrate_imf(log10_min_mass, log10_max_mass, 2,
                         stellar_yields, stars);
 
-  /* compute the total mass ejected */
-  norm1 = metal_mass_released_total + metal_mass_released[chemistry_element_H] + metal_mass_released[chemistry_element_He];
-
-  /* Set normalisation factor. Note additional multiplication by the star
-   * initial mass as tables are per initial mass */
-  const float norm_factor = norm0 / norm1 * sp->mass_init;
-
+  /* compute the total mass released */
+  mass_released = metal_mass_released_total + metal_mass_released[chemistry_element_H] + metal_mass_released[chemistry_element_He];
 
   /* normalize the yields */
-  if (norm1 > 0) {
+  if (mass_released > 0) {
+    /* Set normalisation factor. Note additional multiplication by the star
+     * initial mass as tables are per initial mass */
+    const float norm_factor = sp->mass_init * mass_ejected / mass_released;
+
     for (int i = 0; i < chemistry_element_count; i++) {
       sp->to_distribute.metal_mass[i] += metal_mass_released[i] * norm_factor;
     }
@@ -464,7 +462,7 @@ inline static void evolve_SNII(float log10_min_mass, float log10_max_mass,
     sp->to_distribute.total_metal_mass += metal_mass_released_total * norm_factor;
     sp->to_distribute.metal_mass_from_SNII += metal_mass_released_total * norm_factor;
   } else {
-    error("wrong normalization!!!! norm1 = %e\n", norm1);
+    error("wrong normalization!!!! mass_released = %e\n", mass_released);
   }
 
 }
@@ -547,7 +545,7 @@ inline static void evolve_AGB(float log10_min_mass, float log10_max_mass,
                        stellar_yields, stars);
 
   /* yield normalization */
-  float norm0, norm1;
+  float mass_ejected, mass_released;
 
   /* zero all negative values */
   for (int i = 0; i < chemistry_element_count; i++)
@@ -566,18 +564,18 @@ inline static void evolve_AGB(float log10_min_mass, float log10_max_mass,
         dz * stars->feedback.yield_AGB.ejecta_IMF_resampled[high_index_2d];
   }
 
-  norm0 = integrate_imf(log10_min_mass, log10_max_mass, 2,
+  mass_ejected = integrate_imf(log10_min_mass, log10_max_mass, 2,
                         stellar_yields, stars);
 
-  /* compute the total mass ejected */
-  norm1 = metal_mass_released_total + metal_mass_released[chemistry_element_H] + metal_mass_released[chemistry_element_He];
-
-  /* Set normalisation factor. Note additional multiplication by the stellar
-   * initial mass as tables are per initial mass */
-  const float norm_factor = norm0 / norm1 * sp->mass_init;
+  /* compute the total mass released */
+  mass_released = metal_mass_released_total + metal_mass_released[chemistry_element_H] + metal_mass_released[chemistry_element_He];
 
   /* normalize the yields */
-  if (norm1 > 0) {
+  if (mass_released > 0) {
+    /* Set normalisation factor. Note additional multiplication by the stellar
+     * initial mass as tables are per initial mass */
+    const float norm_factor = sp->mass_init * mass_ejected / mass_released;
+
     for (int i = 0; i < chemistry_element_count; i++) {
       sp->to_distribute.metal_mass[i] += metal_mass_released[i] * norm_factor;
       sp->to_distribute.mass_from_AGB += metal_mass_released[i] * norm_factor;
@@ -585,7 +583,7 @@ inline static void evolve_AGB(float log10_min_mass, float log10_max_mass,
     sp->to_distribute.total_metal_mass += metal_mass_released_total * norm_factor;
     sp->to_distribute.metal_mass_from_AGB += metal_mass_released_total * norm_factor;
   } else {
-    error("wrong normalization!!!! norm1 = %e\n", norm1);
+    error("wrong normalization!!!! mass_released = %e\n", mass_released);
   }
 }
 

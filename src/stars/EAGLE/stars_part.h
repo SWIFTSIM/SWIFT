@@ -129,7 +129,7 @@ struct spart {
   /* Normalisation factor for density weight fraction for feedback (equivalent to metalweight_norm in EAGLE, see eagle_enrich.c:811) */
   float density_weighted_frac_normalisation_inv;
 
-  /* total mass of neighbouring gas particles */
+  /* total mass (unweighted) of neighbouring gas particles */
   float ngb_mass;
 
   /*! Union for the birth time and birth scale factor */
@@ -285,7 +285,7 @@ struct stars_props {
     /* Parameters to SNIa enrichment model  */
     int SNIa_mode;
     float SNIa_efficiency;
-    float SNIa_timescale;
+    float SNIa_timescale_Gyr;
 
     /* Arrays for names of elements being tracked for each enrichment channel */
     char **SNIa_element_names;

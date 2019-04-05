@@ -133,8 +133,8 @@ INLINE static void stars_props_init(struct stars_props *sp,
     sp->log_max_h_change = logf(powf(max_volume_change, hydro_dimension_inv));
 
   /* Read SNIa timscale */
-  sp->feedback.SNIa_timescale =
-      parser_get_opt_param_float(params, "EAGLEFeedback:SNIa_timescale", 2.f);
+  sp->feedback.SNIa_timescale_Gyr =
+      parser_get_opt_param_float(params, "EAGLEFeedback:SNIa_timescale_Gyr", 2.f);
 
   /* Read the efficiency of producing SNIa */
   sp->feedback.SNIa_efficiency = parser_get_opt_param_float(
@@ -151,9 +151,10 @@ INLINE static void stars_props_init(struct stars_props *sp,
                         Gyr_in_cgs /
                         units_cgs_conversion_factor(us, UNIT_CONV_TIME);
 
-  /* Set the temperature to use in stochastic heating */
+  /* Read the temperature change to use in stochastic heating */
   sp->feedback.SNe_deltaT_desired =
-      3.16228e7 / units_cgs_conversion_factor(us, UNIT_CONV_TEMPERATURE);
+      parser_get_opt_param_float(params, "EAGLEFeedback:SNe_heating_temperature_K", 3.16228e7);
+  sp->feedback.SNe_deltaT_desired /= units_cgs_conversion_factor(us, UNIT_CONV_TEMPERATURE);
 
   /* Set ejecta thermal energy */
   const float ejecta_velocity =
