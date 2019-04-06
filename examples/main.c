@@ -725,6 +725,39 @@ int main(int argc, char *argv[]) {
     else
       bzero(&gravity_properties, sizeof(struct gravity_props));
 
+    /* Initialise the external potential properties */
+    bzero(&potential, sizeof(struct external_potential));
+    if (with_external_gravity)
+      potential_init(params, &prog_const, &us, &s, &potential);
+    if (myrank == 0) potential_print(&potential);
+
+    /* Initialise the cooling function properties */
+    bzero(&cooling_func, sizeof(struct cooling_function_data));
+    if (with_cooling || with_temperature) {
+#ifdef COOLING_NONE
+      if (with_cooling)
+        error("ERROR: Running with cooling but compiled without it.");
+#endif
+      cooling_init(params, &us, &prog_const, &cooling_func);
+    }
+    if (myrank == 0) cooling_print(&cooling_func);
+
+    /* Initialise the star formation law and its properties */
+    bzero(&starform, sizeof(struct star_formation));
+    if (with_star_formation) {
+#ifdef STAR_FORMATION_NONE
+      error("ERROR: Running with star formation but compiled without it!");
+#endif
+      starformation_init(params, &prog_const, &us, &hydro_properties,
+                         &starform);
+    }
+    if (with_star_formation && myrank == 0) starformation_print(&starform);
+
+    /* Initialise the chemistry */
+    bzero(&chemistry, sizeof(struct chemistry_global_data));
+    chemistry_init(params, &us, &prog_const, &chemistry);
+    if (myrank == 0) chemistry_print(&chemistry);
+
     /* Be verbose about what happens next */
     if (myrank == 0) message("Reading ICs from file '%s'", ICfileName);
     if (myrank == 0 && cleanup_h)
@@ -889,30 +922,6 @@ int main(int argc, char *argv[]) {
       space_map_cells_pre(&s, 0, &map_maxdepth, data);
       message("nr of cells at depth %i is %i.", data[0], data[1]);
     }
-
-    /* Initialise the external potential properties */
-    bzero(&potential, sizeof(struct external_potential));
-    if (with_external_gravity)
-      potential_init(params, &prog_const, &us, &s, &potential);
-    if (myrank == 0) potential_print(&potential);
-
-    /* Initialise the cooling function properties */
-    bzero(&cooling_func, sizeof(struct cooling_function_data));
-    if (with_cooling || with_temperature)
-      cooling_init(params, &us, &prog_const, &cooling_func);
-    if (myrank == 0) cooling_print(&cooling_func);
-
-    /* Initialise the star formation law and its properties */
-    bzero(&starform, sizeof(struct star_formation));
-    if (with_star_formation)
-      starformation_init(params, &prog_const, &us, &hydro_properties,
-                         &starform);
-    if (with_star_formation && myrank == 0) starformation_print(&starform);
-
-    /* Initialise the chemistry */
-    bzero(&chemistry, sizeof(struct chemistry_global_data));
-    chemistry_init(params, &us, &prog_const, &chemistry);
-    if (myrank == 0) chemistry_print(&chemistry);
 
     /* Construct the engine policy */
     int engine_policies = ENGINE_POLICY | engine_policy_steal;
