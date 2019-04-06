@@ -280,6 +280,7 @@ void hydro_props_print_snapshot(hid_t h_grpsph, const struct hydro_props *p) {
   eos_print_snapshot(h_grpsph, &eos);
 
   io_write_attribute_i(h_grpsph, "Dimension", (int)hydro_dimension);
+  io_write_attribute_f(h_grpsph, "Adiabatic index", hydro_gamma);
   io_write_attribute_s(h_grpsph, "Scheme", SPH_IMPLEMENTATION);
   io_write_attribute_s(h_grpsph, "Kernel function", kernel_name);
   io_write_attribute_f(h_grpsph, "Kernel target N_ngb", p->target_neighbours);
