@@ -668,13 +668,11 @@ void runner_do_star_formation(struct runner *r, struct cell *c, int timer) {
 
   /* If we formed any stars, the star sorts are now invalid. We need to
    * re-compute them. */
-  if (with_feedback && (c == c->hydro.super) &&
+  if (with_feedback && (c == c->top) &&
       (current_stars_count != c->stars.count)) {
 
-    error("MATTHIEU needs to think a bit more here!");
-
     cell_clear_stars_sort_flags(c);
-    runner_do_stars_sort(r, c, 0x1FFF, /*cleanup=*/0, /*timer=*/0);
+    runner_do_all_stars_sort(r, c);
   }
 
   if (timer) TIMER_TOC(timer_do_star_formation);
@@ -804,6 +802,10 @@ void runner_do_hydro_sort(struct runner *r, struct cell *c, int flags,
   float buff[8];
 
   TIMER_TIC;
+
+#ifdef SWIFT_DEBUG_CHECKS
+  if (c->hydro.super == NULL) error("Task called above the super level!!!");
+#endif
 
   /* We need to do the local sorts plus whatever was requested further up. */
   flags |= c->hydro.do_sort;
@@ -1023,6 +1025,10 @@ void runner_do_stars_sort(struct runner *r, struct cell *c, int flags,
 
   TIMER_TIC;
 
+#ifdef SWIFT_DEBUG_CHECKS
+  if (c->hydro.super == NULL) error("Task called above the super level!!!");
+#endif
+
   /* We need to do the local sorts plus whatever was requested further up. */
   flags |= c->stars.do_sort;
   if (cleanup) {
@@ -1212,6 +1218,90 @@ void runner_do_stars_sort(struct runner *r, struct cell *c, int flags,
   c->stars.requires_sorts = 0;
 
   if (clock) TIMER_TOC(timer_do_stars_sort);
+}
+
+/**
+ * @brief Recurse into a cell until reaching the super level and call
+ * the hydro sorting function there.
+ *
+ * This function must be called at or above the super level!
+ *
+ * This function will sort the particles in all 13 directions.
+ *
+ * @param r the #runner.
+ * @param c the #cell.
+ */
+void runner_do_all_hydro_sort(struct runner *r, struct cell *c) {
+
+#ifdef SWIFT_DEBUG_CHECKS
+  if (c->nodeID != engine_rank) error("Function called on a foreign cell!");
+#endif
+
+  /* Shall we sort at this level? */
+  if (c->hydro.super == c) {
+
+    /* Sort everything */
+    runner_do_hydro_sort(r, c, 0x1FFF, /*cleanup=*/0, /*timer=*/0);
+
+  } else {
+
+#ifdef SWIFT_DEBUG_CHECKS
+    if (c->hydro.super != NULL) error("Function called below the super level!");
+#endif
+
+    /* Ok, then, let's try lower */
+    if (c->split) {
+      for (int k = 0; k < 8; ++k) {
+        if (c->progeny[k] != NULL) runner_do_all_hydro_sort(r, c->progeny[k]);
+      }
+    } else {
+#ifdef SWIFT_DEBUG_CHECKS
+      error("Reached a leaf without encountering a hydro super cell!");
+#endif
+    }
+  }
+}
+
+/**
+ * @brief Recurse into a cell until reaching the super level and call
+ * the star sorting function there.
+ *
+ * This function must be called at or above the super level!
+ *
+ * This function will sort the particles in all 13 directions.
+ *
+ * @param r the #runner.
+ * @param c the #cell.
+ */
+void runner_do_all_stars_sort(struct runner *r, struct cell *c) {
+
+#ifdef SWIFT_DEBUG_CHECKS
+  if (c->nodeID != engine_rank) error("Function called on a foreign cell!");
+#endif
+
+  /* Shall we sort at this level? */
+  if (c->hydro.super == c) {
+
+    /* Sort everything */
+    runner_do_stars_sort(r, c, 0x1FFF, /*cleanup=*/0, /*timer=*/0);
+
+  } else {
+
+#ifdef SWIFT_DEBUG_CHECKS
+    if (c->hydro.super != NULL) error("Function called below the super level!");
+#endif
+
+    /* Ok, then, let's try lower */
+    if (c->split) {
+      for (int k = 0; k < 8; ++k) {
+        if (c->progeny[k] != NULL) runner_do_all_stars_sort(r, c->progeny[k]);
+      }
+    } else {
+#ifdef SWIFT_DEBUG_CHECKS
+      error("Reached a leaf without encountering a hydro super cell!");
+#endif
+    }
+  }
 }
 
 /**
