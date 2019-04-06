@@ -119,10 +119,10 @@ void engine_mark_cells_for_hydro_send_tasks_rec(struct engine *e,
   if (ci->hydro.count == 0 || cj->hydro.count == 0) return;
 
   /* Check if the local cell is already marked for sending, and if so, then
-   * nothing to see here folks. */
+     nothing to see here folks. */
   if ((ci->nodeID == foreign_node_id &&
-       (cj->mpi.sendto & (1ULL << proxy_id))) ||
-      (cj->nodeID == foreign_node_id && (ci->mpi.sendto & (1ULL << proxy_id))))
+       (cj->mpi.attach_send_recv_for_proxy & (1ULL << proxy_id))) ||
+      (cj->nodeID == foreign_node_id && (ci->mpi.attach_send_recv_for_proxy & (1ULL << proxy_id))))
     return;
 
   /* Get the orientation of the pair. */
@@ -412,9 +412,9 @@ void engine_mark_cells_for_hydro_send_tasks_rec(struct engine *e,
   else {
     /* We don't know if the local cell is ci or cj, we have to check. */
     if (ci->nodeID == foreign_node_id) {
-      cj->mpi.sendto |= (1ULL << proxy_id);
+      cj->mpi.attach_send_recv_for_proxy |= (1ULL << proxy_id);
     } else {
-      ci->mpi.sendto |= (1ULL << proxy_id);
+      ci->mpi.attach_send_recv_for_proxy |= (1ULL << proxy_id);
     }
   }
 }
@@ -422,7 +422,7 @@ void engine_mark_cells_for_hydro_send_tasks_rec(struct engine *e,
 void engine_mark_cells_for_hydro_send_tasks(struct engine *e, struct cell *c,
                                             int foreign_node_id, int proxy_id) {
   /* If this cell has already been marked for send, bail. */
-  if (c->mpi.sendto & (1ULL << proxy_id)) return;
+  if (c->mpi.attach_send_recv_for_proxy & (1ULL << proxy_id)) return;
 
   /* Look for hydro tasks involving the foreign_node_id. */
   for (struct link *l = c->hydro.density; l != NULL; l = l->next) {
@@ -435,7 +435,7 @@ void engine_mark_cells_for_hydro_send_tasks(struct engine *e, struct cell *c,
       /* If this is a non-sub task, mark for send and return immediately (no
          need to recurse further). */
       if (t->type == task_type_pair) {
-        c->mpi.sendto |= 1ULL << proxy_id;
+        c->mpi.attach_send_recv_for_proxy |= 1ULL << proxy_id;
         return;
       }
 
@@ -474,9 +474,15 @@ void engine_addtasks_send_hydro(struct engine *e, struct cell *ci,
   struct link *l = NULL;
   struct scheduler *s = &e->sched;
   const int nodeID = cj->nodeID;
+  
+  /* The logic here needs a bit of work: The density sub-cell tasks will look
+     for a sort task at their level to depend on, and in the new scheme, there
+     may just not be a task there. For this case, we need to create a dummy implicit
+     send task (or explicit if we actually do send at that level) that is unlocked
+     by all the sends below it. */
 
   /* If this cell has to be sent, add the tasks. */
-  if (ci->sendto & (1ULL << proxy_id)) {
+  if (ci->attach_send_recv_for_proxy & (1ULL << proxy_id)) {
     /* Create the tasks and their dependencies? */
     if (t_xv == NULL) {
       /* Make sure this cell is tagged. */

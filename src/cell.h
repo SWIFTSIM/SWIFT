@@ -644,6 +644,11 @@ struct cell {
 
     /*! Bit mask of the proxies this cell is registered with. */
     unsigned long long int sendto;
+    
+    
+    /*! Bitmaks for whethter this cell needs a send/recv task attached to it for
+        the given proxy. */
+    unsigned long long int attach_send_recv_for_proxy;
 
     /*! Pointer to this cell's packed representation. */
     struct pcell *pcell;
