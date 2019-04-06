@@ -32,13 +32,10 @@
 /* Import the right functions */
 #if defined(EOS_IDEAL_GAS)
 #include "./equation_of_state/ideal_gas/equation_of_state.h"
-#define EOS_NAME "Ideal gas"
 #elif defined(EOS_ISOTHERMAL_GAS)
 #include "./equation_of_state/isothermal/equation_of_state.h"
-#define EOS_NAME "Isothermal gas"
 #elif defined(EOS_PLANETARY)
 #include "./equation_of_state/planetary/equation_of_state.h"
-#define EOS_NAME "Planetary (variable) gas"
 #else
 #error "Invalid choice of equation of state"
 #endif
