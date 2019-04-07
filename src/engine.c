@@ -2579,6 +2579,7 @@ void engine_collect_end_of_step(struct engine *e, int apply) {
   data.ti_gravity_end_min = max_nr_timesteps, data.ti_gravity_end_max = 0,
   data.ti_gravity_beg_max = 0;
   data.e = e;
+
   /* Initialize the total SFH of the simulation to zero */
   star_formation_logger_init_engine(&data.sfh);
 
@@ -3134,14 +3135,20 @@ void engine_step(struct engine *e) {
         e->step, e->time, e->cosmology->a, e->cosmology->z, e->time_step,
         e->min_active_bin, e->max_active_bin, e->updates, e->g_updates,
         e->s_updates, e->wallclock_time, e->step_props);
+
 #ifdef SWIFT_DEBUG_CHECKS
     fflush(stdout);
 #endif
+
     /* Write the star formation information to the file */
     if (e->policy & engine_policy_star_formation) {
       star_formation_logger_write_to_log_file(e->sfh_logger, e->time,
                                               e->cosmology->a, e->cosmology->z,
                                               e->sfh, e->step);
+
+#ifdef SWIFT_DEBUG_CHECKS
+      fflush(e->sfh_logger);
+#endif
     }
 
     if (!e->restarting)
