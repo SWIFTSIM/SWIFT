@@ -96,7 +96,7 @@ INLINE static void star_formation_logger_assign(
 /**
  * @brief Initialize the star formation history structure in the #engine
  *
- * @param The pointer to the star formation history structure
+ * @param sfh The pointer to the star formation history structure
  */
 INLINE static void star_formation_logger_init_engine(
     struct star_formation_history *sfh) {}
@@ -104,14 +104,16 @@ INLINE static void star_formation_logger_init_engine(
 /**
  * @brief Write the final SFH to a file
  *
- * @param time the simulation time
- * @param a the scale factor
- * @param z the redshift
- * @param sf the star_formation_history struct
+ * @param fp The file to write to.
+ * @param time the simulation time (time since Big Bang) in internal units.
+ * @param a the scale factor.
+ * @param z the redshift.
+ * @param sf the #star_formation_history struct.
+ * @param step The time-step of the simulation.
  */
 INLINE static void star_formation_logger_write_to_log_file(
     FILE *fp, const double time, const double a, const double z,
-    const struct star_formation_history sf) {}
+    const struct star_formation_history sf, const int step) {}
 
 /**
  * @brief Initialize the SFH logger file
