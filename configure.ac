@@ -365,6 +365,18 @@ fi
 # Check whether we have any of the ARM v8.1 tick timers
 AX_ASM_ARM_PMCCNTR
 AX_ASM_ARM_CNTVCT
+# See if we want memuse reporting.
+AC_ARG_ENABLE([memuse-reports],
+   [AS_HELP_STRING([--enable-memuse-reports],
+     [Output reports about significant memory allocations@<:@yes/no@:>@]
+   )],
+   [enable_memuse_reports="$enableval"],
+   [enable_memuse_reports="no"]
+)
+if test "$enable_memuse_reports" = "yes"; then
+   AC_DEFINE([SWIFT_MEMUSE_REPORTS],1,[Enable memory usage reports])
+fi
+
 
 # Define HAVE_POSIX_MEMALIGN if it works.
 AX_FUNC_POSIX_MEMALIGN

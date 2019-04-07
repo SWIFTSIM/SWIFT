@@ -1600,6 +1600,8 @@ void cell_reset_task_counters(struct cell *c) {
 #ifdef SWIFT_DEBUG_CHECKS
   for (int t = 0; t < task_type_count; ++t) c->tasks_executed[t] = 0;
   for (int t = 0; t < task_subtype_count; ++t) c->subtasks_executed[t] = 0;
+  for (int k = 0; k < 8; ++k)
+    if (c->progeny[k] != NULL) cell_reset_task_counters(c->progeny[k]);
 #else
   error("Calling debugging code without debugging flag activated.");
 #endif
@@ -1813,18 +1815,10 @@ void cell_check_multipole(struct cell *c) {
 void cell_clean(struct cell *c) {
 
   /* Hydro */
-  for (int i = 0; i < 13; i++)
-    if (c->hydro.sort[i] != NULL) {
-      free(c->hydro.sort[i]);
-      c->hydro.sort[i] = NULL;
-    }
+  cell_free_hydro_sorts(c);
 
   /* Stars */
-  for (int i = 0; i < 13; i++)
-    if (c->stars.sort[i] != NULL) {
-      free(c->stars.sort[i]);
-      c->stars.sort[i] = NULL;
-    }
+  cell_free_stars_sorts(c);
 
   /* Recurse */
   for (int k = 0; k < 8; k++)
@@ -3574,12 +3568,34 @@ int cell_unskip_stars_tasks(struct cell *c, struct scheduler *s) {
     const int cj_nodeID = nodeID;
 #endif
 
-    if ((ci_active && cj_nodeID == nodeID) ||
-        (cj_active && ci_nodeID == nodeID)) {
+    if (t->type == task_type_self && ci_active) {
       scheduler_activate(s, t);
-
-      /* Nothing more to do here, all drifts and sorts activated above */
     }
+
+    else if (t->type == task_type_sub_self && ci_active) {
+      scheduler_activate(s, t);
+    }
+
+    else if (t->type == task_type_pair || t->type == task_type_sub_pair) {
+
+      /* We only want to activate the task if the cell is active and is
+         going to update some gas on the *local* node */
+      if ((ci_nodeID == nodeID && cj_nodeID == nodeID) &&
+          (ci_active || cj_active)) {
+
+        scheduler_activate(s, t);
+
+      } else if ((ci_nodeID == nodeID && cj_nodeID != nodeID) && (cj_active)) {
+
+        scheduler_activate(s, t);
+
+      } else if ((ci_nodeID != nodeID && cj_nodeID == nodeID) && (ci_active)) {
+
+        scheduler_activate(s, t);
+      }
+    }
+
+    /* Nothing more to do here, all drifts and sorts activated above */
   }
 
   /* Unskip all the other task types. */
@@ -4300,10 +4316,7 @@ void cell_clear_stars_sort_flags(struct cell *c, const int is_super) {
 #ifdef SWIFT_DEBUG_CHECKS
     if (c != c->hydro.super) error("Cell is not a super-cell!!!");
 #endif
-
-    for (int i = 0; i < 13; i++) {
-      free(c->stars.sort[i]);
-    }
+    cell_free_stars_sorts(c);
   }
 
   /* Indicate that the cell is not sorted and cancel the pointer sorting arrays.
@@ -4455,6 +4468,9 @@ struct spart *cell_add_spart(struct engine *e, struct cell *const c) {
     top = top->parent;
   }
 
+  /* Lock the top-level cell as we are going to operate on it */
+  lock_lock(&top->stars.star_formation_lock);
+
   /* Are there any extra particles left? */
   if (top->stars.count == top->stars.count_total - 1) {
     message("We ran out of star particles!");
@@ -4492,6 +4508,19 @@ struct spart *cell_add_spart(struct engine *e, struct cell *const c) {
    * current cell*/
   cell_recursively_shift_sparts(top, progeny, /* main_branch=*/1);
 
+  /* Make sure the gravity will be recomputed for this particle in the next step
+   */
+  struct cell *top2 = c;
+  while (top2->parent != NULL) {
+    top2->grav.ti_end_min = e->ti_current;
+    top2 = top2->parent;
+  }
+  top2->grav.ti_end_min = e->ti_current;
+
+  /* Release the lock */
+  if (lock_unlock(&top->stars.star_formation_lock) != 0)
+    error("Failed to unlock the top-level cell.");
+
   /* We now have an empty spart as the first particle in that cell */
   struct spart *sp = &c->stars.parts[0];
   bzero(sp, sizeof(struct spart));
@@ -4503,13 +4532,6 @@ struct spart *cell_add_spart(struct engine *e, struct cell *const c) {
 
   /* Set it to the current time-bin */
   sp->time_bin = e->min_active_bin;
-
-  top = c;
-  while (top->parent != NULL) {
-    top->grav.ti_end_min = e->ti_current;
-    top = top->parent;
-  }
-  top->grav.ti_end_min = e->ti_current;
 
 #ifdef SWIFT_DEBUG_CHECKS
   /* Specify it was drifted to this point */

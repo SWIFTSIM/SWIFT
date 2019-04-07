@@ -309,11 +309,25 @@ void engine_marktasks_mapper(void *map_data, int num_elements,
       }
 
       /* Stars feedback */
-      else if ((t_subtype == task_subtype_stars_feedback) &&
-               ((ci_active_stars && ci_nodeID == nodeID) ||
-                (cj_active_stars && cj_nodeID == nodeID))) {
+      else if (t_subtype == task_subtype_stars_feedback) {
 
-        scheduler_activate(s, t);
+        /* We only want to activate the task if the cell is active and is
+           going to update some gas on the *local* node */
+        if ((ci_nodeID == nodeID && cj_nodeID == nodeID) &&
+            (ci_active_stars || cj_active_stars)) {
+
+          scheduler_activate(s, t);
+
+        } else if ((ci_nodeID == nodeID && cj_nodeID != nodeID) &&
+                   (cj_active_stars)) {
+
+          scheduler_activate(s, t);
+
+        } else if ((ci_nodeID != nodeID && cj_nodeID == nodeID) &&
+                   (ci_active_stars)) {
+
+          scheduler_activate(s, t);
+        }
       }
 
       /* Gravity */
