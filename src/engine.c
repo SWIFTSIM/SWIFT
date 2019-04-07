@@ -3139,8 +3139,9 @@ void engine_step(struct engine *e) {
 #endif
     /* Write the star formation information to the file */
     if (e->policy & engine_policy_star_formation) {
-      star_formation_logger_write_to_log_file(
-          e->sfh_logger, e->time, e->cosmology->a, e->cosmology->z, e->sfh,e->step);
+      star_formation_logger_write_to_log_file(e->sfh_logger, e->time,
+                                              e->cosmology->a, e->cosmology->z,
+                                              e->sfh, e->step);
     }
 
     if (!e->restarting)
@@ -3400,7 +3401,7 @@ void engine_check_for_dumps(struct engine *e) {
 #endif
         }
 
-        /* Dump... */
+          /* Dump... */
 #ifdef WITH_LOGGER
         /* Write a file containing the offsets in the particle logger. */
         engine_dump_index(e);

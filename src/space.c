@@ -786,7 +786,7 @@ void space_allocate_extras(struct space *s, int verbose) {
       s->gparts[i].id_or_neg_offset = -1;
     }
 
-    /* Put the spare particles in their correct cell */
+      /* Put the spare particles in their correct cell */
 #ifdef WITH_MPI
     error("Need to do this correctly over MPI for only the local cells.");
 #endif
@@ -875,7 +875,7 @@ void space_allocate_extras(struct space *s, int verbose) {
       s->parts[i].id = -1;
     }
 
-    /* Put the spare particles in their correct cell */
+      /* Put the spare particles in their correct cell */
 #ifdef WITH_MPI
     error("Need to do this correctly over MPI for only the local cells.");
 #endif
@@ -954,7 +954,7 @@ void space_allocate_extras(struct space *s, int verbose) {
       s->sparts[i].id = -42;
     }
 
-    /* Put the spare particles in their correct cell */
+      /* Put the spare particles in their correct cell */
 #ifdef WITH_MPI
     error("Need to do this correctly over MPI for only the local cells.");
 #endif

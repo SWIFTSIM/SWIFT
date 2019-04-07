@@ -672,7 +672,7 @@ void runner_do_star_formation(struct runner *r, struct cell *c, int timer) {
         }      /* Not Star-forming? */
       } else { /* is active? */
         /* Check if the particle is not inhibited */
-        if (!part_is_inhibited(p,e)) {  
+        if (!part_is_inhibited(p, e)) {
           star_formation_logger_log_inactive_part(p, xp, &c->stars.sfh);
         }
       }
@@ -1463,10 +1463,10 @@ void runner_do_ghost(struct runner *r, struct cell *c, int timer) {
           if (((p->h >= hydro_h_max) && (f < 0.f)) ||
               ((p->h <= hydro_h_min) && (f > 0.f))) {
 
-            /* We have a particle whose smoothing length is already set (wants
-             * to be larger but has already hit the maximum OR wants to be
-             * smaller but has already reached the minimum). So, just tidy up as
-             * if the smoothing length had converged correctly  */
+          /* We have a particle whose smoothing length is already set (wants
+           * to be larger but has already hit the maximum OR wants to be
+           * smaller but has already reached the minimum). So, just tidy up as
+           * if the smoothing length had converged correctly  */
 
 #ifdef EXTRA_HYDRO_LOOP
 
@@ -1611,7 +1611,7 @@ void runner_do_ghost(struct runner *r, struct cell *c, int timer) {
           }
         }
 
-        /* We now have a particle whose smoothing length has converged */
+          /* We now have a particle whose smoothing length has converged */
 
 #ifdef EXTRA_HYDRO_LOOP
 
