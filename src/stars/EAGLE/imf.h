@@ -173,19 +173,19 @@ inline static void init_imf(struct stars_props *restrict star_properties) {
                     (double)(star_properties->feedback.n_imf_mass_bins - 1);
 
   /* Allocate IMF array */
-  if (posix_memalign((void **)&star_properties->feedback.imf,
+  if (swift_memalign("imf-tables", (void **)&star_properties->feedback.imf,
                      SWIFT_STRUCT_ALIGNMENT,
                      star_properties->feedback.n_imf_mass_bins * sizeof(float)) != 0)
     error("Failed to allocate IMF bins table");
 
   /* Allocate array to store IMF mass bins */
-  if (posix_memalign((void **)&star_properties->feedback.imf_mass_bin,
+  if (swift_memalign("imf-tables", (void **)&star_properties->feedback.imf_mass_bin,
                      SWIFT_STRUCT_ALIGNMENT,
                      star_properties->feedback.n_imf_mass_bins * sizeof(float)) != 0)
     error("Failed to allocate IMF bins table");
 
   /* Allocate array to store IMF mass bins in log10 space */
-  if (posix_memalign((void **)&star_properties->feedback.imf_mass_bin_log10,
+  if (swift_memalign("imf-tables", (void **)&star_properties->feedback.imf_mass_bin_log10,
                      SWIFT_STRUCT_ALIGNMENT,
                      star_properties->feedback.n_imf_mass_bins * sizeof(float)) != 0)
     error("Failed to allocate IMF bins table");
