@@ -105,3 +105,10 @@ EAGLEEntropyFloor:
   Cool_over_density_threshold:    10.        # Overdensity above which the EAGLE Cool limiter entropy floor can kick in.
   Cool_temperature_norm_K:        8000       # Temperature of the EAGLE Cool limiter entropy floor at the density threshold expressed in Kelvin.
   Cool_gamma_effective:           1.         # Slope the of the EAGLE Cool limiter entropy floor
+
+EagleStellarEvolution:
+  filename:     /cosma5/data/Eagle/BG_Tables/YieldTables/
+  imf_model:    Chabrier
+
+EAGLEFeedback:
+  lifetime_flag:  2

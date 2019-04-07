@@ -1760,9 +1760,6 @@ case "$with_feedback" in
    thermal)
       AC_DEFINE([FEEDBACK_THERMAL], [1], [Thermal Blastwave])
    ;;
-   const)
-      AC_DEFINE([FEEDBACK_CONST], [1], [Constant feedback model])
-   ;;
    none)
    ;;
 
