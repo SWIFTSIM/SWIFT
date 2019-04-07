@@ -69,9 +69,12 @@ runner_iact_nonsym_stars_density(
   /* Add mass of pj to neighbour mass of si  */
   si->ngb_mass += hydro_get_mass(pj);  
 
-  /* Add contribution of pj to normalisation of kernel (TODO: IMPROVE COMMENT?)
-   */
-  si->density_weighted_frac_normalisation_inv += wj / hydro_get_physical_density(pj,cosmo);
+  /* Add contribution of pj to normalisation of density weighted fraction 
+   * which determines how much mass to distribute to neighbouring 
+   * gas particles */
+  const float rho = hydro_get_physical_density(pj,cosmo);
+  if (rho != 0)
+    si->density_weighted_frac_normalisation_inv += wj / rho;
 
   /* Compute contribution to the density */
   si->rho_gas += mj * wi;

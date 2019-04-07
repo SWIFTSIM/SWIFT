@@ -19,6 +19,7 @@
 
 #include "swift.h"
 
+#ifdef STARS_EAGLE
 /** 
  * @brief compute the relative error between two floats
  *
@@ -199,3 +200,12 @@ int main(int argc, char *argv[]) {
 
   return 0;
 }
+
+#else
+
+/* Don't do anything if not using EAGLE stars */
+int main(int argc, char *argv[]) {
+  return 0;
+}
+
+#endif
