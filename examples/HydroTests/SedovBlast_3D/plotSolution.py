@@ -24,7 +24,7 @@
 # Parameters
 rho_0 = 1.          # Background Density
 P_0 = 1.e-6         # Background Pressure
-E_0 = 1.            # Energy of the explosion
+E_0 = 1.0           # Energy of the explosion
 gas_gamma = 5./3.   # Gas polytropic index
 
 
@@ -86,6 +86,18 @@ S = sim["/PartType0/Entropy"][:]
 P = sim["/PartType0/Pressure"][:]
 rho = sim["/PartType0/Density"][:]
 
+try:
+    diffusion = sim["/PartType0/Diffusion"][:]
+    plot_diffusion = True
+except:
+    plot_diffusion = False
+
+try:
+    viscosity = sim["/PartType0/Viscosity"][:]
+    plot_viscosity = True
+except:
+    plot_viscosity = False
+
 # Bin te data
 r_bin_edge = np.arange(0., 0.5, 0.01)
 r_bin = 0.5*(r_bin_edge[1:] + r_bin_edge[:-1])
@@ -104,6 +116,16 @@ v_sigma_bin = np.sqrt(v2_bin - v_bin**2)
 P_sigma_bin = np.sqrt(P2_bin - P_bin**2)
 S_sigma_bin = np.sqrt(S2_bin - S_bin**2)
 u_sigma_bin = np.sqrt(u2_bin - u_bin**2)
+
+if plot_diffusion:
+    alpha_diff_bin,_,_ = stats.binned_statistic(r, diffusion, statistic='mean', bins=r_bin_edge)
+    alpha2_diff_bin,_,_ = stats.binned_statistic(r, diffusion**2, statistic='mean', bins=r_bin_edge)
+    alpha_diff_sigma_bin = np.sqrt(alpha2_diff_bin - alpha_diff_bin**2)
+
+if plot_viscosity:
+    alpha_visc_bin,_,_ = stats.binned_statistic(r, viscosity, statistic='mean', bins=r_bin_edge)
+    alpha2_visc_bin,_,_ = stats.binned_statistic(r, viscosity**2, statistic='mean', bins=r_bin_edge)
+    alpha_visc_sigma_bin = np.sqrt(alpha2_visc_bin - alpha_visc_bin**2)
 
 
 # Now, work our the solution....
@@ -274,14 +296,28 @@ ylim(-2, 22)
 
 # Entropy profile ---------------------------------
 subplot(235)
-plot(r, S, '.', color='r', ms=0.5, alpha=0.2)
-plot(r_s, s_s, '--', color='k', alpha=0.8, lw=1.2)
-errorbar(r_bin, S_bin, yerr=S_sigma_bin, fmt='.', ms=8.0, color='b', lw=1.2)
 xlabel("${\\rm{Radius}}~r$", labelpad=0)
-ylabel("${\\rm{Entropy}}~S$", labelpad=0)
-xlim(0, 1.3 * r_shock)
-ylim(-5, 50)
 
+
+if plot_diffusion or plot_viscosity:
+    if plot_diffusion:
+        plot(r, diffusion, ".", color='r', ms=0.5, alpha=0.2)
+        errorbar(r_bin, alpha_diff_bin, yerr=alpha_diff_sigma_bin, fmt=".", ms=8.0, color='b', lw=1.2, label="Diffusion")
+
+    if plot_viscosity:
+        plot(r, viscosity, ".", color='g', ms=0.5, alpha=0.2)
+        errorbar(r_bin, alpha_visc_bin, yerr=alpha_visc_sigma_bin, fmt=".", ms=8.0, color='y', lw=1.2, label="Viscosity")
+
+    ylabel("${\\rm{Rate~Coefficient}}~\\alpha$", labelpad=0)
+    legend()
+else:
+    plot(r, S, '.', color='r', ms=0.5, alpha=0.2)
+    plot(r_s, s_s, '--', color='k', alpha=0.8, lw=1.2)
+    errorbar(r_bin, S_bin, yerr=S_sigma_bin, fmt='.', ms=8.0, color='b', lw=1.2)
+    ylabel("${\\rm{Entropy}}~S$", labelpad=0)
+    ylim(-5, 50)
+
+xlim(0, 1.3 * r_shock)
 # Information -------------------------------------
 subplot(236, frameon=False)
 

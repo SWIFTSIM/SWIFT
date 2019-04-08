@@ -76,7 +76,10 @@ __attribute__((always_inline)) INLINE static int cooling_write_particles(
                                               UNIT_CONV_TEMPERATURE, parts,
                                               xparts, convert_part_T);
 
-  return 1;
+  list[1] = io_make_output_field("RadiatedEnergy", FLOAT, 1, UNIT_CONV_ENERGY,
+                                 xparts, cooling_data.radiated_energy);
+
+  return 2;
 }
 
 #endif /* SWIFT_COOLING_CONST_LAMBDA_IO_H */
