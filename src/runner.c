@@ -1134,9 +1134,6 @@ void runner_do_stars_sort(struct runner *r, struct cell *c, int flags,
 
         /* Copy the minimum into the new sort array. */
         finger[ind].d = buff[inds[0]];
-        if (c->progeny[inds[0]] == NULL ||
-            c->progeny[inds[0]]->stars.count == 0)
-          error("should not do it");
         finger[ind].i = fingers[inds[0]]->i + off[inds[0]];
 
         /* Update the buffer. */
