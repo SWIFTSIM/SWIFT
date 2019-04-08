@@ -73,7 +73,7 @@ runner_iact_nonsym_stars_density(
   /* Add contribution of pj to normalisation of density weighted fraction
    * which determines how much mass to distribute to neighbouring
    * gas particles */
-  const float rho = hydro_get_physical_density(pj, cosmo);
+  const float rho = hydro_get_comoving_density(pj);
   if (rho != 0) si->density_weighted_frac_normalisation_inv += wj / rho;
 
   /* Compute contribution to the density */
@@ -122,7 +122,7 @@ runner_iact_nonsym_stars_feedback(
 
   /* Compute weighting for distributing feedback quantities */
   float density_weighted_frac;
-  float rho = hydro_get_physical_density(pj, cosmo);
+  float rho = hydro_get_comoving_density(pj);
   if (rho * si->density_weighted_frac_normalisation_inv != 0) {
     density_weighted_frac =
         wj / (rho * si->density_weighted_frac_normalisation_inv);
