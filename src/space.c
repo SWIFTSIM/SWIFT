@@ -3598,7 +3598,7 @@ void space_first_init_sparts_mapper(void *restrict map_data, int count,
   for (int k = 0; k < count; k++) {
 
     stars_first_init_spart(&sp[k]);
-    
+
     /* Also initialise the chemistry */
     chemistry_first_init_spart(chemistry, &sp[k]);
 

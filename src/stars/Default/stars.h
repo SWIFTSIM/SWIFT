@@ -155,7 +155,7 @@ __attribute__((always_inline)) INLINE static void stars_spart_has_no_neighbours(
  */
 __attribute__((always_inline)) INLINE static void stars_evolve_spart(
     struct spart* restrict sp, const struct stars_props* stars_properties,
-    const struct cosmology* cosmo, const struct unit_system *us,
+    const struct cosmology* cosmo, const struct unit_system* us,
     double star_age, double dt) {}
 
 /**
@@ -180,13 +180,13 @@ __attribute__((always_inline)) INLINE static void stars_reset_feedback(
 }
 
 /**
- * @brief Initializes constants related to stellar evolution, initializes imf, reads and processes yield tables
+ * @brief Initializes constants related to stellar evolution, initializes imf,
+ * reads and processes yield tables
  *
- * @param params swift_params parameters structure 
+ * @param params swift_params parameters structure
  * @param stars stars_props data structure
  */
 inline static void stars_evolve_init(struct swift_params* params,
                                      struct stars_props* restrict stars) {}
-
 
 #endif /* SWIFT_DEFAULT_STARS_H */

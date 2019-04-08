@@ -201,7 +201,8 @@ double cosmology_get_delta_time(const struct cosmology *c,
                                 integertime_t ti_start, integertime_t ti_end);
 
 double cosmology_get_delta_time_from_scale_factors(const struct cosmology *c,
-                           const double a_start, const double a_end);
+                                                   const double a_start,
+                                                   const double a_end);
 
 double cosmology_get_scale_factor(const struct cosmology *cosmo, double t);
 

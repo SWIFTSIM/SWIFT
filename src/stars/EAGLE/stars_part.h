@@ -93,7 +93,7 @@ struct spart {
 
     /* Total mass released by element */
     float metal_mass[chemistry_element_count];
-    
+
     /*! Total mass released due to SNIa */
     float mass_from_SNIa;
 
@@ -126,7 +126,8 @@ struct spart {
 
   } to_distribute;
 
-  /* Normalisation factor for density weight fraction for feedback (equivalent to metalweight_norm in EAGLE, see eagle_enrich.c:811) */
+  /* Normalisation factor for density weight fraction for feedback (equivalent
+   * to metalweight_norm in EAGLE, see eagle_enrich.c:811) */
   float density_weighted_frac_normalisation_inv;
 
   /* total mass (unweighted) of neighbouring gas particles */
@@ -160,7 +161,6 @@ struct spart {
   integertime_t ti_kick;
 
 #endif
-
 
 #ifdef DEBUG_INTERACTIONS_STARS
   /*! Number of interactions in the density SELF and PAIR */
@@ -208,7 +208,8 @@ struct yield_table {
 };
 
 /**
- * @brief Stores tables to determine stellar lifetimes. Used for calculation of IMF
+ * @brief Stores tables to determine stellar lifetimes. Used for calculation of
+ * IMF
  */
 struct lifetime_table {
   /* number of elements, mass, and initial metallicity bins */
@@ -295,7 +296,8 @@ struct stars_props {
     /* Element name string length */
     int element_name_length;
 
-    /* Sizes of dimensions of arrays in yield tables for each enrichment channel */
+    /* Sizes of dimensions of arrays in yield tables for each enrichment channel
+     */
     int SNIa_n_elements;
     int SNII_n_mass;
     int SNII_n_elements;
@@ -346,7 +348,6 @@ struct stars_props {
     /* wind delay time for SNII */
     float SNII_wind_delay;
   } feedback;
-
 };
 
 #endif /* SWIFT_EAGLE_STAR_PART_H */

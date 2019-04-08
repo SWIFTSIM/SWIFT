@@ -133,8 +133,8 @@ INLINE static void stars_props_init(struct stars_props *sp,
     sp->log_max_h_change = logf(powf(max_volume_change, hydro_dimension_inv));
 
   /* Read SNIa timscale */
-  sp->feedback.SNIa_timescale_Gyr =
-      parser_get_opt_param_float(params, "EAGLEFeedback:SNIa_timescale_Gyr", 2.f);
+  sp->feedback.SNIa_timescale_Gyr = parser_get_opt_param_float(
+      params, "EAGLEFeedback:SNIa_timescale_Gyr", 2.f);
 
   /* Read the efficiency of producing SNIa */
   sp->feedback.SNIa_efficiency = parser_get_opt_param_float(
@@ -146,21 +146,23 @@ INLINE static void stars_props_init(struct stars_props *sp,
 
   /* Set the delay time before SNII occur */
   const float Gyr_in_cgs = 3.154e16;
-  sp->feedback.SNII_wind_delay = parser_get_opt_param_float(
-                            params, "EAGLEFeedback:SNII_wind_delay_Gyr", 0.03) *
-                        Gyr_in_cgs /
-                        units_cgs_conversion_factor(us, UNIT_CONV_TIME);
+  sp->feedback.SNII_wind_delay =
+      parser_get_opt_param_float(params, "EAGLEFeedback:SNII_wind_delay_Gyr",
+                                 0.03) *
+      Gyr_in_cgs / units_cgs_conversion_factor(us, UNIT_CONV_TIME);
 
   /* Read the temperature change to use in stochastic heating */
-  sp->feedback.SNe_deltaT_desired =
-      parser_get_opt_param_float(params, "EAGLEFeedback:SNe_heating_temperature_K", 3.16228e7);
-  sp->feedback.SNe_deltaT_desired /= units_cgs_conversion_factor(us, UNIT_CONV_TEMPERATURE);
+  sp->feedback.SNe_deltaT_desired = parser_get_opt_param_float(
+      params, "EAGLEFeedback:SNe_heating_temperature_K", 3.16228e7);
+  sp->feedback.SNe_deltaT_desired /=
+      units_cgs_conversion_factor(us, UNIT_CONV_TEMPERATURE);
 
   /* Set ejecta thermal energy */
   const float ejecta_velocity =
       1.0e6 / units_cgs_conversion_factor(
                   us, UNIT_CONV_SPEED);  // EAGLE parameter is 10 km/s
-  sp->feedback.ejecta_specific_thermal_energy = 0.5 * ejecta_velocity * ejecta_velocity;
+  sp->feedback.ejecta_specific_thermal_energy =
+      0.5 * ejecta_velocity * ejecta_velocity;
 
   /* Energy released by supernova */
   sp->feedback.total_energy_SNe =

@@ -356,22 +356,23 @@ void runner_do_stars_ghost(struct runner *r, struct cell *c, int timer) {
         /* We now have a particle whose smoothing length has converged */
         stars_reset_feedback(sp);
 
-	/* Only do feedback if stars have a reasonable birth time */
-	if (sp->birth_time != -1) {
+        /* Only do feedback if stars have a reasonable birth time */
+        if (sp->birth_time != -1) {
           // Calculate star age
-	  double star_age, current_time_begin = -1;
-	  if (with_cosmology) {
-	    star_age = cosmology_get_delta_time_from_scale_factors(cosmo, sp->birth_scale_factor, cosmo->a);
-	  } else {
+          double star_age, current_time_begin = -1;
+          if (with_cosmology) {
+            star_age = cosmology_get_delta_time_from_scale_factors(
+                cosmo, sp->birth_scale_factor, cosmo->a);
+          } else {
             current_time_begin =
-              get_integer_time_begin(e->ti_current - 1, sp->time_bin) *
-              e->time_base + e->time_begin;
-	    star_age = current_time_begin - sp->birth_time;
-	  }
-  	  
+                get_integer_time_begin(e->ti_current - 1, sp->time_bin) *
+                    e->time_base +
+                e->time_begin;
+            star_age = current_time_begin - sp->birth_time;
+          }
+
           /* Compute the stellar evolution  */
-          stars_evolve_spart(sp, e->stars_properties, cosmo, us,
-                             star_age, dt);
+          stars_evolve_spart(sp, e->stars_properties, cosmo, us, star_age, dt);
         }
       }
 

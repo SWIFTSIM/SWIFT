@@ -783,7 +783,8 @@ double cosmology_get_delta_time(const struct cosmology *c,
  * @param a_end the ending scale factor
  */
 double cosmology_get_delta_time_from_scale_factors(const struct cosmology *c,
-                           const double a_start, const double a_end) {
+                                                   const double a_start,
+                                                   const double a_end) {
 
 #ifdef SWIFT_DEBUG_CHECKS
   if (a_end < a_start) error("a_end must be >= a_start");

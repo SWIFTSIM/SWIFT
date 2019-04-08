@@ -133,7 +133,6 @@ __attribute__((always_inline)) INLINE static void chemistry_first_init_part(
 __attribute__((always_inline)) INLINE static void chemistry_init_part(
     struct part* restrict p, const struct chemistry_global_data* data) {}
 
-
 /**
  * @brief Sets the chemistry properties of the sparticles to a valid start
  * state.

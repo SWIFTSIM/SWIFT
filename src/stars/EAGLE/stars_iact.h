@@ -23,7 +23,8 @@
 
 /**
  * @brief Density interaction between two particles (non-symmetric).
- * MATTHIEU: check with RGB about concerns with comment (in this and other subgrid schemes)
+ * MATTHIEU: check with RGB about concerns with comment (in this and other
+ * subgrid schemes)
  *
  * @param r2 Comoving square distance between the two particles.
  * @param dx Comoving vector separating both particles (pi - pj).
@@ -67,14 +68,13 @@ runner_iact_nonsym_stars_density(
   si->density.wcount_dh -= (hydro_dimension * wi + ui * wi_dx);
 
   /* Add mass of pj to neighbour mass of si  */
-  si->ngb_mass += hydro_get_mass(pj);  
+  si->ngb_mass += hydro_get_mass(pj);
 
-  /* Add contribution of pj to normalisation of density weighted fraction 
-   * which determines how much mass to distribute to neighbouring 
+  /* Add contribution of pj to normalisation of density weighted fraction
+   * which determines how much mass to distribute to neighbouring
    * gas particles */
-  const float rho = hydro_get_physical_density(pj,cosmo);
-  if (rho != 0)
-    si->density_weighted_frac_normalisation_inv += wj / rho;
+  const float rho = hydro_get_physical_density(pj, cosmo);
+  if (rho != 0) si->density_weighted_frac_normalisation_inv += wj / rho;
 
   /* Compute contribution to the density */
   si->rho_gas += mj * wi;
@@ -122,16 +122,18 @@ runner_iact_nonsym_stars_feedback(
 
   /* Compute weighting for distributing feedback quantities */
   float density_weighted_frac;
-  float rho = hydro_get_physical_density(pj,cosmo);
+  float rho = hydro_get_physical_density(pj, cosmo);
   if (rho * si->density_weighted_frac_normalisation_inv != 0) {
-    density_weighted_frac = wj / (rho * si->density_weighted_frac_normalisation_inv);
+    density_weighted_frac =
+        wj / (rho * si->density_weighted_frac_normalisation_inv);
   } else {
     density_weighted_frac = 0.f;
   }
 
   /* Update particle mass */
   const float current_mass = hydro_get_mass(pj);
-  float new_mass = current_mass + si->to_distribute.mass * density_weighted_frac;
+  float new_mass =
+      current_mass + si->to_distribute.mass * density_weighted_frac;
   hydro_set_mass(pj, new_mass);
 
   /* Update total metallicity */
@@ -158,7 +160,7 @@ runner_iact_nonsym_stars_feedback(
       pj->chemistry_data.iron_mass_fraction_from_SNIa * current_mass;
   const float new_iron_from_SNIa_mass =
       current_iron_from_SNIa_mass +
-      si->to_distribute.Fe_mass_from_SNIa* density_weighted_frac;
+      si->to_distribute.Fe_mass_from_SNIa * density_weighted_frac;
   pj->chemistry_data.iron_mass_fraction_from_SNIa =
       new_iron_from_SNIa_mass / new_mass;
 
@@ -168,8 +170,7 @@ runner_iact_nonsym_stars_feedback(
   const float new_mass_from_SNIa =
       current_mass_from_SNIa +
       si->to_distribute.mass_from_SNIa * density_weighted_frac;
-  pj->chemistry_data.mass_from_SNIa =
-      new_mass_from_SNIa / new_mass;
+  pj->chemistry_data.mass_from_SNIa = new_mass_from_SNIa / new_mass;
 
   /* Update metal mass fraction from SNIa */
   const float current_metal_mass_fraction_from_SNIa =
@@ -186,8 +187,7 @@ runner_iact_nonsym_stars_feedback(
   const float new_mass_from_SNII =
       current_mass_from_SNII +
       si->to_distribute.mass_from_SNII * density_weighted_frac;
-  pj->chemistry_data.mass_from_SNII =
-      new_mass_from_SNII / new_mass;
+  pj->chemistry_data.mass_from_SNII = new_mass_from_SNII / new_mass;
 
   /* Update metal mass fraction from SNII */
   const float current_metal_mass_fraction_from_SNII =
@@ -204,8 +204,7 @@ runner_iact_nonsym_stars_feedback(
   const float new_mass_from_AGB =
       current_mass_from_AGB +
       si->to_distribute.mass_from_AGB * density_weighted_frac;
-  pj->chemistry_data.mass_from_AGB =
-      new_mass_from_AGB / new_mass;
+  pj->chemistry_data.mass_from_AGB = new_mass_from_AGB / new_mass;
 
   /* Update metal mass fraction from AGB */
   const float current_metal_mass_fraction_from_AGB =
@@ -218,11 +217,12 @@ runner_iact_nonsym_stars_feedback(
 
   /* Update momentum */
   for (int i = 0; i < 3; i++) {
-    pj->v[i] += si->to_distribute.mass * density_weighted_frac * (si->v[i] - pj->v[i]);
+    pj->v[i] +=
+        si->to_distribute.mass * density_weighted_frac * (si->v[i] - pj->v[i]);
   }
 
   /* Energy feedback */
-  float u_init = hydro_get_physical_internal_energy(pj,xp,cosmo);
+  float u_init = hydro_get_physical_internal_energy(pj, xp, cosmo);
   float heating_probability = -1.f, du = 0.f, d_energy = 0.f;
   d_energy =
       si->to_distribute.mass *
@@ -233,21 +233,23 @@ runner_iact_nonsym_stars_feedback(
   if (stars_properties->feedback.continuous_heating) {
     // We're doing ONLY continuous heating
     d_energy += si->to_distribute.num_SNIa *
-                stars_properties->feedback.total_energy_SNe * density_weighted_frac * si->mass_init;
+                stars_properties->feedback.total_energy_SNe *
+                density_weighted_frac * si->mass_init;
     du = d_energy / hydro_get_mass(pj);
-    hydro_set_physical_internal_energy(pj,xp,cosmo,u_init + du);
-    hydro_set_drifted_physical_internal_energy(pj,cosmo,u_init + du);
+    hydro_set_physical_internal_energy(pj, xp, cosmo, u_init + du);
+    hydro_set_drifted_physical_internal_energy(pj, cosmo, u_init + du);
   } else {
     // We're doing stochastic heating
-    heating_probability = stars_properties->feedback.total_energy_SNe /
-                          stars_properties->feedback.temp_to_u_factor *
-                          si->to_distribute.num_SNe /
-                          (stars_properties->feedback.SNe_deltaT_desired * si->ngb_mass);
+    heating_probability =
+        stars_properties->feedback.total_energy_SNe /
+        stars_properties->feedback.temp_to_u_factor *
+        si->to_distribute.num_SNe /
+        (stars_properties->feedback.SNe_deltaT_desired * si->ngb_mass);
     du = stars_properties->feedback.SNe_deltaT_desired *
          stars_properties->feedback.temp_to_u_factor;
     if (heating_probability >= 1) {
-      du = stars_properties->feedback.total_energy_SNe * si->to_distribute.num_SNIa /
-           si->ngb_mass;
+      du = stars_properties->feedback.total_energy_SNe *
+           si->to_distribute.num_SNIa / si->ngb_mass;
       heating_probability = 1;
     }
   }
@@ -255,8 +257,8 @@ runner_iact_nonsym_stars_feedback(
   double random_num =
       random_unit_interval(pj->id, ti_current, random_number_stellar_feedback);
   if (random_num < heating_probability) {
-    hydro_set_physical_internal_energy(pj,xp,cosmo,u_init + du);
-    hydro_set_drifted_physical_internal_energy(pj,cosmo,u_init + du);
+    hydro_set_physical_internal_energy(pj, xp, cosmo, u_init + du);
+    hydro_set_drifted_physical_internal_energy(pj, cosmo, u_init + du);
   }
 }
 

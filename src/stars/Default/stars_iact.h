@@ -113,5 +113,4 @@ runner_iact_nonsym_stars_feedback(
 #endif
 }
 
-
 #endif

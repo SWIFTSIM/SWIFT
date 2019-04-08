@@ -24,7 +24,7 @@
  *
  * @param table array to interpolate
  * @param i index of cell to interpolate
- * @param dx offset within cell to interpolate 
+ * @param dx offset within cell to interpolate
  */
 inline static double interpolate_1d(double* table, int i, float dx) {
   double result;
@@ -40,11 +40,11 @@ inline static double interpolate_1d(double* table, int i, float dx) {
  * @param table array to interpolate
  * @param i row index of cell to interpolate
  * @param j column index of cell to interpolate
- * @param dx row offset within cell to interpolate 
- * @param dy column offset within cell to interpolate 
+ * @param dx row offset within cell to interpolate
+ * @param dy column offset within cell to interpolate
  */
 inline static double interpolate_2d(double** table, int i, int j, float dx,
-                                 float dy) {
+                                    float dy) {
   double result;
 
   result = (1 - dx) * (1 - dy) * table[i][j] + (1 - dx) * dy * table[i][j + 1] +
@@ -54,15 +54,21 @@ inline static double interpolate_2d(double** table, int i, int j, float dx,
 }
 
 /**
- * @brief linear interpolation of non-uniformly spaced 1d array, array_y, whose positions are specified in array_x. The function takes an input value in the range of array_x and returns a value interpolated from array_y with the same offset in the corresponding bin. 
+ * @brief linear interpolation of non-uniformly spaced 1d array, array_y, whose
+ * positions are specified in array_x. The function takes an input value in the
+ * range of array_x and returns a value interpolated from array_y with the same
+ * offset in the corresponding bin.
  *
- * @param array_x array of values indicating positions of the array to be interpolated
+ * @param array_x array of values indicating positions of the array to be
+ * interpolated
  * @param array_y array to interpolate
  * @param size length of array_x and array_y
- * @param x value within range of array_x indicating bin and offset within array_y to interpolate
+ * @param x value within range of array_x indicating bin and offset within
+ * array_y to interpolate
  */
-inline static double interpolate_1D_non_uniform(double *array_x, double *array_y, int size,
-                                    double x) {
+inline static double interpolate_1D_non_uniform(double* array_x,
+                                                double* array_y, int size,
+                                                double x) {
 
   double result;
 
