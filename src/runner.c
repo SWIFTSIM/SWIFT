@@ -1352,7 +1352,7 @@ void runner_do_extra_ghost(struct runner *r, struct cell *c, int timer) {
   struct xpart *restrict xparts = c->hydro.xparts;
   const int count = c->hydro.count;
   const struct engine *e = r->e;
-  const integertime_t ti_end = e->ti_current;
+  const integertime_t ti_current = e->ti_current;
   const int with_cosmology = (e->policy & engine_policy_cosmology);
   const double time_base = e->time_base;
   const struct cosmology *cosmo = e->cosmology;
@@ -1387,9 +1387,14 @@ void runner_do_extra_ghost(struct runner *r, struct cell *c, int timer) {
          * This is the physical time between the start and end of the time-step
          * without any scale-factor powers. */
         double dt_alpha;
+
         if (with_cosmology) {
           const integertime_t ti_step = get_integer_timestep(p->time_bin);
-          dt_alpha = cosmology_get_delta_time(cosmo, ti_end - ti_step, ti_end);
+          const integertime_t ti_begin =
+              get_integer_time_begin(ti_current - 1, p->time_bin);
+
+          dt_alpha =
+              cosmology_get_delta_time(cosmo, ti_begin, ti_begin + ti_step);
         } else {
           dt_alpha = get_timestep(p->time_bin, time_base);
         }
@@ -1568,13 +1573,16 @@ void runner_do_ghost(struct runner *r, struct cell *c, int timer) {
              * artificial viscosity and thermal conduction terms) */
             const int with_cosmology = (e->policy & engine_policy_cosmology);
             const double time_base = e->time_base;
-            const integertime_t ti_end = e->ti_current;
+            const integertime_t ti_current = e->ti_current;
             double dt_alpha;
 
             if (with_cosmology) {
               const integertime_t ti_step = get_integer_timestep(p->time_bin);
+              const integertime_t ti_begin =
+                  get_integer_time_begin(ti_current - 1, p->time_bin);
+
               dt_alpha =
-                  cosmology_get_delta_time(cosmo, ti_end - ti_step, ti_end);
+                  cosmology_get_delta_time(cosmo, ti_begin, ti_begin + ti_step);
             } else {
               dt_alpha = get_timestep(p->time_bin, time_base);
             }
@@ -1712,13 +1720,17 @@ void runner_do_ghost(struct runner *r, struct cell *c, int timer) {
          * the evolution of alpha factors (i.e. those involved in the artificial
          * viscosity and thermal conduction terms) */
         const int with_cosmology = (e->policy & engine_policy_cosmology);
-        const integertime_t ti_end = e->ti_current;
         const double time_base = e->time_base;
+        const integertime_t ti_current = e->ti_current;
         double dt_alpha;
 
         if (with_cosmology) {
           const integertime_t ti_step = get_integer_timestep(p->time_bin);
-          dt_alpha = cosmology_get_delta_time(cosmo, ti_end - ti_step, ti_end);
+          const integertime_t ti_begin =
+              get_integer_time_begin(ti_current - 1, p->time_bin);
+
+          dt_alpha =
+              cosmology_get_delta_time(cosmo, ti_begin, ti_begin + ti_step);
         } else {
           dt_alpha = get_timestep(p->time_bin, time_base);
         }

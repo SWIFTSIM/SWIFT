@@ -45,7 +45,7 @@ internalEnergy = P / ((gamma - 1.)*rho)
 n_iterations = numPart / N
 remainder = numPart % N
 
-print "Writing", numPart, "in", n_iterations, "iterations of size", N, "and a remainder of", remainder
+print("Writing", numPart, "in", n_iterations, "iterations of size", N, "and a remainder of", remainder)
 
 #---------------------------------------------------
 
@@ -55,8 +55,8 @@ file = h5py.File(fileName, 'w')
 # Header
 grp = file.create_group("/Header")
 grp.attrs["BoxSize"] = boxSize
-grp.attrs["NumPart_Total"] =  [numPart % (long(1)<<32), 0, 0, 0, 0, 0]
-grp.attrs["NumPart_Total_HighWord"] = [numPart / (long(1)<<32), 0, 0, 0, 0, 0]
+grp.attrs["NumPart_Total"] =  [numPart % (int(1)<<32), 0, 0, 0, 0, 0]
+grp.attrs["NumPart_Total_HighWord"] = [numPart / (int(1)<<32), 0, 0, 0, 0, 0]
 grp.attrs["NumPart_ThisFile"] = [numPart, 0, 0, 0, 0, 0]
 grp.attrs["Time"] = 0.0
 grp.attrs["NumFilesPerSnapshot"] = 1
@@ -120,7 +120,7 @@ for n in range(n_iterations):
     coords  = zeros((1,3))
 
     offset += N
-    print "Done", offset,"/", numPart, "(%.1f %%)"%(100*(float)(offset)/numPart)
+    print("Done", offset,"/", numPart, "(%.1f %%)"%(100*(float)(offset)/numPart))
 
 # And now, the remainder
 v  = zeros((remainder, 3))
@@ -150,7 +150,7 @@ coords[:,1] = y[:,0] * boxSize / L + boxSize / (2*L)
 coords[:,2] = x[:,0] * boxSize / L + boxSize / (2*L)
 ods_x[offset:offset+remainder,:] = coords
 
-print "Done", offset+remainder,"/", numPart
+print("Done", offset+remainder,"/", numPart)
 
 
 
