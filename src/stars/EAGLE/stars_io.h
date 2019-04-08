@@ -145,7 +145,7 @@ INLINE static void stars_props_init(struct stars_props *sp,
       params, "EAGLEFeedback:continuous_heating_switch");
 
   /* Set the delay time before SNII occur */
-  const float Gyr_in_cgs = 3.154e16;
+  const float Gyr_in_cgs = 1e9 * 365 * 24 * 3600;
   sp->feedback.SNII_wind_delay =
       parser_get_param_float(params, "EAGLEFeedback:SNII_wind_delay_Gyr") *
       Gyr_in_cgs / units_cgs_conversion_factor(us, UNIT_CONV_TIME);
