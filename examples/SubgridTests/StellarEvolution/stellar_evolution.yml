@@ -91,7 +91,7 @@ EAGLEChemistry:              # Solar abundances
   init_abundance_Iron:       0.0
 
 EAGLEFeedback:
-  filename:     /cosma5/data/Eagle/BG_Tables/YieldTables/
+  filename:     ./yieldtables/
   imf_model:    Chabrier
   continuous_heating_switch: 0
   SNIa_timescale_Gyr:        2.0
