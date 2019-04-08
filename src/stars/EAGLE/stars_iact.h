@@ -224,11 +224,7 @@ runner_iact_nonsym_stars_feedback(
   /* Energy feedback */
   float u_init = hydro_get_physical_internal_energy(pj, xp, cosmo);
   float heating_probability = -1.f, du = 0.f, d_energy = 0.f;
-  d_energy =
-      si->to_distribute.mass *
-      (stars_properties->feedback.ejecta_specific_thermal_energy +
-       0.5 * (si->v[0] * si->v[0] + si->v[1] * si->v[1] + si->v[2] * si->v[2]) *
-           cosmo->a2_inv);
+  d_energy += si->to_distribute.d_energy;
 
   if (stars_properties->feedback.continuous_heating) {
     // We're doing ONLY continuous heating
@@ -240,11 +236,7 @@ runner_iact_nonsym_stars_feedback(
     hydro_set_drifted_physical_internal_energy(pj, cosmo, u_init + du);
   } else {
     // We're doing stochastic heating
-    heating_probability =
-        stars_properties->feedback.total_energy_SNe /
-        stars_properties->feedback.temp_to_u_factor *
-        si->to_distribute.num_SNe /
-        (stars_properties->feedback.SNe_deltaT_desired * si->ngb_mass);
+    heating_probability = si->to_distribute.heating_probability;
     du = stars_properties->feedback.SNe_deltaT_desired *
          stars_properties->feedback.temp_to_u_factor;
     if (heating_probability >= 1) {

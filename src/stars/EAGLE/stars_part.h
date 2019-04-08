@@ -124,6 +124,12 @@ struct spart {
     /* Number of SNe in timestep  */
     float num_SNe;
 
+    /* Energy change due to thermal and kinetic energy of ejecta */
+    float d_energy;
+
+    /* Probability for heating neighbouring gas particles */
+    float heating_probability;
+
   } to_distribute;
 
   /* Normalisation factor for density weight fraction for feedback (equivalent

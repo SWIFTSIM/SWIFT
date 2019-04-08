@@ -731,8 +731,9 @@ inline static float compute_SNe(struct spart* sp,
                                 float age, double dt) {
   if (age <= stars_properties->feedback.SNII_wind_delay &&
       age + dt > stars_properties->feedback.SNII_wind_delay) {
-    return stars_properties->feedback.num_SNII_per_msun * sp->mass_init /
-           stars_properties->feedback.const_solar_mass;
+    //return stars_properties->feedback.num_SNII_per_msun * sp->mass_init /
+    //       stars_properties->feedback.const_solar_mass;
+    return 0;
   } else {
     return 0;
   }
@@ -779,6 +780,19 @@ __attribute__((always_inline)) INLINE static void stars_evolve_spart(
 
   /* Compute the number of type II SNe that went off */
   sp->to_distribute.num_SNe = compute_SNe(sp, stars_properties, star_age, dt);
+
+  /* Compute energy change due to thermal and kinetic energy of ejecta */
+  sp->to_distribute.d_energy = sp->to_distribute.mass *
+      (stars_properties->feedback.ejecta_specific_thermal_energy +
+       0.5 * (sp->v[0] * sp->v[0] + sp->v[1] * sp->v[1] + sp->v[2] * sp->v[2]) *
+           cosmo->a2_inv);
+
+  /* Compute probability of heating neighbouring particles */
+  sp->to_distribute.heating_probability = 
+      stars_properties->feedback.total_energy_SNe /
+      stars_properties->feedback.temp_to_u_factor *
+      sp->to_distribute.num_SNe /
+      (stars_properties->feedback.SNe_deltaT_desired * sp->ngb_mass);
 }
 
 /**
