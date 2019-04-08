@@ -3687,7 +3687,8 @@ void engine_unskip(struct engine *e) {
 
     if ((with_hydro && cell_is_active_hydro(c, e)) ||
         (with_self_grav && cell_is_active_gravity(c, e)) ||
-	(with_ext_grav && c->nodeID == nodeID && cell_is_active_gravity(c, e)) ||
+        (with_ext_grav && c->nodeID == nodeID &&
+         cell_is_active_gravity(c, e)) ||
         (with_feedback && cell_is_active_stars(c, e)) ||
         (with_stars && c->nodeID == nodeID && cell_is_active_stars(c, e))) {
 
