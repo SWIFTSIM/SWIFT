@@ -2567,6 +2567,8 @@ void engine_collect_end_of_step_mapper(void *map_data, int num_elements,
   const struct engine *e = data->e;
   const int with_hydro = (e->policy & engine_policy_hydro);
   const int with_self_grav = (e->policy & engine_policy_self_gravity);
+  const int with_ext_grav = (e->policy & engine_policy_external_gravity);
+  const int with_grav = (with_self_grav || with_ext_grav);
   const int with_stars = (e->policy & engine_policy_stars);
   struct space *s = e->s;
   int *local_cells = (int *)map_data;
@@ -2590,7 +2592,7 @@ void engine_collect_end_of_step_mapper(void *map_data, int num_elements,
       if (with_hydro) {
         engine_collect_end_of_step_recurse_hydro(c, e);
       }
-      if (with_self_grav) {
+      if (with_grav) {
         engine_collect_end_of_step_recurse_grav(c, e);
       }
       if (with_stars) {
@@ -3667,7 +3669,6 @@ void engine_unskip(struct engine *e) {
   const int with_hydro = e->policy & engine_policy_hydro;
   const int with_self_grav = e->policy & engine_policy_self_gravity;
   const int with_ext_grav = e->policy & engine_policy_external_gravity;
-  const int with_grav = (with_self_grav || with_ext_grav);
   const int with_stars = e->policy & engine_policy_stars;
   const int with_feedback = e->policy & engine_policy_feedback;
 
@@ -3685,7 +3686,8 @@ void engine_unskip(struct engine *e) {
     struct cell *c = &s->cells_top[local_cells[k]];
 
     if ((with_hydro && cell_is_active_hydro(c, e)) ||
-        (with_grav && cell_is_active_gravity(c, e)) ||
+        (with_self_grav && cell_is_active_gravity(c, e)) ||
+	(with_ext_grav && c->nodeID == nodeID && cell_is_active_gravity(c, e)) ||
         (with_feedback && cell_is_active_stars(c, e)) ||
         (with_stars && c->nodeID == nodeID && cell_is_active_stars(c, e))) {
 

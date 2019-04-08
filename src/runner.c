@@ -1903,6 +1903,7 @@ void runner_do_unskip_mapper(void *map_data, int num_elements,
                              void *extra_data) {
 
   struct engine *e = (struct engine *)extra_data;
+  const int nodeID = e->nodeID;
   struct space *s = e->s;
   int *local_cells = (int *)map_data;
 
@@ -1915,7 +1916,7 @@ void runner_do_unskip_mapper(void *map_data, int num_elements,
 
       /* All gravity tasks */
       if ((e->policy & engine_policy_self_gravity) ||
-          (e->policy & engine_policy_external_gravity))
+          ((e->policy & engine_policy_external_gravity) && c->nodeID == nodeID))
         runner_do_unskip_gravity(c, e);
 
       /* Stars tasks */
