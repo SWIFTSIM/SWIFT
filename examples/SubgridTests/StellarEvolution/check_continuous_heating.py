@@ -90,7 +90,6 @@ smoothing_length_sparts = zeros(n_snapshots)
 time = zeros(n_snapshots)
 
 # Read fields we are checking from snapshots
-#for i in [0,n_snapshots-1]:
 for i in range(n_snapshots):
 	sim = h5py.File("stellar_evolution_%04d.hdf5"%i, "r")
 	print('reading snapshot '+str(i))
