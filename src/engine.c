@@ -134,7 +134,7 @@ struct end_of_step_data {
   size_t inhibited, g_inhibited, s_inhibited;
   integertime_t ti_hydro_end_min, ti_hydro_end_max, ti_hydro_beg_max;
   integertime_t ti_gravity_end_min, ti_gravity_end_max, ti_gravity_beg_max;
-  integertime_t ti_stars_end_min;
+  integertime_t ti_stars_end_min, ti_stars_end_max, ti_stars_beg_max;
   struct engine *e;
 };
 
@@ -556,7 +556,8 @@ void engine_redistribute(struct engine *e) {
 
   /* Start by moving inhibited particles to the end of the arrays */
   for (size_t k = 0; k < nr_parts; /* void */) {
-    if (parts[k].time_bin == time_bin_inhibited) {
+    if (parts[k].time_bin == time_bin_inhibited ||
+        parts[k].time_bin == time_bin_not_created) {
       nr_parts -= 1;
 
       /* Swap the particle */
@@ -579,7 +580,8 @@ void engine_redistribute(struct engine *e) {
 
   /* Now move inhibited star particles to the end of the arrays */
   for (size_t k = 0; k < nr_sparts; /* void */) {
-    if (sparts[k].time_bin == time_bin_inhibited) {
+    if (sparts[k].time_bin == time_bin_inhibited ||
+        sparts[k].time_bin == time_bin_not_created) {
       nr_sparts -= 1;
 
       /* Swap the particle */
@@ -599,7 +601,8 @@ void engine_redistribute(struct engine *e) {
 
   /* Finally do the same with the gravity particles */
   for (size_t k = 0; k < nr_gparts; /* void */) {
-    if (gparts[k].time_bin == time_bin_inhibited) {
+    if (gparts[k].time_bin == time_bin_inhibited ||
+        gparts[k].time_bin == time_bin_not_created) {
       nr_gparts -= 1;
 
       /* Swap the particle */
@@ -664,6 +667,12 @@ void engine_redistribute(struct engine *e) {
   for (size_t k = 0; k < nr_parts; k++) {
     const struct part *p = &s->parts[k];
 
+    if (p->time_bin == time_bin_inhibited)
+      error("Inhibited particle found after sorting!");
+
+    if (p->time_bin == time_bin_not_created)
+      error("Inhibited particle found after sorting!");
+
     /* New cell index */
     const int new_cid =
         cell_getid(s->cdim, p->x[0] * s->iwidth[0], p->x[1] * s->iwidth[1],
@@ -723,6 +732,12 @@ void engine_redistribute(struct engine *e) {
   for (size_t k = 0; k < nr_sparts; k++) {
     const struct spart *sp = &s->sparts[k];
 
+    if (sp->time_bin == time_bin_inhibited)
+      error("Inhibited particle found after sorting!");
+
+    if (sp->time_bin == time_bin_not_created)
+      error("Inhibited particle found after sorting!");
+
     /* New cell index */
     const int new_cid =
         cell_getid(s->cdim, sp->x[0] * s->iwidth[0], sp->x[1] * s->iwidth[1],
@@ -780,6 +795,12 @@ void engine_redistribute(struct engine *e) {
   /* Verify that the gpart have been sorted correctly. */
   for (size_t k = 0; k < nr_gparts; k++) {
     const struct gpart *gp = &s->gparts[k];
+
+    if (gp->time_bin == time_bin_inhibited)
+      error("Inhibited particle found after sorting!");
+
+    if (gp->time_bin == time_bin_not_created)
+      error("Inhibited particle found after sorting!");
 
     /* New cell index */
     const int new_cid =
@@ -951,6 +972,7 @@ void engine_redistribute(struct engine *e) {
   /* Verify that the links are correct */
   part_verify_links(s->parts, s->gparts, s->sparts, nr_parts_new, nr_gparts_new,
                     nr_sparts_new, e->verbose);
+
 #endif
 
   /* Be verbose about what just happened. */
@@ -961,6 +983,11 @@ void engine_redistribute(struct engine *e) {
     message("node %i now has %zu parts, %zu sparts and %zu gparts in %i cells.",
             nodeID, nr_parts_new, nr_sparts_new, nr_gparts_new, my_cells);
   }
+
+  /* Flag that we do not have any extra particles any more */
+  s->nr_extra_parts = 0;
+  s->nr_extra_gparts = 0;
+  s->nr_extra_sparts = 0;
 
   /* Flag that a redistribute has taken place */
   e->step_props |= engine_step_prop_redistribute;
@@ -2355,57 +2382,45 @@ void engine_barrier(struct engine *e) {
  * @param c The #cell to recurse into.
  * @param e The #engine.
  */
-void engine_collect_end_of_step_recurse(struct cell *c,
-                                        const struct engine *e) {
+void engine_collect_end_of_step_recurse_hydro(struct cell *c,
+                                              const struct engine *e) {
 
 /* Skip super-cells (Their values are already set) */
 #ifdef WITH_MPI
-  if (c->timestep != NULL || c->mpi.recv_ti != NULL) return;
+  if (c->timestep != NULL || c->mpi.hydro.recv_ti != NULL) return;
 #else
   if (c->timestep != NULL) return;
 #endif /* WITH_MPI */
 
+#ifdef SWIFT_DEBUG_CHECKS
+    /* if (!c->split) error("Reached a leaf without finding a time-step task!
+     * c->depth=%d c->maxdepth=%d c->count=%d c->node=%d", */
+    /* 		       c->depth, c->maxdepth, c->hydro.count, c->nodeID); */
+#endif
+
   /* Counters for the different quantities. */
-  size_t updated = 0, g_updated = 0, s_updated = 0;
-  size_t inhibited = 0, g_inhibited = 0, s_inhibited = 0;
+  size_t updated = 0, inhibited = 0;
   integertime_t ti_hydro_end_min = max_nr_timesteps, ti_hydro_end_max = 0,
                 ti_hydro_beg_max = 0;
-  integertime_t ti_gravity_end_min = max_nr_timesteps, ti_gravity_end_max = 0,
-                ti_gravity_beg_max = 0;
-  integertime_t ti_stars_end_min = max_nr_timesteps;
 
   /* Collect the values from the progeny. */
   for (int k = 0; k < 8; k++) {
     struct cell *cp = c->progeny[k];
-    if (cp != NULL &&
-        (cp->hydro.count > 0 || cp->grav.count > 0 || cp->stars.count > 0)) {
+    if (cp != NULL && cp->hydro.count > 0) {
 
       /* Recurse */
-      engine_collect_end_of_step_recurse(cp, e);
+      engine_collect_end_of_step_recurse_hydro(cp, e);
 
       /* And update */
       ti_hydro_end_min = min(ti_hydro_end_min, cp->hydro.ti_end_min);
       ti_hydro_end_max = max(ti_hydro_end_max, cp->hydro.ti_end_max);
       ti_hydro_beg_max = max(ti_hydro_beg_max, cp->hydro.ti_beg_max);
 
-      ti_gravity_end_min = min(ti_gravity_end_min, cp->grav.ti_end_min);
-      ti_gravity_end_max = max(ti_gravity_end_max, cp->grav.ti_end_max);
-      ti_gravity_beg_max = max(ti_gravity_beg_max, cp->grav.ti_beg_max);
-
-      ti_stars_end_min = min(ti_stars_end_min, cp->stars.ti_end_min);
-
       updated += cp->hydro.updated;
-      g_updated += cp->grav.updated;
-      s_updated += cp->stars.updated;
-
       inhibited += cp->hydro.inhibited;
-      g_inhibited += cp->grav.inhibited;
-      s_inhibited += cp->stars.inhibited;
 
       /* Collected, so clear for next time. */
       cp->hydro.updated = 0;
-      cp->grav.updated = 0;
-      cp->stars.updated = 0;
     }
   }
 
@@ -2413,16 +2428,125 @@ void engine_collect_end_of_step_recurse(struct cell *c,
   c->hydro.ti_end_min = ti_hydro_end_min;
   c->hydro.ti_end_max = ti_hydro_end_max;
   c->hydro.ti_beg_max = ti_hydro_beg_max;
-  c->grav.ti_end_min = ti_gravity_end_min;
-  c->grav.ti_end_max = ti_gravity_end_max;
-  c->grav.ti_beg_max = ti_gravity_beg_max;
-  c->stars.ti_end_min = ti_stars_end_min;
   c->hydro.updated = updated;
-  c->grav.updated = g_updated;
-  c->stars.updated = s_updated;
   c->hydro.inhibited = inhibited;
-  c->grav.inhibited = g_inhibited;
-  c->stars.inhibited = s_inhibited;
+}
+
+/**
+ * @brief Recursive function gathering end-of-step data.
+ *
+ * We recurse until we encounter a timestep or time-step MPI recv task
+ * as the values will have been set at that level. We then bring these
+ * values upwards.
+ *
+ * @param c The #cell to recurse into.
+ * @param e The #engine.
+ */
+void engine_collect_end_of_step_recurse_grav(struct cell *c,
+                                             const struct engine *e) {
+
+/* Skip super-cells (Their values are already set) */
+#ifdef WITH_MPI
+  if (c->timestep != NULL || c->mpi.grav.recv_ti != NULL) return;
+#else
+  if (c->timestep != NULL) return;
+#endif /* WITH_MPI */
+
+#ifdef SWIFT_DEBUG_CHECKS
+    //  if (!c->split) error("Reached a leaf without finding a time-step
+    //  task!");
+#endif
+
+  /* Counters for the different quantities. */
+  size_t updated = 0, inhibited = 0;
+  integertime_t ti_grav_end_min = max_nr_timesteps, ti_grav_end_max = 0,
+                ti_grav_beg_max = 0;
+
+  /* Collect the values from the progeny. */
+  for (int k = 0; k < 8; k++) {
+    struct cell *cp = c->progeny[k];
+    if (cp != NULL && cp->grav.count > 0) {
+
+      /* Recurse */
+      engine_collect_end_of_step_recurse_grav(cp, e);
+
+      /* And update */
+      ti_grav_end_min = min(ti_grav_end_min, cp->grav.ti_end_min);
+      ti_grav_end_max = max(ti_grav_end_max, cp->grav.ti_end_max);
+      ti_grav_beg_max = max(ti_grav_beg_max, cp->grav.ti_beg_max);
+
+      updated += cp->grav.updated;
+      inhibited += cp->grav.inhibited;
+
+      /* Collected, so clear for next time. */
+      cp->grav.updated = 0;
+    }
+  }
+
+  /* Store the collected values in the cell. */
+  c->grav.ti_end_min = ti_grav_end_min;
+  c->grav.ti_end_max = ti_grav_end_max;
+  c->grav.ti_beg_max = ti_grav_beg_max;
+  c->grav.updated = updated;
+  c->grav.inhibited = inhibited;
+}
+
+/**
+ * @brief Recursive function gathering end-of-step data.
+ *
+ * We recurse until we encounter a timestep or time-step MPI recv task
+ * as the values will have been set at that level. We then bring these
+ * values upwards.
+ *
+ * @param c The #cell to recurse into.
+ * @param e The #engine.
+ */
+void engine_collect_end_of_step_recurse_stars(struct cell *c,
+                                              const struct engine *e) {
+
+/* Skip super-cells (Their values are already set) */
+#ifdef WITH_MPI
+  if (c->timestep != NULL || c->mpi.stars.recv_ti != NULL) return;
+#else
+  if (c->timestep != NULL) return;
+#endif /* WITH_MPI */
+
+#ifdef SWIFT_DEBUG_CHECKS
+    // if (!c->split) error("Reached a leaf without finding a time-step task!");
+#endif
+
+  /* Counters for the different quantities. */
+  size_t updated = 0, inhibited = 0;
+  integertime_t ti_stars_end_min = max_nr_timesteps, ti_stars_end_max = 0,
+                ti_stars_beg_max = 0;
+
+  /* Collect the values from the progeny. */
+  for (int k = 0; k < 8; k++) {
+    struct cell *cp = c->progeny[k];
+    if (cp != NULL && cp->stars.count > 0) {
+
+      /* Recurse */
+      engine_collect_end_of_step_recurse_stars(cp, e);
+
+      /* And update */
+      ti_stars_end_min = min(ti_stars_end_min, cp->stars.ti_end_min);
+      ti_stars_end_max = max(ti_stars_end_max, cp->stars.ti_end_max);
+      ti_stars_beg_max = max(ti_stars_beg_max, cp->stars.ti_beg_max);
+
+      updated += cp->stars.updated;
+      inhibited += cp->stars.inhibited;
+
+      /* Collected, so clear for next time. */
+      cp->stars.updated = 0;
+    }
+  }
+
+  /* Store the collected values in the cell. */
+  c->stars.ti_end_min = ti_stars_end_min;
+  c->stars.ti_end_max = ti_stars_end_max;
+  c->stars.ti_beg_max = ti_stars_beg_max;
+  c->stars.updated = updated;
+  c->stars.inhibited = inhibited;
 }
 
 /**
@@ -2441,6 +2565,9 @@ void engine_collect_end_of_step_mapper(void *map_data, int num_elements,
 
   struct end_of_step_data *data = (struct end_of_step_data *)extra_data;
   const struct engine *e = data->e;
+  const int with_hydro = (e->policy & engine_policy_hydro);
+  const int with_self_grav = (e->policy & engine_policy_self_gravity);
+  const int with_stars = (e->policy & engine_policy_stars);
   struct space *s = e->s;
   int *local_cells = (int *)map_data;
 
@@ -2451,7 +2578,8 @@ void engine_collect_end_of_step_mapper(void *map_data, int num_elements,
                 ti_hydro_beg_max = 0;
   integertime_t ti_gravity_end_min = max_nr_timesteps, ti_gravity_end_max = 0,
                 ti_gravity_beg_max = 0;
-  integertime_t ti_stars_end_min = max_nr_timesteps;
+  integertime_t ti_stars_end_min = max_nr_timesteps, ti_stars_end_max = 0,
+                ti_stars_beg_max = 0;
 
   for (int ind = 0; ind < num_elements; ind++) {
     struct cell *c = &s->cells_top[local_cells[ind]];
@@ -2459,7 +2587,15 @@ void engine_collect_end_of_step_mapper(void *map_data, int num_elements,
     if (c->hydro.count > 0 || c->grav.count > 0 || c->stars.count > 0) {
 
       /* Make the top-cells recurse */
-      engine_collect_end_of_step_recurse(c, e);
+      if (with_hydro) {
+        engine_collect_end_of_step_recurse_hydro(c, e);
+      }
+      if (with_self_grav) {
+        engine_collect_end_of_step_recurse_grav(c, e);
+      }
+      if (with_stars) {
+        engine_collect_end_of_step_recurse_stars(c, e);
+      }
 
       /* And aggregate */
       if (c->hydro.ti_end_min > e->ti_current)
@@ -2474,6 +2610,8 @@ void engine_collect_end_of_step_mapper(void *map_data, int num_elements,
 
       if (c->stars.ti_end_min > e->ti_current)
         ti_stars_end_min = min(ti_stars_end_min, c->stars.ti_end_min);
+      ti_stars_end_max = max(ti_stars_end_max, c->stars.ti_end_max);
+      ti_stars_beg_max = max(ti_stars_beg_max, c->stars.ti_beg_max);
 
       updated += c->hydro.updated;
       g_updated += c->grav.updated;
@@ -2516,6 +2654,8 @@ void engine_collect_end_of_step_mapper(void *map_data, int num_elements,
 
     if (ti_stars_end_min > e->ti_current)
       data->ti_stars_end_min = min(ti_stars_end_min, data->ti_stars_end_min);
+    data->ti_stars_end_max = max(ti_stars_end_max, data->ti_stars_end_max);
+    data->ti_stars_beg_max = max(ti_stars_beg_max, data->ti_stars_beg_max);
   }
 
   if (lock_unlock(&s->lock) != 0) error("Failed to unlock the space");
@@ -2549,6 +2689,8 @@ void engine_collect_end_of_step(struct engine *e, int apply) {
   data.ti_hydro_beg_max = 0;
   data.ti_gravity_end_min = max_nr_timesteps, data.ti_gravity_end_max = 0,
   data.ti_gravity_beg_max = 0;
+  data.ti_stars_end_min = max_nr_timesteps, data.ti_stars_end_max = 0,
+  data.ti_stars_beg_max = 0;
   data.e = e;
 
   /* Collect information from the local top-level cells */
@@ -2566,7 +2708,8 @@ void engine_collect_end_of_step(struct engine *e, int apply) {
       &e->collect_group1, data.updated, data.g_updated, data.s_updated,
       data.inhibited, data.g_inhibited, data.s_inhibited, data.ti_hydro_end_min,
       data.ti_hydro_end_max, data.ti_hydro_beg_max, data.ti_gravity_end_min,
-      data.ti_gravity_end_max, data.ti_gravity_beg_max, e->forcerebuild,
+      data.ti_gravity_end_max, data.ti_gravity_beg_max, data.ti_stars_end_min,
+      data.ti_stars_end_max, data.ti_stars_beg_max, e->forcerebuild,
       e->s->tot_cells, e->sched.nr_tasks,
       (float)e->sched.nr_tasks / (float)e->s->tot_cells);
 
@@ -2745,8 +2888,10 @@ void engine_skip_force_and_kick(struct engine *e) {
         t->type == task_type_extra_ghost ||
         t->subtype == task_subtype_gradient ||
         t->subtype == task_subtype_stars_feedback ||
-        t->subtype == task_subtype_tend || t->subtype == task_subtype_rho ||
-        t->subtype == task_subtype_gpart)
+        t->subtype == task_subtype_tend_part ||
+        t->subtype == task_subtype_tend_gpart ||
+        t->subtype == task_subtype_tend_spart ||
+        t->subtype == task_subtype_rho || t->subtype == task_subtype_gpart)
       t->skip = 1;
   }
 
@@ -3517,6 +3662,14 @@ void engine_unskip(struct engine *e) {
 
   const ticks tic = getticks();
   struct space *s = e->s;
+  const int nodeID = e->nodeID;
+
+  const int with_hydro = e->policy & engine_policy_hydro;
+  const int with_self_grav = e->policy & engine_policy_self_gravity;
+  const int with_ext_grav = e->policy & engine_policy_external_gravity;
+  const int with_grav = (with_self_grav || with_ext_grav);
+  const int with_stars = e->policy & engine_policy_stars;
+  const int with_feedback = e->policy & engine_policy_feedback;
 
 #ifdef WITH_PROFILER
   static int count = 0;
@@ -3531,11 +3684,10 @@ void engine_unskip(struct engine *e) {
   for (int k = 0; k < s->nr_local_cells_with_tasks; k++) {
     struct cell *c = &s->cells_top[local_cells[k]];
 
-    if ((e->policy & engine_policy_hydro && cell_is_active_hydro(c, e)) ||
-        (e->policy & engine_policy_self_gravity &&
-         cell_is_active_gravity(c, e)) ||
-        (e->policy & engine_policy_external_gravity &&
-         cell_is_active_gravity(c, e))) {
+    if ((with_hydro && cell_is_active_hydro(c, e)) ||
+        (with_grav && cell_is_active_gravity(c, e)) ||
+        (with_feedback && cell_is_active_stars(c, e)) ||
+        (with_stars && c->nodeID == nodeID && cell_is_active_stars(c, e))) {
 
       if (num_active_cells != k)
         memswap(&local_cells[k], &local_cells[num_active_cells], sizeof(int));
