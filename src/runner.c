@@ -589,7 +589,13 @@ void runner_do_star_formation(struct runner *r, struct cell *c, int timer) {
 
   TIMER_TIC;
 
+#ifdef SWIFT_DEBUG_CHECKS
+  if (c->nodeID != e->nodeID)
+    error("Running star formation task on a foreign node!");
+#endif
+
   /* Anything to do here? */
+  if (c->hydro.count == 0) return;
   if (!cell_is_active_hydro(c, e)) return;
 
   /* Recurse? */
@@ -638,9 +644,13 @@ void runner_do_star_formation(struct runner *r, struct cell *c, int timer) {
             /* Convert the gas particle to a star particle */
             struct spart *sp = cell_convert_part_to_spart(e, c, p, xp);
 
-            /* Copy the properties of the gas particle to the star particle */
-            star_formation_copy_properties(p, xp, sp, e, sf_props, cosmo,
-                                           with_cosmology);
+            /* Did we get a star? (Or did we run out of spare ones?) */
+            if (sp != NULL) {
+
+              /* Copy the properties of the gas particle to the star particle */
+              star_formation_copy_properties(p, xp, sp, e, sf_props, cosmo,
+                                             with_cosmology);
+            }
           }
 
         } else { /* Are we not star-forming? */
@@ -656,10 +666,11 @@ void runner_do_star_formation(struct runner *r, struct cell *c, int timer) {
 
   /* If we formed any stars, the star sorts are now invalid. We need to
    * re-compute them. */
-  if (with_feedback && (c == c->hydro.super) &&
+  if (with_feedback && (c == c->top) &&
       (current_stars_count != c->stars.count)) {
-    cell_clear_stars_sort_flags(c, /*is_super=*/1);
-    runner_do_stars_sort(r, c, 0x1FFF, /*cleanup=*/0, /*timer=*/0);
+
+    cell_clear_stars_sort_flags(c);
+    runner_do_all_stars_sort(r, c);
   }
 
   if (timer) TIMER_TOC(timer_do_star_formation);
@@ -789,6 +800,10 @@ void runner_do_hydro_sort(struct runner *r, struct cell *c, int flags,
   float buff[8];
 
   TIMER_TIC;
+
+#ifdef SWIFT_DEBUG_CHECKS
+  if (c->hydro.super == NULL) error("Task called above the super level!!!");
+#endif
 
   /* We need to do the local sorts plus whatever was requested further up. */
   flags |= c->hydro.do_sort;
@@ -1008,6 +1023,10 @@ void runner_do_stars_sort(struct runner *r, struct cell *c, int flags,
 
   TIMER_TIC;
 
+#ifdef SWIFT_DEBUG_CHECKS
+  if (c->hydro.super == NULL) error("Task called above the super level!!!");
+#endif
+
   /* We need to do the local sorts plus whatever was requested further up. */
   flags |= c->stars.do_sort;
   if (cleanup) {
@@ -1197,6 +1216,90 @@ void runner_do_stars_sort(struct runner *r, struct cell *c, int flags,
   c->stars.requires_sorts = 0;
 
   if (clock) TIMER_TOC(timer_do_stars_sort);
+}
+
+/**
+ * @brief Recurse into a cell until reaching the super level and call
+ * the hydro sorting function there.
+ *
+ * This function must be called at or above the super level!
+ *
+ * This function will sort the particles in all 13 directions.
+ *
+ * @param r the #runner.
+ * @param c the #cell.
+ */
+void runner_do_all_hydro_sort(struct runner *r, struct cell *c) {
+
+#ifdef SWIFT_DEBUG_CHECKS
+  if (c->nodeID != engine_rank) error("Function called on a foreign cell!");
+#endif
+
+  /* Shall we sort at this level? */
+  if (c->hydro.super == c) {
+
+    /* Sort everything */
+    runner_do_hydro_sort(r, c, 0x1FFF, /*cleanup=*/0, /*timer=*/0);
+
+  } else {
+
+#ifdef SWIFT_DEBUG_CHECKS
+    if (c->hydro.super != NULL) error("Function called below the super level!");
+#endif
+
+    /* Ok, then, let's try lower */
+    if (c->split) {
+      for (int k = 0; k < 8; ++k) {
+        if (c->progeny[k] != NULL) runner_do_all_hydro_sort(r, c->progeny[k]);
+      }
+    } else {
+#ifdef SWIFT_DEBUG_CHECKS
+      error("Reached a leaf without encountering a hydro super cell!");
+#endif
+    }
+  }
+}
+
+/**
+ * @brief Recurse into a cell until reaching the super level and call
+ * the star sorting function there.
+ *
+ * This function must be called at or above the super level!
+ *
+ * This function will sort the particles in all 13 directions.
+ *
+ * @param r the #runner.
+ * @param c the #cell.
+ */
+void runner_do_all_stars_sort(struct runner *r, struct cell *c) {
+
+#ifdef SWIFT_DEBUG_CHECKS
+  if (c->nodeID != engine_rank) error("Function called on a foreign cell!");
+#endif
+
+  /* Shall we sort at this level? */
+  if (c->hydro.super == c) {
+
+    /* Sort everything */
+    runner_do_stars_sort(r, c, 0x1FFF, /*cleanup=*/0, /*timer=*/0);
+
+  } else {
+
+#ifdef SWIFT_DEBUG_CHECKS
+    if (c->hydro.super != NULL) error("Function called below the super level!");
+#endif
+
+    /* Ok, then, let's try lower */
+    if (c->split) {
+      for (int k = 0; k < 8; ++k) {
+        if (c->progeny[k] != NULL) runner_do_all_stars_sort(r, c->progeny[k]);
+      }
+    } else {
+#ifdef SWIFT_DEBUG_CHECKS
+      error("Reached a leaf without encountering a hydro super cell!");
+#endif
+    }
+  }
 }
 
 /**
@@ -1868,6 +1971,7 @@ void runner_do_drift_spart(struct runner *r, struct cell *c, int timer) {
 
   if (timer) TIMER_TOC(timer_drift_spart);
 }
+
 /**
  * @brief Perform the first half-kick on all the active particles in a cell.
  *
@@ -3310,13 +3414,25 @@ void *runner_main(void *data) {
           break;
 #ifdef WITH_MPI
         case task_type_send:
-          if (t->subtype == task_subtype_tend) {
+          if (t->subtype == task_subtype_tend_part) {
+            free(t->buff);
+          }
+          if (t->subtype == task_subtype_tend_gpart) {
+            free(t->buff);
+          }
+          if (t->subtype == task_subtype_tend_spart) {
             free(t->buff);
           }
           break;
         case task_type_recv:
-          if (t->subtype == task_subtype_tend) {
-            cell_unpack_end_step(ci, (struct pcell_step *)t->buff);
+          if (t->subtype == task_subtype_tend_part) {
+            cell_unpack_end_step_hydro(ci, (struct pcell_step_hydro *)t->buff);
+            free(t->buff);
+          } else if (t->subtype == task_subtype_tend_gpart) {
+            cell_unpack_end_step_grav(ci, (struct pcell_step_grav *)t->buff);
+            free(t->buff);
+          } else if (t->subtype == task_subtype_tend_spart) {
+            cell_unpack_end_step_stars(ci, (struct pcell_step_stars *)t->buff);
             free(t->buff);
           } else if (t->subtype == task_subtype_xv) {
             runner_do_recv_part(r, ci, 1, 1);

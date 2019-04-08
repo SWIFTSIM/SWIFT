@@ -79,6 +79,8 @@ const char *taskID_names[task_type_count] = {"none",
                                              "grav_end_force",
                                              "cooling",
                                              "star_formation",
+                                             "star_formation_in",
+                                             "star_formation_out",
                                              "logger",
                                              "stars_in",
                                              "stars_out",
@@ -88,11 +90,23 @@ const char *taskID_names[task_type_count] = {"none",
                                              "stars_sort"};
 
 /* Sub-task type names. */
-const char *subtaskID_names[task_subtype_count] = {
-    "none",    "density",       "gradient",      "force",
-    "limiter", "grav",          "external_grav", "tend",
-    "xv",      "rho",           "gpart",         "multipole",
-    "spart",   "stars_density", "stars_feedback"};
+const char *subtaskID_names[task_subtype_count] = {"none",
+                                                   "density",
+                                                   "gradient",
+                                                   "force",
+                                                   "limiter",
+                                                   "grav",
+                                                   "external_grav",
+                                                   "tend_part",
+                                                   "tend_gpart",
+                                                   "tend_spart",
+                                                   "xv",
+                                                   "rho",
+                                                   "gpart",
+                                                   "multipole",
+                                                   "spart",
+                                                   "stars_density",
+                                                   "stars_feedback"};
 
 #ifdef WITH_MPI
 /* MPI communicators for the subtypes. */
