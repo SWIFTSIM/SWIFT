@@ -335,3 +335,14 @@ EAGLEStarFormation:
   threshold_slope:                   -0.64     # Slope of the metal-dependant star formation threshold
   threshold_max_density_H_p_cm3:     10.0      # Maximal density of the metal-dependant density threshold for star formation in Hydrogen atoms per cm^3.  
   
+# Parameters related to feedback models  -----------------------------------------------
+
+# EAGLE feedback model
+EAGLEFeedback:
+  filename:                     /cosma5/data/Eagle/BG_Tables/YieldTables/       # Filepath where yield tables are stored
+  imf_model:                    Chabrier                                        # IMF model (choice of Chabrier or PowerLaw)
+  continuous_heating_switch:    0                                               # Switch between continuous heating (1) and stochastic heating (0) 
+  SNIa_timescale_Gyr:           2.0                                             # Timescale governing how many SNIa produced
+  SNIa_efficiency:              2.e-3                                           # Factor governing how efficiency of SNIa production
+  SNII_wind_delay_Gyr:          0.03                                            # Delay to production of SNII winds after star's birth 
+  SNe_heating_temperature_K:    3.16228e7                                       # Temperature to heat gas particles to when distributing SNe energy stochastically
