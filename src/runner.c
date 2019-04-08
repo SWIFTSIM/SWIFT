@@ -145,6 +145,7 @@ void runner_do_stars_ghost(struct runner *r, struct cell *c, int timer) {
   const int max_smoothing_iter = e->stars_properties->max_smoothing_iterations;
   int redo = 0, scount = 0;
 
+  /* Running value of the maximal smoothing length */
   double h_max = c->stars.h_max;
 
   TIMER_TIC;
@@ -155,14 +156,14 @@ void runner_do_stars_ghost(struct runner *r, struct cell *c, int timer) {
 
   /* Recurse? */
   if (c->split) {
-    for (int k = 0; k < 8; k++)
+    for (int k = 0; k < 8; k++) {
       if (c->progeny[k] != NULL) {
         runner_do_stars_ghost(r, c->progeny[k], 0);
 
-        /* update h_max */
-        if (c->progeny[k]->stars.h_max > h_max)
-          h_max = c->progeny[k]->stars.h_max;
+        /* Update h_max */
+        h_max = max(h_max, c->progeny[k]->stars.h_max);
       }
+    }
   } else {
 
     /* Init the list of active particles that have to be updated. */
@@ -349,8 +350,8 @@ void runner_do_stars_ghost(struct runner *r, struct cell *c, int timer) {
 
         /* We now have a particle whose smoothing length has converged */
 
-        /* Check if h_max is increased */
-        if (h_max < sp->h) h_max = sp->h;
+        /* Check if h_max has increased */
+        h_max = max(h_max, sp->h);
 
         stars_reset_feedback(sp);
 
@@ -425,8 +426,8 @@ void runner_do_stars_ghost(struct runner *r, struct cell *c, int timer) {
     free(h_0);
   }
 
-  /* update h_max */
-  if (h_max > c->stars.h_max) c->stars.h_max = h_max;
+  /* Update h_max */
+  c->stars.h_max = h_max;
 
   /* The ghost may not always be at the top level.
    * Therefore we need to update h_max above the ghost */
@@ -1462,23 +1463,25 @@ void runner_do_ghost(struct runner *r, struct cell *c, int timer) {
   const int max_smoothing_iter = e->hydro_properties->max_smoothing_iterations;
   int redo = 0, count = 0;
 
+  /* Running value of the maximal smoothing length */
   double h_max = c->hydro.h_max;
 
   TIMER_TIC;
 
   /* Anything to do here? */
+  if (c->hydro.count == 0) return;
   if (!cell_is_active_hydro(c, e)) return;
 
   /* Recurse? */
   if (c->split) {
-    for (int k = 0; k < 8; k++)
+    for (int k = 0; k < 8; k++) {
       if (c->progeny[k] != NULL) {
         runner_do_ghost(r, c->progeny[k], 0);
-        /* update h_max */
-        if (c->progeny[k]->hydro.h_max > h_max) {
-          h_max = c->progeny[k]->hydro.h_max;
-        }
+
+        /* Update h_max */
+        h_max = max(h_max, c->progeny[k]->hydro.h_max);
       }
+    }
   } else {
 
     /* Init the list of active particles that have to be updated and their
@@ -1723,9 +1726,7 @@ void runner_do_ghost(struct runner *r, struct cell *c, int timer) {
         /* We now have a particle whose smoothing length has converged */
 
         /* Check if h_max is increased */
-        if (h_max < p->h) {
-          h_max = p->h;
-        }
+        h_max = max(h_max, p->h);
 
 #ifdef EXTRA_HYDRO_LOOP
 
@@ -1840,9 +1841,7 @@ void runner_do_ghost(struct runner *r, struct cell *c, int timer) {
   }
 
   /* Update h_max */
-  if (h_max > c->hydro.h_max) {
-    c->hydro.h_max = h_max;
-  }
+  c->hydro.h_max = h_max;
 
   /* The ghost may not always be at the top level.
    * Therefore we need to update h_max above the ghost */
