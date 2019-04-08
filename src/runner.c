@@ -430,10 +430,10 @@ void runner_do_stars_ghost(struct runner *r, struct cell *c, int timer) {
   c->stars.h_max = h_max;
 
   /* The ghost may not always be at the top level.
-   * Therefore we need to update h_max above the ghost */
+   * Therefore we need to update h_max between the super- and top-levels */
   if (c->stars.ghost) {
     for (struct cell *tmp = c->parent; tmp != NULL; tmp = tmp->parent) {
-      if (h_max > tmp->stars.h_max) tmp->stars.h_max = h_max;
+      atomic_max_f(&tmp->stars.h_max, h_max);
     }
   }
 
@@ -1844,10 +1844,10 @@ void runner_do_ghost(struct runner *r, struct cell *c, int timer) {
   c->hydro.h_max = h_max;
 
   /* The ghost may not always be at the top level.
-   * Therefore we need to update h_max above the ghost */
+   * Therefore we need to update h_max between the super- and top-levels */
   if (c->hydro.ghost) {
     for (struct cell *tmp = c->parent; tmp != NULL; tmp = tmp->parent) {
-      if (h_max > tmp->hydro.h_max) tmp->hydro.h_max = h_max;
+      atomic_max_f(&tmp->hydro.h_max, h_max);
     }
   }
 
