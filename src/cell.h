@@ -35,6 +35,7 @@
 #include "lock.h"
 #include "multipole.h"
 #include "part.h"
+#include "sort_part.h"
 #include "space.h"
 #include "task.h"
 #include "timeline.h"
@@ -174,46 +175,37 @@ struct pcell {
 /**
  * @brief Cell information at the end of a time-step.
  */
-struct pcell_step {
+struct pcell_step_hydro {
 
-  /*! Hydro variables */
-  struct {
+  /*! Minimal integer end-of-timestep in this cell (hydro) */
+  integertime_t ti_end_min;
 
-    /*! Minimal integer end-of-timestep in this cell (hydro) */
-    integertime_t ti_end_min;
+  /*! Minimal integer end-of-timestep in this cell (hydro) */
+  integertime_t ti_end_max;
 
-    /*! Minimal integer end-of-timestep in this cell (hydro) */
-    integertime_t ti_end_max;
+  /*! Maximal distance any #part has travelled since last rebuild */
+  float dx_max_part;
+};
 
-    /*! Maximal distance any #part has travelled since last rebuild */
-    float dx_max_part;
+struct pcell_step_grav {
 
-  } hydro;
+  /*! Minimal integer end-of-timestep in this cell (gravity) */
+  integertime_t ti_end_min;
 
-  /*! Grav variables */
-  struct {
+  /*! Minimal integer end-of-timestep in this cell (gravity) */
+  integertime_t ti_end_max;
+};
 
-    /*! Minimal integer end-of-timestep in this cell (gravity) */
-    integertime_t ti_end_min;
+struct pcell_step_stars {
 
-    /*! Minimal integer end-of-timestep in this cell (gravity) */
-    integertime_t ti_end_max;
+  /*! Minimal integer end-of-timestep in this cell (stars) */
+  integertime_t ti_end_min;
 
-  } grav;
+  /*! Maximal integer end-of-timestep in this cell (stars) */
+  integertime_t ti_end_max;
 
-  /*! Stars variables */
-  struct {
-
-    /*! Minimal integer end-of-timestep in this cell (stars) */
-    integertime_t ti_end_min;
-
-    /*! Maximal integer end-of-timestep in this cell (stars) */
-    integertime_t ti_end_max;
-
-    /*! Maximal distance any #part has travelled since last rebuild */
-    float dx_max_part;
-
-  } stars;
+  /*! Maximal distance any #part has travelled since last rebuild */
+  float dx_max_part;
 };
 
 /**
@@ -238,6 +230,9 @@ struct cell {
   /*! Parent cell. */
   struct cell *parent;
 
+  /*! Pointer to the top-level cell in a hierarchy */
+  struct cell *top;
+
   /*! Super cell, i.e. the highest-level parent cell with *any* task */
   struct cell *super;
 
@@ -252,6 +247,7 @@ struct cell {
 
     /*! Pointer for the sorted indices. */
     struct entry *sort[13];
+    struct entry *sortptr;
 
     /*! Super cell, i.e. the highest-level parent cell that has a hydro
      * pair/self tasks */
@@ -512,6 +508,9 @@ struct cell {
     /*! Spin lock for various uses (#spart case). */
     swift_lock_type lock;
 
+    /*! Spin lock for star formation use. */
+    swift_lock_type star_formation_lock;
+
     /*! Nr of #spart in this cell. */
     int count;
 
@@ -538,6 +537,7 @@ struct cell {
 
     /*! Pointer for the sorted indices. */
     struct entry *sort[13];
+    struct entry *sortptr;
 
     /*! Bit-mask indicating the sorted directions */
     unsigned int sorted;
@@ -594,6 +594,9 @@ struct cell {
       /* Task receiving hydro data (gradient). */
       struct task *recv_gradient;
 
+      /* Task receiving data (time-step). */
+      struct task *recv_ti;
+
       /* Linked list for sending hydro data (positions). */
       struct link *send_xv;
 
@@ -603,6 +606,9 @@ struct cell {
       /* Linked list for sending hydro data (gradient). */
       struct link *send_gradient;
 
+      /* Linked list for sending data (time-step). */
+      struct link *send_ti;
+
     } hydro;
 
     struct {
@@ -610,16 +616,30 @@ struct cell {
       /* Task receiving gpart data. */
       struct task *recv;
 
+      /* Task receiving data (time-step). */
+      struct task *recv_ti;
+
       /* Linked list for sending gpart data. */
       struct link *send;
+
+      /* Linked list for sending data (time-step). */
+      struct link *send_ti;
+
     } grav;
 
     struct {
       /* Task receiving spart data. */
       struct task *recv;
 
+      /* Task receiving data (time-step). */
+      struct task *recv_ti;
+
       /* Linked list for sending spart data. */
       struct link *send;
+
+      /* Linked list for sending data (time-step). */
+      struct link *send_ti;
+
     } stars;
 
     struct {
@@ -629,12 +649,6 @@ struct cell {
       /* Linked list for sending limiter data. */
       struct link *send;
     } limiter;
-
-    /* Task receiving data (time-step). */
-    struct task *recv_ti;
-
-    /* Linked list for sending data (time-step). */
-    struct link *send_ti;
 
     /*! Bit mask of the proxies this cell is registered with. */
     unsigned long long int sendto;
@@ -725,8 +739,12 @@ int cell_unpack(struct pcell *pc, struct cell *c, struct space *s,
                 const int with_gravity);
 int cell_pack_tags(const struct cell *c, int *tags);
 int cell_unpack_tags(const int *tags, struct cell *c);
-int cell_pack_end_step(struct cell *c, struct pcell_step *pcell);
-int cell_unpack_end_step(struct cell *c, struct pcell_step *pcell);
+int cell_pack_end_step_hydro(struct cell *c, struct pcell_step_hydro *pcell);
+int cell_unpack_end_step_hydro(struct cell *c, struct pcell_step_hydro *pcell);
+int cell_pack_end_step_grav(struct cell *c, struct pcell_step_grav *pcell);
+int cell_unpack_end_step_grav(struct cell *c, struct pcell_step_grav *pcell);
+int cell_pack_end_step_stars(struct cell *c, struct pcell_step_stars *pcell);
+int cell_unpack_end_step_stars(struct cell *c, struct pcell_step_stars *pcell);
 int cell_pack_multipoles(struct cell *c, struct gravity_tensors *m);
 int cell_unpack_multipoles(struct cell *c, struct gravity_tensors *m);
 int cell_getsize(struct cell *c);
@@ -765,6 +783,7 @@ void cell_activate_subcell_stars_tasks(struct cell *ci, struct cell *cj,
                                        struct scheduler *s);
 void cell_activate_subcell_external_grav_tasks(struct cell *ci,
                                                struct scheduler *s);
+void cell_activate_super_spart_drifts(struct cell *c, struct scheduler *s);
 void cell_activate_drift_part(struct cell *c, struct scheduler *s);
 void cell_activate_drift_gpart(struct cell *c, struct scheduler *s);
 void cell_activate_drift_spart(struct cell *c, struct scheduler *s);
@@ -776,7 +795,7 @@ void cell_clear_limiter_flags(struct cell *c, void *data);
 void cell_set_super_mapper(void *map_data, int num_elements, void *extra_data);
 void cell_check_spart_pos(const struct cell *c,
                           const struct spart *global_sparts);
-void cell_clear_stars_sort_flags(struct cell *c, const int is_super);
+void cell_clear_stars_sort_flags(struct cell *c);
 int cell_has_tasks(struct cell *c);
 void cell_remove_part(const struct engine *e, struct cell *c, struct part *p,
                       struct xpart *xp);
@@ -1059,5 +1078,102 @@ __attribute__((always_inline)) INLINE static void cell_ensure_tagged(
 #endif  // WITH_MPI
 }
 
+/**
+ * @brief Allocate hydro sort memory for cell.
+ *
+ * @param c The #cell that will require sorting.
+ * @param flags Cell flags.
+ */
+__attribute__((always_inline)) INLINE static void cell_malloc_hydro_sorts(
+    struct cell *c, int flags) {
+
+  /* Count the memory needed for all active dimensions. */
+  int count = 0;
+  for (int j = 0; j < 13; j++) {
+    if ((flags & (1 << j)) && c->hydro.sort[j] == NULL)
+      count += (c->hydro.count + 1);
+  }
+
+  /* Allocate as a single chunk. */
+  struct entry *memptr = NULL;
+  if ((memptr = (struct entry *)swift_malloc(
+           "hydro.sort", sizeof(struct entry) * count)) == NULL)
+    error("Failed to allocate sort memory.");
+
+  c->hydro.sortptr = memptr;
+
+  /* And attach spans as needed. */
+  for (int j = 0; j < 13; j++) {
+    if ((flags & (1 << j)) && c->hydro.sort[j] == NULL) {
+      c->hydro.sort[j] = memptr;
+      memptr += (c->hydro.count + 1);
+    }
+  }
+}
+
+/**
+ * @brief Free hydro sort memory for cell.
+ *
+ * @param c The #cell.
+ */
+__attribute__((always_inline)) INLINE static void cell_free_hydro_sorts(
+    struct cell *c) {
+
+  /* Note only one allocation for the dimensions. */
+  if (c->hydro.sortptr != NULL) {
+    swift_free("hydro.sort", c->hydro.sortptr);
+    c->hydro.sortptr = NULL;
+    for (int i = 0; i < 13; i++) c->hydro.sort[i] = NULL;
+  }
+}
+
+/**
+ * @brief Allocate stars sort memory for cell.
+ *
+ * @param c The #cell that will require sorting.
+ * @param flags Cell flags.
+ */
+__attribute__((always_inline)) INLINE static void cell_malloc_stars_sorts(
+    struct cell *c, int flags) {
+
+  /* Count the memory needed for all active dimensions. */
+  int count = 0;
+  for (int j = 0; j < 13; j++) {
+    if ((flags & (1 << j)) && c->stars.sort[j] == NULL)
+      count += (c->stars.count + 1);
+  }
+
+  /* Allocate as a single chunk. */
+  struct entry *memptr = NULL;
+  if ((memptr = (struct entry *)swift_malloc(
+           "stars.sort", sizeof(struct entry) * count)) == NULL)
+    error("Failed to allocate sort memory.");
+
+  c->stars.sortptr = memptr;
+
+  /* And attach spans as needed. */
+  for (int j = 0; j < 13; j++) {
+    if ((flags & (1 << j)) && c->stars.sort[j] == NULL) {
+      c->stars.sort[j] = memptr;
+      memptr += (c->stars.count + 1);
+    }
+  }
+}
+
+/**
+ * @brief Free stars sort memory for cell.
+ *
+ * @param c The #cell.
+ */
+__attribute__((always_inline)) INLINE static void cell_free_stars_sorts(
+    struct cell *c) {
+
+  /* Note only one allocation for the dimensions. */
+  if (c->stars.sortptr != NULL) {
+    swift_free("stars.sort", c->stars.sortptr);
+    c->stars.sortptr = NULL;
+    for (int i = 0; i < 13; i++) c->stars.sort[i] = NULL;
+  }
+}
 
 #endif /* SWIFT_CELL_H */

@@ -300,7 +300,7 @@ void DO_SYM_PAIR1_STARS(struct runner *r, struct cell *ci, struct cell *cj,
          pid >= 0 && sort_i[pid].d + hi_max + dx_max > dj_min; pid--) {
 
       /* Get a hold of the ith part in ci. */
-      struct spart *restrict spi = &sparts_i[pid];
+      struct spart *restrict spi = &sparts_i[sort_i[pid].i];
       const float hi = spi->h;
 
       /* Skip inactive particles */
@@ -416,7 +416,7 @@ void DO_SYM_PAIR1_STARS(struct runner *r, struct cell *ci, struct cell *cj,
          pjd++) {
 
       /* Get a hold of the jth part in cj. */
-      struct spart *spj = &sparts_j[pjd];
+      struct spart *spj = &sparts_j[sort_j[pjd].i];
       const float hj = spj->h;
 
       /* Skip inactive particles */
@@ -1444,7 +1444,7 @@ void DOSUB_SUBSET_STARS(struct runner *r, struct cell *ci, struct spart *sparts,
     }
 
     /* Otherwise, compute the pair directly. */
-    else if (cell_is_active_stars(ci, e)) {
+    else if (cell_is_active_stars(ci, e) && cj->hydro.count > 0) {
 
       /* Do any of the cells need to be drifted first? */
       if (cell_is_active_stars(ci, e)) {

@@ -614,26 +614,21 @@ int cell_unpack_tags(const int *tags, struct cell *restrict c) {
  *
  * @return The number of packed cells.
  */
-int cell_pack_end_step(struct cell *restrict c,
-                       struct pcell_step *restrict pcells) {
+int cell_pack_end_step_hydro(struct cell *restrict c,
+                             struct pcell_step_hydro *restrict pcells) {
 
 #ifdef WITH_MPI
 
   /* Pack this cell's data. */
-  pcells[0].hydro.ti_end_min = c->hydro.ti_end_min;
-  pcells[0].hydro.ti_end_max = c->hydro.ti_end_max;
-  pcells[0].grav.ti_end_min = c->grav.ti_end_min;
-  pcells[0].grav.ti_end_max = c->grav.ti_end_max;
-  pcells[0].stars.ti_end_min = c->stars.ti_end_min;
-  pcells[0].stars.ti_end_max = c->stars.ti_end_max;
-  pcells[0].hydro.dx_max_part = c->hydro.dx_max_part;
-  pcells[0].stars.dx_max_part = c->stars.dx_max_part;
+  pcells[0].ti_end_min = c->hydro.ti_end_min;
+  pcells[0].ti_end_max = c->hydro.ti_end_max;
+  pcells[0].dx_max_part = c->hydro.dx_max_part;
 
   /* Fill in the progeny, depth-first recursion. */
   int count = 1;
   for (int k = 0; k < 8; k++)
     if (c->progeny[k] != NULL) {
-      count += cell_pack_end_step(c->progeny[k], &pcells[count]);
+      count += cell_pack_end_step_hydro(c->progeny[k], &pcells[count]);
     }
 
   /* Return the number of packed values. */
@@ -653,26 +648,155 @@ int cell_pack_end_step(struct cell *restrict c,
  *
  * @return The number of cells created.
  */
-int cell_unpack_end_step(struct cell *restrict c,
-                         struct pcell_step *restrict pcells) {
+int cell_unpack_end_step_hydro(struct cell *restrict c,
+                               struct pcell_step_hydro *restrict pcells) {
 
 #ifdef WITH_MPI
 
   /* Unpack this cell's data. */
-  c->hydro.ti_end_min = pcells[0].hydro.ti_end_min;
-  c->hydro.ti_end_max = pcells[0].hydro.ti_end_max;
-  c->grav.ti_end_min = pcells[0].grav.ti_end_min;
-  c->grav.ti_end_max = pcells[0].grav.ti_end_max;
-  c->stars.ti_end_min = pcells[0].stars.ti_end_min;
-  c->stars.ti_end_max = pcells[0].stars.ti_end_max;
-  c->hydro.dx_max_part = pcells[0].hydro.dx_max_part;
-  c->stars.dx_max_part = pcells[0].stars.dx_max_part;
+  c->hydro.ti_end_min = pcells[0].ti_end_min;
+  c->hydro.ti_end_max = pcells[0].ti_end_max;
+  c->hydro.dx_max_part = pcells[0].dx_max_part;
 
   /* Fill in the progeny, depth-first recursion. */
   int count = 1;
   for (int k = 0; k < 8; k++)
     if (c->progeny[k] != NULL) {
-      count += cell_unpack_end_step(c->progeny[k], &pcells[count]);
+      count += cell_unpack_end_step_hydro(c->progeny[k], &pcells[count]);
+    }
+
+  /* Return the number of packed values. */
+  return count;
+
+#else
+  error("SWIFT was not compiled with MPI support.");
+  return 0;
+#endif
+}
+
+/**
+ * @brief Pack the time information of the given cell and all it's sub-cells.
+ *
+ * @param c The #cell.
+ * @param pcells (output) The end-of-timestep information we pack into
+ *
+ * @return The number of packed cells.
+ */
+int cell_pack_end_step_grav(struct cell *restrict c,
+                            struct pcell_step_grav *restrict pcells) {
+
+#ifdef WITH_MPI
+
+  /* Pack this cell's data. */
+  pcells[0].ti_end_min = c->grav.ti_end_min;
+  pcells[0].ti_end_max = c->grav.ti_end_max;
+
+  /* Fill in the progeny, depth-first recursion. */
+  int count = 1;
+  for (int k = 0; k < 8; k++)
+    if (c->progeny[k] != NULL) {
+      count += cell_pack_end_step_grav(c->progeny[k], &pcells[count]);
+    }
+
+  /* Return the number of packed values. */
+  return count;
+
+#else
+  error("SWIFT was not compiled with MPI support.");
+  return 0;
+#endif
+}
+
+/**
+ * @brief Unpack the time information of a given cell and its sub-cells.
+ *
+ * @param c The #cell
+ * @param pcells The end-of-timestep information to unpack
+ *
+ * @return The number of cells created.
+ */
+int cell_unpack_end_step_grav(struct cell *restrict c,
+                              struct pcell_step_grav *restrict pcells) {
+
+#ifdef WITH_MPI
+
+  /* Unpack this cell's data. */
+  c->grav.ti_end_min = pcells[0].ti_end_min;
+  c->grav.ti_end_max = pcells[0].ti_end_max;
+
+  /* Fill in the progeny, depth-first recursion. */
+  int count = 1;
+  for (int k = 0; k < 8; k++)
+    if (c->progeny[k] != NULL) {
+      count += cell_unpack_end_step_grav(c->progeny[k], &pcells[count]);
+    }
+
+  /* Return the number of packed values. */
+  return count;
+
+#else
+  error("SWIFT was not compiled with MPI support.");
+  return 0;
+#endif
+}
+
+/**
+ * @brief Pack the time information of the given cell and all it's sub-cells.
+ *
+ * @param c The #cell.
+ * @param pcells (output) The end-of-timestep information we pack into
+ *
+ * @return The number of packed cells.
+ */
+int cell_pack_end_step_stars(struct cell *restrict c,
+                             struct pcell_step_stars *restrict pcells) {
+
+#ifdef WITH_MPI
+
+  /* Pack this cell's data. */
+  pcells[0].ti_end_min = c->stars.ti_end_min;
+  pcells[0].ti_end_max = c->stars.ti_end_max;
+  pcells[0].dx_max_part = c->stars.dx_max_part;
+
+  /* Fill in the progeny, depth-first recursion. */
+  int count = 1;
+  for (int k = 0; k < 8; k++)
+    if (c->progeny[k] != NULL) {
+      count += cell_pack_end_step_stars(c->progeny[k], &pcells[count]);
+    }
+
+  /* Return the number of packed values. */
+  return count;
+
+#else
+  error("SWIFT was not compiled with MPI support.");
+  return 0;
+#endif
+}
+
+/**
+ * @brief Unpack the time information of a given cell and its sub-cells.
+ *
+ * @param c The #cell
+ * @param pcells The end-of-timestep information to unpack
+ *
+ * @return The number of cells created.
+ */
+int cell_unpack_end_step_stars(struct cell *restrict c,
+                               struct pcell_step_stars *restrict pcells) {
+
+#ifdef WITH_MPI
+
+  /* Unpack this cell's data. */
+  c->stars.ti_end_min = pcells[0].ti_end_min;
+  c->stars.ti_end_max = pcells[0].ti_end_max;
+  c->stars.dx_max_part = pcells[0].dx_max_part;
+
+  /* Fill in the progeny, depth-first recursion. */
+  int count = 1;
+  for (int k = 0; k < 8; k++)
+    if (c->progeny[k] != NULL) {
+      count += cell_unpack_end_step_stars(c->progeny[k], &pcells[count]);
     }
 
   /* Return the number of packed values. */
@@ -1600,6 +1724,8 @@ void cell_reset_task_counters(struct cell *c) {
 #ifdef SWIFT_DEBUG_CHECKS
   for (int t = 0; t < task_type_count; ++t) c->tasks_executed[t] = 0;
   for (int t = 0; t < task_subtype_count; ++t) c->subtasks_executed[t] = 0;
+  for (int k = 0; k < 8; ++k)
+    if (c->progeny[k] != NULL) cell_reset_task_counters(c->progeny[k]);
 #else
   error("Calling debugging code without debugging flag activated.");
 #endif
@@ -1813,18 +1939,10 @@ void cell_check_multipole(struct cell *c) {
 void cell_clean(struct cell *c) {
 
   /* Hydro */
-  for (int i = 0; i < 13; i++)
-    if (c->hydro.sort[i] != NULL) {
-      free(c->hydro.sort[i]);
-      c->hydro.sort[i] = NULL;
-    }
+  cell_free_hydro_sorts(c);
 
   /* Stars */
-  for (int i = 0; i < 13; i++)
-    if (c->stars.sort[i] != NULL) {
-      free(c->stars.sort[i]);
-      c->stars.sort[i] = NULL;
-    }
+  cell_free_stars_sorts(c);
 
   /* Recurse */
   for (int k = 0; k < 8; k++)
@@ -1849,6 +1967,32 @@ void cell_clear_drift_flags(struct cell *c, void *data) {
 void cell_clear_limiter_flags(struct cell *c, void *data) {
   c->hydro.do_limiter = 0;
   c->hydro.do_sub_limiter = 0;
+}
+
+/**
+ * @brief Recurse down in a cell hierarchy until the hydro.super level is
+ * reached and activate the spart drift at that level.
+ *
+ * @param c The #cell to recurse into.
+ * @param s The #scheduler.
+ */
+void cell_activate_super_spart_drifts(struct cell *c, struct scheduler *s) {
+
+  if (c == c->hydro.super) {
+    cell_activate_drift_spart(c, s);
+  } else {
+    if (c->split) {
+      for (int k = 0; k < 8; ++k) {
+        if (c->progeny[k] != NULL) {
+          cell_activate_super_spart_drifts(c->progeny[k], s);
+        }
+      }
+    } else {
+#ifdef SWIFT_DEBUG_CHECKS
+      error("Reached a leaf cell without finding a hydro.super!!");
+#endif
+    }
+  }
 }
 
 /**
@@ -3126,7 +3270,8 @@ int cell_unskip_hydro_tasks(struct cell *c, struct scheduler *s) {
         }
 
         /* If the foreign cell is active, we want its ti_end values. */
-        if (ci_active || with_limiter) scheduler_activate(s, ci->mpi.recv_ti);
+        if (ci_active || with_limiter)
+          scheduler_activate(s, ci->mpi.hydro.recv_ti);
 
         if (with_limiter) scheduler_activate(s, ci->mpi.limiter.recv);
         if (with_limiter)
@@ -3154,7 +3299,7 @@ int cell_unskip_hydro_tasks(struct cell *c, struct scheduler *s) {
 
         /* If the local cell is active, send its ti_end values. */
         if (cj_active || with_limiter)
-          scheduler_activate_send(s, cj->mpi.send_ti, ci_nodeID);
+          scheduler_activate_send(s, cj->mpi.hydro.send_ti, ci_nodeID);
 
       } else if (cj_nodeID != nodeID) {
 
@@ -3171,7 +3316,8 @@ int cell_unskip_hydro_tasks(struct cell *c, struct scheduler *s) {
         }
 
         /* If the foreign cell is active, we want its ti_end values. */
-        if (cj_active || with_limiter) scheduler_activate(s, cj->mpi.recv_ti);
+        if (cj_active || with_limiter)
+          scheduler_activate(s, cj->mpi.hydro.recv_ti);
 
         if (with_limiter) scheduler_activate(s, cj->mpi.limiter.recv);
         if (with_limiter)
@@ -3200,7 +3346,7 @@ int cell_unskip_hydro_tasks(struct cell *c, struct scheduler *s) {
 
         /* If the local cell is active, send its ti_end values. */
         if (ci_active || with_limiter)
-          scheduler_activate_send(s, ci->mpi.send_ti, cj_nodeID);
+          scheduler_activate_send(s, ci->mpi.hydro.send_ti, cj_nodeID);
       }
 #endif
     }
@@ -3228,8 +3374,8 @@ int cell_unskip_hydro_tasks(struct cell *c, struct scheduler *s) {
     if (c->hydro.cooling != NULL) scheduler_activate(s, c->hydro.cooling);
     if (c->logger != NULL) scheduler_activate(s, c->logger);
 
-    if (c->hydro.star_formation != NULL) {
-      scheduler_activate(s, c->hydro.star_formation);
+    if (c->top->hydro.star_formation != NULL) {
+      scheduler_activate(s, c->top->hydro.star_formation);
       cell_activate_drift_spart(c, s);
     }
   }
@@ -3298,7 +3444,7 @@ int cell_unskip_gravity_tasks(struct cell *c, struct scheduler *s) {
         if (cj_active) scheduler_activate(s, ci->mpi.grav.recv);
 
         /* If the foreign cell is active, we want its ti_end values. */
-        if (ci_active) scheduler_activate(s, ci->mpi.recv_ti);
+        if (ci_active) scheduler_activate(s, ci->mpi.grav.recv_ti);
 
         /* Is the foreign cell active and will need stuff from us? */
         if (ci_active) {
@@ -3312,7 +3458,8 @@ int cell_unskip_gravity_tasks(struct cell *c, struct scheduler *s) {
         }
 
         /* If the local cell is active, send its ti_end values. */
-        if (cj_active) scheduler_activate_send(s, cj->mpi.send_ti, ci_nodeID);
+        if (cj_active)
+          scheduler_activate_send(s, cj->mpi.grav.send_ti, ci_nodeID);
 
       } else if (cj_nodeID != nodeID) {
 
@@ -3320,7 +3467,7 @@ int cell_unskip_gravity_tasks(struct cell *c, struct scheduler *s) {
         if (ci_active) scheduler_activate(s, cj->mpi.grav.recv);
 
         /* If the foreign cell is active, we want its ti_end values. */
-        if (cj_active) scheduler_activate(s, cj->mpi.recv_ti);
+        if (cj_active) scheduler_activate(s, cj->mpi.grav.recv_ti);
 
         /* Is the foreign cell active and will need stuff from us? */
         if (cj_active) {
@@ -3334,7 +3481,8 @@ int cell_unskip_gravity_tasks(struct cell *c, struct scheduler *s) {
         }
 
         /* If the local cell is active, send its ti_end values. */
-        if (ci_active) scheduler_activate_send(s, ci->mpi.send_ti, cj_nodeID);
+        if (ci_active)
+          scheduler_activate_send(s, ci->mpi.grav.send_ti, cj_nodeID);
       }
 #endif
     }
@@ -3507,14 +3655,14 @@ int cell_unskip_stars_tasks(struct cell *c, struct scheduler *s) {
           cell_activate_drift_spart(cj, s);
 
           /* If the local cell is active, send its ti_end values. */
-          scheduler_activate_send(s, cj->mpi.send_ti, ci_nodeID);
+          scheduler_activate_send(s, cj->mpi.stars.send_ti, ci_nodeID);
         }
 
         if (ci_active) {
           scheduler_activate(s, ci->mpi.stars.recv);
 
           /* If the foreign cell is active, we want its ti_end values. */
-          scheduler_activate(s, ci->mpi.recv_ti);
+          scheduler_activate(s, ci->mpi.stars.recv_ti);
 
           /* Is the foreign cell active and will need stuff from us? */
           scheduler_activate_send(s, cj->mpi.hydro.send_xv, ci_nodeID);
@@ -3537,14 +3685,14 @@ int cell_unskip_stars_tasks(struct cell *c, struct scheduler *s) {
           cell_activate_drift_spart(ci, s);
 
           /* If the local cell is active, send its ti_end values. */
-          scheduler_activate_send(s, ci->mpi.send_ti, cj_nodeID);
+          scheduler_activate_send(s, ci->mpi.stars.send_ti, cj_nodeID);
         }
 
         if (cj_active) {
           scheduler_activate(s, cj->mpi.stars.recv);
 
           /* If the foreign cell is active, we want its ti_end values. */
-          scheduler_activate(s, cj->mpi.recv_ti);
+          scheduler_activate(s, cj->mpi.stars.recv_ti);
 
           /* Is the foreign cell active and will need stuff from us? */
           scheduler_activate_send(s, ci->mpi.hydro.send_xv, cj_nodeID);
@@ -3574,12 +3722,34 @@ int cell_unskip_stars_tasks(struct cell *c, struct scheduler *s) {
     const int cj_nodeID = nodeID;
 #endif
 
-    if ((ci_active && cj_nodeID == nodeID) ||
-        (cj_active && ci_nodeID == nodeID)) {
+    if (t->type == task_type_self && ci_active) {
       scheduler_activate(s, t);
-
-      /* Nothing more to do here, all drifts and sorts activated above */
     }
+
+    else if (t->type == task_type_sub_self && ci_active) {
+      scheduler_activate(s, t);
+    }
+
+    else if (t->type == task_type_pair || t->type == task_type_sub_pair) {
+
+      /* We only want to activate the task if the cell is active and is
+         going to update some gas on the *local* node */
+      if ((ci_nodeID == nodeID && cj_nodeID == nodeID) &&
+          (ci_active || cj_active)) {
+
+        scheduler_activate(s, t);
+
+      } else if ((ci_nodeID == nodeID && cj_nodeID != nodeID) && (cj_active)) {
+
+        scheduler_activate(s, t);
+
+      } else if ((ci_nodeID != nodeID && cj_nodeID == nodeID) && (ci_active)) {
+
+        scheduler_activate(s, t);
+      }
+    }
+
+    /* Nothing more to do here, all drifts and sorts activated above */
   }
 
   /* Unskip all the other task types. */
@@ -3588,6 +3758,9 @@ int cell_unskip_stars_tasks(struct cell *c, struct scheduler *s) {
     if (c->stars.ghost != NULL) scheduler_activate(s, c->stars.ghost);
     if (c->stars.stars_in != NULL) scheduler_activate(s, c->stars.stars_in);
     if (c->stars.stars_out != NULL) scheduler_activate(s, c->stars.stars_out);
+    if (c->kick1 != NULL) scheduler_activate(s, c->kick1);
+    if (c->kick2 != NULL) scheduler_activate(s, c->kick2);
+    if (c->timestep != NULL) scheduler_activate(s, c->timestep);
     if (c->logger != NULL) scheduler_activate(s, c->logger);
   }
 
@@ -3630,8 +3803,7 @@ void cell_set_super(struct cell *c, struct cell *super, const int with_hydro,
 void cell_set_super_hydro(struct cell *c, struct cell *super_hydro) {
 
   /* Are we in a cell with some kind of self/pair task ? */
-  if (super_hydro == NULL && (c->hydro.density != NULL || c->stars.count > 0))
-    super_hydro = c;
+  if (super_hydro == NULL && c->hydro.density != NULL) super_hydro = c;
 
   /* Set the super-cell */
   c->hydro.super = super_hydro;
@@ -3711,7 +3883,9 @@ void cell_set_super_mapper(void *map_data, int num_elements, void *extra_data) {
 int cell_has_tasks(struct cell *c) {
 
 #ifdef WITH_MPI
-  if (c->timestep != NULL || c->mpi.recv_ti != NULL) return 1;
+  if (c->timestep != NULL || c->mpi.hydro.recv_ti != NULL ||
+      c->mpi.grav.recv_ti != NULL || c->mpi.stars.recv_ti != NULL)
+    return 1;
 #else
   if (c->timestep != NULL) return 1;
 #endif
@@ -4284,35 +4458,19 @@ void cell_drift_multipole(struct cell *c, const struct engine *e) {
  * hierarchy.
  *
  * @param c The #cell to clean.
- * @param is_super Is this a super-cell?
  */
-void cell_clear_stars_sort_flags(struct cell *c, const int is_super) {
+void cell_clear_stars_sort_flags(struct cell *c) {
 
   /* Recurse if possible */
   if (c->split) {
     for (int k = 0; k < 8; k++)
-      if (c->progeny[k] != NULL)
-        cell_clear_stars_sort_flags(c->progeny[k], /*is_super=*/0);
-  }
-
-  /* Free the sorted array at the level where it was allocated */
-  if (is_super) {
-
-#ifdef SWIFT_DEBUG_CHECKS
-    if (c != c->hydro.super) error("Cell is not a super-cell!!!");
-#endif
-
-    for (int i = 0; i < 13; i++) {
-      free(c->stars.sort[i]);
-    }
+      if (c->progeny[k] != NULL) cell_clear_stars_sort_flags(c->progeny[k]);
   }
 
   /* Indicate that the cell is not sorted and cancel the pointer sorting arrays.
    */
   c->stars.sorted = 0;
-  for (int i = 0; i < 13; i++) {
-    c->stars.sort[i] = NULL;
-  }
+  cell_free_stars_sorts(c);
 }
 
 /**
@@ -4448,16 +4606,36 @@ struct spart *cell_add_spart(struct engine *e, struct cell *const c) {
      each level */
   struct cell *top = c;
   while (top->parent != NULL) {
+
+    /* What is the progeny index of the cell? */
     for (int k = 0; k < 8; ++k) {
       if (top->parent->progeny[k] == top) {
         progeny[(int)top->parent->depth] = k;
       }
     }
+
+      /* Check that the cell was indeed drifted to this point to avoid future
+       * issues */
+#ifdef SWIFT_DEBUG_CHECKS
+    if (top->hydro.super != NULL && top->stars.count > 0 &&
+        top->stars.ti_old_part != e->ti_current) {
+      error("Cell had not been correctly drifted before star formation");
+    }
+#endif
+
+    /* Climb up */
     top = top->parent;
   }
 
+  /* Lock the top-level cell as we are going to operate on it */
+  lock_lock(&top->stars.star_formation_lock);
+
   /* Are there any extra particles left? */
   if (top->stars.count == top->stars.count_total - 1) {
+
+    /* Release the local lock before exiting. */
+    if (lock_unlock(&top->stars.star_formation_lock) != 0)
+      error("Failed to unlock the top-level cell.");
     message("We ran out of star particles!");
     atomic_inc(&e->forcerebuild);
     return NULL;
@@ -4493,6 +4671,19 @@ struct spart *cell_add_spart(struct engine *e, struct cell *const c) {
    * current cell*/
   cell_recursively_shift_sparts(top, progeny, /* main_branch=*/1);
 
+  /* Make sure the gravity will be recomputed for this particle in the next step
+   */
+  struct cell *top2 = c;
+  while (top2->parent != NULL) {
+    top2->stars.ti_old_part = e->ti_current;
+    top2 = top2->parent;
+  }
+  top2->stars.ti_old_part = e->ti_current;
+
+  /* Release the lock */
+  if (lock_unlock(&top->stars.star_formation_lock) != 0)
+    error("Failed to unlock the top-level cell.");
+
   /* We now have an empty spart as the first particle in that cell */
   struct spart *sp = &c->stars.parts[0];
   bzero(sp, sizeof(struct spart));
@@ -4504,13 +4695,6 @@ struct spart *cell_add_spart(struct engine *e, struct cell *const c) {
 
   /* Set it to the current time-bin */
   sp->time_bin = e->min_active_bin;
-
-  top = c;
-  while (top->parent != NULL) {
-    top->grav.ti_end_min = e->ti_current;
-    top = top->parent;
-  }
-  top->grav.ti_end_min = e->ti_current;
 
 #ifdef SWIFT_DEBUG_CHECKS
   /* Specify it was drifted to this point */
@@ -4808,6 +4992,17 @@ void cell_reorder_extra_parts(struct cell *c, const ptrdiff_t parts_offset) {
         parts[i].gpart->id_or_neg_offset = -(i + parts_offset);
     }
   }
+
+#ifdef SWIFT_DEBUG_CHECKS
+  for (int i = 0; i < c->hydro.count_total; ++i) {
+    if (parts[i].time_bin == time_bin_not_created && i < c->hydro.count) {
+      error("Extra particle before the end of the regular array");
+    }
+    if (parts[i].time_bin != time_bin_not_created && i >= c->hydro.count) {
+      error("Regular particle after the end of the regular array");
+    }
+  }
+#endif
 }
 
 /**
@@ -4854,6 +5049,17 @@ void cell_reorder_extra_sparts(struct cell *c, const ptrdiff_t sparts_offset) {
 #endif
     }
   }
+
+#ifdef SWIFT_DEBUG_CHECKS
+  for (int i = 0; i < c->stars.count_total; ++i) {
+    if (sparts[i].time_bin == time_bin_not_created && i < c->stars.count) {
+      error("Extra particle before the end of the regular array");
+    }
+    if (sparts[i].time_bin != time_bin_not_created && i >= c->stars.count) {
+      error("Regular particle after the end of the regular array");
+    }
+  }
+#endif
 }
 
 /**
@@ -4899,6 +5105,17 @@ void cell_reorder_extra_gparts(struct cell *c, struct part *parts,
       }
     }
   }
+
+#ifdef SWIFT_DEBUG_CHECKS
+  for (int i = 0; i < c->grav.count_total; ++i) {
+    if (gparts[i].time_bin == time_bin_not_created && i < c->grav.count) {
+      error("Extra particle before the end of the regular array");
+    }
+    if (gparts[i].time_bin != time_bin_not_created && i >= c->grav.count) {
+      error("Regular particle after the end of the regular array");
+    }
+  }
+#endif
 }
 
 /**

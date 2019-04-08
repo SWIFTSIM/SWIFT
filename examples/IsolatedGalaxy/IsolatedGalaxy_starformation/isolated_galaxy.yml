@@ -35,7 +35,7 @@ Statistics:
 
 # Parameters related to the initial conditions
 InitialConditions:
-  file_name:               fid.hdf5 # The file to read
+  file_name:               lowres8.hdf5 # The file to read
   periodic:                0        # Are we running with periodic ICs?
   stars_smoothing_length:  0.5
   

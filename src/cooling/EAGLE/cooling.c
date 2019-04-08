@@ -58,8 +58,8 @@ static const float explicit_tolerance = 0.05;
 static const float newton_tolerance = 1.0e-4;
 static const float bisection_tolerance = 1.0e-6;
 static const float rounding_tolerance = 1.0e-4;
-static const double bracket_factor = 1.5;              /* sqrt(1.1) */
-static const double newton_log_u_guess_cgs = 12.30103; /* log10(2e12) */
+static const double bracket_factor = 1.5;
+static const double newton_log_u_guess_cgs = 12;
 
 /**
  * @brief Find the index of the current redshift along the redshift dimension
@@ -142,17 +142,21 @@ void cooling_update(const struct cosmology *cosmo,
   get_redshift_index(redshift, &z_index, &dz, cooling);
   cooling->dz = dz;
 
-  /* Does this timestep straddle Hydrogen reionization? If so, we need to input
-   * extra heat */
-  if (!cooling->H_reion_done && (redshift < cooling->H_reion_z)) {
+  /* Extra energy for reionization? */
+  if (!cooling->H_reion_done) {
 
-    if (s == NULL) error("Trying to do H reionization on an empty space!");
+    /* Does this timestep straddle Hydrogen reionization? If so, we need to
+     * input extra heat */
+    if (cosmo->z <= cooling->H_reion_z && cosmo->z_old > cooling->H_reion_z) {
 
-    /* Inject energy to all particles */
-    cooling_Hydrogen_reionization(cooling, cosmo, s);
+      if (s == NULL) error("Trying to do H reionization on an empty space!");
 
-    /* Flag that reionization happened */
-    cooling->H_reion_done = 1;
+      /* Inject energy to all particles */
+      cooling_Hydrogen_reionization(cooling, cosmo, s);
+
+      /* Flag that reionization happened */
+      cooling->H_reion_done = 1;
+    }
   }
 
   /* Do we already have the correct tables loaded? */
@@ -803,6 +807,8 @@ void cooling_Hydrogen_reionization(const struct cooling_function_data *cooling,
   const float extra_heat =
       cooling->H_reion_heat_cgs * cooling->internal_energy_from_cgs;
 
+  message("Applying extra energy for H reionization!");
+
   /* Loop through particles and set new heat */
   for (size_t i = 0; i < s->nr_parts; i++) {
 
@@ -982,20 +988,20 @@ void cooling_print_backend(const struct cooling_function_data *cooling) {
 void cooling_clean(struct cooling_function_data *cooling) {
 
   /* Free the side arrays */
-  free(cooling->Redshifts);
-  free(cooling->nH);
-  free(cooling->Temp);
-  free(cooling->HeFrac);
-  free(cooling->Therm);
-  free(cooling->SolarAbundances);
-  free(cooling->SolarAbundances_inv);
+  swift_free("cooling", cooling->Redshifts);
+  swift_free("cooling", cooling->nH);
+  swift_free("cooling", cooling->Temp);
+  swift_free("cooling", cooling->HeFrac);
+  swift_free("cooling", cooling->Therm);
+  swift_free("cooling", cooling->SolarAbundances);
+  swift_free("cooling", cooling->SolarAbundances_inv);
 
   /* Free the tables */
-  free(cooling->table.metal_heating);
-  free(cooling->table.electron_abundance);
-  free(cooling->table.temperature);
-  free(cooling->table.H_plus_He_heating);
-  free(cooling->table.H_plus_He_electron_abundance);
+  swift_free("cooling-tables", cooling->table.metal_heating);
+  swift_free("cooling-tables", cooling->table.electron_abundance);
+  swift_free("cooling-tables", cooling->table.temperature);
+  swift_free("cooling-tables", cooling->table.H_plus_He_heating);
+  swift_free("cooling-tables", cooling->table.H_plus_He_electron_abundance);
 }
 
 /**
