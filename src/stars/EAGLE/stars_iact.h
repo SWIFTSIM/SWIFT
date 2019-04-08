@@ -244,13 +244,13 @@ runner_iact_nonsym_stars_feedback(
            si->to_distribute.num_SNIa / si->ngb_mass;
       heating_probability = 1;
     }
-  }
 
-  double random_num =
-      random_unit_interval(pj->id, ti_current, random_number_stellar_feedback);
-  if (random_num < heating_probability) {
-    hydro_set_physical_internal_energy(pj, xp, cosmo, u_init + du);
-    hydro_set_drifted_physical_internal_energy(pj, cosmo, u_init + du);
+    double random_num =
+        random_unit_interval(pj->id, ti_current, random_number_stellar_feedback);
+    if (random_num < heating_probability) {
+      hydro_set_physical_internal_energy(pj, xp, cosmo, u_init + du);
+      hydro_set_drifted_physical_internal_energy(pj, cosmo, u_init + du);
+    }
   }
 }
 
