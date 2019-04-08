@@ -527,27 +527,12 @@ __attribute__((always_inline)) INLINE static void runner_iact_force(
 
   /* Eventually got the acceleration */
   const float acc = visc_term + sph_term;
-  // if (pi->id == 142820 || pi->id == 145267) message("1 id %llu acc %.5e
-  // visc_term %.5e sph_term %.5e", pi->id, acc, visc_term, sph_term);  if
-  // (pj->id
-  // == 142820 || pj->id == 145267) message("2 id %llu acc %.5e visc_term %.5e
-  // sph_term %.5e", pj->id, acc, visc_term, sph_term);
 
   /* Use the force Luke ! */
-  // if (pi->id == 145267) message("pi 1 id %llu acted on by id %llu a_old %.5e
-  // %.5e %.5e mj %.5e acc %.5e dx %.5e %.5e %.5e a_new %.5e %.5e %.5e", pi->id,
-  // pj->id, pi->a_hydro[0], pi->a_hydro[1], pi->a_hydro[2], mj, acc, dx[0],
-  // dx[1], dx[2], pi->a_hydro[0] + mj * acc * dx[0], pi->a_hydro[1] + mj * acc
-  // * dx[1], pi->a_hydro[2] + mj * acc * dx[2]);
   pi->a_hydro[0] -= mj * acc * dx[0];
   pi->a_hydro[1] -= mj * acc * dx[1];
   pi->a_hydro[2] -= mj * acc * dx[2];
 
-  // if (pj->id == 145267) message("pj id %llu acted on by %llu a_old %.5e %.5e
-  // %.5e mi %.5e acc %.5e dx %.5e %.5e %.5e a_new %.5e %.5e %.5e", pj->id,
-  // pi->id, pj->a_hydro[0], pj->a_hydro[1], pj->a_hydro[2], mi, acc, dx[0],
-  // dx[1], dx[2], pj->a_hydro[0] + mi * acc * dx[0], pj->a_hydro[1] + mi * acc
-  // * dx[1], pj->a_hydro[2] + mi * acc * dx[2]);
   pj->a_hydro[0] += mi * acc * dx[0];
   pj->a_hydro[1] += mi * acc * dx[1];
   pj->a_hydro[2] += mi * acc * dx[2];
@@ -610,7 +595,6 @@ __attribute__((always_inline)) INLINE static void runner_iact_nonsym_force(
   const float r = r2 * r_inv;
 
   /* Get some values in local variables. */
-  // const float mi = pi->mass;
   const float mj = pj->mass;
   const float rhoi = pi->rho;
   const float rhoj = pj->rho;
@@ -671,15 +655,8 @@ __attribute__((always_inline)) INLINE static void runner_iact_nonsym_force(
 
   /* Eventually got the acceleration */
   const float acc = visc_term + sph_term;
-  // if (pi->id == 142820 || pi->id == 145267) message("3 id %llu acc %.5e
-  // visc_term %.5e sph_term %.5e", pi->id, acc, visc_term, sph_term);
 
   /* Use the force Luke ! */
-  // if (pi->id == 145267) message("pi 2 id %llu acted on by %llu a_old %.5e
-  // %.5e %.5e mj %.5e acc %.5e dx %.5e %.5e %.5e a_new %.5e %.5e %.5e", pi->id,
-  // pj->id, pi->a_hydro[0], pi->a_hydro[1], pi->a_hydro[2], mj, acc, dx[0],
-  // dx[1], dx[2], pi->a_hydro[0] + mj * acc * dx[0], pi->a_hydro[1] + mj * acc
-  // * dx[1], pi->a_hydro[2] + mj * acc * dx[2]);
   pi->a_hydro[0] -= mj * acc * dx[0];
   pi->a_hydro[1] -= mj * acc * dx[1];
   pi->a_hydro[2] -= mj * acc * dx[2];
