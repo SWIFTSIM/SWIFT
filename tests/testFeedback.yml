@@ -20,9 +20,11 @@ SPH:
   resolution_eta:        1.2348   # Target smoothing length in units of the mean inter-particle separation 
   CFL_condition:         0.1      # Courant-Friedrich-Levy condition for time integration.
 
-EagleStellarEvolution:
+EAGLEFeedback:
   filename:     /cosma5/data/Eagle/BG_Tables/YieldTables/
   imf_model:    Chabrier
-
-EAGLEFeedback:
-  lifetime_flag:  2
+  continuous_heating_switch: 0
+  SNIa_timescale_Gyr:        2.0
+  SNIa_efficiency:           2.e-3
+  SNII_wind_delay_Gyr:       0.03
+  SNe_heating_temperature_K: 3.16228e7

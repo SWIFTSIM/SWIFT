@@ -678,7 +678,6 @@ void engine_marktasks_mapper(void *map_data, int num_elements,
  */
 int engine_marktasks(struct engine *e) {
 
-  message("marktask");
   struct scheduler *s = &e->sched;
   const ticks tic = getticks();
   int rebuild_space = 0;

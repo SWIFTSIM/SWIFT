@@ -109,9 +109,11 @@ EAGLEEntropyFloor:
   Cool_temperature_norm_K:        8000       # Temperature of the EAGLE Cool limiter entropy floor at the density threshold expressed in Kelvin.
   Cool_gamma_effective:           1.         # Slope the of the EAGLE Cool limiter entropy floor
 
-EagleStellarEvolution:
+EAGLEFeedback:
   filename:     /cosma5/data/Eagle/BG_Tables/YieldTables/
   imf_model:    Chabrier
-
-EAGLEFeedback:
-  lifetime_flag:  2
+  continuous_heating_switch: 0
+  SNIa_timescale_Gyr:        2.0
+  SNIa_efficiency:           2.e-3
+  SNII_wind_delay_Gyr:       0.03
+  SNe_heating_temperature_K: 3.16228e7

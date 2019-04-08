@@ -809,9 +809,9 @@ inline static void stars_evolve_init(struct swift_params* params,
   stars->feedback.log10_SNIa_max_mass_msun = 0.90308999f;  // log10(8).
 
   /* Yield table filepath  */
-  parser_get_param_string(params, "EagleStellarEvolution:filename",
+  parser_get_param_string(params, "EAGLEFeedback:filename",
                           stars->feedback.yield_table_path);
-  parser_get_param_string(params, "EagleStellarEvolution:imf_model",
+  parser_get_param_string(params, "EAGLEFeedback:imf_model",
                           stars->feedback.IMF_Model);
 
   /* Initialise IMF */

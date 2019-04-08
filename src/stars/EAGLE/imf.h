@@ -396,8 +396,7 @@ inline static double dying_mass_msun(double age_Gyr, float metallicity,
 }
 
 /**
- * @brief Calculate lifetime of star poputlation in Gyr. Lifetime model is
- * specified by stellar_lifetime_flag read in from yml file. Approach based on
+ * @brief Calculate lifetime of star poputlation in Gyr. Approach based on
  * Portinari et al. 1998
  *
  * @param mass
