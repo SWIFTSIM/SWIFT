@@ -22,59 +22,53 @@
 #include "interpolate.h"
 
 /**
+ * @brief the different weightings allowed for the IMF integration
+ */
+enum eagle_imf_integration_type {
+  eagle_imf_integration_no_weight,
+  eagle_imf_integration_mass_weight,
+  eagle_imf_integration_yield_weight
+} __attribute__((packed));
+
+/**
  * @brief determine which IMF mass bins the upper and lower input mass bounds
  * belong to
  *
  * @param log10_min_mass Lower mass bound
  * @param log10_max_mass Upper mass bound
- * @param low_imf_mass_bin_index pointer to index of IMF mass bin containing
- * log10_min_mass
- * @param high_imf_mass_bin_index pointer to index of IMF mass bin containing
- * log10_max_mass
+ * @param i_min (return) Index of IMF mass bin containing log10_min_mass
+ * @param i_max (return) Index of IMF mass bin containing log10_max_mass
  * @param star_properties the #stars_props data struct
  */
 inline static void determine_imf_bins(
-    double log10_min_mass, double log10_max_mass, int *low_imf_mass_bin_index,
-    int *high_imf_mass_bin_index,
-    const struct stars_props *restrict star_properties) {
-  int i1, i2;
+    double log10_min_mass, double log10_max_mass, int *i_min, int *i_max,
+    const struct stars_props *star_properties) {
+
+#ifdef SWIFT_DEBUG_CHECKS
+  if (log10_min_mass > log10_max_mass)
+    error("Lower bound higher than larger bound.");
+#endif
+
+  const int N_bins = star_properties->feedback.n_imf_mass_bins;
+  const float *imf_bins_log10 = star_properties->feedback.imf_mass_bin_log10;
 
   /* Check whether lower mass is within the IMF mass bin range */
-  if (log10_min_mass < star_properties->feedback.imf_mass_bin_log10[0])
-    log10_min_mass = star_properties->feedback.imf_mass_bin_log10[0];
-  if (log10_min_mass >
-      star_properties->feedback
-          .imf_mass_bin_log10[star_properties->feedback.n_imf_mass_bins - 1])
-    log10_min_mass =
-        star_properties->feedback
-            .imf_mass_bin_log10[star_properties->feedback.n_imf_mass_bins - 1];
+  log10_min_mass = max(log10_min_mass, imf_bins_log10[0]);
+  log10_min_mass = min(log10_min_mass, imf_bins_log10[N_bins - 1]);
 
   /* Check whether upper mass is within the IMF mass bin range */
-  if (log10_max_mass < star_properties->feedback.imf_mass_bin_log10[0])
-    log10_max_mass = star_properties->feedback.imf_mass_bin_log10[0];
-  if (log10_max_mass >
-      star_properties->feedback
-          .imf_mass_bin_log10[star_properties->feedback.n_imf_mass_bins - 1])
-    log10_max_mass =
-        star_properties->feedback
-            .imf_mass_bin_log10[star_properties->feedback.n_imf_mass_bins - 1];
+  log10_max_mass = max(log10_min_mass, imf_bins_log10[0]);
+  log10_max_mass = min(log10_min_mass, imf_bins_log10[N_bins - 1]);
 
-  /* Find mass bin to which lower mass belongs */
-  for (i1 = 0;
-       i1 < star_properties->feedback.n_imf_mass_bins - 2 &&
-       star_properties->feedback.imf_mass_bin_log10[i1 + 1] < log10_min_mass;
-       i1++)
-    ;
+  *i_min = 0;
+  while ((*i_min < N_bins - 2) && imf_bins_log10[*i_min + 1] < log10_min_mass) {
+    (*i_min)++;
+  }
 
-  /* Find mass bin to which upper mass belongs */
-  for (i2 = 1;
-       i2 < star_properties->feedback.n_imf_mass_bins - 1 &&
-       star_properties->feedback.imf_mass_bin_log10[i2] < log10_max_mass;
-       i2++)
-    ;
-
-  *low_imf_mass_bin_index = i1;
-  *high_imf_mass_bin_index = i2;
+  *i_max = 1;
+  while ((*i_max < N_bins - 1) && imf_bins_log10[*i_max] < log10_max_mass) {
+    (*i_max)++;
+  }
 }
 
 /**
@@ -84,91 +78,110 @@ inline static void determine_imf_bins(
  *
  * @param log10_min_mass log10 mass lower integration bound
  * @param log10_max_mass log10 mass upper integration bound
- * @param mode Flag to specify weighting used for integrating IMF
- * @param stellar_yields Array of weights based on yields. Used with mode=2
+ * @param mode Type of weighting for the IMF integration.
+ * @param stellar_yields Array of weights based on yields. Used only for
+ * yield-weighted integration.
  * @param star_properties the #stars_props data structure
  */
-inline static float integrate_imf(
-    float log10_min_mass, float log10_max_mass, int mode, float *stellar_yields,
-    const struct stars_props *restrict star_properties) {
+inline static float integrate_imf(const float log10_min_mass,
+                                  const float log10_max_mass,
+                                  const enum eagle_imf_integration_type mode,
+                                  const float *stellar_yields,
+                                  const struct stars_props *star_properties) {
 
-  double result;
-
-  int low_imf_mass_bin_index, high_imf_mass_bin_index;
-
-  float imf_log10_mass_bin_size, bin_offset;
+  /* Pull out some common terms */
+  const int N_bins = star_properties->feedback.n_imf_mass_bins;
+  const float *imf = star_properties->feedback.imf;
+  const float *imf_mass_bin = star_properties->feedback.imf_mass_bin;
+  const float *imf_mass_bin_log10 =
+      star_properties->feedback.imf_mass_bin_log10;
 
   /* IMF mass bin spacing in log10 space. Assumes uniform spacing. */
-  imf_log10_mass_bin_size = star_properties->feedback.imf_mass_bin_log10[1] -
-                            star_properties->feedback.imf_mass_bin_log10[0];
+  const float imf_log10_mass_bin_size =
+      imf_mass_bin_log10[1] - imf_mass_bin_log10[0];
 
   /* Determine bins to integrate over based on integration bounds */
-  determine_imf_bins(log10_min_mass, log10_max_mass, &low_imf_mass_bin_index,
-                     &high_imf_mass_bin_index, star_properties);
+  int i_min, i_max;
+  determine_imf_bins(log10_min_mass, log10_max_mass, &i_min, &i_max,
+                     star_properties);
 
-  float integrand[star_properties->feedback.n_imf_mass_bins];
+  /* Array for the integrand */
+  float integrand[N_bins];
 
   /* Add up the contribution from each of the IMF mass bins */
-  if (mode == 0) /* Integrate IMF on its own */
-    for (int i = low_imf_mass_bin_index; i < high_imf_mass_bin_index + 1; i++)
-      integrand[i] = star_properties->feedback.imf[i] *
-                     star_properties->feedback.imf_mass_bin[i];
-  else if (mode == 1)
-    /* Integrate IMF weighted by mass */
-    for (int i = low_imf_mass_bin_index; i < high_imf_mass_bin_index + 1; i++)
-      integrand[i] = star_properties->feedback.imf[i] *
-                     star_properties->feedback.imf_mass_bin[i] *
-                     star_properties->feedback.imf_mass_bin[i];
-  else if (mode == 2)
-    /* Integrate IMF weighted by yields */
-    for (int i = low_imf_mass_bin_index; i < high_imf_mass_bin_index + 1; i++)
-      integrand[i] = stellar_yields[i] * star_properties->feedback.imf[i] *
-                     star_properties->feedback.imf_mass_bin[i];
-  else {
-    error("invalid mode in integrate_imf = %d\n", mode);
+  switch (mode) {
+
+    case eagle_imf_integration_no_weight:
+
+      /* Integrate IMF on its own */
+      for (int i = i_min; i < i_max + 1; i++) {
+        integrand[i] = imf[i] * imf_mass_bin[i];
+      }
+      break;
+
+    case eagle_imf_integration_mass_weight:
+
+      /* Integrate IMF weighted by mass */
+      for (int i = i_min; i < i_max + 1; i++) {
+        integrand[i] = imf[i] * imf_mass_bin[i] * imf_mass_bin[i];
+      }
+      break;
+
+    case eagle_imf_integration_yield_weight:
+
+#ifdef SWIFT_DEBUG_CHECKS
+      if (stellar_yields == NULL)
+        error(
+            "Yield array not passed in despite asking for yield-weighted IMf "
+            "integration.");
+#endif
+
+      /* Integrate IMF weighted by yields */
+      for (int i = i_min; i < i_max + 1; i++) {
+        integrand[i] = stellar_yields[i] * imf[i] * imf_mass_bin[i];
+      }
+      break;
+
+    default:
+      error("Invalid mode for IMF integration");
   }
 
-  /* integrate using trapezoidal rule */
-  result = 0;
-  for (int i = low_imf_mass_bin_index; i < high_imf_mass_bin_index + 1; i++)
+  /* Integrate using trapezoidal rule */
+  float result = 0.f;
+  for (int i = i_min; i < i_max + 1; i++) {
     result += integrand[i];
+  }
 
   /* Update end bins since contribution was overcounted when summing up all
    * entries */
-  result = result - 0.5 * integrand[low_imf_mass_bin_index] -
-           0.5 * integrand[high_imf_mass_bin_index];
+  result -= 0.5 * (integrand[i_min] + integrand[i_max]);
 
-  /* correct first bin */
-  bin_offset =
-      (log10_min_mass -
-       star_properties->feedback.imf_mass_bin_log10[low_imf_mass_bin_index]) /
-      imf_log10_mass_bin_size;
+  /* Correct first bin */
+  const float first_bin_offset =
+      (log10_min_mass - imf_mass_bin_log10[i_min]) / imf_log10_mass_bin_size;
 
-  if (bin_offset < 0.5)
-    result -= bin_offset * integrand[low_imf_mass_bin_index];
-  else {
-    result -= 0.5 * integrand[low_imf_mass_bin_index];
-    result -= (bin_offset - 0.5) * integrand[low_imf_mass_bin_index + 1];
+  if (first_bin_offset < 0.5f) {
+    result -= first_bin_offset * integrand[i_min];
+  } else {
+    result -= 0.5f * integrand[i_min];
+    result -= (first_bin_offset - 0.5f) * integrand[i_min + 1];
   }
 
-  /* correct last bin */
-  bin_offset =
-      (log10_max_mass - star_properties->feedback
-                            .imf_mass_bin_log10[high_imf_mass_bin_index - 1]) /
+  /* Correct last bin */
+  const float last_bin_offset =
+      (log10_max_mass - imf_mass_bin_log10[i_max - 1]) /
       imf_log10_mass_bin_size;
 
-  if (bin_offset < 0.5) {
-    result -= 0.5 * integrand[high_imf_mass_bin_index];
-    result -= (0.5 - bin_offset) * integrand[high_imf_mass_bin_index - 1];
+  if (last_bin_offset < 0.5) {
+    result -= 0.5f * integrand[i_max];
+    result -= (0.5f - last_bin_offset) * integrand[i_max - 1];
   } else {
-    result -= (1 - bin_offset) * integrand[high_imf_mass_bin_index];
+    result -= (1.f - last_bin_offset) * integrand[i_max];
   }
 
   /* The IMF is tabulated in log10, multiply by log10(mass bin size) to get
    * result of integrating IMF */
-  result *= imf_log10_mass_bin_size * log(10.0);
-
-  return result;
+  return result * imf_log10_mass_bin_size * ((float)M_LN10);
 }
 
 /**
