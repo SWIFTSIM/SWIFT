@@ -218,6 +218,7 @@ hydro_get_comoving_soundspeed(const struct part *restrict p) {
 
   /* Compute the sound speed -- see theory section for justification */
   /* IDEAL GAS ONLY -- P-U does not work with generic EoS. */
+
   const float square_rooted = sqrtf(hydro_gamma * p->pressure_bar / p->rho);
 
   return square_rooted;
@@ -233,7 +234,7 @@ __attribute__((always_inline)) INLINE static float
 hydro_get_physical_soundspeed(const struct part *restrict p,
                               const struct cosmology *cosmo) {
 
-  return cosmo->a_factor_sound_speed * p->force.soundspeed;
+  return cosmo->a_factor_sound_speed * hydro_get_comoving_soundspeed(p);
 }
 
 /**
@@ -380,6 +381,45 @@ __attribute__((always_inline)) INLINE static void hydro_set_physical_entropy(
 }
 
 /**
+ * @brief Sets the physical internal energy of a particle
+ *
+ * @param p The particle of interest.
+ * @param xp The extended particle data.
+ * @param cosmo Cosmology data structure
+ * @param u The physical internal energy
+ */
+__attribute__((always_inline)) INLINE static void
+hydro_set_physical_internal_energy(struct part *p, struct xpart *xp,
+                                   const struct cosmology *cosmo,
+                                   const float u) {
+
+  xp->u_full = u / cosmo->a_factor_internal_energy;
+}
+
+/**
+ * @brief Sets the drifted physical internal energy of a particle
+ *
+ * @param p The particle of interest.
+ * @param cosmo Cosmology data structure
+ * @param u The physical internal energy
+ */
+__attribute__((always_inline)) INLINE static void
+hydro_set_drifted_physical_internal_energy(struct part *p,
+                                           const struct cosmology *cosmo,
+                                           const float u) {
+
+  p->u = u / cosmo->a_factor_internal_energy;
+
+  /* Now recompute the extra quantities */
+
+  /* Compute the sound speed */
+  const float soundspeed = hydro_get_comoving_soundspeed(p);
+
+  /* Update variables. */
+  p->force.soundspeed = soundspeed;
+}
+
+/**
  * @brief Computes the hydro time-step of a given particle
  *
  * This function returns the time-step of a particle given its hydro-dynamical
@@ -502,8 +542,8 @@ __attribute__((always_inline)) INLINE static void hydro_end_density(
   p->density.rot_v[2] *= h_inv_dim_plus_one * a_inv2 * rho_inv;
 
   /* Finish calculation of the velocity divergence */
-  p->viscosity.div_v *=
-      h_inv_dim_plus_one * rho_inv * a_inv2 + cosmo->H * hydro_dimension;
+  p->viscosity.div_v *= h_inv_dim_plus_one * rho_inv * a_inv2;
+  p->viscosity.div_v += cosmo->H * hydro_dimension;
 }
 
 /**
@@ -654,18 +694,31 @@ __attribute__((always_inline)) INLINE static void hydro_prepare_force(
 
   /* Here we need to update the artificial viscosity */
 
-  /* Timescale for decay */
-  const float tau =
-      p->h / (2.f * p->viscosity.v_sig * hydro_props->viscosity.length);
-  /* Construct time differential of div.v implicitly */
-  const float div_v_dt =
+  /* We use in this function that h is the radius of support */
+  const float kernel_support_physical = p->h * cosmo->a * kernel_gamma;
+  const float v_sig_physical = p->viscosity.v_sig * cosmo->a_factor_sound_speed;
+  const float soundspeed_physical = hydro_get_physical_soundspeed(p, cosmo);
+
+  const float sound_crossing_time_inverse =
+      soundspeed_physical / kernel_support_physical;
+
+  /* Construct time differential of div.v implicitly following the ANARCHY spec
+   */
+
+  float div_v_dt =
       dt_alpha == 0.f
           ? 0.f
           : (p->viscosity.div_v - p->viscosity.div_v_previous_step) / dt_alpha;
+
   /* Construct the source term for the AV; if shock detected this is _positive_
    * as div_v_dt should be _negative_ before the shock hits */
-  const float S = p->h * p->h * max(0.f, -1.f * div_v_dt);
-  const float v_sig_square = p->viscosity.v_sig * p->viscosity.v_sig;
+  const float S = kernel_support_physical * kernel_support_physical *
+                  max(0.f, -1.f * div_v_dt);
+  /* 0.25 factor comes from our definition of v_sig (sum of soundspeeds rather
+   * than mean). */
+  /* Note this is v_sig_physical squared, not comoving */
+  const float v_sig_square = 0.25 * v_sig_physical * v_sig_physical;
+
   /* Calculate the current appropriate value of the AV based on the above */
   const float alpha_loc =
       hydro_props->viscosity.alpha_max * S / (v_sig_square + S);
@@ -674,11 +727,11 @@ __attribute__((always_inline)) INLINE static void hydro_prepare_force(
     /* Reset the value of alpha to the appropriate value */
     p->viscosity.alpha = alpha_loc;
   } else {
-    /* Integrate the alpha forward in time to decay back to alpha = 0 */
-    const float alpha_dt = (alpha_loc - p->viscosity.alpha) / tau;
-
-    /* Finally, we can update the actual value of the alpha */
-    p->viscosity.alpha += alpha_dt * dt_alpha;
+    /* Integrate the alpha forward in time to decay back to alpha = alpha_loc */
+    p->viscosity.alpha =
+        alpha_loc + (p->viscosity.alpha - alpha_loc) *
+                        expf(-dt_alpha * sound_crossing_time_inverse *
+                             hydro_props->viscosity.length);
   }
 
   if (p->viscosity.alpha < hydro_props->viscosity.alpha_min) {
@@ -690,14 +743,26 @@ __attribute__((always_inline)) INLINE static void hydro_prepare_force(
 
   /* Now for the diffusive alpha */
 
+  const float diffusion_timescale_physical_inverse =
+      v_sig_physical / kernel_support_physical;
+
   const float sqrt_u = sqrtf(p->u);
   /* Calculate initial value of alpha dt before bounding */
-  /* alpha_diff_dt is cosmology-less */
-  float alpha_diff_dt =
-      hydro_props->diffusion.beta * p->h * p->diffusion.laplace_u / sqrt_u;
+  /* Evolution term: following Schaller+ 2015. This is made up of several
+     cosmology factors: physical h, sound speed from u / sqrt(u), and the
+     1 / a^2 coming from the laplace operator. */
+  float alpha_diff_dt = hydro_props->diffusion.beta * kernel_support_physical *
+                        p->diffusion.laplace_u * cosmo->a_factor_sound_speed /
+                        (sqrt_u * cosmo->a * cosmo->a);
+  /* Decay term: not documented in Schaller+ 2015 but was present
+   * in the original EAGLE code and in Schaye+ 2015 */
+  alpha_diff_dt -= (p->diffusion.alpha - hydro_props->diffusion.alpha_min) *
+                   diffusion_timescale_physical_inverse;
 
-  float new_diffusion_alpha = p->diffusion.alpha + alpha_diff_dt * dt_alpha;
+  float new_diffusion_alpha = p->diffusion.alpha;
+  new_diffusion_alpha += alpha_diff_dt * dt_alpha;
 
+  /* Consistency checks to ensure min < alpha < max */
   if (new_diffusion_alpha > hydro_props->diffusion.alpha_max) {
     new_diffusion_alpha = hydro_props->diffusion.alpha_max;
   } else if (new_diffusion_alpha < hydro_props->diffusion.alpha_min) {

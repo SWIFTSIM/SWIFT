@@ -200,14 +200,28 @@ __attribute__((always_inline)) INLINE static void runner_iact_gradient(
   /* We need to construct the maximal signal velocity between our particle
    * and all of it's neighbours */
 
-  const float dv_dx = (pi->v[0] - pj->v[0]) * dx[0] +
-                      (pi->v[1] - pj->v[1]) * dx[1] +
-                      (pi->v[2] - pj->v[2]) * dx[2];
+  const float r = sqrtf(r2);
+  const float r_inv = 1.f / r;
+  const float ci = pi->force.soundspeed;
+  const float cj = pj->force.soundspeed;
 
-  const float dv_dx_factor = min(0, const_viscosity_beta * dv_dx);
+  /* Cosmology terms for the signal velocity */
+  const float fac_mu = pow_three_gamma_minus_five_over_two(a);
+  const float a2_Hubble = a * a * H;
 
-  const float new_v_sig =
-      pi->force.soundspeed + pj->force.soundspeed - dv_dx_factor;
+  const float dvdr = (pi->v[0] - pj->v[0]) * dx[0] +
+                     (pi->v[1] - pj->v[1]) * dx[1] +
+                     (pi->v[2] - pj->v[2]) * dx[2];
+
+  /* Add Hubble flow */
+
+  const float dvdr_Hubble = dvdr + a2_Hubble * r2;
+  /* Are the particles moving towards each others ? */
+  const float omega_ij = min(dvdr_Hubble, 0.f);
+  const float mu_ij = fac_mu * r_inv * omega_ij; /* This is 0 or negative */
+
+  /* Signal velocity */
+  const float new_v_sig = ci + cj - const_viscosity_beta * mu_ij;
 
   /* Update if we need to */
   pi->viscosity.v_sig = max(pi->viscosity.v_sig, new_v_sig);
@@ -217,14 +231,13 @@ __attribute__((always_inline)) INLINE static void runner_iact_gradient(
   /* Need to get some kernel values F_ij = wi_dx */
   float wi, wi_dx, wj, wj_dx;
 
-  const float r = sqrtf(r2);
   const float ui = r / hi;
   const float uj = r / hj;
 
   kernel_deval(ui, &wi, &wi_dx);
   kernel_deval(uj, &wj, &wj_dx);
 
-  const float delta_u_factor = (pi->u - pj->u) / r;
+  const float delta_u_factor = (pi->u - pj->u) * r_inv;
   pi->diffusion.laplace_u += pj->mass * delta_u_factor * wi_dx / pj->rho;
   pj->diffusion.laplace_u -= pi->mass * delta_u_factor * wj_dx / pi->rho;
 }
@@ -253,14 +266,28 @@ __attribute__((always_inline)) INLINE static void runner_iact_nonsym_gradient(
   /* We need to construct the maximal signal velocity between our particle
    * and all of it's neighbours */
 
-  const float dv_dx = (pi->v[0] - pj->v[0]) * dx[0] +
-                      (pi->v[1] - pj->v[1]) * dx[1] +
-                      (pi->v[2] - pj->v[2]) * dx[2];
+  const float r = sqrtf(r2);
+  const float r_inv = 1.f / r;
+  const float ci = pi->force.soundspeed;
+  const float cj = pj->force.soundspeed;
 
-  const float dv_dx_factor = min(0, const_viscosity_beta * dv_dx);
+  /* Cosmology terms for the signal velocity */
+  const float fac_mu = pow_three_gamma_minus_five_over_two(a);
+  const float a2_Hubble = a * a * H;
 
-  const float new_v_sig =
-      pi->force.soundspeed + pj->force.soundspeed - dv_dx_factor;
+  const float dvdr = (pi->v[0] - pj->v[0]) * dx[0] +
+                     (pi->v[1] - pj->v[1]) * dx[1] +
+                     (pi->v[2] - pj->v[2]) * dx[2];
+
+  /* Add Hubble flow */
+
+  const float dvdr_Hubble = dvdr + a2_Hubble * r2;
+  /* Are the particles moving towards each others ? */
+  const float omega_ij = min(dvdr_Hubble, 0.f);
+  const float mu_ij = fac_mu * r_inv * omega_ij; /* This is 0 or negative */
+
+  /* Signal velocity */
+  const float new_v_sig = ci + cj - const_viscosity_beta * mu_ij;
 
   /* Update if we need to */
   pi->viscosity.v_sig = max(pi->viscosity.v_sig, new_v_sig);
@@ -269,12 +296,11 @@ __attribute__((always_inline)) INLINE static void runner_iact_nonsym_gradient(
   /* Need to get some kernel values F_ij = wi_dx */
   float wi, wi_dx;
 
-  const float r = sqrtf(r2);
   const float ui = r / hi;
 
   kernel_deval(ui, &wi, &wi_dx);
 
-  const float delta_u_factor = (pi->u - pj->u) / r;
+  const float delta_u_factor = (pi->u - pj->u) * r_inv;
   pi->diffusion.laplace_u += pj->mass * delta_u_factor * wi_dx / pj->rho;
 }
 
@@ -343,7 +369,7 @@ __attribute__((always_inline)) INLINE static void runner_iact_force(
   const float mu_ij = fac_mu * r_inv * omega_ij; /* This is 0 or negative */
 
   /* Compute sound speeds and signal velocity */
-  const float v_sig = 0.5 * (pi->viscosity.v_sig + pj->viscosity.v_sig);
+  const float v_sig = 0.5f * (pi->viscosity.v_sig + pj->viscosity.v_sig);
 
   /* Balsara term */
   const float balsara_i = pi->force.balsara;
@@ -390,7 +416,7 @@ __attribute__((always_inline)) INLINE static void runner_iact_force(
   /* Diffusion term */
   const float v_diff =
       max(pi->force.soundspeed + pj->force.soundspeed + dvdr_Hubble, 0.f);
-  const float alpha_diff = 0.5 * (pi->diffusion.alpha + pj->diffusion.alpha);
+  const float alpha_diff = 0.5f * (pi->diffusion.alpha + pj->diffusion.alpha);
   /* wi_dx + wj_dx / 2 is F_ij */
   const float diff_du_term =
       alpha_diff * fac_mu * v_diff * (pi->u - pj->u) * (wi_dr + wj_dr) / rho_ij;
@@ -474,7 +500,7 @@ __attribute__((always_inline)) INLINE static void runner_iact_nonsym_force(
   const float mu_ij = fac_mu * r_inv * omega_ij; /* This is 0 or negative */
 
   /* Compute sound speeds and signal velocity */
-  const float v_sig = 0.5 * (pi->viscosity.v_sig + pj->viscosity.v_sig);
+  const float v_sig = 0.5f * (pi->viscosity.v_sig + pj->viscosity.v_sig);
 
   /* Balsara term */
   const float balsara_i = pi->force.balsara;
@@ -514,7 +540,7 @@ __attribute__((always_inline)) INLINE static void runner_iact_nonsym_force(
   /* Diffusion term */
   const float v_diff =
       max(pi->force.soundspeed + pj->force.soundspeed + dvdr_Hubble, 0.f);
-  const float alpha_diff = 0.5 * (pi->diffusion.alpha + pj->diffusion.alpha);
+  const float alpha_diff = 0.5f * (pi->diffusion.alpha + pj->diffusion.alpha);
   /* wi_dx + wj_dx / 2 is F_ij */
   const float diff_du_term =
       alpha_diff * fac_mu * v_diff * (pi->u - pj->u) * (wi_dr + wj_dr) / rho_ij;

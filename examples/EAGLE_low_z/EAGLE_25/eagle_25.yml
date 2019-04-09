@@ -80,6 +80,7 @@ EAGLEChemistry: 	     # Solar abundances
 EAGLECooling:
   dir_name:                ./coolingtables/
   H_reion_z:               11.5 
+  H_reion_eV_p_H:          2.0
   He_reion_z_centre:       3.5
   He_reion_z_sigma:        0.5
   He_reion_eV_p_H:         2.0
@@ -89,7 +90,6 @@ EAGLEStarFormation:
   EOS_density_norm_H_p_cm3:          0.1       # Physical density used for the normalisation of the EOS assumed for the star-forming gas in Hydrogen atoms per cm^3.
   EOS_temperature_norm_K:            8000      # Temperature om the polytropic EOS assumed for star-forming gas at the density normalisation in Kelvin.
   EOS_gamma_effective:               1.3333333 # Slope the of the polytropic EOS assumed for the star-forming gas.
-  gas_fraction:                      0.3       # The gas fraction used internally by the model.
   KS_normalisation:                  1.515e-4  # The normalization of the Kennicutt-Schmidt law in Msun / kpc^2 / yr.
   KS_exponent:                       1.4       # The exponent of the Kennicutt-Schmidt law.
   KS_min_over_density:               57.7      # The over-density above which star-formation is allowed.

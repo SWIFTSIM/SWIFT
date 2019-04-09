@@ -1,0 +1,19 @@
+Diffusion 1D
+============
+
+This is a very simple, 1D test. It sets up a uniform density particle
+distribution, with energy discontinuities generated at every particle.
+Particles have their internal energy set in a binary manner, with them
+alternating between "low" and "high" states. Under a standard SPH
+scheme, we expect to see no evolution whatsoever in the box. However,
+under a scheme with thermal diffusion, we expect that there will be
+some diffusion between the particles and that the distribution of
+internal energy will equalise.
+
+Included are some scripts to create initial conditions (`makeIC.py`),
+plot a solution (`plotSolution.py`), and to run the code (`run.sh`).
+Also included is a script to run a convergence test by changing the
+`SPH:beta_diffusion` parameter (`run_set.sh`).
+
+To make the initial conditions and produce the plots, the `swiftsimio`
+library (http://gitlab.cosma.dur.ac.uk/jborrow/swiftsimio) is required.

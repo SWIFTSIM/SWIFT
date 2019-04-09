@@ -140,6 +140,10 @@ double cosmology_get_time_since_big_bang(const struct cosmology *c, double a) {
 void cosmology_update(struct cosmology *c, const struct phys_const *phys_const,
                       integertime_t ti_current) {
 
+  /* Save the previous state */
+  c->z_old = c->z;
+  c->a_old = c->a;
+
   /* Get scale factor and powers of it */
   const double a = c->a_begin * exp(ti_current * c->time_base);
   const double a_inv = 1. / a;
@@ -527,6 +531,10 @@ void cosmology_init(struct swift_params *params, const struct unit_system *us,
   /* Update the times */
   c->time_begin = cosmology_get_time_since_big_bang(c, c->a_begin);
   c->time_end = cosmology_get_time_since_big_bang(c, c->a_end);
+
+  /* Initialise the old values to a valid state */
+  c->a_old = c->a_begin;
+  c->z_old = 1. / c->a_old - 1.;
 }
 
 /**
@@ -567,6 +575,9 @@ void cosmology_init_no_cosmo(struct cosmology *c) {
   c->a_factor_Balsara_eps = 1.;
   c->a_factor_hydro_accel = 1.;
   c->a_factor_grav_accel = 1.;
+
+  c->a_old = 1.;
+  c->z_old = 0.;
 
   c->critical_density = 0.;
   c->critical_density_0 = 0.;

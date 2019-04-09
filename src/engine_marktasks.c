@@ -309,11 +309,25 @@ void engine_marktasks_mapper(void *map_data, int num_elements,
       }
 
       /* Stars feedback */
-      else if ((t_subtype == task_subtype_stars_feedback) &&
-               ((ci_active_stars && ci_nodeID == nodeID) ||
-                (cj_active_stars && cj_nodeID == nodeID))) {
+      else if (t_subtype == task_subtype_stars_feedback) {
 
-        scheduler_activate(s, t);
+        /* We only want to activate the task if the cell is active and is
+           going to update some gas on the *local* node */
+        if ((ci_nodeID == nodeID && cj_nodeID == nodeID) &&
+            (ci_active_stars || cj_active_stars)) {
+
+          scheduler_activate(s, t);
+
+        } else if ((ci_nodeID == nodeID && cj_nodeID != nodeID) &&
+                   (cj_active_stars)) {
+
+          scheduler_activate(s, t);
+
+        } else if ((ci_nodeID != nodeID && cj_nodeID == nodeID) &&
+                   (ci_active_stars)) {
+
+          scheduler_activate(s, t);
+        }
       }
 
       /* Gravity */
@@ -358,7 +372,7 @@ void engine_marktasks_mapper(void *map_data, int num_elements,
           }
 
           /* If the foreign cell is active, we want its ti_end values. */
-          if (ci_active_hydro) scheduler_activate(s, ci->mpi.recv_ti);
+          if (ci_active_hydro) scheduler_activate(s, ci->mpi.hydro.recv_ti);
 
           /* Is the foreign cell active and will need stuff from us? */
           if (ci_active_hydro) {
@@ -383,7 +397,7 @@ void engine_marktasks_mapper(void *map_data, int num_elements,
 
           /* If the local cell is active, send its ti_end values. */
           if (cj_active_hydro)
-            scheduler_activate_send(s, cj->mpi.send_ti, ci_nodeID);
+            scheduler_activate_send(s, cj->mpi.hydro.send_ti, ci_nodeID);
 
         } else if (cj_nodeID != nodeID) {
 
@@ -400,7 +414,7 @@ void engine_marktasks_mapper(void *map_data, int num_elements,
           }
 
           /* If the foreign cell is active, we want its ti_end values. */
-          if (cj_active_hydro) scheduler_activate(s, cj->mpi.recv_ti);
+          if (cj_active_hydro) scheduler_activate(s, cj->mpi.hydro.recv_ti);
 
           /* Is the foreign cell active and will need stuff from us? */
           if (cj_active_hydro) {
@@ -427,7 +441,7 @@ void engine_marktasks_mapper(void *map_data, int num_elements,
 
           /* If the local cell is active, send its ti_end values. */
           if (ci_active_hydro)
-            scheduler_activate_send(s, ci->mpi.send_ti, cj_nodeID);
+            scheduler_activate_send(s, ci->mpi.hydro.send_ti, cj_nodeID);
         }
 #endif
       }
@@ -452,14 +466,14 @@ void engine_marktasks_mapper(void *map_data, int num_elements,
             cell_activate_drift_spart(cj, s);
 
             /* If the local cell is active, send its ti_end values. */
-            scheduler_activate_send(s, cj->mpi.send_ti, ci_nodeID);
+            scheduler_activate_send(s, cj->mpi.stars.send_ti, ci_nodeID);
           }
 
           if (ci_active_stars) {
             scheduler_activate(s, ci->mpi.stars.recv);
 
             /* If the foreign cell is active, we want its ti_end values. */
-            scheduler_activate(s, ci->mpi.recv_ti);
+            scheduler_activate(s, ci->mpi.stars.recv_ti);
 
             /* Is the foreign cell active and will need stuff from us? */
             scheduler_activate_send(s, cj->mpi.hydro.send_xv, ci_nodeID);
@@ -482,14 +496,14 @@ void engine_marktasks_mapper(void *map_data, int num_elements,
             cell_activate_drift_spart(ci, s);
 
             /* If the local cell is active, send its ti_end values. */
-            scheduler_activate_send(s, ci->mpi.send_ti, cj_nodeID);
+            scheduler_activate_send(s, ci->mpi.stars.send_ti, cj_nodeID);
           }
 
           if (cj_active_stars) {
             scheduler_activate(s, cj->mpi.stars.recv);
 
             /* If the foreign cell is active, we want its ti_end values. */
-            scheduler_activate(s, cj->mpi.recv_ti);
+            scheduler_activate(s, cj->mpi.stars.recv_ti);
 
             /* Is the foreign cell active and will need stuff from us? */
             scheduler_activate_send(s, ci->mpi.hydro.send_xv, cj_nodeID);
@@ -514,7 +528,7 @@ void engine_marktasks_mapper(void *map_data, int num_elements,
           if (cj_active_gravity) scheduler_activate(s, ci->mpi.grav.recv);
 
           /* If the foreign cell is active, we want its ti_end values. */
-          if (ci_active_gravity) scheduler_activate(s, ci->mpi.recv_ti);
+          if (ci_active_gravity) scheduler_activate(s, ci->mpi.grav.recv_ti);
 
           /* Is the foreign cell active and will need stuff from us? */
           if (ci_active_gravity) {
@@ -530,7 +544,7 @@ void engine_marktasks_mapper(void *map_data, int num_elements,
 
           /* If the local cell is active, send its ti_end values. */
           if (cj_active_gravity)
-            scheduler_activate_send(s, cj->mpi.send_ti, ci_nodeID);
+            scheduler_activate_send(s, cj->mpi.grav.send_ti, ci_nodeID);
 
         } else if (cj_nodeID != nodeID) {
 
@@ -538,7 +552,7 @@ void engine_marktasks_mapper(void *map_data, int num_elements,
           if (ci_active_gravity) scheduler_activate(s, cj->mpi.grav.recv);
 
           /* If the foreign cell is active, we want its ti_end values. */
-          if (cj_active_gravity) scheduler_activate(s, cj->mpi.recv_ti);
+          if (cj_active_gravity) scheduler_activate(s, cj->mpi.grav.recv_ti);
 
           /* Is the foreign cell active and will need stuff from us? */
           if (cj_active_gravity) {
@@ -554,7 +568,7 @@ void engine_marktasks_mapper(void *map_data, int num_elements,
 
           /* If the local cell is active, send its ti_end values. */
           if (ci_active_gravity)
-            scheduler_activate_send(s, ci->mpi.send_ti, cj_nodeID);
+            scheduler_activate_send(s, ci->mpi.grav.send_ti, cj_nodeID);
         }
 #endif
       }
@@ -642,13 +656,17 @@ void engine_marktasks_mapper(void *map_data, int num_elements,
         scheduler_activate(s, t);
     }
 
-    /* Subgrid tasks */
+    /* Subgrid tasks: cooling */
     else if (t_type == task_type_cooling) {
-      if (cell_is_active_hydro(t->ci, e) || cell_is_active_gravity(t->ci, e))
+      if (cell_is_active_hydro(t->ci, e)) scheduler_activate(s, t);
+    }
+
+    /* Subgrid tasks: star formation */
+    else if (t_type == task_type_star_formation) {
+      if (cell_is_active_hydro(t->ci, e)) {
         scheduler_activate(s, t);
-    } else if (t_type == task_type_star_formation) {
-      if (cell_is_active_hydro(t->ci, e) || cell_is_active_gravity(t->ci, e))
-        scheduler_activate(s, t);
+        cell_activate_super_spart_drifts(t->ci, s);
+      }
     }
   }
 }

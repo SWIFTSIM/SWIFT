@@ -557,7 +557,7 @@ void io_write_cell_offsets(hid_t h_grp, const int cdim[3],
     H5Gclose(h_subgrp);
 
     /* Write the centres to the group */
-    hsize_t shape[2] = {nr_cells, 3};
+    hsize_t shape[2] = {(hsize_t)nr_cells, 3};
     hid_t h_space = H5Screate(H5S_SIMPLE);
     if (h_space < 0) error("Error while creating data space for cell centres");
     hid_t h_err = H5Sset_extent_simple(h_space, 2, shape, shape);

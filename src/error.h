@@ -35,11 +35,20 @@
 
 /* Local headers. */
 #include "clocks.h"
+#include "memuse.h"
 
+/* Use exit when not developing, avoids core dumps. */
 #ifdef SWIFT_DEVELOP_MODE
 #define swift_abort(errcode) abort()
 #else
 #define swift_abort(errcode) exit(errcode)
+#endif
+
+/* If reporting memory usage, try to dump that when exiting in error. */
+#ifdef SWIFT_MEMUSE_REPORTS
+#define memdump(rank) memuse_log_dump_error(rank);
+#else
+#define memdump(rank)
 #endif
 
 /**
@@ -54,19 +63,23 @@ extern int engine_rank;
     fprintf(stderr, "[%04i] %s %s:%s():%i: " s "\n", engine_rank,          \
             clocks_get_timesincestart(), __FILE__, __FUNCTION__, __LINE__, \
             ##__VA_ARGS__);                                                \
+    memdump(engine_rank);                                                  \
     MPI_Abort(MPI_COMM_WORLD, -1);                                         \
   })
 #else
+extern int engine_rank;
 #define error(s, ...)                                                      \
   ({                                                                       \
     fflush(stdout);                                                        \
     fprintf(stderr, "%s %s:%s():%i: " s "\n", clocks_get_timesincestart(), \
             __FILE__, __FUNCTION__, __LINE__, ##__VA_ARGS__);              \
+    memdump(engine_rank);                                                  \
     swift_abort(1);                                                        \
   })
 #endif
 
 #ifdef WITH_MPI
+extern int engine_rank;
 /**
  * @brief MPI error macro. Prints the message given in argument,
  *                         followed by the MPI error string and aborts.
@@ -82,6 +95,7 @@ extern int engine_rank;
     char buf[len];                                                         \
     MPI_Error_string(res, buf, &len);                                      \
     fprintf(stderr, "%s\n\n", buf);                                        \
+    memdump(engine_rank);                                                  \
     MPI_Abort(MPI_COMM_WORLD, -1);                                         \
   })
 

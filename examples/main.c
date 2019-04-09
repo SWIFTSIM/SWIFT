@@ -120,8 +120,9 @@ int main(int argc, char *argv[]) {
   if ((res = MPI_Comm_rank(MPI_COMM_WORLD, &myrank)) != MPI_SUCCESS)
     error("Call to MPI_Comm_rank failed with error %i.", res);
 
-  /* Make sure messages are stamped with the correct rank. */
+  /* Make sure messages are stamped with the correct rank and step. */
   engine_rank = myrank;
+  engine_current_step = 0;
 
   if ((res = MPI_Comm_set_errhandler(MPI_COMM_WORLD, MPI_ERRORS_RETURN)) !=
       MPI_SUCCESS)
@@ -343,6 +344,16 @@ int main(int argc, char *argv[]) {
     return 1;
   }
 
+  if (!with_stars && with_star_formation) {
+    if (myrank == 0) {
+      argparse_usage(&argparse);
+      printf(
+          "\nError: Cannot process star formation without stars, --stars must "
+          "be chosen.\n");
+    }
+    return 1;
+  }
+
   if (!with_stars && with_feedback) {
     if (myrank == 0) {
       argparse_usage(&argparse);
@@ -470,8 +481,8 @@ int main(int argc, char *argv[]) {
 #ifdef WITH_MPI
   if (with_mpole_reconstruction && nr_nodes > 1)
     error("Cannot reconstruct m-poles every step over MPI (yet).");
-  if (with_star_formation)
-    error("Can't run with star formation over MPI (yet)");
+  if (with_star_formation && with_feedback)
+    error("Can't run with star formation and feedback over MPI (yet)");
   if (with_limiter) error("Can't run with time-step limiter over MPI (yet)");
 #endif
 
@@ -724,6 +735,39 @@ int main(int argc, char *argv[]) {
     else
       bzero(&gravity_properties, sizeof(struct gravity_props));
 
+    /* Initialise the external potential properties */
+    bzero(&potential, sizeof(struct external_potential));
+    if (with_external_gravity)
+      potential_init(params, &prog_const, &us, &s, &potential);
+    if (myrank == 0) potential_print(&potential);
+
+    /* Initialise the cooling function properties */
+    bzero(&cooling_func, sizeof(struct cooling_function_data));
+    if (with_cooling || with_temperature) {
+#ifdef COOLING_NONE
+      if (with_cooling)
+        error("ERROR: Running with cooling but compiled without it.");
+#endif
+      cooling_init(params, &us, &prog_const, &cooling_func);
+    }
+    if (myrank == 0) cooling_print(&cooling_func);
+
+    /* Initialise the star formation law and its properties */
+    bzero(&starform, sizeof(struct star_formation));
+    if (with_star_formation) {
+#ifdef STAR_FORMATION_NONE
+      error("ERROR: Running with star formation but compiled without it!");
+#endif
+      starformation_init(params, &prog_const, &us, &hydro_properties,
+                         &starform);
+    }
+    if (with_star_formation && myrank == 0) starformation_print(&starform);
+
+    /* Initialise the chemistry */
+    bzero(&chemistry, sizeof(struct chemistry_global_data));
+    chemistry_init(params, &us, &prog_const, &chemistry);
+    if (myrank == 0) chemistry_print(&chemistry);
+
     /* Be verbose about what happens next */
     if (myrank == 0) message("Reading ICs from file '%s'", ICfileName);
     if (myrank == 0 && cleanup_h)
@@ -889,30 +933,6 @@ int main(int argc, char *argv[]) {
       message("nr of cells at depth %i is %i.", data[0], data[1]);
     }
 
-    /* Initialise the external potential properties */
-    bzero(&potential, sizeof(struct external_potential));
-    if (with_external_gravity)
-      potential_init(params, &prog_const, &us, &s, &potential);
-    if (myrank == 0) potential_print(&potential);
-
-    /* Initialise the cooling function properties */
-    bzero(&cooling_func, sizeof(struct cooling_function_data));
-    if (with_cooling || with_temperature)
-      cooling_init(params, &us, &prog_const, &cooling_func);
-    if (myrank == 0) cooling_print(&cooling_func);
-
-    /* Initialise the star formation law and its properties */
-    bzero(&starform, sizeof(struct star_formation));
-    if (with_star_formation)
-      starformation_init(params, &prog_const, &us, &hydro_properties,
-                         &starform);
-    if (with_star_formation && myrank == 0) starformation_print(&starform);
-
-    /* Initialise the chemistry */
-    bzero(&chemistry, sizeof(struct chemistry_global_data));
-    chemistry_init(params, &us, &prog_const, &chemistry);
-    if (myrank == 0) chemistry_print(&chemistry);
-
     /* Construct the engine policy */
     int engine_policies = ENGINE_POLICY | engine_policy_steal;
     if (with_drift_all) engine_policies |= engine_policy_drift_all;
@@ -1035,6 +1055,19 @@ int main(int argc, char *argv[]) {
   /* unused parameters */
   parser_write_params_to_file(params, "unused_parameters.yml", 0);
 
+  /* Dump memory use report if collected for the 0 step. */
+#ifdef SWIFT_MEMUSE_REPORTS
+  {
+    char dumpfile[40];
+#ifdef WITH_MPI
+    snprintf(dumpfile, 40, "memuse_report-rank%d-step%d.dat", engine_rank, 0);
+#else
+    snprintf(dumpfile, 40, "memuse_report-step%d.dat", 0);
+#endif  // WITH_MPI
+    memuse_log_dump(dumpfile);
+  }
+#endif
+
   /* Main simulation loop */
   /* ==================== */
   int force_stop = 0, resubmit = 0;
@@ -1081,6 +1114,20 @@ int main(int argc, char *argv[]) {
       snprintf(dumpfile, 40, "thread_stats-step%d.dat", j + 1);
       task_dump_stats(dumpfile, &e, /* header = */ 0, /* allranks = */ 1);
     }
+
+      /* Dump memory use report if collected. */
+#ifdef SWIFT_MEMUSE_REPORTS
+    {
+      char dumpfile[40];
+#ifdef WITH_MPI
+      snprintf(dumpfile, 40, "memuse_report-rank%d-step%d.dat", engine_rank,
+               j + 1);
+#else
+      snprintf(dumpfile, 40, "memuse_report-step%d.dat", j + 1);
+#endif  // WITH_MPI
+      memuse_log_dump(dumpfile);
+    }
+#endif
 
 #ifdef SWIFT_DEBUG_THREADPOOL
     /* Dump the task data using the given frequency. */

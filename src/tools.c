@@ -442,6 +442,9 @@ void pairs_all_stars_density(struct runner *r, struct cell *ci,
 
       struct part *pj = &cj->hydro.parts[j];
 
+      /* Early abort? */
+      if (part_is_inhibited(pj, e)) continue;
+
       /* Pairwise distance */
       r2 = 0.0f;
       for (int k = 0; k < 3; k++) {
@@ -471,6 +474,9 @@ void pairs_all_stars_density(struct runner *r, struct cell *ci,
     for (int i = 0; i < ci->hydro.count; ++i) {
 
       struct part *pi = &ci->hydro.parts[i];
+
+      /* Early abort? */
+      if (part_is_inhibited(pi, e)) continue;
 
       /* Pairwise distance */
       r2 = 0.0f;
@@ -660,6 +666,9 @@ void self_all_stars_density(struct runner *r, struct cell *ci) {
       pj = &ci->hydro.parts[j];
       hj = pj->h;
 
+      /* Early abort? */
+      if (part_is_inhibited(pj, e)) continue;
+
       /* Pairwise distance */
       r2 = 0.0f;
       for (int k = 0; k < 3; k++) {
@@ -668,7 +677,7 @@ void self_all_stars_density(struct runner *r, struct cell *ci) {
       }
 
       /* Hit or miss? */
-      if (r2 > 0.f && r2 < hig2) {
+      if (r2 < hig2) {
         /* Interact */
         runner_iact_nonsym_stars_density(r2, dxi, hi, hj, spi, pj, a, H);
       }

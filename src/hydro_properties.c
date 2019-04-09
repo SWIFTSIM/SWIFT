@@ -49,12 +49,15 @@
 #ifdef ANARCHY_PU_SPH
 /* This nasty #ifdef is only temporary until we separate the viscosity
  * and hydro components. If it is not removed by July 2019, shout at JB. */
+#undef hydro_props_default_viscosity_alpha
+#define hydro_props_default_viscosity_alpha \
+  0.1f /* Use a very low initial AV paramater for hydrodynamics tests */
 #define hydro_props_default_viscosity_alpha_min \
-  0.01f /* values taken from Schaller+ 2015 */
+  0.0f /* values NOT the same as Schaller+ 2015 */
 #define hydro_props_default_viscosity_alpha_max \
   2.0f /* values taken from Schaller+ 2015 */
 #define hydro_props_default_viscosity_length \
-  0.01f /* values taken from Schaller+ 2015 */
+  0.25f /* values taken from Schaller+ 2015 */
 #else
 #define hydro_props_default_viscosity_alpha_min \
   0.1f /* values taken from (price,2004), not used in legacy gadget mode */
@@ -317,6 +320,12 @@ void hydro_props_print_snapshot(hid_t h_grpsph, const struct hydro_props *p) {
   io_write_attribute_f(h_grpsph, "Beta viscosity", const_viscosity_beta);
   io_write_attribute_f(h_grpsph, "Max v_sig ratio (limiter)",
                        const_limiter_max_v_sig_ratio);
+  io_write_attribute_f(h_grpsph, "Diffusion alpha", p->diffusion.alpha);
+  io_write_attribute_f(h_grpsph, "Diffusion alpha (max)",
+                       p->diffusion.alpha_max);
+  io_write_attribute_f(h_grpsph, "Diffusion alpha (min)",
+                       p->diffusion.alpha_min);
+  io_write_attribute_f(h_grpsph, "Diffusion beta", p->diffusion.beta);
 }
 #endif
 

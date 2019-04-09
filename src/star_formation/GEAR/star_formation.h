@@ -21,6 +21,7 @@
 
 /* Local includes */
 #include "cosmology.h"
+#include "entropy_floor.h"
 #include "error.h"
 #include "hydro_properties.h"
 #include "parser.h"
@@ -96,6 +97,7 @@ INLINE static int star_formation_is_star_forming(  //eneleve le const sur xp REM
     const struct cosmology* cosmo,
     const struct hydro_props* restrict hydro_props,
     const struct unit_system* restrict us,
+<<<<<<< HEAD
     const struct cooling_function_data* restrict cooling) 
     { //begining
 		//starform->cooling=cooling;
@@ -147,6 +149,12 @@ INLINE static int star_formation_is_star_forming(  //eneleve le const sur xp REM
 				return 0;
 			}
 		}
+=======
+    const struct cooling_function_data* restrict cooling,
+    const struct entropy_floor_properties* restrict entropy_floor) {
+
+  return 0;
+>>>>>>> e0a2000120a53f45c70c478fe2c8c1cd07050298
 }
 
 /**
