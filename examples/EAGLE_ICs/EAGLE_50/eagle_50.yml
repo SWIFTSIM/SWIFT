@@ -1,0 +1,115 @@
+# Define the system of units to use internally. 
+InternalUnitSystem:
+  UnitMass_in_cgs:     1.98848e43    # 10^10 M_sun in grams
+  UnitLength_in_cgs:   3.08567758e24 # Mpc in centimeters
+  UnitVelocity_in_cgs: 1e5           # km/s in centimeters per second
+  UnitCurrent_in_cgs:  1             # Amperes
+  UnitTemp_in_cgs:     1             # Kelvin
+
+# Cosmological parameters
+Cosmology:
+  h:              0.6777        # Reduced Hubble constant
+  a_begin:        0.0078125     # Initial scale-factor of the simulation
+  a_end:          1.0           # Final scale factor of the simulation
+  Omega_m:        0.307         # Matter density parameter
+  Omega_lambda:   0.693         # Dark-energy density parameter
+  Omega_b:        0.0455        # Baryon density parameter
+
+# Parameters governing the time integration
+TimeIntegration:
+  dt_min:     1e-10 # The minimal time-step size of the simulation (in internal units).
+  dt_max:     1e-2  # The maximal time-step size of the simulation (in internal units).
+  
+# Parameters governing the snapshots
+Snapshots:
+  basename:            eagle # Common part of the name of output files
+  scale_factor_first:  0.05
+  delta_time:          1.02
+
+# Parameters governing the conserved quantities statistics
+Statistics:
+  delta_time:           1.02
+  scale_factor_first:   0.05
+
+# Parameters for the self-gravity scheme
+Gravity:
+  eta:                    0.025     # Constant dimensionless multiplier for time integration.
+  theta:                  0.7       # Opening angle (Multipole acceptance criterion)
+  comoving_softening:     0.0026994 # Comoving softening length (in internal units).
+  max_physical_softening: 0.0007    # Physical softening length (in internal units).
+  mesh_side_length:       256
+  
+# Parameters for the hydrodynamics scheme
+SPH:
+  resolution_eta:        1.2348   # Target smoothing length in units of the mean inter-particle separation (1.2348 == 48Ngbs with the cubic spline kernel).
+  h_min_ratio:           0.1      # Minimal smoothing in units of softening.
+  CFL_condition:         0.1      # Courant-Friedrich-Levy condition for time integration.
+  minimal_temperature:   100.0    # (internal units)
+  initial_temperature:   268.7
+
+Scheduler:
+  max_top_level_cells:   32
+  cell_split_size:       100
+  tasks_per_cell:        5
+
+Restarts:
+  delta_hours:  1.0
+
+# Parameters related to the initial conditions
+InitialConditions:
+  file_name:  EAGLE_L0050N0752_ICs.hdf5
+  periodic:   1
+  cleanup_h_factors: 1               # Remove the h-factors inherited from Gadget
+  cleanup_velocity_factors: 1        # Remove the sqrt(a) factor in the velocities inherited from Gadget
+  generate_gas_in_ics: 1             # Generate gas particles from the DM-only ICs
+  cleanup_smoothing_lengths: 1       # Since we generate gas, make use of the (expensive) cleaning-up procedure.
+
+# Impose primoridal metallicity
+EAGLEChemistry:
+  init_abundance_metal:     0.
+  init_abundance_Hydrogen:  0.752
+  init_abundance_Helium:    0.248
+  init_abundance_Carbon:    0.0
+  init_abundance_Nitrogen:  0.0
+  init_abundance_Oxygen:    0.0
+  init_abundance_Neon:      0.0
+  init_abundance_Magnesium: 0.0
+  init_abundance_Silicon:   0.0
+  init_abundance_Iron:      0.0
+
+# EAGLE cooling parameters
+EAGLECooling:
+  dir_name:                ./coolingtables/
+  H_reion_z:               11.5 
+  H_reion_eV_p_H:          2.0
+  He_reion_z_centre:       3.5
+  He_reion_z_sigma:        0.5
+  He_reion_eV_p_H:         2.0
+
+# EAGLE star formation parameters
+EAGLEStarFormation:
+  EOS_density_norm_H_p_cm3:          0.1       # Physical density used for the normalisation of the EOS assumed for the star-forming gas in Hydrogen atoms per cm^3.
+  EOS_temperature_norm_K:            8000      # Temperature om the polytropic EOS assumed for star-forming gas at the density normalisation in Kelvin.
+  EOS_gamma_effective:               1.3333333 # Slope the of the polytropic EOS assumed for the star-forming gas.
+  KS_normalisation:                  1.515e-4  # The normalization of the Kennicutt-Schmidt law in Msun / kpc^2 / yr.
+  KS_exponent:                       1.4       # The exponent of the Kennicutt-Schmidt law.
+  KS_min_over_density:               57.7      # The over-density above which star-formation is allowed.
+  KS_high_density_threshold_H_p_cm3: 1e3       # Hydrogen number density above which the Kennicut-Schmidt law changes slope in Hydrogen atoms per cm^3.
+  KS_high_density_exponent:          2.0       # Slope of the Kennicut-Schmidt law above the high-density threshold.
+  KS_temperature_margin_dex:         0.5       # Logarithm base 10 of the maximal temperature difference above the EOS allowed to form stars.
+  threshold_norm_H_p_cm3:            0.1       # Normalisation of the metal-dependant density threshold for star formation in Hydrogen atoms per cm^3.
+  threshold_Z0:                      0.002     # Reference metallicity (metal mass fraction) for the metal-dependant threshold for star formation.
+  threshold_slope:                   -0.64     # Slope of the metal-dependant star formation threshold
+  threshold_max_density_H_p_cm3:     10.0      # Maximal density of the metal-dependant density threshold for star formation in Hydrogen atoms per cm^3.
+  
+# Parameters for the EAGLE "equation of state"
+EAGLEEntropyFloor:
+  Jeans_density_threshold_H_p_cm3: 0.1       # Physical density above which the EAGLE Jeans limiter entropy floor kicks in expressed in Hydrogen atoms per cm^3.
+  Jeans_over_density_threshold:    10.       # Overdensity above which the EAGLE Jeans limiter entropy floor can kick in.
+  Jeans_temperature_norm_K:        8000      # Temperature of the EAGLE Jeans limiter entropy floor at the density threshold expressed in Kelvin.
+  Jeans_gamma_effective:           1.3333333 # Slope the of the EAGLE Jeans limiter entropy floor
+  Cool_density_threshold_H_p_cm3: 1e-5       # Physical density above which the EAGLE Cool limiter entropy floor kicks in expressed in Hydrogen atoms per cm^3.
+  Cool_over_density_threshold:    10.        # Overdensity above which the EAGLE Cool limiter entropy floor can kick in.
+  Cool_temperature_norm_K:        8000       # Temperature of the EAGLE Cool limiter entropy floor at the density threshold expressed in Kelvin.
+  Cool_gamma_effective:           1.         # Slope the of the EAGLE Cool limiter entropy floor
+

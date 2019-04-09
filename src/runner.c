@@ -55,6 +55,7 @@
 #include "hydro_properties.h"
 #include "kick.h"
 #include "logger.h"
+#include "memuse.h"
 #include "minmax.h"
 #include "runner_doiact_vec.h"
 #include "scheduler.h"
@@ -148,6 +149,7 @@ void runner_do_stars_ghost(struct runner *r, struct cell *c, int timer) {
   TIMER_TIC;
 
   /* Anything to do here? */
+  if (c->stars.count == 0) return;
   if (!cell_is_active_stars(c, e)) return;
 
   /* Recurse? */
@@ -670,7 +672,7 @@ void runner_do_star_formation(struct runner *r, struct cell *c, int timer) {
         }      /* Not Star-forming? */
       } else { /* is active? */
         /* Check if the particle is not inhibited */
-        if (!part_is_inhibited(p,e)) {  
+        if (!part_is_inhibited(p, e)) {
           star_formation_logger_log_inactive_part(p, xp, &c->stars.sfh);
         }
       }
@@ -842,14 +844,8 @@ void runner_do_hydro_sort(struct runner *r, struct cell *c, int flags,
   if (c->hydro.sorted == 0) c->hydro.ti_sort = r->e->ti_current;
 #endif
 
-  /* start by allocating the entry arrays in the requested dimensions. */
-  for (int j = 0; j < 13; j++) {
-    if ((flags & (1 << j)) && c->hydro.sort[j] == NULL) {
-      if ((c->hydro.sort[j] = (struct entry *)malloc(sizeof(struct entry) *
-                                                     (count + 1))) == NULL)
-        error("Failed to allocate sort memory.");
-    }
-  }
+  /* Allocate memory for sorting. */
+  cell_malloc_hydro_sorts(c, flags);
 
   /* Does this cell have any progeny? */
   if (c->split) {
@@ -1068,13 +1064,7 @@ void runner_do_stars_sort(struct runner *r, struct cell *c, int flags,
 #endif
 
   /* start by allocating the entry arrays in the requested dimensions. */
-  for (int j = 0; j < 13; j++) {
-    if ((flags & (1 << j)) && c->stars.sort[j] == NULL) {
-      if ((c->stars.sort[j] = (struct entry *)malloc(sizeof(struct entry) *
-                                                     (count + 1))) == NULL)
-        error("Failed to allocate sort memory.");
-    }
-  }
+  cell_malloc_stars_sorts(c, flags);
 
   /* Does this cell have any progeny? */
   if (c->split) {
@@ -1473,10 +1463,10 @@ void runner_do_ghost(struct runner *r, struct cell *c, int timer) {
           if (((p->h >= hydro_h_max) && (f < 0.f)) ||
               ((p->h <= hydro_h_min) && (f > 0.f))) {
 
-            /* We have a particle whose smoothing length is already set (wants
-             * to be larger but has already hit the maximum OR wants to be
-             * smaller but has already reached the minimum). So, just tidy up as
-             * if the smoothing length had converged correctly  */
+          /* We have a particle whose smoothing length is already set (wants
+           * to be larger but has already hit the maximum OR wants to be
+           * smaller but has already reached the minimum). So, just tidy up as
+           * if the smoothing length had converged correctly  */
 
 #ifdef EXTRA_HYDRO_LOOP
 
@@ -1621,7 +1611,7 @@ void runner_do_ghost(struct runner *r, struct cell *c, int timer) {
           }
         }
 
-        /* We now have a particle whose smoothing length has converged */
+          /* We now have a particle whose smoothing length has converged */
 
 #ifdef EXTRA_HYDRO_LOOP
 

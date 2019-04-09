@@ -1444,7 +1444,7 @@ void DOSUB_SUBSET_STARS(struct runner *r, struct cell *ci, struct spart *sparts,
     }
 
     /* Otherwise, compute the pair directly. */
-    else if (cell_is_active_stars(ci, e)) {
+    else if (cell_is_active_stars(ci, e) && cj->hydro.count > 0) {
 
       /* Do any of the cells need to be drifted first? */
       if (cell_is_active_stars(ci, e)) {

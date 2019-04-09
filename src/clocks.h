@@ -37,6 +37,9 @@ struct clocks_time {
 #endif
 };
 
+/* Ticks used as the start of time. */
+extern ticks clocks_start_ticks;
+
 void clocks_gettime(struct clocks_time *time);
 double clocks_diff(struct clocks_time *start, struct clocks_time *end);
 const char *clocks_getunit(void);

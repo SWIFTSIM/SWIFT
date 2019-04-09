@@ -158,7 +158,7 @@ INLINE static void star_formation_logger_assign(
 /**
  * @brief Initialize the star formation history structure in the #engine
  *
- * @param The pointer to the star formation history structure
+ * @param sfh The pointer to the star formation history structure
  */
 INLINE static void star_formation_logger_init_engine(
     struct star_formation_history *sfh) {
@@ -176,11 +176,12 @@ INLINE static void star_formation_logger_init_engine(
 /**
  * @brief Write the final SFH to a file
  *
- * @param fp the file pointer
- * @param time the simulation time
- * @param a the scale factor
- * @param z the redshift
- * @param sf the star_formation_history struct
+ * @param fp The file to write to.
+ * @param time the simulation time (time since Big Bang) in internal units.
+ * @param a the scale factor.
+ * @param z the redshift.
+ * @param sf the #star_formation_history struct.
+ * @param step The time-step of the simulation.
  */
 INLINE static void star_formation_logger_write_to_log_file(
     FILE *fp, const double time, const double a, const double z,
@@ -188,7 +189,7 @@ INLINE static void star_formation_logger_write_to_log_file(
 
   /* Calculate the total SFR */
   const float totalSFR = sf.SFR_active + sf.SFR_inactive;
-  fprintf(fp, "%6d %16e %12.7f %12.7f %14e %14e %14e %14e\n",step, time, a, z,
+  fprintf(fp, "%6d %16e %12.7f %12.7f %14e %14e %14e %14e\n", step, time, a, z,
           sf.new_stellar_mass, sf.SFR_active, sf.SFRdt_active, totalSFR);
 }
 
@@ -209,7 +210,9 @@ INLINE static void star_formation_logger_init_log_file(
   fprintf(fp, "# The quantities are all given in internal physical units!\n");
   fprintf(fp, "#\n");
   fprintf(fp, "# (0) Simulation step\n");
-  fprintf(fp, "# (1) Time since Big Bang (cosmological run), Time since start of the simulation (non-cosmological run).\n");
+  fprintf(fp,
+          "# (1) Time since Big Bang (cosmological run), Time since start of "
+          "the simulation (non-cosmological run).\n");
   fprintf(fp, "#     Unit = %e seconds\n", us->UnitTime_in_cgs);
   fprintf(fp, "#     Unit = %e yr or %e Myr\n", 1.f / phys_const->const_year,
           1.f / phys_const->const_year / 1e6);
@@ -224,9 +227,9 @@ INLINE static void star_formation_logger_init_log_file(
           us->UnitMass_in_cgs / us->UnitTime_in_cgs);
   fprintf(fp, "#     Unit = %e Msol/yr\n",
           phys_const->const_year / phys_const->const_solar_mass);
-  fprintf(
-      fp,
-      "# (6) The star formation rate (SFR) of active particles multiplied by their time-step size.\n");
+  fprintf(fp,
+          "# (6) The star formation rate (SFR) of active particles multiplied "
+          "by their time-step size.\n");
   fprintf(fp, "#     Unit = %e gram\n", us->UnitMass_in_cgs);
   fprintf(fp, "#     Unit = %e solar mass\n",
           1.f / phys_const->const_solar_mass);
@@ -236,12 +239,14 @@ INLINE static void star_formation_logger_init_log_file(
   fprintf(fp, "#     Unit = %e Msol/yr\n",
           phys_const->const_year / phys_const->const_solar_mass);
   fprintf(fp, "#\n");
-  fprintf(fp,
-          "# (0)         (1)            (2)          (3)            (4)           "
-          " (5)            (6)            (7)\n");
-  fprintf(fp,
-          "#            Time             a            z        total M_stars  SFR "
-          "(active)  SFR*dt (active)  SFR (total)\n");
+  fprintf(
+      fp,
+      "# (0)         (1)            (2)          (3)            (4)           "
+      " (5)            (6)            (7)\n");
+  fprintf(
+      fp,
+      "#            Time             a            z        total M_stars  SFR "
+      "(active)  SFR*dt (active)  SFR (total)\n");
 }
 
 /**
@@ -250,6 +255,7 @@ INLINE static void star_formation_logger_init_log_file(
  * @param p the #part
  * @param xp the #xpart
  * @param sf the SFH logger struct
+ * @param dt_star The length of the time-step in physical internal units.
  */
 INLINE static void star_formation_logger_log_active_part(
     const struct part *p, const struct xpart *xp,
