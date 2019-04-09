@@ -38,7 +38,14 @@ __attribute__((always_inline)) INLINE static int star_formation_write_particles(
     const struct part* parts, const struct xpart* xparts,
     struct io_props* list) {
 
-  return 0;
+
+	//message("SFR IO  HHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHhh %e",xparts->sf_data.SFR);
+  list[0] =
+      io_make_output_field("SFR", DOUBLE, 1, UNIT_CONV_SFR, xparts, sf_data.SFR);
+      list[1]=io_make_output_field("gas_temperature", DOUBLE, 1, UNIT_CONV_TEMPERATURE, xparts, sf_data.temperature);
+	  list[2] =
+      io_make_output_field("prob", DOUBLE, 1, UNIT_CONV_NO_UNITS, xparts, sf_data.proba);
+  return 3;
 }
 
 #endif /* SWIFT_STAR_FORMATION_GEAR_IO_H */

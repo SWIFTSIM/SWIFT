@@ -61,7 +61,7 @@ INLINE static void stars_write_particles(const struct spart *sparts,
                                          int *num_fields) {
 
   /* Say how much we want to write */
-  *num_fields = 5;
+  *num_fields = 9;
 
   /* List what we want to write */
   list[0] = io_make_output_field("Coordinates", DOUBLE, 3, UNIT_CONV_LENGTH,
@@ -74,6 +74,17 @@ INLINE static void stars_write_particles(const struct spart *sparts,
                                  sparts, id);
   list[4] = io_make_output_field("SmoothingLength", FLOAT, 1, UNIT_CONV_LENGTH,
                                  sparts, h);
+  list[5] = io_make_output_field("BirthDensity", FLOAT, 1, UNIT_CONV_DENSITY,
+                                 sparts, birth_density);
+  list[6] = io_make_output_field("InitialMasses", FLOAT, 1, UNIT_CONV_MASS,
+                                 sparts, mass_init);
+  list[7] = io_make_output_field("BirthTime", FLOAT, 1, UNIT_CONV_TIME, sparts,
+                                 birth_time);
+  list[8] = io_make_output_field("BirthTemperature", FLOAT, 1, UNIT_CONV_TEMPERATURE, sparts,
+                                 birth_temperature);
+                                 message("SAUVEGARDE IO");
+    message("temperature %e",sparts->birth_temperature);
+  message("densite %e",sparts->birth_density);
 
 #ifdef DEBUG_INTERACTIONS_STARS
 

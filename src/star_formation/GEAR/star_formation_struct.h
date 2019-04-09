@@ -23,9 +23,36 @@
  * @brief Star-formation-related properties stored in the extended particle
  * data.
  */
-struct star_formation_xpart_data {};
+struct star_formation_xpart_data {
+	//star formation rate
+	double SFR; //double
+	double proba; //double
+	double temperature;
+	//int star_created; //was there a star created in this particle
+	//double creation_temperature;
+	//double creation_density; //the temperature and the density when the star was created
+	
+		
+		
+    /* Estimation of local turbulence */
+    float sigma; //double
+	};
 
 /* Starformation struct */
-struct star_formation {};
+struct star_formation {
+	/*! Njeans number. We request that the SPH mass resolution is Njeans times smaller than the Jeans mass*/
+	int Njeans;
+	/*!star formation efficency. If the particle can create a star, it happens with this probablity*/
+	double star_formation_rate;
+	/*!do we include local turbulence*/
+	int with_sigma;
+	/*!Maximum temperature to allow star formation* (should be about 10'000 or 30'000 K*/
+	double Max_temperature;
+	/*!some other useful elements*/
+	const struct hydro_props* restrict hydro_props;
+	const struct unit_system* restrict us;
+	//const struct cooling_function_data* restrict cooling;
+	const struct phys_const* phys_const;
+	};
 
 #endif /* SWIFT_GEAR_STAR_FORMATION_STRUCT_H */

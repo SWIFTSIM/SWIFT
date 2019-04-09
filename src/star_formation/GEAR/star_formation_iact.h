@@ -1,6 +1,4 @@
 /*******************************************************************************
- * This file is part of SWIFT.
- * Copyright (c) 2019 Loic Hausammann (loic.hausammann@epfl.ch)
  *
  * This program is free software: you can redistribute it and/or modify
  * it under the terms of the GNU Lesser General Public License as published
@@ -39,7 +37,21 @@
  */
 __attribute__((always_inline)) INLINE static void runner_iact_star_formation(
     float r2, const float *dx, float hi, float hj, struct part *restrict pi,
-    struct part *restrict pj, float a, float H) {}
+    struct part *restrict pj, float a, float H) 
+    {
+    float wi; //kernel value
+    float wj; //kernel value
+    kernel_eval(sqrt(r2)/hi,&wi);
+    kernel_eval(sqrt(r2)/hj,&wj);
+    //message("W %e",wi);
+	float norm_v2=pow(pi->v[0]-pj->v[0],2)+pow(pi->v[1]-pj->v[1],2)+pow(pi->v[2]-pj->v[2],2); 
+	//message("norm v %e",norm_v2);
+	//message("h-3 %e",pow(hi,-3));
+	//message("mass %e",hydro_get_mass(pj));
+	pi->starform_data.sigma=pi->starform_data.sigma+pow(hi,-3)*norm_v2*wi*hydro_get_mass(pi);//   float u, float *restrict W)
+	pj->starform_data.sigma=pj->starform_data.sigma+pow(hj,-3)*norm_v2*wj*hydro_get_mass(pj);
+						//kernel_eval(sqrt(r2)/hi,&hydro_kernel_dump)
+									  }
 
 /**
  * @brief do star_formation computation after the runner_iact_density (non
@@ -58,6 +70,13 @@ __attribute__((always_inline)) INLINE static void
 runner_iact_nonsym_star_formation(float r2, const float *dx, float hi, float hj,
                                   struct part *restrict pi,
                                   const struct part *restrict pj, float a,
-                                  float H) {}
+                                  float H) 
+    {
+    float wi; //kernel value
+	float norm_v2=pow(pi->v[0]-pj->v[0],2)+pow(pi->v[1]-pj->v[1],2)+pow(pi->v[2]-pj->v[2],2); 
+	kernel_eval(sqrt(r2)/hi,&wi);
+	pi->starform_data.sigma=pi->starform_data.sigma+pow(hi,-3)*norm_v2*wi*hydro_get_mass(pi);//   float u, float *restrict W)
+						//kernel_eval(sqrt(r2)/hi,&hydro_kernel_dump)
+									  }
 
 #endif /* SWIFT_GEAR_STAR_FORMATION_IACT_H */

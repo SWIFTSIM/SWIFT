@@ -53,9 +53,28 @@ struct spart {
 
   /*! Star mass */
   float mass;
+  
+  /*!initial mass (when the particle was created)*/
+  float mass_init;
 
   /* Particle cutoff radius. */
   float h;
+  
+  /*! Union for the birth time and birht scale factor */
+  union {
+
+    /*! Birth time */
+    float birth_time;
+
+    /*! Birth scale factor */
+    float birth_scale_factor;
+  };
+  
+  /*!birth density*/
+  float birth_density;
+  
+  /*!birth temperature*/
+  float birth_temperature;
 
   /*! Particle time bin */
   timebin_t time_bin;
@@ -82,6 +101,7 @@ struct spart {
 
   /*! Chemistry structure */
   struct chemistry_part_data chemistry_data;
+  
 
 #ifdef SWIFT_DEBUG_CHECKS
 
