@@ -2485,6 +2485,11 @@ void engine_collect_end_of_step_mapper(void *map_data, int num_elements,
       g_inhibited += c->grav.inhibited;
       s_inhibited += c->stars.inhibited;
 
+      /* Check if the cell is inactive and in that case reorder the SFH */
+      if (!cell_is_starting_hydro(c,e)){ 
+        star_formation_logger_log_inactive_cell(&c->stars.sfh);
+      }
+
       /* Get the star formation history from the current cell and store it in
        * the star formation history struct */
       star_formation_logger_add(c, &sfh_updated);
