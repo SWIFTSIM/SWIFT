@@ -2391,6 +2391,11 @@ void engine_collect_end_of_step_recurse(struct cell *c,
       g_inhibited += cp->grav.inhibited;
       s_inhibited += cp->stars.inhibited;
 
+      /* Check if the cell is inactive and in that case reorder the SFH */
+      if (!cell_is_starting_hydro(cp,e)){ 
+        star_formation_logger_log_inactive_cell(&cp->stars.sfh);
+      }
+
       /* Add the star formation history in this cell to sfh_updated */
       star_formation_logger_add(cp, &sfh_updated);
 
