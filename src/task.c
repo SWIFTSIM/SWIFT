@@ -99,7 +99,7 @@ const char *subtaskID_names[task_subtype_count] = {
     "limiter",       "grav",           "external_grav", "tend_part",
     "tend_gpart",    "tend_spart",     "tend_bpart",    "xv",
     "rho",           "gpart",          "multipole",     "spart",
-    "stars_density", "stars_feedback", "bpart",         "bh_density",
+    "stars_density", "stars_feedback", "sf_count", "bpart",         "bh_density",
     "bh_feedback"};
 
 #ifdef WITH_MPI
@@ -403,9 +403,8 @@ void task_unlock(struct task *t) {
       if (subtype == task_subtype_grav) {
         cell_gunlocktree(ci);
         cell_munlocktree(ci);
-      } else if (subtype == task_subtype_stars_density) {
-        cell_sunlocktree(ci);
-      } else if (subtype == task_subtype_stars_feedback) {
+      } else if ((subtype == task_subtype_stars_density) ||
+                 (subtype == task_subtype_stars_feedback)) {
         cell_sunlocktree(ci);
         cell_unlocktree(ci);
       } else {
@@ -420,10 +419,8 @@ void task_unlock(struct task *t) {
         cell_gunlocktree(cj);
         cell_munlocktree(ci);
         cell_munlocktree(cj);
-      } else if (subtype == task_subtype_stars_density) {
-        cell_sunlocktree(ci);
-        cell_sunlocktree(cj);
-      } else if (subtype == task_subtype_stars_feedback) {
+      } else if ((subtype == task_subtype_stars_density) ||
+                 (subtype == task_subtype_stars_feedback)) {
         cell_sunlocktree(ci);
         cell_sunlocktree(cj);
         cell_unlocktree(ci);
@@ -540,10 +537,8 @@ int task_lock(struct task *t) {
           cell_gunlocktree(ci);
           return 0;
         }
-      } else if (subtype == task_subtype_stars_density) {
-        if (ci->stars.hold) return 0;
-        if (cell_slocktree(ci) != 0) return 0;
-      } else if (subtype == task_subtype_stars_feedback) {
+      } else if ((subtype == task_subtype_stars_density) ||
+                 (subtype == task_subtype_stars_feedback)) {
         if (ci->stars.hold) return 0;
         if (ci->hydro.hold) return 0;
         if (cell_slocktree(ci) != 0) return 0;
@@ -576,14 +571,8 @@ int task_lock(struct task *t) {
           cell_munlocktree(ci);
           return 0;
         }
-      } else if (subtype == task_subtype_stars_density) {
-        if (ci->stars.hold || cj->stars.hold) return 0;
-        if (cell_slocktree(ci) != 0) return 0;
-        if (cell_slocktree(cj) != 0) {
-          cell_sunlocktree(ci);
-          return 0;
-        }
-      } else if (subtype == task_subtype_stars_feedback) {
+      } else if ((subtype == task_subtype_stars_density) ||
+                 (subtype == task_subtype_stars_feedback)) {
         /* Lock the stars and the gas particles in both cells */
         if (ci->stars.hold || cj->stars.hold) return 0;
         if (ci->hydro.hold || cj->hydro.hold) return 0;

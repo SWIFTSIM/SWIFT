@@ -1591,6 +1591,13 @@ void scheduler_enqueue(struct scheduler *s, struct task *t) {
           err = MPI_Irecv(t->buff, t->ci->mpi.pcell_size, multipole_mpi_type,
                           t->ci->nodeID, t->flags, subtaskMPI_comms[t->subtype],
                           &t->req);
+        } else if (t->subtype == task_subtype_sf_counts) {
+          t->buff = (struct pcell_sf *)malloc(sizeof(struct pcell_sf) *
+                                              t->ci->mpi.pcell_size);
+          err = MPI_Irecv(t->buff,
+                          t->ci->mpi.pcell_size * sizeof(struct pcell_sf),
+                          MPI_BYTE, t->ci->nodeID, t->flags,
+                          subtaskMPI_comms[t->subtype], &t->req);
         } else {
           error("Unknown communication sub-type");
         }
@@ -1726,6 +1733,14 @@ void scheduler_enqueue(struct scheduler *s, struct task *t) {
           err = MPI_Isend(t->buff, t->ci->mpi.pcell_size, multipole_mpi_type,
                           t->cj->nodeID, t->flags, subtaskMPI_comms[t->subtype],
                           &t->req);
+        } else if (t->subtype == task_subtype_sf_counts) {
+          t->buff = (struct pcell_sf *)malloc(sizeof(struct pcell_sf) *
+                                              t->ci->mpi.pcell_size);
+          cell_pack_sf_counts(t->ci, (struct pcell_sf *)t->buff);
+          err = MPI_Isend(t->buff,
+                          t->ci->mpi.pcell_size * sizeof(struct pcell_sf),
+                          MPI_BYTE, t->cj->nodeID, t->flags,
+                          subtaskMPI_comms[t->subtype], &t->req);
         } else {
           error("Unknown communication sub-type");
         }

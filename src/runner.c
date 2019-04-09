@@ -4162,14 +4162,11 @@ void *runner_main(void *data) {
         case task_type_send:
           if (t->subtype == task_subtype_tend_part) {
             free(t->buff);
-          }
-          if (t->subtype == task_subtype_tend_gpart) {
+          } else if (t->subtype == task_subtype_tend_gpart) {
             free(t->buff);
-          }
-          if (t->subtype == task_subtype_tend_spart) {
+          } else if (t->subtype == task_subtype_tend_spart) {
             free(t->buff);
-          }
-          if (t->subtype == task_subtype_tend_bpart) {
+          } else if (t->subtype == task_subtype_sf_counts) {
             free(t->buff);
           }
           break;
@@ -4186,6 +4183,10 @@ void *runner_main(void *data) {
           } else if (t->subtype == task_subtype_tend_bpart) {
             cell_unpack_end_step_black_holes(
                 ci, (struct pcell_step_black_holes *)t->buff);
+            free(t->buff);
+          } else if (t->subtype == task_subtype_sf_counts) {
+            cell_unpack_sf_counts(ci, (struct pcell_sf *)t->buff);
+            cell_clear_stars_sort_flags(ci);
             free(t->buff);
           } else if (t->subtype == task_subtype_xv) {
             runner_do_recv_part(r, ci, 1, 1);

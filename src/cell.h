@@ -272,6 +272,23 @@ enum cell_flags {
 };
 
 /**
+ * @brief Cell information to propagate the new counts of star particles.
+ */
+struct pcell_sf {
+
+  /*! Stars variables */
+  struct {
+
+    /* Distance by which the stars pointer has moved since the last rebuild */
+    ptrdiff_t delta_from_rebuild;
+
+    /* Number of particles in the cell */
+    int count;
+
+  } stars;
+};
+
+/**
  * @brief Cell within the tree structure.
  *
  * Contains particles, links to tasks, a multipole object and counters.
@@ -520,6 +537,9 @@ struct cell {
 
     /*! Pointer to the #spart data. */
     struct spart *parts;
+
+    /*! Pointer to the #spart data at rebuild time. */
+    struct spart *parts_rebuild;
 
     /*! The star ghost task itself */
     struct task *ghost;
@@ -802,6 +822,8 @@ int cell_unpack_end_step_black_holes(struct cell *c,
                                      struct pcell_step_black_holes *pcell);
 int cell_pack_multipoles(struct cell *c, struct gravity_tensors *m);
 int cell_unpack_multipoles(struct cell *c, struct gravity_tensors *m);
+int cell_pack_sf_counts(struct cell *c, struct pcell_sf *pcell);
+int cell_unpack_sf_counts(struct cell *c, struct pcell_sf *pcell);
 int cell_getsize(struct cell *c);
 int cell_link_parts(struct cell *c, struct part *parts);
 int cell_link_gparts(struct cell *c, struct gpart *gparts);

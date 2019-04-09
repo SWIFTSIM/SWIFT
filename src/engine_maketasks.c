@@ -236,7 +236,8 @@ void engine_addtasks_send_hydro(struct engine *e, struct cell *ci,
  */
 void engine_addtasks_send_stars(struct engine *e, struct cell *ci,
                                 struct cell *cj, struct task *t_feedback,
-                                struct task *t_ti) {
+                                struct task *t_sf_counts, struct task *t_ti,
+                                const int with_star_formation) {
 
 #ifdef WITH_MPI
 
@@ -262,6 +263,11 @@ void engine_addtasks_send_stars(struct engine *e, struct cell *ci,
       t_feedback = scheduler_addtask(s, task_type_send, task_subtype_spart,
                                      ci->mpi.tag, 0, ci, cj);
 
+      if (with_star_formation && ci->hydro.count > 0) {
+        t_sf_counts = scheduler_addtask(
+            s, task_type_send, task_subtype_sf_counts, ci->mpi.tag, 0, ci, cj);
+      }
+
       t_ti = scheduler_addtask(s, task_type_send, task_subtype_tend_spart,
                                ci->mpi.tag, 0, ci, cj);
 
@@ -274,18 +280,24 @@ void engine_addtasks_send_stars(struct engine *e, struct cell *ci,
       /* Drift before you send */
       scheduler_addunlock(s, ci->hydro.super->stars.drift, t_feedback);
 
-      scheduler_addunlock(s, ci->super->timestep, t_ti);
-    }
+      /* Update the stars counts before you send them */
+      if (with_star_formation && ci->hydro.count > 0) {
+        scheduler_addunlock(s, ci->top->hydro.star_formation, t_sf_counts);
+      }
 
     engine_addlink(e, &ci->mpi.send, t_feedback);
     engine_addlink(e, &ci->mpi.send, t_ti);
+    if (with_star_formation) {
+      engine_addlink(e, &ci->mpi.send, t_sf_counts);
+    }
   }
 
   /* Recurse? */
   if (ci->split)
     for (int k = 0; k < 8; k++)
       if (ci->progeny[k] != NULL)
-        engine_addtasks_send_stars(e, ci->progeny[k], cj, t_feedback, t_ti);
+        engine_addtasks_send_stars(e, ci->progeny[k], cj, t_feedback, 
+                                   t_sf_counts, t_ti, with_star_formation);
 
 #else
   error("SWIFT was not compiled with MPI support.");
@@ -462,7 +474,9 @@ void engine_addtasks_recv_hydro(struct engine *e, struct cell *c,
  * @param t_ti The recv_ti_end #task, if it has already been created.
  */
 void engine_addtasks_recv_stars(struct engine *e, struct cell *c,
-                                struct task *t_feedback, struct task *t_ti) {
+                                struct task *t_feedback,
+                                struct task *t_sf_counts, struct task *t_ti,
+                                const int with_star_formation) {
 
 #ifdef WITH_MPI
   struct scheduler *s = &e->sched;
@@ -481,11 +495,22 @@ void engine_addtasks_recv_stars(struct engine *e, struct cell *c,
 
     t_ti = scheduler_addtask(s, task_type_recv, task_subtype_tend_spart,
                              c->mpi.tag, 0, c, NULL);
+
+    if (with_star_formation && c->hydro.count > 0) {
+      t_sf_counts = scheduler_addtask(s, task_type_recv, task_subtype_sf_counts,
+                                      c->mpi.tag, 0, c, NULL);
+
+      /* Receive the stars only once the counts have been received */
+      scheduler_addunlock(s, t_sf_counts, t_feedback);
+    }
   }
 
   if (t_feedback != NULL) {
     engine_addlink(e, &c->mpi.recv, t_feedback);
     engine_addlink(e, &c->mpi.recv, t_ti);
+  if (with_star_formation && c->hydro.count > 0) {
+    engine_addlink(e, &c->mpi.recv, t_sf_counts);
+  }
 
 #ifdef SWIFT_DEBUG_CHECKS
     if (c->nodeID == e->nodeID) error("Local cell!");
@@ -507,7 +532,8 @@ void engine_addtasks_recv_stars(struct engine *e, struct cell *c,
   if (c->split)
     for (int k = 0; k < 8; k++)
       if (c->progeny[k] != NULL)
-        engine_addtasks_recv_stars(e, c->progeny[k], t_feedback, t_ti);
+        engine_addtasks_recv_stars(e, c->progeny[k], t_feedback,  t_sf_counts,
+                                   t_ti, with_star_formation);
 
 #else
   error("SWIFT was not compiled with MPI support.");
@@ -614,6 +640,7 @@ void engine_addtasks_recv_gravity(struct engine *e, struct cell *c,
       scheduler_addunlock(s, l->t, t_ti);
     }
   }
+
   /* Recurse? */
   if (c->split)
     for (int k = 0; k < 8; k++)
@@ -2419,6 +2446,9 @@ void engine_addtasks_send_mapper(void *map_data, int num_elements,
     struct cell *cj = cell_type_pairs[k].cj;
     const int type = cell_type_pairs[k].type;
 
+    /* Add the send task for the particle timesteps. */
+    // engine_addtasks_send_timestep(e, ci, cj, NULL, NULL, with_limiter);
+
     /* Add the send tasks for the cells in the proxy that have a hydro
      * connection. */
     if ((e->policy & engine_policy_hydro) && (type & proxy_cell_type_hydro))
@@ -2430,13 +2460,6 @@ void engine_addtasks_send_mapper(void *map_data, int num_elements,
      * connection. */
     if ((e->policy & engine_policy_feedback) && (type & proxy_cell_type_hydro))
       engine_addtasks_send_stars(e, ci, cj, /*t_feedback=*/NULL, /*t_ti=*/NULL);
-
-    /* Add the send tasks for the cells in the proxy that have a black holes
-     * connection. */
-    if ((e->policy & engine_policy_black_holes) &&
-        (type & proxy_cell_type_hydro))
-      engine_addtasks_send_black_holes(e, ci, cj, /*t_feedback=*/NULL,
-                                       /*t_ti=*/NULL);
 
     /* Add the send tasks for the cells in the proxy that have a gravity
      * connection. */
@@ -2457,6 +2480,9 @@ void engine_addtasks_recv_mapper(void *map_data, int num_elements,
     struct cell *ci = cell_type_pairs[k].ci;
     const int type = cell_type_pairs[k].type;
 
+    /* Add the recv task for the particle timesteps. */
+    // engine_addtasks_recv_timestep(e, ci, NULL, NULL, with_limiter);
+
     /* Add the recv tasks for the cells in the proxy that have a hydro
      * connection. */
     if ((e->policy & engine_policy_hydro) && (type & proxy_cell_type_hydro))
@@ -2466,11 +2492,6 @@ void engine_addtasks_recv_mapper(void *map_data, int num_elements,
      * connection. */
     if ((e->policy & engine_policy_feedback) && (type & proxy_cell_type_hydro))
       engine_addtasks_recv_stars(e, ci, NULL, NULL);
-
-    /* Add the recv tasks for the cells in the proxy that have a black holes
-     * connection. */
-    if ((e->policy & engine_policy_feedback) && (type & proxy_cell_type_hydro))
-      engine_addtasks_recv_black_holes(e, ci, NULL, NULL);
 
     /* Add the recv tasks for the cells in the proxy that have a gravity
      * connection. */

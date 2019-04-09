@@ -128,6 +128,7 @@ SUBTYPES = [
     "spart",
     "stars_density",
     "stars_feedback",
+    "sf_counts"
     "bh_density",
     "bh_feedback",
     "count",
