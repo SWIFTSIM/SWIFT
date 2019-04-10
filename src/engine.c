@@ -2383,11 +2383,14 @@ void engine_collect_end_of_step_recurse(struct cell *c,
   /* Initialize the star formation structs */
   star_formation_logger_init_engine(&sfh_updated);
 
+  message("Before for loop");
   /* Collect the values from the progeny. */
   for (int k = 0; k < 8; k++) {
     struct cell *cp = c->progeny[k];
     if (cp != NULL &&
         (cp->hydro.count > 0 || cp->grav.count > 0 || cp->stars.count > 0)) {
+
+      message("YES IN RECURSE!!");
 
       /* Recurse */
       engine_collect_end_of_step_recurse(cp, e);
@@ -2423,6 +2426,8 @@ void engine_collect_end_of_step_recurse(struct cell *c,
       cp->hydro.updated = 0;
       cp->grav.updated = 0;
       cp->stars.updated = 0;
+    } else {
+      message("NULL POINTER!!");
     }
   }
 
