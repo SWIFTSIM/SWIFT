@@ -5481,6 +5481,9 @@ void engine_clean(struct engine *e) {
   space_clean(e->s);
   threadpool_clean(&e->threadpool);
   if (e->policy & engine_policy_star_formation) {
+    star_formation_logger_write_to_log_file(e->sfh_logger, e->time,
+                                            e->cosmology->a, e->cosmology->z,
+                                            e->sfh, e->step);
     fclose(e->sfh_logger);
   }
 }
