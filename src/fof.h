@@ -55,6 +55,9 @@ struct fof {
   long long *max_part_density_index;
   float *max_part_density;
   
+  /*! The extra no. of black holes to seed locally. */
+  int extra_bh_seed_count;
+  
   /*! The FOF linking length squared. */
   double l_x2;
   
@@ -90,6 +93,8 @@ struct fof_final_index {
 struct fof_final_mass {
   size_t global_root;
   double group_mass;
+  long long max_part_density_index;
+  float max_part_density;
 } SWIFT_STRUCT_ALIGN;
 
 /* Struct used to iterate over the hash table and unpack the mass fragments of a group when using MPI */
