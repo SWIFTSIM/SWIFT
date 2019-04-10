@@ -1,3 +1,10 @@
+# Script for plotting energy evolution of uniform box of gas with single star in the 
+# centre when running with stochastic energy injection. It also checks that the change
+# in total energy of the gas particles is within a specified tolerance from what is 
+# expected based on the mass of the star particle (Note that this tolerance could be
+# somewhat high because of Poisson noise and the relatively small number of injection
+# events)
+
 import matplotlib
 matplotlib.use("Agg")
 from pylab import *
@@ -63,6 +70,12 @@ unit_length_in_si = 0.01 * unit_length_in_cgs
 unit_mass_in_si = 0.001 * unit_mass_in_cgs
 unit_time_in_si = unit_time_in_cgs
 
+# Calculate solar mass in internal units
+const_solar_mass = 1.98848e33 / unit_mass_in_cgs
+
+# Define Gyr
+Gyr_in_cgs = 1e9 * 365 * 24 * 3600.
+
 # Find out how many particles (gas and star) we have
 n_parts = sim["/Header"].attrs["NumPart_Total"][0]
 n_sparts = sim["/Header"].attrs["NumPart_Total"][4]
@@ -70,75 +83,55 @@ n_sparts = sim["/Header"].attrs["NumPart_Total"][4]
 # Declare arrays for data
 masses = zeros((n_parts,n_snapshots))
 star_masses = zeros((n_sparts,n_snapshots))
-mass_from_AGB = zeros((n_parts,n_snapshots))
-metal_mass_frac_from_AGB = zeros((n_parts,n_snapshots))
-mass_from_SNII = zeros((n_parts,n_snapshots))
-metal_mass_frac_from_SNII = zeros((n_parts,n_snapshots))
-mass_from_SNIa = zeros((n_parts,n_snapshots))
-metal_mass_frac_from_SNIa = zeros((n_parts,n_snapshots))
-iron_mass_frac_from_SNIa = zeros((n_parts,n_snapshots))
-metallicity = zeros((n_parts,n_snapshots))
-abundances = zeros((n_parts,n_elements,n_snapshots))
 internal_energy = zeros((n_parts,n_snapshots))
-coord_parts = zeros((n_parts,3,n_snapshots))
 velocity_parts = zeros((n_parts,3,n_snapshots))
-speed_parts = zeros((n_parts,n_snapshots))
-coord_sparts = zeros((3,n_snapshots))
-smoothing_length_parts = zeros((n_parts,n_snapshots))
-distances = zeros((n_parts,n_snapshots))
-smoothing_length_sparts = zeros(n_snapshots)
 time = zeros(n_snapshots)
 
 # Read fields we are checking from snapshots
+#for i in [0,n_snapshots-1]:
 for i in range(n_snapshots):
 	sim = h5py.File("stellar_evolution_%04d.hdf5"%i, "r")
 	print('reading snapshot '+str(i))
-	abundances[:,:,i] = sim["/PartType0/ElementAbundance"]
-	metallicity[:,i] = sim["/PartType0/Metallicity"]
 	masses[:,i] = sim["/PartType0/Masses"]
-	star_masses[:,i] = sim["/PartType4/Masses"]
-	mass_from_AGB[:,i] = sim["/PartType0/TotalMassFromAGB"]
-	metal_mass_frac_from_AGB[:,i] = sim["/PartType0/MetalMassFracFromAGB"]
-	mass_from_SNII[:,i] = sim["/PartType0/TotalMassFromSNII"]
-	metal_mass_frac_from_SNII[:,i] = sim["/PartType0/MetalMassFracFromSNII"]
-	mass_from_SNIa[:,i] = sim["/PartType0/TotalMassFromSNIa"]
-	metal_mass_frac_from_SNIa[:,i] = sim["/PartType0/MetalMassFracFromSNIa"]
-	iron_mass_frac_from_SNIa[:,i] = sim["/PartType0/IronMassFracFromSNIa"]
 	internal_energy[:,i] = sim["/PartType0/InternalEnergy"]
 	velocity_parts[:,:,i] = sim["/PartType0/Velocities"]
-	coord_parts[:,:,i] = sim["/PartType0/Coordinates"]
-	coord_sparts[:,i] = sim["/PartType4/Coordinates"]
-	smoothing_length_parts[:,i] = sim["/PartType0/SmoothingLength"]
-	smoothing_length_sparts[i] = sim["/PartType4/SmoothingLength"][0]
 	time[i] = sim["/Header"].attrs["Time"][0]
 
-# Energy emmitted per SN
-energy_per_SNe = 1.0e51/unit_energy_in_cgs
-
 # Check that the total amount of enrichment is as expected.
-# Define tolerance
-eps = 0.01
+# Define tolerance. Note, relatively high value used due to
+# Poisson noise associated with stochastic energy injection.
+eps = 0.15
 
-# Find out how many total sn should go off in simulation time
-feedback_data = "feedback_properties.dat"
-with open(feedback_data) as f:
-        num_sn = float(f.readline().strip())
-        total_time = float(f.readline().strip())
-total_sn = num_sn * time[n_snapshots-1]/total_time
-print("total_sn " + str(total_sn))
-
-# Continuous heating
+# Stochastic heating
 vel2 = zeros((n_parts,n_snapshots))
 vel2[:,:] = velocity_parts[:,0,:]*velocity_parts[:,0,:] + velocity_parts[:,1,:]*velocity_parts[:,1,:] + velocity_parts[:,2,:]*velocity_parts[:,2,:]
-total_kinetic_energy = np.sum(np.multiply(vel2,masses)*0.5,axis = 0)
-total_energy = np.sum(np.multiply(internal_energy,masses),axis = 0)
-total_energy_released = total_energy[n_snapshots-1] - total_energy[0] + total_kinetic_energy[n_snapshots-1] - total_kinetic_energy[0]
+total_kinetic_energy_cgs = np.sum(np.multiply(vel2,masses)*0.5,axis = 0) * unit_energy_in_cgs
+total_energy_cgs = np.sum(np.multiply(internal_energy,masses),axis = 0) * unit_energy_in_cgs
+total_energy_released_cgs = total_energy_cgs[n_snapshots-1] - total_energy_cgs[0] + total_kinetic_energy_cgs[n_snapshots-1] - total_kinetic_energy_cgs[0]
 
+# Calculate energy released
+energy_per_sn = 1.0e51 / unit_energy_in_cgs
+SNIa_efficiency = 2.e-3
+SNIa_timescale_Gyr = 2.0
+expected_energy_released_cgs = np.zeros(n_snapshots)
 for i in range(n_snapshots):
-	print("snapshot " + str(i) + " max velocity " + str(np.max(sqrt(vel2[:,i])*unit_vel_in_cgs)))
+	age_Gyr = time[i] * unit_time_in_cgs / Gyr_in_cgs
+	total_sn = SNIa_efficiency * (SNIa_timescale_Gyr * Gyr_in_cgs / unit_time_in_cgs * (1 - exp(-age_Gyr/SNIa_timescale_Gyr))) * star_initial_mass * const_solar_mass
+	expected_energy_released_cgs[i] = total_sn * energy_per_sn * unit_energy_in_cgs
 
-expected_energy_released = total_sn * energy_per_SNe
-if abs(total_energy_released - expected_energy_released)/expected_energy_released < eps:
-	print("total continuous energy release consistent with expectation")
+# Did we get it right?
+if abs(total_energy_released_cgs - expected_energy_released_cgs[n_snapshots-1])/expected_energy_released_cgs[n_snapshots-1] < eps:
+	print("total stochastic energy release consistent with expectation. total stochastic energy release "+str(total_energy_released_cgs)+" expected "+ str(expected_energy_released_cgs[n_snapshots-1]) + " initial total internal energy "+ str(total_energy_cgs[0] + total_kinetic_energy_cgs[0]))
 else:
-	print("total continuous energy release "+str(total_energy_released)+" expected "+ str(expected_energy_released) + " initial total internal energy "+ str(total_energy[0] + total_kinetic_energy[0]) + " energy change fraction of total " + str(total_energy_released/(total_energy[0]+total_kinetic_energy[0])))
+	print("total stochastic energy release "+str(total_energy_released_cgs)+" expected "+ str(expected_energy_released_cgs[n_snapshots-1]) + " initial total internal energy "+ str(total_energy_cgs[0] + total_kinetic_energy_cgs[0]) + " energy change fraction of total " + str(total_energy_released_cgs/(total_energy_cgs[0]+total_kinetic_energy_cgs[0])))
+
+# Plot the energy evolution
+figure()
+subplot(111)
+plot(time*unit_time_in_cgs/Gyr_in_cgs, total_energy_cgs + total_kinetic_energy_cgs - total_energy_cgs[0] - total_kinetic_energy_cgs[0],color='k', linewidth=0.5, label="SWIFT")
+plot(time*unit_time_in_cgs/Gyr_in_cgs, expected_energy_released_cgs,color = 'r', linewidth=0.5, label="expected")
+xlabel("Time (Gyr)")
+ylabel("Total energy (erg)")
+legend()
+savefig("continuous_energy_evolution.png", dpi=200)
+
