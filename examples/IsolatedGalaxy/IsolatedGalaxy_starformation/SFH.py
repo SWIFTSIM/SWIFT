@@ -164,7 +164,7 @@ if __name__ == "__main__":
     plt.savefig("CSFH_logger.png")
     plt.close()
 
-    # Calculate the Cumulative sum of the particles from the log file
+    # Calculate the Cumulative sum of the particles from the snap shots 
     f = h5.File("./output_0999.hdf5", "r")
     birthtime = f["/PartType4/BirthTime"][:] * 9.778131e2
     mass = f["/PartType4/Masses"][:] * 1e10
@@ -237,11 +237,18 @@ if __name__ == "__main__":
     plt.savefig("SFH_snapshots.png")
     plt.close()
 
-    # Make a plot of the SFH from the snaps and from the log file
+    # Make a plot of the log file
     plt.plot(timelog, logdata[:, 6] * 1.023009e01, label="SFH log file")
-    plt.plot(
-        timesnap[:-1] * 9.778131e2, SFRsnap[:-1] * 1.022690e1, label="SFH gas tracers"
-    )
+    plt.xlabel("Time (Myr)")
+    plt.ylabel("SFH ($\\rm M_\odot \\rm yr^{-1}$)")
+    plt.ylim(0, 20)
+    plt.xlim(0, 100)
+    plt.legend()
+    plt.savefig("SFH_log_file.png")
+
+    # Make a plot of the log file and the snaps
+    plt.plot(timelog, logdata[:, 6] * 1.023009e01, label="SFH log file")
+    plt.plot(timesnap * 9.778131e2, SFRsnap * 1.022690e1, label="SFH gas tracers")
     plt.xlabel("Time (Myr)")
     plt.ylabel("SFH ($\\rm M_\odot \\rm yr^{-1}$)")
     plt.ylim(0, 20)
