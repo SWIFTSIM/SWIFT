@@ -4536,19 +4536,6 @@ void engine_init(struct engine *e, struct space *s, struct swift_params *params,
   e->total_nr_cells = 0;
   e->total_nr_tasks = 0;
 
-  /* Initialize the SFH logger if running with star formation */
-  if (e->policy & engine_policy_star_formation) {
-    const int buffersize = 300;
-    char SFH_logger_fileName[buffersize];
-    snprintf(SFH_logger_fileName, buffersize, "%s_SFH_logger.txt",
-             e->snapshot_base_name);
-
-    e->sfh_logger = fopen(SFH_logger_fileName, "w");
-
-    star_formation_logger_init_log_file(e->sfh_logger, e->internal_units,
-                                        e->physical_constants);
-  }
-
 #if defined(WITH_LOGGER)
   e->logger = (struct logger *)malloc(sizeof(struct logger));
   logger_init(e->logger, params);
@@ -4640,6 +4627,7 @@ void engine_config(int restart, struct engine *e, struct swift_params *params,
   e->nr_links = 0;
   e->file_stats = NULL;
   e->file_timesteps = NULL;
+  e->sfh_logger = NULL;
   e->verbose = verbose;
   e->wallclock_time = 0.f;
   e->restart_dump = 0;
@@ -4851,6 +4839,22 @@ void engine_config(int restart, struct engine *e, struct swift_params *params,
               "Time-bins", "Updates", "g-Updates", "s-Updates",
               "Wall-clock time", clocks_getunit(), "Props");
       fflush(e->file_timesteps);
+    }
+
+    /* Initialize the SFH logger if running with star formation */
+    if (e->policy & engine_policy_star_formation) {
+      const int buffersize = 300;
+      char SFH_logger_fileName[buffersize];
+
+      snprintf(SFH_logger_fileName, buffersize, "%s_SFH_logger.txt",
+               e->snapshot_base_name);
+
+      e->sfh_logger = fopen(SFH_logger_fileName, mode);
+      if (!restart) {
+        star_formation_logger_init_log_file(e->sfh_logger, e->internal_units,
+                                            e->physical_constants);
+        fflush(e->sfh_logger);
+      }
     }
   }
 
