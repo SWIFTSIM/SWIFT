@@ -195,6 +195,15 @@ struct engine {
   /* Maximal gravity ti_beg for the next time-step */
   integertime_t ti_gravity_beg_max;
 
+  /* Minimal stars ti_end for the next time-step */
+  integertime_t ti_stars_end_min;
+
+  /* Maximal stars ti_end for the next time-step */
+  integertime_t ti_stars_end_max;
+
+  /* Maximal stars ti_beg for the next time-step */
+  integertime_t ti_stars_beg_max;
+
   /* Minimal overall ti_end for the next time-step */
   integertime_t ti_end_min;
 

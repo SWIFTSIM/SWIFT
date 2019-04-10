@@ -237,6 +237,7 @@ void space_rebuild_recycle_mapper(void *map_data, int num_elements,
     c->grav.down = NULL;
     c->grav.mesh = NULL;
     c->grav.end_force = NULL;
+    c->top = c;
     c->super = c;
     c->hydro.super = c;
     c->grav.super = c;
@@ -272,17 +273,21 @@ void space_rebuild_recycle_mapper(void *map_data, int num_elements,
     c->mpi.hydro.recv_xv = NULL;
     c->mpi.hydro.recv_rho = NULL;
     c->mpi.hydro.recv_gradient = NULL;
+    c->mpi.hydro.recv_ti = NULL;
     c->mpi.grav.recv = NULL;
+    c->mpi.grav.recv_ti = NULL;
     c->mpi.stars.recv = NULL;
-    c->mpi.recv_ti = NULL;
+    c->mpi.stars.recv_ti = NULL;
     c->mpi.limiter.recv = NULL;
 
     c->mpi.hydro.send_xv = NULL;
     c->mpi.hydro.send_rho = NULL;
     c->mpi.hydro.send_gradient = NULL;
+    c->mpi.hydro.send_ti = NULL;
     c->mpi.grav.send = NULL;
+    c->mpi.grav.send_ti = NULL;
     c->mpi.stars.send = NULL;
-    c->mpi.send_ti = NULL;
+    c->mpi.stars.send_ti = NULL;
     c->mpi.limiter.send = NULL;
 #endif
   }
@@ -572,6 +577,7 @@ void space_regrid(struct space *s, int verbose) {
           c->hydro.count = 0;
           c->grav.count = 0;
           c->stars.count = 0;
+          c->top = c;
           c->super = c;
           c->hydro.super = c;
           c->grav.super = c;
@@ -711,14 +717,23 @@ void space_allocate_extras(struct space *s, int verbose) {
   size_t size_gparts = s->size_gparts;
   size_t size_sparts = s->size_sparts;
 
-  int local_cells = 0;
-  for (int i = 0; i < s->nr_cells; ++i)
-    if (s->cells_top[i].nodeID == local_nodeID) local_cells++;
+  int *local_cells = (int *)malloc(sizeof(int) * s->nr_cells);
+  if (local_cells == NULL)
+    error("Failed to allocate list of local top-level cells");
+
+  /* List the local cells */
+  int nr_local_cells = 0;
+  for (int i = 0; i < s->nr_cells; ++i) {
+    if (s->cells_top[i].nodeID == local_nodeID) {
+      local_cells[nr_local_cells] = i;
+      ++nr_local_cells;
+    }
+  }
 
   /* Number of extra particles we want for each type */
-  const size_t expected_num_extra_parts = local_cells * space_extra_parts;
-  const size_t expected_num_extra_gparts = local_cells * space_extra_gparts;
-  const size_t expected_num_extra_sparts = local_cells * space_extra_sparts;
+  const size_t expected_num_extra_parts = nr_local_cells * space_extra_parts;
+  const size_t expected_num_extra_gparts = nr_local_cells * space_extra_gparts;
+  const size_t expected_num_extra_sparts = nr_local_cells * space_extra_sparts;
 
   if (verbose) {
     message("Currently have %zd/%zd/%zd real particles.", nr_actual_parts,
@@ -786,11 +801,10 @@ void space_allocate_extras(struct space *s, int verbose) {
       s->gparts[i].id_or_neg_offset = -1;
     }
 
-      /* Put the spare particles in their correct cell */
-#ifdef WITH_MPI
-    error("Need to do this correctly over MPI for only the local cells.");
-#endif
-    int count_in_cell = 0, current_cell = 0;
+    /* Put the spare particles in their correct cell */
+    int local_cell_id = 0;
+    int current_cell = local_cells[local_cell_id];
+    int count_in_cell = 0;
     size_t count_extra_gparts = 0;
     for (size_t i = 0; i < nr_actual_gparts + expected_num_extra_gparts; ++i) {
 
@@ -812,7 +826,11 @@ void space_allocate_extras(struct space *s, int verbose) {
       /* Once we have reached the number of extra gpart per cell, we move to the
        * next */
       if (count_in_cell == space_extra_gparts) {
-        ++current_cell;
+        ++local_cell_id;
+
+        if (local_cell_id == nr_local_cells) break;
+
+        current_cell = local_cells[local_cell_id];
         count_in_cell = 0;
       }
     }
@@ -875,11 +893,10 @@ void space_allocate_extras(struct space *s, int verbose) {
       s->parts[i].id = -1;
     }
 
-      /* Put the spare particles in their correct cell */
-#ifdef WITH_MPI
-    error("Need to do this correctly over MPI for only the local cells.");
-#endif
-    int count_in_cell = 0, current_cell = 0;
+    /* Put the spare particles in their correct cell */
+    int local_cell_id = 0;
+    int current_cell = local_cells[local_cell_id];
+    int count_in_cell = 0;
     size_t count_extra_parts = 0;
     for (size_t i = 0; i < nr_actual_parts + expected_num_extra_parts; ++i) {
 
@@ -901,7 +918,11 @@ void space_allocate_extras(struct space *s, int verbose) {
       /* Once we have reached the number of extra part per cell, we move to the
        * next */
       if (count_in_cell == space_extra_parts) {
-        ++current_cell;
+        ++local_cell_id;
+
+        if (local_cell_id == nr_local_cells) break;
+
+        current_cell = local_cells[local_cell_id];
         count_in_cell = 0;
       }
     }
@@ -954,11 +975,10 @@ void space_allocate_extras(struct space *s, int verbose) {
       s->sparts[i].id = -42;
     }
 
-      /* Put the spare particles in their correct cell */
-#ifdef WITH_MPI
-    error("Need to do this correctly over MPI for only the local cells.");
-#endif
-    int count_in_cell = 0, current_cell = 0;
+    /* Put the spare particles in their correct cell */
+    int local_cell_id = 0;
+    int current_cell = local_cells[local_cell_id];
+    int count_in_cell = 0;
     size_t count_extra_sparts = 0;
     for (size_t i = 0; i < nr_actual_sparts + expected_num_extra_sparts; ++i) {
 
@@ -980,7 +1000,11 @@ void space_allocate_extras(struct space *s, int verbose) {
       /* Once we have reached the number of extra spart per cell, we move to the
        * next */
       if (count_in_cell == space_extra_sparts) {
-        ++current_cell;
+        ++local_cell_id;
+
+        if (local_cell_id == nr_local_cells) break;
+
+        current_cell = local_cells[local_cell_id];
         count_in_cell = 0;
       }
     }
@@ -1002,6 +1026,9 @@ void space_allocate_extras(struct space *s, int verbose) {
     part_verify_links(s->parts, s->gparts, s->sparts, nr_parts, nr_gparts,
                       nr_sparts, verbose);
 #endif
+
+  /* Free the list of local cells */
+  free(local_cells);
 }
 
 /**
@@ -1019,6 +1046,9 @@ void space_rebuild(struct space *s, int repartitioned, int verbose) {
 #ifdef SWIFT_DEBUG_CHECKS
   if (s->e->nodeID == 0 || verbose) message("(re)building space");
   fflush(stdout);
+
+  /* Reset the cell counter */
+  last_cell_id = 1;
 #endif
 
   /* Re-grid if necessary, or just re-set the cell data. */
@@ -1667,12 +1697,12 @@ void space_split(struct space *s, int verbose) {
 
 void space_reorder_extra_parts_mapper(void *map_data, int num_cells,
                                       void *extra_data) {
-
-  struct cell *cells_top = (struct cell *)map_data;
+  int *local_cells = (int *)map_data;
   struct space *s = (struct space *)extra_data;
+  struct cell *cells_top = s->cells_top;
 
   for (int ind = 0; ind < num_cells; ind++) {
-    struct cell *c = &cells_top[ind];
+    struct cell *c = &cells_top[local_cells[ind]];
     cell_reorder_extra_parts(c, c->hydro.parts - s->parts);
   }
 }
@@ -1680,11 +1710,12 @@ void space_reorder_extra_parts_mapper(void *map_data, int num_cells,
 void space_reorder_extra_gparts_mapper(void *map_data, int num_cells,
                                        void *extra_data) {
 
-  struct cell *cells_top = (struct cell *)map_data;
+  int *local_cells = (int *)map_data;
   struct space *s = (struct space *)extra_data;
+  struct cell *cells_top = s->cells_top;
 
   for (int ind = 0; ind < num_cells; ind++) {
-    struct cell *c = &cells_top[ind];
+    struct cell *c = &cells_top[local_cells[ind]];
     cell_reorder_extra_gparts(c, s->parts, s->sparts);
   }
 }
@@ -1692,11 +1723,12 @@ void space_reorder_extra_gparts_mapper(void *map_data, int num_cells,
 void space_reorder_extra_sparts_mapper(void *map_data, int num_cells,
                                        void *extra_data) {
 
-  struct cell *cells_top = (struct cell *)map_data;
+  int *local_cells = (int *)map_data;
   struct space *s = (struct space *)extra_data;
+  struct cell *cells_top = s->cells_top;
 
   for (int ind = 0; ind < num_cells; ind++) {
-    struct cell *c = &cells_top[ind];
+    struct cell *c = &cells_top[local_cells[ind]];
     cell_reorder_extra_sparts(c, c->stars.parts - s->sparts);
   }
 }
@@ -1713,25 +1745,20 @@ void space_reorder_extra_sparts_mapper(void *map_data, int num_cells,
  */
 void space_reorder_extras(struct space *s, int verbose) {
 
-#ifdef WITH_MPI
-  if (space_extra_parts || space_extra_gparts || space_extra_sparts)
-    error("Need an MPI-proof version of this.");
-#endif
-
   /* Re-order the gas particles */
   if (space_extra_parts)
     threadpool_map(&s->e->threadpool, space_reorder_extra_parts_mapper,
-                   s->cells_top, s->nr_cells, sizeof(struct cell), 0, s);
+                   s->local_cells_top, s->nr_local_cells, sizeof(int), 0, s);
 
   /* Re-order the gravity particles */
   if (space_extra_gparts)
     threadpool_map(&s->e->threadpool, space_reorder_extra_gparts_mapper,
-                   s->cells_top, s->nr_cells, sizeof(struct cell), 0, s);
+                   s->local_cells_top, s->nr_local_cells, sizeof(int), 0, s);
 
   /* Re-order the star particles */
   if (space_extra_sparts)
     threadpool_map(&s->e->threadpool, space_reorder_extra_sparts_mapper,
-                   s->cells_top, s->nr_cells, sizeof(struct cell), 0, s);
+                   s->local_cells_top, s->nr_local_cells, sizeof(int), 0, s);
 }
 
 /**
@@ -2749,6 +2776,7 @@ void space_split_recursive(struct space *s, struct cell *c,
       cp->stars.dx_max_sort = 0.f;
       cp->nodeID = c->nodeID;
       cp->parent = c;
+      cp->top = c->top;
       cp->super = NULL;
       cp->hydro.super = NULL;
       cp->grav.super = NULL;

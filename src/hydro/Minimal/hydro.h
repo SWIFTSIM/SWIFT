@@ -561,7 +561,7 @@ __attribute__((always_inline)) INLINE static void hydro_prepare_force(
                              p->density.rot_v[2] * p->density.rot_v[2]);
 
   /* Compute the norm of div v including the Hubble flow term */
-  const float div_physical_v = p->density.div_v + 3.f * cosmo->H;
+  const float div_physical_v = p->density.div_v + hydro_dimension * cosmo->H;
   const float abs_div_physical_v = fabsf(div_physical_v);
 
   /* Compute the pressure */

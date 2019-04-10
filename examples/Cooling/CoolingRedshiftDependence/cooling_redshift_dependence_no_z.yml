@@ -1,61 +1,53 @@
 # Define the system of units to use internally. 
 InternalUnitSystem:
-  UnitMass_in_cgs:     2.94e55   # Grams
-  UnitLength_in_cgs:   3.086e18   # pc
-  UnitVelocity_in_cgs: 1   # km per s
-  UnitCurrent_in_cgs:  1   # Amperes
-  UnitTemp_in_cgs:     1   # Kelvin
+  UnitMass_in_cgs:     1.98848e43    # 10^10 M_sun
+  UnitLength_in_cgs:   3.08567758e24 # 1 Mpc
+  UnitVelocity_in_cgs: 1e5   	     # 1 km/s
+  UnitCurrent_in_cgs:  1   	     # Amperes
+  UnitTemp_in_cgs:     1   	     # Kelvin
 
 # Parameters governing the time integration
 TimeIntegration:
-  dt_min:     1e-18  # The minimal time-step size of the simulation (in internal units).
-  dt_max:     1e-3  # The maximal time-step size of the simulation (in internal units).
+  time_begin: 0.
+  time_end:   1.02e-4 # ~ 100 myr
+  dt_min:     1e-14
+  dt_max:     5e-5
 
 # Parameters governing the snapshots
 Snapshots:
-  basename:            sodShock # Common part of the name of output files
-  time_first:          0.       # Time of the first output (in internal units)
-  delta_time:          1.06638      # Time difference between consecutive outputs (in internal units)
-  #  scale_factor_first:  1.0
-  scale_factor_first:  0.001
-  compression:         1
-  
+  basename:	           data/redshift_dependence_no_z
+  delta_time:          1.02e-6
+  compression:         4
+
 # Parameters governing the conserved quantities statistics
 Statistics:
-  scale_factor_first:  1.0
-  delta_time:          1.02 # Time between statistics output
+  delta_time:          1.02e-6
 
 # Parameters for the hydrodynamics scheme
 SPH:
   resolution_eta:        1.2348   # Target smoothing length in units of the mean inter-particle separation (1.2348 == 48Ngbs with the cubic spline kernel).
   CFL_condition:         0.1      # Courant-Friedrich-Levy condition for time integration.
-
+  minimal_temperature:   100      # K
+  
 # Parameters related to the initial conditions
 InitialConditions:
-  file_name:  ./sodShock.hdf5       # The file to read
+  file_name:  ./ics_no_z.hdf5     # The file to read
   periodic:   1
 
-Cosmology:
-  Omega_m: 1.
-  Omega_lambda: 0.
-  Omega_b: 1.
-  h: 1.
-  a_begin: 0.001
-  a_end: 0.00106638
+# Parameters for the EAGLE chemistry
+EAGLEChemistry: 	     # Solar abundances
+  init_abundance_metal:      0.
+  init_abundance_Hydrogen:   0.752
+  init_abundance_Helium:     0.248
+  init_abundance_Carbon:     0.
+  init_abundance_Nitrogen:   0.
+  init_abundance_Oxygen:     0.
+  init_abundance_Neon:       0.
+  init_abundance_Magnesium:  0.
+  init_abundance_Silicon:    0.
+  init_abundance_Iron:       0.
 
-# Impose primoridal metallicity
-EAGLEChemistry:
-  init_abundance_metal:     0.
-  init_abundance_Hydrogen:  0.752
-  init_abundance_Helium:    0.248
-  init_abundance_Carbon:    0.0
-  init_abundance_Nitrogen:  0.0
-  init_abundance_Oxygen:    0.0
-  init_abundance_Neon:      0.0
-  init_abundance_Magnesium: 0.0
-  init_abundance_Silicon:   0.0
-  init_abundance_Iron:      0.0
-
+# Parameters for the EAGLE cooling
 EAGLECooling:
   dir_name:                ./coolingtables/
   H_reion_z:               11.5 
@@ -63,7 +55,7 @@ EAGLECooling:
   He_reion_z_centre:       3.5
   He_reion_z_sigma:        0.5
   He_reion_eV_p_H:         2.0
-
+  
 # Parameters for the EAGLE "equation of state"
 EAGLEEntropyFloor:
   Jeans_density_threshold_H_p_cm3: 0.1       # Physical density above which the EAGLE Jeans limiter entropy floor kicks in expressed in Hydrogen atoms per cm^3.
@@ -76,5 +68,9 @@ EAGLEEntropyFloor:
   Cool_gamma_effective:           1.         # Slope the of the EAGLE Cool limiter entropy floor
 
 LambdaCooling:
-  lambda_nH2_cgs:              1e-48 # Cooling rate divided by square Hydrogen number density (in cgs units [erg * s^-1 * cm^3])
-  cooling_tstep_mult:          1.0   # (Optional) Dimensionless pre-factor for the time-step condition.
+  lambda_nH2_cgs:              2.13744785e-23 # Cooling rate divided by square Hydrogen number density (in cgs units [erg * s^-1 * cm^3]
+
+ConstCooling:
+  cooling_rate: 1.          # Cooling rate (du/dt) (internal units)
+  min_energy:   1.          # Minimal internal energy per unit mass (internal units)
+  cooling_tstep_mult: 1.    # Dimensionless pre-factor for the time-step condition

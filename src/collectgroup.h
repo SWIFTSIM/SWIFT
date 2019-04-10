@@ -47,6 +47,7 @@ struct collectgroup1 {
   /* Times for the time-step */
   integertime_t ti_hydro_end_min, ti_hydro_end_max, ti_hydro_beg_max;
   integertime_t ti_gravity_end_min, ti_gravity_end_max, ti_gravity_beg_max;
+  integertime_t ti_stars_end_min, ti_stars_end_max, ti_stars_beg_max;
 
   /* Force the engine to rebuild? */
   int forcerebuild;
@@ -67,8 +68,9 @@ void collectgroup1_init(
     integertime_t ti_hydro_end_min, integertime_t ti_hydro_end_max,
     integertime_t ti_hydro_beg_max, integertime_t ti_gravity_end_min,
     integertime_t ti_gravity_end_max, integertime_t ti_gravity_beg_max,
-    int forcerebuild, long long total_nr_cells, long long total_nr_tasks,
-    float tasks_per_cell, struct star_formation_history sfh);
+    integertime_t ti_stars_end_min, integertime_t ti_stars_end_max,
+    integertime_t ti_stars_beg_max, int forcerebuild, long long total_nr_cells,
+    long long total_nr_tasks, float tasks_per_cell);
 void collectgroup1_reduce(struct collectgroup1 *grp1);
 
 #endif /* SWIFT_COLLECTGROUP_H */

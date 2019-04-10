@@ -88,6 +88,18 @@ S = sim["/PartType0/Entropy"][:]
 P = sim["/PartType0/Pressure"][:]
 rho = sim["/PartType0/Density"][:]
 
+try:
+    diffusion = sim["/PartType0/Diffusion"][:]
+    plot_diffusion = True
+except:
+    plot_diffusion = False
+
+try:
+    viscosity = sim["/PartType0/Viscosity"][:]
+    plot_viscosity = True
+except:
+    plot_viscosity = False
+
 x_min = -1.
 x_max = 1.
 x += x_min
@@ -112,6 +124,15 @@ P_sigma_bin = np.sqrt(P2_bin - P_bin**2)
 S_sigma_bin = np.sqrt(S2_bin - S_bin**2)
 u_sigma_bin = np.sqrt(u2_bin - u_bin**2)
 
+if plot_diffusion:
+    alpha_diff_bin,_,_ = stats.binned_statistic(x, diffusion, statistic='mean', bins=x_bin_edge)
+    alpha2_diff_bin,_,_ = stats.binned_statistic(x, diffusion**2, statistic='mean', bins=x_bin_edge)
+    alpha_diff_sigma_bin = np.sqrt(alpha2_diff_bin - alpha_diff_bin**2)
+
+if plot_viscosity:
+    alpha_visc_bin,_,_ = stats.binned_statistic(x, viscosity, statistic='mean', bins=x_bin_edge)
+    alpha2_visc_bin,_,_ = stats.binned_statistic(x, viscosity**2, statistic='mean', bins=x_bin_edge)
+    alpha_visc_sigma_bin = np.sqrt(alpha2_visc_bin - alpha_visc_bin**2)
 
 # Analytic solution 
 c_L = sqrt(gas_gamma * P_L / rho_L)   # Speed of the rarefaction wave
@@ -285,13 +306,26 @@ ylim(0.8, 2.2)
 
 # Entropy profile ---------------------------------
 subplot(235)
-plot(x, S, '.', color='r', ms=0.5, alpha=0.2)
-plot(x_s, s_s, '--', color='k', alpha=0.8, lw=1.2)
-errorbar(x_bin, S_bin, yerr=S_sigma_bin, fmt='.', ms=8.0, color='b', lw=1.2)
-xlabel("${\\rm{Position}}~x$", labelpad=0)
-ylabel("${\\rm{Entropy}}~S$", labelpad=0)
 xlim(-0.5, 0.5)
-ylim(0.8, 3.8)
+xlabel("${\\rm{Position}}~x$", labelpad=0)
+
+if plot_diffusion or plot_viscosity:
+    if plot_diffusion:
+        plot(x, diffusion * 100, ".", color='r', ms=0.5, alpha=0.2)
+        errorbar(x_bin, alpha_diff_bin * 100, yerr=alpha_diff_sigma_bin * 100, fmt=".", ms=8.0, color='b', lw=1.2, label="Diffusion (100x)")
+
+    if plot_viscosity:
+        plot(x, viscosity, ".", color='g', ms=0.5, alpha=0.2)
+        errorbar(x_bin, alpha_visc_bin, yerr=alpha_visc_sigma_bin, fmt=".", ms=8.0, color='y', lw=1.2, label="Viscosity")
+
+    ylabel("${\\rm{Rate~Coefficient}}~\\alpha$", labelpad=0)
+    legend()
+else:
+    plot(x, S, '.', color='r', ms=0.5, alpha=0.2)
+    plot(x_s, s_s, '--', color='k', alpha=0.8, lw=1.2)
+    errorbar(x_bin, S_bin, yerr=S_sigma_bin, fmt='.', ms=8.0, color='b', lw=1.2)
+    ylabel("${\\rm{Entropy}}~S$", labelpad=0)
+    ylim(0.8, 3.8)
 
 # Information -------------------------------------
 subplot(236, frameon=False)
@@ -312,5 +346,4 @@ ylim(0, 1)
 xticks([])
 yticks([])
 
-tight_layout()
 savefig("SodShock.png", dpi=200)
