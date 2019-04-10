@@ -672,8 +672,8 @@ __attribute__((always_inline)) INLINE static void hydro_predict_extra(
 #ifdef SWIFT_DEBUG_CHECKS
   if (p->entropy + p->entropy_dt * dt_therm <= 0)
     error(
-        "Negative entropy for particle id %llu old entropy %.5e d_entropy %.5e "
-        "entropy_dt %.5e dt therm %.5e",
+        "Negative entropy for particle id %llu old entropy %.e d_entropy %.e "
+        "entropy_dt %.e dt therm %.e",
         p->id, p->entropy, p->entropy_dt * dt_therm, p->entropy_dt, dt_therm);
 #endif
   p->entropy += p->entropy_dt * dt_therm;

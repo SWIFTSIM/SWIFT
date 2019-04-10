@@ -361,8 +361,8 @@ INLINE static double bisection_iter(
     if (i >= bisection_max_iterations) {
       error(
           "particle %llu exceeded max iterations searching for bounds when "
-          "cooling",
-          ID);
+          "cooling, u_ini_cgs %.5e n_H_cgs %.5e",
+          ID, u_ini_cgs, n_H_cgs);
     }
   } else {
 
@@ -397,8 +397,8 @@ INLINE static double bisection_iter(
     if (i >= bisection_max_iterations) {
       error(
           "particle %llu exceeded max iterations searching for bounds when "
-          "heating",
-          ID);
+          "heating, u_ini_cgs %.5e n_H_cgs %.5e",
+          ID, u_ini_cgs, n_H_cgs);
     }
   }
 
@@ -423,6 +423,8 @@ INLINE static double bisection_iter(
                            n_H_index, d_n_H, He_index, d_He, cooling,
                            /*dLambdaNet_du=*/NULL);
 
+    // Debugging
+    if (u_next_cgs <= 0) error("u_next_cgs %.5e u_upper %.5e u_lower %.5e Lambda %.5e", u_next_cgs, u_upper_cgs, u_lower_cgs, LambdaNet_cgs);
     /* Where do we go next? */
     if (u_next_cgs - u_ini_cgs - LambdaNet_cgs * ratefact_cgs * dt_cgs > 0.0) {
       u_upper_cgs = u_next_cgs;
@@ -652,7 +654,7 @@ void cooling_cool_part(const struct phys_const *phys_const,
   if (u_start + 2.5 * delta_u < 0.) {
     delta_u = -u_start / (2.5 + rounding_tolerance);
   }
-
+      
   /* Turn this into a rate of change (including cosmology term) */
   const float cooling_du_dt = delta_u / dt_therm;
 

@@ -66,14 +66,11 @@ __attribute__((always_inline)) INLINE static void stars_init_spart(
  * @param sp The particle to act upon
  */
 __attribute__((always_inline)) INLINE static void stars_first_init_spart(
-    struct spart* sp) {
+    struct spart* sp, const struct stars_props *stars_properties) {
 
   sp->time_bin = 0;
   sp->birth_density = -1.f;
-  sp->birth_time = -1.f;
-
-  // for debugging
-  sp->birth_time = 0;
+  sp->birth_time = stars_properties->feedback.spart_first_init_birth_time;
 
   stars_init_spart(sp);
 }
@@ -673,6 +670,7 @@ inline static void compute_stellar_evolution(
     struct spart* restrict sp, const struct unit_system* us, float age,
     double dt) {
 
+  /* Allocate temporary array for calculating imf weights */
   float* stellar_yields;
   stellar_yields =
       malloc(star_properties->feedback.n_imf_mass_bins * sizeof(float));
@@ -711,10 +709,12 @@ inline static void compute_stellar_evolution(
   evolve_AGB(log10_min_dying_mass_msun, log10_max_dying_mass_msun,
              stellar_yields, star_properties, sp);
 
+  /* Compute the mass to distribute */
   sp->to_distribute.mass = sp->to_distribute.total_metal_mass +
-                           sp->to_distribute.metal_mass[0] +
-                           sp->to_distribute.metal_mass[1];
+                           sp->to_distribute.metal_mass[chemistry_element_H] +
+                           sp->to_distribute.metal_mass[chemistry_element_He];
 
+  /* Clean up */
   free(stellar_yields);
 }
 
@@ -787,11 +787,11 @@ __attribute__((always_inline)) INLINE static void stars_evolve_spart(
            cosmo->a2_inv);
 
   /* Compute probability of heating neighbouring particles */
-  sp->to_distribute.heating_probability = 
-      stars_properties->feedback.total_energy_SNe /
-      stars_properties->feedback.temp_to_u_factor *
+  if (dt > 0 && sp->ngb_mass > 0)  sp->to_distribute.heating_probability = 
+      stars_properties->feedback.total_energy_SNe *
       sp->to_distribute.num_SNe /
-      (stars_properties->feedback.SNe_deltaT_desired * sp->ngb_mass);
+      (stars_properties->feedback.temp_to_u_factor *
+      stars_properties->feedback.SNe_deltaT_desired * sp->ngb_mass);
 }
 
 /**

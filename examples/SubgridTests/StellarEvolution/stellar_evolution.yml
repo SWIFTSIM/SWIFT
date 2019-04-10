@@ -98,3 +98,4 @@ EAGLEFeedback:
   SNIa_efficiency:              2.e-3
   SNII_wind_delay_Gyr:          0.03
   SNe_heating_temperature_K:    3.16228e7
+  birth_time_override:          0

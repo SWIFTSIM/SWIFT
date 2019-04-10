@@ -172,6 +172,10 @@ INLINE static void stars_props_init(struct stars_props *sp,
       phys_const->const_boltzmann_k /
       (p->mu_ionised * (hydro_gamma_minus_one)*phys_const->const_proton_mass);
 
+  /* Read birth time to set all stars in ICs to (defaults to -1 to indicate star present in ICs) */
+  sp->feedback.spart_first_init_birth_time = parser_get_opt_param_float(
+      params, "EAGLEFeedback:birth_time_override", -1);
+
   /* Copy over solar mass */
   sp->feedback.const_solar_mass = phys_const->const_solar_mass;
 }

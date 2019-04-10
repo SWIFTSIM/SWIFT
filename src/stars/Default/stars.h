@@ -42,7 +42,7 @@ __attribute__((always_inline)) INLINE static float stars_compute_timestep(
  * @param sp The particle to act upon
  */
 __attribute__((always_inline)) INLINE static void stars_first_init_spart(
-    struct spart* sp) {
+    struct spart* sp, const struct stars_props* stars_properties) {
 
   sp->time_bin = 0;
 }

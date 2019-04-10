@@ -3590,6 +3590,7 @@ void space_first_init_sparts_mapper(void *restrict map_data, int count,
   const int with_feedback = (e->policy & engine_policy_feedback);
 
   const struct cosmology *cosmo = e->cosmology;
+  const struct stars_props *stars_properties = e->stars_properties;
   const float a_factor_vel = cosmo->a;
 
   /* Convert velocities to internal units */
@@ -3625,7 +3626,7 @@ void space_first_init_sparts_mapper(void *restrict map_data, int count,
   /* Initialise the rest */
   for (int k = 0; k < count; k++) {
 
-    stars_first_init_spart(&sp[k]);
+    stars_first_init_spart(&sp[k], stars_properties);
 
     /* Also initialise the chemistry */
     chemistry_first_init_spart(chemistry, &sp[k]);
