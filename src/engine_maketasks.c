@@ -2438,16 +2438,13 @@ void engine_addtasks_send_mapper(void *map_data, int num_elements,
                                  void *extra_data) {
 
   struct engine *e = (struct engine *)extra_data;
-  // const int with_limiter = (e->policy & engine_policy_limiter);
+  const int with_star_formation = (e->policy & engine_policy_star_formation);
   struct cell_type_pair *cell_type_pairs = (struct cell_type_pair *)map_data;
 
   for (int k = 0; k < num_elements; k++) {
     struct cell *ci = cell_type_pairs[k].ci;
     struct cell *cj = cell_type_pairs[k].cj;
     const int type = cell_type_pairs[k].type;
-
-    /* Add the send task for the particle timesteps. */
-    // engine_addtasks_send_timestep(e, ci, cj, NULL, NULL, with_limiter);
 
     /* Add the send tasks for the cells in the proxy that have a hydro
      * connection. */
@@ -2459,7 +2456,9 @@ void engine_addtasks_send_mapper(void *map_data, int num_elements,
     /* Add the send tasks for the cells in the proxy that have a stars
      * connection. */
     if ((e->policy & engine_policy_feedback) && (type & proxy_cell_type_hydro))
-      engine_addtasks_send_stars(e, ci, cj, /*t_feedback=*/NULL, /*t_ti=*/NULL);
+      engine_addtasks_send_stars(e, ci, cj, /*t_feedback=*/NULL,
+                                 /*t_sf_counts=*/NULL, /*t_ti=*/NULL,
+                                 with_star_formation);
 
     /* Add the send tasks for the cells in the proxy that have a gravity
      * connection. */
@@ -2473,31 +2472,31 @@ void engine_addtasks_recv_mapper(void *map_data, int num_elements,
                                  void *extra_data) {
 
   struct engine *e = (struct engine *)extra_data;
-  // const int with_limiter = (e->policy & engine_policy_limiter);
+  const int with_star_formation = (e->policy & engine_policy_star_formation);
   struct cell_type_pair *cell_type_pairs = (struct cell_type_pair *)map_data;
 
   for (int k = 0; k < num_elements; k++) {
     struct cell *ci = cell_type_pairs[k].ci;
     const int type = cell_type_pairs[k].type;
 
-    /* Add the recv task for the particle timesteps. */
-    // engine_addtasks_recv_timestep(e, ci, NULL, NULL, with_limiter);
-
     /* Add the recv tasks for the cells in the proxy that have a hydro
      * connection. */
     if ((e->policy & engine_policy_hydro) && (type & proxy_cell_type_hydro))
-      engine_addtasks_recv_hydro(e, ci, NULL, NULL, NULL, NULL);
+      engine_addtasks_recv_hydro(e, ci, /*t_xv=*/NULL, /*t_rho=*/NULL,
+                                 /*t_gradient=*/NULL, /*t_ti=*/NULL);
 
     /* Add the recv tasks for the cells in the proxy that have a stars
      * connection. */
     if ((e->policy & engine_policy_feedback) && (type & proxy_cell_type_hydro))
-      engine_addtasks_recv_stars(e, ci, NULL, NULL);
+      engine_addtasks_recv_stars(e, ci, /*t_feedback=*/NULL,
+                                 /*t_sf_counts=*/NULL, /*t_ti=*/NULL,
+                                 with_star_formation);
 
     /* Add the recv tasks for the cells in the proxy that have a gravity
      * connection. */
     if ((e->policy & engine_policy_self_gravity) &&
         (type & proxy_cell_type_gravity))
-      engine_addtasks_recv_gravity(e, ci, NULL, NULL);
+      engine_addtasks_recv_gravity(e, ci, /*t_grav=*/NULL, /*t_ti=*/NULL);
   }
 }
 
