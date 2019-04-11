@@ -48,6 +48,7 @@ struct cosmology;
 #define space_extra_parts_default 0
 #define space_extra_gparts_default 0
 #define space_extra_sparts_default 100
+#define space_extra_bparts_default 0
 #define space_expected_max_nr_strays_default 100
 #define space_subsize_pair_hydro_default 256000000
 #define space_subsize_self_hydro_default 32000
@@ -74,6 +75,7 @@ extern int space_subdepth_diff_grav;
 extern int space_extra_parts;
 extern int space_extra_gparts;
 extern int space_extra_sparts;
+extern int space_extra_bparts;
 
 /**
  * @brief The space in which the cells and particles reside.
@@ -167,6 +169,9 @@ struct space {
   /*! The total number of #spart in the space. */
   size_t nr_sparts;
 
+  /*! The total number of #bpart in the space. */
+  size_t nr_bparts;
+
   /*! The total number of #part we allocated memory for */
   size_t size_parts;
 
@@ -175,6 +180,9 @@ struct space {
 
   /*! The total number of #spart we allocated memory for */
   size_t size_sparts;
+
+  /*! The total number of #bpart we allocated memory for */
+  size_t size_bparts;
 
   /*! Number of inhibted gas particles in the space */
   size_t nr_inhibited_parts;
@@ -185,6 +193,9 @@ struct space {
   /*! Number of inhibted star particles in the space */
   size_t nr_inhibited_sparts;
 
+  /*! Number of inhibted black hole particles in the space */
+  size_t nr_inhibited_bparts;
+
   /*! Number of extra #part we allocated (for on-the-fly creation) */
   size_t nr_extra_parts;
 
@@ -193,6 +204,9 @@ struct space {
 
   /*! Number of extra #spart we allocated (for on-the-fly creation) */
   size_t nr_extra_sparts;
+
+  /*! Number of extra #bpart we allocated (for on-the-fly creation) */
+  size_t nr_extra_bparts;
 
   /*! The particle data (cells have pointers to this). */
   struct part *parts;
@@ -206,6 +220,9 @@ struct space {
   /*! The s-particle data (cells have pointers to this). */
   struct spart *sparts;
 
+  /*! The b-particle data (cells have pointers to this). */
+  struct bpart *bparts;
+
   /*! Minimal mass of all the #part */
   float min_part_mass;
 
@@ -214,6 +231,9 @@ struct space {
 
   /*! Minimal mass of all the #spart */
   float min_spart_mass;
+
+  /*! Minimal mass of all the #bpart */
+  float min_bpart_mass;
 
   /*! Sum of the norm of the velocity of all the #part */
   float sum_part_vel_norm;
@@ -224,8 +244,14 @@ struct space {
   /*! Sum of the norm of the velocity of all the #spart */
   float sum_spart_vel_norm;
 
+  /*! Sum of the norm of the velocity of all the #bpart */
+  float sum_bpart_vel_norm;
+
   /*! Initial value of the smoothing length read from the parameter file */
   float initial_spart_h;
+
+  /*! Initial value of the smoothing length read from the parameter file */
+  float initial_bpart_h;
 
   /*! General-purpose lock for this space. */
   swift_lock_type lock;
@@ -261,16 +287,19 @@ void space_free_buff_sort_indices(struct space *s);
 void space_parts_sort(struct part *parts, struct xpart *xparts, int *ind,
                       int *counts, int num_bins, ptrdiff_t parts_offset);
 void space_gparts_sort(struct gpart *gparts, struct part *parts,
-                       struct spart *sparts, int *ind, int *counts,
-                       int num_bins);
+                       struct spart *sparts, struct bpart *bparts, int *ind,
+                       int *counts, int num_bins);
 void space_sparts_sort(struct spart *sparts, int *ind, int *counts,
                        int num_bins, ptrdiff_t sparts_offset);
+void space_bparts_sort(struct bpart *bparts, int *ind, int *counts,
+                       int num_bins, ptrdiff_t bparts_offset);
 void space_getcells(struct space *s, int nr_cells, struct cell **cells);
 void space_init(struct space *s, struct swift_params *params,
                 const struct cosmology *cosmo, double dim[3],
                 struct part *parts, struct gpart *gparts, struct spart *sparts,
-                size_t Npart, size_t Ngpart, size_t Nspart, int periodic,
-                int replicate, int generate_gas_in_ics, int hydro, int gravity,
+                struct bpart *bparts, size_t Npart, size_t Ngpart,
+                size_t Nspart, size_t Nbpart, int periodic, int replicate,
+                int generate_gas_in_ics, int hydro, int gravity,
                 int star_formation, int verbose, int dry_run);
 void space_sanitize(struct space *s);
 void space_map_cells_pre(struct space *s, int full,
@@ -302,16 +331,18 @@ void space_gparts_get_cell_index(struct space *s, int *gind, int *cell_counts,
 void space_sparts_get_cell_index(struct space *s, int *sind, int *cell_counts,
                                  size_t *count_inhibited_sparts,
                                  size_t *count_extra_sparts, int verbose);
+void space_bparts_get_cell_index(struct space *s, int *sind, int *cell_counts,
+                                 size_t *count_inhibited_bparts,
+                                 size_t *count_extra_bparts, int verbose);
 void space_synchronize_particle_positions(struct space *s);
-void space_do_parts_sort(void);
-void space_do_gparts_sort(void);
-void space_do_sparts_sort(void);
 void space_first_init_parts(struct space *s, int verbose);
 void space_first_init_gparts(struct space *s, int verbose);
 void space_first_init_sparts(struct space *s, int verbose);
+void space_first_init_bparts(struct space *s, int verbose);
 void space_init_parts(struct space *s, int verbose);
 void space_init_gparts(struct space *s, int verbose);
 void space_init_sparts(struct space *s, int verbose);
+void space_init_bparts(struct space *s, int verbose);
 void space_convert_quantities(struct space *s, int verbose);
 void space_link_cleanup(struct space *s);
 void space_check_drift_point(struct space *s, integertime_t ti_drift,

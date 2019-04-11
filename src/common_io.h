@@ -38,6 +38,7 @@ struct part;
 struct gpart;
 struct velociraptor_gpart_data;
 struct spart;
+struct bpart;
 struct xpart;
 struct io_props;
 struct engine;
@@ -113,6 +114,10 @@ void io_collect_sparts_to_write(const struct spart* restrict sparts,
                                 struct spart* restrict sparts_written,
                                 const size_t Nsparts,
                                 const size_t Nsparts_written);
+void io_collect_bparts_to_write(const struct bpart* restrict bparts,
+                                struct bpart* restrict bparts_written,
+                                const size_t Nbparts,
+                                const size_t Nbparts_written);
 void io_collect_gparts_to_write(const struct gpart* restrict gparts,
                                 const struct velociraptor_gpart_data* vr_data,
                                 struct gpart* restrict gparts_written,
@@ -128,6 +133,10 @@ void io_duplicate_stars_gparts(struct threadpool* tp,
                                struct spart* const sparts,
                                struct gpart* const gparts, size_t Nstars,
                                size_t Ndm);
+void io_duplicate_black_holes_gparts(struct threadpool* tp,
+                                     struct bpart* const bparts,
+                                     struct gpart* const gparts, size_t Nstars,
+                                     size_t Ndm);
 
 void io_check_output_fields(const struct swift_params* params,
                             const long long N_total[3]);

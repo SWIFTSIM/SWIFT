@@ -208,6 +208,18 @@ struct pcell_step_stars {
   float dx_max_part;
 };
 
+struct pcell_step_black_holes {
+
+  /*! Minimal integer end-of-timestep in this cell (black_holes) */
+  integertime_t ti_end_min;
+
+  /*! Maximal integer end-of-timestep in this cell (black_holes) */
+  integertime_t ti_end_max;
+
+  /*! Maximal distance any #part has travelled since last rebuild */
+  float dx_max_part;
+};
+
 /**
  * @brief Cell within the tree structure.
  *
@@ -548,7 +560,7 @@ struct cell {
     /*! Do any of this cell's sub-cells need to be sorted? */
     char do_sub_sort;
 
-    /*! Maximum end of (integer) time step in this cell for gravity tasks. */
+    /*! Maximum end of (integer) time step in this cell for star tasks. */
     integertime_t ti_end_min;
 
     /*! Maximum end of (integer) time step in this cell for star tasks. */
@@ -579,6 +591,64 @@ struct cell {
 #endif
 
   } stars;
+
+  /*! Black hole variables */
+  struct {
+
+    /*! Pointer to the #bpart data. */
+    struct bpart *parts;
+
+    /*! The drift task for bparts */
+    struct task *drift;
+
+    /*! Max smoothing length in this cell. */
+    double h_max;
+
+    /*! Last (integer) time the cell's bpart were drifted forward in time. */
+    integertime_t ti_old_part;
+
+    /*! Spin lock for various uses (#bpart case). */
+    swift_lock_type lock;
+
+    /*! Nr of #bpart in this cell. */
+    int count;
+
+    /*! Nr of #bpart this cell can hold after addition of new #bpart. */
+    int count_total;
+
+    /*! Values of h_max before the drifts, used for sub-cell tasks. */
+    float h_max_old;
+
+    /*! Maximum part movement in this cell since last construction. */
+    float dx_max_part;
+
+    /*! Maximum end of (integer) time step in this cell for black tasks. */
+    integertime_t ti_end_min;
+
+    /*! Maximum end of (integer) time step in this cell for black hole tasks. */
+    integertime_t ti_end_max;
+
+    /*! Maximum beginning of (integer) time step in this cell for black hole
+     * tasks.
+     */
+    integertime_t ti_beg_max;
+
+    /*! Number of #bpart updated in this cell. */
+    int updated;
+
+    /*! Number of #bpart inhibited in this cell. */
+    int inhibited;
+
+    /*! Is the #bpart data of this cell being used in a sub-cell? */
+    int hold;
+
+    /*! Does this cell need to be drifted (black holes)? */
+    char do_drift;
+
+    /*! Do any of this cell's sub-cells need to be drifted (black holes)? */
+    char do_sub_drift;
+
+  } black_holes;
 
 #ifdef WITH_MPI
   /*! MPI variables */
@@ -723,7 +793,8 @@ struct cell {
 
 /* Function prototypes. */
 void cell_split(struct cell *c, ptrdiff_t parts_offset, ptrdiff_t sparts_offset,
-                struct cell_buff *buff, struct cell_buff *sbuff,
+                ptrdiff_t bparts_offset, struct cell_buff *buff,
+                struct cell_buff *sbuff, struct cell_buff *bbuff,
                 struct cell_buff *gbuff);
 void cell_sanitize(struct cell *c, int treated);
 int cell_locktree(struct cell *c);
@@ -745,6 +816,8 @@ int cell_pack_end_step_grav(struct cell *c, struct pcell_step_grav *pcell);
 int cell_unpack_end_step_grav(struct cell *c, struct pcell_step_grav *pcell);
 int cell_pack_end_step_stars(struct cell *c, struct pcell_step_stars *pcell);
 int cell_unpack_end_step_stars(struct cell *c, struct pcell_step_stars *pcell);
+int cell_pack_end_step_black_holes(struct cell *c, struct pcell_step_black_holes *pcell);
+int cell_unpack_end_step_black_holes(struct cell *c, struct pcell_step_black_holes *pcell);
 int cell_pack_multipoles(struct cell *c, struct gravity_tensors *m);
 int cell_unpack_multipoles(struct cell *c, struct gravity_tensors *m);
 int cell_getsize(struct cell *c);
@@ -771,6 +844,7 @@ int cell_unskip_gravity_tasks(struct cell *c, struct scheduler *s);
 void cell_drift_part(struct cell *c, const struct engine *e, int force);
 void cell_drift_gpart(struct cell *c, const struct engine *e, int force);
 void cell_drift_spart(struct cell *c, const struct engine *e, int force);
+void cell_drift_bpart(struct cell *c, const struct engine *e, int force);
 void cell_drift_multipole(struct cell *c, const struct engine *e);
 void cell_drift_all_multipoles(struct cell *c, const struct engine *e);
 void cell_check_timesteps(struct cell *c);
@@ -803,6 +877,8 @@ void cell_remove_gpart(const struct engine *e, struct cell *c,
                        struct gpart *gp);
 void cell_remove_spart(const struct engine *e, struct cell *c,
                        struct spart *sp);
+void cell_remove_bpart(const struct engine *e, struct cell *c,
+                       struct bpart *bp);
 struct spart *cell_add_spart(struct engine *e, struct cell *c);
 struct gpart *cell_convert_part_to_gpart(const struct engine *e, struct cell *c,
                                          struct part *p, struct xpart *xp);

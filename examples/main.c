@@ -101,6 +101,7 @@ int main(int argc, char *argv[]) {
   struct phys_const prog_const;
   struct space s;
   struct spart *sparts = NULL;
+  struct bpart *bparts = NULL;
   struct unit_system us;
 
   int nr_nodes = 1, myrank = 0;
@@ -156,6 +157,7 @@ int main(int argc, char *argv[]) {
   int with_stars = 0;
   int with_star_formation = 0;
   int with_feedback = 0;
+  int with_black_holes = 0;
   int with_limiter = 0;
   int with_fp_exceptions = 0;
   int with_drift_all = 0;
@@ -204,6 +206,8 @@ int main(int argc, char *argv[]) {
       OPT_BOOLEAN('s', "hydro", &with_hydro, "Run with hydrodynamics.", NULL, 0,
                   0),
       OPT_BOOLEAN('S', "stars", &with_stars, "Run with stars.", NULL, 0, 0),
+      OPT_BOOLEAN('B', "black-holes", &with_black_holes,
+                  "Run with black holes.", NULL, 0, 0),
       OPT_BOOLEAN('x', "velociraptor", &with_structure_finding,
                   "Run with structure finding.", NULL, 0, 0),
       OPT_BOOLEAN(0, "limiter", &with_limiter, "Run with time-step limiter.",
@@ -344,6 +348,16 @@ int main(int argc, char *argv[]) {
     return 1;
   }
 
+  if (with_black_holes && !with_external_gravity && !with_self_gravity) {
+    if (myrank == 0) {
+      argparse_usage(&argparse);
+      printf(
+          "\nError: Cannot process black holes without gravity, -g or -G "
+          "must be chosen.\n");
+    }
+    return 1;
+  }
+
   if (!with_stars && with_star_formation) {
     if (myrank == 0) {
       argparse_usage(&argparse);
@@ -448,6 +462,7 @@ int main(int argc, char *argv[]) {
     message("sizeof(part)        is %4zi bytes.", sizeof(struct part));
     message("sizeof(xpart)       is %4zi bytes.", sizeof(struct xpart));
     message("sizeof(spart)       is %4zi bytes.", sizeof(struct spart));
+    message("sizeof(bpart)       is %4zi bytes.", sizeof(struct bpart));
     message("sizeof(gpart)       is %4zi bytes.", sizeof(struct gpart));
     message("sizeof(multipole)   is %4zi bytes.", sizeof(struct multipole));
     message("sizeof(grav_tensor) is %4zi bytes.", sizeof(struct grav_tensor));
@@ -484,6 +499,7 @@ int main(int argc, char *argv[]) {
   if (with_star_formation && with_feedback)
     error("Can't run with star formation and feedback over MPI (yet)");
   if (with_limiter) error("Can't run with time-step limiter over MPI (yet)");
+  if (with_black_holes) error("Can't run with black holes over MPI (yet)");
 #endif
 
     /* Temporary early aborts for modes not supported with hand-vec. */
@@ -777,7 +793,7 @@ int main(int argc, char *argv[]) {
     fflush(stdout);
 
     /* Get ready to read particles of all kinds */
-    size_t Ngas = 0, Ngpart = 0, Nspart = 0;
+    size_t Ngas = 0, Ngpart = 0, Nspart = 0, Nbpart = 0;
     double dim[3] = {0., 0., 0.};
     if (myrank == 0) clocks_gettime(&tic);
 #if defined(HAVE_HDF5)
@@ -798,11 +814,11 @@ int main(int argc, char *argv[]) {
                    dry_run);
 #endif
 #else
-    read_ic_single(ICfileName, &us, dim, &parts, &gparts, &sparts, &Ngas,
-                   &Ngpart, &Nspart, &flag_entropy_ICs, with_hydro,
-                   (with_external_gravity || with_self_gravity), with_stars,
-                   cleanup_h, cleanup_sqrt_a, cosmo.h, cosmo.a, nr_threads,
-                   dry_run);
+    read_ic_single(ICfileName, &us, dim, &parts, &gparts, &sparts, &bparts,
+                   &Ngas, &Ngpart, &Nspart, &Nbpart, &flag_entropy_ICs,
+                   with_hydro, (with_external_gravity || with_self_gravity),
+                   with_stars, with_black_holes, cleanup_h, cleanup_sqrt_a,
+                   cosmo.h, cosmo.a, nr_threads, dry_run);
 #endif
 #endif
     if (myrank == 0) {
@@ -825,35 +841,39 @@ int main(int argc, char *argv[]) {
 
     /* Check that the other links are correctly set */
     if (!dry_run)
-      part_verify_links(parts, gparts, sparts, Ngas, Ngpart, Nspart, 1);
+      part_verify_links(parts, gparts, sparts, bparts, Ngas, Ngpart, Nspart,
+                        Nbpart, 1);
 #endif
 
     /* Get the total number of particles across all nodes. */
-    long long N_total[3] = {0, 0, 0};
+    long long N_total[4] = {0, 0, 0, 0};
 #if defined(WITH_MPI)
-    long long N_long[3] = {Ngas, Ngpart, Nspart};
+    long long N_long[4] = {Ngas, Ngpart, Nspart, Nbpart};
     MPI_Allreduce(&N_long, &N_total, 3, MPI_LONG_LONG_INT, MPI_SUM,
                   MPI_COMM_WORLD);
 #else
     N_total[0] = Ngas;
     N_total[1] = Ngpart;
     N_total[2] = Nspart;
+    N_total[3] = Nbpart;
 #endif
 
     if (myrank == 0)
       message(
-          "Read %lld gas particles, %lld stars particles and %lld gparts from "
-          "the ICs.",
-          N_total[0], N_total[2], N_total[1]);
+          "Read %lld gas particles, %lld stars particles, %lld black hole "
+          "particles"
+          " and %lld gparts from the ICs.",
+          N_total[0], N_total[2], N_total[3], N_total[1]);
 
     /* Verify that the fields to dump actually exist */
     if (myrank == 0) io_check_output_fields(params, N_total);
 
     /* Initialize the space with these data. */
     if (myrank == 0) clocks_gettime(&tic);
-    space_init(&s, params, &cosmo, dim, parts, gparts, sparts, Ngas, Ngpart,
-               Nspart, periodic, replicate, generate_gas_in_ics, with_hydro,
-               with_self_gravity, with_star_formation, talking, dry_run);
+    space_init(&s, params, &cosmo, dim, parts, gparts, sparts, bparts, Ngas,
+               Ngpart, Nspart, Nbpart, periodic, replicate, generate_gas_in_ics,
+               with_hydro, with_self_gravity, with_star_formation, talking,
+               dry_run);
 
     if (myrank == 0) {
       clocks_gettime(&toc);
@@ -885,12 +905,14 @@ int main(int argc, char *argv[]) {
     N_long[0] = s.nr_parts;
     N_long[1] = s.nr_gparts;
     N_long[2] = s.nr_sparts;
-    MPI_Allreduce(&N_long, &N_total, 3, MPI_LONG_LONG_INT, MPI_SUM,
+    N_long[3] = s.nr_bparts;
+    MPI_Allreduce(&N_long, &N_total, 4, MPI_LONG_LONG_INT, MPI_SUM,
                   MPI_COMM_WORLD);
 #else
     N_total[0] = s.nr_parts;
     N_total[1] = s.nr_gparts;
     N_total[2] = s.nr_sparts;
+    N_total[3] = s.nr_bparts;
 #endif
 
     /* Say a few nice things about the space we just created. */
@@ -903,6 +925,7 @@ int main(int argc, char *argv[]) {
       message("%zi parts in %i cells.", s.nr_parts, s.tot_cells);
       message("%zi gparts in %i cells.", s.nr_gparts, s.tot_cells);
       message("%zi sparts in %i cells.", s.nr_sparts, s.tot_cells);
+      message("%zi bparts in %i cells.", s.nr_bparts, s.tot_cells);
       message("maximum depth is %d.", s.maxdepth);
       fflush(stdout);
     }
@@ -949,6 +972,7 @@ int main(int argc, char *argv[]) {
     if (with_stars) engine_policies |= engine_policy_stars;
     if (with_star_formation) engine_policies |= engine_policy_star_formation;
     if (with_feedback) engine_policies |= engine_policy_feedback;
+    if (with_black_holes) engine_policies |= engine_policy_black_holes;
     if (with_structure_finding)
       engine_policies |= engine_policy_structure_finding;
 
@@ -971,11 +995,12 @@ int main(int argc, char *argv[]) {
 
     /* Get some info to the user. */
     if (myrank == 0) {
-      long long N_DM = N_total[1] - N_total[2] - N_total[0];
+      long long N_DM = N_total[1] - N_total[2] - N_total[3] - N_total[0];
       message(
-          "Running on %lld gas particles, %lld stars particles and %lld DM "
-          "particles (%lld gravity particles)",
-          N_total[0], N_total[2], N_total[1] > 0 ? N_DM : 0, N_total[1]);
+          "Running on %lld gas particles, %lld stars particles %lld black "
+          "hole particles and %lld DM particles (%lld gravity particles)",
+          N_total[0], N_total[2], N_total[3], N_total[1] > 0 ? N_DM : 0,
+          N_total[1]);
       message(
           "from t=%.3e until t=%.3e with %d ranks, %d threads / rank and %d "
           "task queues / rank (dt_min=%.3e, dt_max=%.3e)...",

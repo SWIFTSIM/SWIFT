@@ -36,6 +36,7 @@
 #include "single_io.h"
 
 /* Local includes. */
+#include "black_holes_io.h"
 #include "chemistry_io.h"
 #include "common_io.h"
 #include "cooling_io.h"
@@ -348,14 +349,17 @@ void writeArray(const struct engine* e, hid_t grp, char* fileName,
  * @param parts (output) Array of #part particles.
  * @param gparts (output) Array of #gpart particles.
  * @param sparts (output) Array of #spart particles.
+ * @param bparts (output) Array of #bpart particles.
  * @param Ngas (output) number of Gas particles read.
  * @param Ngparts (output) The number of #gpart read.
  * @param Nstars (output) The number of #spart read.
+ * @param Nblackholes (output) The number of #bpart read.
  * @param flag_entropy (output) 1 if the ICs contained Entropy in the
  * InternalEnergy field
  * @param with_hydro Are we reading gas particles ?
  * @param with_gravity Are we reading/creating #gpart arrays ?
  * @param with_stars Are we reading star particles ?
+ * @param with_black_hole Are we reading black hole particles ?
  * @param cleanup_h Are we cleaning-up h-factors from the quantities we read?
  * @param cleanup_sqrt_a Are we cleaning-up the sqrt(a) factors in the Gadget
  * IC velocities?
@@ -374,9 +378,10 @@ void writeArray(const struct engine* e, hid_t grp, char* fileName,
 void read_ic_single(const char* fileName,
                     const struct unit_system* internal_units, double dim[3],
                     struct part** parts, struct gpart** gparts,
-                    struct spart** sparts, size_t* Ngas, size_t* Ngparts,
-                    size_t* Nstars, int* flag_entropy, int with_hydro,
-                    int with_gravity, int with_stars, int cleanup_h,
+                    struct spart** sparts, struct bpart** bparts, size_t* Ngas,
+                    size_t* Ngparts, size_t* Nstars, size_t* Nblackholes,
+                    int* flag_entropy, int with_hydro, int with_gravity,
+                    int with_stars, int with_black_holes, int cleanup_h,
                     int cleanup_sqrt_a, double h, double a, int n_threads,
                     int dry_run) {
 
@@ -518,12 +523,22 @@ void read_ic_single(const char* fileName,
     bzero(*sparts, *Nstars * sizeof(struct spart));
   }
 
+  /* Allocate memory to store star particles */
+  if (with_black_holes) {
+    *Nblackholes = N[swift_type_black_hole];
+    if (swift_memalign("bparts", (void**)bparts, bpart_align,
+                       *Nblackholes * sizeof(struct bpart)) != 0)
+      error("Error while allocating memory for stars particles");
+    bzero(*bparts, *Nblackholes * sizeof(struct bpart));
+  }
+
   /* Allocate memory to store all gravity particles */
   if (with_gravity) {
     Ndm = N[swift_type_dark_matter];
     *Ngparts = (with_hydro ? N[swift_type_gas] : 0) +
                N[swift_type_dark_matter] +
-               (with_stars ? N[swift_type_stars] : 0);
+               (with_stars ? N[swift_type_stars] : 0) +
+               (with_black_holes ? N[swift_type_black_hole] : 0);
     if (swift_memalign("gparts", (void**)gparts, gpart_align,
                        *Ngparts * sizeof(struct gpart)) != 0)
       error("Error while allocating memory for gravity particles");
@@ -579,6 +594,13 @@ void read_ic_single(const char* fileName,
         }
         break;
 
+      case swift_type_black_hole:
+        if (with_black_holes) {
+          Nparticles = *Nblackholes;
+          black_holes_read_particles(*bparts, list, &num_fields);
+        }
+        break;
+
       default:
         message("Particle Type %d not yet supported. Particles ignored", ptype);
     }
@@ -609,6 +631,11 @@ void read_ic_single(const char* fileName,
     /* Duplicate the star particles into gparts */
     if (with_stars)
       io_duplicate_stars_gparts(&tp, *sparts, *gparts, *Nstars, Ndm + *Ngas);
+
+    /* Duplicate the black hole particles into gparts */
+    if (with_black_holes)
+      io_duplicate_black_holes_gparts(&tp, *bparts, *gparts, *Nblackholes,
+                                      Ndm + *Ngas + *Nstars);
 
     threadpool_clean(&tp);
   }
@@ -648,6 +675,7 @@ void write_output_single(struct engine* e, const char* baseName,
   const struct xpart* xparts = e->s->xparts;
   const struct gpart* gparts = e->s->gparts;
   const struct spart* sparts = e->s->sparts;
+  const struct bpart* bparts = e->s->bparts;
   struct swift_params* params = e->parameter_file;
   const int with_cosmology = e->policy & engine_policy_cosmology;
   const int with_cooling = e->policy & engine_policy_cooling;
@@ -663,6 +691,7 @@ void write_output_single(struct engine* e, const char* baseName,
   const size_t Ntot = e->s->nr_gparts;
   const size_t Ngas = e->s->nr_parts;
   const size_t Nstars = e->s->nr_sparts;
+  const size_t Nblackholes = e->s->nr_bparts;
   // const size_t Nbaryons = Ngas + Nstars;
   // const size_t Ndm = Ntot > 0 ? Ntot - Nbaryons : 0;
 
@@ -673,17 +702,17 @@ void write_output_single(struct engine* e, const char* baseName,
       e->s->nr_parts - e->s->nr_inhibited_parts - e->s->nr_extra_parts;
   const size_t Nstars_written =
       e->s->nr_sparts - e->s->nr_inhibited_sparts - e->s->nr_extra_sparts;
-  const size_t Nbaryons_written = Ngas_written + Nstars_written;
+  const size_t Nblackholes_written =
+      e->s->nr_bparts - e->s->nr_inhibited_bparts - e->s->nr_extra_bparts;
+  const size_t Nbaryons_written =
+      Ngas_written + Nstars_written + Nblackholes_written;
   const size_t Ndm_written =
       Ntot_written > 0 ? Ntot_written - Nbaryons_written : 0;
 
   /* Format things in a Gadget-friendly array */
-  long long N_total[swift_type_count] = {(long long)Ngas_written,
-                                         (long long)Ndm_written,
-                                         0,
-                                         0,
-                                         (long long)Nstars_written,
-                                         0};
+  long long N_total[swift_type_count] = {
+      (long long)Ngas_written,   (long long)Ndm_written,        0, 0,
+      (long long)Nstars_written, (long long)Nblackholes_written};
 
   /* File name */
   char fileName[FILENAME_BUFFER_SIZE];
@@ -906,6 +935,7 @@ void write_output_single(struct engine* e, const char* baseName,
     struct gpart* gparts_written = NULL;
     struct velociraptor_gpart_data* gpart_group_data_written = NULL;
     struct spart* sparts_written = NULL;
+    struct bpart* bparts_written = NULL;
 
     /* Write particle fields from the particle structure */
     switch (ptype) {
@@ -1055,6 +1085,39 @@ void write_output_single(struct engine* e, const char* baseName,
         }
       } break;
 
+      case swift_type_black_hole: {
+        if (Nblackholes == Nblackholes_written) {
+
+          /* No inhibted particles: easy case */
+          N = Nblackholes;
+          black_holes_write_particles(bparts, list, &num_fields);
+          if (with_stf) {
+            num_fields += velociraptor_write_bparts(bparts, list + num_fields);
+          }
+        } else {
+
+          /* Ok, we need to fish out the particles we want */
+          N = Nblackholes_written;
+
+          /* Allocate temporary arrays */
+          if (swift_memalign("bparts_written", (void**)&bparts_written,
+                             bpart_align,
+                             Nblackholes_written * sizeof(struct bpart)) != 0)
+            error("Error while allocating temporart memory for bparts");
+
+          /* Collect the particles we want to write */
+          io_collect_bparts_to_write(bparts, bparts_written, Nblackholes,
+                                     Nblackholes_written);
+
+          /* Select the fields to write */
+          black_holes_write_particles(bparts_written, list, &num_fields);
+          if (with_stf) {
+            num_fields +=
+                velociraptor_write_bparts(bparts_written, list + num_fields);
+          }
+        }
+      } break;
+
       default:
         error("Particle Type %d not yet supported. Aborting", ptype);
     }
@@ -1080,6 +1143,7 @@ void write_output_single(struct engine* e, const char* baseName,
     if (gpart_group_data_written)
       swift_free("gpart_group_written", gpart_group_data_written);
     if (sparts_written) swift_free("sparts_written", sparts_written);
+    if (bparts_written) swift_free("bparts_written", bparts_written);
 
     /* Close particle group */
     H5Gclose(h_grp);

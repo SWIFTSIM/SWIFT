@@ -230,4 +230,52 @@ __attribute__((always_inline)) INLINE static integertime_t get_spart_timestep(
   return new_dti;
 }
 
+/**
+ * @brief Compute the new (integer) time-step of a given #bpart
+ *
+ * @param bp The #bpart.
+ * @param e The #engine (used to get some constants).
+ */
+__attribute__((always_inline)) INLINE static integertime_t get_bpart_timestep(
+    const struct bpart *restrict bp, const struct engine *restrict e) {
+
+  /* Stellar time-step */
+  float new_dt_black_holes = black_holes_compute_timestep(bp);
+
+  /* Gravity time-step */
+  float new_dt_self = FLT_MAX, new_dt_ext = FLT_MAX;
+
+  if (e->policy & engine_policy_external_gravity)
+    new_dt_ext = external_gravity_timestep(e->time, e->external_potential,
+                                           e->physical_constants, bp->gpart);
+
+  const float a_hydro[3] = {0.f, 0.f, 0.f};
+  if (e->policy & engine_policy_self_gravity)
+    new_dt_self = gravity_compute_timestep_self(
+        bp->gpart, a_hydro, e->gravity_properties, e->cosmology);
+
+  /* Take the minimum of all */
+  float new_dt = min3(new_dt_black_holes, new_dt_self, new_dt_ext);
+
+  /* Apply the maximal dibslacement constraint (FLT_MAX  if non-cosmological)*/
+  new_dt = min(new_dt, e->dt_max_RMS_displacement);
+
+  /* Apply cosmology correction (This is 1 if non-cosmological) */
+  new_dt *= e->cosmology->time_step_factor;
+
+  /* Limit timestep within the allowed range */
+  new_dt = min(new_dt, e->dt_max);
+  if (new_dt < e->dt_min) {
+    error("bpart (id=%lld) wants a time-step (%e) below dt_min (%e)", bp->id,
+          new_dt, e->dt_min);
+  }
+
+  /* Convert to integer time */
+  const integertime_t new_dti = make_integer_timestep(
+      new_dt, bp->time_bin, e->ti_current, e->time_base_inv);
+
+  return new_dti;
+}
+
+
 #endif /* SWIFT_TIMESTEP_H */
