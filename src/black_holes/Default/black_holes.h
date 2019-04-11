@@ -82,8 +82,8 @@ __attribute__((always_inline)) INLINE static void black_holes_predict_extra(
  *
  * @param sp The particle.
  */
-__attribute__((always_inline)) INLINE static void black_holes_reset_predicted_values(
-    struct bpart* restrict bp) {}
+__attribute__((always_inline)) INLINE static void
+black_holes_reset_predicted_values(struct bpart* restrict bp) {}
 
 /**
  * @brief Finishes the calculation of (non-gravity) forces acting on stars
@@ -129,8 +129,9 @@ __attribute__((always_inline)) INLINE static void black_holes_end_density(
  * @param sp The particle to act upon
  * @param cosmo The current cosmological model.
  */
-__attribute__((always_inline)) INLINE static void black_holes_bpart_has_no_neighbours(
-    struct bpart* restrict bp, const struct cosmology* cosmo) {
+__attribute__((always_inline)) INLINE static void
+black_holes_bpart_has_no_neighbours(struct bpart* restrict bp,
+                                    const struct cosmology* cosmo) {
 
   /* Some smoothing length multiples. */
   const float h = bp->h;

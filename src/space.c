@@ -607,25 +607,25 @@ void space_regrid(struct space *s, int verbose) {
 #ifdef WITH_MPI
           c->mpi.tag = -1;
 
-	  c->mpi.hydro.recv_xv = NULL;
-	  c->mpi.hydro.recv_rho = NULL;
-	  c->mpi.hydro.recv_gradient = NULL;
-	  c->mpi.hydro.recv_ti = NULL;
-	  c->mpi.grav.recv = NULL;
-	  c->mpi.grav.recv_ti = NULL;
-	  c->mpi.stars.recv = NULL;
-	  c->mpi.stars.recv_ti = NULL;
-	  c->mpi.limiter.recv = NULL;
-	  
-	  c->mpi.hydro.send_xv = NULL;
-	  c->mpi.hydro.send_rho = NULL;
-	  c->mpi.hydro.send_gradient = NULL;
-	  c->mpi.hydro.send_ti = NULL;
-	  c->mpi.grav.send = NULL;
-	  c->mpi.grav.send_ti = NULL;
-	  c->mpi.stars.send = NULL;
-	  c->mpi.stars.send_ti = NULL;
-	  c->mpi.limiter.send = NULL;
+          c->mpi.hydro.recv_xv = NULL;
+          c->mpi.hydro.recv_rho = NULL;
+          c->mpi.hydro.recv_gradient = NULL;
+          c->mpi.hydro.recv_ti = NULL;
+          c->mpi.grav.recv = NULL;
+          c->mpi.grav.recv_ti = NULL;
+          c->mpi.stars.recv = NULL;
+          c->mpi.stars.recv_ti = NULL;
+          c->mpi.limiter.recv = NULL;
+
+          c->mpi.hydro.send_xv = NULL;
+          c->mpi.hydro.send_rho = NULL;
+          c->mpi.hydro.send_gradient = NULL;
+          c->mpi.hydro.send_ti = NULL;
+          c->mpi.grav.send = NULL;
+          c->mpi.grav.send_ti = NULL;
+          c->mpi.stars.send = NULL;
+          c->mpi.stars.send_ti = NULL;
+          c->mpi.limiter.send = NULL;
 #endif  // WITH_MPI
           if (s->with_self_gravity) c->grav.multipole = &s->multipoles_top[cid];
 #if defined(SWIFT_DEBUG_CHECKS) || defined(SWIFT_CELL_GRAPH)
@@ -1512,7 +1512,7 @@ void space_rebuild(struct space *s, int repartitioned, int verbose) {
                            &nr_parts_exchanged, nr_gparts, &g_index[nr_gparts],
                            &nr_gparts_exchanged, nr_sparts, &s_index[nr_sparts],
                            &nr_sparts_exchanged, nr_bparts, &b_index[nr_bparts],
-			   &nr_bparts_exchanged);
+                           &nr_bparts_exchanged);
 
     /* Set the new particle counts. */
     s->nr_parts = nr_parts + nr_parts_exchanged;
@@ -5326,7 +5326,7 @@ void space_struct_restore(struct space *s, FILE *stream) {
     restart_read_blocks(s->bparts, s->nr_bparts, sizeof(struct bpart), stream,
                         NULL, "bparts");
   }
-  
+
   /* Need to reconnect the gravity parts to their hydro and stars particles. */
   /* Re-link the parts. */
   if (s->nr_parts > 0 && s->nr_gparts > 0)
@@ -5339,7 +5339,7 @@ void space_struct_restore(struct space *s, FILE *stream) {
   /* Re-link the bparts. */
   if (s->nr_bparts > 0 && s->nr_gparts > 0)
     part_relink_bparts_to_gparts(s->gparts, s->nr_gparts, s->bparts);
-  
+
 #ifdef SWIFT_DEBUG_CHECKS
   /* Verify that everything is correct */
   part_verify_links(s->parts, s->gparts, s->sparts, s->bparts, s->nr_parts,

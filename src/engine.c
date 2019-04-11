@@ -136,7 +136,8 @@ struct end_of_step_data {
   integertime_t ti_hydro_end_min, ti_hydro_end_max, ti_hydro_beg_max;
   integertime_t ti_gravity_end_min, ti_gravity_end_max, ti_gravity_beg_max;
   integertime_t ti_stars_end_min, ti_stars_end_max, ti_stars_beg_max;
-  integertime_t ti_black_holes_end_min, ti_black_holes_end_max, ti_black_holes_beg_max;
+  integertime_t ti_black_holes_end_min, ti_black_holes_end_max,
+      ti_black_holes_beg_max;
   struct engine *e;
 };
 
@@ -1403,8 +1404,9 @@ void engine_exchange_strays(struct engine *e, const size_t offset_parts,
                             const int *ind_part, size_t *Npart,
                             const size_t offset_gparts, const int *ind_gpart,
                             size_t *Ngpart, const size_t offset_sparts,
-                            const int *ind_spart, size_t *Nspart, const size_t offset_bparts,
-                            const int *ind_bpart, size_t *Nbpart) {
+                            const int *ind_spart, size_t *Nspart,
+                            const size_t offset_bparts, const int *ind_bpart,
+                            size_t *Nbpart) {
 
 #ifdef WITH_MPI
 
@@ -1524,7 +1526,7 @@ void engine_exchange_strays(struct engine *e, const size_t offset_parts,
     /* Load the bpart into the proxy */
     proxy_bparts_load(&e->proxies[pid], &s->bparts[offset_bparts + k], 1);
   }
-  
+
   /* Put the gparts into the corresponding proxies. */
   for (size_t k = 0; k < *Ngpart; k++) {
 
@@ -1591,9 +1593,11 @@ void engine_exchange_strays(struct engine *e, const size_t offset_parts,
     count_bparts_in += e->proxies[k].nr_bparts_in;
   }
   if (e->verbose) {
-    message("sent out %zu/%zu/%zu/%zu parts/gparts/sparts/bparts, got %i/%i/%i/%i back.",
-            *Npart, *Ngpart, *Nspart, *Nbpart, count_parts_in, count_gparts_in,
-            count_sparts_in, count_bparts_in);
+    message(
+        "sent out %zu/%zu/%zu/%zu parts/gparts/sparts/bparts, got %i/%i/%i/%i "
+        "back.",
+        *Npart, *Ngpart, *Nspart, *Nbpart, count_parts_in, count_gparts_in,
+        count_sparts_in, count_bparts_in);
   }
 
   /* Reallocate the particle arrays if necessary */
@@ -1659,7 +1663,7 @@ void engine_exchange_strays(struct engine *e, const size_t offset_parts,
       }
     }
   }
-  
+
   if (offset_gparts + count_gparts_in > s->size_gparts) {
     message("re-allocating gparts array.");
     s->size_gparts = (offset_gparts + count_gparts_in) * engine_parts_size_grow;
@@ -1760,7 +1764,7 @@ void engine_exchange_strays(struct engine *e, const size_t offset_parts,
         reqs_in[pid + 1] == MPI_REQUEST_NULL &&
         reqs_in[pid + 2] == MPI_REQUEST_NULL &&
         reqs_in[pid + 3] == MPI_REQUEST_NULL &&
-	reqs_in[pid + 4] == MPI_REQUEST_NULL) {
+        reqs_in[pid + 4] == MPI_REQUEST_NULL) {
       /* Copy the particle data to the part/xpart/gpart arrays. */
       struct proxy *prox = &e->proxies[pid / 5];
       memcpy(&s->parts[offset_parts + count_parts], prox->parts_in,
@@ -1798,7 +1802,7 @@ void engine_exchange_strays(struct engine *e, const size_t offset_parts,
               &s->bparts[offset_bparts + count_bparts - gp->id_or_neg_offset];
           gp->id_or_neg_offset = s->bparts - bp;
           bp->gpart = gp;
-	}
+        }
       }
 
       /* Advance the counters. */
@@ -2087,7 +2091,8 @@ void engine_allocate_foreign_particles(struct engine *e) {
 
   /* Count the number of particles we need to import and re-allocate
      the buffer if needed. */
-  size_t count_parts_in = 0, count_gparts_in = 0, count_sparts_in = 0, count_bparts_in = 0;
+  size_t count_parts_in = 0, count_gparts_in = 0, count_sparts_in = 0,
+         count_bparts_in = 0;
   for (int k = 0; k < nr_proxies; k++) {
     for (int j = 0; j < e->proxies[k].nr_cells_in; j++) {
 
@@ -2156,15 +2161,17 @@ void engine_allocate_foreign_particles(struct engine *e) {
                        sizeof(struct bpart) * s->size_bparts_foreign) != 0)
       error("Failed to allocate foreign bpart data.");
   }
-  
+
   if (e->verbose)
-    message("Allocating %zd/%zd/%zd/%zd foreign part/gpart/spart/bpart (%zd/%zd/%zd/%zd MB)",
-            s->size_parts_foreign, s->size_gparts_foreign,
-            s->size_sparts_foreign, s->size_bparts_foreign,
-            s->size_parts_foreign * sizeof(struct part) / (1024 * 1024),
-            s->size_gparts_foreign * sizeof(struct gpart) / (1024 * 1024),
-            s->size_sparts_foreign * sizeof(struct spart) / (1024 * 1024),
-	    s->size_bparts_foreign * sizeof(struct bpart) / (1024 * 1024));
+    message(
+        "Allocating %zd/%zd/%zd/%zd foreign part/gpart/spart/bpart "
+        "(%zd/%zd/%zd/%zd MB)",
+        s->size_parts_foreign, s->size_gparts_foreign, s->size_sparts_foreign,
+        s->size_bparts_foreign,
+        s->size_parts_foreign * sizeof(struct part) / (1024 * 1024),
+        s->size_gparts_foreign * sizeof(struct gpart) / (1024 * 1024),
+        s->size_sparts_foreign * sizeof(struct spart) / (1024 * 1024),
+        s->size_bparts_foreign * sizeof(struct bpart) / (1024 * 1024));
 
   /* Unpack the cells and link to the particle data. */
   struct part *parts = s->parts_foreign;
@@ -2840,12 +2847,13 @@ void engine_collect_end_of_step_recurse_stars(struct cell *c,
  * @param e The #engine.
  */
 void engine_collect_end_of_step_recurse_black_holes(struct cell *c,
-                                              const struct engine *e) {
+                                                    const struct engine *e) {
 
 /* Skip super-cells (Their values are already set) */
 #ifdef WITH_MPI
   // MATTHIEU
-  if (c->timestep != NULL) return; // || c->mpi.black_holes.recv_ti != NULL) return;
+  if (c->timestep != NULL)
+    return;  // || c->mpi.black_holes.recv_ti != NULL) return;
 #else
   if (c->timestep != NULL) return;
 #endif /* WITH_MPI */
@@ -2856,8 +2864,8 @@ void engine_collect_end_of_step_recurse_black_holes(struct cell *c,
 
   /* Counters for the different quantities. */
   size_t updated = 0, inhibited = 0;
-  integertime_t ti_black_holes_end_min = max_nr_timesteps, ti_black_holes_end_max = 0,
-                ti_black_holes_beg_max = 0;
+  integertime_t ti_black_holes_end_min = max_nr_timesteps,
+                ti_black_holes_end_max = 0, ti_black_holes_beg_max = 0;
 
   /* Collect the values from the progeny. */
   for (int k = 0; k < 8; k++) {
@@ -2868,9 +2876,12 @@ void engine_collect_end_of_step_recurse_black_holes(struct cell *c,
       engine_collect_end_of_step_recurse_black_holes(cp, e);
 
       /* And update */
-      ti_black_holes_end_min = min(ti_black_holes_end_min, cp->black_holes.ti_end_min);
-      ti_black_holes_end_max = max(ti_black_holes_end_max, cp->black_holes.ti_end_max);
-      ti_black_holes_beg_max = max(ti_black_holes_beg_max, cp->black_holes.ti_beg_max);
+      ti_black_holes_end_min =
+          min(ti_black_holes_end_min, cp->black_holes.ti_end_min);
+      ti_black_holes_end_max =
+          max(ti_black_holes_end_max, cp->black_holes.ti_end_max);
+      ti_black_holes_beg_max =
+          max(ti_black_holes_beg_max, cp->black_holes.ti_beg_max);
 
       updated += cp->black_holes.updated;
       inhibited += cp->black_holes.inhibited;
@@ -2887,7 +2898,6 @@ void engine_collect_end_of_step_recurse_black_holes(struct cell *c,
   c->black_holes.updated = updated;
   c->black_holes.inhibited = inhibited;
 }
-
 
 /**
  * @brief Mapping function to collect the data from the end of the step
@@ -2923,13 +2933,14 @@ void engine_collect_end_of_step_mapper(void *map_data, int num_elements,
                 ti_gravity_beg_max = 0;
   integertime_t ti_stars_end_min = max_nr_timesteps, ti_stars_end_max = 0,
                 ti_stars_beg_max = 0;
-  integertime_t ti_black_holes_end_min = max_nr_timesteps, ti_black_holes_end_max = 0,
-                ti_black_holes_beg_max = 0;
+  integertime_t ti_black_holes_end_min = max_nr_timesteps,
+                ti_black_holes_end_max = 0, ti_black_holes_beg_max = 0;
 
   for (int ind = 0; ind < num_elements; ind++) {
     struct cell *c = &s->cells_top[local_cells[ind]];
 
-    if (c->hydro.count > 0 || c->grav.count > 0 || c->stars.count > 0 || c->black_holes.count > 0) {
+    if (c->hydro.count > 0 || c->grav.count > 0 || c->stars.count > 0 ||
+        c->black_holes.count > 0) {
 
       /* Make the top-cells recurse */
       if (with_hydro) {
@@ -2962,10 +2973,13 @@ void engine_collect_end_of_step_mapper(void *map_data, int num_elements,
       ti_stars_beg_max = max(ti_stars_beg_max, c->stars.ti_beg_max);
 
       if (c->black_holes.ti_end_min > e->ti_current)
-        ti_black_holes_end_min = min(ti_black_holes_end_min, c->black_holes.ti_end_min);
-      ti_black_holes_end_max = max(ti_black_holes_end_max, c->black_holes.ti_end_max);
-      ti_black_holes_beg_max = max(ti_black_holes_beg_max, c->black_holes.ti_beg_max);
-      
+        ti_black_holes_end_min =
+            min(ti_black_holes_end_min, c->black_holes.ti_end_min);
+      ti_black_holes_end_max =
+          max(ti_black_holes_end_max, c->black_holes.ti_end_max);
+      ti_black_holes_beg_max =
+          max(ti_black_holes_beg_max, c->black_holes.ti_beg_max);
+
       updated += c->hydro.updated;
       g_updated += c->grav.updated;
       s_updated += c->stars.updated;
@@ -3016,11 +3030,14 @@ void engine_collect_end_of_step_mapper(void *map_data, int num_elements,
     data->ti_stars_beg_max = max(ti_stars_beg_max, data->ti_stars_beg_max);
 
     if (ti_black_holes_end_min > e->ti_current)
-      data->ti_black_holes_end_min = min(ti_black_holes_end_min, data->ti_black_holes_end_min);
-    data->ti_black_holes_end_max = max(ti_black_holes_end_max, data->ti_black_holes_end_max);
-    data->ti_black_holes_beg_max = max(ti_black_holes_beg_max, data->ti_black_holes_beg_max);
+      data->ti_black_holes_end_min =
+          min(ti_black_holes_end_min, data->ti_black_holes_end_min);
+    data->ti_black_holes_end_max =
+        max(ti_black_holes_end_max, data->ti_black_holes_end_max);
+    data->ti_black_holes_beg_max =
+        max(ti_black_holes_beg_max, data->ti_black_holes_beg_max);
   }
-  
+
   if (lock_unlock(&s->lock) != 0) error("Failed to unlock the space");
 }
 
@@ -3047,15 +3064,16 @@ void engine_collect_end_of_step(struct engine *e, int apply) {
   struct space *s = e->s;
   struct end_of_step_data data;
   data.updated = 0, data.g_updated = 0, data.s_updated = 0, data.b_updated = 0;
-  data.inhibited = 0, data.g_inhibited = 0, data.s_inhibited = 0, data.b_inhibited = 0;
+  data.inhibited = 0, data.g_inhibited = 0, data.s_inhibited = 0,
+  data.b_inhibited = 0;
   data.ti_hydro_end_min = max_nr_timesteps, data.ti_hydro_end_max = 0,
   data.ti_hydro_beg_max = 0;
   data.ti_gravity_end_min = max_nr_timesteps, data.ti_gravity_end_max = 0,
   data.ti_gravity_beg_max = 0;
   data.ti_stars_end_min = max_nr_timesteps, data.ti_stars_end_max = 0,
   data.ti_stars_beg_max = 0;
-  data.ti_black_holes_end_min = max_nr_timesteps, data.ti_black_holes_end_max = 0,
-  data.ti_black_holes_beg_max = 0;
+  data.ti_black_holes_end_min = max_nr_timesteps,
+  data.ti_black_holes_end_max = 0, data.ti_black_holes_beg_max = 0;
   data.e = e;
 
   /* Collect information from the local top-level cells */
@@ -3071,11 +3089,12 @@ void engine_collect_end_of_step(struct engine *e, int apply) {
 
   /* Store these in the temporary collection group. */
   collectgroup1_init(
-		     &e->collect_group1, data.updated, data.g_updated, data.s_updated, data.b_updated,
-		     data.inhibited, data.g_inhibited, data.s_inhibited, data.b_inhibited, data.ti_hydro_end_min,
-      data.ti_hydro_end_max, data.ti_hydro_beg_max, data.ti_gravity_end_min,
-      data.ti_gravity_end_max, data.ti_gravity_beg_max, data.ti_stars_end_min,
-      data.ti_stars_end_max, data.ti_stars_beg_max, data.ti_black_holes_end_min,
+      &e->collect_group1, data.updated, data.g_updated, data.s_updated,
+      data.b_updated, data.inhibited, data.g_inhibited, data.s_inhibited,
+      data.b_inhibited, data.ti_hydro_end_min, data.ti_hydro_end_max,
+      data.ti_hydro_beg_max, data.ti_gravity_end_min, data.ti_gravity_end_max,
+      data.ti_gravity_beg_max, data.ti_stars_end_min, data.ti_stars_end_max,
+      data.ti_stars_beg_max, data.ti_black_holes_end_min,
       data.ti_black_holes_end_max, data.ti_black_holes_beg_max, e->forcerebuild,
       e->s->tot_cells, e->sched.nr_tasks,
       (float)e->sched.nr_tasks / (float)e->s->tot_cells);
@@ -3615,7 +3634,7 @@ void engine_step(struct engine *e) {
     /* Print some information to the screen */
     printf(
         "  %6d %14e %12.7f %12.7f %14e %4d %4d %12lld %12lld %12lld %12lld "
-	"%21.3f %6d\n",
+        "%21.3f %6d\n",
         e->step, e->time, e->cosmology->a, e->cosmology->z, e->time_step,
         e->min_active_bin, e->max_active_bin, e->updates, e->g_updates,
         e->s_updates, e->b_updates, e->wallclock_time, e->step_props);
@@ -3627,7 +3646,7 @@ void engine_step(struct engine *e) {
       fprintf(
           e->file_timesteps,
           "  %6d %14e %12.7f %12.7f %14e %4d %4d %12lld %12lld %12lld %12lld "
-	  "%21.3f %6d\n",
+          "%21.3f %6d\n",
           e->step, e->time, e->cosmology->a, e->cosmology->z, e->time_step,
           e->min_active_bin, e->max_active_bin, e->updates, e->g_updates,
           e->s_updates, e->b_updates, e->wallclock_time, e->step_props);
@@ -4485,7 +4504,7 @@ void engine_split(struct engine *e, struct partition *initial_partition) {
   /* Re-link the gparts to their bparts. */
   if (s->nr_bparts > 0 && s->nr_gparts > 0)
     part_relink_gparts_to_bparts(s->bparts, s->nr_bparts, 0);
-  
+
   /* Re-allocate the local gparts. */
   if (e->verbose)
     message("Re-allocating gparts array from %zu to %zu.", s->size_gparts,
@@ -4512,7 +4531,7 @@ void engine_split(struct engine *e, struct partition *initial_partition) {
   /* Re-link the bparts. */
   if (s->nr_bparts > 0 && s->nr_gparts > 0)
     part_relink_bparts_to_gparts(s->gparts, s->nr_gparts, s->bparts);
-  
+
 #ifdef SWIFT_DEBUG_CHECKS
 
   /* Verify that the links are correct */
@@ -5173,11 +5192,12 @@ void engine_config(int restart, struct engine *e, struct swift_params *params,
               engine_step_prop_snapshot, engine_step_prop_restarts,
               engine_step_prop_stf, engine_step_prop_logger_index);
 
-      fprintf(e->file_timesteps,
-              "# %6s %14s %12s %12s %14s %9s %12s %12s %12s %12s %16s [%s] %6s\n",
-              "Step", "Time", "Scale-factor", "Redshift", "Time-step",
-              "Time-bins", "Updates", "g-Updates", "s-Updates", "b-Updates",
-              "Wall-clock time", clocks_getunit(), "Props");
+      fprintf(
+          e->file_timesteps,
+          "# %6s %14s %12s %12s %14s %9s %12s %12s %12s %12s %16s [%s] %6s\n",
+          "Step", "Time", "Scale-factor", "Redshift", "Time-step", "Time-bins",
+          "Updates", "g-Updates", "s-Updates", "b-Updates", "Wall-clock time",
+          clocks_getunit(), "Props");
       fflush(e->file_timesteps);
     }
   }
@@ -5820,12 +5840,9 @@ void engine_recompute_displacement_constraint(struct engine *e) {
   const float rho_crit0 = 3.f * H0 * H0 / (8.f * M_PI * G_newton);
 
   /* Start by reducing the minimal mass of each particle type */
-  float min_mass[swift_type_count] = {e->s->min_part_mass,
-                                      e->s->min_gpart_mass,
-                                      FLT_MAX,
-                                      FLT_MAX,
-                                      e->s->min_spart_mass,
-                                      e->s->min_bpart_mass};
+  float min_mass[swift_type_count] = {
+      e->s->min_part_mass,  e->s->min_gpart_mass, FLT_MAX, FLT_MAX,
+      e->s->min_spart_mass, e->s->min_bpart_mass};
 #ifdef SWIFT_DEBUG_CHECKS
   /* Check that the minimal mass collection worked */
   float min_part_mass_check = FLT_MAX;
@@ -5844,12 +5861,9 @@ void engine_recompute_displacement_constraint(struct engine *e) {
 #endif
 
   /* Do the same for the velocity norm sum */
-  float vel_norm[swift_type_count] = {e->s->sum_part_vel_norm,
-                                      e->s->sum_gpart_vel_norm,
-                                      0.f,
-                                      0.f,
-                                      e->s->sum_spart_vel_norm,
-                                      e->s->sum_spart_vel_norm};
+  float vel_norm[swift_type_count] = {
+      e->s->sum_part_vel_norm,  e->s->sum_gpart_vel_norm, 0.f, 0.f,
+      e->s->sum_spart_vel_norm, e->s->sum_spart_vel_norm};
 #ifdef WITH_MPI
   MPI_Allreduce(MPI_IN_PLACE, vel_norm, swift_type_count, MPI_FLOAT, MPI_SUM,
                 MPI_COMM_WORLD);
@@ -5858,12 +5872,9 @@ void engine_recompute_displacement_constraint(struct engine *e) {
   /* Get the counts of each particle types */
   const long long total_nr_dm_gparts =
       e->total_nr_gparts - e->total_nr_parts - e->total_nr_sparts;
-  float count_parts[swift_type_count] = {(float)e->total_nr_parts,
-                                         (float)total_nr_dm_gparts,
-                                         0.f,
-                                         0.f,
-                                         (float)e->total_nr_sparts,
-                                         (float)e->total_nr_bparts};
+  float count_parts[swift_type_count] = {
+      (float)e->total_nr_parts,  (float)total_nr_dm_gparts, 0.f, 0.f,
+      (float)e->total_nr_sparts, (float)e->total_nr_bparts};
 
   /* Count of particles for the two species */
   const float N_dm = count_parts[1];

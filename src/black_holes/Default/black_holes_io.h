@@ -19,8 +19,8 @@
 #ifndef SWIFT_DEFAULT_BLACK_HOLES_IO_H
 #define SWIFT_DEFAULT_BLACK_HOLES_IO_H
 
-#include "io_properties.h"
 #include "black_holes_part.h"
+#include "io_properties.h"
 
 /**
  * @brief Specifies which b-particle fields to read from a dataset
@@ -30,8 +30,8 @@
  * @param num_fields The number of i/o fields to read.
  */
 INLINE static void black_holes_read_particles(struct bpart *bparts,
-					      struct io_props *list,
-					      int *num_fields) {
+                                              struct io_props *list,
+                                              int *num_fields) {
 
   /* Say how much we want to read */
   *num_fields = 5;
@@ -57,8 +57,8 @@ INLINE static void black_holes_read_particles(struct bpart *bparts,
  * @param num_fields The number of i/o fields to write.
  */
 INLINE static void black_holes_write_particles(const struct bpart *bparts,
-					       struct io_props *list,
-					       int *num_fields) {
+                                               struct io_props *list,
+                                               int *num_fields) {
 
   /* Say how much we want to write */
   *num_fields = 5;

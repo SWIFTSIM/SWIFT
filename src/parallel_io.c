@@ -678,12 +678,13 @@ void writeArray(struct engine* e, hid_t grp, char* fileName,
  */
 void read_ic_parallel(char* fileName, const struct unit_system* internal_units,
                       double dim[3], struct part** parts, struct gpart** gparts,
-                      struct spart** sparts, struct bpart** bparts, size_t* Ngas, size_t* Ngparts,
-                      size_t* Nstars, size_t* Nblackholes, int* flag_entropy, int with_hydro,
-                      int with_gravity, int with_stars, int with_black_holes, int cleanup_h,
-                      int cleanup_sqrt_a, double h, double a, int mpi_rank,
-                      int mpi_size, MPI_Comm comm, MPI_Info info, int n_threads,
-                      int dry_run) {
+                      struct spart** sparts, struct bpart** bparts,
+                      size_t* Ngas, size_t* Ngparts, size_t* Nstars,
+                      size_t* Nblackholes, int* flag_entropy, int with_hydro,
+                      int with_gravity, int with_stars, int with_black_holes,
+                      int cleanup_h, int cleanup_sqrt_a, double h, double a,
+                      int mpi_rank, int mpi_size, MPI_Comm comm, MPI_Info info,
+                      int n_threads, int dry_run) {
 
   hid_t h_file = 0, h_grp = 0;
   /* GADGET has only cubic boxes (in cosmological mode) */
@@ -698,7 +699,7 @@ void read_ic_parallel(char* fileName, const struct unit_system* internal_units,
 
   /* Initialise counters */
   *Ngas = 0, *Ngparts = 0, *Nstars = 0, *Nblackholes = 0;
-  
+
   /* Open file */
   /* message("Opening file '%s' as IC.", fileName); */
   hid_t h_plist_id = H5Pcreate(H5P_FILE_ACCESS);
@@ -846,7 +847,7 @@ void read_ic_parallel(char* fileName, const struct unit_system* internal_units,
       error("Error while allocating memory for black_holes particles");
     bzero(*bparts, *Nblackholes * sizeof(struct bpart));
   }
-  
+
   /* Allocate memory to store gravity particles */
   if (with_gravity) {
     Ndm = N[1];
@@ -915,7 +916,7 @@ void read_ic_parallel(char* fileName, const struct unit_system* internal_units,
           black_holes_read_particles(*bparts, list, &num_fields);
         }
         break;
-	
+
       default:
         if (mpi_rank == 0)
           message("Particle Type %d not yet supported. Particles ignored",
@@ -951,8 +952,9 @@ void read_ic_parallel(char* fileName, const struct unit_system* internal_units,
 
     /* Duplicate the stars particles into gparts */
     if (with_black_holes)
-      io_duplicate_black_holes_gparts(&tp, *bparts, *gparts, *Nblackholes, Ndm + *Ngas + *Nstars);
-    
+      io_duplicate_black_holes_gparts(&tp, *bparts, *gparts, *Nblackholes,
+                                      Ndm + *Ngas + *Nstars);
+
     threadpool_clean(&tp);
   }
 
@@ -1217,7 +1219,7 @@ void prepare_file(struct engine* e, const char* baseName, long long N_total[6],
           num_fields += velociraptor_write_bparts(bparts, list + num_fields);
         }
         break;
-	
+
       default:
         error("Particle Type %d not yet supported. Aborting", ptype);
     }
@@ -1681,7 +1683,7 @@ void write_output_parallel(struct engine* e, const char* baseName,
           }
         }
       } break;
-	
+
       default:
         error("Particle Type %d not yet supported. Aborting", ptype);
     }

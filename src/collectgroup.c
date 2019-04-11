@@ -102,12 +102,12 @@ void collectgroup1_apply(struct collectgroup1 *grp1, struct engine *e) {
   e->ti_black_holes_end_min = grp1->ti_black_holes_end_min;
   e->ti_black_holes_end_max = grp1->ti_black_holes_end_max;
   e->ti_black_holes_beg_max = grp1->ti_black_holes_beg_max;
-  e->ti_end_min =
-    min4(e->ti_hydro_end_min, e->ti_gravity_end_min, e->ti_stars_end_min, e->ti_black_holes_end_min);
-  e->ti_end_max =
-      max4(e->ti_hydro_end_max, e->ti_gravity_end_max, e->ti_stars_end_max , e->ti_black_holes_end_max);
-  e->ti_beg_max =
-    max4(e->ti_hydro_beg_max, e->ti_gravity_beg_max, e->ti_stars_beg_max, e->ti_black_holes_beg_max);
+  e->ti_end_min = min4(e->ti_hydro_end_min, e->ti_gravity_end_min,
+                       e->ti_stars_end_min, e->ti_black_holes_end_min);
+  e->ti_end_max = max4(e->ti_hydro_end_max, e->ti_gravity_end_max,
+                       e->ti_stars_end_max, e->ti_black_holes_end_max);
+  e->ti_beg_max = max4(e->ti_hydro_beg_max, e->ti_gravity_beg_max,
+                       e->ti_stars_beg_max, e->ti_black_holes_beg_max);
   e->updates = grp1->updated;
   e->g_updates = grp1->g_updated;
   e->s_updates = grp1->s_updated;
@@ -161,15 +161,15 @@ void collectgroup1_apply(struct collectgroup1 *grp1, struct engine *e) {
  */
 void collectgroup1_init(
     struct collectgroup1 *grp1, size_t updated, size_t g_updated,
-    size_t s_updated, size_t b_updated, size_t inhibited, size_t g_inhibited, size_t s_inhibited,
-    size_t b_inhibited,
-    integertime_t ti_hydro_end_min, integertime_t ti_hydro_end_max,
-    integertime_t ti_hydro_beg_max, integertime_t ti_gravity_end_min,
-    integertime_t ti_gravity_end_max, integertime_t ti_gravity_beg_max,
-    integertime_t ti_stars_end_min, integertime_t ti_stars_end_max,
-    integertime_t ti_stars_beg_max,     integertime_t ti_black_holes_end_min, integertime_t ti_black_holes_end_max,
-    integertime_t ti_black_holes_beg_max, int forcerebuild, long long total_nr_cells,
-    long long total_nr_tasks, float tasks_per_cell) {
+    size_t s_updated, size_t b_updated, size_t inhibited, size_t g_inhibited,
+    size_t s_inhibited, size_t b_inhibited, integertime_t ti_hydro_end_min,
+    integertime_t ti_hydro_end_max, integertime_t ti_hydro_beg_max,
+    integertime_t ti_gravity_end_min, integertime_t ti_gravity_end_max,
+    integertime_t ti_gravity_beg_max, integertime_t ti_stars_end_min,
+    integertime_t ti_stars_end_max, integertime_t ti_stars_beg_max,
+    integertime_t ti_black_holes_end_min, integertime_t ti_black_holes_end_max,
+    integertime_t ti_black_holes_beg_max, int forcerebuild,
+    long long total_nr_cells, long long total_nr_tasks, float tasks_per_cell) {
 
   grp1->updated = updated;
   grp1->g_updated = g_updated;

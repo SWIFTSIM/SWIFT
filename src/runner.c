@@ -2475,8 +2475,8 @@ void runner_do_timestep(struct runner *r, struct cell *c, int timer) {
                 ti_gravity_beg_max = 0;
   integertime_t ti_stars_end_min = max_nr_timesteps, ti_stars_end_max = 0,
                 ti_stars_beg_max = 0;
-  integertime_t ti_black_holes_end_min = max_nr_timesteps, ti_black_holes_end_max = 0,
-                ti_black_holes_beg_max = 0;
+  integertime_t ti_black_holes_end_min = max_nr_timesteps,
+                ti_black_holes_end_max = 0, ti_black_holes_beg_max = 0;
 
   /* No children? */
   if (!c->split) {
@@ -2714,8 +2714,10 @@ void runner_do_timestep(struct runner *r, struct cell *c, int timer) {
         b_updated++;
         g_updated++;
 
-        ti_black_holes_end_min = min(ti_current + ti_new_step, ti_black_holes_end_min);
-        ti_black_holes_end_max = max(ti_current + ti_new_step, ti_black_holes_end_max);
+        ti_black_holes_end_min =
+            min(ti_current + ti_new_step, ti_black_holes_end_min);
+        ti_black_holes_end_max =
+            max(ti_current + ti_new_step, ti_black_holes_end_max);
         ti_gravity_end_min = min(ti_current + ti_new_step, ti_gravity_end_min);
         ti_gravity_end_max = max(ti_current + ti_new_step, ti_gravity_end_max);
 
@@ -2760,28 +2762,31 @@ void runner_do_timestep(struct runner *r, struct cell *c, int timer) {
         updated += cp->hydro.updated;
         g_updated += cp->grav.updated;
         s_updated += cp->stars.updated;
-	b_updated += cp->black_holes.updated;
-	
+        b_updated += cp->black_holes.updated;
+
         inhibited += cp->hydro.inhibited;
         g_inhibited += cp->grav.inhibited;
         s_inhibited += cp->stars.inhibited;
-	b_inhibited += cp->black_holes.inhibited;
+        b_inhibited += cp->black_holes.inhibited;
 
-	ti_hydro_end_min = min(cp->hydro.ti_end_min, ti_hydro_end_min);
+        ti_hydro_end_min = min(cp->hydro.ti_end_min, ti_hydro_end_min);
         ti_hydro_end_max = max(cp->hydro.ti_end_max, ti_hydro_end_max);
         ti_hydro_beg_max = max(cp->hydro.ti_beg_max, ti_hydro_beg_max);
 
-	ti_gravity_end_min = min(cp->grav.ti_end_min, ti_gravity_end_min);
+        ti_gravity_end_min = min(cp->grav.ti_end_min, ti_gravity_end_min);
         ti_gravity_end_max = max(cp->grav.ti_end_max, ti_gravity_end_max);
         ti_gravity_beg_max = max(cp->grav.ti_beg_max, ti_gravity_beg_max);
 
-	ti_stars_end_min = min(cp->stars.ti_end_min, ti_stars_end_min);
+        ti_stars_end_min = min(cp->stars.ti_end_min, ti_stars_end_min);
         ti_stars_end_max = max(cp->grav.ti_end_max, ti_stars_end_max);
         ti_stars_beg_max = max(cp->grav.ti_beg_max, ti_stars_beg_max);
 
-	ti_black_holes_end_min = min(cp->black_holes.ti_end_min, ti_black_holes_end_min);
-        ti_black_holes_end_max = max(cp->grav.ti_end_max, ti_black_holes_end_max);
-        ti_black_holes_beg_max = max(cp->grav.ti_beg_max, ti_black_holes_beg_max);
+        ti_black_holes_end_min =
+            min(cp->black_holes.ti_end_min, ti_black_holes_end_min);
+        ti_black_holes_end_max =
+            max(cp->grav.ti_end_max, ti_black_holes_end_max);
+        ti_black_holes_beg_max =
+            max(cp->grav.ti_beg_max, ti_black_holes_beg_max);
       }
     }
   }
@@ -2791,12 +2796,12 @@ void runner_do_timestep(struct runner *r, struct cell *c, int timer) {
   c->grav.updated = g_updated;
   c->stars.updated = s_updated;
   c->black_holes.updated = b_updated;
-  
+
   c->hydro.inhibited = inhibited;
   c->grav.inhibited = g_inhibited;
   c->stars.inhibited = s_inhibited;
   c->black_holes.inhibited = b_inhibited;
-  
+
   c->hydro.ti_end_min = ti_hydro_end_min;
   c->hydro.ti_end_max = ti_hydro_end_max;
   c->hydro.ti_beg_max = ti_hydro_beg_max;
@@ -3604,7 +3609,8 @@ void *runner_main(void *data) {
             cell_unpack_end_step_stars(ci, (struct pcell_step_stars *)t->buff);
             free(t->buff);
           } else if (t->subtype == task_subtype_tend_bpart) {
-            cell_unpack_end_step_black_holes(ci, (struct pcell_step_black_holes *)t->buff);
+            cell_unpack_end_step_black_holes(
+                ci, (struct pcell_step_black_holes *)t->buff);
             free(t->buff);
           } else if (t->subtype == task_subtype_xv) {
             runner_do_recv_part(r, ci, 1, 1);

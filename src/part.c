@@ -140,7 +140,7 @@ void part_relink_bparts_to_gparts(struct gpart *gparts, size_t N,
  */
 void part_relink_all_parts_to_gparts(struct gpart *gparts, size_t N,
                                      struct part *parts, struct spart *sparts,
-				     struct bpart *bparts) {
+                                     struct bpart *bparts) {
   for (size_t k = 0; k < N; k++) {
     if (gparts[k].type == swift_type_gas) {
       parts[-gparts[k].id_or_neg_offset].gpart = &gparts[k];

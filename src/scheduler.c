@@ -1541,7 +1541,7 @@ void scheduler_reweight(struct scheduler *s, int verbose) {
     const float scount_i = (t->ci != NULL) ? t->ci->stars.count : 0.f;
     const float scount_j = (t->cj != NULL) ? t->cj->stars.count : 0.f;
     const float bcount_i = (t->ci != NULL) ? t->ci->black_holes.count : 0.f;
-    //const float bcount_j = (t->cj != NULL) ? t->cj->black_holes.count : 0.f;
+    // const float bcount_j = (t->cj != NULL) ? t->cj->black_holes.count : 0.f;
 
     switch (t->type) {
       case task_type_sort:
@@ -1663,10 +1663,10 @@ void scheduler_reweight(struct scheduler *s, int verbose) {
         cost = wscale * (count_i + scount_i);
         break;
       case task_type_kick1:
-	cost = wscale * (count_i + gcount_i + scount_i + bcount_i);
+        cost = wscale * (count_i + gcount_i + scount_i + bcount_i);
         break;
       case task_type_kick2:
-	cost = wscale * (count_i + gcount_i + scount_i + bcount_i);
+        cost = wscale * (count_i + gcount_i + scount_i + bcount_i);
         break;
       case task_type_timestep:
         cost = wscale * (count_i + gcount_i + scount_i + bcount_i);
@@ -1886,7 +1886,8 @@ void scheduler_enqueue(struct scheduler *s, struct task *t) {
           t->buff = (struct pcell_step_black_holes *)malloc(
               sizeof(struct pcell_step_black_holes) * t->ci->mpi.pcell_size);
           err = MPI_Irecv(
-              t->buff, t->ci->mpi.pcell_size * sizeof(struct pcell_step_black_holes),
+              t->buff,
+              t->ci->mpi.pcell_size * sizeof(struct pcell_step_black_holes),
               MPI_BYTE, t->ci->nodeID, t->flags, subtaskMPI_comms[t->subtype],
               &t->req);
         } else if (t->subtype == task_subtype_xv ||
@@ -1980,7 +1981,8 @@ void scheduler_enqueue(struct scheduler *s, struct task *t) {
         } else if (t->subtype == task_subtype_tend_bpart) {
           t->buff = (struct pcell_step_black_holes *)malloc(
               sizeof(struct pcell_step_black_holes) * t->ci->mpi.pcell_size);
-          cell_pack_end_step_black_holes(t->ci, (struct pcell_step_black_holes *)t->buff);
+          cell_pack_end_step_black_holes(
+              t->ci, (struct pcell_step_black_holes *)t->buff);
 
           if ((t->ci->mpi.pcell_size * sizeof(struct pcell_step_black_holes)) >
               s->mpi_message_limit) {

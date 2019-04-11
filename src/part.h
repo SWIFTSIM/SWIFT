@@ -125,7 +125,7 @@ void part_relink_bparts_to_gparts(struct gpart *gparts, size_t N,
                                   struct bpart *bparts);
 void part_relink_all_parts_to_gparts(struct gpart *gparts, size_t N,
                                      struct part *parts, struct spart *sparts,
-				     struct bpart *bparts);
+                                     struct bpart *bparts);
 void part_verify_links(struct part *parts, struct gpart *gparts,
                        struct spart *sparts, struct bpart *bparts,
                        size_t nr_parts, size_t nr_gparts, size_t nr_sparts,

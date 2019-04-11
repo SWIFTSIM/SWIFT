@@ -436,7 +436,8 @@ void writeArray(const struct engine* e, hid_t grp, char* fileName,
  * @param Ngas (output) The number of #part read from the file on that node.
  * @param Ngparts (output) The number of #gpart read from the file on that node.
  * @param Nstars (output) The number of #spart read from the file on that node.
- * @param Nblackholes (output) The number of #bpart read from the file on that node.
+ * @param Nblackholes (output) The number of #bpart read from the file on that
+ * node.
  * @param flag_entropy (output) 1 if the ICs contained Entropy in the
  * InternalEnergy field
  * @param with_hydro Are we reading gas particles ?
@@ -465,9 +466,10 @@ void writeArray(const struct engine* e, hid_t grp, char* fileName,
  */
 void read_ic_serial(char* fileName, const struct unit_system* internal_units,
                     double dim[3], struct part** parts, struct gpart** gparts,
-                    struct spart** sparts, struct bpart** bparts, size_t* Ngas, size_t* Ngparts,
-                    size_t* Nstars, size_t *Nblackholes, int* flag_entropy, int with_hydro,
-                    int with_gravity, int with_stars, int with_black_holes, int cleanup_h,
+                    struct spart** sparts, struct bpart** bparts, size_t* Ngas,
+                    size_t* Ngparts, size_t* Nstars, size_t* Nblackholes,
+                    int* flag_entropy, int with_hydro, int with_gravity,
+                    int with_stars, int with_black_holes, int cleanup_h,
                     int cleanup_sqrt_a, double h, double a, int mpi_rank,
                     int mpi_size, MPI_Comm comm, MPI_Info info, int n_threads,
                     int dry_run) {
@@ -488,7 +490,7 @@ void read_ic_serial(char* fileName, const struct unit_system* internal_units,
 
   /* Initialise counters */
   *Ngas = 0, *Ngparts = 0, *Nstars = 0, *Nblackholes = 0;
-  
+
   /* First read some information about the content */
   if (mpi_rank == 0) {
 
@@ -645,7 +647,7 @@ void read_ic_serial(char* fileName, const struct unit_system* internal_units,
       error("Error while allocating memory for black hole particles");
     bzero(*bparts, *Nblackholes * sizeof(struct bpart));
   }
-  
+
   /* Allocate memory to store all gravity  particles */
   if (with_gravity) {
     Ndm = N[1];
@@ -726,7 +728,7 @@ void read_ic_serial(char* fileName, const struct unit_system* internal_units,
               black_holes_read_particles(*bparts, list, &num_fields);
             }
             break;
-	    
+
           default:
             if (mpi_rank == 0)
               message("Particle Type %d not yet supported. Particles ignored",
@@ -771,8 +773,9 @@ void read_ic_serial(char* fileName, const struct unit_system* internal_units,
 
     /* Duplicate the black holes particles into gparts */
     if (with_black_holes)
-      io_duplicate_black_holes_gparts(&tp, *bparts, *gparts, *Nblackholes, Ndm + *Ngas + *Nstars);
-    
+      io_duplicate_black_holes_gparts(&tp, *bparts, *gparts, *Nblackholes,
+                                      Ndm + *Ngas + *Nstars);
+
     threadpool_clean(&tp);
   }
 
@@ -844,7 +847,8 @@ void write_output_serial(struct engine* e, const char* baseName,
       e->s->nr_sparts - e->s->nr_inhibited_sparts - e->s->nr_extra_sparts;
   const size_t Nblackholes_written =
       e->s->nr_bparts - e->s->nr_inhibited_bparts - e->s->nr_extra_bparts;
-  const size_t Nbaryons_written = Ngas_written + Nstars_written + Nblackholes_written;
+  const size_t Nbaryons_written =
+      Ngas_written + Nstars_written + Nblackholes_written;
   const size_t Ndm_written =
       Ntot_written > 0 ? Ntot_written - Nbaryons_written : 0;
 
@@ -858,8 +862,8 @@ void write_output_serial(struct engine* e, const char* baseName,
              e->snapshot_output_count);
 
   /* Compute offset in the file and total number of particles */
-  size_t N[swift_type_count] = {
-      Ngas_written, Ndm_written, 0, 0, Nstars_written, Nblackholes_written};
+  size_t N[swift_type_count] = {Ngas_written,   Ndm_written,        0, 0,
+                                Nstars_written, Nblackholes_written};
   long long N_total[swift_type_count] = {0};
   long long offset[swift_type_count] = {0};
   MPI_Exscan(&N, &offset, swift_type_count, MPI_LONG_LONG_INT, MPI_SUM, comm);
@@ -1135,7 +1139,7 @@ void write_output_serial(struct engine* e, const char* baseName,
         struct gpart* gparts_written = NULL;
         struct velociraptor_gpart_data* gpart_group_data_written = NULL;
         struct spart* sparts_written = NULL;
-	struct bpart* bparts_written = NULL;
+        struct bpart* bparts_written = NULL;
 
         /* Write particle fields from the particle structure */
         switch (ptype) {
@@ -1305,9 +1309,9 @@ void write_output_serial(struct engine* e, const char* baseName,
               Nparticles = Nblackholes_written;
 
               /* Allocate temporary arrays */
-              if (swift_memalign("bparts_written", (void**)&bparts_written,
-                                 bpart_align,
-                                 Nblackholes_written * sizeof(struct bpart)) != 0)
+              if (swift_memalign(
+                      "bparts_written", (void**)&bparts_written, bpart_align,
+                      Nblackholes_written * sizeof(struct bpart)) != 0)
                 error("Error while allocating temporart memory for bparts");
 
               /* Collect the particles we want to write */
@@ -1322,7 +1326,7 @@ void write_output_serial(struct engine* e, const char* baseName,
               }
             }
           } break;
-	    
+
           default:
             error("Particle Type %d not yet supported. Aborting", ptype);
         }
@@ -1349,7 +1353,7 @@ void write_output_serial(struct engine* e, const char* baseName,
         if (gpart_group_data_written)
           swift_free("gpart_group_written", gpart_group_data_written);
         if (sparts_written) swift_free("sparts_written", sparts_written);
-	if (bparts_written) swift_free("bparts_written", sparts_written);
+        if (bparts_written) swift_free("bparts_written", sparts_written);
 
         /* Close particle group */
         H5Gclose(h_grp);

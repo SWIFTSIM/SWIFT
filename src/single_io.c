@@ -397,7 +397,7 @@ void read_ic_single(const char* fileName,
 
   /* Initialise counters */
   *Ngas = 0, *Ngparts = 0, *Nstars = 0, *Nblackholes = 0;
-  
+
   /* Open file */
   /* message("Opening file '%s' as IC.", fileName); */
   h_file = H5Fopen(fileName, H5F_ACC_RDONLY, H5P_DEFAULT);

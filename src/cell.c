@@ -850,8 +850,8 @@ int cell_unpack_end_step_stars(struct cell *restrict c,
  *
  * @return The number of packed cells.
  */
-int cell_pack_end_step_black_holes(struct cell *restrict c,
-                             struct pcell_step_black_holes *restrict pcells) {
+int cell_pack_end_step_black_holes(
+    struct cell *restrict c, struct pcell_step_black_holes *restrict pcells) {
 
 #ifdef WITH_MPI
 
@@ -884,8 +884,8 @@ int cell_pack_end_step_black_holes(struct cell *restrict c,
  *
  * @return The number of cells created.
  */
-int cell_unpack_end_step_black_holes(struct cell *restrict c,
-                               struct pcell_step_black_holes *restrict pcells) {
+int cell_unpack_end_step_black_holes(
+    struct cell *restrict c, struct pcell_step_black_holes *restrict pcells) {
 
 #ifdef WITH_MPI
 

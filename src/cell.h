@@ -816,8 +816,10 @@ int cell_pack_end_step_grav(struct cell *c, struct pcell_step_grav *pcell);
 int cell_unpack_end_step_grav(struct cell *c, struct pcell_step_grav *pcell);
 int cell_pack_end_step_stars(struct cell *c, struct pcell_step_stars *pcell);
 int cell_unpack_end_step_stars(struct cell *c, struct pcell_step_stars *pcell);
-int cell_pack_end_step_black_holes(struct cell *c, struct pcell_step_black_holes *pcell);
-int cell_unpack_end_step_black_holes(struct cell *c, struct pcell_step_black_holes *pcell);
+int cell_pack_end_step_black_holes(struct cell *c,
+                                   struct pcell_step_black_holes *pcell);
+int cell_unpack_end_step_black_holes(struct cell *c,
+                                     struct pcell_step_black_holes *pcell);
 int cell_pack_multipoles(struct cell *c, struct gravity_tensors *m);
 int cell_unpack_multipoles(struct cell *c, struct gravity_tensors *m);
 int cell_getsize(struct cell *c);

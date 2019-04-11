@@ -282,7 +282,7 @@ struct space {
   /*! Buffers for b-parts that we will receive from foreign cells. */
   struct bpart *bparts_foreign;
   size_t nr_bparts_foreign, size_bparts_foreign;
-  
+
 #endif
 };
 
