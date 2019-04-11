@@ -41,7 +41,8 @@
 
 // Tillotson parameters
 struct Til_params {
-  float rho_0, a, b, A, B, u_0, u_iv, u_cv, alpha, beta, eta_min, P_min;
+  float rho_0, a, b, A, B, u_0, u_iv, u_cv, alpha, beta, eta_min, eta_zero, 
+        P_min;
   enum eos_planetary_material_id mat_id;
 };
 
@@ -60,6 +61,7 @@ INLINE static void set_Til_iron(struct Til_params *mat,
   mat->alpha = 5.0f;
   mat->beta = 5.0f;
   mat->eta_min = 0.0f;
+  mat->eta_zero = 0.0f;
   mat->P_min = 0.0f;
 }
 INLINE static void set_Til_granite(struct Til_params *mat,
@@ -76,6 +78,7 @@ INLINE static void set_Til_granite(struct Til_params *mat,
   mat->alpha = 5.0f;
   mat->beta = 5.0f;
   mat->eta_min = 0.0f;
+  mat->eta_zero = 0.0f;
   mat->P_min = 0.0f;
 }
 INLINE static void set_Til_water(struct Til_params *mat,
@@ -91,7 +94,8 @@ INLINE static void set_Til_water(struct Til_params *mat,
   mat->u_cv = 2.69e9f;
   mat->alpha = 10.0f;
   mat->beta = 5.0f;
-  mat->eta_min = 0.9f;
+  mat->eta_min = 0.925f;
+  mat->eta_zero = 0.875f;
   mat->P_min = 0.0f;
 }
 
@@ -177,11 +181,13 @@ INLINE static float Til_pressure_from_internal_energy(
   float P_c, P_e, P;
 
   // Condensed or cold
-  if (eta < mat->eta_min) {
+  P_c = (mat->a + mat->b * w_inv) * density * u + mat->A * mu +
+        mat->B * mu * mu;
+  if (eta < mat->eta_zero) {
     P_c = 0.f;
-  } else {
-    P_c = (mat->a + mat->b * w_inv) * density * u + mat->A * mu +
-          mat->B * mu * mu;
+  } 
+  else if (eta < mat->eta_min) {
+    P_c *= (eta - mat->eta_zero) / (mat->eta_min - mat->eta_zero);
   }
   // Expanded and hot
   P_e = mat->a * density * u +
@@ -237,11 +243,13 @@ INLINE static float Til_soundspeed_from_internal_energy(
   float P_c, P_e, c_sq_c, c_sq_e, c_sq;
 
   // Condensed or cold
-  if (eta < mat->eta_min) {
+  P_c = (mat->a + mat->b * w_inv) * density * u + mat->A * mu +
+        mat->B * mu * mu;
+  if (eta < mat->eta_zero) {
     P_c = 0.f;
-  } else {
-    P_c = (mat->a + mat->b * w_inv) * density * u + mat->A * mu +
-          mat->B * mu * mu;
+  }
+  else if (eta < mat->eta_min) {
+    P_c *= (eta - mat->eta_zero) / (mat->eta_min - mat->eta_zero);
   }
   c_sq_c = P_c * rho_inv * (1.f + mat->a + mat->b * w_inv) +
            mat->b * (w - 1.f) * w_inv_sq * (2.f * u - P_c * rho_inv) +
