@@ -36,17 +36,20 @@
 
 /* Local collections for MPI reduces. */
 struct mpicollectgroup1 {
-  long long updated, g_updated, s_updated;
-  long long inhibited, g_inhibited, s_inhibited;
+  long long updated, g_updated, s_updated, b_updated;
+  long long inhibited, g_inhibited, s_inhibited, b_inhibited;
   integertime_t ti_hydro_end_min;
   integertime_t ti_gravity_end_min;
   integertime_t ti_stars_end_min;
+  integertime_t ti_black_holes_end_min;
   integertime_t ti_hydro_end_max;
   integertime_t ti_gravity_end_max;
   integertime_t ti_stars_end_max;
+  integertime_t ti_black_holes_end_max;
   integertime_t ti_hydro_beg_max;
   integertime_t ti_gravity_beg_max;
   integertime_t ti_stars_beg_max;
+  integertime_t ti_black_holes_beg_max;
   int forcerebuild;
   long long total_nr_cells;
   long long total_nr_tasks;
@@ -96,18 +99,23 @@ void collectgroup1_apply(struct collectgroup1 *grp1, struct engine *e) {
   e->ti_stars_end_min = grp1->ti_stars_end_min;
   e->ti_stars_end_max = grp1->ti_stars_end_max;
   e->ti_stars_beg_max = grp1->ti_stars_beg_max;
+  e->ti_black_holes_end_min = grp1->ti_black_holes_end_min;
+  e->ti_black_holes_end_max = grp1->ti_black_holes_end_max;
+  e->ti_black_holes_beg_max = grp1->ti_black_holes_beg_max;
   e->ti_end_min =
-      min3(e->ti_hydro_end_min, e->ti_gravity_end_min, e->ti_stars_end_min);
+    min4(e->ti_hydro_end_min, e->ti_gravity_end_min, e->ti_stars_end_min, e->ti_black_holes_end_min);
   e->ti_end_max =
-      max3(e->ti_hydro_end_max, e->ti_gravity_end_max, e->ti_stars_end_max);
+      max4(e->ti_hydro_end_max, e->ti_gravity_end_max, e->ti_stars_end_max , e->ti_black_holes_end_max);
   e->ti_beg_max =
-      max3(e->ti_hydro_beg_max, e->ti_gravity_beg_max, e->ti_stars_beg_max);
+    max4(e->ti_hydro_beg_max, e->ti_gravity_beg_max, e->ti_stars_beg_max, e->ti_black_holes_beg_max);
   e->updates = grp1->updated;
   e->g_updates = grp1->g_updated;
   e->s_updates = grp1->s_updated;
+  e->b_updates = grp1->b_updated;
   e->nr_inhibited_parts = grp1->inhibited;
   e->nr_inhibited_gparts = grp1->g_inhibited;
   e->nr_inhibited_sparts = grp1->s_inhibited;
+  e->nr_inhibited_bparts = grp1->b_inhibited;
   e->forcerebuild = grp1->forcerebuild;
   e->total_nr_cells = grp1->total_nr_cells;
   e->total_nr_tasks = grp1->total_nr_tasks;
@@ -153,20 +161,24 @@ void collectgroup1_apply(struct collectgroup1 *grp1, struct engine *e) {
  */
 void collectgroup1_init(
     struct collectgroup1 *grp1, size_t updated, size_t g_updated,
-    size_t s_updated, size_t inhibited, size_t g_inhibited, size_t s_inhibited,
+    size_t s_updated, size_t b_updated, size_t inhibited, size_t g_inhibited, size_t s_inhibited,
+    size_t b_inhibited,
     integertime_t ti_hydro_end_min, integertime_t ti_hydro_end_max,
     integertime_t ti_hydro_beg_max, integertime_t ti_gravity_end_min,
     integertime_t ti_gravity_end_max, integertime_t ti_gravity_beg_max,
     integertime_t ti_stars_end_min, integertime_t ti_stars_end_max,
-    integertime_t ti_stars_beg_max, int forcerebuild, long long total_nr_cells,
+    integertime_t ti_stars_beg_max,     integertime_t ti_black_holes_end_min, integertime_t ti_black_holes_end_max,
+    integertime_t ti_black_holes_beg_max, int forcerebuild, long long total_nr_cells,
     long long total_nr_tasks, float tasks_per_cell) {
 
   grp1->updated = updated;
   grp1->g_updated = g_updated;
   grp1->s_updated = s_updated;
+  grp1->b_updated = b_updated;
   grp1->inhibited = inhibited;
   grp1->g_inhibited = g_inhibited;
   grp1->s_inhibited = s_inhibited;
+  grp1->b_inhibited = b_inhibited;
   grp1->ti_hydro_end_min = ti_hydro_end_min;
   grp1->ti_hydro_end_max = ti_hydro_end_max;
   grp1->ti_hydro_beg_max = ti_hydro_beg_max;
@@ -176,6 +188,9 @@ void collectgroup1_init(
   grp1->ti_stars_end_min = ti_stars_end_min;
   grp1->ti_stars_end_max = ti_stars_end_max;
   grp1->ti_stars_beg_max = ti_stars_beg_max;
+  grp1->ti_black_holes_end_min = ti_black_holes_end_min;
+  grp1->ti_black_holes_end_max = ti_black_holes_end_max;
+  grp1->ti_black_holes_beg_max = ti_black_holes_beg_max;
   grp1->forcerebuild = forcerebuild;
   grp1->total_nr_cells = total_nr_cells;
   grp1->total_nr_tasks = total_nr_tasks;
@@ -199,18 +214,23 @@ void collectgroup1_reduce(struct collectgroup1 *grp1) {
   mpigrp11.updated = grp1->updated;
   mpigrp11.g_updated = grp1->g_updated;
   mpigrp11.s_updated = grp1->s_updated;
+  mpigrp11.b_updated = grp1->b_updated;
   mpigrp11.inhibited = grp1->inhibited;
   mpigrp11.g_inhibited = grp1->g_inhibited;
   mpigrp11.s_inhibited = grp1->s_inhibited;
+  mpigrp11.b_inhibited = grp1->b_inhibited;
   mpigrp11.ti_hydro_end_min = grp1->ti_hydro_end_min;
   mpigrp11.ti_gravity_end_min = grp1->ti_gravity_end_min;
   mpigrp11.ti_stars_end_min = grp1->ti_stars_end_min;
+  mpigrp11.ti_black_holes_end_min = grp1->ti_black_holes_end_min;
   mpigrp11.ti_hydro_end_max = grp1->ti_hydro_end_max;
   mpigrp11.ti_gravity_end_max = grp1->ti_gravity_end_max;
   mpigrp11.ti_stars_end_max = grp1->ti_stars_end_max;
+  mpigrp11.ti_black_holes_end_max = grp1->ti_black_holes_end_max;
   mpigrp11.ti_hydro_beg_max = grp1->ti_hydro_beg_max;
   mpigrp11.ti_gravity_beg_max = grp1->ti_gravity_beg_max;
   mpigrp11.ti_stars_beg_max = grp1->ti_stars_beg_max;
+  mpigrp11.ti_black_holes_beg_max = grp1->ti_black_holes_beg_max;
   mpigrp11.forcerebuild = grp1->forcerebuild;
   mpigrp11.total_nr_cells = grp1->total_nr_cells;
   mpigrp11.total_nr_tasks = grp1->total_nr_tasks;
@@ -225,18 +245,23 @@ void collectgroup1_reduce(struct collectgroup1 *grp1) {
   grp1->updated = mpigrp12.updated;
   grp1->g_updated = mpigrp12.g_updated;
   grp1->s_updated = mpigrp12.s_updated;
+  grp1->b_updated = mpigrp12.b_updated;
   grp1->inhibited = mpigrp12.inhibited;
   grp1->g_inhibited = mpigrp12.g_inhibited;
   grp1->s_inhibited = mpigrp12.s_inhibited;
+  grp1->b_inhibited = mpigrp12.b_inhibited;
   grp1->ti_hydro_end_min = mpigrp12.ti_hydro_end_min;
   grp1->ti_gravity_end_min = mpigrp12.ti_gravity_end_min;
   grp1->ti_stars_end_min = mpigrp12.ti_stars_end_min;
+  grp1->ti_black_holes_end_min = mpigrp12.ti_black_holes_end_min;
   grp1->ti_hydro_end_max = mpigrp12.ti_hydro_end_max;
   grp1->ti_gravity_end_max = mpigrp12.ti_gravity_end_max;
   grp1->ti_stars_end_max = mpigrp12.ti_stars_end_max;
+  grp1->ti_black_holes_end_max = mpigrp12.ti_black_holes_end_max;
   grp1->ti_hydro_beg_max = mpigrp12.ti_hydro_beg_max;
   grp1->ti_gravity_beg_max = mpigrp12.ti_gravity_beg_max;
   grp1->ti_stars_beg_max = mpigrp12.ti_stars_beg_max;
+  grp1->ti_black_holes_beg_max = mpigrp12.ti_black_holes_beg_max;
   grp1->forcerebuild = mpigrp12.forcerebuild;
   grp1->total_nr_cells = mpigrp12.total_nr_cells;
   grp1->total_nr_tasks = mpigrp12.total_nr_tasks;
@@ -260,11 +285,13 @@ static void doreduce1(struct mpicollectgroup1 *mpigrp11,
   mpigrp11->updated += mpigrp12->updated;
   mpigrp11->g_updated += mpigrp12->g_updated;
   mpigrp11->s_updated += mpigrp12->s_updated;
+  mpigrp11->b_updated += mpigrp12->b_updated;
 
   /* Sum of inhibited */
   mpigrp11->inhibited += mpigrp12->inhibited;
   mpigrp11->g_inhibited += mpigrp12->g_inhibited;
   mpigrp11->s_inhibited += mpigrp12->s_inhibited;
+  mpigrp11->b_inhibited += mpigrp12->b_inhibited;
 
   /* Minimum end time. */
   mpigrp11->ti_hydro_end_min =
@@ -273,6 +300,8 @@ static void doreduce1(struct mpicollectgroup1 *mpigrp11,
       min(mpigrp11->ti_gravity_end_min, mpigrp12->ti_gravity_end_min);
   mpigrp11->ti_stars_end_min =
       min(mpigrp11->ti_stars_end_min, mpigrp12->ti_stars_end_min);
+  mpigrp11->ti_black_holes_end_min =
+      min(mpigrp11->ti_black_holes_end_min, mpigrp12->ti_black_holes_end_min);
 
   /* Maximum end time. */
   mpigrp11->ti_hydro_end_max =
@@ -281,6 +310,8 @@ static void doreduce1(struct mpicollectgroup1 *mpigrp11,
       max(mpigrp11->ti_gravity_end_max, mpigrp12->ti_gravity_end_max);
   mpigrp11->ti_stars_end_max =
       max(mpigrp11->ti_stars_end_max, mpigrp12->ti_stars_end_max);
+  mpigrp11->ti_black_holes_end_max =
+      max(mpigrp11->ti_black_holes_end_max, mpigrp12->ti_black_holes_end_max);
 
   /* Maximum beg time. */
   mpigrp11->ti_hydro_beg_max =
@@ -289,6 +320,8 @@ static void doreduce1(struct mpicollectgroup1 *mpigrp11,
       max(mpigrp11->ti_gravity_beg_max, mpigrp12->ti_gravity_beg_max);
   mpigrp11->ti_stars_beg_max =
       max(mpigrp11->ti_stars_beg_max, mpigrp12->ti_stars_beg_max);
+  mpigrp11->ti_black_holes_beg_max =
+      max(mpigrp11->ti_black_holes_beg_max, mpigrp12->ti_black_holes_beg_max);
 
   /* Everyone must agree to not rebuild. */
   if (mpigrp11->forcerebuild || mpigrp12->forcerebuild)

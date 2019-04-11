@@ -499,7 +499,6 @@ int main(int argc, char *argv[]) {
   if (with_star_formation && with_feedback)
     error("Can't run with star formation and feedback over MPI (yet)");
   if (with_limiter) error("Can't run with time-step limiter over MPI (yet)");
-  if (with_black_holes) error("Can't run with black holes over MPI (yet)");
 #endif
 
     /* Temporary early aborts for modes not supported with hand-vec. */
@@ -799,16 +798,18 @@ int main(int argc, char *argv[]) {
 #if defined(HAVE_HDF5)
 #if defined(WITH_MPI)
 #if defined(HAVE_PARALLEL_HDF5)
-    read_ic_parallel(ICfileName, &us, dim, &parts, &gparts, &sparts, &Ngas,
-                     &Ngpart, &Nspart, &flag_entropy_ICs, with_hydro,
+    read_ic_parallel(ICfileName, &us, dim, &parts, &gparts, &sparts, &bparts, &Ngas,
+                     &Ngpart, &Nspart, &Nbpart, &flag_entropy_ICs, with_hydro,
                      (with_external_gravity || with_self_gravity), with_stars,
+		     with_black_holes,
                      cleanup_h, cleanup_sqrt_a, cosmo.h, cosmo.a, myrank,
                      nr_nodes, MPI_COMM_WORLD, MPI_INFO_NULL, nr_threads,
                      dry_run);
 #else
-    read_ic_serial(ICfileName, &us, dim, &parts, &gparts, &sparts, &Ngas,
-                   &Ngpart, &Nspart, &flag_entropy_ICs, with_hydro,
+    read_ic_serial(ICfileName, &us, dim, &parts, &gparts, &sparts, &bparts, &Ngas,
+                   &Ngpart, &Nspart, &Nbpart, &flag_entropy_ICs, with_hydro,
                    (with_external_gravity || with_self_gravity), with_stars,
+		   with_black_holes,
                    cleanup_h, cleanup_sqrt_a, cosmo.h, cosmo.a, myrank,
                    nr_nodes, MPI_COMM_WORLD, MPI_INFO_NULL, nr_threads,
                    dry_run);
@@ -833,6 +834,10 @@ int main(int argc, char *argv[]) {
     if (!with_stars && !dry_run) {
       for (size_t k = 0; k < Ngpart; ++k)
         if (gparts[k].type == swift_type_stars) error("Linking problem");
+    }
+    if (!with_black_holes && !dry_run) {
+      for (size_t k = 0; k < Ngpart; ++k)
+        if (gparts[k].type == swift_type_black_hole) error("Linking problem");
     }
     if (!with_hydro && !dry_run) {
       for (size_t k = 0; k < Ngpart; ++k)
@@ -1058,9 +1063,9 @@ int main(int argc, char *argv[]) {
 
   /* Legend */
   if (myrank == 0) {
-    printf("# %6s %14s %12s %12s %14s %9s %12s %12s %12s %16s [%s] %6s\n",
+    printf("# %6s %14s %12s %12s %14s %9s %12s %12s %12s %12s %16s [%s] %6s\n",
            "Step", "Time", "Scale-factor", "Redshift", "Time-step", "Time-bins",
-           "Updates", "g-Updates", "s-Updates", "Wall-clock time",
+           "Updates", "g-Updates", "s-Updates", "b-Updates", "Wall-clock time",
            clocks_getunit(), "Props");
     fflush(stdout);
   }

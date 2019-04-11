@@ -202,6 +202,7 @@ void space_rebuild_recycle_mapper(void *map_data, int num_elements,
     c->hydro.dx_max_sort = 0.0f;
     c->stars.dx_max_part = 0.f;
     c->stars.dx_max_sort = 0.f;
+    c->black_holes.dx_max_part = 0.f;
     c->hydro.sorted = 0;
     c->stars.sorted = 0;
     c->hydro.count = 0;
@@ -216,6 +217,10 @@ void space_rebuild_recycle_mapper(void *map_data, int num_elements,
     c->stars.count_total = 0;
     c->stars.updated = 0;
     c->stars.inhibited = 0;
+    c->black_holes.count = 0;
+    c->black_holes.count_total = 0;
+    c->black_holes.updated = 0;
+    c->black_holes.inhibited = 0;
     c->grav.init = NULL;
     c->grav.init_out = NULL;
     c->hydro.extra_ghost = NULL;
@@ -234,6 +239,7 @@ void space_rebuild_recycle_mapper(void *map_data, int num_elements,
     c->stars.drift = NULL;
     c->stars.stars_in = NULL;
     c->stars.stars_out = NULL;
+    c->black_holes.drift = NULL;
     c->grav.drift = NULL;
     c->grav.drift_out = NULL;
     c->hydro.cooling = NULL;
@@ -250,11 +256,13 @@ void space_rebuild_recycle_mapper(void *map_data, int num_elements,
     c->hydro.xparts = NULL;
     c->grav.parts = NULL;
     c->stars.parts = NULL;
+    c->black_holes.parts = NULL;
     c->hydro.do_sub_sort = 0;
     c->stars.do_sub_sort = 0;
     c->hydro.do_sub_drift = 0;
     c->grav.do_sub_drift = 0;
     c->stars.do_sub_drift = 0;
+    c->black_holes.do_sub_drift = 0;
     c->hydro.do_sub_limiter = 0;
     c->hydro.do_limiter = 0;
     c->hydro.ti_end_min = -1;
@@ -263,6 +271,8 @@ void space_rebuild_recycle_mapper(void *map_data, int num_elements,
     c->grav.ti_end_max = -1;
     c->stars.ti_end_min = -1;
     c->stars.ti_end_max = -1;
+    c->black_holes.ti_end_min = -1;
+    c->black_holes.ti_end_max = -1;
 #if defined(SWIFT_DEBUG_CHECKS) || defined(SWIFT_CELL_GRAPH)
     c->cellID = 0;
 #endif
@@ -337,6 +347,11 @@ void space_free_foreign_parts(struct space *s) {
     swift_free("sparts_foreign", s->sparts_foreign);
     s->size_sparts_foreign = 0;
     s->sparts_foreign = NULL;
+  }
+  if (s->bparts_foreign != NULL) {
+    swift_free("bparts_foreign", s->bparts_foreign);
+    s->size_bparts_foreign = 0;
+    s->bparts_foreign = NULL;
   }
 #endif
 }
@@ -591,16 +606,26 @@ void space_regrid(struct space *s, int verbose) {
           c->grav.ti_old_multipole = ti_current;
 #ifdef WITH_MPI
           c->mpi.tag = -1;
-          c->mpi.hydro.recv_xv = NULL;
-          c->mpi.hydro.recv_rho = NULL;
-          c->mpi.hydro.recv_gradient = NULL;
-          c->mpi.hydro.send_xv = NULL;
-          c->mpi.hydro.send_rho = NULL;
-          c->mpi.hydro.send_gradient = NULL;
-          c->mpi.stars.send = NULL;
-          c->mpi.stars.recv = NULL;
-          c->mpi.grav.recv = NULL;
-          c->mpi.grav.send = NULL;
+
+	  c->mpi.hydro.recv_xv = NULL;
+	  c->mpi.hydro.recv_rho = NULL;
+	  c->mpi.hydro.recv_gradient = NULL;
+	  c->mpi.hydro.recv_ti = NULL;
+	  c->mpi.grav.recv = NULL;
+	  c->mpi.grav.recv_ti = NULL;
+	  c->mpi.stars.recv = NULL;
+	  c->mpi.stars.recv_ti = NULL;
+	  c->mpi.limiter.recv = NULL;
+	  
+	  c->mpi.hydro.send_xv = NULL;
+	  c->mpi.hydro.send_rho = NULL;
+	  c->mpi.hydro.send_gradient = NULL;
+	  c->mpi.hydro.send_ti = NULL;
+	  c->mpi.grav.send = NULL;
+	  c->mpi.grav.send_ti = NULL;
+	  c->mpi.stars.send = NULL;
+	  c->mpi.stars.send_ti = NULL;
+	  c->mpi.limiter.send = NULL;
 #endif  // WITH_MPI
           if (s->with_self_gravity) c->grav.multipole = &s->multipoles_top[cid];
 #if defined(SWIFT_DEBUG_CHECKS) || defined(SWIFT_CELL_GRAPH)
@@ -1486,7 +1511,8 @@ void space_rebuild(struct space *s, int repartitioned, int verbose) {
     engine_exchange_strays(s->e, nr_parts, &h_index[nr_parts],
                            &nr_parts_exchanged, nr_gparts, &g_index[nr_gparts],
                            &nr_gparts_exchanged, nr_sparts, &s_index[nr_sparts],
-                           &nr_sparts_exchanged);
+                           &nr_sparts_exchanged, nr_bparts, &b_index[nr_bparts],
+			   &nr_bparts_exchanged);
 
     /* Set the new particle counts. */
     s->nr_parts = nr_parts + nr_parts_exchanged;
@@ -5249,6 +5275,8 @@ void space_struct_restore(struct space *s, FILE *stream) {
   s->size_gparts_foreign = 0;
   s->sparts_foreign = NULL;
   s->size_sparts_foreign = 0;
+  s->bparts_foreign = NULL;
+  s->size_bparts_foreign = 0;
 #endif
 
   /* More things to read. */

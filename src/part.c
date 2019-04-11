@@ -65,6 +65,22 @@ void part_relink_gparts_to_sparts(struct spart *sparts, size_t N,
 }
 
 /**
+ * @brief Re-link the #gpart%s associated with the list of #bpart%s.
+ *
+ * @param bparts The list of #bpart.
+ * @param N The number of s-particles to re-link;
+ * @param offset The offset of #bpart%s relative to the global bparts list.
+ */
+void part_relink_gparts_to_bparts(struct bpart *bparts, size_t N,
+                                  ptrdiff_t offset) {
+  for (size_t k = 0; k < N; k++) {
+    if (bparts[k].gpart) {
+      bparts[k].gpart->id_or_neg_offset = -(k + offset);
+    }
+  }
+}
+
+/**
  * @brief Re-link the #part%s associated with the list of #gpart%s.
  *
  * @param gparts The list of #gpart.
@@ -243,7 +259,7 @@ void part_verify_links(struct part *parts, struct gpart *gparts,
           gparts[k].x[2] != bpart->x[2])
         error(
             "Linked particles are not at the same position !\n"
-            "gp->x=[%e %e %e] sp->x=[%e %e %e] diff=[%e %e %e]",
+            "gp->x=[%e %e %e] bp->x=[%e %e %e] diff=[%e %e %e]",
             gparts[k].x[0], gparts[k].x[1], gparts[k].x[2], bpart->x[0],
             bpart->x[1], bpart->x[2], gparts[k].x[0] - bpart->x[0],
             gparts[k].x[1] - bpart->x[1], gparts[k].x[2] - bpart->x[2]);

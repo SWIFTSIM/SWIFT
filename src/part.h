@@ -115,6 +115,8 @@ void part_relink_gparts_to_parts(struct part *parts, size_t N,
                                  ptrdiff_t offset);
 void part_relink_gparts_to_sparts(struct spart *sparts, size_t N,
                                   ptrdiff_t offset);
+void part_relink_gparts_to_bparts(struct bpart *bparts, size_t N,
+                                  ptrdiff_t offset);
 void part_relink_parts_to_gparts(struct gpart *gparts, size_t N,
                                  struct part *parts);
 void part_relink_sparts_to_gparts(struct gpart *gparts, size_t N,

@@ -275,10 +275,14 @@ struct space {
   struct gpart *gparts_foreign;
   size_t nr_gparts_foreign, size_gparts_foreign;
 
-  /*! Buffers for g-parts that we will receive from foreign cells. */
+  /*! Buffers for s-parts that we will receive from foreign cells. */
   struct spart *sparts_foreign;
   size_t nr_sparts_foreign, size_sparts_foreign;
 
+  /*! Buffers for b-parts that we will receive from foreign cells. */
+  struct bpart *bparts_foreign;
+  size_t nr_bparts_foreign, size_bparts_foreign;
+  
 #endif
 };
 

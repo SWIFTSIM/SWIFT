@@ -395,6 +395,9 @@ void read_ic_single(const char* fileName,
   int dimension = 3; /* Assume 3D if nothing is specified */
   size_t Ndm = 0;
 
+  /* Initialise counters */
+  *Ngas = 0, *Ngparts = 0, *Nstars = 0, *Nblackholes = 0;
+  
   /* Open file */
   /* message("Opening file '%s' as IC.", fileName); */
   h_file = H5Fopen(fileName, H5F_ACC_RDONLY, H5P_DEFAULT);
@@ -523,7 +526,7 @@ void read_ic_single(const char* fileName,
     bzero(*sparts, *Nstars * sizeof(struct spart));
   }
 
-  /* Allocate memory to store star particles */
+  /* Allocate memory to store black hole particles */
   if (with_black_holes) {
     *Nblackholes = N[swift_type_black_hole];
     if (swift_memalign("bparts", (void**)bparts, bpart_align,

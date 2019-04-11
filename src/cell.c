@@ -189,6 +189,39 @@ int cell_link_sparts(struct cell *c, struct spart *sparts) {
 }
 
 /**
+ * @brief Link the cells recursively to the given #bpart array.
+ *
+ * @param c The #cell.
+ * @param bparts The #bpart array.
+ *
+ * @return The number of particles linked.
+ */
+int cell_link_bparts(struct cell *c, struct bpart *bparts) {
+
+#ifdef SWIFT_DEBUG_CHECKS
+  if (c->nodeID == engine_rank)
+    error("Linking foreign particles in a local cell!");
+
+  if (c->black_holes.parts != NULL)
+    error("Linking bparts into a cell that was already linked");
+#endif
+
+  c->black_holes.parts = bparts;
+
+  /* Fill the progeny recursively, depth-first. */
+  if (c->split) {
+    int offset = 0;
+    for (int k = 0; k < 8; k++) {
+      if (c->progeny[k] != NULL)
+        offset += cell_link_bparts(c->progeny[k], &bparts[offset]);
+    }
+  }
+
+  /* Return the total number of linked particles. */
+  return c->black_holes.count;
+}
+
+/**
  * @brief Recurse down foreign cells until reaching one with hydro
  * tasks; then trigger the linking of the #part array from that
  * level.

@@ -204,6 +204,15 @@ struct engine {
   /* Maximal stars ti_beg for the next time-step */
   integertime_t ti_stars_beg_max;
 
+  /* Minimal black holes ti_end for the next time-step */
+  integertime_t ti_black_holes_end_min;
+
+  /* Maximal black holes ti_end for the next time-step */
+  integertime_t ti_black_holes_end_max;
+
+  /* Maximal black holes ti_beg for the next time-step */
+  integertime_t ti_black_holes_beg_max;
+  
   /* Minimal overall ti_end for the next time-step */
   integertime_t ti_end_min;
 
@@ -473,7 +482,8 @@ void engine_exchange_strays(struct engine *e, const size_t offset_parts,
                             const int *ind_part, size_t *Npart,
                             const size_t offset_gparts, const int *ind_gpart,
                             size_t *Ngpart, const size_t offset_sparts,
-                            const int *ind_spart, size_t *Nspart);
+                            const int *ind_spart, size_t *Nspart, const size_t offset_bparts,
+                            const int *ind_bpart, size_t *Nbpart);
 void engine_rebuild(struct engine *e, int redistributed, int clean_h_values);
 void engine_repartition(struct engine *e);
 void engine_repartition_trigger(struct engine *e);
