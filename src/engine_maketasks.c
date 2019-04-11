@@ -59,6 +59,7 @@
  * @param ci The sending #cell.
  * @param cj Dummy cell containing the nodeID of the receiving node.
  * @param t_grav The send_grav #task, if it has already been created.
+ * @param t_ti The recv_ti_end #task, if it has already been created.
  */
 void engine_addtasks_send_gravity(struct engine *e, struct cell *ci,
                                   struct cell *cj, struct task *t_grav,
@@ -124,6 +125,7 @@ void engine_addtasks_send_gravity(struct engine *e, struct cell *ci,
  * @param t_xv The send_xv #task, if it has already been created.
  * @param t_rho The send_rho #task, if it has already been created.
  * @param t_gradient The send_gradient #task, if already created.
+ * @param t_ti The recv_ti_end #task, if it has already been created.
  */
 void engine_addtasks_send_hydro(struct engine *e, struct cell *ci,
                                 struct cell *cj, struct task *t_xv,
@@ -227,6 +229,7 @@ void engine_addtasks_send_hydro(struct engine *e, struct cell *ci,
  * @param ci The sending #cell.
  * @param cj Dummy cell containing the nodeID of the receiving node.
  * @param t_feedback The send_feed #task, if it has already been created.
+ * @param t_ti The recv_ti_end #task, if it has already been created.
  */
 void engine_addtasks_send_stars(struct engine *e, struct cell *ci,
                                 struct cell *cj, struct task *t_feedback,
@@ -379,6 +382,7 @@ void engine_addtasks_recv_hydro(struct engine *e, struct cell *c,
  * @param e The #engine.
  * @param c The foreign #cell.
  * @param t_feedback The recv_feed #task, if it has already been created.
+ * @param t_ti The recv_ti_end #task, if it has already been created.
  */
 void engine_addtasks_recv_stars(struct engine *e, struct cell *c,
                                 struct task *t_feedback, struct task *t_ti) {
@@ -437,6 +441,7 @@ void engine_addtasks_recv_stars(struct engine *e, struct cell *c,
  * @param e The #engine.
  * @param c The foreign #cell.
  * @param t_grav The recv_gpart #task, if it has already been created.
+ * @param t_ti The recv_ti_end #task, if it has already been created.
  */
 void engine_addtasks_recv_gravity(struct engine *e, struct cell *c,
                                   struct task *t_grav, struct task *t_ti) {

@@ -530,8 +530,8 @@ __attribute__((always_inline)) INLINE static void hydro_end_density(
 
   /* Finish calculation of the velocity divergence, including hubble flow term
    */
-  p->density.div_v *=
-      h_inv_dim_plus_one * rho_inv * a_inv2 + cosmo->H * hydro_dimension;
+  p->density.div_v *= h_inv_dim_plus_one * rho_inv * a_inv2;
+  p->density.div_v += cosmo->H * hydro_dimension;
 }
 
 /**

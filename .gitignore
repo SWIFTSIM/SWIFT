@@ -12,6 +12,7 @@ config.h.in
 config.sub
 ltmain.sh
 libtool
+build
 
 src/version_string.h
 swift*.tar.gz
