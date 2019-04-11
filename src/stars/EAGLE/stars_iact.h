@@ -134,8 +134,6 @@ runner_iact_nonsym_stars_feedback(
   const float current_mass = hydro_get_mass(pj);
   float new_mass =
       current_mass + si->to_distribute.mass * density_weighted_frac;
-  // for testing energy injection
-  //new_mass = current_mass;
   hydro_set_mass(pj, new_mass);
 
   /* Update total metallicity */
@@ -233,10 +231,6 @@ runner_iact_nonsym_stars_feedback(
     d_energy += si->to_distribute.num_SNIa *
                 stars_properties->feedback.total_energy_SNe *
                 density_weighted_frac * si->mass_init;
-    // for testing continuous energy injection
-    //d_energy = si->to_distribute.num_SNIa *
-    //            stars_properties->feedback.total_energy_SNe *
-    //            density_weighted_frac * si->mass_init;
   } else {
     // We're doing stochastic heating
     heating_probability = si->to_distribute.heating_probability;
