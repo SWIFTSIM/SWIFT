@@ -61,6 +61,9 @@ struct fof {
   /*! The FOF linking length squared. */
   double l_x2;
   
+  /*! The minimum halo mass for black hole seeding. */
+  double seed_halo_mass;
+  
   int num_groups;
   size_t min_group_size;
   size_t group_id_default;

@@ -79,6 +79,10 @@ InitialConditions:
   cleanup_h_factors: 1               # Remove the h-factors inherited from Gadget
   cleanup_velocity_factors: 1        # Remove the sqrt(a) factor in the velocities inherited from Gadget
 
+# EAGLE black hole seeding parameters
+EAGLEBlackHoles:
+  seed_halo_mass:   1.5e10 # The minimum group mass required for black hole seeding
+
 EAGLEChemistry: 	     # Solar abundances
   init_abundance_metal:      0.014
   init_abundance_Hydrogen:   0.70649785
