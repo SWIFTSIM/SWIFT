@@ -1301,7 +1301,7 @@ void runner_do_all_stars_sort(struct runner *r, struct cell *c) {
   if (c->nodeID != engine_rank) error("Function called on a foreign cell!");
 #endif
 
- if(!cell_is_active_stars(c, r->e) && !cell_is_active_hydro(c, r->e)) return;
+  if (!cell_is_active_stars(c, r->e) && !cell_is_active_hydro(c, r->e)) return;
 
   /* Shall we sort at this level? */
   if (c->hydro.super == c) {
