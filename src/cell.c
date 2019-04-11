@@ -3553,11 +3553,10 @@ int cell_unskip_gravity_tasks(struct cell *c, struct scheduler *s) {
 int cell_unskip_stars_tasks(struct cell *c, struct scheduler *s) {
 
   struct engine *e = s->space->e;
-  const int with_feedback = (e->policy & engine_policy_feedback);
   const int nodeID = e->nodeID;
   int rebuild = 0;
 
-  if (!with_feedback && c->stars.drift != NULL && cell_is_active_stars(c, e)) {
+  if (c->stars.drift != NULL && cell_is_active_stars(c, e)) {
     cell_activate_drift_spart(c, s);
   }
 
