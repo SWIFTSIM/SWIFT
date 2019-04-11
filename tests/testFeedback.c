@@ -76,7 +76,7 @@ int main(int argc, char *argv[]) {
   stars_evolve_init(params, &stars_properties);
 
   /* Init spart */
-  stars_first_init_spart(&sp);
+  stars_first_init_spart(&sp, &stars_properties);
 
   /* Define an initial stellar mass. (for use when calling the feedback
    * functions, the results are presented per initial stellar mass, so the

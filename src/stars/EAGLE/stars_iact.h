@@ -134,6 +134,8 @@ runner_iact_nonsym_stars_feedback(
   const float current_mass = hydro_get_mass(pj);
   float new_mass =
       current_mass + si->to_distribute.mass * density_weighted_frac;
+  // for testing energy injection
+  //new_mass = current_mass;
   hydro_set_mass(pj, new_mass);
 
   /* Update total metallicity */
@@ -224,16 +226,17 @@ runner_iact_nonsym_stars_feedback(
   /* Energy feedback */
   float u_init = hydro_get_physical_internal_energy(pj, xp, cosmo);
   float heating_probability = -1.f, du = 0.f, d_energy = 0.f;
-  d_energy += si->to_distribute.d_energy;
+  d_energy += si->to_distribute.d_energy * density_weighted_frac;
 
   if (stars_properties->feedback.continuous_heating) {
     // We're doing ONLY continuous heating
     d_energy += si->to_distribute.num_SNIa *
                 stars_properties->feedback.total_energy_SNe *
                 density_weighted_frac * si->mass_init;
-    du = d_energy / hydro_get_mass(pj);
-    hydro_set_physical_internal_energy(pj, xp, cosmo, u_init + du);
-    hydro_set_drifted_physical_internal_energy(pj, cosmo, u_init + du);
+    // for testing continuous energy injection
+    //d_energy = si->to_distribute.num_SNIa *
+    //            stars_properties->feedback.total_energy_SNe *
+    //            density_weighted_frac * si->mass_init;
   } else {
     // We're doing stochastic heating
     heating_probability = si->to_distribute.heating_probability;
@@ -257,6 +260,12 @@ runner_iact_nonsym_stars_feedback(
       hydro_set_drifted_physical_internal_energy(pj, cosmo, u_init + du);
     }
   }
+    
+  /* Add contribution from thermal and kinetic energy of ejected material (and continuous SNIa feedback) */
+  u_init = hydro_get_physical_internal_energy(pj, xp, cosmo);
+  du = d_energy / hydro_get_mass(pj);
+  hydro_set_physical_internal_energy(pj, xp, cosmo, u_init + du);
+  hydro_set_drifted_physical_internal_energy(pj, cosmo, u_init + du);
 }
 
 #endif /* SWIFT_EAGLE_STARS_IACT_H */

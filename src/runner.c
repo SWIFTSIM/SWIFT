@@ -375,7 +375,7 @@ void runner_do_stars_ghost(struct runner *r, struct cell *c, int timer) {
           double star_age, current_time_begin = -1;
           if (with_cosmology) {
             star_age = cosmology_get_delta_time_from_scale_factors(
-                cosmo, sp->birth_scale_factor, cosmo->a);
+                cosmo, sp->birth_scale_factor, (float) cosmo->a); // use float to avoid rounding errors
           } else {
             current_time_begin =
                 get_integer_time_begin(e->ti_current - 1, sp->time_bin) *
@@ -704,6 +704,7 @@ void runner_do_star_formation(struct runner *r, struct cell *c, int timer) {
               /* Copy the properties of the gas particle to the star particle */
               star_formation_copy_properties(p, xp, sp, e, sf_props, cosmo,
                                              with_cosmology);
+	      message("formed star %llu", sp->id);
             }
           }
 
