@@ -749,7 +749,7 @@ int main(int argc, char *argv[]) {
     }
 #else
     if (!with_cooling && !with_temperature) {
-      error("ERROR: Compiled with cooling but running without it."
+      error("ERROR: Compiled with cooling but running without it. "
 	    "Did you forget the --cooling or --temperature flags?");
     }
 #endif
