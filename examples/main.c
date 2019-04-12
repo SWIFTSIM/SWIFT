@@ -741,16 +741,18 @@ int main(int argc, char *argv[]) {
       potential_init(params, &prog_const, &us, &s, &potential);
     if (myrank == 0) potential_print(&potential);
 
-    /* Initialise the cooling function properties */
+      /* Initialise the cooling function properties */
 #ifdef COOLING_NONE
     if (with_cooling || with_temperature) {
-      error("ERROR: Running with cooling / temperature calculation"
-	    " but compiled without it.");
+      error(
+          "ERROR: Running with cooling / temperature calculation"
+          " but compiled without it.");
     }
 #else
     if (!with_cooling && !with_temperature) {
-      error("ERROR: Compiled with cooling but running without it. "
-	    "Did you forget the --cooling or --temperature flags?");
+      error(
+          "ERROR: Compiled with cooling but running without it. "
+          "Did you forget the --cooling or --temperature flags?");
     }
 #endif
     bzero(&cooling_func, sizeof(struct cooling_function_data));
