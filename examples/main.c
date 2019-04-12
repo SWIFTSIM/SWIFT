@@ -745,7 +745,7 @@ int main(int argc, char *argv[]) {
 #ifdef COOLING_NONE
     if (with_cooling || with_temperature) {
       error("ERROR: Running with cooling / temperature calculation"
-	    "but compiled without it.");
+	    " but compiled without it.");
     }
 #else
     if (!with_cooling && !with_temperature) {
