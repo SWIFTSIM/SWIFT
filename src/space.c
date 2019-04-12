@@ -3156,6 +3156,8 @@ void space_map_cells_pre(struct space *s, int full,
  *        c->hydro.count or @c NULL.
  * @param sbuff A buffer for particle sorting, should be of size at least
  *        c->stars.count or @c NULL.
+ * @param bbuff A buffer for particle sorting, should be of size at least
+ *        c->black_holes.count or @c NULL.
  * @param gbuff A buffer for particle sorting, should be of size at least
  *        c->grav.count or @c NULL.
  */

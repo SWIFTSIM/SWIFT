@@ -1128,7 +1128,7 @@ void engine_redistribute(struct engine *e) {
                                s->bparts[k].x[1] * s->iwidth[1],
                                s->bparts[k].x[2] * s->iwidth[2]);
     if (cells[cid].nodeID != nodeID)
-      error("Received p-particle (%zu) that does not belong here (nodeID=%i).",
+      error("Received b-particle (%zu) that does not belong here (nodeID=%i).",
             k, cells[cid].nodeID);
   }
 
@@ -2151,7 +2151,7 @@ void engine_allocate_foreign_particles(struct engine *e) {
       error("Failed to allocate foreign spart data.");
   }
 
-  /* Allocate bpace for the foreign particles we will receive */
+  /* Allocate space for the foreign particles we will receive */
   if (count_bparts_in > s->size_bparts_foreign) {
     if (s->bparts_foreign != NULL)
       swift_free("bparts_foreign", s->bparts_foreign);

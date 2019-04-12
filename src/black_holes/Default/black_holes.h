@@ -25,9 +25,9 @@
 #include "minmax.h"
 
 /**
- * @brief Computes the gravity time-step of a given star particle.
+ * @brief Computes the gravity time-step of a given black hole particle.
  *
- * @param sp Pointer to the s-particle data.
+ * @param bp Pointer to the s-particle data.
  */
 __attribute__((always_inline)) INLINE static float black_holes_compute_timestep(
     const struct bpart* const bp) {
@@ -36,12 +36,12 @@ __attribute__((always_inline)) INLINE static float black_holes_compute_timestep(
 }
 
 /**
- * @brief Initialises the s-particles for the first time
+ * @brief Initialises the b-particles for the first time
  *
  * This function is called only once just after the ICs have been
  * read in to do some conversions.
  *
- * @param sp The particle to act upon
+ * @param bp The particle to act upon
  */
 __attribute__((always_inline)) INLINE static void black_holes_first_init_bpart(
     struct bpart* bp) {
@@ -50,17 +50,17 @@ __attribute__((always_inline)) INLINE static void black_holes_first_init_bpart(
 }
 
 /**
- * @brief Prepares a s-particle for its interactions
+ * @brief Prepares a b-particle for its interactions
  *
- * @param sp The particle to act upon
+ * @param bp The particle to act upon
  */
 __attribute__((always_inline)) INLINE static void black_holes_init_bpart(
     struct bpart* bp) {
 
 #ifdef DEBUG_INTERACTIONS_BLACK_HOLES
   for (int i = 0; i < MAX_NUM_OF_NEIGHBOURS_STARS; ++i)
-    sp->ids_ngbs_density[i] = -1;
-  sp->num_ngb_density = 0;
+    bp->ids_ngbs_density[i] = -1;
+  bp->num_ngb_density = 0;
 #endif
 
   bp->density.wcount = 0.f;
@@ -70,7 +70,7 @@ __attribute__((always_inline)) INLINE static void black_holes_init_bpart(
 /**
  * @brief Predict additional particle fields forward in time when drifting
  *
- * @param sp The particle
+ * @param bp The particle
  * @param dt_drift The drift time-step for positions.
  */
 __attribute__((always_inline)) INLINE static void black_holes_predict_extra(
@@ -80,32 +80,24 @@ __attribute__((always_inline)) INLINE static void black_holes_predict_extra(
  * @brief Sets the values to be predicted in the drifts to their values at a
  * kick time
  *
- * @param sp The particle.
+ * @param bp The particle.
  */
 __attribute__((always_inline)) INLINE static void
 black_holes_reset_predicted_values(struct bpart* restrict bp) {}
 
 /**
- * @brief Finishes the calculation of (non-gravity) forces acting on stars
- *
- * @param sp The particle to act upon
- */
-__attribute__((always_inline)) INLINE static void black_holes_end_feedback(
-    struct bpart* bp) {}
-
-/**
  * @brief Kick the additional variables
  *
- * @param sp The particle to act upon
+ * @param bp The particle to act upon
  * @param dt The time-step for this kick
  */
 __attribute__((always_inline)) INLINE static void black_holes_kick_extra(
     struct bpart* bp, float dt) {}
 
 /**
- * @brief Finishes the calculation of density on stars
+ * @brief Finishes the calculation of density on black holes
  *
- * @param sp The particle to act upon
+ * @param bp The particle to act upon
  * @param cosmo The current cosmological model.
  */
 __attribute__((always_inline)) INLINE static void black_holes_end_density(
@@ -126,7 +118,7 @@ __attribute__((always_inline)) INLINE static void black_holes_end_density(
  * @brief Sets all particle fields to sensible values when the #spart has 0
  * ngbs.
  *
- * @param sp The particle to act upon
+ * @param bp The particle to act upon
  * @param cosmo The current cosmological model.
  */
 __attribute__((always_inline)) INLINE static void
@@ -147,17 +139,18 @@ black_holes_bpart_has_no_neighbours(struct bpart* restrict bp,
  * @brief Reset acceleration fields of a particle
  *
  * This is the equivalent of hydro_reset_acceleration.
- * We do not compute the acceleration on star, therefore no need to use it.
+ * We do not compute the acceleration on black hole, therefore no need to use
+ * it.
  *
- * @param p The particle to act upon
+ * @param bp The particle to act upon
  */
 __attribute__((always_inline)) INLINE static void black_holes_reset_feedback(
     struct bpart* restrict bp) {
 
 #ifdef DEBUG_INTERACTIONS_BLACK_HOLES
   for (int i = 0; i < MAX_NUM_OF_NEIGHBOURS_STARS; ++i)
-    p->ids_ngbs_force[i] = -1;
-  p->num_ngb_force = 0;
+    bp->ids_ngbs_force[i] = -1;
+  bp->num_ngb_force = 0;
 #endif
 }
 

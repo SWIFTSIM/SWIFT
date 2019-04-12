@@ -716,8 +716,8 @@ INLINE static struct io_props io_make_output_field_convert_spart_LONGLONG(
  * @param type The type of the data
  * @param dimension Dataset dimension (1D, 3D, ...)
  * @param units The units of the dataset
- * @param spartSize The size in byte of the particle
- * @param sparts The particle array
+ * @param bpartSize The size in byte of the particle
+ * @param bparts The particle array
  * @param functionPtr The function used to convert a g-particle to a float
  *
  * Do not call this function directly. Use the macro defined above.
@@ -764,8 +764,8 @@ INLINE static struct io_props io_make_output_field_convert_bpart_FLOAT(
  * @param type The type of the data
  * @param dimension Dataset dimension (1D, 3D, ...)
  * @param units The units of the dataset
- * @param spartSize The size in byte of the particle
- * @param sparts The particle array
+ * @param bpartSize The size in byte of the particle
+ * @param bparts The particle array
  * @param functionPtr The function used to convert a s-particle to a double
  *
  * Do not call this function directly. Use the macro defined above.
@@ -812,8 +812,8 @@ INLINE static struct io_props io_make_output_field_convert_bpart_DOUBLE(
  * @param type The type of the data
  * @param dimension Dataset dimension (1D, 3D, ...)
  * @param units The units of the dataset
- * @param spartSize The size in byte of the particle
- * @param sparts The particle array
+ * @param bpartSize The size in byte of the particle
+ * @param bparts The particle array
  * @param functionPtr The function used to convert a s-particle to a double
  *
  * Do not call this function directly. Use the macro defined above.

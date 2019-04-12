@@ -5129,7 +5129,7 @@ void cell_remove_spart(const struct engine *e, struct cell *c,
  *
  * @param e The #engine running on this node.
  * @param c The #cell from which to remove the particle.
- * @param sp The #bpart to remove.
+ * @param bp The #bpart to remove.
  */
 void cell_remove_bpart(const struct engine *e, struct cell *c,
                        struct bpart *bp) {

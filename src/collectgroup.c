@@ -130,12 +130,16 @@ void collectgroup1_apply(struct collectgroup1 *grp1, struct engine *e) {
  * @param g_updated the number of updated gravity particles on this node this
  *                  step.
  * @param s_updated the number of updated star particles on this node this step.
+ * @param b_updated the number of updated black hole particles on this node this
+ * step.
  * @param inhibited the number of inhibited hydro particles on this node this
  *                  step.
  * @param g_inhibited the number of inhibited gravity particles on this node
  *                    this step.
  * @param s_inhibited the number of inhibited star particles on this node this
  *                    step.
+ * @param b_inhibited the number of inhibited black hole particles on this node
+ * this step.
  * @param ti_hydro_end_min the minimum end time for next hydro time step after
  *                         this step.
  * @param ti_hydro_end_max the maximum end time for next hydro time step after
@@ -154,6 +158,12 @@ void collectgroup1_apply(struct collectgroup1 *grp1, struct engine *e) {
  *                           after this step.
  * @param ti_stars_beg_max the maximum begin time for next stars time step
  *                           after this step.
+ * @param ti_black_holes_end_min the minimum end time for next black holes time
+ * step after this step.
+ * @param ti_black_holes_end_max the maximum end time for next black holes time
+ * step after this step.
+ * @param ti_black_holes_beg_max the maximum begin time for next black holes
+ * time step after this step.
  * @param forcerebuild whether a rebuild is required after this step.
  * @param total_nr_cells total number of all cells on rank.
  * @param total_nr_tasks total number of tasks on rank.

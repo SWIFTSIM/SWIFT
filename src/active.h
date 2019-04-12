@@ -419,7 +419,7 @@ __attribute__((always_inline)) INLINE static int spart_is_inhibited(
 /**
  * @brief Has this black hole particle been inhibited?
  *
- * @param sp The #bpart.
+ * @param bp The #bpart.
  * @param e The #engine containing information about the current time.
  * @return 1 if the #part is inhibited, 0 otherwise.
  */
@@ -583,7 +583,7 @@ __attribute__((always_inline)) INLINE static int spart_is_starting(
 /**
  * @brief Is this b-particle starting its time-step now ?
  *
- * @param sp The #bpart.
+ * @param bp The #bpart.
  * @param e The #engine containing information about the current time.
  * @return 1 if the #bpart is active, 0 otherwise.
  */
