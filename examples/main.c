@@ -1023,9 +1023,6 @@ int main(int argc, char *argv[]) {
     engine_dump_snapshot(&e);
     engine_print_stats(&e);
 
-    /* Perform first FOF search after the first snapshot dump. */
-    if (e.policy & engine_policy_fof) fof_search_tree(&s);
-
     /* Is there a dump before the end of the first time-step? */
     engine_check_for_dumps(&e);
 

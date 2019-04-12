@@ -3263,6 +3263,26 @@ void engine_step(struct engine *e) {
     error("Obtained a time-step of size 0");
 #endif
 
+  /* Perform FOF search to seed black holes. */
+  if (e->policy & engine_policy_fof && !(e->step % 10)) {
+
+    fof_init(e->s);
+
+    struct scheduler *s = &e->sched;
+
+    for(int i=0; i<s->nr_tasks; i++) {
+      
+      struct task *t = &s->tasks[i];
+
+      if (t->type == task_type_fof_self || t->type == task_type_fof_pair) scheduler_activate(s, t); 
+      else t->skip = 1; 
+    }
+
+    engine_launch(e);
+
+    fof_search_tree(e->s);
+  }
+
   /********************************************************/
   /* OK, we are done with the regular stuff. Time for i/o */
   /********************************************************/

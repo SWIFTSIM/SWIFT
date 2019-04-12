@@ -671,7 +671,7 @@ void engine_marktasks_mapper(void *map_data, int num_elements,
     
     /* FOF tasks. */
     else if (t_type == task_type_fof_self || t_type == task_type_fof_pair) {
-      scheduler_activate(s, t);
+      //scheduler_activate(s, t);
     }
   }
 }
