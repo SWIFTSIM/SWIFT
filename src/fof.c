@@ -940,6 +940,59 @@ void fof_calc_group_size_mapper(void *map_data, int num_elements,
 
 }
 
+/* Mapper function to atomically update the group mass array. */
+void fof_update_group_mass_mapper(hashmap_key_t key, hashmap_value_t *value, void *data) {
+
+  double *group_mass = (double *)data;
+
+  /* Use key to index into group mass array. */
+  atomic_add_d(&group_mass[key], value->value_dbl);
+
+}
+
+/**
+ * @brief Mapper function to calculate the group masses.
+ *
+ * @param map_data An array of #gpart%s.
+ * @param num_elements Chunk size.
+ * @param extra_data Pointer to a #space.
+ */
+void fof_calc_group_mass_mapper(void *map_data, int num_elements,
+                            void *extra_data) {
+
+  /* Retrieve mapped data. */
+  struct space *s = (struct space *)extra_data;
+  struct gpart *gparts = (struct gpart *)map_data;
+  double *group_mass = s->fof_data.group_mass;
+  const size_t group_id_default = s->fof_data.group_id_default;
+  const size_t group_id_offset = s->fof_data.group_id_offset;
+
+  /* Create hash table. */
+  hashmap_t map;
+  hashmap_init(&map);
+
+  /* Loop over particles and increment the group mass for groups above min_group_size. */
+  for (int ind = 0; ind < num_elements; ind++) {
+
+    /* Only check groups above the minimum size. */ 
+    if(gparts[ind].group_id != group_id_default) {
+
+      hashmap_key_t index = gparts[ind].group_id - group_id_offset;
+      hashmap_value_t *data = hashmap_get(&map, index);
+
+      /* Update group mass */   
+      if(data != NULL) (*data).value_dbl += gparts[ind].mass;
+      else error("Couldn't find key (%zu) or create new one.", index);
+    }
+  }
+
+  /* Update the group mass array. */
+  if (map.size > 0) hashmap_iterate(&map, fof_update_group_mass_mapper, group_mass);
+
+  hashmap_free(&map);
+
+}
+
 #ifdef WITH_MPI
 /* Mapper function to unpack hash table into array. */
 void fof_unpack_group_mass_mapper(hashmap_key_t key, hashmap_value_t *value, void *data) {
@@ -996,6 +1049,7 @@ void fof_calc_group_mass(struct space *s, const size_t num_groups_local, const s
   hashmap_t map;
   hashmap_init(&map);
 
+  /* JSW TODO: Parallelise with threadpool*/
   for(size_t i=0; i<nr_gparts; i++) {
 
     /* Check if the particle is in a group above the threshold. */
@@ -1043,6 +1097,7 @@ void fof_calc_group_mass(struct space *s, const size_t num_groups_local, const s
   }
 
   /* Loop over particles and find the densest particle in each group. */
+  /* JSW TODO: Parallelise with threadpool*/
   for(size_t i=0; i<nr_gparts; i++) {
 
     /* Only check groups above the minimum size and mass threshold. */ 
@@ -1248,21 +1303,12 @@ void fof_calc_group_mass(struct space *s, const size_t num_groups_local, const s
   max_part_density_index = s->fof_data.max_part_density_index;
   max_part_density = s->fof_data.max_part_density;
 
-  /* Loop over particles and increment the group mass for groups above min_group_size. */
-  for(size_t i=0; i<nr_gparts; i++) {
-   
-    /* Only check groups above the minimum size. */ 
-    if(gparts[i].group_id != group_id_default) {
-
-      size_t index = gparts[i].group_id - group_id_offset;
-   
-      /* Update group mass */   
-      group_mass[index] += gparts[i].mass;
-
-    }
-  }
+  /* Increment the group mass for groups above min_group_size. */
+  threadpool_map(&s->e->threadpool, fof_calc_group_mass_mapper,
+                 gparts, nr_gparts, sizeof(struct gpart), nr_gparts / s->e->nr_threads, s);
   
   /* Loop over particles and find the densest particle in each group. */
+  /* JSW TODO: Parallelise with threadpool*/
   for(size_t i=0; i<nr_gparts; i++) {
    
     /* Only check groups above the minimum size and mass threshold. */ 
