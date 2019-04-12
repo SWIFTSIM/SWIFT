@@ -1312,7 +1312,8 @@ void write_output_parallel(struct engine* e, const char* baseName,
       e->s->nr_sparts - e->s->nr_inhibited_sparts - e->s->nr_extra_sparts;
   const size_t Nblackholes_written =
       e->s->nr_bparts - e->s->nr_inhibited_bparts - e->s->nr_extra_bparts;
-  const size_t Nbaryons_written = Ngas_written + Nstars_written;
+  const size_t Nbaryons_written =
+      Ngas_written + Nstars_written + Nblackholes_written;
   const size_t Ndm_written =
       Ntot_written > 0 ? Ntot_written - Nbaryons_written : 0;
 
