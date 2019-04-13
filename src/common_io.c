@@ -402,26 +402,32 @@ void io_write_cell_offsets(hid_t h_grp, const int cdim[3],
   centres = (double*)malloc(3 * nr_cells * sizeof(double));
 
   /* Count of particles in each cell */
-  long long *count_part = NULL, *count_gpart = NULL, *count_spart = NULL;
+  long long *count_part = NULL, *count_gpart = NULL, *count_spart = NULL,
+            *count_bpart = NULL;
   count_part = (long long*)malloc(nr_cells * sizeof(long long));
   count_gpart = (long long*)malloc(nr_cells * sizeof(long long));
   count_spart = (long long*)malloc(nr_cells * sizeof(long long));
+  count_bpart = (long long*)malloc(nr_cells * sizeof(long long));
 
   /* Global offsets of particles in each cell */
-  long long *offset_part = NULL, *offset_gpart = NULL, *offset_spart = NULL;
+  long long *offset_part = NULL, *offset_gpart = NULL, *offset_spart = NULL,
+            *offset_bpart = NULL;
   offset_part = (long long*)malloc(nr_cells * sizeof(long long));
   offset_gpart = (long long*)malloc(nr_cells * sizeof(long long));
   offset_spart = (long long*)malloc(nr_cells * sizeof(long long));
+  offset_bpart = (long long*)malloc(nr_cells * sizeof(long long));
 
   /* Offsets of the 0^th element */
   offset_part[0] = 0;
   offset_gpart[0] = 0;
   offset_spart[0] = 0;
+  offset_bpart[0] = 0;
 
   /* Collect the cell information of *local* cells */
   long long local_offset_part = 0;
   long long local_offset_gpart = 0;
   long long local_offset_spart = 0;
+  long long local_offset_bpart = 0;
   for (int i = 0; i < nr_cells; ++i) {
 
     if (cells_top[i].nodeID == nodeID) {
@@ -435,10 +441,12 @@ void io_write_cell_offsets(hid_t h_grp, const int cdim[3],
       count_part[i] = cells_top[i].hydro.count - cells_top[i].hydro.inhibited;
       count_gpart[i] = cells_top[i].grav.count - cells_top[i].grav.inhibited;
       count_spart[i] = cells_top[i].stars.count - cells_top[i].stars.inhibited;
+      count_bpart[i] = cells_top[i].stars.count - cells_top[i].stars.inhibited;
 
       /* Only count DM gpart (gpart without friends) */
       count_gpart[i] -= count_part[i];
       count_gpart[i] -= count_spart[i];
+      count_gpart[i] -= count_bpart[i];
 
       /* Offsets including the global offset of all particles on this MPI rank
        */
@@ -446,10 +454,12 @@ void io_write_cell_offsets(hid_t h_grp, const int cdim[3],
       offset_gpart[i] =
           local_offset_gpart + global_offsets[swift_type_dark_matter];
       offset_spart[i] = local_offset_spart + global_offsets[swift_type_stars];
+      offset_bpart[i] = local_offset_bpart + global_offsets[swift_type_stars];
 
       local_offset_part += count_part[i];
       local_offset_gpart += count_gpart[i];
       local_offset_spart += count_spart[i];
+      local_offset_bpart += count_bpart[i];
 
     } else {
 
@@ -462,10 +472,12 @@ void io_write_cell_offsets(hid_t h_grp, const int cdim[3],
       count_part[i] = 0;
       count_gpart[i] = 0;
       count_spart[i] = 0;
+      count_bpart[i] = 0;
 
       offset_part[i] = 0;
       offset_gpart[i] = 0;
       offset_spart[i] = 0;
+      offset_bpart[i] = 0;
     }
   }
 
@@ -479,6 +491,7 @@ void io_write_cell_offsets(hid_t h_grp, const int cdim[3],
     MPI_Reduce(count_part, NULL, nr_cells, MPI_LONG_LONG_INT, MPI_BOR, 0,
                MPI_COMM_WORLD);
   }
+
   if (nodeID == 0) {
     MPI_Reduce(MPI_IN_PLACE, count_gpart, nr_cells, MPI_LONG_LONG_INT, MPI_BOR,
                0, MPI_COMM_WORLD);
@@ -493,6 +506,14 @@ void io_write_cell_offsets(hid_t h_grp, const int cdim[3],
     MPI_Reduce(count_spart, NULL, nr_cells, MPI_LONG_LONG_INT, MPI_BOR, 0,
                MPI_COMM_WORLD);
   }
+  if (nodeID == 0) {
+    MPI_Reduce(MPI_IN_PLACE, count_bpart, nr_cells, MPI_LONG_LONG_INT, MPI_BOR,
+               0, MPI_COMM_WORLD);
+  } else {
+    MPI_Reduce(count_bpart, NULL, nr_cells, MPI_LONG_LONG_INT, MPI_BOR, 0,
+               MPI_COMM_WORLD);
+  }
+
   if (nodeID == 0) {
     MPI_Reduce(MPI_IN_PLACE, offset_part, nr_cells, MPI_LONG_LONG_INT, MPI_BOR,
                0, MPI_COMM_WORLD);
@@ -512,6 +533,13 @@ void io_write_cell_offsets(hid_t h_grp, const int cdim[3],
                0, MPI_COMM_WORLD);
   } else {
     MPI_Reduce(offset_spart, NULL, nr_cells, MPI_LONG_LONG_INT, MPI_BOR, 0,
+               MPI_COMM_WORLD);
+  }
+  if (nodeID == 0) {
+    MPI_Reduce(MPI_IN_PLACE, offset_bpart, nr_cells, MPI_LONG_LONG_INT, MPI_BOR,
+               0, MPI_COMM_WORLD);
+  } else {
+    MPI_Reduce(offset_bpart, NULL, nr_cells, MPI_LONG_LONG_INT, MPI_BOR, 0,
                MPI_COMM_WORLD);
   }
 
@@ -635,6 +663,27 @@ void io_write_cell_offsets(hid_t h_grp, const int cdim[3],
       H5Sclose(h_space);
     }
 
+    if (global_counts[swift_type_black_hole] > 0) {
+
+      shape[0] = nr_cells;
+      shape[1] = 1;
+      h_space = H5Screate(H5S_SIMPLE);
+      if (h_space < 0)
+        error("Error while creating data space for black hole offsets");
+      h_err = H5Sset_extent_simple(h_space, 1, shape, shape);
+      if (h_err < 0)
+        error("Error while changing shape of black hole offsets data space.");
+      h_data = H5Dcreate(h_subgrp, "PartType5", io_hdf5_type(LONGLONG), h_space,
+                         H5P_DEFAULT, H5P_DEFAULT, H5P_DEFAULT);
+      if (h_data < 0)
+        error("Error while creating dataspace for black hole offsets.");
+      h_err = H5Dwrite(h_data, io_hdf5_type(LONGLONG), h_space, H5S_ALL,
+                       H5P_DEFAULT, offset_bpart);
+      if (h_err < 0) error("Error while writing black hole offsets.");
+      H5Dclose(h_data);
+      H5Sclose(h_space);
+    }
+
     H5Gclose(h_subgrp);
 
     /* Group containing the counts for each particle type */
@@ -700,6 +749,27 @@ void io_write_cell_offsets(hid_t h_grp, const int cdim[3],
       H5Sclose(h_space);
     }
 
+    if (global_counts[swift_type_black_hole] > 0) {
+
+      shape[0] = nr_cells;
+      shape[1] = 1;
+      h_space = H5Screate(H5S_SIMPLE);
+      if (h_space < 0)
+        error("Error while creating data space for black hole counts");
+      h_err = H5Sset_extent_simple(h_space, 1, shape, shape);
+      if (h_err < 0)
+        error("Error while changing shape of black hole counts data space.");
+      h_data = H5Dcreate(h_subgrp, "PartType5", io_hdf5_type(LONGLONG), h_space,
+                         H5P_DEFAULT, H5P_DEFAULT, H5P_DEFAULT);
+      if (h_data < 0)
+        error("Error while creating dataspace for black hole counts.");
+      h_err = H5Dwrite(h_data, io_hdf5_type(LONGLONG), h_space, H5S_ALL,
+                       H5P_DEFAULT, count_bpart);
+      if (h_err < 0) error("Error while writing black hole counts.");
+      H5Dclose(h_data);
+      H5Sclose(h_space);
+    }
+
     H5Gclose(h_subgrp);
   }
 
@@ -708,9 +778,11 @@ void io_write_cell_offsets(hid_t h_grp, const int cdim[3],
   free(count_part);
   free(count_gpart);
   free(count_spart);
+  free(count_bpart);
   free(offset_part);
   free(offset_gpart);
   free(offset_spart);
+  free(offset_bpart);
 }
 
 #endif /* HAVE_HDF5 */
