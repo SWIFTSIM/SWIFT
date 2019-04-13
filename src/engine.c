@@ -2137,7 +2137,7 @@ void engine_rebuild(struct engine *e, int repartitioned,
   const ticks tic = getticks();
 
   /* Perform FOF search to seed black holes. */
-  if (e->policy & engine_policy_fof && e->step != 0) {
+  if (e->policy & engine_policy_fof && e->run_fof) {
 
     /* Initialise FOF parameters and allocate FOF arrays. */
     fof_init(e->s);
@@ -2151,6 +2151,12 @@ void engine_rebuild(struct engine *e, int repartitioned,
     /* Perform FOF search over foreign particles and 
      * find groups which require black hole seeding.  */
     fof_search_tree(e->s);
+  
+    /* Reset flag. */
+    e->run_fof = 0;
+
+    message("Complete FOF search took: %.3f %s.",
+            clocks_from_ticks(getticks() - tic), clocks_getunit());
    
   }
 
@@ -3197,6 +3203,9 @@ void engine_step(struct engine *e) {
        ((double)e->total_nr_gparts) * e->gravity_properties->rebuild_frequency))
     e->forcerebuild = 1;
 
+  /* Trigger a FOF search every N steps. */
+  if (e->policy & engine_policy_fof && !(e->step % e->s->fof_data.run_freq)) e->run_fof = 1;
+  
 #ifdef WITH_LOGGER
   /* Mark the current time step in the particle logger file. */
   logger_log_timestamp(e->logger, e->ti_current, e->time,
@@ -3439,18 +3448,6 @@ void engine_check_for_dumps(struct engine *e) {
       default:
         error("Invalid dump type");
     }
-
-    /* Perform a FOF search. */
-    // if(run_fof) {
-
-    //  // MATTHIEU: Add a drift_all here. And check the order with the order
-    //  i/o
-    //  // options.
-    //
-    //  fof_search_tree(e->s);
-
-    //  run_fof = 0;
-    //}
 
     /* We need to see whether whether we are in the pathological case
      * where there can be another dump before the next step. */
@@ -4474,6 +4471,12 @@ void engine_config(int restart, struct engine *e, struct swift_params *params,
   if (nr_queues != nr_threads)
     message("Number of task queues set to %d", nr_queues);
   e->s->nr_queues = nr_queues;
+
+  /* Read the FOF search frequency. */
+  if (e->policy & engine_policy_fof) {
+    e->s->fof_data.run_freq = parser_get_opt_param_int(
+        params, "FOF:run_freq", 2000);
+  }
 
 /* Deal with affinity. For now, just figure out the number of cores. */
 #if defined(HAVE_SETAFFINITY)

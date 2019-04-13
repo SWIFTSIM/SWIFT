@@ -65,6 +65,7 @@ SPH:
 # Parameters for the Friends-Of-Friends algorithm
 FOF:
   basename:                 fof_output  # Common part of the name of output files
+  run_freq:                 10          # (Optional) The no. of steps between each FOF search. Defaults to 2000.
   min_group_size:           20          # (Optional) The minimum no. of particles required for a group. Defaults to 20 if unspecified.
   linking_length_scale:     0.2         # (Optional) Scales the linking length. Defaults to 0.2 if unspecified.
   group_links_size_default: 20000       # (Optional) Sets the initial size of the group_links array, which is used to store links across MPI domains. Defaults to 20000 if unspecified.
