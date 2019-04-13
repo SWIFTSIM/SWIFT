@@ -476,6 +476,9 @@ void engine_print_task_counts(const struct engine *e);
 /* Function prototypes, engine_maketasks.c. */
 void engine_maketasks(struct engine *e);
 
+/* Function prototypes, engine_maketasks.c. */
+void engine_make_fof_tasks(struct engine *e);
+
 /* Function prototypes, engine_marktasks.c. */
 int engine_marktasks(struct engine *e);
 

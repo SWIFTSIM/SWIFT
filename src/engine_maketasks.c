@@ -2304,6 +2304,61 @@ void engine_make_fofloop_tasks_mapper(void *map_data, int num_elements,
 }
 
 /**
+ * @brief Fill the #space's task list with FOF tasks.
+ *
+ * @param e The #engine we are working with.
+ */
+void engine_make_fof_tasks(struct engine *e) {
+
+  struct space *s = e->s;
+  struct scheduler *sched = &e->sched;
+  ticks tic = getticks();
+
+  tic = getticks();
+
+  /* Construct a FOF loop over neighbours */
+  if (e->policy & engine_policy_fof)
+    threadpool_map(&e->threadpool, engine_make_fofloop_tasks_mapper, NULL,
+                   s->nr_cells, 1, 0, e);
+
+  if (e->verbose)
+    message("Making FOF tasks took %.3f %s.",
+            clocks_from_ticks(getticks() - tic), clocks_getunit());
+
+  tic = getticks();
+  
+  /* Split the tasks. */
+  scheduler_splittasks(sched);
+
+  if (e->verbose)
+    message("Splitting FOF tasks took %.3f %s.",
+            clocks_from_ticks(getticks() - tic), clocks_getunit());
+
+  tic = getticks();
+  
+  /* Activate all FOF tasks by default. */
+  for(int i=0; i<sched->nr_tasks; i++) {
+
+    struct task *t = &sched->tasks[i];
+
+    if (t->type == task_type_fof_self || t->type == task_type_fof_pair) scheduler_activate(sched, t); 
+  }
+
+  if (e->verbose)
+    message("Activating FOF tasks took %.3f %s.",
+            clocks_from_ticks(getticks() - tic), clocks_getunit());
+
+#ifdef SWIFT_DEBUG_CHECKS
+  /* Verify that we are not left with invalid tasks */
+  for (int i = 0; i < e->sched.nr_tasks; ++i) {
+    const struct task *t = &e->sched.tasks[i];
+    if (t->ci == NULL && t->cj != NULL && !t->skip) error("Invalid task");
+  }
+#endif
+
+}
+
+/**
  * @brief Fill the #space's task list.
  *
  * @param e The #engine we are working with.
@@ -2324,11 +2379,6 @@ void engine_maketasks(struct engine *e) {
   /* Construct the first hydro loop over neighbours */
   if (e->policy & engine_policy_hydro)
     threadpool_map(&e->threadpool, engine_make_hydroloop_tasks_mapper, NULL,
-                   s->nr_cells, 1, 0, e);
-
-  /* Construct a FOF loop over neighbours */
-  if (e->policy & engine_policy_fof)
-    threadpool_map(&e->threadpool, engine_make_fofloop_tasks_mapper, NULL,
                    s->nr_cells, 1, 0, e);
 
   if (e->verbose)

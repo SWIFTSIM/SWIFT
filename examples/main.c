@@ -954,9 +954,6 @@ int main(int argc, char *argv[]) {
     engine_config(0, &e, params, nr_nodes, myrank, nr_threads, with_aff,
                   talking, restart_file);
 
-    /* Initialise the FOF parameters. */
-    if (with_fof) fof_init(&s);
-
     if (myrank == 0) {
       clocks_gettime(&toc);
       message("engine_init took %.3f %s.", clocks_diff(&tic, &toc),

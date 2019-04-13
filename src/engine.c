@@ -2136,6 +2136,24 @@ void engine_rebuild(struct engine *e, int repartitioned,
 
   const ticks tic = getticks();
 
+  /* Perform FOF search to seed black holes. */
+  if (e->policy & engine_policy_fof && e->step != 0) {
+
+    /* Initialise FOF parameters and allocate FOF arrays. */
+    fof_init(e->s);
+
+    /* Make FOF tasks and activate them. */
+    engine_make_fof_tasks(e);
+
+    /* Perform local FOF tasks. */
+    engine_launch(e);
+
+    /* Perform FOF search over foreign particles and 
+     * find groups which require black hole seeding.  */
+    fof_search_tree(e->s);
+   
+  }
+
   /* Clear the forcerebuild flag, whatever it was. */
   e->forcerebuild = 0;
   e->restarting = 0;
@@ -3263,26 +3281,6 @@ void engine_step(struct engine *e) {
     error("Obtained a time-step of size 0");
 #endif
 
-  /* Perform FOF search to seed black holes. */
-  if (e->policy & engine_policy_fof && !(e->step % 10)) {
-
-    fof_init(e->s);
-
-    struct scheduler *s = &e->sched;
-
-    for(int i=0; i<s->nr_tasks; i++) {
-      
-      struct task *t = &s->tasks[i];
-
-      if (t->type == task_type_fof_self || t->type == task_type_fof_pair) scheduler_activate(s, t); 
-      else t->skip = 1; 
-    }
-
-    engine_launch(e);
-
-    fof_search_tree(e->s);
-  }
-
   /********************************************************/
   /* OK, we are done with the regular stuff. Time for i/o */
   /********************************************************/
@@ -3390,13 +3388,6 @@ void engine_check_for_dumps(struct engine *e) {
               "Asking for a VELOCIraptor output but SWIFT was compiled without "
               "the interface!");
 #endif
-        }
-
-        /* Perform a FOF search. */
-        if (e->run_fof) {
-
-          fof_search_tree(e->s);
-          e->run_fof = 0;
         }
 
           /* Dump... */

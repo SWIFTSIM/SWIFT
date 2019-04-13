@@ -1249,7 +1249,7 @@ static void scheduler_splittask_fof(struct task *t, struct scheduler *s) {
         break;
       }
 
-      /* Is this cell even split and the task does not violate h ? */
+      /* Is this cell even split? */
       if (cell_can_split_self_fof_task(ci)) {
 
         /* Take a step back (we're going to recycle the current task)... */
