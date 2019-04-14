@@ -2208,10 +2208,14 @@ void fof_dump_group_data(char *out_file, struct space *s, int num_groups,
 
   int total_bh_seed_count = 0;
 
+#ifdef WITH_MPI
   /* Sum the total number of black holes over each MPI rank. */
-  MPI_Allreduce(&bh_seed_count, &total_bh_seed_count, 1, MPI_INT,
-                MPI_SUM, MPI_COMM_WORLD);
-  
+  MPI_Reduce(&bh_seed_count, &total_bh_seed_count, 1, MPI_INT,
+                MPI_SUM, 0, MPI_COMM_WORLD);
+#else
+  total_bh_seed_count = bh_seed_count;
+#endif
+
   if(engine_rank == 0)
     message("Seeding %d black hole(s).", total_bh_seed_count);
 
