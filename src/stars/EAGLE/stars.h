@@ -324,7 +324,7 @@ inline static void evolve_SNIa(float log10_min_mass, float log10_max_mass,
       sp->mass_init;
 
   sp->to_distribute.num_SNIa =
-      num_SNIa_per_msun / stars->feedback.const_solar_mass;
+      num_SNIa_per_msun * stars->feedback.const_solar_mass;
 
   /* compute mass fractions of each metal */
   for (int i = 0; i < chemistry_element_count; i++) {

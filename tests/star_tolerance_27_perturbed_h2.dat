@@ -1,0 +1,4 @@
+#   ID        pos_x      pos_y      pos_z    wcount     wcount_dh
+    0	      1e-6       1e-6	    1e-6     5e-4       1.5e-2
+    0	      1e-6       1e-6	    1e-6     1e-5       5.86e-3
+    0	      1e-6       1e-6	    1e-6     1e-6       1e0

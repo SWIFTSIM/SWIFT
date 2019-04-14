@@ -116,7 +116,7 @@ SNIa_timescale_Gyr = 2.0
 expected_energy_released_cgs = np.zeros(n_snapshots)
 for i in range(n_snapshots):
 	age_Gyr = time[i] * unit_time_in_cgs / Gyr_in_cgs
-	total_sn = SNIa_efficiency * (1.0 - np.exp(-age_Gyr/SNIa_timescale_Gyr)) * star_initial_mass / const_solar_mass
+	total_sn = SNIa_efficiency * (SNIa_timescale_Gyr * Gyr_in_cgs / unit_time_in_cgs * (1 - exp(-age_Gyr/SNIa_timescale_Gyr))) * star_initial_mass * const_solar_mass
 	expected_energy_released_cgs[i] = total_sn * energy_per_sn * unit_energy_in_cgs
 
 # Did we get it right?
@@ -130,7 +130,6 @@ figure()
 subplot(111)
 plot(time*unit_time_in_cgs/Gyr_in_cgs, total_energy_cgs + total_kinetic_energy_cgs - total_energy_cgs[0] - total_kinetic_energy_cgs[0],color='k', linewidth=0.5, label="SWIFT")
 plot(time*unit_time_in_cgs/Gyr_in_cgs, expected_energy_released_cgs,color = 'r', linewidth=0.5, label="expected")
-#plot(np.arange(0,2,0.1),(1.0 - np.exp(-np.arange(0,2,0.1)/SNIa_timescale_Gyr)), color = 'k', linewidth = 0.5)
 xlabel("Time (Gyr)")
 ylabel("Total energy (erg)")
 legend()
