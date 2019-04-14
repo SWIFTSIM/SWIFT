@@ -27,6 +27,13 @@
 #include "align.h"
 #include "parser.h"
 
+/* Constants. */
+#define UNION_BY_SIZE_OVER_MPI (1)
+#define FOF_COMPRESS_PATHS_MIN_LENGTH (2)
+#define FOF_NO_GAS (-1)
+#define FOF_BLACK_HOLE (-2)
+#define FOF_LOW_HALO_MASS (-3)
+
 /* Avoid cyclic inclusions */
 struct space;
 

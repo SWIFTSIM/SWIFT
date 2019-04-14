@@ -49,12 +49,6 @@ MPI_Datatype fof_final_mass_type;
 #endif
 size_t node_offset;
 
-#define UNION_BY_SIZE_OVER_MPI (1)
-#define FOF_COMPRESS_PATHS_MIN_LENGTH (2)
-#define FOF_NO_GAS (-1)
-#define FOF_BLACK_HOLE (-2)
-#define FOF_LOW_HALO_MASS (-3)
-
 /* Initialises parameters for the FOF search. */
 void fof_init(struct space *s) {
 
@@ -1021,8 +1015,6 @@ void fof_calc_group_mass(struct space *s, const size_t num_groups_local, const s
   const size_t group_id_default = s->fof_data.group_id_default;
   const double seed_halo_mass = s->fof_data.seed_halo_mass;
 
-  message("Seed halo mass: %e", seed_halo_mass);
-
 #ifdef WITH_MPI
   size_t *group_index = s->fof_data.group_index;
   int nr_nodes = s->e->nr_nodes;
@@ -1453,13 +1445,12 @@ void fof_search_foreign_cells(struct space *s) {
 #ifdef WITH_MPI
 
   struct engine *e = s->e;
+  int verbose = e->verbose;
   size_t *group_index = s->fof_data.group_index;
   size_t *group_size = s->fof_data.group_size;
   const size_t nr_gparts = s->nr_gparts;
   const double dim[3] = {s->dim[0], s->dim[1], s->dim[2]};
   const double search_r2 = s->fof_data.l_x2;
-
-  message("Searching foreign cells for links.");
 
   ticks tic = getticks();
 
@@ -1570,12 +1561,11 @@ void fof_search_foreign_cells(struct space *s) {
     }
   }
 
-  message(
-      "Finding local/foreign cell pairs and initialising particle roots took: "
-      "%.3f %s.",
-      clocks_from_ticks(getticks() - tic), clocks_getunit());
-
-  message("Pairs of touching cells: %d", cell_pair_count);
+  if (verbose)
+    message(
+        "Finding local/foreign cell pairs and initialising particle roots took: "
+        "%.3f %s.",
+        clocks_from_ticks(getticks() - tic), clocks_getunit());
 
   tic = getticks();
 
@@ -1587,32 +1577,33 @@ void fof_search_foreign_cells(struct space *s) {
 
     struct task *t = &tasks[i];
 
-    if (t->type == task_type_send && t->subtype == task_subtype_gpart) {
+    if ( (t->type == task_type_send && t->subtype == task_subtype_gpart) || 
+        (t->type == task_type_recv && t->subtype == task_subtype_gpart) ) {
       scheduler_activate(sched, t);
     }
 
-    if (t->type == task_type_recv && t->subtype == task_subtype_gpart) {
-      scheduler_activate(sched, t);
-    }
   }
 
-  message("MPI send/recv task activation took: %.3f %s.",
-          clocks_from_ticks(getticks() - tic), clocks_getunit());
+  if (verbose)
+    message("MPI send/recv task activation took: %.3f %s.",
+        clocks_from_ticks(getticks() - tic), clocks_getunit());
 
   ticks local_fof_tic = getticks();
 
   MPI_Barrier(MPI_COMM_WORLD);
 
-  message("Local FOF imbalance: %.3f %s.", clocks_from_ticks(getticks() - local_fof_tic),
-          clocks_getunit());
+  if (verbose)
+    message("Local FOF imbalance: %.3f %s.", clocks_from_ticks(getticks() - local_fof_tic),
+        clocks_getunit());
 
   tic = getticks();
 
   /* Perform send and receive tasks. */
   engine_launch(e);
 
-  message("MPI send/recv comms took: %.3f %s.",
-          clocks_from_ticks(getticks() - tic), clocks_getunit());
+  if (verbose)
+    message("MPI send/recv comms took: %.3f %s.",
+        clocks_from_ticks(getticks() - tic), clocks_getunit());
 
   tic = getticks();
 
@@ -1626,12 +1617,9 @@ void fof_search_foreign_cells(struct space *s) {
   /* Clean up memory. */
   swift_free("fof_cell_pairs", cell_pairs);
 
-  message("Searching for foreign links took: %.3f %s.",
-          clocks_from_ticks(getticks() - tic), clocks_getunit());
-
-  message(
-      "Rank %d found %d unique group links between local and foreign groups.",
-      engine_rank, group_link_count);
+  if (verbose)
+    message("Searching for foreign links took: %.3f %s.",
+        clocks_from_ticks(getticks() - tic), clocks_getunit());
 
   tic = getticks();
 
@@ -1643,8 +1631,9 @@ void fof_search_foreign_cells(struct space *s) {
 
   MPI_Barrier(MPI_COMM_WORLD);
 
-  message("Imbalance took: %.3f %s.", clocks_from_ticks(getticks() - comms_tic),
-          clocks_getunit());
+  if (verbose)
+    message("Imbalance took: %.3f %s.", clocks_from_ticks(getticks() - comms_tic),
+        clocks_getunit());
 
   comms_tic = getticks();
 
@@ -1690,11 +1679,13 @@ void fof_search_foreign_cells(struct space *s) {
   free(displ);
   swift_free("fof_group_links", s->fof_data.group_links);
 
-  message("Communication took: %.3f %s.",
-          clocks_from_ticks(getticks() - comms_tic), clocks_getunit());
+  if (verbose) {
+    message("Communication took: %.3f %s.",
+        clocks_from_ticks(getticks() - comms_tic), clocks_getunit());
 
-  message("Global comms took: %.3f %s.", clocks_from_ticks(getticks() - tic),
-          clocks_getunit());
+    message("Global comms took: %.3f %s.", clocks_from_ticks(getticks() - tic),
+        clocks_getunit());
+  }
 
   tic = getticks();
 
@@ -1747,8 +1738,9 @@ void fof_search_foreign_cells(struct space *s) {
     hashmap_add_group(group_j, group_count++, &map);
   }
 
-  message("Global list compression took: %.3f %s.",
-          clocks_from_ticks(getticks() - tic), clocks_getunit());
+  if (verbose)
+    message("Global list compression took: %.3f %s.",
+        clocks_from_ticks(getticks() - tic), clocks_getunit());
 
   tic = getticks();
 
@@ -1811,8 +1803,9 @@ void fof_search_foreign_cells(struct space *s) {
 
   hashmap_free(&map);
 
-  message("global_group_index construction took: %.3f %s.",
-          clocks_from_ticks(getticks() - tic), clocks_getunit());
+  if (verbose)
+    message("global_group_index construction took: %.3f %s.",
+        clocks_from_ticks(getticks() - tic), clocks_getunit());
 
   tic = getticks();
 
@@ -1839,8 +1832,9 @@ void fof_search_foreign_cells(struct space *s) {
     }
   }
 
-  message("Updating groups locally took: %.3f %s.",
-          clocks_from_ticks(getticks() - tic), clocks_getunit());
+  if (verbose)
+    message("Updating groups locally took: %.3f %s.",
+        clocks_from_ticks(getticks() - tic), clocks_getunit());
 
   /* Clean up memory. */
   swift_free("fof_global_group_links", global_group_links);
@@ -1848,9 +1842,6 @@ void fof_search_foreign_cells(struct space *s) {
   swift_free("fof_global_group_size", global_group_size);
   swift_free("fof_global_group_id", global_group_id);
   swift_free("fof_orig_global_group_size", orig_global_group_size);
-
-  message("Rank %d finished linking local roots to foreign roots.",
-          engine_rank);
 
 #endif /* WITH_MPI */
 }
@@ -1868,15 +1859,18 @@ void fof_search_tree(struct space *s) {
   struct gpart *gparts = s->gparts;
   size_t *group_index, *group_size;
   int num_groups = 0, num_parts_in_groups = 0, max_group_size = 0;
+  int verbose = s->e->verbose;
   ticks tic_total = getticks();
 
   char output_file_name[PARSER_MAX_LINE_SIZE];
   snprintf(output_file_name, PARSER_MAX_LINE_SIZE, "%s", s->fof_data.base_name);
 
-  message("Searching %zu gravity particles for links with l_x2: %lf", nr_gparts,
-          s->fof_data.l_x2);
-  
-  message("Size of hash table element: %ld", sizeof(hashmap_element_t));
+  if (verbose)
+    message("Searching %zu gravity particles for links with l_x2: %lf", nr_gparts,
+        s->fof_data.l_x2);
+ 
+  if(engine_rank == 0 && verbose)  
+    message("Size of hash table element: %ld", sizeof(hashmap_element_t));
 
   node_offset = 0;
 
@@ -1904,8 +1898,9 @@ void fof_search_tree(struct space *s) {
   threadpool_map(&s->e->threadpool, fof_calc_group_size_mapper,
                  gparts, nr_gparts, sizeof(struct gpart), nr_gparts / s->e->nr_threads, s);
   
-  message("FOF calc group size took (scaling): %.3f %s.",
-      clocks_from_ticks(getticks() - tic_calc_group_size), clocks_getunit());
+  if (verbose)
+    message("FOF calc group size took (scaling): %.3f %s.",
+        clocks_from_ticks(getticks() - tic_calc_group_size), clocks_getunit());
   
 #ifdef WITH_MPI
   if (nr_nodes > 1) {
@@ -1915,12 +1910,11 @@ void fof_search_tree(struct space *s) {
     /* Search for group links across MPI domains. */
     fof_search_foreign_cells(s);
 
-    message("fof_search_foreign_cells() took: %.3f %s.",
-            clocks_from_ticks(getticks() - tic_mpi), clocks_getunit());
+    if (verbose)
+      message("fof_search_foreign_cells() took: %.3f %s.",
+          clocks_from_ticks(getticks() - tic_mpi), clocks_getunit());
   }
 #endif
-
-  message("Calculating group properties...");
 
   size_t num_groups_local = 0, num_parts_in_groups_local = 0,
          max_group_size_local = 0;
@@ -1959,8 +1953,6 @@ void fof_search_tree(struct space *s) {
       high_group_sizes[group_count++].size = group_size[i];
     }
   }
-
-  message("Sorting groups...");
 
   ticks tic = getticks();
 
@@ -2114,8 +2106,9 @@ void fof_search_tree(struct space *s) {
     gparts[i].group_id = gparts[root].group_id;
   }
 
-  message("Group sorting took: %.3f %s.", clocks_from_ticks(getticks() - tic),
-          clocks_getunit());
+  if (verbose)
+    message("Group sorting took: %.3f %s.", clocks_from_ticks(getticks() - tic),
+        clocks_getunit());
 
   /* Allocate and initialise a group mass array. */
   if (swift_memalign("group_mass",
@@ -2137,10 +2130,9 @@ void fof_search_tree(struct space *s) {
   fof_calc_group_mass(s, num_groups_local, num_groups_prev, NULL, NULL, group_mass);
 #endif
 
-  message("Black hole seeding took: %.3f %s.",
-          clocks_from_ticks(getticks() - tic_seeding), clocks_getunit());
-
-  message("Dumping data...");
+  if (verbose)
+    message("Black hole seeding took: %.3f %s.",
+        clocks_from_ticks(getticks() - tic_seeding), clocks_getunit());
 
   /* Dump group data. */
   fof_dump_group_data(output_file_name, s, num_groups_local, high_group_sizes);
@@ -2162,8 +2154,9 @@ void fof_search_tree(struct space *s) {
 
     message("Largest group by size: %d", max_group_size);
   }
-  message("FOF search took: %.3f %s.",
-          clocks_from_ticks(getticks() - tic_total), clocks_getunit());
+  if (verbose)
+    message("FOF search took: %.3f %s.",
+        clocks_from_ticks(getticks() - tic_total), clocks_getunit());
 
 #ifdef WITH_MPI
   MPI_Barrier(MPI_COMM_WORLD);
@@ -2213,7 +2206,14 @@ void fof_dump_group_data(char *out_file, struct space *s, int num_groups,
     if(max_part_density_index[i] >= 0) bh_seed_count++; 
   }
 
-  message("Seeding %d black holes.", bh_seed_count);
+  int total_bh_seed_count = 0;
+
+  /* Sum the total number of black holes over each MPI rank. */
+  MPI_Allreduce(&bh_seed_count, &total_bh_seed_count, 1, MPI_INT,
+                MPI_SUM, MPI_COMM_WORLD);
+  
+  if(engine_rank == 0)
+    message("Seeding %d black hole(s).", total_bh_seed_count);
 
   fclose(file);
 }

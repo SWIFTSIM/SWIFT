@@ -2155,8 +2155,9 @@ void engine_rebuild(struct engine *e, int repartitioned,
     /* Reset flag. */
     e->run_fof = 0;
 
-    message("Complete FOF search took: %.3f %s.",
-            clocks_from_ticks(getticks() - tic), clocks_getunit());
+    if(engine_rank == 0)
+      message("Complete FOF search took: %.3f %s.",
+          clocks_from_ticks(getticks() - tic), clocks_getunit());
    
   }
 
