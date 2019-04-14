@@ -71,6 +71,17 @@ struct link {
   struct link *next;
 };
 
+/* Holds the pairs of progeny for each sid. */
+struct cell_split_pair {
+  int count;
+  struct {
+    int pid;
+    int pjd;
+    int sid;
+  } pairs[16];
+};
+extern struct cell_split_pair cell_split_pairs[13];
+
 /**
  * @brief Packed cell for information correct at rebuild time.
  *
