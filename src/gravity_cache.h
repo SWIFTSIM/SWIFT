@@ -80,17 +80,17 @@ struct gravity_cache {
 static INLINE void gravity_cache_clean(struct gravity_cache *c) {
 
   if (c->count > 0) {
-    free(c->x);
-    free(c->y);
-    free(c->z);
-    free(c->epsilon);
-    free(c->m);
-    free(c->a_x);
-    free(c->a_y);
-    free(c->a_z);
-    free(c->pot);
-    free(c->active);
-    free(c->use_mpole);
+    swift_free("gravity_cache", c->x);
+    swift_free("gravity_cache", c->y);
+    swift_free("gravity_cache", c->z);
+    swift_free("gravity_cache", c->epsilon);
+    swift_free("gravity_cache", c->m);
+    swift_free("gravity_cache", c->a_x);
+    swift_free("gravity_cache", c->a_y);
+    swift_free("gravity_cache", c->a_z);
+    swift_free("gravity_cache", c->pot);
+    swift_free("gravity_cache", c->active);
+    swift_free("gravity_cache", c->use_mpole);
   }
   c->count = 0;
 }
@@ -117,18 +117,28 @@ static INLINE void gravity_cache_init(struct gravity_cache *c,
   gravity_cache_clean(c);
 
   int e = 0;
-  e += posix_memalign((void **)&c->x, SWIFT_CACHE_ALIGNMENT, sizeBytesF);
-  e += posix_memalign((void **)&c->y, SWIFT_CACHE_ALIGNMENT, sizeBytesF);
-  e += posix_memalign((void **)&c->z, SWIFT_CACHE_ALIGNMENT, sizeBytesF);
-  e += posix_memalign((void **)&c->epsilon, SWIFT_CACHE_ALIGNMENT, sizeBytesF);
-  e += posix_memalign((void **)&c->m, SWIFT_CACHE_ALIGNMENT, sizeBytesF);
-  e += posix_memalign((void **)&c->a_x, SWIFT_CACHE_ALIGNMENT, sizeBytesF);
-  e += posix_memalign((void **)&c->a_y, SWIFT_CACHE_ALIGNMENT, sizeBytesF);
-  e += posix_memalign((void **)&c->a_z, SWIFT_CACHE_ALIGNMENT, sizeBytesF);
-  e += posix_memalign((void **)&c->pot, SWIFT_CACHE_ALIGNMENT, sizeBytesF);
-  e += posix_memalign((void **)&c->active, SWIFT_CACHE_ALIGNMENT, sizeBytesI);
-  e +=
-      posix_memalign((void **)&c->use_mpole, SWIFT_CACHE_ALIGNMENT, sizeBytesI);
+  e += swift_memalign("gravity_cache", (void **)&c->x, SWIFT_CACHE_ALIGNMENT,
+                      sizeBytesF);
+  e += swift_memalign("gravity_cache", (void **)&c->y, SWIFT_CACHE_ALIGNMENT,
+                      sizeBytesF);
+  e += swift_memalign("gravity_cache", (void **)&c->z, SWIFT_CACHE_ALIGNMENT,
+                      sizeBytesF);
+  e += swift_memalign("gravity_cache", (void **)&c->epsilon,
+                      SWIFT_CACHE_ALIGNMENT, sizeBytesF);
+  e += swift_memalign("gravity_cache", (void **)&c->m, SWIFT_CACHE_ALIGNMENT,
+                      sizeBytesF);
+  e += swift_memalign("gravity_cache", (void **)&c->a_x, SWIFT_CACHE_ALIGNMENT,
+                      sizeBytesF);
+  e += swift_memalign("gravity_cache", (void **)&c->a_y, SWIFT_CACHE_ALIGNMENT,
+                      sizeBytesF);
+  e += swift_memalign("gravity_cache", (void **)&c->a_z, SWIFT_CACHE_ALIGNMENT,
+                      sizeBytesF);
+  e += swift_memalign("gravity_cache", (void **)&c->pot, SWIFT_CACHE_ALIGNMENT,
+                      sizeBytesF);
+  e += swift_memalign("gravity_cache", (void **)&c->active,
+                      SWIFT_CACHE_ALIGNMENT, sizeBytesI);
+  e += swift_memalign("gravity_cache", (void **)&c->use_mpole,
+                      SWIFT_CACHE_ALIGNMENT, sizeBytesI);
 
   if (e != 0) error("Couldn't allocate gravity cache, size: %d", padded_count);
 
