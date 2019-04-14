@@ -131,54 +131,6 @@ INLINE static void stars_props_init(struct stars_props *sp,
     sp->log_max_h_change = p->log_max_h_change;
   else
     sp->log_max_h_change = logf(powf(max_volume_change, hydro_dimension_inv));
-
-  /* Read SNIa timscale */
-  sp->feedback.SNIa_timescale_Gyr =
-      parser_get_param_float(params, "EAGLEFeedback:SNIa_timescale_Gyr");
-
-  /* Read the efficiency of producing SNIa */
-  sp->feedback.SNIa_efficiency =
-      parser_get_param_float(params, "EAGLEFeedback:SNIa_efficiency");
-
-  /* Are we doing continuous heating? */
-  sp->feedback.continuous_heating =
-      parser_get_param_int(params, "EAGLEFeedback:continuous_heating_switch");
-
-  /* Set the delay time before SNII occur */
-  const float Gyr_in_cgs = 1e9 * 365 * 24 * 3600;
-  sp->feedback.SNII_wind_delay =
-      parser_get_param_float(params, "EAGLEFeedback:SNII_wind_delay_Gyr") *
-      Gyr_in_cgs / units_cgs_conversion_factor(us, UNIT_CONV_TIME);
-
-  /* Read the temperature change to use in stochastic heating */
-  sp->feedback.SNe_deltaT_desired =
-      parser_get_param_float(params, "EAGLEFeedback:SNe_heating_temperature_K");
-  sp->feedback.SNe_deltaT_desired /=
-      units_cgs_conversion_factor(us, UNIT_CONV_TEMPERATURE);
-
-  /* Set ejecta thermal energy */
-  const float ejecta_velocity =
-      1.0e6 / units_cgs_conversion_factor(
-                  us, UNIT_CONV_SPEED);  // EAGLE parameter is 10 km/s
-  sp->feedback.ejecta_specific_thermal_energy =
-      0.5 * ejecta_velocity * ejecta_velocity;
-
-  /* Energy released by supernova */
-  sp->feedback.total_energy_SNe =
-      1.0e51 / units_cgs_conversion_factor(us, UNIT_CONV_ENERGY);
-
-  /* Calculate temperature to internal energy conversion factor */
-  sp->feedback.temp_to_u_factor =
-      phys_const->const_boltzmann_k /
-      (p->mu_ionised * (hydro_gamma_minus_one)*phys_const->const_proton_mass);
-
-  /* Read birth time to set all stars in ICs to (defaults to -1 to indicate star
-   * present in ICs) */
-  sp->feedback.spart_first_init_birth_time = parser_get_opt_param_float(
-      params, "EAGLEFeedback:birth_time_override", -1);
-
-  /* Copy over solar mass */
-  sp->feedback.const_solar_mass = phys_const->const_solar_mass;
 }
 
 /**

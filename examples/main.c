@@ -769,7 +769,8 @@ int main(int argc, char *argv[]) {
     if (myrank == 0) chemistry_print(&chemistry);
 
     /* Initialise stellar evolution */
-    if (with_feedback) stars_evolve_init(params, &stars_properties);
+    // MATTHIEU
+    // if (with_feedback) stars_evolve_init(params, &stars_properties);
 
     /* Be verbose about what happens next */
     if (myrank == 0) message("Reading ICs from file '%s'", ICfileName);

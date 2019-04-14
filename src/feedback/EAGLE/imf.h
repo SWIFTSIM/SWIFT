@@ -206,7 +206,7 @@ inline static void init_imf(struct stars_props *restrict star_properties) {
   const float imf_log10_mass_bin_size =
       (star_properties->feedback.log10_imf_max_mass_msun -
        star_properties->feedback.log10_imf_min_mass_msun) /
-    (float)(star_properties->feedback.n_imf_mass_bins - 1);
+      (float)(star_properties->feedback.n_imf_mass_bins - 1);
 
   /* Allocate IMF array */
   if (swift_memalign(
@@ -233,9 +233,10 @@ inline static void init_imf(struct stars_props *restrict star_properties) {
   if (strcmp(star_properties->feedback.IMF_Model, "Chabrier") == 0) {
     for (int i = 0; i < star_properties->feedback.n_imf_mass_bins; i++) {
 
-      const float log10_mass_msun = star_properties->feedback.log10_imf_min_mass_msun +
-	i * imf_log10_mass_bin_size;
-      
+      const float log10_mass_msun =
+          star_properties->feedback.log10_imf_min_mass_msun +
+          i * imf_log10_mass_bin_size;
+
       const float mass_msun = exp10f(log10_mass_msun);
 
       if (mass_msun > 1.0)
@@ -256,10 +257,11 @@ inline static void init_imf(struct stars_props *restrict star_properties) {
   }
 
   /* Normalize the IMF */
-  const float norm = integrate_imf(star_properties->feedback.log10_imf_min_mass_msun,
-				   star_properties->feedback.log10_imf_max_mass_msun,
-				   eagle_imf_integration_mass_weight,
-				   /*(stellar_yields=)*/ NULL, star_properties);
+  const float norm =
+      integrate_imf(star_properties->feedback.log10_imf_min_mass_msun,
+                    star_properties->feedback.log10_imf_max_mass_msun,
+                    eagle_imf_integration_mass_weight,
+                    /*(stellar_yields=)*/ NULL, star_properties);
 
   for (int i = 0; i < star_properties->feedback.n_imf_mass_bins; i++)
     star_properties->feedback.imf[i] /= norm;
@@ -275,15 +277,16 @@ inline static void init_imf(struct stars_props *restrict star_properties) {
  * @param metallicity Star's metallicity
  * @param star_properties the #stars_props data structure
  */
-inline static double dying_mass_msun(const float age_Gyr, const float metallicity,
+inline static double dying_mass_msun(const float age_Gyr,
+                                     const float metallicity,
                                      const struct stars_props *star_props) {
 
   float metallicity_offset, time_offset_low_metallicity = 0,
-        time_offset_high_metallicity = 0, mass_low_metallicity,
-        mass_high_metallicity;
+                            time_offset_high_metallicity = 0,
+                            mass_low_metallicity, mass_high_metallicity;
 
   int metallicity_index, time_index_low_metallicity = -1,
-                            time_index_high_metallicity = -1;
+                         time_index_high_metallicity = -1;
 
   if (age_Gyr <= 0) {
     return star_props->feedback.imf_max_mass_msun;
@@ -303,15 +306,14 @@ inline static double dying_mass_msun(const float age_Gyr, const float metallicit
     for (metallicity_index = 0;
          metallicity_index < star_props->feedback.lifetimes.n_z - 1;
          metallicity_index++)
-      if (star_props->feedback.lifetimes
-              .metallicity[metallicity_index + 1] > metallicity)
+      if (star_props->feedback.lifetimes.metallicity[metallicity_index + 1] >
+          metallicity)
         break;
 
     metallicity_offset =
         (metallicity -
          star_props->feedback.lifetimes.metallicity[metallicity_index]) /
-        (star_props->feedback.lifetimes
-             .metallicity[metallicity_index + 1] -
+        (star_props->feedback.lifetimes.metallicity[metallicity_index + 1] -
          star_props->feedback.lifetimes.metallicity[metallicity_index]);
   }
 
@@ -335,11 +337,9 @@ inline static double dying_mass_msun(const float age_Gyr, const float metallicit
              star_props->feedback.lifetimes
                  .dyingtime[metallicity_index + 1]
                            [star_props->feedback.lifetimes.n_mass - 1]) {
-    time_index_high_metallicity =
-        star_props->feedback.lifetimes.n_mass - 2;
+    time_index_high_metallicity = star_props->feedback.lifetimes.n_mass - 2;
     time_offset_high_metallicity = 1.0;
   }
-
 
   int i = star_props->feedback.lifetimes.n_mass;
   while (i >= 0 && (time_index_low_metallicity == -1 ||
@@ -358,8 +358,8 @@ inline static double dying_mass_msun(const float age_Gyr, const float metallicit
            star_props->feedback.lifetimes
                .dyingtime[metallicity_index][time_index_low_metallicity]);
     }
-    if (star_props->feedback.lifetimes
-                .dyingtime[metallicity_index + 1][i] >= log10_age_yr &&
+    if (star_props->feedback.lifetimes.dyingtime[metallicity_index + 1][i] >=
+            log10_age_yr &&
         time_index_high_metallicity == -1) {
       time_index_high_metallicity = i;
       time_offset_high_metallicity =
@@ -382,7 +382,7 @@ inline static double dying_mass_msun(const float age_Gyr, const float metallicit
                      time_index_high_metallicity, time_offset_high_metallicity);
 
   float mass = (1.0 - metallicity_offset) * mass_low_metallicity +
-    metallicity_offset * mass_high_metallicity;
+               metallicity_offset * mass_high_metallicity;
 
   /* Check that we haven't killed too many stars */
   if (mass > star_props->feedback.imf_max_mass_msun)
