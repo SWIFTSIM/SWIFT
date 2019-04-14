@@ -884,8 +884,7 @@ void DOPAIR1_SUBSET_BRANCH_STARS(struct runner *r, struct cell *restrict ci,
 }
 
 void DOSUB_SUBSET_STARS(struct runner *r, struct cell *ci, struct spart *sparts,
-                        int *ind, int scount, struct cell *cj, int sid,
-                        int gettimer) {
+                        int *ind, int scount, struct cell *cj, int gettimer) {
 
   const struct engine *e = r->e;
   struct space *s = e->s;
@@ -917,11 +916,10 @@ void DOSUB_SUBSET_STARS(struct runner *r, struct cell *ci, struct spart *sparts,
     if (cell_can_recurse_in_self_stars_task(ci)) {
 
       /* Loop over all progeny. */
-      DOSUB_SUBSET_STARS(r, sub, sparts, ind, scount, NULL, -1, 0);
+      DOSUB_SUBSET_STARS(r, sub, sparts, ind, scount, NULL, 0);
       for (int j = 0; j < 8; j++)
         if (ci->progeny[j] != sub && ci->progeny[j] != NULL)
-          DOSUB_SUBSET_STARS(r, sub, sparts, ind, scount, ci->progeny[j], -1,
-                             0);
+          DOSUB_SUBSET_STARS(r, sub, sparts, ind, scount, ci->progeny[j], 0);
 
     }
 
@@ -939,7 +937,7 @@ void DOSUB_SUBSET_STARS(struct runner *r, struct cell *ci, struct spart *sparts,
 
       /* Get the type of pair and flip ci/cj if needed. */
       double shift[3] = {0.0, 0.0, 0.0};
-      sid = space_getsid(s, &ci, &cj, shift);
+      const int sid = space_getsid(s, &ci, &cj, shift);
 
       struct cell_split_pair *csp = &cell_split_pairs[sid];
       for (int k = 0; k < csp->count; k++) {
@@ -947,10 +945,10 @@ void DOSUB_SUBSET_STARS(struct runner *r, struct cell *ci, struct spart *sparts,
         const int pjd = csp->pairs[k].pjd;
         if (ci->progeny[pid] == sub && cj->progeny[pjd] != NULL)
           DOSUB_SUBSET_STARS(r, ci->progeny[pid], sparts, ind, scount,
-                             cj->progeny[pjd], -1, 0);
+                             cj->progeny[pjd], 0);
         if (ci->progeny[pid] != NULL && cj->progeny[pjd] == sub)
           DOSUB_SUBSET_STARS(r, cj->progeny[pjd], sparts, ind, scount,
-                             ci->progeny[pid], -1, 0);
+                             ci->progeny[pid], 0);
       }
     }
 
@@ -1111,14 +1109,13 @@ void DOPAIR1_BRANCH_STARS(struct runner *r, struct cell *ci, struct cell *cj) {
  * @param r The #runner.
  * @param ci The first #cell.
  * @param cj The second #cell.
- * @param sid The direction linking the cells
  * @param gettimer Do we have a timer ?
  *
  * @todo Hard-code the sid on the recursive calls to avoid the
  * redundant computations to find the sid on-the-fly.
  */
 void DOSUB_PAIR1_STARS(struct runner *r, struct cell *ci, struct cell *cj,
-                       int sid, int gettimer) {
+                       int gettimer) {
 
   struct space *s = r->e->s;
   const struct engine *e = r->e;
@@ -1132,7 +1129,7 @@ void DOSUB_PAIR1_STARS(struct runner *r, struct cell *ci, struct cell *cj,
 
   /* Get the type of pair and flip ci/cj if needed. */
   double shift[3];
-  sid = space_getsid(s, &ci, &cj, shift);
+  const int sid = space_getsid(s, &ci, &cj, shift);
 
   /* Recurse? */
   if (cell_can_recurse_in_pair_stars_task(ci, cj) &&
@@ -1142,7 +1139,7 @@ void DOSUB_PAIR1_STARS(struct runner *r, struct cell *ci, struct cell *cj,
       const int pid = csp->pairs[k].pid;
       const int pjd = csp->pairs[k].pjd;
       if (ci->progeny[pid] != NULL && cj->progeny[pjd] != NULL)
-        DOSUB_PAIR1_STARS(r, ci->progeny[pid], cj->progeny[pjd], -1, 0);
+        DOSUB_PAIR1_STARS(r, ci->progeny[pid], cj->progeny[pjd], 0);
     }
   }
 
@@ -1235,7 +1232,7 @@ void DOSUB_SELF1_STARS(struct runner *r, struct cell *ci, int gettimer) {
         DOSUB_SELF1_STARS(r, ci->progeny[k], 0);
         for (int j = k + 1; j < 8; j++)
           if (ci->progeny[j] != NULL)
-            DOSUB_PAIR1_STARS(r, ci->progeny[k], ci->progeny[j], -1, 0);
+            DOSUB_PAIR1_STARS(r, ci->progeny[k], ci->progeny[j], 0);
       }
   }
 
