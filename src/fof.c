@@ -1274,7 +1274,6 @@ void fof_calc_group_mass(struct space *s, const size_t num_groups_local, const s
 
   s->fof_data.extra_bh_seed_count = extra_seed_count;
 
-  MPI_Type_free(&fof_final_mass_type);
   free(sendcount);
   free(recvcount);
   free(sendoffset);
@@ -2100,7 +2099,6 @@ void fof_search_tree(struct space *s) {
     gparts[fof_index_send[i].local_root-node_offset].group_id = fof_index_send[i].global_root;
   }
 
-  MPI_Type_free(&fof_final_index_type);
   free(sendcount);
   free(recvcount);
   free(sendoffset);
