@@ -40,6 +40,14 @@ __attribute__((always_inline)) INLINE static float stars_compute_timestep(
 __attribute__((always_inline)) INLINE static void stars_init_spart(
     struct spart* sp) {
 
+#ifdef DEBUG_INTERACTIONS_STARS
+  for (int i = 0; i < MAX_NUM_OF_NEIGHBOURS_STARS; ++i)
+    sp->ids_ngbs_density[i] = -1;
+  sp->num_ngb_density = 0;
+#endif
+
+  sp->rho_gas = 0.f;
+
   sp->density.wcount = 0.f;
   sp->density.wcount_dh = 0.f;
 }
