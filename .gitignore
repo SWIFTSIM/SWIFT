@@ -104,6 +104,7 @@ tests/testMaths
 tests/testRandom
 tests/testThreadpool
 tests/testParser
+tests/testFeedback
 tests/parser_output.yml
 tests/testPeriodicBC.sh
 tests/testPeriodicBCPerturbed.sh

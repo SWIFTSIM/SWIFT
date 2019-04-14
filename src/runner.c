@@ -371,11 +371,12 @@ void runner_do_stars_ghost(struct runner *r, struct cell *c, int timer) {
 
         /* Only do feedback if stars have a reasonable birth time */
         if (sp->birth_time != -1) {
-          // Calculate star age
+
+          /* Calculate age of the star */
           double star_age, current_time_begin = -1;
           if (with_cosmology) {
             star_age = cosmology_get_delta_time_from_scale_factors(
-                cosmo, sp->birth_scale_factor, cosmo->a);
+                cosmo, sp->birth_scale_factor, (float)cosmo->a);
           } else {
             current_time_begin =
                 get_integer_time_begin(e->ti_current - 1, sp->time_bin) *
@@ -1331,7 +1332,7 @@ void runner_do_all_stars_sort(struct runner *r, struct cell *c) {
   if (c->nodeID != engine_rank) error("Function called on a foreign cell!");
 #endif
 
- if(!cell_is_active_stars(c, r->e) && !cell_is_active_hydro(c, r->e)) return;
+  if (!cell_is_active_stars(c, r->e) && !cell_is_active_hydro(c, r->e)) return;
 
   /* Shall we sort at this level? */
   if (c->hydro.super == c) {

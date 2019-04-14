@@ -116,7 +116,7 @@ SNIa_timescale_Gyr = 2.0
 expected_energy_released_cgs = np.zeros(n_snapshots)
 for i in range(n_snapshots):
 	age_Gyr = time[i] * unit_time_in_cgs / Gyr_in_cgs
-	total_sn = SNIa_efficiency * (SNIa_timescale_Gyr * Gyr_in_cgs / unit_time_in_cgs * (1 - exp(-age_Gyr/SNIa_timescale_Gyr))) * star_initial_mass * const_solar_mass
+	total_sn = SNIa_efficiency * (1.0 - np.exp(-age_Gyr/SNIa_timescale_Gyr)) / const_solar_mass
 	expected_energy_released_cgs[i] = total_sn * energy_per_sn * unit_energy_in_cgs
 
 # Did we get it right?

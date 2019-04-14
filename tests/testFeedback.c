@@ -76,7 +76,7 @@ int main(int argc, char *argv[]) {
   stars_evolve_init(params, &stars_properties);
 
   /* Init spart */
-  stars_first_init_spart(&sp);
+  stars_first_init_spart(&sp, &stars_properties);
 
   /* Define an initial stellar mass. (for use when calling the feedback
    * functions, the results are presented per initial stellar mass, so the
@@ -169,13 +169,15 @@ int main(int argc, char *argv[]) {
 
     /* Read data from EAGLE test and compare it to what we calculated */
     if (!feof(EAGLE_test)) {
-      fscanf(EAGLE_test,
-             "%e %e %e %e %e %e %e %e %e %e %e %e %e %e %e %e %e %e %e ",
-             &eagle_data[0], &eagle_data[1], &eagle_data[2], &eagle_data[3],
-             &eagle_data[4], &eagle_data[5], &eagle_data[6], &eagle_data[7],
-             &eagle_data[8], &eagle_data[9], &eagle_data[10], &eagle_data[11],
-             &eagle_data[12], &eagle_data[13], &eagle_data[14], &eagle_data[15],
-             &eagle_data[16], &eagle_data[17], &eagle_data[18]);
+      int ret = fscanf(
+          EAGLE_test,
+          "%e %e %e %e %e %e %e %e %e %e %e %e %e %e %e %e %e %e %e ",
+          &eagle_data[0], &eagle_data[1], &eagle_data[2], &eagle_data[3],
+          &eagle_data[4], &eagle_data[5], &eagle_data[6], &eagle_data[7],
+          &eagle_data[8], &eagle_data[9], &eagle_data[10], &eagle_data[11],
+          &eagle_data[12], &eagle_data[13], &eagle_data[14], &eagle_data[15],
+          &eagle_data[16], &eagle_data[17], &eagle_data[18]);
+      if (ret == 0) error("Error reading input.");
       if (relative_error(age_Gyr, eagle_data[0]) > tol)
         error(
             "relative error in age greater than tolerance. Swift: %e Eagle %e",

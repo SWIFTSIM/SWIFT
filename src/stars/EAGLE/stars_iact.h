@@ -105,8 +105,9 @@ runner_iact_nonsym_stars_density(
  */
 __attribute__((always_inline)) INLINE static void
 runner_iact_nonsym_stars_feedback(
-    float r2, const float *dx, float hi, float hj, const struct spart *restrict si,
-    struct part *restrict pj, const struct cosmology *restrict cosmo,
+    float r2, const float *dx, float hi, float hj,
+    const struct spart *restrict si, struct part *restrict pj,
+    const struct cosmology *restrict cosmo,
     const struct stars_props *restrict stars_properties,
     struct xpart *restrict xp, integertime_t ti_current) {
   float wj;
@@ -135,7 +136,7 @@ runner_iact_nonsym_stars_feedback(
   float new_mass =
       current_mass + si->to_distribute.mass * density_weighted_frac;
   // for testing energy injection
-  //new_mass = current_mass;
+  // new_mass = current_mass;
   hydro_set_mass(pj, new_mass);
 
   /* Update total metallicity */
@@ -226,16 +227,13 @@ runner_iact_nonsym_stars_feedback(
   /* Energy feedback */
   float u_init = hydro_get_physical_internal_energy(pj, xp, cosmo);
   float heating_probability = -1.f, du = 0.f, d_energy = 0.f;
-  d_energy += si->to_distribute.d_energy;
+  d_energy += si->to_distribute.d_energy * density_weighted_frac;
 
   if (stars_properties->feedback.continuous_heating) {
     // We're doing ONLY continuous heating
     d_energy += si->to_distribute.num_SNIa *
                 stars_properties->feedback.total_energy_SNe *
                 density_weighted_frac * si->mass_init;
-    du = d_energy / hydro_get_mass(pj);
-    hydro_set_physical_internal_energy(pj, xp, cosmo, u_init + du);
-    hydro_set_drifted_physical_internal_energy(pj, cosmo, u_init + du);
   } else {
     // We're doing stochastic heating
     heating_probability = si->to_distribute.heating_probability;
@@ -247,11 +245,12 @@ runner_iact_nonsym_stars_feedback(
       heating_probability = 1;
     }
 
-    double random_num =
-        random_unit_interval(pj->id, ti_current, random_number_stellar_feedback);
+    double random_num = random_unit_interval(pj->id, ti_current,
+                                             random_number_stellar_feedback);
     if (random_num < heating_probability) {
       message(
-          "we did some heating! id %llu star id %llu probability %.5e random_num %.5e du %.5e "
+          "we did some heating! id %llu star id %llu probability %.5e "
+          "random_num %.5e du %.5e "
           "du/ini %.5e",
           pj->id, si->id, heating_probability, random_num, du,
           du / hydro_get_physical_internal_energy(pj, xp, cosmo));
@@ -259,6 +258,13 @@ runner_iact_nonsym_stars_feedback(
       hydro_set_drifted_physical_internal_energy(pj, cosmo, u_init + du);
     }
   }
+
+  /* Add contribution from thermal and kinetic energy of ejected material (and
+   * continuous SNIa feedback) */
+  u_init = hydro_get_physical_internal_energy(pj, xp, cosmo);
+  du = d_energy / hydro_get_mass(pj);
+  hydro_set_physical_internal_energy(pj, xp, cosmo, u_init + du);
+  hydro_set_drifted_physical_internal_energy(pj, cosmo, u_init + du);
 }
 
 #endif /* SWIFT_EAGLE_STARS_IACT_H */

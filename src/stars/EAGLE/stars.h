@@ -66,7 +66,7 @@ __attribute__((always_inline)) INLINE static void stars_init_spart(
  * @param sp The particle to act upon
  */
 __attribute__((always_inline)) INLINE static void stars_first_init_spart(
-    struct spart* sp, const struct stars_props *stars_properties) {
+    struct spart* sp, const struct stars_props* stars_properties) {
 
   sp->time_bin = 0;
   sp->birth_density = -1.f;
@@ -324,7 +324,7 @@ inline static void evolve_SNIa(float log10_min_mass, float log10_max_mass,
       sp->mass_init;
 
   sp->to_distribute.num_SNIa =
-      num_SNIa_per_msun * stars->feedback.const_solar_mass;
+      num_SNIa_per_msun / stars->feedback.const_solar_mass;
 
   /* compute mass fractions of each metal */
   for (int i = 0; i < chemistry_element_count; i++) {
@@ -781,17 +781,19 @@ __attribute__((always_inline)) INLINE static void stars_evolve_spart(
   sp->to_distribute.num_SNe = compute_SNe(sp, stars_properties, star_age, dt);
 
   /* Compute energy change due to thermal and kinetic energy of ejecta */
-  sp->to_distribute.d_energy = sp->to_distribute.mass *
+  sp->to_distribute.d_energy =
+      sp->to_distribute.mass *
       (stars_properties->feedback.ejecta_specific_thermal_energy +
        0.5 * (sp->v[0] * sp->v[0] + sp->v[1] * sp->v[1] + sp->v[2] * sp->v[2]) *
            cosmo->a2_inv);
 
   /* Compute probability of heating neighbouring particles */
-  if (dt > 0 && sp->ngb_mass > 0)  sp->to_distribute.heating_probability = 
-      stars_properties->feedback.total_energy_SNe *
-      sp->to_distribute.num_SNe /
-      (stars_properties->feedback.temp_to_u_factor *
-      stars_properties->feedback.SNe_deltaT_desired * sp->ngb_mass);
+  if (dt > 0 && sp->ngb_mass > 0)
+    sp->to_distribute.heating_probability =
+        stars_properties->feedback.total_energy_SNe *
+        sp->to_distribute.num_SNe /
+        (stars_properties->feedback.temp_to_u_factor *
+         stars_properties->feedback.SNe_deltaT_desired * sp->ngb_mass);
 }
 
 /**

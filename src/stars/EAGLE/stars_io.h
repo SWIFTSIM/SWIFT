@@ -133,16 +133,16 @@ INLINE static void stars_props_init(struct stars_props *sp,
     sp->log_max_h_change = logf(powf(max_volume_change, hydro_dimension_inv));
 
   /* Read SNIa timscale */
-  sp->feedback.SNIa_timescale_Gyr = parser_get_param_float(
-      params, "EAGLEFeedback:SNIa_timescale_Gyr");
+  sp->feedback.SNIa_timescale_Gyr =
+      parser_get_param_float(params, "EAGLEFeedback:SNIa_timescale_Gyr");
 
   /* Read the efficiency of producing SNIa */
-  sp->feedback.SNIa_efficiency = parser_get_param_float(
-      params, "EAGLEFeedback:SNIa_efficiency");
+  sp->feedback.SNIa_efficiency =
+      parser_get_param_float(params, "EAGLEFeedback:SNIa_efficiency");
 
   /* Are we doing continuous heating? */
-  sp->feedback.continuous_heating = parser_get_param_int(
-      params, "EAGLEFeedback:continuous_heating_switch");
+  sp->feedback.continuous_heating =
+      parser_get_param_int(params, "EAGLEFeedback:continuous_heating_switch");
 
   /* Set the delay time before SNII occur */
   const float Gyr_in_cgs = 1e9 * 365 * 24 * 3600;
@@ -151,8 +151,8 @@ INLINE static void stars_props_init(struct stars_props *sp,
       Gyr_in_cgs / units_cgs_conversion_factor(us, UNIT_CONV_TIME);
 
   /* Read the temperature change to use in stochastic heating */
-  sp->feedback.SNe_deltaT_desired = parser_get_param_float(
-      params, "EAGLEFeedback:SNe_heating_temperature_K");
+  sp->feedback.SNe_deltaT_desired =
+      parser_get_param_float(params, "EAGLEFeedback:SNe_heating_temperature_K");
   sp->feedback.SNe_deltaT_desired /=
       units_cgs_conversion_factor(us, UNIT_CONV_TEMPERATURE);
 
@@ -172,7 +172,8 @@ INLINE static void stars_props_init(struct stars_props *sp,
       phys_const->const_boltzmann_k /
       (p->mu_ionised * (hydro_gamma_minus_one)*phys_const->const_proton_mass);
 
-  /* Read birth time to set all stars in ICs to (defaults to -1 to indicate star present in ICs) */
+  /* Read birth time to set all stars in ICs to (defaults to -1 to indicate star
+   * present in ICs) */
   sp->feedback.spart_first_init_birth_time = parser_get_opt_param_float(
       params, "EAGLEFeedback:birth_time_override", -1);
 
