@@ -69,7 +69,7 @@
 /* Global variables. */
 int cell_next_tag = 0;
 
-/** List of cell pairs for sub-cell recursion. For any sid, the entries in 
+/** List of cell pairs for sub-cell recursion. For any sid, the entries in
  * this array contain the number of sub-cell pairs and the indices and sid
  * of the sub-cell pairs themselves. */
 struct cell_split_pair cell_split_pairs[13] = {
