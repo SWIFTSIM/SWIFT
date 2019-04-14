@@ -205,6 +205,14 @@ __attribute__((always_inline)) INLINE static void gravity_cache_populate(
 
   const float theta_crit2 = grav_props->theta_crit2;
 
+#ifdef SWIFT_DEBUG_CHECKS
+  if (gcount_padded < gcount) error("Invalid padded cache size. Too small.");
+  if (gcount_padded % VEC_SIZE != 0)
+    error("Padded gravity cache size invalid. Not a multiple of SIMD length.");
+  if (c->count < gcount_padded)
+    error("Size of the gravity cache is not large enough.");
+#endif
+
   /* Make the compiler understand we are in happy vectorization land */
   swift_declare_aligned_ptr(float, x, c->x, SWIFT_CACHE_ALIGNMENT);
   swift_declare_aligned_ptr(float, y, c->y, SWIFT_CACHE_ALIGNMENT);
@@ -297,6 +305,14 @@ gravity_cache_populate_no_mpole(const timebin_t max_active_bin,
                                 const double shift[3], const struct cell *cell,
                                 const struct gravity_props *grav_props) {
 
+#ifdef SWIFT_DEBUG_CHECKS
+  if (gcount_padded < gcount) error("Invalid padded cache size. Too small.");
+  if (gcount_padded % VEC_SIZE != 0)
+    error("Padded gravity cache size invalid. Not a multiple of SIMD length.");
+  if (c->count < gcount_padded)
+    error("Size of the gravity cache is not large enough.");
+#endif
+
   /* Make the compiler understand we are in happy vectorization land */
   swift_declare_aligned_ptr(float, x, c->x, SWIFT_CACHE_ALIGNMENT);
   swift_declare_aligned_ptr(float, y, c->y, SWIFT_CACHE_ALIGNMENT);
@@ -376,6 +392,12 @@ gravity_cache_populate_all_mpole(const timebin_t max_active_bin,
                                  const struct gravity_props *grav_props) {
 
 #ifdef SWIFT_DEBUG_CHECKS
+  if (gcount_padded < gcount) error("Invalid padded cache size. Too small.");
+  if (gcount_padded % VEC_SIZE != 0)
+    error("Padded gravity cache size invalid. Not a multiple of SIMD length.");
+  if (c->count < gcount_padded)
+    error("Size of the gravity cache is not large enough.");
+
   const float theta_crit2 = grav_props->theta_crit2;
 #endif
 
