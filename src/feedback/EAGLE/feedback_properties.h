@@ -1,7 +1,31 @@
+/*******************************************************************************
+ * This file is part of SWIFT.
+ * Coypright (c) 2018 Matthieu Schaller (schaller@strw.leidenuniv.nl)
+ *
+ * This program is free software: you can redistribute it and/or modify
+ * it under the terms of the GNU Lesser General Public License as published
+ * by the Free Software Foundation, either version 3 of the License, or
+ * (at your option) any later version.
+ *
+ * This program is distributed in the hope that it will be useful,
+ * but WITHOUT ANY WARRANTY; without even the implied warranty of
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+ * GNU General Public License for more details.
+ *
+ * You should have received a copy of the GNU Lesser General Public License
+ * along with this program.  If not, see <http://www.gnu.org/licenses/>.
+ *
+ ******************************************************************************/
+#ifndef SWIFT_EAGLE_FEEDBACK_PROPERTIES_H
+#define SWIFT_EAGLE_FEEDBACK_PROPERTIES_H
+
+#include "hydro_properties.h"
+
 /**
  * @brief Stores AGB and SNII yield tables
  */
 struct yield_table {
+
   /* Yield table mass bins */
   double *mass;
 
@@ -32,6 +56,7 @@ struct yield_table {
  * IMF
  */
 struct lifetime_table {
+
   /* number of elements, mass, and initial metallicity bins */
   int n_mass;
   int n_z;
@@ -66,9 +91,6 @@ struct feedback_props {
   /* Solar mass */
   float const_solar_mass;
 
-  /* Flag for testing energy injection */
-  int const_feedback_energy_testing;
-
   /* Yield tables for AGB and SNII  */
   struct yield_table yield_AGB;
   struct yield_table yield_SNII;
@@ -82,7 +104,6 @@ struct feedback_props {
   double *yields_SNIa;
 
   /* Parameters to SNIa enrichment model  */
-  int SNIa_mode;
   float SNIa_efficiency;
   float SNIa_timescale_Gyr;
 
@@ -90,19 +111,6 @@ struct feedback_props {
   char **SNIa_element_names;
   char **SNII_element_names;
   char **AGB_element_names;
-
-  /* Element name string length */
-  int element_name_length;
-
-  /* Sizes of dimensions of arrays in yield tables for each enrichment channel
-   */
-  int SNIa_n_elements;
-  int SNII_n_mass;
-  int SNII_n_elements;
-  int SNII_n_z;
-  int AGB_n_mass;
-  int AGB_n_elements;
-  int AGB_n_z;
 
   /* log10 of max and min allowable masses for SNII and SNIa in msun */
   float log10_SNII_min_mass_msun;
@@ -114,21 +122,16 @@ struct feedback_props {
 
   /* Parameters for IMF  */
 
-  /* IMF model name */
-  char IMF_Model[10];
-
-  /* Exponent for IMF if using power law */
-  float IMF_Exponent;
-
-  /* Array to store calculated IMF */
+  /*! Array to store calculated IMF */
   float *imf;
 
-  /* Arrays to store IMF mass bins */
+  /*! Arrays to store IMF mass bins */
   float *imf_mass_bin;
+
+  /*! Arrays to store IMF mass bins (log10)*/
   float *imf_mass_bin_log10;
 
   /* Number of IMF mass bins, maximum and minimum bins */
-  int n_imf_mass_bins;
   float imf_max_mass_msun;
   float imf_min_mass_msun;
   float log10_imf_min_mass_msun;
@@ -138,7 +141,7 @@ struct feedback_props {
   struct lifetime_table lifetimes;
 
   /* Location of yield tables */
-  char yield_table_path[50];
+  char yield_table_path[200];
 
   /* number of type II supernovae per solar mass */
   float num_SNII_per_msun;
@@ -156,3 +159,5 @@ void feedback_props_init(struct feedback_props *fp,
                          struct swift_params *params,
                          const struct hydro_props *hydro_props,
                          const struct cosmology *cosmo);
+
+#endif /* SWIFT_EAGLE_FEEDBACK_PROPERTIES_H */

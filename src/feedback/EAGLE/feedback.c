@@ -17,8 +17,10 @@
  *
  ******************************************************************************/
 
+/* This file's header */
 #include "feedback.h"
 
+/* Local includes. */
 #include "hydro_properties.h"
 #include "imf.h"
 #include "interpolate.h"
@@ -284,17 +286,17 @@ inline static void evolve_SNII(
     for (mass_bin_index = low_imf_mass_bin_index;
          mass_bin_index < high_imf_mass_bin_index + 1; mass_bin_index++) {
       low_index_3d = row_major_index_3d(
-          iz_low, elem, mass_bin_index, feedback_props->SNII_n_z,
-          chemistry_element_count, feedback_props->n_imf_mass_bins);
+          iz_low, elem, mass_bin_index, eagle_feedback_SNII_N_metals,
+          chemistry_element_count, eagle_feedback_N_imf_bins);
       high_index_3d = row_major_index_3d(
-          iz_high, elem, mass_bin_index, feedback_props->SNII_n_z,
-          chemistry_element_count, feedback_props->n_imf_mass_bins);
-      low_index_2d =
-          row_major_index_2d(iz_low, mass_bin_index, feedback_props->SNII_n_z,
-                             feedback_props->n_imf_mass_bins);
-      high_index_2d =
-          row_major_index_2d(iz_high, mass_bin_index, feedback_props->SNII_n_z,
-                             feedback_props->n_imf_mass_bins);
+          iz_high, elem, mass_bin_index, eagle_feedback_SNII_N_metals,
+          chemistry_element_count, eagle_feedback_N_imf_bins);
+      low_index_2d = row_major_index_2d(iz_low, mass_bin_index,
+                                        eagle_feedback_SNII_N_metals,
+                                        eagle_feedback_N_imf_bins);
+      high_index_2d = row_major_index_2d(iz_high, mass_bin_index,
+                                         eagle_feedback_SNII_N_metals,
+                                         eagle_feedback_N_imf_bins);
       stellar_yields[mass_bin_index] =
           (1 - dz) *
               (feedback_props->yield_SNII.yield_IMF_resampled[low_index_3d] +
@@ -315,11 +317,11 @@ inline static void evolve_SNII(
   for (mass_bin_index = low_imf_mass_bin_index;
        mass_bin_index < high_imf_mass_bin_index + 1; mass_bin_index++) {
     low_index_2d =
-        row_major_index_2d(iz_low, mass_bin_index, feedback_props->SNII_n_z,
-                           feedback_props->n_imf_mass_bins);
-    high_index_2d =
-        row_major_index_2d(iz_high, mass_bin_index, feedback_props->SNII_n_z,
-                           feedback_props->n_imf_mass_bins);
+        row_major_index_2d(iz_low, mass_bin_index, eagle_feedback_SNII_N_metals,
+                           eagle_feedback_N_imf_bins);
+    high_index_2d = row_major_index_2d(iz_high, mass_bin_index,
+                                       eagle_feedback_SNII_N_metals,
+                                       eagle_feedback_N_imf_bins);
     stellar_yields[mass_bin_index] =
         (1 - dz) * (feedback_props->yield_SNII
                         .total_metals_IMF_resampled[low_index_2d] +
@@ -349,11 +351,11 @@ inline static void evolve_SNII(
   for (mass_bin_index = low_imf_mass_bin_index;
        mass_bin_index < high_imf_mass_bin_index + 1; mass_bin_index++) {
     low_index_2d =
-        row_major_index_2d(iz_low, mass_bin_index, feedback_props->SNII_n_z,
-                           feedback_props->n_imf_mass_bins);
-    high_index_2d =
-        row_major_index_2d(iz_high, mass_bin_index, feedback_props->SNII_n_z,
-                           feedback_props->n_imf_mass_bins);
+        row_major_index_2d(iz_low, mass_bin_index, eagle_feedback_SNII_N_metals,
+                           eagle_feedback_N_imf_bins);
+    high_index_2d = row_major_index_2d(iz_high, mass_bin_index,
+                                       eagle_feedback_SNII_N_metals,
+                                       eagle_feedback_N_imf_bins);
     stellar_yields[mass_bin_index] =
         (1 - dz) *
             feedback_props->yield_SNII.ejecta_IMF_resampled[low_index_2d] +
@@ -437,17 +439,17 @@ inline static void evolve_AGB(
     for (mass_bin_index = low_imf_mass_bin_index;
          mass_bin_index < high_imf_mass_bin_index + 1; mass_bin_index++) {
       low_index_3d = row_major_index_3d(
-          iz_low, elem, mass_bin_index, feedback_props->AGB_n_z,
-          chemistry_element_count, feedback_props->n_imf_mass_bins);
+          iz_low, elem, mass_bin_index, eagle_feedback_AGB_N_metals,
+          chemistry_element_count, eagle_feedback_N_imf_bins);
       high_index_3d = row_major_index_3d(
-          iz_high, elem, mass_bin_index, feedback_props->AGB_n_z,
-          chemistry_element_count, feedback_props->n_imf_mass_bins);
-      low_index_2d =
-          row_major_index_2d(iz_low, mass_bin_index, feedback_props->AGB_n_z,
-                             feedback_props->n_imf_mass_bins);
-      high_index_2d =
-          row_major_index_2d(iz_high, mass_bin_index, feedback_props->AGB_n_z,
-                             feedback_props->n_imf_mass_bins);
+          iz_high, elem, mass_bin_index, eagle_feedback_AGB_N_metals,
+          chemistry_element_count, eagle_feedback_N_imf_bins);
+      low_index_2d = row_major_index_2d(iz_low, mass_bin_index,
+                                        eagle_feedback_AGB_N_metals,
+                                        eagle_feedback_N_imf_bins);
+      high_index_2d = row_major_index_2d(iz_high, mass_bin_index,
+                                         eagle_feedback_AGB_N_metals,
+                                         eagle_feedback_N_imf_bins);
       stellar_yields[mass_bin_index] =
           (1 - dz) *
               (feedback_props->yield_AGB.yield_IMF_resampled[low_index_3d] +
@@ -468,11 +470,11 @@ inline static void evolve_AGB(
   for (mass_bin_index = low_imf_mass_bin_index;
        mass_bin_index < high_imf_mass_bin_index + 1; mass_bin_index++) {
     low_index_2d =
-        row_major_index_2d(iz_low, mass_bin_index, feedback_props->AGB_n_z,
-                           feedback_props->n_imf_mass_bins);
+        row_major_index_2d(iz_low, mass_bin_index, eagle_feedback_AGB_N_metals,
+                           eagle_feedback_N_imf_bins);
     high_index_2d =
-        row_major_index_2d(iz_high, mass_bin_index, feedback_props->AGB_n_z,
-                           feedback_props->n_imf_mass_bins);
+        row_major_index_2d(iz_high, mass_bin_index, eagle_feedback_AGB_N_metals,
+                           eagle_feedback_N_imf_bins);
     stellar_yields[mass_bin_index] =
         (1 - dz) *
             (feedback_props->yield_AGB
@@ -502,11 +504,11 @@ inline static void evolve_AGB(
   for (mass_bin_index = low_imf_mass_bin_index;
        mass_bin_index < high_imf_mass_bin_index + 1; mass_bin_index++) {
     low_index_2d =
-        row_major_index_2d(iz_low, mass_bin_index, feedback_props->AGB_n_z,
-                           feedback_props->n_imf_mass_bins);
+        row_major_index_2d(iz_low, mass_bin_index, eagle_feedback_AGB_N_metals,
+                           eagle_feedback_N_imf_bins);
     high_index_2d =
-        row_major_index_2d(iz_high, mass_bin_index, feedback_props->AGB_n_z,
-                           feedback_props->n_imf_mass_bins);
+        row_major_index_2d(iz_high, mass_bin_index, eagle_feedback_AGB_N_metals,
+                           eagle_feedback_N_imf_bins);
     stellar_yields[mass_bin_index] =
         (1 - dz) *
             feedback_props->yield_AGB.ejecta_IMF_resampled[low_index_2d] +
@@ -558,8 +560,7 @@ void compute_stellar_evolution(const struct feedback_props* feedback_props,
                                const float dt) {
 
   /* Allocate temporary array for calculating imf weights */
-  float* stellar_yields;
-  stellar_yields = malloc(feedback_props->n_imf_mass_bins * sizeof(float));
+  float stellar_yields[eagle_feedback_N_imf_bins];
 
   /* Convert dt and stellar age from internal units to Gyr. */
   const double Gyr_in_cgs = 1e9 * 365. * 24. * 3600.;
@@ -627,9 +628,6 @@ void compute_stellar_evolution(const struct feedback_props* feedback_props,
         sp->feedback_data.to_distribute.num_SNe /
         (feedback_props->temp_to_u_factor * feedback_props->SNe_deltaT_desired *
          sp->feedback_data.ngb_mass);
-
-  /* Clean up */
-  free(stellar_yields);
 }
 
 /**
@@ -699,16 +697,8 @@ void feedback_props_init(struct feedback_props* fp,
   fp->const_solar_mass = phys_const->const_solar_mass;
 
   /* Set number of elements found in yield tables */
-  fp->SNIa_n_elements = 42;
-  fp->SNII_n_mass = 11;
-  fp->SNII_n_elements = 11;
-  fp->SNII_n_z = 5;
-  fp->AGB_n_mass = 23;
-  fp->AGB_n_elements = 11;
-  fp->AGB_n_z = 3;
   fp->lifetimes.n_mass = 30;
   fp->lifetimes.n_z = 6;
-  fp->element_name_length = 15;
 
   /* Set bounds for imf  */
   fp->log10_SNII_min_mass_msun = 0.77815125f;  // log10(6).
@@ -718,7 +708,6 @@ void feedback_props_init(struct feedback_props* fp,
   /* Yield table filepath  */
   parser_get_param_string(params, "EAGLEFeedback:filename",
                           fp->yield_table_path);
-  parser_get_param_string(params, "EAGLEFeedback:imf_model", fp->IMF_Model);
 
   /* Initialise IMF */
   init_imf(fp);
@@ -743,8 +732,9 @@ void feedback_props_init(struct feedback_props* fp,
   /* Set yield_mass_bins array */
   const float imf_log10_mass_bin_size =
       (fp->log10_imf_max_mass_msun - fp->log10_imf_min_mass_msun) /
-      (fp->n_imf_mass_bins - 1);
-  for (int i = 0; i < fp->n_imf_mass_bins; i++)
+      (eagle_feedback_N_imf_bins - 1);
+
+  for (int i = 0; i < eagle_feedback_N_imf_bins; i++)
     fp->yield_mass_bins[i] =
         imf_log10_mass_bin_size * i + fp->log10_imf_min_mass_msun;
 

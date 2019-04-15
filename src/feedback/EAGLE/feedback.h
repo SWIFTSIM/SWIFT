@@ -20,11 +20,12 @@
 #define SWIFT_FEEDBACK_EAGLE_H
 
 #include "cosmology.h"
+#include "feedback_properties.h"
 #include "hydro_properties.h"
 #include "part.h"
 #include "units.h"
 
-#include "feedback_properties.h"
+#include <strings.h>
 
 void compute_stellar_evolution(const struct feedback_props* feedback_props,
                                const struct cosmology* cosmo, struct spart* sp,
@@ -57,6 +58,8 @@ __attribute__((always_inline)) INLINE static void feedback_first_init_spart(
 
   sp->birth_density = -1.f;
   sp->birth_time = feedback_props->spart_first_init_birth_time;
+
+  bzero(&sp->feedback_data, sizeof(struct feedback_part_data));
 
   feedback_init_spart(sp);
 }

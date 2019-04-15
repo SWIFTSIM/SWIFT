@@ -19,10 +19,13 @@
 #ifndef SWIFT_EAGLE_STARS_IMF_H
 #define SWIFT_EAGLE_STARS_IMF_H
 
+/* Some standard headers. */
+#include <string.h>
+
+/* Local includes. */
 #include "interpolate.h"
 #include "minmax.h"
-
-#include <string.h>
+#include "yield_tables.h"
 
 /**
  * @brief the different weightings allowed for the IMF integration
@@ -52,7 +55,7 @@ inline static void determine_imf_bins(
     error("Lower bound higher than larger bound.");
 #endif
 
-  const int N_bins = feedback_props->n_imf_mass_bins;
+  const int N_bins = eagle_feedback_N_imf_bins;
   const float *imf_bins_log10 = feedback_props->imf_mass_bin_log10;
 
   /* Check whether lower mass is within the IMF mass bin range */
@@ -93,7 +96,7 @@ inline static float integrate_imf(const float log10_min_mass,
                                   const struct feedback_props *feedback_props) {
 
   /* Pull out some common terms */
-  const int N_bins = feedback_props->n_imf_mass_bins;
+  const int N_bins = eagle_feedback_N_imf_bins;
   const float *imf = feedback_props->imf;
   const float *imf_mass_bin = feedback_props->imf_mass_bin;
   const float *imf_mass_bin_log10 = feedback_props->imf_mass_bin_log10;
@@ -193,9 +196,6 @@ inline static float integrate_imf(const float log10_min_mass,
  * @param star_properties #stars_props data structure */
 inline static void init_imf(struct feedback_props *restrict feedback_props) {
 
-  /* Define number of imf mass bins */
-  feedback_props->n_imf_mass_bins = 200;
-
   /* Define max and min imf masses */
   feedback_props->imf_max_mass_msun = 100.f;
   feedback_props->imf_min_mass_msun = 0.1;
@@ -208,50 +208,45 @@ inline static void init_imf(struct feedback_props *restrict feedback_props) {
   const float imf_log10_mass_bin_size =
       (feedback_props->log10_imf_max_mass_msun -
        feedback_props->log10_imf_min_mass_msun) /
-      (float)(feedback_props->n_imf_mass_bins - 1);
+      (float)(eagle_feedback_N_imf_bins - 1);
 
   /* Allocate IMF array */
   if (swift_memalign("imf-tables", (void **)&feedback_props->imf,
                      SWIFT_STRUCT_ALIGNMENT,
-                     feedback_props->n_imf_mass_bins * sizeof(float)) != 0)
+                     eagle_feedback_N_imf_bins * sizeof(float)) != 0)
     error("Failed to allocate IMF bins table");
 
   /* Allocate array to store IMF mass bins */
   if (swift_memalign("imf-tables", (void **)&feedback_props->imf_mass_bin,
                      SWIFT_STRUCT_ALIGNMENT,
-                     feedback_props->n_imf_mass_bins * sizeof(float)) != 0)
+                     eagle_feedback_N_imf_bins * sizeof(float)) != 0)
     error("Failed to allocate IMF bins table");
 
   /* Allocate array to store IMF mass bins in log10 space */
   if (swift_memalign("imf-tables", (void **)&feedback_props->imf_mass_bin_log10,
                      SWIFT_STRUCT_ALIGNMENT,
-                     feedback_props->n_imf_mass_bins * sizeof(float)) != 0)
+                     eagle_feedback_N_imf_bins * sizeof(float)) != 0)
     error("Failed to allocate IMF bins table");
 
   /* Set IMF from Chabrier 2003 */
-  if (strcmp(feedback_props->IMF_Model, "Chabrier") == 0) {
-    for (int i = 0; i < feedback_props->n_imf_mass_bins; i++) {
+  for (int i = 0; i < eagle_feedback_N_imf_bins; i++) {
 
-      const float log10_mass_msun =
-          feedback_props->log10_imf_min_mass_msun + i * imf_log10_mass_bin_size;
+    const float log10_mass_msun =
+        feedback_props->log10_imf_min_mass_msun + i * imf_log10_mass_bin_size;
 
-      const float mass_msun = exp10f(log10_mass_msun);
+    const float mass_msun = exp10f(log10_mass_msun);
 
-      if (mass_msun > 1.0)
-        feedback_props->imf[i] = 0.237912 * pow(mass_msun, -2.3);
-      else
-        feedback_props->imf[i] =
-            0.852464 *
-            exp((log10(mass_msun) - log10(0.079)) *
-                (log10(mass_msun) - log10(0.079)) / (-2.0 * pow(0.69, 2))) /
-            mass_msun;
+    if (mass_msun > 1.0)
+      feedback_props->imf[i] = 0.237912 * pow(mass_msun, -2.3);
+    else
+      feedback_props->imf[i] =
+          0.852464 *
+          exp((log10(mass_msun) - log10(0.079)) *
+              (log10(mass_msun) - log10(0.079)) / (-2.0 * pow(0.69, 2))) /
+          mass_msun;
 
-      feedback_props->imf_mass_bin[i] = mass_msun;
-      feedback_props->imf_mass_bin_log10[i] = log10_mass_msun;
-    }
-  } else {
-    error("Invalid IMF model %s. Valid models are: 'Chabrier'\n",
-          feedback_props->IMF_Model);
+    feedback_props->imf_mass_bin[i] = mass_msun;
+    feedback_props->imf_mass_bin_log10[i] = log10_mass_msun;
   }
 
   /* Normalize the IMF */
@@ -260,7 +255,7 @@ inline static void init_imf(struct feedback_props *restrict feedback_props) {
                                    eagle_imf_integration_mass_weight,
                                    /*(stellar_yields=)*/ NULL, feedback_props);
 
-  for (int i = 0; i < feedback_props->n_imf_mass_bins; i++)
+  for (int i = 0; i < eagle_feedback_N_imf_bins; i++)
     feedback_props->imf[i] /= norm;
 }
 

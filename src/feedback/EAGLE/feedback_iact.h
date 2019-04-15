@@ -1,3 +1,23 @@
+/*******************************************************************************
+ * This file is part of SWIFT.
+ * Coypright (c) 2018 Matthieu Schaller (schaller@strw.leidenuniv.nl)
+ *
+ * This program is free software: you can redistribute it and/or modify
+ * it under the terms of the GNU Lesser General Public License as published
+ * by the Free Software Foundation, either version 3 of the License, or
+ * (at your option) any later version.
+ *
+ * This program is distributed in the hope that it will be useful,
+ * but WITHOUT ANY WARRANTY; without even the implied warranty of
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+ * GNU General Public License for more details.
+ *
+ * You should have received a copy of the GNU Lesser General Public License
+ * along with this program.  If not, see <http://www.gnu.org/licenses/>.
+ *
+ ******************************************************************************/
+#ifndef SWIFT_EAGLE_FEEDBACK_IACT_H
+#define SWIFT_EAGLE_FEEDBACK_IACT_H
 
 /**
  * @brief Density interaction between two particles (non-symmetric).
@@ -226,10 +246,11 @@ runner_iact_nonsym_feedback_apply(
   }
 
   /* Add contribution from thermal and kinetic energy of ejected material
-  (and
-   * continuous SNIa feedback) */
+     (and continuous SNIa feedback) */
   u_init = hydro_get_physical_internal_energy(pj, xp, cosmo);
   du = d_energy / hydro_get_mass(pj);
   hydro_set_physical_internal_energy(pj, xp, cosmo, u_init + du);
   hydro_set_drifted_physical_internal_energy(pj, cosmo, u_init + du);
 }
+
+#endif /* SWIFT_EAGLE_FEEDBACK_IACT_H */
