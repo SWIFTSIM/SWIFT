@@ -581,9 +581,6 @@ struct cell {
     };
 
     struct {
-      /* Task receiving hydro data (density). */
-      struct task *recv_rho;
-
       /* Task receiving hydro data (gradient). */
       struct task *recv_gradient;
 

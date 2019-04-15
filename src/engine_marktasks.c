@@ -364,7 +364,7 @@ void engine_marktasks_mapper(void *map_data, int num_elements,
           if (cj_active_hydro) {
             scheduler_activate_recv(s, ci->mpi.recv, task_subtype_xv);
             if (ci_active_hydro) {
-              scheduler_activate(s, ci->mpi.hydro.recv_rho);
+              scheduler_activate_recv(s, ci->mpi.recv, task_subtype_rho);
 #ifdef EXTRA_HYDRO_LOOP
               scheduler_activate(s, ci->mpi.hydro.recv_gradient);
 #endif
@@ -408,7 +408,7 @@ void engine_marktasks_mapper(void *map_data, int num_elements,
 
             scheduler_activate_recv(s, cj->mpi.recv, task_subtype_xv);
             if (cj_active_hydro) {
-              scheduler_activate(s, cj->mpi.hydro.recv_rho);
+              scheduler_activate_recv(s, cj->mpi.recv, task_subtype_rho);
 #ifdef EXTRA_HYDRO_LOOP
               scheduler_activate(s, cj->mpi.hydro.recv_gradient);
 #endif
@@ -463,7 +463,7 @@ void engine_marktasks_mapper(void *map_data, int num_elements,
 
           if (cj_active_stars) {
             scheduler_activate_recv(s, ci->mpi.recv, task_subtype_xv);
-            scheduler_activate(s, ci->mpi.hydro.recv_rho);
+            scheduler_activate_recv(s, ci->mpi.recv, task_subtype_rho);
 
             /* If the local cell is active, more stuff will be needed. */
             scheduler_activate_send(s, cj->mpi.send, task_subtype_spart,
@@ -497,7 +497,7 @@ void engine_marktasks_mapper(void *map_data, int num_elements,
           /* If the local cell is active, receive data from the foreign cell. */
           if (ci_active_stars) {
             scheduler_activate_recv(s, cj->mpi.recv, task_subtype_xv);
-            scheduler_activate(s, cj->mpi.hydro.recv_rho);
+            scheduler_activate_recv(s, cj->mpi.recv, task_subtype_rho);
 
             /* If the local cell is active, more stuff will be needed. */
             scheduler_activate_send(s, ci->mpi.send, task_subtype_spart,

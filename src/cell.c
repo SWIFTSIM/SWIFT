@@ -3265,7 +3265,7 @@ int cell_unskip_hydro_tasks(struct cell *c, struct scheduler *s) {
         if (cj_active) {
           scheduler_activate_recv(s, ci->mpi.recv, task_subtype_xv);
           if (ci_active) {
-            scheduler_activate(s, ci->mpi.hydro.recv_rho);
+            scheduler_activate_recv(s, ci->mpi.recv, task_subtype_rho);
 
 #ifdef EXTRA_HYDRO_LOOP
             scheduler_activate(s, ci->mpi.hydro.recv_gradient);
@@ -3315,7 +3315,7 @@ int cell_unskip_hydro_tasks(struct cell *c, struct scheduler *s) {
         if (ci_active) {
           scheduler_activate_recv(s, cj->mpi.recv, task_subtype_xv);
           if (cj_active) {
-            scheduler_activate(s, cj->mpi.hydro.recv_rho);
+            scheduler_activate_recv(s, cj->mpi.recv, task_subtype_rho);
 
 #ifdef EXTRA_HYDRO_LOOP
             scheduler_activate(s, cj->mpi.hydro.recv_gradient);
@@ -3663,7 +3663,7 @@ int cell_unskip_stars_tasks(struct cell *c, struct scheduler *s) {
 
         if (cj_active) {
           scheduler_activate_recv(s, ci->mpi.recv, task_subtype_xv);
-          scheduler_activate(s, ci->mpi.hydro.recv_rho);
+          scheduler_activate_recv(s, ci->mpi.recv, task_subtype_rho);
 
           /* If the local cell is active, more stuff will be needed. */
           scheduler_activate_send(s, cj->mpi.send, task_subtype_spart,
@@ -3695,7 +3695,7 @@ int cell_unskip_stars_tasks(struct cell *c, struct scheduler *s) {
         /* If the local cell is active, receive data from the foreign cell. */
         if (ci_active) {
           scheduler_activate_recv(s, cj->mpi.recv, task_subtype_xv);
-          scheduler_activate(s, cj->mpi.hydro.recv_rho);
+          scheduler_activate_recv(s, cj->mpi.recv, task_subtype_rho);
 
           /* If the local cell is active, more stuff will be needed. */
           scheduler_activate_send(s, ci->mpi.send, task_subtype_spart,
