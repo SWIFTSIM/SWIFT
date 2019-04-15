@@ -70,6 +70,8 @@ enum task_types {
   task_type_end_grav_force,
   task_type_cooling,
   task_type_star_formation,
+  task_type_star_formation_in,  /* Implicit */
+  task_type_star_formation_out, /* Implicit */
   task_type_logger,
   task_type_stars_in,       /* Implicit */
   task_type_stars_out,      /* Implicit */
@@ -93,7 +95,9 @@ enum task_subtypes {
   task_subtype_limiter,
   task_subtype_grav,
   task_subtype_external_grav,
-  task_subtype_tend,
+  task_subtype_tend_part,
+  task_subtype_tend_gpart,
+  task_subtype_tend_spart,
   task_subtype_xv,
   task_subtype_rho,
   task_subtype_gpart,

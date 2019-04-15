@@ -12,6 +12,7 @@ config.h.in
 config.sub
 ltmain.sh
 libtool
+build
 
 src/version_string.h
 swift*.tar.gz
@@ -35,6 +36,8 @@ examples/*/*/*.rst
 examples/*/*/*.hdf5
 examples/*/*/*.csv
 examples/*/*/*.dot
+examples/*/*/memuse_report-step*.dat
+examples/*/*/memuse_report-step*.log
 examples/*/*/restart/*
 examples/*/*/used_parameters.yml
 examples/*/stf_output*

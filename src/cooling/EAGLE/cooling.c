@@ -988,20 +988,20 @@ void cooling_print_backend(const struct cooling_function_data *cooling) {
 void cooling_clean(struct cooling_function_data *cooling) {
 
   /* Free the side arrays */
-  free(cooling->Redshifts);
-  free(cooling->nH);
-  free(cooling->Temp);
-  free(cooling->HeFrac);
-  free(cooling->Therm);
-  free(cooling->SolarAbundances);
-  free(cooling->SolarAbundances_inv);
+  swift_free("cooling", cooling->Redshifts);
+  swift_free("cooling", cooling->nH);
+  swift_free("cooling", cooling->Temp);
+  swift_free("cooling", cooling->HeFrac);
+  swift_free("cooling", cooling->Therm);
+  swift_free("cooling", cooling->SolarAbundances);
+  swift_free("cooling", cooling->SolarAbundances_inv);
 
   /* Free the tables */
-  free(cooling->table.metal_heating);
-  free(cooling->table.electron_abundance);
-  free(cooling->table.temperature);
-  free(cooling->table.H_plus_He_heating);
-  free(cooling->table.H_plus_He_electron_abundance);
+  swift_free("cooling-tables", cooling->table.metal_heating);
+  swift_free("cooling-tables", cooling->table.electron_abundance);
+  swift_free("cooling-tables", cooling->table.temperature);
+  swift_free("cooling-tables", cooling->table.H_plus_He_heating);
+  swift_free("cooling-tables", cooling->table.H_plus_He_electron_abundance);
 }
 
 /**

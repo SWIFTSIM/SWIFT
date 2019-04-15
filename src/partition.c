@@ -389,7 +389,8 @@ static void split_metis(struct space *s, int nregions, int *celllist) {
   for (int i = 0; i < s->nr_cells; i++) s->cells_top[i].nodeID = celllist[i];
 
   /* To check or visualise the partition dump all the cells. */
-  /*dumpCellRanks("metis_partition", s->cells_top, s->nr_cells);*/
+  /*if (engine_rank == 0) dumpCellRanks("metis_partition", s->cells_top,
+   * s->nr_cells);*/
 }
 #endif
 

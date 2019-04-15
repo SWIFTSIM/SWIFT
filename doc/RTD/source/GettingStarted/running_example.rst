@@ -11,7 +11,7 @@ as ``wget`` for grabbing the glass).
 
 .. code-block:: bash
    
-   cd examples/SodShock_3D
+   cd examples/HydroTests/SodShock_3D
    ./getGlass.sh
    python makeIC.py
    ../swift --hydro --threads=4 sodShock.yml
