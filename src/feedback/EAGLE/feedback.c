@@ -26,6 +26,29 @@
 #include "yield_tables.h"
 
 /**
+ * @brief Compute number of SN that should go off given the age of the spart
+ *
+ * @param sp spart we're evolving
+ * @param stars_properties stars_props data structure
+ * @param age age of star at the beginning of the step
+ * @param dt length of step
+ */
+float compute_SNe(const struct spart* sp,
+		  const struct feedback_props* feedback_props,
+		  const float age, const float dt) {
+
+  const float SNII_wind_delay = feedback_props->SNII_wind_delay;
+  
+  if (age <= SNII_wind_delay && (age + dt) > SNII_wind_delay) {
+
+    return feedback_props->num_SNII_per_msun * sp->mass_init / 
+           feedback_props->const_solar_mass;
+  } else {
+    return 0.f;
+  }
+}
+
+/**
  * @brief determine which metallicity bin star belongs to for AGB, compute bin
  * indices and offsets
  *
@@ -218,6 +241,7 @@ inline static void evolve_SNII(float log10_min_mass, float log10_max_mass,
                                float* stellar_yields,
                                const struct feedback_props* restrict feedback_props,
                                struct spart* restrict sp) {
+  
   int low_imf_mass_bin_index, high_imf_mass_bin_index, mass_bin_index;
 
   /* If mass at beginning of step is less than tabulated lower bound for IMF,
@@ -376,6 +400,7 @@ inline static void evolve_AGB(float log10_min_mass, float log10_max_mass,
                               float* stellar_yields,
                               const struct feedback_props* restrict feedback_props,
                               struct spart* restrict sp) {
+  
   int low_imf_mass_bin_index, high_imf_mass_bin_index, mass_bin_index;
 
   /* If mass at end of step is greater than tabulated lower bound for IMF, limit
@@ -517,10 +542,10 @@ inline static void evolve_AGB(float log10_min_mass, float log10_max_mass,
  * @param age age of spart at beginning of step
  * @param dt length of current timestep
  */
-void compute_stellar_evolution(
-			       const struct feedback_props* feedback_props,
-    struct spart* sp, const struct unit_system* us, float age,
-    double dt) {
+void compute_stellar_evolution(const struct feedback_props* feedback_props,
+			       const struct cosmology *cosmo, struct spart* sp,
+			       const struct unit_system* us, const float age,
+			       const float dt) {
 
   /* Allocate temporary array for calculating imf weights */
   float* stellar_yields;
@@ -528,149 +553,71 @@ void compute_stellar_evolution(
       malloc(feedback_props->n_imf_mass_bins * sizeof(float));
 
   /* Convert dt and stellar age from internal units to Gyr. */
-  const double Gyr_in_cgs = 3.154e16;
-  double dt_Gyr =
-      dt * units_cgs_conversion_factor(us, UNIT_CONV_TIME) / Gyr_in_cgs;
-  double star_age_Gyr =
-      age * units_cgs_conversion_factor(us, UNIT_CONV_TIME) / Gyr_in_cgs;
+  const double Gyr_in_cgs = 1e9 * 365. * 24. * 3600.;
+  const double time_to_cgs = units_cgs_conversion_factor(us, UNIT_CONV_TIME);
+  const float conversion_factor = time_to_cgs / Gyr_in_cgs;
+  const float dt_Gyr = dt * conversion_factor;
+  const float star_age_Gyr = age * conversion_factor;
 
+  /* Get the metallicity */
+  const float Z = sp->chemistry_data.metal_mass_fraction_total;
+  
   /* calculate mass of stars that has died from the star's birth up to the
    * beginning and end of timestep */
-  double log10_max_dying_mass_msun = log10(dying_mass_msun(
-      star_age_Gyr, sp->chemistry_data.metal_mass_fraction_total,
-      feedback_props));
-  double log10_min_dying_mass_msun = log10(dying_mass_msun(
-      star_age_Gyr + dt_Gyr, sp->chemistry_data.metal_mass_fraction_total,
-      feedback_props));
+  const float max_dying_mass_Msun = dying_mass_msun(star_age_Gyr, Z, feedback_props);
+  const float min_dying_mass_Msun = dying_mass_msun(star_age_Gyr + dt_Gyr, Z, feedback_props);
 
+#ifdef SWIFT_DEBUG_CHECK
   /* Sanity check. Worth investigating if necessary as functions for evaluating
    * mass of stars dying might be strictly decreasing.  */
-  if (log10_min_dying_mass_msun > log10_max_dying_mass_msun)
+  if (min_dying_mass_Msun > max_dying_mass_Msun)
     error("min dying mass is greater than max dying mass");
-
+#endif
+  
   /* Integration interval is zero - this can happen if minimum and maximum
-   * dying masses are above imf_max_mass_msun. Return without doing any
+   * dying masses are above imf_max_mass_Msun. Return without doing any
    * feedback. */
-  if (log10_min_dying_mass_msun == log10_max_dying_mass_msun) return;
+  if (min_dying_mass_Msun == max_dying_mass_Msun) return;
 
-  /* Evolve SNIa, SNII, AGB */
-  evolve_SNIa(log10_min_dying_mass_msun, log10_max_dying_mass_msun,
+  /* Life is better in log */
+  const float log10_max_dying_mass_Msun = log10f(max_dying_mass_Msun);
+  const float log10_min_dying_mass_Msun = log10f(min_dying_mass_Msun);
+  
+  /* Compute elements, energy and momentum to distribute from the 
+   *  three channels SNIa, SNII, AGB */
+  evolve_SNIa(log10_min_dying_mass_Msun, log10_max_dying_mass_Msun,
               feedback_props, sp, star_age_Gyr, dt_Gyr);
-  evolve_SNII(log10_min_dying_mass_msun, log10_max_dying_mass_msun,
+  evolve_SNII(log10_min_dying_mass_Msun, log10_max_dying_mass_Msun,
               stellar_yields, feedback_props, sp);
-  evolve_AGB(log10_min_dying_mass_msun, log10_max_dying_mass_msun,
+  evolve_AGB(log10_min_dying_mass_Msun, log10_max_dying_mass_Msun,
              stellar_yields, feedback_props, sp);
 
-  /* Compute the mass to distribute */
+  /* Compute the total mass to distribute (H + He  metals) */
   sp->feedback_data.to_distribute.mass = sp->feedback_data.to_distribute.total_metal_mass +
                            sp->feedback_data.to_distribute.metal_mass[chemistry_element_H] +
                            sp->feedback_data.to_distribute.metal_mass[chemistry_element_He];
 
+  /* Compute the number of type II SNe that went off */
+  sp->feedback_data.to_distribute.num_SNe = compute_SNe(sp, feedback_props, age, dt);
+
+  /* Compute energy change due to thermal and kinetic energy of ejecta */
+  sp->feedback_data.to_distribute.d_energy =
+      sp->feedback_data.to_distribute.mass *
+    (feedback_props->ejecta_specific_thermal_energy +
+     0.5 * (sp->v[0] * sp->v[0] + sp->v[1] * sp->v[1] + sp->v[2] * sp->v[2]) *
+     cosmo->a2_inv);
+
+  /* Compute probability of heating neighbouring particles */
+  if (dt > 0 && sp->feedback_data.ngb_mass > 0)
+    sp->feedback_data.to_distribute.heating_probability =
+        feedback_props->total_energy_SNe *
+        sp->feedback_data.to_distribute.num_SNe /
+        (feedback_props->temp_to_u_factor *
+         feedback_props->SNe_deltaT_desired * sp->feedback_data.ngb_mass);
+
+  
   /* Clean up */
   free(stellar_yields);
-}
-
-/**
- * @brief Compute number of SN that should go off given the age of the spart
- *
- * @param sp spart we're evolving
- * @param stars_properties stars_props data structure
- * @param age age of star at the beginning of the step
- * @param dt length of step
- */
-float compute_SNe(struct spart* sp,
-                                const struct feedback_props* feedback_props,
-                                float age, double dt) {
-  
-  if (age <= feedback_props->SNII_wind_delay &&
-      age + dt > feedback_props->SNII_wind_delay) {
-
-    return feedback_props->num_SNII_per_msun * sp->mass_init / 
-           feedback_props->const_solar_mass;
-  } else {
-    return 0;
-  }
-}
-
-
-/**
- * @brief Initializes constants related to stellar evolution, initializes imf,
- * reads and processes yield tables
- *
- * @param params swift_params parameters structure
- * @param stars stars_props data structure
- */
-inline static void stars_evolve_init(struct swift_params* params,
-                                     struct feedback_props* feedback_props) {
-
-  /* Set number of elements found in yield tables */
-  feedback_props->SNIa_n_elements = 42;
-  feedback_props->SNII_n_mass = 11;
-  feedback_props->SNII_n_elements = 11;
-  feedback_props->SNII_n_z = 5;
-  feedback_props->AGB_n_mass = 23;
-  feedback_props->AGB_n_elements = 11;
-  feedback_props->AGB_n_z = 3;
-  feedback_props->lifetimes.n_mass = 30;
-  feedback_props->lifetimes.n_z = 6;
-  feedback_props->element_name_length = 15;
-
-  /* Set bounds for imf  */
-  feedback_props->log10_SNII_min_mass_msun = 0.77815125f;  // log10(6).
-  feedback_props->log10_SNII_max_mass_msun = 2.f;          // log10(100).
-  feedback_props->log10_SNIa_max_mass_msun = 0.90308999f;  // log10(8).
-
-  /* Yield table filepath  */
-  parser_get_param_string(params, "EAGLEFeedback:filename",
-                          feedback_props->yield_table_path);
-  parser_get_param_string(params, "EAGLEFeedback:imf_model",
-                          feedback_props->IMF_Model);
-
-  /* Initialise IMF */
-  init_imf(feedback_props);
-
-  /* Allocate yield tables  */
-  allocate_yield_tables(feedback_props);
-
-  /* Set factors for each element adjusting SNII yield */
-  feedback_props->typeII_factor[0] = 1.f;
-  feedback_props->typeII_factor[1] = 1.f;
-  feedback_props->typeII_factor[2] = 0.5f;
-  feedback_props->typeII_factor[3] = 1.f;
-  feedback_props->typeII_factor[4] = 1.f;
-  feedback_props->typeII_factor[5] = 1.f;
-  feedback_props->typeII_factor[6] = 2.f;
-  feedback_props->typeII_factor[7] = 1.f;
-  feedback_props->typeII_factor[8] = 0.5f;
-
-  /* Read the tables  */
-  read_yield_tables(feedback_props);
-
-  /* Set yield_mass_bins array */
-  const float imf_log10_mass_bin_size =
-      (feedback_props->log10_imf_max_mass_msun -
-       feedback_props->log10_imf_min_mass_msun) /
-      (feedback_props->n_imf_mass_bins - 1);
-  for (int i = 0; i < feedback_props->n_imf_mass_bins; i++)
-    feedback_props->yield_mass_bins[i] =
-        imf_log10_mass_bin_size * i + feedback_props->log10_imf_min_mass_msun;
-
-  /* Resample yields from mass bins used in tables to mass bins used in IMF  */
-  compute_yields(feedback_props);
-
-  /* Resample ejecta contribution to enrichment from mass bins used in tables to
-   * mass bins used in IMF  */
-  compute_ejecta(feedback_props);
-
-  /* Calculate number of type II SN per solar mass
-   * Note: since we are integrating the IMF without weighting it by the yields
-   * pass NULL pointer for stellar_yields array */
-  feedback_props->num_SNII_per_msun =
-      integrate_imf(feedback_props->log10_SNII_min_mass_msun,
-                    feedback_props->log10_SNII_max_mass_msun, 0,
-                    /*(stellar_yields=)*/ NULL, feedback_props);
-
-  message("initialized stellar feedback");
 }
 
 /**
@@ -684,12 +631,12 @@ inline static void stars_evolve_init(struct swift_params* params,
  * @param params The parsed parameters.
  * @param p The already read-in properties of the hydro scheme.
  */
-void feedbakc_props_init(struct feedback_props *fp,
-                                       const struct phys_const *phys_const,
-                                       const struct unit_system *us,
-                                       struct swift_params *params,
-                                       const struct hydro_props *p,
-                                       const struct cosmology *cosmo) {
+void feedback_props_init(struct feedback_props *fp,
+			 const struct phys_const *phys_const,
+			 const struct unit_system *us,
+			 struct swift_params *params,
+			 const struct hydro_props *hydro_props,
+			 const struct cosmology *cosmo) {
 
   /* Read SNIa timscale */
   fp->SNIa_timescale_Gyr =
@@ -728,7 +675,7 @@ void feedbakc_props_init(struct feedback_props *fp,
   /* Calculate temperature to internal energy conversion factor */
   fp->temp_to_u_factor =
       phys_const->const_boltzmann_k /
-      (p->mu_ionised * (hydro_gamma_minus_one)*phys_const->const_proton_mass);
+      (hydro_props->mu_ionised * (hydro_gamma_minus_one)*phys_const->const_proton_mass);
 
   /* Read birth time to set all stars in ICs to (defaults to -1 to indicate star
    * present in ICs) */
@@ -737,6 +684,76 @@ void feedbakc_props_init(struct feedback_props *fp,
 
   /* Copy over solar mass */
   fp->const_solar_mass = phys_const->const_solar_mass;
+
+
+  /* Set number of elements found in yield tables */
+  fp->SNIa_n_elements = 42;
+  fp->SNII_n_mass = 11;
+  fp->SNII_n_elements = 11;
+  fp->SNII_n_z = 5;
+  fp->AGB_n_mass = 23;
+  fp->AGB_n_elements = 11;
+  fp->AGB_n_z = 3;
+  fp->lifetimes.n_mass = 30;
+  fp->lifetimes.n_z = 6;
+  fp->element_name_length = 15;
+
+  /* Set bounds for imf  */
+  fp->log10_SNII_min_mass_msun = 0.77815125f;  // log10(6).
+  fp->log10_SNII_max_mass_msun = 2.f;          // log10(100).
+  fp->log10_SNIa_max_mass_msun = 0.90308999f;  // log10(8).
+
+  /* Yield table filepath  */
+  parser_get_param_string(params, "EAGLEFeedback:filename",
+                          fp->yield_table_path);
+  parser_get_param_string(params, "EAGLEFeedback:imf_model",
+                          fp->IMF_Model);
+
+  /* Initialise IMF */
+  init_imf(fp);
+
+  /* Allocate yield tables  */
+  allocate_yield_tables(fp);
+
+  /* Set factors for each element adjusting SNII yield */
+  fp->typeII_factor[0] = 1.f;
+  fp->typeII_factor[1] = 1.f;
+  fp->typeII_factor[2] = 0.5f;
+  fp->typeII_factor[3] = 1.f;
+  fp->typeII_factor[4] = 1.f;
+  fp->typeII_factor[5] = 1.f;
+  fp->typeII_factor[6] = 2.f;
+  fp->typeII_factor[7] = 1.f;
+  fp->typeII_factor[8] = 0.5f;
+
+  /* Read the tables  */
+  read_yield_tables(fp);
+
+  /* Set yield_mass_bins array */
+  const float imf_log10_mass_bin_size =
+      (fp->log10_imf_max_mass_msun -
+       fp->log10_imf_min_mass_msun) /
+      (fp->n_imf_mass_bins - 1);
+  for (int i = 0; i < fp->n_imf_mass_bins; i++)
+    fp->yield_mass_bins[i] =
+        imf_log10_mass_bin_size * i + fp->log10_imf_min_mass_msun;
+
+  /* Resample yields from mass bins used in tables to mass bins used in IMF  */
+  compute_yields(fp);
+
+  /* Resample ejecta contribution to enrichment from mass bins used in tables to
+   * mass bins used in IMF  */
+  compute_ejecta(fp);
+
+  /* Calculate number of type II SN per solar mass
+   * Note: since we are integrating the IMF without weighting it by the yields
+   * pass NULL pointer for stellar_yields array */
+  fp->num_SNII_per_msun =
+      integrate_imf(fp->log10_SNII_min_mass_msun,
+                    fp->log10_SNII_max_mass_msun, 0,
+                    /*(stellar_yields=)*/ NULL, fp);
+
+  message("initialized stellar feedback");
 }
 
 

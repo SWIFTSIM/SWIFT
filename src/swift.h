@@ -40,6 +40,7 @@
 #include "engine.h"
 #include "entropy_floor.h"
 #include "error.h"
+#include "feedback_properties.h"
 #include "gravity.h"
 #include "gravity_derivatives.h"
 #include "gravity_properties.h"

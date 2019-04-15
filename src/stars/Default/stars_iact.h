@@ -35,9 +35,7 @@
 __attribute__((always_inline)) INLINE static void
 runner_iact_nonsym_stars_density(
     float r2, const float *dx, float hi, float hj, struct spart *restrict si,
-    const struct part *restrict pj, const struct cosmology *restrict cosmo,
-    const struct stars_props *restrict stars_properties,
-    struct xpart *restrict xp, integertime_t ti_current) {
+    const struct part *restrict pj, const float a, const float H) {
 
   float wi, wi_dx;
 
@@ -78,10 +76,9 @@ runner_iact_nonsym_stars_density(
  */
 __attribute__((always_inline)) INLINE static void
 runner_iact_nonsym_stars_feedback(
-    float r2, const float *dx, float hi, float hj, struct spart *restrict si,
-    struct part *restrict pj, const struct cosmology *restrict cosmo,
-    const struct stars_props *restrict stars_properties,
-    struct xpart *restrict xp, integertime_t ti_current) {
+    float r2, const float *dx, float hi, float hj,
+    const struct spart *restrict si, struct part *restrict pj,
+    const float a, const float H) {
 
   const float mj = hydro_get_mass(pj);
   const float rhoj = hydro_get_comoving_density(pj);

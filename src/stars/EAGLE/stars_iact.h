@@ -23,8 +23,6 @@
 
 /**
  * @brief Density interaction between two particles (non-symmetric).
- * MATTHIEU: check with RGB about concerns with comment (in this and other
- * subgrid schemes)
  *
  * @param r2 Comoving square distance between the two particles.
  * @param dx Comoving vector separating both particles (pi - pj).
@@ -34,8 +32,6 @@
  * @param pj Second particle (not updated).
  * @param a Current scale factor.
  * @param H Current Hubble parameter.
- * @param xp Extra particle data
- * @param ti_current Current integer time value
  */
 __attribute__((always_inline)) INLINE static void
 runner_iact_nonsym_stars_density(
@@ -79,13 +75,10 @@ runner_iact_nonsym_stars_density(
  * @param dx Comoving vector separating both particles (si - pj).
  * @param hi Comoving smoothing-length of particle i.
  * @param hj Comoving smoothing-length of particle j.
- * @param si First (star) particle.
+ * @param si First (star) particle (not updated).
  * @param pj Second (gas) particle.
  * @param a Current scale factor.
  * @param H Current Hubble parameter.
- * @param xp Extra particle data
- * @param ti_current Current integer time used value for seeding random number
- * generator
  */
 __attribute__((always_inline)) INLINE static void
 runner_iact_nonsym_stars_feedback(

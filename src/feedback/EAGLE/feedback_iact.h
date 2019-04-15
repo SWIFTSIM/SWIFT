@@ -1,8 +1,6 @@
 
 /**
  * @brief Density interaction between two particles (non-symmetric).
- * MATTHIEU: check with RGB about concerns with comment (in this and other
- * subgrid schemes)
  *
  * @param r2 Comoving square distance between the two particles.
  * @param dx Comoving vector separating both particles (pi - pj).

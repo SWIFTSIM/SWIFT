@@ -4404,6 +4404,7 @@ void engine_init(struct engine *e, struct space *s, struct swift_params *params,
                  struct cosmology *cosmo, struct hydro_props *hydro,
                  const struct entropy_floor_properties *entropy_floor,
                  struct gravity_props *gravity, const struct stars_props *stars,
+		 const struct feedback_props *feedback,
                  struct pm_mesh *mesh,
                  const struct external_potential *potential,
                  struct cooling_function_data *cooling_func,
@@ -4475,6 +4476,7 @@ void engine_init(struct engine *e, struct space *s, struct swift_params *params,
   e->external_potential = potential;
   e->cooling_func = cooling_func;
   e->star_formation = starform;
+  e->feedback_props = feedback;
   e->chemistry = chemistry;
   e->parameter_file = params;
 #ifdef WITH_MPI

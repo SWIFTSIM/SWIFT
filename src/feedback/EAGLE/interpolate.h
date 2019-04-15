@@ -33,8 +33,8 @@ __attribute__((always_inline)) static INLINE int row_major_index_2d(const int i,
 								    const int Nx,
 								    const int Ny) {
 #ifdef SWIFT_DEBUG_CHECKS
-  assert(x < Nx);
-  assert(y < Ny);
+  assert(i < Nx);
+  assert(j < Ny);
 #endif
 
   return i * Ny + j;
@@ -51,9 +51,9 @@ __attribute__((always_inline)) static INLINE int row_major_index_3d(
 								      const int i, const int j, const int k, const int Nx, const int Ny, const int Nz) {
 
 #ifdef SWIFT_DEBUG_CHECKS
-  assert(x < Nx);
-  assert(y < Ny);
-  assert(z < Nz);
+  assert(i < Nx);
+  assert(j < Ny);
+  assert(k < Nz);
 #endif
 
   return i * Ny * Nz + j * Nz + k;

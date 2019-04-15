@@ -20,20 +20,17 @@
 #define SWIFT_FEEDBACK_EAGLE_H
 
 #include "cosmology.h"
+#include "hydro_properties.h"
 #include "units.h"
 #include "part.h"
 
 #include "feedback_properties.h"
 
 
-void compute_stellar_evolution(
-			       const struct feedback_props* feedback_props,
-    struct spart* sp, const struct unit_system* us, float age,
-    double dt);
-
-float compute_SNe(struct spart* sp,
-                                const struct feedback_props* stars_properties,
-		  float age, double dt);
+void compute_stellar_evolution(const struct feedback_props* feedback_props,
+			       const struct cosmology *cosmo,
+			       struct spart* sp, const struct unit_system* us,
+			       const float age, const float dt);
 
 /**
  * @brief Prepares a s-particle for its feedback interactions
@@ -59,8 +56,8 @@ __attribute__((always_inline)) INLINE static void feedback_init_spart(
 __attribute__((always_inline)) INLINE static void feedback_first_init_spart(
     struct spart* sp, const struct feedback_props* feedback_props) {
 
-  //sp->birth_density = -1.f;
-  //sp->birth_time = feedback_props.spart_first_init_birth_time;
+  sp->birth_density = -1.f;
+  sp->birth_time = feedback_props->spart_first_init_birth_time;
 
   feedback_init_spart(sp);
 }
@@ -111,28 +108,10 @@ __attribute__((always_inline)) INLINE static void stars_evolve_spart(
 
   /* Compute amount of enrichment and feedback that needs to be done in this
    * step */
-  compute_stellar_evolution(feedback_props, sp, us, star_age, dt);
+  compute_stellar_evolution(feedback_props, cosmo, sp, us, star_age, dt);
 
   /* Decrease star mass by amount of mass distributed to gas neighbours */
   sp->mass -= sp->feedback_data.to_distribute.mass;
-
-  /* Compute the number of type II SNe that went off */
-  sp->feedback_data.to_distribute.num_SNe = compute_SNe(sp, feedback_props, star_age, dt);
-
-  /* Compute energy change due to thermal and kinetic energy of ejecta */
-  sp->feedback_data.to_distribute.d_energy =
-      sp->feedback_data.to_distribute.mass *
-       (feedback_props->ejecta_specific_thermal_energy +
-       0.5 * (sp->v[0] * sp->v[0] + sp->v[1] * sp->v[1] + sp->v[2] * sp->v[2]) *
-           cosmo->a2_inv);
-
-  /* Compute probability of heating neighbouring particles */
-  if (dt > 0 && sp->feedback_data.ngb_mass > 0)
-    sp->feedback_data.to_distribute.heating_probability =
-        feedback_props->total_energy_SNe *
-        sp->feedback_data.to_distribute.num_SNe /
-        (feedback_props->temp_to_u_factor *
-         feedback_props->SNe_deltaT_desired * sp->feedback_data.ngb_mass);
 }
 
 

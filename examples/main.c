@@ -96,6 +96,7 @@ int main(int argc, char *argv[]) {
   struct gravity_props gravity_properties;
   struct hydro_props hydro_properties;
   struct stars_props stars_properties;
+  struct feedback_props feedback_properties;
   struct entropy_floor_properties entropy_floor;
   struct part *parts = NULL;
   struct phys_const prog_const;
@@ -728,6 +729,17 @@ int main(int argc, char *argv[]) {
     else
       bzero(&stars_properties, sizeof(struct stars_props));
 
+    /* Initialise the feedback properties */
+    if (with_feedback) {
+#ifdef FEEDBACK_NONE
+      error("ERROR: Running with feedback but compiled without it.");
+#endif
+      feedback_props_init(&feedback_properties, &prog_const, &us, params,
+			  &hydro_properties, &cosmo);
+    }
+    else
+      bzero(&feedback_properties, sizeof(struct feedback_props));
+    
     /* Initialise the gravity properties */
     if (with_self_gravity)
       gravity_props_init(&gravity_properties, params, &cosmo, with_cosmology,
@@ -767,10 +779,6 @@ int main(int argc, char *argv[]) {
     bzero(&chemistry, sizeof(struct chemistry_global_data));
     chemistry_init(params, &us, &prog_const, &chemistry);
     if (myrank == 0) chemistry_print(&chemistry);
-
-    /* Initialise stellar evolution */
-    // MATTHIEU
-    // if (with_feedback) stars_evolve_init(params, &stars_properties);
 
     /* Be verbose about what happens next */
     if (myrank == 0) message("Reading ICs from file '%s'", ICfileName);
@@ -961,8 +969,8 @@ int main(int argc, char *argv[]) {
     engine_init(&e, &s, params, N_total[0], N_total[1], N_total[2],
                 engine_policies, talking, &reparttype, &us, &prog_const, &cosmo,
                 &hydro_properties, &entropy_floor, &gravity_properties,
-                &stars_properties, &mesh, &potential, &cooling_func, &starform,
-                &chemistry);
+                &stars_properties, &feedback_properties, &mesh, &potential,
+		&cooling_func, &starform, &chemistry);
     engine_config(0, &e, params, nr_nodes, myrank, nr_threads, with_aff,
                   talking, restart_file);
 

@@ -6,7 +6,7 @@ then
     ./getIC.sh
 fi
 
-if [ ! -e cooling_tables/ ] 
+if [ ! -e cooling_tables ] 
 then     
     echo "Fetching EAGLE cooling tables for the isolated galaxy example..."
     ./getEagleCoolingTable.sh

@@ -274,194 +274,211 @@ inline static void init_imf(struct feedback_props *restrict feedback_props) {
  * @brief Calculate mass (in solar masses) of stars that died from the star
  * particle's birth up to its current age (in Gyr).
  *
- * Calculation follows Portinari et al. 1998
+ * Calculation uses the tables of Portinari et al. 1998, A&A, 334, 505
  *
- * @param age_Gyr age of star in Gyr
- * @param metallicity Star's metallicity
- * @param star_properties the #stars_props data structure
+ * @param age_Gyr age of star in Gyr.
+ * @param Z Star's metallicity (metal mass fraction).
+ * @param star_properties the #stars_props data structure.
+ * @return Mass of stars died up to that age in solar masses.
  */
-inline static double dying_mass_msun(const float age_Gyr,
-                                     const float metallicity,
-                                     const struct feedback_props *star_props) {
+inline static float dying_mass_msun(const float age_Gyr, const float Z,
+				    const struct feedback_props *feedback_props) {
 
-  float metallicity_offset, time_offset_low_metallicity = 0,
-                            time_offset_high_metallicity = 0,
-                            mass_low_metallicity, mass_high_metallicity;
-
-  int metallicity_index, time_index_low_metallicity = -1,
-                         time_index_high_metallicity = -1;
-
-  if (age_Gyr <= 0) {
-    return star_props->imf_max_mass_msun;
+  /* Pull out some common terms */
+  const double *lifetime_Z = feedback_props->lifetimes.metallicity;
+  const double *lifetime_m = feedback_props->lifetimes.mass;
+  double **const dying_times = feedback_props->lifetimes.dyingtime;
+  const int n_Z = feedback_props->lifetimes.n_z;
+  const int n_m = feedback_props->lifetimes.n_mass;
+  
+  /* Early abort? */
+  if (age_Gyr <= 0.f) {
+    return feedback_props->imf_max_mass_msun;
   }
 
-  const float log10_age_yr = log10f(age_Gyr * 1.e9);
+  const float log10_age_yr = log10f(age_Gyr * 1e9f);
 
-  if (metallicity <= star_props->lifetimes.metallicity[0]) {
-    metallicity_index = 0;
-    metallicity_offset = 0.0;
-  } else if (metallicity >=
-             star_props->lifetimes
-                 .metallicity[star_props->lifetimes.n_z - 1]) {
-    metallicity_index = star_props->lifetimes.n_z - 2;
-    metallicity_offset = 1.0;
+  /* Calculate index along the metallicity axis */
+  int Z_index;
+  float Z_offset;
+  if (Z <= lifetime_Z[0]) {
+
+    /* Before start of the table */
+    Z_index = 0;
+    Z_offset = 0.f;
+    
+  } else if (Z >= lifetime_Z[n_Z - 1]) {
+
+    /* After end of the table */
+    Z_index = n_Z - 2;
+    Z_offset = 1.f;
+    
   } else {
-    for (metallicity_index = 0;
-         metallicity_index < star_props->lifetimes.n_z - 1;
-         metallicity_index++)
-      if (star_props->lifetimes.metallicity[metallicity_index + 1] >
-          metallicity)
+
+    /* Normal case: Somewhere inside the table */
+    for (Z_index = 0; Z_index < n_Z - 1; Z_index++) {
+      if (lifetime_Z[Z_index + 1] > Z)
         break;
+    }
 
-    metallicity_offset =
-        (metallicity -
-         star_props->lifetimes.metallicity[metallicity_index]) /
-        (star_props->lifetimes.metallicity[metallicity_index + 1] -
-         star_props->lifetimes.metallicity[metallicity_index]);
+    Z_offset = (Z - lifetime_Z[Z_index]) /
+      (lifetime_Z[Z_index + 1] - lifetime_Z[Z_index]);
   }
 
-  if (log10_age_yr >=
-      star_props->lifetimes.dyingtime[metallicity_index][0]) {
-    time_index_low_metallicity = 0;
-    time_offset_low_metallicity = 0.0;
-  } else if (log10_age_yr <=
-             star_props->lifetimes
-                 .dyingtime[metallicity_index]
-                           [star_props->lifetimes.n_mass - 1]) {
-    time_index_low_metallicity = star_props->lifetimes.n_mass - 2;
-    time_offset_low_metallicity = 1.0;
+  /* Check whether we are not beyond the table */
+  int time_index_lowZ = -1;
+  float time_offset_lowZ = 0.f;
+  if (log10_age_yr >= dying_times[Z_index][0]) {
+
+    /* Before start of the table */
+    time_index_lowZ = 0;
+    time_offset_lowZ = 0.f;
+    
+  } else if (log10_age_yr <= dying_times[Z_index][n_m - 1]) {
+
+    /* After end of the table */
+    time_index_lowZ = n_m - 2;
+    time_offset_lowZ = 1.0;
   }
 
-  if (log10_age_yr >=
-      star_props->lifetimes.dyingtime[metallicity_index + 1][0]) {
-    time_index_high_metallicity = 0;
-    time_offset_high_metallicity = 0.0;
-  } else if (log10_age_yr <=
-             star_props->lifetimes
-                 .dyingtime[metallicity_index + 1]
-                           [star_props->lifetimes.n_mass - 1]) {
-    time_index_high_metallicity = star_props->lifetimes.n_mass - 2;
-    time_offset_high_metallicity = 1.0;
+  /* Check whether we are not beyond the table */
+  int time_index_highZ = -1;
+  float time_offset_highZ = 0.f;
+  if (log10_age_yr >= dying_times[Z_index + 1][0]) {
+
+    /* Before start of the table */
+    time_index_highZ = 0;
+    time_offset_highZ = 0.f;
+    
+  } else if (log10_age_yr <= dying_times[Z_index + 1][n_m - 1]) {
+
+    /* After end of the table */
+    time_index_highZ = n_m - 2;
+    time_offset_highZ = 1.0;
   }
 
-  int i = star_props->lifetimes.n_mass;
-  while (i >= 0 && (time_index_low_metallicity == -1 ||
-                    time_index_high_metallicity == -1)) {
+  /* Search the table starting from the largest times until we reach
+     a solution for the two bounds */
+  int i = n_m;
+  while (i >= 0 && (time_index_lowZ == -1 || time_index_highZ == -1)) {
+    
     i--;
-    if (star_props->lifetimes.dyingtime[metallicity_index][i] >=
-            log10_age_yr &&
-        time_index_low_metallicity == -1) {
-      time_index_low_metallicity = i;
-      time_offset_low_metallicity =
-          (log10_age_yr -
-           star_props->lifetimes
-               .dyingtime[metallicity_index][time_index_low_metallicity]) /
-          (star_props->lifetimes
-               .dyingtime[metallicity_index][time_index_low_metallicity + 1] -
-           star_props->lifetimes
-               .dyingtime[metallicity_index][time_index_low_metallicity]);
+    
+    if (dying_times[Z_index][i] >= log10_age_yr && time_index_lowZ == -1) {
+
+      /* record index */
+      time_index_lowZ = i;
+
+      /* record distance from table element */
+      time_offset_lowZ =
+          (log10_age_yr - dying_times[Z_index][time_index_lowZ]) /
+          (dying_times[Z_index][time_index_lowZ + 1] -
+           dying_times[Z_index][time_index_lowZ]);
     }
-    if (star_props->lifetimes.dyingtime[metallicity_index + 1][i] >=
-            log10_age_yr &&
-        time_index_high_metallicity == -1) {
-      time_index_high_metallicity = i;
-      time_offset_high_metallicity =
-          (log10_age_yr -
-           star_props->lifetimes
-               .dyingtime[metallicity_index + 1][time_index_high_metallicity]) /
-          (star_props->lifetimes
-               .dyingtime[metallicity_index + 1]
-                         [time_index_high_metallicity + 1] -
-           star_props->lifetimes
-               .dyingtime[metallicity_index + 1][time_index_high_metallicity]);
+    
+    if (dying_times[Z_index + 1][i] >= log10_age_yr && time_index_highZ == -1) {
+
+      /* record index */
+      time_index_highZ = i;
+
+      /* record distance from table element */
+      time_offset_highZ =
+	(log10_age_yr - dying_times[Z_index + 1][time_index_highZ]) /
+          (dying_times[Z_index + 1][time_index_highZ + 1] -
+           dying_times[Z_index + 1][time_index_highZ]);
     }
   }
 
-  mass_low_metallicity =
-      interpolate_1d(star_props->lifetimes.mass,
-                     time_index_low_metallicity, time_offset_low_metallicity);
-  mass_high_metallicity =
-      interpolate_1d(star_props->lifetimes.mass,
-                     time_index_high_metallicity, time_offset_high_metallicity);
+  /* And now interpolate the solution */
+  const float mass_low_Z = interpolate_1d(lifetime_m, time_index_lowZ, time_offset_lowZ);
+  const float mass_high_Z = interpolate_1d(lifetime_m, time_index_highZ, time_offset_highZ);
 
-  float mass = (1.0 - metallicity_offset) * mass_low_metallicity +
-               metallicity_offset * mass_high_metallicity;
+  float mass = (1.f - Z_offset) * mass_low_Z + Z_offset * mass_high_Z;
 
   /* Check that we haven't killed too many stars */
-  if (mass > star_props->imf_max_mass_msun)
-    mass = star_props->imf_max_mass_msun;
+  mass = min(mass, feedback_props->imf_max_mass_msun);
 
   return mass;
 }
 
 /**
- * @brief Calculate lifetime of star poputlation in Gyr. Approach based on
- * Portinari et al. 1998
+ * @brief Calculate lifetime of stellar population in Gyr for a given mass.
  *
- * @param mass
- * @param metallicity
- * @param star_properties the #stars_props data struct
+ * Calculation uses the tables of Portinari et al. 1998, A&A, 334, 505
+ *
+ * @param mass in solar masses.
+ * @param Z Metallicity (metal mass fraction).
+ * @param feedback_props the #feedback_props data structure.
+ * @return The life time in Giga-years.
  */
-inline static float lifetime_in_Gyr(float mass, float metallicity,
-                                    const struct feedback_props *restrict
-                                        feedback_props) {
+inline static float lifetime_in_Gyr(const float mass, const float Z,
+                                    const struct feedback_props *feedback_props) {
 
-  double time_Gyr = 0, mass_offset, metallicity_offset;
-
-  int mass_index, metallicity_index;
-
-  if (mass <= feedback_props->lifetimes.mass[0]) {
-    mass_index = 0;
-    mass_offset = 0.0;
-  } else if (mass >=
-             feedback_props->lifetimes
-                 .mass[feedback_props->lifetimes.n_mass - 1]) {
-    mass_index = feedback_props->lifetimes.n_mass - 2;
-    mass_offset = 1.0;
+  /* Pull out some common terms */
+  const double *lifetime_Z = feedback_props->lifetimes.metallicity;
+  const double *lifetime_m = feedback_props->lifetimes.mass;
+  double **const dying_times = feedback_props->lifetimes.dyingtime;
+  const int n_Z = feedback_props->lifetimes.n_z;
+  const int n_m = feedback_props->lifetimes.n_mass;
+  
+  /* Calculate index along the mass axis */
+  int m_index;
+  float m_offset;
+  if (mass <= lifetime_m[0]) {
+    
+    /* Before start of the table */
+    m_index = 0;
+    m_offset = 0.f;
+    
+  } else if (mass >= lifetime_m[n_m - 1]) {
+    
+    /* After end of the table */
+    m_index = n_m - 2;
+    m_offset = 1.f;
+    
   } else {
-    for (mass_index = 0;
-         mass_index < feedback_props->lifetimes.n_mass - 1;
-         mass_index++)
-      if (feedback_props->lifetimes.mass[mass_index + 1] > mass)
-        break;
 
-    mass_offset =
-        (mass - feedback_props->lifetimes.mass[mass_index]) /
-        (feedback_props->lifetimes.mass[mass_index + 1] -
-         feedback_props->lifetimes.mass[mass_index]);
+    /* Normal case: Somewhere inside the table */
+    for (m_index = 0; m_index < n_m - 1; m_index++)
+      if (lifetime_m[m_index + 1] > mass)
+        break;
+    
+    m_offset = (mass - lifetime_m[m_index]) /
+      (lifetime_m[m_index + 1] -  lifetime_m[m_index]);
   }
 
-  if (metallicity <= feedback_props->lifetimes.metallicity[0]) {
-    metallicity_index = 0;
-    metallicity_offset = 0.0;
-  } else if (metallicity >=
-             feedback_props->lifetimes
-                 .metallicity[feedback_props->lifetimes.n_z - 1]) {
-    metallicity_index = feedback_props->lifetimes.n_z - 2;
-    metallicity_offset = 1.0;
+  /* Calculate index along the metallicity axis */
+  int Z_index;
+  float Z_offset;
+  if (Z <= lifetime_Z[0]) {
+
+    /* Before start of the table */
+    Z_index = 0;
+    Z_offset = 0.f;
+    
+  } else if (Z >= lifetime_Z[n_Z - 1]) {
+
+    /* After end of the table */
+    Z_index = n_Z - 2;
+    Z_offset = 1.f;
+    
   } else {
-    for (metallicity_index = 0;
-         metallicity_index < feedback_props->lifetimes.n_z - 1;
-         metallicity_index++)
-      if (feedback_props->lifetimes
-              .metallicity[metallicity_index + 1] > metallicity)
+    
+    for (Z_index = 0; Z_index < n_Z - 1; Z_index++)
+      if (lifetime_Z[Z_index + 1] > Z)
         break;
 
-    metallicity_offset =
-        (metallicity -
-         feedback_props->lifetimes.metallicity[metallicity_index]) /
-        (feedback_props->lifetimes
-             .metallicity[metallicity_index + 1] -
-         feedback_props->lifetimes.metallicity[metallicity_index]);
+    /* Normal case: Somewhere inside the table */
+    Z_offset = (Z - lifetime_Z[Z_index]) /
+        (lifetime_Z[Z_index + 1] - lifetime_Z[Z_index]);
   }
 
-  /* time in Gyr */
-  time_Gyr =
-      exp(M_LN10 * interpolate_2d(feedback_props->lifetimes.dyingtime,
-                                  metallicity_index, mass_index,
-                                  metallicity_offset, mass_offset)) /
-      1.0e9;
+  /* Interpolation of the table to get the time */
+  const float log_time_years = interpolate_2d(dying_times, Z_index, m_index, Z_offset, m_offset);
 
+  /* Convert to Giga-years */
+  const float time_Gyr = exp10f(log_time_years - 9.f);
+  
   return time_Gyr;
 }
 
