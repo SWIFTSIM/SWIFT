@@ -83,7 +83,7 @@ __attribute__((always_inline)) INLINE static void feedback_prepare_spart(
  * @param cosmo The current cosmological model.
  * @param stars_properties The #stars_props
  */
-__attribute__((always_inline)) INLINE static void stars_evolve_spart(
+__attribute__((always_inline)) INLINE static void feedback_evolve_spart(
     struct spart* restrict sp, const struct feedback_props* feedback_props,
     const struct cosmology* cosmo, const struct unit_system* us,
     double star_age, double dt) {
