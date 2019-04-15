@@ -586,7 +586,10 @@ struct cell {
           /* Task receiving data (time-step). */
           struct task *recv_ti;
         };
-        struct {
+
+        // Using a union for now to make these all the same linked list. once
+        // this works, I'll replace the names.
+        union {
           /* Linked list for sending hydro data (positions). */
           struct link *send_xv;
 
@@ -604,35 +607,42 @@ struct cell {
     } hydro;
 
     struct {
-    union{ struct{
-      /* Task receiving gpart data. */
-      struct task *recv;
+      union {
+        struct {
+          /* Task receiving gpart data. */
+          struct task *recv;
 
-      /* Task receiving data (time-step). */
-      struct task *recv_ti;
-}; struct{
-      /* Linked list for sending gpart data. */
-      struct link *send;
+          /* Task receiving data (time-step). */
+          struct task *recv_ti;
+        };
+        struct {
+          /* Linked list for sending gpart data. */
+          struct link *send;
 
-      /* Linked list for sending data (time-step). */
-      struct link *send_ti;};};
+          /* Linked list for sending data (time-step). */
+          struct link *send_ti;
+        };
+      };
 
     } grav;
 
     struct {
-    union{ struct{
-      /* Task receiving spart data. */
-      struct task *recv;
+      union {
+        struct {
+          /* Task receiving spart data. */
+          struct task *recv;
 
-      /* Task receiving data (time-step). */
-      struct task *recv_ti;
-}; struct{
-      /* Linked list for sending spart data. */
-      struct link *send;
+          /* Task receiving data (time-step). */
+          struct task *recv_ti;
+        };
+        struct {
+          /* Linked list for sending spart data. */
+          struct link *send;
 
-      /* Linked list for sending data (time-step). */
-      struct link *send_ti;
-};};
+          /* Linked list for sending data (time-step). */
+          struct link *send_ti;
+        };
+      };
     } stars;
 
     union {
