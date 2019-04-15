@@ -269,7 +269,6 @@ void space_rebuild_recycle_mapper(void *map_data, int num_elements,
     c->mpi.tag = -1;
 
     c->mpi.recv = NULL;
-    c->mpi.hydro.recv_ti = NULL;
     c->mpi.grav.recv = NULL;
     c->mpi.grav.recv_ti = NULL;
     c->mpi.stars.recv = NULL;

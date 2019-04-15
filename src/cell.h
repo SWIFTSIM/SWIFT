@@ -581,11 +581,6 @@ struct cell {
     };
 
     struct {
-      /* Task receiving data (time-step). */
-      struct task *recv_ti;
-    } hydro;
-
-    struct {
       /* Task receiving gpart data. */
       struct task *recv;
 

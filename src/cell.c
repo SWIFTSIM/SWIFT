@@ -3275,7 +3275,7 @@ int cell_unskip_hydro_tasks(struct cell *c, struct scheduler *s) {
 
         /* If the foreign cell is active, we want its ti_end values. */
         if (ci_active || with_limiter)
-          scheduler_activate(s, ci->mpi.hydro.recv_ti);
+          scheduler_activate_recv(s, ci->mpi.recv, task_subtype_tend_part);
 
         if (with_limiter) scheduler_activate(s, ci->mpi.limiter.recv);
         if (with_limiter)
@@ -3325,7 +3325,7 @@ int cell_unskip_hydro_tasks(struct cell *c, struct scheduler *s) {
 
         /* If the foreign cell is active, we want its ti_end values. */
         if (cj_active || with_limiter)
-          scheduler_activate(s, cj->mpi.hydro.recv_ti);
+          scheduler_activate_recv(s, cj->mpi.recv, task_subtype_tend_part);
 
         if (with_limiter) scheduler_activate(s, cj->mpi.limiter.recv);
         if (with_limiter)
@@ -3902,7 +3902,7 @@ void cell_set_super_mapper(void *map_data, int num_elements, void *extra_data) {
 int cell_has_tasks(struct cell *c) {
 
 #ifdef WITH_MPI
-  if (c->timestep != NULL || c->mpi.hydro.recv_ti != NULL ||
+  if (c->timestep != NULL || c->mpi.recv != NULL ||
       c->mpi.grav.recv_ti != NULL || c->mpi.stars.recv_ti != NULL)
     return 1;
 #else
