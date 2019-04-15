@@ -1,6 +1,6 @@
 /*******************************************************************************
  * This file is part of SWIFT.
- * Coypright (c) 2016 Matthieu Schaller (matthieu.schaller@durham.ac.uk)
+ * Copyright (c) 2018 Matthieu Schaller (schaller@strw.leidenuniv.nl)
  *
  * This program is free software: you can redistribute it and/or modify
  * it under the terms of the GNU Lesser General Public License as published
@@ -16,21 +16,24 @@
  * along with this program.  If not, see <http://www.gnu.org/licenses/>.
  *
  ******************************************************************************/
-#ifndef SWIFT_STARS_H
-#define SWIFT_STARS_H
+#ifndef SWIFT_FEEDBACK_STRUCT_H
+#define SWIFT_FEEDBACK_STRUCT_H
+
+/**
+ * @file src/feedback_struct.h
+ * @brief Branches between the different feedback functions.
+ */
 
 /* Config parameters. */
 #include "../config.h"
 
-/* Select the correct star model */
-#if defined(STARS_NONE)
-#include "./stars/Default/stars.h"
-#include "./stars/Default/stars_iact.h"
-#elif defined(STARS_EAGLE)
-#include "./stars/EAGLE/stars.h"
-#include "./stars/EAGLE/stars_iact.h"
+/* Import the right feedback definition */
+#if defined(FEEDBACK_NONE)
+#include "./feedback/none/feedback_struct.h"
+#elif defined(FEEDBACK_EAGLE)
+#include "./feedback/EAGLE/feedback_struct.h"
 #else
-#error "Invalid choice of star model"
+#error "Invalid choice of feedback function."
 #endif
 
-#endif /* SWIFT_STARS_H */
+#endif /* SWIFT_FEEDBACK_STRUCT_H */

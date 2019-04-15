@@ -59,6 +59,12 @@ if HAVEEAGLECOOLING
 EAGLE_COOLING_SOURCES += cooling/EAGLE/cooling.c cooling/EAGLE/cooling_tables.c
 endif
 
+# source files for EAGLE feedback
+EAGLE_FEEDBACK_SOURCES =
+if HAVEEAGLEFEEDBACK
+EAGLE_FEEDBACK_SOURCES += feedback/EAGLE/feedback.c
+endif
+
 # Common source files
 AM_SOURCES = space.c runner.c queue.c task.c cell.c engine.c engine_maketasks.c \
     engine_marktasks.c engine_drift.c serial_io.c timers.c debug.c scheduler.c \
@@ -71,7 +77,7 @@ AM_SOURCES = space.c runner.c queue.c task.c cell.c engine.c engine_maketasks.c 
     collectgroup.c hydro_space.c equation_of_state.c \
     chemistry.c cosmology.c restart.c mesh_gravity.c velociraptor_interface.c \
     outputlist.c velociraptor_dummy.c logger_io.c memuse.c \
-    $(EAGLE_COOLING_SOURCES)
+    $(EAGLE_COOLING_SOURCES) $(EAGLE_FEEDBACK_SOURCES)
 
 # Include files for distribution, not installation.
 nobase_noinst_HEADERS = align.h approx_math.h atomic.h barrier.h cycle.h error.h inline.h kernel_hydro.h kernel_gravity.h \

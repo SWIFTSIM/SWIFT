@@ -1329,7 +1329,7 @@ case "$with_subgrid" in
 	with_subgrid_entropy_floor=none
 	with_subgrid_stars=GEAR
 	with_subgrid_star_formation=GEAR
-	with_subgrid_feedback=thermal
+	with_subgrid_feedback=none
    ;;
    EAGLE)
 	with_subgrid_cooling=EAGLE
@@ -1338,7 +1338,7 @@ case "$with_subgrid" in
 	with_subgrid_entropy_floor=EAGLE
 	with_subgrid_stars=EAGLE
 	with_subgrid_star_formation=EAGLE
-	with_subgrid_feedback=none
+	with_subgrid_feedback=EAGLE
    ;;
    *)
       AC_MSG_ERROR([Unknown subgrid choice: $with_subgrid])
@@ -1727,11 +1727,8 @@ case "$with_stars" in
    GEAR)
       AC_DEFINE([STARS_GEAR], [1], [GEAR stellar model])
    ;;
-   EAGLE)
-      AC_DEFINE([STARS_EAGLE], [1], [EAGLE stellar model])
-   ;;
    none)
-      AC_DEFINE([STARS_NONE], [1], [None stellar model])
+      AC_DEFINE([STARS_NONE], [1], [Basic stellar model])
    ;;
 
    *)
@@ -1742,7 +1739,7 @@ esac
 # Feedback model
 AC_ARG_WITH([feedback],
    [AS_HELP_STRING([--with-feedback=<model>],
-      [Feedback model to use @<:@none, thermal, debug default: none@:>@]
+      [Feedback model to use @<:@none, EAGLE, debug default: none@:>@]
    )],
    [with_feedback="$withval"],
    [with_feedback="none"]
@@ -1757,10 +1754,11 @@ if test "$with_subgrid" != "none"; then
 fi
 
 case "$with_feedback" in
-   thermal)
-      AC_DEFINE([FEEDBACK_THERMAL], [1], [Thermal Blastwave])
+   EAGLE)
+      AC_DEFINE([FEEDBACK_EAGLE], [1], [EAGLE stellar feedback and evolution model])
    ;;
    none)
+      AC_DEFINE([FEEDBACK_NONE], [1], [No feedback])
    ;;
 
    *)
@@ -1888,6 +1886,9 @@ AM_CONDITIONAL([HAVE_DOXYGEN], [test "$ac_cv_path_ac_pt_DX_DOXYGEN" != ""])
 
 # Check if using EAGLE cooling
 AM_CONDITIONAL([HAVEEAGLECOOLING], [test $with_cooling = "EAGLE"])
+
+# Check if using EAGLE feedback
+AM_CONDITIONAL([HAVEEAGLEFEEDBACK], [test $with_feedback = "EAGLE"])
 
 # Handle .in files.
 AC_CONFIG_FILES([Makefile src/Makefile examples/Makefile examples/Cooling/CoolingRates/Makefile doc/Makefile doc/Doxyfile tests/Makefile])

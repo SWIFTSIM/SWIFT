@@ -16,8 +16,40 @@
  * along with this program.  If not, see <http://www.gnu.org/licenses/>.
  *
  ******************************************************************************/
-#ifndef SWIFT_EAGLE_STARS_INTERPOLATE_H
-#define SWIFT_EAGLE_STARS_INTERPOLATE_H
+#ifndef SWIFT_EAGLE_FEEDBACK_INTERPOLATE_H
+#define SWIFT_EAGLE_FEEDBACK_INTERPOLATE_H
+
+#include "error.h"
+
+
+/**
+ * @brief Returns the 1d index of element with 2d indices i,j
+ * from a flattened 2d array in row major order
+ *
+ * ALEXEI: this function also appears in EAGLE cooling. Could this be done
+ * without duplication?
+ *
+ * @param i, j Indices of element of interest
+ * @param nx, ny Sizes of array dimensions
+ */
+__attribute__((always_inline)) INLINE int feedback_row_major_index_2d(int i,
+                                                                      int j,
+                                                                      int nx,
+                                                                      int ny) {
+  return i * ny + j;
+}
+
+/**
+ * @brief Returns the 1d index of element with 3d indices i,j,k
+ * from a flattened 3d array in row major order
+ *
+ * @param i, j, k Indices of element of interest
+ * @param nx, ny, nz Sizes of array dimensions
+ */
+__attribute__((always_inline)) INLINE int feedback_row_major_index_3d(
+    int i, int j, int k, int nx, int ny, int nz) {
+  return i * ny * nz + j * nz + k;
+}
 
 /**
  * @brief linear interpolation of 1d table at bin i with offset dx
@@ -94,4 +126,4 @@ inline static double interpolate_1D_non_uniform(double* array_x,
   return result;
 }
 
-#endif /* SWIFT_EAGLE_STARS_INTERPOLATE_H */
+#endif /* SWIFT_EAGLE_FEEDBACK_INTERPOLATE_H */

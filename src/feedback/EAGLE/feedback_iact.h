@@ -16,7 +16,7 @@
  * @param ti_current Current integer time value
  */
 __attribute__((always_inline)) INLINE static void
-runner_iact_nonsym_stars_density(
+runner_iact_nonsym_feedback_density(
     float r2, const float *dx, float hi, float hj, struct spart *restrict si,
     const struct part *restrict pj, const struct cosmology *restrict cosmo,
     const struct stars_props *restrict stars_properties,
@@ -42,14 +42,14 @@ runner_iact_nonsym_stars_density(
   kernel_deval(uj, &wj, &wj_dx);
 
   /* Add mass of pj to neighbour mass of si  */
-  si->ngb_mass += hydro_get_mass(pj);
+  si->feedback_data.ngb_mass += hydro_get_mass(pj);
 
   /* Add contribution of pj to normalisation of density weighted fraction
    * which determines how much mass to distribute to neighbouring
    * gas particles */
 
   const float rho = hydro_get_comoving_density(pj);
-  if (rho != 0) si->density_weighted_frac_normalisation_inv += wj / rho;
+  if (rho != 0) si->feedback_data.density_weighted_frac_normalisation_inv += wj / rho;
 
   /* Compute contribution to the density */
   si->rho_gas += mj * wi;
@@ -72,7 +72,7 @@ runner_iact_nonsym_stars_density(
  * generator
  */
 __attribute__((always_inline)) INLINE static void
-runner_iact_nonsym_stars_feedback(
+runner_iact_nonsym_feedback_apply(
     float r2, const float *dx, float hi, float hj,
     const struct spart *restrict si, struct part *restrict pj,
     const struct cosmology *restrict cosmo,

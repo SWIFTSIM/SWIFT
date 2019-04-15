@@ -25,6 +25,7 @@
 
 /* Read chemistry */
 #include "chemistry_struct.h"
+#include "feedback_struct.h"
 #include "tracers_struct.h"
 
 /**
@@ -97,6 +98,9 @@ struct spart {
   /*! Birth density */
   float birth_density;
 
+  /*! Feedback structure */
+  struct feedback_part_data feedback_data;
+  
   /*! Tracer structure */
   struct tracers_xpart_data tracers_data;
 

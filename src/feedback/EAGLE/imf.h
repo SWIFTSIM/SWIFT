@@ -20,6 +20,9 @@
 #define SWIFT_EAGLE_STARS_IMF_H
 
 #include "interpolate.h"
+#include "minmax.h"
+
+#include <string.h>
 
 /**
  * @brief the different weightings allowed for the IMF integration
@@ -42,15 +45,15 @@ enum eagle_imf_integration_type {
  */
 inline static void determine_imf_bins(
     double log10_min_mass, double log10_max_mass, int *i_min, int *i_max,
-    const struct stars_props *star_properties) {
+    const struct feedback_props *feedback_props) {
 
 #ifdef SWIFT_DEBUG_CHECKS
   if (log10_min_mass > log10_max_mass)
     error("Lower bound higher than larger bound.");
 #endif
 
-  const int N_bins = star_properties->feedback.n_imf_mass_bins;
-  const float *imf_bins_log10 = star_properties->feedback.imf_mass_bin_log10;
+  const int N_bins = feedback_props->n_imf_mass_bins;
+  const float *imf_bins_log10 = feedback_props->imf_mass_bin_log10;
 
   /* Check whether lower mass is within the IMF mass bin range */
   log10_min_mass = max(log10_min_mass, imf_bins_log10[0]);
@@ -87,14 +90,14 @@ inline static float integrate_imf(const float log10_min_mass,
                                   const float log10_max_mass,
                                   const enum eagle_imf_integration_type mode,
                                   const float *stellar_yields,
-                                  const struct stars_props *star_properties) {
+                                  const struct feedback_props *feedback_props) {
 
   /* Pull out some common terms */
-  const int N_bins = star_properties->feedback.n_imf_mass_bins;
-  const float *imf = star_properties->feedback.imf;
-  const float *imf_mass_bin = star_properties->feedback.imf_mass_bin;
+  const int N_bins = feedback_props->n_imf_mass_bins;
+  const float *imf = feedback_props->imf;
+  const float *imf_mass_bin = feedback_props->imf_mass_bin;
   const float *imf_mass_bin_log10 =
-      star_properties->feedback.imf_mass_bin_log10;
+      feedback_props->imf_mass_bin_log10;
 
   /* IMF mass bin spacing in log10 space. Assumes uniform spacing. */
   const float imf_log10_mass_bin_size =
@@ -103,7 +106,7 @@ inline static float integrate_imf(const float log10_min_mass,
   /* Determine bins to integrate over based on integration bounds */
   int i_min, i_max;
   determine_imf_bins(log10_min_mass, log10_max_mass, &i_min, &i_max,
-                     star_properties);
+                     feedback_props);
 
   /* Array for the integrand */
   float integrand[N_bins];
@@ -189,82 +192,82 @@ inline static float integrate_imf(const float log10_min_mass,
  * table.
  *
  * @param star_properties #stars_props data structure */
-inline static void init_imf(struct stars_props *restrict star_properties) {
+inline static void init_imf(struct feedback_props *restrict feedback_props) {
 
   /* Define number of imf mass bins */
-  star_properties->feedback.n_imf_mass_bins = 200;
+  feedback_props->n_imf_mass_bins = 200;
 
   /* Define max and min imf masses */
-  star_properties->feedback.imf_max_mass_msun = 100.f;
-  star_properties->feedback.imf_min_mass_msun = 0.1;
-  star_properties->feedback.log10_imf_max_mass_msun =
-      log10(star_properties->feedback.imf_max_mass_msun);
-  star_properties->feedback.log10_imf_min_mass_msun =
-      log10(star_properties->feedback.imf_min_mass_msun);
+  feedback_props->imf_max_mass_msun = 100.f;
+  feedback_props->imf_min_mass_msun = 0.1;
+  feedback_props->log10_imf_max_mass_msun =
+      log10(feedback_props->imf_max_mass_msun);
+  feedback_props->log10_imf_min_mass_msun =
+      log10(feedback_props->imf_min_mass_msun);
 
   /* Compute size of mass bins in log10 space */
   const float imf_log10_mass_bin_size =
-      (star_properties->feedback.log10_imf_max_mass_msun -
-       star_properties->feedback.log10_imf_min_mass_msun) /
-      (float)(star_properties->feedback.n_imf_mass_bins - 1);
+      (feedback_props->log10_imf_max_mass_msun -
+       feedback_props->log10_imf_min_mass_msun) /
+      (float)(feedback_props->n_imf_mass_bins - 1);
 
   /* Allocate IMF array */
   if (swift_memalign(
-          "imf-tables", (void **)&star_properties->feedback.imf,
+          "imf-tables", (void **)&feedback_props->imf,
           SWIFT_STRUCT_ALIGNMENT,
-          star_properties->feedback.n_imf_mass_bins * sizeof(float)) != 0)
+          feedback_props->n_imf_mass_bins * sizeof(float)) != 0)
     error("Failed to allocate IMF bins table");
 
   /* Allocate array to store IMF mass bins */
   if (swift_memalign(
-          "imf-tables", (void **)&star_properties->feedback.imf_mass_bin,
+          "imf-tables", (void **)&feedback_props->imf_mass_bin,
           SWIFT_STRUCT_ALIGNMENT,
-          star_properties->feedback.n_imf_mass_bins * sizeof(float)) != 0)
+          feedback_props->n_imf_mass_bins * sizeof(float)) != 0)
     error("Failed to allocate IMF bins table");
 
   /* Allocate array to store IMF mass bins in log10 space */
   if (swift_memalign(
-          "imf-tables", (void **)&star_properties->feedback.imf_mass_bin_log10,
+          "imf-tables", (void **)&feedback_props->imf_mass_bin_log10,
           SWIFT_STRUCT_ALIGNMENT,
-          star_properties->feedback.n_imf_mass_bins * sizeof(float)) != 0)
+          feedback_props->n_imf_mass_bins * sizeof(float)) != 0)
     error("Failed to allocate IMF bins table");
 
   /* Set IMF from Chabrier 2003 */
-  if (strcmp(star_properties->feedback.IMF_Model, "Chabrier") == 0) {
-    for (int i = 0; i < star_properties->feedback.n_imf_mass_bins; i++) {
+  if (strcmp(feedback_props->IMF_Model, "Chabrier") == 0) {
+    for (int i = 0; i < feedback_props->n_imf_mass_bins; i++) {
 
       const float log10_mass_msun =
-          star_properties->feedback.log10_imf_min_mass_msun +
+          feedback_props->log10_imf_min_mass_msun +
           i * imf_log10_mass_bin_size;
 
       const float mass_msun = exp10f(log10_mass_msun);
 
       if (mass_msun > 1.0)
-        star_properties->feedback.imf[i] = 0.237912 * pow(mass_msun, -2.3);
+        feedback_props->imf[i] = 0.237912 * pow(mass_msun, -2.3);
       else
-        star_properties->feedback.imf[i] =
+        feedback_props->imf[i] =
             0.852464 *
             exp((log10(mass_msun) - log10(0.079)) *
                 (log10(mass_msun) - log10(0.079)) / (-2.0 * pow(0.69, 2))) /
             mass_msun;
 
-      star_properties->feedback.imf_mass_bin[i] = mass_msun;
-      star_properties->feedback.imf_mass_bin_log10[i] = log10_mass_msun;
+      feedback_props->imf_mass_bin[i] = mass_msun;
+      feedback_props->imf_mass_bin_log10[i] = log10_mass_msun;
     }
   } else {
     error("Invalid IMF model %s. Valid models are: 'Chabrier'\n",
-          star_properties->feedback.IMF_Model);
+          feedback_props->IMF_Model);
   }
 
   /* Normalize the IMF */
   const float norm =
-      integrate_imf(star_properties->feedback.log10_imf_min_mass_msun,
-                    star_properties->feedback.log10_imf_max_mass_msun,
+      integrate_imf(feedback_props->log10_imf_min_mass_msun,
+                    feedback_props->log10_imf_max_mass_msun,
                     eagle_imf_integration_mass_weight,
-                    /*(stellar_yields=)*/ NULL, star_properties);
+                    /*(stellar_yields=)*/ NULL, feedback_props);
 
-  for (int i = 0; i < star_properties->feedback.n_imf_mass_bins; i++)
-    star_properties->feedback.imf[i] /= norm;
+  for (int i = 0; i < feedback_props->n_imf_mass_bins; i++)
+    feedback_props->imf[i] /= norm;
 }
 
 /**
@@ -279,7 +282,7 @@ inline static void init_imf(struct stars_props *restrict star_properties) {
  */
 inline static double dying_mass_msun(const float age_Gyr,
                                      const float metallicity,
-                                     const struct stars_props *star_props) {
+                                     const struct feedback_props *star_props) {
 
   float metallicity_offset, time_offset_low_metallicity = 0,
                             time_offset_high_metallicity = 0,
@@ -289,104 +292,104 @@ inline static double dying_mass_msun(const float age_Gyr,
                          time_index_high_metallicity = -1;
 
   if (age_Gyr <= 0) {
-    return star_props->feedback.imf_max_mass_msun;
+    return star_props->imf_max_mass_msun;
   }
 
   const float log10_age_yr = log10f(age_Gyr * 1.e9);
 
-  if (metallicity <= star_props->feedback.lifetimes.metallicity[0]) {
+  if (metallicity <= star_props->lifetimes.metallicity[0]) {
     metallicity_index = 0;
     metallicity_offset = 0.0;
   } else if (metallicity >=
-             star_props->feedback.lifetimes
-                 .metallicity[star_props->feedback.lifetimes.n_z - 1]) {
-    metallicity_index = star_props->feedback.lifetimes.n_z - 2;
+             star_props->lifetimes
+                 .metallicity[star_props->lifetimes.n_z - 1]) {
+    metallicity_index = star_props->lifetimes.n_z - 2;
     metallicity_offset = 1.0;
   } else {
     for (metallicity_index = 0;
-         metallicity_index < star_props->feedback.lifetimes.n_z - 1;
+         metallicity_index < star_props->lifetimes.n_z - 1;
          metallicity_index++)
-      if (star_props->feedback.lifetimes.metallicity[metallicity_index + 1] >
+      if (star_props->lifetimes.metallicity[metallicity_index + 1] >
           metallicity)
         break;
 
     metallicity_offset =
         (metallicity -
-         star_props->feedback.lifetimes.metallicity[metallicity_index]) /
-        (star_props->feedback.lifetimes.metallicity[metallicity_index + 1] -
-         star_props->feedback.lifetimes.metallicity[metallicity_index]);
+         star_props->lifetimes.metallicity[metallicity_index]) /
+        (star_props->lifetimes.metallicity[metallicity_index + 1] -
+         star_props->lifetimes.metallicity[metallicity_index]);
   }
 
   if (log10_age_yr >=
-      star_props->feedback.lifetimes.dyingtime[metallicity_index][0]) {
+      star_props->lifetimes.dyingtime[metallicity_index][0]) {
     time_index_low_metallicity = 0;
     time_offset_low_metallicity = 0.0;
   } else if (log10_age_yr <=
-             star_props->feedback.lifetimes
+             star_props->lifetimes
                  .dyingtime[metallicity_index]
-                           [star_props->feedback.lifetimes.n_mass - 1]) {
-    time_index_low_metallicity = star_props->feedback.lifetimes.n_mass - 2;
+                           [star_props->lifetimes.n_mass - 1]) {
+    time_index_low_metallicity = star_props->lifetimes.n_mass - 2;
     time_offset_low_metallicity = 1.0;
   }
 
   if (log10_age_yr >=
-      star_props->feedback.lifetimes.dyingtime[metallicity_index + 1][0]) {
+      star_props->lifetimes.dyingtime[metallicity_index + 1][0]) {
     time_index_high_metallicity = 0;
     time_offset_high_metallicity = 0.0;
   } else if (log10_age_yr <=
-             star_props->feedback.lifetimes
+             star_props->lifetimes
                  .dyingtime[metallicity_index + 1]
-                           [star_props->feedback.lifetimes.n_mass - 1]) {
-    time_index_high_metallicity = star_props->feedback.lifetimes.n_mass - 2;
+                           [star_props->lifetimes.n_mass - 1]) {
+    time_index_high_metallicity = star_props->lifetimes.n_mass - 2;
     time_offset_high_metallicity = 1.0;
   }
 
-  int i = star_props->feedback.lifetimes.n_mass;
+  int i = star_props->lifetimes.n_mass;
   while (i >= 0 && (time_index_low_metallicity == -1 ||
                     time_index_high_metallicity == -1)) {
     i--;
-    if (star_props->feedback.lifetimes.dyingtime[metallicity_index][i] >=
+    if (star_props->lifetimes.dyingtime[metallicity_index][i] >=
             log10_age_yr &&
         time_index_low_metallicity == -1) {
       time_index_low_metallicity = i;
       time_offset_low_metallicity =
           (log10_age_yr -
-           star_props->feedback.lifetimes
+           star_props->lifetimes
                .dyingtime[metallicity_index][time_index_low_metallicity]) /
-          (star_props->feedback.lifetimes
+          (star_props->lifetimes
                .dyingtime[metallicity_index][time_index_low_metallicity + 1] -
-           star_props->feedback.lifetimes
+           star_props->lifetimes
                .dyingtime[metallicity_index][time_index_low_metallicity]);
     }
-    if (star_props->feedback.lifetimes.dyingtime[metallicity_index + 1][i] >=
+    if (star_props->lifetimes.dyingtime[metallicity_index + 1][i] >=
             log10_age_yr &&
         time_index_high_metallicity == -1) {
       time_index_high_metallicity = i;
       time_offset_high_metallicity =
           (log10_age_yr -
-           star_props->feedback.lifetimes
+           star_props->lifetimes
                .dyingtime[metallicity_index + 1][time_index_high_metallicity]) /
-          (star_props->feedback.lifetimes
+          (star_props->lifetimes
                .dyingtime[metallicity_index + 1]
                          [time_index_high_metallicity + 1] -
-           star_props->feedback.lifetimes
+           star_props->lifetimes
                .dyingtime[metallicity_index + 1][time_index_high_metallicity]);
     }
   }
 
   mass_low_metallicity =
-      interpolate_1d(star_props->feedback.lifetimes.mass,
+      interpolate_1d(star_props->lifetimes.mass,
                      time_index_low_metallicity, time_offset_low_metallicity);
   mass_high_metallicity =
-      interpolate_1d(star_props->feedback.lifetimes.mass,
+      interpolate_1d(star_props->lifetimes.mass,
                      time_index_high_metallicity, time_offset_high_metallicity);
 
   float mass = (1.0 - metallicity_offset) * mass_low_metallicity +
                metallicity_offset * mass_high_metallicity;
 
   /* Check that we haven't killed too many stars */
-  if (mass > star_props->feedback.imf_max_mass_msun)
-    mass = star_props->feedback.imf_max_mass_msun;
+  if (mass > star_props->imf_max_mass_msun)
+    mass = star_props->imf_max_mass_msun;
 
   return mass;
 }
@@ -400,61 +403,61 @@ inline static double dying_mass_msun(const float age_Gyr,
  * @param star_properties the #stars_props data struct
  */
 inline static float lifetime_in_Gyr(float mass, float metallicity,
-                                    const struct stars_props *restrict
-                                        star_properties) {
+                                    const struct feedback_props *restrict
+                                        feedback_props) {
 
   double time_Gyr = 0, mass_offset, metallicity_offset;
 
   int mass_index, metallicity_index;
 
-  if (mass <= star_properties->feedback.lifetimes.mass[0]) {
+  if (mass <= feedback_props->lifetimes.mass[0]) {
     mass_index = 0;
     mass_offset = 0.0;
   } else if (mass >=
-             star_properties->feedback.lifetimes
-                 .mass[star_properties->feedback.lifetimes.n_mass - 1]) {
-    mass_index = star_properties->feedback.lifetimes.n_mass - 2;
+             feedback_props->lifetimes
+                 .mass[feedback_props->lifetimes.n_mass - 1]) {
+    mass_index = feedback_props->lifetimes.n_mass - 2;
     mass_offset = 1.0;
   } else {
     for (mass_index = 0;
-         mass_index < star_properties->feedback.lifetimes.n_mass - 1;
+         mass_index < feedback_props->lifetimes.n_mass - 1;
          mass_index++)
-      if (star_properties->feedback.lifetimes.mass[mass_index + 1] > mass)
+      if (feedback_props->lifetimes.mass[mass_index + 1] > mass)
         break;
 
     mass_offset =
-        (mass - star_properties->feedback.lifetimes.mass[mass_index]) /
-        (star_properties->feedback.lifetimes.mass[mass_index + 1] -
-         star_properties->feedback.lifetimes.mass[mass_index]);
+        (mass - feedback_props->lifetimes.mass[mass_index]) /
+        (feedback_props->lifetimes.mass[mass_index + 1] -
+         feedback_props->lifetimes.mass[mass_index]);
   }
 
-  if (metallicity <= star_properties->feedback.lifetimes.metallicity[0]) {
+  if (metallicity <= feedback_props->lifetimes.metallicity[0]) {
     metallicity_index = 0;
     metallicity_offset = 0.0;
   } else if (metallicity >=
-             star_properties->feedback.lifetimes
-                 .metallicity[star_properties->feedback.lifetimes.n_z - 1]) {
-    metallicity_index = star_properties->feedback.lifetimes.n_z - 2;
+             feedback_props->lifetimes
+                 .metallicity[feedback_props->lifetimes.n_z - 1]) {
+    metallicity_index = feedback_props->lifetimes.n_z - 2;
     metallicity_offset = 1.0;
   } else {
     for (metallicity_index = 0;
-         metallicity_index < star_properties->feedback.lifetimes.n_z - 1;
+         metallicity_index < feedback_props->lifetimes.n_z - 1;
          metallicity_index++)
-      if (star_properties->feedback.lifetimes
+      if (feedback_props->lifetimes
               .metallicity[metallicity_index + 1] > metallicity)
         break;
 
     metallicity_offset =
         (metallicity -
-         star_properties->feedback.lifetimes.metallicity[metallicity_index]) /
-        (star_properties->feedback.lifetimes
+         feedback_props->lifetimes.metallicity[metallicity_index]) /
+        (feedback_props->lifetimes
              .metallicity[metallicity_index + 1] -
-         star_properties->feedback.lifetimes.metallicity[metallicity_index]);
+         feedback_props->lifetimes.metallicity[metallicity_index]);
   }
 
   /* time in Gyr */
   time_Gyr =
-      exp(M_LN10 * interpolate_2d(star_properties->feedback.lifetimes.dyingtime,
+      exp(M_LN10 * interpolate_2d(feedback_props->lifetimes.dyingtime,
                                   metallicity_index, mass_index,
                                   metallicity_offset, mass_offset)) /
       1.0e9;

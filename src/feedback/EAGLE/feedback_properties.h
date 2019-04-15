@@ -46,7 +46,7 @@ struct lifetime_table {
   double **dyingtime;
 };
 
-struct feedback_properties {
+struct feedback_props {
 
   /* Flag to switch between continuous and stochastic heating */
   int continuous_heating;
@@ -150,68 +150,3 @@ struct feedback_properties {
   float spart_first_init_birth_time;
 };
 
-/**
- * @brief Initialize the global properties of the feedback scheme.
- *
- * By default, takes the values provided by the hydro.
- *
- * @param sp The #feedback_properties.
- * @param phys_const The physical constants in the internal unit system.
- * @param us The internal unit system.
- * @param params The parsed parameters.
- * @param p The already read-in properties of the hydro scheme.
- */
-INLINE static void feedbakc_props_init(struct feedback_props *fp,
-                                       const struct phys_const *phys_const,
-                                       const struct unit_system *us,
-                                       struct swift_params *params,
-                                       const struct hydro_props *p,
-                                       const struct cosmology *cosmo) {
-
-  /* Read SNIa timscale */
-  fp->SNIa_timescale_Gyr =
-      parser_get_param_float(params, "EAGLEFeedback:SNIa_timescale_Gyr");
-
-  /* Read the efficiency of producing SNIa */
-  fp->SNIa_efficiency =
-      parser_get_param_float(params, "EAGLEFeedback:SNIa_efficiency");
-
-  /* Are we doing continuous heating? */
-  fp->continuous_heating =
-      parser_get_param_int(params, "EAGLEFeedback:continuous_heating_switch");
-
-  /* Set the delay time before SNII occur */
-  const float Gyr_in_cgs = 1e9 * 365 * 24 * 3600;
-  fp->SNII_wind_delay =
-      parser_get_param_float(params, "EAGLEFeedback:SNII_wind_delay_Gyr") *
-      Gyr_in_cgs / units_cgs_conversion_factor(us, UNIT_CONV_TIME);
-
-  /* Read the temperature change to use in stochastic heating */
-  fp->SNe_deltaT_desired =
-      parser_get_param_float(params, "EAGLEFeedback:SNe_heating_temperature_K");
-  fp->SNe_deltaT_desired /=
-      units_cgs_conversion_factor(us, UNIT_CONV_TEMPERATURE);
-
-  /* Set ejecta thermal energy */
-  const float ejecta_velocity =
-      1.0e6 / units_cgs_conversion_factor(
-                  us, UNIT_CONV_SPEED);  // EAGLE parameter is 10 km/s
-  fp->ejecta_specific_thermal_energy = 0.5 * ejecta_velocity * ejecta_velocity;
-
-  /* Energy released by supernova */
-  fp->total_energy_SNe =
-      1.0e51 / units_cgs_conversion_factor(us, UNIT_CONV_ENERGY);
-
-  /* Calculate temperature to internal energy conversion factor */
-  fp->temp_to_u_factor =
-      phys_const->const_boltzmann_k /
-      (p->mu_ionised * (hydro_gamma_minus_one)*phys_const->const_proton_mass);
-
-  /* Read birth time to set all stars in ICs to (defaults to -1 to indicate star
-   * present in ICs) */
-  fp->spart_first_init_birth_time = parser_get_opt_param_float(
-      params, "EAGLEFeedback:birth_time_override", -1);
-
-  /* Copy over solar mass */
-  fp->const_solar_mass = phys_const->const_solar_mass;
-}
