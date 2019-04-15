@@ -207,7 +207,9 @@ int cell_link_foreign_parts(struct cell *c, struct part *parts) {
 #endif
 
   /* Do we have a hydro task at this level? */
-  if (c->mpi.hydro.recv_xv != NULL) {
+  struct link *l = c->mpi.recv;
+  while (l != NULL && l->t->subtype != task_subtype_xv) l = l->next;
+  if (l != NULL) {
 
     /* Recursively attach the parts */
     const int counts = cell_link_parts(c, parts);
@@ -303,7 +305,9 @@ int cell_count_parts_for_tasks(const struct cell *c) {
 #endif
 
   /* Do we have a hydro task at this level? */
-  if (c->mpi.hydro.recv_xv != NULL) {
+  struct link *l = c->mpi.recv;
+  while (l != NULL && l->t->subtype != task_subtype_xv) l = l->next;
+  if (l != NULL) {
     return c->hydro.count;
   }
 
@@ -3259,7 +3263,7 @@ int cell_unskip_hydro_tasks(struct cell *c, struct scheduler *s) {
 
         /* If the local cell is active, receive data from the foreign cell. */
         if (cj_active) {
-          scheduler_activate(s, ci->mpi.hydro.recv_xv);
+          scheduler_activate_recv(s, ci->mpi.recv, task_subtype_xv);
           if (ci_active) {
             scheduler_activate(s, ci->mpi.hydro.recv_rho);
 
@@ -3309,7 +3313,7 @@ int cell_unskip_hydro_tasks(struct cell *c, struct scheduler *s) {
 
         /* If the local cell is active, receive data from the foreign cell. */
         if (ci_active) {
-          scheduler_activate(s, cj->mpi.hydro.recv_xv);
+          scheduler_activate_recv(s, cj->mpi.recv, task_subtype_xv);
           if (cj_active) {
             scheduler_activate(s, cj->mpi.hydro.recv_rho);
 
@@ -3658,7 +3662,7 @@ int cell_unskip_stars_tasks(struct cell *c, struct scheduler *s) {
       if (ci_nodeID != nodeID) {
 
         if (cj_active) {
-          scheduler_activate(s, ci->mpi.hydro.recv_xv);
+          scheduler_activate_recv(s, ci->mpi.recv, task_subtype_xv);
           scheduler_activate(s, ci->mpi.hydro.recv_rho);
 
           /* If the local cell is active, more stuff will be needed. */
@@ -3690,7 +3694,7 @@ int cell_unskip_stars_tasks(struct cell *c, struct scheduler *s) {
 
         /* If the local cell is active, receive data from the foreign cell. */
         if (ci_active) {
-          scheduler_activate(s, cj->mpi.hydro.recv_xv);
+          scheduler_activate_recv(s, cj->mpi.recv, task_subtype_xv);
           scheduler_activate(s, cj->mpi.hydro.recv_rho);
 
           /* If the local cell is active, more stuff will be needed. */

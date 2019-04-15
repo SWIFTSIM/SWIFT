@@ -328,7 +328,7 @@ void engine_addtasks_recv_hydro(struct engine *e, struct cell *c,
                              c->mpi.tag, 0, c, NULL);
   }
 
-  c->mpi.hydro.recv_xv = t_xv;
+  engine_addlink(e, &c->mpi.recv, t_xv);
   c->mpi.hydro.recv_rho = t_rho;
   c->mpi.hydro.recv_gradient = t_gradient;
   c->mpi.hydro.recv_ti = t_ti;

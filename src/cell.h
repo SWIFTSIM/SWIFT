@@ -576,14 +576,11 @@ struct cell {
       /* Single list of all send tasks associated with this cell. */
       struct link *send;
 
-      /* Single list of all recv tasks associated with this cel. */
+      /* Single list of all recv tasks associated with this cell. */
       struct link *recv;
     };
 
     struct {
-      /* Task receiving hydro data (positions). */
-      struct task *recv_xv;
-
       /* Task receiving hydro data (density). */
       struct task *recv_rho;
 

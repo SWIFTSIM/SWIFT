@@ -268,7 +268,7 @@ void space_rebuild_recycle_mapper(void *map_data, int num_elements,
 #if WITH_MPI
     c->mpi.tag = -1;
 
-    c->mpi.hydro.recv_xv = NULL;
+    c->mpi.recv = NULL;
     c->mpi.hydro.recv_rho = NULL;
     c->mpi.hydro.recv_gradient = NULL;
     c->mpi.hydro.recv_ti = NULL;
@@ -577,7 +577,7 @@ void space_regrid(struct space *s, int verbose) {
           c->grav.ti_old_multipole = ti_current;
 #ifdef WITH_MPI
           c->mpi.tag = -1;
-          c->mpi.hydro.recv_xv = NULL;
+          c->mpi.recv = NULL;
           c->mpi.hydro.recv_rho = NULL;
           c->mpi.hydro.recv_gradient = NULL;
           c->mpi.send = NULL;
