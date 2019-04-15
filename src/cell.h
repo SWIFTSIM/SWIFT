@@ -581,9 +581,6 @@ struct cell {
     };
 
     struct {
-      /* Task receiving hydro data (gradient). */
-      struct task *recv_gradient;
-
       /* Task receiving data (time-step). */
       struct task *recv_ti;
     } hydro;

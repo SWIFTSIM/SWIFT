@@ -3268,7 +3268,7 @@ int cell_unskip_hydro_tasks(struct cell *c, struct scheduler *s) {
             scheduler_activate_recv(s, ci->mpi.recv, task_subtype_rho);
 
 #ifdef EXTRA_HYDRO_LOOP
-            scheduler_activate(s, ci->mpi.hydro.recv_gradient);
+            scheduler_activate_recv(s, ci->mpi.recv, task_subtype_gradient);
 #endif
           }
         }
@@ -3318,7 +3318,7 @@ int cell_unskip_hydro_tasks(struct cell *c, struct scheduler *s) {
             scheduler_activate_recv(s, cj->mpi.recv, task_subtype_rho);
 
 #ifdef EXTRA_HYDRO_LOOP
-            scheduler_activate(s, cj->mpi.hydro.recv_gradient);
+            scheduler_activate_recv(s, cj->mpi.recv, task_subtype_gradient);
 #endif
           }
         }

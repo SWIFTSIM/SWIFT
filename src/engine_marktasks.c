@@ -366,7 +366,7 @@ void engine_marktasks_mapper(void *map_data, int num_elements,
             if (ci_active_hydro) {
               scheduler_activate_recv(s, ci->mpi.recv, task_subtype_rho);
 #ifdef EXTRA_HYDRO_LOOP
-              scheduler_activate(s, ci->mpi.hydro.recv_gradient);
+              scheduler_activate_recv(s, ci->mpi.recv, task_subtype_gradient);
 #endif
             }
           }
@@ -410,7 +410,7 @@ void engine_marktasks_mapper(void *map_data, int num_elements,
             if (cj_active_hydro) {
               scheduler_activate_recv(s, cj->mpi.recv, task_subtype_rho);
 #ifdef EXTRA_HYDRO_LOOP
-              scheduler_activate(s, cj->mpi.hydro.recv_gradient);
+              scheduler_activate_recv(s, cj->mpi.recv, task_subtype_gradient);
 #endif
             }
           }
