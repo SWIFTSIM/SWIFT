@@ -254,16 +254,16 @@ inline static void evolve_SNII(float log10_min_mass, float log10_max_mass,
   for (int elem = 0; elem < chemistry_element_count; elem++) {
     for (mass_bin_index = low_imf_mass_bin_index;
          mass_bin_index < high_imf_mass_bin_index + 1; mass_bin_index++) {
-      low_index_3d = feedback_row_major_index_3d(
+      low_index_3d = row_major_index_3d(
           iz_low, elem, mass_bin_index, feedback_props->SNII_n_z,
           chemistry_element_count, feedback_props->n_imf_mass_bins);
-      high_index_3d = feedback_row_major_index_3d(
+      high_index_3d = row_major_index_3d(
           iz_high, elem, mass_bin_index, feedback_props->SNII_n_z,
           chemistry_element_count, feedback_props->n_imf_mass_bins);
-      low_index_2d = feedback_row_major_index_2d(
+      low_index_2d = row_major_index_2d(
           iz_low, mass_bin_index, feedback_props->SNII_n_z,
           feedback_props->n_imf_mass_bins);
-      high_index_2d = feedback_row_major_index_2d(
+      high_index_2d = row_major_index_2d(
           iz_high, mass_bin_index, feedback_props->SNII_n_z,
           feedback_props->n_imf_mass_bins);
       stellar_yields[mass_bin_index] =
@@ -285,10 +285,10 @@ inline static void evolve_SNII(float log10_min_mass, float log10_max_mass,
   /* Compute mass produced */
   for (mass_bin_index = low_imf_mass_bin_index;
        mass_bin_index < high_imf_mass_bin_index + 1; mass_bin_index++) {
-    low_index_2d = feedback_row_major_index_2d(iz_low, mass_bin_index,
+    low_index_2d = row_major_index_2d(iz_low, mass_bin_index,
                                                feedback_props->SNII_n_z,
                                                feedback_props->n_imf_mass_bins);
-    high_index_2d = feedback_row_major_index_2d(
+    high_index_2d = row_major_index_2d(
         iz_high, mass_bin_index, feedback_props->SNII_n_z,
         feedback_props->n_imf_mass_bins);
     stellar_yields[mass_bin_index] =
@@ -319,10 +319,10 @@ inline static void evolve_SNII(float log10_min_mass, float log10_max_mass,
   /* compute the total metal mass ejected from the star*/
   for (mass_bin_index = low_imf_mass_bin_index;
        mass_bin_index < high_imf_mass_bin_index + 1; mass_bin_index++) {
-    low_index_2d = feedback_row_major_index_2d(iz_low, mass_bin_index,
+    low_index_2d = row_major_index_2d(iz_low, mass_bin_index,
                                                feedback_props->SNII_n_z,
                                                feedback_props->n_imf_mass_bins);
-    high_index_2d = feedback_row_major_index_2d(
+    high_index_2d = row_major_index_2d(
         iz_high, mass_bin_index, feedback_props->SNII_n_z,
         feedback_props->n_imf_mass_bins);
     stellar_yields[mass_bin_index] =
@@ -403,16 +403,16 @@ inline static void evolve_AGB(float log10_min_mass, float log10_max_mass,
   for (int elem = 0; elem < chemistry_element_count; elem++) {
     for (mass_bin_index = low_imf_mass_bin_index;
          mass_bin_index < high_imf_mass_bin_index + 1; mass_bin_index++) {
-      low_index_3d = feedback_row_major_index_3d(
+      low_index_3d = row_major_index_3d(
           iz_low, elem, mass_bin_index, feedback_props->AGB_n_z,
           chemistry_element_count, feedback_props->n_imf_mass_bins);
-      high_index_3d = feedback_row_major_index_3d(
+      high_index_3d = row_major_index_3d(
           iz_high, elem, mass_bin_index, feedback_props->AGB_n_z,
           chemistry_element_count, feedback_props->n_imf_mass_bins);
-      low_index_2d = feedback_row_major_index_2d(
+      low_index_2d = row_major_index_2d(
           iz_low, mass_bin_index, feedback_props->AGB_n_z,
           feedback_props->n_imf_mass_bins);
-      high_index_2d = feedback_row_major_index_2d(
+      high_index_2d = row_major_index_2d(
           iz_high, mass_bin_index, feedback_props->AGB_n_z,
           feedback_props->n_imf_mass_bins);
       stellar_yields[mass_bin_index] =
@@ -434,10 +434,10 @@ inline static void evolve_AGB(float log10_min_mass, float log10_max_mass,
   /* Compute mass produced */
   for (mass_bin_index = low_imf_mass_bin_index;
        mass_bin_index < high_imf_mass_bin_index + 1; mass_bin_index++) {
-    low_index_2d = feedback_row_major_index_2d(iz_low, mass_bin_index,
+    low_index_2d = row_major_index_2d(iz_low, mass_bin_index,
                                                feedback_props->AGB_n_z,
                                                feedback_props->n_imf_mass_bins);
-    high_index_2d = feedback_row_major_index_2d(
+    high_index_2d = row_major_index_2d(
         iz_high, mass_bin_index, feedback_props->AGB_n_z,
         feedback_props->n_imf_mass_bins);
     stellar_yields[mass_bin_index] =
@@ -468,10 +468,10 @@ inline static void evolve_AGB(float log10_min_mass, float log10_max_mass,
   /* compute the total metal mass ejected from the star */
   for (mass_bin_index = low_imf_mass_bin_index;
        mass_bin_index < high_imf_mass_bin_index + 1; mass_bin_index++) {
-    low_index_2d = feedback_row_major_index_2d(iz_low, mass_bin_index,
+    low_index_2d = row_major_index_2d(iz_low, mass_bin_index,
                                                feedback_props->AGB_n_z,
                                                feedback_props->n_imf_mass_bins);
-    high_index_2d = feedback_row_major_index_2d(
+    high_index_2d = row_major_index_2d(
         iz_high, mass_bin_index, feedback_props->AGB_n_z,
         feedback_props->n_imf_mass_bins);
     stellar_yields[mass_bin_index] =

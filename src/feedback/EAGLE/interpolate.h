@@ -1,6 +1,6 @@
 /*******************************************************************************
  * This file is part of SWIFT.
- * Coypright (c) 2016 Matthieu Schaller (matthieu.schaller@durham.ac.uk)
+ * Coypright (c) 2018 Matthieu Schaller (matthieu.schaller@durham.ac.uk)
  *
  * This program is free software: you can redistribute it and/or modify
  * it under the terms of the GNU Lesser General Public License as published
@@ -21,22 +21,23 @@
 
 #include "error.h"
 
-
 /**
  * @brief Returns the 1d index of element with 2d indices i,j
  * from a flattened 2d array in row major order
  *
- * ALEXEI: this function also appears in EAGLE cooling. Could this be done
- * without duplication?
- *
  * @param i, j Indices of element of interest
- * @param nx, ny Sizes of array dimensions
+ * @param Nx, Ny Sizes of array dimensions
  */
-__attribute__((always_inline)) INLINE int feedback_row_major_index_2d(int i,
-                                                                      int j,
-                                                                      int nx,
-                                                                      int ny) {
-  return i * ny + j;
+__attribute__((always_inline)) static INLINE int row_major_index_2d(const int i,
+								    const int j,
+								    const int Nx,
+								    const int Ny) {
+#ifdef SWIFT_DEBUG_CHECKS
+  assert(x < Nx);
+  assert(y < Ny);
+#endif
+
+  return i * Ny + j;
 }
 
 /**
@@ -44,11 +45,18 @@ __attribute__((always_inline)) INLINE int feedback_row_major_index_2d(int i,
  * from a flattened 3d array in row major order
  *
  * @param i, j, k Indices of element of interest
- * @param nx, ny, nz Sizes of array dimensions
+ * @param Nx, Ny, Nz Sizes of array dimensions
  */
-__attribute__((always_inline)) INLINE int feedback_row_major_index_3d(
-    int i, int j, int k, int nx, int ny, int nz) {
-  return i * ny * nz + j * nz + k;
+__attribute__((always_inline)) static INLINE int row_major_index_3d(
+								      const int i, const int j, const int k, const int Nx, const int Ny, const int Nz) {
+
+#ifdef SWIFT_DEBUG_CHECKS
+  assert(x < Nx);
+  assert(y < Ny);
+  assert(z < Nz);
+#endif
+
+  return i * Ny * Nz + j * Nz + k;
 }
 
 /**
@@ -58,12 +66,11 @@ __attribute__((always_inline)) INLINE int feedback_row_major_index_3d(
  * @param i index of cell to interpolate
  * @param dx offset within cell to interpolate
  */
-inline static double interpolate_1d(double* table, int i, float dx) {
-  double result;
+__attribute__((always_inline)) static INLINE double interpolate_1d(const double* table, const int i, const float dx) {
 
-  result = (1 - dx) * table[i] + dx * table[i + 1];
+  const float tx = 1.f - dx;
 
-  return result;
+  return tx * table[i] + dx * table[i + 1];
 }
 
 /**
@@ -75,12 +82,15 @@ inline static double interpolate_1d(double* table, int i, float dx) {
  * @param dx row offset within cell to interpolate
  * @param dy column offset within cell to interpolate
  */
-inline static double interpolate_2d(double** table, int i, int j, float dx,
-                                    float dy) {
-  double result;
+__attribute__((always_inline)) static INLINE double interpolate_2d(double** table, const int i, const int j, const float dx,
+                                    const float dy) {
+  const float tx = 1.f - dx;
+  const float ty = 1.f - dy;
 
-  result = (1 - dx) * (1 - dy) * table[i][j] + (1 - dx) * dy * table[i][j + 1] +
-           dx * (1 - dy) * table[i + 1][j] + dx * dy * table[i + 1][j + 1];
+  double result = tx * ty * table[i][j];
+  result += tx * dy * table[i][j + 1];
+  result += dx * ty * table[i + 1][j];
+  result += dx * dy * table[i + 1][j + 1];
 
   return result;
 }
@@ -98,32 +108,30 @@ inline static double interpolate_2d(double** table, int i, int j, float dx,
  * @param x value within range of array_x indicating bin and offset within
  * array_y to interpolate
  */
-inline static double interpolate_1D_non_uniform(double* array_x,
-                                                double* array_y, int size,
-                                                double x) {
-
-  double result;
-
+static INLINE double interpolate_1D_non_uniform(const double* array_x,
+                                                const double* array_y, const int size,
+                                                const double x) {
+#ifdef SWIFT_DEBUG_CHECKS
+  
   /* Check that x within range of array_x */
   if (x < array_x[0])
     error("interpolating value less than array min. value %.5e array min %.5e",
           x, array_x[0]);
-  else if (x > array_x[size - 1])
+  if (x > array_x[size - 1])
     error(
         "interpolating value greater than array max. value %.5e array max %.5e",
         x, array_x[size - 1]);
-  else {
-    /* Find bin index and offset of x within array_x */
-    int index = 0;
-    while (array_x[index] <= x) index++;
-    double offset =
-        (array_x[index] - x) / (array_x[index] - array_x[index - 1]);
+#endif
+  
+  /* Find bin index and offset of x within array_x */
+  int index = 0;
+  while (array_x[index] <= x) index++;
 
-    /* Interpolate array_y */
-    result = offset * array_y[index - 1] + (1 - offset) * array_y[index];
-  }
-
-  return result;
+  const double offset =
+    (array_x[index] - x) / (array_x[index] - array_x[index - 1]);
+  
+  /* Interpolate array_y */
+  return offset * array_y[index - 1] + (1. - offset) * array_y[index];
 }
 
 #endif /* SWIFT_EAGLE_FEEDBACK_INTERPOLATE_H */
