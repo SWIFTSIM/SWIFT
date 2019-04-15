@@ -65,6 +65,22 @@ void part_relink_gparts_to_sparts(struct spart *sparts, size_t N,
 }
 
 /**
+ * @brief Re-link the #gpart%s associated with the list of #bpart%s.
+ *
+ * @param bparts The list of #bpart.
+ * @param N The number of s-particles to re-link;
+ * @param offset The offset of #bpart%s relative to the global bparts list.
+ */
+void part_relink_gparts_to_bparts(struct bpart *bparts, size_t N,
+                                  ptrdiff_t offset) {
+  for (size_t k = 0; k < N; k++) {
+    if (bparts[k].gpart) {
+      bparts[k].gpart->id_or_neg_offset = -(k + offset);
+    }
+  }
+}
+
+/**
  * @brief Re-link the #part%s associated with the list of #gpart%s.
  *
  * @param gparts The list of #gpart.
@@ -97,6 +113,22 @@ void part_relink_sparts_to_gparts(struct gpart *gparts, size_t N,
 }
 
 /**
+ * @brief Re-link the #bpart%s associated with the list of #gpart%s.
+ *
+ * @param gparts The list of #gpart.
+ * @param N The number of particles to re-link;
+ * @param bparts The global #bpart array in which to find the #gpart offsets.
+ */
+void part_relink_bparts_to_gparts(struct gpart *gparts, size_t N,
+                                  struct bpart *bparts) {
+  for (size_t k = 0; k < N; k++) {
+    if (gparts[k].type == swift_type_black_hole) {
+      bparts[-gparts[k].id_or_neg_offset].gpart = &gparts[k];
+    }
+  }
+}
+
+/**
  * @brief Re-link both the #part%s and #spart%s associated with the list of
  * #gpart%s.
  *
@@ -104,14 +136,18 @@ void part_relink_sparts_to_gparts(struct gpart *gparts, size_t N,
  * @param N The number of particles to re-link;
  * @param parts The global #part array in which to find the #gpart offsets.
  * @param sparts The global #spart array in which to find the #gpart offsets.
+ * @param bparts The global #bpart array in which to find the #gpart offsets.
  */
 void part_relink_all_parts_to_gparts(struct gpart *gparts, size_t N,
-                                     struct part *parts, struct spart *sparts) {
+                                     struct part *parts, struct spart *sparts,
+                                     struct bpart *bparts) {
   for (size_t k = 0; k < N; k++) {
     if (gparts[k].type == swift_type_gas) {
       parts[-gparts[k].id_or_neg_offset].gpart = &gparts[k];
     } else if (gparts[k].type == swift_type_stars) {
       sparts[-gparts[k].id_or_neg_offset].gpart = &gparts[k];
+    } else if (gparts[k].type == swift_type_black_hole) {
+      bparts[-gparts[k].id_or_neg_offset].gpart = &gparts[k];
     }
   }
 }
@@ -126,14 +162,17 @@ void part_relink_all_parts_to_gparts(struct gpart *gparts, size_t N,
  * @param parts The #part array.
  * @param gparts The #gpart array.
  * @param sparts The #spart array.
+ * @param bparts The #bpart array.
  * @param nr_parts The number of #part in the array.
  * @param nr_gparts The number of #gpart in the array.
  * @param nr_sparts The number of #spart in the array.
+ * @param nr_bparts The number of #bpart in the array.
  * @param verbose Do we report verbosely in case of success ?
  */
 void part_verify_links(struct part *parts, struct gpart *gparts,
-                       struct spart *sparts, size_t nr_parts, size_t nr_gparts,
-                       size_t nr_sparts, int verbose) {
+                       struct spart *sparts, struct bpart *bparts,
+                       size_t nr_parts, size_t nr_gparts, size_t nr_sparts,
+                       size_t nr_bparts, int verbose) {
 
   ticks tic = getticks();
 
@@ -202,6 +241,33 @@ void part_verify_links(struct part *parts, struct gpart *gparts,
       if (gparts[k].time_bin != spart->time_bin)
         error("Linked particles are not at the same time !");
     }
+
+    else if (gparts[k].type == swift_type_black_hole) {
+
+      /* Check that it is linked */
+      if (gparts[k].id_or_neg_offset > 0)
+        error("Black holes gpart not linked to anything !");
+
+      /* Find its link */
+      const struct bpart *bpart = &bparts[-gparts[k].id_or_neg_offset];
+
+      /* Check the reverse link */
+      if (bpart->gpart != &gparts[k]) error("Linking problem !");
+
+      /* Check that the particles are at the same place */
+      if (gparts[k].x[0] != bpart->x[0] || gparts[k].x[1] != bpart->x[1] ||
+          gparts[k].x[2] != bpart->x[2])
+        error(
+            "Linked particles are not at the same position !\n"
+            "gp->x=[%e %e %e] bp->x=[%e %e %e] diff=[%e %e %e]",
+            gparts[k].x[0], gparts[k].x[1], gparts[k].x[2], bpart->x[0],
+            bpart->x[1], bpart->x[2], gparts[k].x[0] - bpart->x[0],
+            gparts[k].x[1] - bpart->x[1], gparts[k].x[2] - bpart->x[2]);
+
+      /* Check that the particles are at the same time */
+      if (gparts[k].time_bin != bpart->time_bin)
+        error("Linked particles are not at the same time !");
+    }
   }
 
   /* Now check that all parts are linked */
@@ -250,6 +316,29 @@ void part_verify_links(struct part *parts, struct gpart *gparts,
     }
   }
 
+  /* Now check that all bparts are linked */
+  for (size_t k = 0; k < nr_bparts; ++k) {
+
+    /* Ok, there is a link */
+    if (bparts[k].gpart != NULL) {
+
+      /* Check the link */
+      if (bparts[k].gpart->id_or_neg_offset != -(ptrdiff_t)k) {
+        error("Linking problem !");
+
+        /* Check that the particles are at the same place */
+        if (bparts[k].x[0] != bparts[k].gpart->x[0] ||
+            bparts[k].x[1] != bparts[k].gpart->x[1] ||
+            bparts[k].x[2] != bparts[k].gpart->x[2])
+          error("Linked particles are not at the same position !");
+
+        /* Check that the particles are at the same time */
+        if (bparts[k].time_bin != bparts[k].gpart->time_bin)
+          error("Linked particles are not at the same time !");
+      }
+    }
+  }
+
   if (verbose) message("All links OK");
   if (verbose)
     message("took %.3f %s.", clocks_from_ticks(getticks() - tic),
@@ -262,6 +351,7 @@ MPI_Datatype part_mpi_type;
 MPI_Datatype xpart_mpi_type;
 MPI_Datatype gpart_mpi_type;
 MPI_Datatype spart_mpi_type;
+MPI_Datatype bpart_mpi_type;
 
 /**
  * @brief Registers MPI particle types.
@@ -293,6 +383,11 @@ void part_create_mpi_types(void) {
                           MPI_BYTE, &spart_mpi_type) != MPI_SUCCESS ||
       MPI_Type_commit(&spart_mpi_type) != MPI_SUCCESS) {
     error("Failed to create MPI type for sparts.");
+  }
+  if (MPI_Type_contiguous(sizeof(struct bpart) / sizeof(unsigned char),
+                          MPI_BYTE, &bpart_mpi_type) != MPI_SUCCESS ||
+      MPI_Type_commit(&bpart_mpi_type) != MPI_SUCCESS) {
+    error("Failed to create MPI type for bparts.");
   }
 }
 #endif
