@@ -388,6 +388,9 @@ struct engine {
   /* Properties of the starformation law */
   const struct star_formation *star_formation;
 
+  /* Properties of the sellar feedback model */
+  const struct feedback_props *feedback_props;
+  
   /* Properties of the chemistry model */
   const struct chemistry_global_data *chemistry;
 

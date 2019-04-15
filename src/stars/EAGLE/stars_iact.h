@@ -40,9 +40,7 @@
 __attribute__((always_inline)) INLINE static void
 runner_iact_nonsym_stars_density(
     float r2, const float *dx, float hi, float hj, struct spart *restrict si,
-    const struct part *restrict pj, const struct cosmology *restrict cosmo,
-    const struct stars_props *restrict stars_properties,
-    struct xpart *restrict xp, integertime_t ti_current) {
+    const struct part *restrict pj, const float a, const float H) {
 
   float wi, wi_dx;
 
@@ -93,8 +91,15 @@ __attribute__((always_inline)) INLINE static void
 runner_iact_nonsym_stars_feedback(
     float r2, const float *dx, float hi, float hj,
     const struct spart *restrict si, struct part *restrict pj,
-    const struct cosmology *restrict cosmo,
-    const struct stars_props *restrict stars_properties,
-    struct xpart *restrict xp, integertime_t ti_current) {}
+    const float a, const float H) {
+
+#ifdef DEBUG_INTERACTIONS_STARS
+  /* Update ngb counters */
+  if (si->num_ngb_feedback < MAX_NUM_OF_NEIGHBOURS_STARS)
+    si->ids_ngbs_feedback[si->num_ngb_feedback] = pj->id;
+  ++si->num_ngb_feedback;
+#endif
+
+}
 
 #endif /* SWIFT_EAGLE_STARS_IACT_H */
