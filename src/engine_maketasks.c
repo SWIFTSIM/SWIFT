@@ -101,8 +101,8 @@ void engine_addtasks_send_gravity(struct engine *e, struct cell *ci,
     }
 
     /* Add them to the local cell. */
-    engine_addlink(e, &ci->mpi.grav.send, t_grav);
-    engine_addlink(e, &ci->mpi.grav.send_ti, t_ti);
+    engine_addlink(e, &ci->mpi.send, t_grav);
+    engine_addlink(e, &ci->mpi.send, t_ti);
   }
 
   /* Recurse? */
@@ -202,12 +202,12 @@ void engine_addtasks_send_hydro(struct engine *e, struct cell *ci,
     }
 
     /* Add them to the local cell. */
-    engine_addlink(e, &ci->mpi.hydro.send_xv, t_xv);
-    engine_addlink(e, &ci->mpi.hydro.send_rho, t_rho);
+    engine_addlink(e, &ci->mpi.send, t_xv);
+    engine_addlink(e, &ci->mpi.send, t_rho);
 #ifdef EXTRA_HYDRO_LOOP
-    engine_addlink(e, &ci->mpi.hydro.send_gradient, t_gradient);
+    engine_addlink(e, &ci->mpi.send, t_gradient);
 #endif
-    engine_addlink(e, &ci->mpi.hydro.send_ti, t_ti);
+    engine_addlink(e, &ci->mpi.send, t_ti);
   }
 
   /* Recurse? */
@@ -274,8 +274,8 @@ void engine_addtasks_send_stars(struct engine *e, struct cell *ci,
       scheduler_addunlock(s, ci->super->timestep, t_ti);
     }
 
-    engine_addlink(e, &ci->mpi.stars.send, t_feedback);
-    engine_addlink(e, &ci->mpi.stars.send_ti, t_ti);
+    engine_addlink(e, &ci->mpi.send, t_feedback);
+    engine_addlink(e, &ci->mpi.send, t_ti);
   }
 
   /* Recurse? */

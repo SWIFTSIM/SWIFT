@@ -571,86 +571,49 @@ struct cell {
 #ifdef WITH_MPI
   /*! MPI variables */
   struct {
+
+    union {
+      /* Single list of all send tasks associated with this cell. */
+      struct link *send;
+
+      /* Single list of all recv tasks associated with this cel. */
+      struct link *recv;
+    };
+
     struct {
-      union {
-        struct {
-          /* Task receiving hydro data (positions). */
-          struct task *recv_xv;
+      /* Task receiving hydro data (positions). */
+      struct task *recv_xv;
 
-          /* Task receiving hydro data (density). */
-          struct task *recv_rho;
+      /* Task receiving hydro data (density). */
+      struct task *recv_rho;
 
-          /* Task receiving hydro data (gradient). */
-          struct task *recv_gradient;
+      /* Task receiving hydro data (gradient). */
+      struct task *recv_gradient;
 
-          /* Task receiving data (time-step). */
-          struct task *recv_ti;
-        };
-
-        // Using a union for now to make these all the same linked list. once
-        // this works, I'll replace the names.
-        union {
-          /* Linked list for sending hydro data (positions). */
-          struct link *send_xv;
-
-          /* Linked list for sending hydro data (density). */
-          struct link *send_rho;
-
-          /* Linked list for sending hydro data (gradient). */
-          struct link *send_gradient;
-
-          /* Linked list for sending data (time-step). */
-          struct link *send_ti;
-        };
-      };
-
+      /* Task receiving data (time-step). */
+      struct task *recv_ti;
     } hydro;
 
     struct {
-      union {
-        struct {
-          /* Task receiving gpart data. */
-          struct task *recv;
+      /* Task receiving gpart data. */
+      struct task *recv;
 
-          /* Task receiving data (time-step). */
-          struct task *recv_ti;
-        };
-        struct {
-          /* Linked list for sending gpart data. */
-          struct link *send;
-
-          /* Linked list for sending data (time-step). */
-          struct link *send_ti;
-        };
-      };
-
+      /* Task receiving data (time-step). */
+      struct task *recv_ti;
     } grav;
 
     struct {
-      union {
-        struct {
-          /* Task receiving spart data. */
-          struct task *recv;
+      /* Task receiving spart data. */
+      struct task *recv;
 
-          /* Task receiving data (time-step). */
-          struct task *recv_ti;
-        };
-        struct {
-          /* Linked list for sending spart data. */
-          struct link *send;
-
-          /* Linked list for sending data (time-step). */
-          struct link *send_ti;
-        };
-      };
+      /* Task receiving data (time-step). */
+      struct task *recv_ti;
     } stars;
 
-    union {
+    struct {
       /* Task receiving limiter data. */
       struct task *recv;
 
-      /* Linked list for sending limiter data. */
-      struct link *send;
     } limiter;
 
     /*! Bit mask of the proxies this cell is registered with. */

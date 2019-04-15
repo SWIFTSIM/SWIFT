@@ -377,7 +377,7 @@ void engine_marktasks_mapper(void *map_data, int num_elements,
           /* Is the foreign cell active and will need stuff from us? */
           if (ci_active_hydro) {
             struct link *l = scheduler_activate_send(
-                s, cj->mpi.hydro.send_xv, task_subtype_xv, ci_nodeID);
+                s, cj->mpi.send, task_subtype_xv, ci_nodeID);
 
             /* Drift the cell which will be sent at the level at which it is
                sent, i.e. drift the cell specified in the send task (l->t)
@@ -386,20 +386,20 @@ void engine_marktasks_mapper(void *map_data, int num_elements,
 
             /* If the local cell is also active, more stuff will be needed. */
             if (cj_active_hydro) {
-              scheduler_activate_send(s, cj->mpi.hydro.send_rho,
-                                      task_subtype_rho, ci_nodeID);
+              scheduler_activate_send(s, cj->mpi.send, task_subtype_rho,
+                                      ci_nodeID);
 
 #ifdef EXTRA_HYDRO_LOOP
-              scheduler_activate_send(s, cj->mpi.hydro.send_gradient,
-                                      task_subtype_gradient, ci_nodeID);
+              scheduler_activate_send(s, cj->mpi.send, task_subtype_gradient,
+                                      ci_nodeID);
 #endif
             }
           }
 
           /* If the local cell is active, send its ti_end values. */
           if (cj_active_hydro)
-            scheduler_activate_send(s, cj->mpi.hydro.send_ti,
-                                    task_subtype_tend_part, ci_nodeID);
+            scheduler_activate_send(s, cj->mpi.send, task_subtype_tend_part,
+                                    ci_nodeID);
 
         } else if (cj_nodeID != nodeID) {
 
@@ -422,7 +422,7 @@ void engine_marktasks_mapper(void *map_data, int num_elements,
           if (cj_active_hydro) {
 
             struct link *l = scheduler_activate_send(
-                s, ci->mpi.hydro.send_xv, task_subtype_xv, cj_nodeID);
+                s, ci->mpi.send, task_subtype_xv, cj_nodeID);
 
             /* Drift the cell which will be sent at the level at which it is
                sent, i.e. drift the cell specified in the send task (l->t)
@@ -432,20 +432,20 @@ void engine_marktasks_mapper(void *map_data, int num_elements,
             /* If the local cell is also active, more stuff will be needed. */
             if (ci_active_hydro) {
 
-              scheduler_activate_send(s, ci->mpi.hydro.send_rho,
-                                      task_subtype_rho, cj_nodeID);
+              scheduler_activate_send(s, ci->mpi.send, task_subtype_rho,
+                                      cj_nodeID);
 
 #ifdef EXTRA_HYDRO_LOOP
-              scheduler_activate_send(s, ci->mpi.hydro.send_gradient,
-                                      task_subtype_gradient, cj_nodeID);
+              scheduler_activate_send(s, ci->mpi.send, task_subtype_gradient,
+                                      cj_nodeID);
 #endif
             }
           }
 
           /* If the local cell is active, send its ti_end values. */
           if (ci_active_hydro)
-            scheduler_activate_send(s, ci->mpi.hydro.send_ti,
-                                    task_subtype_tend_part, cj_nodeID);
+            scheduler_activate_send(s, ci->mpi.send, task_subtype_tend_part,
+                                    cj_nodeID);
         }
 #endif
       }
@@ -466,13 +466,13 @@ void engine_marktasks_mapper(void *map_data, int num_elements,
             scheduler_activate(s, ci->mpi.hydro.recv_rho);
 
             /* If the local cell is active, more stuff will be needed. */
-            scheduler_activate_send(s, cj->mpi.stars.send, task_subtype_spart,
+            scheduler_activate_send(s, cj->mpi.send, task_subtype_spart,
                                     ci_nodeID);
             cell_activate_drift_spart(cj, s);
 
             /* If the local cell is active, send its ti_end values. */
-            scheduler_activate_send(s, cj->mpi.stars.send_ti,
-                                    task_subtype_tend_spart, ci_nodeID);
+            scheduler_activate_send(s, cj->mpi.send, task_subtype_tend_spart,
+                                    ci_nodeID);
           }
 
           if (ci_active_stars) {
@@ -482,9 +482,9 @@ void engine_marktasks_mapper(void *map_data, int num_elements,
             scheduler_activate(s, ci->mpi.stars.recv_ti);
 
             /* Is the foreign cell active and will need stuff from us? */
-            scheduler_activate_send(s, cj->mpi.hydro.send_xv, task_subtype_xv,
+            scheduler_activate_send(s, cj->mpi.send, task_subtype_xv,
                                     ci_nodeID);
-            scheduler_activate_send(s, cj->mpi.hydro.send_rho, task_subtype_rho,
+            scheduler_activate_send(s, cj->mpi.send, task_subtype_rho,
                                     ci_nodeID);
 
             /* Drift the cell which will be sent; note that not all sent
@@ -500,13 +500,13 @@ void engine_marktasks_mapper(void *map_data, int num_elements,
             scheduler_activate(s, cj->mpi.hydro.recv_rho);
 
             /* If the local cell is active, more stuff will be needed. */
-            scheduler_activate_send(s, ci->mpi.stars.send, task_subtype_spart,
+            scheduler_activate_send(s, ci->mpi.send, task_subtype_spart,
                                     cj_nodeID);
             cell_activate_drift_spart(ci, s);
 
             /* If the local cell is active, send its ti_end values. */
-            scheduler_activate_send(s, ci->mpi.stars.send_ti,
-                                    task_subtype_tend_spart, cj_nodeID);
+            scheduler_activate_send(s, ci->mpi.send, task_subtype_tend_spart,
+                                    cj_nodeID);
           }
 
           if (cj_active_stars) {
@@ -516,9 +516,9 @@ void engine_marktasks_mapper(void *map_data, int num_elements,
             scheduler_activate(s, cj->mpi.stars.recv_ti);
 
             /* Is the foreign cell active and will need stuff from us? */
-            scheduler_activate_send(s, ci->mpi.hydro.send_xv, task_subtype_xv,
+            scheduler_activate_send(s, ci->mpi.send, task_subtype_xv,
                                     cj_nodeID);
-            scheduler_activate_send(s, ci->mpi.hydro.send_rho, task_subtype_rho,
+            scheduler_activate_send(s, ci->mpi.send, task_subtype_rho,
                                     cj_nodeID);
 
             /* Drift the cell which will be sent; note that not all sent
@@ -546,7 +546,7 @@ void engine_marktasks_mapper(void *map_data, int num_elements,
           if (ci_active_gravity) {
 
             struct link *l = scheduler_activate_send(
-                s, cj->mpi.grav.send, task_subtype_gpart, ci_nodeID);
+                s, cj->mpi.send, task_subtype_gpart, ci_nodeID);
 
             /* Drift the cell which will be sent at the level at which it is
                sent, i.e. drift the cell specified in the send task (l->t)
@@ -556,8 +556,8 @@ void engine_marktasks_mapper(void *map_data, int num_elements,
 
           /* If the local cell is active, send its ti_end values. */
           if (cj_active_gravity)
-            scheduler_activate_send(s, cj->mpi.grav.send_ti,
-                                    task_subtype_tend_gpart, ci_nodeID);
+            scheduler_activate_send(s, cj->mpi.send, task_subtype_tend_gpart,
+                                    ci_nodeID);
 
         } else if (cj_nodeID != nodeID) {
 
@@ -571,7 +571,7 @@ void engine_marktasks_mapper(void *map_data, int num_elements,
           if (cj_active_gravity) {
 
             struct link *l = scheduler_activate_send(
-                s, ci->mpi.grav.send, task_subtype_gpart, cj_nodeID);
+                s, ci->mpi.send, task_subtype_gpart, cj_nodeID);
 
             /* Drift the cell which will be sent at the level at which it is
                sent, i.e. drift the cell specified in the send task (l->t)
@@ -581,8 +581,8 @@ void engine_marktasks_mapper(void *map_data, int num_elements,
 
           /* If the local cell is active, send its ti_end values. */
           if (ci_active_gravity)
-            scheduler_activate_send(s, ci->mpi.grav.send_ti,
-                                    task_subtype_tend_gpart, cj_nodeID);
+            scheduler_activate_send(s, ci->mpi.send, task_subtype_tend_gpart,
+                                    cj_nodeID);
         }
 #endif
       }
