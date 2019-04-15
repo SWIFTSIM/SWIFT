@@ -668,11 +668,6 @@ void engine_marktasks_mapper(void *map_data, int num_elements,
         cell_activate_drift_spart(t->ci, s);
       }
     } 
-    
-    /* FOF tasks. */
-    else if (t_type == task_type_fof_self || t_type == task_type_fof_pair) {
-      //scheduler_activate(s, t);
-    }
   }
 }
 
