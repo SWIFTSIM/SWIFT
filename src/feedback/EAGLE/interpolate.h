@@ -28,10 +28,8 @@
  * @param i, j Indices of element of interest
  * @param Nx, Ny Sizes of array dimensions
  */
-__attribute__((always_inline)) static INLINE int row_major_index_2d(const int i,
-								    const int j,
-								    const int Nx,
-								    const int Ny) {
+__attribute__((always_inline)) static INLINE int row_major_index_2d(
+    const int i, const int j, const int Nx, const int Ny) {
 #ifdef SWIFT_DEBUG_CHECKS
   assert(i < Nx);
   assert(j < Ny);
@@ -48,7 +46,8 @@ __attribute__((always_inline)) static INLINE int row_major_index_2d(const int i,
  * @param Nx, Ny, Nz Sizes of array dimensions
  */
 __attribute__((always_inline)) static INLINE int row_major_index_3d(
-								      const int i, const int j, const int k, const int Nx, const int Ny, const int Nz) {
+    const int i, const int j, const int k, const int Nx, const int Ny,
+    const int Nz) {
 
 #ifdef SWIFT_DEBUG_CHECKS
   assert(i < Nx);
@@ -66,7 +65,8 @@ __attribute__((always_inline)) static INLINE int row_major_index_3d(
  * @param i index of cell to interpolate
  * @param dx offset within cell to interpolate
  */
-__attribute__((always_inline)) static INLINE double interpolate_1d(const double* table, const int i, const float dx) {
+__attribute__((always_inline)) static INLINE double interpolate_1d(
+    const double* table, const int i, const float dx) {
 
   const float tx = 1.f - dx;
 
@@ -82,8 +82,8 @@ __attribute__((always_inline)) static INLINE double interpolate_1d(const double*
  * @param dx row offset within cell to interpolate
  * @param dy column offset within cell to interpolate
  */
-__attribute__((always_inline)) static INLINE double interpolate_2d(double** table, const int i, const int j, const float dx,
-                                    const float dy) {
+__attribute__((always_inline)) static INLINE double interpolate_2d(
+    double** table, const int i, const int j, const float dx, const float dy) {
   const float tx = 1.f - dx;
   const float ty = 1.f - dy;
 
@@ -109,10 +109,11 @@ __attribute__((always_inline)) static INLINE double interpolate_2d(double** tabl
  * array_y to interpolate
  */
 static INLINE double interpolate_1D_non_uniform(const double* array_x,
-                                                const double* array_y, const int size,
+                                                const double* array_y,
+                                                const int size,
                                                 const double x) {
 #ifdef SWIFT_DEBUG_CHECKS
-  
+
   /* Check that x within range of array_x */
   if (x < array_x[0])
     error("interpolating value less than array min. value %.5e array min %.5e",
@@ -122,14 +123,14 @@ static INLINE double interpolate_1D_non_uniform(const double* array_x,
         "interpolating value greater than array max. value %.5e array max %.5e",
         x, array_x[size - 1]);
 #endif
-  
+
   /* Find bin index and offset of x within array_x */
   int index = 0;
   while (array_x[index] <= x) index++;
 
   const double offset =
-    (array_x[index] - x) / (array_x[index] - array_x[index - 1]);
-  
+      (array_x[index] - x) / (array_x[index] - array_x[index - 1]);
+
   /* Interpolate array_y */
   return offset * array_y[index - 1] + (1. - offset) * array_y[index];
 }

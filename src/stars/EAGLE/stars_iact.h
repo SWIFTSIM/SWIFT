@@ -34,9 +34,10 @@
  * @param H Current Hubble parameter.
  */
 __attribute__((always_inline)) INLINE static void
-runner_iact_nonsym_stars_density(
-    float r2, const float *dx, float hi, float hj, struct spart *restrict si,
-    const struct part *restrict pj, const float a, const float H) {
+runner_iact_nonsym_stars_density(float r2, const float *dx, float hi, float hj,
+                                 struct spart *restrict si,
+                                 const struct part *restrict pj, const float a,
+                                 const float H) {
 
   float wi, wi_dx;
 
@@ -81,10 +82,10 @@ runner_iact_nonsym_stars_density(
  * @param H Current Hubble parameter.
  */
 __attribute__((always_inline)) INLINE static void
-runner_iact_nonsym_stars_feedback(
-    float r2, const float *dx, float hi, float hj,
-    const struct spart *restrict si, struct part *restrict pj,
-    const float a, const float H) {
+runner_iact_nonsym_stars_feedback(float r2, const float *dx, float hi, float hj,
+                                  const struct spart *restrict si,
+                                  struct part *restrict pj, const float a,
+                                  const float H) {
 
 #ifdef DEBUG_INTERACTIONS_STARS
   /* Update ngb counters */
@@ -92,7 +93,6 @@ runner_iact_nonsym_stars_feedback(
     si->ids_ngbs_feedback[si->num_ngb_feedback] = pj->id;
   ++si->num_ngb_feedback;
 #endif
-
 }
 
 #endif /* SWIFT_EAGLE_STARS_IACT_H */

@@ -33,9 +33,10 @@
  * @param H Current Hubble parameter.
  */
 __attribute__((always_inline)) INLINE static void
-runner_iact_nonsym_stars_density(
-    float r2, const float *dx, float hi, float hj, struct spart *restrict si,
-    const struct part *restrict pj, const float a, const float H) {
+runner_iact_nonsym_stars_density(float r2, const float *dx, float hi, float hj,
+                                 struct spart *restrict si,
+                                 const struct part *restrict pj, const float a,
+                                 const float H) {
 
   float wi, wi_dx;
 
@@ -75,10 +76,10 @@ runner_iact_nonsym_stars_density(
  * @param H Current Hubble parameter.
  */
 __attribute__((always_inline)) INLINE static void
-runner_iact_nonsym_stars_feedback(
-    float r2, const float *dx, float hi, float hj,
-    const struct spart *restrict si, struct part *restrict pj,
-    const float a, const float H) {
+runner_iact_nonsym_stars_feedback(float r2, const float *dx, float hi, float hj,
+                                  const struct spart *restrict si,
+                                  struct part *restrict pj, const float a,
+                                  const float H) {
 
   const float mj = hydro_get_mass(pj);
   const float rhoj = hydro_get_comoving_density(pj);

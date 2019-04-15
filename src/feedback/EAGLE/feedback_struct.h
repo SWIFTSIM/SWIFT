@@ -19,20 +19,19 @@
 #ifndef SWIFT_FEEDBACK_STRUCT_EAGLE_H
 #define SWIFT_FEEDBACK_STRUCT_EAGLE_H
 
-
 struct feedback_part_data {
 
   struct {
-    
+
     /* Mass of ejecta */
     float mass;
-    
+
     /* Total metal mass released */
     float total_metal_mass;
-    
+
     /* Total mass released by element */
     float metal_mass[chemistry_element_count];
-    
+
     /*! Total mass released due to SNIa */
     float mass_from_SNIa;
 
@@ -79,6 +78,4 @@ struct feedback_part_data {
   float ngb_mass;
 };
 
-
 #endif /* SWIFT_FEEDBACK_STRUCT_EAGLE_H */
-

@@ -150,11 +150,9 @@ struct feedback_props {
   float spart_first_init_birth_time;
 };
 
-
-
 void feedback_props_init(struct feedback_props *fp,
-			 const struct phys_const *phys_const,
-			 const struct unit_system *us,
-			 struct swift_params *params,
-			 const struct hydro_props *hydro_props,
-			 const struct cosmology *cosmo);
+                         const struct phys_const *phys_const,
+                         const struct unit_system *us,
+                         struct swift_params *params,
+                         const struct hydro_props *hydro_props,
+                         const struct cosmology *cosmo);

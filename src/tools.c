@@ -644,7 +644,7 @@ void self_all_force(struct runner *r, struct cell *ci) {
 }
 
 void self_all_stars_density(struct runner *r, struct cell *ci) {
-  
+
   float r2, hi, hj, hig2, dxi[3];
   struct spart *spi;
   struct part *pj;

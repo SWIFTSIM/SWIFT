@@ -96,8 +96,7 @@ inline static float integrate_imf(const float log10_min_mass,
   const int N_bins = feedback_props->n_imf_mass_bins;
   const float *imf = feedback_props->imf;
   const float *imf_mass_bin = feedback_props->imf_mass_bin;
-  const float *imf_mass_bin_log10 =
-      feedback_props->imf_mass_bin_log10;
+  const float *imf_mass_bin_log10 = feedback_props->imf_mass_bin_log10;
 
   /* IMF mass bin spacing in log10 space. Assumes uniform spacing. */
   const float imf_log10_mass_bin_size =
@@ -212,24 +211,21 @@ inline static void init_imf(struct feedback_props *restrict feedback_props) {
       (float)(feedback_props->n_imf_mass_bins - 1);
 
   /* Allocate IMF array */
-  if (swift_memalign(
-          "imf-tables", (void **)&feedback_props->imf,
-          SWIFT_STRUCT_ALIGNMENT,
-          feedback_props->n_imf_mass_bins * sizeof(float)) != 0)
+  if (swift_memalign("imf-tables", (void **)&feedback_props->imf,
+                     SWIFT_STRUCT_ALIGNMENT,
+                     feedback_props->n_imf_mass_bins * sizeof(float)) != 0)
     error("Failed to allocate IMF bins table");
 
   /* Allocate array to store IMF mass bins */
-  if (swift_memalign(
-          "imf-tables", (void **)&feedback_props->imf_mass_bin,
-          SWIFT_STRUCT_ALIGNMENT,
-          feedback_props->n_imf_mass_bins * sizeof(float)) != 0)
+  if (swift_memalign("imf-tables", (void **)&feedback_props->imf_mass_bin,
+                     SWIFT_STRUCT_ALIGNMENT,
+                     feedback_props->n_imf_mass_bins * sizeof(float)) != 0)
     error("Failed to allocate IMF bins table");
 
   /* Allocate array to store IMF mass bins in log10 space */
-  if (swift_memalign(
-          "imf-tables", (void **)&feedback_props->imf_mass_bin_log10,
-          SWIFT_STRUCT_ALIGNMENT,
-          feedback_props->n_imf_mass_bins * sizeof(float)) != 0)
+  if (swift_memalign("imf-tables", (void **)&feedback_props->imf_mass_bin_log10,
+                     SWIFT_STRUCT_ALIGNMENT,
+                     feedback_props->n_imf_mass_bins * sizeof(float)) != 0)
     error("Failed to allocate IMF bins table");
 
   /* Set IMF from Chabrier 2003 */
@@ -237,8 +233,7 @@ inline static void init_imf(struct feedback_props *restrict feedback_props) {
     for (int i = 0; i < feedback_props->n_imf_mass_bins; i++) {
 
       const float log10_mass_msun =
-          feedback_props->log10_imf_min_mass_msun +
-          i * imf_log10_mass_bin_size;
+          feedback_props->log10_imf_min_mass_msun + i * imf_log10_mass_bin_size;
 
       const float mass_msun = exp10f(log10_mass_msun);
 
@@ -260,11 +255,10 @@ inline static void init_imf(struct feedback_props *restrict feedback_props) {
   }
 
   /* Normalize the IMF */
-  const float norm =
-      integrate_imf(feedback_props->log10_imf_min_mass_msun,
-                    feedback_props->log10_imf_max_mass_msun,
-                    eagle_imf_integration_mass_weight,
-                    /*(stellar_yields=)*/ NULL, feedback_props);
+  const float norm = integrate_imf(feedback_props->log10_imf_min_mass_msun,
+                                   feedback_props->log10_imf_max_mass_msun,
+                                   eagle_imf_integration_mass_weight,
+                                   /*(stellar_yields=)*/ NULL, feedback_props);
 
   for (int i = 0; i < feedback_props->n_imf_mass_bins; i++)
     feedback_props->imf[i] /= norm;
@@ -281,8 +275,9 @@ inline static void init_imf(struct feedback_props *restrict feedback_props) {
  * @param star_properties the #stars_props data structure.
  * @return Mass of stars died up to that age in solar masses.
  */
-inline static float dying_mass_msun(const float age_Gyr, const float Z,
-				    const struct feedback_props *feedback_props) {
+inline static float dying_mass_msun(
+    const float age_Gyr, const float Z,
+    const struct feedback_props *feedback_props) {
 
   /* Pull out some common terms */
   const double *lifetime_Z = feedback_props->lifetimes.metallicity;
@@ -290,7 +285,7 @@ inline static float dying_mass_msun(const float age_Gyr, const float Z,
   double **const dying_times = feedback_props->lifetimes.dyingtime;
   const int n_Z = feedback_props->lifetimes.n_z;
   const int n_m = feedback_props->lifetimes.n_mass;
-  
+
   /* Early abort? */
   if (age_Gyr <= 0.f) {
     return feedback_props->imf_max_mass_msun;
@@ -306,23 +301,22 @@ inline static float dying_mass_msun(const float age_Gyr, const float Z,
     /* Before start of the table */
     Z_index = 0;
     Z_offset = 0.f;
-    
+
   } else if (Z >= lifetime_Z[n_Z - 1]) {
 
     /* After end of the table */
     Z_index = n_Z - 2;
     Z_offset = 1.f;
-    
+
   } else {
 
     /* Normal case: Somewhere inside the table */
     for (Z_index = 0; Z_index < n_Z - 1; Z_index++) {
-      if (lifetime_Z[Z_index + 1] > Z)
-        break;
+      if (lifetime_Z[Z_index + 1] > Z) break;
     }
 
     Z_offset = (Z - lifetime_Z[Z_index]) /
-      (lifetime_Z[Z_index + 1] - lifetime_Z[Z_index]);
+               (lifetime_Z[Z_index + 1] - lifetime_Z[Z_index]);
   }
 
   /* Check whether we are not beyond the table */
@@ -333,7 +327,7 @@ inline static float dying_mass_msun(const float age_Gyr, const float Z,
     /* Before start of the table */
     time_index_lowZ = 0;
     time_offset_lowZ = 0.f;
-    
+
   } else if (log10_age_yr <= dying_times[Z_index][n_m - 1]) {
 
     /* After end of the table */
@@ -349,7 +343,7 @@ inline static float dying_mass_msun(const float age_Gyr, const float Z,
     /* Before start of the table */
     time_index_highZ = 0;
     time_offset_highZ = 0.f;
-    
+
   } else if (log10_age_yr <= dying_times[Z_index + 1][n_m - 1]) {
 
     /* After end of the table */
@@ -361,9 +355,9 @@ inline static float dying_mass_msun(const float age_Gyr, const float Z,
      a solution for the two bounds */
   int i = n_m;
   while (i >= 0 && (time_index_lowZ == -1 || time_index_highZ == -1)) {
-    
+
     i--;
-    
+
     if (dying_times[Z_index][i] >= log10_age_yr && time_index_lowZ == -1) {
 
       /* record index */
@@ -375,7 +369,7 @@ inline static float dying_mass_msun(const float age_Gyr, const float Z,
           (dying_times[Z_index][time_index_lowZ + 1] -
            dying_times[Z_index][time_index_lowZ]);
     }
-    
+
     if (dying_times[Z_index + 1][i] >= log10_age_yr && time_index_highZ == -1) {
 
       /* record index */
@@ -383,15 +377,17 @@ inline static float dying_mass_msun(const float age_Gyr, const float Z,
 
       /* record distance from table element */
       time_offset_highZ =
-	(log10_age_yr - dying_times[Z_index + 1][time_index_highZ]) /
+          (log10_age_yr - dying_times[Z_index + 1][time_index_highZ]) /
           (dying_times[Z_index + 1][time_index_highZ + 1] -
            dying_times[Z_index + 1][time_index_highZ]);
     }
   }
 
   /* And now interpolate the solution */
-  const float mass_low_Z = interpolate_1d(lifetime_m, time_index_lowZ, time_offset_lowZ);
-  const float mass_high_Z = interpolate_1d(lifetime_m, time_index_highZ, time_offset_highZ);
+  const float mass_low_Z =
+      interpolate_1d(lifetime_m, time_index_lowZ, time_offset_lowZ);
+  const float mass_high_Z =
+      interpolate_1d(lifetime_m, time_index_highZ, time_offset_highZ);
 
   float mass = (1.f - Z_offset) * mass_low_Z + Z_offset * mass_high_Z;
 
@@ -411,8 +407,9 @@ inline static float dying_mass_msun(const float age_Gyr, const float Z,
  * @param feedback_props the #feedback_props data structure.
  * @return The life time in Giga-years.
  */
-inline static float lifetime_in_Gyr(const float mass, const float Z,
-                                    const struct feedback_props *feedback_props) {
+inline static float lifetime_in_Gyr(
+    const float mass, const float Z,
+    const struct feedback_props *feedback_props) {
 
   /* Pull out some common terms */
   const double *lifetime_Z = feedback_props->lifetimes.metallicity;
@@ -420,31 +417,30 @@ inline static float lifetime_in_Gyr(const float mass, const float Z,
   double **const dying_times = feedback_props->lifetimes.dyingtime;
   const int n_Z = feedback_props->lifetimes.n_z;
   const int n_m = feedback_props->lifetimes.n_mass;
-  
+
   /* Calculate index along the mass axis */
   int m_index;
   float m_offset;
   if (mass <= lifetime_m[0]) {
-    
+
     /* Before start of the table */
     m_index = 0;
     m_offset = 0.f;
-    
+
   } else if (mass >= lifetime_m[n_m - 1]) {
-    
+
     /* After end of the table */
     m_index = n_m - 2;
     m_offset = 1.f;
-    
+
   } else {
 
     /* Normal case: Somewhere inside the table */
     for (m_index = 0; m_index < n_m - 1; m_index++)
-      if (lifetime_m[m_index + 1] > mass)
-        break;
-    
+      if (lifetime_m[m_index + 1] > mass) break;
+
     m_offset = (mass - lifetime_m[m_index]) /
-      (lifetime_m[m_index + 1] -  lifetime_m[m_index]);
+               (lifetime_m[m_index + 1] - lifetime_m[m_index]);
   }
 
   /* Calculate index along the metallicity axis */
@@ -455,30 +451,30 @@ inline static float lifetime_in_Gyr(const float mass, const float Z,
     /* Before start of the table */
     Z_index = 0;
     Z_offset = 0.f;
-    
+
   } else if (Z >= lifetime_Z[n_Z - 1]) {
 
     /* After end of the table */
     Z_index = n_Z - 2;
     Z_offset = 1.f;
-    
+
   } else {
-    
+
     for (Z_index = 0; Z_index < n_Z - 1; Z_index++)
-      if (lifetime_Z[Z_index + 1] > Z)
-        break;
+      if (lifetime_Z[Z_index + 1] > Z) break;
 
     /* Normal case: Somewhere inside the table */
     Z_offset = (Z - lifetime_Z[Z_index]) /
-        (lifetime_Z[Z_index + 1] - lifetime_Z[Z_index]);
+               (lifetime_Z[Z_index + 1] - lifetime_Z[Z_index]);
   }
 
   /* Interpolation of the table to get the time */
-  const float log_time_years = interpolate_2d(dying_times, Z_index, m_index, Z_offset, m_offset);
+  const float log_time_years =
+      interpolate_2d(dying_times, Z_index, m_index, Z_offset, m_offset);
 
   /* Convert to Giga-years */
   const float time_Gyr = exp10f(log_time_years - 9.f);
-  
+
   return time_Gyr;
 }
 

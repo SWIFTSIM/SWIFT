@@ -21,16 +21,15 @@
 
 #include "cosmology.h"
 #include "hydro_properties.h"
-#include "units.h"
 #include "part.h"
+#include "units.h"
 
 #include "feedback_properties.h"
 
-
 void compute_stellar_evolution(const struct feedback_props* feedback_props,
-			       const struct cosmology *cosmo,
-			       struct spart* sp, const struct unit_system* us,
-			       const float age, const float dt);
+                               const struct cosmology* cosmo, struct spart* sp,
+                               const struct unit_system* us, const float age,
+                               const float dt);
 
 /**
  * @brief Prepares a s-particle for its feedback interactions
@@ -113,6 +112,5 @@ __attribute__((always_inline)) INLINE static void stars_evolve_spart(
   /* Decrease star mass by amount of mass distributed to gas neighbours */
   sp->mass -= sp->feedback_data.to_distribute.mass;
 }
-
 
 #endif /* SWIFT_FEEDBACK_EAGLE_H */

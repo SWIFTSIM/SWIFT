@@ -100,7 +100,7 @@ struct spart {
 
   /*! Feedback structure */
   struct feedback_part_data feedback_data;
-  
+
   /*! Tracer structure */
   struct tracers_xpart_data tracers_data;
 
