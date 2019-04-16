@@ -49,6 +49,7 @@
 /* Local headers. */
 #include "active.h"
 #include "atomic.h"
+#include "black_holes.h"
 #include "chemistry.h"
 #include "drift.h"
 #include "engine.h"
@@ -185,6 +186,39 @@ int cell_link_sparts(struct cell *c, struct spart *sparts) {
 
   /* Return the total number of linked particles. */
   return c->stars.count;
+}
+
+/**
+ * @brief Link the cells recursively to the given #bpart array.
+ *
+ * @param c The #cell.
+ * @param bparts The #bpart array.
+ *
+ * @return The number of particles linked.
+ */
+int cell_link_bparts(struct cell *c, struct bpart *bparts) {
+
+#ifdef SWIFT_DEBUG_CHECKS
+  if (c->nodeID == engine_rank)
+    error("Linking foreign particles in a local cell!");
+
+  if (c->black_holes.parts != NULL)
+    error("Linking bparts into a cell that was already linked");
+#endif
+
+  c->black_holes.parts = bparts;
+
+  /* Fill the progeny recursively, depth-first. */
+  if (c->split) {
+    int offset = 0;
+    for (int k = 0; k < 8; k++) {
+      if (c->progeny[k] != NULL)
+        offset += cell_link_bparts(c->progeny[k], &bparts[offset]);
+    }
+  }
+
+  /* Return the total number of linked particles. */
+  return c->black_holes.count;
 }
 
 /**
@@ -809,6 +843,74 @@ int cell_unpack_end_step_stars(struct cell *restrict c,
 }
 
 /**
+ * @brief Pack the time information of the given cell and all it's sub-cells.
+ *
+ * @param c The #cell.
+ * @param pcells (output) The end-of-timestep information we pack into
+ *
+ * @return The number of packed cells.
+ */
+int cell_pack_end_step_black_holes(
+    struct cell *restrict c, struct pcell_step_black_holes *restrict pcells) {
+
+#ifdef WITH_MPI
+
+  /* Pack this cell's data. */
+  pcells[0].ti_end_min = c->black_holes.ti_end_min;
+  pcells[0].ti_end_max = c->black_holes.ti_end_max;
+  pcells[0].dx_max_part = c->black_holes.dx_max_part;
+
+  /* Fill in the progeny, depth-first recursion. */
+  int count = 1;
+  for (int k = 0; k < 8; k++)
+    if (c->progeny[k] != NULL) {
+      count += cell_pack_end_step_black_holes(c->progeny[k], &pcells[count]);
+    }
+
+  /* Return the number of packed values. */
+  return count;
+
+#else
+  error("SWIFT was not compiled with MPI support.");
+  return 0;
+#endif
+}
+
+/**
+ * @brief Unpack the time information of a given cell and its sub-cells.
+ *
+ * @param c The #cell
+ * @param pcells The end-of-timestep information to unpack
+ *
+ * @return The number of cells created.
+ */
+int cell_unpack_end_step_black_holes(
+    struct cell *restrict c, struct pcell_step_black_holes *restrict pcells) {
+
+#ifdef WITH_MPI
+
+  /* Unpack this cell's data. */
+  c->black_holes.ti_end_min = pcells[0].ti_end_min;
+  c->black_holes.ti_end_max = pcells[0].ti_end_max;
+  c->black_holes.dx_max_part = pcells[0].dx_max_part;
+
+  /* Fill in the progeny, depth-first recursion. */
+  int count = 1;
+  for (int k = 0; k < 8; k++)
+    if (c->progeny[k] != NULL) {
+      count += cell_unpack_end_step_black_holes(c->progeny[k], &pcells[count]);
+    }
+
+  /* Return the number of packed values. */
+  return count;
+
+#else
+  error("SWIFT was not compiled with MPI support.");
+  return 0;
+#endif
+}
+
+/**
  * @brief Pack the multipole information of the given cell and all it's
  * sub-cells.
  *
@@ -1213,23 +1315,30 @@ void cell_sunlocktree(struct cell *c) {
  *        space's parts array, i.e. c->hydro.parts - s->parts.
  * @param sparts_offset Offset of the cell sparts array relative to the
  *        space's sparts array, i.e. c->stars.parts - s->stars.parts.
+ * @param bparts_offset Offset of the cell bparts array relative to the
+ *        space's bparts array, i.e. c->black_holes.parts -
+ * s->black_holes.parts.
  * @param buff A buffer with at least max(c->hydro.count, c->grav.count)
  * entries, used for sorting indices.
  * @param sbuff A buffer with at least max(c->stars.count, c->grav.count)
+ * entries, used for sorting indices for the sparts.
+ * @param bbuff A buffer with at least max(c->black_holes.count, c->grav.count)
  * entries, used for sorting indices for the sparts.
  * @param gbuff A buffer with at least max(c->hydro.count, c->grav.count)
  * entries, used for sorting indices for the gparts.
  */
 void cell_split(struct cell *c, ptrdiff_t parts_offset, ptrdiff_t sparts_offset,
-                struct cell_buff *buff, struct cell_buff *sbuff,
+                ptrdiff_t bparts_offset, struct cell_buff *buff,
+                struct cell_buff *sbuff, struct cell_buff *bbuff,
                 struct cell_buff *gbuff) {
 
   const int count = c->hydro.count, gcount = c->grav.count,
-            scount = c->stars.count;
+            scount = c->stars.count, bcount = c->black_holes.count;
   struct part *parts = c->hydro.parts;
   struct xpart *xparts = c->hydro.xparts;
   struct gpart *gparts = c->grav.parts;
   struct spart *sparts = c->stars.parts;
+  struct bpart *bparts = c->black_holes.parts;
   const double pivot[3] = {c->loc[0] + c->width[0] / 2,
                            c->loc[1] + c->width[1] / 2,
                            c->loc[2] + c->width[2] / 2};
@@ -1252,6 +1361,11 @@ void cell_split(struct cell *c, ptrdiff_t parts_offset, ptrdiff_t sparts_offset,
     if (sbuff[k].x[0] != sparts[k].x[0] || sbuff[k].x[1] != sparts[k].x[1] ||
         sbuff[k].x[2] != sparts[k].x[2])
       error("Inconsistent sbuff contents.");
+  }
+  for (int k = 0; k < bcount; k++) {
+    if (bbuff[k].x[0] != bparts[k].x[0] || bbuff[k].x[1] != bparts[k].x[1] ||
+        bbuff[k].x[2] != bparts[k].x[2])
+      error("Inconsistent bbuff contents.");
   }
 #endif /* SWIFT_DEBUG_CHECKS */
 
@@ -1427,6 +1541,60 @@ void cell_split(struct cell *c, ptrdiff_t parts_offset, ptrdiff_t sparts_offset,
     c->progeny[k]->stars.parts = &c->stars.parts[bucket_offset[k]];
   }
 
+  /* Now do the same song and dance for the bparts. */
+  for (int k = 0; k < 8; k++) bucket_count[k] = 0;
+
+  /* Fill the buffer with the indices. */
+  for (int k = 0; k < bcount; k++) {
+    const int bid = (bbuff[k].x[0] > pivot[0]) * 4 +
+                    (bbuff[k].x[1] > pivot[1]) * 2 + (bbuff[k].x[2] > pivot[2]);
+    bucket_count[bid]++;
+    bbuff[k].ind = bid;
+  }
+
+  /* Set the buffer offsets. */
+  bucket_offset[0] = 0;
+  for (int k = 1; k <= 8; k++) {
+    bucket_offset[k] = bucket_offset[k - 1] + bucket_count[k - 1];
+    bucket_count[k - 1] = 0;
+  }
+
+  /* Run through the buckets, and swap particles to their correct spot. */
+  for (int bucket = 0; bucket < 8; bucket++) {
+    for (int k = bucket_offset[bucket] + bucket_count[bucket];
+         k < bucket_offset[bucket + 1]; k++) {
+      int bid = bbuff[k].ind;
+      if (bid != bucket) {
+        struct bpart bpart = bparts[k];
+        struct cell_buff temp_buff = bbuff[k];
+        while (bid != bucket) {
+          int j = bucket_offset[bid] + bucket_count[bid]++;
+          while (bbuff[j].ind == bid) {
+            j++;
+            bucket_count[bid]++;
+          }
+          memswap(&bparts[j], &bpart, sizeof(struct bpart));
+          memswap(&bbuff[j], &temp_buff, sizeof(struct cell_buff));
+          if (bparts[j].gpart)
+            bparts[j].gpart->id_or_neg_offset = -(j + bparts_offset);
+          bid = temp_buff.ind;
+        }
+        bparts[k] = bpart;
+        bbuff[k] = temp_buff;
+        if (bparts[k].gpart)
+          bparts[k].gpart->id_or_neg_offset = -(k + bparts_offset);
+      }
+      bucket_count[bid]++;
+    }
+  }
+
+  /* Store the counts and offsets. */
+  for (int k = 0; k < 8; k++) {
+    c->progeny[k]->black_holes.count = bucket_count[k];
+    c->progeny[k]->black_holes.count_total = c->progeny[k]->black_holes.count;
+    c->progeny[k]->black_holes.parts = &c->black_holes.parts[bucket_offset[k]];
+  }
+
   /* Finally, do the same song and dance for the gparts. */
   for (int k = 0; k < 8; k++) bucket_count[k] = 0;
 
@@ -1467,6 +1635,9 @@ void cell_split(struct cell *c, ptrdiff_t parts_offset, ptrdiff_t sparts_offset,
           } else if (gparts[j].type == swift_type_stars) {
             sparts[-gparts[j].id_or_neg_offset - sparts_offset].gpart =
                 &gparts[j];
+          } else if (gparts[j].type == swift_type_black_hole) {
+            bparts[-gparts[j].id_or_neg_offset - bparts_offset].gpart =
+                &gparts[j];
           }
           bid = temp_buff.ind;
         }
@@ -1476,6 +1647,9 @@ void cell_split(struct cell *c, ptrdiff_t parts_offset, ptrdiff_t sparts_offset,
           parts[-gparts[k].id_or_neg_offset - parts_offset].gpart = &gparts[k];
         } else if (gparts[k].type == swift_type_stars) {
           sparts[-gparts[k].id_or_neg_offset - sparts_offset].gpart =
+              &gparts[k];
+        } else if (gparts[k].type == swift_type_black_hole) {
+          bparts[-gparts[k].id_or_neg_offset - bparts_offset].gpart =
               &gparts[k];
         }
       }
@@ -4401,6 +4575,164 @@ void cell_drift_spart(struct cell *c, const struct engine *e, int force) {
 }
 
 /**
+ * @brief Recursively drifts the #bpart in a cell hierarchy.
+ *
+ * @param c The #cell.
+ * @param e The #engine (to get ti_current).
+ * @param force Drift the particles irrespective of the #cell flags.
+ */
+void cell_drift_bpart(struct cell *c, const struct engine *e, int force) {
+
+  const int periodic = e->s->periodic;
+  const double dim[3] = {e->s->dim[0], e->s->dim[1], e->s->dim[2]};
+  const int with_cosmology = (e->policy & engine_policy_cosmology);
+  const float black_holes_h_max = e->hydro_properties->h_max;
+  const float black_holes_h_min = e->hydro_properties->h_min;
+  const integertime_t ti_old_bpart = c->black_holes.ti_old_part;
+  const integertime_t ti_current = e->ti_current;
+  struct bpart *const bparts = c->black_holes.parts;
+
+  float dx_max = 0.f, dx2_max = 0.f;
+  float cell_h_max = 0.f;
+
+  /* Drift irrespective of cell flags? */
+  force |= c->black_holes.do_drift;
+
+#ifdef SWIFT_DEBUG_CHECKS
+  /* Check that we only drift local cells. */
+  if (c->nodeID != engine_rank) error("Drifting a foreign cell is nope.");
+
+  /* Check that we are actually going to move forward. */
+  if (ti_current < ti_old_bpart) error("Attempt to drift to the past");
+#endif
+
+  /* Early abort? */
+  if (c->black_holes.count == 0) {
+
+    /* Clear the drift flags. */
+    c->black_holes.do_drift = 0;
+    c->black_holes.do_sub_drift = 0;
+
+    /* Update the time of the last drift */
+    c->black_holes.ti_old_part = ti_current;
+
+    return;
+  }
+
+  /* Ok, we have some particles somewhere in the hierarchy to drift */
+
+  /* Are we not in a leaf ? */
+  if (c->split && (force || c->black_holes.do_sub_drift)) {
+
+    /* Loop over the progeny and collect their data. */
+    for (int k = 0; k < 8; k++) {
+      if (c->progeny[k] != NULL) {
+        struct cell *cp = c->progeny[k];
+
+        /* Recurse */
+        cell_drift_bpart(cp, e, force);
+
+        /* Update */
+        dx_max = max(dx_max, cp->black_holes.dx_max_part);
+        cell_h_max = max(cell_h_max, cp->black_holes.h_max);
+      }
+    }
+
+    /* Store the values */
+    c->black_holes.h_max = cell_h_max;
+    c->black_holes.dx_max_part = dx_max;
+
+    /* Update the time of the last drift */
+    c->black_holes.ti_old_part = ti_current;
+
+  } else if (!c->split && force && ti_current > ti_old_bpart) {
+
+    /* Drift from the last time the cell was drifted to the current time */
+    double dt_drift;
+    if (with_cosmology) {
+      dt_drift =
+          cosmology_get_drift_factor(e->cosmology, ti_old_bpart, ti_current);
+    } else {
+      dt_drift = (ti_current - ti_old_bpart) * e->time_base;
+    }
+
+    /* Loop over all the star particles in the cell */
+    const size_t nr_bparts = c->black_holes.count;
+    for (size_t k = 0; k < nr_bparts; k++) {
+
+      /* Get a handle on the bpart. */
+      struct bpart *const bp = &bparts[k];
+
+      /* Ignore inhibited particles */
+      if (bpart_is_inhibited(bp, e)) continue;
+
+      /* Drift... */
+      drift_bpart(bp, dt_drift, ti_old_bpart, ti_current);
+
+#ifdef SWIFT_DEBUG_CHECKS
+      /* Make sure the particle does not drift by more than a box length. */
+      if (fabs(bp->v[0] * dt_drift) > e->s->dim[0] ||
+          fabs(bp->v[1] * dt_drift) > e->s->dim[1] ||
+          fabs(bp->v[2] * dt_drift) > e->s->dim[2]) {
+        error("Particle drifts by more than a box length!");
+      }
+#endif
+
+      /* In non-periodic BC runs, remove particles that crossed the border */
+      if (!periodic) {
+
+        /* Did the particle leave the box?  */
+        if ((bp->x[0] > dim[0]) || (bp->x[0] < 0.) ||  // x
+            (bp->x[1] > dim[1]) || (bp->x[1] < 0.) ||  // y
+            (bp->x[2] > dim[2]) || (bp->x[2] < 0.)) {  // z
+
+          /* Remove the particle entirely */
+          struct gpart *gp = bp->gpart;
+          cell_remove_bpart(e, c, bp);
+
+          /* and it's gravity friend */
+          cell_remove_gpart(e, c, gp);
+
+          continue;
+        }
+      }
+
+      /* Limit h to within the allowed range */
+      bp->h = min(bp->h, black_holes_h_max);
+      bp->h = max(bp->h, black_holes_h_min);
+
+      /* Compute (square of) motion since last cell construction */
+      const float dx2 = bp->x_diff[0] * bp->x_diff[0] +
+                        bp->x_diff[1] * bp->x_diff[1] +
+                        bp->x_diff[2] * bp->x_diff[2];
+      dx2_max = max(dx2_max, dx2);
+
+      /* Maximal smoothing length */
+      cell_h_max = max(cell_h_max, bp->h);
+
+      /* Get ready for a density calculation */
+      if (bpart_is_active(bp, e)) {
+        black_holes_init_bpart(bp);
+      }
+    }
+
+    /* Now, get the maximal particle motion from its square */
+    dx_max = sqrtf(dx2_max);
+
+    /* Store the values */
+    c->black_holes.h_max = cell_h_max;
+    c->black_holes.dx_max_part = dx_max;
+
+    /* Update the time of the last drift */
+    c->black_holes.ti_old_part = ti_current;
+  }
+
+  /* Clear the drift flags. */
+  c->black_holes.do_drift = 0;
+  c->black_holes.do_sub_drift = 0;
+}
+
+/**
  * @brief Recursively drifts all multipoles in a cell hierarchy.
  *
  * @param c The #cell.
@@ -4807,6 +5139,34 @@ void cell_remove_spart(const struct engine *e, struct cell *c,
 
   /* Un-link the spart */
   sp->gpart = NULL;
+}
+
+/**
+ * @brief "Remove" a black hole particle from the calculation.
+ *
+ * The particle is inhibited and will officially be removed at the next rebuild.
+ *
+ * @param e The #engine running on this node.
+ * @param c The #cell from which to remove the particle.
+ * @param bp The #bpart to remove.
+ */
+void cell_remove_bpart(const struct engine *e, struct cell *c,
+                       struct bpart *bp) {
+
+  /* Quick cross-check */
+  if (c->nodeID != e->nodeID)
+    error("Can't remove a particle in a foreign cell.");
+
+  /* Mark the particle as inhibited and stand-alone */
+  bp->time_bin = time_bin_inhibited;
+  if (bp->gpart) {
+    bp->gpart->time_bin = time_bin_inhibited;
+    bp->gpart->id_or_neg_offset = bp->id;
+    bp->gpart->type = swift_type_dark_matter;
+  }
+
+  /* Un-link the bpart */
+  bp->gpart = NULL;
 }
 
 /**

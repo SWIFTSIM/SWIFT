@@ -30,6 +30,7 @@ can be found by typing ``./swift -h``::
     -M, --multipole-reconstruction    Reconstruct the multipoles every time-step.
     -s, --hydro                       Run with hydrodynamics.
     -S, --stars                       Run with stars.
+    -B, --black-holes                 Run with black holes.
     -x, --velociraptor                Run with structure finding.
     --limiter                         Run with time-step limiter.
 

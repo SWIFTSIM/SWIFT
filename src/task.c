@@ -62,6 +62,7 @@ const char *taskID_names[task_type_count] = {"none",
                                              "extra_ghost",
                                              "drift_part",
                                              "drift_spart",
+                                             "drift_bpart",
                                              "drift_gpart",
                                              "drift_gpart_out",
                                              "end_hydro_force",
@@ -90,23 +91,12 @@ const char *taskID_names[task_type_count] = {"none",
                                              "stars_sort"};
 
 /* Sub-task type names. */
-const char *subtaskID_names[task_subtype_count] = {"none",
-                                                   "density",
-                                                   "gradient",
-                                                   "force",
-                                                   "limiter",
-                                                   "grav",
-                                                   "external_grav",
-                                                   "tend_part",
-                                                   "tend_gpart",
-                                                   "tend_spart",
-                                                   "xv",
-                                                   "rho",
-                                                   "gpart",
-                                                   "multipole",
-                                                   "spart",
-                                                   "stars_density",
-                                                   "stars_feedback"};
+const char *subtaskID_names[task_subtype_count] = {
+    "none",          "density",       "gradient",      "force",
+    "limiter",       "grav",          "external_grav", "tend_part",
+    "tend_gpart",    "tend_spart",    "tend_bpart",    "xv",
+    "rho",           "gpart",         "multipole",     "spart",
+    "stars_density", "stars_feedback"};
 
 #ifdef WITH_MPI
 /* MPI communicators for the subtypes. */

@@ -63,6 +63,7 @@ struct cell_buff {
 
 /* Mini struct to link cells to tasks. Used as a linked list. */
 struct link {
+
   /* The task pointer. */
   struct task *t;
 
@@ -76,8 +77,10 @@ struct link {
  * Contains all the information for a tree walk in a non-local cell.
  */
 struct pcell {
+
   /*! Hydro variables */
   struct {
+
     /*! Maximal smoothing length. */
     double h_max;
 
@@ -100,6 +103,7 @@ struct pcell {
 
   /*! Gravity variables */
   struct {
+
     /*! This cell's gravity-related tensors */
     struct multipole m_pole;
 
@@ -137,6 +141,7 @@ struct pcell {
 
   /*! Stars variables */
   struct {
+
     /*! Number of #spart in this cell. */
     int count;
 
@@ -171,6 +176,7 @@ struct pcell {
  * @brief Cell information at the end of a time-step.
  */
 struct pcell_step_hydro {
+
   /*! Minimal integer end-of-timestep in this cell (hydro) */
   integertime_t ti_end_min;
 
@@ -182,6 +188,7 @@ struct pcell_step_hydro {
 };
 
 struct pcell_step_grav {
+
   /*! Minimal integer end-of-timestep in this cell (gravity) */
   integertime_t ti_end_min;
 
@@ -190,10 +197,23 @@ struct pcell_step_grav {
 };
 
 struct pcell_step_stars {
+
   /*! Minimal integer end-of-timestep in this cell (stars) */
   integertime_t ti_end_min;
 
   /*! Maximal integer end-of-timestep in this cell (stars) */
+  integertime_t ti_end_max;
+
+  /*! Maximal distance any #part has travelled since last rebuild */
+  float dx_max_part;
+};
+
+struct pcell_step_black_holes {
+
+  /*! Minimal integer end-of-timestep in this cell (black_holes) */
+  integertime_t ti_end_min;
+
+  /*! Maximal integer end-of-timestep in this cell (black_holes) */
   integertime_t ti_end_max;
 
   /*! Maximal distance any #part has travelled since last rebuild */
@@ -206,6 +226,7 @@ struct pcell_step_stars {
  * Contains particles, links to tasks, a multipole object and counters.
  */
 struct cell {
+
   /*! The cell location on the grid. */
   double loc[3];
 
@@ -229,6 +250,7 @@ struct cell {
 
   /*! Hydro variables */
   struct {
+
     /*! Pointer to the #part data. */
     struct part *parts;
 
@@ -366,6 +388,7 @@ struct cell {
 
   /*! Grav variables */
   struct {
+
     /*! Pointer to the #gpart data. */
     struct gpart *parts;
 
@@ -462,6 +485,7 @@ struct cell {
 
   /*! Stars variables */
   struct {
+
     /*! Pointer to the #spart data. */
     struct spart *parts;
 
@@ -536,7 +560,7 @@ struct cell {
     /*! Do any of this cell's sub-cells need to be sorted? */
     char do_sub_sort;
 
-    /*! Maximum end of (integer) time step in this cell for gravity tasks. */
+    /*! Maximum end of (integer) time step in this cell for star tasks. */
     integertime_t ti_end_min;
 
     /*! Maximum end of (integer) time step in this cell for star tasks. */
@@ -567,6 +591,64 @@ struct cell {
 #endif
 
   } stars;
+
+  /*! Black hole variables */
+  struct {
+
+    /*! Pointer to the #bpart data. */
+    struct bpart *parts;
+
+    /*! The drift task for bparts */
+    struct task *drift;
+
+    /*! Max smoothing length in this cell. */
+    double h_max;
+
+    /*! Last (integer) time the cell's bpart were drifted forward in time. */
+    integertime_t ti_old_part;
+
+    /*! Spin lock for various uses (#bpart case). */
+    swift_lock_type lock;
+
+    /*! Nr of #bpart in this cell. */
+    int count;
+
+    /*! Nr of #bpart this cell can hold after addition of new #bpart. */
+    int count_total;
+
+    /*! Values of h_max before the drifts, used for sub-cell tasks. */
+    float h_max_old;
+
+    /*! Maximum part movement in this cell since last construction. */
+    float dx_max_part;
+
+    /*! Maximum end of (integer) time step in this cell for black tasks. */
+    integertime_t ti_end_min;
+
+    /*! Maximum end of (integer) time step in this cell for black hole tasks. */
+    integertime_t ti_end_max;
+
+    /*! Maximum beginning of (integer) time step in this cell for black hole
+     * tasks.
+     */
+    integertime_t ti_beg_max;
+
+    /*! Number of #bpart updated in this cell. */
+    int updated;
+
+    /*! Number of #bpart inhibited in this cell. */
+    int inhibited;
+
+    /*! Is the #bpart data of this cell being used in a sub-cell? */
+    int hold;
+
+    /*! Does this cell need to be drifted (black holes)? */
+    char do_drift;
+
+    /*! Do any of this cell's sub-cells need to be drifted (black holes)? */
+    char do_sub_drift;
+
+  } black_holes;
 
 #ifdef WITH_MPI
   /*! MPI variables */
@@ -653,7 +735,8 @@ struct cell {
 
 /* Function prototypes. */
 void cell_split(struct cell *c, ptrdiff_t parts_offset, ptrdiff_t sparts_offset,
-                struct cell_buff *buff, struct cell_buff *sbuff,
+                ptrdiff_t bparts_offset, struct cell_buff *buff,
+                struct cell_buff *sbuff, struct cell_buff *bbuff,
                 struct cell_buff *gbuff);
 void cell_sanitize(struct cell *c, int treated);
 int cell_locktree(struct cell *c);
@@ -675,12 +758,17 @@ int cell_pack_end_step_grav(struct cell *c, struct pcell_step_grav *pcell);
 int cell_unpack_end_step_grav(struct cell *c, struct pcell_step_grav *pcell);
 int cell_pack_end_step_stars(struct cell *c, struct pcell_step_stars *pcell);
 int cell_unpack_end_step_stars(struct cell *c, struct pcell_step_stars *pcell);
+int cell_pack_end_step_black_holes(struct cell *c,
+                                   struct pcell_step_black_holes *pcell);
+int cell_unpack_end_step_black_holes(struct cell *c,
+                                     struct pcell_step_black_holes *pcell);
 int cell_pack_multipoles(struct cell *c, struct gravity_tensors *m);
 int cell_unpack_multipoles(struct cell *c, struct gravity_tensors *m);
 int cell_getsize(struct cell *c);
 int cell_link_parts(struct cell *c, struct part *parts);
 int cell_link_gparts(struct cell *c, struct gpart *gparts);
 int cell_link_sparts(struct cell *c, struct spart *sparts);
+int cell_link_bparts(struct cell *c, struct bpart *bparts);
 int cell_link_foreign_parts(struct cell *c, struct part *parts);
 int cell_link_foreign_gparts(struct cell *c, struct gpart *gparts);
 int cell_count_parts_for_tasks(const struct cell *c);
@@ -701,6 +789,7 @@ int cell_unskip_gravity_tasks(struct cell *c, struct scheduler *s);
 void cell_drift_part(struct cell *c, const struct engine *e, int force);
 void cell_drift_gpart(struct cell *c, const struct engine *e, int force);
 void cell_drift_spart(struct cell *c, const struct engine *e, int force);
+void cell_drift_bpart(struct cell *c, const struct engine *e, int force);
 void cell_drift_multipole(struct cell *c, const struct engine *e);
 void cell_drift_all_multipoles(struct cell *c, const struct engine *e);
 void cell_check_timesteps(struct cell *c);
@@ -733,6 +822,8 @@ void cell_remove_gpart(const struct engine *e, struct cell *c,
                        struct gpart *gp);
 void cell_remove_spart(const struct engine *e, struct cell *c,
                        struct spart *sp);
+void cell_remove_bpart(const struct engine *e, struct cell *c,
+                       struct bpart *bp);
 struct spart *cell_add_spart(struct engine *e, struct cell *c);
 struct gpart *cell_convert_part_to_gpart(const struct engine *e, struct cell *c,
                                          struct part *p, struct xpart *xp);
@@ -761,6 +852,7 @@ int cell_can_use_pair_mm_rebuild(const struct cell *ci, const struct cell *cj,
 __attribute__((always_inline)) INLINE static double cell_min_dist2_same_size(
     const struct cell *restrict ci, const struct cell *restrict cj,
     const int periodic, const double dim[3]) {
+
 #ifdef SWIFT_DEBUG_CHECKS
   if (ci->width[0] != cj->width[0]) error("Cells of different size!");
   if (ci->width[1] != cj->width[1]) error("Cells of different size!");
@@ -782,6 +874,7 @@ __attribute__((always_inline)) INLINE static double cell_min_dist2_same_size(
   const double cjz_max = cj->loc[2] + cj->width[2];
 
   if (periodic) {
+
     const double dx = min4(fabs(nearest(cix_min - cjx_min, dim[0])),
                            fabs(nearest(cix_min - cjx_max, dim[0])),
                            fabs(nearest(cix_max - cjx_min, dim[0])),
@@ -800,6 +893,7 @@ __attribute__((always_inline)) INLINE static double cell_min_dist2_same_size(
     return dx * dx + dy * dy + dz * dz;
 
   } else {
+
     const double dx = min(fabs(cix_max - cjx_min), fabs(cix_min - cjx_max));
     const double dy = min(fabs(ciy_max - cjy_min), fabs(ciy_min - cjy_max));
     const double dz = min(fabs(ciz_max - cjz_min), fabs(ciz_min - cjz_max));
@@ -818,6 +912,7 @@ __attribute__((always_inline)) INLINE static double cell_min_dist2_same_size(
  */
 __attribute__((always_inline)) INLINE static int
 cell_can_recurse_in_pair_hydro_task(const struct cell *c) {
+
   /* Is the cell split ? */
   /* If so, is the cut-off radius plus the max distance the parts have moved */
   /* smaller than the sub-cell sizes ? */
@@ -834,6 +929,7 @@ cell_can_recurse_in_pair_hydro_task(const struct cell *c) {
  */
 __attribute__((always_inline)) INLINE static int
 cell_can_recurse_in_self_hydro_task(const struct cell *c) {
+
   /* Is the cell split and not smaller than the smoothing length? */
   return c->split && (kernel_gamma * c->hydro.h_max_old < 0.5f * c->dmin);
 }
@@ -848,6 +944,7 @@ cell_can_recurse_in_self_hydro_task(const struct cell *c) {
 __attribute__((always_inline)) INLINE static int
 cell_can_recurse_in_pair_stars_task(const struct cell *ci,
                                     const struct cell *cj) {
+
   /* Is the cell split ? */
   /* If so, is the cut-off radius plus the max distance the parts have moved */
   /* smaller than the sub-cell sizes ? */
@@ -867,6 +964,7 @@ cell_can_recurse_in_pair_stars_task(const struct cell *ci,
  */
 __attribute__((always_inline)) INLINE static int
 cell_can_recurse_in_self_stars_task(const struct cell *c) {
+
   /* Is the cell split and not smaller than the smoothing length? */
   return c->split && (kernel_gamma * c->stars.h_max_old < 0.5f * c->dmin) &&
          (kernel_gamma * c->hydro.h_max_old < 0.5f * c->dmin);
@@ -880,6 +978,7 @@ cell_can_recurse_in_self_stars_task(const struct cell *c) {
  */
 __attribute__((always_inline)) INLINE static int cell_can_split_pair_hydro_task(
     const struct cell *c) {
+
   /* Is the cell split ? */
   /* If so, is the cut-off radius with some leeway smaller than */
   /* the sub-cell sizes ? */
@@ -898,6 +997,7 @@ __attribute__((always_inline)) INLINE static int cell_can_split_pair_hydro_task(
  */
 __attribute__((always_inline)) INLINE static int cell_can_split_self_hydro_task(
     const struct cell *c) {
+
   /* Is the cell split ? */
   /* If so, is the cut-off radius with some leeway smaller than */
   /* the sub-cell sizes ? */
@@ -916,6 +1016,7 @@ __attribute__((always_inline)) INLINE static int cell_can_split_self_hydro_task(
  */
 __attribute__((always_inline)) INLINE static int
 cell_can_split_pair_gravity_task(const struct cell *c) {
+
   /* Is the cell split and still far from the leaves ? */
   return c->split && ((c->maxdepth - c->depth) > space_subdepth_diff_grav);
 }
@@ -928,6 +1029,7 @@ cell_can_split_pair_gravity_task(const struct cell *c) {
  */
 __attribute__((always_inline)) INLINE static int
 cell_can_split_self_gravity_task(const struct cell *c) {
+
   /* Is the cell split and still far from the leaves ? */
   return c->split && ((c->maxdepth - c->depth) > space_subdepth_diff_grav);
 }
@@ -942,6 +1044,7 @@ cell_can_split_self_gravity_task(const struct cell *c) {
  */
 __attribute__((always_inline)) INLINE static int
 cell_need_rebuild_for_hydro_pair(const struct cell *ci, const struct cell *cj) {
+
   /* Is the cut-off radius plus the max distance the parts in both cells have */
   /* moved larger than the cell size ? */
   /* Note ci->dmin == cj->dmin */
@@ -961,6 +1064,7 @@ cell_need_rebuild_for_hydro_pair(const struct cell *ci, const struct cell *cj) {
  */
 __attribute__((always_inline)) INLINE static int
 cell_need_rebuild_for_stars_pair(const struct cell *ci, const struct cell *cj) {
+
   /* Is the cut-off radius plus the max distance the parts in both cells have */
   /* moved larger than the cell size ? */
   /* Note ci->dmin == cj->dmin */
@@ -1003,28 +1107,45 @@ __attribute__((always_inline)) INLINE static void cell_ensure_tagged(
  */
 __attribute__((always_inline)) INLINE static void cell_malloc_hydro_sorts(
     struct cell *c, int flags) {
-  /* Count the memory needed for all active dimensions. */
-  int count = 0;
-  for (int j = 0; j < 13; j++) {
-    if ((flags & (1 << j)) && c->hydro.sort[j] == NULL)
-      count += (c->hydro.count + 1);
-  }
 
-  /* Allocate as a single chunk. */
-  struct entry *memptr = NULL;
-  if ((memptr = (struct entry *)swift_malloc(
-           "hydro.sort", sizeof(struct entry) * count)) == NULL)
-    error("Failed to allocate sort memory.");
+  const int count = c->hydro.count;
 
-  c->hydro.sortptr = memptr;
-
-  /* And attach spans as needed. */
   for (int j = 0; j < 13; j++) {
     if ((flags & (1 << j)) && c->hydro.sort[j] == NULL) {
-      c->hydro.sort[j] = memptr;
-      memptr += (c->hydro.count + 1);
+      if ((c->hydro.sort[j] = (struct entry *)swift_malloc(
+               "hydro.sort", sizeof(struct entry) * (count + 1))) == NULL)
+        error("Failed to allocate sort memory.");
     }
   }
+
+  /* /\* Count the memory needed for all active dimensions. *\/ */
+  /* int count = 0; */
+  /* for (int j = 0; j < 13; j++) { */
+  /*   if ((flags & (1 << j)) && c->hydro.sort[j] == NULL) */
+  /*     count += (c->hydro.count + 1); */
+  /* } */
+
+  /* if(c->hydro.sortptr != NULL) */
+  /*   error("Reallocating hydro sorts!"); */
+
+  /* /\* Allocate as a single chunk. *\/ */
+  /* struct entry *memptr = NULL; */
+  /* /\* if ((memptr = (struct entry *)swift_malloc( *\/ */
+  /* /\*          "hydro.sort", sizeof(struct entry) * count)) == NULL) *\/ */
+  /* if ((memptr = (struct entry *)malloc( */
+  /* 				       sizeof(struct entry) * count)) == NULL)
+   */
+  /*   error("Failed to allocate sort memory."); */
+
+  /* c->hydro.sortptr = memptr; */
+
+  /* /\* And attach spans as needed. *\/ */
+  /* for (int j = 0; j < 13; j++) { */
+  /*   if ((flags & (1 << j)) && c->hydro.sort[j] == NULL) { */
+  /*     c->hydro.sort[j] = memptr; */
+  /*     memptr += (c->hydro.count + 1); */
+  /*   } */
+  /* } */
 }
 
 /**
@@ -1034,12 +1155,21 @@ __attribute__((always_inline)) INLINE static void cell_malloc_hydro_sorts(
  */
 __attribute__((always_inline)) INLINE static void cell_free_hydro_sorts(
     struct cell *c) {
-  /* Note only one allocation for the dimensions. */
-  if (c->hydro.sortptr != NULL) {
-    swift_free("hydro.sort", c->hydro.sortptr);
-    c->hydro.sortptr = NULL;
-    for (int i = 0; i < 13; i++) c->hydro.sort[i] = NULL;
+
+  for (int i = 0; i < 13; i++) {
+    if (c->hydro.sort[i] != NULL) {
+      swift_free("hydro.sort", c->hydro.sort[i]);
+      c->hydro.sort[i] = NULL;
+    }
   }
+
+  /* /\* Note only one allocation for the dimensions. *\/ */
+  /* if (c->hydro.sortptr != NULL) { */
+  /*   //swift_free("hydro.sort", c->hydro.sortptr); */
+  /*   free(c->hydro.sortptr); */
+  /*   c->hydro.sortptr = NULL; */
+  /*   for (int i = 0; i < 13; i++) c->hydro.sort[i] = NULL; */
+  /* } */
 }
 
 /**
@@ -1050,28 +1180,42 @@ __attribute__((always_inline)) INLINE static void cell_free_hydro_sorts(
  */
 __attribute__((always_inline)) INLINE static void cell_malloc_stars_sorts(
     struct cell *c, int flags) {
-  /* Count the memory needed for all active dimensions. */
-  int count = 0;
-  for (int j = 0; j < 13; j++) {
-    if ((flags & (1 << j)) && c->stars.sort[j] == NULL)
-      count += (c->stars.count + 1);
-  }
 
-  /* Allocate as a single chunk. */
-  struct entry *memptr = NULL;
-  if ((memptr = (struct entry *)swift_malloc(
-           "stars.sort", sizeof(struct entry) * count)) == NULL)
-    error("Failed to allocate sort memory.");
+  const int count = c->stars.count;
 
-  c->stars.sortptr = memptr;
-
-  /* And attach spans as needed. */
   for (int j = 0; j < 13; j++) {
     if ((flags & (1 << j)) && c->stars.sort[j] == NULL) {
-      c->stars.sort[j] = memptr;
-      memptr += (c->stars.count + 1);
+      if ((c->stars.sort[j] = (struct entry *)swift_malloc(
+               "stars.sort", sizeof(struct entry) * (count + 1))) == NULL)
+        error("Failed to allocate sort memory.");
     }
   }
+
+  /* /\* Count the memory needed for all active dimensions. *\/ */
+  /* int count = 0; */
+  /* for (int j = 0; j < 13; j++) { */
+  /*   if ((flags & (1 << j)) && c->stars.sort[j] == NULL) */
+  /*     count += (c->stars.count + 1); */
+  /* } */
+
+  /* /\* Allocate as a single chunk. *\/ */
+  /* struct entry *memptr = NULL; */
+  /* /\* if ((memptr = (struct entry *)swift_malloc( *\/ */
+  /* /\*          "stars.sort", sizeof(struct entry) * count)) == NULL) *\/ */
+  /* if ((memptr = (struct entry *)malloc( */
+  /* 				       sizeof(struct entry) * count)) == NULL)
+   */
+  /*   error("Failed to allocate sort memory."); */
+
+  /* c->stars.sortptr = memptr; */
+
+  /* /\* And attach spans as needed. *\/ */
+  /* for (int j = 0; j < 13; j++) { */
+  /*   if ((flags & (1 << j)) && c->stars.sort[j] == NULL) { */
+  /*     c->stars.sort[j] = memptr; */
+  /*     memptr += (c->stars.count + 1); */
+  /*   } */
+  /* } */
 }
 
 /**
@@ -1081,30 +1225,46 @@ __attribute__((always_inline)) INLINE static void cell_malloc_stars_sorts(
  */
 __attribute__((always_inline)) INLINE static void cell_free_stars_sorts(
     struct cell *c) {
-  /* Note only one allocation for the dimensions. */
-  if (c->stars.sortptr != NULL) {
-    swift_free("stars.sort", c->stars.sortptr);
-    c->stars.sortptr = NULL;
-    for (int i = 0; i < 13; i++) c->stars.sort[i] = NULL;
+
+  for (int i = 0; i < 13; i++) {
+    if (c->stars.sort[i] != NULL) {
+      swift_free("stars.sort", c->stars.sort[i]);
+      c->stars.sort[i] = NULL;
+    }
   }
+
+  /* /\* Note only one allocation for the dimensions. *\/ */
+  /* if (c->stars.sortptr != NULL) { */
+  /*   //swift_free("stars.sort", c->stars.sortptr); */
+  /*   free(c->stars.sortptr); */
+  /*   c->stars.sortptr = NULL; */
+  /*   for (int i = 0; i < 13; i++) c->stars.sort[i] = NULL; */
+  /* } */
 }
 
 /**
  * @brief Check if a cell has a send/recv task of the given subtype.
  */
-#ifdef WITH_MPI
 __attribute__((always_inline)) INLINE static struct task *cell_get_send(
     const struct cell *c, enum task_subtypes subtype) {
+#ifdef WITH_MPI
   struct link *l = c->mpi.send;
   while (l != NULL && l->t->subtype != subtype) l = l->next;
   return (l != NULL) ? l->t : NULL;
+#else
+  return NULL;
+#endif
 }
 
 __attribute__((always_inline)) INLINE static struct task *cell_get_recv(
     const struct cell *c, enum task_subtypes subtype) {
+#ifdef WITH_MPI
   struct link *l = c->mpi.recv;
   while (l != NULL && l->t->subtype != subtype) l = l->next;
   return (l != NULL) ? l->t : NULL;
+#else
+  return NULL;
+#endif
 }
 #endif  // WITH_MPI
 
