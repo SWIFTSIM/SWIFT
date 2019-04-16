@@ -1266,6 +1266,5 @@ __attribute__((always_inline)) INLINE static struct task *cell_get_recv(
   return NULL;
 #endif
 }
-#endif  // WITH_MPI
 
 #endif /* SWIFT_CELL_H */
