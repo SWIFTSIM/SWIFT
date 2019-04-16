@@ -2682,7 +2682,6 @@ void engine_collect_end_of_step_recurse_hydro(struct cell *c,
   if (c->timestep != NULL) return;
 #ifdef WITH_MPI
   if (cell_get_recv(c, task_subtype_tend_part) != NULL) return;
-#else
 #endif /* WITH_MPI */
 
 #ifdef SWIFT_DEBUG_CHECKS
