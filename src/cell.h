@@ -581,14 +581,6 @@ struct cell {
     };
 
     struct {
-      /* Task receiving spart data. */
-      struct task *recv;
-
-      /* Task receiving data (time-step). */
-      struct task *recv_ti;
-    } stars;
-
-    struct {
       /* Task receiving limiter data. */
       struct task *recv;
 

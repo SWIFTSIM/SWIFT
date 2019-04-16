@@ -3676,10 +3676,10 @@ int cell_unskip_stars_tasks(struct cell *c, struct scheduler *s) {
         }
 
         if (ci_active) {
-          scheduler_activate(s, ci->mpi.stars.recv);
+          scheduler_activate_recv(s, ci->mpi.recv, task_subtype_spart);
 
           /* If the foreign cell is active, we want its ti_end values. */
-          scheduler_activate(s, ci->mpi.stars.recv_ti);
+          scheduler_activate_recv(s, ci->mpi.recv, task_subtype_tend_spart);
 
           /* Is the foreign cell active and will need stuff from us? */
           scheduler_activate_send(s, cj->mpi.send, task_subtype_xv, ci_nodeID);
@@ -3708,10 +3708,10 @@ int cell_unskip_stars_tasks(struct cell *c, struct scheduler *s) {
         }
 
         if (cj_active) {
-          scheduler_activate(s, cj->mpi.stars.recv);
+          scheduler_activate_recv(s, cj->mpi.recv, task_subtype_spart);
 
           /* If the foreign cell is active, we want its ti_end values. */
-          scheduler_activate(s, cj->mpi.stars.recv_ti);
+          scheduler_activate_recv(s, cj->mpi.recv, task_subtype_tend_spart);
 
           /* Is the foreign cell active and will need stuff from us? */
           scheduler_activate_send(s, ci->mpi.send, task_subtype_xv, cj_nodeID);
@@ -3902,9 +3902,7 @@ void cell_set_super_mapper(void *map_data, int num_elements, void *extra_data) {
 int cell_has_tasks(struct cell *c) {
 
 #ifdef WITH_MPI
-  if (c->timestep != NULL || c->mpi.recv != NULL ||
-      c->mpi.stars.recv_ti != NULL)
-    return 1;
+  if (c->timestep != NULL || c->mpi.recv != NULL) return 1;
 #else
   if (c->timestep != NULL) return 1;
 #endif

@@ -478,10 +478,10 @@ void engine_marktasks_mapper(void *map_data, int num_elements,
           }
 
           if (ci_active_stars) {
-            scheduler_activate(s, ci->mpi.stars.recv);
+            scheduler_activate_recv(s, ci->mpi.recv, task_subtype_spart);
 
             /* If the foreign cell is active, we want its ti_end values. */
-            scheduler_activate(s, ci->mpi.stars.recv_ti);
+            scheduler_activate_recv(s, ci->mpi.recv, task_subtype_tend_spart);
 
             /* Is the foreign cell active and will need stuff from us? */
             scheduler_activate_send(s, cj->mpi.send, task_subtype_xv,
@@ -512,10 +512,10 @@ void engine_marktasks_mapper(void *map_data, int num_elements,
           }
 
           if (cj_active_stars) {
-            scheduler_activate(s, cj->mpi.stars.recv);
+            scheduler_activate_recv(s, cj->mpi.recv, task_subtype_spart);
 
             /* If the foreign cell is active, we want its ti_end values. */
-            scheduler_activate(s, cj->mpi.stars.recv_ti);
+            scheduler_activate_recv(s, cj->mpi.recv, task_subtype_tend_spart);
 
             /* Is the foreign cell active and will need stuff from us? */
             scheduler_activate_send(s, ci->mpi.send, task_subtype_xv,
