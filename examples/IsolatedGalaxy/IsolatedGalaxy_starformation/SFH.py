@@ -19,16 +19,17 @@
 ################################################################################
 import matplotlib
 
-#matplotlib.use("Agg")
+# matplotlib.use("Agg")
 import h5py as h5
 import numpy as np
 import matplotlib.pyplot as plt
 
 # check if we have tqdm installed
 try:
-  from tqdm import tqdm
+    from tqdm import tqdm
 except ImportError:
     raised_info = False
+
     def tqdm(x, *args, **kwargs):
         global raised_info
 
@@ -36,6 +37,7 @@ except ImportError:
             print("This script can display progress bars. Try `pip install tqdm`")
             raised_info = True
         return x
+
 
 # Plot parameters
 params = {
@@ -116,14 +118,15 @@ def getsfrsnapwide(numbsnaps):
         absmaxxy = 10  # kpc
 
         part_mask = (
-            SFR > 0
-            #((coordinates[:, 0] - box_size / 2.0) > -absmaxxy)
-            #& ((coordinates[:, 0] - box_size / 2.0) < absmaxxy)
-            #& ((coordinates[:, 1] - box_size / 2.0) > -absmaxxy)
-            #& ((coordinates[:, 1] - box_size / 2.0) < absmaxxy)
-            #& ((coordinates[:, 2] - box_size / 2.0) > -absmaxz)
-            #& ((coordinates[:, 2] - box_size / 2.0) < absmaxz)
-            #& (SFR > 0)
+            SFR
+            > 0
+            # ((coordinates[:, 0] - box_size / 2.0) > -absmaxxy)
+            # & ((coordinates[:, 0] - box_size / 2.0) < absmaxxy)
+            # & ((coordinates[:, 1] - box_size / 2.0) > -absmaxxy)
+            # & ((coordinates[:, 1] - box_size / 2.0) < absmaxxy)
+            # & ((coordinates[:, 2] - box_size / 2.0) > -absmaxz)
+            # & ((coordinates[:, 2] - box_size / 2.0) < absmaxz)
+            # & (SFR > 0)
         )
 
         SFR = SFR[part_mask]
@@ -138,7 +141,7 @@ def getsfrsnapwide(numbsnaps):
 if __name__ == "__main__":
     # Read the logger file
     logdata = np.loadtxt("output_SFH_logger.txt")
-    
+
     # Define the logger data in the correct units
     timelog = logdata[:, 1] * 9.778131e2
 
@@ -152,12 +155,12 @@ if __name__ == "__main__":
     plt.xlabel("Time (Myr)")
     plt.ylabel("CSFH [$\\rm M_\odot$]")
     plt.xlim(0, 100)
-    #plt.ylim(0, 1.2e9)
+    # plt.ylim(0, 1.2e9)
     plt.legend()
     plt.savefig("CSFH_logger.png")
     plt.close()
 
-    # Calculate the Cumulative sum of the particles from the snap shots 
+    # Calculate the Cumulative sum of the particles from the snap shots
     f = h5.File("./output_0100.hdf5", "r")
     birthtime = f["/PartType4/BirthTime"][:] * 9.778131e2
     mass = f["/PartType4/Masses"][:] * 1e10
