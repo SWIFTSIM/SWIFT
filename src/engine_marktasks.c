@@ -539,10 +539,12 @@ void engine_marktasks_mapper(void *map_data, int num_elements,
         if (ci_nodeID != nodeID) {
 
           /* If the local cell is active, receive data from the foreign cell. */
-          if (cj_active_gravity) scheduler_activate(s, ci->mpi.grav.recv);
+          if (cj_active_gravity)
+            scheduler_activate_recv(s, ci->mpi.recv, task_subtype_gpart);
 
           /* If the foreign cell is active, we want its ti_end values. */
-          if (ci_active_gravity) scheduler_activate(s, ci->mpi.grav.recv_ti);
+          if (ci_active_gravity)
+            scheduler_activate_recv(s, ci->mpi.recv, task_subtype_tend_gpart);
 
           /* Is the foreign cell active and will need stuff from us? */
           if (ci_active_gravity) {
@@ -564,10 +566,12 @@ void engine_marktasks_mapper(void *map_data, int num_elements,
         } else if (cj_nodeID != nodeID) {
 
           /* If the local cell is active, receive data from the foreign cell. */
-          if (ci_active_gravity) scheduler_activate(s, cj->mpi.grav.recv);
+          if (ci_active_gravity)
+            scheduler_activate_recv(s, cj->mpi.recv, task_subtype_gpart);
 
           /* If the foreign cell is active, we want its ti_end values. */
-          if (cj_active_gravity) scheduler_activate(s, cj->mpi.grav.recv_ti);
+          if (cj_active_gravity)
+            scheduler_activate_recv(s, cj->mpi.recv, task_subtype_tend_gpart);
 
           /* Is the foreign cell active and will need stuff from us? */
           if (cj_active_gravity) {

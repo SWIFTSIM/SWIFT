@@ -2394,9 +2394,7 @@ void engine_collect_end_of_step_recurse_hydro(struct cell *c,
   /* Skip super-cells (Their values are already set) */
   if (c->timestep != NULL) return;
 #ifdef WITH_MPI
-  struct link *l = c->mpi.recv;
-  while (l != NULL && l->t->subtype != task_subtype_tend_part) l = l->next;
-  if (l != NULL) return;
+  if (cell_get_recv(c, task_subtype_tend_part) != NULL) return;
 #else
 #endif /* WITH_MPI */
 
@@ -2453,11 +2451,10 @@ void engine_collect_end_of_step_recurse_hydro(struct cell *c,
 void engine_collect_end_of_step_recurse_grav(struct cell *c,
                                              const struct engine *e) {
 
-/* Skip super-cells (Their values are already set) */
-#ifdef WITH_MPI
-  if (c->timestep != NULL || c->mpi.grav.recv_ti != NULL) return;
-#else
+  /* Skip super-cells (Their values are already set) */
   if (c->timestep != NULL) return;
+#ifdef WITH_MPI
+  if (cell_get_recv(c, task_subtype_tend_gpart) != NULL) return;
 #endif /* WITH_MPI */
 
 #ifdef SWIFT_DEBUG_CHECKS

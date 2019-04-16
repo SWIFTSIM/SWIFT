@@ -207,9 +207,7 @@ int cell_link_foreign_parts(struct cell *c, struct part *parts) {
 #endif
 
   /* Do we have a hydro task at this level? */
-  struct link *l = c->mpi.recv;
-  while (l != NULL && l->t->subtype != task_subtype_xv) l = l->next;
-  if (l != NULL) {
+  if (cell_get_recv(c, task_subtype_xv) != NULL) {
 
     /* Recursively attach the parts */
     const int counts = cell_link_parts(c, parts);
@@ -257,8 +255,8 @@ int cell_link_foreign_gparts(struct cell *c, struct gpart *gparts) {
     error("Linking foreign particles in a local cell!");
 #endif
 
-  /* Do we have a hydro task at this level? */
-  if (c->mpi.grav.recv != NULL) {
+  /* Do we have a gravity task at this level? */
+  if (cell_get_recv(c, task_subtype_gpart) != NULL) {
 
     /* Recursively attach the gparts */
     const int counts = cell_link_gparts(c, gparts);
@@ -305,9 +303,7 @@ int cell_count_parts_for_tasks(const struct cell *c) {
 #endif
 
   /* Do we have a hydro task at this level? */
-  struct link *l = c->mpi.recv;
-  while (l != NULL && l->t->subtype != task_subtype_xv) l = l->next;
-  if (l != NULL) {
+  if (cell_get_recv(c, task_subtype_xv) != NULL) {
     return c->hydro.count;
   }
 
@@ -345,8 +341,8 @@ int cell_count_gparts_for_tasks(const struct cell *c) {
     error("Counting foreign particles in a local cell!");
 #endif
 
-  /* Do we have a hydro task at this level? */
-  if (c->mpi.grav.recv != NULL) {
+  /* Do we have a gravity task at this level? */
+  if (cell_get_recv(c, task_subtype_gpart) != NULL) {
     return c->grav.count;
   }
 
@@ -3453,10 +3449,12 @@ int cell_unskip_gravity_tasks(struct cell *c, struct scheduler *s) {
       if (ci_nodeID != nodeID) {
 
         /* If the local cell is active, receive data from the foreign cell. */
-        if (cj_active) scheduler_activate(s, ci->mpi.grav.recv);
+        if (cj_active)
+          scheduler_activate_recv(s, ci->mpi.recv, task_subtype_gpart);
 
         /* If the foreign cell is active, we want its ti_end values. */
-        if (ci_active) scheduler_activate(s, ci->mpi.grav.recv_ti);
+        if (ci_active)
+          scheduler_activate_recv(s, ci->mpi.recv, task_subtype_tend_gpart);
 
         /* Is the foreign cell active and will need stuff from us? */
         if (ci_active) {
@@ -3478,10 +3476,12 @@ int cell_unskip_gravity_tasks(struct cell *c, struct scheduler *s) {
       } else if (cj_nodeID != nodeID) {
 
         /* If the local cell is active, receive data from the foreign cell. */
-        if (ci_active) scheduler_activate(s, cj->mpi.grav.recv);
+        if (ci_active)
+          scheduler_activate_recv(s, cj->mpi.recv, task_subtype_gpart);
 
         /* If the foreign cell is active, we want its ti_end values. */
-        if (cj_active) scheduler_activate(s, cj->mpi.grav.recv_ti);
+        if (cj_active)
+          scheduler_activate_recv(s, cj->mpi.recv, task_subtype_tend_gpart);
 
         /* Is the foreign cell active and will need stuff from us? */
         if (cj_active) {
@@ -3903,7 +3903,7 @@ int cell_has_tasks(struct cell *c) {
 
 #ifdef WITH_MPI
   if (c->timestep != NULL || c->mpi.recv != NULL ||
-      c->mpi.grav.recv_ti != NULL || c->mpi.stars.recv_ti != NULL)
+      c->mpi.stars.recv_ti != NULL)
     return 1;
 #else
   if (c->timestep != NULL) return 1;

@@ -335,37 +335,38 @@ void engine_addtasks_recv_hydro(struct engine *e, struct cell *c,
     engine_addlink(e, &c->mpi.recv, t_gradient);
 #endif
     engine_addlink(e, &c->mpi.recv, t_ti);
-  }
 
-  /* Add dependencies. */
-  if (c->hydro.sorts != NULL) {
-    scheduler_addunlock(s, t_xv, c->hydro.sorts);
-    scheduler_addunlock(s, c->hydro.sorts, t_rho);
-  }
+    /* Add dependencies. */
+    if (c->hydro.sorts != NULL) {
+      scheduler_addunlock(s, t_xv, c->hydro.sorts);
+      scheduler_addunlock(s, c->hydro.sorts, t_rho);
+    }
 
-  for (struct link *l = c->hydro.density; l != NULL; l = l->next) {
-    scheduler_addunlock(s, t_xv, l->t);
-    scheduler_addunlock(s, l->t, t_rho);
-  }
+    for (struct link *l = c->hydro.density; l != NULL; l = l->next) {
+      scheduler_addunlock(s, t_xv, l->t);
+      scheduler_addunlock(s, l->t, t_rho);
+    }
 #ifdef EXTRA_HYDRO_LOOP
-  for (struct link *l = c->hydro.gradient; l != NULL; l = l->next) {
-    scheduler_addunlock(s, t_rho, l->t);
-    scheduler_addunlock(s, l->t, t_gradient);
-  }
-  for (struct link *l = c->hydro.force; l != NULL; l = l->next) {
-    scheduler_addunlock(s, t_gradient, l->t);
-    scheduler_addunlock(s, l->t, t_ti);
-  }
+    for (struct link *l = c->hydro.gradient; l != NULL; l = l->next) {
+      scheduler_addunlock(s, t_rho, l->t);
+      scheduler_addunlock(s, l->t, t_gradient);
+    }
+    for (struct link *l = c->hydro.force; l != NULL; l = l->next) {
+      scheduler_addunlock(s, t_gradient, l->t);
+      scheduler_addunlock(s, l->t, t_ti);
+    }
 #else
-  for (struct link *l = c->hydro.force; l != NULL; l = l->next) {
-    scheduler_addunlock(s, t_rho, l->t);
-    scheduler_addunlock(s, l->t, t_ti);
-  }
+    for (struct link *l = c->hydro.force; l != NULL; l = l->next) {
+      scheduler_addunlock(s, t_rho, l->t);
+      scheduler_addunlock(s, l->t, t_ti);
+    }
 #endif
 
-  /* Make sure the density has been computed before the stars compute theirs. */
-  for (struct link *l = c->stars.density; l != NULL; l = l->next) {
-    scheduler_addunlock(s, t_rho, l->t);
+    /* Make sure the density has been computed before the stars compute theirs.
+     */
+    for (struct link *l = c->stars.density; l != NULL; l = l->next) {
+      scheduler_addunlock(s, t_rho, l->t);
+    }
   }
 
   /* Recurse? */
@@ -469,14 +470,16 @@ void engine_addtasks_recv_gravity(struct engine *e, struct cell *c,
                              c->mpi.tag, 0, c, NULL);
   }
 
-  c->mpi.grav.recv = t_grav;
-  c->mpi.grav.recv_ti = t_ti;
+  /* If we have tasks, link them. */
+  if (t_grav != NULL) {
+    engine_addlink(e, &c->mpi.recv, t_grav);
+    engine_addlink(e, &c->mpi.recv, t_ti);
 
-  for (struct link *l = c->grav.grav; l != NULL; l = l->next) {
-    scheduler_addunlock(s, t_grav, l->t);
-    scheduler_addunlock(s, l->t, t_ti);
+    for (struct link *l = c->grav.grav; l != NULL; l = l->next) {
+      scheduler_addunlock(s, t_grav, l->t);
+      scheduler_addunlock(s, l->t, t_ti);
+    }
   }
-
   /* Recurse? */
   if (c->split)
     for (int k = 0; k < 8; k++)

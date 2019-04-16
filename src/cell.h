@@ -581,14 +581,6 @@ struct cell {
     };
 
     struct {
-      /* Task receiving gpart data. */
-      struct task *recv;
-
-      /* Task receiving data (time-step). */
-      struct task *recv_ti;
-    } grav;
-
-    struct {
       /* Task receiving spart data. */
       struct task *recv;
 
@@ -1110,5 +1102,24 @@ __attribute__((always_inline)) INLINE static void cell_free_stars_sorts(
     for (int i = 0; i < 13; i++) c->stars.sort[i] = NULL;
   }
 }
+
+/**
+ * @brief Check if a cell has a send/recv task of the given subtype.
+ */
+#ifdef WITH_MPI
+__attribute__((always_inline)) INLINE static struct task *cell_get_send(
+    const struct cell *c, enum task_subtypes subtype) {
+  struct link *l = c->mpi.send;
+  while (l != NULL && l->t->subtype != subtype) l = l->next;
+  return (l != NULL) ? l->t : NULL;
+}
+
+__attribute__((always_inline)) INLINE static struct task *cell_get_recv(
+    const struct cell *c, enum task_subtypes subtype) {
+  struct link *l = c->mpi.recv;
+  while (l != NULL && l->t->subtype != subtype) l = l->next;
+  return (l != NULL) ? l->t : NULL;
+}
+#endif  // WITH_MPI
 
 #endif /* SWIFT_CELL_H */
