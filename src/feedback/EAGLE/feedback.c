@@ -50,9 +50,6 @@ double eagle_feedback_temperature_change(const struct spart* sp,
 double eagle_feedback_number_of_SNe(const struct spart* sp,
                                     const struct feedback_props* props) {
 
-  message("init_mass=%e conv=%e N/Msun=%e", sp->mass_init,
-          props->mass_to_solar_mass, props->num_SNII_per_msun);
-
   /* Note: For a Chabrier 2003 IMF and SNII going off between 6 and 100
    * M_sun, the first term is 0.017362 M_sun^-1 */
   return props->num_SNII_per_msun * sp->mass_init * props->mass_to_solar_mass;
@@ -91,6 +88,8 @@ double eagle_feedback_energy_fraction(const struct spart* sp,
   const double Z_term = pow(max(Z_smooth, 1e-6) / Z_0, n_Z);
   const double n_term = pow(n_birth / n_0, -n_n);
   const double denonimator = 1. + Z_term * n_term;
+
+  message("n_birth=%e Z_smooth=%e", n_birth, Z_smooth);
 
   return f_E_min + (f_E_max - f_E_min) / denonimator;
 }
@@ -838,6 +837,14 @@ void feedback_props_init(struct feedback_props* fp,
   const double m_p = phys_const->const_proton_mass;
   const double mu = hydro_props->mu_ionised;
   fp->temp_to_u_factor = k_B / (mu * hydro_gamma_minus_one * m_p);
+
+  /* Calculate conversion factor from rho to n_H
+   * Note this assumes primoridal abundance */
+  const double X_H = hydro_props->hydrogen_mass_fraction;
+  fp->rho_to_n_cgs =
+      (X_H / m_p) * units_cgs_conversion_factor(us, UNIT_CONV_NUMBER_DENSITY);
+
+  /* Properties of the SNIa feedback model ---------------------------------- */
 
   // MATTHIEU up to here
 

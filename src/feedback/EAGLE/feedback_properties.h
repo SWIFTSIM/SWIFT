@@ -115,7 +115,7 @@ struct feedback_props {
   double mass_to_solar_mass;
 
   /*! Conversion factor from density in internal units to Hydrogen number
-   * density */
+   * density in cgs */
   double rho_to_n_cgs;
 
   /*! Conversion factor from temperature to internal energy */
