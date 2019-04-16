@@ -2,9 +2,9 @@
 InternalUnitSystem:
   UnitMass_in_cgs:     1.98848e43    # 10^10 M_sun in grams
   UnitLength_in_cgs:   3.08567758e24 # Mpc in centimeters
-  UnitVelocity_in_cgs: 1e5   # km/s in centimeters per second
-  UnitCurrent_in_cgs:  1.   # Amperes
-  UnitTemp_in_cgs:     1.   # Kelvin
+  UnitVelocity_in_cgs: 1e5           # km/s in centimeters per second
+  UnitCurrent_in_cgs:  1.            # Amperes
+  UnitTemp_in_cgs:     1.            # Kelvin
 
 # Cosmological parameters
 Cosmology:
@@ -18,9 +18,9 @@ Cosmology:
 # Parameters governing the time integration
 TimeIntegration:
   time_begin: 0     # The starting time of the simulation (in internal units).
-  time_end:   5e-4  # The end time of the simulation (in internal units).
+  time_end:   5e-3  # The end time of the simulation (in internal units).
   dt_min:     1e-12 # The minimal time-step size of the simulation (in internal units).
-  dt_max:     5e-7  # The maximal time-step size of the simulation (in internal units).
+  dt_max:     4e-6  # The maximal time-step size of the simulation (in internal units).
 
 # Parameters governing the snapshots
 Snapshots:
@@ -40,6 +40,9 @@ SPH:
   resolution_eta:        1.2348   # Target smoothing length in units of the mean inter-particle separation 
   CFL_condition:         0.1      # Courant-Friedrich-Levy condition for time integration.
 
+Stars:
+  birth_time:  0.
+  
 # Parameters related to the initial conditions
 InitialConditions:
   file_name:  ./stellar_evolution.hdf5       # The file to read
@@ -47,22 +50,6 @@ InitialConditions:
   
 Scheduler:
   max_top_level_cells: 4
-  cell_split_size:     50
-
-Gravity:
-  mesh_side_length:   32
-  eta: 0.025
-  theta: 0.3
-  r_cut_max: 5.
-  comoving_softening: 0.001
-  max_physical_softening: 0.001
-
-# Parameters controlling restarts
-Restarts:
-  enable:             1          # (Optional) whether to enable dumping restarts at fixed intervals.
-  subdir:             restart    # (Optional) name of subdirectory for restart files.
-  basename:           swift      # (Optional) prefix used in naming restart files.
-  delta_hours:        0.008333        # (Optional) decimal hours between dumps of restart files.
 
 # Parameters for the EAGLE "equation of state"
 EAGLEEntropyFloor:
@@ -75,7 +62,7 @@ EAGLEEntropyFloor:
   Cool_temperature_norm_K:        8000       # Temperature of the EAGLE Cool limiter entropy floor at the density threshold expressed in Kelvin.
   Cool_gamma_effective:           1.         # Slope the of the EAGLE Cool limiter entropy floor
 
-EAGLEChemistry:              # Solar abundances
+EAGLEChemistry:              # Metallicites read in for the gas and star
   init_abundance_metal:      0.01
   init_abundance_Hydrogen:   0.752
   init_abundance_Helium:     0.248
@@ -88,11 +75,17 @@ EAGLEChemistry:              # Solar abundances
   init_abundance_Iron:       0.0
 
 EAGLEFeedback:
-  filename:                     ./yieldtables/
-  imf_model:                    Chabrier
-  continuous_heating_switch:    1
-  SNIa_timescale_Gyr:           2.0
-  SNIa_efficiency:              2.e-3
-  SNII_wind_delay_Gyr:          0.03
-  SNe_heating_temperature_K:    3.16228e7
-  birth_time_override:          0
+  filename:                         ./yieldtables/
+  IMF_min_mass_Msun:                0.1
+  IMF_max_mass_Msun:              100.0
+  SNII_min_mass_Msun:               6.0
+  SNII_max_mass_Msun:             100.0
+  SNII_wind_delay_Gyr:              0.03
+  SNII_delta_T_K:                   3.16228e7
+  SNII_Energy_erg:                  1.0e51       # Energy of one SNII explosion
+  SNII_Energy_fraction_min:         0.
+  SNII_Energy_fraction_max:         0.
+  SNII_Energy_fraction_Z_0:         0.0012663729 # Z_sun / 10
+  SNII_Energy_fraction_n_0_H_p_cm3: 0.67         # cm^-3
+  SNII_Energy_fraction_n_n:         0.8686       # 2/ln(10)
+  SNII_Energy_fraction_n_Z:         0.8686       # 2/ln(10)
