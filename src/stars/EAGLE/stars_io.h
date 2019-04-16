@@ -134,8 +134,8 @@ INLINE static void stars_props_init(struct stars_props *sp,
 
   /* Read birth time to set all stars in ICs to (defaults to -1 to indicate star
    * present in ICs) */
-  sp->spart_first_init_birth_time = parser_get_opt_param_float(
-      params, "EAGLEFeedback:birth_time_override", -1);
+  sp->spart_first_init_birth_time =
+      parser_get_opt_param_float(params, "Stars:birth_time", -1);
 }
 
 /**
