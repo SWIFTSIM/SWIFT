@@ -328,10 +328,14 @@ void engine_addtasks_recv_hydro(struct engine *e, struct cell *c,
                              c->mpi.tag, 0, c, NULL);
   }
 
-  engine_addlink(e, &c->mpi.recv, t_xv);
-  engine_addlink(e, &c->mpi.recv, t_rho);
-  engine_addlink(e, &c->mpi.recv, t_gradient);
-  engine_addlink(e, &c->mpi.recv, t_ti);
+  if (t_xv != NULL) {
+    engine_addlink(e, &c->mpi.recv, t_xv);
+    engine_addlink(e, &c->mpi.recv, t_rho);
+#ifdef EXTRA_HYDRO_LOOP
+    engine_addlink(e, &c->mpi.recv, t_gradient);
+#endif
+    engine_addlink(e, &c->mpi.recv, t_ti);
+  }
 
   /* Add dependencies. */
   if (c->hydro.sorts != NULL) {

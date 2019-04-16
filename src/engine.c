@@ -149,6 +149,12 @@ struct end_of_step_data {
  */
 void engine_addlink(struct engine *e, struct link **l, struct task *t) {
 
+#ifdef SWIFT_DEBUG_CHECKS
+  if (t == NULL) {
+    error("Trying to link NULL task.");
+  }
+#endif
+
   /* Get the next free link. */
   const size_t ind = atomic_inc(&e->nr_links);
   if (ind >= e->size_links) {
