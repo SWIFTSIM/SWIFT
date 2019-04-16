@@ -33,6 +33,8 @@ examples/*/*/*.rst
 examples/*/*/*.hdf5
 examples/*/*/*.csv
 examples/*/*/*.dot
+examples/*/*/memuse_report-step*.dat
+examples/*/*/memuse_report-step*.log
 examples/*/*/restart/*
 examples/*/*/used_parameters.yml
 examples/*/*/log*

@@ -53,6 +53,7 @@ enum task_types {
   task_type_extra_ghost,
   task_type_drift_part,
   task_type_drift_spart,
+  task_type_drift_bpart,
   task_type_drift_gpart,
   task_type_drift_gpart_out, /* Implicit */
   task_type_end_hydro_force,
@@ -96,6 +97,7 @@ enum task_subtypes {
   task_subtype_tend_part,
   task_subtype_tend_gpart,
   task_subtype_tend_spart,
+  task_subtype_tend_bpart,
   task_subtype_xv,
   task_subtype_rho,
   task_subtype_gpart,

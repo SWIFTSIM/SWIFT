@@ -35,7 +35,8 @@
 #define proxy_tag_xparts 2
 #define proxy_tag_gparts 3
 #define proxy_tag_sparts 4
-#define proxy_tag_cells 5
+#define proxy_tag_bparts 5
+#define proxy_tag_cells 6
 
 /**
  * @brief The different reasons a cell can be in a proxy
@@ -69,15 +70,18 @@ struct proxy {
   struct xpart *xparts_in, *xparts_out;
   struct gpart *gparts_in, *gparts_out;
   struct spart *sparts_in, *sparts_out;
+  struct bpart *bparts_in, *bparts_out;
   int size_parts_in, size_parts_out;
   int nr_parts_in, nr_parts_out;
   int size_gparts_in, size_gparts_out;
   int nr_gparts_in, nr_gparts_out;
   int size_sparts_in, size_sparts_out;
   int nr_sparts_in, nr_sparts_out;
+  int size_bparts_in, size_bparts_out;
+  int nr_bparts_in, nr_bparts_out;
 
   /* Buffer to hold the incomming/outgoing particle counts. */
-  int buff_out[3], buff_in[3];
+  int buff_out[4], buff_in[4];
 
 /* MPI request handles. */
 #ifdef WITH_MPI
@@ -86,6 +90,7 @@ struct proxy {
   MPI_Request req_xparts_out, req_xparts_in;
   MPI_Request req_gparts_out, req_gparts_in;
   MPI_Request req_sparts_out, req_sparts_in;
+  MPI_Request req_bparts_out, req_bparts_in;
   MPI_Request req_cells_count_out, req_cells_count_in;
   MPI_Request req_cells_out, req_cells_in;
 #endif
@@ -97,6 +102,7 @@ void proxy_parts_load(struct proxy *p, const struct part *parts,
                       const struct xpart *xparts, int N);
 void proxy_gparts_load(struct proxy *p, const struct gpart *gparts, int N);
 void proxy_sparts_load(struct proxy *p, const struct spart *sparts, int N);
+void proxy_bparts_load(struct proxy *p, const struct bpart *bparts, int N);
 void proxy_parts_exchange_first(struct proxy *p);
 void proxy_parts_exchange_second(struct proxy *p);
 void proxy_addcell_in(struct proxy *p, struct cell *c, int type);

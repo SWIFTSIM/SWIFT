@@ -51,7 +51,7 @@ include_HEADERS = space.h runner.h queue.h task.h lock.h cell.h part.h const.h \
     mesh_gravity.h cbrt.h exp10.h velociraptor_interface.h swift_velociraptor_part.h outputlist.h \
     logger_io.h tracers_io.h tracers.h tracers_struct.h star_formation_io.h \
     star_formation_struct.h star_formation.h star_formation_iact.h \
-    velociraptor_struct.h velociraptor_io.h random.h memuse.h
+    velociraptor_struct.h velociraptor_io.h random.h memuse.h black_holes.h black_holes_io.h
 
 # source files for EAGLE cooling
 EAGLE_COOLING_SOURCES =
@@ -178,7 +178,9 @@ nobase_noinst_HEADERS = align.h approx_math.h atomic.h barrier.h cycle.h error.h
 		 tracers/none/tracers.h tracers/none/tracers_struct.h \
                  tracers/none/tracers_io.h \
 		 tracers/EAGLE/tracers.h tracers/EAGLE/tracers_struct.h \
-                 tracers/EAGLE/tracers_io.h
+                 tracers/EAGLE/tracers_io.h \
+                 black_holes/Default/black_holes.h black_holes/Default/black_holes_io.h \
+		 black_holes/Default/black_holes_part.h 
 
 
 # Sources and flags for regular library
