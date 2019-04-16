@@ -59,8 +59,6 @@ __attribute__((always_inline)) INLINE static void feedback_first_init_spart(
   sp->birth_density = -1.f;
   sp->birth_time = feedback_props->spart_first_init_birth_time;
 
-  bzero(&sp->feedback_data, sizeof(struct feedback_part_data));
-
   feedback_init_spart(sp);
 }
 
@@ -74,7 +72,11 @@ __attribute__((always_inline)) INLINE static void feedback_first_init_spart(
  * @param feedback_props The properties of the feedback model.
  */
 __attribute__((always_inline)) INLINE static void feedback_prepare_spart(
-    struct spart* sp, const struct feedback_props* feedback_props) {}
+    struct spart* sp, const struct feedback_props* feedback_props) {
+
+  /* Zero all the output */
+  bzero(&sp->feedback_data, sizeof(struct feedback_spart_data));
+}
 
 /**
  * @brief Evolve the stellar properties of a #spart.

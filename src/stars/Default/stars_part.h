@@ -22,8 +22,9 @@
 /* Some standard headers. */
 #include <stdlib.h>
 
-/* Read chemistry */
+/* Read additional subgrid models */
 #include "chemistry_struct.h"
+#include "feedback_struct.h"
 #include "tracers_struct.h"
 
 /**
@@ -84,6 +85,9 @@ struct spart {
     double birth_scale_factor;
   };
 
+  /*! Feedback structure */
+  struct feedback_spart_data feedback_data;
+  
   /*! Tracer structure */
   struct tracers_xpart_data tracers_data;
 

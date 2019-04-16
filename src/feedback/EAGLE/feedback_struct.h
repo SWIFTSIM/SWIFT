@@ -19,7 +19,7 @@
 #ifndef SWIFT_FEEDBACK_STRUCT_EAGLE_H
 #define SWIFT_FEEDBACK_STRUCT_EAGLE_H
 
-struct feedback_part_data {
+struct feedback_spart_data {
 
   struct {
 
