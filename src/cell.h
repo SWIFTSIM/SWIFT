@@ -220,6 +220,23 @@ struct pcell_step_black_holes {
   float dx_max_part;
 };
 
+/** Bitmasks for the cell flags. */
+enum cell_flags {
+  cell_flag_split = (1UL << 0),
+  cell_flag_do_hydro_drift = (1UL << 1),
+  cell_flag_do_hydro_sub_drift = (1UL << 2),
+  cell_flag_do_hydro_sub_sort = (1UL << 3),
+  cell_flag_do_limiter = (1UL << 4),
+  cell_flag_do_sub_limiter = (1UL << 5),
+  cell_flag_do_grav_drift = (1UL << 6),
+  cell_flag_do_grav_sub_drift = (1UL << 7),
+  cell_flag_do_stars_sub_sort = (1UL << 8),
+  cell_flag_do_stars_drift = (1UL << 9),
+  cell_flag_do_stars_sub_drift = (1UL << 10),
+  cell_flag_do_bh_drift = (1UL << 11),
+  cell_flag_do_bh_sub_drift = (1UL << 12)
+};
+
 /**
  * @brief Cell within the tree structure.
  *
@@ -247,6 +264,9 @@ struct cell {
 
   /*! Super cell, i.e. the highest-level parent cell with *any* task */
   struct cell *super;
+  
+  /*! Cell flags bit-mask. */
+  unsigned int flags;
 
   /*! Hydro variables */
   struct {
@@ -1299,5 +1319,18 @@ __attribute__((always_inline)) INLINE static void cell_free_stars_sorts(
   /*   for (int i = 0; i < 13; i++) c->stars.sort[i] = NULL; */
   /* } */
 }
+
+/** Set the given flag for the given cell. */
+__attribute__((always_inline)) INLINE static void cell_set_flag(
+    struct cell *c, enum cell_flags flag) {
+    c->flags |= flag;
+  }
+
+/** Get the given flag for the given cell. */
+__attribute__((always_inline)) INLINE static int cell_get_flag(
+    struct cell *c, enum cell_flags flag) {
+    return (c->flags & flag) > 0;
+  }
+
 
 #endif /* SWIFT_CELL_H */
