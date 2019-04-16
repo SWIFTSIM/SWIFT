@@ -267,10 +267,7 @@ void space_rebuild_recycle_mapper(void *map_data, int num_elements,
     cell_free_stars_sorts(c);
 #if WITH_MPI
     c->mpi.tag = -1;
-
     c->mpi.recv = NULL;
-    c->mpi.limiter.recv = NULL;
-
     c->mpi.send = NULL;
 #endif
   }

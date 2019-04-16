@@ -3273,7 +3273,8 @@ int cell_unskip_hydro_tasks(struct cell *c, struct scheduler *s) {
         if (ci_active || with_limiter)
           scheduler_activate_recv(s, ci->mpi.recv, task_subtype_tend_part);
 
-        if (with_limiter) scheduler_activate(s, ci->mpi.limiter.recv);
+        if (with_limiter)
+          scheduler_activate_recv(s, ci->mpi.recv, task_subtype_limiter);
         if (with_limiter)
           scheduler_activate_send(s, cj->mpi.send, task_subtype_limiter,
                                   ci->nodeID);
@@ -3323,7 +3324,8 @@ int cell_unskip_hydro_tasks(struct cell *c, struct scheduler *s) {
         if (cj_active || with_limiter)
           scheduler_activate_recv(s, cj->mpi.recv, task_subtype_tend_part);
 
-        if (with_limiter) scheduler_activate(s, cj->mpi.limiter.recv);
+        if (with_limiter)
+          scheduler_activate_recv(s, cj->mpi.recv, task_subtype_limiter);
         if (with_limiter)
           scheduler_activate_send(s, ci->mpi.send, task_subtype_limiter,
                                   cj->nodeID);

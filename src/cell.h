@@ -580,12 +580,6 @@ struct cell {
       struct link *recv;
     };
 
-    struct {
-      /* Task receiving limiter data. */
-      struct task *recv;
-
-    } limiter;
-
     /*! Bit mask of the proxies this cell is registered with. */
     unsigned long long int sendto;
 
