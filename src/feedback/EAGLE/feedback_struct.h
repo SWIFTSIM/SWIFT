@@ -65,8 +65,11 @@ struct feedback_spart_data {
     /* Energy change due to thermal and kinetic energy of ejecta */
     float d_energy;
 
-    /* Probability for heating neighbouring gas particles */
-    float heating_probability;
+    /*! Probability to heating neighbouring gas particle for SNII feedback */
+    float SNII_heating_probability;
+
+    /*! Change in energy from SNII feedback energy injection */
+    float SNII_delta_u;
 
   } to_distribute;
 

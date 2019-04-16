@@ -27,25 +27,113 @@
 #include "yield_tables.h"
 
 /**
- * @brief Compute number of SN that should go off given the age of the spart
+ * @brief Return the change in temperature (in internal units) to apply to a
+ * gas particle affected by SNe feedback.
  *
- * @param sp spart we're evolving
- * @param stars_properties stars_props data structure
- * @param age age of star at the beginning of the step
- * @param dt length of step
+ * @param sp The #spart.
+ * @param props The properties of the feedback model.
  */
-float compute_SNe(const struct spart* sp,
-                  const struct feedback_props* feedback_props, const float age,
-                  const float dt) {
+double eagle_feedback_temperature_change(const struct spart* sp,
+                                         const struct feedback_props* props) {
 
+  /* In the EAGLE REF model, the change of temperature is constant */
+  return props->SNe_deltaT_desired;
+}
+
+/**
+ * @brief Computes the number of super-novae exploding for a given
+ * star particle.
+ *
+ * @param sp The #spart.
+ * @param props The properties of the stellar model.
+ */
+double eagle_feedback_number_of_SNe(const struct spart* sp,
+                                    const struct feedback_props* props) {
+
+  message("init_mass=%e conv=%e N/Msun=%e", sp->mass_init,
+          props->mass_to_solar_mass, props->num_SNII_per_msun);
+
+  /* Note: For a Chabrier 2003 IMF and SNII going off between 6 and 100
+   * M_sun, the first term is 0.017362 M_sun^-1 */
+  return props->num_SNII_per_msun * sp->mass_init * props->mass_to_solar_mass;
+}
+
+/**
+ * @brief Computes the fraction of the available super-novae energy to
+ * inject for a given event.
+ *
+ * Note that the fraction can be > 1.
+ *
+ * @param sp The #spart.
+ * @param props The properties of the feedback model.
+ */
+double eagle_feedback_energy_fraction(const struct spart* sp,
+                                      const struct feedback_props* props) {
+
+  return 1.;
+}
+
+/**
+ * @brief Compute the properties of the SNe feedback energy injection.
+ *
+ * Only does something if the particle reached the SNe age during this time
+ * step.
+ *
+ * @param sp The star particle.
+ * @param feedback_props The properties of the feedback model.
+ * @param star_age Age of star at the beginning of the step in internal units.
+ * @param dt Length of time-step in internal units.
+ */
+inline static void compute_SNe_feedback(
+    struct spart* sp, const double star_age, const double dt,
+    const struct feedback_props* feedback_props) {
+
+  /* Time after birth considered for SNII feedback (internal units) */
   const float SNII_wind_delay = feedback_props->SNII_wind_delay;
 
-  if (age <= SNII_wind_delay && (age + dt) > SNII_wind_delay) {
+  /* Are we doing feedback this step? */
+  if (star_age <= SNII_wind_delay && (star_age + dt) > SNII_wind_delay) {
 
-    return feedback_props->num_SNII_per_msun * sp->mass_init /
-           feedback_props->const_solar_mass;
-  } else {
-    return 0.f;
+    /* Properties of the model (all in internal units) */
+    const double delta_T =
+        eagle_feedback_temperature_change(sp, feedback_props);
+    const double N_SNe = eagle_feedback_number_of_SNe(sp, feedback_props);
+    const double E_SNe = feedback_props->E_SNII;
+    const double f_E = eagle_feedback_energy_fraction(sp, feedback_props);
+
+    /* Conversion factor from T to internal energy */
+    const double conv_factor = feedback_props->temp_to_u_factor;
+
+    /* Calculate the default heating probability */
+    double prob = f_E * E_SNe * N_SNe /
+                  (conv_factor * delta_T * sp->feedback_data.ngb_mass);
+
+    /* Calculate the change in internal energy of the gas particles that get
+     * heated */
+    double delta_u;
+    if (prob <= 1.) {
+
+      /* Normal case */
+      delta_u = delta_T * conv_factor;
+
+    } else {
+
+      /* Special case: we need to adjust the energy irrespective of the
+         desired deltaT to ensure we inject all the available energy. */
+
+      prob = 1.;
+      delta_u = f_E * E_SNe * N_SNe / sp->feedback_data.ngb_mass;
+    }
+
+    message(
+        "ID=%lld E_SNe=%e N_SNe=%e deltaT= %e f_E=%e prob=%f ngb_mass=%f "
+        "fac=%e delta_u=%e",
+        sp->id, E_SNe, N_SNe, delta_T, f_E, prob, sp->feedback_data.ngb_mass,
+        conv_factor, delta_u);
+
+    /* Store all of this in the star for delivery onto the gas */
+    sp->feedback_data.to_distribute.SNII_heating_probability = prob;
+    sp->feedback_data.to_distribute.SNII_delta_u = delta_u;
   }
 }
 
@@ -182,53 +270,59 @@ inline static void evolve_SNIa(float log10_min_mass, float log10_max_mass,
                                struct spart* restrict sp, float star_age_Gyr,
                                float dt_Gyr) {
 
-  /* Check if we're outside the mass range for SNIa */
-  if (log10_min_mass >= feedback_props->log10_SNIa_max_mass_msun) return;
+  /* /\* Check if we're outside the mass range for SNIa *\/ */
+  /* if (log10_min_mass >= feedback_props->log10_SNIa_max_mass_msun) return; */
 
-  /* If the max mass is outside the mass range update it to be the maximum and
-   * use updated values for the star's age and timestep in this function */
-  if (log10_max_mass > feedback_props->log10_SNIa_max_mass_msun) {
-    log10_max_mass = feedback_props->log10_SNIa_max_mass_msun;
-    float lifetime_Gyr = lifetime_in_Gyr(
-        exp(M_LN10 * feedback_props->log10_SNIa_max_mass_msun),
-        sp->chemistry_data.metal_mass_fraction_total, feedback_props);
-    dt_Gyr = star_age_Gyr + dt_Gyr - lifetime_Gyr;
-    star_age_Gyr = lifetime_Gyr;
-  }
+  /* /\* If the max mass is outside the mass range update it to be the maximum
+   * and */
+  /*  * use updated values for the star's age and timestep in this function *\/
+   */
+  /* if (log10_max_mass > feedback_props->log10_SNIa_max_mass_msun) { */
+  /*   log10_max_mass = feedback_props->log10_SNIa_max_mass_msun; */
+  /*   float lifetime_Gyr = lifetime_in_Gyr( */
+  /*       exp(M_LN10 * feedback_props->log10_SNIa_max_mass_msun), */
+  /*       sp->chemistry_data.metal_mass_fraction_total, feedback_props); */
+  /*   dt_Gyr = star_age_Gyr + dt_Gyr - lifetime_Gyr; */
+  /*   star_age_Gyr = lifetime_Gyr; */
+  /* } */
 
-  /* compute the number of SNIa */
-  /* Efolding (Forster 2006) */
-  float num_SNIa_per_msun =
-      feedback_props->SNIa_efficiency *
-      (exp(-star_age_Gyr / feedback_props->SNIa_timescale_Gyr) -
-       exp(-(star_age_Gyr + dt_Gyr) / feedback_props->SNIa_timescale_Gyr)) *
-      sp->mass_init;
+  /* /\* compute the number of SNIa *\/ */
+  /* /\* Efolding (Forster 2006) *\/ */
+  /* float num_SNIa_per_msun = */
+  /*     feedback_props->SNIa_efficiency * */
+  /*     (exp(-star_age_Gyr / feedback_props->SNIa_timescale_Gyr) - */
+  /*      exp(-(star_age_Gyr + dt_Gyr) / feedback_props->SNIa_timescale_Gyr)) *
+   */
+  /*     sp->mass_init; */
 
-  sp->feedback_data.to_distribute.num_SNIa =
-      num_SNIa_per_msun / feedback_props->const_solar_mass;
+  /* sp->feedback_data.to_distribute.num_SNIa = */
+  /*     num_SNIa_per_msun / feedback_props->const_solar_mass; */
 
-  /* compute mass fractions of each metal */
-  for (int i = 0; i < chemistry_element_count; i++) {
-    sp->feedback_data.to_distribute.metal_mass[i] +=
-        num_SNIa_per_msun * feedback_props->yield_SNIa_IMF_resampled[i];
-  }
+  /* /\* compute mass fractions of each metal *\/ */
+  /* for (int i = 0; i < chemistry_element_count; i++) { */
+  /*   sp->feedback_data.to_distribute.metal_mass[i] += */
+  /*       num_SNIa_per_msun * feedback_props->yield_SNIa_IMF_resampled[i]; */
+  /* } */
 
-  /* Update the metallicity of the material released */
-  sp->feedback_data.to_distribute.metal_mass_from_SNIa +=
-      num_SNIa_per_msun * feedback_props->yield_SNIa_total_metals_IMF_resampled;
+  /* /\* Update the metallicity of the material released *\/ */
+  /* sp->feedback_data.to_distribute.metal_mass_from_SNIa += */
+  /*     num_SNIa_per_msun *
+   * feedback_props->yield_SNIa_total_metals_IMF_resampled; */
 
-  /* Update the metal mass produced */
-  sp->feedback_data.to_distribute.total_metal_mass +=
-      num_SNIa_per_msun * feedback_props->yield_SNIa_total_metals_IMF_resampled;
+  /* /\* Update the metal mass produced *\/ */
+  /* sp->feedback_data.to_distribute.total_metal_mass += */
+  /*     num_SNIa_per_msun *
+   * feedback_props->yield_SNIa_total_metals_IMF_resampled; */
 
-  /* Compute the mass produced by SNIa */
-  sp->feedback_data.to_distribute.mass_from_SNIa +=
-      num_SNIa_per_msun * feedback_props->yield_SNIa_total_metals_IMF_resampled;
+  /* /\* Compute the mass produced by SNIa *\/ */
+  /* sp->feedback_data.to_distribute.mass_from_SNIa += */
+  /*     num_SNIa_per_msun *
+   * feedback_props->yield_SNIa_total_metals_IMF_resampled; */
 
-  /* Compute the iron mass produced */
-  sp->feedback_data.to_distribute.Fe_mass_from_SNIa +=
-      num_SNIa_per_msun *
-      feedback_props->yield_SNIa_IMF_resampled[chemistry_element_Fe];
+  /* /\* Compute the iron mass produced *\/ */
+  /* sp->feedback_data.to_distribute.Fe_mass_from_SNIa += */
+  /*     num_SNIa_per_msun * */
+  /*     feedback_props->yield_SNIa_IMF_resampled[chemistry_element_Fe]; */
 }
 
 /**
@@ -560,7 +654,7 @@ void compute_stellar_evolution(const struct feedback_props* feedback_props,
                                const float dt) {
 
   /* Allocate temporary array for calculating imf weights */
-  float stellar_yields[eagle_feedback_N_imf_bins];
+  // float stellar_yields[eagle_feedback_N_imf_bins];
 
   /* Convert dt and stellar age from internal units to Gyr. */
   const double Gyr_in_cgs = 1e9 * 365. * 24. * 3600.;
@@ -572,7 +666,10 @@ void compute_stellar_evolution(const struct feedback_props* feedback_props,
   /* Get the metallicity */
   const float Z = sp->chemistry_data.metal_mass_fraction_total;
 
-  /* calculate mass of stars that has died from the star's birth up to the
+  /* Compute properties of the stochastic SNe feedback model. */
+  compute_SNe_feedback(sp, age, dt, feedback_props);
+
+  /* Calculate mass of stars that has died from the star's birth up to the
    * beginning and end of timestep */
   const float max_dying_mass_Msun =
       dying_mass_msun(star_age_Gyr, Z, feedback_props);
@@ -592,42 +689,45 @@ void compute_stellar_evolution(const struct feedback_props* feedback_props,
   if (min_dying_mass_Msun == max_dying_mass_Msun) return;
 
   /* Life is better in log */
-  const float log10_max_dying_mass_Msun = log10f(max_dying_mass_Msun);
-  const float log10_min_dying_mass_Msun = log10f(min_dying_mass_Msun);
+  /* const float log10_max_dying_mass_Msun = log10f(max_dying_mass_Msun); */
+  /* const float log10_min_dying_mass_Msun = log10f(min_dying_mass_Msun); */
 
-  /* Compute elements, energy and momentum to distribute from the
-   *  three channels SNIa, SNII, AGB */
-  evolve_SNIa(log10_min_dying_mass_Msun, log10_max_dying_mass_Msun,
-              feedback_props, sp, star_age_Gyr, dt_Gyr);
-  evolve_SNII(log10_min_dying_mass_Msun, log10_max_dying_mass_Msun,
-              stellar_yields, feedback_props, sp);
-  evolve_AGB(log10_min_dying_mass_Msun, log10_max_dying_mass_Msun,
-             stellar_yields, feedback_props, sp);
+  /* /\* Compute elements, energy and momentum to distribute from the */
+  /*  *  three channels SNIa, SNII, AGB *\/ */
+  /* evolve_SNIa(log10_min_dying_mass_Msun, log10_max_dying_mass_Msun, */
+  /*             feedback_props, sp, star_age_Gyr, dt_Gyr); */
+  /* evolve_SNII(log10_min_dying_mass_Msun, log10_max_dying_mass_Msun, */
+  /*             stellar_yields, feedback_props, sp); */
+  /* evolve_AGB(log10_min_dying_mass_Msun, log10_max_dying_mass_Msun, */
+  /*            stellar_yields, feedback_props, sp); */
 
-  /* Compute the total mass to distribute (H + He  metals) */
-  sp->feedback_data.to_distribute.mass =
-      sp->feedback_data.to_distribute.total_metal_mass +
-      sp->feedback_data.to_distribute.metal_mass[chemistry_element_H] +
-      sp->feedback_data.to_distribute.metal_mass[chemistry_element_He];
+  /* /\* Compute the total mass to distribute (H + He  metals) *\/ */
+  /* sp->feedback_data.to_distribute.mass = */
+  /*     sp->feedback_data.to_distribute.total_metal_mass + */
+  /*     sp->feedback_data.to_distribute.metal_mass[chemistry_element_H] + */
+  /*     sp->feedback_data.to_distribute.metal_mass[chemistry_element_He]; */
 
-  /* Compute the number of type II SNe that went off */
-  sp->feedback_data.to_distribute.num_SNe =
-      compute_SNe(sp, feedback_props, age, dt);
+  /* /\* Compute energy change due to thermal and kinetic energy of ejecta *\/
+   */
+  /* sp->feedback_data.to_distribute.d_energy = */
+  /*     sp->feedback_data.to_distribute.mass * */
+  /*     (feedback_props->ejecta_specific_thermal_energy + */
+  /*      0.5 * (sp->v[0] * sp->v[0] + sp->v[1] * sp->v[1] + sp->v[2] *
+   * sp->v[2]) * */
+  /*          cosmo->a2_inv); */
 
-  /* Compute energy change due to thermal and kinetic energy of ejecta */
-  sp->feedback_data.to_distribute.d_energy =
-      sp->feedback_data.to_distribute.mass *
-      (feedback_props->ejecta_specific_thermal_energy +
-       0.5 * (sp->v[0] * sp->v[0] + sp->v[1] * sp->v[1] + sp->v[2] * sp->v[2]) *
-           cosmo->a2_inv);
+  /* /\* Compute the number of type II SNe that went off *\/ */
+  /* sp->feedback_data.to_distribute.num_SNe = */
+  /*     compute_SNe(sp, feedback_props, age, dt); */
 
-  /* Compute probability of heating neighbouring particles */
-  if (dt > 0 && sp->feedback_data.ngb_mass > 0)
-    sp->feedback_data.to_distribute.heating_probability =
-        feedback_props->total_energy_SNe *
-        sp->feedback_data.to_distribute.num_SNe /
-        (feedback_props->temp_to_u_factor * feedback_props->SNe_deltaT_desired *
-         sp->feedback_data.ngb_mass);
+  /* /\* Compute probability of heating neighbouring particles *\/ */
+  /* if (dt > 0 && sp->feedback_data.ngb_mass > 0) */
+  /*   sp->feedback_data.to_distribute.heating_probability = */
+  /*       feedback_props->total_energy_SNe * */
+  /*       sp->feedback_data.to_distribute.num_SNe / */
+  /*       (feedback_props->temp_to_u_factor *
+   * feedback_props->SNe_deltaT_desired * */
+  /*        sp->feedback_data.ngb_mass); */
 }
 
 /**
@@ -648,17 +748,13 @@ void feedback_props_init(struct feedback_props* fp,
                          const struct hydro_props* hydro_props,
                          const struct cosmology* cosmo) {
 
-  /* Read SNIa timscale */
-  fp->SNIa_timescale_Gyr =
-      parser_get_param_float(params, "EAGLEFeedback:SNIa_timescale_Gyr");
+  /* /\* Read SNIa timscale *\/ */
+  /* fp->SNIa_timescale_Gyr = */
+  /*     parser_get_param_float(params, "EAGLEFeedback:SNIa_timescale_Gyr"); */
 
-  /* Read the efficiency of producing SNIa */
-  fp->SNIa_efficiency =
-      parser_get_param_float(params, "EAGLEFeedback:SNIa_efficiency");
-
-  /* Are we doing continuous heating? */
-  fp->continuous_heating =
-      parser_get_param_int(params, "EAGLEFeedback:continuous_heating_switch");
+  /* /\* Read the efficiency of producing SNIa *\/ */
+  /* fp->SNIa_efficiency = */
+  /*     parser_get_param_float(params, "EAGLEFeedback:SNIa_efficiency"); */
 
   /* Set the delay time before SNII occur */
   const float Gyr_in_cgs = 1e9 * 365 * 24 * 3600;
@@ -666,35 +762,42 @@ void feedback_props_init(struct feedback_props* fp,
       parser_get_param_float(params, "EAGLEFeedback:SNII_wind_delay_Gyr") *
       Gyr_in_cgs / units_cgs_conversion_factor(us, UNIT_CONV_TIME);
 
+  message("Wind delay: %e", fp->SNII_wind_delay);
+
   /* Read the temperature change to use in stochastic heating */
   fp->SNe_deltaT_desired =
-      parser_get_param_float(params, "EAGLEFeedback:SNe_heating_temperature_K");
+      parser_get_param_float(params, "EAGLEFeedback:SNII_delta_T_K");
   fp->SNe_deltaT_desired /=
       units_cgs_conversion_factor(us, UNIT_CONV_TEMPERATURE);
+
+  /* Energy released by supernova type II */
+  fp->E_SNII_cgs =
+      parser_get_param_double(params, "EAGLEFeedback:SNII_Energy_erg");
+  fp->E_SNII =
+      fp->E_SNII_cgs / units_cgs_conversion_factor(us, UNIT_CONV_ENERGY);
+
+  /* Gather common conversion factors */
+
+  /* Calculate internal mass to solar mass conversion factor */
+  const double Msun_cgs = phys_const->const_solar_mass *
+                          units_cgs_conversion_factor(us, UNIT_CONV_MASS);
+  const double unit_mass_cgs = units_cgs_conversion_factor(us, UNIT_CONV_MASS);
+  fp->mass_to_solar_mass = unit_mass_cgs / Msun_cgs;
+
+  /* Calculate temperature to internal energy conversion factor (all internal
+   * units) */
+  const double k_B = phys_const->const_boltzmann_k;
+  const double m_p = phys_const->const_proton_mass;
+  const double mu = hydro_props->mu_ionised;
+  fp->temp_to_u_factor = k_B / (mu * hydro_gamma_minus_one * m_p);
+
+  // MATTHIEU up to here
 
   /* Set ejecta thermal energy */
   const float ejecta_velocity =
       1.0e6 / units_cgs_conversion_factor(
                   us, UNIT_CONV_SPEED);  // EAGLE parameter is 10 km/s
   fp->ejecta_specific_thermal_energy = 0.5 * ejecta_velocity * ejecta_velocity;
-
-  /* Energy released by supernova */
-  fp->total_energy_SNe =
-      1.0e51 / units_cgs_conversion_factor(us, UNIT_CONV_ENERGY);
-
-  /* Calculate temperature to internal energy conversion factor */
-  fp->temp_to_u_factor =
-      phys_const->const_boltzmann_k /
-      (hydro_props->mu_ionised *
-       (hydro_gamma_minus_one)*phys_const->const_proton_mass);
-
-  /* Read birth time to set all stars in ICs to (defaults to -1 to indicate star
-   * present in ICs) */
-  fp->spart_first_init_birth_time = parser_get_opt_param_float(
-      params, "EAGLEFeedback:birth_time_override", -1);
-
-  /* Copy over solar mass */
-  fp->const_solar_mass = phys_const->const_solar_mass;
 
   /* Set number of elements found in yield tables */
   fp->lifetimes.n_mass = 30;
@@ -745,12 +848,13 @@ void feedback_props_init(struct feedback_props* fp,
    * mass bins used in IMF  */
   compute_ejecta(fp);
 
-  /* Calculate number of type II SN per solar mass
-   * Note: since we are integrating the IMF without weighting it by the yields
-   * pass NULL pointer for stellar_yields array */
-  fp->num_SNII_per_msun = integrate_imf(fp->log10_SNII_min_mass_msun,
-                                        fp->log10_SNII_max_mass_msun, 0,
-                                        /*(stellar_yields=)*/ NULL, fp);
+  /* Calculate number of type II SN per unit solar mass based on our choice
+   * of IMF and integration limits for type II SNe.
+   * Note: No weighting by yields here. */
+  fp->num_SNII_per_msun =
+      integrate_imf(fp->log10_SNII_min_mass_msun, fp->log10_SNII_max_mass_msun,
+                    eagle_imf_integration_no_weight,
+                    /*(stellar_yields=)*/ NULL, fp);
 
   message("initialized stellar feedback");
 }

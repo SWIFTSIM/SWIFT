@@ -1,6 +1,6 @@
 # Define the system of units to use internally.
 InternalUnitSystem:
-  UnitMass_in_cgs:     1.9891E43   # 10^10 solar masses 
+  UnitMass_in_cgs:     1.98848e43    # 10^10 M_sun in grams
   UnitLength_in_cgs:   3.08567758E21   # 1 kpc 
   UnitVelocity_in_cgs: 1E5   # km/s
   UnitCurrent_in_cgs:  1   # Amperes
@@ -45,6 +45,7 @@ SPH:
   CFL_condition:         0.1      # Courant-Friedrich-Levy condition for time integration.
   h_min_ratio:           0.1      # Minimal smoothing in units of softening.
   h_max:                 10.
+  minimal_temperature:   100.
 
 # Standard EAGLE cooling options
 EAGLECooling:
@@ -110,10 +111,7 @@ EAGLEEntropyFloor:
   Cool_gamma_effective:           1.         # Slope the of the EAGLE Cool limiter entropy floor
 
 EAGLEFeedback:
-  filename:     ./yieldtables/
-  imf_model:    Chabrier
-  continuous_heating_switch: 0
-  SNIa_timescale_Gyr:        2.0
-  SNIa_efficiency:           2.e-3
-  SNII_wind_delay_Gyr:       0.03
-  SNe_heating_temperature_K: 3.16228e7
+  filename:                    ./yieldtables/
+  SNII_wind_delay_Gyr:   0.0001
+  SNII_delta_T_K:        3.16228e7
+  SNII_Energy_erg:       1.0e51

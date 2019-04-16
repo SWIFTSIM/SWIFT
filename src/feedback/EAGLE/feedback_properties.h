@@ -73,23 +73,8 @@ struct lifetime_table {
 
 struct feedback_props {
 
-  /* Flag to switch between continuous and stochastic heating */
-  int continuous_heating;
-
-  /* Desired temperature increase due to supernovae */
-  float SNe_deltaT_desired;
-
-  /* Conversion factor from temperature to internal energy */
-  float temp_to_u_factor;
-
-  /* Energy released by one supernova */
-  float total_energy_SNe;
-
   /* Kinetic energy of SN ejecta per unit mass (check name with Richard)*/
   float ejecta_specific_thermal_energy;
-
-  /* Solar mass */
-  float const_solar_mass;
 
   /* Yield tables for AGB and SNII  */
   struct yield_table yield_AGB;
@@ -120,7 +105,21 @@ struct feedback_props {
   /* Array of mass bins for yield calculations */
   double *yield_mass_bins;
 
-  /* Parameters for IMF  */
+  /* Table of lifetime values */
+  struct lifetime_table lifetimes;
+
+  /* Location of yield tables */
+  char yield_table_path[200];
+
+  /* ------------- Conversion factors --------------- */
+
+  /*! Conversion factor from internal mass unit to solar mass */
+  double mass_to_solar_mass;
+
+  /*! Conversion factor from temperature to internal energy */
+  float temp_to_u_factor;
+
+  /* ------------- Parameters for IMF --------------- */
 
   /*! Array to store calculated IMF */
   float *imf;
@@ -137,17 +136,22 @@ struct feedback_props {
   float log10_imf_min_mass_msun;
   float log10_imf_max_mass_msun;
 
-  /* Table of lifetime values */
-  struct lifetime_table lifetimes;
+  /* ------------ SNe feedback properties ------------ */
 
-  /* Location of yield tables */
-  char yield_table_path[200];
-
-  /* number of type II supernovae per solar mass */
+  /*! Number of type II supernovae per solar mass */
   float num_SNII_per_msun;
 
-  /* wind delay time for SNII */
+  /*! Wind delay time for SNII */
   float SNII_wind_delay;
+
+  /*! Temperature increase induced by SNe feedback */
+  float SNe_deltaT_desired;
+
+  /* Energy released by one supernova type II in cgs units */
+  double E_SNII_cgs;
+
+  /* Energy released by one supernova type II in internal units */
+  float E_SNII;
 };
 
 void feedback_props_init(struct feedback_props *fp,

@@ -53,6 +53,7 @@
 #include "drift.h"
 #include "engine.h"
 #include "error.h"
+#include "feedback.h"
 #include "gravity.h"
 #include "hydro.h"
 #include "hydro_properties.h"
@@ -4366,6 +4367,7 @@ void cell_drift_spart(struct cell *c, const struct engine *e, int force) {
       /* Get ready for a density calculation */
       if (spart_is_active(sp, e)) {
         stars_init_spart(sp);
+        feedback_init_spart(sp);
       }
     }
 

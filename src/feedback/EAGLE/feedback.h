@@ -20,6 +20,7 @@
 #define SWIFT_FEEDBACK_EAGLE_H
 
 #include "cosmology.h"
+#include "error.h"
 #include "feedback_properties.h"
 #include "hydro_properties.h"
 #include "part.h"
@@ -94,8 +95,11 @@ __attribute__((always_inline)) INLINE static void feedback_prepare_spart(
   /* Zero the energy to inject */
   sp->feedback_data.to_distribute.d_energy = 0.f;
 
-  /* Zero the feedback probability */
-  sp->feedback_data.to_distribute.heating_probability = 0.f;
+  /* Zero the SNII feedback probability */
+  sp->feedback_data.to_distribute.SNII_heating_probability = 0.f;
+
+  /* Zero the SNII feedback energy */
+  sp->feedback_data.to_distribute.SNII_delta_u = 0.f;
 }
 
 /**

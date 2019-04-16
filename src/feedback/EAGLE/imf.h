@@ -193,7 +193,7 @@ inline static float integrate_imf(const float log10_min_mass,
  * table.
  *
  * @param star_properties #stars_props data structure */
-inline static void init_imf(struct feedback_props *restrict feedback_props) {
+inline static void init_imf(struct feedback_props *feedback_props) {
 
   /* Define max and min imf masses */
   feedback_props->imf_max_mass_msun = 100.f;
@@ -279,6 +279,8 @@ inline static void init_imf(struct feedback_props *restrict feedback_props) {
 inline static float dying_mass_msun(
     const float age_Gyr, const float Z,
     const struct feedback_props *feedback_props) {
+
+  // MATTHIEU check this!!!
 
   /* Pull out some common terms */
   const double *lifetime_Z = feedback_props->lifetimes.metallicity;
