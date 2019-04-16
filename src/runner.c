@@ -205,19 +205,6 @@ void runner_do_stars_ghost(struct runner *r, struct cell *c, int timer) {
         /* Get a direct pointer on the part. */
         struct spart *sp = &sparts[sid[i]];
 
-        const integertime_t ti_step = get_integer_timestep(sp->time_bin);
-        const integertime_t ti_begin =
-            get_integer_time_begin(e->ti_current - 1, sp->time_bin);
-
-        /* Get particle time-step */
-        double dt;
-        if (with_cosmology) {
-          dt = cosmology_get_delta_time(e->cosmology, ti_begin,
-                                        ti_begin + ti_step);
-        } else {
-          dt = get_timestep(sp->time_bin, e->time_base);
-        }
-
 #ifdef SWIFT_DEBUG_CHECKS
         /* Is this part within the timestep? */
         if (!spart_is_active(sp, e))
@@ -375,17 +362,42 @@ void runner_do_stars_ghost(struct runner *r, struct cell *c, int timer) {
         /* Only do feedback if stars have a reasonable birth time */
         if (sp->birth_time != -1.) {
 
-          /* Calculate age of the star */
-          double star_age;
+          const integertime_t ti_step = get_integer_timestep(sp->time_bin);
+          const integertime_t ti_begin =
+              get_integer_time_begin(e->ti_current - 1, sp->time_bin);
+
+          /* Get particle time-step */
+          double dt;
           if (with_cosmology) {
-            star_age = cosmology_get_delta_time_from_scale_factors(
-                cosmo, sp->birth_scale_factor, (float)cosmo->a);
+            dt = cosmology_get_delta_time(e->cosmology, ti_begin,
+                                          ti_begin + ti_step);
           } else {
-            star_age = e->time - sp->birth_time;
+            dt = get_timestep(sp->time_bin, e->time_base);
           }
 
-          /* Compute the stellar evolution  */
-          feedback_evolve_spart(sp, feedback_props, cosmo, us, star_age, dt);
+          /* Calculate age of the star at current time */
+          double star_age_end_of_step;
+          if (with_cosmology) {
+            star_age_end_of_step = cosmology_get_delta_time_from_scale_factors(
+                cosmo, sp->birth_scale_factor, (float)cosmo->a);
+          } else {
+            star_age_end_of_step = e->time - sp->birth_time;
+          }
+
+          /* Reset the feedback fields of the star particle */
+          feedback_prepare_spart(sp, feedback_props);
+
+          /* Has this star been around for a while ? */
+          if (star_age_end_of_step > 0.) {
+
+            /* Age of the star at the start of the step */
+            const double star_age_beg_of_step =
+                max(star_age_end_of_step - dt, 0.);
+
+            /* Compute the stellar evolution  */
+            feedback_evolve_spart(sp, feedback_props, cosmo, us,
+                                  star_age_beg_of_step, dt);
+          }
         }
       }
 

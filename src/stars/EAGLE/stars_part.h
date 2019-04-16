@@ -156,6 +156,9 @@ struct stars_props {
 
   /*! Maximal change of h over one time-step */
   float log_max_h_change;
+
+  /*! Value to set birth time of stars read from ICs */
+  float spart_first_init_birth_time;
 };
 
 #endif /* SWIFT_EAGLE_STAR_PART_H */

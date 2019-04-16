@@ -56,9 +56,6 @@ __attribute__((always_inline)) INLINE static void feedback_init_spart(
 __attribute__((always_inline)) INLINE static void feedback_first_init_spart(
     struct spart* sp, const struct feedback_props* feedback_props) {
 
-  sp->birth_density = -1.f;
-  sp->birth_time = feedback_props->spart_first_init_birth_time;
-
   feedback_init_spart(sp);
 }
 
@@ -74,8 +71,31 @@ __attribute__((always_inline)) INLINE static void feedback_first_init_spart(
 __attribute__((always_inline)) INLINE static void feedback_prepare_spart(
     struct spart* sp, const struct feedback_props* feedback_props) {
 
-  /* Zero all the output */
-  bzero(&sp->feedback_data, sizeof(struct feedback_spart_data));
+  /* Zero the amount of mass that is distributed */
+  sp->feedback_data.to_distribute.mass = 0.f;
+
+  /* Zero the number of SN */
+  sp->feedback_data.to_distribute.num_SNIa = 0.f;
+  sp->feedback_data.to_distribute.num_SNII = 0.f;
+  sp->feedback_data.to_distribute.num_SNe = 0.f;
+
+  /* Zero the enrichment quantities */
+  for (int i = 0; i < chemistry_element_count; i++)
+    sp->feedback_data.to_distribute.metal_mass[i] = 0.f;
+  sp->feedback_data.to_distribute.total_metal_mass = 0.f;
+  sp->feedback_data.to_distribute.mass_from_AGB = 0.f;
+  sp->feedback_data.to_distribute.metal_mass_from_AGB = 0.f;
+  sp->feedback_data.to_distribute.mass_from_SNII = 0.f;
+  sp->feedback_data.to_distribute.metal_mass_from_SNII = 0.f;
+  sp->feedback_data.to_distribute.mass_from_SNIa = 0.f;
+  sp->feedback_data.to_distribute.metal_mass_from_SNIa = 0.f;
+  sp->feedback_data.to_distribute.Fe_mass_from_SNIa = 0.f;
+
+  /* Zero the energy to inject */
+  sp->feedback_data.to_distribute.d_energy = 0.f;
+
+  /* Zero the feedback probability */
+  sp->feedback_data.to_distribute.heating_probability = 0.f;
 }
 
 /**
@@ -85,34 +105,22 @@ __attribute__((always_inline)) INLINE static void feedback_prepare_spart(
  * this information to a different MPI rank.
  *
  * @param sp The particle to act upon
+ * @param feedback_propss The #feedback_props structure.
  * @param cosmo The current cosmological model.
- * @param stars_properties The #stars_props
+ * @param us The unit system.
+ * @param star_age_beg_step The age of the star at the star of the time-step in
+ * internal units.
+ * @param dt The time-step size of this star in internal units.
  */
 __attribute__((always_inline)) INLINE static void feedback_evolve_spart(
     struct spart* restrict sp, const struct feedback_props* feedback_props,
     const struct cosmology* cosmo, const struct unit_system* us,
-    double star_age, double dt) {
-
-  /* Zero the number of SN and amount of mass that is distributed */
-  sp->feedback_data.to_distribute.num_SNIa = 0;
-  sp->feedback_data.to_distribute.num_SNII = 0;
-  sp->feedback_data.to_distribute.mass = 0;
-
-  /* Zero the enrichment quantities */
-  for (int i = 0; i < chemistry_element_count; i++)
-    sp->feedback_data.to_distribute.metal_mass[i] = 0;
-  sp->feedback_data.to_distribute.total_metal_mass = 0;
-  sp->feedback_data.to_distribute.mass_from_AGB = 0;
-  sp->feedback_data.to_distribute.metal_mass_from_AGB = 0;
-  sp->feedback_data.to_distribute.mass_from_SNII = 0;
-  sp->feedback_data.to_distribute.metal_mass_from_SNII = 0;
-  sp->feedback_data.to_distribute.mass_from_SNIa = 0;
-  sp->feedback_data.to_distribute.metal_mass_from_SNIa = 0;
-  sp->feedback_data.to_distribute.Fe_mass_from_SNIa = 0;
+    const double star_age_beg_step, const double dt) {
 
   /* Compute amount of enrichment and feedback that needs to be done in this
    * step */
-  compute_stellar_evolution(feedback_props, cosmo, sp, us, star_age, dt);
+  compute_stellar_evolution(feedback_props, cosmo, sp, us, star_age_beg_step,
+                            dt);
 
   /* Decrease star mass by amount of mass distributed to gas neighbours */
   sp->mass -= sp->feedback_data.to_distribute.mass;

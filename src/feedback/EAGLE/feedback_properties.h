@@ -148,9 +148,6 @@ struct feedback_props {
 
   /* wind delay time for SNII */
   float SNII_wind_delay;
-
-  /* Value to set birth time of stars read from ICs */
-  float spart_first_init_birth_time;
 };
 
 void feedback_props_init(struct feedback_props *fp,
