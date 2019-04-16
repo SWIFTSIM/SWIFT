@@ -62,8 +62,9 @@ runner_iact_nonsym_feedback_density(float r2, const float *dx, float hi,
    * which determines how much mass to distribute to neighbouring
    * gas particles */
 
-  // const float rho = hydro_get_comoving_density(pj);
-  // si->feedback_data.density_weighted_frac_normalisation_inv += wi / rho;
+  const float rho = hydro_get_comoving_density(pj);
+  if (rho != 0.f)
+    si->feedback_data.density_weighted_frac_normalisation_inv += wi / rho;
 }
 
 /**
@@ -100,47 +101,42 @@ runner_iact_nonsym_feedback_apply(
   float wi;
   kernel_eval(ui, &wi);
 
-  /* /\* Compute weighting for distributing feedback quantities *\/ */
-  /* float density_weighted_frac; */
-  /* float rho = hydro_get_comoving_density(pj); */
-  /* if (rho * si->feedback_data.density_weighted_frac_normalisation_inv != 0) {
-   */
-  /*   density_weighted_frac = */
-  /*       wi / (rho *
-   * si->feedback_data.density_weighted_frac_normalisation_inv); */
-  /* } else { */
-  /*   density_weighted_frac = 0.f; */
-  /* } */
+  /* Compute weighting for distributing feedback quantities */
+  float density_weighted_frac;
+  float rho = hydro_get_comoving_density(pj);
+  if (rho * si->feedback_data.density_weighted_frac_normalisation_inv != 0) {
+    density_weighted_frac =
+        wi / (rho * si->feedback_data.density_weighted_frac_normalisation_inv);
+  } else {
+    density_weighted_frac = 0.f;
+  }
 
-  /* /\* Update particle mass *\/ */
-  /* const float current_mass = hydro_get_mass(pj); */
-  /* const float new_mass = current_mass + si->feedback_data.to_distribute.mass
-   * * */
-  /*                                           density_weighted_frac; */
+  /* Update particle mass */
+  const float current_mass = hydro_get_mass(pj);
+  const float delta_mass =
+      si->feedback_data.to_distribute.mass * density_weighted_frac;
+  const float new_mass = current_mass + delta_mass;
 
-  /* hydro_set_mass(pj, new_mass); */
+  hydro_set_mass(pj, new_mass);
 
-  /* /\* Update total metallicity *\/ */
-  /* const float current_metal_mass_total = */
-  /*     pj->chemistry_data.metal_mass_fraction_total * current_mass; */
-  /* const float new_metal_mass_total = */
-  /*     current_metal_mass_total + */
-  /*     si->feedback_data.to_distribute.total_metal_mass *
-   * density_weighted_frac; */
-  /* pj->chemistry_data.metal_mass_fraction_total = */
-  /*     new_metal_mass_total / new_mass; */
+  /* Update total metallicity */
+  const float current_metal_mass_total =
+      pj->chemistry_data.metal_mass_fraction_total * current_mass;
+  const float new_metal_mass_total =
+      current_metal_mass_total +
+      si->feedback_data.to_distribute.total_metal_mass * density_weighted_frac;
+  pj->chemistry_data.metal_mass_fraction_total =
+      new_metal_mass_total / new_mass;
 
-  /* /\* Update mass fraction of each tracked element  *\/ */
-  /* for (int elem = 0; elem < chemistry_element_count; elem++) { */
-  /*   const float current_metal_mass = */
-  /*       pj->chemistry_data.metal_mass_fraction[elem] * current_mass; */
-  /*   const float new_metal_mass = */
-  /*       current_metal_mass + si->feedback_data.to_distribute.metal_mass[elem]
-   * * */
-  /*                                density_weighted_frac; */
-  /*   pj->chemistry_data.metal_mass_fraction[elem] = new_metal_mass / new_mass;
-   */
-  /* } */
+  /* Update mass fraction of each tracked element  */
+  for (int elem = 0; elem < chemistry_element_count; elem++) {
+    const float current_metal_mass =
+        pj->chemistry_data.metal_mass_fraction[elem] * current_mass;
+    const float new_metal_mass =
+        current_metal_mass + si->feedback_data.to_distribute.metal_mass[elem] *
+                                 density_weighted_frac;
+    pj->chemistry_data.metal_mass_fraction[elem] = new_metal_mass / new_mass;
+  }
 
   /* /\* Update iron mass fraction from SNIa  *\/ */
   /* const float current_iron_from_SNIa_mass = */

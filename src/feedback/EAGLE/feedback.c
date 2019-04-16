@@ -82,7 +82,9 @@ double eagle_feedback_energy_fraction(const struct spart* sp,
 
   /* Physical density of the gas at the star's birth time */
   const double rho_birth = sp->birth_density;
-  const double n_birth = rho_birth * props->rho_to_n_cgs;
+  double n_birth = rho_birth * props->rho_to_n_cgs;
+
+  n_birth = max(n_birth, 0.01);
 
   /* Calculate f_E */
   const double Z_term = pow(max(Z_smooth, 1e-6) / Z_0, n_Z);
@@ -159,61 +161,54 @@ inline static void compute_SNe_feedback(
 }
 
 /**
- * @brief determine which metallicity bin star belongs to for AGB, compute bin
- * indices and offsets
+ * @brief Find the bins and offset along the metallicity dimension of the
+ * AGB yields table.
  *
- * @param iz_low Pointer to index of metallicity bin to which the star belongs
- * (to be calculated in this function)
- * @param iz_high Pointer to index of metallicity bin to above the star's
- * metallicity (to be calculated in this function)
- * @param dz metallicity bin offset
- * @param log10_metallicity log10 of star metallicity
- * @param star_properties stars_props data structure
+ * @param iz_low (return) Lower index along the metallicity dimension.
+ * @param iz_high (return) High index along the metallicity dimension.
+ * @param dz (return) Offset between the metallicity bin and Z.
+ * @param log10_Z log10 of the star metallicity (metal mass fraction).
+ * @param props The properties of the feedback model.
  */
-inline static void determine_bin_yield_AGB(
-    int* iz_low, int* iz_high, float* dz, float log10_metallicity,
-    const struct feedback_props* feedback_props) {
+inline static void determine_bin_yield_AGB(int* iz_low, int* iz_high, float* dz,
+                                           const float log10_Z,
+                                           const struct feedback_props* props) {
 
-  // MATTHIEU
+  const double* AGB_Z = props->yield_AGB.metallicity;
+  const int N_bins = eagle_feedback_AGB_N_metals;
 
-  /* if (log10_metallicity > log10_min_metallicity) { */
-  /*   /\* Find metallicity bin which contains the star's metallicity *\/ */
-  /*   int j; */
-  /*   for (j = 0; j < star_properties->feedback.AGB_n_z - 1 && */
-  /*               log10_metallicity > */
-  /*                   star_properties->feedback.yield_AGB.metallicity[j + 1];
-   */
-  /*        j++) */
-  /*     ; */
-  /*   *iz_low = j; */
-  /*   *iz_high = *iz_low + 1; */
+  if (log10_Z > log10_min_metallicity) {
 
-  /*   /\* Compute offset *\/ */
-  /*   if (log10_metallicity >= */
-  /*           star_properties->feedback.yield_AGB.metallicity[0] && */
-  /*       log10_metallicity <= */
-  /*           star_properties->feedback.yield_AGB */
-  /*               .metallicity[star_properties->feedback.AGB_n_z - 1]) */
-  /*     *dz = log10_metallicity - */
-  /*           star_properties->feedback.yield_AGB.metallicity[*iz_low]; */
-  /*   else */
-  /*     *dz = 0; */
+    /* Find metallicity bin which contains the star's metallicity */
+    int j;
+    for (j = 0; j < (N_bins - 1) && log10_Z > AGB_Z[j + 1]; j++)
+      ;
 
-  /*   /\* Normalize offset *\/ */
-  /*   float deltaz = star_properties->feedback.yield_AGB.metallicity[*iz_high]
-   * - */
-  /*                  star_properties->feedback.yield_AGB.metallicity[*iz_low];
-   */
+    /* Store the indices */
+    *iz_low = j;
+    *iz_high = *iz_low + 1;
 
-  /*   if (deltaz > 0) */
-  /*     *dz /= deltaz; */
-  /*   else */
-  /*     dz = 0; */
-  /* } else { */
-  /*   *iz_low = 0; */
-  /*   *iz_high = 0; */
-  /*   *dz = 0; */
-  /* } */
+    /* Compute offset */
+    if ((log10_Z >= AGB_Z[0]) && (log10_Z <= AGB_Z[N_bins - 1])) {
+
+      *dz = log10_Z - AGB_Z[*iz_low];
+    } else {
+      *dz = 0.f;
+    }
+
+    /* Normalize offset */
+    const float delta_Z = AGB_Z[*iz_high] - AGB_Z[*iz_low];
+
+    if (delta_Z > 0.f)
+      *dz /= delta_Z;
+    else
+      *dz = 0.f;
+
+  } else {
+    *iz_low = 0;
+    *iz_high = 0;
+    *dz = 0.f;
+  }
 }
 
 /**
@@ -640,6 +635,7 @@ inline static void evolve_AGB(
 
   /* normalize the yields */
   if (mass_released > 0) {
+
     /* Set normalisation factor. Note additional multiplication by the stellar
      * initial mass as tables are per initial mass */
     const float norm_factor = sp->mass_init * mass_ejected / mass_released;
@@ -675,7 +671,7 @@ void compute_stellar_evolution(const struct feedback_props* feedback_props,
                                const float dt) {
 
   /* Allocate temporary array for calculating imf weights */
-  // float stellar_yields[eagle_feedback_N_imf_bins];
+  float stellar_yields[eagle_feedback_N_imf_bins];
 
   /* Convert dt and stellar age from internal units to Gyr. */
   const double Gyr_in_cgs = 1e9 * 365. * 24. * 3600.;
@@ -704,14 +700,16 @@ void compute_stellar_evolution(const struct feedback_props* feedback_props,
     error("min dying mass is greater than max dying mass");
 #endif
 
+  message("min mass=%f max mass=%f", min_dying_mass_Msun, max_dying_mass_Msun);
+
   /* Integration interval is zero - this can happen if minimum and maximum
    * dying masses are above imf_max_mass_Msun. Return without doing any
    * feedback. */
   if (min_dying_mass_Msun == max_dying_mass_Msun) return;
 
   /* Life is better in log */
-  /* const float log10_max_dying_mass_Msun = log10f(max_dying_mass_Msun); */
-  /* const float log10_min_dying_mass_Msun = log10f(min_dying_mass_Msun); */
+  const float log10_max_dying_mass_Msun = log10f(max_dying_mass_Msun);
+  const float log10_min_dying_mass_Msun = log10f(min_dying_mass_Msun);
 
   /* /\* Compute elements, energy and momentum to distribute from the */
   /*  *  three channels SNIa, SNII, AGB *\/ */
@@ -719,14 +717,14 @@ void compute_stellar_evolution(const struct feedback_props* feedback_props,
   /*             feedback_props, sp, star_age_Gyr, dt_Gyr); */
   /* evolve_SNII(log10_min_dying_mass_Msun, log10_max_dying_mass_Msun, */
   /*             stellar_yields, feedback_props, sp); */
-  /* evolve_AGB(log10_min_dying_mass_Msun, log10_max_dying_mass_Msun, */
-  /*            stellar_yields, feedback_props, sp); */
+  evolve_AGB(log10_min_dying_mass_Msun, log10_max_dying_mass_Msun,
+             stellar_yields, feedback_props, sp);
 
-  /* /\* Compute the total mass to distribute (H + He  metals) *\/ */
-  /* sp->feedback_data.to_distribute.mass = */
-  /*     sp->feedback_data.to_distribute.total_metal_mass + */
-  /*     sp->feedback_data.to_distribute.metal_mass[chemistry_element_H] + */
-  /*     sp->feedback_data.to_distribute.metal_mass[chemistry_element_He]; */
+  /* Compute the total mass to distribute (H + He  metals) */
+  sp->feedback_data.to_distribute.mass =
+      sp->feedback_data.to_distribute.total_metal_mass +
+      sp->feedback_data.to_distribute.metal_mass[chemistry_element_H] +
+      sp->feedback_data.to_distribute.metal_mass[chemistry_element_He];
 
   /* /\* Compute energy change due to thermal and kinetic energy of ejecta *\/
    */
