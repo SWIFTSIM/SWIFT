@@ -98,8 +98,6 @@ struct feedback_props {
   char **AGB_element_names;
 
   /* log10 of max and min allowable masses for SNII and SNIa in msun */
-  float log10_SNII_min_mass_msun;
-  float log10_SNII_max_mass_msun;
   float log10_SNIa_max_mass_msun;
 
   /* Array of mass bins for yield calculations */
@@ -130,13 +128,29 @@ struct feedback_props {
   /*! Arrays to store IMF mass bins (log10)*/
   float *imf_mass_bin_log10;
 
-  /* Number of IMF mass bins, maximum and minimum bins */
-  float imf_max_mass_msun;
+  /*! Minimal stellar mass considered by the IMF (in solar masses) */
   float imf_min_mass_msun;
+
+  /*! Maximal stellar mass considered by the IMF (in solar masses) */
+  float imf_max_mass_msun;
+
+  /*! Log 10 of the minimal stellar mass considered by the IMF (in solar masses)
+   */
   float log10_imf_min_mass_msun;
+
+  /*! Log 10 of the maximal stellar mass considered by the IMF (in solar masses)
+   */
   float log10_imf_max_mass_msun;
 
   /* ------------ SNe feedback properties ------------ */
+
+  /*! Log 10 of the minimal stellar mass considered for SNII feedback (in solar
+   * masses) */
+  float log10_SNII_min_mass_msun;
+
+  /*! Log 10 of the maximal stellar mass considered for SNII feedback (in solar
+   * masses) */
+  float log10_SNII_max_mass_msun;
 
   /*! Number of type II supernovae per solar mass */
   float num_SNII_per_msun;

@@ -195,14 +195,6 @@ inline static float integrate_imf(const float log10_min_mass,
  * @param star_properties #stars_props data structure */
 inline static void init_imf(struct feedback_props *feedback_props) {
 
-  /* Define max and min imf masses */
-  feedback_props->imf_max_mass_msun = 100.f;
-  feedback_props->imf_min_mass_msun = 0.1;
-  feedback_props->log10_imf_max_mass_msun =
-      log10(feedback_props->imf_max_mass_msun);
-  feedback_props->log10_imf_min_mass_msun =
-      log10(feedback_props->imf_min_mass_msun);
-
   /* Compute size of mass bins in log10 space */
   const double imf_log10_mass_bin_size =
       (feedback_props->log10_imf_max_mass_msun -

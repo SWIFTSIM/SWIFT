@@ -112,6 +112,10 @@ EAGLEEntropyFloor:
 
 EAGLEFeedback:
   filename:                    ./yieldtables/
-  SNII_wind_delay_Gyr:   0.0001
-  SNII_delta_T_K:        3.16228e7
-  SNII_Energy_erg:       1.0e51
+  IMF_max_mass_Msun:         0.1
+  IMF_max_mass_Msun:       100.0
+  SNII_min_mass_Msun:        6.0
+  SNII_max_mass_Msun:      100.0
+  SNII_wind_delay_Gyr:     0.0001
+  SNII_delta_T_K:          3.16228e7
+  SNII_Energy_erg:         1.0e51

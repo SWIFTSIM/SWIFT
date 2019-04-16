@@ -748,21 +748,24 @@ void feedback_props_init(struct feedback_props* fp,
                          const struct hydro_props* hydro_props,
                          const struct cosmology* cosmo) {
 
-  /* /\* Read SNIa timscale *\/ */
-  /* fp->SNIa_timescale_Gyr = */
-  /*     parser_get_param_float(params, "EAGLEFeedback:SNIa_timescale_Gyr"); */
+  /* Properties of the IMF model */
 
-  /* /\* Read the efficiency of producing SNIa *\/ */
-  /* fp->SNIa_efficiency = */
-  /*     parser_get_param_float(params, "EAGLEFeedback:SNIa_efficiency"); */
+  /* Minimal and maximal mass considered */
+  fp->imf_max_mass_msun =
+      parser_get_param_double(params, "EAGLEFeedback:IMF_max_mass_Msun");
+  fp->imf_min_mass_msun =
+      parser_get_param_double(params, "EAGLEFeedback:IMF_min_mass_Msun");
+
+  fp->log10_imf_max_mass_msun = log10(fp->imf_max_mass_msun);
+  fp->log10_imf_min_mass_msun = log10(fp->imf_min_mass_msun);
+
+  /* Properties of the SNII energy feedback model */
 
   /* Set the delay time before SNII occur */
   const float Gyr_in_cgs = 1e9 * 365 * 24 * 3600;
   fp->SNII_wind_delay =
       parser_get_param_float(params, "EAGLEFeedback:SNII_wind_delay_Gyr") *
       Gyr_in_cgs / units_cgs_conversion_factor(us, UNIT_CONV_TIME);
-
-  message("Wind delay: %e", fp->SNII_wind_delay);
 
   /* Read the temperature change to use in stochastic heating */
   fp->SNe_deltaT_desired =
@@ -775,6 +778,15 @@ void feedback_props_init(struct feedback_props* fp,
       parser_get_param_double(params, "EAGLEFeedback:SNII_Energy_erg");
   fp->E_SNII =
       fp->E_SNII_cgs / units_cgs_conversion_factor(us, UNIT_CONV_ENERGY);
+
+  /* Stellar mass limits for SNII feedback */
+  const double SNII_min_mass_msun =
+      parser_get_param_double(params, "EAGLEFeedback:SNII_min_mass_Msun");
+  const double SNII_max_mass_msun =
+      parser_get_param_double(params, "EAGLEFeedback:SNII_max_mass_Msun");
+
+  fp->log10_SNII_min_mass_msun = log10(SNII_min_mass_msun);
+  fp->log10_SNII_max_mass_msun = log10(SNII_max_mass_msun);
 
   /* Gather common conversion factors */
 
@@ -793,6 +805,14 @@ void feedback_props_init(struct feedback_props* fp,
 
   // MATTHIEU up to here
 
+  /* /\* Read SNIa timscale *\/ */
+  /* fp->SNIa_timescale_Gyr = */
+  /*     parser_get_param_float(params, "EAGLEFeedback:SNIa_timescale_Gyr"); */
+
+  /* /\* Read the efficiency of producing SNIa *\/ */
+  /* fp->SNIa_efficiency = */
+  /*     parser_get_param_float(params, "EAGLEFeedback:SNIa_efficiency"); */
+
   /* Set ejecta thermal energy */
   const float ejecta_velocity =
       1.0e6 / units_cgs_conversion_factor(
@@ -804,8 +824,6 @@ void feedback_props_init(struct feedback_props* fp,
   fp->lifetimes.n_z = 6;
 
   /* Set bounds for imf  */
-  fp->log10_SNII_min_mass_msun = 0.77815125f;  // log10(6).
-  fp->log10_SNII_max_mass_msun = 2.f;          // log10(100).
   fp->log10_SNIa_max_mass_msun = 0.90308999f;  // log10(8).
 
   /* Yield table filepath  */
