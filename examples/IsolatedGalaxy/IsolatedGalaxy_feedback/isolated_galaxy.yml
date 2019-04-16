@@ -56,18 +56,18 @@ EAGLECooling:
   He_reion_z_sigma:        0.5               # Spread in redshift of the  Helium re-ionization Gaussian
   He_reion_eV_p_H:         2.0               # Energy inject by Helium re-ionization in electron-volt per Hydrogen atom
 
-# Primordial abundances
+# Use solar abundances
 EAGLEChemistry:
-  init_abundance_metal:     0.0129          # Inital fraction of particle mass in *all* metals
-  init_abundance_Hydrogen:  0.7065       # Inital fraction of particle mass in Hydrogen
-  init_abundance_Helium:    0.2806        # Inital fraction of particle mass in Helium
-  init_abundance_Carbon:    0.00207        # Inital fraction of particle mass in Carbon
-  init_abundance_Nitrogen:  0.000836        # Inital fraction of particle mass in Nitrogen
-  init_abundance_Oxygen:    0.00549        # Inital fraction of particle mass in Oxygen
-  init_abundance_Neon:      0.00141        # Inital fraction of particle mass in Neon
-  init_abundance_Magnesium: 0.000591        # Inital fraction of particle mass in Magnesium
-  init_abundance_Silicon:   0.000683        # Inital fraction of particle mass in Silicon
-  init_abundance_Iron:      0.0011        # Inital fraction of particle mass in Iron
+  init_abundance_metal:     0.0129   
+  init_abundance_Hydrogen:  0.7065   
+  init_abundance_Helium:    0.2806   
+  init_abundance_Carbon:    0.00207  
+  init_abundance_Nitrogen:  0.000836 
+  init_abundance_Oxygen:    0.00549  
+  init_abundance_Neon:      0.00141  
+  init_abundance_Magnesium: 0.000591 
+  init_abundance_Silicon:   0.000683 
+  init_abundance_Iron:      0.0011   
 
 # Hernquist potential parameters
 HernquistPotential:
@@ -111,11 +111,17 @@ EAGLEEntropyFloor:
   Cool_gamma_effective:           1.         # Slope the of the EAGLE Cool limiter entropy floor
 
 EAGLEFeedback:
-  filename:                    ./yieldtables/
-  IMF_max_mass_Msun:         0.1
-  IMF_max_mass_Msun:       100.0
-  SNII_min_mass_Msun:        6.0
-  SNII_max_mass_Msun:      100.0
-  SNII_wind_delay_Gyr:     0.0001
-  SNII_delta_T_K:          3.16228e7
-  SNII_Energy_erg:         1.0e51
+  filename:                         ./yieldtables/
+  IMF_min_mass_Msun:                0.1
+  IMF_max_mass_Msun:              100.0
+  SNII_min_mass_Msun:               6.0
+  SNII_max_mass_Msun:             100.0
+  SNII_wind_delay_Gyr:              0.0003
+  SNII_delta_T_K:                   3.16228e7
+  SNII_Energy_erg:                  1.0e51       # Energy of one SNII explosion
+  SNII_Energy_fraction_min:         0.3
+  SNII_Energy_fraction_max:         3.0
+  SNII_Energy_fraction_Z_0:         0.0012663729 # Z_sun / 10
+  SNII_Energy_fraction_n_0_H_p_cm3: 0.67         # cm^-3
+  SNII_Energy_fraction_n_n:         0.8686       # 2/ln(10)
+  SNII_Energy_fraction_n_Z:         0.8686       # 2/ln(10)

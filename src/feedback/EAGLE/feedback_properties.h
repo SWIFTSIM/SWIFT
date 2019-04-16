@@ -114,6 +114,10 @@ struct feedback_props {
   /*! Conversion factor from internal mass unit to solar mass */
   double mass_to_solar_mass;
 
+  /*! Conversion factor from density in internal units to Hydrogen number
+   * density */
+  double rho_to_n_cgs;
+
   /*! Conversion factor from temperature to internal energy */
   float temp_to_u_factor;
 
@@ -161,11 +165,32 @@ struct feedback_props {
   /*! Temperature increase induced by SNe feedback */
   float SNe_deltaT_desired;
 
-  /* Energy released by one supernova type II in cgs units */
+  /*! Energy released by one supernova type II in cgs units */
   double E_SNII_cgs;
 
-  /* Energy released by one supernova type II in internal units */
+  /*! Energy released by one supernova type II in internal units */
   float E_SNII;
+
+  /*! Minimal energy fraction for supernova type II feedback */
+  double f_E_min;
+
+  /*! Maximal energy fraction for supernova type II feedback */
+  double f_E_max;
+
+  /*! Pivot point for the metallicity dependance of the feedback energy fraction
+   * model */
+  double Z_0;
+
+  /*! Pivot point for the density dependance of the feedback energy fraction
+   * model */
+  double n_0_cgs;
+
+  /*! Slope of the density dependance of the feedback energy fraction model */
+  double n_n;
+
+  /*! Slope of the metallicity dependance of the feedback energy fraction model
+   */
+  double n_Z;
 };
 
 void feedback_props_init(struct feedback_props *fp,
