@@ -750,12 +750,6 @@ int main(int argc, char *argv[]) {
     else
       bzero(&gravity_properties, sizeof(struct gravity_props));
 
-    /* Initialise the external potential properties */
-    bzero(&potential, sizeof(struct external_potential));
-    if (with_external_gravity)
-      potential_init(params, &prog_const, &us, &s, &potential);
-    if (myrank == 0) potential_print(&potential);
-
       /* Initialise the cooling function properties */
 #ifdef COOLING_NONE
     if (with_cooling || with_temperature) {
@@ -893,6 +887,12 @@ int main(int argc, char *argv[]) {
               clocks_getunit());
       fflush(stdout);
     }
+
+    /* Initialise the external potential properties */
+    bzero(&potential, sizeof(struct external_potential));
+    if (with_external_gravity)
+      potential_init(params, &prog_const, &us, &s, &potential);
+    if (myrank == 0) potential_print(&potential);
 
     /* Initialise the long-range gravity mesh */
     if (with_self_gravity && periodic) {
