@@ -1152,7 +1152,7 @@ int main(int argc, char *argv[]) {
       task_dump_stats(dumpfile, &e, /* header = */ 0, /* allranks = */ 1);
     }
 
-      /* Dump memory use report if collected. */
+    /* Dump memory use report if collected. */
 #ifdef SWIFT_MEMUSE_REPORTS
     {
       char dumpfile[40];
@@ -1216,11 +1216,9 @@ int main(int argc, char *argv[]) {
 
     /* Print information to the SFH logger */
     if (e.policy & engine_policy_star_formation) {
-      star_formation_logger_write_to_log_file(e.sfh_logger, e.time,
-                                              e.cosmology->a, e.cosmology->z,
-                                              e.sfh, e.step);
+      star_formation_logger_write_to_log_file(
+          e.sfh_logger, e.time, e.cosmology->a, e.cosmology->z, e.sfh, e.step);
     }
-
   }
 
   /* Write final output. */

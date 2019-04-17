@@ -2716,7 +2716,7 @@ void engine_collect_end_of_step_recurse_hydro(struct cell *c,
       inhibited += cp->hydro.inhibited;
 
       /* Check if the cell is inactive and in that case reorder the SFH */
-      if (!cell_is_starting_hydro(cp,e)){ 
+      if (!cell_is_starting_hydro(cp, e)) {
         star_formation_logger_log_inactive_cell(&cp->stars.sfh);
       }
 
@@ -3016,7 +3016,7 @@ void engine_collect_end_of_step_mapper(void *map_data, int num_elements,
       b_inhibited += c->black_holes.inhibited;
 
       /* Check if the cell is inactive and in that case reorder the SFH */
-      if (!cell_is_starting_hydro(c,e)){ 
+      if (!cell_is_starting_hydro(c, e)) {
         star_formation_logger_log_inactive_cell(&c->stars.sfh);
       }
 
@@ -3951,7 +3951,7 @@ void engine_check_for_dumps(struct engine *e) {
 #endif
         }
 
-          /* Dump... */
+        /* Dump... */
 #ifdef WITH_LOGGER
         /* Write a file containing the offsets in the particle logger. */
         engine_dump_index(e);
@@ -6035,7 +6035,7 @@ void engine_clean(struct engine *e) {
   scheduler_clean(&e->sched);
   space_clean(e->s);
   threadpool_clean(&e->threadpool);
-  
+
   /* Close files */
   fclose(e->file_timesteps);
   fclose(e->file_stats);

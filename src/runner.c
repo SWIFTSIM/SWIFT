@@ -685,7 +685,6 @@ void runner_do_star_formation(struct runner *r, struct cell *c, int timer) {
             /* Convert the gas particle to a star particle */
             struct spart *sp = cell_convert_part_to_spart(e, c, p, xp);
 
-
             /* Did we get a star? (Or did we run out of spare ones?) */
             if (sp != NULL) {
 
@@ -1608,10 +1607,10 @@ void runner_do_ghost(struct runner *r, struct cell *c, int timer) {
           if (((p->h >= hydro_h_max) && (f < 0.f)) ||
               ((p->h <= hydro_h_min) && (f > 0.f))) {
 
-          /* We have a particle whose smoothing length is already set (wants
-           * to be larger but has already hit the maximum OR wants to be
-           * smaller but has already reached the minimum). So, just tidy up as
-           * if the smoothing length had converged correctly  */
+            /* We have a particle whose smoothing length is already set (wants
+             * to be larger but has already hit the maximum OR wants to be
+             * smaller but has already reached the minimum). So, just tidy up as
+             * if the smoothing length had converged correctly  */
 
 #ifdef EXTRA_HYDRO_LOOP
 
