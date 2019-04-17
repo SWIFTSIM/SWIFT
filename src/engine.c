@@ -2852,6 +2852,8 @@ void engine_collect_end_of_step_recurse_stars(struct cell *c,
   c->stars.ti_end_min = ti_stars_end_min;
   c->stars.ti_end_max = ti_stars_end_max;
   c->stars.ti_beg_max = ti_stars_beg_max;
+  c->stars.updated = updated;
+  c->stars.inhibited = inhibited;
 }
 
 /**
