@@ -766,7 +766,7 @@ int main(int argc, char *argv[]) {
 #endif
     bzero(&cooling_func, sizeof(struct cooling_function_data));
     if (with_cooling || with_temperature) {
-      cooling_init(params, &us, &prog_const, &cooling_func);
+      cooling_init(params, &us, &prog_const, &hydro_properties, &cooling_func);
     }
     if (myrank == 0) cooling_print(&cooling_func);
 

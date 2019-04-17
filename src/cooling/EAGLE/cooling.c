@@ -836,14 +836,15 @@ void cooling_init_backend(struct swift_params *parameter_file,
                           const struct phys_const *phys_const,
                           struct cooling_function_data *cooling) {
 
-  /* read some parameters */
+  /* Read model parameters */
+
+  /* Directory for cooling tables */
+  parser_get_param_string(parameter_file, "EAGLECooling:dir_name",
+                          cooling->cooling_table_path);
 
   /* Despite the names, the values of H_reion_heat_cgs and He_reion_heat_cgs
    * that are read in are actually in units of electron volts per proton mass.
    * We later convert to units just below */
-
-  parser_get_param_string(parameter_file, "EAGLECooling:dir_name",
-                          cooling->cooling_table_path);
 
   cooling->H_reion_done = 0;
   cooling->H_reion_z =
