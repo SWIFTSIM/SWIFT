@@ -32,6 +32,7 @@
 #include "adiabatic_index.h"
 #include "common_io.h"
 #include "inline.h"
+#include "memuse.h"
 #include "restart.h"
 
 #ifdef HAVE_LIBGSL
@@ -329,23 +330,24 @@ void cosmology_init_tables(struct cosmology *c) {
   const double a_begin = c->a_begin;
 
   /* Allocate memory for the interpolation tables */
-  c->drift_fac_interp_table =
-      (double *)malloc(cosmology_table_length * sizeof(double));
-  c->grav_kick_fac_interp_table =
-      (double *)malloc(cosmology_table_length * sizeof(double));
-  c->hydro_kick_fac_interp_table =
-      (double *)malloc(cosmology_table_length * sizeof(double));
-  c->hydro_kick_corr_interp_table =
-      (double *)malloc(cosmology_table_length * sizeof(double));
-  c->time_interp_table =
-      (double *)malloc(cosmology_table_length * sizeof(double));
-  c->scale_factor_interp_table =
-      (double *)malloc(cosmology_table_length * sizeof(double));
+  c->drift_fac_interp_table = (double *)swift_malloc(
+      "cosmo.table", cosmology_table_length * sizeof(double));
+  c->grav_kick_fac_interp_table = (double *)swift_malloc(
+      "cosmo.table", cosmology_table_length * sizeof(double));
+  c->hydro_kick_fac_interp_table = (double *)swift_malloc(
+      "cosmo.table", cosmology_table_length * sizeof(double));
+  c->hydro_kick_corr_interp_table = (double *)swift_malloc(
+      "cosmo.table", cosmology_table_length * sizeof(double));
+  c->time_interp_table = (double *)swift_malloc(
+      "cosmo.table", cosmology_table_length * sizeof(double));
+  c->scale_factor_interp_table = (double *)swift_malloc(
+      "cosmo.table", cosmology_table_length * sizeof(double));
 
   /* Prepare a table of scale factors for the integral bounds */
   const double delta_a =
       (c->log_a_end - c->log_a_begin) / cosmology_table_length;
-  double *a_table = (double *)malloc(cosmology_table_length * sizeof(double));
+  double *a_table = (double *)swift_malloc(
+      "cosmo.table", cosmology_table_length * sizeof(double));
   for (int i = 0; i < cosmology_table_length; i++)
     a_table[i] = exp(c->log_a_begin + delta_a * (i + 1));
 
@@ -456,7 +458,7 @@ void cosmology_init_tables(struct cosmology *c) {
 
   /* Free the workspace and temp array */
   gsl_integration_workspace_free(space);
-  free(a_table);
+  swift_free("cosmo.table", a_table);
 
 #else
 
@@ -836,12 +838,12 @@ void cosmology_print(const struct cosmology *c) {
 
 void cosmology_clean(struct cosmology *c) {
 
-  free(c->drift_fac_interp_table);
-  free(c->grav_kick_fac_interp_table);
-  free(c->hydro_kick_fac_interp_table);
-  free(c->hydro_kick_corr_interp_table);
-  free(c->time_interp_table);
-  free(c->scale_factor_interp_table);
+  swift_free("cosmo.table", c->drift_fac_interp_table);
+  swift_free("cosmo.table", c->grav_kick_fac_interp_table);
+  swift_free("cosmo.table", c->hydro_kick_fac_interp_table);
+  swift_free("cosmo.table", c->hydro_kick_corr_interp_table);
+  swift_free("cosmo.table", c->time_interp_table);
+  swift_free("cosmo.table", c->scale_factor_interp_table);
 }
 
 #ifdef HAVE_HDF5

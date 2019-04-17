@@ -1330,6 +1330,7 @@ case "$with_subgrid" in
 	with_subgrid_stars=GEAR
 	with_subgrid_star_formation=GEAR
 	with_subgrid_feedback=none
+	with_subgrid_black_holes=none
    ;;
    EAGLE)
 	with_subgrid_cooling=EAGLE
@@ -1339,6 +1340,7 @@ case "$with_subgrid" in
 	with_subgrid_stars=EAGLE
 	with_subgrid_star_formation=EAGLE
 	with_subgrid_feedback=EAGLE
+	with_subgrid_black_holes=none
    ;;
    *)
       AC_MSG_ERROR([Unknown subgrid choice: $with_subgrid])
@@ -1766,6 +1768,32 @@ case "$with_feedback" in
    ;;
 esac
 
+# Black hole model.
+AC_ARG_WITH([black-holes],
+   [AS_HELP_STRING([--with-black-holes=<model>],
+      [Black holes model to use @<:@none, default: none@:>@]
+   )],
+   [with_black_holes="$withval"],
+   [with_black_holes="none"]
+)
+
+if test "$with_subgrid" != "none"; then
+   if test "$with_black_holes" != "none"; then
+      AC_MSG_ERROR([Cannot provide with-subgrid and with-black-holes together])
+   else
+      with_black_holes="$with_subgrid_black_holes"
+   fi
+fi
+
+case "$with_black_holes" in
+   none)
+      AC_DEFINE([BLACK_HOLES_NONE], [1], [No black hole model])
+   ;;
+   *)
+      AC_MSG_ERROR([Unknown stellar model: $with_black_holes])
+   ;;
+esac
+
 #  External potential
 AC_ARG_WITH([ext-potential],
    [AS_HELP_STRING([--with-ext-potential=<pot>],
@@ -1966,7 +1994,8 @@ AC_MSG_RESULT([
    Tracers              : $with_tracers
    Stellar model        : $with_stars
    Star formation model : $with_star_formation
-   Feedback model       : $with_feedback
+   Star feedback model  : $with_feedback
+   Black holes model    : $with_black_holes
 
    Individual timers           : $enable_timers
    Task debugging              : $enable_task_debugging

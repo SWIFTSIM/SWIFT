@@ -75,9 +75,10 @@ enum engine_policy {
   engine_policy_structure_finding = (1 << 16),
   engine_policy_star_formation = (1 << 17),
   engine_policy_feedback = (1 << 18),
-  engine_policy_limiter = (1 << 19)
+  engine_policy_black_holes = (1 << 19),
+  engine_policy_limiter = (1 << 20)
 };
-#define engine_maxpolicy 20
+#define engine_maxpolicy 21
 extern const char *engine_policy_names[engine_maxpolicy + 1];
 
 /**
@@ -203,6 +204,15 @@ struct engine {
   /* Maximal stars ti_beg for the next time-step */
   integertime_t ti_stars_beg_max;
 
+  /* Minimal black holes ti_end for the next time-step */
+  integertime_t ti_black_holes_end_min;
+
+  /* Maximal black holes ti_end for the next time-step */
+  integertime_t ti_black_holes_end_max;
+
+  /* Maximal black holes ti_beg for the next time-step */
+  integertime_t ti_black_holes_beg_max;
+
   /* Minimal overall ti_end for the next time-step */
   integertime_t ti_end_min;
 
@@ -213,18 +223,22 @@ struct engine {
   integertime_t ti_beg_max;
 
   /* Number of particles updated in the previous step */
-  long long updates, g_updates, s_updates;
+  long long updates, g_updates, s_updates, b_updates;
 
   /* Number of updates since the last rebuild */
   long long updates_since_rebuild;
   long long g_updates_since_rebuild;
   long long s_updates_since_rebuild;
+  long long b_updates_since_rebuild;
 
   /* Properties of the previous step */
   int step_props;
 
   /* Total numbers of particles in the system. */
-  long long total_nr_parts, total_nr_gparts, total_nr_sparts;
+  long long total_nr_parts;
+  long long total_nr_gparts;
+  long long total_nr_sparts;
+  long long total_nr_bparts;
 
   /* Total numbers of cells (top-level and sub-cells) in the system. */
   long long total_nr_cells;
@@ -233,12 +247,17 @@ struct engine {
   long long total_nr_tasks;
 
   /* The total number of inhibited particles in the system. */
-  long long nr_inhibited_parts, nr_inhibited_gparts, nr_inhibited_sparts;
+  long long nr_inhibited_parts;
+  long long nr_inhibited_gparts;
+  long long nr_inhibited_sparts;
+  long long nr_inhibited_bparts;
 
 #ifdef SWIFT_DEBUG_CHECKS
   /* Total number of particles removed from the system since the last rebuild */
-  long long count_inhibited_parts, count_inhibited_gparts,
-      count_inhibited_sparts;
+  long long count_inhibited_parts;
+  long long count_inhibited_gparts;
+  long long count_inhibited_sparts;
+  long long count_inhibited_bparts;
 #endif
 
   /* Total mass in the simulation */
@@ -466,7 +485,9 @@ void engine_exchange_strays(struct engine *e, const size_t offset_parts,
                             const int *ind_part, size_t *Npart,
                             const size_t offset_gparts, const int *ind_gpart,
                             size_t *Ngpart, const size_t offset_sparts,
-                            const int *ind_spart, size_t *Nspart);
+                            const int *ind_spart, size_t *Nspart,
+                            const size_t offset_bparts, const int *ind_bpart,
+                            size_t *Nbpart);
 void engine_rebuild(struct engine *e, int redistributed, int clean_h_values);
 void engine_repartition(struct engine *e);
 void engine_repartition_trigger(struct engine *e);

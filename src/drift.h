@@ -23,6 +23,7 @@
 #include "../config.h"
 
 /* Local headers. */
+#include "black_holes.h"
 #include "const.h"
 #include "debug.h"
 #include "dimension.h"
@@ -147,6 +148,44 @@ __attribute__((always_inline)) INLINE static void drift_spart(
     const float dx = sp->v[k] * dt_drift;
     sp->x_diff[k] -= dx;
     sp->x_diff_sort[k] -= dx;
+  }
+}
+
+/**
+ * @brief Perform the 'drift' operation on a #bpart
+ *
+ * @param bp The #bpart to drift.
+ * @param dt_drift The drift time-step.
+ * @param ti_old Integer start of time-step (for debugging checks).
+ * @param ti_current Integer end of time-step (for debugging checks).
+ */
+__attribute__((always_inline)) INLINE static void drift_bpart(
+    struct bpart *restrict bp, double dt_drift, integertime_t ti_old,
+    integertime_t ti_current) {
+
+#ifdef SWIFT_DEBUG_CHECKS
+  if (bp->ti_drift != ti_old)
+    error(
+        "s-particle has not been drifted to the current time "
+        "bp->ti_drift=%lld, "
+        "c->ti_old=%lld, ti_current=%lld",
+        bp->ti_drift, ti_old, ti_current);
+
+  bp->ti_drift = ti_current;
+#endif
+
+  /* Drift... */
+  bp->x[0] += bp->v[0] * dt_drift;
+  bp->x[1] += bp->v[1] * dt_drift;
+  bp->x[2] += bp->v[2] * dt_drift;
+
+  /* Predict the values of the extra fields */
+  black_holes_predict_extra(bp, dt_drift);
+
+  /* Compute offsets since last cell construction */
+  for (int k = 0; k < 3; k++) {
+    const float dx = bp->v[k] * dt_drift;
+    bp->x_diff[k] -= dx;
   }
 }
 

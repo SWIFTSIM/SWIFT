@@ -117,6 +117,7 @@ const char *engine_policy_names[] = {"none",
                                      "structure finding",
                                      "star formation",
                                      "feedback",
+                                     "black holes",
                                      "time-step limiter"};
 
 /** The rank of the engine as a global variable (for messages). */
@@ -130,11 +131,13 @@ int engine_current_step;
  */
 struct end_of_step_data {
 
-  size_t updated, g_updated, s_updated;
-  size_t inhibited, g_inhibited, s_inhibited;
+  size_t updated, g_updated, s_updated, b_updated;
+  size_t inhibited, g_inhibited, s_inhibited, b_inhibited;
   integertime_t ti_hydro_end_min, ti_hydro_end_max, ti_hydro_beg_max;
   integertime_t ti_gravity_end_min, ti_gravity_end_max, ti_gravity_beg_max;
   integertime_t ti_stars_end_min, ti_stars_end_max, ti_stars_beg_max;
+  integertime_t ti_black_holes_end_min, ti_black_holes_end_max,
+      ti_black_holes_beg_max;
   struct engine *e;
 };
 
@@ -365,6 +368,14 @@ static void ENGINE_REDISTRIBUTE_DEST_MAPPER(spart);
  */
 static void ENGINE_REDISTRIBUTE_DEST_MAPPER(gpart);
 
+/**
+ * @brief Accumulate the counts of black holes particles per cell.
+ * Threadpool helper for accumulating the counts of particles per cell.
+ *
+ * bpart version.
+ */
+static void ENGINE_REDISTRIBUTE_DEST_MAPPER(bpart);
+
 #endif /* redist_mapper_data */
 
 #ifdef WITH_MPI /* savelink_mapper_data */
@@ -435,17 +446,29 @@ static void ENGINE_REDISTRIBUTE_SAVELINK_MAPPER(spart, 1);
 static void ENGINE_REDISTRIBUTE_SAVELINK_MAPPER(spart, 0);
 #endif
 
+/**
+ * @brief Save position of bpart-gpart links.
+ * Threadpool helper for accumulating the counts of particles per cell.
+ */
+#ifdef SWIFT_DEBUG_CHECKS
+static void ENGINE_REDISTRIBUTE_SAVELINK_MAPPER(bpart, 1);
+#else
+static void ENGINE_REDISTRIBUTE_SAVELINK_MAPPER(bpart, 0);
+#endif
+
 #endif /* savelink_mapper_data */
 
 #ifdef WITH_MPI /* relink_mapper_data */
 
-/* Support for relinking parts, gparts and sparts after moving between nodes. */
+/* Support for relinking parts, gparts, sparts and bparts after moving between
+ * nodes. */
 struct relink_mapper_data {
   int nodeID;
   int nr_nodes;
   int *counts;
   int *s_counts;
   int *g_counts;
+  int *b_counts;
   struct space *s;
 };
 
@@ -468,6 +491,7 @@ static void engine_redistribute_relink_mapper(void *map_data, int num_elements,
   int *counts = mydata->counts;
   int *g_counts = mydata->g_counts;
   int *s_counts = mydata->s_counts;
+  int *b_counts = mydata->b_counts;
   struct space *s = mydata->s;
 
   for (int i = 0; i < num_elements; i++) {
@@ -478,11 +502,13 @@ static void engine_redistribute_relink_mapper(void *map_data, int num_elements,
     size_t offset_parts = 0;
     size_t offset_gparts = 0;
     size_t offset_sparts = 0;
+    size_t offset_bparts = 0;
     for (int n = 0; n < node; n++) {
       int ind_recv = n * nr_nodes + nodeID;
       offset_parts += counts[ind_recv];
       offset_gparts += g_counts[ind_recv];
       offset_sparts += s_counts[ind_recv];
+      offset_bparts += b_counts[ind_recv];
     }
 
     /* Number of gparts sent from this node. */
@@ -512,6 +538,17 @@ static void engine_redistribute_relink_mapper(void *map_data, int num_elements,
         /* Re-link */
         s->gparts[k].id_or_neg_offset = -partner_index;
         s->sparts[partner_index].gpart = &s->gparts[k];
+      }
+
+      /* Does this gpart have a black hole partner ? */
+      else if (s->gparts[k].type == swift_type_black_hole) {
+
+        const ptrdiff_t partner_index =
+            offset_bparts - s->gparts[k].id_or_neg_offset;
+
+        /* Re-link */
+        s->gparts[k].id_or_neg_offset = -partner_index;
+        s->bparts[partner_index].gpart = &s->gparts[k];
       }
     }
   }
@@ -548,11 +585,13 @@ void engine_redistribute(struct engine *e) {
   struct part *parts = s->parts;
   struct gpart *gparts = s->gparts;
   struct spart *sparts = s->sparts;
+  struct bpart *bparts = s->bparts;
   ticks tic = getticks();
 
   size_t nr_parts = s->nr_parts;
   size_t nr_gparts = s->nr_gparts;
   size_t nr_sparts = s->nr_sparts;
+  size_t nr_bparts = s->nr_bparts;
 
   /* Start by moving inhibited particles to the end of the arrays */
   for (size_t k = 0; k < nr_parts; /* void */) {
@@ -599,6 +638,27 @@ void engine_redistribute(struct engine *e) {
     }
   }
 
+  /* Now move inhibited black hole particles to the end of the arrays */
+  for (size_t k = 0; k < nr_bparts; /* void */) {
+    if (bparts[k].time_bin == time_bin_inhibited ||
+        bparts[k].time_bin == time_bin_not_created) {
+      nr_bparts -= 1;
+
+      /* Swap the particle */
+      memswap(&s->bparts[k], &s->bparts[nr_bparts], sizeof(struct bpart));
+
+      /* Swap the link with the gpart */
+      if (s->bparts[k].gpart != NULL) {
+        s->bparts[k].gpart->id_or_neg_offset = -k;
+      }
+      if (s->bparts[nr_bparts].gpart != NULL) {
+        s->bparts[nr_bparts].gpart->id_or_neg_offset = -nr_bparts;
+      }
+    } else {
+      k++;
+    }
+  }
+
   /* Finally do the same with the gravity particles */
   for (size_t k = 0; k < nr_gparts; /* void */) {
     if (gparts[k].time_bin == time_bin_inhibited ||
@@ -613,12 +673,18 @@ void engine_redistribute(struct engine *e) {
         s->parts[-s->gparts[k].id_or_neg_offset].gpart = &s->gparts[k];
       } else if (s->gparts[k].type == swift_type_stars) {
         s->sparts[-s->gparts[k].id_or_neg_offset].gpart = &s->gparts[k];
+      } else if (s->gparts[k].type == swift_type_black_hole) {
+        s->bparts[-s->gparts[k].id_or_neg_offset].gpart = &s->gparts[k];
       }
+
       if (s->gparts[nr_gparts].type == swift_type_gas) {
         s->parts[-s->gparts[nr_gparts].id_or_neg_offset].gpart =
             &s->gparts[nr_gparts];
       } else if (s->gparts[nr_gparts].type == swift_type_stars) {
         s->sparts[-s->gparts[nr_gparts].id_or_neg_offset].gpart =
+            &s->gparts[nr_gparts];
+      } else if (s->gparts[nr_gparts].type == swift_type_black_hole) {
+        s->bparts[-s->gparts[nr_gparts].id_or_neg_offset].gpart =
             &s->gparts[nr_gparts];
       }
     } else {
@@ -770,6 +836,70 @@ void engine_redistribute(struct engine *e) {
   }
   swift_free("s_dest", s_dest);
 
+  /* Get destination of each b-particle */
+  int *b_counts;
+  if ((b_counts = (int *)calloc(sizeof(int), nr_nodes * nr_nodes)) == NULL)
+    error("Failed to allocate b_counts temporary buffer.");
+
+  int *b_dest;
+  if ((b_dest = (int *)swift_malloc("b_dest", sizeof(int) * nr_bparts)) == NULL)
+    error("Failed to allocate b_dest temporary buffer.");
+
+  redist_data.counts = b_counts;
+  redist_data.dest = b_dest;
+  redist_data.base = (void *)bparts;
+
+  threadpool_map(&e->threadpool, engine_redistribute_dest_mapper_bpart, bparts,
+                 nr_bparts, sizeof(struct bpart), 0, &redist_data);
+
+  /* Sort the particles according to their cell index. */
+  if (nr_bparts > 0)
+    space_bparts_sort(s->bparts, b_dest, &b_counts[nodeID * nr_nodes], nr_nodes,
+                      0);
+
+#ifdef SWIFT_DEBUG_CHECKS
+  /* Verify that the bpart have been sorted correctly. */
+  for (size_t k = 0; k < nr_bparts; k++) {
+    const struct bpart *bp = &s->bparts[k];
+
+    if (bp->time_bin == time_bin_inhibited)
+      error("Inhibited particle found after sorting!");
+
+    if (bp->time_bin == time_bin_not_created)
+      error("Inhibited particle found after sorting!");
+
+    /* New cell index */
+    const int new_cid =
+        cell_getid(s->cdim, bp->x[0] * s->iwidth[0], bp->x[1] * s->iwidth[1],
+                   bp->x[2] * s->iwidth[2]);
+
+    /* New cell of this bpart */
+    const struct cell *c = &s->cells_top[new_cid];
+    const int new_node = c->nodeID;
+
+    if (b_dest[k] != new_node)
+      error("bpart's new node index not matching sorted index.");
+
+    if (bp->x[0] < c->loc[0] || bp->x[0] > c->loc[0] + c->width[0] ||
+        bp->x[1] < c->loc[1] || bp->x[1] > c->loc[1] + c->width[1] ||
+        bp->x[2] < c->loc[2] || bp->x[2] > c->loc[2] + c->width[2])
+      error("bpart not sorted into the right top-level cell!");
+  }
+#endif
+
+  /* We need to re-link the gpart partners of bparts. */
+  if (nr_bparts > 0) {
+
+    struct savelink_mapper_data savelink_data;
+    savelink_data.nr_nodes = nr_nodes;
+    savelink_data.counts = b_counts;
+    savelink_data.parts = (void *)bparts;
+    savelink_data.nodeID = nodeID;
+    threadpool_map(&e->threadpool, engine_redistribute_savelink_mapper_bpart,
+                   nodes, nr_nodes, sizeof(int), 0, &savelink_data);
+  }
+  swift_free("b_dest", b_dest);
+
   /* Get destination of each g-particle */
   int *g_counts;
   if ((g_counts = (int *)calloc(sizeof(int), nr_nodes * nr_nodes)) == NULL)
@@ -788,7 +918,7 @@ void engine_redistribute(struct engine *e) {
 
   /* Sort the gparticles according to their cell index. */
   if (nr_gparts > 0)
-    space_gparts_sort(s->gparts, s->parts, s->sparts, g_dest,
+    space_gparts_sort(s->gparts, s->parts, s->sparts, s->bparts, g_dest,
                       &g_counts[nodeID * nr_nodes], nr_nodes);
 
 #ifdef SWIFT_DEBUG_CHECKS
@@ -829,30 +959,37 @@ void engine_redistribute(struct engine *e) {
                     MPI_COMM_WORLD) != MPI_SUCCESS)
     error("Failed to allreduce particle transfer counts.");
 
-  /* Get all the s_counts from all the nodes. */
+  /* Get all the g_counts from all the nodes. */
   if (MPI_Allreduce(MPI_IN_PLACE, g_counts, nr_nodes * nr_nodes, MPI_INT,
                     MPI_SUM, MPI_COMM_WORLD) != MPI_SUCCESS)
     error("Failed to allreduce gparticle transfer counts.");
 
-  /* Get all the g_counts from all the nodes. */
+  /* Get all the s_counts from all the nodes. */
   if (MPI_Allreduce(MPI_IN_PLACE, s_counts, nr_nodes * nr_nodes, MPI_INT,
                     MPI_SUM, MPI_COMM_WORLD) != MPI_SUCCESS)
     error("Failed to allreduce sparticle transfer counts.");
 
+  /* Get all the b_counts from all the nodes. */
+  if (MPI_Allreduce(MPI_IN_PLACE, b_counts, nr_nodes * nr_nodes, MPI_INT,
+                    MPI_SUM, MPI_COMM_WORLD) != MPI_SUCCESS)
+    error("Failed to allreduce bparticle transfer counts.");
+
   /* Report how many particles will be moved. */
   if (e->verbose) {
     if (e->nodeID == 0) {
-      size_t total = 0, g_total = 0, s_total = 0;
-      size_t unmoved = 0, g_unmoved = 0, s_unmoved = 0;
+      size_t total = 0, g_total = 0, s_total = 0, b_total = 0;
+      size_t unmoved = 0, g_unmoved = 0, s_unmoved = 0, b_unmoved = 0;
       for (int p = 0, r = 0; p < nr_nodes; p++) {
         for (int n = 0; n < nr_nodes; n++) {
           total += counts[r];
           g_total += g_counts[r];
           s_total += s_counts[r];
+          b_total += b_counts[r];
           if (p == n) {
             unmoved += counts[r];
             g_unmoved += g_counts[r];
             s_unmoved += s_counts[r];
+            b_unmoved += b_counts[r];
           }
           r++;
         }
@@ -868,19 +1005,26 @@ void engine_redistribute(struct engine *e) {
         message("%ld of %ld (%.2f%%) of s-particles moved", s_total - s_unmoved,
                 s_total,
                 100.0 * (double)(s_total - s_unmoved) / (double)s_total);
+      if (b_total > 0)
+        message("%ld of %ld (%.2f%%) of b-particles moved", b_total - b_unmoved,
+                b_total,
+                100.0 * (double)(b_total - b_unmoved) / (double)b_total);
     }
   }
 
-  /* Now each node knows how many parts, sparts and gparts will be transferred
-   * to every other node.
-   * Get the new numbers of particles for this node. */
-  size_t nr_parts_new = 0, nr_gparts_new = 0, nr_sparts_new = 0;
+  /* Now each node knows how many parts, sparts, bparts, and gparts will be
+   * transferred to every other node. Get the new numbers of particles for this
+   * node. */
+  size_t nr_parts_new = 0, nr_gparts_new = 0, nr_sparts_new = 0,
+         nr_bparts_new = 0;
   for (int k = 0; k < nr_nodes; k++)
     nr_parts_new += counts[k * nr_nodes + nodeID];
   for (int k = 0; k < nr_nodes; k++)
     nr_gparts_new += g_counts[k * nr_nodes + nodeID];
   for (int k = 0; k < nr_nodes; k++)
     nr_sparts_new += s_counts[k * nr_nodes + nodeID];
+  for (int k = 0; k < nr_nodes; k++)
+    nr_bparts_new += b_counts[k * nr_nodes + nodeID];
 
   /* Now exchange the particles, type by type to keep the memory required
    * under control. */
@@ -919,6 +1063,15 @@ void engine_redistribute(struct engine *e) {
   s->nr_sparts = nr_sparts_new;
   s->size_sparts = engine_redistribute_alloc_margin * nr_sparts_new;
 
+  /* Black holes particles. */
+  new_parts = engine_do_redistribute(
+      "bparts", b_counts, (char *)s->bparts, nr_bparts_new,
+      sizeof(struct bpart), bpart_align, bpart_mpi_type, nr_nodes, nodeID);
+  swift_free("bparts", s->bparts);
+  s->bparts = (struct bpart *)new_parts;
+  s->nr_bparts = nr_bparts_new;
+  s->size_bparts = engine_redistribute_alloc_margin * nr_bparts_new;
+
   /* All particles have now arrived. Time for some final operations on the
      stuff we just received */
 
@@ -930,6 +1083,7 @@ void engine_redistribute(struct engine *e) {
   relink_data.counts = counts;
   relink_data.g_counts = g_counts;
   relink_data.s_counts = s_counts;
+  relink_data.b_counts = b_counts;
   relink_data.nodeID = nodeID;
   relink_data.nr_nodes = nr_nodes;
 
@@ -941,6 +1095,7 @@ void engine_redistribute(struct engine *e) {
   free(counts);
   free(g_counts);
   free(s_counts);
+  free(b_counts);
 
 #ifdef SWIFT_DEBUG_CHECKS
   /* Verify that all parts are in the right place. */
@@ -968,10 +1123,18 @@ void engine_redistribute(struct engine *e) {
       error("Received s-particle (%zu) that does not belong here (nodeID=%i).",
             k, cells[cid].nodeID);
   }
+  for (size_t k = 0; k < nr_bparts_new; k++) {
+    const int cid = cell_getid(s->cdim, s->bparts[k].x[0] * s->iwidth[0],
+                               s->bparts[k].x[1] * s->iwidth[1],
+                               s->bparts[k].x[2] * s->iwidth[2]);
+    if (cells[cid].nodeID != nodeID)
+      error("Received b-particle (%zu) that does not belong here (nodeID=%i).",
+            k, cells[cid].nodeID);
+  }
 
   /* Verify that the links are correct */
-  part_verify_links(s->parts, s->gparts, s->sparts, nr_parts_new, nr_gparts_new,
-                    nr_sparts_new, e->verbose);
+  part_verify_links(s->parts, s->gparts, s->sparts, s->bparts, nr_parts_new,
+                    nr_gparts_new, nr_sparts_new, nr_bparts_new, e->verbose);
 
 #endif
 
@@ -980,14 +1143,18 @@ void engine_redistribute(struct engine *e) {
     int my_cells = 0;
     for (int k = 0; k < nr_cells; k++)
       if (cells[k].nodeID == nodeID) my_cells += 1;
-    message("node %i now has %zu parts, %zu sparts and %zu gparts in %i cells.",
-            nodeID, nr_parts_new, nr_sparts_new, nr_gparts_new, my_cells);
+    message(
+        "node %i now has %zu parts, %zu sparts, %zu bparts and %zu gparts in "
+        "%i cells.",
+        nodeID, nr_parts_new, nr_sparts_new, nr_bparts_new, nr_gparts_new,
+        my_cells);
   }
 
   /* Flag that we do not have any extra particles any more */
   s->nr_extra_parts = 0;
   s->nr_extra_gparts = 0;
   s->nr_extra_sparts = 0;
+  s->nr_extra_bparts = 0;
 
   /* Flag that a redistribute has taken place */
   e->step_props |= engine_step_prop_redistribute;
@@ -1224,6 +1391,11 @@ void engine_exchange_cells(struct engine *e) {
  * @param ind_spart The foreign #cell ID of each spart.
  * @param Nspart The number of stray sparts, contains the number of sparts
  *        received on return.
+ * @param offset_bparts The index in the bparts array as of which the foreign
+ *        parts reside (i.e. the current number of local #bpart).
+ * @param ind_bpart The foreign #cell ID of each bpart.
+ * @param Nbpart The number of stray bparts, contains the number of bparts
+ *        received on return.
  *
  * Note that this function does not mess-up the linkage between parts and
  * gparts, i.e. the received particles have correct linkeage.
@@ -1232,7 +1404,9 @@ void engine_exchange_strays(struct engine *e, const size_t offset_parts,
                             const int *ind_part, size_t *Npart,
                             const size_t offset_gparts, const int *ind_gpart,
                             size_t *Ngpart, const size_t offset_sparts,
-                            const int *ind_spart, size_t *Nspart) {
+                            const int *ind_spart, size_t *Nspart,
+                            const size_t offset_bparts, const int *ind_bpart,
+                            size_t *Nbpart) {
 
 #ifdef WITH_MPI
 
@@ -1244,6 +1418,7 @@ void engine_exchange_strays(struct engine *e, const size_t offset_parts,
     e->proxies[k].nr_parts_out = 0;
     e->proxies[k].nr_gparts_out = 0;
     e->proxies[k].nr_sparts_out = 0;
+    e->proxies[k].nr_bparts_out = 0;
   }
 
   /* Put the parts into the corresponding proxies. */
@@ -1317,6 +1492,41 @@ void engine_exchange_strays(struct engine *e, const size_t offset_parts,
     proxy_sparts_load(&e->proxies[pid], &s->sparts[offset_sparts + k], 1);
   }
 
+  /* Put the bparts into the corresponding proxies. */
+  for (size_t k = 0; k < *Nbpart; k++) {
+
+    /* Ignore the particles we want to get rid of (inhibited, ...). */
+    if (ind_bpart[k] == -1) continue;
+
+    /* Get the target node and proxy ID. */
+    const int node_id = e->s->cells_top[ind_bpart[k]].nodeID;
+    if (node_id < 0 || node_id >= e->nr_nodes)
+      error("Bad node ID %i.", node_id);
+    const int pid = e->proxy_ind[node_id];
+    if (pid < 0) {
+      error(
+          "Do not have a proxy for the requested nodeID %i for part with "
+          "id=%lld, x=[%e,%e,%e].",
+          node_id, s->bparts[offset_bparts + k].id,
+          s->bparts[offset_bparts + k].x[0], s->bparts[offset_bparts + k].x[1],
+          s->bparts[offset_bparts + k].x[2]);
+    }
+
+    /* Re-link the associated gpart with the buffer offset of the bpart. */
+    if (s->bparts[offset_bparts + k].gpart != NULL) {
+      s->bparts[offset_bparts + k].gpart->id_or_neg_offset =
+          -e->proxies[pid].nr_bparts_out;
+    }
+
+#ifdef SWIFT_DEBUG_CHECKS
+    if (s->bparts[offset_bparts + k].time_bin == time_bin_inhibited)
+      error("Attempting to exchange an inhibited particle");
+#endif
+
+    /* Load the bpart into the proxy */
+    proxy_bparts_load(&e->proxies[pid], &s->bparts[offset_bparts + k], 1);
+  }
+
   /* Put the gparts into the corresponding proxies. */
   for (size_t k = 0; k < *Ngpart; k++) {
 
@@ -1347,8 +1557,8 @@ void engine_exchange_strays(struct engine *e, const size_t offset_parts,
   }
 
   /* Launch the proxies. */
-  MPI_Request reqs_in[4 * engine_maxproxies];
-  MPI_Request reqs_out[4 * engine_maxproxies];
+  MPI_Request reqs_in[5 * engine_maxproxies];
+  MPI_Request reqs_out[5 * engine_maxproxies];
   for (int k = 0; k < e->nr_proxies; k++) {
     proxy_parts_exchange_first(&e->proxies[k]);
     reqs_in[k] = e->proxies[k].req_parts_count_in;
@@ -1375,15 +1585,19 @@ void engine_exchange_strays(struct engine *e, const size_t offset_parts,
   int count_parts_in = 0;
   int count_gparts_in = 0;
   int count_sparts_in = 0;
+  int count_bparts_in = 0;
   for (int k = 0; k < e->nr_proxies; k++) {
     count_parts_in += e->proxies[k].nr_parts_in;
     count_gparts_in += e->proxies[k].nr_gparts_in;
     count_sparts_in += e->proxies[k].nr_sparts_in;
+    count_bparts_in += e->proxies[k].nr_bparts_in;
   }
   if (e->verbose) {
-    message("sent out %zu/%zu/%zu parts/gparts/sparts, got %i/%i/%i back.",
-            *Npart, *Ngpart, *Nspart, count_parts_in, count_gparts_in,
-            count_sparts_in);
+    message(
+        "sent out %zu/%zu/%zu/%zu parts/gparts/sparts/bparts, got %i/%i/%i/%i "
+        "back.",
+        *Npart, *Ngpart, *Nspart, *Nbpart, count_parts_in, count_gparts_in,
+        count_sparts_in, count_bparts_in);
   }
 
   /* Reallocate the particle arrays if necessary */
@@ -1431,6 +1645,25 @@ void engine_exchange_strays(struct engine *e, const size_t offset_parts,
     }
   }
 
+  if (offset_bparts + count_bparts_in > s->size_bparts) {
+    message("re-allocating bparts array.");
+    s->size_bparts = (offset_bparts + count_bparts_in) * engine_parts_size_grow;
+    struct bpart *bparts_new = NULL;
+    if (swift_memalign("bparts", (void **)&bparts_new, bpart_align,
+                       sizeof(struct bpart) * s->size_bparts) != 0)
+      error("Failed to allocate new bpart data.");
+    memcpy(bparts_new, s->bparts, sizeof(struct bpart) * offset_bparts);
+    swift_free("bparts", s->bparts);
+    s->bparts = bparts_new;
+
+    /* Reset the links */
+    for (size_t k = 0; k < offset_bparts; k++) {
+      if (s->bparts[k].gpart != NULL) {
+        s->bparts[k].gpart->id_or_neg_offset = -k;
+      }
+    }
+  }
+
   if (offset_gparts + count_gparts_in > s->size_gparts) {
     message("re-allocating gparts array.");
     s->size_gparts = (offset_gparts + count_gparts_in) * engine_parts_size_grow;
@@ -1448,6 +1681,8 @@ void engine_exchange_strays(struct engine *e, const size_t offset_parts,
         s->parts[-s->gparts[k].id_or_neg_offset].gpart = &s->gparts[k];
       } else if (s->gparts[k].type == swift_type_stars) {
         s->sparts[-s->gparts[k].id_or_neg_offset].gpart = &s->gparts[k];
+      } else if (s->gparts[k].type == swift_type_black_hole) {
+        s->bparts[-s->gparts[k].id_or_neg_offset].gpart = &s->gparts[k];
       }
     }
   }
@@ -1456,52 +1691,64 @@ void engine_exchange_strays(struct engine *e, const size_t offset_parts,
   int nr_in = 0, nr_out = 0;
   for (int k = 0; k < e->nr_proxies; k++) {
     if (e->proxies[k].nr_parts_in > 0) {
-      reqs_in[4 * k] = e->proxies[k].req_parts_in;
-      reqs_in[4 * k + 1] = e->proxies[k].req_xparts_in;
+      reqs_in[5 * k] = e->proxies[k].req_parts_in;
+      reqs_in[5 * k + 1] = e->proxies[k].req_xparts_in;
       nr_in += 2;
     } else {
-      reqs_in[4 * k] = reqs_in[4 * k + 1] = MPI_REQUEST_NULL;
+      reqs_in[5 * k] = reqs_in[5 * k + 1] = MPI_REQUEST_NULL;
     }
     if (e->proxies[k].nr_gparts_in > 0) {
-      reqs_in[4 * k + 2] = e->proxies[k].req_gparts_in;
+      reqs_in[5 * k + 2] = e->proxies[k].req_gparts_in;
       nr_in += 1;
     } else {
-      reqs_in[4 * k + 2] = MPI_REQUEST_NULL;
+      reqs_in[5 * k + 2] = MPI_REQUEST_NULL;
     }
     if (e->proxies[k].nr_sparts_in > 0) {
-      reqs_in[4 * k + 3] = e->proxies[k].req_sparts_in;
+      reqs_in[5 * k + 3] = e->proxies[k].req_sparts_in;
       nr_in += 1;
     } else {
-      reqs_in[4 * k + 3] = MPI_REQUEST_NULL;
+      reqs_in[5 * k + 3] = MPI_REQUEST_NULL;
+    }
+    if (e->proxies[k].nr_bparts_in > 0) {
+      reqs_in[5 * k + 4] = e->proxies[k].req_bparts_in;
+      nr_in += 1;
+    } else {
+      reqs_in[5 * k + 4] = MPI_REQUEST_NULL;
     }
 
     if (e->proxies[k].nr_parts_out > 0) {
-      reqs_out[4 * k] = e->proxies[k].req_parts_out;
-      reqs_out[4 * k + 1] = e->proxies[k].req_xparts_out;
+      reqs_out[5 * k] = e->proxies[k].req_parts_out;
+      reqs_out[5 * k + 1] = e->proxies[k].req_xparts_out;
       nr_out += 2;
     } else {
-      reqs_out[4 * k] = reqs_out[4 * k + 1] = MPI_REQUEST_NULL;
+      reqs_out[5 * k] = reqs_out[5 * k + 1] = MPI_REQUEST_NULL;
     }
     if (e->proxies[k].nr_gparts_out > 0) {
-      reqs_out[4 * k + 2] = e->proxies[k].req_gparts_out;
+      reqs_out[5 * k + 2] = e->proxies[k].req_gparts_out;
       nr_out += 1;
     } else {
-      reqs_out[4 * k + 2] = MPI_REQUEST_NULL;
+      reqs_out[5 * k + 2] = MPI_REQUEST_NULL;
     }
     if (e->proxies[k].nr_sparts_out > 0) {
-      reqs_out[4 * k + 3] = e->proxies[k].req_sparts_out;
+      reqs_out[5 * k + 3] = e->proxies[k].req_sparts_out;
       nr_out += 1;
     } else {
-      reqs_out[4 * k + 3] = MPI_REQUEST_NULL;
+      reqs_out[5 * k + 3] = MPI_REQUEST_NULL;
+    }
+    if (e->proxies[k].nr_bparts_out > 0) {
+      reqs_out[5 * k + 4] = e->proxies[k].req_bparts_out;
+      nr_out += 1;
+    } else {
+      reqs_out[5 * k + 4] = MPI_REQUEST_NULL;
     }
   }
 
   /* Wait for each part array to come in and collect the new
      parts from the proxies. */
-  int count_parts = 0, count_gparts = 0, count_sparts = 0;
+  int count_parts = 0, count_gparts = 0, count_sparts = 0, count_bparts = 0;
   for (int k = 0; k < nr_in; k++) {
     int err, pid;
-    if ((err = MPI_Waitany(4 * e->nr_proxies, reqs_in, &pid,
+    if ((err = MPI_Waitany(5 * e->nr_proxies, reqs_in, &pid,
                            MPI_STATUS_IGNORE)) != MPI_SUCCESS) {
       char buff[MPI_MAX_ERROR_STRING];
       int res;
@@ -1509,16 +1756,17 @@ void engine_exchange_strays(struct engine *e, const size_t offset_parts,
       error("MPI_Waitany failed (%s).", buff);
     }
     if (pid == MPI_UNDEFINED) break;
-    // message( "request from proxy %i has arrived." , pid / 4 );
-    pid = 4 * (pid / 4);
+    // message( "request from proxy %i has arrived." , pid / 5 );
+    pid = 5 * (pid / 5);
 
     /* If all the requests for a given proxy have arrived... */
     if (reqs_in[pid + 0] == MPI_REQUEST_NULL &&
         reqs_in[pid + 1] == MPI_REQUEST_NULL &&
         reqs_in[pid + 2] == MPI_REQUEST_NULL &&
-        reqs_in[pid + 3] == MPI_REQUEST_NULL) {
+        reqs_in[pid + 3] == MPI_REQUEST_NULL &&
+        reqs_in[pid + 4] == MPI_REQUEST_NULL) {
       /* Copy the particle data to the part/xpart/gpart arrays. */
-      struct proxy *prox = &e->proxies[pid / 4];
+      struct proxy *prox = &e->proxies[pid / 5];
       memcpy(&s->parts[offset_parts + count_parts], prox->parts_in,
              sizeof(struct part) * prox->nr_parts_in);
       memcpy(&s->xparts[offset_parts + count_parts], prox->xparts_in,
@@ -1527,6 +1775,8 @@ void engine_exchange_strays(struct engine *e, const size_t offset_parts,
              sizeof(struct gpart) * prox->nr_gparts_in);
       memcpy(&s->sparts[offset_sparts + count_sparts], prox->sparts_in,
              sizeof(struct spart) * prox->nr_sparts_in);
+      memcpy(&s->bparts[offset_bparts + count_bparts], prox->bparts_in,
+             sizeof(struct bpart) * prox->nr_bparts_in);
       /* for (int k = offset; k < offset + count; k++)
          message(
             "received particle %lli, x=[%.3e %.3e %.3e], h=%.3e, from node %i.",
@@ -1547,6 +1797,11 @@ void engine_exchange_strays(struct engine *e, const size_t offset_parts,
               &s->sparts[offset_sparts + count_sparts - gp->id_or_neg_offset];
           gp->id_or_neg_offset = s->sparts - sp;
           sp->gpart = gp;
+        } else if (gp->type == swift_type_black_hole) {
+          struct bpart *bp =
+              &s->bparts[offset_bparts + count_bparts - gp->id_or_neg_offset];
+          gp->id_or_neg_offset = s->bparts - bp;
+          bp->gpart = gp;
         }
       }
 
@@ -1554,12 +1809,13 @@ void engine_exchange_strays(struct engine *e, const size_t offset_parts,
       count_parts += prox->nr_parts_in;
       count_gparts += prox->nr_gparts_in;
       count_sparts += prox->nr_sparts_in;
+      count_bparts += prox->nr_bparts_in;
     }
   }
 
   /* Wait for all the sends to have finished too. */
   if (nr_out > 0)
-    if (MPI_Waitall(4 * e->nr_proxies, reqs_out, MPI_STATUSES_IGNORE) !=
+    if (MPI_Waitall(5 * e->nr_proxies, reqs_out, MPI_STATUSES_IGNORE) !=
         MPI_SUCCESS)
       error("MPI_Waitall on sends failed.");
 
@@ -1571,6 +1827,7 @@ void engine_exchange_strays(struct engine *e, const size_t offset_parts,
   *Npart = count_parts;
   *Ngpart = count_gparts;
   *Nspart = count_sparts;
+  *Nbpart = count_bparts;
 
 #else
   error("SWIFT was not compiled with MPI support.");
@@ -1834,7 +2091,8 @@ void engine_allocate_foreign_particles(struct engine *e) {
 
   /* Count the number of particles we need to import and re-allocate
      the buffer if needed. */
-  size_t count_parts_in = 0, count_gparts_in = 0, count_sparts_in = 0;
+  size_t count_parts_in = 0, count_gparts_in = 0, count_sparts_in = 0,
+         count_bparts_in = 0;
   for (int k = 0; k < nr_proxies; k++) {
     for (int j = 0; j < e->proxies[k].nr_cells_in; j++) {
 
@@ -1849,6 +2107,9 @@ void engine_allocate_foreign_particles(struct engine *e) {
 
       /* For stars, we just use the numbers in the top-level cells */
       count_sparts_in += e->proxies[k].cells_in[j]->stars.count;
+
+      /* For black holes, we just use the numbers in the top-level cells */
+      count_bparts_in += e->proxies[k].cells_in[j]->black_holes.count;
     }
   }
 
@@ -1890,18 +2151,33 @@ void engine_allocate_foreign_particles(struct engine *e) {
       error("Failed to allocate foreign spart data.");
   }
 
+  /* Allocate space for the foreign particles we will receive */
+  if (count_bparts_in > s->size_bparts_foreign) {
+    if (s->bparts_foreign != NULL)
+      swift_free("bparts_foreign", s->bparts_foreign);
+    s->size_bparts_foreign = engine_foreign_alloc_margin * count_bparts_in;
+    if (swift_memalign("bparts_foreign", (void **)&s->bparts_foreign,
+                       bpart_align,
+                       sizeof(struct bpart) * s->size_bparts_foreign) != 0)
+      error("Failed to allocate foreign bpart data.");
+  }
+
   if (e->verbose)
-    message("Allocating %zd/%zd/%zd foreign part/gpart/spart (%zd/%zd/%zd MB)",
-            s->size_parts_foreign, s->size_gparts_foreign,
-            s->size_sparts_foreign,
-            s->size_parts_foreign * sizeof(struct part) / (1024 * 1024),
-            s->size_gparts_foreign * sizeof(struct gpart) / (1024 * 1024),
-            s->size_sparts_foreign * sizeof(struct spart) / (1024 * 1024));
+    message(
+        "Allocating %zd/%zd/%zd/%zd foreign part/gpart/spart/bpart "
+        "(%zd/%zd/%zd/%zd MB)",
+        s->size_parts_foreign, s->size_gparts_foreign, s->size_sparts_foreign,
+        s->size_bparts_foreign,
+        s->size_parts_foreign * sizeof(struct part) / (1024 * 1024),
+        s->size_gparts_foreign * sizeof(struct gpart) / (1024 * 1024),
+        s->size_sparts_foreign * sizeof(struct spart) / (1024 * 1024),
+        s->size_bparts_foreign * sizeof(struct bpart) / (1024 * 1024));
 
   /* Unpack the cells and link to the particle data. */
   struct part *parts = s->parts_foreign;
   struct gpart *gparts = s->gparts_foreign;
   struct spart *sparts = s->sparts_foreign;
+  struct bpart *bparts = s->bparts_foreign;
   for (int k = 0; k < nr_proxies; k++) {
     for (int j = 0; j < e->proxies[k].nr_cells_in; j++) {
 
@@ -1922,6 +2198,10 @@ void engine_allocate_foreign_particles(struct engine *e) {
       /* For stars, we just use the numbers in the top-level cells */
       cell_link_sparts(e->proxies[k].cells_in[j], sparts);
       sparts = &sparts[e->proxies[k].cells_in[j]->stars.count];
+
+      /* For black holes, we just use the numbers in the top-level cells */
+      cell_link_bparts(e->proxies[k].cells_in[j], bparts);
+      bparts = &bparts[e->proxies[k].cells_in[j]->black_holes.count];
     }
   }
 
@@ -1929,6 +2209,7 @@ void engine_allocate_foreign_particles(struct engine *e) {
   s->nr_parts_foreign = parts - s->parts_foreign;
   s->nr_gparts_foreign = gparts - s->gparts_foreign;
   s->nr_sparts_foreign = sparts - s->sparts_foreign;
+  s->nr_bparts_foreign = bparts - s->bparts_foreign;
 
   if (e->verbose)
     message("Recursively linking foreign arrays took %.3f %s.",
@@ -2004,6 +2285,7 @@ void engine_print_task_counts(const struct engine *e) {
   message("nr_parts = %zu.", e->s->nr_parts);
   message("nr_gparts = %zu.", e->s->nr_gparts);
   message("nr_sparts = %zu.", e->s->nr_sparts);
+  message("nr_bparts = %zu.", e->s->nr_bparts);
 
   if (e->verbose)
     message("took %.3f %s.", clocks_from_ticks(getticks() - tic),
@@ -2186,22 +2468,25 @@ void engine_rebuild(struct engine *e, int repartitioned,
   const ticks tic2 = getticks();
 
   /* Update the global counters of particles */
-  long long num_particles[3] = {
+  long long num_particles[4] = {
       (long long)(e->s->nr_parts - e->s->nr_extra_parts),
       (long long)(e->s->nr_gparts - e->s->nr_extra_gparts),
-      (long long)(e->s->nr_sparts - e->s->nr_extra_sparts)};
+      (long long)(e->s->nr_sparts - e->s->nr_extra_sparts),
+      (long long)(e->s->nr_bparts - e->s->nr_extra_bparts)};
 #ifdef WITH_MPI
-  MPI_Allreduce(MPI_IN_PLACE, num_particles, 3, MPI_LONG_LONG, MPI_SUM,
+  MPI_Allreduce(MPI_IN_PLACE, num_particles, 4, MPI_LONG_LONG, MPI_SUM,
                 MPI_COMM_WORLD);
 #endif
   e->total_nr_parts = num_particles[0];
   e->total_nr_gparts = num_particles[1];
   e->total_nr_sparts = num_particles[2];
+  e->total_nr_bparts = num_particles[3];
 
   /* Flag that there are no inhibited particles */
   e->nr_inhibited_parts = 0;
   e->nr_inhibited_gparts = 0;
   e->nr_inhibited_sparts = 0;
+  e->nr_inhibited_bparts = 0;
 
   if (e->verbose)
     message("updating particle counts took %.3f %s.",
@@ -2216,8 +2501,9 @@ void engine_rebuild(struct engine *e, int repartitioned,
     engine_recompute_displacement_constraint(e);
 
 #ifdef SWIFT_DEBUG_CHECKS
-  part_verify_links(e->s->parts, e->s->gparts, e->s->sparts, e->s->nr_parts,
-                    e->s->nr_gparts, e->s->nr_sparts, e->verbose);
+  part_verify_links(e->s->parts, e->s->gparts, e->s->sparts, e->s->bparts,
+                    e->s->nr_parts, e->s->nr_gparts, e->s->nr_sparts,
+                    e->s->nr_bparts, e->verbose);
 #endif
 
   /* Initial cleaning up session ? */
@@ -2276,6 +2562,7 @@ void engine_rebuild(struct engine *e, int repartitioned,
   e->updates_since_rebuild = 0;
   e->g_updates_since_rebuild = 0;
   e->s_updates_since_rebuild = 0;
+  e->b_updates_since_rebuild = 0;
 
   /* Flag that a rebuild has taken place */
   e->step_props |= engine_step_prop_rebuild;
@@ -2550,6 +2837,69 @@ void engine_collect_end_of_step_recurse_stars(struct cell *c,
 }
 
 /**
+ * @brief Recursive function gathering end-of-step data.
+ *
+ * We recurse until we encounter a timestep or time-step MPI recv task
+ * as the values will have been set at that level. We then bring these
+ * values upwards.
+ *
+ * @param c The #cell to recurse into.
+ * @param e The #engine.
+ */
+void engine_collect_end_of_step_recurse_black_holes(struct cell *c,
+                                                    const struct engine *e) {
+
+/* Skip super-cells (Their values are already set) */
+#ifdef WITH_MPI
+  // MATTHIEU
+  if (c->timestep != NULL)
+    return;  // || c->mpi.black_holes.recv_ti != NULL) return;
+#else
+  if (c->timestep != NULL) return;
+#endif /* WITH_MPI */
+
+#ifdef SWIFT_DEBUG_CHECKS
+    // if (!c->split) error("Reached a leaf without finding a time-step task!");
+#endif
+
+  /* Counters for the different quantities. */
+  size_t updated = 0, inhibited = 0;
+  integertime_t ti_black_holes_end_min = max_nr_timesteps,
+                ti_black_holes_end_max = 0, ti_black_holes_beg_max = 0;
+
+  /* Collect the values from the progeny. */
+  for (int k = 0; k < 8; k++) {
+    struct cell *cp = c->progeny[k];
+    if (cp != NULL && cp->black_holes.count > 0) {
+
+      /* Recurse */
+      engine_collect_end_of_step_recurse_black_holes(cp, e);
+
+      /* And update */
+      ti_black_holes_end_min =
+          min(ti_black_holes_end_min, cp->black_holes.ti_end_min);
+      ti_black_holes_end_max =
+          max(ti_black_holes_end_max, cp->black_holes.ti_end_max);
+      ti_black_holes_beg_max =
+          max(ti_black_holes_beg_max, cp->black_holes.ti_beg_max);
+
+      updated += cp->black_holes.updated;
+      inhibited += cp->black_holes.inhibited;
+
+      /* Collected, so clear for next time. */
+      cp->black_holes.updated = 0;
+    }
+  }
+
+  /* Store the collected values in the cell. */
+  c->black_holes.ti_end_min = ti_black_holes_end_min;
+  c->black_holes.ti_end_max = ti_black_holes_end_max;
+  c->black_holes.ti_beg_max = ti_black_holes_beg_max;
+  c->black_holes.updated = updated;
+  c->black_holes.inhibited = inhibited;
+}
+
+/**
  * @brief Mapping function to collect the data from the end of the step
  *
  * This function will call a recursive function on all the top-level cells
@@ -2570,23 +2920,27 @@ void engine_collect_end_of_step_mapper(void *map_data, int num_elements,
   const int with_ext_grav = (e->policy & engine_policy_external_gravity);
   const int with_grav = (with_self_grav || with_ext_grav);
   const int with_stars = (e->policy & engine_policy_stars);
+  const int with_black_holes = (e->policy & engine_policy_black_holes);
   struct space *s = e->s;
   int *local_cells = (int *)map_data;
 
   /* Local collectible */
-  size_t updated = 0, g_updated = 0, s_updated = 0;
-  size_t inhibited = 0, g_inhibited = 0, s_inhibited = 0;
+  size_t updated = 0, g_updated = 0, s_updated = 0, b_updated = 0;
+  size_t inhibited = 0, g_inhibited = 0, s_inhibited = 0, b_inhibited = 0;
   integertime_t ti_hydro_end_min = max_nr_timesteps, ti_hydro_end_max = 0,
                 ti_hydro_beg_max = 0;
   integertime_t ti_gravity_end_min = max_nr_timesteps, ti_gravity_end_max = 0,
                 ti_gravity_beg_max = 0;
   integertime_t ti_stars_end_min = max_nr_timesteps, ti_stars_end_max = 0,
                 ti_stars_beg_max = 0;
+  integertime_t ti_black_holes_end_min = max_nr_timesteps,
+                ti_black_holes_end_max = 0, ti_black_holes_beg_max = 0;
 
   for (int ind = 0; ind < num_elements; ind++) {
     struct cell *c = &s->cells_top[local_cells[ind]];
 
-    if (c->hydro.count > 0 || c->grav.count > 0 || c->stars.count > 0) {
+    if (c->hydro.count > 0 || c->grav.count > 0 || c->stars.count > 0 ||
+        c->black_holes.count > 0) {
 
       /* Make the top-cells recurse */
       if (with_hydro) {
@@ -2597,6 +2951,9 @@ void engine_collect_end_of_step_mapper(void *map_data, int num_elements,
       }
       if (with_stars) {
         engine_collect_end_of_step_recurse_stars(c, e);
+      }
+      if (with_black_holes) {
+        engine_collect_end_of_step_recurse_black_holes(c, e);
       }
 
       /* And aggregate */
@@ -2615,18 +2972,29 @@ void engine_collect_end_of_step_mapper(void *map_data, int num_elements,
       ti_stars_end_max = max(ti_stars_end_max, c->stars.ti_end_max);
       ti_stars_beg_max = max(ti_stars_beg_max, c->stars.ti_beg_max);
 
+      if (c->black_holes.ti_end_min > e->ti_current)
+        ti_black_holes_end_min =
+            min(ti_black_holes_end_min, c->black_holes.ti_end_min);
+      ti_black_holes_end_max =
+          max(ti_black_holes_end_max, c->black_holes.ti_end_max);
+      ti_black_holes_beg_max =
+          max(ti_black_holes_beg_max, c->black_holes.ti_beg_max);
+
       updated += c->hydro.updated;
       g_updated += c->grav.updated;
       s_updated += c->stars.updated;
+      b_updated += c->black_holes.updated;
 
       inhibited += c->hydro.inhibited;
       g_inhibited += c->grav.inhibited;
       s_inhibited += c->stars.inhibited;
+      b_inhibited += c->black_holes.inhibited;
 
       /* Collected, so clear for next time. */
       c->hydro.updated = 0;
       c->grav.updated = 0;
       c->stars.updated = 0;
+      c->black_holes.updated = 0;
     }
   }
 
@@ -2636,10 +3004,12 @@ void engine_collect_end_of_step_mapper(void *map_data, int num_elements,
     data->updated += updated;
     data->g_updated += g_updated;
     data->s_updated += s_updated;
+    data->b_updated += b_updated;
 
     data->inhibited += inhibited;
     data->g_inhibited += g_inhibited;
     data->s_inhibited += s_inhibited;
+    data->b_inhibited += b_inhibited;
 
     if (ti_hydro_end_min > e->ti_current)
       data->ti_hydro_end_min = min(ti_hydro_end_min, data->ti_hydro_end_min);
@@ -2658,6 +3028,14 @@ void engine_collect_end_of_step_mapper(void *map_data, int num_elements,
       data->ti_stars_end_min = min(ti_stars_end_min, data->ti_stars_end_min);
     data->ti_stars_end_max = max(ti_stars_end_max, data->ti_stars_end_max);
     data->ti_stars_beg_max = max(ti_stars_beg_max, data->ti_stars_beg_max);
+
+    if (ti_black_holes_end_min > e->ti_current)
+      data->ti_black_holes_end_min =
+          min(ti_black_holes_end_min, data->ti_black_holes_end_min);
+    data->ti_black_holes_end_max =
+        max(ti_black_holes_end_max, data->ti_black_holes_end_max);
+    data->ti_black_holes_beg_max =
+        max(ti_black_holes_beg_max, data->ti_black_holes_beg_max);
   }
 
   if (lock_unlock(&s->lock) != 0) error("Failed to unlock the space");
@@ -2685,14 +3063,17 @@ void engine_collect_end_of_step(struct engine *e, int apply) {
   const ticks tic = getticks();
   struct space *s = e->s;
   struct end_of_step_data data;
-  data.updated = 0, data.g_updated = 0, data.s_updated = 0;
-  data.inhibited = 0, data.g_inhibited = 0, data.s_inhibited = 0;
+  data.updated = 0, data.g_updated = 0, data.s_updated = 0, data.b_updated = 0;
+  data.inhibited = 0, data.g_inhibited = 0, data.s_inhibited = 0,
+  data.b_inhibited = 0;
   data.ti_hydro_end_min = max_nr_timesteps, data.ti_hydro_end_max = 0,
   data.ti_hydro_beg_max = 0;
   data.ti_gravity_end_min = max_nr_timesteps, data.ti_gravity_end_max = 0,
   data.ti_gravity_beg_max = 0;
   data.ti_stars_end_min = max_nr_timesteps, data.ti_stars_end_max = 0,
   data.ti_stars_beg_max = 0;
+  data.ti_black_holes_end_min = max_nr_timesteps,
+  data.ti_black_holes_end_max = 0, data.ti_black_holes_beg_max = 0;
   data.e = e;
 
   /* Collect information from the local top-level cells */
@@ -2704,14 +3085,17 @@ void engine_collect_end_of_step(struct engine *e, int apply) {
   s->nr_inhibited_parts = data.inhibited;
   s->nr_inhibited_gparts = data.g_inhibited;
   s->nr_inhibited_sparts = data.s_inhibited;
+  s->nr_inhibited_bparts = data.b_inhibited;
 
   /* Store these in the temporary collection group. */
   collectgroup1_init(
       &e->collect_group1, data.updated, data.g_updated, data.s_updated,
-      data.inhibited, data.g_inhibited, data.s_inhibited, data.ti_hydro_end_min,
-      data.ti_hydro_end_max, data.ti_hydro_beg_max, data.ti_gravity_end_min,
-      data.ti_gravity_end_max, data.ti_gravity_beg_max, data.ti_stars_end_min,
-      data.ti_stars_end_max, data.ti_stars_beg_max, e->forcerebuild,
+      data.b_updated, data.inhibited, data.g_inhibited, data.s_inhibited,
+      data.b_inhibited, data.ti_hydro_end_min, data.ti_hydro_end_max,
+      data.ti_hydro_beg_max, data.ti_gravity_end_min, data.ti_gravity_end_max,
+      data.ti_gravity_beg_max, data.ti_stars_end_min, data.ti_stars_end_max,
+      data.ti_stars_beg_max, data.ti_black_holes_end_min,
+      data.ti_black_holes_end_max, data.ti_black_holes_beg_max, e->forcerebuild,
       e->s->tot_cells, e->sched.nr_tasks,
       (float)e->sched.nr_tasks / (float)e->s->tot_cells);
 
@@ -2975,6 +3359,7 @@ void engine_first_init_particles(struct engine *e) {
   space_first_init_parts(e->s, e->verbose);
   space_first_init_gparts(e->s, e->verbose);
   space_first_init_sparts(e->s, e->verbose);
+  space_first_init_bparts(e->s, e->verbose);
 
   if (e->verbose)
     message("took %.3f %s.", clocks_from_ticks(getticks() - tic),
@@ -3027,6 +3412,7 @@ void engine_init_particles(struct engine *e, int flag_entropy_ICs,
   space_init_parts(s, e->verbose);
   space_init_gparts(s, e->verbose);
   space_init_sparts(s, e->verbose);
+  space_init_bparts(s, e->verbose);
 
   /* Update the cooling function */
   if ((e->policy & engine_policy_cooling) ||
@@ -3090,6 +3476,7 @@ void engine_init_particles(struct engine *e, int flag_entropy_ICs,
   space_init_parts(e->s, e->verbose);
   space_init_gparts(e->s, e->verbose);
   space_init_sparts(e->s, e->verbose);
+  space_init_bparts(e->s, e->verbose);
 
   /* Print the number of active tasks ? */
   if (e->verbose) engine_print_task_counts(e);
@@ -3215,8 +3602,9 @@ void engine_init_particles(struct engine *e, int flag_entropy_ICs,
 
 #ifdef SWIFT_DEBUG_CHECKS
   space_check_timesteps(e->s);
-  part_verify_links(e->s->parts, e->s->gparts, e->s->sparts, e->s->nr_parts,
-                    e->s->nr_gparts, e->s->nr_sparts, e->verbose);
+  part_verify_links(e->s->parts, e->s->gparts, e->s->sparts, e->s->bparts,
+                    e->s->nr_parts, e->s->nr_gparts, e->s->nr_sparts,
+                    e->s->nr_bparts, e->verbose);
 #endif
 
   /* Ready to go */
@@ -3245,11 +3633,11 @@ void engine_step(struct engine *e) {
 
     /* Print some information to the screen */
     printf(
-        "  %6d %14e %12.7f %12.7f %14e %4d %4d %12lld %12lld %12lld %21.3f "
-        "%6d\n",
+        "  %6d %14e %12.7f %12.7f %14e %4d %4d %12lld %12lld %12lld %12lld "
+        "%21.3f %6d\n",
         e->step, e->time, e->cosmology->a, e->cosmology->z, e->time_step,
         e->min_active_bin, e->max_active_bin, e->updates, e->g_updates,
-        e->s_updates, e->wallclock_time, e->step_props);
+        e->s_updates, e->b_updates, e->wallclock_time, e->step_props);
 #ifdef SWIFT_DEBUG_CHECKS
     fflush(stdout);
 #endif
@@ -3257,11 +3645,11 @@ void engine_step(struct engine *e) {
     if (!e->restarting)
       fprintf(
           e->file_timesteps,
-          "  %6d %14e %12.7f %12.7f %14e %4d %4d %12lld %12lld %12lld %21.3f "
-          "%6d\n",
+          "  %6d %14e %12.7f %12.7f %14e %4d %4d %12lld %12lld %12lld %12lld "
+          "%21.3f %6d\n",
           e->step, e->time, e->cosmology->a, e->cosmology->z, e->time_step,
           e->min_active_bin, e->max_active_bin, e->updates, e->g_updates,
-          e->s_updates, e->wallclock_time, e->step_props);
+          e->s_updates, e->b_updates, e->wallclock_time, e->step_props);
 #ifdef SWIFT_DEBUG_CHECKS
     fflush(e->file_timesteps);
 #endif
@@ -3396,6 +3784,7 @@ void engine_step(struct engine *e) {
   e->updates_since_rebuild += e->collect_group1.updated;
   e->g_updates_since_rebuild += e->collect_group1.g_updated;
   e->s_updates_since_rebuild += e->collect_group1.s_updated;
+  e->b_updates_since_rebuild += e->collect_group1.b_updated;
 
 #ifdef SWIFT_DEBUG_CHECKS
   if (e->ti_end_min == e->ti_current && e->ti_end_min < max_nr_timesteps)
@@ -4097,6 +4486,25 @@ void engine_split(struct engine *e, struct partition *initial_partition) {
   if (s->nr_sparts > 0 && s->nr_gparts > 0)
     part_relink_gparts_to_sparts(s->sparts, s->nr_sparts, 0);
 
+  /* Re-allocate the local bparts. */
+  if (e->verbose)
+    message("Re-allocating bparts array from %zu to %zu.", s->size_bparts,
+            (size_t)(s->nr_bparts * engine_redistribute_alloc_margin));
+  s->size_bparts = s->nr_bparts * engine_redistribute_alloc_margin;
+  struct bpart *bparts_new = NULL;
+  if (swift_memalign("bparts", (void **)&bparts_new, bpart_align,
+                     sizeof(struct bpart) * s->size_bparts) != 0)
+    error("Failed to allocate new bpart data.");
+
+  if (s->nr_bparts > 0)
+    memcpy(bparts_new, s->bparts, sizeof(struct bpart) * s->nr_bparts);
+  swift_free("bparts", s->bparts);
+  s->bparts = bparts_new;
+
+  /* Re-link the gparts to their bparts. */
+  if (s->nr_bparts > 0 && s->nr_gparts > 0)
+    part_relink_gparts_to_bparts(s->bparts, s->nr_bparts, 0);
+
   /* Re-allocate the local gparts. */
   if (e->verbose)
     message("Re-allocating gparts array from %zu to %zu.", s->size_gparts,
@@ -4120,11 +4528,15 @@ void engine_split(struct engine *e, struct partition *initial_partition) {
   if (s->nr_sparts > 0 && s->nr_gparts > 0)
     part_relink_sparts_to_gparts(s->gparts, s->nr_gparts, s->sparts);
 
+  /* Re-link the bparts. */
+  if (s->nr_bparts > 0 && s->nr_gparts > 0)
+    part_relink_bparts_to_gparts(s->gparts, s->nr_gparts, s->bparts);
+
 #ifdef SWIFT_DEBUG_CHECKS
 
   /* Verify that the links are correct */
-  part_verify_links(s->parts, s->gparts, s->sparts, s->nr_parts, s->nr_gparts,
-                    s->nr_sparts, e->verbose);
+  part_verify_links(s->parts, s->gparts, s->sparts, s->bparts, s->nr_parts,
+                    s->nr_gparts, s->nr_sparts, s->nr_bparts, e->verbose);
 #endif
 
   if (e->verbose)
@@ -4781,11 +5193,12 @@ void engine_config(int restart, struct engine *e, struct swift_params *params,
               engine_step_prop_snapshot, engine_step_prop_restarts,
               engine_step_prop_stf, engine_step_prop_logger_index);
 
-      fprintf(e->file_timesteps,
-              "# %6s %14s %12s %12s %14s %9s %12s %12s %12s %16s [%s] %6s\n",
-              "Step", "Time", "Scale-factor", "Redshift", "Time-step",
-              "Time-bins", "Updates", "g-Updates", "s-Updates",
-              "Wall-clock time", clocks_getunit(), "Props");
+      fprintf(
+          e->file_timesteps,
+          "# %6s %14s %12s %12s %14s %9s %12s %12s %12s %12s %16s [%s] %6s\n",
+          "Step", "Time", "Scale-factor", "Redshift", "Time-step", "Time-bins",
+          "Updates", "g-Updates", "s-Updates", "b-Updates", "Wall-clock time",
+          clocks_getunit(), "Props");
       fflush(e->file_timesteps);
     }
   }
@@ -5428,12 +5841,9 @@ void engine_recompute_displacement_constraint(struct engine *e) {
   const float rho_crit0 = 3.f * H0 * H0 / (8.f * M_PI * G_newton);
 
   /* Start by reducing the minimal mass of each particle type */
-  float min_mass[swift_type_count] = {e->s->min_part_mass,
-                                      e->s->min_gpart_mass,
-                                      FLT_MAX,
-                                      FLT_MAX,
-                                      e->s->min_spart_mass,
-                                      FLT_MAX};
+  float min_mass[swift_type_count] = {
+      e->s->min_part_mass,  e->s->min_gpart_mass, FLT_MAX, FLT_MAX,
+      e->s->min_spart_mass, e->s->min_bpart_mass};
 #ifdef SWIFT_DEBUG_CHECKS
   /* Check that the minimal mass collection worked */
   float min_part_mass_check = FLT_MAX;
@@ -5452,12 +5862,9 @@ void engine_recompute_displacement_constraint(struct engine *e) {
 #endif
 
   /* Do the same for the velocity norm sum */
-  float vel_norm[swift_type_count] = {e->s->sum_part_vel_norm,
-                                      e->s->sum_gpart_vel_norm,
-                                      0.f,
-                                      0.f,
-                                      e->s->sum_spart_vel_norm,
-                                      0.f};
+  float vel_norm[swift_type_count] = {
+      e->s->sum_part_vel_norm,  e->s->sum_gpart_vel_norm, 0.f, 0.f,
+      e->s->sum_spart_vel_norm, e->s->sum_spart_vel_norm};
 #ifdef WITH_MPI
   MPI_Allreduce(MPI_IN_PLACE, vel_norm, swift_type_count, MPI_FLOAT, MPI_SUM,
                 MPI_COMM_WORLD);
@@ -5466,20 +5873,17 @@ void engine_recompute_displacement_constraint(struct engine *e) {
   /* Get the counts of each particle types */
   const long long total_nr_dm_gparts =
       e->total_nr_gparts - e->total_nr_parts - e->total_nr_sparts;
-  float count_parts[swift_type_count] = {(float)e->total_nr_parts,
-                                         (float)total_nr_dm_gparts,
-                                         0.f,
-                                         0.f,
-                                         (float)e->total_nr_sparts,
-                                         0.f};
+  float count_parts[swift_type_count] = {
+      (float)e->total_nr_parts,  (float)total_nr_dm_gparts, 0.f, 0.f,
+      (float)e->total_nr_sparts, (float)e->total_nr_bparts};
 
   /* Count of particles for the two species */
   const float N_dm = count_parts[1];
-  const float N_b = count_parts[0] + count_parts[4];
+  const float N_b = count_parts[0] + count_parts[4] + count_parts[5];
 
   /* Peculiar motion norm for the two species */
   const float vel_norm_dm = vel_norm[1];
-  const float vel_norm_b = vel_norm[0] + vel_norm[4];
+  const float vel_norm_b = vel_norm[0] + vel_norm[4] + vel_norm[5];
 
   /* Mesh forces smoothing scale */
   float r_s;
@@ -5510,7 +5914,7 @@ void engine_recompute_displacement_constraint(struct engine *e) {
   if (N_b > 0.f) {
 
     /* Minimal mass for the baryons */
-    const float min_mass_b = min(min_mass[0], min_mass[4]);
+    const float min_mass_b = min3(min_mass[0], min_mass[4], min_mass[5]);
 
     /* Inter-particle sepration for the baryons */
     const float d_b = cbrtf(min_mass_b / (Ob * rho_crit0));
