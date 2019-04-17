@@ -51,6 +51,12 @@ static const float log10_min_metallicity = -20;
 /*! Number of metallicity bins considered for the AGB yields */
 #define eagle_feedback_AGB_N_metals 3
 
+/*! Number od mass bins along the mass axis of the lifetime table */
+#define eagle_feedback_lifetime_N_masses 30
+
+/*! Number od mass bins along the metal axis of the lifetime table */
+#define eagle_feedback_lifetime_N_metals 6
+
 /**
  * @brief returns index of element_name within array of element names
  * (element_array)
@@ -356,16 +362,16 @@ inline static void read_yield_tables(struct feedback_props *feedback_props) {
   if (status < 0) error("error closing dataset");
 
   /* allocate temporary array to read lifetimes */
-  double temp_lifetimes[feedback_props->lifetimes.n_z]
-                       [feedback_props->lifetimes.n_mass];
+  double temp_lifetimes[eagle_feedback_lifetime_N_metals]
+                       [eagle_feedback_lifetime_N_masses];
 
   dataset = H5Dopen(file_id, "Lifetimes", H5P_DEFAULT);
   H5Dread(dataset, H5T_NATIVE_DOUBLE, H5S_ALL, H5S_ALL, H5P_DEFAULT,
           temp_lifetimes);
   H5Dclose(dataset);
 
-  for (int i = 0; i < feedback_props->lifetimes.n_z; i++) {
-    for (int j = 0; j < feedback_props->lifetimes.n_mass; j++) {
+  for (int i = 0; i < eagle_feedback_lifetime_N_metals; i++) {
+    for (int j = 0; j < eagle_feedback_lifetime_N_masses; j++) {
       feedback_props->lifetimes.dyingtime[i][j] = log10(temp_lifetimes[i][j]);
     }
   }
@@ -546,7 +552,7 @@ inline static void allocate_yield_tables(
   if (swift_memalign("feedback-tables",
                      (void **)&feedback_props->lifetimes.mass,
                      SWIFT_STRUCT_ALIGNMENT,
-                     feedback_props->lifetimes.n_mass * sizeof(double)) != 0) {
+                     eagle_feedback_lifetime_N_masses * sizeof(double)) != 0) {
     error("Failed to allocate lifetime mass array");
   }
 
@@ -554,16 +560,16 @@ inline static void allocate_yield_tables(
   if (swift_memalign("feedback-tables",
                      (void **)&feedback_props->lifetimes.metallicity,
                      SWIFT_STRUCT_ALIGNMENT,
-                     feedback_props->lifetimes.n_z * sizeof(double)) != 0) {
+                     eagle_feedback_lifetime_N_metals * sizeof(double)) != 0) {
     error("Failed to allocate lifetime metallicity array");
   }
 
   /* Allocate lifetimes array */
   feedback_props->lifetimes.dyingtime =
-      (double **)malloc(feedback_props->lifetimes.n_z * sizeof(double *));
-  for (int i = 0; i < feedback_props->lifetimes.n_z; i++) {
+      (double **)malloc(eagle_feedback_lifetime_N_metals * sizeof(double *));
+  for (int i = 0; i < eagle_feedback_lifetime_N_metals; i++) {
     feedback_props->lifetimes.dyingtime[i] =
-        (double *)malloc(feedback_props->lifetimes.n_mass * sizeof(double));
+        (double *)malloc(eagle_feedback_lifetime_N_masses * sizeof(double));
   }
 
   /* Allocate arrays to store names of elements tracked for SNIa, SNII, AGB  */

@@ -58,10 +58,6 @@ struct yield_table {
  */
 struct lifetime_table {
 
-  /* number of elements, mass, and initial metallicity bins */
-  int n_mass;
-  int n_z;
-
   /* table of masses */
   double *mass;
 
@@ -72,6 +68,9 @@ struct lifetime_table {
   double **dyingtime;
 };
 
+/**
+ * @brief Properties of the EAGLE feedback model.
+ */
 struct feedback_props {
 
   /* Kinetic energy of SN ejecta per unit mass (check name with Richard)*/

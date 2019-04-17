@@ -738,19 +738,6 @@ void compute_stellar_evolution(const struct feedback_props* feedback_props,
   /*      0.5 * (sp->v[0] * sp->v[0] + sp->v[1] * sp->v[1] + sp->v[2] *
    * sp->v[2]) * */
   /*          cosmo->a2_inv); */
-
-  /* /\* Compute the number of type II SNe that went off *\/ */
-  /* sp->feedback_data.to_distribute.num_SNe = */
-  /*     compute_SNe(sp, feedback_props, age, dt); */
-
-  /* /\* Compute probability of heating neighbouring particles *\/ */
-  /* if (dt > 0 && sp->feedback_data.ngb_mass > 0) */
-  /*   sp->feedback_data.to_distribute.heating_probability = */
-  /*       feedback_props->total_energy_SNe * */
-  /*       sp->feedback_data.to_distribute.num_SNe / */
-  /*       (feedback_props->temp_to_u_factor *
-   * feedback_props->SNe_deltaT_desired * */
-  /*        sp->feedback_data.ngb_mass); */
 }
 
 /**
@@ -879,10 +866,6 @@ void feedback_props_init(struct feedback_props* fp,
       1.0e6 / units_cgs_conversion_factor(
                   us, UNIT_CONV_SPEED);  // EAGLE parameter is 10 km/s
   fp->ejecta_specific_thermal_energy = 0.5 * ejecta_velocity * ejecta_velocity;
-
-  /* Set number of elements found in yield tables */
-  fp->lifetimes.n_mass = 30;
-  fp->lifetimes.n_z = 6;
 
   /* Initialise the IMF ------------------------------------------------- */
 

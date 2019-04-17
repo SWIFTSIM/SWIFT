@@ -278,8 +278,8 @@ inline static float dying_mass_msun(
   const double *lifetime_Z = feedback_props->lifetimes.metallicity;
   const double *lifetime_m = feedback_props->lifetimes.mass;
   double **const dying_times = feedback_props->lifetimes.dyingtime;
-  const int n_Z = feedback_props->lifetimes.n_z;
-  const int n_m = feedback_props->lifetimes.n_mass;
+  const int n_Z = eagle_feedback_lifetime_N_metals;
+  const int n_m = eagle_feedback_lifetime_N_masses;
 
   /* Early abort? */
   if (age_Gyr <= 0.f) {
@@ -410,8 +410,8 @@ inline static float lifetime_in_Gyr(
   const double *lifetime_Z = feedback_props->lifetimes.metallicity;
   const double *lifetime_m = feedback_props->lifetimes.mass;
   double **const dying_times = feedback_props->lifetimes.dyingtime;
-  const int n_Z = feedback_props->lifetimes.n_z;
-  const int n_m = feedback_props->lifetimes.n_mass;
+  const int n_Z = eagle_feedback_lifetime_N_metals;
+  const int n_m = eagle_feedback_lifetime_N_masses;
 
   /* Calculate index along the mass axis */
   int m_index;
