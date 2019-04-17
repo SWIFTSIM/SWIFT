@@ -75,7 +75,6 @@ double eagle_feedback_number_of_SNIa(const struct spart* sp, const double t0,
   const double tau = props->SNIa_timescale_Gyr_inv;
   const double nu = props->SNIa_efficiency;
   const double num_SNe_per_Msun = nu * (exp(-t0 * tau) - exp(-t1 * tau));
-  message("t0=%f t1=%f SNe / Msun: %e", t0, t1, num_SNe_per_Msun);
 
   return num_SNe_per_Msun * sp->mass_init * props->mass_to_solar_mass;
 }
@@ -85,6 +84,8 @@ double eagle_feedback_number_of_SNIa(const struct spart* sp, const double t0,
  * inject for a given event.
  *
  * Note that the fraction can be > 1.
+ *
+ * We use equation 7 of Schaye et al. 2015.
  *
  * @param sp The #spart.
  * @param props The properties of the feedback model.
@@ -109,14 +110,10 @@ double eagle_feedback_energy_fraction(const struct spart* sp,
   const double rho_birth = sp->birth_density;
   double n_birth = rho_birth * props->rho_to_n_cgs;
 
-  n_birth = max(n_birth, 0.01);
-
   /* Calculate f_E */
   const double Z_term = pow(max(Z_smooth, 1e-6) / Z_0, n_Z);
-  const double n_term = pow(n_birth / n_0, -n_n);
+  const double n_term = pow(max(n_birth, 1e-6) / n_0, -n_n);
   const double denonimator = 1. + Z_term * n_term;
-
-  message("n_birth=%e Z_smooth=%e", n_birth, Z_smooth);
 
   return f_E_min + (f_E_max - f_E_min) / denonimator;
 }
@@ -172,12 +169,6 @@ inline static void compute_SNe_feedback(
       prob = 1.;
       delta_u = f_E * E_SNe * N_SNe / sp->feedback_data.ngb_mass;
     }
-
-    message(
-        "ID=%lld E_SNe=%e N_SNe=%e deltaT= %e f_E=%e prob=%f ngb_mass=%f "
-        "fac=%e delta_u=%e",
-        sp->id, E_SNe, N_SNe, delta_T, f_E, prob, sp->feedback_data.ngb_mass,
-        conv_factor, delta_u);
 
     /* Store all of this in the star for delivery onto the gas */
     sp->feedback_data.to_distribute.SNII_heating_probability = prob;
@@ -324,47 +315,36 @@ inline static void evolve_SNIa(const float log10_min_mass,
   const float num_SNIa = eagle_feedback_number_of_SNIa(
       sp, star_age_Gyr, star_age_Gyr + dt_Gyr, props);
 
-  message("Stellar mass: %e Msun Number of SNIa: %f",
-          sp->mass_init * props->mass_to_solar_mass, num_SNIa);
-
-  /* sp->feedback_data.to_distribute.num_SNIa = */
-  /*     num_SNIa_per_msun / props->const_solar_mass; */
+  sp->feedback_data.to_distribute.num_SNIa = num_SNIa;
 
   /* compute mass of each metal */
   for (int i = 0; i < chemistry_element_count; i++) {
     sp->feedback_data.to_distribute.metal_mass[i] +=
-        num_SNIa * props->yield_SNIa_IMF_resampled[i] /
-        props->mass_to_solar_mass;
+        num_SNIa * props->yield_SNIa_IMF_resampled[i] *
+        props->solar_mass_to_mass;
   }
 
   /* Update the metallicity of the material released */
   sp->feedback_data.to_distribute.metal_mass_from_SNIa +=
-      num_SNIa * props->yield_SNIa_total_metals_IMF_resampled /
-      props->mass_to_solar_mass;
+      num_SNIa * props->yield_SNIa_total_metals_IMF_resampled *
+      props->solar_mass_to_mass;
 
   /* Update the metal mass produced */
   sp->feedback_data.to_distribute.total_metal_mass +=
-      num_SNIa * props->yield_SNIa_total_metals_IMF_resampled /
-      props->mass_to_solar_mass;
-
-  message("Metal mass to distribute: %e Msun",
-          num_SNIa * props->yield_SNIa_total_metals_IMF_resampled);
-
-  message("Metal mass to distribute: %e U_M",
-          num_SNIa * props->yield_SNIa_total_metals_IMF_resampled /
-              props->mass_to_solar_mass);
+      num_SNIa * props->yield_SNIa_total_metals_IMF_resampled *
+      props->solar_mass_to_mass;
 
   /* Compute the mass produced by SNIa
    * Note: SNIa do not inject H or He so the mass injected is the same
    * as the metal mass injected. */
   sp->feedback_data.to_distribute.mass_from_SNIa +=
-      num_SNIa * props->yield_SNIa_total_metals_IMF_resampled /
-      props->mass_to_solar_mass;
+      num_SNIa * props->yield_SNIa_total_metals_IMF_resampled *
+      props->solar_mass_to_mass;
 
   /* Compute the iron mass produced */
   sp->feedback_data.to_distribute.Fe_mass_from_SNIa +=
-      num_SNIa * props->yield_SNIa_IMF_resampled[chemistry_element_Fe] /
-      props->mass_to_solar_mass;
+      num_SNIa * props->yield_SNIa_IMF_resampled[chemistry_element_Fe] *
+      props->solar_mass_to_mass;
 }
 
 /**
@@ -726,8 +706,6 @@ void compute_stellar_evolution(const struct feedback_props* feedback_props,
     error("min dying mass is greater than max dying mass");
 #endif
 
-  message("min mass=%f max mass=%f", min_dying_mass_Msun, max_dying_mass_Msun);
-
   /* Integration interval is zero - this can happen if minimum and maximum
    * dying masses are above imf_max_mass_Msun. Return without doing any
    * feedback. */
@@ -847,6 +825,31 @@ void feedback_props_init(struct feedback_props* fp,
   fp->n_Z =
       parser_get_param_double(params, "EAGLEFeedback:SNII_Energy_fraction_n_Z");
 
+  /* Properties of the SNII enrichment model -------------------------------- */
+
+  /* Set factors for each element adjusting SNII yield */
+  for (int elem = 0; elem < chemistry_element_count; ++elem) {
+    char buffer[50];
+    sprintf(buffer, "EAGLEFeedback:SNII_yield_factor_%s",
+            chemistry_get_element_name((enum chemistry_element)elem));
+
+    fp->SNII_yield_factor[elem] =
+        parser_get_opt_param_float(params, buffer, 1.f);
+  }
+
+  /* Properties of the SNIa enrichment model -------------------------------- */
+
+  const double SNIa_max_mass_msun =
+      parser_get_param_double(params, "EAGLEFeedback:SNIa_max_mass_Msun");
+  fp->log10_SNIa_max_mass_msun = log10(SNIa_max_mass_msun);
+
+  /* Read SNIa timescale model parameters */
+  fp->SNIa_efficiency =
+      parser_get_param_float(params, "EAGLEFeedback:SNIa_efficiency_p_Msun");
+  fp->SNIa_timescale_Gyr =
+      parser_get_param_float(params, "EAGLEFeedback:SNIa_timescale_Gyr");
+  fp->SNIa_timescale_Gyr_inv = 1.f / fp->SNIa_timescale_Gyr;
+
   /* Gather common conversion factors --------------------------------------- */
 
   /* Calculate internal mass to solar mass conversion factor */
@@ -854,6 +857,7 @@ void feedback_props_init(struct feedback_props* fp,
                           units_cgs_conversion_factor(us, UNIT_CONV_MASS);
   const double unit_mass_cgs = units_cgs_conversion_factor(us, UNIT_CONV_MASS);
   fp->mass_to_solar_mass = unit_mass_cgs / Msun_cgs;
+  fp->solar_mass_to_mass = 1. / fp->mass_to_solar_mass;
 
   /* Calculate temperature to internal energy conversion factor (all internal
    * units) */
@@ -868,19 +872,6 @@ void feedback_props_init(struct feedback_props* fp,
   fp->rho_to_n_cgs =
       (X_H / m_p) * units_cgs_conversion_factor(us, UNIT_CONV_NUMBER_DENSITY);
 
-  /* Properties of the SNIa feedback model ---------------------------------- */
-
-  const double SNIa_max_mass_msun =
-      parser_get_param_double(params, "EAGLEFeedback:SNIa_max_mass_Msun");
-  fp->log10_SNIa_max_mass_msun = log10(SNIa_max_mass_msun);
-
-  /* Read SNIa timescale model parameters */
-  fp->SNIa_efficiency =
-      parser_get_param_float(params, "EAGLEFeedback:SNIa_efficiency_p_Msun");
-  fp->SNIa_timescale_Gyr =
-      parser_get_param_float(params, "EAGLEFeedback:SNIa_timescale_Gyr");
-  fp->SNIa_timescale_Gyr_inv = 1.f / fp->SNIa_timescale_Gyr;
-
   // MATTHIEU up to here
 
   /* Set ejecta thermal energy */
@@ -893,26 +884,26 @@ void feedback_props_init(struct feedback_props* fp,
   fp->lifetimes.n_mass = 30;
   fp->lifetimes.n_z = 6;
 
-  /* Yield table filepath  */
+  /* Initialise the IMF ------------------------------------------------- */
+
+  init_imf(fp);
+
+  /* Calculate number of type II SN per unit solar mass based on our choice
+   * of IMF and integration limits for type II SNe.
+   * Note: No weighting by yields here. */
+  fp->num_SNII_per_msun =
+      integrate_imf(fp->log10_SNII_min_mass_msun, fp->log10_SNII_max_mass_msun,
+                    eagle_imf_integration_no_weight,
+                    /*(stellar_yields=)*/ NULL, fp);
+
+  /* Initialise the yields ---------------------------------------------- */
+
+  /* Read yield table filepath  */
   parser_get_param_string(params, "EAGLEFeedback:filename",
                           fp->yield_table_path);
 
-  /* Initialise IMF */
-  init_imf(fp);
-
   /* Allocate yield tables  */
   allocate_yield_tables(fp);
-
-  /* Set factors for each element adjusting SNII yield */
-  fp->typeII_factor[0] = 1.f;
-  fp->typeII_factor[1] = 1.f;
-  fp->typeII_factor[2] = 0.5f;
-  fp->typeII_factor[3] = 1.f;
-  fp->typeII_factor[4] = 1.f;
-  fp->typeII_factor[5] = 1.f;
-  fp->typeII_factor[6] = 2.f;
-  fp->typeII_factor[7] = 1.f;
-  fp->typeII_factor[8] = 0.5f;
 
   /* Read the tables  */
   read_yield_tables(fp);
@@ -932,14 +923,6 @@ void feedback_props_init(struct feedback_props* fp,
   /* Resample ejecta contribution to enrichment from mass bins used in tables to
    * mass bins used in IMF  */
   compute_ejecta(fp);
-
-  /* Calculate number of type II SN per unit solar mass based on our choice
-   * of IMF and integration limits for type II SNe.
-   * Note: No weighting by yields here. */
-  fp->num_SNII_per_msun =
-      integrate_imf(fp->log10_SNII_min_mass_msun, fp->log10_SNII_max_mass_msun,
-                    eagle_imf_integration_no_weight,
-                    /*(stellar_yields=)*/ NULL, fp);
 
   message("initialized stellar feedback");
 }

@@ -566,13 +566,6 @@ inline static void allocate_yield_tables(
         (double *)malloc(feedback_props->lifetimes.n_mass * sizeof(double));
   }
 
-  /* Allocate SNII factor array  */
-  if (swift_memalign("feedback-tables", (void **)&feedback_props->typeII_factor,
-                     SWIFT_STRUCT_ALIGNMENT,
-                     chemistry_element_count * sizeof(double)) != 0) {
-    error("Failed to allocate SNII factor array");
-  }
-
   /* Allocate arrays to store names of elements tracked for SNIa, SNII, AGB  */
   feedback_props->SNIa_element_names =
       (char **)malloc(eagle_feedback_SNIa_N_elements * sizeof(char *));
@@ -701,12 +694,12 @@ inline static void compute_yields(struct feedback_props *feedback_props) {
             strcmp(chemistry_get_element_name(elem), "Helium") != 0) {
           feedback_props->yield_SNII
               .total_metals_IMF_resampled[flat_index_2d] +=
-              (feedback_props->typeII_factor[elem] - 1) *
+              (feedback_props->SNII_yield_factor[elem] - 1) *
               feedback_props->yield_SNII.yield_IMF_resampled[flat_index_3d];
         }
 
         feedback_props->yield_SNII.yield_IMF_resampled[flat_index_3d] *=
-            feedback_props->typeII_factor[elem];
+            feedback_props->SNII_yield_factor[elem];
       }
     }
 

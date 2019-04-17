@@ -19,6 +19,7 @@
 #ifndef SWIFT_EAGLE_FEEDBACK_PROPERTIES_H
 #define SWIFT_EAGLE_FEEDBACK_PROPERTIES_H
 
+#include "chemistry.h"
 #include "hydro_properties.h"
 
 /**
@@ -80,9 +81,6 @@ struct feedback_props {
   struct yield_table yield_AGB;
   struct yield_table yield_SNII;
 
-  /* Array of adjustment factors for SNII  */
-  double *typeII_factor;
-
   /* Arrays of yield tables for SNIa */
   double *yield_SNIa_IMF_resampled;
   double yield_SNIa_total_metals_IMF_resampled;
@@ -102,6 +100,11 @@ struct feedback_props {
   /* Location of yield tables */
   char yield_table_path[200];
 
+  /* ------------- SNII parameters    --------------- */
+
+  /* Array of adjustment factors for SNII  */
+  float SNII_yield_factor[chemistry_element_count];
+
   /* ------------- SNIa parameters    --------------- */
 
   /*! Efficiency of the SNIa model */
@@ -120,6 +123,9 @@ struct feedback_props {
 
   /*! Conversion factor from internal mass unit to solar mass */
   double mass_to_solar_mass;
+
+  /*! Conversion factor from internal mass unit to solar mass */
+  double solar_mass_to_mass;
 
   /*! Conversion factor from density in internal units to Hydrogen number
    * density in cgs */
