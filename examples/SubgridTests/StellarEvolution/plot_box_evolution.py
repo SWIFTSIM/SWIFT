@@ -94,9 +94,10 @@ Msun_in_cgs = 1.989e33
 
 #filename = "/cosma/home/dp004/dc-bori1/Eagle/data1/z_0.0001/StellarEvolutionTotal.txt"
 #filename = "/cosma/home/dp004/dc-bori1/Eagle/data1/z_0.001/StellarEvolutionTotal.txt"
-filename = "/cosma/home/dp004/dc-bori1/Eagle/data1/z_0.01/StellarEvolutionTotal.txt"
+#filename = "/cosma/home/dp004/dc-bori1/Eagle/data1/z_0.01/StellarEvolutionTotal.txt"
 #filename = "/cosma/home/dp004/dc-bori1/Eagle/data1/z_0.04/StellarEvolutionTotal.txt"
 #filename = "/cosma/home/dp004/dc-bori1/Eagle/data1/z_0.08/StellarEvolutionTotal.txt"
+filename = "StellarEvolutionTotal.txt"
 
 # Read EAGLE test output
 with open(filename) as f:
@@ -143,7 +144,9 @@ for i in range(n_snapshots):
 	element_abundances = sim["/PartType0/ElementAbundance"][:][:]
 	for j in range(n_elements):
 		swift_element_mass[i,j] = np.sum(element_abundances[:,j] * masses)
-	
+
+        sim.close()
+                
 # Plot the interesting quantities
 figure()
 
@@ -174,8 +177,10 @@ for j in range(n_elements):
 	plot(eagle_time_Gyr[1:],eagle_total_element_mass[:-1,j],linewidth=1,color=colours[j],linestyle='--')
 xlabel("${\\rm{Time}} (Gyr)$", labelpad=0)
 ylabel("Change in element mass of gas particles (Msun)", labelpad=2)
-ticklabel_format(style='sci', axis='y', scilimits=(0,0))
-legend()
+#ticklabel_format(style='sci', axis='y', scilimits=(0,0))
+xscale("log")
+yscale("log")
+legend(bbox_to_anchor=(1.1, 1.))
 
 savefig("box_evolution.png", dpi=200)
 

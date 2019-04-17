@@ -103,7 +103,7 @@ runner_iact_nonsym_feedback_apply(
 
   /* Compute weighting for distributing feedback quantities */
   float density_weighted_frac;
-  float rho = hydro_get_comoving_density(pj);
+  const float rho = hydro_get_comoving_density(pj);
   if (rho * si->feedback_data.density_weighted_frac_normalisation_inv != 0) {
     density_weighted_frac =
         wi / (rho * si->feedback_data.density_weighted_frac_normalisation_inv);
@@ -112,29 +112,33 @@ runner_iact_nonsym_feedback_apply(
   }
 
   /* Update particle mass */
-  const float current_mass = hydro_get_mass(pj);
-  const float delta_mass =
+  const double current_mass = hydro_get_mass(pj);
+  const double delta_mass =
       si->feedback_data.to_distribute.mass * density_weighted_frac;
-  const float new_mass = current_mass + delta_mass;
+  const double new_mass = current_mass + delta_mass;
 
   hydro_set_mass(pj, new_mass);
 
   /* Update total metallicity */
-  const float current_metal_mass_total =
+  const double current_metal_mass_total =
       pj->chemistry_data.metal_mass_fraction_total * current_mass;
-  const float new_metal_mass_total =
-      current_metal_mass_total +
+  const double delta_metal_mass_total =
       si->feedback_data.to_distribute.total_metal_mass * density_weighted_frac;
+  const double new_metal_mass_total =
+      current_metal_mass_total + delta_metal_mass_total;
+
   pj->chemistry_data.metal_mass_fraction_total =
       new_metal_mass_total / new_mass;
 
   /* Update mass fraction of each tracked element  */
   for (int elem = 0; elem < chemistry_element_count; elem++) {
-    const float current_metal_mass =
+    const double current_metal_mass =
         pj->chemistry_data.metal_mass_fraction[elem] * current_mass;
-    const float new_metal_mass =
-        current_metal_mass + si->feedback_data.to_distribute.metal_mass[elem] *
-                                 density_weighted_frac;
+    const double delta_metal_mass =
+        si->feedback_data.to_distribute.metal_mass[elem] *
+        density_weighted_frac;
+    const double new_metal_mass = current_metal_mass + delta_metal_mass;
+
     pj->chemistry_data.metal_mass_fraction[elem] = new_metal_mass / new_mass;
   }
 

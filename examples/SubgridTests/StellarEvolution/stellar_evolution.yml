@@ -20,7 +20,7 @@ TimeIntegration:
   time_begin: 0     # The starting time of the simulation (in internal units).
   time_end:   5e-3  # The end time of the simulation (in internal units).
   dt_min:     1e-12 # The minimal time-step size of the simulation (in internal units).
-  dt_max:     4e-6  # The maximal time-step size of the simulation (in internal units).
+  dt_max:     8e-6  # The maximal time-step size of the simulation (in internal units).
 
 # Parameters governing the snapshots
 Snapshots:
@@ -89,3 +89,6 @@ EAGLEFeedback:
   SNII_Energy_fraction_n_0_H_p_cm3: 0.67         # cm^-3
   SNII_Energy_fraction_n_n:         0.8686       # 2/ln(10)
   SNII_Energy_fraction_n_Z:         0.8686       # 2/ln(10)
+  SNIa_max_mass_Msun:              8.0
+  SNIa_timescale_Gyr:              2.0
+  SNIa_efficiency_p_Msun:          0.002

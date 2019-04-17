@@ -88,17 +88,10 @@ struct feedback_props {
   double yield_SNIa_total_metals_IMF_resampled;
   double *yields_SNIa;
 
-  /* Parameters to SNIa enrichment model  */
-  float SNIa_efficiency;
-  float SNIa_timescale_Gyr;
-
   /* Arrays for names of elements being tracked for each enrichment channel */
   char **SNIa_element_names;
   char **SNII_element_names;
   char **AGB_element_names;
-
-  /* log10 of max and min allowable masses for SNII and SNIa in msun */
-  float log10_SNIa_max_mass_msun;
 
   /* Array of mass bins for yield calculations */
   double *yield_mass_bins;
@@ -108,6 +101,20 @@ struct feedback_props {
 
   /* Location of yield tables */
   char yield_table_path[200];
+
+  /* ------------- SNIa parameters    --------------- */
+
+  /*! Efficiency of the SNIa model */
+  float SNIa_efficiency;
+
+  /*! Time-scale of the SNIa decay function in Giga-years */
+  float SNIa_timescale_Gyr;
+
+  /*! Inverse of time-scale of the SNIa decay function in Giga-years */
+  float SNIa_timescale_Gyr_inv;
+
+  /*! Log 10 of the maximal mass used for SNIa feedback (in solar masses) */
+  float log10_SNIa_max_mass_msun;
 
   /* ------------- Conversion factors --------------- */
 
