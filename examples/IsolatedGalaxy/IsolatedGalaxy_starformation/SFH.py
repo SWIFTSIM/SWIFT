@@ -117,17 +117,7 @@ def getsfrsnapwide(numbsnaps):
         absmaxz = 2  # kpc
         absmaxxy = 10  # kpc
 
-        part_mask = (
-            SFR
-            > 0
-            # ((coordinates[:, 0] - box_size / 2.0) > -absmaxxy)
-            # & ((coordinates[:, 0] - box_size / 2.0) < absmaxxy)
-            # & ((coordinates[:, 1] - box_size / 2.0) > -absmaxxy)
-            # & ((coordinates[:, 1] - box_size / 2.0) < absmaxxy)
-            # & ((coordinates[:, 2] - box_size / 2.0) > -absmaxz)
-            # & ((coordinates[:, 2] - box_size / 2.0) < absmaxz)
-            # & (SFR > 0)
-        )
+        part_mask = SFR > 0
 
         SFR = SFR[part_mask]
 
