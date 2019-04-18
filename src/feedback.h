@@ -24,8 +24,8 @@
 
 /* Select the correct feedback model */
 #if defined(FEEDBACK_NONE)
-#include "./deedback/Default/feedback_iact.h"
-#include "./feedback/Default/feedback.h"
+#include "./feedback/none/feedback.h"
+#include "./feedback/none/feedback_iact.h"
 #elif defined(FEEDBACK_EAGLE)
 #include "./feedback/EAGLE/feedback.h"
 #include "./feedback/EAGLE/feedback_iact.h"

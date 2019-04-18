@@ -21,6 +21,7 @@
 
 /* Local includes. */
 #include "chemistry.h"
+#include "inline.h"
 
 static const float log10_min_metallicity = -20;
 
@@ -65,7 +66,7 @@ static const float log10_min_metallicity = -20;
  * @param element_array array of element names
  * @param n_elements size of element_array
  */
-inline static int get_element_index(const char *element_name,
+INLINE static int get_element_index(const char *element_name,
                                     char **element_array, int n_elements) {
 
   /* Compare element name we are trying to index to names in element_array */
@@ -83,7 +84,7 @@ inline static int get_element_index(const char *element_name,
  *
  * @param feedback_props the #feedback_props data struct to read the table into.
  */
-inline static void read_yield_tables(struct feedback_props *feedback_props) {
+INLINE static void read_yield_tables(struct feedback_props *feedback_props) {
 
 #ifdef HAVE_HDF5
 
@@ -386,7 +387,7 @@ inline static void read_yield_tables(struct feedback_props *feedback_props) {
  *
  * @param feedback_props the #feedback_props data struct to store the tables in
  */
-inline static void allocate_yield_tables(
+INLINE static void allocate_yield_tables(
     struct feedback_props *feedback_props) {
 
   /* Allocate array to store SNIa yield tables */
@@ -606,7 +607,7 @@ inline static void allocate_yield_tables(
  *
  * @param feedback_props the #feedback_props data struct.
  */
-inline static void compute_yields(struct feedback_props *feedback_props) {
+INLINE static void compute_yields(struct feedback_props *feedback_props) {
 
   int flat_index_3d, flat_index_2d;
 
@@ -756,7 +757,7 @@ inline static void compute_yields(struct feedback_props *feedback_props) {
  *
  * @param feedback_props the #feedback_props data struct.
  */
-inline static void compute_ejecta(struct feedback_props *feedback_props) {
+INLINE static void compute_ejecta(struct feedback_props *feedback_props) {
 
   /* Declare temporary tables to accumulate yields */
   double SNII_ejecta[eagle_feedback_SNII_N_masses];

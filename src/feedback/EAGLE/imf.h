@@ -23,6 +23,7 @@
 #include <string.h>
 
 /* Local includes. */
+#include "inline.h"
 #include "interpolate.h"
 #include "minmax.h"
 #include "yield_tables.h"
@@ -46,7 +47,7 @@ enum eagle_imf_integration_type {
  * @param i_max (return) Index of IMF mass bin containing log10_max_mass
  * @param feedback_props the #feedback_props data struct
  */
-inline static void determine_imf_bins(
+INLINE static void determine_imf_bins(
     double log10_min_mass, double log10_max_mass, int *i_min, int *i_max,
     const struct feedback_props *feedback_props) {
 
@@ -89,7 +90,7 @@ inline static void determine_imf_bins(
  * yield-weighted integration.
  * @param feedback_props the #feedback_props data structure
  */
-inline static float integrate_imf(const float log10_min_mass,
+INLINE static float integrate_imf(const float log10_min_mass,
                                   const float log10_max_mass,
                                   const enum eagle_imf_integration_type mode,
                                   const float *stellar_yields,
@@ -194,7 +195,7 @@ inline static float integrate_imf(const float log10_min_mass,
  *
  * @param feedback_props #feedback_props data structure
  */
-inline static void init_imf(struct feedback_props *feedback_props) {
+INLINE static void init_imf(struct feedback_props *feedback_props) {
 
   /* Compute size of mass bins in log10 space */
   const double imf_log10_mass_bin_size =
@@ -269,7 +270,7 @@ inline static void init_imf(struct feedback_props *feedback_props) {
  * @param feedback_props the #feedback_props data structure.
  * @return Mass of stars died up to that age in solar masses.
  */
-inline static float dying_mass_msun(
+INLINE static float dying_mass_msun(
     const float age_Gyr, const float Z,
     const struct feedback_props *feedback_props) {
 
@@ -403,7 +404,7 @@ inline static float dying_mass_msun(
  * @param feedback_props the #feedback_props data structure.
  * @return The life time in Giga-years.
  */
-inline static float lifetime_in_Gyr(
+INLINE static float lifetime_in_Gyr(
     const float mass, const float Z,
     const struct feedback_props *feedback_props) {
 

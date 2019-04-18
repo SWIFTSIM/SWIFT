@@ -23,6 +23,7 @@
 /* Local includes. */
 #include "hydro_properties.h"
 #include "imf.h"
+#include "inline.h"
 #include "interpolate.h"
 #include "yield_tables.h"
 
@@ -130,7 +131,7 @@ double eagle_feedback_energy_fraction(const struct spart* sp,
  * @param ngb_gas_mass Total un-weighted mass in the star's kernel.
  * @param feedback_props The properties of the feedback model.
  */
-inline static void compute_SNe_feedback(
+INLINE static void compute_SNe_feedback(
     struct spart* sp, const double star_age, const double dt,
     const float ngb_gas_mass, const struct feedback_props* feedback_props) {
 
@@ -186,7 +187,7 @@ inline static void compute_SNe_feedback(
  * @param log10_Z log10 of the star metallicity (metal mass fraction).
  * @param props The properties of the feedback model.
  */
-inline static void determine_bin_yield_AGB(int* iz_low, int* iz_high, float* dz,
+INLINE static void determine_bin_yield_AGB(int* iz_low, int* iz_high, float* dz,
                                            const float log10_Z,
                                            const struct feedback_props* props) {
 
@@ -237,7 +238,7 @@ inline static void determine_bin_yield_AGB(int* iz_low, int* iz_high, float* dz,
  * @param log10_Z log10 of the star metallicity (metal mass fraction).
  * @param props The properties of the feedback model.
  */
-inline static void determine_bin_yield_SNII(
+INLINE static void determine_bin_yield_SNII(
     int* iz_low, int* iz_high, float* dz, const float log10_Z,
     const struct feedback_props* props) {
 
@@ -290,7 +291,7 @@ inline static void determine_bin_yield_SNII(
  * @param star_age_Gyr age of star in Gyr
  * @param dt_Gyr timestep dt in Gyr
  */
-inline static void evolve_SNIa(const float log10_min_mass,
+INLINE static void evolve_SNIa(const float log10_min_mass,
                                const float log10_max_mass,
                                const struct feedback_props* props,
                                struct spart* sp, float star_age_Gyr,
@@ -359,7 +360,7 @@ inline static void evolve_SNIa(const float log10_min_mass,
  * @param props properties of the feedback model.
  * @param sp spart we are computing feedback from
  */
-inline static void evolve_SNII(float log10_min_mass, float log10_max_mass,
+INLINE static void evolve_SNII(float log10_min_mass, float log10_max_mass,
                                float* stellar_yields,
                                const struct feedback_props* props,
                                struct spart* sp) {
@@ -515,7 +516,7 @@ inline static void evolve_SNII(float log10_min_mass, float log10_max_mass,
  * @param props Properties of the feedback model.
  * @param sp spart we are computing feedback for.
  */
-inline static void evolve_AGB(const float log10_min_mass, float log10_max_mass,
+INLINE static void evolve_AGB(const float log10_min_mass, float log10_max_mass,
                               float* stellar_yields,
                               const struct feedback_props* props,
                               struct spart* sp) {
@@ -654,7 +655,7 @@ inline static void evolve_AGB(const float log10_min_mass, float log10_max_mass,
  * @brief Prepares a star's feedback field before computing what
  * needs to be distributed.
  */
-inline static void feedback_init_to_distribute(struct spart* sp) {
+INLINE static void feedback_init_to_distribute(struct spart* sp) {
 
   /* Zero the amount of mass that is distributed */
   sp->feedback_data.to_distribute.mass = 0.f;

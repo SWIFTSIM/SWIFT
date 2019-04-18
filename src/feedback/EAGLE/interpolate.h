@@ -21,6 +21,7 @@
 
 /* Local includes. */
 #include "error.h"
+#include "inline.h"
 
 /**
  * @brief Returns the 1d index of element with 2d indices i,j

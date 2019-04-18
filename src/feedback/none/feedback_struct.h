@@ -1,6 +1,6 @@
 /*******************************************************************************
  * This file is part of SWIFT.
- * Coypright (c) 2018 Matthieu Schaller (matthieu.schaller@durham.ac.uk)
+ * Copyright (c) 2018 Matthieu Schaller (schaller@strw.leidenuniv.nl)
  *
  * This program is free software: you can redistribute it and/or modify
  * it under the terms of the GNU Lesser General Public License as published
@@ -16,19 +16,16 @@
  * along with this program.  If not, see <http://www.gnu.org/licenses/>.
  *
  ******************************************************************************/
-#ifndef SWIFT_FEEDBACK_PROPERTIES_H
-#define SWIFT_FEEDBACK_PROPERTIES_H
+#ifndef SWIFT_FEEDBACK_STRUCT_NONE_H
+#define SWIFT_FEEDBACK_STRUCT_NONE_H
 
-/* Config parameters. */
-#include "../config.h"
+#include "chemistry_struct.h"
 
-/* Select the correct feedback model */
-#if defined(FEEDBACK_NONE)
-#include "./feedback/none/feedback_properties.h"
-#elif defined(FEEDBACK_EAGLE)
-#include "./feedback/EAGLE/feedback_properties.h"
-#else
-#error "Invalid choice of feedback model"
-#endif
+/**
+ * @brief Feedback fields carried by each star particles
+ *
+ * Nothing here since this is a no-feedback model.
+ */
+struct feedback_spart_data {};
 
-#endif /* SWIFT_FEEDBACK_PROPERTIES_H */
+#endif /* SWIFT_FEEDBACK_STRUCT_NONE_H */
