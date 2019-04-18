@@ -71,13 +71,6 @@ struct spart {
 
   } density;
 
-  struct {
-
-    /* Change in smoothing length over time. */
-    float h_dt;
-
-  } feedback;
-
   /* Not used in the default stars */
   union {
     double birth_time;

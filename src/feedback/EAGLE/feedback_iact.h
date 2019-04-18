@@ -19,6 +19,9 @@
 #ifndef SWIFT_EAGLE_FEEDBACK_IACT_H
 #define SWIFT_EAGLE_FEEDBACK_IACT_H
 
+/* Local includes */
+#include "random.h"
+
 /**
  * @brief Density interaction between two particles (non-symmetric).
  *

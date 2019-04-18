@@ -90,10 +90,7 @@ __attribute__((always_inline)) INLINE static void stars_reset_predicted_values(
  * @param sp The particle to act upon
  */
 __attribute__((always_inline)) INLINE static void stars_end_feedback(
-    struct spart* sp) {
-
-  sp->feedback.h_dt *= sp->h * hydro_dimension_inv;
-}
+    struct spart* sp) {}
 
 /**
  * @brief Kick the additional variables
@@ -154,9 +151,6 @@ __attribute__((always_inline)) INLINE static void stars_spart_has_no_neighbours(
  */
 __attribute__((always_inline)) INLINE static void stars_reset_feedback(
     struct spart* restrict p) {
-
-  /* Reset time derivative */
-  p->feedback.h_dt = 0.f;
 
 #ifdef DEBUG_INTERACTIONS_STARS
   for (int i = 0; i < MAX_NUM_OF_NEIGHBOURS_STARS; ++i)
