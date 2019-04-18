@@ -28,19 +28,18 @@
  * @param hj Comoving smoothing-length of particle j.
  * @param si First sparticle.
  * @param pj Second particle (not updated).
- * @param a Current scale factor.
- * @param H Current Hubble parameter.
- * @param xp Extra particle data
+ * @param xp Extra particle data (not updated).
+ * @param cosmo The cosmological model.
  * @param ti_current Current integer time value
  */
 __attribute__((always_inline)) INLINE static void
-runner_iact_nonsym_feedback_density(float r2, const float *dx, float hi,
-                                    float hj, struct spart *restrict si,
+runner_iact_nonsym_feedback_density(const float r2, const float *dx,
+                                    const float hi, const float hj,
+                                    struct spart *restrict si,
                                     const struct part *restrict pj,
-                                    const struct cosmology *restrict cosmo,
-                                    const struct feedback_props *feedback_props,
                                     const struct xpart *restrict xp,
-                                    integertime_t ti_current) {
+                                    const struct cosmology *restrict cosmo,
+                                    const integertime_t ti_current) {
 
   /* Get the gas mass. */
   const float mj = hydro_get_mass(pj);
@@ -75,21 +74,21 @@ runner_iact_nonsym_feedback_density(float r2, const float *dx, float hi,
  * @param dx Comoving vector separating both particles (si - pj).
  * @param hi Comoving smoothing-length of particle i.
  * @param hj Comoving smoothing-length of particle j.
- * @param si First (star) particle.
+ * @param si First (star) particle (not updated).
  * @param pj Second (gas) particle.
- * @param a Current scale factor.
- * @param H Current Hubble parameter.
  * @param xp Extra particle data
+ * @param cosmo The cosmological model.
  * @param ti_current Current integer time used value for seeding random number
  * generator
  */
 __attribute__((always_inline)) INLINE static void
-runner_iact_nonsym_feedback_apply(
-    float r2, const float *dx, float hi, float hj,
-    const struct spart *restrict si, struct part *restrict pj,
-    const struct cosmology *restrict cosmo,
-    const struct feedback_props *restrict feedback_props,
-    struct xpart *restrict xp, integertime_t ti_current) {
+runner_iact_nonsym_feedback_apply(const float r2, const float *dx,
+                                  const float hi, const float hj,
+                                  const struct spart *restrict si,
+                                  struct part *restrict pj,
+                                  struct xpart *restrict xp,
+                                  const struct cosmology *restrict cosmo,
+                                  const integertime_t ti_current) {
 
   /* Get r and 1/r. */
   const float r_inv = 1.0f / sqrtf(r2);

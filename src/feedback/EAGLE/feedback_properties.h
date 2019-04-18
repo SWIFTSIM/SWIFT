@@ -93,11 +93,13 @@ struct feedback_props {
   /* Array of mass bins for yield calculations */
   double *yield_mass_bins;
 
-  /* Table of lifetime values */
-  struct lifetime_table lifetimes;
-
   /* Location of yield tables */
   char yield_table_path[200];
+
+  /* ------------- Lifetime tracks   --------------- */
+
+  /* Table of lifetime values */
+  struct lifetime_table lifetimes;
 
   /* ------------- SNII parameters    --------------- */
 

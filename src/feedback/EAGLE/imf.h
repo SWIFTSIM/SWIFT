@@ -44,7 +44,7 @@ enum eagle_imf_integration_type {
  * @param log10_max_mass Upper mass bound
  * @param i_min (return) Index of IMF mass bin containing log10_min_mass
  * @param i_max (return) Index of IMF mass bin containing log10_max_mass
- * @param star_properties the #stars_props data struct
+ * @param feedback_props the #feedback_props data struct
  */
 inline static void determine_imf_bins(
     double log10_min_mass, double log10_max_mass, int *i_min, int *i_max,
@@ -87,7 +87,7 @@ inline static void determine_imf_bins(
  * @param mode Type of weighting for the IMF integration.
  * @param stellar_yields Array of weights based on yields. Used only for
  * yield-weighted integration.
- * @param star_properties the #stars_props data structure
+ * @param feedback_props the #feedback_props data structure
  */
 inline static float integrate_imf(const float log10_min_mass,
                                   const float log10_max_mass,
@@ -192,7 +192,8 @@ inline static float integrate_imf(const float log10_min_mass,
  * @brief Allocate space for IMF table and compute values to populate this
  * table.
  *
- * @param star_properties #stars_props data structure */
+ * @param feedback_props #feedback_props data structure
+ */
 inline static void init_imf(struct feedback_props *feedback_props) {
 
   /* Compute size of mass bins in log10 space */
@@ -265,7 +266,7 @@ inline static void init_imf(struct feedback_props *feedback_props) {
  *
  * @param age_Gyr age of star in Gyr.
  * @param Z Star's metallicity (metal mass fraction).
- * @param star_properties the #stars_props data structure.
+ * @param feedback_props the #feedback_props data structure.
  * @return Mass of stars died up to that age in solar masses.
  */
 inline static float dying_mass_msun(

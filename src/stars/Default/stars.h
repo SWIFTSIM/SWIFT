@@ -40,6 +40,7 @@ __attribute__((always_inline)) INLINE static float stars_compute_timestep(
  * read in to do some conversions.
  *
  * @param sp The particle to act upon
+ * @param stars_properties The properties of the stellar model.
  */
 __attribute__((always_inline)) INLINE static void stars_first_init_spart(
     struct spart* sp, const struct stars_props* stars_properties) {
@@ -142,21 +143,6 @@ __attribute__((always_inline)) INLINE static void stars_spart_has_no_neighbours(
   sp->density.wcount = kernel_root * h_inv_dim;
   sp->density.wcount_dh = 0.f;
 }
-
-/**
- * @brief Evolve the stellar properties of a #spart.
- *
- * This function allows for example to compute the SN rate before sending
- * this information to a different MPI rank.
- *
- * @param sp The particle to act upon
- * @param cosmo The current cosmological model.
- * @param stars_properties The #stars_props
- */
-__attribute__((always_inline)) INLINE static void stars_evolve_spart(
-    struct spart* restrict sp, const struct stars_props* stars_properties,
-    const struct cosmology* cosmo, const struct unit_system* us,
-    double star_age, double dt) {}
 
 /**
  * @brief Reset acceleration fields of a particle

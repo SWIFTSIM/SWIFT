@@ -81,7 +81,7 @@ inline static int get_element_index(const char *element_name,
  * @brief reads yield tables, flattens and stores them in stars_props data
  * struct
  *
- * @param stars the #stars_props data structure
+ * @param feedback_props the #feedback_props data struct to read the table into.
  */
 inline static void read_yield_tables(struct feedback_props *feedback_props) {
 
@@ -384,7 +384,7 @@ inline static void read_yield_tables(struct feedback_props *feedback_props) {
 /**
  * @brief allocates space for the yield tables
  *
- * @param stars the #stars_props data struct to store the tables in
+ * @param feedback_props the #feedback_props data struct to store the tables in
  */
 inline static void allocate_yield_tables(
     struct feedback_props *feedback_props) {
@@ -604,7 +604,7 @@ inline static void allocate_yield_tables(
 /**
  * @brief resamples yields based on IMF mass bins
  *
- * @param stars the #stars_props data structure
+ * @param feedback_props the #feedback_props data struct.
  */
 inline static void compute_yields(struct feedback_props *feedback_props) {
 
@@ -754,7 +754,7 @@ inline static void compute_yields(struct feedback_props *feedback_props) {
 /**
  * @brief resamples ejecta based on IMF mass bins
  *
- * @param stars the #stars_props data structure
+ * @param feedback_props the #feedback_props data struct.
  */
 inline static void compute_ejecta(struct feedback_props *feedback_props) {
 

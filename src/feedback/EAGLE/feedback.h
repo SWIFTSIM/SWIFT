@@ -109,7 +109,7 @@ __attribute__((always_inline)) INLINE static void feedback_prepare_spart(
  * this information to a different MPI rank.
  *
  * @param sp The particle to act upon
- * @param feedback_propss The #feedback_props structure.
+ * @param feedback_props The #feedback_props structure.
  * @param cosmo The current cosmological model.
  * @param us The unit system.
  * @param star_age_beg_step The age of the star at the star of the time-step in

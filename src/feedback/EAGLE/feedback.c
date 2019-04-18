@@ -285,8 +285,8 @@ inline static void determine_bin_yield_SNII(
  *
  * @param log10_min_mass log10 mass at the end of step
  * @param log10_max_mass log10 mass at the beginning of step
- * @param stars star properties data structure
- * @param sp spart we are computing feedback from
+ * @param props properties of the feedback model
+ * @param sp #spart we are computing feedback from
  * @param star_age_Gyr age of star in Gyr
  * @param dt_Gyr timestep dt in Gyr
  */
@@ -356,25 +356,25 @@ inline static void evolve_SNIa(const float log10_min_mass,
  * @param log10_max_mass log10 mass at the beginning of step
  * @param stellar_yields array to store calculated yields for passing to
  * integrate_imf
- * @param stars star properties data structure
+ * @param props properties of the feedback model.
  * @param sp spart we are computing feedback from
  */
-inline static void evolve_SNII(
-    float log10_min_mass, float log10_max_mass, float* stellar_yields,
-    const struct feedback_props* restrict feedback_props,
-    struct spart* restrict sp) {
+inline static void evolve_SNII(float log10_min_mass, float log10_max_mass,
+                               float* stellar_yields,
+                               const struct feedback_props* props,
+                               struct spart* sp) {
 
   int low_imf_mass_bin_index, high_imf_mass_bin_index, mass_bin_index;
 
   /* If mass at beginning of step is less than tabulated lower bound for IMF,
    * limit it.*/
-  if (log10_min_mass < feedback_props->log10_SNII_min_mass_msun)
-    log10_min_mass = feedback_props->log10_SNII_min_mass_msun;
+  if (log10_min_mass < props->log10_SNII_min_mass_msun)
+    log10_min_mass = props->log10_SNII_min_mass_msun;
 
   /* If mass at end of step is greater than tabulated upper bound for IMF, limit
    * it.*/
-  if (log10_max_mass > feedback_props->log10_SNII_max_mass_msun)
-    log10_max_mass = feedback_props->log10_SNII_max_mass_msun;
+  if (log10_max_mass > props->log10_SNII_max_mass_msun)
+    log10_max_mass = props->log10_SNII_max_mass_msun;
 
   /* Don't do anything if the stellar mass hasn't decreased by the end of the
    * step */
@@ -382,11 +382,12 @@ inline static void evolve_SNII(
 
   /* determine which IMF mass bins contribute to the integral */
   determine_imf_bins(log10_min_mass, log10_max_mass, &low_imf_mass_bin_index,
-                     &high_imf_mass_bin_index, feedback_props);
+                     &high_imf_mass_bin_index, props);
 
   /* Integrate IMF to determine number of SNII */
-  sp->feedback_data.to_distribute.num_SNII = integrate_imf(
-      log10_min_mass, log10_max_mass, 0, stellar_yields, feedback_props);
+  sp->feedback_data.to_distribute.num_SNII =
+      integrate_imf(log10_min_mass, log10_max_mass,
+                    eagle_imf_integration_no_weight, stellar_yields, props);
 
   /* determine which metallicity bin and offset this star belongs to */
   int iz_low = 0, iz_high = 0, low_index_3d, high_index_3d, low_index_2d,
@@ -394,7 +395,7 @@ inline static void evolve_SNII(
   float dz = 0.;
   determine_bin_yield_SNII(&iz_low, &iz_high, &dz,
                            log10(sp->chemistry_data.metal_mass_fraction_total),
-                           feedback_props);
+                           props);
 
   /* compute metals produced */
   float metal_mass_released[chemistry_element_count], metal_mass_released_total;
@@ -415,18 +416,17 @@ inline static void evolve_SNII(
                                          eagle_feedback_N_imf_bins);
       stellar_yields[mass_bin_index] =
           (1 - dz) *
-              (feedback_props->yield_SNII.yield_IMF_resampled[low_index_3d] +
+              (props->yield_SNII.yield_IMF_resampled[low_index_3d] +
                sp->chemistry_data.metal_mass_fraction[elem] *
-                   feedback_props->yield_SNII
-                       .ejecta_IMF_resampled[low_index_2d]) +
-          dz * (feedback_props->yield_SNII.yield_IMF_resampled[high_index_3d] +
+                   props->yield_SNII.ejecta_IMF_resampled[low_index_2d]) +
+          dz * (props->yield_SNII.yield_IMF_resampled[high_index_3d] +
                 sp->chemistry_data.metal_mass_fraction[elem] *
-                    feedback_props->yield_SNII
-                        .ejecta_IMF_resampled[high_index_2d]);
+                    props->yield_SNII.ejecta_IMF_resampled[high_index_2d]);
     }
 
-    metal_mass_released[elem] = integrate_imf(log10_min_mass, log10_max_mass, 2,
-                                              stellar_yields, feedback_props);
+    metal_mass_released[elem] = integrate_imf(
+        log10_min_mass, log10_max_mass, eagle_imf_integration_yield_weight,
+        stellar_yields, props);
   }
 
   /* Compute mass produced */
@@ -439,20 +439,17 @@ inline static void evolve_SNII(
                                        eagle_feedback_SNII_N_metals,
                                        eagle_feedback_N_imf_bins);
     stellar_yields[mass_bin_index] =
-        (1 - dz) * (feedback_props->yield_SNII
-                        .total_metals_IMF_resampled[low_index_2d] +
+        (1 - dz) * (props->yield_SNII.total_metals_IMF_resampled[low_index_2d] +
                     sp->chemistry_data.metal_mass_fraction_total *
-                        feedback_props->yield_SNII
-                            .ejecta_IMF_resampled[low_index_2d]) +
-        dz * (feedback_props->yield_SNII
-                  .total_metals_IMF_resampled[high_index_2d] +
+                        props->yield_SNII.ejecta_IMF_resampled[low_index_2d]) +
+        dz * (props->yield_SNII.total_metals_IMF_resampled[high_index_2d] +
               sp->chemistry_data.metal_mass_fraction_total *
-                  feedback_props->yield_SNII
-                      .ejecta_IMF_resampled[high_index_2d]);
+                  props->yield_SNII.ejecta_IMF_resampled[high_index_2d]);
   }
 
-  metal_mass_released_total = integrate_imf(log10_min_mass, log10_max_mass, 2,
-                                            stellar_yields, feedback_props);
+  metal_mass_released_total =
+      integrate_imf(log10_min_mass, log10_max_mass,
+                    eagle_imf_integration_yield_weight, stellar_yields, props);
 
   /* yield normalization */
   float mass_ejected, mass_released;
@@ -473,13 +470,13 @@ inline static void evolve_SNII(
                                        eagle_feedback_SNII_N_metals,
                                        eagle_feedback_N_imf_bins);
     stellar_yields[mass_bin_index] =
-        (1 - dz) *
-            feedback_props->yield_SNII.ejecta_IMF_resampled[low_index_2d] +
-        dz * feedback_props->yield_SNII.ejecta_IMF_resampled[high_index_2d];
+        (1 - dz) * props->yield_SNII.ejecta_IMF_resampled[low_index_2d] +
+        dz * props->yield_SNII.ejecta_IMF_resampled[high_index_2d];
   }
 
-  mass_ejected = integrate_imf(log10_min_mass, log10_max_mass, 2,
-                               stellar_yields, feedback_props);
+  mass_ejected =
+      integrate_imf(log10_min_mass, log10_max_mass,
+                    eagle_imf_integration_yield_weight, stellar_yields, props);
 
   /* compute the total mass released */
   mass_released = metal_mass_released_total +
@@ -518,20 +515,20 @@ inline static void evolve_SNII(
  * @param log10_max_mass log10 mass at the beginning of step
  * @param stellar_yields array to store calculated yields for passing to
  * integrate_imf
- * @param feedback_props star properties data structure
- * @param sp spart we are computing feedback from
+ * @param props Properties of the feedback model.
+ * @param sp spart we are computing feedback for.
  */
-inline static void evolve_AGB(
-    float log10_min_mass, float log10_max_mass, float* stellar_yields,
-    const struct feedback_props* restrict feedback_props,
-    struct spart* restrict sp) {
+inline static void evolve_AGB(const float log10_min_mass, float log10_max_mass,
+                              float* stellar_yields,
+                              const struct feedback_props* props,
+                              struct spart* sp) {
 
   int low_imf_mass_bin_index, high_imf_mass_bin_index, mass_bin_index;
 
   /* If mass at end of step is greater than tabulated lower bound for IMF, limit
    * it.*/
-  if (log10_max_mass > feedback_props->log10_SNII_min_mass_msun)
-    log10_max_mass = feedback_props->log10_SNII_min_mass_msun;
+  if (log10_max_mass > props->log10_SNII_min_mass_msun)
+    log10_max_mass = props->log10_SNII_min_mass_msun;
 
   /* Don't do anything if the stellar mass hasn't decreased by the end of the
    * step */
@@ -539,7 +536,7 @@ inline static void evolve_AGB(
 
   /* determine which IMF mass bins contribute to the integral */
   determine_imf_bins(log10_min_mass, log10_max_mass, &low_imf_mass_bin_index,
-                     &high_imf_mass_bin_index, feedback_props);
+                     &high_imf_mass_bin_index, props);
 
   /* determine which metallicity bin and offset this star belongs to */
   int iz_low = 0, iz_high = 0, low_index_3d, high_index_3d, low_index_2d,
@@ -547,7 +544,7 @@ inline static void evolve_AGB(
   float dz = 0.f;
   determine_bin_yield_AGB(&iz_low, &iz_high, &dz,
                           log10(sp->chemistry_data.metal_mass_fraction_total),
-                          feedback_props);
+                          props);
 
   /* compute metals produced */
   float metal_mass_released[chemistry_element_count], metal_mass_released_total;
@@ -567,19 +564,17 @@ inline static void evolve_AGB(
                                          eagle_feedback_AGB_N_metals,
                                          eagle_feedback_N_imf_bins);
       stellar_yields[mass_bin_index] =
-          (1 - dz) *
-              (feedback_props->yield_AGB.yield_IMF_resampled[low_index_3d] +
-               sp->chemistry_data.metal_mass_fraction[elem] *
-                   feedback_props->yield_AGB
-                       .ejecta_IMF_resampled[low_index_2d]) +
-          dz * (feedback_props->yield_AGB.yield_IMF_resampled[high_index_3d] +
+          (1 - dz) * (props->yield_AGB.yield_IMF_resampled[low_index_3d] +
+                      sp->chemistry_data.metal_mass_fraction[elem] *
+                          props->yield_AGB.ejecta_IMF_resampled[low_index_2d]) +
+          dz * (props->yield_AGB.yield_IMF_resampled[high_index_3d] +
                 sp->chemistry_data.metal_mass_fraction[elem] *
-                    feedback_props->yield_AGB
-                        .ejecta_IMF_resampled[high_index_2d]);
+                    props->yield_AGB.ejecta_IMF_resampled[high_index_2d]);
     }
 
-    metal_mass_released[elem] = integrate_imf(log10_min_mass, log10_max_mass, 2,
-                                              stellar_yields, feedback_props);
+    metal_mass_released[elem] = integrate_imf(
+        log10_min_mass, log10_max_mass, eagle_imf_integration_yield_weight,
+        stellar_yields, props);
   }
 
   /* Compute mass produced */
@@ -592,20 +587,17 @@ inline static void evolve_AGB(
         row_major_index_2d(iz_high, mass_bin_index, eagle_feedback_AGB_N_metals,
                            eagle_feedback_N_imf_bins);
     stellar_yields[mass_bin_index] =
-        (1 - dz) *
-            (feedback_props->yield_AGB
-                 .total_metals_IMF_resampled[low_index_2d] +
-             sp->chemistry_data.metal_mass_fraction_total *
-                 feedback_props->yield_AGB.ejecta_IMF_resampled[low_index_2d]) +
-        dz *
-            (feedback_props->yield_AGB
-                 .total_metals_IMF_resampled[high_index_2d] +
-             sp->chemistry_data.metal_mass_fraction_total *
-                 feedback_props->yield_AGB.ejecta_IMF_resampled[high_index_2d]);
+        (1 - dz) * (props->yield_AGB.total_metals_IMF_resampled[low_index_2d] +
+                    sp->chemistry_data.metal_mass_fraction_total *
+                        props->yield_AGB.ejecta_IMF_resampled[low_index_2d]) +
+        dz * (props->yield_AGB.total_metals_IMF_resampled[high_index_2d] +
+              sp->chemistry_data.metal_mass_fraction_total *
+                  props->yield_AGB.ejecta_IMF_resampled[high_index_2d]);
   }
 
-  metal_mass_released_total = integrate_imf(log10_min_mass, log10_max_mass, 2,
-                                            stellar_yields, feedback_props);
+  metal_mass_released_total =
+      integrate_imf(log10_min_mass, log10_max_mass,
+                    eagle_imf_integration_yield_weight, stellar_yields, props);
 
   /* yield normalization */
   float mass_ejected, mass_released;
@@ -626,13 +618,13 @@ inline static void evolve_AGB(
         row_major_index_2d(iz_high, mass_bin_index, eagle_feedback_AGB_N_metals,
                            eagle_feedback_N_imf_bins);
     stellar_yields[mass_bin_index] =
-        (1 - dz) *
-            feedback_props->yield_AGB.ejecta_IMF_resampled[low_index_2d] +
-        dz * feedback_props->yield_AGB.ejecta_IMF_resampled[high_index_2d];
+        (1 - dz) * props->yield_AGB.ejecta_IMF_resampled[low_index_2d] +
+        dz * props->yield_AGB.ejecta_IMF_resampled[high_index_2d];
   }
 
-  mass_ejected = integrate_imf(log10_min_mass, log10_max_mass, 2,
-                               stellar_yields, feedback_props);
+  mass_ejected =
+      integrate_imf(log10_min_mass, log10_max_mass,
+                    eagle_imf_integration_yield_weight, stellar_yields, props);
 
   /* compute the total mass released */
   mass_released = metal_mass_released_total +
@@ -665,7 +657,8 @@ inline static void evolve_AGB(
  * @brief calculates stellar mass in spart that died over the timestep, calls
  * functions to calculate feedback due to SNIa, SNII and AGB
  *
- * @param star_properties feedback_props_props data structure
+ * @param feedback_props feedback_props data structure
+ * @param cosmo The cosmological model.
  * @param sp spart that we're evolving
  * @param us unit_system data structure
  * @param age age of spart at beginning of step
@@ -745,11 +738,12 @@ void compute_stellar_evolution(const struct feedback_props* feedback_props,
  *
  * By default, takes the values provided by the hydro.
  *
- * @param sp The #feedback_properties.
+ * @param fp The #feedback_props.
  * @param phys_const The physical constants in the internal unit system.
  * @param us The internal unit system.
  * @param params The parsed parameters.
- * @param p The already read-in properties of the hydro scheme.
+ * @param hydro_props The already read-in properties of the hydro scheme.
+ * @param cosmo The cosmological model.
  */
 void feedback_props_init(struct feedback_props* fp,
                          const struct phys_const* phys_const,

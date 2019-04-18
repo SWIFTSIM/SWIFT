@@ -97,6 +97,7 @@ INLINE static void stars_write_particles(const struct spart *sparts,
  * @param us The internal unit system.
  * @param params The parsed parameters.
  * @param p The already read-in properties of the hydro scheme.
+ * @param cosmo The cosmological model.
  */
 INLINE static void stars_props_init(struct stars_props *sp,
                                     const struct phys_const *phys_const,

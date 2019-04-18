@@ -90,7 +90,6 @@ void DOSELF1_STARS(struct runner *r, struct cell *c, int timer) {
   const struct engine *e = r->e;
   const integertime_t ti_current = e->ti_current;
   const struct cosmology *cosmo = e->cosmology;
-  const struct feedback_props *feedback_props = e->feedback_props;
 
   /* Anything to do here? */
   if (c->hydro.count == 0 || c->stars.count == 0) return;
@@ -146,11 +145,11 @@ void DOSELF1_STARS(struct runner *r, struct cell *c, int timer) {
       if (r2 < hig2) {
         IACT_STARS(r2, dx, hi, hj, si, pj, a, H);
 #if (FUNCTION_TASK_LOOP == TASK_LOOP_DENSITY)
-        runner_iact_nonsym_feedback_density(r2, dx, hi, hj, si, pj, cosmo,
-                                            feedback_props, xpj, ti_current);
+        runner_iact_nonsym_feedback_density(r2, dx, hi, hj, si, pj, xpj, cosmo,
+                                            ti_current);
 #elif (FUNCTION_TASK_LOOP == TASK_LOOP_FEEDBACK)
-        runner_iact_nonsym_feedback_apply(r2, dx, hi, hj, si, pj, cosmo,
-                                          feedback_props, xpj, ti_current);
+        runner_iact_nonsym_feedback_apply(r2, dx, hi, hj, si, pj, xpj, cosmo,
+                                          ti_current);
 #endif
       }
     } /* loop over the parts in ci. */
@@ -178,7 +177,6 @@ void DO_NONSYM_PAIR1_STARS_NAIVE(struct runner *r, struct cell *restrict ci,
   const struct engine *e = r->e;
   const integertime_t ti_current = e->ti_current;
   const struct cosmology *cosmo = e->cosmology;
-  const struct feedback_props *feedback_props = e->feedback_props;
 
   /* Anything to do here? */
   if (cj->hydro.count == 0 || ci->stars.count == 0) return;
@@ -244,11 +242,11 @@ void DO_NONSYM_PAIR1_STARS_NAIVE(struct runner *r, struct cell *restrict ci,
         IACT_STARS(r2, dx, hi, hj, si, pj, a, H);
 
 #if (FUNCTION_TASK_LOOP == TASK_LOOP_DENSITY)
-        runner_iact_nonsym_feedback_density(r2, dx, hi, hj, si, pj, cosmo,
-                                            feedback_props, xpj, ti_current);
+        runner_iact_nonsym_feedback_density(r2, dx, hi, hj, si, pj, xpj, cosmo,
+                                            ti_current);
 #elif (FUNCTION_TASK_LOOP == TASK_LOOP_FEEDBACK)
-        runner_iact_nonsym_feedback_apply(r2, dx, hi, hj, si, pj, cosmo,
-                                          feedback_props, xpj, ti_current);
+        runner_iact_nonsym_feedback_apply(r2, dx, hi, hj, si, pj, xpj, cosmo,
+                                          ti_current);
 #endif
       }
     } /* loop over the parts in cj. */
@@ -270,7 +268,6 @@ void DO_SYM_PAIR1_STARS(struct runner *r, struct cell *ci, struct cell *cj,
   const struct engine *e = r->e;
   const integertime_t ti_current = e->ti_current;
   const struct cosmology *cosmo = e->cosmology;
-  const struct feedback_props *feedback_props = e->feedback_props;
 
   /* Cosmological terms */
   const float a = cosmo->a;
@@ -408,11 +405,11 @@ void DO_SYM_PAIR1_STARS(struct runner *r, struct cell *ci, struct cell *cj,
           IACT_STARS(r2, dx, hi, hj, spi, pj, a, H);
 
 #if (FUNCTION_TASK_LOOP == TASK_LOOP_DENSITY)
-          runner_iact_nonsym_feedback_density(r2, dx, hi, hj, spi, pj, cosmo,
-                                              feedback_props, xpj, ti_current);
+          runner_iact_nonsym_feedback_density(r2, dx, hi, hj, spi, pj, xpj,
+                                              cosmo, ti_current);
 #elif (FUNCTION_TASK_LOOP == TASK_LOOP_FEEDBACK)
-          runner_iact_nonsym_feedback_apply(r2, dx, hi, hj, spi, pj, cosmo,
-                                            feedback_props, xpj, ti_current);
+          runner_iact_nonsym_feedback_apply(r2, dx, hi, hj, spi, pj, xpj, cosmo,
+                                            ti_current);
 #endif
         }
       } /* loop over the parts in cj. */
@@ -534,11 +531,11 @@ void DO_SYM_PAIR1_STARS(struct runner *r, struct cell *ci, struct cell *cj,
           IACT_STARS(r2, dx, hj, hi, spj, pi, a, H);
 
 #if (FUNCTION_TASK_LOOP == TASK_LOOP_DENSITY)
-          runner_iact_nonsym_feedback_density(r2, dx, hj, hi, spj, pi, cosmo,
-                                              feedback_props, xpi, ti_current);
+          runner_iact_nonsym_feedback_density(r2, dx, hj, hi, spj, pi, xpi,
+                                              cosmo, ti_current);
 #elif (FUNCTION_TASK_LOOP == TASK_LOOP_FEEDBACK)
-          runner_iact_nonsym_feedback_apply(r2, dx, hj, hi, spj, pi, cosmo,
-                                            feedback_props, xpi, ti_current);
+          runner_iact_nonsym_feedback_apply(r2, dx, hj, hi, spj, pi, xpi, cosmo,
+                                            ti_current);
 #endif
         }
       } /* loop over the parts in ci. */
@@ -587,7 +584,6 @@ void DOPAIR1_SUBSET_STARS(struct runner *r, struct cell *restrict ci,
   const struct engine *e = r->e;
   const integertime_t ti_current = e->ti_current;
   const struct cosmology *cosmo = e->cosmology;
-  const struct feedback_props *feedback_props = e->feedback_props;
 
   /* Cosmological terms */
   const float a = cosmo->a;
@@ -653,11 +649,11 @@ void DOPAIR1_SUBSET_STARS(struct runner *r, struct cell *restrict ci,
           IACT_STARS(r2, dx, hi, hj, spi, pj, a, H);
 
 #if (FUNCTION_TASK_LOOP == TASK_LOOP_DENSITY)
-          runner_iact_nonsym_feedback_density(r2, dx, hi, hj, spi, pj, cosmo,
-                                              feedback_props, xpj, ti_current);
+          runner_iact_nonsym_feedback_density(r2, dx, hi, hj, spi, pj, xpj,
+                                              cosmo, ti_current);
 #elif (FUNCTION_TASK_LOOP == TASK_LOOP_FEEDBACK)
-          runner_iact_nonsym_feedback_apply(r2, dx, hi, hj, spi, pj, cosmo,
-                                            feedback_props, xpj, ti_current);
+          runner_iact_nonsym_feedback_apply(r2, dx, hi, hj, spi, pj, xpj, cosmo,
+                                            ti_current);
 #endif
         }
       } /* loop over the parts in cj. */
@@ -713,11 +709,11 @@ void DOPAIR1_SUBSET_STARS(struct runner *r, struct cell *restrict ci,
           IACT_STARS(r2, dx, hi, hj, spi, pj, a, H);
 
 #if (FUNCTION_TASK_LOOP == TASK_LOOP_DENSITY)
-          runner_iact_nonsym_feedback_density(r2, dx, hi, hj, spi, pj, cosmo,
-                                              feedback_props, xpj, ti_current);
+          runner_iact_nonsym_feedback_density(r2, dx, hi, hj, spi, pj, xpj,
+                                              cosmo, ti_current);
 #elif (FUNCTION_TASK_LOOP == TASK_LOOP_FEEDBACK)
-          runner_iact_nonsym_feedback_apply(r2, dx, hi, hj, spi, pj, cosmo,
-                                            feedback_props, xpj, ti_current);
+          runner_iact_nonsym_feedback_apply(r2, dx, hi, hj, spi, pj, xpj, cosmo,
+                                            ti_current);
 #endif
         }
       } /* loop over the parts in cj. */
@@ -751,7 +747,6 @@ void DOPAIR1_SUBSET_STARS_NAIVE(struct runner *r, struct cell *restrict ci,
   const struct engine *e = r->e;
   const integertime_t ti_current = e->ti_current;
   const struct cosmology *cosmo = e->cosmology;
-  const struct feedback_props *feedback_props = e->feedback_props;
 
   /* Cosmological terms */
   const float a = cosmo->a;
@@ -811,11 +806,11 @@ void DOPAIR1_SUBSET_STARS_NAIVE(struct runner *r, struct cell *restrict ci,
         IACT_STARS(r2, dx, hi, hj, spi, pj, a, H);
 
 #if (FUNCTION_TASK_LOOP == TASK_LOOP_DENSITY)
-        runner_iact_nonsym_feedback_density(r2, dx, hi, hj, spi, pj, cosmo,
-                                            feedback_props, xpj, ti_current);
+        runner_iact_nonsym_feedback_density(r2, dx, hi, hj, spi, pj, xpj, cosmo,
+                                            ti_current);
 #elif (FUNCTION_TASK_LOOP == TASK_LOOP_FEEDBACK)
-        runner_iact_nonsym_feedback_apply(r2, dx, hi, hj, spi, pj, cosmo,
-                                          feedback_props, xpj, ti_current);
+        runner_iact_nonsym_feedback_apply(r2, dx, hi, hj, spi, pj, xpj, cosmo,
+                                          ti_current);
 #endif
       }
     } /* loop over the parts in cj. */
@@ -843,7 +838,6 @@ void DOSELF1_SUBSET_STARS(struct runner *r, struct cell *restrict ci,
   const struct engine *e = r->e;
   const integertime_t ti_current = e->ti_current;
   const struct cosmology *cosmo = e->cosmology;
-  const struct feedback_props *feedback_props = e->feedback_props;
 
   /* Cosmological terms */
   const float a = cosmo->a;
@@ -899,11 +893,11 @@ void DOSELF1_SUBSET_STARS(struct runner *r, struct cell *restrict ci,
       if (r2 < hig2) {
         IACT_STARS(r2, dx, hi, pj->h, spi, pj, a, H);
 #if (FUNCTION_TASK_LOOP == TASK_LOOP_DENSITY)
-        runner_iact_nonsym_feedback_density(r2, dx, hi, pj->h, spi, pj, cosmo,
-                                            feedback_props, xpj, ti_current);
+        runner_iact_nonsym_feedback_density(r2, dx, hi, pj->h, spi, pj, xpj,
+                                            cosmo, ti_current);
 #elif (FUNCTION_TASK_LOOP == TASK_LOOP_FEEDBACK)
-        runner_iact_nonsym_feedback_apply(r2, dx, hi, pj->h, spi, pj, cosmo,
-                                          feedback_props, xpj, ti_current);
+        runner_iact_nonsym_feedback_apply(r2, dx, hi, pj->h, spi, pj, xpj,
+                                          cosmo, ti_current);
 #endif
       }
     } /* loop over the parts in cj. */
