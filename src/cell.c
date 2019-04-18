@@ -2138,8 +2138,8 @@ void cell_clear_drift_flags(struct cell *c, void *data) {
  * @brief Clear the limiter flags on the given cell.
  */
 void cell_clear_limiter_flags(struct cell *c, void *data) {
-  cell_clear_flag(c, cell_flag_do_hydro_limiter);
-  c->hydro.do_sub_limiter = 0;
+  cell_clear_flag(c,
+                  cell_flag_do_hydro_limiter & cell_flag_do_hydro_sub_limiter);
 }
 
 /**
@@ -2310,11 +2310,12 @@ void cell_activate_limiter(struct cell *c, struct scheduler *s) {
     scheduler_activate(s, c->timestep_limiter);
   } else {
     for (struct cell *parent = c->parent;
-         parent != NULL && !parent->hydro.do_sub_limiter;
+         parent != NULL &&
+         !cell_get_flag(parent, cell_flag_do_hydro_sub_limiter);
          parent = parent->parent) {
 
       /* Mark this cell for limiting */
-      parent->hydro.do_sub_limiter = 1;
+      cell_set_flag(parent, cell_flag_do_hydro_sub_limiter);
 
       if (parent == c->super) {
 #ifdef SWIFT_DEBUG_CHECKS

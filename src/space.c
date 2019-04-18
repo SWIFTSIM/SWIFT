@@ -262,7 +262,6 @@ void space_rebuild_recycle_mapper(void *map_data, int num_elements,
     c->grav.do_sub_drift = 0;
     c->stars.do_sub_drift = 0;
     c->black_holes.do_sub_drift = 0;
-    c->hydro.do_sub_limiter = 0;
     c->hydro.ti_end_min = -1;
     c->hydro.ti_end_max = -1;
     c->grav.ti_end_min = -1;
@@ -3326,7 +3325,6 @@ void space_split_recursive(struct space *s, struct cell *c,
       cp->flags = 0;
       cp->stars.do_sub_drift = 0;
       cp->black_holes.do_sub_drift = 0;
-      cp->hydro.do_sub_limiter = 0;
 #ifdef WITH_MPI
       cp->mpi.tag = -1;
 #endif  // WITH_MPI

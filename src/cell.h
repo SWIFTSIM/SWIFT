@@ -28,6 +28,7 @@
 
 /* Includes. */
 #include <stddef.h>
+#include <stdint.h>
 
 /* Local includes. */
 #include "align.h"
@@ -374,16 +375,13 @@ struct cell {
     int hold;
 
     /*! Bit mask of sort directions that will be needed in the next timestep. */
-    unsigned int requires_sorts;
+    uint16_t requires_sorts;
 
     /*! Bit mask of sorts that need to be computed for this cell. */
-    unsigned int do_sort;
+    uint16_t do_sort;
 
     /*! Bit-mask indicating the sorted directions */
-    unsigned int sorted;
-
-    /*! Do any of this cell's sub-cells need to be limited? */
-    char do_sub_limiter;
+    uint16_t sorted;
 
 #ifdef SWIFT_DEBUG_CHECKS
 
@@ -552,18 +550,18 @@ struct cell {
     /*! Values of dx_max_sort before the drifts, used for sub-cell tasks. */
     float dx_max_sort_old;
 
-    /*! Bit mask of sort directions that will be needed in the next timestep. */
-    unsigned int requires_sorts;
-
     /*! Pointer for the sorted indices. */
     struct entry *sort[13];
     struct entry *sortptr;
 
+    /*! Bit mask of sort directions that will be needed in the next timestep. */
+    uint16_t requires_sorts;
+
     /*! Bit-mask indicating the sorted directions */
-    unsigned int sorted;
+    uint16_t sorted;
 
     /*! Bit mask of sorts that need to be computed for this cell. */
-    unsigned int do_sort;
+    uint16_t do_sort;
 
     /*! Do any of this cell's sub-cells need to be sorted? */
     char do_sub_sort;
