@@ -5257,13 +5257,7 @@ void engine_config(int restart, struct engine *e, struct swift_params *params,
 
     /* Initialize the SFH logger if running with star formation */
     if (e->policy & engine_policy_star_formation) {
-      const int buffersize = 300;
-      char SFH_logger_fileName[buffersize];
-
-      snprintf(SFH_logger_fileName, buffersize, "%s_SFH_logger.txt",
-               e->snapshot_base_name);
-
-      e->sfh_logger = fopen(SFH_logger_fileName, mode);
+      e->sfh_logger = fopen("SFR.txt", mode);
       if (!restart) {
         star_formation_logger_init_log_file(e->sfh_logger, e->internal_units,
                                             e->physical_constants);
@@ -6039,11 +6033,13 @@ void engine_clean(struct engine *e) {
   threadpool_clean(&e->threadpool);
 
   /* Close files */
-  fclose(e->file_timesteps);
-  fclose(e->file_stats);
+  if (e->nodeID == 0) {
+    fclose(e->file_timesteps);
+    fclose(e->file_stats);
 
-  if (e->policy & engine_policy_star_formation) {
-    fclose(e->sfh_logger);
+    if (e->policy & engine_policy_star_formation) {
+      fclose(e->sfh_logger);
+    }
   }
 }
 

@@ -74,8 +74,8 @@ INLINE static void star_formation_logger_log_inactive_cell(
  * @param sf_update the star formation structure which we want to update
  */
 INLINE static void star_formation_logger_add(
-    const struct star_formation_history *sf_add,
-    struct star_formation_history *sf_update) {
+    struct star_formation_history *sf_update,
+    const struct star_formation_history *sf_add) {
 
   /* Update the SFH structure */
   sf_update->new_stellar_mass += sf_add->new_stellar_mass;

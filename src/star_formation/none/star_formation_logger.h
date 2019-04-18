@@ -16,8 +16,8 @@
  * along with this program.  If not, see <http://www.gnu.org/licenses/>.
  *
  *******************************************************************************/
-#ifndef SWIFT_GEAR_STARFORMATION_LOGGER_H
-#define SWIFT_GEAR_STARFORMATION_LOGGER_H
+#ifndef SWIFT_NONE_STARFORMATION_LOGGER_H
+#define SWIFT_NONE_STARFORMATION_LOGGER_H
 
 /* Some standard headers */
 #include <stdlib.h>
@@ -115,4 +115,4 @@ INLINE static void star_formation_logger_log_inactive_part(
     const struct part *p, const struct xpart *xp,
     struct star_formation_history *sf) {}
 
-#endif /* SWIFT_GEAR_STARFORMATION_LOGGER_H */
+#endif /* SWIFT_NONE_STARFORMATION_LOGGER_H */

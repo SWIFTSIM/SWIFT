@@ -132,7 +132,7 @@ def getsfrsnapwide(numbsnaps):
 # run the main script
 if __name__ == "__main__":
     # Read the logger file
-    logdata = np.loadtxt("output_SFH_logger.txt")
+    logdata = np.loadtxt("SFR.txt")
 
     # Define the logger data in the correct units
     timelog = logdata[:, 1] * 9.778131e2
