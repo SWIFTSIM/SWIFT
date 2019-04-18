@@ -259,7 +259,7 @@ void space_rebuild_recycle_mapper(void *map_data, int num_elements,
     c->black_holes.parts = NULL;
     c->hydro.do_sub_sort = 0;
     c->stars.do_sub_sort = 0;
-    c->hydro.do_sub_drift = 0;
+    c->flags = 0;
     c->grav.do_sub_drift = 0;
     c->stars.do_sub_drift = 0;
     c->black_holes.do_sub_drift = 0;
@@ -3326,7 +3326,7 @@ void space_split_recursive(struct space *s, struct cell *c,
       cp->hydro.do_sub_sort = 0;
       cp->stars.do_sub_sort = 0;
       cp->grav.do_sub_drift = 0;
-      cp->hydro.do_sub_drift = 0;
+      cp->flags = 0;
       cp->stars.do_sub_drift = 0;
       cp->black_holes.do_sub_drift = 0;
       cp->hydro.do_sub_limiter = 0;

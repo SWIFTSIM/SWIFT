@@ -2127,8 +2127,7 @@ void cell_clean(struct cell *c) {
  * @brief Clear the drift flags on the given cell.
  */
 void cell_clear_drift_flags(struct cell *c, void *data) {
-  cell_clear_flag(c, cell_flag_do_hydro_drift);
-  c->hydro.do_sub_drift = 0;
+  cell_clear_flag(c, cell_flag_do_hydro_drift & cell_flag_do_hydro_sub_drift);
   c->grav.do_drift = 0;
   c->grav.do_sub_drift = 0;
   c->stars.do_drift = 0;
@@ -2190,11 +2189,11 @@ void cell_activate_drift_part(struct cell *c, struct scheduler *s) {
     scheduler_activate(s, c->hydro.drift);
   } else {
     for (struct cell *parent = c->parent;
-         parent != NULL && !parent->hydro.do_sub_drift;
+         parent != NULL && !cell_get_flag(parent, cell_flag_do_hydro_sub_drift);
          parent = parent->parent) {
 
       /* Mark this cell for drifting */
-      parent->hydro.do_sub_drift = 1;
+      cell_set_flag(parent, cell_flag_do_hydro_sub_drift);
 
       if (parent == c->hydro.super) {
 #ifdef SWIFT_DEBUG_CHECKS
@@ -4111,8 +4110,7 @@ void cell_drift_part(struct cell *c, const struct engine *e, int force) {
   if (c->hydro.count == 0) {
 
     /* Clear the drift flags. */
-    cell_clear_flag(c, cell_flag_do_hydro_drift);
-    c->hydro.do_sub_drift = 0;
+    cell_clear_flag(c, cell_flag_do_hydro_drift & cell_flag_do_hydro_sub_drift);
 
     /* Update the time of the last drift */
     c->hydro.ti_old_part = ti_current;
@@ -4123,7 +4121,7 @@ void cell_drift_part(struct cell *c, const struct engine *e, int force) {
   /* Ok, we have some particles somewhere in the hierarchy to drift */
 
   /* Are we not in a leaf ? */
-  if (c->split && (force || c->hydro.do_sub_drift)) {
+  if (c->split && (force || cell_get_flag(c, cell_flag_do_hydro_sub_drift))) {
 
     /* Loop over the progeny and collect their data. */
     for (int k = 0; k < 8; k++) {
@@ -4260,8 +4258,7 @@ void cell_drift_part(struct cell *c, const struct engine *e, int force) {
   }
 
   /* Clear the drift flags. */
-  cell_clear_flag(c, cell_flag_do_hydro_drift);
-  c->hydro.do_sub_drift = 0;
+  cell_clear_flag(c, cell_flag_do_hydro_drift & cell_flag_do_hydro_sub_drift);
 }
 
 /**
