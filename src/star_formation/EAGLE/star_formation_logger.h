@@ -16,8 +16,8 @@
  * along with this program.  If not, see <http://www.gnu.org/licenses/>.
  *
  *******************************************************************************/
-#ifndef SWIFT_SCHAYE_STARFORMATION_LOGGER_H
-#define SWIFT_SCHAYE_STARFORMATION_LOGGER_H
+#ifndef SWIFT_EAGLE_STARFORMATION_LOGGER_H
+#define SWIFT_EAGLE_STARFORMATION_LOGGER_H
 
 /* Some standard headers */
 #include <stdlib.h>
@@ -73,7 +73,7 @@ INLINE static void star_formation_logger_log_inactive_cell(
  * formation history
  * @param sf_update the star formation structure which we want to update
  */
-INLINE static void star_formation_logger_add_first_to_second(
+INLINE static void star_formation_logger_add(
     const struct star_formation_history *sf_add,
     struct star_formation_history *sf_update) {
 
@@ -216,4 +216,4 @@ INLINE static void star_formation_logger_log_inactive_part(
   sf->SFR_inactive += max(xp->sf_data.SFR, 0.f);
 }
 
-#endif /* SWIFT_SCHAYE_STARFORMATION_LOGGER_H */
+#endif /* SWIFT_EAGLE_STARFORMATION_LOGGER_H */

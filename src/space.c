@@ -3391,8 +3391,7 @@ void space_split_recursive(struct space *s, struct cell *c,
             min(ti_black_holes_end_max, cp->black_holes.ti_end_max);
         ti_black_holes_beg_max =
             min(ti_black_holes_beg_max, cp->black_holes.ti_beg_max);
-        star_formation_logger_add_first_to_second(&cp->stars.sfh,
-                                                  &c->stars.sfh);
+        star_formation_logger_add(&c->stars.sfh, &cp->stars.sfh);
 
         /* Increase the depth */
         if (cp->maxdepth > maxdepth) maxdepth = cp->maxdepth;

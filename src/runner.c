@@ -638,8 +638,7 @@ void runner_do_star_formation(struct runner *r, struct cell *c, int timer) {
         runner_do_star_formation(r, cp, 0);
 
         /* Update current cell using child cells */
-        star_formation_logger_add_first_to_second(&cp->stars.sfh,
-                                                  &c->stars.sfh);
+        star_formation_logger_add(&c->stars.sfh, &cp->stars.sfh);
       }
   } else {
 

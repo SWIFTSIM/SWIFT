@@ -55,9 +55,9 @@ INLINE static void star_formation_logger_log_inactive_cell(
  * formation history
  * @param sf_update the star formation structure which we want to update
  */
-INLINE static void star_formation_logger_add_first_to_second(
-    const struct star_formation_history *sf_add,
-    struct star_formation_history *sf_update) {}
+INLINE static void star_formation_logger_add(
+    struct star_formation_history *sf_update,
+    const struct star_formation_history *sf_add) {}
 
 /**
  * @brief Initialize the star formation history structure in the #engine
