@@ -47,6 +47,7 @@
 #include "runner.h"
 #include "scheduler.h"
 #include "space.h"
+#include "star_formation_logger.h"
 #include "task.h"
 #include "units.h"
 #include "velociraptor_interface.h"
@@ -231,6 +232,9 @@ struct engine {
   long long s_updates_since_rebuild;
   long long b_updates_since_rebuild;
 
+  /* Star formation logger information */
+  struct star_formation_history sfh;
+
   /* Properties of the previous step */
   int step_props;
 
@@ -315,6 +319,9 @@ struct engine {
 
   /* File handle for the timesteps information */
   FILE *file_timesteps;
+
+  /* File handle for the SFH logger file */
+  FILE *sfh_logger;
 
   /* The current step number. */
   int step;

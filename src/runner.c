@@ -64,6 +64,7 @@
 #include "space_getsid.h"
 #include "star_formation.h"
 #include "star_formation_iact.h"
+#include "star_formation_logger.h"
 #include "stars.h"
 #include "task.h"
 #include "timers.h"
@@ -620,12 +621,25 @@ void runner_do_star_formation(struct runner *r, struct cell *c, int timer) {
 
   /* Anything to do here? */
   if (c->hydro.count == 0) return;
-  if (!cell_is_active_hydro(c, e)) return;
+  if (!cell_is_active_hydro(c, e)) {
+    star_formation_logger_log_inactive_cell(&c->stars.sfh);
+    return;
+  }
+  star_formation_logger_init(&c->stars.sfh);
 
   /* Recurse? */
   if (c->split) {
     for (int k = 0; k < 8; k++)
-      if (c->progeny[k] != NULL) runner_do_star_formation(r, c->progeny[k], 0);
+      if (c->progeny[k] != NULL) {
+        /* Load the child cell */
+        struct cell *restrict cp = c->progeny[k];
+
+        /* Do the recursion */
+        runner_do_star_formation(r, cp, 0);
+
+        /* Update current cell using child cells */
+        star_formation_logger_add(&c->stars.sfh, &cp->stars.sfh);
+      }
   } else {
 
     /* Loop over the gas particles in this cell. */
@@ -661,6 +675,9 @@ void runner_do_star_formation(struct runner *r, struct cell *c, int timer) {
           star_formation_compute_SFR(p, xp, sf_props, phys_const, cosmo,
                                      dt_star);
 
+          /* Add the SFR and SFR*dt to the SFH struct of this cell */
+          star_formation_logger_log_active_part(p, xp, &c->stars.sfh, dt_star);
+
           /* Are we forming a star particle from this SF rate? */
           if (star_formation_should_convert_to_star(p, xp, sf_props, e,
                                                     dt_star)) {
@@ -674,6 +691,9 @@ void runner_do_star_formation(struct runner *r, struct cell *c, int timer) {
               /* Copy the properties of the gas particle to the star particle */
               star_formation_copy_properties(p, xp, sp, e, sf_props, cosmo,
                                              with_cosmology);
+
+              /* Update the Star formation history */
+              star_formation_logger_log_new_spart(sp, &c->stars.sfh);
             }
           }
 
@@ -683,9 +703,14 @@ void runner_do_star_formation(struct runner *r, struct cell *c, int timer) {
           star_formation_update_part_not_SFR(p, xp, e, sf_props,
                                              with_cosmology);
 
-        } /* Not Star-forming? */
-      }   /* is active? */
-    }     /* Loop over particles */
+        }      /* Not Star-forming? */
+      } else { /* is active? */
+        /* Check if the particle is not inhibited */
+        if (!part_is_inhibited(p, e)) {
+          star_formation_logger_log_inactive_part(p, xp, &c->stars.sfh);
+        }
+      }
+    } /* Loop over particles */
   }
 
   /* If we formed any stars, the star sorts are now invalid. We need to

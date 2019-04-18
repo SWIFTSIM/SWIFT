@@ -59,6 +59,7 @@
 #include "restart.h"
 #include "sort_part.h"
 #include "star_formation.h"
+#include "star_formation_logger.h"
 #include "stars.h"
 #include "threadpool.h"
 #include "tools.h"
@@ -273,6 +274,7 @@ void space_rebuild_recycle_mapper(void *map_data, int num_elements,
     c->stars.ti_end_max = -1;
     c->black_holes.ti_end_min = -1;
     c->black_holes.ti_end_max = -1;
+    star_formation_logger_init(&c->stars.sfh);
 #if defined(SWIFT_DEBUG_CHECKS) || defined(SWIFT_CELL_GRAPH)
     c->cellID = 0;
 #endif
@@ -3389,6 +3391,7 @@ void space_split_recursive(struct space *s, struct cell *c,
             min(ti_black_holes_end_max, cp->black_holes.ti_end_max);
         ti_black_holes_beg_max =
             min(ti_black_holes_beg_max, cp->black_holes.ti_beg_max);
+        star_formation_logger_add(&c->stars.sfh, &cp->stars.sfh);
 
         /* Increase the depth */
         if (cp->maxdepth > maxdepth) maxdepth = cp->maxdepth;
@@ -3530,6 +3533,9 @@ void space_split_recursive(struct space *s, struct cell *c,
       hydro_time_bin_min = min(hydro_time_bin_min, parts[k].time_bin);
       hydro_time_bin_max = max(hydro_time_bin_max, parts[k].time_bin);
       h_max = max(h_max, parts[k].h);
+      /* Collect SFR from the particles after rebuilt */
+      star_formation_logger_log_inactive_part(&parts[k], &xparts[k],
+                                              &c->stars.sfh);
     }
 
     /* xparts: Reset x_diff */

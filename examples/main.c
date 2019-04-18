@@ -1213,6 +1213,12 @@ int main(int argc, char *argv[]) {
             e.min_active_bin, e.max_active_bin, e.updates, e.g_updates,
             e.s_updates, e.wallclock_time, e.step_props);
     fflush(e.file_timesteps);
+
+    /* Print information to the SFH logger */
+    if (e.policy & engine_policy_star_formation) {
+      star_formation_logger_write_to_log_file(
+          e.sfh_logger, e.time, e.cosmology->a, e.cosmology->z, e.sfh, e.step);
+    }
   }
 
   /* Write final output. */

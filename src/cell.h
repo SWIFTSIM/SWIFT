@@ -37,6 +37,7 @@
 #include "part.h"
 #include "sort_part.h"
 #include "space.h"
+#include "star_formation_logger_struct.h"
 #include "task.h"
 #include "timeline.h"
 
@@ -584,6 +585,9 @@ struct cell {
 
     /*! Do any of this cell's sub-cells need to be drifted (stars)? */
     char do_sub_drift;
+
+    /*! Star formation history struct */
+    struct star_formation_history sfh;
 
 #ifdef SWIFT_DEBUG_CHECKS
     /*! Last (integer) time the cell's sort arrays were updated. */
