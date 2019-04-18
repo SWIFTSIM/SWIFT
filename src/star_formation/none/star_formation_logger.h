@@ -74,24 +74,14 @@ INLINE static void star_formation_logger_log_progeny_cell(
     const struct star_formation_history *sfprogeny) {}
 
 /**
- * @brief Get the total star formation in this cell and add it to the star
- * formation history struct in the #engine
+ * @brief add a star formation history struct to an other star formation history struct 
  *
- * @param c the cell of which we want to know the star formation
- * @param sf the star formation structure to which we want to add the star
- * formation
+ * @param sf_add the star formation struct which we want to add to the star formation 
+ * history
+ * @param sf_update the star formation structure which we want to update
  */
-INLINE static void star_formation_logger_add(
-    struct cell *c, struct star_formation_history *sf) {}
-
-/**
- * @brief add the star formation to the parent cell in the #engine
- *
- * @param c the cell for which we want to add the star formation
- * @param sf the combined star formation history of the progeny
- */
-INLINE static void star_formation_logger_assign(
-    struct cell *c, struct star_formation_history *sf) {}
+INLINE static void star_formation_logger_add_first_to_second(
+    const struct star_formation_history *sf_add, struct star_formation_history *sf_update) {}
 
 /**
  * @brief Initialize the star formation history structure in the #engine

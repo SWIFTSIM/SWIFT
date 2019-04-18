@@ -110,49 +110,23 @@ INLINE static void star_formation_logger_log_progeny_cell(
 }
 
 /**
- * @brief Get the total star formation in this cell and add it to the star
- * formation history struct in the #engine
+ * @brief add a star formation history struct to an other star formation history struct 
  *
- * @param c the cell of which we want to know the star formation
- * @param sf the star formation structure to which we want to add the star
- * formation
+ * @param sf_add the star formation struct which we want to add to the star formation 
+ * history
+ * @param sf_update the star formation structure which we want to update
  */
-INLINE static void star_formation_logger_add(
-    struct cell *c, struct star_formation_history *sf) {
-
-  /* Get the star formation history struct from the cell */
-  struct star_formation_history *sfcell = &c->stars.sfh;
+INLINE static void star_formation_logger_add_first_to_second(
+    const struct star_formation_history *sf_add, struct star_formation_history *sf_update) {
 
   /* Update the SFH structure */
-  sf->new_stellar_mass += sfcell->new_stellar_mass;
+  sf_update->new_stellar_mass += sf_add->new_stellar_mass;
 
-  sf->SFR_active += sfcell->SFR_active;
+  sf_update->SFR_active += sf_add->SFR_active;
 
-  sf->SFRdt_active += sfcell->SFRdt_active;
+  sf_update->SFRdt_active += sf_add->SFRdt_active;
 
-  sf->SFR_inactive += sfcell->SFR_inactive;
-}
-
-/**
- * @brief add the star formation to the parent cell in the #engine
- *
- * @param c the cell for which we want to add the star formation
- * @param sf the combined star formation history of the progeny
- */
-INLINE static void star_formation_logger_assign(
-    struct cell *c, const struct star_formation_history *sf) {
-
-  /* Get the star formation history from the cell */
-  struct star_formation_history *sfcell = &c->stars.sfh;
-
-  /* Update the SFH structure */
-  sfcell->new_stellar_mass += sf->new_stellar_mass;
-
-  sfcell->SFR_active += sf->SFR_active;
-
-  sfcell->SFRdt_active += sf->SFR_active;
-
-  sfcell->SFR_inactive += sf->SFR_inactive;
+  sf_update->SFR_inactive += sf_add->SFR_inactive;
 }
 
 /**
