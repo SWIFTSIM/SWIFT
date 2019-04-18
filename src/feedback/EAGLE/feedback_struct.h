@@ -19,6 +19,8 @@
 #ifndef SWIFT_FEEDBACK_STRUCT_EAGLE_H
 #define SWIFT_FEEDBACK_STRUCT_EAGLE_H
 
+#include "chemistry_struct.h"
+
 /**
  * @brief Feedback fields carried by each star particles
  */
@@ -26,6 +28,9 @@ struct feedback_spart_data {
 
   union {
 
+    /**
+     * @brief Values collected from the gas neighbours.
+     */
     struct {
 
       /*! Inverse of normalisation factor used for the enrichment */
@@ -36,6 +41,9 @@ struct feedback_spart_data {
 
     } to_collect;
 
+    /**
+     * @brief Values to be distributed to the gas neighbours.
+     */
     struct {
 
       /*! Normalisation factor used for the enrichment */

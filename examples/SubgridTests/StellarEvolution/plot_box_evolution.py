@@ -42,11 +42,11 @@ params = {'axes.labelsize': 10,
 'ytick.labelsize': 10,
 'text.usetex': True,
  'figure.figsize' : (9.90,6.45),
-'figure.subplot.left'    : 0.1,
+'figure.subplot.left'    : 0.05,
 'figure.subplot.right'   : 0.99,
 'figure.subplot.bottom'  : 0.1,
 'figure.subplot.top'     : 0.95,
-'figure.subplot.wspace'  : 0.2,
+'figure.subplot.wspace'  : 0.25,
 'figure.subplot.hspace'  : 0.2,
 'lines.markersize' : 6,
 'lines.linewidth' : 3.,
@@ -183,7 +183,7 @@ xlabel("${\\rm{Time}} (Gyr)$", labelpad=0)
 ylabel("Change in element mass of gas particles (Msun)", labelpad=2)
 xscale("log")
 yscale("log")
-legend(bbox_to_anchor=(2.1, 0.5), ncol=3)
+legend(bbox_to_anchor=(1.005, 1.), ncol=1, fontsize=8, handlelength=1)
 
 # Box gas metal mass --------------------------------
 subplot(224)

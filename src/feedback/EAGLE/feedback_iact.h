@@ -140,77 +140,82 @@ runner_iact_nonsym_feedback_apply(const float r2, const float *dx,
     pj->chemistry_data.metal_mass_fraction[elem] = new_metal_mass / new_mass;
   }
 
-  /* /\* Update iron mass fraction from SNIa  *\/ */
-  /* const float current_iron_from_SNIa_mass = */
-  /*     pj->chemistry_data.iron_mass_fraction_from_SNIa * current_mass; */
-  /* const float new_iron_from_SNIa_mass = */
-  /*     current_iron_from_SNIa_mass + */
-  /*     si->feedback_data.to_distribute.Fe_mass_from_SNIa *
-   * Omega_frac; */
-  /* pj->chemistry_data.iron_mass_fraction_from_SNIa = */
-  /*     new_iron_from_SNIa_mass / new_mass; */
+  /* Update iron mass fraction from SNIa  */
+  const double current_iron_from_SNIa_mass =
+      pj->chemistry_data.iron_mass_fraction_from_SNIa * current_mass;
+  const double delta_iron_from_SNIa_mass =
+      si->feedback_data.to_distribute.Fe_mass_from_SNIa * Omega_frac;
+  const double new_iron_from_SNIa_mass =
+      current_iron_from_SNIa_mass + delta_iron_from_SNIa_mass;
 
-  /* /\* Update mass fraction from SNIa  *\/ */
-  /* const float current_mass_from_SNIa = */
-  /*     pj->chemistry_data.mass_from_SNIa * current_mass; */
-  /* const float new_mass_from_SNIa = */
-  /*     current_mass_from_SNIa + */
-  /*     si->feedback_data.to_distribute.mass_from_SNIa * Omega_frac;
-   */
-  /* pj->chemistry_data.mass_from_SNIa = new_mass_from_SNIa / new_mass; */
+  pj->chemistry_data.iron_mass_fraction_from_SNIa =
+      new_iron_from_SNIa_mass / new_mass;
 
-  /* /\* Update metal mass fraction from SNIa *\/ */
-  /* const float current_metal_mass_fraction_from_SNIa = */
-  /*     pj->chemistry_data.metal_mass_fraction_from_SNIa * current_mass; */
-  /* const float new_metal_mass_fraction_from_SNIa = */
-  /*     current_metal_mass_fraction_from_SNIa + */
-  /*     si->feedback_data.to_distribute.metal_mass_from_SNIa * */
-  /*         Omega_frac; */
-  /* pj->chemistry_data.metal_mass_fraction_from_SNIa = */
-  /*     new_metal_mass_fraction_from_SNIa / new_mass; */
+  /* Update mass fraction from SNIa  */
+  const double current_mass_from_SNIa =
+      pj->chemistry_data.mass_from_SNIa * current_mass;
+  const double delta_mass_from_SNIa =
+      si->feedback_data.to_distribute.mass_from_SNIa * Omega_frac;
+  const double new_mass_from_SNIa =
+      current_mass_from_SNIa + delta_mass_from_SNIa;
 
-  /* /\* Update mass fraction from SNII  *\/ */
-  /* const float current_mass_from_SNII = */
-  /*     pj->chemistry_data.mass_from_SNII * current_mass; */
-  /* const float new_mass_from_SNII = */
-  /*     current_mass_from_SNII + */
-  /*     si->feedback_data.to_distribute.mass_from_SNII * Omega_frac;
-   */
-  /* pj->chemistry_data.mass_from_SNII = new_mass_from_SNII / new_mass; */
+  pj->chemistry_data.mass_from_SNIa = new_mass_from_SNIa / new_mass;
 
-  /* /\* Update metal mass fraction from SNII *\/ */
-  /* const float current_metal_mass_fraction_from_SNII = */
-  /*     pj->chemistry_data.metal_mass_fraction_from_SNII * current_mass; */
-  /* const float new_metal_mass_fraction_from_SNII = */
-  /*     current_metal_mass_fraction_from_SNII + */
-  /*     si->feedback_data.to_distribute.metal_mass_from_SNII * */
-  /*         Omega_frac; */
-  /* pj->chemistry_data.metal_mass_fraction_from_SNII = */
-  /*     new_metal_mass_fraction_from_SNII / new_mass; */
+  /* Update metal mass fraction from SNIa */
+  const double current_metal_mass_from_SNIa =
+      pj->chemistry_data.metal_mass_fraction_from_SNIa * current_mass;
+  const double delta_metal_mass_from_SNIa =
+      si->feedback_data.to_distribute.metal_mass_from_SNIa * Omega_frac;
+  const double new_metal_mass_from_SNIa =
+      current_metal_mass_from_SNIa + delta_metal_mass_from_SNIa;
 
-  /* /\* Update mass fraction from AGB  *\/ */
-  /* const float current_mass_from_AGB = */
-  /*     pj->chemistry_data.mass_from_AGB * current_mass; */
-  /* const float new_mass_from_AGB = */
-  /*     current_mass_from_AGB + */
-  /*     si->feedback_data.to_distribute.mass_from_AGB * Omega_frac;
-   */
-  /* pj->chemistry_data.mass_from_AGB = new_mass_from_AGB / new_mass; */
+  pj->chemistry_data.metal_mass_fraction_from_SNIa =
+      new_metal_mass_from_SNIa / new_mass;
 
-  /* /\* Update metal mass fraction from AGB *\/ */
-  /* const float current_metal_mass_fraction_from_AGB = */
-  /*     pj->chemistry_data.metal_mass_fraction_from_AGB * current_mass; */
-  /* const float new_metal_mass_fraction_from_AGB = */
-  /*     current_metal_mass_fraction_from_AGB + */
-  /*     si->feedback_data.to_distribute.metal_mass_from_AGB * */
-  /*         Omega_frac; */
-  /* pj->chemistry_data.metal_mass_fraction_from_AGB = */
-  /*     new_metal_mass_fraction_from_AGB / new_mass; */
+  /* Update mass fraction from SNII  */
+  const double current_mass_from_SNII =
+      pj->chemistry_data.mass_from_SNII * current_mass;
+  const double delta_mass_from_SNII =
+      si->feedback_data.to_distribute.mass_from_SNII * Omega_frac;
+  const double new_mass_from_SNII =
+      current_mass_from_SNII + delta_mass_from_SNII;
+
+  pj->chemistry_data.mass_from_SNII = new_mass_from_SNII / new_mass;
+
+  /* Update metal mass fraction from SNII */
+  const double current_metal_mass_from_SNII =
+      pj->chemistry_data.metal_mass_fraction_from_SNII * current_mass;
+  const double delta_metal_mass_from_SNII =
+      si->feedback_data.to_distribute.metal_mass_from_SNII * Omega_frac;
+  const double new_metal_mass_from_SNII =
+      current_metal_mass_from_SNII + delta_metal_mass_from_SNII;
+
+  pj->chemistry_data.metal_mass_fraction_from_SNII =
+      new_metal_mass_from_SNII / new_mass;
+
+  /* Update mass fraction from AGB  */
+  const double current_mass_from_AGB =
+      pj->chemistry_data.mass_from_AGB * current_mass;
+  const double delta_mass_from_AGB =
+      si->feedback_data.to_distribute.mass_from_AGB * Omega_frac;
+  const double new_mass_from_AGB = current_mass_from_AGB + delta_mass_from_AGB;
+
+  pj->chemistry_data.mass_from_AGB = new_mass_from_AGB / new_mass;
+
+  /* Update metal mass fraction from AGB */
+  const double current_metal_mass_from_AGB =
+      pj->chemistry_data.metal_mass_fraction_from_AGB * current_mass;
+  const double delta_metal_mass_from_AGB =
+      si->feedback_data.to_distribute.metal_mass_from_AGB * Omega_frac;
+  const double new_metal_mass_from_AGB =
+      current_metal_mass_from_AGB + delta_metal_mass_from_AGB;
+
+  pj->chemistry_data.metal_mass_fraction_from_AGB =
+      new_metal_mass_from_AGB / new_mass;
 
   /* /\* Update momentum *\/ */
   /* for (int i = 0; i < 3; i++) { */
-  /*   pj->v[i] += si->feedback_data.to_distribute.mass * Omega_frac
-   * * */
+  /*   pj->v[i] += si->feedback_data.to_distribute.mass * Omega_frac * */
   /*               (si->v[i] - pj->v[i]); */
   /* } */
 

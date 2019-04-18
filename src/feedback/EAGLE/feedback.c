@@ -350,6 +350,8 @@ inline static void evolve_SNIa(const float log10_min_mass,
  * IMF weighted by the yields read from tables for each of the quantities of
  * interest.
  *
+ * Note for Matthieu: This function is poorly written and needs improving.
+ *
  * @param log10_min_mass log10 mass at the end of step
  * @param log10_max_mass log10 mass at the beginning of step
  * @param stellar_yields array to store calculated yields for passing to
@@ -504,6 +506,8 @@ inline static void evolve_SNII(float log10_min_mass, float log10_max_mass,
  * IMF weighted by the yields read from tables for each of the quantities of
  * interest.
  *
+ * Note for Matthieu: This function is poorly written and needs improving.
+ *
  * @param log10_min_mass log10 mass at the end of step
  * @param log10_max_mass log10 mass at the beginning of step
  * @param stellar_yields array to store calculated yields for passing to
@@ -646,6 +650,10 @@ inline static void evolve_AGB(const float log10_min_mass, float log10_max_mass,
   }
 }
 
+/**
+ * @brief Prepares a star's feedback field before computing what
+ * needs to be distributed.
+ */
 inline static void feedback_init_to_distribute(struct spart* sp) {
 
   /* Zero the amount of mass that is distributed */
