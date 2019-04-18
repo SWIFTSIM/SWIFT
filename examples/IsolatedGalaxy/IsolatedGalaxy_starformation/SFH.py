@@ -38,6 +38,8 @@ except ImportError:
             raised_info = True
         return x
 
+np.seterr(divide="ignore")
+np.seterr(invalid="ignore")
 
 # Plot parameters
 params = {
