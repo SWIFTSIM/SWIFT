@@ -2343,7 +2343,7 @@ void cell_activate_hydro_sorts_up(struct cell *c, struct scheduler *s) {
   } else {
 
     for (struct cell *parent = c->parent;
-         parent != NULL && !cell_get_flag(parent, cell_flag_dohydro_sub_sort);
+         parent != NULL && !cell_get_flag(parent, cell_flag_do_hydro_sub_sort);
          parent = parent->parent) {
       cell_set_flag(parent, cell_flag_do_hydro_sub_sort);
       if (parent == c->hydro.super) {
