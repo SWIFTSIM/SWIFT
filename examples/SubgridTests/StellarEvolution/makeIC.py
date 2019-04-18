@@ -45,7 +45,7 @@ boxsize_cgs = 1.0e1*kpc_in_cm
 vol_cgs = boxsize_cgs**3
 
 #---------------------------------------------------
-glass = h5py.File("glassCube_64.hdf5", "r")
+glass = h5py.File("glassCube_32.hdf5", "r")
 
 # Read particle positions and h from the glass
 pos = glass["/PartType0/Coordinates"][:,:]

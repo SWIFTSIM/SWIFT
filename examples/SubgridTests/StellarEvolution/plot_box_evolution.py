@@ -124,22 +124,26 @@ for line in eagle_data:
 	i += 1
 
 # Declare arrays to store SWIFT data
-swift_box_mass = zeros(n_snapshots)
-swift_box_metal_mass = zeros(n_snapshots)
+swift_box_gas_mass = zeros(n_snapshots)
+swift_box_star_mass = zeros(n_snapshots)
+swift_box_gas_metal_mass = zeros(n_snapshots)
 swift_element_mass = zeros((n_snapshots,n_elements))
 t = zeros(n_snapshots)
 
 # Read data from snapshots
 for i in range(n_snapshots):
-	print("reading snapshot "+str(i))
+	#print("reading snapshot "+str(i))
 	sim = h5py.File("stellar_evolution_%04d.hdf5"%i, "r")
 	t[i] = sim["/Header"].attrs["Time"][0]
 	
 	masses = sim["/PartType0/Masses"][:]
-	swift_box_mass[i] = np.sum(masses)
-	
+	swift_box_gas_mass[i] = np.sum(masses)
+
+	star_masses = sim["/PartType4/Masses"][:]
+	swift_box_star_mass[i] = np.sum(star_masses)
+
 	metallicities = sim["/PartType0/Metallicity"][:]
-	swift_box_metal_mass[i] = np.sum(metallicities * masses)
+	swift_box_gas_metal_mass[i] = np.sum(metallicities * masses)
 
 	element_abundances = sim["/PartType0/ElementAbundance"][:][:]
 	for j in range(n_elements):
@@ -150,25 +154,25 @@ for i in range(n_snapshots):
 # Plot the interesting quantities
 figure()
 
-# Box mass --------------------------------
+# Box gas mass --------------------------------
 subplot(221)
-plot(t[1:] * unit_time_in_cgs / Gyr_in_cgs, (swift_box_mass[1:] - swift_box_mass[0])* unit_mass_in_cgs / Msun_in_cgs, linewidth=0.5, color='k', marker = "*", ms=0.5, label='swift')
+plot(t[1:] * unit_time_in_cgs / Gyr_in_cgs, (swift_box_gas_mass[1:] - swift_box_gas_mass[0])* unit_mass_in_cgs / Msun_in_cgs, linewidth=0.5, color='k', marker = "*", ms=0.5, label='swift')
 plot(eagle_time_Gyr[1:],eagle_total_mass[:-1],linewidth=0.5,color='r',label='eagle test total')
 xlabel("${\\rm{Time}} (Gyr)$", labelpad=0)
 ylabel("Change in total gas particle mass (Msun)", labelpad=2)
 ticklabel_format(style='sci', axis='y', scilimits=(0,0))
 legend()
 
-# Box metal mass --------------------------------
+# Box star mass --------------------------------
 subplot(222)
-plot(t[1:] * unit_time_in_cgs / Gyr_in_cgs, (swift_box_metal_mass[1:] - swift_box_metal_mass[0])* unit_mass_in_cgs / Msun_in_cgs, linewidth=0.5, color='k', marker = "*", ms=0.5, label='swift')
-plot(eagle_time_Gyr[1:],eagle_total_metal_mass[:-1],linewidth=0.5,color='r',label='eagle test')
+plot(t[1:] * unit_time_in_cgs / Gyr_in_cgs, (swift_box_star_mass[1:] - swift_box_star_mass[0])* unit_mass_in_cgs / Msun_in_cgs, linewidth=0.5, color='k', marker = "*", ms=0.5, label='swift')
+plot(eagle_time_Gyr[1:],-eagle_total_mass[:-1],linewidth=0.5,color='r',label='eagle test total')
 xlabel("${\\rm{Time}} (Gyr)$", labelpad=0)
-ylabel("Change in total metal mass of gas particles (Msun)", labelpad=2)
+ylabel("Change in total star particle mass (Msun)", labelpad=2)
 ticklabel_format(style='sci', axis='y', scilimits=(0,0))
-#legend()
+legend()
 
-# Box element mass --------------------------------
+# Box gas element  mass --------------------------------
 colours = ['k','r','g','b','c','y','m','skyblue','plum']
 element_names = ['H','He','C','N','O','Ne','Mg','Si','Fe']
 subplot(223)
@@ -177,10 +181,17 @@ for j in range(n_elements):
 	plot(eagle_time_Gyr[1:],eagle_total_element_mass[:-1,j],linewidth=1,color=colours[j],linestyle='--')
 xlabel("${\\rm{Time}} (Gyr)$", labelpad=0)
 ylabel("Change in element mass of gas particles (Msun)", labelpad=2)
-#ticklabel_format(style='sci', axis='y', scilimits=(0,0))
 xscale("log")
 yscale("log")
-legend(bbox_to_anchor=(1.1, 1.))
+legend(bbox_to_anchor=(2.1, 0.5), ncol=3)
+
+# Box gas metal mass --------------------------------
+subplot(224)
+plot(t[1:] * unit_time_in_cgs / Gyr_in_cgs, (swift_box_gas_metal_mass[1:] - swift_box_gas_metal_mass[0])* unit_mass_in_cgs / Msun_in_cgs, linewidth=0.5, color='k', marker = "*", ms=0.5, label='swift')
+plot(eagle_time_Gyr[1:],eagle_total_metal_mass[:-1],linewidth=0.5,color='r',label='eagle test')
+xlabel("${\\rm{Time}} (Gyr)$", labelpad=0)
+ylabel("Change in total metal mass of gas particles (Msun)", labelpad=2)
+ticklabel_format(style='sci', axis='y', scilimits=(0,0))
 
 savefig("box_evolution.png", dpi=200)
 
