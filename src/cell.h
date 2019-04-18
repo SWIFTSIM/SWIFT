@@ -382,9 +382,6 @@ struct cell {
     /*! Bit-mask indicating the sorted directions */
     unsigned int sorted;
 
-    /*! Do any of this cell's sub-cells need to be sorted? */
-    char do_sub_sort;
-
     /*! Does this cell need to be limited? */
     char do_limiter;
 

@@ -2343,9 +2343,9 @@ void cell_activate_hydro_sorts_up(struct cell *c, struct scheduler *s) {
   } else {
 
     for (struct cell *parent = c->parent;
-         parent != NULL && !parent->hydro.do_sub_sort;
+         parent != NULL && !cell_get_flag(parent, cell_flag_dohydro_sub_sort);
          parent = parent->parent) {
-      parent->hydro.do_sub_sort = 1;
+      cell_set_flag(parent, cell_flag_do_hydro_sub_sort);
       if (parent == c->hydro.super) {
 #ifdef SWIFT_DEBUG_CHECKS
         if (parent->hydro.sorts == NULL)
