@@ -48,6 +48,7 @@ examples/*/*/yieldtables
 examples/Cooling/CoolingRates/cooling_rates
 examples/Cooling/CoolingRates/cooling_element_*.dat
 examples/Cooling/CoolingRates/cooling_output.dat
+examples/SubgridTests/StellarEvolution/StellarEvolutionSolution*
 
 tests/testActivePair
 tests/testActivePair.sh

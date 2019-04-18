@@ -19,8 +19,29 @@ then
     ./getYieldTable.sh
 fi
 
+# Get the solutions
+if [ ! -e StellarEvolutionSolution ]
+then
+    echo "Fetching solutions ..."
+    ./getSolutions.sh
+fi
 
-../../swift --limiter --feedback --stars --hydro --external-gravity --threads=4 stellar_evolution.yml 2>&1 | tee output.log
+../../swift --limiter --feedback --stars --hydro --external-gravity --threads=4 stellar_evolution.yml -P EAGLEChemistry:init_abundance_metal:0.08 2>&1 | tee output.log
 
-#python check_stellar_evolution.py
+python plot_box_evolution.py
+
+../../swift --limiter --feedback --stars --hydro --external-gravity --threads=4 stellar_evolution.yml -P EAGLEChemistry:init_abundance_metal:0.04 2>&1 | tee output.log
+
+python plot_box_evolution.py
+
+../../swift --limiter --feedback --stars --hydro --external-gravity --threads=4 stellar_evolution.yml -P EAGLEChemistry:init_abundance_metal:0.01 2>&1 | tee output.log
+
+python plot_box_evolution.py
+
+../../swift --limiter --feedback --stars --hydro --external-gravity --threads=4 stellar_evolution.yml -P EAGLEChemistry:init_abundance_metal:0.001 2>&1 | tee output.log
+
+python plot_box_evolution.py
+
+../../swift --limiter --feedback --stars --hydro --external-gravity --threads=4 stellar_evolution.yml -P EAGLEChemistry:init_abundance_metal:0.0001 2>&1 | tee output.log
+
 python plot_box_evolution.py

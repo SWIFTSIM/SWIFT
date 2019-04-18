@@ -1,7 +1,6 @@
 ###############################################################################
  # This file is part of SWIFT.
- # Copyright (c) 2015 Bert Vandenbroucke (bert.vandenbroucke@ugent.be)
- #                    Matthieu Schaller (matthieu.schaller@durham.ac.uk)
+ # Copyright (c) 2018 Matthieu Schaller (matthieu.schaller@durham.ac.uk)
  # 
  # This program is free software: you can redistribute it and/or modify
  # it under the terms of the GNU Lesser General Public License as published
@@ -43,9 +42,9 @@ params = {'axes.labelsize': 10,
 'text.usetex': True,
  'figure.figsize' : (9.90,6.45),
 'figure.subplot.left'    : 0.05,
-'figure.subplot.right'   : 0.99,
-'figure.subplot.bottom'  : 0.1,
-'figure.subplot.top'     : 0.95,
+'figure.subplot.right'   : 0.995,
+'figure.subplot.bottom'  : 0.06,
+'figure.subplot.top'     : 0.92,
 'figure.subplot.wspace'  : 0.25,
 'figure.subplot.hspace'  : 0.2,
 'lines.markersize' : 6,
@@ -57,7 +56,7 @@ rc('font',**{'family':'sans-serif','sans-serif':['Times']})
 
 
 # Number of snapshots and elements
-newest_snap_name = max(glob.glob('stellar_evolution_*.hdf5'), key=os.path.getctime)
+newest_snap_name = max(glob.glob('stellar_evolution_*.hdf5'))#, key=os.path.getctime)
 n_snapshots = int(newest_snap_name.replace('stellar_evolution_','').replace('.hdf5','')) + 1
 n_elements = 9
 
@@ -86,18 +85,41 @@ unit_density_in_cgs = unit_mass_in_cgs*unit_length_in_cgs**-3
 unit_pressure_in_cgs = unit_mass_in_cgs/unit_length_in_cgs*unit_time_in_cgs**-2
 unit_int_energy_in_cgs = unit_energy_in_cgs/unit_mass_in_cgs
 unit_entropy_in_cgs = unit_energy_in_cgs/unit_temp_in_cgs
-Gyr_in_cgs = 3.155e16
-Msun_in_cgs = 1.989e33
+Gyr_in_cgs = 1e9 * 365. * 24 * 3600.
+Msun_in_cgs = 1.98848e33
+
+# Declare arrays to store SWIFT data
+swift_box_gas_mass = zeros(n_snapshots)
+swift_box_star_mass = zeros(n_snapshots)
+swift_box_gas_metal_mass = zeros(n_snapshots)
+swift_element_mass = zeros((n_snapshots,n_elements))
+t = zeros(n_snapshots)
+
+# Read data from snapshots
+for i in range(n_snapshots):
+	#print("reading snapshot "+str(i))
+	sim = h5py.File("stellar_evolution_%04d.hdf5"%i, "r")
+	t[i] = sim["/Header"].attrs["Time"][0]
+	
+	masses = sim["/PartType0/Masses"][:]
+	swift_box_gas_mass[i] = np.sum(masses)
+
+        Z_star = sim["/PartType4/Metallicity"][0]
+	star_masses = sim["/PartType4/Masses"][:]
+	swift_box_star_mass[i] = np.sum(star_masses)
+
+	metallicities = sim["/PartType0/Metallicity"][:]
+	swift_box_gas_metal_mass[i] = np.sum(metallicities * masses)
+
+	element_abundances = sim["/PartType0/ElementAbundance"][:][:]
+	for j in range(n_elements):
+		swift_element_mass[i,j] = np.sum(element_abundances[:,j] * masses)
+
+        sim.close()
 
 # Read expected yields from EAGLE. Choose which file to use based on metallicity used when
 # running SWIFT (can be specified in yml file)
-
-#filename = "/cosma/home/dp004/dc-bori1/Eagle/data1/z_0.0001/StellarEvolutionTotal.txt"
-#filename = "/cosma/home/dp004/dc-bori1/Eagle/data1/z_0.001/StellarEvolutionTotal.txt"
-#filename = "/cosma/home/dp004/dc-bori1/Eagle/data1/z_0.01/StellarEvolutionTotal.txt"
-#filename = "/cosma/home/dp004/dc-bori1/Eagle/data1/z_0.04/StellarEvolutionTotal.txt"
-#filename = "/cosma/home/dp004/dc-bori1/Eagle/data1/z_0.08/StellarEvolutionTotal.txt"
-filename = "StellarEvolutionTotal.txt"
+filename = "./StellarEvolutionSolution/Z_%.4f/StellarEvolutionTotal.txt"%Z_star
 
 # Read EAGLE test output
 with open(filename) as f:
@@ -123,41 +145,16 @@ for line in eagle_data:
 		eagle_total_element_mass[i,j] = float(enrich_to_date[3+j]) * stellar_mass / Msun_in_cgs * unit_mass_in_cgs 
 	i += 1
 
-# Declare arrays to store SWIFT data
-swift_box_gas_mass = zeros(n_snapshots)
-swift_box_star_mass = zeros(n_snapshots)
-swift_box_gas_metal_mass = zeros(n_snapshots)
-swift_element_mass = zeros((n_snapshots,n_elements))
-t = zeros(n_snapshots)
-
-# Read data from snapshots
-for i in range(n_snapshots):
-	#print("reading snapshot "+str(i))
-	sim = h5py.File("stellar_evolution_%04d.hdf5"%i, "r")
-	t[i] = sim["/Header"].attrs["Time"][0]
-	
-	masses = sim["/PartType0/Masses"][:]
-	swift_box_gas_mass[i] = np.sum(masses)
-
-	star_masses = sim["/PartType4/Masses"][:]
-	swift_box_star_mass[i] = np.sum(star_masses)
-
-	metallicities = sim["/PartType0/Metallicity"][:]
-	swift_box_gas_metal_mass[i] = np.sum(metallicities * masses)
-
-	element_abundances = sim["/PartType0/ElementAbundance"][:][:]
-	for j in range(n_elements):
-		swift_element_mass[i,j] = np.sum(element_abundances[:,j] * masses)
-
-        sim.close()
                 
 # Plot the interesting quantities
 figure()
 
+suptitle("Star metallicity Z = %.4f"%Z_star)
+
 # Box gas mass --------------------------------
 subplot(221)
 plot(t[1:] * unit_time_in_cgs / Gyr_in_cgs, (swift_box_gas_mass[1:] - swift_box_gas_mass[0])* unit_mass_in_cgs / Msun_in_cgs, linewidth=0.5, color='k', marker = "*", ms=0.5, label='swift')
-plot(eagle_time_Gyr[1:],eagle_total_mass[:-1],linewidth=0.5,color='r',label='eagle test total')
+plot(eagle_time_Gyr[1:],eagle_total_mass[:-1],linewidth=0.5,color='r',label='eagle test total', ls='--')
 xlabel("${\\rm{Time}} (Gyr)$", labelpad=0)
 ylabel("Change in total gas particle mass (Msun)", labelpad=2)
 ticklabel_format(style='sci', axis='y', scilimits=(0,0))
@@ -165,8 +162,8 @@ legend()
 
 # Box star mass --------------------------------
 subplot(222)
-plot(t[1:] * unit_time_in_cgs / Gyr_in_cgs, (swift_box_star_mass[1:] - swift_box_star_mass[0])* unit_mass_in_cgs / Msun_in_cgs, linewidth=0.5, color='k', marker = "*", ms=0.5, label='swift')
-plot(eagle_time_Gyr[1:],-eagle_total_mass[:-1],linewidth=0.5,color='r',label='eagle test total')
+plot(t * unit_time_in_cgs / Gyr_in_cgs, (swift_box_star_mass)* unit_mass_in_cgs / Msun_in_cgs, linewidth=0.5, color='k', marker = "*", ms=0.5, label='swift')
+plot(eagle_time_Gyr[1:], swift_box_star_mass[0] * unit_mass_in_cgs / Msun_in_cgs - eagle_total_mass[:-1],linewidth=0.5,color='r',label='eagle test total')
 xlabel("${\\rm{Time}} (Gyr)$", labelpad=0)
 ylabel("Change in total star particle mass (Msun)", labelpad=2)
 ticklabel_format(style='sci', axis='y', scilimits=(0,0))
@@ -193,7 +190,7 @@ xlabel("${\\rm{Time}} (Gyr)$", labelpad=0)
 ylabel("Change in total metal mass of gas particles (Msun)", labelpad=2)
 ticklabel_format(style='sci', axis='y', scilimits=(0,0))
 
-savefig("box_evolution.png", dpi=200)
+savefig("box_evolution_Z_%.4f.png"%(Z_star), dpi=200)
 
 
 
