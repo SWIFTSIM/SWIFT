@@ -2721,7 +2721,7 @@ void engine_collect_end_of_step_recurse_hydro(struct cell *c,
       }
 
       /* Add the star formation history in this cell to sfh_updated */
-      star_formation_logger_add_first_to_second(&cp->stars.sfh,&sfh_updated);
+      star_formation_logger_add_first_to_second(&cp->stars.sfh, &sfh_updated);
 
       /* Collected, so clear for next time. */
       cp->hydro.updated = 0;
@@ -2736,7 +2736,7 @@ void engine_collect_end_of_step_recurse_hydro(struct cell *c,
   c->hydro.inhibited = inhibited;
 
   /* Store the star formation history in the parent cell */
-  star_formation_logger_add_first_to_second(&sfh_updated,&c->stars.sfh);
+  star_formation_logger_add_first_to_second(&sfh_updated, &c->stars.sfh);
 }
 
 /**
