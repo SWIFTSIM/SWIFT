@@ -87,29 +87,6 @@ INLINE static void star_formation_logger_log_inactive_cell(
 }
 
 /**
- * @brief function to add the progeny SFH to the parent SFH.
- *
- * @param sf parent SFH struct
- * @param sfprogeny progeny SFH struct
- */
-INLINE static void star_formation_logger_log_progeny_cell(
-    struct star_formation_history *sf,
-    const struct star_formation_history *sfprogeny) {
-
-  /* Add the new stellar mass from the progeny */
-  sf->new_stellar_mass += sfprogeny->new_stellar_mass;
-
-  /* Add the SFR of the progeny */
-  sf->SFR_active += sfprogeny->SFR_active;
-
-  /* Add the SFR * dt of the progeny */
-  sf->SFRdt_active += sfprogeny->SFRdt_active;
-
-  /* Add the Inactive SFR of the progeny */
-  sf->SFR_inactive += sfprogeny->SFR_inactive;
-}
-
-/**
  * @brief add a star formation history struct to an other star formation history
  * struct
  *

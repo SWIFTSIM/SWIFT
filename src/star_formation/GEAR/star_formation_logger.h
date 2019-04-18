@@ -64,16 +64,6 @@ INLINE static void star_formation_logger_log_inactive_cell(
     struct star_formation_history *sf) {}
 
 /**
- * @brief function to add the progeny SFH to the parent SFH.
- *
- * @param sf parent SFH struct
- * @param sfprogeny progeny SFH struct
- */
-INLINE static void star_formation_logger_log_progeny_cell(
-    struct star_formation_history *sf,
-    const struct star_formation_history *sfprogeny) {}
-
-/**
  * @brief add a star formation history struct to an other star formation history
  * struct
  *
