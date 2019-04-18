@@ -2242,7 +2242,8 @@ void engine_make_fof_tasks(struct engine *e) {
 
     struct task *t = &sched->tasks[i];
 
-    if (t->type == task_type_fof_self || t->type == task_type_fof_pair) scheduler_activate(sched, t); 
+    if (t->type == task_type_fof_self || t->type == task_type_fof_pair) scheduler_activate(sched, t);
+    else t->skip = 1;
   }
 
   if (e->verbose)
@@ -2256,6 +2257,37 @@ void engine_make_fof_tasks(struct engine *e) {
     if (t->ci == NULL && t->cj != NULL && !t->skip) error("Invalid task");
   }
 #endif
+
+  ticks tic2 = getticks();
+
+  /* Report the number of tasks we actually used */
+  if (e->verbose)
+    message(
+        "Nr. of tasks: %d allocated tasks: %d ratio: %f memory use: %zd MB.",
+        e->sched.nr_tasks, e->sched.size,
+        (float)e->sched.nr_tasks / (float)e->sched.size,
+        e->sched.size * sizeof(struct task) / (1024 * 1024));
+
+  tic2 = getticks();
+
+  /* Set the unlocks per task. */
+  scheduler_set_unlocks(sched);
+
+  if (e->verbose)
+    message("Setting unlocks took %.3f %s.",
+            clocks_from_ticks(getticks() - tic2), clocks_getunit());
+
+  tic2 = getticks();
+
+  /* Weight the tasks. */
+  scheduler_reweight(sched, e->verbose);
+
+  /* Set the tasks age. */
+  e->tasks_age = 0;
+
+  if (e->verbose)
+    message("took %.3f %s (including reweight).",
+            clocks_from_ticks(getticks() - tic), clocks_getunit());
 
 }
 

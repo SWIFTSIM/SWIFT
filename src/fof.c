@@ -1581,6 +1581,7 @@ void fof_search_foreign_cells(struct space *s) {
         (t->type == task_type_recv && t->subtype == task_subtype_gpart) ) {
       scheduler_activate(sched, t);
     }
+    else t->skip = 1;
 
   }
 
