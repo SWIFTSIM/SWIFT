@@ -1152,7 +1152,7 @@ int main(int argc, char *argv[]) {
       task_dump_stats(dumpfile, &e, /* header = */ 0, /* allranks = */ 1);
     }
 
-    /* Dump memory use report if collected. */
+      /* Dump memory use report if collected. */
 #ifdef SWIFT_MEMUSE_REPORTS
     {
       char dumpfile[40];

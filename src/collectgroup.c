@@ -169,6 +169,7 @@ void collectgroup1_apply(struct collectgroup1 *grp1, struct engine *e) {
  * @param total_nr_cells total number of all cells on rank.
  * @param total_nr_tasks total number of tasks on rank.
  * @param tasks_per_cell the used number of tasks per cell.
+ * @param sfh The star formation history logger
  */
 void collectgroup1_init(
     struct collectgroup1 *grp1, size_t updated, size_t g_updated,
