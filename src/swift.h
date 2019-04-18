@@ -71,6 +71,7 @@
 #include "single_io.h"
 #include "space.h"
 #include "star_formation.h"
+#include "star_formation_logger.h"
 #include "stars.h"
 #include "stars_io.h"
 #include "task.h"

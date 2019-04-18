@@ -86,6 +86,8 @@
 #include "single_io.h"
 #include "sort_part.h"
 #include "star_formation.h"
+#include "star_formation_logger.h"
+#include "star_formation_logger_struct.h"
 #include "stars_io.h"
 #include "statistics.h"
 #include "timers.h"
@@ -139,6 +141,7 @@ struct end_of_step_data {
   integertime_t ti_black_holes_end_min, ti_black_holes_end_max,
       ti_black_holes_beg_max;
   struct engine *e;
+  struct star_formation_history sfh;
 };
 
 /**
@@ -2690,6 +2693,12 @@ void engine_collect_end_of_step_recurse_hydro(struct cell *c,
   integertime_t ti_hydro_end_min = max_nr_timesteps, ti_hydro_end_max = 0,
                 ti_hydro_beg_max = 0;
 
+  /* Local Star formation history properties */
+  struct star_formation_history sfh_updated;
+
+  /* Initialize the star formation structs */
+  star_formation_logger_init(&sfh_updated);
+
   /* Collect the values from the progeny. */
   for (int k = 0; k < 8; k++) {
     struct cell *cp = c->progeny[k];
@@ -2706,6 +2715,14 @@ void engine_collect_end_of_step_recurse_hydro(struct cell *c,
       updated += cp->hydro.updated;
       inhibited += cp->hydro.inhibited;
 
+      /* Check if the cell is inactive and in that case reorder the SFH */
+      if (!cell_is_starting_hydro(cp, e)) {
+        star_formation_logger_log_inactive_cell(&cp->stars.sfh);
+      }
+
+      /* Add the star formation history in this cell to sfh_updated */
+      star_formation_logger_add(&sfh_updated, &cp->stars.sfh);
+
       /* Collected, so clear for next time. */
       cp->hydro.updated = 0;
     }
@@ -2717,6 +2734,9 @@ void engine_collect_end_of_step_recurse_hydro(struct cell *c,
   c->hydro.ti_beg_max = ti_hydro_beg_max;
   c->hydro.updated = updated;
   c->hydro.inhibited = inhibited;
+
+  /* Store the star formation history in the parent cell */
+  star_formation_logger_add(&c->stars.sfh, &sfh_updated);
 }
 
 /**
@@ -2923,6 +2943,7 @@ void engine_collect_end_of_step_mapper(void *map_data, int num_elements,
   const int with_black_holes = (e->policy & engine_policy_black_holes);
   struct space *s = e->s;
   int *local_cells = (int *)map_data;
+  struct star_formation_history *sfh_top = &data->sfh;
 
   /* Local collectible */
   size_t updated = 0, g_updated = 0, s_updated = 0, b_updated = 0;
@@ -2935,6 +2956,12 @@ void engine_collect_end_of_step_mapper(void *map_data, int num_elements,
                 ti_stars_beg_max = 0;
   integertime_t ti_black_holes_end_min = max_nr_timesteps,
                 ti_black_holes_end_max = 0, ti_black_holes_beg_max = 0;
+
+  /* Local Star formation history properties */
+  struct star_formation_history sfh_updated;
+
+  /* Initialize the star formation structs for this engine to zero */
+  star_formation_logger_init(&sfh_updated);
 
   for (int ind = 0; ind < num_elements; ind++) {
     struct cell *c = &s->cells_top[local_cells[ind]];
@@ -2990,6 +3017,15 @@ void engine_collect_end_of_step_mapper(void *map_data, int num_elements,
       s_inhibited += c->stars.inhibited;
       b_inhibited += c->black_holes.inhibited;
 
+      /* Check if the cell is inactive and in that case reorder the SFH */
+      if (!cell_is_starting_hydro(c, e)) {
+        star_formation_logger_log_inactive_cell(&c->stars.sfh);
+      }
+
+      /* Get the star formation history from the current cell and store it in
+       * the star formation history struct */
+      star_formation_logger_add(&sfh_updated, &c->stars.sfh);
+
       /* Collected, so clear for next time. */
       c->hydro.updated = 0;
       c->grav.updated = 0;
@@ -3010,6 +3046,9 @@ void engine_collect_end_of_step_mapper(void *map_data, int num_elements,
     data->g_inhibited += g_inhibited;
     data->s_inhibited += s_inhibited;
     data->b_inhibited += b_inhibited;
+
+    /* Add the SFH information from this engine to the global data */
+    star_formation_logger_add(sfh_top, &sfh_updated);
 
     if (ti_hydro_end_min > e->ti_current)
       data->ti_hydro_end_min = min(ti_hydro_end_min, data->ti_hydro_end_min);
@@ -3076,6 +3115,9 @@ void engine_collect_end_of_step(struct engine *e, int apply) {
   data.ti_black_holes_end_max = 0, data.ti_black_holes_beg_max = 0;
   data.e = e;
 
+  /* Initialize the total SFH of the simulation to zero */
+  star_formation_logger_init(&data.sfh);
+
   /* Collect information from the local top-level cells */
   threadpool_map(&e->threadpool, engine_collect_end_of_step_mapper,
                  s->local_cells_with_tasks_top, s->nr_local_cells_with_tasks,
@@ -3097,7 +3139,7 @@ void engine_collect_end_of_step(struct engine *e, int apply) {
       data.ti_stars_beg_max, data.ti_black_holes_end_min,
       data.ti_black_holes_end_max, data.ti_black_holes_beg_max, e->forcerebuild,
       e->s->tot_cells, e->sched.nr_tasks,
-      (float)e->sched.nr_tasks / (float)e->s->tot_cells);
+      (float)e->sched.nr_tasks / (float)e->s->tot_cells, data.sfh);
 
 /* Aggregate collective data from the different nodes for this step. */
 #ifdef WITH_MPI
@@ -3641,6 +3683,17 @@ void engine_step(struct engine *e) {
 #ifdef SWIFT_DEBUG_CHECKS
     fflush(stdout);
 #endif
+
+    /* Write the star formation information to the file */
+    if (e->policy & engine_policy_star_formation) {
+      star_formation_logger_write_to_log_file(e->sfh_logger, e->time,
+                                              e->cosmology->a, e->cosmology->z,
+                                              e->sfh, e->step);
+
+#ifdef SWIFT_DEBUG_CHECKS
+      fflush(e->sfh_logger);
+#endif
+    }
 
     if (!e->restarting)
       fprintf(
@@ -4989,6 +5042,7 @@ void engine_config(int restart, struct engine *e, struct swift_params *params,
   e->nr_links = 0;
   e->file_stats = NULL;
   e->file_timesteps = NULL;
+  e->sfh_logger = NULL;
   e->verbose = verbose;
   e->wallclock_time = 0.f;
   e->restart_dump = 0;
@@ -5201,6 +5255,16 @@ void engine_config(int restart, struct engine *e, struct swift_params *params,
           "Updates", "g-Updates", "s-Updates", "b-Updates", "Wall-clock time",
           clocks_getunit(), "Props");
       fflush(e->file_timesteps);
+    }
+
+    /* Initialize the SFH logger if running with star formation */
+    if (e->policy & engine_policy_star_formation) {
+      e->sfh_logger = fopen("SFR.txt", mode);
+      if (!restart) {
+        star_formation_logger_init_log_file(e->sfh_logger, e->internal_units,
+                                            e->physical_constants);
+        fflush(e->sfh_logger);
+      }
     }
   }
 
@@ -5969,6 +6033,16 @@ void engine_clean(struct engine *e) {
   scheduler_clean(&e->sched);
   space_clean(e->s);
   threadpool_clean(&e->threadpool);
+
+  /* Close files */
+  if (e->nodeID == 0) {
+    fclose(e->file_timesteps);
+    fclose(e->file_stats);
+
+    if (e->policy & engine_policy_star_formation) {
+      fclose(e->sfh_logger);
+    }
+  }
 }
 
 /**
