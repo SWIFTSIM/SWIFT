@@ -274,7 +274,7 @@ void space_rebuild_recycle_mapper(void *map_data, int num_elements,
     c->stars.ti_end_max = -1;
     c->black_holes.ti_end_min = -1;
     c->black_holes.ti_end_max = -1;
-    star_formation_logger_init_engine(&c->stars.sfh);
+    star_formation_logger_init(&c->stars.sfh);
 #if defined(SWIFT_DEBUG_CHECKS) || defined(SWIFT_CELL_GRAPH)
     c->cellID = 0;
 #endif

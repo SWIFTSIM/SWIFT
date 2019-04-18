@@ -44,27 +44,6 @@ INLINE static void star_formation_logger_log_new_spart(
 }
 
 /**
- * @brief Initialize the star formation history struct if the cell is active
- *
- * @param sf the star_formation_history struct we want to initialize
- */
-INLINE static void star_formation_logger_log_active_cell(
-    struct star_formation_history *sf) {
-
-  /* Initialize the stellar mass to zero*/
-  sf->new_stellar_mass = 0.f;
-
-  /* Initialize the active SFR */
-  sf->SFR_active = 0.f;
-
-  /* Initialize the SFR*dt active */
-  sf->SFRdt_active = 0.f;
-
-  /* Initialize the inactive SFR */
-  sf->SFR_inactive = 0.f;
-}
-
-/**
  * @brief Initialize the star formation history struct in the case the cell is
  * inactive
  *
@@ -113,7 +92,7 @@ INLINE static void star_formation_logger_add_first_to_second(
  *
  * @param sfh The pointer to the star formation history structure
  */
-INLINE static void star_formation_logger_init_engine(
+INLINE static void star_formation_logger_init(
     struct star_formation_history *sfh) {
 
   /* Initialize the collecting SFH structure to zero */

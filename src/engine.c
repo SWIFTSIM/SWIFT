@@ -2697,7 +2697,7 @@ void engine_collect_end_of_step_recurse_hydro(struct cell *c,
   struct star_formation_history sfh_updated;
 
   /* Initialize the star formation structs */
-  star_formation_logger_init_engine(&sfh_updated);
+  star_formation_logger_init(&sfh_updated);
 
   /* Collect the values from the progeny. */
   for (int k = 0; k < 8; k++) {
@@ -2961,7 +2961,7 @@ void engine_collect_end_of_step_mapper(void *map_data, int num_elements,
   struct star_formation_history sfh_updated;
 
   /* Initialize the star formation structs for this engine to zero */
-  star_formation_logger_init_engine(&sfh_updated);
+  star_formation_logger_init(&sfh_updated);
 
   for (int ind = 0; ind < num_elements; ind++) {
     struct cell *c = &s->cells_top[local_cells[ind]];
@@ -3116,7 +3116,7 @@ void engine_collect_end_of_step(struct engine *e, int apply) {
   data.e = e;
 
   /* Initialize the total SFH of the simulation to zero */
-  star_formation_logger_init_engine(&data.sfh);
+  star_formation_logger_init(&data.sfh);
 
   /* Collect information from the local top-level cells */
   threadpool_map(&e->threadpool, engine_collect_end_of_step_mapper,
