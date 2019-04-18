@@ -3048,7 +3048,7 @@ void engine_collect_end_of_step_mapper(void *map_data, int num_elements,
     data->b_inhibited += b_inhibited;
 
     /* Add the SFH information from this engine to the global data */
-    star_formation_logger_add_first_to_second(&sfh_updated,sfh_top);
+    star_formation_logger_add_first_to_second(&sfh_updated, sfh_top);
 
     if (ti_hydro_end_min > e->ti_current)
       data->ti_hydro_end_min = min(ti_hydro_end_min, data->ti_hydro_end_min);
