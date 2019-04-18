@@ -226,8 +226,8 @@ enum cell_flags {
   cell_flag_do_hydro_drift = (1UL << 1),
   cell_flag_do_hydro_sub_drift = (1UL << 2),
   cell_flag_do_hydro_sub_sort = (1UL << 3),
-  cell_flag_do_limiter = (1UL << 4),
-  cell_flag_do_sub_limiter = (1UL << 5),
+  cell_flag_do_hydro_limiter = (1UL << 4),
+  cell_flag_do_hydro_sub_limiter = (1UL << 5),
   cell_flag_do_grav_drift = (1UL << 6),
   cell_flag_do_grav_sub_drift = (1UL << 7),
   cell_flag_do_stars_sub_sort = (1UL << 8),
@@ -381,9 +381,6 @@ struct cell {
 
     /*! Bit-mask indicating the sorted directions */
     unsigned int sorted;
-
-    /*! Does this cell need to be limited? */
-    char do_limiter;
 
     /*! Do any of this cell's sub-cells need to be limited? */
     char do_sub_limiter;

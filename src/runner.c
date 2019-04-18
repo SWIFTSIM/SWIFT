@@ -2865,13 +2865,13 @@ void runner_do_limiter(struct runner *r, struct cell *c, int force, int timer) {
                 ti_gravity_beg_max = 0;
 
   /* Limit irrespective of cell flags? */
-  force |= c->hydro.do_limiter;
+  force |= cell_get_flag(c, cell_flag_do_hydro_limiter);
 
   /* Early abort? */
   if (c->hydro.count == 0) {
 
     /* Clear the limiter flags. */
-    c->hydro.do_limiter = 0;
+    cell_clear_flag(c, cell_flag_do_hydro_limiter);
     c->hydro.do_sub_limiter = 0;
     return;
   }
@@ -2967,7 +2967,7 @@ void runner_do_limiter(struct runner *r, struct cell *c, int force, int timer) {
   }
 
   /* Clear the limiter flags. */
-  c->hydro.do_limiter = 0;
+  cell_clear_flag(c, cell_flag_do_hydro_limiter);
   c->hydro.do_sub_limiter = 0;
 
   if (timer) TIMER_TOC(timer_do_limiter);

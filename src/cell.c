@@ -2138,7 +2138,7 @@ void cell_clear_drift_flags(struct cell *c, void *data) {
  * @brief Clear the limiter flags on the given cell.
  */
 void cell_clear_limiter_flags(struct cell *c, void *data) {
-  c->hydro.do_limiter = 0;
+  cell_clear_flag(c, cell_flag_do_hydro_limiter);
   c->hydro.do_sub_limiter = 0;
 }
 
@@ -2295,10 +2295,10 @@ void cell_activate_drift_spart(struct cell *c, struct scheduler *s) {
 void cell_activate_limiter(struct cell *c, struct scheduler *s) {
 
   /* If this cell is already marked for limiting, quit early. */
-  if (c->hydro.do_limiter) return;
+  if (cell_get_flag(c, cell_flag_do_hydro_limiter)) return;
 
   /* Mark this cell for limiting. */
-  c->hydro.do_limiter = 1;
+  cell_set_flag(c, cell_flag_do_hydro_limiter);
 
   /* Set the do_sub_limiter all the way up and activate the super limiter
      if this has not yet been done. */
