@@ -2127,7 +2127,7 @@ void cell_clean(struct cell *c) {
  * @brief Clear the drift flags on the given cell.
  */
 void cell_clear_drift_flags(struct cell *c, void *data) {
-  c->hydro.do_drift = 0;
+  cell_clear_flag(c, cell_flag_do_hydro_drift);
   c->hydro.do_sub_drift = 0;
   c->grav.do_drift = 0;
   c->grav.do_sub_drift = 0;
@@ -2175,10 +2175,10 @@ void cell_activate_super_spart_drifts(struct cell *c, struct scheduler *s) {
 void cell_activate_drift_part(struct cell *c, struct scheduler *s) {
 
   /* If this cell is already marked for drift, quit early. */
-  if (c->hydro.do_drift) return;
+  if (cell_get_flag(c, cell_flag_do_hydro_drift)) return;
 
   /* Mark this cell for drifting. */
-  c->hydro.do_drift = 1;
+  cell_set_flag(c, cell_flag_do_hydro_drift);
 
   /* Set the do_sub_drifts all the way up and activate the super drift
      if this has not yet been done. */
@@ -4097,7 +4097,7 @@ void cell_drift_part(struct cell *c, const struct engine *e, int force) {
   float cell_h_max = 0.f;
 
   /* Drift irrespective of cell flags? */
-  force |= c->hydro.do_drift;
+  force |= cell_get_flag(c, cell_flag_do_hydro_drift);
 
 #ifdef SWIFT_DEBUG_CHECKS
   /* Check that we only drift local cells. */
@@ -4111,7 +4111,7 @@ void cell_drift_part(struct cell *c, const struct engine *e, int force) {
   if (c->hydro.count == 0) {
 
     /* Clear the drift flags. */
-    c->hydro.do_drift = 0;
+    cell_clear_flag(c, cell_flag_do_hydro_drift);
     c->hydro.do_sub_drift = 0;
 
     /* Update the time of the last drift */
@@ -4260,7 +4260,7 @@ void cell_drift_part(struct cell *c, const struct engine *e, int force) {
   }
 
   /* Clear the drift flags. */
-  c->hydro.do_drift = 0;
+  cell_clear_flag(c, cell_flag_do_hydro_drift);
   c->hydro.do_sub_drift = 0;
 }
 
