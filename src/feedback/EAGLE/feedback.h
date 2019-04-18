@@ -41,8 +41,8 @@ void compute_stellar_evolution(const struct feedback_props* feedback_props,
 __attribute__((always_inline)) INLINE static void feedback_init_spart(
     struct spart* sp) {
 
-  sp->feedback_data.density_weighted_frac_normalisation_inv = 0.f;
-  sp->feedback_data.ngb_mass = 0.f;
+  sp->feedback_data.to_collect.enrichment_weight_inv = 0.f;
+  sp->feedback_data.to_collect.ngb_mass = 0.f;
 }
 
 /**
@@ -70,37 +70,7 @@ __attribute__((always_inline)) INLINE static void feedback_first_init_spart(
  * @param feedback_props The properties of the feedback model.
  */
 __attribute__((always_inline)) INLINE static void feedback_prepare_spart(
-    struct spart* sp, const struct feedback_props* feedback_props) {
-
-  /* Zero the amount of mass that is distributed */
-  sp->feedback_data.to_distribute.mass = 0.f;
-
-  /* Zero the number of SN */
-  sp->feedback_data.to_distribute.num_SNIa = 0.f;
-  sp->feedback_data.to_distribute.num_SNII = 0.f;
-  sp->feedback_data.to_distribute.num_SNe = 0.f;
-
-  /* Zero the enrichment quantities */
-  for (int i = 0; i < chemistry_element_count; i++)
-    sp->feedback_data.to_distribute.metal_mass[i] = 0.f;
-  sp->feedback_data.to_distribute.total_metal_mass = 0.f;
-  sp->feedback_data.to_distribute.mass_from_AGB = 0.f;
-  sp->feedback_data.to_distribute.metal_mass_from_AGB = 0.f;
-  sp->feedback_data.to_distribute.mass_from_SNII = 0.f;
-  sp->feedback_data.to_distribute.metal_mass_from_SNII = 0.f;
-  sp->feedback_data.to_distribute.mass_from_SNIa = 0.f;
-  sp->feedback_data.to_distribute.metal_mass_from_SNIa = 0.f;
-  sp->feedback_data.to_distribute.Fe_mass_from_SNIa = 0.f;
-
-  /* Zero the energy to inject */
-  sp->feedback_data.to_distribute.d_energy = 0.f;
-
-  /* Zero the SNII feedback probability */
-  sp->feedback_data.to_distribute.SNII_heating_probability = 0.f;
-
-  /* Zero the SNII feedback energy */
-  sp->feedback_data.to_distribute.SNII_delta_u = 0.f;
-}
+    struct spart* sp, const struct feedback_props* feedback_props) {}
 
 /**
  * @brief Evolve the stellar properties of a #spart.

@@ -54,12 +54,6 @@ runner_iact_nonsym_stars_density(float r2, const float *dx, float hi, float hj,
   si->density.wcount += wi;
   si->density.wcount_dh -= (hydro_dimension * wi + ui * wi_dx);
 
-  /* Get the gas mass. */
-  const float mj = hydro_get_mass(pj);
-
-  /* Compute contribution to the density */
-  si->rho_gas += mj * wi;
-
 #ifdef DEBUG_INTERACTIONS_STARS
   /* Update ngb counters */
   if (si->num_ngb_density < MAX_NUM_OF_NEIGHBOURS_STARS)

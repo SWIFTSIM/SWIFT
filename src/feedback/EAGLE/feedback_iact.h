@@ -55,7 +55,7 @@ runner_iact_nonsym_feedback_density(const float r2, const float *dx,
   kernel_eval(ui, &wi);
 
   /* Add mass of pj to neighbour mass of si  */
-  si->feedback_data.ngb_mass += mj;
+  si->feedback_data.to_collect.ngb_mass += mj;
 
   /* Add contribution of pj to normalisation of density weighted fraction
    * which determines how much mass to distribute to neighbouring
@@ -63,7 +63,7 @@ runner_iact_nonsym_feedback_density(const float r2, const float *dx,
 
   const float rho = hydro_get_comoving_density(pj);
   if (rho != 0.f)
-    si->feedback_data.density_weighted_frac_normalisation_inv += wi / rho;
+    si->feedback_data.to_collect.enrichment_weight_inv += wi / rho;
 }
 
 /**
@@ -100,20 +100,20 @@ runner_iact_nonsym_feedback_apply(const float r2, const float *dx,
   float wi;
   kernel_eval(ui, &wi);
 
+  /* Gas particle density */
+  const float rho_j = hydro_get_comoving_density(pj);
+
   /* Compute weighting for distributing feedback quantities */
-  float density_weighted_frac;
-  const float rho = hydro_get_comoving_density(pj);
-  if (rho * si->feedback_data.density_weighted_frac_normalisation_inv != 0) {
-    density_weighted_frac =
-        wi / (rho * si->feedback_data.density_weighted_frac_normalisation_inv);
+  float Omega_frac;
+  if (rho_j != 0.f) {
+    Omega_frac = si->feedback_data.to_distribute.enrichment_weight * wi / rho_j;
   } else {
-    density_weighted_frac = 0.f;
+    Omega_frac = 0.f;
   }
 
   /* Update particle mass */
   const double current_mass = hydro_get_mass(pj);
-  const double delta_mass =
-      si->feedback_data.to_distribute.mass * density_weighted_frac;
+  const double delta_mass = si->feedback_data.to_distribute.mass * Omega_frac;
   const double new_mass = current_mass + delta_mass;
 
   hydro_set_mass(pj, new_mass);
@@ -122,7 +122,7 @@ runner_iact_nonsym_feedback_apply(const float r2, const float *dx,
   const double current_metal_mass_total =
       pj->chemistry_data.metal_mass_fraction_total * current_mass;
   const double delta_metal_mass_total =
-      si->feedback_data.to_distribute.total_metal_mass * density_weighted_frac;
+      si->feedback_data.to_distribute.total_metal_mass * Omega_frac;
   const double new_metal_mass_total =
       current_metal_mass_total + delta_metal_mass_total;
 
@@ -134,8 +134,7 @@ runner_iact_nonsym_feedback_apply(const float r2, const float *dx,
     const double current_metal_mass =
         pj->chemistry_data.metal_mass_fraction[elem] * current_mass;
     const double delta_metal_mass =
-        si->feedback_data.to_distribute.metal_mass[elem] *
-        density_weighted_frac;
+        si->feedback_data.to_distribute.metal_mass[elem] * Omega_frac;
     const double new_metal_mass = current_metal_mass + delta_metal_mass;
 
     pj->chemistry_data.metal_mass_fraction[elem] = new_metal_mass / new_mass;
@@ -147,7 +146,7 @@ runner_iact_nonsym_feedback_apply(const float r2, const float *dx,
   /* const float new_iron_from_SNIa_mass = */
   /*     current_iron_from_SNIa_mass + */
   /*     si->feedback_data.to_distribute.Fe_mass_from_SNIa *
-   * density_weighted_frac; */
+   * Omega_frac; */
   /* pj->chemistry_data.iron_mass_fraction_from_SNIa = */
   /*     new_iron_from_SNIa_mass / new_mass; */
 
@@ -156,7 +155,7 @@ runner_iact_nonsym_feedback_apply(const float r2, const float *dx,
   /*     pj->chemistry_data.mass_from_SNIa * current_mass; */
   /* const float new_mass_from_SNIa = */
   /*     current_mass_from_SNIa + */
-  /*     si->feedback_data.to_distribute.mass_from_SNIa * density_weighted_frac;
+  /*     si->feedback_data.to_distribute.mass_from_SNIa * Omega_frac;
    */
   /* pj->chemistry_data.mass_from_SNIa = new_mass_from_SNIa / new_mass; */
 
@@ -166,7 +165,7 @@ runner_iact_nonsym_feedback_apply(const float r2, const float *dx,
   /* const float new_metal_mass_fraction_from_SNIa = */
   /*     current_metal_mass_fraction_from_SNIa + */
   /*     si->feedback_data.to_distribute.metal_mass_from_SNIa * */
-  /*         density_weighted_frac; */
+  /*         Omega_frac; */
   /* pj->chemistry_data.metal_mass_fraction_from_SNIa = */
   /*     new_metal_mass_fraction_from_SNIa / new_mass; */
 
@@ -175,7 +174,7 @@ runner_iact_nonsym_feedback_apply(const float r2, const float *dx,
   /*     pj->chemistry_data.mass_from_SNII * current_mass; */
   /* const float new_mass_from_SNII = */
   /*     current_mass_from_SNII + */
-  /*     si->feedback_data.to_distribute.mass_from_SNII * density_weighted_frac;
+  /*     si->feedback_data.to_distribute.mass_from_SNII * Omega_frac;
    */
   /* pj->chemistry_data.mass_from_SNII = new_mass_from_SNII / new_mass; */
 
@@ -185,7 +184,7 @@ runner_iact_nonsym_feedback_apply(const float r2, const float *dx,
   /* const float new_metal_mass_fraction_from_SNII = */
   /*     current_metal_mass_fraction_from_SNII + */
   /*     si->feedback_data.to_distribute.metal_mass_from_SNII * */
-  /*         density_weighted_frac; */
+  /*         Omega_frac; */
   /* pj->chemistry_data.metal_mass_fraction_from_SNII = */
   /*     new_metal_mass_fraction_from_SNII / new_mass; */
 
@@ -194,7 +193,7 @@ runner_iact_nonsym_feedback_apply(const float r2, const float *dx,
   /*     pj->chemistry_data.mass_from_AGB * current_mass; */
   /* const float new_mass_from_AGB = */
   /*     current_mass_from_AGB + */
-  /*     si->feedback_data.to_distribute.mass_from_AGB * density_weighted_frac;
+  /*     si->feedback_data.to_distribute.mass_from_AGB * Omega_frac;
    */
   /* pj->chemistry_data.mass_from_AGB = new_mass_from_AGB / new_mass; */
 
@@ -204,25 +203,25 @@ runner_iact_nonsym_feedback_apply(const float r2, const float *dx,
   /* const float new_metal_mass_fraction_from_AGB = */
   /*     current_metal_mass_fraction_from_AGB + */
   /*     si->feedback_data.to_distribute.metal_mass_from_AGB * */
-  /*         density_weighted_frac; */
+  /*         Omega_frac; */
   /* pj->chemistry_data.metal_mass_fraction_from_AGB = */
   /*     new_metal_mass_fraction_from_AGB / new_mass; */
 
   /* /\* Update momentum *\/ */
   /* for (int i = 0; i < 3; i++) { */
-  /*   pj->v[i] += si->feedback_data.to_distribute.mass * density_weighted_frac
+  /*   pj->v[i] += si->feedback_data.to_distribute.mass * Omega_frac
    * * */
   /*               (si->v[i] - pj->v[i]); */
   /* } */
 
   /* Energy feedback */
   // d_energy += si->feedback_data.to_distribute.d_energy *
-  // density_weighted_frac;
+  // Omega_frac;
 
   /* if (feedback_props->continuous_heating) { */
   /*   // We're doing ONLY continuous heating */
   /*   d_energy += si->feedback_data.to_distribute.num_SNIa * */
-  /*               feedback_props->total_energy_SNe * density_weighted_frac * */
+  /*               feedback_props->total_energy_SNe * Omega_frac * */
   /*               si->mass_init; */
   /* } else { */
 

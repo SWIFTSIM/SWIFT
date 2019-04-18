@@ -62,12 +62,6 @@ struct spart {
   /*! Particle smoothing length. */
   float h;
 
-  /*! Density of the gas surrounding the star. */
-  float rho_gas;
-
-  /*! Particle time bin */
-  timebin_t time_bin;
-
   struct {
 
     /* Number of neighbours. */
@@ -77,13 +71,6 @@ struct spart {
     float wcount_dh;
 
   } density;
-
-  struct {
-
-    /* Change in smoothing length over time. */
-    float h_dt;
-
-  } feedback;
 
   /*! Union for the birth time and birth scale factor */
   union {
@@ -106,6 +93,9 @@ struct spart {
 
   /*! Chemistry structure */
   struct chemistry_part_data chemistry_data;
+
+  /*! Particle time bin */
+  timebin_t time_bin;
 
 #ifdef SWIFT_DEBUG_CHECKS
 

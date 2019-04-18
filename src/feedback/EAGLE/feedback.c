@@ -125,13 +125,14 @@ double eagle_feedback_energy_fraction(const struct spart* sp,
  * step.
  *
  * @param sp The star particle.
- * @param feedback_props The properties of the feedback model.
  * @param star_age Age of star at the beginning of the step in internal units.
  * @param dt Length of time-step in internal units.
+ * @param ngb_gas_mass Total un-weighted mass in the star's kernel.
+ * @param feedback_props The properties of the feedback model.
  */
 inline static void compute_SNe_feedback(
     struct spart* sp, const double star_age, const double dt,
-    const struct feedback_props* feedback_props) {
+    const float ngb_gas_mass, const struct feedback_props* feedback_props) {
 
   /* Time after birth considered for SNII feedback (internal units) */
   const float SNII_wind_delay = feedback_props->SNII_wind_delay;
@@ -150,8 +151,7 @@ inline static void compute_SNe_feedback(
     const double conv_factor = feedback_props->temp_to_u_factor;
 
     /* Calculate the default heating probability */
-    double prob = f_E * E_SNe * N_SNe /
-                  (conv_factor * delta_T * sp->feedback_data.ngb_mass);
+    double prob = f_E * E_SNe * N_SNe / (conv_factor * delta_T * ngb_gas_mass);
 
     /* Calculate the change in internal energy of the gas particles that get
      * heated */
@@ -167,7 +167,7 @@ inline static void compute_SNe_feedback(
          desired deltaT to ensure we inject all the available energy. */
 
       prob = 1.;
-      delta_u = f_E * E_SNe * N_SNe / sp->feedback_data.ngb_mass;
+      delta_u = f_E * E_SNe * N_SNe / ngb_gas_mass;
     }
 
     /* Store all of this in the star for delivery onto the gas */
@@ -315,8 +315,6 @@ inline static void evolve_SNIa(const float log10_min_mass,
   const float num_SNIa = eagle_feedback_number_of_SNIa(
       sp, star_age_Gyr, star_age_Gyr + dt_Gyr, props);
 
-  sp->feedback_data.to_distribute.num_SNIa = num_SNIa;
-
   /* compute mass of each metal */
   for (int i = 0; i < chemistry_element_count; i++) {
     sp->feedback_data.to_distribute.metal_mass[i] +=
@@ -383,11 +381,6 @@ inline static void evolve_SNII(float log10_min_mass, float log10_max_mass,
   /* determine which IMF mass bins contribute to the integral */
   determine_imf_bins(log10_min_mass, log10_max_mass, &low_imf_mass_bin_index,
                      &high_imf_mass_bin_index, props);
-
-  /* Integrate IMF to determine number of SNII */
-  sp->feedback_data.to_distribute.num_SNII =
-      integrate_imf(log10_min_mass, log10_max_mass,
-                    eagle_imf_integration_no_weight, stellar_yields, props);
 
   /* determine which metallicity bin and offset this star belongs to */
   int iz_low = 0, iz_high = 0, low_index_3d, high_index_3d, low_index_2d,
@@ -653,6 +646,34 @@ inline static void evolve_AGB(const float log10_min_mass, float log10_max_mass,
   }
 }
 
+inline static void feedback_init_to_distribute(struct spart* sp) {
+
+  /* Zero the amount of mass that is distributed */
+  sp->feedback_data.to_distribute.mass = 0.f;
+
+  /* Zero the metal enrichment quantities */
+  for (int i = 0; i < chemistry_element_count; i++) {
+    sp->feedback_data.to_distribute.metal_mass[i] = 0.f;
+  }
+  sp->feedback_data.to_distribute.total_metal_mass = 0.f;
+  sp->feedback_data.to_distribute.mass_from_AGB = 0.f;
+  sp->feedback_data.to_distribute.metal_mass_from_AGB = 0.f;
+  sp->feedback_data.to_distribute.mass_from_SNII = 0.f;
+  sp->feedback_data.to_distribute.metal_mass_from_SNII = 0.f;
+  sp->feedback_data.to_distribute.mass_from_SNIa = 0.f;
+  sp->feedback_data.to_distribute.metal_mass_from_SNIa = 0.f;
+  sp->feedback_data.to_distribute.Fe_mass_from_SNIa = 0.f;
+
+  /* Zero the energy to inject */
+  sp->feedback_data.to_distribute.d_energy = 0.f;
+
+  /* Zero the SNII feedback probability */
+  sp->feedback_data.to_distribute.SNII_heating_probability = 0.f;
+
+  /* Zero the SNII feedback energy */
+  sp->feedback_data.to_distribute.SNII_delta_u = 0.f;
+}
+
 /**
  * @brief calculates stellar mass in spart that died over the timestep, calls
  * functions to calculate feedback due to SNIa, SNII and AGB
@@ -682,8 +703,23 @@ void compute_stellar_evolution(const struct feedback_props* feedback_props,
   /* Get the metallicity */
   const float Z = sp->chemistry_data.metal_mass_fraction_total;
 
+  /* Properties collected in the stellar density loop. */
+  const float ngb_gas_mass = sp->feedback_data.to_collect.ngb_mass;
+  const float enrichment_weight_inv =
+      sp->feedback_data.to_collect.enrichment_weight_inv;
+
+  /* Now we start filling the data structure for information to apply to the
+   * particles. Do _NOT_ read from the to_collect substructure any more. */
+
+  /* Zero all the output fields */
+  feedback_init_to_distribute(sp);
+
+  /* Update the weights used for distribution */
+  const float enrichment_weight = 1.f / enrichment_weight_inv;
+  sp->feedback_data.to_distribute.enrichment_weight = enrichment_weight;
+
   /* Compute properties of the stochastic SNe feedback model. */
-  compute_SNe_feedback(sp, age, dt, feedback_props);
+  compute_SNe_feedback(sp, age, dt, ngb_gas_mass, feedback_props);
 
   /* Calculate mass of stars that has died from the star's birth up to the
    * beginning and end of timestep */

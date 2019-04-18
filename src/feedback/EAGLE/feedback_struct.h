@@ -19,66 +19,69 @@
 #ifndef SWIFT_FEEDBACK_STRUCT_EAGLE_H
 #define SWIFT_FEEDBACK_STRUCT_EAGLE_H
 
+/**
+ * @brief Feedback fields carried by each star particles
+ */
 struct feedback_spart_data {
 
-  struct {
+  union {
 
-    /* Mass of ejecta */
-    float mass;
+    struct {
 
-    /* Total metal mass released */
-    float total_metal_mass;
+      /*! Inverse of normalisation factor used for the enrichment */
+      float enrichment_weight_inv;
 
-    /* Total mass released by element */
-    float metal_mass[chemistry_element_count];
+      /*! Total mass (unweighted) of neighbouring gas particles */
+      float ngb_mass;
 
-    /*! Total mass released due to SNIa */
-    float mass_from_SNIa;
+    } to_collect;
 
-    /*! Total metal mass released due to SNIa */
-    float metal_mass_from_SNIa;
+    struct {
 
-    /*! Total iron mass released due to SNIa */
-    float Fe_mass_from_SNIa;
+      /*! Normalisation factor used for the enrichment */
+      float enrichment_weight;
 
-    /*! Total mass released due to SNII */
-    float mass_from_SNII;
+      /*! Mass released */
+      float mass;
 
-    /*! Total metal mass released due to SNII */
-    float metal_mass_from_SNII;
+      /*! Total metal mass released */
+      float total_metal_mass;
 
-    /*! Total mass released due to AGB */
-    float mass_from_AGB;
+      /*! Total mass released by each element */
+      float metal_mass[chemistry_element_count];
 
-    /*! Total metal mass released due to AGB */
-    float metal_mass_from_AGB;
+      /*! Total mass released due to SNIa */
+      float mass_from_SNIa;
 
-    /* Number of type Ia SNe per unit mass */
-    float num_SNIa;
+      /*! Total metal mass released due to SNIa */
+      float metal_mass_from_SNIa;
 
-    /* Number of type II SNe per unit mass */
-    float num_SNII;
+      /*! Total iron mass released due to SNIa */
+      float Fe_mass_from_SNIa;
 
-    /* Number of SNe in timestep  */
-    float num_SNe;
+      /*! Total mass released due to SNII */
+      float mass_from_SNII;
 
-    /* Energy change due to thermal and kinetic energy of ejecta */
-    float d_energy;
+      /*! Total metal mass released due to SNII */
+      float metal_mass_from_SNII;
 
-    /*! Probability to heating neighbouring gas particle for SNII feedback */
-    float SNII_heating_probability;
+      /*! Total mass released due to AGB */
+      float mass_from_AGB;
 
-    /*! Change in energy from SNII feedback energy injection */
-    float SNII_delta_u;
+      /*! Total metal mass released due to AGB */
+      float metal_mass_from_AGB;
 
-  } to_distribute;
+      /*! Energy change due to thermal and kinetic energy of ejecta */
+      float d_energy;
 
-  /* Normalisation factor for density weight fraction for feedback (equivalent
-   * to metalweight_norm in EAGLE, see eagle_enrich.c:811) */
-  float density_weighted_frac_normalisation_inv;
+      /*! Probability to heating neighbouring gas particle for SNII feedback */
+      float SNII_heating_probability;
 
-  /* total mass (unweighted) of neighbouring gas particles */
-  float ngb_mass;
+      /*! Change in energy from SNII feedback energy injection */
+      float SNII_delta_u;
+
+    } to_distribute;
+  };
 };
 
 #endif /* SWIFT_FEEDBACK_STRUCT_EAGLE_H */
