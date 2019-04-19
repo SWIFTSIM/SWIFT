@@ -80,7 +80,7 @@ struct feedback_spart_data {
       float metal_mass_from_AGB;
 
       /*! Energy change due to thermal and kinetic energy of ejecta */
-      float d_energy;
+      float energy;
 
       /*! Probability to heating neighbouring gas particle for SNII feedback */
       float SNII_heating_probability;

@@ -36,6 +36,7 @@
  * @param parameter_file The parsed parameter file.
  * @param us The current internal system of units.
  * @param phys_const The physical constants in internal units.
+ * @param hydro_props The properties of the hydro scheme.
  * @param cooling The cooling properties to initialize
  */
 void cooling_init(struct swift_params* parameter_file,

@@ -1605,14 +1605,14 @@ void runner_do_ghost(struct runner *r, struct cell *c, int timer) {
         const float h_init = h_0[i];
         const float h_old = p->h;
         const float h_old_dim = pow_dimension(h_old);
-        const float h_old_inv_dim = pow_dimension(1.f / h_old);
+        // const float h_old_inv_dim = pow_dimension(1.f / h_old);
         const float h_old_dim_minus_one = pow_dimension_minus_one(h_old);
 
         float h_new;
         int has_no_neighbours = 0;
 
-        if (p->density.wcount <
-            1e-5 * kernel_root * h_old_inv_dim) { /* No neighbours case */
+        if (p->density.wcount == 0.f) {
+          // 1e-5 * kernel_root * h_old_inv_dim) { /* No neighbours case */
 
           /* Flag that there were no neighbours */
           has_no_neighbours = 1;

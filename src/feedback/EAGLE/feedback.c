@@ -205,6 +205,8 @@ INLINE static void determine_bin_yield_AGB(int* iz_low, int* iz_high, float* dz,
     *iz_low = j;
     *iz_high = *iz_low + 1;
 
+    *iz_high = min(*iz_high, N_bins - 1);
+
     /* Compute offset */
     if ((log10_Z >= AGB_Z[0]) && (log10_Z <= AGB_Z[N_bins - 1])) {
 
@@ -255,6 +257,8 @@ INLINE static void determine_bin_yield_SNII(
     /* Store the indices */
     *iz_low = j;
     *iz_high = *iz_low + 1;
+
+    *iz_high = min(*iz_high, N_bins - 1);
 
     /* Compute offset */
     if ((log10_Z >= SNII_Z[0]) && (log10_Z <= SNII_Z[N_bins - 1])) {
@@ -346,7 +350,7 @@ INLINE static void evolve_SNIa(const float log10_min_mass,
       props->solar_mass_to_mass;
 
   /* Compute the energy to be injected */
-  sp->feedback_data.to_distribute.d_energy += num_SNIa * props->E_SNIa;
+  sp->feedback_data.to_distribute.energy += num_SNIa * props->E_SNIa;
 }
 
 /**
@@ -754,12 +758,12 @@ void compute_stellar_evolution(const struct feedback_props* feedback_props,
       sp->feedback_data.to_distribute.metal_mass[chemistry_element_He];
 
   /* Compute energy change due to kinetic energy of ejectas */
-  sp->feedback_data.to_distribute.d_energy +=
+  sp->feedback_data.to_distribute.energy +=
       sp->feedback_data.to_distribute.mass *
       feedback_props->AGB_ejecta_specific_kinetic_energy;
 
   /* Compute energy change due to kinetic energy of the star */
-  sp->feedback_data.to_distribute.d_energy +=
+  sp->feedback_data.to_distribute.energy +=
       sp->feedback_data.to_distribute.mass * 0.5f *
       (sp->v[0] * sp->v[0] + sp->v[1] * sp->v[1] + sp->v[2] * sp->v[2]) *
       cosmo->a2_inv;

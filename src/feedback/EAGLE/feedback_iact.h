@@ -31,7 +31,7 @@
  * @param hj Comoving smoothing-length of particle j.
  * @param si First sparticle.
  * @param pj Second particle (not updated).
- * @param xp Extra particle data (not updated).
+ * @param xpj Extra particle data (not updated).
  * @param cosmo The cosmological model.
  * @param ti_current Current integer time value
  */
@@ -40,7 +40,7 @@ runner_iact_nonsym_feedback_density(const float r2, const float *dx,
                                     const float hi, const float hj,
                                     struct spart *restrict si,
                                     const struct part *restrict pj,
-                                    const struct xpart *restrict xp,
+                                    const struct xpart *restrict xpj,
                                     const struct cosmology *restrict cosmo,
                                     const integertime_t ti_current) {
 
@@ -79,7 +79,7 @@ runner_iact_nonsym_feedback_density(const float r2, const float *dx,
  * @param hj Comoving smoothing-length of particle j.
  * @param si First (star) particle (not updated).
  * @param pj Second (gas) particle.
- * @param xp Extra particle data
+ * @param xpj Extra particle data
  * @param cosmo The cosmological model.
  * @param ti_current Current integer time used value for seeding random number
  * generator
@@ -89,7 +89,7 @@ runner_iact_nonsym_feedback_apply(const float r2, const float *dx,
                                   const float hi, const float hj,
                                   const struct spart *restrict si,
                                   struct part *restrict pj,
-                                  struct xpart *restrict xp,
+                                  struct xpart *restrict xpj,
                                   const struct cosmology *restrict cosmo,
                                   const integertime_t ti_current) {
 
@@ -216,36 +216,34 @@ runner_iact_nonsym_feedback_apply(const float r2, const float *dx,
   pj->chemistry_data.metal_mass_fraction_from_AGB =
       new_metal_mass_from_AGB / new_mass;
 
-  /* Update momentum */
-  for (int i = 0; i < 3; i++) {
-    pj->v[i] += si->feedback_data.to_distribute.mass * Omega_frac *
-                (si->v[i] - pj->v[i]);
-  }
+  /* Update velocity following injection of momentum */
+  const double delta_m = si->feedback_data.to_distribute.mass * Omega_frac;
+  xpj->v_full[0] += delta_m * si->v[0] / new_mass;
+  xpj->v_full[1] += delta_m * si->v[1] / new_mass;
+  xpj->v_full[2] += delta_m * si->v[2] / new_mass;
 
-  /* Energy feedback */
-  // d_energy += ;
+  /* /\* Compute how much energy to inject *\/ */
+  /* const double v2 = xpj->v_full[0] * xpj->v_full[0] + */
+  /*                   xpj->v_full[1] * xpj->v_full[1] + */
+  /*                   xpj->v_full[2] * xpj->v_full[2]; */
+  /* const double kinetic_energy_gas = 0.5 * cosmo->a2_inv * new_mass * v2; */
+  /* const double total_energy = */
+  /*     si->feedback_data.to_distribute.energy * Omega_frac; */
+  /* const double thermal_energy = total_energy - kinetic_energy_gas; */
+  /* const double delta_u_enrich = thermal_energy / new_mass; */
 
-  /* if (feedback_props->continuous_heating) { */
-  /*   // We're doing ONLY continuous heating */
-  /*   d_energy += si->feedback_data.to_distribute.num_SNIa * */
-  /*               feedback_props->total_energy_SNe * Omega_frac * */
-  /*               si->mass_init; */
-  /* } else { */
+  /* /\* Energy feedback (ejecta energy + SNIa)*\/ */
+  /* const double u_init_enrich = */
+  /*     hydro_get_physical_internal_energy(pj, xpj, cosmo); */
 
-  /* Add contribution from thermal and kinetic energy of ejected material
-     (and continuous SNIa feedback) */
-  /* const double u_init = hydro_get_physical_internal_energy(pj, xp, cosmo); */
-  /* const double delta_energy = si->feedback_data.to_distribute.d_energy *
-   * Omega_frac; */
-  /* const double delta_u = delta_energy / new_mass; */
-  /* const double u_new = u_init + delta_u; */
-  /* hydro_set_physical_internal_energy(pj, xp, cosmo, u_new); */
-  /* hydro_set_drifted_physical_internal_energy(pj, cosmo, u_new); */
+  /* const double u_new_enrich = u_init_enrich + max(delta_u_enrich, 0.); */
+  /* hydro_set_physical_internal_energy(pj, xpj, cosmo, u_new_enrich); */
+  /* hydro_set_drifted_physical_internal_energy(pj, cosmo, u_new_enrich); */
 
   /* Get the SNII feedback properties */
   const float prob = si->feedback_data.to_distribute.SNII_heating_probability;
 
-  /* Are we doing some SNII feedback? */
+  /* Are we doing some SNII (big boys) feedback? */
   if (prob > 0.f) {
 
     /* Draw a random number (Note mixing both IDs) */
@@ -255,18 +253,18 @@ runner_iact_nonsym_feedback_apply(const float r2, const float *dx,
     if (rand < prob) {
 
       /* Compute new energy of this particle */
-      const double u_init = hydro_get_physical_internal_energy(pj, xp, cosmo);
+      const double u_init = hydro_get_physical_internal_energy(pj, xpj, cosmo);
       const float delta_u = si->feedback_data.to_distribute.SNII_delta_u;
       const double u_new = u_init + delta_u;
 
       /* Inject energy into the particle */
-      hydro_set_physical_internal_energy(pj, xp, cosmo, u_new);
+      hydro_set_physical_internal_energy(pj, xpj, cosmo, u_new);
       hydro_set_drifted_physical_internal_energy(pj, cosmo, u_new);
 
-      message(
-          "We did some heating! id %llu star id %llu probability %.5e "
-          "random_num %.5e du %.5e du/ini %.5e",
-          pj->id, si->id, prob, rand, delta_u, delta_u / u_init);
+      /* message( */
+      /*     "We did some heating! id %llu star id %llu probability %.5e " */
+      /*     "random_num %.5e du %.5e du/ini %.5e", */
+      /*     pj->id, si->id, prob, rand, delta_u, delta_u / u_init); */
     }
   }
 }
