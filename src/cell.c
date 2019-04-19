@@ -4214,11 +4214,7 @@ void cell_drift_part(struct cell *c, const struct engine *e, int force) {
           hydro_remove_part(p, xp);
 
           /* Remove the particle entirely */
-          struct gpart *gp = p->gpart;
           cell_remove_part(e, c, p, xp);
-
-          /* and it's gravity friend */
-          if (gp != NULL) cell_remove_gpart(e, c, gp);
 
           continue;
         }
@@ -4372,7 +4368,7 @@ void cell_drift_gpart(struct cell *c, const struct engine *e, int force) {
             (gp->x[2] > dim[2]) || (gp->x[2] < 0.)) {  // z
 
           /* Remove the particle entirely */
-          if (gp->type == swift_type_dark_matter) cell_remove_gpart(e, c, gp);
+          cell_remove_gpart(e, c, gp);
 
           continue;
         }
@@ -5094,9 +5090,6 @@ void cell_remove_gpart(const struct engine *e, struct cell *c,
   /* Quick cross-check */
   if (c->nodeID != e->nodeID)
     error("Can't remove a particle in a foreign cell.");
-
-  if (gp->type != swift_type_dark_matter)
-    error("Trying to remove a non-dark matter gpart.");
 
   /* Mark the particle as inhibited */
   gp->time_bin = time_bin_inhibited;
