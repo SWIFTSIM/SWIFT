@@ -19,7 +19,7 @@
 
 #include "swift.h"
 
-#ifdef STARS_EAGLE
+#if defined(STARS_EAGLE) && defined(FEEDBACK_EAGLE)
 /**
  * @brief compute the relative error between two floats
  *
@@ -34,6 +34,7 @@ float relative_error(float a, float b) { return fabs((a - b) / b); }
  * these results to those produced by an analogous test in EAGLE.
  */
 int main(int argc, char *argv[]) {
+
   /* Declare relevant structs */
   struct swift_params *params = malloc(sizeof(struct swift_params));
   struct unit_system us;
@@ -45,6 +46,7 @@ int main(int argc, char *argv[]) {
   struct cosmology cosmo;
   struct hydro_props hydro_properties;
   struct stars_props stars_properties;
+  struct feedback_props feedback_properties;
   char *parametersFileName = "./testFeedback.yml";
 
   /* Read the parameter file */
@@ -72,8 +74,9 @@ int main(int argc, char *argv[]) {
   stars_props_init(&stars_properties, &phys_const, &us, params,
                    &hydro_properties, &cosmo);
 
-  /* Read yield tables */
-  stars_evolve_init(params, &stars_properties);
+  /* Init star properties */
+  feedback_props_init(&feedback_properties, &phys_const, &us, params,
+                      &hydro_properties, &cosmo);
 
   /* Init spart */
   stars_first_init_spart(&sp, &stars_properties);
@@ -99,16 +102,16 @@ int main(int argc, char *argv[]) {
 
   /* Zero feedback quantities */
   for (int i = 0; i < chemistry_element_count; i++)
-    sp.to_distribute.metal_mass[i] = 0.f;
-  sp.to_distribute.metal_mass_from_SNIa = 0.f;
-  sp.to_distribute.metal_mass_from_SNII = 0.f;
-  sp.to_distribute.metal_mass_from_AGB = 0.f;
-  sp.to_distribute.mass_from_AGB = 0.f;
-  sp.to_distribute.mass_from_SNII = 0.f;
-  sp.to_distribute.mass_from_SNIa = 0.f;
-  sp.to_distribute.Fe_mass_from_SNIa = 0.f;
-  sp.to_distribute.total_metal_mass = 0.f;
-  sp.to_distribute.mass = 0.f;
+    sp.feedback_data.to_distribute.metal_mass[i] = 0.f;
+  sp.feedback_data.to_distribute.metal_mass_from_SNIa = 0.f;
+  sp.feedback_data.to_distribute.metal_mass_from_SNII = 0.f;
+  sp.feedback_data.to_distribute.metal_mass_from_AGB = 0.f;
+  sp.feedback_data.to_distribute.mass_from_AGB = 0.f;
+  sp.feedback_data.to_distribute.mass_from_SNII = 0.f;
+  sp.feedback_data.to_distribute.mass_from_SNIa = 0.f;
+  sp.feedback_data.to_distribute.Fe_mass_from_SNIa = 0.f;
+  sp.feedback_data.to_distribute.total_metal_mass = 0.f;
+  sp.feedback_data.to_distribute.mass = 0.f;
 
   /* Open EAGLE test file for reading  */
   FILE *EAGLE_test;
@@ -146,25 +149,25 @@ int main(int argc, char *argv[]) {
   for (float age = 0; age <= max_age; age += dt) {
 
     /* Compute feedback */
-    compute_stellar_evolution(&stars_properties, &sp, &us, age, dt);
+    compute_stellar_evolution(&feedback_properties, &cosmo, &sp, &us, age, dt);
 
     /* Print computed values to file */
     float age_Gyr =
         age * units_cgs_conversion_factor(&us, UNIT_CONV_TIME) / Gyr_to_s;
     fprintf(Total_output, "%f %e %e ", age_Gyr,
-            sp.to_distribute.mass / sp.mass_init,
-            sp.to_distribute.total_metal_mass / sp.mass_init);
+            sp.feedback_data.to_distribute.mass / sp.mass_init,
+            sp.feedback_data.to_distribute.total_metal_mass / sp.mass_init);
     for (int i = 0; i < chemistry_element_count; i++)
       fprintf(Total_output, "%e ",
-              sp.to_distribute.metal_mass[i] / sp.mass_init);
+              sp.feedback_data.to_distribute.metal_mass[i] / sp.mass_init);
     fprintf(Total_output, " %e %e %e %e %e %e %e",
-            sp.to_distribute.mass_from_AGB / sp.mass_init,
-            sp.to_distribute.metal_mass_from_AGB / sp.mass_init,
-            sp.to_distribute.mass_from_SNII / sp.mass_init,
-            sp.to_distribute.metal_mass_from_SNII / sp.mass_init,
-            sp.to_distribute.mass_from_SNIa / sp.mass_init,
-            sp.to_distribute.metal_mass_from_SNIa / sp.mass_init,
-            sp.to_distribute.Fe_mass_from_SNIa / sp.mass_init);
+            sp.feedback_data.to_distribute.mass_from_AGB / sp.mass_init,
+            sp.feedback_data.to_distribute.metal_mass_from_AGB / sp.mass_init,
+            sp.feedback_data.to_distribute.mass_from_SNII / sp.mass_init,
+            sp.feedback_data.to_distribute.metal_mass_from_SNII / sp.mass_init,
+            sp.feedback_data.to_distribute.mass_from_SNIa / sp.mass_init,
+            sp.feedback_data.to_distribute.metal_mass_from_SNIa / sp.mass_init,
+            sp.feedback_data.to_distribute.Fe_mass_from_SNIa / sp.mass_init);
     fprintf(Total_output, "\n");
 
     /* Read data from EAGLE test and compare it to what we calculated */
@@ -182,70 +185,84 @@ int main(int argc, char *argv[]) {
         error(
             "relative error in age greater than tolerance. Swift: %e Eagle %e",
             age_Gyr, eagle_data[0]);
-      if (relative_error(sp.to_distribute.mass / sp.mass_init, eagle_data[1]) >
-          tol)
+      if (relative_error(sp.feedback_data.to_distribute.mass / sp.mass_init,
+                         eagle_data[1]) > tol)
         error(
             "relative error in total mass greater than tolerance. Swift: %e "
             "Eagle %e",
-            sp.to_distribute.mass / sp.mass_init, eagle_data[1]);
-      if (relative_error(sp.to_distribute.total_metal_mass / sp.mass_init,
-                         eagle_data[2]) > tol)
+            sp.feedback_data.to_distribute.mass / sp.mass_init, eagle_data[1]);
+      if (relative_error(
+              sp.feedback_data.to_distribute.total_metal_mass / sp.mass_init,
+              eagle_data[2]) > tol)
         error(
             "relative error in total metal mass greater than tolerance. Swift: "
             "%e Eagle %e",
-            sp.to_distribute.total_metal_mass / sp.mass_init, eagle_data[2]);
+            sp.feedback_data.to_distribute.total_metal_mass / sp.mass_init,
+            eagle_data[2]);
       for (int i = 0; i < chemistry_element_count; i++)
-        if (relative_error(sp.to_distribute.metal_mass[i] / sp.mass_init,
-                           eagle_data[3 + i]) > tol)
+        if (relative_error(
+                sp.feedback_data.to_distribute.metal_mass[i] / sp.mass_init,
+                eagle_data[3 + i]) > tol)
           error(
               "relative error in mass released for element %d greater than "
               "tolerance. Swift: %e Eagle %e",
               i, age_Gyr, eagle_data[3 + i]);
-      if (relative_error(sp.to_distribute.mass_from_AGB / sp.mass_init,
-                         eagle_data[12]) > tol)
+      if (relative_error(
+              sp.feedback_data.to_distribute.mass_from_AGB / sp.mass_init,
+              eagle_data[12]) > tol)
         error(
             "relative error in mass from AGB greater than tolerance. Swift: %e "
             "Eagle %e",
-            sp.to_distribute.mass_from_AGB / sp.mass_init, eagle_data[12]);
-      if (relative_error(sp.to_distribute.metal_mass_from_AGB / sp.mass_init,
-                         eagle_data[13]) > tol)
+            sp.feedback_data.to_distribute.mass_from_AGB / sp.mass_init,
+            eagle_data[12]);
+      if (relative_error(
+              sp.feedback_data.to_distribute.metal_mass_from_AGB / sp.mass_init,
+              eagle_data[13]) > tol)
         error(
             "relative error in metal mass from AGB greater than tolerance. "
             "Swift: %e Eagle %e",
-            sp.to_distribute.metal_mass_from_AGB / sp.mass_init,
+            sp.feedback_data.to_distribute.metal_mass_from_AGB / sp.mass_init,
             eagle_data[13]);
-      if (relative_error(sp.to_distribute.mass_from_SNII / sp.mass_init,
-                         eagle_data[14]) > tol)
+      if (relative_error(
+              sp.feedback_data.to_distribute.mass_from_SNII / sp.mass_init,
+              eagle_data[14]) > tol)
         error(
             "relative error in mass from SNII greater than tolerance. Swift: "
             "%e Eagle %e",
-            sp.to_distribute.mass_from_SNII / sp.mass_init, eagle_data[14]);
-      if (relative_error(sp.to_distribute.metal_mass_from_SNII / sp.mass_init,
+            sp.feedback_data.to_distribute.mass_from_SNII / sp.mass_init,
+            eagle_data[14]);
+      if (relative_error(sp.feedback_data.to_distribute.metal_mass_from_SNII /
+                             sp.mass_init,
                          eagle_data[15]) > tol)
         error(
             "relative error in metal mass from SNII greater than tolerance. "
             "Swift: %e Eagle %e",
-            sp.to_distribute.metal_mass_from_SNII / sp.mass_init,
+            sp.feedback_data.to_distribute.metal_mass_from_SNII / sp.mass_init,
             eagle_data[15]);
-      if (relative_error(sp.to_distribute.mass_from_SNIa / sp.mass_init,
-                         eagle_data[16]) > tol)
+      if (relative_error(
+              sp.feedback_data.to_distribute.mass_from_SNIa / sp.mass_init,
+              eagle_data[16]) > tol)
         error(
             "relative error in mass from SNIa greater than tolerance. Swift: "
             "%e Eagle %e",
-            sp.to_distribute.mass_from_SNIa / sp.mass_init, eagle_data[16]);
-      if (relative_error(sp.to_distribute.metal_mass_from_SNIa / sp.mass_init,
+            sp.feedback_data.to_distribute.mass_from_SNIa / sp.mass_init,
+            eagle_data[16]);
+      if (relative_error(sp.feedback_data.to_distribute.metal_mass_from_SNIa /
+                             sp.mass_init,
                          eagle_data[17]) > tol)
         error(
             "relative error in metal mass from SNIa greater than tolerance. "
             "Swift: %e Eagle %e",
-            sp.to_distribute.metal_mass_from_SNIa / sp.mass_init,
+            sp.feedback_data.to_distribute.metal_mass_from_SNIa / sp.mass_init,
             eagle_data[17]);
-      if (relative_error(sp.to_distribute.Fe_mass_from_SNIa / sp.mass_init,
-                         eagle_data[18]) > tol)
+      if (relative_error(
+              sp.feedback_data.to_distribute.Fe_mass_from_SNIa / sp.mass_init,
+              eagle_data[18]) > tol)
         error(
             "relative error in iron mass from SNIa greater than tolerance. "
             "Swift: %e Eagle %e",
-            sp.to_distribute.Fe_mass_from_SNIa / sp.mass_init, eagle_data[18]);
+            sp.feedback_data.to_distribute.Fe_mass_from_SNIa / sp.mass_init,
+            eagle_data[18]);
     } else {
       error("Failed to read line of EAGLE test file data");
     }
