@@ -216,15 +216,14 @@ runner_iact_nonsym_feedback_apply(const float r2, const float *dx,
   pj->chemistry_data.metal_mass_fraction_from_AGB =
       new_metal_mass_from_AGB / new_mass;
 
-  /* /\* Update momentum *\/ */
-  /* for (int i = 0; i < 3; i++) { */
-  /*   pj->v[i] += si->feedback_data.to_distribute.mass * Omega_frac * */
-  /*               (si->v[i] - pj->v[i]); */
-  /* } */
+  /* Update momentum */
+  for (int i = 0; i < 3; i++) {
+    pj->v[i] += si->feedback_data.to_distribute.mass * Omega_frac *
+                (si->v[i] - pj->v[i]);
+  }
 
   /* Energy feedback */
-  // d_energy += si->feedback_data.to_distribute.d_energy *
-  // Omega_frac;
+  // d_energy += ;
 
   /* if (feedback_props->continuous_heating) { */
   /*   // We're doing ONLY continuous heating */
@@ -233,16 +232,18 @@ runner_iact_nonsym_feedback_apply(const float r2, const float *dx,
   /*               si->mass_init; */
   /* } else { */
 
-  /* /\* Add contribution from thermal and kinetic energy of ejected material */
-  /*    (and continuous SNIa feedback) *\/ */
-  /* u_init = hydro_get_physical_internal_energy(pj, xp, cosmo); */
-  /* du = d_energy / hydro_get_mass(pj); */
-  /* hydro_set_physical_internal_energy(pj, xp, cosmo, u_init + du); */
-  /* hydro_set_drifted_physical_internal_energy(pj, cosmo, u_init + du); */
+  /* Add contribution from thermal and kinetic energy of ejected material
+     (and continuous SNIa feedback) */
+  /* const double u_init = hydro_get_physical_internal_energy(pj, xp, cosmo); */
+  /* const double delta_energy = si->feedback_data.to_distribute.d_energy *
+   * Omega_frac; */
+  /* const double delta_u = delta_energy / new_mass; */
+  /* const double u_new = u_init + delta_u; */
+  /* hydro_set_physical_internal_energy(pj, xp, cosmo, u_new); */
+  /* hydro_set_drifted_physical_internal_energy(pj, cosmo, u_new); */
 
   /* Get the SNII feedback properties */
   const float prob = si->feedback_data.to_distribute.SNII_heating_probability;
-  const float delta_u = si->feedback_data.to_distribute.SNII_delta_u;
 
   /* Are we doing some SNII feedback? */
   if (prob > 0.f) {
@@ -254,8 +255,9 @@ runner_iact_nonsym_feedback_apply(const float r2, const float *dx,
     if (rand < prob) {
 
       /* Compute new energy of this particle */
-      const float u_init = hydro_get_physical_internal_energy(pj, xp, cosmo);
-      const float u_new = u_init + delta_u;
+      const double u_init = hydro_get_physical_internal_energy(pj, xp, cosmo);
+      const float delta_u = si->feedback_data.to_distribute.SNII_delta_u;
+      const double u_new = u_init + delta_u;
 
       /* Inject energy into the particle */
       hydro_set_physical_internal_energy(pj, xp, cosmo, u_new);

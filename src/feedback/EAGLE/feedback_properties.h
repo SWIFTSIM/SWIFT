@@ -87,11 +87,6 @@ struct feedback_props {
   /*! Are we doing SNIa enrichment? */
   int with_SNIa_enrichment;
 
-  /* ------------ Energy injection ----------------- */
-
-  /* Kinetic energy of SN ejecta per unit mass (check name with Richard)*/
-  float ejecta_specific_thermal_energy;
-
   /* ------------ Yield tables    ----------------- */
 
   /* Yield tables for AGB and SNII  */
@@ -137,6 +132,17 @@ struct feedback_props {
 
   /*! Log 10 of the maximal mass used for SNIa feedback (in solar masses) */
   float log10_SNIa_max_mass_msun;
+
+  /*! Energy released by one supernova type II in cgs units */
+  double E_SNIa_cgs;
+
+  /*! Energy released by one supernova type II in internal units */
+  float E_SNIa;
+
+  /* ------------- AGB parameters    ---------------- */
+
+  /*! Specific kinetic energy injected from AGB ejectas (in internal units). */
+  float AGB_ejecta_specific_kinetic_energy;
 
   /* ------------- Conversion factors --------------- */
 

@@ -344,6 +344,9 @@ INLINE static void evolve_SNIa(const float log10_min_mass,
   sp->feedback_data.to_distribute.Fe_mass_from_SNIa +=
       num_SNIa * props->yield_SNIa_IMF_resampled[chemistry_element_Fe] *
       props->solar_mass_to_mass;
+
+  /* Compute the energy to be injected */
+  sp->feedback_data.to_distribute.d_energy += num_SNIa * props->E_SNIa;
 }
 
 /**
@@ -717,7 +720,7 @@ void compute_stellar_evolution(const struct feedback_props* feedback_props,
 
   /* Integration interval is zero - this can happen if minimum and maximum
    * dying masses are above imf_max_mass_Msun. Return without doing any
-   * feedback. */
+   * enrichment. */
   if (min_dying_mass_Msun == max_dying_mass_Msun) return;
 
   /* Life is better in log */
@@ -739,20 +742,27 @@ void compute_stellar_evolution(const struct feedback_props* feedback_props,
                stellar_yields, feedback_props, sp);
   }
 
+#ifdef SWIFT_DEBUG_CHECKS
+  if (sp->feedback_data.to_distribute.mass != 0.f)
+    error("Injected mass will be lost");
+#endif
+
   /* Compute the total mass to distribute (H + He  metals) */
   sp->feedback_data.to_distribute.mass =
       sp->feedback_data.to_distribute.total_metal_mass +
       sp->feedback_data.to_distribute.metal_mass[chemistry_element_H] +
       sp->feedback_data.to_distribute.metal_mass[chemistry_element_He];
 
-  /* /\* Compute energy change due to thermal and kinetic energy of ejecta *\/
-   */
-  /* sp->feedback_data.to_distribute.d_energy = */
-  /*     sp->feedback_data.to_distribute.mass * */
-  /*     (feedback_props->ejecta_specific_thermal_energy + */
-  /*      0.5 * (sp->v[0] * sp->v[0] + sp->v[1] * sp->v[1] + sp->v[2] *
-   * sp->v[2]) * */
-  /*          cosmo->a2_inv); */
+  /* Compute energy change due to kinetic energy of ejectas */
+  sp->feedback_data.to_distribute.d_energy +=
+      sp->feedback_data.to_distribute.mass *
+      feedback_props->AGB_ejecta_specific_kinetic_energy;
+
+  /* Compute energy change due to kinetic energy of the star */
+  sp->feedback_data.to_distribute.d_energy +=
+      sp->feedback_data.to_distribute.mass * 0.5f *
+      (sp->v[0] * sp->v[0] + sp->v[1] * sp->v[1] + sp->v[2] * sp->v[2]) *
+      cosmo->a2_inv;
 }
 
 /**
@@ -867,6 +877,27 @@ void feedback_props_init(struct feedback_props* fp,
       parser_get_param_float(params, "EAGLEFeedback:SNIa_timescale_Gyr");
   fp->SNIa_timescale_Gyr_inv = 1.f / fp->SNIa_timescale_Gyr;
 
+  /* Energy released by supernova type Ia */
+  fp->E_SNIa_cgs =
+      parser_get_param_double(params, "EAGLEFeedback:SNIa_Energy_erg");
+  fp->E_SNIa =
+      fp->E_SNIa_cgs / units_cgs_conversion_factor(us, UNIT_CONV_ENERGY);
+
+  /* Properties of the SNIa enrichment model -------------------------------- */
+
+  /* Read AGB ejecta velocity */
+  const float ejecta_velocity_km_p_s = parser_get_param_float(
+      params, "EAGLEFeedback:AGB_ejecta_velocity_km_p_s");
+
+  /* Convert to internal units */
+  const float ejecta_velocity_cgs = ejecta_velocity_km_p_s * 1e5;
+  const float ejecta_velocity =
+      ejecta_velocity_cgs / units_cgs_conversion_factor(us, UNIT_CONV_SPEED);
+
+  /* Convert to specific thermal energy */
+  fp->AGB_ejecta_specific_kinetic_energy =
+      0.5f * ejecta_velocity * ejecta_velocity;
+
   /* Gather common conversion factors --------------------------------------- */
 
   /* Calculate internal mass to solar mass conversion factor */
@@ -888,14 +919,6 @@ void feedback_props_init(struct feedback_props* fp,
   const double X_H = hydro_props->hydrogen_mass_fraction;
   fp->rho_to_n_cgs =
       (X_H / m_p) * units_cgs_conversion_factor(us, UNIT_CONV_NUMBER_DENSITY);
-
-  // MATTHIEU up to here
-
-  /* Set ejecta thermal energy */
-  const float ejecta_velocity =
-      1.0e6 / units_cgs_conversion_factor(
-                  us, UNIT_CONV_SPEED);  // EAGLE parameter is 10 km/s
-  fp->ejecta_specific_thermal_energy = 0.5 * ejecta_velocity * ejecta_velocity;
 
   /* Initialise the IMF ------------------------------------------------- */
 
