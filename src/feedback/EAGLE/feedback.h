@@ -34,6 +34,17 @@ void compute_stellar_evolution(const struct feedback_props* feedback_props,
                                const float dt);
 
 /**
+ * @brief Should we do feedback for this star?
+ *
+ * @param sp The star to consider.
+ */
+__attribute__((always_inline)) INLINE static int feedback_do_feedback(
+    const struct spart* sp) {
+
+  return (sp->birth_time != -1.);
+}
+
+/**
  * @brief Prepares a s-particle for its feedback interactions
  *
  * @param sp The particle to act upon
@@ -43,6 +54,42 @@ __attribute__((always_inline)) INLINE static void feedback_init_spart(
 
   sp->feedback_data.to_collect.enrichment_weight_inv = 0.f;
   sp->feedback_data.to_collect.ngb_mass = 0.f;
+}
+
+/**
+ * @brief Prepares a star's feedback field before computing what
+ * needs to be distributed.
+ */
+__attribute__((always_inline)) INLINE static void feedback_reset_feedback(
+    struct spart* sp, const struct feedback_props* feedback_props) {
+
+  /* Zero the distribution weights */
+  sp->feedback_data.to_distribute.enrichment_weight = 0.f;
+
+  /* Zero the amount of mass that is distributed */
+  sp->feedback_data.to_distribute.mass = 0.f;
+
+  /* Zero the metal enrichment quantities */
+  for (int i = 0; i < chemistry_element_count; i++) {
+    sp->feedback_data.to_distribute.metal_mass[i] = 0.f;
+  }
+  sp->feedback_data.to_distribute.total_metal_mass = 0.f;
+  sp->feedback_data.to_distribute.mass_from_AGB = 0.f;
+  sp->feedback_data.to_distribute.metal_mass_from_AGB = 0.f;
+  sp->feedback_data.to_distribute.mass_from_SNII = 0.f;
+  sp->feedback_data.to_distribute.metal_mass_from_SNII = 0.f;
+  sp->feedback_data.to_distribute.mass_from_SNIa = 0.f;
+  sp->feedback_data.to_distribute.metal_mass_from_SNIa = 0.f;
+  sp->feedback_data.to_distribute.Fe_mass_from_SNIa = 0.f;
+
+  /* Zero the energy to inject */
+  sp->feedback_data.to_distribute.d_energy = 0.f;
+
+  /* Zero the SNII feedback probability */
+  sp->feedback_data.to_distribute.SNII_heating_probability = 0.f;
+
+  /* Zero the SNII feedback energy */
+  sp->feedback_data.to_distribute.SNII_delta_u = 0.f;
 }
 
 /**
@@ -90,6 +137,10 @@ __attribute__((always_inline)) INLINE static void feedback_evolve_spart(
     struct spart* restrict sp, const struct feedback_props* feedback_props,
     const struct cosmology* cosmo, const struct unit_system* us,
     const double star_age_beg_step, const double dt) {
+
+#ifdef SWIFT_DEBUG_CHECKS
+  if (sp->birth_time == -1.) error("Evolving a star particle that shoul not!");
+#endif
 
   /* Compute amount of enrichment and feedback that needs to be done in this
    * step */

@@ -35,6 +35,24 @@ __attribute__((always_inline)) INLINE static void feedback_init_spart(
     struct spart* sp) {}
 
 /**
+ * @brief Should we do feedback for this star?
+ *
+ * @param sp The star to consider.
+ */
+__attribute__((always_inline)) INLINE static int feedback_do_feedback(
+    const struct spart* sp) {
+
+  return 0;
+}
+
+/**
+ * @brief Prepares a star's feedback field before computing what
+ * needs to be distributed.
+ */
+__attribute__((always_inline)) INLINE static void feedback_reset_feedback(
+    struct spart* sp, const struct feedback_props* feedback_props) {}
+
+/**
  * @brief Initialises the s-particles feedback props for the first time
  *
  * This function is called only once just after the ICs have been

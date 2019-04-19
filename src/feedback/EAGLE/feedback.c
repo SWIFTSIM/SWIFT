@@ -652,38 +652,6 @@ INLINE static void evolve_AGB(const float log10_min_mass, float log10_max_mass,
 }
 
 /**
- * @brief Prepares a star's feedback field before computing what
- * needs to be distributed.
- */
-INLINE static void feedback_init_to_distribute(struct spart* sp) {
-
-  /* Zero the amount of mass that is distributed */
-  sp->feedback_data.to_distribute.mass = 0.f;
-
-  /* Zero the metal enrichment quantities */
-  for (int i = 0; i < chemistry_element_count; i++) {
-    sp->feedback_data.to_distribute.metal_mass[i] = 0.f;
-  }
-  sp->feedback_data.to_distribute.total_metal_mass = 0.f;
-  sp->feedback_data.to_distribute.mass_from_AGB = 0.f;
-  sp->feedback_data.to_distribute.metal_mass_from_AGB = 0.f;
-  sp->feedback_data.to_distribute.mass_from_SNII = 0.f;
-  sp->feedback_data.to_distribute.metal_mass_from_SNII = 0.f;
-  sp->feedback_data.to_distribute.mass_from_SNIa = 0.f;
-  sp->feedback_data.to_distribute.metal_mass_from_SNIa = 0.f;
-  sp->feedback_data.to_distribute.Fe_mass_from_SNIa = 0.f;
-
-  /* Zero the energy to inject */
-  sp->feedback_data.to_distribute.d_energy = 0.f;
-
-  /* Zero the SNII feedback probability */
-  sp->feedback_data.to_distribute.SNII_heating_probability = 0.f;
-
-  /* Zero the SNII feedback energy */
-  sp->feedback_data.to_distribute.SNII_delta_u = 0.f;
-}
-
-/**
  * @brief calculates stellar mass in spart that died over the timestep, calls
  * functions to calculate feedback due to SNIa, SNII and AGB
  *
@@ -721,10 +689,11 @@ void compute_stellar_evolution(const struct feedback_props* feedback_props,
    * particles. Do _NOT_ read from the to_collect substructure any more. */
 
   /* Zero all the output fields */
-  feedback_init_to_distribute(sp);
+  feedback_reset_feedback(sp, feedback_props);
 
   /* Update the weights used for distribution */
-  const float enrichment_weight = 1.f / enrichment_weight_inv;
+  const float enrichment_weight =
+      (enrichment_weight_inv != 0.f) ? 1.f / enrichment_weight_inv : 0.f;
   sp->feedback_data.to_distribute.enrichment_weight = enrichment_weight;
 
   /* Compute properties of the stochastic SNe feedback model. */

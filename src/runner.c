@@ -260,6 +260,7 @@ void runner_do_stars_ghost(struct runner *r, struct cell *c, int timer) {
               ((sp->h <= stars_h_min) && (f > 0.f))) {
 
             stars_reset_feedback(sp);
+            feedback_reset_feedback(sp, feedback_props);
 
             /* Ok, we are done with this particle */
             continue;
@@ -356,7 +357,7 @@ void runner_do_stars_ghost(struct runner *r, struct cell *c, int timer) {
         stars_reset_feedback(sp);
 
         /* Only do feedback if stars have a reasonable birth time */
-        if (sp->birth_time != -1.) {
+        if (feedback_do_feedback(sp)) {
 
           const integertime_t ti_step = get_integer_timestep(sp->time_bin);
           const integertime_t ti_begin =
@@ -380,9 +381,6 @@ void runner_do_stars_ghost(struct runner *r, struct cell *c, int timer) {
             star_age_end_of_step = e->time - sp->birth_time;
           }
 
-          /* Reset the feedback fields of the star particle */
-          feedback_prepare_spart(sp, feedback_props);
-
           /* Has this star been around for a while ? */
           if (star_age_end_of_step > 0.) {
 
@@ -393,7 +391,15 @@ void runner_do_stars_ghost(struct runner *r, struct cell *c, int timer) {
             /* Compute the stellar evolution  */
             feedback_evolve_spart(sp, feedback_props, cosmo, us,
                                   star_age_beg_of_step, dt);
+          } else {
+
+            /* Reset the feedback fields of the star particle */
+            feedback_reset_feedback(sp, feedback_props);
           }
+        } else {
+
+          /* Reset the feedback fields of the star particle */
+          feedback_reset_feedback(sp, feedback_props);
         }
       }
 
@@ -724,8 +730,6 @@ void runner_do_star_formation(struct runner *r, struct cell *c, int timer) {
 
             /* Did we get a star? (Or did we run out of spare ones?) */
             if (sp != NULL) {
-
-              message("Formed a star ID=%lld", sp->id);
 
               /* Copy the properties of the gas particle to the star particle */
               star_formation_copy_properties(p, xp, sp, e, sf_props, cosmo,
@@ -1601,12 +1605,14 @@ void runner_do_ghost(struct runner *r, struct cell *c, int timer) {
         const float h_init = h_0[i];
         const float h_old = p->h;
         const float h_old_dim = pow_dimension(h_old);
+        const float h_old_inv_dim = pow_dimension(1.f / h_old);
         const float h_old_dim_minus_one = pow_dimension_minus_one(h_old);
 
         float h_new;
         int has_no_neighbours = 0;
 
-        if (p->density.wcount == 0.f) { /* No neighbours case */
+        if (p->density.wcount <
+            1e-5 * kernel_root * h_old_inv_dim) { /* No neighbours case */
 
           /* Flag that there were no neighbours */
           has_no_neighbours = 1;
