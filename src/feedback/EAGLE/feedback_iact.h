@@ -121,6 +121,9 @@ runner_iact_nonsym_feedback_apply(const float r2, const float *dx,
 
   hydro_set_mass(pj, new_mass);
 
+  /* Inverse of the new mass */
+  const double new_mass_inv = 1. / new_mass;
+
   /* Update total metallicity */
   const double current_metal_mass_total =
       pj->chemistry_data.metal_mass_fraction_total * current_mass;
@@ -130,7 +133,7 @@ runner_iact_nonsym_feedback_apply(const float r2, const float *dx,
       current_metal_mass_total + delta_metal_mass_total;
 
   pj->chemistry_data.metal_mass_fraction_total =
-      new_metal_mass_total / new_mass;
+      new_metal_mass_total * new_mass_inv;
 
   /* Update mass fraction of each tracked element  */
   for (int elem = 0; elem < chemistry_element_count; elem++) {
@@ -140,7 +143,8 @@ runner_iact_nonsym_feedback_apply(const float r2, const float *dx,
         si->feedback_data.to_distribute.metal_mass[elem] * Omega_frac;
     const double new_metal_mass = current_metal_mass + delta_metal_mass;
 
-    pj->chemistry_data.metal_mass_fraction[elem] = new_metal_mass / new_mass;
+    pj->chemistry_data.metal_mass_fraction[elem] =
+        new_metal_mass * new_mass_inv;
   }
 
   /* Update iron mass fraction from SNIa  */
@@ -152,7 +156,7 @@ runner_iact_nonsym_feedback_apply(const float r2, const float *dx,
       current_iron_from_SNIa_mass + delta_iron_from_SNIa_mass;
 
   pj->chemistry_data.iron_mass_fraction_from_SNIa =
-      new_iron_from_SNIa_mass / new_mass;
+      new_iron_from_SNIa_mass * new_mass_inv;
 
   /* Update mass fraction from SNIa  */
   const double current_mass_from_SNIa =
@@ -162,7 +166,7 @@ runner_iact_nonsym_feedback_apply(const float r2, const float *dx,
   const double new_mass_from_SNIa =
       current_mass_from_SNIa + delta_mass_from_SNIa;
 
-  pj->chemistry_data.mass_from_SNIa = new_mass_from_SNIa / new_mass;
+  pj->chemistry_data.mass_from_SNIa = new_mass_from_SNIa * new_mass_inv;
 
   /* Update metal mass fraction from SNIa */
   const double current_metal_mass_from_SNIa =
@@ -173,7 +177,7 @@ runner_iact_nonsym_feedback_apply(const float r2, const float *dx,
       current_metal_mass_from_SNIa + delta_metal_mass_from_SNIa;
 
   pj->chemistry_data.metal_mass_fraction_from_SNIa =
-      new_metal_mass_from_SNIa / new_mass;
+      new_metal_mass_from_SNIa * new_mass_inv;
 
   /* Update mass fraction from SNII  */
   const double current_mass_from_SNII =
@@ -183,7 +187,7 @@ runner_iact_nonsym_feedback_apply(const float r2, const float *dx,
   const double new_mass_from_SNII =
       current_mass_from_SNII + delta_mass_from_SNII;
 
-  pj->chemistry_data.mass_from_SNII = new_mass_from_SNII / new_mass;
+  pj->chemistry_data.mass_from_SNII = new_mass_from_SNII * new_mass_inv;
 
   /* Update metal mass fraction from SNII */
   const double current_metal_mass_from_SNII =
@@ -194,7 +198,7 @@ runner_iact_nonsym_feedback_apply(const float r2, const float *dx,
       current_metal_mass_from_SNII + delta_metal_mass_from_SNII;
 
   pj->chemistry_data.metal_mass_fraction_from_SNII =
-      new_metal_mass_from_SNII / new_mass;
+      new_metal_mass_from_SNII * new_mass_inv;
 
   /* Update mass fraction from AGB  */
   const double current_mass_from_AGB =
@@ -203,7 +207,7 @@ runner_iact_nonsym_feedback_apply(const float r2, const float *dx,
       si->feedback_data.to_distribute.mass_from_AGB * Omega_frac;
   const double new_mass_from_AGB = current_mass_from_AGB + delta_mass_from_AGB;
 
-  pj->chemistry_data.mass_from_AGB = new_mass_from_AGB / new_mass;
+  pj->chemistry_data.mass_from_AGB = new_mass_from_AGB * new_mass_inv;
 
   /* Update metal mass fraction from AGB */
   const double current_metal_mass_from_AGB =
@@ -214,13 +218,13 @@ runner_iact_nonsym_feedback_apply(const float r2, const float *dx,
       current_metal_mass_from_AGB + delta_metal_mass_from_AGB;
 
   pj->chemistry_data.metal_mass_fraction_from_AGB =
-      new_metal_mass_from_AGB / new_mass;
+      new_metal_mass_from_AGB * new_mass_inv;
 
   /* Update velocity following injection of momentum */
   const double delta_m = si->feedback_data.to_distribute.mass * Omega_frac;
-  xpj->v_full[0] += delta_m * si->v[0] / new_mass;
-  xpj->v_full[1] += delta_m * si->v[1] / new_mass;
-  xpj->v_full[2] += delta_m * si->v[2] / new_mass;
+  xpj->v_full[0] += delta_m * si->v[0] * new_mass_inv;
+  xpj->v_full[1] += delta_m * si->v[1] * new_mass_inv;
+  xpj->v_full[2] += delta_m * si->v[2] * new_mass_inv;
 
   /* /\* Compute how much energy to inject *\/ */
   /* const double v2 = xpj->v_full[0] * xpj->v_full[0] + */
