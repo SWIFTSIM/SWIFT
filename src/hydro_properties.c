@@ -136,7 +136,7 @@ void hydro_props_init(struct hydro_props *p,
       params, "SPH:initial_temperature", hydro_props_default_init_temp);
 
   if (p->initial_temperature < 0.f)
-    error("ERROR: Minimal temperature set to a negative value!!!");
+    error("ERROR: Initial temperature set to a negative value!!!");
 
   /* Minimal temperature */
   p->minimal_temperature = parser_get_opt_param_float(

@@ -4855,6 +4855,7 @@ void engine_unpin(void) {
  * @param entropy_floor The #entropy_floor_properties for this run.
  * @param gravity The #gravity_props used for this run.
  * @param stars The #stars_props used for this run.
+ * @param feedback The #feedback_props used for this run.
  * @param mesh The #pm_mesh used for the long-range periodic forces.
  * @param potential The properties of the external potential.
  * @param cooling_func The properties of the cooling function.
@@ -4869,7 +4870,7 @@ void engine_init(struct engine *e, struct space *s, struct swift_params *params,
                  struct cosmology *cosmo, struct hydro_props *hydro,
                  const struct entropy_floor_properties *entropy_floor,
                  struct gravity_props *gravity, const struct stars_props *stars,
-                 struct pm_mesh *mesh,
+                 const struct feedback_props *feedback, struct pm_mesh *mesh,
                  const struct external_potential *potential,
                  struct cooling_function_data *cooling_func,
                  const struct star_formation *starform,
@@ -4940,6 +4941,7 @@ void engine_init(struct engine *e, struct space *s, struct swift_params *params,
   e->external_potential = potential;
   e->cooling_func = cooling_func;
   e->star_formation = starform;
+  e->feedback_props = feedback;
   e->chemistry = chemistry;
   e->parameter_file = params;
 #ifdef WITH_MPI

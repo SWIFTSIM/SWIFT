@@ -164,7 +164,7 @@ __attribute__((always_inline)) INLINE static void chemistry_first_init_part(
     const struct chemistry_global_data* data, struct part* restrict p,
     struct xpart* restrict xp) {
 
-  // Add initialization of all other fields in chemistry_part_data struct.
+  /* Initialize mass fractions for total metals and each metal individually */
   if (data->initial_metal_mass_fraction_total != -1) {
     p->chemistry_data.metal_mass_fraction_total =
         data->initial_metal_mass_fraction_total;
@@ -174,6 +174,27 @@ __attribute__((always_inline)) INLINE static void chemistry_first_init_part(
           data->initial_metal_mass_fraction[elem];
   }
   chemistry_init_part(p, data);
+}
+
+/**
+ * @brief Sets the chemistry properties of the sparticles to a valid start
+ * state.
+ *
+ * @param data The global chemistry information.
+ * @param sp Pointer to the sparticle data.
+ */
+__attribute__((always_inline)) INLINE static void chemistry_first_init_spart(
+    const struct chemistry_global_data* data, struct spart* restrict sp) {
+
+  /* Initialize mass fractions for total metals and each metal individually */
+  if (data->initial_metal_mass_fraction_total != -1) {
+    sp->chemistry_data.metal_mass_fraction_total =
+        data->initial_metal_mass_fraction_total;
+
+    for (int elem = 0; elem < chemistry_element_count; ++elem)
+      sp->chemistry_data.metal_mass_fraction[elem] =
+          data->initial_metal_mass_fraction[elem];
+  }
 }
 
 /**

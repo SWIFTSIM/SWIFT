@@ -50,6 +50,7 @@
 #include "engine.h"
 #include "entropy_floor.h"
 #include "error.h"
+#include "feedback.h"
 #include "gravity.h"
 #include "hydro.h"
 #include "hydro_properties.h"
@@ -137,7 +138,10 @@ void runner_do_stars_ghost(struct runner *r, struct cell *c, int timer) {
 
   struct spart *restrict sparts = c->stars.parts;
   const struct engine *e = r->e;
+  const struct unit_system *us = e->internal_units;
+  const int with_cosmology = (e->policy & engine_policy_cosmology);
   const struct cosmology *cosmo = e->cosmology;
+  const struct feedback_props *feedback_props = e->feedback_props;
   const float stars_h_max = e->hydro_properties->h_max;
   const float stars_h_min = e->hydro_properties->h_min;
   const float eps = e->stars_properties->h_tolerance;
@@ -256,6 +260,7 @@ void runner_do_stars_ghost(struct runner *r, struct cell *c, int timer) {
               ((sp->h <= stars_h_min) && (f > 0.f))) {
 
             stars_reset_feedback(sp);
+            feedback_reset_feedback(sp, feedback_props);
 
             /* Ok, we are done with this particle */
             continue;
@@ -276,12 +281,6 @@ void runner_do_stars_ghost(struct runner *r, struct cell *c, int timer) {
                 num_reruns, sp->id, h_init, h_old, h_new, f, f_prime, n_sum,
                 n_target, left[i], right[i]);
           }
-
-#ifdef SWIFT_DEBUG_CHECKS
-          if ((f > 0.f && h_new > h_old) || (f < 0.f && h_new < h_old))
-            error(
-                "Smoothing length correction not going in the right direction");
-#endif
 
           /* Safety check: truncate to the range [ h_old/2 , 2h_old ]. */
           h_new = min(h_new, 2.f * h_old);
@@ -323,6 +322,7 @@ void runner_do_stars_ghost(struct runner *r, struct cell *c, int timer) {
 
             /* Re-initialise everything */
             stars_init_spart(sp);
+            feedback_init_spart(sp);
 
             /* Off we go ! */
             continue;
@@ -356,8 +356,51 @@ void runner_do_stars_ghost(struct runner *r, struct cell *c, int timer) {
 
         stars_reset_feedback(sp);
 
-        /* Compute the stellar evolution  */
-        stars_evolve_spart(sp, e->stars_properties, cosmo);
+        /* Only do feedback if stars have a reasonable birth time */
+        if (feedback_do_feedback(sp)) {
+
+          const integertime_t ti_step = get_integer_timestep(sp->time_bin);
+          const integertime_t ti_begin =
+              get_integer_time_begin(e->ti_current - 1, sp->time_bin);
+
+          /* Get particle time-step */
+          double dt;
+          if (with_cosmology) {
+            dt = cosmology_get_delta_time(e->cosmology, ti_begin,
+                                          ti_begin + ti_step);
+          } else {
+            dt = get_timestep(sp->time_bin, e->time_base);
+          }
+
+          /* Calculate age of the star at current time */
+          double star_age_end_of_step;
+          if (with_cosmology) {
+            star_age_end_of_step = cosmology_get_delta_time_from_scale_factors(
+                cosmo, sp->birth_scale_factor, (float)cosmo->a);
+          } else {
+            star_age_end_of_step = e->time - sp->birth_time;
+          }
+
+          /* Has this star been around for a while ? */
+          if (star_age_end_of_step > 0.) {
+
+            /* Age of the star at the start of the step */
+            const double star_age_beg_of_step =
+                max(star_age_end_of_step - dt, 0.);
+
+            /* Compute the stellar evolution  */
+            feedback_evolve_spart(sp, feedback_props, cosmo, us,
+                                  star_age_beg_of_step, dt);
+          } else {
+
+            /* Reset the feedback fields of the star particle */
+            feedback_reset_feedback(sp, feedback_props);
+          }
+        } else {
+
+          /* Reset the feedback fields of the star particle */
+          feedback_reset_feedback(sp, feedback_props);
+        }
       }
 
       /* We now need to treat the particles whose smoothing length had not
@@ -1562,12 +1605,14 @@ void runner_do_ghost(struct runner *r, struct cell *c, int timer) {
         const float h_init = h_0[i];
         const float h_old = p->h;
         const float h_old_dim = pow_dimension(h_old);
+        // const float h_old_inv_dim = pow_dimension(1.f / h_old);
         const float h_old_dim_minus_one = pow_dimension_minus_one(h_old);
 
         float h_new;
         int has_no_neighbours = 0;
 
-        if (p->density.wcount == 0.f) { /* No neighbours case */
+        if (p->density.wcount == 0.f) {
+          // 1e-5 * kernel_root * h_old_inv_dim) { /* No neighbours case */
 
           /* Flag that there were no neighbours */
           has_no_neighbours = 1;
@@ -2952,7 +2997,7 @@ void runner_do_limiter(struct runner *r, struct cell *c, int force, int timer) {
         p->wakeup = time_bin_not_awake;
 
       /* Bip, bip, bip... wake-up time */
-      if (p->wakeup == time_bin_awake) {
+      if (p->wakeup <= time_bin_awake) {
 
         /* Apply the limiter and get the new time-step size */
         const integertime_t ti_new_step = timestep_limit_part(p, xp, e);

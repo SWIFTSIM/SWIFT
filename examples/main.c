@@ -96,6 +96,7 @@ int main(int argc, char *argv[]) {
   struct gravity_props gravity_properties;
   struct hydro_props hydro_properties;
   struct stars_props stars_properties;
+  struct feedback_props feedback_properties;
   struct entropy_floor_properties entropy_floor;
   struct part *parts = NULL;
   struct phys_const prog_const;
@@ -739,9 +740,19 @@ int main(int argc, char *argv[]) {
     /* Initialise the stars properties */
     if (with_stars)
       stars_props_init(&stars_properties, &prog_const, &us, params,
-                       &hydro_properties);
+                       &hydro_properties, &cosmo);
     else
       bzero(&stars_properties, sizeof(struct stars_props));
+
+    /* Initialise the feedback properties */
+    if (with_feedback) {
+#ifdef FEEDBACK_NONE
+      error("ERROR: Running with feedback but compiled without it.");
+#endif
+      feedback_props_init(&feedback_properties, &prog_const, &us, params,
+                          &hydro_properties, &cosmo);
+    } else
+      bzero(&feedback_properties, sizeof(struct feedback_props));
 
     /* Initialise the gravity properties */
     if (with_self_gravity)
@@ -993,8 +1004,8 @@ int main(int argc, char *argv[]) {
     engine_init(&e, &s, params, N_total[0], N_total[1], N_total[2],
                 engine_policies, talking, &reparttype, &us, &prog_const, &cosmo,
                 &hydro_properties, &entropy_floor, &gravity_properties,
-                &stars_properties, &mesh, &potential, &cooling_func, &starform,
-                &chemistry);
+                &stars_properties, &feedback_properties, &mesh, &potential,
+                &cooling_func, &starform, &chemistry);
     engine_config(0, &e, params, nr_nodes, myrank, nr_threads, with_aff,
                   talking, restart_file);
 
@@ -1199,19 +1210,19 @@ int main(int argc, char *argv[]) {
 
     /* Print some information to the screen */
     printf(
-        "  %6d %14e %12.7f %12.7f %14e %4d %4d %12lld %12lld %12lld %21.3f "
-        "%6d\n",
+        "  %6d %14e %12.7f %12.7f %14e %4d %4d %12lld %12lld %12lld %12lld"
+        " %21.3f %6d\n",
         e.step, e.time, e.cosmology->a, e.cosmology->z, e.time_step,
         e.min_active_bin, e.max_active_bin, e.updates, e.g_updates, e.s_updates,
-        e.wallclock_time, e.step_props);
+        e.b_updates, e.wallclock_time, e.step_props);
     fflush(stdout);
 
     fprintf(e.file_timesteps,
-            "  %6d %14e %12.7f %12.7f %14e %4d %4d %12lld %12lld %12lld %21.3f "
-            "%6d\n",
+            "  %6d %14e %12.7f %12.7f %14e %4d %4d %12lld %12lld %12lld %12lld"
+            " %21.3f %6d\n",
             e.step, e.time, e.cosmology->a, e.cosmology->z, e.time_step,
             e.min_active_bin, e.max_active_bin, e.updates, e.g_updates,
-            e.s_updates, e.wallclock_time, e.step_props);
+            e.s_updates, e.b_updates, e.wallclock_time, e.step_props);
     fflush(e.file_timesteps);
 
     /* Print information to the SFH logger */

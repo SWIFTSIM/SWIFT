@@ -20,7 +20,6 @@
 #define SWIFT_EAGLE_STARS_H
 
 #include <float.h>
-#include "minmax.h"
 
 /**
  * @brief Computes the gravity time-step of a given star particle.
@@ -49,7 +48,6 @@ __attribute__((always_inline)) INLINE static void stars_init_spart(
 
   sp->density.wcount = 0.f;
   sp->density.wcount_dh = 0.f;
-  sp->rho_gas = 0.f;
 }
 
 /**
@@ -58,14 +56,15 @@ __attribute__((always_inline)) INLINE static void stars_init_spart(
  * This function is called only once just after the ICs have been
  * read in to do some conversions.
  *
- * @param sp The particle to act upon
+ * @param sp The particle to act upon.
+ * @param stars_properties Properties of the stars model.
  */
 __attribute__((always_inline)) INLINE static void stars_first_init_spart(
-    struct spart* sp) {
+    struct spart* sp, const struct stars_props* stars_properties) {
 
   sp->time_bin = 0;
-  sp->birth_density = -1.f;
-  sp->birth_time = -1.f;
+  sp->birth_density = 0.f;
+  sp->birth_time = stars_properties->spart_first_init_birth_time;
 
   stars_init_spart(sp);
 }
@@ -77,18 +76,7 @@ __attribute__((always_inline)) INLINE static void stars_first_init_spart(
  * @param dt_drift The drift time-step for positions.
  */
 __attribute__((always_inline)) INLINE static void stars_predict_extra(
-    struct spart* restrict sp, float dt_drift) {
-
-  // MATTHIEU
-  /* const float h_inv = 1.f / sp->h; */
-
-  /* /\* Predict smoothing length *\/ */
-  /* const float w1 = sp->feedback.h_dt * h_inv * dt_drift; */
-  /* if (fabsf(w1) < 0.2f) */
-  /*   sp->h *= approx_expf(w1); /\* 4th order expansion of exp(w) *\/ */
-  /* else */
-  /*   sp->h *= expf(w1); */
-}
+    struct spart* restrict sp, float dt_drift) {}
 
 /**
  * @brief Sets the values to be predicted in the drifts to their values at a
@@ -107,10 +95,7 @@ __attribute__((always_inline)) INLINE static void stars_reset_predicted_values(
  * @param sp The particle to act upon
  */
 __attribute__((always_inline)) INLINE static void stars_end_feedback(
-    struct spart* sp) {
-
-  sp->feedback.h_dt *= sp->h * hydro_dimension_inv;
-}
+    struct spart* sp) {}
 
 /**
  * @brief Kick the additional variables
@@ -137,7 +122,6 @@ __attribute__((always_inline)) INLINE static void stars_end_density(
   const float h_inv_dim_plus_one = h_inv_dim * h_inv; /* 1/h^(d+1) */
 
   /* Finish the calculation by inserting the missing h-factors */
-  sp->rho_gas *= h_inv_dim;
   sp->density.wcount *= h_inv_dim;
   sp->density.wcount_dh *= h_inv_dim_plus_one;
 }
@@ -155,22 +139,23 @@ __attribute__((always_inline)) INLINE static void stars_spart_has_no_neighbours(
   /* Re-set problematic values */
   sp->density.wcount = 0.f;
   sp->density.wcount_dh = 0.f;
-  sp->rho_gas = 0.f;
 }
 
 /**
- * @brief Evolve the stellar properties of a #spart.
+ * @brief Reset acceleration fields of a particle
  *
- * This function allows for example to compute the SN rate before sending
- * this information to a different MPI rank.
+ * This is the equivalent of hydro_reset_acceleration.
+ * We do not compute the acceleration on star, therefore no need to use it.
  *
- * @param sp The particle to act upon
- * @param cosmo The current cosmological model.
- * @param stars_properties The #stars_props
+ * @param p The particle to act upon
  */
-__attribute__((always_inline)) INLINE static void stars_evolve_spart(
-    struct spart* restrict sp, const struct stars_props* stars_properties,
-    const struct cosmology* cosmo) {}
+__attribute__((always_inline)) INLINE static void stars_reset_acceleration(
+    struct spart* restrict p) {
+
+#ifdef DEBUG_INTERACTIONS_STARS
+  p->num_ngb_force = 0;
+#endif
+}
 
 /**
  * @brief Reset acceleration fields of a particle
@@ -182,9 +167,6 @@ __attribute__((always_inline)) INLINE static void stars_evolve_spart(
  */
 __attribute__((always_inline)) INLINE static void stars_reset_feedback(
     struct spart* restrict p) {
-
-  /* Reset time derivative */
-  p->feedback.h_dt = 0.f;
 
 #ifdef DEBUG_INTERACTIONS_STARS
   for (int i = 0; i < MAX_NUM_OF_NEIGHBOURS_STARS; ++i)
