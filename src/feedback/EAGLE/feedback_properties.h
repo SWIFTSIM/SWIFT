@@ -73,8 +73,26 @@ struct lifetime_table {
  */
 struct feedback_props {
 
+  /* ------------ Main operation modes ------------- */
+
+  /*! Are we doing SNe feedback? */
+  int with_SNe_feedback;
+
+  /*! Are we doing AGB enrichment? */
+  int with_AGB_enrichment;
+
+  /*! Are we doing SNII enrichment? */
+  int with_SNII_enrichment;
+
+  /*! Are we doing SNIa enrichment? */
+  int with_SNIa_enrichment;
+
+  /* ------------ Energy injection ----------------- */
+
   /* Kinetic energy of SN ejecta per unit mass (check name with Richard)*/
   float ejecta_specific_thermal_energy;
+
+  /* ------------ Yield tables    ----------------- */
 
   /* Yield tables for AGB and SNII  */
   struct yield_table yield_AGB;

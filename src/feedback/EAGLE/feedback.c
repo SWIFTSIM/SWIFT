@@ -697,7 +697,9 @@ void compute_stellar_evolution(const struct feedback_props* feedback_props,
   sp->feedback_data.to_distribute.enrichment_weight = enrichment_weight;
 
   /* Compute properties of the stochastic SNe feedback model. */
-  compute_SNe_feedback(sp, age, dt, ngb_gas_mass, feedback_props);
+  if (feedback_props->with_SNe_feedback) {
+    compute_SNe_feedback(sp, age, dt, ngb_gas_mass, feedback_props);
+  }
 
   /* Calculate mass of stars that has died from the star's birth up to the
    * beginning and end of timestep */
@@ -724,12 +726,18 @@ void compute_stellar_evolution(const struct feedback_props* feedback_props,
 
   /* Compute elements, energy and momentum to distribute from the
    *  three channels SNIa, SNII, AGB */
-  evolve_SNIa(log10_min_dying_mass_Msun, log10_max_dying_mass_Msun,
-              feedback_props, sp, star_age_Gyr, dt_Gyr);
-  evolve_SNII(log10_min_dying_mass_Msun, log10_max_dying_mass_Msun,
-              stellar_yields, feedback_props, sp);
-  evolve_AGB(log10_min_dying_mass_Msun, log10_max_dying_mass_Msun,
-             stellar_yields, feedback_props, sp);
+  if (feedback_props->with_SNIa_enrichment) {
+    evolve_SNIa(log10_min_dying_mass_Msun, log10_max_dying_mass_Msun,
+                feedback_props, sp, star_age_Gyr, dt_Gyr);
+  }
+  if (feedback_props->with_SNII_enrichment) {
+    evolve_SNII(log10_min_dying_mass_Msun, log10_max_dying_mass_Msun,
+                stellar_yields, feedback_props, sp);
+  }
+  if (feedback_props->with_AGB_enrichment) {
+    evolve_AGB(log10_min_dying_mass_Msun, log10_max_dying_mass_Msun,
+               stellar_yields, feedback_props, sp);
+  }
 
   /* Compute the total mass to distribute (H + He  metals) */
   sp->feedback_data.to_distribute.mass =
@@ -765,6 +773,20 @@ void feedback_props_init(struct feedback_props* fp,
                          struct swift_params* params,
                          const struct hydro_props* hydro_props,
                          const struct cosmology* cosmo) {
+
+  /* Main operation modes ------------------------------------------------- */
+
+  fp->with_SNe_feedback =
+      parser_get_param_int(params, "EAGLEFeedback:use_SNe_feedback");
+
+  fp->with_AGB_enrichment =
+      parser_get_param_int(params, "EAGLEFeedback:use_AGB_enrichment");
+
+  fp->with_SNII_enrichment =
+      parser_get_param_int(params, "EAGLEFeedback:use_SNII_enrichment");
+
+  fp->with_SNIa_enrichment =
+      parser_get_param_int(params, "EAGLEFeedback:use_SNIa_enrichment");
 
   /* Properties of the IMF model ------------------------------------------ */
 
