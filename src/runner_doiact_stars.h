@@ -71,6 +71,18 @@
 #define _DOSUB_SELF1_STARS(f) PASTE(runner_dosub_self_stars, f)
 #define DOSUB_SELF1_STARS _DOSUB_SELF1_STARS(FUNCTION)
 
+#define _TIMER_DOSELF_STARS(f) PASTE(timer_doself_stars, f)
+#define TIMER_DOSELF_STARS _TIMER_DOSELF_STARS(FUNCTION)
+
+#define _TIMER_DOPAIR_STARS(f) PASTE(timer_dopair_stars, f)
+#define TIMER_DOPAIR_STARS _TIMER_DOPAIR_STARS(FUNCTION)
+
+#define _TIMER_DOSUB_SELF_STARS(f) PASTE(timer_dosub_self_stars, f)
+#define TIMER_DOSUB_SELF_STARS _TIMER_DOSUB_SELF_STARS(FUNCTION)
+
+#define _TIMER_DOSUB_PAIR_STARS(f) PASTE(timer_dosub_pair_stars, f)
+#define TIMER_DOSUB_PAIR_STARS _TIMER_DOSUB_PAIR_STARS(FUNCTION)
+
 #define _IACT_STARS(f) PASTE(runner_iact_nonsym_stars, f)
 #define IACT_STARS _IACT_STARS(FUNCTION)
 
@@ -86,6 +98,8 @@ void DOSELF1_STARS(struct runner *r, struct cell *c, int timer) {
 #ifdef SWIFT_DEBUG_CHECKS
   if (c->nodeID != engine_rank) error("Should be run on a different node");
 #endif
+
+  TIMER_TIC;
 
   const struct engine *e = r->e;
   const integertime_t ti_current = e->ti_current;
@@ -154,6 +168,8 @@ void DOSELF1_STARS(struct runner *r, struct cell *c, int timer) {
       }
     } /* loop over the parts in ci. */
   }   /* loop over the sparts in ci. */
+
+  TIMER_TOC(TIMER_DOSELF_STARS);
 }
 
 /**
@@ -264,6 +280,8 @@ void DO_NONSYM_PAIR1_STARS_NAIVE(struct runner *r, struct cell *restrict ci,
  */
 void DO_SYM_PAIR1_STARS(struct runner *r, struct cell *ci, struct cell *cj,
                         const int sid, const double *shift) {
+
+  TIMER_TIC;
 
   const struct engine *e = r->e;
   const integertime_t ti_current = e->ti_current;
@@ -541,10 +559,14 @@ void DO_SYM_PAIR1_STARS(struct runner *r, struct cell *ci, struct cell *cj,
       } /* loop over the parts in ci. */
     }   /* loop over the parts in cj. */
   }     /* Cell cj is active */
+
+  TIMER_TOC(TIMER_DOPAIR_STARS);
 }
 
 void DOPAIR1_STARS_NAIVE(struct runner *r, struct cell *restrict ci,
                          struct cell *restrict cj, int timer) {
+
+  TIMER_TIC;
 
 #if (FUNCTION_TASK_LOOP == TASK_LOOP_DENSITY)
   const int do_ci_stars = ci->nodeID == r->e->nodeID;
@@ -558,6 +580,8 @@ void DOPAIR1_STARS_NAIVE(struct runner *r, struct cell *restrict ci,
     DO_NONSYM_PAIR1_STARS_NAIVE(r, ci, cj);
   if (do_cj_stars && cj->stars.count != 0 && ci->hydro.count != 0)
     DO_NONSYM_PAIR1_STARS_NAIVE(r, cj, ci);
+
+  TIMER_TOC(TIMER_DOPAIR_STARS);
 }
 
 /**
@@ -1701,6 +1725,8 @@ void DOPAIR1_BRANCH_STARS(struct runner *r, struct cell *ci, struct cell *cj) {
 void DOSUB_PAIR1_STARS(struct runner *r, struct cell *ci, struct cell *cj,
                        int sid, int gettimer) {
 
+  TIMER_TIC;
+
   struct space *s = r->e->s;
   const struct engine *e = r->e;
 
@@ -1976,6 +2002,8 @@ void DOSUB_PAIR1_STARS(struct runner *r, struct cell *ci, struct cell *cj,
 
     if (do_ci || do_cj) DOPAIR1_BRANCH_STARS(r, ci, cj);
   }
+
+  TIMER_TOC(TIMER_DOSUB_PAIR_STARS);
 }
 
 /**
@@ -1986,6 +2014,8 @@ void DOSUB_PAIR1_STARS(struct runner *r, struct cell *ci, struct cell *cj,
  * @param gettimer Do we have a timer ?
  */
 void DOSUB_SELF1_STARS(struct runner *r, struct cell *ci, int gettimer) {
+
+  TIMER_TIC;
 
 #ifdef SWIFT_DEBUG_CHECKS
   if (ci->nodeID != engine_rank)
@@ -2018,4 +2048,6 @@ void DOSUB_SELF1_STARS(struct runner *r, struct cell *ci, int gettimer) {
 
     DOSELF1_BRANCH_STARS(r, ci);
   }
+
+  TIMER_TOC(TIMER_DOSUB_SELF_STARS);
 }

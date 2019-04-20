@@ -481,7 +481,7 @@ void runner_do_stars_ghost(struct runner *r, struct cell *c, int timer) {
     }
   }
 
-  if (timer) TIMER_TOC(timer_dostars_ghost);
+  if (timer) TIMER_TOC(timer_do_stars_ghost);
 }
 
 /**

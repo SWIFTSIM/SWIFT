@@ -55,11 +55,15 @@ enum {
   timer_doself_gradient,
   timer_doself_force,
   timer_doself_limiter,
+  timer_doself_stars_density,
+  timer_doself_stars_feedback,
   timer_doself_grav_pp,
   timer_dopair_density,
   timer_dopair_gradient,
   timer_dopair_force,
   timer_dopair_limiter,
+  timer_dopair_stars_density,
+  timer_dopair_stars_feedback,
   timer_dopair_grav_mm,
   timer_dopair_grav_pp,
   timer_dograv_external,
@@ -71,11 +75,15 @@ enum {
   timer_dosub_self_gradient,
   timer_dosub_self_force,
   timer_dosub_self_limiter,
+  timer_dosub_self_stars_density,
+  timer_dosub_self_stars_feedback,
   timer_dosub_self_grav,
   timer_dosub_pair_density,
   timer_dosub_pair_gradient,
   timer_dosub_pair_force,
   timer_dosub_pair_limiter,
+  timer_dosub_pair_stars_density,
+  timer_dosub_pair_stars_feedback,
   timer_dosub_pair_grav,
   timer_doself_subset,
   timer_dopair_subset,
@@ -83,6 +91,7 @@ enum {
   timer_dosub_subset,
   timer_do_ghost,
   timer_do_extra_ghost,
+  timer_do_stars_ghost,
   timer_dorecv_part,
   timer_dorecv_gpart,
   timer_dorecv_spart,
@@ -96,7 +105,6 @@ enum {
   timer_locktree,
   timer_runners,
   timer_step,
-  timer_dostars_ghost,
   timer_logger,
   timer_do_stars_sort,
   timer_count,
@@ -107,9 +115,6 @@ extern ticks timers[timer_count];
 
 /* The timer names. */
 extern const char *timers_names[];
-
-/* Mask for all timers. */
-#define timers_mask_all ((1ull << timer_count) - 1)
 
 /* Define the timer macros. */
 #ifdef SWIFT_USE_TIMERS
@@ -131,7 +136,6 @@ INLINE static ticks timers_toc(unsigned int t, ticks tic) {
 
 /* Function prototypes. */
 void timers_reset_all(void);
-void timers_reset(unsigned long long mask);
 void timers_open_file(int rank);
 void timers_close_file(void);
 void timers_print(int step);
