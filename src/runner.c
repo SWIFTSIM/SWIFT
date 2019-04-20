@@ -663,11 +663,12 @@ void runner_do_star_formation(struct runner *r, struct cell *c, int timer) {
 #endif
 
   /* Anything to do here? */
-  if (c->hydro.count == 0) return;
-  if (!cell_is_active_hydro(c, e)) {
+  if (c->hydro.count == 0 || !cell_is_active_hydro(c, e)) {
     star_formation_logger_log_inactive_cell(&c->stars.sfh);
     return;
   }
+
+  /* Reset the SFR */
   star_formation_logger_init(&c->stars.sfh);
 
   /* Recurse? */
@@ -746,8 +747,10 @@ void runner_do_star_formation(struct runner *r, struct cell *c, int timer) {
           star_formation_update_part_not_SFR(p, xp, e, sf_props,
                                              with_cosmology);
 
-        }      /* Not Star-forming? */
+        } /* Not Star-forming? */
+
       } else { /* is active? */
+
         /* Check if the particle is not inhibited */
         if (!part_is_inhibited(p, e)) {
           star_formation_logger_log_inactive_part(p, xp, &c->stars.sfh);

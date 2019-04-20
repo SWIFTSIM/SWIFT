@@ -128,7 +128,7 @@ void timers_reset_all(void) {
 void timers_print(int step) {
   fprintf(timers_file, "%d\t", step);
   for (int k = 0; k < timer_count; k++)
-    fprintf(timers_file, "%22.3f ", clocks_from_ticks(timers[k]));
+    fprintf(timers_file, "%25.3f ", clocks_from_ticks(timers[k]));
   fprintf(timers_file, "\n");
   fflush(timers_file);
 }
@@ -144,9 +144,9 @@ void timers_open_file(int rank) {
   sprintf(buff, "timers_%d.txt", rank);
   timers_file = fopen(buff, "w");
 
-  fprintf(timers_file, "# timers: \n# step | ");
+  fprintf(timers_file, "# timers: \n# step |");
   for (int k = 0; k < timer_count; k++)
-    fprintf(timers_file, "%22s ", timers_names[k]);
+    fprintf(timers_file, "%25s ", timers_names[k]);
   fprintf(timers_file, "\n");
 }
 
