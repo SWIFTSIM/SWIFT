@@ -121,7 +121,8 @@ double eagle_feedback_energy_fraction(const struct spart* sp,
 }
 
 /**
- * @brief Compute the properties of the SNII stochastic feedback energy injection.
+ * @brief Compute the properties of the SNII stochastic feedback energy
+ * injection.
  *
  * Only does something if the particle reached the SNII age during this time
  * step.
