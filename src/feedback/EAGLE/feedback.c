@@ -25,6 +25,7 @@
 #include "imf.h"
 #include "inline.h"
 #include "interpolate.h"
+#include "timers.h"
 #include "yield_tables.h"
 
 /**
@@ -679,6 +680,8 @@ void compute_stellar_evolution(const struct feedback_props* feedback_props,
                                const struct unit_system* us, const float age,
                                const float dt) {
 
+  TIMER_TIC;
+
   /* Allocate temporary array for calculating imf weights */
   float stellar_yields[eagle_feedback_N_imf_bins];
 
@@ -772,6 +775,8 @@ void compute_stellar_evolution(const struct feedback_props* feedback_props,
       sp->feedback_data.to_distribute.mass * 0.5f *
       (sp->v[0] * sp->v[0] + sp->v[1] * sp->v[1] + sp->v[2] * sp->v[2]) *
       cosmo->a2_inv;
+
+  TIMER_TOC(timer_do_star_evol);
 }
 
 /**
