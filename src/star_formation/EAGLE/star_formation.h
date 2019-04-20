@@ -405,6 +405,9 @@ INLINE static void star_formation_copy_properties(
 
   /* Store the birth density in the star particle */
   sp->birth_density = hydro_get_physical_density(p, cosmo);
+
+  /* Flag that this particle has not done feedback yet */
+  sp->f_E = -1.f;
 }
 
 /**

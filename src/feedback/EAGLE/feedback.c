@@ -141,6 +141,10 @@ INLINE static void compute_SNe_feedback(
   /* Are we doing feedback this step? */
   if (star_age <= SNII_wind_delay && (star_age + dt) > SNII_wind_delay) {
 
+#ifdef SWIFT_DEBUG_CHECKS
+    if (sp->f_E != -1.f) error("Star has already done feedback!");
+#endif
+
     /* Properties of the model (all in internal units) */
     const double delta_T =
         eagle_feedback_temperature_change(sp, feedback_props);
@@ -172,6 +176,7 @@ INLINE static void compute_SNe_feedback(
     }
 
     /* Store all of this in the star for delivery onto the gas */
+    sp->f_E = f_E;
     sp->feedback_data.to_distribute.SNII_heating_probability = prob;
     sp->feedback_data.to_distribute.SNII_delta_u = delta_u;
   }
