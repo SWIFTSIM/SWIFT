@@ -3690,9 +3690,7 @@ void engine_step(struct engine *e) {
                                               e->cosmology->a, e->cosmology->z,
                                               e->sfh, e->step);
 
-#ifdef SWIFT_DEBUG_CHECKS
       fflush(e->sfh_logger);
-#endif
     }
 
     if (!e->restarting)
