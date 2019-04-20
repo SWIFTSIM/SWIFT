@@ -70,6 +70,7 @@ neighbours = sim["/HydroScheme"].attrs["Kernel target N_ngb"]
 eta = sim["/HydroScheme"].attrs["Kernel eta"]
 git = sim["Code"].attrs["Git Revision"]
 stellar_mass = sim["/PartType4/Masses"][0]
+E_SNIa_cgs = double(sim["/Parameters"].attrs["EAGLEFeedback:SNIa_energy_erg"])
 
 # Units
 unit_length_in_cgs = sim["/Units"].attrs["Unit length in cgs (U_L)"]
@@ -142,10 +143,9 @@ for line in eagle_data:
 	eagle_total_mass[i] = float(enrich_to_date[1]) * stellar_mass / Msun_in_cgs * unit_mass_in_cgs
 	eagle_total_metal_mass[i] = float(enrich_to_date[2]) * stellar_mass / Msun_in_cgs * unit_mass_in_cgs 
 	for j in range(n_elements):
-		eagle_total_element_mass[i,j] = float(enrich_to_date[3+j]) * stellar_mass / Msun_in_cgs * unit_mass_in_cgs 
+		eagle_total_element_mass[i,j] = float(enrich_to_date[3+j]) * stellar_mass / Msun_in_cgs * unit_mass_in_cgs
 	i += 1
 
-                
 # Plot the interesting quantities
 figure()
 

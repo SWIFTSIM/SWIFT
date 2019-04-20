@@ -220,29 +220,47 @@ runner_iact_nonsym_feedback_apply(const float r2, const float *dx,
   pj->chemistry_data.metal_mass_fraction_from_AGB =
       new_metal_mass_from_AGB * new_mass_inv;
 
+  /* Compute the current kinetic energy */
+  const double current_v2 = xpj->v_full[0] * xpj->v_full[0] +
+                            xpj->v_full[1] * xpj->v_full[1] +
+                            xpj->v_full[2] * xpj->v_full[2];
+  const double current_kinetic_energy_gas =
+      0.5 * cosmo->a2_inv * current_mass * current_v2;
+
   /* Update velocity following injection of momentum */
   const double delta_m = si->feedback_data.to_distribute.mass * Omega_frac;
   xpj->v_full[0] += delta_m * si->v[0] * new_mass_inv;
   xpj->v_full[1] += delta_m * si->v[1] * new_mass_inv;
   xpj->v_full[2] += delta_m * si->v[2] * new_mass_inv;
 
-  /* /\* Compute how much energy to inject *\/ */
-  /* const double v2 = xpj->v_full[0] * xpj->v_full[0] + */
-  /*                   xpj->v_full[1] * xpj->v_full[1] + */
-  /*                   xpj->v_full[2] * xpj->v_full[2]; */
-  /* const double kinetic_energy_gas = 0.5 * cosmo->a2_inv * new_mass * v2; */
-  /* const double total_energy = */
-  /*     si->feedback_data.to_distribute.energy * Omega_frac; */
-  /* const double thermal_energy = total_energy - kinetic_energy_gas; */
-  /* const double delta_u_enrich = thermal_energy / new_mass; */
+  /* Compute the new kinetic energy */
+  const double new_v2 = xpj->v_full[0] * xpj->v_full[0] +
+                        xpj->v_full[1] * xpj->v_full[1] +
+                        xpj->v_full[2] * xpj->v_full[2];
+  const double new_kinetic_energy_gas = 0.5 * cosmo->a2_inv * new_mass * new_v2;
 
-  /* /\* Energy feedback (ejecta energy + SNIa)*\/ */
-  /* const double u_init_enrich = */
-  /*     hydro_get_physical_internal_energy(pj, xpj, cosmo); */
+  /* Total energy of that particle */
+  const double new_total_energy =
+      current_kinetic_energy_gas +
+      si->feedback_data.to_distribute.energy * Omega_frac;
 
-  /* const double u_new_enrich = u_init_enrich + max(delta_u_enrich, 0.); */
-  /* hydro_set_physical_internal_energy(pj, xpj, cosmo, u_new_enrich); */
-  /* hydro_set_drifted_physical_internal_energy(pj, cosmo, u_new_enrich); */
+  /* Thermal energy of the particle */
+  const double thermal_energy = new_total_energy - new_kinetic_energy_gas;
+  const double delta_u_enrich = thermal_energy / new_mass;
+
+  /* Energy feedback (ejecta energy + SNIa)*/
+  const double u_init_enrich =
+      hydro_get_physical_internal_energy(pj, xpj, cosmo);
+
+#ifdef SWIFT_DEBUG_CHECKS
+  if (delta_u_enrich < 0.) error("Removing energy from the system.");
+#endif
+
+  /* Do the energy injection.
+   * Note: We take a max() here just to be safe of rounding errors. */
+  const double u_new_enrich = u_init_enrich + max(delta_u_enrich, 0.);
+  hydro_set_physical_internal_energy(pj, xpj, cosmo, u_new_enrich);
+  hydro_set_drifted_physical_internal_energy(pj, cosmo, u_new_enrich);
 
   /* Get the SNII feedback properties */
   const float prob = si->feedback_data.to_distribute.SNII_heating_probability;

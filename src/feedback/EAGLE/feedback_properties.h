@@ -75,9 +75,6 @@ struct feedback_props {
 
   /* ------------ Main operation modes ------------- */
 
-  /*! Are we doing SNe feedback? */
-  int with_SNe_feedback;
-
   /*! Are we doing AGB enrichment? */
   int with_AGB_enrichment;
 
@@ -86,6 +83,12 @@ struct feedback_props {
 
   /*! Are we doing SNIa enrichment? */
   int with_SNIa_enrichment;
+
+  /*! Are we doing SNII feedback? */
+  int with_SNII_feedback;
+
+  /*! Are we doing SNIa feedback? */
+  int with_SNIa_feedback;
 
   /* ------------ Yield tables    ----------------- */
 

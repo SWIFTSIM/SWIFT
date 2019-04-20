@@ -121,9 +121,9 @@ double eagle_feedback_energy_fraction(const struct spart* sp,
 }
 
 /**
- * @brief Compute the properties of the SNe feedback energy injection.
+ * @brief Compute the properties of the SNII stochastic feedback energy injection.
  *
- * Only does something if the particle reached the SNe age during this time
+ * Only does something if the particle reached the SNII age during this time
  * step.
  *
  * @param sp The star particle.
@@ -132,7 +132,7 @@ double eagle_feedback_energy_fraction(const struct spart* sp,
  * @param ngb_gas_mass Total un-weighted mass in the star's kernel.
  * @param feedback_props The properties of the feedback model.
  */
-INLINE static void compute_SNe_feedback(
+INLINE static void compute_SNII_feedback(
     struct spart* sp, const double star_age, const double dt,
     const float ngb_gas_mass, const struct feedback_props* feedback_props) {
 
@@ -356,7 +356,9 @@ INLINE static void evolve_SNIa(const float log10_min_mass,
       props->solar_mass_to_mass;
 
   /* Compute the energy to be injected */
-  sp->feedback_data.to_distribute.energy += num_SNIa * props->E_SNIa;
+  if (props->with_SNIa_feedback) {
+    sp->feedback_data.to_distribute.energy += num_SNIa * props->E_SNIa;
+  }
 }
 
 /**
@@ -711,9 +713,9 @@ void compute_stellar_evolution(const struct feedback_props* feedback_props,
       (enrichment_weight_inv != 0.f) ? 1.f / enrichment_weight_inv : 0.f;
   sp->feedback_data.to_distribute.enrichment_weight = enrichment_weight;
 
-  /* Compute properties of the stochastic SNe feedback model. */
-  if (feedback_props->with_SNe_feedback) {
-    compute_SNe_feedback(sp, age, dt, ngb_gas_mass, feedback_props);
+  /* Compute properties of the stochastic SNII feedback model. */
+  if (feedback_props->with_SNII_feedback) {
+    compute_SNII_feedback(sp, age, dt, ngb_gas_mass, feedback_props);
   }
 
   /* Calculate mass of stars that has died from the star's birth up to the
@@ -800,8 +802,11 @@ void feedback_props_init(struct feedback_props* fp,
 
   /* Main operation modes ------------------------------------------------- */
 
-  fp->with_SNe_feedback =
-      parser_get_param_int(params, "EAGLEFeedback:use_SNe_feedback");
+  fp->with_SNII_feedback =
+      parser_get_param_int(params, "EAGLEFeedback:use_SNII_feedback");
+
+  fp->with_SNIa_feedback =
+      parser_get_param_int(params, "EAGLEFeedback:use_SNIa_feedback");
 
   fp->with_AGB_enrichment =
       parser_get_param_int(params, "EAGLEFeedback:use_AGB_enrichment");
@@ -811,6 +816,10 @@ void feedback_props_init(struct feedback_props* fp,
 
   fp->with_SNIa_enrichment =
       parser_get_param_int(params, "EAGLEFeedback:use_SNIa_enrichment");
+
+  if (fp->with_SNIa_feedback && !fp->with_SNIa_enrichment) {
+    error("Cannot run with SNIa feedback without SNIa enrichment.");
+  }
 
   /* Properties of the IMF model ------------------------------------------ */
 
@@ -839,7 +848,7 @@ void feedback_props_init(struct feedback_props* fp,
 
   /* Energy released by supernova type II */
   fp->E_SNII_cgs =
-      parser_get_param_double(params, "EAGLEFeedback:SNII_Energy_erg");
+      parser_get_param_double(params, "EAGLEFeedback:SNII_energy_erg");
   fp->E_SNII =
       fp->E_SNII_cgs / units_cgs_conversion_factor(us, UNIT_CONV_ENERGY);
 
@@ -854,17 +863,17 @@ void feedback_props_init(struct feedback_props* fp,
 
   /* Properties of the energy fraction model */
   fp->f_E_min =
-      parser_get_param_double(params, "EAGLEFeedback:SNII_Energy_fraction_min");
+      parser_get_param_double(params, "EAGLEFeedback:SNII_energy_fraction_min");
   fp->f_E_max =
-      parser_get_param_double(params, "EAGLEFeedback:SNII_Energy_fraction_max");
+      parser_get_param_double(params, "EAGLEFeedback:SNII_energy_fraction_max");
   fp->Z_0 =
-      parser_get_param_double(params, "EAGLEFeedback:SNII_Energy_fraction_Z_0");
+      parser_get_param_double(params, "EAGLEFeedback:SNII_energy_fraction_Z_0");
   fp->n_0_cgs = parser_get_param_double(
-      params, "EAGLEFeedback:SNII_Energy_fraction_n_0_H_p_cm3");
+      params, "EAGLEFeedback:SNII_energy_fraction_n_0_H_p_cm3");
   fp->n_n =
-      parser_get_param_double(params, "EAGLEFeedback:SNII_Energy_fraction_n_n");
+      parser_get_param_double(params, "EAGLEFeedback:SNII_energy_fraction_n_n");
   fp->n_Z =
-      parser_get_param_double(params, "EAGLEFeedback:SNII_Energy_fraction_n_Z");
+      parser_get_param_double(params, "EAGLEFeedback:SNII_energy_fraction_n_Z");
 
   /* Properties of the SNII enrichment model -------------------------------- */
 
@@ -893,7 +902,7 @@ void feedback_props_init(struct feedback_props* fp,
 
   /* Energy released by supernova type Ia */
   fp->E_SNIa_cgs =
-      parser_get_param_double(params, "EAGLEFeedback:SNIa_Energy_erg");
+      parser_get_param_double(params, "EAGLEFeedback:SNIa_energy_erg");
   fp->E_SNIa =
       fp->E_SNIa_cgs / units_cgs_conversion_factor(us, UNIT_CONV_ENERGY);
 
