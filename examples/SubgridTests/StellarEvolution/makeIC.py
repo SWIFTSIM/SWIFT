@@ -29,19 +29,19 @@ boltzmann_k_cgs = 1.38e-16
 # Parameters
 gamma = 5./3.      				# Gas adiabatic index
 rho_cgs = mp_cgs        			# Background density
-u0_cgs = 1.2e10					# Desired initial internal energy (1.2e12 ~ 10^4K)
+u0_cgs = 1.2e12					# Desired initial internal energy (1.2e12 ~ 10^4K)
 P_cgs = rho_cgs*u0_cgs*(gamma - 1.)          	# Background pressure
 fileName = "stellar_evolution.hdf5" 
 
 # Units
-unit_l_cgs = 3.085678e24
-unit_m_cgs = 1.988480e43
-unit_t_cgs = 3.085678e19
+unit_l_cgs = 3.085678e24  # kpc
+unit_m_cgs = 1.988480e43  # 10^10 Msun
+unit_v_cgs = 1e5          # km / s
 unit_A_cgs = 1.
 unit_T_cgs = 1.
-unit_v_cgs = unit_l_cgs/unit_t_cgs
+unit_t_cgs = unit_l_cgs / unit_v_cgs
 
-boxsize_cgs = 1.0e1*kpc_in_cm
+boxsize_cgs = 10. * kpc_in_cm
 vol_cgs = boxsize_cgs**3
 
 #---------------------------------------------------
@@ -74,7 +74,7 @@ star_v = zeros((1, 3))
 star_v[:,:] = 0.
 
 # increase mass to keep it at center
-star_m_cgs = 5e0 * array([rho_cgs * vol_cgs / numPart])
+star_m_cgs = m_cgs[0]
 star_ids = array([numPart + 1])
 star_h = array([h.max()])
 
