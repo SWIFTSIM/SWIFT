@@ -76,9 +76,9 @@ double eagle_feedback_number_of_SNIa(const struct spart* sp, const double t0,
    * eq. 3 of Schaye 2015 paper. */
   const double tau = props->SNIa_timescale_Gyr_inv;
   const double nu = props->SNIa_efficiency;
-  const double num_SNe_per_Msun = nu * (exp(-t0 * tau) - exp(-t1 * tau));
+  const double num_SNIa_per_Msun = nu * (exp(-t0 * tau) - exp(-t1 * tau));
 
-  return num_SNe_per_Msun * sp->mass_init * props->mass_to_solar_mass;
+  return num_SNIa_per_Msun * sp->mass_init * props->mass_to_solar_mass;
 }
 
 /**
@@ -322,6 +322,11 @@ INLINE static void evolve_SNIa(const float log10_min_mass,
     dt_Gyr = star_age_Gyr + dt_Gyr - lifetime_Gyr;
     star_age_Gyr = lifetime_Gyr;
   }
+
+#ifdef SWIFT_DEBUG_CHECKS
+  if (dt_Gyr < 0.) error("Negative time-step length!");
+  if (star_age_Gyr < 0.) error("Negative age!");
+#endif
 
   /* Compute the number of SNIa */
   const float num_SNIa = eagle_feedback_number_of_SNIa(

@@ -228,10 +228,9 @@ runner_iact_nonsym_feedback_apply(const float r2, const float *dx,
       0.5 * cosmo->a2_inv * current_mass * current_v2;
 
   /* Update velocity following injection of momentum */
-  const double delta_m = si->feedback_data.to_distribute.mass * Omega_frac;
-  xpj->v_full[0] += delta_m * si->v[0] * new_mass_inv;
-  xpj->v_full[1] += delta_m * si->v[1] * new_mass_inv;
-  xpj->v_full[2] += delta_m * si->v[2] * new_mass_inv;
+  xpj->v_full[0] += delta_mass * si->v[0] * new_mass_inv;
+  xpj->v_full[1] += delta_mass * si->v[1] * new_mass_inv;
+  xpj->v_full[2] += delta_mass * si->v[2] * new_mass_inv;
 
   /* Compute the new kinetic energy */
   const double new_v2 = xpj->v_full[0] * xpj->v_full[0] +
@@ -239,10 +238,12 @@ runner_iact_nonsym_feedback_apply(const float r2, const float *dx,
                         xpj->v_full[2] * xpj->v_full[2];
   const double new_kinetic_energy_gas = 0.5 * cosmo->a2_inv * new_mass * new_v2;
 
-  /* Total energy of that particle */
-  const double new_total_energy =
-      current_kinetic_energy_gas +
+  /* Injection energy */
+  const double injected_energy =
       si->feedback_data.to_distribute.energy * Omega_frac;
+
+  /* Total energy of that particle */
+  const double new_total_energy = current_kinetic_energy_gas + injected_energy;
 
   /* Thermal energy of the particle */
   const double thermal_energy = new_total_energy - new_kinetic_energy_gas;
@@ -253,7 +254,8 @@ runner_iact_nonsym_feedback_apply(const float r2, const float *dx,
       hydro_get_physical_internal_energy(pj, xpj, cosmo);
 
 #ifdef SWIFT_DEBUG_CHECKS
-  if (delta_u_enrich < 0.) error("Removing energy from the system.");
+  if (delta_u_enrich < -1e-3 * u_init_enrich)
+    error("Removing energy from the system.");
 #endif
 
   /* Do the energy injection.
