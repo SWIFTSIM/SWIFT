@@ -557,9 +557,6 @@ struct cell {
     /*! Bit mask of sorts that need to be computed for this cell. */
     uint16_t do_sort;
 
-    /*! Do any of this cell's sub-cells need to be sorted? */
-    char do_sub_sort;
-
     /*! Maximum end of (integer) time step in this cell for star tasks. */
     integertime_t ti_end_min;
 
@@ -578,12 +575,6 @@ struct cell {
 
     /*! Is the #spart data of this cell being used in a sub-cell? */
     int hold;
-
-    /*! Does this cell need to be drifted (stars)? */
-    char do_drift;
-
-    /*! Do any of this cell's sub-cells need to be drifted (stars)? */
-    char do_sub_drift;
 
 #ifdef SWIFT_DEBUG_CHECKS
     /*! Last (integer) time the cell's sort arrays were updated. */
@@ -1304,6 +1295,11 @@ __attribute__((always_inline)) INLINE static void cell_free_stars_sorts(
 __attribute__((always_inline)) INLINE static void cell_set_flag(
     struct cell *c, enum cell_flags flag) {
   c->flags |= flag;
+}
+
+__attribute__((always_inline)) INLINE static void cell_set_flag_threadsafe(
+    struct cell *c, enum cell_flags flag) {
+  atomic_or(&c->flags, flag);
 }
 
 /** Clear the given flag for the given cell. */

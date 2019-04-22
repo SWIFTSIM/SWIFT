@@ -2128,9 +2128,9 @@ void cell_clean(struct cell *c) {
  */
 void cell_clear_drift_flags(struct cell *c, void *data) {
   cell_clear_flag(c, cell_flag_do_hydro_drift & cell_flag_do_hydro_sub_drift &
-                         cell_flag_do_grav_drift & cell_flag_do_grav_sub_drift);
-  c->stars.do_drift = 0;
-  c->stars.do_sub_drift = 0;
+                         cell_flag_do_grav_drift & cell_flag_do_grav_sub_drift &
+                         cell_flag_do_stars_drift &
+                         cell_flag_do_stars_sub_drift);
 }
 
 /**
@@ -2255,10 +2255,10 @@ void cell_activate_drift_gpart(struct cell *c, struct scheduler *s) {
 void cell_activate_drift_spart(struct cell *c, struct scheduler *s) {
 
   /* If this cell is already marked for drift, quit early. */
-  if (c->stars.do_drift) return;
+  if (cell_get_flag(c, cell_flag_do_stars_drift)) return;
 
   /* Mark this cell for drifting. */
-  c->stars.do_drift = 1;
+  cell_set_flag(c, cell_flag_do_stars_drift);
 
   /* Set the do_stars_sub_drifts all the way up and activate the super drift
      if this has not yet been done. */
@@ -2270,11 +2270,11 @@ void cell_activate_drift_spart(struct cell *c, struct scheduler *s) {
     scheduler_activate(s, c->stars.drift);
   } else {
     for (struct cell *parent = c->parent;
-         parent != NULL && !parent->stars.do_sub_drift;
+         parent != NULL && !cell_get_flag(parent, cell_flag_do_stars_sub_drift);
          parent = parent->parent) {
 
       /* Mark this cell for drifting */
-      parent->stars.do_sub_drift = 1;
+      cell_set_flag(parent, cell_flag_do_stars_sub_drift);
 
       if (parent == c->hydro.super) {
 #ifdef SWIFT_DEBUG_CHECKS
@@ -2403,9 +2403,9 @@ void cell_activate_stars_sorts_up(struct cell *c, struct scheduler *s) {
   } else {
 
     for (struct cell *parent = c->parent;
-         parent != NULL && !parent->stars.do_sub_sort;
+         parent != NULL && !cell_get_flag(parent, cell_flag_do_stars_sub_sort);
          parent = parent->parent) {
-      parent->stars.do_sub_sort = 1;
+      cell_set_flag(parent, cell_flag_do_stars_sub_sort);
       if (parent == c->hydro.super) {
 #ifdef SWIFT_DEBUG_CHECKS
         if (parent->stars.sorts == NULL)
@@ -4403,7 +4403,7 @@ void cell_drift_spart(struct cell *c, const struct engine *e, int force) {
   float cell_h_max = 0.f;
 
   /* Drift irrespective of cell flags? */
-  force |= c->stars.do_drift;
+  force |= cell_get_flag(c, cell_flag_do_stars_drift);
 
 #ifdef SWIFT_DEBUG_CHECKS
   /* Check that we only drift local cells. */
@@ -4417,8 +4417,7 @@ void cell_drift_spart(struct cell *c, const struct engine *e, int force) {
   if (c->stars.count == 0) {
 
     /* Clear the drift flags. */
-    c->stars.do_drift = 0;
-    c->stars.do_sub_drift = 0;
+    cell_clear_flag(c, cell_flag_do_stars_drift & cell_flag_do_stars_sub_drift);
 
     /* Update the time of the last drift */
     c->stars.ti_old_part = ti_current;
@@ -4429,7 +4428,7 @@ void cell_drift_spart(struct cell *c, const struct engine *e, int force) {
   /* Ok, we have some particles somewhere in the hierarchy to drift */
 
   /* Are we not in a leaf ? */
-  if (c->split && (force || c->stars.do_sub_drift)) {
+  if (c->split && (force || cell_get_flag(c, cell_flag_do_stars_sub_drift))) {
 
     /* Loop over the progeny and collect their data. */
     for (int k = 0; k < 8; k++) {
@@ -4545,8 +4544,7 @@ void cell_drift_spart(struct cell *c, const struct engine *e, int force) {
   }
 
   /* Clear the drift flags. */
-  c->stars.do_drift = 0;
-  c->stars.do_sub_drift = 0;
+  cell_clear_flag(c, cell_flag_do_stars_drift & cell_flag_do_stars_sub_drift);
 }
 
 /**
