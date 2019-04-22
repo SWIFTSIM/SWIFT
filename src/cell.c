@@ -2127,9 +2127,8 @@ void cell_clean(struct cell *c) {
  * @brief Clear the drift flags on the given cell.
  */
 void cell_clear_drift_flags(struct cell *c, void *data) {
-  cell_clear_flag(c, cell_flag_do_hydro_drift & cell_flag_do_hydro_sub_drift);
-  c->grav.do_drift = 0;
-  c->grav.do_sub_drift = 0;
+  cell_clear_flag(c, cell_flag_do_hydro_drift & cell_flag_do_hydro_sub_drift &
+                         cell_flag_do_grav_drift & cell_flag_do_grav_sub_drift);
   c->stars.do_drift = 0;
   c->stars.do_sub_drift = 0;
 }
@@ -2213,10 +2212,10 @@ void cell_activate_drift_part(struct cell *c, struct scheduler *s) {
 void cell_activate_drift_gpart(struct cell *c, struct scheduler *s) {
 
   /* If this cell is already marked for drift, quit early. */
-  if (c->grav.do_drift) return;
+  if (cell_get_flag(c, cell_flag_do_grav_drift)) return;
 
   /* Mark this cell for drifting. */
-  c->grav.do_drift = 1;
+  cell_set_flag(c, cell_flag_do_grav_drift);
 
   if (c->grav.drift_out != NULL) scheduler_activate(s, c->grav.drift_out);
 
@@ -2230,9 +2229,9 @@ void cell_activate_drift_gpart(struct cell *c, struct scheduler *s) {
     scheduler_activate(s, c->grav.drift);
   } else {
     for (struct cell *parent = c->parent;
-         parent != NULL && !parent->grav.do_sub_drift;
+         parent != NULL && !cell_get_flag(parent, cell_flag_do_grav_sub_drift);
          parent = parent->parent) {
-      parent->grav.do_sub_drift = 1;
+      cell_set_flag(parent, cell_flag_do_grav_sub_drift);
 
       if (parent->grav.drift_out) {
         scheduler_activate(s, parent->grav.drift_out);
@@ -4279,7 +4278,7 @@ void cell_drift_gpart(struct cell *c, const struct engine *e, int force) {
   struct gpart *const gparts = c->grav.parts;
 
   /* Drift irrespective of cell flags? */
-  force |= c->grav.do_drift;
+  force |= cell_get_flag(c, cell_flag_do_grav_drift);
 
 #ifdef SWIFT_DEBUG_CHECKS
   /* Check that we only drift local cells. */
@@ -4293,8 +4292,7 @@ void cell_drift_gpart(struct cell *c, const struct engine *e, int force) {
   if (c->grav.count == 0) {
 
     /* Clear the drift flags. */
-    c->grav.do_drift = 0;
-    c->grav.do_sub_drift = 0;
+    cell_clear_flag(c, cell_flag_do_grav_drift & cell_flag_do_grav_sub_drift);
 
     /* Update the time of the last drift */
     c->grav.ti_old_part = ti_current;
@@ -4305,7 +4303,7 @@ void cell_drift_gpart(struct cell *c, const struct engine *e, int force) {
   /* Ok, we have some particles somewhere in the hierarchy to drift */
 
   /* Are we not in a leaf ? */
-  if (c->split && (force || c->grav.do_sub_drift)) {
+  if (c->split && (force || cell_get_flag(c, cell_flag_do_grav_sub_drift))) {
 
     /* Loop over the progeny and collect their data. */
     for (int k = 0; k < 8; k++) {
@@ -4379,8 +4377,7 @@ void cell_drift_gpart(struct cell *c, const struct engine *e, int force) {
   }
 
   /* Clear the drift flags. */
-  c->grav.do_drift = 0;
-  c->grav.do_sub_drift = 0;
+  cell_clear_flag(c, cell_flag_do_grav_drift & cell_flag_do_grav_sub_drift);
 }
 
 /**

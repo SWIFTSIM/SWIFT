@@ -481,12 +481,6 @@ struct cell {
     /*! Number of M-M tasks that are associated with this cell. */
     short int nr_mm_tasks;
 
-    /*! Does this cell need to be drifted (gravity)? */
-    char do_drift;
-
-    /*! Do any of this cell's sub-cells need to be drifted (gravity)? */
-    char do_sub_drift;
-
   } grav;
 
   /*! Stars variables */
