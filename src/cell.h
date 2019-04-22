@@ -38,6 +38,7 @@
 #include "part.h"
 #include "sort_part.h"
 #include "space.h"
+#include "star_formation_logger_struct.h"
 #include "task.h"
 #include "timeline.h"
 
@@ -575,6 +576,9 @@ struct cell {
 
     /*! Is the #spart data of this cell being used in a sub-cell? */
     int hold;
+
+    /*! Star formation history struct */
+    struct star_formation_history sfh;
 
 #ifdef SWIFT_DEBUG_CHECKS
     /*! Last (integer) time the cell's sort arrays were updated. */

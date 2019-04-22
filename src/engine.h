@@ -47,6 +47,7 @@
 #include "runner.h"
 #include "scheduler.h"
 #include "space.h"
+#include "star_formation_logger.h"
 #include "task.h"
 #include "units.h"
 #include "velociraptor_interface.h"
@@ -231,6 +232,9 @@ struct engine {
   long long s_updates_since_rebuild;
   long long b_updates_since_rebuild;
 
+  /* Star formation logger information */
+  struct star_formation_history sfh;
+
   /* Properties of the previous step */
   int step_props;
 
@@ -315,6 +319,9 @@ struct engine {
 
   /* File handle for the timesteps information */
   FILE *file_timesteps;
+
+  /* File handle for the SFH logger file */
+  FILE *sfh_logger;
 
   /* The current step number. */
   int step;
@@ -407,6 +414,9 @@ struct engine {
   /* Properties of the starformation law */
   const struct star_formation *star_formation;
 
+  /* Properties of the sellar feedback model */
+  const struct feedback_props *feedback_props;
+
   /* Properties of the chemistry model */
   const struct chemistry_global_data *chemistry;
 
@@ -463,7 +473,7 @@ void engine_init(struct engine *e, struct space *s, struct swift_params *params,
                  struct cosmology *cosmo, struct hydro_props *hydro,
                  const struct entropy_floor_properties *entropy_floor,
                  struct gravity_props *gravity, const struct stars_props *stars,
-                 struct pm_mesh *mesh,
+                 const struct feedback_props *feedback, struct pm_mesh *mesh,
                  const struct external_potential *potential,
                  struct cooling_function_data *cooling_func,
                  const struct star_formation *starform,

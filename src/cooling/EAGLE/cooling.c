@@ -361,8 +361,8 @@ INLINE static double bisection_iter(
     if (i >= bisection_max_iterations) {
       error(
           "particle %llu exceeded max iterations searching for bounds when "
-          "cooling",
-          ID);
+          "cooling, u_ini_cgs %.5e n_H_cgs %.5e",
+          ID, u_ini_cgs, n_H_cgs);
     }
   } else {
 
@@ -397,8 +397,8 @@ INLINE static double bisection_iter(
     if (i >= bisection_max_iterations) {
       error(
           "particle %llu exceeded max iterations searching for bounds when "
-          "heating",
-          ID);
+          "heating, u_ini_cgs %.5e n_H_cgs %.5e",
+          ID, u_ini_cgs, n_H_cgs);
     }
   }
 
@@ -423,6 +423,10 @@ INLINE static double bisection_iter(
                            n_H_index, d_n_H, He_index, d_He, cooling,
                            /*dLambdaNet_du=*/NULL);
 
+    // Debugging
+    if (u_next_cgs <= 0)
+      error("u_next_cgs %.5e u_upper %.5e u_lower %.5e Lambda %.5e", u_next_cgs,
+            u_upper_cgs, u_lower_cgs, LambdaNet_cgs);
     /* Where do we go next? */
     if (u_next_cgs - u_ini_cgs - LambdaNet_cgs * ratefact_cgs * dt_cgs > 0.0) {
       u_upper_cgs = u_next_cgs;
@@ -836,14 +840,15 @@ void cooling_init_backend(struct swift_params *parameter_file,
                           const struct phys_const *phys_const,
                           struct cooling_function_data *cooling) {
 
-  /* read some parameters */
+  /* Read model parameters */
+
+  /* Directory for cooling tables */
+  parser_get_param_string(parameter_file, "EAGLECooling:dir_name",
+                          cooling->cooling_table_path);
 
   /* Despite the names, the values of H_reion_heat_cgs and He_reion_heat_cgs
    * that are read in are actually in units of electron volts per proton mass.
    * We later convert to units just below */
-
-  parser_get_param_string(parameter_file, "EAGLECooling:dir_name",
-                          cooling->cooling_table_path);
 
   cooling->H_reion_done = 0;
   cooling->H_reion_z =

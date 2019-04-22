@@ -22,6 +22,10 @@
 
 /* This object's header. */
 #include "cooling.h"
+
+/* Local includes */
+#include "error.h"
+#include "hydro_properties.h"
 #include "restart.h"
 
 /**
@@ -32,12 +36,20 @@
  * @param parameter_file The parsed parameter file.
  * @param us The current internal system of units.
  * @param phys_const The physical constants in internal units.
+ * @param hydro_props The properties of the hydro scheme.
  * @param cooling The cooling properties to initialize
  */
 void cooling_init(struct swift_params* parameter_file,
                   const struct unit_system* us,
                   const struct phys_const* phys_const,
+                  const struct hydro_props* hydro_props,
                   struct cooling_function_data* cooling) {
+
+  /* Verify that we are not doing something stupid here */
+  if (hydro_props->minimal_temperature <= 0.)
+    error(
+        "ERROR: Cannot run with cooling switched on and no minimal "
+        "temperature.");
 
   cooling_init_backend(parameter_file, us, phys_const, cooling);
 }

@@ -59,6 +59,7 @@
 #include "restart.h"
 #include "sort_part.h"
 #include "star_formation.h"
+#include "star_formation_logger.h"
 #include "stars.h"
 #include "threadpool.h"
 #include "tools.h"
@@ -266,6 +267,7 @@ void space_rebuild_recycle_mapper(void *map_data, int num_elements,
     c->stars.ti_end_max = -1;
     c->black_holes.ti_end_min = -1;
     c->black_holes.ti_end_max = -1;
+    star_formation_logger_init(&c->stars.sfh);
 #if defined(SWIFT_DEBUG_CHECKS) || defined(SWIFT_CELL_GRAPH)
     c->cellID = 0;
 #endif
@@ -2105,7 +2107,7 @@ void space_parts_get_cell_index_mapper(void *map_data, int nr_parts,
     const double old_pos_z = p->x[2];
 
 #ifdef SWIFT_DEBUG_CHECKS
-    if (!s->periodic) {
+    if (!s->periodic && p->time_bin != time_bin_inhibited) {
       if (old_pos_x < 0. || old_pos_x > dim_x)
         error("Particle outside of volume along X.");
       if (old_pos_y < 0. || old_pos_y > dim_y)
@@ -2223,7 +2225,7 @@ void space_gparts_get_cell_index_mapper(void *map_data, int nr_gparts,
     const double old_pos_z = gp->x[2];
 
 #ifdef SWIFT_DEBUG_CHECKS
-    if (!s->periodic) {
+    if (!s->periodic && gp->time_bin != time_bin_inhibited) {
       if (old_pos_x < 0. || old_pos_x > dim_x)
         error("Particle outside of volume along X.");
       if (old_pos_y < 0. || old_pos_y > dim_y)
@@ -2347,7 +2349,7 @@ void space_sparts_get_cell_index_mapper(void *map_data, int nr_sparts,
     const double old_pos_z = sp->x[2];
 
 #ifdef SWIFT_DEBUG_CHECKS
-    if (!s->periodic) {
+    if (!s->periodic && sp->time_bin != time_bin_inhibited) {
       if (old_pos_x < 0. || old_pos_x > dim_x)
         error("Particle outside of volume along X.");
       if (old_pos_y < 0. || old_pos_y > dim_y)
@@ -3375,6 +3377,7 @@ void space_split_recursive(struct space *s, struct cell *c,
             min(ti_black_holes_end_max, cp->black_holes.ti_end_max);
         ti_black_holes_beg_max =
             min(ti_black_holes_beg_max, cp->black_holes.ti_beg_max);
+        star_formation_logger_add(&c->stars.sfh, &cp->stars.sfh);
 
         /* Increase the depth */
         if (cp->maxdepth > maxdepth) maxdepth = cp->maxdepth;
@@ -3516,6 +3519,9 @@ void space_split_recursive(struct space *s, struct cell *c,
       hydro_time_bin_min = min(hydro_time_bin_min, parts[k].time_bin);
       hydro_time_bin_max = max(hydro_time_bin_max, parts[k].time_bin);
       h_max = max(h_max, parts[k].h);
+      /* Collect SFR from the particles after rebuilt */
+      star_formation_logger_log_inactive_part(&parts[k], &xparts[k],
+                                              &c->stars.sfh);
     }
 
     /* xparts: Reset x_diff */
@@ -4167,6 +4173,8 @@ void space_first_init_sparts_mapper(void *restrict map_data, int count,
   const struct space *restrict s = (struct space *)extra_data;
   const struct engine *e = s->e;
 
+  const struct chemistry_global_data *chemistry = e->chemistry;
+
 #ifdef SWIFT_DEBUG_CHECKS
   const ptrdiff_t delta = sp - s->sparts;
 #endif
@@ -4176,6 +4184,7 @@ void space_first_init_sparts_mapper(void *restrict map_data, int count,
   const int with_feedback = (e->policy & engine_policy_feedback);
 
   const struct cosmology *cosmo = e->cosmology;
+  const struct stars_props *stars_properties = e->stars_properties;
   const float a_factor_vel = cosmo->a;
 
   /* Convert velocities to internal units */
@@ -4211,7 +4220,10 @@ void space_first_init_sparts_mapper(void *restrict map_data, int count,
   /* Initialise the rest */
   for (int k = 0; k < count; k++) {
 
-    stars_first_init_spart(&sp[k]);
+    stars_first_init_spart(&sp[k], stars_properties);
+
+    /* Also initialise the chemistry */
+    chemistry_first_init_spart(chemistry, &sp[k]);
 
 #ifdef SWIFT_DEBUG_CHECKS
     if (sp[k].gpart && sp[k].gpart->id_or_neg_offset != -(k + delta))

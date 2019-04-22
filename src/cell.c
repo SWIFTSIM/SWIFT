@@ -54,6 +54,7 @@
 #include "drift.h"
 #include "engine.h"
 #include "error.h"
+#include "feedback.h"
 #include "gravity.h"
 #include "hydro.h"
 #include "hydro_properties.h"
@@ -4191,7 +4192,11 @@ void cell_drift_part(struct cell *c, const struct engine *e, int force) {
       if (fabs(xp->v_full[0] * dt_drift) > e->s->dim[0] ||
           fabs(xp->v_full[1] * dt_drift) > e->s->dim[1] ||
           fabs(xp->v_full[2] * dt_drift) > e->s->dim[2]) {
-        error("Particle drifts by more than a box length!");
+        error(
+            "Particle drifts by more than a box length! id %llu xp->v_full "
+            "%.5e %.5e %.5e p->v %.5e %.5e %.5e",
+            p->id, xp->v_full[0], xp->v_full[1], xp->v_full[2], p->v[0],
+            p->v[1], p->v[2]);
       }
 #endif
 
@@ -4207,11 +4212,7 @@ void cell_drift_part(struct cell *c, const struct engine *e, int force) {
           hydro_remove_part(p, xp);
 
           /* Remove the particle entirely */
-          struct gpart *gp = p->gpart;
           cell_remove_part(e, c, p, xp);
-
-          /* and it's gravity friend */
-          if (gp != NULL) cell_remove_gpart(e, c, gp);
 
           continue;
         }
@@ -4347,7 +4348,10 @@ void cell_drift_gpart(struct cell *c, const struct engine *e, int force) {
       if (fabs(gp->v_full[0] * dt_drift) > e->s->dim[0] ||
           fabs(gp->v_full[1] * dt_drift) > e->s->dim[1] ||
           fabs(gp->v_full[2] * dt_drift) > e->s->dim[2]) {
-        error("Particle drifts by more than a box length!");
+        error(
+            "Particle drifts by more than a box length! gp->v_full %.5e %.5e "
+            "%.5e",
+            gp->v_full[0], gp->v_full[1], gp->v_full[2]);
       }
 #endif
 
@@ -4360,7 +4364,7 @@ void cell_drift_gpart(struct cell *c, const struct engine *e, int force) {
             (gp->x[2] > dim[2]) || (gp->x[2] < 0.)) {  // z
 
           /* Remove the particle entirely */
-          if (gp->type == swift_type_dark_matter) cell_remove_gpart(e, c, gp);
+          cell_remove_gpart(e, c, gp);
 
           continue;
         }
@@ -4527,6 +4531,7 @@ void cell_drift_spart(struct cell *c, const struct engine *e, int force) {
       /* Get ready for a density calculation */
       if (spart_is_active(sp, e)) {
         stars_init_spart(sp);
+        feedback_init_spart(sp);
       }
     }
 
@@ -5076,9 +5081,6 @@ void cell_remove_gpart(const struct engine *e, struct cell *c,
   /* Quick cross-check */
   if (c->nodeID != e->nodeID)
     error("Can't remove a particle in a foreign cell.");
-
-  if (gp->type != swift_type_dark_matter)
-    error("Trying to remove a non-dark matter gpart.");
 
   /* Mark the particle as inhibited */
   gp->time_bin = time_bin_inhibited;
