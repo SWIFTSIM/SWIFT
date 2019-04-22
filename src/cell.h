@@ -633,12 +633,6 @@ struct cell {
     /*! Is the #bpart data of this cell being used in a sub-cell? */
     int hold;
 
-    /*! Does this cell need to be drifted (black holes)? */
-    char do_drift;
-
-    /*! Do any of this cell's sub-cells need to be drifted (black holes)? */
-    char do_sub_drift;
-
   } black_holes;
 
 #ifdef WITH_MPI
@@ -1295,11 +1289,6 @@ __attribute__((always_inline)) INLINE static void cell_free_stars_sorts(
 __attribute__((always_inline)) INLINE static void cell_set_flag(
     struct cell *c, enum cell_flags flag) {
   c->flags |= flag;
-}
-
-__attribute__((always_inline)) INLINE static void cell_set_flag_threadsafe(
-    struct cell *c, enum cell_flags flag) {
-  atomic_or(&c->flags, flag);
 }
 
 /** Clear the given flag for the given cell. */

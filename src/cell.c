@@ -4569,7 +4569,7 @@ void cell_drift_bpart(struct cell *c, const struct engine *e, int force) {
   float cell_h_max = 0.f;
 
   /* Drift irrespective of cell flags? */
-  force |= c->black_holes.do_drift;
+  force |= cell_get_flag(c, cell_flag_do_bh_drift);
 
 #ifdef SWIFT_DEBUG_CHECKS
   /* Check that we only drift local cells. */
@@ -4583,8 +4583,7 @@ void cell_drift_bpart(struct cell *c, const struct engine *e, int force) {
   if (c->black_holes.count == 0) {
 
     /* Clear the drift flags. */
-    c->black_holes.do_drift = 0;
-    c->black_holes.do_sub_drift = 0;
+    cell_clear_flag(c, cell_flag_do_bh_drift & cell_flag_do_bh_sub_drift);
 
     /* Update the time of the last drift */
     c->black_holes.ti_old_part = ti_current;
@@ -4595,7 +4594,7 @@ void cell_drift_bpart(struct cell *c, const struct engine *e, int force) {
   /* Ok, we have some particles somewhere in the hierarchy to drift */
 
   /* Are we not in a leaf ? */
-  if (c->split && (force || c->black_holes.do_sub_drift)) {
+  if (c->split && (force || cell_get_flag(c, cell_flag_do_bh_sub_drift))) {
 
     /* Loop over the progeny and collect their data. */
     for (int k = 0; k < 8; k++) {
@@ -4701,8 +4700,7 @@ void cell_drift_bpart(struct cell *c, const struct engine *e, int force) {
   }
 
   /* Clear the drift flags. */
-  c->black_holes.do_drift = 0;
-  c->black_holes.do_sub_drift = 0;
+  cell_clear_flag(c, cell_flag_do_bh_drift & cell_flag_do_bh_sub_drift);
 }
 
 /**
