@@ -38,27 +38,15 @@ struct logger_index_data {
 };
 
 /**
- * @brief This structure will contain the data related to
- *   the index file.
+ * @brief This structure contains the data related to
+ *   an index file.
  *
  * It is initialized with #logger_index_init and freed with
  * #logger_index_free.
- *
- * The files are read with #logger_index_read_file and
- * can be freed with #logger_index_free_current_file.
  */
 struct logger_index {
   /* The reader */
   struct logger_reader *reader;
-
-  /* List of the time for each file */
-  double *times;
-
-  /* Number of files */
-  int number_files;
-
-  /* List of all the index filenames */
-  char *basename;
 
   /* Particles' ids and offsets */
   struct logger_index_data *data;
@@ -68,14 +56,18 @@ struct logger_index {
 
   /* Number of particles per type */
   long long number_particles[swift_type_count];
+
+  /* Time of the index file */
+  double time;
+
+  /* Integer time of the index file */
+  integertime_t int_time;
+  
 };
 
 void logger_index_init(struct logger_index *index, struct logger_reader *reader,
-		       char *basename);
-void logger_index_read_file(struct logger_index *index, int i);
+		       char *filename);
 
 void logger_index_free(struct logger_index *index);
-
-void logger_index_free_current_file(struct logger_index *index);
 
 #endif // __LOGGER_LOGGER_INDEX_H__

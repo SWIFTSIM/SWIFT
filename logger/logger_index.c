@@ -29,49 +29,24 @@
 #include "logger_tools.h"
 
 /**
- * @brief Initialize the #logger_index.
+ * @brief Initialize the #logger_index by reading the index file.
  *
  * @param index The #logger_index.
  * @param reader The #logger_reader.
- * @param basename The basename of the index files.
+ * @param filename The filename.
  */
 void logger_index_init(struct logger_index *index, struct logger_reader *reader,
-		       char *basename) {
-
-  /* Set pointers to 0. */
-  index->data = NULL;
-
-  /* Set variables default value. */
-  index->total_number_particles = 0;
-
-  for(int i = 0; i < swift_type_count; i++) {
-    index->number_particles[i] = 0;
-  }
-}
-
-/**
- * @brief Read a single index file.
- *
- * @param index The #logger_index.
- * @param i The index of the file.
- */
-void logger_index_read_file(struct logger_index *index, int i) {
-  /* Cleanup the memory of previous file. */
-  logger_index_free_current_file(index);
+		       char *filename) {
 
   /* Open file. */
   FILE *f = NULL;
-  char name[200];
-  sprintf(name, "%s_%04i.index", index->basename, i);
-  f = fopen(name, "rb");
+  f = fopen(filename, "rb");
 
   /* Read the double time. */
-  double time;
-  fread(&time, sizeof(double), 1, f);
+  fread(&index->time, sizeof(double), 1, f);
 
   /* Read the integer time. */
-  double int_time;
-  fread(&int_time, sizeof(integertime_t), 1, f);
+  fread(&index->int_time, sizeof(integertime_t), 1, f);
 
   /* Read the number of particles. */
   fread(index->number_particles, sizeof(long long), swift_type_count, f);

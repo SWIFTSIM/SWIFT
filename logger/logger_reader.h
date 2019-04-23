@@ -55,6 +55,9 @@
  */
 struct logger_reader {
 
+  /* Time of each index file #TODO */
+  double *times;
+
   /* Information contained in the index file */
   struct logger_index index;
   
