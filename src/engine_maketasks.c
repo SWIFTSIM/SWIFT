@@ -50,6 +50,7 @@
 #include "debug.h"
 #include "error.h"
 #include "proxy.h"
+#include "space_getsid.h"
 #include "timers.h"
 
 /**
@@ -136,7 +137,7 @@ void engine_mark_cells_for_hydro_send_tasks_rec(struct engine *e,
 
   /* Get the orientation of the pair. */
   double shift[3];
-  int sid = space_getsid(s->space, &ci, &cj, shift);
+  int sid = space_getsid(e->s, &ci, &cj, shift);
 
   /* Recurse?
      Note that we don't check cell_can_recurse_pair_hydro_task, since that
@@ -481,12 +482,11 @@ void engine_addtasks_send_hydro(struct engine *e, struct cell *ci,
                                 struct task *t_xv, struct task *t_rho,
                                 struct task *t_gradient, struct task *t_ti) {
 #ifdef WITH_MPI
-  struct link *l = NULL;
   struct scheduler *s = &e->sched;
   const int nodeID = cj->nodeID;
 
   /* If this cell has to be sent, add the tasks. */
-  if (ci->attach_send_recv_for_proxy & (1ULL << proxy_id)) {
+  if (ci->mpi.attach_send_recv_for_proxy & (1ULL << proxy_id)) {
     /* Create the tasks and their dependencies? */
     if (t_xv == NULL) {
       /* Make sure this cell is tagged. */
@@ -562,9 +562,10 @@ void engine_addtasks_send_hydro(struct engine *e, struct cell *ci,
         if (l != NULL) {
           scheduler_addunlock(s, t_xv, l->t);
         } else {
-          struct task *t = scheduler_addtask(
-              s, task_type_send, task_subtype_xv, /*flags=*/0, /*implicit=*/1,
-              finger, cj) scheduler_addunlock(s, t_xv, t);
+          struct task *t =
+              scheduler_addtask(s, task_type_send, task_subtype_xv, /*flags=*/0,
+                                /*implicit=*/1, finger, cj);
+          scheduler_addunlock(s, t_xv, t);
           engine_addlink(e, &finger->mpi.hydro.send_xv, t);
         }
 
@@ -576,9 +577,10 @@ void engine_addtasks_send_hydro(struct engine *e, struct cell *ci,
         if (l != NULL) {
           scheduler_addunlock(s, t_rho, l->t);
         } else {
-          struct task *t = scheduler_addtask(
-              s, task_type_send, task_subtype_rho, /*flags=*/0, /*implicit=*/1,
-              finger, cj) scheduler_addunlock(s, t_rho, t);
+          struct task *t =
+              scheduler_addtask(s, task_type_send, task_subtype_rho,
+                                /*flags=*/0, /*implicit=*/1, finger, cj);
+          scheduler_addunlock(s, t_rho, t);
           engine_addlink(e, &finger->mpi.hydro.send_rho, t);
         }
 
@@ -592,7 +594,8 @@ void engine_addtasks_send_hydro(struct engine *e, struct cell *ci,
         } else {
           struct task *t = scheduler_addtask(
               s, task_type_send, task_subtype_tend_part, /*flags=*/0,
-              /*implicit=*/1, finger, cj) scheduler_addunlock(s, t_ti, t);
+              /*implicit=*/1, finger, cj);
+          scheduler_addunlock(s, t_ti, t);
           engine_addlink(e, &finger->mpi.hydro.send_ti, t);
         }
 
@@ -605,9 +608,10 @@ void engine_addtasks_send_hydro(struct engine *e, struct cell *ci,
         if (l != NULL) {
           scheduler_addunlock(s, t_gradient, l->t);
         } else {
-          struct task *t = scheduler_addtask(
-              s, task_type_send, task_subtype_gradient, /*flags=*/0,
-              /*implicit=*/1, finger, cj) scheduler_addunlock(s, t_gradient, t);
+          struct task *t = scheduler_addtask(s, task_type_send,
+                                             task_subtype_gradient, /*flags=*/0,
+                                             /*implicit=*/1, finger, cj);
+          scheduler_addunlock(s, t_gradient, t);
           engine_addlink(e, &finger->mpi.hydro.send_gradient, t);
         }
 #endif
@@ -627,7 +631,7 @@ void engine_addtasks_send_hydro(struct engine *e, struct cell *ci,
   if (ci->split)
     for (int k = 0; k < 8; k++)
       if (ci->progeny[k] != NULL)
-        engine_addtasks_send_hydro(e, ci->progeny[k], cj, t_xv, t_rho,
+        engine_addtasks_send_hydro(e, ci->progeny[k], cj, proxy_id, t_xv, t_rho,
                                    t_gradient, t_ti);
 
 #else
@@ -647,6 +651,7 @@ void engine_addtasks_send_hydro(struct engine *e, struct cell *ci,
 void engine_addtasks_send_stars(struct engine *e, struct cell *ci,
                                 struct cell *cj, struct task *t_feedback,
                                 struct task *t_ti) {
+
 #ifdef WITH_MPI
 
   struct link *l = NULL;
@@ -661,7 +666,9 @@ void engine_addtasks_send_stars(struct engine *e, struct cell *ci,
 
   /* If so, attach send tasks. */
   if (l != NULL) {
+
     if (t_feedback == NULL) {
+
       /* Make sure this cell is tagged. */
       cell_ensure_tagged(ci);
 
@@ -680,27 +687,19 @@ void engine_addtasks_send_stars(struct engine *e, struct cell *ci,
 
       /* Drift before you send */
       scheduler_addunlock(s, ci->hydro.super->stars.drift, t_feedback);
+
+      scheduler_addunlock(s, ci->super->timestep, t_ti);
     }
 
-    scheduler_addunlock(s, ci->super->timestep, t_ti);
-    if (with_limiter) scheduler_addunlock(s, t_limiter, ci->super->timestep);
-    if (with_limiter)
-      scheduler_addunlock(s, t_limiter, ci->super->timestep_limiter);
-    if (with_limiter) scheduler_addunlock(s, ci->super->kick2, t_limiter);
-    if (with_limiter) scheduler_addunlock(s, ci->super->timestep_limiter, t_ti);
+    engine_addlink(e, &ci->mpi.stars.send, t_feedback);
+    engine_addlink(e, &ci->mpi.stars.send_ti, t_ti);
   }
 
-  /* Add them to the local cell. */
-  engine_addlink(e, &ci->mpi.send_ti, t_ti);
-  if (with_limiter) engine_addlink(e, &ci->mpi.limiter.send, t_limiter);
-}
-
-/* Recurse? */
-if (ci->split)
-  for (int k = 0; k < 8; k++)
-    if (ci->progeny[k] != NULL)
-      engine_addtasks_send_timestep(e, ci->progeny[k], cj, t_ti, t_limiter,
-                                    with_limiter);
+  /* Recurse? */
+  if (ci->split)
+    for (int k = 0; k < 8; k++)
+      if (ci->progeny[k] != NULL)
+        engine_addtasks_send_stars(e, ci->progeny[k], cj, t_feedback, t_ti);
 
 #else
   error("SWIFT was not compiled with MPI support.");
@@ -2416,13 +2415,17 @@ void engine_addtasks_send_mapper(void *map_data, int num_elements,
     struct cell *cj = cell_type_pairs[k].cj;
     const int type = cell_type_pairs[k].type;
 
+    /* Find the proxy for this task. */
+    int pid = 0;
+    while (pid < e->nr_proxies && e->proxies[pid].nodeID != cj->nodeID) pid++;
+
     /* Add the send task for the particle timesteps. */
     // engine_addtasks_send_timestep(e, ci, cj, NULL, NULL, with_limiter);
 
     /* Add the send tasks for the cells in the proxy that have a hydro
      * connection. */
     if ((e->policy & engine_policy_hydro) && (type & proxy_cell_type_hydro))
-      engine_addtasks_send_hydro(e, ci, cj, /*t_xv=*/NULL,
+      engine_addtasks_send_hydro(e, ci, cj, pid, /*t_xv=*/NULL,
                                  /*t_rho=*/NULL, /*t_gradient=*/NULL,
                                  /*t_ti=*/NULL);
 
