@@ -434,7 +434,7 @@ void engine_mark_cells_for_hydro_send_tasks(struct engine *e, struct cell *c,
   /* If this cell has already been marked for send, bail. */
   if (c->mpi.attach_send_recv_for_proxy & (1ULL << proxy_id)) return;
 
-  /* Look for hydro tasks involving the foreign_node_id. */
+  /* Look for non-subcell hydro tasks involving the foreign_node_id. */
   for (struct link *l = c->hydro.density; l != NULL; l = l->next) {
     struct task *t = l->t;
 
@@ -447,20 +447,35 @@ void engine_mark_cells_for_hydro_send_tasks(struct engine *e, struct cell *c,
         c->mpi.attach_send_recv_for_proxy |= 1ULL << proxy_id;
         return;
       }
+    }
+  }
 
-      /* If this is a sub-cell task, recurse on it. */
-      else if (t->type == task_type_sub_pair) {
+  /* Look for subcell hydro tasks involving the foreign_node_id. We do this
+     only after checking for non-subcell tasks since any of those may have
+     already marked the cell for send. */
+  for (struct link *l = c->hydro.density; l != NULL; l = l->next) {
+    struct task *t = l->t;
+
+    /* Does this task involve the foreign cell? */
+    if (t->ci->nodeID == foreign_node_id ||
+        (t->cj != NULL && t->cj->nodeID == foreign_node_id)) {
+      /* If this is a sub-cell task, recurse on it. As opposed to the
+         non-subcell tasks, we don't bail here since we don't know at what level
+         the send/recv flags were set. */
+      if (t->type == task_type_sub_pair) {
         engine_mark_cells_for_hydro_send_tasks_rec(e, t->ci, t->cj,
                                                    foreign_node_id, proxy_id);
       }
-
-      /* Otherwise, something is not right. */
-      else {
-        error(
-            "Was not expecting anything other than task_type_pair or "
-            "task_type_sub_pair.");
-      }
     }
+  }
+
+  /* Recurse? */
+  if (c->mpi.attach_send_recv_for_proxy & (1ULL << proxy_id)) return;
+  if (c->split) {
+    for (int k = 0; k < 8; k++)
+      if (c->progeny[k] != NULL)
+        engine_mark_cells_for_hydro_send_tasks(e, c->progeny[k],
+                                               foreign_node_id, proxy_id);
   }
 }
 #endif  // WITH_MPI
