@@ -41,6 +41,7 @@
 #include "cell.h"
 #include "engine.h"
 #include "error.h"
+#include "memuse.h"
 #include "space.h"
 
 #ifdef WITH_MPI
@@ -89,9 +90,9 @@ void proxy_tags_exchange(struct proxy *proxies, int num_proxies,
   /* Allocate the tags. */
   int *tags_in = NULL;
   int *tags_out = NULL;
-  if (posix_memalign((void **)&tags_in, SWIFT_CACHE_ALIGNMENT,
+  if (swift_memalign("tags_in", (void **)&tags_in, SWIFT_CACHE_ALIGNMENT,
                      sizeof(int) * count_in) != 0 ||
-      posix_memalign((void **)&tags_out, SWIFT_CACHE_ALIGNMENT,
+      swift_memalign("tags_out", (void **)&tags_out, SWIFT_CACHE_ALIGNMENT,
                      sizeof(int) * count_out) != 0)
     error("Failed to allocate tags buffers.");
 
@@ -167,8 +168,8 @@ void proxy_tags_exchange(struct proxy *proxies, int num_proxies,
     error("MPI_Waitall on sends failed.");
 
   /* Clean up. */
-  free(tags_in);
-  free(tags_out);
+  swift_free("tags_in", tags_in);
+  swift_free("tags_out", tags_out);
   free(reqs_in);
   free(cids_in);
 
@@ -204,10 +205,12 @@ void proxy_cells_exchange_first(struct proxy *p) {
   // p->size_pcells_out , p->mynodeID , p->nodeID ); fflush(stdout);
 
   /* Allocate and fill the pcell buffer. */
-  if (p->pcells_out != NULL) free(p->pcells_out);
-  if (posix_memalign((void **)&p->pcells_out, SWIFT_STRUCT_ALIGNMENT,
+  if (p->pcells_out != NULL) swift_free("pcells_out", p->pcells_out);
+  if (swift_memalign("pcells_out", (void **)&p->pcells_out,
+                     SWIFT_STRUCT_ALIGNMENT,
                      sizeof(struct pcell) * p->size_pcells_out) != 0)
     error("Failed to allocate pcell_out buffer.");
+
   for (int ind = 0, k = 0; k < p->nr_cells_out; k++) {
     memcpy(&p->pcells_out[ind], p->cells_out[k]->mpi.pcell,
            sizeof(struct pcell) * p->cells_out[k]->mpi.pcell_size);
@@ -250,8 +253,9 @@ void proxy_cells_exchange_second(struct proxy *p) {
 #ifdef WITH_MPI
 
   /* Re-allocate the pcell_in buffer. */
-  if (p->pcells_in != NULL) free(p->pcells_in);
-  if (posix_memalign((void **)&p->pcells_in, SWIFT_STRUCT_ALIGNMENT,
+  if (p->pcells_in != NULL) swift_free("pcells_in", p->pcells_in);
+  if (swift_memalign("pcells_in", (void **)&p->pcells_in,
+                     SWIFT_STRUCT_ALIGNMENT,
                      sizeof(struct pcell) * p->size_pcells_in) != 0)
     error("Failed to allocate pcell_in buffer.");
 
@@ -397,7 +401,7 @@ void proxy_cells_exchange(struct proxy *proxies, int num_proxies,
 
   /* Allocate the pcells. */
   struct pcell *pcells = NULL;
-  if (posix_memalign((void **)&pcells, SWIFT_CACHE_ALIGNMENT,
+  if (swift_memalign("pcells", (void **)&pcells, SWIFT_CACHE_ALIGNMENT,
                      sizeof(struct pcell) * count_out) != 0)
     error("Failed to allocate pcell buffer.");
 
@@ -467,7 +471,7 @@ void proxy_cells_exchange(struct proxy *proxies, int num_proxies,
 
   /* Clean up. */
   free(reqs);
-  free(pcells);
+  swift_free("pcells", pcells);
 
 #else
   error("SWIFT was not compiled with MPI support.");
@@ -580,7 +584,8 @@ void proxy_parts_exchange_first(struct proxy *p) {
   p->buff_out[0] = p->nr_parts_out;
   p->buff_out[1] = p->nr_gparts_out;
   p->buff_out[2] = p->nr_sparts_out;
-  if (MPI_Isend(p->buff_out, 3, MPI_INT, p->nodeID,
+  p->buff_out[3] = p->nr_bparts_out;
+  if (MPI_Isend(p->buff_out, 4, MPI_INT, p->nodeID,
                 p->mynodeID * proxy_tag_shift + proxy_tag_count, MPI_COMM_WORLD,
                 &p->req_parts_count_out) != MPI_SUCCESS)
     error("Failed to isend nr of parts.");
@@ -608,7 +613,7 @@ void proxy_parts_exchange_first(struct proxy *p) {
                   p->mynodeID * proxy_tag_shift + proxy_tag_gparts,
                   MPI_COMM_WORLD, &p->req_gparts_out) != MPI_SUCCESS)
       error("Failed to isend gpart data.");
-    // message( "isent gpart data (%i) to node %i." , p->nr_parts_out ,
+    // message( "isent gpart data (%i) to node %i." , p->nr_gparts_out ,
     // p->nodeID ); fflush(stdout);
   }
 
@@ -617,12 +622,20 @@ void proxy_parts_exchange_first(struct proxy *p) {
                   p->mynodeID * proxy_tag_shift + proxy_tag_sparts,
                   MPI_COMM_WORLD, &p->req_sparts_out) != MPI_SUCCESS)
       error("Failed to isend spart data.");
-    // message( "isent gpart data (%i) to node %i." , p->nr_parts_out ,
+    // message( "isent spart data (%i) to node %i." , p->nr_sparts_out ,
+    // p->nodeID ); fflush(stdout);
+  }
+  if (p->nr_bparts_out > 0) {
+    if (MPI_Isend(p->bparts_out, p->nr_bparts_out, bpart_mpi_type, p->nodeID,
+                  p->mynodeID * proxy_tag_shift + proxy_tag_bparts,
+                  MPI_COMM_WORLD, &p->req_bparts_out) != MPI_SUCCESS)
+      error("Failed to isend bpart data.");
+    // message( "isent bpart data (%i) to node %i." , p->nr_bparts_out ,
     // p->nodeID ); fflush(stdout);
   }
 
   /* Receive the number of particles. */
-  if (MPI_Irecv(p->buff_in, 3, MPI_INT, p->nodeID,
+  if (MPI_Irecv(p->buff_in, 4, MPI_INT, p->nodeID,
                 p->nodeID * proxy_tag_shift + proxy_tag_count, MPI_COMM_WORLD,
                 &p->req_parts_count_in) != MPI_SUCCESS)
     error("Failed to irecv nr of parts.");
@@ -640,37 +653,47 @@ void proxy_parts_exchange_second(struct proxy *p) {
   p->nr_parts_in = p->buff_in[0];
   p->nr_gparts_in = p->buff_in[1];
   p->nr_sparts_in = p->buff_in[2];
+  p->nr_bparts_in = p->buff_in[3];
 
   /* Is there enough space in the buffers? */
   if (p->nr_parts_in > p->size_parts_in) {
     do {
       p->size_parts_in *= proxy_buffgrow;
     } while (p->nr_parts_in > p->size_parts_in);
-    free(p->parts_in);
-    free(p->xparts_in);
-    if ((p->parts_in = (struct part *)malloc(sizeof(struct part) *
-                                             p->size_parts_in)) == NULL ||
-        (p->xparts_in = (struct xpart *)malloc(sizeof(struct xpart) *
-                                               p->size_parts_in)) == NULL)
+    swift_free("parts_in", p->parts_in);
+    swift_free("xparts_in", p->xparts_in);
+    if ((p->parts_in = (struct part *)swift_malloc(
+             "parts_in", sizeof(struct part) * p->size_parts_in)) == NULL ||
+        (p->xparts_in = (struct xpart *)swift_malloc(
+             "xparts_in", sizeof(struct xpart) * p->size_parts_in)) == NULL)
       error("Failed to re-allocate parts_in buffers.");
   }
   if (p->nr_gparts_in > p->size_gparts_in) {
     do {
       p->size_gparts_in *= proxy_buffgrow;
     } while (p->nr_gparts_in > p->size_gparts_in);
-    free(p->gparts_in);
-    if ((p->gparts_in = (struct gpart *)malloc(sizeof(struct gpart) *
-                                               p->size_gparts_in)) == NULL)
+    swift_free("gparts_in", p->gparts_in);
+    if ((p->gparts_in = (struct gpart *)swift_malloc(
+             "gparts_in", sizeof(struct gpart) * p->size_gparts_in)) == NULL)
       error("Failed to re-allocate gparts_in buffers.");
   }
   if (p->nr_sparts_in > p->size_sparts_in) {
     do {
       p->size_sparts_in *= proxy_buffgrow;
     } while (p->nr_sparts_in > p->size_sparts_in);
-    free(p->sparts_in);
-    if ((p->sparts_in = (struct spart *)malloc(sizeof(struct spart) *
-                                               p->size_sparts_in)) == NULL)
+    swift_free("sparts_in", p->sparts_in);
+    if ((p->sparts_in = (struct spart *)swift_malloc(
+             "sparts_in", sizeof(struct spart) * p->size_sparts_in)) == NULL)
       error("Failed to re-allocate sparts_in buffers.");
+  }
+  if (p->nr_bparts_in > p->size_bparts_in) {
+    do {
+      p->size_bparts_in *= proxy_buffgrow;
+    } while (p->nr_bparts_in > p->size_bparts_in);
+    swift_free("bparts_in", p->bparts_in);
+    if ((p->bparts_in = (struct bpart *)swift_malloc(
+             "bparts_in", sizeof(struct bpart) * p->size_bparts_in)) == NULL)
+      error("Failed to re-allocate bparts_in buffers.");
   }
 
   /* Receive the particle buffers. */
@@ -698,7 +721,15 @@ void proxy_parts_exchange_second(struct proxy *p) {
                   p->nodeID * proxy_tag_shift + proxy_tag_sparts,
                   MPI_COMM_WORLD, &p->req_sparts_in) != MPI_SUCCESS)
       error("Failed to irecv spart data.");
-    // message( "irecv gpart data (%i) from node %i." , p->nr_gparts_in ,
+    // message( "irecv spart data (%i) from node %i." , p->nr_sparts_in ,
+    // p->nodeID ); fflush(stdout);
+  }
+  if (p->nr_bparts_in > 0) {
+    if (MPI_Irecv(p->bparts_in, p->nr_bparts_in, bpart_mpi_type, p->nodeID,
+                  p->nodeID * proxy_tag_shift + proxy_tag_bparts,
+                  MPI_COMM_WORLD, &p->req_bparts_in) != MPI_SUCCESS)
+      error("Failed to irecv bpart data.");
+    // message( "irecv bpart data (%i) from node %i." , p->nr_bparts_in ,
     // p->nodeID ); fflush(stdout);
   }
 
@@ -725,15 +756,15 @@ void proxy_parts_load(struct proxy *p, const struct part *parts,
     } while (p->nr_parts_out + N > p->size_parts_out);
     struct part *tp = NULL;
     struct xpart *txp = NULL;
-    if ((tp = (struct part *)malloc(sizeof(struct part) * p->size_parts_out)) ==
-            NULL ||
-        (txp = (struct xpart *)malloc(sizeof(struct xpart) *
-                                      p->size_parts_out)) == NULL)
+    if ((tp = (struct part *)swift_malloc(
+             "parts_out", sizeof(struct part) * p->size_parts_out)) == NULL ||
+        (txp = (struct xpart *)swift_malloc(
+             "xparts_out", sizeof(struct xpart) * p->size_parts_out)) == NULL)
       error("Failed to re-allocate parts_out buffers.");
     memcpy(tp, p->parts_out, sizeof(struct part) * p->nr_parts_out);
     memcpy(txp, p->xparts_out, sizeof(struct xpart) * p->nr_parts_out);
-    free(p->parts_out);
-    free(p->xparts_out);
+    swift_free("parts_out", p->parts_out);
+    swift_free("xparts_out", p->xparts_out);
     p->parts_out = tp;
     p->xparts_out = txp;
   }
@@ -761,11 +792,11 @@ void proxy_gparts_load(struct proxy *p, const struct gpart *gparts, int N) {
       p->size_gparts_out *= proxy_buffgrow;
     } while (p->nr_gparts_out + N > p->size_gparts_out);
     struct gpart *tp;
-    if ((tp = (struct gpart *)malloc(sizeof(struct gpart) *
-                                     p->size_gparts_out)) == NULL)
+    if ((tp = (struct gpart *)swift_malloc(
+             "gparts_out", sizeof(struct gpart) * p->size_gparts_out)) == NULL)
       error("Failed to re-allocate gparts_out buffers.");
     memcpy(tp, p->gparts_out, sizeof(struct gpart) * p->nr_gparts_out);
-    free(p->gparts_out);
+    swift_free("gparts_out", p->gparts_out);
     p->gparts_out = tp;
   }
 
@@ -791,11 +822,11 @@ void proxy_sparts_load(struct proxy *p, const struct spart *sparts, int N) {
       p->size_sparts_out *= proxy_buffgrow;
     } while (p->nr_sparts_out + N > p->size_sparts_out);
     struct spart *tp;
-    if ((tp = (struct spart *)malloc(sizeof(struct spart) *
-                                     p->size_sparts_out)) == NULL)
+    if ((tp = (struct spart *)swift_malloc(
+             "sparts_out", sizeof(struct spart) * p->size_sparts_out)) == NULL)
       error("Failed to re-allocate sparts_out buffers.");
     memcpy(tp, p->sparts_out, sizeof(struct spart) * p->nr_sparts_out);
-    free(p->sparts_out);
+    swift_free("sparts_out", p->sparts_out);
     p->sparts_out = tp;
   }
 
@@ -804,6 +835,36 @@ void proxy_sparts_load(struct proxy *p, const struct spart *sparts, int N) {
 
   /* Increase the counters. */
   p->nr_sparts_out += N;
+}
+
+/**
+ * @brief Load bparts onto a proxy for exchange.
+ *
+ * @param p The #proxy.
+ * @param bparts Pointer to an array of #bpart to send.
+ * @param N The number of bparts.
+ */
+void proxy_bparts_load(struct proxy *p, const struct bpart *bparts, int N) {
+
+  /* Is there enough space in the buffer? */
+  if (p->nr_bparts_out + N > p->size_bparts_out) {
+    do {
+      p->size_bparts_out *= proxy_buffgrow;
+    } while (p->nr_bparts_out + N > p->size_bparts_out);
+    struct bpart *tp;
+    if ((tp = (struct bpart *)swift_malloc(
+             "bparts_out", sizeof(struct bpart) * p->size_bparts_out)) == NULL)
+      error("Failed to re-allocate bparts_out buffers.");
+    memcpy(tp, p->bparts_out, sizeof(struct bpart) * p->nr_bparts_out);
+    swift_free("bparts_out", p->bparts_out);
+    p->bparts_out = tp;
+  }
+
+  /* Copy the parts and xparts data to the buffer. */
+  memcpy(&p->bparts_out[p->nr_bparts_out], bparts, sizeof(struct bpart) * N);
+
+  /* Increase the counters. */
+  p->nr_bparts_out += N;
 }
 
 /**
@@ -844,19 +905,19 @@ void proxy_init(struct proxy *p, int mynodeID, int nodeID) {
   /* Allocate the part send and receive buffers, if needed. */
   if (p->parts_in == NULL) {
     p->size_parts_in = proxy_buffinit;
-    if ((p->parts_in = (struct part *)malloc(sizeof(struct part) *
-                                             p->size_parts_in)) == NULL ||
-        (p->xparts_in = (struct xpart *)malloc(sizeof(struct xpart) *
-                                               p->size_parts_in)) == NULL)
+    if ((p->parts_in = (struct part *)swift_malloc(
+             "parts_in", sizeof(struct part) * p->size_parts_in)) == NULL ||
+        (p->xparts_in = (struct xpart *)swift_malloc(
+             "xparts_in", sizeof(struct xpart) * p->size_parts_in)) == NULL)
       error("Failed to allocate parts_in buffers.");
   }
   p->nr_parts_in = 0;
   if (p->parts_out == NULL) {
     p->size_parts_out = proxy_buffinit;
-    if ((p->parts_out = (struct part *)malloc(sizeof(struct part) *
-                                              p->size_parts_out)) == NULL ||
-        (p->xparts_out = (struct xpart *)malloc(sizeof(struct xpart) *
-                                                p->size_parts_out)) == NULL)
+    if ((p->parts_out = (struct part *)swift_malloc(
+             "parts_out", sizeof(struct part) * p->size_parts_out)) == NULL ||
+        (p->xparts_out = (struct xpart *)swift_malloc(
+             "xparts_out", sizeof(struct xpart) * p->size_parts_out)) == NULL)
       error("Failed to allocate parts_out buffers.");
   }
   p->nr_parts_out = 0;
@@ -864,15 +925,15 @@ void proxy_init(struct proxy *p, int mynodeID, int nodeID) {
   /* Allocate the gpart send and receive buffers, if needed. */
   if (p->gparts_in == NULL) {
     p->size_gparts_in = proxy_buffinit;
-    if ((p->gparts_in = (struct gpart *)malloc(sizeof(struct gpart) *
-                                               p->size_gparts_in)) == NULL)
+    if ((p->gparts_in = (struct gpart *)swift_malloc(
+             "gparts_in", sizeof(struct gpart) * p->size_gparts_in)) == NULL)
       error("Failed to allocate gparts_in buffers.");
   }
   p->nr_gparts_in = 0;
   if (p->gparts_out == NULL) {
     p->size_gparts_out = proxy_buffinit;
-    if ((p->gparts_out = (struct gpart *)malloc(sizeof(struct gpart) *
-                                                p->size_gparts_out)) == NULL)
+    if ((p->gparts_out = (struct gpart *)swift_malloc(
+             "gparts_out", sizeof(struct gpart) * p->size_gparts_out)) == NULL)
       error("Failed to allocate gparts_out buffers.");
   }
   p->nr_gparts_out = 0;
@@ -880,18 +941,34 @@ void proxy_init(struct proxy *p, int mynodeID, int nodeID) {
   /* Allocate the spart send and receive buffers, if needed. */
   if (p->sparts_in == NULL) {
     p->size_sparts_in = proxy_buffinit;
-    if ((p->sparts_in = (struct spart *)malloc(sizeof(struct spart) *
-                                               p->size_sparts_in)) == NULL)
+    if ((p->sparts_in = (struct spart *)swift_malloc(
+             "sparts_in", sizeof(struct spart) * p->size_sparts_in)) == NULL)
       error("Failed to allocate sparts_in buffers.");
   }
   p->nr_sparts_in = 0;
   if (p->sparts_out == NULL) {
     p->size_sparts_out = proxy_buffinit;
-    if ((p->sparts_out = (struct spart *)malloc(sizeof(struct spart) *
-                                                p->size_sparts_out)) == NULL)
+    if ((p->sparts_out = (struct spart *)swift_malloc(
+             "sparts_out", sizeof(struct spart) * p->size_sparts_out)) == NULL)
       error("Failed to allocate sparts_out buffers.");
   }
   p->nr_sparts_out = 0;
+
+  /* Allocate the bpart send and receive buffers, if needed. */
+  if (p->bparts_in == NULL) {
+    p->size_bparts_in = proxy_buffinit;
+    if ((p->bparts_in = (struct bpart *)swift_malloc(
+             "bparts_in", sizeof(struct bpart) * p->size_bparts_in)) == NULL)
+      error("Failed to allocate bparts_in buffers.");
+  }
+  p->nr_bparts_in = 0;
+  if (p->bparts_out == NULL) {
+    p->size_bparts_out = proxy_buffinit;
+    if ((p->bparts_out = (struct bpart *)swift_malloc(
+             "bparts_out", sizeof(struct bpart) * p->size_bparts_out)) == NULL)
+      error("Failed to allocate bparts_out buffers.");
+  }
+  p->nr_bparts_out = 0;
 }
 
 /**

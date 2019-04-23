@@ -442,6 +442,9 @@ void pairs_all_stars_density(struct runner *r, struct cell *ci,
 
       struct part *pj = &cj->hydro.parts[j];
 
+      /* Early abort? */
+      if (part_is_inhibited(pj, e)) continue;
+
       /* Pairwise distance */
       r2 = 0.0f;
       for (int k = 0; k < 3; k++) {
@@ -471,6 +474,9 @@ void pairs_all_stars_density(struct runner *r, struct cell *ci,
     for (int i = 0; i < ci->hydro.count; ++i) {
 
       struct part *pi = &ci->hydro.parts[i];
+
+      /* Early abort? */
+      if (part_is_inhibited(pi, e)) continue;
 
       /* Pairwise distance */
       r2 = 0.0f;
@@ -638,6 +644,7 @@ void self_all_force(struct runner *r, struct cell *ci) {
 }
 
 void self_all_stars_density(struct runner *r, struct cell *ci) {
+
   float r2, hi, hj, hig2, dxi[3];
   struct spart *spi;
   struct part *pj;
@@ -660,6 +667,9 @@ void self_all_stars_density(struct runner *r, struct cell *ci) {
       pj = &ci->hydro.parts[j];
       hj = pj->h;
 
+      /* Early abort? */
+      if (part_is_inhibited(pj, e)) continue;
+
       /* Pairwise distance */
       r2 = 0.0f;
       for (int k = 0; k < 3; k++) {
@@ -668,7 +678,7 @@ void self_all_stars_density(struct runner *r, struct cell *ci) {
       }
 
       /* Hit or miss? */
-      if (r2 > 0.f && r2 < hig2) {
+      if (r2 < hig2) {
         /* Interact */
         runner_iact_nonsym_stars_density(r2, dxi, hi, hj, spi, pj, a, H);
       }
@@ -816,9 +826,9 @@ void shuffle_sparticles(struct spart *sparts, const int scount) {
  * @param a Value a
  * @param b Value b
  * @param threshold The limit on the relative difference between the two values
- * @param absDiff Absolute difference: |a - b|
- * @param absSum Absolute sum: |a + b|
- * @param relDiff Relative difference: |a - b|/|a + b|
+ * @param absDiff (return) Absolute difference: |a - b|
+ * @param absSum (return) Absolute sum: |a + b|
+ * @param relDiff (return) Relative difference: |a - b|/|a + b|
  *
  * @return 1 if difference found, 0 otherwise
  */

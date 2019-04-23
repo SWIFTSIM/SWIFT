@@ -25,9 +25,8 @@ TimeIntegration:
 Snapshots:
   basename:   output      # Common part of the name of output files
   time_first: 0.          # (Optional) Time of the first output if non-cosmological time-integration (in internal units)
-  delta_time: 0.001        # Time difference between consecutive outputs (in internal units)
+  delta_time: 0.001       # Time difference between consecutive outputs (in internal units)
 
-  
 # Parameters governing the conserved quantities statistics
 Statistics:
   delta_time:           1e-2     # Time between statistics output
@@ -45,27 +44,29 @@ SPH:
   CFL_condition:         0.1      # Courant-Friedrich-Levy condition for time integration.
   h_min_ratio:           0.1      # Minimal smoothing in units of softening.
   h_max:                 10.
+  minimal_temperature:   10.      # Kelvin
 
 # Standard EAGLE cooling options
 EAGLECooling:
   dir_name:                ./coolingtables/  # Location of the Wiersma+08 cooling tables
   H_reion_z:               11.5              # Redshift of Hydrogen re-ionization
+  H_reion_eV_p_H:          2.0
   He_reion_z_centre:       3.5               # Redshift of the centre of the Helium re-ionization Gaussian
   He_reion_z_sigma:        0.5               # Spread in redshift of the  Helium re-ionization Gaussian
   He_reion_eV_p_H:         2.0               # Energy inject by Helium re-ionization in electron-volt per Hydrogen atom
 
-# Primordial abundances
+# Solar abundances
 EAGLEChemistry:
-  init_abundance_metal:     0.0129          # Inital fraction of particle mass in *all* metals
+  init_abundance_metal:     0.0129       # Inital fraction of particle mass in *all* metals
   init_abundance_Hydrogen:  0.7065       # Inital fraction of particle mass in Hydrogen
-  init_abundance_Helium:    0.2806        # Inital fraction of particle mass in Helium
-  init_abundance_Carbon:    0.00207        # Inital fraction of particle mass in Carbon
-  init_abundance_Nitrogen:  0.000836        # Inital fraction of particle mass in Nitrogen
-  init_abundance_Oxygen:    0.00549        # Inital fraction of particle mass in Oxygen
-  init_abundance_Neon:      0.00141        # Inital fraction of particle mass in Neon
-  init_abundance_Magnesium: 0.000591        # Inital fraction of particle mass in Magnesium
-  init_abundance_Silicon:   0.000683        # Inital fraction of particle mass in Silicon
-  init_abundance_Iron:      0.0011        # Inital fraction of particle mass in Iron
+  init_abundance_Helium:    0.2806       # Inital fraction of particle mass in Helium
+  init_abundance_Carbon:    0.00207      # Inital fraction of particle mass in Carbon
+  init_abundance_Nitrogen:  0.000836     # Inital fraction of particle mass in Nitrogen
+  init_abundance_Oxygen:    0.00549      # Inital fraction of particle mass in Oxygen
+  init_abundance_Neon:      0.00141      # Inital fraction of particle mass in Neon
+  init_abundance_Magnesium: 0.000591     # Inital fraction of particle mass in Magnesium
+  init_abundance_Silicon:   0.000683     # Inital fraction of particle mass in Silicon
+  init_abundance_Iron:      0.0011       # Inital fraction of particle mass in Iron
 
 # Hernquist potential parameters
 HernquistPotential:

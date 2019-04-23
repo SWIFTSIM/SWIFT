@@ -53,6 +53,21 @@ static INLINE float entropy_floor(
 }
 
 /**
+ * @brief Compute the temperature from the entropy floor for a given #part
+ *
+ * Simply return 0 (no floor).
+ *
+ * @param p The #part.
+ * @param cosmo The cosmological model.
+ * @param props The properties of the entropy floor.
+ */
+static INLINE float entropy_floor_temperature(
+    const struct part *p, const struct cosmology *cosmo,
+    const struct entropy_floor_properties *props) {
+  return 0.f;
+}
+
+/**
  * @brief Initialise the entropy floor by reading the parameters and converting
  * to internal units.
  *

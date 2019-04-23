@@ -37,6 +37,7 @@
 #include "parallel_io.h"
 
 /* Local includes. */
+#include "black_holes_io.h"
 #include "chemistry_io.h"
 #include "common_io.h"
 #include "cooling_io.h"
@@ -50,6 +51,7 @@
 #include "hydro_properties.h"
 #include "io_properties.h"
 #include "kernel_hydro.h"
+#include "memuse.h"
 #include "part.h"
 #include "part_type.h"
 #include "star_formation_io.h"
@@ -472,7 +474,7 @@ void writeArray_chunk(struct engine* e, hid_t h_data,
 
   /* Allocate temporary buffer */
   void* temp = NULL;
-  if (posix_memalign((void**)&temp, IO_BUFFER_ALIGNMENT,
+  if (swift_memalign("writebuff", (void**)&temp, IO_BUFFER_ALIGNMENT,
                      num_elements * typeSize) != 0)
     error("Unable to allocate temporary i/o buffer");
 
@@ -556,7 +558,7 @@ void writeArray_chunk(struct engine* e, hid_t h_data,
 #endif
 
   /* Free and close everything */
-  free(temp);
+  swift_free("writebuff", temp);
   H5Sclose(h_memspace);
   H5Sclose(h_filespace);
 }
@@ -650,14 +652,17 @@ void writeArray(struct engine* e, hid_t grp, char* fileName,
  * @param parts (output) The array of #part read from the file.
  * @param gparts (output) The array of #gpart read from the file.
  * @param sparts (output) The array of #spart read from the file.
+ * @param bparts (output) The array of #bpart read from the file.
  * @param Ngas (output) The number of particles read from the file.
  * @param Ngparts (output) The number of particles read from the file.
  * @param Nstars (output) The number of particles read from the file.
+ * @param Nblackholes (output) The number of particles read from the file.
  * @param flag_entropy (output) 1 if the ICs contained Entropy in the
  * InternalEnergy field
  * @param with_hydro Are we running with hydro ?
  * @param with_gravity Are we running with gravity ?
  * @param with_stars Are we running with stars ?
+ * @param with_black_holes Are we running with black holes ?
  * @param cleanup_h Are we cleaning-up h-factors from the quantities we read?
  * @param cleanup_sqrt_a Are we cleaning-up the sqrt(a) factors in the Gadget
  * IC velocities?
@@ -673,12 +678,13 @@ void writeArray(struct engine* e, hid_t grp, char* fileName,
  */
 void read_ic_parallel(char* fileName, const struct unit_system* internal_units,
                       double dim[3], struct part** parts, struct gpart** gparts,
-                      struct spart** sparts, size_t* Ngas, size_t* Ngparts,
-                      size_t* Nstars, int* flag_entropy, int with_hydro,
-                      int with_gravity, int with_stars, int cleanup_h,
-                      int cleanup_sqrt_a, double h, double a, int mpi_rank,
-                      int mpi_size, MPI_Comm comm, MPI_Info info, int n_threads,
-                      int dry_run) {
+                      struct spart** sparts, struct bpart** bparts,
+                      size_t* Ngas, size_t* Ngparts, size_t* Nstars,
+                      size_t* Nblackholes, int* flag_entropy, int with_hydro,
+                      int with_gravity, int with_stars, int with_black_holes,
+                      int cleanup_h, int cleanup_sqrt_a, double h, double a,
+                      int mpi_rank, int mpi_size, MPI_Comm comm, MPI_Info info,
+                      int n_threads, int dry_run) {
 
   hid_t h_file = 0, h_grp = 0;
   /* GADGET has only cubic boxes (in cosmological mode) */
@@ -690,6 +696,9 @@ void read_ic_parallel(char* fileName, const struct unit_system* internal_units,
   long long offset[swift_type_count] = {0};
   int dimension = 3; /* Assume 3D if nothing is specified */
   size_t Ndm = 0;
+
+  /* Initialise counters */
+  *Ngas = 0, *Ngparts = 0, *Nstars = 0, *Nblackholes = 0;
 
   /* Open file */
   /* message("Opening file '%s' as IC.", fileName); */
@@ -815,7 +824,7 @@ void read_ic_parallel(char* fileName, const struct unit_system* internal_units,
   /* Allocate memory to store SPH particles */
   if (with_hydro) {
     *Ngas = N[0];
-    if (posix_memalign((void**)parts, part_align,
+    if (swift_memalign("parts", (void**)parts, part_align,
                        (*Ngas) * sizeof(struct part)) != 0)
       error("Error while allocating memory for particles");
     bzero(*parts, *Ngas * sizeof(struct part));
@@ -824,10 +833,19 @@ void read_ic_parallel(char* fileName, const struct unit_system* internal_units,
   /* Allocate memory to store stars particles */
   if (with_stars) {
     *Nstars = N[swift_type_stars];
-    if (posix_memalign((void**)sparts, spart_align,
+    if (swift_memalign("sparts", (void**)sparts, spart_align,
                        *Nstars * sizeof(struct spart)) != 0)
       error("Error while allocating memory for stars particles");
     bzero(*sparts, *Nstars * sizeof(struct spart));
+  }
+
+  /* Allocate memory to store black hole particles */
+  if (with_black_holes) {
+    *Nblackholes = N[swift_type_black_hole];
+    if (swift_memalign("sparts", (void**)bparts, bpart_align,
+                       *Nblackholes * sizeof(struct bpart)) != 0)
+      error("Error while allocating memory for black_holes particles");
+    bzero(*bparts, *Nblackholes * sizeof(struct bpart));
   }
 
   /* Allocate memory to store gravity particles */
@@ -835,8 +853,9 @@ void read_ic_parallel(char* fileName, const struct unit_system* internal_units,
     Ndm = N[1];
     *Ngparts = (with_hydro ? N[swift_type_gas] : 0) +
                N[swift_type_dark_matter] +
-               (with_stars ? N[swift_type_stars] : 0);
-    if (posix_memalign((void**)gparts, gpart_align,
+               (with_stars ? N[swift_type_stars] : 0) +
+               (with_black_holes ? N[swift_type_black_hole] : 0);
+    if (swift_memalign("gparts", (void**)gparts, gpart_align,
                        *Ngparts * sizeof(struct gpart)) != 0)
       error("Error while allocating memory for gravity particles");
     bzero(*gparts, *Ngparts * sizeof(struct gpart));
@@ -891,6 +910,13 @@ void read_ic_parallel(char* fileName, const struct unit_system* internal_units,
         }
         break;
 
+      case swift_type_black_hole:
+        if (with_black_holes) {
+          Nparticles = *Nblackholes;
+          black_holes_read_particles(*bparts, list, &num_fields);
+        }
+        break;
+
       default:
         if (mpi_rank == 0)
           message("Particle Type %d not yet supported. Particles ignored",
@@ -924,6 +950,11 @@ void read_ic_parallel(char* fileName, const struct unit_system* internal_units,
     if (with_stars)
       io_duplicate_stars_gparts(&tp, *sparts, *gparts, *Nstars, Ndm + *Ngas);
 
+    /* Duplicate the stars particles into gparts */
+    if (with_black_holes)
+      io_duplicate_black_holes_gparts(&tp, *bparts, *gparts, *Nblackholes,
+                                      Ndm + *Ngas + *Nstars);
+
     threadpool_clean(&tp);
   }
 
@@ -956,6 +987,7 @@ void prepare_file(struct engine* e, const char* baseName, long long N_total[6],
   const struct xpart* xparts = e->s->xparts;
   const struct gpart* gparts = e->s->gparts;
   const struct spart* sparts = e->s->sparts;
+  const struct bpart* bparts = e->s->bparts;
   struct swift_params* params = e->parameter_file;
   const int with_cosmology = e->policy & engine_policy_cosmology;
   const int with_cooling = e->policy & engine_policy_cooling;
@@ -1181,6 +1213,13 @@ void prepare_file(struct engine* e, const char* baseName, long long N_total[6],
         }
         break;
 
+      case swift_type_black_hole:
+        black_holes_write_particles(bparts, list, &num_fields);
+        if (with_stf) {
+          num_fields += velociraptor_write_bparts(bparts, list + num_fields);
+        }
+        break;
+
       default:
         error("Particle Type %d not yet supported. Aborting", ptype);
     }
@@ -1244,6 +1283,7 @@ void write_output_parallel(struct engine* e, const char* baseName,
   const struct xpart* xparts = e->s->xparts;
   const struct gpart* gparts = e->s->gparts;
   const struct spart* sparts = e->s->sparts;
+  const struct bpart* bparts = e->s->bparts;
   struct swift_params* params = e->parameter_file;
   const int with_cosmology = e->policy & engine_policy_cosmology;
   const int with_cooling = e->policy & engine_policy_cooling;
@@ -1259,6 +1299,7 @@ void write_output_parallel(struct engine* e, const char* baseName,
   const size_t Ntot = e->s->nr_gparts;
   const size_t Ngas = e->s->nr_parts;
   const size_t Nstars = e->s->nr_sparts;
+  const size_t Nblackholes = e->s->nr_bparts;
   // const size_t Nbaryons = Ngas + Nstars;
   // const size_t Ndm = Ntot > 0 ? Ntot - Nbaryons : 0;
 
@@ -1269,7 +1310,10 @@ void write_output_parallel(struct engine* e, const char* baseName,
       e->s->nr_parts - e->s->nr_inhibited_parts - e->s->nr_extra_parts;
   const size_t Nstars_written =
       e->s->nr_sparts - e->s->nr_inhibited_sparts - e->s->nr_extra_sparts;
-  const size_t Nbaryons_written = Ngas_written + Nstars_written;
+  const size_t Nblackholes_written =
+      e->s->nr_bparts - e->s->nr_inhibited_bparts - e->s->nr_extra_bparts;
+  const size_t Nbaryons_written =
+      Ngas_written + Nstars_written + Nblackholes_written;
   const size_t Ndm_written =
       Ntot_written > 0 ? Ntot_written - Nbaryons_written : 0;
 
@@ -1457,6 +1501,7 @@ void write_output_parallel(struct engine* e, const char* baseName,
     struct gpart* gparts_written = NULL;
     struct velociraptor_gpart_data* gpart_group_data_written = NULL;
     struct spart* sparts_written = NULL;
+    struct bpart* bparts_written = NULL;
 
     /* Write particle fields from the particle structure */
     switch (ptype) {
@@ -1487,10 +1532,12 @@ void write_output_parallel(struct engine* e, const char* baseName,
           Nparticles = Ngas_written;
 
           /* Allocate temporary arrays */
-          if (posix_memalign((void**)&parts_written, part_align,
+          if (swift_memalign("parts_written", (void**)&parts_written,
+                             part_align,
                              Ngas_written * sizeof(struct part)) != 0)
             error("Error while allocating temporart memory for parts");
-          if (posix_memalign((void**)&xparts_written, xpart_align,
+          if (swift_memalign("xparts_written", (void**)&xparts_written,
+                             xpart_align,
                              Ngas_written * sizeof(struct xpart)) != 0)
             error("Error while allocating temporart memory for xparts");
 
@@ -1535,13 +1582,15 @@ void write_output_parallel(struct engine* e, const char* baseName,
           Nparticles = Ndm_written;
 
           /* Allocate temporary array */
-          if (posix_memalign((void**)&gparts_written, gpart_align,
+          if (swift_memalign("gparts_written", (void**)&gparts_written,
+                             gpart_align,
                              Ndm_written * sizeof(struct gpart)) != 0)
             error("Error while allocating temporart memory for gparts");
 
           if (with_stf) {
-            if (posix_memalign(
-                    (void**)&gpart_group_data_written, gpart_align,
+            if (swift_memalign(
+                    "gpart_group_written", (void**)&gpart_group_data_written,
+                    gpart_align,
                     Ndm_written * sizeof(struct velociraptor_gpart_data)) != 0)
               error(
                   "Error while allocating temporart memory for gparts STF "
@@ -1582,7 +1631,8 @@ void write_output_parallel(struct engine* e, const char* baseName,
           Nparticles = Nstars_written;
 
           /* Allocate temporary arrays */
-          if (posix_memalign((void**)&sparts_written, spart_align,
+          if (swift_memalign("sparts_written", (void**)&sparts_written,
+                             spart_align,
                              Nstars_written * sizeof(struct spart)) != 0)
             error("Error while allocating temporart memory for sparts");
 
@@ -1598,6 +1648,39 @@ void write_output_parallel(struct engine* e, const char* baseName,
           if (with_stf) {
             num_fields +=
                 velociraptor_write_sparts(sparts_written, list + num_fields);
+          }
+        }
+      } break;
+
+      case swift_type_black_hole: {
+        if (Nblackholes == Nblackholes_written) {
+
+          /* No inhibted particles: easy case */
+          Nparticles = Nblackholes;
+          black_holes_write_particles(bparts, list, &num_fields);
+          if (with_stf) {
+            num_fields += velociraptor_write_bparts(bparts, list + num_fields);
+          }
+        } else {
+
+          /* Ok, we need to fish out the particles we want */
+          Nparticles = Nblackholes_written;
+
+          /* Allocate temporary arrays */
+          if (swift_memalign("bparts_written", (void**)&bparts_written,
+                             bpart_align,
+                             Nblackholes_written * sizeof(struct bpart)) != 0)
+            error("Error while allocating temporart memory for bparts");
+
+          /* Collect the particles we want to write */
+          io_collect_bparts_to_write(bparts, bparts_written, Nblackholes,
+                                     Nblackholes_written);
+
+          /* Select the fields to write */
+          black_holes_write_particles(bparts_written, list, &num_fields);
+          if (with_stf) {
+            num_fields +=
+                velociraptor_write_bparts(bparts_written, list + num_fields);
           }
         }
       } break;
@@ -1622,11 +1705,13 @@ void write_output_parallel(struct engine* e, const char* baseName,
     }
 
     /* Free temporary array */
-    if (parts_written) free(parts_written);
-    if (xparts_written) free(xparts_written);
-    if (gparts_written) free(gparts_written);
-    if (gpart_group_data_written) free(gpart_group_data_written);
-    if (sparts_written) free(sparts_written);
+    if (parts_written) swift_free("parts_written", parts_written);
+    if (xparts_written) swift_free("xparts_written", xparts_written);
+    if (gparts_written) swift_free("gparts_written", gparts_written);
+    if (gpart_group_data_written)
+      swift_free("gpart_group_written", gpart_group_data_written);
+    if (sparts_written) swift_free("sparts_written", sparts_written);
+    if (bparts_written) swift_free("bparts_written", bparts_written);
 
 #ifdef IO_SPEED_MEASUREMENT
     MPI_Barrier(MPI_COMM_WORLD);

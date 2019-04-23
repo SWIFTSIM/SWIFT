@@ -377,6 +377,45 @@ __attribute__((always_inline)) INLINE static void hydro_set_physical_entropy(
 }
 
 /**
+ * @brief Sets the physical internal energy of a particle
+ *
+ * @param p The particle of interest.
+ * @param xp The extended particle data.
+ * @param cosmo Cosmology data structure
+ * @param u The physical internal energy
+ */
+__attribute__((always_inline)) INLINE static void
+hydro_set_physical_internal_energy(struct part *p, struct xpart *xp,
+                                   const struct cosmology *cosmo,
+                                   const float u) {
+
+  xp->u_full = u / cosmo->a_factor_internal_energy;
+}
+
+/**
+ * @brief Sets the drifted physical internal energy of a particle
+ *
+ * @param p The particle of interest.
+ * @param cosmo Cosmology data structure
+ * @param u The physical internal energy
+ */
+__attribute__((always_inline)) INLINE static void
+hydro_set_drifted_physical_internal_energy(struct part *p,
+                                           const struct cosmology *cosmo,
+                                           const float u) {
+
+  p->u = u / cosmo->a_factor_internal_energy;
+
+  /* Now recompute the extra quantities */
+
+  /* Compute the sound speed */
+  const float soundspeed = hydro_get_comoving_soundspeed(p);
+
+  /* Update variables. */
+  p->force.soundspeed = soundspeed;
+}
+
+/**
  * @brief Computes the hydro time-step of a given particle
  *
  * This function returns the time-step of a particle given its hydro-dynamical
@@ -487,8 +526,8 @@ __attribute__((always_inline)) INLINE static void hydro_end_density(
   p->density.rot_v[2] *= h_inv_dim_plus_one * a_inv2 * rho_inv;
 
   /* Finish calculation of the velocity divergence */
-  p->density.div_v *=
-      h_inv_dim_plus_one * rho_inv * a_inv2 + cosmo->H * hydro_dimension;
+  p->density.div_v *= h_inv_dim_plus_one * rho_inv * a_inv2;
+  p->density.div_v += cosmo->H * hydro_dimension;
 }
 
 /**
@@ -575,7 +614,14 @@ __attribute__((always_inline)) INLINE static void hydro_prepare_force(
 
   /* Artificial viscosity updates */
 
-  const float inverse_tau = hydro_props->viscosity.length * soundspeed * h_inv;
+  /* TODO: Actually work out why this cosmology factor is correct
+   * and update the SPH / cosmology theory documents. */
+
+  /* We divide by a^2 here to make this transform under cosmology the
+   * same as the velocity (which in SWIFT has an extra 1/a^2 factor.
+   * See the cosmology theory documents for more information. */
+  const float inverse_tau =
+      (hydro_props->viscosity.length * cosmo->a2_inv) * soundspeed * h_inv;
   const float source_term = -1.f * min(p->density.div_v, 0.f);
 
   /* Compute da/dt */

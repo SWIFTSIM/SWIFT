@@ -32,6 +32,7 @@
 #include "adiabatic_index.h"
 #include "common_io.h"
 #include "inline.h"
+#include "memuse.h"
 #include "restart.h"
 
 #ifdef HAVE_LIBGSL
@@ -139,6 +140,10 @@ double cosmology_get_time_since_big_bang(const struct cosmology *c, double a) {
  */
 void cosmology_update(struct cosmology *c, const struct phys_const *phys_const,
                       integertime_t ti_current) {
+
+  /* Save the previous state */
+  c->z_old = c->z;
+  c->a_old = c->a;
 
   /* Get scale factor and powers of it */
   const double a = c->a_begin * exp(ti_current * c->time_base);
@@ -325,23 +330,24 @@ void cosmology_init_tables(struct cosmology *c) {
   const double a_begin = c->a_begin;
 
   /* Allocate memory for the interpolation tables */
-  c->drift_fac_interp_table =
-      (double *)malloc(cosmology_table_length * sizeof(double));
-  c->grav_kick_fac_interp_table =
-      (double *)malloc(cosmology_table_length * sizeof(double));
-  c->hydro_kick_fac_interp_table =
-      (double *)malloc(cosmology_table_length * sizeof(double));
-  c->hydro_kick_corr_interp_table =
-      (double *)malloc(cosmology_table_length * sizeof(double));
-  c->time_interp_table =
-      (double *)malloc(cosmology_table_length * sizeof(double));
-  c->scale_factor_interp_table =
-      (double *)malloc(cosmology_table_length * sizeof(double));
+  c->drift_fac_interp_table = (double *)swift_malloc(
+      "cosmo.table", cosmology_table_length * sizeof(double));
+  c->grav_kick_fac_interp_table = (double *)swift_malloc(
+      "cosmo.table", cosmology_table_length * sizeof(double));
+  c->hydro_kick_fac_interp_table = (double *)swift_malloc(
+      "cosmo.table", cosmology_table_length * sizeof(double));
+  c->hydro_kick_corr_interp_table = (double *)swift_malloc(
+      "cosmo.table", cosmology_table_length * sizeof(double));
+  c->time_interp_table = (double *)swift_malloc(
+      "cosmo.table", cosmology_table_length * sizeof(double));
+  c->scale_factor_interp_table = (double *)swift_malloc(
+      "cosmo.table", cosmology_table_length * sizeof(double));
 
   /* Prepare a table of scale factors for the integral bounds */
   const double delta_a =
       (c->log_a_end - c->log_a_begin) / cosmology_table_length;
-  double *a_table = (double *)malloc(cosmology_table_length * sizeof(double));
+  double *a_table = (double *)swift_malloc(
+      "cosmo.table", cosmology_table_length * sizeof(double));
   for (int i = 0; i < cosmology_table_length; i++)
     a_table[i] = exp(c->log_a_begin + delta_a * (i + 1));
 
@@ -452,7 +458,7 @@ void cosmology_init_tables(struct cosmology *c) {
 
   /* Free the workspace and temp array */
   gsl_integration_workspace_free(space);
-  free(a_table);
+  swift_free("cosmo.table", a_table);
 
 #else
 
@@ -527,6 +533,10 @@ void cosmology_init(struct swift_params *params, const struct unit_system *us,
   /* Update the times */
   c->time_begin = cosmology_get_time_since_big_bang(c, c->a_begin);
   c->time_end = cosmology_get_time_since_big_bang(c, c->a_end);
+
+  /* Initialise the old values to a valid state */
+  c->a_old = c->a_begin;
+  c->z_old = 1. / c->a_old - 1.;
 }
 
 /**
@@ -567,6 +577,9 @@ void cosmology_init_no_cosmo(struct cosmology *c) {
   c->a_factor_Balsara_eps = 1.;
   c->a_factor_hydro_accel = 1.;
   c->a_factor_grav_accel = 1.;
+
+  c->a_old = 1.;
+  c->z_old = 0.;
 
   c->critical_density = 0.;
   c->critical_density_0 = 0.;
@@ -765,6 +778,35 @@ double cosmology_get_delta_time(const struct cosmology *c,
 }
 
 /**
+ * @brief Compute the cosmic time (in internal units) between two scale factors
+ *
+ * @param c The current #cosmology.
+ * @param a_start the starting scale factor
+ * @param a_end the ending scale factor
+ */
+double cosmology_get_delta_time_from_scale_factors(const struct cosmology *c,
+                                                   const double a_start,
+                                                   const double a_end) {
+
+#ifdef SWIFT_DEBUG_CHECKS
+  if (a_end < a_start) error("a_end must be >= a_start");
+#endif
+
+  const double log_a_start = log(a_start);
+  const double log_a_end = log(a_end);
+
+  /* Time between a_begin and a_start */
+  const double t1 = interp_table(c->time_interp_table, log_a_start,
+                                 c->log_a_begin, c->log_a_end);
+
+  /* Time between a_begin and a_end */
+  const double t2 = interp_table(c->time_interp_table, log_a_end,
+                                 c->log_a_begin, c->log_a_end);
+
+  return t2 - t1;
+}
+
+/**
  * @brief Compute scale factor from time since big bang (in internal units).
  *
  * @param c The current #cosmology.
@@ -796,12 +838,12 @@ void cosmology_print(const struct cosmology *c) {
 
 void cosmology_clean(struct cosmology *c) {
 
-  free(c->drift_fac_interp_table);
-  free(c->grav_kick_fac_interp_table);
-  free(c->hydro_kick_fac_interp_table);
-  free(c->hydro_kick_corr_interp_table);
-  free(c->time_interp_table);
-  free(c->scale_factor_interp_table);
+  swift_free("cosmo.table", c->drift_fac_interp_table);
+  swift_free("cosmo.table", c->grav_kick_fac_interp_table);
+  swift_free("cosmo.table", c->hydro_kick_fac_interp_table);
+  swift_free("cosmo.table", c->hydro_kick_corr_interp_table);
+  swift_free("cosmo.table", c->time_interp_table);
+  swift_free("cosmo.table", c->scale_factor_interp_table);
 }
 
 #ifdef HAVE_HDF5

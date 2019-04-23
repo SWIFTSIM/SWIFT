@@ -331,6 +331,7 @@ hydro_set_physical_internal_energy_dt(struct part *restrict p,
   p->entropy_dt =
       gas_entropy_from_internal_energy(p->rho * cosmo->a3_inv, du_dt);
 }
+
 /**
  * @brief Sets the physical entropy of a particle
  *
@@ -345,6 +346,56 @@ __attribute__((always_inline)) INLINE static void hydro_set_physical_entropy(
 
   /* Note there is no conversion from physical to comoving entropy */
   xp->entropy_full = entropy;
+}
+
+/**
+ * @brief Sets the physical internal energy of a particle
+ *
+ * @param p The particle of interest.
+ * @param xp The extended particle data.
+ * @param cosmo Cosmology data structure
+ * @param u The physical internal energy
+ */
+__attribute__((always_inline)) INLINE static void
+hydro_set_physical_internal_energy(struct part *p, struct xpart *xp,
+                                   const struct cosmology *cosmo,
+                                   const float u) {
+
+  xp->entropy_full =
+      gas_entropy_from_internal_energy(p->rho * cosmo->a3_inv, u);
+}
+
+/**
+ * @brief Sets the drifted physical internal energy of a particle
+ *
+ * @param p The particle of interest.
+ * @param cosmo Cosmology data structure
+ * @param u The physical internal energy
+ */
+__attribute__((always_inline)) INLINE static void
+hydro_set_drifted_physical_internal_energy(struct part *p,
+                                           const struct cosmology *cosmo,
+                                           const float u) {
+
+  p->entropy = gas_entropy_from_internal_energy(p->rho * cosmo->a3_inv, u);
+
+  /* Now recompute the extra quantities */
+
+  /* Inverse of the co-moving density */
+  const float rho_inv = 1.f / p->rho;
+
+  /* Compute the pressure */
+  const float pressure = gas_pressure_from_entropy(p->rho, p->entropy);
+
+  /* Compute the sound speed */
+  const float soundspeed = gas_soundspeed_from_pressure(p->rho, pressure);
+
+  /* Divide the pressure by the density squared to get the SPH term */
+  const float P_over_rho2 = pressure * rho_inv * rho_inv;
+
+  /* Update variables. */
+  p->force.P_over_rho2 = P_over_rho2;
+  p->force.soundspeed = soundspeed;
 }
 
 /**
@@ -511,7 +562,7 @@ __attribute__((always_inline)) INLINE static void hydro_prepare_force(
                              p->density.rot_v[2] * p->density.rot_v[2]);
 
   /* Compute the norm of div v including the Hubble flow term */
-  const float div_physical_v = p->density.div_v + 3.f * cosmo->H;
+  const float div_physical_v = p->density.div_v + hydro_dimension * cosmo->H;
   const float abs_div_physical_v = fabsf(div_physical_v);
 
   /* Compute the pressure */
@@ -621,8 +672,8 @@ __attribute__((always_inline)) INLINE static void hydro_predict_extra(
 #ifdef SWIFT_DEBUG_CHECKS
   if (p->entropy + p->entropy_dt * dt_therm <= 0)
     error(
-        "Negative entropy for particle id %llu old entropy %.5e d_entropy %.5e "
-        "entropy_dt %.5e dt therm %.5e",
+        "Negative entropy for particle id %llu old entropy %.e d_entropy %.e "
+        "entropy_dt %.e dt therm %.e",
         p->id, p->entropy, p->entropy_dt * dt_therm, p->entropy_dt, dt_therm);
 #endif
   p->entropy += p->entropy_dt * dt_therm;

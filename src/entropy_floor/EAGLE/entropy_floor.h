@@ -98,47 +98,116 @@ static INLINE float entropy_floor(
     const struct part *p, const struct cosmology *cosmo,
     const struct entropy_floor_properties *props) {
 
-  /* Physical density in internal units */
-  const float rho = hydro_get_physical_density(p, cosmo);
+  /* Comoving density in internal units */
+  const float rho_com = hydro_get_comoving_density(p);
 
-  /* Critical density at this redshift.
-   * Recall that this is 0 in a non-cosmological run */
-  const float rho_crit = cosmo->critical_density;
-  const float rho_crit_baryon = cosmo->Omega_b * rho_crit;
+  /* Physical density in internal units */
+  const float rho_phys = hydro_get_physical_density(p, cosmo);
+
+  /* Mean baryon density in co-moving internal units for over-density condition
+   * (Recall cosmo->critical_density_0 is 0 in a non-cosmological run,
+   * making the over-density condition a no-op) */
+  const float rho_crit_0 = cosmo->critical_density_0;
+  const float rho_crit_baryon = cosmo->Omega_b * rho_crit_0;
 
   /* Physical pressure */
   float pressure = 0.f;
 
   /* Are we in the regime of the Jeans equation of state? */
-  if ((rho >= rho_crit_baryon * props->Jeans_over_density_threshold) &&
-      (rho >= props->Jeans_density_threshold)) {
+  if ((rho_com >= rho_crit_baryon * props->Jeans_over_density_threshold) &&
+      (rho_phys >= props->Jeans_density_threshold)) {
 
-    const float pressure_Jeans = props->Jeans_pressure_norm *
-                                 powf(rho * props->Jeans_density_threshold_inv,
-                                      props->Jeans_gamma_effective);
+    const float pressure_Jeans =
+        props->Jeans_pressure_norm *
+        powf(rho_phys * props->Jeans_density_threshold_inv,
+             props->Jeans_gamma_effective);
 
     pressure = max(pressure, pressure_Jeans);
   }
 
   /* Are we in the regime of the Cool equation of state? */
-  if ((rho >= rho_crit_baryon * props->Cool_over_density_threshold) &&
-      (rho >= props->Cool_density_threshold)) {
+  if ((rho_com >= rho_crit_baryon * props->Cool_over_density_threshold) &&
+      (rho_phys >= props->Cool_density_threshold)) {
 
-    const float pressure_Cool = props->Cool_pressure_norm *
-                                powf(rho * props->Cool_density_threshold_inv,
-                                     props->Cool_gamma_effective);
+    const float pressure_Cool =
+        props->Cool_pressure_norm *
+        powf(rho_phys * props->Cool_density_threshold_inv,
+             props->Cool_gamma_effective);
 
     pressure = max(pressure, pressure_Cool);
   }
 
   /* Convert to an entropy.
    * (Recall that the entropy is the same in co-moving and phycial frames) */
-  return gas_entropy_from_pressure(rho, pressure);
+  return gas_entropy_from_pressure(rho_phys, pressure);
+}
+
+/**
+ * @brief Compute the temperature from the entropy floor for a given #part
+ *
+ * Calculate the EoS temperature, the particle is not updated.
+ * This is the temperature exactly corresponding to the imposed EoS shape.
+ * It only matches the entropy returned by the entropy_floor() function
+ * for a neutral gas with primoridal abundance.
+ *
+ * @param p The #part.
+ * @param cosmo The cosmological model.
+ * @param props The properties of the entropy floor.
+ */
+static INLINE float entropy_floor_temperature(
+    const struct part *p, const struct cosmology *cosmo,
+    const struct entropy_floor_properties *props) {
+
+  /* Comoving density in internal units */
+  const float rho_com = hydro_get_comoving_density(p);
+
+  /* Physical density in internal units */
+  const float rho_phys = hydro_get_physical_density(p, cosmo);
+
+  /* Mean baryon density in co-moving internal units for over-density condition
+   * (Recall cosmo->critical_density_0 is 0 in a non-cosmological run,
+   * making the over-density condition a no-op) */
+  const float rho_crit_0 = cosmo->critical_density_0;
+  const float rho_crit_baryon = cosmo->Omega_b * rho_crit_0;
+
+  /* Physical */
+  float temperature = 0.f;
+
+  /* Are we in the regime of the Jeans equation of state? */
+  if ((rho_com >= rho_crit_baryon * props->Jeans_over_density_threshold) &&
+      (rho_phys >= props->Jeans_density_threshold)) {
+
+    const float jeans_slope = props->Jeans_gamma_effective - 1.f;
+
+    const float temperature_Jeans =
+        props->Jeans_temperature_norm *
+        pow(rho_phys * props->Jeans_density_threshold_inv, jeans_slope);
+
+    temperature = max(temperature, temperature_Jeans);
+  }
+
+  /* Are we in the regime of the Cool equation of state? */
+  if ((rho_com >= rho_crit_baryon * props->Cool_over_density_threshold) &&
+      (rho_phys >= props->Cool_density_threshold)) {
+
+    const float cool_slope = props->Cool_gamma_effective - 1.f;
+
+    const float temperature_Cool =
+        props->Cool_temperature_norm *
+        pow(rho_phys * props->Cool_density_threshold_inv, cool_slope);
+
+    temperature = max(temperature, temperature_Cool);
+  }
+
+  return temperature;
 }
 
 /**
  * @brief Initialise the entropy floor by reading the parameters and converting
  * to internal units.
+ *
+ * The input temperatures and number densities are converted to entropy and
+ * density assuming a neutral gas of primoridal abundance.
  *
  * @param params The YAML parameter file.
  * @param us The system of units used internally.

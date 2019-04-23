@@ -24,7 +24,9 @@
 #include "cooling.h"
 #include "cosmology.h"
 #include "engine.h"
+#include "entropy_floor.h"
 #include "equation_of_state.h"
+#include "exp10.h"
 #include "hydro.h"
 #include "parser.h"
 #include "part.h"
@@ -188,23 +190,6 @@ INLINE static double EOS_pressure(const double n_H,
 }
 
 /**
- * @brief Compute the temperarue on the polytropic equation of state for a given
- * Hydrogen number density.
- *
- * Schaye & Dalla Vecchia 2008, eq. 13 rewritten for temperature
- *
- * @param n_H The Hydrogen number density in internal units.
- * @param starform The properties of the star formation model.
- * @return The temperature on the equation of state in internal units.
- */
-INLINE static double EOS_temperature(const double n_H,
-                                     const struct star_formation* starform) {
-
-  return starform->EOS_temperature_c *
-         pow(n_H, starform->EOS_polytropic_index - 1.);
-}
-
-/**
  * @brief Calculate if the gas has the potential of becoming
  * a star.
  *
@@ -216,7 +201,7 @@ INLINE static double EOS_temperature(const double n_H,
  * @param hydro_props The properties of the hydro scheme.
  * @param us The internal system of units.
  * @param cooling The cooling data struct.
- *
+ * @param entropy_floor The entropy floor assumed in this run.
  */
 INLINE static int star_formation_is_star_forming(
     const struct part* restrict p, const struct xpart* restrict xp,
@@ -224,7 +209,8 @@ INLINE static int star_formation_is_star_forming(
     const struct cosmology* cosmo,
     const struct hydro_props* restrict hydro_props,
     const struct unit_system* restrict us,
-    const struct cooling_function_data* restrict cooling) {
+    const struct cooling_function_data* restrict cooling,
+    const struct entropy_floor_properties* restrict entropy_floor) {
 
   /* Minimal density (converted from critical density) for star formation */
   const double rho_crit_times_min_over_den =
@@ -261,7 +247,8 @@ INLINE static int star_formation_is_star_forming(
                                                      us, cosmo, cooling, p, xp);
 
   /* Temperature on the equation of state */
-  const double temperature_eos = EOS_temperature(n_H, starform);
+  const double temperature_eos =
+      entropy_floor_temperature(p, cosmo, entropy_floor);
 
   /* Check the Scahye & Dalla Vecchia 2012 EOS-based temperature critrion */
   return (temperature <
@@ -418,6 +405,9 @@ INLINE static void star_formation_copy_properties(
 
   /* Store the birth density in the star particle */
   sp->birth_density = hydro_get_physical_density(p, cosmo);
+
+  /* Flag that this particle has not done feedback yet */
+  sp->f_E = -1.f;
 }
 
 /**

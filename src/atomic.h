@@ -66,6 +66,38 @@ __attribute__((always_inline)) INLINE static void atomic_min_f(
 }
 
 /**
+ * @brief Atomic min operation on doubles.
+ *
+ * This is a text-book implementation based on an atomic CAS.
+ *
+ * We create a temporary union to cope with the int-only atomic CAS
+ * and the floating-point min that we want.
+ *
+ * @param address The address to update.
+ * @param y The value to update the address with.
+ */
+__attribute__((always_inline)) INLINE static void atomic_min_d(
+    volatile double *const address, const double y) {
+
+  long long *const long_long_ptr = (long long *)address;
+
+  typedef union {
+    double as_double;
+    long long as_long_long;
+  } cast_type;
+
+  cast_type test_val, old_val, new_val;
+  old_val.as_double = *address;
+
+  do {
+    test_val.as_long_long = old_val.as_long_long;
+    new_val.as_double = min(old_val.as_double, y);
+    old_val.as_long_long =
+        atomic_cas(long_long_ptr, test_val.as_long_long, new_val.as_long_long);
+  } while (test_val.as_long_long != old_val.as_long_long);
+}
+
+/**
  * @brief Atomic max operation on floats.
  *
  * This is a text-book implementation based on an atomic CAS.
@@ -94,6 +126,38 @@ __attribute__((always_inline)) INLINE static void atomic_max_f(
     new_val.as_float = max(old_val.as_float, y);
     old_val.as_int = atomic_cas(int_ptr, test_val.as_int, new_val.as_int);
   } while (test_val.as_int != old_val.as_int);
+}
+
+/**
+ * @brief Atomic max operation on doubles.
+ *
+ * This is a text-book implementation based on an atomic CAS.
+ *
+ * We create a temporary union to cope with the int-only atomic CAS
+ * and the floating-point max that we want.
+ *
+ * @param address The address to update.
+ * @param y The value to update the address with.
+ */
+__attribute__((always_inline)) INLINE static void atomic_max_d(
+    volatile double *const address, const double y) {
+
+  long long *const long_long_ptr = (long long *)address;
+
+  typedef union {
+    double as_double;
+    long long as_long_long;
+  } cast_type;
+
+  cast_type test_val, old_val, new_val;
+  old_val.as_double = *address;
+
+  do {
+    test_val.as_long_long = old_val.as_long_long;
+    new_val.as_double = max(old_val.as_double, y);
+    old_val.as_long_long =
+        atomic_cas(long_long_ptr, test_val.as_long_long, new_val.as_long_long);
+  } while (test_val.as_long_long != old_val.as_long_long);
 }
 
 /**

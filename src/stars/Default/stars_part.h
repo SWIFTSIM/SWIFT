@@ -22,8 +22,9 @@
 /* Some standard headers. */
 #include <stdlib.h>
 
-/* Read chemistry */
+/* Read additional subgrid models */
 #include "chemistry_struct.h"
+#include "feedback_struct.h"
 #include "tracers_struct.h"
 
 /**
@@ -70,12 +71,15 @@ struct spart {
 
   } density;
 
-  struct {
+  /* Not used in the default stars */
+  union {
+    double birth_time;
 
-    /* Change in smoothing length over time. */
-    float h_dt;
+    double birth_scale_factor;
+  };
 
-  } feedback;
+  /*! Feedback structure */
+  struct feedback_spart_data feedback_data;
 
   /*! Tracer structure */
   struct tracers_xpart_data tracers_data;

@@ -41,13 +41,13 @@
  * @brief Common operations performed on the cooling function at a
  * given time-step or redshift.
  *
- * @param phys_const The physical constants in internal units.
- * @param us The internal system of units.
  * @param cosmo The current cosmological model.
  * @param cooling The #cooling_function_data used in the run.
+ * @param s The #space containing all the particles.
  */
 INLINE static void cooling_update(const struct cosmology* cosmo,
-                                  struct cooling_function_data* cooling) {
+                                  struct cooling_function_data* cooling,
+                                  struct space* s) {
   // Add content if required.
 }
 

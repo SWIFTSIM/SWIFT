@@ -46,6 +46,7 @@
 #include "error.h"
 #include "intrinsics.h"
 #include "kernel_hydro.h"
+#include "memuse.h"
 #include "queue.h"
 #include "sort_part.h"
 #include "space.h"
@@ -67,9 +68,10 @@ static void scheduler_extend_unlocks(struct scheduler *s) {
 
   /* Allocate the new buffer. */
   const int size_unlocks_new = s->size_unlocks * 2;
-  struct task **unlocks_new =
-      (struct task **)malloc(sizeof(struct task *) * size_unlocks_new);
-  int *unlock_ind_new = (int *)malloc(sizeof(int) * size_unlocks_new);
+  struct task **unlocks_new = (struct task **)swift_malloc(
+      "unlocks", sizeof(struct task *) * size_unlocks_new);
+  int *unlock_ind_new =
+      (int *)swift_malloc("unlock_ind", sizeof(int) * size_unlocks_new);
   if (unlocks_new == NULL || unlock_ind_new == NULL)
     error("Failed to re-allocate unlocks.");
 
@@ -80,8 +82,8 @@ static void scheduler_extend_unlocks(struct scheduler *s) {
   /* Copy the buffers. */
   memcpy(unlocks_new, s->unlocks, sizeof(struct task *) * s->size_unlocks);
   memcpy(unlock_ind_new, s->unlock_ind, sizeof(int) * s->size_unlocks);
-  free(s->unlocks);
-  free(s->unlock_ind);
+  swift_free("unlocks", s->unlocks);
+  swift_free("unlock_ind", s->unlock_ind);
   s->unlocks = unlocks_new;
   s->unlock_ind = unlock_ind_new;
 
@@ -465,7 +467,7 @@ void scheduler_write_dependencies(struct scheduler *s, int verbose) {
 
   if (s->nodeID == 0) {
     /* Create file */
-    char *filename = "dependency_graph.csv";
+    const char *filename = "dependency_graph.csv";
     FILE *f = fopen(filename, "w");
     if (f == NULL) error("Error opening dependency graph file.");
 
@@ -545,6 +547,7 @@ static void scheduler_splittask_hydro(struct task *t, struct scheduler *s) {
   /* Note this is not very clean as the scheduler should not really
      access the engine... */
   const int with_feedback = (s->space->e->policy & engine_policy_feedback);
+  const int with_stars = (s->space->e->policy & engine_policy_stars);
 
   /* Iterate on this task until we're done with it. */
   int redo = 1;
@@ -556,7 +559,7 @@ static void scheduler_splittask_hydro(struct task *t, struct scheduler *s) {
     /* Is this a non-empty self-task? */
     const int is_self =
         (t->type == task_type_self) && (t->ci != NULL) &&
-        ((t->ci->hydro.count > 0) || (with_feedback && t->ci->stars.count > 0));
+        ((t->ci->hydro.count > 0) || (with_stars && t->ci->stars.count > 0));
 
     /* Is this a non-empty pair-task? */
     const int is_pair =
@@ -1321,7 +1324,8 @@ void scheduler_set_unlocks(struct scheduler *s) {
 
   /* Store the counts for each task. */
   short int *counts;
-  if ((counts = (short int *)malloc(sizeof(short int) * s->nr_tasks)) == NULL)
+  if ((counts = (short int *)swift_malloc(
+           "counts", sizeof(short int) * s->nr_tasks)) == NULL)
     error("Failed to allocate temporary counts array.");
   bzero(counts, sizeof(short int) * s->nr_tasks);
   for (int k = 0; k < s->nr_unlocks; k++) {
@@ -1339,7 +1343,8 @@ void scheduler_set_unlocks(struct scheduler *s) {
 
   /* Compute the offset for each unlock block. */
   int *offsets;
-  if ((offsets = (int *)malloc(sizeof(int) * (s->nr_tasks + 1))) == NULL)
+  if ((offsets = (int *)swift_malloc("offsets",
+                                     sizeof(int) * (s->nr_tasks + 1))) == NULL)
     error("Failed to allocate temporary offsets array.");
   offsets[0] = 0;
   for (int k = 0; k < s->nr_tasks; k++) {
@@ -1353,8 +1358,8 @@ void scheduler_set_unlocks(struct scheduler *s) {
 
   /* Create and fill a temporary array with the sorted unlocks. */
   struct task **unlocks;
-  if ((unlocks = (struct task **)malloc(sizeof(struct task *) *
-                                        s->size_unlocks)) == NULL)
+  if ((unlocks = (struct task **)swift_malloc(
+           "unlocks", sizeof(struct task *) * s->size_unlocks)) == NULL)
     error("Failed to allocate temporary unlocks array.");
   for (int k = 0; k < s->nr_unlocks; k++) {
     const int ind = s->unlock_ind[k];
@@ -1363,7 +1368,7 @@ void scheduler_set_unlocks(struct scheduler *s) {
   }
 
   /* Swap the unlocks. */
-  free(s->unlocks);
+  swift_free("unlocks", s->unlocks);
   s->unlocks = unlocks;
 
   /* Re-set the offsets. */
@@ -1395,8 +1400,8 @@ void scheduler_set_unlocks(struct scheduler *s) {
 #endif
 
   /* Clean up. */
-  free(counts);
-  free(offsets);
+  swift_free("counts", counts);
+  swift_free("offsets", offsets);
 }
 
 /**
@@ -1478,14 +1483,16 @@ void scheduler_reset(struct scheduler *s, int size) {
     scheduler_free_tasks(s);
 
     /* Allocate the new lists. */
-    if (posix_memalign((void **)&s->tasks, task_align,
+    if (swift_memalign("tasks", (void **)&s->tasks, task_align,
                        size * sizeof(struct task)) != 0)
       error("Failed to allocate task array.");
 
-    if ((s->tasks_ind = (int *)malloc(sizeof(int) * size)) == NULL)
+    if ((s->tasks_ind = (int *)swift_malloc("tasks_ind", sizeof(int) * size)) ==
+        NULL)
       error("Failed to allocate task lists.");
 
-    if ((s->tid_active = (int *)malloc(sizeof(int) * size)) == NULL)
+    if ((s->tid_active =
+             (int *)swift_malloc("tid_active", sizeof(int) * size)) == NULL)
       error("Failed to allocate aactive task lists.");
   }
 
@@ -1533,6 +1540,8 @@ void scheduler_reweight(struct scheduler *s, int verbose) {
     const float gcount_j = (t->cj != NULL) ? t->cj->grav.count : 0.f;
     const float scount_i = (t->ci != NULL) ? t->ci->stars.count : 0.f;
     const float scount_j = (t->cj != NULL) ? t->cj->stars.count : 0.f;
+    const float bcount_i = (t->ci != NULL) ? t->ci->black_holes.count : 0.f;
+    // const float bcount_j = (t->cj != NULL) ? t->cj->black_holes.count : 0.f;
 
     switch (t->type) {
       case task_type_sort:
@@ -1623,6 +1632,12 @@ void scheduler_reweight(struct scheduler *s, int verbose) {
       case task_type_drift_gpart:
         cost = wscale * gcount_i;
         break;
+      case task_type_drift_spart:
+        cost = wscale * scount_i;
+        break;
+      case task_type_drift_bpart:
+        cost = wscale * bcount_i;
+        break;
       case task_type_init_grav:
         cost = wscale * gcount_i;
         break;
@@ -1641,14 +1656,20 @@ void scheduler_reweight(struct scheduler *s, int verbose) {
       case task_type_end_grav_force:
         cost = wscale * gcount_i;
         break;
+      case task_type_cooling:
+        cost = wscale * count_i;
+        break;
+      case task_type_star_formation:
+        cost = wscale * (count_i + scount_i);
+        break;
       case task_type_kick1:
-        cost = wscale * count_i + wscale * gcount_i;
+        cost = wscale * (count_i + gcount_i + scount_i + bcount_i);
         break;
       case task_type_kick2:
-        cost = wscale * count_i + wscale * gcount_i;
+        cost = wscale * (count_i + gcount_i + scount_i + bcount_i);
         break;
       case task_type_timestep:
-        cost = wscale * count_i + wscale * gcount_i;
+        cost = wscale * (count_i + gcount_i + scount_i + bcount_i);
         break;
       case task_type_send:
         if (count_i < 1e5)
@@ -1840,13 +1861,35 @@ void scheduler_enqueue(struct scheduler *s, struct task *t) {
         break;
       case task_type_recv:
 #ifdef WITH_MPI
-        if (t->subtype == task_subtype_tend) {
-          t->buff = (struct pcell_step *)malloc(sizeof(struct pcell_step) *
-                                                t->ci->mpi.pcell_size);
-          err = MPI_Irecv(t->buff,
-                          t->ci->mpi.pcell_size * sizeof(struct pcell_step),
-                          MPI_BYTE, t->ci->nodeID, t->flags,
-                          subtaskMPI_comms[t->subtype], &t->req);
+        if (t->subtype == task_subtype_tend_part) {
+          t->buff = (struct pcell_step_hydro *)malloc(
+              sizeof(struct pcell_step_hydro) * t->ci->mpi.pcell_size);
+          err = MPI_Irecv(
+              t->buff, t->ci->mpi.pcell_size * sizeof(struct pcell_step_hydro),
+              MPI_BYTE, t->ci->nodeID, t->flags, subtaskMPI_comms[t->subtype],
+              &t->req);
+        } else if (t->subtype == task_subtype_tend_gpart) {
+          t->buff = (struct pcell_step_grav *)malloc(
+              sizeof(struct pcell_step_grav) * t->ci->mpi.pcell_size);
+          err = MPI_Irecv(
+              t->buff, t->ci->mpi.pcell_size * sizeof(struct pcell_step_grav),
+              MPI_BYTE, t->ci->nodeID, t->flags, subtaskMPI_comms[t->subtype],
+              &t->req);
+        } else if (t->subtype == task_subtype_tend_spart) {
+          t->buff = (struct pcell_step_stars *)malloc(
+              sizeof(struct pcell_step_stars) * t->ci->mpi.pcell_size);
+          err = MPI_Irecv(
+              t->buff, t->ci->mpi.pcell_size * sizeof(struct pcell_step_stars),
+              MPI_BYTE, t->ci->nodeID, t->flags, subtaskMPI_comms[t->subtype],
+              &t->req);
+        } else if (t->subtype == task_subtype_tend_bpart) {
+          t->buff = (struct pcell_step_black_holes *)malloc(
+              sizeof(struct pcell_step_black_holes) * t->ci->mpi.pcell_size);
+          err = MPI_Irecv(
+              t->buff,
+              t->ci->mpi.pcell_size * sizeof(struct pcell_step_black_holes),
+              MPI_BYTE, t->ci->nodeID, t->flags, subtaskMPI_comms[t->subtype],
+              &t->req);
         } else if (t->subtype == task_subtype_xv ||
                    t->subtype == task_subtype_rho ||
                    t->subtype == task_subtype_gradient) {
@@ -1880,21 +1923,81 @@ void scheduler_enqueue(struct scheduler *s, struct task *t) {
         break;
       case task_type_send:
 #ifdef WITH_MPI
-        if (t->subtype == task_subtype_tend) {
-          t->buff = (struct pcell_step *)malloc(sizeof(struct pcell_step) *
-                                                t->ci->mpi.pcell_size);
-          cell_pack_end_step(t->ci, (struct pcell_step *)t->buff);
-          if ((t->ci->mpi.pcell_size * sizeof(struct pcell_step)) >
-              s->mpi_message_limit)
-            err = MPI_Isend(t->buff,
-                            t->ci->mpi.pcell_size * sizeof(struct pcell_step),
-                            MPI_BYTE, t->cj->nodeID, t->flags,
-                            subtaskMPI_comms[t->subtype], &t->req);
-          else
-            err = MPI_Issend(t->buff,
-                             t->ci->mpi.pcell_size * sizeof(struct pcell_step),
-                             MPI_BYTE, t->cj->nodeID, t->flags,
-                             subtaskMPI_comms[t->subtype], &t->req);
+        if (t->subtype == task_subtype_tend_part) {
+          t->buff = (struct pcell_step_hydro *)malloc(
+              sizeof(struct pcell_step_hydro) * t->ci->mpi.pcell_size);
+          cell_pack_end_step_hydro(t->ci, (struct pcell_step_hydro *)t->buff);
+
+          if ((t->ci->mpi.pcell_size * sizeof(struct pcell_step_hydro)) >
+              s->mpi_message_limit) {
+            err = MPI_Isend(
+                t->buff,
+                t->ci->mpi.pcell_size * sizeof(struct pcell_step_hydro),
+                MPI_BYTE, t->cj->nodeID, t->flags, subtaskMPI_comms[t->subtype],
+                &t->req);
+          } else {
+            err = MPI_Issend(
+                t->buff,
+                t->ci->mpi.pcell_size * sizeof(struct pcell_step_hydro),
+                MPI_BYTE, t->cj->nodeID, t->flags, subtaskMPI_comms[t->subtype],
+                &t->req);
+          }
+        } else if (t->subtype == task_subtype_tend_gpart) {
+          t->buff = (struct pcell_step_grav *)malloc(
+              sizeof(struct pcell_step_grav) * t->ci->mpi.pcell_size);
+          cell_pack_end_step_grav(t->ci, (struct pcell_step_grav *)t->buff);
+
+          if ((t->ci->mpi.pcell_size * sizeof(struct pcell_step_grav)) >
+              s->mpi_message_limit) {
+            err = MPI_Isend(
+                t->buff, t->ci->mpi.pcell_size * sizeof(struct pcell_step_grav),
+                MPI_BYTE, t->cj->nodeID, t->flags, subtaskMPI_comms[t->subtype],
+                &t->req);
+          } else {
+            err = MPI_Issend(
+                t->buff, t->ci->mpi.pcell_size * sizeof(struct pcell_step_grav),
+                MPI_BYTE, t->cj->nodeID, t->flags, subtaskMPI_comms[t->subtype],
+                &t->req);
+          }
+        } else if (t->subtype == task_subtype_tend_spart) {
+          t->buff = (struct pcell_step_stars *)malloc(
+              sizeof(struct pcell_step_stars) * t->ci->mpi.pcell_size);
+          cell_pack_end_step_stars(t->ci, (struct pcell_step_stars *)t->buff);
+
+          if ((t->ci->mpi.pcell_size * sizeof(struct pcell_step_stars)) >
+              s->mpi_message_limit) {
+            err = MPI_Isend(
+                t->buff,
+                t->ci->mpi.pcell_size * sizeof(struct pcell_step_stars),
+                MPI_BYTE, t->cj->nodeID, t->flags, subtaskMPI_comms[t->subtype],
+                &t->req);
+          } else {
+            err = MPI_Issend(
+                t->buff,
+                t->ci->mpi.pcell_size * sizeof(struct pcell_step_stars),
+                MPI_BYTE, t->cj->nodeID, t->flags, subtaskMPI_comms[t->subtype],
+                &t->req);
+          }
+        } else if (t->subtype == task_subtype_tend_bpart) {
+          t->buff = (struct pcell_step_black_holes *)malloc(
+              sizeof(struct pcell_step_black_holes) * t->ci->mpi.pcell_size);
+          cell_pack_end_step_black_holes(
+              t->ci, (struct pcell_step_black_holes *)t->buff);
+
+          if ((t->ci->mpi.pcell_size * sizeof(struct pcell_step_black_holes)) >
+              s->mpi_message_limit) {
+            err = MPI_Isend(
+                t->buff,
+                t->ci->mpi.pcell_size * sizeof(struct pcell_step_black_holes),
+                MPI_BYTE, t->cj->nodeID, t->flags, subtaskMPI_comms[t->subtype],
+                &t->req);
+          } else {
+            err = MPI_Issend(
+                t->buff,
+                t->ci->mpi.pcell_size * sizeof(struct pcell_step_black_holes),
+                MPI_BYTE, t->cj->nodeID, t->flags, subtaskMPI_comms[t->subtype],
+                &t->req);
+          }
         } else if (t->subtype == task_subtype_xv ||
                    t->subtype == task_subtype_rho ||
                    t->subtype == task_subtype_gradient) {
@@ -2147,7 +2250,7 @@ void scheduler_init(struct scheduler *s, struct space *space, int nr_tasks,
   lock_init(&s->lock);
 
   /* Allocate the queues. */
-  if (posix_memalign((void **)&s->queues, queue_struct_align,
+  if (swift_memalign("queues", (void **)&s->queues, queue_struct_align,
                      sizeof(struct queue) * nr_queues) != 0)
     error("Failed to allocate queues.");
 
@@ -2160,10 +2263,11 @@ void scheduler_init(struct scheduler *s, struct space *space, int nr_tasks,
     error("Failed to initialize sleep barrier.");
 
   /* Init the unlocks. */
-  if ((s->unlocks = (struct task **)malloc(
-           sizeof(struct task *) * scheduler_init_nr_unlocks)) == NULL ||
-      (s->unlock_ind =
-           (int *)malloc(sizeof(int) * scheduler_init_nr_unlocks)) == NULL)
+  if ((s->unlocks = (struct task **)swift_malloc(
+           "unlocks", sizeof(struct task *) * scheduler_init_nr_unlocks)) ==
+          NULL ||
+      (s->unlock_ind = (int *)swift_malloc(
+           "unlock_ind", sizeof(int) * scheduler_init_nr_unlocks)) == NULL)
     error("Failed to allocate unlocks.");
   s->nr_unlocks = 0;
   s->size_unlocks = scheduler_init_nr_unlocks;
@@ -2214,10 +2318,10 @@ void scheduler_print_tasks(const struct scheduler *s, const char *fileName) {
 void scheduler_clean(struct scheduler *s) {
 
   scheduler_free_tasks(s);
-  free(s->unlocks);
-  free(s->unlock_ind);
+  swift_free("unlocks", s->unlocks);
+  swift_free("unlock_ind", s->unlock_ind);
   for (int i = 0; i < s->nr_queues; ++i) queue_clean(&s->queues[i]);
-  free(s->queues);
+  swift_free("queues", s->queues);
 }
 
 /**
@@ -2226,15 +2330,15 @@ void scheduler_clean(struct scheduler *s) {
 void scheduler_free_tasks(struct scheduler *s) {
 
   if (s->tasks != NULL) {
-    free(s->tasks);
+    swift_free("tasks", s->tasks);
     s->tasks = NULL;
   }
   if (s->tasks_ind != NULL) {
-    free(s->tasks_ind);
+    swift_free("tasks_ind", s->tasks_ind);
     s->tasks_ind = NULL;
   }
   if (s->tid_active != NULL) {
-    free(s->tid_active);
+    swift_free("tid_active", s->tid_active);
     s->tid_active = NULL;
   }
   s->size = 0;

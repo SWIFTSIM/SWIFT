@@ -1,0 +1,77 @@
+# Define the system of units to use internally. 
+InternalUnitSystem:
+  UnitMass_in_cgs:     1.98848e43    # 10^10 M_sun
+  UnitLength_in_cgs:   3.08567758e24 # 1 Mpc
+  UnitVelocity_in_cgs: 1e5   	     # 1 km/s
+  UnitCurrent_in_cgs:  1   	     # Amperes
+  UnitTemp_in_cgs:     1   	     # Kelvin
+
+# Cosmological parameters
+Cosmology:
+  h:              0.6777        # Reduced Hubble constant
+  a_begin:        0.0099        # Initial scale-factor of the simulation (z = 100.0)
+  a_end:          1.0           # Final scale factor of the simulation
+  Omega_m:        0.307         # Matter density parameter
+  Omega_lambda:   0.693         # Dark-energy density parameter
+  Omega_b:        0.0455        # Baryon density parameter
+
+# Parameters governing the time integration
+TimeIntegration:
+  dt_min:     1e-7
+  dt_max:     5e-3
+
+# Parameters governing the snapshots
+Snapshots:
+  basename:	       cooling_box
+  delta_time:          1.04
+  scale_factor_first:  0.00991
+  compression:         4
+
+# Parameters governing the conserved quantities statistics
+Statistics:
+  scale_factor_first:  0.00991
+  delta_time:          1.1
+
+# Parameters for the hydrodynamics scheme
+SPH:
+  resolution_eta:        1.2348   # Target smoothing length in units of the mean inter-particle separation (1.2348 == 48Ngbs with the cubic spline kernel).
+  CFL_condition:         0.1      # Courant-Friedrich-Levy condition for time integration.
+  minimal_temperature:   100      # K
+  
+# Parameters related to the initial conditions
+InitialConditions:
+  file_name:  ./constantBox.hdf5     # The file to read
+  periodic:   1
+
+# Parameters for the EAGLE chemistry
+EAGLEChemistry: 	     # Solar abundances
+  init_abundance_metal:      0.
+  init_abundance_Hydrogen:   0.752
+  init_abundance_Helium:     0.248
+  init_abundance_Carbon:     0.
+  init_abundance_Nitrogen:   0.
+  init_abundance_Oxygen:     0.
+  init_abundance_Neon:       0.
+  init_abundance_Magnesium:  0.
+  init_abundance_Silicon:    0.
+  init_abundance_Iron:       0.
+
+# Parameters for the EAGLE cooling
+EAGLECooling:
+  dir_name:                ./coolingtables/
+  H_reion_z:               11.5 
+  H_reion_eV_p_H:          2.0
+  He_reion_z_centre:       3.5
+  He_reion_z_sigma:        0.5
+  He_reion_eV_p_H:         2.0
+  
+# Parameters for the EAGLE "equation of state"
+EAGLEEntropyFloor:
+  Jeans_density_threshold_H_p_cm3: 0.1       # Physical density above which the EAGLE Jeans limiter entropy floor kicks in expressed in Hydrogen atoms per cm^3.
+  Jeans_over_density_threshold:    10.       # Overdensity above which the EAGLE Jeans limiter entropy floor can kick in.
+  Jeans_temperature_norm_K:        8000      # Temperature of the EAGLE Jeans limiter entropy floor at the density threshold expressed in Kelvin.
+  Jeans_gamma_effective:           1.3333333 # Slope the of the EAGLE Jeans limiter entropy floor
+  Cool_density_threshold_H_p_cm3: 1e-5       # Physical density above which the EAGLE Cool limiter entropy floor kicks in expressed in Hydrogen atoms per cm^3.
+  Cool_over_density_threshold:    10.        # Overdensity above which the EAGLE Cool limiter entropy floor can kick in.
+  Cool_temperature_norm_K:        8000       # Temperature of the EAGLE Cool limiter entropy floor at the density threshold expressed in Kelvin.
+  Cool_gamma_effective:           1.         # Slope the of the EAGLE Cool limiter entropy floor

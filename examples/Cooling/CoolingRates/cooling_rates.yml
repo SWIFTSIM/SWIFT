@@ -15,6 +15,11 @@ Cosmology:
   Omega_lambda:   0.693         # Dark-energy density parameter
   Omega_b:        0.0455        # Baryon density parameter
 
+SPH:
+  resolution_eta:      1.234
+  CFL_condition:       0.1
+  minimal_temperature: 100.
+
 EAGLEChemistry:
   init_abundance_metal:     0.014
   init_abundance_Hydrogen:  0.70649785
@@ -30,6 +35,7 @@ EAGLEChemistry:
 EAGLECooling:
   dir_name:                ./coolingtables/
   H_reion_z:               11.5
+  H_reion_eV_p_H:          2.0
   He_reion_z_centre:       3.5
   He_reion_z_sigma:        0.5
   He_reion_eV_p_H:         2.0

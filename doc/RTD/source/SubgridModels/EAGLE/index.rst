@@ -17,9 +17,10 @@ Entropy floors
 The gas particles in the EAGLE model are prevented from cooling below a
 certain temperature. The temperature limit depends on the density of the
 particles. Two floors are used in conjonction. Both are implemented as
-polytropic "equations of states" :math:`P = P_c
-\left(\rho/\rho_c\right)^\gamma`, with the constants derived from the user
-input given in terms of temperature and Hydrogen number density.
+polytropic "equations of states":math:`P = P_c
+\left(\rho/\rho_c\right)^\gamma` (all done in physical coordinates), with
+the constants derived from the user input given in terms of temperature and
+Hydrogen number density.
 
 The first limit, labelled as ``Cool``, is typically used to prevent
 low-density high-metallicity particles to cool below the warm phase because
@@ -27,12 +28,7 @@ of over-cooling induced by the absence of metal diffusion. This limit plays
 only a small role in practice. The second limit, labelled as ``Jeans``, is
 used to prevent the fragmentation of high-density gas into clumps that
 cannot be resolved by the coupled hydro+gravity solver. The two limits are
-sketched on the following figure. An additional over-density criterion is
-applied to prevent gas not collapsed into structures from being
-affected. This criterion demands that :math:`\rho > \Delta_{\rm floor}
-\Omega_b \rho_{\rm crit}`, with :math:`\Delta_{\rm floor}` specified by the
-user and :math:`\rho_{\rm crit}` the critical density at that redshift
-[#f1]_.
+sketched on the following figure.
 
 .. figure:: EAGLE_entropy_floor.svg
     :width: 400px
@@ -51,6 +47,15 @@ user and :math:`\rho_{\rm crit}` the critical density at that redshift
     the figure for clarity reasons, typical values for EAGLE runs place
     both anchors at the same temperature.
 
+An additional over-density criterion above the mean baryonic density is
+applied to prevent gas not collapsed into structures from being
+affected. To be precise, this criterion demands that the floor is applied
+only if :math:`\rho_{\rm com} > \Delta_{\rm floor}\bar{\rho_b} =
+\Delta_{\rm floor} \Omega_b \rho_{\rm crit,0}`, with :math:`\Delta_{\rm
+floor}` specified by the user, :math:`\rho_{\rm crit,0} = 3H_0/8\pi G` the
+critical density at redshift zero [#f1]_, and :math:`\rho_{\rm com}` the
+gas co-moving density. Typical values for :math:`\Delta_{\rm floor}` are of
+order 10.
 
 The model is governed by 4 parameters for each of the two
 limits. These are given in the ``EAGLEEntropyFloor`` section of the
@@ -280,7 +285,7 @@ these elements from the abundance of `Si`. More specifically, we assume that
 their abundance by mass relative to the table's solar abundance pattern is the
 same as the relative abundance of `Si` (i.e. :math:`[Ca/Si] = 0` and
 :math:`[S/Si] = 0`). Users can optionally modify the ratios used for `S` and
-`Ca`.
+`Ca`. Note that we use the *smoothed* abundances of elements for all calculations.
 
 Above the redshift of Hydrogen re-ionization we use the extra table containing
 net cooling rates for gas exposed to the CMB and a UV + X-ray background at
@@ -288,9 +293,13 @@ redshift nine truncated above 1 Rydberg. At the redshift or re-ionization, we
 additionally inject a fixed user-defined amount of energy per unit mass to all
 the gas particles.
 
-In addition to the tables we inject extra energy from Helium re-ionization using
-a Gaussian model with a user-defined redshift for the centre, width and total
-amount of energy injected per unit mass.
+In addition to the tables we inject extra energy from Helium II re-ionization
+using a Gaussian model with a user-defined redshift for the centre, width and
+total amount of energy injected per unit mass. Additional energy is also
+injected instantaneously for Hydrogen re-ionisation to all particles (active and
+inactive) to make sure the whole Universe reaches the expected temperature
+quickly (i.e not just via the interaction with the now much stronger UV
+background).
 
 For non-cosmological run, we use the :math:`z = 0` table and the interpolation
 along the redshift dimension then becomes a trivial operation.
@@ -326,7 +335,7 @@ they are listed for every gas particle:
 +---------------------+-------------------------------------+-----------+-------------------------------------+
 
 Note that if one is running without cooling switched on at runtime, the
-temperatures can be computed by passing the ``--temparature`` runtime flag (see
+temperatures can be computed by passing the ``--temperature`` runtime flag (see
 :ref:`cmdline-options`). Note that the tables then have to be available as in
 the case with cooling switched on.
 
@@ -341,9 +350,10 @@ implicit problem. A valid section of the YAML file looks like:
    EAGLECooling:
      dir_name:     /path/to/the/Wiersma/tables/directory # Absolute or relative path
      H_reion_z:            11.5      # Redhift of Hydrogen re-ionization
+     H_reion_ev_p_H:        2.0      # Energy injected in eV per Hydrogen atom for Hydrogen re-ionization.
      He_reion_z_centre:     3.5      # Centre of the Gaussian used for Helium re-ionization
      He_reion_z_sigma:      0.5      # Width of the Gaussian used for Helium re-ionization
-     He_reion_ev_p_H:       2.0      # Energy injected in eV per Hydrogen atom for Helium re-ionization.
+     He_reion_ev_p_H:       2.0      # Energy injected in eV per Hydrogen atom for Helium II re-ionization.
 
 And the optional parameters are:
 
@@ -384,8 +394,61 @@ the snapshots for each gas and star particle:
 
 .. _EAGLE_star_formation:
 
-Star formation: Schaye+2008
-~~~~~~~~~~~~~~~~~~~~~~~~~~~
+Star formation: Schaye+2008 modified for EAGLE
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+.. figure:: EAGLE_SF_Z_dep.svg
+    :width: 400px
+    :align: center
+    :figclass: align-center
+    :alt: Metal-dependance of the threshold for star formation in the
+	  EAGLE model.
+
+    The dependency of the SF threshold density on the metallicty of the gas
+    in the EAGLE model (black line). The function is described by the four
+    parameters indicated on the figure. These are the slope of the
+    dependency, its position on the metallicity-axis and normalisation
+    (black circle) as well as the maximal threshold density allowed. For
+    reference, the black arrow indicates the value typically assumed for
+    solar metallicity :math:`Z_\odot=0.014` (note, however, that this value
+    does *not* enter the model at all). The values used to produce this
+    figure are the ones assumed in the reference EAGLE model.
+
+.. figure:: EAGLE_SF_EOS.svg
+    :width: 400px
+    :align: center
+    :figclass: align-center
+    :alt: Equation-of-state assumed for the star-forming gas
+
+    The equation-of-state assumed for the star-forming gas in the EAGLE
+    model (black line). The function is described by the three parameters
+    indicated on the figure. These are the slope of the relation, the
+    position of the normalisation point on the density axis and the
+    temperature expected at this density. Note that this is a normalisation
+    and *not* a threshold. Gas at densities lower than the normalisation
+    point will also be put on this equation of state when computing its
+    star formation rate. The values used to produce this figure are the
+    ones assumed in the reference EAGLE model.
+    
+.. code:: YAML
+
+   # EAGLE star formation parameters
+   EAGLEStarFormation:
+     EOS_density_norm_H_p_cm3:          0.1       # Physical density used for the normalisation of the EOS assumed for the star-forming gas in Hydrogen atoms per cm^3.
+     EOS_temperature_norm_K:            8000      # Temperature om the polytropic EOS assumed for star-forming gas at the density normalisation in Kelvin.
+     EOS_gamma_effective:               1.3333333 # Slope the of the polytropic EOS assumed for the star-forming gas.
+     KS_normalisation:                  1.515e-4  # The normalization of the Kennicutt-Schmidt law in Msun / kpc^2 / yr.
+     KS_exponent:                       1.4       # The exponent of the Kennicutt-Schmidt law.
+     KS_min_over_density:               57.7      # The over-density above which star-formation is allowed.
+     KS_high_density_threshold_H_p_cm3: 1e3       # Hydrogen number density above which the Kennicut-Schmidt law changes slope in Hydrogen atoms per cm^3.
+     KS_high_density_exponent:          2.0       # Slope of the Kennicut-Schmidt law above the high-density threshold.
+     KS_temperature_margin_dex:         0.5       # Logarithm base 10 of the maximal temperature difference above the EOS allowed to form stars.
+     KS_max_density_threshold_H_p_cm3:  1e5       # Hydrogen number density above which a particle gets automatically turned into a star in Hydrogen atoms per cm^3.
+     threshold_norm_H_p_cm3:            0.1       # Normalisation of the metal-dependant density threshold for star formation in Hydrogen atoms per cm^3.
+     threshold_Z0:                      0.002     # Reference metallicity (metal mass fraction) for the metal-dependant threshold for star formation.
+     threshold_slope:                   -0.64     # Slope of the metal-dependant star formation threshold
+     threshold_max_density_H_p_cm3:     10.0      # Maximal density of the metal-dependant density threshold for star formation in Hydrogen atoms per cm^3.
+     gas_fraction:                      0.1       # The gas fraction used internally by the model.
 
 .. _EAGLE_enrichment:
 
