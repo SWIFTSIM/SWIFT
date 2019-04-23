@@ -47,7 +47,7 @@ include_HEADERS = logger_header.h logger_io.h logger_particle.h logger_time.h lo
 
 # Common source files
 AM_SOURCES = logger_header.c logger_io.c logger_particle.c logger_time.c logger_tools.c logger_reader.c \
-	logger_logfile.c
+	logger_index.c logger_logfile.c
 if HAVEPYTHON
 AM_SOURCES += logger_python_wrapper.c
 endif

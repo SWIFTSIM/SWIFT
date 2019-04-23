@@ -116,15 +116,13 @@ void header_read(struct header *h, struct logger_logfile *log) {
     error("Wrong file format");
 
   /* Read major version number */
-  int major;
-  offset = io_read_data(map, sizeof(int), &major, offset);
+  offset = io_read_data(map, sizeof(int), &h->major_version, offset);
 
   /* Read minor version number */
-  int minor;
-  offset = io_read_data(map, sizeof(int), &minor, offset);
+  offset = io_read_data(map, sizeof(int), &h->minor_version, offset);
 
   if (h->log->reader->verbose > 0)
-    message("File version %i.%i", major, minor);
+    message("File version %i.%i", h->major_version, h->minor_version);
 
   /* read the offset directions */
   offset = io_read_data(map, LOGGER_NUMBER_SIZE, &h->offset_direction, offset);

@@ -60,6 +60,12 @@ struct header {
   /* Logger version. */
   char version[STRING_SIZE];
 
+  /* Dump major version */
+  int major_version;
+
+  /* Dump minor version */
+  int minor_version;
+
   /* Offset of the first record. */
   size_t offset_first_record;
 

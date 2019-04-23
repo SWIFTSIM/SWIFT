@@ -39,12 +39,14 @@ void logger_index_init(struct logger_index *index, struct logger_reader *reader,
 		       char *basename) {
 
   /* Set pointers to 0. */
-  index->offsets = NULL;
-  index->ids = NULL;
+  index->data = NULL;
 
   /* Set variables default value. */
-  index->current_file = -1;
-  index->number_of_particles = 0;
+  index->total_number_particles = 0;
+
+  for(int i = 0; i < swift_type_count; i++) {
+    index->number_particles[i] = 0;
+  }
 }
 
 /**
@@ -57,12 +59,11 @@ void logger_index_read_file(struct logger_index *index, int i) {
   /* Cleanup the memory of previous file. */
   logger_index_free_current_file(index);
 
-  /* Save current index. */
-  index->current_file = i;
-
   /* Open file. */
   FILE *f = NULL;
-  f = fopen(index->filenames[i], "wb");
+  char name[200];
+  sprintf(name, "%s_%04i.index", index->basename, i);
+  f = fopen(name, "rb");
 
   /* Read the double time. */
   double time;
@@ -73,32 +74,23 @@ void logger_index_read_file(struct logger_index *index, int i) {
   fread(&int_time, sizeof(integertime_t), 1, f);
 
   /* Read the number of particles. */
-  long long N_total[swift_type_count];
-  fread(N_total, sizeof(long long), swift_type_count, f);
+  fread(index->number_particles, sizeof(long long), swift_type_count, f);
 
   /* Count total number of particles. */
   long long N = 0;
-  for(int i = 0; i < swift_type_count; i++) {
-    N += N_total[i];
+  for(int j = 0; j < swift_type_count; j++) {
+    N += index->number_particles[j];
   }
 
-  index->number_of_particles = N;
+  index->total_number_particles = N;
 
 
   /* Read the particles ids. */
-  if (posix_memalign((void**)&index->ids, IO_BUFFER_ALIGNMENT,
-                     N * sizeof(long long)) != 0)
-    error("Unable to allocate the offset buffer");
+  if (posix_memalign((void**)&index->data, IO_BUFFER_ALIGNMENT,
+                     N * sizeof(struct logger_index_data)) != 0)
+    error("Unable to allocate index data buffer");
 
-  fread(index->ids, sizeof(size_t), N, f);
-
-  /* Read the particles offsets. */
-  if (posix_memalign((void**)&index->offsets, IO_BUFFER_ALIGNMENT,
-                     N * sizeof(size_t)) != 0)
-    error("Unable to allocate the offset buffer");
-
-  fread(index->offset, sizeof(size_t), N, f);
-
+  fread(index->data, sizeof(struct logger_index_data), N, f);
 
   /* Close the file. */
   fclose(f);
@@ -110,19 +102,17 @@ void logger_index_read_file(struct logger_index *index, int i) {
  * @param index The #logger_index.
  */
 void logger_index_free_current_file(struct logger_index *index) {
-  /* Free the particles offsets. */
-  if (index->offsets)
-    free(index->offsets);
-  index->offsets = NULL;
-
-  /* Free the particles ids. */
-  if (index->ids)
-    free(index->ids);
-  index->ids = NULL;
+  /* Free the index data */
+  if (index->data)
+    free(index->data);
+  index->data = NULL;
 
   /* Set variables to default value. */
-  index->current_file = -1;
-  index->number_of_particles = 0;
+  index->total_number_particles = 0;
+
+  for(int i = 0; i < swift_type_count; i++) {
+    index->number_particles[i] = 0;
+  }
 }
 
 /**
@@ -132,21 +122,6 @@ void logger_index_free_current_file(struct logger_index *index) {
  */
 void logger_index_free(struct logger_index *index) {
 
-  /* Set variables to default value. */
-  index->current_file = -1;
-  index->number_of_particles = 0;
-
   /* Free the memory allocated for current file. */
-  logger_index_free_file_data(index);
-
-  /* Free the filenames. */
-  for(int i = 0; i < index->number_files; i++) {
-    if (index->filenames[i])
-      free(index->filenames[i]);
-    index->filenames[i] = NULL;
-  }
-
-  /* Free the array of filenames. */
-  free(index->filenames);
-  index->filenames = NULL;
+  logger_index_free_current_file(index);
 }

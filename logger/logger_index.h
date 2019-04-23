@@ -17,6 +17,8 @@
  *
  ******************************************************************************/
 
+#include "logger_tools.h"
+
 /**
  * @file logger_index.h
  * @brief This file deals with the index files.
@@ -25,6 +27,15 @@
 #define __LOGGER_LOGGER_INDEX_H__
 
 struct logger_reader;
+
+
+struct logger_index_data {
+  /* The particle's id */
+  long long id;
+
+  /* The particle's offset */
+  size_t offset;
+};
 
 /**
  * @brief This structure will contain the data related to
@@ -47,19 +58,16 @@ struct logger_index {
   int number_files;
 
   /* List of all the index filenames */
-  char **filenames;
+  char *basename;
 
-  /* Index of current file */
-  int current_file;
-
-  /* Offsets of the particles in current file */
-  size_t *offsets;
-
-  /* ids of the particles in current file */
-  long long *ids;
+  /* Particles' ids and offsets */
+  struct logger_index_data *data;
 
   /* Number of particles */
-  size_t number_of_particles;
+  size_t total_number_particles;
+
+  /* Number of particles per type */
+  long long number_particles[swift_type_count];
 };
 
 void logger_index_init(struct logger_index *index, struct logger_reader *reader,
