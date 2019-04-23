@@ -222,7 +222,8 @@ struct pcell_step_black_holes {
   float dx_max_part;
 };
 
-/** Bitmasks for the cell flags. */
+/** Bitmasks for the cell flags. Beware when adding flags that you don't exceed
+    the size of the flags variable in the struct cell. */
 enum cell_flags {
   cell_flag_split = (1UL << 0),
   cell_flag_do_hydro_drift = (1UL << 1),
@@ -268,7 +269,7 @@ struct cell {
   struct cell *super;
 
   /*! Cell flags bit-mask. */
-  unsigned int flags;
+  uint16_t flags;
 
   /*! Hydro variables */
   struct {
@@ -1303,7 +1304,7 @@ __attribute__((always_inline)) INLINE static void cell_clear_flag(
 
 /** Get the given flag for the given cell. */
 __attribute__((always_inline)) INLINE static int cell_get_flag(
-    struct cell *c, enum cell_flags flag) {
+    const struct cell *c, enum cell_flags flag) {
   return (c->flags & flag) > 0;
 }
 
