@@ -2128,9 +2128,9 @@ void cell_clean(struct cell *c) {
  * @brief Clear the drift flags on the given cell.
  */
 void cell_clear_drift_flags(struct cell *c, void *data) {
-  cell_clear_flag(c, cell_flag_do_hydro_drift & cell_flag_do_hydro_sub_drift &
-                         cell_flag_do_grav_drift & cell_flag_do_grav_sub_drift &
-                         cell_flag_do_stars_drift &
+  cell_clear_flag(c, cell_flag_do_hydro_drift | cell_flag_do_hydro_sub_drift |
+                         cell_flag_do_grav_drift | cell_flag_do_grav_sub_drift |
+                         cell_flag_do_stars_drift |
                          cell_flag_do_stars_sub_drift);
 }
 
@@ -2139,7 +2139,7 @@ void cell_clear_drift_flags(struct cell *c, void *data) {
  */
 void cell_clear_limiter_flags(struct cell *c, void *data) {
   cell_clear_flag(c,
-                  cell_flag_do_hydro_limiter & cell_flag_do_hydro_sub_limiter);
+                  cell_flag_do_hydro_limiter | cell_flag_do_hydro_sub_limiter);
 }
 
 /**
@@ -4111,7 +4111,7 @@ void cell_drift_part(struct cell *c, const struct engine *e, int force) {
   if (c->hydro.count == 0) {
 
     /* Clear the drift flags. */
-    cell_clear_flag(c, cell_flag_do_hydro_drift & cell_flag_do_hydro_sub_drift);
+    cell_clear_flag(c, cell_flag_do_hydro_drift | cell_flag_do_hydro_sub_drift);
 
     /* Update the time of the last drift */
     c->hydro.ti_old_part = ti_current;
@@ -4259,7 +4259,7 @@ void cell_drift_part(struct cell *c, const struct engine *e, int force) {
   }
 
   /* Clear the drift flags. */
-  cell_clear_flag(c, cell_flag_do_hydro_drift & cell_flag_do_hydro_sub_drift);
+  cell_clear_flag(c, cell_flag_do_hydro_drift | cell_flag_do_hydro_sub_drift);
 }
 
 /**
@@ -4293,7 +4293,7 @@ void cell_drift_gpart(struct cell *c, const struct engine *e, int force) {
   if (c->grav.count == 0) {
 
     /* Clear the drift flags. */
-    cell_clear_flag(c, cell_flag_do_grav_drift & cell_flag_do_grav_sub_drift);
+    cell_clear_flag(c, cell_flag_do_grav_drift | cell_flag_do_grav_sub_drift);
 
     /* Update the time of the last drift */
     c->grav.ti_old_part = ti_current;
@@ -4381,7 +4381,7 @@ void cell_drift_gpart(struct cell *c, const struct engine *e, int force) {
   }
 
   /* Clear the drift flags. */
-  cell_clear_flag(c, cell_flag_do_grav_drift & cell_flag_do_grav_sub_drift);
+  cell_clear_flag(c, cell_flag_do_grav_drift | cell_flag_do_grav_sub_drift);
 }
 
 /**
@@ -4421,7 +4421,7 @@ void cell_drift_spart(struct cell *c, const struct engine *e, int force) {
   if (c->stars.count == 0) {
 
     /* Clear the drift flags. */
-    cell_clear_flag(c, cell_flag_do_stars_drift & cell_flag_do_stars_sub_drift);
+    cell_clear_flag(c, cell_flag_do_stars_drift | cell_flag_do_stars_sub_drift);
 
     /* Update the time of the last drift */
     c->stars.ti_old_part = ti_current;
@@ -4549,7 +4549,7 @@ void cell_drift_spart(struct cell *c, const struct engine *e, int force) {
   }
 
   /* Clear the drift flags. */
-  cell_clear_flag(c, cell_flag_do_stars_drift & cell_flag_do_stars_sub_drift);
+  cell_clear_flag(c, cell_flag_do_stars_drift | cell_flag_do_stars_sub_drift);
 }
 
 /**
@@ -4588,7 +4588,7 @@ void cell_drift_bpart(struct cell *c, const struct engine *e, int force) {
   if (c->black_holes.count == 0) {
 
     /* Clear the drift flags. */
-    cell_clear_flag(c, cell_flag_do_bh_drift & cell_flag_do_bh_sub_drift);
+    cell_clear_flag(c, cell_flag_do_bh_drift | cell_flag_do_bh_sub_drift);
 
     /* Update the time of the last drift */
     c->black_holes.ti_old_part = ti_current;
@@ -4705,7 +4705,7 @@ void cell_drift_bpart(struct cell *c, const struct engine *e, int force) {
   }
 
   /* Clear the drift flags. */
-  cell_clear_flag(c, cell_flag_do_bh_drift & cell_flag_do_bh_sub_drift);
+  cell_clear_flag(c, cell_flag_do_bh_drift | cell_flag_do_bh_sub_drift);
 }
 
 /**
