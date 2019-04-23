@@ -1,0 +1,30 @@
+# Define the system of units to use internally. 
+InternalUnitSystem:
+  UnitMass_in_cgs:     1.98848e43    # 10^10 M_sun in grams
+  UnitLength_in_cgs:   3.08567758e24 # Mpc in centimeters
+  UnitVelocity_in_cgs: 1e5   # km/s in centimeters per second
+  UnitCurrent_in_cgs:  1.   # Amperes
+  UnitTemp_in_cgs:     1.   # Kelvin
+
+# Cosmological parameters
+Cosmology:
+  h:              0.6777        # Reduced Hubble constant
+  a_begin:        0.5           # Initial scale-factor of the simulation
+  a_end:          1.0           # Final scale factor of the simulation
+  Omega_m:        0.307         # Matter density parameter
+  Omega_lambda:   0.693         # Dark-energy density parameter
+  Omega_b:        0.0455        # Baryon density parameter
+
+# Parameters for the hydrodynamics scheme
+SPH:
+  resolution_eta:        1.2348   # Target smoothing length in units of the mean inter-particle separation 
+  CFL_condition:         0.1      # Courant-Friedrich-Levy condition for time integration.
+
+EAGLEFeedback:
+  filename:     /cosma5/data/Eagle/BG_Tables/YieldTables/
+  imf_model:    Chabrier
+  continuous_heating_switch: 0
+  SNIa_timescale_Gyr:        2.0
+  SNIa_efficiency:           2.e-3
+  SNII_wind_delay_Gyr:       0.03
+  SNe_heating_temperature_K: 3.16228e7

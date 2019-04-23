@@ -644,6 +644,7 @@ void self_all_force(struct runner *r, struct cell *ci) {
 }
 
 void self_all_stars_density(struct runner *r, struct cell *ci) {
+
   float r2, hi, hj, hig2, dxi[3];
   struct spart *spi;
   struct part *pj;
@@ -825,9 +826,9 @@ void shuffle_sparticles(struct spart *sparts, const int scount) {
  * @param a Value a
  * @param b Value b
  * @param threshold The limit on the relative difference between the two values
- * @param absDiff Absolute difference: |a - b|
- * @param absSum Absolute sum: |a + b|
- * @param relDiff Relative difference: |a - b|/|a + b|
+ * @param absDiff (return) Absolute difference: |a - b|
+ * @param absSum (return) Absolute sum: |a + b|
+ * @param relDiff (return) Relative difference: |a - b|/|a + b|
  *
  * @return 1 if difference found, 0 otherwise
  */

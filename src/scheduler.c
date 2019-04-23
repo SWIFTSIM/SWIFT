@@ -547,6 +547,7 @@ static void scheduler_splittask_hydro(struct task *t, struct scheduler *s) {
   /* Note this is not very clean as the scheduler should not really
      access the engine... */
   const int with_feedback = (s->space->e->policy & engine_policy_feedback);
+  const int with_stars = (s->space->e->policy & engine_policy_stars);
 
   /* Iterate on this task until we're done with it. */
   int redo = 1;
@@ -558,7 +559,7 @@ static void scheduler_splittask_hydro(struct task *t, struct scheduler *s) {
     /* Is this a non-empty self-task? */
     const int is_self =
         (t->type == task_type_self) && (t->ci != NULL) &&
-        ((t->ci->hydro.count > 0) || (with_feedback && t->ci->stars.count > 0));
+        ((t->ci->hydro.count > 0) || (with_stars && t->ci->stars.count > 0));
 
     /* Is this a non-empty pair-task? */
     const int is_pair =
@@ -1539,6 +1540,8 @@ void scheduler_reweight(struct scheduler *s, int verbose) {
     const float gcount_j = (t->cj != NULL) ? t->cj->grav.count : 0.f;
     const float scount_i = (t->ci != NULL) ? t->ci->stars.count : 0.f;
     const float scount_j = (t->cj != NULL) ? t->cj->stars.count : 0.f;
+    const float bcount_i = (t->ci != NULL) ? t->ci->black_holes.count : 0.f;
+    // const float bcount_j = (t->cj != NULL) ? t->cj->black_holes.count : 0.f;
 
     switch (t->type) {
       case task_type_sort:
@@ -1629,6 +1632,12 @@ void scheduler_reweight(struct scheduler *s, int verbose) {
       case task_type_drift_gpart:
         cost = wscale * gcount_i;
         break;
+      case task_type_drift_spart:
+        cost = wscale * scount_i;
+        break;
+      case task_type_drift_bpart:
+        cost = wscale * bcount_i;
+        break;
       case task_type_init_grav:
         cost = wscale * gcount_i;
         break;
@@ -1647,14 +1656,20 @@ void scheduler_reweight(struct scheduler *s, int verbose) {
       case task_type_end_grav_force:
         cost = wscale * gcount_i;
         break;
+      case task_type_cooling:
+        cost = wscale * count_i;
+        break;
+      case task_type_star_formation:
+        cost = wscale * (count_i + scount_i);
+        break;
       case task_type_kick1:
-        cost = wscale * count_i + wscale * gcount_i;
+        cost = wscale * (count_i + gcount_i + scount_i + bcount_i);
         break;
       case task_type_kick2:
-        cost = wscale * count_i + wscale * gcount_i;
+        cost = wscale * (count_i + gcount_i + scount_i + bcount_i);
         break;
       case task_type_timestep:
-        cost = wscale * count_i + wscale * gcount_i;
+        cost = wscale * (count_i + gcount_i + scount_i + bcount_i);
         break;
       case task_type_send:
         if (count_i < 1e5)
@@ -1846,13 +1861,35 @@ void scheduler_enqueue(struct scheduler *s, struct task *t) {
         break;
       case task_type_recv:
 #ifdef WITH_MPI
-        if (t->subtype == task_subtype_tend) {
-          t->buff = (struct pcell_step *)malloc(sizeof(struct pcell_step) *
-                                                t->ci->mpi.pcell_size);
-          err = MPI_Irecv(t->buff,
-                          t->ci->mpi.pcell_size * sizeof(struct pcell_step),
-                          MPI_BYTE, t->ci->nodeID, t->flags,
-                          subtaskMPI_comms[t->subtype], &t->req);
+        if (t->subtype == task_subtype_tend_part) {
+          t->buff = (struct pcell_step_hydro *)malloc(
+              sizeof(struct pcell_step_hydro) * t->ci->mpi.pcell_size);
+          err = MPI_Irecv(
+              t->buff, t->ci->mpi.pcell_size * sizeof(struct pcell_step_hydro),
+              MPI_BYTE, t->ci->nodeID, t->flags, subtaskMPI_comms[t->subtype],
+              &t->req);
+        } else if (t->subtype == task_subtype_tend_gpart) {
+          t->buff = (struct pcell_step_grav *)malloc(
+              sizeof(struct pcell_step_grav) * t->ci->mpi.pcell_size);
+          err = MPI_Irecv(
+              t->buff, t->ci->mpi.pcell_size * sizeof(struct pcell_step_grav),
+              MPI_BYTE, t->ci->nodeID, t->flags, subtaskMPI_comms[t->subtype],
+              &t->req);
+        } else if (t->subtype == task_subtype_tend_spart) {
+          t->buff = (struct pcell_step_stars *)malloc(
+              sizeof(struct pcell_step_stars) * t->ci->mpi.pcell_size);
+          err = MPI_Irecv(
+              t->buff, t->ci->mpi.pcell_size * sizeof(struct pcell_step_stars),
+              MPI_BYTE, t->ci->nodeID, t->flags, subtaskMPI_comms[t->subtype],
+              &t->req);
+        } else if (t->subtype == task_subtype_tend_bpart) {
+          t->buff = (struct pcell_step_black_holes *)malloc(
+              sizeof(struct pcell_step_black_holes) * t->ci->mpi.pcell_size);
+          err = MPI_Irecv(
+              t->buff,
+              t->ci->mpi.pcell_size * sizeof(struct pcell_step_black_holes),
+              MPI_BYTE, t->ci->nodeID, t->flags, subtaskMPI_comms[t->subtype],
+              &t->req);
         } else if (t->subtype == task_subtype_xv ||
                    t->subtype == task_subtype_rho ||
                    t->subtype == task_subtype_gradient) {
@@ -1886,21 +1923,81 @@ void scheduler_enqueue(struct scheduler *s, struct task *t) {
         break;
       case task_type_send:
 #ifdef WITH_MPI
-        if (t->subtype == task_subtype_tend) {
-          t->buff = (struct pcell_step *)malloc(sizeof(struct pcell_step) *
-                                                t->ci->mpi.pcell_size);
-          cell_pack_end_step(t->ci, (struct pcell_step *)t->buff);
-          if ((t->ci->mpi.pcell_size * sizeof(struct pcell_step)) >
-              s->mpi_message_limit)
-            err = MPI_Isend(t->buff,
-                            t->ci->mpi.pcell_size * sizeof(struct pcell_step),
-                            MPI_BYTE, t->cj->nodeID, t->flags,
-                            subtaskMPI_comms[t->subtype], &t->req);
-          else
-            err = MPI_Issend(t->buff,
-                             t->ci->mpi.pcell_size * sizeof(struct pcell_step),
-                             MPI_BYTE, t->cj->nodeID, t->flags,
-                             subtaskMPI_comms[t->subtype], &t->req);
+        if (t->subtype == task_subtype_tend_part) {
+          t->buff = (struct pcell_step_hydro *)malloc(
+              sizeof(struct pcell_step_hydro) * t->ci->mpi.pcell_size);
+          cell_pack_end_step_hydro(t->ci, (struct pcell_step_hydro *)t->buff);
+
+          if ((t->ci->mpi.pcell_size * sizeof(struct pcell_step_hydro)) >
+              s->mpi_message_limit) {
+            err = MPI_Isend(
+                t->buff,
+                t->ci->mpi.pcell_size * sizeof(struct pcell_step_hydro),
+                MPI_BYTE, t->cj->nodeID, t->flags, subtaskMPI_comms[t->subtype],
+                &t->req);
+          } else {
+            err = MPI_Issend(
+                t->buff,
+                t->ci->mpi.pcell_size * sizeof(struct pcell_step_hydro),
+                MPI_BYTE, t->cj->nodeID, t->flags, subtaskMPI_comms[t->subtype],
+                &t->req);
+          }
+        } else if (t->subtype == task_subtype_tend_gpart) {
+          t->buff = (struct pcell_step_grav *)malloc(
+              sizeof(struct pcell_step_grav) * t->ci->mpi.pcell_size);
+          cell_pack_end_step_grav(t->ci, (struct pcell_step_grav *)t->buff);
+
+          if ((t->ci->mpi.pcell_size * sizeof(struct pcell_step_grav)) >
+              s->mpi_message_limit) {
+            err = MPI_Isend(
+                t->buff, t->ci->mpi.pcell_size * sizeof(struct pcell_step_grav),
+                MPI_BYTE, t->cj->nodeID, t->flags, subtaskMPI_comms[t->subtype],
+                &t->req);
+          } else {
+            err = MPI_Issend(
+                t->buff, t->ci->mpi.pcell_size * sizeof(struct pcell_step_grav),
+                MPI_BYTE, t->cj->nodeID, t->flags, subtaskMPI_comms[t->subtype],
+                &t->req);
+          }
+        } else if (t->subtype == task_subtype_tend_spart) {
+          t->buff = (struct pcell_step_stars *)malloc(
+              sizeof(struct pcell_step_stars) * t->ci->mpi.pcell_size);
+          cell_pack_end_step_stars(t->ci, (struct pcell_step_stars *)t->buff);
+
+          if ((t->ci->mpi.pcell_size * sizeof(struct pcell_step_stars)) >
+              s->mpi_message_limit) {
+            err = MPI_Isend(
+                t->buff,
+                t->ci->mpi.pcell_size * sizeof(struct pcell_step_stars),
+                MPI_BYTE, t->cj->nodeID, t->flags, subtaskMPI_comms[t->subtype],
+                &t->req);
+          } else {
+            err = MPI_Issend(
+                t->buff,
+                t->ci->mpi.pcell_size * sizeof(struct pcell_step_stars),
+                MPI_BYTE, t->cj->nodeID, t->flags, subtaskMPI_comms[t->subtype],
+                &t->req);
+          }
+        } else if (t->subtype == task_subtype_tend_bpart) {
+          t->buff = (struct pcell_step_black_holes *)malloc(
+              sizeof(struct pcell_step_black_holes) * t->ci->mpi.pcell_size);
+          cell_pack_end_step_black_holes(
+              t->ci, (struct pcell_step_black_holes *)t->buff);
+
+          if ((t->ci->mpi.pcell_size * sizeof(struct pcell_step_black_holes)) >
+              s->mpi_message_limit) {
+            err = MPI_Isend(
+                t->buff,
+                t->ci->mpi.pcell_size * sizeof(struct pcell_step_black_holes),
+                MPI_BYTE, t->cj->nodeID, t->flags, subtaskMPI_comms[t->subtype],
+                &t->req);
+          } else {
+            err = MPI_Issend(
+                t->buff,
+                t->ci->mpi.pcell_size * sizeof(struct pcell_step_black_holes),
+                MPI_BYTE, t->cj->nodeID, t->flags, subtaskMPI_comms[t->subtype],
+                &t->req);
+          }
         } else if (t->subtype == task_subtype_xv ||
                    t->subtype == task_subtype_rho ||
                    t->subtype == task_subtype_gradient) {

@@ -763,7 +763,6 @@ INPUT                  =  @top_srcdir@ @top_srcdir@/src @top_srcdir@/tests @top_
 INPUT		       += @top_srcdir@/src/hydro/Minimal
 INPUT		       += @top_srcdir@/src/hydro/Gadget2
 INPUT		       += @top_srcdir@/src/gravity/Default
-INPUT		       += @top_srcdir@/src/stars/Default
 INPUT		       += @top_srcdir@/src/riemann
 INPUT		       += @top_srcdir@/src/potential/point_mass
 INPUT		       += @top_srcdir@/src/equation_of_state/ideal_gas
@@ -776,6 +775,8 @@ INPUT		       += @top_srcdir@/src/entropy_floor/EAGLE
 INPUT		       += @top_srcdir@/src/star_formation/EAGLE
 INPUT		       += @top_srcdir@/src/tracers/EAGLE
 INPUT		       += @top_srcdir@/src/stars/EAGLE
+INPUT		       += @top_srcdir@/src/feedback/EAGLE
+INPUT		       += @top_srcdir@/src/black_holes/Default
 
 # This tag can be used to specify the character encoding of the source files
 # that doxygen parses. Internally doxygen uses the UTF-8 encoding. Doxygen uses
