@@ -757,7 +757,7 @@ static void pick_parmetis(int nodeID, struct space *s, int nregions,
 #ifdef SWIFT_DEBUG_CHECKS
       /* Check weights are all in range. */
       int failed = 0;
-      for (int k = 0; k < nadjcny; k++) {
+      for (int k = 0; k < ncells * 26; k++) {
 
         if ((idx_t)edgew[k] < 0) {
           message("Input edge weight out of range: %ld", (long)edgew[k]);
@@ -1023,7 +1023,7 @@ static void pick_parmetis(int nodeID, struct space *s, int nregions,
     int bad = 0;
     for (int k = 0; k < ncells; k++) {
       if (newcelllist[k] < 0 || newcelllist[k] >= nregions) {
-        message("Got bad nodeID %" PRIDX " for cell %i.", newcelllist[k], k);
+        message("Got bad nodeID %d for cell %i.", newcelllist[k], k);
         bad++;
       }
     }
