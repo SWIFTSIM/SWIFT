@@ -206,8 +206,8 @@ static void split_vector(struct space *s, int nregions, int *samplecells) {
  *             number of cells in space + 1. NULL for not used.
  * @param nxadj the number of xadj element used.
  */
-static void graph_init(struct space *s, int periodic, idx_t *weights_e, idx_t *adjncy,
-                       int *nadjcny, idx_t *xadj, int *nxadj) {
+static void graph_init(struct space *s, int periodic, idx_t *weights_e,
+                       idx_t *adjncy, int *nadjcny, idx_t *xadj, int *nxadj) {
 
   /* Loop over all cells in the space. */
   *nadjcny = 0;
@@ -293,11 +293,11 @@ static void graph_init(struct space *s, int periodic, idx_t *weights_e, idx_t *a
                         adjncy[ind] = cell_getid(s->cdim, ii, jj, kk);
 
                         if (shuffle) {
-                            /* Keep this weight, need index for periodic
-                             * version for input weights... */
-                            int oldp = ((i + 1) * 9 + (j + 1) * 3 + (k + 1));
-                            oldp = oldp - (oldp / 14);
-                            weights_e[ind] = weights_e[cid * 26 + oldp];
+                          /* Keep this weight, need index for periodic
+                           * version for input weights... */
+                          int oldp = ((i + 1) * 9 + (j + 1) * 3 + (k + 1));
+                          oldp = oldp - (oldp / 14);
+                          weights_e[ind] = weights_e[cid * 26 + oldp];
                         }
 
                         ind++;
@@ -695,8 +695,7 @@ static void pick_parmetis(int nodeID, struct space *s, int nregions,
              (idx_t *)malloc(sizeof(idx_t) * (ncells + nregions + 1))) == NULL)
       error("Failed to allocate full xadj buffer.");
     idx_t *std_xadj = NULL;
-    if ((std_xadj =
-             (idx_t *)malloc(sizeof(idx_t) * (ncells + 1))) == NULL)
+    if ((std_xadj = (idx_t *)malloc(sizeof(idx_t) * (ncells + 1))) == NULL)
       error("Failed to allocate std xadj buffer.");
     idx_t *full_adjncy = NULL;
     if ((full_adjncy = (idx_t *)malloc(sizeof(idx_t) * 26 * ncells)) == NULL)
@@ -716,7 +715,6 @@ static void pick_parmetis(int nodeID, struct space *s, int nregions,
       if ((full_regionid = (idx_t *)malloc(sizeof(idx_t) * ncells)) == NULL)
         error("Failed to allocate full regionid array");
     }
-
 
     /* Init the vertex weights array. */
     if (vertexw != NULL) {
@@ -777,7 +775,8 @@ static void pick_parmetis(int nodeID, struct space *s, int nregions,
     /* Define the cell graph. Keeping the edge weights association. */
     int nadjcny = 0;
     int nxadj = 0;
-    graph_init(s, s->periodic, full_weights_e, full_adjncy, &nadjcny, std_xadj, &nxadj);
+    graph_init(s, s->periodic, full_weights_e, full_adjncy, &nadjcny, std_xadj,
+               &nxadj);
 
     /* Dump graphs to disk files for testing. */
     /*dumpMETISGraph("parmetis_graph", ncells, 1, std_xadj, full_adjncy,
@@ -793,9 +792,9 @@ static void pick_parmetis(int nodeID, struct space *s, int nregions,
       /* Each xadj section starts at 0 and terminates like a complete one. */
       int offset = std_xadj[j];
       for (int k = 0; k < nvt; k++) {
-          full_xadj[i] = std_xadj[j] - offset;
-          j++;
-          i++;
+        full_xadj[i] = std_xadj[j] - offset;
+        j++;
+        i++;
       }
       full_xadj[i] = std_xadj[j] - offset;
       i++;
@@ -867,9 +866,9 @@ static void pick_parmetis(int nodeID, struct space *s, int nregions,
     /* Receive stuff from rank 0. */
     res = MPI_Irecv(xadj, nverts + 1, IDX_T, 0, 0, comm, &reqs[0]);
     if (res == MPI_SUCCESS)
-        res = MPI_Irecv(adjncy, nverts * 26, IDX_T, 0, 1, comm, &reqs[1]);
+      res = MPI_Irecv(adjncy, nverts * 26, IDX_T, 0, 1, comm, &reqs[1]);
     if (res == MPI_SUCCESS && weights_e != NULL)
-        res = MPI_Irecv(weights_e, nverts * 26, IDX_T, 0, 2, comm, &reqs[2]);
+      res = MPI_Irecv(weights_e, nverts * 26, IDX_T, 0, 2, comm, &reqs[2]);
     if (res == MPI_SUCCESS && weights_v != NULL)
       res = MPI_Irecv(weights_v, nverts, IDX_T, 0, 3, comm, &reqs[3]);
     if (refine && res == MPI_SUCCESS)
@@ -1349,7 +1348,7 @@ static void partition_gather_weights(void *map_data, int num_elements,
     /* Pair? */
     else if (t->type == task_type_pair || (t->type == task_type_sub_pair)) {
 
-     /* In-cell pair? */
+      /* In-cell pair? */
       if (ci == cj) {
         /* Add weight to vertex for ci. */
         if (vweights) atomic_add_d(&weights_v[cid], w);
@@ -1449,8 +1448,8 @@ static void repart_edge_metis(int vweights, int eweights, int timebins,
     error("Failed to allocate the inds array");
   int nadjcny = 0;
   int nxadj = 0;
-  graph_init(s, 1 /* periodic */, NULL /* no edge weights */, inds,
-             &nadjcny, NULL /* no xadj needed */, &nxadj);
+  graph_init(s, 1 /* periodic */, NULL /* no edge weights */, inds, &nadjcny,
+             NULL /* no xadj needed */, &nxadj);
 
   /* Allocate and init weights. */
   double *weights_v = NULL;

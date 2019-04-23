@@ -41,8 +41,8 @@
 
 // Tillotson parameters
 struct Til_params {
-  float rho_0, a, b, A, B, u_0, u_iv, u_cv, alpha, beta, eta_min, eta_zero, 
-        P_min;
+  float rho_0, a, b, A, B, u_0, u_iv, u_cv, alpha, beta, eta_min, eta_zero,
+      P_min;
   enum eos_planetary_material_id mat_id;
 };
 
@@ -181,12 +181,11 @@ INLINE static float Til_pressure_from_internal_energy(
   float P_c, P_e, P;
 
   // Condensed or cold
-  P_c = (mat->a + mat->b * w_inv) * density * u + mat->A * mu +
-        mat->B * mu * mu;
+  P_c =
+      (mat->a + mat->b * w_inv) * density * u + mat->A * mu + mat->B * mu * mu;
   if (eta < mat->eta_zero) {
     P_c = 0.f;
-  } 
-  else if (eta < mat->eta_min) {
+  } else if (eta < mat->eta_min) {
     P_c *= (eta - mat->eta_zero) / (mat->eta_min - mat->eta_zero);
   }
   // Expanded and hot
@@ -243,12 +242,11 @@ INLINE static float Til_soundspeed_from_internal_energy(
   float P_c, P_e, c_sq_c, c_sq_e, c_sq;
 
   // Condensed or cold
-  P_c = (mat->a + mat->b * w_inv) * density * u + mat->A * mu +
-        mat->B * mu * mu;
+  P_c =
+      (mat->a + mat->b * w_inv) * density * u + mat->A * mu + mat->B * mu * mu;
   if (eta < mat->eta_zero) {
     P_c = 0.f;
-  }
-  else if (eta < mat->eta_min) {
+  } else if (eta < mat->eta_min) {
     P_c *= (eta - mat->eta_zero) / (mat->eta_min - mat->eta_zero);
   }
   c_sq_c = P_c * rho_inv * (1.f + mat->a + mat->b * w_inv) +
