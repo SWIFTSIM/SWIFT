@@ -1889,7 +1889,8 @@ void space_rebuild(struct space *s, int repartitioned, int verbose) {
 
     const int is_local = (c->nodeID == engine_rank);
     const int has_particles = (c->hydro.count > 0) || (c->grav.count > 0) ||
-                              (c->stars.count > 0) || (c->black_holes.count > 0);
+                              (c->stars.count > 0) ||
+                              (c->black_holes.count > 0);
 
     if (is_local) {
       c->hydro.parts = finger;
