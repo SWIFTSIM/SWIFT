@@ -311,7 +311,7 @@ int checkCellhdxmax(const struct cell *c, int *depth) {
         sp->x[2] < loc_min[2] || sp->x[2] >= loc_max[2]) {
 
       message(
-          "Inconsistent part position p->x=[%e %e %e], c->loc=[%e %e %e] "
+          "Inconsistent spart position p->x=[%e %e %e], c->loc=[%e %e %e] "
           "c->width=[%e %e %e]",
           sp->x[0], sp->x[1], sp->x[2], c->loc[0], c->loc[1], c->loc[2],
           c->width[0], c->width[1], c->width[2]);
