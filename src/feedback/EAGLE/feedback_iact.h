@@ -114,6 +114,11 @@ runner_iact_nonsym_feedback_apply(const float r2, const float *dx,
     Omega_frac = 0.f;
   }
 
+#ifdef SWIFT_DEBUG_CHECKS
+  if (Omega_frac < 0. || Omega_frac > 1.)
+    error("Invalid fraction of material to dsitribute.");
+#endif
+
   /* Update particle mass */
   const double current_mass = hydro_get_mass(pj);
   const double delta_mass = si->feedback_data.to_distribute.mass * Omega_frac;
