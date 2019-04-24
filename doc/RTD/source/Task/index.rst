@@ -10,7 +10,7 @@ This section of the documentation includes information on the task system
 available in SWIFT, as well as how to implement your own task.
 
 SWIFT can produce a graph containing all the dependencies.
-Everything is described in :ref:`_analysistools`.
+Everything is described in :ref:`_Analysis_Tools`.
 
 
 .. toctree::
