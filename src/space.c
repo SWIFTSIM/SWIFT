@@ -3346,7 +3346,7 @@ void space_split_recursive(struct space *s, struct cell *c,
 #endif
     }
 
-    /* Split the cell's partcle data. */
+    /* Split the cell's particle data. */
     cell_split(c, c->hydro.parts - s->parts, c->stars.parts - s->sparts,
                c->black_holes.parts - s->bparts, buff, sbuff, bbuff, gbuff);
 
@@ -4782,7 +4782,7 @@ void space_init(struct space *s, struct swift_params *params,
   last_cell_id = 1;
 #endif
 
-  /* Do we want any spare particles for on the fly cration? */
+  /* Do we want any spare particles for on the fly creation? */
   if (!star_formation) space_extra_sparts = 0;
 
   /* Build the cells recursively. */
@@ -5253,6 +5253,30 @@ void space_struct_dump(struct space *s, FILE *stream) {
   restart_write_blocks(s, sizeof(struct space), 1, stream, "space",
                        "space struct");
 
+  /* Now all our globals. */
+  restart_write_blocks(&space_splitsize, sizeof(int), 1, stream,
+                       "space_splitsize", "space_splitsize");
+  restart_write_blocks(&space_maxsize, sizeof(int), 1, stream, "space_maxsize",
+                       "space_maxsize");
+  restart_write_blocks(&space_subsize_pair_hydro, sizeof(int), 1, stream,
+                       "space_subsize_pair_hydro", "space_subsize_pair_hydro");
+  restart_write_blocks(&space_subsize_self_hydro, sizeof(int), 1, stream,
+                       "space_subsize_self_hydro", "space_subsize_self_hydro");
+  restart_write_blocks(&space_subsize_pair_grav, sizeof(int), 1, stream,
+                       "space_subsize_pair_grav", "space_subsize_pair_grav");
+  restart_write_blocks(&space_subsize_self_grav, sizeof(int), 1, stream,
+                       "space_subsize_self_grav", "space_subsize_self_grav");
+  restart_write_blocks(&space_subdepth_diff_grav, sizeof(int), 1, stream,
+                       "space_subdepth_diff_grav", "space_subdepth_diff_grav");
+  restart_write_blocks(&space_extra_parts, sizeof(int), 1, stream,
+                       "space_extra_parts", "space_extra_parts");
+  restart_write_blocks(&space_extra_gparts, sizeof(int), 1, stream,
+                       "space_extra_gparts", "space_extra_gparts");
+  restart_write_blocks(&space_extra_sparts, sizeof(int), 1, stream,
+                       "space_extra_sparts", "space_extra_sparts");
+  restart_write_blocks(&space_extra_bparts, sizeof(int), 1, stream,
+                       "space_extra_bparts", "space_extra_bparts");
+
   /* More things to write. */
   if (s->nr_parts > 0) {
     restart_write_blocks(s->parts, s->nr_parts, sizeof(struct part), stream,
@@ -5282,6 +5306,30 @@ void space_struct_dump(struct space *s, FILE *stream) {
 void space_struct_restore(struct space *s, FILE *stream) {
 
   restart_read_blocks(s, sizeof(struct space), 1, stream, NULL, "space struct");
+
+  /* Now all our globals. */
+  restart_read_blocks(&space_splitsize, sizeof(int), 1, stream, NULL,
+                      "space_splitsize");
+  restart_read_blocks(&space_maxsize, sizeof(int), 1, stream, NULL,
+                      "space_maxsize");
+  restart_read_blocks(&space_subsize_pair_hydro, sizeof(int), 1, stream, NULL,
+                      "space_subsize_pair_hydro");
+  restart_read_blocks(&space_subsize_self_hydro, sizeof(int), 1, stream, NULL,
+                      "space_subsize_self_hydro");
+  restart_read_blocks(&space_subsize_pair_grav, sizeof(int), 1, stream, NULL,
+                      "space_subsize_pair_grav");
+  restart_read_blocks(&space_subsize_self_grav, sizeof(int), 1, stream, NULL,
+                      "space_subsize_self_grav");
+  restart_read_blocks(&space_subdepth_diff_grav, sizeof(int), 1, stream, NULL,
+                      "space_subdepth_diff_grav");
+  restart_read_blocks(&space_extra_parts, sizeof(int), 1, stream, NULL,
+                      "space_extra_parts");
+  restart_read_blocks(&space_extra_gparts, sizeof(int), 1, stream, NULL,
+                      "space_extra_gparts");
+  restart_read_blocks(&space_extra_sparts, sizeof(int), 1, stream, NULL,
+                      "space_extra_sparts");
+  restart_read_blocks(&space_extra_bparts, sizeof(int), 1, stream, NULL,
+                      "space_extra_bparts");
 
   /* Things that should be reconstructed in a rebuild. */
   s->cells_top = NULL;
