@@ -5752,7 +5752,7 @@ void engine_config(int restart, int fof, struct engine *e,
 
 #ifdef WITH_LOGGER
   /* Write the particle logger header */
-  logger_write_file_header(e->logger, e);
+  logger_write_file_header(e->logger);
 #endif
 
   /* Initialise the structure finder */

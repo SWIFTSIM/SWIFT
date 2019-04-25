@@ -456,10 +456,9 @@ void logger_clean(struct logger *log) { dump_close(&log->dump); }
  * @brief Write a file header to a logger file
  *
  * @param log The #logger
- * @param dump The #dump in which to log the particle data.
  *
  */
-void logger_write_file_header(struct logger *log, const struct engine *e) {
+void logger_write_file_header(struct logger *log) {
 
   /* get required variables */
   struct dump *dump = &log->dump;

@@ -147,7 +147,7 @@ void logger_log_timestamp(struct logger *log, integertime_t t, double time,
                           size_t *offset);
 void logger_ensure_size(struct logger *log, size_t total_nr_parts,
                         size_t total_nr_gparts, size_t total_nr_sparts);
-void logger_write_file_header(struct logger *log, const struct engine *e);
+void logger_write_file_header(struct logger *log);
 
 int logger_read_part(struct part *p, size_t *offset, const char *buff);
 int logger_read_gpart(struct gpart *p, size_t *offset, const char *buff);
