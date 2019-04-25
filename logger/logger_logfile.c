@@ -42,7 +42,7 @@ void logger_logfile_init(
   /* Open file, map it and get its size. */
   if (reader->verbose > 1)
     message("Mapping the log file.");
-  log->log.map = io_mmap_file(filename, &log->log.file_size);
+  log->log.map = logger_io_mmap_file(filename, &log->log.file_size);
 
   /* Read the header. */
   if (reader->verbose > 1)
@@ -87,7 +87,7 @@ void logger_logfile_init(
  * @param log The #logger_logfile.
  */
 void logger_logfile_free(struct logger_logfile *log) {
-  io_munmap_file(log->log.map, log->log.file_size);
+  logger_io_munmap_file(log->log.map, log->log.file_size);
 
 }
 

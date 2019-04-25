@@ -32,7 +32,7 @@
  *
  * @return file size.
  */
-size_t io_get_file_size(int fd) {
+size_t logger_io_get_file_size(int fd) {
   struct stat s;
   int status = fstat(fd, &s);
   if (status != 0) error("Unable to get file size (%s)", strerror(errno));
@@ -42,20 +42,20 @@ size_t io_get_file_size(int fd) {
 /**
  * @brief Map a file.
  *
- * #io_munmap_file should be called to unmap the file.
+ * #logger_io_munmap_file should be called to unmap the file.
  *
  * @param filename file to read.
  * @param file_size (out) size of the file.
  *
  */
-void *io_mmap_file(char *filename, size_t *file_size) {
+void *logger_io_mmap_file(char *filename, size_t *file_size) {
   /* open the file. */
   int fd = open(filename, O_RDWR);
   if (fd == -1)
     error("Unable to open file %s (%s)", filename, strerror(errno));
 
   /* get the file size. */
-  *file_size = io_get_file_size(fd);
+  *file_size = logger_io_get_file_size(fd);
 
   /* map the memory. */
   void *map = mmap(NULL, *file_size, PROT_WRITE | PROT_READ, MAP_SHARED, fd, 0);
@@ -76,7 +76,7 @@ void *io_mmap_file(char *filename, size_t *file_size) {
  * @param file_size The file size.
  *
  */
-void io_munmap_file(void *map, size_t file_size) {
+void logger_io_munmap_file(void *map, size_t file_size) {
   /* unmap */
   if (munmap(map, file_size) != 0) {
     error("Unable to unmap the file (%s)", strerror(errno));

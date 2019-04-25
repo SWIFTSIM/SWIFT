@@ -40,17 +40,17 @@ void logger_index_init(struct logger_index *index, struct logger_reader *reader,
 		       char *filename) {
 
   /* Open file. */
-  index->data = io_mmap_file(filename, &index->file_size);
+  index->data = logger_io_mmap_file(filename, &index->file_size);
 
   /* Read the double time. */
   size_t offset = 0;
-  offset = io_read_data(index->data, sizeof(double), &index->time, offset);
+  offset = logger_io_read_data(index->data, sizeof(double), &index->time, offset);
 
   /* Read the integer time. */
-  offset = io_read_data(index->data, sizeof(integertime_t), &index->int_time, offset);
+  offset = logger_io_read_data(index->data, sizeof(integertime_t), &index->int_time, offset);
 
   /* Read the number of particles. */
-  offset = io_read_data(index->data, swift_type_count * sizeof(long long),
+  offset = logger_io_read_data(index->data, swift_type_count * sizeof(long long),
 			&index->number_particles, offset);
 
   /* Count total number of particles. */
@@ -70,7 +70,7 @@ void logger_index_init(struct logger_index *index, struct logger_reader *reader,
 void logger_index_free(struct logger_index *index) {
 
   /* unmap file */
-  io_munmap_file(index->data, index->file_size);
+  logger_io_munmap_file(index->data, index->file_size);
 
   /* Set variables to default value. */
   index->total_number_particles = 0;

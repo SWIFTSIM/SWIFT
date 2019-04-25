@@ -31,10 +31,10 @@ struct logger_reader;
 
 struct logger_index_data {
   /* The particle's id */
-  long long id;
+  uint64_t id;
 
   /* The particle's offset */
-  size_t offset;
+  uint64_t offset;
 };
 
 /**

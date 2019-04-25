@@ -29,9 +29,9 @@
 #include <stdio.h>
 #include <stdlib.h>
 
-size_t io_get_file_size(int fd);
-void *io_mmap_file(char *filename, size_t *file_size);
-void io_munmap_file(void *map, size_t file_size);
+size_t logger_io_get_file_size(int fd);
+void *logger_io_mmap_file(char *filename, size_t *file_size);
+void logger_io_munmap_file(void *map, size_t file_size);
 
 /**
  * @brief read a mask with its offset.
@@ -45,7 +45,7 @@ void io_munmap_file(void *map, size_t file_size);
  *
  * @return offset after the record header.
  */
-__attribute__((always_inline)) INLINE static size_t io_read_mask(
+__attribute__((always_inline)) INLINE static size_t logger_io_read_mask(
     const struct header *h, void *data, size_t offset, size_t *mask,
     size_t *diff_offset) {
   /* read mask */
@@ -75,7 +75,7 @@ __attribute__((always_inline)) INLINE static size_t io_read_mask(
 
  * @return offset after the data written.
  */
-__attribute__((always_inline)) INLINE static size_t io_read_data(
+__attribute__((always_inline)) INLINE static size_t logger_io_read_data(
     void *data, const size_t size, void *p, size_t offset) {
   memcpy(p, data + offset, size);
   return offset + size;
@@ -91,7 +91,7 @@ __attribute__((always_inline)) INLINE static size_t io_read_data(
  *
  * @return offset after the data written.
  */
-__attribute__((always_inline)) INLINE static size_t io_write_data(
+__attribute__((always_inline)) INLINE static size_t logger_io_write_data(
     void *data, const size_t size, const void *p, size_t offset) {
   memcpy(data + offset, p, size);
 

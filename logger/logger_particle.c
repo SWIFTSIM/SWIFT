@@ -99,7 +99,7 @@ size_t logger_particle_read_field(struct logger_particle *part, void *map,
   }
 
   /* read the data */
-  offset = io_read_data(map, size, p, offset);
+  offset = logger_io_read_data(map, size, p, offset);
 
   /* Split the required fields */
   if (strcmp("consts", field) == 0) {
@@ -142,7 +142,7 @@ size_t logger_particle_read(struct logger_particle *part, const struct logger_re
   logger_particle_init(part);
 
   /* Read the record mask */
-  offset = io_read_mask(h, map, offset, &mask, &h_offset);
+  offset = logger_io_read_mask(h, map, offset, &mask, &h_offset);
 
   /* Check if it is not a time record */
   if (mask != 127) error("Unexpected mask: %lu", mask);

@@ -59,7 +59,7 @@ int _tools_get_next_record_forward(const struct header *h, void *map,
   size_t diff_offset = 0;
 
   /* read offset */
-  *offset = io_read_mask(h, map, *offset, NULL, &diff_offset);
+  *offset = logger_io_read_mask(h, map, *offset, NULL, &diff_offset);
 
   if (diff_offset == 0) return -1;
 
@@ -90,7 +90,7 @@ int _tools_get_next_record_backward(const struct header *h, void *map,
   while (current_offset < file_size) {
     size_t mask = 0;
     size_t prev_offset;
-    current_offset = io_read_mask(h, map, current_offset, &mask, &prev_offset);
+    current_offset = logger_io_read_mask(h, map, current_offset, &mask, &prev_offset);
 
     prev_offset = current_offset - prev_offset - record_header;
     if (*offset == prev_offset) {
@@ -120,12 +120,12 @@ size_t tools_reverse_offset(const struct header *h, void *map, size_t offset) {
   const size_t cur_offset = offset;
 
   /* read mask + offset */
-  offset = io_read_mask(h, map, offset, &mask, &prev_offset);
+  offset = logger_io_read_mask(h, map, offset, &mask, &prev_offset);
 
   /* write offset of zero (in case it is the last record) */
   const size_t zero = 0;
   offset -= LOGGER_OFFSET_SIZE;
-  offset = io_write_data(map, LOGGER_OFFSET_SIZE, &zero, offset);
+  offset = logger_io_write_data(map, LOGGER_OFFSET_SIZE, &zero, offset);
 
   /* set offset after current record */
   offset += header_get_record_size_from_mask(h, mask);
@@ -140,12 +140,12 @@ size_t tools_reverse_offset(const struct header *h, void *map, size_t offset) {
 
   /* modify previous offset */
   size_t abs_prev_offset = cur_offset - prev_offset + LOGGER_MASK_SIZE;
-  abs_prev_offset = io_write_data(map, LOGGER_OFFSET_SIZE, &prev_offset, abs_prev_offset);
+  abs_prev_offset = logger_io_write_data(map, LOGGER_OFFSET_SIZE, &prev_offset, abs_prev_offset);
 
 #ifdef SWIFT_DEBUG_CHECKS
   size_t prev_mask = 0;
   abs_prev_offset -= LOGGER_MASK_SIZE + LOGGER_OFFSET_SIZE;
-  abs_prev_offset = io_read_mask(h, map, abs_prev_offset, &prev_mask, NULL);
+  abs_prev_offset = logger_io_read_mask(h, map, abs_prev_offset, &prev_mask, NULL);
 
   if (prev_mask != mask)
     error("Unexpected mask: %lu (at %lu), got %lu (at %lu)", mask, offset,
@@ -181,7 +181,7 @@ size_t tools_check_record_consistency(const struct logger_reader *reader, size_t
   size_t pointed_offset;
 
   /* read mask + offset */
-  offset = io_read_mask(h, map, offset, &mask, &pointed_offset);
+  offset = logger_io_read_mask(h, map, offset, &mask, &pointed_offset);
 
   /* get absolute offset */
   if (header_is_forward(h))
@@ -204,7 +204,7 @@ size_t tools_check_record_consistency(const struct logger_reader *reader, size_t
 
   /* read mask of the pointed record */
   size_t pointed_mask = 0;
-  pointed_offset = io_read_mask(h, map, pointed_offset, &pointed_mask, NULL);
+  pointed_offset = logger_io_read_mask(h, map, pointed_offset, &pointed_mask, NULL);
 
   /* check masks */
   if (pointed_mask != mask)
