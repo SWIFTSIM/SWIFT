@@ -29,6 +29,7 @@
 #include "../src/inline.h"
 #include "../src/logger.h"
 #include "../src/part_type.h"
+#include "../src/error.h"
 
 #ifdef HAVE_PYTHON
 #define NPY_NO_DEPRECATED_API NPY_1_7_API_VERSION
@@ -44,27 +45,6 @@
 
 struct header;
 struct logger_reader;
-
-#define error(s, ...)                                                        \
-  ({                                                                         \
-    fflush(stdout);                                                          \
-    fprintf(stderr, "%s:%s():%i: " s "\n", __FILE__, __FUNCTION__, __LINE__, \
-            ##__VA_ARGS__);                                                  \
-    abort();                                                                 \
-  })
-
-#ifdef SWIFT_DEBUG_CHECKS
-#define message(s, ...)                                             \
-  ({                                                                \
-    printf("%s:%s():%i: " s "\n", __FILE__, __FUNCTION__, __LINE__, \
-           ##__VA_ARGS__);                                          \
-  })
-#else
-({								    \
-    printf("%s(): " s "\n", __FUNCTION__,			    \
-           ##__VA_ARGS__);                                          \
-  })
-#endif
 
 int tools_get_next_record(const struct header *h, void *map, size_t *offset,
                          size_t file_size);

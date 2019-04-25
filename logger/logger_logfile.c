@@ -27,10 +27,11 @@
  * @param log The #logger_logfile.
  * @param filename the log's filename.
  * @param reader The #logger_reader.
+ * @param only_header Read only the header.
  */
 void logger_logfile_init(
     struct logger_logfile *log, char *filename,
-    struct logger_reader *reader) {
+    struct logger_reader *reader, int only_header) {
 
   /* Set the pointer to the reader. */
   log->reader = reader;
@@ -52,6 +53,11 @@ void logger_logfile_init(
   if (reader->verbose > 0) {
     header_print(&log->header);
   }
+
+  /* No need to continue if only the
+     header is required */
+  if (only_header)
+    return;
 
   /* Check if the offset are corrupted */
   if (header_is_corrupted(&log->header)) {

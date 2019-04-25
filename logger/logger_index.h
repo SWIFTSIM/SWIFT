@@ -48,8 +48,11 @@ struct logger_index {
   /* The reader */
   struct logger_reader *reader;
 
-  /* Particles' ids and offsets */
-  struct logger_index_data *data;
+  /* memory map of the index file */
+  void *data;
+
+  /* Index file size */
+  size_t file_size;
 
   /* Number of particles */
   size_t total_number_particles;

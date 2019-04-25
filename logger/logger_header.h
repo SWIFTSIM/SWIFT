@@ -57,13 +57,10 @@ struct logger_logfile;
  * The only function that modify the file is #header_change_offset_direction.
  */
 struct header {
-  /* Logger version. */
-  char version[STRING_SIZE];
-
-  /* Dump major version */
+  /* Dump's major version */
   int major_version;
 
-  /* Dump minor version */
+  /* Dump's minor version */
   int minor_version;
 
   /* Offset of the first record. */

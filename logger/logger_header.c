@@ -43,7 +43,6 @@ void header_print(const struct header *h) {
 #ifdef SWIFT_DEBUG_CHECKS
   message("Debug checks enabled");
 #endif
-  message("Version:          %s", h->version);
   message("First Offset:     %lu", h->offset_first_record);
   message("Offset direction: %s", logger_offset_name[h->offset_direction]);
   message("Number masks:     %lu", h->number_mask);
@@ -113,7 +112,7 @@ void header_read(struct header *h, struct logger_logfile *log) {
   char file_format[STRING_SIZE];
   offset = io_read_data(map, LOGGER_VERSION_SIZE, &file_format, offset);
   if (strcmp(file_format, "SWIFT_LOGGER"))
-    error("Wrong file format");
+    error("Wrong file format (%s)", file_format);
 
   /* Read major version number */
   offset = io_read_data(map, sizeof(int), &h->major_version, offset);

@@ -62,7 +62,8 @@ struct logger_logfile {
 };
 
 
-void logger_logfile_init(struct logger_logfile *log, char *filename, struct logger_reader *reader);
+void logger_logfile_init(struct logger_logfile *log, char *filename, struct logger_reader *reader,
+			 int only_header);
 void logger_logfile_reverse_offset(struct logger_logfile *log);
 void logger_logfile_free(struct logger_logfile *log);
 

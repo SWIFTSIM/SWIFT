@@ -26,6 +26,7 @@
 /* This object's header. */
 #include "logger_index.h"
 
+#include "logger_io.h"
 #include "logger_tools.h"
 
 /**
@@ -39,17 +40,18 @@ void logger_index_init(struct logger_index *index, struct logger_reader *reader,
 		       char *filename) {
 
   /* Open file. */
-  FILE *f = NULL;
-  f = fopen(filename, "rb");
+  index->data = io_mmap_file(filename, &index->file_size);
 
   /* Read the double time. */
-  fread(&index->time, sizeof(double), 1, f);
+  size_t offset = 0;
+  offset = io_read_data(index->data, sizeof(double), &index->time, offset);
 
   /* Read the integer time. */
-  fread(&index->int_time, sizeof(integertime_t), 1, f);
+  offset = io_read_data(index->data, sizeof(integertime_t), &index->int_time, offset);
 
   /* Read the number of particles. */
-  fread(index->number_particles, sizeof(long long), swift_type_count, f);
+  offset = io_read_data(index->data, swift_type_count * sizeof(long long),
+			&index->number_particles, offset);
 
   /* Count total number of particles. */
   long long N = 0;
@@ -58,36 +60,6 @@ void logger_index_init(struct logger_index *index, struct logger_reader *reader,
   }
 
   index->total_number_particles = N;
-
-
-  /* Read the particles ids. */
-  if (posix_memalign((void**)&index->data, IO_BUFFER_ALIGNMENT,
-                     N * sizeof(struct logger_index_data)) != 0)
-    error("Unable to allocate index data buffer");
-
-  fread(index->data, sizeof(struct logger_index_data), N, f);
-
-  /* Close the file. */
-  fclose(f);
-}
-
-/**
- * @brief Free the memory allocated for current file.
- *
- * @param index The #logger_index.
- */
-void logger_index_free_current_file(struct logger_index *index) {
-  /* Free the index data */
-  if (index->data)
-    free(index->data);
-  index->data = NULL;
-
-  /* Set variables to default value. */
-  index->total_number_particles = 0;
-
-  for(int i = 0; i < swift_type_count; i++) {
-    index->number_particles[i] = 0;
-  }
 }
 
 /**
@@ -97,6 +69,14 @@ void logger_index_free_current_file(struct logger_index *index) {
  */
 void logger_index_free(struct logger_index *index) {
 
-  /* Free the memory allocated for current file. */
-  logger_index_free_current_file(index);
+  /* unmap file */
+  io_munmap_file(index->data, index->file_size);
+
+  /* Set variables to default value. */
+  index->total_number_particles = 0;
+
+  for(int i = 0; i < swift_type_count; i++) {
+    index->number_particles[i] = 0;
+  }
+
 }
