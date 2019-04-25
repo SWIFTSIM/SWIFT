@@ -45,6 +45,27 @@ __attribute__((always_inline)) INLINE static int feedback_do_feedback(
 }
 
 /**
+ * @brief Should this particle be doing any feedback-related operation?
+ *
+ * @param sp The #spart.
+ * @param time The current simulation time (Non-cosmological runs).
+ * @param cosmo The cosmological model (cosmological runs).
+ * @param with_cosmology Are we doing a cosmological run?
+ */
+__attribute__((always_inline)) INLINE static int feedback_is_active(
+    const struct spart* sp, const float time, const struct cosmology* cosmo,
+    const int with_cosmology) {
+
+  if (sp->birth_time == -1.) return 0;
+
+  if (with_cosmology) {
+    return ((float)cosmo->a) > sp->birth_scale_factor;
+  } else {
+    return time > sp->birth_time;
+  }
+}
+
+/**
  * @brief Prepares a s-particle for its feedback interactions
  *
  * @param sp The particle to act upon

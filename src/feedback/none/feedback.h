@@ -46,6 +46,21 @@ __attribute__((always_inline)) INLINE static int feedback_do_feedback(
 }
 
 /**
+ * @brief Should this particle be doing any feedback-related operation?
+ *
+ * @param sp The #spart.
+ * @param time The current simulation time (Non-cosmological runs).
+ * @param cosmo The cosmological model (cosmological runs).
+ * @param with_cosmology Are we doing a cosmological run?
+ */
+__attribute__((always_inline)) INLINE static int feedback_is_active(
+    const struct spart* sp, const float time, const struct cosmology* cosmo,
+    const int with_cosmology) {
+
+  return 0;
+}
+
+/**
  * @brief Prepares a star's feedback field before computing what
  * needs to be distributed.
  */

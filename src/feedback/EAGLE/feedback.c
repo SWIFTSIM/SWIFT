@@ -690,6 +690,10 @@ void compute_stellar_evolution(const struct feedback_props* feedback_props,
 
   TIMER_TIC;
 
+#ifdef SWIFT_DEBUG_CHECKS
+  if (age < 0.f) error("Negative age for a star.");
+#endif
+
   /* Allocate temporary array for calculating imf weights */
   float stellar_yields[eagle_feedback_N_imf_bins];
 
