@@ -41,6 +41,9 @@ lib_LTLIBRARIES = liblogger.la
 # lib_LTLIBRARIES += liblogger_mpi.la
 # endif
 
+# subdirectories
+SUBDIRS = tests
+
 # List required headers
 include_HEADERS = logger_header.h logger_io.h logger_particle.h logger_time.h logger_tools.h logger_reader.h \
 	logger_index.h logger_logfile.h
