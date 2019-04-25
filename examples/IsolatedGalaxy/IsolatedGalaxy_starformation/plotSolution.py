@@ -116,6 +116,9 @@ stars_pos[:,2] -= centre[2]
 # Turn the mass into better units
 gas_mass *= unit_mass_in_cgs / Msun_in_cgs
 
+# Calculate the median gas mass
+median_gas_mass = np.median(gas_mass)
+
 # Turn the SFR into better units
 gas_SFR = np.maximum(gas_SFR, np.zeros(np.size(gas_SFR)))
 gas_SFR /= unit_time_in_cgs / year_in_cgs
@@ -166,19 +169,6 @@ savefig("rhoT_SF.png", dpi=200)
 
 ########################################################################3
 
-# 3D Density vs SFR
-figure()
-subplot(111, xscale="log", yscale="log")
-scatter(gas_nH, gas_SFR, s=0.2)
-plot([1, 100], 2e-5 * np.array([1, 100]) ** 0.266667, "k--", lw=1)
-xlabel("${\\rm Density}~n_{\\rm H}~[{\\rm cm^{-3}}]$", labelpad=0)
-ylabel("${\\rm SFR}~[{\\rm M_\\odot~\\cdot~yr^{-1}}]$", labelpad=-7)
-xlim(1e-4, 3e3)
-ylim(8e-6, 2.5e-4)
-savefig("rho_SFR.png", dpi=200)
-
-########################################################################3
-
 star_mask = (
     (stars_pos[:, 0] > -15)
     & (stars_pos[:, 0] < 15)
@@ -223,6 +213,23 @@ yticks([0, 1, 2], ["$10^0$", "$10^1$", "$10^2$"])
 xlim(-1.4, 4.9)
 ylim(-0.5, 2.2)
 savefig("density-sSFR.png", dpi=200)
+
+SFR_low = 10**(np.log10(sSFR)+np.log10(year_in_cgs)+np.log10(median_gas_mass))
+SFR_high = 10**(np.log10(sSFR_high_den)+np.log10(year_in_cgs)+np.log10(median_gas_mass))
+SFR_low_min = np.floor(np.log10(.75*np.min(SFR_low)))
+SFR_high_max = np.ceil(np.log10(1.25*np.max(SFR_high)))
+
+# 3D Density vs SFR
+figure()
+subplot(111, xscale="log", yscale="log")
+scatter(gas_nH, gas_SFR, s=0.2)
+plot(rhos,SFR_low,'k--',lw=1,label='SFR low density EAGLE')
+plot(rhoshigh,SFR_high,'k--',lw=1,label='SFR high density EAGLE')
+xlabel("${\\rm Density}~n_{\\rm H}~[{\\rm cm^{-3}}]$", labelpad=0)
+ylabel("${\\rm SFR}~[{\\rm M_\\odot~\\cdot~yr^{-1}}]$", labelpad=-7)
+xlim(1e-2, 1e5)
+ylim(10**SFR_low_min, 10**SFR_high_max)
+savefig("rho_SFR.png", dpi=200)
 
 ########################################################################3
 
