@@ -48,6 +48,10 @@ __attribute__((always_inline)) INLINE static int feedback_do_feedback(
 /**
  * @brief Should this particle be doing any feedback-related operation?
  *
+ * Note: Since this 'none' feedback mode is used for testing the neighbour
+ * loops only, we want to always do feedback irrespective of the particle
+ * or of the system's state.
+ *
  * @param sp The #spart.
  * @param time The current simulation time (Non-cosmological runs).
  * @param cosmo The cosmological model (cosmological runs).
@@ -57,7 +61,7 @@ __attribute__((always_inline)) INLINE static int feedback_is_active(
     const struct spart* sp, const float time, const struct cosmology* cosmo,
     const int with_cosmology) {
 
-  return 0;
+  return 1;
 }
 
 /**
