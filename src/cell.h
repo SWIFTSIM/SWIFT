@@ -1292,19 +1292,19 @@ __attribute__((always_inline)) INLINE static void cell_free_stars_sorts(
 
 /** Set the given flag for the given cell. */
 __attribute__((always_inline)) INLINE static void cell_set_flag(
-    struct cell *c, uint16_t cell_flags flag) {
+    struct cell *c, uint16_t flag) {
   c->flags |= flag;
 }
 
 /** Clear the given flag for the given cell. */
 __attribute__((always_inline)) INLINE static void cell_clear_flag(
-    struct cell *c, uint16_t cell_flags flag) {
+    struct cell *c, uint16_t flag) {
   c->flags &= ~flag;
 }
 
 /** Get the given flag for the given cell. */
 __attribute__((always_inline)) INLINE static int cell_get_flag(
-    const struct cell *c, uint16_t cell_flags flag) {
+    const struct cell *c, uint16_t flag) {
   return (c->flags & flag) > 0;
 }
 
