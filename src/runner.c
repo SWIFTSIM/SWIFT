@@ -2945,7 +2945,7 @@ void runner_do_limiter(struct runner *r, struct cell *c, int force, int timer) {
 
     /* Clear the limiter flags. */
     cell_clear_flag(
-        c, cell_flag_do_hydro_limiter & cell_flag_do_hydro_sub_limiter);
+        c, cell_flag_do_hydro_limiter | cell_flag_do_hydro_sub_limiter);
     return;
   }
 
@@ -3041,7 +3041,7 @@ void runner_do_limiter(struct runner *r, struct cell *c, int force, int timer) {
 
   /* Clear the limiter flags. */
   cell_clear_flag(c,
-                  cell_flag_do_hydro_limiter & cell_flag_do_hydro_sub_limiter);
+                  cell_flag_do_hydro_limiter | cell_flag_do_hydro_sub_limiter);
 
   if (timer) TIMER_TOC(timer_do_limiter);
 }
