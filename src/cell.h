@@ -1291,8 +1291,8 @@ __attribute__((always_inline)) INLINE static void cell_free_stars_sorts(
 }
 
 /** Set the given flag for the given cell. */
-__attribute__((always_inline)) INLINE static void cell_set_flag(
-    struct cell *c, uint16_t flag) {
+__attribute__((always_inline)) INLINE static void cell_set_flag(struct cell *c,
+                                                                uint16_t flag) {
   c->flags |= flag;
 }
 
