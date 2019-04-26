@@ -1,3 +1,23 @@
+#!/usr/bin/env python3
+################################################################################
+# This file is part of SWIFT.
+# Copyright (c) 2019 Folkert Nobels    (nobels@strw.leidenuniv.nl)
+#                    Matthieu Schaller (schaller@strw.leidenuniv.nl)
+#
+# This program is free software: you can redistribute it and/or modify
+# it under the terms of the GNU Lesser General Public License as published
+# by the Free Software Foundation, either version 3 of the License, or
+# (at your option) any later version.
+#
+# This program is distributed in the hope that it will be useful,
+# but WITHOUT ANY WARRANTY; without even the implied warranty of
+# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+# GNU General Public License for more details.
+#
+# You should have received a copy of the GNU Lesser General Public License
+# along with this program.  If not, see <http://www.gnu.org/licenses/>.
+#
+################################################################################
 import matplotlib
 
 matplotlib.use("Agg")
@@ -220,17 +240,18 @@ SFR_low_min = np.floor(np.log10(.75*np.min(SFR_low)))
 SFR_high_max = np.ceil(np.log10(1.25*np.max(SFR_high)))
 
 # 3D Density vs SFR
+rcParams.update({"figure.subplot.left": 0.18})
 figure()
 subplot(111, xscale="log", yscale="log")
 scatter(gas_nH, gas_SFR, s=0.2)
 plot(rhos,SFR_low,'k--',lw=1,label='SFR low density EAGLE')
 plot(rhoshigh,SFR_high,'k--',lw=1,label='SFR high density EAGLE')
 xlabel("${\\rm Density}~n_{\\rm H}~[{\\rm cm^{-3}}]$", labelpad=0)
-ylabel("${\\rm SFR}~[{\\rm M_\\odot~\\cdot~yr^{-1}}]$", labelpad=-7)
+ylabel("${\\rm SFR}~[{\\rm M_\\odot~\\cdot~yr^{-1}}]$", labelpad=2)
 xlim(1e-2, 1e5)
-ylim(10**SFR_low_min, 10**SFR_high_max)
+ylim(10**SFR_low_min, 10**(SFR_high_max+0.1))
 savefig("rho_SFR.png", dpi=200)
-
+rcParams.update({"figure.subplot.left": 0.15})
 ########################################################################3
 
 # Select gas in a pillow box around the galaxy
