@@ -269,7 +269,7 @@ struct cell {
   struct cell *super;
 
   /*! Cell flags bit-mask. */
-  uint16_t flags;
+  uint32_t flags;
 
   /*! Hydro variables */
   struct {
@@ -1292,19 +1292,19 @@ __attribute__((always_inline)) INLINE static void cell_free_stars_sorts(
 
 /** Set the given flag for the given cell. */
 __attribute__((always_inline)) INLINE static void cell_set_flag(struct cell *c,
-                                                                uint16_t flag) {
-  c->flags |= flag;
+                                                                uint32_t flag) {
+  atomic_or(&c->flags, flag);
 }
 
 /** Clear the given flag for the given cell. */
 __attribute__((always_inline)) INLINE static void cell_clear_flag(
-    struct cell *c, uint16_t flag) {
-  c->flags &= ~flag;
+    struct cell *c, uint32_t flag) {
+  atomic_and(&c->flags, ~flag);
 }
 
 /** Get the given flag for the given cell. */
 __attribute__((always_inline)) INLINE static int cell_get_flag(
-    const struct cell *c, uint16_t flag) {
+    const struct cell *c, uint32_t flag) {
   return (c->flags & flag) > 0;
 }
 

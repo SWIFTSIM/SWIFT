@@ -2938,7 +2938,7 @@ void runner_do_limiter(struct runner *r, struct cell *c, int force, int timer) {
                 ti_gravity_beg_max = 0;
 
   /* Limit irrespective of cell flags? */
-  force |= cell_get_flag(c, cell_flag_do_hydro_limiter);
+  force = (force || cell_get_flag(c, cell_flag_do_hydro_limiter));
 
   /* Early abort? */
   if (c->hydro.count == 0) {

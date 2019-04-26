@@ -4097,7 +4097,7 @@ void cell_drift_part(struct cell *c, const struct engine *e, int force) {
   float cell_h_max = 0.f;
 
   /* Drift irrespective of cell flags? */
-  force |= cell_get_flag(c, cell_flag_do_hydro_drift);
+  force = (force || cell_get_flag(c, cell_flag_do_hydro_drift));
 
 #ifdef SWIFT_DEBUG_CHECKS
   /* Check that we only drift local cells. */
@@ -4279,7 +4279,7 @@ void cell_drift_gpart(struct cell *c, const struct engine *e, int force) {
   struct gpart *const gparts = c->grav.parts;
 
   /* Drift irrespective of cell flags? */
-  force |= cell_get_flag(c, cell_flag_do_grav_drift);
+  force = (force || cell_get_flag(c, cell_flag_do_grav_drift));
 
 #ifdef SWIFT_DEBUG_CHECKS
   /* Check that we only drift local cells. */
@@ -4407,7 +4407,7 @@ void cell_drift_spart(struct cell *c, const struct engine *e, int force) {
   float cell_h_max = 0.f;
 
   /* Drift irrespective of cell flags? */
-  force |= cell_get_flag(c, cell_flag_do_stars_drift);
+  force = (force || cell_get_flag(c, cell_flag_do_stars_drift));
 
 #ifdef SWIFT_DEBUG_CHECKS
   /* Check that we only drift local cells. */
@@ -4574,7 +4574,7 @@ void cell_drift_bpart(struct cell *c, const struct engine *e, int force) {
   float cell_h_max = 0.f;
 
   /* Drift irrespective of cell flags? */
-  force |= cell_get_flag(c, cell_flag_do_bh_drift);
+  force = (force || cell_get_flag(c, cell_flag_do_bh_drift));
 
 #ifdef SWIFT_DEBUG_CHECKS
   /* Check that we only drift local cells. */
