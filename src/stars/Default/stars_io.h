@@ -103,12 +103,14 @@ INLINE static void stars_write_particles(const struct spart *sparts,
  * @param us The internal unit system.
  * @param params The parsed parameters.
  * @param p The already read-in properties of the hydro scheme.
+ * @param cosmo The cosmological model.
  */
 INLINE static void stars_props_init(struct stars_props *sp,
                                     const struct phys_const *phys_const,
                                     const struct unit_system *us,
                                     struct swift_params *params,
-                                    const struct hydro_props *p) {
+                                    const struct hydro_props *p,
+                                    const struct cosmology *cosmo) {
 
   /* Kernel properties */
   sp->eta_neighbours = parser_get_opt_param_float(

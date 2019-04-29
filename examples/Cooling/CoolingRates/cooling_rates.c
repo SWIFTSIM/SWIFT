@@ -164,6 +164,7 @@ int main(int argc, char **argv) {
   struct part p;
   struct xpart xp;
   struct phys_const internal_const;
+  struct hydro_props hydro_properties;
   struct cooling_function_data cooling;
   struct cosmology cosmo;
   struct space s;
@@ -210,7 +211,12 @@ int main(int argc, char **argv) {
 
   // Init units
   units_init_from_params(&us, params, "InternalUnitSystem");
+
+  // Init physical constants
   phys_const_init(&us, params, &internal_const);
+
+  // Init porperties of hydro
+  hydro_props_init(&hydro_properties, &internal_const, &us, params);
 
   // Init chemistry
   chemistry_init(params, &us, &internal_const, &chem_data);
@@ -228,7 +234,7 @@ int main(int argc, char **argv) {
   message("Redshift is %f", cosmo.z);
 
   // Init cooling
-  cooling_init(params, &us, &internal_const, &cooling);
+  cooling_init(params, &us, &internal_const, &hydro_properties, &cooling);
   cooling_print(&cooling);
   cooling_update(&cosmo, &cooling, &s);
 

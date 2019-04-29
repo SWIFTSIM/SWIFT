@@ -42,18 +42,27 @@ const char* timers_names[timer_count] = {
     "init_grav",
     "drift_part",
     "drift_gpart",
+    "drift_spart",
+    "drift_bpart",
     "kick1",
     "kick2",
     "timestep",
-    "endforce",
+    "end_hydro_force",
+    "end_grav_force",
     "dosort",
     "doself_density",
     "doself_gradient",
     "doself_force",
+    "doself_limiter",
+    "doself_stars_density",
+    "doself_stars_feedback",
     "doself_grav_pp",
     "dopair_density",
     "dopair_gradient",
     "dopair_force",
+    "dopair_limiter",
+    "dopair_stars_density",
+    "dopair_stars_feedback",
     "dopair_grav_mm",
     "dopair_grav_pp",
     "dograv_external",
@@ -64,10 +73,16 @@ const char* timers_names[timer_count] = {
     "dosub_self_density",
     "dosub_self_gradient",
     "dosub_self_force",
+    "dosub_self_limiter",
+    "dosub_self_stars_density",
+    "dosub_self_stars_feedback",
     "dosub_self_grav",
     "dosub_pair_density",
     "dosub_pair_gradient",
     "dosub_pair_force",
+    "dosub_pair_limiter",
+    "dosub_pair_stars_density",
+    "dosub_pair_stars_feedback",
     "dosub_pair_grav",
     "doself_subset",
     "dopair_subset",
@@ -75,18 +90,20 @@ const char* timers_names[timer_count] = {
     "dosub_subset",
     "do_ghost",
     "do_extra_ghost",
+    "do_stars_ghost",
     "dorecv_part",
     "dorecv_gpart",
     "dorecv_spart",
+    "do_limiter",
     "do_cooling",
     "do_star_formation",
+    "do_star_evol",
     "gettask",
     "qget",
     "qsteal",
     "locktree",
     "runners",
     "step",
-    "do_stars_ghost",
     "logger",
     "do_stars_sort",
 };
@@ -95,24 +112,13 @@ const char* timers_names[timer_count] = {
 static FILE* timers_file;
 
 /**
- * @brief Re-set the timers.
- *
- * @param mask A bitmask of the timers to re-set.
- *
- * To reset all timers, use the mask #timers_mask_all.
- */
-void timers_reset(unsigned long long mask) {
-
-  /* Loop over the timers and set the masked ones to zero. */
-  for (int k = 0; k < timer_count; k++)
-    if (mask & (1ull << k)) timers[k] = 0;
-}
-
-/**
  * @brief Re-set all the timers.
  *
  */
-void timers_reset_all(void) { timers_reset(timers_mask_all); }
+void timers_reset_all(void) {
+
+  for (int k = 0; k < timer_count; k++) timers[k] = 0;
+}
 
 /**
  * @brief Outputs all the timers to the timers dump file.
@@ -122,7 +128,7 @@ void timers_reset_all(void) { timers_reset(timers_mask_all); }
 void timers_print(int step) {
   fprintf(timers_file, "%d\t", step);
   for (int k = 0; k < timer_count; k++)
-    fprintf(timers_file, "%18.3f ", clocks_from_ticks(timers[k]));
+    fprintf(timers_file, "%25.3f ", clocks_from_ticks(timers[k]));
   fprintf(timers_file, "\n");
   fflush(timers_file);
 }
@@ -138,9 +144,9 @@ void timers_open_file(int rank) {
   sprintf(buff, "timers_%d.txt", rank);
   timers_file = fopen(buff, "w");
 
-  fprintf(timers_file, "# timers: \n# step | ");
+  fprintf(timers_file, "# timers: \n# step |");
   for (int k = 0; k < timer_count; k++)
-    fprintf(timers_file, "%18s ", timers_names[k]);
+    fprintf(timers_file, "%25s ", timers_names[k]);
   fprintf(timers_file, "\n");
 }
 

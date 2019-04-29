@@ -50,6 +50,7 @@
 #include "engine.h"
 #include "entropy_floor.h"
 #include "error.h"
+#include "feedback.h"
 #include "gravity.h"
 #include "hydro.h"
 #include "hydro_properties.h"
@@ -64,6 +65,7 @@
 #include "space_getsid.h"
 #include "star_formation.h"
 #include "star_formation_iact.h"
+#include "star_formation_logger.h"
 #include "stars.h"
 #include "task.h"
 #include "timers.h"
@@ -136,7 +138,10 @@ void runner_do_stars_ghost(struct runner *r, struct cell *c, int timer) {
 
   struct spart *restrict sparts = c->stars.parts;
   const struct engine *e = r->e;
+  const struct unit_system *us = e->internal_units;
+  const int with_cosmology = (e->policy & engine_policy_cosmology);
   const struct cosmology *cosmo = e->cosmology;
+  const struct feedback_props *feedback_props = e->feedback_props;
   const float stars_h_max = e->hydro_properties->h_max;
   const float stars_h_min = e->hydro_properties->h_min;
   const float eps = e->stars_properties->h_tolerance;
@@ -180,7 +185,8 @@ void runner_do_stars_ghost(struct runner *r, struct cell *c, int timer) {
     if ((right = (float *)malloc(sizeof(float) * c->stars.count)) == NULL)
       error("Can't allocate memory for right.");
     for (int k = 0; k < c->stars.count; k++)
-      if (spart_is_active(&sparts[k], e)) {
+      if (spart_is_active(&sparts[k], e) &&
+          feedback_is_active(&sparts[k], e->time, cosmo, with_cosmology)) {
         sid[scount] = k;
         h_0[scount] = sparts[k].h;
         left[scount] = 0.f;
@@ -255,6 +261,7 @@ void runner_do_stars_ghost(struct runner *r, struct cell *c, int timer) {
               ((sp->h <= stars_h_min) && (f > 0.f))) {
 
             stars_reset_feedback(sp);
+            feedback_reset_feedback(sp, feedback_props);
 
             /* Ok, we are done with this particle */
             continue;
@@ -275,12 +282,6 @@ void runner_do_stars_ghost(struct runner *r, struct cell *c, int timer) {
                 num_reruns, sp->id, h_init, h_old, h_new, f, f_prime, n_sum,
                 n_target, left[i], right[i]);
           }
-
-#ifdef SWIFT_DEBUG_CHECKS
-          if ((f > 0.f && h_new > h_old) || (f < 0.f && h_new < h_old))
-            error(
-                "Smoothing length correction not going in the right direction");
-#endif
 
           /* Safety check: truncate to the range [ h_old/2 , 2h_old ]. */
           h_new = min(h_new, 2.f * h_old);
@@ -322,6 +323,7 @@ void runner_do_stars_ghost(struct runner *r, struct cell *c, int timer) {
 
             /* Re-initialise everything */
             stars_init_spart(sp);
+            feedback_init_spart(sp);
 
             /* Off we go ! */
             continue;
@@ -355,8 +357,51 @@ void runner_do_stars_ghost(struct runner *r, struct cell *c, int timer) {
 
         stars_reset_feedback(sp);
 
-        /* Compute the stellar evolution  */
-        stars_evolve_spart(sp, e->stars_properties, cosmo);
+        /* Only do feedback if stars have a reasonable birth time */
+        if (feedback_do_feedback(sp)) {
+
+          const integertime_t ti_step = get_integer_timestep(sp->time_bin);
+          const integertime_t ti_begin =
+              get_integer_time_begin(e->ti_current - 1, sp->time_bin);
+
+          /* Get particle time-step */
+          double dt;
+          if (with_cosmology) {
+            dt = cosmology_get_delta_time(e->cosmology, ti_begin,
+                                          ti_begin + ti_step);
+          } else {
+            dt = get_timestep(sp->time_bin, e->time_base);
+          }
+
+          /* Calculate age of the star at current time */
+          double star_age_end_of_step;
+          if (with_cosmology) {
+            star_age_end_of_step = cosmology_get_delta_time_from_scale_factors(
+                cosmo, sp->birth_scale_factor, (float)cosmo->a);
+          } else {
+            star_age_end_of_step = (float)e->time - sp->birth_time;
+          }
+
+          /* Has this star been around for a while ? */
+          if (star_age_end_of_step > 0.) {
+
+            /* Age of the star at the start of the step */
+            const double star_age_beg_of_step =
+                max(star_age_end_of_step - dt, 0.);
+
+            /* Compute the stellar evolution  */
+            feedback_evolve_spart(sp, feedback_props, cosmo, us,
+                                  star_age_beg_of_step, dt);
+          } else {
+
+            /* Reset the feedback fields of the star particle */
+            feedback_reset_feedback(sp, feedback_props);
+          }
+        } else {
+
+          /* Reset the feedback fields of the star particle */
+          feedback_reset_feedback(sp, feedback_props);
+        }
       }
 
       /* We now need to treat the particles whose smoothing length had not
@@ -437,7 +482,7 @@ void runner_do_stars_ghost(struct runner *r, struct cell *c, int timer) {
     }
   }
 
-  if (timer) TIMER_TOC(timer_dostars_ghost);
+  if (timer) TIMER_TOC(timer_do_stars_ghost);
 }
 
 /**
@@ -619,13 +664,27 @@ void runner_do_star_formation(struct runner *r, struct cell *c, int timer) {
 #endif
 
   /* Anything to do here? */
-  if (c->hydro.count == 0) return;
-  if (!cell_is_active_hydro(c, e)) return;
+  if (c->hydro.count == 0 || !cell_is_active_hydro(c, e)) {
+    star_formation_logger_log_inactive_cell(&c->stars.sfh);
+    return;
+  }
+
+  /* Reset the SFR */
+  star_formation_logger_init(&c->stars.sfh);
 
   /* Recurse? */
   if (c->split) {
     for (int k = 0; k < 8; k++)
-      if (c->progeny[k] != NULL) runner_do_star_formation(r, c->progeny[k], 0);
+      if (c->progeny[k] != NULL) {
+        /* Load the child cell */
+        struct cell *restrict cp = c->progeny[k];
+
+        /* Do the recursion */
+        runner_do_star_formation(r, cp, 0);
+
+        /* Update current cell using child cells */
+        star_formation_logger_add(&c->stars.sfh, &cp->stars.sfh);
+      }
   } else {
 
     /* Loop over the gas particles in this cell. */
@@ -661,6 +720,9 @@ void runner_do_star_formation(struct runner *r, struct cell *c, int timer) {
           star_formation_compute_SFR(p, xp, sf_props, phys_const, cosmo,
                                      dt_star);
 
+          /* Add the SFR and SFR*dt to the SFH struct of this cell */
+          star_formation_logger_log_active_part(p, xp, &c->stars.sfh, dt_star);
+
           /* Are we forming a star particle from this SF rate? */
           if (star_formation_should_convert_to_star(p, xp, sf_props, e,
                                                     dt_star)) {
@@ -674,6 +736,9 @@ void runner_do_star_formation(struct runner *r, struct cell *c, int timer) {
               /* Copy the properties of the gas particle to the star particle */
               star_formation_copy_properties(p, xp, sp, e, sf_props, cosmo,
                                              with_cosmology);
+
+              /* Update the Star formation history */
+              star_formation_logger_log_new_spart(sp, &c->stars.sfh);
             }
           }
 
@@ -684,8 +749,15 @@ void runner_do_star_formation(struct runner *r, struct cell *c, int timer) {
                                              with_cosmology);
 
         } /* Not Star-forming? */
-      }   /* is active? */
-    }     /* Loop over particles */
+
+      } else { /* is active? */
+
+        /* Check if the particle is not inhibited */
+        if (!part_is_inhibited(p, e)) {
+          star_formation_logger_log_inactive_part(p, xp, &c->stars.sfh);
+        }
+      }
+    } /* Loop over particles */
   }
 
   /* If we formed any stars, the star sorts are now invalid. We need to
@@ -2036,6 +2108,22 @@ void runner_do_drift_spart(struct runner *r, struct cell *c, int timer) {
 }
 
 /**
+ * @brief Drift all bpart in a cell.
+ *
+ * @param r The runner thread.
+ * @param c The cell.
+ * @param timer Are we timing this ?
+ */
+void runner_do_drift_bpart(struct runner *r, struct cell *c, int timer) {
+
+  TIMER_TIC;
+
+  cell_drift_bpart(c, r->e, 0);
+
+  if (timer) TIMER_TOC(timer_drift_bpart);
+}
+
+/**
  * @brief Perform the first half-kick on all the active particles in a cell.
  *
  * @param r The runner thread.
@@ -2434,30 +2522,35 @@ void runner_do_timestep(struct runner *r, struct cell *c, int timer) {
   const int count = c->hydro.count;
   const int gcount = c->grav.count;
   const int scount = c->stars.count;
+  const int bcount = c->black_holes.count;
   struct part *restrict parts = c->hydro.parts;
   struct xpart *restrict xparts = c->hydro.xparts;
   struct gpart *restrict gparts = c->grav.parts;
   struct spart *restrict sparts = c->stars.parts;
+  struct bpart *restrict bparts = c->black_holes.parts;
 
   TIMER_TIC;
 
   /* Anything to do here? */
   if (!cell_is_active_hydro(c, e) && !cell_is_active_gravity(c, e) &&
-      !cell_is_active_stars(c, e)) {
+      !cell_is_active_stars(c, e) && !cell_is_active_black_holes(c, e)) {
     c->hydro.updated = 0;
     c->grav.updated = 0;
     c->stars.updated = 0;
+    c->black_holes.updated = 0;
     return;
   }
 
-  int updated = 0, g_updated = 0, s_updated = 0;
-  int inhibited = 0, g_inhibited = 0, s_inhibited = 0;
+  int updated = 0, g_updated = 0, s_updated = 0, b_updated = 0;
+  int inhibited = 0, g_inhibited = 0, s_inhibited = 0, b_inhibited = 0;
   integertime_t ti_hydro_end_min = max_nr_timesteps, ti_hydro_end_max = 0,
                 ti_hydro_beg_max = 0;
   integertime_t ti_gravity_end_min = max_nr_timesteps, ti_gravity_end_max = 0,
                 ti_gravity_beg_max = 0;
   integertime_t ti_stars_end_min = max_nr_timesteps, ti_stars_end_max = 0,
                 ti_stars_beg_max = 0;
+  integertime_t ti_black_holes_end_min = max_nr_timesteps,
+                ti_black_holes_end_max = 0, ti_black_holes_beg_max = 0;
 
   /* No children? */
   if (!c->split) {
@@ -2666,6 +2759,69 @@ void runner_do_timestep(struct runner *r, struct cell *c, int timer) {
         ti_gravity_beg_max = max(ti_beg, ti_gravity_beg_max);
       }
     }
+
+    /* Loop over the star particles in this cell. */
+    for (int k = 0; k < bcount; k++) {
+
+      /* Get a handle on the part. */
+      struct bpart *restrict bp = &bparts[k];
+
+      /* need to be updated ? */
+      if (bpart_is_active(bp, e)) {
+
+#ifdef SWIFT_DEBUG_CHECKS
+        /* Current end of time-step */
+        const integertime_t ti_end =
+            get_integer_time_end(ti_current, bp->time_bin);
+
+        if (ti_end != ti_current)
+          error("Computing time-step of rogue particle.");
+#endif
+        /* Get new time-step */
+        const integertime_t ti_new_step = get_bpart_timestep(bp, e);
+
+        /* Update particle */
+        bp->time_bin = get_time_bin(ti_new_step);
+        bp->gpart->time_bin = get_time_bin(ti_new_step);
+
+        /* Number of updated s-particles */
+        b_updated++;
+        g_updated++;
+
+        ti_black_holes_end_min =
+            min(ti_current + ti_new_step, ti_black_holes_end_min);
+        ti_black_holes_end_max =
+            max(ti_current + ti_new_step, ti_black_holes_end_max);
+        ti_gravity_end_min = min(ti_current + ti_new_step, ti_gravity_end_min);
+        ti_gravity_end_max = max(ti_current + ti_new_step, ti_gravity_end_max);
+
+        /* What is the next starting point for this cell ? */
+        ti_black_holes_beg_max = max(ti_current, ti_black_holes_beg_max);
+        ti_gravity_beg_max = max(ti_current, ti_gravity_beg_max);
+
+        /* star particle is inactive but not inhibited */
+      } else {
+
+        /* Count the number of inhibited particles */
+        if (bpart_is_inhibited(bp, e)) ++b_inhibited;
+
+        const integertime_t ti_end =
+            get_integer_time_end(ti_current, bp->time_bin);
+
+        const integertime_t ti_beg =
+            get_integer_time_begin(ti_current + 1, bp->time_bin);
+
+        ti_black_holes_end_min = min(ti_end, ti_black_holes_end_min);
+        ti_black_holes_end_max = max(ti_end, ti_black_holes_end_max);
+        ti_gravity_end_min = min(ti_end, ti_gravity_end_min);
+        ti_gravity_end_max = max(ti_end, ti_gravity_end_max);
+
+        /* What is the next starting point for this cell ? */
+        ti_black_holes_beg_max = max(ti_beg, ti_black_holes_beg_max);
+        ti_gravity_beg_max = max(ti_beg, ti_gravity_beg_max);
+      }
+    }
+
   } else {
 
     /* Loop over the progeny. */
@@ -2680,18 +2836,31 @@ void runner_do_timestep(struct runner *r, struct cell *c, int timer) {
         updated += cp->hydro.updated;
         g_updated += cp->grav.updated;
         s_updated += cp->stars.updated;
+        b_updated += cp->black_holes.updated;
+
         inhibited += cp->hydro.inhibited;
         g_inhibited += cp->grav.inhibited;
         s_inhibited += cp->stars.inhibited;
+        b_inhibited += cp->black_holes.inhibited;
+
         ti_hydro_end_min = min(cp->hydro.ti_end_min, ti_hydro_end_min);
         ti_hydro_end_max = max(cp->hydro.ti_end_max, ti_hydro_end_max);
         ti_hydro_beg_max = max(cp->hydro.ti_beg_max, ti_hydro_beg_max);
+
         ti_gravity_end_min = min(cp->grav.ti_end_min, ti_gravity_end_min);
         ti_gravity_end_max = max(cp->grav.ti_end_max, ti_gravity_end_max);
         ti_gravity_beg_max = max(cp->grav.ti_beg_max, ti_gravity_beg_max);
+
         ti_stars_end_min = min(cp->stars.ti_end_min, ti_stars_end_min);
         ti_stars_end_max = max(cp->grav.ti_end_max, ti_stars_end_max);
         ti_stars_beg_max = max(cp->grav.ti_beg_max, ti_stars_beg_max);
+
+        ti_black_holes_end_min =
+            min(cp->black_holes.ti_end_min, ti_black_holes_end_min);
+        ti_black_holes_end_max =
+            max(cp->grav.ti_end_max, ti_black_holes_end_max);
+        ti_black_holes_beg_max =
+            max(cp->grav.ti_beg_max, ti_black_holes_beg_max);
       }
     }
   }
@@ -2700,9 +2869,13 @@ void runner_do_timestep(struct runner *r, struct cell *c, int timer) {
   c->hydro.updated = updated;
   c->grav.updated = g_updated;
   c->stars.updated = s_updated;
+  c->black_holes.updated = b_updated;
+
   c->hydro.inhibited = inhibited;
   c->grav.inhibited = g_inhibited;
   c->stars.inhibited = s_inhibited;
+  c->black_holes.inhibited = b_inhibited;
+
   c->hydro.ti_end_min = ti_hydro_end_min;
   c->hydro.ti_end_max = ti_hydro_end_max;
   c->hydro.ti_beg_max = ti_hydro_beg_max;
@@ -2712,6 +2885,9 @@ void runner_do_timestep(struct runner *r, struct cell *c, int timer) {
   c->stars.ti_end_min = ti_stars_end_min;
   c->stars.ti_end_max = ti_stars_end_max;
   c->stars.ti_beg_max = ti_stars_beg_max;
+  c->black_holes.ti_end_min = ti_black_holes_end_min;
+  c->black_holes.ti_end_max = ti_black_holes_end_max;
+  c->black_holes.ti_beg_max = ti_black_holes_beg_max;
 
 #ifdef SWIFT_DEBUG_CHECKS
   if (c->hydro.ti_end_min == e->ti_current &&
@@ -2723,6 +2899,9 @@ void runner_do_timestep(struct runner *r, struct cell *c, int timer) {
   if (c->stars.ti_end_min == e->ti_current &&
       c->stars.ti_end_min < max_nr_timesteps)
     error("End of next stars step is current time!");
+  if (c->black_holes.ti_end_min == e->ti_current &&
+      c->black_holes.ti_end_min < max_nr_timesteps)
+    error("End of next black holes step is current time!");
 #endif
 
   if (timer) TIMER_TOC(timer_timestep);
@@ -2820,7 +2999,7 @@ void runner_do_limiter(struct runner *r, struct cell *c, int force, int timer) {
         p->wakeup = time_bin_not_awake;
 
       /* Bip, bip, bip... wake-up time */
-      if (p->wakeup == time_bin_awake) {
+      if (p->wakeup <= time_bin_awake) {
 
         /* Apply the limiter and get the new time-step size */
         const integertime_t ti_new_step = timestep_limit_part(p, xp, e);
@@ -3451,6 +3630,9 @@ void *runner_main(void *data) {
         case task_type_drift_spart:
           runner_do_drift_spart(r, ci, 1);
           break;
+        case task_type_drift_bpart:
+          runner_do_drift_bpart(r, ci, 1);
+          break;
         case task_type_drift_gpart:
           runner_do_drift_gpart(r, ci, 1);
           break;
@@ -3486,6 +3668,9 @@ void *runner_main(void *data) {
           if (t->subtype == task_subtype_tend_spart) {
             free(t->buff);
           }
+          if (t->subtype == task_subtype_tend_bpart) {
+            free(t->buff);
+          }
           break;
         case task_type_recv:
           if (t->subtype == task_subtype_tend_part) {
@@ -3496,6 +3681,10 @@ void *runner_main(void *data) {
             free(t->buff);
           } else if (t->subtype == task_subtype_tend_spart) {
             cell_unpack_end_step_stars(ci, (struct pcell_step_stars *)t->buff);
+            free(t->buff);
+          } else if (t->subtype == task_subtype_tend_bpart) {
+            cell_unpack_end_step_black_holes(
+                ci, (struct pcell_step_black_holes *)t->buff);
             free(t->buff);
           } else if (t->subtype == task_subtype_xv) {
             runner_do_recv_part(r, ci, 1, 1);

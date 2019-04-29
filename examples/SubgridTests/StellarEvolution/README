@@ -1,0 +1,7 @@
+Example for testing EAGLE stellar feedback. This consists of a uniform box of gas with a star in the center. The amount of feedback can then be checked by summing over the gas particles in the whole box and comparing to the expected amount of feedback from a single star over a given time period. 
+
+If only mass enrichment is of interest, the box can be run with ICs generated from a smaller glass (eg glassCube_32.hdf5). In this case, however it is necessary to turn off energy feedback (eg. by setting the return value of compute_SNe in src/stars/EAGLE/stars.h to zero) or using a larger glass (glassCube_64.hdf5). 
+
+Use the python script, plot_box_evolution.py to compare total mass evolution of gas particles in the whole box with what is expected based on EAGLE standalone feedback test.
+
+Use plot_paricle_evolution.py to plot the evolution of particles starting in the viscinity of the star at the beginning of the simulation. 

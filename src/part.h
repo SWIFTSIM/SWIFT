@@ -40,6 +40,7 @@
 #define xpart_align 128
 #define spart_align 128
 #define gpart_align 128
+#define bpart_align 128
 
 /* Import the right hydro particle definition */
 #if defined(MINIMAL_SPH)
@@ -93,7 +94,9 @@
 #endif
 
 /* Import the right star particle definition */
-#if defined(STARS_NONE)
+#if defined(FEEDBACK_CONST)
+#include "./stars/const/stars_part.h"
+#elif defined(STARS_NONE)
 #include "./stars/Default/stars_part.h"
 #elif defined(STARS_EAGLE)
 #include "./stars/EAGLE/stars_part.h"
@@ -103,19 +106,32 @@
 #error "Invalid choice of star particle"
 #endif
 
+/* Import the right black hole particle definition */
+#if defined(BLACK_HOLES_NONE)
+#include "./black_holes/Default/black_holes_part.h"
+#else
+#error "Invalid choice of black hole particle"
+#endif
+
 void part_relink_gparts_to_parts(struct part *parts, size_t N,
                                  ptrdiff_t offset);
 void part_relink_gparts_to_sparts(struct spart *sparts, size_t N,
+                                  ptrdiff_t offset);
+void part_relink_gparts_to_bparts(struct bpart *bparts, size_t N,
                                   ptrdiff_t offset);
 void part_relink_parts_to_gparts(struct gpart *gparts, size_t N,
                                  struct part *parts);
 void part_relink_sparts_to_gparts(struct gpart *gparts, size_t N,
                                   struct spart *sparts);
+void part_relink_bparts_to_gparts(struct gpart *gparts, size_t N,
+                                  struct bpart *bparts);
 void part_relink_all_parts_to_gparts(struct gpart *gparts, size_t N,
-                                     struct part *parts, struct spart *sparts);
+                                     struct part *parts, struct spart *sparts,
+                                     struct bpart *bparts);
 void part_verify_links(struct part *parts, struct gpart *gparts,
-                       struct spart *sparts, size_t nr_parts, size_t nr_gparts,
-                       size_t nr_sparts, int verbose);
+                       struct spart *sparts, struct bpart *bparts,
+                       size_t nr_parts, size_t nr_gparts, size_t nr_sparts,
+                       size_t nr_bparts, int verbose);
 
 #ifdef WITH_MPI
 /* MPI data type for the particle transfers */
@@ -123,6 +139,7 @@ extern MPI_Datatype part_mpi_type;
 extern MPI_Datatype xpart_mpi_type;
 extern MPI_Datatype gpart_mpi_type;
 extern MPI_Datatype spart_mpi_type;
+extern MPI_Datatype bpart_mpi_type;
 
 void part_create_mpi_types(void);
 #endif
