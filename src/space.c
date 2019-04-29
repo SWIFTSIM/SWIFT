@@ -3349,7 +3349,6 @@ void space_split_recursive(struct space *s, struct cell *c,
         /* Update the cell-wide properties */
         h_max = max(h_max, cp->hydro.h_max);
         stars_h_max = max(stars_h_max, cp->stars.h_max);
-        black_holes_h_max = max(black_holes_h_max, cp->black_holes.h_max);
         ti_hydro_end_min = min(ti_hydro_end_min, cp->hydro.ti_end_min);
         ti_hydro_end_max = max(ti_hydro_end_max, cp->hydro.ti_end_max);
         ti_hydro_beg_max = max(ti_hydro_beg_max, cp->hydro.ti_beg_max);
@@ -3702,7 +3701,6 @@ void space_recycle(struct space *s, struct cell *c) {
   /* Clear the cell. */
   if (lock_destroy(&c->lock) != 0 || lock_destroy(&c->grav.plock) != 0 ||
       lock_destroy(&c->mlock) != 0 || lock_destroy(&c->stars.lock) != 0 ||
-      lock_destroy(&c->black_holes.lock) != 0 ||
       lock_destroy(&c->stars.star_formation_lock))
     error("Failed to destroy spinlocks.");
 
@@ -3753,7 +3751,6 @@ void space_recycle_list(struct space *s, struct cell *cell_list_begin,
     /* Clear the cell. */
     if (lock_destroy(&c->lock) != 0 || lock_destroy(&c->grav.plock) != 0 ||
         lock_destroy(&c->mlock) != 0 || lock_destroy(&c->stars.lock) != 0 ||
-        lock_destroy(&c->black_holes.lock) != 0 ||
         lock_destroy(&c->stars.star_formation_lock))
       error("Failed to destroy spinlocks.");
 
@@ -3854,7 +3851,6 @@ void space_getcells(struct space *s, int nr_cells, struct cell **cells) {
         lock_init(&cells[j]->grav.plock) != 0 ||
         lock_init(&cells[j]->grav.mlock) != 0 ||
         lock_init(&cells[j]->stars.lock) != 0 ||
-        lock_init(&cells[j]->black_holes.lock) != 0 ||
         lock_init(&cells[j]->stars.star_formation_lock) != 0)
       error("Failed to initialize cell spinlocks.");
   }
@@ -4249,7 +4245,6 @@ void space_first_init_bparts_mapper(void *restrict map_data, int count,
   struct bpart *restrict bp = (struct bpart *)map_data;
   const struct space *restrict s = (struct space *)extra_data;
   const struct engine *e = s->e;
-  const struct black_holes_props *props = e->black_holes_properties;
 
 #ifdef SWIFT_DEBUG_CHECKS
   const ptrdiff_t delta = bp - s->bparts;
@@ -4283,17 +4278,10 @@ void space_first_init_bparts_mapper(void *restrict map_data, int count,
 #endif
   }
 
-  /* Check that the smoothing lengths are non-zero */
-  for (int k = 0; k < count; k++) {
-    if (bp[k].h <= 0.)
-      error("Invalid value of smoothing length for bpart %lld h=%e", bp[k].id,
-            bp[k].h);
-  }
-
   /* Initialise the rest */
   for (int k = 0; k < count; k++) {
 
-    black_holes_first_init_bpart(&bp[k], props);
+    black_holes_first_init_bpart(&bp[k]);
 
 #ifdef SWIFT_DEBUG_CHECKS
     if (bp[k].gpart && bp[k].gpart->id_or_neg_offset != -(k + delta))
