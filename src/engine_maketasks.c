@@ -232,7 +232,9 @@ void engine_addtasks_send_hydro(struct engine *e, struct cell *ci,
  * @param ci The sending #cell.
  * @param cj Dummy cell containing the nodeID of the receiving node.
  * @param t_feedback The send_feed #task, if it has already been created.
+ * @param t_sf_counts The send_sf_counts, if it has been created.
  * @param t_ti The recv_ti_end #task, if it has already been created.
+ * @param with_star_formation Are we running with star formation on?
  */
 void engine_addtasks_send_stars(struct engine *e, struct cell *ci,
                                 struct cell *cj, struct task *t_feedback,
@@ -471,7 +473,9 @@ void engine_addtasks_recv_hydro(struct engine *e, struct cell *c,
  * @param e The #engine.
  * @param c The foreign #cell.
  * @param t_feedback The recv_feed #task, if it has already been created.
+ * @param t_sf_counts The recv_sf_counts, if it has been created.
  * @param t_ti The recv_ti_end #task, if it has already been created.
+ * @param with_star_formation Are we running with star formation on?
  */
 void engine_addtasks_recv_stars(struct engine *e, struct cell *c,
                                 struct task *t_feedback,
