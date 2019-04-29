@@ -2116,7 +2116,8 @@ void engine_allocate_foreign_particles(struct engine *e) {
       }
 
       /* For stars, we just use the numbers in the top-level cells */
-      count_sparts_in += e->proxies[k].cells_in[j]->stars.count + space_extra_sparts;
+      count_sparts_in +=
+          e->proxies[k].cells_in[j]->stars.count + space_extra_sparts;
 
       /* For black holes, we just use the numbers in the top-level cells */
       count_bparts_in += e->proxies[k].cells_in[j]->black_holes.count;
@@ -2207,7 +2208,8 @@ void engine_allocate_foreign_particles(struct engine *e) {
 
       /* For stars, we just use the numbers in the top-level cells */
       cell_link_sparts(e->proxies[k].cells_in[j], sparts);
-      sparts = &sparts[e->proxies[k].cells_in[j]->stars.count + space_extra_sparts;
+      sparts =
+          &sparts[e->proxies[k].cells_in[j]->stars.count + space_extra_sparts];
 
       /* For black holes, we just use the numbers in the top-level cells */
       cell_link_bparts(e->proxies[k].cells_in[j], bparts);
