@@ -442,7 +442,7 @@ void runner_do_stars_ghost(struct runner *r, struct cell *c, int timer) {
             /* Otherwise, sub-self interaction? */
             else if (l->t->type == task_type_sub_self)
               runner_dosub_subset_stars_density(r, finger, sparts, sid, scount,
-                                                NULL, -1, 1);
+                                                NULL, 1);
 
             /* Otherwise, sub-pair interaction? */
             else if (l->t->type == task_type_sub_pair) {
@@ -450,10 +450,10 @@ void runner_do_stars_ghost(struct runner *r, struct cell *c, int timer) {
               /* Left or right? */
               if (l->t->ci == finger)
                 runner_dosub_subset_stars_density(r, finger, sparts, sid,
-                                                  scount, l->t->cj, -1, 1);
+                                                  scount, l->t->cj, 1);
               else
                 runner_dosub_subset_stars_density(r, finger, sparts, sid,
-                                                  scount, l->t->ci, -1, 1);
+                                                  scount, l->t->ci, 1);
             }
           }
         }
@@ -1897,7 +1897,7 @@ void runner_do_ghost(struct runner *r, struct cell *c, int timer) {
             /* Otherwise, sub-self interaction? */
             else if (l->t->type == task_type_sub_self)
               runner_dosub_subset_density(r, finger, parts, pid, count, NULL,
-                                          -1, 1);
+                                          1);
 
             /* Otherwise, sub-pair interaction? */
             else if (l->t->type == task_type_sub_pair) {
@@ -1905,10 +1905,10 @@ void runner_do_ghost(struct runner *r, struct cell *c, int timer) {
               /* Left or right? */
               if (l->t->ci == finger)
                 runner_dosub_subset_density(r, finger, parts, pid, count,
-                                            l->t->cj, -1, 1);
+                                            l->t->cj, 1);
               else
                 runner_dosub_subset_density(r, finger, parts, pid, count,
-                                            l->t->ci, -1, 1);
+                                            l->t->ci, 1);
             }
           }
         }
@@ -3577,19 +3577,19 @@ void *runner_main(void *data) {
 
         case task_type_sub_pair:
           if (t->subtype == task_subtype_density)
-            runner_dosub_pair1_density(r, ci, cj, t->flags, 1);
+            runner_dosub_pair1_density(r, ci, cj, 1);
 #ifdef EXTRA_HYDRO_LOOP
           else if (t->subtype == task_subtype_gradient)
-            runner_dosub_pair1_gradient(r, ci, cj, t->flags, 1);
+            runner_dosub_pair1_gradient(r, ci, cj, 1);
 #endif
           else if (t->subtype == task_subtype_force)
-            runner_dosub_pair2_force(r, ci, cj, t->flags, 1);
+            runner_dosub_pair2_force(r, ci, cj, 1);
           else if (t->subtype == task_subtype_limiter)
-            runner_dosub_pair2_limiter(r, ci, cj, t->flags, 1);
+            runner_dosub_pair2_limiter(r, ci, cj, 1);
           else if (t->subtype == task_subtype_stars_density)
-            runner_dosub_pair_stars_density(r, ci, cj, t->flags, 1);
+            runner_dosub_pair_stars_density(r, ci, cj, 1);
           else if (t->subtype == task_subtype_stars_feedback)
-            runner_dosub_pair_stars_feedback(r, ci, cj, t->flags, 1);
+            runner_dosub_pair_stars_feedback(r, ci, cj, 1);
           else
             error("Unknown/invalid task subtype (%d).", t->subtype);
           break;
