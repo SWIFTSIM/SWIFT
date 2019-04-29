@@ -1017,8 +1017,7 @@ void zero_yield_table_pointers(struct yield_table table) {
  * @brief Restore feedback tables (if applicable) after
  * restart
  *
- * @param feedback the #feedback_props structure
- * @param cosmo #cosmology structure
+ * @param fp the #feedback_props structure
  */
 void feedback_restore_tables(struct feedback_props* fp) {
 
