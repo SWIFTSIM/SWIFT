@@ -2917,6 +2917,10 @@ int cell_unskip_hydro_tasks(struct cell *c, struct scheduler *s) {
   struct engine *e = s->space->e;
   const int nodeID = e->nodeID;
   const int with_limiter = (e->policy & engine_policy_limiter);
+#ifdef WITH_MPI
+  const int with_star_formation = e->policy & engine_policy_star_formation;
+  const int with_feedback = e->policy & engine_policy_feedback;
+#endif
   int rebuild = 0;
 
   /* Un-skip the density tasks involved with this cell. */
@@ -3023,6 +3027,18 @@ int cell_unskip_hydro_tasks(struct cell *c, struct scheduler *s) {
         if (cj_active || with_limiter)
           scheduler_activate_send(s, cj->mpi.hydro.send_ti, ci_nodeID);
 
+        /* Propagating new star counts? */
+        if (with_star_formation && with_feedback) {
+          if (ci_active && ci->hydro.count > 0) {
+            scheduler_activate_recv(s, ci->mpi.recv, task_subtype_sf_counts);
+	    scheduler_activate_recv(s, ci->mpi.recv, task_subtype_ti);
+          }
+          if (cj_active && cj->hydro.count > 0) {
+            scheduler_activate_send(s, cj->mpi.send, task_subtype_sf_counts, ci_nodeID);
+	    scheduler_activate_send(s, cj->mpi.send, task_subtype_ti, ci_nodeID);
+          }
+        }
+
       } else if (cj_nodeID != nodeID) {
         /* If the local cell is active, receive data from the foreign cell. */
         if (ci_active) {
@@ -3066,6 +3082,18 @@ int cell_unskip_hydro_tasks(struct cell *c, struct scheduler *s) {
         /* If the local cell is active, send its ti_end values. */
         if (ci_active || with_limiter)
           scheduler_activate_send(s, ci->mpi.hydro.send_ti, cj_nodeID);
+
+        /* Propagating new star counts? */
+        if (with_star_formation && with_feedback) {
+          if (cj_active && cj->hydro.count > 0) {
+            scheduler_activate_recv(s, cj->mpi.recv, task_subtype_sf_counts);
+	    scheduler_activate_recv(s, cj->mpi.recv, task_subtype_ti);
+          }
+          if (ci_active && ci->hydro.count > 0) {
+            scheduler_activate_send(s, ci->mpi.send, task_subtype_sf_counts, cj_nodeID);
+	    scheduler_activate_send(s, ci->mpi.send, task_subtype_ti, cj_nodeID);
+          }
+        }
       }
 #endif
     }
