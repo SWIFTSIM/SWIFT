@@ -1002,15 +1002,16 @@ void feedback_props_init(struct feedback_props* fp,
  * @param table yield_table struct in which pointers to tables
  * set to NULL
  */
-void zero_yield_table_pointers(struct yield_table table) {
-  table.mass = NULL;
-  table.metallicity = NULL;
-  table.yield_IMF_resampled = NULL;
-  table.yield = NULL;
-  table.ejecta_IMF_resampled = NULL;
-  table.ejecta = NULL;
-  table.total_metals_IMF_resampled = NULL;
-  table.total_metals = NULL;
+void zero_yield_table_pointers(struct yield_table* table) {
+
+  table->mass = NULL;
+  table->metallicity = NULL;
+  table->yield_IMF_resampled = NULL;
+  table->yield = NULL;
+  table->ejecta_IMF_resampled = NULL;
+  table->ejecta = NULL;
+  table->total_metals_IMF_resampled = NULL;
+  table->total_metals = NULL;
 }
 
 /**
@@ -1060,8 +1061,8 @@ void feedback_struct_dump(const struct feedback_props* feedback, FILE* stream) {
   struct feedback_props feedback_copy = *feedback;
 
   /* zero AGB and SNII table pointers */
-  zero_yield_table_pointers(feedback_copy.yield_AGB);
-  zero_yield_table_pointers(feedback_copy.yield_SNII);
+  zero_yield_table_pointers(&feedback_copy.yield_AGB);
+  zero_yield_table_pointers(&feedback_copy.yield_SNII);
 
   /* zero SNIa table pointers */
   feedback_copy.yield_SNIa_IMF_resampled = NULL;
