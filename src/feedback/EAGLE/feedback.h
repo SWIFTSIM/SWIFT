@@ -160,7 +160,7 @@ __attribute__((always_inline)) INLINE static void feedback_evolve_spart(
     const double star_age_beg_step, const double dt) {
 
 #ifdef SWIFT_DEBUG_CHECKS
-  if (sp->birth_time == -1.) error("Evolving a star particle that shoul not!");
+  if (sp->birth_time == -1.) error("Evolving a star particle that should not!");
 #endif
 
   /* Compute amount of enrichment and feedback that needs to be done in this
@@ -171,5 +171,9 @@ __attribute__((always_inline)) INLINE static void feedback_evolve_spart(
   /* Decrease star mass by amount of mass distributed to gas neighbours */
   sp->mass -= sp->feedback_data.to_distribute.mass;
 }
+
+void feedback_struct_dump(const struct feedback_props* feedback, FILE* stream);
+
+void feedback_struct_restore(struct feedback_props* feedback, FILE* stream);
 
 #endif /* SWIFT_FEEDBACK_EAGLE_H */
