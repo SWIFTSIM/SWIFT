@@ -1172,9 +1172,8 @@ __attribute__((always_inline)) INLINE static void cell_malloc_hydro_sorts(
 
   const int count = c->hydro.count;
 
-  /* Note that sorts can happen on a cell from different tasks at the same
-   * time (but not on the same dimensions), so we need separate allocations
-   * per dimension. */
+  /* Note that sorts can be used by different tasks at the same time (but not
+   * on the same dimensions), so we need separate allocations per dimension. */
   for (int j = 0; j < 13; j++) {
     if ((flags & (1 << j)) && c->hydro.sort[j] == NULL) {
       if ((c->hydro.sort[j] = (struct entry *)swift_malloc(
@@ -1211,9 +1210,8 @@ __attribute__((always_inline)) INLINE static void cell_malloc_stars_sorts(
 
   const int count = c->stars.count;
 
-  /* Note that sorts can happen on a cell from different tasks at the same
-   * time (but not on the same dimensions), so we need separate allocations
-   * per dimension. */
+  /* Note that sorts can be used by different tasks at the same time (but not
+   * on the same dimensions), so we need separate allocations per dimension. */
   for (int j = 0; j < 13; j++) {
     if ((flags & (1 << j)) && c->stars.sort[j] == NULL) {
       if ((c->stars.sort[j] = (struct entry *)swift_malloc(
