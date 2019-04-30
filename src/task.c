@@ -92,11 +92,11 @@ const char *taskID_names[task_type_count] = {"none",
 
 /* Sub-task type names. */
 const char *subtaskID_names[task_subtype_count] = {
-    "none",          "density",       "gradient",      "force",
-    "limiter",       "grav",          "external_grav", "tend_part",
-    "tend_gpart",    "tend_spart",    "tend_bpart",    "xv",
-    "rho",           "gpart",         "multipole",     "spart",
-    "stars_density", "stars_feedback"};
+    "none",          "density",        "gradient",      "force",
+    "limiter",       "grav",           "external_grav", "tend_part",
+    "tend_gpart",    "tend_spart",     "tend_bpart",    "xv",
+    "rho",           "gpart",          "multipole",     "spart",
+    "stars_density", "stars_feedback", "bh_density",    "bh_feedback"};
 
 #ifdef WITH_MPI
 /* MPI communicators for the subtypes. */

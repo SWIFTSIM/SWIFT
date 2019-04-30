@@ -606,6 +606,15 @@ struct cell {
     /*! The drift task for bparts */
     struct task *drift;
 
+    /*! The star ghost task itself */
+    struct task *ghost;
+
+    /*! Linked list of the tasks computing this cell's star density. */
+    struct link *density;
+
+    /*! Linked list of the tasks computing this cell's star feedback. */
+    struct link *feedback;
+
     /*! Max smoothing length in this cell. */
     double h_max;
 
@@ -626,6 +635,9 @@ struct cell {
 
     /*! Maximum part movement in this cell since last construction. */
     float dx_max_part;
+
+    /*! Values of dx_max before the drifts, used for sub-cell tasks. */
+    float dx_max_part_old;
 
     /*! Maximum end of (integer) time step in this cell for black tasks. */
     integertime_t ti_end_min;
@@ -966,6 +978,43 @@ cell_can_recurse_in_self_stars_task(const struct cell *c) {
 
   /* Is the cell split and not smaller than the smoothing length? */
   return c->split && (kernel_gamma * c->stars.h_max_old < 0.5f * c->dmin) &&
+         (kernel_gamma * c->hydro.h_max_old < 0.5f * c->dmin);
+}
+
+/**
+ * @brief Can a sub-pair star task recurse to a lower level based
+ * on the status of the particles in the cell.
+ *
+ * @param ci The #cell with black holes.
+ * @param cj The #cell with hydro parts.
+ */
+__attribute__((always_inline)) INLINE static int
+cell_can_recurse_in_pair_black_holes_task(const struct cell *ci,
+                                          const struct cell *cj) {
+
+  /* Is the cell split ? */
+  /* If so, is the cut-off radius plus the max distance the parts have moved */
+  /* smaller than the sub-cell sizes ? */
+  /* Note: We use the _old values as these might have been updated by a drift */
+  return ci->split && cj->split &&
+         ((kernel_gamma * ci->black_holes.h_max_old +
+           ci->black_holes.dx_max_part_old) < 0.5f * ci->dmin) &&
+         ((kernel_gamma * cj->hydro.h_max_old + cj->hydro.dx_max_part_old) <
+          0.5f * cj->dmin);
+}
+
+/**
+ * @brief Can a sub-self black_holes task recurse to a lower level based
+ * on the status of the particles in the cell.
+ *
+ * @param c The #cell.
+ */
+__attribute__((always_inline)) INLINE static int
+cell_can_recurse_in_self_black_holes_task(const struct cell *c) {
+
+  /* Is the cell split and not smaller than the smoothing length? */
+  return c->split &&
+         (kernel_gamma * c->black_holes.h_max_old < 0.5f * c->dmin) &&
          (kernel_gamma * c->hydro.h_max_old < 0.5f * c->dmin);
 }
 
