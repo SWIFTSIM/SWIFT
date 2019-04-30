@@ -45,6 +45,27 @@ __attribute__((always_inline)) INLINE static int feedback_do_feedback(
 }
 
 /**
+ * @brief Should this particle be doing any feedback-related operation?
+ *
+ * @param sp The #spart.
+ * @param time The current simulation time (Non-cosmological runs).
+ * @param cosmo The cosmological model (cosmological runs).
+ * @param with_cosmology Are we doing a cosmological run?
+ */
+__attribute__((always_inline)) INLINE static int feedback_is_active(
+    const struct spart* sp, const float time, const struct cosmology* cosmo,
+    const int with_cosmology) {
+
+  if (sp->birth_time == -1.) return 0;
+
+  if (with_cosmology) {
+    return ((float)cosmo->a) > sp->birth_scale_factor;
+  } else {
+    return time > sp->birth_time;
+  }
+}
+
+/**
  * @brief Prepares a s-particle for its feedback interactions
  *
  * @param sp The particle to act upon
@@ -139,7 +160,7 @@ __attribute__((always_inline)) INLINE static void feedback_evolve_spart(
     const double star_age_beg_step, const double dt) {
 
 #ifdef SWIFT_DEBUG_CHECKS
-  if (sp->birth_time == -1.) error("Evolving a star particle that shoul not!");
+  if (sp->birth_time == -1.) error("Evolving a star particle that should not!");
 #endif
 
   /* Compute amount of enrichment and feedback that needs to be done in this
@@ -150,5 +171,9 @@ __attribute__((always_inline)) INLINE static void feedback_evolve_spart(
   /* Decrease star mass by amount of mass distributed to gas neighbours */
   sp->mass -= sp->feedback_data.to_distribute.mass;
 }
+
+void feedback_struct_dump(const struct feedback_props* feedback, FILE* stream);
+
+void feedback_struct_restore(struct feedback_props* feedback, FILE* stream);
 
 #endif /* SWIFT_FEEDBACK_EAGLE_H */

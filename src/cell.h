@@ -73,6 +73,17 @@ struct link {
   struct link *next;
 };
 
+/* Holds the pairs of progeny for each sid. */
+struct cell_split_pair {
+  int count;
+  struct {
+    int pid;
+    int pjd;
+    int sid;
+  } pairs[16];
+};
+extern struct cell_split_pair cell_split_pairs[13];
+
 /**
  * @brief Packed cell for information correct at rebuild time.
  *
@@ -1158,6 +1169,8 @@ __attribute__((always_inline)) INLINE static void cell_malloc_hydro_sorts(
 
   const int count = c->hydro.count;
 
+  /* Note that sorts can be used by different tasks at the same time (but not
+   * on the same dimensions), so we need separate allocations per dimension. */
   for (int j = 0; j < 13; j++) {
     if ((flags & (1 << j)) && c->hydro.sort[j] == NULL) {
       if ((c->hydro.sort[j] = (struct entry *)swift_malloc(
@@ -1165,35 +1178,6 @@ __attribute__((always_inline)) INLINE static void cell_malloc_hydro_sorts(
         error("Failed to allocate sort memory.");
     }
   }
-
-  /* /\* Count the memory needed for all active dimensions. *\/ */
-  /* int count = 0; */
-  /* for (int j = 0; j < 13; j++) { */
-  /*   if ((flags & (1 << j)) && c->hydro.sort[j] == NULL) */
-  /*     count += (c->hydro.count + 1); */
-  /* } */
-
-  /* if(c->hydro.sortptr != NULL) */
-  /*   error("Reallocating hydro sorts!"); */
-
-  /* /\* Allocate as a single chunk. *\/ */
-  /* struct entry *memptr = NULL; */
-  /* /\* if ((memptr = (struct entry *)swift_malloc( *\/ */
-  /* /\*          "hydro.sort", sizeof(struct entry) * count)) == NULL) *\/ */
-  /* if ((memptr = (struct entry *)malloc( */
-  /* 				       sizeof(struct entry) * count)) == NULL)
-   */
-  /*   error("Failed to allocate sort memory."); */
-
-  /* c->hydro.sortptr = memptr; */
-
-  /* /\* And attach spans as needed. *\/ */
-  /* for (int j = 0; j < 13; j++) { */
-  /*   if ((flags & (1 << j)) && c->hydro.sort[j] == NULL) { */
-  /*     c->hydro.sort[j] = memptr; */
-  /*     memptr += (c->hydro.count + 1); */
-  /*   } */
-  /* } */
 }
 
 /**
@@ -1210,14 +1194,6 @@ __attribute__((always_inline)) INLINE static void cell_free_hydro_sorts(
       c->hydro.sort[i] = NULL;
     }
   }
-
-  /* /\* Note only one allocation for the dimensions. *\/ */
-  /* if (c->hydro.sortptr != NULL) { */
-  /*   //swift_free("hydro.sort", c->hydro.sortptr); */
-  /*   free(c->hydro.sortptr); */
-  /*   c->hydro.sortptr = NULL; */
-  /*   for (int i = 0; i < 13; i++) c->hydro.sort[i] = NULL; */
-  /* } */
 }
 
 /**
@@ -1231,6 +1207,8 @@ __attribute__((always_inline)) INLINE static void cell_malloc_stars_sorts(
 
   const int count = c->stars.count;
 
+  /* Note that sorts can be used by different tasks at the same time (but not
+   * on the same dimensions), so we need separate allocations per dimension. */
   for (int j = 0; j < 13; j++) {
     if ((flags & (1 << j)) && c->stars.sort[j] == NULL) {
       if ((c->stars.sort[j] = (struct entry *)swift_malloc(
@@ -1238,32 +1216,6 @@ __attribute__((always_inline)) INLINE static void cell_malloc_stars_sorts(
         error("Failed to allocate sort memory.");
     }
   }
-
-  /* /\* Count the memory needed for all active dimensions. *\/ */
-  /* int count = 0; */
-  /* for (int j = 0; j < 13; j++) { */
-  /*   if ((flags & (1 << j)) && c->stars.sort[j] == NULL) */
-  /*     count += (c->stars.count + 1); */
-  /* } */
-
-  /* /\* Allocate as a single chunk. *\/ */
-  /* struct entry *memptr = NULL; */
-  /* /\* if ((memptr = (struct entry *)swift_malloc( *\/ */
-  /* /\*          "stars.sort", sizeof(struct entry) * count)) == NULL) *\/ */
-  /* if ((memptr = (struct entry *)malloc( */
-  /* 				       sizeof(struct entry) * count)) == NULL)
-   */
-  /*   error("Failed to allocate sort memory."); */
-
-  /* c->stars.sortptr = memptr; */
-
-  /* /\* And attach spans as needed. *\/ */
-  /* for (int j = 0; j < 13; j++) { */
-  /*   if ((flags & (1 << j)) && c->stars.sort[j] == NULL) { */
-  /*     c->stars.sort[j] = memptr; */
-  /*     memptr += (c->stars.count + 1); */
-  /*   } */
-  /* } */
 }
 
 /**
@@ -1280,14 +1232,6 @@ __attribute__((always_inline)) INLINE static void cell_free_stars_sorts(
       c->stars.sort[i] = NULL;
     }
   }
-
-  /* /\* Note only one allocation for the dimensions. *\/ */
-  /* if (c->stars.sortptr != NULL) { */
-  /*   //swift_free("stars.sort", c->stars.sortptr); */
-  /*   free(c->stars.sortptr); */
-  /*   c->stars.sortptr = NULL; */
-  /*   for (int i = 0; i < 13; i++) c->stars.sort[i] = NULL; */
-  /* } */
 }
 
 /** Set the given flag for the given cell. */

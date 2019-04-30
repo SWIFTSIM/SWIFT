@@ -23,6 +23,7 @@
 #include <string.h>
 
 /* Local includes. */
+#include "exp10.h"
 #include "inline.h"
 #include "interpolate.h"
 #include "minmax.h"

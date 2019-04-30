@@ -62,15 +62,14 @@ struct cosmology;
 /* Maximum allowed depth of cell splits. */
 #define space_cell_maxdepth 52
 
-/* Split size. */
+/* Globals needed in contexts without a space struct. Remember to dump and
+ * restore these. */
 extern int space_splitsize;
 extern int space_maxsize;
 extern int space_subsize_pair_hydro;
 extern int space_subsize_self_hydro;
 extern int space_subsize_pair_grav;
 extern int space_subsize_self_grav;
-extern int space_subsize_pair_stars;
-extern int space_subsize_self_stars;
 extern int space_subdepth_diff_grav;
 extern int space_extra_parts;
 extern int space_extra_gparts;

@@ -40,6 +40,7 @@
 #include "chemistry.h"
 #include "cosmology.h"
 #include "error.h"
+#include "feedback.h"
 #include "gravity.h"
 #include "hydro.h"
 #include "part.h"
@@ -424,6 +425,7 @@ void pairs_all_stars_density(struct runner *r, struct cell *ci,
   float r2, dx[3];
   const double dim[3] = {r->e->s->dim[0], r->e->s->dim[1], r->e->s->dim[2]};
   const struct engine *e = r->e;
+  const int with_cosmology = e->policy & engine_policy_cosmology;
   const struct cosmology *cosmo = e->cosmology;
   const float a = cosmo->a;
   const float H = cosmo->H;
@@ -437,6 +439,7 @@ void pairs_all_stars_density(struct runner *r, struct cell *ci,
 
     /* Skip inactive particles. */
     if (!spart_is_active(spi, e)) continue;
+    if (!feedback_is_active(spi, e->time, cosmo, with_cosmology)) continue;
 
     for (int j = 0; j < cj->hydro.count; ++j) {
 
@@ -470,6 +473,7 @@ void pairs_all_stars_density(struct runner *r, struct cell *ci,
 
     /* Skip inactive particles. */
     if (!spart_is_active(spj, e)) continue;
+    if (!feedback_is_active(spj, e->time, cosmo, with_cosmology)) continue;
 
     for (int i = 0; i < ci->hydro.count; ++i) {
 
@@ -649,6 +653,7 @@ void self_all_stars_density(struct runner *r, struct cell *ci) {
   struct spart *spi;
   struct part *pj;
   const struct engine *e = r->e;
+  const int with_cosmology = e->policy & engine_policy_cosmology;
   const struct cosmology *cosmo = e->cosmology;
   const float a = cosmo->a;
   const float H = cosmo->H;
@@ -661,6 +666,7 @@ void self_all_stars_density(struct runner *r, struct cell *ci) {
     hig2 = hi * hi * kernel_gamma2;
 
     if (!spart_is_active(spi, e)) continue;
+    if (!feedback_is_active(spi, e->time, cosmo, with_cosmology)) continue;
 
     for (int j = 0; j < ci->hydro.count; ++j) {
 
