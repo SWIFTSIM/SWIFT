@@ -729,6 +729,7 @@ void engine_make_hierarchical_tasks_hydro(struct engine *e, struct cell *c) {
   const int with_feedback = (e->policy & engine_policy_feedback);
   const int with_cooling = (e->policy & engine_policy_cooling);
   const int with_star_formation = (e->policy & engine_policy_star_formation);
+  const int with_black_holes = (e->policy & engine_policy_black_holes);
 
   /* Are we in a super-cell ? */
   if (c->hydro.super == c) {
@@ -775,6 +776,13 @@ void engine_make_hierarchical_tasks_hydro(struct engine *e, struct cell *c) {
         scheduler_addunlock(s, c->stars.drift, c->super->kick2);
       }
 
+      /* Black holes */
+      if (with_black_holes) {
+        c->black_holes.drift = scheduler_addtask(
+            s, task_type_drift_bpart, task_subtype_none, 0, 0, c, NULL);
+        scheduler_addunlock(s, c->black_holes.drift, c->super->kick2);
+      }
+
       /* Subgrid tasks: cooling */
       if (with_cooling) {
 
@@ -809,6 +817,25 @@ void engine_make_hierarchical_tasks_hydro(struct engine *e, struct cell *c) {
           scheduler_addunlock(s, c->top->hydro.star_formation,
                               c->stars.stars_in);
         }
+      }
+
+      /* Subgrid tasks: black hole feedback */
+      if (with_black_holes) {
+
+        c->black_holes.black_holes_in =
+            scheduler_addtask(s, task_type_bh_in, task_subtype_none, 0,
+                              /* implicit = */ 1, c, NULL);
+
+        c->black_holes.black_holes_out =
+            scheduler_addtask(s, task_type_bh_out, task_subtype_none, 0,
+                              /* implicit = */ 1, c, NULL);
+
+        c->black_holes.ghost = scheduler_addtask(
+            s, task_type_bh_ghost, task_subtype_none, 0, 0, c, NULL);
+
+        scheduler_addunlock(s, c->super->kick2, c->black_holes.black_holes_in);
+        scheduler_addunlock(s, c->black_holes.black_holes_out,
+                            c->super->timestep);
       }
     }
   } else { /* We are above the super-cell so need to go deeper */

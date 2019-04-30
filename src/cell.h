@@ -606,6 +606,13 @@ struct cell {
     /*! The drift task for bparts */
     struct task *drift;
 
+    /*! Implicit tasks marking the entry of the BH physics block of tasks
+     */
+    struct task *black_holes_in;
+
+    /*! Implicit tasks marking the exit of the BH physics block of tasks */
+    struct task *black_holes_out;
+
     /*! The star ghost task itself */
     struct task *ghost;
 
