@@ -31,12 +31,10 @@
  * @param a Current scale factor.
  * @param H Current Hubble parameter.
  */
-__attribute__((always_inline)) INLINE static void
-runner_iact_nonsym_bh_density(const float r2, const float *dx,
-                                 const float hi, const float hj,
-                                 struct bpart *restrict bi,
-                                 const struct part *restrict pj, const float a,
-                                 const float H) {
+__attribute__((always_inline)) INLINE static void runner_iact_nonsym_bh_density(
+    const float r2, const float *dx, const float hi, const float hj,
+    struct bpart *restrict bi, const struct part *restrict pj, const float a,
+    const float H) {
 
   float wi, wi_dx;
 
@@ -76,11 +74,10 @@ runner_iact_nonsym_bh_density(const float r2, const float *dx,
  * @param H Current Hubble parameter.
  */
 __attribute__((always_inline)) INLINE static void
-runner_iact_nonsym_bh_feedback(const float r2, const float *dx,
-                                  const float hi, const float hj,
-                                  struct bpart *restrict bi,
-                                  struct part *restrict pj, const float a,
-                                  const float H) {
+runner_iact_nonsym_bh_feedback(const float r2, const float *dx, const float hi,
+                               const float hj, struct bpart *restrict bi,
+                               struct part *restrict pj, const float a,
+                               const float H) {
 #ifdef DEBUG_INTERACTIONS_BH
   /* Update ngb counters */
   if (si->num_ngb_force < MAX_NUM_OF_NEIGHBOURS_BH)
