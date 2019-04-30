@@ -28,6 +28,7 @@
 
 /* Includes. */
 #include <stddef.h>
+#include <stdint.h>
 
 /* Local includes. */
 #include "align.h"
@@ -232,6 +233,24 @@ struct pcell_step_black_holes {
   float dx_max_part;
 };
 
+/** Bitmasks for the cell flags. Beware when adding flags that you don't exceed
+    the size of the flags variable in the struct cell. */
+enum cell_flags {
+  cell_flag_split = (1UL << 0),
+  cell_flag_do_hydro_drift = (1UL << 1),
+  cell_flag_do_hydro_sub_drift = (1UL << 2),
+  cell_flag_do_hydro_sub_sort = (1UL << 3),
+  cell_flag_do_hydro_limiter = (1UL << 4),
+  cell_flag_do_hydro_sub_limiter = (1UL << 5),
+  cell_flag_do_grav_drift = (1UL << 6),
+  cell_flag_do_grav_sub_drift = (1UL << 7),
+  cell_flag_do_stars_sub_sort = (1UL << 8),
+  cell_flag_do_stars_drift = (1UL << 9),
+  cell_flag_do_stars_sub_drift = (1UL << 10),
+  cell_flag_do_bh_drift = (1UL << 11),
+  cell_flag_do_bh_sub_drift = (1UL << 12)
+};
+
 /**
  * @brief Cell within the tree structure.
  *
@@ -259,6 +278,9 @@ struct cell {
 
   /*! Super cell, i.e. the highest-level parent cell with *any* task */
   struct cell *super;
+
+  /*! Cell flags bit-mask. */
+  volatile uint32_t flags;
 
   /*! Hydro variables */
   struct {
@@ -366,28 +388,13 @@ struct cell {
     int hold;
 
     /*! Bit mask of sort directions that will be needed in the next timestep. */
-    unsigned int requires_sorts;
+    uint16_t requires_sorts;
 
     /*! Bit mask of sorts that need to be computed for this cell. */
-    unsigned int do_sort;
+    uint16_t do_sort;
 
     /*! Bit-mask indicating the sorted directions */
-    unsigned int sorted;
-
-    /*! Does this cell need to be drifted (hydro)? */
-    char do_drift;
-
-    /*! Do any of this cell's sub-cells need to be drifted (hydro)? */
-    char do_sub_drift;
-
-    /*! Do any of this cell's sub-cells need to be sorted? */
-    char do_sub_sort;
-
-    /*! Does this cell need to be limited? */
-    char do_limiter;
-
-    /*! Do any of this cell's sub-cells need to be limited? */
-    char do_sub_limiter;
+    uint16_t sorted;
 
 #ifdef SWIFT_DEBUG_CHECKS
 
@@ -487,12 +494,6 @@ struct cell {
     /*! Number of M-M tasks that are associated with this cell. */
     short int nr_mm_tasks;
 
-    /*! Does this cell need to be drifted (gravity)? */
-    char do_drift;
-
-    /*! Do any of this cell's sub-cells need to be drifted (gravity)? */
-    char do_sub_drift;
-
   } grav;
 
   /*! Stars variables */
@@ -556,21 +557,18 @@ struct cell {
     /*! Values of dx_max_sort before the drifts, used for sub-cell tasks. */
     float dx_max_sort_old;
 
-    /*! Bit mask of sort directions that will be needed in the next timestep. */
-    unsigned int requires_sorts;
-
     /*! Pointer for the sorted indices. */
     struct entry *sort[13];
     struct entry *sortptr;
 
+    /*! Bit mask of sort directions that will be needed in the next timestep. */
+    uint16_t requires_sorts;
+
     /*! Bit-mask indicating the sorted directions */
-    unsigned int sorted;
+    uint16_t sorted;
 
     /*! Bit mask of sorts that need to be computed for this cell. */
-    unsigned int do_sort;
-
-    /*! Do any of this cell's sub-cells need to be sorted? */
-    char do_sub_sort;
+    uint16_t do_sort;
 
     /*! Maximum end of (integer) time step in this cell for star tasks. */
     integertime_t ti_end_min;
@@ -590,12 +588,6 @@ struct cell {
 
     /*! Is the #spart data of this cell being used in a sub-cell? */
     int hold;
-
-    /*! Does this cell need to be drifted (stars)? */
-    char do_drift;
-
-    /*! Do any of this cell's sub-cells need to be drifted (stars)? */
-    char do_sub_drift;
 
     /*! Star formation history struct */
     struct star_formation_history sfh;
@@ -656,12 +648,6 @@ struct cell {
 
     /*! Is the #bpart data of this cell being used in a sub-cell? */
     int hold;
-
-    /*! Does this cell need to be drifted (black holes)? */
-    char do_drift;
-
-    /*! Do any of this cell's sub-cells need to be drifted (black holes)? */
-    char do_sub_drift;
 
   } black_holes;
 
@@ -1246,6 +1232,24 @@ __attribute__((always_inline)) INLINE static void cell_free_stars_sorts(
       c->stars.sort[i] = NULL;
     }
   }
+}
+
+/** Set the given flag for the given cell. */
+__attribute__((always_inline)) INLINE static void cell_set_flag(struct cell *c,
+                                                                uint32_t flag) {
+  atomic_or(&c->flags, flag);
+}
+
+/** Clear the given flag for the given cell. */
+__attribute__((always_inline)) INLINE static void cell_clear_flag(
+    struct cell *c, uint32_t flag) {
+  atomic_and(&c->flags, ~flag);
+}
+
+/** Get the given flag for the given cell. */
+__attribute__((always_inline)) INLINE static int cell_get_flag(
+    const struct cell *c, uint32_t flag) {
+  return (c->flags & flag) > 0;
 }
 
 #endif /* SWIFT_CELL_H */

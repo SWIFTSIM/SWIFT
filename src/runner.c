@@ -908,7 +908,7 @@ void runner_do_hydro_sort(struct runner *r, struct cell *c, int flags,
   } else {
     flags &= ~c->hydro.sorted;
   }
-  if (flags == 0 && !c->hydro.do_sub_sort) return;
+  if (flags == 0 && !cell_get_flag(c, cell_flag_do_hydro_sub_sort)) return;
 
   /* Check that the particles have been moved to the current time */
   if (flags && !cell_are_part_drifted(c, r->e))
@@ -1091,7 +1091,7 @@ void runner_do_hydro_sort(struct runner *r, struct cell *c, int flags,
 
   /* Clear the cell's sort flags. */
   c->hydro.do_sort = 0;
-  c->hydro.do_sub_sort = 0;
+  cell_clear_flag(c, cell_flag_do_hydro_sub_sort);
   c->hydro.requires_sorts = 0;
 
   if (clock) TIMER_TOC(timer_dosort);
@@ -1130,7 +1130,7 @@ void runner_do_stars_sort(struct runner *r, struct cell *c, int flags,
   } else {
     flags &= ~c->stars.sorted;
   }
-  if (flags == 0 && !c->stars.do_sub_sort) return;
+  if (flags == 0 && !cell_get_flag(c, cell_flag_do_stars_sub_sort)) return;
 
   /* Check that the particles have been moved to the current time */
   if (flags && !cell_are_spart_drifted(c, r->e)) {
@@ -1308,7 +1308,7 @@ void runner_do_stars_sort(struct runner *r, struct cell *c, int flags,
 
   /* Clear the cell's sort flags. */
   c->stars.do_sort = 0;
-  c->stars.do_sub_sort = 0;
+  cell_clear_flag(c, cell_flag_do_stars_sub_sort);
   c->stars.requires_sorts = 0;
 
   if (clock) TIMER_TOC(timer_do_stars_sort);
@@ -2937,19 +2937,19 @@ void runner_do_limiter(struct runner *r, struct cell *c, int force, int timer) {
                 ti_gravity_beg_max = 0;
 
   /* Limit irrespective of cell flags? */
-  force |= c->hydro.do_limiter;
+  force = (force || cell_get_flag(c, cell_flag_do_hydro_limiter));
 
   /* Early abort? */
   if (c->hydro.count == 0) {
 
     /* Clear the limiter flags. */
-    c->hydro.do_limiter = 0;
-    c->hydro.do_sub_limiter = 0;
+    cell_clear_flag(
+        c, cell_flag_do_hydro_limiter | cell_flag_do_hydro_sub_limiter);
     return;
   }
 
   /* Loop over the progeny ? */
-  if (c->split && (force || c->hydro.do_sub_limiter)) {
+  if (c->split && (force || cell_get_flag(c, cell_flag_do_hydro_sub_limiter))) {
     for (int k = 0; k < 8; k++) {
       if (c->progeny[k] != NULL) {
         struct cell *restrict cp = c->progeny[k];
@@ -3039,8 +3039,8 @@ void runner_do_limiter(struct runner *r, struct cell *c, int force, int timer) {
   }
 
   /* Clear the limiter flags. */
-  c->hydro.do_limiter = 0;
-  c->hydro.do_sub_limiter = 0;
+  cell_clear_flag(c,
+                  cell_flag_do_hydro_limiter | cell_flag_do_hydro_sub_limiter);
 
   if (timer) TIMER_TOC(timer_do_limiter);
 }
