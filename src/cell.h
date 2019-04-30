@@ -293,7 +293,6 @@ struct cell {
 
     /*! Pointer for the sorted indices. */
     struct entry *sort[13];
-    struct entry *sortptr;
 
     /*! Super cell, i.e. the highest-level parent cell that has a hydro
      * pair/self tasks */
@@ -559,7 +558,6 @@ struct cell {
 
     /*! Pointer for the sorted indices. */
     struct entry *sort[13];
-    struct entry *sortptr;
 
     /*! Bit mask of sort directions that will be needed in the next timestep. */
     uint16_t requires_sorts;
