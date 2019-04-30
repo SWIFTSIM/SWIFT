@@ -269,7 +269,7 @@ struct cell {
   struct cell *super;
 
   /*! Cell flags bit-mask. */
-  uint32_t flags;
+  volatile uint32_t flags;
 
   /*! Hydro variables */
   struct {
