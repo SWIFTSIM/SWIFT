@@ -524,6 +524,8 @@ void runner_do_black_holes_ghost(struct runner *r, struct cell *c, int timer) {
   /* Running value of the maximal smoothing length */
   double h_max = c->black_holes.h_max;
 
+  double dt = 0.001;
+
   TIMER_TIC;
 
   /* Anything to do here? */
@@ -630,6 +632,11 @@ void runner_do_black_holes_ghost(struct runner *r, struct cell *c, int timer) {
           if (((bp->h >= black_holes_h_max) && (f < 0.f)) ||
               ((bp->h <= black_holes_h_min) && (f > 0.f))) {
 
+            /* Compute variables required for the feedback loop */
+            black_holes_prepare_feedback(bp, e->physical_constants,
+                                         e->cosmology, dt);
+
+            /* Reset quantities computed by the feedback loop */
             black_holes_reset_feedback(bp);
 
             /* Ok, we are done with this particle */
@@ -723,6 +730,11 @@ void runner_do_black_holes_ghost(struct runner *r, struct cell *c, int timer) {
         /* Check if h_max has increased */
         h_max = max(h_max, bp->h);
 
+        /* Compute variables required for the feedback loop */
+        black_holes_prepare_feedback(bp, e->physical_constants, e->cosmology,
+                                     dt);
+
+        /* Reset quantities computed by the feedback loop */
         black_holes_reset_feedback(bp);
       }
 

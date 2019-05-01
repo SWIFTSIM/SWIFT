@@ -20,9 +20,11 @@
 #define SWIFT_EAGLE_BLACK_HOLES_H
 
 #include <float.h>
+#include "cosmology.h"
 #include "dimension.h"
 #include "kernel_hydro.h"
 #include "minmax.h"
+#include "physical_constants.h"
 
 /**
  * @brief Computes the gravity time-step of a given black hole particle.
@@ -47,6 +49,8 @@ __attribute__((always_inline)) INLINE static void black_holes_first_init_bpart(
     struct bpart* bp) {
 
   bp->time_bin = 0;
+  bp->subgrid_mass = bp->mass;
+  bp->energy_reservoir = 0.;
 }
 
 /**
@@ -65,6 +69,12 @@ __attribute__((always_inline)) INLINE static void black_holes_init_bpart(
 
   bp->density.wcount = 0.f;
   bp->density.wcount_dh = 0.f;
+  bp->rho_gas = 0.f;
+  bp->sound_speed_gas = 0.f;
+  bp->velocity_gas[0] = 0.f;
+  bp->velocity_gas[1] = 0.f;
+  bp->velocity_gas[2] = 0.f;
+  bp->ngb_mass = 0.f;
 }
 
 /**
@@ -112,6 +122,11 @@ __attribute__((always_inline)) INLINE static void black_holes_end_density(
   /* Finish the calculation by inserting the missing h-factors */
   bp->density.wcount *= h_inv_dim;
   bp->density.wcount_dh *= h_inv_dim_plus_one;
+  bp->rho_gas *= h_inv_dim;
+  bp->sound_speed_gas *= h_inv_dim;
+  bp->velocity_gas[0] *= h_inv_dim;
+  bp->velocity_gas[1] *= h_inv_dim;
+  bp->velocity_gas[2] *= h_inv_dim;
 }
 
 /**
@@ -133,6 +148,58 @@ black_holes_bpart_has_no_neighbours(struct bpart* restrict bp,
   /* Re-set problematic values */
   bp->density.wcount = kernel_root * h_inv_dim;
   bp->density.wcount_dh = 0.f;
+}
+
+/**
+ *
+ */
+__attribute__((always_inline)) INLINE static void black_holes_prepare_feedback(
+    struct bpart* restrict bp, const struct phys_const* constants,
+    const struct cosmology* cosmo, const double dt) {
+
+  const double G = constants->const_newton_G;
+  const double c = constants->const_speed_light_c;
+
+  /* (Subgrid) mass of the BH (internal units) */
+  const double BH_mass = bp->subgrid_mass;
+
+  /* Convert the quantities we gathered to physical frame (all internal units)
+   */
+  const double gas_rho_phys = bp->rho_gas * cosmo->a3_inv;
+  const double gas_c_phys = bp->sound_speed_gas * cosmo->a_factor_sound_speed;
+  const double gas_v_peculiar[3] = {bp->velocity_gas[0] * cosmo->a_inv,
+                                    bp->velocity_gas[1] * cosmo->a_inv,
+                                    bp->velocity_gas[2] * cosmo->a_inv};
+
+  const double bh_v_peculiar[3] = {bp->v[0] * cosmo->a_inv,
+                                   bp->v[1] * cosmo->a_inv,
+                                   bp->v[2] * cosmo->a_inv};
+
+  /* Difference in velocity between the gas and the BH */
+  const double v_diff_peculiar[3] = {gas_v_peculiar[0] - bh_v_peculiar[0],
+                                     gas_v_peculiar[1] - bh_v_peculiar[1],
+                                     gas_v_peculiar[2] - bh_v_peculiar[2]};
+  const double v_diff_norm2 = v_diff_peculiar[0] * v_diff_peculiar[0] +
+                              v_diff_peculiar[1] * v_diff_peculiar[1] +
+                              v_diff_peculiar[2] * v_diff_peculiar[2];
+
+  /* We can now compute the Bondi accretion rate (internal units) */
+  const double gas_c_phys2 = gas_c_phys * gas_c_phys;
+  const double denominator2 = v_diff_norm2 + gas_c_phys2;
+  const double denominator_inv = 1. / sqrt(denominator2);
+  const double Bondi_rate = 4. * M_PI * G * G * BH_mass * BH_mass *
+                            gas_rho_phys * denominator_inv * denominator_inv *
+                            denominator_inv;
+
+  /* Factor in the radiative efficiency */
+  const double epsilon_r = 0.1;
+  const double mass_rate = (1. - epsilon_r) * Bondi_rate;
+  const double luminosity = epsilon_r * Bondi_rate * c * c;
+
+  /* Integrate forward in time */
+  const double epsilon_f = 0.15;
+  bp->subgrid_mass += mass_rate * dt;
+  bp->energy_reservoir += luminosity * epsilon_f * dt;
 }
 
 /**

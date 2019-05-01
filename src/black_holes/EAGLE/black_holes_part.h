@@ -16,11 +16,8 @@
  * along with this program.  If not, see <http://www.gnu.org/licenses/>.
  *
  ******************************************************************************/
-#ifndef SWIFT_DEFAULT_BLACK_HOLE_PART_H
-#define SWIFT_DEFAULT_BLACK_HOLE_PART_H
-
-/* Some standard headers. */
-#include <stdlib.h>
+#ifndef SWIFT_EAGLE_BLACK_HOLE_PART_H
+#define SWIFT_EAGLE_BLACK_HOLE_PART_H
 
 /**
  * @brief Particle fields for the black hole particles.
@@ -63,6 +60,24 @@ struct bpart {
 
   } density;
 
+  /*! Subgrid mass of the black hole */
+  float subgrid_mass;
+
+  /*! Energy reservoir for feedback */
+  float energy_reservoir;
+
+  /*! Density of the gas surrounding the black hole. */
+  float rho_gas;
+
+  /*! Smoothed sound speed of the gas surrounding the black hole. */
+  float sound_speed_gas;
+
+  /*! Smoothed velocity (peculiar) of the gas surrounding the black hole */
+  float velocity_gas[3];
+
+  /*! Total mass of the gas neighbours. */
+  float ngb_mass;
+
 #ifdef SWIFT_DEBUG_CHECKS
 
   /* Time of the last drift */
@@ -89,4 +104,4 @@ struct bpart {
 
 } SWIFT_STRUCT_ALIGN;
 
-#endif /* SWIFT_DEFAULT_BLACK_HOLE_PART_H */
+#endif /* SWIFT_EAGLE_BLACK_HOLE_PART_H */

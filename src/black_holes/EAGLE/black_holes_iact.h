@@ -19,6 +19,8 @@
 #ifndef SWIFT_EAGLE_BH_IACT_H
 #define SWIFT_EAGLE_BH_IACT_H
 
+#include "hydro.h"
+
 /**
  * @brief Density interaction between two particles (non-symmetric).
  *
@@ -50,6 +52,29 @@ __attribute__((always_inline)) INLINE static void runner_iact_nonsym_bh_density(
   /* Compute contribution to the number of neighbours */
   bi->density.wcount += wi;
   bi->density.wcount_dh -= (hydro_dimension * wi + ui * wi_dx);
+
+  /* Neighbour gas mass */
+  const float mj = hydro_get_mass(pj);
+
+  /* Contribution to the BH gas density */
+  bi->rho_gas += mj * wi;
+
+  /* Contribution to the total neighbour mass */
+  bi->ngb_mass += mj;
+
+  /* Neighbour sounds speed */
+  const float cj = hydro_get_comoving_soundspeed(pj);
+
+  /* Contribution to the smoothed sound speed */
+  bi->sound_speed_gas += cj * wi;
+
+  /* Neighbour peculiar drifted velocity */
+  const float v[3] = {pj->v[0], pj->v[1], pj->v[2]};
+
+  /* Contribution to the smoothed velocity */
+  bi->velocity_gas[0] += v[0] * wi;
+  bi->velocity_gas[1] += v[1] * wi;
+  bi->velocity_gas[2] += v[2] * wi;
 
 #ifdef DEBUG_INTERACTIONS_BH
   /* Update ngb counters */
