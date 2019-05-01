@@ -709,6 +709,12 @@ void task_get_group_name(int type, int subtype, char *cluster) {
     case task_subtype_stars_feedback:
       strcpy(cluster, "StarsFeedback");
       break;
+    case task_subtype_bh_density:
+      strcpy(cluster, "BHDensity");
+      break;
+    case task_subtype_bh_feedback:
+      strcpy(cluster, "BHFeedback");
+      break;
     default:
       strcpy(cluster, "None");
       break;

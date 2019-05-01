@@ -136,6 +136,20 @@ def appendData(data):
     return data[0]
 
 
+def taskIsBlackHoles(name):
+    """
+    Does the task concern black holes?
+
+    Parameters
+    ----------
+
+    name: str
+        Task name
+    """
+    if "bh" in name or "bpart" in name:
+        return True
+    return False
+
 def taskIsStars(name):
     """
     Does the task concern stars?
@@ -149,7 +163,6 @@ def taskIsStars(name):
     if "stars" in name or "spart" in name:
         return True
     return False
-
 
 def taskIsHydro(name):
     """
@@ -290,6 +303,9 @@ def writeTask(f, name, implicit, mpi, with_calls):
         txt += "style=filled,fillcolor=lightgrey,"
     if mpi:
         txt += "shape=diamond,"
+
+    if taskIsBlackHoles(name):
+        txt += "color=forestgreen,"
 
     if taskIsStars(name):
         txt += "color=darkorange1,"
