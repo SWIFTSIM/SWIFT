@@ -4263,6 +4263,13 @@ void space_first_init_bparts_mapper(void *restrict map_data, int count,
 #endif
   }
 
+  /* Check that the smoothing lengths are non-zero */
+  for (int k = 0; k < count; k++) {
+    if (bp[k].h <= 0.)
+      error("Invalid value of smoothing length for bpart %lld h=%e", bp[k].id,
+            bp[k].h);
+  }
+
   /* Initialise the rest */
   for (int k = 0; k < count; k++) {
 
