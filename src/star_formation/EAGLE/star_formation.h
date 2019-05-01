@@ -244,10 +244,9 @@ INLINE static int star_formation_is_star_forming(
 
   /* Calculate the entropy of the particle */
   const double entropy = hydro_get_physical_entropy(p, xp, cosmo);
-  
+
   /* Calculate the entropy EOS of the particle */
-  const double entropy_eos =
-      entropy_floor(p, cosmo, entropy_floor_props);
+  const double entropy_eos = entropy_floor(p, cosmo, entropy_floor_props);
 
   /* Check the Scahye & Dalla Vecchia 2012 EOS-based temperature critrion */
   return (entropy <
@@ -410,8 +409,8 @@ INLINE static void star_formation_copy_properties(
   sp->birth_density = hydro_get_physical_density(p, cosmo);
 
   /* Store the birth temperature in the star particle */
-  sp->birth_temperature = cooling_get_temperature(phys_const, hydro_props,
-                                                  us, cosmo, cooling, p, xp); 
+  sp->birth_temperature = cooling_get_temperature(phys_const, hydro_props, us,
+                                                  cosmo, cooling, p, xp);
 
   /* Flag that this particle has not done feedback yet */
   sp->f_E = -1.f;

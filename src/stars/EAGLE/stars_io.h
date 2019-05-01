@@ -85,8 +85,9 @@ INLINE static void stars_write_particles(const struct spart *sparts,
                                  birth_time);
   list[8] = io_make_output_field("FeedbackEnergyFraction", FLOAT, 1,
                                  UNIT_CONV_NO_UNITS, sparts, f_E);
-  list[9] = io_make_output_field("BirthTemperature", FLOAT, 1,
-                                 UNIT_CONV_TEMPERATURE, sparts, birth_temperature);
+  list[9] =
+      io_make_output_field("BirthTemperature", FLOAT, 1, UNIT_CONV_TEMPERATURE,
+                           sparts, birth_temperature);
 }
 
 /**
