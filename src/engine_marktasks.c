@@ -179,8 +179,7 @@ void engine_marktasks_mapper(void *map_data, int num_elements,
                t_subtype == task_subtype_bh_density) {
         if (cell_is_active_black_holes(ci, e)) {
           scheduler_activate(s, t);
-          error("TODO!");
-          // cell_activate_subcell_bh_tasks(ci, NULL, s);
+          cell_activate_subcell_black_holes_tasks(ci, NULL, s);
         }
       }
 
@@ -697,6 +696,16 @@ void engine_marktasks_mapper(void *map_data, int num_elements,
     /* Feedback implicit tasks? */
     else if (t_type == task_type_stars_in || t_type == task_type_stars_out) {
       if (cell_is_active_stars(t->ci, e)) scheduler_activate(s, t);
+    }
+
+    /* Black hole ghost tasks ? */
+    else if (t_type == task_type_bh_ghost) {
+      if (cell_is_active_black_holes(t->ci, e)) scheduler_activate(s, t);
+    }
+
+    /* Black holes implicit tasks? */
+    else if (t_type == task_type_bh_in || t_type == task_type_bh_out) {
+      if (cell_is_active_black_holes(t->ci, e)) scheduler_activate(s, t);
     }
 
     /* Time-step? */
