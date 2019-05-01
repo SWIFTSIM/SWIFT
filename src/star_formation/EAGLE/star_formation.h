@@ -242,17 +242,22 @@ INLINE static int star_formation_is_star_forming(
   /* Check if it exceeded the minimum density */
   if (n_H < density_threshold) return 0;
 
+  /* Calculate the entropy of the particle */
+  const double entropy = hydro_get_physical_entropy(p, xp, cosmo);
   /* Calculate the temperature */
-  const double temperature = cooling_get_temperature(phys_const, hydro_props,
-                                                     us, cosmo, cooling, p, xp);
-
-  /* Temperature on the equation of state */
-  const double temperature_eos =
+  //const double temperature = cooling_get_temperature(phys_const, hydro_props,
+  //                                                   us, cosmo, cooling, p, xp);
+  
+  /* Calculate the entropy EOS of the particle */
+  const double entropy_eos =
       entropy_floor_temperature(p, cosmo, entropy_floor);
+  /* Temperature on the equation of state */
+  //const double temperature_eos =
+  //    entropy_floor_temperature(p, cosmo, entropy_floor);
 
   /* Check the Scahye & Dalla Vecchia 2012 EOS-based temperature critrion */
-  return (temperature <
-          temperature_eos * starform->ten_to_temperature_margin_threshold_dex);
+  return (entropy <
+          entropy_eos * starform->ten_to_temperature_margin_threshold_dex);
 }
 
 /**
