@@ -803,6 +803,7 @@ void cell_check_multipole_drift_point(struct cell *c, void *data);
 void cell_reset_task_counters(struct cell *c);
 int cell_unskip_hydro_tasks(struct cell *c, struct scheduler *s);
 int cell_unskip_stars_tasks(struct cell *c, struct scheduler *s);
+int cell_unskip_black_holes_tasks(struct cell *c, struct scheduler *s);
 int cell_unskip_gravity_tasks(struct cell *c, struct scheduler *s);
 void cell_drift_part(struct cell *c, const struct engine *e, int force);
 void cell_drift_gpart(struct cell *c, const struct engine *e, int force);

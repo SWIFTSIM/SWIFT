@@ -639,7 +639,7 @@ void engine_marktasks_mapper(void *map_data, int num_elements,
             /* If the local cell is active, more stuff will be needed. */
             error("MATTHIEU: needs implementing");
             // scheduler_activate_send(s, cj->mpi.black_holes.send, ci_nodeID);
-            cell_activate_drift_spart(cj, s);
+            cell_activate_drift_bpart(cj, s);
 
             /* If the local cell is active, send its ti_end values. */
             error("MATTHIEU: needs implementing");
@@ -674,7 +674,7 @@ void engine_marktasks_mapper(void *map_data, int num_elements,
             /* If the local cell is active, more stuff will be needed. */
             error("MATTHIEU: needs implementing");
             // scheduler_activate_send(s, ci->mpi.black_holes.send, cj_nodeID);
-            cell_activate_drift_spart(ci, s);
+            cell_activate_drift_bpart(ci, s);
 
             /* If the local cell is active, send its ti_end values. */
             error("MATTHIEU: needs implementing");
@@ -780,7 +780,9 @@ void engine_marktasks_mapper(void *map_data, int num_elements,
     /* Kick ? */
     else if (t_type == task_type_kick1 || t_type == task_type_kick2) {
 
-      if (cell_is_active_hydro(t->ci, e) || cell_is_active_gravity(t->ci, e))
+      if (cell_is_active_hydro(t->ci, e) || cell_is_active_gravity(t->ci, e) ||
+          cell_is_active_stars(t->ci, e) ||
+          cell_is_active_black_holes(t->ci, e))
         scheduler_activate(s, t);
     }
 
@@ -853,7 +855,10 @@ void engine_marktasks_mapper(void *map_data, int num_elements,
       t->ci->hydro.updated = 0;
       t->ci->grav.updated = 0;
       t->ci->stars.updated = 0;
-      if (cell_is_active_hydro(t->ci, e) || cell_is_active_gravity(t->ci, e))
+      t->ci->black_holes.updated = 0;
+      if (cell_is_active_hydro(t->ci, e) || cell_is_active_gravity(t->ci, e) ||
+          cell_is_active_stars(t->ci, e) ||
+          cell_is_active_black_holes(t->ci, e))
         scheduler_activate(s, t);
     }
 

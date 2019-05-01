@@ -2323,6 +2323,35 @@ static void runner_do_unskip_stars(struct cell *c, struct engine *e) {
 }
 
 /**
+ * @brief Unskip any black hole tasks associated with active cells.
+ *
+ * @param c The cell.
+ * @param e The engine.
+ */
+static void runner_do_unskip_black_holes(struct cell *c, struct engine *e) {
+
+  /* Ignore empty cells. */
+  if (c->black_holes.count == 0) return;
+
+  /* Skip inactive cells. */
+  if (!cell_is_active_black_holes(c, e)) return;
+
+  /* Recurse */
+  if (c->split) {
+    for (int k = 0; k < 8; k++) {
+      if (c->progeny[k] != NULL) {
+        struct cell *cp = c->progeny[k];
+        runner_do_unskip_black_holes(cp, e);
+      }
+    }
+  }
+
+  /* Unskip any active tasks. */
+  const int forcerebuild = cell_unskip_black_holes_tasks(c, &e->sched);
+  if (forcerebuild) atomic_inc(&e->forcerebuild);
+}
+
+/**
  * @brief Unskip any gravity tasks associated with active cells.
  *
  * @param c The cell.
@@ -2379,6 +2408,10 @@ void runner_do_unskip_mapper(void *map_data, int num_elements,
 
       /* Stars tasks */
       if (e->policy & engine_policy_stars) runner_do_unskip_stars(c, e);
+
+      /* Black hole tasks */
+      if (e->policy & engine_policy_black_holes)
+        runner_do_unskip_black_holes(c, e);
     }
   }
 }
