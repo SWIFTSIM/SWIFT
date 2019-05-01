@@ -127,6 +127,14 @@ __attribute__((always_inline)) INLINE static void black_holes_end_density(
   bp->velocity_gas[0] *= h_inv_dim;
   bp->velocity_gas[1] *= h_inv_dim;
   bp->velocity_gas[2] *= h_inv_dim;
+
+  const float rho_inv = 1.f / bp->rho_gas;
+
+  /* Finish the calculation by undoing the mass smoothing */
+  bp->sound_speed_gas *= rho_inv;
+  bp->velocity_gas[0] *= rho_inv;
+  bp->velocity_gas[1] *= rho_inv;
+  bp->velocity_gas[2] *= rho_inv;
 }
 
 /**
@@ -157,8 +165,16 @@ __attribute__((always_inline)) INLINE static void black_holes_prepare_feedback(
     struct bpart* restrict bp, const struct phys_const* constants,
     const struct cosmology* cosmo, const double dt) {
 
+  /* Gather some physical constants (all in internal units) */
   const double G = constants->const_newton_G;
   const double c = constants->const_speed_light_c;
+  const double proton_mass = constants->const_proton_mass;
+  const double sigma_Thomson = constants->const_thomson_cross_section;
+
+  /* Gather the parameters of the model */
+  const double f_Edd = 1.;
+  const double epsilon_r = 0.1;
+  const double epsilon_f = 0.15;
 
   /* (Subgrid) mass of the BH (internal units) */
   const double BH_mass = bp->subgrid_mass;
@@ -175,7 +191,7 @@ __attribute__((always_inline)) INLINE static void black_holes_prepare_feedback(
                                    bp->v[1] * cosmo->a_inv,
                                    bp->v[2] * cosmo->a_inv};
 
-  /* Difference in velocity between the gas and the BH */
+  /* Difference in peculiar velocity between the gas and the BH */
   const double v_diff_peculiar[3] = {gas_v_peculiar[0] - bh_v_peculiar[0],
                                      gas_v_peculiar[1] - bh_v_peculiar[1],
                                      gas_v_peculiar[2] - bh_v_peculiar[2]};
@@ -191,13 +207,18 @@ __attribute__((always_inline)) INLINE static void black_holes_prepare_feedback(
                             gas_rho_phys * denominator_inv * denominator_inv *
                             denominator_inv;
 
+  /* Compute the Eddington rate */
+  const double Eddington_rate =
+      4. * M_PI * G * BH_mass * proton_mass / (epsilon_r * c * sigma_Thomson);
+
+  /* Limit the accretion rate to the Eddington fraction */
+  const double accr_rate = max(Bondi_rate, f_Edd * Eddington_rate);
+
   /* Factor in the radiative efficiency */
-  const double epsilon_r = 0.1;
-  const double mass_rate = (1. - epsilon_r) * Bondi_rate;
-  const double luminosity = epsilon_r * Bondi_rate * c * c;
+  const double mass_rate = (1. - epsilon_r) * accr_rate;
+  const double luminosity = epsilon_r * accr_rate * c * c;
 
   /* Integrate forward in time */
-  const double epsilon_f = 0.15;
   bp->subgrid_mass += mass_rate * dt;
   bp->energy_reservoir += luminosity * epsilon_f * dt;
 }

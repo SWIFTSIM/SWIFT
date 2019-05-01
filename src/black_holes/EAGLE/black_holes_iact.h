@@ -66,15 +66,15 @@ __attribute__((always_inline)) INLINE static void runner_iact_nonsym_bh_density(
   const float cj = hydro_get_comoving_soundspeed(pj);
 
   /* Contribution to the smoothed sound speed */
-  bi->sound_speed_gas += cj * wi;
+  bi->sound_speed_gas += mj * cj * wi;
 
   /* Neighbour peculiar drifted velocity */
-  const float v[3] = {pj->v[0], pj->v[1], pj->v[2]};
+  const float vj[3] = {pj->v[0], pj->v[1], pj->v[2]};
 
   /* Contribution to the smoothed velocity */
-  bi->velocity_gas[0] += v[0] * wi;
-  bi->velocity_gas[1] += v[1] * wi;
-  bi->velocity_gas[2] += v[2] * wi;
+  bi->velocity_gas[0] += mj * vj[0] * wi;
+  bi->velocity_gas[1] += mj * vj[1] * wi;
+  bi->velocity_gas[2] += mj * vj[2] * wi;
 
 #ifdef DEBUG_INTERACTIONS_BH
   /* Update ngb counters */
