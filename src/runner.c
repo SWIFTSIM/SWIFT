@@ -735,7 +735,8 @@ void runner_do_star_formation(struct runner *r, struct cell *c, int timer) {
 
               /* Copy the properties of the gas particle to the star particle */
               star_formation_copy_properties(p, xp, sp, e, sf_props, cosmo,
-                                             with_cosmology);
+                                             with_cosmology, phys_const,
+                                             hydro_props, us, cooling);
 
               /* Update the Star formation history */
               star_formation_logger_log_new_spart(sp, &c->stars.sfh);

@@ -85,6 +85,9 @@ struct spart {
   /*! Birth density */
   float birth_density;
 
+  /*! Birth temperature */
+  float birth_temperature;
+
   /*! Feedback energy fraction */
   float f_E;
 
