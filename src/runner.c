@@ -171,6 +171,11 @@ void runner_do_stars_ghost(struct runner *r, struct cell *c, int timer) {
 
   TIMER_TIC;
 
+#ifdef SWIFT_DEBUG_CHECKS
+  if (c->nodeID != e->nodeID)
+    error("Running the star ghost on a foreign node!");
+#endif
+
   /* Anything to do here? */
   if (c->stars.count == 0) return;
   if (!cell_is_active_stars(c, e)) return;
