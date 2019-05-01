@@ -3031,11 +3031,11 @@ int cell_unskip_hydro_tasks(struct cell *c, struct scheduler *s) {
         if (with_star_formation && with_feedback) {
           if (ci_active && ci->hydro.count > 0) {
             scheduler_activate_recv(s, ci->mpi.recv, task_subtype_sf_counts);
-	    scheduler_activate_recv(s, ci->mpi.recv, task_subtype_ti);
+	    scheduler_activate_recv(s, ci->mpi.recv, task_subtype_tend_spart);
           }
           if (cj_active && cj->hydro.count > 0) {
             scheduler_activate_send(s, cj->mpi.send, task_subtype_sf_counts, ci_nodeID);
-	    scheduler_activate_send(s, cj->mpi.send, task_subtype_ti, ci_nodeID);
+	    scheduler_activate_send(s, cj->mpi.send, task_subtype_tend_spart, ci_nodeID);
           }
         }
 
@@ -3087,11 +3087,11 @@ int cell_unskip_hydro_tasks(struct cell *c, struct scheduler *s) {
         if (with_star_formation && with_feedback) {
           if (cj_active && cj->hydro.count > 0) {
             scheduler_activate_recv(s, cj->mpi.recv, task_subtype_sf_counts);
-	    scheduler_activate_recv(s, cj->mpi.recv, task_subtype_ti);
+	    scheduler_activate_recv(s, cj->mpi.recv, task_subtype_tend_spart);
           }
           if (ci_active && ci->hydro.count > 0) {
             scheduler_activate_send(s, ci->mpi.send, task_subtype_sf_counts, cj_nodeID);
-	    scheduler_activate_send(s, ci->mpi.send, task_subtype_ti, cj_nodeID);
+	    scheduler_activate_send(s, ci->mpi.send, task_subtype_tend_spart, cj_nodeID);
           }
         }
       }
