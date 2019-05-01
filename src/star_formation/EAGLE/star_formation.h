@@ -382,7 +382,11 @@ INLINE static void star_formation_update_part_not_SFR(
 INLINE static void star_formation_copy_properties(
     const struct part* p, const struct xpart* xp, struct spart* sp,
     const struct engine* e, const struct star_formation* starform,
-    const struct cosmology* cosmo, const int with_cosmology) {
+    const struct cosmology* cosmo, const int with_cosmology,
+    const struct phys_const* phys_const,
+    const struct hydro_props* restrict hydro_props,
+    const struct unit_system* restrict us,
+    const struct cooling_function_data* restrict cooling) {
 
   /* Store the current mass */
   sp->mass = hydro_get_mass(p);
@@ -405,6 +409,10 @@ INLINE static void star_formation_copy_properties(
 
   /* Store the birth density in the star particle */
   sp->birth_density = hydro_get_physical_density(p, cosmo);
+
+  /* Store the birth temperature in the star particle */
+  sp->birth_temperature = cooling_get_temperature(phys_const, hydro_props,
+                                                  us, cosmo, cooling, p, xp); 
 
   /* Flag that this particle has not done feedback yet */
   sp->f_E = -1.f;
