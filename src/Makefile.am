@@ -196,7 +196,9 @@ nobase_noinst_HEADERS = align.h approx_math.h atomic.h barrier.h cycle.h error.h
                  feedback/EAGLE/feedback_properties.h feedback/EAGLE/imf.h feedback/EAGLE/interpolate.h \
                  feedback/EAGLE/yield_tables.h \
                  black_holes/Default/black_holes.h black_holes/Default/black_holes_io.h \
-		 black_holes/Default/black_holes_part.h 
+		 black_holes/Default/black_holes_part.h black_holes/Default/black_holes_iact.h \
+                 black_holes/EAGLE/black_holes.h black_holes/EAGLE/black_holes_io.h \
+		 black_holes/EAGLE/black_holes_part.h black_holes/EAGLE/black_holes_iact.h
 
 
 # Sources and flags for regular library
