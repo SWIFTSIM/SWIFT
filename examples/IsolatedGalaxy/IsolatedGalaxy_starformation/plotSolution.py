@@ -123,6 +123,7 @@ stars_pos = f["/PartType4/Coordinates"][:, :]
 stars_BirthDensity = f["/PartType4/BirthDensity"][:]
 stars_BirthTime = f["/PartType4/BirthTime"][:]
 stars_XH = f["/PartType4/ElementAbundance"][:,0]
+stars_BirthTemperature = f["/PartType4/BirthTemperature"][:]
 
 # Centre the box
 gas_pos[:, 0] -= centre[0]
@@ -207,8 +208,16 @@ figure()
 subplot(111, xscale="linear", yscale="linear")
 hist(np.log10(stars_BirthDensity),density=True,bins=20,range=[-2,5])
 xlabel("${\\rm Stellar~birth~density}~n_{\\rm H}~[{\\rm cm^{-3}}]$", labelpad=0)
-ylabel("${\\rm Probability}$", labelpad=-7)
+ylabel("${\\rm Probability}$", labelpad=3)
 savefig("BirthDensity.png", dpi=200)
+
+# Histogram of the birth temperature 
+figure()
+subplot(111, xscale="linear", yscale="linear")
+hist(np.log10(stars_BirthTemperature),density=True,bins=20,range=[3.5,5.0])
+xlabel("${\\rm Stellar~birth~temperature}~[{\\rm K}]$", labelpad=0)
+ylabel("${\\rm Probability}$", labelpad=3)
+savefig("BirthTemperature.png", dpi=200)
 
 # Plot of the specific star formation rate in the galaxy
 rhos = 10**np.linspace(-1,np.log10(KS_high_den_thresh),100)
