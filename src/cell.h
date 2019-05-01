@@ -1135,6 +1135,28 @@ cell_need_rebuild_for_stars_pair(const struct cell *ci, const struct cell *cj) {
 }
 
 /**
+ * @brief Have star particles in a pair of cells moved too much and require a
+ * rebuild?
+ *
+ * @param ci The first #cell.
+ * @param cj The second #cell.
+ */
+__attribute__((always_inline)) INLINE static int
+cell_need_rebuild_for_black_holes_pair(const struct cell *ci,
+                                       const struct cell *cj) {
+
+  /* Is the cut-off radius plus the max distance the parts in both cells have */
+  /* moved larger than the cell size ? */
+  /* Note ci->dmin == cj->dmin */
+  if (kernel_gamma * max(ci->black_holes.h_max, cj->hydro.h_max) +
+          ci->black_holes.dx_max_part + cj->hydro.dx_max_part >
+      cj->dmin) {
+    return 1;
+  }
+  return 0;
+}
+
+/**
  * @brief Add a unique tag to a cell, mostly for MPI communications.
  *
  * This function locks the cell so that tags can be added concurrently.
