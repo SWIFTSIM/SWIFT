@@ -168,6 +168,11 @@ __attribute__((always_inline)) INLINE static enum task_actions task_acts_on(
       return task_action_spart;
       break;
 
+    case task_type_drift_bpart:
+    case task_type_bh_ghost:
+      return task_action_bpart;
+      break;
+
     case task_type_self:
     case task_type_pair:
     case task_type_sub_self:
@@ -183,6 +188,11 @@ __attribute__((always_inline)) INLINE static enum task_actions task_acts_on(
 
         case task_subtype_stars_density:
         case task_subtype_stars_feedback:
+          return task_action_all;
+          break;
+
+        case task_subtype_bh_density:
+        case task_subtype_bh_feedback:
           return task_action_all;
           break;
 

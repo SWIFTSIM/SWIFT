@@ -164,6 +164,38 @@ void engine_marktasks_mapper(void *map_data, int num_elements,
         if (cell_is_active_stars(ci, e)) scheduler_activate(s, t);
       }
 
+      /* Activate the black hole density */
+      else if (t_type == task_type_self &&
+               t_subtype == task_subtype_bh_density) {
+        if (cell_is_active_black_holes(ci, e)) {
+          scheduler_activate(s, t);
+          cell_activate_drift_part(ci, s);
+          cell_activate_drift_bpart(ci, s);
+        }
+      }
+
+      /* Store current values of dx_max and h_max. */
+      else if (t_type == task_type_sub_self &&
+               t_subtype == task_subtype_bh_density) {
+        if (cell_is_active_black_holes(ci, e)) {
+          scheduler_activate(s, t);
+          error("TODO!");
+          // cell_activate_subcell_bh_tasks(ci, NULL, s);
+        }
+      }
+
+      else if (t_type == task_type_self &&
+               t_subtype == task_subtype_bh_feedback) {
+        if (cell_is_active_black_holes(ci, e)) {
+          scheduler_activate(s, t);
+        }
+      }
+
+      else if (t_type == task_type_sub_self &&
+               t_subtype == task_subtype_bh_feedback) {
+        if (cell_is_active_black_holes(ci, e)) scheduler_activate(s, t);
+      }
+
       /* Activate the gravity drift */
       else if (t_type == task_type_self && t_subtype == task_subtype_grav) {
         if (cell_is_active_gravity(ci, e)) {

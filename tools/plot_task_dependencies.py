@@ -176,7 +176,7 @@ def taskIsHydro(name):
     """
     if "_part" in name:
         return True
-    if "density" in name and "stars" not in name:
+    if "density" in name and "stars" not in name and "bh" not in name:
         return True
     if "rho" in name:
         return True

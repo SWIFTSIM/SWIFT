@@ -1112,6 +1112,10 @@ void engine_count_and_link_tasks_mapper(void *map_data, int num_elements,
         engine_addlink(e, &ci->stars.density, t);
       } else if (t->subtype == task_subtype_stars_feedback) {
         engine_addlink(e, &ci->stars.feedback, t);
+      } else if (t->subtype == task_subtype_bh_density) {
+        engine_addlink(e, &ci->black_holes.density, t);
+      } else if (t->subtype == task_subtype_bh_feedback) {
+        engine_addlink(e, &ci->black_holes.feedback, t);
       }
 
       /* Link pair tasks to cells. */
@@ -1131,6 +1135,12 @@ void engine_count_and_link_tasks_mapper(void *map_data, int num_elements,
       } else if (t->subtype == task_subtype_stars_feedback) {
         engine_addlink(e, &ci->stars.feedback, t);
         engine_addlink(e, &cj->stars.feedback, t);
+      } else if (t->subtype == task_subtype_bh_density) {
+        engine_addlink(e, &ci->black_holes.density, t);
+        engine_addlink(e, &cj->black_holes.density, t);
+      } else if (t->subtype == task_subtype_bh_feedback) {
+        engine_addlink(e, &ci->black_holes.feedback, t);
+        engine_addlink(e, &cj->black_holes.feedback, t);
       }
 #ifdef SWIFT_DEBUG_CHECKS
       else if (t_subtype == task_subtype_external_grav) {
@@ -1152,6 +1162,10 @@ void engine_count_and_link_tasks_mapper(void *map_data, int num_elements,
         engine_addlink(e, &ci->stars.density, t);
       } else if (t->subtype == task_subtype_stars_feedback) {
         engine_addlink(e, &ci->stars.feedback, t);
+      } else if (t->subtype == task_subtype_bh_density) {
+        engine_addlink(e, &ci->black_holes.density, t);
+      } else if (t->subtype == task_subtype_bh_feedback) {
+        engine_addlink(e, &ci->black_holes.feedback, t);
       }
 
       /* Link sub-pair tasks to cells. */
@@ -1171,6 +1185,12 @@ void engine_count_and_link_tasks_mapper(void *map_data, int num_elements,
       } else if (t->subtype == task_subtype_stars_feedback) {
         engine_addlink(e, &ci->stars.feedback, t);
         engine_addlink(e, &cj->stars.feedback, t);
+      } else if (t->subtype == task_subtype_bh_density) {
+        engine_addlink(e, &ci->black_holes.density, t);
+        engine_addlink(e, &cj->black_holes.density, t);
+      } else if (t->subtype == task_subtype_bh_feedback) {
+        engine_addlink(e, &ci->black_holes.feedback, t);
+        engine_addlink(e, &cj->black_holes.feedback, t);
       }
 #ifdef SWIFT_DEBUG_CHECKS
       else if (t_subtype == task_subtype_external_grav) {
@@ -1425,6 +1445,7 @@ void engine_make_extra_hydroloop_tasks_mapper(void *map_data, int num_elements,
   const int with_cooling = (e->policy & engine_policy_cooling);
   const int with_limiter = (e->policy & engine_policy_limiter);
   const int with_feedback = (e->policy & engine_policy_feedback);
+  const int with_black_holes = (e->policy & engine_policy_black_holes);
 #ifdef EXTRA_HYDRO_LOOP
   struct task *t_gradient = NULL;
 #endif
@@ -1432,6 +1453,8 @@ void engine_make_extra_hydroloop_tasks_mapper(void *map_data, int num_elements,
   struct task *t_limiter = NULL;
   struct task *t_star_density = NULL;
   struct task *t_star_feedback = NULL;
+  struct task *t_bh_density = NULL;
+  struct task *t_bh_feedback = NULL;
 
   for (int ind = 0; ind < num_elements; ind++) {
 
@@ -1478,6 +1501,15 @@ void engine_make_extra_hydroloop_tasks_mapper(void *map_data, int num_elements,
                               task_subtype_stars_feedback, flags, 0, ci, NULL);
       }
 
+      /* The black hole feedback tasks */
+      if (with_feedback) {
+        t_bh_density = scheduler_addtask(
+            sched, task_type_self, task_subtype_bh_density, flags, 0, ci, NULL);
+        t_bh_feedback =
+            scheduler_addtask(sched, task_type_self, task_subtype_bh_feedback,
+                              flags, 0, ci, NULL);
+      }
+
       /* Link the tasks to the cells */
       engine_addlink(e, &ci->hydro.force, t_force);
       if (with_limiter) {
@@ -1486,6 +1518,10 @@ void engine_make_extra_hydroloop_tasks_mapper(void *map_data, int num_elements,
       if (with_feedback) {
         engine_addlink(e, &ci->stars.density, t_star_density);
         engine_addlink(e, &ci->stars.feedback, t_star_feedback);
+      }
+      if (with_black_holes) {
+        engine_addlink(e, &ci->black_holes.density, t_bh_density);
+        engine_addlink(e, &ci->black_holes.feedback, t_bh_feedback);
       }
 
 #ifdef EXTRA_HYDRO_LOOP
@@ -1525,6 +1561,21 @@ void engine_make_extra_hydroloop_tasks_mapper(void *map_data, int num_elements,
                             t_star_feedback);
         scheduler_addunlock(sched, t_star_feedback,
                             ci->hydro.super->stars.stars_out);
+      }
+
+      if (with_feedback) {
+
+        scheduler_addunlock(sched, ci->hydro.super->black_holes.drift,
+                            t_bh_density);
+        scheduler_addunlock(sched, ci->hydro.super->hydro.drift, t_bh_density);
+        scheduler_addunlock(sched, ci->hydro.super->black_holes.black_holes_in,
+                            t_bh_density);
+        scheduler_addunlock(sched, t_bh_density,
+                            ci->hydro.super->black_holes.ghost);
+        scheduler_addunlock(sched, ci->hydro.super->black_holes.ghost,
+                            t_bh_feedback);
+        scheduler_addunlock(sched, t_bh_feedback,
+                            ci->hydro.super->black_holes.black_holes_out);
       }
 
       if (with_limiter) {

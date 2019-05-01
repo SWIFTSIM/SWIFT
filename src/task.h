@@ -125,6 +125,7 @@ enum task_actions {
   task_action_part,
   task_action_gpart,
   task_action_spart,
+  task_action_bpart,
   task_action_all,
   task_action_multipole,
   task_action_count

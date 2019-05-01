@@ -2314,6 +2314,44 @@ void cell_activate_drift_spart(struct cell *c, struct scheduler *s) {
 }
 
 /**
+ * @brief Activate the #bpart drifts on the given cell.
+ */
+void cell_activate_drift_bpart(struct cell *c, struct scheduler *s) {
+
+  /* If this cell is already marked for drift, quit early. */
+  if (cell_get_flag(c, cell_flag_do_bh_drift)) return;
+
+  /* Mark this cell for drifting. */
+  cell_set_flag(c, cell_flag_do_bh_drift);
+
+  /* Set the do_black_holes_sub_drifts all the way up and activate the super
+     drift if this has not yet been done. */
+  if (c == c->hydro.super) {
+#ifdef SWIFT_DEBUG_CHECKS
+    if (c->black_holes.drift == NULL)
+      error("Trying to activate un-existing c->black_holes.drift");
+#endif
+    scheduler_activate(s, c->black_holes.drift);
+  } else {
+    for (struct cell *parent = c->parent;
+         parent != NULL && !cell_get_flag(parent, cell_flag_do_bh_sub_drift);
+         parent = parent->parent) {
+      /* Mark this cell for drifting */
+      cell_set_flag(parent, cell_flag_do_bh_sub_drift);
+
+      if (parent == c->hydro.super) {
+#ifdef SWIFT_DEBUG_CHECKS
+        if (parent->black_holes.drift == NULL)
+          error("Trying to activate un-existing parent->black_holes.drift");
+#endif
+        scheduler_activate(s, parent->black_holes.drift);
+        break;
+      }
+    }
+  }
+}
+
+/**
  * @brief Activate the drifts on the given cell.
  */
 void cell_activate_limiter(struct cell *c, struct scheduler *s) {
