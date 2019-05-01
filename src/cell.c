@@ -53,6 +53,7 @@
 #include "chemistry.h"
 #include "drift.h"
 #include "engine.h"
+#include "entropy_floor.h"
 #include "error.h"
 #include "feedback.h"
 #include "gravity.h"
@@ -3595,7 +3596,8 @@ void cell_drift_part(struct cell *c, const struct engine *e, int force) {
 
       /* Drift... */
       drift_part(p, xp, dt_drift, dt_kick_hydro, dt_kick_grav, dt_therm,
-                 ti_old_part, ti_current);
+                 ti_old_part, ti_current, e->cosmology, e->hydro_properties,
+                 e->entropy_floor);
 
       /* Update the tracers properties */
       tracers_after_drift(p, xp, e->internal_units, e->physical_constants,
