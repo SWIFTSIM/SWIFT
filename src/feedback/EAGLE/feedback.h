@@ -30,8 +30,8 @@
 
 void compute_stellar_evolution(const struct feedback_props* feedback_props,
                                const struct cosmology* cosmo, struct spart* sp,
-                               const struct unit_system* us, const float age,
-                               const float dt);
+                               const struct unit_system* us, const double age,
+                               const double dt);
 
 /**
  * @brief Should we do feedback for this star?
