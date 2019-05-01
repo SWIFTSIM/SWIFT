@@ -90,8 +90,9 @@ __attribute__((always_inline)) INLINE static void chemistry_end_density(
 
   /* Some smoothing length multiples. */
   const float h = p->h;
-  const float h_inv = 1.0f / h;                       /* 1/h */
-  const float factor = pow_dimension(h_inv) / p->rho; /* 1 / h^d * rho */
+  const float h_inv = 1.0f / h; /* 1/h */
+  const float rho = hydro_get_comoving_density(p);
+  const float factor = pow_dimension(h_inv) / rho; /* 1 / (h^d * rho) */
   const float m = hydro_get_mass(p);
 
   struct chemistry_part_data* cpd = &p->chemistry_data;
