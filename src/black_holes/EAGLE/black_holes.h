@@ -251,14 +251,16 @@ __attribute__((always_inline)) INLINE static void black_holes_prepare_feedback(
   if (bp->energy_reservoir > E_feedback_event) {
 
     /* Default probability of heating */
-    double prob = bp->energy_reservoir / (delta_u * bp->ngb_mass);
+    double target_prob = bp->energy_reservoir / (delta_u * bp->ngb_mass);
 
     /* Calculate the change in internal energy of the gas particles that get
-     * heated */
+     * heated. Adjust the prbability if needed. */
     double gas_delta_u;
-    if (prob <= 1.) {
+    double prob;
+    if (target_prob <= 1.) {
 
       /* Normal case */
+      prob = target_prob;
       gas_delta_u = delta_u;
 
     } else {
@@ -273,6 +275,11 @@ __attribute__((always_inline)) INLINE static void black_holes_prepare_feedback(
     /* Store all of this in the black hole for delivery onto the gas. */
     bp->to_distribute.AGN_heating_probability = prob;
     bp->to_distribute.AGN_delta_u = gas_delta_u;
+
+    /* Decrement the energy in the reservoir by the mean expected energy */
+    const double energy_used = bp->energy_reservoir / max(prob, 1.);
+    bp->energy_reservoir -= energy_used;
+
   } else {
 
     /* Flag that we don't want to heat anyone */
