@@ -47,6 +47,8 @@ struct black_holes_props {
   /*! Maximal change of h over one time-step */
   float log_max_h_change;
 
+  /* ----- Initialisation properties  ------ */
+
   /* ----- Properties of the accretion model ------ */
 
   /*! Maximal fraction of the Eddington rate allowed. */
