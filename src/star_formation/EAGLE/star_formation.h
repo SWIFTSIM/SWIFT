@@ -201,7 +201,7 @@ INLINE static double EOS_pressure(const double n_H,
  * @param hydro_props The properties of the hydro scheme.
  * @param us The internal system of units.
  * @param cooling The cooling data struct.
- * @param entropy_floor The entropy floor assumed in this run.
+ * @param entropy_floor_props The entropy floor assumed in this run.
  */
 INLINE static int star_formation_is_star_forming(
     const struct part* restrict p, const struct xpart* restrict xp,
@@ -376,6 +376,10 @@ INLINE static void star_formation_update_part_not_SFR(
  * @param starform the star formation law properties to use.
  * @param cosmo the cosmological parameters and properties.
  * @param with_cosmology if we run with cosmology.
+ * @param phys_const the physical constants in internal units.
+ * @param hydro_props The properties of the hydro scheme.
+ * @param us The internal system of units.
+ * @param cooling The cooling data struct.
  */
 INLINE static void star_formation_copy_properties(
     const struct part* p, const struct xpart* xp, struct spart* sp,

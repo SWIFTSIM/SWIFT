@@ -26,10 +26,11 @@
  * @param dx Comoving vector separating both particles (pi - pj).
  * @param hi Comoving smoothing-length of particle i.
  * @param hj Comoving smoothing-length of particle j.
- * @param bi First bparticle.
- * @param pj Second particle (not updated).
- * @param a Current scale factor.
- * @param H Current Hubble parameter.
+ * @param bi First particle (black hole).
+ * @param pj Second particle (gas, not updated).
+ * @param xpj The extended data of the second particle (not updated).
+ * @param cosmo The cosmological model.
+ * @param ti_current Current integer time value (for random numbers).
  */
 __attribute__((always_inline)) INLINE static void runner_iact_nonsym_bh_density(
     const float r2, const float *dx, const float hi, const float hj,
@@ -69,10 +70,11 @@ __attribute__((always_inline)) INLINE static void runner_iact_nonsym_bh_density(
  * @param dx Comoving vector separating both particles (pi - pj).
  * @param hi Comoving smoothing-length of particle i.
  * @param hj Comoving smoothing-length of particle j.
- * @param bi First bparticle.
- * @param pj Second particle (not updated).
- * @param a Current scale factor.
- * @param H Current Hubble parameter.
+ * @param bi First particle (black hole).
+ * @param pj Second particle (gas)
+ * @param xpj The extended data of the second particle.
+ * @param cosmo The cosmological model.
+ * @param ti_current Current integer time value (for random numbers).
  */
 __attribute__((always_inline)) INLINE static void
 runner_iact_nonsym_bh_feedback(const float r2, const float *dx, const float hi,
