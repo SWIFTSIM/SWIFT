@@ -6087,6 +6087,7 @@ void engine_struct_dump(struct engine *e, FILE *stream) {
   cooling_struct_dump(e->cooling_func, stream);
   starformation_struct_dump(e->star_formation, stream);
   feedback_struct_dump(e->feedback_props, stream);
+  black_holes_struct_dump(e->black_holes_properties, stream);
   chemistry_struct_dump(e->chemistry, stream);
   parser_struct_dump(e->parameter_file, stream);
   if (e->output_list_snapshots)
@@ -6193,6 +6194,11 @@ void engine_struct_restore(struct engine *e, FILE *stream) {
       (struct feedback_props *)malloc(sizeof(struct feedback_props));
   feedback_struct_restore(feedback_properties, stream);
   e->feedback_props = feedback_properties;
+
+  struct black_holes_props *black_holes_properties =
+      (struct black_holes_props *)malloc(sizeof(struct black_holes_props));
+  black_holes_struct_restore(black_holes_properties, stream);
+  e->black_holes_properties = black_holes_properties;
 
   struct chemistry_global_data *chemistry =
       (struct chemistry_global_data *)malloc(

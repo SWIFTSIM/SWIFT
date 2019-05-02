@@ -97,4 +97,30 @@ static INLINE void black_holes_props_init(struct black_holes_props *bp,
     bp->log_max_h_change = logf(powf(max_volume_change, hydro_dimension_inv));
 }
 
+/**
+ * @brief Write a black_holes_props struct to the given FILE as a stream of
+ * bytes.
+ *
+ * @param props the black hole properties struct
+ * @param stream the file stream
+ */
+INLINE static void black_holes_struct_dump(
+    const struct black_holes_props *props, FILE *stream) {
+  restart_write_blocks((void *)props, sizeof(struct black_holes_props), 1,
+                       stream, "black_holes props", "black holes props");
+}
+
+/**
+ * @brief Restore a black_holes_props struct from the given FILE as a stream of
+ * bytes.
+ *
+ * @param props the black hole properties struct
+ * @param stream the file stream
+ */
+INLINE static void black_holes_struct_restore(
+    const struct black_holes_props *props, FILE *stream) {
+  restart_read_blocks((void *)props, sizeof(struct black_holes_props), 1,
+                      stream, NULL, "black holes props");
+}
+
 #endif /* SWIFT_DEFAULT_BLACK_HOLES_PROPERTIES_H */
