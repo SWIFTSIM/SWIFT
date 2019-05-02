@@ -53,6 +53,9 @@ __attribute__((always_inline)) INLINE static void runner_iact_nonsym_bh_density(
   bi->density.wcount += wi;
   bi->density.wcount_dh -= (hydro_dimension * wi + ui * wi_dx);
 
+  /* Contribution to the number of neighbours */
+  bi->num_ngbs += 1;
+
   /* Neighbour gas mass */
   const float mj = hydro_get_mass(pj);
 

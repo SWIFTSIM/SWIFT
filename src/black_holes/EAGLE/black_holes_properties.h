@@ -22,6 +22,9 @@
 #include "chemistry.h"
 #include "hydro_properties.h"
 
+/**
+ * @brief Properties of black holes and AGN feedback in the EAGEL model.
+ */
 struct black_holes_props {
 
   /* ----- Basic neighbour search properties ------ */
@@ -59,6 +62,14 @@ struct black_holes_props {
 
   /*! Temperature increase induced by AGN feedback (Kelvin) */
   float AGN_delta_T_desired;
+
+  /*! Number of gas neighbours to heat in a feedback event */
+  float num_ngbs_to_heat;
+
+  /* ---- Common conversion factors --------------- */
+
+  /*! Conversion factor from temperature to internal energy */
+  float temp_to_u_factor;
 };
 
 /**
@@ -125,6 +136,18 @@ INLINE static void black_holes_props_init(struct black_holes_props *bp,
 
   bp->AGN_delta_T_desired =
       parser_get_param_float(params, "EAGLEAGN:AGN_delta_T_K");
+
+  bp->num_ngbs_to_heat =
+      parser_get_param_float(params, "EAGLEAGN:AGN_num_ngb_to_heat");
+
+  /* Common conversion factors ----------------------------- */
+
+  /* Calculate temperature to internal energy conversion factor (all internal
+   * units) */
+  const double k_B = phys_const->const_boltzmann_k;
+  const double m_p = phys_const->const_proton_mass;
+  const double mu = hydro_props->mu_ionised;
+  bp->temp_to_u_factor = k_B / (mu * hydro_gamma_minus_one * m_p);
 }
 
 #endif /* SWIFT_EAGLE_BLACK_HOLES_PROPERTIES_H */

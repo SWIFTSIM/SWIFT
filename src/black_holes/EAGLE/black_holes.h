@@ -81,6 +81,7 @@ __attribute__((always_inline)) INLINE static void black_holes_init_bpart(
   bp->velocity_gas[1] = 0.f;
   bp->velocity_gas[2] = 0.f;
   bp->ngb_mass = 0.f;
+  bp->num_ngbs = 0;
 }
 
 /**
@@ -189,6 +190,9 @@ __attribute__((always_inline)) INLINE static void black_holes_prepare_feedback(
   const double f_Edd = props->f_Edd;
   const double epsilon_r = props->epsilon_r;
   const double epsilon_f = props->epsilon_f;
+  const double num_ngbs_to_heat = props->num_ngbs_to_heat;
+  const double delta_T = props->AGN_delta_T_desired;
+  const double delta_u = delta_T * props->temp_to_u_factor;
 
   /* (Subgrid) mass of the BH (internal units) */
   const double BH_mass = bp->subgrid_mass;
@@ -205,7 +209,9 @@ __attribute__((always_inline)) INLINE static void black_holes_prepare_feedback(
                                    bp->v[1] * cosmo->a_inv,
                                    bp->v[2] * cosmo->a_inv};
 
-  /* Difference in peculiar velocity between the gas and the BH */
+  /* Difference in peculiar velocity between the gas and the BH
+   * Note that there is no need for a Hubble flow term here. We are
+   * computing the gas velocity at the position of the black hole. */
   const double v_diff_peculiar[3] = {gas_v_peculiar[0] - bh_v_peculiar[0],
                                      gas_v_peculiar[1] - bh_v_peculiar[1],
                                      gas_v_peculiar[2] - bh_v_peculiar[2]};
@@ -236,6 +242,43 @@ __attribute__((always_inline)) INLINE static void black_holes_prepare_feedback(
   /* Integrate forward in time */
   bp->subgrid_mass += mass_rate * dt;
   bp->energy_reservoir += luminosity * epsilon_f * dt;
+
+  /* Energy required to have a feedback event */
+  const double mean_ngb_mass = bp->ngb_mass / ((double)bp->num_ngbs);
+  const double E_feedback_event = num_ngbs_to_heat * delta_u * mean_ngb_mass;
+
+  /* Are we doing some feedback? */
+  if (bp->energy_reservoir > E_feedback_event) {
+
+    /* Default probability of heating */
+    double prob = bp->energy_reservoir / (delta_u * bp->ngb_mass);
+
+    /* Calculate the change in internal energy of the gas particles that get
+     * heated */
+    double gas_delta_u;
+    if (prob <= 1.) {
+
+      /* Normal case */
+      gas_delta_u = delta_u;
+
+    } else {
+
+      /* Special case: we need to adjust the energy irrespective of the
+       * desired deltaT to ensure we inject all the available energy. */
+
+      prob = 1.;
+      gas_delta_u = bp->energy_reservoir / bp->ngb_mass;
+    }
+
+    /* Store all of this in the black hole for delivery onto the gas. */
+    bp->to_distribute.AGN_heating_probability = prob;
+    bp->to_distribute.AGN_delta_u = gas_delta_u;
+  } else {
+
+    /* Flag that we don't want to heat anyone */
+    bp->to_distribute.AGN_heating_probability = 0.f;
+    bp->to_distribute.AGN_delta_u = 0.f;
+  }
 }
 
 /**
@@ -249,6 +292,9 @@ __attribute__((always_inline)) INLINE static void black_holes_prepare_feedback(
  */
 __attribute__((always_inline)) INLINE static void black_holes_reset_feedback(
     struct bpart* restrict bp) {
+
+  bp->to_distribute.AGN_heating_probability = 0.f;
+  bp->to_distribute.AGN_delta_u = 0.f;
 
 #ifdef DEBUG_INTERACTIONS_BLACK_HOLES
   for (int i = 0; i < MAX_NUM_OF_NEIGHBOURS_STARS; ++i)

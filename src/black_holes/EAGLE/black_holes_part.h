@@ -91,6 +91,20 @@ struct bpart {
   /*! Total mass of the gas neighbours. */
   float ngb_mass;
 
+  /*! Integer number of neighbours */
+  int num_ngbs;
+
+  /*! Properties used in the feedback loop to distribute to gas neighbours. */
+  struct {
+
+    /*! Probability of heating neighbouring gas particles for AGN feedback */
+    float AGN_heating_probability;
+
+    /*! Change in energy from SNII feedback energy injection */
+    float AGN_delta_u;
+
+  } to_distribute;
+
 #ifdef SWIFT_DEBUG_CHECKS
 
   /* Time of the last drift */

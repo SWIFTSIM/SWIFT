@@ -84,9 +84,9 @@ INLINE static void black_holes_write_particles(const struct bpart *bparts,
                                  bparts, sound_speed_gas);
   list[9] = io_make_output_field("EnergyReservoir", FLOAT, 1, UNIT_CONV_ENERGY,
                                  bparts, energy_reservoir);
-  list[10] =
-      io_make_output_field("AccretionRate", FLOAT, 1,
-                           UNIT_CONV_MASS_PER_UNIT_TIME, bparts, accretion_rate);
+  list[10] = io_make_output_field("AccretionRate", FLOAT, 1,
+                                  UNIT_CONV_MASS_PER_UNIT_TIME, bparts,
+                                  accretion_rate);
 
 #ifdef DEBUG_INTERACTIONS_BLACK_HOLES
 
