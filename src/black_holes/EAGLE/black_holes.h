@@ -54,8 +54,9 @@ __attribute__((always_inline)) INLINE static void black_holes_first_init_bpart(
 
   bp->time_bin = 0;
   bp->subgrid_mass = bp->mass;
-  bp->energy_reservoir = 0.;
-  bp->formation_time = -1.;
+  bp->energy_reservoir = 0.f;
+  bp->accretion_rate = 0.f;
+  bp->formation_time = -1.f;
 }
 
 /**
@@ -164,7 +165,14 @@ black_holes_bpart_has_no_neighbours(struct bpart* restrict bp,
 }
 
 /**
+ * @brief Compute the accretion rate of the black hole and all the quantites
+ * required for the feedback loop.
  *
+ * @param bp The black hole particle.
+ * @param props The properties of the black hole scheme.
+ * @param constants The physical constants (in internal units).
+ * @param cosmo The cosmological model.
+ * @param dt The time-step size (in physical internal units).
  */
 __attribute__((always_inline)) INLINE static void black_holes_prepare_feedback(
     struct bpart* restrict bp, const struct black_holes_props* props,
@@ -219,6 +227,7 @@ __attribute__((always_inline)) INLINE static void black_holes_prepare_feedback(
 
   /* Limit the accretion rate to the Eddington fraction */
   const double accr_rate = max(Bondi_rate, f_Edd * Eddington_rate);
+  bp->accretion_rate = accr_rate;
 
   /* Factor in the radiative efficiency */
   const double mass_rate = (1. - epsilon_r) * accr_rate;

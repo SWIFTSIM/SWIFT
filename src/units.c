@@ -377,6 +377,7 @@ void units_get_base_unit_exponants_array(float baseUnitsExp[5],
       break;
 
     case UNIT_CONV_SFR:
+    case UNIT_CONV_MASS_PER_UNIT_TIME:
       baseUnitsExp[UNIT_MASS] = 1.f;
       baseUnitsExp[UNIT_TIME] = -1.f;
       break;

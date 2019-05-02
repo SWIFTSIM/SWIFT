@@ -513,6 +513,7 @@ void runner_do_black_holes_ghost(struct runner *r, struct cell *c, int timer) {
 
   struct bpart *restrict bparts = c->black_holes.parts;
   const struct engine *e = r->e;
+  const int with_cosmology = e->policy & engine_policy_cosmology;
   const struct cosmology *cosmo = e->cosmology;
   const float black_holes_h_max = e->hydro_properties->h_max;
   const float black_holes_h_min = e->hydro_properties->h_min;
@@ -524,8 +525,6 @@ void runner_do_black_holes_ghost(struct runner *r, struct cell *c, int timer) {
 
   /* Running value of the maximal smoothing length */
   double h_max = c->black_holes.h_max;
-
-  double dt = 0.001;
 
   TIMER_TIC;
 
@@ -633,6 +632,19 @@ void runner_do_black_holes_ghost(struct runner *r, struct cell *c, int timer) {
           if (((bp->h >= black_holes_h_max) && (f < 0.f)) ||
               ((bp->h <= black_holes_h_min) && (f > 0.f))) {
 
+            /* Get particle time-step */
+            double dt;
+            if (with_cosmology) {
+              const integertime_t ti_step = get_integer_timestep(bp->time_bin);
+              const integertime_t ti_begin =
+                  get_integer_time_begin(e->ti_current - 1, bp->time_bin);
+
+              dt = cosmology_get_delta_time(e->cosmology, ti_begin,
+                                            ti_begin + ti_step);
+            } else {
+              dt = get_timestep(bp->time_bin, e->time_base);
+            }
+
             /* Compute variables required for the feedback loop */
             black_holes_prepare_feedback(bp, e->black_holes_properties,
                                          e->physical_constants, e->cosmology,
@@ -731,6 +743,19 @@ void runner_do_black_holes_ghost(struct runner *r, struct cell *c, int timer) {
 
         /* Check if h_max has increased */
         h_max = max(h_max, bp->h);
+
+        /* Get particle time-step */
+        double dt;
+        if (with_cosmology) {
+          const integertime_t ti_step = get_integer_timestep(bp->time_bin);
+          const integertime_t ti_begin =
+              get_integer_time_begin(e->ti_current - 1, bp->time_bin);
+
+          dt = cosmology_get_delta_time(e->cosmology, ti_begin,
+                                        ti_begin + ti_step);
+        } else {
+          dt = get_timestep(bp->time_bin, e->time_base);
+        }
 
         /* Compute variables required for the feedback loop */
         black_holes_prepare_feedback(bp, e->black_holes_properties,

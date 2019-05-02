@@ -76,6 +76,9 @@ struct bpart {
   /*! Energy reservoir for feedback */
   float energy_reservoir;
 
+  /*! Instantaneous accretion rate */
+  float accretion_rate;
+
   /*! Density of the gas surrounding the black hole. */
   float rho_gas;
 
