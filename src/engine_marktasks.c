@@ -637,23 +637,18 @@ void engine_marktasks_mapper(void *map_data, int num_elements,
             scheduler_activate(s, ci->mpi.hydro.recv_rho);
 
             /* If the local cell is active, more stuff will be needed. */
-            error("MATTHIEU: needs implementing");
-            // scheduler_activate_send(s, cj->mpi.black_holes.send, ci_nodeID);
+            scheduler_activate_send(s, cj->mpi.black_holes.send, ci_nodeID);
             cell_activate_drift_bpart(cj, s);
 
             /* If the local cell is active, send its ti_end values. */
-            error("MATTHIEU: needs implementing");
-            // scheduler_activate_send(s, cj->mpi.black_holes.send_ti,
-            // ci_nodeID);
+            scheduler_activate_send(s, cj->mpi.black_holes.send_ti, ci_nodeID);
           }
 
           if (ci_active_black_holes) {
-            error("MATTHIEU: needs implementing");
-            // scheduler_activate(s, ci->mpi.black_holes.recv);
+            scheduler_activate(s, ci->mpi.black_holes.recv);
 
             /* If the foreign cell is active, we want its ti_end values. */
-            error("MATTHIEU: needs implementing");
-            // scheduler_activate(s, ci->mpi.black_holes.recv_ti);
+            scheduler_activate(s, ci->mpi.black_holes.recv_ti);
 
             /* Is the foreign cell active and will need stuff from us? */
             scheduler_activate_send(s, cj->mpi.hydro.send_xv, ci_nodeID);
@@ -672,23 +667,18 @@ void engine_marktasks_mapper(void *map_data, int num_elements,
             scheduler_activate(s, cj->mpi.hydro.recv_rho);
 
             /* If the local cell is active, more stuff will be needed. */
-            error("MATTHIEU: needs implementing");
-            // scheduler_activate_send(s, ci->mpi.black_holes.send, cj_nodeID);
+            scheduler_activate_send(s, ci->mpi.black_holes.send, cj_nodeID);
             cell_activate_drift_bpart(ci, s);
 
             /* If the local cell is active, send its ti_end values. */
-            error("MATTHIEU: needs implementing");
-            // scheduler_activate_send(s, ci->mpi.black_holes.send_ti,
-            // cj_nodeID);
+            scheduler_activate_send(s, ci->mpi.black_holes.send_ti, cj_nodeID);
           }
 
           if (cj_active_black_holes) {
-            error("MATTHIEU: needs implementing");
-            // scheduler_activate(s, cj->mpi.black_holes.recv);
+            scheduler_activate(s, cj->mpi.black_holes.recv);
 
             /* If the foreign cell is active, we want its ti_end values. */
-            error("MATTHIEU: needs implementing");
-            // scheduler_activate(s, cj->mpi.black_holes.recv_ti);
+            scheduler_activate(s, cj->mpi.black_holes.recv_ti);
 
             /* Is the foreign cell active and will need stuff from us? */
             scheduler_activate_send(s, ci->mpi.hydro.send_xv, cj_nodeID);

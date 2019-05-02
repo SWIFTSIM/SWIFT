@@ -497,12 +497,15 @@ int cell_pack(struct cell *restrict c, struct pcell *restrict pc,
   /* Start by packing the data of the current cell. */
   pc->hydro.h_max = c->hydro.h_max;
   pc->stars.h_max = c->stars.h_max;
+  pc->black_holes.h_max = c->black_holes.h_max;
   pc->hydro.ti_end_min = c->hydro.ti_end_min;
   pc->hydro.ti_end_max = c->hydro.ti_end_max;
   pc->grav.ti_end_min = c->grav.ti_end_min;
   pc->grav.ti_end_max = c->grav.ti_end_max;
   pc->stars.ti_end_min = c->stars.ti_end_min;
   pc->stars.ti_end_max = c->stars.ti_end_max;
+  pc->black_holes.ti_end_min = c->black_holes.ti_end_min;
+  pc->black_holes.ti_end_max = c->black_holes.ti_end_max;
   pc->hydro.ti_old_part = c->hydro.ti_old_part;
   pc->grav.ti_old_part = c->grav.ti_old_part;
   pc->grav.ti_old_multipole = c->grav.ti_old_multipole;
@@ -510,6 +513,7 @@ int cell_pack(struct cell *restrict c, struct pcell *restrict pc,
   pc->hydro.count = c->hydro.count;
   pc->grav.count = c->grav.count;
   pc->stars.count = c->stars.count;
+  pc->black_holes.count = c->black_holes.count;
   pc->maxdepth = c->maxdepth;
 
   /* Copy the Multipole related information */
@@ -602,19 +606,24 @@ int cell_unpack(struct pcell *restrict pc, struct cell *restrict c,
   /* Unpack the current pcell. */
   c->hydro.h_max = pc->hydro.h_max;
   c->stars.h_max = pc->stars.h_max;
+  c->black_holes.h_max = pc->black_holes.h_max;
   c->hydro.ti_end_min = pc->hydro.ti_end_min;
   c->hydro.ti_end_max = pc->hydro.ti_end_max;
   c->grav.ti_end_min = pc->grav.ti_end_min;
   c->grav.ti_end_max = pc->grav.ti_end_max;
   c->stars.ti_end_min = pc->stars.ti_end_min;
   c->stars.ti_end_max = pc->stars.ti_end_max;
+  c->black_holes.ti_end_min = pc->black_holes.ti_end_min;
+  c->black_holes.ti_end_max = pc->black_holes.ti_end_max;
   c->hydro.ti_old_part = pc->hydro.ti_old_part;
   c->grav.ti_old_part = pc->grav.ti_old_part;
   c->grav.ti_old_multipole = pc->grav.ti_old_multipole;
   c->stars.ti_old_part = pc->stars.ti_old_part;
+  c->black_holes.ti_old_part = pc->black_holes.ti_old_part;
   c->hydro.count = pc->hydro.count;
   c->grav.count = pc->grav.count;
   c->stars.count = pc->stars.count;
+  c->black_holes.count = pc->black_holes.count;
   c->maxdepth = pc->maxdepth;
 
 #ifdef SWIFT_DEBUG_CHECKS
@@ -664,6 +673,7 @@ int cell_unpack(struct pcell *restrict pc, struct cell *restrict c,
       temp->hydro.dx_max_sort = 0.f;
       temp->stars.dx_max_part = 0.f;
       temp->stars.dx_max_sort = 0.f;
+      temp->black_holes.dx_max_part = 0.f;
       temp->nodeID = c->nodeID;
       temp->parent = c;
       c->progeny[k] = temp;
@@ -2452,7 +2462,6 @@ void cell_activate_stars_sorts_up(struct cell *c, struct scheduler *s) {
 #endif
     scheduler_activate(s, c->stars.sorts);
     if (c->nodeID == engine_rank) {
-      // MATTHIEU: to do: do we actually need both drifts here?
       cell_activate_drift_spart(c, s);
     }
   } else {
@@ -3610,22 +3619,18 @@ int cell_unskip_black_holes_tasks(struct cell *c, struct scheduler *s) {
           scheduler_activate(s, ci->mpi.hydro.recv_rho);
 
           /* If the local cell is active, more stuff will be needed. */
-          error("MATTHIEU: needs implementing");
-          // scheduler_activate_send(s, cj->mpi.black_holes.send, ci_nodeID);
+          scheduler_activate_send(s, cj->mpi.black_holes.send, ci_nodeID);
           cell_activate_drift_bpart(cj, s);
 
           /* If the local cell is active, send its ti_end values. */
-          error("MATTHIEU: needs implementing");
-          // scheduler_activate_send(s, cj->mpi.black_holes.send_ti, ci_nodeID);
+          scheduler_activate_send(s, cj->mpi.black_holes.send_ti, ci_nodeID);
         }
 
         if (ci_active) {
-          error("MATTHIEU: needs implementing");
-          // scheduler_activate(s, ci->mpi.black_holes.recv);
+          scheduler_activate(s, ci->mpi.black_holes.recv);
 
           /* If the foreign cell is active, we want its ti_end values. */
-          error("MATTHIEU: needs implementing");
-          // scheduler_activate(s, ci->mpi.black_holes.recv_ti);
+          scheduler_activate(s, ci->mpi.black_holes.recv_ti);
 
           /* Is the foreign cell active and will need stuff from us? */
           scheduler_activate_send(s, cj->mpi.hydro.send_xv, ci_nodeID);
@@ -3643,22 +3648,18 @@ int cell_unskip_black_holes_tasks(struct cell *c, struct scheduler *s) {
           scheduler_activate(s, cj->mpi.hydro.recv_rho);
 
           /* If the local cell is active, more stuff will be needed. */
-          error("MATTHIEU: needs implementing");
-          // scheduler_activate_send(s, ci->mpi.black_holes.send, cj_nodeID);
+          scheduler_activate_send(s, ci->mpi.black_holes.send, cj_nodeID);
           cell_activate_drift_bpart(ci, s);
 
           /* If the local cell is active, send its ti_end values. */
-          error("MATTHIEU: needs implementing");
-          // scheduler_activate_send(s, ci->mpi.black_holes.send_ti, cj_nodeID);
+          scheduler_activate_send(s, ci->mpi.black_holes.send_ti, cj_nodeID);
         }
 
         if (cj_active) {
-          error("MATTHIEU: needs implementing");
-          // scheduler_activate(s, cj->mpi.black_holes.recv);
+          scheduler_activate(s, cj->mpi.black_holes.recv);
 
           /* If the foreign cell is active, we want its ti_end values. */
-          error("MATTHIEU: needs implementing");
-          // scheduler_activate(s, cj->mpi.black_holes.recv_ti);
+          scheduler_activate(s, cj->mpi.black_holes.recv_ti);
 
           /* Is the foreign cell active and will need stuff from us? */
           scheduler_activate_send(s, ci->mpi.hydro.send_xv, cj_nodeID);
@@ -4573,7 +4574,8 @@ void cell_check_timesteps(struct cell *c) {
 #ifdef SWIFT_DEBUG_CHECKS
 
   if (c->hydro.ti_end_min == 0 && c->grav.ti_end_min == 0 &&
-      c->stars.ti_end_min == 0 && c->nr_tasks > 0)
+      c->stars.ti_end_min == 0 && c->black_holes.ti_end_min == 0 &&
+      c->nr_tasks > 0)
     error("Cell without assigned time-step");
 
   if (c->split) {

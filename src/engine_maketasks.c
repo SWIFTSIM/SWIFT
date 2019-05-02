@@ -293,6 +293,75 @@ void engine_addtasks_send_stars(struct engine *e, struct cell *ci,
 }
 
 /**
+ * @brief Add send tasks for the black holes pairs to a hierarchy of cells.
+ *
+ * @param e The #engine.
+ * @param ci The sending #cell.
+ * @param cj Dummy cell containing the nodeID of the receiving node.
+ * @param t_feedback The send_feed #task, if it has already been created.
+ * @param t_ti The recv_ti_end #task, if it has already been created.
+ */
+void engine_addtasks_send_black_holes(struct engine *e, struct cell *ci,
+                                      struct cell *cj, struct task *t_feedback,
+                                      struct task *t_ti) {
+
+#ifdef WITH_MPI
+
+  struct link *l = NULL;
+  struct scheduler *s = &e->sched;
+  const int nodeID = cj->nodeID;
+
+  /* Check if any of the density tasks are for the target node. */
+  for (l = ci->black_holes.density; l != NULL; l = l->next)
+    if (l->t->ci->nodeID == nodeID ||
+        (l->t->cj != NULL && l->t->cj->nodeID == nodeID))
+      break;
+
+  /* If so, attach send tasks. */
+  if (l != NULL) {
+
+    if (t_feedback == NULL) {
+
+      /* Make sure this cell is tagged. */
+      cell_ensure_tagged(ci);
+
+      /* Create the tasks and their dependencies? */
+      t_feedback = scheduler_addtask(s, task_type_send, task_subtype_bpart,
+                                     ci->mpi.tag, 0, ci, cj);
+
+      t_ti = scheduler_addtask(s, task_type_send, task_subtype_tend_bpart,
+                               ci->mpi.tag, 0, ci, cj);
+
+      /* The send_black_holes task should unlock the super_cell's kick task. */
+      scheduler_addunlock(s, t_feedback,
+                          ci->hydro.super->black_holes.black_holes_out);
+
+      /* Ghost before you send */
+      scheduler_addunlock(s, ci->hydro.super->black_holes.ghost, t_feedback);
+
+      /* Drift before you send */
+      scheduler_addunlock(s, ci->hydro.super->black_holes.drift, t_feedback);
+
+      scheduler_addunlock(s, ci->super->timestep, t_ti);
+    }
+
+    engine_addlink(e, &ci->mpi.black_holes.send, t_feedback);
+    engine_addlink(e, &ci->mpi.black_holes.send_ti, t_ti);
+  }
+
+  /* Recurse? */
+  if (ci->split)
+    for (int k = 0; k < 8; k++)
+      if (ci->progeny[k] != NULL)
+        engine_addtasks_send_black_holes(e, ci->progeny[k], cj, t_feedback,
+                                         t_ti);
+
+#else
+  error("SWIFT was not compiled with MPI support.");
+#endif
+}
+
+/**
  * @brief Add recv tasks for hydro pairs to a hierarchy of cells.
  *
  * @param e The #engine.
@@ -439,6 +508,64 @@ void engine_addtasks_recv_stars(struct engine *e, struct cell *c,
     for (int k = 0; k < 8; k++)
       if (c->progeny[k] != NULL)
         engine_addtasks_recv_stars(e, c->progeny[k], t_feedback, t_ti);
+
+#else
+  error("SWIFT was not compiled with MPI support.");
+#endif
+}
+
+/**
+ * @brief Add recv tasks for black_holes pairs to a hierarchy of cells.
+ *
+ * @param e The #engine.
+ * @param c The foreign #cell.
+ * @param t_feedback The recv_feed #task, if it has already been created.
+ * @param t_ti The recv_ti_end #task, if it has already been created.
+ */
+void engine_addtasks_recv_black_holes(struct engine *e, struct cell *c,
+                                      struct task *t_feedback,
+                                      struct task *t_ti) {
+
+#ifdef WITH_MPI
+  struct scheduler *s = &e->sched;
+
+  /* Have we reached a level where there are any black_holes tasks ? */
+  if (t_feedback == NULL && c->black_holes.density != NULL) {
+
+#ifdef SWIFT_DEBUG_CHECKS
+    /* Make sure this cell has a valid tag. */
+    if (c->mpi.tag < 0) error("Trying to receive from untagged cell.");
+#endif  // SWIFT_DEBUG_CHECKS
+
+    /* Create the tasks. */
+    t_feedback = scheduler_addtask(s, task_type_recv, task_subtype_bpart,
+                                   c->mpi.tag, 0, c, NULL);
+
+    t_ti = scheduler_addtask(s, task_type_recv, task_subtype_tend_bpart,
+                             c->mpi.tag, 0, c, NULL);
+  }
+
+  c->mpi.black_holes.recv = t_feedback;
+  c->mpi.black_holes.recv_ti = t_ti;
+
+#ifdef SWIFT_DEBUG_CHECKS
+  if (c->nodeID == e->nodeID) error("Local cell!");
+#endif
+
+  for (struct link *l = c->black_holes.density; l != NULL; l = l->next) {
+    scheduler_addunlock(s, l->t, t_feedback);
+  }
+
+  for (struct link *l = c->black_holes.feedback; l != NULL; l = l->next) {
+    scheduler_addunlock(s, t_feedback, l->t);
+    scheduler_addunlock(s, l->t, t_ti);
+  }
+
+  /* Recurse? */
+  if (c->split)
+    for (int k = 0; k < 8; k++)
+      if (c->progeny[k] != NULL)
+        engine_addtasks_recv_black_holes(e, c->progeny[k], t_feedback, t_ti);
 
 #else
   error("SWIFT was not compiled with MPI support.");
@@ -1502,7 +1629,7 @@ void engine_make_extra_hydroloop_tasks_mapper(void *map_data, int num_elements,
       }
 
       /* The black hole feedback tasks */
-      if (with_feedback) {
+      if (with_black_holes) {
         t_bh_density = scheduler_addtask(
             sched, task_type_self, task_subtype_bh_density, flags, 0, ci, NULL);
         t_bh_feedback =
@@ -1563,7 +1690,7 @@ void engine_make_extra_hydroloop_tasks_mapper(void *map_data, int num_elements,
                             ci->hydro.super->stars.stars_out);
       }
 
-      if (with_feedback) {
+      if (with_black_holes) {
 
         scheduler_addunlock(sched, ci->hydro.super->black_holes.drift,
                             t_bh_density);
@@ -1959,7 +2086,7 @@ void engine_make_extra_hydroloop_tasks_mapper(void *map_data, int num_elements,
       }
 
       /* The black hole feedback tasks */
-      if (with_feedback) {
+      if (with_black_holes) {
         t_bh_density =
             scheduler_addtask(sched, task_type_sub_pair,
                               task_subtype_bh_density, flags, 0, ci, cj);
@@ -2107,7 +2234,7 @@ void engine_make_extra_hydroloop_tasks_mapper(void *map_data, int num_elements,
                                 cj->hydro.super->stars.stars_out);
           }
 
-          if (with_feedback) {
+          if (with_black_holes) {
 
             scheduler_addunlock(sched, cj->hydro.super->black_holes.drift,
                                 t_bh_density);
@@ -2160,6 +2287,7 @@ void engine_make_hydroloop_tasks_mapper(void *map_data, int num_elements,
   const int periodic = e->s->periodic;
   const int with_feedback = (e->policy & engine_policy_feedback);
   const int with_stars = (e->policy & engine_policy_stars);
+  const int with_black_holes = (e->policy & engine_policy_black_holes);
 
   struct space *s = e->s;
   struct scheduler *sched = &e->sched;
@@ -2182,7 +2310,8 @@ void engine_make_hydroloop_tasks_mapper(void *map_data, int num_elements,
     struct cell *ci = &cells[cid];
 
     /* Skip cells without hydro or star particles */
-    if ((ci->hydro.count == 0) && (!with_stars || ci->stars.count == 0))
+    if ((ci->hydro.count == 0) && (!with_stars || ci->stars.count == 0) &&
+        (!with_black_holes || ci->black_holes.count == 0))
       continue;
 
     /* If the cell is local build a self-interaction */
@@ -2212,7 +2341,8 @@ void engine_make_hydroloop_tasks_mapper(void *map_data, int num_elements,
           /* Is that neighbour local and does it have gas or star particles ? */
           if ((cid >= cjd) ||
               ((cj->hydro.count == 0) &&
-               (!with_feedback || cj->stars.count == 0)) ||
+               (!with_feedback || cj->stars.count == 0) &&
+               (!with_black_holes || cj->black_holes.count == 0)) ||
               (ci->nodeID != nodeID && cj->nodeID != nodeID))
             continue;
 
@@ -2287,9 +2417,6 @@ void engine_addtasks_send_mapper(void *map_data, int num_elements,
     struct cell *cj = cell_type_pairs[k].cj;
     const int type = cell_type_pairs[k].type;
 
-    /* Add the send task for the particle timesteps. */
-    // engine_addtasks_send_timestep(e, ci, cj, NULL, NULL, with_limiter);
-
     /* Add the send tasks for the cells in the proxy that have a hydro
      * connection. */
     if ((e->policy & engine_policy_hydro) && (type & proxy_cell_type_hydro))
@@ -2301,6 +2428,13 @@ void engine_addtasks_send_mapper(void *map_data, int num_elements,
      * connection. */
     if ((e->policy & engine_policy_feedback) && (type & proxy_cell_type_hydro))
       engine_addtasks_send_stars(e, ci, cj, /*t_feedback=*/NULL, /*t_ti=*/NULL);
+
+    /* Add the send tasks for the cells in the proxy that have a black holes
+     * connection. */
+    if ((e->policy & engine_policy_black_holes) &&
+        (type & proxy_cell_type_hydro))
+      engine_addtasks_send_black_holes(e, ci, cj, /*t_feedback=*/NULL,
+                                       /*t_ti=*/NULL);
 
     /* Add the send tasks for the cells in the proxy that have a gravity
      * connection. */
@@ -2321,9 +2455,6 @@ void engine_addtasks_recv_mapper(void *map_data, int num_elements,
     struct cell *ci = cell_type_pairs[k].ci;
     const int type = cell_type_pairs[k].type;
 
-    /* Add the recv task for the particle timesteps. */
-    // engine_addtasks_recv_timestep(e, ci, NULL, NULL, with_limiter);
-
     /* Add the recv tasks for the cells in the proxy that have a hydro
      * connection. */
     if ((e->policy & engine_policy_hydro) && (type & proxy_cell_type_hydro))
@@ -2333,6 +2464,11 @@ void engine_addtasks_recv_mapper(void *map_data, int num_elements,
      * connection. */
     if ((e->policy & engine_policy_feedback) && (type & proxy_cell_type_hydro))
       engine_addtasks_recv_stars(e, ci, NULL, NULL);
+
+    /* Add the recv tasks for the cells in the proxy that have a black holes
+     * connection. */
+    if ((e->policy & engine_policy_feedback) && (type & proxy_cell_type_hydro))
+      engine_addtasks_recv_black_holes(e, ci, NULL, NULL);
 
     /* Add the recv tasks for the cells in the proxy that have a gravity
      * connection. */

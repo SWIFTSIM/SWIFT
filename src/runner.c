@@ -3846,6 +3846,92 @@ void runner_do_recv_spart(struct runner *r, struct cell *c, int clear_sorts,
 }
 
 /**
+ * @brief Construct the cell properties from the received #bpart.
+ *
+ * Note that we do not need to clear the sorts since we do not sort
+ * the black holes.
+ *
+ * @param r The runner thread.
+ * @param c The cell.
+ * @param clear_sorts Should we clear the sort flag and hence trigger a sort ?
+ * @param timer Are we timing this ?
+ */
+void runner_do_recv_bpart(struct runner *r, struct cell *c, int clear_sorts,
+                          int timer) {
+
+#ifdef WITH_MPI
+
+  struct bpart *restrict bparts = c->black_holes.parts;
+  const size_t nr_bparts = c->black_holes.count;
+  const integertime_t ti_current = r->e->ti_current;
+
+  TIMER_TIC;
+
+  integertime_t ti_black_holes_end_min = max_nr_timesteps;
+  integertime_t ti_black_holes_end_max = 0;
+  timebin_t time_bin_min = num_time_bins;
+  timebin_t time_bin_max = 0;
+  float h_max = 0.f;
+
+#ifdef SWIFT_DEBUG_CHECKS
+  if (c->nodeID == engine_rank) error("Updating a local cell!");
+#endif
+
+  /* If this cell is a leaf, collect the particle data. */
+  if (!c->split) {
+
+    /* Collect everything... */
+    for (size_t k = 0; k < nr_bparts; k++) {
+#ifdef DEBUG_INTERACTIONS_BLACK_HOLES
+      bparts[k].num_ngb_force = 0;
+#endif
+      if (bparts[k].time_bin == time_bin_inhibited) continue;
+      time_bin_min = min(time_bin_min, bparts[k].time_bin);
+      time_bin_max = max(time_bin_max, bparts[k].time_bin);
+      h_max = max(h_max, bparts[k].h);
+    }
+
+    /* Convert into a time */
+    ti_black_holes_end_min = get_integer_time_end(ti_current, time_bin_min);
+    ti_black_holes_end_max = get_integer_time_end(ti_current, time_bin_max);
+  }
+
+  /* Otherwise, recurse and collect. */
+  else {
+    for (int k = 0; k < 8; k++) {
+      if (c->progeny[k] != NULL && c->progeny[k]->black_holes.count > 0) {
+        runner_do_recv_bpart(r, c->progeny[k], clear_sorts, 0);
+        ti_black_holes_end_min =
+            min(ti_black_holes_end_min, c->progeny[k]->black_holes.ti_end_min);
+        ti_black_holes_end_max =
+            max(ti_black_holes_end_max, c->progeny[k]->grav.ti_end_max);
+        h_max = max(h_max, c->progeny[k]->black_holes.h_max);
+      }
+    }
+  }
+
+#ifdef SWIFT_DEBUG_CHECKS
+  if (ti_black_holes_end_min < ti_current)
+    error(
+        "Received a cell at an incorrect time c->ti_end_min=%lld, "
+        "e->ti_current=%lld.",
+        ti_black_holes_end_min, ti_current);
+#endif
+
+  /* ... and store. */
+  // c->grav.ti_end_min = ti_gravity_end_min;
+  // c->grav.ti_end_max = ti_gravity_end_max;
+  c->black_holes.ti_old_part = ti_current;
+  c->black_holes.h_max = h_max;
+
+  if (timer) TIMER_TOC(timer_dorecv_bpart);
+
+#else
+  error("SWIFT was not compiled with MPI support.");
+#endif
+}
+
+/**
  * @brief The #runner main thread routine.
  *
  * @param data A pointer to this thread's data.
@@ -4113,6 +4199,8 @@ void *runner_main(void *data) {
             runner_do_recv_gpart(r, ci, 1);
           } else if (t->subtype == task_subtype_spart) {
             runner_do_recv_spart(r, ci, 1, 1);
+          } else if (t->subtype == task_subtype_bpart) {
+            runner_do_recv_bpart(r, ci, 1, 1);
           } else if (t->subtype == task_subtype_multipole) {
             cell_unpack_multipoles(ci, (struct gravity_tensors *)t->buff);
             free(t->buff);

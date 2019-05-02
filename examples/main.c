@@ -511,7 +511,6 @@ int main(int argc, char *argv[]) {
   if (with_star_formation && with_feedback)
     error("Can't run with star formation and feedback over MPI (yet)");
   if (with_limiter) error("Can't run with time-step limiter over MPI (yet)");
-  if (with_black_holes) error("Can't run with black holes over MPI (yet)");
 #endif
 
     /* Temporary early aborts for modes not supported with hand-vec. */

@@ -172,6 +172,26 @@ struct pcell {
 
   } stars;
 
+  /*! Black hole variables */
+  struct {
+
+    /*! Number of #spart in this cell. */
+    int count;
+
+    /*! Maximal smoothing length. */
+    double h_max;
+
+    /*! Minimal integer end-of-timestep in this cell for black hole tasks */
+    integertime_t ti_end_min;
+
+    /*! Maximal integer end-of-timestep in this cell for black hole tasks */
+    integertime_t ti_end_max;
+
+    /*! Integer time of the last drift of the #spart in this cell */
+    integertime_t ti_old_part;
+
+  } black_holes;
+
   /*! Maximal depth in that part of the tree */
   int maxdepth;
 

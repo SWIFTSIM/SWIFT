@@ -539,6 +539,8 @@ static void scheduler_splittask_hydro(struct task *t, struct scheduler *s) {
      access the engine... */
   const int with_feedback = (s->space->e->policy & engine_policy_feedback);
   const int with_stars = (s->space->e->policy & engine_policy_stars);
+  const int with_black_holes =
+      (s->space->e->policy & engine_policy_black_holes);
 
   /* Iterate on this task until we're done with it. */
   int redo = 1;
@@ -549,14 +551,18 @@ static void scheduler_splittask_hydro(struct task *t, struct scheduler *s) {
     /* Is this a non-empty self-task? */
     const int is_self =
         (t->type == task_type_self) && (t->ci != NULL) &&
-        ((t->ci->hydro.count > 0) || (with_stars && t->ci->stars.count > 0));
+        ((t->ci->hydro.count > 0) || (with_stars && t->ci->stars.count > 0) ||
+         (with_black_holes && t->ci->black_holes.count > 0));
 
     /* Is this a non-empty pair-task? */
-    const int is_pair =
-        (t->type == task_type_pair) && (t->ci != NULL) && (t->cj != NULL) &&
-        ((t->ci->hydro.count > 0) ||
-         (with_feedback && t->ci->stars.count > 0)) &&
-        ((t->cj->hydro.count > 0) || (with_feedback && t->cj->stars.count > 0));
+    const int is_pair = (t->type == task_type_pair) && (t->ci != NULL) &&
+                        (t->cj != NULL) &&
+                        ((t->ci->hydro.count > 0) ||
+                         (with_feedback && t->ci->stars.count > 0) ||
+                         (with_black_holes && t->ci->black_holes.count > 0)) &&
+                        ((t->cj->hydro.count > 0) ||
+                         (with_feedback && t->cj->stars.count > 0) ||
+                         (with_black_holes && t->cj->black_holes.count > 0));
 
     /* Empty task? */
     if (!is_self && !is_pair) {
@@ -1535,6 +1541,10 @@ void scheduler_enqueue(struct scheduler *s, struct task *t) {
           err = MPI_Irecv(t->ci->stars.parts, t->ci->stars.count,
                           spart_mpi_type, t->ci->nodeID, t->flags,
                           subtaskMPI_comms[t->subtype], &t->req);
+        } else if (t->subtype == task_subtype_bpart) {
+          err = MPI_Irecv(t->ci->black_holes.parts, t->ci->black_holes.count,
+                          bpart_mpi_type, t->ci->nodeID, t->flags,
+                          subtaskMPI_comms[t->subtype], &t->req);
         } else if (t->subtype == task_subtype_multipole) {
           t->buff = (struct gravity_tensors *)malloc(
               sizeof(struct gravity_tensors) * t->ci->mpi.pcell_size);
@@ -1658,6 +1668,16 @@ void scheduler_enqueue(struct scheduler *s, struct task *t) {
           else
             err = MPI_Issend(t->ci->stars.parts, t->ci->stars.count,
                              spart_mpi_type, t->cj->nodeID, t->flags,
+                             subtaskMPI_comms[t->subtype], &t->req);
+        } else if (t->subtype == task_subtype_bpart) {
+          if ((t->ci->black_holes.count * sizeof(struct bpart)) >
+              s->mpi_message_limit)
+            err = MPI_Isend(t->ci->black_holes.parts, t->ci->black_holes.count,
+                            bpart_mpi_type, t->cj->nodeID, t->flags,
+                            subtaskMPI_comms[t->subtype], &t->req);
+          else
+            err = MPI_Issend(t->ci->black_holes.parts, t->ci->black_holes.count,
+                             bpart_mpi_type, t->cj->nodeID, t->flags,
                              subtaskMPI_comms[t->subtype], &t->req);
         } else if (t->subtype == task_subtype_multipole) {
           t->buff = (struct gravity_tensors *)malloc(
