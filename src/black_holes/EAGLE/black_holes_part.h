@@ -63,6 +63,16 @@ struct bpart {
   /*! Subgrid mass of the black hole */
   float subgrid_mass;
 
+  /*! Union for the formation time and formation scale factor */
+  union {
+
+    /*! Formation time */
+    float formation_time;
+
+    /*! Formation scale factor */
+    float formation_scale_factor;
+  };
+
   /*! Energy reservoir for feedback */
   float energy_reservoir;
 

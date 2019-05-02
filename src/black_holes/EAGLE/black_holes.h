@@ -55,6 +55,7 @@ __attribute__((always_inline)) INLINE static void black_holes_first_init_bpart(
   bp->time_bin = 0;
   bp->subgrid_mass = bp->mass;
   bp->energy_reservoir = 0.;
+  bp->formation_time = -1.;
 }
 
 /**
