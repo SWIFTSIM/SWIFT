@@ -763,7 +763,6 @@ INPUT                  =  @top_srcdir@ @top_srcdir@/src @top_srcdir@/tests @top_
 INPUT		       += @top_srcdir@/src/hydro/Minimal
 INPUT		       += @top_srcdir@/src/hydro/Gadget2
 INPUT		       += @top_srcdir@/src/gravity/Default
-INPUT		       += @top_srcdir@/src/stars/Default
 INPUT		       += @top_srcdir@/src/riemann
 INPUT		       += @top_srcdir@/src/potential/point_mass
 INPUT		       += @top_srcdir@/src/equation_of_state/ideal_gas
@@ -776,6 +775,7 @@ INPUT		       += @top_srcdir@/src/entropy_floor/EAGLE
 INPUT		       += @top_srcdir@/src/star_formation/EAGLE
 INPUT		       += @top_srcdir@/src/tracers/EAGLE
 INPUT		       += @top_srcdir@/src/stars/EAGLE
+INPUT		       += @top_srcdir@/src/feedback/EAGLE
 INPUT		       += @top_srcdir@/src/black_holes/Default
 
 # This tag can be used to specify the character encoding of the source files
@@ -811,7 +811,7 @@ RECURSIVE              = NO
 # Note that relative paths are relative to the directory from which doxygen is
 # run.
 
-EXCLUDE                =
+EXCLUDE                = @top_srcdir@/src/cooling/EAGLE/newton_cooling.c
 
 # The EXCLUDE_SYMLINKS tag can be used to select whether or not files or
 # directories that are symbolic links (a Unix file system feature) are excluded

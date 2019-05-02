@@ -35,6 +35,7 @@
 #include "approx_math.h"
 #include "cosmology.h"
 #include "dimension.h"
+#include "entropy_floor.h"
 #include "equation_of_state.h"
 #include "hydro_properties.h"
 #include "hydro_space.h"
@@ -638,6 +639,20 @@ __attribute__((always_inline)) INLINE static void hydro_reset_predicted_values(
 
   /* Re-set the entropy */
   p->entropy = xp->entropy_full;
+
+  /* Re-compute the pressure */
+  const float pressure = gas_pressure_from_entropy(p->rho, p->entropy);
+
+  /* Compute the new sound speed */
+  const float soundspeed = gas_soundspeed_from_pressure(p->rho, pressure);
+
+  /* Divide the pressure by the density squared to get the SPH term */
+  const float rho_inv = 1.f / p->rho;
+  const float P_over_rho2 = pressure * rho_inv * rho_inv;
+
+  /* Update variables */
+  p->force.soundspeed = soundspeed;
+  p->force.P_over_rho2 = P_over_rho2;
 }
 
 /**
@@ -647,10 +662,29 @@ __attribute__((always_inline)) INLINE static void hydro_reset_predicted_values(
  * @param xp The extended data of the particle
  * @param dt_drift The drift time-step for positions.
  * @param dt_therm The drift time-step for thermal quantities.
+ * @param cosmo The cosmological model.
+ * @param hydro_props The properties of the hydro scheme.
+ * @param floor_props The properties of the entropy floor.
  */
 __attribute__((always_inline)) INLINE static void hydro_predict_extra(
     struct part *restrict p, const struct xpart *restrict xp, float dt_drift,
-    float dt_therm) {
+    float dt_therm, const struct cosmology *cosmo,
+    const struct hydro_props *hydro_props,
+    const struct entropy_floor_properties *floor_props) {
+
+  /* Predict the entropy */
+  p->entropy += p->entropy_dt * dt_therm;
+
+  /* Check against entropy floor */
+  const float floor_A = entropy_floor(p, cosmo, floor_props);
+
+  /* Check against absolute minimum */
+  const float min_u = hydro_props->minimal_internal_energy;
+  const float min_A =
+      gas_entropy_from_internal_energy(p->rho * cosmo->a3_inv, min_u);
+
+  p->entropy = max(p->entropy, floor_A);
+  p->entropy = max(p->entropy, min_A);
 
   const float h_inv = 1.f / p->h;
 
@@ -667,16 +701,6 @@ __attribute__((always_inline)) INLINE static void hydro_predict_extra(
     p->rho *= approx_expf(w2); /* 4th order expansion of exp(w) */
   else
     p->rho *= expf(w2);
-
-    /* Predict the entropy */
-#ifdef SWIFT_DEBUG_CHECKS
-  if (p->entropy + p->entropy_dt * dt_therm <= 0)
-    error(
-        "Negative entropy for particle id %llu old entropy %.5e d_entropy %.5e "
-        "entropy_dt %.5e dt therm %.5e",
-        p->id, p->entropy, p->entropy_dt * dt_therm, p->entropy_dt, dt_therm);
-#endif
-  p->entropy += p->entropy_dt * dt_therm;
 
   /* Re-compute the pressure */
   const float pressure = gas_pressure_from_entropy(p->rho, p->entropy);
@@ -720,42 +744,37 @@ __attribute__((always_inline)) INLINE static void hydro_end_force(
  * @param dt_hydro The time-step for this kick (for hydro forces)
  * @param dt_kick_corr The time-step for this kick (for correction of the kick)
  * @param cosmo The cosmological model.
- * @param hydro_props The constants used in the scheme
+ * @param hydro_props The constants used in the scheme.
+ * @param floor_props The properties of the entropy floor.
  */
 __attribute__((always_inline)) INLINE static void hydro_kick_extra(
     struct part *restrict p, struct xpart *restrict xp, float dt_therm,
     float dt_grav, float dt_hydro, float dt_kick_corr,
-    const struct cosmology *cosmo, const struct hydro_props *hydro_props) {
+    const struct cosmology *cosmo, const struct hydro_props *hydro_props,
+    const struct entropy_floor_properties *floor_props) {
+
+  /* Integrate the entropy forward in time */
+  const float delta_entropy = p->entropy_dt * dt_therm;
 
   /* Do not decrease the entropy by more than a factor of 2 */
-  if (dt_therm > 0. && p->entropy_dt * dt_therm < -0.5f * xp->entropy_full) {
-    p->entropy_dt = -0.5f * xp->entropy_full / dt_therm;
-  }
-  xp->entropy_full += p->entropy_dt * dt_therm;
+  xp->entropy_full =
+      max(xp->entropy_full + delta_entropy, 0.5f * xp->entropy_full);
 
-  /* Apply the minimal energy limit */
-  const float physical_density = p->rho * cosmo->a3_inv;
-  const float min_physical_energy = hydro_props->minimal_internal_energy;
-  const float min_physical_entropy =
-      gas_entropy_from_internal_energy(physical_density, min_physical_energy);
-  const float min_comoving_entropy = min_physical_entropy; /* A' = A */
-  if (xp->entropy_full < min_comoving_entropy) {
-    xp->entropy_full = min_comoving_entropy;
+  /* Check against entropy floor */
+  const float floor_A = entropy_floor(p, cosmo, floor_props);
+
+  /* Check against absolute minimum */
+  const float min_u = hydro_props->minimal_internal_energy;
+  const float min_A =
+      gas_entropy_from_internal_energy(p->rho * cosmo->a3_inv, min_u);
+
+  /* Take highest of both limits */
+  const float entropy_min = max(min_A, floor_A);
+
+  if (xp->entropy_full < entropy_min) {
+    xp->entropy_full = entropy_min;
     p->entropy_dt = 0.f;
   }
-
-  /* Compute the pressure */
-  const float pressure = gas_pressure_from_entropy(p->rho, xp->entropy_full);
-
-  /* Compute the new sound speed */
-  const float soundspeed = gas_soundspeed_from_pressure(p->rho, pressure);
-
-  /* Divide the pressure by the density squared to get the SPH term */
-  const float rho_inv = 1.f / p->rho;
-  const float P_over_rho2 = pressure * rho_inv * rho_inv;
-
-  p->force.soundspeed = soundspeed;
-  p->force.P_over_rho2 = P_over_rho2;
 }
 
 /**

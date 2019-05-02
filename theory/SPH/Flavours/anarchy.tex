@@ -108,7 +108,7 @@ their time-integration. The following quantities are calculated:
 	       \mu_{ij} (b_i + b_j) (\nabla_i W_i + \nabla_j W_j)/ (\rho_i + \rho_j)$
 	\item $\dot{u}_{ij, {\rm hydro}} = \sum_j m_j u_i u_j (\gamma - 1)^2
 	       \frac{f_{ij}}{\bar{P}_i} \nabla_i W_i$
-	\item $\dot{u}_{ij, {\rm visc}} = \frac{1}{2} \a_{\rm visc} (\mathbf{v}_{ij} \cdot \tilde{\mathbf{x}}_{ij} + r^2a^2 H)$
+	\item $\dot{u}_{ij, {\rm visc}} = \frac{1}{2} a_{\rm visc} (\mathbf{v}_{ij} \cdot \tilde{\mathbf{x}}_{ij} + r^2a^2 H)$
 	\item $v_{{\rm diff}, i} = {\rm max}(0, c_i + c_j + \mathbf{v}_{ij} \cdot \tilde{\mathbf{x}}_{ij} + r^2a^2 H)$
 	\item $\dot{u}_{ij, {\rm diff}} = \frac{1}{2}(\tilde{\alpha}_i + \tilde{\alpha}_j) a^{(3\gamma - 5)/2)}
 	       v_{{\rm diff}, i} (u_i - u_j) (\nabla_i W_i + \nabla_j W_j)/ (\rho_i + \rho_j) $
@@ -118,6 +118,6 @@ where:
 \begin{itemize}
 	\item $f_{ij}$ are the variable smoothing length correction factors
 	\item $b_i$ is the Balsara switch for particle $i$
-	\item $\mu_{ij} = a^{(3\gamma - 5)/2) {\rm min}(\mathbf{v}_{ij} \cdot \tilde{\mathbf{x}}_{ij} + r^2a^2 H, 0)$
+	\item $\mu_{ij} = a^{(3\gamma - 5)/2} {\rm min}(\mathbf{v}_{ij} \cdot \tilde{\mathbf{x}}_{ij} + r^2a^2 H, 0)$
 \end{itemize}
 

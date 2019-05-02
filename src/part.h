@@ -94,7 +94,9 @@
 #endif
 
 /* Import the right star particle definition */
-#if defined(STARS_NONE)
+#if defined(FEEDBACK_CONST)
+#include "./stars/const/stars_part.h"
+#elif defined(STARS_NONE)
 #include "./stars/Default/stars_part.h"
 #elif defined(STARS_EAGLE)
 #include "./stars/EAGLE/stars_part.h"

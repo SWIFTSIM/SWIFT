@@ -54,6 +54,7 @@ struct mpicollectgroup1 {
   long long total_nr_cells;
   long long total_nr_tasks;
   float tasks_per_cell_max;
+  struct star_formation_history sfh;
 };
 
 /* Forward declarations. */
@@ -89,7 +90,8 @@ void collectgroup_init(void) {
  * @param grp1 The #collectgroup1
  * @param e The #engine
  */
-void collectgroup1_apply(struct collectgroup1 *grp1, struct engine *e) {
+void collectgroup1_apply(const struct collectgroup1 *grp1, struct engine *e) {
+
   e->ti_hydro_end_min = grp1->ti_hydro_end_min;
   e->ti_hydro_end_max = grp1->ti_hydro_end_max;
   e->ti_hydro_beg_max = grp1->ti_hydro_beg_max;
@@ -120,6 +122,7 @@ void collectgroup1_apply(struct collectgroup1 *grp1, struct engine *e) {
   e->total_nr_cells = grp1->total_nr_cells;
   e->total_nr_tasks = grp1->total_nr_tasks;
   e->tasks_per_cell_max = grp1->tasks_per_cell_max;
+  e->sfh = grp1->sfh;
 }
 
 /**
@@ -168,6 +171,7 @@ void collectgroup1_apply(struct collectgroup1 *grp1, struct engine *e) {
  * @param total_nr_cells total number of all cells on rank.
  * @param total_nr_tasks total number of tasks on rank.
  * @param tasks_per_cell the used number of tasks per cell.
+ * @param sfh The star formation history logger
  */
 void collectgroup1_init(
     struct collectgroup1 *grp1, size_t updated, size_t g_updated,
@@ -179,7 +183,8 @@ void collectgroup1_init(
     integertime_t ti_stars_end_max, integertime_t ti_stars_beg_max,
     integertime_t ti_black_holes_end_min, integertime_t ti_black_holes_end_max,
     integertime_t ti_black_holes_beg_max, int forcerebuild,
-    long long total_nr_cells, long long total_nr_tasks, float tasks_per_cell) {
+    long long total_nr_cells, long long total_nr_tasks, float tasks_per_cell,
+    const struct star_formation_history sfh) {
 
   grp1->updated = updated;
   grp1->g_updated = g_updated;
@@ -205,6 +210,7 @@ void collectgroup1_init(
   grp1->total_nr_cells = total_nr_cells;
   grp1->total_nr_tasks = total_nr_tasks;
   grp1->tasks_per_cell_max = tasks_per_cell;
+  grp1->sfh = sfh;
 }
 
 /**
@@ -245,6 +251,7 @@ void collectgroup1_reduce(struct collectgroup1 *grp1) {
   mpigrp11.total_nr_cells = grp1->total_nr_cells;
   mpigrp11.total_nr_tasks = grp1->total_nr_tasks;
   mpigrp11.tasks_per_cell_max = grp1->tasks_per_cell_max;
+  mpigrp11.sfh = grp1->sfh;
 
   struct mpicollectgroup1 mpigrp12;
   if (MPI_Allreduce(&mpigrp11, &mpigrp12, 1, mpicollectgroup1_type,
@@ -276,6 +283,7 @@ void collectgroup1_reduce(struct collectgroup1 *grp1) {
   grp1->total_nr_cells = mpigrp12.total_nr_cells;
   grp1->total_nr_tasks = mpigrp12.total_nr_tasks;
   grp1->tasks_per_cell_max = mpigrp12.tasks_per_cell_max;
+  grp1->sfh = mpigrp12.sfh;
 
 #endif
 }
@@ -344,6 +352,9 @@ static void doreduce1(struct mpicollectgroup1 *mpigrp11,
   /* Maximum value of tasks_per_cell. */
   mpigrp11->tasks_per_cell_max =
       max(mpigrp11->tasks_per_cell_max, mpigrp12->tasks_per_cell_max);
+
+  /* Star formation history */
+  star_formation_logger_add(&mpigrp11->sfh, &mpigrp12->sfh);
 }
 
 /**

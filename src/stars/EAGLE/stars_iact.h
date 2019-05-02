@@ -19,6 +19,8 @@
 #ifndef SWIFT_EAGLE_STARS_IACT_H
 #define SWIFT_EAGLE_STARS_IACT_H
 
+#include "random.h"
+
 /**
  * @brief Density interaction between two particles (non-symmetric).
  *
@@ -32,13 +34,11 @@
  * @param H Current Hubble parameter.
  */
 __attribute__((always_inline)) INLINE static void
-runner_iact_nonsym_stars_density(float r2, const float *dx, float hi, float hj,
+runner_iact_nonsym_stars_density(const float r2, const float *dx,
+                                 const float hi, const float hj,
                                  struct spart *restrict si,
-                                 const struct part *restrict pj, float a,
-                                 float H) {
-
-  /* Get the gas mass. */
-  const float mj = hydro_get_mass(pj);
+                                 const struct part *restrict pj, const float a,
+                                 const float H) {
 
   float wi, wi_dx;
 
@@ -55,9 +55,6 @@ runner_iact_nonsym_stars_density(float r2, const float *dx, float hi, float hj,
   si->density.wcount += wi;
   si->density.wcount_dh -= (hydro_dimension * wi + ui * wi_dx);
 
-  /* Compute contribution to the density */
-  si->rho_gas += mj * wi;
-
 #ifdef DEBUG_INTERACTIONS_STARS
   /* Update ngb counters */
   if (si->num_ngb_density < MAX_NUM_OF_NEIGHBOURS_STARS)
@@ -68,19 +65,30 @@ runner_iact_nonsym_stars_density(float r2, const float *dx, float hi, float hj,
 
 /**
  * @brief Feedback interaction between two particles (non-symmetric).
+ * Used for updating properties of gas particles neighbouring a star particle
  *
  * @param r2 Comoving square distance between the two particles.
- * @param dx Comoving vector separating both particles (pi - pj).
+ * @param dx Comoving vector separating both particles (si - pj).
  * @param hi Comoving smoothing-length of particle i.
  * @param hj Comoving smoothing-length of particle j.
- * @param si First sparticle.
- * @param pj Second particle (not updated).
+ * @param si First (star) particle (not updated).
+ * @param pj Second (gas) particle.
  * @param a Current scale factor.
  * @param H Current Hubble parameter.
  */
 __attribute__((always_inline)) INLINE static void
-runner_iact_nonsym_stars_feedback(float r2, const float *dx, float hi, float hj,
-                                  struct spart *restrict si,
-                                  struct part *restrict pj, float a, float H) {}
+runner_iact_nonsym_stars_feedback(const float r2, const float *dx,
+                                  const float hi, const float hj,
+                                  const struct spart *restrict si,
+                                  struct part *restrict pj, const float a,
+                                  const float H) {
+
+#ifdef DEBUG_INTERACTIONS_STARS
+  /* Update ngb counters */
+  if (si->num_ngb_feedback < MAX_NUM_OF_NEIGHBOURS_STARS)
+    si->ids_ngbs_feedback[si->num_ngb_feedback] = pj->id;
+  ++si->num_ngb_feedback;
+#endif
+}
 
 #endif /* SWIFT_EAGLE_STARS_IACT_H */

@@ -59,6 +59,7 @@
 #include "restart.h"
 #include "sort_part.h"
 #include "star_formation.h"
+#include "star_formation_logger.h"
 #include "stars.h"
 #include "threadpool.h"
 #include "tools.h"
@@ -84,6 +85,10 @@ int space_extra_bparts = space_extra_bparts_default;
 
 /*! Number of extra #gpart we allocate memory for per top-level cell */
 int space_extra_gparts = space_extra_gparts_default;
+
+/*! Maximum number of particles per ghost */
+int engine_max_parts_per_ghost = engine_max_parts_per_ghost_default;
+int engine_max_sparts_per_ghost = engine_max_sparts_per_ghost_default;
 
 /*! Expected maximal number of strays received at a rebuild */
 int space_expected_max_nr_strays = space_expected_max_nr_strays_default;
@@ -257,14 +262,7 @@ void space_rebuild_recycle_mapper(void *map_data, int num_elements,
     c->grav.parts = NULL;
     c->stars.parts = NULL;
     c->black_holes.parts = NULL;
-    c->hydro.do_sub_sort = 0;
-    c->stars.do_sub_sort = 0;
-    c->hydro.do_sub_drift = 0;
-    c->grav.do_sub_drift = 0;
-    c->stars.do_sub_drift = 0;
-    c->black_holes.do_sub_drift = 0;
-    c->hydro.do_sub_limiter = 0;
-    c->hydro.do_limiter = 0;
+    c->flags = 0;
     c->hydro.ti_end_min = -1;
     c->hydro.ti_end_max = -1;
     c->grav.ti_end_min = -1;
@@ -273,6 +271,7 @@ void space_rebuild_recycle_mapper(void *map_data, int num_elements,
     c->stars.ti_end_max = -1;
     c->black_holes.ti_end_min = -1;
     c->black_holes.ti_end_max = -1;
+    star_formation_logger_init(&c->stars.sfh);
 #if defined(SWIFT_DEBUG_CHECKS) || defined(SWIFT_CELL_GRAPH)
     c->cellID = 0;
 #endif
@@ -1847,7 +1846,8 @@ void space_rebuild(struct space *s, int repartitioned, int verbose) {
 
     const int is_local = (c->nodeID == engine_rank);
     const int has_particles = (c->hydro.count > 0) || (c->grav.count > 0) ||
-                              (c->stars.count > 0) | (c->black_holes.count > 0);
+                              (c->stars.count > 0) ||
+                              (c->black_holes.count > 0);
 
     if (is_local) {
       c->hydro.parts = finger;
@@ -2076,7 +2076,7 @@ void space_parts_get_cell_index_mapper(void *map_data, int nr_parts,
     const double old_pos_z = p->x[2];
 
 #ifdef SWIFT_DEBUG_CHECKS
-    if (!s->periodic) {
+    if (!s->periodic && p->time_bin != time_bin_inhibited) {
       if (old_pos_x < 0. || old_pos_x > dim_x)
         error("Particle outside of volume along X.");
       if (old_pos_y < 0. || old_pos_y > dim_y)
@@ -2194,7 +2194,7 @@ void space_gparts_get_cell_index_mapper(void *map_data, int nr_gparts,
     const double old_pos_z = gp->x[2];
 
 #ifdef SWIFT_DEBUG_CHECKS
-    if (!s->periodic) {
+    if (!s->periodic && gp->time_bin != time_bin_inhibited) {
       if (old_pos_x < 0. || old_pos_x > dim_x)
         error("Particle outside of volume along X.");
       if (old_pos_y < 0. || old_pos_y > dim_y)
@@ -2318,7 +2318,7 @@ void space_sparts_get_cell_index_mapper(void *map_data, int nr_sparts,
     const double old_pos_z = sp->x[2];
 
 #ifdef SWIFT_DEBUG_CHECKS
-    if (!s->periodic) {
+    if (!s->periodic && sp->time_bin != time_bin_inhibited) {
       if (old_pos_x < 0. || old_pos_x > dim_x)
         error("Particle outside of volume along X.");
       if (old_pos_y < 0. || old_pos_y > dim_y)
@@ -3287,14 +3287,7 @@ void space_split_recursive(struct space *s, struct cell *c,
       cp->super = NULL;
       cp->hydro.super = NULL;
       cp->grav.super = NULL;
-      cp->hydro.do_sub_sort = 0;
-      cp->stars.do_sub_sort = 0;
-      cp->grav.do_sub_drift = 0;
-      cp->hydro.do_sub_drift = 0;
-      cp->stars.do_sub_drift = 0;
-      cp->black_holes.do_sub_drift = 0;
-      cp->hydro.do_sub_limiter = 0;
-      cp->hydro.do_limiter = 0;
+      cp->flags = 0;
 #ifdef WITH_MPI
       cp->mpi.tag = -1;
 #endif  // WITH_MPI
@@ -3303,7 +3296,7 @@ void space_split_recursive(struct space *s, struct cell *c,
 #endif
     }
 
-    /* Split the cell's partcle data. */
+    /* Split the cell's particle data. */
     cell_split(c, c->hydro.parts - s->parts, c->stars.parts - s->sparts,
                c->black_holes.parts - s->bparts, buff, sbuff, bbuff, gbuff);
 
@@ -3353,6 +3346,7 @@ void space_split_recursive(struct space *s, struct cell *c,
             min(ti_black_holes_end_max, cp->black_holes.ti_end_max);
         ti_black_holes_beg_max =
             min(ti_black_holes_beg_max, cp->black_holes.ti_beg_max);
+        star_formation_logger_add(&c->stars.sfh, &cp->stars.sfh);
 
         /* Increase the depth */
         if (cp->maxdepth > maxdepth) maxdepth = cp->maxdepth;
@@ -3494,6 +3488,9 @@ void space_split_recursive(struct space *s, struct cell *c,
       hydro_time_bin_min = min(hydro_time_bin_min, parts[k].time_bin);
       hydro_time_bin_max = max(hydro_time_bin_max, parts[k].time_bin);
       h_max = max(h_max, parts[k].h);
+      /* Collect SFR from the particles after rebuilt */
+      star_formation_logger_log_inactive_part(&parts[k], &xparts[k],
+                                              &c->stars.sfh);
     }
 
     /* xparts: Reset x_diff */
@@ -4145,6 +4142,8 @@ void space_first_init_sparts_mapper(void *restrict map_data, int count,
   const struct space *restrict s = (struct space *)extra_data;
   const struct engine *e = s->e;
 
+  const struct chemistry_global_data *chemistry = e->chemistry;
+
 #ifdef SWIFT_DEBUG_CHECKS
   const ptrdiff_t delta = sp - s->sparts;
 #endif
@@ -4154,6 +4153,7 @@ void space_first_init_sparts_mapper(void *restrict map_data, int count,
   const int with_feedback = (e->policy & engine_policy_feedback);
 
   const struct cosmology *cosmo = e->cosmology;
+  const struct stars_props *stars_properties = e->stars_properties;
   const float a_factor_vel = cosmo->a;
 
   /* Convert velocities to internal units */
@@ -4189,7 +4189,10 @@ void space_first_init_sparts_mapper(void *restrict map_data, int count,
   /* Initialise the rest */
   for (int k = 0; k < count; k++) {
 
-    stars_first_init_spart(&sp[k]);
+    stars_first_init_spart(&sp[k], stars_properties);
+
+    /* Also initialise the chemistry */
+    chemistry_first_init_spart(chemistry, &sp[k]);
 
 #ifdef SWIFT_DEBUG_CHECKS
     if (sp[k].gpart && sp[k].gpart->id_or_neg_offset != -(k + delta))
@@ -4587,6 +4590,13 @@ void space_init(struct space *s, struct swift_params *params,
   space_extra_bparts = parser_get_opt_param_int(
       params, "Scheduler:cell_extra_bparts", space_extra_bparts_default);
 
+  engine_max_parts_per_ghost =
+      parser_get_opt_param_int(params, "Scheduler:engine_max_parts_per_ghost",
+                               engine_max_parts_per_ghost_default);
+  engine_max_sparts_per_ghost =
+      parser_get_opt_param_int(params, "Scheduler:engine_max_sparts_per_ghost",
+                               engine_max_sparts_per_ghost_default);
+
   if (verbose) {
     message("max_size set to %d split_size set to %d", space_maxsize,
             space_splitsize);
@@ -4722,7 +4732,7 @@ void space_init(struct space *s, struct swift_params *params,
   last_cell_id = 1;
 #endif
 
-  /* Do we want any spare particles for on the fly cration? */
+  /* Do we want any spare particles for on the fly creation? */
   if (!star_formation) space_extra_sparts = 0;
 
   /* Build the cells recursively. */
@@ -5193,6 +5203,30 @@ void space_struct_dump(struct space *s, FILE *stream) {
   restart_write_blocks(s, sizeof(struct space), 1, stream, "space",
                        "space struct");
 
+  /* Now all our globals. */
+  restart_write_blocks(&space_splitsize, sizeof(int), 1, stream,
+                       "space_splitsize", "space_splitsize");
+  restart_write_blocks(&space_maxsize, sizeof(int), 1, stream, "space_maxsize",
+                       "space_maxsize");
+  restart_write_blocks(&space_subsize_pair_hydro, sizeof(int), 1, stream,
+                       "space_subsize_pair_hydro", "space_subsize_pair_hydro");
+  restart_write_blocks(&space_subsize_self_hydro, sizeof(int), 1, stream,
+                       "space_subsize_self_hydro", "space_subsize_self_hydro");
+  restart_write_blocks(&space_subsize_pair_grav, sizeof(int), 1, stream,
+                       "space_subsize_pair_grav", "space_subsize_pair_grav");
+  restart_write_blocks(&space_subsize_self_grav, sizeof(int), 1, stream,
+                       "space_subsize_self_grav", "space_subsize_self_grav");
+  restart_write_blocks(&space_subdepth_diff_grav, sizeof(int), 1, stream,
+                       "space_subdepth_diff_grav", "space_subdepth_diff_grav");
+  restart_write_blocks(&space_extra_parts, sizeof(int), 1, stream,
+                       "space_extra_parts", "space_extra_parts");
+  restart_write_blocks(&space_extra_gparts, sizeof(int), 1, stream,
+                       "space_extra_gparts", "space_extra_gparts");
+  restart_write_blocks(&space_extra_sparts, sizeof(int), 1, stream,
+                       "space_extra_sparts", "space_extra_sparts");
+  restart_write_blocks(&space_extra_bparts, sizeof(int), 1, stream,
+                       "space_extra_bparts", "space_extra_bparts");
+
   /* More things to write. */
   if (s->nr_parts > 0) {
     restart_write_blocks(s->parts, s->nr_parts, sizeof(struct part), stream,
@@ -5222,6 +5256,30 @@ void space_struct_dump(struct space *s, FILE *stream) {
 void space_struct_restore(struct space *s, FILE *stream) {
 
   restart_read_blocks(s, sizeof(struct space), 1, stream, NULL, "space struct");
+
+  /* Now all our globals. */
+  restart_read_blocks(&space_splitsize, sizeof(int), 1, stream, NULL,
+                      "space_splitsize");
+  restart_read_blocks(&space_maxsize, sizeof(int), 1, stream, NULL,
+                      "space_maxsize");
+  restart_read_blocks(&space_subsize_pair_hydro, sizeof(int), 1, stream, NULL,
+                      "space_subsize_pair_hydro");
+  restart_read_blocks(&space_subsize_self_hydro, sizeof(int), 1, stream, NULL,
+                      "space_subsize_self_hydro");
+  restart_read_blocks(&space_subsize_pair_grav, sizeof(int), 1, stream, NULL,
+                      "space_subsize_pair_grav");
+  restart_read_blocks(&space_subsize_self_grav, sizeof(int), 1, stream, NULL,
+                      "space_subsize_self_grav");
+  restart_read_blocks(&space_subdepth_diff_grav, sizeof(int), 1, stream, NULL,
+                      "space_subdepth_diff_grav");
+  restart_read_blocks(&space_extra_parts, sizeof(int), 1, stream, NULL,
+                      "space_extra_parts");
+  restart_read_blocks(&space_extra_gparts, sizeof(int), 1, stream, NULL,
+                      "space_extra_gparts");
+  restart_read_blocks(&space_extra_sparts, sizeof(int), 1, stream, NULL,
+                      "space_extra_sparts");
+  restart_read_blocks(&space_extra_bparts, sizeof(int), 1, stream, NULL,
+                      "space_extra_bparts");
 
   /* Things that should be reconstructed in a rebuild. */
   s->cells_top = NULL;

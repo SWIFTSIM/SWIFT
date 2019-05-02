@@ -23,6 +23,7 @@
 #include "adiabatic_index.h"
 #include "approx_math.h"
 #include "cosmology.h"
+#include "entropy_floor.h"
 #include "equation_of_state.h"
 #include "hydro_gradients.h"
 #include "hydro_properties.h"
@@ -498,7 +499,9 @@ __attribute__((always_inline)) INLINE static void hydro_reset_acceleration(
  * @param xp The extended data of this particle.
  */
 __attribute__((always_inline)) INLINE static void hydro_reset_predicted_values(
-    struct part* restrict p, const struct xpart* restrict xp) {}
+    struct part* restrict p, const struct xpart* restrict xp) {
+  // MATTHIEU: Do we need something here?
+}
 
 /**
  * @brief Converts the hydrodynamic variables from the initial condition file to
@@ -524,9 +527,14 @@ __attribute__((always_inline)) INLINE static void hydro_convert_quantities(
  * @param xp The extended particle data to act upon.
  * @param dt_drift The drift time-step for positions.
  * @param dt_therm The drift time-step for thermal quantities.
+ * @param cosmo The cosmological model.
+ * @param hydro_props The properties of the hydro scheme.
+ * @param floor_props The properties of the entropy floor.
  */
 __attribute__((always_inline)) INLINE static void hydro_predict_extra(
-    struct part* p, struct xpart* xp, float dt_drift, float dt_therm) {
+    struct part* p, struct xpart* xp, float dt_drift, float dt_therm,
+    const struct cosmology* cosmo, const struct hydro_props* hydro_props,
+    const struct entropy_floor_properties* floor_props) {
 
   const float h_inv = 1.0f / p->h;
 
@@ -564,6 +572,8 @@ __attribute__((always_inline)) INLINE static void hydro_predict_extra(
     p->P = hydro_gamma_minus_one * u * p->rho;
 #endif
   }
+
+    // MATTHIEU: Apply the entropy floor here.
 
 #ifdef SWIFT_DEBUG_CHECKS
   if (p->h <= 0.0f) {
@@ -611,11 +621,13 @@ __attribute__((always_inline)) INLINE static void hydro_end_force(
  * @param dt_kick_corr Gravity correction time-step @f$adt@f$.
  * @param cosmo Cosmology.
  * @param hydro_props Additional hydro properties.
+ * @param floor_props The properties of the entropy floor.
  */
 __attribute__((always_inline)) INLINE static void hydro_kick_extra(
     struct part* p, struct xpart* xp, float dt_therm, float dt_grav,
     float dt_hydro, float dt_kick_corr, const struct cosmology* cosmo,
-    const struct hydro_props* hydro_props) {
+    const struct hydro_props* hydro_props,
+    const struct entropy_floor_properties* floor_props) {
 
   float a_grav[3];
 
@@ -645,6 +657,8 @@ __attribute__((always_inline)) INLINE static void hydro_kick_extra(
     p->conserved.energy = min_energy * p->conserved.mass;
     p->flux.energy = 0.0f;
   }
+
+  // MATTHIEU: Apply the entropy floor here.
 
   gizmo_check_physical_quantities(
       "mass", "energy", p->conserved.mass, p->conserved.momentum[0],

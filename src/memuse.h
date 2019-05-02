@@ -121,6 +121,44 @@ __attribute__((always_inline)) inline void *swift_calloc(const char *label,
 }
 
 /**
+ * @brief reallocate memory. The use and results are the same as the
+ *        realloc function. This function should be used for any
+ *        _significant_ allocations and consistently labelled.
+ *        Do not use this function for small or high frequency
+ *        allocations in production code.
+ *
+ * @param label a symbolic label for the memory, i.e. "parts".
+ * @param ptr pointer to memory that may need reallocating or allocating.
+ * @param size the quantity of bytes that should be available.
+ * @result pointer to the allocated memory or NULL on failure.
+ */
+__attribute__((always_inline)) inline void *swift_realloc(const char *label,
+                                                          void *ptr,
+                                                          size_t size) {
+  void *memptr = realloc(ptr, size);
+#ifdef SWIFT_MEMUSE_REPORTS
+  if (memptr != NULL) {
+
+    /* On reallocation we free the previous memory. */
+    if (ptr != NULL && ptr != memptr) memuse_log_allocation(label, ptr, 0, 0);
+    memuse_log_allocation(label, memptr, 1, size);
+
+  } else {
+
+    /* Can be NULL if size is zero, we have just freed the memory. */
+    if (size == 0) {
+      memuse_log_allocation(label, ptr, 0, 0);
+    } else {
+
+      /* Failed allocations are interesting as well. */
+      memuse_log_allocation(label, NULL, -1, size);
+    }
+  }
+#endif
+  return memptr;
+}
+
+/**
  * @brief free aligned memory. The use and results are the same as the
  *        free function. The label should match a prior call to swift_memalign
  *        or swift_malloc.

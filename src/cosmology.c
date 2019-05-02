@@ -778,6 +778,35 @@ double cosmology_get_delta_time(const struct cosmology *c,
 }
 
 /**
+ * @brief Compute the cosmic time (in internal units) between two scale factors
+ *
+ * @param c The current #cosmology.
+ * @param a_start the starting scale factor
+ * @param a_end the ending scale factor
+ */
+double cosmology_get_delta_time_from_scale_factors(const struct cosmology *c,
+                                                   const double a_start,
+                                                   const double a_end) {
+
+#ifdef SWIFT_DEBUG_CHECKS
+  if (a_end < a_start) error("a_end must be >= a_start");
+#endif
+
+  const double log_a_start = log(a_start);
+  const double log_a_end = log(a_end);
+
+  /* Time between a_begin and a_start */
+  const double t1 = interp_table(c->time_interp_table, log_a_start,
+                                 c->log_a_begin, c->log_a_end);
+
+  /* Time between a_begin and a_end */
+  const double t2 = interp_table(c->time_interp_table, log_a_end,
+                                 c->log_a_begin, c->log_a_end);
+
+  return t2 - t1;
+}
+
+/**
  * @brief Compute scale factor from time since big bang (in internal units).
  *
  * @param c The current #cosmology.

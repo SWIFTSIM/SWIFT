@@ -104,9 +104,9 @@ INLINE static double eagle_print_metal_cooling_rate(
 
   /* calculate cooling rates */
   for (int j = 0; j < eagle_cooling_N_metal + 2; j++) element_lambda[j] = 0.0;
-  lambda_net = eagle_metal_cooling_rate(
-      log10(u), cosmo->z, n_h, abundance_ratio, n_h_i, d_n_h, He_i, d_He,
-      cooling, /*dLambdaNet_du=*/NULL, element_lambda);
+  lambda_net =
+      eagle_metal_cooling_rate(log10(u), cosmo->z, n_h, abundance_ratio, n_h_i,
+                               d_n_h, He_i, d_He, cooling, element_lambda);
 
   /* write cooling rate contributions to their own files. */
   for (int j = 0; j < eagle_cooling_N_metal + 2; j++) {
@@ -164,6 +164,7 @@ int main(int argc, char **argv) {
   struct part p;
   struct xpart xp;
   struct phys_const internal_const;
+  struct hydro_props hydro_properties;
   struct cooling_function_data cooling;
   struct cosmology cosmo;
   struct space s;
@@ -210,7 +211,12 @@ int main(int argc, char **argv) {
 
   // Init units
   units_init_from_params(&us, params, "InternalUnitSystem");
+
+  // Init physical constants
   phys_const_init(&us, params, &internal_const);
+
+  // Init porperties of hydro
+  hydro_props_init(&hydro_properties, &internal_const, &us, params);
 
   // Init chemistry
   chemistry_init(params, &us, &internal_const, &chem_data);
@@ -228,19 +234,27 @@ int main(int argc, char **argv) {
   message("Redshift is %f", cosmo.z);
 
   // Init cooling
-  cooling_init(params, &us, &internal_const, &cooling);
+  cooling_init(params, &us, &internal_const, &hydro_properties, &cooling);
+  cooling.H_reion_done = 1;
   cooling_print(&cooling);
   cooling_update(&cosmo, &cooling, &s);
+
+  // Copy over the raw metals into the smoothed metals
+  memcpy(&p.chemistry_data.smoothed_metal_mass_fraction,
+         &p.chemistry_data.metal_mass_fraction,
+         chemistry_element_count * sizeof(float));
+  p.chemistry_data.smoothed_metal_mass_fraction_total =
+      p.chemistry_data.metal_mass_fraction_total;
 
   // Calculate abundance ratios
   float abundance_ratio[(chemistry_element_count + 2)];
   abundance_ratio_to_solar(&p, &cooling, abundance_ratio);
 
   // extract mass fractions, calculate table indices and offsets
-  float XH = p.chemistry_data.metal_mass_fraction[chemistry_element_H];
-  float HeFrac =
-      p.chemistry_data.metal_mass_fraction[chemistry_element_He] /
-      (XH + p.chemistry_data.metal_mass_fraction[chemistry_element_He]);
+  float XH = p.chemistry_data.smoothed_metal_mass_fraction[chemistry_element_H];
+  float XHe =
+      p.chemistry_data.smoothed_metal_mass_fraction[chemistry_element_He];
+  float HeFrac = XHe / (XH + XHe);
   int He_i, n_h_i;
   float d_He, d_n_h;
   get_index_1d(cooling.HeFrac, eagle_cooling_N_He_frac, HeFrac, &He_i, &d_He);
@@ -280,7 +294,7 @@ int main(int argc, char **argv) {
 
     // calculate cooling rates
     const double temperature = eagle_convert_u_to_temp(
-        log10(u), cosmo.z, 0, NULL, n_h_i, He_i, d_n_h, d_He, &cooling);
+        log10(u), cosmo.z, n_h_i, He_i, d_n_h, d_He, &cooling);
 
     const double cooling_du_dt = eagle_print_metal_cooling_rate(
         n_h_i, d_n_h, He_i, d_He, &p, &xp, &cooling, &cosmo, &internal_const,

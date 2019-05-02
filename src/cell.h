@@ -28,6 +28,7 @@
 
 /* Includes. */
 #include <stddef.h>
+#include <stdint.h>
 
 /* Local includes. */
 #include "align.h"
@@ -37,6 +38,7 @@
 #include "part.h"
 #include "sort_part.h"
 #include "space.h"
+#include "star_formation_logger_struct.h"
 #include "task.h"
 #include "timeline.h"
 
@@ -70,6 +72,17 @@ struct link {
   /* The next pointer. */
   struct link *next;
 };
+
+/* Holds the pairs of progeny for each sid. */
+struct cell_split_pair {
+  int count;
+  struct {
+    int pid;
+    int pjd;
+    int sid;
+  } pairs[16];
+};
+extern struct cell_split_pair cell_split_pairs[13];
 
 /**
  * @brief Packed cell for information correct at rebuild time.
@@ -220,6 +233,24 @@ struct pcell_step_black_holes {
   float dx_max_part;
 };
 
+/** Bitmasks for the cell flags. Beware when adding flags that you don't exceed
+    the size of the flags variable in the struct cell. */
+enum cell_flags {
+  cell_flag_split = (1UL << 0),
+  cell_flag_do_hydro_drift = (1UL << 1),
+  cell_flag_do_hydro_sub_drift = (1UL << 2),
+  cell_flag_do_hydro_sub_sort = (1UL << 3),
+  cell_flag_do_hydro_limiter = (1UL << 4),
+  cell_flag_do_hydro_sub_limiter = (1UL << 5),
+  cell_flag_do_grav_drift = (1UL << 6),
+  cell_flag_do_grav_sub_drift = (1UL << 7),
+  cell_flag_do_stars_sub_sort = (1UL << 8),
+  cell_flag_do_stars_drift = (1UL << 9),
+  cell_flag_do_stars_sub_drift = (1UL << 10),
+  cell_flag_do_bh_drift = (1UL << 11),
+  cell_flag_do_bh_sub_drift = (1UL << 12)
+};
+
 /**
  * @brief Cell within the tree structure.
  *
@@ -248,6 +279,9 @@ struct cell {
   /*! Super cell, i.e. the highest-level parent cell with *any* task */
   struct cell *super;
 
+  /*! Cell flags bit-mask. */
+  volatile uint32_t flags;
+
   /*! Hydro variables */
   struct {
 
@@ -259,7 +293,6 @@ struct cell {
 
     /*! Pointer for the sorted indices. */
     struct entry *sort[13];
-    struct entry *sortptr;
 
     /*! Super cell, i.e. the highest-level parent cell that has a hydro
      * pair/self tasks */
@@ -354,28 +387,13 @@ struct cell {
     int hold;
 
     /*! Bit mask of sort directions that will be needed in the next timestep. */
-    unsigned int requires_sorts;
+    uint16_t requires_sorts;
 
     /*! Bit mask of sorts that need to be computed for this cell. */
-    unsigned int do_sort;
+    uint16_t do_sort;
 
     /*! Bit-mask indicating the sorted directions */
-    unsigned int sorted;
-
-    /*! Does this cell need to be drifted (hydro)? */
-    char do_drift;
-
-    /*! Do any of this cell's sub-cells need to be drifted (hydro)? */
-    char do_sub_drift;
-
-    /*! Do any of this cell's sub-cells need to be sorted? */
-    char do_sub_sort;
-
-    /*! Does this cell need to be limited? */
-    char do_limiter;
-
-    /*! Do any of this cell's sub-cells need to be limited? */
-    char do_sub_limiter;
+    uint16_t sorted;
 
 #ifdef SWIFT_DEBUG_CHECKS
 
@@ -475,12 +493,6 @@ struct cell {
     /*! Number of M-M tasks that are associated with this cell. */
     short int nr_mm_tasks;
 
-    /*! Does this cell need to be drifted (gravity)? */
-    char do_drift;
-
-    /*! Do any of this cell's sub-cells need to be drifted (gravity)? */
-    char do_sub_drift;
-
   } grav;
 
   /*! Stars variables */
@@ -544,21 +556,17 @@ struct cell {
     /*! Values of dx_max_sort before the drifts, used for sub-cell tasks. */
     float dx_max_sort_old;
 
-    /*! Bit mask of sort directions that will be needed in the next timestep. */
-    unsigned int requires_sorts;
-
     /*! Pointer for the sorted indices. */
     struct entry *sort[13];
-    struct entry *sortptr;
+
+    /*! Bit mask of sort directions that will be needed in the next timestep. */
+    uint16_t requires_sorts;
 
     /*! Bit-mask indicating the sorted directions */
-    unsigned int sorted;
+    uint16_t sorted;
 
     /*! Bit mask of sorts that need to be computed for this cell. */
-    unsigned int do_sort;
-
-    /*! Do any of this cell's sub-cells need to be sorted? */
-    char do_sub_sort;
+    uint16_t do_sort;
 
     /*! Maximum end of (integer) time step in this cell for star tasks. */
     integertime_t ti_end_min;
@@ -579,11 +587,8 @@ struct cell {
     /*! Is the #spart data of this cell being used in a sub-cell? */
     int hold;
 
-    /*! Does this cell need to be drifted (stars)? */
-    char do_drift;
-
-    /*! Do any of this cell's sub-cells need to be drifted (stars)? */
-    char do_sub_drift;
+    /*! Star formation history struct */
+    struct star_formation_history sfh;
 
 #ifdef SWIFT_DEBUG_CHECKS
     /*! Last (integer) time the cell's sort arrays were updated. */
@@ -641,12 +646,6 @@ struct cell {
 
     /*! Is the #bpart data of this cell being used in a sub-cell? */
     int hold;
-
-    /*! Does this cell need to be drifted (black holes)? */
-    char do_drift;
-
-    /*! Do any of this cell's sub-cells need to be drifted (black holes)? */
-    char do_sub_drift;
 
   } black_holes;
 
@@ -1110,6 +1109,8 @@ __attribute__((always_inline)) INLINE static void cell_malloc_hydro_sorts(
 
   const int count = c->hydro.count;
 
+  /* Note that sorts can be used by different tasks at the same time (but not
+   * on the same dimensions), so we need separate allocations per dimension. */
   for (int j = 0; j < 13; j++) {
     if ((flags & (1 << j)) && c->hydro.sort[j] == NULL) {
       if ((c->hydro.sort[j] = (struct entry *)swift_malloc(
@@ -1117,35 +1118,6 @@ __attribute__((always_inline)) INLINE static void cell_malloc_hydro_sorts(
         error("Failed to allocate sort memory.");
     }
   }
-
-  /* /\* Count the memory needed for all active dimensions. *\/ */
-  /* int count = 0; */
-  /* for (int j = 0; j < 13; j++) { */
-  /*   if ((flags & (1 << j)) && c->hydro.sort[j] == NULL) */
-  /*     count += (c->hydro.count + 1); */
-  /* } */
-
-  /* if(c->hydro.sortptr != NULL) */
-  /*   error("Reallocating hydro sorts!"); */
-
-  /* /\* Allocate as a single chunk. *\/ */
-  /* struct entry *memptr = NULL; */
-  /* /\* if ((memptr = (struct entry *)swift_malloc( *\/ */
-  /* /\*          "hydro.sort", sizeof(struct entry) * count)) == NULL) *\/ */
-  /* if ((memptr = (struct entry *)malloc( */
-  /* 				       sizeof(struct entry) * count)) == NULL)
-   */
-  /*   error("Failed to allocate sort memory."); */
-
-  /* c->hydro.sortptr = memptr; */
-
-  /* /\* And attach spans as needed. *\/ */
-  /* for (int j = 0; j < 13; j++) { */
-  /*   if ((flags & (1 << j)) && c->hydro.sort[j] == NULL) { */
-  /*     c->hydro.sort[j] = memptr; */
-  /*     memptr += (c->hydro.count + 1); */
-  /*   } */
-  /* } */
 }
 
 /**
@@ -1162,14 +1134,6 @@ __attribute__((always_inline)) INLINE static void cell_free_hydro_sorts(
       c->hydro.sort[i] = NULL;
     }
   }
-
-  /* /\* Note only one allocation for the dimensions. *\/ */
-  /* if (c->hydro.sortptr != NULL) { */
-  /*   //swift_free("hydro.sort", c->hydro.sortptr); */
-  /*   free(c->hydro.sortptr); */
-  /*   c->hydro.sortptr = NULL; */
-  /*   for (int i = 0; i < 13; i++) c->hydro.sort[i] = NULL; */
-  /* } */
 }
 
 /**
@@ -1183,6 +1147,8 @@ __attribute__((always_inline)) INLINE static void cell_malloc_stars_sorts(
 
   const int count = c->stars.count;
 
+  /* Note that sorts can be used by different tasks at the same time (but not
+   * on the same dimensions), so we need separate allocations per dimension. */
   for (int j = 0; j < 13; j++) {
     if ((flags & (1 << j)) && c->stars.sort[j] == NULL) {
       if ((c->stars.sort[j] = (struct entry *)swift_malloc(
@@ -1190,32 +1156,6 @@ __attribute__((always_inline)) INLINE static void cell_malloc_stars_sorts(
         error("Failed to allocate sort memory.");
     }
   }
-
-  /* /\* Count the memory needed for all active dimensions. *\/ */
-  /* int count = 0; */
-  /* for (int j = 0; j < 13; j++) { */
-  /*   if ((flags & (1 << j)) && c->stars.sort[j] == NULL) */
-  /*     count += (c->stars.count + 1); */
-  /* } */
-
-  /* /\* Allocate as a single chunk. *\/ */
-  /* struct entry *memptr = NULL; */
-  /* /\* if ((memptr = (struct entry *)swift_malloc( *\/ */
-  /* /\*          "stars.sort", sizeof(struct entry) * count)) == NULL) *\/ */
-  /* if ((memptr = (struct entry *)malloc( */
-  /* 				       sizeof(struct entry) * count)) == NULL)
-   */
-  /*   error("Failed to allocate sort memory."); */
-
-  /* c->stars.sortptr = memptr; */
-
-  /* /\* And attach spans as needed. *\/ */
-  /* for (int j = 0; j < 13; j++) { */
-  /*   if ((flags & (1 << j)) && c->stars.sort[j] == NULL) { */
-  /*     c->stars.sort[j] = memptr; */
-  /*     memptr += (c->stars.count + 1); */
-  /*   } */
-  /* } */
 }
 
 /**
@@ -1232,14 +1172,24 @@ __attribute__((always_inline)) INLINE static void cell_free_stars_sorts(
       c->stars.sort[i] = NULL;
     }
   }
+}
 
-  /* /\* Note only one allocation for the dimensions. *\/ */
-  /* if (c->stars.sortptr != NULL) { */
-  /*   //swift_free("stars.sort", c->stars.sortptr); */
-  /*   free(c->stars.sortptr); */
-  /*   c->stars.sortptr = NULL; */
-  /*   for (int i = 0; i < 13; i++) c->stars.sort[i] = NULL; */
-  /* } */
+/** Set the given flag for the given cell. */
+__attribute__((always_inline)) INLINE static void cell_set_flag(struct cell *c,
+                                                                uint32_t flag) {
+  atomic_or(&c->flags, flag);
+}
+
+/** Clear the given flag for the given cell. */
+__attribute__((always_inline)) INLINE static void cell_clear_flag(
+    struct cell *c, uint32_t flag) {
+  atomic_and(&c->flags, ~flag);
+}
+
+/** Get the given flag for the given cell. */
+__attribute__((always_inline)) INLINE static int cell_get_flag(
+    const struct cell *c, uint32_t flag) {
+  return (c->flags & flag) > 0;
 }
 
 /**

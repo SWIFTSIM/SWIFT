@@ -210,7 +210,7 @@ INLINE static int star_formation_is_star_forming(
     const struct hydro_props* restrict hydro_props,
     const struct unit_system* restrict us,
     const struct cooling_function_data* restrict cooling,
-    const struct entropy_floor_properties* restrict entropy_floor) {
+    const struct entropy_floor_properties* restrict entropy_floor_props) {
 
   /* Minimal density (converted from critical density) for star formation */
   const double rho_crit_times_min_over_den =
@@ -242,17 +242,15 @@ INLINE static int star_formation_is_star_forming(
   /* Check if it exceeded the minimum density */
   if (n_H < density_threshold) return 0;
 
-  /* Calculate the temperature */
-  const double temperature = cooling_get_temperature(phys_const, hydro_props,
-                                                     us, cosmo, cooling, p, xp);
+  /* Calculate the entropy of the particle */
+  const double entropy = hydro_get_physical_entropy(p, xp, cosmo);
 
-  /* Temperature on the equation of state */
-  const double temperature_eos =
-      entropy_floor_temperature(p, cosmo, entropy_floor);
+  /* Calculate the entropy EOS of the particle */
+  const double entropy_eos = entropy_floor(p, cosmo, entropy_floor_props);
 
   /* Check the Scahye & Dalla Vecchia 2012 EOS-based temperature critrion */
-  return (temperature <
-          temperature_eos * starform->ten_to_temperature_margin_threshold_dex);
+  return (entropy <
+          entropy_eos * starform->ten_to_temperature_margin_threshold_dex);
 }
 
 /**
@@ -382,7 +380,11 @@ INLINE static void star_formation_update_part_not_SFR(
 INLINE static void star_formation_copy_properties(
     const struct part* p, const struct xpart* xp, struct spart* sp,
     const struct engine* e, const struct star_formation* starform,
-    const struct cosmology* cosmo, const int with_cosmology) {
+    const struct cosmology* cosmo, const int with_cosmology,
+    const struct phys_const* phys_const,
+    const struct hydro_props* restrict hydro_props,
+    const struct unit_system* restrict us,
+    const struct cooling_function_data* restrict cooling) {
 
   /* Store the current mass */
   sp->mass = hydro_get_mass(p);
@@ -405,6 +407,13 @@ INLINE static void star_formation_copy_properties(
 
   /* Store the birth density in the star particle */
   sp->birth_density = hydro_get_physical_density(p, cosmo);
+
+  /* Store the birth temperature in the star particle */
+  sp->birth_temperature = cooling_get_temperature(phys_const, hydro_props, us,
+                                                  cosmo, cooling, p, xp);
+
+  /* Flag that this particle has not done feedback yet */
+  sp->f_E = -1.f;
 }
 
 /**

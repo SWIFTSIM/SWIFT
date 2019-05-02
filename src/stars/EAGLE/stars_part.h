@@ -23,8 +23,9 @@
 /* Some standard headers. */
 #include <stdlib.h>
 
-/* Read chemistry */
+/* Read additional aubgrid models */
 #include "chemistry_struct.h"
+#include "feedback_struct.h"
 #include "tracers_struct.h"
 
 /**
@@ -61,12 +62,6 @@ struct spart {
   /*! Particle smoothing length. */
   float h;
 
-  /*! Density of the gas surrounding the star. */
-  float rho_gas;
-
-  /*! Particle time bin */
-  timebin_t time_bin;
-
   struct {
 
     /* Number of neighbours. */
@@ -77,14 +72,7 @@ struct spart {
 
   } density;
 
-  struct {
-
-    /* Change in smoothing length over time. */
-    float h_dt;
-
-  } feedback;
-
-  /*! Union for the birth time and birht scale factor */
+  /*! Union for the birth time and birth scale factor */
   union {
 
     /*! Birth time */
@@ -97,11 +85,23 @@ struct spart {
   /*! Birth density */
   float birth_density;
 
+  /*! Birth temperature */
+  float birth_temperature;
+
+  /*! Feedback energy fraction */
+  float f_E;
+
+  /*! Feedback structure */
+  struct feedback_spart_data feedback_data;
+
   /*! Tracer structure */
   struct tracers_xpart_data tracers_data;
 
   /*! Chemistry structure */
   struct chemistry_part_data chemistry_data;
+
+  /*! Particle time bin */
+  timebin_t time_bin;
 
 #ifdef SWIFT_DEBUG_CHECKS
 
@@ -114,11 +114,18 @@ struct spart {
 #endif
 
 #ifdef DEBUG_INTERACTIONS_STARS
-  /*! List of interacting particles in the density SELF and PAIR */
-  long long ids_ngbs_density[MAX_NUM_OF_NEIGHBOURS_STARS];
 
   /*! Number of interactions in the density SELF and PAIR */
   int num_ngb_density;
+
+  /*! List of interacting particles in the density SELF and PAIR */
+  long long ids_ngbs_density[MAX_NUM_OF_NEIGHBOURS_STARS];
+
+  /*! Number of interactions in the force SELF and PAIR */
+  int num_ngb_force;
+
+  /*! List of interacting particles in the force SELF and PAIR */
+  long long ids_ngbs_force[MAX_NUM_OF_NEIGHBOURS_STARS];
 #endif
 
 } SWIFT_STRUCT_ALIGN;
@@ -131,7 +138,7 @@ struct stars_props {
   /*! Resolution parameter */
   float eta_neighbours;
 
-  /*! Target weightd number of neighbours (for info only)*/
+  /*! Target weighted number of neighbours (for info only)*/
   float target_neighbours;
 
   /*! Smoothing length tolerance */
@@ -145,6 +152,9 @@ struct stars_props {
 
   /*! Maximal change of h over one time-step */
   float log_max_h_change;
+
+  /*! Value to set birth time of stars read from ICs */
+  float spart_first_init_birth_time;
 };
 
 #endif /* SWIFT_EAGLE_STAR_PART_H */

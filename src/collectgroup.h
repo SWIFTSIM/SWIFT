@@ -26,6 +26,7 @@
 #include <stddef.h>
 
 /* Local headers. */
+#include "star_formation_logger_struct.h"
 #include "timeline.h"
 
 /* Forward declaration of engine struct (to avoid cyclic include). */
@@ -39,6 +40,9 @@ struct collectgroup1 {
 
   /* Number of particles inhibited */
   long long inhibited, g_inhibited, s_inhibited, b_inhibited;
+
+  /* SFH logger */
+  struct star_formation_history sfh;
 
   /* Times for the time-step */
   integertime_t ti_hydro_end_min, ti_hydro_end_max, ti_hydro_beg_max;
@@ -59,7 +63,7 @@ struct collectgroup1 {
 };
 
 void collectgroup_init(void);
-void collectgroup1_apply(struct collectgroup1 *grp1, struct engine *e);
+void collectgroup1_apply(const struct collectgroup1 *grp1, struct engine *e);
 void collectgroup1_init(
     struct collectgroup1 *grp1, size_t updated, size_t g_updated,
     size_t s_updated, size_t b_updated, size_t inhibited, size_t g_inhibited,
@@ -70,7 +74,8 @@ void collectgroup1_init(
     integertime_t ti_stars_end_max, integertime_t ti_stars_beg_max,
     integertime_t ti_black_holes_end_min, integertime_t ti_black_holes_end_max,
     integertime_t ti_black_holes_beg_max, int forcerebuild,
-    long long total_nr_cells, long long total_nr_tasks, float tasks_per_cell);
+    long long total_nr_cells, long long total_nr_tasks, float tasks_per_cell,
+    const struct star_formation_history sfh);
 void collectgroup1_reduce(struct collectgroup1 *grp1);
 
 #endif /* SWIFT_COLLECTGROUP_H */

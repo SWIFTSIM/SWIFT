@@ -52,6 +52,9 @@
 #include "proxy.h"
 #include "timers.h"
 
+extern int engine_max_parts_per_ghost;
+extern int engine_max_sparts_per_ghost;
+
 /**
  * @brief Add send tasks for the gravity pairs to a hierarchy of cells.
  *

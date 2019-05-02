@@ -51,12 +51,20 @@ include_HEADERS = space.h runner.h queue.h task.h lock.h cell.h part.h const.h \
     mesh_gravity.h cbrt.h exp10.h velociraptor_interface.h swift_velociraptor_part.h outputlist.h \
     logger_io.h tracers_io.h tracers.h tracers_struct.h star_formation_io.h \
     star_formation_struct.h star_formation.h star_formation_iact.h \
-    velociraptor_struct.h velociraptor_io.h random.h memuse.h black_holes.h black_holes_io.h
+    star_formation_logger.h star_formation_logger_struct.h \
+    velociraptor_struct.h velociraptor_io.h random.h memuse.h black_holes.h black_holes_io.h \
+    feedback.h feedback_struct.h feedback_properties.h
 
 # source files for EAGLE cooling
 EAGLE_COOLING_SOURCES =
 if HAVEEAGLECOOLING
 EAGLE_COOLING_SOURCES += cooling/EAGLE/cooling.c cooling/EAGLE/cooling_tables.c
+endif
+
+# source files for EAGLE feedback
+EAGLE_FEEDBACK_SOURCES =
+if HAVEEAGLEFEEDBACK
+EAGLE_FEEDBACK_SOURCES += feedback/EAGLE/feedback.c
 endif
 
 # Common source files
@@ -71,7 +79,7 @@ AM_SOURCES = space.c runner.c queue.c task.c cell.c engine.c engine_maketasks.c 
     collectgroup.c hydro_space.c equation_of_state.c \
     chemistry.c cosmology.c restart.c mesh_gravity.c velociraptor_interface.c \
     outputlist.c velociraptor_dummy.c logger_io.c memuse.c \
-    $(EAGLE_COOLING_SOURCES)
+    $(EAGLE_COOLING_SOURCES) $(EAGLE_FEEDBACK_SOURCES)
 
 # Include files for distribution, not installation.
 nobase_noinst_HEADERS = align.h approx_math.h atomic.h barrier.h cycle.h error.h inline.h kernel_hydro.h kernel_gravity.h \
@@ -149,7 +157,10 @@ nobase_noinst_HEADERS = align.h approx_math.h atomic.h barrier.h cycle.h error.h
 		 star_formation/EAGLE/star_formation_io.h star_formation/EAGLE/star_formation_iact.h \
 		 star_formation/GEAR/star_formation.h star_formation/GEAR/star_formation_struct.h \
 		 star_formation/GEAR/star_formation_io.h star_formation/GEAR/star_formation_iact.h \
-		 cooling/none/cooling.h cooling/none/cooling_struct.h \
+                 star_formation/EAGLE/star_formation_logger.h star_formation/EAGLE/star_formation_logger_struct.h \
+                 star_formation/GEAR/star_formation_logger.h star_formation/GEAR/star_formation_logger_struct.h \
+                 star_formation/none/star_formation_logger.h star_formation/none/star_formation_logger_struct.h \
+                 cooling/none/cooling.h cooling/none/cooling_struct.h \
                  cooling/none/cooling_io.h \
 		 cooling/Compton/cooling.h cooling/Compton/cooling_struct.h \
                  cooling/Compton/cooling_io.h \
@@ -179,6 +190,11 @@ nobase_noinst_HEADERS = align.h approx_math.h atomic.h barrier.h cycle.h error.h
                  tracers/none/tracers_io.h \
 		 tracers/EAGLE/tracers.h tracers/EAGLE/tracers_struct.h \
                  tracers/EAGLE/tracers_io.h \
+	         feedback/none/feedback.h feedback/none/feedback_struct.h feedback/none/feedback_iact.h \
+                 feedback/none/feedback_properties.h \
+	         feedback/EAGLE/feedback.h feedback/EAGLE/feedback_struct.h feedback/EAGLE/feedback_iact.h \
+                 feedback/EAGLE/feedback_properties.h feedback/EAGLE/imf.h feedback/EAGLE/interpolate.h \
+                 feedback/EAGLE/yield_tables.h \
                  black_holes/Default/black_holes.h black_holes/Default/black_holes_io.h \
 		 black_holes/Default/black_holes_part.h 
 
