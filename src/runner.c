@@ -42,6 +42,7 @@
 #include "approx_math.h"
 #include "atomic.h"
 #include "black_holes.h"
+#include "black_holes_properties.h"
 #include "cell.h"
 #include "chemistry.h"
 #include "const.h"
@@ -515,9 +516,9 @@ void runner_do_black_holes_ghost(struct runner *r, struct cell *c, int timer) {
   const struct cosmology *cosmo = e->cosmology;
   const float black_holes_h_max = e->hydro_properties->h_max;
   const float black_holes_h_min = e->hydro_properties->h_min;
-  const float eps = e->hydro_properties->h_tolerance;
+  const float eps = e->black_holes_properties->h_tolerance;
   const float black_holes_eta_dim =
-      pow_dimension(e->hydro_properties->eta_neighbours);
+      pow_dimension(e->black_holes_properties->eta_neighbours);
   const int max_smoothing_iter = e->hydro_properties->max_smoothing_iterations;
   int redo = 0, bcount = 0;
 
@@ -633,8 +634,9 @@ void runner_do_black_holes_ghost(struct runner *r, struct cell *c, int timer) {
               ((bp->h <= black_holes_h_min) && (f > 0.f))) {
 
             /* Compute variables required for the feedback loop */
-            black_holes_prepare_feedback(bp, e->physical_constants,
-                                         e->cosmology, dt);
+            black_holes_prepare_feedback(bp, e->black_holes_properties,
+                                         e->physical_constants, e->cosmology,
+                                         dt);
 
             /* Reset quantities computed by the feedback loop */
             black_holes_reset_feedback(bp);
@@ -731,8 +733,8 @@ void runner_do_black_holes_ghost(struct runner *r, struct cell *c, int timer) {
         h_max = max(h_max, bp->h);
 
         /* Compute variables required for the feedback loop */
-        black_holes_prepare_feedback(bp, e->physical_constants, e->cosmology,
-                                     dt);
+        black_holes_prepare_feedback(bp, e->black_holes_properties,
+                                     e->physical_constants, e->cosmology, dt);
 
         /* Reset quantities computed by the feedback loop */
         black_holes_reset_feedback(bp);

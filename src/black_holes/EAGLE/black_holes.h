@@ -19,12 +19,16 @@
 #ifndef SWIFT_EAGLE_BLACK_HOLES_H
 #define SWIFT_EAGLE_BLACK_HOLES_H
 
-#include <float.h>
+/* Local includes */
+#include "black_holes_properties.h"
 #include "cosmology.h"
 #include "dimension.h"
 #include "kernel_hydro.h"
 #include "minmax.h"
 #include "physical_constants.h"
+
+/* Standard includes */
+#include <float.h>
 
 /**
  * @brief Computes the gravity time-step of a given black hole particle.
@@ -162,8 +166,9 @@ black_holes_bpart_has_no_neighbours(struct bpart* restrict bp,
  *
  */
 __attribute__((always_inline)) INLINE static void black_holes_prepare_feedback(
-    struct bpart* restrict bp, const struct phys_const* constants,
-    const struct cosmology* cosmo, const double dt) {
+    struct bpart* restrict bp, const struct black_holes_props* props,
+    const struct phys_const* constants, const struct cosmology* cosmo,
+    const double dt) {
 
   /* Gather some physical constants (all in internal units) */
   const double G = constants->const_newton_G;
@@ -172,9 +177,9 @@ __attribute__((always_inline)) INLINE static void black_holes_prepare_feedback(
   const double sigma_Thomson = constants->const_thomson_cross_section;
 
   /* Gather the parameters of the model */
-  const double f_Edd = 1.;
-  const double epsilon_r = 0.1;
-  const double epsilon_f = 0.15;
+  const double f_Edd = props->f_Edd;
+  const double epsilon_r = props->epsilon_r;
+  const double epsilon_f = props->epsilon_f;
 
   /* (Subgrid) mass of the BH (internal units) */
   const double BH_mass = bp->subgrid_mass;
@@ -207,7 +212,7 @@ __attribute__((always_inline)) INLINE static void black_holes_prepare_feedback(
                             gas_rho_phys * denominator_inv * denominator_inv *
                             denominator_inv;
 
-  /* Compute the Eddington rate */
+  /* Compute the Eddington rate (internal units) */
   const double Eddington_rate =
       4. * M_PI * G * BH_mass * proton_mass / (epsilon_r * c * sigma_Thomson);
 

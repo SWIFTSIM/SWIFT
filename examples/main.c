@@ -98,6 +98,7 @@ int main(int argc, char *argv[]) {
   struct stars_props stars_properties;
   struct feedback_props feedback_properties;
   struct entropy_floor_properties entropy_floor;
+  struct black_holes_props black_holes_properties;
   struct part *parts = NULL;
   struct phys_const prog_const;
   struct space s;
@@ -384,6 +385,16 @@ int main(int argc, char *argv[]) {
       argparse_usage(&argparse);
       printf(
           "\nError: Cannot process feedback without gas, --hydro must be "
+          "chosen.\n");
+    }
+    return 1;
+  }
+
+  if (!with_hydro && with_black_holes) {
+    if (myrank == 0) {
+      argparse_usage(&argparse);
+      printf(
+          "\nError: Cannot process black holes without gas, --hydro must be "
           "chosen.\n");
     }
     return 1;
@@ -755,6 +766,16 @@ int main(int argc, char *argv[]) {
     } else
       bzero(&feedback_properties, sizeof(struct feedback_props));
 
+    /* Initialise the black holes properties */
+    if (with_black_holes) {
+#ifdef BLACK_HOLES_NONE
+      error("ERROR: Running with black_holes but compiled without it.");
+#endif
+      black_holes_props_init(&black_holes_properties, &prog_const, &us, params,
+                             &hydro_properties, &cosmo);
+    } else
+      bzero(&black_holes_properties, sizeof(struct black_holes_props));
+
     /* Initialise the gravity properties */
     if (with_self_gravity)
       gravity_props_init(&gravity_properties, params, &cosmo, with_cosmology,
@@ -1005,8 +1026,9 @@ int main(int argc, char *argv[]) {
     engine_init(&e, &s, params, N_total[0], N_total[1], N_total[2],
                 engine_policies, talking, &reparttype, &us, &prog_const, &cosmo,
                 &hydro_properties, &entropy_floor, &gravity_properties,
-                &stars_properties, &feedback_properties, &mesh, &potential,
-                &cooling_func, &starform, &chemistry);
+                &stars_properties, &black_holes_properties,
+                &feedback_properties, &mesh, &potential, &cooling_func,
+                &starform, &chemistry);
     engine_config(0, &e, params, nr_nodes, myrank, nr_threads, with_aff,
                   talking, restart_file);
 
