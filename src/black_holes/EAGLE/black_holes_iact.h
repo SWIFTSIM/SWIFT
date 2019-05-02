@@ -19,7 +19,9 @@
 #ifndef SWIFT_EAGLE_BH_IACT_H
 #define SWIFT_EAGLE_BH_IACT_H
 
+/* Local includes */
 #include "hydro.h"
+#include "random.h"
 
 /**
  * @brief Density interaction between two particles (non-symmetric).
@@ -35,8 +37,9 @@
  */
 __attribute__((always_inline)) INLINE static void runner_iact_nonsym_bh_density(
     const float r2, const float *dx, const float hi, const float hj,
-    struct bpart *restrict bi, const struct part *restrict pj, const float a,
-    const float H) {
+    struct bpart *restrict bi, const struct part *restrict pj,
+    const struct xpart *restrict xpj, const struct cosmology *cosmo,
+    const integertime_t ti_current) {
 
   float wi, wi_dx;
 
@@ -104,8 +107,34 @@ __attribute__((always_inline)) INLINE static void runner_iact_nonsym_bh_density(
 __attribute__((always_inline)) INLINE static void
 runner_iact_nonsym_bh_feedback(const float r2, const float *dx, const float hi,
                                const float hj, struct bpart *restrict bi,
-                               struct part *restrict pj, const float a,
-                               const float H) {
+                               struct part *restrict pj,
+                               struct xpart *restrict xpj,
+                               const struct cosmology *cosmo,
+                               const integertime_t ti_current) {
+
+  /* Get the heating probability */
+  const float prob = bi->to_distribute.AGN_heating_probability;
+
+  /* Are we doing some feedback? */
+  if (prob > 0.f) {
+
+    /* Draw a random number (Note mixing both IDs) */
+    const float rand = random_unit_interval(bi->id + pj->id, ti_current,
+                                            random_number_BH_feedback);
+
+    /* Are we lucky? */
+    if (rand < prob) {
+
+      /* Compute new energy of this particle */
+      const double u_init = hydro_get_physical_internal_energy(pj, xpj, cosmo);
+      const float delta_u = bi->to_distribute.AGN_delta_u;
+      const double u_new = u_init + delta_u;
+
+      hydro_set_physical_internal_energy(pj, xpj, cosmo, u_new);
+      hydro_set_drifted_physical_internal_energy(pj, cosmo, u_new);
+    }
+  }
+
 #ifdef DEBUG_INTERACTIONS_BH
   /* Update ngb counters */
   if (si->num_ngb_force < MAX_NUM_OF_NEIGHBOURS_BH)

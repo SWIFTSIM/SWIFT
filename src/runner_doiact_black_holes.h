@@ -98,23 +98,18 @@ void DOSELF1_BH(struct runner *r, struct cell *c, int timer) {
   TIMER_TIC;
 
   const struct engine *e = r->e;
-  // const int with_cosmology = e->policy & engine_policy_cosmology;
-  // const integertime_t ti_current = e->ti_current;
+  const integertime_t ti_current = e->ti_current;
   const struct cosmology *cosmo = e->cosmology;
 
   /* Anything to do here? */
   if (c->hydro.count == 0 || c->black_holes.count == 0) return;
   if (!cell_is_active_black_holes(c, e)) return;
 
-  /* Cosmological terms */
-  const float a = cosmo->a;
-  const float H = cosmo->H;
-
   const int bcount = c->black_holes.count;
   const int count = c->hydro.count;
   struct bpart *restrict bparts = c->black_holes.parts;
   struct part *restrict parts = c->hydro.parts;
-  // struct xpart *restrict xparts = c->hydro.xparts;
+  struct xpart *restrict xparts = c->hydro.xparts;
 
   /* Loop over the bparts in ci. */
   for (int sid = 0; sid < bcount; sid++) {
@@ -136,7 +131,7 @@ void DOSELF1_BH(struct runner *r, struct cell *c, int timer) {
 
       /* Get a pointer to the jth particle. */
       struct part *restrict pj = &parts[pjd];
-      // struct xpart *restrict xpj = &xparts[pjd];
+      struct xpart *restrict xpj = &xparts[pjd];
       const float hj = pj->h;
 
       /* Early abort? */
@@ -156,7 +151,7 @@ void DOSELF1_BH(struct runner *r, struct cell *c, int timer) {
 #endif
 
       if (r2 < hig2) {
-        IACT_BH(r2, dx, hi, hj, si, pj, a, H);
+        IACT_BH(r2, dx, hi, hj, si, pj, xpj, cosmo, ti_current);
       }
     } /* loop over the parts in ci. */
   }   /* loop over the bparts in ci. */
@@ -183,23 +178,18 @@ void DO_NONSYM_PAIR1_BH_NAIVE(struct runner *r, struct cell *restrict ci,
 #endif
 
   const struct engine *e = r->e;
-  // const int with_cosmology = e->policy & engine_policy_cosmology;
-  // const integertime_t ti_current = e->ti_current;
+  const integertime_t ti_current = e->ti_current;
   const struct cosmology *cosmo = e->cosmology;
 
   /* Anything to do here? */
   if (cj->hydro.count == 0 || ci->black_holes.count == 0) return;
   if (!cell_is_active_black_holes(ci, e)) return;
 
-  /* Cosmological terms */
-  const float a = cosmo->a;
-  const float H = cosmo->H;
-
   const int bcount_i = ci->black_holes.count;
   const int count_j = cj->hydro.count;
   struct bpart *restrict bparts_i = ci->black_holes.parts;
   struct part *restrict parts_j = cj->hydro.parts;
-  // struct xpart *restrict xparts_j = cj->hydro.xparts;
+  struct xpart *restrict xparts_j = cj->hydro.xparts;
 
   /* Get the relative distance between the pairs, wrapping. */
   double shift[3] = {0.0, 0.0, 0.0};
@@ -230,7 +220,7 @@ void DO_NONSYM_PAIR1_BH_NAIVE(struct runner *r, struct cell *restrict ci,
 
       /* Get a pointer to the jth particle. */
       struct part *restrict pj = &parts_j[pjd];
-      // struct xpart *restrict xpj = &xparts_j[pjd];
+      struct xpart *restrict xpj = &xparts_j[pjd];
       const float hj = pj->h;
 
       /* Skip inhibited particles. */
@@ -250,7 +240,7 @@ void DO_NONSYM_PAIR1_BH_NAIVE(struct runner *r, struct cell *restrict ci,
 #endif
 
       if (r2 < hig2) {
-        IACT_BH(r2, dx, hi, hj, si, pj, a, H);
+        IACT_BH(r2, dx, hi, hj, si, pj, xpj, cosmo, ti_current);
       }
     } /* loop over the parts in cj. */
   }   /* loop over the parts in ci. */
@@ -301,16 +291,12 @@ void DOPAIR1_SUBSET_BH_NAIVE(struct runner *r, struct cell *restrict ci,
 #endif
 
   const struct engine *e = r->e;
-  // const integertime_t ti_current = e->ti_current;
+  const integertime_t ti_current = e->ti_current;
   const struct cosmology *cosmo = e->cosmology;
-
-  /* Cosmological terms */
-  const float a = cosmo->a;
-  const float H = cosmo->H;
 
   const int count_j = cj->hydro.count;
   struct part *restrict parts_j = cj->hydro.parts;
-  // struct xpart *restrict xparts_j = cj->hydro.xparts;
+  struct xpart *restrict xparts_j = cj->hydro.xparts;
 
   /* Early abort? */
   if (count_j == 0) return;
@@ -337,7 +323,7 @@ void DOPAIR1_SUBSET_BH_NAIVE(struct runner *r, struct cell *restrict ci,
 
       /* Get a pointer to the jth particle. */
       struct part *restrict pj = &parts_j[pjd];
-      // struct xpart *restrict xpj = &xparts_j[pjd];
+      struct xpart *restrict xpj = &xparts_j[pjd];
 
       /* Skip inhibited particles */
       if (part_is_inhibited(pj, e)) continue;
@@ -359,7 +345,7 @@ void DOPAIR1_SUBSET_BH_NAIVE(struct runner *r, struct cell *restrict ci,
 #endif
       /* Hit or miss? */
       if (r2 < hig2) {
-        IACT_BH(r2, dx, hi, hj, bpi, pj, a, H);
+        IACT_BH(r2, dx, hi, hj, bpi, pj, xpj, cosmo, ti_current);
       }
     } /* loop over the parts in cj. */
   }   /* loop over the parts in ci. */
@@ -384,16 +370,12 @@ void DOSELF1_SUBSET_BH(struct runner *r, struct cell *restrict ci,
 #endif
 
   const struct engine *e = r->e;
-  // const integertime_t ti_current = e->ti_current;
+  const integertime_t ti_current = e->ti_current;
   const struct cosmology *cosmo = e->cosmology;
-
-  /* Cosmological terms */
-  const float a = cosmo->a;
-  const float H = cosmo->H;
 
   const int count_i = ci->hydro.count;
   struct part *restrict parts_j = ci->hydro.parts;
-  // struct xpart *restrict xparts_j = ci->hydro.xparts;
+  struct xpart *restrict xparts_j = ci->hydro.xparts;
 
   /* Early abort? */
   if (count_i == 0) return;
@@ -419,7 +401,7 @@ void DOSELF1_SUBSET_BH(struct runner *r, struct cell *restrict ci,
 
       /* Get a pointer to the jth particle. */
       struct part *restrict pj = &parts_j[pjd];
-      // struct xpart *restrict xpj = &xparts_j[pjd];
+      struct xpart *restrict xpj = &xparts_j[pjd];
 
       /* Early abort? */
       if (part_is_inhibited(pj, e)) continue;
@@ -439,7 +421,7 @@ void DOSELF1_SUBSET_BH(struct runner *r, struct cell *restrict ci,
 
       /* Hit or miss? */
       if (r2 < hig2) {
-        IACT_BH(r2, dx, hi, pj->h, bpi, pj, a, H);
+        IACT_BH(r2, dx, hi, pj->h, bpi, pj, xpj, cosmo, ti_current);
       }
     } /* loop over the parts in cj. */
   }   /* loop over the parts in ci. */
