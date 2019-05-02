@@ -20,6 +20,9 @@
 #define SWIFT_DEFAULT_BLACK_HOLES_H
 
 #include <float.h>
+
+/* Local includes */
+#include "black_holes_properties.h"
 #include "dimension.h"
 #include "kernel_hydro.h"
 #include "minmax.h"
@@ -42,9 +45,10 @@ __attribute__((always_inline)) INLINE static float black_holes_compute_timestep(
  * read in to do some conversions.
  *
  * @param bp The particle to act upon
+ * @param props The properties of the black holes model.
  */
 __attribute__((always_inline)) INLINE static void black_holes_first_init_bpart(
-    struct bpart* bp) {
+    struct bpart* bp, const struct black_holes_props* props) {
 
   bp->time_bin = 0;
 }
@@ -134,6 +138,23 @@ black_holes_bpart_has_no_neighbours(struct bpart* restrict bp,
   bp->density.wcount = kernel_root * h_inv_dim;
   bp->density.wcount_dh = 0.f;
 }
+
+/**
+ * @brief Compute the accretion rate of the black hole and all the quantites
+ * required for the feedback loop.
+ *
+ * Nothing to do here.
+ *
+ * @param bp The black hole particle.
+ * @param props The properties of the black hole scheme.
+ * @param constants The physical constants (in internal units).
+ * @param cosmo The cosmological model.
+ * @param dt The time-step size (in physical internal units).
+ */
+__attribute__((always_inline)) INLINE static void black_holes_prepare_feedback(
+    struct bpart* restrict bp, const struct black_holes_props* props,
+    const struct phys_const* constants, const struct cosmology* cosmo,
+    const double dt) {}
 
 /**
  * @brief Reset acceleration fields of a particle

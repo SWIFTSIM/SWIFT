@@ -61,12 +61,12 @@ struct black_holes_props {
  * @param hydro_props The already read-in properties of the hydro scheme.
  * @param cosmo The cosmological model.
  */
-void black_holes_props_init(struct black_holes_props *bp,
-                            const struct phys_const *phys_const,
-                            const struct unit_system *us,
-                            struct swift_params *params,
-                            const struct hydro_props *hydro_props,
-                            const struct cosmology *cosmo) {
+static INLINE void black_holes_props_init(struct black_holes_props *bp,
+                                          const struct phys_const *phys_const,
+                                          const struct unit_system *us,
+                                          struct swift_params *params,
+                                          const struct hydro_props *hydro_props,
+                                          const struct cosmology *cosmo) {
 
   /* Kernel properties */
   bp->eta_neighbours = parser_get_opt_param_float(

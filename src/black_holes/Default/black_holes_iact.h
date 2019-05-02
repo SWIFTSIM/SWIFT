@@ -33,8 +33,9 @@
  */
 __attribute__((always_inline)) INLINE static void runner_iact_nonsym_bh_density(
     const float r2, const float *dx, const float hi, const float hj,
-    struct bpart *restrict bi, const struct part *restrict pj, const float a,
-    const float H) {
+    struct bpart *restrict bi, const struct part *restrict pj,
+    const struct xpart *restrict xpj, const struct cosmology *cosmo,
+    const integertime_t ti_current) {
 
   float wi, wi_dx;
 
@@ -76,8 +77,10 @@ __attribute__((always_inline)) INLINE static void runner_iact_nonsym_bh_density(
 __attribute__((always_inline)) INLINE static void
 runner_iact_nonsym_bh_feedback(const float r2, const float *dx, const float hi,
                                const float hj, struct bpart *restrict bi,
-                               struct part *restrict pj, const float a,
-                               const float H) {
+                               struct part *restrict pj,
+                               const struct xpart *restrict xpj,
+                               const struct cosmology *cosmo,
+                               const integertime_t ti_current) {
 #ifdef DEBUG_INTERACTIONS_BH
   /* Update ngb counters */
   if (si->num_ngb_force < MAX_NUM_OF_NEIGHBOURS_BH)
