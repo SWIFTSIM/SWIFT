@@ -64,7 +64,7 @@ int _tools_get_next_record_forward(const struct header *h, void *map,
   if (diff_offset == 0) return -1;
 
   /* set absolute offset */
-  *offset += diff_offset - LOGGER_MASK_SIZE - LOGGER_OFFSET_SIZE;
+  *offset += diff_offset;
   return 0;
 }
 
@@ -130,10 +130,11 @@ size_t tools_reverse_offset(const struct header *h, void *file_map, size_t offse
 
   /* set offset after current record */
   map += header_get_record_size_from_mask(h, mask);
+  size_t after_current_record = (size_t) (map - file_map);
 
   /* first records do not have a previous partner */
   if (prev_offset == cur_offset)
-    return offset;
+    return after_current_record;
 
   if (prev_offset > cur_offset)
     error("Unexpected offset, header %lu, current %lu", prev_offset,
@@ -146,14 +147,14 @@ size_t tools_reverse_offset(const struct header *h, void *file_map, size_t offse
 #ifdef SWIFT_DEBUG_CHECKS
   size_t prev_mask = 0;
   map -= LOGGER_MASK_SIZE + LOGGER_OFFSET_SIZE;
-  map = logger_io_read_mask(h, map, &prev_mask, NULL);
+  logger_io_read_mask(h, map, &prev_mask, NULL);
 
   if (prev_mask != mask)
     error("Unexpected mask: %lu, got %lu", mask, prev_mask);
 
 #endif  // SWIFT_DEBUG_CHECKS
 
-  return offset;
+  return after_current_record;
 }
 
 /**
@@ -203,25 +204,24 @@ size_t tools_check_record_consistency(const struct logger_reader *reader, size_t
 
   /* read mask of the pointed record */
   size_t pointed_mask = 0;
-  map = logger_io_read_mask(h, map + pointed_offset, &pointed_mask, NULL);
+  logger_io_read_mask(h, file_init + pointed_offset, &pointed_mask, NULL);
 
   /* check masks */
   if (pointed_mask != mask)
-    error("Error in the offset (mask %lu != %lu)", mask,
-          pointed_mask);
+    error("Error in the offset (mask %lu at %lu != %lu at %lu)", mask, offset,
+          pointed_mask, pointed_offset);
 
   if (pointed_mask == 128)
     return (size_t) (map - file_init);
 
   struct logger_particle part;
-  size_t tmp = logger_particle_read(&part, reader, offset, 0, logger_reader_const);
+  logger_particle_read(&part, reader, offset, 0, logger_reader_const);
 
   size_t id = part.id;
-  tmp = pointed_offset - LOGGER_MASK_SIZE - LOGGER_OFFSET_SIZE;
-  tmp = logger_particle_read(&part, reader, tmp, 0, logger_reader_const);
+  logger_particle_read(&part, reader, pointed_offset, 0, logger_reader_const);
 
   if (id != part.id)
-    error("Offset wrong, id incorrect (%lu != %lu) at %lu", id, part.id, tmp);
+    error("Offset wrong, id incorrect (%lu != %lu) at %lu", id, part.id, pointed_offset);
 
   return (size_t) (map - file_init);
 }
