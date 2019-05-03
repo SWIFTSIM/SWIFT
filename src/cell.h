@@ -1193,19 +1193,8 @@ __attribute__((always_inline)) INLINE static int cell_get_flag(
 }
 
 /**
- * @brief Check if a cell has a send/recv task of the given subtype.
+ * @brief Check if a cell has a recv task of the given subtype.
  */
-__attribute__((always_inline)) INLINE static struct task *cell_get_send(
-    const struct cell *c, enum task_subtypes subtype) {
-#ifdef WITH_MPI
-  struct link *l = c->mpi.send;
-  while (l != NULL && l->t->subtype != subtype) l = l->next;
-  return (l != NULL) ? l->t : NULL;
-#else
-  return NULL;
-#endif
-}
-
 __attribute__((always_inline)) INLINE static struct task *cell_get_recv(
     const struct cell *c, enum task_subtypes subtype) {
 #ifdef WITH_MPI
