@@ -282,26 +282,8 @@ void space_rebuild_recycle_mapper(void *map_data, int num_elements,
     cell_free_stars_sorts(c);
 #if WITH_MPI
     c->mpi.tag = -1;
-
-    c->mpi.hydro.recv_xv = NULL;
-    c->mpi.hydro.recv_rho = NULL;
-    c->mpi.hydro.recv_gradient = NULL;
-    c->mpi.hydro.recv_ti = NULL;
-    c->mpi.grav.recv = NULL;
-    c->mpi.grav.recv_ti = NULL;
-    c->mpi.stars.recv = NULL;
-    c->mpi.stars.recv_ti = NULL;
-    c->mpi.limiter.recv = NULL;
-
-    c->mpi.hydro.send_xv = NULL;
-    c->mpi.hydro.send_rho = NULL;
-    c->mpi.hydro.send_gradient = NULL;
-    c->mpi.hydro.send_ti = NULL;
-    c->mpi.grav.send = NULL;
-    c->mpi.grav.send_ti = NULL;
-    c->mpi.stars.send = NULL;
-    c->mpi.stars.send_ti = NULL;
-    c->mpi.limiter.send = NULL;
+    c->mpi.recv = NULL;
+    c->mpi.send = NULL;
 #endif
   }
 }
@@ -605,26 +587,8 @@ void space_regrid(struct space *s, int verbose) {
           c->grav.ti_old_multipole = ti_current;
 #ifdef WITH_MPI
           c->mpi.tag = -1;
-
-          c->mpi.hydro.recv_xv = NULL;
-          c->mpi.hydro.recv_rho = NULL;
-          c->mpi.hydro.recv_gradient = NULL;
-          c->mpi.hydro.recv_ti = NULL;
-          c->mpi.grav.recv = NULL;
-          c->mpi.grav.recv_ti = NULL;
-          c->mpi.stars.recv = NULL;
-          c->mpi.stars.recv_ti = NULL;
-          c->mpi.limiter.recv = NULL;
-
-          c->mpi.hydro.send_xv = NULL;
-          c->mpi.hydro.send_rho = NULL;
-          c->mpi.hydro.send_gradient = NULL;
-          c->mpi.hydro.send_ti = NULL;
-          c->mpi.grav.send = NULL;
-          c->mpi.grav.send_ti = NULL;
-          c->mpi.stars.send = NULL;
-          c->mpi.stars.send_ti = NULL;
-          c->mpi.limiter.send = NULL;
+          c->mpi.recv = NULL;
+          c->mpi.send = NULL;
 #endif  // WITH_MPI
           if (s->with_self_gravity) c->grav.multipole = &s->multipoles_top[cid];
 #if defined(SWIFT_DEBUG_CHECKS) || defined(SWIFT_CELL_GRAPH)

@@ -405,7 +405,7 @@ static void dumpCells_map(struct cell *c, void *data) {
      * These define the edges of the partitions. */
     int ismpiactive = 0;
 #if WITH_MPI
-    ismpiactive = (c->mpi.hydro.send_xv != NULL);
+    ismpiactive = (c->mpi.send != NULL);
     if (mpiactive)
       mpiactive = ismpiactive;
     else

@@ -27,8 +27,12 @@
 
 /* Includes. */
 #include "align.h"
-#include "cell.h"
 #include "cycle.h"
+#include "timeline.h"
+
+/* Forward declarations to avoid circular inclusion dependencies. */
+struct cell;
+struct engine;
 
 #define task_align 128
 

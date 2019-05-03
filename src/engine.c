@@ -156,6 +156,12 @@ struct end_of_step_data {
  */
 void engine_addlink(struct engine *e, struct link **l, struct task *t) {
 
+#ifdef SWIFT_DEBUG_CHECKS
+  if (t == NULL) {
+    error("Trying to link NULL task.");
+  }
+#endif
+
   /* Get the next free link. */
   const size_t ind = atomic_inc(&e->nr_links);
   if (ind >= e->size_links) {
@@ -2676,11 +2682,10 @@ void engine_barrier(struct engine *e) {
 void engine_collect_end_of_step_recurse_hydro(struct cell *c,
                                               const struct engine *e) {
 
-/* Skip super-cells (Their values are already set) */
-#ifdef WITH_MPI
-  if (c->timestep != NULL || c->mpi.hydro.recv_ti != NULL) return;
-#else
+  /* Skip super-cells (Their values are already set) */
   if (c->timestep != NULL) return;
+#ifdef WITH_MPI
+  if (cell_get_recv(c, task_subtype_tend_part) != NULL) return;
 #endif /* WITH_MPI */
 
 #ifdef SWIFT_DEBUG_CHECKS
@@ -2753,11 +2758,10 @@ void engine_collect_end_of_step_recurse_hydro(struct cell *c,
 void engine_collect_end_of_step_recurse_grav(struct cell *c,
                                              const struct engine *e) {
 
-/* Skip super-cells (Their values are already set) */
-#ifdef WITH_MPI
-  if (c->timestep != NULL || c->mpi.grav.recv_ti != NULL) return;
-#else
+  /* Skip super-cells (Their values are already set) */
   if (c->timestep != NULL) return;
+#ifdef WITH_MPI
+  if (cell_get_recv(c, task_subtype_tend_gpart) != NULL) return;
 #endif /* WITH_MPI */
 
 #ifdef SWIFT_DEBUG_CHECKS
@@ -2812,11 +2816,10 @@ void engine_collect_end_of_step_recurse_grav(struct cell *c,
 void engine_collect_end_of_step_recurse_stars(struct cell *c,
                                               const struct engine *e) {
 
-/* Skip super-cells (Their values are already set) */
-#ifdef WITH_MPI
-  if (c->timestep != NULL || c->mpi.stars.recv_ti != NULL) return;
-#else
+  /* Skip super-cells (Their values are already set) */
   if (c->timestep != NULL) return;
+#ifdef WITH_MPI
+  if (cell_get_recv(c, task_subtype_tend_spart) != NULL) return;
 #endif /* WITH_MPI */
 
 #ifdef SWIFT_DEBUG_CHECKS

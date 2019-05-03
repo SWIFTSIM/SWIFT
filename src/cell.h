@@ -653,71 +653,13 @@ struct cell {
   /*! MPI variables */
   struct {
 
-    struct {
-      /* Task receiving hydro data (positions). */
-      struct task *recv_xv;
-
-      /* Task receiving hydro data (density). */
-      struct task *recv_rho;
-
-      /* Task receiving hydro data (gradient). */
-      struct task *recv_gradient;
-
-      /* Task receiving data (time-step). */
-      struct task *recv_ti;
-
-      /* Linked list for sending hydro data (positions). */
-      struct link *send_xv;
-
-      /* Linked list for sending hydro data (density). */
-      struct link *send_rho;
-
-      /* Linked list for sending hydro data (gradient). */
-      struct link *send_gradient;
-
-      /* Linked list for sending data (time-step). */
-      struct link *send_ti;
-
-    } hydro;
-
-    struct {
-
-      /* Task receiving gpart data. */
-      struct task *recv;
-
-      /* Task receiving data (time-step). */
-      struct task *recv_ti;
-
-      /* Linked list for sending gpart data. */
+    union {
+      /* Single list of all send tasks associated with this cell. */
       struct link *send;
 
-      /* Linked list for sending data (time-step). */
-      struct link *send_ti;
-
-    } grav;
-
-    struct {
-      /* Task receiving spart data. */
-      struct task *recv;
-
-      /* Task receiving data (time-step). */
-      struct task *recv_ti;
-
-      /* Linked list for sending spart data. */
-      struct link *send;
-
-      /* Linked list for sending data (time-step). */
-      struct link *send_ti;
-
-    } stars;
-
-    struct {
-      /* Task receiving limiter data. */
-      struct task *recv;
-
-      /* Linked list for sending limiter data. */
-      struct link *send;
-    } limiter;
+      /* Single list of all recv tasks associated with this cell. */
+      struct link *recv;
+    };
 
     /*! Bit mask of the proxies this cell is registered with. */
     unsigned long long int sendto;
@@ -1248,6 +1190,20 @@ __attribute__((always_inline)) INLINE static void cell_clear_flag(
 __attribute__((always_inline)) INLINE static int cell_get_flag(
     const struct cell *c, uint32_t flag) {
   return (c->flags & flag) > 0;
+}
+
+/**
+ * @brief Check if a cell has a recv task of the given subtype.
+ */
+__attribute__((always_inline)) INLINE static struct task *cell_get_recv(
+    const struct cell *c, enum task_subtypes subtype) {
+#ifdef WITH_MPI
+  struct link *l = c->mpi.recv;
+  while (l != NULL && l->t->subtype != subtype) l = l->next;
+  return (l != NULL) ? l->t : NULL;
+#else
+  return NULL;
+#endif
 }
 
 #endif /* SWIFT_CELL_H */

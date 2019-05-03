@@ -56,7 +56,6 @@
 
 /* Data of a scheduler. */
 struct scheduler {
-
   /* Scheduler flags. */
   unsigned int flags;
 
@@ -120,7 +119,6 @@ struct scheduler {
  */
 __attribute__((always_inline)) INLINE static void scheduler_activate(
     struct scheduler *s, struct task *t) {
-
   if (atomic_cas(&t->skip, 1, 0)) {
     t->wait = 0;
     int ind = atomic_inc(&s->active_count);
@@ -134,18 +132,44 @@ __attribute__((always_inline)) INLINE static void scheduler_activate(
  * @param s The #scheduler.
  * @param link The first element in the linked list of links for the task of
  * interest.
+ * @param subtype the task subtype to activate.
  * @param nodeID The nodeID of the foreign cell.
  *
  * @return The #link to the MPI send task.
  */
 __attribute__((always_inline)) INLINE static struct link *
-scheduler_activate_send(struct scheduler *s, struct link *link, int nodeID) {
-
+scheduler_activate_send(struct scheduler *s, struct link *link,
+                        enum task_subtypes subtype, int nodeID) {
   struct link *l = NULL;
-  for (l = link; l != NULL && l->t->cj->nodeID != nodeID; l = l->next)
+  for (l = link;
+       l != NULL && !(l->t->cj->nodeID == nodeID && l->t->subtype == subtype);
+       l = l->next)
     ;
   if (l == NULL) {
     error("Missing link to send task.");
+  }
+  scheduler_activate(s, l->t);
+  return l;
+}
+
+/**
+ * @brief Search and add an MPI recv task to the list of active tasks.
+ *
+ * @param s The #scheduler.
+ * @param link The first element in the linked list of links for the task of
+ * interest.
+ * @param subtype the task subtype to activate.
+ *
+ * @return The #link to the MPI recv task.
+ */
+__attribute__((always_inline)) INLINE static struct link *
+scheduler_activate_recv(struct scheduler *s, struct link *link,
+                        enum task_subtypes subtype) {
+  struct link *l = NULL;
+  for (l = link; l != NULL && l->t->subtype != subtype; l = l->next)
+    ;
+  if (l == NULL) {
+    error("Missing link to recv task.");
   }
   scheduler_activate(s, l->t);
   return l;
