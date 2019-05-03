@@ -44,7 +44,7 @@ size_t time_read(integertime_t *int_time, double *time, const struct logger_read
   *time = 0;
 
   /* read record header */
-  offset = logger_io_read_mask(h, map, offset, &mask, &prev_offset);
+  map = logger_io_read_mask(h, map + offset, &mask, &prev_offset);
 
 #ifdef SWIFT_DEBUG_CHECKS
 
@@ -57,10 +57,10 @@ size_t time_read(integertime_t *int_time, double *time, const struct logger_read
 #endif
 
   /* read the record */
-  offset = logger_io_read_data(map, sizeof(unsigned long long int), int_time, offset);
-  offset = logger_io_read_data(map, sizeof(double), time, offset);
+  map = logger_io_read_data(map, sizeof(unsigned long long int), int_time);
+  map = logger_io_read_data(map, sizeof(double), time);
 
-  return offset;
+  return (size_t) (map - h->log->log.map);
 }
 
 /**
@@ -82,7 +82,7 @@ size_t time_offset_first_record(const struct header *h) {
   if (i == -1) error("Time mask not present in the log file header");
 
   size_t mask = 0;
-  logger_io_read_mask(h, map, offset, &mask, NULL);
+  logger_io_read_mask(h, map + offset, &mask, NULL);
 
   if (mask != h->masks[i].mask) error("Log file should begin by timestep");
 

@@ -38,47 +38,44 @@ void logger_io_munmap_file(void *map, size_t file_size);
  *
  * @param h #header file structure.
  * @param data Pointer to the data to read.
- * @param offset position in the file.
- * @param mask mask read from the data.
- * @param diff_offset offset difference to previous/next corresponding record read.
- * from the data.
+ * @param mask (output) mask read from the data.
+ * @param diff_offset (output) offset difference to previous/next corresponding record.
  *
- * @return offset after the record header.
+ * @return memory after the record header.
  */
-__attribute__((always_inline)) INLINE static size_t logger_io_read_mask(
-    const struct header *h, void *data, size_t offset, size_t *mask,
+__attribute__((always_inline)) INLINE static void* logger_io_read_mask(
+    const struct header *h, void *data, size_t *mask,
     size_t *diff_offset) {
   /* read mask */
   if (mask) {
     *mask = 0;
-    memcpy(mask, data + offset, LOGGER_MASK_SIZE);
+    memcpy(mask, data, LOGGER_MASK_SIZE);
   }
-  offset += LOGGER_MASK_SIZE;
+  data += LOGGER_MASK_SIZE;
 
   /* read offset */
   if (diff_offset) {
     *diff_offset = 0;
-    memcpy(diff_offset, data + offset, LOGGER_OFFSET_SIZE);
+    memcpy(diff_offset, data, LOGGER_OFFSET_SIZE);
   }
-  offset += LOGGER_OFFSET_SIZE;
+  data += LOGGER_OFFSET_SIZE;
 
-  return offset;
+  return data;
 }
 
 /**
- * @brief read a single value in a file.
+ * @brief read a single value from a file.
  *
  * @param data Pointer to the data to read.
  * @param size size of the data to read.
  * @param p pointer where to store the data.
- * @param offset position to read.
 
- * @return offset after the data written.
+ * @return memory after the data written.
  */
-__attribute__((always_inline)) INLINE static size_t logger_io_read_data(
-    void *data, const size_t size, void *p, size_t offset) {
-  memcpy(p, data + offset, size);
-  return offset + size;
+__attribute__((always_inline)) INLINE static void* logger_io_read_data(
+    void *data, const size_t size, void *p) {
+  memcpy(p, data, size);
+  return data + size;
 };
 
 /**
@@ -87,15 +84,14 @@ __attribute__((always_inline)) INLINE static size_t logger_io_read_data(
  * @param data Pointer to the data to read.
  * @param size size of the data to write.
  * @param p pointer to the data.
- * @param offset position to write.
  *
- * @return offset after the data written.
+ * @return memory after the data written.
  */
-__attribute__((always_inline)) INLINE static size_t logger_io_write_data(
-    void *data, const size_t size, const void *p, size_t offset) {
-  memcpy(data + offset, p, size);
+__attribute__((always_inline)) INLINE static void* logger_io_write_data(
+    void *data, const size_t size, const void *p) {
+  memcpy(data, p, size);
 
-  return offset + size;
+  return data + size;
 };
 
 #endif  // __LOGGER_LOGGER_IO_H__

@@ -68,15 +68,13 @@ void logger_particle_init(struct logger_particle *part) {
  *
  * @param part The #logger_particle to update.
  * @param map The mapped data.
- * @param offset position to read.
  * @param field field to read.
  * @param size number of bits to read.
  *
- * @return position after the data read.
+ * @return mapped data after the block read.
  */
-size_t logger_particle_read_field(struct logger_particle *part, void *map,
-				  size_t offset, const char *field,
-				  const size_t size) {
+void* logger_particle_read_field(struct logger_particle *part, void *map,
+				  const char *field, const size_t size) {
   void *p = NULL;
 
   /* Get the correct pointer */
@@ -99,7 +97,7 @@ size_t logger_particle_read_field(struct logger_particle *part, void *map,
   }
 
   /* read the data */
-  offset = logger_io_read_data(map, size, p, offset);
+  map = logger_io_read_data(map, size, p);
 
   /* Split the required fields */
   if (strcmp("consts", field) == 0) {
@@ -112,7 +110,7 @@ size_t logger_particle_read_field(struct logger_particle *part, void *map,
     free(p);
   }
 
-  return offset;
+  return map;
 }
 
 /**
@@ -142,7 +140,7 @@ size_t logger_particle_read(struct logger_particle *part, const struct logger_re
   logger_particle_init(part);
 
   /* Read the record mask */
-  offset = logger_io_read_mask(h, map, offset, &mask, &h_offset);
+  map = logger_io_read_mask(h, map + offset, &mask, &h_offset);
 
   /* Check if it is not a time record */
   if (mask != 127) error("Unexpected mask: %lu", mask);
@@ -150,18 +148,20 @@ size_t logger_particle_read(struct logger_particle *part, const struct logger_re
   /* Read all the fields */
   for (size_t i = 0; i < h->number_mask; i++) {
     if (mask & h->masks[i].mask) {
-      offset = logger_particle_read_field(part, map, offset, h->masks[i].name,
-					  h->masks[i].size);
+      map = logger_particle_read_field(part, map, h->masks[i].name,
+				       h->masks[i].size);
     }
   }
 
   /* Get the time of current record. */
-  if (times) {
-    /* move offset by 1 in order to be in the required record. */
-    part->time = time_array_get_time(times, offset - 1);
+  if (times->next) {
+    part->time = time_array_get_time(times, offset);
   }
   else
     part->time = -1;
+
+  /* update the offset */
+  offset = (size_t) (map - reader->log.log.map);
 
   /* Check if an interpolation is required. */
   if (reader_type == logger_reader_const)
@@ -177,7 +177,7 @@ size_t logger_particle_read(struct logger_particle *part, const struct logger_re
 
   /* No next particle. */
   if (h_offset == 0)
-    return offset;
+    return (size_t) (map - reader->log.log.map);
 
   /* get absolute offset of next particle. */
   h_offset += offset - header_get_record_size_from_mask(h, mask) - LOGGER_MASK_SIZE -

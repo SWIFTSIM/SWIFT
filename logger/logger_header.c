@@ -92,7 +92,7 @@ void header_change_offset_direction(struct header *h, enum logger_offset_directi
   /* Skip file format and version numbers */
   size_t offset = LOGGER_VERSION_SIZE + 2 * sizeof(int);
 
-  logger_io_write_data(h->log->log.map, LOGGER_NUMBER_SIZE, &new_value, offset);
+  logger_io_write_data(h->log->log.map + offset, LOGGER_NUMBER_SIZE, &new_value);
 }
 
 /**
@@ -102,7 +102,6 @@ void header_change_offset_direction(struct header *h, enum logger_offset_directi
  * @param log The #logger_logfile.
  */
 void header_read(struct header *h, struct logger_logfile *log) {
-  size_t offset = 0;
   void *map = log->log.map;
 
   /* Set pointer to log */
@@ -110,39 +109,39 @@ void header_read(struct header *h, struct logger_logfile *log) {
 
   /* read file format */
   char file_format[STRING_SIZE];
-  offset = logger_io_read_data(map, LOGGER_VERSION_SIZE, &file_format, offset);
+  map = logger_io_read_data(map, LOGGER_VERSION_SIZE, &file_format);
   if (strcmp(file_format, "SWIFT_LOGGER"))
     error("Wrong file format (%s)", file_format);
 
   /* Read major version number */
-  offset = logger_io_read_data(map, sizeof(int), &h->major_version, offset);
+  map = logger_io_read_data(map, sizeof(int), &h->major_version);
 
   /* Read minor version number */
-  offset = logger_io_read_data(map, sizeof(int), &h->minor_version, offset);
+  map = logger_io_read_data(map, sizeof(int), &h->minor_version);
 
   if (h->log->reader->verbose > 0)
     message("File version %i.%i", h->major_version, h->minor_version);
 
   /* read the offset directions */
-  offset = logger_io_read_data(map, LOGGER_NUMBER_SIZE, &h->offset_direction, offset);
+  map = logger_io_read_data(map, LOGGER_NUMBER_SIZE, &h->offset_direction);
 
   if (!header_is_forward(h) && !header_is_backward(h) &&
       !header_is_corrupted(h))
     error("Wrong offset value in the header (%i)", h->offset_direction);
 
   /* read offset to first record */
-  offset = logger_io_read_data(map, LOGGER_OFFSET_SIZE, &h->offset_first_record, offset);
+  map = logger_io_read_data(map, LOGGER_OFFSET_SIZE, &h->offset_first_record);
 
   /* read the size of the strings */
-  offset = logger_io_read_data(map, LOGGER_NUMBER_SIZE, &h->string_length, offset);
+  map = logger_io_read_data(map, LOGGER_NUMBER_SIZE, &h->string_length);
 
   /* check if value defined in this file is large enough. */
   if (STRING_SIZE < h->string_length) {
-    error("Name too large in log file");
+    error("Name too large in log file %li", h->string_length);
   }
 
   /* read the number of masks. */
-  offset = logger_io_read_data(map, LOGGER_NUMBER_SIZE, &h->number_mask, offset);
+  map = logger_io_read_data(map, LOGGER_NUMBER_SIZE, &h->number_mask);
 
   /* allocate the masks memory. */
   h->masks = malloc(sizeof(struct mask_data) * h->number_mask);
@@ -150,18 +149,19 @@ void header_read(struct header *h, struct logger_logfile *log) {
   /* loop over all masks. */
   for (size_t i = 0; i < h->number_mask; i++) {
     /* read the mask name. */
-    offset = logger_io_read_data(map, h->string_length, h->masks[i].name, offset);
+    map = logger_io_read_data(map, h->string_length, h->masks[i].name);
 
     /* set the mask value. */
     h->masks[i].mask = 1 << i;
 
     /* read the mask data size. */
-    offset = logger_io_read_data(map, LOGGER_NUMBER_SIZE, &h->masks[i].size, offset);
+    map = logger_io_read_data(map, LOGGER_NUMBER_SIZE, &h->masks[i].size);
   }
 
   /* Check the logfile header's size */
-  if (offset != h->offset_first_record) {
+  if (map != log->log.map + h->offset_first_record) {
     header_print(h);
+    size_t offset = map - log->log.map;
     error("Wrong header size (in header %zi, current %zi)", h->offset_first_record,
           offset);
   }

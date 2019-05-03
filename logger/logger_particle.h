@@ -96,9 +96,8 @@ size_t logger_particle_read(struct logger_particle *part, const struct logger_re
 
 void logger_particle_init(struct logger_particle *part);
 
-size_t logger_particle_read_field(struct logger_particle *part, void *map,
-                                size_t offset, const char *field,
-                                const size_t size);
+void* logger_particle_read_field(struct logger_particle *part, void *map,
+				 const char *field, const size_t size);
 
 void logger_particle_interpolate(struct logger_particle *part_curr,
                                  const struct logger_particle *part_next,
