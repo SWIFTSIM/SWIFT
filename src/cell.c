@@ -3052,11 +3052,8 @@ int cell_unskip_hydro_tasks(struct cell *c, struct scheduler *s) {
   const int with_limiter = (e->policy & engine_policy_limiter);
 
 #ifdef WITH_MPI
-
   const int with_star_formation = e->policy & engine_policy_star_formation;
-
   const int with_feedback = e->policy & engine_policy_feedback;
-
 #endif
   int rebuild = 0;
 
@@ -3171,21 +3168,14 @@ int cell_unskip_hydro_tasks(struct cell *c, struct scheduler *s) {
                                   ci_nodeID);
 
         /* Propagating new star counts? */
-
         if (with_star_formation && with_feedback) {
-
           if (ci_active && ci->hydro.count > 0) {
-
             scheduler_activate_recv(s, ci->mpi.recv, task_subtype_sf_counts);
-
             scheduler_activate_recv(s, ci->mpi.recv, task_subtype_tend_spart);
           }
-
           if (cj_active && cj->hydro.count > 0) {
-
             scheduler_activate_send(s, cj->mpi.send, task_subtype_sf_counts,
                                     ci_nodeID);
-
             scheduler_activate_send(s, cj->mpi.send, task_subtype_tend_spart,
                                     ci_nodeID);
           }
@@ -3243,21 +3233,14 @@ int cell_unskip_hydro_tasks(struct cell *c, struct scheduler *s) {
                                   cj_nodeID);
 
         /* Propagating new star counts? */
-
         if (with_star_formation && with_feedback) {
-
           if (cj_active && cj->hydro.count > 0) {
-
             scheduler_activate_recv(s, cj->mpi.recv, task_subtype_sf_counts);
-
             scheduler_activate_recv(s, cj->mpi.recv, task_subtype_tend_spart);
           }
-
           if (ci_active && ci->hydro.count > 0) {
-
             scheduler_activate_send(s, ci->mpi.send, task_subtype_sf_counts,
                                     cj_nodeID);
-
             scheduler_activate_send(s, ci->mpi.send, task_subtype_tend_spart,
                                     cj_nodeID);
           }

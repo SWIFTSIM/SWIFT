@@ -569,6 +569,8 @@ void space_regrid(struct space *s, int verbose) {
         error("Failed to init spinlock for multipoles.");
       if (lock_init(&s->cells_top[k].stars.lock) != 0)
         error("Failed to init spinlock for stars.");
+      if (lock_init(&s->cells_top[k].black_holes.lock) != 0)
+        error("Failed to init spinlock for black holes.");
       if (lock_init(&s->cells_top[k].stars.star_formation_lock) != 0)
         error("Failed to init spinlock for star formation.");
     }
@@ -3349,6 +3351,7 @@ void space_split_recursive(struct space *s, struct cell *c,
         /* Update the cell-wide properties */
         h_max = max(h_max, cp->hydro.h_max);
         stars_h_max = max(stars_h_max, cp->stars.h_max);
+        black_holes_h_max = max(black_holes_h_max, cp->black_holes.h_max);
         ti_hydro_end_min = min(ti_hydro_end_min, cp->hydro.ti_end_min);
         ti_hydro_end_max = max(ti_hydro_end_max, cp->hydro.ti_end_max);
         ti_hydro_beg_max = max(ti_hydro_beg_max, cp->hydro.ti_beg_max);
@@ -3699,8 +3702,9 @@ void space_split_mapper(void *map_data, int num_cells, void *extra_data) {
 void space_recycle(struct space *s, struct cell *c) {
 
   /* Clear the cell. */
-  if (lock_destroy(&c->lock) != 0 || lock_destroy(&c->grav.plock) != 0 ||
-      lock_destroy(&c->mlock) != 0 || lock_destroy(&c->stars.lock) != 0 ||
+  if (lock_destroy(&c->hydro.lock) != 0 || lock_destroy(&c->grav.plock) != 0 ||
+      lock_destroy(&c->grav.mlock) != 0 || lock_destroy(&c->stars.lock) != 0 ||
+      lock_destroy(&c->black_holes.lock) != 0 ||
       lock_destroy(&c->stars.star_formation_lock))
     error("Failed to destroy spinlocks.");
 
@@ -3749,8 +3753,11 @@ void space_recycle_list(struct space *s, struct cell *cell_list_begin,
   /* Clean up the list of cells. */
   for (struct cell *c = cell_list_begin; c != NULL; c = c->next) {
     /* Clear the cell. */
-    if (lock_destroy(&c->lock) != 0 || lock_destroy(&c->grav.plock) != 0 ||
-        lock_destroy(&c->mlock) != 0 || lock_destroy(&c->stars.lock) != 0 ||
+    if (lock_destroy(&c->hydro.lock) != 0 ||
+        lock_destroy(&c->grav.plock) != 0 ||
+        lock_destroy(&c->grav.mlock) != 0 ||
+        lock_destroy(&c->stars.lock) != 0 ||
+        lock_destroy(&c->black_holes.lock) != 0 ||
         lock_destroy(&c->stars.star_formation_lock))
       error("Failed to destroy spinlocks.");
 
@@ -3851,6 +3858,7 @@ void space_getcells(struct space *s, int nr_cells, struct cell **cells) {
         lock_init(&cells[j]->grav.plock) != 0 ||
         lock_init(&cells[j]->grav.mlock) != 0 ||
         lock_init(&cells[j]->stars.lock) != 0 ||
+        lock_init(&cells[j]->black_holes.lock) != 0 ||
         lock_init(&cells[j]->stars.star_formation_lock) != 0)
       error("Failed to initialize cell spinlocks.");
   }

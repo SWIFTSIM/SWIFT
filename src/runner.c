@@ -4173,6 +4173,8 @@ void *runner_main(void *data) {
             free(t->buff);
           } else if (t->subtype == task_subtype_tend_spart) {
             free(t->buff);
+          } else if (t->subtype == task_subtype_tend_bpart) {
+            free(t->buff);
           } else if (t->subtype == task_subtype_sf_counts) {
             free(t->buff);
           }
