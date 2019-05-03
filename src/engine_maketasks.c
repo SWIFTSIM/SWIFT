@@ -345,8 +345,8 @@ void engine_addtasks_send_black_holes(struct engine *e, struct cell *ci,
       scheduler_addunlock(s, ci->super->timestep, t_ti);
     }
 
-    engine_addlink(e, &ci->mpi.black_holes.send, t_feedback);
-    engine_addlink(e, &ci->mpi.black_holes.send_ti, t_ti);
+    engine_addlink(e, &ci->mpi.send, t_feedback);
+    engine_addlink(e, &ci->mpi.send, t_ti);
   }
 
   /* Recurse? */
@@ -545,20 +545,22 @@ void engine_addtasks_recv_black_holes(struct engine *e, struct cell *c,
                              c->mpi.tag, 0, c, NULL);
   }
 
-  c->mpi.black_holes.recv = t_feedback;
-  c->mpi.black_holes.recv_ti = t_ti;
+  if (t_feedback != NULL) {
+    engine_addlink(e, &c->mpi.recv, t_feedback);
+    engine_addlink(e, &c->mpi.recv, t_ti);
 
 #ifdef SWIFT_DEBUG_CHECKS
-  if (c->nodeID == e->nodeID) error("Local cell!");
+    if (c->nodeID == e->nodeID) error("Local cell!");
 #endif
 
-  for (struct link *l = c->black_holes.density; l != NULL; l = l->next) {
-    scheduler_addunlock(s, l->t, t_feedback);
-  }
+    for (struct link *l = c->black_holes.density; l != NULL; l = l->next) {
+      scheduler_addunlock(s, l->t, t_feedback);
+    }
 
-  for (struct link *l = c->black_holes.feedback; l != NULL; l = l->next) {
-    scheduler_addunlock(s, t_feedback, l->t);
-    scheduler_addunlock(s, l->t, t_ti);
+    for (struct link *l = c->black_holes.feedback; l != NULL; l = l->next) {
+      scheduler_addunlock(s, t_feedback, l->t);
+      scheduler_addunlock(s, l->t, t_ti);
+    }
   }
 
   /* Recurse? */

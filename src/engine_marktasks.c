@@ -633,26 +633,30 @@ void engine_marktasks_mapper(void *map_data, int num_elements,
         if (ci_nodeID != nodeID) {
 
           if (cj_active_black_holes) {
-            scheduler_activate(s, ci->mpi.hydro.recv_xv);
-            scheduler_activate(s, ci->mpi.hydro.recv_rho);
+            scheduler_activate_recv(s, ci->mpi.recv, task_subtype_xv);
+            scheduler_activate_recv(s, ci->mpi.recv, task_subtype_rho);
 
             /* If the local cell is active, more stuff will be needed. */
-            scheduler_activate_send(s, cj->mpi.black_holes.send, ci_nodeID);
+            scheduler_activate_send(s, cj->mpi.send, task_subtype_bpart,
+                                    ci_nodeID);
             cell_activate_drift_bpart(cj, s);
 
             /* If the local cell is active, send its ti_end values. */
-            scheduler_activate_send(s, cj->mpi.black_holes.send_ti, ci_nodeID);
+            scheduler_activate_send(s, cj->mpi.send, task_subtype_tend_bpart,
+                                    ci_nodeID);
           }
 
           if (ci_active_black_holes) {
-            scheduler_activate(s, ci->mpi.black_holes.recv);
+            scheduler_activate_recv(s, ci->mpi.recv, task_subtype_bpart);
 
             /* If the foreign cell is active, we want its ti_end values. */
-            scheduler_activate(s, ci->mpi.black_holes.recv_ti);
+            scheduler_activate_recv(s, ci->mpi.recv, task_subtype_tend_bpart);
 
             /* Is the foreign cell active and will need stuff from us? */
-            scheduler_activate_send(s, cj->mpi.hydro.send_xv, ci_nodeID);
-            scheduler_activate_send(s, cj->mpi.hydro.send_rho, ci_nodeID);
+            scheduler_activate_send(s, cj->mpi.send, task_subtype_xv,
+                                    ci_nodeID);
+            scheduler_activate_send(s, cj->mpi.send, task_subtype_rho,
+                                    ci_nodeID);
 
             /* Drift the cell which will be sent; note that not all sent
                particles will be drifted, only those that are needed. */
@@ -663,26 +667,30 @@ void engine_marktasks_mapper(void *map_data, int num_elements,
 
           /* If the local cell is active, receive data from the foreign cell. */
           if (ci_active_black_holes) {
-            scheduler_activate(s, cj->mpi.hydro.recv_xv);
-            scheduler_activate(s, cj->mpi.hydro.recv_rho);
+            scheduler_activate_recv(s, cj->mpi.recv, task_subtype_xv);
+            scheduler_activate_recv(s, cj->mpi.recv, task_subtype_rho);
 
             /* If the local cell is active, more stuff will be needed. */
-            scheduler_activate_send(s, ci->mpi.black_holes.send, cj_nodeID);
+            scheduler_activate_send(s, ci->mpi.send, task_subtype_bpart,
+                                    cj_nodeID);
             cell_activate_drift_bpart(ci, s);
 
             /* If the local cell is active, send its ti_end values. */
-            scheduler_activate_send(s, ci->mpi.black_holes.send_ti, cj_nodeID);
+            scheduler_activate_send(s, ci->mpi.send, task_subtype_tend_bpart,
+                                    cj_nodeID);
           }
 
           if (cj_active_black_holes) {
-            scheduler_activate(s, cj->mpi.black_holes.recv);
+            scheduler_activate_recv(s, cj->mpi.recv, task_subtype_bpart);
 
             /* If the foreign cell is active, we want its ti_end values. */
-            scheduler_activate(s, cj->mpi.black_holes.recv_ti);
+            scheduler_activate_recv(s, cj->mpi.recv, task_subtype_tend_bpart);
 
             /* Is the foreign cell active and will need stuff from us? */
-            scheduler_activate_send(s, ci->mpi.hydro.send_xv, cj_nodeID);
-            scheduler_activate_send(s, ci->mpi.hydro.send_rho, cj_nodeID);
+            scheduler_activate_send(s, ci->mpi.send, task_subtype_xv,
+                                    cj_nodeID);
+            scheduler_activate_send(s, ci->mpi.send, task_subtype_rho,
+                                    cj_nodeID);
 
             /* Drift the cell which will be sent; note that not all sent
                particles will be drifted, only those that are needed. */
