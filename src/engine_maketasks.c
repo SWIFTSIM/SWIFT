@@ -282,16 +282,18 @@ void engine_addtasks_send_stars(struct engine *e, struct cell *ci,
       /* Drift before you send */
       scheduler_addunlock(s, ci->hydro.super->stars.drift, t_feedback);
 
+      scheduler_addunlock(s, ci->super->timestep, t_ti);
+
       /* Update the stars counts before you send them */
       if (with_star_formation && ci->hydro.count > 0) {
         scheduler_addunlock(s, ci->top->hydro.star_formation, t_sf_counts);
       }
+    }
 
-      engine_addlink(e, &ci->mpi.send, t_feedback);
-      engine_addlink(e, &ci->mpi.send, t_ti);
-      if (with_star_formation) {
-        engine_addlink(e, &ci->mpi.send, t_sf_counts);
-      }
+    engine_addlink(e, &ci->mpi.send, t_feedback);
+    engine_addlink(e, &ci->mpi.send, t_ti);
+    if (with_star_formation) {
+      engine_addlink(e, &ci->mpi.send, t_sf_counts);
     }
   }
 
