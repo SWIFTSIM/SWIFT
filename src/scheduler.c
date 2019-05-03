@@ -1181,7 +1181,7 @@ void scheduler_reweight(struct scheduler *s, int verbose) {
     const float scount_i = (t->ci != NULL) ? t->ci->stars.count : 0.f;
     const float scount_j = (t->cj != NULL) ? t->cj->stars.count : 0.f;
     const float bcount_i = (t->ci != NULL) ? t->ci->black_holes.count : 0.f;
-    // const float bcount_j = (t->cj != NULL) ? t->cj->black_holes.count : 0.f;
+    const float bcount_j = (t->cj != NULL) ? t->cj->black_holes.count : 0.f;
 
     switch (t->type) {
       case task_type_sort:
@@ -1201,7 +1201,13 @@ void scheduler_reweight(struct scheduler *s, int verbose) {
           cost = 1.f * wscale * gcount_i;
         else if (t->subtype == task_subtype_stars_density)
           cost = 1.f * wscale * scount_i * count_i;
-        else
+        else if (t->subtype == task_subtype_stars_feedback)
+          cost = 1.f * wscale * scount_i * count_i;
+        else if (t->subtype == task_subtype_bh_density)
+          cost = 1.f * wscale * bcount_i * count_i;
+        else if (t->subtype == task_subtype_bh_feedback)
+          cost = 1.f * wscale * bcount_i * count_i;
+        else  // hydro loops
           cost = 1.f * (wscale * count_i) * count_i;
         break;
 
@@ -1211,7 +1217,9 @@ void scheduler_reweight(struct scheduler *s, int verbose) {
             cost = 3.f * (wscale * gcount_i) * gcount_j;
           else
             cost = 2.f * (wscale * gcount_i) * gcount_j;
-        } else if (t->subtype == task_subtype_stars_density) {
+
+        } else if (t->subtype == task_subtype_stars_density ||
+                   t->subtype == task_subtype_stars_feedback) {
           if (t->ci->nodeID != nodeID)
             cost = 3.f * wscale * count_i * scount_j * sid_scale[t->flags];
           else if (t->cj->nodeID != nodeID)
@@ -1219,7 +1227,18 @@ void scheduler_reweight(struct scheduler *s, int verbose) {
           else
             cost = 2.f * wscale * (scount_i * count_j + scount_j * count_i) *
                    sid_scale[t->flags];
-        } else {
+
+        } else if (t->subtype == task_subtype_bh_density ||
+                   t->subtype == task_subtype_bh_feedback) {
+          if (t->ci->nodeID != nodeID)
+            cost = 3.f * wscale * count_i * bcount_j * sid_scale[t->flags];
+          else if (t->cj->nodeID != nodeID)
+            cost = 3.f * wscale * bcount_i * count_j * sid_scale[t->flags];
+          else
+            cost = 2.f * wscale * (bcount_i * count_j + bcount_j * count_i) *
+                   sid_scale[t->flags];
+
+        } else {  // hydro loops
           if (t->ci->nodeID != nodeID || t->cj->nodeID != nodeID)
             cost = 3.f * (wscale * count_i) * count_j * sid_scale[t->flags];
           else
@@ -1231,7 +1250,8 @@ void scheduler_reweight(struct scheduler *s, int verbose) {
 #ifdef SWIFT_DEBUG_CHECKS
         if (t->flags < 0) error("Negative flag value!");
 #endif
-        if (t->subtype == task_subtype_stars_density) {
+        if (t->subtype == task_subtype_stars_density ||
+            t->subtype == task_subtype_stars_feedback) {
           if (t->ci->nodeID != nodeID) {
             cost = 3.f * (wscale * count_i) * scount_j * sid_scale[t->flags];
           } else if (t->cj->nodeID != nodeID) {
@@ -1241,7 +1261,18 @@ void scheduler_reweight(struct scheduler *s, int verbose) {
                    sid_scale[t->flags];
           }
 
-        } else {
+        } else if (t->subtype == task_subtype_bh_density ||
+                   t->subtype == task_subtype_bh_feedback) {
+          if (t->ci->nodeID != nodeID) {
+            cost = 3.f * (wscale * count_i) * bcount_j * sid_scale[t->flags];
+          } else if (t->cj->nodeID != nodeID) {
+            cost = 3.f * (wscale * bcount_i) * count_j * sid_scale[t->flags];
+          } else {
+            cost = 2.f * wscale * (bcount_i * count_j + bcount_j * count_i) *
+                   sid_scale[t->flags];
+          }
+
+        } else {  // hydro loops
           if (t->ci->nodeID != nodeID || t->cj->nodeID != nodeID) {
             cost = 3.f * (wscale * count_i) * count_j * sid_scale[t->flags];
           } else {
@@ -1253,6 +1284,12 @@ void scheduler_reweight(struct scheduler *s, int verbose) {
       case task_type_sub_self:
         if (t->subtype == task_subtype_stars_density) {
           cost = 1.f * (wscale * scount_i) * count_i;
+        } else if (t->subtype == task_subtype_stars_feedback) {
+          cost = 1.f * (wscale * scount_i) * count_i;
+        } else if (t->subtype == task_subtype_bh_density) {
+          cost = 1.f * (wscale * bcount_i) * count_i;
+        } else if (t->subtype == task_subtype_bh_feedback) {
+          cost = 1.f * (wscale * bcount_i) * count_i;
         } else {
           cost = 1.f * (wscale * count_i) * count_i;
         }
@@ -1265,6 +1302,9 @@ void scheduler_reweight(struct scheduler *s, int verbose) {
         break;
       case task_type_stars_ghost:
         if (t->ci == t->ci->hydro.super) cost = wscale * scount_i;
+        break;
+      case task_type_bh_ghost:
+        if (t->ci == t->ci->hydro.super) cost = wscale * bcount_i;
         break;
       case task_type_drift_part:
         cost = wscale * count_i;
