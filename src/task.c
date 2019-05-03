@@ -99,8 +99,8 @@ const char *subtaskID_names[task_subtype_count] = {
     "limiter",       "grav",           "external_grav", "tend_part",
     "tend_gpart",    "tend_spart",     "tend_bpart",    "xv",
     "rho",           "gpart",          "multipole",     "spart",
-    "stars_density", "stars_feedback", "sf_count", "bpart",         "bh_density",
-    "bh_feedback"};
+    "stars_density", "stars_feedback", "sf_count",      "bpart",
+    "bh_density",    "bh_feedback"};
 
 #ifdef WITH_MPI
 /* MPI communicators for the subtypes. */

@@ -287,10 +287,11 @@ void engine_addtasks_send_stars(struct engine *e, struct cell *ci,
         scheduler_addunlock(s, ci->top->hydro.star_formation, t_sf_counts);
       }
 
-    engine_addlink(e, &ci->mpi.send, t_feedback);
-    engine_addlink(e, &ci->mpi.send, t_ti);
-    if (with_star_formation) {
-      engine_addlink(e, &ci->mpi.send, t_sf_counts);
+      engine_addlink(e, &ci->mpi.send, t_feedback);
+      engine_addlink(e, &ci->mpi.send, t_ti);
+      if (with_star_formation) {
+        engine_addlink(e, &ci->mpi.send, t_sf_counts);
+      }
     }
   }
 
@@ -298,7 +299,7 @@ void engine_addtasks_send_stars(struct engine *e, struct cell *ci,
   if (ci->split)
     for (int k = 0; k < 8; k++)
       if (ci->progeny[k] != NULL)
-        engine_addtasks_send_stars(e, ci->progeny[k], cj, t_feedback, 
+        engine_addtasks_send_stars(e, ci->progeny[k], cj, t_feedback,
                                    t_sf_counts, t_ti, with_star_formation);
 
 #else
@@ -512,9 +513,9 @@ void engine_addtasks_recv_stars(struct engine *e, struct cell *c,
   if (t_feedback != NULL) {
     engine_addlink(e, &c->mpi.recv, t_feedback);
     engine_addlink(e, &c->mpi.recv, t_ti);
-  if (with_star_formation && c->hydro.count > 0) {
-    engine_addlink(e, &c->mpi.recv, t_sf_counts);
-  }
+    if (with_star_formation && c->hydro.count > 0) {
+      engine_addlink(e, &c->mpi.recv, t_sf_counts);
+    }
 
 #ifdef SWIFT_DEBUG_CHECKS
     if (c->nodeID == e->nodeID) error("Local cell!");
@@ -536,7 +537,7 @@ void engine_addtasks_recv_stars(struct engine *e, struct cell *c,
   if (c->split)
     for (int k = 0; k < 8; k++)
       if (c->progeny[k] != NULL)
-        engine_addtasks_recv_stars(e, c->progeny[k], t_feedback,  t_sf_counts,
+        engine_addtasks_recv_stars(e, c->progeny[k], t_feedback, t_sf_counts,
                                    t_ti, with_star_formation);
 
 #else
@@ -2464,6 +2465,13 @@ void engine_addtasks_send_mapper(void *map_data, int num_elements,
                                  /*t_sf_counts=*/NULL, /*t_ti=*/NULL,
                                  with_star_formation);
 
+    /* Add the send tasks for the cells in the proxy that have a black holes
+     * connection. */
+    if ((e->policy & engine_policy_black_holes) &&
+        (type & proxy_cell_type_hydro))
+      engine_addtasks_send_black_holes(e, ci, cj, /*t_feedback=*/NULL,
+                                       /*t_ti=*/NULL);
+
     /* Add the send tasks for the cells in the proxy that have a gravity
      * connection. */
     if ((e->policy & engine_policy_self_gravity) &&
@@ -2495,6 +2503,11 @@ void engine_addtasks_recv_mapper(void *map_data, int num_elements,
       engine_addtasks_recv_stars(e, ci, /*t_feedback=*/NULL,
                                  /*t_sf_counts=*/NULL, /*t_ti=*/NULL,
                                  with_star_formation);
+
+    /* Add the recv tasks for the cells in the proxy that have a black holes
+     * connection. */
+    if ((e->policy & engine_policy_feedback) && (type & proxy_cell_type_hydro))
+      engine_addtasks_recv_black_holes(e, ci, NULL, NULL);
 
     /* Add the recv tasks for the cells in the proxy that have a gravity
      * connection. */

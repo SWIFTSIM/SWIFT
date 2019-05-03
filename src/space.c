@@ -4245,6 +4245,7 @@ void space_first_init_bparts_mapper(void *restrict map_data, int count,
   struct bpart *restrict bp = (struct bpart *)map_data;
   const struct space *restrict s = (struct space *)extra_data;
   const struct engine *e = s->e;
+  const struct black_holes_props *props = e->black_holes_properties;
 
 #ifdef SWIFT_DEBUG_CHECKS
   const ptrdiff_t delta = bp - s->bparts;
@@ -4278,10 +4279,17 @@ void space_first_init_bparts_mapper(void *restrict map_data, int count,
 #endif
   }
 
+  /* Check that the smoothing lengths are non-zero */
+  for (int k = 0; k < count; k++) {
+    if (bp[k].h <= 0.)
+      error("Invalid value of smoothing length for bpart %lld h=%e", bp[k].id,
+            bp[k].h);
+  }
+
   /* Initialise the rest */
   for (int k = 0; k < count; k++) {
 
-    black_holes_first_init_bpart(&bp[k]);
+    black_holes_first_init_bpart(&bp[k], props);
 
 #ifdef SWIFT_DEBUG_CHECKS
     if (bp[k].gpart && bp[k].gpart->id_or_neg_offset != -(k + delta))
