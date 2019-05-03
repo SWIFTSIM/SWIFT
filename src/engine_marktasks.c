@@ -378,7 +378,7 @@ void engine_marktasks_mapper(void *map_data, int num_elements,
           if (ci_active_black_holes) {
 
             /* Activate the drift tasks. */
-            if (ci_nodeID == nodeID) cell_activate_drift_spart(ci, s);
+            if (ci_nodeID == nodeID) cell_activate_drift_bpart(ci, s);
             if (cj_nodeID == nodeID) cell_activate_drift_part(cj, s);
           }
 
@@ -387,7 +387,7 @@ void engine_marktasks_mapper(void *map_data, int num_elements,
 
             /* Activate the drift tasks. */
             if (ci_nodeID == nodeID) cell_activate_drift_part(ci, s);
-            if (cj_nodeID == nodeID) cell_activate_drift_spart(cj, s);
+            if (cj_nodeID == nodeID) cell_activate_drift_bpart(cj, s);
           }
         }
 
