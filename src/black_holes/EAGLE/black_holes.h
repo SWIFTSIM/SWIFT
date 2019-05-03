@@ -55,6 +55,7 @@ __attribute__((always_inline)) INLINE static void black_holes_first_init_bpart(
 
   bp->time_bin = 0;
   bp->subgrid_mass = bp->mass;
+  bp->total_accreted_mass = 0.f;
   bp->accretion_rate = 0.f;
   bp->formation_time = -1.f;
 }
@@ -241,6 +242,7 @@ __attribute__((always_inline)) INLINE static void black_holes_prepare_feedback(
 
   /* Integrate forward in time */
   bp->subgrid_mass += mass_rate * dt;
+  bp->total_accreted_mass += mass_rate * dt;
   bp->energy_reservoir += luminosity * epsilon_f * dt;
 
   /* Energy required to have a feedback event */

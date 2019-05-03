@@ -63,7 +63,7 @@ INLINE static void black_holes_write_particles(const struct bpart *bparts,
                                                int *num_fields) {
 
   /* Say how much we want to write */
-  *num_fields = 11;
+  *num_fields = 12;
 
   /* List what we want to write */
   list[0] = io_make_output_field("Coordinates", DOUBLE, 3, UNIT_CONV_LENGTH,
@@ -89,6 +89,9 @@ INLINE static void black_holes_write_particles(const struct bpart *bparts,
   list[10] = io_make_output_field("AccretionRate", FLOAT, 1,
                                   UNIT_CONV_MASS_PER_UNIT_TIME, bparts,
                                   accretion_rate);
+  list[11] = io_make_output_field("TotalAccretedMass", FLOAT, 1,
+                                  UNIT_CONV_MASS_PER_UNIT_TIME, bparts,
+                                  total_accreted_mass);
 
 #ifdef DEBUG_INTERACTIONS_BLACK_HOLES
 
