@@ -5507,7 +5507,7 @@ void engine_config(int restart, struct engine *e, struct swift_params *params,
 
   /* Estimated number of links per tasks */
   e->links_per_tasks =
-      parser_get_opt_param_int(params, "Scheduler:links_per_tasks", 15);
+      parser_get_opt_param_int(params, "Scheduler:links_per_tasks", 25);
 
   /* Init the scheduler. */
   scheduler_init(&e->sched, e->s, maxtasks, nr_queues,
