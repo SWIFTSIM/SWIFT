@@ -2694,7 +2694,8 @@ void cell_activate_subcell_hydro_tasks(struct cell *ci, struct cell *cj,
  * @param s The task #scheduler.
  */
 void cell_activate_subcell_stars_tasks(struct cell *ci, struct cell *cj,
-                                       struct scheduler *s) {
+                                       struct scheduler *s,
+				       const int with_star_formation) {
   const struct engine *e = s->space->e;
 
   /* Store the current dx_max and h_max values. */
@@ -2722,11 +2723,12 @@ void cell_activate_subcell_stars_tasks(struct cell *ci, struct cell *cj,
       /* Loop over all progenies and pairs of progenies */
       for (int j = 0; j < 8; j++) {
         if (ci->progeny[j] != NULL) {
-          cell_activate_subcell_stars_tasks(ci->progeny[j], NULL, s);
+          cell_activate_subcell_stars_tasks(ci->progeny[j], NULL, 
+					    s, with_star_formation);
           for (int k = j + 1; k < 8; k++)
             if (ci->progeny[k] != NULL)
               cell_activate_subcell_stars_tasks(ci->progeny[j], ci->progeny[k],
-                                                s);
+                                                s, with_star_formation);
         }
       }
     } else {
@@ -2754,7 +2756,7 @@ void cell_activate_subcell_stars_tasks(struct cell *ci, struct cell *cj,
         const int pjd = csp->pairs[k].pjd;
         if (ci->progeny[pid] != NULL && cj->progeny[pjd] != NULL)
           cell_activate_subcell_stars_tasks(ci->progeny[pid], cj->progeny[pjd],
-                                            s);
+                                            s, with_star_formation);
       }
     }
 
@@ -3453,7 +3455,9 @@ int cell_unskip_gravity_tasks(struct cell *c, struct scheduler *s) {
  *
  * @return 1 If the space needs rebuilding. 0 otherwise.
  */
-int cell_unskip_stars_tasks(struct cell *c, struct scheduler *s) {
+int cell_unskip_stars_tasks(struct cell *c, struct scheduler *s, 
+			    const int with_star_formation) {
+
   struct engine *e = s->space->e;
   const int nodeID = e->nodeID;
   int rebuild = 0;
@@ -3529,11 +3533,11 @@ int cell_unskip_stars_tasks(struct cell *c, struct scheduler *s) {
       }
 
       else if (t->type == task_type_sub_self) {
-        cell_activate_subcell_stars_tasks(ci, NULL, s);
+        cell_activate_subcell_stars_tasks(ci, NULL, s, with_star_formation);
       }
 
       else if (t->type == task_type_sub_pair) {
-        cell_activate_subcell_stars_tasks(ci, cj, s);
+        cell_activate_subcell_stars_tasks(ci, cj, s, with_star_formation);
       }
     }
 

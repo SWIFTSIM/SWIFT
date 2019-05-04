@@ -70,8 +70,8 @@ void engine_marktasks_mapper(void *map_data, int num_elements,
   struct engine *e = (struct engine *)((size_t *)extra_data)[0];
   const int nodeID = e->nodeID;
   const int with_limiter = e->policy & engine_policy_limiter;
-#ifdef WITH_MPI
   const int with_star_formation = e->policy & engine_policy_star_formation;
+#ifdef WITH_MPI
   const int with_feedback = e->policy & engine_policy_feedback;
 #endif
 
@@ -152,7 +152,7 @@ void engine_marktasks_mapper(void *map_data, int num_elements,
                t_subtype == task_subtype_stars_density) {
         if (cell_is_active_stars(ci, e)) {
           scheduler_activate(s, t);
-          cell_activate_subcell_stars_tasks(ci, NULL, s);
+          cell_activate_subcell_stars_tasks(ci, NULL, s, with_star_formation);
         }
       }
 
@@ -342,7 +342,7 @@ void engine_marktasks_mapper(void *map_data, int num_elements,
         /* Store current values of dx_max and h_max. */
         else if (t_type == task_type_sub_pair &&
                  t_subtype == task_subtype_stars_density) {
-          cell_activate_subcell_stars_tasks(ci, cj, s);
+          cell_activate_subcell_stars_tasks(ci, cj, s, with_star_formation);
         }
       }
 
