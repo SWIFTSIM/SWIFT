@@ -24,18 +24,15 @@
  * data.
  */
 struct star_formation_xpart_data {
-	//star formation rate
-	double SFR; //double
-	double proba; //double
+	/*!star formation rate*/
+	double SFR; 
+	/*!probability of star formation*/
+	double proba; 
+	/*!temperature of the particle*/
 	double temperature;
-	//int star_created; //was there a star created in this particle
-	//double creation_temperature;
-	//double creation_density; //the temperature and the density when the star was created
-	
-		
-		
-    /* Estimation of local turbulence */
-    float sigma; //double
+    /*! Estimation of local turbulence */
+    float sigma;
+    int voisins; //nbres de voisins
 	};
 
 /* Starformation struct */
@@ -50,8 +47,9 @@ struct star_formation {
 	double Max_temperature;
 	/*!some other useful elements*/
 	const struct hydro_props* restrict hydro_props;
+	/*!units*/
 	const struct unit_system* restrict us;
-	//const struct cooling_function_data* restrict cooling;
+	/*! physical constants*/
 	const struct phys_const* phys_const;
 	};
 

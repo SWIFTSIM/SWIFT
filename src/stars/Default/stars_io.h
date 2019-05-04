@@ -82,9 +82,6 @@ INLINE static void stars_write_particles(const struct spart *sparts,
                                  birth_time);
   list[8] = io_make_output_field("BirthTemperature", FLOAT, 1, UNIT_CONV_TEMPERATURE, sparts,
                                  birth_temperature);
-                                 message("SAUVEGARDE IO");
-    message("temperature %e",sparts->birth_temperature);
-  message("densite %e",sparts->birth_density);
 
 #ifdef DEBUG_INTERACTIONS_STARS
 

@@ -37,15 +37,17 @@
 __attribute__((always_inline)) INLINE static int star_formation_write_particles(
     const struct part* parts, const struct xpart* xparts,
     struct io_props* list) {
-
-
-	//message("SFR IO  HHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHhh %e",xparts->sf_data.SFR);
+	/*! we write the properties of our gas particles, star formation rate, temperature, star formation probability, turbulence estimation and the three components of velocity.*/
   list[0] =
       io_make_output_field("SFR", DOUBLE, 1, UNIT_CONV_SFR, xparts, sf_data.SFR);
       list[1]=io_make_output_field("gas_temperature", DOUBLE, 1, UNIT_CONV_TEMPERATURE, xparts, sf_data.temperature);
 	  list[2] =
       io_make_output_field("prob", DOUBLE, 1, UNIT_CONV_NO_UNITS, xparts, sf_data.proba);
-  return 3;
+      list[3]=io_make_output_field("sigma", FLOAT, 1, UNIT_CONV_ENERGY_PER_UNIT_MASS, xparts, sf_data.sigma);
+      list[4]=io_make_output_field("velocity1", FLOAT, 1, UNIT_CONV_VELOCITY, parts, v[0]);
+      list[5]=io_make_output_field("velocity2", FLOAT, 1, UNIT_CONV_VELOCITY, parts, v[1]);
+      list[6]=io_make_output_field("velocity3", FLOAT, 1, UNIT_CONV_VELOCITY, parts, v[2]);
+  return 7;
 }
 
 #endif /* SWIFT_STAR_FORMATION_GEAR_IO_H */

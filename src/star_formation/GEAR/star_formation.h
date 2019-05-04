@@ -92,36 +92,62 @@ INLINE static float get_temperature(
  *
  */
 INLINE static int star_formation_is_star_forming(  //eneleve le const sur xp REMIS
-    const struct part* restrict p, struct xpart* restrict xp,
+    struct part* restrict p, struct xpart* restrict xp,
     const struct star_formation* starform, const struct phys_const* phys_const,
     const struct cosmology* cosmo,
     const struct hydro_props* restrict hydro_props,
     const struct unit_system* restrict us,
-<<<<<<< HEAD
-    const struct cooling_function_data* restrict cooling) 
-    { //begining
-		//starform->cooling=cooling;
-		const double G = phys_const->const_newton_G; //d
-		const double kb = phys_const->const_boltzmann_k; //d
-		const double mH = phys_const->const_proton_mass; //d
-		float sigma=0.f; //f
+    const struct cooling_function_data* restrict cooling,
+    const struct entropy_floor_properties* restrict entropy_floor) 
+    { 
+		const double G = phys_const->const_newton_G; 
+		const double kb = phys_const->const_boltzmann_k; 
+		const double mH = phys_const->const_proton_mass;
+		float sigma=0.f;
+		/*!we first check if we are supposed to include turbulence estimation
+		 * otherewise we keep 0*/
 		if(starform->with_sigma>0)
 		{
 			sigma=p->starform_data.sigma;
 		}
-		double const T=get_temperature(phys_const,hydro_props,us,cosmo,cooling,p,xp); ///////d
+		p->starform_data.sigma=0;
+		/*!compute the temperature and store it*/
+		double const T=get_temperature(phys_const,hydro_props,us,cosmo,cooling,p,xp);
 		xp->sf_data.temperature=T;
-		//const double gamma=starform->EOS_gamma_effective;//supprime pour le moment, on le trouve d'une autre facon
+		/*!other useful values*/
 		const int N=starform->Njeans;
-		const double h=p->h; //smoothing length d
-		const double mu=hydro_props->mu_neutral; /////juste de prendre mu neutre ???? d
-		const double T0=starform->Max_temperature; ///////a changer d
-		const double physical_density = hydro_get_physical_density(p, cosmo); //d
-		const double rho_sfr=PI*(hydro_gamma*kb*T/mu/mH+sigma*sigma)/h/h/G/pow(N,2./3.); //d
+		const double h=p->h;
+		const double mu=hydro_props->mu_neutral;
+		const double T0=starform->Max_temperature; 
+		const double physical_density = hydro_get_physical_density(p, cosmo);
+		/*!we compute the minimal density for star formation (see Revaz & Jablonka, 2018 eq (3))*/
+		const double rho_sfr=PI*(hydro_gamma*kb*T/mu/mH+sigma*sigma)/h/h/4./G/pow(N,2./3.);
+		/*!temperature criterion for star formation eligibility*/
 		//message("T %e",hydro_gamma*kb*T/mu/mH);
-		//message("sigma %e",sigma*sigma);
+		//message("sigma %e",pow(sigma,2));
+		if(T>T0)
+		{
+			//message("trop chaud");
+			xp->sf_data.proba=0.f; 
+			return 0;
+		}
+		/*! density criterion*/
+		else
+		{
+			if(physical_density>rho_sfr)
+			{
+				return 1;
+			}
+			else
+			{
+				//message("pas assez dense");
+				xp->sf_data.proba=0.f; 
+				return 0;
+			}
+		}
+
 		//message("**************************333");
-		//message("temperature %e",T);
+		//message("temperfature %e",T);
 		//message("t0 %e",T0);
 		//message("densite %e",physical_density);
 		//message("rhosfr %e",rho_sfr);
@@ -130,38 +156,11 @@ INLINE static int star_formation_is_star_forming(  //eneleve le const sur xp REM
 		//message("h %e",h);
 		//message("G %e",G);
 		//message("mu AAAA  %e",mu);
-		if(T>T0) //the temperature is to high to form a star
-		{
-			//message("trop chaud");
-			return 0;
-		}
-		else
-		{
-			if(physical_density>rho_sfr) //we can form a star
-			{
-				//message("temperature %e",T);
-				//message("temperature_0 %e",T0);
-				return 1;
-			}
-			else //the density is to low to form a star
-			{
-				//message("pas assez dense");
-				return 0;
-			}
-		}
-=======
-    const struct cooling_function_data* restrict cooling,
-    const struct entropy_floor_properties* restrict entropy_floor) {
-
-  return 0;
->>>>>>> e0a2000120a53f45c70c478fe2c8c1cd07050298
 }
 
 /**
  * @brief Compute the star-formation rate of a given particle and store
  * it into the #xpart.
- *
- * Nothing to do here.
  *
  * @param p #part.
  * @param xp the #xpart.
@@ -175,7 +174,6 @@ INLINE static void star_formation_compute_SFR(
     const struct star_formation* starform, const struct phys_const* phys_const,
     const struct cosmology* cosmo, const double dt_star) 
     {
-		//first check
 		if (dt_star == 0.) {
 			xp->sf_data.SFR = 0.;
 		}
@@ -186,9 +184,8 @@ INLINE static void star_formation_compute_SFR(
 		const double physical_density = hydro_get_physical_density(p, cosmo); //d
 		if(physical_density!=0)
 		{
-			//double tff=sqrt(3*PI/32/G/physical_density);
+			/*!we compute the star formation rate and store it (see Revaz & Jablonka, 2012, eq. (5))*/
 			xp->sf_data.SFR=c_star*physical_density*sqrt(physical_density*32.f*G)/sqrt(3*PI);
-			//xp->sf_data.SFR=1.-exp(-c_star*dt_star*sqrt(physical_density*32.f*G)/sqrt(3*PI)); //c_star*hydro_get_mass(p) / dt_star;
 		}
 		else
 		{
@@ -216,25 +213,29 @@ INLINE static void star_formation_compute_SFR(
  * @param e The #engine (for random numbers).
  * @param dt_star The time-step of this particle
  * @return 1 if a conversion should be done, 0 otherwise.
- */ //eneleve le const sur xp REMIS RETIRE a nouveau (7.4.19)
+ */ 
 INLINE static int star_formation_should_convert_to_star(
     const struct part* p, struct xpart* xp,
     const struct star_formation* starform, const struct engine* e,
     const double dt_star) {
-	/* Calculate the propability of forming a star */
-	//a voir si il faut garder ce terme dt/m
-	
+	/*! Calculate the propability of forming a star */
 	const double prob = 1.- exp(xp->sf_data.SFR * dt_star * (-1.) / hydro_get_physical_density(p,e->cosmology));
-	xp->sf_data.proba=1.- exp(xp->sf_data.SFR * 0.5*(e->dt_min+e->dt_max) * (-1.) / hydro_get_physical_density(p,e->cosmology));
-	/* Get a unique random number between 0 and 1 for star formation */
+	/*!we store a value computed with fixed dt to do things outside swift*/
+	xp->sf_data.proba=1.- exp(xp->sf_data.SFR * (e->dt_max) * (-1.) / hydro_get_physical_density(p,e->cosmology));
+	//if(p->id==(long long int)3003)
+	//{
+	//	message("proba %e",	xp->sf_data.proba);
+	//	message("densite %e",hydro_get_physical_density(p,e->cosmology));
+	//}
+	
+	/*! Get a unique random number between 0 and 1 for star formation */
 	const double random_number =
     random_unit_interval(p->id, e->ti_current, random_number_star_formation); 
-    if(random_number>prob) //no star
+    if(random_number>prob) 
 	{
-		//message("pas eu de chance");
 		return 0;
 	}
-	else //we form a new star particle
+	else
 	{
 		return 1;
 	}
@@ -242,8 +243,6 @@ INLINE static int star_formation_should_convert_to_star(
 
 /**
  * @brief Update the SF properties of a particle that is not star forming.
- *
- * Nothing to do here.
  *
  * @param p The #part.
  * @param xp The #xpart.
@@ -254,18 +253,14 @@ INLINE static int star_formation_should_convert_to_star(
 INLINE static void star_formation_update_part_not_SFR(
     struct part* p, struct xpart* xp, const struct engine* e,
     const struct star_formation* starform, const int with_cosmology) {
-
-  /* Check if it is the first time steps after star formation */
+  /*! Check if it is the first time steps after star formation */
   if (xp->sf_data.SFR > 0.) {
 
-    /* Record the current time as an indicator of when this particle was last
+    /*! Record the current time as an indicator of when this particle was last
        star-forming. */
-     // message("Pas de formation stellaire pour le moment !!!!!!KKKKKKK");
     if (with_cosmology) {
-		//message("Cosmo %e", -(e->cosmology->a));
       xp->sf_data.SFR = -(e->cosmology->a);
     } else {
-		//message("Pas de cosmo %e",-(e->time));
       xp->sf_data.SFR = -(e->time);
     }
   }
@@ -274,8 +269,6 @@ INLINE static void star_formation_update_part_not_SFR(
 /**
  * @brief Copies the properties of the gas particle over to the
  * star particle.
- *
- * Nothing to do here.
  *
  * @param e The #engine
  * @param p the gas particles.
@@ -286,7 +279,6 @@ INLINE static void star_formation_update_part_not_SFR(
  * @param cosmo the cosmological parameters and properties.
  * @param with_cosmology if we run with cosmology.
  */
- //juste pour tester pour le moment je copie l'autre
 INLINE static void star_formation_copy_properties(
     const struct part* p, const struct xpart* xp, struct spart* sp,
     const struct engine* e, const struct star_formation* starform,
@@ -315,8 +307,7 @@ INLINE static void star_formation_copy_properties(
   sp->birth_density = hydro_get_physical_density(p, cosmo);
   /* Store the birth temperature*/
   sp->birth_temperature = get_temperature(starform->phys_const,starform->hydro_props,starform->us,cosmo,e->cooling_func,p,xp);
-  //message("temperature %e",sp->birth_temperature);
-  //message("densite %e",sp->birth_density);
+
 }
 
 /**
@@ -343,9 +334,6 @@ INLINE static void starformation_init_backend(
       starform->phys_const=phys_const;
       starform->with_sigma = parser_get_param_int(
       parameter_file, "GEARStarFormation:with_turbulence_estimation");
-      //starform->cooling=cooling;
-      //quelques initialisations sans interet
-      //xp->sf_data.star_created=false;
       
 		}
 
@@ -370,8 +358,10 @@ INLINE static void starformation_print_backend(
 __attribute__((always_inline)) INLINE static void star_formation_end_density(
     struct part* restrict p, const struct star_formation* cd,
     const struct cosmology* cosmo) {
-		//message("sigma_provisoire %e",p->starform_data.sigma);
-		//message("density %e",hydro_get_physical_density(p,cosmo));
+		/*!if(p->id==(long long int)1)
+		{
+			message("Fin du calcul de sigma %e",p->starform_data.sigma);
+			message("voisins %d",p->starform_data.voisins);}*/
 		p->starform_data.sigma=p->starform_data.sigma/hydro_get_physical_density(p,cosmo);
 		}
 
@@ -388,7 +378,9 @@ star_formation_part_has_no_neighbours(struct part* restrict p,
                                       struct xpart* restrict xp,
                                       const struct star_formation* cd,
                                       const struct cosmology* cosmo) {
+	/*!if part has 0 neighbours, the estimation of turbulence is 0*/
 		p->starform_data.sigma=0.f;
+		p->starform_data.voisins=0;
 										 
 										  }
 
@@ -420,8 +412,9 @@ star_formation_first_init_part(const struct phys_const* restrict phys_const,
  */
 __attribute__((always_inline)) INLINE static void star_formation_init_part(
     struct part* restrict p, const struct star_formation* data) {
+		//message("Init");
 		 p->starform_data.sigma=0.f;
-		 //message("ATTTENTION : SIGMA INIT");
+		 p->starform_data.voisins=0;
 		}
 
 #endif /* SWIFT_GEAR_STAR_FORMATION_H */
