@@ -70,9 +70,8 @@ void engine_marktasks_mapper(void *map_data, int num_elements,
   struct engine *e = (struct engine *)((size_t *)extra_data)[0];
   const int nodeID = e->nodeID;
   const int with_limiter = e->policy & engine_policy_limiter;
-  const int with_star_formation = e->policy & engine_policy_star_formation;
-
 #ifdef WITH_MPI
+  const int with_star_formation = e->policy & engine_policy_star_formation;
   const int with_feedback = e->policy & engine_policy_feedback;
 #endif
 
@@ -89,19 +88,11 @@ void engine_marktasks_mapper(void *map_data, int num_elements,
       /* Local pointer. */
       struct cell *ci = t->ci;
 
-      /* How active is this cell? */
-      const int ci_active_hydro = cell_is_active_hydro(ci, e);
-      const int ci_active_gravity = cell_is_active_gravity(ci, e);
-      const int ci_active_black_holes = cell_is_active_black_holes(ci, e);
-      const int ci_active_stars =
-          cell_is_active_stars(ci, e) ||
-          (with_star_formation && cell_is_active_hydro(ci, e));
-
       if (ci->nodeID != nodeID) error("Non-local self task found");
 
       /* Activate the hydro drift */
       if (t_type == task_type_self && t_subtype == task_subtype_density) {
-        if (ci_active_hydro) {
+        if (cell_is_active_hydro(ci, e)) {
           scheduler_activate(s, t);
           cell_activate_drift_part(ci, s);
           if (with_limiter) cell_activate_limiter(ci, s);
@@ -111,7 +102,7 @@ void engine_marktasks_mapper(void *map_data, int num_elements,
       /* Store current values of dx_max and h_max. */
       else if (t_type == task_type_sub_self &&
                t_subtype == task_subtype_density) {
-        if (ci_active_hydro) {
+        if (cell_is_active_hydro(ci, e)) {
           scheduler_activate(s, t);
           cell_activate_subcell_hydro_tasks(ci, NULL, s);
           if (with_limiter) cell_activate_limiter(ci, s);
@@ -119,37 +110,37 @@ void engine_marktasks_mapper(void *map_data, int num_elements,
       }
 
       else if (t_type == task_type_self && t_subtype == task_subtype_force) {
-        if (ci_active_hydro) scheduler_activate(s, t);
+        if (cell_is_active_hydro(ci, e)) scheduler_activate(s, t);
       }
 
       else if (t_type == task_type_sub_self &&
                t_subtype == task_subtype_force) {
-        if (ci_active_hydro) scheduler_activate(s, t);
+        if (cell_is_active_hydro(ci, e)) scheduler_activate(s, t);
       }
 
       else if (t->type == task_type_self &&
                t->subtype == task_subtype_limiter) {
-        if (ci_active_hydro) scheduler_activate(s, t);
+        if (cell_is_active_hydro(ci, e)) scheduler_activate(s, t);
       }
 
       else if (t->type == task_type_sub_self &&
                t->subtype == task_subtype_limiter) {
-        if (ci_active_hydro) scheduler_activate(s, t);
+        if (cell_is_active_hydro(ci, e)) scheduler_activate(s, t);
       }
 
       else if (t_type == task_type_self && t_subtype == task_subtype_gradient) {
-        if (ci_active_hydro) scheduler_activate(s, t);
+        if (cell_is_active_hydro(ci, e)) scheduler_activate(s, t);
       }
 
       else if (t_type == task_type_sub_self &&
                t_subtype == task_subtype_gradient) {
-        if (ci_active_hydro) scheduler_activate(s, t);
+        if (cell_is_active_hydro(ci, e)) scheduler_activate(s, t);
       }
 
       /* Activate the star density */
       else if (t_type == task_type_self &&
                t_subtype == task_subtype_stars_density) {
-        if (ci_active_stars) {
+        if (cell_is_active_stars(ci, e)) {
           scheduler_activate(s, t);
           cell_activate_drift_part(ci, s);
           cell_activate_drift_spart(ci, s);
@@ -159,28 +150,28 @@ void engine_marktasks_mapper(void *map_data, int num_elements,
       /* Store current values of dx_max and h_max. */
       else if (t_type == task_type_sub_self &&
                t_subtype == task_subtype_stars_density) {
-        if (ci_active_stars) {
+        if (cell_is_active_stars(ci, e)) {
           scheduler_activate(s, t);
-          cell_activate_subcell_stars_tasks(ci, NULL, s, with_star_formation);
+          cell_activate_subcell_stars_tasks(ci, NULL, s);
         }
       }
 
       else if (t_type == task_type_self &&
                t_subtype == task_subtype_stars_feedback) {
-        if (ci_active_stars) {
+        if (cell_is_active_stars(ci, e)) {
           scheduler_activate(s, t);
         }
       }
 
       else if (t_type == task_type_sub_self &&
                t_subtype == task_subtype_stars_feedback) {
-        if (ci_active_stars) scheduler_activate(s, t);
+        if (cell_is_active_stars(ci, e)) scheduler_activate(s, t);
       }
 
       /* Activate the black hole density */
       else if (t_type == task_type_self &&
                t_subtype == task_subtype_bh_density) {
-        if (ci_active_black_holes) {
+        if (cell_is_active_black_holes(ci, e)) {
           scheduler_activate(s, t);
           cell_activate_drift_part(ci, s);
           cell_activate_drift_bpart(ci, s);
@@ -190,7 +181,7 @@ void engine_marktasks_mapper(void *map_data, int num_elements,
       /* Store current values of dx_max and h_max. */
       else if (t_type == task_type_sub_self &&
                t_subtype == task_subtype_bh_density) {
-        if (ci_active_black_holes) {
+        if (cell_is_active_black_holes(ci, e)) {
           scheduler_activate(s, t);
           cell_activate_subcell_black_holes_tasks(ci, NULL, s);
         }
@@ -198,19 +189,19 @@ void engine_marktasks_mapper(void *map_data, int num_elements,
 
       else if (t_type == task_type_self &&
                t_subtype == task_subtype_bh_feedback) {
-        if (ci_active_black_holes) {
+        if (cell_is_active_black_holes(ci, e)) {
           scheduler_activate(s, t);
         }
       }
 
       else if (t_type == task_type_sub_self &&
                t_subtype == task_subtype_bh_feedback) {
-        if (ci_active_black_holes) scheduler_activate(s, t);
+        if (cell_is_active_black_holes(ci, e)) scheduler_activate(s, t);
       }
 
       /* Activate the gravity drift */
       else if (t_type == task_type_self && t_subtype == task_subtype_grav) {
-        if (ci_active_gravity) {
+        if (cell_is_active_gravity(ci, e)) {
           scheduler_activate(s, t);
           cell_activate_subcell_grav_tasks(t->ci, NULL, s);
         }
@@ -219,7 +210,7 @@ void engine_marktasks_mapper(void *map_data, int num_elements,
       /* Activate the gravity drift */
       else if (t_type == task_type_self &&
                t_subtype == task_subtype_external_grav) {
-        if (ci_active_gravity) {
+        if (cell_is_active_gravity(ci, e)) {
           scheduler_activate(s, t);
           cell_activate_drift_gpart(t->ci, s);
         }
@@ -251,15 +242,11 @@ void engine_marktasks_mapper(void *map_data, int num_elements,
       const int ci_active_gravity = cell_is_active_gravity(ci, e);
       const int cj_active_gravity = cell_is_active_gravity(cj, e);
 
+      const int ci_active_stars = cell_is_active_stars(ci, e);
+      const int cj_active_stars = cell_is_active_stars(cj, e);
+
       const int ci_active_black_holes = cell_is_active_black_holes(ci, e);
       const int cj_active_black_holes = cell_is_active_black_holes(cj, e);
-
-      const int ci_active_stars =
-          cell_is_active_stars(ci, e) ||
-          (with_star_formation && cell_is_active_hydro(ci, e));
-      const int cj_active_stars =
-          cell_is_active_stars(cj, e) ||
-          (with_star_formation && cell_is_active_hydro(cj, e));
 
       /* Only activate tasks that involve a local active cell. */
       if ((t_subtype == task_subtype_density ||
@@ -355,7 +342,7 @@ void engine_marktasks_mapper(void *map_data, int num_elements,
         /* Store current values of dx_max and h_max. */
         else if (t_type == task_type_sub_pair &&
                  t_subtype == task_subtype_stars_density) {
-          cell_activate_subcell_stars_tasks(ci, cj, s, with_star_formation);
+          cell_activate_subcell_stars_tasks(ci, cj, s);
         }
       }
 
@@ -838,8 +825,7 @@ void engine_marktasks_mapper(void *map_data, int num_elements,
     /* logger tasks ? */
     else if (t->type == task_type_logger) {
       if (cell_is_active_hydro(t->ci, e) || cell_is_active_gravity(t->ci, e) ||
-          cell_is_active_stars(t->ci, e) ||
-          cell_is_active_black_holes(t->ci, e))
+          cell_is_active_stars(t->ci, e))
         scheduler_activate(s, t);
     }
 
@@ -876,16 +862,12 @@ void engine_marktasks_mapper(void *map_data, int num_elements,
 
     /* Star ghost tasks ? */
     else if (t_type == task_type_stars_ghost) {
-      if (cell_is_active_stars(t->ci, e) ||
-          (with_star_formation && cell_is_active_hydro(t->ci, e)))
-        scheduler_activate(s, t);
+      if (cell_is_active_stars(t->ci, e)) scheduler_activate(s, t);
     }
 
     /* Feedback implicit tasks? */
     else if (t_type == task_type_stars_in || t_type == task_type_stars_out) {
-      if (cell_is_active_stars(t->ci, e) ||
-          (with_star_formation && cell_is_active_hydro(t->ci, e)))
-        scheduler_activate(s, t);
+      if (cell_is_active_stars(t->ci, e)) scheduler_activate(s, t);
     }
 
     /* Black hole ghost tasks ? */

@@ -2344,32 +2344,27 @@ static void runner_do_unskip_hydro(struct cell *c, struct engine *e) {
  *
  * @param c The cell.
  * @param e The engine.
- * @param with_star_formation Are we running with star formation on?
  */
-static void runner_do_unskip_stars(struct cell *c, struct engine *e,
-                                   const int with_star_formation) {
+static void runner_do_unskip_stars(struct cell *c, struct engine *e) {
 
   /* Ignore empty cells. */
   if (c->stars.count == 0) return;
 
   /* Skip inactive cells. */
-  if (!cell_is_active_stars(c, e) &&
-      (!with_star_formation || !cell_is_active_hydro(c, e)))
-    return;
+  if (!cell_is_active_stars(c, e)) return;
 
   /* Recurse */
   if (c->split) {
     for (int k = 0; k < 8; k++) {
       if (c->progeny[k] != NULL) {
         struct cell *cp = c->progeny[k];
-        runner_do_unskip_stars(cp, e, with_star_formation);
+        runner_do_unskip_stars(cp, e);
       }
     }
   }
 
   /* Unskip any active tasks. */
-  const int forcerebuild =
-      cell_unskip_stars_tasks(c, &e->sched, with_star_formation);
+  const int forcerebuild = cell_unskip_stars_tasks(c, &e->sched);
   if (forcerebuild) atomic_inc(&e->forcerebuild);
 }
 
@@ -2441,7 +2436,6 @@ void runner_do_unskip_mapper(void *map_data, int num_elements,
                              void *extra_data) {
 
   struct engine *e = (struct engine *)extra_data;
-  const int with_star_formation = e->policy & engine_policy_star_formation;
   const int nodeID = e->nodeID;
   struct space *s = e->s;
   int *local_cells = (int *)map_data;
@@ -2459,8 +2453,7 @@ void runner_do_unskip_mapper(void *map_data, int num_elements,
         runner_do_unskip_gravity(c, e);
 
       /* Stars tasks */
-      if (e->policy & engine_policy_stars)
-        runner_do_unskip_stars(c, e, with_star_formation);
+      if (e->policy & engine_policy_stars) runner_do_unskip_stars(c, e);
 
       /* Black hole tasks */
       if (e->policy & engine_policy_black_holes)
