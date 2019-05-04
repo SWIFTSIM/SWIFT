@@ -3116,8 +3116,14 @@ int cell_unskip_hydro_tasks(struct cell *c, struct scheduler *s) {
         cell_activate_hydro_sorts(ci, t->flags, s);
         cell_activate_hydro_sorts(cj, t->flags, s);
       }
+
       /* Store current values of dx_max and h_max. */
-      else if (t->type == task_type_sub_pair || t->type == task_type_sub_self) {
+      else if (t->type == task_type_sub_self) {
+        cell_activate_subcell_hydro_tasks(ci, NULL, s);
+      }
+
+      /* Store current values of dx_max and h_max. */
+      else if (t->type == task_type_sub_pair) {
         cell_activate_subcell_hydro_tasks(ci, cj, s);
       }
     }
@@ -3754,7 +3760,11 @@ int cell_unskip_black_holes_tasks(struct cell *c, struct scheduler *s) {
         }
       }
 
-      else if (t->type == task_type_sub_pair || t->type == task_type_sub_self) {
+      else if (t->type == task_type_sub_self) {
+        cell_activate_subcell_black_holes_tasks(ci, NULL, s);
+      }
+
+      else if (t->type == task_type_sub_pair) {
         cell_activate_subcell_black_holes_tasks(ci, cj, s);
       }
     }
