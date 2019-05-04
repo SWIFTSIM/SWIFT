@@ -512,7 +512,8 @@ int main(int argc, char *argv[]) {
 #endif
 
     /* Temporary early aborts for modes not supported with hand-vec. */
-#if defined(WITH_VECTORIZATION) && !defined(CHEMISTRY_NONE)
+#if defined(WITH_VECTORIZATION) && defined(GADGET2_SPH) && \
+    !defined(CHEMISTRY_NONE)
   error(
       "Cannot run with chemistry and hand-vectorization (yet). "
       "Use --disable-hand-vec at configure time.");
