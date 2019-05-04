@@ -3528,7 +3528,11 @@ int cell_unskip_stars_tasks(struct cell *c, struct scheduler *s) {
         }
       }
 
-      else if (t->type == task_type_sub_pair || t->type == task_type_sub_self) {
+      else if (t->type == task_type_sub_self) {
+        cell_activate_subcell_stars_tasks(ci, NULL, s);
+      }
+
+      else if (t->type == task_type_sub_pair) {
         cell_activate_subcell_stars_tasks(ci, cj, s);
       }
     }
