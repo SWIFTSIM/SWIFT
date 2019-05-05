@@ -93,9 +93,10 @@ void engine_marktasks_mapper(void *map_data, int num_elements,
 #endif
       const int ci_active_hydro = cell_is_active_hydro(ci, e);
       const int ci_active_gravity = cell_is_active_gravity(ci, e);
-      const int ci_active_stars = cell_is_active_stars(ci, e);
       const int ci_active_black_holes = cell_is_active_black_holes(ci, e);
-      
+      const int ci_active_stars = cell_is_active_stars(ci, e) ||
+                                  (with_star_formation && ci_active_hydro);
+
       /* Activate the hydro drift */
       if (t_type == task_type_self && t_subtype == task_subtype_density) {
         if (ci_active_hydro) {
@@ -248,11 +249,13 @@ void engine_marktasks_mapper(void *map_data, int num_elements,
       const int ci_active_gravity = cell_is_active_gravity(ci, e);
       const int cj_active_gravity = cell_is_active_gravity(cj, e);
 
-      const int ci_active_stars = cell_is_active_stars(ci, e);
-      const int cj_active_stars = cell_is_active_stars(cj, e);
-
       const int ci_active_black_holes = cell_is_active_black_holes(ci, e);
       const int cj_active_black_holes = cell_is_active_black_holes(cj, e);
+
+      const int ci_active_stars = cell_is_active_stars(ci, e) ||
+                                  (with_star_formation && ci_active_hydro);
+      const int cj_active_stars = cell_is_active_stars(cj, e) ||
+                                  (with_star_formation && cj_active_hydro);
 
       /* Only activate tasks that involve a local active cell. */
       if ((t_subtype == task_subtype_density ||
@@ -868,12 +871,16 @@ void engine_marktasks_mapper(void *map_data, int num_elements,
 
     /* Star ghost tasks ? */
     else if (t_type == task_type_stars_ghost) {
-      if (cell_is_active_stars(t->ci, e)) scheduler_activate(s, t);
+      if (cell_is_active_stars(t->ci, e) ||
+          (with_star_formation && cell_is_active_hydro(t->ci, e)))
+        scheduler_activate(s, t);
     }
 
     /* Feedback implicit tasks? */
     else if (t_type == task_type_stars_in || t_type == task_type_stars_out) {
-      if (cell_is_active_stars(t->ci, e)) scheduler_activate(s, t);
+      if (cell_is_active_stars(t->ci, e) ||
+          (with_star_formation && cell_is_active_hydro(t->ci, e)))
+        scheduler_activate(s, t);
     }
 
     /* Black hole ghost tasks ? */
