@@ -2645,12 +2645,12 @@ void cell_activate_subcell_hydro_tasks(struct cell *ci, struct cell *cj,
 
     /* Get the orientation of the pair. */
     double shift[3];
-    int sid = space_getsid(s->space, &ci, &cj, shift);
+    const int sid = space_getsid(s->space, &ci, &cj, shift);
 
     /* recurse? */
     if (cell_can_recurse_in_pair_hydro_task(ci) &&
         cell_can_recurse_in_pair_hydro_task(cj)) {
-      struct cell_split_pair *csp = &cell_split_pairs[sid];
+      const struct cell_split_pair *csp = &cell_split_pairs[sid];
       for (int k = 0; k < csp->count; k++) {
         const int pid = csp->pairs[k].pid;
         const int pjd = csp->pairs[k].pjd;
@@ -2715,10 +2715,10 @@ void cell_activate_subcell_stars_tasks(struct cell *ci, struct cell *cj,
   /* Self interaction? */
   if (cj == NULL) {
 
+    const int ci_active = cell_is_active_stars(ci, e);
+
     /* Do anything? */
-    if (!cell_is_active_stars(ci, e) || ci->hydro.count == 0 ||
-        ci->stars.count == 0)
-      return;
+    if (!ci_active || ci->hydro.count == 0 || ci->stars.count == 0) return;
 
     /* Recurse? */
     if (cell_can_recurse_in_self_stars_task(ci)) {
@@ -2743,17 +2743,20 @@ void cell_activate_subcell_stars_tasks(struct cell *ci, struct cell *cj,
   /* Otherwise, pair interation */
   else {
 
-    /* Should we even bother? */
-    if (!cell_is_active_stars(ci, e) && !cell_is_active_stars(cj, e)) return;
-
     /* Get the orientation of the pair. */
     double shift[3];
-    int sid = space_getsid(s->space, &ci, &cj, shift);
+    const int sid = space_getsid(s->space, &ci, &cj, shift);
+
+    const int ci_active = cell_is_active_stars(ci, e);
+    const int cj_active = cell_is_active_stars(cj, e);
+
+    /* Should we even bother? */
+    if (!ci_active && !cj_active) return;
 
     /* recurse? */
     if (cell_can_recurse_in_pair_stars_task(ci, cj) &&
         cell_can_recurse_in_pair_stars_task(cj, ci)) {
-      struct cell_split_pair *csp = &cell_split_pairs[sid];
+      const struct cell_split_pair *csp = &cell_split_pairs[sid];
       for (int k = 0; k < csp->count; k++) {
         const int pid = csp->pairs[k].pid;
         const int pjd = csp->pairs[k].pjd;
@@ -2766,7 +2769,7 @@ void cell_activate_subcell_stars_tasks(struct cell *ci, struct cell *cj,
     /* Otherwise, activate the sorts and drifts. */
     else {
 
-      if (cell_is_active_stars(ci, e)) {
+      if (ci_active) {
         /* We are going to interact this pair, so store some values. */
         atomic_or(&cj->hydro.requires_sorts, 1 << sid);
         atomic_or(&ci->stars.requires_sorts, 1 << sid);
@@ -2783,7 +2786,7 @@ void cell_activate_subcell_stars_tasks(struct cell *ci, struct cell *cj,
         cell_activate_stars_sorts(ci, sid, s);
       }
 
-      if (cell_is_active_stars(cj, e)) {
+      if (cj_active) {
         /* We are going to interact this pair, so store some values. */
         atomic_or(&cj->stars.requires_sorts, 1 << sid);
         atomic_or(&ci->hydro.requires_sorts, 1 << sid);
@@ -2863,12 +2866,12 @@ void cell_activate_subcell_black_holes_tasks(struct cell *ci, struct cell *cj,
 
     /* Get the orientation of the pair. */
     double shift[3];
-    int sid = space_getsid(s->space, &ci, &cj, shift);
+    const int sid = space_getsid(s->space, &ci, &cj, shift);
 
     /* recurse? */
     if (cell_can_recurse_in_pair_black_holes_task(ci, cj) &&
         cell_can_recurse_in_pair_black_holes_task(cj, ci)) {
-      struct cell_split_pair *csp = &cell_split_pairs[sid];
+      const struct cell_split_pair *csp = &cell_split_pairs[sid];
       for (int k = 0; k < csp->count; k++) {
         const int pid = csp->pairs[k].pid;
         const int pjd = csp->pairs[k].pjd;
