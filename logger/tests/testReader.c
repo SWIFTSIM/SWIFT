@@ -138,7 +138,7 @@ int main(int argc, char *argv[]) {
   /* Create required structures. */
   struct logger log;
   struct swift_params params;
-  char filename[200] = "testHeader.yml";
+  char filename[200] = "testReader.yml";
 
   /* Read parameters. */
   parser_read_file(filename, &params);

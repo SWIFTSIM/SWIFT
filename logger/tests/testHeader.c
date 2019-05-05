@@ -42,7 +42,6 @@ int main(int argc, char *argv[]) {
 
   /* get dump filename */
   char dump_filename[PARSER_MAX_LINE_SIZE];
-  message("%s", log.base_name);
   strcpy(dump_filename, log.base_name);
   strcat(dump_filename, ".dump");
 

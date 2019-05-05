@@ -3,4 +3,4 @@ Logger:
   delta_step: 10
   initial_buffer_size: 0.01 # in GB
   buffer_scale: 10
-  basename: index
+  basename: test_reader
