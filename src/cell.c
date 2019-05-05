@@ -2692,10 +2692,11 @@ void cell_activate_subcell_hydro_tasks(struct cell *ci, struct cell *cj,
  * @param ci The first #cell we recurse in.
  * @param cj The second #cell we recurse in.
  * @param s The task #scheduler.
+ * @param with_star_formation Are we running with star formation switched on?
  */
 void cell_activate_subcell_stars_tasks(struct cell *ci, struct cell *cj,
                                        struct scheduler *s,
-				       const int with_star_formation) {
+                                       const int with_star_formation) {
   const struct engine *e = s->space->e;
 
   /* Store the current dx_max and h_max values. */
@@ -2713,6 +2714,7 @@ void cell_activate_subcell_stars_tasks(struct cell *ci, struct cell *cj,
 
   /* Self interaction? */
   if (cj == NULL) {
+
     /* Do anything? */
     if (!cell_is_active_stars(ci, e) || ci->hydro.count == 0 ||
         ci->stars.count == 0)
@@ -2723,8 +2725,8 @@ void cell_activate_subcell_stars_tasks(struct cell *ci, struct cell *cj,
       /* Loop over all progenies and pairs of progenies */
       for (int j = 0; j < 8; j++) {
         if (ci->progeny[j] != NULL) {
-          cell_activate_subcell_stars_tasks(ci->progeny[j], NULL, 
-					    s, with_star_formation);
+          cell_activate_subcell_stars_tasks(ci->progeny[j], NULL, s,
+                                            with_star_formation);
           for (int k = j + 1; k < 8; k++)
             if (ci->progeny[k] != NULL)
               cell_activate_subcell_stars_tasks(ci->progeny[j], ci->progeny[k],
@@ -2740,6 +2742,7 @@ void cell_activate_subcell_stars_tasks(struct cell *ci, struct cell *cj,
 
   /* Otherwise, pair interation */
   else {
+
     /* Should we even bother? */
     if (!cell_is_active_stars(ci, e) && !cell_is_active_stars(cj, e)) return;
 
@@ -2762,6 +2765,7 @@ void cell_activate_subcell_stars_tasks(struct cell *ci, struct cell *cj,
 
     /* Otherwise, activate the sorts and drifts. */
     else {
+
       if (cell_is_active_stars(ci, e)) {
         /* We are going to interact this pair, so store some values. */
         atomic_or(&cj->hydro.requires_sorts, 1 << sid);
@@ -3452,18 +3456,23 @@ int cell_unskip_gravity_tasks(struct cell *c, struct scheduler *s) {
  *
  * @param c the #cell.
  * @param s the #scheduler.
+ * @param with_star_formation Are we running with star formation switched on?
  *
  * @return 1 If the space needs rebuilding. 0 otherwise.
  */
-int cell_unskip_stars_tasks(struct cell *c, struct scheduler *s, 
-			    const int with_star_formation) {
+int cell_unskip_stars_tasks(struct cell *c, struct scheduler *s,
+                            const int with_star_formation) {
 
   struct engine *e = s->space->e;
   const int nodeID = e->nodeID;
   int rebuild = 0;
 
-  if (c->stars.drift != NULL && cell_is_active_stars(c, e)) {
-    cell_activate_drift_spart(c, s);
+  if (c->stars.drift != NULL) {
+    if (cell_is_active_stars(c, e) ||
+        (with_star_formation && cell_is_active_hydro(c, e))) {
+
+      cell_activate_drift_spart(c, s);
+    }
   }
 
   /* Un-skip the density tasks involved with this cell. */
@@ -3471,8 +3480,6 @@ int cell_unskip_stars_tasks(struct cell *c, struct scheduler *s,
     struct task *t = l->t;
     struct cell *ci = t->ci;
     struct cell *cj = t->cj;
-    const int ci_active = cell_is_active_stars(ci, e);
-    const int cj_active = (cj != NULL) ? cell_is_active_stars(cj, e) : 0;
 #ifdef WITH_MPI
     const int ci_nodeID = ci->nodeID;
     const int cj_nodeID = (cj != NULL) ? cj->nodeID : -1;
@@ -3480,6 +3487,13 @@ int cell_unskip_stars_tasks(struct cell *c, struct scheduler *s,
     const int ci_nodeID = nodeID;
     const int cj_nodeID = nodeID;
 #endif
+
+    const int ci_active = cell_is_active_stars(ci, e) ||
+                          (with_star_formation && cell_is_active_hydro(ci, e));
+
+    const int cj_active =
+        (cj != NULL) && (cell_is_active_stars(cj, e) ||
+                         (with_star_formation && cell_is_active_hydro(cj, e)));
 
     /* Activate the drifts */
     if (t->type == task_type_self && ci_active) {
@@ -3620,8 +3634,6 @@ int cell_unskip_stars_tasks(struct cell *c, struct scheduler *s,
     struct task *t = l->t;
     struct cell *ci = t->ci;
     struct cell *cj = t->cj;
-    const int ci_active = cell_is_active_stars(ci, e);
-    const int cj_active = (cj != NULL) ? cell_is_active_stars(cj, e) : 0;
 #ifdef WITH_MPI
     const int ci_nodeID = ci->nodeID;
     const int cj_nodeID = (cj != NULL) ? cj->nodeID : -1;
@@ -3629,6 +3641,13 @@ int cell_unskip_stars_tasks(struct cell *c, struct scheduler *s,
     const int ci_nodeID = nodeID;
     const int cj_nodeID = nodeID;
 #endif
+
+    const int ci_active = cell_is_active_stars(ci, e) ||
+                          (with_star_formation && cell_is_active_hydro(ci, e));
+
+    const int cj_active =
+        (cj != NULL) && (cell_is_active_stars(cj, e) ||
+                         (with_star_formation && cell_is_active_hydro(cj, e)));
 
     if (t->type == task_type_self && ci_active) {
       scheduler_activate(s, t);
@@ -3657,14 +3676,18 @@ int cell_unskip_stars_tasks(struct cell *c, struct scheduler *s,
   }
 
   /* Unskip all the other task types. */
-  if (c->nodeID == nodeID && cell_is_active_stars(c, e)) {
-    if (c->stars.ghost != NULL) scheduler_activate(s, c->stars.ghost);
-    if (c->stars.stars_in != NULL) scheduler_activate(s, c->stars.stars_in);
-    if (c->stars.stars_out != NULL) scheduler_activate(s, c->stars.stars_out);
-    if (c->kick1 != NULL) scheduler_activate(s, c->kick1);
-    if (c->kick2 != NULL) scheduler_activate(s, c->kick2);
-    if (c->timestep != NULL) scheduler_activate(s, c->timestep);
-    if (c->logger != NULL) scheduler_activate(s, c->logger);
+  if (c->nodeID == nodeID) {
+    if (cell_is_active_stars(c, e) ||
+        (with_star_formation && cell_is_active_hydro(c, e))) {
+
+      if (c->stars.ghost != NULL) scheduler_activate(s, c->stars.ghost);
+      if (c->stars.stars_in != NULL) scheduler_activate(s, c->stars.stars_in);
+      if (c->stars.stars_out != NULL) scheduler_activate(s, c->stars.stars_out);
+      if (c->kick1 != NULL) scheduler_activate(s, c->kick1);
+      if (c->kick2 != NULL) scheduler_activate(s, c->kick2);
+      if (c->timestep != NULL) scheduler_activate(s, c->timestep);
+      if (c->logger != NULL) scheduler_activate(s, c->logger);
+    }
   }
 
   return rebuild;
