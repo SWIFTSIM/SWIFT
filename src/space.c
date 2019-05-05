@@ -248,6 +248,8 @@ void space_rebuild_recycle_mapper(void *map_data, int num_elements,
     c->stars.stars_in = NULL;
     c->stars.stars_out = NULL;
     c->black_holes.drift = NULL;
+    c->black_holes.black_holes_in = NULL;
+    c->black_holes.black_holes_out = NULL;
     c->grav.drift = NULL;
     c->grav.drift_out = NULL;
     c->hydro.cooling = NULL;
