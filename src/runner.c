@@ -3840,7 +3840,8 @@ void runner_do_recv_spart(struct runner *r, struct cell *c, int clear_sorts,
   }
 
 #ifdef SWIFT_DEBUG_CHECKS
-  if (ti_stars_end_min < ti_current)
+  if (ti_stars_end_min < ti_current &&
+      !(e->policy & engine_policy_star_formation))
     error(
         "Received a cell at an incorrect time c->ti_end_min=%lld, "
         "e->ti_current=%lld.",
