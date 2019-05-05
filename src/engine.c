@@ -4115,6 +4115,7 @@ void engine_unskip(struct engine *e) {
   const int with_ext_grav = e->policy & engine_policy_external_gravity;
   const int with_stars = e->policy & engine_policy_stars;
   const int with_feedback = e->policy & engine_policy_feedback;
+  const int with_black_holes = e->policy & engine_policy_black_holes;
 
 #ifdef WITH_PROFILER
   static int count = 0;
@@ -4134,7 +4135,8 @@ void engine_unskip(struct engine *e) {
         (with_ext_grav && c->nodeID == nodeID &&
          cell_is_active_gravity(c, e)) ||
         (with_feedback && cell_is_active_stars(c, e)) ||
-        (with_stars && c->nodeID == nodeID && cell_is_active_stars(c, e))) {
+        (with_stars && c->nodeID == nodeID && cell_is_active_stars(c, e)) ||
+        (with_black_holes && cell_is_active_black_holes(c, e))) {
 
       if (num_active_cells != k)
         memswap(&local_cells[k], &local_cells[num_active_cells], sizeof(int));
