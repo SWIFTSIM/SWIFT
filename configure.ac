@@ -1793,7 +1793,7 @@ case "$with_black_holes" in
       AC_DEFINE([BLACK_HOLES_EAGLE], [1], [EAGLE black hole model])
    ;;
    *)
-      AC_MSG_ERROR([Unknown stellar model: $with_black_holes])
+      AC_MSG_ERROR([Unknown black-hole model: $with_black_holes])
    ;;
 esac
 
