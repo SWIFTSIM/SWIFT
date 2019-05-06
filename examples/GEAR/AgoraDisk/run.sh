@@ -22,14 +22,14 @@ fi
 if [ ! -e $sim.hdf5 ]
 then
     echo "Fetching initial glass file for the Sedov blast example..."
-    ./getIC.sh $sim.hdf5
+    ./getIC.sh $sim
 fi
 
 # Get the Grackle cooling table
 if [ ! -e CloudyData_UVB=HM2012.h5 ]
 then
     echo "Fetching the Cloudy tables required by Grackle..."
-    ../getCoolingTable.sh
+    ../../Cooling/getGrackleCoolingTable.sh 
 fi
 
 # copy the initial conditions
@@ -38,7 +38,7 @@ cp $sim.hdf5 agora_disk.hdf5
 python3 changeType.py agora_disk.hdf5
 
 # Run SWIFT
-#../../swift $flag --hydro --self-gravity --threads=4 agora_disk.yml 2>&1 | tee output.log
+../../swift $flag --hydro --self-gravity --threads=4 agora_disk.yml 2>&1 | tee output.log
 
 
 echo "Changing smoothing length to be Gadget compatible"

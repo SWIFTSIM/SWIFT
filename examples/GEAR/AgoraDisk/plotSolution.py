@@ -1,12 +1,11 @@
-#!/usr/bin/env python2
+#!/usr/bin/env python3
 #######################################################################
 #
 #  UNIFIED ANALYSIS SCRIPT FOR DISK SIMULATION FOR THE AGORA PROJECT
 #
 #  FOR SCRIPT HISTORY SEE VERSION CONTROL CHANGELOG
 #
-#  Note: This script requires yt-3.2 or yt-dev. Older versions may
-#        yield incorrect results.
+#  Note: This script works with yt-3.5.1.
 #
 #######################################################################
 # This script is a copy of the AGORA project (https://bitbucket.org/mornkr/agora-analysis-script/)
@@ -50,9 +49,9 @@ draw_cellsize_map                = 2#2           # 0/1/2/3     = OFF/ON/ON now w
 draw_elevation_map               = 1#1           # 0/1         = OFF/ON
 draw_metal_map                   = 0#0           # 0/1/2       = OFF/ON/ON with total metal mass in the simulation annotated (this will be inaccurate for SPH)
 draw_zvel_map                    = 0#0           # 0/1         = OFF/ON
-draw_star_map                    = 0#0           # 0/1         = OFF/ON
+draw_star_map                    = 1#0           # 0/1         = OFF/ON
 draw_star_clump_stats            = 0#0           # 0/1/2/3     = OFF/ON/ON with additional star_map with annotated clumps/ON with addtional star_map + extra clump mass function with GIZMO-ps2
-draw_SFR_map                     = 0###0         # 0/1/2       = OFF/ON/ON with local K-S plot using patches
+draw_SFR_map                     = 1###0         # 0/1/2       = OFF/ON/ON with local K-S plot using patches
 draw_PDF                         = 0###0         # 0/1/2/3     = OFF/ON/ON with constant pressure/entropy lines/ON with additional annotations such as 1D profile from a specific code (CHANGA)
 draw_pos_vel_PDF                 = 0##0          # 0/1/2/3/4   = OFF/ON/ON with 1D profile/ON also with 1D dispersion profile/ON also with separate 1D vertical dispersion profiles
 draw_star_pos_vel_PDF            = 0##0          # 0/1/2/3/4   = OFF/ON/ON with 1D profile/ON also with 1D dispersion profile/ON also with separate 1D vertical dispersion profiles
@@ -60,9 +59,9 @@ draw_rad_height_PDF              = 0##0          # 0/1/2/3     = OFF/ON/ON with 
 draw_metal_PDF                   = 0##0          # 0/1         = OFF/ON
 draw_density_DF                  = 0#0           # 0/1/2       = OFF/ON/ON with difference plot between 1st and 2nd datasets (when 2, dataset_num should be set to 2)
 draw_radius_DF                   = 0#0           # 0/1         = OFF/ON
-draw_star_radius_DF              = 0#0           # 0/1/2       = OFF/ON/ON with SFR profile and K-S plot (when 2, this automatically turns on draw_radius_DF)
+draw_star_radius_DF              = 1#0           # 0/1/2       = OFF/ON/ON with SFR profile and K-S plot (when 2, this automatically turns on draw_radius_DF)
 draw_height_DF                   = 0#0           # 0/1         = OFF/ON
-draw_SFR                         = 0#0           # 0/1/2       = OFF/ON/ON with extra line with GIZMO-ps2
+draw_SFR                         = 1#0           # 0/1/2       = OFF/ON/ON with extra line with GIZMO-ps2
 draw_cut_through                 = 0#0           # 0/1         = OFF/ON
 add_nametag                      = 1#1           # 0/1         = OFF/ON
 add_mean_fractional_dispersion   = 0#0           # 0/1         = OFF/ON
@@ -112,15 +111,15 @@ marker_names             = ['s', 'o', 'p', 'v', '^', '<', '>', 'h', '*']
 #             [file_location[1]+'GADGET-3/AGORA_ISO_LOW_SF_SNII_Thermal_Chevalier_SFT10/snap_iso_sf_000.hdf5', file_location[1]+'GADGET-3/AGORA_ISO_LOW_SF_SNII_Thermal_Chevalier_SFT10/snap_iso_sf_010.hdf5'],
 #             [file_location[1]+'GEAR/snapshot_0000', file_location[1]+'GEAR/snapshot_0500'],
 #             [file_location[1]+'GIZMO/snapshot_temp_000', file_location[1]+'GIZMO/snapshot_temp_100']]]
-codes = ['SWIFT', 'GEAR']
-filenames = [[["./agora_disk_IC.hdf5", "./agora_disk_500Myr.hdf5"],
-              ["./snapshot_0000.hdf5", "./snapshot_0500.hdf5"]],
-             [["./agora_disk_IC.hdf5", "./agora_disk_500Myr.hdf5"],
-              ["./snapshot_0000.hdf5", "./snapshot_0500.hdf5"]]]
+# codes = ['SWIFT', 'GEAR']
+# filenames = [[["./agora_disk_0012.hdf5", "./agora_disk_0012.hdf5"],
+#               ["./snapshot_0000.hdf5", "./snapshot_0500.hdf5"]],
+#              [["./agora_disk_0012.hdf5", "./agora_disk_0012.hdf5"],
+#               ["./snapshot_0000.hdf5", "./snapshot_0500.hdf5"]]]
 
-# codes = ["SWIFT"]
-# filenames = [[["./agora_disk_0000.hdf5", "./agora_disk_0050.hdf5"]],
-#             [["./agora_disk_0000.hdf5", "./agora_disk_0050.hdf5"]]]
+codes = ["SWIFT"]
+filenames = [[["./agora_disk_0012.hdf5", "./agora_disk_0012.hdf5"]],
+            [["./agora_disk_0012.hdf5", "./agora_disk_0012.hdf5"]]]
 # codes = ['ART-I']
 # filenames = [[[file_location[0]+'ART-I/IC/AGORA_Galaxy_LOW.d', file_location[0]+'ART-I/t0.5Gyr/10MpcBox_csf512_02350.d']],
 #            [[file_location[1]+'ART-I/IC/AGORA_Galaxy_LOW.d', file_location[1]+'ART-I/t0.5Gyr/10MpcBox_csf512_02350.d']]]
@@ -513,8 +512,11 @@ for time in range(len(times)):
                         MassType_to_use = "Masses"
                 elif codes[code] == "SWIFT":
                         PartType_Gas_to_use = "PartType0"
-                        PartType_Star_to_use = "PartType2"
-                        PartType_StarBeforeFiltered_to_use = "PartType2"
+                        PartType_Star_to_use = "PartType4"
+                        PartType_StarBeforeFiltered_to_use = "PartType4"
+                        def _FormationTime(field, data):
+                            return pf.arr(data["PartType4", "BirthTime"].d, 'code_time')
+                        pf.add_field(("PartType4", FormationTimeType_to_use), function=_FormationTime, particle_type=True, take_log=False, units="code_time")
                         MassType_to_use = "Masses"
                 elif codes[code] == "GEAR":
                         PartType_Gas_to_use = "PartType0"
@@ -701,7 +703,7 @@ for time in range(len(times)):
                 cen2 = sp.quantities.center_of_mass(use_gas=True, use_particles=False).in_units("kpc")
                 sp2 = pf.sphere(cen2, (1.0, "kpc"))
                 cen3 = sp2.quantities.max_location(("gas", "density"))
-                center = pf.arr([cen3[1].d, cen3[2].d, cen3[3].d], 'code_length') # naive usage such as YTArray([cen3[1], cen3[2], cen3[3]]) doesn't work somehow for ART-II data
+                center = pf.arr([cen3[1].d, cen3[2].d, cen3[3].d], 'cm') # naive usage such as YTArray([cen3[1], cen3[2], cen3[3]]) doesn't work somehow for ART-II data
                 if yt_version_pre_3_2_3 == 1:
                         center = pf.arr([cen3[2].d, cen3[3].d, cen3[4].d], 'code_length') # for yt-3.2.3 or before
                 if codes[code] == "GASOLINE" and dataset_num == 2 and time == 1:

@@ -13,9 +13,10 @@ copyfile(filename, out)
 
 f = File(out)
 
-name = "PartType0/ElementAbundance"
-if name in f:
-    del f[name]
+for i in range(6):
+    name = "PartType{}/ElementAbundance".format(i)
+    if name in f:
+        del f[name]
 
 for i in range(NPartType):
     name = "PartType%i" % i
@@ -24,5 +25,11 @@ for i in range(NPartType):
 
     grp = f[name + "/SmoothingLength"]
     grp[:] *= 1.823
+
+cosmo = f["Cosmology"].attrs
+head = f["Header"].attrs
+head["OmegaLambda"] = cosmo["Omega_lambda"]
+head["Omega0"] = cosmo["Omega_b"]
+head["HubbleParam"] = cosmo["H0 [internal units]"]
 
 f.close()
