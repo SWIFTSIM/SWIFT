@@ -4118,6 +4118,7 @@ void engine_unskip(struct engine *e) {
   const int with_ext_grav = e->policy & engine_policy_external_gravity;
   const int with_stars = e->policy & engine_policy_stars;
   const int with_feedback = e->policy & engine_policy_feedback;
+  const int with_black_holes = e->policy & engine_policy_black_holes;
 
 #ifdef WITH_PROFILER
   static int count = 0;
@@ -4137,7 +4138,8 @@ void engine_unskip(struct engine *e) {
         (with_ext_grav && c->nodeID == nodeID &&
          cell_is_active_gravity(c, e)) ||
         (with_feedback && cell_is_active_stars(c, e)) ||
-        (with_stars && c->nodeID == nodeID && cell_is_active_stars(c, e))) {
+        (with_stars && c->nodeID == nodeID && cell_is_active_stars(c, e)) ||
+        (with_black_holes && cell_is_active_black_holes(c, e))) {
 
       if (num_active_cells != k)
         memswap(&local_cells[k], &local_cells[num_active_cells], sizeof(int));
@@ -5513,7 +5515,7 @@ void engine_config(int restart, struct engine *e, struct swift_params *params,
 
   /* Estimated number of links per tasks */
   e->links_per_tasks =
-      parser_get_opt_param_int(params, "Scheduler:links_per_tasks", 15);
+      parser_get_opt_param_int(params, "Scheduler:links_per_tasks", 25);
 
   /* Init the scheduler. */
   scheduler_init(&e->sched, e->s, maxtasks, nr_queues,

@@ -2064,7 +2064,6 @@ void engine_make_extra_hydroloop_tasks_mapper(void *map_data, int num_elements,
         scheduler_addunlock(sched, ci->hydro.super->black_holes.drift,
                             t_bh_density);
         scheduler_addunlock(sched, ci->hydro.super->hydro.drift, t_bh_density);
-        scheduler_addunlock(sched, ci->hydro.super->hydro.sorts, t_bh_density);
         scheduler_addunlock(sched, ci->hydro.super->black_holes.black_holes_in,
                             t_bh_density);
         scheduler_addunlock(sched, t_bh_density,
