@@ -50,21 +50,21 @@ draw_elevation_map               = 1#1           # 0/1         = OFF/ON
 draw_metal_map                   = 0#0           # 0/1/2       = OFF/ON/ON with total metal mass in the simulation annotated (this will be inaccurate for SPH)
 draw_zvel_map                    = 0#0           # 0/1         = OFF/ON
 draw_star_map                    = 1#0           # 0/1         = OFF/ON
-draw_star_clump_stats            = 0#0           # 0/1/2/3     = OFF/ON/ON with additional star_map with annotated clumps/ON with addtional star_map + extra clump mass function with GIZMO-ps2
-draw_SFR_map                     = 1###0         # 0/1/2       = OFF/ON/ON with local K-S plot using patches
-draw_PDF                         = 0###0         # 0/1/2/3     = OFF/ON/ON with constant pressure/entropy lines/ON with additional annotations such as 1D profile from a specific code (CHANGA)
-draw_pos_vel_PDF                 = 0##0          # 0/1/2/3/4   = OFF/ON/ON with 1D profile/ON also with 1D dispersion profile/ON also with separate 1D vertical dispersion profiles
-draw_star_pos_vel_PDF            = 0##0          # 0/1/2/3/4   = OFF/ON/ON with 1D profile/ON also with 1D dispersion profile/ON also with separate 1D vertical dispersion profiles
-draw_rad_height_PDF              = 0##0          # 0/1/2/3     = OFF/ON/ON with 1D profile/ON with analytic ftn subtracted
+draw_star_clump_stats            = 1#0           # 0/1/2/3     = OFF/ON/ON with additional star_map with annotated clumps/ON with addtional star_map + extra clump mass function with GIZMO-ps2
+draw_SFR_map                     = 2###0         # 0/1/2       = OFF/ON/ON with local K-S plot using patches
+draw_PDF                         = 2###0         # 0/1/2/3     = OFF/ON/ON with constant pressure/entropy lines/ON with additional annotations such as 1D profile from a specific code (CHANGA)
+draw_pos_vel_PDF                 = 1##0          # 0/1/2/3/4   = OFF/ON/ON with 1D profile/ON also with 1D dispersion profile/ON also with separate 1D vertical dispersion profiles
+draw_star_pos_vel_PDF            = 1##0          # 0/1/2/3/4   = OFF/ON/ON with 1D profile/ON also with 1D dispersion profile/ON also with separate 1D vertical dispersion profiles
+draw_rad_height_PDF              = 1##0          # 0/1/2/3     = OFF/ON/ON with 1D profile/ON with analytic ftn subtracted
 draw_metal_PDF                   = 0##0          # 0/1         = OFF/ON
-draw_density_DF                  = 0#0           # 0/1/2       = OFF/ON/ON with difference plot between 1st and 2nd datasets (when 2, dataset_num should be set to 2)
-draw_radius_DF                   = 0#0           # 0/1         = OFF/ON
+draw_density_DF                  = 1#0           # 0/1/2       = OFF/ON/ON with difference plot between 1st and 2nd datasets (when 2, dataset_num should be set to 2)
+draw_radius_DF                   = 1#0           # 0/1         = OFF/ON
 draw_star_radius_DF              = 1#0           # 0/1/2       = OFF/ON/ON with SFR profile and K-S plot (when 2, this automatically turns on draw_radius_DF)
-draw_height_DF                   = 0#0           # 0/1         = OFF/ON
+draw_height_DF                   = 1#0           # 0/1         = OFF/ON
 draw_SFR                         = 1#0           # 0/1/2       = OFF/ON/ON with extra line with GIZMO-ps2
-draw_cut_through                 = 0#0           # 0/1         = OFF/ON
+draw_cut_through                 = 1#0           # 0/1         = OFF/ON
 add_nametag                      = 1#1           # 0/1         = OFF/ON
-add_mean_fractional_dispersion   = 0#0           # 0/1         = OFF/ON
+add_mean_fractional_dispersion   = 1#0           # 0/1         = OFF/ON
 
 dataset_num                      = 2             # 1/2         = 1st dataset(Grackle+noSF)/2nd dataset(Grackle+SF+ThermalFbck) for AGORA Paper 4
 yt_version_pre_3_2_3             = 0             # 0/1         = NO/YES to "Is the yt version being used pre yt-dev-3.2.3?"
@@ -676,15 +676,6 @@ for time in range(len(times)):
                         pf.add_field((PartType_Gas_to_use, "particle_position_cylindrical_z_abs"), function=_particle_position_cylindrical_z_abs, take_log=False, particle_type=True, units="cm")
                         # particle_type=False doesn't make sense, but is critical for PhasePlot/ProfilePlot to work for particle fields
                         # requires a change in data_objects/data_container.py: remove raise YTFieldTypeNotFound(ftype)
-                        def _Density_2(field, data):
-                                return data[(PartType_Gas_to_use, "Density")].in_units('g/cm**3')
-                        pf.add_field((PartType_Gas_to_use, "Density_2"), function=_Density_2, take_log=True, particle_type=False, display_name="Density", units="g/cm**3")
-                        def _Temperature_2(field, data):
-                                return data[(PartType_Gas_to_use, "Temperature")].in_units('K')
-                        pf.add_field((PartType_Gas_to_use, "Temperature_2"), function=_Temperature_2, take_log=True, particle_type=False, display_name="Temperature", units="K")
-                        def _Mass_2(field, data):
-                                return data[(PartType_Gas_to_use, MassType_to_use)].in_units('Msun')
-                        pf.add_field((PartType_Gas_to_use, "Mass_2"), function=_Mass_2, take_log=True, particle_type=False, display_name="Mass", units="Msun")
                         if draw_metal_map >= 1 or draw_metal_PDF == 1:
                                 def _Metallicity_2(field, data):
                                         return data[(PartType_Gas_to_use, MetallicityType_to_use)]
@@ -1111,10 +1102,10 @@ for time in range(len(times)):
                                 plot3 = p3.plots[("gas", "cell_mass")]
                         else:
                                 # Because ParticlePhasePlot doesn't yet work for a log-log PDF for some reason, I will do the following trick.
-                                p3 = PhasePlot(sp, (PartType_Gas_to_use, "Density_2"), (PartType_Gas_to_use, "Temperature_2"), (PartType_Gas_to_use, "Mass_2"), weight_field=None, fontsize=12, x_bins=300, y_bins=300)
-                                p3.set_zlim((PartType_Gas_to_use, "Mass_2"), 1e3, 1e8)
-                                p3.set_cmap((PartType_Gas_to_use, "Mass_2"), my_cmap2)
-                                plot3 = p3.plots[(PartType_Gas_to_use, "Mass_2")]
+                                p3 = PhasePlot(sp, (PartType_Gas_to_use, "density"), (PartType_Gas_to_use, "temperature"), (PartType_Gas_to_use, MassType_to_use), weight_field=None, fontsize=12, x_bins=300, y_bins=300)
+                                p3.set_zlim((PartType_Gas_to_use, MassType_to_use), 1e3, 1e8)
+                                p3.set_cmap((PartType_Gas_to_use, MassType_to_use), my_cmap2)
+                                plot3 = p3.plots[(PartType_Gas_to_use, MassType_to_use)]
 
                         p3.set_xlim(1e-29, 1e-21)
                         p3.set_ylim(10, 1e7)
@@ -1428,16 +1419,16 @@ for time in range(len(times)):
                         else:
                                 # Because ParticlePhasePlot doesn't work for these newly created fields for some reason, I will do the following trick.
                                 if draw_rad_height_PDF == 1 or draw_rad_height_PDF == 2:
-                                        p55 = PhasePlot(sp, (PartType_Gas_to_use, "particle_position_cylindrical_radius"), (PartType_Gas_to_use, "particle_position_cylindrical_z_abs"), (PartType_Gas_to_use, "Density_2"), weight_field=(PartType_Gas_to_use, "Mass_2"), fontsize=12, x_bins=200, y_bins=200)
-                                        p55.set_zlim((PartType_Gas_to_use, "Density_2"), 1e-26, 1e-21)
-                                        p55.set_cmap((PartType_Gas_to_use, "Density_2"), 'algae')
+                                        p55 = PhasePlot(sp, (PartType_Gas_to_use, "particle_position_cylindrical_radius"), (PartType_Gas_to_use, "particle_position_cylindrical_z_abs"), (PartType_Gas_to_use, "density"), weight_field=(PartType_Gas_to_use, MassType_to_use), fontsize=12, x_bins=200, y_bins=200)
+                                        p55.set_zlim((PartType_Gas_to_use, "density"), 1e-26, 1e-21)
+                                        p55.set_cmap((PartType_Gas_to_use, "density"), 'algae')
                                         p55.set_log("particle_position_cylindrical_radius", False)
                                         p55.set_log("particle_position_cylindrical_z_abs", False)
                                         p55.set_unit("particle_position_cylindrical_radius", 'kpc')
                                         p55.set_unit("particle_position_cylindrical_z_abs", 'kpc')
-                                        plot55 = p55.plots[(PartType_Gas_to_use, "Density_2")]
+                                        plot55 = p55.plots[(PartType_Gas_to_use, "density")]
                                 elif draw_rad_height_PDF == 3:
-                                        p55 = PhasePlot(sp, (PartType_Gas_to_use, "particle_position_cylindrical_radius"), (PartType_Gas_to_use, "particle_position_cylindrical_z_abs"), (PartType_Gas_to_use, "Density_2_minus_analytic"), weight_field=(PartType_Gas_to_use, "Mass_2"), fontsize=12, x_bins=200, y_bins=200)
+                                        p55 = PhasePlot(sp, (PartType_Gas_to_use, "particle_position_cylindrical_radius"), (PartType_Gas_to_use, "particle_position_cylindrical_z_abs"), (PartType_Gas_to_use, "Density_2_minus_analytic"), weight_field=(PartType_Gas_to_use, MassType_to_use), fontsize=12, x_bins=200, y_bins=200)
                                         p55.set_zlim((PartType_Gas_to_use, "Density_2_minus_analytic"), -1e-24, 1e-24)
                                         p55.set_cmap((PartType_Gas_to_use, "Density_2_minus_analytic"), 'algae')
                                         p55.set_log("particle_position_cylindrical_radius", False)
@@ -1503,7 +1494,7 @@ for time in range(len(times)):
                         else:
                                 # Because ParticlePhasePlot doesn't yet work for a log-log PDF for some reason, I will do the following trick.
                                 pf.field_info[(PartType_Gas_to_use, "Metallicity_2")].take_log = False
-                                p3 = PhasePlot(sp, (PartType_Gas_to_use, "Density_2"), (PartType_Gas_to_use, "Temperature_2"), (PartType_Gas_to_use, "Metallicity_2"), weight_field=(PartType_Gas_to_use, "Mass_2"), fontsize=12, x_bins=300, y_bins=300)
+                                p3 = PhasePlot(sp, (PartType_Gas_to_use, "density"), (PartType_Gas_to_use, "temperature"), (PartType_Gas_to_use, "Metallicity_2"), weight_field=(PartType_Gas_to_use, MassType_to_use), fontsize=12, x_bins=300, y_bins=300)
                                 p3.set_zlim((PartType_Gas_to_use, "Metallicity_2"), 0.01, 0.04)
                                 p3.set_cmap((PartType_Gas_to_use, "Metallicity_2"), my_cmap2)
                                 plot3 = p3.plots[(PartType_Gas_to_use, "Metallicity_2")]
@@ -1532,12 +1523,13 @@ for time in range(len(times)):
                                 density_DF_profiles[time].append(p6.profiles[0]["cell_mass"].in_units('Msun').d)
                         else:
                                 # Because ParticleProfilePlot doesn't exist, I will do the following trick.
-                                p6 = ProfilePlot(sp, (PartType_Gas_to_use, "Density_2"),  (PartType_Gas_to_use, "Mass_2"), weight_field=None, n_bins=50, x_log=True, accumulation=False)
-#				p6 = ProfilePlot(sp, (PartType_Gas_to_use, "Density_2"),  (PartType_Gas_to_use, "Mass_2"), weight_field=None, n_bins=50, x_log=True, accumulation=True)
-                                p6.set_log("Mass_2", True)
+                                p6 = ProfilePlot(sp, (PartType_Gas_to_use, "density"),  (PartType_Gas_to_use, MassType_to_use), weight_field=None, n_bins=50, x_log=True, accumulation=False)
+#				p6 = ProfilePlot(sp, (PartType_Gas_to_use, "density"),  (PartType_Gas_to_use, MassType_to_use), weight_field=None, n_bins=50, x_log=True, accumulation=True)
+                                # TODO use log
+                                # p6.set_log(MassType_to_use, True)
                                 p6.set_xlim(1e-29, 1e-21)
                                 density_DF_xs[time].append(p6.profiles[0].x.in_units('g/cm**3').d)
-                                density_DF_profiles[time].append(p6.profiles[0]["Mass_2"].in_units('Msun').d)
+                                density_DF_profiles[time].append(p6.profiles[0][MassType_to_use].in_units('Msun').d)
 
                         # Add difference plot between 1st and 2nd datasets, if requested
                         if draw_density_DF == 2 and time != 0:
@@ -1561,15 +1553,15 @@ for time in range(len(times)):
                                         else:
                                                 def _Density_2(field, data):
                                                         return data[(PartType_Gas_to_use, "Density")].in_units('g/cm**3')
-                                                pf_1st.add_field((PartType_Gas_to_use, "Density_2"), function=_Density_2, take_log=True, particle_type=False, display_name="Density", units="g/cm**3")
+                                                pf_1st.add_field((PartType_Gas_to_use, "density"), function=_Density_2, take_log=True, particle_type=False, display_name="Density", units="g/cm**3")
                                                 def _Mass_2(field, data):
                                                         return data[(PartType_Gas_to_use, MassType_to_use)].in_units('Msun')
-                                                pf_1st.add_field((PartType_Gas_to_use, "Mass_2"), function=_Mass_2, take_log=True, particle_type=False, display_name="Mass", units="Msun")
-                                                p61 = ProfilePlot(sp_1st, (PartType_Gas_to_use, "Density_2"),  (PartType_Gas_to_use, "Mass_2"), weight_field=None, n_bins=50, x_log=True, accumulation=False)
-                                                p61.set_log("Mass_2", True)
+                                                pf_1st.add_field((PartType_Gas_to_use, MassType_to_use), function=_Mass_2, take_log=True, particle_type=False, display_name="Mass", units="Msun")
+                                                p61 = ProfilePlot(sp_1st, (PartType_Gas_to_use, "density"),  (PartType_Gas_to_use, MassType_to_use), weight_field=None, n_bins=50, x_log=True, accumulation=False)
+                                                p61.set_log(MassType_to_use, True)
                                                 p61.set_xlim(1e-29, 1e-21)
                                                 density_DF_1st_xs[time].append(p61.profiles[0].x.in_units('g/cm**3').d)
-                                                density_DF_1st_profiles[time].append(p61.profiles[0]["Mass_2"].in_units('Msun').d)
+                                                density_DF_1st_profiles[time].append(p61.profiles[0][MassType_to_use].in_units('Msun').d)
                                 else:
                                         print("This won't work; consider setting dataset_num to 2...")
                                         continue
@@ -1587,13 +1579,14 @@ for time in range(len(times)):
                                 radius_DF_xs[time].append(p7.profiles[0].x.in_units('kpc').d)
                                 radius_DF_profiles[time].append(p7.profiles[0]["cell_mass"].in_units('Msun').d)
                         else:
-                                p7 = ProfilePlot(sp, (PartType_Gas_to_use, "particle_position_cylindrical_radius"),  (PartType_Gas_to_use, "Mass_2"), weight_field=None, n_bins=50, x_log=False, accumulation=False)
-                                p7.set_log("Mass_2", True)
+                                p7 = ProfilePlot(sp, (PartType_Gas_to_use, "particle_position_cylindrical_radius"),  (PartType_Gas_to_use, MassType_to_use), weight_field=None, n_bins=50, x_log=False, accumulation=False)
+                                p7.set_log(MassType_to_use, True)
                                 p7.set_log("particle_position_cylindrical_radius", False)
                                 p7.set_unit("particle_position_cylindrical_radius", 'kpc')
-                                p7.set_xlim(1e-3, 15)
+                                # TODO find lims
+                                # p7.set_xlim(1e-3, 15)
                                 radius_DF_xs[time].append(p7.profiles[0].x.in_units('kpc').d)
-                                radius_DF_profiles[time].append(p7.profiles[0]["Mass_2"].in_units('Msun').d)
+                                radius_DF_profiles[time].append(p7.profiles[0][MassType_to_use].in_units('Msun').d)
 
                 # CYLINDRICAL RADIUS DF + RADIALLY-BINNED SURFACE DENSITY FOR NEW STARS
                 if draw_star_radius_DF >= 1 and time != 0:
@@ -1642,13 +1635,13 @@ for time in range(len(times)):
                                 height_DF_xs[time].append(p8.profiles[0].x.in_units('kpc').d)
                                 height_DF_profiles[time].append(p8.profiles[0]["cell_mass"].in_units('Msun').d)
                         else:
-                                p8 = ProfilePlot(sp, (PartType_Gas_to_use, "particle_position_cylindrical_z_abs"),  (PartType_Gas_to_use, "Mass_2"), weight_field=None, n_bins=10, x_log=False, accumulation=False)
-                                p8.set_log("Mass_2", True)
+                                p8 = ProfilePlot(sp, (PartType_Gas_to_use, "particle_position_cylindrical_z_abs"),  (PartType_Gas_to_use, MassType_to_use), weight_field=None, n_bins=10, x_log=False, accumulation=False)
+                                p8.set_log(MassType_to_use, True)
                                 p8.set_log("particle_position_cylindrical_z_abs", False)
                                 p8.set_unit("particle_position_cylindrical_z_abs", 'kpc')
                                 p8.set_xlim(1e-3, 1.4)
                                 height_DF_xs[time].append(p8.profiles[0].x.in_units('kpc').d)
-                                height_DF_profiles[time].append(p8.profiles[0]["Mass_2"].in_units('Msun').d)
+                                height_DF_profiles[time].append(p8.profiles[0][MassType_to_use].in_units('Msun').d)
 
                 # STAR FORMATION RATE + CUMULATIVE STELLAR MASS GROWTH IN TIME
                 if draw_SFR >= 1 and time != 0:
@@ -1872,8 +1865,11 @@ for time in range(len(times)):
                                 KS_x[np.where(np.array(sfr_surf_dens_SFR_map[time][code]) < 1e-10)] = 0
                                 KS_x = np.log10(KS_x)
                                 KS_y = np.log10(np.array(sfr_surf_dens_SFR_map[time][code]))
-                                KS_x = KS_x[~np.isinf(KS_x)]
-                                KS_y = KS_y[~np.isinf(KS_y)]
+                                ind = np.logical_or(np.isinf(KS_x), np.isinf(KS_y))
+                                ind2 = np.logical_or(np.isnan(KS_x), np.isnan(KS_y))
+                                ind = np.logical_or(ind, ind2)
+                                KS_x = KS_x[~ind]
+                                KS_y = KS_y[~ind]
                                 if codes[code] == "CHANGA":
                                         plt.scatter(KS_x, KS_y, color='k', edgecolor='k', s=20, linewidth=0.7, marker=marker_names[code], alpha=0.1)
                                 # Draw a 80% contour rather than scattering all the datapoints; see http://stackoverflow.com/questions/19390320/scatterplot-contours-in-matplotlib
@@ -1895,10 +1891,10 @@ for time in range(len(times)):
                         ltext = leg.get_texts()
                         plt.setp(ltext, fontsize='small')
                         t = np.arange(-2, 5, 0.01)
-                        for line in import_text("./Bigieletal2008_Fig8_Contour.txt", " "):
-                                Bigiel_surface_density.append(float(line[0]) + np.log10(1.36)) # for the factor 1.36, see Section 2.3.1 of Bigiel et al. 2008
-                                Bigiel_sfr_surface_density.append(float(line[1]))
-                        plt.fill(Bigiel_surface_density, Bigiel_sfr_surface_density, fill=True, color='b', alpha = 0.1, hatch='\\') # contour by Bigiel et al. 2008 (Fig 8), or Feldmann et al. 2012 (Fig 1)
+                        # for line in import_text("./Bigieletal2008_Fig8_Contour.txt", " "):
+                        #         Bigiel_surface_density.append(float(line[0]) + np.log10(1.36)) # for the factor 1.36, see Section 2.3.1 of Bigiel et al. 2008
+                        #         Bigiel_sfr_surface_density.append(float(line[1]))
+                        # plt.fill(Bigiel_surface_density, Bigiel_sfr_surface_density, fill=True, color='b', alpha = 0.1, hatch='\\') # contour by Bigiel et al. 2008 (Fig 8), or Feldmann et al. 2012 (Fig 1)
                         plt.plot(t, 1.37*t - 3.78, 'k--', linewidth = 2, alpha = 0.7) # observational fit by Kennicutt et al. 2007
 #			plt.axhline(y = np.log10(8.593e4/young_star_cutoff_SFR_map/1e6/(float(aperture_size_SFR_map)/1000.)**2),
 #                                   color='k', linestyle ='-.', linewidth=1, alpha=0.7) # SFR surface density cutoff due to limited star particle mass resolution
@@ -1911,13 +1907,13 @@ for time in range(len(times)):
                         pf_profile_ref = load_dataset(1, 1, 0, ['CHANGA'], [['dummy', file_location[0]+'CHANGA/disklow/disklow.000500']])
                         def _Density_2(field, data):
                                 return data[(PartType_Gas_to_use, "Density")].in_units('g/cm**3')
-                        pf_profile_ref.add_field((PartType_Gas_to_use, "Density_2"), function=_Density_2, take_log=True, particle_type=False, display_name="Density", units="g/cm**3")
+                        pf_profile_ref.add_field((PartType_Gas_to_use, "density"), function=_Density_2, take_log=True, particle_type=False, display_name="Density", units="g/cm**3")
                         def _Temperature_2(field, data):
                                 return data[(PartType_Gas_to_use, "Temperature")].in_units('K')
-                        pf_profile_ref.add_field((PartType_Gas_to_use, "Temperature_2"), function=_Temperature_2, take_log=True, particle_type=False, display_name="Temperature", units="K")
+                        pf_profile_ref.add_field((PartType_Gas_to_use, "temperature"), function=_Temperature_2, take_log=True, particle_type=False, display_name="Temperature", units="K")
                         def _Mass_2(field, data):
                                 return data[(PartType_Gas_to_use, MassType_to_use)].in_units('Msun')
-                        pf_profile_ref.add_field((PartType_Gas_to_use, "Mass_2"), function=_Mass_2, take_log=True, particle_type=False, display_name="Mass", units="Msun")
+                        pf_profile_ref.add_field((PartType_Gas_to_use, MassType_to_use), function=_Mass_2, take_log=True, particle_type=False, display_name="Mass", units="Msun")
 
                         v, cen = pf_profile_ref.h.find_max(("gas", "density"))
                         sp = pf_profile_ref.sphere(cen, (30.0, "kpc"))
@@ -1932,12 +1928,12 @@ for time in range(len(times)):
                         # p35 = ProfilePlot(sp_profile_ref, ("gas", "density"),  ("gas", "temperature"), weight_field=("gas", "cell_mass"), n_bins=30)
                         # p35.set_xlim(1e-29, 1e-21)
                         # p35.set_ylim("temperature", 10, 1e7)
-                        p35 = ProfilePlot(sp_profile_ref, (PartType_Gas_to_use, "Density_2"), (PartType_Gas_to_use, "Temperature_2"), weight_field=(PartType_Gas_to_use, "Mass_2"), n_bins=30)
+                        p35 = ProfilePlot(sp_profile_ref, (PartType_Gas_to_use, "density"), (PartType_Gas_to_use, "temperature"), weight_field=(PartType_Gas_to_use, MassType_to_use), n_bins=30)
                         p35.set_xlim(1e-26, 1e-21)
-                        p35.set_ylim("Temperature_2", 10, 1e7)
+                        p35.set_ylim("temperature", 10, 1e7)
                         for code in range(len(codes)):
 #				line_profile_ref = ln.Line2D(p35.profiles[0].x.in_units('g/cm**3'), p35.profiles[0]["temperature"].in_units('K'), linestyle="--", linewidth=2, color='k', alpha=0.7)
-                                line_profile_ref = ln.Line2D(p35.profiles[0].x.in_units('g/cm**3'), p35.profiles[0]["Temperature_2"].in_units('K'), linestyle="--", linewidth=2, color='k', alpha=0.7)
+                                line_profile_ref = ln.Line2D(p35.profiles[0].x.in_units('g/cm**3'), p35.profiles[0]["temperature"].in_units('K'), linestyle="--", linewidth=2, color='k', alpha=0.7)
                                 grid_PDF[time][code].axes.add_line(line_profile_ref)
                 fig_PDF[time].savefig("PDF_%dMyr" % times[time], bbox_inches='tight', pad_inches=0.03, dpi=300)
         if draw_pos_vel_PDF >= 1:
@@ -2467,10 +2463,10 @@ for time in range(len(times)):
                         ltext = leg.get_texts()
                         plt.setp(ltext, fontsize='small')
                         t = np.arange(-2, 5, 0.01)
-                        for line in import_text("./Bigieletal2008_Fig8_Contour.txt", " "):
-                                Bigiel_surface_density.append(float(line[0]) + np.log10(1.36)) # for the factor 1.36, see Section 2.3.1 of Bigiel et al. 2008
-                                Bigiel_sfr_surface_density.append(float(line[1]))
-                        plt.fill(Bigiel_surface_density, Bigiel_sfr_surface_density, fill=True, color='b', alpha = 0.1, hatch='\\') # contour by Bigiel et al. 2008 (Fig 8), or Feldmann et al. 2012 (Fig 1)
+                        # for line in import_text("./Bigieletal2008_Fig8_Contour.txt", " "):
+                        #         Bigiel_surface_density.append(float(line[0]) + np.log10(1.36)) # for the factor 1.36, see Section 2.3.1 of Bigiel et al. 2008
+                        #         Bigiel_sfr_surface_density.append(float(line[1]))
+                        # plt.fill(Bigiel_surface_density, Bigiel_sfr_surface_density, fill=True, color='b', alpha = 0.1, hatch='\\') # contour by Bigiel et al. 2008 (Fig 8), or Feldmann et al. 2012 (Fig 1)
 #			plt.plot(Bigiel_surface_density, Bigiel_sfr_surface_density, 'b-', linewidth = 0.7, alpha = 0.4)
                         plt.plot(t, 1.37*t - 3.78, 'k--', linewidth = 2, alpha = 0.7) # observational fit by Kennicutt et al. 2007
                         plt.savefig("K-S_%dMyr" % times[time], bbox_inches='tight', pad_inches=0.03, dpi=300)
