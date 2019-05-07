@@ -19,9 +19,6 @@ Snapshots:
   time_first:          0.       # Time of the first output (in internal units)
   delta_time:          0.2      # Time difference between consecutive outputs (in internal units)
   compression:         1
-
-Scheduler:
-  links_per_tasks: 75
   
 # Parameters governing the conserved quantities statistics
 Statistics:
