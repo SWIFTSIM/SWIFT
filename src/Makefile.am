@@ -221,7 +221,7 @@ libswiftsim_mpi_la_LIBADD = $(GRACKLE_LIBS) $(VELOCIRAPTOR_LIBS)
 # the current git revision and package version.
 # May have a checkout without a version_string.h file and no git command (tar/zip
 # download), allow that, but make sure we know it.
-version_string.h: version_string.h.in $(AM_SOURCES) $(include_HEADERS) $(noinst_HEADERS)
+version_string.h: version_string.h.in Makefile $(AM_SOURCES) $(include_HEADERS) $(noinst_HEADERS)
 	if test "X$(GIT_CMD)" != "X"; then \
 	    GIT_REVISION=`$(GIT_CMD) describe --abbrev=8  --always --tags --dirty`; \
 	    GIT_BRANCH=`$(GIT_CMD) branch | sed -n 's/^\* \(.*\)/\1/p'`; \
