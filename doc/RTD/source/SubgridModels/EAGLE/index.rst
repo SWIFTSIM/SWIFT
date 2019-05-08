@@ -20,7 +20,10 @@ particles. Two floors are used in conjonction. Both are implemented as
 polytropic "equations of states":math:`P = P_c
 \left(\rho/\rho_c\right)^\gamma` (all done in physical coordinates), with
 the constants derived from the user input given in terms of temperature and
-Hydrogen number density.
+Hydrogen number density. The code computing the entropy floor
+is located in the directory ``src/entropy_floor/EAGLE/`` and the floor
+is applied in the drift and kick operations of the hydro scheme. It is
+also used in some of the other subgrid schemes.
 
 The first limit, labelled as ``Cool``, is typically used to prevent
 low-density high-metallicity particles to cool below the warm phase because
@@ -57,13 +60,19 @@ critical density at redshift zero [#f1]_, and :math:`\rho_{\rm com}` the
 gas co-moving density. Typical values for :math:`\Delta_{\rm floor}` are of
 order 10.
 
-The model is governed by 4 parameters for each of the two
-limits. These are given in the ``EAGLEEntropyFloor`` section of the
-YAML file. The parameters are the Hydrogen number density (in
-:math:`cm^{-3}`) and temperature (in :math:`K`) of the anchor point of
-each floor as well as the power-law slope of each floor and the
-minimal over-density required to apply the limit. For a normal
-EAGLE run, that section of the parameter file reads:
+The model is governed by 4 parameters for each of the two limits. These are
+given in the ``EAGLEEntropyFloor`` section of the YAML file. The parameters
+are the Hydrogen number density (in :math:`cm^{-3}`) and temperature (in
+:math:`K`) of the anchor point of each floor as well as the power-law slope
+of each floor and the minimal over-density required to apply the
+limit. Note that, even though the anchor points are given in terms of
+temperatures, the slopes are expressed using a power-law in terms of
+entropy and *not* in terms of temperature. For a slope of :math:`\gamma` in
+the parameter file, the temperature as a function of density will be
+limited to be above a power-law with slope :math:`\gamma - 1` (as shown on
+the figure above).
+
+For a normal EAGLE run, that section of the parameter file reads:
 
 .. code:: YAML
 
@@ -86,6 +95,10 @@ for the temperature limit which will often be lower than the imposed
 floor by a factor :math:`\frac{\mu_{\rm neutral}}{\mu_{ionised}}
 \approx \frac{1.22}{0.59} \approx 2` due to the different ionisation
 states of the gas.
+
+Recall that we additionally impose an absolute minium temperature at all
+densities with a value provided in the :ref:`Parameters_SPH` section of the parameter
+file. This minimal temperature is typically set to 100 Kelvin.
 
 Note that the model only makes sense if the ``Cool`` threshold is at a lower
 density than the ``Jeans`` threshold.
