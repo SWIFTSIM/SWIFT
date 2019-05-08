@@ -247,6 +247,17 @@ void engine_addtasks_send_stars(struct engine *e, struct cell *ci,
   struct scheduler *s = &e->sched;
   const int nodeID = cj->nodeID;
 
+  if (t_sf_counts == NULL && with_star_formation && ci->hydro.count > 0) {
+#ifdef SWIFT_DEBUG_CHECKS
+    if(ci->depth != 0) 
+      error("Attaching a sf_count task at a non-top level c->depth=%d c->count=%d",
+	    ci->depth, ci->hydro.count);
+#endif
+    t_sf_counts = scheduler_addtask(s, task_type_send, task_subtype_sf_counts, ci->mpi.tag, 0, ci, cj);
+    scheduler_addunlock(s, ci->hydro.star_formation, t_sf_counts);
+  }
+
+
   /* Check if any of the density tasks are for the target node. */
   for (l = ci->stars.density; l != NULL; l = l->next)
     if (l->t->ci->nodeID == nodeID ||
@@ -265,11 +276,6 @@ void engine_addtasks_send_stars(struct engine *e, struct cell *ci,
       t_feedback = scheduler_addtask(s, task_type_send, task_subtype_spart,
                                      ci->mpi.tag, 0, ci, cj);
 
-      if (with_star_formation && ci->hydro.count > 0) {
-        t_sf_counts = scheduler_addtask(
-            s, task_type_send, task_subtype_sf_counts, ci->mpi.tag, 0, ci, cj);
-      }
-
       t_ti = scheduler_addtask(s, task_type_send, task_subtype_tend_spart,
                                ci->mpi.tag, 0, ci, cj);
 
@@ -286,15 +292,15 @@ void engine_addtasks_send_stars(struct engine *e, struct cell *ci,
 
       /* Update the stars counts before you send them */
       if (with_star_formation && ci->hydro.count > 0) {
-        scheduler_addunlock(s, ci->top->hydro.star_formation, t_sf_counts);
+
       }
     }
 
     engine_addlink(e, &ci->mpi.send, t_feedback);
     engine_addlink(e, &ci->mpi.send, t_ti);
-    if (with_star_formation) {
+    if (with_star_formation && ci->hydro.count > 0) {
       engine_addlink(e, &ci->mpi.send, t_sf_counts);
-    }
+   }
   }
 
   /* Recurse? */
@@ -488,6 +494,16 @@ void engine_addtasks_recv_stars(struct engine *e, struct cell *c,
 #ifdef WITH_MPI
   struct scheduler *s = &e->sched;
 
+  if (t_sf_counts == NULL && with_star_formation && c->hydro.count > 0) {
+#ifdef SWIFT_DEBUG_CHECKS
+    if(c->depth != 0) 
+      error("Attaching a sf_count task at a non-top level c->depth=%d c->count=%d",
+	    c->depth, c->hydro.count);
+#endif
+    t_sf_counts = scheduler_addtask(s, task_type_recv, task_subtype_sf_counts,
+				    c->mpi.tag, 0, c, NULL);
+  }
+  
   /* Have we reached a level where there are any stars tasks ? */
   if (t_feedback == NULL && c->stars.density != NULL) {
 
@@ -504,8 +520,6 @@ void engine_addtasks_recv_stars(struct engine *e, struct cell *c,
                              c->mpi.tag, 0, c, NULL);
 
     if (with_star_formation && c->hydro.count > 0) {
-      t_sf_counts = scheduler_addtask(s, task_type_recv, task_subtype_sf_counts,
-                                      c->mpi.tag, 0, c, NULL);
 
       /* Receive the stars only once the counts have been received */
       scheduler_addunlock(s, t_sf_counts, t_feedback);
