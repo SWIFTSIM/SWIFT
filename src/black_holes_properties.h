@@ -1,6 +1,6 @@
 /*******************************************************************************
  * This file is part of SWIFT.
- * Coypright (c) 2019 Matthieu Schaller (schaller@strw.leidenuniv.nl)
+ * Coypright (c) 2018 Matthieu Schaller (matthieu.schaller@durham.ac.uk)
  *
  * This program is free software: you can redistribute it and/or modify
  * it under the terms of the GNU Lesser General Public License as published
@@ -16,21 +16,19 @@
  * along with this program.  If not, see <http://www.gnu.org/licenses/>.
  *
  ******************************************************************************/
-#ifndef SWIFT_BLACK_HOLES_H
-#define SWIFT_BLACK_HOLES_H
+#ifndef SWIFT_BLACK_HOLES_PROPERTIES_H
+#define SWIFT_BLACK_HOLES_PROPERTIES_H
 
 /* Config parameters. */
 #include "../config.h"
 
-/* Select the correct star model */
+/* Select the correct black_holes model */
 #if defined(BLACK_HOLES_NONE)
-#include "./black_holes/Default/black_holes.h"
-#include "./black_holes/Default/black_holes_iact.h"
+#include "./black_holes/Default/black_holes_properties.h"
 #elif defined(BLACK_HOLES_EAGLE)
-#include "./black_holes/EAGLE/black_holes.h"
-#include "./black_holes/EAGLE/black_holes_iact.h"
+#include "./black_holes/EAGLE/black_holes_properties.h"
 #else
-#error "Invalid choice of star model"
+#error "Invalid choice of black hole model"
 #endif
 
-#endif
+#endif /* SWIFT_BLACK_HOLES_PROPERTIES_H */

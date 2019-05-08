@@ -372,7 +372,7 @@ __attribute__((always_inline)) INLINE static int bpart_is_active(
 
   if (ti_end < ti_current)
     error(
-        "s-particle in an impossible time-zone! bp->ti_end=%lld "
+        "b-particle in an impossible time-zone! bp->ti_end=%lld "
         "e->ti_current=%lld",
         ti_end, ti_current);
 #endif

@@ -539,6 +539,8 @@ static void scheduler_splittask_hydro(struct task *t, struct scheduler *s) {
      access the engine... */
   const int with_feedback = (s->space->e->policy & engine_policy_feedback);
   const int with_stars = (s->space->e->policy & engine_policy_stars);
+  const int with_black_holes =
+      (s->space->e->policy & engine_policy_black_holes);
 
   /* Iterate on this task until we're done with it. */
   int redo = 1;
@@ -549,14 +551,18 @@ static void scheduler_splittask_hydro(struct task *t, struct scheduler *s) {
     /* Is this a non-empty self-task? */
     const int is_self =
         (t->type == task_type_self) && (t->ci != NULL) &&
-        ((t->ci->hydro.count > 0) || (with_stars && t->ci->stars.count > 0));
+        ((t->ci->hydro.count > 0) || (with_stars && t->ci->stars.count > 0) ||
+         (with_black_holes && t->ci->black_holes.count > 0));
 
     /* Is this a non-empty pair-task? */
-    const int is_pair =
-        (t->type == task_type_pair) && (t->ci != NULL) && (t->cj != NULL) &&
-        ((t->ci->hydro.count > 0) ||
-         (with_feedback && t->ci->stars.count > 0)) &&
-        ((t->cj->hydro.count > 0) || (with_feedback && t->cj->stars.count > 0));
+    const int is_pair = (t->type == task_type_pair) && (t->ci != NULL) &&
+                        (t->cj != NULL) &&
+                        ((t->ci->hydro.count > 0) ||
+                         (with_feedback && t->ci->stars.count > 0) ||
+                         (with_black_holes && t->ci->black_holes.count > 0)) &&
+                        ((t->cj->hydro.count > 0) ||
+                         (with_feedback && t->cj->stars.count > 0) ||
+                         (with_black_holes && t->cj->black_holes.count > 0));
 
     /* Empty task? */
     if (!is_self && !is_pair) {
@@ -1175,7 +1181,7 @@ void scheduler_reweight(struct scheduler *s, int verbose) {
     const float scount_i = (t->ci != NULL) ? t->ci->stars.count : 0.f;
     const float scount_j = (t->cj != NULL) ? t->cj->stars.count : 0.f;
     const float bcount_i = (t->ci != NULL) ? t->ci->black_holes.count : 0.f;
-    // const float bcount_j = (t->cj != NULL) ? t->cj->black_holes.count : 0.f;
+    const float bcount_j = (t->cj != NULL) ? t->cj->black_holes.count : 0.f;
 
     switch (t->type) {
       case task_type_sort:
@@ -1195,7 +1201,13 @@ void scheduler_reweight(struct scheduler *s, int verbose) {
           cost = 1.f * wscale * gcount_i;
         else if (t->subtype == task_subtype_stars_density)
           cost = 1.f * wscale * scount_i * count_i;
-        else
+        else if (t->subtype == task_subtype_stars_feedback)
+          cost = 1.f * wscale * scount_i * count_i;
+        else if (t->subtype == task_subtype_bh_density)
+          cost = 1.f * wscale * bcount_i * count_i;
+        else if (t->subtype == task_subtype_bh_feedback)
+          cost = 1.f * wscale * bcount_i * count_i;
+        else  // hydro loops
           cost = 1.f * (wscale * count_i) * count_i;
         break;
 
@@ -1205,7 +1217,9 @@ void scheduler_reweight(struct scheduler *s, int verbose) {
             cost = 3.f * (wscale * gcount_i) * gcount_j;
           else
             cost = 2.f * (wscale * gcount_i) * gcount_j;
-        } else if (t->subtype == task_subtype_stars_density) {
+
+        } else if (t->subtype == task_subtype_stars_density ||
+                   t->subtype == task_subtype_stars_feedback) {
           if (t->ci->nodeID != nodeID)
             cost = 3.f * wscale * count_i * scount_j * sid_scale[t->flags];
           else if (t->cj->nodeID != nodeID)
@@ -1213,7 +1227,18 @@ void scheduler_reweight(struct scheduler *s, int verbose) {
           else
             cost = 2.f * wscale * (scount_i * count_j + scount_j * count_i) *
                    sid_scale[t->flags];
-        } else {
+
+        } else if (t->subtype == task_subtype_bh_density ||
+                   t->subtype == task_subtype_bh_feedback) {
+          if (t->ci->nodeID != nodeID)
+            cost = 3.f * wscale * count_i * bcount_j * sid_scale[t->flags];
+          else if (t->cj->nodeID != nodeID)
+            cost = 3.f * wscale * bcount_i * count_j * sid_scale[t->flags];
+          else
+            cost = 2.f * wscale * (bcount_i * count_j + bcount_j * count_i) *
+                   sid_scale[t->flags];
+
+        } else {  // hydro loops
           if (t->ci->nodeID != nodeID || t->cj->nodeID != nodeID)
             cost = 3.f * (wscale * count_i) * count_j * sid_scale[t->flags];
           else
@@ -1225,7 +1250,8 @@ void scheduler_reweight(struct scheduler *s, int verbose) {
 #ifdef SWIFT_DEBUG_CHECKS
         if (t->flags < 0) error("Negative flag value!");
 #endif
-        if (t->subtype == task_subtype_stars_density) {
+        if (t->subtype == task_subtype_stars_density ||
+            t->subtype == task_subtype_stars_feedback) {
           if (t->ci->nodeID != nodeID) {
             cost = 3.f * (wscale * count_i) * scount_j * sid_scale[t->flags];
           } else if (t->cj->nodeID != nodeID) {
@@ -1235,7 +1261,18 @@ void scheduler_reweight(struct scheduler *s, int verbose) {
                    sid_scale[t->flags];
           }
 
-        } else {
+        } else if (t->subtype == task_subtype_bh_density ||
+                   t->subtype == task_subtype_bh_feedback) {
+          if (t->ci->nodeID != nodeID) {
+            cost = 3.f * (wscale * count_i) * bcount_j * sid_scale[t->flags];
+          } else if (t->cj->nodeID != nodeID) {
+            cost = 3.f * (wscale * bcount_i) * count_j * sid_scale[t->flags];
+          } else {
+            cost = 2.f * wscale * (bcount_i * count_j + bcount_j * count_i) *
+                   sid_scale[t->flags];
+          }
+
+        } else {  // hydro loops
           if (t->ci->nodeID != nodeID || t->cj->nodeID != nodeID) {
             cost = 3.f * (wscale * count_i) * count_j * sid_scale[t->flags];
           } else {
@@ -1247,6 +1284,12 @@ void scheduler_reweight(struct scheduler *s, int verbose) {
       case task_type_sub_self:
         if (t->subtype == task_subtype_stars_density) {
           cost = 1.f * (wscale * scount_i) * count_i;
+        } else if (t->subtype == task_subtype_stars_feedback) {
+          cost = 1.f * (wscale * scount_i) * count_i;
+        } else if (t->subtype == task_subtype_bh_density) {
+          cost = 1.f * (wscale * bcount_i) * count_i;
+        } else if (t->subtype == task_subtype_bh_feedback) {
+          cost = 1.f * (wscale * bcount_i) * count_i;
         } else {
           cost = 1.f * (wscale * count_i) * count_i;
         }
@@ -1259,6 +1302,9 @@ void scheduler_reweight(struct scheduler *s, int verbose) {
         break;
       case task_type_stars_ghost:
         if (t->ci == t->ci->hydro.super) cost = wscale * scount_i;
+        break;
+      case task_type_bh_ghost:
+        if (t->ci == t->ci->hydro.super) cost = wscale * bcount_i;
         break;
       case task_type_drift_part:
         cost = wscale * count_i;
@@ -1535,6 +1581,10 @@ void scheduler_enqueue(struct scheduler *s, struct task *t) {
           err = MPI_Irecv(t->ci->stars.parts, t->ci->stars.count,
                           spart_mpi_type, t->ci->nodeID, t->flags,
                           subtaskMPI_comms[t->subtype], &t->req);
+        } else if (t->subtype == task_subtype_bpart) {
+          err = MPI_Irecv(t->ci->black_holes.parts, t->ci->black_holes.count,
+                          bpart_mpi_type, t->ci->nodeID, t->flags,
+                          subtaskMPI_comms[t->subtype], &t->req);
         } else if (t->subtype == task_subtype_multipole) {
           t->buff = (struct gravity_tensors *)malloc(
               sizeof(struct gravity_tensors) * t->ci->mpi.pcell_size);
@@ -1658,6 +1708,16 @@ void scheduler_enqueue(struct scheduler *s, struct task *t) {
           else
             err = MPI_Issend(t->ci->stars.parts, t->ci->stars.count,
                              spart_mpi_type, t->cj->nodeID, t->flags,
+                             subtaskMPI_comms[t->subtype], &t->req);
+        } else if (t->subtype == task_subtype_bpart) {
+          if ((t->ci->black_holes.count * sizeof(struct bpart)) >
+              s->mpi_message_limit)
+            err = MPI_Isend(t->ci->black_holes.parts, t->ci->black_holes.count,
+                            bpart_mpi_type, t->cj->nodeID, t->flags,
+                            subtaskMPI_comms[t->subtype], &t->req);
+          else
+            err = MPI_Issend(t->ci->black_holes.parts, t->ci->black_holes.count,
+                             bpart_mpi_type, t->cj->nodeID, t->flags,
                              subtaskMPI_comms[t->subtype], &t->req);
         } else if (t->subtype == task_subtype_multipole) {
           t->buff = (struct gravity_tensors *)malloc(

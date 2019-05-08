@@ -2873,13 +2873,10 @@ void engine_collect_end_of_step_recurse_stars(struct cell *c,
 void engine_collect_end_of_step_recurse_black_holes(struct cell *c,
                                                     const struct engine *e) {
 
-/* Skip super-cells (Their values are already set) */
-#ifdef WITH_MPI
-  // MATTHIEU
-  if (c->timestep != NULL)
-    return;  // || c->mpi.black_holes.recv_ti != NULL) return;
-#else
+  /* Skip super-cells (Their values are already set) */
   if (c->timestep != NULL) return;
+#ifdef WITH_MPI
+  if (cell_get_recv(c, task_subtype_tend_bpart) != NULL) return;
 #endif /* WITH_MPI */
 
 #ifdef SWIFT_DEBUG_CHECKS
@@ -3305,8 +3302,9 @@ void engine_skip_force_and_kick(struct engine *e) {
 
     /* Skip everything that updates the particles */
     if (t->type == task_type_drift_part || t->type == task_type_drift_gpart ||
-        t->type == task_type_drift_spart || t->type == task_type_kick1 ||
-        t->type == task_type_kick2 || t->type == task_type_timestep ||
+        t->type == task_type_drift_spart || t->type == task_type_drift_bpart ||
+        t->type == task_type_kick1 || t->type == task_type_kick2 ||
+        t->type == task_type_timestep ||
         t->type == task_type_timestep_limiter ||
         t->subtype == task_subtype_force ||
         t->subtype == task_subtype_limiter || t->subtype == task_subtype_grav ||
@@ -3320,9 +3318,11 @@ void engine_skip_force_and_kick(struct engine *e) {
         t->type == task_type_extra_ghost ||
         t->subtype == task_subtype_gradient ||
         t->subtype == task_subtype_stars_feedback ||
+        t->subtype == task_subtype_bh_feedback ||
         t->subtype == task_subtype_tend_part ||
         t->subtype == task_subtype_tend_gpart ||
         t->subtype == task_subtype_tend_spart ||
+        t->subtype == task_subtype_tend_bpart ||
         t->subtype == task_subtype_rho || t->subtype == task_subtype_gpart)
       t->skip = 1;
   }
@@ -4115,6 +4115,7 @@ void engine_unskip(struct engine *e) {
   const int with_ext_grav = e->policy & engine_policy_external_gravity;
   const int with_stars = e->policy & engine_policy_stars;
   const int with_feedback = e->policy & engine_policy_feedback;
+  const int with_black_holes = e->policy & engine_policy_black_holes;
 
 #ifdef WITH_PROFILER
   static int count = 0;
@@ -4134,7 +4135,8 @@ void engine_unskip(struct engine *e) {
         (with_ext_grav && c->nodeID == nodeID &&
          cell_is_active_gravity(c, e)) ||
         (with_feedback && cell_is_active_stars(c, e)) ||
-        (with_stars && c->nodeID == nodeID && cell_is_active_stars(c, e))) {
+        (with_stars && c->nodeID == nodeID && cell_is_active_stars(c, e)) ||
+        (with_black_holes && cell_is_active_black_holes(c, e))) {
 
       if (num_active_cells != k)
         memswap(&local_cells[k], &local_cells[num_active_cells], sizeof(int));
@@ -4857,6 +4859,7 @@ void engine_unpin(void) {
  * @param entropy_floor The #entropy_floor_properties for this run.
  * @param gravity The #gravity_props used for this run.
  * @param stars The #stars_props used for this run.
+ * @param black_holes The #black_holes_props used for this run.
  * @param feedback The #feedback_props used for this run.
  * @param mesh The #pm_mesh used for the long-range periodic forces.
  * @param potential The properties of the external potential.
@@ -4872,6 +4875,7 @@ void engine_init(struct engine *e, struct space *s, struct swift_params *params,
                  struct cosmology *cosmo, struct hydro_props *hydro,
                  const struct entropy_floor_properties *entropy_floor,
                  struct gravity_props *gravity, const struct stars_props *stars,
+                 const struct black_holes_props *black_holes,
                  const struct feedback_props *feedback, struct pm_mesh *mesh,
                  const struct external_potential *potential,
                  struct cooling_function_data *cooling_func,
@@ -4939,6 +4943,7 @@ void engine_init(struct engine *e, struct space *s, struct swift_params *params,
   e->entropy_floor = entropy_floor;
   e->gravity_properties = gravity;
   e->stars_properties = stars;
+  e->black_holes_properties = black_holes;
   e->mesh = mesh;
   e->external_potential = potential;
   e->cooling_func = cooling_func;
@@ -6083,6 +6088,7 @@ void engine_struct_dump(struct engine *e, FILE *stream) {
   cooling_struct_dump(e->cooling_func, stream);
   starformation_struct_dump(e->star_formation, stream);
   feedback_struct_dump(e->feedback_props, stream);
+  black_holes_struct_dump(e->black_holes_properties, stream);
   chemistry_struct_dump(e->chemistry, stream);
   parser_struct_dump(e->parameter_file, stream);
   if (e->output_list_snapshots)
@@ -6189,6 +6195,11 @@ void engine_struct_restore(struct engine *e, FILE *stream) {
       (struct feedback_props *)malloc(sizeof(struct feedback_props));
   feedback_struct_restore(feedback_properties, stream);
   e->feedback_props = feedback_properties;
+
+  struct black_holes_props *black_holes_properties =
+      (struct black_holes_props *)malloc(sizeof(struct black_holes_props));
+  black_holes_struct_restore(black_holes_properties, stream);
+  e->black_holes_properties = black_holes_properties;
 
   struct chemistry_global_data *chemistry =
       (struct chemistry_global_data *)malloc(

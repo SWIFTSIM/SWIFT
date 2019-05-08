@@ -172,6 +172,26 @@ struct pcell {
 
   } stars;
 
+  /*! Black hole variables */
+  struct {
+
+    /*! Number of #spart in this cell. */
+    int count;
+
+    /*! Maximal smoothing length. */
+    double h_max;
+
+    /*! Minimal integer end-of-timestep in this cell for black hole tasks */
+    integertime_t ti_end_min;
+
+    /*! Maximal integer end-of-timestep in this cell for black hole tasks */
+    integertime_t ti_end_max;
+
+    /*! Integer time of the last drift of the #spart in this cell */
+    integertime_t ti_old_part;
+
+  } black_holes;
+
   /*! Maximal depth in that part of the tree */
   int maxdepth;
 
@@ -606,6 +626,22 @@ struct cell {
     /*! The drift task for bparts */
     struct task *drift;
 
+    /*! Implicit tasks marking the entry of the BH physics block of tasks
+     */
+    struct task *black_holes_in;
+
+    /*! Implicit tasks marking the exit of the BH physics block of tasks */
+    struct task *black_holes_out;
+
+    /*! The star ghost task itself */
+    struct task *ghost;
+
+    /*! Linked list of the tasks computing this cell's star density. */
+    struct link *density;
+
+    /*! Linked list of the tasks computing this cell's star feedback. */
+    struct link *feedback;
+
     /*! Max smoothing length in this cell. */
     double h_max;
 
@@ -626,6 +662,9 @@ struct cell {
 
     /*! Maximum part movement in this cell since last construction. */
     float dx_max_part;
+
+    /*! Values of dx_max before the drifts, used for sub-cell tasks. */
+    float dx_max_part_old;
 
     /*! Maximum end of (integer) time step in this cell for black tasks. */
     integertime_t ti_end_min;
@@ -784,6 +823,7 @@ void cell_check_multipole_drift_point(struct cell *c, void *data);
 void cell_reset_task_counters(struct cell *c);
 int cell_unskip_hydro_tasks(struct cell *c, struct scheduler *s);
 int cell_unskip_stars_tasks(struct cell *c, struct scheduler *s);
+int cell_unskip_black_holes_tasks(struct cell *c, struct scheduler *s);
 int cell_unskip_gravity_tasks(struct cell *c, struct scheduler *s);
 void cell_drift_part(struct cell *c, const struct engine *e, int force);
 void cell_drift_gpart(struct cell *c, const struct engine *e, int force);
@@ -799,12 +839,15 @@ void cell_activate_subcell_grav_tasks(struct cell *ci, struct cell *cj,
                                       struct scheduler *s);
 void cell_activate_subcell_stars_tasks(struct cell *ci, struct cell *cj,
                                        struct scheduler *s);
+void cell_activate_subcell_black_holes_tasks(struct cell *ci, struct cell *cj,
+                                             struct scheduler *s);
 void cell_activate_subcell_external_grav_tasks(struct cell *ci,
                                                struct scheduler *s);
 void cell_activate_super_spart_drifts(struct cell *c, struct scheduler *s);
 void cell_activate_drift_part(struct cell *c, struct scheduler *s);
 void cell_activate_drift_gpart(struct cell *c, struct scheduler *s);
 void cell_activate_drift_spart(struct cell *c, struct scheduler *s);
+void cell_activate_drift_bpart(struct cell *c, struct scheduler *s);
 void cell_activate_hydro_sorts(struct cell *c, int sid, struct scheduler *s);
 void cell_activate_stars_sorts(struct cell *c, int sid, struct scheduler *s);
 void cell_activate_limiter(struct cell *c, struct scheduler *s);
@@ -970,6 +1013,43 @@ cell_can_recurse_in_self_stars_task(const struct cell *c) {
 }
 
 /**
+ * @brief Can a sub-pair black hole task recurse to a lower level based
+ * on the status of the particles in the cell.
+ *
+ * @param ci The #cell with black holes.
+ * @param cj The #cell with hydro parts.
+ */
+__attribute__((always_inline)) INLINE static int
+cell_can_recurse_in_pair_black_holes_task(const struct cell *ci,
+                                          const struct cell *cj) {
+
+  /* Is the cell split ? */
+  /* If so, is the cut-off radius plus the max distance the parts have moved */
+  /* smaller than the sub-cell sizes ? */
+  /* Note: We use the _old values as these might have been updated by a drift */
+  return ci->split && cj->split &&
+         ((kernel_gamma * ci->black_holes.h_max_old +
+           ci->black_holes.dx_max_part_old) < 0.5f * ci->dmin) &&
+         ((kernel_gamma * cj->hydro.h_max_old + cj->hydro.dx_max_part_old) <
+          0.5f * cj->dmin);
+}
+
+/**
+ * @brief Can a sub-self black hole task recurse to a lower level based
+ * on the status of the particles in the cell.
+ *
+ * @param c The #cell.
+ */
+__attribute__((always_inline)) INLINE static int
+cell_can_recurse_in_self_black_holes_task(const struct cell *c) {
+
+  /* Is the cell split and not smaller than the smoothing length? */
+  return c->split &&
+         (kernel_gamma * c->black_holes.h_max_old < 0.5f * c->dmin) &&
+         (kernel_gamma * c->hydro.h_max_old < 0.5f * c->dmin);
+}
+
+/**
  * @brief Can a pair hydro task associated with a cell be split into smaller
  * sub-tasks.
  *
@@ -985,7 +1065,8 @@ __attribute__((always_inline)) INLINE static int cell_can_split_pair_hydro_task(
   /* into account any part motion (i.e. dx_max == 0 here) */
   return c->split &&
          (space_stretch * kernel_gamma * c->hydro.h_max < 0.5f * c->dmin) &&
-         (space_stretch * kernel_gamma * c->stars.h_max < 0.5f * c->dmin);
+         (space_stretch * kernel_gamma * c->stars.h_max < 0.5f * c->dmin) &&
+         (space_stretch * kernel_gamma * c->black_holes.h_max < 0.5f * c->dmin);
 }
 
 /**
@@ -1004,7 +1085,8 @@ __attribute__((always_inline)) INLINE static int cell_can_split_self_hydro_task(
   /* tasks will be created. So no need to check for h_max */
   return c->split &&
          (space_stretch * kernel_gamma * c->hydro.h_max < 0.5f * c->dmin) &&
-         (space_stretch * kernel_gamma * c->stars.h_max < 0.5f * c->dmin);
+         (space_stretch * kernel_gamma * c->stars.h_max < 0.5f * c->dmin) &&
+         (space_stretch * kernel_gamma * c->black_holes.h_max < 0.5f * c->dmin);
 }
 
 /**
@@ -1054,6 +1136,7 @@ cell_need_rebuild_for_hydro_pair(const struct cell *ci, const struct cell *cj) {
   }
   return 0;
 }
+
 /**
  * @brief Have star particles in a pair of cells moved too much and require a
  * rebuild?
@@ -1069,6 +1152,28 @@ cell_need_rebuild_for_stars_pair(const struct cell *ci, const struct cell *cj) {
   /* Note ci->dmin == cj->dmin */
   if (kernel_gamma * max(ci->stars.h_max, cj->hydro.h_max) +
           ci->stars.dx_max_part + cj->hydro.dx_max_part >
+      cj->dmin) {
+    return 1;
+  }
+  return 0;
+}
+
+/**
+ * @brief Have star particles in a pair of cells moved too much and require a
+ * rebuild?
+ *
+ * @param ci The first #cell.
+ * @param cj The second #cell.
+ */
+__attribute__((always_inline)) INLINE static int
+cell_need_rebuild_for_black_holes_pair(const struct cell *ci,
+                                       const struct cell *cj) {
+
+  /* Is the cut-off radius plus the max distance the parts in both cells have */
+  /* moved larger than the cell size ? */
+  /* Note ci->dmin == cj->dmin */
+  if (kernel_gamma * max(ci->black_holes.h_max, cj->hydro.h_max) +
+          ci->black_holes.dx_max_part + cj->hydro.dx_max_part >
       cj->dmin) {
     return 1;
   }

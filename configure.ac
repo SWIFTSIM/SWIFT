@@ -1340,7 +1340,7 @@ case "$with_subgrid" in
 	with_subgrid_stars=EAGLE
 	with_subgrid_star_formation=EAGLE
 	with_subgrid_feedback=EAGLE
-	with_subgrid_black_holes=none
+	with_subgrid_black_holes=EAGLE
    ;;
    *)
       AC_MSG_ERROR([Unknown subgrid choice: $with_subgrid])
@@ -1789,8 +1789,11 @@ case "$with_black_holes" in
    none)
       AC_DEFINE([BLACK_HOLES_NONE], [1], [No black hole model])
    ;;
+   EAGLE)
+      AC_DEFINE([BLACK_HOLES_EAGLE], [1], [EAGLE black hole model])
+   ;;
    *)
-      AC_MSG_ERROR([Unknown stellar model: $with_black_holes])
+      AC_MSG_ERROR([Unknown black-hole model: $with_black_holes])
    ;;
 esac
 

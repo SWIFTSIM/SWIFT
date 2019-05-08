@@ -235,6 +235,9 @@ void space_rebuild_recycle_mapper(void *map_data, int num_elements,
     c->stars.ghost = NULL;
     c->stars.density = NULL;
     c->stars.feedback = NULL;
+    c->black_holes.ghost = NULL;
+    c->black_holes.density = NULL;
+    c->black_holes.feedback = NULL;
     c->kick1 = NULL;
     c->kick2 = NULL;
     c->timestep = NULL;
@@ -245,6 +248,8 @@ void space_rebuild_recycle_mapper(void *map_data, int num_elements,
     c->stars.stars_in = NULL;
     c->stars.stars_out = NULL;
     c->black_holes.drift = NULL;
+    c->black_holes.black_holes_in = NULL;
+    c->black_holes.black_holes_out = NULL;
     c->grav.drift = NULL;
     c->grav.drift_out = NULL;
     c->hydro.cooling = NULL;
@@ -347,6 +352,7 @@ void space_regrid(struct space *s, int verbose) {
 
   const size_t nr_parts = s->nr_parts;
   const size_t nr_sparts = s->nr_sparts;
+  const size_t nr_bparts = s->nr_bparts;
   const ticks tic = getticks();
   const integertime_t ti_current = (s->e != NULL) ? s->e->ti_current : 0;
 
@@ -366,6 +372,9 @@ void space_regrid(struct space *s, int verbose) {
         if (c->stars.h_max > h_max) {
           h_max = c->stars.h_max;
         }
+        if (c->black_holes.h_max > h_max) {
+          h_max = c->black_holes.h_max;
+        }
       }
 
       /* Can we instead use all the top-level cells? */
@@ -378,6 +387,9 @@ void space_regrid(struct space *s, int verbose) {
         if (c->nodeID == engine_rank && c->stars.h_max > h_max) {
           h_max = c->stars.h_max;
         }
+        if (c->nodeID == engine_rank && c->black_holes.h_max > h_max) {
+          h_max = c->black_holes.h_max;
+        }
       }
 
       /* Last option: run through the particles */
@@ -387,6 +399,9 @@ void space_regrid(struct space *s, int verbose) {
       }
       for (size_t k = 0; k < nr_sparts; k++) {
         if (s->sparts[k].h > h_max) h_max = s->sparts[k].h;
+      }
+      for (size_t k = 0; k < nr_bparts; k++) {
+        if (s->bparts[k].h > h_max) h_max = s->bparts[k].h;
       }
     }
   }
@@ -555,6 +570,8 @@ void space_regrid(struct space *s, int verbose) {
         error("Failed to init spinlock for multipoles.");
       if (lock_init(&s->cells_top[k].stars.lock) != 0)
         error("Failed to init spinlock for stars.");
+      if (lock_init(&s->cells_top[k].black_holes.lock) != 0)
+        error("Failed to init spinlock for black holes.");
       if (lock_init(&s->cells_top[k].stars.star_formation_lock) != 0)
         error("Failed to init spinlock for star formation.");
     }
@@ -584,6 +601,7 @@ void space_regrid(struct space *s, int verbose) {
           c->hydro.ti_old_part = ti_current;
           c->grav.ti_old_part = ti_current;
           c->stars.ti_old_part = ti_current;
+          c->black_holes.ti_old_part = ti_current;
           c->grav.ti_old_multipole = ti_current;
 #ifdef WITH_MPI
           c->mpi.tag = -1;
@@ -3331,6 +3349,7 @@ void space_split_recursive(struct space *s, struct cell *c,
         /* Update the cell-wide properties */
         h_max = max(h_max, cp->hydro.h_max);
         stars_h_max = max(stars_h_max, cp->stars.h_max);
+        black_holes_h_max = max(black_holes_h_max, cp->black_holes.h_max);
         ti_hydro_end_min = min(ti_hydro_end_min, cp->hydro.ti_end_min);
         ti_hydro_end_max = max(ti_hydro_end_max, cp->hydro.ti_end_max);
         ti_hydro_beg_max = max(ti_hydro_beg_max, cp->hydro.ti_beg_max);
@@ -3683,6 +3702,7 @@ void space_recycle(struct space *s, struct cell *c) {
   /* Clear the cell. */
   if (lock_destroy(&c->lock) != 0 || lock_destroy(&c->grav.plock) != 0 ||
       lock_destroy(&c->mlock) != 0 || lock_destroy(&c->stars.lock) != 0 ||
+      lock_destroy(&c->black_holes.lock) != 0 ||
       lock_destroy(&c->stars.star_formation_lock))
     error("Failed to destroy spinlocks.");
 
@@ -3733,6 +3753,7 @@ void space_recycle_list(struct space *s, struct cell *cell_list_begin,
     /* Clear the cell. */
     if (lock_destroy(&c->lock) != 0 || lock_destroy(&c->grav.plock) != 0 ||
         lock_destroy(&c->mlock) != 0 || lock_destroy(&c->stars.lock) != 0 ||
+        lock_destroy(&c->black_holes.lock) != 0 ||
         lock_destroy(&c->stars.star_formation_lock))
       error("Failed to destroy spinlocks.");
 
@@ -3833,6 +3854,7 @@ void space_getcells(struct space *s, int nr_cells, struct cell **cells) {
         lock_init(&cells[j]->grav.plock) != 0 ||
         lock_init(&cells[j]->grav.mlock) != 0 ||
         lock_init(&cells[j]->stars.lock) != 0 ||
+        lock_init(&cells[j]->black_holes.lock) != 0 ||
         lock_init(&cells[j]->stars.star_formation_lock) != 0)
       error("Failed to initialize cell spinlocks.");
   }
@@ -4227,6 +4249,7 @@ void space_first_init_bparts_mapper(void *restrict map_data, int count,
   struct bpart *restrict bp = (struct bpart *)map_data;
   const struct space *restrict s = (struct space *)extra_data;
   const struct engine *e = s->e;
+  const struct black_holes_props *props = e->black_holes_properties;
 
 #ifdef SWIFT_DEBUG_CHECKS
   const ptrdiff_t delta = bp - s->bparts;
@@ -4260,10 +4283,17 @@ void space_first_init_bparts_mapper(void *restrict map_data, int count,
 #endif
   }
 
+  /* Check that the smoothing lengths are non-zero */
+  for (int k = 0; k < count; k++) {
+    if (bp[k].h <= 0.)
+      error("Invalid value of smoothing length for bpart %lld h=%e", bp[k].id,
+            bp[k].h);
+  }
+
   /* Initialise the rest */
   for (int k = 0; k < count; k++) {
 
-    black_holes_first_init_bpart(&bp[k]);
+    black_holes_first_init_bpart(&bp[k], props);
 
 #ifdef SWIFT_DEBUG_CHECKS
     if (bp[k].gpart && bp[k].gpart->id_or_neg_offset != -(k + delta))

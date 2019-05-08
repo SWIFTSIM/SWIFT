@@ -162,6 +162,7 @@ TASKTYPES = [
     "extra_ghost",
     "drift_part",
     "drift_spart",
+    "drift_bpart",
     "drift_gpart",
     "drift_gpart_out",
     "hydro_end_force",
@@ -188,6 +189,9 @@ TASKTYPES = [
     "stars_ghost",
     "stars_ghost_out",
     "stars_sort",
+    "bh_in",
+    "bh_out",
+    "bh_ghost",
     "count",
 ]
 
@@ -202,6 +206,7 @@ SUBTYPES = [
     "tend_part",
     "tend_gpart",
     "tend_spart",
+    "tend_bpart",
     "xv",
     "rho",
     "gpart",
@@ -209,6 +214,9 @@ SUBTYPES = [
     "spart",
     "stars_density",
     "stars_feedback",
+    "bpart",
+    "bh_density",
+    "bh_feedback",
     "count",
 ]
 
@@ -242,10 +250,14 @@ FULLTYPES = [
     "send/tend_gpart",
     "recv/tend_spart",
     "send/tend_spart",
+    "recv/tend_bpart",
+    "send/tend_bpart",
     "recv/gpart",
     "send/gpart",
     "recv/spart",
     "send/spart",
+    "recv/bpart",
+    "send/bpart",
     "self/stars_density",
     "pair/stars_density",
     "sub_self/stars_density",
@@ -254,6 +266,14 @@ FULLTYPES = [
     "pair/stars_feedback",
     "sub_self/stars_feedback",
     "sub_pair/stars_feedback",
+    "self/bh_density",
+    "pair/bh_density",
+    "sub_self/bh_density",
+    "sub_pair/bh_density",
+    "self/bh_feedback",
+    "pair/bh_feedback",
+    "sub_self/bh_feedback",
+    "sub_pair/bh_feedback",
 ]
 
 #  A number of colours for the various types. Recycled when there are
