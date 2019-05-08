@@ -683,7 +683,7 @@ __attribute__((always_inline)) INLINE static void hydro_predict_extra(
   const float min_u_physical = hydro_props->minimal_internal_energy;
   /* Conversion done in physical space; multiplication by a3_inv is faster
    * than division by a_factor_internal_energy to do in comoving space */
-  const float min_A_physical =
+  const float min_A =
       gas_entropy_from_internal_energy(p->rho * cosmo->a3_inv, min_u_physical);
 
   p->entropy = max(p->entropy, floor_A);
@@ -771,11 +771,11 @@ __attribute__((always_inline)) INLINE static void hydro_kick_extra(
   const float min_u_physical = hydro_props->minimal_internal_energy;
   /* Conversion done in physical space; multiplication by a3_inv is faster
    * than division by a_factor_internal_energy to do in comoving space */
-  const float min_A_physical =
+  const float min_A =
       gas_entropy_from_internal_energy(p->rho * cosmo->a3_inv, min_u_physical);
 
   /* Take highest of both limits */
-  const float entropy_min = max(min_A_physical, floor_A);
+  const float entropy_min = max(min_A, floor_A);
 
   if (xp->entropy_full < entropy_min) {
     xp->entropy_full = entropy_min;
