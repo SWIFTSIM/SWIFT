@@ -2521,7 +2521,8 @@ void engine_addtasks_recv_mapper(void *map_data, int num_elements,
 
     /* Add the recv tasks for the cells in the proxy that have a black holes
      * connection. */
-    if ((e->policy & engine_policy_feedback) && (type & proxy_cell_type_hydro))
+    if ((e->policy & engine_policy_black_holes) &&
+        (type & proxy_cell_type_hydro))
       engine_addtasks_recv_black_holes(e, ci, NULL, NULL);
 
     /* Add the recv tasks for the cells in the proxy that have a gravity

@@ -1041,7 +1041,7 @@ cell_can_recurse_in_self_stars_task(const struct cell *c) {
 }
 
 /**
- * @brief Can a sub-pair star task recurse to a lower level based
+ * @brief Can a sub-pair black hole task recurse to a lower level based
  * on the status of the particles in the cell.
  *
  * @param ci The #cell with black holes.
@@ -1063,7 +1063,7 @@ cell_can_recurse_in_pair_black_holes_task(const struct cell *ci,
 }
 
 /**
- * @brief Can a sub-self black_holes task recurse to a lower level based
+ * @brief Can a sub-self black hole task recurse to a lower level based
  * on the status of the particles in the cell.
  *
  * @param c The #cell.

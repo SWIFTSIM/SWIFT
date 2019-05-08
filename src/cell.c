@@ -2981,7 +2981,7 @@ void cell_activate_subcell_black_holes_tasks(struct cell *ci, struct cell *cj,
       }
     }
 
-    /* Otherwise, activate the sorts and drifts. */
+    /* Otherwise, activate the drifts. */
     else {
       if (cell_is_active_black_holes(ci, e)) {
 
@@ -3992,7 +3992,7 @@ int cell_unskip_black_holes_tasks(struct cell *c, struct scheduler *s) {
       }
     }
 
-    /* Nothing more to do here, all drifts and sorts activated above */
+    /* Nothing more to do here, all drifts activated above */
   }
 
   /* Unskip all the other task types. */

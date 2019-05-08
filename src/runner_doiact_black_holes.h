@@ -83,7 +83,7 @@
 #define IACT_BH _IACT_BH(FUNCTION)
 
 /**
- * @brief Calculate the number density of #part around the #spart
+ * @brief Calculate the number density of #part around the #bpart
  *
  * @param r runner task
  * @param c cell
@@ -160,7 +160,7 @@ void DOSELF1_BH(struct runner *r, struct cell *c, int timer) {
 }
 
 /**
- * @brief Calculate the number density of cj #part around the ci #spart
+ * @brief Calculate the number density of cj #part around the ci #bpart
  *
  * @param r runner task
  * @param ci The first #cell
@@ -275,7 +275,7 @@ void DOPAIR1_BH_NAIVE(struct runner *r, struct cell *restrict ci,
  *
  * @param r The #runner.
  * @param ci The first #cell.
- * @param bparts_i The #part to interact with @c cj.
+ * @param bparts_i The #bpart to interact with @c cj.
  * @param ind The list of indices of particles in @c ci to interact with.
  * @param bcount The number of particles in @c ind.
  * @param cj The second #cell.
@@ -357,7 +357,7 @@ void DOPAIR1_SUBSET_BH_NAIVE(struct runner *r, struct cell *restrict ci,
  *
  * @param r The #runner.
  * @param ci The first #cell.
- * @param bparts The #spart to interact.
+ * @param bparts The #bpart to interact.
  * @param ind The list of indices of particles in @c ci to interact with.
  * @param bcount The number of particles in @c ind.
  */
@@ -428,12 +428,12 @@ void DOSELF1_SUBSET_BH(struct runner *r, struct cell *restrict ci,
 }
 
 /**
- * @brief Determine which version of DOSELF1_SUBSET_STARS needs to be called
+ * @brief Determine which version of DOSELF1_SUBSET_BH needs to be called
  * depending on the optimisation level.
  *
  * @param r The #runner.
  * @param ci The first #cell.
- * @param bparts The #spart to interact.
+ * @param bparts The #bpart to interact.
  * @param ind The list of indices of particles in @c ci to interact with.
  * @param bcount The number of particles in @c ind.
  */
@@ -445,13 +445,13 @@ void DOSELF1_SUBSET_BRANCH_BH(struct runner *r, struct cell *restrict ci,
 }
 
 /**
- * @brief Determine which version of DOPAIR1_SUBSET_STARS needs to be called
- * depending on the orientation of the cells or whether DOPAIR1_SUBSET_STARS
+ * @brief Determine which version of DOPAIR1_SUBSET_BH needs to be called
+ * depending on the orientation of the cells or whether DOPAIR1_SUBSET_BH
  * needs to be called at all.
  *
  * @param r The #runner.
  * @param ci The first #cell.
- * @param bparts_i The #spart to interact with @c cj.
+ * @param bparts_i The #bpart to interact with @c cj.
  * @param ind The list of indices of particles in @c ci to interact with.
  * @param bcount The number of particles in @c ind.
  * @param cj The second #cell.
@@ -565,7 +565,7 @@ void DOSUB_SUBSET_BH(struct runner *r, struct cell *ci, struct bpart *bparts,
 }
 
 /**
- * @brief Determine which version of DOSELF1_STARS needs to be called depending
+ * @brief Determine which version of DOSELF1_BH needs to be called depending
  * on the optimisation level.
  *
  * @param r #runner
@@ -590,8 +590,8 @@ void DOSELF1_BRANCH_BH(struct runner *r, struct cell *c) {
 }
 
 /**
- * @brief Determine which version of DOPAIR1_STARS needs to be called depending
- * on the orientation of the cells or whether DOPAIR1_STARS needs to be called
+ * @brief Determine which version of DOPAIR1_BH needs to be called depending
+ * on the orientation of the cells or whether DOPAIR1_BH needs to be called
  * at all.
  *
  * @param r #runner

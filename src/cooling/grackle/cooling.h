@@ -879,6 +879,9 @@ static INLINE void cooling_struct_restore(struct cooling_function_data* cooling,
                                           const struct cosmology* cosmo) {
   restart_read_blocks((void*)cooling, sizeof(struct cooling_function_data), 1,
                       stream, NULL, "cooling function");
+
+  /* Set up grackle */
+  cooling_init_grackle(cooling);
 }
 
 #endif /* SWIFT_COOLING_GRACKLE_H */
