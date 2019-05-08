@@ -253,6 +253,26 @@ struct pcell_step_black_holes {
   float dx_max_part;
 };
 
+/**
+ * @brief Cell information to propagate the new counts of star particles.
+ */
+struct pcell_sf {
+
+  /*! Stars variables */
+  struct {
+
+    /* Distance by which the stars pointer has moved since the last rebuild */
+    ptrdiff_t delta_from_rebuild;
+
+    /* Number of particles in the cell */
+    int count;
+
+    /*! Maximum part movement in this cell since last construction. */
+    float dx_max_part;
+    
+  } stars;
+};
+
 /** Bitmasks for the cell flags. Beware when adding flags that you don't exceed
     the size of the flags variable in the struct cell. */
 enum cell_flags {
@@ -269,23 +289,6 @@ enum cell_flags {
   cell_flag_do_stars_sub_drift = (1UL << 10),
   cell_flag_do_bh_drift = (1UL << 11),
   cell_flag_do_bh_sub_drift = (1UL << 12)
-};
-
-/**
- * @brief Cell information to propagate the new counts of star particles.
- */
-struct pcell_sf {
-
-  /*! Stars variables */
-  struct {
-
-    /* Distance by which the stars pointer has moved since the last rebuild */
-    ptrdiff_t delta_from_rebuild;
-
-    /* Number of particles in the cell */
-    int count;
-
-  } stars;
 };
 
 /**
@@ -880,6 +883,7 @@ void cell_clear_limiter_flags(struct cell *c, void *data);
 void cell_set_super_mapper(void *map_data, int num_elements, void *extra_data);
 void cell_check_spart_pos(const struct cell *c,
                           const struct spart *global_sparts);
+void cell_check_sort_flags(const struct cell* c);
 void cell_clear_stars_sort_flags(struct cell *c);
 int cell_has_tasks(struct cell *c);
 void cell_remove_part(const struct engine *e, struct cell *c, struct part *p,

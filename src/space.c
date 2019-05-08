@@ -5192,6 +5192,42 @@ void space_check_limiter(struct space *s) {
 #endif
 }
 
+void space_check_sort_flags_mapper(void *map_data, int nr_cells,
+				   void *extra_data) {
+  
+#ifdef SWIFT_DEBUG_CHECKS
+  
+const struct space *s = (struct space*) extra_data;
+ int *local_cells_top = map_data;
+
+ for(int ind = 0; ind < nr_cells; ++ind) {
+  const struct cell *c = &s->cells_top[local_cells_top[ind]];
+
+  cell_check_sort_flags(c);
+}
+  
+#endif
+}
+
+/**
+ * @brief Checks that all cells have cleared their sort flags.
+ *
+ * Should only be used for debugging purposes.
+ *
+ * @param s The #space to check.
+ */
+void space_check_sort_flags(struct space *s) {
+#ifdef SWIFT_DEBUG_CHECKS
+
+  threadpool_map(&s->e->threadpool, space_check_sort_flags_mapper, 
+		 s->local_cells_with_tasks_top,
+                 s->nr_local_cells_with_tasks, 
+		 sizeof(int), 1, s);
+#else
+  error("Calling debugging code without debugging flag activated.");
+#endif
+}
+
 /**
  * @brief Resets all the individual cell task counters to 0.
  *

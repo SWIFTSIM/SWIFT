@@ -2561,6 +2561,8 @@ void engine_rebuild(struct engine *e, int repartitioned,
     for (int k = 0; k < e->s->nr_local_cells; k++)
       cell_check_foreign_multipole(&e->s->cells_top[e->s->local_cells_top[k]]);
   }
+
+  space_check_sort_flags(e->s);
 #endif
 
   /* Run through the tasks and mark as skip or not. */
@@ -3834,6 +3836,7 @@ void engine_step(struct engine *e) {
 #ifdef SWIFT_DEBUG_CHECKS
   /* Make sure all woken-up particles have been processed */
   space_check_limiter(e->s);
+  space_check_sort_flags(e->s);
 #endif
 
   /* Collect information about the next time-step */
@@ -4722,22 +4725,22 @@ void engine_dump_snapshot(struct engine *e) {
 #endif
 
 /* Dump... */
-#if defined(HAVE_HDF5)
-#if defined(WITH_MPI)
-#if defined(HAVE_PARALLEL_HDF5)
-  write_output_parallel(e, e->snapshot_base_name, e->internal_units,
-                        e->snapshot_units, e->nodeID, e->nr_nodes,
-                        MPI_COMM_WORLD, MPI_INFO_NULL);
-#else
-  write_output_serial(e, e->snapshot_base_name, e->internal_units,
-                      e->snapshot_units, e->nodeID, e->nr_nodes, MPI_COMM_WORLD,
-                      MPI_INFO_NULL);
-#endif
-#else
-  write_output_single(e, e->snapshot_base_name, e->internal_units,
-                      e->snapshot_units);
-#endif
-#endif
+/* #if defined(HAVE_HDF5) */
+/* #if defined(WITH_MPI) */
+/* #if defined(HAVE_PARALLEL_HDF5) */
+/*   write_output_parallel(e, e->snapshot_base_name, e->internal_units, */
+/*                         e->snapshot_units, e->nodeID, e->nr_nodes, */
+/*                         MPI_COMM_WORLD, MPI_INFO_NULL); */
+/* #else */
+/*   write_output_serial(e, e->snapshot_base_name, e->internal_units, */
+/*                       e->snapshot_units, e->nodeID, e->nr_nodes, MPI_COMM_WORLD, */
+/*                       MPI_INFO_NULL); */
+/* #endif */
+/* #else */
+/*   write_output_single(e, e->snapshot_base_name, e->internal_units, */
+/*                       e->snapshot_units); */
+/* #endif */
+/* #endif */
 
   /* Flag that we dumped a snapshot */
   e->step_props |= engine_step_prop_snapshot;

@@ -160,6 +160,11 @@ struct cell_split_pair cell_split_pairs[13] = {
       {5, 6, 9},
       {7, 6, 12}}}};
 
+extern int cell_to_check;
+extern int parent_cell_to_check;
+extern int super_cell_to_check;
+int CHECK = 0;
+
 /**
  * @brief Get the size of the cell subtree.
  *
@@ -1072,7 +1077,8 @@ int cell_pack_sf_counts(struct cell *restrict c,
   /* Pack this cell's data. */
   pcells[0].stars.delta_from_rebuild = c->stars.parts - c->stars.parts_rebuild;
   pcells[0].stars.count = c->stars.count;
-
+  pcells[0].stars.dx_max_part = c->stars.dx_max_part;
+  
 #ifdef SWIFT_DEBUG_CHECKS
   if (c->stars.parts_rebuild == NULL)
     error("Star particles array at rebuild is NULL! c->depth=%d", c->depth);
@@ -1122,6 +1128,7 @@ int cell_unpack_sf_counts(struct cell *restrict c,
   /* Unpack this cell's data. */
   c->stars.count = pcells[0].stars.count;
   c->stars.parts = c->stars.parts_rebuild + pcells[0].stars.delta_from_rebuild;
+  c->stars.dx_max_part = pcells[0].stars.dx_max_part;
 
   /* Fill in the progeny, depth-first recursion. */
   int count = 1;
@@ -2541,7 +2548,11 @@ void cell_activate_hydro_sorts(struct cell *c, int sid, struct scheduler *s) {
  * @brief Activate the sorts up a cell hierarchy.
  */
 void cell_activate_stars_sorts_up(struct cell *c, struct scheduler *s) {
+
   if (c == c->hydro.super) {
+
+    if(CHECK) message("in if");
+
 #ifdef SWIFT_DEBUG_CHECKS
     if (c->stars.sorts == NULL)
       error("Trying to activate un-existing c->stars.sorts");
@@ -2551,11 +2562,31 @@ void cell_activate_stars_sorts_up(struct cell *c, struct scheduler *s) {
       cell_activate_drift_spart(c, s);
     }
   } else {
+    if(CHECK) message("in else");
+
+    if(CHECK) {
+
+    int sub_sort = cell_get_flag(c, cell_flag_do_stars_sub_sort);
+    int parent_sub_sort = cell_get_flag(c->parent, cell_flag_do_stars_sub_sort);
+
+      message("depth=%d cellID=%d sub_sort=%d parent->sub_sort=%d",
+	      c->depth, c->nodeID, sub_sort, parent_sub_sort);
+      message("super->stars.sorts=%p", c->hydro.super->stars.sorts);
+      message("super->stars.sorts->skip=%d", c->hydro.super->stars.sorts->skip);
+    } 
+
     for (struct cell *parent = c->parent;
          parent != NULL && !cell_get_flag(parent, cell_flag_do_stars_sub_sort);
          parent = parent->parent) {
+
       cell_set_flag(parent, cell_flag_do_stars_sub_sort);
+      if(CHECK) message("parent->depth=%d", parent->depth);
+
       if (parent == c->hydro.super) {
+
+	if(CHECK) message("in other if");
+
+
 #ifdef SWIFT_DEBUG_CHECKS
         if (parent->stars.sorts == NULL)
           error("Trying to activate un-existing parents->stars.sorts");
@@ -2572,8 +2603,16 @@ void cell_activate_stars_sorts_up(struct cell *c, struct scheduler *s) {
  * @brief Activate the sorts on a given cell, if needed.
  */
 void cell_activate_stars_sorts(struct cell *c, int sid, struct scheduler *s) {
+
+  if(CHECK)
+    message("Activating sorts for cell %d", c->cellID);
+
   /* Do we need to re-sort? */
   if (c->stars.dx_max_sort > space_maxreldx * c->dmin) {
+
+    if(c->cellID == cell_to_check)
+      message("In first if");
+
     /* Climb up the tree to active the sorts in that direction */
     for (struct cell *finger = c; finger != NULL; finger = finger->parent) {
       if (finger->stars.requires_sorts) {
@@ -2586,6 +2625,10 @@ void cell_activate_stars_sorts(struct cell *c, int sid, struct scheduler *s) {
 
   /* Has this cell been sorted at all for the given sid? */
   if (!(c->stars.sorted & (1 << sid)) || c->nodeID != engine_rank) {
+
+    if(CHECK)
+      message("In second if");
+
     atomic_or(&c->stars.do_sort, (1 << sid));
     cell_activate_stars_sorts_up(c, s);
   }
@@ -2744,21 +2787,52 @@ void cell_activate_subcell_stars_tasks(struct cell *ci, struct cell *cj,
   /* Otherwise, pair interation */
   else {
 
-    /* Get the orientation of the pair. */
-    double shift[3];
-    const int sid = space_getsid(s->space, &ci, &cj, shift);
-
     const int ci_active = cell_is_active_stars(ci, e) ||
-                          (with_star_formation && cell_is_active_hydro(ci, e));
+      (with_star_formation && cell_is_active_hydro(ci, e));
     const int cj_active = cell_is_active_stars(cj, e) ||
-                          (with_star_formation && cell_is_active_hydro(cj, e));
+      (with_star_formation && cell_is_active_hydro(cj, e));
 
     /* Should we even bother? */
     if (!ci_active && !cj_active) return;
 
+    /* Get the orientation of the pair. */
+    double shift[3];
+    const int sid = space_getsid(s->space, &ci, &cj, shift);
+    
+    /* if(e->nodeID == 7 && ci->cellID == super_cell_to_check) */
+    /*   message("Found the super ci! ci_active=%d cj_active=%d depth=%d", ci_active, cj_active, ci->depth); */
+
+    /* if(e->nodeID == 7 && cj->cellID == super_cell_to_check) */
+    /*   message("Found the super cj! ci_active=%d cj_active=%d depth=%d", ci_active, cj_active, cj->depth); */
+
+    /* if(e->nodeID == 7 && ci->depth > 0 && ci->parent->cellID == super_cell_to_check) */
+    /*   message("Found the parent ci! ci_active=%d cj_active=%d depth=%d", ci_active, cj_active, ci->depth); */
+
+    /* if(e->nodeID == 7 && cj->depth > 0 &&cj->parent->cellID == super_cell_to_check) */
+    /*   message("Found the parent cj! ci_active=%d cj_active=%d depth=%d", ci_active, cj_active, cj->depth); */
+
+    /* if(e->nodeID == 7 && cj->hydro.super->cellID == super_cell_to_check) */
+    /*   message("Found a cell with super-cell= %d depth=%d cellID=%d ci_active=%d cj_active=%d cj->requires_sorts=%d cj->do_sort=%d sid=%d cj->dx_max_part=%e cj->dx_max_part_old=%e cj->dx_max_sort=%e cj->dx_max_sort_old=%e", */
+    /* 	      cj->hydro.super->cellID, cj->depth, cj->cellID, ci_active, cj_active, cj->stars.requires_sorts, cj->stars.do_sort, sid, */
+    /* 	      cj->stars.dx_max_part, cj->stars.dx_max_part_old, */
+    /* 	      cj->stars.dx_max_sort, cj->stars.dx_max_sort_old); */
+       
     /* recurse? */
     if (cell_can_recurse_in_pair_stars_task(ci, cj) &&
         cell_can_recurse_in_pair_stars_task(cj, ci)) {
+
+      /* if(e->nodeID == 7 && ci->cellID == super_cell_to_check) */
+      /* 	message("Found the super ci! Recursing!"); */
+      
+      /* if(e->nodeID == 7 && cj->cellID == super_cell_to_check) */
+      /* 	message("Found the super cj! Recursing!"); */
+
+      /* if(e->nodeID == 7 && ci->depth > 0 && ci->parent->cellID == super_cell_to_check) */
+      /* 	message("Found the parent ci! Recursing!"); */
+      
+      /* if(e->nodeID == 7 && cj->depth > 0 && cj->parent->cellID == super_cell_to_check) */
+      /* 	message("Found the parent cj! Recursing!"); */
+
       const struct cell_split_pair *csp = &cell_split_pairs[sid];
       for (int k = 0; k < csp->count; k++) {
         const int pid = csp->pairs[k].pid;
@@ -2772,7 +2846,16 @@ void cell_activate_subcell_stars_tasks(struct cell *ci, struct cell *cj,
     /* Otherwise, activate the sorts and drifts. */
     else {
 
-      if (ci_active) {
+      if (cell_is_active_stars(ci, e) ||
+	  (with_star_formation && cell_is_active_hydro(ci, e))) {
+
+    /* if(e->nodeID == 7 && cj->hydro.super->cellID == super_cell_to_check && cj->depth==3) */
+    /*   message("ACTIVATING  ci!!! Found a cell with super-cell= %d depth=%d cellID=%d ci_active=%d cj_active=%d cj->requires_sorts=%d cj->do_sort=%d sid=%d cj->dx_max_part=%e cj->dx_max_part_old=%e cj->dx_max_sort=%e cj->dx_max_sort_old=%e", */
+    /* 	      cj->hydro.super->cellID, cj->depth, cj->cellID, ci_active, cj_active, cj->stars.requires_sorts, cj->stars.do_sort, sid, */
+    /* 	      cj->stars.dx_max_part, cj->stars.dx_max_part_old, */
+    /* 	      cj->stars.dx_max_sort, cj->stars.dx_max_sort_old); */
+
+
         /* We are going to interact this pair, so store some values. */
         atomic_or(&cj->hydro.requires_sorts, 1 << sid);
         atomic_or(&ci->stars.requires_sorts, 1 << sid);
@@ -2789,7 +2872,19 @@ void cell_activate_subcell_stars_tasks(struct cell *ci, struct cell *cj,
         cell_activate_stars_sorts(ci, sid, s);
       }
 
-      if (cj_active) {
+      if (cell_is_active_stars(cj, e) ||
+	  (with_star_formation && cell_is_active_hydro(cj, e))) {
+
+      /* 	if(e->nodeID == 7 && cj->hydro.super->cellID == super_cell_to_check && cj->depth==3) { */
+      /* message("ACTIVATING  cj!!! Found a cell with super-cell= %d depth=%d cellID=%d ci_active=%d cj_active=%d cj->requires_sorts=%d cj->do_sort=%d sid=%d cj->dx_max_part=%e cj->dx_max_part_old=%e cj->dx_max_sort=%e cj->dx_max_sort_old=%e", */
+      /* 	      cj->hydro.super->cellID, cj->depth, cj->cellID, ci_active, cj_active, cj->stars.requires_sorts, cj->stars.do_sort, sid, */
+      /* 	      cj->stars.dx_max_part, cj->stars.dx_max_part_old, */
+      /* 	      cj->stars.dx_max_sort, cj->stars.dx_max_sort_old); */
+
+      /* if(sid == 3) CHECK =1; */
+      /* 	} */
+
+
         /* We are going to interact this pair, so store some values. */
         atomic_or(&cj->stars.requires_sorts, 1 << sid);
         atomic_or(&ci->hydro.requires_sorts, 1 << sid);
@@ -2804,6 +2899,8 @@ void cell_activate_subcell_stars_tasks(struct cell *ci, struct cell *cj,
         /* Do we need to sort the cells? */
         cell_activate_hydro_sorts(ci, sid, s);
         cell_activate_stars_sorts(cj, sid, s);
+
+	CHECK = 0;
       }
     }
   } /* Otherwise, pair interation */
@@ -3511,6 +3608,19 @@ int cell_unskip_stars_tasks(struct cell *c, struct scheduler *s,
     if ((ci_active || cj_active) &&
         (ci_nodeID == nodeID || cj_nodeID == nodeID)) {
       scheduler_activate(s, t);
+
+      if(ci->cellID == cell_to_check)
+	message("Activating task ci case t->type=%s/%s", taskID_names[t->type], subtaskID_names[t->subtype]);
+
+      if(cj != NULL && cj->cellID == cell_to_check)
+	message("Activating task cj case t->type=%s/%s", taskID_names[t->type], subtaskID_names[t->subtype]);
+
+
+      if(ci->cellID == super_cell_to_check)
+	message("Activating super task ci case t->type=%s/%s", taskID_names[t->type], subtaskID_names[t->subtype]);
+
+      if(cj != NULL && cj->cellID == super_cell_to_check)
+	message("Activating super task cj case t->type=%s/%s", taskID_names[t->type], subtaskID_names[t->subtype]);
 
       if (t->type == task_type_pair) {
         /* Do ci */
@@ -4801,6 +4911,35 @@ void cell_check_spart_pos(const struct cell *c,
 #endif
 }
 
+void cell_check_sort_flags(const struct cell* c) {
+
+#ifdef SWIFT_DEBUG_CHECKS
+  const int do_hydro_sub_sort = cell_get_flag(c, cell_flag_do_hydro_sub_sort);
+  const int do_stars_sub_sort = cell_get_flag(c, cell_flag_do_stars_sub_sort);
+
+  if(do_hydro_sub_sort)
+    error("cell %d has a hydro sub_sort flag set. Node=%d depth=%d maxdepth=%d",
+          c->cellID, c->nodeID, c->depth, c->maxdepth);
+
+  if(do_stars_sub_sort) {
+    message("cell %d has a stars sub_sort flag set. Node=%d depth=%d maxdepth=%d super=%p",
+             c->cellID, c->nodeID, c->depth, c->maxdepth, c->hydro.super);
+   message("c->stars.count=%d", c->stars.count);
+   message("super->cellID=%d super->sorts=%p super->depth=%d", c->hydro.super->cellID,
+c->hydro.super->stars.sorts, c->hydro.super->depth);
+   message("super->sorts->skip=%d",c->hydro.super->stars.sorts->skip);
+
+  error("oooo");
+}
+
+  if(c->split) {
+    for(int k = 0; k < 8; ++k) {
+      if(c->progeny[k] != NULL) cell_check_sort_flags(c->progeny[k]);
+    } 
+  }
+#endif
+}
+
 /**
  * @brief Recursively update the pointer and counter for #spart after the
  * addition of a new particle.
@@ -5189,6 +5328,11 @@ struct spart *cell_convert_part_to_spart(struct engine *e, struct cell *c,
 
   /* Did we run out of free spart slots? */
   if (sp == NULL) return NULL;
+
+  /* Copy over the distance since rebuild */
+  sp->x_diff[0] = xp->x_diff[0];
+  sp->x_diff[1] = xp->x_diff[1];
+  sp->x_diff[2] = xp->x_diff[2];
 
   /* Destroy the gas particle and get it's gpart friend */
   struct gpart *gp = cell_convert_part_to_gpart(e, c, p, xp);
