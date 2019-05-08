@@ -109,9 +109,9 @@ marker_names             = ['s', 'o', 'p', 'v', '^', '<', '>', 'h', '*']
 #             [file_location[1]+'GEAR/snapshot_0000', file_location[1]+'GEAR/snapshot_0500'],
 #             [file_location[1]+'GIZMO/snapshot_temp_000', file_location[1]+'GIZMO/snapshot_temp_100']]]
 codes = ['SWIFT', 'GEAR']
-filenames = [[["./agora_disk_0000.hdf5", "./agora_disk_0050.hdf5"], # Sim-noSFF
+filenames = [[["./agora_disk_IC.hdf5", "./agora_disk_500Myr.hdf5"], # Sim-noSFF
               ["./snapshot_0000.hdf5", "./snapshot_0500.hdf5"]],
-             [["./agora_disk_0000.hdf5", "./agora_disk_0050.hdf5"], # Sim-SFF (with star formation and feedback)
+             [["./agora_disk_IC.hdf5", "./agora_disk_500Myr.hdf5"], # Sim-SFF (with star formation and feedback)
               ["./snapshot_0000.hdf5", "./snapshot_0500.hdf5"]]] # I did not check the order, they can be switched
 
 # codes = ["SWIFT"]
