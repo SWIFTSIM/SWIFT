@@ -1255,6 +1255,7 @@ void cell_clear_hydro_sort_flags2(struct cell *c)  {
   c->hydro.do_sort = 0;
   cell_clear_flag(c, cell_flag_do_hydro_sub_sort);
   c->hydro.requires_sorts = 0;
+  cell_free_hydro_sorts(c);
 
   if(c->split) {
     for(int k = 0; k < 8; ++k){
@@ -1496,6 +1497,7 @@ void cell_clear_stars_sort_flags2(struct cell *c)  {
   c->stars.do_sort = 0;
   cell_clear_flag(c, cell_flag_do_stars_sub_sort);
   c->stars.requires_sorts = 0;
+  cell_free_stars_sorts(c);
 
   if(c->split) {
     for(int k = 0; k < 8; ++k){
