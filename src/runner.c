@@ -1139,7 +1139,7 @@ void runner_do_star_formation(struct runner *r, struct cell *c, int timer) {
   if (with_feedback && (c == c->top) &&
       (current_stars_count != c->stars.count)) {
 
-    cell_clear_stars_sort_flags(c, 0);
+    cell_clear_stars_sort_flags(c, /*clear_unused_flags=*/0);
     runner_do_all_stars_sort(r, c);
   }
 
@@ -1317,6 +1317,7 @@ void runner_do_hydro_sort(struct runner *r, struct cell *c, int flags,
       if (c->progeny[k] != NULL) {
 
         if (c->progeny[k]->hydro.count > 0) {
+
           /* Only propagate cleanup if the progeny is stale. */
           runner_do_hydro_sort(
               r, c->progeny[k], flags,
@@ -1327,7 +1328,10 @@ void runner_do_hydro_sort(struct runner *r, struct cell *c, int flags,
           dx_max_sort_old =
               max(dx_max_sort_old, c->progeny[k]->hydro.dx_max_sort_old);
         } else {
-          cell_clear_hydro_sort_flags(c->progeny[k], 1);
+
+          /* We need to clean up the unused flags that were in case the
+             number of particles in the cell would change */
+          cell_clear_hydro_sort_flags(c->progeny[k], /*clear_unused_flags=*/1);
         }
       }
     }
@@ -1555,7 +1559,9 @@ void runner_do_stars_sort(struct runner *r, struct cell *c, int flags,
     float dx_max_sort_old = 0.0f;
     for (int k = 0; k < 8; k++) {
       if (c->progeny[k] != NULL) {
+
         if (c->progeny[k]->stars.count > 0) {
+
           /* Only propagate cleanup if the progeny is stale. */
           const int cleanup_prog =
               cleanup && (c->progeny[k]->stars.dx_max_sort_old >
@@ -1565,7 +1571,10 @@ void runner_do_stars_sort(struct runner *r, struct cell *c, int flags,
           dx_max_sort_old =
               max(dx_max_sort_old, c->progeny[k]->stars.dx_max_sort_old);
         } else {
-          cell_clear_stars_sort_flags(c->progeny[k], 1);
+
+          /* We need to clean up the unused flags that were in case the
+             number of particles in the cell would change */
+          cell_clear_stars_sort_flags(c->progeny[k], /*clear_unused_flags=*/1);
         }
       }
     }
@@ -4256,7 +4265,7 @@ void *runner_main(void *data) {
             free(t->buff);
           } else if (t->subtype == task_subtype_sf_counts) {
             cell_unpack_sf_counts(ci, (struct pcell_sf *)t->buff);
-            cell_clear_stars_sort_flags(ci, 0);
+            cell_clear_stars_sort_flags(ci, /*clear_unused_flags=*/0);
             free(t->buff);
           } else if (t->subtype == task_subtype_xv) {
             runner_do_recv_part(r, ci, 1, 1);

@@ -2731,7 +2731,9 @@ void cell_activate_subcell_stars_tasks(struct cell *ci, struct cell *cj,
                           (with_star_formation && cell_is_active_hydro(ci, e));
 
     /* Do anything? */
-    if (!ci_active || ci->hydro.count == 0 || ci->stars.count == 0) return;
+    if (!ci_active || ci->hydro.count == 0 ||
+        (!with_star_formation && ci->stars.count == 0))
+      return;
 
     /* Recurse? */
     if (cell_can_recurse_in_self_stars_task(ci)) {
@@ -2756,6 +2758,10 @@ void cell_activate_subcell_stars_tasks(struct cell *ci, struct cell *cj,
   /* Otherwise, pair interation */
   else {
 
+    /* Get the orientation of the pair. */
+    double shift[3];
+    const int sid = space_getsid(s->space, &ci, &cj, shift);
+
     const int ci_active = cell_is_active_stars(ci, e) ||
                           (with_star_formation && cell_is_active_hydro(ci, e));
     const int cj_active = cell_is_active_stars(cj, e) ||
@@ -2763,10 +2769,6 @@ void cell_activate_subcell_stars_tasks(struct cell *ci, struct cell *cj,
 
     /* Should we even bother? */
     if (!ci_active && !cj_active) return;
-
-    /* Get the orientation of the pair. */
-    double shift[3];
-    const int sid = space_getsid(s->space, &ci, &cj, shift);
 
     /* recurse? */
     if (cell_can_recurse_in_pair_stars_task(ci, cj) &&
@@ -2785,8 +2787,7 @@ void cell_activate_subcell_stars_tasks(struct cell *ci, struct cell *cj,
     /* Otherwise, activate the sorts and drifts. */
     else {
 
-      if (cell_is_active_stars(ci, e) ||
-          (with_star_formation && cell_is_active_hydro(ci, e))) {
+      if (ci_active) {
 
         /* We are going to interact this pair, so store some values. */
         atomic_or(&cj->hydro.requires_sorts, 1 << sid);
@@ -2804,8 +2805,7 @@ void cell_activate_subcell_stars_tasks(struct cell *ci, struct cell *cj,
         cell_activate_stars_sorts(ci, sid, s);
       }
 
-      if (cell_is_active_stars(cj, e) ||
-          (with_star_formation && cell_is_active_hydro(cj, e))) {
+      if (cj_active) {
 
         /* We are going to interact this pair, so store some values. */
         atomic_or(&cj->stars.requires_sorts, 1 << sid);
@@ -4885,19 +4885,9 @@ void cell_check_sort_flags(const struct cell *c) {
     error("cell %d has a hydro sub_sort flag set. Node=%d depth=%d maxdepth=%d",
           c->cellID, c->nodeID, c->depth, c->maxdepth);
 
-  if (do_stars_sub_sort) {
-    message(
-        "cell %d has a stars sub_sort flag set. Node=%d depth=%d maxdepth=%d "
-        "super=%p",
-        c->cellID, c->nodeID, c->depth, c->maxdepth, c->hydro.super);
-    message("c->stars.count=%d", c->stars.count);
-    message("super->cellID=%d super->sorts=%p super->depth=%d",
-            c->hydro.super->cellID, c->hydro.super->stars.sorts,
-            c->hydro.super->depth);
-    message("super->sorts->skip=%d", c->hydro.super->stars.sorts->skip);
-
-    error("oooo");
-  }
+  if (do_stars_sub_sort)
+    error("cell %d has a stars sub_sort flag set. Node=%d depth=%d maxdepth=%d",
+          c->cellID, c->nodeID, c->depth, c->maxdepth);
 
   if (c->split) {
     for (int k = 0; k < 8; ++k) {
