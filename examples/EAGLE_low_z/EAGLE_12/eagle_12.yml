@@ -36,9 +36,6 @@ Statistics:
   time_first:          0.01 # Time of the first stat dump (non-cosmological run) (in internal units)
   delta_time:          1.05 # Time between statistics output
 
-Scheduler:
-  links_per_tasks: 25
-
 # Parameters for the self-gravity scheme
 Gravity:
   eta:                    0.025     # Constant dimensionless multiplier for time integration.

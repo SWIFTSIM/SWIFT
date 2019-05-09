@@ -49,7 +49,7 @@ Gravity:
   theta:                  0.7     # Opening angle (Multipole acceptance criterion)
   comoving_softening:     0.0026994 # Comoving softening length (in internal units).
   max_physical_softening: 0.0007    # Physical softening length (in internal units).
-  mesh_side_length:       256
+  mesh_side_length:       64
 
 # Parameters for the hydrodynamics scheme
 SPH:
@@ -84,9 +84,6 @@ EAGLECooling:
   He_reion_z_centre:       3.5
   He_reion_z_sigma:        0.5
   He_reion_eV_p_H:         2.0
-
-Scheduler:
-  links_per_tasks:    25
 
 # EAGLE star formation parameters
 EAGLEStarFormation:
