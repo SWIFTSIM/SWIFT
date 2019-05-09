@@ -1034,7 +1034,7 @@ int main(int argc, char *argv[]) {
 
     /* Initialize the engine with the space and policies. */
     if (myrank == 0) clocks_gettime(&tic);
-    engine_init(&e, &s, params, N_total[0], N_total[1], N_total[2],
+    engine_init(&e, &s, params, N_total[0], N_total[1], N_total[2], N_total[3],
                 engine_policies, talking, &reparttype, &us, &prog_const, &cosmo,
                 &hydro_properties, &entropy_floor, &gravity_properties,
                 &stars_properties, &black_holes_properties,

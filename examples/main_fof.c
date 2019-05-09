@@ -96,11 +96,14 @@ int main(int argc, char *argv[]) {
   struct gravity_props gravity_properties;
   struct hydro_props hydro_properties;
   struct stars_props stars_properties;
+  struct feedback_props feedback_properties;
   struct entropy_floor_properties entropy_floor;
+  struct black_holes_props black_holes_properties;
   struct part *parts = NULL;
   struct phys_const prog_const;
   struct space s;
   struct spart *sparts = NULL;
+  struct bpart *bparts = NULL;
   struct unit_system us;
 
   int nr_nodes = 1, myrank = 0;
@@ -156,6 +159,7 @@ int main(int argc, char *argv[]) {
   int with_fof = 1;
   int with_star_formation = 0;
   int with_feedback = 0;
+  int with_black_holes = 0;
   int with_fp_exceptions = 0;
   int with_drift_all = 0;
   int with_mpole_reconstruction = 0;
@@ -708,9 +712,23 @@ int main(int argc, char *argv[]) {
     /* Initialise the stars properties */
     if (with_stars)
       stars_props_init(&stars_properties, &prog_const, &us, params,
-                       &hydro_properties);
+                       &hydro_properties, &cosmo);
     else
       bzero(&stars_properties, sizeof(struct stars_props));
+
+    /* Initialise the feedback properties */
+    if (with_feedback) {
+      feedback_props_init(&feedback_properties, &prog_const, &us, params,
+                          &hydro_properties, &cosmo);
+    } else
+      bzero(&feedback_properties, sizeof(struct feedback_props));
+
+    /* Initialise the black holes properties */
+    if (with_black_holes) {
+      black_holes_props_init(&black_holes_properties, &prog_const, &us, params,
+                             &hydro_properties, &cosmo);
+    } else
+      bzero(&black_holes_properties, sizeof(struct black_holes_props));
 
     /* Initialise the gravity properties */
     if (with_self_gravity)
@@ -728,32 +746,32 @@ int main(int argc, char *argv[]) {
     fflush(stdout);
 
     /* Get ready to read particles of all kinds */
-    size_t Ngas = 0, Ngpart = 0, Nspart = 0;
+    size_t Ngas = 0, Ngpart = 0, Nspart = 0, Nbpart = 0;
     double dim[3] = {0., 0., 0.};
     if (myrank == 0) clocks_gettime(&tic);
 #if defined(HAVE_HDF5)
 #if defined(WITH_MPI)
 #if defined(HAVE_PARALLEL_HDF5)
-    read_ic_parallel(ICfileName, &us, dim, &parts, &gparts, &sparts, &Ngas,
-                     &Ngpart, &Nspart, &flag_entropy_ICs, with_hydro,
-                     (with_external_gravity || with_self_gravity), with_stars,
-                     cleanup_h, cleanup_sqrt_a, cosmo.h, cosmo.a, myrank,
-                     nr_nodes, MPI_COMM_WORLD, MPI_INFO_NULL, nr_threads,
-                     dry_run);
+    read_ic_parallel(ICfileName, &us, dim, &parts, &gparts, &sparts, &bparts,
+                     &Ngas, &Ngpart, &Nspart, &Nbpart, &flag_entropy_ICs,
+                     with_hydro, (with_external_gravity || with_self_gravity),
+                     with_stars, with_black_holes, cleanup_h, cleanup_sqrt_a,
+                     cosmo.h, cosmo.a, myrank, nr_nodes, MPI_COMM_WORLD,
+                     MPI_INFO_NULL, nr_threads, dry_run);
 #else
-    read_ic_serial(ICfileName, &us, dim, &parts, &gparts, &sparts, &Ngas,
-                   &Ngpart, &Nspart, &flag_entropy_ICs, with_hydro,
-                   (with_external_gravity || with_self_gravity), with_stars,
-                   cleanup_h, cleanup_sqrt_a, cosmo.h, cosmo.a, myrank,
-                   nr_nodes, MPI_COMM_WORLD, MPI_INFO_NULL, nr_threads,
-                   dry_run);
+    read_ic_serial(ICfileName, &us, dim, &parts, &gparts, &sparts, &bparts,
+                   &Ngas, &Ngpart, &Nspart, &Nbpart, &flag_entropy_ICs,
+                   with_hydro, (with_external_gravity || with_self_gravity),
+                   with_stars, with_black_holes, cleanup_h, cleanup_sqrt_a,
+                   cosmo.h, cosmo.a, myrank, nr_nodes, MPI_COMM_WORLD,
+                   MPI_INFO_NULL, nr_threads, dry_run);
 #endif
 #else
-    read_ic_single(ICfileName, &us, dim, &parts, &gparts, &sparts, &Ngas,
-                   &Ngpart, &Nspart, &flag_entropy_ICs, with_hydro,
-                   (with_external_gravity || with_self_gravity), with_stars,
-                   cleanup_h, cleanup_sqrt_a, cosmo.h, cosmo.a, nr_threads,
-                   dry_run);
+    read_ic_single(ICfileName, &us, dim, &parts, &gparts, &sparts, &bparts,
+                   &Ngas, &Ngpart, &Nspart, &Nbpart, &flag_entropy_ICs,
+                   with_hydro, (with_external_gravity || with_self_gravity),
+                   with_stars, with_black_holes, cleanup_h, cleanup_sqrt_a,
+                   cosmo.h, cosmo.a, nr_threads, dry_run);
 #endif
 #endif
     if (myrank == 0) {
@@ -776,19 +794,21 @@ int main(int argc, char *argv[]) {
 
     /* Check that the other links are correctly set */
     if (!dry_run)
-      part_verify_links(parts, gparts, sparts, Ngas, Ngpart, Nspart, 1);
+      part_verify_links(parts, gparts, sparts, bparts, Ngas, Ngpart, Nspart,
+                        Nbpart, 1);
 #endif
 
     /* Get the total number of particles across all nodes. */
-    long long N_total[3] = {0, 0, 0};
+    long long N_total[4] = {0, 0, 0};
 #if defined(WITH_MPI)
-    long long N_long[3] = {Ngas, Ngpart, Nspart};
-    MPI_Allreduce(&N_long, &N_total, 3, MPI_LONG_LONG_INT, MPI_SUM,
+    long long N_long[4] = {Ngas, Ngpart, Nspart, Nbpart};
+    MPI_Allreduce(&N_long, &N_total, 4, MPI_LONG_LONG_INT, MPI_SUM,
                   MPI_COMM_WORLD);
 #else
     N_total[0] = Ngas;
     N_total[1] = Ngpart;
     N_total[2] = Nspart;
+    N_total[3] = Nbpart;
 #endif
 
     if (myrank == 0)
@@ -802,9 +822,10 @@ int main(int argc, char *argv[]) {
 
     /* Initialize the space with these data. */
     if (myrank == 0) clocks_gettime(&tic);
-    space_init(&s, params, &cosmo, dim, parts, gparts, sparts, Ngas, Ngpart,
-               Nspart, periodic, replicate, generate_gas_in_ics, with_hydro,
-               with_self_gravity, with_star_formation, talking, dry_run);
+    space_init(&s, params, &cosmo, dim, parts, gparts, sparts, bparts, Ngas,
+               Ngpart, Nspart, Nbpart, periodic, replicate, generate_gas_in_ics,
+               with_hydro, with_self_gravity, with_star_formation, talking,
+               dry_run);
 
     if (myrank == 0) {
       clocks_gettime(&toc);
@@ -878,7 +899,8 @@ int main(int argc, char *argv[]) {
     if (myrank == 0) potential_print(&potential);
 
     /* Initialise the cooling function properties */
-    if (with_cooling) cooling_init(params, &us, &prog_const, &cooling_func);
+    if (with_cooling)
+      cooling_init(params, &us, &prog_const, &hydro_properties, &cooling_func);
     if (myrank == 0) cooling_print(&cooling_func);
 
     /* Initialise the star formation law and its properties */
@@ -905,17 +927,19 @@ int main(int argc, char *argv[]) {
     if (with_stars) engine_policies |= engine_policy_stars;
     if (with_fof) engine_policies |= engine_policy_fof;
     if (with_feedback) engine_policies |= engine_policy_feedback;
+    if (with_black_holes) engine_policies |= engine_policy_black_holes;
     if (with_structure_finding)
       engine_policies |= engine_policy_structure_finding;
     if (with_fof) engine_policies |= engine_policy_fof;
 
     /* Initialize the engine with the space and policies. */
     if (myrank == 0) clocks_gettime(&tic);
-    engine_init(&e, &s, params, N_total[0], N_total[1], N_total[2],
+    engine_init(&e, &s, params, N_total[0], N_total[1], N_total[2], N_total[3],
                 engine_policies, talking, &reparttype, &us, &prog_const, &cosmo,
                 &hydro_properties, &entropy_floor, &gravity_properties,
-                &stars_properties, &mesh, &potential, &cooling_func, &starform,
-                &chemistry);
+                &stars_properties, &black_holes_properties,
+                &feedback_properties, &mesh, &potential, &cooling_func,
+                &starform, &chemistry);
     engine_config(0, &e, params, nr_nodes, myrank, nr_threads, with_aff,
                   talking, restart_file);
 

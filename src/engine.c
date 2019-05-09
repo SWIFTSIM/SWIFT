@@ -4887,7 +4887,8 @@ void engine_unpin(void) {
  */
 void engine_init(struct engine *e, struct space *s, struct swift_params *params,
                  long long Ngas, long long Ngparts, long long Nstars,
-                 int policy, int verbose, struct repartition *reparttype,
+                 long long Nblackholes, int policy, int verbose,
+                 struct repartition *reparttype,
                  const struct unit_system *internal_units,
                  const struct phys_const *physical_constants,
                  struct cosmology *cosmo, struct hydro_props *hydro,
@@ -4910,6 +4911,7 @@ void engine_init(struct engine *e, struct space *s, struct swift_params *params,
   e->total_nr_parts = Ngas;
   e->total_nr_gparts = Ngparts;
   e->total_nr_sparts = Nstars;
+  e->total_nr_bparts = Nblackholes;
   e->proxy_ind = NULL;
   e->nr_proxies = 0;
   e->reparttype = reparttype;

@@ -109,14 +109,6 @@ enum {
   timer_do_stars_sort,
   timer_fof_self,
   timer_fof_pair,
-  timer_dopair_limiter,
-  timer_doself_limiter,
-  timer_dosub_pair_limiter,
-  timer_dosub_self_limiter,
-  timer_drift_spart,
-  timer_do_limiter,
-  timer_end_hydro_force,
-  timer_end_grav_force,
   timer_count,
 };
 
