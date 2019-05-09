@@ -41,6 +41,8 @@
 #include "active.h"
 #include "approx_math.h"
 #include "atomic.h"
+#include "black_holes.h"
+#include "black_holes_properties.h"
 #include "cell.h"
 #include "chemistry.h"
 #include "const.h"
@@ -50,6 +52,7 @@
 #include "engine.h"
 #include "entropy_floor.h"
 #include "error.h"
+#include "feedback.h"
 #include "gravity.h"
 #include "hydro.h"
 #include "hydro_properties.h"
@@ -64,6 +67,7 @@
 #include "space_getsid.h"
 #include "star_formation.h"
 #include "star_formation_iact.h"
+#include "star_formation_logger.h"
 #include "stars.h"
 #include "task.h"
 #include "timers.h"
@@ -124,6 +128,20 @@
 #undef FUNCTION_TASK_LOOP
 #undef FUNCTION
 
+/* Import the black hole density loop functions. */
+#define FUNCTION density
+#define FUNCTION_TASK_LOOP TASK_LOOP_DENSITY
+#include "runner_doiact_black_holes.h"
+#undef FUNCTION_TASK_LOOP
+#undef FUNCTION
+
+/* Import the black hole feedback loop functions. */
+#define FUNCTION feedback
+#define FUNCTION_TASK_LOOP TASK_LOOP_FEEDBACK
+#include "runner_doiact_black_holes.h"
+#undef FUNCTION_TASK_LOOP
+#undef FUNCTION
+
 /**
  * @brief Intermediate task after the density to check that the smoothing
  * lengths are correct.
@@ -136,7 +154,10 @@ void runner_do_stars_ghost(struct runner *r, struct cell *c, int timer) {
 
   struct spart *restrict sparts = c->stars.parts;
   const struct engine *e = r->e;
+  const struct unit_system *us = e->internal_units;
+  const int with_cosmology = (e->policy & engine_policy_cosmology);
   const struct cosmology *cosmo = e->cosmology;
+  const struct feedback_props *feedback_props = e->feedback_props;
   const float stars_h_max = e->hydro_properties->h_max;
   const float stars_h_min = e->hydro_properties->h_min;
   const float eps = e->stars_properties->h_tolerance;
@@ -180,7 +201,8 @@ void runner_do_stars_ghost(struct runner *r, struct cell *c, int timer) {
     if ((right = (float *)malloc(sizeof(float) * c->stars.count)) == NULL)
       error("Can't allocate memory for right.");
     for (int k = 0; k < c->stars.count; k++)
-      if (spart_is_active(&sparts[k], e)) {
+      if (spart_is_active(&sparts[k], e) &&
+          feedback_is_active(&sparts[k], e->time, cosmo, with_cosmology)) {
         sid[scount] = k;
         h_0[scount] = sparts[k].h;
         left[scount] = 0.f;
@@ -255,6 +277,7 @@ void runner_do_stars_ghost(struct runner *r, struct cell *c, int timer) {
               ((sp->h <= stars_h_min) && (f > 0.f))) {
 
             stars_reset_feedback(sp);
+            feedback_reset_feedback(sp, feedback_props);
 
             /* Ok, we are done with this particle */
             continue;
@@ -275,12 +298,6 @@ void runner_do_stars_ghost(struct runner *r, struct cell *c, int timer) {
                 num_reruns, sp->id, h_init, h_old, h_new, f, f_prime, n_sum,
                 n_target, left[i], right[i]);
           }
-
-#ifdef SWIFT_DEBUG_CHECKS
-          if ((f > 0.f && h_new > h_old) || (f < 0.f && h_new < h_old))
-            error(
-                "Smoothing length correction not going in the right direction");
-#endif
 
           /* Safety check: truncate to the range [ h_old/2 , 2h_old ]. */
           h_new = min(h_new, 2.f * h_old);
@@ -322,6 +339,7 @@ void runner_do_stars_ghost(struct runner *r, struct cell *c, int timer) {
 
             /* Re-initialise everything */
             stars_init_spart(sp);
+            feedback_init_spart(sp);
 
             /* Off we go ! */
             continue;
@@ -355,8 +373,51 @@ void runner_do_stars_ghost(struct runner *r, struct cell *c, int timer) {
 
         stars_reset_feedback(sp);
 
-        /* Compute the stellar evolution  */
-        stars_evolve_spart(sp, e->stars_properties, cosmo);
+        /* Only do feedback if stars have a reasonable birth time */
+        if (feedback_do_feedback(sp)) {
+
+          const integertime_t ti_step = get_integer_timestep(sp->time_bin);
+          const integertime_t ti_begin =
+              get_integer_time_begin(e->ti_current - 1, sp->time_bin);
+
+          /* Get particle time-step */
+          double dt;
+          if (with_cosmology) {
+            dt = cosmology_get_delta_time(e->cosmology, ti_begin,
+                                          ti_begin + ti_step);
+          } else {
+            dt = get_timestep(sp->time_bin, e->time_base);
+          }
+
+          /* Calculate age of the star at current time */
+          double star_age_end_of_step;
+          if (with_cosmology) {
+            star_age_end_of_step = cosmology_get_delta_time_from_scale_factors(
+                cosmo, sp->birth_scale_factor, (float)cosmo->a);
+          } else {
+            star_age_end_of_step = (float)e->time - sp->birth_time;
+          }
+
+          /* Has this star been around for a while ? */
+          if (star_age_end_of_step > 0.) {
+
+            /* Age of the star at the start of the step */
+            const double star_age_beg_of_step =
+                max(star_age_end_of_step - dt, 0.);
+
+            /* Compute the stellar evolution  */
+            feedback_evolve_spart(sp, feedback_props, cosmo, us,
+                                  star_age_beg_of_step, dt);
+          } else {
+
+            /* Reset the feedback fields of the star particle */
+            feedback_reset_feedback(sp, feedback_props);
+          }
+        } else {
+
+          /* Reset the feedback fields of the star particle */
+          feedback_reset_feedback(sp, feedback_props);
+        }
       }
 
       /* We now need to treat the particles whose smoothing length had not
@@ -397,7 +458,7 @@ void runner_do_stars_ghost(struct runner *r, struct cell *c, int timer) {
             /* Otherwise, sub-self interaction? */
             else if (l->t->type == task_type_sub_self)
               runner_dosub_subset_stars_density(r, finger, sparts, sid, scount,
-                                                NULL, -1, 1);
+                                                NULL, 1);
 
             /* Otherwise, sub-pair interaction? */
             else if (l->t->type == task_type_sub_pair) {
@@ -405,10 +466,10 @@ void runner_do_stars_ghost(struct runner *r, struct cell *c, int timer) {
               /* Left or right? */
               if (l->t->ci == finger)
                 runner_dosub_subset_stars_density(r, finger, sparts, sid,
-                                                  scount, l->t->cj, -1, 1);
+                                                  scount, l->t->cj, 1);
               else
                 runner_dosub_subset_stars_density(r, finger, sparts, sid,
-                                                  scount, l->t->ci, -1, 1);
+                                                  scount, l->t->ci, 1);
             }
           }
         }
@@ -437,7 +498,353 @@ void runner_do_stars_ghost(struct runner *r, struct cell *c, int timer) {
     }
   }
 
-  if (timer) TIMER_TOC(timer_dostars_ghost);
+  if (timer) TIMER_TOC(timer_do_stars_ghost);
+}
+
+/**
+ * @brief Intermediate task after the density to check that the smoothing
+ * lengths are correct.
+ *
+ * @param r The runner thread.
+ * @param c The cell.
+ * @param timer Are we timing this ?
+ */
+void runner_do_black_holes_ghost(struct runner *r, struct cell *c, int timer) {
+
+  struct bpart *restrict bparts = c->black_holes.parts;
+  const struct engine *e = r->e;
+  const int with_cosmology = e->policy & engine_policy_cosmology;
+  const struct cosmology *cosmo = e->cosmology;
+  const float black_holes_h_max = e->hydro_properties->h_max;
+  const float black_holes_h_min = e->hydro_properties->h_min;
+  const float eps = e->black_holes_properties->h_tolerance;
+  const float black_holes_eta_dim =
+      pow_dimension(e->black_holes_properties->eta_neighbours);
+  const int max_smoothing_iter = e->hydro_properties->max_smoothing_iterations;
+  int redo = 0, bcount = 0;
+
+  /* Running value of the maximal smoothing length */
+  double h_max = c->black_holes.h_max;
+
+  TIMER_TIC;
+
+  /* Anything to do here? */
+  if (c->black_holes.count == 0) return;
+  if (!cell_is_active_black_holes(c, e)) return;
+
+  /* Recurse? */
+  if (c->split) {
+    for (int k = 0; k < 8; k++) {
+      if (c->progeny[k] != NULL) {
+        runner_do_black_holes_ghost(r, c->progeny[k], 0);
+
+        /* Update h_max */
+        h_max = max(h_max, c->progeny[k]->black_holes.h_max);
+      }
+    }
+  } else {
+
+    /* Init the list of active particles that have to be updated. */
+    int *sid = NULL;
+    float *h_0 = NULL;
+    float *left = NULL;
+    float *right = NULL;
+    if ((sid = (int *)malloc(sizeof(int) * c->black_holes.count)) == NULL)
+      error("Can't allocate memory for sid.");
+    if ((h_0 = (float *)malloc(sizeof(float) * c->black_holes.count)) == NULL)
+      error("Can't allocate memory for h_0.");
+    if ((left = (float *)malloc(sizeof(float) * c->black_holes.count)) == NULL)
+      error("Can't allocate memory for left.");
+    if ((right = (float *)malloc(sizeof(float) * c->black_holes.count)) == NULL)
+      error("Can't allocate memory for right.");
+    for (int k = 0; k < c->black_holes.count; k++)
+      if (bpart_is_active(&bparts[k], e)) {
+        sid[bcount] = k;
+        h_0[bcount] = bparts[k].h;
+        left[bcount] = 0.f;
+        right[bcount] = black_holes_h_max;
+        ++bcount;
+      }
+
+    /* While there are particles that need to be updated... */
+    for (int num_reruns = 0; bcount > 0 && num_reruns < max_smoothing_iter;
+         num_reruns++) {
+
+      /* Reset the redo-count. */
+      redo = 0;
+
+      /* Loop over the remaining active parts in this cell. */
+      for (int i = 0; i < bcount; i++) {
+
+        /* Get a direct pointer on the part. */
+        struct bpart *bp = &bparts[sid[i]];
+
+#ifdef SWIFT_DEBUG_CHECKS
+        /* Is this part within the timestep? */
+        if (!bpart_is_active(bp, e))
+          error("Ghost applied to inactive particle");
+#endif
+
+        /* Get some useful values */
+        const float h_init = h_0[i];
+        const float h_old = bp->h;
+        const float h_old_dim = pow_dimension(h_old);
+        const float h_old_dim_minus_one = pow_dimension_minus_one(h_old);
+
+        float h_new;
+        int has_no_neighbours = 0;
+
+        if (bp->density.wcount == 0.f) { /* No neighbours case */
+
+          /* Flag that there were no neighbours */
+          has_no_neighbours = 1;
+
+          /* Double h and try again */
+          h_new = 2.f * h_old;
+
+        } else {
+
+          /* Finish the density calculation */
+          black_holes_end_density(bp, cosmo);
+
+          /* Compute one step of the Newton-Raphson scheme */
+          const float n_sum = bp->density.wcount * h_old_dim;
+          const float n_target = black_holes_eta_dim;
+          const float f = n_sum - n_target;
+          const float f_prime =
+              bp->density.wcount_dh * h_old_dim +
+              hydro_dimension * bp->density.wcount * h_old_dim_minus_one;
+
+          /* Improve the bisection bounds */
+          if (n_sum < n_target)
+            left[i] = max(left[i], h_old);
+          else if (n_sum > n_target)
+            right[i] = min(right[i], h_old);
+
+#ifdef SWIFT_DEBUG_CHECKS
+          /* Check the validity of the left and right bounds */
+          if (left[i] > right[i])
+            error("Invalid left (%e) and right (%e)", left[i], right[i]);
+#endif
+
+          /* Skip if h is already h_max and we don't have enough neighbours */
+          /* Same if we are below h_min */
+          if (((bp->h >= black_holes_h_max) && (f < 0.f)) ||
+              ((bp->h <= black_holes_h_min) && (f > 0.f))) {
+
+            /* Get particle time-step */
+            double dt;
+            if (with_cosmology) {
+              const integertime_t ti_step = get_integer_timestep(bp->time_bin);
+              const integertime_t ti_begin =
+                  get_integer_time_begin(e->ti_current - 1, bp->time_bin);
+
+              dt = cosmology_get_delta_time(e->cosmology, ti_begin,
+                                            ti_begin + ti_step);
+            } else {
+              dt = get_timestep(bp->time_bin, e->time_base);
+            }
+
+            /* Compute variables required for the feedback loop */
+            black_holes_prepare_feedback(bp, e->black_holes_properties,
+                                         e->physical_constants, e->cosmology,
+                                         dt);
+
+            /* Reset quantities computed by the feedback loop */
+            black_holes_reset_feedback(bp);
+
+            /* Ok, we are done with this particle */
+            continue;
+          }
+
+          /* Normal case: Use Newton-Raphson to get a better value of h */
+
+          /* Avoid floating point exception from f_prime = 0 */
+          h_new = h_old - f / (f_prime + FLT_MIN);
+
+          /* Be verbose about the particles that struggle to converge */
+          if (num_reruns > max_smoothing_iter - 10) {
+
+            message(
+                "Smoothing length convergence problem: iter=%d p->id=%lld "
+                "h_init=%12.8e h_old=%12.8e h_new=%12.8e f=%f f_prime=%f "
+                "n_sum=%12.8e n_target=%12.8e left=%12.8e right=%12.8e",
+                num_reruns, bp->id, h_init, h_old, h_new, f, f_prime, n_sum,
+                n_target, left[i], right[i]);
+          }
+
+          /* Safety check: truncate to the range [ h_old/2 , 2h_old ]. */
+          h_new = min(h_new, 2.f * h_old);
+          h_new = max(h_new, 0.5f * h_old);
+
+          /* Verify that we are actually progrssing towards the answer */
+          h_new = max(h_new, left[i]);
+          h_new = min(h_new, right[i]);
+        }
+
+        /* Check whether the particle has an inappropriate smoothing length */
+        if (fabsf(h_new - h_old) > eps * h_old) {
+
+          /* Ok, correct then */
+
+          /* Case where we have been oscillating around the solution */
+          if ((h_new == left[i] && h_old == right[i]) ||
+              (h_old == left[i] && h_new == right[i])) {
+
+            /* Bissect the remaining interval */
+            bp->h = pow_inv_dimension(
+                0.5f * (pow_dimension(left[i]) + pow_dimension(right[i])));
+
+          } else {
+
+            /* Normal case */
+            bp->h = h_new;
+          }
+
+          /* If below the absolute maximum, try again */
+          if (bp->h < black_holes_h_max && bp->h > black_holes_h_min) {
+
+            /* Flag for another round of fun */
+            sid[redo] = sid[i];
+            h_0[redo] = h_0[i];
+            left[redo] = left[i];
+            right[redo] = right[i];
+            redo += 1;
+
+            /* Re-initialise everything */
+            black_holes_init_bpart(bp);
+
+            /* Off we go ! */
+            continue;
+
+          } else if (bp->h <= black_holes_h_min) {
+
+            /* Ok, this particle is a lost cause... */
+            bp->h = black_holes_h_min;
+
+          } else if (bp->h >= black_holes_h_max) {
+
+            /* Ok, this particle is a lost cause... */
+            bp->h = black_holes_h_max;
+
+            /* Do some damage control if no neighbours at all were found */
+            if (has_no_neighbours) {
+              black_holes_bpart_has_no_neighbours(bp, cosmo);
+            }
+
+          } else {
+            error(
+                "Fundamental problem with the smoothing length iteration "
+                "logic.");
+          }
+        }
+
+        /* We now have a particle whose smoothing length has converged */
+
+        /* Check if h_max has increased */
+        h_max = max(h_max, bp->h);
+
+        /* Get particle time-step */
+        double dt;
+        if (with_cosmology) {
+          const integertime_t ti_step = get_integer_timestep(bp->time_bin);
+          const integertime_t ti_begin =
+              get_integer_time_begin(e->ti_current - 1, bp->time_bin);
+
+          dt = cosmology_get_delta_time(e->cosmology, ti_begin,
+                                        ti_begin + ti_step);
+        } else {
+          dt = get_timestep(bp->time_bin, e->time_base);
+        }
+
+        /* Compute variables required for the feedback loop */
+        black_holes_prepare_feedback(bp, e->black_holes_properties,
+                                     e->physical_constants, e->cosmology, dt);
+
+        /* Reset quantities computed by the feedback loop */
+        black_holes_reset_feedback(bp);
+      }
+
+      /* We now need to treat the particles whose smoothing length had not
+       * converged again */
+
+      /* Re-set the counter for the next loop (potentially). */
+      bcount = redo;
+      if (bcount > 0) {
+
+        /* Climb up the cell hierarchy. */
+        for (struct cell *finger = c; finger != NULL; finger = finger->parent) {
+
+          /* Run through this cell's density interactions. */
+          for (struct link *l = finger->black_holes.density; l != NULL;
+               l = l->next) {
+
+#ifdef SWIFT_DEBUG_CHECKS
+            if (l->t->ti_run < r->e->ti_current)
+              error("Density task should have been run.");
+#endif
+
+            /* Self-interaction? */
+            if (l->t->type == task_type_self)
+              runner_doself_subset_branch_bh_density(r, finger, bparts, sid,
+                                                     bcount);
+
+            /* Otherwise, pair interaction? */
+            else if (l->t->type == task_type_pair) {
+
+              /* Left or right? */
+              if (l->t->ci == finger)
+                runner_dopair_subset_branch_bh_density(r, finger, bparts, sid,
+                                                       bcount, l->t->cj);
+              else
+                runner_dopair_subset_branch_bh_density(r, finger, bparts, sid,
+                                                       bcount, l->t->ci);
+            }
+
+            /* Otherwise, sub-self interaction? */
+            else if (l->t->type == task_type_sub_self)
+              runner_dosub_subset_bh_density(r, finger, bparts, sid, bcount,
+                                             NULL, 1);
+
+            /* Otherwise, sub-pair interaction? */
+            else if (l->t->type == task_type_sub_pair) {
+
+              /* Left or right? */
+              if (l->t->ci == finger)
+                runner_dosub_subset_bh_density(r, finger, bparts, sid, bcount,
+                                               l->t->cj, 1);
+              else
+                runner_dosub_subset_bh_density(r, finger, bparts, sid, bcount,
+                                               l->t->ci, 1);
+            }
+          }
+        }
+      }
+    }
+
+    if (bcount) {
+      error("Smoothing length failed to converge on %i particles.", bcount);
+    }
+
+    /* Be clean */
+    free(left);
+    free(right);
+    free(sid);
+    free(h_0);
+  }
+
+  /* Update h_max */
+  c->black_holes.h_max = h_max;
+
+  /* The ghost may not always be at the top level.
+   * Therefore we need to update h_max between the super- and top-levels */
+  if (c->black_holes.ghost) {
+    for (struct cell *tmp = c->parent; tmp != NULL; tmp = tmp->parent) {
+      atomic_max_d(&tmp->black_holes.h_max, h_max);
+    }
+  }
+
+  if (timer) TIMER_TOC(timer_do_black_holes_ghost);
 }
 
 /**
@@ -619,13 +1026,27 @@ void runner_do_star_formation(struct runner *r, struct cell *c, int timer) {
 #endif
 
   /* Anything to do here? */
-  if (c->hydro.count == 0) return;
-  if (!cell_is_active_hydro(c, e)) return;
+  if (c->hydro.count == 0 || !cell_is_active_hydro(c, e)) {
+    star_formation_logger_log_inactive_cell(&c->stars.sfh);
+    return;
+  }
+
+  /* Reset the SFR */
+  star_formation_logger_init(&c->stars.sfh);
 
   /* Recurse? */
   if (c->split) {
     for (int k = 0; k < 8; k++)
-      if (c->progeny[k] != NULL) runner_do_star_formation(r, c->progeny[k], 0);
+      if (c->progeny[k] != NULL) {
+        /* Load the child cell */
+        struct cell *restrict cp = c->progeny[k];
+
+        /* Do the recursion */
+        runner_do_star_formation(r, cp, 0);
+
+        /* Update current cell using child cells */
+        star_formation_logger_add(&c->stars.sfh, &cp->stars.sfh);
+      }
   } else {
 
     /* Loop over the gas particles in this cell. */
@@ -661,6 +1082,9 @@ void runner_do_star_formation(struct runner *r, struct cell *c, int timer) {
           star_formation_compute_SFR(p, xp, sf_props, phys_const, cosmo,
                                      dt_star);
 
+          /* Add the SFR and SFR*dt to the SFH struct of this cell */
+          star_formation_logger_log_active_part(p, xp, &c->stars.sfh, dt_star);
+
           /* Are we forming a star particle from this SF rate? */
           if (star_formation_should_convert_to_star(p, xp, sf_props, e,
                                                     dt_star)) {
@@ -673,7 +1097,11 @@ void runner_do_star_formation(struct runner *r, struct cell *c, int timer) {
 
               /* Copy the properties of the gas particle to the star particle */
               star_formation_copy_properties(p, xp, sp, e, sf_props, cosmo,
-                                             with_cosmology);
+                                             with_cosmology, phys_const,
+                                             hydro_props, us, cooling);
+
+              /* Update the Star formation history */
+              star_formation_logger_log_new_spart(sp, &c->stars.sfh);
             }
           }
 
@@ -684,8 +1112,15 @@ void runner_do_star_formation(struct runner *r, struct cell *c, int timer) {
                                              with_cosmology);
 
         } /* Not Star-forming? */
-      }   /* is active? */
-    }     /* Loop over particles */
+
+      } else { /* is active? */
+
+        /* Check if the particle is not inhibited */
+        if (!part_is_inhibited(p, e)) {
+          star_formation_logger_log_inactive_part(p, xp, &c->stars.sfh);
+        }
+      }
+    } /* Loop over particles */
   }
 
   /* If we formed any stars, the star sorts are now invalid. We need to
@@ -836,7 +1271,7 @@ void runner_do_hydro_sort(struct runner *r, struct cell *c, int flags,
   } else {
     flags &= ~c->hydro.sorted;
   }
-  if (flags == 0 && !c->hydro.do_sub_sort) return;
+  if (flags == 0 && !cell_get_flag(c, cell_flag_do_hydro_sub_sort)) return;
 
   /* Check that the particles have been moved to the current time */
   if (flags && !cell_are_part_drifted(c, r->e))
@@ -1019,7 +1454,7 @@ void runner_do_hydro_sort(struct runner *r, struct cell *c, int flags,
 
   /* Clear the cell's sort flags. */
   c->hydro.do_sort = 0;
-  c->hydro.do_sub_sort = 0;
+  cell_clear_flag(c, cell_flag_do_hydro_sub_sort);
   c->hydro.requires_sorts = 0;
 
   if (clock) TIMER_TOC(timer_dosort);
@@ -1058,7 +1493,7 @@ void runner_do_stars_sort(struct runner *r, struct cell *c, int flags,
   } else {
     flags &= ~c->stars.sorted;
   }
-  if (flags == 0 && !c->stars.do_sub_sort) return;
+  if (flags == 0 && !cell_get_flag(c, cell_flag_do_stars_sub_sort)) return;
 
   /* Check that the particles have been moved to the current time */
   if (flags && !cell_are_spart_drifted(c, r->e)) {
@@ -1236,7 +1671,7 @@ void runner_do_stars_sort(struct runner *r, struct cell *c, int flags,
 
   /* Clear the cell's sort flags. */
   c->stars.do_sort = 0;
-  c->stars.do_sub_sort = 0;
+  cell_clear_flag(c, cell_flag_do_stars_sub_sort);
   c->stars.requires_sorts = 0;
 
   if (clock) TIMER_TOC(timer_do_stars_sort);
@@ -1825,7 +2260,7 @@ void runner_do_ghost(struct runner *r, struct cell *c, int timer) {
             /* Otherwise, sub-self interaction? */
             else if (l->t->type == task_type_sub_self)
               runner_dosub_subset_density(r, finger, parts, pid, count, NULL,
-                                          -1, 1);
+                                          1);
 
             /* Otherwise, sub-pair interaction? */
             else if (l->t->type == task_type_sub_pair) {
@@ -1833,10 +2268,10 @@ void runner_do_ghost(struct runner *r, struct cell *c, int timer) {
               /* Left or right? */
               if (l->t->ci == finger)
                 runner_dosub_subset_density(r, finger, parts, pid, count,
-                                            l->t->cj, -1, 1);
+                                            l->t->cj, 1);
               else
                 runner_dosub_subset_density(r, finger, parts, pid, count,
-                                            l->t->ci, -1, 1);
+                                            l->t->ci, 1);
             }
           }
         }
@@ -1927,6 +2362,35 @@ static void runner_do_unskip_stars(struct cell *c, struct engine *e) {
 }
 
 /**
+ * @brief Unskip any black hole tasks associated with active cells.
+ *
+ * @param c The cell.
+ * @param e The engine.
+ */
+static void runner_do_unskip_black_holes(struct cell *c, struct engine *e) {
+
+  /* Ignore empty cells. */
+  if (c->black_holes.count == 0) return;
+
+  /* Skip inactive cells. */
+  if (!cell_is_active_black_holes(c, e)) return;
+
+  /* Recurse */
+  if (c->split) {
+    for (int k = 0; k < 8; k++) {
+      if (c->progeny[k] != NULL) {
+        struct cell *cp = c->progeny[k];
+        runner_do_unskip_black_holes(cp, e);
+      }
+    }
+  }
+
+  /* Unskip any active tasks. */
+  const int forcerebuild = cell_unskip_black_holes_tasks(c, &e->sched);
+  if (forcerebuild) atomic_inc(&e->forcerebuild);
+}
+
+/**
  * @brief Unskip any gravity tasks associated with active cells.
  *
  * @param c The cell.
@@ -1983,6 +2447,10 @@ void runner_do_unskip_mapper(void *map_data, int num_elements,
 
       /* Stars tasks */
       if (e->policy & engine_policy_stars) runner_do_unskip_stars(c, e);
+
+      /* Black hole tasks */
+      if (e->policy & engine_policy_black_holes)
+        runner_do_unskip_black_holes(c, e);
     }
   }
 }
@@ -2033,6 +2501,22 @@ void runner_do_drift_spart(struct runner *r, struct cell *c, int timer) {
   cell_drift_spart(c, r->e, 0);
 
   if (timer) TIMER_TOC(timer_drift_spart);
+}
+
+/**
+ * @brief Drift all bpart in a cell.
+ *
+ * @param r The runner thread.
+ * @param c The cell.
+ * @param timer Are we timing this ?
+ */
+void runner_do_drift_bpart(struct runner *r, struct cell *c, int timer) {
+
+  TIMER_TIC;
+
+  cell_drift_bpart(c, r->e, 0);
+
+  if (timer) TIMER_TOC(timer_drift_bpart);
 }
 
 /**
@@ -2434,30 +2918,35 @@ void runner_do_timestep(struct runner *r, struct cell *c, int timer) {
   const int count = c->hydro.count;
   const int gcount = c->grav.count;
   const int scount = c->stars.count;
+  const int bcount = c->black_holes.count;
   struct part *restrict parts = c->hydro.parts;
   struct xpart *restrict xparts = c->hydro.xparts;
   struct gpart *restrict gparts = c->grav.parts;
   struct spart *restrict sparts = c->stars.parts;
+  struct bpart *restrict bparts = c->black_holes.parts;
 
   TIMER_TIC;
 
   /* Anything to do here? */
   if (!cell_is_active_hydro(c, e) && !cell_is_active_gravity(c, e) &&
-      !cell_is_active_stars(c, e)) {
+      !cell_is_active_stars(c, e) && !cell_is_active_black_holes(c, e)) {
     c->hydro.updated = 0;
     c->grav.updated = 0;
     c->stars.updated = 0;
+    c->black_holes.updated = 0;
     return;
   }
 
-  int updated = 0, g_updated = 0, s_updated = 0;
-  int inhibited = 0, g_inhibited = 0, s_inhibited = 0;
+  int updated = 0, g_updated = 0, s_updated = 0, b_updated = 0;
+  int inhibited = 0, g_inhibited = 0, s_inhibited = 0, b_inhibited = 0;
   integertime_t ti_hydro_end_min = max_nr_timesteps, ti_hydro_end_max = 0,
                 ti_hydro_beg_max = 0;
   integertime_t ti_gravity_end_min = max_nr_timesteps, ti_gravity_end_max = 0,
                 ti_gravity_beg_max = 0;
   integertime_t ti_stars_end_min = max_nr_timesteps, ti_stars_end_max = 0,
                 ti_stars_beg_max = 0;
+  integertime_t ti_black_holes_end_min = max_nr_timesteps,
+                ti_black_holes_end_max = 0, ti_black_holes_beg_max = 0;
 
   /* No children? */
   if (!c->split) {
@@ -2666,6 +3155,69 @@ void runner_do_timestep(struct runner *r, struct cell *c, int timer) {
         ti_gravity_beg_max = max(ti_beg, ti_gravity_beg_max);
       }
     }
+
+    /* Loop over the star particles in this cell. */
+    for (int k = 0; k < bcount; k++) {
+
+      /* Get a handle on the part. */
+      struct bpart *restrict bp = &bparts[k];
+
+      /* need to be updated ? */
+      if (bpart_is_active(bp, e)) {
+
+#ifdef SWIFT_DEBUG_CHECKS
+        /* Current end of time-step */
+        const integertime_t ti_end =
+            get_integer_time_end(ti_current, bp->time_bin);
+
+        if (ti_end != ti_current)
+          error("Computing time-step of rogue particle.");
+#endif
+        /* Get new time-step */
+        const integertime_t ti_new_step = get_bpart_timestep(bp, e);
+
+        /* Update particle */
+        bp->time_bin = get_time_bin(ti_new_step);
+        bp->gpart->time_bin = get_time_bin(ti_new_step);
+
+        /* Number of updated s-particles */
+        b_updated++;
+        g_updated++;
+
+        ti_black_holes_end_min =
+            min(ti_current + ti_new_step, ti_black_holes_end_min);
+        ti_black_holes_end_max =
+            max(ti_current + ti_new_step, ti_black_holes_end_max);
+        ti_gravity_end_min = min(ti_current + ti_new_step, ti_gravity_end_min);
+        ti_gravity_end_max = max(ti_current + ti_new_step, ti_gravity_end_max);
+
+        /* What is the next starting point for this cell ? */
+        ti_black_holes_beg_max = max(ti_current, ti_black_holes_beg_max);
+        ti_gravity_beg_max = max(ti_current, ti_gravity_beg_max);
+
+        /* star particle is inactive but not inhibited */
+      } else {
+
+        /* Count the number of inhibited particles */
+        if (bpart_is_inhibited(bp, e)) ++b_inhibited;
+
+        const integertime_t ti_end =
+            get_integer_time_end(ti_current, bp->time_bin);
+
+        const integertime_t ti_beg =
+            get_integer_time_begin(ti_current + 1, bp->time_bin);
+
+        ti_black_holes_end_min = min(ti_end, ti_black_holes_end_min);
+        ti_black_holes_end_max = max(ti_end, ti_black_holes_end_max);
+        ti_gravity_end_min = min(ti_end, ti_gravity_end_min);
+        ti_gravity_end_max = max(ti_end, ti_gravity_end_max);
+
+        /* What is the next starting point for this cell ? */
+        ti_black_holes_beg_max = max(ti_beg, ti_black_holes_beg_max);
+        ti_gravity_beg_max = max(ti_beg, ti_gravity_beg_max);
+      }
+    }
+
   } else {
 
     /* Loop over the progeny. */
@@ -2680,18 +3232,31 @@ void runner_do_timestep(struct runner *r, struct cell *c, int timer) {
         updated += cp->hydro.updated;
         g_updated += cp->grav.updated;
         s_updated += cp->stars.updated;
+        b_updated += cp->black_holes.updated;
+
         inhibited += cp->hydro.inhibited;
         g_inhibited += cp->grav.inhibited;
         s_inhibited += cp->stars.inhibited;
+        b_inhibited += cp->black_holes.inhibited;
+
         ti_hydro_end_min = min(cp->hydro.ti_end_min, ti_hydro_end_min);
         ti_hydro_end_max = max(cp->hydro.ti_end_max, ti_hydro_end_max);
         ti_hydro_beg_max = max(cp->hydro.ti_beg_max, ti_hydro_beg_max);
+
         ti_gravity_end_min = min(cp->grav.ti_end_min, ti_gravity_end_min);
         ti_gravity_end_max = max(cp->grav.ti_end_max, ti_gravity_end_max);
         ti_gravity_beg_max = max(cp->grav.ti_beg_max, ti_gravity_beg_max);
+
         ti_stars_end_min = min(cp->stars.ti_end_min, ti_stars_end_min);
         ti_stars_end_max = max(cp->grav.ti_end_max, ti_stars_end_max);
         ti_stars_beg_max = max(cp->grav.ti_beg_max, ti_stars_beg_max);
+
+        ti_black_holes_end_min =
+            min(cp->black_holes.ti_end_min, ti_black_holes_end_min);
+        ti_black_holes_end_max =
+            max(cp->grav.ti_end_max, ti_black_holes_end_max);
+        ti_black_holes_beg_max =
+            max(cp->grav.ti_beg_max, ti_black_holes_beg_max);
       }
     }
   }
@@ -2700,9 +3265,13 @@ void runner_do_timestep(struct runner *r, struct cell *c, int timer) {
   c->hydro.updated = updated;
   c->grav.updated = g_updated;
   c->stars.updated = s_updated;
+  c->black_holes.updated = b_updated;
+
   c->hydro.inhibited = inhibited;
   c->grav.inhibited = g_inhibited;
   c->stars.inhibited = s_inhibited;
+  c->black_holes.inhibited = b_inhibited;
+
   c->hydro.ti_end_min = ti_hydro_end_min;
   c->hydro.ti_end_max = ti_hydro_end_max;
   c->hydro.ti_beg_max = ti_hydro_beg_max;
@@ -2712,6 +3281,9 @@ void runner_do_timestep(struct runner *r, struct cell *c, int timer) {
   c->stars.ti_end_min = ti_stars_end_min;
   c->stars.ti_end_max = ti_stars_end_max;
   c->stars.ti_beg_max = ti_stars_beg_max;
+  c->black_holes.ti_end_min = ti_black_holes_end_min;
+  c->black_holes.ti_end_max = ti_black_holes_end_max;
+  c->black_holes.ti_beg_max = ti_black_holes_beg_max;
 
 #ifdef SWIFT_DEBUG_CHECKS
   if (c->hydro.ti_end_min == e->ti_current &&
@@ -2723,6 +3295,9 @@ void runner_do_timestep(struct runner *r, struct cell *c, int timer) {
   if (c->stars.ti_end_min == e->ti_current &&
       c->stars.ti_end_min < max_nr_timesteps)
     error("End of next stars step is current time!");
+  if (c->black_holes.ti_end_min == e->ti_current &&
+      c->black_holes.ti_end_min < max_nr_timesteps)
+    error("End of next black holes step is current time!");
 #endif
 
   if (timer) TIMER_TOC(timer_timestep);
@@ -2758,19 +3333,19 @@ void runner_do_limiter(struct runner *r, struct cell *c, int force, int timer) {
                 ti_gravity_beg_max = 0;
 
   /* Limit irrespective of cell flags? */
-  force |= c->hydro.do_limiter;
+  force = (force || cell_get_flag(c, cell_flag_do_hydro_limiter));
 
   /* Early abort? */
   if (c->hydro.count == 0) {
 
     /* Clear the limiter flags. */
-    c->hydro.do_limiter = 0;
-    c->hydro.do_sub_limiter = 0;
+    cell_clear_flag(
+        c, cell_flag_do_hydro_limiter | cell_flag_do_hydro_sub_limiter);
     return;
   }
 
   /* Loop over the progeny ? */
-  if (c->split && (force || c->hydro.do_sub_limiter)) {
+  if (c->split && (force || cell_get_flag(c, cell_flag_do_hydro_sub_limiter))) {
     for (int k = 0; k < 8; k++) {
       if (c->progeny[k] != NULL) {
         struct cell *restrict cp = c->progeny[k];
@@ -2820,7 +3395,7 @@ void runner_do_limiter(struct runner *r, struct cell *c, int force, int timer) {
         p->wakeup = time_bin_not_awake;
 
       /* Bip, bip, bip... wake-up time */
-      if (p->wakeup == time_bin_awake) {
+      if (p->wakeup <= time_bin_awake) {
 
         /* Apply the limiter and get the new time-step size */
         const integertime_t ti_new_step = timestep_limit_part(p, xp, e);
@@ -2860,8 +3435,8 @@ void runner_do_limiter(struct runner *r, struct cell *c, int force, int timer) {
   }
 
   /* Clear the limiter flags. */
-  c->hydro.do_limiter = 0;
-  c->hydro.do_sub_limiter = 0;
+  cell_clear_flag(c,
+                  cell_flag_do_hydro_limiter | cell_flag_do_hydro_sub_limiter);
 
   if (timer) TIMER_TOC(timer_do_limiter);
 }
@@ -3271,6 +3846,92 @@ void runner_do_recv_spart(struct runner *r, struct cell *c, int clear_sorts,
 }
 
 /**
+ * @brief Construct the cell properties from the received #bpart.
+ *
+ * Note that we do not need to clear the sorts since we do not sort
+ * the black holes.
+ *
+ * @param r The runner thread.
+ * @param c The cell.
+ * @param clear_sorts Should we clear the sort flag and hence trigger a sort ?
+ * @param timer Are we timing this ?
+ */
+void runner_do_recv_bpart(struct runner *r, struct cell *c, int clear_sorts,
+                          int timer) {
+
+#ifdef WITH_MPI
+
+  struct bpart *restrict bparts = c->black_holes.parts;
+  const size_t nr_bparts = c->black_holes.count;
+  const integertime_t ti_current = r->e->ti_current;
+
+  TIMER_TIC;
+
+  integertime_t ti_black_holes_end_min = max_nr_timesteps;
+  integertime_t ti_black_holes_end_max = 0;
+  timebin_t time_bin_min = num_time_bins;
+  timebin_t time_bin_max = 0;
+  float h_max = 0.f;
+
+#ifdef SWIFT_DEBUG_CHECKS
+  if (c->nodeID == engine_rank) error("Updating a local cell!");
+#endif
+
+  /* If this cell is a leaf, collect the particle data. */
+  if (!c->split) {
+
+    /* Collect everything... */
+    for (size_t k = 0; k < nr_bparts; k++) {
+#ifdef DEBUG_INTERACTIONS_BLACK_HOLES
+      bparts[k].num_ngb_force = 0;
+#endif
+      if (bparts[k].time_bin == time_bin_inhibited) continue;
+      time_bin_min = min(time_bin_min, bparts[k].time_bin);
+      time_bin_max = max(time_bin_max, bparts[k].time_bin);
+      h_max = max(h_max, bparts[k].h);
+    }
+
+    /* Convert into a time */
+    ti_black_holes_end_min = get_integer_time_end(ti_current, time_bin_min);
+    ti_black_holes_end_max = get_integer_time_end(ti_current, time_bin_max);
+  }
+
+  /* Otherwise, recurse and collect. */
+  else {
+    for (int k = 0; k < 8; k++) {
+      if (c->progeny[k] != NULL && c->progeny[k]->black_holes.count > 0) {
+        runner_do_recv_bpart(r, c->progeny[k], clear_sorts, 0);
+        ti_black_holes_end_min =
+            min(ti_black_holes_end_min, c->progeny[k]->black_holes.ti_end_min);
+        ti_black_holes_end_max =
+            max(ti_black_holes_end_max, c->progeny[k]->grav.ti_end_max);
+        h_max = max(h_max, c->progeny[k]->black_holes.h_max);
+      }
+    }
+  }
+
+#ifdef SWIFT_DEBUG_CHECKS
+  if (ti_black_holes_end_min < ti_current)
+    error(
+        "Received a cell at an incorrect time c->ti_end_min=%lld, "
+        "e->ti_current=%lld.",
+        ti_black_holes_end_min, ti_current);
+#endif
+
+  /* ... and store. */
+  // c->grav.ti_end_min = ti_gravity_end_min;
+  // c->grav.ti_end_max = ti_gravity_end_max;
+  c->black_holes.ti_old_part = ti_current;
+  c->black_holes.h_max = h_max;
+
+  if (timer) TIMER_TOC(timer_dorecv_bpart);
+
+#else
+  error("SWIFT was not compiled with MPI support.");
+#endif
+}
+
+/**
  * @brief The #runner main thread routine.
  *
  * @param data A pointer to this thread's data.
@@ -3352,6 +4013,10 @@ void *runner_main(void *data) {
             runner_doself_branch_stars_density(r, ci);
           else if (t->subtype == task_subtype_stars_feedback)
             runner_doself_branch_stars_feedback(r, ci);
+          else if (t->subtype == task_subtype_bh_density)
+            runner_doself_branch_bh_density(r, ci);
+          else if (t->subtype == task_subtype_bh_feedback)
+            runner_doself_branch_bh_feedback(r, ci);
           else
             error("Unknown/invalid task subtype (%d).", t->subtype);
           break;
@@ -3373,6 +4038,10 @@ void *runner_main(void *data) {
             runner_dopair_branch_stars_density(r, ci, cj);
           else if (t->subtype == task_subtype_stars_feedback)
             runner_dopair_branch_stars_feedback(r, ci, cj);
+          else if (t->subtype == task_subtype_bh_density)
+            runner_dopair_branch_bh_density(r, ci, cj);
+          else if (t->subtype == task_subtype_bh_feedback)
+            runner_dopair_branch_bh_feedback(r, ci, cj);
           else
             error("Unknown/invalid task subtype (%d).", t->subtype);
           break;
@@ -3392,25 +4061,33 @@ void *runner_main(void *data) {
             runner_dosub_self_stars_density(r, ci, 1);
           else if (t->subtype == task_subtype_stars_feedback)
             runner_dosub_self_stars_feedback(r, ci, 1);
+          else if (t->subtype == task_subtype_bh_density)
+            runner_dosub_self_bh_density(r, ci, 1);
+          else if (t->subtype == task_subtype_bh_feedback)
+            runner_dosub_self_bh_feedback(r, ci, 1);
           else
             error("Unknown/invalid task subtype (%d).", t->subtype);
           break;
 
         case task_type_sub_pair:
           if (t->subtype == task_subtype_density)
-            runner_dosub_pair1_density(r, ci, cj, t->flags, 1);
+            runner_dosub_pair1_density(r, ci, cj, 1);
 #ifdef EXTRA_HYDRO_LOOP
           else if (t->subtype == task_subtype_gradient)
-            runner_dosub_pair1_gradient(r, ci, cj, t->flags, 1);
+            runner_dosub_pair1_gradient(r, ci, cj, 1);
 #endif
           else if (t->subtype == task_subtype_force)
-            runner_dosub_pair2_force(r, ci, cj, t->flags, 1);
+            runner_dosub_pair2_force(r, ci, cj, 1);
           else if (t->subtype == task_subtype_limiter)
-            runner_dosub_pair2_limiter(r, ci, cj, t->flags, 1);
+            runner_dosub_pair2_limiter(r, ci, cj, 1);
           else if (t->subtype == task_subtype_stars_density)
-            runner_dosub_pair_stars_density(r, ci, cj, t->flags, 1);
+            runner_dosub_pair_stars_density(r, ci, cj, 1);
           else if (t->subtype == task_subtype_stars_feedback)
-            runner_dosub_pair_stars_feedback(r, ci, cj, t->flags, 1);
+            runner_dosub_pair_stars_feedback(r, ci, cj, 1);
+          else if (t->subtype == task_subtype_bh_density)
+            runner_dosub_pair_bh_density(r, ci, cj, 1);
+          else if (t->subtype == task_subtype_bh_feedback)
+            runner_dosub_pair_bh_feedback(r, ci, cj, 1);
           else
             error("Unknown/invalid task subtype (%d).", t->subtype);
           break;
@@ -3445,11 +4122,17 @@ void *runner_main(void *data) {
         case task_type_stars_ghost:
           runner_do_stars_ghost(r, ci, 1);
           break;
+        case task_type_bh_ghost:
+          runner_do_black_holes_ghost(r, ci, 1);
+          break;
         case task_type_drift_part:
           runner_do_drift_part(r, ci, 1);
           break;
         case task_type_drift_spart:
           runner_do_drift_spart(r, ci, 1);
+          break;
+        case task_type_drift_bpart:
+          runner_do_drift_bpart(r, ci, 1);
           break;
         case task_type_drift_gpart:
           runner_do_drift_gpart(r, ci, 1);
@@ -3486,6 +4169,9 @@ void *runner_main(void *data) {
           if (t->subtype == task_subtype_tend_spart) {
             free(t->buff);
           }
+          if (t->subtype == task_subtype_tend_bpart) {
+            free(t->buff);
+          }
           break;
         case task_type_recv:
           if (t->subtype == task_subtype_tend_part) {
@@ -3496,6 +4182,10 @@ void *runner_main(void *data) {
             free(t->buff);
           } else if (t->subtype == task_subtype_tend_spart) {
             cell_unpack_end_step_stars(ci, (struct pcell_step_stars *)t->buff);
+            free(t->buff);
+          } else if (t->subtype == task_subtype_tend_bpart) {
+            cell_unpack_end_step_black_holes(
+                ci, (struct pcell_step_black_holes *)t->buff);
             free(t->buff);
           } else if (t->subtype == task_subtype_xv) {
             runner_do_recv_part(r, ci, 1, 1);
@@ -3509,6 +4199,8 @@ void *runner_main(void *data) {
             runner_do_recv_gpart(r, ci, 1);
           } else if (t->subtype == task_subtype_spart) {
             runner_do_recv_spart(r, ci, 1, 1);
+          } else if (t->subtype == task_subtype_bpart) {
+            runner_do_recv_bpart(r, ci, 1, 1);
           } else if (t->subtype == task_subtype_multipole) {
             cell_unpack_multipoles(ci, (struct gravity_tensors *)t->buff);
             free(t->buff);

@@ -62,6 +62,7 @@ const char *taskID_names[task_type_count] = {"none",
                                              "extra_ghost",
                                              "drift_part",
                                              "drift_spart",
+                                             "drift_bpart",
                                              "drift_gpart",
                                              "drift_gpart_out",
                                              "end_hydro_force",
@@ -88,27 +89,20 @@ const char *taskID_names[task_type_count] = {"none",
                                              "stars_ghost",
                                              "stars_ghost_out",
                                              "stars_sort",
-                                             "fof_self",
+                                             "bh_in",
+                                             "bh_out",
+                                             "bh_ghost",
+					     "fof_self",
                                              "fof_pair"};
 
 /* Sub-task type names. */
-const char *subtaskID_names[task_subtype_count] = {"none",
-                                                   "density",
-                                                   "gradient",
-                                                   "force",
-                                                   "limiter",
-                                                   "grav",
-                                                   "external_grav",
-                                                   "tend_part",
-                                                   "tend_gpart",
-                                                   "tend_spart",
-                                                   "xv",
-                                                   "rho",
-                                                   "gpart",
-                                                   "multipole",
-                                                   "spart",
-                                                   "stars_density",
-                                                   "stars_feedback"};
+const char *subtaskID_names[task_subtype_count] = {
+    "none",          "density",        "gradient",      "force",
+    "limiter",       "grav",           "external_grav", "tend_part",
+    "tend_gpart",    "tend_spart",     "tend_bpart",    "xv",
+    "rho",           "gpart",          "multipole",     "spart",
+    "stars_density", "stars_feedback", "bpart",         "bh_density",
+    "bh_feedback"};
 
 #ifdef WITH_MPI
 /* MPI communicators for the subtypes. */
@@ -177,6 +171,11 @@ __attribute__((always_inline)) INLINE static enum task_actions task_acts_on(
       return task_action_spart;
       break;
 
+    case task_type_drift_bpart:
+    case task_type_bh_ghost:
+      return task_action_bpart;
+      break;
+
     case task_type_self:
     case task_type_pair:
     case task_type_sub_self:
@@ -192,6 +191,11 @@ __attribute__((always_inline)) INLINE static enum task_actions task_acts_on(
 
         case task_subtype_stars_density:
         case task_subtype_stars_feedback:
+          return task_action_all;
+          break;
+
+        case task_subtype_bh_density:
+        case task_subtype_bh_feedback:
           return task_action_all;
           break;
 
@@ -719,6 +723,12 @@ void task_get_group_name(int type, int subtype, char *cluster) {
       break;
     case task_subtype_stars_feedback:
       strcpy(cluster, "StarsFeedback");
+      break;
+    case task_subtype_bh_density:
+      strcpy(cluster, "BHDensity");
+      break;
+    case task_subtype_bh_feedback:
+      strcpy(cluster, "BHFeedback");
       break;
     default:
       strcpy(cluster, "None");

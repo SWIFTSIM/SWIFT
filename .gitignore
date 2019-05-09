@@ -49,9 +49,12 @@ examples/*/*.mpg
 examples/*/*/gravity_checks_*.dat
 examples/*/*/coolingtables.tar.gz
 examples/*/*/coolingtables
+examples/*/*/yieldtables.tar.gz
+examples/*/*/yieldtables
 examples/Cooling/CoolingRates/cooling_rates
 examples/Cooling/CoolingRates/cooling_element_*.dat
 examples/Cooling/CoolingRates/cooling_output.dat
+examples/SubgridTests/StellarEvolution/StellarEvolutionSolution*
 
 tests/testActivePair
 tests/testActivePair.sh
@@ -110,6 +113,7 @@ tests/testMaths
 tests/testRandom
 tests/testThreadpool
 tests/testParser
+tests/testFeedback
 tests/parser_output.yml
 tests/testPeriodicBC.sh
 tests/testPeriodicBCPerturbed.sh

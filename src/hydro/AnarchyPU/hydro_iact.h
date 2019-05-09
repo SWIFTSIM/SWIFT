@@ -364,7 +364,7 @@ __attribute__((always_inline)) INLINE static void runner_iact_force(
   /* Includes the hubble flow term; not used for du/dt */
   const float dvdr_Hubble = dvdr + a2_Hubble * r2;
 
-  /* Are the part*icles moving towards each others ? */
+  /* Are the particles moving towards each others ? */
   const float omega_ij = min(dvdr_Hubble, 0.f);
   const float mu_ij = fac_mu * r_inv * omega_ij; /* This is 0 or negative */
 
@@ -495,7 +495,7 @@ __attribute__((always_inline)) INLINE static void runner_iact_nonsym_force(
   /* Includes the hubble flow term; not used for du/dt */
   const float dvdr_Hubble = dvdr + a2_Hubble * r2;
 
-  /* Are the part*icles moving towards each others ? */
+  /* Are the particles moving towards each others ? */
   const float omega_ij = min(dvdr_Hubble, 0.f);
   const float mu_ij = fac_mu * r_inv * omega_ij; /* This is 0 or negative */
 
@@ -600,4 +600,4 @@ __attribute__((always_inline)) INLINE static void runner_iact_nonsym_limiter(
   }
 }
 
-#endif /* SWIFT_MINIMAL_HYDRO_IACT_H */
+#endif /* SWIFT_ANARCHY_PU_HYDRO_IACT_H */

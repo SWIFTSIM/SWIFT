@@ -1329,7 +1329,8 @@ case "$with_subgrid" in
 	with_subgrid_entropy_floor=none
 	with_subgrid_stars=GEAR
 	with_subgrid_star_formation=GEAR
-	with_subgrid_feedback=thermal
+	with_subgrid_feedback=none
+	with_subgrid_black_holes=none
    ;;
    EAGLE)
 	with_subgrid_cooling=EAGLE
@@ -1338,7 +1339,8 @@ case "$with_subgrid" in
 	with_subgrid_entropy_floor=EAGLE
 	with_subgrid_stars=EAGLE
 	with_subgrid_star_formation=EAGLE
-	with_subgrid_feedback=none
+	with_subgrid_feedback=EAGLE
+	with_subgrid_black_holes=EAGLE
    ;;
    *)
       AC_MSG_ERROR([Unknown subgrid choice: $with_subgrid])
@@ -1369,7 +1371,7 @@ esac
 # Hydro scheme.
 AC_ARG_WITH([hydro],
    [AS_HELP_STRING([--with-hydro=<scheme>],
-      [Hydro dynamics to use @<:@gadget2, minimal, pressure-entropy, pressure-energy, pressure-energy-monaghan, default, gizmo-mfv, gizmo-mfm, shadowfax, planetary, anarchy-pu debug default: gadget2@:>@]
+      [Hydro dynamics to use @<:@gadget2, minimal, pressure-entropy, pressure-energy, pressure-energy-monaghan, default, gizmo-mfv, gizmo-mfm, shadowfax, planetary, anarchy-pu default: gadget2@:>@]
    )],
    [with_hydro="$withval"],
    [with_hydro="gadget2"]
@@ -1728,7 +1730,7 @@ case "$with_stars" in
       AC_DEFINE([STARS_GEAR], [1], [GEAR stellar model])
    ;;
    none)
-      AC_DEFINE([STARS_NONE], [1], [None stellar model])
+      AC_DEFINE([STARS_NONE], [1], [Basic stellar model])
    ;;
 
    *)
@@ -1739,7 +1741,7 @@ esac
 # Feedback model
 AC_ARG_WITH([feedback],
    [AS_HELP_STRING([--with-feedback=<model>],
-      [Feedback model to use @<:@none, thermal, debug default: none@:>@]
+      [Feedback model to use @<:@none, EAGLE, debug default: none@:>@]
    )],
    [with_feedback="$withval"],
    [with_feedback="none"]
@@ -1754,10 +1756,11 @@ if test "$with_subgrid" != "none"; then
 fi
 
 case "$with_feedback" in
-   thermal)
-      AC_DEFINE([FEEDBACK_THERMAL], [1], [Thermal Blastwave])
+   EAGLE)
+      AC_DEFINE([FEEDBACK_EAGLE], [1], [EAGLE stellar feedback and evolution model])
    ;;
    none)
+      AC_DEFINE([FEEDBACK_NONE], [1], [No feedback])
    ;;
 
    *)
@@ -1765,10 +1768,39 @@ case "$with_feedback" in
    ;;
 esac
 
+# Black hole model.
+AC_ARG_WITH([black-holes],
+   [AS_HELP_STRING([--with-black-holes=<model>],
+      [Black holes model to use @<:@none, default: none@:>@]
+   )],
+   [with_black_holes="$withval"],
+   [with_black_holes="none"]
+)
+
+if test "$with_subgrid" != "none"; then
+   if test "$with_black_holes" != "none"; then
+      AC_MSG_ERROR([Cannot provide with-subgrid and with-black-holes together])
+   else
+      with_black_holes="$with_subgrid_black_holes"
+   fi
+fi
+
+case "$with_black_holes" in
+   none)
+      AC_DEFINE([BLACK_HOLES_NONE], [1], [No black hole model])
+   ;;
+   EAGLE)
+      AC_DEFINE([BLACK_HOLES_EAGLE], [1], [EAGLE black hole model])
+   ;;
+   *)
+      AC_MSG_ERROR([Unknown black-hole model: $with_black_holes])
+   ;;
+esac
+
 #  External potential
 AC_ARG_WITH([ext-potential],
    [AS_HELP_STRING([--with-ext-potential=<pot>],
-      [external potential @<:@none, point-mass, point-mass-ring, point-mass-softened, isothermal, softened-isothermal, nfw, hernquist, disc-patch, sine-wave, default: none@:>@]
+      [external potential @<:@none, point-mass, point-mass-ring, point-mass-softened, isothermal, nfw, hernquist, disc-patch, sine-wave, default: none@:>@]
    )],
    [with_potential="$withval"],
    [with_potential="none"]
@@ -1886,6 +1918,9 @@ AM_CONDITIONAL([HAVE_DOXYGEN], [test "$ac_cv_path_ac_pt_DX_DOXYGEN" != ""])
 # Check if using EAGLE cooling
 AM_CONDITIONAL([HAVEEAGLECOOLING], [test $with_cooling = "EAGLE"])
 
+# Check if using EAGLE feedback
+AM_CONDITIONAL([HAVEEAGLEFEEDBACK], [test $with_feedback = "EAGLE"])
+
 # Handle .in files.
 AC_CONFIG_FILES([Makefile src/Makefile examples/Makefile examples/Cooling/CoolingRates/Makefile doc/Makefile doc/Doxyfile tests/Makefile])
 AC_CONFIG_FILES([argparse/Makefile tools/Makefile])
@@ -1962,7 +1997,8 @@ AC_MSG_RESULT([
    Tracers              : $with_tracers
    Stellar model        : $with_stars
    Star formation model : $with_star_formation
-   Feedback model       : $with_feedback
+   Star feedback model  : $with_feedback
+   Black holes model    : $with_black_holes
 
    Individual timers           : $enable_timers
    Task debugging              : $enable_task_debugging

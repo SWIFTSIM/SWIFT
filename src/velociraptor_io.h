@@ -45,6 +45,17 @@ INLINE static void velociraptor_convert_spart_groupID(const struct engine* e,
   }
 }
 
+INLINE static void velociraptor_convert_bpart_groupID(const struct engine* e,
+                                                      const struct bpart* bp,
+                                                      long long* ret) {
+  if (bp->gpart == NULL)
+    ret[0] = 0.f;
+  else {
+    const ptrdiff_t offset = bp->gpart - e->s->gparts;
+    *ret = (e->s->gpart_group_data + offset)->groupID;
+  }
+}
+
 __attribute__((always_inline)) INLINE static int velociraptor_write_parts(
     const struct part* parts, const struct xpart* xparts,
     struct io_props* list) {
@@ -71,6 +82,16 @@ __attribute__((always_inline)) INLINE static int velociraptor_write_sparts(
   list[0] = io_make_output_field_convert_spart(
       "GroupID", LONGLONG, 1, UNIT_CONV_NO_UNITS, sparts,
       velociraptor_convert_spart_groupID);
+
+  return 1;
+}
+
+__attribute__((always_inline)) INLINE static int velociraptor_write_bparts(
+    const struct bpart* bparts, struct io_props* list) {
+
+  list[0] = io_make_output_field_convert_bpart(
+      "GroupID", LONGLONG, 1, UNIT_CONV_NO_UNITS, bparts,
+      velociraptor_convert_bpart_groupID);
 
   return 1;
 }

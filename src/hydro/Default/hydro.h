@@ -23,6 +23,7 @@
 #include "approx_math.h"
 #include "cosmology.h"
 #include "dimension.h"
+#include "entropy_floor.h"
 #include "equation_of_state.h"
 #include "hydro_properties.h"
 #include "hydro_space.h"
@@ -617,11 +618,29 @@ __attribute__((always_inline)) INLINE static void hydro_reset_predicted_values(
  * @param xp The extended data of the particle
  * @param dt_drift The drift time-step for positions.
  * @param dt_therm The drift time-step for thermal quantities.
+ * @param cosmo The cosmological model.
+ * @param hydro_props The properties of the hydro scheme.
+ * @param floor_props The properties of the entropy floor.
  */
 __attribute__((always_inline)) INLINE static void hydro_predict_extra(
     struct part *restrict p, struct xpart *restrict xp, float dt_drift,
-    float dt_therm) {
-  float u, w;
+    float dt_therm, const struct cosmology *cosmo,
+    const struct hydro_props *hydro_props,
+    const struct entropy_floor_properties *floor_props) {
+
+  /* Predict the internal energy */
+  p->u += p->force.u_dt * dt_therm;
+
+  /* Check against entropy floor */
+  const float floor_A = entropy_floor(p, cosmo, floor_props);
+  const float floor_u = gas_internal_energy_from_entropy(p->rho, floor_A);
+
+  /* Check against absolute minimum */
+  const float min_u =
+      hydro_props->minimal_internal_energy / cosmo->a_factor_internal_energy;
+
+  p->u = max(p->u, floor_u);
+  p->u = max(p->u, min_u);
 
   const float h_inv = 1.f / p->h;
 
@@ -639,15 +658,8 @@ __attribute__((always_inline)) INLINE static void hydro_predict_extra(
   else
     p->rho *= expf(w2);
 
-  /* Predict internal energy */
-  w = p->force.u_dt / p->u * dt_therm;
-  if (fabsf(w) < 0.2f)
-    u = p->u *= approx_expf(w);
-  else
-    u = p->u *= expf(w);
-
   /* Predict gradient term */
-  p->force.P_over_rho2 = u * hydro_gamma_minus_one / (p->rho * xp->omega);
+  p->force.P_over_rho2 = p->u * hydro_gamma_minus_one / (p->rho * xp->omega);
 }
 
 /**
@@ -673,7 +685,8 @@ __attribute__((always_inline)) INLINE static void hydro_end_force(
 __attribute__((always_inline)) INLINE static void hydro_kick_extra(
     struct part *restrict p, struct xpart *restrict xp, float dt_therm,
     float dt_grav, float dt_hydro, float dt_kick_corr,
-    const struct cosmology *cosmo, const struct hydro_props *hydro_props) {}
+    const struct cosmology *cosmo, const struct hydro_props *hydro_props,
+    const struct entropy_floor_properties *floor_props) {}
 
 /**
  *  @brief Converts hydro quantity of a particle at the start of a run

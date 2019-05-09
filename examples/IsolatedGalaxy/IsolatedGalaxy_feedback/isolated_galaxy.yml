@@ -1,0 +1,145 @@
+# Define the system of units to use internally.
+InternalUnitSystem:
+  UnitMass_in_cgs:     1.98848e43    # 10^10 M_sun in grams
+  UnitLength_in_cgs:   3.08567758e21 # 1 kpc in cm
+  UnitVelocity_in_cgs: 1e5           # 1 km/s in cm/s
+  UnitCurrent_in_cgs:  1             # Amperes
+  UnitTemp_in_cgs:     1             # Kelvin
+
+# Parameters for the self-gravity scheme
+Gravity:
+  eta:          0.025               # Constant dimensionless multiplier for time integration.
+  theta:        0.7                 # Opening angle (Multipole acceptance criterion).
+  comoving_softening:     0.1       # Comoving softening length (in internal units).
+  max_physical_softening: 0.1       # Physical softening length (in internal units).
+
+# Parameters governing the time integration (Set dt_min and dt_max to the same value for a fixed time-step run.)
+TimeIntegration:
+  time_begin:        0.    # The starting time of the simulation (in internal units).
+  time_end:          0.1   # The end time of the simulation (in internal units).
+  dt_min:            1e-14  # The minimal time-step size of the simulation (in internal units).
+  dt_max:            1e-2  # The maximal time-step size of the simulation (in internal units).
+
+# Parameters governing the snapshots
+Snapshots:
+  basename:   output      # Common part of the name of output files
+  time_first: 0.          # (Optional) Time of the first output if non-cosmological time-integration (in internal units)
+  delta_time: 0.001        # Time difference between consecutive outputs (in internal units)
+
+# Parameters governing the conserved quantities statistics
+Statistics:
+  delta_time:           1e-2     # Time between statistics output
+  time_first:             0.     # (Optional) Time of the first stats output if non-cosmological time-integration (in internal units)
+
+# Parameters related to the initial conditions
+InitialConditions:
+  file_name:               lowres8.hdf5 # The file to read
+  periodic:                0        # Are we running with periodic ICs?
+  stars_smoothing_length:  0.5
+  
+# Parameters for the hydrodynamics scheme
+SPH:
+  resolution_eta:        1.2348   # Target smoothing length in units of the mean inter-particle separation (1.2348 == 48Ngbs with the cubic spline kernel).
+  CFL_condition:         0.1      # Courant-Friedrich-Levy condition for time integration.
+  h_min_ratio:           0.1      # Minimal smoothing in units of softening.
+  h_max:                 10.
+  minimal_temperature:   100.
+
+# Standard EAGLE cooling options
+EAGLECooling:
+  dir_name:                ./coolingtables/  # Location of the Wiersma+08 cooling tables
+  H_reion_z:               11.5              # Redshift of Hydrogen re-ionization
+  H_reion_eV_p_H:          2.0               # Energy inject by Hydrogen re-ionization in electron-volt per Hydrogen atom
+  He_reion_z_centre:       3.5               # Redshift of the centre of the Helium re-ionization Gaussian
+  He_reion_z_sigma:        0.5               # Spread in redshift of the  Helium re-ionization Gaussian
+  He_reion_eV_p_H:         2.0               # Energy inject by Helium re-ionization in electron-volt per Hydrogen atom
+
+# Use solar abundances
+EAGLEChemistry:
+  init_abundance_metal:     0.0129   
+  init_abundance_Hydrogen:  0.7065   
+  init_abundance_Helium:    0.2806   
+  init_abundance_Carbon:    0.00207  
+  init_abundance_Nitrogen:  0.000836 
+  init_abundance_Oxygen:    0.00549  
+  init_abundance_Neon:      0.00141  
+  init_abundance_Magnesium: 0.000591 
+  init_abundance_Silicon:   0.000683 
+  init_abundance_Iron:      0.0011   
+
+# Hernquist potential parameters
+HernquistPotential:
+  useabspos:       0       # 0 -> positions based on centre, 1 -> absolute positions 
+  position:        [0.,0.,0.]    # Location of centre of isothermal potential with respect to centre of the box (if 0) otherwise absolute (if 1) (internal units)
+  idealizeddisk:   1       # Run with an idealized galaxy disk
+  M200:            137.0   # M200 of the galaxy disk
+  h:               0.704   # reduced Hubble constant (value does not specify the used units!)
+  concentration:   9.0     # concentration of the Halo
+  diskfraction:    0.040   # Disk mass fraction
+  bulgefraction:   0.014   # Bulge mass fraction
+  timestep_mult:   0.01    # Dimensionless pre-factor for the time-step condition, basically determines the fraction of the orbital time we use to do the time integration
+  epsilon:         0.1     # Softening size (internal units)
+ 
+# EAGLE star formation parameters
+EAGLEStarFormation:
+  EOS_density_norm_H_p_cm3:          0.1       # Physical density used for the normalisation of the EOS assumed for the star-forming gas in Hydrogen atoms per cm^3.
+  EOS_temperature_norm_K:            8000      # Temperature om the polytropic EOS assumed for star-forming gas at the density normalisation in Kelvin.
+  EOS_gamma_effective:               1.3333333 # Slope the of the polytropic EOS assumed for the star-forming gas.
+  gas_fraction:                      0.3       # The gas fraction used internally by the model.
+  KS_normalisation:                  1.515e-4  # The normalization of the Kennicutt-Schmidt law in Msun / kpc^2 / yr.
+  KS_exponent:                       1.4       # The exponent of the Kennicutt-Schmidt law.
+  KS_min_over_density:               57.7      # The over-density above which star-formation is allowed.
+  KS_high_density_threshold_H_p_cm3: 1e3       # Hydrogen number density above which the Kennicut-Schmidt law changes slope in Hydrogen atoms per cm^3.
+  KS_high_density_exponent:          2.0       # Slope of the Kennicut-Schmidt law above the high-density threshold.
+  KS_temperature_margin_dex:         0.5       # Logarithm base 10 of the maximal temperature difference above the EOS allowed to form stars.
+  threshold_norm_H_p_cm3:            0.1       # Normalisation of the metal-dependant density threshold for star formation in Hydrogen atoms per cm^3.
+  threshold_Z0:                      0.002     # Reference metallicity (metal mass fraction) for the metal-dependant threshold for star formation.
+  threshold_slope:                   -0.64     # Slope of the metal-dependant star formation threshold
+  threshold_max_density_H_p_cm3:     10.0      # Maximal density of the metal-dependant density threshold for star formation in Hydrogen atoms per cm^3.
+  
+# Parameters for the EAGLE "equation of state"
+EAGLEEntropyFloor:
+  Jeans_density_threshold_H_p_cm3: 0.1       # Physical density above which the EAGLE Jeans limiter entropy floor kicks in expressed in Hydrogen atoms per cm^3.
+  Jeans_over_density_threshold:    10.       # Overdensity above which the EAGLE Jeans limiter entropy floor can kick in.
+  Jeans_temperature_norm_K:        8000      # Temperature of the EAGLE Jeans limiter entropy floor at the density threshold expressed in Kelvin.
+  Jeans_gamma_effective:           1.3333333 # Slope the of the EAGLE Jeans limiter entropy floor
+  Cool_density_threshold_H_p_cm3: 1e-5       # Physical density above which the EAGLE Cool limiter entropy floor kicks in expressed in Hydrogen atoms per cm^3.
+  Cool_over_density_threshold:    10.        # Overdensity above which the EAGLE Cool limiter entropy floor can kick in.
+  Cool_temperature_norm_K:        8000       # Temperature of the EAGLE Cool limiter entropy floor at the density threshold expressed in Kelvin.
+  Cool_gamma_effective:           1.         # Slope the of the EAGLE Cool limiter entropy floor
+
+# EAGLE feedback model
+EAGLEFeedback:
+  use_SNII_feedback:                1               # Global switch for SNII thermal (stochastic) feedback.
+  use_SNIa_feedback:                1               # Global switch for SNIa thermal (continuous) feedback.
+  use_AGB_enrichment:               1               # Global switch for enrichement from AGB stars.
+  use_SNII_enrichment:              1               # Global switch for enrichement from SNII stars.
+  use_SNIa_enrichment:              1               # Global switch for enrichement from SNIa stars.
+  filename:                         ./yieldtables/  # Path to the directory containing the EAGLE yield tables.
+  IMF_min_mass_Msun:                0.1             # Minimal stellar mass considered for the Chabrier IMF in solar masses.
+  IMF_max_mass_Msun:              100.0             # Maximal stellar mass considered for the Chabrier IMF in solar masses.
+  SNII_min_mass_Msun:               6.0             # Minimal mass considered for SNII feedback (not SNII enrichment!) in solar masses.
+  SNII_max_mass_Msun:             100.0             # Maximal mass considered for SNII feedback (not SNII enrichment!) in solar masses.
+  SNII_wind_delay_Gyr:              0.03            # Time in Gyr between a star's birth and the SNII thermal feedback event.
+  SNII_delta_T_K:                   3.16228e7       # Change in temperature to apply to the gas particle in a SNII thermal feedback event in Kelvin.
+  SNII_energy_erg:                  1.0e51          # Energy of one SNII explosion in ergs.
+  SNII_energy_fraction_min:         3.0             # Maximal fraction of energy applied in a SNII feedback event.
+  SNII_energy_fraction_max:         0.3             # Minimal fraction of energy applied in a SNII feedback event.
+  SNII_energy_fraction_Z_0:         0.0012663729    # Pivot point for the metallicity dependance of the SNII energy fraction (metal mass fraction).
+  SNII_energy_fraction_n_0_H_p_cm3: 0.67            # Pivot point for the birth density dependance of the SNII energy fraction in cm^-3.
+  SNII_energy_fraction_n_Z:         0.8686          # Power-law for the metallicity dependance of the SNII energy fraction.
+  SNII_energy_fraction_n_n:         0.8686          # Power-law for the birth density dependance of the SNII energy fraction.
+  SNIa_max_mass_Msun:              8.0              # Maximal mass considered for SNIa feedback and enrichment in solar masses.
+  SNIa_timescale_Gyr:              2.0              # Time-scale of the exponential decay of the SNIa rates in Gyr.
+  SNIa_efficiency_p_Msun:          0.002            # Normalisation of the SNIa rates in inverse solar masses.
+  SNIa_energy_erg:                 1.0e51           # Energy of one SNIa explosion in ergs.
+  AGB_ejecta_velocity_km_p_s:      10.0             # Velocity of the AGB ejectas in km/s.
+  SNII_yield_factor_Hydrogen:       1.0             # (Optional) Correction factor to apply to the Hydrogen yield from the SNII channel.
+  SNII_yield_factor_Helium:         1.0             # (Optional) Correction factor to apply to the Helium yield from the SNII channel.
+  SNII_yield_factor_Carbon:         0.5             # (Optional) Correction factor to apply to the Carbon yield from the SNII channel.
+  SNII_yield_factor_Nitrogen:       1.0             # (Optional) Correction factor to apply to the Nitrogen yield from the SNII channel.
+  SNII_yield_factor_Oxygen:         1.0             # (Optional) Correction factor to apply to the Oxygen yield from the SNII channel.
+  SNII_yield_factor_Neon:           1.0             # (Optional) Correction factor to apply to the Neon yield from the SNII channel.
+  SNII_yield_factor_Magnesium:      2.0             # (Optional) Correction factor to apply to the Magnesium yield from the SNII channel.
+  SNII_yield_factor_Silicon:        1.0             # (Optional) Correction factor to apply to the Silicon yield from the SNII channel.
+  SNII_yield_factor_Iron:           0.5             # (Optional) Correction factor to apply to the Iron yield from the SNII channel.
