@@ -61,19 +61,19 @@ struct fof {
   double *group_mass;
   long long *max_part_density_index;
   float *max_part_density;
-  
+
   /*! The extra no. of black holes to seed locally. */
   int extra_bh_seed_count;
-  
+
   /*! The FOF linking length squared. */
   double l_x2;
-  
+
   /*! The minimum halo mass for black hole seeding. */
   double seed_halo_mass;
-  
+
   /*! The no. of steps between each FOF search. */
   int run_freq;
-  
+
   int num_groups;
   size_t min_group_size;
   size_t group_id_default;
@@ -110,10 +110,11 @@ struct fof_final_mass {
   float max_part_density;
 } SWIFT_STRUCT_ALIGN;
 
-/* Struct used to iterate over the hash table and unpack the mass fragments of a group when using MPI */
+/* Struct used to iterate over the hash table and unpack the mass fragments of a
+ * group when using MPI */
 struct fof_mass_send_hashmap {
   struct fof_final_mass *mass_send;
-  size_t nsend; 
+  size_t nsend;
 } SWIFT_STRUCT_ALIGN;
 #endif
 
@@ -133,8 +134,8 @@ void fof_search_pair_cells_foreign(struct space *s, struct cell *ci,
                                    struct fof_mpi **group_links,
                                    int *group_links_size);
 void fof_search_tree(struct space *s);
-void fof_dump_group_data(char *out_file, struct space *s,
-                         int num_groups, struct group_length *group_sizes);
+void fof_dump_group_data(char *out_file, struct space *s, int num_groups,
+                         struct group_length *group_sizes);
 void rec_fof_search_self(struct cell *c, struct space *s, const double dim[3],
                          const double search_r2);
 void rec_fof_search_pair(struct cell *restrict ci, struct cell *restrict cj,

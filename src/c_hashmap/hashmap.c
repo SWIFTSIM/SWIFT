@@ -20,15 +20,16 @@
 void hashmap_allocate_chunks(hashmap_t *m, int num_chunks) {
   /* Allocate a fresh set of chunks. */
   hashmap_chunk_t *alloc;
-  if ((alloc = (hashmap_chunk_t *)swift_calloc("hashmap", num_chunks,
-                                         sizeof(hashmap_chunk_t))) == NULL) {
+  if ((alloc = (hashmap_chunk_t *)swift_calloc(
+           "hashmap", num_chunks, sizeof(hashmap_chunk_t))) == NULL) {
     error("Unable to allocate chunks.");
   }
 
   /* Hook up the alloc, so that we can clean it up later. */
   if (m->allocs_count == m->allocs_size) {
     m->allocs_size *= 2;
-    void **new_allocs = (void **)swift_malloc("hashmap", sizeof(void *) * m->allocs_size);
+    void **new_allocs =
+        (void **)swift_malloc("hashmap", sizeof(void *) * m->allocs_size);
     memcpy(new_allocs, m->allocs, sizeof(void *) * m->allocs_count);
     swift_free("hashmap", m->allocs);
     m->allocs = new_allocs;
@@ -50,8 +51,8 @@ void hashmap_allocate_chunks(hashmap_t *m, int num_chunks) {
 void hashmap_init(hashmap_t *m) {
   /* Allocate the first (empty) list of chunks. */
   m->nr_chunks = INITIAL_NUM_CHUNKS;
-  if ((m->chunks = (hashmap_chunk_t **)swift_calloc("hashmap",
-           m->nr_chunks, sizeof(hashmap_chunk_t *))) == NULL) {
+  if ((m->chunks = (hashmap_chunk_t **)swift_calloc(
+           "hashmap", m->nr_chunks, sizeof(hashmap_chunk_t *))) == NULL) {
     error("Unable to allocate hashmap chunks.");
   }
 
@@ -61,7 +62,8 @@ void hashmap_init(hashmap_t *m) {
 
   /* Init the array of allocations. */
   m->allocs_size = HASHMAP_ALLOCS_INITIAL_SIZE;
-  if ((m->allocs = (void **)swift_malloc("hashmap", sizeof(void *) * m->allocs_size)) == NULL) {
+  if ((m->allocs = (void **)swift_malloc(
+           "hashmap", sizeof(void *) * m->allocs_size)) == NULL) {
     error("Unable to allocate allocs pointer array.");
   }
   m->allocs_count = 0;
@@ -190,7 +192,7 @@ hashmap_element_t *hashmap_find(hashmap_t *m, hashmap_key_t key, int create_new,
       /* Mark this element as taken and increase the size counter. */
       chunk->masks[mask_offset] |= search_mask;
       m->size += 1;
-      if(created_new_element) *created_new_element = 1;
+      if (created_new_element) *created_new_element = 1;
 
       /* Set the key. */
       chunk->data[offset_in_chunk].key = key;
@@ -234,12 +236,12 @@ void hashmap_grow(hashmap_t *m) {
 
   if (HASHMAP_DEBUG_OUTPUT) {
     message("Increasing hash table size from %zu (%zu kb) to %zu (%zu kb).",
-        old_table_size, old_table_size * sizeof(hashmap_element_t) / 1024,
-        m->table_size, m->table_size * sizeof(hashmap_element_t) / 1024);
+            old_table_size, old_table_size * sizeof(hashmap_element_t) / 1024,
+            m->table_size, m->table_size * sizeof(hashmap_element_t) / 1024);
   }
 
-  if ((m->chunks = (hashmap_chunk_t **)swift_calloc("hashmap",
-           m->nr_chunks, sizeof(hashmap_chunk_t *))) == NULL) {
+  if ((m->chunks = (hashmap_chunk_t **)swift_calloc(
+           "hashmap", m->nr_chunks, sizeof(hashmap_chunk_t *))) == NULL) {
     error("Unable to allocate hashmap chunks.");
   }
 
@@ -266,8 +268,9 @@ void hashmap_grow(hashmap_t *m) {
               &chunk->data[mid * HASHMAP_BITS_PER_MASK + eid];
 
           /* Copy the element over to the new hashmap. */
-          hashmap_element_t *new_element = hashmap_find(
-              m, element->key, /*create_new=*/1, /*chain_length=*/NULL, /*created_new_element=*/NULL);
+          hashmap_element_t *new_element =
+              hashmap_find(m, element->key, /*create_new=*/1,
+                           /*chain_length=*/NULL, /*created_new_element=*/NULL);
           if (!new_element) {
             /* TODO(pedro): Deal with this type of failure more elegantly. */
             error("Failed to re-hash element.");
@@ -286,15 +289,17 @@ void hashmap_grow(hashmap_t *m) {
 }
 
 void hashmap_put(hashmap_t *m, hashmap_key_t key, hashmap_value_t value) {
-  
+
   /* Try to find an element for the given key. */
   hashmap_element_t *element =
-      hashmap_find(m, key, /*create_new=*/1, /*chain_length=*/NULL, /*created_new_element=*/NULL);
+      hashmap_find(m, key, /*create_new=*/1, /*chain_length=*/NULL,
+                   /*created_new_element=*/NULL);
 
   /* Loop around, trying to find our place in the world. */
   while (!element) {
     hashmap_grow(m);
-    element = hashmap_find(m, key, /*create_new=*/1, /*chain_length=*/NULL, /*created_new_element=*/NULL);
+    element = hashmap_find(m, key, /*create_new=*/1, /*chain_length=*/NULL,
+                           /*created_new_element=*/NULL);
   }
 
   /* Set the value. */
@@ -302,31 +307,36 @@ void hashmap_put(hashmap_t *m, hashmap_key_t key, hashmap_value_t value) {
 }
 
 hashmap_value_t *hashmap_get(hashmap_t *m, hashmap_key_t key) {
-          
+
   /* Look for the given key. */
   hashmap_element_t *element =
-      hashmap_find(m, key, /*create_new=*/1, /*chain_length=*/NULL, /*created_new_element=*/NULL);
+      hashmap_find(m, key, /*create_new=*/1, /*chain_length=*/NULL,
+                   /*created_new_element=*/NULL);
   while (!element) {
     hashmap_grow(m);
-    element = hashmap_find(m, key, /*create_new=*/1, /*chain_length=*/NULL, /*created_new_element=*/NULL);
+    element = hashmap_find(m, key, /*create_new=*/1, /*chain_length=*/NULL,
+                           /*created_new_element=*/NULL);
   }
   return &element->value;
 }
 
-hashmap_value_t *hashmap_get_new(hashmap_t *m, hashmap_key_t key, int *created_new_element) {
+hashmap_value_t *hashmap_get_new(hashmap_t *m, hashmap_key_t key,
+                                 int *created_new_element) {
   /* Look for the given key. */
-  hashmap_element_t *element =
-      hashmap_find(m, key, /*create_new=*/1, /*chain_length=*/NULL, created_new_element);
+  hashmap_element_t *element = hashmap_find(
+      m, key, /*create_new=*/1, /*chain_length=*/NULL, created_new_element);
   while (!element) {
     hashmap_grow(m);
-    element = hashmap_find(m, key, /*create_new=*/1, /*chain_length=*/NULL, created_new_element);
+    element = hashmap_find(m, key, /*create_new=*/1, /*chain_length=*/NULL,
+                           created_new_element);
   }
   return &element->value;
 }
 
 hashmap_value_t *hashmap_lookup(hashmap_t *m, hashmap_key_t key) {
   hashmap_element_t *element =
-      hashmap_find(m, key, /*create_new=*/0, /*chain_length=*/NULL, /*created_new_element=*/NULL);
+      hashmap_find(m, key, /*create_new=*/0, /*chain_length=*/NULL,
+                   /*created_new_element=*/NULL);
   return element ? &element->value : NULL;
 }
 
@@ -388,7 +398,8 @@ void hashmap_count_chain_lengths(hashmap_key_t key, hashmap_value_t *value,
                                  void *data) {
   hashmap_t *m = (hashmap_t *)data;
   int count = 0;
-  hashmap_find(m, key, /*create_entry=*/0, &count, /*created_new_element=*/NULL);
+  hashmap_find(m, key, /*create_entry=*/0, &count,
+               /*created_new_element=*/NULL);
   m->chain_length_counts[count] += 1;
 }
 #endif

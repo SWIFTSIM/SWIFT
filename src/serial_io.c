@@ -1178,7 +1178,7 @@ void write_output_serial(struct engine* e, const char* baseName,
                                  xpart_align,
                                  Ngas_written * sizeof(struct xpart)) != 0)
                 error("Error while allocating temporary memory for xparts");
-              
+
               /* Collect the particles we want to write */
               io_collect_parts_to_write(parts, xparts, parts_written,
                                         xparts_written, Ngas, Ngas_written);

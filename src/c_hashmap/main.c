@@ -2,9 +2,9 @@
  * A unit test and example of how to use the simple C hashmap
  */
 
-#include <stdlib.h>
-#include <stdio.h>
 #include <assert.h>
+#include <stdio.h>
+#include <stdlib.h>
 
 #include "hashmap.h"
 
@@ -12,87 +12,85 @@
 #define KEY_PREFIX ("somekey")
 #define KEY_COUNT (26 * 1024 * 1024)
 
-typedef struct data_struct_s
-{
-    char key_string[KEY_MAX_LENGTH];
-    int number;
+typedef struct data_struct_s {
+  char key_string[KEY_MAX_LENGTH];
+  int number;
 } data_struct_t;
 
-int main(char* argv, int argc)
-{
-    int index;
-    int error;
-    map_t mymap;
-    char key_string[KEY_MAX_LENGTH];
-    data_struct_t* value;
-    
-    mymap = hashmap_new();
+int main(char* argv, int argc) {
+  int index;
+  int error;
+  map_t mymap;
+  char key_string[KEY_MAX_LENGTH];
+  data_struct_t* value;
 
-    /* First, populate the hash map with ascending values */
-    for (index=0; index<KEY_COUNT; index+=1)
-    {
-        /* Store the key string along side the numerical value so we can free it later */
-        value = malloc(sizeof(data_struct_t));
-        snprintf(value->key_string, KEY_MAX_LENGTH, "%s%d", KEY_PREFIX, index);
-        value->number = index;
+  mymap = hashmap_new();
 
-        error = hashmap_put(mymap, value->key_string, value);
-        assert(error==MAP_OK);
-    }
-
-    /* Now, check all of the expected values are there */
-    for (index=0; index<KEY_COUNT; index+=1)
-    {
-        snprintf(key_string, KEY_MAX_LENGTH, "%s%d", KEY_PREFIX, index);
-
-        error = hashmap_get(mymap, key_string, (void**)(&value));
-        
-        /* Make sure the value was both found and the correct number */
-        assert(error==MAP_OK);
-        assert(value->number==index);
-    }
-    
-    /* Make sure that a value that wasn't in the map can't be found */
-    snprintf(key_string, KEY_MAX_LENGTH, "%s%d", KEY_PREFIX, KEY_COUNT);
-
-    error = hashmap_get(mymap, key_string, (void**)(&value));
-        
-    /* Make sure the value was not found */
-    assert(error==MAP_MISSING);
-
+  /* First, populate the hash map with ascending values */
+  for (index = 0; index < KEY_COUNT; index += 1) {
+    /* Store the key string along side the numerical value so we can free it
+     * later */
     value = malloc(sizeof(data_struct_t));
-    snprintf(value->key_string, KEY_MAX_LENGTH, "%d", 666);
-    value->number = 1;
+    snprintf(value->key_string, KEY_MAX_LENGTH, "%s%d", KEY_PREFIX, index);
+    value->number = index;
 
     error = hashmap_put(mymap, value->key_string, value);
+    assert(error == MAP_OK);
+  }
 
-    snprintf(key_string, KEY_MAX_LENGTH, "%d", 666);
+  /* Now, check all of the expected values are there */
+  for (index = 0; index < KEY_COUNT; index += 1) {
+    snprintf(key_string, KEY_MAX_LENGTH, "%s%d", KEY_PREFIX, index);
 
     error = hashmap_get(mymap, key_string, (void**)(&value));
-    
-    printf("Value: %d hash table size: %d\n", value->number, hashmap_length(mymap));
 
-    value->number = 2;
+    /* Make sure the value was both found and the correct number */
+    assert(error == MAP_OK);
+    assert(value->number == index);
+  }
+
+  /* Make sure that a value that wasn't in the map can't be found */
+  snprintf(key_string, KEY_MAX_LENGTH, "%s%d", KEY_PREFIX, KEY_COUNT);
+
+  error = hashmap_get(mymap, key_string, (void**)(&value));
+
+  /* Make sure the value was not found */
+  assert(error == MAP_MISSING);
+
+  value = malloc(sizeof(data_struct_t));
+  snprintf(value->key_string, KEY_MAX_LENGTH, "%d", 666);
+  value->number = 1;
+
+  error = hashmap_put(mymap, value->key_string, value);
+
+  snprintf(key_string, KEY_MAX_LENGTH, "%d", 666);
+
+  error = hashmap_get(mymap, key_string, (void**)(&value));
+
+  printf("Value: %d hash table size: %d\n", value->number,
+         hashmap_length(mymap));
+
+  value->number = 2;
+  error = hashmap_get(mymap, key_string, (void**)(&value));
+
+  printf("Value: %d hash table size: %d\n", value->number,
+         hashmap_length(mymap));
+
+  /* Free all of the values we allocated and remove them from the map */
+  for (index = 0; index < KEY_COUNT; index += 1) {
+    snprintf(key_string, KEY_MAX_LENGTH, "%s%d", KEY_PREFIX, index);
+
     error = hashmap_get(mymap, key_string, (void**)(&value));
-    
-    printf("Value: %d hash table size: %d\n", value->number, hashmap_length(mymap));
+    assert(error == MAP_OK);
 
-    /* Free all of the values we allocated and remove them from the map */
-    for (index=0; index<KEY_COUNT; index+=1)
-    {
-        snprintf(key_string, KEY_MAX_LENGTH, "%s%d", KEY_PREFIX, index);
+    error = hashmap_remove(mymap, key_string);
+    assert(error == MAP_OK);
 
-        error = hashmap_get(mymap, key_string, (void**)(&value));
-        assert(error==MAP_OK);
+    free(value);
+  }
 
-        error = hashmap_remove(mymap, key_string);
-        assert(error==MAP_OK);
+  /* Now, destroy the map */
+  hashmap_free(mymap);
 
-        free(value);        
-    }
-    
-    /* Now, destroy the map */
-    hashmap_free(mymap);
-
-    return 1;
+  return 1;
 }

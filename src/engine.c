@@ -2613,9 +2613,11 @@ void engine_prepare(struct engine *e) {
     message("Communicating rebuild flag took %.3f %s.",
             clocks_from_ticks(getticks() - tic3), clocks_getunit());
 
-  /* Perform FOF search to seed black holes. Only if there is a rebuild coming and no repartitioing. */
-  if (e->policy & engine_policy_fof && e->forcerebuild && 
-      !e->forcerepart && e->run_fof) engine_fof(e);
+  /* Perform FOF search to seed black holes. Only if there is a rebuild coming
+   * and no repartitioing. */
+  if (e->policy & engine_policy_fof && e->forcerebuild && !e->forcerepart &&
+      e->run_fof)
+    engine_fof(e);
 
   /* Do we need repartitioning ? */
   if (e->forcerepart) {
@@ -3774,8 +3776,9 @@ void engine_step(struct engine *e) {
     e->forcerebuild = 1;
 
   /* Trigger a FOF search every N steps. */
-  if (e->policy & engine_policy_fof && !(e->step % e->s->fof_data.run_freq)) e->run_fof = 1;
-  
+  if (e->policy & engine_policy_fof && !(e->step % e->s->fof_data.run_freq))
+    e->run_fof = 1;
+
 #ifdef WITH_LOGGER
   /* Mark the current time step in the particle logger file. */
   logger_log_timestamp(e->logger, e->ti_current, e->time,
@@ -5084,8 +5087,8 @@ void engine_config(int restart, struct engine *e, struct swift_params *params,
 
   /* Read the FOF search frequency. */
   if (e->policy & engine_policy_fof) {
-    e->s->fof_data.run_freq = parser_get_opt_param_int(
-        params, "FOF:run_freq", 2000);
+    e->s->fof_data.run_freq =
+        parser_get_opt_param_int(params, "FOF:run_freq", 2000);
   }
 
 /* Deal with affinity. For now, just figure out the number of cores. */
@@ -6282,15 +6285,14 @@ void engine_fof(struct engine *e) {
   /* Perform local FOF tasks. */
   engine_launch(e);
 
-  /* Perform FOF search over foreign particles and 
+  /* Perform FOF search over foreign particles and
    * find groups which require black hole seeding.  */
   fof_search_tree(e->s);
 
   /* Reset flag. */
   e->run_fof = 0;
 
-  if(e->verbose && engine_rank == 0)
+  if (e->verbose && engine_rank == 0)
     message("Complete FOF search took: %.3f %s.",
-        clocks_from_ticks(getticks() - tic), clocks_getunit());
-
+            clocks_from_ticks(getticks() - tic), clocks_getunit());
 }

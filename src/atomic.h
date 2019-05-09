@@ -89,7 +89,7 @@ __attribute__((always_inline)) INLINE static void atomic_min(
   } while (test_val != old_val);
 }
 
-/** 
+/**
  * @brief Atomic min operation on doubles.
  *
  * This is a text-book implementation based on an atomic CAS.

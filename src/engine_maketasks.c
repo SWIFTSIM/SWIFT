@@ -2581,7 +2581,7 @@ void engine_make_fof_tasks(struct engine *e) {
             clocks_from_ticks(getticks() - tic), clocks_getunit());
 
   tic = getticks();
-  
+
   /* Split the tasks. */
   scheduler_splittasks(sched);
 
@@ -2590,14 +2590,16 @@ void engine_make_fof_tasks(struct engine *e) {
             clocks_from_ticks(getticks() - tic), clocks_getunit());
 
   tic = getticks();
-  
+
   /* Activate all FOF tasks by default. */
-  for(int i=0; i<sched->nr_tasks; i++) {
+  for (int i = 0; i < sched->nr_tasks; i++) {
 
     struct task *t = &sched->tasks[i];
 
-    if (t->type == task_type_fof_self || t->type == task_type_fof_pair) scheduler_activate(sched, t);
-    else t->skip = 1;
+    if (t->type == task_type_fof_self || t->type == task_type_fof_pair)
+      scheduler_activate(sched, t);
+    else
+      t->skip = 1;
   }
 
   if (e->verbose)
@@ -2642,7 +2644,6 @@ void engine_make_fof_tasks(struct engine *e) {
   if (e->verbose)
     message("took %.3f %s (including reweight).",
             clocks_from_ticks(getticks() - tic), clocks_getunit());
-
 }
 
 /**

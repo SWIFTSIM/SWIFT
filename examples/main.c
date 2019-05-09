@@ -250,8 +250,8 @@ int main(int argc, char *argv[]) {
                   NULL, 0, 0),
       OPT_INTEGER('T', "timers", &with_verbose_timers,
                   "Print timers every time-step.", NULL, 0, 0),
-      OPT_BOOLEAN('u', "fof", &with_fof,
-                  "Run Friends-of-Friends algorithm.", NULL, 0, 0),
+      OPT_BOOLEAN('u', "fof", &with_fof, "Run Friends-of-Friends algorithm.",
+                  NULL, 0, 0),
       OPT_INTEGER('v', "verbose", &verbose,
                   "Run in verbose mode, in MPI mode 2 outputs from all ranks.",
                   NULL, 0, 0),
@@ -1112,7 +1112,6 @@ int main(int argc, char *argv[]) {
 
     /* Is there a dump before the end of the first time-step? */
     engine_check_for_dumps(&e);
-
   }
 
   /* Legend */

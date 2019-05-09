@@ -92,7 +92,7 @@ const char *taskID_names[task_type_count] = {"none",
                                              "bh_in",
                                              "bh_out",
                                              "bh_ghost",
-					     "fof_self",
+                                             "fof_self",
                                              "fof_pair"};
 
 /* Sub-task type names. */

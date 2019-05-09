@@ -41,8 +41,8 @@ typedef void (*conversion_func_part_float)(const struct engine*,
                                            const struct part*,
                                            const struct xpart*, float*);
 typedef void (*conversion_func_part_int)(const struct engine*,
-                                           const struct part*,
-                                           const struct xpart*, int*);
+                                         const struct part*,
+                                         const struct xpart*, int*);
 typedef void (*conversion_func_part_double)(const struct engine*,
                                             const struct part*,
                                             const struct xpart*, double*);

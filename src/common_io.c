@@ -1158,8 +1158,8 @@ void io_copy_temp_buffer(void* temp, const struct engine* e,
 
       /* Copy the whole thing into a buffer */
       threadpool_map((struct threadpool*)&e->threadpool,
-          io_convert_part_i_mapper, temp_i, N, copySize, 0,
-          (void*)&props);
+                     io_convert_part_i_mapper, temp_i, N, copySize, 0,
+                     (void*)&props);
 
     } else if (props.convert_part_d != NULL) {
 
