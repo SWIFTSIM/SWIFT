@@ -1140,7 +1140,7 @@ void runner_do_star_formation(struct runner *r, struct cell *c, int timer) {
   if (with_feedback && (c == c->top) &&
       (current_stars_count != c->stars.count)) {
 
-    cell_clear_stars_sort_flags(c);
+    cell_clear_stars_sort_flags(c, 0);
     runner_do_all_stars_sort(r, c);
   }
 
@@ -1250,21 +1250,6 @@ void runner_do_sort_ascending(struct entry *sort, int N) {
 RUNNER_CHECK_SORTS(hydro)
 RUNNER_CHECK_SORTS(stars)
 
-void cell_clear_hydro_sort_flags2(struct cell *c)  {
-
-  c->hydro.do_sort = 0;
-  cell_clear_flag(c, cell_flag_do_hydro_sub_sort);
-  c->hydro.requires_sorts = 0;
-  cell_free_hydro_sorts(c);
-
-  if(c->split) {
-    for(int k = 0; k < 8; ++k){
-      if(c->progeny[k] != NULL)
-	cell_clear_hydro_sort_flags2(c->progeny[k]);
-    }
-  }
-}
-
 /**
  * @brief Sort the particles in the given cell along all cardinal directions.
  *
@@ -1342,7 +1327,7 @@ void runner_do_hydro_sort(struct runner *r, struct cell *c, int flags,
 	  dx_max_sort_old =
             max(dx_max_sort_old, c->progeny[k]->hydro.dx_max_sort_old);
 	} else {
-	  cell_clear_hydro_sort_flags2(c->progeny[k]);
+	  cell_clear_hydro_sort_flags(c->progeny[k], 1);
 	}
       }
     }
@@ -1492,22 +1477,6 @@ void runner_do_hydro_sort(struct runner *r, struct cell *c, int flags,
   if (clock) TIMER_TOC(timer_dosort);
 }
 
-void cell_clear_stars_sort_flags2(struct cell *c)  {
-
-  c->stars.do_sort = 0;
-  cell_clear_flag(c, cell_flag_do_stars_sub_sort);
-  c->stars.requires_sorts = 0;
-  cell_free_stars_sorts(c);
-
-  if(c->split) {
-    for(int k = 0; k < 8; ++k){
-      if(c->progeny[k] != NULL)
-	cell_clear_stars_sort_flags2(c->progeny[k]);
-    }
-  }
-}
-
-
 /**
  * @brief Sort the stars particles in the given cell along all cardinal
  * directions.
@@ -1595,7 +1564,7 @@ void runner_do_stars_sort(struct runner *r, struct cell *c, int flags,
         dx_max_sort_old =
             max(dx_max_sort_old, c->progeny[k]->stars.dx_max_sort_old);
 	} else {
-	  cell_clear_stars_sort_flags2(c->progeny[k]);
+	  cell_clear_stars_sort_flags(c->progeny[k], 1);
 	}
       }
     }
@@ -4285,7 +4254,7 @@ void *runner_main(void *data) {
             free(t->buff);
           } else if (t->subtype == task_subtype_sf_counts) {
             cell_unpack_sf_counts(ci, (struct pcell_sf *)t->buff);
-            cell_clear_stars_sort_flags(ci);
+            cell_clear_stars_sort_flags(ci, 0);
             free(t->buff);
           } else if (t->subtype == task_subtype_xv) {
             runner_do_recv_part(r, ci, 1, 1);
