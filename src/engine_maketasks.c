@@ -291,10 +291,6 @@ void engine_addtasks_send_stars(struct engine *e, struct cell *ci,
       scheduler_addunlock(s, ci->hydro.super->stars.drift, t_feedback);
 
       scheduler_addunlock(s, ci->super->timestep, t_ti);
-
-      /* Update the stars counts before you send them */
-      if (with_star_formation && ci->hydro.count > 0) {
-      }
     }
 
     engine_addlink(e, &ci->mpi.send, t_feedback);
