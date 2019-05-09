@@ -300,10 +300,10 @@ runner_iact_nonsym_feedback_apply(const float r2, const float *dx,
       hydro_set_physical_internal_energy(pj, xpj, cosmo, u_new);
       hydro_set_drifted_physical_internal_energy(pj, cosmo, u_new);
 
-      message(
-          "We did some heating! id %llu star id %llu probability %.5e "
-          "random_num %.5e du %.5e du/ini %.5e",
-          pj->id, si->id, prob, rand, delta_u, delta_u / u_init);
+      /* message( */
+      /*     "We did some heating! id %llu star id %llu probability %.5e " */
+      /*     "random_num %.5e du %.5e du/ini %.5e", */
+      /*     pj->id, si->id, prob, rand, delta_u, delta_u / u_init); */
     }
   }
 }

@@ -1308,12 +1308,7 @@ void DOSUB_PAIR1_STARS(struct runner *r, struct cell *ci, struct cell *cj,
       /* Do any of the cells need to be sorted first? */
       if (!(ci->stars.sorted & (1 << sid)) ||
           ci->stars.dx_max_sort_old > ci->dmin * space_maxreldx) {
-        error(
-            "Interacting unsorted cell (sparts). ci->nodeID=%d "
-            "ci->stars.count=%d ci->stars[0].id=%lld ci->cellID=%d "
-            "ci->super->cellID=%d",
-            ci->nodeID, ci->stars.count, ci->stars.parts[0].id, ci->cellID,
-            ci->hydro.super->cellID);
+        error("Interacting unsorted cell (sparts).");
       }
 
       if (!(cj->hydro.sorted & (1 << sid)) ||
@@ -1338,19 +1333,7 @@ void DOSUB_PAIR1_STARS(struct runner *r, struct cell *ci, struct cell *cj,
 
       if (!(cj->stars.sorted & (1 << sid)) ||
           cj->stars.dx_max_sort_old > cj->dmin * space_maxreldx) {
-        error(
-            "Interacting unsorted cell (sparts). cj->nodeID=%d "
-            "cj->stars.count=%d cj->stars[0].id=%lld cj->cellID=%d "
-            "cj->parent->cellID=%d cj->super->cellID=%d stars.ti_end_min=%lld "
-            "ti_current=%lld cj->depth=%d cj->super->depth=%d "
-            "cj->requires_sorts=%d cj->do_sort=%d sid=%d dx_max_part=%e "
-            "dx_max_part_old=%e dx_max_sort=%e dx_max_sort_old=%e",
-            cj->nodeID, cj->stars.count, cj->stars.parts[0].id, cj->cellID,
-            cj->parent->cellID, cj->hydro.super->cellID, cj->stars.ti_end_min,
-            e->ti_current, cj->depth, cj->hydro.super->depth,
-            cj->stars.requires_sorts, cj->stars.do_sort, sid,
-            cj->stars.dx_max_part, cj->stars.dx_max_part_old,
-            cj->stars.dx_max_sort, cj->stars.dx_max_sort_old);
+        error("Interacting unsorted cell (sparts).");
       }
     }
 
