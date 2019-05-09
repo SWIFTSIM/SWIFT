@@ -28,7 +28,7 @@ cp $sim.hdf5 agora_disk.hdf5
 python3 changeType.py agora_disk.hdf5
 
 # Run SWIFT
-../../swift -C --hydro --self-gravity --threads=4 agora_disk.yml 2>&1 | tee output.log
+../../swift --cooling --hydro --self-gravity --threads=4 agora_disk.yml 2>&1 | tee output.log
 
 
 echo "Changing smoothing length to be Gadget compatible"
