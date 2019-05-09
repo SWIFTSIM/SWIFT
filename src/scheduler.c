@@ -957,11 +957,12 @@ void scheduler_splittasks_mapper(void *map_data, int num_elements,
       scheduler_splittask_gravity(t, s);
     } else if (t->type == task_type_grav_mesh) {
       /* For future use */
-    } else if (t->type == task_type_fof_self) {
+    } else if (t->type == task_type_fof_self || t->type == task_type_fof_pair) {
       scheduler_splittask_fof(t, s);
     } else {
 #ifdef SWIFT_DEBUG_CHECKS
-      error("Unexpected task sub-type");
+      error("Unexpected task sub-type %s/%s", taskID_names[t->type],
+            subtaskID_names[t->subtype]);
 #endif
     }
   }
@@ -1190,6 +1191,7 @@ void scheduler_ranktasks(struct scheduler *s) {
  * @param size The maximum number of tasks in the #scheduler.
  */
 void scheduler_reset(struct scheduler *s, int size) {
+
   /* Do we need to re-allocate? */
   if (size > s->size) {
     /* Free existing task lists if necessary. */
