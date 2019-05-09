@@ -160,11 +160,6 @@ struct cell_split_pair cell_split_pairs[13] = {
       {5, 6, 9},
       {7, 6, 12}}}};
 
-extern int cell_to_check;
-extern int parent_cell_to_check;
-extern int super_cell_to_check;
-int CHECK = 0;
-
 /**
  * @brief Get the size of the cell subtree.
  *
@@ -1078,7 +1073,7 @@ int cell_pack_sf_counts(struct cell *restrict c,
   pcells[0].stars.delta_from_rebuild = c->stars.parts - c->stars.parts_rebuild;
   pcells[0].stars.count = c->stars.count;
   pcells[0].stars.dx_max_part = c->stars.dx_max_part;
-  
+
 #ifdef SWIFT_DEBUG_CHECKS
   if (c->stars.parts_rebuild == NULL)
     error("Star particles array at rebuild is NULL! c->depth=%d", c->depth);
@@ -2551,8 +2546,6 @@ void cell_activate_stars_sorts_up(struct cell *c, struct scheduler *s) {
 
   if (c == c->hydro.super) {
 
-    if(CHECK) message("in if");
-
 #ifdef SWIFT_DEBUG_CHECKS
     if (c->stars.sorts == NULL)
       error("Trying to activate un-existing c->stars.sorts");
@@ -2562,30 +2555,16 @@ void cell_activate_stars_sorts_up(struct cell *c, struct scheduler *s) {
       cell_activate_drift_spart(c, s);
     }
   } else {
-    if(CHECK) message("in else");
 
-    if(CHECK) {
-
-    int sub_sort = cell_get_flag(c, cell_flag_do_stars_sub_sort);
-    int parent_sub_sort = cell_get_flag(c->parent, cell_flag_do_stars_sub_sort);
-
-      message("depth=%d cellID=%d sub_sort=%d parent->sub_sort=%d",
-	      c->depth, c->nodeID, sub_sort, parent_sub_sort);
-      message("super->stars.sorts=%p", c->hydro.super->stars.sorts);
-      message("super->stars.sorts->skip=%d", c->hydro.super->stars.sorts->skip);
-    } 
-
+    /* Climb up the tree and set the flags */
     for (struct cell *parent = c->parent;
          parent != NULL && !cell_get_flag(parent, cell_flag_do_stars_sub_sort);
          parent = parent->parent) {
 
       cell_set_flag(parent, cell_flag_do_stars_sub_sort);
-      if(CHECK) message("parent->depth=%d", parent->depth);
 
+      /* Reached the super-level? Activate the task and abort */
       if (parent == c->hydro.super) {
-
-	if(CHECK) message("in other if");
-
 
 #ifdef SWIFT_DEBUG_CHECKS
         if (parent->stars.sorts == NULL)
@@ -2604,14 +2583,8 @@ void cell_activate_stars_sorts_up(struct cell *c, struct scheduler *s) {
  */
 void cell_activate_stars_sorts(struct cell *c, int sid, struct scheduler *s) {
 
-  if(CHECK)
-    message("Activating sorts for cell %d", c->cellID);
-
   /* Do we need to re-sort? */
   if (c->stars.dx_max_sort > space_maxreldx * c->dmin) {
-
-    if(c->cellID == cell_to_check)
-      message("In first if");
 
     /* Climb up the tree to active the sorts in that direction */
     for (struct cell *finger = c; finger != NULL; finger = finger->parent) {
@@ -2625,10 +2598,6 @@ void cell_activate_stars_sorts(struct cell *c, int sid, struct scheduler *s) {
 
   /* Has this cell been sorted at all for the given sid? */
   if (!(c->stars.sorted & (1 << sid)) || c->nodeID != engine_rank) {
-
-    if(CHECK)
-      message("In second if");
-
     atomic_or(&c->stars.do_sort, (1 << sid));
     cell_activate_stars_sorts_up(c, s);
   }
@@ -2788,9 +2757,9 @@ void cell_activate_subcell_stars_tasks(struct cell *ci, struct cell *cj,
   else {
 
     const int ci_active = cell_is_active_stars(ci, e) ||
-      (with_star_formation && cell_is_active_hydro(ci, e));
+                          (with_star_formation && cell_is_active_hydro(ci, e));
     const int cj_active = cell_is_active_stars(cj, e) ||
-      (with_star_formation && cell_is_active_hydro(cj, e));
+                          (with_star_formation && cell_is_active_hydro(cj, e));
 
     /* Should we even bother? */
     if (!ci_active && !cj_active) return;
@@ -2798,40 +2767,10 @@ void cell_activate_subcell_stars_tasks(struct cell *ci, struct cell *cj,
     /* Get the orientation of the pair. */
     double shift[3];
     const int sid = space_getsid(s->space, &ci, &cj, shift);
-    
-    /* if(e->nodeID == 7 && ci->cellID == super_cell_to_check) */
-    /*   message("Found the super ci! ci_active=%d cj_active=%d depth=%d", ci_active, cj_active, ci->depth); */
 
-    /* if(e->nodeID == 7 && cj->cellID == super_cell_to_check) */
-    /*   message("Found the super cj! ci_active=%d cj_active=%d depth=%d", ci_active, cj_active, cj->depth); */
-
-    /* if(e->nodeID == 7 && ci->depth > 0 && ci->parent->cellID == super_cell_to_check) */
-    /*   message("Found the parent ci! ci_active=%d cj_active=%d depth=%d", ci_active, cj_active, ci->depth); */
-
-    /* if(e->nodeID == 7 && cj->depth > 0 &&cj->parent->cellID == super_cell_to_check) */
-    /*   message("Found the parent cj! ci_active=%d cj_active=%d depth=%d", ci_active, cj_active, cj->depth); */
-
-    /* if(e->nodeID == 7 && cj->hydro.super->cellID == super_cell_to_check) */
-    /*   message("Found a cell with super-cell= %d depth=%d cellID=%d ci_active=%d cj_active=%d cj->requires_sorts=%d cj->do_sort=%d sid=%d cj->dx_max_part=%e cj->dx_max_part_old=%e cj->dx_max_sort=%e cj->dx_max_sort_old=%e", */
-    /* 	      cj->hydro.super->cellID, cj->depth, cj->cellID, ci_active, cj_active, cj->stars.requires_sorts, cj->stars.do_sort, sid, */
-    /* 	      cj->stars.dx_max_part, cj->stars.dx_max_part_old, */
-    /* 	      cj->stars.dx_max_sort, cj->stars.dx_max_sort_old); */
-       
     /* recurse? */
     if (cell_can_recurse_in_pair_stars_task(ci, cj) &&
         cell_can_recurse_in_pair_stars_task(cj, ci)) {
-
-      /* if(e->nodeID == 7 && ci->cellID == super_cell_to_check) */
-      /* 	message("Found the super ci! Recursing!"); */
-      
-      /* if(e->nodeID == 7 && cj->cellID == super_cell_to_check) */
-      /* 	message("Found the super cj! Recursing!"); */
-
-      /* if(e->nodeID == 7 && ci->depth > 0 && ci->parent->cellID == super_cell_to_check) */
-      /* 	message("Found the parent ci! Recursing!"); */
-      
-      /* if(e->nodeID == 7 && cj->depth > 0 && cj->parent->cellID == super_cell_to_check) */
-      /* 	message("Found the parent cj! Recursing!"); */
 
       const struct cell_split_pair *csp = &cell_split_pairs[sid];
       for (int k = 0; k < csp->count; k++) {
@@ -2847,14 +2786,7 @@ void cell_activate_subcell_stars_tasks(struct cell *ci, struct cell *cj,
     else {
 
       if (cell_is_active_stars(ci, e) ||
-	  (with_star_formation && cell_is_active_hydro(ci, e))) {
-
-    /* if(e->nodeID == 7 && cj->hydro.super->cellID == super_cell_to_check && cj->depth==3) */
-    /*   message("ACTIVATING  ci!!! Found a cell with super-cell= %d depth=%d cellID=%d ci_active=%d cj_active=%d cj->requires_sorts=%d cj->do_sort=%d sid=%d cj->dx_max_part=%e cj->dx_max_part_old=%e cj->dx_max_sort=%e cj->dx_max_sort_old=%e", */
-    /* 	      cj->hydro.super->cellID, cj->depth, cj->cellID, ci_active, cj_active, cj->stars.requires_sorts, cj->stars.do_sort, sid, */
-    /* 	      cj->stars.dx_max_part, cj->stars.dx_max_part_old, */
-    /* 	      cj->stars.dx_max_sort, cj->stars.dx_max_sort_old); */
-
+          (with_star_formation && cell_is_active_hydro(ci, e))) {
 
         /* We are going to interact this pair, so store some values. */
         atomic_or(&cj->hydro.requires_sorts, 1 << sid);
@@ -2873,17 +2805,7 @@ void cell_activate_subcell_stars_tasks(struct cell *ci, struct cell *cj,
       }
 
       if (cell_is_active_stars(cj, e) ||
-	  (with_star_formation && cell_is_active_hydro(cj, e))) {
-
-      /* 	if(e->nodeID == 7 && cj->hydro.super->cellID == super_cell_to_check && cj->depth==3) { */
-      /* message("ACTIVATING  cj!!! Found a cell with super-cell= %d depth=%d cellID=%d ci_active=%d cj_active=%d cj->requires_sorts=%d cj->do_sort=%d sid=%d cj->dx_max_part=%e cj->dx_max_part_old=%e cj->dx_max_sort=%e cj->dx_max_sort_old=%e", */
-      /* 	      cj->hydro.super->cellID, cj->depth, cj->cellID, ci_active, cj_active, cj->stars.requires_sorts, cj->stars.do_sort, sid, */
-      /* 	      cj->stars.dx_max_part, cj->stars.dx_max_part_old, */
-      /* 	      cj->stars.dx_max_sort, cj->stars.dx_max_sort_old); */
-
-      /* if(sid == 3) CHECK =1; */
-      /* 	} */
-
+          (with_star_formation && cell_is_active_hydro(cj, e))) {
 
         /* We are going to interact this pair, so store some values. */
         atomic_or(&cj->stars.requires_sorts, 1 << sid);
@@ -2899,8 +2821,6 @@ void cell_activate_subcell_stars_tasks(struct cell *ci, struct cell *cj,
         /* Do we need to sort the cells? */
         cell_activate_hydro_sorts(ci, sid, s);
         cell_activate_stars_sorts(cj, sid, s);
-
-	CHECK = 0;
       }
     }
   } /* Otherwise, pair interation */
@@ -3608,19 +3528,6 @@ int cell_unskip_stars_tasks(struct cell *c, struct scheduler *s,
     if ((ci_active || cj_active) &&
         (ci_nodeID == nodeID || cj_nodeID == nodeID)) {
       scheduler_activate(s, t);
-
-      if(ci->cellID == cell_to_check)
-	message("Activating task ci case t->type=%s/%s", taskID_names[t->type], subtaskID_names[t->subtype]);
-
-      if(cj != NULL && cj->cellID == cell_to_check)
-	message("Activating task cj case t->type=%s/%s", taskID_names[t->type], subtaskID_names[t->subtype]);
-
-
-      if(ci->cellID == super_cell_to_check)
-	message("Activating super task ci case t->type=%s/%s", taskID_names[t->type], subtaskID_names[t->subtype]);
-
-      if(cj != NULL && cj->cellID == super_cell_to_check)
-	message("Activating super task cj case t->type=%s/%s", taskID_names[t->type], subtaskID_names[t->subtype]);
 
       if (t->type == task_type_pair) {
         /* Do ci */
@@ -4832,24 +4739,33 @@ void cell_drift_multipole(struct cell *c, const struct engine *e) {
  * @brief Resets all the sorting properties for the stars in a given cell
  * hierarchy.
  *
+ * The clear_unused_flags argument can be used to additionally clean up all
+ * the flags demanding a sort for the given cell. This should be used with
+ * caution as it will prevent the sort tasks from doing anything on that cell
+ * until these flags are reset.
+ *
  * @param c The #cell to clean.
+ * @param clear_unused_flags Do we also clean the flags demanding a sort?
  */
-void cell_clear_stars_sort_flags(struct cell *c, const int clear_all) {
+void cell_clear_stars_sort_flags(struct cell *c, const int clear_unused_flags) {
 
-  /* Indicate that the cell is not sorted and cancel the pointer sorting arrays.
-   */
-  if (clear_all) {
+  /* Clear the flags that have not been reset by the sort task? */
+  if (clear_unused_flags) {
     c->stars.requires_sorts = 0;
     c->stars.do_sort = 0;
     cell_clear_flag(c, cell_flag_do_stars_sub_sort);
   }
+
+  /* Indicate that the cell is not sorted and cancel the pointer sorting arrays.
+   */
   c->stars.sorted = 0;
   cell_free_stars_sorts(c);
 
   /* Recurse if possible */
   if (c->split) {
     for (int k = 0; k < 8; k++)
-      if (c->progeny[k] != NULL) cell_clear_stars_sort_flags(c->progeny[k], clear_all);
+      if (c->progeny[k] != NULL)
+        cell_clear_stars_sort_flags(c->progeny[k], clear_unused_flags);
   }
 }
 
@@ -4857,24 +4773,33 @@ void cell_clear_stars_sort_flags(struct cell *c, const int clear_all) {
  * @brief Resets all the sorting properties for the hydro in a given cell
  * hierarchy.
  *
+ * The clear_unused_flags argument can be used to additionally clean up all
+ * the flags demanding a sort for the given cell. This should be used with
+ * caution as it will prevent the sort tasks from doing anything on that cell
+ * until these flags are reset.
+ *
  * @param c The #cell to clean.
+ * @param clear_unused_flags Do we also clean the flags demanding a sort?
  */
-void cell_clear_hydro_sort_flags(struct cell *c, int clear_all) {
+void cell_clear_hydro_sort_flags(struct cell *c, const int clear_unused_flags) {
 
-  /* Indicate that the cell is not sorted and cancel the pointer sorting arrays.
-   */
-  if (clear_all) {
+  /* Clear the flags that have not been reset by the sort task? */
+  if (clear_unused_flags) {
     c->hydro.do_sort = 0;
     c->hydro.requires_sorts = 0;
     cell_clear_flag(c, cell_flag_do_hydro_sub_sort);
   }
+
+  /* Indicate that the cell is not sorted and cancel the pointer sorting arrays.
+   */
   c->hydro.sorted = 0;
   cell_free_hydro_sorts(c);
 
   /* Recurse if possible */
   if (c->split) {
     for (int k = 0; k < 8; k++)
-      if (c->progeny[k] != NULL) cell_clear_hydro_sort_flags(c->progeny[k], clear_all);
+      if (c->progeny[k] != NULL)
+        cell_clear_hydro_sort_flags(c->progeny[k], clear_unused_flags);
   }
 }
 
@@ -4942,31 +4867,42 @@ void cell_check_spart_pos(const struct cell *c,
 #endif
 }
 
-void cell_check_sort_flags(const struct cell* c) {
+/**
+ * @brief Checks that a cell and all its progenies have cleared their sort
+ * flags.
+ *
+ * Should only be used for debugging purposes.
+ *
+ * @param c The #cell to check.
+ */
+void cell_check_sort_flags(const struct cell *c) {
 
 #ifdef SWIFT_DEBUG_CHECKS
   const int do_hydro_sub_sort = cell_get_flag(c, cell_flag_do_hydro_sub_sort);
   const int do_stars_sub_sort = cell_get_flag(c, cell_flag_do_stars_sub_sort);
 
-  if(do_hydro_sub_sort)
+  if (do_hydro_sub_sort)
     error("cell %d has a hydro sub_sort flag set. Node=%d depth=%d maxdepth=%d",
           c->cellID, c->nodeID, c->depth, c->maxdepth);
 
-  if(do_stars_sub_sort) {
-    message("cell %d has a stars sub_sort flag set. Node=%d depth=%d maxdepth=%d super=%p",
-             c->cellID, c->nodeID, c->depth, c->maxdepth, c->hydro.super);
-   message("c->stars.count=%d", c->stars.count);
-   message("super->cellID=%d super->sorts=%p super->depth=%d", c->hydro.super->cellID,
-c->hydro.super->stars.sorts, c->hydro.super->depth);
-   message("super->sorts->skip=%d",c->hydro.super->stars.sorts->skip);
+  if (do_stars_sub_sort) {
+    message(
+        "cell %d has a stars sub_sort flag set. Node=%d depth=%d maxdepth=%d "
+        "super=%p",
+        c->cellID, c->nodeID, c->depth, c->maxdepth, c->hydro.super);
+    message("c->stars.count=%d", c->stars.count);
+    message("super->cellID=%d super->sorts=%p super->depth=%d",
+            c->hydro.super->cellID, c->hydro.super->stars.sorts,
+            c->hydro.super->depth);
+    message("super->sorts->skip=%d", c->hydro.super->stars.sorts->skip);
 
-  error("oooo");
-}
+    error("oooo");
+  }
 
-  if(c->split) {
-    for(int k = 0; k < 8; ++k) {
-      if(c->progeny[k] != NULL) cell_check_sort_flags(c->progeny[k]);
-    } 
+  if (c->split) {
+    for (int k = 0; k < 8; ++k) {
+      if (c->progeny[k] != NULL) cell_check_sort_flags(c->progeny[k]);
+    }
   }
 #endif
 }

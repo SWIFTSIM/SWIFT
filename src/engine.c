@@ -4725,22 +4725,22 @@ void engine_dump_snapshot(struct engine *e) {
 #endif
 
 /* Dump... */
-/* #if defined(HAVE_HDF5) */
-/* #if defined(WITH_MPI) */
-/* #if defined(HAVE_PARALLEL_HDF5) */
-/*   write_output_parallel(e, e->snapshot_base_name, e->internal_units, */
-/*                         e->snapshot_units, e->nodeID, e->nr_nodes, */
-/*                         MPI_COMM_WORLD, MPI_INFO_NULL); */
-/* #else */
-/*   write_output_serial(e, e->snapshot_base_name, e->internal_units, */
-/*                       e->snapshot_units, e->nodeID, e->nr_nodes, MPI_COMM_WORLD, */
-/*                       MPI_INFO_NULL); */
-/* #endif */
-/* #else */
-/*   write_output_single(e, e->snapshot_base_name, e->internal_units, */
-/*                       e->snapshot_units); */
-/* #endif */
-/* #endif */
+#if defined(HAVE_HDF5)
+#if defined(WITH_MPI)
+#if defined(HAVE_PARALLEL_HDF5)
+  write_output_parallel(e, e->snapshot_base_name, e->internal_units,
+                        e->snapshot_units, e->nodeID, e->nr_nodes,
+                        MPI_COMM_WORLD, MPI_INFO_NULL);
+#else
+  write_output_serial(e, e->snapshot_base_name, e->internal_units,
+                      e->snapshot_units, e->nodeID, e->nr_nodes, MPI_COMM_WORLD,
+                      MPI_INFO_NULL);
+#endif
+#else
+  write_output_single(e, e->snapshot_base_name, e->internal_units,
+                      e->snapshot_units);
+#endif
+#endif
 
   /* Flag that we dumped a snapshot */
   e->step_props |= engine_step_prop_snapshot;

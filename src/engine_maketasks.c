@@ -249,14 +249,16 @@ void engine_addtasks_send_stars(struct engine *e, struct cell *ci,
 
   if (t_sf_counts == NULL && with_star_formation && ci->hydro.count > 0) {
 #ifdef SWIFT_DEBUG_CHECKS
-    if(ci->depth != 0) 
-      error("Attaching a sf_count task at a non-top level c->depth=%d c->count=%d",
-	    ci->depth, ci->hydro.count);
+    if (ci->depth != 0)
+      error(
+          "Attaching a sf_count task at a non-top level c->depth=%d "
+          "c->count=%d",
+          ci->depth, ci->hydro.count);
 #endif
-    t_sf_counts = scheduler_addtask(s, task_type_send, task_subtype_sf_counts, ci->mpi.tag, 0, ci, cj);
+    t_sf_counts = scheduler_addtask(s, task_type_send, task_subtype_sf_counts,
+                                    ci->mpi.tag, 0, ci, cj);
     scheduler_addunlock(s, ci->hydro.star_formation, t_sf_counts);
   }
-
 
   /* Check if any of the density tasks are for the target node. */
   for (l = ci->stars.density; l != NULL; l = l->next)
@@ -292,7 +294,6 @@ void engine_addtasks_send_stars(struct engine *e, struct cell *ci,
 
       /* Update the stars counts before you send them */
       if (with_star_formation && ci->hydro.count > 0) {
-
       }
     }
 
@@ -300,7 +301,7 @@ void engine_addtasks_send_stars(struct engine *e, struct cell *ci,
     engine_addlink(e, &ci->mpi.send, t_ti);
     if (with_star_formation && ci->hydro.count > 0) {
       engine_addlink(e, &ci->mpi.send, t_sf_counts);
-   }
+    }
   }
 
   /* Recurse? */
@@ -496,14 +497,16 @@ void engine_addtasks_recv_stars(struct engine *e, struct cell *c,
 
   if (t_sf_counts == NULL && with_star_formation && c->hydro.count > 0) {
 #ifdef SWIFT_DEBUG_CHECKS
-    if(c->depth != 0) 
-      error("Attaching a sf_count task at a non-top level c->depth=%d c->count=%d",
-	    c->depth, c->hydro.count);
+    if (c->depth != 0)
+      error(
+          "Attaching a sf_count task at a non-top level c->depth=%d "
+          "c->count=%d",
+          c->depth, c->hydro.count);
 #endif
     t_sf_counts = scheduler_addtask(s, task_type_recv, task_subtype_sf_counts,
-				    c->mpi.tag, 0, c, NULL);
+                                    c->mpi.tag, 0, c, NULL);
   }
-  
+
   /* Have we reached a level where there are any stars tasks ? */
   if (t_feedback == NULL && c->stars.density != NULL) {
 

@@ -46,9 +46,6 @@ __attribute__((always_inline)) INLINE static void stars_init_spart(
   sp->num_ngb_density = 0;
 #endif
 
-  if(sp->id == 155966626889L)
-    message("Initialising spart id=%lld", sp->id);
-
   sp->density.wcount = 0.f;
   sp->density.wcount_dh = 0.f;
 }

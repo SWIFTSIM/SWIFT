@@ -511,8 +511,8 @@ __attribute__((always_inline)) INLINE static int cell_is_starting_black_holes(
     error(
         "cell in an impossible time-zone! c->ti_beg_max=%lld (t=%e) and "
         "e->ti_current=%lld (t=%e, a=%e)",
-        c->black_holes.ti_beg_max, c->black_holes.ti_beg_max * e->time_base, e->ti_current,
-        e->ti_current * e->time_base, e->cosmology->a);
+        c->black_holes.ti_beg_max, c->black_holes.ti_beg_max * e->time_base,
+        e->ti_current, e->ti_current * e->time_base, e->cosmology->a);
 #endif
 
   return (c->black_holes.ti_beg_max == e->ti_current);

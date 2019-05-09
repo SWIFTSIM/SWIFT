@@ -1104,8 +1104,7 @@ void runner_do_star_formation(struct runner *r, struct cell *c, int timer) {
             /* Did we get a star? (Or did we run out of spare ones?) */
             if (sp != NULL) {
 
-              message("We formed a star id=%lld cellID=%d", sp->id,
-		      c->cellID);
+              message("We formed a star id=%lld cellID=%d", sp->id, c->cellID);
 
               /* Copy the properties of the gas particle to the star particle */
               star_formation_copy_properties(p, xp, sp, e, sf_props, cosmo,
@@ -1316,19 +1315,20 @@ void runner_do_hydro_sort(struct runner *r, struct cell *c, int flags,
     float dx_max_sort_old = 0.0f;
     for (int k = 0; k < 8; k++) {
       if (c->progeny[k] != NULL) {
-	
-	if( c->progeny[k]->hydro.count > 0) {
-	  /* Only propagate cleanup if the progeny is stale. */
-	  runner_do_hydro_sort(r, c->progeny[k], flags,
-			       cleanup && (c->progeny[k]->hydro.dx_max_sort_old >
-					   space_maxreldx * c->progeny[k]->dmin),
-			       0);
-	  dx_max_sort = max(dx_max_sort, c->progeny[k]->hydro.dx_max_sort);
-	  dx_max_sort_old =
-            max(dx_max_sort_old, c->progeny[k]->hydro.dx_max_sort_old);
-	} else {
-	  cell_clear_hydro_sort_flags(c->progeny[k], 1);
-	}
+
+        if (c->progeny[k]->hydro.count > 0) {
+          /* Only propagate cleanup if the progeny is stale. */
+          runner_do_hydro_sort(
+              r, c->progeny[k], flags,
+              cleanup && (c->progeny[k]->hydro.dx_max_sort_old >
+                          space_maxreldx * c->progeny[k]->dmin),
+              0);
+          dx_max_sort = max(dx_max_sort, c->progeny[k]->hydro.dx_max_sort);
+          dx_max_sort_old =
+              max(dx_max_sort_old, c->progeny[k]->hydro.dx_max_sort_old);
+        } else {
+          cell_clear_hydro_sort_flags(c->progeny[k], 1);
+        }
       }
     }
     c->hydro.dx_max_sort = dx_max_sort;
@@ -1503,14 +1503,15 @@ void runner_do_stars_sort(struct runner *r, struct cell *c, int flags,
   if (c->hydro.super == NULL) error("Task called above the super level!!!");
 #endif
 
-  if(c->cellID == cell_to_check) {
-    message("Sorting stars in cellID=%d count=%d is_super=%d super=%d", c->cellID,
-	    c->stars.count, c == c->hydro.super, c->hydro.super->cellID);
+  if (c->cellID == cell_to_check) {
+    message("Sorting stars in cellID=%d count=%d is_super=%d super=%d",
+            c->cellID, c->stars.count, c == c->hydro.super,
+            c->hydro.super->cellID);
   }
 
-  if(c->cellID == super_cell_to_check) {
+  if (c->cellID == super_cell_to_check) {
     message("Sorting stars in cellID=%d count=%d is_super=%d", c->cellID,
-	    c->stars.count, c == c->hydro.super);
+            c->stars.count, c == c->hydro.super);
   }
 
   /* We need to do the local sorts plus whatever was requested further up. */
@@ -1553,19 +1554,19 @@ void runner_do_stars_sort(struct runner *r, struct cell *c, int flags,
     float dx_max_sort = 0.0f;
     float dx_max_sort_old = 0.0f;
     for (int k = 0; k < 8; k++) {
-      if (c->progeny[k] != NULL){ 
-	if(c->progeny[k]->stars.count > 0) {
-        /* Only propagate cleanup if the progeny is stale. */
-        const int cleanup_prog =
-            cleanup && (c->progeny[k]->stars.dx_max_sort_old >
-                        space_maxreldx * c->progeny[k]->dmin);
-        runner_do_stars_sort(r, c->progeny[k], flags, cleanup_prog, 0);
-        dx_max_sort = max(dx_max_sort, c->progeny[k]->stars.dx_max_sort);
-        dx_max_sort_old =
-            max(dx_max_sort_old, c->progeny[k]->stars.dx_max_sort_old);
-	} else {
-	  cell_clear_stars_sort_flags(c->progeny[k], 1);
-	}
+      if (c->progeny[k] != NULL) {
+        if (c->progeny[k]->stars.count > 0) {
+          /* Only propagate cleanup if the progeny is stale. */
+          const int cleanup_prog =
+              cleanup && (c->progeny[k]->stars.dx_max_sort_old >
+                          space_maxreldx * c->progeny[k]->dmin);
+          runner_do_stars_sort(r, c->progeny[k], flags, cleanup_prog, 0);
+          dx_max_sort = max(dx_max_sort, c->progeny[k]->stars.dx_max_sort);
+          dx_max_sort_old =
+              max(dx_max_sort_old, c->progeny[k]->stars.dx_max_sort_old);
+        } else {
+          cell_clear_stars_sort_flags(c->progeny[k], 1);
+        }
       }
     }
     c->stars.dx_max_sort = dx_max_sort;
@@ -1647,8 +1648,8 @@ void runner_do_stars_sort(struct runner *r, struct cell *c, int flags,
 
       /* And the individual sort distances if we are a local cell */
       for (int k = 0; k < count; k++) {
-	if(sparts[k].id == 155966626889L)
-	  message("Sorting star %lld", sparts[k].id);
+        if (sparts[k].id == 155966626889L)
+          message("Sorting star %lld", sparts[k].id);
         sparts[k].x_diff_sort[0] = 0.0f;
         sparts[k].x_diff_sort[1] = 0.0f;
         sparts[k].x_diff_sort[2] = 0.0f;
@@ -2377,8 +2378,8 @@ static void runner_do_unskip_hydro(struct cell *c, struct engine *e) {
 static void runner_do_unskip_stars(struct cell *c, struct engine *e,
                                    const int with_star_formation) {
 
-  const int non_empty = c->stars.count > 0 ||
-                        (with_star_formation && c->hydro.count > 0);
+  const int non_empty =
+      c->stars.count > 0 || (with_star_formation && c->hydro.count > 0);
 
   /* Ignore empty cells. */
   if (!non_empty) return;
@@ -3148,8 +3149,8 @@ void runner_do_timestep(struct runner *r, struct cell *c, int timer) {
       /* Get a handle on the part. */
       struct spart *restrict sp = &sparts[k];
 
-      if(sp->id == 155966626889L)
-	message("getting time-step for spart id=%lld", sp->id);
+      if (sp->id == 155966626889L)
+        message("getting time-step for spart id=%lld", sp->id);
 
       /* need to be updated ? */
       if (spart_is_active(sp, e)) {
@@ -3169,10 +3170,10 @@ void runner_do_timestep(struct runner *r, struct cell *c, int timer) {
         sp->time_bin = get_time_bin(ti_new_step);
         sp->gpart->time_bin = get_time_bin(ti_new_step);
 
-	if(sp->id == 155966626889L)
-	  message("new time-step for spart id=%lld is %d", sp->id,
-		  sp->time_bin);
-      
+        if (sp->id == 155966626889L)
+          message("new time-step for spart id=%lld is %d", sp->id,
+                  sp->time_bin);
+
         /* Number of updated s-particles */
         s_updated++;
         g_updated++;
@@ -3857,16 +3858,17 @@ void runner_do_recv_spart(struct runner *r, struct cell *c, int clear_sorts,
       time_bin_max = max(time_bin_max, sparts[k].time_bin);
       h_max = max(h_max, sparts[k].h);
 
-      if(sparts[k].id == 155966626889L) {
-	message("Received star %lld", sparts[k].id);
-	cell_to_check = c->cellID;
-	parent_cell_to_check = c->parent->cellID;
-	super_cell_to_check = c->hydro.super->cellID;
-	message("Cell to check: %d depth=%d", cell_to_check, c->depth);
-	message("Parent cell to check: %d", parent_cell_to_check);
-	message("Super to check: %d", super_cell_to_check);
-	message("Super to check sort task: %p", c->hydro.super->stars.sorts);
-	message("Super to check sort task skip: %d", c->hydro.super->stars.sorts->skip);
+      if (sparts[k].id == 155966626889L) {
+        message("Received star %lld", sparts[k].id);
+        cell_to_check = c->cellID;
+        parent_cell_to_check = c->parent->cellID;
+        super_cell_to_check = c->hydro.super->cellID;
+        message("Cell to check: %d depth=%d", cell_to_check, c->depth);
+        message("Parent cell to check: %d", parent_cell_to_check);
+        message("Super to check: %d", super_cell_to_check);
+        message("Super to check sort task: %p", c->hydro.super->stars.sorts);
+        message("Super to check sort task skip: %d",
+                c->hydro.super->stars.sorts->skip);
       }
     }
 
