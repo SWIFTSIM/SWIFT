@@ -3776,7 +3776,7 @@ void engine_step(struct engine *e) {
     e->forcerebuild = 1;
 
   /* Trigger a FOF search every N steps. */
-  if (e->policy & engine_policy_fof && !(e->step % e->s->fof_data.run_freq))
+  if (e->policy & engine_policy_fof && (e->step % e->s->fof_data.run_freq == 1))
     e->run_fof = 1;
 
 #ifdef WITH_LOGGER
