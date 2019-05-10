@@ -233,7 +233,7 @@ __attribute__((always_inline)) INLINE static void black_holes_prepare_feedback(
       4. * M_PI * G * BH_mass * proton_mass / (epsilon_r * c * sigma_Thomson);
 
   /* Limit the accretion rate to the Eddington fraction */
-  const double accr_rate = max(Bondi_rate, f_Edd * Eddington_rate);
+  const double accr_rate = min(Bondi_rate, f_Edd * Eddington_rate);
   bp->accretion_rate = accr_rate;
 
   /* Factor in the radiative efficiency */
