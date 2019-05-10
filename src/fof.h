@@ -54,7 +54,7 @@ struct fof_mpi {
 
 } SWIFT_STRUCT_ALIGN;
 
-struct fof {
+struct fof_props {
 
   size_t *group_index;
   size_t *group_size;
@@ -127,6 +127,7 @@ struct cell_pair_indices {
 
 /* Function prototypes. */
 void fof_init(struct space *s);
+void fof_allocate(struct space *s);
 void fof_search_cell(struct space *s, struct cell *c);
 void fof_search_pair_cells(struct space *s, struct cell *ci, struct cell *cj);
 void fof_search_pair_cells_foreign(struct space *s, struct cell *ci,

@@ -428,6 +428,9 @@ struct engine {
   /* Properties of the chemistry model */
   const struct chemistry_global_data *chemistry;
 
+  /*! The FOF properties data. */
+  struct fof_props *fof_properties;
+
   /* The (parsed) parameter file */
   struct swift_params *parameter_file;
 

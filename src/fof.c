@@ -49,115 +49,111 @@ MPI_Datatype fof_final_mass_type;
 #endif
 size_t node_offset;
 
-/* Initialises parameters for the FOF search. */
 void fof_init(struct space *s) {
 
-  static int first_init = 1;
-
-  /* Only read parameter file once. */
-  if (first_init) {
-
-    first_init = 0;
-
-    struct engine *e = s->e;
-
-    /* Check that we can write outputs by testing if the output
-     * directory exists and is searchable and writable. */
-    parser_get_param_string(e->parameter_file, "FOF:basename",
-                            s->fof_data.base_name);
-
-    const char *dirp = dirname(s->fof_data.base_name);
-    if (access(dirp, W_OK | X_OK) != 0) {
-      error("Cannot write FOF outputs in directory %s (%s)", dirp,
-            strerror(errno));
-    }
-
-    /* Read the minimum group size. */
-    s->fof_data.min_group_size =
-        parser_get_opt_param_int(e->parameter_file, "FOF:min_group_size", 20);
-
-    /* Read the default group ID of particles in groups below the minimum group
-     * size. */
-    const int default_id = parser_get_opt_param_int(
-        e->parameter_file, "FOF:group_id_default", 2147483647);
-
-    /* Make sure default group ID is positive. */
-    if (default_id < 0)
-      error("The default group ID set: %d, has to be positive.", default_id);
-
-    s->fof_data.group_id_default = default_id;
-
-    /* Read the starting group ID. */
-    s->fof_data.group_id_offset =
-        parser_get_opt_param_int(e->parameter_file, "FOF:group_id_offset", 1);
-
-    /* Read the linking length scale. */
-    const double l_x_scale = parser_get_opt_param_double(
-        e->parameter_file, "FOF:linking_length_scale", 0.2);
-
-    /* Calculate the particle linking length based upon the mean inter-particle
-     * spacing of the DM particles. */
-    const long long total_nr_dmparts =
-        e->total_nr_gparts - e->total_nr_parts - e->total_nr_sparts;
-    double l_x = l_x_scale * (s->dim[0] / cbrt(total_nr_dmparts));
-
-    l_x = parser_get_opt_param_double(e->parameter_file,
-                                      "FOF:absolute_linking_length", l_x);
-
-    s->fof_data.l_x2 = l_x * l_x;
-
-    s->fof_data.extra_bh_seed_count = 0;
-    s->fof_data.seed_halo_mass = parser_get_param_double(
-        e->parameter_file, "EAGLEBlackHoles:seed_halo_mass");
-    ;
-
-    /* Read the initial group_links array size. */
-    s->fof_data.group_links_size_default = parser_get_opt_param_double(
-        e->parameter_file, "FOF:group_links_size_default", 20000);
-
-#ifdef WITH_MPI
-    /* Check size of linking length against the top-level cell dimensions. */
-    if (l_x > s->width[0])
-      error(
-          "Linking length greater than the width of a top-level cell. Need to "
-          "check more than one layer of top-level cells for links.");
-
-    if (MPI_Type_contiguous(sizeof(struct fof_mpi) / sizeof(unsigned char),
-                            MPI_BYTE, &fof_mpi_type) != MPI_SUCCESS ||
-        MPI_Type_commit(&fof_mpi_type) != MPI_SUCCESS) {
-      error("Failed to create MPI type for fof.");
-    }
-    if (MPI_Type_contiguous(sizeof(struct group_length) / sizeof(unsigned char),
-                            MPI_BYTE, &group_length_mpi_type) != MPI_SUCCESS ||
-        MPI_Type_commit(&group_length_mpi_type) != MPI_SUCCESS) {
-      error("Failed to create MPI type for group_length.");
-    }
-    /* Define type for sending fof_final_index struct */
-    if (MPI_Type_contiguous(sizeof(struct fof_final_index), MPI_BYTE,
-                            &fof_final_index_type) != MPI_SUCCESS ||
-        MPI_Type_commit(&fof_final_index_type) != MPI_SUCCESS) {
-      error("Failed to create MPI type for fof_final_index.");
-    }
-    /* Define type for sending fof_final_mass struct */
-    if (MPI_Type_contiguous(sizeof(struct fof_final_mass), MPI_BYTE,
-                            &fof_final_mass_type) != MPI_SUCCESS ||
-        MPI_Type_commit(&fof_final_mass_type) != MPI_SUCCESS) {
-      error("Failed to create MPI type for fof_final_mass.");
-    }
-#endif
-
-#if defined(WITH_MPI) && defined(UNION_BY_SIZE_OVER_MPI)
-    if (engine_rank == 0)
-      message(
-          "Performing FOF over MPI using union by size and union by rank "
-          "locally.");
-#else
-    message("Performing FOF using union by rank.");
-#endif
+  const struct engine *e = s->e;
+  
+  /* Check that we can write outputs by testing if the output
+   * directory exists and is searchable and writable. */
+  parser_get_param_string(e->parameter_file, "FOF:basename",
+			  s->fof_data.base_name);
+  
+  const char *dirp = dirname(s->fof_data.base_name);
+  if (access(dirp, W_OK | X_OK) != 0) {
+    error("Cannot write FOF outputs in directory %s (%s)", dirp,
+	  strerror(errno));
   }
+  
+  /* Read the minimum group size. */
+  s->fof_data.min_group_size =
+    parser_get_opt_param_int(e->parameter_file, "FOF:min_group_size", 20);
+  
+  /* Read the default group ID of particles in groups below the minimum group
+   * size. */
+  const int default_id = parser_get_opt_param_int(
+						  e->parameter_file, "FOF:group_id_default", 2147483647);
+  
+  /* Make sure default group ID is positive. */
+  if (default_id < 0)
+    error("The default group ID set: %d, has to be positive.", default_id);
+  
+  s->fof_data.group_id_default = default_id;
+  
+  /* Read the starting group ID. */
+  s->fof_data.group_id_offset =
+    parser_get_opt_param_int(e->parameter_file, "FOF:group_id_offset", 1);
+  
+  /* Read the linking length scale. */
+  const double l_x_scale = parser_get_opt_param_double(
+						       e->parameter_file, "FOF:linking_length_scale", 0.2);
+  
+  /* Calculate the particle linking length based upon the mean inter-particle
+   * spacing of the DM particles. */
+  const long long total_nr_dmparts =
+    e->total_nr_gparts - e->total_nr_parts - e->total_nr_sparts;
+  double l_x = l_x_scale * (s->dim[0] / cbrt(total_nr_dmparts));
+  
+  l_x = parser_get_opt_param_double(e->parameter_file,
+				    "FOF:absolute_linking_length", l_x);
+  
+  s->fof_data.l_x2 = l_x * l_x;
+  
+  s->fof_data.extra_bh_seed_count = 0;
+  s->fof_data.seed_halo_mass = parser_get_param_double(
+						       e->parameter_file, "EAGLEBlackHoles:seed_halo_mass");
+  ;
+  
+  /* Read the initial group_links array size. */
+  s->fof_data.group_links_size_default = parser_get_opt_param_double(
+								     e->parameter_file, "FOF:group_links_size_default", 20000);
+#ifdef WITH_MPI  
+  if (MPI_Type_contiguous(sizeof(struct fof_mpi) / sizeof(unsigned char),
+			  MPI_BYTE, &fof_mpi_type) != MPI_SUCCESS ||
+      MPI_Type_commit(&fof_mpi_type) != MPI_SUCCESS) {
+    error("Failed to create MPI type for fof.");
+  }
+  if (MPI_Type_contiguous(sizeof(struct group_length) / sizeof(unsigned char),
+			  MPI_BYTE, &group_length_mpi_type) != MPI_SUCCESS ||
+      MPI_Type_commit(&group_length_mpi_type) != MPI_SUCCESS) {
+    error("Failed to create MPI type for group_length.");
+    }
+  /* Define type for sending fof_final_index struct */
+  if (MPI_Type_contiguous(sizeof(struct fof_final_index), MPI_BYTE,
+			  &fof_final_index_type) != MPI_SUCCESS ||
+      MPI_Type_commit(&fof_final_index_type) != MPI_SUCCESS) {
+    error("Failed to create MPI type for fof_final_index.");
+  }
+  /* Define type for sending fof_final_mass struct */
+  if (MPI_Type_contiguous(sizeof(struct fof_final_mass), MPI_BYTE,
+			  &fof_final_mass_type) != MPI_SUCCESS ||
+      MPI_Type_commit(&fof_final_mass_type) != MPI_SUCCESS) {
+    error("Failed to create MPI type for fof_final_mass.");
+  }
+#endif
+  
+#if defined(WITH_MPI) && defined(UNION_BY_SIZE_OVER_MPI)
+  if (engine_rank == 0)
+    message(
+	    "Performing FOF over MPI using union by size and union by rank "
+	    "locally.");
+#else
+  message("Performing FOF using union by rank.");
+#endif
+}
+
+/* Initialises parameters for the FOF search. */
+void fof_allocate(struct space *s) {
 
   const size_t nr_local_gparts = s->nr_gparts;
 
+#ifdef WITH_MPI
+  /* Check size of linking length against the top-level cell dimensions. */
+  if (s->fof_data.l_x2 > s->width[0] * s->width[0])
+    error(
+          "Linking length greater than the width of a top-level cell. Need to "
+          "check more than one layer of top-level cells for links.");
+#endif
+  
   /* Allocate and initialise a group index array. */
   if (swift_memalign("fof_group_index", (void **)&s->fof_data.group_index, 32,
                      nr_local_gparts * sizeof(size_t)) != 0)
@@ -167,7 +163,7 @@ void fof_init(struct space *s) {
   if (swift_memalign("fof_group_size", (void **)&s->fof_data.group_size, 32,
                      nr_local_gparts * sizeof(size_t)) != 0)
     error("Failed to allocate list of group size for FOF search.");
-
+  
   /* Set initial group index to particle offset into array and set default group
    * ID. */
   for (size_t i = 0; i < nr_local_gparts; i++) {

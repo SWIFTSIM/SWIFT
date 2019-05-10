@@ -54,7 +54,8 @@ SPH:
 # Parameters for the Friends-Of-Friends algorithm
 FOF:
   basename:                 fof_output  # Common part of the name of output files
-  min_group_size:           20          # (Optional) The minimum no. of particles required for a group. Defaults to 20 if unspecified.
+  run_freq:                  50
+  min_group_size:           256         # (Optional) The minimum no. of particles required for a group. Defaults to 20 if unspecified.
   linking_length_scale:     0.2         # (Optional) Scales the linking length. Defaults to 0.2 if unspecified.
   group_links_size_default: 20000       # (Optional) Sets the initial size of the group_links array, which is used to store links across MPI domains. Defaults to 20000 if unspecified.
   group_id_default:         2147483647  # (Optional) Sets the group ID of particles in groups below the minimum size. Defaults to 2^31 - 1 if unspecified. Has to be positive.
@@ -67,7 +68,11 @@ InitialConditions:
   periodic:   1
   cleanup_h_factors: 1               # Remove the h-factors inherited from Gadget
   cleanup_velocity_factors: 1        # Remove the sqrt(a) factor in the velocities inherited from Gadget
+
+EAGLEBlackHoles:
+  seed_halo_mass:            1.5
   
+
 EAGLEChemistry: 	     # Solar abundances
   init_abundance_metal:      0.014
   init_abundance_Hydrogen:   0.70649785

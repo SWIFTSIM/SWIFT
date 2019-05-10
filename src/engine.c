@@ -6279,7 +6279,7 @@ void engine_fof(struct engine *e) {
   ticks tic = getticks();
 
   /* Initialise FOF parameters and allocate FOF arrays. */
-  fof_init(e->s);
+  fof_allocate(e->s);
 
   /* Make FOF tasks and activate them. */
   engine_make_fof_tasks(e);
@@ -6294,7 +6294,7 @@ void engine_fof(struct engine *e) {
   /* Reset flag. */
   e->run_fof = 0;
 
-  if (e->verbose && engine_rank == 0)
+  if (engine_rank == 0)
     message("Complete FOF search took: %.3f %s.",
             clocks_from_ticks(getticks() - tic), clocks_getunit());
 }
