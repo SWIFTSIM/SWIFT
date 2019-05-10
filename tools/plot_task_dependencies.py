@@ -162,6 +162,9 @@ def taskIsStars(name):
     """
     if "stars" in name or "spart" in name:
         return True
+    if "sf_count" in name:
+        return True
+
     return False
 
 def taskIsHydro(name):

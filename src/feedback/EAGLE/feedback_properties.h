@@ -201,7 +201,7 @@ struct feedback_props {
   float num_SNII_per_msun;
 
   /*! Wind delay time for SNII */
-  float SNII_wind_delay;
+  double SNII_wind_delay;
 
   /*! Temperature increase induced by SNe feedback */
   float SNe_deltaT_desired;

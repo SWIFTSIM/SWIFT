@@ -266,6 +266,7 @@ void space_rebuild_recycle_mapper(void *map_data, int num_elements,
     c->hydro.xparts = NULL;
     c->grav.parts = NULL;
     c->stars.parts = NULL;
+    c->stars.parts_rebuild = NULL;
     c->black_holes.parts = NULL;
     c->flags = 0;
     c->hydro.ti_end_min = -1;
@@ -1873,6 +1874,9 @@ void space_rebuild(struct space *s, int repartitioned, int verbose) {
       c->grav.parts = gfinger;
       c->stars.parts = sfinger;
       c->black_holes.parts = bfinger;
+
+      /* Store the state at rebuild time */
+      c->stars.parts_rebuild = c->stars.parts;
 
       c->hydro.count_total = c->hydro.count + space_extra_parts;
       c->grav.count_total = c->grav.count + space_extra_gparts;
@@ -3700,8 +3704,8 @@ void space_split_mapper(void *map_data, int num_cells, void *extra_data) {
 void space_recycle(struct space *s, struct cell *c) {
 
   /* Clear the cell. */
-  if (lock_destroy(&c->lock) != 0 || lock_destroy(&c->grav.plock) != 0 ||
-      lock_destroy(&c->mlock) != 0 || lock_destroy(&c->stars.lock) != 0 ||
+  if (lock_destroy(&c->hydro.lock) != 0 || lock_destroy(&c->grav.plock) != 0 ||
+      lock_destroy(&c->grav.mlock) != 0 || lock_destroy(&c->stars.lock) != 0 ||
       lock_destroy(&c->black_holes.lock) != 0 ||
       lock_destroy(&c->stars.star_formation_lock))
     error("Failed to destroy spinlocks.");
@@ -3751,8 +3755,10 @@ void space_recycle_list(struct space *s, struct cell *cell_list_begin,
   /* Clean up the list of cells. */
   for (struct cell *c = cell_list_begin; c != NULL; c = c->next) {
     /* Clear the cell. */
-    if (lock_destroy(&c->lock) != 0 || lock_destroy(&c->grav.plock) != 0 ||
-        lock_destroy(&c->mlock) != 0 || lock_destroy(&c->stars.lock) != 0 ||
+    if (lock_destroy(&c->hydro.lock) != 0 ||
+        lock_destroy(&c->grav.plock) != 0 ||
+        lock_destroy(&c->grav.mlock) != 0 ||
+        lock_destroy(&c->stars.lock) != 0 ||
         lock_destroy(&c->black_holes.lock) != 0 ||
         lock_destroy(&c->stars.star_formation_lock))
       error("Failed to destroy spinlocks.");
@@ -3899,6 +3905,7 @@ void space_list_useful_top_level_cells(struct space *s) {
 
     const int has_particles =
         (c->hydro.count > 0) || (c->grav.count > 0) || (c->stars.count > 0) ||
+        (c->black_holes.count > 0) ||
         (c->grav.multipole != NULL && c->grav.multipole->m_pole.M_000 > 0.f);
 
     if (has_particles) {
@@ -5180,6 +5187,41 @@ void space_check_limiter(struct space *s) {
 
   threadpool_map(&s->e->threadpool, space_check_limiter_mapper, s->parts,
                  s->nr_parts, sizeof(struct part), 1000, NULL);
+#else
+  error("Calling debugging code without debugging flag activated.");
+#endif
+}
+
+void space_check_sort_flags_mapper(void *map_data, int nr_cells,
+                                   void *extra_data) {
+
+#ifdef SWIFT_DEBUG_CHECKS
+
+  const struct space *s = (struct space *)extra_data;
+  int *local_cells_top = map_data;
+
+  for (int ind = 0; ind < nr_cells; ++ind) {
+    const struct cell *c = &s->cells_top[local_cells_top[ind]];
+
+    cell_check_sort_flags(c);
+  }
+
+#endif
+}
+
+/**
+ * @brief Checks that all cells have cleared their sort flags.
+ *
+ * Should only be used for debugging purposes.
+ *
+ * @param s The #space to check.
+ */
+void space_check_sort_flags(struct space *s) {
+#ifdef SWIFT_DEBUG_CHECKS
+
+  threadpool_map(&s->e->threadpool, space_check_sort_flags_mapper,
+                 s->local_cells_with_tasks_top, s->nr_local_cells_with_tasks,
+                 sizeof(int), 1, s);
 #else
   error("Calling debugging code without debugging flag activated.");
 #endif

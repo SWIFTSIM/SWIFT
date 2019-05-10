@@ -253,6 +253,26 @@ struct pcell_step_black_holes {
   float dx_max_part;
 };
 
+/**
+ * @brief Cell information to propagate the new counts of star particles.
+ */
+struct pcell_sf {
+
+  /*! Stars variables */
+  struct {
+
+    /* Distance by which the stars pointer has moved since the last rebuild */
+    ptrdiff_t delta_from_rebuild;
+
+    /* Number of particles in the cell */
+    int count;
+
+    /*! Maximum part movement in this cell since last construction. */
+    float dx_max_part;
+
+  } stars;
+};
+
 /** Bitmasks for the cell flags. Beware when adding flags that you don't exceed
     the size of the flags variable in the struct cell. */
 enum cell_flags {
@@ -520,6 +540,9 @@ struct cell {
 
     /*! Pointer to the #spart data. */
     struct spart *parts;
+
+    /*! Pointer to the #spart data at rebuild time. */
+    struct spart *parts_rebuild;
 
     /*! The star ghost task itself */
     struct task *ghost;
@@ -802,6 +825,8 @@ int cell_unpack_end_step_black_holes(struct cell *c,
                                      struct pcell_step_black_holes *pcell);
 int cell_pack_multipoles(struct cell *c, struct gravity_tensors *m);
 int cell_unpack_multipoles(struct cell *c, struct gravity_tensors *m);
+int cell_pack_sf_counts(struct cell *c, struct pcell_sf *pcell);
+int cell_unpack_sf_counts(struct cell *c, struct pcell_sf *pcell);
 int cell_getsize(struct cell *c);
 int cell_link_parts(struct cell *c, struct part *parts);
 int cell_link_gparts(struct cell *c, struct gpart *gparts);
@@ -822,7 +847,8 @@ void cell_check_spart_drift_point(struct cell *c, void *data);
 void cell_check_multipole_drift_point(struct cell *c, void *data);
 void cell_reset_task_counters(struct cell *c);
 int cell_unskip_hydro_tasks(struct cell *c, struct scheduler *s);
-int cell_unskip_stars_tasks(struct cell *c, struct scheduler *s);
+int cell_unskip_stars_tasks(struct cell *c, struct scheduler *s,
+                            const int with_star_formation);
 int cell_unskip_black_holes_tasks(struct cell *c, struct scheduler *s);
 int cell_unskip_gravity_tasks(struct cell *c, struct scheduler *s);
 void cell_drift_part(struct cell *c, const struct engine *e, int force);
@@ -838,7 +864,8 @@ void cell_activate_subcell_hydro_tasks(struct cell *ci, struct cell *cj,
 void cell_activate_subcell_grav_tasks(struct cell *ci, struct cell *cj,
                                       struct scheduler *s);
 void cell_activate_subcell_stars_tasks(struct cell *ci, struct cell *cj,
-                                       struct scheduler *s);
+                                       struct scheduler *s,
+                                       const int with_star_formation);
 void cell_activate_subcell_black_holes_tasks(struct cell *ci, struct cell *cj,
                                              struct scheduler *s);
 void cell_activate_subcell_external_grav_tasks(struct cell *ci,
@@ -856,7 +883,9 @@ void cell_clear_limiter_flags(struct cell *c, void *data);
 void cell_set_super_mapper(void *map_data, int num_elements, void *extra_data);
 void cell_check_spart_pos(const struct cell *c,
                           const struct spart *global_sparts);
-void cell_clear_stars_sort_flags(struct cell *c);
+void cell_check_sort_flags(const struct cell *c);
+void cell_clear_stars_sort_flags(struct cell *c, const int unused_flags);
+void cell_clear_hydro_sort_flags(struct cell *c, const int unused_flags);
 int cell_has_tasks(struct cell *c);
 void cell_remove_part(const struct engine *e, struct cell *c, struct part *p,
                       struct xpart *xp);
