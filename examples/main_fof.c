@@ -1002,7 +1002,8 @@ int main(int argc, char *argv[]) {
 #endif
 
     /* Initialise the FOF parameters. */
-    fof_init(&s);
+    // MATTHIEU
+    // fof_init(&s);
 
     /* Initialise the particles */
     engine_init_particles(&e, flag_entropy_ICs, clean_smoothing_length_values,
