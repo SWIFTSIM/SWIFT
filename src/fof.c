@@ -553,6 +553,10 @@ void fof_search_cell(const struct fof_props *props, const struct space *s,
   for (size_t i = 0; i < count; i++) {
 
     struct gpart *pi = &gparts[i];
+
+    /* Ignore inhibited particles */
+    if (pi->time_bin >= time_bin_inhibited) continue;
+
     const double pix = pi->x[0];
     const double piy = pi->x[1];
     const double piz = pi->x[2];
@@ -562,16 +566,20 @@ void fof_search_cell(const struct fof_props *props, const struct space *s,
 
     for (size_t j = i + 1; j < count; j++) {
 
+      struct gpart *pj = &gparts[j];
+
+      /* Ignore inhibited particles */
+      if (pj->time_bin >= time_bin_inhibited) continue;
+
+      const double pjx = pj->x[0];
+      const double pjy = pj->x[1];
+      const double pjz = pj->x[2];
+
       /* Find the root of pj. */
       const size_t root_j = fof_find(offset[j], group_index);
 
       /* Skip particles in the same group. */
       if (root_i == root_j) continue;
-
-      struct gpart *pj = &gparts[j];
-      const double pjx = pj->x[0];
-      const double pjy = pj->x[1];
-      const double pjz = pj->x[2];
 
       /* Compute the pairwise distance */
       float dx[3], r2 = 0.0f;
@@ -640,6 +648,10 @@ void fof_search_pair_cells(const struct fof_props *props, const struct space *s,
   for (size_t i = 0; i < count_i; i++) {
 
     struct gpart *pi = &gparts_i[i];
+
+    /* Ignore inhibited particles */
+    if (pi->time_bin >= time_bin_inhibited) continue;
+
     const double pix = pi->x[0] - shift[0];
     const double piy = pi->x[1] - shift[1];
     const double piz = pi->x[2] - shift[2];
@@ -649,13 +661,17 @@ void fof_search_pair_cells(const struct fof_props *props, const struct space *s,
 
     for (size_t j = 0; j < count_j; j++) {
 
+      struct gpart *pj = &gparts_j[j];
+
+      /* Ignore inhibited particles */
+      if (pj->time_bin >= time_bin_inhibited) continue;
+
       /* Find the root of pj. */
       const size_t root_j = fof_find(offset_j[j], group_index);
 
       /* Skip particles in the same group. */
       if (root_i == root_j) continue;
 
-      struct gpart *pj = &gparts_j[j];
       const double pjx = pj->x[0];
       const double pjy = pj->x[1];
       const double pjz = pj->x[2];
@@ -734,6 +750,10 @@ void fof_search_pair_cells_foreign(
   for (size_t i = 0; i < count_i; i++) {
 
     const struct gpart *pi = &gparts_i[i];
+
+    /* Ignore inhibited particles */
+    if (pi->time_bin >= time_bin_inhibited) continue;
+
     const double pix = pi->x[0] - shift[0];
     const double piy = pi->x[1] - shift[1];
     const double piz = pi->x[2] - shift[2];
@@ -745,6 +765,10 @@ void fof_search_pair_cells_foreign(
     for (size_t j = 0; j < count_j; j++) {
 
       const struct gpart *pj = &gparts_j[j];
+
+      /* Ignore inhibited particles */
+      if (pj->time_bin >= time_bin_inhibited) continue;
+
       const double pjx = pj->x[0];
       const double pjy = pj->x[1];
       const double pjz = pj->x[2];
