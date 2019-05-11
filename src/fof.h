@@ -16,7 +16,6 @@
  * along with this program.  If not, see <http://www.gnu.org/licenses/>.
  *
  ******************************************************************************/
-
 #ifndef SWIFT_FOF_H
 #define SWIFT_FOF_H
 
@@ -30,12 +29,16 @@
 /* Constants. */
 #define UNION_BY_SIZE_OVER_MPI (1)
 #define FOF_COMPRESS_PATHS_MIN_LENGTH (2)
-#define FOF_NO_GAS (-1)
-#define FOF_BLACK_HOLE (-2)
-#define FOF_LOW_HALO_MASS (-3)
+
+enum fof_halo_seeding_props {
+  fof_halo_has_no_gas = -1LL,
+  fof_halo_has_black_hole = -2LL,
+  fof_halo_has_too_low_mass = -3LL
+};
 
 /* Avoid cyclic inclusions */
 struct space;
+struct engine;
 
 /* MPI message required for FOF. */
 struct fof_mpi {
@@ -56,8 +59,12 @@ struct fof_mpi {
 
 struct fof_props {
 
+  /*! Index of a particle in the global group array */
   size_t *group_index;
+
+  /*! Size of the group a particle belongs to */
   size_t *group_size;
+
   double *group_mass;
   long long *max_part_density_index;
   float *max_part_density;
@@ -65,7 +72,14 @@ struct fof_props {
   /*! The extra no. of black holes to seed locally. */
   int extra_bh_seed_count;
 
-  /*! The FOF linking length squared. */
+  /*! The linking length in units of the mean DM inter-particle separation. */
+  double l_x_ratio;
+
+  /*! The absolute linking length in internal units if the user wants to
+   *   overwrite the one based on the mean inter-particle separation. */
+  double l_x_absolute;
+
+  /*! The square of the linking length. */
   double l_x2;
 
   /*! The minimum halo mass for black hole seeding. */
@@ -76,6 +90,8 @@ struct fof_props {
 
   int num_groups;
   size_t min_group_size;
+
+  /*! Default group ID to give to particles not in a group */
   size_t group_id_default;
   size_t group_id_offset;
   int group_links_size_default;
@@ -84,6 +100,7 @@ struct fof_props {
   struct fof_mpi *group_links;
   int group_links_size;
 
+  /*! The base name of the output file */
   char base_name[PARSER_MAX_LINE_SIZE];
 
 } SWIFT_STRUCT_ALIGN;
@@ -126,23 +143,16 @@ struct cell_pair_indices {
 } SWIFT_STRUCT_ALIGN;
 
 /* Function prototypes. */
-void fof_init(struct space *s);
-void fof_allocate(struct space *s);
-void fof_search_cell(struct space *s, struct cell *c);
-void fof_search_pair_cells(struct space *s, struct cell *ci, struct cell *cj);
-void fof_search_pair_cells_foreign(struct space *s, struct cell *ci,
-                                   struct cell *cj, int *link_count,
-                                   struct fof_mpi **group_links,
-                                   int *group_links_size);
-void fof_search_tree(struct space *s);
-void fof_dump_group_data(char *out_file, struct space *s, int num_groups,
-                         struct group_length *group_sizes);
-void rec_fof_search_self(struct cell *c, struct space *s, const double dim[3],
-                         const double search_r2);
-void rec_fof_search_pair(struct cell *restrict ci, struct cell *restrict cj,
-                         struct space *s, const double dim[3],
-                         const double search_r2);
-
+void fof_init(struct fof_props *props, struct swift_params *params);
+void fof_create_mpi_types(void);
+void fof_allocate(const struct engine *e, struct fof_props *props);
+void fof_search_tree(struct fof_props *props, struct space *s);
+void rec_fof_search_self(const struct fof_props *props, const struct space *s,
+                         const double dim[3], const double search_r2,
+                         struct cell *c);
+void rec_fof_search_pair(const struct fof_props *props, const struct space *s,
+                         const double dim[3], const double search_r2,
+                         struct cell *restrict ci, struct cell *restrict cj);
 #ifdef WITH_MPI
 /* MPI data type for the particle transfers */
 extern MPI_Datatype fof_mpi_type;

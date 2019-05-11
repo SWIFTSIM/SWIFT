@@ -4342,11 +4342,12 @@ void runner_do_fof_self(struct runner *r, struct cell *c, int timer) {
 
   TIMER_TIC;
 
-  struct space *s = r->e->s;
+  const struct engine *e = r->e;
+  struct space *s = e->s;
   const double dim[3] = {s->dim[0], s->dim[1], s->dim[2]};
-  const double search_r2 = s->fof_data.l_x2;
+  const double search_r2 = e->fof_properties->l_x2;
 
-  rec_fof_search_self(c, s, dim, search_r2);
+  rec_fof_search_self(e->fof_properties, s, dim, search_r2, c);
 
   if (timer) TIMER_TOC(timer_fof_self);
 }
@@ -4364,11 +4365,12 @@ void runner_do_fof_pair(struct runner *r, struct cell *ci, struct cell *cj,
 
   TIMER_TIC;
 
-  struct space *s = r->e->s;
+  const struct engine *e = r->e;
+  struct space *s = e->s;
   const double dim[3] = {s->dim[0], s->dim[1], s->dim[2]};
-  const double search_r2 = s->fof_data.l_x2;
+  const double search_r2 = e->fof_properties->l_x2;
 
-  rec_fof_search_pair(ci, cj, s, dim, search_r2);
+  rec_fof_search_pair(e->fof_properties, s, dim, search_r2, ci, cj);
 
   if (timer) TIMER_TOC(timer_fof_pair);
 }

@@ -3776,7 +3776,8 @@ void engine_step(struct engine *e) {
     e->forcerebuild = 1;
 
   /* Trigger a FOF search every N steps. */
-  if (e->policy & engine_policy_fof && (e->step % e->s->fof_data.run_freq == 1))
+  if (e->policy & engine_policy_fof &&
+      (e->step % e->fof_properties->run_freq == 1))
     e->run_fof = 1;
 
 #ifdef WITH_LOGGER
@@ -5087,12 +5088,6 @@ void engine_config(int restart, struct engine *e, struct swift_params *params,
     message("Number of task queues set to %d", nr_queues);
   e->s->nr_queues = nr_queues;
 
-  /* Read the FOF search frequency. */
-  if (e->policy & engine_policy_fof) {
-    e->s->fof_data.run_freq =
-        parser_get_opt_param_int(params, "FOF:run_freq", 2000);
-  }
-
 /* Deal with affinity. For now, just figure out the number of cores. */
 #if defined(HAVE_SETAFFINITY)
   const int nr_cores = sysconf(_SC_NPROCESSORS_ONLN);
@@ -5510,6 +5505,7 @@ void engine_config(int restart, struct engine *e, struct swift_params *params,
   stats_create_mpi_type();
   proxy_create_mpi_type();
   task_create_mpi_comms();
+  fof_create_mpi_types();
 #endif
 
   /* Initialise the collection group. */
@@ -6279,7 +6275,7 @@ void engine_fof(struct engine *e) {
   ticks tic = getticks();
 
   /* Initialise FOF parameters and allocate FOF arrays. */
-  fof_allocate(e->s);
+  fof_allocate(e, e->fof_properties);
 
   /* Make FOF tasks and activate them. */
   engine_make_fof_tasks(e);
@@ -6289,7 +6285,7 @@ void engine_fof(struct engine *e) {
 
   /* Perform FOF search over foreign particles and
    * find groups which require black hole seeding.  */
-  fof_search_tree(e->s);
+  fof_search_tree(e->fof_properties, e->s);
 
   /* Reset flag. */
   e->run_fof = 0;
