@@ -59,18 +59,7 @@ struct fof_mpi {
 
 struct fof_props {
 
-  /*! Index of a particle in the global group array */
-  size_t *group_index;
-
-  /*! Size of the group a particle belongs to */
-  size_t *group_size;
-
-  double *group_mass;
-  long long *max_part_density_index;
-  float *max_part_density;
-
-  /*! The extra no. of black holes to seed locally. */
-  int extra_bh_seed_count;
+  /* ----------- Parameters of the FOF search ------- */
 
   /*! The linking length in units of the mean DM inter-particle separation. */
   double l_x_ratio;
@@ -88,20 +77,54 @@ struct fof_props {
   /*! The no. of steps between each FOF search. */
   int run_freq;
 
-  int num_groups;
+  /*! Minimal number of particles in a group */
   size_t min_group_size;
 
   /*! Default group ID to give to particles not in a group */
   size_t group_id_default;
-  size_t group_id_offset;
-  int group_links_size_default;
 
-  int group_link_count;
-  struct fof_mpi *group_links;
-  int group_links_size;
+  /*! ID of the first (largest) group. */
+  size_t group_id_offset;
 
   /*! The base name of the output file */
   char base_name[PARSER_MAX_LINE_SIZE];
+
+  /* ------------  Group properties ----------------- */
+
+  /*! Number of groups */
+  int num_groups;
+
+  /*! Number of local black holes that belong to groups whose roots are on a
+   * different node. */
+  int extra_bh_seed_count;
+
+  /*! Index of the root particle of the group a given gpart belongs to. */
+  size_t *group_index;
+
+  /*! Size of the group a given gpart belongs to. */
+  size_t *group_size;
+
+  /*! Mass of the group a given gpart belongs to. */
+  double *group_mass;
+
+  /*! Index of the part with the maximal density of each group. */
+  long long *max_part_density_index;
+
+  /*! Maximal density of all parts of each group. */
+  float *max_part_density;
+
+  /* ------------ MPI-related arrays --------------- */
+
+  /*! The number of links between pairs of particles on this node and
+   * a foreign node */
+  int group_link_count;
+
+  /*! The allocated size of the links array */
+  int group_links_size;
+
+  /*! The links between pairs of particles on this node and a foreign
+   * node */
+  struct fof_mpi *group_links;
 
 } SWIFT_STRUCT_ALIGN;
 

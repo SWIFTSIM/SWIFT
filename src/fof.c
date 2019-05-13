@@ -44,6 +44,7 @@
 #define fof_props_default_run_freq 2000
 #define fof_props_default_group_id 2147483647
 #define fof_props_default_group_id_offset 1
+#define fof_props_default_group_link_size 20000
 
 #ifdef WITH_MPI
 MPI_Datatype fof_mpi_type;
@@ -92,10 +93,6 @@ void fof_init(struct fof_props *props, struct swift_params *params) {
   /* Read value of absolute linking length aksed by the user */
   props->l_x_absolute =
       parser_get_opt_param_double(params, "FOF:absolute_linking_length", -1.);
-
-  /* Read the initial group_links array size. */
-  props->group_links_size_default = parser_get_opt_param_double(
-      params, "FOF:group_links_size_default", 20000);
 
 #if defined(WITH_MPI) && defined(UNION_BY_SIZE_OVER_MPI)
   if (engine_rank == 0)
@@ -1696,7 +1693,7 @@ void fof_search_foreign_cells(struct fof_props *props, const struct space *s) {
   int group_link_count = 0;
   int cell_pair_count = 0;
 
-  props->group_links_size = props->group_links_size_default;
+  props->group_links_size = fof_props_default_group_link_size;
   props->group_link_count = 0;
 
   int num_cells_out = 0;
