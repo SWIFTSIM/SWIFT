@@ -1926,6 +1926,9 @@ void runner_do_ghost(struct runner *r, struct cell *c, int timer) {
   const struct cosmology *cosmo = e->cosmology;
   const struct chemistry_global_data *chemistry = e->chemistry;
   const struct star_formation *star_formation = e->star_formation;
+
+  const int with_cosmology = (e->policy & engine_policy_cosmology);
+
   const float hydro_h_max = e->hydro_properties->h_max;
   const float hydro_h_min = e->hydro_properties->h_min;
   const float eps = e->hydro_properties->h_tolerance;
@@ -2071,7 +2074,6 @@ void runner_do_ghost(struct runner *r, struct cell *c, int timer) {
             /* Calculate the time-step for passing to hydro_prepare_force, used
              * for the evolution of alpha factors (i.e. those involved in the
              * artificial viscosity and thermal conduction terms) */
-            const int with_cosmology = (e->policy & engine_policy_cosmology);
             const double time_base = e->time_base;
             const integertime_t ti_current = e->ti_current;
             double dt_alpha;
@@ -2168,6 +2170,9 @@ void runner_do_ghost(struct runner *r, struct cell *c, int timer) {
             hydro_init_part(p, hs);
             chemistry_init_part(p, chemistry);
             star_formation_init_part(p, star_formation);
+            tracers_after_init(p, xp, e->internal_units, e->physical_constants,
+                               with_cosmology, e->cosmology,
+                               e->hydro_properties, e->cooling_func, e->time);
 
             /* Off we go ! */
             continue;
@@ -2222,7 +2227,6 @@ void runner_do_ghost(struct runner *r, struct cell *c, int timer) {
         /* Calculate the time-step for passing to hydro_prepare_force, used for
          * the evolution of alpha factors (i.e. those involved in the artificial
          * viscosity and thermal conduction terms) */
-        const int with_cosmology = (e->policy & engine_policy_cosmology);
         const double time_base = e->time_base;
         const integertime_t ti_current = e->ti_current;
         double dt_alpha;
