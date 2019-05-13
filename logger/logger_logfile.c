@@ -18,7 +18,7 @@
  ******************************************************************************/
 #include "logger_logfile.h"
 #include "logger_reader.h"
-#include "logger_io.h"
+#include "logger_loader_io.h"
 
 /**
  * @brief Initialize the #logger_logfile.
@@ -42,7 +42,8 @@ void logger_logfile_init(
   /* Open file, map it and get its size. */
   if (reader->verbose > 1)
     message("Mapping the log file.");
-  log->log.map = logger_io_mmap_file(filename, &log->log.file_size);
+  log->log.map = logger_loader_io_mmap_file(
+      filename, &log->log.file_size, /* read_only */ 1);
 
   /* Read the header. */
   if (reader->verbose > 1)
@@ -66,7 +67,7 @@ void logger_logfile_init(
 
   /* Reverse the offsets direction */
   if (header_is_backward(&log->header)) {
-    logger_logfile_reverse_offset(log);
+    logger_logfile_reverse_offset(log, filename);
   }
 
   /* Initialize the time array */
@@ -87,7 +88,7 @@ void logger_logfile_init(
  * @param log The #logger_logfile.
  */
 void logger_logfile_free(struct logger_logfile *log) {
-  logger_io_munmap_file(log->log.map, log->log.file_size);
+  logger_loader_io_munmap_file(log->log.map, log->log.file_size);
 
 }
 
@@ -96,8 +97,14 @@ void logger_logfile_free(struct logger_logfile *log) {
  * @brief Reverse offset in log file
  *
  * @param log The #logger_logfile
+ * @param filename The log's filename.
  */
-void logger_logfile_reverse_offset(struct logger_logfile *log) {
+void logger_logfile_reverse_offset(struct logger_logfile *log, char *filename) {
+
+  /* Close and reopen the file in write mode */
+  logger_loader_io_munmap_file(log->log.map, log->log.file_size);
+  log->log.map = logger_loader_io_mmap_file(
+      filename, &log->log.file_size, /* read_only */ 0);
 
   /* Get pointers */
   struct header *header = &log->header;
@@ -163,4 +170,8 @@ void logger_logfile_reverse_offset(struct logger_logfile *log) {
   }
 #endif
 
+  /* Close and reopen the file in read mode */
+  logger_loader_io_munmap_file(log->log.map, log->log.file_size);
+  log->log.map = logger_loader_io_mmap_file(
+      filename, &log->log.file_size, /* read_only */ 1);
 }

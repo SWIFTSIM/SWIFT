@@ -17,11 +17,11 @@
  *
  ******************************************************************************/
 /**
- * @file logger_io.h
+ * @file logger_loader_io.h
  * @brief This file contains basic IO function.
  */
-#ifndef __LOGGER_LOGGER_IO_H__
-#define __LOGGER_LOGGER_IO_H__
+#ifndef __LOGGER_LOGGER_LOADER_IO_H__
+#define __LOGGER_LOGGER_LOADER_IO_H__
 
 #include "logger_header.h"
 #include "logger_tools.h"
@@ -29,9 +29,9 @@
 #include <stdio.h>
 #include <stdlib.h>
 
-size_t logger_io_get_file_size(int fd);
-void *logger_io_mmap_file(char *filename, size_t *file_size);
-void logger_io_munmap_file(void *map, size_t file_size);
+size_t logger_loader_io_get_file_size(int fd);
+void *logger_loader_io_mmap_file(char *filename, size_t *file_size, int read_only);
+void logger_loader_io_munmap_file(void *map, size_t file_size);
 
 /**
  * @brief read a mask with its offset.
@@ -43,7 +43,7 @@ void logger_io_munmap_file(void *map, size_t file_size);
  *
  * @return memory after the record header.
  */
-__attribute__((always_inline)) INLINE static void* logger_io_read_mask(
+__attribute__((always_inline)) INLINE static void* logger_loader_io_read_mask(
     const struct header *h, void *data, size_t *mask,
     size_t *diff_offset) {
   /* read mask */
@@ -72,7 +72,7 @@ __attribute__((always_inline)) INLINE static void* logger_io_read_mask(
 
  * @return memory after the data written.
  */
-__attribute__((always_inline)) INLINE static void* logger_io_read_data(
+__attribute__((always_inline)) INLINE static void* logger_loader_io_read_data(
     void *data, const size_t size, void *p) {
   memcpy(p, data, size);
   return data + size;
@@ -87,11 +87,11 @@ __attribute__((always_inline)) INLINE static void* logger_io_read_data(
  *
  * @return memory after the data written.
  */
-__attribute__((always_inline)) INLINE static void* logger_io_write_data(
+__attribute__((always_inline)) INLINE static void* logger_loader_io_write_data(
     void *data, const size_t size, const void *p) {
   memcpy(data, p, size);
 
   return data + size;
 };
 
-#endif  // __LOGGER_LOGGER_IO_H__
+#endif  // __LOGGER_LOGGER_LOADER_IO_H__

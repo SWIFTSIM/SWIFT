@@ -26,7 +26,7 @@
 /* This object's header. */
 #include "logger_index.h"
 
-#include "logger_io.h"
+#include "logger_loader_io.h"
 #include "logger_tools.h"
 
 /**
@@ -40,18 +40,19 @@ void logger_index_init(struct logger_index *index, struct logger_reader *reader,
 		       char *filename) {
 
   /* Open file. */
-  index->data = logger_io_mmap_file(filename, &index->file_size);
+  index->data = logger_loader_io_mmap_file(filename, &index->file_size, /* read_only */ 1);
 
-  /* /\* Read the double time. *\/ */
-  /* size_t offset = 0; */
-  /* offset = logger_io_read_data(index->data, sizeof(double), &index->time, offset); */
+  /* Read the double time. */
+  size_t offset = 0;
+  void *map = index->data + offset;
+  map = logger_loader_io_read_data(map, sizeof(double), &index->time);
 
-  /* /\* Read the integer time. *\/ */
-  /* offset = logger_io_read_data(index->data, sizeof(integertime_t), &index->int_time, offset); */
+  /* Read the integer time. */
+  map = logger_loader_io_read_data(map, sizeof(integertime_t), &index->int_time);
 
-  /* /\* Read the number of particles. *\/ */
-  /* offset = logger_io_read_data(index->data, swift_type_count * sizeof(long long), */
-  /* 			&index->number_particles, offset); */
+  /* Read the number of particles. */
+  map = logger_loader_io_read_data(map, swift_type_count * sizeof(long long),
+  			&index->number_particles);
 
   /* Count total number of particles. */
   long long N = 0;
@@ -70,7 +71,7 @@ void logger_index_init(struct logger_index *index, struct logger_reader *reader,
 void logger_index_free(struct logger_index *index) {
 
   /* unmap file */
-  logger_io_munmap_file(index->data, index->file_size);
+  logger_loader_io_munmap_file(index->data, index->file_size);
 
   /* Set variables to default value. */
   index->total_number_particles = 0;

@@ -91,8 +91,8 @@ enum logger_reader_type {
 void logger_particle_print(const struct logger_particle *p);
 
 size_t logger_particle_read(struct logger_particle *part, const struct logger_reader *reader,
-			  size_t offset, const double time,
-			  const enum logger_reader_type reader_type);
+			    size_t offset, const double time,
+			    const enum logger_reader_type reader_type);
 
 void logger_particle_init(struct logger_particle *part);
 

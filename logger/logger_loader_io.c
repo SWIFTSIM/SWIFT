@@ -22,7 +22,7 @@
 #include <unistd.h>
 
 #include "logger_header.h"
-#include "logger_io.h"
+#include "logger_loader_io.h"
 #include "logger_tools.h"
 
 /**
@@ -32,7 +32,7 @@
  *
  * @return file size.
  */
-size_t logger_io_get_file_size(int fd) {
+size_t logger_loader_io_get_file_size(int fd) {
   struct stat s;
   int status = fstat(fd, &s);
   if (status != 0) error("Unable to get file size (%s)", strerror(errno));
@@ -42,23 +42,34 @@ size_t logger_io_get_file_size(int fd) {
 /**
  * @brief Map a file.
  *
- * #logger_io_munmap_file should be called to unmap the file.
+ * #logger_loader_io_munmap_file should be called to unmap the file.
  *
  * @param filename file to read.
  * @param file_size (out) size of the file.
+ * @param read_only Open the file in read only mode?
  *
  */
-void *logger_io_mmap_file(char *filename, size_t *file_size) {
+void *logger_loader_io_mmap_file(char *filename, size_t *file_size, int read_only) {
   /* open the file. */
-  int fd = open(filename, O_RDWR);
+  int fd;
+
+  if (read_only)
+    fd = open(filename, O_RDONLY);
+  else
+    fd = open(filename, O_RDWR);
+    
   if (fd == -1)
     error("Unable to open file %s (%s)", filename, strerror(errno));
 
   /* get the file size. */
-  *file_size = logger_io_get_file_size(fd);
+  *file_size = logger_loader_io_get_file_size(fd);
 
   /* map the memory. */
-  void *map = mmap(NULL, *file_size, PROT_WRITE | PROT_READ, MAP_SHARED, fd, 0);
+  int mode = PROT_READ;
+  if (!read_only)
+    mode |= PROT_WRITE;
+
+  void *map = mmap(NULL, *file_size, mode, MAP_SHARED, fd, 0);
   if (map == MAP_FAILED)
     error("Failed to allocate map of size %zi bytes. (%s)", *file_size,
           strerror(errno));
@@ -76,7 +87,7 @@ void *logger_io_mmap_file(char *filename, size_t *file_size) {
  * @param file_size The file size.
  *
  */
-void logger_io_munmap_file(void *map, size_t file_size) {
+void logger_loader_io_munmap_file(void *map, size_t file_size) {
   /* unmap */
   if (munmap(map, file_size) != 0) {
     error("Unable to unmap the file (%s)", strerror(errno));

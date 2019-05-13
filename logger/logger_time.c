@@ -17,7 +17,7 @@
  *
  ******************************************************************************/
 #include "logger_time.h"
-#include "logger_io.h"
+#include "logger_loader_io.h"
 #include "logger_logfile.h"
 #include "logger_reader.h"
 
@@ -29,10 +29,9 @@
  * @param reader The #logger_reader.
  * @param offset position in the file.
  *
- * @return position after the time record.
  */
 size_t time_read(integertime_t *int_time, double *time, const struct logger_reader *reader,
-               size_t offset) {
+	       size_t offset) {
 
   /* Initialize variables. */
   const struct header *h = &reader->log.header;
@@ -44,7 +43,7 @@ size_t time_read(integertime_t *int_time, double *time, const struct logger_read
   *time = 0;
 
   /* read record header */
-  map = logger_io_read_mask(h, map + offset, &mask, &prev_offset);
+  map = logger_loader_io_read_mask(h, map + offset, &mask, &prev_offset);
 
 #ifdef SWIFT_DEBUG_CHECKS
 
@@ -57,10 +56,11 @@ size_t time_read(integertime_t *int_time, double *time, const struct logger_read
 #endif
 
   /* read the record */
-  map = logger_io_read_data(map, sizeof(unsigned long long int), int_time);
-  map = logger_io_read_data(map, sizeof(double), time);
+  map = logger_loader_io_read_data(map, sizeof(unsigned long long int), int_time);
+  map = logger_loader_io_read_data(map, sizeof(double), time);
 
-  return (size_t) (map - h->log->log.map);
+  return map - h->log->log.map;
+
 }
 
 /**
@@ -82,7 +82,7 @@ size_t time_offset_first_record(const struct header *h) {
   if (i == -1) error("Time mask not present in the log file header");
 
   size_t mask = 0;
-  logger_io_read_mask(h, map + offset, &mask, NULL);
+  logger_loader_io_read_mask(h, map + offset, &mask, NULL);
 
   if (mask != h->masks[i].mask) error("Log file should begin by timestep");
 
@@ -123,7 +123,7 @@ void time_array_init(struct time_array *t, struct logger_logfile *log) {
     /* read current time record and store it. */
     t->offset = offset;
     size_t tmp_offset = offset;
-    tmp_offset = time_read(&int_time, &time, log->reader, tmp_offset);
+    time_read(&int_time, &time, log->reader, tmp_offset);
     t->int_time = int_time;
     t->time = time;
 

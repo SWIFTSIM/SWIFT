@@ -18,7 +18,7 @@
  ******************************************************************************/
 #include "logger_particle.h"
 #include "logger_header.h"
-#include "logger_io.h"
+#include "logger_loader_io.h"
 #include "logger_reader.h"
 #include "logger_time.h"
 #include "logger_tools.h"
@@ -97,7 +97,7 @@ void* logger_particle_read_field(struct logger_particle *part, void *map,
   }
 
   /* read the data */
-  map = logger_io_read_data(map, size, p);
+  map = logger_loader_io_read_data(map, size, p);
 
   /* Split the required fields */
   if (strcmp("consts", field) == 0) {
@@ -140,7 +140,7 @@ size_t logger_particle_read(struct logger_particle *part, const struct logger_re
   logger_particle_init(part);
 
   /* Read the record mask */
-  map = logger_io_read_mask(h, map + offset, &mask, &h_offset);
+  map = logger_loader_io_read_mask(h, map + offset, &mask, &h_offset);
 
   /* Check if it is not a time record */
   if (mask != 127) error("Unexpected mask: %lu", mask);

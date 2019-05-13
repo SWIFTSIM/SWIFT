@@ -25,7 +25,6 @@
 #include <stdlib.h>
 
 #define LOGGER_VERSION_SIZE 20
-#define LOGGER_NUMBER_SIZE 4
 #define LOGGER_OFFSET_SIZE 7
 #define LOGGER_MASK_SIZE 1
 
@@ -67,10 +66,10 @@ struct header {
   size_t offset_first_record;
 
   /* Number of bytes for strings. */
-  size_t string_length;
+  unsigned int string_length;
 
   /* Number of masks. */
-  size_t number_mask;
+  unsigned int number_mask;
 
   /* List of masks. */
   struct mask_data *masks;

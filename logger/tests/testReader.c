@@ -19,6 +19,8 @@
 
 #include "swift.h"
 #include "logger_header.h"
+#include "logger_loader_io.h"
+#include "logger_particle.h"
 #include "logger_reader.h"
 
 #define number_parts 100
@@ -54,6 +56,25 @@ void init_particles(struct part *p, struct xpart *xp) {
 }
 
 /**
+ * @brief Provides a time given the step number.
+ *
+ * @param step The required step.
+ */
+integertime_t get_integer_time(int step) {
+  return step;
+}
+
+/**
+ * @brief Provides a time given the step number.
+ *
+ * @param step The required step.
+ */
+double get_double_time(int step) {
+  const double time_base = 1e-4;
+  return step * time_base;
+}
+
+/**
  * @brief Write a few particles during multiple time steps.
  *
  * As only the logger is tested, there is no need to really
@@ -63,14 +84,6 @@ void write_particles(struct logger *log) {
 
 
   const int number_steps = 100;
-
-  integertime_t ti_int = 0;
-  double ti_double = 0.;
-  const double time_base = 1e-4;
-
-  /* Create unit system */
-  struct unit_system us;
-  units_init_cgs(&us);
 
   /* Create particles and initialize them. */
   struct part *parts;
@@ -89,6 +102,8 @@ void write_particles(struct logger *log) {
     
   /* Do step */
   for(int i = 0; i < number_steps; i++) {
+    integertime_t ti_int = get_integer_time(i);
+    double ti_double = get_double_time(i);
 
     /* Mark the current time step in the particle logger file. */
     logger_log_timestamp(log, ti_int, ti_double,
@@ -113,17 +128,118 @@ void write_particles(struct logger *log) {
 		      &xparts[j].logger_data.last_offset);      
     }
 
-    ti_int += 1;
-    ti_double = time_base * ti_int;
-
     // TODO write index files
   }
 
   /* Mark the current time step in the particle logger file. */
+  integertime_t ti_int = get_integer_time(number_steps);
+  double ti_double = get_double_time(number_steps);
   logger_log_timestamp(log, ti_int, ti_double,
 		       &log->timestamp_offset);
 
 
+  /* Cleanup */
+  free(parts);
+  free(xparts);
+}
+
+/**
+ * @brief Read a record (timestamp or particle)
+ *
+ * @param reader The #reader.
+ * @param lp (out) The #logger_particle (if the record is a particle).
+ * @param time (out) The time read (if the record is a timestamp).
+ * @param is_particle Is the record a particle (or a timestamp)?
+ * @param offset The offset in the file.
+ *
+ * @return The offset after this record.
+ */
+size_t read_record(struct logger_reader *reader, struct logger_particle *lp,
+		   double *time, int *is_particle, size_t offset) {
+
+  struct logger_logfile *log = &reader->log;
+
+  /* Read mask to find out if timestamp or particle */
+  size_t mask = 0;
+  logger_loader_io_read_mask(&log->header, log->log.map + offset, &mask, NULL);
+
+  /* Check if timestamp or not */
+  int ind = header_get_field_index(&log->header, "timestamp");
+  if (ind == -1) {
+    error("File header does not contain a mask for time");
+  }
+  if (log->header.masks[ind].mask == mask) {
+    *is_particle = 0;
+    integertime_t int_time = 0;
+    offset = time_read(&int_time, time, reader, offset);
+  }
+  else {
+    *is_particle = 1;
+    offset = logger_particle_read(lp, reader, offset, *time, logger_reader_const);
+  }
+
+  return offset;
+}
+
+/**
+ * @brief Check that the reader contains the correct data
+ *
+ * @param reader The #logger_reader.
+ */
+void check_data(struct logger_reader *reader) {
+
+  /* No need to check the header, this is already done in testHeader.c */
+
+  /* Get required structures */
+  struct logger_logfile *logfile = &reader->log;
+  
+  struct logger_particle lp;
+  logger_particle_init(&lp);
+
+  /* Generate the particles again */
+  struct part *parts;
+  if ((parts = (struct part *)malloc(sizeof(struct part) * number_parts)) == NULL)
+    error("Failed to allocate particles array.");
+
+  struct xpart *xparts;
+  if ((xparts = (struct xpart *)malloc(sizeof(struct xpart) * number_parts)) == NULL)
+    error("Failed to allocate xparticles array.");
+
+  init_particles(parts, xparts);
+
+  double time = get_double_time(0);
+  int is_particle = 0;
+  int step = 0;
+
+  /* Loop over each record */
+  for(size_t offset = read_record(reader, &lp, &time, &is_particle, logfile->header.offset_first_record);
+      offset < logfile->log.file_size;
+      offset = read_record(reader, &lp, &time, &is_particle, offset)) {
+
+    if (is_particle) {
+      if (lp.id >= number_parts)
+	error("Wrong id %zi", lp.id);
+
+      struct part *p = &parts[lp.id];
+
+      for(int i = 0; i < 3; i++) {
+	assert(p->x[i] == lp.pos[i]);
+	assert(p->v[i] == lp.vel[i]);
+	assert(p->a_hydro[i] == lp.acc[i]);
+      }
+
+      assert(p->entropy == lp.entropy);
+      assert(p->h == lp.h);
+      assert(p->rho == lp.density);
+      assert(p->mass == lp.mass);
+    }
+    else {
+      assert(time == get_double_time(step));
+
+      step += 1;
+    }
+  }
+  
 }
 
 
@@ -178,6 +294,8 @@ int main(int argc, char *argv[]) {
   /*
     Finally check everything
   */
+
+  check_data(&reader);
 
   return 0;
 }
