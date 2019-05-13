@@ -1911,6 +1911,7 @@ void fof_search_foreign_cells(struct fof_props *props, const struct space *s) {
   /* Clean up memory. */
   free(displ);
   swift_free("fof_group_links", props->group_links);
+  props->group_links = NULL;
 
   if (verbose) {
     message("Communication took: %.3f %s.",
@@ -2391,6 +2392,11 @@ void fof_search_tree(struct fof_props *props, struct space *s) {
   swift_free("fof_group_mass", props->group_mass);
   swift_free("fof_max_part_density_index", props->max_part_density_index);
   swift_free("fof_max_part_density", props->max_part_density);
+  props->group_index = NULL;
+  props->group_size = NULL;
+  props->group_mass = NULL;
+  props->max_part_density_index = NULL;
+  props->max_part_density = NULL;
 
   if (engine_rank == 0) {
     message(
@@ -2408,4 +2414,27 @@ void fof_search_tree(struct fof_props *props, struct space *s) {
 #ifdef WITH_MPI
   MPI_Barrier(MPI_COMM_WORLD);
 #endif
+}
+
+void fof_struct_dump(const struct fof_props *props, FILE *stream) {
+
+  struct fof_props temp = *props;
+  temp.num_groups = 0;
+  temp.group_link_count = 0;
+  temp.group_links_size = 0;
+  temp.group_index = NULL;
+  temp.group_size = NULL;
+  temp.group_mass = NULL;
+  temp.max_part_density_index = NULL;
+  temp.max_part_density = NULL;
+  temp.group_links = NULL;
+
+  restart_write_blocks((void *)&temp, sizeof(struct fof_props), 1, stream,
+                       "fof_props", "fof_props");
+}
+
+void fof_struct_restore(struct fof_props *props, FILE *stream) {
+
+  restart_read_blocks((void *)props, sizeof(struct fof_props), 1, stream, NULL,
+                      "fof_props");
 }

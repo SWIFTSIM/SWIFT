@@ -176,6 +176,8 @@ void rec_fof_search_self(const struct fof_props *props, const struct space *s,
 void rec_fof_search_pair(const struct fof_props *props, const struct space *s,
                          const double dim[3], const double search_r2,
                          struct cell *restrict ci, struct cell *restrict cj);
+void fof_struct_dump(const struct fof_props *props, FILE *stream);
+void fof_struct_restore(struct fof_props *props, FILE *stream);
 #ifdef WITH_MPI
 /* MPI data type for the particle transfers */
 extern MPI_Datatype fof_mpi_type;

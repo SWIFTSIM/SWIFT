@@ -6113,6 +6113,7 @@ void engine_struct_dump(struct engine *e, FILE *stream) {
   feedback_struct_dump(e->feedback_props, stream);
   black_holes_struct_dump(e->black_holes_properties, stream);
   chemistry_struct_dump(e->chemistry, stream);
+  fof_struct_dump(e->fof_properties, stream);
   parser_struct_dump(e->parameter_file, stream);
   if (e->output_list_snapshots)
     output_list_struct_dump(e->output_list_snapshots, stream);
@@ -6229,6 +6230,11 @@ void engine_struct_restore(struct engine *e, FILE *stream) {
           sizeof(struct chemistry_global_data));
   chemistry_struct_restore(chemistry, stream);
   e->chemistry = chemistry;
+
+  struct fof_props *fof_props =
+      (struct fof_props *)malloc(sizeof(struct fof_props));
+  fof_struct_restore(fof_props, stream);
+  e->fof_properties = fof_props;
 
   struct swift_params *parameter_file =
       (struct swift_params *)malloc(sizeof(struct swift_params));
