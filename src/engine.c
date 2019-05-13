@@ -2117,7 +2117,8 @@ void engine_allocate_foreign_particles(struct engine *e) {
       }
 
       /* For stars, we just use the numbers in the top-level cells */
-      count_sparts_in += e->proxies[k].cells_in[j]->stars.count;
+      count_sparts_in +=
+          e->proxies[k].cells_in[j]->stars.count + space_extra_sparts;
 
       /* For black holes, we just use the numbers in the top-level cells */
       count_bparts_in += e->proxies[k].cells_in[j]->black_holes.count;
@@ -2208,7 +2209,8 @@ void engine_allocate_foreign_particles(struct engine *e) {
 
       /* For stars, we just use the numbers in the top-level cells */
       cell_link_sparts(e->proxies[k].cells_in[j], sparts);
-      sparts = &sparts[e->proxies[k].cells_in[j]->stars.count];
+      sparts =
+          &sparts[e->proxies[k].cells_in[j]->stars.count + space_extra_sparts];
 
       /* For black holes, we just use the numbers in the top-level cells */
       cell_link_bparts(e->proxies[k].cells_in[j], bparts);
@@ -2563,6 +2565,8 @@ void engine_rebuild(struct engine *e, int repartitioned,
     for (int k = 0; k < e->s->nr_local_cells; k++)
       cell_check_foreign_multipole(&e->s->cells_top[e->s->local_cells_top[k]]);
   }
+
+  space_check_sort_flags(e->s);
 #endif
 
   /* Run through the tasks and mark as skip or not. */
@@ -3333,7 +3337,8 @@ void engine_skip_force_and_kick(struct engine *e) {
         t->subtype == task_subtype_tend_gpart ||
         t->subtype == task_subtype_tend_spart ||
         t->subtype == task_subtype_tend_bpart ||
-        t->subtype == task_subtype_rho || t->subtype == task_subtype_gpart)
+        t->subtype == task_subtype_rho || t->subtype == task_subtype_gpart ||
+        t->subtype == task_subtype_sf_counts)
       t->skip = 1;
   }
 
@@ -3850,6 +3855,7 @@ void engine_step(struct engine *e) {
 #ifdef SWIFT_DEBUG_CHECKS
   /* Make sure all woken-up particles have been processed */
   space_check_limiter(e->s);
+  space_check_sort_flags(e->s);
 #endif
 
   /* Collect information about the next time-step */

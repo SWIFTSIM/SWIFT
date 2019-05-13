@@ -316,11 +316,14 @@ INLINE static double bisection_iter(
                     eagle_cooling_rate(log10(u_next_cgs), redshift, n_H_cgs,
                                        abundance_ratio, n_H_index, d_n_H,
                                        He_index, d_He, cooling);
-
-    // Debugging
+#ifdef SWIFT_DEBUG_CHECKS
     if (u_next_cgs <= 0)
-      error("u_next_cgs %.5e u_upper %.5e u_lower %.5e Lambda %.5e", u_next_cgs,
-            u_upper_cgs, u_lower_cgs, LambdaNet_cgs);
+      error(
+          "Got negative energy! u_next_cgs=%.5e u_upper=%.5e u_lower=%.5e "
+          "Lambda=%.5e",
+          u_next_cgs, u_upper_cgs, u_lower_cgs, LambdaNet_cgs);
+#endif
+
     /* Where do we go next? */
     if (u_next_cgs - u_ini_cgs - LambdaNet_cgs * ratefact_cgs * dt_cgs > 0.0) {
       u_upper_cgs = u_next_cgs;
