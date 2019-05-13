@@ -4333,8 +4333,21 @@ void space_init_parts_mapper(void *restrict map_data, int count,
                              void *restrict extra_data) {
 
   struct part *restrict parts = (struct part *)map_data;
-  const struct hydro_space *restrict hs = (struct hydro_space *)extra_data;
-  for (int k = 0; k < count; k++) hydro_init_part(&parts[k], hs);
+  const struct engine *restrict e = (struct engine *)extra_data;
+  const struct hydro_space *restrict hs = &e->s->hs;
+  const int with_cosmology = (e->policy & engine_policy_cosmology);
+
+  size_t ind = parts - e->s->parts;
+  struct xpart *restrict xparts = e->s->xparts + ind;
+
+  for (int k = 0; k < count; k++) {
+    hydro_init_part(&parts[k], hs);
+    chemistry_init_part(&parts[k], e->chemistry);
+    star_formation_init_part(&parts[k], e->star_formation);
+    tracers_after_init(&parts[k], &xparts[k], e->internal_units,
+                       e->physical_constants, with_cosmology, e->cosmology,
+                       e->hydro_properties, e->cooling_func, e->time);
+  }
 }
 
 /**
@@ -4349,7 +4362,7 @@ void space_init_parts(struct space *s, int verbose) {
 
   if (s->nr_parts > 0)
     threadpool_map(&s->e->threadpool, space_init_parts_mapper, s->parts,
-                   s->nr_parts, sizeof(struct part), 0, &s->hs);
+                   s->nr_parts, sizeof(struct part), 0, &s->e);
   if (verbose)
     message("took %.3f %s.", clocks_from_ticks(getticks() - tic),
             clocks_getunit());
