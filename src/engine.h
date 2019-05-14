@@ -490,7 +490,8 @@ void engine_init(struct engine *e, struct space *s, struct swift_params *params,
                  const struct external_potential *potential,
                  struct cooling_function_data *cooling_func,
                  const struct star_formation *starform,
-                 const struct chemistry_global_data *chemistry);
+                 const struct chemistry_global_data *chemistry,
+                 struct fof_props *fof_properties);
 void engine_config(int restart, struct engine *e, struct swift_params *params,
                    int nr_nodes, int nodeID, int nr_threads, int with_aff,
                    int verbose, const char *restart_file);

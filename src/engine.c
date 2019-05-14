@@ -4906,7 +4906,8 @@ void engine_init(struct engine *e, struct space *s, struct swift_params *params,
                  const struct external_potential *potential,
                  struct cooling_function_data *cooling_func,
                  const struct star_formation *starform,
-                 const struct chemistry_global_data *chemistry) {
+                 const struct chemistry_global_data *chemistry,
+                 struct fof_props *fof_properties) {
 
   /* Clean-up everything */
   bzero(e, sizeof(struct engine));
@@ -4977,6 +4978,7 @@ void engine_init(struct engine *e, struct space *s, struct swift_params *params,
   e->star_formation = starform;
   e->feedback_props = feedback;
   e->chemistry = chemistry;
+  e->fof_properties = fof_properties;
   e->parameter_file = params;
 #ifdef WITH_MPI
   e->cputime_last_step = 0;

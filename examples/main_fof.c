@@ -99,6 +99,7 @@ int main(int argc, char *argv[]) {
   struct feedback_props feedback_properties;
   struct entropy_floor_properties entropy_floor;
   struct black_holes_props black_holes_properties;
+  struct fof_props fof_properties;
   struct part *parts = NULL;
   struct phys_const prog_const;
   struct space s;
@@ -913,6 +914,10 @@ int main(int argc, char *argv[]) {
     chemistry_init(params, &us, &prog_const, &chemistry);
     if (myrank == 0) chemistry_print(&chemistry);
 
+    /* Initialise the FOF properties */
+    bzero(&fof_properties, sizeof(struct fof_props));
+    if (with_fof) fof_init(&fof_properties, params);
+
     /* Construct the engine policy */
     int engine_policies = ENGINE_POLICY | engine_policy_steal;
     if (with_drift_all) engine_policies |= engine_policy_drift_all;
@@ -939,7 +944,7 @@ int main(int argc, char *argv[]) {
                 &hydro_properties, &entropy_floor, &gravity_properties,
                 &stars_properties, &black_holes_properties,
                 &feedback_properties, &mesh, &potential, &cooling_func,
-                &starform, &chemistry);
+                &starform, &chemistry, &fof_properties);
     engine_config(0, &e, params, nr_nodes, myrank, nr_threads, with_aff,
                   talking, restart_file);
 
@@ -1000,10 +1005,6 @@ int main(int argc, char *argv[]) {
 #ifdef SWIFT_DEBUG_TASKS
     e.tic_step = getticks();
 #endif
-
-    /* Initialise the FOF parameters. */
-    // MATTHIEU
-    // fof_init(&s);
 
     /* Initialise the particles */
     engine_init_particles(&e, flag_entropy_ICs, clean_smoothing_length_values,
