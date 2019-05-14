@@ -39,12 +39,15 @@
 #include "minmax.h"
 #include "sign.h"
 
+#define HYDRO_SLOPE_LIMITER_PSI1 0.5f
+#define HYDRO_SLOPE_LIMITER_PSI2 0.25f
+
 __attribute__((always_inline)) INLINE static float
 hydro_slope_limit_face_quantity(float phi_i, float phi_j, float phi_mid0,
                                 float xij_norm, float r_inv) {
 
-  const float psi1 = 0.5f;
-  const float psi2 = 0.25f;
+  const float psi1 = HYDRO_SLOPE_LIMITER_PSI1;
+  const float psi2 = HYDRO_SLOPE_LIMITER_PSI2;
 
   const float delta1 = psi1 * fabsf(phi_i - phi_j);
   const float delta2 = psi2 * fabsf(phi_i - phi_j);

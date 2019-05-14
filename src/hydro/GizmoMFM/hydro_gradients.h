@@ -87,6 +87,33 @@ __attribute__((always_inline)) INLINE static void hydro_gradients_finalize(
 
 #endif
 
+__attribute__((always_inline)) INLINE static void hydro_gradients_evolve(
+    struct part* restrict p, const float dt) {
+
+  const float rho = p->rho;
+  const float v[3] = {p->v[0], p->v[1], p->v[2]};
+  const float P = p->P;
+
+  const float drho[3] = {p->gradients.rho[0], p->gradients.rho[1],
+                         p->gradients.rho[2]};
+  const float divv =
+      p->gradients.v[0][0] + p->gradients.v[1][1] + p->gradients.v[2][2];
+  const float dP[3] = {p->gradients.P[0], p->gradients.P[1], p->gradients.P[2]};
+
+  const float rho_inv = 1.f / rho;
+
+  p->rho -=
+      dt * (rho * divv + v[0] * drho[0] + v[1] * drho[1] + v[2] * drho[2]);
+  p->v[0] -= dt * (v[0] * divv + rho_inv * dP[0]);
+  p->v[1] -= dt * (v[1] * divv + rho_inv * dP[1]);
+  p->v[2] -= dt * (v[2] * divv + rho_inv * dP[2]);
+  p->P -= dt *
+          (hydro_gamma * P * divv + v[0] * dP[0] + v[1] * dP[1] + v[2] * dP[2]);
+
+  gizmo_check_physical_quantities("density", "pressure", p->rho, p->v[0],
+                                  p->v[1], p->v[2], p->P);
+}
+
 /**
  * @brief Gradients reconstruction. Is the same for all gradient types (although
  * gradients_none does nothing, since all gradients are zero -- are they?).

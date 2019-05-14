@@ -476,6 +476,8 @@ __attribute__((always_inline)) INLINE static void hydro_prepare_force(
   p->flux.energy = 0.0f;
 
   p->force.Ekinmax = 0.0f;
+
+  //  hydro_gradients_evolve(p, 0.5f * dt_alpha * cosmo->a2_inv);
 }
 
 /**
