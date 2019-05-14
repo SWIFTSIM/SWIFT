@@ -46,14 +46,29 @@
 #define fof_props_default_group_id_offset 1
 #define fof_props_default_group_link_size 20000
 
+/* Constants. */
+#define UNION_BY_SIZE_OVER_MPI (1)
+#define FOF_COMPRESS_PATHS_MIN_LENGTH (2)
+
 #ifdef WITH_MPI
+
+/* MPI types used for communications */
 MPI_Datatype fof_mpi_type;
 MPI_Datatype group_length_mpi_type;
 MPI_Datatype fof_final_index_type;
 MPI_Datatype fof_final_mass_type;
-#endif
-size_t node_offset;
 
+/*! Offset between the first particle on this MPI rank and the first particle in
+ * the global order */
+size_t node_offset;
+#endif
+
+/**
+ * @brief Initialise the properties of the FOF code.
+ *
+ * @param props the #fof_props structure to fill.
+ * @param params the parameter file parser.
+ */
 void fof_init(struct fof_props *props, struct swift_params *params) {
 
   /* Base name for the FOF output file */
@@ -93,6 +108,9 @@ void fof_init(struct fof_props *props, struct swift_params *params) {
   /* Read value of absolute linking length aksed by the user */
   props->l_x_absolute =
       parser_get_opt_param_double(params, "FOF:absolute_linking_length", -1.);
+
+  if (props->l_x_ratio <= 0. && props->l_x_ratio != -1.)
+    error("The FOF linking length can't be negative!");
 
 #if defined(WITH_MPI) && defined(UNION_BY_SIZE_OVER_MPI)
   if (engine_rank == 0)
@@ -137,18 +155,21 @@ void fof_create_mpi_types() {
 #endif
 }
 
-/* Initialises parameters for the FOF search. */
-void fof_allocate(const struct engine *e, struct fof_props *props) {
-
-  const size_t nr_local_gparts = e->s->nr_gparts;
+/**
+ * @brief Allocate the memory and initialise the arrays for a FOF calculation.
+ *
+ * @param s The #space to act on.
+ * @param total_nr_DM_particles The total number of DM particles in the
+ * simulation.
+ * @param props The properties of the FOF structure.
+ */
+void fof_allocate(const struct space *s, const long long total_nr_DM_particles,
+                  struct fof_props *props) {
 
   /* Calculate the particle linking length based upon the mean inter-particle
    * spacing of the DM particles. */
-  const long long total_nr_baryons =
-      e->total_nr_parts + e->total_nr_sparts + e->total_nr_bparts;
-  const long long total_nr_dmparts = e->total_nr_gparts - total_nr_baryons;
   const double mean_inter_particle_sep =
-      e->s->dim[0] / cbrt((double)total_nr_dmparts);
+      s->dim[0] / cbrt((double)total_nr_DM_particles);
   const double l_x = props->l_x_ratio * mean_inter_particle_sep;
 
   /* Are we using the aboslute value or the one derived from the mean
@@ -161,11 +182,14 @@ void fof_allocate(const struct engine *e, struct fof_props *props) {
 
 #ifdef WITH_MPI
   /* Check size of linking length against the top-level cell dimensions. */
-  if (props->l_x2 > e->s->width[0] * e->s->width[0])
+  if (props->l_x2 > s->width[0] * s->width[0])
     error(
         "Linking length greater than the width of a top-level cell. Need to "
         "check more than one layer of top-level cells for links.");
 #endif
+
+  const size_t nr_local_gparts = s->nr_gparts;
+  struct gpart *gparts = s->gparts;
 
   /* Allocate and initialise a group index array. */
   if (swift_memalign("fof_group_index", (void **)&props->group_index, 64,
@@ -178,7 +202,6 @@ void fof_allocate(const struct engine *e, struct fof_props *props) {
     error("Failed to allocate list of group size for FOF search.");
 
   /* Set initial group ID of the gparts */
-  struct gpart *gparts = e->s->gparts;
   const size_t group_id_default = props->group_id_default;
   for (size_t i = 0; i < nr_local_gparts; i++) {
     gparts[i].group_id = group_id_default;
@@ -193,16 +216,15 @@ void fof_allocate(const struct engine *e, struct fof_props *props) {
   }
 }
 
-/*
- * Sort elements in descending order.
+/**
+ * @brief Comparison function for qsort call comparing group sizes.
  *
- * Return value meaning
- * <0 The element pointed by b goes before the element pointed by a
- * 0  The element pointed by b is equivalent to the element pointed by a
- * >0 The element pointed by b goes after the element pointed by a
- *
+ * @param a The first #group_length object.
+ * @param b The second #group_length object.
+ * @return 1 if the size of the group b is larger than the size of group a, -1
+ * if a is the largest and 0 if they are equal.
  */
-int cmp_func(const void *a, const void *b) {
+int cmp_func_group_size(const void *a, const void *b) {
   struct group_length *a_group_size = (struct group_length *)a;
   struct group_length *b_group_size = (struct group_length *)b;
   if (b_group_size->size > a_group_size->size)
@@ -214,14 +236,14 @@ int cmp_func(const void *a, const void *b) {
 }
 
 #ifdef WITH_MPI
-/*
- * Sort elements of struct fof_final_index in ASCENDING order of global_root.
+
+/**
+ * @brief Comparison function for qsort call comparing group global roots.
  *
- * Return value meaning
- * <0 The element pointed by b goes before the element pointed by a
- * 0  The element pointed by b is equivalent to the element pointed by a
- * >0 The element pointed by b goes after the element pointed by a
- *
+ * @param a The first #fof_final_index object.
+ * @param b The second #fof_final_index object.
+ * @return 1 if the global of the group b is *smaller* than the global group of
+ * group a, -1 if a is the smaller one and 0 if they are equal.
  */
 int compare_fof_final_index_global_root(const void *a, const void *b) {
   struct fof_final_index *fof_final_index_a = (struct fof_final_index *)a;
@@ -234,6 +256,14 @@ int compare_fof_final_index_global_root(const void *a, const void *b) {
     return 0;
 }
 
+/**
+ * @brief Comparison function for qsort call comparing group global roots
+ *
+ * @param a The first #fof_final_mass object.
+ * @param b The second #fof_final_mass object.
+ * @return 1 if the global of the group b is *smaller* than the global group of
+ * group a, -1 if a is the smaller one and 0 if they are equal.
+ */
 int compare_fof_final_mass_global_root(const void *a, const void *b) {
   struct fof_final_mass *fof_final_mass_a = (struct fof_final_mass *)a;
   struct fof_final_mass *fof_final_mass_b = (struct fof_final_mass *)b;
@@ -246,22 +276,49 @@ int compare_fof_final_mass_global_root(const void *a, const void *b) {
 }
 #endif
 
-/* Checks whether the group is on the local node. */
+/**
+ * @brief Check whether a given group ID is on the local node.
+ *
+ * This function only makes sense in MPI mode.
+ *
+ * @param group_id The ID to check.
+ * @param nr_gparts The number of gparts on this node.
+ */
 __attribute__((always_inline)) INLINE static int is_local(
     const size_t group_id, const size_t nr_gparts) {
+#ifdef WITH_MPI
   return (group_id >= node_offset && group_id < node_offset + nr_gparts);
+#else
+  error("Calling MPI function in non-MPI mode");
+  return 1;
+#endif
 }
 
-/* Finds the global root ID of the group a particle exists in. */
+/**
+ * @brief Find the global root ID of a given particle
+ *
+ * This function only makes sense in MPI mode.
+ *
+ * @param i Index of the particle.
+ * @param group_index Array of group root indices.
+ * @param nr_gparts The number of g-particles on this node.
+ */
 __attribute__((always_inline)) INLINE static size_t fof_find_global(
-    const size_t i, size_t *group_index, const size_t nr_gparts) {
+    const size_t i, const size_t *group_index, const size_t nr_gparts) {
 
+#ifdef WITH_MPI
   size_t root = node_offset + i;
-  if (!is_local(root, nr_gparts)) return root;
+  if (!is_local(root, nr_gparts)) {
 
-  while (root != group_index[root - node_offset]) {
-    root = group_index[root - node_offset];
-    if (!is_local(root, nr_gparts)) break;
+    /* Non local --> This is the root */
+    return root;
+  } else {
+
+    /* Local --> Follow the links until we find the root */
+    while (root != group_index[root - node_offset]) {
+      root = group_index[root - node_offset];
+      if (!is_local(root, nr_gparts)) break;
+    }
   }
 
   /* Perform path compression. */
@@ -273,18 +330,27 @@ __attribute__((always_inline)) INLINE static size_t fof_find_global(
   //}
 
   return root;
+#else
+  error("Calling MPI function in non-MPI mode");
+  return -1;
+#endif
 }
 
-/*
-  Finds the local root ID of the group a particle exists in
-  when group_index contains globally unique identifiers -
-  i.e. we stop *before* we advance to a foreign root.
-
-  Here we assume that the input i is a local index and we
-  return the local index of the root.
-*/
+/**
+ * @brief   Finds the local root ID of the group a particle exists in
+ * when group_index contains globally unique identifiers -
+ * i.e. we stop *before* we advance to a foreign root.
+ *
+ * Here we assume that the input i is a local index and we
+ * return the local index of the root.
+ *
+ * @param i Index of the particle.
+ * @param nr_gparts The number of g-particles on this node.
+ * @param group_index Array of group root indices.
+ */
 __attribute__((always_inline)) INLINE static size_t fof_find_local(
-    const size_t i, const size_t nr_gparts, size_t *group_index) {
+    const size_t i, const size_t nr_gparts, const size_t *group_index) {
+#ifdef WITH_MPI
   size_t root = node_offset + i;
 
   while ((group_index[root - node_offset] != root) &&
@@ -294,14 +360,33 @@ __attribute__((always_inline)) INLINE static size_t fof_find_local(
   }
 
   return root - node_offset;
+#else
+  size_t root = i;
+
+  while ((group_index[root] != root) && (group_index[root] < nr_gparts)) {
+    root = group_index[root];
+  }
+
+  return root;
+#endif
 }
 
-/* Finds the local root ID of the group a particle exists in. */
+/**
+ * @brief Finds the local root ID of the group a particle exists in.
+ *
+ * We follow the group_index array until reaching the root of the group.
+ *
+ * Also performs path compression if the path is long.
+ *
+ * @param i The index of the particle.
+ * @param group_index Array of group root indices.
+ */
 __attribute__((always_inline)) INLINE static size_t fof_find(
     const size_t i, size_t *group_index) {
 
   size_t root = i;
-  size_t tree_depth = 0;
+  int tree_depth = 0;
+
   while (root != group_index[root]) {
 #ifdef PATH_HALVING
     atomic_cas(&group_index[root], group_index[root],
@@ -319,18 +404,22 @@ __attribute__((always_inline)) INLINE static size_t fof_find(
   return root;
 }
 
-/* Updates the root and checks that its value has not been changed since being
- * read. */
-__attribute__((always_inline)) INLINE static int update_root(
+/**
+ * @brief Atomically update the root of a group
+ *
+ * @param address The address of the value to update.
+ * @param y The new value to write.
+ *
+ * @return 1 If successful, 0 otherwise.
+ */
+__attribute__((always_inline)) INLINE static int atomic_update_root(
     volatile size_t *address, const size_t y) {
 
   size_t *size_t_ptr = (size_t *)address;
 
-  size_t test_val, old_val, new_val;
-  old_val = *address;
-
-  test_val = old_val;
-  new_val = y;
+  size_t old_val = *address;
+  size_t test_val = old_val;
+  size_t new_val = y;
 
   /* atomic_cas returns old_val if *size_t_ptr has not changed since being
    * read.*/
@@ -342,6 +431,13 @@ __attribute__((always_inline)) INLINE static int update_root(
     return 0;
 }
 
+/**
+ * @brief Unifies two groups by setting them to the same root.
+ *
+ * @param root_i The root of the first group. Will be updated.
+ * @param root_j The root of the second group.
+ * @param group_index The list of group roots.
+ */
 __attribute__((always_inline)) INLINE static void fof_union(
     size_t *root_i, const size_t root_j, size_t *group_index) {
 
@@ -361,7 +457,7 @@ __attribute__((always_inline)) INLINE static void fof_union(
 
       /* Updates the root and checks that its value has not been changed since
        * being read. */
-      result = update_root(&group_index[root_i_new], root_j_new);
+      result = atomic_update_root(&group_index[root_i_new], root_j_new);
 
       /* Update root_i on the fly. */
       *root_i = root_j_new;
@@ -369,7 +465,7 @@ __attribute__((always_inline)) INLINE static void fof_union(
 
       /* Updates the root and checks that its value has not been changed since
        * being read. */
-      result = update_root(&group_index[root_j_new], root_i_new);
+      result = atomic_update_root(&group_index[root_j_new], root_i_new);
 
       /* Update root_i on the fly. */
       *root_i = root_i_new;
@@ -377,8 +473,13 @@ __attribute__((always_inline)) INLINE static void fof_union(
   } while (result != 1);
 }
 
-/* Find the shortest distance between cells, remembering to account for boundary
- * conditions. */
+/**
+ * @brief Compute th minimal distance between any two points in two cells.
+ *
+ * @param ci The first #cell.
+ * @param cj The second #cell.
+ * @param dim The size of the simulation domain.
+ */
 __attribute__((always_inline)) INLINE static double cell_min_dist(
     const struct cell *restrict ci, const struct cell *restrict cj,
     const double dim[3]) {
@@ -437,7 +538,7 @@ __attribute__((always_inline)) INLINE static double cell_min_dist(
   }
 
   /* Find the shortest distance between cells, remembering to account for
-   * boundary conditions. */
+   * periodic boundary conditions. */
   double dx[3];
   dx[0] = min4(fabs(nearest(cix_min - cjx_min, dim[0])),
                fabs(nearest(cix_min - cjx_max, dim[0])),
@@ -527,8 +628,9 @@ __attribute__((always_inline)) INLINE static void fof_compute_send_recv_offsets(
  * @param l_x2 The square of the FOF linking length.
  * @param c The #cell in which to perform FOF.
  */
-void fof_search_cell(const struct fof_props *props, const struct space *s,
-                     const double l_x2, struct cell *c) {
+void fof_search_self_cell(const struct fof_props *props, const double l_x2,
+                          const struct gpart *const space_gparts,
+                          struct cell *c) {
 
 #ifdef SWIFT_DEBUG_CHECKS
   if (c->split) error("Performing the FOF search at a non-leaf level!");
@@ -541,7 +643,7 @@ void fof_search_cell(const struct fof_props *props, const struct space *s,
   size_t *group_index = props->group_index;
 
   /* Make a list of particle offsets into the global gparts array. */
-  size_t *const offset = group_index + (ptrdiff_t)(gparts - s->gparts);
+  size_t *const offset = group_index + (ptrdiff_t)(gparts - space_gparts);
 
   if (c->nodeID != engine_rank)
     error("Performing self FOF search on foreign cell.");
@@ -587,7 +689,11 @@ void fof_search_cell(const struct fof_props *props, const struct space *s,
       for (int k = 0; k < 3; k++) r2 += dx[k] * dx[k];
 
       /* Hit or miss? */
-      if (r2 < l_x2) fof_union(&root_i, root_j, group_index);
+      if (r2 < l_x2) {
+
+        /* Merge the groups */
+        fof_union(&root_i, root_j, group_index);
+      }
     }
   }
 }
@@ -596,13 +702,15 @@ void fof_search_cell(const struct fof_props *props, const struct space *s,
  * @brief Perform a FOF search using union-find between two cells
  *
  * @param props The properties fof the FOF scheme.
- * @param s The #space where the particles are.
  * @param l_x2 The square of the FOF linking length.
+ * @param periodic Are we using periodic BCs?
+ * @param gparts The start of the #gpart array in the #space structure.
  * @param ci The first #cell in which to perform FOF.
  * @param cj The second #cell in which to perform FOF.
  */
-void fof_search_pair_cells(const struct fof_props *props, const struct space *s,
-                           const double dim[3], const double l_x2,
+void fof_search_pair_cells(const struct fof_props *props, const double dim[3],
+                           const double l_x2, const int periodic,
+                           const struct gpart *const space_gparts,
                            struct cell *restrict ci, struct cell *restrict cj) {
 
   const size_t count_i = ci->grav.count;
@@ -614,8 +722,8 @@ void fof_search_pair_cells(const struct fof_props *props, const struct space *s,
   size_t *group_index = props->group_index;
 
   /* Make a list of particle offsets into the global gparts array. */
-  size_t *const offset_i = group_index + (ptrdiff_t)(gparts_i - s->gparts);
-  size_t *const offset_j = group_index + (ptrdiff_t)(gparts_j - s->gparts);
+  size_t *const offset_i = group_index + (ptrdiff_t)(gparts_i - space_gparts);
+  size_t *const offset_j = group_index + (ptrdiff_t)(gparts_j - space_gparts);
 
 #ifdef SWIFT_DEBUG_CHECKS
   if (offset_j > offset_i && (offset_j < offset_i + count_i))
@@ -628,7 +736,6 @@ void fof_search_pair_cells(const struct fof_props *props, const struct space *s,
   double shift[3] = {0.0, 0.0, 0.0};
 
   /* Get the relative distance between the pairs, wrapping. */
-  const int periodic = s->periodic;
   double diff[3];
   for (int k = 0; k < 3; k++) {
     diff[k] = cj->loc[k] - ci->loc[k];
@@ -683,7 +790,11 @@ void fof_search_pair_cells(const struct fof_props *props, const struct space *s,
       for (int k = 0; k < 3; k++) r2 += dx[k] * dx[k];
 
       /* Hit or miss? */
-      if (r2 < l_x2) fof_union(&root_i, root_j, group_index);
+      if (r2 < l_x2) {
+
+        /* Merge the groups */
+        fof_union(&root_i, root_j, group_index);
+      }
     }
   }
 }
@@ -691,8 +802,9 @@ void fof_search_pair_cells(const struct fof_props *props, const struct space *s,
 /* Perform a FOF search between a local and foreign cell using the Union-Find
  * algorithm. Store any links found between particles.*/
 void fof_search_pair_cells_foreign(
-    const struct fof_props *props, const struct space *s, const double dim[3],
-    const double l_x2, const struct cell *restrict ci,
+    const struct fof_props *props, const double dim[3], const double l_x2,
+    const int periodic, const struct gpart *const space_gparts,
+    const size_t nr_gparts, const struct cell *restrict ci,
     const struct cell *restrict cj, int *restrict link_count,
     struct fof_mpi **group_links, int *restrict group_links_size) {
 
@@ -711,7 +823,7 @@ void fof_search_pair_cells_foreign(
   int local_link_count = *link_count;
 
   /* Make a list of particle offsets into the global gparts array. */
-  size_t *const offset_i = group_index + (ptrdiff_t)(gparts_i - s->gparts);
+  size_t *const offset_i = group_index + (ptrdiff_t)(gparts_i - space_gparts);
 
 #ifdef SWIFT_DEBUG_CHECKS
 
@@ -729,10 +841,9 @@ void fof_search_pair_cells_foreign(
   }
 #endif
 
-  /* Get the relative distance between the pairs, wrapping. */
-  const int periodic = s->periodic;
   double shift[3] = {0.0, 0.0, 0.0};
 
+  /* Get the relative distance between the pairs, wrapping. */
   for (int k = 0; k < 3; k++) {
     const double diff = cj->loc[k] - ci->loc[k];
     if (periodic && diff < -dim[k] / 2)
@@ -757,7 +868,7 @@ void fof_search_pair_cells_foreign(
 
     /* Find the root of pi. */
     const size_t root_i =
-        fof_find_global(offset_i[i] - node_offset, group_index, s->nr_gparts);
+        fof_find_global(offset_i[i] - node_offset, group_index, nr_gparts);
 
     for (size_t j = 0; j < count_j; j++) {
 
@@ -840,21 +951,25 @@ void fof_search_pair_cells_foreign(
  * If cells are more distant than the linking length, we abort early.
  *
  * @param props The properties fof the FOF scheme.
- * @param s The #space where the particles are.
  * @param dim The dimension of the space.
  * @param search_r2 the square of the FOF linking length.
+ * @param periodic Are we using periodic BCs?
+ * @param gparts The start of the #gpart array in the #space structure.
  * @param ci The first #cell in which to perform FOF.
  * @param cj The second #cell in which to perform FOF.
  */
-void rec_fof_search_pair(const struct fof_props *props, const struct space *s,
-                         const double dim[3], const double search_r2,
+void rec_fof_search_pair(const struct fof_props *props, const double dim[3],
+                         const double search_r2, const int periodic,
+                         const struct gpart *const space_gparts,
                          struct cell *restrict ci, struct cell *restrict cj) {
 
   /* Find the shortest distance between cells, remembering to account for
    * boundary conditions. */
   const double r2 = cell_min_dist(ci, cj, dim);
 
+#ifdef SWIFT_DEBUG_CHECKS
   if (ci == cj) error("Pair FOF called on same cell!!!");
+#endif
 
   /* Return if cells are out of range of each other. */
   if (r2 > search_r2) return;
@@ -866,37 +981,39 @@ void rec_fof_search_pair(const struct fof_props *props, const struct space *s,
 
         for (int l = 0; l < 8; l++)
           if (cj->progeny[l] != NULL)
-            rec_fof_search_pair(props, s, dim, search_r2, ci->progeny[k],
-                                cj->progeny[l]);
+            rec_fof_search_pair(props, dim, search_r2, periodic, space_gparts,
+                                ci->progeny[k], cj->progeny[l]);
       }
     }
   } else if (ci->split) {
     for (int k = 0; k < 8; k++) {
       if (ci->progeny[k] != NULL)
-        rec_fof_search_pair(props, s, dim, search_r2, ci->progeny[k], cj);
+        rec_fof_search_pair(props, dim, search_r2, periodic, space_gparts,
+                            ci->progeny[k], cj);
     }
   } else if (cj->split) {
     for (int k = 0; k < 8; k++) {
       if (cj->progeny[k] != NULL)
-        rec_fof_search_pair(props, s, dim, search_r2, ci, cj->progeny[k]);
+        rec_fof_search_pair(props, dim, search_r2, periodic, space_gparts, ci,
+                            cj->progeny[k]);
     }
   } else {
     /* Perform FOF search between pairs of cells that are within the linking
      * length and not the same cell. */
-    fof_search_pair_cells(props, s, dim, search_r2, ci, cj);
+    fof_search_pair_cells(props, dim, search_r2, periodic, space_gparts, ci,
+                          cj);
   }
 }
 #ifdef WITH_MPI
 
 /* Recurse on a pair of cells (one local, one foreign) and perform a FOF search
  * between cells that are within range. */
-void rec_fof_search_pair_foreign(const struct fof_props *props,
-                                 const struct space *s, const double dim[3],
-                                 const double search_r2, const struct cell *ci,
-                                 const struct cell *cj,
-                                 int *restrict link_count,
-                                 struct fof_mpi **group_links,
-                                 int *restrict group_links_size) {
+void rec_fof_search_pair_foreign(
+    const struct fof_props *props, const double dim[3], const double search_r2,
+    const int periodic, const struct gpart *const space_gparts,
+    const size_t nr_gparts, const struct cell *ci, const struct cell *cj,
+    int *restrict link_count, struct fof_mpi **group_links,
+    int *restrict group_links_size) {
 
 #ifdef SWIFT_DEBUG_CHECKS
   if (ci == cj) error("Pair FOF called on same cell!!!");
@@ -916,31 +1033,33 @@ void rec_fof_search_pair_foreign(const struct fof_props *props,
 
         for (int l = 0; l < 8; l++)
           if (cj->progeny[l] != NULL)
-            rec_fof_search_pair_foreign(
-                props, s, dim, search_r2, ci->progeny[k], cj->progeny[l],
-                link_count, group_links, group_links_size);
+            rec_fof_search_pair_foreign(props, dim, search_r2, periodic,
+                                        space_gparts, nr_gparts, ci->progeny[k],
+                                        cj->progeny[l], link_count, group_links,
+                                        group_links_size);
       }
     }
   } else if (ci->split) {
 
     for (int k = 0; k < 8; k++) {
       if (ci->progeny[k] != NULL)
-        rec_fof_search_pair_foreign(props, s, dim, search_r2, ci->progeny[k],
-                                    cj, link_count, group_links,
-                                    group_links_size);
+        rec_fof_search_pair_foreign(props, dim, search_r2, periodic,
+                                    space_gparts, nr_gparts, ci->progeny[k], cj,
+                                    link_count, group_links, group_links_size);
     }
   } else if (cj->split) {
     for (int k = 0; k < 8; k++) {
       if (cj->progeny[k] != NULL)
-        rec_fof_search_pair_foreign(props, s, dim, search_r2, ci,
-                                    cj->progeny[k], link_count, group_links,
-                                    group_links_size);
+        rec_fof_search_pair_foreign(props, dim, search_r2, periodic,
+                                    space_gparts, nr_gparts, ci, cj->progeny[k],
+                                    link_count, group_links, group_links_size);
     }
   } else {
     /* Perform FOF search between pairs of cells that are within the linking
      * length and not the same cell. */
-    fof_search_pair_cells_foreign(props, s, dim, search_r2, ci, cj, link_count,
-                                  group_links, group_links_size);
+    fof_search_pair_cells_foreign(props, dim, search_r2, periodic, space_gparts,
+                                  nr_gparts, ci, cj, link_count, group_links,
+                                  group_links_size);
   }
 }
 
@@ -955,8 +1074,9 @@ void rec_fof_search_pair_foreign(const struct fof_props *props,
  * @param search_r2 the square of the FOF linking length.
  * @param c The #cell in which to perform FOF.
  */
-void rec_fof_search_self(const struct fof_props *props, const struct space *s,
-                         const double dim[3], const double search_r2,
+void rec_fof_search_self(const struct fof_props *props, const double dim[3],
+                         const double search_r2, const int periodic,
+                         const struct gpart *const space_gparts,
                          struct cell *c) {
 
   /* Recurse? */
@@ -966,18 +1086,19 @@ void rec_fof_search_self(const struct fof_props *props, const struct space *s,
     for (int k = 0; k < 8; k++) {
       if (c->progeny[k] != NULL) {
 
-        rec_fof_search_self(props, s, dim, search_r2, c->progeny[k]);
+        rec_fof_search_self(props, dim, search_r2, periodic, space_gparts,
+                            c->progeny[k]);
 
         for (int l = k + 1; l < 8; l++)
           if (c->progeny[l] != NULL)
-            rec_fof_search_pair(props, s, dim, search_r2, c->progeny[k],
-                                c->progeny[l]);
+            rec_fof_search_pair(props, dim, search_r2, periodic, space_gparts,
+                                c->progeny[k], c->progeny[l]);
       }
     }
   }
   /* Otherwise, compute self-interaction. */
   else
-    fof_search_cell(props, s, search_r2, c);
+    fof_search_self_cell(props, search_r2, space_gparts, c);
 }
 
 /* Mapper function to atomically update the group size array. */
@@ -1153,7 +1274,7 @@ void fof_calc_group_mass(struct fof_props *props, const struct space *s,
   float *max_part_density = props->max_part_density;
 
   /* No densest particle found so far */
-  bzero(&max_part_density, num_groups_local * sizeof(float));
+  bzero(max_part_density, num_groups_local * sizeof(float));
 
   /* Start by assuming that the haloes have no gas */
   for (size_t i = 0; i < num_groups_local; i++) {
@@ -1449,7 +1570,7 @@ void fof_calc_group_mass(struct fof_props *props, const struct space *s,
   float *max_part_density = props->max_part_density;
 
   /* No densest particle found so far */
-  bzero(&max_part_density, num_groups_local * sizeof(float));
+  bzero(max_part_density, num_groups_local * sizeof(float));
 
   /* Start by assuming that the haloes have no gas */
   for (size_t i = 0; i < num_groups_local; i++) {
@@ -1508,6 +1629,9 @@ void fof_find_foreign_links_mapper(void *map_data, int num_elements,
 
   /* Retrieve mapped data. */
   struct space *s = (struct space *)extra_data;
+  const int periodic = s->periodic;
+  const size_t nr_gparts = s->nr_gparts;
+  const struct gpart *const gparts = s->gparts;
   const struct engine *e = s->e;
   struct fof_props *props = e->fof_properties;
   struct cell_pair_indices *cell_pairs = (struct cell_pair_indices *)map_data;
@@ -1533,9 +1657,10 @@ void fof_find_foreign_links_mapper(void *map_data, int num_elements,
     struct cell *restrict local_cell = cell_pairs[ind].local;
     struct cell *restrict foreign_cell = cell_pairs[ind].foreign;
 
-    rec_fof_search_pair_foreign(props, s, dim, search_r2, local_cell,
-                                foreign_cell, &local_link_count,
-                                &local_group_links, &local_group_links_size);
+    rec_fof_search_pair_foreign(props, dim, search_r2, periodic, gparts,
+                                nr_gparts, local_cell, foreign_cell,
+                                &local_link_count, &local_group_links,
+                                &local_group_links_size);
   }
 
   /* Add links found by this thread to the global link list. */
@@ -1631,10 +1756,17 @@ void fof_dump_group_data(const struct fof_props *props,
     const long long part_id = max_part_density_index[i] >= 0
                                   ? parts[max_part_density_index[i]].id
                                   : -1;
+#ifdef WITH_MPI
     fprintf(file, "  %8zu %12zu %12e %12e %18lld %18lld\n",
             gparts[group_offset - node_offset].group_id,
             group_size[group_offset - node_offset], group_mass[i],
             max_part_density[i], max_part_density_index[i], part_id);
+#else
+    fprintf(file, "  %8zu %12zu %12e %12e %18lld %18lld\n",
+            gparts[group_offset].group_id, group_size[group_offset],
+            group_mass[i], max_part_density[i], max_part_density_index[i],
+            part_id);
+#endif
 
     if (max_part_density_index[i] >= 0) bh_seed_count++;
   }
@@ -2107,11 +2239,13 @@ void fof_search_tree(struct fof_props *props, struct space *s) {
   if (engine_rank == 0 && verbose)
     message("Size of hash table element: %ld", sizeof(hashmap_element_t));
 
-  node_offset = 0;
-
   const size_t group_id_default = props->group_id_default;
 
 #ifdef WITH_MPI
+
+  /* Reset global variable */
+  node_offset = 0;
+
   /* Determine number of gparts on lower numbered MPI ranks */
   long long nr_gparts_cumulative;
   long long nr_gparts_local = s->nr_gparts;
@@ -2159,9 +2293,15 @@ void fof_search_tree(struct fof_props *props, struct space *s) {
 
   for (size_t i = 0; i < nr_gparts; i++) {
 
+#ifdef WITH_MPI
     /* Find the total number of groups. */
     if (group_index[i] == i + node_offset && group_size[i] >= min_group_size)
       num_groups_local++;
+#else
+    /* Find the total number of groups. */
+    if (group_index[i] == i && group_size[i] >= min_group_size)
+      num_groups_local++;
+#endif
 
     /* Find the total number of particles in groups. */
     if (group_size[i] >= min_group_size)
@@ -2184,10 +2324,17 @@ void fof_search_tree(struct fof_props *props, struct space *s) {
   /* Store the group_sizes and their offset. */
   for (size_t i = 0; i < nr_gparts; i++) {
 
+#ifdef WITH_MPI
     if (group_index[i] == i + node_offset && group_size[i] >= min_group_size) {
       high_group_sizes[group_count].index = node_offset + i;
       high_group_sizes[group_count++].size = group_size[i];
     }
+#else
+    if (group_index[i] == i && group_size[i] >= min_group_size) {
+      high_group_sizes[group_count].index = i;
+      high_group_sizes[group_count++].size = group_size[i];
+    }
+#endif
   }
 
   ticks tic = getticks();
@@ -2208,18 +2355,16 @@ void fof_search_tree(struct fof_props *props, struct space *s) {
   props->num_groups = num_groups;
 
   /* Find number of groups on lower numbered MPI ranks */
-  size_t num_groups_prev = 0;
 #ifdef WITH_MPI
   long long nglocal = num_groups_local;
   long long ngsum;
-  MPI_Scan(&nglocal, &ngsum, 1, MPI_LONG_LONG, MPI_SUM,
-           MPI_COMM_WORLD); /* TODO: define MPI_SIZE_T? */
-  num_groups_prev = (size_t)(ngsum - nglocal);
+  MPI_Scan(&nglocal, &ngsum, 1, MPI_LONG_LONG, MPI_SUM, MPI_COMM_WORLD);
+  const size_t num_groups_prev = (size_t)(ngsum - nglocal);
 #endif /* WITH_MPI */
 
   /* Sort local groups into descending order of size */
   qsort(high_group_sizes, num_groups_local, sizeof(struct group_length),
-        cmp_func);
+        cmp_func_group_size);
 
   /* Set default group ID for all particles */
   for (size_t i = 0; i < nr_gparts; i++) gparts[i].group_id = group_id_default;
@@ -2229,9 +2374,14 @@ void fof_search_tree(struct fof_props *props, struct space *s) {
     this node and the group is large enough. Within a node IDs are assigned in
     descending order of particle number.
   */
-  for (size_t i = 0; i < num_groups_local; i++)
+  for (size_t i = 0; i < num_groups_local; i++) {
+#ifdef WITH_MPI
     gparts[high_group_sizes[i].index - node_offset].group_id =
         group_id_offset + i + num_groups_prev;
+#else
+    gparts[high_group_sizes[i].index].group_id = group_id_offset + i;
+#endif
+  }
 
 #ifdef WITH_MPI
   /*
@@ -2373,8 +2523,7 @@ void fof_search_tree(struct fof_props *props, struct space *s) {
   free(num_on_node);
   free(first_on_node);
 #else
-  fof_calc_group_mass(props, s, num_groups_local, num_groups_prev, NULL, NULL,
-                      group_mass);
+  fof_calc_group_mass(props, s, num_groups_local, 0, NULL, NULL, group_mass);
 #endif
 
   if (verbose)
