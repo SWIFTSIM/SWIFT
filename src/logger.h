@@ -92,8 +92,10 @@ enum logger_masks_number {
 struct mask_data {
   /* Number of bytes for a mask */
   int size;
+
   /* Mask value */
   unsigned int mask;
+
   /* name of the mask */
   char name[100];
 };

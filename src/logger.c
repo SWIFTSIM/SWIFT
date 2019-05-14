@@ -60,9 +60,6 @@
 /* number of bytes for the labels in the header */
 #define logger_label_size 20
 
-/* number of bytes for the number in the header */
-#define logger_number_size 4
-
 char logger_file_format[logger_format_size] = "SWIFT_LOGGER";
 
 const struct mask_data logger_mask_data[logger_count_mask] = {
@@ -483,18 +480,18 @@ void logger_write_file_header(struct logger *log) {
 
   /* write offset direction */
   const int reversed = 0;
-  logger_write_data(dump, &file_offset, logger_number_size, &reversed);
+  logger_write_data(dump, &file_offset, sizeof(int), &reversed);
 
   /* placeholder to write the offset of the first log here */
   char *skip_header = dump_get(dump, logger_offset_size, &file_offset);
 
   /* write number of bytes used for names */
-  const int label_size = logger_label_size;
-  logger_write_data(dump, &file_offset, logger_number_size, &label_size);
+  const unsigned int label_size = logger_label_size;
+  logger_write_data(dump, &file_offset, sizeof(unsigned int), &label_size);
 
   /* write number of masks */
-  int count_mask = logger_count_mask;
-  logger_write_data(dump, &file_offset, logger_number_size, &count_mask);
+  const unsigned int count_mask = logger_count_mask;
+  logger_write_data(dump, &file_offset, sizeof(unsigned int), &count_mask);
 
   /* write masks */
   // loop over all mask type
@@ -504,7 +501,7 @@ void logger_write_file_header(struct logger *log) {
                       &logger_mask_data[i].name);
 
     // mask size
-    logger_write_data(dump, &file_offset, logger_number_size,
+    logger_write_data(dump, &file_offset, sizeof(unsigned int),
                       &logger_mask_data[i].size);
   }
 
