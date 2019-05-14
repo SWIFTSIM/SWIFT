@@ -744,7 +744,7 @@ __attribute__((always_inline)) INLINE static void hydro_kick_extra(
 
   /* Apply the minimal energy limit */
   const float min_energy =
-      hydro_props->minimal_internal_energy * cosmo->a_factor_internal_energy;
+      hydro_props->minimal_internal_energy / cosmo->a_factor_internal_energy;
   if (p->conserved.energy < min_energy * p->conserved.mass) {
     p->conserved.energy = min_energy * p->conserved.mass;
     p->conserved.flux.energy = 0.f;
