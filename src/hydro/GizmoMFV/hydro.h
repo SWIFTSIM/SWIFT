@@ -1188,15 +1188,10 @@ __attribute__((always_inline)) INLINE static void hydro_set_entropy(
 __attribute__((always_inline)) INLINE static void
 hydro_set_init_internal_energy(struct part* p, float u_init) {
 
-  p->conserved.energy = u_init * p->conserved.mass;
-#ifdef GIZMO_TOTAL_ENERGY
-  /* add the kinetic energy */
-  p->conserved.energy += 0.5f * p->conserved.mass *
-                         (p->conserved.momentum[0] * p->primitives.v[0] +
-                          p->conserved.momentum[1] * p->primitives.v[1] +
-                          p->conserved.momentum[2] * p->primitives.v[2]);
-#endif
-  p->primitives.P = hydro_gamma_minus_one * p->primitives.rho * u_init;
+  /* We store the initial energy per unit mass in the energy
+   * variable as the conversion to energy will be done later,
+   * in hydro_first_init_part(). */
+  p->conserved.energy = u_init;
 }
 
 /**
