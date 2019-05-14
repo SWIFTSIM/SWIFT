@@ -205,6 +205,10 @@ struct part {
     /* Needed to drift the primitive variables. */
     float h_dt;
 
+    /* Maximum kinetic energy of all neighbouring particles (in the rest
+     * frame of this particle). Used for the entropy switch. */
+    float Ekinmax;
+
   } force;
 
   /* Specific stuff for the gravity-hydro coupling. */

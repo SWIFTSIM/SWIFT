@@ -260,6 +260,20 @@ __attribute__((always_inline)) INLINE static void runner_iact_fluxes_common(
   } else
     vmax = 0.0f;
 
+  /* calculate entropy switch quantities */
+  const float Wjminvi[3] = {Wj[1] - vi[0], Wj[2] - vi[1], Wj[3] - vi[2]};
+  const float Ekinngbj = 0.5f * pj->conserved.mass *
+                         (Wjminvi[0] * Wjminvi[0] + Wjminvi[1] * Wjminvi[1] +
+                          Wjminvi[2] * Wjminvi[2]);
+  pi->force.Ekinmax = max(pi->force.Ekinmax, Ekinngbj);
+  if (mode == 1) {
+    const float Wiminvj[3] = {Wi[1] - vj[0], Wi[2] - vj[1], Wi[3] - vj[2]};
+    const float Ekinngbi = 0.5f * pi->conserved.mass *
+                           (Wiminvj[0] * Wiminvj[0] + Wiminvj[1] * Wiminvj[1] +
+                            Wiminvj[2] * Wiminvj[2]);
+    pj->force.Ekinmax = max(pj->force.Ekinmax, Ekinngbi);
+  }
+
   float dvdr = (pi->v[0] - pj->v[0]) * dx[0] + (pi->v[1] - pj->v[1]) * dx[1] +
                (pi->v[2] - pj->v[2]) * dx[2];
 

@@ -234,9 +234,9 @@ riemann_solve_for_middle_state_flux(const float *WL, const float *WR,
   }
   const float SLmuL = -aL * qL;
   const float SRmuR = aR * qR;
-  const float Sstar =
-      (WR[4] - WL[4] + WL[0] * uL * SLmuL - WR[0] * uR * SRmuR) /
-      (WL[0] * SLmuL - WR[0] * SRmuR);
+  const double Pdiff = WR[4] - WL[4];
+  const double vdiff = WL[0] * uL * SLmuL - WR[0] * uR * SRmuR;
+  const float Sstar = (Pdiff + vdiff) / (WL[0] * SLmuL - WR[0] * SRmuR);
 
   totflux[0] = 0.0f;
   totflux[1] = pstar * n[0];

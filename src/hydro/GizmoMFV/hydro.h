@@ -508,6 +508,8 @@ __attribute__((always_inline)) INLINE static void hydro_prepare_force(
   p->conserved.flux.momentum[2] = 0.0f;
   p->conserved.flux.energy = 0.0f;
   p->conserved.flux.entropy = 0.0f;
+
+  p->force.Ekinmax = 0.0f;
 }
 
 /**
@@ -758,9 +760,23 @@ __attribute__((always_inline)) INLINE static void hydro_kick_extra(
 #endif
 #endif
 
-  p->conserved.energy = p->conserved.entropy *
-                        pow_gamma_minus_one(p->primitives.rho) *
-                        hydro_one_over_gamma_minus_one;
+  /* apply the entropy switch */
+  if (p->gpart) {
+    const float dEgrav = p->conserved.mass *
+                         sqrtf(a_grav[0] * a_grav[0] + a_grav[1] * a_grav[1] +
+                               a_grav[2] * a_grav[2]) *
+                         p->h;
+    if (p->conserved.energy <
+            0.001 * (p->force.Ekinmax + p->conserved.energy) ||
+        p->conserved.energy < 0.001 * dEgrav) {
+      p->conserved.energy = hydro_one_over_gamma_minus_one *
+                            p->conserved.entropy *
+                            pow_gamma_minus_one(p->primitives.rho);
+    } else {
+      p->conserved.entropy = hydro_gamma_minus_one * p->conserved.energy *
+                             pow_minus_gamma_minus_one(p->primitives.rho);
+    }
+  }
 
   /* Apply the minimal energy limit */
   const float min_energy =
