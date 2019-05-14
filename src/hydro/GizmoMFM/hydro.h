@@ -652,7 +652,7 @@ __attribute__((always_inline)) INLINE static void hydro_kick_extra(
 
   /* Apply the minimal energy limit */
   const float min_energy =
-      hydro_props->minimal_internal_energy * cosmo->a_factor_internal_energy;
+      hydro_props->minimal_internal_energy / cosmo->a_factor_internal_energy;
   if (p->conserved.energy < min_energy * p->conserved.mass) {
     p->conserved.energy = min_energy * p->conserved.mass;
     p->flux.energy = 0.0f;
@@ -1117,15 +1117,10 @@ __attribute__((always_inline)) INLINE static void hydro_set_entropy(
 __attribute__((always_inline)) INLINE static void
 hydro_set_init_internal_energy(struct part* p, float u_init) {
 
-  p->conserved.energy = u_init * p->conserved.mass;
-#ifdef GIZMO_TOTAL_ENERGY
-  /* add the kinetic energy */
-  p->conserved.energy +=
-      0.5f * p->conserved.mass *
-      (p->conserved.momentum[0] * p->v[0] + p->conserved.momentum[1] * p->v[1] +
-       p->conserved.momentum[2] * p->v[2]);
-#endif
-  p->P = hydro_gamma_minus_one * p->rho * u_init;
+  /* We store the initial energy per unit mass in the energy
+   * variable as the conversion to energy will be done later,
+   * in hydro_first_init_part(). */
+  p->conserved.energy = u_init;
 }
 
 /**

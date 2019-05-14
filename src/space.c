@@ -4051,6 +4051,13 @@ void space_first_init_parts_mapper(void *restrict map_data, int count,
 #endif
   }
 
+  /* Overwrite the internal energy? */
+  if (u_init > 0.f) {
+    for (int k = 0; k < count; k++) {
+      hydro_set_init_internal_energy(&p[k], u_init);
+    }
+  }
+
   /* Initialise the rest */
   for (int k = 0; k < count; k++) {
 
@@ -4058,9 +4065,6 @@ void space_first_init_parts_mapper(void *restrict map_data, int count,
 #ifdef WITH_LOGGER
     logger_part_data_init(&xp[k].logger_data);
 #endif
-
-    /* Overwrite the internal energy? */
-    if (u_init > 0.f) hydro_set_init_internal_energy(&p[k], u_init);
 
     /* Also initialise the chemistry */
     chemistry_first_init_part(phys_const, us, cosmo, chemistry, &p[k], &xp[k]);
