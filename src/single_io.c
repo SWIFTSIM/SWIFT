@@ -788,6 +788,7 @@ void write_output_single(struct engine* e, const char* baseName,
   io_write_attribute(h_grp, "Flag_Entropy_ICs", UINT, flagEntropy,
                      swift_type_count);
   io_write_attribute(h_grp, "NumFilesPerSnapshot", INT, &numFiles, 1);
+  io_write_attribute_s(h_grp, "RunName", e->run_name);
 
   /* Close header */
   H5Gclose(h_grp);

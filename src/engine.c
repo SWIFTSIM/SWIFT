@@ -4972,6 +4972,11 @@ void engine_init(struct engine *e, struct space *s, struct swift_params *params,
   /* Make the space link back to the engine. */
   s->e = e;
 
+  /* Read the run label */
+  memset(e->run_name, 0, PARSER_MAX_LINE_SIZE);
+  parser_get_opt_param_string(params, "MetaData:run_name", e->run_name, "");
+  if (e->nodeID == 0) message("Running simulation '%s'.", e->run_name);
+
   /* Setup the timestep if non-cosmological */
   if (!(e->policy & engine_policy_cosmology)) {
     e->time_begin =

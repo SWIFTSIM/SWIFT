@@ -451,6 +451,9 @@ struct engine {
 
   /* Maximum number of tasks needed for restarting. */
   int restart_max_tasks;
+
+  /* Label of the run */
+  char run_name[PARSER_MAX_LINE_SIZE];
 };
 
 /* Function prototypes, engine.c. */

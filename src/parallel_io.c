@@ -1051,6 +1051,7 @@ void prepare_file(struct engine* e, const char* baseName, long long N_total[6],
   io_write_attribute_s(h_grp, "Code", "SWIFT");
   time_t tm = time(NULL);
   io_write_attribute_s(h_grp, "Snapshot date", ctime(&tm));
+  io_write_attribute_s(h_grp, "RunName", e->run_name);
 
   /* GADGET-2 legacy values */
   /* Number of particles of each type */
