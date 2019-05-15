@@ -4874,6 +4874,7 @@ void engine_unpin(void) {
  * @param Ngas total number of gas particles in the simulation.
  * @param Ngparts total number of gravity particles in the simulation.
  * @param Nstars total number of star particles in the simulation.
+ * @param Nblackholes total number of black holes in the simulation.
  * @param policy The queuing policy to use.
  * @param verbose Is this #engine talkative ?
  * @param reparttype What type of repartition algorithm are we using ?
@@ -4891,6 +4892,7 @@ void engine_unpin(void) {
  * @param cooling_func The properties of the cooling function.
  * @param starform The #star_formation model of this run.
  * @param chemistry The chemistry information.
+ * @param fof_properties The #fof_props.
  */
 void engine_init(struct engine *e, struct space *s, struct swift_params *params,
                  long long Ngas, long long Ngparts, long long Nstars,
@@ -6304,7 +6306,8 @@ void engine_fof(struct engine *e) {
 
   /* Perform FOF search over foreign particles and
    * find groups which require black hole seeding.  */
-  fof_search_tree(e->fof_properties, e->s);
+  fof_search_tree(e->fof_properties, e->s, /*dump_results=*/1,
+                  /*seed_black_holes=*/1);
 
   /* Reset flag. */
   e->run_fof = 0;

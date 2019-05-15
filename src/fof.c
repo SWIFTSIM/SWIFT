@@ -50,6 +50,15 @@
 #define UNION_BY_SIZE_OVER_MPI (1)
 #define FOF_COMPRESS_PATHS_MIN_LENGTH (2)
 
+/**
+ * @brief Properties of a group used for black hole seeding
+ */
+enum fof_halo_seeding_props {
+  fof_halo_has_no_gas = -1LL,
+  fof_halo_has_black_hole = -2LL,
+  fof_halo_has_too_low_mass = -3LL
+};
+
 #ifdef WITH_MPI
 
 /* MPI types used for communications */
@@ -68,8 +77,12 @@ size_t node_offset;
  *
  * @param props the #fof_props structure to fill.
  * @param params the parameter file parser.
+ * @param phys_const The physical constants in internal units.
+ * @param us The internal unit system.
  */
-void fof_init(struct fof_props *props, struct swift_params *params) {
+void fof_init(struct fof_props *props, struct swift_params *params,
+              const struct phys_const *phys_const,
+              const struct unit_system *us) {
 
   /* Base name for the FOF output file */
   parser_get_param_string(params, "FOF:basename", props->base_name);
@@ -111,6 +124,13 @@ void fof_init(struct fof_props *props, struct swift_params *params) {
 
   if (props->l_x_ratio <= 0. && props->l_x_ratio != -1.)
     error("The FOF linking length can't be negative!");
+
+  /* Read the minimal halo mass for black hole seeding */
+  props->seed_halo_mass =
+      parser_get_param_double(params, "FOF:black_hole_seed_halo_mass");
+
+  /* Convert to internal units */
+  props->seed_halo_mass *= phys_const->const_solar_mass;
 
 #if defined(WITH_MPI) && defined(UNION_BY_SIZE_OVER_MPI)
   if (engine_rank == 0)
@@ -624,8 +644,8 @@ __attribute__((always_inline)) INLINE static void fof_compute_send_recv_offsets(
  * @brief Perform a FOF search using union-find on a given leaf-cell
  *
  * @param props The properties fof the FOF scheme.
- * @param s The #space where the particles are.
  * @param l_x2 The square of the FOF linking length.
+ * @param space_gparts The start of the #gpart array in the #space structure.
  * @param c The #cell in which to perform FOF.
  */
 void fof_search_self_cell(const struct fof_props *props, const double l_x2,
@@ -702,9 +722,10 @@ void fof_search_self_cell(const struct fof_props *props, const double l_x2,
  * @brief Perform a FOF search using union-find between two cells
  *
  * @param props The properties fof the FOF scheme.
+ * @param dim The dimension of the simulation volume.
  * @param l_x2 The square of the FOF linking length.
  * @param periodic Are we using periodic BCs?
- * @param gparts The start of the #gpart array in the #space structure.
+ * @param space_gparts The start of the #gpart array in the #space structure.
  * @param ci The first #cell in which to perform FOF.
  * @param cj The second #cell in which to perform FOF.
  */
@@ -954,7 +975,7 @@ void fof_search_pair_cells_foreign(
  * @param dim The dimension of the space.
  * @param search_r2 the square of the FOF linking length.
  * @param periodic Are we using periodic BCs?
- * @param gparts The start of the #gpart array in the #space structure.
+ * @param space_gparts The start of the #gpart array in the #space structure.
  * @param ci The first #cell in which to perform FOF.
  * @param cj The second #cell in which to perform FOF.
  */
@@ -1069,9 +1090,10 @@ void rec_fof_search_pair_foreign(
  * @brief Recursively perform a union-find FOF on a cell.
  *
  * @param props The properties fof the FOF scheme.
- * @param s The #space where the particles are.
  * @param dim The dimension of the space.
+ * @param space_gparts The start of the #gpart array in the #space structure.
  * @param search_r2 the square of the FOF linking length.
+ * @param periodic Are we using periodic BCs?
  * @param c The #cell in which to perform FOF.
  */
 void rec_fof_search_self(const struct fof_props *props, const double dim[3],
@@ -1237,7 +1259,7 @@ void fof_unpack_group_mass_mapper(hashmap_key_t key, hashmap_value_t *value,
 }
 #endif
 
-/*
+/**
  * @brief Calculates the total mass of each group above min_group_size and finds
  * the densest particle for black hole seeding.
  */
@@ -1585,28 +1607,36 @@ void fof_calc_group_mass(struct fof_props *props, const struct space *s,
   /* JSW TODO: Parallelise with threadpool*/
   for (size_t i = 0; i < nr_gparts; i++) {
 
-    /* Only check groups above the minimum size and mass threshold. */
-    if (gparts[i].group_id != group_id_default &&
-        group_mass[gparts[i].group_id - group_id_offset] > seed_halo_mass) {
+    const size_t index = gparts[i].group_id - group_id_offset;
 
-      const size_t index = gparts[i].group_id - group_id_offset;
+    /* Only check groups above the minimum mass threshold. */
+    if (gparts[i].group_id != group_id_default) {
 
-      /* Find the densest gas particle.
-       * Account for groups that already have a black hole and groups that
-       * contain no gas. */
-      if (gparts[i].type == swift_type_gas &&
-          max_part_density_index[index] != fof_halo_has_black_hole) {
+      if (group_mass[index] > seed_halo_mass) {
 
-        /* Update index if a denser gas particle is found. */
-        if (parts[-gparts[i].id_or_neg_offset].rho > max_part_density[index]) {
-          max_part_density_index[index] = -gparts[i].id_or_neg_offset;
-          max_part_density[index] = parts[-gparts[i].id_or_neg_offset].rho;
+        /* Find the densest gas particle.
+         * Account for groups that already have a black hole and groups that
+         * contain no gas. */
+        if (gparts[i].type == swift_type_gas &&
+            max_part_density_index[index] != fof_halo_has_black_hole) {
+
+          const size_t gas_index = -gparts[i].id_or_neg_offset;
+          const float rho_com = hydro_get_comoving_density(&parts[gas_index]);
+
+          /* Update index if a denser gas particle is found. */
+          if (rho_com > max_part_density[index]) {
+            max_part_density_index[index] = gas_index;
+            max_part_density[index] = rho_com;
+          }
         }
-      }
-      /* If there is already a black hole in the group we don't need to create a
-         new one. */
-      else if (gparts[i].type == swift_type_black_hole) {
-        max_part_density_index[index] = fof_halo_has_black_hole;
+        /* If there is already a black hole in the group we don't need to create
+           a new one. */
+        else if (gparts[i].type == swift_type_black_hole) {
+          max_part_density_index[index] = fof_halo_has_black_hole;
+        }
+
+      } else {
+        max_part_density_index[index] = fof_halo_has_too_low_mass;
       }
     }
   }
@@ -1727,6 +1757,9 @@ void fof_find_foreign_links_mapper(void *map_data, int num_elements,
 #endif
 }
 
+void fof_seed_black_holes(const struct fof_props *props, struct space *s,
+                          int num_groups, struct group_length *group_sizes) {}
+
 /* Dump FOF group data. */
 void fof_dump_group_data(const struct fof_props *props,
                          const char *out_file_name, struct space *s,
@@ -1802,6 +1835,7 @@ void fof_dump_group_data(const struct fof_props *props,
  * @brief Search foreign cells for links and communicate any found to the
  * appropriate node.
  *
+ * @param props the properties of the FOF scheme.
  * @param s Pointer to a #space.
  */
 void fof_search_foreign_cells(struct fof_props *props, const struct space *s) {
@@ -2213,9 +2247,17 @@ void fof_search_foreign_cells(struct fof_props *props, const struct space *s) {
 #endif /* WITH_MPI */
 }
 
-/* Perform a FOF search on gravity particles using the cells and applying the
- * Union-Find algorithm.*/
-void fof_search_tree(struct fof_props *props, struct space *s) {
+/**
+ * @brief Perform a FOF search on gravity particles using the cells and applying
+ * the Union-Find algorithm.
+ *
+ * @param props The properties of the FOF scheme.
+ * @param s The #space containing the particles.
+ * @param dump_results Do we want to write the group catalogue to a file?
+ * @param seed_black_holes Do we want to seed black holes in haloes?
+ */
+void fof_search_tree(struct fof_props *props, struct space *s,
+                     const int dump_results, const int seed_black_holes) {
 
   const size_t nr_gparts = s->nr_gparts;
   const size_t min_group_size = props->min_group_size;
@@ -2531,8 +2573,14 @@ void fof_search_tree(struct fof_props *props, struct space *s) {
             clocks_from_ticks(getticks() - tic_seeding), clocks_getunit());
 
   /* Dump group data. */
-  fof_dump_group_data(props, output_file_name, s, num_groups_local,
-                      high_group_sizes);
+  if (dump_results) {
+    fof_dump_group_data(props, output_file_name, s, num_groups_local,
+                        high_group_sizes);
+  }
+
+  if (seed_black_holes) {
+    fof_seed_black_holes(props, s, num_groups_local, high_group_sizes);
+  }
 
   /* Free the left-overs */
   swift_free("fof_high_group_sizes", high_group_sizes);

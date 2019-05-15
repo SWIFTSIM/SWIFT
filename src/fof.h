@@ -26,16 +26,12 @@
 #include "align.h"
 #include "parser.h"
 
-enum fof_halo_seeding_props {
-  fof_halo_has_no_gas = -1LL,
-  fof_halo_has_black_hole = -2LL,
-  fof_halo_has_too_low_mass = -3LL
-};
-
 /* Avoid cyclic inclusions */
 struct gpart;
 struct space;
 struct engine;
+struct unit_system;
+struct phys_const;
 
 /* MPI message required for FOF. */
 struct fof_mpi {
@@ -163,11 +159,14 @@ struct cell_pair_indices {
 } SWIFT_STRUCT_ALIGN;
 
 /* Function prototypes. */
-void fof_init(struct fof_props *props, struct swift_params *params);
+void fof_init(struct fof_props *props, struct swift_params *params,
+              const struct phys_const *phys_const,
+              const struct unit_system *us);
 void fof_create_mpi_types(void);
 void fof_allocate(const struct space *s, const long long total_nr_DM_particles,
                   struct fof_props *props);
-void fof_search_tree(struct fof_props *props, struct space *s);
+void fof_search_tree(struct fof_props *props, struct space *s,
+                     const int dump_results, const int seed_black_holes);
 void rec_fof_search_self(const struct fof_props *props, const double dim[3],
                          const double search_r2, const int periodic,
                          const struct gpart *const space_gparts,

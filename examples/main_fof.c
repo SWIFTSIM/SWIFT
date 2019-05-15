@@ -916,7 +916,7 @@ int main(int argc, char *argv[]) {
 
     /* Initialise the FOF properties */
     bzero(&fof_properties, sizeof(struct fof_props));
-    if (with_fof) fof_init(&fof_properties, params);
+    if (with_fof) fof_init(&fof_properties, params, &prog_const, &us);
 
     /* Construct the engine policy */
     int engine_policies = ENGINE_POLICY | engine_policy_steal;
