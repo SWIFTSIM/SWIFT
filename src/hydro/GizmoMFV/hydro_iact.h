@@ -25,6 +25,8 @@
 #include "hydro_gradients.h"
 #include "riemann.h"
 
+#include "./hydro_parameters.h"
+
 #define GIZMO_VOLUME_CORRECTION
 
 /**

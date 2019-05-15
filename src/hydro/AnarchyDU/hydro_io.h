@@ -1,7 +1,7 @@
 /*******************************************************************************
  * This file is part of SWIFT.
- * Coypright (c) 2016 Matthieu Schaller (matthieu.schaller@durham.ac.uk) &
- *                    Josh Borrow (joshua.borrow@durham.ac.uk)
+ * Coypright (c) 2019 Josh Borrow (joshua.borrow@durham.ac.uk) &
+ *                    Matthieu Schaller (matthieu.schaller@durham.ac.uk)
  *
  * This program is free software: you can redistribute it and/or modify
  * it under the terms of the GNU Lesser General Public License as published
@@ -10,25 +10,21 @@
  *
  * This program is distributed in the hope that it will be useful,
  * but WITHOUT ANY WARRANTY; without even the implied warranty of
- * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR DURPOSE.  See the
  * GNU General Public License for more details.
  *
  * You should have received a copy of the GNU Lesser General Public License
  * along with this program.  If not, see <http://www.gnu.org/licenses/>.
  *
  ******************************************************************************/
-#ifndef SWIFT_PRESSURE_ENERGY_HYDRO_IO_H
-#define SWIFT_PRESSURE_ENERGY_HYDRO_IO_H
+#ifndef SWIFT_ANARCHY_DU_HYDRO_IO_H
+#define SWIFT_ANARCHY_DU_HYDRO_IO_H
+
 /**
- * @file PressureEnergy/hydro_io.h
- * @brief P-U implementation of SPH (i/o routines)
- *
- * The thermal variable is the internal energy (u). A simple constant
- * viscosity term with a Balsara switch is implemented.
- *
- * No thermal conduction term is implemented.
- *
- * See PressureEnergy/hydro.h for references.
+ * @file AnarchyDU/hydro_io.h
+ * @brief Density-Energy conservative implementation of SPH,
+ *        with added ANARCHY physics (Cullen & Denhen 2011 AV,
+ *        Price 2008 thermal diffusion (i/o routines)
  */
 
 #include "adiabatic_index.h"
@@ -141,6 +137,18 @@ INLINE static void convert_part_potential(const struct engine* e,
     ret[0] = 0.f;
 }
 
+INLINE static void convert_viscosity(const struct engine* e,
+                                     const struct part* p,
+                                     const struct xpart* xp, float* ret) {
+  ret[0] = p->viscosity.alpha;
+}
+
+INLINE static void convert_diffusion(const struct engine* e,
+                                     const struct part* p,
+                                     const struct xpart* xp, float* ret) {
+  ret[0] = p->diffusion.alpha;
+}
+
 /**
  * @brief Specifies which particle fields to write to a dataset
  *
@@ -153,7 +161,7 @@ INLINE static void hydro_write_particles(const struct part* parts,
                                          struct io_props* list,
                                          int* num_fields) {
 
-  *num_fields = 10;
+  *num_fields = 12;
 
   /* List what we want to write */
   list[0] = io_make_output_field_convert_part("Coordinates", DOUBLE, 3,
@@ -171,14 +179,20 @@ INLINE static void hydro_write_particles(const struct part* parts,
                                  UNIT_CONV_NO_UNITS, parts, id);
   list[6] =
       io_make_output_field("Density", FLOAT, 1, UNIT_CONV_DENSITY, parts, rho);
-  list[7] = io_make_output_field("Pressure", FLOAT, 1, UNIT_CONV_PRESSURE,
-                                 parts, pressure_bar);
+  list[7] = io_make_output_field_convert_part(
+      "Pressure", FLOAT, 1, UNIT_CONV_PRESSURE, parts, xparts, convert_P);
   list[8] = io_make_output_field_convert_part("Entropy", FLOAT, 1,
                                               UNIT_CONV_ENTROPY_PER_UNIT_MASS,
                                               parts, xparts, convert_S);
   list[9] = io_make_output_field_convert_part("Potential", FLOAT, 1,
                                               UNIT_CONV_POTENTIAL, parts,
                                               xparts, convert_part_potential);
+  list[10] = io_make_output_field_convert_part("Viscosity", FLOAT, 1,
+                                               UNIT_CONV_NO_UNITS, parts,
+                                               xparts, convert_viscosity);
+  list[11] = io_make_output_field_convert_part("Diffusion", FLOAT, 1,
+                                               UNIT_CONV_NO_UNITS, parts,
+                                               xparts, convert_diffusion);
 }
 
 /**
@@ -189,9 +203,10 @@ INLINE static void hydro_write_flavour(hid_t h_grpsph) {
 
   /* Viscosity and thermal conduction */
   /* Nothing in this minimal model... */
-  io_write_attribute_s(h_grpsph, "Thermal Conductivity Model", "No treatment");
+  io_write_attribute_s(h_grpsph, "Thermal Conductivity Model",
+                       "Simple treatment as in Price (2008)");
   io_write_attribute_s(h_grpsph, "Viscosity Model",
-                       "Minimal treatment as in Monaghan (1992)");
+                       "Simplified version of Cullen & Denhen (2011)");
 
   /* Time integration properties */
   io_write_attribute_f(h_grpsph, "Maximal Delta u change over dt",
@@ -205,4 +220,4 @@ INLINE static void hydro_write_flavour(hid_t h_grpsph) {
  */
 INLINE static int writeEntropyFlag(void) { return 0; }
 
-#endif /* SWIFT_MINIMAL_HYDRO_IO_H */
+#endif /* SWIFT_ANARCHY_DU_HYDRO_IO_H */
