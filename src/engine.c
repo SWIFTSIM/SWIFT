@@ -4974,7 +4974,11 @@ void engine_init(struct engine *e, struct space *s, struct swift_params *params,
 
   /* Read the run label */
   memset(e->run_name, 0, PARSER_MAX_LINE_SIZE);
-  parser_get_opt_param_string(params, "MetaData:run_name", e->run_name, "");
+  parser_get_opt_param_string(params, "MetaData:run_name", e->run_name,
+                              "Untitled SWIFT simulation");
+  if (strlen(e->run_name) == 0) {
+    error("The run name in the parameter file cannot be an empty string.")
+  }
   if (e->nodeID == 0) message("Running simulation '%s'.", e->run_name);
 
   /* Setup the timestep if non-cosmological */
