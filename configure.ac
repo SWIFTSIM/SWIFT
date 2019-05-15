@@ -1371,7 +1371,7 @@ esac
 # Hydro scheme.
 AC_ARG_WITH([hydro],
    [AS_HELP_STRING([--with-hydro=<scheme>],
-      [Hydro dynamics to use @<:@gadget2, minimal, pressure-entropy, pressure-energy, pressure-energy-monaghan, default, gizmo-mfv, gizmo-mfm, shadowfax, planetary, anarchy-pu default: gadget2@:>@]
+      [Hydro dynamics to use @<:@gadget2, minimal, pressure-entropy, pressure-energy, pressure-energy-monaghan, default, gizmo-mfv, gizmo-mfm, shadowfax, planetary, anarchy-du, anarchy-pu default: gadget2@:>@]
    )],
    [with_hydro="$withval"],
    [with_hydro="gadget2"]
@@ -1407,6 +1407,9 @@ case "$with_hydro" in
    ;;
    planetary)
       AC_DEFINE([PLANETARY_SPH], [1], [Planetary SPH])
+   ;;
+   anarchy-du)
+      AC_DEFINE([ANARCHY_DU_SPH], [1], [ANARCHY (DU) SPH])
    ;;
    anarchy-pu)
       AC_DEFINE([ANARCHY_PU_SPH], [1], [ANARCHY (PU) SPH])

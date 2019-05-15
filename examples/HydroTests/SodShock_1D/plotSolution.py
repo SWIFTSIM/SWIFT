@@ -1,6 +1,7 @@
 ###############################################################################
  # This file is part of SWIFT.
  # Copyright (c) 2016 Matthieu Schaller (matthieu.schaller@durham.ac.uk)
+ #               2019 Josh Borrow (josh.borrow@durham.ac.uk)
  # 
  # This program is free software: you can redistribute it and/or modify
  # it under the terms of the GNU Lesser General Public License as published
@@ -270,7 +271,7 @@ ylim(0.01, 1.1)
 
 # Internal energy profile -------------------------
 subplot(234)
-scatter(x, u, marker='.', c=alpha_diff, s=4.0)
+plot(x, u, '.', color='r', ms=4.0)
 plot(x_s, u_s, '--', color='k', alpha=0.8, lw=1.2)
 xlabel("${\\rm{Position}}~x$", labelpad=0)
 ylabel("${\\rm{Internal~Energy}}~u$", labelpad=0)

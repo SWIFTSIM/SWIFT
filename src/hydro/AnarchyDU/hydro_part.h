@@ -1,7 +1,7 @@
 /*******************************************************************************
  * This file is part of SWIFT.
- * Copyright (c) 2016 Matthieu Schaller (matthieu.schaller@durham.ac.uk) &
- *                    Josh Borrow (joshua.borrow@durham.ac.uk)
+ * Coypright (c) 2019 Josh Borrow (joshua.borrow@durham.ac.uk) &
+ *                    Matthieu Schaller (matthieu.schaller@durham.ac.uk)
  *
  * This program is free software: you can redistribute it and/or modify
  * it under the terms of the GNU Lesser General Public License as published
@@ -17,15 +17,14 @@
  * along with this program.  If not, see <http://www.gnu.org/licenses/>.
  *
  ******************************************************************************/
-#ifndef SWIFT_ANARCHY_PU_HYDRO_PART_H
-#define SWIFT_ANARCHY_PU_HYDRO_PART_H
+#ifndef SWIFT_ANARCHY_DU_HYDRO_PART_H
+#define SWIFT_ANARCHY_DU_HYDRO_PART_H
+
 /**
- * @file AnarchyPU/hydro_part.h
- * @brief P-U conservative implementation of SPH,
+ * @file AnarchyDU/hydro_part.h
+ * @brief Density-Energy conservative implementation of SPH,
  *        with added ANARCHY physics (Cullen & Denhen 2011 AV,
- *        Price 2008 thermal diffusion) (Particle definition)
- *
- * See AnarchyPU/hydro.h for references.
+ *        Price 2008 thermal diffusion (particle definition)
  */
 
 #include "chemistry_struct.h"
@@ -107,9 +106,6 @@ struct part {
   /*! Particle density. */
   float rho;
 
-  /*! Particle pressure (weighted) */
-  float pressure_bar;
-
   /* Store viscosity information in a separate struct. */
   struct {
 
@@ -159,9 +155,6 @@ struct part {
       /*! Derivative of density with respect to h */
       float rho_dh;
 
-      /*! Derivative of the weighted pressure with respect to h */
-      float pressure_bar_dh;
-
       /*! Particle velocity curl. */
       float rot_v[3];
 
@@ -178,6 +171,9 @@ struct part {
 
       /*! "Grad h" term -- only partial in P-U */
       float f;
+
+      /*! Particle pressure. */
+      float pressure;
 
       /*! Particle soundspeed. */
       float soundspeed;
@@ -212,4 +208,4 @@ struct part {
 
 } SWIFT_STRUCT_ALIGN;
 
-#endif /* SWIFT_ANARCHY_PU_HYDRO_PART_H */
+#endif /* SWIFT_ANARCHY_DU_HYDRO_PART_H */

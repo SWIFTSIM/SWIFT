@@ -1031,6 +1031,28 @@ hydro_set_drifted_physical_internal_energy(struct part* p,
 }
 
 /**
+ * @brief Update the value of the viscosity alpha for the scheme.
+ *
+ * @param p the particle of interest
+ * @param alpha the new value for the viscosity coefficient.
+ */
+__attribute__((always_inline)) INLINE static void hydro_set_viscosity_alpha(
+    struct part* restrict p, float alpha) {
+  /* Purposefully left empty */
+}
+
+/**
+ * @brief Update the value of the viscosity alpha to the
+ *        feedback reset value for the scheme.
+ *
+ * @param p the particle of interest
+ */
+__attribute__((always_inline)) INLINE static void
+hydro_set_viscosity_alpha_max_feedback(struct part* restrict p) {
+  /* Purposefully left empty */
+}
+
+/**
  * @brief Returns the comoving density of a particle
  *
  * @param p The particle of interest

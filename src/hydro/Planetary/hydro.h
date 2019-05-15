@@ -46,6 +46,8 @@
 #include "kernel_hydro.h"
 #include "minmax.h"
 
+#include "./hydro_parameters.h"
+
 /*
  * Note: Define PLANETARY_SPH_NO_BALSARA to disable the Balsara (1995) switch
  * for the artificial viscosity and use the vanilla Monaghan (1992) instead.
@@ -416,6 +418,28 @@ hydro_set_drifted_physical_internal_energy(struct part *p,
 
   /* Update variables. */
   p->force.soundspeed = soundspeed;
+}
+
+/**
+ * @brief Update the value of the viscosity alpha for the scheme.
+ *
+ * @param p the particle of interest
+ * @param alpha the new value for the viscosity coefficient.
+ */
+__attribute__((always_inline)) INLINE static void hydro_set_viscosity_alpha(
+    struct part *restrict p, float alpha) {
+  /* This scheme has fixed alpha */
+}
+
+/**
+ * @brief Update the value of the viscosity alpha to the
+ *        feedback reset value for the scheme.
+ *
+ * @param p the particle of interest
+ */
+__attribute__((always_inline)) INLINE static void
+hydro_set_viscosity_alpha_max_feedback(struct part *restrict p) {
+  /* This scheme has fixed alpha */
 }
 
 /**

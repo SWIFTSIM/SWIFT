@@ -20,7 +20,7 @@
 #ifndef SWIFT_PRESSURE_ENERGY_MORRIS_HYDRO_PART_H
 #define SWIFT_PRESSURE_ENERGY_MORRIS_HYDRO_PART_H
 /**
- * @file PressureEnergy/hydro_part.h
+ * @file PressureEnergyMorrisMonaghanAV/hydro_part.h
  * @brief P-U implementation of SPH (Particle definition)
  *
  * The thermal variable is the internal energy (u). A simple variable

@@ -1,7 +1,7 @@
 /*******************************************************************************
  * This file is part* of SWIFT.
- * Copyright (c) 2016 Matthieu Schaller (matthieu.schaller@durham.ac.uk) &
- *                    Josh Borrow (joshua.borrow@durham.ac.uk)
+ * Coypright (c) 2019 Josh Borrow (joshua.borrow@durham.ac.uk) &
+ *                    Matthieu Schaller (matthieu.schaller@durham.ac.uk)
  *
  * This program is free software: you can redistribute it and/or modify
  * it under the terms of the GNU Lesser General Public License as published
@@ -17,16 +17,14 @@
  * along with this program.  If not, see <http://www.gnu.org/licenses/>.
  *
  ******************************************************************************/
-#ifndef SWIFT_ANARCHY_PU_HYDRO_IACT_H
-#define SWIFT_ANARCHY_PU_HYDRO_IACT_H
+#ifndef SWIFT_ANARCHY_DU_HYDRO_IACT_H
+#define SWIFT_ANARCHY_DU_HYDRO_IACT_H
 
 /**
- * @file AnarchyPU/hydro_iact.h
- * @brief P-U conservative implementation of SPH,
+ * @file AnarchyDU/hydro_iact.h
+ * @brief Density-Energy conservative implementation of SPH,
  *        with added ANARCHY physics (Cullen & Denhen 2011 AV,
- *        Price 2008 thermal diffusion) (Neighbour loop equations).
- *
- * See AnarchyPU/hydro.h for references.
+ *        Price 2008 thermal diffusion (interaction routines)
  */
 
 #include "adiabatic_index.h"
@@ -68,9 +66,6 @@ __attribute__((always_inline)) INLINE static void runner_iact_density(
   pi->rho += mj * wi;
   pi->density.rho_dh -= mj * (hydro_dimension * wi + ui * wi_dx);
 
-  pi->pressure_bar += mj * wi * pj->u;
-  pi->density.pressure_bar_dh -=
-      mj * pj->u * (hydro_dimension * wi + ui * wi_dx);
   pi->density.wcount += wi;
   pi->density.wcount_dh -= (hydro_dimension * wi + ui * wi_dx);
 
@@ -81,9 +76,6 @@ __attribute__((always_inline)) INLINE static void runner_iact_density(
 
   pj->rho += mi * wj;
   pj->density.rho_dh -= mi * (hydro_dimension * wj + uj * wj_dx);
-  pj->pressure_bar += mi * wj * pi->u;
-  pj->density.pressure_bar_dh -=
-      mi * pi->u * (hydro_dimension * wj + uj * wj_dx);
   pj->density.wcount += wj;
   pj->density.wcount_dh -= (hydro_dimension * wj + uj * wj_dx);
 
@@ -148,10 +140,6 @@ __attribute__((always_inline)) INLINE static void runner_iact_nonsym_density(
   pi->rho += mj * wi;
   pi->density.rho_dh -= mj * (hydro_dimension * wi + ui * wi_dx);
 
-  pi->pressure_bar += mj * wi * pj->u;
-
-  pi->density.pressure_bar_dh -=
-      mj * pj->u * (hydro_dimension * wi + ui * wi_dx);
   pi->density.wcount += wi;
   pi->density.wcount_dh -= (hydro_dimension * wi + ui * wi_dx);
 
@@ -330,14 +318,11 @@ __attribute__((always_inline)) INLINE static void runner_iact_force(
   const float mj = pj->mass;
   const float mi = pi->mass;
 
-  const float miui = mi * pi->u;
-  const float mjuj = mj * pj->u;
-
   const float rhoi = pi->rho;
   const float rhoj = pj->rho;
-  /* Compute gradient terms */
-  const float f_ij = 1.f - (pi->force.f / mjuj);
-  const float f_ji = 1.f - (pj->force.f / miui);
+
+  const float pressurei = pi->force.pressure;
+  const float pressurej = pj->force.pressure;
 
   /* Get the kernel for hi. */
   const float hi_inv = 1.0f / hi;
@@ -368,7 +353,8 @@ __attribute__((always_inline)) INLINE static void runner_iact_force(
   const float mu_ij = fac_mu * r_inv * omega_ij; /* This is 0 or negative */
 
   /* Compute sound speeds and signal velocity */
-  const float v_sig = 0.5f * (pi->viscosity.v_sig + pj->viscosity.v_sig);
+  const float v_sig = pi->force.soundspeed + pj->force.soundspeed -
+                      const_viscosity_beta * mu_ij;
 
   /* Balsara term */
   const float balsara_i = pi->force.balsara;
@@ -383,11 +369,13 @@ __attribute__((always_inline)) INLINE static void runner_iact_force(
   /* Convolve with the kernel */
   const float visc_acc_term = 0.5f * visc * (wi_dr + wj_dr) * r_inv;
 
+  /* Compute gradient terms */
+  const float P_over_rho2_i = pressurei / (rhoi * rhoi) * pi->force.f;
+  const float P_over_rho2_j = pressurej / (rhoj * rhoj) * pj->force.f;
+
   /* SPH acceleration term */
   const float sph_acc_term =
-      pj->u * pi->u * hydro_gamma_minus_one * hydro_gamma_minus_one *
-      ((f_ij / pi->pressure_bar) * wi_dr + (f_ji / pj->pressure_bar) * wj_dr) *
-      r_inv;
+      (P_over_rho2_i * wi_dr + P_over_rho2_j * wj_dr) * r_inv;
 
   /* Assemble the acceleration */
   const float acc = sph_acc_term + visc_acc_term;
@@ -402,12 +390,8 @@ __attribute__((always_inline)) INLINE static void runner_iact_force(
   pj->a_hydro[2] += mi * acc * dx[2];
 
   /* Get the time derivative for u. */
-  const float sph_du_term_i = hydro_gamma_minus_one * hydro_gamma_minus_one *
-                              pj->u * pi->u * (f_ij / pi->pressure_bar) *
-                              wi_dr * dvdr * r_inv;
-  const float sph_du_term_j = hydro_gamma_minus_one * hydro_gamma_minus_one *
-                              pi->u * pj->u * (f_ji / pj->pressure_bar) *
-                              wj_dr * dvdr * r_inv;
+  const float sph_du_term_i = P_over_rho2_i * dvdr * r_inv * wi_dr;
+  const float sph_du_term_j = P_over_rho2_j * dvdr * r_inv * wj_dr;
 
   /* Viscosity term */
   const float visc_du_term = 0.5f * visc_acc_term * dvdr_Hubble;
@@ -459,16 +443,12 @@ __attribute__((always_inline)) INLINE static void runner_iact_nonsym_force(
   /* Recover some data */
   // const float mi = pi->mass;
   const float mj = pj->mass;
-  const float mi = pi->mass;
-
-  const float miui = mi * pi->u;
-  const float mjuj = mj * pj->u;
 
   const float rhoi = pi->rho;
   const float rhoj = pj->rho;
-  /* Compute gradient terms */
-  const float f_ij = 1.f - (pi->force.f / mjuj);
-  const float f_ji = 1.f - (pj->force.f / miui);
+
+  const float pressurei = pi->force.pressure;
+  const float pressurej = pj->force.pressure;
 
   /* Get the kernel for hi. */
   const float hi_inv = 1.0f / hi;
@@ -499,7 +479,8 @@ __attribute__((always_inline)) INLINE static void runner_iact_nonsym_force(
   const float mu_ij = fac_mu * r_inv * omega_ij; /* This is 0 or negative */
 
   /* Compute sound speeds and signal velocity */
-  const float v_sig = 0.5f * (pi->viscosity.v_sig + pj->viscosity.v_sig);
+  const float v_sig = pi->force.soundspeed + pj->force.soundspeed -
+                      const_viscosity_beta * mu_ij;
 
   /* Balsara term */
   const float balsara_i = pi->force.balsara;
@@ -514,11 +495,13 @@ __attribute__((always_inline)) INLINE static void runner_iact_nonsym_force(
   /* Convolve with the kernel */
   const float visc_acc_term = 0.5f * visc * (wi_dr + wj_dr) * r_inv;
 
+  /* Compute gradient terms */
+  const float P_over_rho2_i = pressurei / (rhoi * rhoi) * pi->force.f;
+  const float P_over_rho2_j = pressurej / (rhoj * rhoj) * pj->force.f;
+
   /* SPH acceleration term */
   const float sph_acc_term =
-      pj->u * pi->u * hydro_gamma_minus_one * hydro_gamma_minus_one *
-      ((f_ij / pi->pressure_bar) * wi_dr + (f_ji / pj->pressure_bar) * wj_dr) *
-      r_inv;
+      (P_over_rho2_i * wi_dr + P_over_rho2_j * wj_dr) * r_inv;
 
   /* Assemble the acceleration */
   const float acc = sph_acc_term + visc_acc_term;
@@ -529,9 +512,7 @@ __attribute__((always_inline)) INLINE static void runner_iact_nonsym_force(
   pi->a_hydro[2] -= mj * acc * dx[2];
 
   /* Get the time derivative for u. */
-  const float sph_du_term_i = hydro_gamma_minus_one * hydro_gamma_minus_one *
-                              pj->u * pi->u * (f_ij / pi->pressure_bar) *
-                              wi_dr * dvdr * r_inv;
+  const float sph_du_term_i = P_over_rho2_i * dvdr * r_inv * wi_dr;
 
   /* Viscosity term */
   const float visc_du_term = 0.5f * visc_acc_term * dvdr_Hubble;
@@ -599,4 +580,4 @@ __attribute__((always_inline)) INLINE static void runner_iact_nonsym_limiter(
   }
 }
 
-#endif /* SWIFT_ANARCHY_PU_HYDRO_IACT_H */
+#endif /* SWIFT_ANARCHY_DU_HYDRO_IACT_H */
