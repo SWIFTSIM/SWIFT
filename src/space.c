@@ -4366,7 +4366,7 @@ void space_init_parts(struct space *s, int verbose) {
 
   if (s->nr_parts > 0)
     threadpool_map(&s->e->threadpool, space_init_parts_mapper, s->parts,
-                   s->nr_parts, sizeof(struct part), 0, &s->e);
+                   s->nr_parts, sizeof(struct part), 0, s->e);
   if (verbose)
     message("took %.3f %s.", clocks_from_ticks(getticks() - tic),
             clocks_getunit());
