@@ -143,17 +143,19 @@ subplot(231)
 if np.size(x_g) > 1:
     plot(x_g, v_g, 's', color='g', alpha=0.8, lw=1.2, ms=4)
 plot(x, v, '.', color='r', ms=4.0)
-plot(x_s, v_s, '--', color='k', alpha=0.8, lw=1.2)
+if redshift > 1.:
+  plot(x_s, v_s, '--', color='k', alpha=0.8, lw=1.2)
 xlabel("${\\rm{Comoving~position}}~x$", labelpad=0)
 ylabel("${\\rm{Peculiar~velocity}}~v_x$", labelpad=0)
 
 
 # Density profile --------------------------------
-subplot(232)#, yscale="log")
+subplot(232, yscale="log")
 if np.size(x_g) > 1:
     plot(x_g, rho_g/rho_0, 's', color='g', alpha=0.8, lw=1.2, ms=4)
 plot(x, rho/rho_0, '.', color='r', ms=4.0)
-plot(x_s, rho_s/rho_0, '--', color='k', alpha=0.8, lw=1.2)
+if redshift > 1.:
+  plot(x_s, rho_s/rho_0, '--', color='k', alpha=0.8, lw=1.2)
 xlabel("${\\rm{Comoving~position}}~x$", labelpad=0)
 ylabel("${\\rm{Density}}~\\rho / \\rho_0$", labelpad=0)
 
@@ -166,7 +168,7 @@ xlabel("${\\rm{Comoving~position}}~x$", labelpad=0)
 ylabel("${\\rm{Potential}}~\\phi$", labelpad=0)
 
 # Temperature profile -------------------------
-subplot(234)#, yscale="log")
+subplot(234, yscale="log")
 u *= (unit_length_in_si**2 / unit_time_in_si**2)
 u_g *= (unit_length_in_si**2 / unit_time_in_si**2)
 u /= a**(3 * (gas_gamma - 1.))
@@ -177,7 +179,8 @@ print("z = {0:.2f}, T_avg = {1:.2f}".format(redshift, T.mean()))
 if np.size(x_g) > 1:
     plot(x_g, T_g, 's', color='g', alpha=0.8, lw=1.2, ms=4)
 plot(x, T, '.', color='r', ms=4.0)
-plot(x_s, T_s, '--', color='k', alpha=0.8, lw=1.2)
+if redshift > 1.:
+  plot(x_s, T_s, '--', color='k', alpha=0.8, lw=1.2)
 xlabel("${\\rm{Comoving~position}}~x$", labelpad=0)
 ylabel("${\\rm{Temperature}}~T$", labelpad=0)
 

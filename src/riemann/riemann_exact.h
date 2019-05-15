@@ -334,7 +334,6 @@ __attribute__((always_inline)) INLINE static int riemann_solver_solve(
 
   /* check vacuum (generation) condition */
   if (riemann_is_vacuum(WL, WR, vL, vR, aL, aR)) {
-    message("vacuum");
     return riemann_solve_vacuum(WL, WR, vL, vR, aL, aR, Whalf, n_unit);
   }
 
