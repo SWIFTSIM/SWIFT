@@ -95,7 +95,8 @@ enum engine_step_properties {
   engine_step_prop_snapshot = (1 << 4),
   engine_step_prop_restarts = (1 << 5),
   engine_step_prop_stf = (1 << 6),
-  engine_step_prop_logger_index = (1 << 7)
+  engine_step_prop_logger_index = (1 << 7),
+  engine_step_prop_done = (1 << 8)
 };
 
 /* Some constants */
