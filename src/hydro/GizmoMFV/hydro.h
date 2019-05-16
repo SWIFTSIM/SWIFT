@@ -25,6 +25,7 @@
 #include "cosmology.h"
 #include "entropy_floor.h"
 #include "equation_of_state.h"
+#include "hydro_flag_variable.h"
 #include "hydro_gradients.h"
 #include "hydro_properties.h"
 #include "hydro_space.h"
@@ -218,6 +219,8 @@ __attribute__((always_inline)) INLINE static void hydro_init_part(
   p->geometry.centroid[0] = 0.0f;
   p->geometry.centroid[1] = 0.0f;
   p->geometry.centroid[2] = 0.0f;
+
+  hydro_flag_variable_init(p);
 }
 
 /**
@@ -390,6 +393,13 @@ __attribute__((always_inline)) INLINE static void hydro_end_density(
      the geometry matrix is close to singular) */
   p->density.wcount *= p->density.wcorr;
   p->density.wcount_dh *= p->density.wcorr;
+
+  if (p->density.wcorr < 1.f) {
+    hydro_add_flag(p, GIZMO_FLAG_MORE_NEIGHBOURS);
+  }
+  if (p->density.wcorr <= const_gizmo_min_wcorr) {
+    hydro_add_flag(p, GIZMO_FLAG_REVERT_TO_SPH);
+  }
 }
 
 /**
@@ -762,16 +772,25 @@ __attribute__((always_inline)) INLINE static void hydro_kick_extra(
 
   /* apply the entropy switch */
   if (p->gpart) {
+    const float psize = powf(p->geometry.volume / hydro_dimension_unit_sphere,
+                             hydro_dimension_inv);
     const float dEgrav = p->conserved.mass *
                          sqrtf(a_grav[0] * a_grav[0] + a_grav[1] * a_grav[1] +
                                a_grav[2] * a_grav[2]) *
-                         p->h;
-    if (p->conserved.energy <
-            0.001 * (p->force.Ekinmax + p->conserved.energy) ||
-        p->conserved.energy < 0.001 * dEgrav) {
+                         cosmo->a_inv * psize;
+    const float dEkin = 0.5f * p->conserved.mass * p->force.Ekinmax;
+    if (p->conserved.energy < 0.0001f * (dEkin + p->conserved.energy) ||
+        p->conserved.energy < 0.0001f * dEgrav) {
       p->conserved.energy = hydro_one_over_gamma_minus_one *
                             p->conserved.entropy *
                             pow_gamma_minus_one(p->primitives.rho);
+      if (p->conserved.energy < 0.0001f * (dEkin + p->conserved.energy)) {
+        hydro_add_flag(p, GIZMO_FLAG_EKIN_SWITCH);
+      }
+      if (p->conserved.energy < 0.0001f * dEgrav) {
+        hydro_add_flag(p, GIZMO_FLAG_GRAVITY_SWITCH);
+      }
+      hydro_add_flag(p, GIZMO_FLAG_ENTROPY);
     } else {
       p->conserved.entropy = hydro_gamma_minus_one * p->conserved.energy *
                              pow_minus_gamma_minus_one(p->primitives.rho);

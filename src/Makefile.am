@@ -114,6 +114,7 @@ nobase_noinst_HEADERS = align.h approx_math.h atomic.h barrier.h cycle.h error.h
                  hydro/GizmoMFV/hydro_slope_limiters.h \
                  hydro/GizmoMFV/hydro_unphysical.h \
                  hydro/GizmoMFV/hydro_velocities.h \
+                 hydro/GizmoMFV/hydro_flag_variable.h \
 		 hydro/GizmoMFM/hydro.h hydro/GizmoMFM/hydro_iact.h \
                  hydro/GizmoMFM/hydro_io.h hydro/GizmoMFM/hydro_debug.h \
                  hydro/GizmoMFM/hydro_part.h \

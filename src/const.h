@@ -92,6 +92,10 @@
    gradient matrix and use SPH gradients instead. */
 #define const_gizmo_min_wcorr 0.5f
 
+/* Outputs an additional flag variable for each particle containing diagnostic
+   information. */
+#define GIZMO_FLAG_VARIABLE
+
 /* Types of gradients to use for SHADOWFAX_SPH */
 /* If no option is chosen, no gradients are used (first order scheme) */
 #define SHADOWFAX_GRADIENTS
