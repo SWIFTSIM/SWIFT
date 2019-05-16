@@ -1164,10 +1164,9 @@ __attribute__((always_inline)) INLINE static void hydro_set_internal_energy(
   p->conserved.energy = u * p->conserved.mass;
 #ifdef GIZMO_TOTAL_ENERGY
   /* add the kinetic energy */
-  p->conserved.energy += 0.5f *
-                         (p->conserved.momentum[0] * p->primitives.v[0] +
-                          p->conserved.momentum[1] * p->primitives.v[1] +
-                          p->conserved.momentum[2] * p->primitives.v[2]);
+  p->conserved.energy += 0.5f * (p->conserved.momentum[0] * p->primitives.v[0] +
+                                 p->conserved.momentum[1] * p->primitives.v[1] +
+                                 p->conserved.momentum[2] * p->primitives.v[2]);
 #endif
   p->primitives.P = hydro_gamma_minus_one * p->primitives.rho * u;
 }
@@ -1188,10 +1187,9 @@ __attribute__((always_inline)) INLINE static void hydro_set_entropy(
                         hydro_one_over_gamma_minus_one * p->conserved.mass;
 #ifdef GIZMO_TOTAL_ENERGY
   /* add the kinetic energy */
-  p->conserved.energy += 0.5f *
-                         (p->conserved.momentum[0] * p->primitives.v[0] +
-                          p->conserved.momentum[1] * p->primitives.v[1] +
-                          p->conserved.momentum[2] * p->primitives.v[2]);
+  p->conserved.energy += 0.5f * (p->conserved.momentum[0] * p->primitives.v[0] +
+                                 p->conserved.momentum[1] * p->primitives.v[1] +
+                                 p->conserved.momentum[2] * p->primitives.v[2]);
 #endif
   p->primitives.P = S * pow_gamma(p->primitives.rho);
 }

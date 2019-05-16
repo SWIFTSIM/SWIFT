@@ -155,6 +155,22 @@ __attribute__((always_inline)) INLINE static integertime_t get_part_timestep(
           ? fabsf(e->hydro_properties->log_max_h_change * p->h / p->force.h_dt)
           : FLT_MAX;
 
+#ifdef SWIFT_DEBUG_CHECKS
+  if (new_dt_grav == 0.0f) {
+    error("Zero gravity time step!");
+  }
+  if (new_dt_hydro == 0.0f) {
+    printParticle_single(p, xp);
+    error("Zero hydro time step!");
+  }
+  if (new_dt_cooling == 0.0f) {
+    error("Zero cooling time step!");
+  }
+  if (dt_h_change == 0.0f) {
+    error("Zero h_change time step!");
+  }
+#endif
+
   new_dt = min(new_dt, dt_h_change);
 
   /* Apply the maximal displacement constraint (FLT_MAX if non-cosmological)*/
@@ -162,6 +178,13 @@ __attribute__((always_inline)) INLINE static integertime_t get_part_timestep(
 
   /* Apply cosmology correction (This is 1 if non-cosmological) */
   new_dt *= e->cosmology->time_step_factor;
+
+#ifdef SWIFT_DEBUG_CHECKS
+  if (new_dt == 0.0f) {
+    error("Zero timestep! (%e, %e)", e->dt_max_RMS_displacement,
+          e->cosmology->time_step_factor);
+  }
+#endif
 
   /* Limit timestep within the allowed range */
   new_dt = min(new_dt, e->dt_max);

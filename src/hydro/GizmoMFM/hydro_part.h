@@ -21,6 +21,7 @@
 
 #include "chemistry_struct.h"
 #include "cooling_struct.h"
+#include "hydro_parameters.h"
 #include "star_formation_struct.h"
 #include "tracers_struct.h"
 
@@ -205,6 +206,11 @@ struct part {
 
   /* Need waking-up ? */
   timebin_t wakeup;
+
+#ifdef GIZMO_FLAG_VARIABLE
+  /* Flag variable containing diagnostic information about the particle. */
+  int flag_variable;
+#endif
 
 #ifdef SWIFT_DEBUG_CHECKS
 

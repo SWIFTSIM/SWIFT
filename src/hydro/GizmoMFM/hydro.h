@@ -25,6 +25,7 @@
 #include "cosmology.h"
 #include "entropy_floor.h"
 #include "equation_of_state.h"
+#include "hydro_flag_variable.h"
 #include "hydro_gradients.h"
 #include "hydro_properties.h"
 #include "hydro_space.h"
@@ -188,6 +189,8 @@ __attribute__((always_inline)) INLINE static void hydro_init_part(
   p->geometry.centroid[0] = 0.0f;
   p->geometry.centroid[1] = 0.0f;
   p->geometry.centroid[2] = 0.0f;
+
+  hydro_flag_variable_init(p);
 }
 
 /**
@@ -349,6 +352,13 @@ __attribute__((always_inline)) INLINE static void hydro_end_density(
      the geometry matrix is close to singular) */
   p->density.wcount *= p->geometry.wcorr;
   p->density.wcount_dh *= p->geometry.wcorr;
+
+  if (p->geometry.wcorr < 1.f) {
+    hydro_add_flag(p, GIZMO_FLAG_MORE_NEIGHBOURS);
+  }
+  if (p->geometry.wcorr <= const_gizmo_min_wcorr) {
+    hydro_add_flag(p, GIZMO_FLAG_REVERT_TO_SPH);
+  }
 }
 
 /**
@@ -529,9 +539,9 @@ __attribute__((always_inline)) INLINE static void hydro_convert_quantities(
   p->conserved.energy /= cosmo->a_factor_internal_energy;
 
   /* initialize the entropy */
-  p->conserved.entropy =
-    p->conserved.energy * pow_minus_gamma_minus_one(p->rho) *
-      hydro_gamma_minus_one;
+  p->conserved.entropy = p->conserved.energy *
+                         pow_minus_gamma_minus_one(p->rho) *
+                         hydro_gamma_minus_one;
 }
 
 /**
@@ -565,6 +575,10 @@ __attribute__((always_inline)) INLINE static void hydro_predict_extra(
   if (h_corr < 2.0f && h_corr > 0.0f) {
     p->h *= h_corr;
   }
+
+  p->v[0] = xp->v_full[0];
+  p->v[1] = xp->v_full[1];
+  p->v[2] = xp->v_full[2];
 
   /* drift the primitive variables based on the old fluxes */
   if (p->conserved.mass > 0.0f) {
@@ -666,31 +680,6 @@ __attribute__((always_inline)) INLINE static void hydro_kick_extra(
   p->conserved.momentum[2] -= Pcorr * p->gradients.P[2];
 #endif
 
-  /* Apply the minimal energy limit */
-  const float min_energy =
-      hydro_props->minimal_internal_energy / cosmo->a_factor_internal_energy;
-  if (p->conserved.energy < min_energy * p->conserved.mass) {
-    p->conserved.energy = min_energy * p->conserved.mass;
-    p->flux.energy = 0.0f;
-  }
-
-  // MATTHIEU: Apply the entropy floor here.
-
-  gizmo_check_physical_quantities(
-      "mass", "energy", p->conserved.mass, p->conserved.momentum[0],
-      p->conserved.momentum[1], p->conserved.momentum[2], p->conserved.energy);
-
-#ifdef SWIFT_DEBUG_CHECKS
-  /* Note that this check will only have effect if no GIZMO_UNPHYSICAL option
-     was selected. */
-  if (p->conserved.energy < 0.0f) {
-    error(
-        "Negative energy after conserved variables update (energy: %g, "
-        "denergy: %g)!",
-        p->conserved.energy, p->flux.energy);
-  }
-#endif
-
   /* Add gravity. We only do this if we have gravity activated. */
   if (p->gpart) {
     /* Retrieve the current value of the gravitational acceleration from the
@@ -711,16 +700,49 @@ __attribute__((always_inline)) INLINE static void hydro_kick_extra(
     const float dEgrav = p->conserved.mass *
                          sqrtf(a_grav[0] * a_grav[0] + a_grav[1] * a_grav[1] +
                                a_grav[2] * a_grav[2]) *
-                         p->h;
-    if (p->conserved.energy <
-            0.001 * (p->force.Ekinmax + p->conserved.energy) ||
-        p->conserved.energy < 0.001 * dEgrav) {
+                         cosmo->a_inv * p->h;
+    if (p->conserved.energy < const_entropy_switch_ekin_fac *
+                                  (p->force.Ekinmax + p->conserved.energy) ||
+        p->conserved.energy < const_entropy_switch_grav_fac * dEgrav) {
       p->conserved.energy = hydro_one_over_gamma_minus_one *
                             p->conserved.entropy * pow_gamma_minus_one(p->rho);
+      if (p->conserved.energy < const_entropy_switch_ekin_fac *
+                                    (p->force.Ekinmax + p->conserved.energy)) {
+        hydro_add_flag(p, GIZMO_FLAG_EKIN_SWITCH);
+      }
+      if (p->conserved.energy < const_entropy_switch_grav_fac * dEgrav) {
+        hydro_add_flag(p, GIZMO_FLAG_GRAVITY_SWITCH);
+      }
+      hydro_add_flag(p, GIZMO_FLAG_ENTROPY);
     } else {
       p->conserved.entropy = hydro_gamma_minus_one * p->conserved.energy *
                              pow_minus_gamma_minus_one(p->rho);
     }
+  }
+
+  gizmo_check_physical_quantities(
+      "mass", "energy", p->conserved.mass, p->conserved.momentum[0],
+      p->conserved.momentum[1], p->conserved.momentum[2], p->conserved.energy);
+
+#ifdef SWIFT_DEBUG_CHECKS
+  /* Note that this check will only have effect if no GIZMO_UNPHYSICAL option
+     was selected. */
+  if (p->conserved.energy < 0.0f) {
+    error(
+        "Negative energy after conserved variables update (energy: %g, "
+        "denergy: %g)!",
+        p->conserved.energy, p->flux.energy);
+  }
+#endif
+
+  /* Apply the minimal energy limit */
+  const float min_energy =
+      hydro_props->minimal_internal_energy / cosmo->a_factor_internal_energy;
+  if (p->conserved.energy < min_energy * p->conserved.mass) {
+    p->conserved.energy = min_energy * p->conserved.mass;
+    p->conserved.entropy = hydro_gamma_minus_one * p->conserved.energy *
+                           pow_minus_gamma_minus_one(p->rho);
+    p->flux.energy = 0.0f;
   }
 
   /* Set the velocities: */
@@ -1124,10 +1146,9 @@ __attribute__((always_inline)) INLINE static void hydro_set_internal_energy(
   p->conserved.energy = u * p->conserved.mass;
 #ifdef GIZMO_TOTAL_ENERGY
   /* add the kinetic energy */
-  p->conserved.energy +=
-      0.5f *
-      (p->conserved.momentum[0] * p->v[0] + p->conserved.momentum[1] * p->v[1] +
-       p->conserved.momentum[2] * p->v[2]);
+  p->conserved.energy += 0.5f * (p->conserved.momentum[0] * p->v[0] +
+                                 p->conserved.momentum[1] * p->v[1] +
+                                 p->conserved.momentum[2] * p->v[2]);
 #endif
   p->P = hydro_gamma_minus_one * p->rho * u;
 }
@@ -1148,10 +1169,9 @@ __attribute__((always_inline)) INLINE static void hydro_set_entropy(
                         hydro_one_over_gamma_minus_one * p->conserved.mass;
 #ifdef GIZMO_TOTAL_ENERGY
   /* add the kinetic energy */
-  p->conserved.energy +=
-      0.5f *
-      (p->conserved.momentum[0] * p->v[0] + p->conserved.momentum[1] * p->v[1] +
-       p->conserved.momentum[2] * p->v[2]);
+  p->conserved.energy += 0.5f * (p->conserved.momentum[0] * p->v[0] +
+                                 p->conserved.momentum[1] * p->v[1] +
+                                 p->conserved.momentum[2] * p->v[2]);
 #endif
   p->P = S * pow_gamma(p->rho);
 }

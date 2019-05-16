@@ -23,7 +23,7 @@
 
 /*! @brief Maximum value for the extrapolated quantity as a function of the
  *  maximum value across the particle neighbours. */
-#define HYDRO_SLOPE_LIMITER_ALPHAMAX 2.0f
+#define HYDRO_SLOPE_LIMITER_ALPHAMAX 1.0f
 
 /**
  * @brief Initialize variables for the cell wide slope limiter

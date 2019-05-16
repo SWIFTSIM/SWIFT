@@ -52,6 +52,15 @@
  * Beta is defined as in e.g. Price (2010) Eqn (103) */
 #define const_viscosity_beta 3.0f
 
+/* Prefactor for the kinetic energy condition for the entropy switch. */
+#define const_entropy_switch_ekin_fac 0.0001f
+
+/* Prefactor for the gravitational energy condition for the entropy switch. */
+#define const_entropy_switch_grav_fac 0.0001f
+
+/*! Activate this to write a diagnostic flag variable to the snapshots. */
+#define GIZMO_FLAG_VARIABLE
+
 /* Structs that store the relevant variables */
 
 /*! Artificial viscosity parameters */
@@ -110,6 +119,9 @@ static INLINE void viscosity_print(
  **/
 static INLINE void viscosity_print_snapshot(
     hid_t h_grpsph, const struct viscosity_global_data* viscosity) {
+
+  /* dummy to make the plot scripts happy */
+  io_write_attribute_f(h_grpsph, "Alpha viscosity", 0.0f);
   io_write_attribute_f(h_grpsph, "Beta viscosity", const_viscosity_beta);
 }
 #endif

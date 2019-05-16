@@ -52,7 +52,6 @@
   gizmo_check_physical_quantity(energy_name, energy);                         \
   /* now check for vacuum and make sure we have a real vacuum */              \
   if (mass == 0.f || energy == 0.f) {                                         \
-    mass = 0.f;                                                               \
     momentum_x = 0.f;                                                         \
     momentum_y = 0.f;                                                         \
     momentum_z = 0.f;                                                         \

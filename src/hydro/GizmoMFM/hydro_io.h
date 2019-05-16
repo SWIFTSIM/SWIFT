@@ -215,6 +215,8 @@ INLINE static void hydro_write_particles(const struct part* parts,
   list[10] = io_make_output_field_convert_part("Potential", FLOAT, 1,
                                                UNIT_CONV_POTENTIAL, parts,
                                                xparts, convert_part_potential);
+
+  hydro_write_flag_variable(parts, list, num_fields);
 }
 
 /**
