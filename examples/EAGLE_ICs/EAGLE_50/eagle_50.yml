@@ -132,8 +132,8 @@ EAGLEFeedback:
   SNII_wind_delay_Gyr:              0.03            # Time in Gyr between a star's birth and the SNII thermal feedback event.
   SNII_delta_T_K:                   3.16228e7       # Change in temperature to apply to the gas particle in a SNII thermal feedback event in Kelvin.
   SNII_energy_erg:                  1.0e51          # Energy of one SNII explosion in ergs.
-  SNII_energy_fraction_min:         3.0             # Maximal fraction of energy applied in a SNII feedback event.
-  SNII_energy_fraction_max:         0.3             # Minimal fraction of energy applied in a SNII feedback event.
+  SNII_energy_fraction_min:         0.3             # Maximal fraction of energy applied in a SNII feedback event.
+  SNII_energy_fraction_max:         3.0             # Minimal fraction of energy applied in a SNII feedback event.
   SNII_energy_fraction_Z_0:         0.0012663729    # Pivot point for the metallicity dependance of the SNII energy fraction (metal mass fraction).
   SNII_energy_fraction_n_0_H_p_cm3: 0.67            # Pivot point for the birth density dependance of the SNII energy fraction in cm^-3.
   SNII_energy_fraction_n_Z:         0.8686          # Power-law for the metallicity dependance of the SNII energy fraction.
