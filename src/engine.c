@@ -6031,14 +6031,20 @@ void engine_recompute_displacement_constraint(struct engine *e) {
  * @brief Frees up the memory allocated for this #engine
  */
 void engine_clean(struct engine *e) {
-
-  for (int i = 0; i < e->nr_threads; ++i) {
+  /* Start by telling the runners to stop. */
+  e->step_props = engine_step_prop_done;
+  swift_barrier_wait(&e->run_barrier);
+  
+  /* Wait for each runner to come home. */
+  for (int k = 0; k < e->nr_threads; k++) {
+    if (pthread_join(e->runners[k].thread, /*retval=*/ NULL) != 0)
+      error("Failed to join runner %i.", k);
 #ifdef WITH_VECTORIZATION
-    cache_clean(&e->runners[i].ci_cache);
-    cache_clean(&e->runners[i].cj_cache);
+    cache_clean(&e->runners[k].ci_cache);
+    cache_clean(&e->runners[k].cj_cache);
 #endif
-    gravity_cache_clean(&e->runners[i].ci_gravity_cache);
-    gravity_cache_clean(&e->runners[i].cj_gravity_cache);
+    gravity_cache_clean(&e->runners[k].ci_gravity_cache);
+    gravity_cache_clean(&e->runners[k].cj_gravity_cache);
   }
   swift_free("runners", e->runners);
   free(e->snapshot_units);
