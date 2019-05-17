@@ -34,6 +34,7 @@
 #include "fof.h"
 
 /* Local headers. */
+#include "black_holes.h"
 #include "c_hashmap/hashmap.h"
 #include "common_io.h"
 #include "engine.h"
@@ -127,7 +128,7 @@ void fof_init(struct fof_props *props, struct swift_params *params,
 
   /* Read the minimal halo mass for black hole seeding */
   props->seed_halo_mass =
-      parser_get_param_double(params, "FOF:black_hole_seed_halo_mass");
+      parser_get_param_double(params, "FOF:black_hole_seed_halo_mass_Msun");
 
   /* Convert to internal units */
   props->seed_halo_mass *= phys_const->const_solar_mass;
@@ -1757,7 +1758,10 @@ void fof_find_foreign_links_mapper(void *map_data, int num_elements,
 #endif
 }
 
-void fof_seed_black_holes(const struct fof_props *props, struct space *s,
+void fof_seed_black_holes(const struct fof_props *props,
+                          const struct black_holes_props *bh_props,
+                          const struct phys_const *constants,
+                          const struct cosmology *cosmo, struct space *s,
                           int num_groups, struct group_length *group_sizes) {
 
   const long long *max_part_density_index = props->max_part_density_index;
@@ -1822,6 +1826,7 @@ void fof_seed_black_holes(const struct fof_props *props, struct space *s,
 
       /* Basic properties of the black hole */
       struct bpart *bp = &s->bparts[k];
+      bzero(bp, sizeof(struct bpart));
       bp->time_bin = gp->time_bin;
 
       /* Re-link things */
@@ -1844,6 +1849,9 @@ void fof_seed_black_holes(const struct fof_props *props, struct space *s,
       bp->ti_kick = p->ti_kick;
       bp->ti_drift = p->ti_drift;
 #endif
+
+      /* Copy over all the gas properties that we want */
+      black_holes_create_from_gas(bp, bh_props, constants, cosmo, p);
 
       /* Move to the next BH slot */
       k++;
@@ -2356,7 +2364,10 @@ void fof_search_foreign_cells(struct fof_props *props, const struct space *s) {
  * @param dump_results Do we want to write the group catalogue to a file?
  * @param seed_black_holes Do we want to seed black holes in haloes?
  */
-void fof_search_tree(struct fof_props *props, struct space *s,
+void fof_search_tree(struct fof_props *props,
+                     const struct black_holes_props *bh_props,
+                     const struct phys_const *constants,
+                     const struct cosmology *cosmo, struct space *s,
                      const int dump_results, const int seed_black_holes) {
 
   const size_t nr_gparts = s->nr_gparts;
@@ -2678,8 +2689,10 @@ void fof_search_tree(struct fof_props *props, struct space *s,
                         high_group_sizes);
   }
 
+  /* Seed black holes */
   if (seed_black_holes) {
-    fof_seed_black_holes(props, s, num_groups_local, high_group_sizes);
+    fof_seed_black_holes(props, bh_props, constants, cosmo, s, num_groups_local,
+                         high_group_sizes);
   }
 
   /* Free the left-overs */

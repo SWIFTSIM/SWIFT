@@ -32,6 +32,8 @@ struct space;
 struct engine;
 struct unit_system;
 struct phys_const;
+struct black_holes_props;
+struct cosmology;
 
 /* MPI message required for FOF. */
 struct fof_mpi {
@@ -165,7 +167,10 @@ void fof_init(struct fof_props *props, struct swift_params *params,
 void fof_create_mpi_types(void);
 void fof_allocate(const struct space *s, const long long total_nr_DM_particles,
                   struct fof_props *props);
-void fof_search_tree(struct fof_props *props, struct space *s,
+void fof_search_tree(struct fof_props *props,
+                     const struct black_holes_props *bh_props,
+                     const struct phys_const *constants,
+                     const struct cosmology *cosmo, struct space *s,
                      const int dump_results, const int seed_black_holes);
 void rec_fof_search_self(const struct fof_props *props, const double dim[3],
                          const double search_r2, const int periodic,

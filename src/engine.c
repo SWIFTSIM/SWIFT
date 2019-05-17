@@ -6312,7 +6312,8 @@ void engine_fof(struct engine *e) {
 
   /* Perform FOF search over foreign particles and
    * find groups which require black hole seeding.  */
-  fof_search_tree(e->fof_properties, e->s, /*dump_results=*/1,
+  fof_search_tree(e->fof_properties, e->black_holes_properties,
+                  e->physical_constants, e->cosmology, e->s, /*dump_results=*/1,
                   /*seed_black_holes=*/1);
 
   /* Reset flag. */

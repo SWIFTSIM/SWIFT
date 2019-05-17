@@ -175,4 +175,11 @@ __attribute__((always_inline)) INLINE static void black_holes_reset_feedback(
 #endif
 }
 
+INLINE static void black_holes_create_from_gas(
+    struct bpart* bp, const struct black_holes_props* props,
+    const struct phys_const* constants, const struct cosmology* cosmo,
+    const struct part* p) {
+  black_holes_init_bpart(bp);
+}
+
 #endif /* SWIFT_DEFAULT_BLACK_HOLES_H */

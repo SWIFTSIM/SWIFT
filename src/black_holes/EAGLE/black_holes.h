@@ -312,4 +312,22 @@ __attribute__((always_inline)) INLINE static void black_holes_reset_feedback(
 #endif
 }
 
+INLINE static void black_holes_create_from_gas(
+    struct bpart* bp, const struct black_holes_props* props,
+    const struct phys_const* constants, const struct cosmology* cosmo,
+    const struct part* p) {
+
+  /* All the non-basic properties of the black hole have been zeroed
+     in the FOF code. We just update the rest. */
+
+  /* Birth time */
+  bp->formation_scale_factor = cosmo->a;
+
+  /* Initial seed mass */
+  bp->subgrid_mass = props->subgrid_seed_mass;
+
+  /* First initialisation */
+  black_holes_init_bpart(bp);
+}
+
 #endif /* SWIFT_EAGLE_BLACK_HOLES_H */
