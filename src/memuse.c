@@ -33,6 +33,7 @@
 #include <unistd.h>
 
 /* Local defines. */
+#include "c_hashmap/hashmap.h"
 #include "memuse.h"
 
 /* Local includes. */
@@ -70,6 +71,9 @@ struct memuse_log_entry {
 
   /* Label associated with the memory. */
   char label[MEMUSE_MAXLAB + 1];
+
+  /* Key for hashmap. Formatted address of memory. */
+  char key[MEMUSE_MAXLAB + 1];
 };
 
 /* The log of allocations and frees. */
@@ -77,6 +81,12 @@ static struct memuse_log_entry *memuse_log = NULL;
 static volatile size_t memuse_log_size = 0;
 static volatile size_t memuse_log_count = 0;
 static volatile size_t memuse_log_done = 0;
+
+/* Hashmap for matching frees to allocations. */
+static map_t memuse_hashmap;
+
+/* Current sum of memory in use. Only used in dumping. */
+static size_t memuse_sum = 0;
 
 #define MEMUSE_INITLOG 1000000
 static void memuse_log_reallocate(size_t ind) {
@@ -87,6 +97,9 @@ static void memuse_log_reallocate(size_t ind) {
     if ((memuse_log = (struct memuse_log_entry *)malloc(
              sizeof(struct memuse_log_entry) * MEMUSE_INITLOG)) == NULL)
       error("Failed to allocate memuse log.");
+
+    /* Create the hashmap. */
+    memuse_hashmap = hashmap_new();
 
     /* Last action. */
     memuse_log_size = MEMUSE_INITLOG;
@@ -162,15 +175,61 @@ void memuse_log_dump(const char *filename) {
   /* Write a header. */
   fprintf(fd, "# Current use: %s\n", memuse_process(1));
   fprintf(fd, "# cpufreq: %lld\n", clocks_get_cpufreq());
-  fprintf(fd, "# dtic adr rank step allocated label size\n");
+  fprintf(fd, "# dtic rank step label size sum\n");
 
   for (size_t k = 0; k < memuse_log_count; k++) {
-    fprintf(fd, "%lld %p %d %d %d %s %zd\n", memuse_log[k].dtic,
-            memuse_log[k].ptr, memuse_log[k].rank, memuse_log[k].step,
-            memuse_log[k].allocated, memuse_log[k].label, memuse_log[k].size);
+
+    /* Check if this address has already been used. */
+    struct memuse_log_entry *stored_log;
+    sprintf(memuse_log[k].key, "%p", memuse_log[k].ptr);
+
+    int error = hashmap_get(memuse_hashmap, memuse_log[k].key,
+                        (void **)(&stored_log));
+    if (error == MAP_OK) {
+
+      /* Found the allocation, this should be the free. */
+      if (memuse_log[k].allocated) {
+
+        /* Allocated twice, this is an error, but we cannot abort as that will
+         * attempt another memory dump, so just complain. */
+#if SWIFT_DEBUG_CHECKS
+        message("Allocated the same address twice (%s: %zd)\n",
+                memuse_log[k].key, memuse_log[k].size);
+#endif
+        continue;
+      }
+
+      /* Free, so we can update the size to remove the allocation. */
+      memuse_log[k].size = -stored_log->size;
+
+      /* And remove this key. */
+      hashmap_remove(memuse_hashmap, memuse_log[k].key);
+
+    } else if (memuse_log[k].allocated) {
+
+      /* Not found, so new allocation which we store. */
+      hashmap_put(memuse_hashmap, memuse_log[k].key, &memuse_log[k]);
+
+    } else if (!memuse_log[k].allocated) {
+
+      /* Unmatched free, OK if NULL. */
+#if SWIFT_DEBUG_CHECKS
+      if (memuse_log[k].ptr != NULL)
+        fprintf(stderr, "Unmatched non-NULL free: %s\n", memuse_log[k].label);
+#endif
+      continue;
+    }
+
+    memuse_sum += memuse_log[k].size;
+
+    /* And output. */
+    fprintf(fd, "%lld %d %d %s %zd %zd\n", memuse_log[k].dtic,
+            memuse_log[k].rank, memuse_log[k].step, memuse_log[k].label,
+            memuse_log[k].size, memuse_sum);
   }
 
-  /* Clear the log. */
+  /* Clear the log. OK as records are dumped, but note active memory is still
+   * in the hashmap. */
   memuse_log_count = 0;
 
   /* Close the file. */
