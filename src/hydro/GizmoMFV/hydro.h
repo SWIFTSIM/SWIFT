@@ -123,6 +123,17 @@ __attribute__((always_inline)) INLINE static void hydro_timestep_extra(
 __attribute__((always_inline)) INLINE static void hydro_first_init_part(
     struct part* p, struct xpart* xp) {
 
+#ifdef GIZMO_USE_IC_DENSITY
+  /* we temporarily store the primitive variables in the flux variables.
+     This is a hack: we will restore them in hydro_convert_quantities after
+     the volumes have been computed. */
+  p->conserved.flux.mass = p->primitives.rho;
+  p->conserved.flux.momentum[0] = p->v[0];
+  p->conserved.flux.momentum[1] = p->v[1];
+  p->conserved.flux.momentum[2] = p->v[2];
+  p->conserved.flux.energy = p->conserved.energy;
+#endif
+
   const float mass = p->conserved.mass;
 
   p->time_bin = 0;
@@ -372,7 +383,6 @@ __attribute__((always_inline)) INLINE static void hydro_end_density(
      this is why we divide by the volume, and not by the density */
   p->primitives.P = hydro_gamma_minus_one * energy / volume;
   p->primitives.A = p->conserved.entropy / m;
-  p->primitives.P = p->primitives.A * pow_gamma(p->primitives.rho);
 #endif
 
   /* sanity checks */
@@ -579,6 +589,39 @@ __attribute__((always_inline)) INLINE static void hydro_reset_predicted_values(
 __attribute__((always_inline)) INLINE static void hydro_convert_quantities(
     struct part* p, struct xpart* xp, const struct cosmology* cosmo,
     const struct hydro_props* hydro_props) {
+
+#ifdef GIZMO_USE_IC_DENSITY
+  /* read the temporarily stored initial density and internal energy from the
+     snapshot */
+  const float rho = p->conserved.flux.mass;
+  const float v[3] = {p->conserved.flux.momentum[0],
+                      p->conserved.flux.momentum[1],
+                      p->conserved.flux.momentum[2]};
+  const float u = p->conserved.flux.energy;
+
+  /* get the particle volume */
+  const float V = p->geometry.volume;
+
+  /* now compute all derived quantities */
+  p->conserved.mass = rho * V;
+  p->conserved.momentum[0] = p->conserved.mass * v[0];
+  p->conserved.momentum[1] = p->conserved.mass * v[1];
+  p->conserved.momentum[2] = p->conserved.mass * v[2];
+  p->conserved.energy = p->conserved.mass * u;
+
+  p->primitives.rho = rho;
+  p->primitives.v[0] = v[0];
+  p->primitives.v[1] = v[1];
+  p->primitives.v[2] = v[2];
+  p->primitives.P = gas_pressure_from_internal_energy(rho, u);
+  p->primitives.A = p->primitives.P * pow_minus_gamma(rho);
+
+  p->v[0] = v[0];
+  p->v[1] = v[1];
+  p->v[2] = v[2];
+
+  hydro_velocities_init(p, xp);
+#endif
 
   p->conserved.energy /= cosmo->a_factor_internal_energy;
 

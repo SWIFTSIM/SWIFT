@@ -96,6 +96,9 @@
    information. */
 #define GIZMO_FLAG_VARIABLE
 
+/* Initialize densities instead of masses to reduce particle noise. */
+//#define GIZMO_USE_IC_DENSITY
+
 /* Types of gradients to use for SHADOWFAX_SPH */
 /* If no option is chosen, no gradients are used (first order scheme) */
 #define SHADOWFAX_GRADIENTS
