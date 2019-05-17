@@ -2620,8 +2620,14 @@ void engine_prepare(struct engine *e) {
   /* Perform FOF search to seed black holes. Only if there is a rebuild coming
    * and no repartitioing. */
   if (e->policy & engine_policy_fof && e->forcerebuild && !e->forcerepart &&
-      e->run_fof)
+      e->run_fof) {
+
+    /* Let's start by drifting everybody to the current time */
+    engine_drift_all(e, /*drift_mpole=*/0);
+    drifted_all = 1;
+
     engine_fof(e);
+  }
 
   /* Do we need repartitioning ? */
   if (e->forcerepart) {
