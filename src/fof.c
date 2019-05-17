@@ -1758,7 +1758,80 @@ void fof_find_foreign_links_mapper(void *map_data, int num_elements,
 }
 
 void fof_seed_black_holes(const struct fof_props *props, struct space *s,
-                          int num_groups, struct group_length *group_sizes) {}
+                          int num_groups, struct group_length *group_sizes) {
+
+  const long long *max_part_density_index = props->max_part_density_index;
+
+  /* Count the number of black holes to seed */
+  int num_seed_black_holes = 0;
+  for (int i = 0; i < num_groups + props->extra_bh_seed_count; i++) {
+    if (max_part_density_index[i] >= 0) ++num_seed_black_holes;
+  }
+
+#ifdef WITH_MPI
+  int total_num_seed_black_holes = 0;
+  /* Sum the total number of black holes over each MPI rank. */
+  MPI_Reduce(&num_seed_black_holes, &total_num_seed_black_holes, 1, MPI_INT,
+             MPI_SUM, 0, MPI_COMM_WORLD);
+#else
+  int total_num_seed_black_holes = num_seed_black_holes;
+#endif
+
+  if (engine_rank == 0)
+    message("Seeding %d black hole(s)", total_num_seed_black_holes);
+
+  struct bpart bparts[100];
+  int k = 0;
+
+  /* Loop over the local groups */
+  for (int i = 0; i < num_groups + props->extra_bh_seed_count; i++) {
+
+    const long long part_index = max_part_density_index[i];
+
+    /* Should we seed? */
+    if (part_index >= 0) {
+
+      /* Handle on the particle to convert */
+      struct part *p = &s->parts[part_index];
+      struct gpart *gp = p->gpart;
+
+      /* Let's destroy the gas particle */
+      p->time_bin = time_bin_inhibited;
+      p->gpart = NULL;
+
+      /* Mark the gpart as black hole */
+      gp->type = swift_type_black_hole;
+
+      /* Basic properties of the black hole */
+      struct bpart *bp = &bparts[k];
+      bp->time_bin = p->time_bin;
+
+      /* Re-link things */
+      bp->gpart = gp;
+      gp->id_or_neg_offset = -(bp - s->bparts);
+
+      /* Synchronize masses, positions and velocities */
+      bp->mass = gp->mass;
+      bp->x[0] = gp->x[0];
+      bp->x[1] = gp->x[1];
+      bp->x[2] = gp->x[2];
+      bp->v[0] = gp->v_full[0];
+      bp->v[1] = gp->v_full[1];
+      bp->v[2] = gp->v_full[2];
+
+      /* Set a smoothing length */
+      bp->h = p->h;
+
+#ifdef SWIFT_DEBUG_CHECKS
+      bp->ti_kick = p->ti_kick;
+      bp->ti_drift = p->ti_drift;
+#endif
+
+      /* Move to the next BH slot */
+      k++;
+    }
+  }
+}
 
 /* Dump FOF group data. */
 void fof_dump_group_data(const struct fof_props *props,
@@ -1771,8 +1844,8 @@ void fof_dump_group_data(const struct fof_props *props,
   struct part *parts = s->parts;
   size_t *group_size = props->group_size;
   double *group_mass = props->group_mass;
-  long long *max_part_density_index = props->max_part_density_index;
-  float *max_part_density = props->max_part_density;
+  const long long *max_part_density_index = props->max_part_density_index;
+  const float *max_part_density = props->max_part_density;
 
   fprintf(file, "# %8s %12s %12s %12s %18s %18s %12s\n", "Group ID",
           "Group Size", "Group Mass", "Max Density", "Max Density Index",
