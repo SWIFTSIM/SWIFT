@@ -53,10 +53,10 @@
 #define const_viscosity_beta 3.0f
 
 /* Prefactor for the kinetic energy condition for the entropy switch. */
-#define const_entropy_switch_ekin_fac 0.0001f
+#define const_entropy_switch_ekin_fac 0.000001f
 
 /* Prefactor for the gravitational energy condition for the entropy switch. */
-#define const_entropy_switch_grav_fac 0.0001f
+#define const_entropy_switch_grav_fac 0.000001f
 
 /*! Activate this to write a diagnostic flag variable to the snapshots. */
 #define GIZMO_FLAG_VARIABLE

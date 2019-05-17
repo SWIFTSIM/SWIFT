@@ -38,7 +38,7 @@ enum gizmo_flag_variables {
  * @param p Particle.
  */
 __attribute__((always_inline)) INLINE static void hydro_flag_variable_init(
-    struct part *p) {
+    struct part* p) {
   p->flag_variable = 0;
 }
 
@@ -50,9 +50,10 @@ __attribute__((always_inline)) INLINE static void hydro_flag_variable_init(
  * @param num_fields The number of i/o fields to write.
  */
 __attribute__((always_inline)) INLINE static void hydro_write_flag_variable(
-  const struct part* parts, struct io_props* list, int* num_fields) {
+    const struct part* parts, struct io_props* list, int* num_fields) {
 
-  list[*num_fields] = io_make_output_field("FlagVariable", INT, 1, UNIT_CONV_NO_UNITS, parts, flag_variable);
+  list[*num_fields] = io_make_output_field(
+      "FlagVariable", INT, 1, UNIT_CONV_NO_UNITS, parts, flag_variable);
   ++(*num_fields);
 }
 
@@ -62,8 +63,8 @@ __attribute__((always_inline)) INLINE static void hydro_write_flag_variable(
  * @param p Particle.
  * @param value Flag value to add.
  */
-__attribute__((always_inline)) INLINE static void hydro_add_flag(
-  struct part* p, int value) {
+__attribute__((always_inline)) INLINE static void hydro_add_flag(struct part* p,
+                                                                 int value) {
 
   p->flag_variable |= (1 << value);
 }
@@ -76,7 +77,7 @@ __attribute__((always_inline)) INLINE static void hydro_add_flag(
  * @param p Particle.
  */
 __attribute__((always_inline)) INLINE static void hydro_flag_variable_init(
-    struct part *p) {}
+    struct part* p) {}
 
 /**
  * @brief Add the flag variable to the snapshot output.
@@ -86,7 +87,7 @@ __attribute__((always_inline)) INLINE static void hydro_flag_variable_init(
  * @param num_fields The number of i/o fields to write.
  */
 __attribute__((always_inline)) INLINE static void hydro_write_flag_variable(
-  const struct part* parts, struct io_props* list, int* num_fields) {}
+    const struct part* parts, struct io_props* list, int* num_fields) {}
 
 /**
  * @brief Add the given flag value to the flag variable.
@@ -94,8 +95,8 @@ __attribute__((always_inline)) INLINE static void hydro_write_flag_variable(
  * @param p Particle.
  * @param value Flag value to add.
  */
-__attribute__((always_inline)) INLINE static void hydro_add_flag(
-  struct part* p, int value) {}
+__attribute__((always_inline)) INLINE static void hydro_add_flag(struct part* p,
+                                                                 int value) {}
 
 #endif
 

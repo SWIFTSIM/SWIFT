@@ -697,17 +697,20 @@ __attribute__((always_inline)) INLINE static void hydro_kick_extra(
     p->conserved.momentum[2] += dt_grav * p->conserved.mass * a_grav[2];
 
     /* apply the entropy switch */
+    const float psize = powf(p->geometry.volume / hydro_dimension_unit_sphere,
+                             hydro_dimension_inv);
     const float dEgrav = p->conserved.mass *
                          sqrtf(a_grav[0] * a_grav[0] + a_grav[1] * a_grav[1] +
                                a_grav[2] * a_grav[2]) *
-                         cosmo->a_inv * p->h;
-    if (p->conserved.energy < const_entropy_switch_ekin_fac *
-                                  (p->force.Ekinmax + p->conserved.energy) ||
+                         cosmo->a_inv * psize;
+    const float dEkin = 0.5f * p->conserved.mass * p->force.Ekinmax;
+    if (p->conserved.energy <
+            const_entropy_switch_ekin_fac * (dEkin + p->conserved.energy) ||
         p->conserved.energy < const_entropy_switch_grav_fac * dEgrav) {
       p->conserved.energy = hydro_one_over_gamma_minus_one *
                             p->conserved.entropy * pow_gamma_minus_one(p->rho);
-      if (p->conserved.energy < const_entropy_switch_ekin_fac *
-                                    (p->force.Ekinmax + p->conserved.energy)) {
+      if (p->conserved.energy <
+          const_entropy_switch_ekin_fac * (dEkin + p->conserved.energy)) {
         hydro_add_flag(p, GIZMO_FLAG_EKIN_SWITCH);
       }
       if (p->conserved.energy < const_entropy_switch_grav_fac * dEgrav) {
