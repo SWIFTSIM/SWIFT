@@ -6034,10 +6034,10 @@ void engine_clean(struct engine *e) {
   /* Start by telling the runners to stop. */
   e->step_props = engine_step_prop_done;
   swift_barrier_wait(&e->run_barrier);
-  
+
   /* Wait for each runner to come home. */
   for (int k = 0; k < e->nr_threads; k++) {
-    if (pthread_join(e->runners[k].thread, /*retval=*/ NULL) != 0)
+    if (pthread_join(e->runners[k].thread, /*retval=*/NULL) != 0)
       error("Failed to join runner %i.", k);
 #ifdef WITH_VECTORIZATION
     cache_clean(&e->runners[k].ci_cache);
