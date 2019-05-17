@@ -1780,8 +1780,26 @@ void fof_seed_black_holes(const struct fof_props *props, struct space *s,
   if (engine_rank == 0)
     message("Seeding %d black hole(s)", total_num_seed_black_holes);
 
-  struct bpart bparts[100];
-  int k = 0;
+  /* Anything to do this time on this rank? */
+  if (num_seed_black_holes == 0) return;
+
+  /* Do we need to reallocate the black hole array for the new particles? */
+  if (s->nr_bparts + num_seed_black_holes > s->size_bparts) {
+    const size_t nr_bparts_new = s->nr_bparts + num_seed_black_holes;
+
+    s->size_bparts = engine_parts_size_grow * nr_bparts_new;
+
+    struct bpart *bparts_new = NULL;
+    if (swift_memalign("bparts", (void **)&bparts_new, bpart_align,
+                       sizeof(struct bpart) * s->size_bparts) != 0)
+      error("Failed to allocate new bpart data.");
+    memcpy(bparts_new, s->bparts, sizeof(struct bpart) * s->nr_bparts);
+    swift_free("bparts", s->bparts);
+
+    s->bparts = bparts_new;
+  }
+
+  int k = s->nr_bparts;
 
   /* Loop over the local groups */
   for (int i = 0; i < num_groups + props->extra_bh_seed_count; i++) {
@@ -1803,8 +1821,8 @@ void fof_seed_black_holes(const struct fof_props *props, struct space *s,
       gp->type = swift_type_black_hole;
 
       /* Basic properties of the black hole */
-      struct bpart *bp = &bparts[k];
-      bp->time_bin = p->time_bin;
+      struct bpart *bp = &s->bparts[k];
+      bp->time_bin = gp->time_bin;
 
       /* Re-link things */
       bp->gpart = gp;
@@ -1831,6 +1849,15 @@ void fof_seed_black_holes(const struct fof_props *props, struct space *s,
       k++;
     }
   }
+
+#ifdef SWIFT_DEBUG_CHECKS
+  if ((int)(s->nr_bparts) + num_seed_black_holes != k) {
+    error("Seeded the wrong number of black holes!");
+  }
+#endif
+
+  /* Update the count of black holes. */
+  s->nr_bparts = k;
 }
 
 /* Dump FOF group data. */
