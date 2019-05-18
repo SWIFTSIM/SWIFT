@@ -48,7 +48,7 @@ extern int engine_rank;
 extern int engine_current_step;
 
 /* Entry for logger of memory allocations and deallocations in a step. */
-#define MEMUSE_MAXLAB 64
+#define MEMUSE_MAXLAB 32
 struct memuse_log_entry {
 
   /* Rank in action. */
@@ -74,6 +74,11 @@ struct memuse_log_entry {
 
   /* Key for hashmap. Formatted address of memory. */
   char key[MEMUSE_MAXLAB + 1];
+
+  /* Sum of memory associated with this label. Only used when summing active
+   * memory and the only for the first entry with this label. */
+  size_t active_sum;
+  size_t active_count;
 };
 
 /* The log of allocations and frees. */
@@ -125,6 +130,7 @@ static void memuse_log_reallocate(size_t ind) {
   }
 }
 
+
 /**
  * @brief Log an allocation or deallocation of memory.
  *
@@ -158,11 +164,58 @@ void memuse_log_allocation(const char *label, void *ptr, int allocated,
 }
 
 /**
+ * @brief Gather the labels of the current active memory and sum the memory
+ *        associated with them. Called from hashmap_iterate().
+ */
+static int memuse_active_dump_gather(any_t item, any_t data) {
+
+  /* Get label hashmap and the active log entry. */
+  map_t active_hashmap = (map_t) item;
+  struct memuse_log_entry *stored_log = (struct memuse_log_entry *)data;
+
+  /* Look for this label. */
+  struct memuse_log_entry *active_log = NULL;
+  int error = hashmap_get(active_hashmap, stored_log->label,
+                          (void **)(&active_log));
+  if (error != MAP_OK) {
+
+    /* Not seen yet, so add an entry. */
+    hashmap_put(active_hashmap, stored_log->label, stored_log);
+    stored_log->active_sum = 0;
+    stored_log->active_count = 0;
+  }
+
+  /* And increment sum. */
+  stored_log->active_sum += stored_log->size;
+  stored_log->active_count++;
+
+  return MAP_OK;
+}
+
+/**
+ * @brief Output the active memory usage.
+ */
+static int memuse_active_dump_output(any_t item, any_t data) {
+
+  /* Get label hashmap and the active record. */
+  FILE *fd = (FILE *) item;
+  struct memuse_log_entry *stored_log = (struct memuse_log_entry *)data;
+
+  /* Output. */
+  fprintf(fd, "## %s %zd %zd\n", stored_log->label, stored_log->active_sum,
+          stored_log->active_count);
+
+  return MAP_OK;
+}
+
+/**
  * @brief dump the log to a file and reset, if anything to dump.
  *
  * @param filename name of file for log dump.
  */
 void memuse_log_dump(const char *filename) {
+
+  int error;
 
   /* Skip if nothing allocated this step. */
   if (memuse_log_count == 0) return;
@@ -177,13 +230,14 @@ void memuse_log_dump(const char *filename) {
   fprintf(fd, "# cpufreq: %lld\n", clocks_get_cpufreq());
   fprintf(fd, "# dtic rank step label size sum\n");
 
+  size_t maxmem = memuse_sum;
   for (size_t k = 0; k < memuse_log_count; k++) {
 
     /* Check if this address has already been used. */
     struct memuse_log_entry *stored_log;
     sprintf(memuse_log[k].key, "%p", memuse_log[k].ptr);
 
-    int error = hashmap_get(memuse_hashmap, memuse_log[k].key,
+    error = hashmap_get(memuse_hashmap, memuse_log[k].key,
                         (void **)(&stored_log));
     if (error == MAP_OK) {
 
@@ -220,13 +274,29 @@ void memuse_log_dump(const char *filename) {
       continue;
     }
 
+    /* Keep maximum and rolling sum. */
     memuse_sum += memuse_log[k].size;
+    if (memuse_sum > maxmem) maxmem = memuse_sum;
 
     /* And output. */
     fprintf(fd, "%lld %d %d %s %zd %zd\n", memuse_log[k].dtic,
             memuse_log[k].rank, memuse_log[k].step, memuse_log[k].label,
             memuse_log[k].size, memuse_sum);
   }
+
+  /* The hashmap should only contain active memory, make a report about
+   * that. */
+  map_t active_hashmap = hashmap_new();
+
+  /* First we so the sums against the active labels. */
+  error = hashmap_iterate(memuse_hashmap, memuse_active_dump_gather,
+                          active_hashmap);
+
+  /* Then make the report. */
+  error = hashmap_iterate(active_hashmap, memuse_active_dump_output,
+                          fd);
+
+  hashmap_free(active_hashmap);
 
   /* Clear the log. OK as records are dumped, but note active memory is still
    * in the hashmap. */
