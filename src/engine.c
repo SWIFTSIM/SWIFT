@@ -6303,6 +6303,41 @@ void engine_struct_restore(struct engine *e, FILE *stream) {
 }
 
 /**
+ * @brief Activate all the #gpart communications in preparation
+ * fof a call to FOF.
+ *
+ * @param e The #engine to act on.
+ */
+void engine_activate_gpart_comms(struct engine *e) {
+
+#ifdef WITH_MPI
+
+  const ticks tic = getticks();
+
+  struct scheduler *s = &e->sched;
+  const int nr_tasks = s->nr_tasks;
+  struct task *tasks = s->tasks;
+
+  for (int k = 0; k < nr_tasks; ++k) {
+
+    if ((tasks[k].type == task_type_send) ||
+        (tasks[k].type == task_type_recv)) {
+      if (tasks[k].subtype == task_subtype_gpart) {
+        scheduler_activate(s, &tasks[k]);
+      }
+    }
+  }
+
+  if (e->verbose)
+    message("took %.3f %s.", clocks_from_ticks(getticks() - tic),
+            clocks_getunit());
+
+#else
+  error("Calling an MPI function in non-MPI mode.");
+#endif
+}
+
+/**
  * @brief Run a FOF search.
  *
  * @param e the engine
@@ -6318,6 +6353,14 @@ void engine_fof(struct engine *e) {
 
   /* Initialise FOF parameters and allocate FOF arrays. */
   fof_allocate(e->s, total_nr_dmparts, e->fof_properties);
+
+#ifdef WITH_MPI
+  /* Exchange the freshly-drifted gparts */
+  engine_activate_gpart_comms(e);
+
+  /* Perform the communications */
+  engine_launch(e);
+#endif
 
   /* Make FOF tasks and activate them. */
   engine_make_fof_tasks(e);
