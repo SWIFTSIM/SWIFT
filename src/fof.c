@@ -73,6 +73,10 @@ MPI_Datatype fof_final_mass_type;
 size_t node_offset;
 #endif
 
+#ifdef SWIFT_DEBUG_CHECKS
+static integertime_t ti_current;
+#endif
+
 /**
  * @brief Initialise the properties of the FOF code.
  *
@@ -235,6 +239,10 @@ void fof_allocate(const struct space *s, const long long total_nr_DM_particles,
     group_index[i] = i;
     group_size[i] = 1;
   }
+
+#ifdef SWIFT_DEBUG_CHECKS
+  ti_current = s->e->ti_current;
+#endif
 }
 
 /**
@@ -677,6 +685,11 @@ void fof_search_self_cell(const struct fof_props *props, const double l_x2,
     /* Ignore inhibited particles */
     if (pi->time_bin >= time_bin_inhibited) continue;
 
+#ifdef SWIFT_DEBUG_CHECKS
+    if (pi->ti_drift != ti_current)
+      error("Running FOF on an un-drifted particle!");
+#endif
+
     const double pix = pi->x[0];
     const double piy = pi->x[1];
     const double piz = pi->x[2];
@@ -690,6 +703,11 @@ void fof_search_self_cell(const struct fof_props *props, const double l_x2,
 
       /* Ignore inhibited particles */
       if (pj->time_bin >= time_bin_inhibited) continue;
+
+#ifdef SWIFT_DEBUG_CHECKS
+      if (pj->ti_drift != ti_current)
+        error("Running FOF on an un-drifted particle!");
+#endif
 
       const double pjx = pj->x[0];
       const double pjy = pj->x[1];
@@ -778,6 +796,11 @@ void fof_search_pair_cells(const struct fof_props *props, const double dim[3],
     /* Ignore inhibited particles */
     if (pi->time_bin >= time_bin_inhibited) continue;
 
+#ifdef SWIFT_DEBUG_CHECKS
+    if (pi->ti_drift != ti_current)
+      error("Running FOF on an un-drifted particle!");
+#endif
+
     const double pix = pi->x[0] - shift[0];
     const double piy = pi->x[1] - shift[1];
     const double piz = pi->x[2] - shift[2];
@@ -791,6 +814,11 @@ void fof_search_pair_cells(const struct fof_props *props, const double dim[3],
 
       /* Ignore inhibited particles */
       if (pj->time_bin >= time_bin_inhibited) continue;
+
+#ifdef SWIFT_DEBUG_CHECKS
+      if (pj->ti_drift != ti_current)
+        error("Running FOF on an un-drifted particle!");
+#endif
 
       /* Find the root of pj. */
       const size_t root_j = fof_find(offset_j[j], group_index);
@@ -884,6 +912,11 @@ void fof_search_pair_cells_foreign(
     /* Ignore inhibited particles */
     if (pi->time_bin >= time_bin_inhibited) continue;
 
+#ifdef SWIFT_DEBUG_CHECKS
+    if (pi->ti_drift != ti_current)
+      error("Running FOF on an un-drifted particle!");
+#endif
+
     const double pix = pi->x[0] - shift[0];
     const double piy = pi->x[1] - shift[1];
     const double piz = pi->x[2] - shift[2];
@@ -898,6 +931,11 @@ void fof_search_pair_cells_foreign(
 
       /* Ignore inhibited particles */
       if (pj->time_bin >= time_bin_inhibited) continue;
+
+#ifdef SWIFT_DEBUG_CHECKS
+      if (pj->ti_drift != ti_current)
+        error("Running FOF on an un-drifted particle!");
+#endif
 
       const double pjx = pj->x[0];
       const double pjy = pj->x[1];
