@@ -20,7 +20,7 @@
 #ifndef SWIFT_PRESSURE_ENERGY_MORRIS_HYDRO_DEBUG_H
 #define SWIFT_PRESSURE_ENERGY_MORRIS_HYDRO_DEBUG_H
 /**
- * @file PressureEnergy/hydro_debug.h
+ * @file PressureEnergyMorrisMonaghanAV/hydro_debug.h
  * @brief P-U conservative implementation of SPH (Debugging routines)
  *
  * The thermal variable is the internal energy (u). A simple variable

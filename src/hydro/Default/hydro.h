@@ -30,6 +30,8 @@
 #include "kernel_hydro.h"
 #include "minmax.h"
 
+#include "./hydro_parameters.h"
+
 #include <float.h>
 
 /**
@@ -376,6 +378,29 @@ hydro_set_drifted_physical_internal_energy(struct part *p,
 }
 
 /**
+ * @brief Update the value of the viscosity alpha for the scheme.
+ *
+ * @param p the particle of interest
+ * @param alpha the new value for the viscosity coefficient.
+ */
+__attribute__((always_inline)) INLINE static void hydro_set_viscosity_alpha(
+    struct part *restrict p, float alpha) {
+  p->alpha = alpha;
+}
+
+/**
+ * @brief Update the value of the viscosity alpha to the
+ *        feedback reset value for the scheme.
+ *
+ * @param p the particle of interest
+ */
+__attribute__((always_inline)) INLINE static void
+hydro_set_viscosity_alpha_max_feedback(struct part *restrict p) {
+  hydro_set_viscosity_alpha(p,
+                            hydro_props_default_viscosity_alpha_feedback_reset);
+}
+
+/**
  * @brief Computes the hydro time-step of a given particle
  *
  * @param p Pointer to the particle data
@@ -553,6 +578,9 @@ __attribute__((always_inline)) INLINE static void hydro_prepare_force(
 
   /* Set the AV property */
   p->alpha = hydro_props->viscosity.alpha;
+
+  /* Set the diffusion parameter */
+  p->alpha_diff = hydro_props->diffusion.alpha;
 
   /* Viscosity parameter decay time */
   /* const float tau = h / (2.f * const_viscosity_length * p->force.soundspeed);

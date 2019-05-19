@@ -5003,6 +5003,15 @@ void engine_init(struct engine *e, struct space *s, struct swift_params *params,
   /* Make the space link back to the engine. */
   s->e = e;
 
+  /* Read the run label */
+  memset(e->run_name, 0, PARSER_MAX_LINE_SIZE);
+  parser_get_opt_param_string(params, "MetaData:run_name", e->run_name,
+                              "Untitled SWIFT simulation");
+  if (strlen(e->run_name) == 0) {
+    error("The run name in the parameter file cannot be an empty string.");
+  }
+  if (e->nodeID == 0) message("Running simulation '%s'.", e->run_name);
+
   /* Setup the timestep if non-cosmological */
   if (!(e->policy & engine_policy_cosmology)) {
     e->time_begin =
@@ -6055,14 +6064,20 @@ void engine_recompute_displacement_constraint(struct engine *e) {
  * @brief Frees up the memory allocated for this #engine
  */
 void engine_clean(struct engine *e) {
+  /* Start by telling the runners to stop. */
+  e->step_props = engine_step_prop_done;
+  swift_barrier_wait(&e->run_barrier);
 
-  for (int i = 0; i < e->nr_threads; ++i) {
+  /* Wait for each runner to come home. */
+  for (int k = 0; k < e->nr_threads; k++) {
+    if (pthread_join(e->runners[k].thread, /*retval=*/NULL) != 0)
+      error("Failed to join runner %i.", k);
 #ifdef WITH_VECTORIZATION
-    cache_clean(&e->runners[i].ci_cache);
-    cache_clean(&e->runners[i].cj_cache);
+    cache_clean(&e->runners[k].ci_cache);
+    cache_clean(&e->runners[k].cj_cache);
 #endif
-    gravity_cache_clean(&e->runners[i].ci_gravity_cache);
-    gravity_cache_clean(&e->runners[i].cj_gravity_cache);
+    gravity_cache_clean(&e->runners[k].ci_gravity_cache);
+    gravity_cache_clean(&e->runners[k].cj_gravity_cache);
   }
   swift_free("runners", e->runners);
   free(e->snapshot_units);

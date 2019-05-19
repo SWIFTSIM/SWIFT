@@ -47,6 +47,8 @@
 #include "kernel_hydro.h"
 #include "minmax.h"
 
+#include "./hydro_parameters.h"
+
 #include <float.h>
 
 /**
@@ -417,6 +419,28 @@ hydro_set_drifted_physical_internal_energy(struct part *p,
 
   /* Update variables. */
   p->force.soundspeed = soundspeed;
+}
+
+/**
+ * @brief Update the value of the viscosity alpha for the scheme.
+ *
+ * @param p the particle of interest
+ * @param alpha the new value for the viscosity coefficient.
+ */
+__attribute__((always_inline)) INLINE static void hydro_set_viscosity_alpha(
+    struct part *restrict p, float alpha) {
+  /* This scheme has fixed alpha */
+}
+
+/**
+ * @brief Update the value of the viscosity alpha to the
+ *        feedback reset value for the scheme.
+ *
+ * @param p the particle of interest
+ */
+__attribute__((always_inline)) INLINE static void
+hydro_set_viscosity_alpha_max_feedback(struct part *restrict p) {
+  /* This scheme has fixed alpha */
 }
 
 /**
@@ -885,23 +909,5 @@ hydro_set_init_internal_energy(struct part *p, float u_init) {
  */
 __attribute__((always_inline)) INLINE static void hydro_remove_part(
     const struct part *p, const struct xpart *xp) {}
-
-/**
- * @brief Inputs extra heat to a particle at redshift of reionization
- *
- * We assume a constant density.
- * @param p The particle of interest
- * @param xp The extended particle data
- * @param cosmo Cosmology data structure
- * @param extra_heat The extra internal energy given to the particle.
- */
-__attribute__((always_inline)) INLINE static void hydro_reion_heating(
-    struct part *p, struct xpart *xp, const struct cosmology *cosmo,
-    float extra_heat) {
-
-  const float old_u = xp->u_full * cosmo->a_factor_internal_energy;
-  const float new_u = old_u + extra_heat;
-  xp->u_full = new_u / cosmo->a_factor_internal_energy;
-}
 
 #endif /* SWIFT_PRESSURE_ENERGY_HYDRO_H */

@@ -64,6 +64,7 @@
 #include "scheduler.h"
 #include "space.h"
 #include "space_getsid.h"
+#include "star_formation.h"
 #include "stars.h"
 #include "timers.h"
 #include "tools.h"
@@ -4207,6 +4208,7 @@ void cell_drift_part(struct cell *c, const struct engine *e, int force) {
       if (part_is_active(p, e)) {
         hydro_init_part(p, &e->s->hs);
         chemistry_init_part(p, e->chemistry);
+        star_formation_init_part(p, e->star_formation);
         tracers_after_init(p, xp, e->internal_units, e->physical_constants,
                            with_cosmology, e->cosmology, e->hydro_properties,
                            e->cooling_func, e->time);

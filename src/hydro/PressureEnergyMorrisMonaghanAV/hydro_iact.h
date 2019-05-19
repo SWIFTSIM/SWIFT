@@ -21,7 +21,7 @@
 #define SWIFT_PRESSURE_ENERGY_MORRIS_HYDRO_IACT_H
 
 /**
- * @file PressureEnergy/hydro_iact.h
+ * @file PressureEnergyMorrisMonaghanAV/hydro_iact.h
  * @brief P-U implementation of SPH (Neighbour loop equations)
  *
  * The thermal variable is the internal energy (u). A simple variable
@@ -35,6 +35,8 @@
 
 #include "adiabatic_index.h"
 #include "minmax.h"
+
+#include "./hydro_parameters.h"
 
 /**
  * @brief Density interaction between two part*icles.

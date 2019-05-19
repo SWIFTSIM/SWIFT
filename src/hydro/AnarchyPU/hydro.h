@@ -21,14 +21,11 @@
 #define SWIFT_ANARCHY_PU_HYDRO_H
 
 /**
- * @file PressureEnergy/hydro.h
- * @brief P-U conservative implementation of SPH (Non-neighbour loop
- * equations)
- *
- * The thermal variable is the internal energy (u). A simple constant
- * viscosity term with a Balsara switch is implemented.
- *
- * No thermal conduction term is implemented.
+ * @file AnarchyPU/hydro.h
+ * @brief P-U conservative implementation of SPH,
+ *        with added ANARCHY physics (Cullen & Denhen 2011 AV,
+ *        Price 2008 thermal diffusion (Non-neighbour loop
+ *        equations)
  *
  * This implementation corresponds to the one presented in the SWIFT
  * documentation and in Hopkins, "A general class of Lagrangian smoothed
@@ -46,6 +43,8 @@
 #include "hydro_space.h"
 #include "kernel_hydro.h"
 #include "minmax.h"
+
+#include "./hydro_parameters.h"
 
 #include <float.h>
 
@@ -418,6 +417,29 @@ hydro_set_drifted_physical_internal_energy(struct part *p,
 
   /* Update variables. */
   p->force.soundspeed = soundspeed;
+}
+
+/**
+ * @brief Update the value of the viscosity alpha for the scheme.
+ *
+ * @param p the particle of interest
+ * @param alpha the new value for the viscosity coefficient.
+ */
+__attribute__((always_inline)) INLINE static void hydro_set_viscosity_alpha(
+    struct part *restrict p, float alpha) {
+  p->viscosity.alpha = alpha;
+}
+
+/**
+ * @brief Update the value of the viscosity alpha to the
+ *        feedback reset value for the scheme.
+ *
+ * @param p the particle of interest
+ */
+__attribute__((always_inline)) INLINE static void
+hydro_set_viscosity_alpha_max_feedback(struct part *restrict p) {
+  hydro_set_viscosity_alpha(p,
+                            hydro_props_default_viscosity_alpha_feedback_reset);
 }
 
 /**

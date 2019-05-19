@@ -21,19 +21,18 @@
 #define SWIFT_ANARCHY_PU_HYDRO_IACT_H
 
 /**
- * @file PressureEnergy/hydro_iact.h
- * @brief P-U implementation of SPH (Neighbour loop equations)
+ * @file AnarchyPU/hydro_iact.h
+ * @brief P-U conservative implementation of SPH,
+ *        with added ANARCHY physics (Cullen & Denhen 2011 AV,
+ *        Price 2008 thermal diffusion) (Neighbour loop equations).
  *
- * The thermal variable is the internal energy (u). A simple constant
- * viscosity term with a Balsara switch is implemented.
- *
- * No thermal conduction term is implemented.
- *
- * See PressureEnergy/hydro.h for references.
+ * See AnarchyPU/hydro.h for references.
  */
 
 #include "adiabatic_index.h"
 #include "minmax.h"
+
+#include "./hydro_parameters.h"
 
 /**
  * @brief Density interaction between two part*icles.

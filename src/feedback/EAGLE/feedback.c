@@ -841,6 +841,11 @@ void feedback_props_init(struct feedback_props* fp,
   fp->imf_min_mass_msun =
       parser_get_param_double(params, "EAGLEFeedback:IMF_min_mass_Msun");
 
+  /* Check that it makes sense. */
+  if (fp->imf_max_mass_msun < fp->imf_min_mass_msun) {
+    error("Can't have the max IMF mass smaller than the min IMF mass!");
+  }
+
   fp->log10_imf_max_mass_msun = log10(fp->imf_max_mass_msun);
   fp->log10_imf_min_mass_msun = log10(fp->imf_min_mass_msun);
 
@@ -870,6 +875,11 @@ void feedback_props_init(struct feedback_props* fp,
   const double SNII_max_mass_msun =
       parser_get_param_double(params, "EAGLEFeedback:SNII_max_mass_Msun");
 
+  /* Check that it makes sense. */
+  if (SNII_max_mass_msun < SNII_min_mass_msun) {
+    error("Can't have the max SNII mass smaller than the min SNII mass!");
+  }
+
   fp->log10_SNII_min_mass_msun = log10(SNII_min_mass_msun);
   fp->log10_SNII_max_mass_msun = log10(SNII_max_mass_msun);
 
@@ -886,6 +896,11 @@ void feedback_props_init(struct feedback_props* fp,
       parser_get_param_double(params, "EAGLEFeedback:SNII_energy_fraction_n_n");
   fp->n_Z =
       parser_get_param_double(params, "EAGLEFeedback:SNII_energy_fraction_n_Z");
+
+  /* Check that it makes sense. */
+  if (fp->f_E_max < fp->f_E_min) {
+    error("Can't have the maximal energy fraction smaller than the minimal!");
+  }
 
   /* Properties of the SNII enrichment model -------------------------------- */
 
