@@ -60,13 +60,11 @@ SPH:
 
 # Parameters for the Friends-Of-Friends algorithm
 FOF:
-  basename:                 fof_output  # Common part of the name of output files
-  min_group_size:           20          # (Optional) The minimum no. of particles required for a group. Defaults to 20 if unspecified.
-  linking_length_scale:     0.2         # (Optional) Scales the linking length. Defaults to 0.2 if unspecified.
-  group_links_size_default: 20000       # (Optional) Sets the initial size of the group_links array, which is used to store links across MPI domains. Defaults to 20000 if unspecified.
-  group_id_default:         2147483647  # (Optional) Sets the group ID of particles in groups below the minimum size. Defaults to 2^31 - 1 if unspecified. Has to be positive.
-  group_id_offset:          1           # (Optional) Sets the offset of group ID labeling. Defaults to 1 if unspecified.
-  #absolute_linking_length: 0.2         # (Optional) Sets an absolute linking length. Defaults to mean inter-particle spacing * linking_length_scale if unspecified.
+  basename:                        fof_output  # Filename for the FOF outputs.
+  min_group_size:                  256         # The minimum no. of particles required for a group.
+  linking_length_ratio:            0.2         # Linking length in units of the main inter-particle separation.
+  black_hole_seed_halo_mass_Msun:  1.5e10      # Minimal halo mass in which to seed a black hole (in solar masses).
+  run_freq:                        256
 
 # Parameters related to the initial conditions
 InitialConditions:
@@ -160,6 +158,7 @@ EAGLEFeedback:
 
 # EAGLE AGN model
 EAGLEAGN:
+  subgrid_seed_mass_Msun:           1.5e5      # Black hole subgrid mass at creation time in solar masses.
   max_eddington_fraction:           1.         # Maximal allowed accretion rate in units of the Eddington rate.
   radiative_efficiency:             0.1        # Fraction of the accreted mass that gets radiated.
   coupling_efficiency:              0.15       # Fraction of the radiated energy that couples to the gas in feedback events.
