@@ -179,6 +179,11 @@ nobase_noinst_HEADERS = align.h approx_math.h atomic.h barrier.h cycle.h error.h
                  hydro/Euler/hydro_iact.h \
                  hydro/Euler/hydro_io.h \
                  hydro/Euler/hydro_part.h \
+                 hydro/NavierStokes/hydro_debug.h \
+                 hydro/NavierStokes/hydro.h \
+                 hydro/NavierStokes/hydro_iact.h \
+                 hydro/NavierStokes/hydro_io.h \
+                 hydro/NavierStokes/hydro_part.h \
 	         riemann/riemann_hllc.h riemann/riemann_trrs.h \
 		 riemann/riemann_exact.h riemann/riemann_vacuum.h \
                  riemann/riemann_checks.h \

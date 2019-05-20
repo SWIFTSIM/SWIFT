@@ -78,7 +78,11 @@
 #include "./hydro/Euler/hydro.h"
 #include "./hydro/Euler/hydro_iact.h"
 #define SPH_IMPLEMENTATION \
-  "ANARCHY (Pressure-Energy) SPH (Dalla Vecchia+ in prep)"
+  "Euler Fluid SPH"
+#elif defined(NAV_STOK_SPH)
+#include "./hydro/NavierStokes/hydro.h"
+#include "./hydro/NavierStokes/hydro_iact.h"
+#define SPH_IMPLEMENTATION "Navier-Stokes Fluid SPH"
 #else
 #error "Invalid choice of SPH variant"
 #endif

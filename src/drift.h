@@ -76,11 +76,16 @@ __attribute__((always_inline)) INLINE static void drift_gpart(
  * @param dt_therm The drift time-step for thermodynamic quantities.
  * @param ti_old Integer start of time-step (for debugging checks).
  * @param ti_current Integer end of time-step (for debugging checks).
+ * @param cosmo The cosmological model.
+ * @param hydro_props The properties of the hydro scheme.
+ * @param floor The properties of the entropy floor.
  */
 __attribute__((always_inline)) INLINE static void drift_part(
     struct part *restrict p, struct xpart *restrict xp, double dt_drift,
     double dt_kick_hydro, double dt_kick_grav, double dt_therm,
-    integertime_t ti_old, integertime_t ti_current) {
+    integertime_t ti_old, integertime_t ti_current,
+    const struct cosmology *cosmo, const struct hydro_props *hydro_props,
+    const struct entropy_floor_properties *floor) {
 
 
 }

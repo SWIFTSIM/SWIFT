@@ -64,6 +64,8 @@
 #include "./hydro/AnarchyPU/hydro_debug.h"
 #elif defined(EULER_ENG_SPH)
 #include "./hydro/Euler/hydro_debug.h"
+#elif defined (NAV_STOK_SPH)
+#include "./hydro/NavierStokes/hydro_debug.h"
 #else
 #error "Invalid choice of SPH variant"
 #endif

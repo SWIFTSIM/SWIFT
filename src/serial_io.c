@@ -397,7 +397,6 @@ void writeArray(const struct engine* e, hid_t grp, char* fileName,
 
   /* Copy the particle data to the temporary buffer */
   io_copy_temp_buffer(temp, e, props, N, internal_units, snapshot_units);
-
   /* Construct information for the hyper-slab */
   int rank;
   hsize_t shape[2];

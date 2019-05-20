@@ -86,11 +86,10 @@ __attribute__((always_inline)) INLINE static void kick_part(
     const struct cosmology *cosmo, const struct hydro_props *hydro_props,
     const struct entropy_floor_properties *entropy_floor_props,
     integertime_t ti_start, integertime_t ti_end) {
+    if(p->since_euler >= 50) p->since_euler = 0;
 
-    static int since_euler = 0;
-    since_euler = since_euler + 1;
-    printf("%f %f %f\n", p->rho_t_minus1, p->v_minus1[1], dt_kick_hydro);
-    if(since_euler >= 50){
+
+    if(p->since_euler == 0){
       float temp = p->rho;
       p->rho = p->rho + p->drho_dt*dt_kick_hydro;
       p->rho_t_minus1 = temp;
@@ -113,7 +112,6 @@ __attribute__((always_inline)) INLINE static void kick_part(
       p->pressure = pressure_from_density(p->rho);
 
 
-      since_euler = 0;
     }else{
       float temp = p->rho;
       p->rho = p->rho_t_minus1 + 2*dt_kick_hydro*p->drho_dt;
@@ -136,6 +134,7 @@ __attribute__((always_inline)) INLINE static void kick_part(
 
 
     }
+    p->since_euler += 1;
   /* Compute offsets since last cell construction */
   for (int k = 0; k < 3; k++) {
     const float dx = p->v[k]*dt_kick_hydro + 0.5*p->a_hydro[k]*dt_kick_hydro*dt_kick_hydro;

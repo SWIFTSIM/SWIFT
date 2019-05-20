@@ -77,7 +77,7 @@ void factor(int value, int *f1, int *f2) {
  * @param periodic Periodic boundary conditions flag.
  */
 void pairs_n2(double *dim, struct part *restrict parts, int N, int periodic) {
-#ifdef EULER_ENG_SPH
+#if defined(EULER_ENG_SPH) || defined(NAV_STOK_SPH)
   error("NYI for Euler fluid SPH");
 #else
   int i, j, k, count = 0;
@@ -145,7 +145,7 @@ void pairs_n2(double *dim, struct part *restrict parts, int N, int periodic) {
 
 void pairs_single_density(double *dim, long long int pid,
                           struct part *restrict parts, int N, int periodic) {
-#ifdef EULER_ENG_SPH
+#if defined(EULER_ENG_SPH) || defined(NAV_STOK_SPH)
   error("NYI for Euler fluid SPH");
 
 #else
@@ -197,7 +197,7 @@ void pairs_single_density(double *dim, long long int pid,
 }
 
 void pairs_all_density(struct runner *r, struct cell *ci, struct cell *cj) {
-#ifdef EULER_ENG_SPH
+#if defined(EULER_ENG_SPH) || defined(NAV_STOK_SPH)
   error("NYI for Euler fluid SPH");
 #else
   float r2, hi, hj, hig2, hjg2, dx[3];
@@ -715,7 +715,7 @@ void self_all_stars_density(struct runner *r, struct cell *ci) {
 void engine_single_density(double *dim, long long int pid,
                            struct part *restrict parts, int N, int periodic,
                            const struct cosmology *cosmo) {
-#ifdef EULER_ENG_SPH
+#if defined(EULER_ENG_SPH) || defined(NAV_STOK_SPH)
   error("NYI for Euler fluid SPH");
 
 #else
@@ -763,7 +763,7 @@ void engine_single_density(double *dim, long long int pid,
 
 void engine_single_force(double *dim, long long int pid,
                          struct part *restrict parts, int N, int periodic) {
-#ifdef EULER_ENG_SPH
+#if defined(EULER_ENG_SPH) || defined(NAV_STOK_SPH)
   error("NYI for Euler fluid SPH");
 #else
   int i, k;
