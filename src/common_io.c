@@ -1946,7 +1946,6 @@ void io_collect_parts_to_write(const struct part* restrict parts,
                                const size_t Nparts_written) {
 
   size_t count = 0;
-
   /* Loop over all parts */
   for (size_t i = 0; i < Nparts; ++i) {
 

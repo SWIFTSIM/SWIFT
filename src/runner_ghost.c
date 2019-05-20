@@ -945,6 +945,33 @@ void runner_do_extra_ghost(struct runner *r, struct cell *c, int timer) {
  * @param timer Are we timing this ?
  */
 void runner_do_ghost(struct runner *r, struct cell *c, int timer) {
+#if defined(WITH_ENGINEERING)
+          /* Recurse? */
+  if (c->split) {
+    for (int k = 0; k < 8; k++)
+      if (c->progeny[k] != NULL) runner_do_ghost(r, c->progeny[k], 0);
+  } else {
+    struct part *restrict parts = c->hydro.parts;
+    struct xpart *restrict xparts = c->hydro.xparts; 
+    const struct engine *e = r->e;
+    const struct cosmology *cosmo = e->cosmology;
+    const struct hydro_props *hydro_props = e->hydro_properties;
+    const double time_base = e->time_base;
+    for(int i = 0; i < c->hydro.count; i++){
+         struct part *p = &parts[i];
+         struct xpart *xp = &xparts[i];
+         double dt_alpha = get_timestep(p->time_bin, time_base);
+
+        /* As of here, particle force variables will be set. */
+
+        /* Compute variables required for the force loop */
+        hydro_prepare_force(p, xp, cosmo, hydro_props, dt_alpha);
+
+        /* Prepare the particle for the force loop over neighbours */
+        hydro_reset_acceleration(p);
+   }
+ }
+#else
 
   struct part *restrict parts = c->hydro.parts;
   struct xpart *restrict xparts = c->hydro.xparts;
@@ -1382,4 +1409,5 @@ void runner_do_ghost(struct runner *r, struct cell *c, int timer) {
   }
 
   if (timer) TIMER_TOC(timer_do_ghost);
+#endif
 }

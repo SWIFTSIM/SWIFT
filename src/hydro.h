@@ -74,6 +74,9 @@
 #elif defined(ANARCHY_PU_SPH)
 #include "./hydro/AnarchyPU/hydro.h"
 #include "./hydro/AnarchyPU/hydro_iact.h"
+#elif defined(EULER_ENG_SPH)
+#include "./hydro/Euler/hydro.h"
+#include "./hydro/Euler/hydro_iact.h"
 #define SPH_IMPLEMENTATION \
   "ANARCHY (Pressure-Energy) SPH (Dalla Vecchia+ in prep)"
 #else

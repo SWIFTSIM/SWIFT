@@ -170,10 +170,14 @@ __attribute__((always_inline)) INLINE static integertime_t get_part_timestep(
       min4(new_dt_hydro, new_dt_cooling, new_dt_grav, new_dt_chemistry);
 
   /* Limit change in smoothing length */
+#ifdef WITH_ENGINEERING
+  const float dt_h_change = FLT_MAX;
+#else
   const float dt_h_change =
       (p->force.h_dt != 0.0f)
           ? fabsf(e->hydro_properties->log_max_h_change * p->h / p->force.h_dt)
           : FLT_MAX;
+#endif
 
   new_dt = min(new_dt, dt_h_change);
 

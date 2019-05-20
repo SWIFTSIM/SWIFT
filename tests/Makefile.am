@@ -41,7 +41,8 @@ check_PROGRAMS = testGreetings testReading testTimeIntegration \
 		 testVoronoi1D testVoronoi2D testVoronoi3D testPeriodicBC \
 		 testGravityDerivatives testPotentialSelf testPotentialPair testEOS testUtilities \
 		 testSelectOutput testCbrt testCosmology testOutputList test27cellsStars \
-		 test27cellsStars_subset testCooling testComovingCooling testFeedback testHashmap testHydroMPIrules
+		 test27cellsStars_subset testCooling testComovingCooling testTwoParts testBoundary testFeedback testHashmap \
+                 testHydroMPIrules
 
 # Rebuild tests when SWIFT is updated.
 $(check_PROGRAMS): ../src/.libs/libswiftsim.a
@@ -137,6 +138,10 @@ testFeedback_SOURCES = testFeedback.c
 testHashmap_SOURCES = testHashmap.c
 
 testHydroMPIrules = testHydroMPIrules.c
+
+testTwoParts_SOURCES = testTwoParts.c
+
+testBoundary_SOURCES = testBoundary.c
 
 # Files necessary for distribution
 EXTRA_DIST = testReading.sh makeInput.py testActivePair.sh \

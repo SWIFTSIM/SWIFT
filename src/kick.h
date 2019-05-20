@@ -61,6 +61,93 @@ __attribute__((always_inline)) INLINE static void kick_gpart(
   gravity_kick_extra(gp, dt_kick_grav);
 }
 
+#ifdef WITH_ENGINEERING
+
+
+/**
+ * @brief Perform the 'kick' operation on a #part
+ *
+ * @param p The #part to kick.
+ * @param xp The #xpart of the particle.
+ * @param dt_kick_hydro The kick time-step for hydro accelerations.
+ * @param dt_kick_grav The kick time-step for gravity accelerations.
+ * @param dt_kick_therm The kick time-step for changes in thermal state.
+ * @param dt_kick_corr The kick time-step for the gizmo-mfv gravity correction.
+ * @param cosmo The cosmological model.
+ * @param hydro_props The constants used in the scheme.
+ * @param entropy_floor_props Properties of the entropy floor.
+ * @param ti_start The starting (integer) time of the kick (for debugging
+ * checks).
+ * @param ti_end The ending (integer) time of the kick (for debugging checks).
+ */
+__attribute__((always_inline)) INLINE static void kick_part(
+    struct part *restrict p, struct xpart *restrict xp, double dt_kick_hydro,
+    double dt_kick_grav, double dt_kick_therm, double dt_kick_corr,
+    const struct cosmology *cosmo, const struct hydro_props *hydro_props,
+    const struct entropy_floor_properties *entropy_floor_props,
+    integertime_t ti_start, integertime_t ti_end) {
+
+    static int since_euler = 0;
+    since_euler = since_euler + 1;
+    printf("%f %f %f\n", p->rho_t_minus1, p->v_minus1[1], dt_kick_hydro);
+    if(since_euler >= 50){
+      float temp = p->rho;
+      p->rho = p->rho + p->drho_dt*dt_kick_hydro;
+      p->rho_t_minus1 = temp;
+
+      p->x[0] = p->x[0] + p->v[0]*dt_kick_hydro + 0.5*p->a_hydro[0]*dt_kick_hydro*dt_kick_hydro;
+      p->x[1] = p->x[1] + p->v[1]*dt_kick_hydro + 0.5*p->a_hydro[1]*dt_kick_hydro*dt_kick_hydro;
+      p->x[2] = p->x[2] + p->v[2]*dt_kick_hydro + 0.5*p->a_hydro[2]*dt_kick_hydro*dt_kick_hydro;
+
+      temp = p->v[0];
+      p->v[0] = p->v[0] + p->a_hydro[0]*dt_kick_hydro;
+      p->v_minus1[0] = temp;
+
+      temp = p->v[1];
+      p->v[1] = p->v[1] + p->a_hydro[1]*dt_kick_hydro;
+      p->v_minus1[1] = temp;
+
+      temp = p->v[2];
+      p->v[2] = p->v[2] + p->a_hydro[2]*dt_kick_hydro;
+      p->v_minus1[2] = temp;
+      p->pressure = pressure_from_density(p->rho);
+
+
+      since_euler = 0;
+    }else{
+      float temp = p->rho;
+      p->rho = p->rho_t_minus1 + 2*dt_kick_hydro*p->drho_dt;
+      p->rho_t_minus1 = temp;
+      p->x[0] = p->x[0] + p->v[0]*dt_kick_hydro + 0.5*p->a_hydro[0]*dt_kick_hydro*dt_kick_hydro;
+      p->x[1] = p->x[1] + p->v[1]*dt_kick_hydro + 0.5*p->a_hydro[1]*dt_kick_hydro*dt_kick_hydro;
+      p->x[2] = p->x[2] + p->v[2]*dt_kick_hydro + 0.5*p->a_hydro[2]*dt_kick_hydro*dt_kick_hydro;
+      temp = p->v[0];
+      p->v[0] = p->v_minus1[0] + 2*p->a_hydro[0]*dt_kick_hydro;
+      p->v_minus1[0] = temp;
+
+      temp = p->v[1];
+      p->v[1] = p->v_minus1[1] + 2*p->a_hydro[1]*dt_kick_hydro;
+      p->v_minus1[1] = temp;
+
+      temp = p->v[2];
+      p->v[2] = p->v_minus1[2] + 2*p->a_hydro[2]*dt_kick_hydro;
+      p->v_minus1[2] = temp;
+      p->pressure = pressure_from_density(p->rho);
+
+
+    }
+  /* Compute offsets since last cell construction */
+  for (int k = 0; k < 3; k++) {
+    const float dx = p->v[k]*dt_kick_hydro + 0.5*p->a_hydro[k]*dt_kick_hydro*dt_kick_hydro;
+    xp->x_diff[k] -= dx;
+    xp->x_diff_sort[k] -= dx;
+  }
+
+
+}
+#else
+
+
 /**
  * @brief Perform the 'kick' operation on a #part
  *
@@ -118,8 +205,16 @@ __attribute__((always_inline)) INLINE static void kick_part(
   hydro_kick_extra(p, xp, dt_kick_therm, dt_kick_grav, dt_kick_hydro,
                    dt_kick_corr, cosmo, hydro_props, floor_props);
   if (p->gpart != NULL) gravity_kick_extra(p->gpart, dt_kick_grav);
+#if !defined(EULER_ENG_SPH)
+  /* Verify that the particle is not below the entropy floor */
+  const float floor = entropy_floor(p, cosmo, entropy_floor_props);
+  if (hydro_get_physical_entropy(p, xp, cosmo) < floor) {
+    hydro_set_physical_entropy(p, xp, cosmo, floor);
+    hydro_set_physical_internal_energy_dt(p, cosmo, 0.f);
+  }
+#endif
 }
-
+#endif
 /**
  * @brief Perform the 'kick' operation on a #spart
  *

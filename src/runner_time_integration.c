@@ -80,7 +80,9 @@ void runner_do_init_grav(struct runner *r, struct cell *c, int timer) {
  * @param timer Are we timing this ?
  */
 void runner_do_kick1(struct runner *r, struct cell *c, int timer) {
-
+#ifdef WITH_ENGINEERING
+  return;
+#endif
   const struct engine *e = r->e;
   const struct cosmology *cosmo = e->cosmology;
   const struct hydro_props *hydro_props = e->hydro_properties;
@@ -165,12 +167,14 @@ void runner_do_kick1(struct runner *r, struct cell *c, int timer) {
                   ti_begin + ti_step / 2);
 
         /* Update the accelerations to be used in the drift for hydro */
+#if !defined(WITH_ENGINEERING)
         if (p->gpart != NULL) {
 
           xp->a_grav[0] = p->gpart->a_grav[0];
           xp->a_grav[1] = p->gpart->a_grav[1];
           xp->a_grav[2] = p->gpart->a_grav[2];
         }
+#endif
       }
     }
 
@@ -377,10 +381,17 @@ void runner_do_kick2(struct runner *r, struct cell *c, int timer) {
           dt_kick_corr = cosmology_get_corr_kick_factor(
               cosmo, ti_begin + ti_step / 2, ti_end);
         } else {
+#ifdef WITH_ENGINEERING
+          dt_kick_hydro = (ti_end - (ti_begin + ti_step / 2)) * time_base*2;
+          dt_kick_grav = (ti_end - (ti_begin + ti_step / 2)) * time_base*2;
+          dt_kick_therm = (ti_end - (ti_begin + ti_step / 2)) * time_base*2;
+          dt_kick_corr = (ti_end - (ti_begin + ti_step / 2)) * time_base*2;
+#else
           dt_kick_hydro = (ti_end - (ti_begin + ti_step / 2)) * time_base;
           dt_kick_grav = (ti_end - (ti_begin + ti_step / 2)) * time_base;
           dt_kick_therm = (ti_end - (ti_begin + ti_step / 2)) * time_base;
           dt_kick_corr = (ti_end - (ti_begin + ti_step / 2)) * time_base;
+#endif
         }
 
         /* Finish the time-step with a second half-kick */

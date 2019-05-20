@@ -199,6 +199,12 @@ struct velociraptor_copy_data {
  * @param nr_gparts The number of #gpart.
  * @param extra_data Pointer to the #engine and to the array to fill.
  */
+#ifdef WITH_ENGINEERING
+void velociraptor_convert_particles_mapper(void *map_data, int nr_gparts,
+                                           void *extra_data){
+  error("Velociraptor and engineering support not currently enabled");
+}
+#else
 void velociraptor_convert_particles_mapper(void *map_data, int nr_gparts,
                                            void *extra_data) {
 
@@ -295,7 +301,7 @@ void velociraptor_convert_particles_mapper(void *map_data, int nr_gparts,
     }
   }
 }
-
+#endif
 /**
  * @brief Initialise VELOCIraptor with configuration, units,
  * simulation info needed to run.

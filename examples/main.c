@@ -907,7 +907,7 @@ int main(int argc, char *argv[]) {
     fflush(stdout);
 
     /* Get ready to read particles of all kinds */
-    size_t Ngas = 0, Ngpart = 0, Ngpart_background = 0, Nspart = 0, Nbpart = 0;
+    size_t Ngas = 0, Ngpart = 0, Ngpart_background = 0, Nspart = 0, Nbpart = 0, Nfluid = 0;
     double dim[3] = {0., 0., 0.};
 
     if (myrank == 0) clocks_gettime(&tic);
@@ -922,21 +922,23 @@ int main(int argc, char *argv[]) {
                      MPI_COMM_WORLD, MPI_INFO_NULL, nr_threads, dry_run);
 #else
     read_ic_serial(ICfileName, &us, dim, &parts, &gparts, &sparts, &bparts,
-                   &Ngas, &Ngpart, &Ngpart_background, &Nspart, &Nbpart,
-                   &flag_entropy_ICs, with_hydro, with_gravity, with_stars,
-                   with_black_holes, with_cosmology, cleanup_h, cleanup_sqrt_a,
+                   &Ngas, &Ngpart, &Ngpart_background, &Nspart, &Nbpart, &Nfluid, &Nfluid, &flag_entropy_ICs,
+                   with_hydro, (with_external_gravity || with_self_gravity),
+                   with_stars, with_black_holes, 0, with_cosmology, cleanup_h, cleanup_sqrt_a,
                    cosmo.h, cosmo.a, myrank, nr_nodes, MPI_COMM_WORLD,
                    MPI_INFO_NULL, nr_threads, dry_run);
 #endif
 #else
     read_ic_single(ICfileName, &us, dim, &parts, &gparts, &sparts, &bparts,
-                   &Ngas, &Ngpart, &Ngpart_background, &Nspart, &Nbpart,
-                   &flag_entropy_ICs, with_hydro, with_gravity, with_stars,
-                   with_black_holes, with_cosmology, cleanup_h, cleanup_sqrt_a,
+                   &Ngas, &Ngpart, &Ngpart_background, &Nspart, &Nbpart,&Nfluid, &Nfluid, &flag_entropy_ICs,
+                   with_hydro, (with_external_gravity || with_self_gravity),
+                   with_stars, with_black_holes, 0, with_cosmology, cleanup_h, cleanup_sqrt_a,
                    cosmo.h, cosmo.a, nr_threads, dry_run);
 #endif
 #endif
-
+    if(Nfluid != 0){
+       error("Have read in some engineering fluid particles");
+    }
     if (myrank == 0) {
       clocks_gettime(&toc);
       message("Reading initial conditions took %.3f %s.",

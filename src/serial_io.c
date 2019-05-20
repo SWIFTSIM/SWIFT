@@ -465,6 +465,8 @@ void writeArray(const struct engine* e, hid_t grp, char* fileName,
  * @param Nstars (output) The number of #spart read from the file on that node.
  * @param Nblackholes (output) The number of #bpart read from the file on that
  * node.
+ * @param Nboundary (output) The number of #part read with is_boundary (engineering only).
+ * @param Nfluid (output) The number of #part read without is_boundary (engineering only).
  * @param flag_entropy (output) 1 if the ICs contained Entropy in the
  * InternalEnergy field
  * @param with_hydro Are we reading gas particles ?
@@ -472,6 +474,7 @@ void writeArray(const struct engine* e, hid_t grp, char* fileName,
  * @param with_stars Are we reading star particles ?
  * @param with_black_holes Are we reading black hole particles ?
  * @param with_cosmology Are we running with cosmology ?
+ * @param with_engineering_hydro Are we doing engineering SPH
  * @param cleanup_h Are we cleaning-up h-factors from the quantities we read?
  * @param cleanup_sqrt_a Are we cleaning-up the sqrt(a) factors in the Gadget
  * IC velocities?
@@ -496,8 +499,8 @@ void read_ic_serial(char* fileName, const struct unit_system* internal_units,
                     double dim[3], struct part** parts, struct gpart** gparts,
                     struct spart** sparts, struct bpart** bparts, size_t* Ngas,
                     size_t* Ngparts, size_t* Ngparts_background, size_t* Nstars,
-                    size_t* Nblackholes, int* flag_entropy, int with_hydro,
-                    int with_gravity, int with_stars, int with_black_holes,
+                    size_t* Nblackholes,size_t* Nboundary, size_t* Nfluid, int* flag_entropy, int with_hydro,
+                    int with_gravity, int with_stars, int with_black_holes, int with_engineering_hydro,
                     int with_cosmology, int cleanup_h, int cleanup_sqrt_a,
                     double h, double a, int mpi_rank, int mpi_size,
                     MPI_Comm comm, MPI_Info info, int n_threads, int dry_run) {
@@ -701,6 +704,15 @@ void read_ic_serial(char* fileName, const struct unit_system* internal_units,
     bzero(*gparts, *Ngparts * sizeof(struct gpart));
   }
 
+  if (with_engineering_hydro) {
+    *Nboundary = N[swift_type_boundary];
+    *Nfluid = N[swift_type_fluid];
+    if (swift_memalign("parts", (void**)parts, part_align,
+                       (*Nboundary+*Nfluid) * sizeof(struct part)) != 0)
+      error("Error while allocating memory for SPH particles");
+    bzero(*parts, (*Nboundary+*Nfluid) * sizeof(struct part));
+  }
+
   /* message("Allocated %8.2f MB for particles.", *N * sizeof(struct part) / */
   /* 	  (1024.*1024.)); */
   /* message("BoxSize = %lf", dim[0]); */
@@ -775,6 +787,20 @@ void read_ic_serial(char* fileName, const struct unit_system* internal_units,
               black_holes_read_particles(*bparts, list, &num_fields);
             }
             break;
+
+          case swift_type_boundary:
+            if (with_engineering_hydro) {
+              Nparticles = *Nboundary;
+              hydro_read_particles(*parts, list, &num_fields);
+            }
+            break;
+
+           case swift_type_fluid:
+             if (with_engineering_hydro) {
+               Nparticles = *Nfluid;
+               hydro_read_particles( &(*parts)[*Nboundary], list, &num_fields);
+             }
+             break;
 
           default:
             if (mpi_rank == 0)

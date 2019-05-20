@@ -156,25 +156,34 @@ void map_maxdepth(struct cell *c, void *data) {
  * @brief Mapping function for neighbour count.
  */
 void map_count(struct part *p, struct cell *c, void *data) {
+#ifdef EULER_ENG_SPH
 
+#else
   double *wcount = (double *)data;
 
   // printf( "%i %e %e\n" , p->id , p->count , p->count_dh );
 
   *wcount += p->density.wcount;
+#endif
 }
 void map_wcount_min(struct part *p, struct cell *c, void *data) {
+#ifdef EULER_ENG_SPH
 
+#else
   struct part **p2 = (struct part **)data;
 
   if (p->density.wcount < (*p2)->density.wcount) *p2 = p;
+#endif
 }
 
 void map_wcount_max(struct part *p, struct cell *c, void *data) {
+#ifdef EULER_ENG_SPH
 
+#else
   struct part **p2 = (struct part **)data;
 
   if (p->density.wcount > (*p2)->density.wcount) *p2 = p;
+#endif
 }
 
 void map_h_min(struct part *p, struct cell *c, void *data) {

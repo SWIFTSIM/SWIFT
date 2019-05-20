@@ -174,6 +174,11 @@ nobase_noinst_HEADERS = align.h approx_math.h atomic.h barrier.h cycle.h error.h
                  hydro/Shadowswift/voronoi_algorithm.h \
                  hydro/Shadowswift/voronoi_cell.h \
                  hydro/Shadowswift/hydro_parameters.h \
+                 hydro/Euler/hydro_debug.h \
+                 hydro/Euler/hydro.h \
+                 hydro/Euler/hydro_iact.h \
+                 hydro/Euler/hydro_io.h \
+                 hydro/Euler/hydro_part.h \
 	         riemann/riemann_hllc.h riemann/riemann_trrs.h \
 		 riemann/riemann_exact.h riemann/riemann_vacuum.h \
                  riemann/riemann_checks.h \

@@ -77,6 +77,9 @@ void factor(int value, int *f1, int *f2) {
  * @param periodic Periodic boundary conditions flag.
  */
 void pairs_n2(double *dim, struct part *restrict parts, int N, int periodic) {
+#ifdef EULER_ENG_SPH
+  error("NYI for Euler fluid SPH");
+#else
   int i, j, k, count = 0;
   // int mj, mk;
   // double maxratio = 1.0;
@@ -137,10 +140,15 @@ void pairs_n2(double *dim, struct part *restrict parts, int N, int periodic) {
       mk , parts[mk].x[0] , parts[mk].x[1] , parts[mk].x[2] ,
       parts[mj].h , parts[mk].h ); fflush(stdout); */
   fflush(stdout);
+#endif
 }
 
 void pairs_single_density(double *dim, long long int pid,
                           struct part *restrict parts, int N, int periodic) {
+#ifdef EULER_ENG_SPH
+  error("NYI for Euler fluid SPH");
+
+#else
   int i, k;
   double r2, dx[3];
   float fdx[3];
@@ -185,10 +193,13 @@ void pairs_single_density(double *dim, long long int pid,
   printf("pairs_single: wcount of part %lli (h=%e) is %f.\n", p.id, p.h,
          p.density.wcount + 32.0 / 3);
   fflush(stdout);
+#endif
 }
 
 void pairs_all_density(struct runner *r, struct cell *ci, struct cell *cj) {
-
+#ifdef EULER_ENG_SPH
+  error("NYI for Euler fluid SPH");
+#else
   float r2, hi, hj, hig2, hjg2, dx[3];
   struct part *pi, *pj;
   const double dim[3] = {r->e->s->dim[0], r->e->s->dim[1], r->e->s->dim[2]};
@@ -264,6 +275,7 @@ void pairs_all_density(struct runner *r, struct cell *ci, struct cell *cj) {
       }
     }
   }
+#endif
 }
 
 #ifdef EXTRA_HYDRO_LOOP
@@ -703,6 +715,10 @@ void self_all_stars_density(struct runner *r, struct cell *ci) {
 void engine_single_density(double *dim, long long int pid,
                            struct part *restrict parts, int N, int periodic,
                            const struct cosmology *cosmo) {
+#ifdef EULER_ENG_SPH
+  error("NYI for Euler fluid SPH");
+
+#else
   double r2, dx[3];
   float fdx[3];
   struct part p;
@@ -742,10 +758,14 @@ void engine_single_density(double *dim, long long int pid,
   message("part %lli (h=%e) has wcount=%e, rho=%e.", p.id, p.h,
           p.density.wcount, hydro_get_comoving_density(&p));
   fflush(stdout);
+#endif
 }
 
 void engine_single_force(double *dim, long long int pid,
                          struct part *restrict parts, int N, int periodic) {
+#ifdef EULER_ENG_SPH
+  error("NYI for Euler fluid SPH");
+#else
   int i, k;
   double r2, dx[3];
   float fdx[3];
@@ -787,6 +807,7 @@ void engine_single_force(double *dim, long long int pid,
   message("part %lli (h=%e) has a=[%.3e,%.3e,%.3e]", p.id, p.h, p.a_hydro[0],
           p.a_hydro[1], p.a_hydro[2]);
   fflush(stdout);
+#endif
 }
 
 /**

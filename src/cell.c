@@ -3394,6 +3394,7 @@ int cell_unskip_hydro_tasks(struct cell *c, struct scheduler *s) {
 #endif
   int rebuild = 0;
 
+  if(cell_need_rebuild_for_hydro_self(c)) rebuild = 1;
   /* Un-skip the density tasks involved with this cell. */
   for (struct link *l = c->hydro.density; l != NULL; l = l->next) {
     struct task *t = l->t;

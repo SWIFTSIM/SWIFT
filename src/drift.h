@@ -33,6 +33,7 @@
 #include "part.h"
 #include "stars.h"
 
+
 /**
  * @brief Perform the 'drift' operation on a #gpart.
  *
@@ -61,6 +62,29 @@ __attribute__((always_inline)) INLINE static void drift_gpart(
   gp->x[1] += gp->v_full[1] * dt_drift;
   gp->x[2] += gp->v_full[2] * dt_drift;
 }
+
+#ifdef WITH_ENGINEERING
+
+/**
+ * @brief Perform the 'drift' operation on a #part
+ *
+ * @param p The #part to drift.
+ * @param xp The #xpart of the particle.
+ * @param dt_drift The drift time-step
+ * @param dt_kick_grav The kick time-step for gravity accelerations.
+ * @param dt_kick_hydro The kick time-step for hydro accelerations.
+ * @param dt_therm The drift time-step for thermodynamic quantities.
+ * @param ti_old Integer start of time-step (for debugging checks).
+ * @param ti_current Integer end of time-step (for debugging checks).
+ */
+__attribute__((always_inline)) INLINE static void drift_part(
+    struct part *restrict p, struct xpart *restrict xp, double dt_drift,
+    double dt_kick_hydro, double dt_kick_grav, double dt_therm,
+    integertime_t ti_old, integertime_t ti_current) {
+
+
+}
+#else
 
 /**
  * @brief Perform the 'drift' operation on a #part
@@ -93,7 +117,6 @@ __attribute__((always_inline)) INLINE static void drift_part(
 
   p->ti_drift = ti_current;
 #endif
-
   /* Drift... */
   p->x[0] += xp->v_full[0] * dt_drift;
   p->x[1] += xp->v_full[1] * dt_drift;
@@ -104,6 +127,7 @@ __attribute__((always_inline)) INLINE static void drift_part(
   p->v[1] += p->a_hydro[1] * dt_kick_hydro;
   p->v[2] += p->a_hydro[2] * dt_kick_hydro;
 
+  //TODO The drift for engineering sph is probably rewritten.
   p->v[0] += xp->a_grav[0] * dt_kick_grav;
   p->v[1] += xp->a_grav[1] * dt_kick_grav;
   p->v[2] += xp->a_grav[2] * dt_kick_grav;
@@ -118,6 +142,8 @@ __attribute__((always_inline)) INLINE static void drift_part(
     xp->x_diff_sort[k] -= dx;
   }
 }
+
+#endif /* WITH_ENGINEERING */
 
 /**
  * @brief Perform the 'drift' operation on a #spart

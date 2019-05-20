@@ -50,7 +50,9 @@
  * @param timer Are we timing this?
  */
 void runner_do_gas_swallow(struct runner *r, struct cell *c, int timer) {
-
+#if defined(WITH_ENGINEERING)
+  return;
+#else
   struct engine *e = r->e;
   struct space *s = e->s;
   struct bpart *bparts = s->bparts;
@@ -210,6 +212,7 @@ void runner_do_gas_swallow(struct runner *r, struct cell *c, int timer) {
       } /* Part was flagged for swallowing */
     }   /* Loop over the parts */
   }     /* Cell is not split */
+#endif
 }
 
 /**
@@ -272,7 +275,9 @@ void runner_do_gas_swallow_pair(struct runner *r, struct cell *ci,
  * @param timer Are we timing this?
  */
 void runner_do_bh_swallow(struct runner *r, struct cell *c, int timer) {
+#if defined(WITH_ENGINEERING)
 
+#else
   struct engine *e = r->e;
   struct space *s = e->s;
   const int with_cosmology = (e->policy & engine_policy_cosmology);
@@ -417,6 +422,7 @@ void runner_do_bh_swallow(struct runner *r, struct cell *c, int timer) {
       } /* Part was flagged for swallowing */
     }   /* Loop over the parts */
   }     /* Cell is not split */
+#endif
 }
 
 /**

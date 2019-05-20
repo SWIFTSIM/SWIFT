@@ -78,8 +78,9 @@ enum engine_policy {
   engine_policy_fof = (1 << 20),
   engine_policy_timestep_limiter = (1 << 21),
   engine_policy_timestep_sync = (1 << 22)
+  engine_policy_engineering = (1 << 23)
 };
-#define engine_maxpolicy 23
+#define engine_maxpolicy 24
 extern const char *engine_policy_names[engine_maxpolicy + 1];
 
 /**

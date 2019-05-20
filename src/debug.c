@@ -62,6 +62,8 @@
 #include "./hydro/AnarchyDU/hydro_debug.h"
 #elif defined(ANARCHY_PU_SPH)
 #include "./hydro/AnarchyPU/hydro_debug.h"
+#elif defined(EULER_ENG_SPH)
+#include "./hydro/Euler/hydro_debug.h"
 #else
 #error "Invalid choice of SPH variant"
 #endif

@@ -139,6 +139,9 @@ INLINE static float cooling_get_temperature(
     const struct cooling_function_data* restrict cooling,
     const struct part* restrict p, const struct xpart* restrict xp) {
 
+#ifdef WITH_ENGINEERING
+  return 0.0f;
+#else
   /* Physical constants */
   const double m_H = phys_const->const_proton_mass;
   const double k_B = phys_const->const_boltzmann_k;
@@ -161,6 +164,7 @@ INLINE static float cooling_get_temperature(
     return T_over_mu * mu_neutral;
   else
     return T_transition;
+#endif
 }
 
 /**

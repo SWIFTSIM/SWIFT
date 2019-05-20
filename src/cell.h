@@ -1178,6 +1178,19 @@ cell_can_split_self_gravity_task(const struct cell *c) {
   return c->split && ((c->maxdepth - c->depth) > space_subdepth_diff_grav);
 }
 
+
+__attribute__((always_inline)) INLINE static int
+cell_need_rebuild_for_hydro_self(const struct cell *c){
+  int res = 0;
+  for(int i = 0; i < c->hydro.count; i++){
+    struct part *p = &c->hydro.parts[i];
+    if(p->x[0] <= c->loc[0] || p->x[0] >= c->loc[0] + c->width[0] || p->x[1] <= c->loc[1] || p->x[1] >= c->loc[1] + c->width[1] || p->x[2] <= c->loc[2] || p->x[2] >= c->loc[2] + c->width[2]){
+      res = 1;
+      break;
+    }
+  }
+  return res;
+}
 /**
  * @brief Can a self FOF task associated with a cell be split into smaller
  * sub-tasks.

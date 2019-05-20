@@ -39,6 +39,8 @@ runner_iact_nonsym_stars_density(const float r2, const float *dx,
                                  const struct part *restrict pj, const float a,
                                  const float H) {
 
+#ifdef WITH_ENGINEERING
+#else
   float wi, wi_dx;
 
   /* Get r and 1/r. */
@@ -62,6 +64,7 @@ runner_iact_nonsym_stars_density(const float r2, const float *dx,
   /* Update ngb counters */
   ++si->num_ngb_density;
 #endif
+#endif
 }
 
 /**
@@ -82,6 +85,30 @@ runner_iact_nonsym_stars_feedback(const float r2, const float *dx,
                                   struct spart *restrict si,
                                   struct part *restrict pj, const float a,
                                   const float H) {
+#ifdef WITH_ENGINEERING
+
+#else
+  const float mj = hydro_get_mass(pj);
+  const float rhoj = hydro_get_comoving_density(pj);
+  const float r = sqrtf(r2);
+  const float ri = 1.f / r;
+
+  /* Get the kernel for hi. */
+  float hi_inv = 1.0f / hi;
+  float hid_inv = pow_dimension_plus_one(hi_inv); /* 1/h^(d+1) */
+  float xi = r * hi_inv;
+  float wi, wi_dx;
+  kernel_deval(xi, &wi, &wi_dx);
+  float wi_dr = hid_inv * wi_dx;
+
+  /* Compute dv dot r */
+  float dvdr = (si->v[0] - pj->v[0]) * dx[0] + (si->v[1] - pj->v[1]) * dx[1] +
+               (si->v[2] - pj->v[2]) * dx[2];
+
+  /* Get the time derivative for h. */
+  si->feedback.h_dt -= mj * dvdr * ri / rhoj * wi_dr;
+
+>>>>>>> Stashed changes
 #ifdef DEBUG_INTERACTIONS_STARS
   /* Update ngb counters */
   if (si->num_ngb_force < MAX_NUM_OF_NEIGHBOURS_STARS)
@@ -89,6 +116,7 @@ runner_iact_nonsym_stars_feedback(const float r2, const float *dx,
 
   /* Update ngb counters */
   ++si->num_ngb_force;
+#endif
 #endif
 }
 

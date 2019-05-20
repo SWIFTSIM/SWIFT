@@ -224,7 +224,6 @@ void DOPAIR2_NAIVE(struct runner *r, struct cell *restrict ci,
       if (pj->ti_drift != e->ti_current)
         error("Particle pj not drifted to current time");
 #endif
-
       /* Hit or miss? */
       if (r2 < hig2 || r2 < hjg2) {
 

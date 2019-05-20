@@ -102,7 +102,6 @@ void stats_init(struct statistics *s) {
  * @param extra_data The #statistics aggregator.
  */
 void stats_collect_part_mapper(void *map_data, int nr_parts, void *extra_data) {
-
   /* Unpack the data */
   const struct index_data *data = (struct index_data *)extra_data;
   const struct space *s = data->s;
