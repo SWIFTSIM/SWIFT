@@ -2398,6 +2398,9 @@ void fof_search_foreign_cells(struct fof_props *props, const struct space *s) {
  * the Union-Find algorithm.
  *
  * @param props The properties of the FOF scheme.
+ * @param bh_props The properties of the black hole scheme.
+ * @param constants The physical constants in internal units.
+ * @param cosmo The current cosmological model.
  * @param s The #space containing the particles.
  * @param dump_results Do we want to write the group catalogue to a file?
  * @param seed_black_holes Do we want to seed black holes in haloes?
