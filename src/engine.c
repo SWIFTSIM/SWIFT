@@ -117,11 +117,11 @@ const char *engine_policy_names[] = {"none",
                                      "temperature",
                                      "cooling",
                                      "stars",
-                                     "fof search",
                                      "structure finding",
                                      "star formation",
                                      "feedback",
                                      "black holes",
+                                     "fof search",
                                      "time-step limiter"};
 
 /** The rank of the engine as a global variable (for messages). */
