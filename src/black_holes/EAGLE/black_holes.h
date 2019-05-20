@@ -312,6 +312,15 @@ __attribute__((always_inline)) INLINE static void black_holes_reset_feedback(
 #endif
 }
 
+/**
+ * @brief Initialise a BH particle that has just been seeded.
+ *
+ * @param bp The #bpart to initialise.
+ * @param props The properties of the black hole scheme.
+ * @param constants The physical constants in internal units.
+ * @param cosmo The current cosmological model.
+ * @param p The #part that became a black hole.
+ */
 INLINE static void black_holes_create_from_gas(
     struct bpart* bp, const struct black_holes_props* props,
     const struct phys_const* constants, const struct cosmology* cosmo,
