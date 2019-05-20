@@ -134,6 +134,9 @@ runner_iact_nonsym_bh_feedback(const float r2, const float *dx, const float hi,
 
       hydro_set_physical_internal_energy(pj, xpj, cosmo, u_new);
       hydro_set_drifted_physical_internal_energy(pj, cosmo, u_new);
+
+      /* Impose maximal viscosity */
+      hydro_set_viscosity_alpha_max_feedback(pj);
     }
   }
 
