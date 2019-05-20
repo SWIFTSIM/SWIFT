@@ -1319,8 +1319,8 @@ void write_output_parallel(struct engine* e, const char* baseName,
       Ntot_written > 0 ? Ntot_written - Nbaryons_written : 0;
 
   /* Compute offset in the file and total number of particles */
-  size_t N[swift_type_count] = {
-      Ngas_written, Ndm_written, 0, 0, Nstars_written, 0};
+  size_t N[swift_type_count] = {Ngas_written,   Ndm_written,        0, 0,
+                                Nstars_written, Nblackholes_written};
   long long N_total[swift_type_count] = {0};
   long long offset[swift_type_count] = {0};
   MPI_Exscan(&N, &offset, swift_type_count, MPI_LONG_LONG_INT, MPI_SUM, comm);
