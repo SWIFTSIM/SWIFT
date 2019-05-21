@@ -31,6 +31,8 @@ can be found by typing ``./swift -h``::
     -s, --hydro                       Run with hydrodynamics.
     -S, --stars                       Run with stars.
     -B, --black-holes                 Run with black holes.
+    -u, --fof                         Run Friends-of-Friends algorithm and 
+                                      black holes seeding.
     -x, --velociraptor                Run with structure finding.
     --limiter                         Run with time-step limiter.
 
