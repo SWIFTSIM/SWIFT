@@ -2626,7 +2626,7 @@ void engine_prepare(struct engine *e) {
     engine_drift_all(e, /*drift_mpole=*/0);
     drifted_all = 1;
 
-    engine_fof(e);
+    engine_fof(e, /*dump_results=*/0, /*seed_black_holes=*/1);
   }
 
   /* Do we need repartitioning ? */
@@ -5304,9 +5304,11 @@ void engine_config(int restart, struct engine *e, struct swift_params *params,
           "+/- %.4f\n# Eta: %f\n# Config: %s\n# CFLAGS: %s\n",
           hostname(), git_branch(), git_revision(), compiler_name(),
           compiler_version(), e->nr_threads, e->nr_nodes, SPH_IMPLEMENTATION,
-          kernel_name, e->hydro_properties->target_neighbours,
-          e->hydro_properties->delta_neighbours,
-          e->hydro_properties->eta_neighbours, configuration_options(),
+          kernel_name,
+	  e->hydro_properties ? e->hydro_properties->target_neighbours : 0.f,
+          e->hydro_properties ? e->hydro_properties->delta_neighbours: 0.f,
+          e->hydro_properties ? e->hydro_properties->eta_neighbours : 0.f,
+	  configuration_options(),
           compilation_cflags());
 
       fprintf(
@@ -6480,8 +6482,10 @@ void engine_activate_fof_tasks(struct engine *e) {
  * @brief Run a FOF search.
  *
  * @param e the engine
+ * @param dump_results Are we writing group catalogues to output files?
+ * @param seed_black_holes Are we seeding black holes?
  */
-void engine_fof(struct engine *e) {
+void engine_fof(struct engine *e, const int dump_results, const int seed_black_holes) {
 
   ticks tic = getticks();
 
@@ -6513,8 +6517,8 @@ void engine_fof(struct engine *e) {
   /* Perform FOF search over foreign particles and
    * find groups which require black hole seeding.  */
   fof_search_tree(e->fof_properties, e->black_holes_properties,
-                  e->physical_constants, e->cosmology, e->s, /*dump_results=*/0,
-                  /*seed_black_holes=*/1);
+                  e->physical_constants, e->cosmology, e->s, dump_results,
+                  seed_black_holes);
 
   /* Reset flag. */
   e->run_fof = 0;
