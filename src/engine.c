@@ -5294,13 +5294,15 @@ void engine_config(int restart, struct engine *e, struct swift_params *params,
           e->hydro_properties->eta_neighbours, configuration_options(),
           compilation_cflags());
 
-      fprintf(e->file_timesteps,
-              "# Step Properties: Rebuild=%d, Redistribute=%d, Repartition=%d, "
-              "Statistics=%d, Snapshot=%d, Restarts=%d STF=%d, logger=%d\n",
-              engine_step_prop_rebuild, engine_step_prop_redistribute,
-              engine_step_prop_repartition, engine_step_prop_statistics,
-              engine_step_prop_snapshot, engine_step_prop_restarts,
-              engine_step_prop_stf, engine_step_prop_logger_index);
+      fprintf(
+          e->file_timesteps,
+          "# Step Properties: Rebuild=%d, Redistribute=%d, Repartition=%d, "
+          "Statistics=%d, Snapshot=%d, Restarts=%d STF=%d, FOF=%d, logger=%d\n",
+          engine_step_prop_rebuild, engine_step_prop_redistribute,
+          engine_step_prop_repartition, engine_step_prop_statistics,
+          engine_step_prop_snapshot, engine_step_prop_restarts,
+          engine_step_prop_stf, engine_step_prop_fof,
+          engine_step_prop_logger_index);
 
       fprintf(
           e->file_timesteps,
@@ -6376,6 +6378,9 @@ void engine_fof(struct engine *e) {
 
   /* Reset flag. */
   e->run_fof = 0;
+
+  /* Flag that a FOF has taken place */
+  e->step_props |= engine_step_prop_fof;
 
   if (engine_rank == 0)
     message("Complete FOF search took: %.3f %s.",
