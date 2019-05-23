@@ -326,7 +326,8 @@ void prepareArray(const struct engine* e, hid_t grp, char* fileName,
   io_write_attribute_s(h_data, "Expression for physical CGS units", buffer);
 
   /* Write the actual number this conversion factor corresponds to */
-  const float factor = units_cgs_conversion_factor(snapshot_units, props.units);
+  const double factor =
+      units_cgs_conversion_factor(snapshot_units, props.units);
   io_write_attribute_d(
       h_data,
       "Conversion factor to CGS (not including cosmological corrections)",
