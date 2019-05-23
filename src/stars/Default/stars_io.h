@@ -65,15 +65,15 @@ INLINE static void stars_write_particles(const struct spart *sparts,
 
   /* List what we want to write */
   list[0] = io_make_output_field("Coordinates", DOUBLE, 3, UNIT_CONV_LENGTH,
-                                 sparts, x);
-  list[1] =
-      io_make_output_field("Velocities", FLOAT, 3, UNIT_CONV_SPEED, sparts, v);
-  list[2] =
-      io_make_output_field("Masses", FLOAT, 1, UNIT_CONV_MASS, sparts, mass);
+                                 1.f, sparts, x, "");
+  list[1] = io_make_output_field("Velocities", FLOAT, 3, UNIT_CONV_SPEED, 1.f,
+                                 sparts, v, "");
+  list[2] = io_make_output_field("Masses", FLOAT, 1, UNIT_CONV_MASS, 0.f,
+                                 sparts, mass, "");
   list[3] = io_make_output_field("ParticleIDs", LONGLONG, 1, UNIT_CONV_NO_UNITS,
-                                 sparts, id);
+                                 0.f, sparts, id, "");
   list[4] = io_make_output_field("SmoothingLength", FLOAT, 1, UNIT_CONV_LENGTH,
-                                 sparts, h);
+                                 1.f, sparts, h, "");
 
 #ifdef DEBUG_INTERACTIONS_STARS
 

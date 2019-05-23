@@ -65,15 +65,15 @@ INLINE static void black_holes_write_particles(const struct bpart *bparts,
 
   /* List what we want to write */
   list[0] = io_make_output_field("Coordinates", DOUBLE, 3, UNIT_CONV_LENGTH,
-                                 bparts, x);
-  list[1] =
-      io_make_output_field("Velocities", FLOAT, 3, UNIT_CONV_SPEED, bparts, v);
-  list[2] =
-      io_make_output_field("Masses", FLOAT, 1, UNIT_CONV_MASS, bparts, mass);
+                                 1.f, bparts, x, "");
+  list[1] = io_make_output_field("Velocities", FLOAT, 3, UNIT_CONV_SPEED, 1.f,
+                                 bparts, v, "");
+  list[2] = io_make_output_field("Masses", FLOAT, 1, UNIT_CONV_MASS, 0.f,
+                                 bparts, mass, "");
   list[3] = io_make_output_field("ParticleIDs", LONGLONG, 1, UNIT_CONV_NO_UNITS,
-                                 bparts, id);
+                                 0.f, bparts, id, "");
   list[4] = io_make_output_field("SmoothingLength", FLOAT, 1, UNIT_CONV_LENGTH,
-                                 bparts, h);
+                                 1.f, bparts, h, "");
 
 #ifdef DEBUG_INTERACTIONS_BLACK_HOLES
 

@@ -24,8 +24,8 @@
 
 /* Local includes. */
 #include "common_io.h"
+#include "error.h"
 #include "inline.h"
-#include "part.h"
 
 /* Standard includes. */
 #include <string.h>
@@ -79,6 +79,9 @@ struct io_props {
   /* Name */
   char name[FIELD_BUFFER_SIZE];
 
+  /* Description of the variable to write to the field's meta-data */
+  char description[DESCRIPTION_BUFFER_SIZE];
+
   /* Type of the field */
   enum IO_DATA_TYPE type;
 
@@ -90,6 +93,9 @@ struct io_props {
 
   /* Units of the quantity */
   enum unit_conversion_factor units;
+
+  /* Scale-factor exponent to apply for unit conversion to physical */
+  float scale_factor_exponent;
 
   /* Pointer to the field of the first particle in the array */
   char* field;
@@ -196,9 +202,10 @@ INLINE static struct io_props io_make_input_field_(
 /**
  * @brief Constructs an #io_props from its parameters
  */
-#define io_make_output_field(name, type, dim, units, part, field)          \
-  io_make_output_field_(name, type, dim, units, (char*)(&(part[0]).field), \
-                        sizeof(part[0]))
+#define io_make_output_field(name, type, dim, units, a_exponent, part, field, \
+                             desc)                                            \
+  io_make_output_field_(name, type, dim, units, a_exponent,                   \
+                        (char*)(&(part[0]).field), sizeof(part[0]), desc)
 
 /**
  * @brief Construct an #io_props from its parameters
@@ -214,13 +221,21 @@ INLINE static struct io_props io_make_input_field_(
  */
 INLINE static struct io_props io_make_output_field_(
     const char name[FIELD_BUFFER_SIZE], enum IO_DATA_TYPE type, int dimension,
-    enum unit_conversion_factor units, char* field, size_t partSize) {
+    enum unit_conversion_factor units, float a_exponent, char* field,
+    size_t partSize, const char description[DESCRIPTION_BUFFER_SIZE]) {
+
   struct io_props r;
   strcpy(r.name, name);
+  if (strlen(description) == 0) {
+    sprintf(r.description, "No description given");
+  } else {
+    strcpy(r.description, description);
+  }
   r.type = type;
   r.dimension = dimension;
   r.importance = UNUSED;
   r.units = units;
+  r.scale_factor_exponent = a_exponent;
   r.field = field;
   r.partSize = partSize;
   r.parts = NULL;

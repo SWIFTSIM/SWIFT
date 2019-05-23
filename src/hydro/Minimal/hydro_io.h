@@ -165,16 +165,20 @@ INLINE static void hydro_write_particles(const struct part* parts,
                                               convert_part_pos);
   list[1] = io_make_output_field_convert_part(
       "Velocities", FLOAT, 3, UNIT_CONV_SPEED, parts, xparts, convert_part_vel);
-  list[2] =
-      io_make_output_field("Masses", FLOAT, 1, UNIT_CONV_MASS, parts, mass);
-  list[3] = io_make_output_field("SmoothingLength", FLOAT, 1, UNIT_CONV_LENGTH,
-                                 parts, h);
-  list[4] = io_make_output_field("InternalEnergy", FLOAT, 1,
-                                 UNIT_CONV_ENERGY_PER_UNIT_MASS, parts, u);
-  list[5] = io_make_output_field("ParticleIDs", ULONGLONG, 1,
-                                 UNIT_CONV_NO_UNITS, parts, id);
+  list[2] = io_make_output_field("Masses", FLOAT, 1, UNIT_CONV_MASS, 0.f, parts,
+                                 mass, "Masses of the particles");
+  list[3] = io_make_output_field(
+      "SmoothingLength", FLOAT, 1, UNIT_CONV_LENGTH, 1.f, parts, h,
+      "Smoothing lengths (FWHM of the kernel) of the particles");
+  list[4] = io_make_output_field(
+      "InternalEnergy", FLOAT, 1, UNIT_CONV_ENERGY_PER_UNIT_MASS,
+      3. * hydro_gamma_minus_one, parts, u, "Thermal energy per unit mass.");
+  list[5] =
+      io_make_output_field("ParticleIDs", ULONGLONG, 1, UNIT_CONV_NO_UNITS, 0.f,
+                           parts, id, "Unique ID of the particles");
   list[6] =
-      io_make_output_field("Density", FLOAT, 1, UNIT_CONV_DENSITY, parts, rho);
+      io_make_output_field("Density", FLOAT, 1, UNIT_CONV_DENSITY, -3.f, parts,
+                           rho, "Physical mass density of the particles");
   list[7] = io_make_output_field_convert_part("Entropy", FLOAT, 1,
                                               UNIT_CONV_ENTROPY_PER_UNIT_MASS,
                                               parts, xparts, convert_S);

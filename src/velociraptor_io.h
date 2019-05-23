@@ -71,7 +71,7 @@ __attribute__((always_inline)) INLINE static int velociraptor_write_gparts(
     const struct velociraptor_gpart_data* group_data, struct io_props* list) {
 
   list[0] = io_make_output_field("GroupID", LONGLONG, 1, UNIT_CONV_NO_UNITS,
-                                 group_data, groupID);
+                                 0.f, group_data, groupID, "");
 
   return 1;
 }
