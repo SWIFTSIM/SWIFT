@@ -6390,14 +6390,6 @@ void engine_fof(struct engine *e) {
   /* Initialise FOF parameters and allocate FOF arrays. */
   fof_allocate(e->s, total_nr_dmparts, e->fof_properties);
 
-#ifdef WITH_MPI
-  /* Exchange the freshly-drifted gparts */
-  engine_activate_gpart_comms(e);
-
-  /* Perform the communications */
-  engine_launch(e);
-#endif
-
   /* Make FOF tasks */
   engine_make_fof_tasks(e);
 
@@ -6406,6 +6398,14 @@ void engine_fof(struct engine *e) {
 
   /* Perform local FOF tasks. */
   engine_launch(e);
+
+#ifdef WITH_MPI
+  /* Exchange the gparts that now contain all their local group information */
+  engine_activate_gpart_comms(e);
+
+  /* Perform the communications */
+  engine_launch(e);
+#endif
 
   /* Perform FOF search over foreign particles and
    * find groups which require black hole seeding.  */
