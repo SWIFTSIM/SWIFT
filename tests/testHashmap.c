@@ -20,14 +20,23 @@
 /* Config parameters. */
 #include "../config.h"
 
+#include <fenv.h>
+
 /* Local headers. */
 #include "swift.h"
-
-#include "../src/c_hashmap/hashmap.h"
 
 #define NUM_KEYS (26 * 1000 * 1000)
 
 int main(int argc, char *argv[]) {
+
+  /* Initialize CPU frequency, this also starts time. */
+  unsigned long long cpufreq = 0;
+  clocks_set_cpufreq(cpufreq);
+
+/* Choke on FPEs */
+#ifdef HAVE_FE_ENABLE_EXCEPT
+  feenableexcept(FE_DIVBYZERO | FE_INVALID | FE_OVERFLOW);
+#endif
 
   hashmap_t m;
 
