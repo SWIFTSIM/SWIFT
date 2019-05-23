@@ -114,16 +114,15 @@ static int memuse_tsearch_compare(const void *item1, const void *item2) {
 static void memuse_active_dump_gather(hashmap_key_t key, hashmap_value_t *value,
                                       void *data) {
   /* If entry has no data it is not active. */
-  if (value->value_ptr == NULL) return;
+  if (value->value_st < 0) return;
 
   /* Get the stored log entry. */
-  struct memuse_log_entry *stored_log =
-      (struct memuse_log_entry *)value->value_ptr;
+  int index = (int)value->value_st;
 
   /* Look for this label in our tree and store if not found. */
-  struct memuse_tsearch_item *new_item = (struct memuse_tsearch_item *)calloc(
-      1, sizeof(struct memuse_tsearch_item));
-  new_item->key = stored_log->label;
+  struct memuse_tsearch_item *new_item =
+      (struct memuse_tsearch_item *)calloc(1, sizeof(struct memuse_tsearch_item));
+  new_item->key = memuse_log[index].label;
   new_item->sum = 0;
   new_item->count = 0;
 
@@ -134,7 +133,7 @@ static void memuse_active_dump_gather(hashmap_key_t key, hashmap_value_t *value,
   struct memuse_tsearch_item *stored_item = *(struct memuse_tsearch_item **)ptr;
 
   /* And increment sum. */
-  stored_item->sum += stored_log->size;
+  stored_item->sum += memuse_log[index].size;
   stored_item->count++;
 }
 
@@ -144,15 +143,17 @@ static void memuse_active_dump_gather(hashmap_key_t key, hashmap_value_t *value,
 static void memuse_active_transfer(hashmap_key_t key, hashmap_value_t *value,
                                    void *data) {
   /* If entry has no data it is not active. */
-  if (value->value_ptr == NULL) return;
+  if (value->value_st < 0) return;
+  return;
+
+  /* XXX need to move log to head of logs and reindex. */
 
   /* Get the stored log entry. */
-  struct memuse_log_entry *stored_log =
-      (struct memuse_log_entry *)value->value_ptr;
+  int index = (int)value->value_st;
 
   /* And add to new hashmap. */
   hashmap_t *hashmap = (hashmap_t *)data;
-  hashmap_put(hashmap, (hashmap_key_t)stored_log.ptr, stored_log);
+  hashmap_put(hashmap, (hashmap_key_t)memuse_log[index].ptr, *value);
 }
 
 /**
@@ -286,9 +287,8 @@ void memuse_log_dump(const char *filename) {
     hashmap_value_t *vt =
         hashmap_lookup(memuse_hashmap, (hashmap_key_t)memuse_log[k].ptr);
 
-    if (vt != NULL && vt->value_ptr != NULL) {
-      struct memuse_log_entry *stored_log =
-          (struct memuse_log_entry *)vt->value_ptr;
+    if (vt != NULL && vt->value_st >= 0) {
+      int index = (int)vt->value_st;
 
       /* Found the allocation, this should be the free. */
       if (memuse_log[k].allocated) {
@@ -303,20 +303,19 @@ void memuse_log_dump(const char *filename) {
       }
 
       /* Free, so we can update the size to remove the allocation. */
-      memuse_log[k].size = -stored_log->size;
+      memuse_log[k].size = -memuse_log[index].size;
 
-      /* And remove this key. XXX does this work? Do we leak and need to
-       * rebuild to keep between dumps? */
-      hashmap_value_t svt;
-      svt.value_ptr = NULL;
-      hashmap_put(memuse_hashmap, (hashmap_key_t)memuse_log[k].ptr, svt);
+      /* And deactivate this key. */
+      hashmap_value_t value;
+      value.value_st = -1;
+      hashmap_put(memuse_hashmap, (hashmap_key_t)memuse_log[k].ptr, value);
 
     } else if (vt == NULL && memuse_log[k].allocated) {
 
       /* Not found, so new allocation which we store. */
-      hashmap_value_t svt;
-      svt.value_ptr = &memuse_log[k];
-      hashmap_put(memuse_hashmap, (hashmap_key_t)memuse_log[k].ptr, svt);
+      hashmap_value_t value;
+      value.value_st = k;
+      hashmap_put(memuse_hashmap, (hashmap_key_t)memuse_log[k].ptr, value);
 
     } else if (vt == NULL && !memuse_log[k].allocated) {
 
@@ -328,7 +327,7 @@ void memuse_log_dump(const char *filename) {
       continue;
     } else {
 
-      /* Must be released allocation with NULL value_ptr, so skip. */
+      /* Must be released allocation with xvalue_st < 0, so skip. */
       continue;
     }
 
