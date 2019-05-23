@@ -27,14 +27,15 @@
 #include "../config.h"
 
 /* Standard includes. */
+#include <search.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <sys/types.h>
 #include <unistd.h>
 
 /* Local defines. */
-#include "memuse.h"
 #include "c_hashmap/hashmap.h"
+#include "memuse.h"
 
 /* Local includes. */
 #include "atomic.h"
@@ -42,6 +43,8 @@
 #include "engine.h"
 
 #ifdef SWIFT_MEMUSE_REPORTS
+
+#define MEGABYTE 1048576.0
 
 /* Also recorded in logger. */
 extern int engine_rank;
@@ -71,11 +74,6 @@ struct memuse_log_entry {
 
   /* Label associated with the memory. */
   char label[MEMUSE_MAXLABLEN + 1];
-
-  /* Sum of memory associated with this label. Only used when summing active
-   * memory and the only for the first entry with this label. */
-  size_t active_sum;
-  size_t active_count;
 };
 
 /* The log of allocations and frees. */
@@ -85,18 +83,112 @@ static volatile size_t memuse_log_count = 0;
 static volatile size_t memuse_log_done = 0;
 
 /* Hashmap for matching frees to allocations. */
-static hashmap_t memuse_hashmap;
+static hashmap_t *memuse_hashmap;
 static int memuse_init_hashmap = 1;
 
 /* Current sum of memory in use. Only used in dumping. */
-static size_t memuse_sum = 0;
+static size_t memuse_current = 0;
 
-/* Sorted list of memory allocation labels. Only used in dumping. */
-//#define MEMUSE_MAXLABS 64
-//static char *memuse_labels[64];
-//static int memuse_labels_count;
+/* tsearch support */
+struct memuse_tsearch_item {
+  char *key;
+  size_t sum;
+  size_t count;
+};
+static void *memuse_tsearch_root = NULL;
+static FILE *memuse_tsearch_output_fd = NULL;
+static double memuse_tsearch_total = 0.0;
+
+/**
+ * @brief comparison function for comparing keys in our tsearch struct.
+ */
+static int memuse_tsearch_compare(const void *item1, const void *item2) {
+  return strcmp(((const struct memuse_tsearch_item *)item1)->key,
+                ((const struct memuse_tsearch_item *)item2)->key);
+}
+
+/**
+ * @brief Gather the labels of the current active memory and sum the memory
+ *        associated with them. Called from hashmap_iterate().
+ */
+static void memuse_active_dump_gather(hashmap_key_t key, hashmap_value_t *value,
+                                      void *data) {
+  /* If entry has no data it is not active. */
+  if (value->value_ptr == NULL) return;
+
+  /* Get the stored log entry. */
+  struct memuse_log_entry *stored_log =
+      (struct memuse_log_entry *)value->value_ptr;
+
+  /* Look for this label in our tree and store if not found. */
+  struct memuse_tsearch_item *new_item = (struct memuse_tsearch_item *)calloc(
+      1, sizeof(struct memuse_tsearch_item));
+  new_item->key = stored_log->label;
+  new_item->sum = 0;
+  new_item->count = 0;
+
+  void *ptr = tsearch((void *)new_item, (void **)&memuse_tsearch_root,
+                      memuse_tsearch_compare);
+
+  /* Only our pointer is stored, so we get a pointer to that. */
+  struct memuse_tsearch_item *stored_item = *(struct memuse_tsearch_item **)ptr;
+
+  /* And increment sum. */
+  stored_item->sum += stored_log->size;
+  stored_item->count++;
+}
+
+/**
+ * @brief Transfer the active log records from one hashmap to another.
+ */
+static void memuse_active_transfer(hashmap_key_t key, hashmap_value_t *value,
+                                   void *data) {
+  /* If entry has no data it is not active. */
+  if (value->value_ptr == NULL) return;
+
+  /* Get the stored log entry. */
+  struct memuse_log_entry *stored_log =
+      (struct memuse_log_entry *)value->value_ptr;
+
+  /* And add to new hashmap. */
+  hashmap_t *hashmap = (hashmap_t *)data;
+  hashmap_put(hashmap, (hashmap_key_t)stored_log.ptr, stored_log);
+}
+
+/**
+ * @brief Output the active memory usage from a tree walk.
+ */
+static void memuse_tsearch_dump(const void *ptr, const VISIT order,
+                                const int depth) {
+
+  struct memuse_tsearch_item *item = *(struct memuse_tsearch_item **)ptr;
+
+  if (order == postorder || order == leaf) {
+    fprintf(memuse_tsearch_output_fd, "## %30s %16.3f %16zd\n", item->key,
+            item->sum / MEGABYTE, item->count);
+    memuse_tsearch_total += item->sum;
+  }
+}
+
+#ifndef HAVE_TDESTROY
+/**
+ * @brief Free nodes using a tree walk...
+ */
+static void memuse_tsearch_free(const void *ptr, const VISIT order,
+                                const int depth) {
+
+  struct memuse_tsearch_item *item = *(struct memuse_tsearch_item **)ptr;
+
+  if (order == postorder || order == leaf) {
+    free(item);
+  }
+}
+#endif
 
 #define MEMUSE_INITLOG 1000000
+/**
+ * @brief reallocate the entries log if space is needed.
+ */
 static void memuse_log_reallocate(size_t ind) {
 
   if (ind == 0) {
@@ -129,7 +221,6 @@ static void memuse_log_reallocate(size_t ind) {
     memuse_log_size *= 2;
   }
 }
-
 
 /**
  * @brief Log an allocation or deallocation of memory.
@@ -164,59 +255,6 @@ void memuse_log_allocation(const char *label, void *ptr, int allocated,
 }
 
 /**
- * @brief Gather the labels of the current active memory and sum the memory
- *        associated with them. Called from hashmap_iterate().
- */
-static void memuse_active_dump_gather(hashmap_key_t key,
-                                      hashmap_value_t *value,
-                                      void *data) {
-
-  return;
-  hashmap_value_t *vt;
-  hashmap_key_t kt;
-
-  /* Get label hashmap and the stored log entry. */
-  struct memuse_log_entry *stored_log = (struct memuse_log_entry *)value;
-  hashmap_t *active_hashmap = (hashmap_t *) data;
-
-  /* Look for this label. XXX need to use the address of the label. */
-  kt = (hashmap_key_t)stored_log->label;
-  vt = hashmap_lookup(active_hashmap, kt);
-  if (vt == NULL) {
-
-    /* Not seen yet, so add an entry. XXX need to use the address of the
-     * label. */
-    hashmap_value_t svt;
-    svt.value_ptr = stored_log;
-    hashmap_put(active_hashmap, kt, svt);
-    stored_log->active_sum = 0;
-    stored_log->active_count = 0;
-  }
-
-  /* And increment sum. */
-  stored_log->active_sum += stored_log->size;
-  stored_log->active_count++;
-}
-
-/**
- * @brief Output the active memory usage.
- */
-static void memuse_active_dump_output(hashmap_key_t key,
-                                      hashmap_value_t *value,
-                                      void *data) {
-
-  return;
-
-  /* Get label hashmap and the active record. */
-  FILE *fd = (FILE *) data;
-  struct memuse_log_entry *stored_log = (struct memuse_log_entry *)value;
-
-  /* Output. */
-  fprintf(fd, "## %s %zd %zd\n", stored_log->label, stored_log->active_sum,
-          stored_log->active_count);
-}
-
-/**
  * @brief dump the log to a file and reset, if anything to dump.
  *
  * @param filename name of file for log dump.
@@ -228,7 +266,8 @@ void memuse_log_dump(const char *filename) {
 
   /* Create the hashmap. If not already done. */
   if (memuse_init_hashmap) {
-    hashmap_init(&memuse_hashmap);
+    memuse_hashmap = (hashmap_t *)malloc(sizeof(hashmap_t));
+    hashmap_init(memuse_hashmap);
     memuse_init_hashmap = 0;
   }
 
@@ -238,25 +277,24 @@ void memuse_log_dump(const char *filename) {
     error("Failed to create memuse log file '%s'.", filename);
 
   /* Write a header. */
-  fprintf(fd, "# Current use: %s\n", memuse_process(1));
-  fprintf(fd, "# cpufreq: %lld\n", clocks_get_cpufreq());
   fprintf(fd, "# dtic rank step label size sum\n");
 
-  size_t maxmem = memuse_sum;
+  size_t memuse_maxmem = memuse_current;
   for (size_t k = 0; k < memuse_log_count; k++) {
 
     /* Check if this address has already been used. */
-    hashmap_value_t *vt = hashmap_lookup(&memuse_hashmap,
-                                         (hashmap_key_t)memuse_log[k].ptr);
+    hashmap_value_t *vt =
+        hashmap_lookup(memuse_hashmap, (hashmap_key_t)memuse_log[k].ptr);
 
     if (vt != NULL && vt->value_ptr != NULL) {
-      struct memuse_log_entry *stored_log = (struct memuse_log_entry *)vt->value_ptr;
+      struct memuse_log_entry *stored_log =
+          (struct memuse_log_entry *)vt->value_ptr;
 
       /* Found the allocation, this should be the free. */
       if (memuse_log[k].allocated) {
 
-        /* Allocated twice, this is an error, but we cannot abort as that will
-         * attempt another memory dump, so just complain. */
+      /* Allocated twice, this is an error, but we cannot abort as that will
+       * attempt another memory dump, so just complain. */
 #if SWIFT_DEBUG_CHECKS
         message("Allocated the same address twice (%s: %zd)",
                 memuse_log[k].label, memuse_log[k].size);
@@ -265,26 +303,24 @@ void memuse_log_dump(const char *filename) {
       }
 
       /* Free, so we can update the size to remove the allocation. */
-      message("Free of: %p %s %zd (%p %s %zd)", stored_log->ptr, stored_log->label, stored_log->size,
-              memuse_log[k].ptr, memuse_log[k].label, memuse_log[k].size);
       memuse_log[k].size = -stored_log->size;
 
       /* And remove this key. XXX does this work? Do we leak and need to
        * rebuild to keep between dumps? */
       hashmap_value_t svt;
       svt.value_ptr = NULL;
-      hashmap_put(&memuse_hashmap, (hashmap_key_t)memuse_log[k].ptr, svt);
+      hashmap_put(memuse_hashmap, (hashmap_key_t)memuse_log[k].ptr, svt);
 
     } else if (vt == NULL && memuse_log[k].allocated) {
 
       /* Not found, so new allocation which we store. */
       hashmap_value_t svt;
       svt.value_ptr = &memuse_log[k];
-      hashmap_put(&memuse_hashmap, (hashmap_key_t)memuse_log[k].ptr, svt);
+      hashmap_put(memuse_hashmap, (hashmap_key_t)memuse_log[k].ptr, svt);
 
     } else if (vt == NULL && !memuse_log[k].allocated) {
 
-      /* Unmatched free, OK if NULL. */
+    /* Unmatched free, OK if NULL. */
 #if SWIFT_DEBUG_CHECKS
       if (memuse_log[k].ptr != NULL)
         message("Unmatched non-NULL free: %s", memuse_log[k].label);
@@ -297,30 +333,57 @@ void memuse_log_dump(const char *filename) {
     }
 
     /* Keep maximum and rolling sum. */
-    memuse_sum += memuse_log[k].size;
-    if (memuse_sum > maxmem) maxmem = memuse_sum;
+    memuse_current += memuse_log[k].size;
+    if (memuse_current > memuse_maxmem) memuse_maxmem = memuse_current;
 
     /* And output. */
     fprintf(fd, "%lld %d %d %s %zd %zd\n", memuse_log[k].dtic,
             memuse_log[k].rank, memuse_log[k].step, memuse_log[k].label,
-            memuse_log[k].size, memuse_sum);
+            memuse_log[k].size, memuse_current);
   }
 
-  /* The hashmap should only contain active memory, make a report about
-   * that. */
-  hashmap_t active_hashmap;
-  hashmap_init(&active_hashmap);
+  /* The hashmap should now only contain active memory logs, make a report
+   * about those. Use a tsearch based method as we cannot use character keys
+   * with the hashmap. */
 
-  /* First we so the sums against the active labels. */
-  hashmap_iterate(&memuse_hashmap, memuse_active_dump_gather, &active_hashmap);
+  /* First we do the sums against the active labels. */
+  hashmap_iterate(memuse_hashmap, memuse_active_dump_gather, NULL);
 
-  /* Then make the report. */
-  hashmap_iterate(&active_hashmap, memuse_active_dump_output, fd);
+  /* Now walk the tree to dump the sums. */
+  fprintf(fd, "# Memory use by label:\n");
+  fprintf(fd, "##  %30s %16s %16s\n", "label", "MB", "numactive");
+  fprintf(fd, "##\n");
+  memuse_tsearch_output_fd = fd;
+  memuse_tsearch_total = 0;
+  twalk(memuse_tsearch_root, memuse_tsearch_dump);
+  fprintf(fd, "##\n");
+  fprintf(fd, "# Total memory still in use : %.3f (MB)\n",
+          memuse_tsearch_total/MEGABYTE);
+  fprintf(fd, "# Peak memory usage         : %.3f (MB)\n",
+          memuse_maxmem/MEGABYTE);
+  fprintf(fd, "#\n");
+  fprintf(fd, "# Memory use by process (all/system): %s\n", memuse_process(1));
+  fprintf(fd, "# cpufreq: %lld\n", clocks_get_cpufreq());
 
-  hashmap_free(&active_hashmap);
+  /* Clean up tree. */
+#ifdef HAVE_TDESTROY
+  tdestroy(memuse_tsearch_root, free);
+#else
+  twalk(memuse_tsearch_root, memuse_tsearch_free);
+#endif
+  memuse_tsearch_output_fd = NULL;
+  memuse_tsearch_root = NULL;
 
-  /* Clear the log. OK as records are dumped, but note active memory is still
-   * in the hashmap. */
+
+  /* The hashmap has all the active and inactive logs present. We need to
+   * remove the inactive logs, which can only be done the hardway... */
+  hashmap_t *newhashmap = (hashmap_t *)malloc(sizeof(hashmap_t));
+  hashmap_init(newhashmap);
+  hashmap_iterate(memuse_hashmap, memuse_active_transfer, &newhashmap);
+  hashmap_free(memuse_hashmap);
+  memuse_hashmap = newhashmap;
+
+  /* Clear the log. */
   memuse_log_count = 0;
 
   /* Close the file. */
