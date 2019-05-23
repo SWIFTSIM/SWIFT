@@ -151,6 +151,7 @@ tests/testOutputList
 tests/testCbrt
 tests/testFormat.sh
 tests/testCooling
+tests/testHashmap
 tests/*.png
 tests/*.txt
 
