@@ -79,7 +79,7 @@ AM_SOURCES = space.c runner.c queue.c task.c cell.c engine.c engine_maketasks.c 
     collectgroup.c hydro_space.c equation_of_state.c \
     chemistry.c cosmology.c restart.c mesh_gravity.c velociraptor_interface.c \
     outputlist.c velociraptor_dummy.c logger_io.c memuse.c fof.c \
-    c_hashmap/hashmap.c \
+    hashmap.c \
     $(EAGLE_COOLING_SOURCES) $(EAGLE_FEEDBACK_SOURCES)
 
 # Include files for distribution, not installation.
@@ -87,7 +87,7 @@ nobase_noinst_HEADERS = align.h approx_math.h atomic.h barrier.h cycle.h error.h
 		 gravity_iact.h kernel_long_gravity.h vector.h cache.h runner_doiact.h runner_doiact_vec.h runner_doiact_grav.h  \
                  runner_doiact_nosort.h runner_doiact_stars.h runner_doiact_black_holes.h units.h intrinsics.h minmax.h \
                  kick.h timestep.h drift.h adiabatic_index.h io_properties.h dimension.h part_type.h periodic.h memswap.h \
-                 dump.h logger.h sign.h logger_io.h timestep_limiter.h c_hashmap/hashmap.h \
+                 dump.h logger.h sign.h logger_io.h timestep_limiter.h hashmap.h \
 		 gravity.h gravity_io.h gravity_cache.h \
 		 gravity/Default/gravity.h gravity/Default/gravity_iact.h gravity/Default/gravity_io.h \
 		 gravity/Default/gravity_debug.h gravity/Default/gravity_part.h  \

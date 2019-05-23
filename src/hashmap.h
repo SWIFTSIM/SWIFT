@@ -1,3 +1,22 @@
+/*******************************************************************************
+ * This file is part of SWIFT.
+ * Copyright (c) 2019 James Willis (james.s.willis@durham.ac.uk)
+ *                    Pedro Gonnet (pedro.gonnet@gmail.com)
+ *
+ * This program is free software: you can redistribute it and/or modify
+ * it under the terms of the GNU Lesser General Public License as published
+ * by the Free Software Foundation, either version 3 of the License, or
+ * (at your option) any later version.
+ *
+ * This program is distributed in the hope that it will be useful,
+ * but WITHOUT ANY WARRANTY; without even the implied warranty of
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+ * GNU General Public License for more details.
+ *
+ * You should have received a copy of the GNU Lesser General Public License
+ * along with this program.  If not, see <http://www.gnu.org/licenses/>.
+ *
+ ******************************************************************************/
 /*
  * Generic hashmap manipulation functions
  *
@@ -7,8 +26,8 @@
  * Modified by Pete Warden to fix a serious performance problem, support strings
  * as keys and removed thread synchronization - http://petewarden.typepad.com
  */
-#ifndef __HASHMAP_H__
-#define __HASHMAP_H__
+#ifndef SWIFT_HASHMAP_H
+#define SWIFT_HASHMAP_H
 
 /* Some standard headers. */
 #include <stdbool.h>
@@ -160,4 +179,4 @@ extern size_t hashmap_size(hashmap_t *m);
  */
 void hashmap_print_stats(hashmap_t *m);
 
-#endif /*__HASHMAP_H__*/
+#endif /* SWIFT_HASHMAP_H */

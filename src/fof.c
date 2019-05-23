@@ -35,9 +35,9 @@
 
 /* Local headers. */
 #include "black_holes.h"
-#include "c_hashmap/hashmap.h"
 #include "common_io.h"
 #include "engine.h"
+#include "hashmap.h"
 #include "memuse.h"
 #include "proxy.h"
 #include "threadpool.h"
