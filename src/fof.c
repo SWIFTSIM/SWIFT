@@ -303,7 +303,6 @@ int compare_fof_final_mass_global_root(const void *a, const void *b) {
   else
     return 0;
 }
-#endif
 
 /**
  * @brief Check whether a given group ID is on the local node.
@@ -364,6 +363,8 @@ __attribute__((always_inline)) INLINE static size_t fof_find_global(
   return -1;
 #endif
 }
+
+#endif /* WITH_MPI */
 
 /**
  * @brief   Finds the local root ID of the group a particle exists in
@@ -591,6 +592,7 @@ __attribute__((always_inline)) INLINE static double cell_min_dist(
 }
 
 #ifdef WITH_MPI
+
 /* Add a group to the hash table. */
 __attribute__((always_inline)) INLINE static void hashmap_add_group(
     const size_t group_id, const size_t group_offset, hashmap_t *map) {
@@ -647,7 +649,8 @@ __attribute__((always_inline)) INLINE static void fof_compute_send_recv_offsets(
   *nrecv = 0;
   for (int i = 0; i < nr_nodes; i++) (*nrecv) += (*recvcount)[i];
 }
-#endif
+
+#endif /* WITH_MPI */
 
 /**
  * @brief Perform a FOF search using union-find on a given leaf-cell
@@ -1123,7 +1126,7 @@ void rec_fof_search_pair_foreign(
   }
 }
 
-#endif
+#endif /* WITH_MPI */
 
 /**
  * @brief Recursively perform a union-find FOF on a cell.
@@ -1296,7 +1299,8 @@ void fof_unpack_group_mass_mapper(hashmap_key_t key, hashmap_value_t *value,
   mass_send[(*nsend)].max_part_density_index = value->value_st;
   mass_send[(*nsend)++].max_part_density = value->value_flt;
 }
-#endif
+
+#endif /* WITH_MPI */
 
 /**
  * @brief Calculates the total mass of each group above min_group_size and finds
