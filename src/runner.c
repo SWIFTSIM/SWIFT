@@ -1149,13 +1149,13 @@ void runner_do_star_formation(struct runner *r, struct cell *c, int timer) {
  * @param sort The entries
  * @param N The number of entries.
  */
-void runner_do_sort_ascending(struct entry *sort, int N) {
+void runner_do_sort_ascending(struct sort_entry *sort, int N) {
 
   struct {
     short int lo, hi;
   } qstack[10];
   int qpos, i, j, lo, hi, imin;
-  struct entry temp;
+  struct sort_entry temp;
   float pivot;
 
   /* Sort parts in cell_i in decreasing order with quicksort */
@@ -1260,7 +1260,7 @@ RUNNER_CHECK_SORTS(stars)
 void runner_do_hydro_sort(struct runner *r, struct cell *c, int flags,
                           int cleanup, int clock) {
 
-  struct entry *fingers[8];
+  struct sort_entry *fingers[8];
   const int count = c->hydro.count;
   const struct part *parts = c->hydro.parts;
   struct xpart *xparts = c->hydro.xparts;
@@ -1372,7 +1372,7 @@ void runner_do_hydro_sort(struct runner *r, struct cell *c, int flags,
           }
 
       /* For each entry in the new sort list. */
-      struct entry *finger = c->hydro.sort[j];
+      struct sort_entry *finger = c->hydro.sort[j];
       for (int ind = 0; ind < count; ind++) {
 
         /* Copy the minimum into the new sort array. */
@@ -1451,7 +1451,7 @@ void runner_do_hydro_sort(struct runner *r, struct cell *c, int flags,
   /* Verify the sorting. */
   for (int j = 0; j < 13; j++) {
     if (!(flags & (1 << j))) continue;
-    struct entry *finger = c->hydro.sort[j];
+    struct sort_entry *finger = c->hydro.sort[j];
     for (int k = 1; k < count; k++) {
       if (finger[k].d < finger[k - 1].d)
         error("Sorting failed, ascending array.");
@@ -1493,7 +1493,7 @@ void runner_do_hydro_sort(struct runner *r, struct cell *c, int flags,
 void runner_do_stars_sort(struct runner *r, struct cell *c, int flags,
                           int cleanup, int clock) {
 
-  struct entry *fingers[8];
+  struct sort_entry *fingers[8];
   const int count = c->stars.count;
   struct spart *sparts = c->stars.parts;
   float buff[8];
@@ -1604,7 +1604,7 @@ void runner_do_stars_sort(struct runner *r, struct cell *c, int flags,
           }
 
       /* For each entry in the new sort list. */
-      struct entry *finger = c->stars.sort[j];
+      struct sort_entry *finger = c->stars.sort[j];
       for (int ind = 0; ind < count; ind++) {
 
         /* Copy the minimum into the new sort array. */
@@ -1677,7 +1677,7 @@ void runner_do_stars_sort(struct runner *r, struct cell *c, int flags,
   /* Verify the sorting. */
   for (int j = 0; j < 13; j++) {
     if (!(flags & (1 << j))) continue;
-    struct entry *finger = c->stars.sort[j];
+    struct sort_entry *finger = c->stars.sort[j];
     for (int k = 1; k < count; k++) {
       if (finger[k].d < finger[k - 1].d)
         error("Sorting failed, ascending array.");

@@ -346,7 +346,7 @@ __attribute__((always_inline)) INLINE int cache_read_particles_subset_self(
  */
 __attribute__((always_inline)) INLINE void cache_read_particles_subset_pair(
     const struct cell *restrict const ci, struct cache *restrict const ci_cache,
-    const struct entry *restrict sort_i, int *first_pi, int *last_pi,
+    const struct sort_entry *restrict sort_i, int *first_pi, int *last_pi,
     const double *loc, const int flipped) {
 
 #if defined(GADGET2_SPH)
@@ -608,9 +608,10 @@ __attribute__((always_inline)) INLINE int cache_read_force_particles(
 __attribute__((always_inline)) INLINE void cache_read_two_partial_cells_sorted(
     const struct cell *restrict const ci, const struct cell *restrict const cj,
     struct cache *restrict const ci_cache,
-    struct cache *restrict const cj_cache, const struct entry *restrict sort_i,
-    const struct entry *restrict sort_j, const double *restrict const shift,
-    int *first_pi, int *last_pj) {
+    struct cache *restrict const cj_cache,
+    const struct sort_entry *restrict sort_i,
+    const struct sort_entry *restrict sort_j,
+    const double *restrict const shift, int *first_pi, int *last_pj) {
 
   /* Make the number of particles to be read a multiple of the vector size.
    * This eliminates serial remainder loops where possible when populating the
@@ -860,8 +861,9 @@ __attribute__((always_inline)) INLINE void
 cache_read_two_partial_cells_sorted_force(
     const struct cell *const ci, const struct cell *const cj,
     struct cache *const ci_cache, struct cache *const cj_cache,
-    const struct entry *restrict sort_i, const struct entry *restrict sort_j,
-    const double *const shift, int *first_pi, int *last_pj) {
+    const struct sort_entry *restrict sort_i,
+    const struct sort_entry *restrict sort_j, const double *const shift,
+    int *first_pi, int *last_pj) {
 
   /* Make the number of particles to be read a multiple of the vector size.
    * This eliminates serial remainder loops where possible when populating the
