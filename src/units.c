@@ -458,7 +458,7 @@ void units_cgs_conversion_string(char* buffer, const struct unit_system* us,
  * @brief Returns the conversion factor for a given unit (expressed in terms of
  * the 5 fundamental units) in the chosen unit system
  * @param us The unit system used
- * @param baseUnitsExponants The exponent of each base units required to form
+ * @param baseUnitsExponents The exponent of each base units required to form
  * the desired quantity. See conversionFactor() for a working example
  */
 double units_general_cgs_conversion_factor(const struct unit_system* us,
@@ -476,7 +476,7 @@ double units_general_cgs_conversion_factor(const struct unit_system* us,
  * @brief Returns the h factor exponentiation for a given unit (expressed in
  * terms of the 5 fundamental units)
  * @param us The unit system used
- * @param baseUnitsExponants The exponent of each base units required to form
+ * @param baseUnitsExponents The exponent of each base units required to form
  * the desired quantity. See conversionFactor() for a working example
  */
 float units_general_h_factor(const struct unit_system* us,
@@ -494,7 +494,7 @@ float units_general_h_factor(const struct unit_system* us,
  * @brief Returns the scaling factor exponentiation for a given unit (expressed
  * in terms of the 5 fundamental units)
  * @param us The unit system used
- * @param baseUnitsExponants The exponent of each base units required to form
+ * @param baseUnitsExponents The exponent of each base units required to form
  * the desired quantity. See conversionFactor() for a working example
  */
 float units_general_a_factor(const struct unit_system* us,
@@ -516,7 +516,7 @@ float units_general_a_factor(const struct unit_system* us,
  * @param buffer The buffer in which to write (The buffer must be long enough,
  * 140 chars at most)
  * @param us The UnitsSystem in use.
- * @param baseUnitsExponants The exponent of each base units required to form
+ * @param baseUnitsExponents The exponent of each base units required to form
  * the desired quantity. See conversionFactor() for a working example
  */
 void units_general_cgs_conversion_string(char* buffer,
@@ -630,7 +630,7 @@ int units_are_equal(const struct unit_system* a, const struct unit_system* b) {
  *
  * @param from The #unit_system we are converting from
  * @param to The #unit_system we are converting to
- * @param baseUnitsExponants The exponent of each base units required to form
+ * @param baseUnitsExponents The exponent of each base units required to form
  * the desired quantity. See conversionFactor() for a working example
  */
 double units_general_conversion_factor(const struct unit_system* from,
