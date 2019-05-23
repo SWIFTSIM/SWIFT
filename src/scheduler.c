@@ -933,7 +933,30 @@ static void scheduler_splittask_fof(struct task *t, struct scheduler *s) {
 }
 
 /**
- * @brief Mapper function to split tasks that may be too large.
+ * @brief Mapper function to split FOF tasks that may be too large.
+ *
+ * @param map_data the tasks to process
+ * @param num_elements the number of tasks.
+ * @param extra_data The #scheduler we are working in.
+ */
+void scheduler_splittasks_fof_mapper(void *map_data, int num_elements,
+                                     void *extra_data) {
+  /* Extract the parameters. */
+  struct scheduler *s = (struct scheduler *)extra_data;
+  struct task *tasks = (struct task *)map_data;
+
+  for (int ind = 0; ind < num_elements; ind++) {
+    struct task *t = &tasks[ind];
+
+    /* Invoke the correct splitting strategy */
+    if (t->type == task_type_fof_self || t->type == task_type_fof_pair) {
+      scheduler_splittask_fof(t, s);
+    }
+  }
+}
+
+/**
+ * @brief Mapper function to split non-FOF tasks that may be too large.
  *
  * @param map_data the tasks to process
  * @param num_elements the number of tasks.
@@ -957,8 +980,6 @@ void scheduler_splittasks_mapper(void *map_data, int num_elements,
       scheduler_splittask_gravity(t, s);
     } else if (t->type == task_type_grav_mesh) {
       /* For future use */
-    } else if (t->type == task_type_fof_self || t->type == task_type_fof_pair) {
-      scheduler_splittask_fof(t, s);
     } else {
 #ifdef SWIFT_DEBUG_CHECKS
       error("Unexpected task sub-type %s/%s", taskID_names[t->type],
@@ -972,11 +993,21 @@ void scheduler_splittasks_mapper(void *map_data, int num_elements,
  * @brief Splits all the tasks in the scheduler that are too large.
  *
  * @param s The #scheduler.
+ * @param fof_tasks Are we splitting the FOF tasks (1)? Or the regular tasks
+ * (0)?
  */
-void scheduler_splittasks(struct scheduler *s) {
-  /* Call the mapper on each current task. */
-  threadpool_map(s->threadpool, scheduler_splittasks_mapper, s->tasks,
-                 s->nr_tasks, sizeof(struct task), 0, s);
+void scheduler_splittasks(struct scheduler *s, const int fof_tasks) {
+
+  if (fof_tasks) {
+    /* Call the mapper on each current task. */
+    threadpool_map(s->threadpool, scheduler_splittasks_fof_mapper, s->tasks,
+                   s->nr_tasks, sizeof(struct task), 0, s);
+
+  } else {
+    /* Call the mapper on each current task. */
+    threadpool_map(s->threadpool, scheduler_splittasks_mapper, s->tasks,
+                   s->nr_tasks, sizeof(struct task), 0, s);
+  }
 }
 
 /**

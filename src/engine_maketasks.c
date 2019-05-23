@@ -2621,11 +2621,6 @@ void engine_make_fof_tasks(struct engine *e) {
   struct scheduler *sched = &e->sched;
   ticks tic = getticks();
 
-  /* Re-set the scheduler. */
-  scheduler_reset(sched, engine_estimate_nr_tasks(e));
-
-  tic = getticks();
-
   /* Construct a FOF loop over neighbours */
   if (e->policy & engine_policy_fof)
     threadpool_map(&e->threadpool, engine_make_fofloop_tasks_mapper, NULL,
@@ -2638,27 +2633,10 @@ void engine_make_fof_tasks(struct engine *e) {
   tic = getticks();
 
   /* Split the tasks. */
-  scheduler_splittasks(sched);
+  scheduler_splittasks(sched, /*fof_only=*/1);
 
   if (e->verbose)
     message("Splitting FOF tasks took %.3f %s.",
-            clocks_from_ticks(getticks() - tic), clocks_getunit());
-
-  tic = getticks();
-
-  /* Activate all FOF tasks by default. */
-  for (int i = 0; i < sched->nr_tasks; i++) {
-
-    struct task *t = &sched->tasks[i];
-
-    if (t->type == task_type_fof_self || t->type == task_type_fof_pair)
-      scheduler_activate(sched, t);
-    else
-      t->skip = 1;
-  }
-
-  if (e->verbose)
-    message("Activating FOF tasks took %.3f %s.",
             clocks_from_ticks(getticks() - tic), clocks_getunit());
 
 #ifdef SWIFT_DEBUG_CHECKS
@@ -2669,8 +2647,6 @@ void engine_make_fof_tasks(struct engine *e) {
   }
 #endif
 
-  ticks tic2 = getticks();
-
   /* Report the number of tasks we actually used */
   if (e->verbose)
     message(
@@ -2678,23 +2654,6 @@ void engine_make_fof_tasks(struct engine *e) {
         e->sched.nr_tasks, e->sched.size,
         (float)e->sched.nr_tasks / (float)e->sched.size,
         e->sched.size * sizeof(struct task) / (1024 * 1024));
-
-  tic2 = getticks();
-
-  /* Set the unlocks per task. */
-  scheduler_set_unlocks(sched);
-
-  if (e->verbose)
-    message("Setting unlocks took %.3f %s.",
-            clocks_from_ticks(getticks() - tic2), clocks_getunit());
-
-  tic2 = getticks();
-
-  /* Weight the tasks. */
-  scheduler_reweight(sched, e->verbose);
-
-  /* Set the tasks age. */
-  e->tasks_age = 0;
 
   if (e->verbose)
     message("took %.3f %s (including reweight).",
@@ -2750,7 +2709,7 @@ void engine_maketasks(struct engine *e) {
   tic2 = getticks();
 
   /* Split the tasks. */
-  scheduler_splittasks(sched);
+  scheduler_splittasks(sched, /*fof_only=*/0);
 
   if (e->verbose)
     message("Splitting tasks took %.3f %s.",

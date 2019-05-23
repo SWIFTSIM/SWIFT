@@ -6322,11 +6322,15 @@ void engine_activate_gpart_comms(struct engine *e) {
 
   for (int k = 0; k < nr_tasks; ++k) {
 
-    if ((tasks[k].type == task_type_send) ||
-        (tasks[k].type == task_type_recv)) {
-      if (tasks[k].subtype == task_subtype_gpart) {
-        scheduler_activate(s, &tasks[k]);
-      }
+    struct task *t = &tasks[k];
+
+    if ((t->type == task_type_send) && (t->subtype == task_subtype_gpart)) {
+      scheduler_activate(s, t);
+    } else if ((t->type == task_type_recv) &&
+               (t->subtype == task_subtype_gpart)) {
+      scheduler_activate(s, t);
+    } else {
+      t->skip = 1;
     }
   }
 
@@ -6337,6 +6341,36 @@ void engine_activate_gpart_comms(struct engine *e) {
 #else
   error("Calling an MPI function in non-MPI mode.");
 #endif
+}
+
+/**
+ * @brief Activate all the FOF tasks.
+ *
+ * Marks all the other task types to be skipped.
+ *
+ * @param e The #engine to act on.
+ */
+void engine_activate_fof_tasks(struct engine *e) {
+
+  const ticks tic = getticks();
+
+  struct scheduler *s = &e->sched;
+  const int nr_tasks = s->nr_tasks;
+  struct task *tasks = s->tasks;
+
+  for (int k = 0; k < nr_tasks; k++) {
+
+    struct task *t = &tasks[k];
+
+    if (t->type == task_type_fof_self || t->type == task_type_fof_pair)
+      scheduler_activate(s, t);
+    else
+      t->skip = 1;
+  }
+
+  if (e->verbose)
+    message("took %.3f %s.", clocks_from_ticks(getticks() - tic),
+            clocks_getunit());
 }
 
 /**
@@ -6364,8 +6398,11 @@ void engine_fof(struct engine *e) {
   engine_launch(e);
 #endif
 
-  /* Make FOF tasks and activate them. */
+  /* Make FOF tasks */
   engine_make_fof_tasks(e);
+
+  /* and activate them. */
+  engine_activate_fof_tasks(e);
 
   /* Perform local FOF tasks. */
   engine_launch(e);
