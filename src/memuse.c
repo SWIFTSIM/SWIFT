@@ -74,12 +74,16 @@ struct memuse_log_entry {
 
   /* Label associated with the memory. */
   char label[MEMUSE_MAXLABLEN + 1];
+
+  /* Whether log is still active, i.e. not matched with a free or allocation. */
+  int active;
 };
 
 /* The log of allocations and frees. */
 static struct memuse_log_entry *memuse_log = NULL;
 static volatile size_t memuse_log_size = 0;
 static volatile size_t memuse_log_count = 0;
+static volatile size_t memuse_new_logs = 0;
 static volatile size_t memuse_log_done = 0;
 
 /* Hashmap for matching frees to allocations. */
@@ -135,25 +139,6 @@ static void memuse_active_dump_gather(hashmap_key_t key, hashmap_value_t *value,
   /* And increment sum. */
   stored_item->sum += memuse_log[index].size;
   stored_item->count++;
-}
-
-/**
- * @brief Transfer the active log records from one hashmap to another.
- */
-static void memuse_active_transfer(hashmap_key_t key, hashmap_value_t *value,
-                                   void *data) {
-  /* If entry has no data it is not active. */
-  if (value->value_st < 0) return;
-  return;
-
-  /* XXX need to move log to head of logs and reindex. */
-
-  /* Get the stored log entry. */
-  int index = (int)value->value_st;
-
-  /* And add to new hashmap. */
-  hashmap_t *hashmap = (hashmap_t *)data;
-  hashmap_put(hashmap, (hashmap_key_t)memuse_log[index].ptr, *value);
 }
 
 /**
@@ -252,7 +237,11 @@ void memuse_log_allocation(const char *label, void *ptr, int allocated,
   strncpy(memuse_log[ind].label, label, MEMUSE_MAXLABLEN);
   memuse_log[ind].label[MEMUSE_MAXLABLEN] = '\0';
   memuse_log[ind].dtic = getticks() - clocks_start_ticks;
+  memuse_log[ind].active = 1;
   atomic_inc(&memuse_log_done);
+
+  /* At least one new log. */
+  memuse_new_logs = 1;
 }
 
 /**
@@ -263,7 +252,7 @@ void memuse_log_allocation(const char *label, void *ptr, int allocated,
 void memuse_log_dump(const char *filename) {
 
   /* Skip if nothing allocated this step. */
-  if (memuse_log_count == 0) return;
+  if (!memuse_new_logs) return;
 
   /* Create the hashmap. If not already done. */
   if (memuse_init_hashmap) {
@@ -309,6 +298,10 @@ void memuse_log_dump(const char *filename) {
       hashmap_value_t value;
       value.value_st = -1;
       hashmap_put(memuse_hashmap, (hashmap_key_t)memuse_log[k].ptr, value);
+
+      /* And mark this as matched. */
+      memuse_log[k].active = 0;
+      memuse_log[index].active = 0;
 
     } else if (vt == NULL && memuse_log[k].allocated) {
 
@@ -373,17 +366,36 @@ void memuse_log_dump(const char *filename) {
   memuse_tsearch_output_fd = NULL;
   memuse_tsearch_root = NULL;
 
-
   /* The hashmap has all the active and inactive logs present. We need to
    * remove the inactive logs, which can only be done the hardway... */
   hashmap_t *newhashmap = (hashmap_t *)malloc(sizeof(hashmap_t));
   hashmap_init(newhashmap);
-  hashmap_iterate(memuse_hashmap, memuse_active_transfer, &newhashmap);
+
+  size_t newcount = 0;
+  for (size_t k = 0; k < memuse_log_count; k++) {
+
+      /* Only allocations can be active. */
+      if (memuse_log[k].allocated && memuse_log[k].active) {
+
+          /* Move to head. */
+          if (newcount != k) {
+              memcpy(&memuse_log[newcount], &memuse_log[k],
+                     sizeof(struct memuse_log_entry));
+              newcount++;
+          }
+          hashmap_value_t value;
+          value.value_st = newcount;
+          hashmap_put(memuse_hashmap, (hashmap_key_t)memuse_log[newcount].ptr,
+                      value);
+      }
+  }
+
+  /* And swap. */
+  message("newcount = %zd, old count = %zd", newcount, memuse_log_count);
+  memuse_log_count = newcount;
+  memuse_new_logs = 0;
   hashmap_free(memuse_hashmap);
   memuse_hashmap = newhashmap;
-
-  /* Clear the log. */
-  memuse_log_count = 0;
 
   /* Close the file. */
   fflush(fd);
