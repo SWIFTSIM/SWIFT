@@ -46,7 +46,7 @@ int main(int argc, char *argv[]) {
   message("Populating hash table...");
   for (hashmap_key_t key = 0; key < NUM_KEYS; key++) {
     hashmap_value_t value;
-    value.value_st = key;
+    value.value_st = (long long)key;
     hashmap_put(&m, key, value);
   }
 
@@ -57,8 +57,9 @@ int main(int argc, char *argv[]) {
   for (hashmap_key_t key = 0; key < NUM_KEYS; key++) {
     hashmap_value_t value = *hashmap_lookup(&m, key);
 
-    if (value.value_st != key)
-      error("Incorrect value (%zu) found for key: %zu", value.value_st, key);
+    if (value.value_st != (long long)key)
+      error("Incorrect value (%lld) found for key: %lld", value.value_st,
+            (long long)key);
     // else message("Retrieved element, Key: %zu Value: %zu", key, value);
   }
 
