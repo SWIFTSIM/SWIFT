@@ -34,7 +34,7 @@
 #include <unistd.h>
 
 /* Local defines. */
-#include "c_hashmap/hashmap.h"
+#include "hashmap.h"
 #include "memuse.h"
 
 /* Local includes. */
@@ -83,7 +83,7 @@ struct memuse_log_entry {
 static struct memuse_log_entry *memuse_log = NULL;
 static volatile size_t memuse_log_size = 0;
 static volatile size_t memuse_log_count = 0;
-static volatile size_t memuse_new_logs = 0;
+static volatile size_t memuse_old_count = 0;
 static volatile size_t memuse_log_done = 0;
 
 /* Hashmap for matching frees to allocations. */
@@ -239,9 +239,6 @@ void memuse_log_allocation(const char *label, void *ptr, int allocated,
   memuse_log[ind].dtic = getticks() - clocks_start_ticks;
   memuse_log[ind].active = 1;
   atomic_inc(&memuse_log_done);
-
-  /* At least one new log. */
-  memuse_new_logs = 1;
 }
 
 /**
@@ -252,7 +249,7 @@ void memuse_log_allocation(const char *label, void *ptr, int allocated,
 void memuse_log_dump(const char *filename) {
 
   /* Skip if nothing allocated this step. */
-  if (!memuse_new_logs) return;
+  if ( memuse_log_count == memuse_old_count) return;
 
   /* Create the hashmap. If not already done. */
   if (memuse_init_hashmap) {
@@ -270,7 +267,7 @@ void memuse_log_dump(const char *filename) {
   fprintf(fd, "# dtic rank step label size sum\n");
 
   size_t memuse_maxmem = memuse_current;
-  for (size_t k = 0; k < memuse_log_count; k++) {
+  for (size_t k = memuse_old_count; k < memuse_log_count; k++) {
 
     /* Check if this address has already been used. */
     hashmap_value_t *vt =
@@ -315,7 +312,7 @@ void memuse_log_dump(const char *filename) {
     /* Unmatched free, OK if NULL. */
 #if SWIFT_DEBUG_CHECKS
       if (memuse_log[k].ptr != NULL)
-        message("Unmatched non-NULL free: %s", memuse_log[k].label);
+          message("Unmatched non-NULL free: %s", memuse_log[k].label);
 #endif
       continue;
     } else {
@@ -393,7 +390,7 @@ void memuse_log_dump(const char *filename) {
   /* And swap. */
   message("newcount = %zd, old count = %zd", newcount, memuse_log_count);
   memuse_log_count = newcount;
-  memuse_new_logs = 0;
+  memuse_old_count = newcount;
   hashmap_free(memuse_hashmap);
   memuse_hashmap = newhashmap;
 
