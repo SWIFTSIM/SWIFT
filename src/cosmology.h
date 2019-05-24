@@ -78,6 +78,9 @@ struct cosmology {
   /*! The critical density at redshift 0 (in internal physical units) */
   double critical_density_0;
 
+  /*! The mean density at the current redshift (in internal physical units) */
+  double mean_density;
+
   /*! Conversion factor from internal time-step size to cosmological step */
   double time_step_factor;
 
