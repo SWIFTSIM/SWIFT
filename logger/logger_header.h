@@ -41,7 +41,6 @@ enum logger_offset_direction {
  */
 extern const char *logger_offset_name[];
 
-
 struct logger_logfile;
 
 /**
@@ -85,9 +84,10 @@ void header_print(const struct header *h);
 void header_free(struct header *h);
 int header_get_field_index(const struct header *h, const char *field);
 void header_read(struct header *h, struct logger_logfile *log);
-size_t header_get_record_size_from_mask(const struct header *h, const size_t mask);
-void header_change_offset_direction(struct header *h, enum logger_offset_direction new_value);
-
+size_t header_get_record_size_from_mask(const struct header *h,
+                                        const size_t mask);
+void header_change_offset_direction(struct header *h,
+                                    enum logger_offset_direction new_value);
 
 /**
  * @brief Check if the offset are forward.

@@ -49,7 +49,8 @@ size_t logger_loader_io_get_file_size(int fd) {
  * @param read_only Open the file in read only mode?
  *
  */
-void *logger_loader_io_mmap_file(char *filename, size_t *file_size, int read_only) {
+void *logger_loader_io_mmap_file(char *filename, size_t *file_size,
+                                 int read_only) {
   /* open the file. */
   int fd;
 
@@ -57,17 +58,15 @@ void *logger_loader_io_mmap_file(char *filename, size_t *file_size, int read_onl
     fd = open(filename, O_RDONLY);
   else
     fd = open(filename, O_RDWR);
-    
-  if (fd == -1)
-    error("Unable to open file %s (%s)", filename, strerror(errno));
+
+  if (fd == -1) error("Unable to open file %s (%s)", filename, strerror(errno));
 
   /* get the file size. */
   *file_size = logger_loader_io_get_file_size(fd);
 
   /* map the memory. */
   int mode = PROT_READ;
-  if (!read_only)
-    mode |= PROT_WRITE;
+  if (!read_only) mode |= PROT_WRITE;
 
   void *map = mmap(NULL, *file_size, mode, MAP_SHARED, fd, 0);
   if (map == MAP_FAILED)
@@ -92,5 +91,4 @@ void logger_loader_io_munmap_file(void *map, size_t file_size) {
   if (munmap(map, file_size) != 0) {
     error("Unable to unmap the file (%s)", strerror(errno));
   }
-
 }

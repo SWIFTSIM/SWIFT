@@ -17,11 +17,11 @@
  *
  ******************************************************************************/
 
-#include "swift.h"
 #include "logger_header.h"
 #include "logger_loader_io.h"
 #include "logger_particle.h"
 #include "logger_reader.h"
+#include "swift.h"
 
 #define number_parts 100
 /* Not all the fields are written at every step.
@@ -39,7 +39,7 @@
 void init_particles(struct part *p, struct xpart *xp) {
   struct hydro_space hs;
 
-  for(int i = 0; i < number_parts; i++) {
+  for (int i = 0; i < number_parts; i++) {
     /* Set internal energy. */
     hydro_set_init_internal_energy(&p[i], 100);
 
@@ -47,7 +47,7 @@ void init_particles(struct part *p, struct xpart *xp) {
     hydro_first_init_part(&p[i], &xp[i]);
     hydro_init_part(&p[i], &hs);
 
-    for(int j = 0; j < 3; j++) {
+    for (int j = 0; j < 3; j++) {
       p[i].x[j] = i;
       p[i].v[j] = (j == 0) ? -1 : 0;
       p[i].a_hydro[j] = (j == 1) ? 1e-2 : 0;
@@ -64,9 +64,7 @@ void init_particles(struct part *p, struct xpart *xp) {
 }
 
 /** Provides a integer time given the step number.*/
-integertime_t get_integer_time(int step) {
-  return step;
-}
+integertime_t get_integer_time(int step) { return step; }
 
 /** Provides a double time given the step number. */
 double get_double_time(int step) {
@@ -74,56 +72,51 @@ double get_double_time(int step) {
   return step * time_base;
 }
 
-
 /**
  * @brief Write a few particles during multiple time steps.
  *
  * As only the logger is tested, there is no need to really
  * evolve the particles.
  */
-void write_particles(struct logger_writer *log, struct part *parts, struct xpart *xparts) {
-
+void write_particles(struct logger_writer *log, struct part *parts,
+                     struct xpart *xparts) {
 
   const int number_steps = 100;
 
   /* Loop over all the steps. */
-  for(int i = 0; i < number_steps; i++) {
+  for (int i = 0; i < number_steps; i++) {
     integertime_t ti_int = get_integer_time(i);
     double ti_double = get_double_time(i);
 
     /* Mark the current time step in the particle logger file. */
-    logger_log_timestamp(log, ti_int, ti_double,
-			 &log->timestamp_offset);
+    logger_log_timestamp(log, ti_int, ti_double, &log->timestamp_offset);
     /* Make sure that we have enough space in the particle logger file
      * to store the particles in current time step. */
-    logger_ensure_size(log, number_parts, /* number gpart */0, 0);
+    logger_ensure_size(log, number_parts, /* number gpart */ 0, 0);
 
     /* Loop over all the particles. */
-    for(int j = 0; j < number_parts; j++) {
+    for (int j = 0; j < number_parts; j++) {
 
       /* Skip some particles. */
-      if (i % parts[j].time_bin != 0)
-	continue;
+      if (i % parts[j].time_bin != 0) continue;
 
       /* Write a time information to check that the correct particle is read. */
       parts[j].x[0] = i;
 
       /* Write this particle. */
-      unsigned int mask = logger_mask_data[logger_x].mask |
-	logger_mask_data[logger_v].mask |
-	logger_mask_data[logger_a].mask |
-	logger_mask_data[logger_u].mask |
-	logger_mask_data[logger_consts].mask;
+      unsigned int mask =
+          logger_mask_data[logger_x].mask | logger_mask_data[logger_v].mask |
+          logger_mask_data[logger_a].mask | logger_mask_data[logger_u].mask |
+          logger_mask_data[logger_consts].mask;
 
       int number_particle_step = i / parts[j].time_bin;
 
       if (number_particle_step % period_h == 0)
-	mask |= logger_mask_data[logger_h].mask;
+        mask |= logger_mask_data[logger_h].mask;
       if (number_particle_step % period_rho == 0)
-	mask |= logger_mask_data[logger_rho].mask;
-	
-      logger_log_part(log, &parts[j], mask,
-		      &xparts[j].logger_data.last_offset);      
+        mask |= logger_mask_data[logger_rho].mask;
+
+      logger_log_part(log, &parts[j], mask, &xparts[j].logger_data.last_offset);
     }
 
     // TODO write index files.
@@ -132,18 +125,14 @@ void write_particles(struct logger_writer *log, struct part *parts, struct xpart
   /* Mark the current time step in the particle logger file. */
   integertime_t ti_int = get_integer_time(number_steps);
   double ti_double = get_double_time(number_steps);
-  logger_log_timestamp(log, ti_int, ti_double,
-		       &log->timestamp_offset);
-
-
+  logger_log_timestamp(log, ti_int, ti_double, &log->timestamp_offset);
 }
 
 /** Count the number of active particles. */
 int get_number_active_particles(int step, struct part *p) {
   int count = 0;
-  for(int i = 0; i < number_parts; i++) {
-      if (step % p[i].time_bin == 0)
-	count += 1;
+  for (int i = 0; i < number_parts; i++) {
+    if (step % p[i].time_bin == 0) count += 1;
   }
   return count;
 }
@@ -152,13 +141,14 @@ int get_number_active_particles(int step, struct part *p) {
  *
  * @param reader The #logger_reader.
  */
-void check_data(struct logger_reader *reader, struct part *parts, struct xpart *xparts) {
+void check_data(struct logger_reader *reader, struct part *parts,
+                struct xpart *xparts) {
 
   /* No need to check the header, this is already done in testHeader.c */
 
   /* Get required structures. */
   struct logger_logfile *logfile = &reader->log;
-  
+
   struct logger_particle lp;
   logger_particle_init(&lp);
 
@@ -174,38 +164,38 @@ void check_data(struct logger_reader *reader, struct part *parts, struct xpart *
   size_t previous_id = id_flag;
 
   /* Loop over each record. */
-  for(size_t offset = reader_read_record(reader, &lp, &time, &is_particle, logfile->header.offset_first_record);
-      offset < logfile->log.file_size;
-      offset = reader_read_record(reader, &lp, &time, &is_particle, offset)) {
+  for (size_t offset = reader_read_record(reader, &lp, &time, &is_particle,
+                                          logfile->header.offset_first_record);
+       offset < logfile->log.file_size;
+       offset = reader_read_record(reader, &lp, &time, &is_particle, offset)) {
 
     /* Do the particle case */
     if (is_particle) {
       count += 1;
 
       /*
-	Check that we are really increasing the id in the logfile.
-	See the writing part to see that we are always increasing the id.
+        Check that we are really increasing the id in the logfile.
+        See the writing part to see that we are always increasing the id.
       */
       if (previous_id != id_flag && previous_id >= lp.id) {
-	error("Wrong particle found");
-	previous_id = lp.id;
+        error("Wrong particle found");
+        previous_id = lp.id;
       }
 
       /* Get the corresponding particle */
-      if (lp.id >= number_parts)
-	error("Wrong id %zi", lp.id);
+      if (lp.id >= number_parts) error("Wrong id %zi", lp.id);
 
       struct part *p = &parts[lp.id];
 
       /* Check the record's data. */
-      for(int i = 0; i < 3; i++) {
+      for (int i = 0; i < 3; i++) {
         /* in the first index, we are storing the step information. */
-	if (i == 0)
-	  assert(step == lp.pos[i]);
-	else
-	  assert(p->x[i] == lp.pos[i]);
-	assert(p->v[i] == lp.vel[i]);
-	assert(p->a_hydro[i] == lp.acc[i]);
+        if (i == 0)
+          assert(step == lp.pos[i]);
+        else
+          assert(p->x[i] == lp.pos[i]);
+        assert(p->v[i] == lp.vel[i]);
+        assert(p->a_hydro[i] == lp.acc[i]);
       }
 
       assert(p->entropy == lp.entropy);
@@ -214,16 +204,14 @@ void check_data(struct logger_reader *reader, struct part *parts, struct xpart *
       /* Check optional fields. */
       int number_steps = step / p->time_bin;
       if (number_steps % period_h == 0) {
-	assert(p->h == lp.h);
-      }
-      else {
-	assert(-1 == lp.h);
+        assert(p->h == lp.h);
+      } else {
+        assert(-1 == lp.h);
       }
       if (number_steps % period_rho == 0) {
-	assert(p->rho == lp.density);
-      }
-      else {
-	assert(-1 == lp.density);
+        assert(p->rho == lp.density);
+      } else {
+        assert(-1 == lp.density);
       }
     }
     /* Time stamp case. */
@@ -231,7 +219,10 @@ void check_data(struct logger_reader *reader, struct part *parts, struct xpart *
 
       /* Check if we have the current amount of particles in previous step. */
       if (step != -1 && count != get_number_active_particles(step, parts))
-	error("The reader did not find the correct number of particles during step %i", step);
+        error(
+            "The reader did not find the correct number of particles during "
+            "step %i",
+            step);
 
       step += 1;
 
@@ -241,12 +232,9 @@ void check_data(struct logger_reader *reader, struct part *parts, struct xpart *
 
       /* Check the record's data. */
       assert(time == get_double_time(step));
-
     }
   }
-  
 }
-
 
 int main(int argc, char *argv[]) {
 
@@ -266,11 +254,13 @@ int main(int argc, char *argv[]) {
 
   /* Initialize the particles. */
   struct part *parts;
-  if ((parts = (struct part *)malloc(sizeof(struct part) * number_parts)) == NULL)
+  if ((parts = (struct part *)malloc(sizeof(struct part) * number_parts)) ==
+      NULL)
     error("Failed to allocate particles array.");
 
   struct xpart *xparts;
-  if ((xparts = (struct xpart *)malloc(sizeof(struct xpart) * number_parts)) == NULL)
+  if ((xparts = (struct xpart *)malloc(sizeof(struct xpart) * number_parts)) ==
+      NULL)
     error("Failed to allocate xparticles array.");
 
   init_particles(parts, xparts);
@@ -303,7 +293,7 @@ int main(int argc, char *argv[]) {
 
   /* Set verbose level. */
   reader.verbose = 1;
-  
+
   /* Read the header. */
   logger_reader_init(&reader, dump_filename, /* verbose */ 1);
 

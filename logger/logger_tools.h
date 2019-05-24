@@ -26,10 +26,10 @@
 
 /* Swift include */
 #include "../src/dimension.h"
+#include "../src/error.h"
 #include "../src/inline.h"
 #include "../src/logger.h"
 #include "../src/part_type.h"
-#include "../src/error.h"
 
 #ifdef HAVE_PYTHON
 #define NPY_NO_DEPRECATED_API NPY_1_7_API_VERSION
@@ -47,12 +47,13 @@ struct header;
 struct logger_reader;
 
 int tools_get_next_record(const struct header *h, void *map, size_t *offset,
-                         size_t file_size);
+                          size_t file_size);
 int _tools_get_next_record_backward(const struct header *h, void *map,
-                                   size_t *offset, size_t file_size);
+                                    size_t *offset, size_t file_size);
 int _tools_get_next_record_forward(const struct header *h, void *map,
-                                  size_t *offset);
+                                   size_t *offset);
 size_t tools_reverse_offset(const struct header *h, void *map, size_t offset);
-size_t tools_check_record_consistency(const struct logger_reader *reader, size_t offset);
+size_t tools_check_record_consistency(const struct logger_reader *reader,
+                                      size_t offset);
 
 #endif  //__LOGGER_LOGGER_TOOLS_H__

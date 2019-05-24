@@ -26,19 +26,18 @@
  * @param filename The log filename.
  * @param verbose The verbose level.
  */
-void logger_reader_init(struct logger_reader *reader, char *filename, int verbose) {
-  if (verbose > 1)
-    message("Initializing the reader");
+void logger_reader_init(struct logger_reader *reader, char *filename,
+                        int verbose) {
+  if (verbose > 1) message("Initializing the reader");
 
   /* Initialize the reader variables. */
   reader->verbose = verbose;
 
   /* Initialize the log file. */
   logger_logfile_init_from_file(&reader->log, filename, reader,
-				/* only_header */ 0);
+                                /* only_header */ 0);
 
-  if (verbose > 1)
-    message("Initialization done.");
+  if (verbose > 1) message("Initialization done.");
 }
 
 /**
@@ -62,8 +61,9 @@ void logger_reader_free(struct logger_reader *reader) {
  *
  * @return The offset after this record.
  */
-size_t reader_read_record(struct logger_reader *reader, struct logger_particle *lp,
-		   double *time, int *is_particle, size_t offset) {
+size_t reader_read_record(struct logger_reader *reader,
+                          struct logger_particle *lp, double *time,
+                          int *is_particle, size_t offset) {
 
   struct logger_logfile *log = &reader->log;
 
@@ -80,10 +80,10 @@ size_t reader_read_record(struct logger_reader *reader, struct logger_particle *
     *is_particle = 0;
     integertime_t int_time = 0;
     offset = time_read(&int_time, time, reader, offset);
-  }
-  else {
+  } else {
     *is_particle = 1;
-    offset = logger_particle_read(lp, reader, offset, *time, logger_reader_const);
+    offset =
+        logger_particle_read(lp, reader, offset, *time, logger_reader_const);
   }
 
   return offset;

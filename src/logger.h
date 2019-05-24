@@ -112,7 +112,8 @@ struct logger_writer {
   /* Logger basename. */
   char base_name[logger_string_length];
 
-  /*  Dump file (In the reader, the dump is cleaned, therefore it is renamed logfile). */
+  /*  Dump file (In the reader, the dump is cleaned, therefore it is renamed
+   * logfile). */
   struct dump dump;
 
   /* timestamp offset for logger. */
@@ -144,8 +145,8 @@ void logger_log_gpart(struct logger_writer *log, const struct gpart *p,
                       unsigned int mask, size_t *offset);
 void logger_init(struct logger_writer *log, struct swift_params *params);
 void logger_free(struct logger_writer *log);
-void logger_log_timestamp(struct logger_writer *log, integertime_t t, double time,
-                          size_t *offset);
+void logger_log_timestamp(struct logger_writer *log, integertime_t t,
+                          double time, size_t *offset);
 void logger_ensure_size(struct logger_writer *log, size_t total_nr_parts,
                         size_t total_nr_gparts, size_t total_nr_sparts);
 void logger_write_file_header(struct logger_writer *log);
@@ -174,7 +175,8 @@ INLINE static void logger_part_data_init(struct logger_part_data *logger) {
  * @return 1 if the particule should be writen, 0 otherwise.
  */
 __attribute__((always_inline)) INLINE static int logger_should_write(
-    const struct logger_part_data *logger_data, const struct logger_writer *log) {
+    const struct logger_part_data *logger_data,
+    const struct logger_writer *log) {
 
   return (logger_data->steps_since_last_output > log->delta_step);
 }

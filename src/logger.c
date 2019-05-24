@@ -468,7 +468,8 @@ void logger_write_file_header(struct logger_writer *log) {
         "This function should be called before writing anything in the logger");
 
   /* Write format information. */
-  logger_write_data(dump, &file_offset, logger_format_size, &logger_file_format);
+  logger_write_data(dump, &file_offset, logger_format_size,
+                    &logger_file_format);
 
   /* Write the major version number. */
   int major = logger_major_version;

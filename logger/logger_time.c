@@ -30,8 +30,8 @@
  * @param offset position in the file.
  *
  */
-size_t time_read(integertime_t *int_time, double *time, const struct logger_reader *reader,
-	       size_t offset) {
+size_t time_read(integertime_t *int_time, double *time,
+                 const struct logger_reader *reader, size_t offset) {
 
   /* Initialize variables. */
   const struct header *h = &reader->log.header;
@@ -56,11 +56,11 @@ size_t time_read(integertime_t *int_time, double *time, const struct logger_read
 #endif
 
   /* read the record. */
-  map = logger_loader_io_read_data(map, sizeof(unsigned long long int), int_time);
+  map =
+      logger_loader_io_read_data(map, sizeof(unsigned long long int), int_time);
   map = logger_loader_io_read_data(map, sizeof(double), time);
 
   return map - h->log->log.map;
-
 }
 
 /**
@@ -129,7 +129,7 @@ void time_array_populate(struct time_array *t, struct logger_logfile *log) {
 
     /* get next record. */
     int test = tools_get_next_record(&log->header, log->log.map, &offset,
-				    log->log.file_size);
+                                     log->log.file_size);
     if (test == -1) break;
 
     /* allocate next time_array. */
@@ -189,13 +189,13 @@ struct time_array *time_array_get_time_array(const struct time_array *t,
 #endif
   const struct time_array *tmp;
   /* Find the time_array with the correct offset. */
-  for(tmp = t; tmp->next && tmp->offset <= offset; tmp = tmp->next)
-    {}
+  for (tmp = t; tmp->next && tmp->offset <= offset; tmp = tmp->next) {
+  }
 
   /* If providing the offset of a time_array, need to give it back. */
-  if (tmp->offset == offset) return (struct time_array *) tmp;
+  if (tmp->offset == offset) return (struct time_array *)tmp;
 
-  return (struct time_array *) tmp->prev;
+  return (struct time_array *)tmp->prev;
 }
 
 /**
@@ -205,7 +205,7 @@ struct time_array *time_array_get_time_array(const struct time_array *t,
  */
 void time_array_free(struct time_array *t) {
   struct time_array *tmp;
-  for(tmp = t; t->next; t = tmp) {
+  for (tmp = t; t->next; t = tmp) {
     tmp = t->next;
     free(t);
   }
@@ -225,9 +225,8 @@ void time_array_print(const struct time_array *t) {
   printf("Times (size %lu): [%lli (%g)", n, t->int_time, t->time);
 
   /* Loop over all elements. */
-  for(size_t i = 1; i < n; i++) {
-    if (!t->next)
-      error("Next pointer not initialized %zi", i);
+  for (size_t i = 1; i < n; i++) {
+    if (!t->next) error("Next pointer not initialized %zi", i);
 
     t = t->next;
     /* Skip the times at the center of the array. */
@@ -254,7 +253,7 @@ void time_array_print_offset(const struct time_array *t) {
   printf("Times (size %lu): [%lu", n, t->offset);
 
   /* Loop over all elements. */
-  for(size_t i = 1; i < n; i++) {
+  for (size_t i = 1; i < n; i++) {
     t = t->next;
     /* Skip the offset in the middle of the array. */
     if (i < threshold || i > up_threshold) printf(", %lu", t->offset);
@@ -274,7 +273,7 @@ void time_array_print_offset(const struct time_array *t) {
  */
 size_t time_array_count(const struct time_array *t) {
   size_t count = 1;
-  for(const struct time_array *tmp = t; tmp->next; tmp = tmp->next) {
+  for (const struct time_array *tmp = t; tmp->next; tmp = tmp->next) {
     count += 1;
   }
 

@@ -73,8 +73,8 @@ void logger_particle_init(struct logger_particle *part) {
  *
  * @return mapped data after the block read.
  */
-void* logger_particle_read_field(struct logger_particle *part, void *map,
-				  const char *field, const size_t size) {
+void *logger_particle_read_field(struct logger_particle *part, void *map,
+                                 const char *field, const size_t size) {
   void *p = NULL;
 
   /* Get the correct pointer. */
@@ -124,9 +124,10 @@ void* logger_particle_read_field(struct logger_particle *part, void *map,
  *
  * @return position after the record.
  */
-size_t logger_particle_read(struct logger_particle *part, const struct logger_reader *reader,
-			    size_t offset, const double time,
-			    const enum logger_reader_type reader_type) {
+size_t logger_particle_read(struct logger_particle *part,
+                            const struct logger_reader *reader, size_t offset,
+                            const double time,
+                            const enum logger_reader_type reader_type) {
 
   /* Get a few pointers. */
   const struct header *h = &reader->log.header;
@@ -149,23 +150,21 @@ size_t logger_particle_read(struct logger_particle *part, const struct logger_re
   for (size_t i = 0; i < h->number_mask; i++) {
     if (mask & h->masks[i].mask) {
       map = logger_particle_read_field(part, map, h->masks[i].name,
-				       h->masks[i].size);
+                                       h->masks[i].size);
     }
   }
 
   /* Get the time of current record. */
   if (times->next) {
     part->time = time_array_get_time(times, offset);
-  }
-  else
+  } else
     part->time = -1;
 
   /* update the offset. */
-  offset = (size_t) (map - reader->log.log.map);
+  offset = (size_t)(map - reader->log.log.map);
 
   /* Check if an interpolation is required. */
-  if (reader_type == logger_reader_const)
-    return offset;
+  if (reader_type == logger_reader_const) return offset;
 
   /* Start reading next record. */
   struct logger_particle part_next;
@@ -176,19 +175,18 @@ size_t logger_particle_read(struct logger_particle *part, const struct logger_re
   }
 
   /* No next particle. */
-  if (h_offset == 0)
-    return (size_t) (map - reader->log.log.map);
+  if (h_offset == 0) return (size_t)(map - reader->log.log.map);
 
   /* get absolute offset of next particle. */
-  h_offset += offset - header_get_record_size_from_mask(h, mask) - LOGGER_MASK_SIZE -
-              LOGGER_OFFSET_SIZE;
+  h_offset += offset - header_get_record_size_from_mask(h, mask) -
+              LOGGER_MASK_SIZE - LOGGER_OFFSET_SIZE;
 
   /* Get time of next record. */
   part_next.time = time_array_get_time(times, h_offset);
 
   /* Read next record. */
   h_offset = logger_particle_read(&part_next, reader, h_offset, part_next.time,
-				  logger_reader_const);
+                                  logger_reader_const);
 
   /* Interpolate the two particles. */
   logger_particle_interpolate(part, &part_next, time);
@@ -205,9 +203,9 @@ size_t logger_particle_read(struct logger_particle *part, const struct logger_re
  * @param time interpolation time
  *
  */
-void logger_particle_interpolate(
-    struct logger_particle *part_curr, const struct logger_particle *part_next,
-    const double time) {
+void logger_particle_interpolate(struct logger_particle *part_curr,
+                                 const struct logger_particle *part_next,
+                                 const double time) {
 
   /* Check that a particle is provided. */
   if (!part_curr) error("part_curr is NULL");

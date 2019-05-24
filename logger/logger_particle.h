@@ -85,19 +85,20 @@ struct logger_particle {
  */
 enum logger_reader_type {
   logger_reader_const, /* Constant interpolation. */
-  logger_reader_lin, /* Linear interpolation. */
+  logger_reader_lin,   /* Linear interpolation. */
 };
 
 void logger_particle_print(const struct logger_particle *p);
 
-size_t logger_particle_read(struct logger_particle *part, const struct logger_reader *reader,
-			    size_t offset, const double time,
-			    const enum logger_reader_type reader_type);
+size_t logger_particle_read(struct logger_particle *part,
+                            const struct logger_reader *reader, size_t offset,
+                            const double time,
+                            const enum logger_reader_type reader_type);
 
 void logger_particle_init(struct logger_particle *part);
 
-void* logger_particle_read_field(struct logger_particle *part, void *map,
-				 const char *field, const size_t size);
+void *logger_particle_read_field(struct logger_particle *part, void *map,
+                                 const char *field, const size_t size);
 
 void logger_particle_interpolate(struct logger_particle *part_curr,
                                  const struct logger_particle *part_next,

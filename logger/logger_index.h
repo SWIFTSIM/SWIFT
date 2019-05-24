@@ -28,7 +28,6 @@
 
 struct logger_reader;
 
-
 struct logger_index_data {
   /* The particle's id. */
   uint64_t id;
@@ -65,12 +64,11 @@ struct logger_index {
 
   /* Integer time of the index file. */
   integertime_t int_time;
-  
 };
 
 void logger_index_init(struct logger_index *index, struct logger_reader *reader,
-		       char *filename);
+                       char *filename);
 
 void logger_index_free(struct logger_index *index);
 
-#endif // __LOGGER_LOGGER_INDEX_H__
+#endif  // __LOGGER_LOGGER_INDEX_H__

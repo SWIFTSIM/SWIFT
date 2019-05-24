@@ -34,8 +34,8 @@ struct logger_reader;
  * this structure is required. It contains all the time step
  * with their integer time, double time and position in the file.
  *
- * This structure is initialized with #time_array_init and #time_array_populate, and
- * freed with #time_array_free.
+ * This structure is initialized with #time_array_init and #time_array_populate,
+ * and freed with #time_array_free.
  *
  * The time step of an offset can be obtained with
  * #time_array_get_integertime, #time_array_get_time and
@@ -62,16 +62,18 @@ struct time_array {
 };
 
 size_t time_read(integertime_t *int_time, double *time,
-	       const struct logger_reader *reader, size_t offset);
+                 const struct logger_reader *reader, size_t offset);
 
 void time_array_init(struct time_array *t);
 void time_array_populate(struct time_array *t, struct logger_logfile *log);
 
-integertime_t time_array_get_integertime(struct time_array *t, const size_t offset);
+integertime_t time_array_get_integertime(struct time_array *t,
+                                         const size_t offset);
 
 double time_array_get_time(const struct time_array *t, const size_t offset);
 
-struct time_array *time_array_get_time_array(const struct time_array *t, const size_t offset);
+struct time_array *time_array_get_time_array(const struct time_array *t,
+                                             const size_t offset);
 
 void time_array_free(struct time_array *t);
 

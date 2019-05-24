@@ -123,8 +123,7 @@ static PyObject *loadFromIndex(__attribute__((unused)) PyObject *self,
     id = (PyArrayObject *)PyArray_SimpleNew(1, PyArray_DIMS(offset), NPY_ULONG);
   }
 
-  if (verbose > 1)
-    message("Reading particles.");
+  if (verbose > 1) message("Reading particles.");
 
   /* loop over all particles. */
   for (npy_intp i = 0; i < PyArray_DIMS(offset)[0]; i++) {
@@ -134,7 +133,8 @@ static PyObject *loadFromIndex(__attribute__((unused)) PyObject *self,
     size_t offset_particle = *(size_t *)PyArray_GETPTR1(offset, i);
 
     /* Read the particle. */
-    logger_particle_read(&part, &reader, offset_particle, time, logger_reader_lin);
+    logger_particle_read(&part, &reader, offset_particle, time,
+                         logger_reader_lin);
 
     double *dtmp;
     float *ftmp;

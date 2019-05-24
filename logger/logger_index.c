@@ -37,10 +37,11 @@
  * @param filename The filename.
  */
 void logger_index_init(struct logger_index *index, struct logger_reader *reader,
-		       char *filename) {
+                       char *filename) {
 
   /* Open file. */
-  index->data = logger_loader_io_mmap_file(filename, &index->file_size, /* read_only */ 1);
+  index->data = logger_loader_io_mmap_file(filename, &index->file_size,
+                                           /* read_only */ 1);
 
   /* Read the double time. */
   size_t offset = 0;
@@ -48,15 +49,16 @@ void logger_index_init(struct logger_index *index, struct logger_reader *reader,
   map = logger_loader_io_read_data(map, sizeof(double), &index->time);
 
   /* Read the integer time. */
-  map = logger_loader_io_read_data(map, sizeof(integertime_t), &index->int_time);
+  map =
+      logger_loader_io_read_data(map, sizeof(integertime_t), &index->int_time);
 
   /* Read the number of particles. */
   map = logger_loader_io_read_data(map, swift_type_count * sizeof(long long),
-  			&index->number_particles);
+                                   &index->number_particles);
 
   /* Count total number of particles. */
   long long N = 0;
-  for(int j = 0; j < swift_type_count; j++) {
+  for (int j = 0; j < swift_type_count; j++) {
     N += index->number_particles[j];
   }
 
@@ -76,8 +78,7 @@ void logger_index_free(struct logger_index *index) {
   /* Set variables to default value. */
   index->total_number_particles = 0;
 
-  for(int i = 0; i < swift_type_count; i++) {
+  for (int i = 0; i < swift_type_count; i++) {
     index->number_particles[i] = 0;
   }
-
 }

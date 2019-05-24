@@ -45,15 +45,13 @@ void test_log_parts(struct logger_writer *log) {
   size_t offset = d->count;
 
   /* Write the full part. */
-  logger_log_part(log, &p,
-                  logger_mask_data[logger_x].mask |
-                              logger_mask_data[logger_v].mask |
-                              logger_mask_data[logger_a].mask |
-                              logger_mask_data[logger_u].mask |
-                              logger_mask_data[logger_h].mask |
-                              logger_mask_data[logger_rho].mask |
-                              logger_mask_data[logger_consts].mask,
-                  &offset);
+  logger_log_part(
+      log, &p,
+      logger_mask_data[logger_x].mask | logger_mask_data[logger_v].mask |
+          logger_mask_data[logger_a].mask | logger_mask_data[logger_u].mask |
+          logger_mask_data[logger_h].mask | logger_mask_data[logger_rho].mask |
+          logger_mask_data[logger_consts].mask,
+      &offset);
   printf("Wrote part at offset %#016zx.\n", offset);
 
   /* Write only the position. */
@@ -64,9 +62,10 @@ void test_log_parts(struct logger_writer *log) {
   /* Write the position and velocity. */
   p.x[0] = 3.0;
   p.v[0] = 0.3;
-  logger_log_part(log, &p, logger_mask_data[logger_x].mask |
-		  logger_mask_data[logger_v].mask
-		  , &offset);
+  logger_log_part(
+      log, &p,
+      logger_mask_data[logger_x].mask | logger_mask_data[logger_v].mask,
+      &offset);
   printf("Wrote part at offset %#016zx.\n", offset);
 
   /* Recover the last part from the dump. */
@@ -122,13 +121,12 @@ void test_log_gparts(struct logger_writer *log) {
   size_t offset = d->count;
 
   /* Write the full part. */
-  logger_log_gpart(log, &p,
-                   logger_mask_data[logger_x].mask |
-		   logger_mask_data[logger_v].mask |
-		   logger_mask_data[logger_a].mask |
-		   logger_mask_data[logger_h].mask |
-		   logger_mask_data[logger_consts].mask,
-                   &offset);
+  logger_log_gpart(
+      log, &p,
+      logger_mask_data[logger_x].mask | logger_mask_data[logger_v].mask |
+          logger_mask_data[logger_a].mask | logger_mask_data[logger_h].mask |
+          logger_mask_data[logger_consts].mask,
+      &offset);
   printf("Wrote gpart at offset %#016zx.\n", offset);
 
   /* Write only the position. */
@@ -139,8 +137,10 @@ void test_log_gparts(struct logger_writer *log) {
   /* Write the position and velocity. */
   p.x[0] = 3.0;
   p.v_full[0] = 0.3;
-  logger_log_gpart(log, &p, logger_mask_data[logger_x].mask |
-		   logger_mask_data[logger_v].mask, &offset);
+  logger_log_gpart(
+      log, &p,
+      logger_mask_data[logger_x].mask | logger_mask_data[logger_v].mask,
+      &offset);
   printf("Wrote gpart at offset %#016zx.\n", offset);
 
   /* Recover the last part from the dump. */
@@ -275,7 +275,7 @@ int main(int argc, char *argv[]) {
   remove(filename);
 
   /* Clean the logger. */
-  logger_clean(&log);
+  logger_free(&log);
 
   /* Return a happy number. */
   return 0;

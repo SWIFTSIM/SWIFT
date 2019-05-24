@@ -17,10 +17,10 @@
  *
  ******************************************************************************/
 
-#include "swift.h"
 #include "logger_header.h"
 #include "logger_logfile.h"
 #include "logger_reader.h"
+#include "swift.h"
 
 int main(int argc, char *argv[]) {
 
@@ -62,10 +62,10 @@ int main(int argc, char *argv[]) {
 
   /* Set verbose level. */
   reader.verbose = 1;
-  
+
   /* Read the header */
   logger_logfile_init_from_file(logfile, dump_filename, &reader,
-		      /* only_header */ 1);
+                                /* only_header */ 1);
   /*
     Finally check everything.
   */
@@ -82,7 +82,7 @@ int main(int argc, char *argv[]) {
   assert(h->number_mask == logger_count_mask);
 
   message("Checking masks");
-  for(int i = 0; i < logger_count_mask; i++) {
+  for (int i = 0; i < logger_count_mask; i++) {
     assert(logger_mask_data[i].size == h->masks[i].size);
     assert(logger_mask_data[i].mask == h->masks[i].mask);
     assert(strcmp(logger_mask_data[i].name, h->masks[i].name) == 0);
