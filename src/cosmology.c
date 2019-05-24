@@ -191,7 +191,7 @@ void cosmology_update(struct cosmology *c, const struct phys_const *phys_const,
       3. * c->H * c->H / (8. * M_PI * phys_const->const_newton_G);
 
   /* Mean density */
-  c->mean_density = c->critical_density_0 * a3_inv;
+  c->mean_density = c->critical_density_0 * c->a3_inv;
 
   /* Time-step conversion factor */
   c->time_step_factor = c->H;
