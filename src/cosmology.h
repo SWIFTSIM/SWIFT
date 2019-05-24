@@ -81,6 +81,9 @@ struct cosmology {
   /*! The mean density at the current redshift (in internal physical units) */
   double mean_density;
 
+  /*! The mean baryonic density at the current redshift (in internal physical units) */
+  double mean_density_Omega_b;
+
   /*! Conversion factor from internal time-step size to cosmological step */
   double time_step_factor;
 
