@@ -212,7 +212,8 @@ INLINE static int star_formation_is_star_forming(
     const struct cooling_function_data* restrict cooling,
     const struct entropy_floor_properties* restrict entropy_floor_props) {
 
-  /* Minimal density (converted from mean baryonic density) for star formation */
+  /* Minimal density (converted from mean baryonic density) for star formation
+   */
   const double rho_mean_b_times_min_over_den =
       cosmo->mean_density_Omega_b * starform->min_over_den;
 

@@ -72,7 +72,8 @@ struct cosmology {
   /*! Hubble constant at the current redshift (in internal units) */
   double H;
 
-  /*! The critical density at the current redshift (in internal physical units) */
+  /*! The critical density at the current redshift (in internal physical units)
+   */
   double critical_density;
 
   /*! The critical density at redshift 0 (in internal physical units) */
@@ -81,7 +82,8 @@ struct cosmology {
   /*! The mean density at the current redshift (in internal physical units) */
   double mean_density;
 
-  /*! The mean baryonic density at the current redshift (in internal physical units) */
+  /*! The mean baryonic density at the current redshift (in internal physical
+   * units) */
   double mean_density_Omega_b;
 
   /*! Conversion factor from internal time-step size to cosmological step */
