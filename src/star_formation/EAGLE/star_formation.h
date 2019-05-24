@@ -212,9 +212,9 @@ INLINE static int star_formation_is_star_forming(
     const struct cooling_function_data* restrict cooling,
     const struct entropy_floor_properties* restrict entropy_floor_props) {
 
-  /* Minimal density (converted from critical density) for star formation */
-  const double rho_crit_times_min_over_den =
-      cosmo->critical_density * starform->min_over_den;
+  /* Minimal density (converted from mean baryonic density) for star formation */
+  const double rho_mean_b_times_min_over_den =
+      cosmo->mean_density_Omega_b * starform->min_over_den;
 
   /* Physical density of the particle */
   const double physical_density = hydro_get_physical_density(p, cosmo);
@@ -225,7 +225,7 @@ INLINE static int star_formation_is_star_forming(
    * threshold is reached or if the metallicity dependent
    * threshold is reached, after this we calculate if the
    * temperature is appropriate */
-  if (physical_density < rho_crit_times_min_over_den) return 0;
+  if (physical_density < rho_mean_b_times_min_over_den) return 0;
 
   /* In this case there are actually multiple possibilities
    * because we also need to check if the physical density exceeded
