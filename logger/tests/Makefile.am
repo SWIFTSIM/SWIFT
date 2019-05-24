@@ -30,7 +30,7 @@ $(check_PROGRAMS): ../../src/.libs/libswiftsim.a
 
 # Sources for the individual programs
 testLogfileHeader_SOURCES = testLogfileHeader.c
-testReader_SOURCES = testLogfileReader.c
+testLogfileReader_SOURCES = testLogfileReader.c
 # testIndex_SOURCES = testIndex.c
 
 # Files necessary for distribution

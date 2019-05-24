@@ -22,7 +22,7 @@
 #include "logger_header.h"
 #include "logger_tools.h"
 
-typedef char timebin_t;
+typedef int8_t timebin_t;
 typedef long long integertime_t;
 
 struct logger_reader;
