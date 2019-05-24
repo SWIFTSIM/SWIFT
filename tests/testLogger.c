@@ -32,7 +32,7 @@
 /* Local headers. */
 #include "swift.h"
 
-void test_log_parts(struct logger *log) {
+void test_log_parts(struct logger_writer *log) {
   struct dump *d = &log->dump;
 
   /* Write several copies of a part to the dump. */
@@ -109,7 +109,7 @@ void test_log_parts(struct logger *log) {
   }
 }
 
-void test_log_gparts(struct logger *log) {
+void test_log_gparts(struct logger_writer *log) {
   struct dump *d = &log->dump;
 
   /* Write several copies of a part to the dump. */
@@ -183,7 +183,7 @@ void test_log_gparts(struct logger *log) {
   }
 }
 
-void test_log_timestamps(struct logger *log) {
+void test_log_timestamps(struct logger_writer *log) {
   struct dump *d = &log->dump;
 
   /* The timestamp to log. */
@@ -255,7 +255,7 @@ void test_log_timestamps(struct logger *log) {
 int main(int argc, char *argv[]) {
 
   /* Prepare a logger. */
-  struct logger log;
+  struct logger_writer log;
   struct swift_params params;
   parser_read_file("logger.yml", &params);
   logger_init(&log, &params);
