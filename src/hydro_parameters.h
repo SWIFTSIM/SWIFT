@@ -16,12 +16,17 @@
  * along with this program.  If not, see <http://www.gnu.org/licenses/>.
  *
  ******************************************************************************/
+#ifndef SWIFT_HYDRO_PARAMETERS_H
+#define SWIFT_HYDRO_PARAMETERS_H
 
 /**
- * @file hydro_parameters.h
+ * @file src/hydro_parameters.h
  * @brief Contains all the parameters of the hydro schemes, included from
  *        their own local header.
  */
+
+/* Config parameters. */
+#include "../config.h"
 
 /* Import the right hydro header */
 #if defined(MINIMAL_SPH)
@@ -51,3 +56,5 @@
 #else
 #error "Invalid choice of SPH variant"
 #endif
+
+#endif /* SWIFT_HYDRO_PARAMETERS_H */

@@ -117,31 +117,34 @@ double units_get_base_unit(const struct unit_system*, enum base_units);
 const char* units_get_base_unit_internal_symbol(enum base_units);
 const char* units_get_base_unit_cgs_symbol(enum base_units);
 
+void units_get_base_unit_exponents_array(float baseUnitsExp[5],
+                                         enum unit_conversion_factor unit);
+
 /* Cosmology factors */
 float units_general_h_factor(const struct unit_system* us,
-                             const float baseUnitsExponants[5]);
+                             const float baseUnitsExponents[5]);
 float units_h_factor(const struct unit_system* us,
                      enum unit_conversion_factor unit);
 float units_general_a_factor(const struct unit_system* us,
-                             const float baseUnitsExponants[5]);
+                             const float baseUnitsExponents[5]);
 float units_a_factor(const struct unit_system* us,
                      enum unit_conversion_factor unit);
 
 /* Conversion to CGS */
 double units_general_cgs_conversion_factor(const struct unit_system* us,
-                                           const float baseUnitsExponants[5]);
+                                           const float baseUnitsExponents[5]);
 double units_cgs_conversion_factor(const struct unit_system* us,
                                    enum unit_conversion_factor unit);
 void units_general_cgs_conversion_string(char* buffer,
                                          const struct unit_system* us,
-                                         const float baseUnitsExponants[5]);
+                                         const float baseUnitsExponents[5]);
 void units_cgs_conversion_string(char* buffer, const struct unit_system* us,
                                  enum unit_conversion_factor unit);
 
 /* Conversion between systems */
 double units_general_conversion_factor(const struct unit_system* from,
                                        const struct unit_system* to,
-                                       const float baseUnitsExponants[5]);
+                                       const float baseUnitsExponents[5]);
 double units_conversion_factor(const struct unit_system* from,
                                const struct unit_system* to,
                                enum unit_conversion_factor unit);

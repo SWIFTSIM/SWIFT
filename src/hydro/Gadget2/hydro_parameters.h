@@ -17,12 +17,11 @@
  * along with this program.  If not, see <http://www.gnu.org/licenses/>.
  *
  ******************************************************************************/
-
 #ifndef SWIFT_GADGET2_HYDRO_PARAMETERS_H
 #define SWIFT_GADGET2_HYDRO_PARAMETERS_H
 
 /* Configuration file */
-#include "../../../config.h"
+#include "config.h"
 
 /* Global headers */
 #if defined(HAVE_HDF5)
@@ -88,7 +87,7 @@ struct unit_system;
  *        the parameter file, or sets them to defaults.
  *
  * @param params: the pointer to the swift_params file
- * @param unit_system: pointer to the unit system
+ * @param us: pointer to the internal unit system
  * @param phys_const: pointer to the physical constants system
  * @param viscosity: pointer to the viscosity_global_data struct to be filled.
  **/
@@ -149,9 +148,9 @@ static INLINE void viscosity_print_snapshot(
  *        the parameter file, or sets them to defaults.
  *
  * @param params: the pointer to the swift_params file
- * @param unit_system: pointer to the unit system
+ * @param us: pointer to the internal unit system
  * @param phys_const: pointer to the physical constants system
- * @param diffusion_global_data: pointer to the diffusion struct to be filled.
+ * @param diffusion: pointer to the diffusion struct to be filled.
  **/
 static INLINE void diffusion_init(struct swift_params* params,
                                   const struct unit_system* us,
