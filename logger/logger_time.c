@@ -94,18 +94,18 @@ size_t time_offset_first_record(const struct header *h) {
  *
  * @param t #time_array to initialize.
  */
-void time_array_init_to_zero(struct time_array *t) {
+void time_array_init(struct time_array *t) {
   t->next = NULL;
   t->prev = NULL;
 }
 
 /**
- * @brief Initialize a time array.
+ * @brief Initialize a time array from a file.
  *
  * @param t #time_array to initialize.
  * @param log The #logger_logfile.
  */
-void time_array_init(struct time_array *t, struct logger_logfile *log) {
+void time_array_populate(struct time_array *t, struct logger_logfile *log) {
 
   /* Initialize a few variables. */
   t->next = NULL;

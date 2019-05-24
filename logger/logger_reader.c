@@ -34,8 +34,8 @@ void logger_reader_init(struct logger_reader *reader, char *filename, int verbos
   reader->verbose = verbose;
 
   /* Initialize the log file */
-  logger_logfile_init(&reader->log, filename, reader,
-		      /* only_header */ 0);
+  logger_logfile_init_from_file(&reader->log, filename, reader,
+				/* only_header */ 0);
 
   if (verbose > 1)
     message("Initialization done.");

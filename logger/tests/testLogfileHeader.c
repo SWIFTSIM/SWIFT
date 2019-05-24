@@ -1,6 +1,6 @@
 /*******************************************************************************
  * This file is part of SWIFT.
- * Copyright (C) 2015 Matthieu Schaller (matthieu.schaller@durham.ac.uk).
+ * Copyright (C) 2019 Loic Hausammann (loic.hausammann@epfl.ch)
  *
  * This program is free software: you can redistribute it and/or modify
  * it under the terms of the GNU Lesser General Public License as published
@@ -32,7 +32,7 @@ int main(int argc, char *argv[]) {
   /* Create required structures. */
   struct logger log;
   struct swift_params params;
-  char filename[200] = "testHeader.yml";
+  char filename[200] = "testLogfileHeader.yml";
 
   /* Read parameters. */
   parser_read_file(filename, &params);
@@ -49,33 +49,34 @@ int main(int argc, char *argv[]) {
   logger_write_file_header(&log);
 
   /* clean memory */
-  logger_clean(&log);
+  logger_free(&log);
   /*
     Then read the file.
   */
 
   message("Reading the header.");
   /* Generate required structure for reading. */
-  struct logger_logfile logfile;
   struct logger_reader reader;
+  struct logger_logfile *logfile = &reader.log;
+  logfile->reader = &reader;
 
   /* Set verbose level */
   reader.verbose = 1;
   
   /* Read the header */
-  logger_logfile_init(&logfile, dump_filename, &reader,
+  logger_logfile_init_from_file(logfile, dump_filename, &reader,
 		      /* only_header */ 1);
   /*
     Finally check everything
   */
 
-  struct header *h = &logfile.header;
+  struct header *h = &logfile->header;
   message("Checking versions.");
   assert(h->major_version == logger_major_version);
   assert(h->minor_version == logger_minor_version);
 
   message("Checking offset of first record");
-  assert(h->offset_first_record == logfile.log.file_size);
+  assert(h->offset_first_record == logfile->log.file_size);
 
   message("Checking number of masks");
   assert(h->number_mask == logger_count_mask);

@@ -119,7 +119,11 @@ void header_read(struct header *h, struct logger_logfile *log) {
   /* Read minor version number */
   map = logger_loader_io_read_data(map, sizeof(int), &h->minor_version);
 
-  if (h->log->reader->verbose > 0)
+  struct logger_reader *reader = log->reader;
+  if (&reader->log != log)
+    error("Wrong link to the reader.");
+
+  if (reader->verbose > 0)
     message("File version %i.%i", h->major_version, h->minor_version);
 
   /* read the offset directions */

@@ -1,6 +1,6 @@
 /*******************************************************************************
  * This file is part of SWIFT.
- * Copyright (C) 2015 Matthieu Schaller (matthieu.schaller@durham.ac.uk).
+ * Copyright (C) 2019 Loic Hausammann (loic.hausammann@epfl.ch).
  *
  * This program is free software: you can redistribute it and/or modify
  * it under the terms of the GNU Lesser General Public License as published
@@ -44,8 +44,8 @@ void init_particles(struct part *p, struct xpart *xp) {
 
     for(int j = 0; j < 3; j++) {
       p[i].x[j] = i;
-      p[i].v[j] = j == 0 ? -1 : 0;
-      p[i].a_hydro[j] = j == 1 ? 1e-2 : 0;
+      p[i].v[j] = (j == 0) ? -1 : 0;
+      p[i].a_hydro[j] = (j == 1) ? 1e-2 : 0;
     }
     p[i].h = 15;
     p[i].rho = 50;
@@ -55,20 +55,12 @@ void init_particles(struct part *p, struct xpart *xp) {
   }
 }
 
-/**
- * @brief Provides a time given the step number.
- *
- * @param step The required step.
- */
+/** Provides a integer time given the step number.*/
 integertime_t get_integer_time(int step) {
   return step;
 }
 
-/**
- * @brief Provides a time given the step number.
- *
- * @param step The required step.
- */
+/** Provides a double time given the step number. */
 double get_double_time(int step) {
   const double time_base = 1e-4;
   return step * time_base;
@@ -217,6 +209,7 @@ void check_data(struct logger_reader *reader) {
       offset = read_record(reader, &lp, &time, &is_particle, offset)) {
 
     if (is_particle) {
+      /* Check data if it is a particle */
       if (lp.id >= number_parts)
 	error("Wrong id %zi", lp.id);
 
@@ -234,6 +227,7 @@ void check_data(struct logger_reader *reader) {
       assert(p->mass == lp.mass);
     }
     else {
+      /* Check data if it is a timestamp */
       assert(time == get_double_time(step));
 
       step += 1;
@@ -254,7 +248,7 @@ int main(int argc, char *argv[]) {
   /* Create required structures. */
   struct logger log;
   struct swift_params params;
-  char filename[200] = "testReader.yml";
+  char filename[200] = "testLogfileReader.yml";
 
   /* Read parameters. */
   parser_read_file(filename, &params);
@@ -275,7 +269,7 @@ int main(int argc, char *argv[]) {
   write_particles(&log);
 
   /* clean memory */
-  logger_clean(&log);
+  logger_free(&log);
   /*
     Then read the file.
   */

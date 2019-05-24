@@ -447,7 +447,7 @@ void logger_init(struct logger *log, struct swift_params *params) {
  *
  * @param log The #logger
  */
-void logger_clean(struct logger *log) { dump_close(&log->dump); }
+void logger_free(struct logger *log) { dump_close(&log->dump); }
 
 /**
  * @brief Write a file header to a logger file

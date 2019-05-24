@@ -35,7 +35,7 @@ struct logger_reader;
  * and deals with the log file.
  * It maps it, reverse the offsets (if required) and unmap it.
  *
- * The structure is initialized with #logger_logfile_init and
+ * The structure is initialized with #logger_logfile_init_from_file and
  * freed with #logger_logfile_free.
  */
 struct logger_logfile {
@@ -62,7 +62,7 @@ struct logger_logfile {
 };
 
 
-void logger_logfile_init(struct logger_logfile *log, char *filename, struct logger_reader *reader,
+void logger_logfile_init_from_file(struct logger_logfile *log, char *filename, struct logger_reader *reader,
 			 int only_header);
 void logger_logfile_reverse_offset(struct logger_logfile *log, char *filename);
 void logger_logfile_free(struct logger_logfile *log);

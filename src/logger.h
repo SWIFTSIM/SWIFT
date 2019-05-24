@@ -144,7 +144,7 @@ void logger_log_part(struct logger *log, const struct part *p,
 void logger_log_gpart(struct logger *log, const struct gpart *p,
                       unsigned int mask, size_t *offset);
 void logger_init(struct logger *log, struct swift_params *params);
-void logger_clean(struct logger *log);
+void logger_free(struct logger *log);
 void logger_log_timestamp(struct logger *log, integertime_t t, double time,
                           size_t *offset);
 void logger_ensure_size(struct logger *log, size_t total_nr_parts,

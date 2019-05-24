@@ -29,15 +29,17 @@
  * @param reader The #logger_reader.
  * @param only_header Read only the header.
  */
-void logger_logfile_init(
+void logger_logfile_init_from_file(
     struct logger_logfile *log, char *filename,
     struct logger_reader *reader, int only_header) {
 
   /* Set the pointer to the reader. */
   log->reader = reader;
+  if (&reader->log != log)
+    error("Wrong link to the reader.");
 
   /* Set pointers to zero */
-  time_array_init_to_zero(&log->times);
+  time_array_init(&log->times);
 
   /* Open file, map it and get its size. */
   if (reader->verbose > 1)
@@ -73,7 +75,7 @@ void logger_logfile_init(
   /* Initialize the time array */
   if (reader->verbose > 1)
     message("Reading the time stamps.");
-  time_array_init(&log->times, log);
+  time_array_populate(&log->times, log);
 
   /* Print the time array */
   if (reader->verbose > 0) {
@@ -90,6 +92,7 @@ void logger_logfile_init(
 void logger_logfile_free(struct logger_logfile *log) {
   logger_loader_io_munmap_file(log->log.map, log->log.file_size);
 
+  time_array_free(&log->times);
 }
 
 
@@ -109,6 +112,8 @@ void logger_logfile_reverse_offset(struct logger_logfile *log, char *filename) {
   /* Get pointers */
   struct header *header = &log->header;
   const struct logger_reader *reader = log->reader;
+  if (&reader->log != log)
+    error("Wrong link to the reader.");
 
   /* Check if the offsets need to be reversed */
   if (!header_is_backward(header)) {
