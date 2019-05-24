@@ -58,12 +58,12 @@ int _tools_get_next_record_forward(const struct header *h, void *map,
                                   size_t *offset) {
   size_t diff_offset = 0;
 
-  /* read offset */
+  /* Read the offset. */
   map = logger_loader_io_read_mask(h, map + *offset, NULL, &diff_offset);
 
   if (diff_offset == 0) return -1;
 
-  /* set absolute offset */
+  /* Set the absolute offset. */
   *offset += diff_offset;
   return 0;
 }
@@ -120,19 +120,19 @@ size_t tools_reverse_offset(const struct header *h, void *file_map, size_t offse
   const size_t cur_offset = offset;
   void *map = file_map;
 
-  /* read mask + offset */
+  /* read mask + offset. */
   map = logger_loader_io_read_mask(h, map + offset, &mask, &prev_offset);
 
-  /* write offset of zero (in case it is the last record) */
+  /* write offset of zero (in case it is the last record). */
   const size_t zero = 0;
   map -= LOGGER_OFFSET_SIZE;
   map = logger_loader_io_write_data(map, LOGGER_OFFSET_SIZE, &zero);
 
-  /* set offset after current record */
+  /* set offset after current record. */
   map += header_get_record_size_from_mask(h, mask);
   size_t after_current_record = (size_t) (map - file_map);
 
-  /* first records do not have a previous partner */
+  /* first records do not have a previous partner. */
   if (prev_offset == cur_offset)
     return after_current_record;
 
@@ -140,7 +140,7 @@ size_t tools_reverse_offset(const struct header *h, void *file_map, size_t offse
     error("Unexpected offset, header %lu, current %lu", prev_offset,
           cur_offset);
 
-  /* modify previous offset */
+  /* modify previous offset. */
   map = file_map + cur_offset - prev_offset + LOGGER_MASK_SIZE;
   map = logger_loader_io_write_data(map, LOGGER_OFFSET_SIZE, &prev_offset);
 
@@ -149,7 +149,9 @@ size_t tools_reverse_offset(const struct header *h, void *file_map, size_t offse
   map -= LOGGER_MASK_SIZE + LOGGER_OFFSET_SIZE;
   logger_loader_io_read_mask(h, map, &prev_mask, NULL);
 
-  if (prev_mask != mask)
+  /* Check if we are not mixing time stamp and particles */
+  if ((prev_mask != 128 && mask == 128) ||
+      (prev_mask == 128 && mask != 128))
     error("Unexpected mask: %lu, got %lu", mask, prev_mask);
 
 #endif  // SWIFT_DEBUG_CHECKS
@@ -180,10 +182,10 @@ size_t tools_check_record_consistency(const struct logger_reader *reader, size_t
   size_t mask;
   size_t pointed_offset;
 
-  /* read mask + offset */
+  /* read mask + offset. */
   map = logger_loader_io_read_mask(h, map, &mask, &pointed_offset);
 
-  /* get absolute offset */
+  /* get absolute offset. */
   if (header_is_forward(h))
     pointed_offset += offset;
   else if (header_is_backward(h)) {
@@ -196,18 +198,19 @@ size_t tools_check_record_consistency(const struct logger_reader *reader, size_t
     error("Offset are corrupted");
   }
 
-  /* set offset after current record */
+  /* set offset after current record. */
   map += header_get_record_size_from_mask(h, mask);
 
   if (pointed_offset == offset || pointed_offset == 0)
     return (size_t) (map - file_init);
 
-  /* read mask of the pointed record */
+  /* read mask of the pointed record. */
   size_t pointed_mask = 0;
   logger_loader_io_read_mask(h, file_init + pointed_offset, &pointed_mask, NULL);
 
-  /* check masks */
-  if (pointed_mask != mask)
+  /* check if not mixing time stamp and particles. */
+  if ((pointed_mask != 128 && mask == 128) ||
+      (pointed_mask == 128 && mask != 128))
     error("Error in the offset (mask %lu at %lu != %lu at %lu)", mask, offset,
           pointed_mask, pointed_offset);
 

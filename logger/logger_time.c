@@ -42,7 +42,7 @@ size_t time_read(integertime_t *int_time, double *time, const struct logger_read
   *int_time = 0;
   *time = 0;
 
-  /* read record header */
+  /* read record header. */
   map = logger_loader_io_read_mask(h, map + offset, &mask, &prev_offset);
 
 #ifdef SWIFT_DEBUG_CHECKS
@@ -55,7 +55,7 @@ size_t time_read(integertime_t *int_time, double *time, const struct logger_read
   if (h->masks[ind].mask != mask) error("Not a time record");
 #endif
 
-  /* read the record */
+  /* read the record. */
   map = logger_loader_io_read_data(map, sizeof(unsigned long long int), int_time);
   map = logger_loader_io_read_data(map, sizeof(double), time);
 
@@ -72,7 +72,7 @@ size_t time_read(integertime_t *int_time, double *time, const struct logger_read
  */
 size_t time_offset_first_record(const struct header *h) {
 
-  /* Initialize a few variables */
+  /* Initialize a few variables. */
   size_t offset = h->offset_first_record;
   void *map = h->log->log.map;
 
@@ -114,10 +114,10 @@ void time_array_populate(struct time_array *t, struct logger_logfile *log) {
   integertime_t int_time = 0;
   double time = 0;
 
-  /* get file size */
+  /* get file size. */
   size_t file_size = log->log.file_size;
 
-  /* get first time stamp */
+  /* get first time stamp. */
   size_t offset = time_offset_first_record(&log->header);
   while (offset < file_size) {
     /* read current time record and store it. */
@@ -127,7 +127,7 @@ void time_array_populate(struct time_array *t, struct logger_logfile *log) {
     t->int_time = int_time;
     t->time = time;
 
-    /* get next record */
+    /* get next record. */
     int test = tools_get_next_record(&log->header, log->log.map, &offset,
 				    log->log.file_size);
     if (test == -1) break;
@@ -140,7 +140,7 @@ void time_array_populate(struct time_array *t, struct logger_logfile *log) {
     t = tmp;
   }
 
-  /* free unused time_array */
+  /* free unused time_array. */
   struct time_array *tmp = t->prev;
   tmp->next = NULL;
   free(t);
@@ -188,7 +188,7 @@ struct time_array *time_array_get_time_array(const struct time_array *t,
   if (!t) error("NULL pointer");
 #endif
   const struct time_array *tmp;
-  /* Find the time_array with the correct offset */
+  /* Find the time_array with the correct offset. */
   for(tmp = t; tmp->next && tmp->offset <= offset; tmp = tmp->next)
     {}
 

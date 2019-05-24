@@ -87,7 +87,7 @@ void write_index_single(struct engine* e, const char* baseName,
   // struct spart* sparts = e->s->sparts;
   static int outputCount = 0;
 
-  struct logger* log = e->logger;
+  struct logger_writer* log = e->logger;
 
   /* Number of unassociated gparts */
   const size_t Ndm = Ntot > 0 ? Ntot - (Ngas + Nstars) : 0;

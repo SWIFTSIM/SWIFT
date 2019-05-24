@@ -44,11 +44,11 @@
 static PyObject *loadFromIndex(__attribute__((unused)) PyObject *self,
                                PyObject *args) {
 
-  /* input */
+  /* input variables. */
   PyArrayObject *offset = NULL;
   char *filename = NULL;
 
-  /* output */
+  /* output variables. */
   PyArrayObject *pos = NULL;
   PyArrayObject *vel = NULL;
   PyArrayObject *acc = NULL;
@@ -61,8 +61,7 @@ static PyObject *loadFromIndex(__attribute__((unused)) PyObject *self,
   size_t time_offset;
   int verbose = 2;
 
-  /* parse arguments */
-
+  /* parse arguments. */
   if (!PyArg_ParseTuple(args, "OsL|i", &offset, &filename, &time_offset,
                         &verbose))
     return NULL;
@@ -77,12 +76,12 @@ static PyObject *loadFromIndex(__attribute__((unused)) PyObject *self,
     error("Offset does not contain unsigned int");
   }
 
-  /* initialize the reader */
+  /* initialize the reader. */
   struct logger_reader reader;
   logger_reader_init(&reader, filename, verbose);
   struct header *h = &reader.log.header;
 
-  /* init array */
+  /* init array. */
   npy_intp dim[2];
   dim[0] = PyArray_DIMS(offset)[0];
   dim[1] = DIM;
@@ -90,7 +89,7 @@ static PyObject *loadFromIndex(__attribute__((unused)) PyObject *self,
   /* Get required time. */
   double time = time_array_get_time(&reader.log.times, time_offset);
 
-  /* init output */
+  /* init output. */
   if (header_get_field_index(h, "positions") != -1) {
     pos = (PyArrayObject *)PyArray_SimpleNew(2, dim, NPY_DOUBLE);
   }
@@ -127,19 +126,21 @@ static PyObject *loadFromIndex(__attribute__((unused)) PyObject *self,
   if (verbose > 1)
     message("Reading particles.");
 
-  /* loop over all particles */
+  /* loop over all particles. */
   for (npy_intp i = 0; i < PyArray_DIMS(offset)[0]; i++) {
     struct logger_particle part;
 
+    /* Get the offset. */
     size_t offset_particle = *(size_t *)PyArray_GETPTR1(offset, i);
 
+    /* Read the particle. */
     logger_particle_read(&part, &reader, offset_particle, time, logger_reader_lin);
 
     double *dtmp;
     float *ftmp;
     size_t *stmp;
 
-    /* copy data */
+    /* copy the data. */
     for (size_t k = 0; k < DIM; k++) {
       if (pos) {
         dtmp = PyArray_GETPTR2(pos, i, k);
@@ -183,10 +184,10 @@ static PyObject *loadFromIndex(__attribute__((unused)) PyObject *self,
     }
   }
 
-  /* Free the memory */
+  /* Free the memory. */
   logger_reader_free(&reader);
 
-  /* construct return value */
+  /* construct return value. */
   PyObject *dict = PyDict_New();
   PyObject *key = PyUnicode_FromString("positions");
   PyDict_SetItem(dict, key, PyArray_Return(pos));
@@ -237,26 +238,25 @@ static PyObject *loadFromIndex(__attribute__((unused)) PyObject *self,
  */
 static PyObject *pyReverseOffset(__attribute__((unused)) PyObject *self,
                                  PyObject *args) {
-  /* input */
+  /* input variables. */
   char *filename = NULL;
 
   int verbose = 0;
 
-  /* parse arguments */
-
+  /* parse the arguments. */
   if (!PyArg_ParseTuple(args, "s|i", &filename, &verbose)) return NULL;
 
-  /* initialize the reader (and reverse the offset if necessary) */
+  /* initialize the reader which reverse the offset if necessary. */
   struct logger_reader reader;
   logger_reader_init(&reader, filename, verbose);
 
-  /* Free the reader */
+  /* Free the reader. */
   logger_reader_free(&reader);
 
   return Py_BuildValue("");
 }
 
-/* definition of the method table */
+/* definition of the method table. */
 
 static PyMethodDef libloggerMethods[] = {
     {"loadFromIndex", loadFromIndex, METH_VARARGS,

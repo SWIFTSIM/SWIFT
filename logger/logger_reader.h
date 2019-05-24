@@ -41,8 +41,10 @@
 #ifndef __LOGGER_LOGGER_READER_H__
 #define __LOGGER_LOGGER_READER_H__
 
+#include "logger_loader_io.h"
 #include "logger_logfile.h"
 #include "logger_index.h"
+#include "logger_particle.h"
 
 /**
  * @brief Main structure of the logger.
@@ -55,20 +57,21 @@
  */
 struct logger_reader {
 
-  /* Time of each index file #TODO */
+  /* Time of each index file. #TODO */
   double *times;
 
-  /* Information contained in the index file */
+  /* Information contained in the index file. */
   struct logger_index index;
   
-  /* Informations contained in the file header */
+  /* Informations contained in the file header. */
   struct logger_logfile log;
 
-  /* Level of verbosity */
+  /* Level of verbosity. */
   int verbose;
 };
 
 void logger_reader_init(struct logger_reader *reader, char *filename, int verbose);
 void logger_reader_free(struct logger_reader *reader);
-
+size_t reader_read_record(struct logger_reader *reader, struct logger_particle *lp,
+			  double *time, int *is_particle, size_t offset);
 #endif  // __LOGGER_LOGGER_READER_H__

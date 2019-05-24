@@ -70,7 +70,7 @@ void logger_index_init(struct logger_index *index, struct logger_reader *reader,
  */
 void logger_index_free(struct logger_index *index) {
 
-  /* unmap file */
+  /* unmap file. */
   logger_loader_io_munmap_file(index->data, index->file_size);
 
   /* Set variables to default value. */

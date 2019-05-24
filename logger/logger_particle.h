@@ -52,31 +52,31 @@ struct logger_reader;
  * interpolation is required.
  */
 struct logger_particle {
-  /* position */
+  /* position. */
   double pos[DIM];
 
-  /* velocity */
+  /* velocity. */
   float vel[DIM];
 
-  /* acceleration */
+  /* acceleration. */
   float acc[DIM];
 
-  /* entropy */
+  /* entropy. */
   float entropy;
 
-  /* smoothing length */
+  /* smoothing length. */
   float h;
 
-  /* density */
+  /* density. */
   float density;
 
-  /* mass */
+  /* mass. */
   float mass;
 
-  /* id */
+  /* unique id. */
   size_t id;
 
-  /* time */
+  /* time of the record. */
   double time;
 };
 
@@ -84,8 +84,8 @@ struct logger_particle {
  * @brief Defines the type of interpolation
  */
 enum logger_reader_type {
-  logger_reader_const, /* Constant interpolation */
-  logger_reader_lin, /* Linear interpolation */
+  logger_reader_const, /* Constant interpolation. */
+  logger_reader_lin, /* Linear interpolation. */
 };
 
 void logger_particle_print(const struct logger_particle *p);

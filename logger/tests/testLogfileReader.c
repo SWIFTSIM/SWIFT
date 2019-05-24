@@ -24,6 +24,11 @@
 #include "logger_reader.h"
 
 #define number_parts 100
+/* Not all the fields are written at every step.
+ * Here we define how often a few fields are written.
+ */
+#define period_rho 2
+#define period_h 4
 
 /**
  * @brief Initialize the particles.
@@ -52,6 +57,9 @@ void init_particles(struct part *p, struct xpart *xp) {
     p[i].id = i;
     hydro_set_mass(&p[i], 1.5);
     xp[i].logger_data.last_offset = 0;
+
+    /* Add time bin in order to skip particles. */
+    p[i].time_bin = (i % 10) + 1;
   }
 }
 
@@ -66,33 +74,19 @@ double get_double_time(int step) {
   return step * time_base;
 }
 
+
 /**
  * @brief Write a few particles during multiple time steps.
  *
  * As only the logger is tested, there is no need to really
  * evolve the particles.
  */
-void write_particles(struct logger *log) {
+void write_particles(struct logger_writer *log, struct part *parts, struct xpart *xparts) {
 
 
   const int number_steps = 100;
 
-  /* Create particles and initialize them. */
-  struct part *parts;
-  if ((parts = (struct part *)malloc(sizeof(struct part) * number_parts)) == NULL)
-    error("Failed to allocate particles array.");
-
-  struct xpart *xparts;
-  if ((xparts = (struct xpart *)malloc(sizeof(struct xpart) * number_parts)) == NULL)
-    error("Failed to allocate xparticles array.");
-
-  init_particles(parts, xparts);
-
-  /*
-    Init logger
-  */
-    
-  /* Do step */
+  /* Loop over all the steps. */
   for(int i = 0; i < number_steps; i++) {
     integertime_t ti_int = get_integer_time(i);
     double ti_double = get_double_time(i);
@@ -104,23 +98,35 @@ void write_particles(struct logger *log) {
      * to store the particles in current time step. */
     logger_ensure_size(log, number_parts, /* number gpart */0, 0);
 
-    /* Run step */
+    /* Loop over all the particles. */
     for(int j = 0; j < number_parts; j++) {
 
-      /* Write particle */
-      /* TODO Currently writing everything, should adapt it through time */
-      logger_log_part(log, &parts[j],
-		      logger_mask_data[logger_x].mask |
-		      logger_mask_data[logger_v].mask |
-		      logger_mask_data[logger_a].mask |
-		      logger_mask_data[logger_u].mask |
-		      logger_mask_data[logger_h].mask |
-		      logger_mask_data[logger_rho].mask |
-		      logger_mask_data[logger_consts].mask,
+      /* Skip some particles. */
+      if (i % parts[j].time_bin != 0)
+	continue;
+
+      /* Write a time information to check that the correct particle is read. */
+      parts[j].x[0] = i;
+
+      /* Write this particle. */
+      unsigned int mask = logger_mask_data[logger_x].mask |
+	logger_mask_data[logger_v].mask |
+	logger_mask_data[logger_a].mask |
+	logger_mask_data[logger_u].mask |
+	logger_mask_data[logger_consts].mask;
+
+      int number_particle_step = i / parts[j].time_bin;
+
+      if (number_particle_step % period_h == 0)
+	mask |= logger_mask_data[logger_h].mask;
+      if (number_particle_step % period_rho == 0)
+	mask |= logger_mask_data[logger_rho].mask;
+	
+      logger_log_part(log, &parts[j], mask,
 		      &xparts[j].logger_data.last_offset);      
     }
 
-    // TODO write index files
+    // TODO write index files.
   }
 
   /* Mark the current time step in the particle logger file. */
@@ -130,107 +136,112 @@ void write_particles(struct logger *log) {
 		       &log->timestamp_offset);
 
 
-  /* Cleanup */
-  free(parts);
-  free(xparts);
 }
 
-/**
- * @brief Read a record (timestamp or particle)
- *
- * @param reader The #reader.
- * @param lp (out) The #logger_particle (if the record is a particle).
- * @param time (out) The time read (if the record is a timestamp).
- * @param is_particle Is the record a particle (or a timestamp)?
- * @param offset The offset in the file.
- *
- * @return The offset after this record.
- */
-size_t read_record(struct logger_reader *reader, struct logger_particle *lp,
-		   double *time, int *is_particle, size_t offset) {
-
-  struct logger_logfile *log = &reader->log;
-
-  /* Read mask to find out if timestamp or particle */
-  size_t mask = 0;
-  logger_loader_io_read_mask(&log->header, log->log.map + offset, &mask, NULL);
-
-  /* Check if timestamp or not */
-  int ind = header_get_field_index(&log->header, "timestamp");
-  if (ind == -1) {
-    error("File header does not contain a mask for time");
+/** Count the number of active particles. */
+int get_number_active_particles(int step, struct part *p) {
+  int count = 0;
+  for(int i = 0; i < number_parts; i++) {
+      if (step % p[i].time_bin == 0)
+	count += 1;
   }
-  if (log->header.masks[ind].mask == mask) {
-    *is_particle = 0;
-    integertime_t int_time = 0;
-    offset = time_read(&int_time, time, reader, offset);
-  }
-  else {
-    *is_particle = 1;
-    offset = logger_particle_read(lp, reader, offset, *time, logger_reader_const);
-  }
-
-  return offset;
+  return count;
 }
-
 /**
  * @brief Check that the reader contains the correct data
  *
  * @param reader The #logger_reader.
  */
-void check_data(struct logger_reader *reader) {
+void check_data(struct logger_reader *reader, struct part *parts, struct xpart *xparts) {
 
   /* No need to check the header, this is already done in testHeader.c */
 
-  /* Get required structures */
+  /* Get required structures. */
   struct logger_logfile *logfile = &reader->log;
   
   struct logger_particle lp;
   logger_particle_init(&lp);
 
-  /* Generate the particles again */
-  struct part *parts;
-  if ((parts = (struct part *)malloc(sizeof(struct part) * number_parts)) == NULL)
-    error("Failed to allocate particles array.");
-
-  struct xpart *xparts;
-  if ((xparts = (struct xpart *)malloc(sizeof(struct xpart) * number_parts)) == NULL)
-    error("Failed to allocate xparticles array.");
-
-  init_particles(parts, xparts);
-
+  /* Define a few variables */
   double time = get_double_time(0);
   int is_particle = 0;
-  int step = 0;
+  int step = -1;
 
-  /* Loop over each record */
-  for(size_t offset = read_record(reader, &lp, &time, &is_particle, logfile->header.offset_first_record);
+  /* Number of particle found during this time step. */
+  int count = 0;
+  /* Set it to an impossible value in order to flag it. */
+  const size_t id_flag = 5 * number_parts;
+  size_t previous_id = id_flag;
+
+  /* Loop over each record. */
+  for(size_t offset = reader_read_record(reader, &lp, &time, &is_particle, logfile->header.offset_first_record);
       offset < logfile->log.file_size;
-      offset = read_record(reader, &lp, &time, &is_particle, offset)) {
+      offset = reader_read_record(reader, &lp, &time, &is_particle, offset)) {
 
+    /* Do the particle case */
     if (is_particle) {
-      /* Check data if it is a particle */
+      count += 1;
+
+      /*
+	Check that we are really increasing the id in the logfile.
+	See the writing part to see that we are always increasing the id.
+      */
+      if (previous_id != id_flag && previous_id >= lp.id) {
+	error("Wrong particle found");
+	previous_id = lp.id;
+      }
+
+      /* Get the corresponding particle */
       if (lp.id >= number_parts)
 	error("Wrong id %zi", lp.id);
 
       struct part *p = &parts[lp.id];
 
+      /* Check the record's data. */
       for(int i = 0; i < 3; i++) {
-	assert(p->x[i] == lp.pos[i]);
+        /* in the first index, we are storing the step information. */
+	if (i == 0)
+	  assert(step == lp.pos[i]);
+	else
+	  assert(p->x[i] == lp.pos[i]);
 	assert(p->v[i] == lp.vel[i]);
 	assert(p->a_hydro[i] == lp.acc[i]);
       }
 
       assert(p->entropy == lp.entropy);
-      assert(p->h == lp.h);
-      assert(p->rho == lp.density);
       assert(p->mass == lp.mass);
+
+      /* Check optional fields. */
+      int number_steps = step / p->time_bin;
+      if (number_steps % period_h == 0) {
+	assert(p->h == lp.h);
+      }
+      else {
+	assert(-1 == lp.h);
+      }
+      if (number_steps % period_rho == 0) {
+	assert(p->rho == lp.density);
+      }
+      else {
+	assert(-1 == lp.density);
+      }
     }
+    /* Time stamp case. */
     else {
-      /* Check data if it is a timestamp */
-      assert(time == get_double_time(step));
+
+      /* Check if we have the current amount of particles in previous step. */
+      if (step != -1 && count != get_number_active_particles(step, parts))
+	error("The reader did not find the correct number of particles during step %i", step);
 
       step += 1;
+
+      /* Reset some variables. */
+      previous_id = id_flag;
+      count = 0;
+
+      /* Check the record's data. */
+      assert(time == get_double_time(step));
+
     }
   }
   
@@ -246,17 +257,28 @@ int main(int argc, char *argv[]) {
   message("Generating the dump.");
 
   /* Create required structures. */
-  struct logger log;
+  struct logger_writer log;
   struct swift_params params;
   char filename[200] = "testLogfileReader.yml";
 
   /* Read parameters. */
   parser_read_file(filename, &params);
 
+  /* Initialize the particles. */
+  struct part *parts;
+  if ((parts = (struct part *)malloc(sizeof(struct part) * number_parts)) == NULL)
+    error("Failed to allocate particles array.");
+
+  struct xpart *xparts;
+  if ((xparts = (struct xpart *)malloc(sizeof(struct xpart) * number_parts)) == NULL)
+    error("Failed to allocate xparticles array.");
+
+  init_particles(parts, xparts);
+
   /* Initialize the logger. */
   logger_init(&log, &params);
 
-  /* get dump filename */
+  /* get dump filename. */
   char dump_filename[PARSER_MAX_LINE_SIZE];
   message("%s", log.base_name);
   strcpy(dump_filename, log.base_name);
@@ -266,7 +288,7 @@ int main(int argc, char *argv[]) {
   logger_write_file_header(&log);
 
   /* Write particles. */
-  write_particles(&log);
+  write_particles(&log, parts, xparts);
 
   /* clean memory */
   logger_free(&log);
@@ -279,17 +301,21 @@ int main(int argc, char *argv[]) {
   /* Generate required structure for reading. */
   struct logger_reader reader;
 
-  /* Set verbose level */
+  /* Set verbose level. */
   reader.verbose = 1;
   
-  /* Read the header */
+  /* Read the header. */
   logger_reader_init(&reader, dump_filename, /* verbose */ 1);
 
   /*
-    Finally check everything
+    Finally check everything.
   */
 
-  check_data(&reader);
+  check_data(&reader, parts, xparts);
+
+  /* Do some cleanup. */
+  free(parts);
+  free(xparts);
 
   return 0;
 }

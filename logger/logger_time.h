@@ -45,19 +45,19 @@ struct logger_reader;
  * #time_array_count.
  */
 struct time_array {
-  /* Pointer to next element */
+  /* Pointer to next element. */
   void *next;
 
-  /* Pointer to prev element */
+  /* Pointer to prev element. */
   void *prev;
 
-  /* Integertime of this time record */
+  /* Integertime of this time record. */
   integertime_t int_time;
 
-  /* Double time of this time record */
+  /* Double time of this time record. */
   double time;
 
-  /* Offset in the file of this time record */
+  /* Offset in the file of this time record. */
   size_t offset;
 };
 

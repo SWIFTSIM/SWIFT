@@ -88,7 +88,7 @@ void *logger_loader_io_mmap_file(char *filename, size_t *file_size, int read_onl
  *
  */
 void logger_loader_io_munmap_file(void *map, size_t file_size) {
-  /* unmap */
+  /* unmap the file. */
   if (munmap(map, file_size) != 0) {
     error("Unable to unmap the file (%s)", strerror(errno));
   }

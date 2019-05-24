@@ -30,10 +30,10 @@ struct logger_reader;
 
 
 struct logger_index_data {
-  /* The particle's id */
+  /* The particle's id. */
   uint64_t id;
 
-  /* The particle's offset */
+  /* The particle's offset. */
   uint64_t offset;
 };
 
@@ -45,25 +45,25 @@ struct logger_index_data {
  * #logger_index_free.
  */
 struct logger_index {
-  /* The reader */
+  /* The reader. */
   struct logger_reader *reader;
 
-  /* memory map of the index file */
+  /* memory map of the index file. */
   void *data;
 
-  /* Index file size */
+  /* Index file size. */
   size_t file_size;
 
-  /* Number of particles */
+  /* Number of particles. */
   size_t total_number_particles;
 
-  /* Number of particles per type */
+  /* Number of particles per type. */
   long long number_particles[swift_type_count];
 
-  /* Time of the index file */
+  /* Time of the index file. */
   double time;
 
-  /* Integer time of the index file */
+  /* Integer time of the index file. */
   integertime_t int_time;
   
 };

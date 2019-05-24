@@ -38,7 +38,7 @@ void logger_logfile_init_from_file(
   if (&reader->log != log)
     error("Wrong link to the reader.");
 
-  /* Set pointers to zero */
+  /* Set pointers to zero. */
   time_array_init(&log->times);
 
   /* Open file, map it and get its size. */
@@ -58,26 +58,26 @@ void logger_logfile_init_from_file(
   }
 
   /* No need to continue if only the
-     header is required */
+     header is required. */
   if (only_header)
     return;
 
-  /* Check if the offset are corrupted */
+  /* Check if the offset are corrupted. */
   if (header_is_corrupted(&log->header)) {
     error("The offsets have been corrupted");
   }
 
-  /* Reverse the offsets direction */
+  /* Reverse the offsets direction. */
   if (header_is_backward(&log->header)) {
     logger_logfile_reverse_offset(log, filename);
   }
 
-  /* Initialize the time array */
+  /* Initialize the time array. */
   if (reader->verbose > 1)
     message("Reading the time stamps.");
   time_array_populate(&log->times, log);
 
-  /* Print the time array */
+  /* Print the time array. */
   if (reader->verbose > 0) {
     time_array_print(&log->times);
   }
@@ -104,7 +104,7 @@ void logger_logfile_free(struct logger_logfile *log) {
  */
 void logger_logfile_reverse_offset(struct logger_logfile *log, char *filename) {
 
-  /* Close and reopen the file in write mode */
+  /* Close and reopen the file in write mode. */
   logger_loader_io_munmap_file(log->log.map, log->log.file_size);
   log->log.map = logger_loader_io_mmap_file(
       filename, &log->log.file_size, /* read_only */ 0);
@@ -115,7 +115,7 @@ void logger_logfile_reverse_offset(struct logger_logfile *log, char *filename) {
   if (&reader->log != log)
     error("Wrong link to the reader.");
 
-  /* Check if the offsets need to be reversed */
+  /* Check if the offsets need to be reversed. */
   if (!header_is_backward(header)) {
     error("The offsets are already reversed.");
   }
@@ -175,7 +175,7 @@ void logger_logfile_reverse_offset(struct logger_logfile *log, char *filename) {
   }
 #endif
 
-  /* Close and reopen the file in read mode */
+  /* Close and reopen the file in read mode. */
   logger_loader_io_munmap_file(log->log.map, log->log.file_size);
   log->log.map = logger_loader_io_mmap_file(
       filename, &log->log.file_size, /* read_only */ 1);

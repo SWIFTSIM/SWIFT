@@ -77,7 +77,7 @@ void* logger_particle_read_field(struct logger_particle *part, void *map,
 				  const char *field, const size_t size) {
   void *p = NULL;
 
-  /* Get the correct pointer */
+  /* Get the correct pointer. */
   if (strcmp("positions", field) == 0) {
     p = &part->pos;
   } else if (strcmp("velocities", field) == 0) {
@@ -96,10 +96,10 @@ void* logger_particle_read_field(struct logger_particle *part, void *map,
     error("Type %s not defined", field);
   }
 
-  /* read the data */
+  /* read the data. */
   map = logger_loader_io_read_data(map, size, p);
 
-  /* Split the required fields */
+  /* Split the required fields. */
   if (strcmp("consts", field) == 0) {
     part->mass = 0;
     part->id = 0;
@@ -128,7 +128,7 @@ size_t logger_particle_read(struct logger_particle *part, const struct logger_re
 			    size_t offset, const double time,
 			    const enum logger_reader_type reader_type) {
 
-  /* Get a few pointers */
+  /* Get a few pointers. */
   const struct header *h = &reader->log.header;
   void *map = reader->log.log.map;
 
@@ -139,13 +139,13 @@ size_t logger_particle_read(struct logger_particle *part, const struct logger_re
 
   logger_particle_init(part);
 
-  /* Read the record mask */
+  /* Read the record's mask. */
   map = logger_loader_io_read_mask(h, map + offset, &mask, &h_offset);
 
-  /* Check if it is not a time record */
-  if (mask != 127) error("Unexpected mask: %lu", mask);
+  /* Check if it is not a time record. */
+  if (mask == 128) error("Unexpected mask: %lu", mask);
 
-  /* Read all the fields */
+  /* Read all the fields. */
   for (size_t i = 0; i < h->number_mask; i++) {
     if (mask & h->masks[i].mask) {
       map = logger_particle_read_field(part, map, h->masks[i].name,
@@ -160,7 +160,7 @@ size_t logger_particle_read(struct logger_particle *part, const struct logger_re
   else
     part->time = -1;
 
-  /* update the offset */
+  /* update the offset. */
   offset = (size_t) (map - reader->log.log.map);
 
   /* Check if an interpolation is required. */
@@ -183,7 +183,7 @@ size_t logger_particle_read(struct logger_particle *part, const struct logger_re
   h_offset += offset - header_get_record_size_from_mask(h, mask) - LOGGER_MASK_SIZE -
               LOGGER_OFFSET_SIZE;
 
-  /* Get time of next record */
+  /* Get time of next record. */
   part_next.time = time_array_get_time(times, h_offset);
 
   /* Read next record. */
@@ -232,7 +232,7 @@ void logger_particle_interpolate(
   double tmp;
   float ftmp;
 
-  /* interpolate vectors */
+  /* interpolate vectors. */
   for (size_t i = 0; i < DIM; i++) {
     tmp = (part_next->pos[i] - part_curr->pos[i]);
     part_curr->pos[i] += tmp * scaling;
@@ -244,10 +244,10 @@ void logger_particle_interpolate(
     part_curr->acc[i] += ftmp * scaling;
   }
 
-  /* interpolate scalars */
+  /* interpolate scalars. */
   ftmp = (part_next->entropy - part_curr->entropy);
   part_curr->entropy += ftmp * scaling;
 
-  /* set time */
+  /* set time. */
   part_curr->time = time;
 }

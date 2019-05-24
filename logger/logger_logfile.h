@@ -46,15 +46,15 @@ struct logger_logfile {
   /* The reader that is using this log file. */
   struct logger_reader *reader;
 
-  /* Information about the time records */
+  /* Information about the time records. */
   struct time_array times;
 
   /* The log's variables. */
   struct {
-    /* Mapped data */
+    /* Mapped data. */
     void *map;
 
-    /* File size */
+    /* File size. */
     size_t file_size;
 
   } log;

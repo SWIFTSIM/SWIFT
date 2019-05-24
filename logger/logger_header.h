@@ -32,7 +32,7 @@ enum logger_offset_direction {
   logger_offset_backward = 0,
   logger_offset_forward,
   logger_offset_corrupted,
-  /* Number of offset type */
+  /* Number of offset type. */
   logger_offset_count,
 };
 
@@ -56,10 +56,10 @@ struct logger_logfile;
  * The only function that modify the file is #header_change_offset_direction.
  */
 struct header {
-  /* Dump's major version */
+  /* Dump's major version. */
   int major_version;
 
-  /* Dump's minor version */
+  /* Dump's minor version. */
   int minor_version;
 
   /* Offset of the first record. */
@@ -77,7 +77,7 @@ struct header {
   /* Direction of the offset in the records. */
   enum logger_offset_direction offset_direction;
 
-  /* The corresponding log */
+  /* The corresponding log. */
   struct logger_logfile *log;
 };
 

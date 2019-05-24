@@ -30,7 +30,7 @@ int main(int argc, char *argv[]) {
 
   message("Generating the dump.");
   /* Create required structures. */
-  struct logger log;
+  struct logger_writer log;
   struct swift_params params;
   char filename[200] = "testLogfileHeader.yml";
 
@@ -40,7 +40,7 @@ int main(int argc, char *argv[]) {
   /* Initialize the logger. */
   logger_init(&log, &params);
 
-  /* get dump filename */
+  /* get dump filename. */
   char dump_filename[PARSER_MAX_LINE_SIZE];
   strcpy(dump_filename, log.base_name);
   strcat(dump_filename, ".dump");
@@ -48,7 +48,7 @@ int main(int argc, char *argv[]) {
   /* Write file header. */
   logger_write_file_header(&log);
 
-  /* clean memory */
+  /* clean memory. */
   logger_free(&log);
   /*
     Then read the file.
@@ -60,14 +60,14 @@ int main(int argc, char *argv[]) {
   struct logger_logfile *logfile = &reader.log;
   logfile->reader = &reader;
 
-  /* Set verbose level */
+  /* Set verbose level. */
   reader.verbose = 1;
   
   /* Read the header */
   logger_logfile_init_from_file(logfile, dump_filename, &reader,
 		      /* only_header */ 1);
   /*
-    Finally check everything
+    Finally check everything.
   */
 
   struct header *h = &logfile->header;
