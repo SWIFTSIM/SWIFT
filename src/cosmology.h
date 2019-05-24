@@ -57,7 +57,7 @@ struct cosmology {
   /*! Power of the scale-factor used for relative velocities in visc. terms */
   double a_factor_mu;
 
-  /*! {ower of the scale-factor used for epsilon term in the Balsara switch */
+  /*! Power of the scale-factor used for epsilon term in the Balsara switch */
   double a_factor_Balsara_eps;
 
   /*! Power of the scale-factor used for gravity accelerations */
@@ -72,10 +72,10 @@ struct cosmology {
   /*! Hubble constant at the current redshift (in internal units) */
   double H;
 
-  /*! The critical density at the current redshift (in internal units) */
+  /*! The critical density at the current redshift (in internal physical units) */
   double critical_density;
 
-  /*! The critical density at redshift 0 (in internal units) */
+  /*! The critical density at redshift 0 (in internal physical units) */
   double critical_density_0;
 
   /*! Conversion factor from internal time-step size to cosmological step */
