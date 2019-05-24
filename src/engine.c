@@ -5014,7 +5014,6 @@ void engine_init(struct engine *e, struct space *s, struct swift_params *params,
   if (strlen(e->run_name) == 0) {
     error("The run name in the parameter file cannot be an empty string.");
   }
-  if (e->nodeID == 0) message("Running simulation '%s'.", e->run_name);
 
   /* Setup the timestep if non-cosmological */
   if (!(e->policy & engine_policy_cosmology)) {
@@ -5120,6 +5119,9 @@ void engine_config(int restart, struct engine *e, struct swift_params *params,
   e->run_fof = 0;
   engine_rank = nodeID;
 
+  /* Welcome message */
+  if (e->nodeID == 0) message("Running simulation '%s'.", e->run_name);
+  
   /* Get the number of queues */
   int nr_queues =
       parser_get_opt_param_int(params, "Scheduler:nr_queues", nr_threads);

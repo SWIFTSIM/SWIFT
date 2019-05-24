@@ -637,8 +637,6 @@ void read_ic_serial(char* fileName, const struct unit_system* internal_units,
     N[ptype] = (mpi_rank + 1) * N_total[ptype] / mpi_size - offset[ptype];
   }
 
-  N[5] = 0;
-
   /* Allocate memory to store SPH particles */
   if (with_hydro) {
     *Ngas = N[0];

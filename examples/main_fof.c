@@ -138,7 +138,6 @@ int main(int argc, char *argv[]) {
   if (myrank == 0) greetings();
 
   int with_aff = 0;
-  int dry_run = 0;
   int dump_tasks = 0;
   int dump_threadpool = 0;
   int with_fof = 1;
@@ -164,12 +163,6 @@ int main(int argc, char *argv[]) {
       OPT_GROUP("  Control options:\n"),
       OPT_BOOLEAN('a', "pin", &with_aff,
                   "Pin runners using processor affinity.", NULL, 0, 0),
-      OPT_BOOLEAN('d', "dry-run", &dry_run,
-                  "Dry run. Read the parameter file, allocates memory but does "
-                  "not read the particles from ICs. Exits before the start of "
-                  "time integration. Checks the validity of parameters and IC "
-                  "files as well as memory limits.",
-                  NULL, 0, 0),
       OPT_BOOLEAN('e', "fpe", &with_fp_exceptions,
                   "Enable floating-point exceptions (debugging mode).", NULL, 0,
                   0),
@@ -276,10 +269,6 @@ int main(int argc, char *argv[]) {
 
   /* How vocal are we ? */
   const int talking = (verbose == 1 && myrank == 0) || (verbose == 2);
-
-  if (myrank == 0 && dry_run)
-    message(
-        "Executing a dry run. No i/o or time integration will be performed.");
 
   /* Report CPU frequency.*/
   cpufreq = clocks_get_cpufreq();
@@ -446,7 +435,7 @@ int main(int argc, char *argv[]) {
 		   /*with_hydro=*/1, /*with_grav=*/ 1,
 		   /*with_stars=*/1, /*with_black_holes=*/1, cleanup_h, cleanup_sqrt_a,
 		   cosmo.h, cosmo.a, myrank, nr_nodes, MPI_COMM_WORLD,
-		   MPI_INFO_NULL, nr_threads, dry_run);
+		   MPI_INFO_NULL, nr_threads, /*dry_run=*/0);
 #else
   read_ic_serial(ICfileName, &us, dim, &parts, &gparts, &sparts, &bparts,
 		 &Ngas, &Ngpart, &Nspart, &Nbpart, &flag_entropy_ICs,
@@ -454,7 +443,7 @@ int main(int argc, char *argv[]) {
 		 /*with_stars=*/1, /*with_black_holes=*/1,
 		 cleanup_h, cleanup_sqrt_a,
 		 cosmo.h, cosmo.a, myrank, nr_nodes, MPI_COMM_WORLD,
-		 MPI_INFO_NULL, nr_threads, dry_run);
+		 MPI_INFO_NULL, nr_threads, /*dry_run=*/0);
 #endif
 #else
   read_ic_single(ICfileName, &us, dim, &parts, &gparts, &sparts, &bparts,
@@ -462,7 +451,7 @@ int main(int argc, char *argv[]) {
 		 /*with_hydro=*/1, /*with_grav=*/ 1,
 		 /*with_stars=*/1, /*with_black_holes=*/1,
 		 cleanup_h, cleanup_sqrt_a,
-		 cosmo.h, cosmo.a, nr_threads, dry_run);
+		 cosmo.h, cosmo.a, nr_threads, /*dry_run=*/0);
 #endif
 #endif
   if (myrank == 0) {
@@ -474,9 +463,8 @@ int main(int argc, char *argv[]) {
   
 #ifdef SWIFT_DEBUG_CHECKS
   /* Check that the other links are correctly set */
-  if (!dry_run)
-    part_verify_links(parts, gparts, sparts, bparts, Ngas, Ngpart, Nspart,
-		      Nbpart, 1);
+  part_verify_links(parts, gparts, sparts, bparts, Ngas, Ngpart, Nspart,
+		    Nbpart, 1);
 #endif
   
   /* Get the total number of particles across all nodes. */
@@ -491,19 +479,19 @@ int main(int argc, char *argv[]) {
   N_total[2] = Nspart;
   N_total[3] = Nbpart;
 #endif
-  
+
   if (myrank == 0)
     message(
-	    "Read %lld gas particles, %lld stars particles and %lld gparts from "
-	    "the ICs.",
-	    N_total[0], N_total[2], N_total[1]);
+	    "Read %lld gas particles, %lld stars particles, %lld black hole "
+	    "particles and %lld gparts from the ICs.",
+	    N_total[0], N_total[2], N_total[3], N_total[1]);
   
   /* Initialize the space with these data. */
   if (myrank == 0) clocks_gettime(&tic);
   space_init(&s, params, &cosmo, dim, parts, gparts, sparts, bparts, Ngas,
 	     Ngpart, Nspart, Nbpart, periodic, replicate, /*generate_gas_in_ics=*/0,
 	     N_total[0] > 0, 1, /*with_star_formation=*/0, talking,
-	     dry_run);
+	     /*dry_run=*/0);
   
   if (myrank == 0) {
     clocks_gettime(&toc);
@@ -553,14 +541,14 @@ int main(int argc, char *argv[]) {
   }
   
   /* Verify that each particle is in it's proper cell. */
-  if (talking && !dry_run) {
+  if (talking) {
     int icount = 0;
     space_map_cells_pre(&s, 0, &map_cellcheck, &icount);
     message("map_cellcheck picked up %i parts.", icount);
   }
   
   /* Verify the maximal depth of cells. */
-  if (talking && !dry_run) {
+  if (talking) {
     int data[2] = {s.maxdepth, 0};
     space_map_cells_pre(&s, 0, &map_maxdepth, data);
     message("nr of cells at depth %i is %i.", data[0], data[1]);
@@ -596,11 +584,12 @@ int main(int argc, char *argv[]) {
   
   /* Get some info to the user. */
   if (myrank == 0) {
-    long long N_DM = N_total[1] - N_total[2] - N_total[0];
+    long long N_DM = N_total[1] - N_total[2] - N_total[3] - N_total[0];
     message(
-	    "Running on %lld gas particles, %lld stars particles and %lld DM "
-	    "particles (%lld gravity particles)",
-	    N_total[0], N_total[2], N_total[1] > 0 ? N_DM : 0, N_total[1]);
+	    "Running on %lld gas particles, %lld stars particles %lld black "
+	    "hole particles and %lld DM particles (%lld gravity particles)",
+	    N_total[0], N_total[2], N_total[3], N_total[1] > 0 ? N_DM : 0,
+	    N_total[1]);
     message(
 	    "from t=%.3e until t=%.3e with %d ranks, %d threads / rank and %d "
 	    "task queues / rank (dt_min=%.3e, dt_max=%.3e)...",
@@ -608,29 +597,6 @@ int main(int argc, char *argv[]) {
 	    e.dt_min, e.dt_max);
     fflush(stdout);
   }
-  
-  /* Time to say good-bye if this was not a serious run. */
-  if (dry_run) {
-#ifdef WITH_MPI
-    if ((res = MPI_Finalize()) != MPI_SUCCESS)
-      error("call to MPI_Finalize failed with error %i.", res);
-#endif
-    if (myrank == 0)
-      message("Time integration ready to start. End of dry-run.");
-    engine_clean(&e);
-    free(params);
-    return 0;
-  }
-  
-  /* Initialise the table of Ewald corrections for the gravity checks */
-#ifdef SWIFT_GRAVITY_FORCE_CHECKS
-  if (s.periodic) gravity_exact_force_ewald_init(e.s->dim[0]);
-#endif
-  
-  /* Init the runner history. */
-#ifdef HIST
-  for (k = 0; k < runner_hist_N; k++) runner_hist_bins[k] = 0;
-#endif
   
 #ifdef WITH_MPI
     /* Split the space. */
@@ -689,9 +655,9 @@ int main(int argc, char *argv[]) {
 #endif  // SWIFT_DEBUG_THREADPOOL
 
   /* used parameters */
-  parser_write_params_to_file(params, "used_parameters.yml", 1);
+  parser_write_params_to_file(params, "fof_used_parameters.yml", 1);
   /* unused parameters */
-  parser_write_params_to_file(params, "unused_parameters.yml", 0);
+  parser_write_params_to_file(params, "fof_unused_parameters.yml", 0);
 
   /* Dump memory use report */
 #ifdef SWIFT_MEMUSE_REPORTS
