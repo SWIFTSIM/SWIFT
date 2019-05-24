@@ -506,9 +506,10 @@ void engine_init(struct engine *e, struct space *s, struct swift_params *params,
                  const struct star_formation *starform,
                  const struct chemistry_global_data *chemistry,
                  struct fof_props *fof_properties);
-void engine_config(int restart, struct engine *e, struct swift_params *params,
-                   int nr_nodes, int nodeID, int nr_threads, int with_aff,
-                   int verbose, const char *restart_file);
+void engine_config(int restart, int fof, struct engine *e,
+                   struct swift_params *params, int nr_nodes, int nodeID,
+                   int nr_threads, int with_aff, int verbose,
+                   const char *restart_file);
 void engine_dump_index(struct engine *e);
 void engine_launch(struct engine *e);
 void engine_prepare(struct engine *e);
@@ -535,7 +536,8 @@ void engine_unpin(void);
 void engine_clean(struct engine *e);
 int engine_estimate_nr_tasks(const struct engine *e);
 void engine_print_task_counts(const struct engine *e);
-void engine_fof(struct engine *e, const int dump_results, const int seed_black_holes);
+void engine_fof(struct engine *e, const int dump_results,
+                const int seed_black_holes);
 
 /* Function prototypes, engine_maketasks.c. */
 void engine_maketasks(struct engine *e);
