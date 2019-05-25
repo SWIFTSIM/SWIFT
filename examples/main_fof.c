@@ -53,11 +53,11 @@
 struct profiler prof;
 
 /*  Usage string. */
-static const char *const swift_usage[] = {
-    "swift [options] [[--] param-file]",
-    "swift [options] param-file",
-    "swift_mpi [options] [[--] param-file]",
-    "swift_mpi [options] param-file",
+static const char *const fof_usage[] = {
+    "fof [options] [[--] param-file]",
+    "fof [options] param-file",
+    "fof_mpi [options] [[--] param-file]",
+    "fof_mpi [options] param-file",
     NULL,
 };
 
@@ -144,7 +144,6 @@ int main(int argc, char *argv[]) {
   int with_fp_exceptions = 0;
   int verbose = 0;
   int nr_threads = 1;
-  int with_verbose_timers = 0;
   char *output_parameters_filename = NULL;
   char *cpufreqarg = NULL;
   char *param_filename = NULL;
@@ -178,8 +177,6 @@ int main(int argc, char *argv[]) {
                   "The number of threads to use on each MPI rank. Defaults to "
                   "1 if not specified.",
                   NULL, 0, 0),
-      OPT_INTEGER('T', "timers", &with_verbose_timers,
-                  "Print timers every time-step.", NULL, 0, 0),
       OPT_INTEGER('v', "verbose", &verbose,
                   "Run in verbose mode, in MPI mode 2 outputs from all ranks.",
                   NULL, 0, 0),
@@ -192,7 +189,7 @@ int main(int argc, char *argv[]) {
       OPT_END(),
   };
   struct argparse argparse;
-  argparse_init(&argparse, options, swift_usage, 0);
+  argparse_init(&argparse, options, fof_usage, 0);
   argparse_describe(&argparse, "\nParameters:",
                     "\nSee the file examples/parameter_example.yml for an "
                     "example of parameter file.");
@@ -415,6 +412,10 @@ int main(int argc, char *argv[]) {
   /* Initialise the hydro scheme */
   hydro_props_init(&hydro_properties, &prog_const, &us, params);
 
+  /* Initialise the FOF properties */
+  bzero(&fof_properties, sizeof(struct fof_props));
+  if (with_fof) fof_init(&fof_properties, params, &prog_const, &us);
+
   /* Be verbose about what happens next */
   if (myrank == 0) message("Reading ICs from file '%s'", ICfileName);
   if (myrank == 0 && cleanup_h)
@@ -488,7 +489,7 @@ int main(int argc, char *argv[]) {
   if (myrank == 0) clocks_gettime(&tic);
   space_init(&s, params, &cosmo, dim, parts, gparts, sparts, bparts, Ngas,
              Ngpart, Nspart, Nbpart, periodic, replicate,
-             /*generate_gas_in_ics=*/0, N_total[0] > 0, 1,
+             /*generate_gas_in_ics=*/0, /*hydro=*/N_total[0] > 0, /*gravity=*/1,
              /*with_star_formation=*/0, talking,
              /*dry_run=*/0);
 
@@ -537,24 +538,6 @@ int main(int argc, char *argv[]) {
     message("maximum depth is %d.", s.maxdepth);
     fflush(stdout);
   }
-
-  /* Verify that each particle is in it's proper cell. */
-  if (talking) {
-    int icount = 0;
-    space_map_cells_pre(&s, 0, &map_cellcheck, &icount);
-    message("map_cellcheck picked up %i parts.", icount);
-  }
-
-  /* Verify the maximal depth of cells. */
-  if (talking) {
-    int data[2] = {s.maxdepth, 0};
-    space_map_cells_pre(&s, 0, &map_maxdepth, data);
-    message("nr of cells at depth %i is %i.", data[0], data[1]);
-  }
-
-  /* Initialise the FOF properties */
-  bzero(&fof_properties, sizeof(struct fof_props));
-  if (with_fof) fof_init(&fof_properties, params, &prog_const, &us);
 
   /* Construct the engine policy */
   int engine_policies = ENGINE_POLICY | engine_policy_steal;
@@ -676,7 +659,6 @@ int main(int argc, char *argv[]) {
 #endif
 
   /* Clean everything */
-  if (with_verbose_timers) timers_close_file();
   cosmology_clean(&cosmo);
   pm_mesh_clean(&mesh);
   engine_clean(&e);
