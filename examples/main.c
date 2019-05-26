@@ -143,7 +143,7 @@ int main(int argc, char *argv[]) {
 #endif
 
   /* Welcome to SWIFT, you made the right choice */
-  if (myrank == 0) greetings();
+  if (myrank == 0) greetings(/*fof=*/0);
 
   int with_aff = 0;
   int dry_run = 0;
