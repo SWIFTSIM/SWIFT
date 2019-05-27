@@ -240,8 +240,8 @@ __attribute__((always_inline)) INLINE static void storeInteractions(
  *
  * @param ci #cell pointer to ci
  * @param cj #cell pointer to cj
- * @param sort_i #entry array for particle distance in ci
- * @param sort_j #entry array for particle distance in cj
+ * @param sort_i #sort_entry array for particle distance in ci
+ * @param sort_j #sort_entry array for particle distance in cj
  * @param dx_max maximum particle movement allowed in cell
  * @param rshift cutoff shift
  * @param hi_max Maximal smoothing length in cell ci
@@ -399,8 +399,8 @@ __attribute__((always_inline)) INLINE static void populate_max_index_density(
  *
  * @param ci #cell pointer to ci
  * @param cj #cell pointer to cj
- * @param sort_i #entry array for particle distance in ci
- * @param sort_j #entry array for particle distance in cj
+ * @param sort_i #sort_entry array for particle distance in ci
+ * @param sort_j #sort_entry array for particle distance in cj
  * @param dx_max maximum particle movement allowed in cell
  * @param rshift cutoff shift
  * @param hi_max_raw Maximal smoothing length in cell ci
@@ -571,7 +571,7 @@ __attribute__((always_inline)) INLINE static void populate_max_index_force(
  * @param runner_shift_x The runner_shift in the x direction.
  * @param runner_shift_y The runner_shift in the y direction.
  * @param runner_shift_z The runner_shift in the z direction.
- * @param sort_j #entry array for particle distance in cj
+ * @param sort_j #sort_entry array for particle distance in cj
  * @param max_index_i array to hold the maximum distances of pi particles into
  * #cell cj
  * @param flipped Flag to check whether the cells have been flipped or not.
