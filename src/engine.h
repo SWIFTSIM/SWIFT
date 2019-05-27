@@ -514,7 +514,7 @@ void engine_dump_index(struct engine *e);
 void engine_launch(struct engine *e);
 void engine_prepare(struct engine *e);
 void engine_init_particles(struct engine *e, int flag_entropy_ICs,
-                           int clean_h_values, int compute_init_accel);
+                           int clean_h_values);
 void engine_step(struct engine *e);
 void engine_split(struct engine *e, struct partition *initial_partition);
 void engine_exchange_strays(struct engine *e, const size_t offset_parts,

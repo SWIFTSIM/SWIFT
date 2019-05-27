@@ -3441,11 +3441,11 @@ void engine_first_init_particles(struct engine *e) {
  * @param flag_entropy_ICs Did the 'Internal Energy' of the particles actually
  * contain entropy ?
  * @param clean_h_values Are we cleaning up the values of h before building
- * @param compute_init_accel Are we computing the initial acceleration of
- *particles?
+ * @param start_acutal_run Are we computing the initial acceleration of
+ * particles (i.e. are we preparing for an actual run)?
  */
 void engine_init_particles(struct engine *e, int flag_entropy_ICs,
-                           int clean_h_values, int compute_init_accel) {
+                           int clean_h_values) {
 
   struct space *s = e->s;
 
@@ -3515,9 +3515,6 @@ void engine_init_particles(struct engine *e, int flag_entropy_ICs,
       engine_launch(e);
     }
   }
-
-  /* Exit if only computing the FOF. */
-  if (!compute_init_accel) return;
 
 #ifdef SWIFT_DEBUG_CHECKS
   /* Check that we have the correct total mass in the top-level multipoles */

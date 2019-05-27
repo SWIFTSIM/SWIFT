@@ -374,7 +374,6 @@ int main(int argc, char *argv[]) {
 #endif
 
   /* Common variables for restart and IC sections. */
-  int clean_smoothing_length_values = 0;
   int flag_entropy_ICs = 0;
 
   /* Initialize unit system and constants */
@@ -396,7 +395,7 @@ int main(int argc, char *argv[]) {
       parser_get_param_int(params, "InitialConditions:periodic");
   const int replicate =
       parser_get_opt_param_int(params, "InitialConditions:replicate", 1);
-  clean_smoothing_length_values = parser_get_opt_param_int(
+  const int clean_smoothing_length_values = parser_get_opt_param_int(
       params, "InitialConditions:cleanup_smoothing_lengths", 0);
   const int cleanup_h = parser_get_opt_param_int(
       params, "InitialConditions:cleanup_h_factors", 0);
@@ -590,8 +589,8 @@ int main(int argc, char *argv[]) {
   e.tic_step = getticks();
 #endif
 
-  /* Initialise the particles */
-  engine_init_particles(&e, flag_entropy_ICs, clean_smoothing_length_values, 0);
+  /* Initialise the tree and communication tasks */
+  engine_rebuild(&e, /*repartitionned=*/0, clean_smoothing_length_values);
 
 #ifdef SWIFT_DEBUG_TASKS
   e.toc_step = getticks();
