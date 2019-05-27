@@ -533,7 +533,7 @@ void engine_print_policy(struct engine *e);
 int engine_is_done(struct engine *e);
 void engine_pin(void);
 void engine_unpin(void);
-void engine_clean(struct engine *e);
+void engine_clean(struct engine *e, const int fof);
 int engine_estimate_nr_tasks(const struct engine *e);
 void engine_print_task_counts(const struct engine *e);
 void engine_fof(struct engine *e, const int dump_results,

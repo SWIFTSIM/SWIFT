@@ -5263,8 +5263,8 @@ void engine_config(int restart, int fof, struct engine *e,
 #endif
   }
 
-  /* Open some files */
-  if (e->nodeID == 0) {
+  /* Open some global files */
+  if (!fof && e->nodeID == 0) {
 
     /* When restarting append to these files. */
     const char *mode;
@@ -5310,11 +5310,10 @@ void engine_config(int restart, int fof, struct engine *e,
           "+/- %.4f\n# Eta: %f\n# Config: %s\n# CFLAGS: %s\n",
           hostname(), git_branch(), git_revision(), compiler_name(),
           compiler_version(), e->nr_threads, e->nr_nodes, SPH_IMPLEMENTATION,
-          kernel_name,
-          e->hydro_properties ? e->hydro_properties->target_neighbours : 0.f,
-          e->hydro_properties ? e->hydro_properties->delta_neighbours : 0.f,
-          e->hydro_properties ? e->hydro_properties->eta_neighbours : 0.f,
-          configuration_options(), compilation_cflags());
+          kernel_name, e->hydro_properties->target_neighbours,
+          e->hydro_properties->delta_neighbours,
+          e->hydro_properties->eta_neighbours, configuration_options(),
+          compilation_cflags());
 
       fprintf(
           e->file_timesteps,
@@ -5580,8 +5579,11 @@ void engine_config(int restart, int fof, struct engine *e,
   fof_create_mpi_types();
 #endif
 
-  /* Initialise the collection group. */
-  collectgroup_init();
+  if (!fof) {
+
+    /* Initialise the collection group. */
+    collectgroup_init();
+  }
 
   /* Initialize the threadpool. */
   threadpool_init(&e->threadpool, e->nr_threads);
@@ -6170,8 +6172,11 @@ void engine_recompute_displacement_constraint(struct engine *e) {
 
 /**
  * @brief Frees up the memory allocated for this #engine
+ *
+ * @param e The #engine to clean.
+ * @param fof Was this a stand-alone FOF run?
  */
-void engine_clean(struct engine *e) {
+void engine_clean(struct engine *e, const int fof) {
   /* Start by telling the runners to stop. */
   e->step_props = engine_step_prop_done;
   swift_barrier_wait(&e->run_barrier);
@@ -6204,7 +6209,7 @@ void engine_clean(struct engine *e) {
   threadpool_clean(&e->threadpool);
 
   /* Close files */
-  if (e->nodeID == 0) {
+  if (!fof && e->nodeID == 0) {
     fclose(e->file_timesteps);
     fclose(e->file_stats);
 
