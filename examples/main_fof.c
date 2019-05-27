@@ -98,10 +98,6 @@ int main(int argc, char *argv[]) {
   struct bpart *bparts = NULL;
   struct unit_system us;
 
-  int with_stars = 0;
-  int with_black_holes = 0;
-  int with_hydro = 0;
-
   int nr_nodes = 1, myrank = 0;
 
 #ifdef WITH_MPI
@@ -145,6 +141,9 @@ int main(int argc, char *argv[]) {
   int dump_threadpool = 0;
   int with_fof = 1;
   int with_fp_exceptions = 0;
+  int with_stars = 0;
+  int with_black_holes = 0;
+  int with_hydro = 0;
   int verbose = 0;
   int nr_threads = 1;
   char *output_parameters_filename = NULL;
@@ -160,12 +159,13 @@ int main(int argc, char *argv[]) {
   struct argparse_option options[] = {
       OPT_HELP(),
 
-      OPT_GROUP("  Simulation options:\n"),
-      OPT_BOOLEAN('s', "hydro", &with_hydro, "Run with hydrodynamics.", NULL, 0,
+      OPT_GROUP("  Friends-of-Friends options:\n"),
+      OPT_BOOLEAN(0, "hydro", &with_hydro, "Read gas particles from the ICs.",
+                  NULL, 0, 0),
+      OPT_BOOLEAN(0, "stars", &with_stars, "Read stars from the ICs.", NULL, 0,
                   0),
-      OPT_BOOLEAN('S', "stars", &with_stars, "Run with stars.", NULL, 0, 0),
-      OPT_BOOLEAN('B', "black-holes", &with_black_holes,
-                  "Run with black holes.", NULL, 0, 0),
+      OPT_BOOLEAN(0, "black-holes", &with_black_holes,
+                  "Read black holes from the ICs.", NULL, 0, 0),
 
       OPT_GROUP("  Control options:\n"),
       OPT_BOOLEAN('a', "pin", &with_aff,
