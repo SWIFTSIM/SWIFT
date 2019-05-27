@@ -196,8 +196,14 @@ void fof_allocate(const struct space *s, const long long total_nr_DM_particles,
      inter-particle sepration? */
   if (props->l_x_absolute != -1.) {
     props->l_x2 = props->l_x_absolute * props->l_x_absolute;
+    message("Linking length is set to %e [internal units].",
+            props->l_x_absolute);
   } else {
     props->l_x2 = l_x * l_x;
+    message(
+        "Linking length is set to %e [internal units] (%f of mean "
+        "inter-DM-particle separation).",
+        l_x, props->l_x_ratio);
   }
 
 #ifdef WITH_MPI
