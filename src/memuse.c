@@ -13,7 +13,8 @@
  * GNU General Public License for more details.
  *
  * You should have received a copy of the GNU Lesser General Public License
- * along with this program.  If not, see <http://www.gnu.org/licenses/>.
+ * along with this program.  If not, see
+ *<http://www.gnu.org/licenses/>src/runner_doiact_vec.c.
  *
  ******************************************************************************/
 
@@ -124,8 +125,8 @@ static void memuse_active_dump_gather(hashmap_key_t key, hashmap_value_t *value,
   int index = (int)value->value_st;
 
   /* Look for this label in our tree and store if not found. */
-  struct memuse_tsearch_item *new_item =
-      (struct memuse_tsearch_item *)calloc(1, sizeof(struct memuse_tsearch_item));
+  struct memuse_tsearch_item *new_item = (struct memuse_tsearch_item *)calloc(
+      1, sizeof(struct memuse_tsearch_item));
   new_item->key = memuse_log[index].label;
   new_item->sum = 0;
   new_item->count = 0;
@@ -249,7 +250,7 @@ void memuse_log_allocation(const char *label, void *ptr, int allocated,
 void memuse_log_dump(const char *filename) {
 
   /* Skip if nothing allocated this step. */
-  if ( memuse_log_count == memuse_old_count) return;
+  if (memuse_log_count == memuse_old_count) return;
 
   /* Create the hashmap. If not already done. */
   if (memuse_init_hashmap) {
@@ -257,6 +258,10 @@ void memuse_log_dump(const char *filename) {
     hashmap_init(memuse_hashmap);
     memuse_init_hashmap = 0;
   }
+
+  /* Stop any new logs from being processed while we are dumping. */
+  size_t log_count = memuse_log_count;
+  size_t old_count = memuse_old_count;
 
   /* Open the output file. */
   FILE *fd;
@@ -267,7 +272,7 @@ void memuse_log_dump(const char *filename) {
   fprintf(fd, "# dtic rank step label size sum\n");
 
   size_t memuse_maxmem = memuse_current;
-  for (size_t k = memuse_old_count; k < memuse_log_count; k++) {
+  for (size_t k = old_count; k < log_count; k++) {
 
     /* Check if this address has already been used. */
     hashmap_value_t *vt =
@@ -294,7 +299,7 @@ void memuse_log_dump(const char *filename) {
       /* And deactivate this key. */
       hashmap_value_t value;
       value.value_st = -1;
-      hashmap_put(memuse_hashmap, (hashmap_key_t)memuse_log[k].ptr, value);
+      hashmap_put(memuse_hashmap, (hashmap_key_t)memuse_log[index].ptr, value);
 
       /* And mark this as matched. */
       memuse_log[k].active = 0;
@@ -311,13 +316,24 @@ void memuse_log_dump(const char *filename) {
 
     /* Unmatched free, OK if NULL. */
 #if SWIFT_DEBUG_CHECKS
-      if (memuse_log[k].ptr != NULL)
-          message("Unmatched non-NULL free: %s", memuse_log[k].label);
+      if (memuse_log[k].ptr != NULL) {
+        message("Unmatched non-NULL free: %s", memuse_log[k].label);
+      }
+
 #endif
       continue;
-    } else {
+    } else if (memuse_log[k].allocated) {
 
-      /* Must be released allocation with xvalue_st < 0, so skip. */
+      /* Must be released allocation with same address, so we store. */
+      hashmap_value_t value;
+      value.value_st = k;
+      hashmap_put(memuse_hashmap, (hashmap_key_t)memuse_log[k].ptr, value);
+
+    } else {
+    /* What ... */
+#ifdef SWIFT_DEBUG_CHECKS
+      message("weird log record: %zd, %s", k, memuse_log[k].label);
+#endif
       continue;
     }
 
@@ -347,9 +363,9 @@ void memuse_log_dump(const char *filename) {
   twalk(memuse_tsearch_root, memuse_tsearch_dump);
   fprintf(fd, "##\n");
   fprintf(fd, "# Total memory still in use : %.3f (MB)\n",
-          memuse_tsearch_total/MEGABYTE);
+          memuse_tsearch_total / MEGABYTE);
   fprintf(fd, "# Peak memory usage         : %.3f (MB)\n",
-          memuse_maxmem/MEGABYTE);
+          memuse_maxmem / MEGABYTE);
   fprintf(fd, "#\n");
   fprintf(fd, "# Memory use by process (all/system): %s\n", memuse_process(1));
   fprintf(fd, "# cpufreq: %lld\n", clocks_get_cpufreq());
@@ -369,26 +385,22 @@ void memuse_log_dump(const char *filename) {
   hashmap_init(newhashmap);
 
   size_t newcount = 0;
-  for (size_t k = 0; k < memuse_log_count; k++) {
+  for (size_t k = 0; k < log_count; k++) {
 
-      /* Only allocations can be active. */
-      if (memuse_log[k].allocated && memuse_log[k].active) {
+    /* Only allocations can be active. */
+    if (memuse_log[k].allocated && memuse_log[k].active) {
 
-          /* Move to head. */
-          if (newcount != k) {
-              memcpy(&memuse_log[newcount], &memuse_log[k],
-                     sizeof(struct memuse_log_entry));
-              newcount++;
-          }
-          hashmap_value_t value;
-          value.value_st = newcount;
-          hashmap_put(memuse_hashmap, (hashmap_key_t)memuse_log[newcount].ptr,
-                      value);
-      }
+      /* Move to head. */
+      hashmap_value_t value;
+      memcpy(&memuse_log[newcount], &memuse_log[k],
+             sizeof(struct memuse_log_entry));
+      value.value_st = newcount;
+      hashmap_put(newhashmap, (hashmap_key_t)memuse_log[newcount].ptr, value);
+      newcount++;
+    }
   }
 
   /* And swap. */
-  message("newcount = %zd, old count = %zd", newcount, memuse_log_count);
   memuse_log_count = newcount;
   memuse_old_count = newcount;
   hashmap_free(memuse_hashmap);
