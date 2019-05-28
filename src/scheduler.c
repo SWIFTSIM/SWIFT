@@ -863,7 +863,100 @@ static void scheduler_splittask_gravity(struct task *t, struct scheduler *s) {
 }
 
 /**
- * @brief Mapper function to split tasks that may be too large.
+ * @brief Split a FOF task if too large.
+ *
+ * @param t The #task
+ * @param s The #scheduler we are working in.
+ */
+static void scheduler_splittask_fof(struct task *t, struct scheduler *s) {
+
+  /* Iterate on this task until we're done with it. */
+  int redo = 1;
+  while (redo) {
+
+    /* Reset the redo flag. */
+    redo = 0;
+
+    /* Non-splittable task? */
+    if ((t->ci == NULL) || (t->type == task_type_fof_pair && t->cj == NULL) ||
+        t->ci->grav.count == 0 || (t->cj != NULL && t->cj->grav.count == 0)) {
+      t->type = task_type_none;
+      t->subtype = task_subtype_none;
+      t->cj = NULL;
+      t->skip = 1;
+      break;
+    }
+
+    /* Self-interaction? */
+    if (t->type == task_type_fof_self) {
+
+      /* Get a handle on the cell involved. */
+      struct cell *ci = t->ci;
+
+      /* Foreign task? */
+      if (ci->nodeID != s->nodeID) {
+        t->skip = 1;
+        break;
+      }
+
+      /* Is this cell even split? */
+      if (cell_can_split_self_fof_task(ci)) {
+
+        /* Take a step back (we're going to recycle the current task)... */
+        redo = 1;
+
+        /* Add the self tasks. */
+        int first_child = 0;
+        while (ci->progeny[first_child] == NULL) first_child++;
+        t->ci = ci->progeny[first_child];
+        for (int k = first_child + 1; k < 8; k++)
+          if (ci->progeny[k] != NULL && ci->progeny[k]->grav.count)
+            scheduler_splittask_fof(
+                scheduler_addtask(s, task_type_fof_self, t->subtype, 0, 0,
+                                  ci->progeny[k], NULL),
+                s);
+
+        /* Make a task for each pair of progeny */
+        for (int j = 0; j < 8; j++)
+          if (ci->progeny[j] != NULL && ci->progeny[j]->grav.count)
+            for (int k = j + 1; k < 8; k++)
+              if (ci->progeny[k] != NULL && ci->progeny[k]->grav.count)
+                scheduler_splittask_fof(
+                    scheduler_addtask(s, task_type_fof_pair, t->subtype, 0, 0,
+                                      ci->progeny[j], ci->progeny[k]),
+                    s);
+      } /* Cell is split */
+
+    } /* Self interaction */
+
+  } /* iterate over the current task. */
+}
+
+/**
+ * @brief Mapper function to split FOF tasks that may be too large.
+ *
+ * @param map_data the tasks to process
+ * @param num_elements the number of tasks.
+ * @param extra_data The #scheduler we are working in.
+ */
+void scheduler_splittasks_fof_mapper(void *map_data, int num_elements,
+                                     void *extra_data) {
+  /* Extract the parameters. */
+  struct scheduler *s = (struct scheduler *)extra_data;
+  struct task *tasks = (struct task *)map_data;
+
+  for (int ind = 0; ind < num_elements; ind++) {
+    struct task *t = &tasks[ind];
+
+    /* Invoke the correct splitting strategy */
+    if (t->type == task_type_fof_self || t->type == task_type_fof_pair) {
+      scheduler_splittask_fof(t, s);
+    }
+  }
+}
+
+/**
+ * @brief Mapper function to split non-FOF tasks that may be too large.
  *
  * @param map_data the tasks to process
  * @param num_elements the number of tasks.
@@ -889,7 +982,8 @@ void scheduler_splittasks_mapper(void *map_data, int num_elements,
       /* For future use */
     } else {
 #ifdef SWIFT_DEBUG_CHECKS
-      error("Unexpected task sub-type");
+      error("Unexpected task sub-type %s/%s", taskID_names[t->type],
+            subtaskID_names[t->subtype]);
 #endif
     }
   }
@@ -899,11 +993,21 @@ void scheduler_splittasks_mapper(void *map_data, int num_elements,
  * @brief Splits all the tasks in the scheduler that are too large.
  *
  * @param s The #scheduler.
+ * @param fof_tasks Are we splitting the FOF tasks (1)? Or the regular tasks
+ * (0)?
  */
-void scheduler_splittasks(struct scheduler *s) {
-  /* Call the mapper on each current task. */
-  threadpool_map(s->threadpool, scheduler_splittasks_mapper, s->tasks,
-                 s->nr_tasks, sizeof(struct task), 0, s);
+void scheduler_splittasks(struct scheduler *s, const int fof_tasks) {
+
+  if (fof_tasks) {
+    /* Call the mapper on each current task. */
+    threadpool_map(s->threadpool, scheduler_splittasks_fof_mapper, s->tasks,
+                   s->nr_tasks, sizeof(struct task), 0, s);
+
+  } else {
+    /* Call the mapper on each current task. */
+    threadpool_map(s->threadpool, scheduler_splittasks_mapper, s->tasks,
+                   s->nr_tasks, sizeof(struct task), 0, s);
+  }
 }
 
 /**
@@ -1118,6 +1222,7 @@ void scheduler_ranktasks(struct scheduler *s) {
  * @param size The maximum number of tasks in the #scheduler.
  */
 void scheduler_reset(struct scheduler *s, int size) {
+
   /* Do we need to re-allocate? */
   if (size > s->size) {
     /* Free existing task lists if necessary. */

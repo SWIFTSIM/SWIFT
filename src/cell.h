@@ -1145,6 +1145,20 @@ cell_can_split_self_gravity_task(const struct cell *c) {
 }
 
 /**
+ * @brief Can a self FOF task associated with a cell be split into smaller
+ * sub-tasks.
+ *
+ * @param c The #cell.
+ */
+__attribute__((always_inline)) INLINE static int cell_can_split_self_fof_task(
+    const struct cell *c) {
+
+  /* Is the cell split ? */
+  return c->split && c->grav.count > 5000 &&
+         ((c->maxdepth - c->depth) > space_subdepth_diff_grav);
+}
+
+/**
  * @brief Have gas particles in a pair of cells moved too much and require a
  * rebuild
  * ?

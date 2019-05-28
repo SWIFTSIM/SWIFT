@@ -153,16 +153,14 @@ int main(int argc, char *argv[]) {
   int restart = 0;
   int with_cosmology = 0;
   int with_external_gravity = 0;
-  int with_temperature = 0;
   int with_cooling = 0;
   int with_self_gravity = 0;
   int with_hydro = 0;
   int with_stars = 0;
-  int with_fof = 0;
+  int with_fof = 1;
   int with_star_formation = 0;
   int with_feedback = 0;
   int with_black_holes = 0;
-  int with_limiter = 0;
   int with_fp_exceptions = 0;
   int with_drift_all = 0;
   int with_mpole_reconstruction = 0;
@@ -189,8 +187,6 @@ int main(int argc, char *argv[]) {
                   NULL, 0, 0),
       OPT_BOOLEAN('c', "cosmology", &with_cosmology,
                   "Run with cosmological time integration.", NULL, 0, 0),
-      OPT_BOOLEAN(0, "temperature", &with_temperature,
-                  "Run with temperature calculation.", NULL, 0, 0),
       OPT_BOOLEAN('C', "cooling", &with_cooling,
                   "Run with cooling (also switches on --with-temperature).",
                   NULL, 0, 0),
@@ -210,16 +206,8 @@ int main(int argc, char *argv[]) {
       OPT_BOOLEAN('s', "hydro", &with_hydro, "Run with hydrodynamics.", NULL, 0,
                   0),
       OPT_BOOLEAN('S', "stars", &with_stars, "Run with stars.", NULL, 0, 0),
-      OPT_BOOLEAN('B', "black-holes", &with_black_holes,
-                  "Run with black holes.", NULL, 0, 0),
-      OPT_BOOLEAN(
-          'u', "fof", &with_fof,
-          "Run Friends-of-Friends algorithm to perform black hole seeding.",
-          NULL, 0, 0),
       OPT_BOOLEAN('x', "velociraptor", &with_structure_finding,
                   "Run with structure finding.", NULL, 0, 0),
-      OPT_BOOLEAN(0, "limiter", &with_limiter, "Run with time-step limiter.",
-                  NULL, 0, 0),
 
       OPT_GROUP("  Control options:\n"),
       OPT_BOOLEAN('a', "pin", &with_aff,
@@ -255,6 +243,8 @@ int main(int argc, char *argv[]) {
                   NULL, 0, 0),
       OPT_INTEGER('T', "timers", &with_verbose_timers,
                   "Print timers every time-step.", NULL, 0, 0),
+      OPT_BOOLEAN('u', "fof", &with_fof, "Run Friends-of-Friends algorithm.",
+                  NULL, 0, 0),
       OPT_INTEGER('v', "verbose", &verbose,
                   "Run in verbose mode, in MPI mode 2 outputs from all ranks.",
                   NULL, 0, 0),
@@ -355,30 +345,11 @@ int main(int argc, char *argv[]) {
     }
     return 1;
   }
-
-  if (with_black_holes && !with_external_gravity && !with_self_gravity) {
-    if (myrank == 0) {
-      argparse_usage(&argparse);
-      printf(
-          "\nError: Cannot process black holes without gravity, -g or -G "
-          "must be chosen.\n");
-    }
-    return 1;
-  }
-
-  if (with_fof && !with_self_gravity) {
+  if (with_fof && !with_external_gravity && !with_self_gravity) {
     if (myrank == 0)
       printf(
           "Error: Cannot perform FOF search without gravity, -g or -G must be "
           "chosen.\n");
-    return 1;
-  }
-
-  if (with_fof && !with_black_holes) {
-    if (myrank == 0)
-      printf(
-          "Error: Cannot perform FOF seeding without black holes being in use, "
-          "-B must be chosen.\n");
     return 1;
   }
 
@@ -407,16 +378,6 @@ int main(int argc, char *argv[]) {
       argparse_usage(&argparse);
       printf(
           "\nError: Cannot process feedback without gas, --hydro must be "
-          "chosen.\n");
-    }
-    return 1;
-  }
-
-  if (!with_hydro && with_black_holes) {
-    if (myrank == 0) {
-      argparse_usage(&argparse);
-      printf(
-          "\nError: Cannot process black holes without gas, --hydro must be "
           "chosen.\n");
     }
     return 1;
@@ -496,7 +457,6 @@ int main(int argc, char *argv[]) {
     message("sizeof(part)        is %4zi bytes.", sizeof(struct part));
     message("sizeof(xpart)       is %4zi bytes.", sizeof(struct xpart));
     message("sizeof(spart)       is %4zi bytes.", sizeof(struct spart));
-    message("sizeof(bpart)       is %4zi bytes.", sizeof(struct bpart));
     message("sizeof(gpart)       is %4zi bytes.", sizeof(struct gpart));
     message("sizeof(multipole)   is %4zi bytes.", sizeof(struct multipole));
     message("sizeof(grav_tensor) is %4zi bytes.", sizeof(struct grav_tensor));
@@ -530,12 +490,12 @@ int main(int argc, char *argv[]) {
 #ifdef WITH_MPI
   if (with_mpole_reconstruction && nr_nodes > 1)
     error("Cannot reconstruct m-poles every step over MPI (yet).");
-  if (with_limiter) error("Can't run with time-step limiter over MPI (yet)");
+  if (with_star_formation && with_feedback)
+    error("Can't run with star formation and feedback over MPI (yet)");
 #endif
 
     /* Temporary early aborts for modes not supported with hand-vec. */
-#if defined(WITH_VECTORIZATION) && defined(GADGET2_SPH) && \
-    !defined(CHEMISTRY_NONE)
+#if defined(WITH_VECTORIZATION) && !defined(CHEMISTRY_NONE)
   error(
       "Cannot run with chemistry and hand-vectorization (yet). "
       "Use --disable-hand-vec at configure time.");
@@ -616,25 +576,6 @@ int main(int argc, char *argv[]) {
   char restart_name[PARSER_MAX_LINE_SIZE];
   parser_get_opt_param_string(params, "Restarts:basename", restart_name,
                               "swift");
-
-  /* How often to check for the stop file and dump restarts and exit the
-   * application. */
-  const int restart_stop_steps =
-      parser_get_opt_param_int(params, "Restarts:stop_steps", 100);
-
-  /* Get the maximal wall-clock time of this run */
-  const float restart_max_hours_runtime =
-      parser_get_opt_param_float(params, "Restarts:max_run_time", FLT_MAX);
-
-  /* Do we want to resubmit when we hit the limit? */
-  const int resubmit_after_max_hours =
-      parser_get_opt_param_int(params, "Restarts:resubmit_on_exit", 0);
-
-  /* What command should we run to resubmit at the end? */
-  char resubmit_command[PARSER_MAX_LINE_SIZE];
-  if (resubmit_after_max_hours)
-    parser_get_param_string(params, "Restarts:resubmit_command",
-                            resubmit_command);
 
   /* If restarting, look for the restart files. */
   if (restart) {
@@ -778,9 +719,6 @@ int main(int argc, char *argv[]) {
 
     /* Initialise the feedback properties */
     if (with_feedback) {
-#ifdef FEEDBACK_NONE
-      error("ERROR: Running with feedback but compiled without it.");
-#endif
       feedback_props_init(&feedback_properties, &prog_const, &us, params,
                           &hydro_properties, &cosmo);
     } else
@@ -788,9 +726,6 @@ int main(int argc, char *argv[]) {
 
     /* Initialise the black holes properties */
     if (with_black_holes) {
-#ifdef BLACK_HOLES_NONE
-      error("ERROR: Running with black_holes but compiled without it.");
-#endif
       black_holes_props_init(&black_holes_properties, &prog_const, &us, params,
                              &hydro_properties, &cosmo);
     } else
@@ -802,46 +737,6 @@ int main(int argc, char *argv[]) {
                          periodic);
     else
       bzero(&gravity_properties, sizeof(struct gravity_props));
-
-      /* Initialise the cooling function properties */
-#ifdef COOLING_NONE
-    if (with_cooling || with_temperature) {
-      error(
-          "ERROR: Running with cooling / temperature calculation"
-          " but compiled without it.");
-    }
-#else
-    if (!with_cooling && !with_temperature) {
-      error(
-          "ERROR: Compiled with cooling but running without it. "
-          "Did you forget the --cooling or --temperature flags?");
-    }
-#endif
-    bzero(&cooling_func, sizeof(struct cooling_function_data));
-    if (with_cooling || with_temperature) {
-      cooling_init(params, &us, &prog_const, &hydro_properties, &cooling_func);
-    }
-    if (myrank == 0) cooling_print(&cooling_func);
-
-    /* Initialise the star formation law and its properties */
-    bzero(&starform, sizeof(struct star_formation));
-    if (with_star_formation) {
-#ifdef STAR_FORMATION_NONE
-      error("ERROR: Running with star formation but compiled without it!");
-#endif
-      starformation_init(params, &prog_const, &us, &hydro_properties,
-                         &starform);
-    }
-    if (with_star_formation && myrank == 0) starformation_print(&starform);
-
-    /* Initialise the chemistry */
-    bzero(&chemistry, sizeof(struct chemistry_global_data));
-    chemistry_init(params, &us, &prog_const, &chemistry);
-    if (myrank == 0) chemistry_print(&chemistry);
-
-    /* Initialise the FOF properties */
-    bzero(&fof_properties, sizeof(struct fof_props));
-    if (with_fof) fof_init(&fof_properties, params, &prog_const, &us);
 
     /* Be verbose about what happens next */
     if (myrank == 0) message("Reading ICs from file '%s'", ICfileName);
@@ -893,10 +788,6 @@ int main(int argc, char *argv[]) {
       for (size_t k = 0; k < Ngpart; ++k)
         if (gparts[k].type == swift_type_stars) error("Linking problem");
     }
-    if (!with_black_holes && !dry_run) {
-      for (size_t k = 0; k < Ngpart; ++k)
-        if (gparts[k].type == swift_type_black_hole) error("Linking problem");
-    }
     if (!with_hydro && !dry_run) {
       for (size_t k = 0; k < Ngpart; ++k)
         if (gparts[k].type == swift_type_gas) error("Linking problem");
@@ -909,7 +800,7 @@ int main(int argc, char *argv[]) {
 #endif
 
     /* Get the total number of particles across all nodes. */
-    long long N_total[4] = {0, 0, 0, 0};
+    long long N_total[4] = {0, 0, 0};
 #if defined(WITH_MPI)
     long long N_long[4] = {Ngas, Ngpart, Nspart, Nbpart};
     MPI_Allreduce(&N_long, &N_total, 4, MPI_LONG_LONG_INT, MPI_SUM,
@@ -923,10 +814,9 @@ int main(int argc, char *argv[]) {
 
     if (myrank == 0)
       message(
-          "Read %lld gas particles, %lld stars particles, %lld black hole "
-          "particles"
-          " and %lld gparts from the ICs.",
-          N_total[0], N_total[2], N_total[3], N_total[1]);
+          "Read %lld gas particles, %lld stars particles and %lld gparts from "
+          "the ICs.",
+          N_total[0], N_total[2], N_total[1]);
 
     /* Verify that the fields to dump actually exist */
     if (myrank == 0) io_check_output_fields(params, N_total);
@@ -944,12 +834,6 @@ int main(int argc, char *argv[]) {
               clocks_getunit());
       fflush(stdout);
     }
-
-    /* Initialise the external potential properties */
-    bzero(&potential, sizeof(struct external_potential));
-    if (with_external_gravity)
-      potential_init(params, &prog_const, &us, &s, &potential);
-    if (myrank == 0) potential_print(&potential);
 
     /* Initialise the long-range gravity mesh */
     if (with_self_gravity && periodic) {
@@ -974,14 +858,12 @@ int main(int argc, char *argv[]) {
     N_long[0] = s.nr_parts;
     N_long[1] = s.nr_gparts;
     N_long[2] = s.nr_sparts;
-    N_long[3] = s.nr_bparts;
-    MPI_Allreduce(&N_long, &N_total, 4, MPI_LONG_LONG_INT, MPI_SUM,
+    MPI_Allreduce(&N_long, &N_total, 3, MPI_LONG_LONG_INT, MPI_SUM,
                   MPI_COMM_WORLD);
 #else
     N_total[0] = s.nr_parts;
     N_total[1] = s.nr_gparts;
     N_total[2] = s.nr_sparts;
-    N_total[3] = s.nr_bparts;
 #endif
 
     /* Say a few nice things about the space we just created. */
@@ -994,21 +876,8 @@ int main(int argc, char *argv[]) {
       message("%zi parts in %i cells.", s.nr_parts, s.tot_cells);
       message("%zi gparts in %i cells.", s.nr_gparts, s.tot_cells);
       message("%zi sparts in %i cells.", s.nr_sparts, s.tot_cells);
-      message("%zi bparts in %i cells.", s.nr_bparts, s.tot_cells);
       message("maximum depth is %d.", s.maxdepth);
       fflush(stdout);
-    }
-
-    /* Verify that we are not using basic modes incorrectly */
-    if (with_hydro && N_total[0] == 0) {
-      error(
-          "ERROR: Running with hydrodynamics but no gas particles found in the "
-          "ICs!");
-    }
-    if ((with_self_gravity || with_external_gravity) && N_total[1] == 0) {
-      error(
-          "ERROR: Running with gravity but no gravity particles found in "
-          "the ICs!");
     }
 
     /* Verify that each particle is in it's proper cell. */
@@ -1025,6 +894,30 @@ int main(int argc, char *argv[]) {
       message("nr of cells at depth %i is %i.", data[0], data[1]);
     }
 
+    /* Initialise the external potential properties */
+    if (with_external_gravity)
+      potential_init(params, &prog_const, &us, &s, &potential);
+    if (myrank == 0) potential_print(&potential);
+
+    /* Initialise the cooling function properties */
+    if (with_cooling)
+      cooling_init(params, &us, &prog_const, &hydro_properties, &cooling_func);
+    if (myrank == 0) cooling_print(&cooling_func);
+
+    /* Initialise the star formation law and its properties */
+    if (with_star_formation)
+      starformation_init(params, &prog_const, &us, &hydro_properties,
+                         &starform);
+    if (myrank == 0) starformation_print(&starform);
+
+    /* Initialise the chemistry */
+    chemistry_init(params, &us, &prog_const, &chemistry);
+    if (myrank == 0) chemistry_print(&chemistry);
+
+    /* Initialise the FOF properties */
+    bzero(&fof_properties, sizeof(struct fof_props));
+    if (with_fof) fof_init(&fof_properties, params, &prog_const, &us);
+
     /* Construct the engine policy */
     int engine_policies = ENGINE_POLICY | engine_policy_steal;
     if (with_drift_all) engine_policies |= engine_policy_drift_all;
@@ -1035,11 +928,9 @@ int main(int argc, char *argv[]) {
     if (with_external_gravity)
       engine_policies |= engine_policy_external_gravity;
     if (with_cosmology) engine_policies |= engine_policy_cosmology;
-    if (with_temperature) engine_policies |= engine_policy_temperature;
-    if (with_limiter) engine_policies |= engine_policy_limiter;
     if (with_cooling) engine_policies |= engine_policy_cooling;
     if (with_stars) engine_policies |= engine_policy_stars;
-    if (with_star_formation) engine_policies |= engine_policy_star_formation;
+    if (with_fof) engine_policies |= engine_policy_fof;
     if (with_feedback) engine_policies |= engine_policy_feedback;
     if (with_black_holes) engine_policies |= engine_policy_black_holes;
     if (with_structure_finding)
@@ -1066,12 +957,11 @@ int main(int argc, char *argv[]) {
 
     /* Get some info to the user. */
     if (myrank == 0) {
-      long long N_DM = N_total[1] - N_total[2] - N_total[3] - N_total[0];
+      long long N_DM = N_total[1] - N_total[2] - N_total[0];
       message(
-          "Running on %lld gas particles, %lld stars particles %lld black "
-          "hole particles and %lld DM particles (%lld gravity particles)",
-          N_total[0], N_total[2], N_total[3], N_total[1] > 0 ? N_DM : 0,
-          N_total[1]);
+          "Running on %lld gas particles, %lld stars particles and %lld DM "
+          "particles (%lld gravity particles)",
+          N_total[0], N_total[2], N_total[1] > 0 ? N_DM : 0, N_total[1]);
       message(
           "from t=%.3e until t=%.3e with %d ranks, %d threads / rank and %d "
           "task queues / rank (dt_min=%.3e, dt_max=%.3e)...",
@@ -1112,221 +1002,86 @@ int main(int argc, char *argv[]) {
     engine_redistribute(&e);
 #endif
 
+#ifdef SWIFT_DEBUG_TASKS
+    e.tic_step = getticks();
+#endif
+
     /* Initialise the particles */
     engine_init_particles(&e, flag_entropy_ICs, clean_smoothing_length_values,
-                          1);
+                          0);
 
-    /* Write the state of the system before starting time integration. */
-#ifdef WITH_LOGGER
-    logger_log_all(e.logger, &e);
-    engine_dump_index(&e);
+#ifdef SWIFT_DEBUG_TASKS
+    e.toc_step = getticks();
 #endif
-    engine_dump_snapshot(&e);
-    engine_print_stats(&e);
 
-    /* Is there a dump before the end of the first time-step? */
-    engine_check_for_dumps(&e);
+    /* Perform first FOF search after the first snapshot dump. */
+    engine_fof(&e);
+
+#ifdef WITH_MPI
+    MPI_Barrier(MPI_COMM_WORLD);
+#endif
   }
 
-  /* Legend */
-  if (myrank == 0) {
-    printf("# %6s %14s %12s %12s %14s %9s %12s %12s %12s %12s %16s [%s] %6s\n",
-           "Step", "Time", "Scale-factor", "Redshift", "Time-step", "Time-bins",
-           "Updates", "g-Updates", "s-Updates", "b-Updates", "Wall-clock time",
-           clocks_getunit(), "Props");
-    fflush(stdout);
+  /* Dump the task data using the given frequency. */
+  if (dump_tasks) {
+#ifdef SWIFT_DEBUG_TASKS
+    task_dump_all(&e, 0);
+#endif
+
+    /* Generate the task statistics. */
+    char dumpfile[40];
+    snprintf(dumpfile, 40, "thread_stats-step%d.dat", 0);
+    task_dump_stats(dumpfile, &e, /* header = */ 0, /* allranks = */ 1);
   }
 
-  /* File for the timers */
-  if (with_verbose_timers) timers_open_file(myrank);
-
-  /* Create a name for restart file of this rank. */
-  if (restart_genname(restart_dir, restart_name, e.nodeID, restart_file, 200) !=
-      0)
-    error("Failed to generate restart filename");
-
-  /* dump the parameters as used. */
+#ifdef SWIFT_DEBUG_THREADPOOL
+  /* Dump the task data using the given frequency. */
+  if (dump_threadpool) {
+    char threadpool_dumpfile[52];
+#ifdef WITH_MPI
+    snprintf(threadpool_dumpfile, 52, "threadpool_info-rank%d-step%d.dat",
+             engine_rank, 0);
+#else
+    snprintf(threadpool_dumpfile, 52, "threadpool_info-step%d.dat", 0);
+#endif  // WITH_MPI
+    threadpool_dump_log(&e.threadpool, threadpool_dumpfile, 1);
+  } else {
+    threadpool_reset_log(&e.threadpool);
+  }
+#endif  // SWIFT_DEBUG_THREADPOOL
 
   /* used parameters */
   parser_write_params_to_file(params, "used_parameters.yml", 1);
   /* unused parameters */
   parser_write_params_to_file(params, "unused_parameters.yml", 0);
 
-  /* Dump memory use report if collected for the 0 step. */
+  /* Write final output. */
+  engine_drift_all(&e, /*drift_mpole=*/0);
+  engine_print_stats(&e);
+  engine_dump_snapshot(&e);
+
+  /* Dump memory use report */
 #ifdef SWIFT_MEMUSE_REPORTS
   {
     char dumpfile[40];
 #ifdef WITH_MPI
-    snprintf(dumpfile, 40, "memuse_report-rank%d-step%d.dat", engine_rank, 0);
+    snprintf(dumpfile, 40, "memuse_report-rank%d-fof.dat", engine_rank);
 #else
-    snprintf(dumpfile, 40, "memuse_report-step%d.dat", 0);
+    snprintf(dumpfile, 40, "memuse_report-fof.dat");
 #endif  // WITH_MPI
     memuse_log_dump(dumpfile);
   }
 #endif
-
-  /* Main simulation loop */
-  /* ==================== */
-  int force_stop = 0, resubmit = 0;
-  for (int j = 0; !engine_is_done(&e) && e.step - 1 != nsteps && !force_stop;
-       j++) {
-
-    /* Reset timers */
-    timers_reset_all();
-
-    /* Take a step. */
-    engine_step(&e);
-
-    /* Print the timers. */
-    if (with_verbose_timers) timers_print(e.step);
-
-    /* Every so often allow the user to stop the application and dump the
-     * restart files. */
-    if (j % restart_stop_steps == 0) {
-      force_stop = restart_stop_now(restart_dir, 0);
-      if (myrank == 0 && force_stop)
-        message("Forcing application exit, dumping restart files...");
-    }
-
-    /* Did we exceed the maximal runtime? */
-    if (clocks_get_hours_since_start() > restart_max_hours_runtime) {
-      force_stop = 1;
-      message("Runtime limit reached, dumping restart files...");
-      if (resubmit_after_max_hours) resubmit = 1;
-    }
-
-    /* Also if using nsteps to exit, will not have saved any restarts on exit,
-     * make sure we do that (useful in testing only). */
-    if (force_stop || (e.restart_onexit && e.step - 1 == nsteps))
-      engine_dump_restarts(&e, 0, 1);
-
-    /* Dump the task data using the given frequency. */
-    if (dump_tasks && (dump_tasks == 1 || j % dump_tasks == 1)) {
-#ifdef SWIFT_DEBUG_TASKS
-      task_dump_all(&e, j + 1);
-#endif
-
-      /* Generate the task statistics. */
-      char dumpfile[40];
-      snprintf(dumpfile, 40, "thread_stats-step%d.dat", j + 1);
-      task_dump_stats(dumpfile, &e, /* header = */ 0, /* allranks = */ 1);
-    }
-
-      /* Dump memory use report if collected. */
-#ifdef SWIFT_MEMUSE_REPORTS
-    {
-      char dumpfile[40];
-#ifdef WITH_MPI
-      snprintf(dumpfile, 40, "memuse_report-rank%d-step%d.dat", engine_rank,
-               j + 1);
-#else
-      snprintf(dumpfile, 40, "memuse_report-step%d.dat", j + 1);
-#endif  // WITH_MPI
-      memuse_log_dump(dumpfile);
-    }
-#endif
-
-#ifdef SWIFT_DEBUG_THREADPOOL
-    /* Dump the task data using the given frequency. */
-    if (dump_threadpool && (dump_threadpool == 1 || j % dump_threadpool == 1)) {
-      char dumpfile[40];
-#ifdef WITH_MPI
-      snprintf(dumpfile, 40, "threadpool_info-rank%d-step%d.dat", engine_rank,
-               j + 1);
-#else
-      snprintf(dumpfile, 40, "threadpool_info-step%d.dat", j + 1);
-#endif  // WITH_MPI
-      threadpool_dump_log(&e.threadpool, dumpfile, 1);
-    } else {
-      threadpool_reset_log(&e.threadpool);
-    }
-#endif  // SWIFT_DEBUG_THREADPOOL
-  }
-
-/* Print the values of the runner histogram. */
-#ifdef HIST
-  printf("main: runner histogram data:\n");
-  for (k = 0; k < runner_hist_N; k++)
-    printf(" %e %e %e\n",
-           runner_hist_a + k * (runner_hist_b - runner_hist_a) / runner_hist_N,
-           runner_hist_a +
-               (k + 1) * (runner_hist_b - runner_hist_a) / runner_hist_N,
-           (double)runner_hist_bins[k]);
-#endif
-
-  /* Write final time information */
-  if (myrank == 0) {
-
-    /* Print some information to the screen */
-    printf(
-        "  %6d %14e %12.7f %12.7f %14e %4d %4d %12lld %12lld %12lld %12lld"
-        " %21.3f %6d\n",
-        e.step, e.time, e.cosmology->a, e.cosmology->z, e.time_step,
-        e.min_active_bin, e.max_active_bin, e.updates, e.g_updates, e.s_updates,
-        e.b_updates, e.wallclock_time, e.step_props);
-    fflush(stdout);
-
-    fprintf(e.file_timesteps,
-            "  %6d %14e %12.7f %12.7f %14e %4d %4d %12lld %12lld %12lld %12lld"
-            " %21.3f %6d\n",
-            e.step, e.time, e.cosmology->a, e.cosmology->z, e.time_step,
-            e.min_active_bin, e.max_active_bin, e.updates, e.g_updates,
-            e.s_updates, e.b_updates, e.wallclock_time, e.step_props);
-    fflush(e.file_timesteps);
-
-    /* Print information to the SFH logger */
-    if (e.policy & engine_policy_star_formation) {
-      star_formation_logger_write_to_log_file(
-          e.sfh_logger, e.time, e.cosmology->a, e.cosmology->z, e.sfh, e.step);
-    }
-  }
-
-  /* Write final output. */
-  if (!force_stop) {
-    engine_drift_all(&e, /*drift_mpole=*/0);
-    engine_print_stats(&e);
-#ifdef WITH_LOGGER
-    logger_log_all(e.logger, &e);
-    engine_dump_index(&e);
-#endif
-
-#ifdef HAVE_VELOCIRAPTOR
-    if (with_structure_finding && e.snapshot_invoke_stf)
-      velociraptor_invoke(&e, /*linked_with_snap=*/1);
-#endif
-
-    /* write a final snapshot */
-    engine_dump_snapshot(&e);
-
-#ifdef HAVE_VELOCIRAPTOR
-    if (with_structure_finding && e.snapshot_invoke_stf)
-      free(e.s->gpart_group_data);
-#endif
-  }
 
 #ifdef WITH_MPI
   if ((res = MPI_Finalize()) != MPI_SUCCESS)
     error("call to MPI_Finalize failed with error %i.", res);
 #endif
 
-  /* Remove the stop file if used. Do this anyway, we could have missed the
-   * stop file if normal exit happened first. */
-  if (myrank == 0) force_stop = restart_stop_now(restart_dir, 1);
-
-  /* Did we want to run a re-submission command just before dying? */
-  if (myrank == 0 && resubmit) {
-    message("Running the resubmission command:");
-    restart_resubmit(resubmit_command);
-    fflush(stdout);
-    fflush(stderr);
-    message("resubmission command completed.");
-  }
-
   /* Clean everything */
   if (with_verbose_timers) timers_close_file();
-  if (with_cosmology) cosmology_clean(e.cosmology);
-  if (with_self_gravity) pm_mesh_clean(e.mesh);
-  if (with_cooling || with_temperature) cooling_clean(&cooling_func);
+  if (with_cosmology) cosmology_clean(&cosmo);
+  if (with_self_gravity) pm_mesh_clean(&mesh);
   engine_clean(&e);
   free(params);
 

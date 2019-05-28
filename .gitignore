@@ -25,7 +25,10 @@ doc/Doxyfile
 
 examples/swift
 examples/swift_mpi
+examples/fof
+examples/fof_mpi
 examples/*/*/*.xmf
+examples/*/*/*.dat
 examples/*/*/*.png
 examples/*/*/*.mp4
 examples/*/*/*.txt
@@ -37,7 +40,10 @@ examples/*/*/memuse_report-step*.dat
 examples/*/*/memuse_report-step*.log
 examples/*/*/restart/*
 examples/*/*/used_parameters.yml
-examples/*/*/log*
+examples/*/stf_output*
+examples/*/stf.*
+examples/*/fof_output*
+examples/*/log*
 examples/*/*/unused_parameters.yml
 examples/*/*.mpg
 examples/*/*/gravity_checks_*.dat
@@ -145,6 +151,7 @@ tests/testOutputList
 tests/testCbrt
 tests/testFormat.sh
 tests/testCooling
+tests/testHashmap
 tests/*.png
 tests/*.txt
 

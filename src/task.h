@@ -87,6 +87,8 @@ enum task_types {
   task_type_bh_in,  /* Implicit */
   task_type_bh_out, /* Implicit */
   task_type_bh_ghost,
+  task_type_fof_self,
+  task_type_fof_pair,
   task_type_count
 } __attribute__((packed));
 

@@ -4278,6 +4278,12 @@ void *runner_main(void *data) {
         case task_type_star_formation:
           runner_do_star_formation(r, t->ci, 1);
           break;
+        case task_type_fof_self:
+          runner_do_fof_self(r, t->ci, 1);
+          break;
+        case task_type_fof_pair:
+          runner_do_fof_pair(r, t->ci, t->cj, 1);
+          break;
         default:
           error("Unknown/invalid task type (%d).", t->type);
       }
@@ -4374,4 +4380,53 @@ void runner_do_logger(struct runner *r, struct cell *c, int timer) {
 #else
   error("Logger disabled, please enable it during configuration");
 #endif
+}
+
+/**
+ * @brief Recursively search for FOF groups in a single cell.
+ *
+ * @param r runner task
+ * @param c cell
+ * @param timer 1 if the time is to be recorded.
+ */
+void runner_do_fof_self(struct runner *r, struct cell *c, int timer) {
+
+  TIMER_TIC;
+
+  const struct engine *e = r->e;
+  struct space *s = e->s;
+  const double dim[3] = {s->dim[0], s->dim[1], s->dim[2]};
+  const int periodic = s->periodic;
+  const struct gpart *const gparts = s->gparts;
+  const double search_r2 = e->fof_properties->l_x2;
+
+  rec_fof_search_self(e->fof_properties, dim, search_r2, periodic, gparts, c);
+
+  if (timer) TIMER_TOC(timer_fof_self);
+}
+
+/**
+ * @brief Recursively search for FOF groups between a pair of cells.
+ *
+ * @param r runner task
+ * @param ci cell i
+ * @param cj cell j
+ * @param timer 1 if the time is to be recorded.
+ */
+void runner_do_fof_pair(struct runner *r, struct cell *ci, struct cell *cj,
+                        int timer) {
+
+  TIMER_TIC;
+
+  const struct engine *e = r->e;
+  struct space *s = e->s;
+  const double dim[3] = {s->dim[0], s->dim[1], s->dim[2]};
+  const int periodic = s->periodic;
+  const struct gpart *const gparts = s->gparts;
+  const double search_r2 = e->fof_properties->l_x2;
+
+  rec_fof_search_pair(e->fof_properties, dim, search_r2, periodic, gparts, ci,
+                      cj);
+
+  if (timer) TIMER_TOC(timer_fof_pair);
 }

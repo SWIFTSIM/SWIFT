@@ -67,6 +67,29 @@ __attribute__((always_inline)) INLINE static void atomic_min_f(
 }
 
 /**
+ * @brief Atomic min operation on ints.
+ *
+ * This is a text-book implementation based on an atomic CAS.
+ *
+ * @param address The address to update.
+ * @param y The value to update the address with.
+ */
+__attribute__((always_inline)) INLINE static void atomic_min(
+    volatile int *address, int y) {
+
+  int *int_ptr = (int *)address;
+
+  int test_val, old_val, new_val;
+  old_val = *address;
+
+  do {
+    test_val = old_val;
+    new_val = min(old_val, y);
+    old_val = atomic_cas(int_ptr, test_val, new_val);
+  } while (test_val != old_val);
+}
+
+/**
  * @brief Atomic min operation on doubles.
  *
  * This is a text-book implementation based on an atomic CAS.

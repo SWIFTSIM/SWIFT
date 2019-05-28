@@ -106,6 +106,8 @@ const char* timers_names[timer_count] = {
     "step",
     "logger",
     "do_stars_sort",
+    "fof_self",
+    "fof_pair",
 };
 
 /* File to store the timers */
