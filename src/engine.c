@@ -6533,7 +6533,8 @@ void engine_fof(struct engine *e, const int dump_results,
   e->step_props |= engine_step_prop_fof;
 
   /* ... and find the next FOF time */
-  engine_compute_next_fof_time(e);
+  if(seed_black_holes)
+    engine_compute_next_fof_time(e);
 
   if (engine_rank == 0)
     message("Complete FOF search took: %.3f %s.",
