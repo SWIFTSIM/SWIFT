@@ -212,9 +212,10 @@ int main(int argc, char *argv[]) {
       OPT_BOOLEAN('S', "stars", &with_stars, "Run with stars.", NULL, 0, 0),
       OPT_BOOLEAN('B', "black-holes", &with_black_holes,
                   "Run with black holes.", NULL, 0, 0),
-      OPT_BOOLEAN('u', "fof", &with_fof,
-                  "Run Friends-of-Friends algorithm and black holes seeding.",
-                  NULL, 0, 0),
+      OPT_BOOLEAN(
+          'u', "fof", &with_fof,
+          "Run Friends-of-Friends algorithm to perform black hole seeding.",
+          NULL, 0, 0),
       OPT_BOOLEAN('x', "velociraptor", &with_structure_finding,
                   "Run with structure finding.", NULL, 0, 0),
       OPT_BOOLEAN(0, "limiter", &with_limiter, "Run with time-step limiter.",
@@ -370,6 +371,14 @@ int main(int argc, char *argv[]) {
       printf(
           "Error: Cannot perform FOF search without gravity, -g or -G must be "
           "chosen.\n");
+    return 1;
+  }
+
+  if (with_fof && !with_black_holes) {
+    if (myrank == 0)
+      printf(
+          "Error: Cannot perform FOF seeding without black holes being in use, "
+          "-B must be chosen.\n");
     return 1;
   }
 
