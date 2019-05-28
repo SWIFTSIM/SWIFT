@@ -348,11 +348,13 @@ void writeArray(const struct engine* e, hid_t grp, char* fileName,
       "Conversion factor to phyical CGS (including cosmological corrections)",
       factor * pow(e->cosmology->a, props.scale_factor_exponent));
 
-  if (strlen(props.description) != 0) {
+#ifdef SWIFT_DEBUG_CHECKS
+  if (strlen(props.description) == 0)
+    error("Invalid (empty) description of the field '%s'", props.name);
+#endif
 
-    /* Write the full description */
-    io_write_attribute_s(h_data, "Description", props.description);
-  }
+  /* Write the full description */
+  io_write_attribute_s(h_data, "Description", props.description);
 
   /* Free and close everything */
   swift_free("writebuff", temp);
