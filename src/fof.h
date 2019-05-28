@@ -69,9 +69,6 @@ struct fof_props {
   /*! The minimum halo mass for black hole seeding. */
   double seed_halo_mass;
 
-  /*! The no. of steps between each FOF search. */
-  int run_freq;
-
   /*! Minimal number of particles in a group */
   size_t min_group_size;
 

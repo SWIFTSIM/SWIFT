@@ -307,6 +307,14 @@ struct engine {
   char stf_base_name[PARSER_MAX_LINE_SIZE];
   int stf_output_count;
 
+  /* FoF black holes seeding information */
+  double a_first_fof_call;
+  double time_first_fof_call;
+  double delta_time_fof;
+
+  /* Integer time of the next FoF black holes seeding call */
+  integertime_t ti_next_fof;
+
   /* FOF information */
   int run_fof;
 
@@ -470,6 +478,7 @@ void engine_addlink(struct engine *e, struct link **l, struct task *t);
 void engine_barrier(struct engine *e);
 void engine_compute_next_snapshot_time(struct engine *e);
 void engine_compute_next_stf_time(struct engine *e);
+void engine_compute_next_fof_time(struct engine *e);
 void engine_compute_next_statistics_time(struct engine *e);
 void engine_recompute_displacement_constraint(struct engine *e);
 void engine_unskip(struct engine *e);

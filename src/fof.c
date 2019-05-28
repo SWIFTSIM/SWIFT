@@ -42,7 +42,6 @@
 #include "proxy.h"
 #include "threadpool.h"
 
-#define fof_props_default_run_freq 2000
 #define fof_props_default_group_id 2147483647
 #define fof_props_default_group_id_offset 1
 #define fof_props_default_group_link_size 20000
@@ -99,10 +98,6 @@ void fof_init(struct fof_props *props, struct swift_params *params,
     error("Cannot write FOF outputs in directory %s (%s)", dirp,
           strerror(errno));
   }
-
-  /* Read the FOF search frequency. */
-  props->run_freq = parser_get_opt_param_int(params, "FOF:run_freq",
-                                             fof_props_default_run_freq);
 
   /* Read the minimum group size. */
   props->min_group_size = parser_get_param_int(params, "FOF:min_group_size");

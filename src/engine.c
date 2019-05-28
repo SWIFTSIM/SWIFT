@@ -3786,10 +3786,12 @@ void engine_step(struct engine *e) {
        ((double)e->total_nr_gparts) * e->gravity_properties->rebuild_frequency))
     e->forcerebuild = 1;
 
-  /* Trigger a FOF search every N steps. */
-  if (e->policy & engine_policy_fof &&
-      (e->step % e->fof_properties->run_freq == 1))
-    e->run_fof = 1;
+  /* Trigger a FOF black hole seeding? */
+  if (e->policy & engine_policy_fof) {
+    if (e->ti_end_min > e->ti_next_fof && e->ti_next_fof > 0) {
+      e->run_fof = 1;
+    }
+  }
 
 #ifdef WITH_LOGGER
   /* Mark the current time step in the particle logger file. */
@@ -4971,6 +4973,8 @@ void engine_init(struct engine *e, struct space *s, struct swift_params *params,
   e->delta_time_statistics =
       parser_get_param_double(params, "Statistics:delta_time");
   e->ti_next_stats = 0;
+  e->ti_next_stf = 0;
+  e->ti_next_fof = 0;
   e->verbose = verbose;
   e->wallclock_time = 0.f;
   e->physical_constants = physical_constants;
@@ -5049,6 +5053,17 @@ void engine_init(struct engine *e, struct space *s, struct swift_params *params,
         params, "StructureFinding:scale_factor_first", 0.1);
     e->delta_time_stf =
         parser_get_opt_param_double(params, "StructureFinding:delta_time", -1.);
+  }
+
+  /* Initialise FoF calls frequency. */
+  if (e->policy & engine_policy_fof) {
+
+    e->time_first_fof_call =
+        parser_get_opt_param_double(params, "FOF:time_first", 0.);
+    e->a_first_fof_call =
+        parser_get_opt_param_double(params, "FOF:scale_factor_first", 0.1);
+    e->delta_time_fof =
+        parser_get_opt_param_double(params, "FOF:delta_time", -1.);
   }
 
   engine_init_output_lists(e, params);
@@ -5420,6 +5435,18 @@ void engine_config(int restart, struct engine *e, struct swift_params *params,
             "simulation start a=%e.",
             e->a_first_stf_output, e->cosmology->a_begin);
     }
+
+    if (e->policy & engine_policy_fof) {
+
+      if (e->delta_time_fof <= 1.)
+        error("Time between FOF (%e) must be > 1.", e->delta_time_fof);
+
+      if (e->a_first_fof_call < e->cosmology->a_begin)
+        error(
+            "Scale-factor of first fof call (%e) must be after the "
+            "simulation start a=%e.",
+            e->a_first_fof_call, e->cosmology->a_begin);
+    }
   } else {
 
     if (e->delta_time_snapshot <= 0.)
@@ -5455,6 +5482,16 @@ void engine_config(int restart, struct engine *e, struct swift_params *params,
         error("Time of first STF (%e) must be after the simulation start t=%e.",
               e->time_first_stf_output, e->time_begin);
     }
+
+    if (e->policy & engine_policy_structure_finding) {
+
+      if (e->delta_time_fof <= 0.)
+        error("Time between FOF (%e) must be positive.", e->delta_time_fof);
+
+      if (e->time_first_fof_call < e->time_begin)
+        error("Time of first FOF (%e) must be after the simulation start t=%e.",
+              e->time_first_fof_call, e->time_begin);
+    }
   }
 
   /* Get the total mass */
@@ -5484,6 +5521,11 @@ void engine_config(int restart, struct engine *e, struct swift_params *params,
   /* Find the time of the first stf output */
   if (e->policy & engine_policy_structure_finding) {
     engine_compute_next_stf_time(e);
+  }
+
+  /* Find the time of the first stf output */
+  if (e->policy & engine_policy_fof) {
+    engine_compute_next_fof_time(e);
   }
 
   /* Check that we are invoking VELOCIraptor only if we have it */
@@ -5892,6 +5934,67 @@ void engine_compute_next_stf_time(struct engine *e) {
       const float next_stf_time = e->ti_next_stf * e->time_base + e->time_begin;
       if (e->verbose)
         message("Next VELOCIraptor time set to t=%e.", next_stf_time);
+    }
+  }
+}
+
+/**
+ * @brief Computes the next time (on the time line) for FoF black holes seeding
+ *
+ * @param e The #engine.
+ */
+void engine_compute_next_fof_time(struct engine *e) {
+
+  /* Find upper-bound on last output */
+  double time_end;
+  if (e->policy & engine_policy_cosmology)
+    time_end = e->cosmology->a_end * e->delta_time_fof;
+  else
+    time_end = e->time_end + e->delta_time_fof;
+
+  /* Find next snasphot above current time */
+  double time;
+  if (e->policy & engine_policy_cosmology)
+    time = e->a_first_fof_call;
+  else
+    time = e->time_first_fof_call;
+
+  int found_fof_time = 0;
+  while (time < time_end) {
+
+    /* Output time on the integer timeline */
+    if (e->policy & engine_policy_cosmology)
+      e->ti_next_fof = log(time / e->cosmology->a_begin) / e->time_base;
+    else
+      e->ti_next_fof = (time - e->time_begin) / e->time_base;
+
+    /* Found it? */
+    if (e->ti_next_fof > e->ti_current) {
+      found_fof_time = 1;
+      break;
+    }
+
+    if (e->policy & engine_policy_cosmology)
+      time *= e->delta_time_fof;
+    else
+      time += e->delta_time_fof;
+  }
+
+  /* Deal with last snapshot */
+  if (!found_fof_time) {
+    e->ti_next_fof = -1;
+    if (e->verbose) message("No further FoF time.");
+  } else {
+
+    /* Be nice, talk... */
+    if (e->policy & engine_policy_cosmology) {
+      const float next_fof_time =
+          exp(e->ti_next_fof * e->time_base) * e->cosmology->a_begin;
+      // if (e->verbose)
+      message("Next FoF time set to a=%e.", next_fof_time);
+    } else {
+      const float next_fof_time = e->ti_next_fof * e->time_base + e->time_begin;
+      if (e->verbose) message("Next FoF time set to t=%e.", next_fof_time);
     }
   }
 }
@@ -6418,6 +6521,9 @@ void engine_fof(struct engine *e) {
 
   /* Flag that a FOF has taken place */
   e->step_props |= engine_step_prop_fof;
+
+  /* ... and find the next FOF time */
+  engine_compute_next_fof_time(e);
 
   if (engine_rank == 0)
     message("Complete FOF search took: %.3f %s.",
