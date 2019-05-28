@@ -1378,10 +1378,13 @@ void fof_calc_group_mass(struct fof_props *props, const struct space *s,
           if (gparts[i].type == swift_type_gas &&
               data->value_st != fof_halo_has_black_hole) {
 
+            const size_t gas_index = -gparts[i].id_or_neg_offset;
+            const float rho_com = hydro_get_comoving_density(&parts[gas_index]);
+
             /* Update index if a denser gas particle is found. */
-            if (parts[-gparts[i].id_or_neg_offset].rho > data->value_flt) {
-              data->value_flt = parts[-gparts[i].id_or_neg_offset].rho;
-              data->value_st = -gparts[i].id_or_neg_offset;
+            if (rho_com > data->value_flt) {
+              data->value_flt = rho_com;
+              data->value_st = gas_index;
             }
           }
           /* If there is already a black hole in the group we don't need to
@@ -1408,7 +1411,8 @@ void fof_calc_group_mass(struct fof_props *props, const struct space *s,
       /* Increment the mass of groups that are local */
       if (is_local(root, nr_gparts)) {
 
-        size_t index = gparts[i].group_id - group_id_offset - num_groups_prev;
+        const size_t index =
+            gparts[i].group_id - group_id_offset - num_groups_prev;
 
         /* Only seed groups above the mass threshold. */
         if (group_mass[index] > seed_halo_mass) {
@@ -1419,11 +1423,13 @@ void fof_calc_group_mass(struct fof_props *props, const struct space *s,
           if (gparts[i].type == swift_type_gas &&
               max_part_density_index[index] != fof_halo_has_black_hole) {
 
+            const size_t gas_index = -gparts[i].id_or_neg_offset;
+            const float rho_com = hydro_get_comoving_density(&parts[gas_index]);
+
             /* Update index if a denser gas particle is found. */
-            if (parts[-gparts[i].id_or_neg_offset].rho >
-                max_part_density[index]) {
-              max_part_density_index[index] = -gparts[i].id_or_neg_offset;
-              max_part_density[index] = parts[-gparts[i].id_or_neg_offset].rho;
+            if (rho_com > max_part_density[index]) {
+              max_part_density_index[index] = gas_index;
+              max_part_density[index] = rho_com;
             }
           }
           /* If there is already a black hole in the group we don't need to
