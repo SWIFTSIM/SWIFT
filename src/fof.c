@@ -624,17 +624,17 @@ __attribute__((always_inline)) INLINE static void fof_compute_send_recv_offsets(
     int **recvoffset, size_t *nrecv) {
 
   /* Determine number of entries to receive */
-  *recvcount = malloc(nr_nodes * sizeof(int));
+  *recvcount = (int *)malloc(nr_nodes * sizeof(int));
   MPI_Alltoall(sendcount, 1, MPI_INT, *recvcount, 1, MPI_INT, MPI_COMM_WORLD);
 
   /* Compute send/recv offsets */
-  *sendoffset = malloc(nr_nodes * sizeof(int));
+  *sendoffset = (int *)malloc(nr_nodes * sizeof(int));
 
   (*sendoffset)[0] = 0;
   for (int i = 1; i < nr_nodes; i++)
     (*sendoffset)[i] = (*sendoffset)[i - 1] + sendcount[i - 1];
 
-  *recvoffset = malloc(nr_nodes * sizeof(int));
+  *recvoffset = (int *)malloc(nr_nodes * sizeof(int));
 
   (*recvoffset)[0] = 0;
   for (int i = 1; i < nr_nodes; i++)
@@ -1471,7 +1471,7 @@ void fof_calc_group_mass(struct fof_props *props, const struct space *s,
         compare_fof_final_mass_global_root);
 
   /* Determine how many entries go to each node */
-  int *sendcount = malloc(nr_nodes * sizeof(int));
+  int *sendcount = (int *)malloc(nr_nodes * sizeof(int));
   for (int i = 0; i < nr_nodes; i += 1) sendcount[i] = 0;
   int dest = 0;
   for (size_t i = 0; i < nsend; i += 1) {
@@ -1490,7 +1490,7 @@ void fof_calc_group_mass(struct fof_props *props, const struct space *s,
                                 &recvoffset, &nrecv);
 
   struct fof_final_mass *fof_mass_recv =
-      malloc(nrecv * sizeof(struct fof_final_mass));
+      (struct fof_final_mass *)malloc(nrecv * sizeof(struct fof_final_mass));
 
   /* Exchange group mass */
   MPI_Alltoallv(fof_mass_send, sendcount, sendoffset, fof_final_mass_type,
@@ -2609,7 +2609,8 @@ void fof_search_tree(struct fof_props *props,
     }
   }
   struct fof_final_index *fof_index_send =
-      swift_malloc("fof_index_send", sizeof(struct fof_final_index) * nsend);
+      (struct fof_final_index *)swift_malloc(
+          "fof_index_send", sizeof(struct fof_final_index) * nsend);
   nsend = 0;
   for (size_t i = 0; i < nr_gparts; i += 1) {
     if ((!is_local(group_index[i],
@@ -2626,16 +2627,16 @@ void fof_search_tree(struct fof_props *props,
         compare_fof_final_index_global_root);
 
   /* Determine range of global indexes (i.e. particles) on each node */
-  size_t *num_on_node = malloc(nr_nodes * sizeof(size_t));
+  size_t *num_on_node = (size_t *)malloc(nr_nodes * sizeof(size_t));
   MPI_Allgather(&nr_gparts, sizeof(size_t), MPI_BYTE, num_on_node,
                 sizeof(size_t), MPI_BYTE, MPI_COMM_WORLD);
-  size_t *first_on_node = malloc(nr_nodes * sizeof(size_t));
+  size_t *first_on_node = (size_t *)malloc(nr_nodes * sizeof(size_t));
   first_on_node[0] = 0;
   for (int i = 1; i < nr_nodes; i += 1)
     first_on_node[i] = first_on_node[i - 1] + num_on_node[i - 1];
 
   /* Determine how many entries go to each node */
-  int *sendcount = malloc(nr_nodes * sizeof(int));
+  int *sendcount = (int *)malloc(nr_nodes * sizeof(int));
   for (int i = 0; i < nr_nodes; i += 1) sendcount[i] = 0;
   int dest = 0;
   for (size_t i = 0; i < nsend; i += 1) {
@@ -2654,7 +2655,8 @@ void fof_search_tree(struct fof_props *props,
                                 &recvoffset, &nrecv);
 
   struct fof_final_index *fof_index_recv =
-      swift_malloc("fof_index_recv", nrecv * sizeof(struct fof_final_index));
+      (struct fof_final_index *)swift_malloc(
+          "fof_index_recv", nrecv * sizeof(struct fof_final_index));
 
   /* Exchange group indexes */
   MPI_Alltoallv(fof_index_send, sendcount, sendoffset, fof_final_index_type,
