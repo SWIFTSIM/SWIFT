@@ -5436,25 +5436,26 @@ void engine_config(int restart, int fof, struct engine *e,
         if (e->delta_time_stf == -1. && !e->snapshot_invoke_stf)
           error("A value for `StructureFinding:delta_time` must be specified");
 
-      if (e->a_first_stf_output < e->cosmology->a_begin)
-        error(
-            "Scale-factor of first stf output (%e) must be after the "
-            "simulation start a=%e.",
-            e->a_first_stf_output, e->cosmology->a_begin);
-    }
+        if (e->a_first_stf_output < e->cosmology->a_begin)
+          error(
+              "Scale-factor of first stf output (%e) must be after the "
+              "simulation start a=%e.",
+              e->a_first_stf_output, e->cosmology->a_begin);
+      }
 
-    if (e->policy & engine_policy_fof) {
+      if (e->policy & engine_policy_fof) {
 
-      if (e->delta_time_fof <= 1.)
-        error("Time between FOF (%e) must be > 1.", e->delta_time_fof);
+        if (e->delta_time_fof <= 1.)
+          error("Time between FOF (%e) must be > 1.", e->delta_time_fof);
 
-      if (e->a_first_fof_call < e->cosmology->a_begin)
-        error(
-            "Scale-factor of first fof call (%e) must be after the "
-            "simulation start a=%e.",
-            e->a_first_fof_call, e->cosmology->a_begin);
-    }
-  } else {
+        if (e->a_first_fof_call < e->cosmology->a_begin)
+          error(
+              "Scale-factor of first fof call (%e) must be after the "
+              "simulation start a=%e.",
+              e->a_first_fof_call, e->cosmology->a_begin);
+      }
+
+    } else {
 
       if (e->delta_time_snapshot <= 0.)
         error("Time between snapshots (%e) must be positive.",
@@ -5474,8 +5475,7 @@ void engine_config(int restart, int fof, struct engine *e,
       if (e->time_first_statistics < e->time_begin)
         error(
             "Time of first stats output (%e) must be after the simulation "
-            "start "
-            "t=%e.",
+            "start t=%e.",
             e->time_first_statistics, e->time_begin);
 
       if (e->policy & engine_policy_structure_finding) {
@@ -5490,9 +5490,8 @@ void engine_config(int restart, int fof, struct engine *e,
           error(
               "Time of first STF (%e) must be after the simulation start t=%e.",
               e->time_first_stf_output, e->time_begin);
-
-
-  }
+      }
+    }
 
     /* Get the total mass */
     e->total_mass = 0.;
@@ -5518,23 +5517,23 @@ void engine_config(int restart, int fof, struct engine *e,
     /* Find the time of the first statistics output */
     engine_compute_next_statistics_time(e);
 
-  /* Find the time of the first stf output */
-  if (e->policy & engine_policy_structure_finding) {
-    engine_compute_next_stf_time(e);
-  }
+    /* Find the time of the first stf output */
+    if (e->policy & engine_policy_structure_finding) {
+      engine_compute_next_stf_time(e);
+    }
 
-  /* Find the time of the first stf output */
-  if (e->policy & engine_policy_fof) {
-    engine_compute_next_fof_time(e);
-  }
+    /* Find the time of the first stf output */
+    if (e->policy & engine_policy_fof) {
+      engine_compute_next_fof_time(e);
+    }
 
-  /* Check that we are invoking VELOCIraptor only if we have it */
-  if (e->snapshot_invoke_stf &&
-      !(e->policy & engine_policy_structure_finding)) {
-    error(
-        "Invoking VELOCIraptor after snapshots but structure finding wasn't "
-        "activated at runtime (Use --velociraptor).");
-  }
+    /* Check that we are invoking VELOCIraptor only if we have it */
+    if (e->snapshot_invoke_stf &&
+        !(e->policy & engine_policy_structure_finding)) {
+      error(
+          "Invoking VELOCIraptor after snapshots but structure finding wasn't "
+          "activated at runtime (Use --velociraptor).");
+    }
 
     /* Whether restarts are enabled. Yes by default. Can be changed on restart.
      */
