@@ -22,6 +22,8 @@
 /* Some standard headers. */
 #include <stdlib.h>
 
+#include "timeline.h"
+
 /**
  * @brief Particle fields for the black hole particles.
  *

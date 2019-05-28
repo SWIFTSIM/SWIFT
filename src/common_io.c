@@ -25,6 +25,7 @@
 #include "common_io.h"
 
 /* Local includes. */
+#include "black_holes_io.h"
 #include "chemistry_io.h"
 #include "engine.h"
 #include "error.h"
@@ -1819,6 +1820,10 @@ void io_write_output_field_parameter(const char* filename) {
         stars_write_particles(NULL, list, &num_fields);
         break;
 
+      case swift_type_black_hole:
+        black_holes_write_particles(NULL, list, &num_fields);
+        break;
+
       default:
         break;
     }
@@ -1830,7 +1835,9 @@ void io_write_output_field_parameter(const char* filename) {
 
     /* Write all the fields of this particle type */
     for (int i = 0; i < num_fields; ++i)
-      fprintf(file, "  %s_%s: 1\n", list[i].name, part_type_names[ptype]);
+      fprintf(file, "  %s_%s: %*d \t # %s\n", list[i].name,
+              part_type_names[ptype], (int)(28 - strlen(list[i].name)), 1,
+              list[i].description);
 
     fprintf(file, "\n");
   }

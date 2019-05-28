@@ -116,8 +116,8 @@ INLINE static void darkmatter_write_particles(const struct gpart* gparts,
   list[3] =
       io_make_output_field("ParticleIDs", ULONGLONG, 1, UNIT_CONV_NO_UNITS, 0.f,
                            gparts, id_or_neg_offset, "");
-  list[4] = io_make_output_field("GroupIDs", INT, 1, UNIT_CONV_NO_UNITS, 0.f, gparts,
-                                 group_id, "");
+  list[4] = io_make_output_field("GroupIDs", INT, 1, UNIT_CONV_NO_UNITS, 0.f,
+                                 gparts, group_id, "");
 }
 
 #endif /* SWIFT_DEFAULT_GRAVITY_IO_H */
