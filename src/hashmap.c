@@ -129,8 +129,8 @@ hashmap_chunk_t *hashmap_get_chunk(hashmap_t *m) {
     hashmap_allocate_chunks(m, num_chunks);
   }
 
-  hashmap_chunk_t *res = m->graveyard;
-  m->graveyard = res->next;
+  hashmap_chunk_t *res = (hashmap_chunk_t *)m->graveyard;
+  m->graveyard = (hashmap_chunk_t *)res->next;
   res->next = NULL;
 
   return res;
@@ -441,7 +441,7 @@ void hashmap_print_stats(hashmap_t *m) {
   }
   int graveyard_counter = 0;
   for (hashmap_chunk_t *finger = m->graveyard; finger != NULL;
-       finger = finger->next) {
+       finger = (hashmap_chunk_t *)finger->next) {
     graveyard_counter += 1;
   }
   message(
