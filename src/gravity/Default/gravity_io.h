@@ -108,9 +108,11 @@ INLINE static void darkmatter_write_particles(const struct gpart* gparts,
 
   /* List what we want to write */
   list[0] = io_make_output_field_convert_gpart(
-      "Coordinates", DOUBLE, 3, UNIT_CONV_LENGTH, gparts, convert_gpart_pos);
+      "Coordinates", DOUBLE, 3, UNIT_CONV_LENGTH, 1.f, gparts,
+      convert_gpart_pos, "Position of the particles");
   list[1] = io_make_output_field_convert_gpart(
-      "Velocities", FLOAT, 3, UNIT_CONV_SPEED, gparts, convert_gpart_vel);
+      "Velocities", FLOAT, 3, UNIT_CONV_SPEED, 0.f, gparts, convert_gpart_vel,
+      "Peculiar velocites of the particles");
   list[2] = io_make_output_field("Masses", FLOAT, 1, UNIT_CONV_MASS, 0.f,
                                  gparts, mass, "");
   list[3] =

@@ -66,7 +66,7 @@ INLINE static void stars_write_particles(const struct spart *sparts,
   /* List what we want to write */
   list[0] = io_make_output_field("Coordinates", DOUBLE, 3, UNIT_CONV_LENGTH,
                                  1.f, sparts, x, "");
-  list[1] = io_make_output_field("Velocities", FLOAT, 3, UNIT_CONV_SPEED, 1.f,
+  list[1] = io_make_output_field("Velocities", FLOAT, 3, UNIT_CONV_SPEED, 0.f,
                                  sparts, v, "");
   list[2] = io_make_output_field("Masses", FLOAT, 1, UNIT_CONV_MASS, 0.f,
                                  sparts, mass, "");

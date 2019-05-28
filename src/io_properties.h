@@ -214,8 +214,10 @@ INLINE static struct io_props io_make_input_field_(
  * @param type The type of the data
  * @param dimension Dataset dimension (1D, 3D, ...)
  * @param units The units of the dataset
+ * @param a_exponent Exponent of the scale-factor to convert to physical units.
  * @param field Pointer to the field of the first particle
  * @param partSize The size in byte of the particle
+ * @param description Description of the field added to the meta-data.
  *
  * Do not call this function directly. Use the macro defined above.
  */
@@ -262,10 +264,11 @@ INLINE static struct io_props io_make_output_field_(
 /**
  * @brief Constructs an #io_props (with conversion) from its parameters
  */
-#define io_make_output_field_convert_part(name, type, dim, units, part, xpart, \
-                                          convert)                             \
-  io_make_output_field_convert_part_##type(                                    \
-      name, type, dim, units, sizeof(part[0]), part, xpart, convert)
+#define io_make_output_field_convert_part(name, type, dim, units, a_exponent,  \
+                                          part, xpart, convert, desc)          \
+  io_make_output_field_convert_part_##type(name, type, dim, units, a_exponent, \
+                                           sizeof(part[0]), part, xpart,       \
+                                           convert, desc)
 
 /**
  * @brief Construct an #io_props from its parameters
@@ -274,25 +277,34 @@ INLINE static struct io_props io_make_output_field_(
  * @param type The type of the data
  * @param dimension Dataset dimension (1D, 3D, ...)
  * @param units The units of the dataset
+ * @param a_exponent Exponent of the scale-factor to convert to physical units.
  * @param partSize The size in byte of the particle
  * @param parts The particle array
  * @param xparts The xparticle array
  * @param functionPtr The function used to convert a particle to an int
+ * @param description Description of the field added to the meta-data.
  *
  * Do not call this function directly. Use the macro defined above.
  */
 INLINE static struct io_props io_make_output_field_convert_part_INT(
     const char name[FIELD_BUFFER_SIZE], enum IO_DATA_TYPE type, int dimension,
-    enum unit_conversion_factor units, size_t partSize,
+    enum unit_conversion_factor units, float a_exponent, size_t partSize,
     const struct part* parts, const struct xpart* xparts,
-    conversion_func_part_int functionPtr) {
+    conversion_func_part_int functionPtr,
+    const char description[DESCRIPTION_BUFFER_SIZE]) {
 
   struct io_props r;
   strcpy(r.name, name);
+  if (strlen(description) == 0) {
+    sprintf(r.description, "No description given");
+  } else {
+    strcpy(r.description, description);
+  }
   r.type = type;
   r.dimension = dimension;
   r.importance = UNUSED;
   r.units = units;
+  r.scale_factor_exponent = a_exponent;
   r.field = NULL;
   r.partSize = partSize;
   r.parts = parts;
@@ -320,25 +332,34 @@ INLINE static struct io_props io_make_output_field_convert_part_INT(
  * @param type The type of the data
  * @param dimension Dataset dimension (1D, 3D, ...)
  * @param units The units of the dataset
+ * @param a_exponent Exponent of the scale-factor to convert to physical units.
  * @param partSize The size in byte of the particle
  * @param parts The particle array
  * @param xparts The xparticle array
  * @param functionPtr The function used to convert a particle to a float
+ * @param description Description of the field added to the meta-data.
  *
  * Do not call this function directly. Use the macro defined above.
  */
 INLINE static struct io_props io_make_output_field_convert_part_FLOAT(
     const char name[FIELD_BUFFER_SIZE], enum IO_DATA_TYPE type, int dimension,
-    enum unit_conversion_factor units, size_t partSize,
+    enum unit_conversion_factor units, float a_exponent, size_t partSize,
     const struct part* parts, const struct xpart* xparts,
-    conversion_func_part_float functionPtr) {
+    conversion_func_part_float functionPtr,
+    const char description[DESCRIPTION_BUFFER_SIZE]) {
 
   struct io_props r;
   strcpy(r.name, name);
+  if (strlen(description) == 0) {
+    sprintf(r.description, "No description given");
+  } else {
+    strcpy(r.description, description);
+  }
   r.type = type;
   r.dimension = dimension;
   r.importance = UNUSED;
   r.units = units;
+  r.scale_factor_exponent = a_exponent;
   r.field = NULL;
   r.partSize = partSize;
   r.parts = parts;
@@ -371,25 +392,34 @@ INLINE static struct io_props io_make_output_field_convert_part_FLOAT(
  * @param type The type of the data
  * @param dimension Dataset dimension (1D, 3D, ...)
  * @param units The units of the dataset
+ * @param a_exponent Exponent of the scale-factor to convert to physical units.
  * @param partSize The size in byte of the particle
  * @param parts The particle array
  * @param xparts The xparticle array
  * @param functionPtr The function used to convert a particle to a double
+ * @param description Description of the field added to the meta-data.
  *
  * Do not call this function directly. Use the macro defined above.
  */
 INLINE static struct io_props io_make_output_field_convert_part_DOUBLE(
     const char name[FIELD_BUFFER_SIZE], enum IO_DATA_TYPE type, int dimension,
-    enum unit_conversion_factor units, size_t partSize,
+    enum unit_conversion_factor units, float a_exponent, size_t partSize,
     const struct part* parts, const struct xpart* xparts,
-    conversion_func_part_double functionPtr) {
+    conversion_func_part_double functionPtr,
+    const char description[DESCRIPTION_BUFFER_SIZE]) {
 
   struct io_props r;
   strcpy(r.name, name);
+  if (strlen(description) == 0) {
+    sprintf(r.description, "No description given");
+  } else {
+    strcpy(r.description, description);
+  }
   r.type = type;
   r.dimension = dimension;
   r.importance = UNUSED;
   r.units = units;
+  r.scale_factor_exponent = a_exponent;
   r.field = NULL;
   r.partSize = partSize;
   r.parts = parts;
@@ -422,25 +452,34 @@ INLINE static struct io_props io_make_output_field_convert_part_DOUBLE(
  * @param type The type of the data
  * @param dimension Dataset dimension (1D, 3D, ...)
  * @param units The units of the dataset
+ * @param a_exponent Exponent of the scale-factor to convert to physical units.
  * @param partSize The size in byte of the particle
  * @param parts The particle array
  * @param xparts The xparticle array
  * @param functionPtr The function used to convert a particle to a double
+ * @param description Description of the field added to the meta-data.
  *
  * Do not call this function directly. Use the macro defined above.
  */
 INLINE static struct io_props io_make_output_field_convert_part_LONGLONG(
     const char name[FIELD_BUFFER_SIZE], enum IO_DATA_TYPE type, int dimension,
-    enum unit_conversion_factor units, size_t partSize,
+    enum unit_conversion_factor units, float a_exponent, size_t partSize,
     const struct part* parts, const struct xpart* xparts,
-    conversion_func_part_long_long functionPtr) {
+    conversion_func_part_long_long functionPtr,
+    const char description[DESCRIPTION_BUFFER_SIZE]) {
 
   struct io_props r;
   strcpy(r.name, name);
+  if (strlen(description) == 0) {
+    sprintf(r.description, "No description given");
+  } else {
+    strcpy(r.description, description);
+  }
   r.type = type;
   r.dimension = dimension;
   r.importance = UNUSED;
   r.units = units;
+  r.scale_factor_exponent = a_exponent;
   r.field = NULL;
   r.partSize = partSize;
   r.parts = parts;
@@ -469,10 +508,11 @@ INLINE static struct io_props io_make_output_field_convert_part_LONGLONG(
 /**
  * @brief Constructs an #io_props (with conversion) from its parameters
  */
-#define io_make_output_field_convert_gpart(name, type, dim, units, gpart, \
-                                           convert)                       \
-  io_make_output_field_convert_gpart_##type(name, type, dim, units,       \
-                                            sizeof(gpart[0]), gpart, convert)
+#define io_make_output_field_convert_gpart(name, type, dim, units, a_exponent, \
+                                           gpart, convert, desc)               \
+  io_make_output_field_convert_gpart_##type(name, type, dim, units,            \
+                                            a_exponent, sizeof(gpart[0]),      \
+                                            gpart, convert, desc)
 
 /**
  * @brief Construct an #io_props from its parameters
@@ -481,23 +521,32 @@ INLINE static struct io_props io_make_output_field_convert_part_LONGLONG(
  * @param type The type of the data
  * @param dimension Dataset dimension (1D, 3D, ...)
  * @param units The units of the dataset
+ * @param a_exponent Exponent of the scale-factor to convert to physical units.
  * @param gpartSize The size in byte of the particle
  * @param gparts The particle array
  * @param functionPtr The function used to convert a g-particle to a float
+ * @param description Description of the field added to the meta-data.
  *
  * Do not call this function directly. Use the macro defined above.
  */
 INLINE static struct io_props io_make_output_field_convert_gpart_FLOAT(
     const char name[FIELD_BUFFER_SIZE], enum IO_DATA_TYPE type, int dimension,
-    enum unit_conversion_factor units, size_t gpartSize,
-    const struct gpart* gparts, conversion_func_gpart_float functionPtr) {
+    enum unit_conversion_factor units, float a_exponent, size_t gpartSize,
+    const struct gpart* gparts, conversion_func_gpart_float functionPtr,
+    const char description[DESCRIPTION_BUFFER_SIZE]) {
 
   struct io_props r;
   strcpy(r.name, name);
+  if (strlen(description) == 0) {
+    sprintf(r.description, "No description given");
+  } else {
+    strcpy(r.description, description);
+  }
   r.type = type;
   r.dimension = dimension;
   r.importance = UNUSED;
   r.units = units;
+  r.scale_factor_exponent = a_exponent;
   r.field = NULL;
   r.partSize = gpartSize;
   r.parts = NULL;
@@ -530,23 +579,32 @@ INLINE static struct io_props io_make_output_field_convert_gpart_FLOAT(
  * @param type The type of the data
  * @param dimension Dataset dimension (1D, 3D, ...)
  * @param units The units of the dataset
+ * @param a_exponent Exponent of the scale-factor to convert to physical units.
  * @param gpartSize The size in byte of the particle
  * @param gparts The particle array
  * @param functionPtr The function used to convert a g-particle to a double
+ * @param description Description of the field added to the meta-data.
  *
  * Do not call this function directly. Use the macro defined above.
  */
 INLINE static struct io_props io_make_output_field_convert_gpart_DOUBLE(
     const char name[FIELD_BUFFER_SIZE], enum IO_DATA_TYPE type, int dimension,
-    enum unit_conversion_factor units, size_t gpartSize,
-    const struct gpart* gparts, conversion_func_gpart_double functionPtr) {
+    enum unit_conversion_factor units, float a_exponent, size_t gpartSize,
+    const struct gpart* gparts, conversion_func_gpart_double functionPtr,
+    const char description[DESCRIPTION_BUFFER_SIZE]) {
 
   struct io_props r;
   strcpy(r.name, name);
+  if (strlen(description) == 0) {
+    sprintf(r.description, "No description given");
+  } else {
+    strcpy(r.description, description);
+  }
   r.type = type;
   r.dimension = dimension;
   r.importance = UNUSED;
   r.units = units;
+  r.scale_factor_exponent = a_exponent;
   r.field = NULL;
   r.partSize = gpartSize;
   r.parts = NULL;
@@ -579,23 +637,32 @@ INLINE static struct io_props io_make_output_field_convert_gpart_DOUBLE(
  * @param type The type of the data
  * @param dimension Dataset dimension (1D, 3D, ...)
  * @param units The units of the dataset
+ * @param a_exponent Exponent of the scale-factor to convert to physical units.
  * @param gpartSize The size in byte of the particle
  * @param gparts The particle array
  * @param functionPtr The function used to convert a g-particle to a double
+ * @param description Description of the field added to the meta-data.
  *
  * Do not call this function directly. Use the macro defined above.
  */
 INLINE static struct io_props io_make_output_field_convert_gpart_LONGLONG(
     const char name[FIELD_BUFFER_SIZE], enum IO_DATA_TYPE type, int dimension,
-    enum unit_conversion_factor units, size_t gpartSize,
-    const struct gpart* gparts, conversion_func_gpart_long_long functionPtr) {
+    enum unit_conversion_factor units, float a_exponent, size_t gpartSize,
+    const struct gpart* gparts, conversion_func_gpart_long_long functionPtr,
+    const char description[DESCRIPTION_BUFFER_SIZE]) {
 
   struct io_props r;
   strcpy(r.name, name);
+  if (strlen(description) == 0) {
+    sprintf(r.description, "No description given");
+  } else {
+    strcpy(r.description, description);
+  }
   r.type = type;
   r.dimension = dimension;
   r.importance = UNUSED;
   r.units = units;
+  r.scale_factor_exponent = a_exponent;
   r.field = NULL;
   r.partSize = gpartSize;
   r.parts = NULL;
@@ -624,10 +691,11 @@ INLINE static struct io_props io_make_output_field_convert_gpart_LONGLONG(
 /**
  * @brief Constructs an #io_props (with conversion) from its parameters
  */
-#define io_make_output_field_convert_spart(name, type, dim, units, spart, \
-                                           convert)                       \
-  io_make_output_field_convert_spart_##type(name, type, dim, units,       \
-                                            sizeof(spart[0]), spart, convert)
+#define io_make_output_field_convert_spart(name, type, dim, units, a_exponent, \
+                                           spart, convert, desc)               \
+  io_make_output_field_convert_spart_##type(name, type, dim, units,            \
+                                            a_exponent, sizeof(spart[0]),      \
+                                            spart, convert, desc)
 
 /**
  * @brief Construct an #io_props from its parameters
@@ -636,23 +704,32 @@ INLINE static struct io_props io_make_output_field_convert_gpart_LONGLONG(
  * @param type The type of the data
  * @param dimension Dataset dimension (1D, 3D, ...)
  * @param units The units of the dataset
+ * @param a_exponent Exponent of the scale-factor to convert to physical units.
  * @param spartSize The size in byte of the particle
  * @param sparts The particle array
  * @param functionPtr The function used to convert a g-particle to a float
+ * @param description Description of the field added to the meta-data.
  *
  * Do not call this function directly. Use the macro defined above.
  */
 INLINE static struct io_props io_make_output_field_convert_spart_FLOAT(
     const char name[FIELD_BUFFER_SIZE], enum IO_DATA_TYPE type, int dimension,
-    enum unit_conversion_factor units, size_t spartSize,
-    const struct spart* sparts, conversion_func_spart_float functionPtr) {
+    enum unit_conversion_factor units, float a_exponent, size_t spartSize,
+    const struct spart* sparts, conversion_func_spart_float functionPtr,
+    const char description[DESCRIPTION_BUFFER_SIZE]) {
 
   struct io_props r;
   strcpy(r.name, name);
+  if (strlen(description) == 0) {
+    sprintf(r.description, "No description given");
+  } else {
+    strcpy(r.description, description);
+  }
   r.type = type;
   r.dimension = dimension;
   r.importance = UNUSED;
   r.units = units;
+  r.scale_factor_exponent = a_exponent;
   r.field = NULL;
   r.partSize = spartSize;
   r.parts = NULL;
@@ -685,23 +762,32 @@ INLINE static struct io_props io_make_output_field_convert_spart_FLOAT(
  * @param type The type of the data
  * @param dimension Dataset dimension (1D, 3D, ...)
  * @param units The units of the dataset
+ * @param a_exponent Exponent of the scale-factor to convert to physical units.
  * @param spartSize The size in byte of the particle
  * @param sparts The particle array
  * @param functionPtr The function used to convert a s-particle to a double
+ * @param description Description of the field added to the meta-data.
  *
  * Do not call this function directly. Use the macro defined above.
  */
 INLINE static struct io_props io_make_output_field_convert_spart_DOUBLE(
     const char name[FIELD_BUFFER_SIZE], enum IO_DATA_TYPE type, int dimension,
-    enum unit_conversion_factor units, size_t spartSize,
-    const struct spart* sparts, conversion_func_spart_double functionPtr) {
+    enum unit_conversion_factor units, float a_exponent, size_t spartSize,
+    const struct spart* sparts, conversion_func_spart_double functionPtr,
+    const char description[DESCRIPTION_BUFFER_SIZE]) {
 
   struct io_props r;
   strcpy(r.name, name);
+  if (strlen(description) == 0) {
+    sprintf(r.description, "No description given");
+  } else {
+    strcpy(r.description, description);
+  }
   r.type = type;
   r.dimension = dimension;
   r.importance = UNUSED;
   r.units = units;
+  r.scale_factor_exponent = a_exponent;
   r.field = NULL;
   r.partSize = spartSize;
   r.parts = NULL;
@@ -734,23 +820,32 @@ INLINE static struct io_props io_make_output_field_convert_spart_DOUBLE(
  * @param type The type of the data
  * @param dimension Dataset dimension (1D, 3D, ...)
  * @param units The units of the dataset
+ * @param a_exponent Exponent of the scale-factor to convert to physical units.
  * @param spartSize The size in byte of the particle
  * @param sparts The particle array
  * @param functionPtr The function used to convert a s-particle to a double
+ * @param description Description of the field added to the meta-data.
  *
  * Do not call this function directly. Use the macro defined above.
  */
 INLINE static struct io_props io_make_output_field_convert_spart_LONGLONG(
     const char name[FIELD_BUFFER_SIZE], enum IO_DATA_TYPE type, int dimension,
-    enum unit_conversion_factor units, size_t spartSize,
-    const struct spart* sparts, conversion_func_spart_long_long functionPtr) {
+    enum unit_conversion_factor units, float a_exponent, size_t spartSize,
+    const struct spart* sparts, conversion_func_spart_long_long functionPtr,
+    const char description[DESCRIPTION_BUFFER_SIZE]) {
 
   struct io_props r;
   strcpy(r.name, name);
+  if (strlen(description) == 0) {
+    sprintf(r.description, "No description given");
+  } else {
+    strcpy(r.description, description);
+  }
   r.type = type;
   r.dimension = dimension;
   r.importance = UNUSED;
   r.units = units;
+  r.scale_factor_exponent = a_exponent;
   r.field = NULL;
   r.partSize = spartSize;
   r.parts = NULL;
@@ -779,10 +874,11 @@ INLINE static struct io_props io_make_output_field_convert_spart_LONGLONG(
 /**
  * @brief Constructs an #io_props (with conversion) from its parameters
  */
-#define io_make_output_field_convert_bpart(name, type, dim, units, bpart, \
-                                           convert)                       \
-  io_make_output_field_convert_bpart_##type(name, type, dim, units,       \
-                                            sizeof(bpart[0]), bpart, convert)
+#define io_make_output_field_convert_bpart(name, type, dim, units, a_exponent, \
+                                           bpart, convert, desc)               \
+  io_make_output_field_convert_bpart_##type(name, type, dim, units,            \
+                                            a_exponent, sizeof(bpart[0]),      \
+                                            bpart, convert, desc)
 
 /**
  * @brief Construct an #io_props from its parameters
@@ -791,23 +887,32 @@ INLINE static struct io_props io_make_output_field_convert_spart_LONGLONG(
  * @param type The type of the data
  * @param dimension Dataset dimension (1D, 3D, ...)
  * @param units The units of the dataset
+ * @param a_exponent Exponent of the scale-factor to convert to physical units.
  * @param bpartSize The size in byte of the particle
  * @param bparts The particle array
  * @param functionPtr The function used to convert a g-particle to a float
+ * @param description Description of the field added to the meta-data.
  *
  * Do not call this function directly. Use the macro defined above.
  */
 INLINE static struct io_props io_make_output_field_convert_bpart_FLOAT(
     const char name[FIELD_BUFFER_SIZE], enum IO_DATA_TYPE type, int dimension,
-    enum unit_conversion_factor units, size_t bpartSize,
-    const struct bpart* bparts, conversion_func_bpart_float functionPtr) {
+    enum unit_conversion_factor units, float a_exponent, size_t bpartSize,
+    const struct bpart* bparts, conversion_func_bpart_float functionPtr,
+    const char description[DESCRIPTION_BUFFER_SIZE]) {
 
   struct io_props r;
   strcpy(r.name, name);
+  if (strlen(description) == 0) {
+    sprintf(r.description, "No description given");
+  } else {
+    strcpy(r.description, description);
+  }
   r.type = type;
   r.dimension = dimension;
   r.importance = UNUSED;
   r.units = units;
+  r.scale_factor_exponent = a_exponent;
   r.field = NULL;
   r.partSize = bpartSize;
   r.parts = NULL;
@@ -839,23 +944,32 @@ INLINE static struct io_props io_make_output_field_convert_bpart_FLOAT(
  * @param type The type of the data
  * @param dimension Dataset dimension (1D, 3D, ...)
  * @param units The units of the dataset
+ * @param a_exponent Exponent of the scale-factor to convert to physical units.
  * @param bpartSize The size in byte of the particle
  * @param bparts The particle array
  * @param functionPtr The function used to convert a s-particle to a double
+ * @param description Description of the field added to the meta-data.
  *
  * Do not call this function directly. Use the macro defined above.
  */
 INLINE static struct io_props io_make_output_field_convert_bpart_DOUBLE(
     const char name[FIELD_BUFFER_SIZE], enum IO_DATA_TYPE type, int dimension,
-    enum unit_conversion_factor units, size_t bpartSize,
-    const struct bpart* bparts, conversion_func_bpart_double functionPtr) {
+    enum unit_conversion_factor units, float a_exponent, size_t bpartSize,
+    const struct bpart* bparts, conversion_func_bpart_double functionPtr,
+    const char description[DESCRIPTION_BUFFER_SIZE]) {
 
   struct io_props r;
   strcpy(r.name, name);
+  if (strlen(description) == 0) {
+    sprintf(r.description, "No description given");
+  } else {
+    strcpy(r.description, description);
+  }
   r.type = type;
   r.dimension = dimension;
   r.importance = UNUSED;
   r.units = units;
+  r.scale_factor_exponent = a_exponent;
   r.field = NULL;
   r.partSize = bpartSize;
   r.parts = NULL;
@@ -887,23 +1001,33 @@ INLINE static struct io_props io_make_output_field_convert_bpart_DOUBLE(
  * @param type The type of the data
  * @param dimension Dataset dimension (1D, 3D, ...)
  * @param units The units of the dataset
+ * @param a_exponent Exponent of the scale-factor to convert to physical units.
  * @param bpartSize The size in byte of the particle
  * @param bparts The particle array
  * @param functionPtr The function used to convert a s-particle to a double
+ * @param description Description of the field added to the meta-data.
+ * @param description Description of the field added to the meta-data.
  *
  * Do not call this function directly. Use the macro defined above.
  */
 INLINE static struct io_props io_make_output_field_convert_bpart_LONGLONG(
     const char name[FIELD_BUFFER_SIZE], enum IO_DATA_TYPE type, int dimension,
-    enum unit_conversion_factor units, size_t bpartSize,
-    const struct bpart* bparts, conversion_func_bpart_long_long functionPtr) {
+    enum unit_conversion_factor units, float a_exponent, size_t bpartSize,
+    const struct bpart* bparts, conversion_func_bpart_long_long functionPtr,
+    const char description[DESCRIPTION_BUFFER_SIZE]) {
 
   struct io_props r;
   strcpy(r.name, name);
+  if (strlen(description) == 0) {
+    sprintf(r.description, "No description given");
+  } else {
+    strcpy(r.description, description);
+  }
   r.type = type;
   r.dimension = dimension;
   r.importance = UNUSED;
   r.units = units;
+  r.scale_factor_exponent = a_exponent;
   r.field = NULL;
   r.partSize = bpartSize;
   r.parts = NULL;

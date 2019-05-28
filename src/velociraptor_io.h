@@ -61,8 +61,9 @@ __attribute__((always_inline)) INLINE static int velociraptor_write_parts(
     struct io_props* list) {
 
   list[0] = io_make_output_field_convert_part(
-      "GroupID", LONGLONG, 1, UNIT_CONV_NO_UNITS, parts, xparts,
-      velociraptor_convert_part_groupID);
+      "GroupID", LONGLONG, 1, UNIT_CONV_NO_UNITS, 0.f, parts, xparts,
+      velociraptor_convert_part_groupID,
+      "Group ID of the particle in the VELOCIraptor catalogue");
 
   return 1;
 }
@@ -70,8 +71,9 @@ __attribute__((always_inline)) INLINE static int velociraptor_write_parts(
 __attribute__((always_inline)) INLINE static int velociraptor_write_gparts(
     const struct velociraptor_gpart_data* group_data, struct io_props* list) {
 
-  list[0] = io_make_output_field("GroupID", LONGLONG, 1, UNIT_CONV_NO_UNITS,
-                                 0.f, group_data, groupID, "");
+  list[0] = io_make_output_field(
+      "GroupID", LONGLONG, 1, UNIT_CONV_NO_UNITS, 0.f, group_data, groupID,
+      "Group ID of the particle in the VELOCIraptor catalogue");
 
   return 1;
 }
@@ -80,8 +82,9 @@ __attribute__((always_inline)) INLINE static int velociraptor_write_sparts(
     const struct spart* sparts, struct io_props* list) {
 
   list[0] = io_make_output_field_convert_spart(
-      "GroupID", LONGLONG, 1, UNIT_CONV_NO_UNITS, sparts,
-      velociraptor_convert_spart_groupID);
+      "GroupID", LONGLONG, 1, UNIT_CONV_NO_UNITS, 0.f, sparts,
+      velociraptor_convert_spart_groupID,
+      "Group ID of the particle in the VELOCIraptor catalogue");
 
   return 1;
 }
@@ -90,8 +93,9 @@ __attribute__((always_inline)) INLINE static int velociraptor_write_bparts(
     const struct bpart* bparts, struct io_props* list) {
 
   list[0] = io_make_output_field_convert_bpart(
-      "GroupID", LONGLONG, 1, UNIT_CONV_NO_UNITS, bparts,
-      velociraptor_convert_bpart_groupID);
+      "GroupID", LONGLONG, 1, UNIT_CONV_NO_UNITS, 0.f, bparts,
+      velociraptor_convert_bpart_groupID,
+      "Group ID of the particle in the VELOCIraptor catalogue");
 
   return 1;
 }
