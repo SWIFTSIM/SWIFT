@@ -3441,8 +3441,6 @@ void engine_first_init_particles(struct engine *e) {
  * @param flag_entropy_ICs Did the 'Internal Energy' of the particles actually
  * contain entropy ?
  * @param clean_h_values Are we cleaning up the values of h before building
- * @param start_acutal_run Are we computing the initial acceleration of
- * particles (i.e. are we preparing for an actual run)?
  */
 void engine_init_particles(struct engine *e, int flag_entropy_ICs,
                            int clean_h_values) {
@@ -5079,6 +5077,7 @@ void engine_init(struct engine *e, struct space *s, struct swift_params *params,
  * When not restarting params should be the same as given to engine_init().
  *
  * @param restart true when restarting the application.
+ * @param fof true when starting a stand-alone FOF call.
  * @param e The #engine.
  * @param params The parsed parameter file.
  * @param nr_nodes The number of MPI ranks.
@@ -5367,8 +5366,7 @@ void engine_config(int restart, int fof, struct engine *e,
     if (e->time_begin >= e->time_end)
       error(
           "Final simulation time (t_end = %e) must be larger than the start "
-          "time "
-          "(t_beg = %e)",
+          "time (t_beg = %e)",
           e->time_end, e->time_begin);
 
     /* Check we don't have inappropriate time labels */
@@ -6533,8 +6531,7 @@ void engine_fof(struct engine *e, const int dump_results,
   e->step_props |= engine_step_prop_fof;
 
   /* ... and find the next FOF time */
-  if(seed_black_holes)
-    engine_compute_next_fof_time(e);
+  if (seed_black_holes) engine_compute_next_fof_time(e);
 
   if (engine_rank == 0)
     message("Complete FOF search took: %.3f %s.",
