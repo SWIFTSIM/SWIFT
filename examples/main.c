@@ -192,8 +192,8 @@ int main(int argc, char *argv[]) {
       OPT_BOOLEAN(0, "temperature", &with_temperature,
                   "Run with temperature calculation.", NULL, 0, 0),
       OPT_BOOLEAN('C', "cooling", &with_cooling,
-                  "Run with cooling (also switches on --with-temperature).",
-                  NULL, 0, 0),
+                  "Run with cooling (also switches on --temperature).", NULL, 0,
+                  0),
       OPT_BOOLEAN('D', "drift-all", &with_drift_all,
                   "Always drift all particles even the ones far from active "
                   "particles. This emulates Gadget-[23] and GIZMO's default "
