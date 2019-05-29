@@ -225,10 +225,10 @@ if test "x$enable_debug" = "xyes"; then
    fi
 fi
 
-# Check if stand-along FoF is on.
+# Check if stand-alone FoF is on.
 AC_ARG_ENABLE([stand-alone-fof],
    [AS_HELP_STRING([--enable-stand-alone-fof],
-     [Acticate the compilation of the stand-alone friends-of-friends post-processing tool.],
+     [Activate the compilation of the stand-alone friends-of-friends post-processing tool.],
    )],
    [enable_standalone_fof="$enableval"],
    [enable_standalone_fof="no"]
