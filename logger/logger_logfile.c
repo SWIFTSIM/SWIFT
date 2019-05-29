@@ -60,7 +60,7 @@ void logger_logfile_init_from_file(struct logger_logfile *log, char *filename,
 
   /* Check if the offset are corrupted. */
   if (header_is_corrupted(&log->header)) {
-    error("The offsets have been corrupted");
+    error("The offsets have been corrupted.");
   }
 
   /* Reverse the offsets direction. */
@@ -143,7 +143,7 @@ void logger_logfile_reverse_offset(struct logger_logfile *log, char *filename) {
   }
 
   if (reader->verbose > 0) {
-    message("Reversing done");
+    message("Reversing done.");
   }
 
   /* Now that the offset are effectively reversed, can set the direction to

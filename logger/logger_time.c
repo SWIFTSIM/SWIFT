@@ -49,10 +49,10 @@ size_t time_read(integertime_t *int_time, double *time,
 
   /* check if time mask is present in log file header. */
   int ind = header_get_field_index(h, "timestamp");
-  if (ind == -1) error("File header does not contain a mask for time");
+  if (ind == -1) error("File header does not contain a mask for time.");
 
   /* check if reading a time record. */
-  if (h->masks[ind].mask != mask) error("Not a time record");
+  if (h->masks[ind].mask != mask) error("Not a time record.");
 #endif
 
   /* read the record. */
@@ -79,12 +79,12 @@ size_t time_offset_first_record(const struct header *h) {
   /* Check that the first record is really a time record. */
   int i = header_get_field_index(h, "timestamp");
 
-  if (i == -1) error("Time mask not present in the log file header");
+  if (i == -1) error("Time mask not present in the log file header.");
 
   size_t mask = 0;
   logger_loader_io_read_mask(h, map + offset, &mask, NULL);
 
-  if (mask != h->masks[i].mask) error("Log file should begin by timestep");
+  if (mask != h->masks[i].mask) error("Log file should begin by timestep.");
 
   return h->offset_first_record;
 }
@@ -185,7 +185,7 @@ struct time_array *time_array_get_time_array(const struct time_array *t,
                                              const size_t offset) {
 
 #ifdef SWIFT_DEBUG_CHECKS
-  if (!t) error("NULL pointer");
+  if (!t) error("NULL pointer.");
 #endif
   const struct time_array *tmp;
   /* Find the time_array with the correct offset. */
@@ -226,7 +226,7 @@ void time_array_print(const struct time_array *t) {
 
   /* Loop over all elements. */
   for (size_t i = 1; i < n; i++) {
-    if (!t->next) error("Next pointer not initialized %zi", i);
+    if (!t->next) error("Next pointer not initialized %zi.", i);
 
     t = t->next;
     /* Skip the times at the center of the array. */

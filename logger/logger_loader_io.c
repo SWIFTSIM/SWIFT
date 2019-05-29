@@ -35,7 +35,7 @@
 size_t logger_loader_io_get_file_size(int fd) {
   struct stat s;
   int status = fstat(fd, &s);
-  if (status != 0) error("Unable to get file size (%s)", strerror(errno));
+  if (status != 0) error("Unable to get file size (%s).", strerror(errno));
   return s.st_size;
 }
 
@@ -59,7 +59,7 @@ void *logger_loader_io_mmap_file(char *filename, size_t *file_size,
   else
     fd = open(filename, O_RDWR);
 
-  if (fd == -1) error("Unable to open file %s (%s)", filename, strerror(errno));
+  if (fd == -1) error("Unable to open file %s (%s).", filename, strerror(errno));
 
   /* get the file size. */
   *file_size = logger_loader_io_get_file_size(fd);
@@ -70,7 +70,7 @@ void *logger_loader_io_mmap_file(char *filename, size_t *file_size,
 
   void *map = mmap(NULL, *file_size, mode, MAP_SHARED, fd, 0);
   if (map == MAP_FAILED)
-    error("Failed to allocate map of size %zi bytes. (%s)", *file_size,
+    error("Failed to allocate map of size %zi bytes (%s).", *file_size,
           strerror(errno));
 
   /* Close the file. */
@@ -89,6 +89,6 @@ void *logger_loader_io_mmap_file(char *filename, size_t *file_size,
 void logger_loader_io_munmap_file(void *map, size_t file_size) {
   /* unmap the file. */
   if (munmap(map, file_size) != 0) {
-    error("Unable to unmap the file (%s)", strerror(errno));
+    error("Unable to unmap the file (%s).", strerror(errno));
   }
 }

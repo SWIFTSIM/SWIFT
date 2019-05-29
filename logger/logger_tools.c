@@ -42,7 +42,7 @@ int tools_get_next_record(const struct header *h, void *map, size_t *offset,
   if (header_is_backward(h))
     return _tools_get_next_record_backward(h, map, offset, file_size);
   else
-    error("Offsets are corrupted");
+    error("Offsets are corrupted.");
 }
 
 /**
@@ -138,7 +138,7 @@ size_t tools_reverse_offset(const struct header *h, void *file_map,
   if (prev_offset == cur_offset) return after_current_record;
 
   if (prev_offset > cur_offset)
-    error("Unexpected offset, header %lu, current %lu", prev_offset,
+    error("Unexpected offset: header %lu, current %lu.", prev_offset,
           cur_offset);
 
   /* modify previous offset. */
@@ -152,7 +152,7 @@ size_t tools_reverse_offset(const struct header *h, void *file_map,
 
   /* Check if we are not mixing time stamp and particles */
   if ((prev_mask != 128 && mask == 128) || (prev_mask == 128 && mask != 128))
-    error("Unexpected mask: %lu, got %lu", mask, prev_mask);
+    error("Unexpected mask: %lu, got %lu.", mask, prev_mask);
 
 #endif  // SWIFT_DEBUG_CHECKS
 
@@ -173,7 +173,7 @@ size_t tools_reverse_offset(const struct header *h, void *file_map,
 size_t tools_check_record_consistency(const struct logger_reader *reader,
                                       size_t offset) {
 #ifndef SWIFT_DEBUG_CHECKS
-  error("Should not check in non debug mode");
+  error("Should not check in non debug mode.");
 #endif
 
   const struct header *h = &reader->log.header;
@@ -191,11 +191,11 @@ size_t tools_check_record_consistency(const struct logger_reader *reader,
     pointed_offset += offset;
   else if (header_is_backward(h)) {
     if (offset < pointed_offset)
-      error("Offset too large (%lu) at %lu with mask %lu", pointed_offset,
+      error("Offset too large (%lu) at %lu with mask %lu.", pointed_offset,
             offset, mask);
     pointed_offset = offset - pointed_offset;
   } else {
-    error("Offset are corrupted");
+    error("Offset are corrupted.");
   }
 
   /* set offset after current record. */
@@ -212,7 +212,7 @@ size_t tools_check_record_consistency(const struct logger_reader *reader,
   /* check if not mixing time stamp and particles. */
   if ((pointed_mask != 128 && mask == 128) ||
       (pointed_mask == 128 && mask != 128))
-    error("Error in the offset (mask %lu at %lu != %lu at %lu)", mask, offset,
+    error("Error in the offset (mask %lu at %lu != %lu at %lu).", mask, offset,
           pointed_mask, pointed_offset);
 
   if (pointed_mask == 128) return (size_t)(map - file_init);
@@ -224,7 +224,7 @@ size_t tools_check_record_consistency(const struct logger_reader *reader,
   logger_particle_read(&part, reader, pointed_offset, 0, logger_reader_const);
 
   if (id != part.id)
-    error("Offset wrong, id incorrect (%lu != %lu) at %lu", id, part.id,
+    error("Offset wrong, id incorrect (%lu != %lu) at %lu.", id, part.id,
           pointed_offset);
 
   return (size_t)(map - file_init);

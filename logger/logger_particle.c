@@ -33,15 +33,15 @@
  * @param p The #logger_particle to print
  */
 void logger_particle_print(const struct logger_particle *p) {
-  message("ID:            %lu\n", p->id);
-  message("Mass:          %g\n", p->mass);
-  message("Time:          %g\n", p->time);
-  message("Cutoff Radius: %g\n", p->h);
-  message("Positions:     (%g, %g, %g)\n", p->pos[0], p->pos[1], p->pos[2]);
-  message("Velocities:    (%g, %g, %g)\n", p->vel[0], p->vel[1], p->vel[2]);
-  message("Accelerations: (%g, %g, %g)\n", p->acc[0], p->acc[1], p->acc[2]);
-  message("Entropy:       %g\n", p->entropy);
-  message("Density:       %g\n", p->density);
+  message("ID:            %lu.", p->id);
+  message("Mass:          %g", p->mass);
+  message("Time:          %g.", p->time);
+  message("Cutoff Radius: %g.", p->h);
+  message("Positions:     (%g, %g, %g).", p->pos[0], p->pos[1], p->pos[2]);
+  message("Velocities:    (%g, %g, %g).", p->vel[0], p->vel[1], p->vel[2]);
+  message("Accelerations: (%g, %g, %g).", p->acc[0], p->acc[1], p->acc[2]);
+  message("Entropy:       %g.", p->entropy);
+  message("Density:       %g.", p->density);
 }
 
 /**
@@ -93,7 +93,7 @@ void *logger_particle_read_field(struct logger_particle *part, void *map,
   } else if (strcmp("consts", field) == 0) {
     p = malloc(size);
   } else {
-    error("Type %s not defined", field);
+    error("Type %s not defined.", field);
   }
 
   /* read the data. */
@@ -144,7 +144,7 @@ size_t logger_particle_read(struct logger_particle *part,
   map = logger_loader_io_read_mask(h, map + offset, &mask, &h_offset);
 
   /* Check if it is not a time record. */
-  if (mask == 128) error("Unexpected mask: %lu", mask);
+  if (mask == 128) error("Unexpected mask: %lu.", mask);
 
   /* Read all the fields. */
   for (size_t i = 0; i < h->number_mask; i++) {
@@ -208,17 +208,17 @@ void logger_particle_interpolate(struct logger_particle *part_curr,
                                  const double time) {
 
   /* Check that a particle is provided. */
-  if (!part_curr) error("part_curr is NULL");
-  if (!part_next) error("part_next is NULL");
+  if (!part_curr) error("part_curr is NULL.");
+  if (!part_next) error("part_next is NULL.");
 
 #ifdef SWIFT_DEBUG_CHECKS
   /* Check the particle order. */
   if (part_next->time <= part_curr->time)
-    error("Wrong particle order (next before current)");
+    error("Wrong particle order (next before current).");
   if ((time < part_curr->time) || (part_next->time < time))
     error(
         "Cannot extrapolate (particle time: %f, "
-        "interpolating time: %f, next particle time: %f)",
+        "interpolating time: %f, next particle time: %f).",
         part_curr->time, time, part_next->time);
 #endif
 

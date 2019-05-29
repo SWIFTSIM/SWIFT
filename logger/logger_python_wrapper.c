@@ -67,13 +67,13 @@ static PyObject *loadFromIndex(__attribute__((unused)) PyObject *self,
     return NULL;
 
   if (!PyArray_Check(offset)) {
-    error("Offset is not a numpy array");
+    error("Offset is not a numpy array.");
   }
   if (PyArray_NDIM(offset) != 1) {
-    error("Offset is not a 1 dimensional array");
+    error("Offset is not a 1 dimensional array.");
   }
   if (PyArray_TYPE(offset) != NPY_UINT64) {
-    error("Offset does not contain unsigned int");
+    error("Offset does not contain unsigned int.");
   }
 
   /* initialize the reader. */

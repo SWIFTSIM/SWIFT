@@ -28,7 +28,7 @@
  */
 void logger_reader_init(struct logger_reader *reader, char *filename,
                         int verbose) {
-  if (verbose > 1) message("Initializing the reader");
+  if (verbose > 1) message("Initializing the reader.");
 
   /* Initialize the reader variables. */
   reader->verbose = verbose;
@@ -74,7 +74,7 @@ size_t reader_read_record(struct logger_reader *reader,
   /* Check if timestamp or not. */
   int ind = header_get_field_index(&log->header, "timestamp");
   if (ind == -1) {
-    error("File header does not contain a mask for time");
+    error("File header does not contain a mask for time.");
   }
   if (log->header.masks[ind].mask == mask) {
     *is_particle = 0;
