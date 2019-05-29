@@ -143,7 +143,7 @@ int main(int argc, char *argv[]) {
 #endif
 
   /* Welcome to SWIFT, you made the right choice */
-  if (myrank == 0) greetings();
+  if (myrank == 0) greetings(/*fof=*/0);
 
   int with_aff = 0;
   int dry_run = 0;
@@ -693,8 +693,8 @@ int main(int argc, char *argv[]) {
 
     /* And initialize the engine with the space and policies. */
     if (myrank == 0) clocks_gettime(&tic);
-    engine_config(1, &e, params, nr_nodes, myrank, nr_threads, with_aff,
-                  talking, restart_file);
+    engine_config(/*restart=*/1, /*fof=*/0, &e, params, nr_nodes, myrank,
+                  nr_threads, with_aff, talking, restart_file);
     if (myrank == 0) {
       clocks_gettime(&toc);
       message("engine_config took %.3f %s.", clocks_diff(&tic, &toc),
@@ -924,8 +924,7 @@ int main(int argc, char *argv[]) {
     if (myrank == 0)
       message(
           "Read %lld gas particles, %lld stars particles, %lld black hole "
-          "particles"
-          " and %lld gparts from the ICs.",
+          "particles and %lld gparts from the ICs.",
           N_total[0], N_total[2], N_total[3], N_total[1]);
 
     /* Verify that the fields to dump actually exist */
@@ -1054,8 +1053,8 @@ int main(int argc, char *argv[]) {
                 &stars_properties, &black_holes_properties,
                 &feedback_properties, &mesh, &potential, &cooling_func,
                 &starform, &chemistry, &fof_properties);
-    engine_config(0, &e, params, nr_nodes, myrank, nr_threads, with_aff,
-                  talking, restart_file);
+    engine_config(/*restart=*/0, /*fof=*/0, &e, params, nr_nodes, myrank,
+                  nr_threads, with_aff, talking, restart_file);
 
     if (myrank == 0) {
       clocks_gettime(&toc);
@@ -1089,7 +1088,7 @@ int main(int argc, char *argv[]) {
 #endif
     if (myrank == 0)
       message("Time integration ready to start. End of dry-run.");
-    engine_clean(&e);
+    engine_clean(&e, /*fof=*/0);
     free(params);
     return 0;
   }
@@ -1113,8 +1112,7 @@ int main(int argc, char *argv[]) {
 #endif
 
     /* Initialise the particles */
-    engine_init_particles(&e, flag_entropy_ICs, clean_smoothing_length_values,
-                          1);
+    engine_init_particles(&e, flag_entropy_ICs, clean_smoothing_length_values);
 
     /* Write the state of the system before starting time integration. */
 #ifdef WITH_LOGGER
@@ -1327,7 +1325,7 @@ int main(int argc, char *argv[]) {
   if (with_cosmology) cosmology_clean(e.cosmology);
   if (with_self_gravity) pm_mesh_clean(e.mesh);
   if (with_cooling || with_temperature) cooling_clean(&cooling_func);
-  engine_clean(&e);
+  engine_clean(&e, /*fof=*/0);
   free(params);
 
   /* Say goodbye. */
