@@ -311,7 +311,7 @@ void prepareArray(const struct engine* e, hid_t grp, char* fileName,
                    props.dimension, props.type);
 
   /* Write unit conversion factors for this data set */
-  char buffer[FIELD_BUFFER_SIZE];
+  char buffer[FIELD_BUFFER_SIZE] = {0};
   units_cgs_conversion_string(buffer, snapshot_units, props.units);
   float baseUnitsExp[5];
   units_get_base_unit_exponents_array(baseUnitsExp, props.units);

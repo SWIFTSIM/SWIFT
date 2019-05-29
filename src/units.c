@@ -522,7 +522,7 @@ float units_general_a_factor(const struct unit_system* us,
 void units_general_cgs_conversion_string(char* buffer,
                                          const struct unit_system* us,
                                          const float baseUnitsExponents[5]) {
-  char temp[32];
+  char temp[32] = {0};
   const double a_exp = units_general_a_factor(us, baseUnitsExponents);
   const double h_exp = 0.; /* There are no h-factors in SWIFT outputs. */
 
