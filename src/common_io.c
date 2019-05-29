@@ -1790,12 +1790,16 @@ void io_check_output_fields(const struct swift_params* params,
 /**
  * @brief Write the output field parameters file
  *
- * @param filename The file to write
+ * @param filename The file to write.
  */
 void io_write_output_field_parameter(const char* filename) {
 
   FILE* file = fopen(filename, "w");
   if (file == NULL) error("Error opening file '%s'", filename);
+
+  /* Create a fake unit system for the snapshots */
+  struct unit_system snapshot_units;
+  units_init_cgs(&snapshot_units);
 
   /* Loop over all particle types */
   fprintf(file, "SelectOutput:\n");
@@ -1834,10 +1838,16 @@ void io_write_output_field_parameter(const char* filename) {
     fprintf(file, "  # Particle Type %s\n", part_type_names[ptype]);
 
     /* Write all the fields of this particle type */
-    for (int i = 0; i < num_fields; ++i)
-      fprintf(file, "  %s_%s: %*d \t # %s\n", list[i].name,
-              part_type_names[ptype], (int)(28 - strlen(list[i].name)), 1,
-              list[i].description);
+    for (int i = 0; i < num_fields; ++i) {
+
+      char buffer[FIELD_BUFFER_SIZE] = {0};
+      units_cgs_conversion_string(buffer, &snapshot_units, list[i].units);
+
+      fprintf(file,
+              "  %s_%s: %*d \t # %s. ::: Conversion to physical CGS: %s\n",
+              list[i].name, part_type_names[ptype],
+              (int)(28 - strlen(list[i].name)), 1, list[i].description, buffer);
+    }
 
     fprintf(file, "\n");
   }
