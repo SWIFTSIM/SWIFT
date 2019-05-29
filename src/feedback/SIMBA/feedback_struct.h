@@ -16,28 +16,16 @@
  * along with this program.  If not, see <http://www.gnu.org/licenses/>.
  *
  ******************************************************************************/
-#ifndef SWIFT_FEEDBACK_STRUCT_H
-#define SWIFT_FEEDBACK_STRUCT_H
+#ifndef SWIFT_FEEDBACK_STRUCT_NONE_H
+#define SWIFT_FEEDBACK_STRUCT_NONE_H
+
+#include "chemistry_struct.h"
 
 /**
- * @file src/feedback_struct.h
- * @brief Branches between the different feedback functions.
+ * @brief Feedback fields carried by each star particles
+ *
+ * Nothing here since this is a no-feedback model.
  */
+struct feedback_spart_data {};
 
-/* Config parameters. */
-#include "../config.h"
-
-/* Import the right feedback definition */
-#if defined(FEEDBACK_NONE)
-#include "./feedback/none/feedback_struct.h"
-#elif defined(FEEDBACK_EAGLE)
-#include "./feedback/EAGLE/feedback_struct.h"
-#elif defined(FEEDBACK_GEAR)
-#include "./feedback/GEAR/feedback_struct.h"
-#elif defined(FEEDBACK_SIMBA)
-#include "./feedback/SIMBA/feedback_struct.h"
-#else
-#error "Invalid choice of feedback function."
-#endif
-
-#endif /* SWIFT_FEEDBACK_STRUCT_H */
+#endif /* SWIFT_FEEDBACK_STRUCT_NONE_H */
