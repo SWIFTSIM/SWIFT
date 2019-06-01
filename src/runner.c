@@ -3053,7 +3053,10 @@ void runner_do_timestep(struct runner *r, struct cell *c, int timer) {
       else { /* part is inactive */
 
         /* Count the number of inhibited particles */
-        if (part_is_inhibited(p, e)) inhibited++;
+        if (part_is_inhibited(p, e)) {
+          inhibited++;
+          continue;
+        }
 
         const integertime_t ti_end =
             get_integer_time_end(ti_current, p->time_bin);
@@ -3122,7 +3125,10 @@ void runner_do_timestep(struct runner *r, struct cell *c, int timer) {
         } else { /* gpart is inactive */
 
           /* Count the number of inhibited particles */
-          if (gpart_is_inhibited(gp, e)) g_inhibited++;
+          if (gpart_is_inhibited(gp, e)) {
+            g_inhibited++;
+            continue;
+          }
 
           const integertime_t ti_end =
               get_integer_time_end(ti_current, gp->time_bin);
@@ -3181,7 +3187,10 @@ void runner_do_timestep(struct runner *r, struct cell *c, int timer) {
       } else {
 
         /* Count the number of inhibited particles */
-        if (spart_is_inhibited(sp, e)) ++s_inhibited;
+        if (spart_is_inhibited(sp, e)) {
+          ++s_inhibited;
+          continue;
+        }
 
         const integertime_t ti_end =
             get_integer_time_end(ti_current, sp->time_bin);
@@ -3243,7 +3252,10 @@ void runner_do_timestep(struct runner *r, struct cell *c, int timer) {
       } else {
 
         /* Count the number of inhibited particles */
-        if (bpart_is_inhibited(bp, e)) ++b_inhibited;
+        if (bpart_is_inhibited(bp, e)) {
+          ++b_inhibited;
+          continue;
+        }
 
         const integertime_t ti_end =
             get_integer_time_end(ti_current, bp->time_bin);
