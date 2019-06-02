@@ -13,8 +13,7 @@
  * GNU General Public License for more details.
  *
  * You should have received a copy of the GNU Lesser General Public License
- * along with this program.  If not, see
- *<http://www.gnu.org/licenses/>src/runner_doiact_vec.c.
+ * along with this program.  If not, see <http://www.gnu.org/licenses/>.
  *
  ******************************************************************************/
 
@@ -35,7 +34,6 @@
 #include <unistd.h>
 
 /* Local defines. */
-#include "hashmap.h"
 #include "memuse.h"
 
 /* Local includes. */
@@ -45,14 +43,20 @@
 
 #ifdef SWIFT_MEMUSE_REPORTS
 
+/* The initial size and increment of the log entries buffer. */
+#define MEMUSE_INITLOG 1000000
+
+/* A megabyte for conversions. */
 #define MEGABYTE 1048576.0
+
+/* Maximum length of label in log entry. */
+#define MEMUSE_MAXLABLEN 32
 
 /* Also recorded in logger. */
 extern int engine_rank;
 extern int engine_current_step;
 
 /* Entry for logger of memory allocations and deallocations in a step. */
-#define MEMUSE_MAXLABLEN 32
 struct memuse_log_entry {
 
   /* Rank in action. */
@@ -67,8 +71,12 @@ struct memuse_log_entry {
   /* Memory allocated in bytes. */
   size_t size;
 
-  /* Address of memory. */
-  void *ptr;
+  /* Address of memory. Use union as easy way to convert into an array of
+   * bytes. */
+  union {
+    void *ptr;
+    uint8_t vptr[sizeof(uintptr_t)];
+  };
 
   /* Relative time of this action. */
   ticks dtic;
@@ -80,16 +88,13 @@ struct memuse_log_entry {
   int active;
 };
 
-/* The log of allocations and frees. */
-static struct memuse_log_entry *memuse_log = NULL;
+/* The log of allocations and frees. All volatile as accessed from threads
+ * that use the value to synchronise. */
+static struct memuse_log_entry *volatile memuse_log = NULL;
 static volatile size_t memuse_log_size = 0;
 static volatile size_t memuse_log_count = 0;
 static volatile size_t memuse_old_count = 0;
 static volatile size_t memuse_log_done = 0;
-
-/* Hashmap for matching frees to allocations. */
-static hashmap_t *memuse_hashmap;
-static int memuse_init_hashmap = 1;
 
 /* Current sum of memory in use. Only used in dumping. */
 static size_t memuse_current = 0;
@@ -104,42 +109,204 @@ static void *memuse_tsearch_root = NULL;
 static FILE *memuse_tsearch_output_fd = NULL;
 static double memuse_tsearch_total = 0.0;
 
+/* A radix node, this has a single byte key and a pointer to some related
+ * resource. It also holds a sorted list of children, if any. */
+struct memuse_rnode {
+
+  /* Byte key of this node. */
+  uint8_t keypart;
+
+  /* Value of this node, if set. */
+  void *ptr;
+
+  /* Sorted pointers to children of this node. */
+  struct memuse_rnode **children;
+  unsigned int count;
+};
+
+/* Persistent radix trie root node. Holds active logs between dumps. */
+static struct memuse_rnode *memuse_rnode_root;
+static int memuse_rnode_root_init = 1;
+
+#ifdef MEMUSE_RNODE_DUMP
+/**
+ * @brief Dump a representation of the radix tree rooted at a node to stdout.
+ *
+ * @param depth the depth of the node in the tree, root is 0.
+ * @param node the node at which to start dumping.
+ * @param full if not zero then nodes that are not storing a value
+ *              are also reported.
+ */
+static void memuse_rnode_dump(int depth, struct memuse_rnode *node, int full) {
+
+  /* Value of the full key, to this depth. Assumes full key is a pointer,
+   * so fix when not. */
+  static union {
+    uint8_t key[sizeof(uintptr_t)];
+    void *ptr;
+  } keyparts = {0};
+
+  /* Record keypart at this depth. Root has no keypart. */
+  if (depth != 0) keyparts.key[depth - 1] = node->keypart;
+
+  if (node->ptr != NULL || full) {
+    printf("dump @ depth: %d keypart: %d key: %p value: %p\n", depth,
+           node->keypart, keyparts.ptr, node->ptr);
+  }
+
+  /* Recurse to all children. */
+  for (size_t k = 0; k < node->count; k++) {
+    memuse_rnode_dump(depth + 1, node->children[k], full);
+  }
+}
+#endif
+
+/* Compare two rnodes for sort order. */
+static int memuse_rnode_cmp(const void *a, const void *b) {
+  const struct memuse_rnode *node1 = *(const struct memuse_rnode **)a;
+  const struct memuse_rnode *node2 = *(const struct memuse_rnode **)b;
+  return node2->keypart - node1->keypart;
+}
+
+/**
+ * @brief Add a child node to a node. No check is made if this child
+ *        already exists.
+ *
+ * @param node the parent node.
+ * @param child the node to add to the parent,
+ */
+static void memuse_rnode_add_child(struct memuse_rnode *node,
+                                   struct memuse_rnode *child) {
+
+  /* Extend the children list to include a new entry .*/
+  void *mem = realloc(node->children,
+                      (node->count + 1) * sizeof(struct memuse_rnode *));
+  if (mem == NULL) error("Failed to reallocate rnodes\n");
+
+  node->children = mem;
+  node->children[node->count] = child;
+  node->count++;
+
+  /* And sort by key.  XXX use an insertion as pre-sorted, or defer until
+   * needed (find). */
+  if (node->count > 1) {
+    qsort(node->children, node->count, sizeof(struct memuse_rnode *),
+          memuse_rnode_cmp);
+  }
+}
+
+/**
+ * @brief Find a child of a node with the given key.
+ *
+ * @param node the node to search.
+ * @param keypart the key part of the child.
+ * @return NULL if not found.
+ */
+static struct memuse_rnode *memuse_rnode_lookup(const struct memuse_rnode *node,
+                                                uint8_t keypart) {
+  /* Pass on quickly if one child. */
+  if (node->count == 1) {
+    if (node->children[0]->keypart == keypart) return node->children[0];
+    return NULL;
+  }
+
+  /* Note we are using pointers of pointers, so a little more work. */
+  struct memuse_rnode *search_nodes[1];
+  struct memuse_rnode search_node;
+  search_node.keypart = keypart;
+  search_nodes[0] = &search_node;
+
+  struct memuse_rnode **child =
+      bsearch(search_nodes, node->children, node->count,
+              sizeof(struct memuse_rnode *), memuse_rnode_cmp);
+  if (child != NULL) return *child;
+  return NULL;
+}
+
+/**
+ * @brief insert a child into a node's children list and add a pointer, iff
+ *        this is the leaf node for the given key.
+ *
+ * @param node the parent node.
+ * @param depth the depth of the parent node.
+ * @param key the full key of the eventual leaf node.
+ * @param keylen the numbers of bytes in the full key.
+ * @param value pointer that will be stored as the value of the leaf node.
+ */
+static void memuse_rnode_insert_child(struct memuse_rnode *node, uint8_t depth,
+                                      uint8_t *key, uint8_t keylen,
+                                      void *value) {
+
+  /* Check if keypart this already exists at this level and add new child if
+   * not. */
+  uint8_t keypart = key[depth];
+  struct memuse_rnode *child = memuse_rnode_lookup(node, keypart);
+  if (child == NULL) {
+    child = calloc(1, sizeof(struct memuse_rnode));
+    child->keypart = keypart;
+    memuse_rnode_add_child(node, child);
+  }
+
+  /* Are we at the lowest level yet? */
+  depth++;
+  if (depth == keylen) {
+  /* Our leaf node. */
+
+#if SWIFT_DEBUG_CHECKS
+    if (child->ptr != NULL)
+      message("Overwriting rnode value: %p with %p", child->ptr, value);
+#endif
+    child->ptr = value;
+    return;
+  }
+
+  /* Down we go to the next level. */
+  memuse_rnode_insert_child(child, depth, key, keylen, value);
+  return;
+}
+
+/**
+ * @brief Find a child node for the given full key.
+ *
+ * @param node the current parent node.
+ * @param depth the depth of the parent node.
+ * @param key the full key of the expected child node.
+ * @param keylen the number of bytes in the key.
+ */
+static struct memuse_rnode *memuse_rnode_find_child(struct memuse_rnode *node,
+                                                    uint8_t depth, uint8_t *key,
+                                                    uint8_t keylen) {
+  uint8_t keypart = key[depth];
+  struct memuse_rnode *child = NULL;
+  if (node->count > 0) child = memuse_rnode_lookup(node, keypart);
+  if (child != NULL && (depth + 1) < keylen) {
+    return memuse_rnode_find_child(child, depth + 1, key, keylen);
+  }
+  return child;
+}
+
+/**
+ * @brief Free all resources associated with a node.
+ *
+ * @param node the rnode.
+ */
+static void memuse_rnode_cleanup(struct memuse_rnode *node) {
+
+  if (!node) return;
+
+  for (size_t k = 0; k < node->count; k++) {
+    memuse_rnode_cleanup(node->children[k]);
+    free(node->children[k]);
+  }
+  if (node->count > 0) free(node->children);
+}
+
 /**
  * @brief comparison function for comparing keys in our tsearch struct.
  */
 static int memuse_tsearch_compare(const void *item1, const void *item2) {
   return strcmp(((const struct memuse_tsearch_item *)item1)->key,
                 ((const struct memuse_tsearch_item *)item2)->key);
-}
-
-/**
- * @brief Gather the labels of the current active memory and sum the memory
- *        associated with them. Called from hashmap_iterate().
- */
-static void memuse_active_dump_gather(hashmap_key_t key, hashmap_value_t *value,
-                                      void *data) {
-  /* If entry has no data it is not active. */
-  if (value->value_st < 0) return;
-
-  /* Get the stored log entry. */
-  int index = (int)value->value_st;
-
-  /* Look for this label in our tree and store if not found. */
-  struct memuse_tsearch_item *new_item = (struct memuse_tsearch_item *)calloc(
-      1, sizeof(struct memuse_tsearch_item));
-  new_item->key = memuse_log[index].label;
-  new_item->sum = 0;
-  new_item->count = 0;
-
-  void *ptr = tsearch((void *)new_item, (void **)&memuse_tsearch_root,
-                      memuse_tsearch_compare);
-
-  /* Only our pointer is stored, so we get a pointer to that. */
-  struct memuse_tsearch_item *stored_item = *(struct memuse_tsearch_item **)ptr;
-
-  /* And increment sum. */
-  stored_item->sum += memuse_log[index].size;
-  stored_item->count++;
 }
 
 /**
@@ -172,7 +339,6 @@ static void memuse_tsearch_free(const void *ptr, const VISIT order,
 }
 #endif
 
-#define MEMUSE_INITLOG 1000000
 /**
  * @brief reallocate the entries log if space is needed.
  */
@@ -191,7 +357,8 @@ static void memuse_log_reallocate(size_t ind) {
   } else {
     struct memuse_log_entry *new_log;
     if ((new_log = (struct memuse_log_entry *)malloc(
-             sizeof(struct memuse_log_entry) * memuse_log_size * 2)) == NULL)
+             sizeof(struct memuse_log_entry) *
+             (memuse_log_size + MEMUSE_INITLOG))) == NULL)
       error("Failed to re-allocate memuse log.");
 
     /* Wait for all writes to the old buffer to complete. */
@@ -200,12 +367,12 @@ static void memuse_log_reallocate(size_t ind) {
 
     /* Copy to new buffer. */
     memcpy(new_log, memuse_log,
-           sizeof(struct memuse_log_entry) * memuse_log_count);
+           sizeof(struct memuse_log_entry) * memuse_log_size);
     free(memuse_log);
     memuse_log = new_log;
 
-    /* Last action. */
-    memuse_log_size *= 2;
+    /* Last action, releases waiting threads. */
+    atomic_add(&memuse_log_size, MEMUSE_INITLOG);
   }
 }
 
@@ -220,6 +387,7 @@ static void memuse_log_reallocate(size_t ind) {
  */
 void memuse_log_allocation(const char *label, void *ptr, int allocated,
                            size_t size) {
+
   size_t ind = atomic_inc(&memuse_log_count);
 
   /* If we are at the current size we need more space. */
@@ -252,21 +420,26 @@ void memuse_log_dump(const char *filename) {
   /* Skip if nothing allocated this step. */
   if (memuse_log_count == memuse_old_count) return;
 
-  /* Create the hashmap. If not already done. */
-  if (memuse_init_hashmap) {
-    memuse_hashmap = (hashmap_t *)malloc(sizeof(hashmap_t));
-    hashmap_init(memuse_hashmap);
-    memuse_init_hashmap = 0;
+  /* Create the radix tree. If not already done. */
+  if (memuse_rnode_root_init) {
+    memuse_rnode_root =
+        (struct memuse_rnode *)calloc(1, sizeof(struct memuse_rnode));
+    memuse_rnode_root_init = 0;
   }
 
-  /* Stop any new logs from being processed while we are dumping. */
+  /* Stop any new logs from being processed while we are dumping.
+   * Remember to not abort with error() in this section, that is recursive
+   * with the exit handler. */
   size_t log_count = memuse_log_count;
   size_t old_count = memuse_old_count;
 
   /* Open the output file. */
   FILE *fd;
-  if ((fd = fopen(filename, "w")) == NULL)
-    error("Failed to create memuse log file '%s'.", filename);
+  if ((fd = fopen(filename, "w")) == NULL) {
+    message("Failed to create memuse log file '%s', logs not dumped.",
+            filename);
+    return;
+  }
 
   /* Write a header. */
   fprintf(fd, "# dtic rank step label size sum\n");
@@ -274,12 +447,11 @@ void memuse_log_dump(const char *filename) {
   size_t memuse_maxmem = memuse_current;
   for (size_t k = old_count; k < log_count; k++) {
 
-    /* Check if this address has already been used. */
-    hashmap_value_t *vt =
-        hashmap_lookup(memuse_hashmap, (hashmap_key_t)memuse_log[k].ptr);
+    /* Check if this address has already been recorded. */
+    struct memuse_rnode *child = memuse_rnode_find_child(
+        memuse_rnode_root, 0, memuse_log[k].vptr, sizeof(uintptr_t));
 
-    if (vt != NULL && vt->value_st >= 0) {
-      int index = (int)vt->value_st;
+    if (child != NULL && child->ptr != NULL) {
 
       /* Found the allocation, this should be the free. */
       if (memuse_log[k].allocated) {
@@ -293,47 +465,44 @@ void memuse_log_dump(const char *filename) {
         continue;
       }
 
-      /* Free, so we can update the size to remove the allocation. */
-      memuse_log[k].size = -memuse_log[index].size;
+      /* Free, update the size to remove the allocation. */
+      struct memuse_log_entry *oldlog = (struct memuse_log_entry *)child->ptr;
+      memuse_log[k].size = -oldlog->size;
 
       /* And deactivate this key. */
-      hashmap_value_t value;
-      value.value_st = -1;
-      hashmap_put(memuse_hashmap, (hashmap_key_t)memuse_log[index].ptr, value);
+      child->ptr = NULL;
 
       /* And mark this as matched. */
       memuse_log[k].active = 0;
-      memuse_log[index].active = 0;
+      oldlog->active = 0;
 
-    } else if (vt == NULL && memuse_log[k].allocated) {
+    } else if (child == NULL && memuse_log[k].allocated) {
 
-      /* Not found, so new allocation which we store. */
-      hashmap_value_t value;
-      value.value_st = k;
-      hashmap_put(memuse_hashmap, (hashmap_key_t)memuse_log[k].ptr, value);
+      /* Not found, so new allocation which we store the log against the
+       * address. */
+      memuse_rnode_insert_child(memuse_rnode_root, 0, memuse_log[k].vptr,
+                                sizeof(uintptr_t), &memuse_log[k]);
 
-    } else if (vt == NULL && !memuse_log[k].allocated) {
+    } else if (child == NULL && !memuse_log[k].allocated) {
 
     /* Unmatched free, OK if NULL. */
 #if SWIFT_DEBUG_CHECKS
       if (memuse_log[k].ptr != NULL) {
         message("Unmatched non-NULL free: %s", memuse_log[k].label);
       }
-
 #endif
       continue;
     } else if (memuse_log[k].allocated) {
 
-      /* Must be released allocation with same address, so we store. */
-      hashmap_value_t value;
-      value.value_st = k;
-      hashmap_put(memuse_hashmap, (hashmap_key_t)memuse_log[k].ptr, value);
+      /* Must be previously released allocation with same address, so we
+       * store. */
+      memuse_rnode_insert_child(memuse_rnode_root, 0, memuse_log[k].vptr,
+                                sizeof(uintptr_t), &memuse_log[k]);
 
     } else {
-    /* What ... */
-#ifdef SWIFT_DEBUG_CHECKS
-      message("weird log record: %zd, %s", k, memuse_log[k].label);
-#endif
+      /* Should not happen ... */
+      message("weird memory log record for label '%s' skipped",
+              memuse_log[k].label);
       continue;
     }
 
@@ -347,14 +516,55 @@ void memuse_log_dump(const char *filename) {
             memuse_log[k].size, memuse_current);
   }
 
-  /* The hashmap should now only contain active memory logs, make a report
-   * about those. Use a tsearch based method as we cannot use character keys
-   * with the hashmap. */
+#ifdef MEMUSE_RNODE_DUMP
+  /* Debug dump of tree. */
+  memuse_rnode_dump(0, memuse_rnode_root, 0);
+#endif
 
-  /* First we do the sums against the active labels. */
-  hashmap_iterate(memuse_hashmap, memuse_active_dump_gather, NULL);
+  /* Now we find all the still active nodes and gather their sizes against the
+   * labels. */
+  struct memuse_rnode *newrnode =
+      (struct memuse_rnode *)calloc(1, sizeof(struct memuse_rnode));
+  size_t newcount = 0;
+  for (size_t k = 0; k < log_count; k++) {
 
-  /* Now walk the tree to dump the sums. */
+    /* Only allocations are stored, is it active? */
+    if (memuse_log[k].active) {
+
+      /* Look for this label in our tsearch tree and store if not found. */
+      struct memuse_tsearch_item *new_item =
+          (struct memuse_tsearch_item *)calloc(
+              1, sizeof(struct memuse_tsearch_item));
+      new_item->key = memuse_log[k].label;
+      new_item->sum = 0;
+      new_item->count = 0;
+      void *ptr = tsearch((void *)new_item, (void **)&memuse_tsearch_root,
+                          memuse_tsearch_compare);
+
+      /* Only our pointer is stored, so we get a pointer to that. */
+      struct memuse_tsearch_item *stored_item =
+          *(struct memuse_tsearch_item **)ptr;
+
+      /* And increment sum. */
+      stored_item->sum += memuse_log[k].size;
+      stored_item->count++;
+
+      /* Keep this in new rnode tree. Move to head. */
+      memcpy(&memuse_log[newcount], &memuse_log[k],
+             sizeof(struct memuse_log_entry));
+      memuse_rnode_insert_child(newrnode, 0, memuse_log[newcount].vptr,
+                                sizeof(uintptr_t), &memuse_log[newcount]);
+      newcount++;
+    }
+  }
+
+  /* And move all active logs to a clean new tree for next time. */
+  memuse_log_count = newcount;
+  memuse_old_count = newcount;
+  memuse_rnode_cleanup(memuse_rnode_root);
+  memuse_rnode_root = newrnode;
+
+  /* Now walk tsearch tree to dump the sums. */
   fprintf(fd, "# Memory use by label:\n");
   fprintf(fd, "##  %30s %16s %16s\n", "label", "MB", "numactive");
   fprintf(fd, "##\n");
@@ -378,33 +588,6 @@ void memuse_log_dump(const char *filename) {
 #endif
   memuse_tsearch_output_fd = NULL;
   memuse_tsearch_root = NULL;
-
-  /* The hashmap has all the active and inactive logs present. We need to
-   * remove the inactive logs, which can only be done the hardway... */
-  hashmap_t *newhashmap = (hashmap_t *)malloc(sizeof(hashmap_t));
-  hashmap_init(newhashmap);
-
-  size_t newcount = 0;
-  for (size_t k = 0; k < log_count; k++) {
-
-    /* Only allocations can be active. */
-    if (memuse_log[k].allocated && memuse_log[k].active) {
-
-      /* Move to head. */
-      hashmap_value_t value;
-      memcpy(&memuse_log[newcount], &memuse_log[k],
-             sizeof(struct memuse_log_entry));
-      value.value_st = newcount;
-      hashmap_put(newhashmap, (hashmap_key_t)memuse_log[newcount].ptr, value);
-      newcount++;
-    }
-  }
-
-  /* And swap. */
-  memuse_log_count = newcount;
-  memuse_old_count = newcount;
-  hashmap_free(memuse_hashmap);
-  memuse_hashmap = newhashmap;
 
   /* Close the file. */
   fflush(fd);
