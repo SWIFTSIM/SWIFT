@@ -99,15 +99,11 @@ static volatile size_t memuse_log_done = 0;
 /* Current sum of memory in use. Only used in dumping. */
 static size_t memuse_current = 0;
 
-/* tsearch support */
-struct memuse_tsearch_item {
-  char *key;
+/* Label gathering struct and support. */
+struct memuse_labelled_item {
   size_t sum;
   size_t count;
 };
-static void *memuse_tsearch_root = NULL;
-static FILE *memuse_tsearch_output_fd = NULL;
-static double memuse_tsearch_total = 0.0;
 
 /* A radix node, this has a single byte key and a pointer to some related
  * resource. It also holds a sorted list of children, if any. */
@@ -302,44 +298,6 @@ static void memuse_rnode_cleanup(struct memuse_rnode *node) {
 }
 
 /**
- * @brief comparison function for comparing keys in our tsearch struct.
- */
-static int memuse_tsearch_compare(const void *item1, const void *item2) {
-  return strcmp(((const struct memuse_tsearch_item *)item1)->key,
-                ((const struct memuse_tsearch_item *)item2)->key);
-}
-
-/**
- * @brief Output the active memory usage from a tree walk.
- */
-static void memuse_tsearch_dump(const void *ptr, const VISIT order,
-                                const int depth) {
-
-  struct memuse_tsearch_item *item = *(struct memuse_tsearch_item **)ptr;
-
-  if (order == postorder || order == leaf) {
-    fprintf(memuse_tsearch_output_fd, "## %30s %16.3f %16zd\n", item->key,
-            item->sum / MEGABYTE, item->count);
-    memuse_tsearch_total += item->sum;
-  }
-}
-
-#ifndef HAVE_TDESTROY
-/**
- * @brief Free nodes using a tree walk...
- */
-static void memuse_tsearch_free(const void *ptr, const VISIT order,
-                                const int depth) {
-
-  struct memuse_tsearch_item *item = *(struct memuse_tsearch_item **)ptr;
-
-  if (order == postorder || order == leaf) {
-    free(item);
-  }
-}
-#endif
-
-/**
  * @brief reallocate the entries log if space is needed.
  */
 static void memuse_log_reallocate(size_t ind) {
@@ -523,36 +481,48 @@ void memuse_log_dump(const char *filename) {
 
   /* Now we find all the still active nodes and gather their sizes against the
    * labels. */
-  struct memuse_rnode *newrnode =
+  struct memuse_rnode *activernodes =
       (struct memuse_rnode *)calloc(1, sizeof(struct memuse_rnode));
   size_t newcount = 0;
+  struct memuse_rnode *labellednodes =
+      (struct memuse_rnode *)calloc(1, sizeof(struct memuse_rnode));
+  size_t *lindices = (size_t *)calloc(log_count, sizeof(size_t));
+  size_t lcount = 0;
   for (size_t k = 0; k < log_count; k++) {
 
     /* Only allocations are stored, is it active? */
     if (memuse_log[k].active) {
 
-      /* Look for this label in our tsearch tree and store if not found. */
-      struct memuse_tsearch_item *new_item =
-          (struct memuse_tsearch_item *)calloc(
-              1, sizeof(struct memuse_tsearch_item));
-      new_item->key = memuse_log[k].label;
-      new_item->sum = 0;
-      new_item->count = 0;
-      void *ptr = tsearch((void *)new_item, (void **)&memuse_tsearch_root,
-                          memuse_tsearch_compare);
+      /* Look for this label in our tree. */
+      struct memuse_rnode *labelchild = memuse_rnode_find_child(
+          labellednodes, 0, (uint8_t *)memuse_log[k].label, MEMUSE_MAXLABLEN);
+      struct memuse_labelled_item *item = NULL;
+      if (labelchild == NULL) {
 
-      /* Only our pointer is stored, so we get a pointer to that. */
-      struct memuse_tsearch_item *stored_item =
-          *(struct memuse_tsearch_item **)ptr;
+        /* New, so create an instance to keep the count. */
+        item = (struct memuse_labelled_item *)calloc(
+            1, sizeof(struct memuse_labelled_item));
+        item->sum = 0;
+        item->count = 0;
+        memuse_rnode_insert_child(labellednodes, 0, (uint8_t *)memuse_log[k].label,
+                                  MEMUSE_MAXLABLEN, item);
+
+        /* Keep for indexing next time. */
+        lindices[lcount] = newcount;
+        lcount++;
+      } else {
+        item = (struct memuse_labelled_item *)labelchild->ptr;
+      }
+      fflush(stdout);
 
       /* And increment sum. */
-      stored_item->sum += memuse_log[k].size;
-      stored_item->count++;
+      item->sum += memuse_log[k].size;
+      item->count++;
 
-      /* Keep this in new rnode tree. Move to head. */
+      /* Keep this in new log entry tree. Move to head. */
       memcpy(&memuse_log[newcount], &memuse_log[k],
              sizeof(struct memuse_log_entry));
-      memuse_rnode_insert_child(newrnode, 0, memuse_log[newcount].vptr,
+      memuse_rnode_insert_child(activernodes, 0, memuse_log[newcount].vptr,
                                 sizeof(uintptr_t), &memuse_log[newcount]);
       newcount++;
     }
@@ -562,18 +532,33 @@ void memuse_log_dump(const char *filename) {
   memuse_log_count = newcount;
   memuse_old_count = newcount;
   memuse_rnode_cleanup(memuse_rnode_root);
-  memuse_rnode_root = newrnode;
+  free(memuse_rnode_root);
+  memuse_rnode_root = activernodes;
 
-  /* Now walk tsearch tree to dump the sums. */
+  /* Now dump the labelled counts. */
   fprintf(fd, "# Memory use by label:\n");
   fprintf(fd, "##  %30s %16s %16s\n", "label", "MB", "numactive");
   fprintf(fd, "##\n");
-  memuse_tsearch_output_fd = fd;
-  memuse_tsearch_total = 0;
-  twalk(memuse_tsearch_root, memuse_tsearch_dump);
+
+  size_t total_mem = 0;
+  for (size_t k = 0; k < lcount; k++) {
+    size_t ind = lindices[k];
+
+    /* Find this entry. */
+    struct memuse_rnode *labelchild = memuse_rnode_find_child(
+        labellednodes, 0, (uint8_t *)memuse_log[ind].label, MEMUSE_MAXLABLEN);
+    struct memuse_labelled_item *item =
+        (struct memuse_labelled_item *)labelchild->ptr;
+    fprintf(fd, "## %30s %16.3f %16zd\n", memuse_log[ind].label,
+            item->sum / MEGABYTE, item->count);
+    total_mem += item->sum;
+
+    /* Don't need this again. */
+    free(item);
+  }
   fprintf(fd, "##\n");
   fprintf(fd, "# Total memory still in use : %.3f (MB)\n",
-          memuse_tsearch_total / MEGABYTE);
+          total_mem / MEGABYTE);
   fprintf(fd, "# Peak memory usage         : %.3f (MB)\n",
           memuse_maxmem / MEGABYTE);
   fprintf(fd, "#\n");
@@ -581,13 +566,9 @@ void memuse_log_dump(const char *filename) {
   fprintf(fd, "# cpufreq: %lld\n", clocks_get_cpufreq());
 
   /* Clean up tree. */
-#ifdef HAVE_TDESTROY
-  tdestroy(memuse_tsearch_root, free);
-#else
-  twalk(memuse_tsearch_root, memuse_tsearch_free);
-#endif
-  memuse_tsearch_output_fd = NULL;
-  memuse_tsearch_root = NULL;
+  memuse_rnode_cleanup(labellednodes);
+  free(labellednodes);
+  free(lindices);
 
   /* Close the file. */
   fflush(fd);
