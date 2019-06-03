@@ -59,7 +59,8 @@ void *logger_loader_io_mmap_file(char *filename, size_t *file_size,
   else
     fd = open(filename, O_RDWR);
 
-  if (fd == -1) error("Unable to open file %s (%s).", filename, strerror(errno));
+  if (fd == -1)
+    error("Unable to open file %s (%s).", filename, strerror(errno));
 
   /* get the file size. */
   *file_size = logger_loader_io_get_file_size(fd);

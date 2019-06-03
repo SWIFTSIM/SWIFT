@@ -27,6 +27,8 @@ typedef long long integertime_t;
 
 struct logger_reader;
 
+#define LOGGER_TIME_INIT_SIZE 1024
+
 /**
  * @brief This structure contains all the time record.
  *
@@ -39,28 +41,27 @@ struct logger_reader;
  *
  * The time step of an offset can be obtained with
  * #time_array_get_integertime, #time_array_get_time and
- * #time_array_get_time_array.
- *
- * The size of the time array can be accessed with
- * #time_array_count.
+ * #time_array_get_index.
  */
 struct time_array {
-  /* Pointer to next element. */
-  void *next;
+  /* Integertime of the records. */
+  integertime_t *int_time;
 
-  /* Pointer to prev element. */
-  void *prev;
+  /* Double time of the records. */
+  double *time;
 
-  /* Integertime of this time record. */
-  integertime_t int_time;
+  /* Offset in the file of the time records. */
+  size_t *offset;
 
-  /* Double time of this time record. */
-  double time;
+  /* Number of element in the arrays. */
+  size_t size;
 
-  /* Offset in the file of this time record. */
-  size_t offset;
+  /* Maximum number of element available */
+  size_t capacity;
 };
 
+void time_array_append(struct time_array *t, const integertime_t int_time,
+                       const double time, const size_t offset);
 size_t time_read(integertime_t *int_time, double *time,
                  const struct logger_reader *reader, size_t offset);
 
@@ -72,16 +73,13 @@ integertime_t time_array_get_integertime(struct time_array *t,
 
 double time_array_get_time(const struct time_array *t, const size_t offset);
 
-struct time_array *time_array_get_time_array(const struct time_array *t,
-                                             const size_t offset);
+size_t time_array_get_index(const struct time_array *t, const size_t offset);
 
 void time_array_free(struct time_array *t);
 
 void time_array_print(const struct time_array *t);
 
 void time_array_print_offset(const struct time_array *t);
-
-size_t time_array_count(const struct time_array *t);
 
 size_t time_offset_first_record(const struct header *h);
 

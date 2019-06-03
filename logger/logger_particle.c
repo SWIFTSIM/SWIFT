@@ -154,8 +154,10 @@ size_t logger_particle_read(struct logger_particle *part,
     }
   }
 
-  /* Get the time of current record. */
-  if (times->next) {
+  /* Get the time of current record.
+     This check is required for the manipulating the file before
+     the initialization of the time_array. */
+  if (times->size != 0) {
     part->time = time_array_get_time(times, offset);
   } else
     part->time = -1;
