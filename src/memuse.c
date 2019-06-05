@@ -59,9 +59,6 @@ extern int engine_current_step;
 /* Entry for logger of memory allocations and deallocations in a step. */
 struct memuse_log_entry {
 
-  /* Rank in action. */
-  int rank;
-
   /* Step of action. */
   int step;
 
@@ -99,7 +96,7 @@ static volatile size_t memuse_log_done = 0;
 /* Current sum of memory in use. Only used in dumping. */
 static size_t memuse_current = 0;
 
-/* Label gathering struct and support. */
+/* Label usage gathering struct. Only used in dumping. */
 struct memuse_labelled_item {
   size_t sum;
   size_t count;
@@ -136,14 +133,34 @@ static int memuse_rnode_root_init = 1;
 static void memuse_rnode_dump(int depth, struct memuse_rnode *node, int full) {
 
   /* Value of the full key, to this depth. Assumes full key is a pointer,
-   * so fix when not. */
+   * so uncomment when using strings. */
   static union {
+    //uint8_t key[MEMUSE_MAXLABLEN];
+    //char ptr[MEMUSE_MAXLABLEN];
     uint8_t key[sizeof(uintptr_t)];
     void *ptr;
   } keyparts = {0};
 
   /* Record keypart at this depth. Root has no keypart. */
   if (depth != 0) keyparts.key[depth - 1] = node->keypart;
+
+  //if (node->ptr != NULL || full) {
+  //  keyparts.key[depth] = '\0';
+  //
+  //    /* Gather children's keys if full. */
+  //    char fullkey[MEMUSE_MAXLABLEN];
+  //    if (full) {
+  //      for (size_t k = 0; k < node->count; k++) {
+  //        fullkey[k] = node->children[k]->keypart;
+  //      }
+  //      fullkey[node->count] = '\0';
+  //      printf("dump @ depth: %d keypart: %d key: %s value: %p fullkey: %s\n",
+  //             depth, node->keypart, keyparts.ptr, node->ptr, fullkey);
+  //    } else {
+  //      printf("dump @ depth: %d keypart: %d key: %s value: %p\n", depth,
+  //             node->keypart, keyparts.ptr, node->ptr);
+  //    }
+  //}
 
   if (node->ptr != NULL || full) {
     printf("dump @ depth: %d keypart: %d key: %p value: %p\n", depth,
@@ -157,16 +174,66 @@ static void memuse_rnode_dump(int depth, struct memuse_rnode *node, int full) {
 }
 #endif
 
-/* Compare two rnodes for sort order. */
-static int memuse_rnode_cmp(const void *a, const void *b) {
-  const struct memuse_rnode *node1 = *(const struct memuse_rnode **)a;
-  const struct memuse_rnode *node2 = *(const struct memuse_rnode **)b;
-  return node2->keypart - node1->keypart;
+/**
+ * @brief Return the position of a keypart for a list of children.
+ *        If not found returns where it would be inserted.
+ *
+ * @param keypart the keypart to locate.
+ * @param children the list of sorted children.
+ * @param count the number of children
+ *
+ * @return the index of key or where it should be inserted.
+ */
+static unsigned int memuse_rnode_bsearch(uint8_t keypart,
+                                         struct memuse_rnode **children,
+                                         unsigned int count) {
+
+  /* Search for lower bound. */
+  unsigned int lower = 0;
+  unsigned int upper = count;
+  while (lower < upper) {
+    unsigned int middle = (upper + lower) / 2;
+    if (keypart > children[middle]->keypart)
+      lower = middle + 1;
+    else
+      upper = middle;
+  }
+  return lower;
 }
 
 /**
- * @brief Add a child node to a node. No check is made if this child
- *        already exists.
+ * @brief Insert a child, if needed, into a list of children. Assumes
+ *        we have sufficient room.
+ *
+ * @param child the child to insert, if needed.
+ * @param children the list of sorted children.
+ * @param count the number of children
+ */
+static void memuse_rnode_binsert_child(struct memuse_rnode *child,
+                                       struct memuse_rnode **children,
+                                       unsigned int *count) {
+  unsigned int pos = 0;
+  if (*count > 0) {
+
+    /* Find the child or insertion point. */
+    pos = memuse_rnode_bsearch(child->keypart, children, *count);
+
+    /* If not found move all children to make a space, unless we're inserting
+     * after the end. */
+    if (pos < *count && children[pos]->keypart != child->keypart) {
+      memmove(&children[pos + 1], &children[pos],
+              (*count - pos) * sizeof(struct memuse_rnode *));
+    }
+  }
+
+  /* Insert new child */
+  children[pos] = child;
+  *count += 1;
+}
+
+/**
+ * @brief Add a child rnode to an rnode. Making sure we have room and keeping
+ *        the sort order.
  *
  * @param node the parent node.
  * @param child the node to add to the parent,
@@ -174,25 +241,19 @@ static int memuse_rnode_cmp(const void *a, const void *b) {
 static void memuse_rnode_add_child(struct memuse_rnode *node,
                                    struct memuse_rnode *child) {
 
+  /* XXX use a cache of allocations. */
   /* Extend the children list to include a new entry .*/
   void *mem = realloc(node->children,
                       (node->count + 1) * sizeof(struct memuse_rnode *));
   if (mem == NULL) error("Failed to reallocate rnodes\n");
-
   node->children = mem;
-  node->children[node->count] = child;
-  node->count++;
 
-  /* And sort by key.  XXX use an insertion as pre-sorted, or defer until
-   * needed (find). */
-  if (node->count > 1) {
-    qsort(node->children, node->count, sizeof(struct memuse_rnode *),
-          memuse_rnode_cmp);
-  }
+  /* Insert the new child. */
+  memuse_rnode_binsert_child(child, node->children, &node->count);
 }
 
 /**
- * @brief Find a child of a node with the given key.
+ * @brief Find a child of a node with the given key part.
  *
  * @param node the node to search.
  * @param keypart the key part of the child.
@@ -200,28 +261,21 @@ static void memuse_rnode_add_child(struct memuse_rnode *node,
  */
 static struct memuse_rnode *memuse_rnode_lookup(const struct memuse_rnode *node,
                                                 uint8_t keypart) {
-  /* Pass on quickly if one child. */
-  if (node->count == 1) {
-    if (node->children[0]->keypart == keypart) return node->children[0];
-    return NULL;
+
+  /* Locate the key, or where it would be inserted. */
+  if (node->count > 0) {
+    unsigned int index = memuse_rnode_bsearch(keypart, node->children,
+                                              node->count);
+    if (index < node->count && keypart == node->children[index]->keypart) {
+      return node->children[index];
+    }
   }
-
-  /* Note we are using pointers of pointers, so a little more work. */
-  struct memuse_rnode *search_nodes[1];
-  struct memuse_rnode search_node;
-  search_node.keypart = keypart;
-  search_nodes[0] = &search_node;
-
-  struct memuse_rnode **child =
-      bsearch(search_nodes, node->children, node->count,
-              sizeof(struct memuse_rnode *), memuse_rnode_cmp);
-  if (child != NULL) return *child;
   return NULL;
 }
 
 /**
  * @brief insert a child into a node's children list and add a pointer, iff
- *        this is the leaf node for the given key.
+ *        this is the destination node for the given key.
  *
  * @param node the parent node.
  * @param depth the depth of the parent node.
@@ -246,7 +300,7 @@ static void memuse_rnode_insert_child(struct memuse_rnode *node, uint8_t depth,
   /* Are we at the lowest level yet? */
   depth++;
   if (depth == keylen) {
-  /* Our leaf node. */
+    /* Our destination node. */
 
 #if SWIFT_DEBUG_CHECKS
     if (child->ptr != NULL)
@@ -265,7 +319,7 @@ static void memuse_rnode_insert_child(struct memuse_rnode *node, uint8_t depth,
  * @brief Find a child node for the given full key.
  *
  * @param node the current parent node.
- * @param depth the depth of the parent node.
+ * @param depth the depth of the parent node, 0 for first call.
  * @param key the full key of the expected child node.
  * @param keylen the number of bytes in the key.
  */
@@ -356,7 +410,6 @@ void memuse_log_allocation(const char *label, void *ptr, int allocated,
     ;
 
   /* Record the log. */
-  memuse_log[ind].rank = engine_rank;
   memuse_log[ind].step = engine_current_step;
   memuse_log[ind].allocated = allocated;
   memuse_log[ind].size = size;
@@ -400,7 +453,7 @@ void memuse_log_dump(const char *filename) {
   }
 
   /* Write a header. */
-  fprintf(fd, "# dtic rank step label size sum\n");
+  fprintf(fd, "# dtic step label size sum\n");
 
   size_t memuse_maxmem = memuse_current;
   for (size_t k = old_count; k < log_count; k++) {
@@ -469,14 +522,14 @@ void memuse_log_dump(const char *filename) {
     if (memuse_current > memuse_maxmem) memuse_maxmem = memuse_current;
 
     /* And output. */
-    fprintf(fd, "%lld %d %d %s %zd %zd\n", memuse_log[k].dtic,
-            memuse_log[k].rank, memuse_log[k].step, memuse_log[k].label,
+    fprintf(fd, "%lld %d %s %zd %zd\n", memuse_log[k].dtic,
+            memuse_log[k].step, memuse_log[k].label,
             memuse_log[k].size, memuse_current);
   }
 
 #ifdef MEMUSE_RNODE_DUMP
   /* Debug dump of tree. */
-  memuse_rnode_dump(0, memuse_rnode_root, 0);
+  //memuse_rnode_dump(0, memuse_rnode_root, 0);
 #endif
 
   /* Now we find all the still active nodes and gather their sizes against the
@@ -495,7 +548,8 @@ void memuse_log_dump(const char *filename) {
 
       /* Look for this label in our tree. */
       struct memuse_rnode *labelchild = memuse_rnode_find_child(
-          labellednodes, 0, (uint8_t *)memuse_log[k].label, MEMUSE_MAXLABLEN);
+          labellednodes, 0, (uint8_t *)memuse_log[k].label,
+          strlen(memuse_log[k].label));
       struct memuse_labelled_item *item = NULL;
       if (labelchild == NULL) {
 
@@ -504,8 +558,9 @@ void memuse_log_dump(const char *filename) {
             1, sizeof(struct memuse_labelled_item));
         item->sum = 0;
         item->count = 0;
-        memuse_rnode_insert_child(labellednodes, 0, (uint8_t *)memuse_log[k].label,
-                                  MEMUSE_MAXLABLEN, item);
+        memuse_rnode_insert_child(labellednodes, 0,
+                                  (uint8_t *)memuse_log[k].label,
+                                  strlen(memuse_log[k].label), item);
 
         /* Keep for indexing next time. */
         lindices[lcount] = newcount;
@@ -513,7 +568,6 @@ void memuse_log_dump(const char *filename) {
       } else {
         item = (struct memuse_labelled_item *)labelchild->ptr;
       }
-      fflush(stdout);
 
       /* And increment sum. */
       item->sum += memuse_log[k].size;
@@ -546,7 +600,8 @@ void memuse_log_dump(const char *filename) {
 
     /* Find this entry. */
     struct memuse_rnode *labelchild = memuse_rnode_find_child(
-        labellednodes, 0, (uint8_t *)memuse_log[ind].label, MEMUSE_MAXLABLEN);
+        labellednodes, 0, (uint8_t *)memuse_log[ind].label,
+        strlen(memuse_log[ind].label));
     struct memuse_labelled_item *item =
         (struct memuse_labelled_item *)labelchild->ptr;
     fprintf(fd, "## %30s %16.3f %16zd\n", memuse_log[ind].label,
