@@ -224,21 +224,31 @@ size_t time_array_get_index(const struct time_array *t, const size_t offset) {
 #ifdef SWIFT_DEBUG_CHECKS
   if (!t) error("NULL pointer.");
 
-  if (offset < t->records[0].offset || offset > t->records[t->size].offset)
+  if (offset < t->records[0].offset || offset > t->records[t->size - 1].offset)
     error("Offset outside of range.");
 #endif
 
-  /* Find the time_array with the correct offset. */
-  for (size_t i = 1; i < t->size; i++) {
-    if (offset < t->records[i].offset) {
-      return i - 1;
-    }
+  /* left will contain the index at the end of the loop */
+  size_t left = 0;
+  size_t right = t->size - 1;
 
-    else if (offset == t->records[i].offset)
-      return i;
+  /* Find the time_array with the correct offset through a bisection method. */
+  while (left <= right) {
+    size_t center = (left + right) / 2;
+    const size_t offset_center = t->records[center].offset;
+    
+    if (offset > offset_center) {
+      left = center + 1;
+    }
+    else if (offset < offset_center) {
+      right = center - 1;
+    }
+    else {
+      return center;
+    }
   }
 
-  error("Unable to find the required offset.");
+  return right;
 }
 
 /**
