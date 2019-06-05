@@ -30,6 +30,20 @@ struct logger_reader;
 #define LOGGER_TIME_INIT_SIZE 1024
 
 /**
+ * @brief This structure contains all the information present in a time record.
+ */
+struct time_record {
+  /* Integertime of the records. */
+  integertime_t int_time;
+
+  /* Double time of the records. */
+  double time;
+
+  /* Offset in the file of the time records. */
+  size_t offset;
+};
+
+/**
  * @brief This structure contains all the time record.
  *
  * In order to obtain easily the time step of a record,
@@ -44,14 +58,9 @@ struct logger_reader;
  * #time_array_get_index.
  */
 struct time_array {
-  /* Integertime of the records. */
-  integertime_t *int_time;
 
-  /* Double time of the records. */
-  double *time;
-
-  /* Offset in the file of the time records. */
-  size_t *offset;
+  /* The complete list of time record */
+  struct time_record *records;
 
   /* Number of element in the arrays. */
   size_t size;

@@ -27,11 +27,14 @@
 
 int main(int argc, char *argv[]) {
 
+  /* Check that we are really testing the reallocation */
   if (NUMBER_OF_ELEMENT < LOGGER_TIME_INIT_SIZE) {
     error("Not testing the reallocation.");
   }
 
+  /* Fix the random seed in order to reproduce the results */
   srand(100);
+
   /* Initialize the time array */
   struct time_array times;
   time_array_init(&times);
@@ -66,9 +69,9 @@ int main(int argc, char *argv[]) {
     
     /* Check the values obtained */
     assert(i == ind);
-    assert(int_time == times.int_time[ind]);
-    assert(time == times.time[ind]);
-    assert(offset == times.offset[ind]);    
+    assert(int_time == times.records[ind].int_time);
+    assert(time == times.records[ind].time);
+    assert(offset == times.records[ind].offset);    
   }
 
 

@@ -33,14 +33,19 @@ void time_array_ensure_size(struct time_array *t) {
   /* Increase the size */
   t->capacity *= 2;
 
-  t->time = realloc(t->time, sizeof(double) * t->capacity);
-  if (t->time == NULL) error("Failed to realloc time memory.");
+  /* Allocate the new array */
+  struct time_record *tmp = malloc(sizeof(struct time_record) * t->capacity);
+  if (tmp == NULL) error("Failed to allocate the time records.");
 
-  t->int_time = realloc(t->int_time, sizeof(integertime_t) * t->capacity);
-  if (t->int_time == NULL) error("Failed to realloc integer time memory.");
+  /* Copy the memory */
+  memcpy(tmp, t->records, sizeof(struct time_record) * t->size);
 
-  t->offset = realloc(t->offset, sizeof(size_t) * t->capacity);
-  if (t->offset == NULL) error("Failed to realloc offset memory.");
+  /* Cleanup the memory */
+  free(t->records);
+
+  /* Set the pointer to the new array */
+  t->records = tmp;
+  
 }
 
 /**
@@ -58,9 +63,9 @@ void time_array_append(struct time_array *t, const integertime_t int_time,
   time_array_ensure_size(t);
 
   /* Copy the values */
-  t->time[t->size] = time;
-  t->int_time[t->size] = int_time;
-  t->offset[t->size] = offset;
+  t->records[t->size].time = time;
+  t->records[t->size].int_time = int_time;
+  t->records[t->size].offset = offset;
 
   /* Increase the size used. */
   t->size += 1;
@@ -141,14 +146,8 @@ size_t time_offset_first_record(const struct header *h) {
  */
 void time_array_init(struct time_array *t) {
   /* Allocate the arrays */
-  t->int_time = malloc(sizeof(integertime_t) * LOGGER_TIME_INIT_SIZE);
-  if (t->int_time == NULL) error("Failed to initialize the integer times.");
-
-  t->time = malloc(sizeof(double) * LOGGER_TIME_INIT_SIZE);
-  if (t->time == NULL) error("Failed to initialize the times.");
-
-  t->offset = malloc(sizeof(size_t) * LOGGER_TIME_INIT_SIZE);
-  if (t->offset == NULL) error("Failed to initialize the offsets.");
+  t->records = malloc(sizeof(struct time_record) * LOGGER_TIME_INIT_SIZE);
+  if (t->records == NULL) error("Failed to initialize the time records.");
 
   /* Initialize the sizes */
   t->size = 0;
@@ -196,7 +195,7 @@ void time_array_populate(struct time_array *t, struct logger_logfile *log) {
 integertime_t time_array_get_integertime(struct time_array *t,
                                          const size_t offset) {
   size_t ind = time_array_get_index(t, offset);
-  return t->int_time[ind];
+  return t->records[ind].int_time;
 }
 
 /**
@@ -209,7 +208,7 @@ integertime_t time_array_get_integertime(struct time_array *t,
  */
 double time_array_get_time(const struct time_array *t, const size_t offset) {
   size_t ind = time_array_get_index(t, offset);
-  return t->time[ind];
+  return t->records[ind].time;
 }
 
 /**
@@ -224,15 +223,18 @@ size_t time_array_get_index(const struct time_array *t, const size_t offset) {
 
 #ifdef SWIFT_DEBUG_CHECKS
   if (!t) error("NULL pointer.");
+
+  if (offset < t->records[0].offset || offset > t->records[t->size].offset)
+    error("Offset outside of range.");
 #endif
 
   /* Find the time_array with the correct offset. */
   for (size_t i = 1; i < t->size; i++) {
-    if (offset < t->offset[i]) {
+    if (offset < t->records[i].offset) {
       return i - 1;
     }
 
-    else if (offset == t->offset[i])
+    else if (offset == t->records[i].offset)
       return i;
   }
 
@@ -246,14 +248,8 @@ size_t time_array_get_index(const struct time_array *t, const size_t offset) {
  */
 void time_array_free(struct time_array *t) {
   /* Free the arrays */
-  free(t->int_time);
-  t->int_time = NULL;
-
-  free(t->time);
-  t->time = NULL;
-
-  free(t->offset);
-  t->offset = NULL;
+  free(t->records);
+  t->records = NULL;
 
   /* Reset the counters */
   t->size = 0;
@@ -271,13 +267,14 @@ void time_array_print(const struct time_array *t) {
   size_t n = t->size;
   size_t up_threshold = n - threshold;
 
-  printf("Times (size %lu): [%lli (%g)", n, t->int_time[0], t->time[0]);
+  printf("Times (size %lu): [%lli (%g)", n,
+	 t->records[0].int_time, t->records[0].time);
 
   /* Loop over all elements. */
   for (size_t i = 1; i < n; i++) {
     /* Skip the times at the center of the array. */
     if (i < threshold || i > up_threshold)
-      printf(", %lli (%g)", t->int_time[i], t->time[i]);
+      printf(", %lli (%g)", t->records[i].int_time, t->records[i].time);
 
     if (i == threshold) printf(", ...");
   }
@@ -296,12 +293,12 @@ void time_array_print_offset(const struct time_array *t) {
   size_t n = t->size;
   size_t up_threshold = n - threshold;
 
-  printf("Times (size %lu): [%lu", n, t->offset[0]);
+  printf("Times (size %lu): [%lu", n, t->records[0].offset);
 
   /* Loop over all elements. */
   for (size_t i = 1; i < n; i++) {
     /* Skip the offset in the middle of the array. */
-    if (i < threshold || i > up_threshold) printf(", %lu", t->offset[i]);
+    if (i < threshold || i > up_threshold) printf(", %lu", t->records[i].offset);
 
     if (i == threshold) printf(", ...");
   }
