@@ -20,8 +20,10 @@
 #ifndef SWIFT_ANARCHY_PU_HYDRO_DEBUG_H
 #define SWIFT_ANARCHY_PU_HYDRO_DEBUG_H
 /**
- * @file PressureEnergy/hydro_debug.h
- * @brief P-U conservative implementation of SPH (Debugging routines)
+ * @file AnarchyPU/hydro_debug.h
+ * @brief P-U conservative implementation of SPH,
+ *        with added ANARCHY physics (Cullen & Denhen 2011 AV,
+ *        Price 2008 thermal diffusion (Debugging routines).
  */
 
 __attribute__((always_inline)) INLINE static void hydro_debug_particle(

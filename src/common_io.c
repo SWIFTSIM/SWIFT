@@ -402,26 +402,32 @@ void io_write_cell_offsets(hid_t h_grp, const int cdim[3],
   centres = (double*)malloc(3 * nr_cells * sizeof(double));
 
   /* Count of particles in each cell */
-  long long *count_part = NULL, *count_gpart = NULL, *count_spart = NULL;
+  long long *count_part = NULL, *count_gpart = NULL, *count_spart = NULL,
+            *count_bpart = NULL;
   count_part = (long long*)malloc(nr_cells * sizeof(long long));
   count_gpart = (long long*)malloc(nr_cells * sizeof(long long));
   count_spart = (long long*)malloc(nr_cells * sizeof(long long));
+  count_bpart = (long long*)malloc(nr_cells * sizeof(long long));
 
   /* Global offsets of particles in each cell */
-  long long *offset_part = NULL, *offset_gpart = NULL, *offset_spart = NULL;
+  long long *offset_part = NULL, *offset_gpart = NULL, *offset_spart = NULL,
+            *offset_bpart = NULL;
   offset_part = (long long*)malloc(nr_cells * sizeof(long long));
   offset_gpart = (long long*)malloc(nr_cells * sizeof(long long));
   offset_spart = (long long*)malloc(nr_cells * sizeof(long long));
+  offset_bpart = (long long*)malloc(nr_cells * sizeof(long long));
 
   /* Offsets of the 0^th element */
   offset_part[0] = 0;
   offset_gpart[0] = 0;
   offset_spart[0] = 0;
+  offset_bpart[0] = 0;
 
   /* Collect the cell information of *local* cells */
   long long local_offset_part = 0;
   long long local_offset_gpart = 0;
   long long local_offset_spart = 0;
+  long long local_offset_bpart = 0;
   for (int i = 0; i < nr_cells; ++i) {
 
     if (cells_top[i].nodeID == nodeID) {
@@ -435,10 +441,12 @@ void io_write_cell_offsets(hid_t h_grp, const int cdim[3],
       count_part[i] = cells_top[i].hydro.count - cells_top[i].hydro.inhibited;
       count_gpart[i] = cells_top[i].grav.count - cells_top[i].grav.inhibited;
       count_spart[i] = cells_top[i].stars.count - cells_top[i].stars.inhibited;
+      count_bpart[i] = cells_top[i].stars.count - cells_top[i].stars.inhibited;
 
       /* Only count DM gpart (gpart without friends) */
       count_gpart[i] -= count_part[i];
       count_gpart[i] -= count_spart[i];
+      count_gpart[i] -= count_bpart[i];
 
       /* Offsets including the global offset of all particles on this MPI rank
        */
@@ -446,10 +454,12 @@ void io_write_cell_offsets(hid_t h_grp, const int cdim[3],
       offset_gpart[i] =
           local_offset_gpart + global_offsets[swift_type_dark_matter];
       offset_spart[i] = local_offset_spart + global_offsets[swift_type_stars];
+      offset_bpart[i] = local_offset_bpart + global_offsets[swift_type_stars];
 
       local_offset_part += count_part[i];
       local_offset_gpart += count_gpart[i];
       local_offset_spart += count_spart[i];
+      local_offset_bpart += count_bpart[i];
 
     } else {
 
@@ -462,10 +472,12 @@ void io_write_cell_offsets(hid_t h_grp, const int cdim[3],
       count_part[i] = 0;
       count_gpart[i] = 0;
       count_spart[i] = 0;
+      count_bpart[i] = 0;
 
       offset_part[i] = 0;
       offset_gpart[i] = 0;
       offset_spart[i] = 0;
+      offset_bpart[i] = 0;
     }
   }
 
@@ -479,6 +491,7 @@ void io_write_cell_offsets(hid_t h_grp, const int cdim[3],
     MPI_Reduce(count_part, NULL, nr_cells, MPI_LONG_LONG_INT, MPI_BOR, 0,
                MPI_COMM_WORLD);
   }
+
   if (nodeID == 0) {
     MPI_Reduce(MPI_IN_PLACE, count_gpart, nr_cells, MPI_LONG_LONG_INT, MPI_BOR,
                0, MPI_COMM_WORLD);
@@ -493,6 +506,14 @@ void io_write_cell_offsets(hid_t h_grp, const int cdim[3],
     MPI_Reduce(count_spart, NULL, nr_cells, MPI_LONG_LONG_INT, MPI_BOR, 0,
                MPI_COMM_WORLD);
   }
+  if (nodeID == 0) {
+    MPI_Reduce(MPI_IN_PLACE, count_bpart, nr_cells, MPI_LONG_LONG_INT, MPI_BOR,
+               0, MPI_COMM_WORLD);
+  } else {
+    MPI_Reduce(count_bpart, NULL, nr_cells, MPI_LONG_LONG_INT, MPI_BOR, 0,
+               MPI_COMM_WORLD);
+  }
+
   if (nodeID == 0) {
     MPI_Reduce(MPI_IN_PLACE, offset_part, nr_cells, MPI_LONG_LONG_INT, MPI_BOR,
                0, MPI_COMM_WORLD);
@@ -512,6 +533,13 @@ void io_write_cell_offsets(hid_t h_grp, const int cdim[3],
                0, MPI_COMM_WORLD);
   } else {
     MPI_Reduce(offset_spart, NULL, nr_cells, MPI_LONG_LONG_INT, MPI_BOR, 0,
+               MPI_COMM_WORLD);
+  }
+  if (nodeID == 0) {
+    MPI_Reduce(MPI_IN_PLACE, offset_bpart, nr_cells, MPI_LONG_LONG_INT, MPI_BOR,
+               0, MPI_COMM_WORLD);
+  } else {
+    MPI_Reduce(offset_bpart, NULL, nr_cells, MPI_LONG_LONG_INT, MPI_BOR, 0,
                MPI_COMM_WORLD);
   }
 
@@ -635,6 +663,27 @@ void io_write_cell_offsets(hid_t h_grp, const int cdim[3],
       H5Sclose(h_space);
     }
 
+    if (global_counts[swift_type_black_hole] > 0) {
+
+      shape[0] = nr_cells;
+      shape[1] = 1;
+      h_space = H5Screate(H5S_SIMPLE);
+      if (h_space < 0)
+        error("Error while creating data space for black hole offsets");
+      h_err = H5Sset_extent_simple(h_space, 1, shape, shape);
+      if (h_err < 0)
+        error("Error while changing shape of black hole offsets data space.");
+      h_data = H5Dcreate(h_subgrp, "PartType5", io_hdf5_type(LONGLONG), h_space,
+                         H5P_DEFAULT, H5P_DEFAULT, H5P_DEFAULT);
+      if (h_data < 0)
+        error("Error while creating dataspace for black hole offsets.");
+      h_err = H5Dwrite(h_data, io_hdf5_type(LONGLONG), h_space, H5S_ALL,
+                       H5P_DEFAULT, offset_bpart);
+      if (h_err < 0) error("Error while writing black hole offsets.");
+      H5Dclose(h_data);
+      H5Sclose(h_space);
+    }
+
     H5Gclose(h_subgrp);
 
     /* Group containing the counts for each particle type */
@@ -700,6 +749,27 @@ void io_write_cell_offsets(hid_t h_grp, const int cdim[3],
       H5Sclose(h_space);
     }
 
+    if (global_counts[swift_type_black_hole] > 0) {
+
+      shape[0] = nr_cells;
+      shape[1] = 1;
+      h_space = H5Screate(H5S_SIMPLE);
+      if (h_space < 0)
+        error("Error while creating data space for black hole counts");
+      h_err = H5Sset_extent_simple(h_space, 1, shape, shape);
+      if (h_err < 0)
+        error("Error while changing shape of black hole counts data space.");
+      h_data = H5Dcreate(h_subgrp, "PartType5", io_hdf5_type(LONGLONG), h_space,
+                         H5P_DEFAULT, H5P_DEFAULT, H5P_DEFAULT);
+      if (h_data < 0)
+        error("Error while creating dataspace for black hole counts.");
+      h_err = H5Dwrite(h_data, io_hdf5_type(LONGLONG), h_space, H5S_ALL,
+                       H5P_DEFAULT, count_bpart);
+      if (h_err < 0) error("Error while writing black hole counts.");
+      H5Dclose(h_data);
+      H5Sclose(h_space);
+    }
+
     H5Gclose(h_subgrp);
   }
 
@@ -708,9 +778,11 @@ void io_write_cell_offsets(hid_t h_grp, const int cdim[3],
   free(count_part);
   free(count_gpart);
   free(count_spart);
+  free(count_bpart);
   free(offset_part);
   free(offset_gpart);
   free(offset_spart);
+  free(offset_bpart);
 }
 
 #endif /* HAVE_HDF5 */
@@ -784,6 +856,28 @@ void io_convert_part_f_mapper(void* restrict temp, int N,
   for (int i = 0; i < N; i++)
     props.convert_part_f(e, parts + delta + i, xparts + delta + i,
                          &temp_f[i * dim]);
+}
+
+/**
+ * @brief Mapper function to copy #part into a buffer of ints using a
+ * conversion function.
+ */
+void io_convert_part_i_mapper(void* restrict temp, int N,
+                              void* restrict extra_data) {
+
+  const struct io_props props = *((const struct io_props*)extra_data);
+  const struct part* restrict parts = props.parts;
+  const struct xpart* restrict xparts = props.xparts;
+  const struct engine* e = props.e;
+  const size_t dim = props.dimension;
+
+  /* How far are we with this chunk? */
+  int* restrict temp_i = (int*)temp;
+  const ptrdiff_t delta = (temp_i - props.start_temp_i) / dim;
+
+  for (int i = 0; i < N; i++)
+    props.convert_part_i(e, parts + delta + i, xparts + delta + i,
+                         &temp_i[i * dim]);
 }
 
 /**
@@ -951,6 +1045,66 @@ void io_convert_spart_l_mapper(void* restrict temp, int N,
 }
 
 /**
+ * @brief Mapper function to copy #bpart into a buffer of floats using a
+ * conversion function.
+ */
+void io_convert_bpart_f_mapper(void* restrict temp, int N,
+                               void* restrict extra_data) {
+
+  const struct io_props props = *((const struct io_props*)extra_data);
+  const struct bpart* restrict bparts = props.bparts;
+  const struct engine* e = props.e;
+  const size_t dim = props.dimension;
+
+  /* How far are we with this chunk? */
+  float* restrict temp_f = (float*)temp;
+  const ptrdiff_t delta = (temp_f - props.start_temp_f) / dim;
+
+  for (int i = 0; i < N; i++)
+    props.convert_bpart_f(e, bparts + delta + i, &temp_f[i * dim]);
+}
+
+/**
+ * @brief Mapper function to copy #bpart into a buffer of doubles using a
+ * conversion function.
+ */
+void io_convert_bpart_d_mapper(void* restrict temp, int N,
+                               void* restrict extra_data) {
+
+  const struct io_props props = *((const struct io_props*)extra_data);
+  const struct bpart* restrict bparts = props.bparts;
+  const struct engine* e = props.e;
+  const size_t dim = props.dimension;
+
+  /* How far are we with this chunk? */
+  double* restrict temp_d = (double*)temp;
+  const ptrdiff_t delta = (temp_d - props.start_temp_d) / dim;
+
+  for (int i = 0; i < N; i++)
+    props.convert_bpart_d(e, bparts + delta + i, &temp_d[i * dim]);
+}
+
+/**
+ * @brief Mapper function to copy #bpart into a buffer of doubles using a
+ * conversion function.
+ */
+void io_convert_bpart_l_mapper(void* restrict temp, int N,
+                               void* restrict extra_data) {
+
+  const struct io_props props = *((const struct io_props*)extra_data);
+  const struct bpart* restrict bparts = props.bparts;
+  const struct engine* e = props.e;
+  const size_t dim = props.dimension;
+
+  /* How far are we with this chunk? */
+  long long* restrict temp_l = (long long*)temp;
+  const ptrdiff_t delta = (temp_l - props.start_temp_l) / dim;
+
+  for (int i = 0; i < N; i++)
+    props.convert_bpart_l(e, bparts + delta + i, &temp_l[i * dim]);
+}
+
+/**
  * @brief Copy the particle data into a temporary buffer ready for i/o.
  *
  * @param temp The buffer to be filled. Must be allocated and aligned properly.
@@ -993,6 +1147,18 @@ void io_copy_temp_buffer(void* temp, const struct engine* e,
       /* Copy the whole thing into a buffer */
       threadpool_map((struct threadpool*)&e->threadpool,
                      io_convert_part_f_mapper, temp_f, N, copySize, 0,
+                     (void*)&props);
+
+    } else if (props.convert_part_i != NULL) {
+
+      /* Prepare some parameters */
+      int* temp_i = (int*)temp;
+      props.start_temp_i = (int*)temp;
+      props.e = e;
+
+      /* Copy the whole thing into a buffer */
+      threadpool_map((struct threadpool*)&e->threadpool,
+                     io_convert_part_i_mapper, temp_i, N, copySize, 0,
                      (void*)&props);
 
     } else if (props.convert_part_d != NULL) {
@@ -1091,6 +1257,42 @@ void io_copy_temp_buffer(void* temp, const struct engine* e,
                      io_convert_spart_l_mapper, temp_l, N, copySize, 0,
                      (void*)&props);
 
+    } else if (props.convert_bpart_f != NULL) {
+
+      /* Prepare some parameters */
+      float* temp_f = (float*)temp;
+      props.start_temp_f = (float*)temp;
+      props.e = e;
+
+      /* Copy the whole thing into a buffer */
+      threadpool_map((struct threadpool*)&e->threadpool,
+                     io_convert_bpart_f_mapper, temp_f, N, copySize, 0,
+                     (void*)&props);
+
+    } else if (props.convert_bpart_d != NULL) {
+
+      /* Prepare some parameters */
+      double* temp_d = (double*)temp;
+      props.start_temp_d = (double*)temp;
+      props.e = e;
+
+      /* Copy the whole thing into a buffer */
+      threadpool_map((struct threadpool*)&e->threadpool,
+                     io_convert_bpart_d_mapper, temp_d, N, copySize, 0,
+                     (void*)&props);
+
+    } else if (props.convert_bpart_l != NULL) {
+
+      /* Prepare some parameters */
+      long long* temp_l = (long long*)temp;
+      props.start_temp_l = (long long*)temp;
+      props.e = e;
+
+      /* Copy the whole thing into a buffer */
+      threadpool_map((struct threadpool*)&e->threadpool,
+                     io_convert_bpart_l_mapper, temp_l, N, copySize, 0,
+                     (void*)&props);
+
     } else {
       error("Missing conversion function");
     }
@@ -1155,9 +1357,11 @@ struct duplication_data {
   struct part* parts;
   struct gpart* gparts;
   struct spart* sparts;
+  struct bpart* bparts;
   int Ndm;
   int Ngas;
   int Nstars;
+  int Nblackholes;
 };
 
 void io_duplicate_hydro_gparts_mapper(void* restrict data, int Ngas,
@@ -1216,7 +1420,7 @@ void io_duplicate_hydro_gparts(struct threadpool* tp, struct part* const parts,
                  sizeof(struct part), 0, &data);
 }
 
-void io_duplicate_hydro_sparts_mapper(void* restrict data, int Nstars,
+void io_duplicate_stars_gparts_mapper(void* restrict data, int Nstars,
                                       void* restrict extra_data) {
 
   struct duplication_data* temp = (struct duplication_data*)extra_data;
@@ -1270,8 +1474,68 @@ void io_duplicate_stars_gparts(struct threadpool* tp,
   data.sparts = sparts;
   data.Ndm = Ndm;
 
-  threadpool_map(tp, io_duplicate_hydro_sparts_mapper, sparts, Nstars,
+  threadpool_map(tp, io_duplicate_stars_gparts_mapper, sparts, Nstars,
                  sizeof(struct spart), 0, &data);
+}
+
+void io_duplicate_black_holes_gparts_mapper(void* restrict data,
+                                            int Nblackholes,
+                                            void* restrict extra_data) {
+
+  struct duplication_data* temp = (struct duplication_data*)extra_data;
+  const int Ndm = temp->Ndm;
+  struct bpart* bparts = (struct bpart*)data;
+  const ptrdiff_t offset = bparts - temp->bparts;
+  struct gpart* gparts = temp->gparts + offset;
+
+  for (int i = 0; i < Nblackholes; ++i) {
+
+    /* Duplicate the crucial information */
+    gparts[i + Ndm].x[0] = bparts[i].x[0];
+    gparts[i + Ndm].x[1] = bparts[i].x[1];
+    gparts[i + Ndm].x[2] = bparts[i].x[2];
+
+    gparts[i + Ndm].v_full[0] = bparts[i].v[0];
+    gparts[i + Ndm].v_full[1] = bparts[i].v[1];
+    gparts[i + Ndm].v_full[2] = bparts[i].v[2];
+
+    gparts[i + Ndm].mass = bparts[i].mass;
+
+    /* Set gpart type */
+    gparts[i + Ndm].type = swift_type_black_hole;
+
+    /* Link the particles */
+    gparts[i + Ndm].id_or_neg_offset = -(long long)(offset + i);
+    bparts[i].gpart = &gparts[i + Ndm];
+  }
+}
+
+/**
+ * @brief Copy every #bpart into the corresponding #gpart and link them.
+ *
+ * This function assumes that the DM particles, gas particles and star particles
+ * are all at the start of the gparts array and adds the black hole particles
+ * afterwards
+ *
+ * @param tp The current #threadpool.
+ * @param bparts The array of #bpart freshly read in.
+ * @param gparts The array of #gpart freshly read in with all the DM, gas
+ * and star particles at the start.
+ * @param Nblackholes The number of blackholes particles read in.
+ * @param Ndm The number of DM, gas and star particles read in.
+ */
+void io_duplicate_black_holes_gparts(struct threadpool* tp,
+                                     struct bpart* const bparts,
+                                     struct gpart* const gparts,
+                                     size_t Nblackholes, size_t Ndm) {
+
+  struct duplication_data data;
+  data.gparts = gparts;
+  data.bparts = bparts;
+  data.Ndm = Ndm;
+
+  threadpool_map(tp, io_duplicate_black_holes_gparts_mapper, bparts,
+                 Nblackholes, sizeof(struct bpart), 0, &data);
 }
 
 /**
@@ -1346,6 +1610,40 @@ void io_collect_sparts_to_write(const struct spart* restrict sparts,
   if (count != Nsparts_written)
     error("Collected the wrong number of s-particles (%zu vs. %zu expected)",
           count, Nsparts_written);
+}
+
+/**
+ * @brief Copy every non-inhibited #bpart into the bparts_written array.
+ *
+ * @param bparts The array of #bpart containing all particles.
+ * @param bparts_written The array of #bpart to fill with particles we want to
+ * write.
+ * @param Nbparts The total number of #part.
+ * @param Nbparts_written The total number of #part to write.
+ */
+void io_collect_bparts_to_write(const struct bpart* restrict bparts,
+                                struct bpart* restrict bparts_written,
+                                const size_t Nbparts,
+                                const size_t Nbparts_written) {
+
+  size_t count = 0;
+
+  /* Loop over all parts */
+  for (size_t i = 0; i < Nbparts; ++i) {
+
+    /* And collect the ones that have not been removed */
+    if (bparts[i].time_bin != time_bin_inhibited &&
+        bparts[i].time_bin != time_bin_not_created) {
+
+      bparts_written[count] = bparts[i];
+      count++;
+    }
+  }
+
+  /* Check that everything is fine */
+  if (count != Nbparts_written)
+    error("Collected the wrong number of s-particles (%zu vs. %zu expected)",
+          count, Nbparts_written);
 }
 
 /**

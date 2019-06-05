@@ -90,6 +90,9 @@ struct part {
   /* Particle viscosity parameter */
   float alpha;
 
+  /* Particle diffusion parameter */
+  float alpha_diff;
+
   /* Store density/force specific stuff. */
   union {
 

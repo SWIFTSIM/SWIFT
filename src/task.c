@@ -62,6 +62,7 @@ const char *taskID_names[task_type_count] = {"none",
                                              "extra_ghost",
                                              "drift_part",
                                              "drift_spart",
+                                             "drift_bpart",
                                              "drift_gpart",
                                              "drift_gpart_out",
                                              "end_hydro_force",
@@ -87,26 +88,21 @@ const char *taskID_names[task_type_count] = {"none",
                                              "stars_ghost_in",
                                              "stars_ghost",
                                              "stars_ghost_out",
-                                             "stars_sort"};
+                                             "stars_sort",
+                                             "bh_in",
+                                             "bh_out",
+                                             "bh_ghost",
+                                             "fof_self",
+                                             "fof_pair"};
 
 /* Sub-task type names. */
-const char *subtaskID_names[task_subtype_count] = {"none",
-                                                   "density",
-                                                   "gradient",
-                                                   "force",
-                                                   "limiter",
-                                                   "grav",
-                                                   "external_grav",
-                                                   "tend_part",
-                                                   "tend_gpart",
-                                                   "tend_spart",
-                                                   "xv",
-                                                   "rho",
-                                                   "gpart",
-                                                   "multipole",
-                                                   "spart",
-                                                   "stars_density",
-                                                   "stars_feedback"};
+const char *subtaskID_names[task_subtype_count] = {
+    "none",          "density",        "gradient",      "force",
+    "limiter",       "grav",           "external_grav", "tend_part",
+    "tend_gpart",    "tend_spart",     "tend_bpart",    "xv",
+    "rho",           "gpart",          "multipole",     "spart",
+    "stars_density", "stars_feedback", "sf_count",      "bpart",
+    "bh_density",    "bh_feedback"};
 
 #ifdef WITH_MPI
 /* MPI communicators for the subtypes. */
@@ -175,6 +171,11 @@ __attribute__((always_inline)) INLINE static enum task_actions task_acts_on(
       return task_action_spart;
       break;
 
+    case task_type_drift_bpart:
+    case task_type_bh_ghost:
+      return task_action_bpart;
+      break;
+
     case task_type_self:
     case task_type_pair:
     case task_type_sub_self:
@@ -190,6 +191,11 @@ __attribute__((always_inline)) INLINE static enum task_actions task_acts_on(
 
         case task_subtype_stars_density:
         case task_subtype_stars_feedback:
+          return task_action_all;
+          break;
+
+        case task_subtype_bh_density:
+        case task_subtype_bh_feedback:
           return task_action_all;
           break;
 
@@ -211,6 +217,8 @@ __attribute__((always_inline)) INLINE static enum task_actions task_acts_on(
     case task_type_kick1:
     case task_type_kick2:
     case task_type_logger:
+    case task_type_fof_self:
+    case task_type_fof_pair:
     case task_type_timestep:
     case task_type_send:
     case task_type_recv:
@@ -399,9 +407,8 @@ void task_unlock(struct task *t) {
       if (subtype == task_subtype_grav) {
         cell_gunlocktree(ci);
         cell_munlocktree(ci);
-      } else if (subtype == task_subtype_stars_density) {
-        cell_sunlocktree(ci);
-      } else if (subtype == task_subtype_stars_feedback) {
+      } else if ((subtype == task_subtype_stars_density) ||
+                 (subtype == task_subtype_stars_feedback)) {
         cell_sunlocktree(ci);
         cell_unlocktree(ci);
       } else {
@@ -416,10 +423,8 @@ void task_unlock(struct task *t) {
         cell_gunlocktree(cj);
         cell_munlocktree(ci);
         cell_munlocktree(cj);
-      } else if (subtype == task_subtype_stars_density) {
-        cell_sunlocktree(ci);
-        cell_sunlocktree(cj);
-      } else if (subtype == task_subtype_stars_feedback) {
+      } else if ((subtype == task_subtype_stars_density) ||
+                 (subtype == task_subtype_stars_feedback)) {
         cell_sunlocktree(ci);
         cell_sunlocktree(cj);
         cell_unlocktree(ci);
@@ -536,10 +541,8 @@ int task_lock(struct task *t) {
           cell_gunlocktree(ci);
           return 0;
         }
-      } else if (subtype == task_subtype_stars_density) {
-        if (ci->stars.hold) return 0;
-        if (cell_slocktree(ci) != 0) return 0;
-      } else if (subtype == task_subtype_stars_feedback) {
+      } else if ((subtype == task_subtype_stars_density) ||
+                 (subtype == task_subtype_stars_feedback)) {
         if (ci->stars.hold) return 0;
         if (ci->hydro.hold) return 0;
         if (cell_slocktree(ci) != 0) return 0;
@@ -572,14 +575,8 @@ int task_lock(struct task *t) {
           cell_munlocktree(ci);
           return 0;
         }
-      } else if (subtype == task_subtype_stars_density) {
-        if (ci->stars.hold || cj->stars.hold) return 0;
-        if (cell_slocktree(ci) != 0) return 0;
-        if (cell_slocktree(cj) != 0) {
-          cell_sunlocktree(ci);
-          return 0;
-        }
-      } else if (subtype == task_subtype_stars_feedback) {
+      } else if ((subtype == task_subtype_stars_density) ||
+                 (subtype == task_subtype_stars_feedback)) {
         /* Lock the stars and the gas particles in both cells */
         if (ci->stars.hold || cj->stars.hold) return 0;
         if (ci->hydro.hold || cj->hydro.hold) return 0;
@@ -715,6 +712,12 @@ void task_get_group_name(int type, int subtype, char *cluster) {
       break;
     case task_subtype_stars_feedback:
       strcpy(cluster, "StarsFeedback");
+      break;
+    case task_subtype_bh_density:
+      strcpy(cluster, "BHDensity");
+      break;
+    case task_subtype_bh_feedback:
+      strcpy(cluster, "BHFeedback");
       break;
     default:
       strcpy(cluster, "None");

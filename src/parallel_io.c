@@ -37,6 +37,7 @@
 #include "parallel_io.h"
 
 /* Local includes. */
+#include "black_holes_io.h"
 #include "chemistry_io.h"
 #include "common_io.h"
 #include "cooling_io.h"
@@ -427,13 +428,29 @@ void prepareArray(struct engine* e, hid_t grp, char* fileName, FILE* xmfFile,
   /* Write unit conversion factors for this data set */
   char buffer[FIELD_BUFFER_SIZE];
   units_cgs_conversion_string(buffer, snapshot_units, props.units);
-  io_write_attribute_d(
-      h_data, "CGS conversion factor",
-      units_cgs_conversion_factor(snapshot_units, props.units));
+  float baseUnitsExp[5];
+  units_get_base_unit_exponents_array(baseUnitsExp, props.units);
+  const float a_factor_exp = units_a_factor(snapshot_units, props.units);
+  io_write_attribute_f(h_data, "U_M exponent", baseUnitsExp[UNIT_MASS]);
+  io_write_attribute_f(h_data, "U_L exponent", baseUnitsExp[UNIT_LENGTH]);
+  io_write_attribute_f(h_data, "U_t exponent", baseUnitsExp[UNIT_TIME]);
+  io_write_attribute_f(h_data, "U_I exponent", baseUnitsExp[UNIT_CURRENT]);
+  io_write_attribute_f(h_data, "U_T exponent", baseUnitsExp[UNIT_TEMPERATURE]);
   io_write_attribute_f(h_data, "h-scale exponent", 0);
-  io_write_attribute_f(h_data, "a-scale exponent",
-                       units_a_factor(snapshot_units, props.units));
-  io_write_attribute_s(h_data, "Conversion factor", buffer);
+  io_write_attribute_f(h_data, "a-scale exponent", a_factor_exp);
+  io_write_attribute_s(h_data, "Expression for physical CGS units", buffer);
+
+  /* Write the actual number this conversion factor corresponds to */
+  const double factor =
+      units_cgs_conversion_factor(snapshot_units, props.units);
+  io_write_attribute_d(
+      h_data,
+      "Conversion factor to CGS (not including cosmological corrections)",
+      factor);
+  io_write_attribute_d(
+      h_data,
+      "Conversion factor to phyical CGS (including cosmological corrections)",
+      factor * pow(e->cosmology->a, a_factor_exp));
 
   /* Add a line to the XMF */
   if (xmfFile != NULL)
@@ -651,14 +668,17 @@ void writeArray(struct engine* e, hid_t grp, char* fileName,
  * @param parts (output) The array of #part read from the file.
  * @param gparts (output) The array of #gpart read from the file.
  * @param sparts (output) The array of #spart read from the file.
+ * @param bparts (output) The array of #bpart read from the file.
  * @param Ngas (output) The number of particles read from the file.
  * @param Ngparts (output) The number of particles read from the file.
  * @param Nstars (output) The number of particles read from the file.
+ * @param Nblackholes (output) The number of particles read from the file.
  * @param flag_entropy (output) 1 if the ICs contained Entropy in the
  * InternalEnergy field
  * @param with_hydro Are we running with hydro ?
  * @param with_gravity Are we running with gravity ?
  * @param with_stars Are we running with stars ?
+ * @param with_black_holes Are we running with black holes ?
  * @param cleanup_h Are we cleaning-up h-factors from the quantities we read?
  * @param cleanup_sqrt_a Are we cleaning-up the sqrt(a) factors in the Gadget
  * IC velocities?
@@ -674,12 +694,13 @@ void writeArray(struct engine* e, hid_t grp, char* fileName,
  */
 void read_ic_parallel(char* fileName, const struct unit_system* internal_units,
                       double dim[3], struct part** parts, struct gpart** gparts,
-                      struct spart** sparts, size_t* Ngas, size_t* Ngparts,
-                      size_t* Nstars, int* flag_entropy, int with_hydro,
-                      int with_gravity, int with_stars, int cleanup_h,
-                      int cleanup_sqrt_a, double h, double a, int mpi_rank,
-                      int mpi_size, MPI_Comm comm, MPI_Info info, int n_threads,
-                      int dry_run) {
+                      struct spart** sparts, struct bpart** bparts,
+                      size_t* Ngas, size_t* Ngparts, size_t* Nstars,
+                      size_t* Nblackholes, int* flag_entropy, int with_hydro,
+                      int with_gravity, int with_stars, int with_black_holes,
+                      int cleanup_h, int cleanup_sqrt_a, double h, double a,
+                      int mpi_rank, int mpi_size, MPI_Comm comm, MPI_Info info,
+                      int n_threads, int dry_run) {
 
   hid_t h_file = 0, h_grp = 0;
   /* GADGET has only cubic boxes (in cosmological mode) */
@@ -691,6 +712,9 @@ void read_ic_parallel(char* fileName, const struct unit_system* internal_units,
   long long offset[swift_type_count] = {0};
   int dimension = 3; /* Assume 3D if nothing is specified */
   size_t Ndm = 0;
+
+  /* Initialise counters */
+  *Ngas = 0, *Ngparts = 0, *Nstars = 0, *Nblackholes = 0;
 
   /* Open file */
   /* message("Opening file '%s' as IC.", fileName); */
@@ -831,12 +855,22 @@ void read_ic_parallel(char* fileName, const struct unit_system* internal_units,
     bzero(*sparts, *Nstars * sizeof(struct spart));
   }
 
+  /* Allocate memory to store black hole particles */
+  if (with_black_holes) {
+    *Nblackholes = N[swift_type_black_hole];
+    if (swift_memalign("sparts", (void**)bparts, bpart_align,
+                       *Nblackholes * sizeof(struct bpart)) != 0)
+      error("Error while allocating memory for black_holes particles");
+    bzero(*bparts, *Nblackholes * sizeof(struct bpart));
+  }
+
   /* Allocate memory to store gravity particles */
   if (with_gravity) {
     Ndm = N[1];
     *Ngparts = (with_hydro ? N[swift_type_gas] : 0) +
                N[swift_type_dark_matter] +
-               (with_stars ? N[swift_type_stars] : 0);
+               (with_stars ? N[swift_type_stars] : 0) +
+               (with_black_holes ? N[swift_type_black_hole] : 0);
     if (swift_memalign("gparts", (void**)gparts, gpart_align,
                        *Ngparts * sizeof(struct gpart)) != 0)
       error("Error while allocating memory for gravity particles");
@@ -892,6 +926,13 @@ void read_ic_parallel(char* fileName, const struct unit_system* internal_units,
         }
         break;
 
+      case swift_type_black_hole:
+        if (with_black_holes) {
+          Nparticles = *Nblackholes;
+          black_holes_read_particles(*bparts, list, &num_fields);
+        }
+        break;
+
       default:
         if (mpi_rank == 0)
           message("Particle Type %d not yet supported. Particles ignored",
@@ -925,6 +966,11 @@ void read_ic_parallel(char* fileName, const struct unit_system* internal_units,
     if (with_stars)
       io_duplicate_stars_gparts(&tp, *sparts, *gparts, *Nstars, Ndm + *Ngas);
 
+    /* Duplicate the stars particles into gparts */
+    if (with_black_holes)
+      io_duplicate_black_holes_gparts(&tp, *bparts, *gparts, *Nblackholes,
+                                      Ndm + *Ngas + *Nstars);
+
     threadpool_clean(&tp);
   }
 
@@ -957,6 +1003,7 @@ void prepare_file(struct engine* e, const char* baseName, long long N_total[6],
   const struct xpart* xparts = e->s->xparts;
   const struct gpart* gparts = e->s->gparts;
   const struct spart* sparts = e->s->sparts;
+  const struct bpart* bparts = e->s->bparts;
   struct swift_params* params = e->parameter_file;
   const int with_cosmology = e->policy & engine_policy_cosmology;
   const int with_cooling = e->policy & engine_policy_cooling;
@@ -1020,6 +1067,7 @@ void prepare_file(struct engine* e, const char* baseName, long long N_total[6],
   io_write_attribute_s(h_grp, "Code", "SWIFT");
   time_t tm = time(NULL);
   io_write_attribute_s(h_grp, "Snapshot date", ctime(&tm));
+  io_write_attribute_s(h_grp, "RunName", e->run_name);
 
   /* GADGET-2 legacy values */
   /* Number of particles of each type */
@@ -1182,6 +1230,13 @@ void prepare_file(struct engine* e, const char* baseName, long long N_total[6],
         }
         break;
 
+      case swift_type_black_hole:
+        black_holes_write_particles(bparts, list, &num_fields);
+        if (with_stf) {
+          num_fields += velociraptor_write_bparts(bparts, list + num_fields);
+        }
+        break;
+
       default:
         error("Particle Type %d not yet supported. Aborting", ptype);
     }
@@ -1245,6 +1300,7 @@ void write_output_parallel(struct engine* e, const char* baseName,
   const struct xpart* xparts = e->s->xparts;
   const struct gpart* gparts = e->s->gparts;
   const struct spart* sparts = e->s->sparts;
+  const struct bpart* bparts = e->s->bparts;
   struct swift_params* params = e->parameter_file;
   const int with_cosmology = e->policy & engine_policy_cosmology;
   const int with_cooling = e->policy & engine_policy_cooling;
@@ -1260,6 +1316,7 @@ void write_output_parallel(struct engine* e, const char* baseName,
   const size_t Ntot = e->s->nr_gparts;
   const size_t Ngas = e->s->nr_parts;
   const size_t Nstars = e->s->nr_sparts;
+  const size_t Nblackholes = e->s->nr_bparts;
   // const size_t Nbaryons = Ngas + Nstars;
   // const size_t Ndm = Ntot > 0 ? Ntot - Nbaryons : 0;
 
@@ -1270,13 +1327,16 @@ void write_output_parallel(struct engine* e, const char* baseName,
       e->s->nr_parts - e->s->nr_inhibited_parts - e->s->nr_extra_parts;
   const size_t Nstars_written =
       e->s->nr_sparts - e->s->nr_inhibited_sparts - e->s->nr_extra_sparts;
-  const size_t Nbaryons_written = Ngas_written + Nstars_written;
+  const size_t Nblackholes_written =
+      e->s->nr_bparts - e->s->nr_inhibited_bparts - e->s->nr_extra_bparts;
+  const size_t Nbaryons_written =
+      Ngas_written + Nstars_written + Nblackholes_written;
   const size_t Ndm_written =
       Ntot_written > 0 ? Ntot_written - Nbaryons_written : 0;
 
   /* Compute offset in the file and total number of particles */
-  size_t N[swift_type_count] = {
-      Ngas_written, Ndm_written, 0, 0, Nstars_written, 0};
+  size_t N[swift_type_count] = {Ngas_written,   Ndm_written,        0, 0,
+                                Nstars_written, Nblackholes_written};
   long long N_total[swift_type_count] = {0};
   long long offset[swift_type_count] = {0};
   MPI_Exscan(&N, &offset, swift_type_count, MPI_LONG_LONG_INT, MPI_SUM, comm);
@@ -1458,6 +1518,7 @@ void write_output_parallel(struct engine* e, const char* baseName,
     struct gpart* gparts_written = NULL;
     struct velociraptor_gpart_data* gpart_group_data_written = NULL;
     struct spart* sparts_written = NULL;
+    struct bpart* bparts_written = NULL;
 
     /* Write particle fields from the particle structure */
     switch (ptype) {
@@ -1608,6 +1669,39 @@ void write_output_parallel(struct engine* e, const char* baseName,
         }
       } break;
 
+      case swift_type_black_hole: {
+        if (Nblackholes == Nblackholes_written) {
+
+          /* No inhibted particles: easy case */
+          Nparticles = Nblackholes;
+          black_holes_write_particles(bparts, list, &num_fields);
+          if (with_stf) {
+            num_fields += velociraptor_write_bparts(bparts, list + num_fields);
+          }
+        } else {
+
+          /* Ok, we need to fish out the particles we want */
+          Nparticles = Nblackholes_written;
+
+          /* Allocate temporary arrays */
+          if (swift_memalign("bparts_written", (void**)&bparts_written,
+                             bpart_align,
+                             Nblackholes_written * sizeof(struct bpart)) != 0)
+            error("Error while allocating temporart memory for bparts");
+
+          /* Collect the particles we want to write */
+          io_collect_bparts_to_write(bparts, bparts_written, Nblackholes,
+                                     Nblackholes_written);
+
+          /* Select the fields to write */
+          black_holes_write_particles(bparts_written, list, &num_fields);
+          if (with_stf) {
+            num_fields +=
+                velociraptor_write_bparts(bparts_written, list + num_fields);
+          }
+        }
+      } break;
+
       default:
         error("Particle Type %d not yet supported. Aborting", ptype);
     }
@@ -1634,6 +1728,7 @@ void write_output_parallel(struct engine* e, const char* baseName,
     if (gpart_group_data_written)
       swift_free("gpart_group_written", gpart_group_data_written);
     if (sparts_written) swift_free("sparts_written", sparts_written);
+    if (bparts_written) swift_free("bparts_written", bparts_written);
 
 #ifdef IO_SPEED_MEASUREMENT
     MPI_Barrier(MPI_COMM_WORLD);

@@ -30,9 +30,12 @@ struct star_formation_xpart_data {
 	double proba; 
 	/*!temperature of the particle*/
 	double temperature;
+	/*!gas density*/
+	double density;
     /*! Estimation of local turbulence */
     float sigma;
-    int voisins; //nbres de voisins
+    /*! Saved value of local turbulence (square root of sigma)*/
+    float sigma_save;
 	};
 
 /* Starformation struct */

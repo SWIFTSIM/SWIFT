@@ -6,6 +6,7 @@
  /____/ |__/|__/___/_/    /_/
  SPH With Inter-dependent Fine-grained Tasking
 
+ Version : 0.8.2
  Website: www.swiftsim.com
  Twitter: @SwiftSimulation
 
@@ -25,7 +26,7 @@ Parameters:
     -b, --feedback                    Run with stars feedback.
     -c, --cosmology                   Run with cosmological time integration.
     --temperature                     Run with temperature calculation.
-    -C, --cooling                     Run with cooling (also switches on --with-temperature).
+    -C, --cooling                     Run with cooling (also switches on --temperature).
     -D, --drift-all                   Always drift all particles even the ones
                                       far from active particles. This emulates
                                       Gadget-[23] and GIZMO's default behaviours.
@@ -35,6 +36,9 @@ Parameters:
     -M, --multipole-reconstruction    Reconstruct the multipoles every time-step.
     -s, --hydro                       Run with hydrodynamics.
     -S, --stars                       Run with stars.
+    -B, --black-holes                 Run with black holes.
+    -u, --fof                         Run Friends-of-Friends algorithm and 
+                                      black holes seeding.
     -x, --velociraptor                Run with structure finding.
     --limiter                         Run with time-step limiter.
     

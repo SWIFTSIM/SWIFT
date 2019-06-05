@@ -296,6 +296,7 @@ void read_cooling_header(const char *fname,
   for (int i = 0; i < N_nH; i++) {
     cooling->nH[i] = log10(cooling->nH[i]);
   }
+
   /* Compute inverse of solar mass fractions */
   for (int i = 0; i < N_SolarAbundances; ++i) {
     cooling->SolarAbundances_inv[i] = 1.f / cooling->SolarAbundances[i];

@@ -34,6 +34,7 @@
 
 /* Includes. */
 #include "barrier.h"
+#include "black_holes_properties.h"
 #include "chemistry_struct.h"
 #include "clocks.h"
 #include "collectgroup.h"
@@ -47,6 +48,7 @@
 #include "runner.h"
 #include "scheduler.h"
 #include "space.h"
+#include "star_formation_logger.h"
 #include "task.h"
 #include "units.h"
 #include "velociraptor_interface.h"
@@ -75,9 +77,11 @@ enum engine_policy {
   engine_policy_structure_finding = (1 << 16),
   engine_policy_star_formation = (1 << 17),
   engine_policy_feedback = (1 << 18),
-  engine_policy_limiter = (1 << 19)
+  engine_policy_black_holes = (1 << 19),
+  engine_policy_fof = (1 << 20),
+  engine_policy_limiter = (1 << 21)
 };
-#define engine_maxpolicy 20
+#define engine_maxpolicy 22
 extern const char *engine_policy_names[engine_maxpolicy + 1];
 
 /**
@@ -92,7 +96,9 @@ enum engine_step_properties {
   engine_step_prop_snapshot = (1 << 4),
   engine_step_prop_restarts = (1 << 5),
   engine_step_prop_stf = (1 << 6),
-  engine_step_prop_logger_index = (1 << 7)
+  engine_step_prop_fof = (1 << 7),
+  engine_step_prop_logger_index = (1 << 8),
+  engine_step_prop_done = (1 << 9)
 };
 
 /* Some constants */
@@ -105,8 +111,8 @@ enum engine_step_properties {
 #define engine_foreign_alloc_margin 1.05
 #define engine_default_energy_file_name "energy"
 #define engine_default_timesteps_file_name "timesteps"
-#define engine_max_parts_per_ghost 1000
-#define engine_max_sparts_per_ghost 1000
+#define engine_max_parts_per_ghost_default 1000
+#define engine_max_sparts_per_ghost_default 1000
 #define engine_tasks_per_cell_margin 1.2
 
 /**
@@ -203,6 +209,15 @@ struct engine {
   /* Maximal stars ti_beg for the next time-step */
   integertime_t ti_stars_beg_max;
 
+  /* Minimal black holes ti_end for the next time-step */
+  integertime_t ti_black_holes_end_min;
+
+  /* Maximal black holes ti_end for the next time-step */
+  integertime_t ti_black_holes_end_max;
+
+  /* Maximal black holes ti_beg for the next time-step */
+  integertime_t ti_black_holes_beg_max;
+
   /* Minimal overall ti_end for the next time-step */
   integertime_t ti_end_min;
 
@@ -213,18 +228,25 @@ struct engine {
   integertime_t ti_beg_max;
 
   /* Number of particles updated in the previous step */
-  long long updates, g_updates, s_updates;
+  long long updates, g_updates, s_updates, b_updates;
 
   /* Number of updates since the last rebuild */
   long long updates_since_rebuild;
   long long g_updates_since_rebuild;
   long long s_updates_since_rebuild;
+  long long b_updates_since_rebuild;
+
+  /* Star formation logger information */
+  struct star_formation_history sfh;
 
   /* Properties of the previous step */
   int step_props;
 
   /* Total numbers of particles in the system. */
-  long long total_nr_parts, total_nr_gparts, total_nr_sparts;
+  long long total_nr_parts;
+  long long total_nr_gparts;
+  long long total_nr_sparts;
+  long long total_nr_bparts;
 
   /* Total numbers of cells (top-level and sub-cells) in the system. */
   long long total_nr_cells;
@@ -233,12 +255,17 @@ struct engine {
   long long total_nr_tasks;
 
   /* The total number of inhibited particles in the system. */
-  long long nr_inhibited_parts, nr_inhibited_gparts, nr_inhibited_sparts;
+  long long nr_inhibited_parts;
+  long long nr_inhibited_gparts;
+  long long nr_inhibited_sparts;
+  long long nr_inhibited_bparts;
 
 #ifdef SWIFT_DEBUG_CHECKS
   /* Total number of particles removed from the system since the last rebuild */
-  long long count_inhibited_parts, count_inhibited_gparts,
-      count_inhibited_sparts;
+  long long count_inhibited_parts;
+  long long count_inhibited_gparts;
+  long long count_inhibited_sparts;
+  long long count_inhibited_bparts;
 #endif
 
   /* Total mass in the simulation */
@@ -280,6 +307,17 @@ struct engine {
   char stf_base_name[PARSER_MAX_LINE_SIZE];
   int stf_output_count;
 
+  /* FoF black holes seeding information */
+  double a_first_fof_call;
+  double time_first_fof_call;
+  double delta_time_fof;
+
+  /* Integer time of the next FoF black holes seeding call */
+  integertime_t ti_next_fof;
+
+  /* FOF information */
+  int run_fof;
+
   /* Statistics information */
   double a_first_statistics;
   double time_first_statistics;
@@ -296,6 +334,9 @@ struct engine {
 
   /* File handle for the timesteps information */
   FILE *file_timesteps;
+
+  /* File handle for the SFH logger file */
+  FILE *sfh_logger;
 
   /* The current step number. */
   int step;
@@ -373,6 +414,9 @@ struct engine {
   /* Properties of the star model */
   const struct stars_props *stars_properties;
 
+  /* Properties of the black hole model */
+  const struct black_holes_props *black_holes_properties;
+
   /* Properties of the self-gravity scheme */
   struct gravity_props *gravity_properties;
 
@@ -388,8 +432,14 @@ struct engine {
   /* Properties of the starformation law */
   const struct star_formation *star_formation;
 
+  /* Properties of the sellar feedback model */
+  const struct feedback_props *feedback_props;
+
   /* Properties of the chemistry model */
   const struct chemistry_global_data *chemistry;
+
+  /*! The FOF properties data. */
+  struct fof_props *fof_properties;
 
   /* The (parsed) parameter file */
   struct swift_params *parameter_file;
@@ -418,6 +468,9 @@ struct engine {
 
   /* Maximum number of tasks needed for restarting. */
   int restart_max_tasks;
+
+  /* Label of the run */
+  char run_name[PARSER_MAX_LINE_SIZE];
 };
 
 /* Function prototypes, engine.c. */
@@ -425,6 +478,7 @@ void engine_addlink(struct engine *e, struct link **l, struct task *t);
 void engine_barrier(struct engine *e);
 void engine_compute_next_snapshot_time(struct engine *e);
 void engine_compute_next_stf_time(struct engine *e);
+void engine_compute_next_fof_time(struct engine *e);
 void engine_compute_next_statistics_time(struct engine *e);
 void engine_recompute_displacement_constraint(struct engine *e);
 void engine_unskip(struct engine *e);
@@ -438,20 +492,24 @@ void engine_dump_snapshot(struct engine *e);
 void engine_init_output_lists(struct engine *e, struct swift_params *params);
 void engine_init(struct engine *e, struct space *s, struct swift_params *params,
                  long long Ngas, long long Ngparts, long long Nstars,
-                 int policy, int verbose, struct repartition *reparttype,
+                 long long Nblackholes, int policy, int verbose,
+                 struct repartition *reparttype,
                  const struct unit_system *internal_units,
                  const struct phys_const *physical_constants,
                  struct cosmology *cosmo, struct hydro_props *hydro,
                  const struct entropy_floor_properties *entropy_floor,
                  struct gravity_props *gravity, const struct stars_props *stars,
-                 struct pm_mesh *mesh,
+                 const struct black_holes_props *black_holes,
+                 const struct feedback_props *feedback, struct pm_mesh *mesh,
                  const struct external_potential *potential,
                  struct cooling_function_data *cooling_func,
                  const struct star_formation *starform,
-                 const struct chemistry_global_data *chemistry);
-void engine_config(int restart, struct engine *e, struct swift_params *params,
-                   int nr_nodes, int nodeID, int nr_threads, int with_aff,
-                   int verbose, const char *restart_file);
+                 const struct chemistry_global_data *chemistry,
+                 struct fof_props *fof_properties);
+void engine_config(int restart, int fof, struct engine *e,
+                   struct swift_params *params, int nr_nodes, int nodeID,
+                   int nr_threads, int with_aff, int verbose,
+                   const char *restart_file);
 void engine_dump_index(struct engine *e);
 void engine_launch(struct engine *e);
 void engine_prepare(struct engine *e);
@@ -463,7 +521,9 @@ void engine_exchange_strays(struct engine *e, const size_t offset_parts,
                             const int *ind_part, size_t *Npart,
                             const size_t offset_gparts, const int *ind_gpart,
                             size_t *Ngpart, const size_t offset_sparts,
-                            const int *ind_spart, size_t *Nspart);
+                            const int *ind_spart, size_t *Nspart,
+                            const size_t offset_bparts, const int *ind_bpart,
+                            size_t *Nbpart);
 void engine_rebuild(struct engine *e, int redistributed, int clean_h_values);
 void engine_repartition(struct engine *e);
 void engine_repartition_trigger(struct engine *e);
@@ -473,11 +533,17 @@ void engine_print_policy(struct engine *e);
 int engine_is_done(struct engine *e);
 void engine_pin(void);
 void engine_unpin(void);
-void engine_clean(struct engine *e);
+void engine_clean(struct engine *e, const int fof);
 int engine_estimate_nr_tasks(const struct engine *e);
+void engine_print_task_counts(const struct engine *e);
+void engine_fof(struct engine *e, const int dump_results,
+                const int seed_black_holes);
 
 /* Function prototypes, engine_maketasks.c. */
 void engine_maketasks(struct engine *e);
+
+/* Function prototypes, engine_maketasks.c. */
+void engine_make_fof_tasks(struct engine *e);
 
 /* Function prototypes, engine_marktasks.c. */
 int engine_marktasks(struct engine *e);

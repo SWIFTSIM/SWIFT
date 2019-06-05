@@ -96,11 +96,15 @@ int main(int argc, char *argv[]) {
   struct gravity_props gravity_properties;
   struct hydro_props hydro_properties;
   struct stars_props stars_properties;
+  struct feedback_props feedback_properties;
   struct entropy_floor_properties entropy_floor;
+  struct black_holes_props black_holes_properties;
+  struct fof_props fof_properties;
   struct part *parts = NULL;
   struct phys_const prog_const;
   struct space s;
   struct spart *sparts = NULL;
+  struct bpart *bparts = NULL;
   struct unit_system us;
 
   int nr_nodes = 1, myrank = 0;
@@ -139,7 +143,7 @@ int main(int argc, char *argv[]) {
 #endif
 
   /* Welcome to SWIFT, you made the right choice */
-  if (myrank == 0) greetings();
+  if (myrank == 0) greetings(/*fof=*/0);
 
   int with_aff = 0;
   int dry_run = 0;
@@ -154,8 +158,10 @@ int main(int argc, char *argv[]) {
   int with_self_gravity = 0;
   int with_hydro = 0;
   int with_stars = 0;
+  int with_fof = 0;
   int with_star_formation = 0;
   int with_feedback = 0;
+  int with_black_holes = 0;
   int with_limiter = 0;
   int with_fp_exceptions = 0;
   int with_drift_all = 0;
@@ -186,8 +192,8 @@ int main(int argc, char *argv[]) {
       OPT_BOOLEAN(0, "temperature", &with_temperature,
                   "Run with temperature calculation.", NULL, 0, 0),
       OPT_BOOLEAN('C', "cooling", &with_cooling,
-                  "Run with cooling (also switches on --with-temperature).",
-                  NULL, 0, 0),
+                  "Run with cooling (also switches on --temperature).", NULL, 0,
+                  0),
       OPT_BOOLEAN('D', "drift-all", &with_drift_all,
                   "Always drift all particles even the ones far from active "
                   "particles. This emulates Gadget-[23] and GIZMO's default "
@@ -204,6 +210,12 @@ int main(int argc, char *argv[]) {
       OPT_BOOLEAN('s', "hydro", &with_hydro, "Run with hydrodynamics.", NULL, 0,
                   0),
       OPT_BOOLEAN('S', "stars", &with_stars, "Run with stars.", NULL, 0, 0),
+      OPT_BOOLEAN('B', "black-holes", &with_black_holes,
+                  "Run with black holes.", NULL, 0, 0),
+      OPT_BOOLEAN(
+          'u', "fof", &with_fof,
+          "Run Friends-of-Friends algorithm to perform black hole seeding.",
+          NULL, 0, 0),
       OPT_BOOLEAN('x', "velociraptor", &with_structure_finding,
                   "Run with structure finding.", NULL, 0, 0),
       OPT_BOOLEAN(0, "limiter", &with_limiter, "Run with time-step limiter.",
@@ -344,6 +356,32 @@ int main(int argc, char *argv[]) {
     return 1;
   }
 
+  if (with_black_holes && !with_external_gravity && !with_self_gravity) {
+    if (myrank == 0) {
+      argparse_usage(&argparse);
+      printf(
+          "\nError: Cannot process black holes without gravity, -g or -G "
+          "must be chosen.\n");
+    }
+    return 1;
+  }
+
+  if (with_fof && !with_self_gravity) {
+    if (myrank == 0)
+      printf(
+          "Error: Cannot perform FOF search without gravity, -g or -G must be "
+          "chosen.\n");
+    return 1;
+  }
+
+  if (with_fof && !with_black_holes) {
+    if (myrank == 0)
+      printf(
+          "Error: Cannot perform FOF seeding without black holes being in use, "
+          "-B must be chosen.\n");
+    return 1;
+  }
+
   if (!with_stars && with_star_formation) {
     if (myrank == 0) {
       argparse_usage(&argparse);
@@ -369,6 +407,16 @@ int main(int argc, char *argv[]) {
       argparse_usage(&argparse);
       printf(
           "\nError: Cannot process feedback without gas, --hydro must be "
+          "chosen.\n");
+    }
+    return 1;
+  }
+
+  if (!with_hydro && with_black_holes) {
+    if (myrank == 0) {
+      argparse_usage(&argparse);
+      printf(
+          "\nError: Cannot process black holes without gas, --hydro must be "
           "chosen.\n");
     }
     return 1;
@@ -448,6 +496,7 @@ int main(int argc, char *argv[]) {
     message("sizeof(part)        is %4zi bytes.", sizeof(struct part));
     message("sizeof(xpart)       is %4zi bytes.", sizeof(struct xpart));
     message("sizeof(spart)       is %4zi bytes.", sizeof(struct spart));
+    message("sizeof(bpart)       is %4zi bytes.", sizeof(struct bpart));
     message("sizeof(gpart)       is %4zi bytes.", sizeof(struct gpart));
     message("sizeof(multipole)   is %4zi bytes.", sizeof(struct multipole));
     message("sizeof(grav_tensor) is %4zi bytes.", sizeof(struct grav_tensor));
@@ -481,13 +530,12 @@ int main(int argc, char *argv[]) {
 #ifdef WITH_MPI
   if (with_mpole_reconstruction && nr_nodes > 1)
     error("Cannot reconstruct m-poles every step over MPI (yet).");
-  if (with_star_formation && with_feedback)
-    error("Can't run with star formation and feedback over MPI (yet)");
   if (with_limiter) error("Can't run with time-step limiter over MPI (yet)");
 #endif
 
     /* Temporary early aborts for modes not supported with hand-vec. */
-#if defined(WITH_VECTORIZATION) && !defined(CHEMISTRY_NONE)
+#if defined(WITH_VECTORIZATION) && defined(GADGET2_SPH) && \
+    !defined(CHEMISTRY_NONE)
   error(
       "Cannot run with chemistry and hand-vectorization (yet). "
       "Use --disable-hand-vec at configure time.");
@@ -645,8 +693,8 @@ int main(int argc, char *argv[]) {
 
     /* And initialize the engine with the space and policies. */
     if (myrank == 0) clocks_gettime(&tic);
-    engine_config(1, &e, params, nr_nodes, myrank, nr_threads, with_aff,
-                  talking, restart_file);
+    engine_config(/*restart=*/1, /*fof=*/0, &e, params, nr_nodes, myrank,
+                  nr_threads, with_aff, talking, restart_file);
     if (myrank == 0) {
       clocks_gettime(&toc);
       message("engine_config took %.3f %s.", clocks_diff(&tic, &toc),
@@ -724,9 +772,29 @@ int main(int argc, char *argv[]) {
     /* Initialise the stars properties */
     if (with_stars)
       stars_props_init(&stars_properties, &prog_const, &us, params,
-                       &hydro_properties);
+                       &hydro_properties, &cosmo);
     else
       bzero(&stars_properties, sizeof(struct stars_props));
+
+    /* Initialise the feedback properties */
+    if (with_feedback) {
+#ifdef FEEDBACK_NONE
+      error("ERROR: Running with feedback but compiled without it.");
+#endif
+      feedback_props_init(&feedback_properties, &prog_const, &us, params,
+                          &hydro_properties, &cosmo);
+    } else
+      bzero(&feedback_properties, sizeof(struct feedback_props));
+
+    /* Initialise the black holes properties */
+    if (with_black_holes) {
+#ifdef BLACK_HOLES_NONE
+      error("ERROR: Running with black_holes but compiled without it.");
+#endif
+      black_holes_props_init(&black_holes_properties, &prog_const, &us, params,
+                             &hydro_properties, &cosmo);
+    } else
+      bzero(&black_holes_properties, sizeof(struct black_holes_props));
 
     /* Initialise the gravity properties */
     if (with_self_gravity)
@@ -735,20 +803,23 @@ int main(int argc, char *argv[]) {
     else
       bzero(&gravity_properties, sizeof(struct gravity_props));
 
-    /* Initialise the external potential properties */
-    bzero(&potential, sizeof(struct external_potential));
-    if (with_external_gravity)
-      potential_init(params, &prog_const, &us, &s, &potential);
-    if (myrank == 0) potential_print(&potential);
-
-    /* Initialise the cooling function properties */
+      /* Initialise the cooling function properties */
+#ifdef COOLING_NONE
+    if (with_cooling || with_temperature) {
+      error(
+          "ERROR: Running with cooling / temperature calculation"
+          " but compiled without it.");
+    }
+#else
+    if (!with_cooling && !with_temperature) {
+      error(
+          "ERROR: Compiled with cooling but running without it. "
+          "Did you forget the --cooling or --temperature flags?");
+    }
+#endif
     bzero(&cooling_func, sizeof(struct cooling_function_data));
     if (with_cooling || with_temperature) {
-#ifdef COOLING_NONE
-      if (with_cooling)
-        error("ERROR: Running with cooling but compiled without it.");
-#endif
-      cooling_init(params, &us, &prog_const, &cooling_func);
+      cooling_init(params, &us, &prog_const, &hydro_properties, &cooling_func);
     }
     if (myrank == 0) cooling_print(&cooling_func);
 
@@ -768,6 +839,10 @@ int main(int argc, char *argv[]) {
     chemistry_init(params, &us, &prog_const, &chemistry);
     if (myrank == 0) chemistry_print(&chemistry);
 
+    /* Initialise the FOF properties */
+    bzero(&fof_properties, sizeof(struct fof_props));
+    if (with_fof) fof_init(&fof_properties, params, &prog_const, &us);
+
     /* Be verbose about what happens next */
     if (myrank == 0) message("Reading ICs from file '%s'", ICfileName);
     if (myrank == 0 && cleanup_h)
@@ -777,32 +852,32 @@ int main(int argc, char *argv[]) {
     fflush(stdout);
 
     /* Get ready to read particles of all kinds */
-    size_t Ngas = 0, Ngpart = 0, Nspart = 0;
+    size_t Ngas = 0, Ngpart = 0, Nspart = 0, Nbpart = 0;
     double dim[3] = {0., 0., 0.};
     if (myrank == 0) clocks_gettime(&tic);
 #if defined(HAVE_HDF5)
 #if defined(WITH_MPI)
 #if defined(HAVE_PARALLEL_HDF5)
-    read_ic_parallel(ICfileName, &us, dim, &parts, &gparts, &sparts, &Ngas,
-                     &Ngpart, &Nspart, &flag_entropy_ICs, with_hydro,
-                     (with_external_gravity || with_self_gravity), with_stars,
-                     cleanup_h, cleanup_sqrt_a, cosmo.h, cosmo.a, myrank,
-                     nr_nodes, MPI_COMM_WORLD, MPI_INFO_NULL, nr_threads,
-                     dry_run);
+    read_ic_parallel(ICfileName, &us, dim, &parts, &gparts, &sparts, &bparts,
+                     &Ngas, &Ngpart, &Nspart, &Nbpart, &flag_entropy_ICs,
+                     with_hydro, (with_external_gravity || with_self_gravity),
+                     with_stars, with_black_holes, cleanup_h, cleanup_sqrt_a,
+                     cosmo.h, cosmo.a, myrank, nr_nodes, MPI_COMM_WORLD,
+                     MPI_INFO_NULL, nr_threads, dry_run);
 #else
-    read_ic_serial(ICfileName, &us, dim, &parts, &gparts, &sparts, &Ngas,
-                   &Ngpart, &Nspart, &flag_entropy_ICs, with_hydro,
-                   (with_external_gravity || with_self_gravity), with_stars,
-                   cleanup_h, cleanup_sqrt_a, cosmo.h, cosmo.a, myrank,
-                   nr_nodes, MPI_COMM_WORLD, MPI_INFO_NULL, nr_threads,
-                   dry_run);
+    read_ic_serial(ICfileName, &us, dim, &parts, &gparts, &sparts, &bparts,
+                   &Ngas, &Ngpart, &Nspart, &Nbpart, &flag_entropy_ICs,
+                   with_hydro, (with_external_gravity || with_self_gravity),
+                   with_stars, with_black_holes, cleanup_h, cleanup_sqrt_a,
+                   cosmo.h, cosmo.a, myrank, nr_nodes, MPI_COMM_WORLD,
+                   MPI_INFO_NULL, nr_threads, dry_run);
 #endif
 #else
-    read_ic_single(ICfileName, &us, dim, &parts, &gparts, &sparts, &Ngas,
-                   &Ngpart, &Nspart, &flag_entropy_ICs, with_hydro,
-                   (with_external_gravity || with_self_gravity), with_stars,
-                   cleanup_h, cleanup_sqrt_a, cosmo.h, cosmo.a, nr_threads,
-                   dry_run);
+    read_ic_single(ICfileName, &us, dim, &parts, &gparts, &sparts, &bparts,
+                   &Ngas, &Ngpart, &Nspart, &Nbpart, &flag_entropy_ICs,
+                   with_hydro, (with_external_gravity || with_self_gravity),
+                   with_stars, with_black_holes, cleanup_h, cleanup_sqrt_a,
+                   cosmo.h, cosmo.a, nr_threads, dry_run);
 #endif
 #endif
     if (myrank == 0) {
@@ -818,6 +893,10 @@ int main(int argc, char *argv[]) {
       for (size_t k = 0; k < Ngpart; ++k)
         if (gparts[k].type == swift_type_stars) error("Linking problem");
     }
+    if (!with_black_holes && !dry_run) {
+      for (size_t k = 0; k < Ngpart; ++k)
+        if (gparts[k].type == swift_type_black_hole) error("Linking problem");
+    }
     if (!with_hydro && !dry_run) {
       for (size_t k = 0; k < Ngpart; ++k)
         if (gparts[k].type == swift_type_gas) error("Linking problem");
@@ -825,35 +904,38 @@ int main(int argc, char *argv[]) {
 
     /* Check that the other links are correctly set */
     if (!dry_run)
-      part_verify_links(parts, gparts, sparts, Ngas, Ngpart, Nspart, 1);
+      part_verify_links(parts, gparts, sparts, bparts, Ngas, Ngpart, Nspart,
+                        Nbpart, 1);
 #endif
 
     /* Get the total number of particles across all nodes. */
-    long long N_total[3] = {0, 0, 0};
+    long long N_total[4] = {0, 0, 0, 0};
 #if defined(WITH_MPI)
-    long long N_long[3] = {Ngas, Ngpart, Nspart};
-    MPI_Allreduce(&N_long, &N_total, 3, MPI_LONG_LONG_INT, MPI_SUM,
+    long long N_long[4] = {Ngas, Ngpart, Nspart, Nbpart};
+    MPI_Allreduce(&N_long, &N_total, 4, MPI_LONG_LONG_INT, MPI_SUM,
                   MPI_COMM_WORLD);
 #else
     N_total[0] = Ngas;
     N_total[1] = Ngpart;
     N_total[2] = Nspart;
+    N_total[3] = Nbpart;
 #endif
 
     if (myrank == 0)
       message(
-          "Read %lld gas particles, %lld stars particles and %lld gparts from "
-          "the ICs.",
-          N_total[0], N_total[2], N_total[1]);
+          "Read %lld gas particles, %lld stars particles, %lld black hole "
+          "particles and %lld gparts from the ICs.",
+          N_total[0], N_total[2], N_total[3], N_total[1]);
 
     /* Verify that the fields to dump actually exist */
     if (myrank == 0) io_check_output_fields(params, N_total);
 
     /* Initialize the space with these data. */
     if (myrank == 0) clocks_gettime(&tic);
-    space_init(&s, params, &cosmo, dim, parts, gparts, sparts, Ngas, Ngpart,
-               Nspart, periodic, replicate, generate_gas_in_ics, with_hydro,
-               with_self_gravity, with_star_formation, talking, dry_run);
+    space_init(&s, params, &cosmo, dim, parts, gparts, sparts, bparts, Ngas,
+               Ngpart, Nspart, Nbpart, periodic, replicate, generate_gas_in_ics,
+               with_hydro, with_self_gravity, with_star_formation, talking,
+               dry_run);
 
     if (myrank == 0) {
       clocks_gettime(&toc);
@@ -861,6 +943,12 @@ int main(int argc, char *argv[]) {
               clocks_getunit());
       fflush(stdout);
     }
+
+    /* Initialise the external potential properties */
+    bzero(&potential, sizeof(struct external_potential));
+    if (with_external_gravity)
+      potential_init(params, &prog_const, &us, &s, &potential);
+    if (myrank == 0) potential_print(&potential);
 
     /* Initialise the long-range gravity mesh */
     if (with_self_gravity && periodic) {
@@ -885,12 +973,14 @@ int main(int argc, char *argv[]) {
     N_long[0] = s.nr_parts;
     N_long[1] = s.nr_gparts;
     N_long[2] = s.nr_sparts;
-    MPI_Allreduce(&N_long, &N_total, 3, MPI_LONG_LONG_INT, MPI_SUM,
+    N_long[3] = s.nr_bparts;
+    MPI_Allreduce(&N_long, &N_total, 4, MPI_LONG_LONG_INT, MPI_SUM,
                   MPI_COMM_WORLD);
 #else
     N_total[0] = s.nr_parts;
     N_total[1] = s.nr_gparts;
     N_total[2] = s.nr_sparts;
+    N_total[3] = s.nr_bparts;
 #endif
 
     /* Say a few nice things about the space we just created. */
@@ -903,6 +993,7 @@ int main(int argc, char *argv[]) {
       message("%zi parts in %i cells.", s.nr_parts, s.tot_cells);
       message("%zi gparts in %i cells.", s.nr_gparts, s.tot_cells);
       message("%zi sparts in %i cells.", s.nr_sparts, s.tot_cells);
+      message("%zi bparts in %i cells.", s.nr_bparts, s.tot_cells);
       message("maximum depth is %d.", s.maxdepth);
       fflush(stdout);
     }
@@ -949,18 +1040,21 @@ int main(int argc, char *argv[]) {
     if (with_stars) engine_policies |= engine_policy_stars;
     if (with_star_formation) engine_policies |= engine_policy_star_formation;
     if (with_feedback) engine_policies |= engine_policy_feedback;
+    if (with_black_holes) engine_policies |= engine_policy_black_holes;
     if (with_structure_finding)
       engine_policies |= engine_policy_structure_finding;
+    if (with_fof) engine_policies |= engine_policy_fof;
 
     /* Initialize the engine with the space and policies. */
     if (myrank == 0) clocks_gettime(&tic);
-    engine_init(&e, &s, params, N_total[0], N_total[1], N_total[2],
+    engine_init(&e, &s, params, N_total[0], N_total[1], N_total[2], N_total[3],
                 engine_policies, talking, &reparttype, &us, &prog_const, &cosmo,
                 &hydro_properties, &entropy_floor, &gravity_properties,
-                &stars_properties, &mesh, &potential, &cooling_func, &starform,
-                &chemistry);
-    engine_config(0, &e, params, nr_nodes, myrank, nr_threads, with_aff,
-                  talking, restart_file);
+                &stars_properties, &black_holes_properties,
+                &feedback_properties, &mesh, &potential, &cooling_func,
+                &starform, &chemistry, &fof_properties);
+    engine_config(/*restart=*/0, /*fof=*/0, &e, params, nr_nodes, myrank,
+                  nr_threads, with_aff, talking, restart_file);
 
     if (myrank == 0) {
       clocks_gettime(&toc);
@@ -971,11 +1065,12 @@ int main(int argc, char *argv[]) {
 
     /* Get some info to the user. */
     if (myrank == 0) {
-      long long N_DM = N_total[1] - N_total[2] - N_total[0];
+      long long N_DM = N_total[1] - N_total[2] - N_total[3] - N_total[0];
       message(
-          "Running on %lld gas particles, %lld stars particles and %lld DM "
-          "particles (%lld gravity particles)",
-          N_total[0], N_total[2], N_total[1] > 0 ? N_DM : 0, N_total[1]);
+          "Running on %lld gas particles, %lld stars particles %lld black "
+          "hole particles and %lld DM particles (%lld gravity particles)",
+          N_total[0], N_total[2], N_total[3], N_total[1] > 0 ? N_DM : 0,
+          N_total[1]);
       message(
           "from t=%.3e until t=%.3e with %d ranks, %d threads / rank and %d "
           "task queues / rank (dt_min=%.3e, dt_max=%.3e)...",
@@ -993,7 +1088,7 @@ int main(int argc, char *argv[]) {
 #endif
     if (myrank == 0)
       message("Time integration ready to start. End of dry-run.");
-    engine_clean(&e);
+    engine_clean(&e, /*fof=*/0);
     free(params);
     return 0;
   }
@@ -1033,9 +1128,9 @@ int main(int argc, char *argv[]) {
 
   /* Legend */
   if (myrank == 0) {
-    printf("# %6s %14s %12s %12s %14s %9s %12s %12s %12s %16s [%s] %6s\n",
+    printf("# %6s %14s %12s %12s %14s %9s %12s %12s %12s %12s %16s [%s] %6s\n",
            "Step", "Time", "Scale-factor", "Redshift", "Time-step", "Time-bins",
-           "Updates", "g-Updates", "s-Updates", "Wall-clock time",
+           "Updates", "g-Updates", "s-Updates", "b-Updates", "Wall-clock time",
            clocks_getunit(), "Props");
     fflush(stdout);
   }
@@ -1162,20 +1257,26 @@ int main(int argc, char *argv[]) {
 
     /* Print some information to the screen */
     printf(
-        "  %6d %14e %12.7f %12.7f %14e %4d %4d %12lld %12lld %12lld %21.3f "
-        "%6d\n",
+        "  %6d %14e %12.7f %12.7f %14e %4d %4d %12lld %12lld %12lld %12lld"
+        " %21.3f %6d\n",
         e.step, e.time, e.cosmology->a, e.cosmology->z, e.time_step,
         e.min_active_bin, e.max_active_bin, e.updates, e.g_updates, e.s_updates,
-        e.wallclock_time, e.step_props);
+        e.b_updates, e.wallclock_time, e.step_props);
     fflush(stdout);
 
     fprintf(e.file_timesteps,
-            "  %6d %14e %12.7f %12.7f %14e %4d %4d %12lld %12lld %12lld %21.3f "
-            "%6d\n",
+            "  %6d %14e %12.7f %12.7f %14e %4d %4d %12lld %12lld %12lld %12lld"
+            " %21.3f %6d\n",
             e.step, e.time, e.cosmology->a, e.cosmology->z, e.time_step,
             e.min_active_bin, e.max_active_bin, e.updates, e.g_updates,
-            e.s_updates, e.wallclock_time, e.step_props);
+            e.s_updates, e.b_updates, e.wallclock_time, e.step_props);
     fflush(e.file_timesteps);
+
+    /* Print information to the SFH logger */
+    if (e.policy & engine_policy_star_formation) {
+      star_formation_logger_write_to_log_file(
+          e.sfh_logger, e.time, e.cosmology->a, e.cosmology->z, e.sfh, e.step);
+    }
   }
 
   /* Write final output. */
@@ -1224,7 +1325,7 @@ int main(int argc, char *argv[]) {
   if (with_cosmology) cosmology_clean(e.cosmology);
   if (with_self_gravity) pm_mesh_clean(e.mesh);
   if (with_cooling || with_temperature) cooling_clean(&cooling_func);
-  engine_clean(&e);
+  engine_clean(&e, /*fof=*/0);
   free(params);
 
   /* Say goodbye. */

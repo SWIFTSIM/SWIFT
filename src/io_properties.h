@@ -40,6 +40,9 @@ enum DATA_IMPORTANCE { COMPULSORY = 1, OPTIONAL = 0, UNUSED = -1 };
 typedef void (*conversion_func_part_float)(const struct engine*,
                                            const struct part*,
                                            const struct xpart*, float*);
+typedef void (*conversion_func_part_int)(const struct engine*,
+                                         const struct part*,
+                                         const struct xpart*, int*);
 typedef void (*conversion_func_part_double)(const struct engine*,
                                             const struct part*,
                                             const struct xpart*, double*);
@@ -59,6 +62,13 @@ typedef void (*conversion_func_spart_double)(const struct engine*,
                                              const struct spart*, double*);
 typedef void (*conversion_func_spart_long_long)(const struct engine*,
                                                 const struct spart*,
+                                                long long*);
+typedef void (*conversion_func_bpart_float)(const struct engine*,
+                                            const struct bpart*, float*);
+typedef void (*conversion_func_bpart_double)(const struct engine*,
+                                             const struct bpart*, double*);
+typedef void (*conversion_func_bpart_long_long)(const struct engine*,
+                                                const struct bpart*,
                                                 long long*);
 
 /**
@@ -86,6 +96,7 @@ struct io_props {
 
   /* Pointer to the start of the temporary buffer used in i/o */
   char* start_temp_c;
+  int* start_temp_i;
   float* start_temp_f;
   double* start_temp_d;
   long long* start_temp_l;
@@ -101,12 +112,14 @@ struct io_props {
   const struct xpart* xparts;
   const struct gpart* gparts;
   const struct spart* sparts;
+  const struct bpart* bparts;
 
   /* Are we converting? */
   int conversion;
 
   /* Conversion function for part */
   conversion_func_part_float convert_part_f;
+  conversion_func_part_int convert_part_i;
   conversion_func_part_double convert_part_d;
   conversion_func_part_long_long convert_part_l;
 
@@ -119,6 +132,11 @@ struct io_props {
   conversion_func_spart_float convert_spart_f;
   conversion_func_spart_double convert_spart_d;
   conversion_func_spart_long_long convert_spart_l;
+
+  /* Conversion function for bpart */
+  conversion_func_bpart_float convert_bpart_f;
+  conversion_func_bpart_double convert_bpart_d;
+  conversion_func_bpart_long_long convert_bpart_l;
 };
 
 /**
@@ -157,6 +175,7 @@ INLINE static struct io_props io_make_input_field_(
   r.xparts = NULL;
   r.gparts = NULL;
   r.sparts = NULL;
+  r.bparts = NULL;
   r.conversion = 0;
   r.convert_part_f = NULL;
   r.convert_part_d = NULL;
@@ -167,6 +186,9 @@ INLINE static struct io_props io_make_input_field_(
   r.convert_spart_f = NULL;
   r.convert_spart_d = NULL;
   r.convert_spart_l = NULL;
+  r.convert_bpart_f = NULL;
+  r.convert_bpart_d = NULL;
+  r.convert_bpart_l = NULL;
 
   return r;
 }
@@ -204,7 +226,65 @@ INLINE static struct io_props io_make_output_field_(
   r.parts = NULL;
   r.gparts = NULL;
   r.sparts = NULL;
+  r.bparts = NULL;
   r.conversion = 0;
+  r.convert_part_f = NULL;
+  r.convert_part_d = NULL;
+  r.convert_part_l = NULL;
+  r.convert_gpart_f = NULL;
+  r.convert_gpart_d = NULL;
+  r.convert_gpart_l = NULL;
+  r.convert_spart_f = NULL;
+  r.convert_spart_d = NULL;
+  r.convert_spart_l = NULL;
+  r.convert_bpart_f = NULL;
+  r.convert_bpart_d = NULL;
+  r.convert_bpart_l = NULL;
+
+  return r;
+}
+
+/**
+ * @brief Constructs an #io_props (with conversion) from its parameters
+ */
+#define io_make_output_field_convert_part(name, type, dim, units, part, xpart, \
+                                          convert)                             \
+  io_make_output_field_convert_part_##type(                                    \
+      name, type, dim, units, sizeof(part[0]), part, xpart, convert)
+
+/**
+ * @brief Construct an #io_props from its parameters
+ *
+ * @param name Name of the field to read
+ * @param type The type of the data
+ * @param dimension Dataset dimension (1D, 3D, ...)
+ * @param units The units of the dataset
+ * @param partSize The size in byte of the particle
+ * @param parts The particle array
+ * @param xparts The xparticle array
+ * @param functionPtr The function used to convert a particle to an int
+ *
+ * Do not call this function directly. Use the macro defined above.
+ */
+INLINE static struct io_props io_make_output_field_convert_part_INT(
+    const char name[FIELD_BUFFER_SIZE], enum IO_DATA_TYPE type, int dimension,
+    enum unit_conversion_factor units, size_t partSize,
+    const struct part* parts, const struct xpart* xparts,
+    conversion_func_part_int functionPtr) {
+
+  struct io_props r;
+  strcpy(r.name, name);
+  r.type = type;
+  r.dimension = dimension;
+  r.importance = UNUSED;
+  r.units = units;
+  r.field = NULL;
+  r.partSize = partSize;
+  r.parts = parts;
+  r.xparts = xparts;
+  r.sparts = NULL;
+  r.conversion = 1;
+  r.convert_part_i = functionPtr;
   r.convert_part_f = NULL;
   r.convert_part_d = NULL;
   r.convert_part_l = NULL;
@@ -217,14 +297,6 @@ INLINE static struct io_props io_make_output_field_(
 
   return r;
 }
-
-/**
- * @brief Constructs an #io_props (with conversion) from its parameters
- */
-#define io_make_output_field_convert_part(name, type, dim, units, part, xpart, \
-                                          convert)                             \
-  io_make_output_field_convert_part_##type(                                    \
-      name, type, dim, units, sizeof(part[0]), part, xpart, convert)
 
 /**
  * @brief Construct an #io_props from its parameters
@@ -258,7 +330,9 @@ INLINE static struct io_props io_make_output_field_convert_part_FLOAT(
   r.xparts = xparts;
   r.gparts = NULL;
   r.sparts = NULL;
+  r.bparts = NULL;
   r.conversion = 1;
+  r.convert_part_i = NULL;
   r.convert_part_f = functionPtr;
   r.convert_part_d = NULL;
   r.convert_part_l = NULL;
@@ -268,6 +342,9 @@ INLINE static struct io_props io_make_output_field_convert_part_FLOAT(
   r.convert_spart_f = NULL;
   r.convert_spart_d = NULL;
   r.convert_spart_l = NULL;
+  r.convert_bpart_f = NULL;
+  r.convert_bpart_d = NULL;
+  r.convert_bpart_l = NULL;
 
   return r;
 }
@@ -304,7 +381,9 @@ INLINE static struct io_props io_make_output_field_convert_part_DOUBLE(
   r.xparts = xparts;
   r.gparts = NULL;
   r.sparts = NULL;
+  r.bparts = NULL;
   r.conversion = 1;
+  r.convert_part_i = NULL;
   r.convert_part_f = NULL;
   r.convert_part_d = functionPtr;
   r.convert_part_l = NULL;
@@ -314,6 +393,9 @@ INLINE static struct io_props io_make_output_field_convert_part_DOUBLE(
   r.convert_spart_f = NULL;
   r.convert_spart_d = NULL;
   r.convert_spart_l = NULL;
+  r.convert_bpart_f = NULL;
+  r.convert_bpart_d = NULL;
+  r.convert_bpart_l = NULL;
 
   return r;
 }
@@ -350,7 +432,9 @@ INLINE static struct io_props io_make_output_field_convert_part_LONGLONG(
   r.xparts = xparts;
   r.gparts = NULL;
   r.sparts = NULL;
+  r.bparts = NULL;
   r.conversion = 1;
+  r.convert_part_i = NULL;
   r.convert_part_f = NULL;
   r.convert_part_d = NULL;
   r.convert_part_l = functionPtr;
@@ -360,6 +444,9 @@ INLINE static struct io_props io_make_output_field_convert_part_LONGLONG(
   r.convert_spart_f = NULL;
   r.convert_spart_d = NULL;
   r.convert_spart_l = NULL;
+  r.convert_bpart_f = NULL;
+  r.convert_bpart_d = NULL;
+  r.convert_bpart_l = NULL;
 
   return r;
 }
@@ -402,7 +489,9 @@ INLINE static struct io_props io_make_output_field_convert_gpart_FLOAT(
   r.xparts = NULL;
   r.gparts = gparts;
   r.sparts = NULL;
+  r.bparts = NULL;
   r.conversion = 1;
+  r.convert_part_i = NULL;
   r.convert_part_f = NULL;
   r.convert_part_d = NULL;
   r.convert_part_l = NULL;
@@ -412,6 +501,9 @@ INLINE static struct io_props io_make_output_field_convert_gpart_FLOAT(
   r.convert_spart_f = NULL;
   r.convert_spart_d = NULL;
   r.convert_spart_l = NULL;
+  r.convert_bpart_f = NULL;
+  r.convert_bpart_d = NULL;
+  r.convert_bpart_l = NULL;
 
   return r;
 }
@@ -446,7 +538,9 @@ INLINE static struct io_props io_make_output_field_convert_gpart_DOUBLE(
   r.xparts = NULL;
   r.gparts = gparts;
   r.sparts = NULL;
+  r.bparts = NULL;
   r.conversion = 1;
+  r.convert_part_i = NULL;
   r.convert_part_f = NULL;
   r.convert_part_d = NULL;
   r.convert_part_l = NULL;
@@ -456,6 +550,9 @@ INLINE static struct io_props io_make_output_field_convert_gpart_DOUBLE(
   r.convert_spart_f = NULL;
   r.convert_spart_d = NULL;
   r.convert_spart_l = NULL;
+  r.convert_bpart_f = NULL;
+  r.convert_bpart_d = NULL;
+  r.convert_bpart_l = NULL;
 
   return r;
 }
@@ -490,7 +587,9 @@ INLINE static struct io_props io_make_output_field_convert_gpart_LONGLONG(
   r.xparts = NULL;
   r.gparts = gparts;
   r.sparts = NULL;
+  r.bparts = NULL;
   r.conversion = 1;
+  r.convert_part_i = NULL;
   r.convert_part_f = NULL;
   r.convert_part_d = NULL;
   r.convert_part_l = NULL;
@@ -500,6 +599,9 @@ INLINE static struct io_props io_make_output_field_convert_gpart_LONGLONG(
   r.convert_spart_f = NULL;
   r.convert_spart_d = NULL;
   r.convert_spart_l = NULL;
+  r.convert_bpart_f = NULL;
+  r.convert_bpart_d = NULL;
+  r.convert_bpart_l = NULL;
 
   return r;
 }
@@ -542,7 +644,9 @@ INLINE static struct io_props io_make_output_field_convert_spart_FLOAT(
   r.xparts = NULL;
   r.gparts = NULL;
   r.sparts = sparts;
+  r.bparts = NULL;
   r.conversion = 1;
+  r.convert_part_i = NULL;
   r.convert_part_f = NULL;
   r.convert_part_d = NULL;
   r.convert_part_l = NULL;
@@ -552,6 +656,9 @@ INLINE static struct io_props io_make_output_field_convert_spart_FLOAT(
   r.convert_spart_f = functionPtr;
   r.convert_spart_d = NULL;
   r.convert_spart_l = NULL;
+  r.convert_bpart_f = NULL;
+  r.convert_bpart_d = NULL;
+  r.convert_bpart_l = NULL;
 
   return r;
 }
@@ -586,7 +693,9 @@ INLINE static struct io_props io_make_output_field_convert_spart_DOUBLE(
   r.xparts = NULL;
   r.gparts = NULL;
   r.sparts = sparts;
+  r.bparts = NULL;
   r.conversion = 1;
+  r.convert_part_i = NULL;
   r.convert_part_f = NULL;
   r.convert_part_d = NULL;
   r.convert_part_l = NULL;
@@ -596,6 +705,9 @@ INLINE static struct io_props io_make_output_field_convert_spart_DOUBLE(
   r.convert_spart_f = NULL;
   r.convert_spart_d = functionPtr;
   r.convert_spart_l = NULL;
+  r.convert_bpart_f = NULL;
+  r.convert_bpart_d = NULL;
+  r.convert_bpart_l = NULL;
 
   return r;
 }
@@ -630,7 +742,9 @@ INLINE static struct io_props io_make_output_field_convert_spart_LONGLONG(
   r.xparts = NULL;
   r.gparts = NULL;
   r.sparts = sparts;
+  r.bparts = NULL;
   r.conversion = 1;
+  r.convert_part_i = NULL;
   r.convert_part_f = NULL;
   r.convert_part_d = NULL;
   r.convert_part_l = NULL;
@@ -640,6 +754,161 @@ INLINE static struct io_props io_make_output_field_convert_spart_LONGLONG(
   r.convert_spart_f = NULL;
   r.convert_spart_d = NULL;
   r.convert_spart_l = functionPtr;
+  r.convert_bpart_f = NULL;
+  r.convert_bpart_d = NULL;
+  r.convert_bpart_l = NULL;
+
+  return r;
+}
+
+/**
+ * @brief Constructs an #io_props (with conversion) from its parameters
+ */
+#define io_make_output_field_convert_bpart(name, type, dim, units, bpart, \
+                                           convert)                       \
+  io_make_output_field_convert_bpart_##type(name, type, dim, units,       \
+                                            sizeof(bpart[0]), bpart, convert)
+
+/**
+ * @brief Construct an #io_props from its parameters
+ *
+ * @param name Name of the field to read
+ * @param type The type of the data
+ * @param dimension Dataset dimension (1D, 3D, ...)
+ * @param units The units of the dataset
+ * @param bpartSize The size in byte of the particle
+ * @param bparts The particle array
+ * @param functionPtr The function used to convert a g-particle to a float
+ *
+ * Do not call this function directly. Use the macro defined above.
+ */
+INLINE static struct io_props io_make_output_field_convert_bpart_FLOAT(
+    const char name[FIELD_BUFFER_SIZE], enum IO_DATA_TYPE type, int dimension,
+    enum unit_conversion_factor units, size_t bpartSize,
+    const struct bpart* bparts, conversion_func_bpart_float functionPtr) {
+
+  struct io_props r;
+  strcpy(r.name, name);
+  r.type = type;
+  r.dimension = dimension;
+  r.importance = UNUSED;
+  r.units = units;
+  r.field = NULL;
+  r.partSize = bpartSize;
+  r.parts = NULL;
+  r.xparts = NULL;
+  r.gparts = NULL;
+  r.sparts = NULL;
+  r.bparts = bparts;
+  r.conversion = 1;
+  r.convert_part_f = NULL;
+  r.convert_part_d = NULL;
+  r.convert_part_l = NULL;
+  r.convert_gpart_f = NULL;
+  r.convert_gpart_d = NULL;
+  r.convert_gpart_l = NULL;
+  r.convert_spart_f = NULL;
+  r.convert_spart_d = NULL;
+  r.convert_spart_l = NULL;
+  r.convert_bpart_f = functionPtr;
+  r.convert_bpart_d = NULL;
+  r.convert_bpart_l = NULL;
+
+  return r;
+}
+
+/**
+ * @brief Construct an #io_props from its parameters
+ *
+ * @param name Name of the field to read
+ * @param type The type of the data
+ * @param dimension Dataset dimension (1D, 3D, ...)
+ * @param units The units of the dataset
+ * @param bpartSize The size in byte of the particle
+ * @param bparts The particle array
+ * @param functionPtr The function used to convert a s-particle to a double
+ *
+ * Do not call this function directly. Use the macro defined above.
+ */
+INLINE static struct io_props io_make_output_field_convert_bpart_DOUBLE(
+    const char name[FIELD_BUFFER_SIZE], enum IO_DATA_TYPE type, int dimension,
+    enum unit_conversion_factor units, size_t bpartSize,
+    const struct bpart* bparts, conversion_func_bpart_double functionPtr) {
+
+  struct io_props r;
+  strcpy(r.name, name);
+  r.type = type;
+  r.dimension = dimension;
+  r.importance = UNUSED;
+  r.units = units;
+  r.field = NULL;
+  r.partSize = bpartSize;
+  r.parts = NULL;
+  r.xparts = NULL;
+  r.gparts = NULL;
+  r.sparts = NULL;
+  r.bparts = bparts;
+  r.conversion = 1;
+  r.convert_part_f = NULL;
+  r.convert_part_d = NULL;
+  r.convert_part_l = NULL;
+  r.convert_gpart_f = NULL;
+  r.convert_gpart_d = NULL;
+  r.convert_gpart_l = NULL;
+  r.convert_spart_f = NULL;
+  r.convert_spart_d = NULL;
+  r.convert_spart_l = NULL;
+  r.convert_bpart_f = NULL;
+  r.convert_bpart_d = functionPtr;
+  r.convert_bpart_l = NULL;
+
+  return r;
+}
+
+/**
+ * @brief Construct an #io_props from its parameters
+ *
+ * @param name Name of the field to read
+ * @param type The type of the data
+ * @param dimension Dataset dimension (1D, 3D, ...)
+ * @param units The units of the dataset
+ * @param bpartSize The size in byte of the particle
+ * @param bparts The particle array
+ * @param functionPtr The function used to convert a s-particle to a double
+ *
+ * Do not call this function directly. Use the macro defined above.
+ */
+INLINE static struct io_props io_make_output_field_convert_bpart_LONGLONG(
+    const char name[FIELD_BUFFER_SIZE], enum IO_DATA_TYPE type, int dimension,
+    enum unit_conversion_factor units, size_t bpartSize,
+    const struct bpart* bparts, conversion_func_bpart_long_long functionPtr) {
+
+  struct io_props r;
+  strcpy(r.name, name);
+  r.type = type;
+  r.dimension = dimension;
+  r.importance = UNUSED;
+  r.units = units;
+  r.field = NULL;
+  r.partSize = bpartSize;
+  r.parts = NULL;
+  r.xparts = NULL;
+  r.gparts = NULL;
+  r.sparts = NULL;
+  r.bparts = bparts;
+  r.conversion = 1;
+  r.convert_part_f = NULL;
+  r.convert_part_d = NULL;
+  r.convert_part_l = NULL;
+  r.convert_gpart_f = NULL;
+  r.convert_gpart_d = NULL;
+  r.convert_gpart_l = NULL;
+  r.convert_spart_f = NULL;
+  r.convert_spart_d = NULL;
+  r.convert_spart_l = NULL;
+  r.convert_bpart_f = NULL;
+  r.convert_bpart_d = NULL;
+  r.convert_bpart_l = functionPtr;
 
   return r;
 }

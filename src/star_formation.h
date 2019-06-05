@@ -27,6 +27,9 @@
 /* Config parameters. */
 #include "../config.h"
 
+/* Local includes */
+#include "hydro.h"
+
 /* Import the right star formation law definition */
 #if defined(STAR_FORMATION_NONE)
 #include "./star_formation/none/star_formation.h"

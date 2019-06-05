@@ -1,3 +1,23 @@
+#!/usr/bin/env python3
+################################################################################
+# This file is part of SWIFT.
+# Copyright (c) 2019 Folkert Nobels    (nobels@strw.leidenuniv.nl)
+#                    Matthieu Schaller (schaller@strw.leidenuniv.nl)
+#
+# This program is free software: you can redistribute it and/or modify
+# it under the terms of the GNU Lesser General Public License as published
+# by the Free Software Foundation, either version 3 of the License, or
+# (at your option) any later version.
+#
+# This program is distributed in the hope that it will be useful,
+# but WITHOUT ANY WARRANTY; without even the implied warranty of
+# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+# GNU General Public License for more details.
+#
+# You should have received a copy of the GNU Lesser General Public License
+# along with this program.  If not, see <http://www.gnu.org/licenses/>.
+#
+################################################################################
 import matplotlib
 
 matplotlib.use("Agg")
@@ -103,6 +123,7 @@ stars_pos = f["/PartType4/Coordinates"][:, :]
 stars_BirthDensity = f["/PartType4/BirthDensity"][:]
 stars_BirthTime = f["/PartType4/BirthTime"][:]
 stars_XH = f["/PartType4/ElementAbundance"][:,0]
+stars_BirthTemperature = f["/PartType4/BirthTemperature"][:]
 
 # Centre the box
 gas_pos[:, 0] -= centre[0]
@@ -115,6 +136,9 @@ stars_pos[:,2] -= centre[2]
 
 # Turn the mass into better units
 gas_mass *= unit_mass_in_cgs / Msun_in_cgs
+
+# Calculate the median gas mass
+median_gas_mass = np.median(gas_mass)
 
 # Turn the SFR into better units
 gas_SFR = np.maximum(gas_SFR, np.zeros(np.size(gas_SFR)))
@@ -166,19 +190,6 @@ savefig("rhoT_SF.png", dpi=200)
 
 ########################################################################3
 
-# 3D Density vs SFR
-figure()
-subplot(111, xscale="log", yscale="log")
-scatter(gas_nH, gas_SFR, s=0.2)
-plot([1, 100], 2e-5 * np.array([1, 100]) ** 0.266667, "k--", lw=1)
-xlabel("${\\rm Density}~n_{\\rm H}~[{\\rm cm^{-3}}]$", labelpad=0)
-ylabel("${\\rm SFR}~[{\\rm M_\\odot~\\cdot~yr^{-1}}]$", labelpad=-7)
-xlim(1e-4, 3e3)
-ylim(8e-6, 2.5e-4)
-savefig("rho_SFR.png", dpi=200)
-
-########################################################################3
-
 star_mask = (
     (stars_pos[:, 0] > -15)
     & (stars_pos[:, 0] < 15)
@@ -197,8 +208,16 @@ figure()
 subplot(111, xscale="linear", yscale="linear")
 hist(np.log10(stars_BirthDensity),density=True,bins=20,range=[-2,5])
 xlabel("${\\rm Stellar~birth~density}~n_{\\rm H}~[{\\rm cm^{-3}}]$", labelpad=0)
-ylabel("${\\rm Probability}$", labelpad=-7)
+ylabel("${\\rm Probability}$", labelpad=3)
 savefig("BirthDensity.png", dpi=200)
+
+# Histogram of the birth temperature 
+figure()
+subplot(111, xscale="linear", yscale="linear")
+hist(np.log10(stars_BirthTemperature),density=True,bins=20,range=[3.5,5.0])
+xlabel("${\\rm Stellar~birth~temperature}~[{\\rm K}]$", labelpad=0)
+ylabel("${\\rm Probability}$", labelpad=3)
+savefig("BirthTemperature.png", dpi=200)
 
 # Plot of the specific star formation rate in the galaxy
 rhos = 10**np.linspace(-1,np.log10(KS_high_den_thresh),100)
@@ -224,6 +243,24 @@ xlim(-1.4, 4.9)
 ylim(-0.5, 2.2)
 savefig("density-sSFR.png", dpi=200)
 
+SFR_low = 10**(np.log10(sSFR)+np.log10(year_in_cgs)+np.log10(median_gas_mass))
+SFR_high = 10**(np.log10(sSFR_high_den)+np.log10(year_in_cgs)+np.log10(median_gas_mass))
+SFR_low_min = np.floor(np.log10(.75*np.min(SFR_low)))
+SFR_high_max = np.ceil(np.log10(1.25*np.max(SFR_high)))
+
+# 3D Density vs SFR
+rcParams.update({"figure.subplot.left": 0.18})
+figure()
+subplot(111, xscale="log", yscale="log")
+scatter(gas_nH, gas_SFR, s=0.2)
+plot(rhos,SFR_low,'k--',lw=1,label='SFR low density EAGLE')
+plot(rhoshigh,SFR_high,'k--',lw=1,label='SFR high density EAGLE')
+xlabel("${\\rm Density}~n_{\\rm H}~[{\\rm cm^{-3}}]$", labelpad=0)
+ylabel("${\\rm SFR}~[{\\rm M_\\odot~\\cdot~yr^{-1}}]$", labelpad=2)
+xlim(1e-2, 1e5)
+ylim(10**SFR_low_min, 10**(SFR_high_max+0.1))
+savefig("rho_SFR.png", dpi=200)
+rcParams.update({"figure.subplot.left": 0.15})
 ########################################################################3
 
 # Select gas in a pillow box around the galaxy

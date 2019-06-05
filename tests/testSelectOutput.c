@@ -84,13 +84,14 @@ int main(int argc, char *argv[]) {
   clocks_set_cpufreq(cpufreq);
 
   char *base_name = "testSelectOutput";
-  size_t Ngas = 0, Ngpart = 0, Nspart = 0;
+  size_t Ngas = 0, Ngpart = 0, Nspart = 0, Nbpart = 0;
   int flag_entropy_ICs = -1;
   int periodic = 1;
   double dim[3];
   struct part *parts = NULL;
   struct gpart *gparts = NULL;
   struct spart *sparts = NULL;
+  struct bpart *bparts = NULL;
 
   /* parse parameters */
   message("Reading parameters.");
@@ -110,9 +111,9 @@ int main(int argc, char *argv[]) {
 
   /* Read data */
   message("Reading initial conditions.");
-  read_ic_single("input.hdf5", &us, dim, &parts, &gparts, &sparts, &Ngas,
-                 &Ngpart, &Nspart, &flag_entropy_ICs, 1, 0, 0, 0, 0, 1., 1., 1,
-                 0);
+  read_ic_single("input.hdf5", &us, dim, &parts, &gparts, &sparts, &bparts,
+                 &Ngas, &Ngpart, &Nspart, &Nbpart, &flag_entropy_ICs, 1, 0, 0,
+                 0, 0, 0, 1., 1., 1, 0);
 
   /* pseudo initialization of the space */
   message("Initialization of the space.");

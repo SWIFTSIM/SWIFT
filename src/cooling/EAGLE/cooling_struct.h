@@ -112,7 +112,7 @@ struct cooling_function_data {
   /*! Inverse of proton mass in cgs (for quick access) */
   double inv_proton_mass_cgs;
 
-  /*! Temperatur of the CMB at present day (for quick access) */
+  /*! Temperature of the CMB at present day (for quick access) */
   double T_CMB_0;
 
   /*! Compton rate in cgs units */
@@ -126,9 +126,6 @@ struct cooling_function_data {
 
   /*! Index of the previous tables along the redshift index of the tables */
   int previous_z_index;
-
-  /*! Are we doing Newton-Raphson iterations? */
-  int newton_flag;
 };
 
 /**

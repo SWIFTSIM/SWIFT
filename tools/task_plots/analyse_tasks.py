@@ -77,6 +77,7 @@ TASKTYPES = [
     "extra_ghost",
     "drift_part",
     "drift_spart",
+    "drift_bpart",
     "drift_gpart",
     "drift_gpart_out",
     "hydro_end_force",
@@ -103,6 +104,11 @@ TASKTYPES = [
     "stars_ghost",
     "stars_ghost_out",
     "stars_sort",
+    "bh_in",
+    "bh_out",
+    "bh_ghost",
+    "fof_self",
+    "fof_pair",
     "count",
 ]
 
@@ -117,6 +123,7 @@ SUBTYPES = [
     "tend_part",
     "tend_gpart",
     "tend_spart",
+    "tend_bpart",
     "xv",
     "rho",
     "gpart",
@@ -124,6 +131,10 @@ SUBTYPES = [
     "spart",
     "stars_density",
     "stars_feedback",
+    "sf_counts"
+    "bpart",
+    "bh_density",
+    "bh_feedback",
     "count",
 ]
 

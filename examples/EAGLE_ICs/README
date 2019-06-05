@@ -2,3 +2,7 @@ This directory contains initial conditions generated for
 the EAGLE suite of simulations. The cosmology, resolution
 and phases are the same as used in the original suite. The only
 difference is the file format, adapted for SWIFT.
+
+The scripts in this directory download the tables required to
+run the EAGLE model. Plotting scripts are also provided
+for basic quantities.

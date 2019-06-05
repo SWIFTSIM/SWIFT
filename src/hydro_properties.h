@@ -32,6 +32,7 @@
 #endif
 
 /* Local includes. */
+#include "hydro_parameters.h"
 #include "restart.h"
 
 /* Forward declarations */
@@ -101,38 +102,10 @@ struct hydro_props {
   float mu_ionised;
 
   /*! Artificial viscosity parameters */
-  struct {
-    /*! For the fixed, simple case. Also used to set the initial AV
-        coefficient for variable schemes. */
-    float alpha;
-
-    /*! Artificial viscosity (max) for the variable case (e.g. M&M) */
-    float alpha_max;
-
-    /*! Artificial viscosity (min) for the variable case (e.g. M&M) */
-    float alpha_min;
-
-    /*! The decay length of the artificial viscosity (used in M&M, etc.) */
-    float length;
-  } viscosity;
+  struct viscosity_global_data viscosity;
 
   /*! Thermal diffusion parameters */
-  struct {
-
-    /*! Initialisation value, or the case for constant thermal diffusion coeffs
-     */
-    float alpha;
-
-    /*! Tuning parameter for speed of ramp up/down */
-    float beta;
-
-    /*! Maximal value for alpha_diff */
-    float alpha_max;
-
-    /*! Minimal value for alpha_diff */
-    float alpha_min;
-
-  } diffusion;
+  struct diffusion_global_data diffusion;
 };
 
 void hydro_props_print(const struct hydro_props *p);
