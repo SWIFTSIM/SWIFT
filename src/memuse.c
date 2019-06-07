@@ -431,6 +431,8 @@ void memuse_log_dump(const char *filename) {
   /* Skip if nothing allocated this step. */
   if (memuse_log_count == memuse_old_count) return;
 
+  //ticks tic = getticks();
+
   /* Create the radix tree. If not already done. */
   if (memuse_rnode_root_init) {
     memuse_rnode_root =
@@ -543,15 +545,15 @@ void memuse_log_dump(const char *filename) {
   size_t lcount = 0;
   for (size_t k = 0; k < log_count; k++) {
 
-    /* Only allocations are stored, is it active? */
-    if (memuse_log[k].active) {
+    /* Only allocations are stored also is it active? */
+    if (memuse_log[k].allocated && memuse_log[k].active) {
 
       /* Look for this label in our tree. */
       struct memuse_rnode *labelchild = memuse_rnode_find_child(
           labellednodes, 0, (uint8_t *)memuse_log[k].label,
           strlen(memuse_log[k].label));
       struct memuse_labelled_item *item = NULL;
-      if (labelchild == NULL) {
+      if (labelchild == NULL || labelchild->ptr == NULL) {
 
         /* New, so create an instance to keep the count. */
         item = (struct memuse_labelled_item *)calloc(
@@ -628,6 +630,9 @@ void memuse_log_dump(const char *filename) {
   /* Close the file. */
   fflush(fd);
   fclose(fd);
+
+  //message("took %.3f %s.", clocks_from_ticks(getticks() - tic),
+  //        clocks_getunit());
 }
 
 /**
