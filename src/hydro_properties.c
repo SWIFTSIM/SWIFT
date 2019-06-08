@@ -332,8 +332,13 @@ void hydro_props_init_no_hydro(struct hydro_props *p) {
 void hydro_props_update(struct hydro_props *p, const struct gravity_props *gp,
                         const struct cosmology *cosmo) {
 
-  /* Update the minimal allowed smoothing length */
-  p->h_min = p->h_min_ratio * gp->epsilon_cur;
+  /* Update the minimal allowed smoothing length
+   *
+   * We follow Gadget here and demand that the kernel support (h * gamma)
+   * is a fixed fraction of the radius at which the softened forces
+   * recover a Newtonian behaviour (i.e. 2.8 * Plummer equivalent softening
+   * in the case of a cubic spline kernel). */
+  p->h_min = p->h_min_ratio * gp->epsilon_cur / kernel_gamma;
 }
 
 /**
