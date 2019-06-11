@@ -58,7 +58,6 @@ struct xpart {
 /* Data of a single particle. */
 struct part {
 
-
   /* Particle ID. */
   long long id;
 

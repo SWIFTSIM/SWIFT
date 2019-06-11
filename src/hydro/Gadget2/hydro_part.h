@@ -74,7 +74,6 @@ struct xpart {
 /* Data of a single particle. */
 struct part {
 
-
   /* Particle ID. */
   long long id;
 
@@ -151,9 +150,6 @@ struct part {
 
   /* Chemistry information */
   struct chemistry_part_data chemistry_data;
-  
-  /* Star formation data */
-  struct star_formation_xpart_data starform_data;
 
   /* Time-step length */
   timebin_t time_bin;
