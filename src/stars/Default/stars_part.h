@@ -55,13 +55,10 @@ struct spart {
   /*! Star mass */
   float mass;
   
-  /*!initial mass (when the particle was created)*/
-  float mass_init;
-
   /* Particle cutoff radius. */
   float h;
   
-  /*! Union for the birth time and birht scale factor */
+  /*! Union for the birth time and birth scale factor */
   union {
 
     /*! Birth time */
@@ -89,13 +86,6 @@ struct spart {
     float wcount_dh;
 
   } density;
-
-  /* Not used in the default stars */
-  union {
-    double birth_time;
-
-    double birth_scale_factor;
-  };
 
   /*! Feedback structure */
   struct feedback_spart_data feedback_data;

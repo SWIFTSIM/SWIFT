@@ -21,15 +21,15 @@
 
 /* Starformation history struct */
 struct star_formation_history {
-  /*! Total new stellar mass (divided by timestep) */
+  /*! Total current star formation rate (new mass divided by timestep) */
   float new_sfr;
-    /*! Total stellar mass (no reset) */
-    float total_stellar_mass;
-   /*!stellar mass created in the current timestep*/ 
+  /*! Total stellar mass (no reset) */
+  float total_stellar_mass;
+  /*! Stellar mass created in the current timestep */ 
   float stellar_mass;
-  /*!number of stars created in this timestep*/
+  /*! Number of stars created in this timestep */
   long int number_of_stars;
-  /*!total number of stars*/
+  /*! Total number of stars */
   long int total_number_of_stars;
 };
 

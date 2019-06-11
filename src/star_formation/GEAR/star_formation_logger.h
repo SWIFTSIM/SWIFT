@@ -31,7 +31,7 @@
 /**
  * @brief Update the stellar mass in the current cell after creating
  * the new star particle spart sp
- *
+ * @param time_step, the current time step of the simulation
  * @param sp new created star particle
  * @param sf the star_formation_history struct of the current cell
  */
@@ -39,16 +39,13 @@ INLINE static void star_formation_logger_log_new_spart(
     const struct spart *sp, struct star_formation_history *sf, const double time_step) {
 
   /* Add mass of created sparticle to the total stellar mass in this cell*/
-  if(sp->mass>0)
-  {
   sf->stellar_mass += sp->mass;
   sf->total_stellar_mass += sp->mass;
-  //increase the number of stars
+  /* Increase the number of stars */
   sf->number_of_stars+=1;
   sf->total_number_of_stars+=1;
-  //approximation of the SFR
+  /* Approximation of the SFR */
   sf->new_sfr += sp->mass/time_step;
-}
 }
 
 /**
@@ -59,13 +56,33 @@ INLINE static void star_formation_logger_log_new_spart(
  */
 INLINE static void star_formation_logger_log_inactive_cell(
     struct star_formation_history *sf) {
-  /* Initialize the stellar mass to zero*/
+  /* Initialize the stellar mass to zero */
   sf->stellar_mass=0.f;
   /*!initialize number of stars to zero*/
   sf->number_of_stars=0;
   /* Initialize the active SFR */
   sf->new_sfr = 0.f;
 }
+/**
+ * @brief Initialize the star formation history structure in the #engine
+ *
+ * @param sfh The pointer to the star formation history structure
+ */
+INLINE static void star_formation_logger_init(
+    struct star_formation_history *sfh) {
+  /* Initialize the collecting SFH structure to zero */
+  sfh->new_sfr = 0.f;
+  sfh->number_of_stars=0;
+  sfh->stellar_mass=0.f;
+  /* to be removed when the total quantities will be implemented */
+  sfh->total_number_of_stars=0;
+  sfh->total_stellar_mass=0.f;
+}
+/**
+ * @brief Initialize the star formation history struct in the #engine (once only)
+ *
+ * @param sfh the star_formation_history struct we want to initialize
+ */
 INLINE static void star_formation_logger_first_init(
     struct star_formation_history *sfh) {
   /* Initialize all values to zero */
@@ -95,21 +112,7 @@ INLINE static void star_formation_logger_add(
   sf_update->total_stellar_mass+=sf_add->total_stellar_mass;
 }
 
-/**
- * @brief Initialize the star formation history structure in the #engine
- *
- * @param sfh The pointer to the star formation history structure
- */
-INLINE static void star_formation_logger_init(
-    struct star_formation_history *sfh) {
-  /* Initialize the collecting SFH structure to zero */
-  sfh->new_sfr = 0.f;
-  sfh->number_of_stars=0;
-  sfh->stellar_mass=0.f;
-  /*! to be removed when the total quantities will be implemented*/
-  sfh->total_number_of_stars=0;
-  sfh->total_stellar_mass=0.f;
-}
+
 /**
  * @brief Write the final SFH to a file
  *
@@ -127,7 +130,6 @@ INLINE static void star_formation_logger_write_to_log_file(
   fprintf(fp, "%6d %16e %12.7f %14e %14ld %14e %14e\n", step, time, a, z, sf.number_of_stars,
           sf.stellar_mass, sf.new_sfr);
 }
-
 /**
  * @brief Initialize the SFH logger file
  *
@@ -174,6 +176,9 @@ INLINE static void star_formation_logger_init_log_file(
  *
  * @param p the #part
  * @param xp the #xpart
+ *
+ * Nothing to do here
+ *
  * @param sf the SFH logger struct
  * @param dt_star The length of the time-step in physical internal units.
  */
@@ -186,6 +191,8 @@ INLINE static void star_formation_logger_log_active_part(
 /**
  * @brief Add the SFR tracer to the total inactive SFR of this cell as long as
  * the SFR tracer is larger than 0
+ *
+ * Nothing to do here
  *
  * @param p the #part
  * @param xp the #xpart

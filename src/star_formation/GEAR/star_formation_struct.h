@@ -24,18 +24,10 @@
  * data.
  */
 struct star_formation_xpart_data {
-	/*!star formation rate*/
+	/*!star formation rate (mass/(time*volume))*/
 	double SFR; 
-	/*!probability of star formation*/
-	double proba; 
-	/*!temperature of the particle*/
-	double temperature;
-	/*!gas density*/
-	double density;
-    /*! Estimation of local turbulence */
-    float sigma;
-    /*! Saved value of local turbulence (square root of sigma)*/
-    float sigma_save;
+    /*! Estimation of local turbulence (squared) */
+    float sigma2;
 	};
 
 /* Starformation struct */

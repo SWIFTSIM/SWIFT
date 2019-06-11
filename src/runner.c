@@ -1154,7 +1154,7 @@ void runner_do_star_formation(struct runner *r, struct cell *c, int timer) {
                                              hydro_props, us, cooling);
 
               /* Update the Star formation history */
-              star_formation_logger_log_new_spart(sp, &c->stars.sfh);
+              star_formation_logger_log_new_spart(sp, &c->stars.sfh,e->time_step);
             }
           }
 
@@ -2067,7 +2067,7 @@ void runner_do_ghost(struct runner *r, struct cell *c, int timer) {
           /* Finish the density calculation */
           hydro_end_density(p, cosmo);
           chemistry_end_density(p, chemistry, cosmo);
-          star_formation_end_density(p, star_formation, cosmo);
+          star_formation_end_density(p, xp, star_formation, cosmo);
 
           /* Compute one step of the Newton-Raphson scheme */
           const float n_sum = p->density.wcount * h_old_dim;
@@ -2214,7 +2214,7 @@ void runner_do_ghost(struct runner *r, struct cell *c, int timer) {
             /* Re-initialise everything */
             hydro_init_part(p, hs);
             chemistry_init_part(p, chemistry);
-            star_formation_init_part(p, star_formation);
+            star_formation_init_part(p, xp, star_formation);
             tracers_after_init(p, xp, e->internal_units, e->physical_constants,
                                with_cosmology, e->cosmology,
                                e->hydro_properties, e->cooling_func, e->time);
@@ -2321,23 +2321,23 @@ void runner_do_ghost(struct runner *r, struct cell *c, int timer) {
 
             /* Self-interaction? */
             if (l->t->type == task_type_self)
-              runner_doself_subset_branch_density(r, finger, parts, pid, count);
+              runner_doself_subset_branch_density(r, finger, parts, xparts, pid, count);
 
             /* Otherwise, pair interaction? */
             else if (l->t->type == task_type_pair) {
 
               /* Left or right? */
               if (l->t->ci == finger)
-                runner_dopair_subset_branch_density(r, finger, parts, pid,
+                runner_dopair_subset_branch_density(r, finger, parts, xparts,  pid,
                                                     count, l->t->cj);
               else
-                runner_dopair_subset_branch_density(r, finger, parts, pid,
+                runner_dopair_subset_branch_density(r, finger, parts, xparts, pid,
                                                     count, l->t->ci);
             }
 
             /* Otherwise, sub-self interaction? */
             else if (l->t->type == task_type_sub_self)
-              runner_dosub_subset_density(r, finger, parts, pid, count, NULL,
+              runner_dosub_subset_density(r, finger, parts, xparts, pid, count, NULL,
                                           1);
 
             /* Otherwise, sub-pair interaction? */
@@ -2345,10 +2345,10 @@ void runner_do_ghost(struct runner *r, struct cell *c, int timer) {
 
               /* Left or right? */
               if (l->t->ci == finger)
-                runner_dosub_subset_density(r, finger, parts, pid, count,
+                runner_dosub_subset_density(r, finger, parts, xparts, pid, count,
                                             l->t->cj, 1);
               else
-                runner_dosub_subset_density(r, finger, parts, pid, count,
+                runner_dosub_subset_density(r, finger, parts, xparts, pid, count,
                                             l->t->ci, 1);
             }
           }
