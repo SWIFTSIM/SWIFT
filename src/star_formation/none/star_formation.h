@@ -167,11 +167,12 @@ INLINE static void starformation_print_backend(
  * @brief Finishes the density calculation.
  *
  * @param p The particle to act upon
+ * @param xp The extended particle to act upon
  * @param cd The global star_formation information.
  * @param cosmo The current cosmological model.
  */
 __attribute__((always_inline)) INLINE static void star_formation_end_density(
-    struct part* restrict p, const struct star_formation* cd,
+    struct part* restrict p, struct xpart* restrict xp, const struct star_formation* cd,
     const struct cosmology* cosmo) {}
 
 /**
@@ -216,9 +217,10 @@ star_formation_first_init_part(const struct phys_const* restrict phys_const,
  * Nothing to do here.
  *
  * @param p Pointer to the particle data.
+ * @param xp Pointer to the extended particle data.
  * @param data The global star_formation information.
  */
 __attribute__((always_inline)) INLINE static void star_formation_init_part(
-    struct part* restrict p, const struct star_formation* data) {}
+    struct part* restrict p, struct xpart* restrict xp, const struct star_formation* data) {}
 
 #endif /* SWIFT_NONE_STAR_FORMATION_H */

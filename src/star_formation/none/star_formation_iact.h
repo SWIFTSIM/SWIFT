@@ -32,12 +32,14 @@
  * @param hj Comoving smoothing-length of particle j.
  * @param pi First particle.
  * @param pj Second particle.
+ * @param xpi First extended particle. 
+ * @param xpj Second extended particle.
  * @param a Current scale factor.
  * @param H Current Hubble parameter.
  */
 __attribute__((always_inline)) INLINE static void runner_iact_star_formation(
     float r2, const float *dx, float hi, float hj, struct part *restrict pi,
-    struct part *restrict pj, float a, float H) {}
+    struct part *restrict pj, struct xpart *restrict xpi, struct xpart *restrict xpj,float a, float H) {}
 
 /**
  * @brief do star_formation computation after the runner_iact_density (non
@@ -49,13 +51,17 @@ __attribute__((always_inline)) INLINE static void runner_iact_star_formation(
  * @param hj Comoving smoothing-length of particle j.
  * @param pi First particle.
  * @param pj Second particle (not updated).
+ * @param xpi First extended particle.
+ * @param xpj Second extended particle (not updated).
  * @param a Current scale factor.
  * @param H Current Hubble parameter.
  */
 __attribute__((always_inline)) INLINE static void
 runner_iact_nonsym_star_formation(float r2, const float *dx, float hi, float hj,
                                   struct part *restrict pi,
-                                  const struct part *restrict pj, float a,
-                                  float H) {}
+                                  const struct part *restrict pj, 
+                                  struct xpart *restrict xpi, 
+                                  const struct xpart *restrict xpj, 
+                                  float a, float H) {}
 
 #endif /* SWIFT_NONE_STAR_FORMATION_IACT_H */

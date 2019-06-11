@@ -34,9 +34,11 @@
  *
  * @param sp new created star particle
  * @param sf the star_formation_history struct of the current cell
+ * @param time_step, the current time step of the simulation
+
  */
 INLINE static void star_formation_logger_log_new_spart(
-    struct spart *sp, struct star_formation_history *sf) {}
+    struct spart *sp, struct star_formation_history *sf, const double time_step) {}
 
 /**
  * @brief Initialize the star formation history struct in the case the cell is
