@@ -459,6 +459,12 @@ void engine_addtasks_recv_hydro(struct engine *e, struct cell *c,
     for (struct link *l = c->stars.density; l != NULL; l = l->next) {
       scheduler_addunlock(s, t_rho, l->t);
     }
+
+    /* Make sure the part have been sent before the BHs compute their densities.
+     */
+    for (struct link *l = c->black_holes.density; l != NULL; l = l->next) {
+      scheduler_addunlock(s, t_xv, l->t);
+    }
   }
 
   /* Recurse? */
