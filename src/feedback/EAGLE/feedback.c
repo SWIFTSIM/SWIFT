@@ -110,7 +110,7 @@ double eagle_feedback_energy_fraction(const struct spart* sp,
 
   /* Physical density of the gas at the star's birth time */
   const double rho_birth = sp->birth_density;
-  double n_birth = rho_birth * props->rho_to_n_cgs;
+  const double n_birth = rho_birth * props->rho_to_n_cgs;
 
   /* Calculate f_E */
   const double Z_term = pow(max(Z_smooth, 1e-6) / Z_0, n_Z);

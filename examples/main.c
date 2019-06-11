@@ -1281,6 +1281,15 @@ int main(int argc, char *argv[]) {
 
   /* Write final output. */
   if (!force_stop) {
+
+    /* Move forward in time */
+    e.ti_old = e.ti_current;
+    e.ti_current = e.ti_end_min;
+    e.max_active_bin = get_max_active_bin(e.ti_end_min);
+    e.min_active_bin = get_min_active_bin(e.ti_current, e.ti_old);
+    e.step += 1;
+    engine_current_step = e.step;
+
     engine_drift_all(&e, /*drift_mpole=*/0);
     engine_print_stats(&e);
 #ifdef WITH_LOGGER
