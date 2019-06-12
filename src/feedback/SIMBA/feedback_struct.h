@@ -16,16 +16,35 @@
  * along with this program.  If not, see <http://www.gnu.org/licenses/>.
  *
  ******************************************************************************/
-#ifndef SWIFT_FEEDBACK_STRUCT_NONE_H
-#define SWIFT_FEEDBACK_STRUCT_NONE_H
+#ifndef SWIFT_FEEDBACK_STRUCT_SIMBA_H
+#define SWIFT_FEEDBACK_STRUCT_SIMBA_H
 
 #include "chemistry_struct.h"
 
 /**
  * @brief Feedback fields carried by each star particles
- *
- * Nothing here since this is a no-feedback model.
  */
-struct feedback_spart_data {};
+struct feedback_spart_data {
 
-#endif /* SWIFT_FEEDBACK_STRUCT_NONE_H */
+  union {
+
+    /**
+     * @brief Values collected from the gas neighbours.
+     */
+    struct {
+
+    } to_collect;
+
+    /**
+     * @brief Values to be distributed to the gas neighbours.
+     */
+    struct {
+
+      /* Velocity to update particles with */
+      float v_kick[3];
+
+    } to_distribute;
+  };
+};
+
+#endif /* SWIFT_FEEDBACK_STRUCT_SIMBA_H */

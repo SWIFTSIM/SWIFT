@@ -16,13 +16,14 @@
  * along with this program.  If not, see <http://www.gnu.org/licenses/>.
  *
  ******************************************************************************/
-#ifndef SWIFT_NONE_FEEDBACK_IACT_H
-#define SWIFT_NONE_FEEDBACK_IACT_H
+#ifndef SWIFT_SIMBA_FEEDBACK_IACT_H
+#define SWIFT_SIMBA_FEEDBACK_IACT_H
+
+/* Local includes */
+#include "random.h"
 
 /**
  * @brief Density interaction between two particles (non-symmetric).
- *
- * Nothing to do here for the no-feedback model.
  *
  * @param r2 Comoving square distance between the two particles.
  * @param dx Comoving vector separating both particles (pi - pj).
@@ -47,7 +48,8 @@ runner_iact_nonsym_feedback_density(const float r2, const float *dx,
  * @brief Feedback interaction between two particles (non-symmetric).
  * Used for updating properties of gas particles neighbouring a star particle
  *
- * Nothing to do here for the no-feedback model.
+ * In SIMBA model kick particle to model injection of energy due to SN, add
+ * rest of energy as heating. ALEXEI: update comment
  *
  * @param r2 Comoving square distance between the two particles.
  * @param dx Comoving vector separating both particles (si - pj).
@@ -67,6 +69,26 @@ runner_iact_nonsym_feedback_apply(const float r2, const float *dx,
                                   struct part *restrict pj,
                                   struct xpart *restrict xp,
                                   const struct cosmology *restrict cosmo,
-                                  const integertime_t ti_current) {}
+                                  const integertime_t ti_current) {
+  
+  /* Get the probability of doing feedback */
+  const float prob = 1./50.; // ALEXEI: just set to random constant for now
 
-#endif /* SWIFT_NONE_FEEDBACK_IACT_H */
+  if (prob > 0) {
+    /* Draw a random number (Note mixing both IDs) */
+    const float rand = random_unit_interval(si->id + pj->id, ti_current, random_number_stellar_feedback);
+
+    /* Are we lucky? */
+    if (rand < prob) {
+      /* kick particle */
+      hydro_set_velocity(pj,si->feedback_data.to_distribute.v_kick);
+
+      /* Heat particle */
+
+      /* Set delaytime before which the particle cannot interact */
+    }
+  }
+
+}
+
+#endif /* SWIFT_SIMBA_FEEDBACK_IACT_H */

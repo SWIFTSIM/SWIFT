@@ -16,8 +16,8 @@
  * along with this program.  If not, see <http://www.gnu.org/licenses/>.
  *
  ******************************************************************************/
-#ifndef SWIFT_NONE_FEEDBACK_PROPERTIES_H
-#define SWIFT_NONE_FEEDBACK_PROPERTIES_H
+#ifndef SWIFT_SIMBA_FEEDBACK_PROPERTIES_H
+#define SWIFT_SIMBA_FEEDBACK_PROPERTIES_H
 
 #include "chemistry.h"
 #include "hydro_properties.h"
@@ -30,8 +30,6 @@ struct feedback_props {};
 
 /**
  * @brief Initialize the global properties of the feedback scheme.
- *
- * Nothing to do here for the no feedback model.
  *
  * @param fp The #feedback_props.
  * @param phys_const The physical constants in the internal unit system.
@@ -47,4 +45,4 @@ INLINE static void feedback_props_init(struct feedback_props *fp,
                                        const struct hydro_props *hydro_props,
                                        const struct cosmology *cosmo) {}
 
-#endif /* SWIFT_NONE_FEEDBACK_PROPERTIES_H */
+#endif /* SWIFT_SIMBA_FEEDBACK_PROPERTIES_H */

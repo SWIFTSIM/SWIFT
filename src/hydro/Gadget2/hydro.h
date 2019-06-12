@@ -430,6 +430,18 @@ hydro_diffusive_feedback_reset(struct part *restrict p) {
 }
 
 /**
+ * @brief Update particle velocity
+ *
+ * @param p the particle of interest
+ */
+__attribute__((always_inline)) INLINE static void
+hydro_set_velocity(struct part *restrict p, const float v[3]) {
+  p->v[0] = v[0];
+  p->v[1] = v[1];
+  p->v[2] = v[2];
+}
+
+/**
  * @brief Computes the hydro time-step of a given particle
  *
  * @param p Pointer to the particle data

@@ -16,8 +16,8 @@
  * along with this program.  If not, see <http://www.gnu.org/licenses/>.
  *
  ******************************************************************************/
-#ifndef SWIFT_FEEDBACK_NONE_H
-#define SWIFT_FEEDBACK_NONE_H
+#ifndef SWIFT_FEEDBACK_SIMBA_H
+#define SWIFT_FEEDBACK_SIMBA_H
 
 #include "cosmology.h"
 #include "error.h"
@@ -42,15 +42,11 @@ __attribute__((always_inline)) INLINE static void feedback_init_spart(
 __attribute__((always_inline)) INLINE static int feedback_do_feedback(
     const struct spart* sp) {
 
-  return 0;
+  return (sp->birth_time != -1.);
 }
 
 /**
  * @brief Should this particle be doing any feedback-related operation?
- *
- * Note: Since this 'none' feedback mode is used for testing the neighbour
- * loops only, we want to always do feedback irrespective of the particle
- * or of the system's state.
  *
  * @param sp The #spart.
  * @param time The current simulation time (Non-cosmological runs).
@@ -114,7 +110,11 @@ __attribute__((always_inline)) INLINE static void feedback_evolve_spart(
     const struct cosmology* cosmo, const struct unit_system* us,
     const double star_age_beg_step, const double dt) {
   
-    error("SIMBA feedback on");
+  /* Calculate the velocity to kick neighbouring particles with */
+  const float kick_speed_cgs = 1.e6;
+  for (int i = 0; i < 3; i++)
+    sp->feedback_data.to_distribute.v_kick[i] = kick_speed_cgs / units_cgs_conversion_factor(us, UNIT_CONV_VELOCITY);
+
 }
 
 /**
@@ -137,4 +137,4 @@ static INLINE void feedback_struct_dump(const struct feedback_props* feedback,
 static INLINE void feedback_struct_restore(struct feedback_props* feedback,
                                            FILE* stream) {}
 
-#endif /* SWIFT_FEEDBACK_NONE_H */
+#endif /* SWIFT_FEEDBACK_SIMBA_H */
