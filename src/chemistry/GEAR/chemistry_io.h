@@ -74,15 +74,17 @@ INLINE static int chemistry_write_particles(const struct part* parts,
 
   /* List what we want to write */
   list[0] = io_make_output_field(
-      "SmoothedElementAbundance", FLOAT, chemistry_element_count,
-      UNIT_CONV_NO_UNITS, parts, chemistry_data.smoothed_metal_mass_fraction);
+      "SmoothedElementAbundances", FLOAT, chemistry_element_count,
+      UNIT_CONV_NO_UNITS, 0.f, parts, chemistry_data.smoothed_metal_mass_fraction,
+				 "Element abundances smoothed over the neighbors");
 
-  list[1] = io_make_output_field("Z", FLOAT, 1, UNIT_CONV_NO_UNITS, parts,
-                                 chemistry_data.Z);
+  list[1] = io_make_output_field("Z", FLOAT, 1, UNIT_CONV_NO_UNITS, 0.f, parts,
+                                 chemistry_data.Z, "Temporary field");
 
-  list[2] = io_make_output_field("ElementAbundance", FLOAT,
+  list[2] = io_make_output_field("ElementAbundances", FLOAT,
                                  chemistry_element_count, UNIT_CONV_NO_UNITS,
-                                 parts, chemistry_data.metal_mass_fraction);
+                                 0.f, parts, chemistry_data.metal_mass_fraction,
+				 "Mass fraction of each element");
 
   return 3;
 }
@@ -100,15 +102,17 @@ INLINE static int chemistry_write_sparticles(const struct spart* sparts,
 
   /* List what we want to write */
   list[0] = io_make_output_field(
-      "SmoothedElementAbundance", FLOAT, chemistry_element_count,
-      UNIT_CONV_NO_UNITS, sparts, chemistry_data.smoothed_metal_mass_fraction);
+      "SmoothedElementAbundances", FLOAT, chemistry_element_count,
+      UNIT_CONV_NO_UNITS, 0.f, sparts, chemistry_data.smoothed_metal_mass_fraction,
+				 "Element abundances smoothed over the neighbors");
 
-  list[1] = io_make_output_field("Z", FLOAT, 1, UNIT_CONV_NO_UNITS, sparts,
-                                 chemistry_data.Z);
+  list[1] = io_make_output_field("Z", FLOAT, 1, UNIT_CONV_NO_UNITS, 0.f, sparts,
+                                 chemistry_data.Z, "Temporary field");
 
   list[2] = io_make_output_field("ElementAbundance", FLOAT,
                                  chemistry_element_count, UNIT_CONV_NO_UNITS,
-                                 sparts, chemistry_data.metal_mass_fraction);
+                                 0.f, sparts, chemistry_data.metal_mass_fraction,
+				 "Mass fraction of each element");
 
   return 3;
 }
