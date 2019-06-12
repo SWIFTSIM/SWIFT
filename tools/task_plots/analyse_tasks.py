@@ -107,6 +107,8 @@ TASKTYPES = [
     "bh_in",
     "bh_out",
     "bh_ghost",
+    "fof_self",
+    "fof_pair",
     "count",
 ]
 

@@ -45,6 +45,9 @@ Any contributions that fail any of the automated tests will not be accepted.
 Contributions that include tests of the proposed modules (or any current ones!)
 are highly encouraged.
 
+Runtime parameters
+------------------
+
 ```
  Welcome to the cosmological hydrodynamical code
     ______       _________________
@@ -54,6 +57,7 @@ are highly encouraged.
  /____/ |__/|__/___/_/    /_/
  SPH With Inter-dependent Fine-grained Tasking
 
+ Version : 0.8.2
  Website: www.swiftsim.com
  Twitter: @SwiftSimulation
 
@@ -73,7 +77,7 @@ Parameters:
     -b, --feedback                    Run with stars feedback.
     -c, --cosmology                   Run with cosmological time integration.
     --temperature                     Run with temperature calculation.
-    -C, --cooling                     Run with cooling (also switches on --with-temperature).
+    -C, --cooling                     Run with cooling (also switches on --temperature).
     -D, --drift-all                   Always drift all particles even the ones
                                       far from active particles. This emulates
                                       Gadget-[23] and GIZMO's default behaviours.
@@ -84,6 +88,8 @@ Parameters:
     -s, --hydro                       Run with hydrodynamics.
     -S, --stars                       Run with stars.
     -B, --black-holes                 Run with black holes.
+    -u, --fof                         Run Friends-of-Friends algorithm to
+                                      perform black hole seeding.
     -x, --velociraptor                Run with structure finding.
     --limiter                         Run with time-step limiter.
 

@@ -32,6 +32,7 @@
 
 /* Local headers. */
 #include "align.h"
+#include "fof.h"
 #include "part_type.h"
 #include "timeline.h"
 

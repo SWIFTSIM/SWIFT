@@ -46,6 +46,7 @@
 #include "gravity.h"
 #include "gravity_derivatives.h"
 #include "gravity_properties.h"
+#include "hashmap.h"
 #include "hydro.h"
 #include "hydro_properties.h"
 #include "lock.h"

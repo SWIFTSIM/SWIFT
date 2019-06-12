@@ -91,7 +91,9 @@ const char *taskID_names[task_type_count] = {"none",
                                              "stars_sort",
                                              "bh_in",
                                              "bh_out",
-                                             "bh_ghost"};
+                                             "bh_ghost",
+                                             "fof_self",
+                                             "fof_pair"};
 
 /* Sub-task type names. */
 const char *subtaskID_names[task_subtype_count] = {
@@ -215,6 +217,8 @@ __attribute__((always_inline)) INLINE static enum task_actions task_acts_on(
     case task_type_kick1:
     case task_type_kick2:
     case task_type_logger:
+    case task_type_fof_self:
+    case task_type_fof_pair:
     case task_type_timestep:
     case task_type_send:
     case task_type_recv:

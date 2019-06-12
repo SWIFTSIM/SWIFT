@@ -282,7 +282,52 @@ void runner_do_stars_ghost(struct runner *r, struct cell *c, int timer) {
               ((sp->h <= stars_h_min) && (f > 0.f))) {
 
             stars_reset_feedback(sp);
-            feedback_reset_feedback(sp, feedback_props);
+
+            /* Only do feedback if stars have a reasonable birth time */
+            if (feedback_do_feedback(sp)) {
+
+              const integertime_t ti_step = get_integer_timestep(sp->time_bin);
+              const integertime_t ti_begin =
+                  get_integer_time_begin(e->ti_current - 1, sp->time_bin);
+
+              /* Get particle time-step */
+              double dt;
+              if (with_cosmology) {
+                dt = cosmology_get_delta_time(e->cosmology, ti_begin,
+                                              ti_begin + ti_step);
+              } else {
+                dt = get_timestep(sp->time_bin, e->time_base);
+              }
+
+              /* Calculate age of the star at current time */
+              double star_age_end_of_step;
+              if (with_cosmology) {
+                star_age_end_of_step =
+                    cosmology_get_delta_time_from_scale_factors(
+                        cosmo, (double)sp->birth_scale_factor, cosmo->a);
+              } else {
+                star_age_end_of_step = (float)e->time - sp->birth_time;
+              }
+
+              /* Has this star been around for a while ? */
+              if (star_age_end_of_step > 0.) {
+
+                /* Age of the star at the start of the step */
+                const double star_age_beg_of_step =
+                    max(star_age_end_of_step - dt, 0.);
+
+                /* Compute the stellar evolution  */
+                feedback_evolve_spart(sp, feedback_props, cosmo, us,
+                                      star_age_beg_of_step, dt);
+              } else {
+
+                /* Reset the feedback fields of the star particle */
+                feedback_reset_feedback(sp, feedback_props);
+              }
+            } else {
+
+              feedback_reset_feedback(sp, feedback_props);
+            }
 
             /* Ok, we are done with this particle */
             continue;
@@ -3053,7 +3098,10 @@ void runner_do_timestep(struct runner *r, struct cell *c, int timer) {
       else { /* part is inactive */
 
         /* Count the number of inhibited particles */
-        if (part_is_inhibited(p, e)) inhibited++;
+        if (part_is_inhibited(p, e)) {
+          inhibited++;
+          continue;
+        }
 
         const integertime_t ti_end =
             get_integer_time_end(ti_current, p->time_bin);
@@ -3122,7 +3170,10 @@ void runner_do_timestep(struct runner *r, struct cell *c, int timer) {
         } else { /* gpart is inactive */
 
           /* Count the number of inhibited particles */
-          if (gpart_is_inhibited(gp, e)) g_inhibited++;
+          if (gpart_is_inhibited(gp, e)) {
+            g_inhibited++;
+            continue;
+          }
 
           const integertime_t ti_end =
               get_integer_time_end(ti_current, gp->time_bin);
@@ -3181,7 +3232,10 @@ void runner_do_timestep(struct runner *r, struct cell *c, int timer) {
       } else {
 
         /* Count the number of inhibited particles */
-        if (spart_is_inhibited(sp, e)) ++s_inhibited;
+        if (spart_is_inhibited(sp, e)) {
+          ++s_inhibited;
+          continue;
+        }
 
         const integertime_t ti_end =
             get_integer_time_end(ti_current, sp->time_bin);
@@ -3243,7 +3297,10 @@ void runner_do_timestep(struct runner *r, struct cell *c, int timer) {
       } else {
 
         /* Count the number of inhibited particles */
-        if (bpart_is_inhibited(bp, e)) ++b_inhibited;
+        if (bpart_is_inhibited(bp, e)) {
+          ++b_inhibited;
+          continue;
+        }
 
         const integertime_t ti_end =
             get_integer_time_end(ti_current, bp->time_bin);
@@ -4278,6 +4335,12 @@ void *runner_main(void *data) {
         case task_type_star_formation:
           runner_do_star_formation(r, t->ci, 1);
           break;
+        case task_type_fof_self:
+          runner_do_fof_self(r, t->ci, 1);
+          break;
+        case task_type_fof_pair:
+          runner_do_fof_pair(r, t->ci, t->cj, 1);
+          break;
         default:
           error("Unknown/invalid task type (%d).", t->type);
       }
@@ -4374,4 +4437,53 @@ void runner_do_logger(struct runner *r, struct cell *c, int timer) {
 #else
   error("Logger disabled, please enable it during configuration");
 #endif
+}
+
+/**
+ * @brief Recursively search for FOF groups in a single cell.
+ *
+ * @param r runner task
+ * @param c cell
+ * @param timer 1 if the time is to be recorded.
+ */
+void runner_do_fof_self(struct runner *r, struct cell *c, int timer) {
+
+  TIMER_TIC;
+
+  const struct engine *e = r->e;
+  struct space *s = e->s;
+  const double dim[3] = {s->dim[0], s->dim[1], s->dim[2]};
+  const int periodic = s->periodic;
+  const struct gpart *const gparts = s->gparts;
+  const double search_r2 = e->fof_properties->l_x2;
+
+  rec_fof_search_self(e->fof_properties, dim, search_r2, periodic, gparts, c);
+
+  if (timer) TIMER_TOC(timer_fof_self);
+}
+
+/**
+ * @brief Recursively search for FOF groups between a pair of cells.
+ *
+ * @param r runner task
+ * @param ci cell i
+ * @param cj cell j
+ * @param timer 1 if the time is to be recorded.
+ */
+void runner_do_fof_pair(struct runner *r, struct cell *ci, struct cell *cj,
+                        int timer) {
+
+  TIMER_TIC;
+
+  const struct engine *e = r->e;
+  struct space *s = e->s;
+  const double dim[3] = {s->dim[0], s->dim[1], s->dim[2]};
+  const int periodic = s->periodic;
+  const struct gpart *const gparts = s->gparts;
+  const double search_r2 = e->fof_properties->l_x2;
+
+  rec_fof_search_pair(e->fof_properties, dim, search_r2, periodic, gparts, ci,
+                      cj);
+
+  if (timer) TIMER_TOC(timer_fof_pair);
 }

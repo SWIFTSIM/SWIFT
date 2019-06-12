@@ -411,16 +411,33 @@ const char *allocator_version(void) {
 /**
  * @brief Prints a greeting message to the standard output containing code
  * version and revision number
+ *
+ * This was constructed using the 'figlet' tool and the 'slant' font. The
+ * lower-bar of the f is then lengthened.
+ *
+ * @param fof Is this for the FOF greeting?
  */
-void greetings(void) {
+void greetings(int fof) {
 
-  printf(" Welcome to the cosmological hydrodynamical code\n");
-  printf("    ______       _________________\n");
-  printf("   / ___/ |     / /  _/ ___/_  __/\n");
-  printf("   \\__ \\| | /| / // // /_   / /   \n");
-  printf("  ___/ /| |/ |/ // // __/  / /    \n");
-  printf(" /____/ |__/|__/___/_/    /_/     \n");
-  printf(" SPH With Inter-dependent Fine-grained Tasking\n\n");
+  if (!fof) {
+    printf(" Welcome to the cosmological hydrodynamical code\n");
+    printf("    ______       _________________\n");
+    printf("   / ___/ |     / /  _/ ___/_  __/\n");
+    printf("   \\__ \\| | /| / // // /_   / /   \n");
+    printf("  ___/ /| |/ |/ // // __/  / /    \n");
+    printf(" /____/ |__/|__/___/_/    /_/     \n");
+    printf(" SPH With Inter-dependent Fine-grained Tasking\n\n");
+  } else {
+    printf(" Welcome to the particle group finding tool\n");
+    printf("   ______       __________________    __________  ______\n");
+    printf("  / ___/ |     / /  _/ ____/_  __/   / ____/ __ \\/ ____/\n");
+    printf("  \\__ \\| | /| / // // /__   / /_____/ /__ / / / / /__  \n");
+    printf(" ___/ /| |/ |/ // // ___/  / /_____/ ___// /_/ / ___/    \n");
+    printf("/____/ |__/|__/___/_/     /_/     /_/    \\____/_/       \n");
+    printf(
+        " SPH With Inter-dependent Fine-grained Tasking - "
+        "Friend-of-Friends\n\n");
+  }
 
   printf(" Version : %s\n", package_version());
   printf(" Revision: %s, Branch: %s, Date: %s\n", git_revision(), git_branch(),

@@ -107,6 +107,8 @@ enum {
   timer_step,
   timer_logger,
   timer_do_stars_sort,
+  timer_fof_self,
+  timer_fof_pair,
   timer_count,
 };
 

@@ -21,7 +21,8 @@
 
 int main(int argc, char *argv[]) {
 
-  greetings();
+  greetings(/*fof=*/0);
+  greetings(/*fof=*/1);
 
   return 0;
 }

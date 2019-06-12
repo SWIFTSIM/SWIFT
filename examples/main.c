@@ -99,6 +99,7 @@ int main(int argc, char *argv[]) {
   struct feedback_props feedback_properties;
   struct entropy_floor_properties entropy_floor;
   struct black_holes_props black_holes_properties;
+  struct fof_props fof_properties;
   struct part *parts = NULL;
   struct phys_const prog_const;
   struct space s;
@@ -142,7 +143,7 @@ int main(int argc, char *argv[]) {
 #endif
 
   /* Welcome to SWIFT, you made the right choice */
-  if (myrank == 0) greetings();
+  if (myrank == 0) greetings(/*fof=*/0);
 
   int with_aff = 0;
   int dry_run = 0;
@@ -157,6 +158,7 @@ int main(int argc, char *argv[]) {
   int with_self_gravity = 0;
   int with_hydro = 0;
   int with_stars = 0;
+  int with_fof = 0;
   int with_star_formation = 0;
   int with_feedback = 0;
   int with_black_holes = 0;
@@ -190,8 +192,8 @@ int main(int argc, char *argv[]) {
       OPT_BOOLEAN(0, "temperature", &with_temperature,
                   "Run with temperature calculation.", NULL, 0, 0),
       OPT_BOOLEAN('C', "cooling", &with_cooling,
-                  "Run with cooling (also switches on --with-temperature).",
-                  NULL, 0, 0),
+                  "Run with cooling (also switches on --temperature).", NULL, 0,
+                  0),
       OPT_BOOLEAN('D', "drift-all", &with_drift_all,
                   "Always drift all particles even the ones far from active "
                   "particles. This emulates Gadget-[23] and GIZMO's default "
@@ -210,6 +212,10 @@ int main(int argc, char *argv[]) {
       OPT_BOOLEAN('S', "stars", &with_stars, "Run with stars.", NULL, 0, 0),
       OPT_BOOLEAN('B', "black-holes", &with_black_holes,
                   "Run with black holes.", NULL, 0, 0),
+      OPT_BOOLEAN(
+          'u', "fof", &with_fof,
+          "Run Friends-of-Friends algorithm to perform black hole seeding.",
+          NULL, 0, 0),
       OPT_BOOLEAN('x', "velociraptor", &with_structure_finding,
                   "Run with structure finding.", NULL, 0, 0),
       OPT_BOOLEAN(0, "limiter", &with_limiter, "Run with time-step limiter.",
@@ -243,12 +249,12 @@ int main(int argc, char *argv[]) {
                  handle_cmdparam, (intptr_t)&cmdps, 0),
       OPT_BOOLEAN('r', "restart", &restart, "Continue using restart files.",
                   NULL, 0, 0),
-      OPT_BOOLEAN('T', "timers", &with_verbose_timers,
-                  "Print timers every time-step.", NULL, 0, 0),
       OPT_INTEGER('t', "threads", &nr_threads,
                   "The number of threads to use on each MPI rank. Defaults to "
                   "1 if not specified.",
                   NULL, 0, 0),
+      OPT_INTEGER('T', "timers", &with_verbose_timers,
+                  "Print timers every time-step.", NULL, 0, 0),
       OPT_INTEGER('v', "verbose", &verbose,
                   "Run in verbose mode, in MPI mode 2 outputs from all ranks.",
                   NULL, 0, 0),
@@ -357,6 +363,22 @@ int main(int argc, char *argv[]) {
           "\nError: Cannot process black holes without gravity, -g or -G "
           "must be chosen.\n");
     }
+    return 1;
+  }
+
+  if (with_fof && !with_self_gravity) {
+    if (myrank == 0)
+      printf(
+          "Error: Cannot perform FOF search without gravity, -g or -G must be "
+          "chosen.\n");
+    return 1;
+  }
+
+  if (with_fof && !with_black_holes) {
+    if (myrank == 0)
+      printf(
+          "Error: Cannot perform FOF seeding without black holes being in use, "
+          "-B must be chosen.\n");
     return 1;
   }
 
@@ -671,8 +693,8 @@ int main(int argc, char *argv[]) {
 
     /* And initialize the engine with the space and policies. */
     if (myrank == 0) clocks_gettime(&tic);
-    engine_config(1, &e, params, nr_nodes, myrank, nr_threads, with_aff,
-                  talking, restart_file);
+    engine_config(/*restart=*/1, /*fof=*/0, &e, params, nr_nodes, myrank,
+                  nr_threads, with_aff, talking, restart_file);
     if (myrank == 0) {
       clocks_gettime(&toc);
       message("engine_config took %.3f %s.", clocks_diff(&tic, &toc),
@@ -817,6 +839,10 @@ int main(int argc, char *argv[]) {
     chemistry_init(params, &us, &prog_const, &chemistry);
     if (myrank == 0) chemistry_print(&chemistry);
 
+    /* Initialise the FOF properties */
+    bzero(&fof_properties, sizeof(struct fof_props));
+    if (with_fof) fof_init(&fof_properties, params, &prog_const, &us);
+
     /* Be verbose about what happens next */
     if (myrank == 0) message("Reading ICs from file '%s'", ICfileName);
     if (myrank == 0 && cleanup_h)
@@ -898,8 +924,7 @@ int main(int argc, char *argv[]) {
     if (myrank == 0)
       message(
           "Read %lld gas particles, %lld stars particles, %lld black hole "
-          "particles"
-          " and %lld gparts from the ICs.",
+          "particles and %lld gparts from the ICs.",
           N_total[0], N_total[2], N_total[3], N_total[1]);
 
     /* Verify that the fields to dump actually exist */
@@ -1018,17 +1043,18 @@ int main(int argc, char *argv[]) {
     if (with_black_holes) engine_policies |= engine_policy_black_holes;
     if (with_structure_finding)
       engine_policies |= engine_policy_structure_finding;
+    if (with_fof) engine_policies |= engine_policy_fof;
 
     /* Initialize the engine with the space and policies. */
     if (myrank == 0) clocks_gettime(&tic);
-    engine_init(&e, &s, params, N_total[0], N_total[1], N_total[2],
+    engine_init(&e, &s, params, N_total[0], N_total[1], N_total[2], N_total[3],
                 engine_policies, talking, &reparttype, &us, &prog_const, &cosmo,
                 &hydro_properties, &entropy_floor, &gravity_properties,
                 &stars_properties, &black_holes_properties,
                 &feedback_properties, &mesh, &potential, &cooling_func,
-                &starform, &chemistry);
-    engine_config(0, &e, params, nr_nodes, myrank, nr_threads, with_aff,
-                  talking, restart_file);
+                &starform, &chemistry, &fof_properties);
+    engine_config(/*restart=*/0, /*fof=*/0, &e, params, nr_nodes, myrank,
+                  nr_threads, with_aff, talking, restart_file);
 
     if (myrank == 0) {
       clocks_gettime(&toc);
@@ -1062,7 +1088,7 @@ int main(int argc, char *argv[]) {
 #endif
     if (myrank == 0)
       message("Time integration ready to start. End of dry-run.");
-    engine_clean(&e);
+    engine_clean(&e, /*fof=*/0);
     free(params);
     return 0;
   }
@@ -1255,6 +1281,15 @@ int main(int argc, char *argv[]) {
 
   /* Write final output. */
   if (!force_stop) {
+
+    /* Move forward in time */
+    e.ti_old = e.ti_current;
+    e.ti_current = e.ti_end_min;
+    e.max_active_bin = get_max_active_bin(e.ti_end_min);
+    e.min_active_bin = get_min_active_bin(e.ti_current, e.ti_old);
+    e.step += 1;
+    engine_current_step = e.step;
+
     engine_drift_all(&e, /*drift_mpole=*/0);
     engine_print_stats(&e);
 #ifdef WITH_LOGGER
@@ -1299,7 +1334,7 @@ int main(int argc, char *argv[]) {
   if (with_cosmology) cosmology_clean(e.cosmology);
   if (with_self_gravity) pm_mesh_clean(e.mesh);
   if (with_cooling || with_temperature) cooling_clean(&cooling_func);
-  engine_clean(&e);
+  engine_clean(&e, /*fof=*/0);
   free(params);
 
   /* Say goodbye. */

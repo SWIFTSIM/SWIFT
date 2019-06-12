@@ -49,6 +49,9 @@ struct black_holes_props {
 
   /* ----- Initialisation properties  ------ */
 
+  /*! Mass of a BH seed at creation time */
+  float subgrid_seed_mass;
+
   /* ----- Properties of the accretion model ------ */
 
   /*! Maximal fraction of the Eddington rate allowed. */
@@ -125,6 +128,14 @@ INLINE static void black_holes_props_init(struct black_holes_props *bp,
     bp->log_max_h_change = hydro_props->log_max_h_change;
   else
     bp->log_max_h_change = logf(powf(max_volume_change, hydro_dimension_inv));
+
+  /* Initialisation properties  ---------------------------- */
+
+  bp->subgrid_seed_mass =
+      parser_get_param_float(params, "EAGLEAGN:subgrid_seed_mass_Msun");
+
+  /* Convert to internal units */
+  bp->subgrid_seed_mass *= phys_const->const_solar_mass;
 
   /* Accretion parameters ---------------------------------- */
 

@@ -20,7 +20,7 @@ can be found by typing ``./swift -h``::
     -b, --feedback                    Run with stars feedback.
     -c, --cosmology                   Run with cosmological time integration.
     --temperature                     Run with temperature calculation. 
-    -C, --cooling                     Run with cooling (also switches on --with-temperature).
+    -C, --cooling                     Run with cooling (also switches on --temperature).
     -D, --drift-all                   Always drift all particles even the ones
                                       far from active particles. This emulates
                                       Gadget-[23] and GIZMO's default behaviours.
@@ -31,6 +31,8 @@ can be found by typing ``./swift -h``::
     -s, --hydro                       Run with hydrodynamics.
     -S, --stars                       Run with stars.
     -B, --black-holes                 Run with black holes.
+    -u, --fof                         Run Friends-of-Friends algorithm to
+                                      perform black hole seeding.
     -x, --velociraptor                Run with structure finding.
     --limiter                         Run with time-step limiter.
 

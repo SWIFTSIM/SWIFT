@@ -104,7 +104,7 @@ INLINE static void darkmatter_write_particles(const struct gpart* gparts,
                                               int* num_fields) {
 
   /* Say how much we want to write */
-  *num_fields = 4;
+  *num_fields = 5;
 
   /* List what we want to write */
   list[0] = io_make_output_field_convert_gpart(
@@ -115,6 +115,8 @@ INLINE static void darkmatter_write_particles(const struct gpart* gparts,
       io_make_output_field("Masses", FLOAT, 1, UNIT_CONV_MASS, gparts, mass);
   list[3] = io_make_output_field("ParticleIDs", ULONGLONG, 1,
                                  UNIT_CONV_NO_UNITS, gparts, id_or_neg_offset);
+  list[4] = io_make_output_field("GroupIDs", INT, 1, UNIT_CONV_NO_UNITS, gparts,
+                                 group_id);
 }
 
 #endif /* SWIFT_DEFAULT_GRAVITY_IO_H */

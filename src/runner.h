@@ -86,6 +86,9 @@ void runner_do_cooling(struct runner *r, struct cell *c, int timer);
 void runner_do_grav_external(struct runner *r, struct cell *c, int timer);
 void runner_do_grav_fft(struct runner *r, int timer);
 void runner_do_logger(struct runner *r, struct cell *c, int timer);
+void runner_do_fof_self(struct runner *r, struct cell *c, int timer);
+void runner_do_fof_pair(struct runner *r, struct cell *ci, struct cell *cj,
+                        int timer);
 void *runner_main(void *data);
 void runner_do_unskip_mapper(void *map_data, int num_elements,
                              void *extra_data);
