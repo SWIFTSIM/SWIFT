@@ -240,7 +240,6 @@ static void memuse_rnode_binsert_child(struct memuse_rnode *child,
 static void memuse_rnode_add_child(struct memuse_rnode *node,
                                    struct memuse_rnode *child) {
 
-  /* XXX use a cache of allocations. */
   /* Extend the children list to include a new entry .*/
   void *mem = realloc(node->children,
                       (node->count + 1) * sizeof(struct memuse_rnode *));
