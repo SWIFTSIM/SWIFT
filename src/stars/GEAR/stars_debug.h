@@ -1,6 +1,7 @@
 /*******************************************************************************
  * This file is part of SWIFT.
- * Copyright (c) 2018 Folkert Nobels (nobels@strw.leidenuniv.nl)
+ * Coypright (c) 2019 Loic Hausammann (loic.hausammann@epfl.ch)
+ *               2019 Fabien Jeanquartier (fabien.jeanquartier@epfl.ch)
  *
  * This program is free software: you can redistribute it and/or modify
  * it under the terms of the GNU Lesser General Public License as published
@@ -16,29 +17,16 @@
  * along with this program.  If not, see <http://www.gnu.org/licenses/>.
  *
  ******************************************************************************/
-#ifndef SWIFT_STAR_FORMATION_GEAR_IO_H
-#define SWIFT_STAR_FORMATION_GEAR_IO_H
+#ifndef SWIFT_GEAR_STARS_DEBUG_H
+#define SWIFT_GEAR_STARS_DEBUG_H
 
-/* Config parameters. */
-#include "../config.h"
-
-/* Local includes */
-#include "io_properties.h"
-
-/**
- * @brief Specifies which particle fields to write to a dataset
- *
- * @param parts The particle array.
- * @param xparts The extended data particle array.
- * @param list The list of i/o properties to write.
- *
- * @return Returns the number of fields to write.
- */
-__attribute__((always_inline)) INLINE static int star_formation_write_particles(
-    const struct part* parts, const struct xpart* xparts,
-    struct io_props* list) {
-		/* Nothing to write here */
-  return 0;
+__attribute__((always_inline)) INLINE static void stars_debug_particle(
+    const struct spart* p) {
+  printf(
+      "x=[%.3e,%.3e,%.3e], "
+      "v_full=[%.3e,%.3e,%.3e] p->mass=%.3e \n t_begin=%d, t_end=%d\n",
+      p->x[0], p->x[1], p->x[2], p->v_full[0], p->v_full[1], p->v_full[2],
+      p->mass, p->ti_begin, p->ti_end);
 }
 
-#endif /* SWIFT_STAR_FORMATION_GEAR_IO_H */
+#endif /* SWIFT_GEAR_STARS_DEBUG_H */

@@ -16,10 +16,21 @@
  * along with this program.  If not, see <http://www.gnu.org/licenses/>.
  *
  ******************************************************************************/
-#ifndef SWIFT_GEAR_STAR_FORMATION_LOGGER_STRUCT_H
-#define SWIFT_GEAR_STAR_FORMATION_LOGGER_STRUCT_H
+#ifndef SWIFT_EAGLE_STAR_FORMATION_LOGGER_STRUCT_H
+#define SWIFT_EAGLE_STAR_FORMATION_LOGGER_STRUCT_H
 
 /* Starformation history struct */
-struct star_formation_history {};
+struct star_formation_history {
+  /*! Total current star formation rate (new mass divided by timestep) */
+  float new_sfr;
+  /*! Total stellar mass (no reset) */
+  float total_stellar_mass;
+  /*! Stellar mass created in the current timestep */ 
+  float stellar_mass;
+  /*! Number of stars created in this timestep */
+  long int number_of_stars;
+  /*! Total number of stars */
+  long int total_number_of_stars;
+};
 
-#endif /* SWIFT_NONE_STAR_FORMATION_STRUCT_H */
+#endif /* SWIFT_EAGLE_STAR_FORMATION_LOGGER_STRUCT_H */
