@@ -41,7 +41,7 @@ struct feedback_spart_data {
     struct {
 
       /* Velocity to update particles with */
-      float v_kick[3];
+      float v_kick;
 
       /* Remaining energy to distribute as heat */
       float delta_u; // ALEXEI: surely this should be an energy and not an internal energy because don't know particle's mass we're distributing to.
@@ -50,6 +50,8 @@ struct feedback_spart_data {
       double simba_delay_time; // ALEXEI: think of a better place to put this
 
     } to_distribute;
+
+    float host_galaxy_mass;
   };
 };
 

@@ -81,7 +81,10 @@ runner_iact_nonsym_feedback_apply(const float r2, const float *dx,
     /* Are we lucky? */
     if (rand < prob) {
       /* kick particle */
-      hydro_set_velocity(pj,si->feedback_data.to_distribute.v_kick);
+      float v_new[3];
+      // ALEXEI: temporary simple definition. Change to be consistent with sfr_eff.c: 1565
+      for (int i = 0; i < 3; i++) v_new[i] = si->feedback_data.to_distribute.v_kick; 
+      hydro_set_velocity(pj,v_new);
 
       /* Heat particle */
       const float u_init = hydro_get_physical_internal_energy(pj, xp, cosmo);

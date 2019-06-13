@@ -34,7 +34,22 @@
  * @param sp The sparticle doing the feedback
  * @param feedback_props The properties of the feedback model
  */
-inline void compute_kick_speed(struct spart *sp, const struct feedback_props *feedback_props) {};
+inline void compute_kick_speed(struct spart *sp, const struct feedback_props *feedback_props, const struct cosmology *cosmo) {
+
+  /* Calculate circular velocity based on Baryonic Tully-Fisher relation*/
+  const float v_circ = pow(sp->feedback_data.host_galaxy_mass/feedback_props->simba_host_galaxy_mass_norm, feedback_props->simba_v_circ_exp);
+
+  /* checkout what this random number does and how to generate it */
+  const float random_num = 1.;
+
+  /* Calculate wind speed */
+  // ALEXEI: checkout what the numbers in this equation mean.
+  sp->feedback_data.to_distribute.v_kick = feedback_props->galsf_firevel 
+      * pow(v_circ * cosmo->a /feedback_props->scale_factor_norm,feedback_props->galsf_firevel_slope) 
+      * pow(feedback_props->scale_factor_norm,0.12 - feedback_props->galsf_firevel_slope)
+      * (1. - feedback_props->vwvf_scatter - 2.*feedback_props->vwvf_scatter*random_num)
+      * v_circ;
+}
 
 /**
  * @brief Calculates speed particles will be kicked based on
@@ -139,7 +154,7 @@ __attribute__((always_inline)) INLINE static void feedback_evolve_spart(
     const double star_age_beg_step, const double dt) {
   
   /* Calculate the velocity to kick neighbouring particles with */
-  compute_kick_speed(sp, feedback_props);
+  compute_kick_speed(sp, feedback_props, cosmo);
 
   /* Compute wind mass loading */
   compute_mass_loading(sp, feedback_props);

@@ -26,7 +26,17 @@
 /**
  * @brief Properties of the EAGLE feedback model.
  */
-struct feedback_props {};
+struct feedback_props {
+  /* Parameters for calculating rotational velocity of galaxy */
+  float simba_host_galaxy_mass_norm;
+  float simba_v_circ_exp;
+
+  /* Parameters for calculating ejection velocity */
+  float galsf_firevel;
+  float galsf_firevel_slope;
+  float scale_factor_norm;
+  float vwvf_scatter;
+};
 
 /**
  * @brief Initialize the global properties of the feedback scheme.
@@ -43,6 +53,20 @@ INLINE static void feedback_props_init(struct feedback_props *fp,
                                        const struct unit_system *us,
                                        struct swift_params *params,
                                        const struct hydro_props *hydro_props,
-                                       const struct cosmology *cosmo) {}
+                                       const struct cosmology *cosmo) {
+
+  /* Initialize parameters for calculating rotational velocity of galaxy */
+  // ALEXEI: change to be read in.
+  fp->simba_host_galaxy_mass_norm = 102.329;
+  fp->simba_v_circ_exp = 0.26178;
+
+  /* Initialize parameters for calculating ejection velocity */
+  // ALEXEI: change to be read in.
+  fp->galsf_firevel = 1.;
+  fp->galsf_firevel_slope = 0.12;
+  fp->scale_factor_norm = 200.;
+  fp->vwvf_scatter = 0.;
+
+}
 
 #endif /* SWIFT_SIMBA_FEEDBACK_PROPERTIES_H */
