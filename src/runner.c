@@ -1187,6 +1187,16 @@ void runner_do_star_formation(struct runner *r, struct cell *c, int timer) {
   if (timer) TIMER_TOC(timer_do_star_formation);
 }
 
+/**
+ * @brief Sorts again all the stars in a given cell hierarchy.
+ *
+ * This is intended to be used after the star formation task has been run
+ * to get the cells back into a state where self/pair star tasks can be run.
+ *
+ * @param r The thread #runner.
+ * @param c The top-level cell to run on.
+ * @param timer Are we timing this?
+ */
 void runner_do_stars_resort(struct runner *r, struct cell *c, int timer) {
 
 #ifdef SWIFT_DEBUG_CHECKS
@@ -1194,11 +1204,15 @@ void runner_do_stars_resort(struct runner *r, struct cell *c, int timer) {
   if (c->depth != 0) error("Task must be run at the top-level");
 #endif
 
+  TIMER_TIC;
+
   /* Did we demand a recalculation of the stars'sorts? */
   if (cell_get_flag(c, cell_flag_do_stars_resort)) {
     runner_do_all_stars_sort(r, c);
     cell_clear_flag(c, cell_flag_do_stars_resort);
   }
+
+  if (clock) TIMER_TOC(timer_dostars_resort);
 }
 
 /**
