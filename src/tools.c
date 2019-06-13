@@ -225,9 +225,10 @@ void pairs_all_density(struct runner *r, struct cell *ci, struct cell *cj) {
       if (r2 < hig2 && !part_is_inhibited(pj, e)) {
 
         /* Interact */
-       runner_iact_nonsym_density(r2, dx, hi, pj->h, pi, pj, a, H);
-       runner_iact_nonsym_chemistry(r2, dx, hi, pj->h, pi, pj, a, H);
-       runner_iact_nonsym_star_formation(r2, dx, hi, pj->h, pi, pj, xpi, xpj, a, H);
+        runner_iact_nonsym_density(r2, dx, hi, pj->h, pi, pj, a, H);
+        runner_iact_nonsym_chemistry(r2, dx, hi, pj->h, pi, pj, a, H);
+        runner_iact_nonsym_star_formation(r2, dx, hi, pj->h, pi, pj, xpi, xpj,
+                                          a, H);
       }
     }
   }
@@ -262,7 +263,8 @@ void pairs_all_density(struct runner *r, struct cell *ci, struct cell *cj) {
         /* Interact */
         runner_iact_nonsym_density(r2, dx, hj, pi->h, pj, pi, a, H);
         runner_iact_nonsym_chemistry(r2, dx, hj, pi->h, pj, pi, a, H);
-        runner_iact_nonsym_star_formation(r2, dx, hj, pi->h, pj, pi, xpj, xpi, a, H);
+        runner_iact_nonsym_star_formation(r2, dx, hj, pi->h, pj, pi, xpj, xpi,
+                                          a, H);
       }
     }
   }
@@ -543,7 +545,8 @@ void self_all_density(struct runner *r, struct cell *ci) {
         /* Interact */
         runner_iact_nonsym_density(r2, dxi, hi, hj, pi, pj, a, H);
         runner_iact_nonsym_chemistry(r2, dxi, hi, hj, pi, pj, a, H);
-        runner_iact_nonsym_star_formation(r2, dxi, hi, hj, pi, pj, xpi, xpj, a, H);
+        runner_iact_nonsym_star_formation(r2, dxi, hi, hj, pi, pj, xpi, xpj, a,
+                                          H);
       }
 
       /* Hit or miss? */
@@ -556,7 +559,8 @@ void self_all_density(struct runner *r, struct cell *ci) {
         /* Interact */
         runner_iact_nonsym_density(r2, dxi, hj, hi, pj, pi, a, H);
         runner_iact_nonsym_chemistry(r2, dxi, hj, hi, pj, pi, a, H);
-        runner_iact_nonsym_star_formation(r2, dxi, hj, hi, pj, pi, xpj, xpi, a, H);
+        runner_iact_nonsym_star_formation(r2, dxi, hj, hi, pj, pi, xpj, xpi, a,
+                                          H);
       }
     }
   }

@@ -36,16 +36,17 @@
  * @param sf the star_formation_history struct of the current cell
  */
 INLINE static void star_formation_logger_log_new_spart(
-    const struct spart *sp, struct star_formation_history *sf, const double time_step) {
+    const struct spart *sp, struct star_formation_history *sf,
+    const double time_step) {
 
   /* Add mass of created sparticle to the total stellar mass in this cell*/
   sf->stellar_mass += sp->mass;
   sf->total_stellar_mass += sp->mass;
   /* Increase the number of stars */
-  sf->number_of_stars+=1;
-  sf->total_number_of_stars+=1;
+  sf->number_of_stars += 1;
+  sf->total_number_of_stars += 1;
   /* Approximation of the SFR */
-  sf->new_sfr += sp->mass/time_step;
+  sf->new_sfr += sp->mass / time_step;
 }
 
 /**
@@ -57,9 +58,9 @@ INLINE static void star_formation_logger_log_new_spart(
 INLINE static void star_formation_logger_log_inactive_cell(
     struct star_formation_history *sf) {
   /* Initialize the stellar mass to zero */
-  sf->stellar_mass=0.f;
+  sf->stellar_mass = 0.f;
   /*!initialize number of stars to zero*/
-  sf->number_of_stars=0;
+  sf->number_of_stars = 0;
   /* Initialize the active SFR */
   sf->new_sfr = 0.f;
 }
@@ -72,14 +73,15 @@ INLINE static void star_formation_logger_init(
     struct star_formation_history *sfh) {
   /* Initialize the collecting SFH structure to zero */
   sfh->new_sfr = 0.f;
-  sfh->number_of_stars=0;
-  sfh->stellar_mass=0.f;
+  sfh->number_of_stars = 0;
+  sfh->stellar_mass = 0.f;
   /* to be removed when the total quantities will be implemented */
-  sfh->total_number_of_stars=0;
-  sfh->total_stellar_mass=0.f;
+  sfh->total_number_of_stars = 0;
+  sfh->total_stellar_mass = 0.f;
 }
 /**
- * @brief Initialize the star formation history struct in the #engine (once only)
+ * @brief Initialize the star formation history struct in the #engine (once
+ * only)
  *
  * @param sfh the star_formation_history struct we want to initialize
  */
@@ -87,10 +89,10 @@ INLINE static void star_formation_logger_first_init(
     struct star_formation_history *sfh) {
   /* Initialize all values to zero */
   sfh->new_sfr = 0.f;
-  sfh->stellar_mass=0.f;
-  sfh->number_of_stars=0;
-  sfh->total_number_of_stars=0;
-  sfh->total_stellar_mass=0.f;
+  sfh->stellar_mass = 0.f;
+  sfh->number_of_stars = 0;
+  sfh->total_number_of_stars = 0;
+  sfh->total_stellar_mass = 0.f;
 }
 /**
  * @brief add a star formation history struct to an other star formation history
@@ -108,10 +110,9 @@ INLINE static void star_formation_logger_add(
   sf_update->new_sfr += sf_add->new_sfr;
   sf_update->number_of_stars += sf_add->number_of_stars;
   sf_update->stellar_mass += sf_add->stellar_mass;
-  sf_update->total_number_of_stars+=sf_add->total_number_of_stars;
-  sf_update->total_stellar_mass+=sf_add->total_stellar_mass;
+  sf_update->total_number_of_stars += sf_add->total_number_of_stars;
+  sf_update->total_stellar_mass += sf_add->total_stellar_mass;
 }
-
 
 /**
  * @brief Write the final SFH to a file
@@ -127,8 +128,8 @@ INLINE static void star_formation_logger_write_to_log_file(
     FILE *fp, const double time, const double a, const double z,
     struct star_formation_history sf, const int step) {
 
-  fprintf(fp, "%6d %16e %12.7f %14e %14ld %14e %14e\n", step, time, a, z, sf.number_of_stars,
-          sf.stellar_mass, sf.new_sfr);
+  fprintf(fp, "%6d %16e %12.7f %14e %14ld %14e %14e\n", step, time, a, z,
+          sf.number_of_stars, sf.stellar_mass, sf.new_sfr);
 }
 /**
  * @brief Initialize the SFH logger file
@@ -155,7 +156,8 @@ INLINE static void star_formation_logger_init_log_file(
           1.f / phys_const->const_year / 1e6);
   fprintf(fp, "# (2) Scale factor (no unit)\n");
   fprintf(fp, "# (3) Redshift     (no unit)\n");
-  fprintf(fp, "# (4) Number of stars formed in the current time step (no unit)\n");
+  fprintf(fp,
+          "# (4) Number of stars formed in the current time step (no unit)\n");
   fprintf(fp, "# (5) Stellar mass formed in the current time step.\n");
   fprintf(fp, "#     Unit = %e gram\n", us->UnitMass_in_cgs);
   fprintf(fp, "#     Unit = %e solar mass\n",
@@ -165,10 +167,9 @@ INLINE static void star_formation_logger_init_log_file(
           us->UnitMass_in_cgs / us->UnitTime_in_cgs);
   fprintf(fp, "#     Unit = %e Msol/yr\n",
           phys_const->const_year / phys_const->const_solar_mass);
-    fprintf(
-      fp,
-      "# (0)         (1)            (2)          (3)                   (4)       (5)        (6)\n");        
-  
+  fprintf(fp,
+          "# (0)         (1)            (2)          (3)                   (4) "
+          "      (5)        (6)\n");
 }
 
 /**
@@ -184,9 +185,7 @@ INLINE static void star_formation_logger_init_log_file(
  */
 INLINE static void star_formation_logger_log_active_part(
     const struct part *p, const struct xpart *xp,
-    struct star_formation_history *sf, const double dt_star) {
-
-}
+    struct star_formation_history *sf, const double dt_star) {}
 
 /**
  * @brief Add the SFR tracer to the total inactive SFR of this cell as long as
@@ -200,7 +199,6 @@ INLINE static void star_formation_logger_log_active_part(
  */
 INLINE static void star_formation_logger_log_inactive_part(
     const struct part *p, const struct xpart *xp,
-    struct star_formation_history *sf) {
-}
+    struct star_formation_history *sf) {}
 
 #endif /* SWIFT_EAGLE_STARFORMATION_LOGGER_H */

@@ -149,11 +149,11 @@ void DOPAIR1_NAIVE(struct runner *r, struct cell *restrict ci,
   const int count_j = cj->hydro.count;
   struct part *restrict parts_i = ci->hydro.parts;
 #if (FUNCTION_TASK_LOOP == TASK_LOOP_DENSITY)
-	struct xpart *restrict xparts_i = ci->hydro.xparts;
+  struct xpart *restrict xparts_i = ci->hydro.xparts;
 #endif
   struct part *restrict parts_j = cj->hydro.parts;
 #if (FUNCTION_TASK_LOOP == TASK_LOOP_DENSITY)
-	struct xpart *restrict xparts_j = cj->hydro.xparts;
+  struct xpart *restrict xparts_j = cj->hydro.xparts;
 #endif
 
   /* Cosmological terms */
@@ -173,9 +173,9 @@ void DOPAIR1_NAIVE(struct runner *r, struct cell *restrict ci,
   for (int pid = 0; pid < count_i; pid++) {
 
     /* Get a hold of the ith part in ci. */
-struct part *restrict pi = &parts_i[pid];
+    struct part *restrict pi = &parts_i[pid];
 #if (FUNCTION_TASK_LOOP == TASK_LOOP_DENSITY)
-	struct xpart *xpi = &xparts_i[pid];
+    struct xpart *xpi = &xparts_i[pid];
 #endif
 
     /* Skip inhibited particles. */
@@ -194,7 +194,7 @@ struct part *restrict pi = &parts_i[pid];
       /* Get a pointer to the jth particle. */
       struct part *restrict pj = &parts_j[pjd];
 #if (FUNCTION_TASK_LOOP == TASK_LOOP_DENSITY)
-	  struct xpart *xpj = &xparts_j[pjd];
+      struct xpart *xpj = &xparts_j[pjd];
 #endif
 
       /* Skip inhibited particles. */
@@ -225,7 +225,8 @@ struct part *restrict pi = &parts_i[pid];
         IACT_NONSYM(r2, dx, hi, hj, pi, pj, a, H);
 #if (FUNCTION_TASK_LOOP == TASK_LOOP_DENSITY)
         runner_iact_nonsym_chemistry(r2, dx, hi, hj, pi, pj, a, H);
-        runner_iact_nonsym_star_formation(r2, dx, hi, hj, pi, pj, xpi, xpj, a, H);
+        runner_iact_nonsym_star_formation(r2, dx, hi, hj, pi, pj, xpi, xpj, a,
+                                          H);
 #endif
       }
       if (r2 < hjg2 && pj_active) {
@@ -237,7 +238,8 @@ struct part *restrict pi = &parts_i[pid];
         IACT_NONSYM(r2, dx, hj, hi, pj, pi, a, H);
 #if (FUNCTION_TASK_LOOP == TASK_LOOP_DENSITY)
         runner_iact_nonsym_chemistry(r2, dx, hj, hi, pj, pi, a, H);
-        runner_iact_nonsym_star_formation(r2, dx, hj, hi, pj, pi, xpj, xpi, a, H);
+        runner_iact_nonsym_star_formation(r2, dx, hj, hi, pj, pi, xpj, xpi, a,
+                                          H);
 #endif
       }
 
@@ -271,11 +273,11 @@ void DOPAIR2_NAIVE(struct runner *r, struct cell *restrict ci,
   const int count_j = cj->hydro.count;
   struct part *restrict parts_i = ci->hydro.parts;
 #if (FUNCTION_TASK_LOOP == TASK_LOOP_DENSITY)
-	struct xpart *restrict xparts_i = ci->hydro.xparts;
+  struct xpart *restrict xparts_i = ci->hydro.xparts;
 #endif
   struct part *restrict parts_j = cj->hydro.parts;
 #if (FUNCTION_TASK_LOOP == TASK_LOOP_DENSITY)
-	struct xpart *restrict xparts_j = cj->hydro.xparts;
+  struct xpart *restrict xparts_j = cj->hydro.xparts;
 #endif
 
   /* Cosmological terms */
@@ -295,9 +297,9 @@ void DOPAIR2_NAIVE(struct runner *r, struct cell *restrict ci,
   for (int pid = 0; pid < count_i; pid++) {
 
     /* Get a hold of the ith part in ci. */
-struct part *restrict pi = &parts_i[pid];
+    struct part *restrict pi = &parts_i[pid];
 #if (FUNCTION_TASK_LOOP == TASK_LOOP_DENSITY)
-	struct xpart *xpi = &xparts_i[pid];
+    struct xpart *xpi = &xparts_i[pid];
 #endif
 
     /* Skip inhibited particles. */
@@ -316,7 +318,7 @@ struct part *restrict pi = &parts_i[pid];
       /* Get a pointer to the jth particle. */
       struct part *restrict pj = &parts_j[pjd];
 #if (FUNCTION_TASK_LOOP == TASK_LOOP_DENSITY)
-	struct xpart *xpj = &xparts_j[pjd];
+      struct xpart *xpj = &xparts_j[pjd];
 #endif
 
       /* Skip inhibited particles. */
@@ -356,7 +358,8 @@ struct part *restrict pi = &parts_i[pid];
           IACT_NONSYM(r2, dx, hi, hj, pi, pj, a, H);
 #if (FUNCTION_TASK_LOOP == TASK_LOOP_DENSITY)
           runner_iact_nonsym_chemistry(r2, dx, hi, hj, pi, pj, a, H);
-          runner_iact_nonsym_star_formation(r2, dx, hi, hj, pi, pj, xpi, xpj, a, H);
+          runner_iact_nonsym_star_formation(r2, dx, hi, hj, pi, pj, xpi, xpj, a,
+                                            H);
 #endif
         } else if (pj_active) {
 
@@ -367,7 +370,8 @@ struct part *restrict pi = &parts_i[pid];
           IACT_NONSYM(r2, dx, hj, hi, pj, pi, a, H);
 #if (FUNCTION_TASK_LOOP == TASK_LOOP_DENSITY)
           runner_iact_nonsym_chemistry(r2, dx, hj, hi, pj, pi, a, H);
-          runner_iact_nonsym_star_formation(r2, dx, hj, hi, pj, pi, xpj, xpi, a, H);
+          runner_iact_nonsym_star_formation(r2, dx, hj, hi, pj, pi, xpj, xpi, a,
+                                            H);
 #endif
         }
       }
@@ -402,7 +406,7 @@ void DOSELF1_NAIVE(struct runner *r, struct cell *restrict c) {
   const int count = c->hydro.count;
   struct part *restrict parts = c->hydro.parts;
 #if (FUNCTION_TASK_LOOP == TASK_LOOP_DENSITY)
-	struct xpart *restrict xparts = c->hydro.xparts;
+  struct xpart *restrict xparts = c->hydro.xparts;
 #endif
 
   /* Loop over the parts in ci. */
@@ -411,7 +415,7 @@ void DOSELF1_NAIVE(struct runner *r, struct cell *restrict c) {
     /* Get a hold of the ith part in ci. */
     struct part *restrict pi = &parts[pid];
 #if (FUNCTION_TASK_LOOP == TASK_LOOP_DENSITY)
-	struct xpart *xpi = &xparts[pid];
+    struct xpart *xpi = &xparts[pid];
 #endif
 
     /* Skip inhibited particles. */
@@ -430,7 +434,7 @@ void DOSELF1_NAIVE(struct runner *r, struct cell *restrict c) {
       /* Get a pointer to the jth particle. */
       struct part *restrict pj = &parts[pjd];
 #if (FUNCTION_TASK_LOOP == TASK_LOOP_DENSITY)
-	struct xpart *xpj = &xparts[pjd];
+      struct xpart *xpj = &xparts[pjd];
 #endif
 
       /* Skip inhibited particles. */
@@ -471,7 +475,8 @@ void DOSELF1_NAIVE(struct runner *r, struct cell *restrict c) {
         IACT_NONSYM(r2, dx, hi, hj, pi, pj, a, H);
 #if (FUNCTION_TASK_LOOP == TASK_LOOP_DENSITY)
         runner_iact_nonsym_chemistry(r2, dx, hi, hj, pi, pj, a, H);
-        runner_iact_nonsym_star_formation(r2, dx, hi, hj, pi, pj, xpi, xpj, a, H);
+        runner_iact_nonsym_star_formation(r2, dx, hi, hj, pi, pj, xpi, xpj, a,
+                                          H);
 #endif
       } else if (doj) {
 
@@ -482,7 +487,8 @@ void DOSELF1_NAIVE(struct runner *r, struct cell *restrict c) {
         IACT_NONSYM(r2, dx, hj, hi, pj, pi, a, H);
 #if (FUNCTION_TASK_LOOP == TASK_LOOP_DENSITY)
         runner_iact_nonsym_chemistry(r2, dx, hj, hi, pj, pi, a, H);
-        runner_iact_nonsym_star_formation(r2, dx, hj, hi, pj, pi, xpj, xpi, a, H);
+        runner_iact_nonsym_star_formation(r2, dx, hj, hi, pj, pi, xpj, xpi, a,
+                                          H);
 #endif
       }
     } /* loop over the parts in cj. */
@@ -516,7 +522,7 @@ void DOSELF2_NAIVE(struct runner *r, struct cell *restrict c) {
   const int count = c->hydro.count;
   struct part *restrict parts = c->hydro.parts;
 #if (FUNCTION_TASK_LOOP == TASK_LOOP_DENSITY)
-	struct xpart *restrict xparts = c->hydro.xparts;
+  struct xpart *restrict xparts = c->hydro.xparts;
 #endif
 
   /* Loop over the parts in ci. */
@@ -525,7 +531,7 @@ void DOSELF2_NAIVE(struct runner *r, struct cell *restrict c) {
     /* Get a hold of the ith part in ci. */
     struct part *restrict pi = &parts[pid];
 #if (FUNCTION_TASK_LOOP == TASK_LOOP_DENSITY)
-	struct xpart *xpi = &xparts[pid];
+    struct xpart *xpi = &xparts[pid];
 #endif
 
     /* Skip inhibited particles. */
@@ -544,7 +550,7 @@ void DOSELF2_NAIVE(struct runner *r, struct cell *restrict c) {
       /* Get a pointer to the jth particle. */
       struct part *restrict pj = &parts[pjd];
 #if (FUNCTION_TASK_LOOP == TASK_LOOP_DENSITY)
-	struct xpart *xpj = &xparts[pjd];
+      struct xpart *xpj = &xparts[pjd];
 #endif
 
       /* Skip inhibited particles. */
@@ -585,7 +591,8 @@ void DOSELF2_NAIVE(struct runner *r, struct cell *restrict c) {
         IACT_NONSYM(r2, dx, hi, hj, pi, pj, a, H);
 #if (FUNCTION_TASK_LOOP == TASK_LOOP_DENSITY)
         runner_iact_nonsym_chemistry(r2, dx, hi, hj, pi, pj, a, H);
-        runner_iact_nonsym_star_formation(r2, dx, hi, hj, pi, pj, xpi, xpj, a, H);
+        runner_iact_nonsym_star_formation(r2, dx, hi, hj, pi, pj, xpi, xpj, a,
+                                          H);
 #endif
       } else if (doj) {
 
@@ -596,7 +603,8 @@ void DOSELF2_NAIVE(struct runner *r, struct cell *restrict c) {
         IACT_NONSYM(r2, dx, hj, hi, pj, pi, a, H);
 #if (FUNCTION_TASK_LOOP == TASK_LOOP_DENSITY)
         runner_iact_nonsym_chemistry(r2, dx, hj, hi, pj, pi, a, H);
-        runner_iact_nonsym_star_formation(r2, dx, hj, hi, pj, pi, xpj, xpi, a, H);
+        runner_iact_nonsym_star_formation(r2, dx, hj, hi, pj, pi, xpj, xpi, a,
+                                          H);
 #endif
       }
     } /* loop over the parts in cj. */
@@ -620,7 +628,8 @@ void DOSELF2_NAIVE(struct runner *r, struct cell *restrict c) {
  * @param shift The shift vector to apply to the particles in ci.
  */
 void DOPAIR_SUBSET_NAIVE(struct runner *r, struct cell *restrict ci,
-                         struct part *restrict parts_i, struct xpart *restrict xparts_i, int *restrict ind,
+                         struct part *restrict parts_i,
+                         struct xpart *restrict xparts_i, int *restrict ind,
                          int count, struct cell *restrict cj,
                          const double *shift) {
 
@@ -632,7 +641,7 @@ void DOPAIR_SUBSET_NAIVE(struct runner *r, struct cell *restrict ci,
   const int count_j = cj->hydro.count;
   struct part *restrict parts_j = cj->hydro.parts;
 #if (FUNCTION_TASK_LOOP == TASK_LOOP_DENSITY)
-	struct xpart *restrict xparts_j = cj->hydro.xparts;
+  struct xpart *restrict xparts_j = cj->hydro.xparts;
 #endif
 
   /* Cosmological terms */
@@ -645,7 +654,7 @@ void DOPAIR_SUBSET_NAIVE(struct runner *r, struct cell *restrict ci,
     /* Get a hold of the ith part in ci. */
     struct part *restrict pi = &parts_i[ind[pid]];
 #if (FUNCTION_TASK_LOOP == TASK_LOOP_DENSITY)
-	struct xpart *restrict xpi = &xparts_i[ind[pid]];
+    struct xpart *restrict xpi = &xparts_i[ind[pid]];
 #endif
     double pix[3];
     for (int k = 0; k < 3; k++) pix[k] = pi->x[k] - shift[k];
@@ -663,7 +672,7 @@ void DOPAIR_SUBSET_NAIVE(struct runner *r, struct cell *restrict ci,
       /* Get a pointer to the jth particle. */
       struct part *restrict pj = &parts_j[pjd];
 #if (FUNCTION_TASK_LOOP == TASK_LOOP_DENSITY)
-	struct xpart *xpj = &xparts_j[pjd];
+      struct xpart *xpj = &xparts_j[pjd];
 #endif
 
       /* Skip inhibited particles. */
@@ -691,7 +700,8 @@ void DOPAIR_SUBSET_NAIVE(struct runner *r, struct cell *restrict ci,
         IACT_NONSYM(r2, dx, hi, pj->h, pi, pj, a, H);
 #if (FUNCTION_TASK_LOOP == TASK_LOOP_DENSITY)
         runner_iact_nonsym_chemistry(r2, dx, hi, pj->h, pi, pj, a, H);
-        runner_iact_nonsym_star_formation(r2, dx, hi, pj->h, pi, pj, xpi, xpj, a, H);
+        runner_iact_nonsym_star_formation(r2, dx, hi, pj->h, pi, pj, xpi, xpj,
+                                          a, H);
 #endif
       }
     } /* loop over the parts in cj. */
@@ -715,9 +725,10 @@ void DOPAIR_SUBSET_NAIVE(struct runner *r, struct cell *restrict ci,
  * @param shift The shift vector to apply to the particles in ci.
  */
 void DOPAIR_SUBSET(struct runner *r, struct cell *restrict ci,
-                   struct part *restrict parts_i, struct xpart *restrict xparts_i, int *restrict ind, int count,
-                   struct cell *restrict cj, const int sid, const int flipped,
-                   const double *shift) {
+                   struct part *restrict parts_i,
+                   struct xpart *restrict xparts_i, int *restrict ind,
+                   int count, struct cell *restrict cj, const int sid,
+                   const int flipped, const double *shift) {
 
   const struct engine *e = r->e;
   const struct cosmology *cosmo = e->cosmology;
@@ -727,7 +738,7 @@ void DOPAIR_SUBSET(struct runner *r, struct cell *restrict ci,
   const int count_j = cj->hydro.count;
   struct part *restrict parts_j = cj->hydro.parts;
 #if (FUNCTION_TASK_LOOP == TASK_LOOP_DENSITY)
-	struct xpart *restrict xparts_j = cj->hydro.xparts;
+  struct xpart *restrict xparts_j = cj->hydro.xparts;
 #endif
 
   /* Cosmological terms */
@@ -747,7 +758,7 @@ void DOPAIR_SUBSET(struct runner *r, struct cell *restrict ci,
       /* Get a hold of the ith part in ci. */
       struct part *restrict pi = &parts_i[ind[pid]];
 #if (FUNCTION_TASK_LOOP == TASK_LOOP_DENSITY)
-	struct xpart *restrict xpi = &xparts_i[ind[pid]];
+      struct xpart *restrict xpi = &xparts_i[ind[pid]];
 #endif
       const double pix = pi->x[0] - (shift[0]);
       const double piy = pi->x[1] - (shift[1]);
@@ -763,7 +774,7 @@ void DOPAIR_SUBSET(struct runner *r, struct cell *restrict ci,
         /* Get a pointer to the jth particle. */
         struct part *restrict pj = &parts_j[sort_j[pjd].i];
 #if (FUNCTION_TASK_LOOP == TASK_LOOP_DENSITY)
-	struct xpart *restrict xpj = &xparts_j[sort_j[pjd].i];
+        struct xpart *restrict xpj = &xparts_j[sort_j[pjd].i];
 #endif
 
         /* Skip inhibited particles. */
@@ -793,7 +804,8 @@ void DOPAIR_SUBSET(struct runner *r, struct cell *restrict ci,
           IACT_NONSYM(r2, dx, hi, hj, pi, pj, a, H);
 #if (FUNCTION_TASK_LOOP == TASK_LOOP_DENSITY)
           runner_iact_nonsym_chemistry(r2, dx, hi, hj, pi, pj, a, H);
-          runner_iact_nonsym_star_formation(r2, dx, hi, hj, pi, pj, xpi, xpj, a, H);
+          runner_iact_nonsym_star_formation(r2, dx, hi, hj, pi, pj, xpi, xpj, a,
+                                            H);
 #endif
         }
       } /* loop over the parts in cj. */
@@ -809,7 +821,7 @@ void DOPAIR_SUBSET(struct runner *r, struct cell *restrict ci,
       /* Get a hold of the ith part in ci. */
       struct part *restrict pi = &parts_i[ind[pid]];
 #if (FUNCTION_TASK_LOOP == TASK_LOOP_DENSITY)
-	struct xpart *restrict xpi = &xparts_i[ind[pid]];
+      struct xpart *restrict xpi = &xparts_i[ind[pid]];
 #endif
       const double pix = pi->x[0] - (shift[0]);
       const double piy = pi->x[1] - (shift[1]);
@@ -825,7 +837,7 @@ void DOPAIR_SUBSET(struct runner *r, struct cell *restrict ci,
         /* Get a pointer to the jth particle. */
         struct part *restrict pj = &parts_j[sort_j[pjd].i];
 #if (FUNCTION_TASK_LOOP == TASK_LOOP_DENSITY)
-	struct xpart *restrict xpj = &xparts_j[sort_j[pjd].i];
+        struct xpart *restrict xpj = &xparts_j[sort_j[pjd].i];
 #endif
 
         /* Skip inhibited particles. */
@@ -855,7 +867,8 @@ void DOPAIR_SUBSET(struct runner *r, struct cell *restrict ci,
           IACT_NONSYM(r2, dx, hi, hj, pi, pj, a, H);
 #if (FUNCTION_TASK_LOOP == TASK_LOOP_DENSITY)
           runner_iact_nonsym_chemistry(r2, dx, hi, hj, pi, pj, a, H);
-          runner_iact_nonsym_star_formation(r2, dx, hi, hj, pi, pj, xpi, xpj, a, H);
+          runner_iact_nonsym_star_formation(r2, dx, hi, hj, pi, pj, xpi, xpj, a,
+                                            H);
 #endif
         }
       } /* loop over the parts in cj. */
@@ -878,7 +891,8 @@ void DOPAIR_SUBSET(struct runner *r, struct cell *restrict ci,
  * @param cj The second #cell.
  */
 void DOPAIR_SUBSET_BRANCH(struct runner *r, struct cell *restrict ci,
-                          struct part *restrict parts_i, struct xpart *restrict xparts_i, int *restrict ind,
+                          struct part *restrict parts_i,
+                          struct xpart *restrict xparts_i, int *restrict ind,
                           int count, struct cell *restrict cj) {
 
   const struct engine *e = r->e;
@@ -920,7 +934,8 @@ void DOPAIR_SUBSET_BRANCH(struct runner *r, struct cell *restrict ci,
     runner_dopair_subset_density_vec(r, ci, parts_i, ind, count, cj, sid,
                                      flipped, shift);
   else
-    DOPAIR_SUBSET(r, ci, parts_i, xparts_i,ind, count, cj, sid, flipped, shift);
+    DOPAIR_SUBSET(r, ci, parts_i, xparts_i, ind, count, cj, sid, flipped,
+                  shift);
 #else
   DOPAIR_SUBSET(r, ci, parts_i, xparts_i, ind, count, cj, sid, flipped, shift);
 #endif
@@ -937,7 +952,8 @@ void DOPAIR_SUBSET_BRANCH(struct runner *r, struct cell *restrict ci,
  * @param count The number of particles in @c ind.
  */
 void DOSELF_SUBSET(struct runner *r, struct cell *restrict ci,
-                   struct part *restrict parts, struct xpart *restrict xparts, int *restrict ind, int count) {
+                   struct part *restrict parts, struct xpart *restrict xparts,
+                   int *restrict ind, int count) {
 
   const struct engine *e = r->e;
   const struct cosmology *cosmo = e->cosmology;
@@ -950,17 +966,17 @@ void DOSELF_SUBSET(struct runner *r, struct cell *restrict ci,
 
   const int count_i = ci->hydro.count;
   struct part *restrict parts_j = ci->hydro.parts;
-  #if (FUNCTION_TASK_LOOP == TASK_LOOP_DENSITY)
+#if (FUNCTION_TASK_LOOP == TASK_LOOP_DENSITY)
   struct xpart *restrict xparts_j = ci->hydro.xparts;
-  #endif
+#endif
   /* Loop over the parts in ci. */
   for (int pid = 0; pid < count; pid++) {
 
     /* Get a hold of the ith part in ci. */
     struct part *pi = &parts[ind[pid]];
- #if (FUNCTION_TASK_LOOP == TASK_LOOP_DENSITY)
+#if (FUNCTION_TASK_LOOP == TASK_LOOP_DENSITY)
     struct xpart *xpi = &xparts[ind[pid]];
-   #endif
+#endif
     const float pix[3] = {(float)(pi->x[0] - ci->loc[0]),
                           (float)(pi->x[1] - ci->loc[1]),
                           (float)(pi->x[2] - ci->loc[2])};
@@ -977,7 +993,7 @@ void DOSELF_SUBSET(struct runner *r, struct cell *restrict ci,
       /* Get a pointer to the jth particle. */
       struct part *restrict pj = &parts_j[pjd];
 #if (FUNCTION_TASK_LOOP == TASK_LOOP_DENSITY)
-	struct xpart *xpj = &xparts_j[pjd];
+      struct xpart *xpj = &xparts_j[pjd];
 #endif
 
       /* Skip inhibited particles. */
@@ -1006,7 +1022,8 @@ void DOSELF_SUBSET(struct runner *r, struct cell *restrict ci,
         IACT_NONSYM(r2, dx, hi, hj, pi, pj, a, H);
 #if (FUNCTION_TASK_LOOP == TASK_LOOP_DENSITY)
         runner_iact_nonsym_chemistry(r2, dx, hi, hj, pi, pj, a, H);
-        runner_iact_nonsym_star_formation(r2, dx, hi, hj, pi, pj, xpi, xpj, a, H);
+        runner_iact_nonsym_star_formation(r2, dx, hi, hj, pi, pj, xpi, xpj, a,
+                                          H);
 #endif
       }
     } /* loop over the parts in cj. */
@@ -1026,7 +1043,8 @@ void DOSELF_SUBSET(struct runner *r, struct cell *restrict ci,
  * @param count The number of particles in @c ind.
  */
 void DOSELF_SUBSET_BRANCH(struct runner *r, struct cell *restrict ci,
-                          struct part *restrict parts, struct xpart *restrict xparts, int *restrict ind,
+                          struct part *restrict parts,
+                          struct xpart *restrict xparts, int *restrict ind,
                           int count) {
 
 #if defined(WITH_VECTORIZATION) && defined(GADGET2_SPH)
@@ -1081,11 +1099,11 @@ void DOPAIR1(struct runner *r, struct cell *ci, struct cell *cj, const int sid,
   const int count_j = cj->hydro.count;
   struct part *restrict parts_i = ci->hydro.parts;
 #if (FUNCTION_TASK_LOOP == TASK_LOOP_DENSITY)
-	struct xpart *restrict xparts_i = ci->hydro.xparts;
+  struct xpart *restrict xparts_i = ci->hydro.xparts;
 #endif
   struct part *restrict parts_j = cj->hydro.parts;
 #if (FUNCTION_TASK_LOOP == TASK_LOOP_DENSITY)
-	struct xpart *restrict xparts_j = cj->hydro.xparts;
+  struct xpart *restrict xparts_j = cj->hydro.xparts;
 #endif
   const double di_max = sort_i[count_i - 1].d - rshift;
   const double dj_min = sort_j[0].d;
@@ -1103,7 +1121,7 @@ void DOPAIR1(struct runner *r, struct cell *ci, struct cell *cj, const int sid,
 
       /* Get a hold of the ith part in ci. */
       struct part *restrict pi = &parts_i[sort_i[pid].i];
-      #if (FUNCTION_TASK_LOOP == TASK_LOOP_DENSITY)
+#if (FUNCTION_TASK_LOOP == TASK_LOOP_DENSITY)
       struct xpart *restrict xpi = &xparts_i[sort_i[pid].i];
 #endif
       const float hi = pi->h;
@@ -1127,7 +1145,7 @@ void DOPAIR1(struct runner *r, struct cell *ci, struct cell *cj, const int sid,
         /* Recover pj */
         struct part *pj = &parts_j[sort_j[pjd].i];
 #if (FUNCTION_TASK_LOOP == TASK_LOOP_DENSITY)
-	struct xpart *xpj = &xparts_j[sort_j[pjd].i];
+        struct xpart *xpj = &xparts_j[sort_j[pjd].i];
 #endif
 
         /* Skip inhibited particles. */
@@ -1182,7 +1200,8 @@ void DOPAIR1(struct runner *r, struct cell *ci, struct cell *cj, const int sid,
           IACT_NONSYM(r2, dx, hi, hj, pi, pj, a, H);
 #if (FUNCTION_TASK_LOOP == TASK_LOOP_DENSITY)
           runner_iact_nonsym_chemistry(r2, dx, hi, hj, pi, pj, a, H);
-          runner_iact_nonsym_star_formation(r2, dx, hi, hj, pi, pj, xpi, xpj, a, H);
+          runner_iact_nonsym_star_formation(r2, dx, hi, hj, pi, pj, xpi, xpj, a,
+                                            H);
 #endif
         }
       } /* loop over the parts in cj. */
@@ -1198,7 +1217,7 @@ void DOPAIR1(struct runner *r, struct cell *ci, struct cell *cj, const int sid,
       /* Get a hold of the jth part in cj. */
       struct part *pj = &parts_j[sort_j[pjd].i];
 #if (FUNCTION_TASK_LOOP == TASK_LOOP_DENSITY)
-	struct xpart *xpj = &xparts_j[sort_j[pjd].i];
+      struct xpart *xpj = &xparts_j[sort_j[pjd].i];
 #endif
       const float hj = pj->h;
 
@@ -1221,7 +1240,7 @@ void DOPAIR1(struct runner *r, struct cell *ci, struct cell *cj, const int sid,
         /* Recover pi */
         struct part *pi = &parts_i[sort_i[pid].i];
 #if (FUNCTION_TASK_LOOP == TASK_LOOP_DENSITY)
-	struct xpart *xpi = &xparts_i[sort_i[pid].i];
+        struct xpart *xpi = &xparts_i[sort_i[pid].i];
 #endif
 
         /* Skip inhibited particles. */
@@ -1276,7 +1295,8 @@ void DOPAIR1(struct runner *r, struct cell *ci, struct cell *cj, const int sid,
           IACT_NONSYM(r2, dx, hj, hi, pj, pi, a, H);
 #if (FUNCTION_TASK_LOOP == TASK_LOOP_DENSITY)
           runner_iact_nonsym_chemistry(r2, dx, hj, hi, pj, pi, a, H);
-          runner_iact_nonsym_star_formation(r2, dx, hj, hi, pj, pi, xpj, xpi, a, H);
+          runner_iact_nonsym_star_formation(r2, dx, hj, hi, pj, pi, xpj, xpi, a,
+                                            H);
 #endif
         }
       } /* loop over the parts in ci. */
@@ -1424,11 +1444,11 @@ void DOPAIR2(struct runner *r, struct cell *ci, struct cell *cj, const int sid,
   const int count_j = cj->hydro.count;
   struct part *restrict parts_i = ci->hydro.parts;
 #if (FUNCTION_TASK_LOOP == TASK_LOOP_DENSITY)
-	struct xpart *restrict xparts_i = ci->hydro.xparts;
+  struct xpart *restrict xparts_i = ci->hydro.xparts;
 #endif
   struct part *restrict parts_j = cj->hydro.parts;
 #if (FUNCTION_TASK_LOOP == TASK_LOOP_DENSITY)
-	struct xpart *restrict xparts_j = cj->hydro.xparts;
+  struct xpart *restrict xparts_j = cj->hydro.xparts;
 #endif
 
   /* Cosmological terms */
@@ -1497,7 +1517,7 @@ void DOPAIR2(struct runner *r, struct cell *ci, struct cell *cj, const int sid,
     /* Get a hold of the ith part in ci. */
     struct part *pi = &parts_i[sort_i[pid].i];
 #if (FUNCTION_TASK_LOOP == TASK_LOOP_DENSITY)
-	struct xpart *xpi = &xparts_i[sort_i[pid].i];
+    struct xpart *xpi = &xparts_i[sort_i[pid].i];
 #endif
 
     /* Skip inhibited particles. */
@@ -1585,7 +1605,8 @@ void DOPAIR2(struct runner *r, struct cell *ci, struct cell *cj, const int sid,
           IACT_NONSYM(r2, dx, hj, hi, pj, pi, a, H);
 #if (FUNCTION_TASK_LOOP == TASK_LOOP_DENSITY)
           runner_iact_nonsym_chemistry(r2, dx, hj, hi, pj, pi, a, H);
-          runner_iact_nonsym_star_formation(r2, dx, hj, hi, pj, pi, xpj, xpi, a, H);
+          runner_iact_nonsym_star_formation(r2, dx, hj, hi, pj, pi, xpj, xpi, a,
+                                            H);
 #endif
         }
       } /* loop over the active parts in cj. */
@@ -1599,7 +1620,7 @@ void DOPAIR2(struct runner *r, struct cell *ci, struct cell *cj, const int sid,
         /* Recover pj */
         struct part *pj = &parts_j[sort_j[pjd].i];
 #if (FUNCTION_TASK_LOOP == TASK_LOOP_DENSITY)
-	struct xpart *xpj = &xparts_j[sort_j[pjd].i];
+        struct xpart *xpj = &xparts_j[sort_j[pjd].i];
 #endif
 
         /* Skip inhibited particles. */
@@ -1665,7 +1686,8 @@ void DOPAIR2(struct runner *r, struct cell *ci, struct cell *cj, const int sid,
             IACT_NONSYM(r2, dx, hi, hj, pi, pj, a, H);
 #if (FUNCTION_TASK_LOOP == TASK_LOOP_DENSITY)
             runner_iact_nonsym_chemistry(r2, dx, hi, hj, pi, pj, a, H);
-            runner_iact_nonsym_star_formation(r2, dx, hi, hj, pi, pj, xpi, xpj, a, H);
+            runner_iact_nonsym_star_formation(r2, dx, hi, hj, pi, pj, xpi, xpj,
+                                              a, H);
 #endif
           }
         }
@@ -1683,7 +1705,7 @@ void DOPAIR2(struct runner *r, struct cell *ci, struct cell *cj, const int sid,
     /* Get a hold of the jth part in cj. */
     struct part *pj = &parts_j[sort_j[pjd].i];
 #if (FUNCTION_TASK_LOOP == TASK_LOOP_DENSITY)
-	struct xpart *xpj = &xparts_j[sort_j[pjd].i];
+    struct xpart *xpj = &xparts_j[sort_j[pjd].i];
 #endif
 
     /* Skip inhibited particles. */
@@ -1771,7 +1793,8 @@ void DOPAIR2(struct runner *r, struct cell *ci, struct cell *cj, const int sid,
           IACT_NONSYM(r2, dx, hi, hj, pi, pj, a, H);
 #if (FUNCTION_TASK_LOOP == TASK_LOOP_DENSITY)
           runner_iact_nonsym_chemistry(r2, dx, hi, hj, pi, pj, a, H);
-          runner_iact_nonsym_star_formation(r2, dx, hi, hj, pi, pj, xpi, xpj, a, H);
+          runner_iact_nonsym_star_formation(r2, dx, hi, hj, pi, pj, xpi, xpj, a,
+                                            H);
 #endif
         }
       } /* loop over the active parts in ci. */
@@ -1786,7 +1809,7 @@ void DOPAIR2(struct runner *r, struct cell *ci, struct cell *cj, const int sid,
         /* Recover pi */
         struct part *pi = &parts_i[sort_i[pid].i];
 #if (FUNCTION_TASK_LOOP == TASK_LOOP_DENSITY)
-	struct xpart *xpi = &xparts_i[sort_i[pid].i];
+        struct xpart *xpi = &xparts_i[sort_i[pid].i];
 #endif
 
         /* Skip inhibited particles. */
@@ -1853,7 +1876,8 @@ void DOPAIR2(struct runner *r, struct cell *ci, struct cell *cj, const int sid,
             IACT_NONSYM(r2, dx, hj, hi, pj, pi, a, H);
 #if (FUNCTION_TASK_LOOP == TASK_LOOP_DENSITY)
             runner_iact_nonsym_chemistry(r2, dx, hj, hi, pj, pi, a, H);
-            runner_iact_nonsym_star_formation(r2, dx, hj, hi, pj, pi, xpj, xpi, a, H);
+            runner_iact_nonsym_star_formation(r2, dx, hj, hi, pj, pi, xpj, xpi,
+                                              a, H);
 #endif
           }
         }
@@ -1978,7 +2002,7 @@ void DOSELF1(struct runner *r, struct cell *restrict c) {
 
   struct part *restrict parts = c->hydro.parts;
 #if (FUNCTION_TASK_LOOP == TASK_LOOP_DENSITY)
-	struct xpart *restrict xparts = c->hydro.xparts;
+  struct xpart *restrict xparts = c->hydro.xparts;
 #endif
   const int count = c->hydro.count;
 
@@ -2004,7 +2028,7 @@ void DOSELF1(struct runner *r, struct cell *restrict c) {
     /* Get a pointer to the ith particle. */
     struct part *restrict pi = &parts[pid];
 #if (FUNCTION_TASK_LOOP == TASK_LOOP_DENSITY)
-	struct xpart *xpi = &xparts[pid];
+    struct xpart *xpi = &xparts[pid];
 #endif
 
     /* Skip inhibited particles. */
@@ -2024,8 +2048,8 @@ void DOSELF1(struct runner *r, struct cell *restrict c) {
 
         /* Get a pointer to the jth particle. */
         struct part *restrict pj = &parts[indt[pjd]];
-        #if (FUNCTION_TASK_LOOP == TASK_LOOP_DENSITY)
-	struct xpart *xpj = &xparts[indt[pjd]];
+#if (FUNCTION_TASK_LOOP == TASK_LOOP_DENSITY)
+        struct xpart *xpj = &xparts[indt[pjd]];
 #endif
         const float hj = pj->h;
 
@@ -2051,7 +2075,8 @@ void DOSELF1(struct runner *r, struct cell *restrict c) {
           IACT_NONSYM(r2, dx, hj, hi, pj, pi, a, H);
 #if (FUNCTION_TASK_LOOP == TASK_LOOP_DENSITY)
           runner_iact_nonsym_chemistry(r2, dx, hj, hi, pj, pi, a, H);
-          runner_iact_nonsym_star_formation(r2, dx, hj, hi, pj, pi, xpj, xpi, a, H);
+          runner_iact_nonsym_star_formation(r2, dx, hj, hi, pj, pi, xpj, xpi, a,
+                                            H);
 #endif
         }
       } /* loop over all other particles. */
@@ -2069,7 +2094,7 @@ void DOSELF1(struct runner *r, struct cell *restrict c) {
         /* Get a pointer to the jth particle. */
         struct part *restrict pj = &parts[pjd];
 #if (FUNCTION_TASK_LOOP == TASK_LOOP_DENSITY)
-	struct xpart *xpj = &xparts[pjd];
+        struct xpart *xpj = &xparts[pjd];
 #endif
 
         /* Skip inhibited particles. */
@@ -2113,7 +2138,8 @@ void DOSELF1(struct runner *r, struct cell *restrict c) {
             IACT_NONSYM(r2, dx, hi, hj, pi, pj, a, H);
 #if (FUNCTION_TASK_LOOP == TASK_LOOP_DENSITY)
             runner_iact_nonsym_chemistry(r2, dx, hi, hj, pi, pj, a, H);
-            runner_iact_nonsym_star_formation(r2, dx, hi, hj, pi, pj, xpi, xpj, a, H);
+            runner_iact_nonsym_star_formation(r2, dx, hi, hj, pi, pj, xpi, xpj,
+                                              a, H);
 #endif
           } else if (doj) {
 
@@ -2123,7 +2149,8 @@ void DOSELF1(struct runner *r, struct cell *restrict c) {
             IACT_NONSYM(r2, dx, hj, hi, pj, pi, a, H);
 #if (FUNCTION_TASK_LOOP == TASK_LOOP_DENSITY)
             runner_iact_nonsym_chemistry(r2, dx, hj, hi, pj, pi, a, H);
-            runner_iact_nonsym_star_formation(r2, dx, hj, hi, pj, pi, xpj, xpi, a, H);
+            runner_iact_nonsym_star_formation(r2, dx, hj, hi, pj, pi, xpj, xpi,
+                                              a, H);
 #endif
           }
         }
@@ -2186,7 +2213,7 @@ void DOSELF2(struct runner *r, struct cell *restrict c) {
 
   struct part *restrict parts = c->hydro.parts;
 #if (FUNCTION_TASK_LOOP == TASK_LOOP_DENSITY)
-	struct xpart *restrict xparts = c->hydro.xparts;
+  struct xpart *restrict xparts = c->hydro.xparts;
 #endif
   const int count = c->hydro.count;
 
@@ -2212,7 +2239,7 @@ void DOSELF2(struct runner *r, struct cell *restrict c) {
     /* Get a pointer to the ith particle. */
     struct part *restrict pi = &parts[pid];
 #if (FUNCTION_TASK_LOOP == TASK_LOOP_DENSITY)
-	struct xpart *xpi = &xparts[pid];
+    struct xpart *xpi = &xparts[pid];
 #endif
 
     /* Skip inhibited particles. */
@@ -2232,8 +2259,8 @@ void DOSELF2(struct runner *r, struct cell *restrict c) {
 
         /* Get a pointer to the jth particle. */
         struct part *restrict pj = &parts[indt[pjd]];
-        #if (FUNCTION_TASK_LOOP == TASK_LOOP_DENSITY)
-	struct xpart *xpj = &xparts[indt[pjd]];
+#if (FUNCTION_TASK_LOOP == TASK_LOOP_DENSITY)
+        struct xpart *xpj = &xparts[indt[pjd]];
 #endif
         const float hj = pj->h;
 
@@ -2259,7 +2286,8 @@ void DOSELF2(struct runner *r, struct cell *restrict c) {
           IACT_NONSYM(r2, dx, hj, hi, pj, pi, a, H);
 #if (FUNCTION_TASK_LOOP == TASK_LOOP_DENSITY)
           runner_iact_nonsym_chemistry(r2, dx, hj, hi, pj, pi, a, H);
-          runner_iact_nonsym_star_formation(r2, dx, hj, hi, pj, pi, xpj, xpi, a, H);
+          runner_iact_nonsym_star_formation(r2, dx, hj, hi, pj, pi, xpj, xpi, a,
+                                            H);
 #endif
         }
       } /* loop over all other particles. */
@@ -2277,7 +2305,7 @@ void DOSELF2(struct runner *r, struct cell *restrict c) {
         /* Get a pointer to the jth particle. */
         struct part *restrict pj = &parts[pjd];
 #if (FUNCTION_TASK_LOOP == TASK_LOOP_DENSITY)
-	struct xpart *xpj = &xparts[pjd];
+        struct xpart *xpj = &xparts[pjd];
 #endif
 
         /* Skip inhibited particles. */
@@ -2315,7 +2343,8 @@ void DOSELF2(struct runner *r, struct cell *restrict c) {
             IACT_NONSYM(r2, dx, hi, hj, pi, pj, a, H);
 #if (FUNCTION_TASK_LOOP == TASK_LOOP_DENSITY)
             runner_iact_nonsym_chemistry(r2, dx, hi, hj, pi, pj, a, H);
-            runner_iact_nonsym_star_formation(r2, dx, hi, hj, pi, pj, xpi, xpj, a, H);
+            runner_iact_nonsym_star_formation(r2, dx, hi, hj, pi, pj, xpi, xpj,
+                                              a, H);
 #endif
           }
         }
@@ -2572,7 +2601,8 @@ void DOSUB_SELF2(struct runner *r, struct cell *ci, int gettimer) {
 }
 
 void DOSUB_SUBSET(struct runner *r, struct cell *ci, struct part *parts,
-                  struct xpart *xparts, int *ind, int count, struct cell *cj, int gettimer) {
+                  struct xpart *xparts, int *ind, int count, struct cell *cj,
+                  int gettimer) {
 
   const struct engine *e = r->e;
   struct space *s = e->s;
@@ -2635,11 +2665,11 @@ void DOSUB_SUBSET(struct runner *r, struct cell *ci, struct part *parts,
         const int pid = csp->pairs[k].pid;
         const int pjd = csp->pairs[k].pjd;
         if (ci->progeny[pid] == sub && cj->progeny[pjd] != NULL)
-          DOSUB_SUBSET(r, ci->progeny[pid], parts, xparts, ind, count, cj->progeny[pjd],
-                       0);
+          DOSUB_SUBSET(r, ci->progeny[pid], parts, xparts, ind, count,
+                       cj->progeny[pjd], 0);
         if (ci->progeny[pid] != NULL && cj->progeny[pjd] == sub)
-          DOSUB_SUBSET(r, cj->progeny[pjd], parts, xparts, ind, count, ci->progeny[pid],
-                       0);
+          DOSUB_SUBSET(r, cj->progeny[pjd], parts, xparts, ind, count,
+                       ci->progeny[pid], 0);
       }
     }
 
