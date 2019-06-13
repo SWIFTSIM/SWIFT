@@ -173,6 +173,9 @@ struct part {
   /*! Time-step limiter information */
   struct timestep_limiter_data limiter_data;
 
+  /* Delay time for decoupling from hydro */
+  double delay_time; // ALEXEI: think about which type we want to have here. i.e. integertime_t or double?
+
 #ifdef SWIFT_DEBUG_CHECKS
 
   /* Time of the last drift */

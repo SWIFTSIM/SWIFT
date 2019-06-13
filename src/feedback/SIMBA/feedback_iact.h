@@ -84,8 +84,14 @@ runner_iact_nonsym_feedback_apply(const float r2, const float *dx,
       hydro_set_velocity(pj,si->feedback_data.to_distribute.v_kick);
 
       /* Heat particle */
+      const float u_init = hydro_get_physical_internal_energy(pj, xp, cosmo);
+      const float u_new = u_init + si->feedback_data.to_distribute.delta_u;
+      hydro_set_physical_internal_energy(pj, xp, cosmo, u_new);
+      hydro_set_drifted_physical_internal_energy(pj, cosmo, u_new);
 
       /* Set delaytime before which the particle cannot interact */
+      pj->delay_time = si->feedback_data.to_distribute.simba_delay_time;
+      pj->time_bin = time_bin_decoupled;
     }
   }
 

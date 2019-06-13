@@ -26,6 +26,34 @@
 #include "part.h"
 #include "units.h"
 
+
+/**
+ * @brief Calculates speed particles will be kicked based on
+ * host galaxy properties 
+ *
+ * @param sp The sparticle doing the feedback
+ * @param feedback_props The properties of the feedback model
+ */
+inline void compute_kick_speed(struct spart *sp, const struct feedback_props *feedback_props) {};
+
+/**
+ * @brief Calculates speed particles will be kicked based on
+ * host galaxy properties 
+ *
+ * @param sp The sparticle doing the feedback
+ * @param feedback_props The properties of the feedback model
+ */
+inline void compute_mass_loading(struct spart *sp, const struct feedback_props *feedback_props) {};
+
+/**
+ * @brief Calculates speed particles will be kicked based on
+ * host galaxy properties 
+ *
+ * @param sp The sparticle doing the feedback
+ * @param feedback_props The properties of the feedback model
+ */
+inline void compute_heating(struct spart *sp, const struct feedback_props *feedback_props) {};
+
 /**
  * @brief Prepares a s-particle for its feedback interactions
  *
@@ -111,9 +139,13 @@ __attribute__((always_inline)) INLINE static void feedback_evolve_spart(
     const double star_age_beg_step, const double dt) {
   
   /* Calculate the velocity to kick neighbouring particles with */
-  const float kick_speed_cgs = 1.e6;
-  for (int i = 0; i < 3; i++)
-    sp->feedback_data.to_distribute.v_kick[i] = kick_speed_cgs / units_cgs_conversion_factor(us, UNIT_CONV_VELOCITY);
+  compute_kick_speed(sp, feedback_props);
+
+  /* Compute wind mass loading */
+  compute_mass_loading(sp, feedback_props);
+
+  /* Compute residual heating */
+  compute_heating(sp, feedback_props);
 
 }
 

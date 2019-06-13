@@ -44,6 +44,9 @@ typedef int8_t timebin_t;
 /*! Fictious time-bin to hold particles not yet created */
 #define time_bin_not_created (num_time_bins + 3)
 
+/*! Fictitious time-bin to hold particles decoupled from hydro */
+#define time_bin_decoupled (num_time_bins + 4)
+
 /*! Fictitious time-bin for particles not awaken */
 #define time_bin_not_awake (-num_time_bins)
 
