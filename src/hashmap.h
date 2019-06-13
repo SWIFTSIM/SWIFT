@@ -33,6 +33,9 @@
 #include <stdbool.h>
 #include <stddef.h>
 
+/* Local headers. */
+#include "align.h"
+
 // Type used for chunk bitmasks.
 typedef size_t hashmap_mask_t;
 
@@ -83,7 +86,7 @@ typedef struct _hashmap_chunk {
     void *next;
   };
   hashmap_element_t data[HASHMAP_ELEMENTS_PER_CHUNK];
-} hashmap_chunk_t;
+} SWIFT_STRUCT_ALIGN hashmap_chunk_t;
 
 /* A hashmap has some maximum size and current size,
  * as well as the data to hold. */
@@ -116,6 +119,18 @@ typedef void (*hashmap_mapper_t)(hashmap_key_t, hashmap_value_t *, void *);
  * @brief Initialize a hashmap.
  */
 void hashmap_init(hashmap_t *m);
+
+/**
+ * @brief Re-size the hashmap.
+ *
+ * Note that the hashmap size does not necessarily correspond to its
+ * capacity, since it will grow if too many collisions occur. As a rule
+ * of thumb, allocate twice as many elements as you think you will need.
+ *
+ * @param size New table size. If zero, the current size will be increase
+ *             by a fixed rate.
+ */
+void hashmap_grow(hashmap_t *m, size_t size);
 
 /**
  * @brief Add a key/value pair to the hashmap, overwriting whatever was
