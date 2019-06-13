@@ -1197,7 +1197,7 @@ void runner_do_star_formation(struct runner *r, struct cell *c, int timer) {
  * @param c The top-level cell to run on.
  * @param timer Are we timing this?
  */
-void runner_do_stars_resort(struct runner *r, struct cell *c, int timer) {
+void runner_do_stars_resort(struct runner *r, struct cell *c, const int timer) {
 
 #ifdef SWIFT_DEBUG_CHECKS
   if (c->nodeID != r->e->nodeID) error("Task must be run locally!");
@@ -1212,7 +1212,7 @@ void runner_do_stars_resort(struct runner *r, struct cell *c, int timer) {
     cell_clear_flag(c, cell_flag_do_stars_resort);
   }
 
-  if (clock) TIMER_TOC(timer_dostars_resort);
+  if (timer) TIMER_TOC(timer_do_stars_resort);
 }
 
 /**
