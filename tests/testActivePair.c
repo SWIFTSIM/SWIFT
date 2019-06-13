@@ -113,7 +113,7 @@ struct cell *make_cell(size_t n, double *offset, double size, double h,
         part->entropy = 1.f;
 #elif defined(MINIMAL_SPH) || defined(HOPKINS_PU_SPH) ||           \
     defined(HOPKINS_PU_SPH_MONAGHAN) || defined(ANARCHY_PU_SPH) || \
-    defined(ANARCHY_DU_SPH)
+    defined(ANARCHY_DU_SPH) || defined(DEFAULT_SPH)
         part->u = 1.f;
 #elif defined(HOPKINS_PE_SPH)
         part->entropy = 1.f;
@@ -197,7 +197,7 @@ void zero_particle_fields_force(struct cell *c, const struct cosmology *cosmo,
     p->density.rot_v[2] = 0.f;
     p->density.div_v = 0.f;
 #endif /* GADGET-2 */
-#if defined(MINIMAL_SPH) || defined(ANARCHY_DU_SPH)
+#if defined(MINIMAL_SPH) || defined(ANARCHY_DU_SPH) || defined(DEFAULT_SPH)
     p->rho = 1.f;
     p->density.rho_dh = 0.f;
     p->density.wcount = 48.f / (kernel_norm * pow_dimension(p->h));
