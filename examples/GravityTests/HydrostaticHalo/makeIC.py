@@ -62,15 +62,15 @@ M_vir_cgs = r_vir_cgs * v_c_cgs**2 / CONST_G_CGS
 const_unit_mass_in_cgs = M_vir_cgs
 const_unit_length_in_cgs = r_vir_cgs
 
-print "UnitMass_in_cgs:     ", const_unit_mass_in_cgs 
-print "UnitLength_in_cgs:   ", const_unit_length_in_cgs
-print "UnitVelocity_in_cgs: ", const_unit_velocity_in_cgs
+print("UnitMass_in_cgs:     ", const_unit_mass_in_cgs) 
+print("UnitLength_in_cgs:   ", const_unit_length_in_cgs)
+print("UnitVelocity_in_cgs: ", const_unit_velocity_in_cgs)
 
 #derived quantities
 const_unit_time_in_cgs = (const_unit_length_in_cgs / const_unit_velocity_in_cgs)
-print "UnitTime_in_cgs:     ", const_unit_time_in_cgs
+print("UnitTime_in_cgs:     ", const_unit_time_in_cgs)
 const_G                = ((CONST_G_CGS*const_unit_mass_in_cgs*const_unit_time_in_cgs*const_unit_time_in_cgs/(const_unit_length_in_cgs*const_unit_length_in_cgs*const_unit_length_in_cgs)))
-print 'G=', const_G
+print('G=', const_G)
 
 # Parameters
 periodic= 1            # 1 For periodic box
@@ -108,9 +108,9 @@ coords[:,2] = radius * ctheta
 
 #shift to centre of box
 coords += np.full((N,3),boxSize/2.)
-print "x range = (%f,%f)" %(np.min(coords[:,0]),np.max(coords[:,0]))
-print "y range = (%f,%f)" %(np.min(coords[:,1]),np.max(coords[:,1]))
-print "z range = (%f,%f)" %(np.min(coords[:,2]),np.max(coords[:,2]))
+print("x range = (%f,%f)" %(np.min(coords[:,0]),np.max(coords[:,0])))
+print("y range = (%f,%f)" %(np.min(coords[:,1]),np.max(coords[:,1])))
+print("z range = (%f,%f)" %(np.min(coords[:,2]),np.max(coords[:,2])))
 
 #print np.mean(coords[:,0])
 #print np.mean(coords[:,1])
@@ -156,7 +156,7 @@ z_coords = z_coords[ind]
 
 N = x_coords.size
 
-print "Number of particles in the box = " , N
+print("Number of particles in the box = " , N)
 
 #make the coords and radius arrays again
 coords_2 = np.zeros((N,3))
@@ -168,13 +168,13 @@ radius = np.sqrt(coords_2[:,0]**2 + coords_2[:,1]**2 + coords_2[:,2]**2)
 
 #test we've done it right
 
-print "x range = (%f,%f)" %(np.min(coords_2[:,0]),np.max(coords_2[:,0]))
-print "y range = (%f,%f)" %(np.min(coords_2[:,1]),np.max(coords_2[:,1]))
-print "z range = (%f,%f)" %(np.min(coords_2[:,2]),np.max(coords_2[:,2]))
+print("x range = (%f,%f)" %(np.min(coords_2[:,0]),np.max(coords_2[:,0])))
+print("y range = (%f,%f)" %(np.min(coords_2[:,1]),np.max(coords_2[:,1])))
+print("z range = (%f,%f)" %(np.min(coords_2[:,2]),np.max(coords_2[:,2])))
 
-print np.mean(coords_2[:,0])
-print np.mean(coords_2[:,1])
-print np.mean(coords_2[:,2])
+print(np.mean(coords_2[:,0]))
+print(np.mean(coords_2[:,1]))
+print(np.mean(coords_2[:,2]))
 
 # Header
 grp = file.create_group("/Header")
