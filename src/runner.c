@@ -2379,8 +2379,7 @@ void runner_do_ghost(struct runner *r, struct cell *c, int timer) {
 
             /* Self-interaction? */
             if (l->t->type == task_type_self)
-              runner_doself_subset_branch_density(r, finger, parts, pid,
-                                                  count);
+              runner_doself_subset_branch_density(r, finger, parts, pid, count);
 
             /* Otherwise, pair interaction? */
             else if (l->t->type == task_type_pair) {
@@ -2396,19 +2395,19 @@ void runner_do_ghost(struct runner *r, struct cell *c, int timer) {
 
             /* Otherwise, sub-self interaction? */
             else if (l->t->type == task_type_sub_self)
-              runner_dosub_subset_density(r, finger, parts, pid, count,
-                                          NULL, 1);
+              runner_dosub_subset_density(r, finger, parts, pid, count, NULL,
+					  1);
 
             /* Otherwise, sub-pair interaction? */
             else if (l->t->type == task_type_sub_pair) {
 
               /* Left or right? */
               if (l->t->ci == finger)
-                runner_dosub_subset_density(r, finger, parts, pid,
-                                            count, l->t->cj, 1);
+                runner_dosub_subset_density(r, finger, parts, pid, count,
+					    l->t->cj, 1);
               else
-                runner_dosub_subset_density(r, finger, parts, pid,
-                                            count, l->t->ci, 1);
+                runner_dosub_subset_density(r, finger, parts, pid, count,
+					    l->t->ci, 1);
             }
           }
         }

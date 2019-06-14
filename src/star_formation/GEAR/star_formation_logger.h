@@ -32,8 +32,8 @@
 
 
 /**
- * @brief Update the stellar mass in the current cell after creating
- * the new star particle spart sp
+ * @brief Update the stellar quantities in the current cell after creating
+ * the new star particle spart sp.
  *
  * @param time_step, the current time step of the simulation
  * @param sp new created star particle
@@ -42,10 +42,13 @@
 INLINE static void star_formation_logger_log_new_spart(
     const struct spart *sp, struct star_formation_history *sf) {
 
-  /* Add mass of created sparticle to the total stellar mass in this cell*/
+  /* Add mass of created sparticle to the total stellar mass in this cell */
   sf->stellar_mass += sp->mass;
+
   /* Increase the number of stars */
   sf->number_of_stars += 1;
+
+  /* No need to deal with the integrated quantities, only the engine's one is updated */
 }
 
 /**
@@ -56,12 +59,13 @@ INLINE static void star_formation_logger_log_new_spart(
  */
 INLINE static void star_formation_logger_log_inactive_cell(
     struct star_formation_history *sf) {
+
   /* Initialize the stellar mass to zero */
   sf->stellar_mass = 0.f;
-  /*!initialize number of stars to zero*/
+
+  /* initialize number of stars to zero*/
   sf->number_of_stars = 0;
-  /* Initialize the active SFR */
-  sf->new_sfr = 0.f;
+
 }
 /**
  * @brief Initialize the star formation history structure in the #engine
@@ -71,28 +75,24 @@ INLINE static void star_formation_logger_log_inactive_cell(
 INLINE static void star_formation_logger_init(
     struct star_formation_history *sfh) {
   /* Initialize the collecting SFH structure to zero */
-  sfh->new_sfr = 0.f;
-  sfh->number_of_stars = 0;
-  sfh->stellar_mass = 0.f;
-  /* to be removed when the total quantities will be implemented */
-  sfh->total_number_of_stars = 0;
-  sfh->total_stellar_mass = 0.f;
+  sfh->new_stellar_mass = 0.f;
+  sfh->number_new_stars = 0;
 }
 /**
- * @brief Initialize the star formation history struct in the #engine (once
- * only)
+ * @brief Initialize the star formation history struct in the #engine when
+ * starting the simulation.
  *
  * @param sfh the star_formation_history struct we want to initialize
  */
 INLINE static void star_formation_logger_first_init(
     struct star_formation_history *sfh) {
   /* Initialize all values to zero */
-  sfh->new_sfr = 0.f;
-  sfh->stellar_mass = 0.f;
-  sfh->number_of_stars = 0;
-  sfh->total_number_of_stars = 0;
+  sfh->new_stellar_mass = 0.f;
+  sfh->number_new_stars = 0;
+  sfh->total_number_stars = 0;
   sfh->total_stellar_mass = 0.f;
 }
+
 /**
  * @brief add a star formation history struct to an other star formation history
  * struct
@@ -106,15 +106,36 @@ INLINE static void star_formation_logger_add(
     const struct star_formation_history *sf_add) {
 
   /* Update the SFH structure */
-  sf_update->new_sfr += sf_add->new_sfr;
-  sf_update->number_of_stars += sf_add->number_of_stars;
-  sf_update->stellar_mass += sf_add->stellar_mass;
-  sf_update->total_number_of_stars += sf_add->total_number_of_stars;
-  sf_update->total_stellar_mass += sf_add->total_stellar_mass;
+  sf_update->number_new_stars += sf_add->number_new_stars;
+  sf_update->new_stellar_mass += sf_add->new_stellar_mass;
 }
 
 /**
- * @brief Write the final SFH to a file
+ * @brief add a star formation history struct to an other star formation history
+ * struct
+ *
+ * @param sf_add the star formation struct which we want to add to the star
+ * formation history
+ * @param sf_update the star formation structure which we want to update
+ */
+INLINE static void star_formation_logger_add_to_engine(
+    struct star_formation_history *sf_update,
+    const struct star_formation_history *sf_add) {
+
+  /* Remove self contribution */
+  sf_update->total_number_stars -= sf_update->number_new_stars;
+  sf_update->total_stellar_mass -= sf_update->new_stellar_mass;
+
+  /* Update the SFH structure */
+  sf_update->number_new_stars += sf_add->number_new_stars;
+  sf_update->new_stellar_mass += sf_add->new_stellar_mass;
+  sf_update->total_number_stars += sf_add->number_new_stars;
+  sf_update->total_stellar_mass += sf_add->new_stellar_mass;
+
+}
+
+/**
+za * @brief Write the final SFH to a file
  *
  * @param fp The file to write to.
  * @param time the simulation time (time since Big Bang) in internal units.
@@ -127,8 +148,8 @@ INLINE static void star_formation_logger_write_to_log_file(
     FILE *fp, const double time, const double a, const double z,
     struct star_formation_history sf, const int step) {
 
-  fprintf(fp, "%6d %16e %12.7f %14e %14ld %14e %14e\n", step, time, a, z,
-          sf.number_of_stars, sf.stellar_mass, sf.new_sfr);
+  fprintf(fp, "%6d %16e %12.7f %14e %14ld %14e %14ld %14e\n", step, time, a, z,
+          sf.total_number_stars, sf.total_stellar_mass, sf.number_new_stars, sf.new_stellar_mass);
 }
 /**
  * @brief Initialize the SFH logger file
@@ -156,19 +177,19 @@ INLINE static void star_formation_logger_init_log_file(
   fprintf(fp, "# (2) Scale factor (no unit)\n");
   fprintf(fp, "# (3) Redshift     (no unit)\n");
   fprintf(fp,
-          "# (4) Number of stars formed in the current time step (no unit)\n");
-  fprintf(fp, "# (5) Stellar mass formed in the current time step.\n");
+          "# (4) Total number of stars formed in the simulation (no unit)\n");
+  fprintf(fp, "# (5) Total stellar mass formed in the simulation.\n");
   fprintf(fp, "#     Unit = %e gram\n", us->UnitMass_in_cgs);
   fprintf(fp, "#     Unit = %e solar mass\n",
           1.f / phys_const->const_solar_mass);
-  fprintf(fp, "# (6) Star formation rate in the current time step.\n");
-  fprintf(fp, "#     Unit = %e gram/s\n",
-          us->UnitMass_in_cgs / us->UnitTime_in_cgs);
-  fprintf(fp, "#     Unit = %e Msol/yr\n",
-          phys_const->const_year / phys_const->const_solar_mass);
+  fprintf(fp, "# (6) Number of stars formed in the current time step (no unit).\n");
+  fprintf(fp, "# (7) Mass of stars formed in the current time step.\n");
+  fprintf(fp, "#     Unit = %e gram\n", us->UnitMass_in_cgs);
+  fprintf(fp, "#     Unit = %e solar mass\n",
+          1.f / phys_const->const_solar_mass);
   fprintf(fp,
           "# (0)         (1)            (2)          (3)                   (4) "
-          "      (5)        (6)\n");
+          "      (5)        (6)        (7)\n");
 }
 
 /**

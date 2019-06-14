@@ -578,8 +578,7 @@ void DOSELF2_NAIVE(struct runner *r, struct cell *restrict c) {
  * @param shift The shift vector to apply to the particles in ci.
  */
 void DOPAIR_SUBSET_NAIVE(struct runner *r, struct cell *restrict ci,
-                         struct part *restrict parts_i,
-                         int *restrict ind,
+                         struct part *restrict parts_i, int *restrict ind,
                          int count, struct cell *restrict cj,
                          const double *shift) {
 
@@ -665,10 +664,9 @@ void DOPAIR_SUBSET_NAIVE(struct runner *r, struct cell *restrict ci,
  * @param shift The shift vector to apply to the particles in ci.
  */
 void DOPAIR_SUBSET(struct runner *r, struct cell *restrict ci,
-                   struct part *restrict parts_i,
-                   int *restrict ind,
-                   int count, struct cell *restrict cj, const int sid,
-                   const int flipped, const double *shift) {
+                   struct part *restrict parts_i, int *restrict ind, int count,
+		   struct cell *restrict cj, const int sid, const int flipped,
+		   const double *shift) {
 
   const struct engine *e = r->e;
   const struct cosmology *cosmo = e->cosmology;
@@ -814,8 +812,7 @@ void DOPAIR_SUBSET(struct runner *r, struct cell *restrict ci,
  * @param cj The second #cell.
  */
 void DOPAIR_SUBSET_BRANCH(struct runner *r, struct cell *restrict ci,
-                          struct part *restrict parts_i,
-                          int *restrict ind,
+                          struct part *restrict parts_i, int *restrict ind,
                           int count, struct cell *restrict cj) {
 
   const struct engine *e = r->e;
@@ -857,8 +854,7 @@ void DOPAIR_SUBSET_BRANCH(struct runner *r, struct cell *restrict ci,
     runner_dopair_subset_density_vec(r, ci, parts_i, ind, count, cj, sid,
                                      flipped, shift);
   else
-    DOPAIR_SUBSET(r, ci, parts_i, ind, count, cj, sid, flipped,
-                  shift);
+    DOPAIR_SUBSET(r, ci, parts_i, ind, count, cj, sid, flipped, shift);
 #else
   DOPAIR_SUBSET(r, ci, parts_i, ind, count, cj, sid, flipped, shift);
 #endif
@@ -875,8 +871,7 @@ void DOPAIR_SUBSET_BRANCH(struct runner *r, struct cell *restrict ci,
  * @param count The number of particles in @c ind.
  */
 void DOSELF_SUBSET(struct runner *r, struct cell *restrict ci,
-                   struct part *restrict parts,
-                   int *restrict ind, int count) {
+                   struct part *restrict parts, int *restrict ind, int count) {
 
   const struct engine *e = r->e;
   const struct cosmology *cosmo = e->cosmology;
@@ -956,8 +951,7 @@ void DOSELF_SUBSET(struct runner *r, struct cell *restrict ci,
  * @param count The number of particles in @c ind.
  */
 void DOSELF_SUBSET_BRANCH(struct runner *r, struct cell *restrict ci,
-                          struct part *restrict parts,
-                          int *restrict ind,
+                          struct part *restrict parts, int *restrict ind,
                           int count) {
 
 #if defined(WITH_VECTORIZATION) && defined(GADGET2_SPH)
@@ -2443,8 +2437,7 @@ void DOSUB_SELF2(struct runner *r, struct cell *ci, int gettimer) {
 }
 
 void DOSUB_SUBSET(struct runner *r, struct cell *ci, struct part *parts,
-                  int *ind, int count, struct cell *cj,
-                  int gettimer) {
+		  int *ind, int count, struct cell *cj, int gettimer) {
 
   const struct engine *e = r->e;
   struct space *s = e->s;
@@ -2507,11 +2500,11 @@ void DOSUB_SUBSET(struct runner *r, struct cell *ci, struct part *parts,
         const int pid = csp->pairs[k].pid;
         const int pjd = csp->pairs[k].pjd;
         if (ci->progeny[pid] == sub && cj->progeny[pjd] != NULL)
-          DOSUB_SUBSET(r, ci->progeny[pid], parts, ind, count,
-                       cj->progeny[pjd], 0);
+          DOSUB_SUBSET(r, ci->progeny[pid], parts, ind, count, cj->progeny[pjd],
+		       0);
         if (ci->progeny[pid] != NULL && cj->progeny[pjd] == sub)
-          DOSUB_SUBSET(r, cj->progeny[pjd], parts, ind, count,
-                       ci->progeny[pid], 0);
+          DOSUB_SUBSET(r, cj->progeny[pjd], parts, ind, count, ci->progeny[pid],
+		       0);
       }
     }
 

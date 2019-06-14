@@ -122,7 +122,8 @@ void collectgroup1_apply(const struct collectgroup1 *grp1, struct engine *e) {
   e->total_nr_cells = grp1->total_nr_cells;
   e->total_nr_tasks = grp1->total_nr_tasks;
   e->tasks_per_cell_max = grp1->tasks_per_cell_max;
-  e->sfh = grp1->sfh;
+
+  star_formation_logger_add_to_engine(e->sfh, grp1->sfh);
 }
 
 /**

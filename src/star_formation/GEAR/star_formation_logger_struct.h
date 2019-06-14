@@ -28,7 +28,7 @@ struct star_formation_history {
   float total_stellar_mass;
 
   /*! Total number of stars */
-  long int total_number_of_stars;
+  long int total_number_stars;
 
   /*! Stellar mass created in the current timestep */
   float new_stellar_mass;
