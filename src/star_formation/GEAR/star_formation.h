@@ -1,6 +1,7 @@
 /*******************************************************************************
  * This file is part of SWIFT.
- * Copyright (c) 2018 Folkert Nobels (nobels@strw.leidenuniv.nl)
+ * Coypright (c) 2019 Loic Hausammann (loic.hausammann@epfl.ch)
+ *               2019 Fabien Jeanquartier (fabien.jeanquartier@epfl.ch)
  *
  * This program is free software: you can redistribute it and/or modify
  * it under the terms of the GNU Lesser General Public License as published
@@ -352,15 +353,13 @@ star_formation_part_has_no_neighbours(struct part* restrict p,
  * @param cosmo The current cosmological model.
  * @param data The global star_formation information used for this run.
  * @param p Pointer to the particle data.
- * @param xp Pointer to the extended particle data.
  */
 __attribute__((always_inline)) INLINE static void
 star_formation_first_init_part(const struct phys_const* restrict phys_const,
                                const struct unit_system* restrict us,
                                const struct cosmology* restrict cosmo,
                                const struct star_formation* data,
-                               struct part* restrict p,
-                               struct xpart* restrict xp) {
+                               struct part* restrict p) {
 
   xp->sf_data.sigma2 = 0.f;
 }

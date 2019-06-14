@@ -4082,8 +4082,7 @@ void space_first_init_parts_mapper(void *restrict map_data, int count,
     chemistry_first_init_part(phys_const, us, cosmo, chemistry, &p[k], &xp[k]);
 
     /* Also initialise the star formation */
-    star_formation_first_init_part(phys_const, us, cosmo, star_formation, &p[k],
-                                   &xp[k]);
+    star_formation_first_init_part(phys_const, us, cosmo, star_formation, &p[k]);
 
     /* And the cooling */
     cooling_first_init_part(phys_const, us, cosmo, cool_func, &p[k], &xp[k]);

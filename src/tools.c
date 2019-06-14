@@ -190,7 +190,6 @@ void pairs_all_density(struct runner *r, struct cell *ci, struct cell *cj) {
 
   float r2, hi, hj, hig2, hjg2, dx[3];
   struct part *pi, *pj;
-  struct xpart *xpi, *xpj;
   const double dim[3] = {r->e->s->dim[0], r->e->s->dim[1], r->e->s->dim[2]};
   const struct engine *e = r->e;
   const struct cosmology *cosmo = e->cosmology;
@@ -201,7 +200,6 @@ void pairs_all_density(struct runner *r, struct cell *ci, struct cell *cj) {
   for (int i = 0; i < ci->hydro.count; ++i) {
 
     pi = &ci->hydro.parts[i];
-    xpi = &ci->hydro.xparts[i];
     hi = pi->h;
     hig2 = hi * hi * kernel_gamma2;
 
@@ -211,7 +209,6 @@ void pairs_all_density(struct runner *r, struct cell *ci, struct cell *cj) {
     for (int j = 0; j < cj->hydro.count; ++j) {
 
       pj = &cj->hydro.parts[j];
-      xpj = &cj->hydro.xparts[j];
 
       /* Pairwise distance */
       r2 = 0.0f;
@@ -227,8 +224,7 @@ void pairs_all_density(struct runner *r, struct cell *ci, struct cell *cj) {
         /* Interact */
         runner_iact_nonsym_density(r2, dx, hi, pj->h, pi, pj, a, H);
         runner_iact_nonsym_chemistry(r2, dx, hi, pj->h, pi, pj, a, H);
-        runner_iact_nonsym_star_formation(r2, dx, hi, pj->h, pi, pj, xpi, xpj,
-                                          a, H);
+        runner_iact_nonsym_star_formation(r2, dx, hi, pj->h, pi, pj, a, H);
       }
     }
   }
@@ -237,7 +233,6 @@ void pairs_all_density(struct runner *r, struct cell *ci, struct cell *cj) {
   for (int j = 0; j < cj->hydro.count; ++j) {
 
     pj = &cj->hydro.parts[j];
-    xpj = &cj->hydro.xparts[j];
     hj = pj->h;
     hjg2 = hj * hj * kernel_gamma2;
 
@@ -247,7 +242,6 @@ void pairs_all_density(struct runner *r, struct cell *ci, struct cell *cj) {
     for (int i = 0; i < ci->hydro.count; ++i) {
 
       pi = &ci->hydro.parts[i];
-      xpi = &ci->hydro.xparts[i];
 
       /* Pairwise distance */
       r2 = 0.0f;
@@ -263,8 +257,7 @@ void pairs_all_density(struct runner *r, struct cell *ci, struct cell *cj) {
         /* Interact */
         runner_iact_nonsym_density(r2, dx, hj, pi->h, pj, pi, a, H);
         runner_iact_nonsym_chemistry(r2, dx, hj, pi->h, pj, pi, a, H);
-        runner_iact_nonsym_star_formation(r2, dx, hj, pi->h, pj, pi, xpj, xpi,
-                                          a, H);
+        runner_iact_nonsym_star_formation(r2, dx, hj, pi->h, pj, pi, a, H);
       }
     }
   }
@@ -509,7 +502,6 @@ void pairs_all_stars_density(struct runner *r, struct cell *ci,
 void self_all_density(struct runner *r, struct cell *ci) {
   float r2, hi, hj, hig2, hjg2, dxi[3];  //, dxj[3];
   struct part *pi, *pj;
-  struct xpart *xpi, *xpj;
   const struct engine *e = r->e;
   const struct cosmology *cosmo = e->cosmology;
   const float a = cosmo->a;
@@ -519,14 +511,12 @@ void self_all_density(struct runner *r, struct cell *ci) {
   for (int i = 0; i < ci->hydro.count; ++i) {
 
     pi = &ci->hydro.parts[i];
-    xpi = &ci->hydro.xparts[i];
     hi = pi->h;
     hig2 = hi * hi * kernel_gamma2;
 
     for (int j = i + 1; j < ci->hydro.count; ++j) {
 
       pj = &ci->hydro.parts[j];
-      xpj = &ci->hydro.xparts[j];
       hj = pj->h;
       hjg2 = hj * hj * kernel_gamma2;
 
@@ -545,8 +535,7 @@ void self_all_density(struct runner *r, struct cell *ci) {
         /* Interact */
         runner_iact_nonsym_density(r2, dxi, hi, hj, pi, pj, a, H);
         runner_iact_nonsym_chemistry(r2, dxi, hi, hj, pi, pj, a, H);
-        runner_iact_nonsym_star_formation(r2, dxi, hi, hj, pi, pj, xpi, xpj, a,
-                                          H);
+        runner_iact_nonsym_star_formation(r2, dxi, hi, hj, pi, pj, a, H);
       }
 
       /* Hit or miss? */
@@ -559,8 +548,7 @@ void self_all_density(struct runner *r, struct cell *ci) {
         /* Interact */
         runner_iact_nonsym_density(r2, dxi, hj, hi, pj, pi, a, H);
         runner_iact_nonsym_chemistry(r2, dxi, hj, hi, pj, pi, a, H);
-        runner_iact_nonsym_star_formation(r2, dxi, hj, hi, pj, pi, xpj, xpi, a,
-                                          H);
+        runner_iact_nonsym_star_formation(r2, dxi, hj, hi, pj, pi, a, H);
       }
     }
   }

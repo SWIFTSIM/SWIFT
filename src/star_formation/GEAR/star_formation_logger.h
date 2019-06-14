@@ -1,6 +1,7 @@
 /*******************************************************************************
  * This file is part of SWIFT.
- * Copyright (c) 2019 Folkert Nobels (nobels@strw.leidenuniv.nl)
+ * Coypright (c) 2019 Loic Hausammann (loic.hausammann@epfl.ch)
+ *               2019 Fabien Jeanquartier (fabien.jeanquartier@epfl.ch)
  *
  * This program is free software: you can redistribute it and/or modify
  * it under the terms of the GNU Lesser General Public License as published
@@ -16,8 +17,8 @@
  * along with this program.  If not, see <http://www.gnu.org/licenses/>.
  *
  *******************************************************************************/
-#ifndef SWIFT_EAGLE_STARFORMATION_LOGGER_H
-#define SWIFT_EAGLE_STARFORMATION_LOGGER_H
+#ifndef SWIFT_GEAR_STARFORMATION_LOGGER_H
+#define SWIFT_GEAR_STARFORMATION_LOGGER_H
 
 /* Some standard headers */
 #include <stdlib.h>
@@ -28,25 +29,23 @@
 #include "part.h"
 #include "star_formation_logger_struct.h"
 #include "units.h"
+
+
 /**
  * @brief Update the stellar mass in the current cell after creating
  * the new star particle spart sp
+ *
  * @param time_step, the current time step of the simulation
  * @param sp new created star particle
  * @param sf the star_formation_history struct of the current cell
  */
 INLINE static void star_formation_logger_log_new_spart(
-    const struct spart *sp, struct star_formation_history *sf,
-    const double time_step) {
+    const struct spart *sp, struct star_formation_history *sf) {
 
   /* Add mass of created sparticle to the total stellar mass in this cell*/
   sf->stellar_mass += sp->mass;
-  sf->total_stellar_mass += sp->mass;
   /* Increase the number of stars */
   sf->number_of_stars += 1;
-  sf->total_number_of_stars += 1;
-  /* Approximation of the SFR */
-  sf->new_sfr += sp->mass / time_step;
 }
 
 /**
@@ -201,4 +200,4 @@ INLINE static void star_formation_logger_log_inactive_part(
     const struct part *p, const struct xpart *xp,
     struct star_formation_history *sf) {}
 
-#endif /* SWIFT_EAGLE_STARFORMATION_LOGGER_H */
+#endif /* SWIFT_GEAR_STARFORMATION_LOGGER_H */
