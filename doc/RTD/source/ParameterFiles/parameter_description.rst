@@ -568,8 +568,9 @@ been activated, the previous set of restart files will be named
 ``basename_000000.rst.prev``.
 
 SWIFT can also be stopped by creating an empty file called ``stop`` in the
-directory where the code runs. This will make SWIFT dump a fresh set of restart
-file (irrespective of the specified ``delta_time`` between dumps) and exit
+directory where the restart files are written (i.e. the directory speicified by
+the parameter ``subdir``). This will make SWIFT dump a fresh set of restart file
+(irrespective of the specified ``delta_time`` between dumps) and exit
 cleanly. One parameter governs this behaviour:
 
 * Number of steps between two checks for the presence of a ``stop`` file:
