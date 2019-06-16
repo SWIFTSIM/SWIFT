@@ -35,7 +35,6 @@ struct star_formation_history {
 
   /*! Number of stars created in this timestep */
   long int number_new_stars;
-
 };
 
 #endif /* SWIFT_GEAR_STAR_FORMATION_LOGGER_STRUCT_H */

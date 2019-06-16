@@ -665,8 +665,8 @@ void DOPAIR_SUBSET_NAIVE(struct runner *r, struct cell *restrict ci,
  */
 void DOPAIR_SUBSET(struct runner *r, struct cell *restrict ci,
                    struct part *restrict parts_i, int *restrict ind, int count,
-		   struct cell *restrict cj, const int sid, const int flipped,
-		   const double *shift) {
+                   struct cell *restrict cj, const int sid, const int flipped,
+                   const double *shift) {
 
   const struct engine *e = r->e;
   const struct cosmology *cosmo = e->cosmology;
@@ -2437,7 +2437,7 @@ void DOSUB_SELF2(struct runner *r, struct cell *ci, int gettimer) {
 }
 
 void DOSUB_SUBSET(struct runner *r, struct cell *ci, struct part *parts,
-		  int *ind, int count, struct cell *cj, int gettimer) {
+                  int *ind, int count, struct cell *cj, int gettimer) {
 
   const struct engine *e = r->e;
   struct space *s = e->s;
@@ -2501,10 +2501,10 @@ void DOSUB_SUBSET(struct runner *r, struct cell *ci, struct part *parts,
         const int pjd = csp->pairs[k].pjd;
         if (ci->progeny[pid] == sub && cj->progeny[pjd] != NULL)
           DOSUB_SUBSET(r, ci->progeny[pid], parts, ind, count, cj->progeny[pjd],
-		       0);
+                       0);
         if (ci->progeny[pid] != NULL && cj->progeny[pjd] == sub)
           DOSUB_SUBSET(r, cj->progeny[pjd], parts, ind, count, ci->progeny[pid],
-		       0);
+                       0);
       }
     }
 

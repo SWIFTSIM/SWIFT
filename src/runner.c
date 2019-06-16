@@ -2387,16 +2387,16 @@ void runner_do_ghost(struct runner *r, struct cell *c, int timer) {
               /* Left or right? */
               if (l->t->ci == finger)
                 runner_dopair_subset_branch_density(r, finger, parts, pid,
-						    count, l->t->cj);
+                                                    count, l->t->cj);
               else
                 runner_dopair_subset_branch_density(r, finger, parts, pid,
-						    count, l->t->ci);
+                                                    count, l->t->ci);
             }
 
             /* Otherwise, sub-self interaction? */
             else if (l->t->type == task_type_sub_self)
               runner_dosub_subset_density(r, finger, parts, pid, count, NULL,
-					  1);
+                                          1);
 
             /* Otherwise, sub-pair interaction? */
             else if (l->t->type == task_type_sub_pair) {
@@ -2404,10 +2404,10 @@ void runner_do_ghost(struct runner *r, struct cell *c, int timer) {
               /* Left or right? */
               if (l->t->ci == finger)
                 runner_dosub_subset_density(r, finger, parts, pid, count,
-					    l->t->cj, 1);
+                                            l->t->cj, 1);
               else
                 runner_dosub_subset_density(r, finger, parts, pid, count,
-					    l->t->ci, 1);
+                                            l->t->ci, 1);
             }
           }
         }

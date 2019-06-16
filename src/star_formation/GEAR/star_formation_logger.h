@@ -30,7 +30,6 @@
 #include "star_formation_logger_struct.h"
 #include "units.h"
 
-
 /**
  * @brief Update the stellar quantities in the current cell after creating
  * the new star particle spart sp.
@@ -48,7 +47,8 @@ INLINE static void star_formation_logger_log_new_spart(
   /* Increase the number of stars */
   sf->number_of_stars += 1;
 
-  /* No need to deal with the integrated quantities, only the engine's one is updated */
+  /* No need to deal with the integrated quantities, only the engine's one is
+   * updated */
 }
 
 /**
@@ -65,7 +65,6 @@ INLINE static void star_formation_logger_log_inactive_cell(
 
   /* initialize number of stars to zero*/
   sf->number_of_stars = 0;
-
 }
 /**
  * @brief Initialize the star formation history structure in the #engine
@@ -131,7 +130,6 @@ INLINE static void star_formation_logger_add_to_engine(
   sf_update->new_stellar_mass += sf_add->new_stellar_mass;
   sf_update->total_number_stars += sf_add->number_new_stars;
   sf_update->total_stellar_mass += sf_add->new_stellar_mass;
-
 }
 
 /**
@@ -149,7 +147,8 @@ INLINE static void star_formation_logger_write_to_log_file(
     struct star_formation_history sf, const int step) {
 
   fprintf(fp, "%6d %16e %12.7f %14e %14ld %14e %14ld %14e\n", step, time, a, z,
-          sf.total_number_stars, sf.total_stellar_mass, sf.number_new_stars, sf.new_stellar_mass);
+          sf.total_number_stars, sf.total_stellar_mass, sf.number_new_stars,
+          sf.new_stellar_mass);
 }
 /**
  * @brief Initialize the SFH logger file
@@ -182,7 +181,8 @@ INLINE static void star_formation_logger_init_log_file(
   fprintf(fp, "#     Unit = %e gram\n", us->UnitMass_in_cgs);
   fprintf(fp, "#     Unit = %e solar mass\n",
           1.f / phys_const->const_solar_mass);
-  fprintf(fp, "# (6) Number of stars formed in the current time step (no unit).\n");
+  fprintf(fp,
+          "# (6) Number of stars formed in the current time step (no unit).\n");
   fprintf(fp, "# (7) Mass of stars formed in the current time step.\n");
   fprintf(fp, "#     Unit = %e gram\n", us->UnitMass_in_cgs);
   fprintf(fp, "#     Unit = %e solar mass\n",
