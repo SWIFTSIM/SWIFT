@@ -195,10 +195,10 @@ INLINE static void star_formation_logger_init_log_file(
 /**
  * @brief Add the SFR tracer to the total active SFR of this cell
  *
+ * Nothing to do here
+ *
  * @param p the #part
  * @param xp the #xpart
- *
- * Nothing to do here
  *
  * @param sf the SFH logger struct
  * @param dt_star The length of the time-step in physical internal units.

@@ -24,31 +24,26 @@
  * data.
  */
 struct star_formation_xpart_data {
-  /*!star formation rate (mass/(time*volume))*/
-  double SFR;
+
+  // TODO move it to the pressure floor
   /*! Estimation of local turbulence (squared) */
   float sigma2;
 };
 
-/* Starformation struct */
+/**
+ * @brief Global star formation properties
+ */
 struct star_formation {
-  /*! Njeans number. We request that the SPH mass resolution is Njeans times
-   * smaller than the Jeans mass*/
-  int Njeans;
-  /*!star formation efficency. If the particle can create a star, it happens
-   * with this probablity*/
-  double star_formation_rate;
-  /*!do we include local turbulence*/
-  int with_sigma;
-  /*!Maximum temperature to allow star formation* (should be about 10'000 or
-   * 30'000 K*/
-  double Max_temperature;
-  /*!some other useful elements*/
-  const struct hydro_props* restrict hydro_props;
-  /*!units*/
-  const struct unit_system* restrict us;
-  /*! physical constants*/
-  const struct phys_const* phys_const;
+
+  // TODO move it to pressure floor
+  /*! Number of particle required to resolved the Jeans criterion (at power 2/3) */
+  float n_jeans_2_3;
+
+  /*! Maximal temperature for forming a star */
+  float maximal_temperature;
+
+  /*! Star formation efficiency */
+  float star_formation_efficiency;
 };
 
 #endif /* SWIFT_GEAR_STAR_FORMATION_STRUCT_H */

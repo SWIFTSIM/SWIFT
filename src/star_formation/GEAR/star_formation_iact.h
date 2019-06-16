@@ -29,6 +29,8 @@
  * @brief do star_formation computation after the runner_iact_density (symmetric
  * version)
  *
+ * Compute the velocity dispersion follow eq. 2 in Revaz & Jablonka 2018.
+ *
  * @param r2 Comoving square distance between the two particles.
  * @param dx Comoving vector separating both particles (pi - pj).
  * @param hi Comoving smoothing-length of particle i.
@@ -42,21 +44,26 @@ __attribute__((always_inline)) INLINE static void runner_iact_star_formation(
     float r2, const float *dx, float hi, float hj, struct part *restrict pi,
     struct part *restrict pj, struct xpart *restrict xpi,
     struct xpart *restrict xpj, float a, float H) {
-  /* The goal here is to estimate the local turbulence */
-  /* Value used to evaluate the SPH kernel */
+
   float wi;
   float wj;
   /* Evaluation of the SPH kernel */
   kernel_eval(sqrt(r2) / hi, &wi);
   kernel_eval(sqrt(r2) / hj, &wj);
-  /* Square of the velocity norm between particles i and j */
-  float norm_v2 = pow(pi->v[0] - pj->v[0], 2) + pow(pi->v[1] - pj->v[1], 2) +
-                  pow(pi->v[2] - pj->v[2], 2);
 
-  /* Estimation of local turbulence for pi and pj, see Revaz & Jablonka, eq (2)
-   */
-  xpi->sf_data.sigma2 += pow(hi, -3) * norm_v2 * wi * hydro_get_mass(pj);
-  xpj->sf_data.sigma2 += pow(hj, -3) * norm_v2 * wj * hydro_get_mass(pi);
+  /* Delta v */
+  float dv[3] = {
+    pi->v[0] - pj->v[0],
+    pi->v[1] - pj->v[1],
+    pi->v[2] - pj->v[2]
+  };
+
+  /* Square of delta v */
+  float norm_v2 = dv[0] * dv[0] + dv[1] * dv[1] + dv[2] * dv[2];
+
+  /* Compute the velocity dispersion */
+  xpi->sf_data.sigma2 += norm_v2 * wi * hydro_get_mass(pj);
+  xpj->sf_data.sigma2 += norm_v2 * wj * hydro_get_mass(pi);
 }
 
 /**
@@ -78,17 +85,23 @@ runner_iact_nonsym_star_formation(float r2, const float *dx, float hi, float hj,
                                   const struct part *restrict pj,
                                   struct xpart *restrict xpi,
                                   const struct xpart *restrict xpj, float a,
-                                  float H)
-/* The goal here is to estimate the local turbulence */
-/* Value used to evaluate the SPH kernel */
-{
+                                  float H) {
   float wi;
   /* Evaluation of the SPH kernel */
   kernel_eval(sqrt(r2) / hi, &wi);
-  /* Square of the velocity norm */
-  float norm_v2 = pow(pi->v[0] - pj->v[0], 2) + pow(pi->v[1] - pj->v[1], 2) +
-                  pow(pi->v[2] - pj->v[2], 2);
-  /* Estimation of local turbulence for pi */
-  xpi->sf_data.sigma2 += pow(hi, -3) * norm_v2 * wi * hydro_get_mass(pj);
+
+  /* Delta v */
+  float dv[3] = {
+    pi->v[0] - pj->v[0],
+    pi->v[1] - pj->v[1],
+    pi->v[2] - pj->v[2]
+  };
+
+  /* Square of delta v */
+  float norm_v2 = dv[0] * dv[0] + dv[1] * dv[1] + dv[2] * dv[2];
+
+  /* Compute the velocity dispersion */
+  xpi->sf_data.sigma2 += norm_v2 * wi * hydro_get_mass(pj);
 }
+
 #endif /* SWIFT_GEAR_STAR_FORMATION_IACT_H */
