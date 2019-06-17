@@ -517,6 +517,14 @@ following pages:
 * :ref:`Output_list_label` (to have snapshots not evenly spaced in time),
 * :ref:`Output_selection_label` (to select what particle fields to write).
 
+.. _Parameters_fof:
+
+Friends-Of-Friends (FOF)
+------------------------
+
+The parameters are described separately on the page
+:ref:`Fof_Parameter_Description_label` within the more general
+:ref:`Friends_Of_Friends_label` description.
 
 .. _Parameters_statistics:
 
