@@ -5363,6 +5363,9 @@ void cell_remove_gpart(const struct engine *e, struct cell *c,
   if (c->nodeID != e->nodeID)
     error("Can't remove a particle in a foreign cell.");
 
+  if (gp->type == swift_type_dark_matter_background)
+    error("Can't remove a DM background particle!");
+
   /* Mark the particle as inhibited */
   gp->time_bin = time_bin_inhibited;
 

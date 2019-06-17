@@ -4532,6 +4532,7 @@ void space_convert_quantities(struct space *s, int verbose) {
  * @param hydro flag whether we are doing hydro or not?
  * @param self_gravity flag whether we are doing gravity or not?
  * @param star_formation flag whether we are doing star formation or not?
+ * @param DM_background Are we running with some DM background particles?
  * @param verbose Print messages to stdout or not.
  * @param dry_run If 1, just initialise stuff, don't do anything with the parts.
  *
@@ -4546,7 +4547,8 @@ void space_init(struct space *s, struct swift_params *params,
                 struct bpart *bparts, size_t Npart, size_t Ngpart,
                 size_t Nspart, size_t Nbpart, int periodic, int replicate,
                 int generate_gas_in_ics, int hydro, int self_gravity,
-                int star_formation, int verbose, int dry_run) {
+                int star_formation, int DM_background, int verbose,
+                int dry_run) {
 
   /* Clean-up everything */
   bzero(s, sizeof(struct space));
@@ -4559,6 +4561,7 @@ void space_init(struct space *s, struct swift_params *params,
   s->with_self_gravity = self_gravity;
   s->with_hydro = hydro;
   s->with_star_formation = star_formation;
+  s->with_DM_background = DM_background;
   s->nr_parts = Npart;
   s->nr_gparts = Ngpart;
   s->nr_sparts = Nspart;

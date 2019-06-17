@@ -949,6 +949,10 @@ int main(int argc, char *argv[]) {
           N_total[swift_type_black_hole], N_total[swift_type_dark_matter],
           N_total[swift_type_dark_matter_background]);
 
+    /* Do we have background DM particles? */
+    const int with_DM_background_particles =
+        N_total[swift_type_dark_matter_background] > 0;
+
     /* Verify that the fields to dump actually exist */
     if (myrank == 0) io_check_output_fields(params, N_total);
 
@@ -956,8 +960,8 @@ int main(int argc, char *argv[]) {
     if (myrank == 0) clocks_gettime(&tic);
     space_init(&s, params, &cosmo, dim, parts, gparts, sparts, bparts, Ngas,
                Ngpart, Nspart, Nbpart, periodic, replicate, generate_gas_in_ics,
-               with_hydro, with_self_gravity, with_star_formation, talking,
-               dry_run);
+               with_hydro, with_self_gravity, with_star_formation,
+               with_DM_background_particles, talking, dry_run);
 
     if (myrank == 0) {
       clocks_gettime(&toc);

@@ -727,6 +727,7 @@ void write_output_single(struct engine* e, const char* baseName,
   const int with_cooling = e->policy & engine_policy_cooling;
   const int with_temperature = e->policy & engine_policy_temperature;
   const int with_fof = e->policy & engine_policy_fof;
+  const int with_DM_background = e->s->with_DM_background;
 #ifdef HAVE_VELOCIRAPTOR
   const int with_stf = (e->policy & engine_policy_structure_finding) &&
                        (e->s->gpart_group_data != NULL);
@@ -742,7 +743,13 @@ void write_output_single(struct engine* e, const char* baseName,
   // const size_t Nbaryons = Ngas + Nstars;
   // const size_t Ndm = Ntot > 0 ? Ntot - Nbaryons : 0;
 
-  /* Number of particles that we will write */
+  size_t Ndm_background = 0;
+  if (with_DM_background) {
+    Ndm_background = io_count_dm_background_gparts(gparts, Ntot);
+  }
+
+  /* Number of particles that we will write
+   * Recall that background particles are never inhibited and have no extras */
   const size_t Ntot_written =
       e->s->nr_gparts - e->s->nr_inhibited_gparts - e->s->nr_extra_gparts;
   const size_t Ngas_written =
@@ -754,11 +761,12 @@ void write_output_single(struct engine* e, const char* baseName,
   const size_t Nbaryons_written =
       Ngas_written + Nstars_written + Nblackholes_written;
   const size_t Ndm_written =
-      Ntot_written > 0 ? Ntot_written - Nbaryons_written : 0;
+      Ntot_written > 0 ? Ntot_written - Nbaryons_written - Ndm_background : 0;
 
   /* Format things in a Gadget-friendly array */
   long long N_total[swift_type_count] = {
-      (long long)Ngas_written,   (long long)Ndm_written,        0, 0,
+      (long long)Ngas_written,   (long long)Ndm_written,
+      (long long)Ndm_background, 0,
       (long long)Nstars_written, (long long)Nblackholes_written};
 
   /* File name */
@@ -1058,7 +1066,7 @@ void write_output_single(struct engine* e, const char* baseName,
       case swift_type_dark_matter: {
         if (Ntot == Ndm_written) {
 
-          /* This is a DM-only run without inhibited particles */
+          /* This is a DM-only run without background or inhibited particles */
           N = Ntot;
           darkmatter_write_particles(gparts, list, &num_fields);
           if (with_fof) {
@@ -1103,6 +1111,43 @@ void write_output_single(struct engine* e, const char* baseName,
             num_fields += velociraptor_write_gparts(gpart_group_data_written,
                                                     list + num_fields);
           }
+        }
+      } break;
+
+      case swift_type_dark_matter_background: {
+
+        /* Ok, we need to fish out the particles we want */
+        N = Ndm_background;
+
+        /* Allocate temporary array */
+        if (swift_memalign("gparts_written", (void**)&gparts_written,
+                           gpart_align,
+                           Ndm_background * sizeof(struct gpart)) != 0)
+          error("Error while allocating temporart memory for gparts");
+
+        if (with_stf) {
+          if (swift_memalign(
+                  "gpart_group_written", (void**)&gpart_group_data_written,
+                  gpart_align,
+                  Ndm_background * sizeof(struct velociraptor_gpart_data)) != 0)
+            error(
+                "Error while allocating temporart memory for gparts STF "
+                "data");
+        }
+
+        /* Collect the non-inhibited DM particles from gpart */
+        io_collect_gparts_background_to_write(
+            gparts, e->s->gpart_group_data, gparts_written,
+            gpart_group_data_written, Ntot, Ndm_background, with_stf);
+
+        /* Select the fields to write */
+        darkmatter_write_particles(gparts_written, list, &num_fields);
+        if (with_fof) {
+            num_fields += fof_write_gparts(gparts_written, list + num_fields);
+        }
+        if (with_stf) {
+          num_fields += velociraptor_write_gparts(gpart_group_data_written,
+                                                  list + num_fields);
         }
       } break;
 

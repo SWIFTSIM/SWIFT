@@ -1585,6 +1585,20 @@ void io_prepare_dm_background_gparts(struct threadpool* tp,
                  sizeof(struct gpart), 0, NULL);
 }
 
+size_t io_count_dm_background_gparts(const struct gpart* const gparts,
+                                     const size_t Ndm) {
+
+  swift_declare_aligned_ptr(const struct gpart, gparts_array, gparts,
+                            gpart_align);
+
+  size_t count = 0;
+  for (size_t i = 0; i < Ndm; ++i) {
+    if (gparts[i].type == swift_type_dark_matter_background) ++count;
+  }
+
+  return count;
+}
+
 struct duplication_data {
 
   struct part* parts;
@@ -1880,7 +1894,8 @@ void io_collect_bparts_to_write(const struct bpart* restrict bparts,
 }
 
 /**
- * @brief Copy every non-inhibited DM #gpart into the gparts_written array.
+ * @brief Copy every non-inhibited regulat DM #gpart into the gparts_written
+ * array.
  *
  * @param gparts The array of #gpart containing all particles.
  * @param vr_data The array of gpart-related VELOCIraptor output.
@@ -1908,6 +1923,50 @@ void io_collect_gparts_to_write(
     if ((gparts[i].time_bin != time_bin_inhibited) &&
         (gparts[i].time_bin != time_bin_not_created) &&
         (gparts[i].type == swift_type_dark_matter)) {
+
+      if (with_stf) vr_data_written[count] = vr_data[i];
+
+      gparts_written[count] = gparts[i];
+      count++;
+    }
+  }
+
+  /* Check that everything is fine */
+  if (count != Ngparts_written)
+    error("Collected the wrong number of g-particles (%zu vs. %zu expected)",
+          count, Ngparts_written);
+}
+
+/**
+ * @brief Copy every non-inhibited background DM #gpart into the gparts_written
+ * array.
+ *
+ * @param gparts The array of #gpart containing all particles.
+ * @param vr_data The array of gpart-related VELOCIraptor output.
+ * @param gparts_written The array of #gpart to fill with particles we want to
+ * write.
+ * @param vr_data_written The array of gpart-related VELOCIraptor with particles
+ * we want to write.
+ * @param Ngparts The total number of #part.
+ * @param Ngparts_written The total number of #part to write.
+ * @param with_stf Are we running with STF? i.e. do we want to collect vr data?
+ */
+void io_collect_gparts_background_to_write(
+    const struct gpart* restrict gparts,
+    const struct velociraptor_gpart_data* restrict vr_data,
+    struct gpart* restrict gparts_written,
+    struct velociraptor_gpart_data* restrict vr_data_written,
+    const size_t Ngparts, const size_t Ngparts_written, const int with_stf) {
+
+  size_t count = 0;
+
+  /* Loop over all parts */
+  for (size_t i = 0; i < Ngparts; ++i) {
+
+    /* And collect the ones that have not been removed */
+    if ((gparts[i].time_bin != time_bin_inhibited) &&
+        (gparts[i].time_bin != time_bin_not_created) &&
+        (gparts[i].type == swift_type_dark_matter_background)) {
 
       if (with_stf) vr_data_written[count] = vr_data[i];
 
