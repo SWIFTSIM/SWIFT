@@ -428,28 +428,31 @@ int main(int argc, char *argv[]) {
 
   /* Get ready to read particles of all kinds */
   int flag_entropy_ICs = 0;
-  size_t Ngas = 0, Ngpart = 0, Nspart = 0, Nbpart = 0;
+  size_t Ngas = 0, Ngpart = 0, Ngpart_background = 0, Nspart = 0, Nbpart = 0;
   double dim[3] = {0., 0., 0.};
   if (myrank == 0) clocks_gettime(&tic);
 #if defined(HAVE_HDF5)
 #if defined(WITH_MPI)
 #if defined(HAVE_PARALLEL_HDF5)
   read_ic_parallel(ICfileName, &us, dim, &parts, &gparts, &sparts, &bparts,
-                   &Ngas, &Ngpart, &Nspart, &Nbpart, &flag_entropy_ICs,
-                   with_hydro, /*with_grav=*/1, with_stars, with_black_holes,
-                   cleanup_h, cleanup_sqrt_a, cosmo.h, cosmo.a, myrank,
-                   nr_nodes, MPI_COMM_WORLD, MPI_INFO_NULL, nr_threads,
+                   &Ngas, &Ngpart, &Ngpart_background, &Nspart, &Nbpart,
+                   &flag_entropy_ICs, with_hydro, /*with_grav=*/1, with_stars,
+                   with_black_holes, cleanup_h, cleanup_sqrt_a, cosmo.h,
+                   cosmo.a, myrank, nr_nodes, MPI_COMM_WORLD, MPI_INFO_NULL,
+                   nr_threads,
                    /*dry_run=*/0);
 #else
   read_ic_serial(ICfileName, &us, dim, &parts, &gparts, &sparts, &bparts, &Ngas,
-                 &Ngpart, &Nspart, &Nbpart, &flag_entropy_ICs, with_hydro,
+                 &Ngpart, &Ngpart_background, &Nspart, &Nbpart,
+                 &flag_entropy_ICs, with_hydro,
                  /*with_grav=*/1, with_stars, with_black_holes, cleanup_h,
                  cleanup_sqrt_a, cosmo.h, cosmo.a, myrank, nr_nodes,
                  MPI_COMM_WORLD, MPI_INFO_NULL, nr_threads, /*dry_run=*/0);
 #endif
 #else
   read_ic_single(ICfileName, &us, dim, &parts, &gparts, &sparts, &bparts, &Ngas,
-                 &Ngpart, &Nspart, &Nbpart, &flag_entropy_ICs, with_hydro,
+                 &Ngpart, &Ngpart_background, &Nspart, &Nbpart,
+                 &flag_entropy_ICs, with_hydro,
                  /*with_grav=*/1, with_stars, with_black_holes, cleanup_h,
                  cleanup_sqrt_a, cosmo.h, cosmo.a, nr_threads, /*dry_run=*/0);
 #endif
@@ -468,30 +471,46 @@ int main(int argc, char *argv[]) {
 #endif
 
   /* Get the total number of particles across all nodes. */
-  long long N_total[4] = {0, 0, 0};
+  long long N_total[swift_type_count + 1] = {0};
+  const long long Nbaryons = Ngas + Nspart + Nbpart;
 #if defined(WITH_MPI)
-  long long N_long[4] = {Ngas, Ngpart, Nspart, Nbpart};
-  MPI_Allreduce(&N_long, &N_total, 4, MPI_LONG_LONG_INT, MPI_SUM,
-                MPI_COMM_WORLD);
+  long long N_long[swift_type_count + 1] = {0};
+  N_long[swift_type_gas] = Ngas;
+  N_long[swift_type_dark_matter] = Ngpart - Ngpart_background - Nbaryons;
+  N_long[swift_type_dark_matter_background] = Ngpart_background;
+  N_long[swift_type_stars] = Nspart;
+  N_long[swift_type_black_hole] = Nbpart;
+  N_long[swift_type_count] = Ngpart;
+  MPI_Allreduce(&N_long, &N_total, swift_type_count + 1, MPI_LONG_LONG_INT,
+                MPI_SUM, MPI_COMM_WORLD);
 #else
-  N_total[0] = Ngas;
-  N_total[1] = Ngpart;
-  N_total[2] = Nspart;
-  N_total[3] = Nbpart;
+  N_total[swift_type_gas] = Ngas;
+  N_total[swift_type_dark_matter] = Ngpart - Ngpart_background - Nbaryons;
+  N_total[swift_type_dark_matter_background] = Ngpart_background;
+  N_total[swift_type_stars] = Nspart;
+  N_total[swift_type_black_hole] = Nbpart;
+  N_total[swift_type_count] = Ngpart;
 #endif
 
   if (myrank == 0)
     message(
         "Read %lld gas particles, %lld stars particles, %lld black hole "
-        "particles and %lld gparts from the ICs.",
-        N_total[0], N_total[2], N_total[3], N_total[1]);
+        "particles, %lld DM particles and %lld DM background particles from "
+        "the ICs.",
+        N_total[swift_type_gas], N_total[swift_type_stars],
+        N_total[swift_type_black_hole], N_total[swift_type_dark_matter],
+        N_total[swift_type_dark_matter_background]);
+
+  /* Do we have background DM particles? */
+  const int with_DM_background_particles =
+      N_total[swift_type_dark_matter_background] > 0;
 
   /* Initialize the space with these data. */
   if (myrank == 0) clocks_gettime(&tic);
   space_init(&s, params, &cosmo, dim, parts, gparts, sparts, bparts, Ngas,
              Ngpart, Nspart, Nbpart, periodic, replicate,
              /*generate_gas_in_ics=*/0, /*hydro=*/N_total[0] > 0, /*gravity=*/1,
-             /*with_star_formation=*/0, talking,
+             /*with_star_formation=*/0, with_DM_background_particles, talking,
              /*dry_run=*/0);
 
   if (myrank == 0) {
