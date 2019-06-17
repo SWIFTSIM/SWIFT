@@ -20,5 +20,5 @@
 /* This object's header. */
 #include "part_type.h"
 
-const char* part_type_names[swift_type_count] = {"Gas",   "DM",    "Dummy",
-                                                 "Dummy", "Stars", "BH"};
+const char* part_type_names[swift_type_count] = {
+    "Gas", "DM", "DM_boundary", "Dummy", "Stars", "BH"};
