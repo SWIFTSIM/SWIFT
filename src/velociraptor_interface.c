@@ -283,6 +283,13 @@ void velociraptor_convert_particles_mapper(void *map_data, int nr_gparts,
         swift_parts[i].T = 0.f;
         break;
 
+      case swift_type_dark_matter_background:
+
+        swift_parts[i].id = gparts[i].id_or_neg_offset;
+        swift_parts[i].u = 0.f;
+        swift_parts[i].T = 0.f;
+        break;
+
       default:
         error("Particle type not handled by VELOCIraptor.");
     }

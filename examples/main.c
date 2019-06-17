@@ -861,7 +861,7 @@ int main(int argc, char *argv[]) {
     fflush(stdout);
 
     /* Get ready to read particles of all kinds */
-    size_t Ngas = 0, Ngpart = 0, Nspart = 0, Nbpart = 0;
+    size_t Ngas = 0, Ngpart = 0, Ngpart_background = 0, Nspart = 0, Nbpart = 0;
     double dim[3] = {0., 0., 0.};
     if (myrank == 0) clocks_gettime(&tic);
 #if defined(HAVE_HDF5)
@@ -883,10 +883,11 @@ int main(int argc, char *argv[]) {
 #endif
 #else
     read_ic_single(ICfileName, &us, dim, &parts, &gparts, &sparts, &bparts,
-                   &Ngas, &Ngpart, &Nspart, &Nbpart, &flag_entropy_ICs,
-                   with_hydro, (with_external_gravity || with_self_gravity),
-                   with_stars, with_black_holes, cleanup_h, cleanup_sqrt_a,
-                   cosmo.h, cosmo.a, nr_threads, dry_run);
+                   &Ngas, &Ngpart, &Ngpart_background, &Nspart, &Nbpart,
+                   &flag_entropy_ICs, with_hydro,
+                   (with_external_gravity || with_self_gravity), with_stars,
+                   with_black_holes, cleanup_h, cleanup_sqrt_a, cosmo.h,
+                   cosmo.a, nr_threads, dry_run);
 #endif
 #endif
     if (myrank == 0) {
@@ -918,23 +919,35 @@ int main(int argc, char *argv[]) {
 #endif
 
     /* Get the total number of particles across all nodes. */
-    long long N_total[4] = {0, 0, 0, 0};
+    long long N_total[swift_type_count + 1] = {0};
+    const long long Nbaryons = Ngas + Nspart + Nbpart;
 #if defined(WITH_MPI)
-    long long N_long[4] = {Ngas, Ngpart, Nspart, Nbpart};
-    MPI_Allreduce(&N_long, &N_total, 4, MPI_LONG_LONG_INT, MPI_SUM,
-                  MPI_COMM_WORLD);
+    long long N_long[swift_type_count + 1] = {0};
+    N_long[swift_type_gas] = Ngas;
+    N_long[swift_type_dark_matter] = Ngpart - Ngpart_background - Nbaryons;
+    N_long[swift_type_dark_matter_background] = Ngpart_background;
+    N_long[swift_type_stars] = Nspart;
+    N_long[swift_type_black_hole] = Nbpart;
+    N_long[swift_type_count] = Ngpart;
+    MPI_Allreduce(&N_long, &N_total, swift_type_count + 1, MPI_LONG_LONG_INT,
+                  MPI_SUM, MPI_COMM_WORLD);
 #else
-    N_total[0] = Ngas;
-    N_total[1] = Ngpart;
-    N_total[2] = Nspart;
-    N_total[3] = Nbpart;
+    N_total[swift_type_gas] = Ngas;
+    N_total[swift_type_dark_matter] = Ngpart - Ngpart_background - Nbaryons;
+    N_total[swift_type_dark_matter_background] = Ngpart_background;
+    N_total[swift_type_stars] = Nspart;
+    N_total[swift_type_black_hole] = Nbpart;
+    N_total[swift_type_count] = Ngpart;
 #endif
 
     if (myrank == 0)
       message(
           "Read %lld gas particles, %lld stars particles, %lld black hole "
-          "particles and %lld gparts from the ICs.",
-          N_total[0], N_total[2], N_total[3], N_total[1]);
+          "particles, %lld DM particles and %lld DM background particles from "
+          "the ICs.",
+          N_total[swift_type_gas], N_total[swift_type_stars],
+          N_total[swift_type_black_hole], N_total[swift_type_dark_matter],
+          N_total[swift_type_dark_matter_background]);
 
     /* Verify that the fields to dump actually exist */
     if (myrank == 0) io_check_output_fields(params, N_total);

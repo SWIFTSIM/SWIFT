@@ -24,13 +24,11 @@
 /* This object's header. */
 #include "common_io.h"
 
-/* First common header */
-#include "engine.h"
-
 /* Local includes. */
 #include "black_holes_io.h"
 #include "chemistry_io.h"
 #include "cooling_io.h"
+#include "engine.h"
 #include "error.h"
 #include "fof_io.h"
 #include "gravity_io.h"
@@ -1551,6 +1549,42 @@ void io_prepare_dm_gparts(struct threadpool* tp, struct gpart* const gparts,
                  sizeof(struct gpart), 0, NULL);
 }
 
+void io_prepare_dm_background_gparts_mapper(void* restrict data, int Ndm,
+                                            void* dummy) {
+
+  struct gpart* restrict gparts = (struct gpart*)data;
+
+  /* Let's give all these gparts a negative id */
+  for (int i = 0; i < Ndm; ++i) {
+
+    /* Negative ids are not allowed */
+    if (gparts[i].id_or_neg_offset < 0)
+      error("Negative ID for DM particle %i: ID=%lld", i,
+            gparts[i].id_or_neg_offset);
+
+    /* Set gpart type */
+    gparts[i].type = swift_type_dark_matter_background;
+  }
+}
+
+/**
+ * @brief Prepare the DM backgorund particles (in gparts) read in
+ * for the addition of the other particle types
+ *
+ * This function assumes that the DM particles are all at the start of the
+ * gparts array and that the background particles directly follow them.
+ *
+ * @param tp The current #threadpool.
+ * @param gparts The array of #gpart freshly read in.
+ * @param Ndm The number of DM particles read in.
+ */
+void io_prepare_dm_background_gparts(struct threadpool* tp,
+                                     struct gpart* const gparts, size_t Ndm) {
+
+  threadpool_map(tp, io_prepare_dm_background_gparts_mapper, gparts, Ndm,
+                 sizeof(struct gpart), 0, NULL);
+}
+
 struct duplication_data {
 
   struct part* parts;
@@ -1895,7 +1929,7 @@ void io_collect_gparts_to_write(
  * @param N_total The total number of each particle type.
  */
 void io_check_output_fields(const struct swift_params* params,
-                            const long long N_total[3]) {
+                            const long long N_total[swift_type_count]) {
 
   /* Copy N_total to array with length == 6 */
   const long long nr_total[swift_type_count] = {N_total[0], N_total[1], 0,
@@ -1908,7 +1942,7 @@ void io_check_output_fields(const struct swift_params* params,
     struct io_props list[100];
 
     /* Don't do anything if no particle of this kind */
-    if (nr_total[ptype] == 0) continue;
+    if (N_total[ptype] == 0) continue;
 
     /* Gather particle fields from the particle structures */
     switch (ptype) {
@@ -1927,6 +1961,12 @@ void io_check_output_fields(const struct swift_params* params,
         break;
 
       case swift_type_dark_matter:
+        darkmatter_write_particles(NULL, list, &num_fields);
+        num_fields += fof_write_gparts(NULL, list + num_fields);
+        num_fields += velociraptor_write_gparts(NULL, list + num_fields);
+        break;
+
+      case swift_type_dark_matter_background:
         darkmatter_write_particles(NULL, list, &num_fields);
         num_fields += fof_write_gparts(NULL, list + num_fields);
         num_fields += velociraptor_write_gparts(NULL, list + num_fields);
@@ -2040,6 +2080,12 @@ void io_write_output_field_parameter(const char* filename) {
         break;
 
       case swift_type_dark_matter:
+        darkmatter_write_particles(NULL, list, &num_fields);
+        num_fields += fof_write_gparts(NULL, list + num_fields);
+        num_fields += velociraptor_write_gparts(NULL, list + num_fields);
+        break;
+
+      case swift_type_dark_matter_background:
         darkmatter_write_particles(NULL, list, &num_fields);
         num_fields += fof_write_gparts(NULL, list + num_fields);
         num_fields += velociraptor_write_gparts(NULL, list + num_fields);

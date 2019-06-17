@@ -127,6 +127,8 @@ void io_collect_gparts_to_write(const struct gpart* restrict gparts,
                                 const size_t Ngparts_written, int with_stf);
 void io_prepare_dm_gparts(struct threadpool* tp, struct gpart* const gparts,
                           size_t Ndm);
+void io_prepare_dm_background_gparts(struct threadpool* tp,
+                                     struct gpart* const gparts, size_t Ndm);
 void io_duplicate_hydro_gparts(struct threadpool* tp, struct part* const parts,
                                struct gpart* const gparts, size_t Ngas,
                                size_t Ndm);

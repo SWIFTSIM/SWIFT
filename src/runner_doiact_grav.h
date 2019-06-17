@@ -1382,6 +1382,8 @@ static INLINE void runner_dopair_grav_mm_progenies(struct runner *r,
                                                    struct cell *restrict ci,
                                                    struct cell *restrict cj) {
 
+  return;
+
   /* Loop over all pairs of progenies */
   for (int i = 0; i < 8; i++) {
     if (ci->progeny[i] != NULL) {
@@ -1502,6 +1504,8 @@ static INLINE void runner_dopair_recursive_grav_pm(struct runner *r,
 static INLINE void runner_dopair_recursive_grav(struct runner *r,
                                                 struct cell *ci,
                                                 struct cell *cj, int gettimer) {
+
+  return;
 
   /* Some constants */
   const struct engine *e = r->e;
@@ -1656,6 +1660,8 @@ static INLINE void runner_dopair_recursive_grav(struct runner *r,
  */
 static INLINE void runner_doself_recursive_grav(struct runner *r,
                                                 struct cell *c, int gettimer) {
+
+  return;
 
   /* Some constants */
   const struct engine *e = r->e;
