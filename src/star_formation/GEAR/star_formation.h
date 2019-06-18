@@ -62,20 +62,16 @@ INLINE static int star_formation_is_star_forming(
   const float temperature =
       cooling_get_temperature(phys_const, hydro_props, us, cosmo, cooling, p, xp);
 
-  const float temperature_max = starform->Max_temperature;
+  const float temperature_max = starform->maximal_temperature;
 
   /* Check the temperature criterion */
-  if (T > T0) {
+  if (temperature > temperature_max) {
     return 0;
   }
 
   /* Get the required variables */
-  const float G = phys_const->const_newton_G;
-  const float kb = phys_const->const_boltzmann_k;
-  const float mH = phys_const->const_proton_mass;
-
-  const float sigma2 = xp->sf_data.sigma2;
-  const int n_jeans_2_3 = starform->n_jeans_2_3;
+  const float sigma2 = p->sf_data.sigma2;
+  const float n_jeans_2_3 = starform->n_jeans_2_3;
 
   const float h = p->h;
   const float density = hydro_get_physical_density(p, cosmo);
@@ -84,8 +80,9 @@ INLINE static int star_formation_is_star_forming(
   const float mu = hydro_props->mu_neutral;
 
   /* Compute the density criterion */
-  const float coef = M_PI_4 / (G * n_jeans_2_3 * h * h);
-  const float density_criterion = coef * (hydro_gamma * kb * T / (mu * mH) + sigma2);
+  const float coef = M_PI_4 / (phys_const->const_newton_G * n_jeans_2_3 * h * h);
+  const float density_criterion = coef * (hydro_gamma * phys_const->const_boltzmann_k * temperature
+					  / (mu * phys_const->const_proton_mass) + sigma2);
 
   /* Check the density criterion */
   if (density > density_criterion) {
@@ -129,6 +126,9 @@ INLINE static int star_formation_should_convert_to_star(
     struct part* p, struct xpart* xp, const struct star_formation* starform,
     const struct engine* e, const double dt_star) {
 
+  const struct phys_const* phys_const = e->physical_constants;
+  const struct cosmology *cosmo = e->cosmology;
+
   /* Check that we are running a full time step */
   if (dt_star == 0.) {
     return 0;
@@ -136,12 +136,11 @@ INLINE static int star_formation_should_convert_to_star(
 
   /* Get a few variables */
   const float G = phys_const->const_newton_G;
-  const float c_star = starform->star_formation_rate;
   const float density = hydro_get_physical_density(p, cosmo);
 
   /* Compute the probability */
   const float inv_free_fall_time = sqrtf(density * 32. * G / (3. * M_PI));
-  const float prob = 1. - exp(-starform->star_formation_efficency * inv_free_fall_time * dt_star);
+  const float prob = 1. - exp(-starform->star_formation_efficiency * inv_free_fall_time * dt_star);
 
   /* Roll the dice... */
   const float random_number =
@@ -193,6 +192,7 @@ INLINE static void star_formation_copy_properties(
 
   /* Store the current mass */
   sp->mass = hydro_get_mass(p);
+  sp->birth.mass = sp->mass;
 
   /* Store either the birth_scale_factor or birth_time depending  */
   if (with_cosmology) {
@@ -209,45 +209,12 @@ INLINE static void star_formation_copy_properties(
   sp->tracers_data = xp->tracers_data;
 
   /* Store the birth density in the star particle */
-  sp->birth_density = hydro_get_physical_density(p, cosmo);
+  sp->birth.density = hydro_get_physical_density(p, cosmo);
 
   /* Store the birth temperature*/
-  sp->birth_temperature =
-      get_temperature(starform->phys_const, starform->hydro_props, starform->us,
-                      cosmo, e->cooling_func, p, xp);
-}
-
-/**
- * @brief initialization of the star formation law
- *
- * @param parameter_file The parsed parameter file
- * @param phys_const Physical constants in internal units
- * @param us The current internal system of units
- * @param starform the star formation law properties to initialize
- *
- */
-INLINE static void starformation_init_backend(
-    struct swift_params* parameter_file, const struct phys_const* phys_const,
-    const struct unit_system* us, const struct hydro_props* hydro_props,
-    struct star_formation* starform) {
-
-  // TODO move into pressure floor
-  starform->n_jeans_2_3 =
-      parser_get_param_float(parameter_file, "GEARStarFormation:NJeans");
-  starform->n_jeans_2_3 = pow(starform->n_jeans_2_3, 2./3.);
-
-  /* Star formation efficiency */
-  starform->star_formation_efficiency = parser_get_param_double(
-      parameter_file, "GEARStarFormation:star_formation_efficiency");
-
-  /* Maximum temperature for star formation */
-  starform->maximal_temperature =
-      parser_get_param_double(parameter_file,
-                              "GEARStarFormation:maximal_temperature");
-
-  /* Apply unit change */
-  starform->maximal_temperature *=
-    units_cgs_conversion_factor(us, UNIT_CONV_TEMPERATURE);
+  sp->birth.temperature =
+      cooling_get_temperature(phys_const, hydro_props, us,
+			      cosmo, cooling, p, xp);
 }
 
 /**
@@ -265,16 +232,15 @@ INLINE static void starformation_print_backend(
  *
  * @param p The particle to act upon
  * @param xp The extended particle data to act upon
- * @param cd The global star_formation information.
+ * @param sf The global star_formation information.
  * @param cosmo The current cosmological model.
  */
 __attribute__((always_inline)) INLINE static void star_formation_end_density(
-    struct part* restrict p, struct xpart* restrict xp,
-    const struct star_formation* cd, const struct cosmology* cosmo) {
+    struct part* restrict p, const struct star_formation* sf, const struct cosmology* cosmo) {
 
   // TODO move into pressure floor
   /* To finish the turbulence estimation we devide by the density */
-  xp->sf_data.sigma2 /= pow_dimension(p->h) * hydro_get_physical_density(p, cosmo);
+  p->sf_data.sigma2 /= pow_dimension(p->h) * hydro_get_physical_density(p, cosmo);
 }
 
 /**
@@ -293,7 +259,21 @@ star_formation_part_has_no_neighbours(struct part* restrict p,
 
   // TODO move into pressure floor
   /* If part has 0 neighbours, the estimation of turbulence is 0 */
-  xp->sf_data.sigma2 = 0.f;
+  p->sf_data.sigma2 = 0.f;
+}
+
+/**
+ * @brief Sets the star_formation properties of the (x-)particles to a valid
+ * start state.
+ *
+ * @param p Pointer to the particle data.
+ * @param xp Pointer to extended particle data
+ * @param data The global star_formation information.
+ */
+__attribute__((always_inline)) INLINE static void star_formation_init_part(
+    struct part* restrict p, struct xpart* restrict xp,
+    const struct star_formation* data) {
+  p->sf_data.sigma2 = 0.f;
 }
 
 /**
@@ -310,24 +290,12 @@ star_formation_first_init_part(const struct phys_const* restrict phys_const,
                                const struct unit_system* restrict us,
                                const struct cosmology* restrict cosmo,
                                const struct star_formation* data,
-                               struct part* restrict p) {
+                               struct part* restrict p,
+			       struct xpart* restrict xp) {
 
   /* Nothing special here */
   star_formation_init_part(p, xp, data);
 }
 
-/**
- * @brief Sets the star_formation properties of the (x-)particles to a valid
- * start state.
- *
- * @param p Pointer to the particle data.
- * @param xp Pointer to extended particle data
- * @param data The global star_formation information.
- */
-__attribute__((always_inline)) INLINE static void star_formation_init_part(
-    struct part* restrict p, struct xpart* restrict xp,
-    const struct star_formation* data) {
-  xp->sf_data.sigma2 = 0.f;
-}
 
 #endif /* SWIFT_GEAR_STAR_FORMATION_H */

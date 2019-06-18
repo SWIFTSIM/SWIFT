@@ -38,8 +38,42 @@
 __attribute__((always_inline)) INLINE static int star_formation_write_particles(
     const struct part* parts, const struct xpart* xparts,
     struct io_props* list) {
-  /* Nothing to write here */
+/* Nothing to write here */
   return 0;
+}
+
+
+/**
+ * @brief initialization of the star formation law
+ *
+ * @param parameter_file The parsed parameter file
+ * @param phys_const Physical constants in internal units
+ * @param us The current internal system of units
+ * @param starform the star formation law properties to initialize
+ *
+ */
+INLINE static void starformation_init_backend(
+    struct swift_params* parameter_file, const struct phys_const* phys_const,
+    const struct unit_system* us, const struct hydro_props* hydro_props,
+    struct star_formation* starform) {
+
+  // TODO move into pressure floor
+  starform->n_jeans_2_3 =
+      parser_get_param_float(parameter_file, "GEARStarFormation:NJeans");
+  starform->n_jeans_2_3 = pow(starform->n_jeans_2_3, 2./3.);
+
+  /* Star formation efficiency */
+  starform->star_formation_efficiency = parser_get_param_double(
+      parameter_file, "GEARStarFormation:star_formation_efficiency");
+
+  /* Maximum temperature for star formation */
+  starform->maximal_temperature =
+      parser_get_param_double(parameter_file,
+                              "GEARStarFormation:maximal_temperature");
+
+  /* Apply unit change */
+  starform->maximal_temperature *=
+    units_cgs_conversion_factor(us, UNIT_CONV_TEMPERATURE);
 }
 
 #endif /* SWIFT_STAR_FORMATION_GEAR_IO_H */

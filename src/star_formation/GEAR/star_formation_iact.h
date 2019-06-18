@@ -42,8 +42,7 @@
  */
 __attribute__((always_inline)) INLINE static void runner_iact_star_formation(
     float r2, const float *dx, float hi, float hj, struct part *restrict pi,
-    struct part *restrict pj, struct xpart *restrict xpi,
-    struct xpart *restrict xpj, float a, float H) {
+    struct part *restrict pj, float a, float H) {
 
   float wi;
   float wj;
@@ -62,8 +61,8 @@ __attribute__((always_inline)) INLINE static void runner_iact_star_formation(
   float norm_v2 = dv[0] * dv[0] + dv[1] * dv[1] + dv[2] * dv[2];
 
   /* Compute the velocity dispersion */
-  xpi->sf_data.sigma2 += norm_v2 * wi * hydro_get_mass(pj);
-  xpj->sf_data.sigma2 += norm_v2 * wj * hydro_get_mass(pi);
+  pi->sf_data.sigma2 += norm_v2 * wi * hydro_get_mass(pj);
+  pj->sf_data.sigma2 += norm_v2 * wj * hydro_get_mass(pi);
 }
 
 /**
@@ -82,9 +81,7 @@ __attribute__((always_inline)) INLINE static void runner_iact_star_formation(
 __attribute__((always_inline)) INLINE static void
 runner_iact_nonsym_star_formation(float r2, const float *dx, float hi, float hj,
                                   struct part *restrict pi,
-                                  const struct part *restrict pj,
-                                  struct xpart *restrict xpi,
-                                  const struct xpart *restrict xpj, float a,
+                                  const struct part *restrict pj, float a,
                                   float H) {
   float wi;
   /* Evaluation of the SPH kernel */
@@ -101,7 +98,7 @@ runner_iact_nonsym_star_formation(float r2, const float *dx, float hi, float hj,
   float norm_v2 = dv[0] * dv[0] + dv[1] * dv[1] + dv[2] * dv[2];
 
   /* Compute the velocity dispersion */
-  xpi->sf_data.sigma2 += norm_v2 * wi * hydro_get_mass(pj);
+  pi->sf_data.sigma2 += norm_v2 * wi * hydro_get_mass(pj);
 }
 
 #endif /* SWIFT_GEAR_STAR_FORMATION_IACT_H */

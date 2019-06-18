@@ -5064,7 +5064,7 @@ void engine_init(struct engine *e, struct space *s, struct swift_params *params,
 
   /* Initialize the star formation history structure */
   if (e->policy & engine_policy_star_formation) {
-    star_formation_logger_first_init(e->sfh);
+    star_formation_logger_first_init(&e->sfh);
   }
 
   engine_init_output_lists(e, params);

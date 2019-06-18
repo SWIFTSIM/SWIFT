@@ -42,10 +42,10 @@ INLINE static void star_formation_logger_log_new_spart(
     const struct spart *sp, struct star_formation_history *sf) {
 
   /* Add mass of created sparticle to the total stellar mass in this cell */
-  sf->stellar_mass += sp->mass;
+  sf->new_stellar_mass += sp->mass;
 
   /* Increase the number of stars */
-  sf->number_of_stars += 1;
+  sf->number_new_stars += 1;
 
   /* No need to deal with the integrated quantities, only the engine's one is
    * updated */
@@ -61,10 +61,10 @@ INLINE static void star_formation_logger_log_inactive_cell(
     struct star_formation_history *sf) {
 
   /* Initialize the stellar mass to zero */
-  sf->stellar_mass = 0.f;
+  sf->new_stellar_mass = 0.f;
 
   /* initialize number of stars to zero*/
-  sf->number_of_stars = 0;
+  sf->number_new_stars = 0;
 }
 /**
  * @brief Initialize the star formation history structure in the #engine
@@ -121,13 +121,9 @@ INLINE static void star_formation_logger_add_to_engine(
     struct star_formation_history *sf_update,
     const struct star_formation_history *sf_add) {
 
-  /* Remove self contribution */
-  sf_update->total_number_stars -= sf_update->number_new_stars;
-  sf_update->total_stellar_mass -= sf_update->new_stellar_mass;
-
   /* Update the SFH structure */
-  sf_update->number_new_stars += sf_add->number_new_stars;
-  sf_update->new_stellar_mass += sf_add->new_stellar_mass;
+  sf_update->number_new_stars = sf_add->number_new_stars;
+  sf_update->new_stellar_mass = sf_add->new_stellar_mass;
   sf_update->total_number_stars += sf_add->number_new_stars;
   sf_update->total_stellar_mass += sf_add->new_stellar_mass;
 }

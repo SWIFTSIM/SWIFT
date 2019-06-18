@@ -23,8 +23,10 @@
  * @brief Star-formation-related properties stored in the extended particle
  * data.
  */
-struct star_formation_xpart_data {
+struct star_formation_xpart_data {};
 
+
+struct star_formation_part_data {
   // TODO move it to the pressure floor
   /*! Estimation of local turbulence (squared) */
   float sigma2;

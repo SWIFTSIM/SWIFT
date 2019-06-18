@@ -68,12 +68,6 @@ struct spart {
     float birth_scale_factor;
   };
 
-  /*!birth density*/
-  float birth_density;
-
-  /*!birth temperature*/
-  float birth_temperature;
-
   /*! Particle time bin */
   timebin_t time_bin;
 
@@ -86,6 +80,17 @@ struct spart {
     float wcount_dh;
 
   } density;
+
+  struct {
+    /*! birth density*/
+    float density;
+
+    /*! birth temperature*/
+    float temperature;
+
+    /*! birth mass */
+    float mass;
+  } birth;
 
   /*! Feedback structure */
   struct feedback_spart_data feedback_data;
