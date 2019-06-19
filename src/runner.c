@@ -2775,7 +2775,9 @@ void runner_do_kick1(struct runner *r, struct cell *c, int timer) {
       struct gpart *restrict gp = &gparts[k];
 
       /* If the g-particle has no counterpart and needs to be kicked */
-      if (gp->type == swift_type_dark_matter && gpart_is_starting(gp, e)) {
+      if ((gp->type == swift_type_dark_matter ||
+           gp->type == swift_type_dark_matter_background) &&
+          gpart_is_starting(gp, e)) {
 
         const integertime_t ti_step = get_integer_timestep(gp->time_bin);
         const integertime_t ti_begin =
@@ -2969,7 +2971,9 @@ void runner_do_kick2(struct runner *r, struct cell *c, int timer) {
       struct gpart *restrict gp = &gparts[k];
 
       /* If the g-particle has no counterpart and needs to be kicked */
-      if (gp->type == swift_type_dark_matter && gpart_is_active(gp, e)) {
+      if ((gp->type == swift_type_dark_matter ||
+           gp->type == swift_type_dark_matter_background) &&
+          gpart_is_active(gp, e)) {
 
         const integertime_t ti_step = get_integer_timestep(gp->time_bin);
         const integertime_t ti_begin =
@@ -3189,7 +3193,8 @@ void runner_do_timestep(struct runner *r, struct cell *c, int timer) {
       struct gpart *restrict gp = &gparts[k];
 
       /* If the g-particle has no counterpart */
-      if (gp->type == swift_type_dark_matter) {
+      if (gp->type == swift_type_dark_matter ||
+          gp->type == swift_type_dark_matter_background) {
 
         /* need to be updated ? */
         if (gpart_is_active(gp, e)) {
