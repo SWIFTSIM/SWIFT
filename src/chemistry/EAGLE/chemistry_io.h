@@ -58,50 +58,72 @@ INLINE static int chemistry_write_particles(const struct part* parts,
                                             struct io_props* list) {
 
   /* List what we want to write */
-  list[0] = io_make_output_field("ElementAbundance", FLOAT,
-                                 chemistry_element_count, UNIT_CONV_NO_UNITS,
-                                 parts, chemistry_data.metal_mass_fraction);
+  list[0] = io_make_output_field(
+      "ElementMassFractions", FLOAT, chemistry_element_count,
+      UNIT_CONV_NO_UNITS, 0.f, parts, chemistry_data.metal_mass_fraction,
+      "Fractions of the particles' masses that are in the given element");
 
   list[1] = io_make_output_field(
       "SmoothedElementAbundance", FLOAT, chemistry_element_count,
-      UNIT_CONV_NO_UNITS, parts, chemistry_data.smoothed_metal_mass_fraction);
+      UNIT_CONV_NO_UNITS, 0.f, parts,
+      chemistry_data.smoothed_metal_mass_fraction,
+      "Smoothed fractions of the particles' masses that are "
+      "in the given element");
 
-  list[2] =
-      io_make_output_field("Metallicity", FLOAT, 1, UNIT_CONV_NO_UNITS, parts,
-                           chemistry_data.metal_mass_fraction_total);
+  list[2] = io_make_output_field(
+      "MetalMassFractions", FLOAT, 1, UNIT_CONV_NO_UNITS, 0.f, parts,
+      chemistry_data.metal_mass_fraction_total,
+      "Fractions of the particles' masses that are in metals");
 
   list[3] = io_make_output_field(
-      "SmoothedMetallicity", FLOAT, 1, UNIT_CONV_NO_UNITS, parts,
-      chemistry_data.smoothed_metal_mass_fraction_total);
+      "SmoothedMetalMassFractions", FLOAT, 1, UNIT_CONV_NO_UNITS, 0.f, parts,
+      chemistry_data.smoothed_metal_mass_fraction_total,
+      "Smoothed fractions of the particles masses that are in metals");
 
-  list[4] = io_make_output_field("TotalMassFromSNIa", FLOAT, 1, UNIT_CONV_MASS,
-                                 parts, chemistry_data.mass_from_SNIa);
+  list[4] = io_make_output_field(
+      "MassesFromSNIa", FLOAT, 1, UNIT_CONV_MASS, 0.f, parts,
+      chemistry_data.mass_from_SNIa,
+      "Masses of gas that have been produced by SNIa stars");
 
-  list[5] = io_make_output_field("MetalMassFracFromSNIa", FLOAT, 1,
-                                 UNIT_CONV_NO_UNITS, parts,
-                                 chemistry_data.metal_mass_fraction_from_SNIa);
+  list[5] = io_make_output_field("MetalMassFractionsFromSNIa", FLOAT, 1,
+                                 UNIT_CONV_NO_UNITS, 0.f, parts,
+                                 chemistry_data.metal_mass_fraction_from_SNIa,
+                                 "Fractions of the particles' masses that are "
+                                 "in metals produced by SNIa stars");
 
-  list[6] = io_make_output_field("TotalMassFromAGB", FLOAT, 1, UNIT_CONV_MASS,
-                                 parts, chemistry_data.mass_from_AGB);
+  list[6] = io_make_output_field(
+      "MassesFromAGB", FLOAT, 1, UNIT_CONV_MASS, 0.f, parts,
+      chemistry_data.mass_from_AGB,
+      "Masses of gas that have been produced by AGN stars");
 
-  list[7] =
-      io_make_output_field("MetalMassFracFromAGB", FLOAT, 1, UNIT_CONV_NO_UNITS,
-                           parts, chemistry_data.metal_mass_fraction_from_AGB);
+  list[7] = io_make_output_field("MetalMassFractionsFromAGB", FLOAT, 1,
+                                 UNIT_CONV_NO_UNITS, 0., parts,
+                                 chemistry_data.metal_mass_fraction_from_AGB,
+                                 "Fractions of the particles' masses that are "
+                                 "in metals produced by AGB stars");
 
-  list[8] = io_make_output_field("TotalMassFromSNII", FLOAT, 1, UNIT_CONV_MASS,
-                                 parts, chemistry_data.mass_from_SNII);
+  list[8] = io_make_output_field(
+      "MassesFromSNII", FLOAT, 1, UNIT_CONV_MASS, 0.f, parts,
+      chemistry_data.mass_from_SNII,
+      "Masses of gas that have been produced by SNII stars");
 
-  list[9] = io_make_output_field("MetalMassFracFromSNII", FLOAT, 1,
-                                 UNIT_CONV_NO_UNITS, parts,
-                                 chemistry_data.metal_mass_fraction_from_SNII);
+  list[9] = io_make_output_field("MetalMassFractionsFromSNII", FLOAT, 1,
+                                 UNIT_CONV_NO_UNITS, 0.f, parts,
+                                 chemistry_data.metal_mass_fraction_from_SNII,
+                                 "Fractions of the particles' masses that are "
+                                 "in metals produced by SNII stars");
 
-  list[10] =
-      io_make_output_field("IronMassFracFromSNIa", FLOAT, 1, UNIT_CONV_NO_UNITS,
-                           parts, chemistry_data.iron_mass_fraction_from_SNIa);
+  list[10] = io_make_output_field("IronMassFractionsFromSNIa", FLOAT, 1,
+                                  UNIT_CONV_NO_UNITS, 0.f, parts,
+                                  chemistry_data.iron_mass_fraction_from_SNIa,
+                                  "Fractions of the particles' masses that are "
+                                  "in iron produced by SNIa stars");
 
   list[11] = io_make_output_field(
-      "SmoothedIronMassFracFromSNIa", FLOAT, 1, UNIT_CONV_NO_UNITS, parts,
-      chemistry_data.smoothed_iron_mass_fraction_from_SNIa);
+      "SmoothedIronMassFractionsFromSNIa", FLOAT, 1, UNIT_CONV_NO_UNITS, 0.f,
+      parts, chemistry_data.smoothed_iron_mass_fraction_from_SNIa,
+      "Smoothed fractions of the particles' masses that are "
+      "in iron produced by SNIa stars");
 
   return 12;
 }
@@ -118,50 +140,72 @@ INLINE static int chemistry_write_sparticles(const struct spart* sparts,
                                              struct io_props* list) {
 
   /* List what we want to write */
-  list[0] = io_make_output_field("ElementAbundance", FLOAT,
-                                 chemistry_element_count, UNIT_CONV_NO_UNITS,
-                                 sparts, chemistry_data.metal_mass_fraction);
+  list[0] = io_make_output_field(
+      "ElementMassFractions", FLOAT, chemistry_element_count,
+      UNIT_CONV_NO_UNITS, 0.f, sparts, chemistry_data.metal_mass_fraction,
+      "Fractions of the particles' masses that are in the given element");
 
   list[1] = io_make_output_field(
       "SmoothedElementAbundance", FLOAT, chemistry_element_count,
-      UNIT_CONV_NO_UNITS, sparts, chemistry_data.smoothed_metal_mass_fraction);
+      UNIT_CONV_NO_UNITS, 0.f, sparts,
+      chemistry_data.smoothed_metal_mass_fraction,
+      "Smoothed fractions of the particles' masses that are "
+      "in the given element");
 
-  list[2] =
-      io_make_output_field("Metallicity", FLOAT, 1, UNIT_CONV_NO_UNITS, sparts,
-                           chemistry_data.metal_mass_fraction_total);
+  list[2] = io_make_output_field(
+      "MetalMassFractions", FLOAT, 1, UNIT_CONV_NO_UNITS, 0.f, sparts,
+      chemistry_data.metal_mass_fraction_total,
+      "Fractions of the particles' masses that are in metals");
 
   list[3] = io_make_output_field(
-      "SmoothedMetallicity", FLOAT, 1, UNIT_CONV_NO_UNITS, sparts,
-      chemistry_data.smoothed_metal_mass_fraction_total);
+      "SmoothedMetalMassFractions", FLOAT, 1, UNIT_CONV_NO_UNITS, 0.f, sparts,
+      chemistry_data.smoothed_metal_mass_fraction_total,
+      "Smoothed fractions of the particles masses that are in metals");
 
-  list[4] = io_make_output_field("TotalMassFromSNIa", FLOAT, 1, UNIT_CONV_MASS,
-                                 sparts, chemistry_data.mass_from_SNIa);
+  list[4] = io_make_output_field(
+      "MassesFromSNIa", FLOAT, 1, UNIT_CONV_MASS, 0.f, sparts,
+      chemistry_data.mass_from_SNIa,
+      "Masses of gas that have been produced by SNIa stars");
 
-  list[5] = io_make_output_field("MetalMassFracFromSNIa", FLOAT, 1,
-                                 UNIT_CONV_NO_UNITS, sparts,
-                                 chemistry_data.metal_mass_fraction_from_SNIa);
+  list[5] = io_make_output_field("MetalMassFractionsFromSNIa", FLOAT, 1,
+                                 UNIT_CONV_NO_UNITS, 0.f, sparts,
+                                 chemistry_data.metal_mass_fraction_from_SNIa,
+                                 "Fractions of the particles' masses that are "
+                                 "in metals produced by SNIa stars");
 
-  list[6] = io_make_output_field("TotalMassFromAGB", FLOAT, 1, UNIT_CONV_MASS,
-                                 sparts, chemistry_data.mass_from_AGB);
+  list[6] = io_make_output_field(
+      "MassesFromAGB", FLOAT, 1, UNIT_CONV_MASS, 0.f, sparts,
+      chemistry_data.mass_from_AGB,
+      "Masses of gas that have been produced by AGN stars");
 
-  list[7] =
-      io_make_output_field("MetalMassFracFromAGB", FLOAT, 1, UNIT_CONV_NO_UNITS,
-                           sparts, chemistry_data.metal_mass_fraction_from_AGB);
+  list[7] = io_make_output_field("MetalMassFractionsFromAGB", FLOAT, 1,
+                                 UNIT_CONV_NO_UNITS, 0., sparts,
+                                 chemistry_data.metal_mass_fraction_from_AGB,
+                                 "Fractions of the particles' masses that are "
+                                 "in metals produced by AGB stars");
 
-  list[8] = io_make_output_field("TotalMassFromSNII", FLOAT, 1, UNIT_CONV_MASS,
-                                 sparts, chemistry_data.mass_from_SNII);
+  list[8] = io_make_output_field(
+      "MassesFromSNII", FLOAT, 1, UNIT_CONV_MASS, 0.f, sparts,
+      chemistry_data.mass_from_SNII,
+      "Masses of gas that have been produced by SNII stars");
 
-  list[9] = io_make_output_field("MetalMassFracFromSNII", FLOAT, 1,
-                                 UNIT_CONV_NO_UNITS, sparts,
-                                 chemistry_data.metal_mass_fraction_from_SNII);
+  list[9] = io_make_output_field("MetalMassFractionsFromSNII", FLOAT, 1,
+                                 UNIT_CONV_NO_UNITS, 0.f, sparts,
+                                 chemistry_data.metal_mass_fraction_from_SNII,
+                                 "Fractions of the particles' masses that are "
+                                 "in metals produced by SNII stars");
 
-  list[10] =
-      io_make_output_field("IronMassFracFromSNIa", FLOAT, 1, UNIT_CONV_NO_UNITS,
-                           sparts, chemistry_data.iron_mass_fraction_from_SNIa);
+  list[10] = io_make_output_field("IronMassFractionsFromSNIa", FLOAT, 1,
+                                  UNIT_CONV_NO_UNITS, 0.f, sparts,
+                                  chemistry_data.iron_mass_fraction_from_SNIa,
+                                  "Fractions of the particles' masses that are "
+                                  "in iron produced by SNIa stars");
 
   list[11] = io_make_output_field(
-      "SmoothedIronMassFracFromSNIa", FLOAT, 1, UNIT_CONV_NO_UNITS, sparts,
-      chemistry_data.smoothed_iron_mass_fraction_from_SNIa);
+      "SmoothedIronMassFractionsFromSNIa", FLOAT, 1, UNIT_CONV_NO_UNITS, 0.f,
+      sparts, chemistry_data.smoothed_iron_mass_fraction_from_SNIa,
+      "Smoothed fractions of the particles' masses that are "
+      "in iron produced by SNIa stars");
 
   return 12;
 }

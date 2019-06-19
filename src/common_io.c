@@ -24,10 +24,12 @@
 /* This object's header. */
 #include "common_io.h"
 
+/* First common header */
+#include "engine.h"
+
 /* Local includes. */
 #include "black_holes_io.h"
 #include "chemistry_io.h"
-#include "engine.h"
 #include "error.h"
 #include "gravity_io.h"
 #include "hydro.h"
@@ -1704,6 +1706,7 @@ void io_check_output_fields(const struct swift_params* params,
   struct xpart xp;
   struct spart sp;
   struct gpart gp;
+  struct bpart bp;
 
   /* Copy N_total to array with length == 6 */
   const long long nr_total[swift_type_count] = {N_total[0], N_total[1], 0,
@@ -1731,7 +1734,11 @@ void io_check_output_fields(const struct swift_params* params,
         break;
 
       case swift_type_stars:
-        stars_write_particles(&sp, list, &num_fields);
+        stars_write_particles(&sp, list, &num_fields, 1);
+        break;
+
+      case swift_type_black_hole:
+        black_holes_write_particles(&bp, list, &num_fields, 1);
         break;
 
       default:
@@ -1821,11 +1828,11 @@ void io_write_output_field_parameter(const char* filename) {
         break;
 
       case swift_type_stars:
-        stars_write_particles(NULL, list, &num_fields);
+        stars_write_particles(NULL, list, &num_fields, 1);
         break;
 
       case swift_type_black_hole:
-        black_holes_write_particles(NULL, list, &num_fields);
+        black_holes_write_particles(NULL, list, &num_fields, 1);
         break;
 
       default:

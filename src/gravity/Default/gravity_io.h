@@ -109,17 +109,23 @@ INLINE static void darkmatter_write_particles(const struct gpart* gparts,
   /* List what we want to write */
   list[0] = io_make_output_field_convert_gpart(
       "Coordinates", DOUBLE, 3, UNIT_CONV_LENGTH, 1.f, gparts,
-      convert_gpart_pos, "Position of the particles");
+      convert_gpart_pos, "Co-moving position of the particles");
+
   list[1] = io_make_output_field_convert_gpart(
       "Velocities", FLOAT, 3, UNIT_CONV_SPEED, 0.f, gparts, convert_gpart_vel,
-      "Peculiar velocites of the particles");
+      "Peculiar velocities of the stars. This is a * dx/dt where x is the "
+      "co-moving position of the particles.");
+
   list[2] = io_make_output_field("Masses", FLOAT, 1, UNIT_CONV_MASS, 0.f,
-                                 gparts, mass, "");
-  list[3] =
-      io_make_output_field("ParticleIDs", ULONGLONG, 1, UNIT_CONV_NO_UNITS, 0.f,
-                           gparts, id_or_neg_offset, "");
-  list[4] = io_make_output_field("GroupIDs", INT, 1, UNIT_CONV_NO_UNITS, 0.f,
-                                 gparts, group_id, "");
+                                 gparts, mass, "Masses of the particles");
+
+  list[3] = io_make_output_field(
+      "ParticleIDs", ULONGLONG, 1, UNIT_CONV_NO_UNITS, 0.f, gparts,
+      id_or_neg_offset, "Unique ID of the particles");
+
+  list[4] = io_make_output_field(
+      "GroupIDs", INT, 1, UNIT_CONV_NO_UNITS, 0.f, gparts, group_id,
+      "Unique ID of the group to which the particles belong");
 }
 
 #endif /* SWIFT_DEFAULT_GRAVITY_IO_H */

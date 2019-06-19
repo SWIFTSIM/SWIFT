@@ -1273,7 +1273,7 @@ void write_output_serial(struct engine* e, const char* baseName,
 
               /* No inhibted particles: easy case */
               Nparticles = Nstars;
-              stars_write_particles(sparts, list, &num_fields);
+              stars_write_particles(sparts, list, &num_fields, with_cosmology);
               num_fields +=
                   chemistry_write_sparticles(sparts, list + num_fields);
               num_fields += tracers_write_sparticles(sparts, list + num_fields,
@@ -1298,7 +1298,8 @@ void write_output_serial(struct engine* e, const char* baseName,
                                          Nstars_written);
 
               /* Select the fields to write */
-              stars_write_particles(sparts_written, list, &num_fields);
+              stars_write_particles(sparts_written, list, &num_fields,
+                                    with_cosmology);
               num_fields +=
                   chemistry_write_sparticles(sparts, list + num_fields);
               num_fields += tracers_write_sparticles(sparts, list + num_fields,
@@ -1315,7 +1316,8 @@ void write_output_serial(struct engine* e, const char* baseName,
 
               /* No inhibted particles: easy case */
               Nparticles = Nblackholes;
-              black_holes_write_particles(bparts, list, &num_fields);
+              black_holes_write_particles(bparts, list, &num_fields,
+                                          with_cosmology);
               if (with_stf) {
                 num_fields +=
                     velociraptor_write_bparts(bparts, list + num_fields);
@@ -1336,7 +1338,8 @@ void write_output_serial(struct engine* e, const char* baseName,
                                          Nblackholes_written);
 
               /* Select the fields to write */
-              black_holes_write_particles(bparts_written, list, &num_fields);
+              black_holes_write_particles(bparts_written, list, &num_fields,
+                                          with_cosmology);
               if (with_stf) {
                 num_fields += velociraptor_write_bparts(bparts_written,
                                                         list + num_fields);

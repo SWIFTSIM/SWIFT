@@ -19,6 +19,8 @@
 #ifndef SWIFT_EAGLE_BLACK_HOLE_PART_H
 #define SWIFT_EAGLE_BLACK_HOLE_PART_H
 
+#include "timeline.h"
+
 /**
  * @brief Particle fields for the black hole particles.
  *
