@@ -4198,7 +4198,7 @@ void engine_do_reconstruct_multipoles_mapper(void *map_data, int num_elements,
     if (c != NULL && c->nodeID == e->nodeID) {
 
       /* Construct the multipoles in this cell hierarchy */
-      cell_make_multipoles(c, e->ti_current);
+      cell_make_multipoles(c, e->ti_current, e->gravity_properties);
     }
   }
 }

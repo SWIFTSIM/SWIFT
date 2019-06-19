@@ -40,8 +40,10 @@
 
 void gravity_props_init(struct gravity_props *p, struct swift_params *params,
                         const struct phys_const *phys_const,
-                        const struct cosmology *cosmo, int with_cosmology,
-                        int periodic) {
+                        const struct cosmology *cosmo, 
+                        const double high_res_DM_mass, 
+                        const int with_cosmology,
+                        const int periodic) {
 
   /* Tree updates */
   p->rebuild_frequency =
@@ -89,10 +91,39 @@ void gravity_props_init(struct gravity_props *p, struct swift_params *params,
 
   /* Softening parameters */
   if (with_cosmology) {
-    p->epsilon_comoving =
-        parser_get_param_double(params, "Gravity:comoving_softening");
+
+    /* Check that a mass for the high res. particles was indeed read. */
+    if (high_res_DM_mass == -1.)
+      error("DM particle mass for type 1 has not been read from the ICs.");
+
+    const double ratio =
+        parser_get_param_double(params, "Gravity:softening_ratio");
+
+    /* Compute the comoving softening length as a fraction of the mean
+     * inter-particle density of the high-res. DM particles
+     * and assuming the mean density of the Universe is used in the simulation.
+     */
+    const double mean_matter_density =
+        cosmo->Omega_m * cosmo->critical_density_0;
+
+    p->epsilon_comoving = ratio * cbrt(high_res_DM_mass / mean_matter_density);
+
+    /* Maximal physical softening taken straight from the parameter file */
     p->epsilon_max_physical =
         parser_get_param_double(params, "Gravity:max_physical_softening");
+
+    /* Compute the comoving softening length for background particles.
+     * Since they have variable masses the mass factor will be multiplied
+     * in later on.
+     * Note that we already multiply in the conversion from Plummer -> real
+     * softening length */
+    const double ratio_background =
+        parser_get_param_double(params, "Gravity:softening_ratio_background");
+
+    p->epsilon_background_fac = kernel_gravity_softening_plummer_equivalent *
+                                ratio_background *
+                                cbrt(1. / mean_matter_density);
+
   } else {
     p->epsilon_max_physical =
         parser_get_param_double(params, "Gravity:max_physical_softening");
@@ -109,7 +140,7 @@ void gravity_props_init(struct gravity_props *p, struct swift_params *params,
 void gravity_props_update(struct gravity_props *p,
                           const struct cosmology *cosmo) {
 
-  /* Current softening lengths */
+  /* Current softening length for the high-resolution particles. */
   double softening;
   if (p->epsilon_comoving * cosmo->a > p->epsilon_max_physical)
     softening = p->epsilon_max_physical / cosmo->a;
@@ -121,11 +152,6 @@ void gravity_props_update(struct gravity_props *p,
 
   /* Store things */
   p->epsilon_cur = softening;
-
-  /* Other factors */
-  p->epsilon_cur2 = softening * softening;
-  p->epsilon_cur_inv = 1. / softening;
-  p->epsilon_cur_inv3 = 1. / (softening * softening * softening);
 }
 
 void gravity_props_print(const struct gravity_props *p) {
@@ -143,14 +169,14 @@ void gravity_props_print(const struct gravity_props *p) {
           kernel_gravity_softening_name);
 
   message(
-      "Self-gravity comoving softening:    epsilon=%.4f (Plummer equivalent: "
-      "%.4f)",
+      "Self-gravity comoving softening: epsilon=%.6f (Plummer equivalent: "
+      "%.6f)",
       p->epsilon_comoving * kernel_gravity_softening_plummer_equivalent,
       p->epsilon_comoving);
 
   message(
-      "Self-gravity maximal physical softening:    epsilon=%.4f (Plummer "
-      "equivalent: %.4f)",
+      "Self-gravity maximal physical softening:    epsilon=%.6f (Plummer "
+      "equivalent: %.6f)",
       p->epsilon_max_physical * kernel_gravity_softening_plummer_equivalent,
       p->epsilon_max_physical);
 
@@ -171,33 +197,38 @@ void gravity_props_print(const struct gravity_props *p) {
 void gravity_props_print_snapshot(hid_t h_grpgrav,
                                   const struct gravity_props *p) {
 
-  io_write_attribute_f(h_grpgrav, "Time integration eta", p->eta);
-  io_write_attribute_s(h_grpgrav, "Softening style",
-                       kernel_gravity_softening_name);
-  io_write_attribute_f(
-      h_grpgrav, "Comoving softening length [internal units]",
-      p->epsilon_comoving * kernel_gravity_softening_plummer_equivalent);
-  io_write_attribute_f(
-      h_grpgrav,
-      "Comoving Softening length (Plummer equivalent)  [internal units]",
-      p->epsilon_comoving);
-  io_write_attribute_f(
-      h_grpgrav, "Maximal physical softening length  [internal units]",
-      p->epsilon_max_physical * kernel_gravity_softening_plummer_equivalent);
-  io_write_attribute_f(h_grpgrav,
-                       "Maximal physical softening length (Plummer equivalent) "
-                       " [internal units]",
-                       p->epsilon_max_physical);
-  io_write_attribute_f(h_grpgrav, "Opening angle", p->theta_crit);
-  io_write_attribute_s(h_grpgrav, "Scheme", GRAVITY_IMPLEMENTATION);
-  io_write_attribute_i(h_grpgrav, "MM order", SELF_GRAVITY_MULTIPOLE_ORDER);
-  io_write_attribute_f(h_grpgrav, "Mesh a_smooth", p->a_smooth);
-  io_write_attribute_f(h_grpgrav, "Mesh r_cut_max ratio", p->r_cut_max_ratio);
-  io_write_attribute_f(h_grpgrav, "Mesh r_cut_min ratio", p->r_cut_min_ratio);
-  io_write_attribute_f(h_grpgrav, "Tree update frequency",
-                       p->rebuild_frequency);
-  io_write_attribute_s(h_grpgrav, "Mesh truncation function",
-                       kernel_long_gravity_truncation_name);
+  /* io_write_attribute_f(h_grpgrav, "Time integration eta", p->eta); */
+  /* io_write_attribute_s(h_grpgrav, "Softening style", */
+  /*                      kernel_gravity_softening_name); */
+  /* io_write_attribute_f( */
+  /*     h_grpgrav, "Comoving softening length [internal units]", */
+  /*     p->epsilon_comoving * kernel_gravity_softening_plummer_equivalent); */
+  /* io_write_attribute_f( */
+  /*     h_grpgrav, */
+  /*     "Comoving Softening length (Plummer equivalent)  [internal units]", */
+  /*     p->epsilon_comoving); */
+  /* io_write_attribute_f( */
+  /*     h_grpgrav, "Maximal physical softening length  [internal units]", */
+  /*     p->epsilon_max_physical * kernel_gravity_softening_plummer_equivalent);
+   */
+  /* io_write_attribute_f(h_grpgrav, */
+  /*                      "Maximal physical softening length (Plummer
+   * equivalent) " */
+  /*                      " [internal units]", */
+  /*                      p->epsilon_max_physical); */
+  /* io_write_attribute_f(h_grpgrav, "Opening angle", p->theta_crit); */
+  /* io_write_attribute_s(h_grpgrav, "Scheme", GRAVITY_IMPLEMENTATION); */
+  /* io_write_attribute_i(h_grpgrav, "MM order", SELF_GRAVITY_MULTIPOLE_ORDER);
+   */
+  /* io_write_attribute_f(h_grpgrav, "Mesh a_smooth", p->a_smooth); */
+  /* io_write_attribute_f(h_grpgrav, "Mesh r_cut_max ratio",
+   * p->r_cut_max_ratio); */
+  /* io_write_attribute_f(h_grpgrav, "Mesh r_cut_min ratio",
+   * p->r_cut_min_ratio); */
+  /* io_write_attribute_f(h_grpgrav, "Tree update frequency", */
+  /*                      p->rebuild_frequency); */
+  /* io_write_attribute_s(h_grpgrav, "Mesh truncation function", */
+  /*                      kernel_long_gravity_truncation_name); */
 }
 #endif
 

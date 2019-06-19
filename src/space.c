@@ -1928,7 +1928,7 @@ void space_rebuild(struct space *s, int repartitioned, int verbose) {
   /* Check that the multipole construction went OK */
   if (s->with_self_gravity)
     for (int k = 0; k < s->nr_cells; k++)
-      cell_check_multipole(&s->cells_top[k]);
+      cell_check_multipole(&s->cells_top[k], s->e->gravity_properties);
 #endif
 
   /* Clean up any stray sort indices in the cell buffer. */
@@ -3603,7 +3603,8 @@ void space_split_recursive(struct space *s, struct cell *c,
     if (s->with_self_gravity) {
       if (gcount > 0) {
 
-        gravity_P2M(c->grav.multipole, c->grav.parts, c->grav.count);
+        gravity_P2M(c->grav.multipole, c->grav.parts, c->grav.count,
+                    e->gravity_properties);
 
       } else {
 

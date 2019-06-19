@@ -40,8 +40,52 @@ struct swift_params;
  */
 struct gravity_props {
 
+  /* -------------- Softening for the regular DM and baryons ----------- */
+
+  /*! Softening length for high-res. particles at the current redshift.  */
+  float epsilon_cur;
+
+  /* -------------- Softening for the background DM -------------------- */
+
+  /*! Conversion factor from cbrt of particle mass to softening assuming
+   * a constant fraction of the mean inter-particle separation at that mass. */
+  float epsilon_background_fac;
+
+  /* -------------- Properties of the FFM gravity ---------------------- */
+
+  /*! Tree opening angle (Multipole acceptance criterion) */
+  double theta_crit;
+
+  /*! Square of opening angle */
+  double theta_crit2;
+
+  /*! Inverse of opening angle */
+  double theta_crit_inv;
+
+  /* ------------- Properties of the softened gravity ------------------ */
+
+  /*! Fraction of the mean inter particle separation corresponding to the
+   * co-moving softening length of the low-res. particles (DM + baryons) */
+  float mean_inter_particle_fraction_high_res;
+
+  /*! Co-moving softening length for for high-res. particles (DM + baryons)
+   * assuming a constant fraction of the mean inter-particle separation
+   * and a constant particle mass */
+  float epsilon_comoving;
+
+  /*! Maximal softening length in physical coordinates for the high-res.
+   * particles (DM + baryons) */
+  float epsilon_max_physical;
+
+  /* ------------- Properties of the time integration  ----------------- */
+
   /*! Frequency of tree-rebuild in units of #gpart updates. */
   float rebuild_frequency;
+
+  /*! Time integration dimensionless multiplier */
+  float eta;
+
+  /* ------------- Properties of the mesh-based gravity ---------------- */
 
   /*! Periodic long-range mesh side-length */
   int mesh_size;
@@ -57,36 +101,6 @@ struct gravity_props {
    * a_smooth */
   float r_cut_max_ratio;
 
-  /*! Time integration dimensionless multiplier */
-  float eta;
-
-  /*! Tree opening angle (Multipole acceptance criterion) */
-  double theta_crit;
-
-  /*! Square of opening angle */
-  double theta_crit2;
-
-  /*! Inverse of opening angle */
-  double theta_crit_inv;
-
-  /*! Comoving softening */
-  double epsilon_comoving;
-
-  /*! Maxium physical softening */
-  double epsilon_max_physical;
-
-  /*! Current softening length */
-  float epsilon_cur;
-
-  /*! Square of current softening length */
-  float epsilon_cur2;
-
-  /*! Inverse of current softening length */
-  float epsilon_cur_inv;
-
-  /*! Cube of the inverse of current oftening length */
-  float epsilon_cur_inv3;
-
   /*! Gravitational constant (in internal units, copied from the physical
    * constants) */
   float G_Newton;
@@ -94,9 +108,10 @@ struct gravity_props {
 
 void gravity_props_print(const struct gravity_props *p);
 void gravity_props_init(struct gravity_props *p, struct swift_params *params,
-                        const struct phys_const *phys_const,
-                        const struct cosmology *cosmo, int with_cosmology,
-                        int periodic);
+const struct phys_const *phys_const,
+                        const struct cosmology *cosmo,
+                        const double high_res_DM_mass, const int with_cosmology,
+                        const int periodic);
 void gravity_props_update(struct gravity_props *p,
                           const struct cosmology *cosmo);
 

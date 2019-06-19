@@ -2175,8 +2175,11 @@ void cell_reset_task_counters(struct cell *c) {
  *
  * @param c The #cell.
  * @param ti_current The current integer time.
+ * @param grav_props The properties of the gravity scheme.
  */
-void cell_make_multipoles(struct cell *c, integertime_t ti_current) {
+void cell_make_multipoles(struct cell *c, integertime_t ti_current,
+                          const struct gravity_props *const grav_props) {
+
   /* Reset everything */
   gravity_reset(c->grav.multipole);
 
@@ -2184,7 +2187,7 @@ void cell_make_multipoles(struct cell *c, integertime_t ti_current) {
     /* Start by recursing */
     for (int k = 0; k < 8; ++k) {
       if (c->progeny[k] != NULL)
-        cell_make_multipoles(c->progeny[k], ti_current);
+        cell_make_multipoles(c->progeny[k], ti_current, grav_props);
     }
 
     /* Compute CoM of all progenies */
@@ -2245,7 +2248,7 @@ void cell_make_multipoles(struct cell *c, integertime_t ti_current) {
 
   } else {
     if (c->grav.count > 0) {
-      gravity_P2M(c->grav.multipole, c->grav.parts, c->grav.count);
+      gravity_P2M(c->grav.multipole, c->grav.parts, c->grav.count, grav_props);
       const double dx =
           c->grav.multipole->CoM[0] > c->loc[0] + c->width[0] * 0.5
               ? c->grav.multipole->CoM[0] - c->loc[0]
@@ -2322,7 +2325,9 @@ void cell_check_foreign_multipole(const struct cell *c) {
  *
  * @param c Cell to act upon
  */
-void cell_check_multipole(struct cell *c) {
+void cell_check_multipole(struct cell *c,
+                          const struct gravity_props *const grav_props) {
+
 #ifdef SWIFT_DEBUG_CHECKS
   struct gravity_tensors ma;
   const double tolerance = 1e-3; /* Relative */
@@ -2330,11 +2335,12 @@ void cell_check_multipole(struct cell *c) {
   /* First recurse */
   if (c->split)
     for (int k = 0; k < 8; k++)
-      if (c->progeny[k] != NULL) cell_check_multipole(c->progeny[k]);
+      if (c->progeny[k] != NULL)
+        cell_check_multipole(c->progeny[k], grav_props);
 
   if (c->grav.count > 0) {
     /* Brute-force calculation */
-    gravity_P2M(&ma, c->grav.parts, c->grav.count);
+    gravity_P2M(&ma, c->grav.parts, c->grav.count, grav_props);
 
     /* Now  compare the multipole expansion */
     if (!gravity_multipole_equal(&ma, c->grav.multipole, tolerance)) {
