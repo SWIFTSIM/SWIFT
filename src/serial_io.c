@@ -312,17 +312,17 @@ void prepareArray(const struct engine* e, hid_t grp, char* fileName,
 
   /* Write unit conversion factors for this data set */
   char buffer[FIELD_BUFFER_SIZE] = {0};
-  units_cgs_conversion_string(buffer, snapshot_units, props.units);
+  units_cgs_conversion_string(buffer, snapshot_units, props.units,
+                              props.scale_factor_exponent);
   float baseUnitsExp[5];
   units_get_base_unit_exponents_array(baseUnitsExp, props.units);
-  const float a_factor_exp = units_a_factor(snapshot_units, props.units);
   io_write_attribute_f(h_data, "U_M exponent", baseUnitsExp[UNIT_MASS]);
   io_write_attribute_f(h_data, "U_L exponent", baseUnitsExp[UNIT_LENGTH]);
   io_write_attribute_f(h_data, "U_t exponent", baseUnitsExp[UNIT_TIME]);
   io_write_attribute_f(h_data, "U_I exponent", baseUnitsExp[UNIT_CURRENT]);
   io_write_attribute_f(h_data, "U_T exponent", baseUnitsExp[UNIT_TEMPERATURE]);
-  io_write_attribute_f(h_data, "h-scale exponent", 0);
-  io_write_attribute_f(h_data, "a-scale exponent", a_factor_exp);
+  io_write_attribute_f(h_data, "h-scale exponent", 0.f);
+  io_write_attribute_f(h_data, "a-scale exponent", props.scale_factor_exponent);
   io_write_attribute_s(h_data, "Expression for physical CGS units", buffer);
 
   /* Write the actual number this conversion factor corresponds to */
@@ -335,7 +335,15 @@ void prepareArray(const struct engine* e, hid_t grp, char* fileName,
   io_write_attribute_d(
       h_data,
       "Conversion factor to phyical CGS (including cosmological corrections)",
-      factor * pow(e->cosmology->a, a_factor_exp));
+      factor * pow(e->cosmology->a, props.scale_factor_exponent));
+
+#ifdef SWIFT_DEBUG_CHECKS
+  if (strlen(props.description) == 0)
+    error("Invalid (empty) description of the field '%s'", props.name);
+#endif
+
+  /* Write the full description */
+  io_write_attribute_s(h_data, "Description", props.description);
 
   /* Close everything */
   H5Pclose(h_prop);

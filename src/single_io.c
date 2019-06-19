@@ -324,7 +324,8 @@ void writeArray(const struct engine* e, hid_t grp, char* fileName,
 
   /* Write unit conversion factors for this data set */
   char buffer[FIELD_BUFFER_SIZE] = {0};
-  units_cgs_conversion_string(buffer, snapshot_units, props.units);
+  units_cgs_conversion_string(buffer, snapshot_units, props.units,
+                              props.scale_factor_exponent);
   float baseUnitsExp[5];
   units_get_base_unit_exponents_array(baseUnitsExp, props.units);
   io_write_attribute_f(h_data, "U_M exponent", baseUnitsExp[UNIT_MASS]);
@@ -332,7 +333,7 @@ void writeArray(const struct engine* e, hid_t grp, char* fileName,
   io_write_attribute_f(h_data, "U_t exponent", baseUnitsExp[UNIT_TIME]);
   io_write_attribute_f(h_data, "U_I exponent", baseUnitsExp[UNIT_CURRENT]);
   io_write_attribute_f(h_data, "U_T exponent", baseUnitsExp[UNIT_TEMPERATURE]);
-  io_write_attribute_f(h_data, "h-scale exponent", 0);
+  io_write_attribute_f(h_data, "h-scale exponent", 0.f);
   io_write_attribute_f(h_data, "a-scale exponent", props.scale_factor_exponent);
   io_write_attribute_s(h_data, "Expression for physical CGS units", buffer);
 

@@ -1848,7 +1848,8 @@ void io_write_output_field_parameter(const char* filename) {
     for (int i = 0; i < num_fields; ++i) {
 
       char buffer[FIELD_BUFFER_SIZE] = {0};
-      units_cgs_conversion_string(buffer, &snapshot_units, list[i].units);
+      units_cgs_conversion_string(buffer, &snapshot_units, list[i].units,
+                                  list[i].scale_factor_exponent);
 
       fprintf(file,
               "  %s_%s: %*d \t # %s. ::: Conversion to physical CGS: %s\n",
