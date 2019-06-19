@@ -69,7 +69,9 @@ INLINE static void convert_gpart_vel(const struct engine* e,
 
 INLINE static void convert_gpart_soft(const struct engine* e,
                                       const struct gpart* gp, float* ret) {
-  ret[0] = gravity_get_softening(gp, e->gravity_properties);
+
+  ret[0] = kernel_gravity_softening_plummer_equivalent_inv *
+           gravity_get_softening(gp, e->gravity_properties);
 }
 
 /**
