@@ -677,7 +677,7 @@ void read_ic_serial(char* fileName, const struct unit_system* internal_units,
 
   /* Allocate memory to store all gravity  particles */
   if (with_gravity) {
-    Ndm = N[1];
+    Ndm = N[swift_dark_matter];
     Ndm_background = N[swift_type_dark_matter_background];
     *Ngparts = (with_hydro ? N[swift_type_gas] : 0) +
                N[swift_type_dark_matter] +
@@ -806,7 +806,6 @@ void read_ic_serial(char* fileName, const struct unit_system* internal_units,
     float global_gpart_mass;
     MPI_Allreduce(&local_gpart_mass, &global_gpart_mass, 1, MPI_FLOAT, MPI_MAX,
                   comm);
-    /* Record the mass of the DM particles */
     *gpart_mass = global_gpart_mass;
 
     /* Prepare the DM background particles */
