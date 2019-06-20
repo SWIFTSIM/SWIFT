@@ -29,15 +29,15 @@ rho0 = 4          # Gas central density
 rho1 = 1          # Gas outskirt density
 P0 = 2.5          # Gas central pressure
 P1 = 2.5          # Gas central pressure
-vx = 142.3        # Random velocity for all particles 
-vy = -31.4
+vx = 0.0        # Random velocity for all particles 
+vy = 0.0
 fileOutputName = "square.hdf5"
 #---------------------------------------------------
 
 vol = 1.
 
 numPart_out = L * L
-numPart_in = L * L * rho0 / rho1 / 4
+numPart_in = int(L * L * rho0 / rho1 / 4)
 
 L_out = int(sqrt(numPart_out))
 L_in = int(sqrt(numPart_in))

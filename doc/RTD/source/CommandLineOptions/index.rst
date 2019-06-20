@@ -20,7 +20,7 @@ can be found by typing ``./swift -h``::
     -b, --feedback                    Run with stars feedback.
     -c, --cosmology                   Run with cosmological time integration.
     --temperature                     Run with temperature calculation. 
-    -C, --cooling                     Run with cooling (also switches on --with-temperature).
+    -C, --cooling                     Run with cooling (also switches on --temperature).
     -D, --drift-all                   Always drift all particles even the ones
                                       far from active particles. This emulates
                                       Gadget-[23] and GIZMO's default behaviours.
@@ -31,8 +31,8 @@ can be found by typing ``./swift -h``::
     -s, --hydro                       Run with hydrodynamics.
     -S, --stars                       Run with stars.
     -B, --black-holes                 Run with black holes.
-    -u, --fof                         Run Friends-of-Friends algorithm and 
-                                      black holes seeding.
+    -u, --fof                         Run Friends-of-Friends algorithm to
+                                      perform black hole seeding.
     -x, --velociraptor                Run with structure finding.
     --limiter                         Run with time-step limiter.
 
@@ -52,8 +52,8 @@ can be found by typing ``./swift -h``::
     -n, --steps=<int>                 Execute a fixed number of time steps.
                                       When unset use the time_end parameter
                                       to stop.
-    -o, --output-params=<str>         Generate a default output parameter
-                                      file.
+    -o, --output-params=<str>         Generate a parameter file with the options
+                                      for selecting the output fields.
     -P, --param=<str>                 Set parameter value, overiding the value
                                       read from the parameter file. Can be used
                                       more than once {sec:par:value}.

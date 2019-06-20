@@ -2626,7 +2626,7 @@ void engine_prepare(struct engine *e) {
     engine_drift_all(e, /*drift_mpole=*/0);
     drifted_all = 1;
 
-    engine_fof(e);
+    engine_fof(e, /*dump_results=*/0, /*seed_black_holes=*/1);
   }
 
   /* Do we need repartitioning ? */
@@ -3441,11 +3441,9 @@ void engine_first_init_particles(struct engine *e) {
  * @param flag_entropy_ICs Did the 'Internal Energy' of the particles actually
  * contain entropy ?
  * @param clean_h_values Are we cleaning up the values of h before building
- * @param compute_init_accel Are we computing the initial acceleration of
- *particles?
  */
 void engine_init_particles(struct engine *e, int flag_entropy_ICs,
-                           int clean_h_values, int compute_init_accel) {
+                           int clean_h_values) {
 
   struct space *s = e->s;
 
@@ -3515,9 +3513,6 @@ void engine_init_particles(struct engine *e, int flag_entropy_ICs,
       engine_launch(e);
     }
   }
-
-  /* Exit if only computing the FOF. */
-  if (!compute_init_accel) return;
 
 #ifdef SWIFT_DEBUG_CHECKS
   /* Check that we have the correct total mass in the top-level multipoles */
@@ -5014,7 +5009,6 @@ void engine_init(struct engine *e, struct space *s, struct swift_params *params,
   if (strlen(e->run_name) == 0) {
     error("The run name in the parameter file cannot be an empty string.");
   }
-  if (e->nodeID == 0) message("Running simulation '%s'.", e->run_name);
 
   /* Setup the timestep if non-cosmological */
   if (!(e->policy & engine_policy_cosmology)) {
@@ -5083,6 +5077,7 @@ void engine_init(struct engine *e, struct space *s, struct swift_params *params,
  * When not restarting params should be the same as given to engine_init().
  *
  * @param restart true when restarting the application.
+ * @param fof true when starting a stand-alone FOF call.
  * @param e The #engine.
  * @param params The parsed parameter file.
  * @param nr_nodes The number of MPI ranks.
@@ -5092,9 +5087,10 @@ void engine_init(struct engine *e, struct space *s, struct swift_params *params,
  * @param verbose Is this #engine talkative ?
  * @param restart_file The name of our restart file.
  */
-void engine_config(int restart, struct engine *e, struct swift_params *params,
-                   int nr_nodes, int nodeID, int nr_threads, int with_aff,
-                   int verbose, const char *restart_file) {
+void engine_config(int restart, int fof, struct engine *e,
+                   struct swift_params *params, int nr_nodes, int nodeID,
+                   int nr_threads, int with_aff, int verbose,
+                   const char *restart_file) {
 
   /* Store the values and initialise global fields. */
   e->nodeID = nodeID;
@@ -5119,6 +5115,15 @@ void engine_config(int restart, struct engine *e, struct swift_params *params,
   e->restart_dt = 0;
   e->run_fof = 0;
   engine_rank = nodeID;
+
+  if (restart && fof) {
+    error(
+        "Can't configure the engine to be a stand-alone FOF and restarting "
+        "from a check-point at the same time!");
+  }
+
+  /* Welcome message */
+  if (e->nodeID == 0) message("Running simulation '%s'.", e->run_name);
 
   /* Get the number of queues */
   int nr_queues =
@@ -5257,8 +5262,8 @@ void engine_config(int restart, struct engine *e, struct swift_params *params,
 #endif
   }
 
-  /* Open some files */
-  if (e->nodeID == 0) {
+  /* Open some global files */
+  if (!fof && e->nodeID == 0) {
 
     /* When restarting append to these files. */
     const char *mode;
@@ -5342,230 +5347,224 @@ void engine_config(int restart, struct engine *e, struct swift_params *params,
   /* Print policy */
   engine_print_policy(e);
 
-  /* Print information about the hydro scheme */
-  if (e->policy & engine_policy_hydro) {
-    if (e->nodeID == 0) hydro_props_print(e->hydro_properties);
-    if (e->nodeID == 0) entropy_floor_print(e->entropy_floor);
-  }
+  if (!fof) {
 
-  /* Print information about the gravity scheme */
-  if (e->policy & engine_policy_self_gravity)
-    if (e->nodeID == 0) gravity_props_print(e->gravity_properties);
-
-  if (e->policy & engine_policy_stars)
-    if (e->nodeID == 0) stars_props_print(e->stars_properties);
-
-  /* Check we have sensible time bounds */
-  if (e->time_begin >= e->time_end)
-    error(
-        "Final simulation time (t_end = %e) must be larger than the start time "
-        "(t_beg = %e)",
-        e->time_end, e->time_begin);
-
-  /* Check we don't have inappropriate time labels */
-  if ((e->snapshot_int_time_label_on == 1) && (e->time_end <= 1.f))
-    error("Snapshot integer time labels enabled but end time <= 1");
-
-  /* Check we have sensible time-step values */
-  if (e->dt_min > e->dt_max)
-    error(
-        "Minimal time-step size (%e) must be smaller than maximal time-step "
-        "size (%e)",
-        e->dt_min, e->dt_max);
-
-  /* Info about time-steps */
-  if (e->nodeID == 0) {
-    message("Absolute minimal timestep size: %e", e->time_base);
-
-    float dt_min = e->time_end - e->time_begin;
-    while (dt_min > e->dt_min) dt_min /= 2.f;
-
-    message("Minimal timestep size (on time-line): %e", dt_min);
-
-    float dt_max = e->time_end - e->time_begin;
-    while (dt_max > e->dt_max) dt_max /= 2.f;
-
-    message("Maximal timestep size (on time-line): %e", dt_max);
-  }
-
-  if (e->dt_min < e->time_base && e->nodeID == 0)
-    error(
-        "Minimal time-step size smaller than the absolute possible minimum "
-        "dt=%e",
-        e->time_base);
-
-  if (!(e->policy & engine_policy_cosmology))
-    if (e->dt_max > (e->time_end - e->time_begin) && e->nodeID == 0)
-      error("Maximal time-step size larger than the simulation run time t=%e",
-            e->time_end - e->time_begin);
-
-  /* Deal with outputs */
-  if (e->policy & engine_policy_cosmology) {
-
-    if (e->delta_time_snapshot <= 1.)
-      error("Time between snapshots (%e) must be > 1.", e->delta_time_snapshot);
-
-    if (e->delta_time_statistics <= 1.)
-      error("Time between statistics (%e) must be > 1.",
-            e->delta_time_statistics);
-
-    if (e->a_first_snapshot < e->cosmology->a_begin)
-      error(
-          "Scale-factor of first snapshot (%e) must be after the simulation "
-          "start a=%e.",
-          e->a_first_snapshot, e->cosmology->a_begin);
-
-    if (e->a_first_statistics < e->cosmology->a_begin)
-      error(
-          "Scale-factor of first stats output (%e) must be after the "
-          "simulation start a=%e.",
-          e->a_first_statistics, e->cosmology->a_begin);
-
-    if (e->policy & engine_policy_structure_finding) {
-
-      if (e->delta_time_stf == -1. && !e->snapshot_invoke_stf)
-        error("A value for `StructureFinding:delta_time` must be specified");
-
-      if (e->delta_time_stf <= 1. && e->delta_time_stf != -1.)
-        error("Time between STF (%e) must be > 1.", e->delta_time_stf);
-
-      if (e->a_first_stf_output < e->cosmology->a_begin)
-        error(
-            "Scale-factor of first stf output (%e) must be after the "
-            "simulation start a=%e.",
-            e->a_first_stf_output, e->cosmology->a_begin);
+    /* Print information about the hydro scheme */
+    if (e->policy & engine_policy_hydro) {
+      if (e->nodeID == 0) hydro_props_print(e->hydro_properties);
+      if (e->nodeID == 0) entropy_floor_print(e->entropy_floor);
     }
 
-    if (e->policy & engine_policy_fof) {
+    /* Print information about the gravity scheme */
+    if (e->policy & engine_policy_self_gravity)
+      if (e->nodeID == 0) gravity_props_print(e->gravity_properties);
 
-      if (e->delta_time_fof <= 1.)
-        error("Time between FOF (%e) must be > 1.", e->delta_time_fof);
+    if (e->policy & engine_policy_stars)
+      if (e->nodeID == 0) stars_props_print(e->stars_properties);
 
-      if (e->a_first_fof_call < e->cosmology->a_begin)
-        error(
-            "Scale-factor of first fof call (%e) must be after the "
-            "simulation start a=%e.",
-            e->a_first_fof_call, e->cosmology->a_begin);
+    /* Check we have sensible time bounds */
+    if (e->time_begin >= e->time_end)
+      error(
+          "Final simulation time (t_end = %e) must be larger than the start "
+          "time (t_beg = %e)",
+          e->time_end, e->time_begin);
+
+    /* Check we don't have inappropriate time labels */
+    if ((e->snapshot_int_time_label_on == 1) && (e->time_end <= 1.f))
+      error("Snapshot integer time labels enabled but end time <= 1");
+
+    /* Check we have sensible time-step values */
+    if (e->dt_min > e->dt_max)
+      error(
+          "Minimal time-step size (%e) must be smaller than maximal time-step "
+          "size (%e)",
+          e->dt_min, e->dt_max);
+
+    /* Info about time-steps */
+    if (e->nodeID == 0) {
+      message("Absolute minimal timestep size: %e", e->time_base);
+
+      float dt_min = e->time_end - e->time_begin;
+      while (dt_min > e->dt_min) dt_min /= 2.f;
+
+      message("Minimal timestep size (on time-line): %e", dt_min);
+
+      float dt_max = e->time_end - e->time_begin;
+      while (dt_max > e->dt_max) dt_max /= 2.f;
+
+      message("Maximal timestep size (on time-line): %e", dt_max);
     }
-  } else {
 
-    if (e->delta_time_snapshot <= 0.)
-      error("Time between snapshots (%e) must be positive.",
-            e->delta_time_snapshot);
-
-    if (e->delta_time_statistics <= 0.)
-      error("Time between statistics (%e) must be positive.",
-            e->delta_time_statistics);
-
-    /* Find the time of the first output */
-    if (e->time_first_snapshot < e->time_begin)
+    if (e->dt_min < e->time_base && e->nodeID == 0)
       error(
-          "Time of first snapshot (%e) must be after the simulation start "
-          "t=%e.",
-          e->time_first_snapshot, e->time_begin);
+          "Minimal time-step size smaller than the absolute possible minimum "
+          "dt=%e",
+          e->time_base);
 
-    if (e->time_first_statistics < e->time_begin)
-      error(
-          "Time of first stats output (%e) must be after the simulation start "
-          "t=%e.",
-          e->time_first_statistics, e->time_begin);
+    if (!(e->policy & engine_policy_cosmology))
+      if (e->dt_max > (e->time_end - e->time_begin) && e->nodeID == 0)
+        error("Maximal time-step size larger than the simulation run time t=%e",
+              e->time_end - e->time_begin);
 
-    if (e->policy & engine_policy_structure_finding) {
+    /* Deal with outputs */
+    if (e->policy & engine_policy_cosmology) {
 
-      if (e->delta_time_stf == -1. && !e->snapshot_invoke_stf)
-        error("A value for `StructureFinding:delta_time` must be specified");
+      if (e->delta_time_snapshot <= 1.)
+        error("Time between snapshots (%e) must be > 1.",
+              e->delta_time_snapshot);
 
-      if (e->delta_time_stf <= 0. && e->delta_time_stf != -1.)
-        error("Time between STF (%e) must be positive.", e->delta_time_stf);
+      if (e->delta_time_statistics <= 1.)
+        error("Time between statistics (%e) must be > 1.",
+              e->delta_time_statistics);
 
-      if (e->time_first_stf_output < e->time_begin)
-        error("Time of first STF (%e) must be after the simulation start t=%e.",
+      if (e->a_first_snapshot < e->cosmology->a_begin)
+        error(
+            "Scale-factor of first snapshot (%e) must be after the simulation "
+            "start a=%e.",
+            e->a_first_snapshot, e->cosmology->a_begin);
+
+      if (e->a_first_statistics < e->cosmology->a_begin)
+        error(
+            "Scale-factor of first stats output (%e) must be after the "
+            "simulation start a=%e.",
+            e->a_first_statistics, e->cosmology->a_begin);
+
+      if (e->policy & engine_policy_structure_finding) {
+
+        if (e->delta_time_stf == -1. && !e->snapshot_invoke_stf)
+          error("A value for `StructureFinding:delta_time` must be specified");
+
+        if (e->a_first_stf_output < e->cosmology->a_begin)
+          error(
+              "Scale-factor of first stf output (%e) must be after the "
+              "simulation start a=%e.",
+              e->a_first_stf_output, e->cosmology->a_begin);
+      }
+
+      if (e->policy & engine_policy_fof) {
+
+        if (e->delta_time_fof <= 1.)
+          error("Time between FOF (%e) must be > 1.", e->delta_time_fof);
+
+        if (e->a_first_fof_call < e->cosmology->a_begin)
+          error(
+              "Scale-factor of first fof call (%e) must be after the "
+              "simulation start a=%e.",
+              e->a_first_fof_call, e->cosmology->a_begin);
+      }
+
+    } else {
+
+      if (e->delta_time_snapshot <= 0.)
+        error("Time between snapshots (%e) must be positive.",
+              e->delta_time_snapshot);
+
+      if (e->delta_time_statistics <= 0.)
+        error("Time between statistics (%e) must be positive.",
+              e->delta_time_statistics);
+
+      /* Find the time of the first output */
+      if (e->time_first_snapshot < e->time_begin)
+        error(
+            "Time of first snapshot (%e) must be after the simulation start "
+            "t=%e.",
+            e->time_first_snapshot, e->time_begin);
+
+      if (e->time_first_statistics < e->time_begin)
+        error(
+            "Time of first stats output (%e) must be after the simulation "
+            "start t=%e.",
+            e->time_first_statistics, e->time_begin);
+
+      if (e->policy & engine_policy_structure_finding) {
+
+        if (e->delta_time_stf == -1. && !e->snapshot_invoke_stf)
+          error("A value for `StructureFinding:delta_time` must be specified");
+
+        if (e->delta_time_stf <= 0. && e->delta_time_stf != -1.)
+          error("Time between STF (%e) must be positive.", e->delta_time_stf);
+
+        if (e->time_first_stf_output < e->time_begin)
+          error(
+              "Time of first STF (%e) must be after the simulation start t=%e.",
               e->time_first_stf_output, e->time_begin);
+      }
     }
 
-    if (e->policy & engine_policy_structure_finding) {
-
-      if (e->delta_time_fof <= 0.)
-        error("Time between FOF (%e) must be positive.", e->delta_time_fof);
-
-      if (e->time_first_fof_call < e->time_begin)
-        error("Time of first FOF (%e) must be after the simulation start t=%e.",
-              e->time_first_fof_call, e->time_begin);
-    }
-  }
-
-  /* Get the total mass */
-  e->total_mass = 0.;
-  for (size_t i = 0; i < e->s->nr_gparts; ++i)
-    e->total_mass += e->s->gparts[i].mass;
+    /* Get the total mass */
+    e->total_mass = 0.;
+    for (size_t i = 0; i < e->s->nr_gparts; ++i)
+      e->total_mass += e->s->gparts[i].mass;
 
 /* Reduce the total mass */
 #ifdef WITH_MPI
-  MPI_Allreduce(MPI_IN_PLACE, &e->total_mass, 1, MPI_DOUBLE, MPI_SUM,
-                MPI_COMM_WORLD);
+    MPI_Allreduce(MPI_IN_PLACE, &e->total_mass, 1, MPI_DOUBLE, MPI_SUM,
+                  MPI_COMM_WORLD);
 #endif
 
 #if defined(WITH_LOGGER)
-  if (e->nodeID == 0)
-    message(
-        "WARNING: There is currently no way of predicting the output "
-        "size, please use it carefully");
+    if (e->nodeID == 0)
+      message(
+          "WARNING: There is currently no way of predicting the output "
+          "size, please use it carefully");
 #endif
 
-  /* Find the time of the first snapshot output */
-  engine_compute_next_snapshot_time(e);
+    /* Find the time of the first snapshot output */
+    engine_compute_next_snapshot_time(e);
 
-  /* Find the time of the first statistics output */
-  engine_compute_next_statistics_time(e);
+    /* Find the time of the first statistics output */
+    engine_compute_next_statistics_time(e);
 
-  /* Find the time of the first stf output */
-  if (e->policy & engine_policy_structure_finding) {
-    engine_compute_next_stf_time(e);
+    /* Find the time of the first stf output */
+    if (e->policy & engine_policy_structure_finding) {
+      engine_compute_next_stf_time(e);
+    }
+
+    /* Find the time of the first stf output */
+    if (e->policy & engine_policy_fof) {
+      engine_compute_next_fof_time(e);
+    }
+
+    /* Check that we are invoking VELOCIraptor only if we have it */
+    if (e->snapshot_invoke_stf &&
+        !(e->policy & engine_policy_structure_finding)) {
+      error(
+          "Invoking VELOCIraptor after snapshots but structure finding wasn't "
+          "activated at runtime (Use --velociraptor).");
+    }
+
+    /* Whether restarts are enabled. Yes by default. Can be changed on restart.
+     */
+    e->restart_dump = parser_get_opt_param_int(params, "Restarts:enable", 1);
+
+    /* Whether to save backup copies of the previous restart files. */
+    e->restart_save = parser_get_opt_param_int(params, "Restarts:save", 1);
+
+    /* Whether restarts should be dumped on exit. Not by default. Can be changed
+     * on restart. */
+    e->restart_onexit = parser_get_opt_param_int(params, "Restarts:onexit", 0);
+
+    /* Hours between restart dumps. Can be changed on restart. */
+    float dhours =
+        parser_get_opt_param_float(params, "Restarts:delta_hours", 6.0);
+    if (e->nodeID == 0) {
+      if (e->restart_dump)
+        message("Restarts will be dumped every %f hours", dhours);
+      else
+        message("WARNING: restarts will not be dumped");
+
+      if (e->verbose && e->restart_onexit)
+        message("Restarts will be dumped after the final step");
+    }
+
+    /* Internally we use ticks, so convert into a delta ticks. Assumes we can
+     * convert from ticks into milliseconds. */
+    e->restart_dt = clocks_to_ticks(dhours * 60.0 * 60.0 * 1000.0);
+
+    /* The first dump will happen no sooner than restart_dt ticks in the
+     * future. */
+    e->restart_next = getticks() + e->restart_dt;
   }
-
-  /* Find the time of the first stf output */
-  if (e->policy & engine_policy_fof) {
-    engine_compute_next_fof_time(e);
-  }
-
-  /* Check that we are invoking VELOCIraptor only if we have it */
-  if (e->snapshot_invoke_stf &&
-      !(e->policy & engine_policy_structure_finding)) {
-    error(
-        "Invoking VELOCIraptor after snapshots but structure finding wasn't "
-        "activated at runtime (Use --velociraptor).");
-  }
-
-  /* Whether restarts are enabled. Yes by default. Can be changed on restart. */
-  e->restart_dump = parser_get_opt_param_int(params, "Restarts:enable", 1);
-
-  /* Whether to save backup copies of the previous restart files. */
-  e->restart_save = parser_get_opt_param_int(params, "Restarts:save", 1);
-
-  /* Whether restarts should be dumped on exit. Not by default. Can be changed
-   * on restart. */
-  e->restart_onexit = parser_get_opt_param_int(params, "Restarts:onexit", 0);
-
-  /* Hours between restart dumps. Can be changed on restart. */
-  float dhours =
-      parser_get_opt_param_float(params, "Restarts:delta_hours", 6.0);
-  if (e->nodeID == 0) {
-    if (e->restart_dump)
-      message("Restarts will be dumped every %f hours", dhours);
-    else
-      message("WARNING: restarts will not be dumped");
-
-    if (e->verbose && e->restart_onexit)
-      message("Restarts will be dumped after the final step");
-  }
-
-  /* Internally we use ticks, so convert into a delta ticks. Assumes we can
-   * convert from ticks into milliseconds. */
-  e->restart_dt = clocks_to_ticks(dhours * 60.0 * 60.0 * 1000.0);
-
-  /* The first dump will happen no sooner than restart_dt ticks in the
-   * future. */
-  e->restart_next = getticks() + e->restart_dt;
 
 /* Construct types for MPI communications */
 #ifdef WITH_MPI
@@ -5577,8 +5576,11 @@ void engine_config(int restart, struct engine *e, struct swift_params *params,
   fof_create_mpi_types();
 #endif
 
-  /* Initialise the collection group. */
-  collectgroup_init();
+  if (!fof) {
+
+    /* Initialise the collection group. */
+    collectgroup_init();
+  }
 
   /* Initialize the threadpool. */
   threadpool_init(&e->threadpool, e->nr_threads);
@@ -6167,8 +6169,11 @@ void engine_recompute_displacement_constraint(struct engine *e) {
 
 /**
  * @brief Frees up the memory allocated for this #engine
+ *
+ * @param e The #engine to clean.
+ * @param fof Was this a stand-alone FOF run?
  */
-void engine_clean(struct engine *e) {
+void engine_clean(struct engine *e, const int fof) {
   /* Start by telling the runners to stop. */
   e->step_props = engine_step_prop_done;
   swift_barrier_wait(&e->run_barrier);
@@ -6201,7 +6206,7 @@ void engine_clean(struct engine *e) {
   threadpool_clean(&e->threadpool);
 
   /* Close files */
-  if (e->nodeID == 0) {
+  if (!fof && e->nodeID == 0) {
     fclose(e->file_timesteps);
     fclose(e->file_stats);
 
@@ -6480,8 +6485,11 @@ void engine_activate_fof_tasks(struct engine *e) {
  * @brief Run a FOF search.
  *
  * @param e the engine
+ * @param dump_results Are we writing group catalogues to output files?
+ * @param seed_black_holes Are we seeding black holes?
  */
-void engine_fof(struct engine *e) {
+void engine_fof(struct engine *e, const int dump_results,
+                const int seed_black_holes) {
 
   ticks tic = getticks();
 
@@ -6513,8 +6521,8 @@ void engine_fof(struct engine *e) {
   /* Perform FOF search over foreign particles and
    * find groups which require black hole seeding.  */
   fof_search_tree(e->fof_properties, e->black_holes_properties,
-                  e->physical_constants, e->cosmology, e->s, /*dump_results=*/0,
-                  /*seed_black_holes=*/1);
+                  e->physical_constants, e->cosmology, e->s, dump_results,
+                  seed_black_holes);
 
   /* Reset flag. */
   e->run_fof = 0;
@@ -6523,7 +6531,7 @@ void engine_fof(struct engine *e) {
   e->step_props |= engine_step_prop_fof;
 
   /* ... and find the next FOF time */
-  engine_compute_next_fof_time(e);
+  if (seed_black_holes) engine_compute_next_fof_time(e);
 
   if (engine_rank == 0)
     message("Complete FOF search took: %.3f %s.",

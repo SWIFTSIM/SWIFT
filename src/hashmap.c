@@ -248,15 +248,15 @@ hashmap_element_t *hashmap_find(hashmap_t *m, hashmap_key_t key, int create_new,
 /**
  * @brief Grows the hashmap and rehashes all the elements
  */
-void hashmap_grow(hashmap_t *m) {
+void hashmap_grow(hashmap_t *m, size_t new_size) {
   /* Hold on to the old data. */
   const size_t old_table_size = m->table_size;
   hashmap_chunk_t **old_chunks = m->chunks;
 
   /* Re-allocate the chunk array. */
-  m->table_size *= HASHMAP_GROWTH_FACTOR;
-  m->nr_chunks = (m->table_size + HASHMAP_ELEMENTS_PER_CHUNK - 1) /
-                 HASHMAP_ELEMENTS_PER_CHUNK;
+  if (new_size == 0) new_size = m->table_size * HASHMAP_GROWTH_FACTOR;
+  m->nr_chunks =
+      (new_size + HASHMAP_ELEMENTS_PER_CHUNK - 1) / HASHMAP_ELEMENTS_PER_CHUNK;
   m->table_size = m->nr_chunks * HASHMAP_ELEMENTS_PER_CHUNK;
 
   if (HASHMAP_DEBUG_OUTPUT) {
@@ -272,6 +272,11 @@ void hashmap_grow(hashmap_t *m) {
 
   /* Reset size. */
   m->size = 0;
+
+  /* Buffer of stray elements, in case we get overflows while re-hashing. */
+  hashmap_element_t *strays = NULL;
+  size_t strays_count = 0;
+  size_t strays_size = 0;
 
   /* Iterate over the chunks and add their entries to the new table. */
   for (size_t cid = 0; cid < old_table_size / HASHMAP_ELEMENTS_PER_CHUNK;
@@ -296,11 +301,29 @@ void hashmap_grow(hashmap_t *m) {
           hashmap_element_t *new_element =
               hashmap_find(m, element->key, /*create_new=*/1,
                            /*chain_length=*/NULL, /*created_new_element=*/NULL);
-          if (!new_element) {
-            /* TODO(pedro): Deal with this type of failure more elegantly. */
-            error("Failed to re-hash element.");
+
+          if (new_element) {
+            new_element->value = element->value;
           }
-          new_element->value = element->value;
+          /* If copying failed, then we have an overflow in the new hashmap.
+             If this happens, store the offending element in the strays buffer
+             for now. */
+          else {
+            /* (Re)allocate strays buffer? */
+            if (strays_count == strays_size) {
+              hashmap_element_t *temp_buff;
+              strays_size = strays_size ? strays_size * 2 : 10;
+              if ((temp_buff = (hashmap_element_t *)swift_malloc(
+                       "hashmap_strays",
+                       sizeof(hashmap_element_t) * strays_size)) == NULL)
+                error("Failed to (re)allocate strays buffer.");
+              memcpy(temp_buff, strays,
+                     sizeof(hashmap_element_t) * strays_count);
+              swift_free("hashmap_strays", strays);
+              strays = temp_buff;
+            }
+            strays[strays_count++] = *element;
+          }
         }
       }
     }
@@ -311,10 +334,18 @@ void hashmap_grow(hashmap_t *m) {
 
   /* Free the old list of chunks. */
   swift_free("hashmap", old_chunks);
+
+  /* If we have any strays, add them back to the hashmap. This will inevitably
+     trigger a rehashing, but that's not our problem. */
+  if (strays_count) {
+    for (size_t k = 0; k < strays_count; k++) {
+      hashmap_put(m, strays[k].key, strays[k].value);
+    }
+    swift_free("hashmap_strays", strays);
+  }
 }
 
 void hashmap_put(hashmap_t *m, hashmap_key_t key, hashmap_value_t value) {
-
   /* Try to find an element for the given key. */
   hashmap_element_t *element =
       hashmap_find(m, key, /*create_new=*/1, /*chain_length=*/NULL,
@@ -322,7 +353,7 @@ void hashmap_put(hashmap_t *m, hashmap_key_t key, hashmap_value_t value) {
 
   /* Loop around, trying to find our place in the world. */
   while (!element) {
-    hashmap_grow(m);
+    hashmap_grow(m, 0);
     element = hashmap_find(m, key, /*create_new=*/1, /*chain_length=*/NULL,
                            /*created_new_element=*/NULL);
   }
@@ -332,13 +363,12 @@ void hashmap_put(hashmap_t *m, hashmap_key_t key, hashmap_value_t value) {
 }
 
 hashmap_value_t *hashmap_get(hashmap_t *m, hashmap_key_t key) {
-
   /* Look for the given key. */
   hashmap_element_t *element =
       hashmap_find(m, key, /*create_new=*/1, /*chain_length=*/NULL,
                    /*created_new_element=*/NULL);
   while (!element) {
-    hashmap_grow(m);
+    hashmap_grow(m, 0);
     element = hashmap_find(m, key, /*create_new=*/1, /*chain_length=*/NULL,
                            /*created_new_element=*/NULL);
   }
@@ -351,7 +381,7 @@ hashmap_value_t *hashmap_get_new(hashmap_t *m, hashmap_key_t key,
   hashmap_element_t *element = hashmap_find(
       m, key, /*create_new=*/1, /*chain_length=*/NULL, created_new_element);
   while (!element) {
-    hashmap_grow(m);
+    hashmap_grow(m, 0);
     element = hashmap_find(m, key, /*create_new=*/1, /*chain_length=*/NULL,
                            created_new_element);
   }

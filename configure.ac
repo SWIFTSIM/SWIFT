@@ -16,7 +16,7 @@
 # along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
 # Init the project.
-AC_INIT([SWIFT],[0.8.2],[https://gitlab.cosma.dur.ac.uk/swift/swiftsim])
+AC_INIT([SWIFT],[0.8.3],[https://gitlab.cosma.dur.ac.uk/swift/swiftsim])
 swift_config_flags="$*"
 
 #  We want to stop when given unrecognised options. No subdirs so this is safe.
@@ -224,6 +224,16 @@ if test "x$enable_debug" = "xyes"; then
       CFLAGS="$CFLAGS -debug inline-debug-info"
    fi
 fi
+
+# Check if stand-alone FoF is on.
+AC_ARG_ENABLE([stand-alone-fof],
+   [AS_HELP_STRING([--enable-stand-alone-fof],
+     [Activate the compilation of the stand-alone friends-of-friends post-processing tool.],
+   )],
+   [enable_standalone_fof="$enableval"],
+   [enable_standalone_fof="no"]
+)
+AM_CONDITIONAL([HAVEFOF],[test $enable_standalone_fof = "yes"])
 
 # Check if task debugging is on.
 AC_ARG_ENABLE([task-debugging],
@@ -2003,6 +2013,7 @@ AC_MSG_RESULT([
    Star feedback model  : $with_feedback
    Black holes model    : $with_black_holes
 
+   Stand-alone FoF tool:       : $enable_standalone_fof
    Individual timers           : $enable_timers
    Task debugging              : $enable_task_debugging
    Threadpool debugging        : $enable_threadpool_debugging

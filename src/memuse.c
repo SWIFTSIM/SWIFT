@@ -73,7 +73,7 @@ struct memuse_log_entry {
 };
 
 /* The log of allocations and frees. */
-static struct memuse_log_entry *memuse_log = NULL;
+static struct memuse_log_entry *volatile memuse_log = NULL;
 static volatile size_t memuse_log_size = 0;
 static volatile size_t memuse_log_count = 0;
 static volatile size_t memuse_log_done = 0;
@@ -103,7 +103,7 @@ static void memuse_log_reallocate(size_t ind) {
 
     /* Copy to new buffer. */
     memcpy(new_log, memuse_log,
-           sizeof(struct memuse_log_entry) * memuse_log_count);
+           sizeof(struct memuse_log_entry) * memuse_log_size);
     free(memuse_log);
     memuse_log = new_log;
 

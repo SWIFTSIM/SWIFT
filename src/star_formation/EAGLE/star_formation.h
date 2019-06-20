@@ -485,7 +485,7 @@ INLINE static void starformation_init_backend(
 
   /* Read the critical density contrast from the parameter file*/
   starform->min_over_den = parser_get_param_double(
-      parameter_file, "EAGLEStarFormation:KS_min_over_density");
+      parameter_file, "EAGLEStarFormation:min_over_density");
 
   /* Read the gas fraction from the file */
   starform->fgas = parser_get_opt_param_double(
@@ -559,7 +559,7 @@ INLINE static void starformation_init_backend(
       starform->max_gas_density_HpCM3 * number_density_from_cgs;
 
   starform->temperature_margin_threshold_dex = parser_get_opt_param_double(
-      parameter_file, "EAGLEStarFormation:KS_temperature_margin_dex", FLT_MAX);
+      parameter_file, "EAGLEStarFormation:EOS_temperature_margin_dex", FLT_MAX);
 
   starform->ten_to_temperature_margin_threshold_dex =
       exp10(starform->temperature_margin_threshold_dex);

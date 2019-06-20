@@ -517,6 +517,14 @@ following pages:
 * :ref:`Output_list_label` (to have snapshots not evenly spaced in time),
 * :ref:`Output_selection_label` (to select what particle fields to write).
 
+.. _Parameters_fof:
+
+Friends-Of-Friends (FOF)
+------------------------
+
+The parameters are described separately on the page
+:ref:`Fof_Parameter_Description_label` within the more general
+:ref:`Friends_Of_Friends_label` description.
 
 .. _Parameters_statistics:
 
@@ -568,8 +576,9 @@ been activated, the previous set of restart files will be named
 ``basename_000000.rst.prev``.
 
 SWIFT can also be stopped by creating an empty file called ``stop`` in the
-directory where the code runs. This will make SWIFT dump a fresh set of restart
-file (irrespective of the specified ``delta_time`` between dumps) and exit
+directory where the restart files are written (i.e. the directory speicified by
+the parameter ``subdir``). This will make SWIFT dump a fresh set of restart file
+(irrespective of the specified ``delta_time`` between dumps) and exit
 cleanly. One parameter governs this behaviour:
 
 * Number of steps between two checks for the presence of a ``stop`` file:

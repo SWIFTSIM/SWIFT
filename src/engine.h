@@ -506,14 +506,15 @@ void engine_init(struct engine *e, struct space *s, struct swift_params *params,
                  const struct star_formation *starform,
                  const struct chemistry_global_data *chemistry,
                  struct fof_props *fof_properties);
-void engine_config(int restart, struct engine *e, struct swift_params *params,
-                   int nr_nodes, int nodeID, int nr_threads, int with_aff,
-                   int verbose, const char *restart_file);
+void engine_config(int restart, int fof, struct engine *e,
+                   struct swift_params *params, int nr_nodes, int nodeID,
+                   int nr_threads, int with_aff, int verbose,
+                   const char *restart_file);
 void engine_dump_index(struct engine *e);
 void engine_launch(struct engine *e);
 void engine_prepare(struct engine *e);
 void engine_init_particles(struct engine *e, int flag_entropy_ICs,
-                           int clean_h_values, int compute_init_accel);
+                           int clean_h_values);
 void engine_step(struct engine *e);
 void engine_split(struct engine *e, struct partition *initial_partition);
 void engine_exchange_strays(struct engine *e, const size_t offset_parts,
@@ -532,10 +533,11 @@ void engine_print_policy(struct engine *e);
 int engine_is_done(struct engine *e);
 void engine_pin(void);
 void engine_unpin(void);
-void engine_clean(struct engine *e);
+void engine_clean(struct engine *e, const int fof);
 int engine_estimate_nr_tasks(const struct engine *e);
 void engine_print_task_counts(const struct engine *e);
-void engine_fof(struct engine *e);
+void engine_fof(struct engine *e, const int dump_results,
+                const int seed_black_holes);
 
 /* Function prototypes, engine_maketasks.c. */
 void engine_maketasks(struct engine *e);

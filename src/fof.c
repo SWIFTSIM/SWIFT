@@ -196,8 +196,20 @@ void fof_allocate(const struct space *s, const long long total_nr_DM_particles,
      inter-particle sepration? */
   if (props->l_x_absolute != -1.) {
     props->l_x2 = props->l_x_absolute * props->l_x_absolute;
+
+    if (s->e->nodeID == 0) {
+      message("Linking length is set to %e [internal units].",
+              props->l_x_absolute);
+    }
   } else {
     props->l_x2 = l_x * l_x;
+
+    if (s->e->nodeID == 0) {
+      message(
+          "Linking length is set to %e [internal units] (%f of mean "
+          "inter-DM-particle separation).",
+          l_x, props->l_x_ratio);
+    }
   }
 
 #ifdef WITH_MPI
@@ -1932,8 +1944,6 @@ void fof_dump_group_data(const struct fof_props *props,
           "#-------------------------------------------------------------------"
           "-------------\n");
 
-  int bh_seed_count = 0;
-
   for (int i = 0; i < num_groups; i++) {
 
     const size_t group_offset = group_sizes[i].index;
@@ -1951,8 +1961,6 @@ void fof_dump_group_data(const struct fof_props *props,
             group_mass[i], max_part_density[i], max_part_density_index[i],
             part_id);
 #endif
-
-    if (max_part_density_index[i] >= 0) bh_seed_count++;
   }
 
   /* Dump the extra black hole seeds. */
@@ -1962,22 +1970,7 @@ void fof_dump_group_data(const struct fof_props *props,
                                   : -1;
     fprintf(file, "  %8zu %12zu %12e %12e %18lld %18lld\n", 0UL, 0UL, 0., 0.,
             0LL, part_id);
-
-    if (max_part_density_index[i] >= 0) bh_seed_count++;
   }
-
-  int total_bh_seed_count = 0;
-
-#ifdef WITH_MPI
-  /* Sum the total number of black holes over each MPI rank. */
-  MPI_Reduce(&bh_seed_count, &total_bh_seed_count, 1, MPI_INT, MPI_SUM, 0,
-             MPI_COMM_WORLD);
-#else
-  total_bh_seed_count = bh_seed_count;
-#endif
-
-  if (engine_rank == 0)
-    message("Seeding %d black hole(s).", total_bh_seed_count);
 
   fclose(file);
 }

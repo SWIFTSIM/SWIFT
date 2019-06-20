@@ -36,12 +36,17 @@ MPI_FLAGS = -DWITH_MPI $(PARMETIS_INCS) $(METIS_INCS)
 # Programs.
 bin_PROGRAMS = swift
 
+# Also build the FOF tool?
+if HAVEFOF
 bin_PROGRAMS += fof
+endif
 
 # Build MPI versions as well?
 if HAVEMPI
 bin_PROGRAMS += swift_mpi
+if HAVEFOF
 bin_PROGRAMS += fof_mpi
+endif
 endif
 
 # engine_policy_setaffinity is available?
