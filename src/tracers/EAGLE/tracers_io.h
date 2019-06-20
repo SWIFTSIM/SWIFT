@@ -95,7 +95,7 @@ __attribute__((always_inline)) INLINE static int tracers_write_sparticles(
   } else {
 
     list[1] = io_make_output_field(
-        "Maximal Temperature time", FLOAT, 1, UNIT_CONV_NO_UNITS, 0.f, sparts,
+        "MaximalTemperatureTimes", FLOAT, 1, UNIT_CONV_NO_UNITS, 0.f, sparts,
         tracers_data.maximum_temperature_time,
         "Times at which the maximal temperature was reached");
   }
