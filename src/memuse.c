@@ -134,8 +134,8 @@ static void memuse_rnode_dump(int depth, struct memuse_rnode *node, int full) {
   /* Value of the full key, to this depth. Assumes full key is a pointer,
    * so uncomment when using strings. */
   static union {
-    //uint8_t key[MEMUSE_MAXLABLEN];
-    //char ptr[MEMUSE_MAXLABLEN];
+    // uint8_t key[MEMUSE_MAXLABLEN];
+    // char ptr[MEMUSE_MAXLABLEN];
     uint8_t key[sizeof(uintptr_t)];
     void *ptr;
   } keyparts = {0};
@@ -143,7 +143,7 @@ static void memuse_rnode_dump(int depth, struct memuse_rnode *node, int full) {
   /* Record keypart at this depth. Root has no keypart. */
   if (depth != 0) keyparts.key[depth - 1] = node->keypart;
 
-  //if (node->ptr != NULL || full) {
+  // if (node->ptr != NULL || full) {
   //  keyparts.key[depth] = '\0';
   //
   //    /* Gather children's keys if full. */
@@ -262,8 +262,8 @@ static struct memuse_rnode *memuse_rnode_lookup(const struct memuse_rnode *node,
 
   /* Locate the key, or where it would be inserted. */
   if (node->count > 0) {
-    unsigned int index = memuse_rnode_bsearch(keypart, node->children,
-                                              node->count);
+    unsigned int index =
+        memuse_rnode_bsearch(keypart, node->children, node->count);
     if (index < node->count && keypart == node->children[index]->keypart) {
       return node->children[index];
     }
@@ -298,7 +298,7 @@ static void memuse_rnode_insert_child(struct memuse_rnode *node, uint8_t depth,
   /* Are we at the lowest level yet? */
   depth++;
   if (depth == keylen) {
-    /* Our destination node. */
+  /* Our destination node. */
 
 #if SWIFT_DEBUG_CHECKS
     if (child->ptr != NULL)
@@ -429,7 +429,7 @@ void memuse_log_dump(const char *filename) {
   /* Skip if nothing allocated this step. */
   if (memuse_log_count == memuse_old_count) return;
 
-  //ticks tic = getticks();
+  // ticks tic = getticks();
 
   /* Create the radix tree. If not already done. */
   if (memuse_rnode_root_init) {
@@ -522,14 +522,13 @@ void memuse_log_dump(const char *filename) {
     if (memuse_current > memuse_maxmem) memuse_maxmem = memuse_current;
 
     /* And output. */
-    fprintf(fd, "%lld %d %s %zd %zd\n", memuse_log[k].dtic,
-            memuse_log[k].step, memuse_log[k].label,
-            memuse_log[k].size, memuse_current);
+    fprintf(fd, "%lld %d %s %zd %zd\n", memuse_log[k].dtic, memuse_log[k].step,
+            memuse_log[k].label, memuse_log[k].size, memuse_current);
   }
 
 #ifdef MEMUSE_RNODE_DUMP
-  /* Debug dump of tree. */
-  //memuse_rnode_dump(0, memuse_rnode_root, 0);
+    /* Debug dump of tree. */
+    // memuse_rnode_dump(0, memuse_rnode_root, 0);
 #endif
 
   /* Now we find all the still active nodes and gather their sizes against the
@@ -629,7 +628,7 @@ void memuse_log_dump(const char *filename) {
   fflush(fd);
   fclose(fd);
 
-  //message("took %.3f %s.", clocks_from_ticks(getticks() - tic),
+  // message("took %.3f %s.", clocks_from_ticks(getticks() - tic),
   //        clocks_getunit());
 }
 
