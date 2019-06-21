@@ -236,7 +236,7 @@ void fof_allocate(const struct space *s, const long long total_nr_DM_particles,
   /* Set initial group ID of the gparts */
   const size_t group_id_default = props->group_id_default;
   for (size_t i = 0; i < nr_local_gparts; i++) {
-    gparts[i].group_id = group_id_default;
+    gparts[i].fof_data.group_id = group_id_default;
   }
 
   /* Set initial group index and group size */
@@ -968,7 +968,7 @@ void fof_search_pair_cells_foreign(
         /* Check that the links have not already been added to the list. */
         for (int l = 0; l < local_link_count; l++) {
           if ((local_group_links)[l].group_i == root_i &&
-              (local_group_links)[l].group_j == pj->group_id) {
+              (local_group_links)[l].group_j == pj->fof_data.group_id) {
             found = 1;
             break;
           }
@@ -998,8 +998,9 @@ void fof_search_pair_cells_foreign(
           local_group_links[local_link_count].group_i_size =
               group_size[root_i - node_offset];
 
-          local_group_links[local_link_count].group_j = pj->group_id;
-          local_group_links[local_link_count].group_j_size = pj->group_size;
+          local_group_links[local_link_count].group_j = pj->fof_data.group_id;
+          local_group_links[local_link_count].group_j_size =
+              pj->fof_data.group_size;
 
           local_link_count++;
         }
@@ -1270,9 +1271,9 @@ void fof_calc_group_mass_mapper(void *map_data, int num_elements,
   for (int ind = 0; ind < num_elements; ind++) {
 
     /* Only check groups above the minimum size. */
-    if (gparts[ind].group_id != group_id_default) {
+    if (gparts[ind].fof_data.group_id != group_id_default) {
 
-      hashmap_key_t index = gparts[ind].group_id - group_id_offset;
+      hashmap_key_t index = gparts[ind].fof_data.group_id - group_id_offset;
       hashmap_value_t *data = hashmap_get(&map, index);
 
       /* Update group mass */
@@ -1361,7 +1362,7 @@ void fof_calc_group_mass(struct fof_props *props, const struct space *s,
   for (size_t i = 0; i < nr_gparts; i++) {
 
     /* Check if the particle is in a group above the threshold. */
-    if (gparts[i].group_id != group_id_default) {
+    if (gparts[i].fof_data.group_id != group_id_default) {
 
       const size_t root = fof_find_global(i, group_index, nr_gparts);
 
@@ -1369,7 +1370,7 @@ void fof_calc_group_mass(struct fof_props *props, const struct space *s,
       if (is_local(root, nr_gparts)) {
 
         const size_t index =
-            gparts[i].group_id - group_id_offset - num_groups_prev;
+            gparts[i].fof_data.group_id - group_id_offset - num_groups_prev;
 
         /* Update group mass */
         group_mass[index] += gparts[i].mass;
@@ -1416,7 +1417,7 @@ void fof_calc_group_mass(struct fof_props *props, const struct space *s,
   for (size_t i = 0; i < nr_gparts; i++) {
 
     /* Only check groups above the minimum size and mass threshold. */
-    if (gparts[i].group_id != group_id_default) {
+    if (gparts[i].fof_data.group_id != group_id_default) {
 
       size_t root = fof_find_global(i, group_index, nr_gparts);
 
@@ -1424,7 +1425,7 @@ void fof_calc_group_mass(struct fof_props *props, const struct space *s,
       if (is_local(root, nr_gparts)) {
 
         const size_t index =
-            gparts[i].group_id - group_id_offset - num_groups_prev;
+            gparts[i].fof_data.group_id - group_id_offset - num_groups_prev;
 
         /* Only seed groups above the mass threshold. */
         if (group_mass[index] > seed_halo_mass) {
@@ -1516,7 +1517,8 @@ void fof_calc_group_mass(struct fof_props *props, const struct space *s,
         (fof_mass_recv[i].global_root >= node_offset + nr_gparts)) {
       error("Received global root index out of range!");
     }
-    group_mass[gparts[fof_mass_recv[i].global_root - node_offset].group_id -
+    group_mass[gparts[fof_mass_recv[i].global_root - node_offset]
+                   .fof_data.group_id -
                group_id_offset - num_groups_prev] +=
         fof_mass_recv[i].group_mass;
   }
@@ -1526,7 +1528,7 @@ void fof_calc_group_mass(struct fof_props *props, const struct space *s,
   for (size_t i = 0; i < nrecv; i++) {
 
     const int offset =
-        gparts[fof_mass_recv[i].global_root - node_offset].group_id -
+        gparts[fof_mass_recv[i].global_root - node_offset].fof_data.group_id -
         group_id_offset - num_groups_prev;
 
     /* Only seed groups above the mass threshold. */
@@ -1563,7 +1565,7 @@ void fof_calc_group_mass(struct fof_props *props, const struct space *s,
     }
 
     const int offset =
-        gparts[fof_mass_recv[i].global_root - node_offset].group_id -
+        gparts[fof_mass_recv[i].global_root - node_offset].fof_data.group_id -
         group_id_offset - num_groups_prev;
 
     /* If the densest particle found locally is not the global max, make sure we
@@ -1663,10 +1665,10 @@ void fof_calc_group_mass(struct fof_props *props, const struct space *s,
   /* JSW TODO: Parallelise with threadpool*/
   for (size_t i = 0; i < nr_gparts; i++) {
 
-    const size_t index = gparts[i].group_id - group_id_offset;
+    const size_t index = gparts[i].fof_data.group_id - group_id_offset;
 
     /* Only check groups above the minimum mass threshold. */
-    if (gparts[i].group_id != group_id_default) {
+    if (gparts[i].fof_data.group_id != group_id_default) {
 
       if (group_mass[index] > seed_halo_mass) {
 
@@ -1952,12 +1954,12 @@ void fof_dump_group_data(const struct fof_props *props,
                                   : -1;
 #ifdef WITH_MPI
     fprintf(file, "  %8zu %12zu %12e %12e %18lld %18lld\n",
-            gparts[group_offset - node_offset].group_id,
+            gparts[group_offset - node_offset].fof_data.group_id,
             group_size[group_offset - node_offset], group_mass[i],
             max_part_density[i], max_part_density_index[i], part_id);
 #else
     fprintf(file, "  %8zu %12zu %12e %12e %18lld %18lld\n",
-            gparts[group_offset].group_id, group_size[group_offset],
+            gparts[group_offset].fof_data.group_id, group_size[group_offset],
             group_mass[i], max_part_density[i], max_part_density_index[i],
             part_id);
 #endif
@@ -2096,8 +2098,8 @@ void fof_search_foreign_cells(struct fof_props *props, const struct space *s) {
       for (int k = 0; k < local_cell->grav.count; k++) {
         const size_t root =
             fof_find_global(offset[k] - node_offset, group_index, nr_gparts);
-        gparts[k].group_id = root;
-        gparts[k].group_size = group_size[root - node_offset];
+        gparts[k].fof_data.group_id = root;
+        gparts[k].fof_data.group_size = group_size[root - node_offset];
       }
     }
   }
@@ -2539,7 +2541,8 @@ void fof_search_tree(struct fof_props *props,
         cmp_func_group_size);
 
   /* Set default group ID for all particles */
-  for (size_t i = 0; i < nr_gparts; i++) gparts[i].group_id = group_id_default;
+  for (size_t i = 0; i < nr_gparts; i++)
+    gparts[i].fof_data.group_id = group_id_default;
 
   /*
     Assign final group IDs to local root particles where the global root is on
@@ -2548,10 +2551,10 @@ void fof_search_tree(struct fof_props *props,
   */
   for (size_t i = 0; i < num_groups_local; i++) {
 #ifdef WITH_MPI
-    gparts[high_group_sizes[i].index - node_offset].group_id =
+    gparts[high_group_sizes[i].index - node_offset].fof_data.group_id =
         group_id_offset + i + num_groups_prev;
 #else
-    gparts[high_group_sizes[i].index].group_id = group_id_offset + i;
+    gparts[high_group_sizes[i].index].fof_data.group_id = group_id_offset + i;
 #endif
   }
 
@@ -2644,7 +2647,7 @@ void fof_search_tree(struct fof_props *props,
       error("Received global root index out of range!");
     }
     fof_index_recv[i].global_root =
-        gparts[fof_index_recv[i].global_root - node_offset].group_id;
+        gparts[fof_index_recv[i].global_root - node_offset].fof_data.group_id;
   }
 
   /* Send the result back */
@@ -2658,7 +2661,7 @@ void fof_search_tree(struct fof_props *props,
         (fof_index_send[i].local_root >= node_offset + nr_gparts)) {
       error("Sent local root index out of range!");
     }
-    gparts[fof_index_send[i].local_root - node_offset].group_id =
+    gparts[fof_index_send[i].local_root - node_offset].fof_data.group_id =
         fof_index_send[i].global_root;
   }
 
@@ -2674,7 +2677,7 @@ void fof_search_tree(struct fof_props *props,
   /* Assign every particle the group_id of its local root. */
   for (size_t i = 0; i < nr_gparts; i++) {
     const size_t root = fof_find_local(i, nr_gparts, group_index);
-    gparts[i].group_id = gparts[root].group_id;
+    gparts[i].fof_data.group_id = gparts[root].fof_data.group_id;
   }
 
   if (verbose)
