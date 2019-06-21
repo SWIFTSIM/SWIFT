@@ -381,6 +381,18 @@ __attribute__((always_inline)) INLINE static int bpart_is_active(
 }
 
 /**
+ * @brief Has this particle been decoupled from hydro?
+ *
+ * @param p The #part.
+ * @param e The #engine containing information about the current time.
+ * @return 1 if the #part is decoupled, 0 otherwise.
+ */
+__attribute__((always_inline)) INLINE static int part_is_decoupled(
+    const struct part *p, const struct engine *e) {
+  return (p->time_bin == time_bin_decoupled);
+}
+
+/**
  * @brief Has this particle been inhibited?
  *
  * @param p The #part.

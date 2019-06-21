@@ -72,6 +72,7 @@ runner_iact_nonsym_feedback_apply(const float r2, const float *dx,
                                   const integertime_t ti_current) {
   
   /* Get the probability of doing feedback */
+  // Compute mass loading which will determine probability
   const float prob = 1./50.; // ALEXEI: just set to random constant for now
 
   if (prob > 0) {

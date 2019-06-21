@@ -73,6 +73,9 @@ void DOPAIR1_NAIVE(struct runner *r, struct cell *restrict ci,
     /* Skip inhibited particles. */
     if (part_is_inhibited(pi, e)) continue;
 
+    /* Skip decoupled particles. */
+    if (part_is_decoupled(pi, e)) continue;
+
     const int pi_active = part_is_active(pi, e);
     const float hi = pi->h;
     const float hig2 = hi * hi * kernel_gamma2;
@@ -88,6 +91,9 @@ void DOPAIR1_NAIVE(struct runner *r, struct cell *restrict ci,
 
       /* Skip inhibited particles. */
       if (part_is_inhibited(pj, e)) continue;
+
+      /* Skip decoupled particles. */
+      if (part_is_decoupled(pj, e)) continue;
 
       const float hj = pj->h;
       const float hjg2 = hj * hj * kernel_gamma2;
@@ -190,6 +196,9 @@ void DOPAIR2_NAIVE(struct runner *r, struct cell *restrict ci,
     /* Skip inhibited particles. */
     if (part_is_inhibited(pi, e)) continue;
 
+    /* Skip decoupled particles. */
+    if (part_is_decoupled(pi, e)) continue;
+
     const int pi_active = part_is_active(pi, e);
     const float hi = pi->h;
     const float hig2 = hi * hi * kernel_gamma2;
@@ -205,6 +214,9 @@ void DOPAIR2_NAIVE(struct runner *r, struct cell *restrict ci,
 
       /* Skip inhibited particles. */
       if (part_is_inhibited(pj, e)) continue;
+
+      /* Skip decoupled particles. */
+      if (part_is_decoupled(pj, e)) continue;
 
       const int pj_active = part_is_active(pj, e);
       const float hj = pj->h;
@@ -307,6 +319,9 @@ void DOSELF1_NAIVE(struct runner *r, struct cell *restrict c) {
     /* Skip inhibited particles. */
     if (part_is_inhibited(pi, e)) continue;
 
+    /* Skip decoupled particles. */
+    if (part_is_decoupled(pi, e)) continue;
+
     const int pi_active = part_is_active(pi, e);
     const float hi = pi->h;
     const float hig2 = hi * hi * kernel_gamma2;
@@ -322,6 +337,9 @@ void DOSELF1_NAIVE(struct runner *r, struct cell *restrict c) {
 
       /* Skip inhibited particles. */
       if (part_is_inhibited(pj, e)) continue;
+
+      /* Skip decoupled particles. */
+      if (part_is_decoupled(pj, e)) continue;
 
       const float hj = pj->h;
       const float hjg2 = hj * hj * kernel_gamma2;
@@ -424,6 +442,9 @@ void DOSELF2_NAIVE(struct runner *r, struct cell *restrict c) {
     /* Skip inhibited particles. */
     if (part_is_inhibited(pi, e)) continue;
 
+    /* Skip decoupled particles. */
+    if (part_is_decoupled(pi, e)) continue;
+
     const int pi_active = part_is_active(pi, e);
     const float hi = pi->h;
     const float hig2 = hi * hi * kernel_gamma2;
@@ -439,6 +460,9 @@ void DOSELF2_NAIVE(struct runner *r, struct cell *restrict c) {
 
       /* Skip inhibited particles. */
       if (part_is_inhibited(pj, e)) continue;
+
+      /* Skip decoupled particles. */
+      if (part_is_decoupled(pj, e)) continue;
 
       const float hj = pj->h;
       const float hjg2 = hj * hj * kernel_gamma2;
@@ -562,6 +586,9 @@ void DOPAIR_SUBSET_NAIVE(struct runner *r, struct cell *restrict ci,
       /* Skip inhibited particles. */
       if (part_is_inhibited(pj, e)) continue;
 
+      /* Skip decoupled particles. */
+      if (part_is_decoupled(pj, e)) continue;
+
       /* Compute the pairwise distance. */
       float r2 = 0.0f;
       float dx[3];
@@ -657,6 +684,9 @@ void DOPAIR_SUBSET(struct runner *r, struct cell *restrict ci,
         /* Skip inhibited particles. */
         if (part_is_inhibited(pj, e)) continue;
 
+        /* Skip decoupled particles. */
+        if (part_is_decoupled(pj, e)) continue;
+
         const float hj = pj->h;
         const double pjx = pj->x[0];
         const double pjy = pj->x[1];
@@ -716,6 +746,9 @@ void DOPAIR_SUBSET(struct runner *r, struct cell *restrict ci,
 
         /* Skip inhibited particles. */
         if (part_is_inhibited(pj, e)) continue;
+
+        /* Skip decoupled particles. */
+        if (part_is_decoupled(pj, e)) continue;
 
         const float hj = pj->h;
         const double pjx = pj->x[0];
@@ -864,6 +897,9 @@ void DOSELF_SUBSET(struct runner *r, struct cell *restrict ci,
       /* Skip inhibited particles. */
       if (part_is_inhibited(pj, e)) continue;
 
+      /* Skip decoupled particles. */
+      if (part_is_decoupled(pj, e)) continue;
+
       const float hj = pj->h;
 
       /* Compute the pairwise distance. */
@@ -1006,6 +1042,9 @@ void DOPAIR1(struct runner *r, struct cell *ci, struct cell *cj, const int sid,
         /* Skip inhibited particles. */
         if (part_is_inhibited(pj, e)) continue;
 
+        /* Skip decoupled particles. */
+        if (part_is_decoupled(pj, e)) continue;
+
         const float hj = pj->h;
         const float pjx = pj->x[0] - cj->loc[0];
         const float pjy = pj->x[1] - cj->loc[1];
@@ -1097,6 +1136,9 @@ void DOPAIR1(struct runner *r, struct cell *ci, struct cell *cj, const int sid,
 
         /* Skip inhibited particles. */
         if (part_is_inhibited(pi, e)) continue;
+
+        /* Skip decoupled particles. */
+        if (part_is_decoupled(pi, e)) continue;
 
         const float hi = pi->h;
         const float pix = pi->x[0] - (cj->loc[0] + shift[0]);
@@ -1206,6 +1248,8 @@ void DOPAIR1_BRANCH(struct runner *r, struct cell *ci, struct cell *cj) {
   for (int pid = 0; pid < ci->hydro.count; pid++) {
     const struct part *p = &ci->hydro.parts[sort_i[pid].i];
     if (part_is_inhibited(p, e)) continue;
+    if (part_is_decoupled(p, e)) continue;
+
 
     const float d = p->x[0] * runner_shift[sid][0] +
                     p->x[1] * runner_shift[sid][1] +
@@ -1224,6 +1268,8 @@ void DOPAIR1_BRANCH(struct runner *r, struct cell *ci, struct cell *cj) {
   for (int pjd = 0; pjd < cj->hydro.count; pjd++) {
     const struct part *p = &cj->hydro.parts[sort_j[pjd].i];
     if (part_is_inhibited(p, e)) continue;
+    if (part_is_decoupled(p, e)) continue;
+
 
     const float d = p->x[0] * runner_shift[sid][0] +
                     p->x[1] * runner_shift[sid][1] +
@@ -1370,6 +1416,9 @@ void DOPAIR2(struct runner *r, struct cell *ci, struct cell *cj, const int sid,
 
     /* Skip inhibited particles. */
     if (part_is_inhibited(pi, e)) continue;
+    
+    /* Skip decoupled particles. */
+    if (part_is_decoupled(pi, e)) continue;
 
     const float hi = pi->h;
 
@@ -1474,6 +1523,9 @@ void DOPAIR2(struct runner *r, struct cell *ci, struct cell *cj, const int sid,
         /* Skip inhibited particles. */
         if (part_is_inhibited(pj, e)) continue;
 
+        /* Skip decoupled particles. */
+        if (part_is_decoupled(pj, e)) continue;
+
         const float hj = pj->h;
 
         /* Get the position of pj in the right frame */
@@ -1562,6 +1614,9 @@ void DOPAIR2(struct runner *r, struct cell *ci, struct cell *cj, const int sid,
 
     /* Skip inhibited particles. */
     if (part_is_inhibited(pj, e)) continue;
+
+    /* Skip decoupled particles. */
+    if (part_is_decoupled(pj, e)) continue;
 
     const float hj = pj->h;
 
@@ -1666,6 +1721,9 @@ void DOPAIR2(struct runner *r, struct cell *ci, struct cell *cj, const int sid,
 
         /* Skip inhibited particles. */
         if (part_is_inhibited(pi, e)) continue;
+
+        /* Skip decoupled particles. */
+        if (part_is_decoupled(pi, e)) continue;
 
         const float hi = pi->h;
         const float hig2 = hi * hi * kernel_gamma2;
@@ -1798,6 +1856,7 @@ void DOPAIR2_BRANCH(struct runner *r, struct cell *ci, struct cell *cj) {
   for (int pid = 0; pid < ci->hydro.count; pid++) {
     const struct part *p = &ci->hydro.parts[sort_i[pid].i];
     if (part_is_inhibited(p, e)) continue;
+    if (part_is_decoupled(p, e)) continue;
 
     const float d = p->x[0] * runner_shift[sid][0] +
                     p->x[1] * runner_shift[sid][1] +
@@ -1816,6 +1875,7 @@ void DOPAIR2_BRANCH(struct runner *r, struct cell *ci, struct cell *cj) {
   for (int pjd = 0; pjd < cj->hydro.count; pjd++) {
     const struct part *p = &cj->hydro.parts[sort_j[pjd].i];
     if (part_is_inhibited(p, e)) continue;
+    if (part_is_decoupled(p, e)) continue;
 
     const float d = p->x[0] * runner_shift[sid][0] +
                     p->x[1] * runner_shift[sid][1] +
@@ -1886,6 +1946,9 @@ void DOSELF1(struct runner *r, struct cell *restrict c) {
 
     /* Skip inhibited particles. */
     if (part_is_inhibited(pi, e)) continue;
+    
+    /* Skip decoupled particles. */
+    if (part_is_decoupled(pi, e)) continue;
 
     /* Get the particle position and radius. */
     double pix[3];
@@ -1949,6 +2012,9 @@ void DOSELF1(struct runner *r, struct cell *restrict c) {
 
         /* Skip inhibited particles. */
         if (part_is_inhibited(pj, e)) continue;
+
+        /* Skip decoupled particles. */
+        if (part_is_decoupled(pj, e)) continue;
 
         const float hj = pj->h;
 
@@ -2099,6 +2165,9 @@ void DOSELF2(struct runner *r, struct cell *restrict c) {
     /* Skip inhibited particles. */
     if (part_is_inhibited(pi, e)) continue;
 
+    /* Skip decoupled particles. */
+    if (part_is_decoupled(pi, e)) continue;
+
     /* Get the particle position and radius. */
     double pix[3];
     for (int k = 0; k < 3; k++) pix[k] = pi->x[k];
@@ -2161,6 +2230,9 @@ void DOSELF2(struct runner *r, struct cell *restrict c) {
 
         /* Skip inhibited particles. */
         if (part_is_inhibited(pj, e)) continue;
+
+        /* Skip decoupled particles. */
+        if (part_is_decoupled(pj, e)) continue;
 
         const float hj = pj->h;
 

@@ -4697,6 +4697,15 @@ void cell_drift_part(struct cell *c, const struct engine *e, int force) {
       /* Ignore inhibited particles */
       if (part_is_inhibited(p, e)) continue;
 
+      /* Decrement time delay for decoupled particles */
+      if (part_is_decoupled(p, e)) {
+        p->delay_time -= dt_drift; 
+        if (p->delay_time < 0.) {
+          p->time_bin = get_time_bin(ti_current);
+          if (ti_current * e->time_base > 0.) message("particle %llu recoupled", p->id);
+        }
+      }
+
       /* Drift... */
       drift_part(p, xp, dt_drift, dt_kick_hydro, dt_kick_grav, dt_therm,
                  ti_old_part, ti_current, e->cosmology, e->hydro_properties,

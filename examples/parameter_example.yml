@@ -539,3 +539,4 @@ SIMBAFeedback:
   galsf_vel_slope:                  0.12
   scale_factor_norm:                200.
   wind_scatter:                     0.1
+  delay_time:                       0.05

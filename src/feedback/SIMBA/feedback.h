@@ -43,12 +43,16 @@ inline void compute_kick_speed(struct spart *sp, const struct feedback_props *fe
   const float random_num = 1.;
 
   /* Calculate wind speed */
-  // ALEXEI: checkout what the numbers in this equation mean.
+  // ALEXEI: checkout what the numbers in this equation mean. Maybe possible future simplifications
   sp->feedback_data.to_distribute.v_kick = feedback_props->galsf_firevel 
       * pow(v_circ * cosmo->a /feedback_props->scale_factor_norm,feedback_props->galsf_firevel_slope) 
       * pow(feedback_props->scale_factor_norm,0.12 - feedback_props->galsf_firevel_slope)
       * (1. - feedback_props->vwvf_scatter - 2.*feedback_props->vwvf_scatter*random_num)
       * v_circ;
+
+  // ALEXEI: temporarily set to arbitrary number for testing.
+  sp->feedback_data.to_distribute.v_kick = 500.;
+  
 }
 
 /**
@@ -75,7 +79,11 @@ inline void compute_heating(struct spart *sp, const struct feedback_props *feedb
  * @param sp The particle to act upon
  */
 __attribute__((always_inline)) INLINE static void feedback_init_spart(
-    struct spart* sp) {}
+    struct spart* sp) {
+  // Temporarily set the particle's galaxy host mass artificially.
+  sp->feedback_data.host_galaxy_mass = 1.;
+
+}
 
 /**
  * @brief Should we do feedback for this star?
@@ -120,7 +128,9 @@ __attribute__((always_inline)) INLINE static void feedback_reset_feedback(
  * @param feedback_props The properties of the feedback model.
  */
 __attribute__((always_inline)) INLINE static void feedback_first_init_spart(
-    struct spart* sp, const struct feedback_props* feedback_props) {}
+    struct spart* sp, const struct feedback_props* feedback_props) {
+  sp->feedback_data.to_distribute.simba_delay_time = feedback_props->simba_delay_time;
+}
 
 /**
  * @brief Initialises the s-particles feedback props for the first time
