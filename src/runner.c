@@ -4748,6 +4748,8 @@ void runner_do_logger(struct runner *r, struct cell *c, int timer) {
  */
 void runner_do_fof_self(struct runner *r, struct cell *c, int timer) {
 
+#ifdef WITH_FOF
+
   TIMER_TIC;
 
   const struct engine *e = r->e;
@@ -4760,6 +4762,10 @@ void runner_do_fof_self(struct runner *r, struct cell *c, int timer) {
   rec_fof_search_self(e->fof_properties, dim, search_r2, periodic, gparts, c);
 
   if (timer) TIMER_TOC(timer_fof_self);
+
+#else
+  error("SWIFT was not compiled with FOF enabled!");
+#endif
 }
 
 /**
@@ -4772,6 +4778,8 @@ void runner_do_fof_self(struct runner *r, struct cell *c, int timer) {
  */
 void runner_do_fof_pair(struct runner *r, struct cell *ci, struct cell *cj,
                         int timer) {
+
+#ifdef WITH_FOF
 
   TIMER_TIC;
 
@@ -4786,4 +4794,7 @@ void runner_do_fof_pair(struct runner *r, struct cell *ci, struct cell *cj,
                       cj);
 
   if (timer) TIMER_TOC(timer_fof_pair);
+#else
+  error("SWIFT was not compiled with FOF enabled!");
+#endif
 }

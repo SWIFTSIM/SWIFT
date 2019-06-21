@@ -22,6 +22,8 @@
 /* Config parameters. */
 #include "../config.h"
 
+#ifdef WITH_FOF
+
 INLINE static void convert_part_group_id(const struct engine* e,
                                          const struct part* p,
                                          const struct xpart* xp,
@@ -41,6 +43,8 @@ INLINE static void convert_bpart_group_id(const struct engine* e,
   ret[0] = bp->gpart->fof_data.group_id;
 }
 
+#endif /* WITH_FOF */
+
 /**
  * @brief Specifies which FoF-related particle fields to write to a dataset
  *
@@ -54,11 +58,15 @@ INLINE static int fof_write_parts(const struct part* parts,
                                   const struct xpart* xparts,
                                   struct io_props* list) {
 
+#ifdef WITH_FOF
+
   list[0] = io_make_output_field_convert_part("GroupIDs", LONGLONG, 1,
                                               UNIT_CONV_NO_UNITS, parts, xparts,
                                               convert_part_group_id);
-
   return 1;
+#else
+  return 0;
+#endif
 }
 
 /**
@@ -72,10 +80,15 @@ INLINE static int fof_write_parts(const struct part* parts,
 INLINE static int fof_write_gparts(const struct gpart* gparts,
                                    struct io_props* list) {
 
+#ifdef WITH_FOF
+
   list[0] = io_make_output_field("GroupIDs", LONGLONG, 1, UNIT_CONV_NO_UNITS,
                                  gparts, fof_data.group_id);
 
   return 1;
+#else
+  return 0;
+#endif
 }
 
 /**
@@ -89,11 +102,15 @@ INLINE static int fof_write_gparts(const struct gpart* gparts,
 INLINE static int fof_write_sparts(const struct spart* sparts,
                                    struct io_props* list) {
 
+#ifdef WITH_FOF
+
   list[0] = io_make_output_field_convert_spart("GroupIDs", LONGLONG, 1,
                                                UNIT_CONV_NO_UNITS, sparts,
                                                convert_spart_group_id);
-
   return 1;
+#else
+  return 0;
+#endif
 }
 
 /**
@@ -107,11 +124,15 @@ INLINE static int fof_write_sparts(const struct spart* sparts,
 INLINE static int fof_write_bparts(const struct bpart* bparts,
                                    struct io_props* list) {
 
+#ifdef WITH_FOF
+
   list[0] = io_make_output_field_convert_bpart("GroupIDs", LONGLONG, 1,
                                                UNIT_CONV_NO_UNITS, bparts,
                                                convert_bpart_group_id);
-
   return 1;
+#else
+  return 0;
+#endif
 }
 
 #endif /* SWIFT_FOF_IO_H */

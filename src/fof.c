@@ -20,6 +20,8 @@
 /* Config parameters. */
 #include "../config.h"
 
+#ifdef WITH_FOF
+
 /* Some standard headers. */
 #include <errno.h>
 #include <libgen.h>
@@ -2772,3 +2774,5 @@ void fof_struct_restore(struct fof_props *props, FILE *stream) {
   restart_read_blocks((void *)props, sizeof(struct fof_props), 1, stream, NULL,
                       "fof_props");
 }
+
+#endif /* WITH_FOF */

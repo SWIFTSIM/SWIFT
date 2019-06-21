@@ -22,6 +22,8 @@
 /* Config parameters. */
 #include "../config.h"
 
+#ifdef WITH_FOF
+
 /**
  * @brief Particle-carried fields for the FoF scheme.
  */
@@ -33,5 +35,14 @@ struct fof_gpart_data {
   /*! Size of the FOF group of this particle */
   size_t group_size;
 };
+
+#else
+
+/**
+ * @brief Particle-carried fields for the FoF scheme.
+ */
+struct fof_gpart_data {};
+
+#endif
 
 #endif /* SWIFT_FOF_STRUCT_H */
