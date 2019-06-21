@@ -332,7 +332,7 @@ struct cell {
     struct xpart *xparts;
 
     /*! Pointer for the sorted indices. */
-    struct entry *sort[13];
+    struct sort_entry *sort[13];
 
     /*! Super cell, i.e. the highest-level parent cell that has a hydro
      * pair/self tasks */
@@ -600,7 +600,7 @@ struct cell {
     float dx_max_sort_old;
 
     /*! Pointer for the sorted indices. */
-    struct entry *sort[13];
+    struct sort_entry *sort[13];
 
     /*! Bit mask of sort directions that will be needed in the next timestep. */
     uint16_t requires_sorts;
@@ -1261,8 +1261,8 @@ __attribute__((always_inline)) INLINE static void cell_malloc_hydro_sorts(
    * on the same dimensions), so we need separate allocations per dimension. */
   for (int j = 0; j < 13; j++) {
     if ((flags & (1 << j)) && c->hydro.sort[j] == NULL) {
-      if ((c->hydro.sort[j] = (struct entry *)swift_malloc(
-               "hydro.sort", sizeof(struct entry) * (count + 1))) == NULL)
+      if ((c->hydro.sort[j] = (struct sort_entry *)swift_malloc(
+               "hydro.sort", sizeof(struct sort_entry) * (count + 1))) == NULL)
         error("Failed to allocate sort memory.");
     }
   }
@@ -1299,8 +1299,8 @@ __attribute__((always_inline)) INLINE static void cell_malloc_stars_sorts(
    * on the same dimensions), so we need separate allocations per dimension. */
   for (int j = 0; j < 13; j++) {
     if ((flags & (1 << j)) && c->stars.sort[j] == NULL) {
-      if ((c->stars.sort[j] = (struct entry *)swift_malloc(
-               "stars.sort", sizeof(struct entry) * (count + 1))) == NULL)
+      if ((c->stars.sort[j] = (struct sort_entry *)swift_malloc(
+               "stars.sort", sizeof(struct sort_entry) * (count + 1))) == NULL)
         error("Failed to allocate sort memory.");
     }
   }
