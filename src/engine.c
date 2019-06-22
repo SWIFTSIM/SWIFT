@@ -6510,14 +6510,6 @@ void engine_fof(struct engine *e, const int dump_results,
   /* Perform local FOF tasks. */
   engine_launch(e);
 
-#ifdef WITH_MPI
-  /* Exchange the gparts that now contain all their local group information */
-  engine_activate_gpart_comms(e);
-
-  /* Perform the communications */
-  engine_launch(e);
-#endif
-
   /* Perform FOF search over foreign particles and
    * find groups which require black hole seeding.  */
   fof_search_tree(e->fof_properties, e->black_holes_properties,
