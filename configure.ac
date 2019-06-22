@@ -225,6 +225,8 @@ if test "x$enable_debug" = "xyes"; then
    fi
 fi
 
+
+
 # Check if stand-alone FoF is on.
 AC_ARG_ENABLE([stand-alone-fof],
    [AS_HELP_STRING([--enable-stand-alone-fof],
@@ -233,7 +235,7 @@ AC_ARG_ENABLE([stand-alone-fof],
    [enable_standalone_fof="$enableval"],
    [enable_standalone_fof="no"]
 )
-AM_CONDITIONAL([HAVEFOF],[test $enable_standalone_fof = "yes"])
+AM_CONDITIONAL([HAVESTANDALONEFOF],[test $enable_standalone_fof = "yes"])
 
 # Check if task debugging is on.
 AC_ARG_ENABLE([task-debugging],

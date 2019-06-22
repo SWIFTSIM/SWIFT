@@ -49,7 +49,7 @@ INLINE static void convert_bpart_group_id(const struct engine* e,
  * @brief Specifies which FoF-related particle fields to write to a dataset
  *
  * @param parts The particle array.
- * @param parts The extended particle array.
+ * @param xparts The extended particle array.
  * @param list The list of i/o properties to write.
  *
  * @return The number of fields to write.
