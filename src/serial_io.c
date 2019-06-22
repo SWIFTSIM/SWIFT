@@ -677,7 +677,7 @@ void read_ic_serial(char* fileName, const struct unit_system* internal_units,
 
   /* Allocate memory to store all gravity  particles */
   if (with_gravity) {
-    Ndm = N[swift_dark_matter];
+    Ndm = N[swift_type_dark_matter];
     Ndm_background = N[swift_type_dark_matter_background];
     *Ngparts = (with_hydro ? N[swift_type_gas] : 0) +
                N[swift_type_dark_matter] +

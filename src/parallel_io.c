@@ -704,12 +704,13 @@ void writeArray(struct engine* e, hid_t grp, char* fileName,
 void read_ic_parallel(char* fileName, const struct unit_system* internal_units,
                       double dim[3], struct part** parts, struct gpart** gparts,
                       struct spart** sparts, struct bpart** bparts,
-                      size_t* Ngas, size_t* Ngparts, size_t *Ngparts_background, size_t* Nstars,
-                      size_t* Nblackholes, int* flag_entropy, float* gpart_mass, int with_hydro,
-                      int with_gravity, int with_stars, int with_black_holes,
-                      int cleanup_h, int cleanup_sqrt_a, double h, double a,
-                      int mpi_rank, int mpi_size, MPI_Comm comm, MPI_Info info,
-                      int n_threads, int dry_run) {
+                      size_t* Ngas, size_t* Ngparts, size_t* Ngparts_background,
+                      size_t* Nstars, size_t* Nblackholes, int* flag_entropy,
+                      float* gpart_mass, int with_hydro, int with_gravity,
+                      int with_stars, int with_black_holes, int cleanup_h,
+                      int cleanup_sqrt_a, double h, double a, int mpi_rank,
+                      int mpi_size, MPI_Comm comm, MPI_Info info, int n_threads,
+                      int dry_run) {
 
   hid_t h_file = 0, h_grp = 0;
   /* GADGET has only cubic boxes (in cosmological mode) */
@@ -724,7 +725,8 @@ void read_ic_parallel(char* fileName, const struct unit_system* internal_units,
   size_t Ndm_background = 0;
 
   /* Initialise counters */
-  *Ngas = 0, *Ngparts = 0, *Ngparts_background = 0, *Nstars = 0, *Nblackholes = 0;
+  *Ngas = 0, *Ngparts = 0, *Ngparts_background = 0, *Nstars = 0,
+  *Nblackholes = 0;
 
   /* Open file */
   /* message("Opening file '%s' as IC.", fileName); */
@@ -990,11 +992,14 @@ void read_ic_parallel(char* fileName, const struct unit_system* internal_units,
     io_prepare_dm_background_gparts(&tp, *gparts + Ndm, Ndm_background);
 
     /* Duplicate the hydro particles into gparts */
-    if (with_hydro) io_duplicate_hydro_gparts(&tp, *parts, *gparts, *Ngas, Ndm + Ndm_background);
+    if (with_hydro)
+      io_duplicate_hydro_gparts(&tp, *parts, *gparts, *Ngas,
+                                Ndm + Ndm_background);
 
     /* Duplicate the stars particles into gparts */
     if (with_stars)
-      io_duplicate_stars_gparts(&tp, *sparts, *gparts, *Nstars, Ndm + Ndm_background + *Ngas);
+      io_duplicate_stars_gparts(&tp, *sparts, *gparts, *Nstars,
+                                Ndm + Ndm_background + *Ngas);
 
     /* Duplicate the stars particles into gparts */
     if (with_black_holes)
@@ -1398,7 +1403,8 @@ void write_output_parallel(struct engine* e, const char* baseName,
       Ntot_written > 0 ? Ntot_written - Nbaryons_written - Ndm_background : 0;
 
   /* Compute offset in the file and total number of particles */
-  size_t N[swift_type_count] = {Ngas_written,   Ndm_written,        Ndm_background, 0,
+  size_t N[swift_type_count] = {Ngas_written,   Ndm_written,
+                                Ndm_background, 0,
                                 Nstars_written, Nblackholes_written};
   long long N_total[swift_type_count] = {0};
   long long offset[swift_type_count] = {0};

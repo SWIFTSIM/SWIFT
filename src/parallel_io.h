@@ -36,12 +36,12 @@
 void read_ic_parallel(char* fileName, const struct unit_system* internal_units,
                       double dim[3], struct part** parts, struct gpart** gparts,
                       struct spart** sparts, struct bpart** bparts,
-                      size_t* Ngas, size_t* Ngparts, size_t* Ngparts_background, size_t* Nsparts,
-                      size_t* Nbparts, int* flag_entropy, float* gpart_mass, 
-		      int with_hydro,
-                      int with_gravity, int with_stars, int with_black_holes,
-                      int cleanup_h, int cleanup_sqrt_a, double h, double a,
-                      int mpi_rank, int mpi_size, MPI_Comm comm, MPI_Info info,
+                      size_t* Ngas, size_t* Ngparts, size_t* Ngparts_background,
+                      size_t* Nsparts, size_t* Nbparts, int* flag_entropy,
+                      float* gpart_mass, int with_hydro, int with_gravity,
+                      int with_stars, int with_black_holes, int cleanup_h,
+                      int cleanup_sqrt_a, double h, double a, int mpi_rank,
+                      int mpi_size, MPI_Comm comm, MPI_Info info,
                       int nr_threads, int dry_run);
 
 void write_output_parallel(struct engine* e, const char* baseName,
