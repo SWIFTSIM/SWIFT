@@ -368,6 +368,12 @@ int main(int argc, char *argv[]) {
     return 1;
   }
 
+  if (with_fof) {
+#ifndef WITH_FOF
+    error("Running with FOF but compiled without it!");
+#endif
+  }
+
   if (with_fof && !with_self_gravity) {
     if (myrank == 0)
       printf(
