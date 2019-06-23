@@ -318,11 +318,18 @@ void engine_addtasks_send_stars(struct engine *e, struct cell *ci,
  * @param e The #engine.
  * @param ci The sending #cell.
  * @param cj Dummy cell containing the nodeID of the receiving node.
+ * @param t_rho The density comm. task, if it has already been created.
+ * @param t_swallow The BH swallow comm. task, if it has already been created.
+ * @param t_gas_swallow The gas swallow comm. task, if it has already been
+ * created.
  * @param t_feedback The send_feed #task, if it has already been created.
  * @param t_ti The recv_ti_end #task, if it has already been created.
  */
 void engine_addtasks_send_black_holes(struct engine *e, struct cell *ci,
-                                      struct cell *cj, struct task *t_feedback,
+                                      struct cell *cj, struct task *t_rho,
+                                      struct task *t_swallow,
+                                      struct task *t_gas_swallow,
+                                      struct task *t_feedback,
                                       struct task *t_ti) {
 
 #ifdef WITH_MPI
@@ -340,31 +347,60 @@ void engine_addtasks_send_black_holes(struct engine *e, struct cell *ci,
   /* If so, attach send tasks. */
   if (l != NULL) {
 
-    if (t_feedback == NULL) {
+    if (t_rho == NULL) {
 
       /* Make sure this cell is tagged. */
       cell_ensure_tagged(ci);
 
       /* Create the tasks and their dependencies? */
-      t_feedback = scheduler_addtask(s, task_type_send, task_subtype_bpart,
-                                     ci->mpi.tag, 0, ci, cj);
+      t_rho = scheduler_addtask(s, task_type_send, task_subtype_bpart_rho,
+                                ci->mpi.tag, 0, ci, cj);
+
+      /* t_swallow = */
+      /*     scheduler_addtask(s, task_type_send, task_subtype_bpart_swallow, */
+      /*                       ci->mpi.tag, 0, ci, cj); */
+
+      t_gas_swallow = scheduler_addtask(
+          s, task_type_send, task_subtype_part_swallow, ci->mpi.tag, 0, ci, cj);
+
+      t_feedback =
+          scheduler_addtask(s, task_type_send, task_subtype_bpart_feedback,
+                            ci->mpi.tag, 0, ci, cj);
 
       t_ti = scheduler_addtask(s, task_type_send, task_subtype_tend_bpart,
                                ci->mpi.tag, 0, ci, cj);
 
-      /* The send_black_holes task should unlock the super_cell's kick task. */
+      /* The send_black_holes task should unlock the super_cell's BH exit point
+       * task. */
       scheduler_addunlock(s, t_feedback,
                           ci->hydro.super->black_holes.black_holes_out);
 
+      scheduler_addunlock(s, ci->hydro.super->black_holes.swallow_ghost[1],
+                          t_feedback);
+
       /* Ghost before you send */
-      scheduler_addunlock(s, ci->hydro.super->black_holes.ghost, t_feedback);
+      scheduler_addunlock(s, ci->hydro.super->black_holes.density_ghost, t_rho);
+      scheduler_addunlock(s, t_rho,
+                          ci->hydro.super->black_holes.swallow_ghost[0]);
 
       /* Drift before you send */
-      scheduler_addunlock(s, ci->hydro.super->black_holes.drift, t_feedback);
+      /* scheduler_addunlock(s, ci->hydro.super->black_holes.swallow_ghost[0],
+       */
+      /*                     t_swallow); */
+      /* scheduler_addunlock(s, t_swallow, */
+      /*                     ci->hydro.super->black_holes.swallow_ghost[1]); */
+
+      scheduler_addunlock(s, ci->hydro.super->black_holes.swallow_ghost[0],
+                          t_gas_swallow);
+      scheduler_addunlock(s, t_gas_swallow,
+                          ci->hydro.super->black_holes.swallow_ghost[1]);
 
       scheduler_addunlock(s, ci->super->timestep, t_ti);
     }
 
+    engine_addlink(e, &ci->mpi.send, t_rho);
+    // engine_addlink(e, &ci->mpi.send, t_swallow);
+    engine_addlink(e, &ci->mpi.send, t_gas_swallow);
     engine_addlink(e, &ci->mpi.send, t_feedback);
     engine_addlink(e, &ci->mpi.send, t_ti);
   }
@@ -373,7 +409,8 @@ void engine_addtasks_send_black_holes(struct engine *e, struct cell *ci,
   if (ci->split)
     for (int k = 0; k < 8; k++)
       if (ci->progeny[k] != NULL)
-        engine_addtasks_send_black_holes(e, ci->progeny[k], cj, t_feedback,
+        engine_addtasks_send_black_holes(e, ci->progeny[k], cj, t_rho,
+                                         t_swallow, t_gas_swallow, t_feedback,
                                          t_ti);
 
 #else
@@ -460,10 +497,10 @@ void engine_addtasks_recv_hydro(struct engine *e, struct cell *c,
       scheduler_addunlock(s, t_rho, l->t);
     }
 
-    /* Make sure the part have been sent before the BHs compute their densities.
-     */
+    /* Make sure the part have been received before the BHs compute their
+     * accretion rates (depends on particles' rho). */
     for (struct link *l = c->black_holes.density; l != NULL; l = l->next) {
-      scheduler_addunlock(s, t_xv, l->t);
+      scheduler_addunlock(s, t_rho, l->t);
     }
   }
 
@@ -571,10 +608,17 @@ void engine_addtasks_recv_stars(struct engine *e, struct cell *c,
  *
  * @param e The #engine.
  * @param c The foreign #cell.
+ * @param t_rho The density comm. task, if it has already been created.
+ * @param t_swallow The BH swallow comm. task, if it has already been created.
+ * @param t_gas_swallow The gas swallow comm. task, if it has already been
+ * created.
  * @param t_feedback The recv_feed #task, if it has already been created.
  * @param t_ti The recv_ti_end #task, if it has already been created.
  */
 void engine_addtasks_recv_black_holes(struct engine *e, struct cell *c,
+                                      struct task *t_rho,
+                                      struct task *t_swallow,
+                                      struct task *t_gas_swallow,
                                       struct task *t_feedback,
                                       struct task *t_ti) {
 
@@ -582,7 +626,7 @@ void engine_addtasks_recv_black_holes(struct engine *e, struct cell *c,
   struct scheduler *s = &e->sched;
 
   /* Have we reached a level where there are any black_holes tasks ? */
-  if (t_feedback == NULL && c->black_holes.density != NULL) {
+  if (t_rho == NULL && c->black_holes.density != NULL) {
 
 #ifdef SWIFT_DEBUG_CHECKS
     /* Make sure this cell has a valid tag. */
@@ -590,14 +634,27 @@ void engine_addtasks_recv_black_holes(struct engine *e, struct cell *c,
 #endif  // SWIFT_DEBUG_CHECKS
 
     /* Create the tasks. */
-    t_feedback = scheduler_addtask(s, task_type_recv, task_subtype_bpart,
-                                   c->mpi.tag, 0, c, NULL);
+    t_rho = scheduler_addtask(s, task_type_recv, task_subtype_bpart_rho,
+                              c->mpi.tag, 0, c, NULL);
+
+    /* t_swallow = scheduler_addtask(s, task_type_recv,
+     * task_subtype_bpart_swallow, */
+    /*                               c->mpi.tag, 0, c, NULL); */
+
+    t_gas_swallow = scheduler_addtask(
+        s, task_type_recv, task_subtype_part_swallow, c->mpi.tag, 0, c, NULL);
+
+    t_feedback = scheduler_addtask(
+        s, task_type_recv, task_subtype_bpart_feedback, c->mpi.tag, 0, c, NULL);
 
     t_ti = scheduler_addtask(s, task_type_recv, task_subtype_tend_bpart,
                              c->mpi.tag, 0, c, NULL);
   }
 
-  if (t_feedback != NULL) {
+  if (t_rho != NULL) {
+    engine_addlink(e, &c->mpi.recv, t_rho);
+    // engine_addlink(e, &c->mpi.recv, t_swallow);
+    engine_addlink(e, &c->mpi.recv, t_gas_swallow);
     engine_addlink(e, &c->mpi.recv, t_feedback);
     engine_addlink(e, &c->mpi.recv, t_ti);
 
@@ -606,9 +663,23 @@ void engine_addtasks_recv_black_holes(struct engine *e, struct cell *c,
 #endif
 
     for (struct link *l = c->black_holes.density; l != NULL; l = l->next) {
-      scheduler_addunlock(s, l->t, t_feedback);
+      scheduler_addunlock(s, l->t, t_rho);
     }
 
+    for (struct link *l = c->hydro.force; l != NULL; l = l->next) {
+      scheduler_addunlock(s, l->t, t_gas_swallow);
+    }
+
+    for (struct link *l = c->black_holes.swallow; l != NULL; l = l->next) {
+      scheduler_addunlock(s, t_rho, l->t);
+      // scheduler_addunlock(s, l->t, t_swallow);
+      scheduler_addunlock(s, l->t, t_gas_swallow);
+    }
+    for (struct link *l = c->black_holes.do_swallow; l != NULL; l = l->next) {
+      // scheduler_addunlock(s, t_swallow, l->t);
+      scheduler_addunlock(s, t_gas_swallow, l->t);
+      scheduler_addunlock(s, l->t, t_feedback);
+    }
     for (struct link *l = c->black_holes.feedback; l != NULL; l = l->next) {
       scheduler_addunlock(s, t_feedback, l->t);
       scheduler_addunlock(s, l->t, t_ti);
@@ -619,7 +690,8 @@ void engine_addtasks_recv_black_holes(struct engine *e, struct cell *c,
   if (c->split)
     for (int k = 0; k < 8; k++)
       if (c->progeny[k] != NULL)
-        engine_addtasks_recv_black_holes(e, c->progeny[k], t_feedback, t_ti);
+        engine_addtasks_recv_black_holes(e, c->progeny[k], t_rho, t_swallow,
+                                         t_gas_swallow, t_feedback, t_ti);
 
 #else
   error("SWIFT was not compiled with MPI support.");
@@ -925,6 +997,12 @@ void engine_make_hierarchical_tasks_hydro(struct engine *e, struct cell *c) {
                                          task_subtype_none, 0, 0, c, NULL);
     }
 
+    if (with_black_holes) {
+      c->black_holes.swallow_ghost[0] =
+          scheduler_addtask(s, task_type_bh_swallow_ghost1, task_subtype_none,
+                            0, /* implicit =*/1, c, NULL);
+    }
+
     /* Local tasks only... */
     if (c->nodeID == e->nodeID) {
 
@@ -1012,8 +1090,11 @@ void engine_make_hierarchical_tasks_hydro(struct engine *e, struct cell *c) {
             scheduler_addtask(s, task_type_bh_out, task_subtype_none, 0,
                               /* implicit = */ 1, c, NULL);
 
-        c->black_holes.ghost = scheduler_addtask(
-            s, task_type_bh_ghost, task_subtype_none, 0, 0, c, NULL);
+        c->black_holes.density_ghost = scheduler_addtask(
+            s, task_type_bh_density_ghost, task_subtype_none, 0, 0, c, NULL);
+
+        c->black_holes.swallow_ghost[1] = scheduler_addtask(
+            s, task_type_bh_swallow_ghost2, task_subtype_none, 0, 0, c, NULL);
 
         scheduler_addunlock(s, c->super->kick2, c->black_holes.black_holes_in);
         scheduler_addunlock(s, c->black_holes.black_holes_out,
@@ -1636,6 +1717,8 @@ void engine_make_extra_hydroloop_tasks_mapper(void *map_data, int num_elements,
   struct task *t_star_density = NULL;
   struct task *t_star_feedback = NULL;
   struct task *t_bh_density = NULL;
+  struct task *t_bh_swallow = NULL;
+  struct task *t_do_swallow = NULL;
   struct task *t_bh_feedback = NULL;
 
   for (int ind = 0; ind < num_elements; ind++) {
@@ -1659,6 +1742,8 @@ void engine_make_extra_hydroloop_tasks_mapper(void *map_data, int num_elements,
 
     /* Self-interaction? */
     else if (t_type == task_type_self && t_subtype == task_subtype_density) {
+
+      const int bcount_i = ci->black_holes.count;
 
       /* Make the self-density tasks depend on the drift only. */
       scheduler_addunlock(sched, ci->hydro.super->hydro.drift, t);
@@ -1684,9 +1769,13 @@ void engine_make_extra_hydroloop_tasks_mapper(void *map_data, int num_elements,
       }
 
       /* The black hole feedback tasks */
-      if (with_black_holes) {
+      if (with_black_holes && bcount_i > 0) {
         t_bh_density = scheduler_addtask(
             sched, task_type_self, task_subtype_bh_density, flags, 0, ci, NULL);
+        t_bh_swallow = scheduler_addtask(
+            sched, task_type_self, task_subtype_bh_swallow, flags, 0, ci, NULL);
+        t_do_swallow = scheduler_addtask(
+            sched, task_type_self, task_subtype_do_swallow, flags, 0, ci, NULL);
         t_bh_feedback =
             scheduler_addtask(sched, task_type_self, task_subtype_bh_feedback,
                               flags, 0, ci, NULL);
@@ -1701,8 +1790,10 @@ void engine_make_extra_hydroloop_tasks_mapper(void *map_data, int num_elements,
         engine_addlink(e, &ci->stars.density, t_star_density);
         engine_addlink(e, &ci->stars.feedback, t_star_feedback);
       }
-      if (with_black_holes) {
+      if (with_black_holes && bcount_i > 0) {
         engine_addlink(e, &ci->black_holes.density, t_bh_density);
+        engine_addlink(e, &ci->black_holes.swallow, t_bh_swallow);
+        engine_addlink(e, &ci->black_holes.do_swallow, t_do_swallow);
         engine_addlink(e, &ci->black_holes.feedback, t_bh_feedback);
       }
 
@@ -1745,7 +1836,7 @@ void engine_make_extra_hydroloop_tasks_mapper(void *map_data, int num_elements,
                             ci->hydro.super->stars.stars_out);
       }
 
-      if (with_black_holes) {
+      if (with_black_holes && bcount_i > 0) {
 
         scheduler_addunlock(sched, ci->hydro.super->black_holes.drift,
                             t_bh_density);
@@ -1753,8 +1844,20 @@ void engine_make_extra_hydroloop_tasks_mapper(void *map_data, int num_elements,
         scheduler_addunlock(sched, ci->hydro.super->black_holes.black_holes_in,
                             t_bh_density);
         scheduler_addunlock(sched, t_bh_density,
-                            ci->hydro.super->black_holes.ghost);
-        scheduler_addunlock(sched, ci->hydro.super->black_holes.ghost,
+                            ci->hydro.super->black_holes.density_ghost);
+
+        scheduler_addunlock(sched, ci->hydro.super->black_holes.density_ghost,
+                            t_bh_swallow);
+        scheduler_addunlock(sched, t_bh_swallow,
+                            ci->hydro.super->black_holes.swallow_ghost[0]);
+
+        scheduler_addunlock(
+            sched, ci->hydro.super->black_holes.swallow_ghost[0], t_do_swallow);
+        scheduler_addunlock(sched, t_do_swallow,
+                            ci->hydro.super->black_holes.swallow_ghost[1]);
+
+        scheduler_addunlock(sched,
+                            ci->hydro.super->black_holes.swallow_ghost[1],
                             t_bh_feedback);
         scheduler_addunlock(sched, t_bh_feedback,
                             ci->hydro.super->black_holes.black_holes_out);
@@ -1769,6 +1872,9 @@ void engine_make_extra_hydroloop_tasks_mapper(void *map_data, int num_elements,
 
     /* Otherwise, pair interaction? */
     else if (t_type == task_type_pair && t_subtype == task_subtype_density) {
+
+      const int bcount_i = ci->black_holes.count;
+      const int bcount_j = cj->black_holes.count;
 
       /* Make all density tasks depend on the drift */
       if (ci->nodeID == nodeID) {
@@ -1805,9 +1911,13 @@ void engine_make_extra_hydroloop_tasks_mapper(void *map_data, int num_elements,
       }
 
       /* The black hole feedback tasks */
-      if (with_black_holes) {
+      if (with_black_holes && (bcount_i > 0 || bcount_j > 0)) {
         t_bh_density = scheduler_addtask(
             sched, task_type_pair, task_subtype_bh_density, flags, 0, ci, cj);
+        t_bh_swallow = scheduler_addtask(
+            sched, task_type_pair, task_subtype_bh_swallow, flags, 0, ci, cj);
+        t_do_swallow = scheduler_addtask(
+            sched, task_type_pair, task_subtype_do_swallow, flags, 0, ci, cj);
         t_bh_feedback = scheduler_addtask(
             sched, task_type_pair, task_subtype_bh_feedback, flags, 0, ci, cj);
       }
@@ -1824,9 +1934,13 @@ void engine_make_extra_hydroloop_tasks_mapper(void *map_data, int num_elements,
         engine_addlink(e, &ci->stars.feedback, t_star_feedback);
         engine_addlink(e, &cj->stars.feedback, t_star_feedback);
       }
-      if (with_black_holes) {
+      if (with_black_holes && (bcount_i > 0 || bcount_j > 0)) {
         engine_addlink(e, &ci->black_holes.density, t_bh_density);
         engine_addlink(e, &cj->black_holes.density, t_bh_density);
+        engine_addlink(e, &ci->black_holes.swallow, t_bh_swallow);
+        engine_addlink(e, &cj->black_holes.swallow, t_bh_swallow);
+        engine_addlink(e, &ci->black_holes.do_swallow, t_do_swallow);
+        engine_addlink(e, &cj->black_holes.do_swallow, t_do_swallow);
         engine_addlink(e, &ci->black_holes.feedback, t_bh_feedback);
         engine_addlink(e, &cj->black_holes.feedback, t_bh_feedback);
       }
@@ -1898,7 +2012,7 @@ void engine_make_extra_hydroloop_tasks_mapper(void *map_data, int num_elements,
                               ci->hydro.super->stars.stars_out);
         }
 
-        if (with_black_holes) {
+        if (with_black_holes && (bcount_i > 0 || bcount_j > 0)) {
 
           scheduler_addunlock(sched, ci->hydro.super->black_holes.drift,
                               t_bh_density);
@@ -1907,8 +2021,21 @@ void engine_make_extra_hydroloop_tasks_mapper(void *map_data, int num_elements,
           scheduler_addunlock(
               sched, ci->hydro.super->black_holes.black_holes_in, t_bh_density);
           scheduler_addunlock(sched, t_bh_density,
-                              ci->hydro.super->black_holes.ghost);
-          scheduler_addunlock(sched, ci->hydro.super->black_holes.ghost,
+                              ci->hydro.super->black_holes.density_ghost);
+
+          scheduler_addunlock(sched, ci->hydro.super->black_holes.density_ghost,
+                              t_bh_swallow);
+          scheduler_addunlock(sched, t_bh_swallow,
+                              ci->hydro.super->black_holes.swallow_ghost[0]);
+
+          scheduler_addunlock(sched,
+                              ci->hydro.super->black_holes.swallow_ghost[0],
+                              t_do_swallow);
+          scheduler_addunlock(sched, t_do_swallow,
+                              ci->hydro.super->black_holes.swallow_ghost[1]);
+
+          scheduler_addunlock(sched,
+                              ci->hydro.super->black_holes.swallow_ghost[1],
                               t_bh_feedback);
           scheduler_addunlock(sched, t_bh_feedback,
                               ci->hydro.super->black_holes.black_holes_out);
@@ -1923,6 +2050,11 @@ void engine_make_extra_hydroloop_tasks_mapper(void *map_data, int num_elements,
         if (with_feedback) {
           scheduler_addunlock(sched, ci->hydro.super->stars.sorts,
                               t_star_feedback);
+        }
+
+        if (with_black_holes && (bcount_i > 0 || bcount_j > 0)) {
+          scheduler_addunlock(sched, t_bh_swallow,
+                              ci->hydro.super->black_holes.swallow_ghost[0]);
         }
       }
 
@@ -1950,7 +2082,7 @@ void engine_make_extra_hydroloop_tasks_mapper(void *map_data, int num_elements,
                                 cj->hydro.super->stars.stars_out);
           }
 
-          if (with_black_holes) {
+          if (with_black_holes && (bcount_i > 0 || bcount_j > 0)) {
 
             scheduler_addunlock(sched, cj->hydro.super->black_holes.drift,
                                 t_bh_density);
@@ -1960,8 +2092,22 @@ void engine_make_extra_hydroloop_tasks_mapper(void *map_data, int num_elements,
                                 cj->hydro.super->black_holes.black_holes_in,
                                 t_bh_density);
             scheduler_addunlock(sched, t_bh_density,
-                                cj->hydro.super->black_holes.ghost);
-            scheduler_addunlock(sched, cj->hydro.super->black_holes.ghost,
+                                cj->hydro.super->black_holes.density_ghost);
+
+            scheduler_addunlock(sched,
+                                cj->hydro.super->black_holes.density_ghost,
+                                t_bh_swallow);
+            scheduler_addunlock(sched, t_bh_swallow,
+                                cj->hydro.super->black_holes.swallow_ghost[0]);
+
+            scheduler_addunlock(sched,
+                                cj->hydro.super->black_holes.swallow_ghost[0],
+                                t_do_swallow);
+            scheduler_addunlock(sched, t_do_swallow,
+                                cj->hydro.super->black_holes.swallow_ghost[1]);
+
+            scheduler_addunlock(sched,
+                                cj->hydro.super->black_holes.swallow_ghost[1],
                                 t_bh_feedback);
             scheduler_addunlock(sched, t_bh_feedback,
                                 cj->hydro.super->black_holes.black_holes_out);
@@ -1978,12 +2124,20 @@ void engine_make_extra_hydroloop_tasks_mapper(void *map_data, int num_elements,
           scheduler_addunlock(sched, cj->hydro.super->stars.sorts,
                               t_star_feedback);
         }
+
+        if (with_black_holes && (bcount_i > 0 || bcount_j > 0)) {
+
+          scheduler_addunlock(sched, t_bh_swallow,
+                              cj->hydro.super->black_holes.swallow_ghost[0]);
+        }
       }
     }
 
     /* Otherwise, sub-self interaction? */
     else if (t_type == task_type_sub_self &&
              t_subtype == task_subtype_density) {
+
+      const int bcount_i = ci->black_holes.count;
 
       /* Make all density tasks depend on the drift and sorts. */
       scheduler_addunlock(sched, ci->hydro.super->hydro.drift, t);
@@ -2010,10 +2164,18 @@ void engine_make_extra_hydroloop_tasks_mapper(void *map_data, int num_elements,
       }
 
       /* The black hole feedback tasks */
-      if (with_black_holes) {
+      if (with_black_holes && bcount_i > 0) {
         t_bh_density =
             scheduler_addtask(sched, task_type_sub_self,
                               task_subtype_bh_density, flags, 0, ci, NULL);
+        t_bh_swallow =
+            scheduler_addtask(sched, task_type_sub_self,
+                              task_subtype_bh_swallow, flags, 0, ci, NULL);
+
+        t_do_swallow =
+            scheduler_addtask(sched, task_type_sub_self,
+                              task_subtype_do_swallow, flags, 0, ci, NULL);
+
         t_bh_feedback =
             scheduler_addtask(sched, task_type_sub_self,
                               task_subtype_bh_feedback, flags, 0, ci, NULL);
@@ -2028,8 +2190,10 @@ void engine_make_extra_hydroloop_tasks_mapper(void *map_data, int num_elements,
         engine_addlink(e, &ci->stars.density, t_star_density);
         engine_addlink(e, &ci->stars.feedback, t_star_feedback);
       }
-      if (with_black_holes) {
+      if (with_black_holes && bcount_i > 0) {
         engine_addlink(e, &ci->black_holes.density, t_bh_density);
+        engine_addlink(e, &ci->black_holes.swallow, t_bh_swallow);
+        engine_addlink(e, &ci->black_holes.do_swallow, t_do_swallow);
         engine_addlink(e, &ci->black_holes.feedback, t_bh_feedback);
       }
 
@@ -2078,7 +2242,7 @@ void engine_make_extra_hydroloop_tasks_mapper(void *map_data, int num_elements,
                             ci->hydro.super->stars.stars_out);
       }
 
-      if (with_black_holes) {
+      if (with_black_holes && bcount_i > 0) {
 
         scheduler_addunlock(sched, ci->hydro.super->black_holes.drift,
                             t_bh_density);
@@ -2086,8 +2250,20 @@ void engine_make_extra_hydroloop_tasks_mapper(void *map_data, int num_elements,
         scheduler_addunlock(sched, ci->hydro.super->black_holes.black_holes_in,
                             t_bh_density);
         scheduler_addunlock(sched, t_bh_density,
-                            ci->hydro.super->black_holes.ghost);
-        scheduler_addunlock(sched, ci->hydro.super->black_holes.ghost,
+                            ci->hydro.super->black_holes.density_ghost);
+
+        scheduler_addunlock(sched, ci->hydro.super->black_holes.density_ghost,
+                            t_bh_swallow);
+        scheduler_addunlock(sched, t_bh_swallow,
+                            ci->hydro.super->black_holes.swallow_ghost[0]);
+
+        scheduler_addunlock(
+            sched, ci->hydro.super->black_holes.swallow_ghost[0], t_do_swallow);
+        scheduler_addunlock(sched, t_do_swallow,
+                            ci->hydro.super->black_holes.swallow_ghost[1]);
+
+        scheduler_addunlock(sched,
+                            ci->hydro.super->black_holes.swallow_ghost[1],
                             t_bh_feedback);
         scheduler_addunlock(sched, t_bh_feedback,
                             ci->hydro.super->black_holes.black_holes_out);
@@ -2104,6 +2280,9 @@ void engine_make_extra_hydroloop_tasks_mapper(void *map_data, int num_elements,
     /* Otherwise, sub-pair interaction? */
     else if (t_type == task_type_sub_pair &&
              t_subtype == task_subtype_density) {
+
+      const int bcount_i = ci->black_holes.count;
+      const int bcount_j = cj->black_holes.count;
 
       /* Make all density tasks depend on the drift */
       if (ci->nodeID == nodeID) {
@@ -2140,10 +2319,16 @@ void engine_make_extra_hydroloop_tasks_mapper(void *map_data, int num_elements,
       }
 
       /* The black hole feedback tasks */
-      if (with_black_holes) {
+      if (with_black_holes && (bcount_i > 0 || bcount_j > 0)) {
         t_bh_density =
             scheduler_addtask(sched, task_type_sub_pair,
                               task_subtype_bh_density, flags, 0, ci, cj);
+        t_bh_swallow =
+            scheduler_addtask(sched, task_type_sub_pair,
+                              task_subtype_bh_swallow, flags, 0, ci, cj);
+        t_do_swallow =
+            scheduler_addtask(sched, task_type_sub_pair,
+                              task_subtype_do_swallow, flags, 0, ci, cj);
         t_bh_feedback =
             scheduler_addtask(sched, task_type_sub_pair,
                               task_subtype_bh_feedback, flags, 0, ci, cj);
@@ -2161,9 +2346,13 @@ void engine_make_extra_hydroloop_tasks_mapper(void *map_data, int num_elements,
         engine_addlink(e, &ci->stars.feedback, t_star_feedback);
         engine_addlink(e, &cj->stars.feedback, t_star_feedback);
       }
-      if (with_black_holes) {
+      if (with_black_holes && (bcount_i > 0 || bcount_j > 0)) {
         engine_addlink(e, &ci->black_holes.density, t_bh_density);
         engine_addlink(e, &cj->black_holes.density, t_bh_density);
+        engine_addlink(e, &ci->black_holes.swallow, t_bh_swallow);
+        engine_addlink(e, &cj->black_holes.swallow, t_bh_swallow);
+        engine_addlink(e, &ci->black_holes.do_swallow, t_do_swallow);
+        engine_addlink(e, &cj->black_holes.do_swallow, t_do_swallow);
         engine_addlink(e, &ci->black_holes.feedback, t_bh_feedback);
         engine_addlink(e, &cj->black_holes.feedback, t_bh_feedback);
       }
@@ -2234,7 +2423,7 @@ void engine_make_extra_hydroloop_tasks_mapper(void *map_data, int num_elements,
                               ci->hydro.super->stars.stars_out);
         }
 
-        if (with_black_holes) {
+        if (with_black_holes && (bcount_i > 0 || bcount_j > 0)) {
 
           scheduler_addunlock(sched, ci->hydro.super->black_holes.drift,
                               t_bh_density);
@@ -2243,8 +2432,21 @@ void engine_make_extra_hydroloop_tasks_mapper(void *map_data, int num_elements,
           scheduler_addunlock(
               sched, ci->hydro.super->black_holes.black_holes_in, t_bh_density);
           scheduler_addunlock(sched, t_bh_density,
-                              ci->hydro.super->black_holes.ghost);
-          scheduler_addunlock(sched, ci->hydro.super->black_holes.ghost,
+                              ci->hydro.super->black_holes.density_ghost);
+
+          scheduler_addunlock(sched, ci->hydro.super->black_holes.density_ghost,
+                              t_bh_swallow);
+          scheduler_addunlock(sched, t_bh_swallow,
+                              ci->hydro.super->black_holes.swallow_ghost[0]);
+
+          scheduler_addunlock(sched,
+                              ci->hydro.super->black_holes.swallow_ghost[0],
+                              t_do_swallow);
+          scheduler_addunlock(sched, t_do_swallow,
+                              ci->hydro.super->black_holes.swallow_ghost[1]);
+
+          scheduler_addunlock(sched,
+                              ci->hydro.super->black_holes.swallow_ghost[1],
                               t_bh_feedback);
           scheduler_addunlock(sched, t_bh_feedback,
                               ci->hydro.super->black_holes.black_holes_out);
@@ -2261,6 +2463,11 @@ void engine_make_extra_hydroloop_tasks_mapper(void *map_data, int num_elements,
           /* message("%p/%p",ci->hydro.super->stars.sorts, t_star_feedback); */
           scheduler_addunlock(sched, ci->hydro.super->stars.sorts,
                               t_star_feedback);
+        }
+        if (with_black_holes && (bcount_i > 0 || bcount_j > 0)) {
+
+          scheduler_addunlock(sched, t_bh_swallow,
+                              ci->hydro.super->black_holes.swallow_ghost[0]);
         }
       }
 
@@ -2288,7 +2495,7 @@ void engine_make_extra_hydroloop_tasks_mapper(void *map_data, int num_elements,
                                 cj->hydro.super->stars.stars_out);
           }
 
-          if (with_black_holes) {
+          if (with_black_holes && (bcount_i > 0 || bcount_j > 0)) {
 
             scheduler_addunlock(sched, cj->hydro.super->black_holes.drift,
                                 t_bh_density);
@@ -2298,8 +2505,22 @@ void engine_make_extra_hydroloop_tasks_mapper(void *map_data, int num_elements,
                                 cj->hydro.super->black_holes.black_holes_in,
                                 t_bh_density);
             scheduler_addunlock(sched, t_bh_density,
-                                cj->hydro.super->black_holes.ghost);
-            scheduler_addunlock(sched, cj->hydro.super->black_holes.ghost,
+                                cj->hydro.super->black_holes.density_ghost);
+
+            scheduler_addunlock(sched,
+                                cj->hydro.super->black_holes.density_ghost,
+                                t_bh_swallow);
+            scheduler_addunlock(sched, t_bh_swallow,
+                                cj->hydro.super->black_holes.swallow_ghost[0]);
+
+            scheduler_addunlock(sched,
+                                cj->hydro.super->black_holes.swallow_ghost[0],
+                                t_do_swallow);
+            scheduler_addunlock(sched, t_do_swallow,
+                                cj->hydro.super->black_holes.swallow_ghost[1]);
+
+            scheduler_addunlock(sched,
+                                cj->hydro.super->black_holes.swallow_ghost[1],
                                 t_bh_feedback);
             scheduler_addunlock(sched, t_bh_feedback,
                                 cj->hydro.super->black_holes.black_holes_out);
@@ -2315,6 +2536,11 @@ void engine_make_extra_hydroloop_tasks_mapper(void *map_data, int num_elements,
         if (with_feedback) {
           scheduler_addunlock(sched, cj->hydro.super->stars.sorts,
                               t_star_feedback);
+        }
+
+        if (with_black_holes && (bcount_i > 0 || bcount_j > 0)) {
+          scheduler_addunlock(sched, t_bh_swallow,
+                              cj->hydro.super->black_holes.swallow_ghost[0]);
         }
       }
     }
@@ -2489,7 +2715,10 @@ void engine_addtasks_send_mapper(void *map_data, int num_elements,
      * connection. */
     if ((e->policy & engine_policy_black_holes) &&
         (type & proxy_cell_type_hydro))
-      engine_addtasks_send_black_holes(e, ci, cj, /*t_feedback=*/NULL,
+      engine_addtasks_send_black_holes(e, ci, cj, /*t_rho=*/NULL,
+                                       /*t_swallow=*/NULL,
+                                       /*t_gas_swallow=*/NULL,
+                                       /*t_feedback=*/NULL,
                                        /*t_ti=*/NULL);
 
     /* Add the send tasks for the cells in the proxy that have a gravity
@@ -2528,7 +2757,11 @@ void engine_addtasks_recv_mapper(void *map_data, int num_elements,
      * connection. */
     if ((e->policy & engine_policy_black_holes) &&
         (type & proxy_cell_type_hydro))
-      engine_addtasks_recv_black_holes(e, ci, NULL, NULL);
+      engine_addtasks_recv_black_holes(e, ci, /*t_rho=*/NULL,
+                                       /*t_swallow=*/NULL,
+                                       /*t_gas_swallow=*/NULL,
+                                       /*t_feedback=*/NULL,
+                                       /*t_ti=*/NULL);
 
     /* Add the recv tasks for the cells in the proxy that have a gravity
      * connection. */

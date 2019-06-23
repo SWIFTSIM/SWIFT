@@ -590,6 +590,28 @@ int cell_pack_tags(const struct cell *c, int *tags) {
 #endif
 }
 
+void cell_pack_part_swallow(const struct cell *c,
+                            struct black_holes_part_data *data) {
+
+  const size_t count = c->hydro.count;
+  const struct part *parts = c->hydro.parts;
+
+  for (size_t i = 0; i < count; ++i) {
+    data[i] = parts[i].black_holes_data;
+  }
+}
+
+void cell_unpack_part_swallow(struct cell *c,
+                              const struct black_holes_part_data *data) {
+
+  const size_t count = c->hydro.count;
+  struct part *parts = c->hydro.parts;
+
+  for (size_t i = 0; i < count; ++i) {
+    parts[i].black_holes_data = data[i];
+  }
+}
+
 /**
  * @brief Unpack the data of a given cell and its sub-cells.
  *
@@ -1383,6 +1405,67 @@ int cell_slocktree(struct cell *c) {
 }
 
 /**
+ * @brief Lock a cell for access to its array of #bpart and hold its parents.
+ *
+ * @param c The #cell.
+ * @return 0 on success, 1 on failure
+ */
+int cell_blocktree(struct cell *c) {
+  TIMER_TIC
+
+  /* First of all, try to lock this cell. */
+  if (c->black_holes.hold || lock_trylock(&c->black_holes.lock) != 0) {
+    TIMER_TOC(timer_locktree);
+    return 1;
+  }
+
+  /* Did somebody hold this cell in the meantime? */
+  if (c->black_holes.hold) {
+    /* Unlock this cell. */
+    if (lock_unlock(&c->black_holes.lock) != 0) error("Failed to unlock cell.");
+
+    /* Admit defeat. */
+    TIMER_TOC(timer_locktree);
+    return 1;
+  }
+
+  /* Climb up the tree and lock/hold/unlock. */
+  struct cell *finger;
+  for (finger = c->parent; finger != NULL; finger = finger->parent) {
+    /* Lock this cell. */
+    if (lock_trylock(&finger->black_holes.lock) != 0) break;
+
+    /* Increment the hold. */
+    atomic_inc(&finger->black_holes.hold);
+
+    /* Unlock the cell. */
+    if (lock_unlock(&finger->black_holes.lock) != 0)
+      error("Failed to unlock cell.");
+  }
+
+  /* If we reached the top of the tree, we're done. */
+  if (finger == NULL) {
+    TIMER_TOC(timer_locktree);
+    return 0;
+  }
+
+  /* Otherwise, we hit a snag. */
+  else {
+    /* Undo the holds up to finger. */
+    for (struct cell *finger2 = c->parent; finger2 != finger;
+         finger2 = finger2->parent)
+      atomic_dec(&finger2->black_holes.hold);
+
+    /* Unlock this cell. */
+    if (lock_unlock(&c->black_holes.lock) != 0) error("Failed to unlock cell.");
+
+    /* Admit defeat. */
+    TIMER_TOC(timer_locktree);
+    return 1;
+  }
+}
+
+/**
  * @brief Unlock a cell's parents for access to #part array.
  *
  * @param c The #cell.
@@ -1450,6 +1533,24 @@ void cell_sunlocktree(struct cell *c) {
   /* Climb up the tree and unhold the parents. */
   for (struct cell *finger = c->parent; finger != NULL; finger = finger->parent)
     atomic_dec(&finger->stars.hold);
+
+  TIMER_TOC(timer_locktree);
+}
+
+/**
+ * @brief Unlock a cell's parents for access to #bpart array.
+ *
+ * @param c The #cell.
+ */
+void cell_bunlocktree(struct cell *c) {
+  TIMER_TIC
+
+  /* First of all, try to unlock this cell. */
+  if (lock_unlock(&c->black_holes.lock) != 0) error("Failed to unlock cell.");
+
+  /* Climb up the tree and unhold the parents. */
+  for (struct cell *finger = c->parent; finger != NULL; finger = finger->parent)
+    atomic_dec(&finger->black_holes.hold);
 
   TIMER_TOC(timer_locktree);
 }
@@ -1886,6 +1987,8 @@ void cell_clean_links(struct cell *c, void *data) {
   c->stars.density = NULL;
   c->stars.feedback = NULL;
   c->black_holes.density = NULL;
+  c->black_holes.swallow = NULL;
+  c->black_holes.do_swallow = NULL;
   c->black_holes.feedback = NULL;
 }
 
@@ -2903,20 +3006,16 @@ void cell_activate_subcell_black_holes_tasks(struct cell *ci, struct cell *cj,
     }
 
     /* Otherwise, activate the drifts. */
-    else {
-      if (cell_is_active_black_holes(ci, e)) {
+    else if (cell_is_active_black_holes(ci, e) ||
+             cell_is_active_black_holes(cj, e)) {
 
-        /* Activate the drifts if the cells are local. */
-        if (ci->nodeID == engine_rank) cell_activate_drift_bpart(ci, s);
-        if (cj->nodeID == engine_rank) cell_activate_drift_part(cj, s);
-      }
+      /* Activate the drifts if the cells are local. */
+      if (ci->nodeID == engine_rank) cell_activate_drift_bpart(ci, s);
+      if (cj->nodeID == engine_rank) cell_activate_drift_part(cj, s);
 
-      if (cell_is_active_black_holes(cj, e)) {
-
-        /* Activate the drifts if the cells are local. */
-        if (ci->nodeID == engine_rank) cell_activate_drift_part(ci, s);
-        if (cj->nodeID == engine_rank) cell_activate_drift_bpart(cj, s);
-      }
+      /* Activate the drifts if the cells are local. */
+      if (ci->nodeID == engine_rank) cell_activate_drift_part(ci, s);
+      if (cj->nodeID == engine_rank) cell_activate_drift_bpart(cj, s);
     }
   } /* Otherwise, pair interation */
 }
@@ -3727,6 +3826,7 @@ int cell_unskip_stars_tasks(struct cell *c, struct scheduler *s,
  * @return 1 If the space needs rebuilding. 0 otherwise.
  */
 int cell_unskip_black_holes_tasks(struct cell *c, struct scheduler *s) {
+
   struct engine *e = s->space->e;
   const int nodeID = e->nodeID;
   int rebuild = 0;
@@ -3750,39 +3850,35 @@ int cell_unskip_black_holes_tasks(struct cell *c, struct scheduler *s) {
     const int cj_nodeID = nodeID;
 #endif
 
-    /* Activate the drifts */
-    if (t->type == task_type_self && ci_active) {
-      cell_activate_drift_part(ci, s);
-      cell_activate_drift_bpart(ci, s);
-    }
-
     /* Only activate tasks that involve a local active cell. */
     if ((ci_active || cj_active) &&
         (ci_nodeID == nodeID || cj_nodeID == nodeID)) {
+
       scheduler_activate(s, t);
 
-      if (t->type == task_type_pair) {
-        /* Do ci */
-        if (ci_active) {
-
-          /* Activate the drift tasks. */
-          if (ci_nodeID == nodeID) cell_activate_drift_bpart(ci, s);
-          if (cj_nodeID == nodeID) cell_activate_drift_part(cj, s);
-        }
-
-        /* Do cj */
-        if (cj_active) {
-
-          /* Activate the drift tasks. */
-          if (cj_nodeID == nodeID) cell_activate_drift_bpart(cj, s);
-          if (ci_nodeID == nodeID) cell_activate_drift_part(ci, s);
-        }
+      /* Activate the drifts */
+      if (t->type == task_type_self) {
+        cell_activate_drift_part(ci, s);
+        cell_activate_drift_bpart(ci, s);
       }
 
+      /* Activate the drifts */
+      else if (t->type == task_type_pair) {
+
+        /* Activate the drift tasks. */
+        if (ci_nodeID == nodeID) cell_activate_drift_bpart(ci, s);
+        if (ci_nodeID == nodeID) cell_activate_drift_part(ci, s);
+
+        if (cj_nodeID == nodeID) cell_activate_drift_part(cj, s);
+        if (cj_nodeID == nodeID) cell_activate_drift_bpart(cj, s);
+      }
+
+      /* Store current values of dx_max and h_max. */
       else if (t->type == task_type_sub_self) {
         cell_activate_subcell_black_holes_tasks(ci, NULL, s);
       }
 
+      /* Store current values of dx_max and h_max. */
       else if (t->type == task_type_sub_pair) {
         cell_activate_subcell_black_holes_tasks(ci, cj, s);
       }
@@ -3790,71 +3886,140 @@ int cell_unskip_black_holes_tasks(struct cell *c, struct scheduler *s) {
 
     /* Only interested in pair interactions as of here. */
     if (t->type == task_type_pair || t->type == task_type_sub_pair) {
+
       /* Check whether there was too much particle motion, i.e. the
          cell neighbour conditions were violated. */
       if (cell_need_rebuild_for_black_holes_pair(ci, cj)) rebuild = 1;
       if (cell_need_rebuild_for_black_holes_pair(cj, ci)) rebuild = 1;
 
+      scheduler_activate(s, ci->hydro.super->black_holes.swallow_ghost[0]);
+      scheduler_activate(s, cj->hydro.super->black_holes.swallow_ghost[0]);
+
 #ifdef WITH_MPI
       /* Activate the send/recv tasks. */
       if (ci_nodeID != nodeID) {
-        if (cj_active) {
-          scheduler_activate_recv(s, ci->mpi.recv, task_subtype_xv);
 
-          /* If the local cell is active, more stuff will be needed. */
-          scheduler_activate_send(s, cj->mpi.send, task_subtype_bpart,
-                                  ci_nodeID);
-          cell_activate_drift_bpart(cj, s);
+        /* Receive the foreign parts to compute BH accretion rates and do the
+         * swallowing */
+        scheduler_activate_recv(s, ci->mpi.recv, task_subtype_rho);
+        scheduler_activate_recv(s, ci->mpi.recv, task_subtype_part_swallow);
 
-          /* If the local cell is active, send its ti_end values. */
-          scheduler_activate_send(s, cj->mpi.send, task_subtype_tend_bpart,
-                                  ci_nodeID);
-        }
+        /* Send the local BHs to tag the particles to swallow and to do feedback
+         */
+        scheduler_activate_send(s, cj->mpi.send, task_subtype_bpart_rho,
+                                ci_nodeID);
+        scheduler_activate_send(s, cj->mpi.send, task_subtype_bpart_feedback,
+                                ci_nodeID);
 
-        if (ci_active) {
-          scheduler_activate_recv(s, ci->mpi.recv, task_subtype_bpart);
+        /* Drift before you send */
+        cell_activate_drift_bpart(cj, s);
 
-          /* If the foreign cell is active, we want its ti_end values. */
-          scheduler_activate_recv(s, ci->mpi.recv, task_subtype_tend_bpart);
+        /* Send the new BH time-steps */
+        scheduler_activate_send(s, cj->mpi.send, task_subtype_tend_bpart,
+                                ci_nodeID);
 
-          /* Is the foreign cell active and will need stuff from us? */
-          scheduler_activate_send(s, cj->mpi.send, task_subtype_xv, ci_nodeID);
+        /* Receive the foreign BHs to tag particles to swallow and for feedback
+         */
+        scheduler_activate_recv(s, ci->mpi.recv, task_subtype_bpart_rho);
+        scheduler_activate_recv(s, ci->mpi.recv, task_subtype_bpart_feedback);
 
-          /* Drift the cell which will be sent; note that not all sent
-             particles will be drifted, only those that are needed. */
-          cell_activate_drift_part(cj, s);
-        }
+        /* Receive the foreign BH time-steps */
+        scheduler_activate_recv(s, ci->mpi.recv, task_subtype_tend_bpart);
+
+        /* Send the local part information */
+        scheduler_activate_send(s, cj->mpi.send, task_subtype_rho, ci_nodeID);
+        scheduler_activate_send(s, cj->mpi.send, task_subtype_part_swallow,
+                                ci_nodeID);
+
+        /* Drift the cell which will be sent; note that not all sent
+           particles will be drifted, only those that are needed. */
+        cell_activate_drift_part(cj, s);
 
       } else if (cj_nodeID != nodeID) {
-        /* If the local cell is active, receive data from the foreign cell. */
-        if (ci_active) {
-          scheduler_activate_recv(s, cj->mpi.recv, task_subtype_xv);
 
-          /* If the local cell is active, more stuff will be needed. */
-          scheduler_activate_send(s, ci->mpi.send, task_subtype_bpart,
-                                  cj_nodeID);
-          cell_activate_drift_bpart(ci, s);
+        /* Receive the foreign parts to compute BH accretion rates and do the
+         * swallowing */
+        scheduler_activate_recv(s, cj->mpi.recv, task_subtype_rho);
+        scheduler_activate_recv(s, cj->mpi.recv, task_subtype_part_swallow);
 
-          /* If the local cell is active, send its ti_end values. */
-          scheduler_activate_send(s, ci->mpi.send, task_subtype_tend_bpart,
-                                  cj_nodeID);
-        }
+        /* Send the local BHs to tag the particles to swallow and to do feedback
+         */
+        scheduler_activate_send(s, ci->mpi.send, task_subtype_bpart_rho,
+                                cj_nodeID);
+        scheduler_activate_send(s, ci->mpi.send, task_subtype_bpart_feedback,
+                                cj_nodeID);
 
-        if (cj_active) {
-          scheduler_activate_recv(s, cj->mpi.recv, task_subtype_bpart);
+        /* Drift before you send */
+        cell_activate_drift_bpart(ci, s);
 
-          /* If the foreign cell is active, we want its ti_end values. */
-          scheduler_activate_recv(s, cj->mpi.recv, task_subtype_tend_bpart);
+        /* Send the new BH time-steps */
+        scheduler_activate_send(s, ci->mpi.send, task_subtype_tend_bpart,
+                                cj_nodeID);
 
-          /* Is the foreign cell active and will need stuff from us? */
-          scheduler_activate_send(s, ci->mpi.send, task_subtype_xv, cj_nodeID);
+        /* Receive the foreign BHs to tag particles to swallow and for feedback
+         */
+        scheduler_activate_recv(s, cj->mpi.recv, task_subtype_bpart_rho);
+        scheduler_activate_recv(s, cj->mpi.recv, task_subtype_bpart_feedback);
 
-          /* Drift the cell which will be sent; note that not all sent
-             particles will be drifted, only those that are needed. */
-          cell_activate_drift_part(ci, s);
-        }
+        /* Receive the foreign BH time-steps */
+        scheduler_activate_recv(s, cj->mpi.recv, task_subtype_tend_bpart);
+
+        /* Send the local part information */
+        scheduler_activate_send(s, ci->mpi.send, task_subtype_rho, cj_nodeID);
+        scheduler_activate_send(s, ci->mpi.send, task_subtype_part_swallow,
+                                cj_nodeID);
+
+        /* Drift the cell which will be sent; note that not all sent
+           particles will be drifted, only those that are needed. */
+        cell_activate_drift_part(ci, s);
       }
 #endif
+    }
+  }
+
+  /* Un-skip the swallow tasks involved with this cell. */
+  for (struct link *l = c->black_holes.swallow; l != NULL; l = l->next) {
+    struct task *t = l->t;
+    struct cell *ci = t->ci;
+    struct cell *cj = t->cj;
+    const int ci_active = cell_is_active_black_holes(ci, e);
+    const int cj_active = (cj != NULL) ? cell_is_active_black_holes(cj, e) : 0;
+#ifdef WITH_MPI
+    const int ci_nodeID = ci->nodeID;
+    const int cj_nodeID = (cj != NULL) ? cj->nodeID : -1;
+#else
+    const int ci_nodeID = nodeID;
+    const int cj_nodeID = nodeID;
+#endif
+
+    /* Only activate tasks that involve a local active cell. */
+    if ((ci_active || cj_active) &&
+        (ci_nodeID == nodeID || cj_nodeID == nodeID)) {
+
+      scheduler_activate(s, t);
+    }
+  }
+
+  /* Un-skip the swallow tasks involved with this cell. */
+  for (struct link *l = c->black_holes.do_swallow; l != NULL; l = l->next) {
+    struct task *t = l->t;
+    struct cell *ci = t->ci;
+    struct cell *cj = t->cj;
+    const int ci_active = cell_is_active_black_holes(ci, e);
+    const int cj_active = (cj != NULL) ? cell_is_active_black_holes(cj, e) : 0;
+#ifdef WITH_MPI
+    const int ci_nodeID = ci->nodeID;
+    const int cj_nodeID = (cj != NULL) ? cj->nodeID : -1;
+#else
+    const int ci_nodeID = nodeID;
+    const int cj_nodeID = nodeID;
+#endif
+
+    /* Only activate tasks that involve a local active cell. */
+    if ((ci_active || cj_active) &&
+        (ci_nodeID == nodeID || cj_nodeID == nodeID)) {
+
+      scheduler_activate(s, t);
     }
   }
 
@@ -3873,36 +4038,34 @@ int cell_unskip_black_holes_tasks(struct cell *c, struct scheduler *s) {
     const int cj_nodeID = nodeID;
 #endif
 
-    if (t->type == task_type_self && ci_active) {
+    /* Only activate tasks that involve a local active cell. */
+    if ((ci_active || cj_active) &&
+        (ci_nodeID == nodeID || cj_nodeID == nodeID)) {
+
       scheduler_activate(s, t);
     }
-
-    else if (t->type == task_type_sub_self && ci_active) {
-      scheduler_activate(s, t);
-    }
-
-    else if (t->type == task_type_pair || t->type == task_type_sub_pair) {
-      /* We only want to activate the task if the cell is active and is
-         going to update some gas on the *local* node */
-      if ((ci_nodeID == nodeID && cj_nodeID == nodeID) &&
-          (ci_active || cj_active)) {
-        scheduler_activate(s, t);
-
-      } else if ((ci_nodeID == nodeID && cj_nodeID != nodeID) && (cj_active)) {
-        scheduler_activate(s, t);
-
-      } else if ((ci_nodeID != nodeID && cj_nodeID == nodeID) && (ci_active)) {
-        scheduler_activate(s, t);
-      }
-    }
-
-    /* Nothing more to do here, all drifts activated above */
   }
 
   /* Unskip all the other task types. */
   if (c->nodeID == nodeID && cell_is_active_black_holes(c, e)) {
-    if (c->black_holes.ghost != NULL)
-      scheduler_activate(s, c->black_holes.ghost);
+
+    /* for (struct link *l = c->black_holes.swallow; l != NULL; l = l->next)
+     */
+    /*   scheduler_activate(s, l->t); */
+    /* for (struct link *l = c->black_holes.do_swallow; l != NULL; l =
+     * l->next)
+     */
+    /*   scheduler_activate(s, l->t); */
+    /* for (struct link *l = c->black_holes.feedback; l != NULL; l = l->next)
+     */
+    /*   scheduler_activate(s, l->t); */
+
+    if (c->black_holes.density_ghost != NULL)
+      scheduler_activate(s, c->black_holes.density_ghost);
+    if (c->black_holes.swallow_ghost[0] != NULL)
+      scheduler_activate(s, c->black_holes.swallow_ghost[0]);
+    if (c->black_holes.swallow_ghost[1] != NULL)
+      scheduler_activate(s, c->black_holes.swallow_ghost[1]);
     if (c->black_holes.black_holes_in != NULL)
       scheduler_activate(s, c->black_holes.black_holes_in);
     if (c->black_holes.black_holes_out != NULL)
@@ -3920,7 +4083,8 @@ int cell_unskip_black_holes_tasks(struct cell *c, struct scheduler *s) {
  * @brief Set the super-cell pointers for all cells in a hierarchy.
  *
  * @param c The top-level #cell to play with.
- * @param super Pointer to the deepest cell with tasks in this part of the tree.
+ * @param super Pointer to the deepest cell with tasks in this part of the
+ * tree.
  * @param with_hydro Are we running with hydrodynamics on?
  * @param with_grav Are we running with gravity on?
  */
@@ -3945,8 +4109,8 @@ void cell_set_super(struct cell *c, struct cell *super, const int with_hydro,
  * @brief Set the super-cell pointers for all cells in a hierarchy.
  *
  * @param c The top-level #cell to play with.
- * @param super_hydro Pointer to the deepest cell with tasks in this part of the
- * tree.
+ * @param super_hydro Pointer to the deepest cell with tasks in this part of
+ * the tree.
  */
 void cell_set_super_hydro(struct cell *c, struct cell *super_hydro) {
   /* Are we in a cell with some kind of self/pair task ? */
@@ -4177,7 +4341,13 @@ void cell_drift_part(struct cell *c, const struct engine *e, int force) {
           hydro_remove_part(p, xp);
 
           /* Remove the particle entirely */
+          struct gpart *gp = p->gpart;
           cell_remove_part(e, c, p, xp);
+
+          /* and it's gravity friend */
+          if (gp != NULL) {
+            cell_remove_gpart(e, c, gp);
+          }
 
           continue;
         }
@@ -4197,8 +4367,11 @@ void cell_drift_part(struct cell *c, const struct engine *e, int force) {
                              xp->x_diff_sort[2] * xp->x_diff_sort[2];
       dx2_max_sort = max(dx2_max_sort, dx2_sort);
 
-      /* Maximal smoothing length */
+      /* Update the maximal smoothing length in the cell */
       cell_h_max = max(cell_h_max, p->h);
+
+      /* Mark the particle has not being swallowed */
+      black_holes_mark_as_not_swallowed(&p->black_holes_data);
 
       /* Get ready for a density calculation */
       if (part_is_active(p, e)) {
@@ -4754,7 +4927,8 @@ void cell_clear_stars_sort_flags(struct cell *c, const int clear_unused_flags) {
     cell_clear_flag(c, cell_flag_do_stars_sub_sort);
   }
 
-  /* Indicate that the cell is not sorted and cancel the pointer sorting arrays.
+  /* Indicate that the cell is not sorted and cancel the pointer sorting
+   * arrays.
    */
   c->stars.sorted = 0;
   cell_free_stars_sorts(c);
@@ -4788,7 +4962,8 @@ void cell_clear_hydro_sort_flags(struct cell *c, const int clear_unused_flags) {
     cell_clear_flag(c, cell_flag_do_hydro_sub_sort);
   }
 
-  /* Indicate that the cell is not sorted and cancel the pointer sorting arrays.
+  /* Indicate that the cell is not sorted and cancel the pointer sorting
+   * arrays.
    */
   c->hydro.sorted = 0;
   cell_free_hydro_sorts(c);
@@ -4938,9 +5113,9 @@ void cell_recursively_shift_sparts(struct cell *c,
  * @param e The #engine.
  * @param c The leaf-cell in which to add the #spart.
  *
- * @return A pointer to the newly added #spart. The spart has a been zeroed and
- * given a position within the cell as well as set to the minimal active time
- * bin.
+ * @return A pointer to the newly added #spart. The spart has a been zeroed
+ * and given a position within the cell as well as set to the minimal active
+ * time bin.
  */
 struct spart *cell_add_spart(struct engine *e, struct cell *const c) {
   /* Perform some basic consitency checks */
@@ -5020,7 +5195,8 @@ struct spart *cell_add_spart(struct engine *e, struct cell *const c) {
    * current cell*/
   cell_recursively_shift_sparts(top, progeny, /* main_branch=*/1);
 
-  /* Make sure the gravity will be recomputed for this particle in the next step
+  /* Make sure the gravity will be recomputed for this particle in the next
+   * step
    */
   struct cell *top2 = c;
   while (top2->parent != NULL) {
@@ -5060,7 +5236,8 @@ struct spart *cell_add_spart(struct engine *e, struct cell *const c) {
 /**
  * @brief "Remove" a gas particle from the calculation.
  *
- * The particle is inhibited and will officially be removed at the next rebuild.
+ * The particle is inhibited and will officially be removed at the next
+ * rebuild.
  *
  * @param e The #engine running on this node.
  * @param c The #cell from which to remove the particle.
@@ -5085,12 +5262,17 @@ void cell_remove_part(const struct engine *e, struct cell *c, struct part *p,
 
   /* Un-link the part */
   p->gpart = NULL;
+
+  /* Update the space-wide counters */
+  const size_t one = 1;
+  atomic_add(&e->s->nr_inhibited_parts, one);
 }
 
 /**
  * @brief "Remove" a gravity particle from the calculation.
  *
- * The particle is inhibited and will officially be removed at the next rebuild.
+ * The particle is inhibited and will officially be removed at the next
+ * rebuild.
  *
  * @param e The #engine running on this node.
  * @param c The #cell from which to remove the particle.
@@ -5104,12 +5286,17 @@ void cell_remove_gpart(const struct engine *e, struct cell *c,
 
   /* Mark the particle as inhibited */
   gp->time_bin = time_bin_inhibited;
+
+  /* Update the space-wide counters */
+  const size_t one = 1;
+  atomic_add(&e->s->nr_inhibited_gparts, one);
 }
 
 /**
  * @brief "Remove" a star particle from the calculation.
  *
- * The particle is inhibited and will officially be removed at the next rebuild.
+ * The particle is inhibited and will officially be removed at the next
+ * rebuild.
  *
  * @param e The #engine running on this node.
  * @param c The #cell from which to remove the particle.
@@ -5131,12 +5318,17 @@ void cell_remove_spart(const struct engine *e, struct cell *c,
 
   /* Un-link the spart */
   sp->gpart = NULL;
+
+  /* Update the space-wide counters */
+  const size_t one = 1;
+  atomic_add(&e->s->nr_inhibited_sparts, one);
 }
 
 /**
  * @brief "Remove" a black hole particle from the calculation.
  *
- * The particle is inhibited and will officially be removed at the next rebuild.
+ * The particle is inhibited and will officially be removed at the next
+ * rebuild.
  *
  * @param e The #engine running on this node.
  * @param c The #cell from which to remove the particle.
@@ -5159,6 +5351,10 @@ void cell_remove_bpart(const struct engine *e, struct cell *c,
 
   /* Un-link the bpart */
   bp->gpart = NULL;
+
+  /* Update the space-wide counters */
+  const size_t one = 1;
+  atomic_add(&e->s->nr_inhibited_bparts, one);
 }
 
 /**
@@ -5168,7 +5364,8 @@ void cell_remove_bpart(const struct engine *e, struct cell *c,
  * Note that the #part is not destroyed. The pointer is still valid
  * after this call and the properties of the #part are not altered
  * apart from the time-bin and #gpart pointer.
- * The particle is inhibited and will officially be removed at the next rebuild.
+ * The particle is inhibited and will officially be removed at the next
+ * rebuild.
  *
  * @param e The #engine running on this node.
  * @param c The #cell from which to remove the particle.
@@ -5204,6 +5401,9 @@ struct gpart *cell_convert_part_to_gpart(const struct engine *e, struct cell *c,
   gp->ti_kick = p->ti_kick;
 #endif
 
+  /* Update the space-wide counters */
+  atomic_inc(&e->s->nr_inhibited_parts);
+
   return gp;
 }
 
@@ -5214,7 +5414,8 @@ struct gpart *cell_convert_part_to_gpart(const struct engine *e, struct cell *c,
  * Note that the #spart is not destroyed. The pointer is still valid
  * after this call and the properties of the #spart are not altered
  * apart from the time-bin and #gpart pointer.
- * The particle is inhibited and will officially be removed at the next rebuild.
+ * The particle is inhibited and will officially be removed at the next
+ * rebuild.
  *
  * @param e The #engine running on this node.
  * @param c The #cell from which to remove the particle.
@@ -5249,6 +5450,9 @@ struct gpart *cell_convert_spart_to_gpart(const struct engine *e,
   gp->ti_kick = sp->ti_kick;
 #endif
 
+  /* Update the space-wide counters */
+  atomic_inc(&e->s->nr_inhibited_sparts);
+
   return gp;
 }
 
@@ -5259,7 +5463,8 @@ struct gpart *cell_convert_spart_to_gpart(const struct engine *e,
  * Note that the #part is not destroyed. The pointer is still valid
  * after this call and the properties of the #part are not altered
  * apart from the time-bin and #gpart pointer.
- * The particle is inhibited and will officially be removed at the next rebuild.
+ * The particle is inhibited and will officially be removed at the next
+ * rebuild.
  *
  * @param e The #engine.
  * @param c The #cell from which to remove the #part.
@@ -5325,8 +5530,8 @@ struct spart *cell_convert_part_to_spart(struct engine *e, struct cell *c,
 }
 
 /**
- * @brief Re-arrange the #part in a top-level cell such that all the extra ones
- * for on-the-fly creation are located at the end of the array.
+ * @brief Re-arrange the #part in a top-level cell such that all the extra
+ * ones for on-the-fly creation are located at the end of the array.
  *
  * @param c The #cell to sort.
  * @param parts_offset The offset between the first #part in the array and the
@@ -5377,12 +5582,13 @@ void cell_reorder_extra_parts(struct cell *c, const ptrdiff_t parts_offset) {
 }
 
 /**
- * @brief Re-arrange the #spart in a top-level cell such that all the extra ones
- * for on-the-fly creation are located at the end of the array.
+ * @brief Re-arrange the #spart in a top-level cell such that all the extra
+ * ones for on-the-fly creation are located at the end of the array.
  *
  * @param c The #cell to sort.
- * @param sparts_offset The offset between the first #spart in the array and the
- * first #spart in the global array in the space structure (for re-linking).
+ * @param sparts_offset The offset between the first #spart in the array and
+ * the first #spart in the global array in the space structure (for
+ * re-linking).
  */
 void cell_reorder_extra_sparts(struct cell *c, const ptrdiff_t sparts_offset) {
   struct spart *sparts = c->stars.parts;
@@ -5432,8 +5638,8 @@ void cell_reorder_extra_sparts(struct cell *c, const ptrdiff_t sparts_offset) {
 }
 
 /**
- * @brief Re-arrange the #gpart in a top-level cell such that all the extra ones
- * for on-the-fly creation are located at the end of the array.
+ * @brief Re-arrange the #gpart in a top-level cell such that all the extra
+ * ones for on-the-fly creation are located at the end of the array.
  *
  * @param c The #cell to sort.
  * @param parts The global array of #part (for re-linking).

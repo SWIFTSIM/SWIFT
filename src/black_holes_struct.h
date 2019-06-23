@@ -1,6 +1,6 @@
 /*******************************************************************************
  * This file is part of SWIFT.
- * Copyright (c) 2016 Matthieu Schaller (matthieu.schaller@durham.ac.uk)
+ * Copyright (c) 2019 Matthieu Schaller (schaller@strw.leidenuniv.nl)
  *
  * This program is free software: you can redistribute it and/or modify
  * it under the terms of the GNU Lesser General Public License as published
@@ -16,38 +16,24 @@
  * along with this program.  If not, see <http://www.gnu.org/licenses/>.
  *
  ******************************************************************************/
-#ifndef SWIFT_CHEMISTRY_STRUCT_NONE_H
-#define SWIFT_CHEMISTRY_STRUCT_NONE_H
+#ifndef SWIFT_BLACK_HOLES_STRUCT_H
+#define SWIFT_BLACK_HOLES_STRUCT_H
 
 /**
- * @file src/chemistry/none/chemistry_struct.h
- * @brief Empty infrastructure for the cases without chemistry function
+ * @file src/feedback_struct.h
+ * @brief Branches between the different feedback functions.
  */
 
-/**
- * @brief The individual elements traced in the model.
- */
-enum chemistry_element { chemistry_element_count = 0 };
+/* Config parameters. */
+#include "../config.h"
 
-/**
- * @brief Global chemical abundance information.
- *
- * Nothing here.
- */
-struct chemistry_global_data {};
+/* Import the right black holes definition */
+#if defined(BLACK_HOLES_NONE)
+#include "./black_holes/Default/black_holes_struct.h"
+#elif defined(BLACK_HOLES_EAGLE)
+#include "./black_holes/EAGLE/black_holes_struct.h"
+#else
+#error "Invalid choice of black holes function."
+#endif
 
-/**
- * @brief Chemistry properties carried by the #part.
- *
- * Nothing here.
- */
-struct chemistry_part_data {};
-
-/**
- * @brief Chemistry properties carried by the #bpart.
- *
- * Nothing here.
- */
-struct chemistry_bpart_data {};
-
-#endif /* SWIFT_CHEMISTRY_STRUCT_NONE_H */
+#endif /* SWIFT_BLACK_HOLES_STRUCT_H */

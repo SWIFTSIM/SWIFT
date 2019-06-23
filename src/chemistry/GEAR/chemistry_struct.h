@@ -58,4 +58,9 @@ struct chemistry_part_data {
   float Z;
 };
 
+/**
+ * @brief Chemical abundances traced by the #bpart in the GEAR model.
+ */
+struct chemistry_bpart_data {};
+
 #endif /* SWIFT_CHEMISTRY_STRUCT_GEAR_H */

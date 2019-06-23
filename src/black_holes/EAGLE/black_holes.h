@@ -21,6 +21,7 @@
 
 /* Local includes */
 #include "black_holes_properties.h"
+#include "black_holes_struct.h"
 #include "cosmology.h"
 #include "dimension.h"
 #include "kernel_hydro.h"
@@ -101,7 +102,7 @@ __attribute__((always_inline)) INLINE static void black_holes_predict_extra(
  * @param bp The particle.
  */
 __attribute__((always_inline)) INLINE static void
-black_holes_reset_predicted_values(struct bpart* restrict bp) {}
+black_holes_reset_predicted_values(struct bpart* bp) {}
 
 /**
  * @brief Kick the additional variables
@@ -153,7 +154,7 @@ __attribute__((always_inline)) INLINE static void black_holes_end_density(
  * @param cosmo The current cosmological model.
  */
 __attribute__((always_inline)) INLINE static void
-black_holes_bpart_has_no_neighbours(struct bpart* restrict bp,
+black_holes_bpart_has_no_neighbours(struct bpart* bp,
                                     const struct cosmology* cosmo) {
 
   /* Some smoothing length multiples. */
@@ -164,6 +165,99 @@ black_holes_bpart_has_no_neighbours(struct bpart* restrict bp,
   /* Re-set problematic values */
   bp->density.wcount = kernel_root * h_inv_dim;
   bp->density.wcount_dh = 0.f;
+}
+
+/**
+ * @brief Update the properties of a black hole particles by swallowing
+ * a gas particle.
+ *
+ * @param bp The #bpart to update.
+ * @param p The #part that is swallowed.
+ * @param xp The #xpart that is swallowed.
+ * @param cosmo The current cosmological model.
+ */
+__attribute__((always_inline)) INLINE static void black_holes_swallow_part(
+    struct bpart* bp, const struct part* p, const struct xpart* xp,
+    const struct cosmology* cosmo) {
+
+  /* Get the current dynamical masses */
+  const float gas_mass = hydro_get_mass(p);
+  const float BH_mass = bp->mass;
+
+  /* Increase the dynamical mass of the BH. */
+  bp->mass += gas_mass;
+  bp->gpart->mass += gas_mass;
+
+  /* Update the BH momentum */
+  const float BH_mom[3] = {BH_mass * bp->v[0] + gas_mass * p->v[0],
+                           BH_mass * bp->v[1] + gas_mass * p->v[1],
+                           BH_mass * bp->v[2] + gas_mass * p->v[2]};
+
+  bp->v[0] = BH_mom[0] / bp->mass;
+  bp->v[1] = BH_mom[1] / bp->mass;
+  bp->v[2] = BH_mom[2] / bp->mass;
+  bp->gpart->v_full[0] = bp->v[0];
+  bp->gpart->v_full[1] = bp->v[1];
+  bp->gpart->v_full[2] = bp->v[2];
+
+  /* Update the BH metal masses */
+  struct chemistry_bpart_data* bp_chem = &bp->chemistry_data;
+  const struct chemistry_part_data* p_chem = &p->chemistry_data;
+
+  bp_chem->metal_mass_total += p_chem->metal_mass_fraction_total * gas_mass;
+  for (int i = 0; i < chemistry_element_count; ++i) {
+    bp_chem->metal_mass[i] += p_chem->metal_mass_fraction[i] * gas_mass;
+  }
+  bp_chem->mass_from_SNIa += p_chem->mass_from_SNIa;
+  bp_chem->mass_from_SNII += p_chem->mass_from_SNII;
+  bp_chem->mass_from_AGB += p_chem->mass_from_AGB;
+  bp_chem->metal_mass_from_SNIa +=
+      p_chem->metal_mass_fraction_from_SNIa * gas_mass;
+  bp_chem->metal_mass_from_SNII +=
+      p_chem->metal_mass_fraction_from_SNII * gas_mass;
+  bp_chem->metal_mass_from_AGB +=
+      p_chem->metal_mass_fraction_from_AGB * gas_mass;
+  bp_chem->iron_mass_from_SNIa +=
+      p_chem->iron_mass_fraction_from_SNIa * gas_mass;
+
+  /* This BH lost a neighbour */
+  bp->num_ngbs--;
+  bp->ngb_mass -= gas_mass;
+}
+
+/**
+ * @brief Update a given #part's BH data field to mark the particle has
+ * not yet been swallowed.
+ *
+ * @param p_data The #part's #black_holes_part_data structure.
+ */
+__attribute__((always_inline)) INLINE static void
+black_holes_mark_as_not_swallowed(struct black_holes_part_data* p_data) {
+
+  p_data->swallow_id = -1;
+}
+
+/**
+ * @brief Update a given #part's BH data field to mark the particle has
+ * having been been swallowed.
+ *
+ * @param p_data The #part's #black_holes_part_data structure.
+ */
+__attribute__((always_inline)) INLINE static void black_holes_mark_as_swallowed(
+    struct black_holes_part_data* p_data) {
+
+  p_data->swallow_id = -2;
+}
+
+/**
+ * @brief Return the ID of the BH that should swallow this #part.
+ *
+ * @param p_data The #part's #black_holes_part_data structure.
+ */
+__attribute__((always_inline)) INLINE static long long
+black_holes_get_swallow_id(struct black_holes_part_data* p_data) {
+
+  return p_data->swallow_id;
 }
 
 /**
@@ -180,6 +274,8 @@ __attribute__((always_inline)) INLINE static void black_holes_prepare_feedback(
     struct bpart* restrict bp, const struct black_holes_props* props,
     const struct phys_const* constants, const struct cosmology* cosmo,
     const double dt) {
+
+  if (dt == 0.) return;
 
   /* Gather some physical constants (all in internal units) */
   const double G = constants->const_newton_G;
@@ -245,7 +341,9 @@ __attribute__((always_inline)) INLINE static void black_holes_prepare_feedback(
   bp->total_accreted_mass += mass_rate * dt;
   bp->energy_reservoir += luminosity * epsilon_f * dt;
 
-  /* Energy required to have a feedback event */
+  /* Energy required to have a feedback event
+   * Note that we have subtracted the particles we swallowed from the ngb_mass
+   * and num_ngbs accumulators. */
   const double mean_ngb_mass = bp->ngb_mass / ((double)bp->num_ngbs);
   const double E_feedback_event = num_ngbs_to_heat * delta_u * mean_ngb_mass;
 
@@ -327,13 +425,39 @@ INLINE static void black_holes_create_from_gas(
     const struct part* p) {
 
   /* All the non-basic properties of the black hole have been zeroed
-     in the FOF code. We just update the rest. */
+   * in the FOF code. We update them here.
+   * (i.e. position, velocity, mass, time-step have been set) */
 
   /* Birth time */
   bp->formation_scale_factor = cosmo->a;
 
   /* Initial seed mass */
   bp->subgrid_mass = props->subgrid_seed_mass;
+
+  /* We haven't accreted anything yet */
+  bp->total_accreted_mass = 0.f;
+
+  /* Initial metal masses */
+  const float gas_mass = hydro_get_mass(p);
+
+  struct chemistry_bpart_data* bp_chem = &bp->chemistry_data;
+  const struct chemistry_part_data* p_chem = &p->chemistry_data;
+
+  bp_chem->metal_mass_total = p_chem->metal_mass_fraction_total * gas_mass;
+  for (int i = 0; i < chemistry_element_count; ++i) {
+    bp_chem->metal_mass[i] = p_chem->metal_mass_fraction[i] * gas_mass;
+  }
+  bp_chem->mass_from_SNIa = p_chem->mass_from_SNIa;
+  bp_chem->mass_from_SNII = p_chem->mass_from_SNII;
+  bp_chem->mass_from_AGB = p_chem->mass_from_AGB;
+  bp_chem->metal_mass_from_SNIa =
+      p_chem->metal_mass_fraction_from_SNIa * gas_mass;
+  bp_chem->metal_mass_from_SNII =
+      p_chem->metal_mass_fraction_from_SNII * gas_mass;
+  bp_chem->metal_mass_from_AGB =
+      p_chem->metal_mass_fraction_from_AGB * gas_mass;
+  bp_chem->iron_mass_from_SNIa =
+      p_chem->iron_mass_fraction_from_SNIa * gas_mass;
 
   /* First initialisation */
   black_holes_init_bpart(bp);

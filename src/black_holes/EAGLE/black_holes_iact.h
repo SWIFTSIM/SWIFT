@@ -22,6 +22,7 @@
 /* Local includes */
 #include "hydro.h"
 #include "random.h"
+#include "space.h"
 
 /**
  * @brief Density interaction between two particles (non-symmetric).
@@ -94,6 +95,71 @@ __attribute__((always_inline)) INLINE static void runner_iact_nonsym_bh_density(
 }
 
 /**
+ * @brief Swallowing interaction between two particles (non-symmetric).
+ *
+ * Function used to flag the gas particles that will be swallowed
+ * by the black hole particle.
+ *
+ * @param r2 Comoving square distance between the two particles.
+ * @param dx Comoving vector separating both particles (pi - pj).
+ * @param hi Comoving smoothing-length of particle i.
+ * @param hj Comoving smoothing-length of particle j.
+ * @param bi First particle (black hole).
+ * @param pj Second particle (gas)
+ * @param xpj The extended data of the second particle.
+ * @param cosmo The cosmological model.
+ * @param ti_current Current integer time value (for random numbers).
+ */
+__attribute__((always_inline)) INLINE static void runner_iact_nonsym_bh_swallow(
+    const float r2, const float *dx, const float hi, const float hj,
+    struct bpart *restrict bi, struct part *restrict pj,
+    struct xpart *restrict xpj, const struct cosmology *cosmo,
+    const integertime_t ti_current) {
+
+  float wi;
+
+  /* Get r and 1/r. */
+  const float r_inv = 1.0f / sqrtf(r2);
+  const float r = r2 * r_inv;
+
+  /* Compute the kernel function */
+  const float hi_inv = 1.0f / hi;
+  const float ui = r * hi_inv;
+  kernel_eval(ui, &wi);
+
+  /* Is the BH hungry? */
+  if (bi->subgrid_mass > bi->mass) {
+
+    /* Probability to swallow this particle */
+    const float prob = (bi->subgrid_mass - bi->mass) * wi / bi->rho_gas;
+
+    /* Draw a random number (Note mixing both IDs) */
+    const float rand = random_unit_interval(bi->id + pj->id, ti_current,
+                                            random_number_BH_swallow);
+
+    /* Are we lucky? */
+    if (rand < prob) {
+
+      /* This particle is swallowed by the BH with the largest ID of all the
+       * candidates wanting to swallow it */
+      if (pj->black_holes_data.swallow_id < bi->id) {
+
+        message("BH %lld wants to swallow gas particle %lld", bi->id, pj->id);
+
+        pj->black_holes_data.swallow_id = bi->id;
+
+      } else {
+
+        message(
+            "BH %lld wants to swallow gas particle %lld BUT CANNOT (old "
+            "swallow id=%lld)",
+            bi->id, pj->id, pj->black_holes_data.swallow_id);
+      }
+    }
+  }
+}
+
+/**
  * @brief Feedback interaction between two particles (non-symmetric).
  *
  * @param r2 Comoving square distance between the two particles.
@@ -137,6 +203,11 @@ runner_iact_nonsym_bh_feedback(const float r2, const float *dx, const float hi,
 
       /* Impose maximal viscosity */
       hydro_set_viscosity_alpha_max_feedback(pj);
+
+      /* message( */
+      /*     "We did some AGN heating! id %llu BH id %llu probability " */
+      /*     " %.5e  random_num %.5e du %.5e du/ini %.5e", */
+      /*     pj->id, bi->id, prob, rand, delta_u, delta_u / u_init); */
     }
   }
 

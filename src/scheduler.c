@@ -1408,7 +1408,7 @@ void scheduler_reweight(struct scheduler *s, int verbose) {
       case task_type_stars_ghost:
         if (t->ci == t->ci->hydro.super) cost = wscale * scount_i;
         break;
-      case task_type_bh_ghost:
+      case task_type_bh_density_ghost:
         if (t->ci == t->ci->hydro.super) cost = wscale * bcount_i;
         break;
       case task_type_drift_part:
@@ -1672,6 +1672,14 @@ void scheduler_enqueue(struct scheduler *s, struct task *t) {
               t->ci->mpi.pcell_size * sizeof(struct pcell_step_black_holes),
               MPI_BYTE, t->ci->nodeID, t->flags, subtaskMPI_comms[t->subtype],
               &t->req);
+        } else if (t->subtype == task_subtype_part_swallow) {
+          t->buff = (struct black_holes_part_data *)malloc(
+              sizeof(struct black_holes_part_data) * t->ci->hydro.count);
+          err = MPI_Irecv(
+              t->buff,
+              t->ci->hydro.count * sizeof(struct black_holes_part_data),
+              MPI_BYTE, t->ci->nodeID, t->flags, subtaskMPI_comms[t->subtype],
+              &t->req);
         } else if (t->subtype == task_subtype_xv ||
                    t->subtype == task_subtype_rho ||
                    t->subtype == task_subtype_gradient) {
@@ -1686,7 +1694,9 @@ void scheduler_enqueue(struct scheduler *s, struct task *t) {
           err = MPI_Irecv(t->ci->stars.parts, t->ci->stars.count,
                           spart_mpi_type, t->ci->nodeID, t->flags,
                           subtaskMPI_comms[t->subtype], &t->req);
-        } else if (t->subtype == task_subtype_bpart) {
+        } else if (t->subtype == task_subtype_bpart_rho ||
+                   t->subtype == task_subtype_bpart_swallow ||
+                   t->subtype == task_subtype_bpart_feedback) {
           err = MPI_Irecv(t->ci->black_holes.parts, t->ci->black_holes.count,
                           bpart_mpi_type, t->ci->nodeID, t->flags,
                           subtaskMPI_comms[t->subtype], &t->req);
@@ -1791,6 +1801,27 @@ void scheduler_enqueue(struct scheduler *s, struct task *t) {
                 MPI_BYTE, t->cj->nodeID, t->flags, subtaskMPI_comms[t->subtype],
                 &t->req);
           }
+        } else if (t->subtype == task_subtype_part_swallow) {
+          t->buff = (struct black_holes_part_data *)malloc(
+              sizeof(struct black_holes_part_data) * t->ci->hydro.count);
+          cell_pack_part_swallow(t->ci,
+                                 (struct black_holes_part_data *)t->buff);
+
+          if (t->ci->hydro.count * sizeof(struct black_holes_part_data) >
+              s->mpi_message_limit) {
+            err = MPI_Isend(
+                t->buff,
+                t->ci->hydro.count * sizeof(struct black_holes_part_data),
+                MPI_BYTE, t->cj->nodeID, t->flags, subtaskMPI_comms[t->subtype],
+                &t->req);
+          } else {
+            err = MPI_Issend(
+                t->buff,
+                t->ci->hydro.count * sizeof(struct black_holes_part_data),
+                MPI_BYTE, t->cj->nodeID, t->flags, subtaskMPI_comms[t->subtype],
+                &t->req);
+          }
+
         } else if (t->subtype == task_subtype_xv ||
                    t->subtype == task_subtype_rho ||
                    t->subtype == task_subtype_gradient) {
@@ -1821,7 +1852,9 @@ void scheduler_enqueue(struct scheduler *s, struct task *t) {
             err = MPI_Issend(t->ci->stars.parts, t->ci->stars.count,
                              spart_mpi_type, t->cj->nodeID, t->flags,
                              subtaskMPI_comms[t->subtype], &t->req);
-        } else if (t->subtype == task_subtype_bpart) {
+        } else if (t->subtype == task_subtype_bpart_rho ||
+                   t->subtype == task_subtype_bpart_swallow ||
+                   t->subtype == task_subtype_bpart_feedback) {
           if ((t->ci->black_holes.count * sizeof(struct bpart)) >
               s->mpi_message_limit)
             err = MPI_Isend(t->ci->black_holes.parts, t->ci->black_holes.count,

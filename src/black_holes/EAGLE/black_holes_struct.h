@@ -1,6 +1,6 @@
 /*******************************************************************************
  * This file is part of SWIFT.
- * Copyright (c) 2016 Matthieu Schaller (matthieu.schaller@durham.ac.uk)
+ * Copyright (c) 2019 Matthieu Schaller (schaller@strw.leidenuniv.nl)
  *
  * This program is free software: you can redistribute it and/or modify
  * it under the terms of the GNU Lesser General Public License as published
@@ -16,38 +16,16 @@
  * along with this program.  If not, see <http://www.gnu.org/licenses/>.
  *
  ******************************************************************************/
-#ifndef SWIFT_CHEMISTRY_STRUCT_NONE_H
-#define SWIFT_CHEMISTRY_STRUCT_NONE_H
+#ifndef SWIFT_BLACK_HOLES_STRUCT_EAGLE_H
+#define SWIFT_BLACK_HOLES_STRUCT_EAGLE_H
 
 /**
- * @file src/chemistry/none/chemistry_struct.h
- * @brief Empty infrastructure for the cases without chemistry function
+ * @brief Black holes-related fields carried by each *gas* particle.
  */
+struct black_holes_part_data {
 
-/**
- * @brief The individual elements traced in the model.
- */
-enum chemistry_element { chemistry_element_count = 0 };
+  /*! ID of the black-hole that will swallow this #part. */
+  long long swallow_id;
+};
 
-/**
- * @brief Global chemical abundance information.
- *
- * Nothing here.
- */
-struct chemistry_global_data {};
-
-/**
- * @brief Chemistry properties carried by the #part.
- *
- * Nothing here.
- */
-struct chemistry_part_data {};
-
-/**
- * @brief Chemistry properties carried by the #bpart.
- *
- * Nothing here.
- */
-struct chemistry_bpart_data {};
-
-#endif /* SWIFT_CHEMISTRY_STRUCT_NONE_H */
+#endif /* SWIFT_BLACK_HOLES_STRUCT_EAGLE_H */
