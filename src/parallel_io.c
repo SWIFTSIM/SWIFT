@@ -1710,6 +1710,43 @@ void write_output_parallel(struct engine* e, const char* baseName,
         }
       } break;
 
+      case swift_type_dark_matter_background: {
+
+        /* Ok, we need to fish out the particles we want */
+        Nparticles = Ndm_background;
+
+        /* Allocate temporary array */
+        if (swift_memalign("gparts_written", (void**)&gparts_written,
+                           gpart_align,
+                           Ndm_background * sizeof(struct gpart)) != 0)
+          error("Error while allocating temporart memory for gparts");
+
+        if (with_stf) {
+          if (swift_memalign(
+                  "gpart_group_written", (void**)&gpart_group_data_written,
+                  gpart_align,
+                  Ndm_background * sizeof(struct velociraptor_gpart_data)) != 0)
+            error(
+                "Error while allocating temporart memory for gparts STF "
+                "data");
+        }
+
+        /* Collect the non-inhibited DM particles from gpart */
+        io_collect_gparts_background_to_write(
+            gparts, e->s->gpart_group_data, gparts_written,
+            gpart_group_data_written, Ntot, Ndm_background, with_stf);
+
+        /* Select the fields to write */
+        darkmatter_write_particles(gparts_written, list, &num_fields);
+        if (with_stf) {
+#ifdef HAVE_VELOCIRAPTOR
+          num_fields += velociraptor_write_gparts(gpart_group_data_written,
+                                                  list + num_fields);
+#endif
+        }
+
+      } break;
+
       case swift_type_stars: {
         if (Nstars == Nstars_written) {
 
