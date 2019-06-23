@@ -94,6 +94,9 @@ struct bpart {
   /*! Smoothed velocity (peculiar) of the gas surrounding the black hole */
   float velocity_gas[3];
 
+  /*! Curl of the velocity field around the black hole */
+  float circular_velocity_gas[3];
+
   /*! Total mass of the gas neighbours. */
   float ngb_mass;
 

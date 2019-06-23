@@ -82,6 +82,9 @@ __attribute__((always_inline)) INLINE static void black_holes_init_bpart(
   bp->velocity_gas[0] = 0.f;
   bp->velocity_gas[1] = 0.f;
   bp->velocity_gas[2] = 0.f;
+  bp->circular_velocity_gas[0] = 0.f;
+  bp->circular_velocity_gas[1] = 0.f;
+  bp->circular_velocity_gas[2] = 0.f;
   bp->ngb_mass = 0.f;
   bp->num_ngbs = 0;
 }
@@ -136,6 +139,9 @@ __attribute__((always_inline)) INLINE static void black_holes_end_density(
   bp->velocity_gas[0] *= h_inv_dim;
   bp->velocity_gas[1] *= h_inv_dim;
   bp->velocity_gas[2] *= h_inv_dim;
+  bp->circular_velocity_gas[0] *= h_inv_dim;
+  bp->circular_velocity_gas[1] *= h_inv_dim;
+  bp->circular_velocity_gas[2] *= h_inv_dim;
 
   const float rho_inv = 1.f / bp->rho_gas;
 
@@ -144,6 +150,9 @@ __attribute__((always_inline)) INLINE static void black_holes_end_density(
   bp->velocity_gas[0] *= rho_inv;
   bp->velocity_gas[1] *= rho_inv;
   bp->velocity_gas[2] *= rho_inv;
+  bp->circular_velocity_gas[0] *= rho_inv * h_inv;
+  bp->circular_velocity_gas[1] *= rho_inv * h_inv;
+  bp->circular_velocity_gas[2] *= rho_inv * h_inv;
 }
 
 /**
@@ -290,12 +299,13 @@ __attribute__((always_inline)) INLINE static void black_holes_prepare_feedback(
   const double num_ngbs_to_heat = props->num_ngbs_to_heat;
   const double delta_T = props->AGN_delta_T_desired;
   const double delta_u = delta_T * props->temp_to_u_factor;
+  const double alpha_visc = props->alpha_visc;
 
   /* (Subgrid) mass of the BH (internal units) */
   const double BH_mass = bp->subgrid_mass;
 
   /* Convert the quantities we gathered to physical frame (all internal units)
-   */
+   * Note: for the velocities this means peculiar velocities */
   const double gas_rho_phys = bp->rho_gas * cosmo->a3_inv;
   const double gas_c_phys = bp->sound_speed_gas * cosmo->a_factor_sound_speed;
   const double gas_v_peculiar[3] = {bp->velocity_gas[0] * cosmo->a_inv,
@@ -305,6 +315,11 @@ __attribute__((always_inline)) INLINE static void black_holes_prepare_feedback(
   const double bh_v_peculiar[3] = {bp->v[0] * cosmo->a_inv,
                                    bp->v[1] * cosmo->a_inv,
                                    bp->v[2] * cosmo->a_inv};
+
+  const double gas_v_circular[3] = {
+      bp->circular_velocity_gas[0] * cosmo->a_inv,
+      bp->circular_velocity_gas[1] * cosmo->a_inv,
+      bp->circular_velocity_gas[2] * cosmo->a_inv};
 
   /* Difference in peculiar velocity between the gas and the BH
    * Note that there is no need for a Hubble flow term here. We are
@@ -316,13 +331,31 @@ __attribute__((always_inline)) INLINE static void black_holes_prepare_feedback(
                               v_diff_peculiar[1] * v_diff_peculiar[1] +
                               v_diff_peculiar[2] * v_diff_peculiar[2];
 
+  /* Norm of the cirecular velocity of the gas around the BH */
+  const double tangential_velocity2 = gas_v_circular[0] * gas_v_circular[0] +
+                                      gas_v_circular[0] * gas_v_circular[0] +
+                                      gas_v_circular[0] * gas_v_circular[0];
+  const double tangential_velocity = sqrt(tangential_velocity2);
+
   /* We can now compute the Bondi accretion rate (internal units) */
   const double gas_c_phys2 = gas_c_phys * gas_c_phys;
   const double denominator2 = v_diff_norm2 + gas_c_phys2;
   const double denominator_inv = 1. / sqrt(denominator2);
-  const double Bondi_rate = 4. * M_PI * G * G * BH_mass * BH_mass *
-                            gas_rho_phys * denominator_inv * denominator_inv *
-                            denominator_inv;
+  double Bondi_rate = 4. * M_PI * G * G * BH_mass * BH_mass * gas_rho_phys *
+                      denominator_inv * denominator_inv * denominator_inv;
+
+  /* Compute the reduction factor from Rosas-Guevara et al. (2015) */
+  const double Bondi_radius = G * BH_mass / gas_c_phys2;
+  const double Bondi_time = Bondi_radius / gas_c_phys;
+  const double r_times_v_tang = Bondi_radius * tangential_velocity;
+  const double r_times_v_tang_3 =
+      r_times_v_tang * r_times_v_tang * r_times_v_tang;
+  const double viscous_time = 2. * M_PI * r_times_v_tang_3 /
+                              (1e-6 * alpha_visc * G * G * BH_mass * BH_mass);
+  const double f_visc = max(Bondi_time / viscous_time, 1.);
+
+  /* Limit the Bondi rate by the Bondi viscuous time ratio */
+  Bondi_rate *= f_visc;
 
   /* Compute the Eddington rate (internal units) */
   const double Eddington_rate =

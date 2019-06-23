@@ -63,6 +63,9 @@ struct black_holes_props {
   /*! Feedback coupling efficiency of the black holes. */
   float epsilon_f;
 
+  /*! Normalisation of the viscuous angular momentum accretion reduction */
+  float alpha_visc;
+
   /* ---- Properties of the feedback model ------- */
 
   /*! Temperature increase induced by AGN feedback (Kelvin) */
@@ -144,6 +147,7 @@ INLINE static void black_holes_props_init(struct black_holes_props *bp,
       parser_get_param_float(params, "EAGLEAGN:radiative_efficiency");
   bp->epsilon_f =
       parser_get_param_float(params, "EAGLEAGN:coupling_efficiency");
+  bp->alpha_visc = parser_get_param_float(params, "EAGLEAGN:viscuous_alpha");
 
   /* Feedback parameters ---------------------------------- */
 
