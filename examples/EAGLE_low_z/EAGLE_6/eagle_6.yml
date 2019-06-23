@@ -25,6 +25,7 @@ Cosmology:
   
 Scheduler:
   max_top_level_cells:    8
+  links_per_tasks: 500
   
 # Parameters governing the time integration
 TimeIntegration:

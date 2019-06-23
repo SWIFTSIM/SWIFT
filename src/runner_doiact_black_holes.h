@@ -172,7 +172,7 @@ void DO_NONSYM_PAIR1_BH_NAIVE(struct runner *r, struct cell *restrict ci,
 #ifdef SWIFT_DEBUG_CHECKS
 #if (FUNCTION_TASK_LOOP == TASK_LOOP_DENSITY)
   if (ci->nodeID != engine_rank) error("Should be run on a different node");
-#else
+#elif (FUNCTION_TASK_LOOP == TASK_LOOP_FEEDBACK)
   if (cj->nodeID != engine_rank) error("Should be run on a different node");
 #endif
 #endif
@@ -254,11 +254,16 @@ void DOPAIR1_BH_NAIVE(struct runner *r, struct cell *restrict ci,
 #if (FUNCTION_TASK_LOOP == TASK_LOOP_DENSITY)
   const int do_ci_bh = ci->nodeID == r->e->nodeID;
   const int do_cj_bh = cj->nodeID == r->e->nodeID;
-#else
+#elif (FUNCTION_TASK_LOOP == TASK_LOOP_FEEDBACK)
   /* here we are updating the hydro -> switch ci, cj */
   const int do_ci_bh = cj->nodeID == r->e->nodeID;
   const int do_cj_bh = ci->nodeID == r->e->nodeID;
+#else
+  /* The swallow task is executed on both sides */
+  const int do_ci_bh = 1;
+  const int do_cj_bh = 1;
 #endif
+
   if (do_ci_bh && ci->black_holes.count != 0 && cj->hydro.count != 0)
     DO_NONSYM_PAIR1_BH_NAIVE(r, ci, cj);
   if (do_cj_bh && cj->black_holes.count != 0 && ci->hydro.count != 0)
@@ -608,11 +613,16 @@ void DOPAIR1_BRANCH_BH(struct runner *r, struct cell *ci, struct cell *cj) {
 #if (FUNCTION_TASK_LOOP == TASK_LOOP_DENSITY)
   const int do_ci_bh = ci->nodeID == e->nodeID;
   const int do_cj_bh = cj->nodeID == e->nodeID;
-#else
+#elif (FUNCTION_TASK_LOOP == TASK_LOOP_FEEDBACK)
   /* here we are updating the hydro -> switch ci, cj */
   const int do_ci_bh = cj->nodeID == e->nodeID;
   const int do_cj_bh = ci->nodeID == e->nodeID;
+#else
+  /* The swallow task is executed on both sides */
+  const int do_ci_bh = 1;
+  const int do_cj_bh = 1;
 #endif
+
   const int do_ci = (ci->black_holes.count != 0 && cj->hydro.count != 0 &&
                      ci_active && do_ci_bh);
   const int do_cj = (cj->black_holes.count != 0 && ci->hydro.count != 0 &&
@@ -682,11 +692,15 @@ void DOSUB_PAIR1_BH(struct runner *r, struct cell *ci, struct cell *cj,
 #if (FUNCTION_TASK_LOOP == TASK_LOOP_DENSITY)
     const int do_ci_bh = ci->nodeID == e->nodeID;
     const int do_cj_bh = cj->nodeID == e->nodeID;
-#else
+#elif (FUNCTION_TASK_LOOP == TASK_LOOP_FEEDBACK)
     /* here we are updating the hydro -> switch ci, cj */
     const int do_ci_bh = cj->nodeID == e->nodeID;
     const int do_cj_bh = ci->nodeID == e->nodeID;
+#else
+    const int do_ci_bh = 1;
+    const int do_cj_bh = 1;
 #endif
+
     const int do_ci = ci->black_holes.count != 0 && cj->hydro.count != 0 &&
                       cell_is_active_black_holes(ci, e) && do_ci_bh;
     const int do_cj = cj->black_holes.count != 0 && ci->hydro.count != 0 &&

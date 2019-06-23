@@ -1424,6 +1424,14 @@ void DOPAIR2(struct runner *r, struct cell *ci, struct cell *cj, const int sid,
 
         /* Recover pj */
         struct part *pj = &parts_j[sort_active_j[pjd].i];
+
+        /* Skip inhibited particles.
+         * Note we are looping over active particles but in the case where
+         * the cell thinks all the particles are active (because of the
+         * ti_end_max), particles may have nevertheless been inhibted by BH
+         * swallowing in the mean time. */
+        if (part_is_inhibited(pj, e)) continue;
+
         const float hj = pj->h;
 
         /* Get the position of pj in the right frame */
@@ -1465,6 +1473,7 @@ void DOPAIR2(struct runner *r, struct cell *ci, struct cell *cj, const int sid,
         /* Check that particles have been drifted to the current time */
         if (pi->ti_drift != e->ti_current)
           error("Particle pi not drifted to current time");
+
         if (pj->ti_drift != e->ti_current)
           error("Particle pj not drifted to current time");
 #endif
@@ -1533,6 +1542,7 @@ void DOPAIR2(struct runner *r, struct cell *ci, struct cell *cj, const int sid,
         /* Check that particles have been drifted to the current time */
         if (pi->ti_drift != e->ti_current)
           error("Particle pi not drifted to current time");
+
         if (pj->ti_drift != e->ti_current)
           error("Particle pj not drifted to current time");
 #endif
@@ -1594,6 +1604,14 @@ void DOPAIR2(struct runner *r, struct cell *ci, struct cell *cj, const int sid,
 
         /* Recover pi */
         struct part *pi = &parts_i[sort_active_i[pid].i];
+
+        /* Skip inhibited particles.
+         * Note we are looping over active particles but in the case where
+         * the cell thinks all the particles are active (because of the
+         * ti_end_max), particles may have nevertheless been inhibted by BH
+         * swallowing in the mean time. */
+        if (part_is_inhibited(pi, e)) continue;
+
         const float hi = pi->h;
         const float hig2 = hi * hi * kernel_gamma2;
 

@@ -420,9 +420,6 @@ struct cell {
     /*! Number of #part updated in this cell. */
     int updated;
 
-    /*! Number of #part inhibited in this cell. */
-    int inhibited;
-
     /*! Is the #part data of this cell being used in a sub-cell? */
     int hold;
 
@@ -520,9 +517,6 @@ struct cell {
 
     /*! Number of #gpart updated in this cell. */
     int updated;
-
-    /*! Number of #gpart inhibited in this cell. */
-    int inhibited;
 
     /*! Is the #gpart data of this cell being used in a sub-cell? */
     int phold;
@@ -624,9 +618,6 @@ struct cell {
     /*! Number of #spart updated in this cell. */
     int updated;
 
-    /*! Number of #spart inhibited in this cell. */
-    int inhibited;
-
     /*! Is the #spart data of this cell being used in a sub-cell? */
     int hold;
 
@@ -657,12 +648,22 @@ struct cell {
     struct task *black_holes_out;
 
     /*! The star ghost task itself */
-    struct task *ghost;
+    struct task *density_ghost;
 
-    /*! Linked list of the tasks computing this cell's star density. */
+    /*! The star ghost task itself */
+    struct task *swallow_ghost[2];
+
+    /*! Linked list of the tasks computing this cell's BH density. */
     struct link *density;
 
-    /*! Linked list of the tasks computing this cell's star feedback. */
+    /*! Linked list of the tasks computing this cell's BH swallowing and
+     * merging. */
+    struct link *swallow;
+
+    /*! Linked list of the tasks processing the particles to swallow */
+    struct link *do_swallow;
+
+    /*! Linked list of the tasks computing this cell's BH feedback. */
     struct link *feedback;
 
     /*! Max smoothing length in this cell. */
@@ -702,9 +703,6 @@ struct cell {
 
     /*! Number of #bpart updated in this cell. */
     int updated;
-
-    /*! Number of #bpart inhibited in this cell. */
-    int inhibited;
 
     /*! Is the #bpart data of this cell being used in a sub-cell? */
     int hold;
@@ -808,9 +806,15 @@ int cell_mlocktree(struct cell *c);
 void cell_munlocktree(struct cell *c);
 int cell_slocktree(struct cell *c);
 void cell_sunlocktree(struct cell *c);
+int cell_blocktree(struct cell *c);
+void cell_bunlocktree(struct cell *c);
 int cell_pack(struct cell *c, struct pcell *pc, const int with_gravity);
 int cell_unpack(struct pcell *pc, struct cell *c, struct space *s,
                 const int with_gravity);
+void cell_pack_part_swallow(const struct cell *c,
+                            struct black_holes_part_data *data);
+void cell_unpack_part_swallow(struct cell *c,
+                              const struct black_holes_part_data *data);
 int cell_pack_tags(const struct cell *c, int *tags);
 int cell_unpack_tags(const int *tags, struct cell *c);
 int cell_pack_end_step_hydro(struct cell *c, struct pcell_step_hydro *pcell);

@@ -127,10 +127,11 @@ void hashmap_init(hashmap_t *m);
  * capacity, since it will grow if too many collisions occur. As a rule
  * of thumb, allocate twice as many elements as you think you will need.
  *
- * @param size New table size. If zero, the current size will be increase
- *             by a fixed rate.
+ * @param m The hasmmap to grow.
+ * @param new_size New table size. If zero, the current size will be increase
+ *                 by a fixed rate.
  */
-void hashmap_grow(hashmap_t *m, size_t size);
+void hashmap_grow(hashmap_t *m, size_t new_size);
 
 /**
  * @brief Add a key/value pair to the hashmap, overwriting whatever was

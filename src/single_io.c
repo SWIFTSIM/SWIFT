@@ -989,11 +989,11 @@ void write_output_single(struct engine* e, const char* baseName,
           if (swift_memalign("parts_written", (void**)&parts_written,
                              part_align,
                              Ngas_written * sizeof(struct part)) != 0)
-            error("Error while allocating temporart memory for parts");
+            error("Error while allocating temporary memory for parts");
           if (swift_memalign("xparts_written", (void**)&xparts_written,
                              xpart_align,
                              Ngas_written * sizeof(struct xpart)) != 0)
-            error("Error while allocating temporart memory for xparts");
+            error("Error while allocating temporary memory for xparts");
 
           /* Collect the particles we want to write */
           io_collect_parts_to_write(parts, xparts, parts_written,
@@ -1039,7 +1039,7 @@ void write_output_single(struct engine* e, const char* baseName,
           if (swift_memalign("gparts_written", (void**)&gparts_written,
                              gpart_align,
                              Ndm_written * sizeof(struct gpart)) != 0)
-            error("Error while allocating temporart memory for gparts");
+            error("Error while allocating temporary memory for gparts");
 
           if (with_stf) {
             if (swift_memalign(
@@ -1047,7 +1047,7 @@ void write_output_single(struct engine* e, const char* baseName,
                     gpart_align,
                     Ndm_written * sizeof(struct velociraptor_gpart_data)) != 0)
               error(
-                  "Error while allocating temporart memory for gparts STF "
+                  "Error while allocating temporary memory for gparts STF "
                   "data");
           }
 
@@ -1086,7 +1086,7 @@ void write_output_single(struct engine* e, const char* baseName,
           if (swift_memalign("sparts_written", (void**)&sparts_written,
                              spart_align,
                              Nstars_written * sizeof(struct spart)) != 0)
-            error("Error while allocating temporart memory for sparts");
+            error("Error while allocating temporary memory for sparts");
 
           /* Collect the particles we want to write */
           io_collect_sparts_to_write(sparts, sparts_written, Nstars,
@@ -1111,6 +1111,8 @@ void write_output_single(struct engine* e, const char* baseName,
           /* No inhibted particles: easy case */
           N = Nblackholes;
           black_holes_write_particles(bparts, list, &num_fields);
+          num_fields += chemistry_write_bparticles(bparts, list + num_fields);
+
           if (with_stf) {
             num_fields += velociraptor_write_bparts(bparts, list + num_fields);
           }
@@ -1123,7 +1125,7 @@ void write_output_single(struct engine* e, const char* baseName,
           if (swift_memalign("bparts_written", (void**)&bparts_written,
                              bpart_align,
                              Nblackholes_written * sizeof(struct bpart)) != 0)
-            error("Error while allocating temporart memory for bparts");
+            error("Error while allocating temporary memory for bparts");
 
           /* Collect the particles we want to write */
           io_collect_bparts_to_write(bparts, bparts_written, Nblackholes,
@@ -1131,6 +1133,8 @@ void write_output_single(struct engine* e, const char* baseName,
 
           /* Select the fields to write */
           black_holes_write_particles(bparts_written, list, &num_fields);
+          num_fields +=
+              chemistry_write_bparticles(bparts_written, list + num_fields);
           if (with_stf) {
             num_fields +=
                 velociraptor_write_bparts(bparts_written, list + num_fields);

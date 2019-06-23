@@ -64,6 +64,28 @@ __attribute__((always_inline)) INLINE static void runner_iact_nonsym_bh_density(
 }
 
 /**
+ * @brief Swallowing interaction between two particles (non-symmetric).
+ *
+ * Function used to flag the gas particles that will be swallowed
+ * by the black hole particle.
+ *
+ * @param r2 Comoving square distance between the two particles.
+ * @param dx Comoving vector separating both particles (pi - pj).
+ * @param hi Comoving smoothing-length of particle i.
+ * @param hj Comoving smoothing-length of particle j.
+ * @param bi First particle (black hole).
+ * @param pj Second particle (gas)
+ * @param xpj The extended data of the second particle.
+ * @param cosmo The cosmological model.
+ * @param ti_current Current integer time value (for random numbers).
+ */
+__attribute__((always_inline)) INLINE static void runner_iact_nonsym_bh_swallow(
+    const float r2, const float *dx, const float hi, const float hj,
+    struct bpart *restrict bi, struct part *restrict pj,
+    struct xpart *restrict xpj, const struct cosmology *cosmo,
+    const integertime_t ti_current) {}
+
+/**
  * @brief Feedback interaction between two particles (non-symmetric).
  *
  * @param r2 Comoving square distance between the two particles.
