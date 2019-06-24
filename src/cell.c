@@ -4340,6 +4340,8 @@ void cell_drift_part(struct cell *c, const struct engine *e, int force) {
           /* One last action before death? */
           hydro_remove_part(p, xp);
 
+          lock_lock(&e->s->lock);
+
           /* Remove the particle entirely */
           struct gpart *gp = p->gpart;
           cell_remove_part(e, c, p, xp);
@@ -4348,6 +4350,9 @@ void cell_drift_part(struct cell *c, const struct engine *e, int force) {
           if (gp != NULL) {
             cell_remove_gpart(e, c, gp);
           }
+
+          if (lock_unlock(&e->s->lock) != 0)
+            error("Failed to unlock the space!");
 
           continue;
         }
@@ -4497,8 +4502,13 @@ void cell_drift_gpart(struct cell *c, const struct engine *e, int force) {
             (gp->x[1] > dim[1]) || (gp->x[1] < 0.) ||  // y
             (gp->x[2] > dim[2]) || (gp->x[2] < 0.)) {  // z
 
+          lock_lock(&e->s->lock);
+
           /* Remove the particle entirely */
           cell_remove_gpart(e, c, gp);
+
+          if (lock_unlock(&e->s->lock) != 0)
+            error("Failed to unlock the space!");
 
           continue;
         }
@@ -4627,12 +4637,17 @@ void cell_drift_spart(struct cell *c, const struct engine *e, int force) {
             (sp->x[1] > dim[1]) || (sp->x[1] < 0.) ||  // y
             (sp->x[2] > dim[2]) || (sp->x[2] < 0.)) {  // z
 
+          lock_lock(&e->s->lock);
+
           /* Remove the particle entirely */
           struct gpart *gp = sp->gpart;
           cell_remove_spart(e, c, sp);
 
           /* and it's gravity friend */
           cell_remove_gpart(e, c, gp);
+
+          if (lock_unlock(&e->s->lock) != 0)
+            error("Failed to unlock the space!");
 
           continue;
         }
@@ -4792,12 +4807,17 @@ void cell_drift_bpart(struct cell *c, const struct engine *e, int force) {
             (bp->x[1] > dim[1]) || (bp->x[1] < 0.) ||  // y
             (bp->x[2] > dim[2]) || (bp->x[2] < 0.)) {  // z
 
+          lock_lock(&e->s->lock);
+
           /* Remove the particle entirely */
           struct gpart *gp = bp->gpart;
           cell_remove_bpart(e, c, bp);
 
           /* and it's gravity friend */
           cell_remove_gpart(e, c, gp);
+
+          if (lock_unlock(&e->s->lock) != 0)
+            error("Failed to unlock the space!");
 
           continue;
         }
