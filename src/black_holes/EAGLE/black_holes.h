@@ -331,10 +331,10 @@ __attribute__((always_inline)) INLINE static void black_holes_prepare_feedback(
                               v_diff_peculiar[1] * v_diff_peculiar[1] +
                               v_diff_peculiar[2] * v_diff_peculiar[2];
 
-  /* Norm of the cirecular velocity of the gas around the BH */
+  /* Norm of the circular velocity of the gas around the BH */
   const double tangential_velocity2 = gas_v_circular[0] * gas_v_circular[0] +
-                                      gas_v_circular[0] * gas_v_circular[0] +
-                                      gas_v_circular[0] * gas_v_circular[0];
+                                      gas_v_circular[1] * gas_v_circular[1] +
+                                      gas_v_circular[2] * gas_v_circular[2];
   const double tangential_velocity = sqrt(tangential_velocity2);
 
   /* We can now compute the Bondi accretion rate (internal units) */

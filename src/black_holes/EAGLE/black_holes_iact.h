@@ -87,7 +87,7 @@ __attribute__((always_inline)) INLINE static void runner_iact_nonsym_bh_density(
   /* Contribution to the circular valocity */
   const float dv[3] = {bi->v[0] - vj[0], bi->v[1] - vj[1], bi->v[2] - vj[2]};
   bi->circular_velocity_gas[0] += mj * wi * (dx[1] * dv[2] - dx[2] * dv[1]);
-  bi->circular_velocity_gas[1] += mj * wi * (dx[0] * dv[2] - dx[2] * dv[0]);
+  bi->circular_velocity_gas[1] += mj * wi * (dx[2] * dv[0] - dx[0] * dv[2]);
   bi->circular_velocity_gas[2] += mj * wi * (dx[0] * dv[1] - dx[1] * dv[0]);
 
 #ifdef DEBUG_INTERACTIONS_BH
