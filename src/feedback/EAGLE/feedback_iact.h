@@ -301,7 +301,7 @@ runner_iact_nonsym_feedback_apply(const float r2, const float *dx,
       hydro_set_drifted_physical_internal_energy(pj, cosmo, u_new);
 
       /* Impose maximal viscosity */
-      hydro_set_viscosity_alpha_max_feedback(pj);
+      hydro_diffusive_feedback_reset(pj);
 
       /* message( */
       /*     "We did some heating! id %llu star id %llu probability %.5e " */
