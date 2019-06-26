@@ -471,14 +471,6 @@ void io_write_cell_offsets(hid_t h_grp, const int cdim[3],
 
   double cell_width[3] = {width[0], width[1], width[2]};
 
-  message("global_counts: %lld %lld %lld %lld %lld %lld", global_counts[0],
-          global_counts[1], global_counts[2], global_counts[3],
-          global_counts[4], global_counts[5]);
-
-  message("global_offsets: %lld %lld %lld %lld %lld %lld", global_offsets[0],
-          global_offsets[1], global_offsets[2], global_offsets[3],
-          global_offsets[4], global_offsets[5]);
-
   /* Temporary memory for the cell-by-cell information */
   double* centres = NULL;
   centres = (double*)malloc(3 * nr_cells * sizeof(double));
@@ -532,10 +524,6 @@ void io_write_cell_offsets(hid_t h_grp, const int cdim[3],
           cell_count_non_inhibited_background_dark_matter(&cells_top[i]);
       count_spart[i] = cell_count_non_inhibited_stars(&cells_top[i]);
       count_bpart[i] = cell_count_non_inhibited_black_holes(&cells_top[i]);
-
-      if (count_background_gpart[i] == 0)
-        message("count_gpart = %lld count_gpart_back = %lld", count_gpart[i],
-                count_background_gpart[i]);
 
       /* Offsets including the global offset of all particles on this MPI rank
        */
