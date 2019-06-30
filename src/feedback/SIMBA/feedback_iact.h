@@ -71,6 +71,8 @@ runner_iact_nonsym_feedback_apply(const float r2, const float *dx,
                                   const struct cosmology *restrict cosmo,
                                   const integertime_t ti_current) {
   
+  if (ti_current == 0) return;
+
   /* Get the probability of doing feedback */
   // Compute mass loading which will determine probability
   const float prob = 1./50.; // ALEXEI: just set to random constant for now
@@ -96,6 +98,7 @@ runner_iact_nonsym_feedback_apply(const float r2, const float *dx,
       /* Set delaytime before which the particle cannot interact */
       pj->delay_time = si->feedback_data.to_distribute.simba_delay_time;
       pj->time_bin = time_bin_decoupled;
+      message("decoupled particle %llu delay_time %.5e", pj->id, pj->delay_time);
     }
   }
 

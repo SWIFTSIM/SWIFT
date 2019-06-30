@@ -49,6 +49,9 @@ struct feedback_spart_data {
       /* Delay time */
       double simba_delay_time; // ALEXEI: think of a better place to put this
 
+      /* wind mass loading */
+      float wind_mass;
+
     } to_distribute;
 
     float host_galaxy_mass;

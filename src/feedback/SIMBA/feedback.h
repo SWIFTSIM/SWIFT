@@ -62,7 +62,15 @@ inline void compute_kick_speed(struct spart *sp, const struct feedback_props *fe
  * @param sp The sparticle doing the feedback
  * @param feedback_props The properties of the feedback model
  */
-inline void compute_mass_loading(struct spart *sp, const struct feedback_props *feedback_props) {};
+inline void compute_mass_loading(struct spart *sp, const struct feedback_props *feedback_props) {
+  if (sp->mass < feedback_props->simba_mass_spectrum_break) {
+    sp->feedback_data.to_distribute.wind_mass = feedback_props->simba_wind_mass_eta 
+        * sp->feedback_data.host_galaxy_mass * pow(sp->mass/feedback_props->simba_mass_spectrum_break,feedback_props->simba_low_mass_power);
+  } else {
+    sp->feedback_data.to_distribute.wind_mass = feedback_props->simba_wind_mass_eta 
+        * sp->feedback_data.host_galaxy_mass * pow(sp->mass/feedback_props->simba_mass_spectrum_break,feedback_props->simba_high_mass_power);
+  }
+};
 
 /**
  * @brief Calculates speed particles will be kicked based on

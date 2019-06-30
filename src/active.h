@@ -389,7 +389,7 @@ __attribute__((always_inline)) INLINE static int bpart_is_active(
  */
 __attribute__((always_inline)) INLINE static int part_is_decoupled(
     const struct part *p, const struct engine *e) {
-  return (p->time_bin == time_bin_decoupled);
+  return p->time_bin == time_bin_decoupled;
 }
 
 /**

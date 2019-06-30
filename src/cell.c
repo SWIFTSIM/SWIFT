@@ -4699,6 +4699,7 @@ void cell_drift_part(struct cell *c, const struct engine *e, int force) {
 
       /* Decrement time delay for decoupled particles */
       if (part_is_decoupled(p, e)) {
+        message("particle decoupled id %llu timebin %d current timebint %d delay %.5e dt %.5e", p->id, p->time_bin, get_time_bin(ti_current), p->delay_time, dt_drift);
         p->delay_time -= dt_drift; 
         if (p->delay_time < 0.) {
           p->time_bin = get_time_bin(ti_current);
