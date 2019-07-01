@@ -2626,6 +2626,7 @@ void engine_prepare(struct engine *e) {
     engine_drift_all(e, /*drift_mpole=*/0);
     drifted_all = 1;
 
+    MPI_Barrier(MPI_COMM_WORLD);
     engine_fof(e, /*dump_results=*/0, /*seed_black_holes=*/1);
   }
 
@@ -6501,22 +6502,25 @@ void engine_fof(struct engine *e, const int dump_results,
   /* Initialise FOF parameters and allocate FOF arrays. */
   fof_allocate(e->s, total_nr_dmparts, e->fof_properties);
 
+  message("FOF allocate (FOF SCALING) took: %.3f %s.",
+      clocks_from_ticks(getticks() - tic), clocks_getunit());
+
   /* Make FOF tasks */
   engine_make_fof_tasks(e);
 
   /* and activate them. */
   engine_activate_fof_tasks(e);
 
+  ticks tic_local_fof = getticks();
+  
   /* Perform local FOF tasks. */
   engine_launch(e);
 
-#ifdef WITH_MPI
-  /* Exchange the gparts that now contain all their local group information */
-  engine_activate_gpart_comms(e);
+  message("Local FOF search (tasks FOF SCALING) took: %.3f %s.",
+      clocks_from_ticks(getticks() - tic_local_fof), clocks_getunit());
 
-  /* Perform the communications */
-  engine_launch(e);
-#endif
+  message("FOF allocate + task creation + local search (FOF SCALING) took: %.3f %s.",
+      clocks_from_ticks(getticks() - tic), clocks_getunit());
 
   /* Perform FOF search over foreign particles and
    * find groups which require black hole seeding.  */
@@ -6532,6 +6536,8 @@ void engine_fof(struct engine *e, const int dump_results,
 
   /* ... and find the next FOF time */
   if (seed_black_holes) engine_compute_next_fof_time(e);
+
+  MPI_Barrier(MPI_COMM_WORLD);
 
   if (engine_rank == 0)
     message("Complete FOF search took: %.3f %s.",

@@ -385,28 +385,28 @@ __attribute__((always_inline)) INLINE static size_t fof_find_global(
  * @param nr_gparts The number of g-particles on this node.
  * @param group_index Array of group root indices.
  */
-__attribute__((always_inline)) INLINE static size_t fof_find_local(
-    const size_t i, const size_t nr_gparts, const size_t *group_index) {
-#ifdef WITH_MPI
-  size_t root = node_offset + i;
-
-  while ((group_index[root - node_offset] != root) &&
-         (group_index[root - node_offset] >= node_offset) &&
-         (group_index[root - node_offset] < node_offset + nr_gparts)) {
-    root = group_index[root - node_offset];
-  }
-
-  return root - node_offset;
-#else
-  size_t root = i;
-
-  while ((group_index[root] != root) && (group_index[root] < nr_gparts)) {
-    root = group_index[root];
-  }
-
-  return root;
-#endif
-}
+//__attribute__((always_inline)) INLINE static size_t fof_find_local(
+//    const size_t i, const size_t nr_gparts, const size_t *group_index) {
+//#ifdef WITH_MPI
+//  size_t root = node_offset + i;
+//
+//  while ((group_index[root - node_offset] != root) &&
+//         (group_index[root - node_offset] >= node_offset) &&
+//         (group_index[root - node_offset] < node_offset + nr_gparts)) {
+//    root = group_index[root - node_offset];
+//  }
+//
+//  return root - node_offset;
+//#else
+//  size_t root = i;
+//
+//  while ((group_index[root] != root) && (group_index[root] < nr_gparts)) {
+//    root = group_index[root];
+//  }
+//
+//  return root;
+//#endif
+//}
 
 /**
  * @brief Finds the local root ID of the group a particle exists in.
@@ -2411,7 +2411,7 @@ void fof_search_tree(struct fof_props *props,
 
   const size_t nr_gparts = s->nr_gparts;
   const size_t min_group_size = props->min_group_size;
-  const size_t group_id_offset = props->group_id_offset;
+  //const size_t group_id_offset = props->group_id_offset;
 #ifdef WITH_MPI
   const int nr_nodes = s->e->nr_nodes;
 #endif
@@ -2431,7 +2431,7 @@ void fof_search_tree(struct fof_props *props,
   if (engine_rank == 0 && verbose)
     message("Size of hash table element: %ld", sizeof(hashmap_element_t));
 
-  const size_t group_id_default = props->group_id_default;
+  //const size_t group_id_default = props->group_id_default;
 
 #ifdef WITH_MPI
 
@@ -2441,8 +2441,16 @@ void fof_search_tree(struct fof_props *props,
   /* Determine number of gparts on lower numbered MPI ranks */
   long long nr_gparts_cumulative;
   long long nr_gparts_local = s->nr_gparts;
+  
+  ticks comms_tic = getticks();
+
   MPI_Scan(&nr_gparts_local, &nr_gparts_cumulative, 1, MPI_LONG_LONG, MPI_SUM,
            MPI_COMM_WORLD);
+  
+  //if (verbose)
+  message("MPI_Scan Imbalance took: %.3f %s.",
+      clocks_from_ticks(getticks() - comms_tic), clocks_getunit());
+
   node_offset = nr_gparts_cumulative - nr_gparts_local;
 
   snprintf(output_file_name + strlen(output_file_name), FILENAME_BUFFER_SIZE,
@@ -2461,10 +2469,9 @@ void fof_search_tree(struct fof_props *props,
   threadpool_map(&s->e->threadpool, fof_calc_group_size_mapper, gparts,
                  nr_gparts, sizeof(struct gpart), 0, s);
 
-  if (verbose)
-    message("FOF calc group size took (scaling): %.3f %s.",
-            clocks_from_ticks(getticks() - tic_calc_group_size),
-            clocks_getunit());
+  message("FOF calc group size took (FOF SCALING): %.3f %s.",
+      clocks_from_ticks(getticks() - tic_calc_group_size),
+      clocks_getunit());
 
 #ifdef WITH_MPI
   if (nr_nodes > 1) {
@@ -2474,14 +2481,18 @@ void fof_search_tree(struct fof_props *props,
     /* Search for group links across MPI domains. */
     fof_search_foreign_cells(props, s);
 
-    if (verbose)
-      message("fof_search_foreign_cells() took: %.3f %s.",
-              clocks_from_ticks(getticks() - tic_mpi), clocks_getunit());
+    message("fof_search_foreign_cells() took (FOF SCALING): %.3f %s.",       
+            clocks_from_ticks(getticks() - tic_mpi), clocks_getunit());
+    
+    message("fof_search_foreign_cells() + calc_group_size took (FOF SCALING): %.3f %s.",       
+            clocks_from_ticks(getticks() - tic_total), clocks_getunit());
   }
 #endif
 
-  size_t num_groups_local = 0, num_parts_in_groups_local = 0,
-         max_group_size_local = 0;
+  size_t num_groups_local = 0;//, num_parts_in_groups_local = 0,
+  //       max_group_size_local = 0;
+
+  ticks tic_num_groups_calc = getticks();
 
   for (size_t i = 0; i < nr_gparts; i++) {
 
@@ -2495,249 +2506,256 @@ void fof_search_tree(struct fof_props *props,
       num_groups_local++;
 #endif
 
-    /* Find the total number of particles in groups. */
-    if (group_size[i] >= min_group_size)
-      num_parts_in_groups_local += group_size[i];
-
-    /* Find the largest group. */
-    if (group_size[i] > max_group_size_local)
-      max_group_size_local = group_size[i];
+//    /* Find the total number of particles in groups. */
+//    if (group_size[i] >= min_group_size)
+//      num_parts_in_groups_local += group_size[i];
+//
+//    /* Find the largest group. */
+//    if (group_size[i] > max_group_size_local)
+//      max_group_size_local = group_size[i];
   }
+    
+  message("Calculating the total no. of local groups took: (FOF SCALING): %.3f %s.",       
+            clocks_from_ticks(getticks() - tic_num_groups_calc), clocks_getunit());
 
   /* Sort the groups in descending order based upon size and re-label their IDs
    * 0-num_groups. */
-  struct group_length *high_group_sizes = NULL;
-  int group_count = 0;
+//  struct group_length *high_group_sizes = NULL;
+//  int group_count = 0;
+//
+//  if (swift_memalign("fof_high_group_sizes", (void **)&high_group_sizes, 32,
+//                     num_groups_local * sizeof(struct group_length)) != 0)
+//    error("Failed to allocate list of large groups.");
+//
+//  /* Store the group_sizes and their offset. */
+//  for (size_t i = 0; i < nr_gparts; i++) {
+//
+//#ifdef WITH_MPI
+//    if (group_index[i] == i + node_offset && group_size[i] >= min_group_size) {
+//      high_group_sizes[group_count].index = node_offset + i;
+//      high_group_sizes[group_count++].size = group_size[i];
+//    }
+//#else
+//    if (group_index[i] == i && group_size[i] >= min_group_size) {
+//      high_group_sizes[group_count].index = i;
+//      high_group_sizes[group_count++].size = group_size[i];
+//    }
+//#endif
+//  }
 
-  if (swift_memalign("fof_high_group_sizes", (void **)&high_group_sizes, 32,
-                     num_groups_local * sizeof(struct group_length)) != 0)
-    error("Failed to allocate list of large groups.");
-
-  /* Store the group_sizes and their offset. */
-  for (size_t i = 0; i < nr_gparts; i++) {
-
-#ifdef WITH_MPI
-    if (group_index[i] == i + node_offset && group_size[i] >= min_group_size) {
-      high_group_sizes[group_count].index = node_offset + i;
-      high_group_sizes[group_count++].size = group_size[i];
-    }
-#else
-    if (group_index[i] == i && group_size[i] >= min_group_size) {
-      high_group_sizes[group_count].index = i;
-      high_group_sizes[group_count++].size = group_size[i];
-    }
-#endif
-  }
-
-  ticks tic = getticks();
-
-  /* Find global properties. */
+//  ticks tic = getticks();
+//
+//  /* Find global properties. */
 #ifdef WITH_MPI
   MPI_Allreduce(&num_groups_local, &num_groups, 1, MPI_INT, MPI_SUM,
                 MPI_COMM_WORLD);
-  MPI_Reduce(&num_parts_in_groups_local, &num_parts_in_groups, 1, MPI_INT,
-             MPI_SUM, 0, MPI_COMM_WORLD);
-  MPI_Reduce(&max_group_size_local, &max_group_size, 1, MPI_INT, MPI_MAX, 0,
-             MPI_COMM_WORLD);
+
+  message("Finding the total no. of groups took: (FOF SCALING): %.3f %s.",       
+            clocks_from_ticks(getticks() - tic_num_groups_calc), clocks_getunit());
+
+  //MPI_Reduce(&num_parts_in_groups_local, &num_parts_in_groups, 1, MPI_INT,
+  //           MPI_SUM, 0, MPI_COMM_WORLD);
+  //MPI_Reduce(&max_group_size_local, &max_group_size, 1, MPI_INT, MPI_MAX, 0,
+  //           MPI_COMM_WORLD);
 #else
   num_groups = num_groups_local;
-  num_parts_in_groups = num_parts_in_groups_local;
-  max_group_size = max_group_size_local;
+  //num_parts_in_groups = num_parts_in_groups_local;
+  //max_group_size = max_group_size_local;
 #endif /* WITH_MPI */
   props->num_groups = num_groups;
-
-  /* Find number of groups on lower numbered MPI ranks */
-#ifdef WITH_MPI
-  long long nglocal = num_groups_local;
-  long long ngsum;
-  MPI_Scan(&nglocal, &ngsum, 1, MPI_LONG_LONG, MPI_SUM, MPI_COMM_WORLD);
-  const size_t num_groups_prev = (size_t)(ngsum - nglocal);
-#endif /* WITH_MPI */
-
-  /* Sort local groups into descending order of size */
-  qsort(high_group_sizes, num_groups_local, sizeof(struct group_length),
-        cmp_func_group_size);
-
-  /* Set default group ID for all particles */
-  for (size_t i = 0; i < nr_gparts; i++) gparts[i].group_id = group_id_default;
-
-  /*
-    Assign final group IDs to local root particles where the global root is on
-    this node and the group is large enough. Within a node IDs are assigned in
-    descending order of particle number.
-  */
-  for (size_t i = 0; i < num_groups_local; i++) {
-#ifdef WITH_MPI
-    gparts[high_group_sizes[i].index - node_offset].group_id =
-        group_id_offset + i + num_groups_prev;
-#else
-    gparts[high_group_sizes[i].index].group_id = group_id_offset + i;
-#endif
-  }
-
-#ifdef WITH_MPI
-  /*
-     Now, for each local root where the global root is on some other node
-     AND the total size of the group is >= min_group_size we need to retrieve
-     the gparts.group_id we just assigned to the global root.
-
-     Will do that by sending the group_index of these lcoal roots to the node
-     where their global root is stored and receiving back the new group_id
-     associated with that particle.
-  */
-
-  /*
-     Identify local roots with global root on another node and large enough
-     group_size. Store index of the local and global roots in these cases.
-
-     NOTE: if group_size only contains the total FoF mass for global roots,
-     then we have to communicate ALL fragments where the global root is not
-     on this node. Hence the commented out extra conditions below.
-  */
-  size_t nsend = 0;
-  for (size_t i = 0; i < nr_gparts; i += 1) {
-    if ((!is_local(group_index[i],
-                   nr_gparts))) { /* && (group_size[i] >= min_group_size)) { */
-      nsend += 1;
-    }
-  }
-  struct fof_final_index *fof_index_send =
-      (struct fof_final_index *)swift_malloc(
-          "fof_index_send", sizeof(struct fof_final_index) * nsend);
-  nsend = 0;
-  for (size_t i = 0; i < nr_gparts; i += 1) {
-    if ((!is_local(group_index[i],
-                   nr_gparts))) { /* && (group_size[i] >= min_group_size)) { */
-      fof_index_send[nsend].local_root = node_offset + i;
-      fof_index_send[nsend].global_root = group_index[i];
-      nsend += 1;
-    }
-  }
-
-  /* Sort by global root - this puts the groups in order of which node they're
-   * stored on */
-  qsort(fof_index_send, nsend, sizeof(struct fof_final_index),
-        compare_fof_final_index_global_root);
-
-  /* Determine range of global indexes (i.e. particles) on each node */
-  size_t *num_on_node = (size_t *)malloc(nr_nodes * sizeof(size_t));
-  MPI_Allgather(&nr_gparts, sizeof(size_t), MPI_BYTE, num_on_node,
-                sizeof(size_t), MPI_BYTE, MPI_COMM_WORLD);
-  size_t *first_on_node = (size_t *)malloc(nr_nodes * sizeof(size_t));
-  first_on_node[0] = 0;
-  for (int i = 1; i < nr_nodes; i += 1)
-    first_on_node[i] = first_on_node[i - 1] + num_on_node[i - 1];
-
-  /* Determine how many entries go to each node */
-  int *sendcount = (int *)malloc(nr_nodes * sizeof(int));
-  for (int i = 0; i < nr_nodes; i += 1) sendcount[i] = 0;
-  int dest = 0;
-  for (size_t i = 0; i < nsend; i += 1) {
-    while ((fof_index_send[i].global_root >=
-            first_on_node[dest] + num_on_node[dest]) ||
-           (num_on_node[dest] == 0))
-      dest += 1;
-    if (dest >= nr_nodes) error("Node index out of range!");
-    sendcount[dest] += 1;
-  }
-
-  int *recvcount = NULL, *sendoffset = NULL, *recvoffset = NULL;
-  size_t nrecv = 0;
-
-  fof_compute_send_recv_offsets(nr_nodes, sendcount, &recvcount, &sendoffset,
-                                &recvoffset, &nrecv);
-
-  struct fof_final_index *fof_index_recv =
-      (struct fof_final_index *)swift_malloc(
-          "fof_index_recv", nrecv * sizeof(struct fof_final_index));
-
-  /* Exchange group indexes */
-  MPI_Alltoallv(fof_index_send, sendcount, sendoffset, fof_final_index_type,
-                fof_index_recv, recvcount, recvoffset, fof_final_index_type,
-                MPI_COMM_WORLD);
-
-  /* For each received global root, look up the group ID we assigned and store
-   * it in the struct */
-  for (size_t i = 0; i < nrecv; i += 1) {
-    if ((fof_index_recv[i].global_root < node_offset) ||
-        (fof_index_recv[i].global_root >= node_offset + nr_gparts)) {
-      error("Received global root index out of range!");
-    }
-    fof_index_recv[i].global_root =
-        gparts[fof_index_recv[i].global_root - node_offset].group_id;
-  }
-
-  /* Send the result back */
-  MPI_Alltoallv(fof_index_recv, recvcount, recvoffset, fof_final_index_type,
-                fof_index_send, sendcount, sendoffset, fof_final_index_type,
-                MPI_COMM_WORLD);
-
-  /* Update local gparts.group_id */
-  for (size_t i = 0; i < nsend; i += 1) {
-    if ((fof_index_send[i].local_root < node_offset) ||
-        (fof_index_send[i].local_root >= node_offset + nr_gparts)) {
-      error("Sent local root index out of range!");
-    }
-    gparts[fof_index_send[i].local_root - node_offset].group_id =
-        fof_index_send[i].global_root;
-  }
-
-  free(sendcount);
-  free(recvcount);
-  free(sendoffset);
-  free(recvoffset);
-  swift_free("fof_index_send", fof_index_send);
-  swift_free("fof_index_recv", fof_index_recv);
-
-#endif /* WITH_MPI */
-
-  /* Assign every particle the group_id of its local root. */
-  for (size_t i = 0; i < nr_gparts; i++) {
-    const size_t root = fof_find_local(i, nr_gparts, group_index);
-    gparts[i].group_id = gparts[root].group_id;
-  }
-
-  if (verbose)
-    message("Group sorting took: %.3f %s.", clocks_from_ticks(getticks() - tic),
-            clocks_getunit());
-
-  /* Allocate and initialise a group mass array. */
-  if (swift_memalign("group_mass", (void **)&props->group_mass, 32,
-                     num_groups_local * sizeof(double)) != 0)
-    error("Failed to allocate list of group masses for FOF search.");
-
-  bzero(props->group_mass, num_groups_local * sizeof(double));
-
-  ticks tic_seeding = getticks();
-
-  double *group_mass = props->group_mass;
-#ifdef WITH_MPI
-  fof_calc_group_mass(props, s, num_groups_local, num_groups_prev, num_on_node,
-                      first_on_node, group_mass);
-  free(num_on_node);
-  free(first_on_node);
-#else
-  fof_calc_group_mass(props, s, num_groups_local, 0, NULL, NULL, group_mass);
-#endif
-
-  if (verbose)
-    message("Black hole seeding took: %.3f %s.",
-            clocks_from_ticks(getticks() - tic_seeding), clocks_getunit());
-
-  /* Dump group data. */
-  if (dump_results) {
-    fof_dump_group_data(props, output_file_name, s, num_groups_local,
-                        high_group_sizes);
-  }
-
-  /* Seed black holes */
-  if (seed_black_holes) {
-    fof_seed_black_holes(props, bh_props, constants, cosmo, s, num_groups_local,
-                         high_group_sizes);
-  }
+//
+//  /* Find number of groups on lower numbered MPI ranks */
+//#ifdef WITH_MPI
+//  long long nglocal = num_groups_local;
+//  long long ngsum;
+//  MPI_Scan(&nglocal, &ngsum, 1, MPI_LONG_LONG, MPI_SUM, MPI_COMM_WORLD);
+//  const size_t num_groups_prev = (size_t)(ngsum - nglocal);
+//#endif /* WITH_MPI */
+//
+//  /* Sort local groups into descending order of size */
+//  qsort(high_group_sizes, num_groups_local, sizeof(struct group_length),
+//        cmp_func_group_size);
+//
+//  /* Set default group ID for all particles */
+//  for (size_t i = 0; i < nr_gparts; i++) gparts[i].group_id = group_id_default;
+//
+//  /*
+//    Assign final group IDs to local root particles where the global root is on
+//    this node and the group is large enough. Within a node IDs are assigned in
+//    descending order of particle number.
+//  */
+//  for (size_t i = 0; i < num_groups_local; i++) {
+//#ifdef WITH_MPI
+//    gparts[high_group_sizes[i].index - node_offset].group_id =
+//        group_id_offset + i + num_groups_prev;
+//#else
+//    gparts[high_group_sizes[i].index].group_id = group_id_offset + i;
+//#endif
+//  }
+//
+//#ifdef WITH_MPI
+//  /*
+//     Now, for each local root where the global root is on some other node
+//     AND the total size of the group is >= min_group_size we need to retrieve
+//     the gparts.group_id we just assigned to the global root.
+//
+//     Will do that by sending the group_index of these lcoal roots to the node
+//     where their global root is stored and receiving back the new group_id
+//     associated with that particle.
+//  */
+//
+//  /*
+//     Identify local roots with global root on another node and large enough
+//     group_size. Store index of the local and global roots in these cases.
+//
+//     NOTE: if group_size only contains the total FoF mass for global roots,
+//     then we have to communicate ALL fragments where the global root is not
+//     on this node. Hence the commented out extra conditions below.
+//  */
+//  size_t nsend = 0;
+//  for (size_t i = 0; i < nr_gparts; i += 1) {
+//    if ((!is_local(group_index[i],
+//                   nr_gparts))) { /* && (group_size[i] >= min_group_size)) { */
+//      nsend += 1;
+//    }
+//  }
+//  struct fof_final_index *fof_index_send =
+//      (struct fof_final_index *)swift_malloc(
+//          "fof_index_send", sizeof(struct fof_final_index) * nsend);
+//  nsend = 0;
+//  for (size_t i = 0; i < nr_gparts; i += 1) {
+//    if ((!is_local(group_index[i],
+//                   nr_gparts))) { /* && (group_size[i] >= min_group_size)) { */
+//      fof_index_send[nsend].local_root = node_offset + i;
+//      fof_index_send[nsend].global_root = group_index[i];
+//      nsend += 1;
+//    }
+//  }
+//
+//  /* Sort by global root - this puts the groups in order of which node they're
+//   * stored on */
+//  qsort(fof_index_send, nsend, sizeof(struct fof_final_index),
+//        compare_fof_final_index_global_root);
+//
+//  /* Determine range of global indexes (i.e. particles) on each node */
+//  size_t *num_on_node = (size_t *)malloc(nr_nodes * sizeof(size_t));
+//  MPI_Allgather(&nr_gparts, sizeof(size_t), MPI_BYTE, num_on_node,
+//                sizeof(size_t), MPI_BYTE, MPI_COMM_WORLD);
+//  size_t *first_on_node = (size_t *)malloc(nr_nodes * sizeof(size_t));
+//  first_on_node[0] = 0;
+//  for (int i = 1; i < nr_nodes; i += 1)
+//    first_on_node[i] = first_on_node[i - 1] + num_on_node[i - 1];
+//
+//  /* Determine how many entries go to each node */
+//  int *sendcount = (int *)malloc(nr_nodes * sizeof(int));
+//  for (int i = 0; i < nr_nodes; i += 1) sendcount[i] = 0;
+//  int dest = 0;
+//  for (size_t i = 0; i < nsend; i += 1) {
+//    while ((fof_index_send[i].global_root >=
+//            first_on_node[dest] + num_on_node[dest]) ||
+//           (num_on_node[dest] == 0))
+//      dest += 1;
+//    if (dest >= nr_nodes) error("Node index out of range!");
+//    sendcount[dest] += 1;
+//  }
+//
+//  int *recvcount = NULL, *sendoffset = NULL, *recvoffset = NULL;
+//  size_t nrecv = 0;
+//
+//  fof_compute_send_recv_offsets(nr_nodes, sendcount, &recvcount, &sendoffset,
+//                                &recvoffset, &nrecv);
+//
+//  struct fof_final_index *fof_index_recv =
+//      (struct fof_final_index *)swift_malloc(
+//          "fof_index_recv", nrecv * sizeof(struct fof_final_index));
+//
+//  /* Exchange group indexes */
+//  MPI_Alltoallv(fof_index_send, sendcount, sendoffset, fof_final_index_type,
+//                fof_index_recv, recvcount, recvoffset, fof_final_index_type,
+//                MPI_COMM_WORLD);
+//
+//  /* For each received global root, look up the group ID we assigned and store
+//   * it in the struct */
+//  for (size_t i = 0; i < nrecv; i += 1) {
+//    if ((fof_index_recv[i].global_root < node_offset) ||
+//        (fof_index_recv[i].global_root >= node_offset + nr_gparts)) {
+//      error("Received global root index out of range!");
+//    }
+//    fof_index_recv[i].global_root =
+//        gparts[fof_index_recv[i].global_root - node_offset].group_id;
+//  }
+//
+//  /* Send the result back */
+//  MPI_Alltoallv(fof_index_recv, recvcount, recvoffset, fof_final_index_type,
+//                fof_index_send, sendcount, sendoffset, fof_final_index_type,
+//                MPI_COMM_WORLD);
+//
+//  /* Update local gparts.group_id */
+//  for (size_t i = 0; i < nsend; i += 1) {
+//    if ((fof_index_send[i].local_root < node_offset) ||
+//        (fof_index_send[i].local_root >= node_offset + nr_gparts)) {
+//      error("Sent local root index out of range!");
+//    }
+//    gparts[fof_index_send[i].local_root - node_offset].group_id =
+//        fof_index_send[i].global_root;
+//  }
+//
+//  free(sendcount);
+//  free(recvcount);
+//  free(sendoffset);
+//  free(recvoffset);
+//  swift_free("fof_index_send", fof_index_send);
+//  swift_free("fof_index_recv", fof_index_recv);
+//
+//#endif /* WITH_MPI */
+//
+//  /* Assign every particle the group_id of its local root. */
+//  for (size_t i = 0; i < nr_gparts; i++) {
+//    const size_t root = fof_find_local(i, nr_gparts, group_index);
+//    gparts[i].group_id = gparts[root].group_id;
+//  }
+//
+//  if (verbose)
+//    message("Group sorting took: %.3f %s.", clocks_from_ticks(getticks() - tic),
+//            clocks_getunit());
+//
+//  /* Allocate and initialise a group mass array. */
+//  if (swift_memalign("group_mass", (void **)&props->group_mass, 32,
+//                     num_groups_local * sizeof(double)) != 0)
+//    error("Failed to allocate list of group masses for FOF search.");
+//
+//  bzero(props->group_mass, num_groups_local * sizeof(double));
+//
+//  ticks tic_seeding = getticks();
+//
+//  double *group_mass = props->group_mass;
+//#ifdef WITH_MPI
+//  fof_calc_group_mass(props, s, num_groups_local, num_groups_prev, num_on_node,
+//                      first_on_node, group_mass);
+//  free(num_on_node);
+//  free(first_on_node);
+//#else
+//  fof_calc_group_mass(props, s, num_groups_local, 0, NULL, NULL, group_mass);
+//#endif
+//
+//  if (verbose)
+//    message("Black hole seeding took: %.3f %s.",
+//            clocks_from_ticks(getticks() - tic_seeding), clocks_getunit());
+//
+//  /* Dump group data. */
+//  if (dump_results) {
+//    fof_dump_group_data(props, output_file_name, s, num_groups_local,
+//                        high_group_sizes);
+//  }
+//
+//  /* Seed black holes */
+//  if (seed_black_holes) {
+//    fof_seed_black_holes(props, bh_props, constants, cosmo, s, num_groups_local,
+//                         high_group_sizes);
+//  }
 
   /* Free the left-overs */
-  swift_free("fof_high_group_sizes", high_group_sizes);
+  //swift_free("fof_high_group_sizes", high_group_sizes);
   swift_free("fof_group_index", props->group_index);
   swift_free("fof_group_size", props->group_size);
   swift_free("fof_group_mass", props->group_mass);
