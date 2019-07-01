@@ -3954,7 +3954,7 @@ void space_synchronize_particle_positions_mapper(void *map_data, int nr_gparts,
       xp->v_full[1] = gp->v_full[1];
       xp->v_full[2] = gp->v_full[2];
 
-      gp->mass = p->mass;
+      gp->mass = hydro_get_mass(p);
     }
 
     else if (gp->type == swift_type_stars) {
