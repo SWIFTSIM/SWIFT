@@ -3050,7 +3050,7 @@ void engine_collect_end_of_step_mapper(void *map_data, int num_elements,
     data->s_updated += s_updated;
     data->b_updated += b_updated;
 
-     /* Add the SFH information from this engine to the global data */
+    /* Add the SFH information from this engine to the global data */
     star_formation_logger_add(sfh_top, &sfh_updated);
 
     if (ti_hydro_end_min > e->ti_current)
@@ -6490,6 +6490,9 @@ void engine_activate_fof_tasks(struct engine *e) {
 void engine_fof(struct engine *e, const int dump_results,
                 const int seed_black_holes) {
 
+#ifdef WITH_MPI
+  MPI_Barrier(MPI_COMM_WORLD);
+#endif
   ticks tic = getticks();
 
   /* Compute number of DM particles */
@@ -6501,7 +6504,7 @@ void engine_fof(struct engine *e, const int dump_results,
   fof_allocate(e->s, total_nr_dmparts, e->fof_properties);
 
   message("FOF allocate (FOF SCALING) took: %.3f %s.",
-      clocks_from_ticks(getticks() - tic), clocks_getunit());
+          clocks_from_ticks(getticks() - tic), clocks_getunit());
 
   /* Make FOF tasks */
   engine_make_fof_tasks(e);
@@ -6510,14 +6513,16 @@ void engine_fof(struct engine *e, const int dump_results,
   engine_activate_fof_tasks(e);
 
   ticks tic_local_fof = getticks();
-  
+
   /* Perform local FOF tasks. */
   engine_launch(e);
 
   message("Local FOF search (tasks FOF SCALING) took: %.3f %s.",
-      clocks_from_ticks(getticks() - tic_local_fof), clocks_getunit());
+          clocks_from_ticks(getticks() - tic_local_fof), clocks_getunit());
 
-  message("FOF allocate + task creation + local search (FOF SCALING) took: %.3f %s.",
+  message(
+      "FOF allocate + task creation + local search (FOF SCALING) took: %.3f "
+      "%s.",
       clocks_from_ticks(getticks() - tic), clocks_getunit());
 
   /* Perform FOF search over foreign particles and
@@ -6535,7 +6540,9 @@ void engine_fof(struct engine *e, const int dump_results,
   /* ... and find the next FOF time */
   if (seed_black_holes) engine_compute_next_fof_time(e);
 
+#ifdef WITH_MPI
   MPI_Barrier(MPI_COMM_WORLD);
+#endif
 
   if (engine_rank == 0)
     message("Complete FOF search took: %.3f %s.",
