@@ -112,19 +112,19 @@ void DOSELF1_BH(struct runner *r, struct cell *c, int timer) {
   struct xpart *restrict xparts = c->hydro.xparts;
 
   /* Loop over the bparts in ci. */
-  for (int sid = 0; sid < bcount; sid++) {
+  for (int bid = 0; bid < bcount; bid++) {
 
     /* Get a hold of the ith bpart in ci. */
-    struct bpart *restrict si = &bparts[sid];
+    struct bpart *restrict bi = &bparts[bid];
 
     /* Skip inactive particles */
-    if (!bpart_is_active(si, e)) continue;
+    if (!bpart_is_active(bi, e)) continue;
 
-    const float hi = si->h;
+    const float hi = bi->h;
     const float hig2 = hi * hi * kernel_gamma2;
-    const float six[3] = {(float)(si->x[0] - c->loc[0]),
-                          (float)(si->x[1] - c->loc[1]),
-                          (float)(si->x[2] - c->loc[2])};
+    const float bix[3] = {(float)(bi->x[0] - c->loc[0]),
+                          (float)(bi->x[1] - c->loc[1]),
+                          (float)(bi->x[2] - c->loc[2])};
 
     /* Loop over the parts in cj. */
     for (int pjd = 0; pjd < count; pjd++) {
@@ -141,7 +141,7 @@ void DOSELF1_BH(struct runner *r, struct cell *c, int timer) {
       const float pjx[3] = {(float)(pj->x[0] - c->loc[0]),
                             (float)(pj->x[1] - c->loc[1]),
                             (float)(pj->x[2] - c->loc[2])};
-      float dx[3] = {six[0] - pjx[0], six[1] - pjx[1], six[2] - pjx[2]};
+      float dx[3] = {bix[0] - pjx[0], bix[1] - pjx[1], bix[2] - pjx[2]};
       const float r2 = dx[0] * dx[0] + dx[1] * dx[1] + dx[2] * dx[2];
 
 #ifdef SWIFT_DEBUG_CHECKS
@@ -151,7 +151,7 @@ void DOSELF1_BH(struct runner *r, struct cell *c, int timer) {
 #endif
 
       if (r2 < hig2) {
-        IACT_BH(r2, dx, hi, hj, si, pj, xpj, cosmo, ti_current);
+        IACT_BH(r2, dx, hi, hj, bi, pj, xpj, cosmo, ti_current);
       }
     } /* loop over the parts in ci. */
   }   /* loop over the bparts in ci. */
@@ -201,19 +201,19 @@ void DO_NONSYM_PAIR1_BH_NAIVE(struct runner *r, struct cell *restrict ci,
   }
 
   /* Loop over the bparts in ci. */
-  for (int sid = 0; sid < bcount_i; sid++) {
+  for (int bid = 0; bid < bcount_i; bid++) {
 
     /* Get a hold of the ith bpart in ci. */
-    struct bpart *restrict si = &bparts_i[sid];
+    struct bpart *restrict bi = &bparts_i[bid];
 
     /* Skip inactive particles */
-    if (!bpart_is_active(si, e)) continue;
+    if (!bpart_is_active(bi, e)) continue;
 
-    const float hi = si->h;
+    const float hi = bi->h;
     const float hig2 = hi * hi * kernel_gamma2;
-    const float six[3] = {(float)(si->x[0] - (cj->loc[0] + shift[0])),
-                          (float)(si->x[1] - (cj->loc[1] + shift[1])),
-                          (float)(si->x[2] - (cj->loc[2] + shift[2]))};
+    const float bix[3] = {(float)(bi->x[0] - (cj->loc[0] + shift[0])),
+                          (float)(bi->x[1] - (cj->loc[1] + shift[1])),
+                          (float)(bi->x[2] - (cj->loc[2] + shift[2]))};
 
     /* Loop over the parts in cj. */
     for (int pjd = 0; pjd < count_j; pjd++) {
@@ -230,7 +230,7 @@ void DO_NONSYM_PAIR1_BH_NAIVE(struct runner *r, struct cell *restrict ci,
       const float pjx[3] = {(float)(pj->x[0] - cj->loc[0]),
                             (float)(pj->x[1] - cj->loc[1]),
                             (float)(pj->x[2] - cj->loc[2])};
-      float dx[3] = {six[0] - pjx[0], six[1] - pjx[1], six[2] - pjx[2]};
+      float dx[3] = {bix[0] - pjx[0], bix[1] - pjx[1], bix[2] - pjx[2]};
       const float r2 = dx[0] * dx[0] + dx[1] * dx[1] + dx[2] * dx[2];
 
 #ifdef SWIFT_DEBUG_CHECKS
@@ -240,7 +240,7 @@ void DO_NONSYM_PAIR1_BH_NAIVE(struct runner *r, struct cell *restrict ci,
 #endif
 
       if (r2 < hig2) {
-        IACT_BH(r2, dx, hi, hj, si, pj, xpj, cosmo, ti_current);
+        IACT_BH(r2, dx, hi, hj, bi, pj, xpj, cosmo, ti_current);
       }
     } /* loop over the parts in cj. */
   }   /* loop over the parts in ci. */
@@ -307,19 +307,19 @@ void DOPAIR1_SUBSET_BH_NAIVE(struct runner *r, struct cell *restrict ci,
   if (count_j == 0) return;
 
   /* Loop over the parts_i. */
-  for (int pid = 0; pid < bcount; pid++) {
+  for (int bid = 0; bid < bcount; bid++) {
 
     /* Get a hold of the ith part in ci. */
-    struct bpart *restrict bpi = &bparts_i[ind[pid]];
+    struct bpart *restrict bi = &bparts_i[ind[bid]];
 
-    const double pix = bpi->x[0] - (shift[0]);
-    const double piy = bpi->x[1] - (shift[1]);
-    const double piz = bpi->x[2] - (shift[2]);
-    const float hi = bpi->h;
+    const double bix = bi->x[0] - (shift[0]);
+    const double biy = bi->x[1] - (shift[1]);
+    const double biz = bi->x[2] - (shift[2]);
+    const float hi = bi->h;
     const float hig2 = hi * hi * kernel_gamma2;
 
 #ifdef SWIFT_DEBUG_CHECKS
-    if (!bpart_is_active(bpi, e))
+    if (!bpart_is_active(bi, e))
       error("Trying to correct smoothing length of inactive particle !");
 #endif
 
@@ -339,8 +339,8 @@ void DOPAIR1_SUBSET_BH_NAIVE(struct runner *r, struct cell *restrict ci,
       const float hj = pj->h;
 
       /* Compute the pairwise distance. */
-      float dx[3] = {(float)(pix - pjx), (float)(piy - pjy),
-                     (float)(piz - pjz)};
+      float dx[3] = {(float)(bix - pjx), (float)(biy - pjy),
+                     (float)(biz - pjz)};
       const float r2 = dx[0] * dx[0] + dx[1] * dx[1] + dx[2] * dx[2];
 
 #ifdef SWIFT_DEBUG_CHECKS
@@ -350,7 +350,7 @@ void DOPAIR1_SUBSET_BH_NAIVE(struct runner *r, struct cell *restrict ci,
 #endif
       /* Hit or miss? */
       if (r2 < hig2) {
-        IACT_BH(r2, dx, hi, hj, bpi, pj, xpj, cosmo, ti_current);
+        IACT_BH(r2, dx, hi, hj, bi, pj, xpj, cosmo, ti_current);
       }
     } /* loop over the parts in cj. */
   }   /* loop over the parts in ci. */
@@ -386,19 +386,18 @@ void DOSELF1_SUBSET_BH(struct runner *r, struct cell *restrict ci,
   if (count_i == 0) return;
 
   /* Loop over the parts in ci. */
-  for (int bpid = 0; bpid < bcount; bpid++) {
+  for (int bid = 0; bid < bcount; bid++) {
 
     /* Get a hold of the ith part in ci. */
-    struct bpart *bpi = &bparts[ind[bpid]];
-    const float bpix[3] = {(float)(bpi->x[0] - ci->loc[0]),
-                           (float)(bpi->x[1] - ci->loc[1]),
-                           (float)(bpi->x[2] - ci->loc[2])};
-    const float hi = bpi->h;
+    struct bpart *bi = &bparts[ind[bid]];
+    const float bix[3] = {(float)(bi->x[0] - ci->loc[0]),
+                          (float)(bi->x[1] - ci->loc[1]),
+                          (float)(bi->x[2] - ci->loc[2])};
+    const float hi = bi->h;
     const float hig2 = hi * hi * kernel_gamma2;
 
 #ifdef SWIFT_DEBUG_CHECKS
-    if (!bpart_is_active(bpi, e))
-      error("Inactive particle in subset function!");
+    if (!bpart_is_active(bi, e)) error("Inactive particle in subset function!");
 #endif
 
     /* Loop over the parts in cj. */
@@ -415,7 +414,7 @@ void DOSELF1_SUBSET_BH(struct runner *r, struct cell *restrict ci,
       const float pjx[3] = {(float)(pj->x[0] - ci->loc[0]),
                             (float)(pj->x[1] - ci->loc[1]),
                             (float)(pj->x[2] - ci->loc[2])};
-      float dx[3] = {bpix[0] - pjx[0], bpix[1] - pjx[1], bpix[2] - pjx[2]};
+      float dx[3] = {bix[0] - pjx[0], bix[1] - pjx[1], bix[2] - pjx[2]};
       const float r2 = dx[0] * dx[0] + dx[1] * dx[1] + dx[2] * dx[2];
 
 #ifdef SWIFT_DEBUG_CHECKS
@@ -426,7 +425,7 @@ void DOSELF1_SUBSET_BH(struct runner *r, struct cell *restrict ci,
 
       /* Hit or miss? */
       if (r2 < hig2) {
-        IACT_BH(r2, dx, hi, pj->h, bpi, pj, xpj, cosmo, ti_current);
+        IACT_BH(r2, dx, hi, pj->h, bi, pj, xpj, cosmo, ti_current);
       }
     } /* loop over the parts in cj. */
   }   /* loop over the parts in ci. */
