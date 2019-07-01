@@ -130,14 +130,18 @@ __attribute__((always_inline)) INLINE static void runner_iact_nonsym_bh_swallow(
 
   /* Compute the kernel function */
   const float hi_inv = 1.0f / hi;
+  const float hi_inv_dim = pow_dimension(hi_inv);
   const float ui = r * hi_inv;
   kernel_eval(ui, &wi);
 
   /* Is the BH hungry? */
   if (bi->subgrid_mass > bi->mass) {
 
-    /* Probability to swallow this particle */
-    const float prob = (bi->subgrid_mass - bi->mass) * wi / bi->rho_gas;
+    /* Probability to swallow this particle
+     * Recall that in SWIFT the SPH kernel is recovered by computing
+     * kernel_eval() and muliplying by (1/h^d) */
+    const float prob =
+        (bi->subgrid_mass - bi->mass) * hi_inv_dim * wi / bi->rho_gas;
 
     /* Draw a random number (Note mixing both IDs) */
     const float rand = random_unit_interval(bi->id + pj->id, ti_current,
