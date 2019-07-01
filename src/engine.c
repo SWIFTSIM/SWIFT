@@ -3050,7 +3050,7 @@ void engine_collect_end_of_step_mapper(void *map_data, int num_elements,
     data->s_updated += s_updated;
     data->b_updated += b_updated;
 
-    /* Add the SFH information from this engine to the global data */
+     /* Add the SFH information from this engine to the global data */
     star_formation_logger_add(sfh_top, &sfh_updated);
 
     if (ti_hydro_end_min > e->ti_current)
@@ -6500,14 +6500,25 @@ void engine_fof(struct engine *e, const int dump_results,
   /* Initialise FOF parameters and allocate FOF arrays. */
   fof_allocate(e->s, total_nr_dmparts, e->fof_properties);
 
+  message("FOF allocate (FOF SCALING) took: %.3f %s.",
+      clocks_from_ticks(getticks() - tic), clocks_getunit());
+
   /* Make FOF tasks */
   engine_make_fof_tasks(e);
 
   /* and activate them. */
   engine_activate_fof_tasks(e);
 
+  ticks tic_local_fof = getticks();
+  
   /* Perform local FOF tasks. */
   engine_launch(e);
+
+  message("Local FOF search (tasks FOF SCALING) took: %.3f %s.",
+      clocks_from_ticks(getticks() - tic_local_fof), clocks_getunit());
+
+  message("FOF allocate + task creation + local search (FOF SCALING) took: %.3f %s.",
+      clocks_from_ticks(getticks() - tic), clocks_getunit());
 
   /* Perform FOF search over foreign particles and
    * find groups which require black hole seeding.  */
@@ -6523,6 +6534,8 @@ void engine_fof(struct engine *e, const int dump_results,
 
   /* ... and find the next FOF time */
   if (seed_black_holes) engine_compute_next_fof_time(e);
+
+  MPI_Barrier(MPI_COMM_WORLD);
 
   if (engine_rank == 0)
     message("Complete FOF search took: %.3f %s.",
