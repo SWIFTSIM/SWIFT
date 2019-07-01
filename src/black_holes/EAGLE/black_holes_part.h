@@ -118,6 +118,9 @@ struct bpart {
    * content, etc.) */
   struct chemistry_bpart_data chemistry_data;
 
+  /*! Black holes merger information (e.g. merging ID) */
+  struct black_holes_bpart_data merger_data;
+
 #ifdef SWIFT_DEBUG_CHECKS
 
   /* Time of the last drift */

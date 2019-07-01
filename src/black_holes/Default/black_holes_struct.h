@@ -24,4 +24,45 @@
  */
 struct black_holes_part_data {};
 
+/**
+ * @brief Black holes-related fields carried by each *BH* particle.
+ */
+struct black_holes_bpart_data {};
+
+/**
+ * @brief Update a given #part's BH data field to mark the particle has
+ * not yet been swallowed.
+ *
+ * @param p_data The #part's #black_holes_part_data structure.
+ */
+__attribute__((always_inline)) INLINE static void
+black_holes_mark_as_not_swallowed(struct black_holes_part_data* p_data) {
+
+  /* Nothing to do here: No swallowing in the default model */
+}
+
+/**
+ * @brief Update a given #part's BH data field to mark the particle has
+ * having been been swallowed.
+ *
+ * @param p_data The #part's #black_holes_part_data structure.
+ */
+__attribute__((always_inline)) INLINE static void black_holes_mark_as_swallowed(
+    struct black_holes_part_data* p_data) {
+
+  /* Nothing to do here: No swallowing in the default model */
+}
+
+/**
+ * @brief Return the ID of the BH that should swallow this #part.
+ *
+ * @param p_data The #part's #black_holes_part_data structure.
+ */
+__attribute__((always_inline)) INLINE static long long
+black_holes_get_swallow_id(struct black_holes_part_data* p_data) {
+
+  /* Return a non-existing ID */
+  return -1;
+}
+
 #endif /* SWIFT_BLACK_HOLES_STRUCT_DEFAULT_H */
