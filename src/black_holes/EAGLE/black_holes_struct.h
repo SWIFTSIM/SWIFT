@@ -44,7 +44,7 @@ struct black_holes_bpart_data {
  * @param p_data The #part's #black_holes_part_data structure.
  */
 __attribute__((always_inline)) INLINE static void
-black_holes_mark_as_not_swallowed(struct black_holes_part_data* p_data) {
+black_holes_mark_part_as_not_swallowed(struct black_holes_part_data* p_data) {
 
   p_data->swallow_id = -1;
 }
@@ -55,8 +55,8 @@ black_holes_mark_as_not_swallowed(struct black_holes_part_data* p_data) {
  *
  * @param p_data The #part's #black_holes_part_data structure.
  */
-__attribute__((always_inline)) INLINE static void black_holes_mark_as_swallowed(
-    struct black_holes_part_data* p_data) {
+__attribute__((always_inline)) INLINE static void
+black_holes_mark_part_as_swallowed(struct black_holes_part_data* p_data) {
 
   p_data->swallow_id = -2;
 }
@@ -67,7 +67,42 @@ __attribute__((always_inline)) INLINE static void black_holes_mark_as_swallowed(
  * @param p_data The #part's #black_holes_part_data structure.
  */
 __attribute__((always_inline)) INLINE static long long
-black_holes_get_swallow_id(struct black_holes_part_data* p_data) {
+black_holes_get_part_swallow_id(struct black_holes_part_data* p_data) {
+
+  return p_data->swallow_id;
+}
+
+/**
+ * @brief Update a given #bpart's BH data field to mark the particle has
+ * not yet been swallowed.
+ *
+ * @param p_data The #bpart's #black_holes_bpart_data structure.
+ */
+__attribute__((always_inline)) INLINE static void
+black_holes_mark_bpart_as_not_swallowed(struct black_holes_bpart_data* p_data) {
+
+  p_data->swallow_id = -1;
+}
+
+/**
+ * @brief Update a given #bpart's BH data field to mark the particle has
+ * having been been swallowed.
+ *
+ * @param p_data The #bpart's #black_holes_bpart_data structure.
+ */
+__attribute__((always_inline)) INLINE static void
+black_holes_mark_bpart_as_merged(struct black_holes_part_data* p_data) {
+
+  p_data->swallow_id = -2;
+}
+
+/**
+ * @brief Return the ID of the BH that should swallow this #bpart.
+ *
+ * @param p_data The #bpart's #black_holes_bpart_data structure.
+ */
+__attribute__((always_inline)) INLINE static long long
+black_holes_get_bpart_swallow_id(struct black_holes_bpart_data* p_data) {
 
   return p_data->swallow_id;
 }

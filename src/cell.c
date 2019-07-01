@@ -4371,7 +4371,7 @@ void cell_drift_part(struct cell *c, const struct engine *e, int force) {
       cell_h_max = max(cell_h_max, p->h);
 
       /* Mark the particle has not being swallowed */
-      black_holes_mark_as_not_swallowed(&p->black_holes_data);
+      black_holes_mark_part_as_not_swallowed(&p->black_holes_data);
 
       /* Get ready for a density calculation */
       if (part_is_active(p, e)) {
@@ -4815,6 +4815,9 @@ void cell_drift_bpart(struct cell *c, const struct engine *e, int force) {
 
       /* Maximal smoothing length */
       cell_h_max = max(cell_h_max, bp->h);
+
+      /* Mark the particle has not being swallowed */
+      black_holes_mark_bpart_as_not_swallowed(&bp->merger_data);
 
       /* Get ready for a density calculation */
       if (bpart_is_active(bp, e)) {

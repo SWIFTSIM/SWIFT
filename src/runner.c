@@ -3778,7 +3778,7 @@ void runner_do_swallow(struct runner *r, struct cell *c, int timer) {
 
       /* Get the ID of the black holes that will swallow this part */
       const long long swallow_id =
-          black_holes_get_swallow_id(&p->black_holes_data);
+          black_holes_get_part_swallow_id(&p->black_holes_data);
 
       /* Has this particle been flagged for swallowing? */
       if (swallow_id >= 0) {
@@ -3827,7 +3827,7 @@ void runner_do_swallow(struct runner *r, struct cell *c, int timer) {
             }
 
             /* In any case, prevent the particle from being re-swallowed */
-            black_holes_mark_as_swallowed(&p->black_holes_data);
+            black_holes_mark_part_as_swallowed(&p->black_holes_data);
 
             found = 1;
             break;

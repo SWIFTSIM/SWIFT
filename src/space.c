@@ -4081,7 +4081,7 @@ void space_first_init_parts_mapper(void *restrict map_data, int count,
                              cool_func);
 
     /* And the black hole markers */
-    black_holes_mark_as_not_swallowed(&p[k].black_holes_data);
+    black_holes_mark_part_as_not_swallowed(&p[k].black_holes_data);
 
 #ifdef SWIFT_DEBUG_CHECKS
     /* Check part->gpart->part linkeage. */
@@ -4308,6 +4308,9 @@ void space_first_init_bparts_mapper(void *restrict map_data, int count,
   for (int k = 0; k < count; k++) {
 
     black_holes_first_init_bpart(&bp[k], props);
+
+    /* And the black hole merger markers */
+    black_holes_mark_bpart_as_not_swallowed(&bp[k].merger_data);
 
 #ifdef SWIFT_DEBUG_CHECKS
     if (bp[k].gpart && bp[k].gpart->id_or_neg_offset != -(k + delta))
@@ -5215,8 +5218,8 @@ void space_check_limiter(struct space *s) {
 /**
  * @brief #threadpool mapper function for the swallow debugging check
  */
-void space_check_swallow_mapper(void *map_data, int nr_parts,
-                                void *extra_data) {
+void space_check_part_swallow_mapper(void *map_data, int nr_parts,
+                                     void *extra_data) {
 #ifdef SWIFT_DEBUG_CHECKS
   /* Unpack the data */
   struct part *restrict parts = (struct part *)map_data;
@@ -5227,10 +5230,35 @@ void space_check_swallow_mapper(void *map_data, int nr_parts,
     if (parts[k].time_bin == time_bin_inhibited) continue;
 
     const long long swallow_id =
-        black_holes_get_swallow_id(&parts[k].black_holes_data);
+        black_holes_get_part_swallow_id(&parts[k].black_holes_data);
 
     if (swallow_id != -1)
       error("Particle has not been swallowed! id=%lld", parts[k].id);
+  }
+#else
+  error("Calling debugging code without debugging flag activated.");
+#endif
+}
+
+/**
+ * @brief #threadpool mapper function for the swallow debugging check
+ */
+void space_check_bpart_swallow_mapper(void *map_data, int nr_bparts,
+                                      void *extra_data) {
+#ifdef SWIFT_DEBUG_CHECKS
+  /* Unpack the data */
+  struct bpart *restrict bparts = (struct bpart *)map_data;
+
+  /* Verify that all particles have been swallowed or are untouched */
+  for (int k = 0; k < nr_bparts; k++) {
+
+    if (bparts[k].time_bin == time_bin_inhibited) continue;
+
+    const long long swallow_id =
+        black_holes_get_bpart_swallow_id(&bparts[k].merger_data);
+
+    if (swallow_id != -1)
+      error("BH particle has not been swallowed! id=%lld", bparts[k].id);
   }
 #else
   error("Calling debugging code without debugging flag activated.");
@@ -5248,8 +5276,11 @@ void space_check_swallow_mapper(void *map_data, int nr_parts,
 void space_check_swallow(struct space *s) {
 #ifdef SWIFT_DEBUG_CHECKS
 
-  threadpool_map(&s->e->threadpool, space_check_swallow_mapper, s->parts,
-                 s->nr_parts, sizeof(struct part), 1000, NULL);
+  threadpool_map(&s->e->threadpool, space_check_part_swallow_mapper, s->parts,
+                 s->nr_parts, sizeof(struct part), 0, NULL);
+
+  threadpool_map(&s->e->threadpool, space_check_bpart_swallow_mapper, s->bparts,
+                 s->nr_bparts, sizeof(struct bpart), 0, NULL);
 #else
   error("Calling debugging code without debugging flag activated.");
 #endif
