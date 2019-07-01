@@ -3934,7 +3934,7 @@ void space_synchronize_particle_positions_mapper(void *map_data, int nr_gparts,
   for (int k = 0; k < nr_gparts; k++) {
 
     /* Get the particle */
-    const struct gpart *restrict gp = &gparts[k];
+    struct gpart *restrict gp = &gparts[k];
 
     if (gp->type == swift_type_dark_matter)
       continue;
@@ -3953,6 +3953,8 @@ void space_synchronize_particle_positions_mapper(void *map_data, int nr_gparts,
       xp->v_full[0] = gp->v_full[0];
       xp->v_full[1] = gp->v_full[1];
       xp->v_full[2] = gp->v_full[2];
+
+      gp->mass = p->mass;
     }
 
     else if (gp->type == swift_type_stars) {
@@ -3964,6 +3966,8 @@ void space_synchronize_particle_positions_mapper(void *map_data, int nr_gparts,
       sp->x[0] = gp->x[0];
       sp->x[1] = gp->x[1];
       sp->x[2] = gp->x[2];
+
+      gp->mass = sp->mass;
     }
 
     else if (gp->type == swift_type_black_hole) {
@@ -3975,6 +3979,8 @@ void space_synchronize_particle_positions_mapper(void *map_data, int nr_gparts,
       bp->x[0] = gp->x[0];
       bp->x[1] = gp->x[1];
       bp->x[2] = gp->x[2];
+
+      gp->mass = bp->mass;
     }
   }
 }
