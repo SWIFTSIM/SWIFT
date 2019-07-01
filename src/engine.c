@@ -2626,7 +2626,6 @@ void engine_prepare(struct engine *e) {
     engine_drift_all(e, /*drift_mpole=*/0);
     drifted_all = 1;
 
-    MPI_Barrier(MPI_COMM_WORLD);
     engine_fof(e, /*dump_results=*/0, /*seed_black_holes=*/1);
   }
 
@@ -6492,6 +6491,8 @@ void engine_activate_fof_tasks(struct engine *e) {
 void engine_fof(struct engine *e, const int dump_results,
                 const int seed_black_holes) {
 
+  MPI_Barrier(MPI_COMM_WORLD);
+  
   ticks tic = getticks();
 
   /* Compute number of DM particles */
@@ -6539,7 +6540,6 @@ void engine_fof(struct engine *e, const int dump_results,
 
   MPI_Barrier(MPI_COMM_WORLD);
 
-  if (engine_rank == 0)
-    message("Complete FOF search took: %.3f %s.",
-            clocks_from_ticks(getticks() - tic), clocks_getunit());
+  message("Complete FOF search took: %.3f %s.",
+      clocks_from_ticks(getticks() - tic), clocks_getunit());
 }
