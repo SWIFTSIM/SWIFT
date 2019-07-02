@@ -58,24 +58,13 @@ can be made by calling the ``memuse_log_allocation()`` function directly.
 
 The output files are called ``memuse_report-step<n>.dat`` or
 ``memuse_report-rank<m>-step<n>.dat`` if running using MPI. These have a line
-for each allocation or free that records the time, memory address, step,
-whether an allocation or free, the label and when an allocation, the amount of
-memory. The comments in this file also record the actual memory use of the
-process (including threads) as reported by the operating system at the end of
-the step.
+for each allocation or free that records the time, step, whether an allocation
+or free, the label, the amount of memory allocated or freed and the total of
+all (labelled) memory in use at that time.
 
-To post process these files into a memory used timeline and get a report of
-the peak memory use, as well as the memory still in use at the end of the step
-there is an basic analysis script ``analyse_memuse_logs.py`` and two wrappers
-that process a directory of logs, these are ``./process_memuse_logs.sh`` and
-``./process_memuse_logs_MPI.sh`` for non-MPI and MPI runs respectively.
-
-Note that the process scripts process each step individually and also process
-all the logs as a single sequence. When interpreting these some care should be
-taken as they are not all the memory allocated, just important allocations in
-SWIFT and when looking at a single step the context of any previous steps is
-not used, so you only see allocations made in that step and the effect of any
-matching frees (so allocations made in previous steps that are freed in this
-step will not be understood and will be ignored, you need the global analysis
-to understand that).
+Comments at the end of this file also record the actual memory use of the
+process (including threads), as reported by the operating system at the end of
+the step, and the total memory still in use per label. Note this includes
+memory still active from previous steps and the total memory is also continued
+from the previous dump.
 

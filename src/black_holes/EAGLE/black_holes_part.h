@@ -19,6 +19,8 @@
 #ifndef SWIFT_EAGLE_BLACK_HOLE_PART_H
 #define SWIFT_EAGLE_BLACK_HOLE_PART_H
 
+#include "chemistry_struct.h"
+
 /**
  * @brief Particle fields for the black hole particles.
  *
@@ -73,7 +75,8 @@ struct bpart {
   /*! Subgrid mass of the black hole */
   float subgrid_mass;
 
-  /*! Total accreted mass of the black hole */
+  /*! Total accreted mass of the black hole (including accreted mass onto BHs
+   * that were merged) */
   float total_accreted_mass;
 
   /*! Energy reservoir for feedback */
@@ -91,6 +94,9 @@ struct bpart {
   /*! Smoothed velocity (peculiar) of the gas surrounding the black hole */
   float velocity_gas[3];
 
+  /*! Curl of the velocity field around the black hole */
+  float circular_velocity_gas[3];
+
   /*! Total mass of the gas neighbours. */
   float ngb_mass;
 
@@ -107,6 +113,10 @@ struct bpart {
     float AGN_delta_u;
 
   } to_distribute;
+
+  /*! Chemistry information (e.g. metal content at birth, swallowed metal
+   * content, etc.) */
+  struct chemistry_bpart_data chemistry_data;
 
 #ifdef SWIFT_DEBUG_CHECKS
 

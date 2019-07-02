@@ -30,6 +30,7 @@
  * Volume 428, Issue 4, pp. 2840-2856 with a simple Balsara viscosity term.
  */
 
+#include "black_holes_struct.h"
 #include "chemistry_struct.h"
 #include "cooling_struct.h"
 #include "star_formation_struct.h"
@@ -152,6 +153,9 @@ struct part {
 
   /* Chemistry information */
   struct chemistry_part_data chemistry_data;
+
+  /*! Black holes information (e.g. swallowing ID) */
+  struct black_holes_part_data black_holes_data;
 
   /* Time-step length */
   timebin_t time_bin;

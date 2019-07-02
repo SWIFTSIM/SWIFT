@@ -140,9 +140,13 @@ INLINE static void compute_SNII_feedback(
   /* Time after birth considered for SNII feedback (internal units) */
   const double SNII_wind_delay = feedback_props->SNII_wind_delay;
 
-  /* Are we doing feedback this step? */
-  if (star_age <= SNII_wind_delay && (star_age + dt) > SNII_wind_delay) {
+  /* Are we doing feedback this step?
+   * Note that since the ages are calculated using an interpolation table we
+   * must allow some tolerance here*/
+  if (star_age <= SNII_wind_delay &&
+      (star_age + 1.0001 * dt) > SNII_wind_delay) {
 
+    /* Make sure a star does not do feedback twice! */
     if (sp->f_E != -1.f) {
 #ifdef SWIFT_DEBUG_CHECKS
       message("Star has already done feedback! sp->id=%lld age=%e d=%e", sp->id,

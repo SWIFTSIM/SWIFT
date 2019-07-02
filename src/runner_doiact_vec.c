@@ -240,8 +240,8 @@ __attribute__((always_inline)) INLINE static void storeInteractions(
  *
  * @param ci #cell pointer to ci
  * @param cj #cell pointer to cj
- * @param sort_i #entry array for particle distance in ci
- * @param sort_j #entry array for particle distance in cj
+ * @param sort_i #sort_entry array for particle distance in ci
+ * @param sort_j #sort_entry array for particle distance in cj
  * @param dx_max maximum particle movement allowed in cell
  * @param rshift cutoff shift
  * @param hi_max Maximal smoothing length in cell ci
@@ -260,10 +260,11 @@ __attribute__((always_inline)) INLINE static void storeInteractions(
  */
 __attribute__((always_inline)) INLINE static void populate_max_index_density(
     const struct cell *ci, const struct cell *cj,
-    const struct entry *restrict sort_i, const struct entry *restrict sort_j,
-    const float dx_max, const float rshift, const double hi_max,
-    const double hj_max, const double di_max, const double dj_min,
-    int *max_index_i, int *max_index_j, int *init_pi, int *init_pj,
+    const struct sort_entry *restrict sort_i,
+    const struct sort_entry *restrict sort_j, const float dx_max,
+    const float rshift, const double hi_max, const double hj_max,
+    const double di_max, const double dj_min, int *max_index_i,
+    int *max_index_j, int *init_pi, int *init_pj,
     const timebin_t max_active_bin, const int active_ci, const int active_cj) {
 
   const struct part *restrict parts_i = ci->hydro.parts;
@@ -398,8 +399,8 @@ __attribute__((always_inline)) INLINE static void populate_max_index_density(
  *
  * @param ci #cell pointer to ci
  * @param cj #cell pointer to cj
- * @param sort_i #entry array for particle distance in ci
- * @param sort_j #entry array for particle distance in cj
+ * @param sort_i #sort_entry array for particle distance in ci
+ * @param sort_j #sort_entry array for particle distance in cj
  * @param dx_max maximum particle movement allowed in cell
  * @param rshift cutoff shift
  * @param hi_max_raw Maximal smoothing length in cell ci
@@ -419,12 +420,12 @@ __attribute__((always_inline)) INLINE static void populate_max_index_density(
  */
 __attribute__((always_inline)) INLINE static void populate_max_index_force(
     const struct cell *ci, const struct cell *cj,
-    const struct entry *restrict sort_i, const struct entry *restrict sort_j,
-    const float dx_max, const float rshift, const double hi_max_raw,
-    const double hj_max_raw, const double h_max, const double di_max,
-    const double dj_min, int *max_index_i, int *max_index_j, int *init_pi,
-    int *init_pj, const timebin_t max_active_bin, const int active_ci,
-    const int active_cj) {
+    const struct sort_entry *restrict sort_i,
+    const struct sort_entry *restrict sort_j, const float dx_max,
+    const float rshift, const double hi_max_raw, const double hj_max_raw,
+    const double h_max, const double di_max, const double dj_min,
+    int *max_index_i, int *max_index_j, int *init_pi, int *init_pj,
+    const timebin_t max_active_bin, const int active_ci, const int active_cj) {
 
   const struct part *restrict parts_i = ci->hydro.parts;
   const struct part *restrict parts_j = cj->hydro.parts;
@@ -570,7 +571,7 @@ __attribute__((always_inline)) INLINE static void populate_max_index_force(
  * @param runner_shift_x The runner_shift in the x direction.
  * @param runner_shift_y The runner_shift in the y direction.
  * @param runner_shift_z The runner_shift in the z direction.
- * @param sort_j #entry array for particle distance in cj
+ * @param sort_j #sort_entry array for particle distance in cj
  * @param max_index_i array to hold the maximum distances of pi particles into
  * #cell cj
  * @param flipped Flag to check whether the cells have been flipped or not.
@@ -582,7 +583,8 @@ __attribute__((always_inline)) INLINE static int populate_max_index_subset(
     int *restrict ind, const double *total_ci_shift, const float dxj,
     const double di_shift_correction, const double runner_shift_x,
     const double runner_shift_y, const double runner_shift_z,
-    const struct entry *restrict sort_j, int *max_index_i, const int flipped) {
+    const struct sort_entry *restrict sort_j, int *max_index_i,
+    const int flipped) {
 
   /* The cell is on the right so read the particles
    * into the cache from the start of the cell. */
@@ -1320,8 +1322,8 @@ void runner_dopair1_density_vec(struct runner *r, struct cell *ci,
   for (int k = 0; k < 3; k++) rshift += shift[k] * runner_shift[sid][k];
 
   /* Pick-out the sorted lists. */
-  const struct entry *restrict sort_i = ci->hydro.sort[sid];
-  const struct entry *restrict sort_j = cj->hydro.sort[sid];
+  const struct sort_entry *restrict sort_i = ci->hydro.sort[sid];
+  const struct sort_entry *restrict sort_j = cj->hydro.sort[sid];
 
   /* Get some other useful values. */
   const int count_i = ci->hydro.count;
@@ -1726,7 +1728,7 @@ void runner_dopair_subset_density_vec(struct runner *r,
   const int count_j = cj->hydro.count;
 
   /* Pick-out the sorted lists. */
-  const struct entry *restrict sort_j = cj->hydro.sort[sid];
+  const struct sort_entry *restrict sort_j = cj->hydro.sort[sid];
   const float dxj = cj->hydro.dx_max_sort;
 
   /* Get both particle caches from the runner and re-allocate
@@ -2075,8 +2077,8 @@ void runner_dopair2_force_vec(struct runner *r, struct cell *ci,
   for (int k = 0; k < 3; k++) rshift += shift[k] * runner_shift[sid][k];
 
   /* Pick-out the sorted lists. */
-  const struct entry *restrict sort_i = ci->hydro.sort[sid];
-  const struct entry *restrict sort_j = cj->hydro.sort[sid];
+  const struct sort_entry *restrict sort_i = ci->hydro.sort[sid];
+  const struct sort_entry *restrict sort_j = cj->hydro.sort[sid];
 
   /* Get some other useful values. */
   const int count_i = ci->hydro.count;

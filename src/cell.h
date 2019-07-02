@@ -332,7 +332,7 @@ struct cell {
     struct xpart *xparts;
 
     /*! Pointer for the sorted indices. */
-    struct entry *sort[13];
+    struct sort_entry *sort[13];
 
     /*! Super cell, i.e. the highest-level parent cell that has a hydro
      * pair/self tasks */
@@ -419,9 +419,6 @@ struct cell {
 
     /*! Number of #part updated in this cell. */
     int updated;
-
-    /*! Number of #part inhibited in this cell. */
-    int inhibited;
 
     /*! Is the #part data of this cell being used in a sub-cell? */
     int hold;
@@ -521,9 +518,6 @@ struct cell {
     /*! Number of #gpart updated in this cell. */
     int updated;
 
-    /*! Number of #gpart inhibited in this cell. */
-    int inhibited;
-
     /*! Is the #gpart data of this cell being used in a sub-cell? */
     int phold;
 
@@ -600,7 +594,7 @@ struct cell {
     float dx_max_sort_old;
 
     /*! Pointer for the sorted indices. */
-    struct entry *sort[13];
+    struct sort_entry *sort[13];
 
     /*! Bit mask of sort directions that will be needed in the next timestep. */
     uint16_t requires_sorts;
@@ -623,9 +617,6 @@ struct cell {
 
     /*! Number of #spart updated in this cell. */
     int updated;
-
-    /*! Number of #spart inhibited in this cell. */
-    int inhibited;
 
     /*! Is the #spart data of this cell being used in a sub-cell? */
     int hold;
@@ -657,12 +648,22 @@ struct cell {
     struct task *black_holes_out;
 
     /*! The star ghost task itself */
-    struct task *ghost;
+    struct task *density_ghost;
 
-    /*! Linked list of the tasks computing this cell's star density. */
+    /*! The star ghost task itself */
+    struct task *swallow_ghost[2];
+
+    /*! Linked list of the tasks computing this cell's BH density. */
     struct link *density;
 
-    /*! Linked list of the tasks computing this cell's star feedback. */
+    /*! Linked list of the tasks computing this cell's BH swallowing and
+     * merging. */
+    struct link *swallow;
+
+    /*! Linked list of the tasks processing the particles to swallow */
+    struct link *do_swallow;
+
+    /*! Linked list of the tasks computing this cell's BH feedback. */
     struct link *feedback;
 
     /*! Max smoothing length in this cell. */
@@ -702,9 +703,6 @@ struct cell {
 
     /*! Number of #bpart updated in this cell. */
     int updated;
-
-    /*! Number of #bpart inhibited in this cell. */
-    int inhibited;
 
     /*! Is the #bpart data of this cell being used in a sub-cell? */
     int hold;
@@ -808,9 +806,15 @@ int cell_mlocktree(struct cell *c);
 void cell_munlocktree(struct cell *c);
 int cell_slocktree(struct cell *c);
 void cell_sunlocktree(struct cell *c);
+int cell_blocktree(struct cell *c);
+void cell_bunlocktree(struct cell *c);
 int cell_pack(struct cell *c, struct pcell *pc, const int with_gravity);
 int cell_unpack(struct pcell *pc, struct cell *c, struct space *s,
                 const int with_gravity);
+void cell_pack_part_swallow(const struct cell *c,
+                            struct black_holes_part_data *data);
+void cell_unpack_part_swallow(struct cell *c,
+                              const struct black_holes_part_data *data);
 int cell_pack_tags(const struct cell *c, int *tags);
 int cell_unpack_tags(const int *tags, struct cell *c);
 int cell_pack_end_step_hydro(struct cell *c, struct pcell_step_hydro *pcell);
@@ -1261,8 +1265,8 @@ __attribute__((always_inline)) INLINE static void cell_malloc_hydro_sorts(
    * on the same dimensions), so we need separate allocations per dimension. */
   for (int j = 0; j < 13; j++) {
     if ((flags & (1 << j)) && c->hydro.sort[j] == NULL) {
-      if ((c->hydro.sort[j] = (struct entry *)swift_malloc(
-               "hydro.sort", sizeof(struct entry) * (count + 1))) == NULL)
+      if ((c->hydro.sort[j] = (struct sort_entry *)swift_malloc(
+               "hydro.sort", sizeof(struct sort_entry) * (count + 1))) == NULL)
         error("Failed to allocate sort memory.");
     }
   }
@@ -1299,8 +1303,8 @@ __attribute__((always_inline)) INLINE static void cell_malloc_stars_sorts(
    * on the same dimensions), so we need separate allocations per dimension. */
   for (int j = 0; j < 13; j++) {
     if ((flags & (1 << j)) && c->stars.sort[j] == NULL) {
-      if ((c->stars.sort[j] = (struct entry *)swift_malloc(
-               "stars.sort", sizeof(struct entry) * (count + 1))) == NULL)
+      if ((c->stars.sort[j] = (struct sort_entry *)swift_malloc(
+               "stars.sort", sizeof(struct sort_entry) * (count + 1))) == NULL)
         error("Failed to allocate sort memory.");
     }
   }

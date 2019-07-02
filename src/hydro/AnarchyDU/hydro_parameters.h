@@ -76,6 +76,14 @@
  * sets the decay length for the diffusion. */
 #define hydro_props_default_viscosity_length 0.25f
 
+/* Diffusion parameters -- FIXED -- MUST BE DEFINED AT COMPILE-TIME */
+
+/*! The diffusion that the particles are reset to after being hit by a
+ * feedback event. This should be set to the same value as the
+ * hydro_props_default_diffusion_alpha in fixed schemes, and likely
+ * to hydro_props_default_diffusion_alpha_min in variable schemes. */
+#define hydro_props_default_diffusion_alpha_feedback_reset 0.0f
+
 /* Diffusion parameters -- Defaults; can be changed at run-time */
 
 /*! The "initial" diffusion, or the fixed value for non-variable
