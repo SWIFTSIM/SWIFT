@@ -341,13 +341,19 @@ void velociraptor_init(struct engine *e) {
   } else {
     sim_info.icosmologicalsim = 0;
   }
-  sim_info.izoomsim = 0;
+
+  /* Are we running a zoom? */
+  if (e->s->with_DM_background) {
+    sim_info.izoomsim = 1;
+  } else {
+    sim_info.izoomsim = 0;
+  }
 
   /* Tell VELOCIraptor what we have in the simulation */
   sim_info.idarkmatter = (e->total_nr_gparts - e->total_nr_parts > 0);
   sim_info.igas = (e->policy & engine_policy_hydro);
   sim_info.istar = (e->policy & engine_policy_stars);
-  sim_info.ibh = 0;  // sim_info.ibh = (e->policy&engine_policy_bh);
+  sim_info.ibh = (e->policy & engine_policy_black_holes);
   sim_info.iother = 0;
 
   /* Be nice, talk! */
