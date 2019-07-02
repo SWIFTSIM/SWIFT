@@ -75,30 +75,43 @@ runner_iact_nonsym_feedback_apply(const float r2, const float *dx,
 
   /* Get the probability of doing feedback */
   // Compute mass loading which will determine probability
-  const float prob = 1./50.; // ALEXEI: just set to random constant for now
+  const float prob_kick = 1./50.; // ALEXEI: just set to random constant for now
+  const float prob_heat = prob_kick; // ALEXEI: placeholder
 
-  if (prob > 0) {
+  /* First we kick a particle */
+  /* Draw a random number (Note mixing both IDs) */
+  const float rand_kick = random_unit_interval(si->id + pj->id, ti_current, random_number_stellar_feedback);
+
+  /* Are we lucky? */
+  if (rand_kick < prob_kick) {
+    /* kick particle */
+    float v_new[3];
+    // ALEXEI: temporary simple definition. Change to be consistent with sfr_eff.c: 1565
+    for (int i = 0; i < 3; i++) v_new[i] = si->feedback_data.to_distribute.v_kick; 
+    hydro_set_velocity(pj,v_new);
+
+    /* Heat particle */
+    const float u_init = hydro_get_physical_internal_energy(pj, xp, cosmo);
+    const float u_new = u_init + si->feedback_data.to_distribute.delta_u;
+    hydro_set_physical_internal_energy(pj, xp, cosmo, u_new);
+    hydro_set_drifted_physical_internal_energy(pj, cosmo, u_new);
+
+    /* Set delaytime before which the particle cannot interact */
+    pj->delay_time = si->feedback_data.to_distribute.simba_delay_time;
+    pj->time_bin = time_bin_decoupled;
+    message("decoupled particle %llu delay_time %.5e", pj->id, pj->delay_time);
+  }
+
+  /* Now we can heat some other neighbours */
+  if (si->feedback_data.to_distribute.u_extra > 0.) { 
     /* Draw a random number (Note mixing both IDs) */
-    const float rand = random_unit_interval(si->id + pj->id, ti_current, random_number_stellar_feedback);
+    const float rand_heat = random_unit_interval(si->id * pj->id, ti_current, random_number_stellar_feedback);
 
     /* Are we lucky? */
-    if (rand < prob) {
-      /* kick particle */
-      float v_new[3];
-      // ALEXEI: temporary simple definition. Change to be consistent with sfr_eff.c: 1565
-      for (int i = 0; i < 3; i++) v_new[i] = si->feedback_data.to_distribute.v_kick; 
-      hydro_set_velocity(pj,v_new);
-
-      /* Heat particle */
-      const float u_init = hydro_get_physical_internal_energy(pj, xp, cosmo);
-      const float u_new = u_init + si->feedback_data.to_distribute.delta_u;
+    if (rand_heat > prob_heat) {
+      const float u_new = hydro_get_physical_internal_energy(pj, xp, cosmo) + si->feedback_data.to_distribute.u_extra;
       hydro_set_physical_internal_energy(pj, xp, cosmo, u_new);
       hydro_set_drifted_physical_internal_energy(pj, cosmo, u_new);
-
-      /* Set delaytime before which the particle cannot interact */
-      pj->delay_time = si->feedback_data.to_distribute.simba_delay_time;
-      pj->time_bin = time_bin_decoupled;
-      message("decoupled particle %llu delay_time %.5e", pj->id, pj->delay_time);
     }
   }
 

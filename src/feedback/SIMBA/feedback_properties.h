@@ -46,6 +46,10 @@ struct feedback_props {
   float simba_low_mass_power;
   float simba_high_mass_power;
 
+  /* parameters for thermal feedback */
+  float SN_energy;
+  float simba_wind_energy_limit;
+
 };
 
 /**
@@ -84,6 +88,10 @@ INLINE static void feedback_props_init(struct feedback_props *fp,
   fp->simba_mass_spectrum_break = parser_get_param_float(params,"SIMBAFeedback:wind_mass_spectrum_break") / units_cgs_conversion_factor(us,UNIT_CONV_MASS);
   fp->simba_low_mass_power = parser_get_param_float(params,"SIMBAFeedback:low_mass_power");
   fp->simba_high_mass_power = parser_get_param_float(params,"SIMBAFeedback:high_mass_power");
+
+  /* read thermal feedback parameters */
+  fp->simba_wind_energy_limit = parser_get_param_float(params,"SIMBAFeedback:energy_limit"); // ALEXEI: check units here
+  fp->SN_energy = parser_get_param_float(params,"SIMBAFeedback:sn_energy_erg") / units_cgs_conversion_factor(us,UNIT_CONV_ENERGY);
 
 }
 

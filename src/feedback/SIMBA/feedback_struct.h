@@ -52,6 +52,9 @@ struct feedback_spart_data {
       /* wind mass loading */
       float wind_mass;
 
+      /* Excess energy after kicking particle converted to thermal */
+      float u_extra;
+
     } to_distribute;
 
     float host_galaxy_mass;

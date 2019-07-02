@@ -63,6 +63,7 @@ inline void compute_kick_speed(struct spart *sp, const struct feedback_props *fe
  * @param feedback_props The properties of the feedback model
  */
 inline void compute_mass_loading(struct spart *sp, const struct feedback_props *feedback_props) {
+  // ALEXEI: check units of host_galaxy_mass with Romeel: is this a mass or mass/msun?
   if (sp->mass < feedback_props->simba_mass_spectrum_break) {
     sp->feedback_data.to_distribute.wind_mass = feedback_props->simba_wind_mass_eta 
         * sp->feedback_data.host_galaxy_mass * pow(sp->mass/feedback_props->simba_mass_spectrum_break,feedback_props->simba_low_mass_power);
@@ -73,13 +74,38 @@ inline void compute_mass_loading(struct spart *sp, const struct feedback_props *
 };
 
 /**
- * @brief Calculates speed particles will be kicked based on
- * host galaxy properties 
+ * @brief Calculates amount of extra thermal energy injection required to
+ * make up difference between energy injected as wind and total energy
+ * injected due to SN.  
  *
  * @param sp The sparticle doing the feedback
  * @param feedback_props The properties of the feedback model
  */
-inline void compute_heating(struct spart *sp, const struct feedback_props *feedback_props) {};
+inline void compute_heating(struct spart *sp, const struct feedback_props *feedback_props) {
+  /* Calculate the amount of energy injected in the wind. 
+   * This is in terms of internal energy because we don't 
+   * know the mass of the particle being kicked yet. */
+  float u_wind = 0.5*sp->feedback_data.to_distribute.v_kick*sp->feedback_data.to_distribute.v_kick;
+
+  /* Calculate internal energy contribution from SN */
+  float u_SN = feedback_props->SN_energy * sp->feedback_data.host_galaxy_mass 
+               / sp->feedback_data.to_distribute.wind_mass;
+
+  // ALEXEI: should this be smoothed metal mass fraction?
+  if (sp->chemistry_data.metal_mass_fraction[0] < 1.e-9) {
+    u_SN *= exp10(-0.0029*pow(log10(sp->chemistry_data.metal_mass_fraction[0])+9,2.5)+0.417694); // ALEXEI: what are all these numbers?
+  } else {
+    u_SN *= 2.61634;
+  }
+
+  if (u_wind > feedback_props->simba_wind_energy_limit) 
+    sp->feedback_data.to_distribute.v_kick *= sqrt(feedback_props->simba_wind_energy_limit*u_SN/u_wind);
+  if (feedback_props->simba_wind_energy_limit < 1.f) 
+    u_SN *= feedback_props->simba_wind_energy_limit;
+
+  /* Now we can decide if there's any energy left over to distribute */
+  sp->feedback_data.to_distribute.u_extra = max(u_SN - u_wind, 0.);
+};
 
 /**
  * @brief Prepares a s-particle for its feedback interactions

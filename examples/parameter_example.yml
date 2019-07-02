@@ -544,3 +544,5 @@ SIMBAFeedback:
   wind_mass_spectrum_break:         5.2e9
   low_mass_power:                   -0.317
   high_mass_power:                  -0.761
+  sn_energy_erg:                    1.e51
+  energy_limit:                     1.
