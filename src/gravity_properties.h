@@ -77,6 +77,11 @@ struct gravity_props {
    * particles (DM + baryons) */
   float epsilon_max_physical;
 
+  /*! In case of zoom runs: mass of the DM particles in the zoom region in
+   * internal units. Otherwise: mass of the DM particles in internal units. -1
+   * If there are no dark matter particles. */
+  float high_res_DM_mass;
+
   /* ------------- Properties of the time integration  ----------------- */
 
   /*! Frequency of tree-rebuild in units of #gpart updates. */

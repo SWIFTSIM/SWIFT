@@ -450,14 +450,27 @@ void velociraptor_invoke(struct engine *e, const int linked_with_snap) {
   /* Are we running with cosmology? */
   if (e->policy & engine_policy_cosmology) {
     sim_info.icosmologicalsim = 1;
-    sim_info.izoomsim = 0;
-    const size_t total_nr_baryons = e->total_nr_parts + e->total_nr_sparts;
-    const size_t total_nr_dmparts = e->total_nr_gparts - total_nr_baryons;
-    sim_info.interparticlespacing = sim_info.period / cbrt(total_nr_dmparts);
+
+    /* Are we running a zoom? */
+    if (e->s->with_DM_background) {
+      sim_info.izoomsim = 1;
+    } else {
+      sim_info.izoomsim = 0;
+    }
+
+    /* Linking length based on the mean DM inter-particle separation
+     * in the zoom region and assuming the mean density of the Universe
+     * is used in the zoom region. */
+    const double mean_matter_density =
+        e->cosmology->Omega_m * e->cosmology->critical_density_0;
+    const double high_res_DM_mass = e->gravity_properties->high_res_DM_mass;
+    sim_info.interparticlespacing =
+        cbrt(high_res_DM_mass / mean_matter_density);
+
   } else {
-    sim_info.icosmologicalsim = 0;
     sim_info.izoomsim = 0;
-    sim_info.interparticlespacing = -1;
+    sim_info.icosmologicalsim = 0;
+    sim_info.interparticlespacing = -1.;
   }
 
   /* Set the spatial extent of the simulation volume */
