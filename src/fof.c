@@ -51,7 +51,7 @@
 #define FOF_COMPRESS_PATHS_MIN_LENGTH (2)
 
 /* Are we timing the FOF? */
-#define WITH_FOF_TIMING
+//#define WITH_FOF_TIMING
 
 /**
  * @brief Properties of a group used for black hole seeding
