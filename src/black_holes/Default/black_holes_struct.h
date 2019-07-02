@@ -84,7 +84,7 @@ black_holes_mark_bpart_as_not_swallowed(struct black_holes_bpart_data* p_data) {
  * @param p_data The #bpart's #black_holes_bpart_data structure.
  */
 __attribute__((always_inline)) INLINE static void
-black_holes_mark_bpart_as_merged(struct black_holes_part_data* p_data) {
+black_holes_mark_bpart_as_merged(struct black_holes_bpart_data* p_data) {
 
   /* Nothing to do here: No merging in the default model */
 }
