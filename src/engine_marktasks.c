@@ -207,14 +207,26 @@ void engine_marktasks_mapper(void *map_data, int num_elements,
       }
 
       else if (t_type == task_type_self &&
-               t_subtype == task_subtype_do_swallow) {
+               t_subtype == task_subtype_do_gas_swallow) {
         if (ci_active_black_holes) {
           scheduler_activate(s, t);
         }
       }
 
       else if (t_type == task_type_sub_self &&
-               t_subtype == task_subtype_do_swallow) {
+               t_subtype == task_subtype_do_gas_swallow) {
+        if (ci_active_black_holes) scheduler_activate(s, t);
+      }
+
+      else if (t_type == task_type_self &&
+               t_subtype == task_subtype_do_bh_swallow) {
+        if (ci_active_black_holes) {
+          scheduler_activate(s, t);
+        }
+      }
+
+      else if (t_type == task_type_sub_self &&
+               t_subtype == task_subtype_do_bh_swallow) {
         if (ci_active_black_holes) scheduler_activate(s, t);
       }
 
@@ -404,7 +416,7 @@ void engine_marktasks_mapper(void *map_data, int num_elements,
       /* Black_Holes density */
       else if ((t_subtype == task_subtype_bh_density ||
                 t_subtype == task_subtype_bh_swallow ||
-                t_subtype == task_subtype_do_swallow ||
+                t_subtype == task_subtype_do_gas_swallow ||
                 t_subtype == task_subtype_bh_feedback) &&
                (ci_active_black_holes || cj_active_black_holes) &&
                (ci_nodeID == nodeID || cj_nodeID == nodeID)) {
@@ -892,7 +904,8 @@ void engine_marktasks_mapper(void *map_data, int num_elements,
     /* Black hole ghost tasks ? */
     else if (t_type == task_type_bh_density_ghost ||
              t_type == task_type_bh_swallow_ghost1 ||
-             t_type == task_type_bh_swallow_ghost2) {
+             t_type == task_type_bh_swallow_ghost2 ||
+             t_type == task_type_bh_swallow_ghost3) {
       if (cell_is_active_black_holes(t->ci, e)) scheduler_activate(s, t);
     }
 

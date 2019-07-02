@@ -230,6 +230,8 @@ runner_iact_nonsym_bh_bh_swallow(const float r2, const float *dx,
      * smoothing length */
     if (v2_pec < G * M / (kernel_gamma * h)) {
 
+      // MATTHIEU: Also add distance check: factor * Plummer softening
+
       /* This particle is swallowed by the BH with the largest ID of all the
        * candidates wanting to swallow it */
       if (bj->merger_data.swallow_id < bi->id) {

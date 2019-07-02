@@ -651,7 +651,7 @@ struct cell {
     struct task *density_ghost;
 
     /*! The star ghost task itself */
-    struct task *swallow_ghost[2];
+    struct task *swallow_ghost[3];
 
     /*! Linked list of the tasks computing this cell's BH density. */
     struct link *density;
@@ -661,7 +661,10 @@ struct cell {
     struct link *swallow;
 
     /*! Linked list of the tasks processing the particles to swallow */
-    struct link *do_swallow;
+    struct link *do_gas_swallow;
+
+    /*! Linked list of the tasks processing the particles to swallow */
+    struct link *do_bh_swallow;
 
     /*! Linked list of the tasks computing this cell's BH feedback. */
     struct link *feedback;

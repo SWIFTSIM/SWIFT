@@ -1988,7 +1988,8 @@ void cell_clean_links(struct cell *c, void *data) {
   c->stars.feedback = NULL;
   c->black_holes.density = NULL;
   c->black_holes.swallow = NULL;
-  c->black_holes.do_swallow = NULL;
+  c->black_holes.do_gas_swallow = NULL;
+  c->black_holes.do_bh_swallow = NULL;
   c->black_holes.feedback = NULL;
 }
 
@@ -4001,7 +4002,7 @@ int cell_unskip_black_holes_tasks(struct cell *c, struct scheduler *s) {
   }
 
   /* Un-skip the swallow tasks involved with this cell. */
-  for (struct link *l = c->black_holes.do_swallow; l != NULL; l = l->next) {
+  for (struct link *l = c->black_holes.do_gas_swallow; l != NULL; l = l->next) {
     struct task *t = l->t;
     struct cell *ci = t->ci;
     struct cell *cj = t->cj;
@@ -4049,23 +4050,14 @@ int cell_unskip_black_holes_tasks(struct cell *c, struct scheduler *s) {
   /* Unskip all the other task types. */
   if (c->nodeID == nodeID && cell_is_active_black_holes(c, e)) {
 
-    /* for (struct link *l = c->black_holes.swallow; l != NULL; l = l->next)
-     */
-    /*   scheduler_activate(s, l->t); */
-    /* for (struct link *l = c->black_holes.do_swallow; l != NULL; l =
-     * l->next)
-     */
-    /*   scheduler_activate(s, l->t); */
-    /* for (struct link *l = c->black_holes.feedback; l != NULL; l = l->next)
-     */
-    /*   scheduler_activate(s, l->t); */
-
     if (c->black_holes.density_ghost != NULL)
       scheduler_activate(s, c->black_holes.density_ghost);
     if (c->black_holes.swallow_ghost[0] != NULL)
       scheduler_activate(s, c->black_holes.swallow_ghost[0]);
     if (c->black_holes.swallow_ghost[1] != NULL)
       scheduler_activate(s, c->black_holes.swallow_ghost[1]);
+    if (c->black_holes.swallow_ghost[2] != NULL)
+      scheduler_activate(s, c->black_holes.swallow_ghost[2]);
     if (c->black_holes.black_holes_in != NULL)
       scheduler_activate(s, c->black_holes.black_holes_in);
     if (c->black_holes.black_holes_out != NULL)
