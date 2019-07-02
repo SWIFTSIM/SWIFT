@@ -215,17 +215,35 @@ runner_iact_nonsym_bh_bh_swallow(const float r2, const float *dx,
     h = hj;
   }
 
+  message("hello!");
+
   const float G = 43.;  // MATTHIEU: Fix this!!!
 
-  /* Merge if gravitationally bound
-   * Note that we use the kernel support here as the size and not just the
-   * smoothing length */
-  if (v2_pec < G * M / (kernel_gamma * h)) {
+  /* The BH with the smaller ID will be merged onto the one with the larger ID
+   */
+  if (bj->id < bi->id) {
 
-    /* This particle is swallowed by the BH with the largest ID of all the
-     * candidates wanting to swallow it */
-    if (bj->merger_data.swallow_id < bi->id && bj->id < bi->id) {
-      bj->merger_data.swallow_id = bi->id;
+    message("ID is smaller");
+
+    /* Merge if gravitationally bound
+     * Note that we use the kernel support here as the size and not just the
+     * smoothing length */
+    if (v2_pec < G * M / (kernel_gamma * h)) {
+
+      /* This particle is swallowed by the BH with the largest ID of all the
+       * candidates wanting to swallow it */
+      if (bj->merger_data.swallow_id < bi->id) {
+
+        message("BH %lld wants to swallow BH particle %lld", bi->id, bj->id);
+
+        bj->merger_data.swallow_id = bi->id;
+      } else {
+
+        message(
+            "BH %lld wants to swallow gas particle %lld BUT CANNOT (old "
+            "swallow id=%lld)",
+            bi->id, bj->id, bj->merger_data.swallow_id);
+      }
     }
   }
 }
