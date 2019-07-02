@@ -196,7 +196,39 @@ runner_iact_nonsym_bh_bh_swallow(const float r2, const float *dx,
                                  struct bpart *restrict bi,
                                  struct bpart *restrict bj,
                                  const struct cosmology *cosmo,
-                                 const integertime_t ti_current) {}
+                                 const integertime_t ti_current) {
+
+  /* Compute relative peculiar velocity between the two BHs
+   * Recall that in SWIFT v is (v_pec * a) */
+  const float delta_v[3] = {bi->v[0] - bj->v[0], bi->v[1] - bj->v[1],
+                            bi->v[2] - bj->v[2]};
+  const float v2 = delta_v[0] * delta_v[0] + delta_v[1] * delta_v[1] +
+                   delta_v[2] * delta_v[2];
+
+  const float v2_pec = v2 * cosmo->a2_inv;
+
+  /* Find the bigger of the two BHs */
+  float M = bi->subgrid_mass;
+  float h = hi;
+  if (bj->subgrid_mass > M) {
+    M = bj->subgrid_mass;
+    h = hj;
+  }
+
+  const float G = 43.;
+
+  /* Merge if gravitationally bound
+   * Note that we use the kernel support here as the size and not just the
+   * smoothing length */
+  if (v2_pec < G * M / (kernel_gamma * h)) {
+
+    /* This particle is swallowed by the BH with the largest ID of all the
+     * candidates wanting to swallow it */
+    if (bj->merger_data.swallow_id < bi->id && bj->id < bi->id) {
+      bj->merger_data.swallow_id = bi->id;
+    }
+  }
+}
 
 /**
  * @brief Feedback interaction between two particles (non-symmetric).
