@@ -85,7 +85,7 @@ runner_iact_nonsym_bh_gas_density(const float r2, const float *dx,
 __attribute__((always_inline)) INLINE static void
 runner_iact_nonsym_bh_gas_swallow(const float r2, const float *dx,
                                   const float hi, const float hj,
-                                  struct bpart *restrict bi,
+                                  const struct bpart *restrict bi,
                                   struct part *restrict pj,
                                   struct xpart *restrict xpj,
                                   const struct cosmology *cosmo,
@@ -109,7 +109,7 @@ runner_iact_nonsym_bh_gas_swallow(const float r2, const float *dx,
 __attribute__((always_inline)) INLINE static void
 runner_iact_nonsym_bh_bh_swallow(const float r2, const float *dx,
                                  const float hi, const float hj,
-                                 struct bpart *restrict bi,
+                                 const struct bpart *restrict bi,
                                  struct bpart *restrict bj,
                                  const struct cosmology *cosmo,
                                  const integertime_t ti_current) {}
@@ -132,7 +132,7 @@ runner_iact_nonsym_bh_gas_feedback(const float r2, const float *dx,
                                    const float hi, const float hj,
                                    struct bpart *restrict bi,
                                    struct part *restrict pj,
-                                   const struct xpart *restrict xpj,
+                                   struct xpart *restrict xpj,
                                    const struct cosmology *cosmo,
                                    const integertime_t ti_current) {
 #ifdef DEBUG_INTERACTIONS_BH

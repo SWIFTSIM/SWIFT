@@ -122,7 +122,7 @@ runner_iact_nonsym_bh_gas_density(const float r2, const float *dx,
 __attribute__((always_inline)) INLINE static void
 runner_iact_nonsym_bh_gas_swallow(const float r2, const float *dx,
                                   const float hi, const float hj,
-                                  struct bpart *restrict bi,
+                                  const struct bpart *restrict bi,
                                   struct part *restrict pj,
                                   struct xpart *restrict xpj,
                                   const struct cosmology *cosmo,
@@ -193,7 +193,7 @@ runner_iact_nonsym_bh_gas_swallow(const float r2, const float *dx,
 __attribute__((always_inline)) INLINE static void
 runner_iact_nonsym_bh_bh_swallow(const float r2, const float *dx,
                                  const float hi, const float hj,
-                                 struct bpart *restrict bi,
+                                 const struct bpart *restrict bi,
                                  struct bpart *restrict bj,
                                  const struct cosmology *cosmo,
                                  const integertime_t ti_current) {
@@ -207,7 +207,7 @@ runner_iact_nonsym_bh_bh_swallow(const float r2, const float *dx,
 
   const float v2_pec = v2 * cosmo->a2_inv;
 
-  /* Find the bigger of the two BHs */
+  /* Find the most massive of the two BHs */
   float M = bi->subgrid_mass;
   float h = hi;
   if (bj->subgrid_mass > M) {
@@ -215,7 +215,7 @@ runner_iact_nonsym_bh_bh_swallow(const float r2, const float *dx,
     h = hj;
   }
 
-  const float G = 43.;
+  const float G = 43.;  // MATTHIEU: Fix this!!!
 
   /* Merge if gravitationally bound
    * Note that we use the kernel support here as the size and not just the
@@ -246,7 +246,7 @@ runner_iact_nonsym_bh_bh_swallow(const float r2, const float *dx,
 __attribute__((always_inline)) INLINE static void
 runner_iact_nonsym_bh_gas_feedback(const float r2, const float *dx,
                                    const float hi, const float hj,
-                                   struct bpart *restrict bi,
+                                   const struct bpart *restrict bi,
                                    struct part *restrict pj,
                                    struct xpart *restrict xpj,
                                    const struct cosmology *cosmo,
