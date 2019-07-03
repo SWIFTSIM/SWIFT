@@ -3404,6 +3404,12 @@ void engine_launch(struct engine *e) {
 
   /* Sit back and wait for the runners to come home. */
   swift_barrier_wait(&e->wait_barrier);
+  
+  ///###
+  const size_t N_tot = e->s->nr_gparts - e->s->nr_inhibited_gparts;
+  const size_t N_gas = e->s->nr_gparts - e->s->nr_inhibited_gparts;
+  if(N_tot != N_gas)
+    error("Incompatible counts of particles!");
 
   if (e->verbose)
     message("took %.3f %s.", clocks_from_ticks(getticks() - tic),
