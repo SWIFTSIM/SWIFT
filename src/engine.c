@@ -29,6 +29,7 @@
 #include <float.h>
 #include <limits.h>
 #include <sched.h>
+#include <signal.h>
 #include <stdbool.h>
 #include <stdio.h>
 #include <stdlib.h>
@@ -123,6 +124,9 @@ const char *engine_policy_names[] = {"none",
                                      "black holes",
                                      "fof search",
                                      "time-step limiter"};
+
+/** The engine as a global variable (for messages and dumps only). */
+struct engine *engine_engine = NULL;
 
 /** The rank of the engine as a global variable (for messages). */
 int engine_rank;
@@ -4864,6 +4868,81 @@ void engine_unpin(void) {
 }
 
 /**
+ * @brief a signal handler function that will be invoked when the USR1 signal
+ * is sent to the application.
+ *
+ * What happens depends on how SWIFT has been configured, but we will attempt
+ * to dump the currently active tasks and memory log when configure. Once
+ * invoked the application will exit.
+ *
+ * When using an MPI application you need to make sure that all the ranks see
+ * this signal, this can be done in SLURM using "scancel -s USR1 <jobid>".
+ *
+ * @param signum the signal number, unused.
+ */
+static void engine_signal_handler(int signum) {
+
+#ifdef WITH_MPI
+  /* Let's try to do this all together and avoid truncation. */
+  MPI_Barrier(MPI_COMM_WORLD);
+#endif
+
+  /* Only one thread better do this as all can accept the signal and the main
+   * thread will propagate it. */
+  static int mine = 0;
+  atomic_inc(&mine);
+  if (mine == 1) {
+
+    /* If have an active engine dump all the tasks. */
+    if (engine_engine != NULL) {
+      task_dump_active(engine_engine);
+    } else {
+      message("No engine is active, so no task dump is possible");
+      fflush(stdout);
+    }
+
+#ifdef SWIFT_MEMUSE_REPORTS
+    /* Dump the currently logged memory. */
+    memuse_log_dump_error(engine_rank);
+#endif
+
+    /* Other interesting diagnostics... */
+
+    /* Release other threads. */
+    mine = -INT_MAX;
+  }
+
+  /* Other threads wait, as we don't want to exit early and cause truncation
+   * of the logs. */
+  while (mine > 0)
+    ;
+
+  /* Now the application exits. We don't use error() as that may attempt to
+   * dump the memory log */
+#ifdef WITH_MPI
+  MPI_Barrier(MPI_COMM_WORLD);
+  MPI_Abort(MPI_COMM_WORLD, -1);
+#else
+  swift_abort(1);
+#endif
+}
+
+/**
+ * @brief register a signal handler for the USR1 signal.
+ *
+ * When USR1 is intercepted the idea is to dump the state of the application
+ * in various ways and exit. This is hoped to be helpful when diagnosing
+ * issues with deadlocks.
+ */
+static void engine_register_signal_handler(void) {
+  struct sigaction action;
+  action.sa_handler = engine_signal_handler;
+  sigemptyset(&action.sa_mask);
+  action.sa_flags = 0;
+  sigaction(SIGUSR1, &action, NULL);
+}
+
+/**
  * @brief init an engine struct with the necessary properties for the
  *        simulation.
  *
@@ -5114,6 +5193,7 @@ void engine_config(int restart, int fof, struct engine *e,
   e->restart_dt = 0;
   e->run_fof = 0;
   engine_rank = nodeID;
+  engine_engine = e;
 
   if (restart && fof) {
     error(
@@ -5247,6 +5327,10 @@ void engine_config(int restart, int fof, struct engine *e,
     printf("].\n");
 #endif
   }
+
+  /* Register the function that handles USR1, this can be used to stop the
+   * application and dump logs of the current state. */
+  engine_register_signal_handler();
 
   /* Are we doing stuff in parallel? */
   if (nr_nodes > 1) {

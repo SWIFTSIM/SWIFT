@@ -116,6 +116,11 @@ enum engine_step_properties {
 #define engine_tasks_per_cell_margin 1.2
 
 /**
+ * @brief current engine for messages and dumps if needed.
+ */
+extern struct engine *engine_engine;
+
+/**
  * @brief The rank of the engine as a global variable (for messages).
  */
 extern int engine_rank;
