@@ -4332,23 +4332,29 @@ void cell_drift_part(struct cell *c, const struct engine *e, int force) {
 
       /* In non-periodic BC runs, remove particles that crossed the border */
       if (!periodic) {
+
         /* Did the particle leave the box?  */
         if ((p->x[0] > dim[0]) || (p->x[0] < 0.) ||  // x
             (p->x[1] > dim[1]) || (p->x[1] < 0.) ||  // y
             (p->x[2] > dim[2]) || (p->x[2] < 0.)) {  // z
 
-          /* One last action before death? */
-          hydro_remove_part(p, xp);
-
           lock_lock(&e->s->lock);
 
-          /* Remove the particle entirely */
-          struct gpart *gp = p->gpart;
-          cell_remove_part(e, c, p, xp);
+          /* Re-check that the particle has not been removed
+           * by another thread before we do the deed. */
+          if (!part_is_inhibited(p, e)) {
 
-          /* and it's gravity friend */
-          if (gp != NULL) {
-            cell_remove_gpart(e, c, gp);
+            /* One last action before death? */
+            hydro_remove_part(p, xp);
+
+            /* Remove the particle entirely */
+            struct gpart *gp = p->gpart;
+            cell_remove_part(e, c, p, xp);
+
+            /* and it's gravity friend */
+            if (gp != NULL) {
+              cell_remove_gpart(e, c, gp);
+            }
           }
 
           if (lock_unlock(&e->s->lock) != 0)
@@ -4497,6 +4503,7 @@ void cell_drift_gpart(struct cell *c, const struct engine *e, int force) {
 
       /* In non-periodic BC runs, remove particles that crossed the border */
       if (!periodic) {
+
         /* Did the particle leave the box?  */
         if ((gp->x[0] > dim[0]) || (gp->x[0] < 0.) ||  // x
             (gp->x[1] > dim[1]) || (gp->x[1] < 0.) ||  // y
@@ -4504,8 +4511,13 @@ void cell_drift_gpart(struct cell *c, const struct engine *e, int force) {
 
           lock_lock(&e->s->lock);
 
-          /* Remove the particle entirely */
-          cell_remove_gpart(e, c, gp);
+          /* Re-check that the particle has not been removed
+           * by another thread before we do the deed. */
+          if (!gpart_is_inhibited(gp, e)) {
+
+            /* Remove the particle entirely */
+            cell_remove_gpart(e, c, gp);
+          }
 
           if (lock_unlock(&e->s->lock) != 0)
             error("Failed to unlock the space!");
@@ -4632,6 +4644,7 @@ void cell_drift_spart(struct cell *c, const struct engine *e, int force) {
 
       /* In non-periodic BC runs, remove particles that crossed the border */
       if (!periodic) {
+
         /* Did the particle leave the box?  */
         if ((sp->x[0] > dim[0]) || (sp->x[0] < 0.) ||  // x
             (sp->x[1] > dim[1]) || (sp->x[1] < 0.) ||  // y
@@ -4639,12 +4652,17 @@ void cell_drift_spart(struct cell *c, const struct engine *e, int force) {
 
           lock_lock(&e->s->lock);
 
-          /* Remove the particle entirely */
-          struct gpart *gp = sp->gpart;
-          cell_remove_spart(e, c, sp);
+          /* Re-check that the particle has not been removed
+           * by another thread before we do the deed. */
+          if (!spart_is_inhibited(sp, e)) {
 
-          /* and it's gravity friend */
-          cell_remove_gpart(e, c, gp);
+            /* Remove the particle entirely */
+            struct gpart *gp = sp->gpart;
+            cell_remove_spart(e, c, sp);
+
+            /* and it's gravity friend */
+            cell_remove_gpart(e, c, gp);
+          }
 
           if (lock_unlock(&e->s->lock) != 0)
             error("Failed to unlock the space!");
@@ -4809,12 +4827,17 @@ void cell_drift_bpart(struct cell *c, const struct engine *e, int force) {
 
           lock_lock(&e->s->lock);
 
-          /* Remove the particle entirely */
-          struct gpart *gp = bp->gpart;
-          cell_remove_bpart(e, c, bp);
+          /* Re-check that the particle has not been removed
+           * by another thread before we do the deed. */
+          if (!bpart_is_inhibited(bp, e)) {
 
-          /* and it's gravity friend */
-          cell_remove_gpart(e, c, gp);
+            /* Remove the particle entirely */
+            struct gpart *gp = bp->gpart;
+            cell_remove_bpart(e, c, bp);
+
+            /* and it's gravity friend */
+            cell_remove_gpart(e, c, gp);
+          }
 
           if (lock_unlock(&e->s->lock) != 0)
             error("Failed to unlock the space!");
