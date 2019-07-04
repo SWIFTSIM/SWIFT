@@ -51,7 +51,7 @@
 #define FOF_COMPRESS_PATHS_MIN_LENGTH (2)
 
 /* Are we timing the FOF? */
-#define WITH_FOF_TIMING
+//#define WITH_FOF_TIMING
 
 /**
  * @brief Properties of a group used for black hole seeding
@@ -268,7 +268,7 @@ void fof_allocate(const struct space *s, const long long total_nr_DM_particles,
 
   /* Set initial group ID of the gparts */
   size_t group_id_default = props->group_id_default;
-  threadpool_map(&s->e->threadpool, fof_set_initial_group_id_mapper, s->parts,
+  threadpool_map(&s->e->threadpool, fof_set_initial_group_id_mapper, s->gparts,
                  s->nr_gparts, sizeof(struct gpart), 0, &group_id_default);
 
   /* Set initial group index */
