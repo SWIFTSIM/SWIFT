@@ -51,7 +51,7 @@
 #define FOF_COMPRESS_PATHS_MIN_LENGTH (2)
 
 /* Are we timing the FOF? */
-//#define WITH_FOF_TIMING
+#define WITH_FOF_TIMING
 
 /**
  * @brief Properties of a group used for black hole seeding
@@ -2164,12 +2164,6 @@ void fof_search_foreign_cells(struct fof_props *props, const struct space *s) {
     }
   }
   
-  if (verbose)
-    message(
-        "Initialising particle roots "
-        "took: %.3f %s.",
-        clocks_from_ticks(getticks() - tic_set_roots), clocks_getunit());
-
   /* Now set the roots */
   struct mapper_data data;
   data.group_index = group_index;
@@ -2178,6 +2172,12 @@ void fof_search_foreign_cells(struct fof_props *props, const struct space *s) {
   data.space_gparts = s->gparts;
   threadpool_map(&e->threadpool, fof_set_outgoing_root_mapper, local_cells,
                  num_cells_out, sizeof(struct cell **), 0, &data);
+
+  if (verbose)
+    message(
+        "Initialising particle roots "
+        "took: %.3f %s.",
+        clocks_from_ticks(getticks() - tic_set_roots), clocks_getunit());
 
   free(local_cells);
 
