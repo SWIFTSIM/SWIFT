@@ -99,7 +99,7 @@ runner_iact_nonsym_feedback_apply(const float r2, const float *dx,
     /* Set delaytime before which the particle cannot interact */
     pj->delay_time = si->feedback_data.to_distribute.simba_delay_time;
     pj->time_bin = time_bin_decoupled;
-    message("decoupled particle %llu delay_time %.5e", pj->id, pj->delay_time);
+    message("spart id %llu decoupled particle %llu delay_time %.5e rand %.5e prob %.5e", si->id, pj->id, pj->delay_time, rand_kick, prob_kick);
   }
 
   /* Now we can heat some other neighbours */

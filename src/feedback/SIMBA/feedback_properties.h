@@ -81,7 +81,7 @@ INLINE static void feedback_props_init(struct feedback_props *fp,
   fp->vwvf_scatter = parser_get_param_float(params,"SIMBAFeedback:wind_scatter"); // 0.1;
 
   /* read in delay time */
-  fp->simba_delay_time = parser_get_param_float(params,"SIMBAFeedback:delay_time") / units_cgs_conversion_factor(us, UNIT_CONV_TIME);
+  fp->simba_delay_time = parser_get_param_float(params,"SIMBAFeedback:delay_time"); // / units_cgs_conversion_factor(us, UNIT_CONV_TIME);
 
   /* read parameters for mass loading calculation */
   fp->simba_wind_mass_eta = parser_get_param_float(params,"SIMBAFeedback:wind_mass_eta");

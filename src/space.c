@@ -48,6 +48,7 @@
 #include "debug.h"
 #include "engine.h"
 #include "error.h"
+#include "feedback.h"
 #include "gravity.h"
 #include "hydro.h"
 #include "kernel_hydro.h"
@@ -4476,6 +4477,7 @@ void space_first_init_sparts_mapper(void *restrict map_data, int count,
   const struct engine *e = s->e;
 
   const struct chemistry_global_data *chemistry = e->chemistry;
+  const struct feedback_props *feedback_props = e->feedback_props;
 
 #ifdef SWIFT_DEBUG_CHECKS
   const ptrdiff_t delta = sp - s->sparts;
@@ -4532,6 +4534,9 @@ void space_first_init_sparts_mapper(void *restrict map_data, int count,
 
     /* Also initialise the chemistry */
     chemistry_first_init_spart(chemistry, &sp[k]);
+
+    /* And the feedback */
+    feedback_first_init_spart(&sp[k], feedback_props);
 
 #ifdef SWIFT_DEBUG_CHECKS
     if (sp[k].gpart && sp[k].gpart->id_or_neg_offset != -(k + delta))
