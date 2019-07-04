@@ -89,6 +89,7 @@ const char *taskID_names[task_type_count] = {"none",
                                              "stars_ghost",
                                              "stars_ghost_out",
                                              "stars_sort",
+                                             "stars_resort",
                                              "bh_in",
                                              "bh_out",
                                              "bh_density_ghost",
@@ -172,6 +173,7 @@ __attribute__((always_inline)) INLINE static enum task_actions task_acts_on(
     case task_type_drift_spart:
     case task_type_stars_ghost:
     case task_type_stars_sort:
+    case task_type_stars_resort:
       return task_action_spart;
       break;
 
@@ -431,6 +433,7 @@ void task_unlock(struct task *t) {
       break;
 
     case task_type_stars_sort:
+    case task_type_stars_resort:
       cell_sunlocktree(ci);
       break;
 
@@ -565,6 +568,7 @@ int task_lock(struct task *t) {
       break;
 
     case task_type_stars_sort:
+    case task_type_stars_resort:
       if (ci->stars.hold) return 0;
       if (cell_slocktree(ci) != 0) return 0;
       break;
