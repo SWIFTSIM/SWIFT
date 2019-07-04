@@ -4882,11 +4882,6 @@ void engine_unpin(void) {
  */
 static void engine_signal_handler(int signum) {
 
-#ifdef WITH_MPI
-  /* Let's try to do this all together and avoid truncation. */
-  MPI_Barrier(MPI_COMM_WORLD);
-#endif
-
   /* Only one thread better do this as all can accept the signal and the main
    * thread will propagate it. */
   static int mine = 0;
@@ -4908,6 +4903,13 @@ static void engine_signal_handler(int signum) {
 
     /* Other interesting diagnostics... */
 
+#ifdef WITH_MPI
+    /* Get all ranks to this position before we go on and terminate the
+     * application. Note only do this from one thread on each rank as that is
+     * the size of MPI_COMM_WORLD. */
+    MPI_Barrier(MPI_COMM_WORLD);
+#endif
+
     /* Release other threads. */
     mine = -INT_MAX;
   }
@@ -4920,7 +4922,6 @@ static void engine_signal_handler(int signum) {
   /* Now the application exits. We don't use error() as that may attempt to
    * dump the memory log */
 #ifdef WITH_MPI
-  MPI_Barrier(MPI_COMM_WORLD);
   MPI_Abort(MPI_COMM_WORLD, -1);
 #else
   swift_abort(1);
