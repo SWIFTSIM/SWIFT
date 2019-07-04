@@ -178,6 +178,39 @@ void fof_create_mpi_types() {
 #endif
 }
 
+void fof_set_initial_group_index_mapper(void *map_data, int num_elements,
+                                        void *extra_data) {
+  size_t *group_index = (size_t *)map_data;
+  size_t *group_index_start = (size_t *)extra_data;
+
+  const ptrdiff_t offset = group_index - group_index_start;
+
+  for (int i = 0; i < num_elements; ++i) {
+    group_index[i] = i + offset;
+  }
+}
+
+void fof_set_initial_group_size_mapper(void *map_data, int num_elements,
+                                       void *extra_data) {
+
+  size_t *group_size = (size_t *)map_data;
+  for (int i = 0; i < num_elements; ++i) {
+    group_size[i] = 1;
+  }
+}
+
+void fof_set_initial_group_id_mapper(void *map_data, int num_elements,
+                                     void *extra_data) {
+
+  /* Unpack the information */
+  struct gpart *gparts = (struct gpart *)map_data;
+  const size_t group_id_default = *((size_t *)extra_data);
+
+  for (int i = 0; i < num_elements; ++i) {
+    gparts[i].group_id = group_id_default;
+  }
+}
+
 /**
  * @brief Allocate the memory and initialise the arrays for a FOF calculation.
  *
@@ -223,32 +256,29 @@ void fof_allocate(const struct space *s, const long long total_nr_DM_particles,
         "check more than one layer of top-level cells for links.");
 #endif
 
-  const size_t nr_local_gparts = s->nr_gparts;
-  struct gpart *gparts = s->gparts;
-
   /* Allocate and initialise a group index array. */
   if (swift_memalign("fof_group_index", (void **)&props->group_index, 64,
-                     nr_local_gparts * sizeof(size_t)) != 0)
+                     s->nr_gparts * sizeof(size_t)) != 0)
     error("Failed to allocate list of particle group indices for FOF search.");
 
   /* Allocate and initialise a group size array. */
   if (swift_memalign("fof_group_size", (void **)&props->group_size, 64,
-                     nr_local_gparts * sizeof(size_t)) != 0)
+                     s->nr_gparts * sizeof(size_t)) != 0)
     error("Failed to allocate list of group size for FOF search.");
 
   /* Set initial group ID of the gparts */
-  const size_t group_id_default = props->group_id_default;
-  for (size_t i = 0; i < nr_local_gparts; i++) {
-    gparts[i].group_id = group_id_default;
-  }
+  size_t group_id_default = props->group_id_default;
+  threadpool_map(&s->e->threadpool, fof_set_initial_group_id_mapper, s->parts,
+                 s->nr_gparts, sizeof(struct gpart), 0, &group_id_default);
 
-  /* Set initial group index and group size */
-  size_t *group_index = props->group_index;
-  size_t *group_size = props->group_size;
-  for (size_t i = 0; i < nr_local_gparts; i++) {
-    group_index[i] = i;
-    group_size[i] = 1;
-  }
+  /* Set initial group index */
+  threadpool_map(&s->e->threadpool, fof_set_initial_group_index_mapper,
+                 props->group_index, s->nr_gparts, sizeof(size_t), 0,
+                 props->group_index);
+
+  /* Set initial group sizes */
+  threadpool_map(&s->e->threadpool, fof_set_initial_group_size_mapper,
+                 props->group_size, s->nr_gparts, sizeof(size_t), 0, NULL);
 
 #ifdef SWIFT_DEBUG_CHECKS
   ti_current = s->e->ti_current;
