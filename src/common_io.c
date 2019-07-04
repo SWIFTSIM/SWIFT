@@ -994,6 +994,26 @@ void io_convert_gpart_f_mapper(void* restrict temp, int N,
 }
 
 /**
+ * @brief Mapper function to copy #gpart into a buffer of ints using a
+ * conversion function.
+ */
+void io_convert_gpart_i_mapper(void* restrict temp, int N,
+                               void* restrict extra_data) {
+
+  const struct io_props props = *((const struct io_props*)extra_data);
+  const struct gpart* restrict gparts = props.gparts;
+  const struct engine* e = props.e;
+  const size_t dim = props.dimension;
+
+  /* How far are we with this chunk? */
+  int* restrict temp_i = (int*)temp;
+  const ptrdiff_t delta = (temp_i - props.start_temp_i) / dim;
+
+  for (int i = 0; i < N; i++)
+    props.convert_gpart_i(e, gparts + delta + i, &temp_i[i * dim]);
+}
+
+/**
  * @brief Mapper function to copy #gpart into a buffer of doubles using a
  * conversion function.
  */
@@ -1054,6 +1074,26 @@ void io_convert_spart_f_mapper(void* restrict temp, int N,
 }
 
 /**
+ * @brief Mapper function to copy #spart into a buffer of ints using a
+ * conversion function.
+ */
+void io_convert_spart_i_mapper(void* restrict temp, int N,
+                               void* restrict extra_data) {
+
+  const struct io_props props = *((const struct io_props*)extra_data);
+  const struct spart* restrict sparts = props.sparts;
+  const struct engine* e = props.e;
+  const size_t dim = props.dimension;
+
+  /* How far are we with this chunk? */
+  int* restrict temp_i = (int*)temp;
+  const ptrdiff_t delta = (temp_i - props.start_temp_i) / dim;
+
+  for (int i = 0; i < N; i++)
+    props.convert_spart_i(e, sparts + delta + i, &temp_i[i * dim]);
+}
+
+/**
  * @brief Mapper function to copy #spart into a buffer of doubles using a
  * conversion function.
  */
@@ -1111,6 +1151,26 @@ void io_convert_bpart_f_mapper(void* restrict temp, int N,
 
   for (int i = 0; i < N; i++)
     props.convert_bpart_f(e, bparts + delta + i, &temp_f[i * dim]);
+}
+
+/**
+ * @brief Mapper function to copy #bpart into a buffer of ints using a
+ * conversion function.
+ */
+void io_convert_bpart_i_mapper(void* restrict temp, int N,
+                               void* restrict extra_data) {
+
+  const struct io_props props = *((const struct io_props*)extra_data);
+  const struct bpart* restrict bparts = props.bparts;
+  const struct engine* e = props.e;
+  const size_t dim = props.dimension;
+
+  /* How far are we with this chunk? */
+  int* restrict temp_i = (int*)temp;
+  const ptrdiff_t delta = (temp_i - props.start_temp_i) / dim;
+
+  for (int i = 0; i < N; i++)
+    props.convert_bpart_i(e, bparts + delta + i, &temp_i[i * dim]);
 }
 
 /**
@@ -1245,6 +1305,17 @@ void io_copy_temp_buffer(void* temp, const struct engine* e,
       threadpool_map((struct threadpool*)&e->threadpool,
                      io_convert_gpart_f_mapper, temp_f, N, copySize, 0,
                      (void*)&props);
+    } else if (props.convert_gpart_i != NULL) {
+
+      /* Prepare some parameters */
+      int* temp_i = (int*)temp;
+      props.start_temp_i = (int*)temp;
+      props.e = e;
+
+      /* Copy the whole thing into a buffer */
+      threadpool_map((struct threadpool*)&e->threadpool,
+                     io_convert_gpart_i_mapper, temp_i, N, copySize, 0,
+                     (void*)&props);
 
     } else if (props.convert_gpart_d != NULL) {
 
@@ -1281,6 +1352,17 @@ void io_copy_temp_buffer(void* temp, const struct engine* e,
       threadpool_map((struct threadpool*)&e->threadpool,
                      io_convert_spart_f_mapper, temp_f, N, copySize, 0,
                      (void*)&props);
+    } else if (props.convert_spart_i != NULL) {
+
+      /* Prepare some parameters */
+      int* temp_i = (int*)temp;
+      props.start_temp_i = (int*)temp;
+      props.e = e;
+
+      /* Copy the whole thing into a buffer */
+      threadpool_map((struct threadpool*)&e->threadpool,
+                     io_convert_spart_i_mapper, temp_i, N, copySize, 0,
+                     (void*)&props);
 
     } else if (props.convert_spart_d != NULL) {
 
@@ -1316,6 +1398,18 @@ void io_copy_temp_buffer(void* temp, const struct engine* e,
       /* Copy the whole thing into a buffer */
       threadpool_map((struct threadpool*)&e->threadpool,
                      io_convert_bpart_f_mapper, temp_f, N, copySize, 0,
+                     (void*)&props);
+
+    } else if (props.convert_bpart_i != NULL) {
+
+      /* Prepare some parameters */
+      int* temp_i = (int*)temp;
+      props.start_temp_i = (int*)temp;
+      props.e = e;
+
+      /* Copy the whole thing into a buffer */
+      threadpool_map((struct threadpool*)&e->threadpool,
+                     io_convert_bpart_i_mapper, temp_i, N, copySize, 0,
                      (void*)&props);
 
     } else if (props.convert_bpart_d != NULL) {
