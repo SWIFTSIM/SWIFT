@@ -219,11 +219,12 @@ runner_iact_nonsym_bh_bh_swallow(const float r2, const float *dx,
 
   const float G = 43.;  // MATTHIEU: Fix this!!!
 
-  /* The BH with the smaller ID will be merged onto the one with the larger ID
-   */
-  if (bj->id < bi->id) {
-
-    message("ID is smaller");
+  /* The BH with the smaller mass will be merged onto the one with the
+   * larger mass.
+   * To avoid rounding issues, we additionally check for IDs if the BHs
+   * have the exact same mass. */
+  if ((bj->subgrid_mass < bi->subgrid_mass) ||
+      (bj->subgrid_mass == bi->subgrid_mass && bj->id < bi->id)) {
 
     /* Merge if gravitationally bound
      * Note that we use the kernel support here as the size and not just the
@@ -234,11 +235,15 @@ runner_iact_nonsym_bh_bh_swallow(const float r2, const float *dx,
 
       /* This particle is swallowed by the BH with the largest ID of all the
        * candidates wanting to swallow it */
-      if (bj->merger_data.swallow_id < bi->id) {
+      if ((bj->merger_data.swallow_mass < bi->subgrid_mass) ||
+          (bj->merger_data.swallow_mass == bi->subgrid_mass &&
+           bj->merger_data.swallow_id < bi->id)) {
 
         message("BH %lld wants to swallow BH particle %lld", bi->id, bj->id);
 
         bj->merger_data.swallow_id = bi->id;
+        bj->merger_data.swallow_mass = bi->subgrid_mass;
+
       } else {
 
         message(

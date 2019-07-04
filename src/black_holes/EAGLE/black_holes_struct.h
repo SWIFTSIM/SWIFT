@@ -35,6 +35,9 @@ struct black_holes_bpart_data {
 
   /*! ID of the black-hole that will swallow this #bpart. */
   long long swallow_id;
+
+  /*! Mass of the black-hole that will swallow this #bpart. */
+  float swallow_mass;
 };
 
 /**
@@ -82,6 +85,7 @@ __attribute__((always_inline)) INLINE static void
 black_holes_mark_bpart_as_not_swallowed(struct black_holes_bpart_data* p_data) {
 
   p_data->swallow_id = -1;
+  p_data->swallow_mass = 0.f;
 }
 
 /**
@@ -94,6 +98,7 @@ __attribute__((always_inline)) INLINE static void
 black_holes_mark_bpart_as_merged(struct black_holes_bpart_data* p_data) {
 
   p_data->swallow_id = -2;
+  p_data->swallow_mass = -1.f;
 }
 
 /**
