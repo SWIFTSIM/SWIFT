@@ -2165,6 +2165,7 @@ void fof_search_foreign_cells(struct fof_props *props, const struct space *s) {
         "took: %.3f %s.",
         clocks_from_ticks(getticks() - tic), clocks_getunit());
 
+  /* Activate the tasks exchanging all the required gparts */
   engine_activate_gpart_comms(e);
 
   ticks local_fof_tic = getticks();
