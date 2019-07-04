@@ -2032,6 +2032,12 @@ void fof_search_foreign_cells(struct fof_props *props, const struct space *s) {
     }
   }
 
+  if (verbose)
+    message(
+        "Finding max no. of cells + offset IDs"
+        "took: %.3f %s.",
+        clocks_from_ticks(getticks() - tic), clocks_getunit());
+
   const int cell_pair_size = num_cells_in * num_cells_out;
 
   if (swift_memalign("fof_group_links", (void **)&props->group_links,
@@ -2043,6 +2049,8 @@ void fof_search_foreign_cells(struct fof_props *props, const struct space *s) {
                      SWIFT_STRUCT_ALIGNMENT,
                      cell_pair_size * sizeof(struct cell_pair_indices)) != 0)
     error("Error while allocating memory for FOF cell pair indices");
+
+  ticks tic_pairs = getticks();
 
   /* Loop over cells_in and cells_out for each proxy and find which cells are in
    * range of each other to perform the FOF search. Store local cells that are
@@ -2086,6 +2094,14 @@ void fof_search_foreign_cells(struct fof_props *props, const struct space *s) {
     }
   }
 
+  if (verbose)
+    message(
+        "Finding local/foreign cell pairs"
+        "took: %.3f %s.",
+        clocks_from_ticks(getticks() - tic_pairs), clocks_getunit());
+
+  ticks tic_set_roots = getticks();
+
   /* Set the root of outgoing particles. */
   for (int i = 0; i < e->nr_proxies; i++) {
 
@@ -2106,6 +2122,12 @@ void fof_search_foreign_cells(struct fof_props *props, const struct space *s) {
       }
     }
   }
+  
+  if (verbose)
+    message(
+        "Initialising particle roots "
+        "took: %.3f %s.",
+        clocks_from_ticks(getticks() - tic_set_roots), clocks_getunit());
 
   if (verbose)
     message(
