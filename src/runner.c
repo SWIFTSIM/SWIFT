@@ -3822,10 +3822,15 @@ void runner_do_swallow(struct runner *r, struct cell *c, int timer) {
 
               lock_lock(&e->s->lock);
 
-              /* Finally, remove the gas particle from the system */
-              struct gpart *gp = p->gpart;
-              cell_remove_part(e, c, p, xp);
-              cell_remove_gpart(e, c, gp);
+              /* Re-check that the particle has not been removed
+               * by another thread before we do the deed. */
+              if (!part_is_inhibited(p, e)) {
+
+                /* Finally, remove the gas particle from the system */
+                struct gpart *gp = p->gpart;
+                cell_remove_part(e, c, p, xp);
+                cell_remove_gpart(e, c, gp);
+              }
 
               if (lock_unlock(&e->s->lock) != 0)
                 error("Failed to unlock the space!");
@@ -3860,10 +3865,15 @@ void runner_do_swallow(struct runner *r, struct cell *c, int timer) {
 
               lock_lock(&e->s->lock);
 
-              /* Finally, remove the gas particle from the system */
-              struct gpart *gp = p->gpart;
-              cell_remove_part(e, c, p, xp);
-              cell_remove_gpart(e, c, gp);
+              /* Re-check that the particle has not been removed
+               * by another thread before we do the deed. */
+              if (!part_is_inhibited(p, e)) {
+
+                /* Finally, remove the gas particle from the system */
+                struct gpart *gp = p->gpart;
+                cell_remove_part(e, c, p, xp);
+                cell_remove_gpart(e, c, gp);
+              }
 
               if (lock_unlock(&e->s->lock) != 0)
                 error("Failed to unlock the space!");
