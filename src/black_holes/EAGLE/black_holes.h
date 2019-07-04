@@ -235,6 +235,18 @@ __attribute__((always_inline)) INLINE static void black_holes_swallow_part(
 }
 
 /**
+ * @brief Update the properties of a black hole particles by swallowing
+ * a BH particle.
+ *
+ * @param bpi The #bpart to update.
+ * @param bpj The #bpart that is swallowed.
+ * @param cosmo The current cosmological model.
+ */
+__attribute__((always_inline)) INLINE static void black_holes_swallow_bpart(
+    struct bpart* bpi, const struct bpart* bpj, const struct cosmology* cosmo) {
+}
+
+/**
  * @brief Compute the accretion rate of the black hole and all the quantites
  * required for the feedback loop.
  *

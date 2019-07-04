@@ -4031,7 +4031,7 @@ void runner_do_bh_swallow(struct runner *r, struct cell *c, int timer) {
             lock_lock(&s->lock);
 
             /* Swallow the gas particle (i.e. update the BH properties) */
-            // black_holes_swallow_part(bp, p, xp, e->cosmology);
+            black_holes_swallow_bpart(bp, cell_bp, e->cosmology);
 
             /* Release the space as we are done updating the bpart */
             if (lock_unlock(&s->lock) != 0)
@@ -4061,9 +4061,9 @@ void runner_do_bh_swallow(struct runner *r, struct cell *c, int timer) {
 
 #ifdef WITH_MPI
 
-        /* We could also be in the case of a local gas particle being
+        /* We could also be in the case of a local BH particle being
          * swallowed by a foreign BH. In this case, we won't update the
-         * BH but just remove the particle from the local list. */
+         * foreign BH but just remove the particle from the local list. */
         if (c->nodeID == e->nodeID && !found) {
 
           /* Let's look for the foreign hungry black hole */
