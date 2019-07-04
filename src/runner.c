@@ -3129,29 +3129,29 @@ void runner_do_timestep(struct runner *r, struct cell *c, int timer) {
 
         if (!part_is_inhibited(p, e)) {
 
-        const integertime_t ti_end =
-            get_integer_time_end(ti_current, p->time_bin);
+          const integertime_t ti_end =
+              get_integer_time_end(ti_current, p->time_bin);
 
-        const integertime_t ti_beg =
-            get_integer_time_begin(ti_current + 1, p->time_bin);
-
-        /* What is the next sync-point ? */
-        ti_hydro_end_min = min(ti_end, ti_hydro_end_min);
-        ti_hydro_end_max = max(ti_end, ti_hydro_end_max);
-
-        /* What is the next starting point for this cell ? */
-        ti_hydro_beg_max = max(ti_beg, ti_hydro_beg_max);
-
-        if (p->gpart != NULL) {
+          const integertime_t ti_beg =
+              get_integer_time_begin(ti_current + 1, p->time_bin);
 
           /* What is the next sync-point ? */
-          ti_gravity_end_min = min(ti_end, ti_gravity_end_min);
-          ti_gravity_end_max = max(ti_end, ti_gravity_end_max);
+          ti_hydro_end_min = min(ti_end, ti_hydro_end_min);
+          ti_hydro_end_max = max(ti_end, ti_hydro_end_max);
 
           /* What is the next starting point for this cell ? */
-          ti_gravity_beg_max = max(ti_beg, ti_gravity_beg_max);
+          ti_hydro_beg_max = max(ti_beg, ti_hydro_beg_max);
+
+          if (p->gpart != NULL) {
+
+            /* What is the next sync-point ? */
+            ti_gravity_end_min = min(ti_end, ti_gravity_end_min);
+            ti_gravity_end_max = max(ti_end, ti_gravity_end_max);
+
+            /* What is the next starting point for this cell ? */
+            ti_gravity_beg_max = max(ti_beg, ti_gravity_beg_max);
+          }
         }
-	}
       }
     }
 
@@ -3257,21 +3257,21 @@ void runner_do_timestep(struct runner *r, struct cell *c, int timer) {
 
         if (!spart_is_inhibited(sp, e)) {
 
-        const integertime_t ti_end =
-            get_integer_time_end(ti_current, sp->time_bin);
+          const integertime_t ti_end =
+              get_integer_time_end(ti_current, sp->time_bin);
 
-        const integertime_t ti_beg =
-            get_integer_time_begin(ti_current + 1, sp->time_bin);
+          const integertime_t ti_beg =
+              get_integer_time_begin(ti_current + 1, sp->time_bin);
 
-        ti_stars_end_min = min(ti_end, ti_stars_end_min);
-        ti_stars_end_max = max(ti_end, ti_stars_end_max);
-        ti_gravity_end_min = min(ti_end, ti_gravity_end_min);
-        ti_gravity_end_max = max(ti_end, ti_gravity_end_max);
+          ti_stars_end_min = min(ti_end, ti_stars_end_min);
+          ti_stars_end_max = max(ti_end, ti_stars_end_max);
+          ti_gravity_end_min = min(ti_end, ti_gravity_end_min);
+          ti_gravity_end_max = max(ti_end, ti_gravity_end_max);
 
-        /* What is the next starting point for this cell ? */
-        ti_stars_beg_max = max(ti_beg, ti_stars_beg_max);
-        ti_gravity_beg_max = max(ti_beg, ti_gravity_beg_max);
-      }
+          /* What is the next starting point for this cell ? */
+          ti_stars_beg_max = max(ti_beg, ti_stars_beg_max);
+          ti_gravity_beg_max = max(ti_beg, ti_gravity_beg_max);
+        }
       }
     }
 
@@ -3812,12 +3812,12 @@ void runner_do_gas_swallow(struct runner *r, struct cell *c, int timer) {
             if (lock_unlock(&s->lock) != 0)
               error("Failed to unlock the space.");
 
-            message("BH %lld swallowing particle %lld", bp->id, p->id);
+            message("BH %lld swallowing gas particle %lld", bp->id, p->id);
 
             /* If the gas particle is local, remove it */
             if (c->nodeID == e->nodeID) {
 
-              message("BH %lld removing particle %lld", bp->id, p->id);
+              message("BH %lld removing gas particle %lld", bp->id, p->id);
 
               lock_lock(&e->s->lock);
 
@@ -3859,7 +3859,7 @@ void runner_do_gas_swallow(struct runner *r, struct cell *c, int timer) {
 
             if (bp->id == BH_id) {
 
-              message("BH %lld removing particle %lld (foreign BH case)",
+              message("BH %lld removing gas particle %lld (foreign BH case)",
                       bp->id, p->id);
 
               lock_lock(&e->s->lock);
@@ -4037,17 +4037,17 @@ void runner_do_bh_swallow(struct runner *r, struct cell *c, int timer) {
             if (lock_unlock(&s->lock) != 0)
               error("Failed to unlock the space.");
 
-            message("BH %lld swallowing particle %lld", bp->id, cell_bp->id);
+            message("BH %lld swallowing BH particle %lld", bp->id, cell_bp->id);
 
             /* If the gas particle is local, remove it */
             if (c->nodeID == e->nodeID) {
 
-              message("BH %lld removing particle %lld", bp->id, cell_bp->id);
+              message("BH %lld removing BH particle %lld", bp->id, cell_bp->id);
 
               /* Finally, remove the gas particle from the system */
-              struct gpart *gp = cell_bp->gpart;
+              struct gpart *cell_gp = cell_bp->gpart;
               cell_remove_bpart(e, c, cell_bp);
-              cell_remove_gpart(e, c, gp);
+              cell_remove_gpart(e, c, cell_gp);
             }
 
             /* In any case, prevent the particle from being re-swallowed */
@@ -4074,13 +4074,13 @@ void runner_do_bh_swallow(struct runner *r, struct cell *c, int timer) {
 
             if (bp->id == BH_id) {
 
-              message("BH %lld removing particle %lld (foreign BH case)",
+              message("BH %lld removing BH particle %lld (foreign BH case)",
                       bp->id, cell_bp->id);
 
               /* Finally, remove the gas particle from the system */
-              // struct gpart *gp = p->gpart;
-              // cell_remove_part(e, c, p, xp);
-              // cell_remove_gpart(e, c, gp);
+              struct gpart *cell_gp = cell_bp->gpart;
+              cell_remove_bpart(e, c, cell_bp);
+              cell_remove_gpart(e, c, cell_gp);
 
               found = 1;
               break;
