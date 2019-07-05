@@ -3327,6 +3327,7 @@ void engine_skip_force_and_kick(struct engine *e) {
         t->type == task_type_drift_gpart_out || t->type == task_type_cooling ||
         t->type == task_type_stars_in || t->type == task_type_stars_out ||
         t->type == task_type_star_formation ||
+        t->type == task_type_stars_resort ||
         t->type == task_type_extra_ghost ||
         t->type == task_type_bh_swallow_ghost1 ||
         t->type == task_type_bh_swallow_ghost2 ||
