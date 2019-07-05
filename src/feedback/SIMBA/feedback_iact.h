@@ -75,12 +75,13 @@ runner_iact_nonsym_feedback_apply(const float r2, const float *dx,
 
   /* Get the probability of doing feedback */
   // Compute mass loading which will determine probability
-  const float prob_kick = 1./50.; // ALEXEI: just set to random constant for now
-  const float prob_heat = prob_kick; // ALEXEI: placeholder
+  //const double prob_kick = 1./50.; // ALEXEI: just set to random constant for now
+  const double prob_kick = si->feedback_data.to_distribute.feedback_probability;
+  const double prob_heat = prob_kick; // ALEXEI: placeholder
 
   /* First we kick a particle */
   /* Draw a random number (Note mixing both IDs) */
-  const float rand_kick = random_unit_interval(si->id + pj->id, ti_current, random_number_stellar_feedback);
+  const double rand_kick = random_unit_interval(si->id + pj->id, ti_current, random_number_stellar_feedback);
 
   /* Are we lucky? */
   if (rand_kick < prob_kick) {

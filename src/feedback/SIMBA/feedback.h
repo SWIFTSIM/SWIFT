@@ -107,6 +107,11 @@ inline void compute_heating(struct spart *sp, const struct feedback_props *feedb
   sp->feedback_data.to_distribute.u_extra = max(u_SN - u_wind, 0.);
 };
 
+inline void compute_feedback_probability(struct spart *sp) {
+  const float mass_frac = sp->feedback_data.to_distribute.wind_mass/sp->mass;
+  sp->feedback_data.to_distribute.feedback_probability = 1. - exp(-mass_frac);
+}
+
 /**
  * @brief Prepares a s-particle for its feedback interactions
  *
@@ -205,6 +210,9 @@ __attribute__((always_inline)) INLINE static void feedback_evolve_spart(
 
   /* Compute residual heating */
   compute_heating(sp, feedback_props);
+
+  /* Compute probability of doing feedback */
+  compute_feedback_probability(sp);
 
 }
 

@@ -55,6 +55,9 @@ struct feedback_spart_data {
       /* Excess energy after kicking particle converted to thermal */
       float u_extra;
 
+      /* Probability of kicking particle */
+      double feedback_probability;
+
     } to_distribute;
 
     float host_galaxy_mass;
