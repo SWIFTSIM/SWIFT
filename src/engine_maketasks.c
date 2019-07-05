@@ -775,9 +775,6 @@ void engine_make_hierarchical_tasks_common(struct engine *e, struct cell *c) {
     if (with_star_formation && c->hydro.count > 0) {
       c->hydro.star_formation = scheduler_addtask(
           s, task_type_star_formation, task_subtype_none, 0, 0, c, NULL);
-      c->hydro.stars_resort = scheduler_addtask(
-          s, task_type_stars_resort, task_subtype_none, 0, 0, c, NULL);
-      scheduler_addunlock(s, c->hydro.star_formation, c->hydro.stars_resort);
     }
   }
 
@@ -810,6 +807,11 @@ void engine_make_hierarchical_tasks_common(struct engine *e, struct cell *c) {
       if (with_star_formation && c->hydro.count > 0) {
         scheduler_addunlock(s, c->kick2, c->top->hydro.star_formation);
         scheduler_addunlock(s, c->top->hydro.star_formation, c->timestep);
+
+        c->hydro.stars_resort = scheduler_addtask(
+            s, task_type_stars_resort, task_subtype_none, 0, 0, c, NULL);
+        scheduler_addunlock(s, c->top->hydro.star_formation,
+                            c->hydro.stars_resort);
       }
 
       /* Time-step limiting */
@@ -1078,7 +1080,8 @@ void engine_make_hierarchical_tasks_hydro(struct engine *e, struct cell *c) {
         scheduler_addunlock(s, c->stars.stars_out, c->super->timestep);
 
         if (with_star_formation && c->hydro.count > 0) {
-          scheduler_addunlock(s, c->top->hydro.stars_resort, c->stars.stars_in);
+          scheduler_addunlock(s, c->super->hydro.stars_resort,
+                              c->stars.stars_in);
         }
       }
 

@@ -1180,8 +1180,7 @@ void runner_do_star_formation(struct runner *r, struct cell *c, int timer) {
             /* Did we get a star? (Or did we run out of spare ones?) */
             if (sp != NULL) {
 
-              /* message("We formed a star id=%lld cellID=%d", sp->id,
-               * c->cellID); */
+              message("We formed a star id=%lld cellID=%d", sp->id, c->cellID);
 
               /* Copy the properties of the gas particle to the star particle */
               star_formation_copy_properties(p, xp, sp, e, sf_props, cosmo,
@@ -1236,7 +1235,7 @@ void runner_do_stars_resort(struct runner *r, struct cell *c, const int timer) {
 
 #ifdef SWIFT_DEBUG_CHECKS
   if (c->nodeID != r->e->nodeID) error("Task must be run locally!");
-  if (c->depth != 0) error("Task must be run at the top-level");
+  if (c->hydro.super != c) error("Task must be run at the super-level");
 #endif
 
   TIMER_TIC;
