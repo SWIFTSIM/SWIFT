@@ -78,8 +78,10 @@ FOF:
 Scheduler:
   nr_queues:                 0         # (Optional) The number of task queues to use. Use 0  to let the system decide.
   cell_max_size:             8000000   # (Optional) Maximal number of interactions per task if we force the split (this is the default value).
-  cell_sub_size_pair_hydro:  256000000 # (Optional) Maximal number of interactions per sub-pair hydro task  (this is the default value).
-  cell_sub_size_self_hydro:  32000     # (Optional) Maximal number of interactions per sub-self hydro task  (this is the default value).
+  cell_sub_size_pair_hydro:  256000000 # (Optional) Maximal number of hydro-hydro interactions per sub-pair hydro/star task (this is the default value).
+  cell_sub_size_self_hydro:  32000     # (Optional) Maximal number of hydro-hydro interactions per sub-self hydro/star task (this is the default value).
+  cell_sub_size_pair_stars:  256000000 # (Optional) Maximal number of hydro-star interactions per sub-pair hydro/star task (this is the default value).
+  cell_sub_size_self_stars:  32000     # (Optional) Maximal number of hydro-star interactions per sub-self hydro/star task (this is the default value).
   cell_sub_size_pair_grav:   256000000 # (Optional) Maximal number of interactions per sub-pair gravity task  (this is the default value).
   cell_sub_size_self_grav:   32000     # (Optional) Maximal number of interactions per sub-self gravity task  (this is the default value).
   cell_split_size:           400       # (Optional) Maximal number of particles per cell (this is the default value).
