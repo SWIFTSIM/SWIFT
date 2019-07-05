@@ -676,22 +676,29 @@ static void scheduler_splittask_hydro(struct task *t, struct scheduler *s) {
         int do_sub_stars_i = 1;
         int do_sub_stars_j = 1;
         if (h_count_i > 0 && h_count_j > 0) {
+
+          /* Note: Use division to avoid integer overflow. */
           do_sub_hydro =
-              h_count_j * sid_scale[sid] < space_subsize_pair_hydro / h_count_j;
+              h_count_i * sid_scale[sid] < space_subsize_pair_hydro / h_count_j;
         }
         if (s_count_i > 0 && h_count_j > 0) {
+
+          /* Note: Use division to avoid integer overflow. */
           do_sub_stars_i =
               s_count_i * sid_scale[sid] < space_subsize_pair_stars / h_count_j;
         }
         if (s_count_j > 0 && h_count_i > 0) {
+
+          /* Note: Use division to avoid integer overflow. */
           do_sub_stars_j =
               s_count_j * sid_scale[sid] < space_subsize_pair_stars / h_count_i;
         }
 
         /* Replace by a single sub-task? */
-        if (scheduler_dosub && /* Use division to avoid integer overflow. */
-            do_sub_hydro && do_sub_stars_i && do_sub_stars_j &&
+        if (scheduler_dosub &&
+            (do_sub_hydro && do_sub_stars_i && do_sub_stars_j) &&
             !sort_is_corner(sid)) {
+
           /* Make this task a sub task. */
           t->type = task_type_sub_pair;
 
