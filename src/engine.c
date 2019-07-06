@@ -5545,7 +5545,7 @@ void engine_config(int restart, int fof, struct engine *e,
 
     /* Hours between restart dumps. Can be changed on restart. */
     float dhours =
-        parser_get_opt_param_float(params, "Restarts:delta_hours", 6.0);
+        parser_get_opt_param_float(params, "Restarts:delta_hours", 5.0f);
     if (e->nodeID == 0) {
       if (e->restart_dump)
         message("Restarts will be dumped every %f hours", dhours);

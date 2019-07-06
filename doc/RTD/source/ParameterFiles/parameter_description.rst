@@ -557,10 +557,10 @@ other options require the ``enable`` parameter to be set to ``1``.
 * Whether or not to dump a set of restart file on regular exit: ``onexit``
   (default: ``0``),
 * The wall-clock time in hours between two sets of restart files:
-  ``delta_hours`` (default: ``6.0``).
+  ``delta_hours`` (default: ``5.0``).
 
 Note that there is no buffer time added to the ``delta_hours`` value. If the
-system's batch queue run time limit is set to 6 hours, the user must specify a
+system's batch queue run time limit is set to 5 hours, the user must specify a
 smaller value to allow for enough time to safely dump the check-point files.
 
 * The sub-directory in which to store the restart files: ``subdir`` (default:
@@ -613,7 +613,7 @@ hours after which a shell command will be run, one would use:
     onexit:             0
     subdir:             restart    # Sub-directory of the directory where SWIFT is run
     basename:           swift
-    delta_hours:        6.0
+    delta_hours:        5.0
     stop_steps:         100
     max_run_time:       24.0       # In hours
     resubmit_on_exit:   1
