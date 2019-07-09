@@ -4346,7 +4346,7 @@ void cell_drift_part(struct cell *c, const struct engine *e, int force) {
             cell_remove_part(e, c, p, xp);
 
             /* and it's gravity friend */
-            if (gp != NULL) {
+            if(gp != NULL && !gpart_is_inhibited(gp, e)) {
               cell_remove_gpart(e, c, gp);
             }
           }
@@ -5317,6 +5317,10 @@ void cell_remove_part(const struct engine *e, struct cell *c, struct part *p,
  */
 void cell_remove_gpart(const struct engine *e, struct cell *c,
                        struct gpart *gp) {
+  /* Don't remove a particle twice */
+  if (gp->time_bin == time_bin_inhibited)
+    return;
+  
   /* Quick cross-check */
   if (c->nodeID != e->nodeID)
     error("Can't remove a particle in a foreign cell.");
