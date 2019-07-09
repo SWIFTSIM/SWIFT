@@ -153,8 +153,9 @@ void engine_mark_cells_for_hydro_send_tasks_rec(struct engine *e,
       const cell *cip = ci->progeny[csp->pairs[k].pid];
       const cell *cjp = ci->progeny[csp->pairs[k].pjd];
       if (cip && cjp) {
-      engine_mark_cells_for_hydro_send_tasks_rec(
-        e, cip, cjp, foreign_node_id, proxy_id);}
+        engine_mark_cells_for_hydro_send_tasks_rec(e, cip, cjp, foreign_node_id,
+                                                   proxy_id);
+      }
     }
   }
 
