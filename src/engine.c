@@ -65,6 +65,7 @@
 #include "entropy_floor.h"
 #include "equation_of_state.h"
 #include "error.h"
+#include "feedback.h"
 #include "gravity.h"
 #include "gravity_cache.h"
 #include "hydro.h"
@@ -120,6 +121,7 @@ const char *engine_policy_names[] = {"none",
                                      "star formation",
                                      "feedback",
                                      "black holes",
+                                     "fof search",
                                      "time-step limiter"};
 
 /** The rank of the engine as a global variable (for messages). */
@@ -154,6 +156,12 @@ struct end_of_step_data {
  * @return The new #link pointer.
  */
 void engine_addlink(struct engine *e, struct link **l, struct task *t) {
+
+#ifdef SWIFT_DEBUG_CHECKS
+  if (t == NULL) {
+    error("Trying to link NULL task.");
+  }
+#endif
 
   /* Get the next free link. */
   const size_t ind = atomic_inc(&e->nr_links);
@@ -998,14 +1006,14 @@ void engine_redistribute(struct engine *e) {
         }
       }
       if (total > 0)
-        message("%ld of %ld (%.2f%%) of particles moved", total - unmoved,
+        message("%zu of %zu (%.2f%%) of particles moved", total - unmoved,
                 total, 100.0 * (double)(total - unmoved) / (double)total);
       if (g_total > 0)
-        message("%ld of %ld (%.2f%%) of g-particles moved", g_total - g_unmoved,
+        message("%zu of %zu (%.2f%%) of g-particles moved", g_total - g_unmoved,
                 g_total,
                 100.0 * (double)(g_total - g_unmoved) / (double)g_total);
       if (s_total > 0)
-        message("%ld of %ld (%.2f%%) of s-particles moved", s_total - s_unmoved,
+        message("%zu of %zu (%.2f%%) of s-particles moved", s_total - s_unmoved,
                 s_total,
                 100.0 * (double)(s_total - s_unmoved) / (double)s_total);
       if (b_total > 0)
@@ -2109,7 +2117,8 @@ void engine_allocate_foreign_particles(struct engine *e) {
       }
 
       /* For stars, we just use the numbers in the top-level cells */
-      count_sparts_in += e->proxies[k].cells_in[j]->stars.count;
+      count_sparts_in +=
+          e->proxies[k].cells_in[j]->stars.count + space_extra_sparts;
 
       /* For black holes, we just use the numbers in the top-level cells */
       count_bparts_in += e->proxies[k].cells_in[j]->black_holes.count;
@@ -2200,7 +2209,8 @@ void engine_allocate_foreign_particles(struct engine *e) {
 
       /* For stars, we just use the numbers in the top-level cells */
       cell_link_sparts(e->proxies[k].cells_in[j], sparts);
-      sparts = &sparts[e->proxies[k].cells_in[j]->stars.count];
+      sparts =
+          &sparts[e->proxies[k].cells_in[j]->stars.count + space_extra_sparts];
 
       /* For black holes, we just use the numbers in the top-level cells */
       cell_link_bparts(e->proxies[k].cells_in[j], bparts);
@@ -2377,6 +2387,9 @@ int engine_estimate_nr_tasks(const struct engine *e) {
     n1 += 6;
 #endif
   }
+  if (e->policy & engine_policy_fof) {
+    n1 += 2;
+  }
 #if defined(WITH_LOGGER)
   /* each cell logs its particles */
   n1 += 1;
@@ -2552,6 +2565,8 @@ void engine_rebuild(struct engine *e, int repartitioned,
     for (int k = 0; k < e->s->nr_local_cells; k++)
       cell_check_foreign_multipole(&e->s->cells_top[e->s->local_cells_top[k]]);
   }
+
+  space_check_sort_flags(e->s);
 #endif
 
   /* Run through the tasks and mark as skip or not. */
@@ -2601,6 +2616,18 @@ void engine_prepare(struct engine *e) {
   if (e->verbose)
     message("Communicating rebuild flag took %.3f %s.",
             clocks_from_ticks(getticks() - tic3), clocks_getunit());
+
+  /* Perform FOF search to seed black holes. Only if there is a rebuild coming
+   * and no repartitioing. */
+  if (e->policy & engine_policy_fof && e->forcerebuild && !e->forcerepart &&
+      e->run_fof) {
+
+    /* Let's start by drifting everybody to the current time */
+    engine_drift_all(e, /*drift_mpole=*/0);
+    drifted_all = 1;
+
+    engine_fof(e, /*dump_results=*/0, /*seed_black_holes=*/1);
+  }
 
   /* Do we need repartitioning ? */
   if (e->forcerepart) {
@@ -2675,11 +2702,10 @@ void engine_barrier(struct engine *e) {
 void engine_collect_end_of_step_recurse_hydro(struct cell *c,
                                               const struct engine *e) {
 
-/* Skip super-cells (Their values are already set) */
-#ifdef WITH_MPI
-  if (c->timestep != NULL || c->mpi.hydro.recv_ti != NULL) return;
-#else
+  /* Skip super-cells (Their values are already set) */
   if (c->timestep != NULL) return;
+#ifdef WITH_MPI
+  if (cell_get_recv(c, task_subtype_tend_part) != NULL) return;
 #endif /* WITH_MPI */
 
 #ifdef SWIFT_DEBUG_CHECKS
@@ -2689,7 +2715,7 @@ void engine_collect_end_of_step_recurse_hydro(struct cell *c,
 #endif
 
   /* Counters for the different quantities. */
-  size_t updated = 0, inhibited = 0;
+  size_t updated = 0;
   integertime_t ti_hydro_end_min = max_nr_timesteps, ti_hydro_end_max = 0,
                 ti_hydro_beg_max = 0;
 
@@ -2713,7 +2739,6 @@ void engine_collect_end_of_step_recurse_hydro(struct cell *c,
       ti_hydro_beg_max = max(ti_hydro_beg_max, cp->hydro.ti_beg_max);
 
       updated += cp->hydro.updated;
-      inhibited += cp->hydro.inhibited;
 
       /* Check if the cell is inactive and in that case reorder the SFH */
       if (!cell_is_starting_hydro(cp, e)) {
@@ -2733,7 +2758,7 @@ void engine_collect_end_of_step_recurse_hydro(struct cell *c,
   c->hydro.ti_end_max = ti_hydro_end_max;
   c->hydro.ti_beg_max = ti_hydro_beg_max;
   c->hydro.updated = updated;
-  c->hydro.inhibited = inhibited;
+  // c->hydro.inhibited = inhibited;
 
   /* Store the star formation history in the parent cell */
   star_formation_logger_add(&c->stars.sfh, &sfh_updated);
@@ -2752,11 +2777,10 @@ void engine_collect_end_of_step_recurse_hydro(struct cell *c,
 void engine_collect_end_of_step_recurse_grav(struct cell *c,
                                              const struct engine *e) {
 
-/* Skip super-cells (Their values are already set) */
-#ifdef WITH_MPI
-  if (c->timestep != NULL || c->mpi.grav.recv_ti != NULL) return;
-#else
+  /* Skip super-cells (Their values are already set) */
   if (c->timestep != NULL) return;
+#ifdef WITH_MPI
+  if (cell_get_recv(c, task_subtype_tend_gpart) != NULL) return;
 #endif /* WITH_MPI */
 
 #ifdef SWIFT_DEBUG_CHECKS
@@ -2765,7 +2789,7 @@ void engine_collect_end_of_step_recurse_grav(struct cell *c,
 #endif
 
   /* Counters for the different quantities. */
-  size_t updated = 0, inhibited = 0;
+  size_t updated = 0;
   integertime_t ti_grav_end_min = max_nr_timesteps, ti_grav_end_max = 0,
                 ti_grav_beg_max = 0;
 
@@ -2783,7 +2807,6 @@ void engine_collect_end_of_step_recurse_grav(struct cell *c,
       ti_grav_beg_max = max(ti_grav_beg_max, cp->grav.ti_beg_max);
 
       updated += cp->grav.updated;
-      inhibited += cp->grav.inhibited;
 
       /* Collected, so clear for next time. */
       cp->grav.updated = 0;
@@ -2795,7 +2818,6 @@ void engine_collect_end_of_step_recurse_grav(struct cell *c,
   c->grav.ti_end_max = ti_grav_end_max;
   c->grav.ti_beg_max = ti_grav_beg_max;
   c->grav.updated = updated;
-  c->grav.inhibited = inhibited;
 }
 
 /**
@@ -2811,11 +2833,10 @@ void engine_collect_end_of_step_recurse_grav(struct cell *c,
 void engine_collect_end_of_step_recurse_stars(struct cell *c,
                                               const struct engine *e) {
 
-/* Skip super-cells (Their values are already set) */
-#ifdef WITH_MPI
-  if (c->timestep != NULL || c->mpi.stars.recv_ti != NULL) return;
-#else
+  /* Skip super-cells (Their values are already set) */
   if (c->timestep != NULL) return;
+#ifdef WITH_MPI
+  if (cell_get_recv(c, task_subtype_tend_spart) != NULL) return;
 #endif /* WITH_MPI */
 
 #ifdef SWIFT_DEBUG_CHECKS
@@ -2823,7 +2844,7 @@ void engine_collect_end_of_step_recurse_stars(struct cell *c,
 #endif
 
   /* Counters for the different quantities. */
-  size_t updated = 0, inhibited = 0;
+  size_t updated = 0;
   integertime_t ti_stars_end_min = max_nr_timesteps, ti_stars_end_max = 0,
                 ti_stars_beg_max = 0;
 
@@ -2841,7 +2862,6 @@ void engine_collect_end_of_step_recurse_stars(struct cell *c,
       ti_stars_beg_max = max(ti_stars_beg_max, cp->stars.ti_beg_max);
 
       updated += cp->stars.updated;
-      inhibited += cp->stars.inhibited;
 
       /* Collected, so clear for next time. */
       cp->stars.updated = 0;
@@ -2853,7 +2873,6 @@ void engine_collect_end_of_step_recurse_stars(struct cell *c,
   c->stars.ti_end_max = ti_stars_end_max;
   c->stars.ti_beg_max = ti_stars_beg_max;
   c->stars.updated = updated;
-  c->stars.inhibited = inhibited;
 }
 
 /**
@@ -2869,13 +2888,10 @@ void engine_collect_end_of_step_recurse_stars(struct cell *c,
 void engine_collect_end_of_step_recurse_black_holes(struct cell *c,
                                                     const struct engine *e) {
 
-/* Skip super-cells (Their values are already set) */
-#ifdef WITH_MPI
-  // MATTHIEU
-  if (c->timestep != NULL)
-    return;  // || c->mpi.black_holes.recv_ti != NULL) return;
-#else
+  /* Skip super-cells (Their values are already set) */
   if (c->timestep != NULL) return;
+#ifdef WITH_MPI
+  if (cell_get_recv(c, task_subtype_tend_bpart) != NULL) return;
 #endif /* WITH_MPI */
 
 #ifdef SWIFT_DEBUG_CHECKS
@@ -2883,7 +2899,7 @@ void engine_collect_end_of_step_recurse_black_holes(struct cell *c,
 #endif
 
   /* Counters for the different quantities. */
-  size_t updated = 0, inhibited = 0;
+  size_t updated = 0;
   integertime_t ti_black_holes_end_min = max_nr_timesteps,
                 ti_black_holes_end_max = 0, ti_black_holes_beg_max = 0;
 
@@ -2904,7 +2920,6 @@ void engine_collect_end_of_step_recurse_black_holes(struct cell *c,
           max(ti_black_holes_beg_max, cp->black_holes.ti_beg_max);
 
       updated += cp->black_holes.updated;
-      inhibited += cp->black_holes.inhibited;
 
       /* Collected, so clear for next time. */
       cp->black_holes.updated = 0;
@@ -2916,7 +2931,6 @@ void engine_collect_end_of_step_recurse_black_holes(struct cell *c,
   c->black_holes.ti_end_max = ti_black_holes_end_max;
   c->black_holes.ti_beg_max = ti_black_holes_beg_max;
   c->black_holes.updated = updated;
-  c->black_holes.inhibited = inhibited;
 }
 
 /**
@@ -2947,7 +2961,6 @@ void engine_collect_end_of_step_mapper(void *map_data, int num_elements,
 
   /* Local collectible */
   size_t updated = 0, g_updated = 0, s_updated = 0, b_updated = 0;
-  size_t inhibited = 0, g_inhibited = 0, s_inhibited = 0, b_inhibited = 0;
   integertime_t ti_hydro_end_min = max_nr_timesteps, ti_hydro_end_max = 0,
                 ti_hydro_beg_max = 0;
   integertime_t ti_gravity_end_min = max_nr_timesteps, ti_gravity_end_max = 0,
@@ -3012,11 +3025,6 @@ void engine_collect_end_of_step_mapper(void *map_data, int num_elements,
       s_updated += c->stars.updated;
       b_updated += c->black_holes.updated;
 
-      inhibited += c->hydro.inhibited;
-      g_inhibited += c->grav.inhibited;
-      s_inhibited += c->stars.inhibited;
-      b_inhibited += c->black_holes.inhibited;
-
       /* Check if the cell is inactive and in that case reorder the SFH */
       if (!cell_is_starting_hydro(c, e)) {
         star_formation_logger_log_inactive_cell(&c->stars.sfh);
@@ -3041,11 +3049,6 @@ void engine_collect_end_of_step_mapper(void *map_data, int num_elements,
     data->g_updated += g_updated;
     data->s_updated += s_updated;
     data->b_updated += b_updated;
-
-    data->inhibited += inhibited;
-    data->g_inhibited += g_inhibited;
-    data->s_inhibited += s_inhibited;
-    data->b_inhibited += b_inhibited;
 
     /* Add the SFH information from this engine to the global data */
     star_formation_logger_add(sfh_top, &sfh_updated);
@@ -3103,8 +3106,6 @@ void engine_collect_end_of_step(struct engine *e, int apply) {
   struct space *s = e->s;
   struct end_of_step_data data;
   data.updated = 0, data.g_updated = 0, data.s_updated = 0, data.b_updated = 0;
-  data.inhibited = 0, data.g_inhibited = 0, data.s_inhibited = 0,
-  data.b_inhibited = 0;
   data.ti_hydro_end_min = max_nr_timesteps, data.ti_hydro_end_max = 0,
   data.ti_hydro_beg_max = 0;
   data.ti_gravity_end_min = max_nr_timesteps, data.ti_gravity_end_max = 0,
@@ -3123,11 +3124,12 @@ void engine_collect_end_of_step(struct engine *e, int apply) {
                  s->local_cells_with_tasks_top, s->nr_local_cells_with_tasks,
                  sizeof(int), 0, &data);
 
-  /* Store the local number of inhibited particles */
-  s->nr_inhibited_parts = data.inhibited;
-  s->nr_inhibited_gparts = data.g_inhibited;
-  s->nr_inhibited_sparts = data.s_inhibited;
-  s->nr_inhibited_bparts = data.b_inhibited;
+  /* Get the number of inhibited particles from the space-wide counters
+   * since these have been updated atomically during the time-steps. */
+  data.inhibited = s->nr_inhibited_parts;
+  data.g_inhibited = s->nr_inhibited_gparts;
+  data.s_inhibited = s->nr_inhibited_sparts;
+  data.b_inhibited = s->nr_inhibited_bparts;
 
   /* Store these in the temporary collection group. */
   collectgroup1_init(
@@ -3163,11 +3165,12 @@ void engine_collect_end_of_step(struct engine *e, int apply) {
       error("Failed to get same ti_gravity_end_min, is %lld, should be %lld",
             in_i[1], e->collect_group1.ti_gravity_end_min);
 
-    long long in_ll[3], out_ll[3];
+    long long in_ll[4], out_ll[4];
     out_ll[0] = data.updated;
     out_ll[1] = data.g_updated;
     out_ll[2] = data.s_updated;
-    if (MPI_Allreduce(out_ll, in_ll, 3, MPI_LONG_LONG_INT, MPI_SUM,
+    out_ll[3] = data.b_updated;
+    if (MPI_Allreduce(out_ll, in_ll, 4, MPI_LONG_LONG_INT, MPI_SUM,
                       MPI_COMM_WORLD) != MPI_SUCCESS)
       error("Failed to aggregate particle counts.");
     if (in_ll[0] != (long long)e->collect_group1.updated)
@@ -3179,11 +3182,15 @@ void engine_collect_end_of_step(struct engine *e, int apply) {
     if (in_ll[2] != (long long)e->collect_group1.s_updated)
       error("Failed to get same s_updated, is %lld, should be %lld", in_ll[2],
             e->collect_group1.s_updated);
+    if (in_ll[3] != (long long)e->collect_group1.b_updated)
+      error("Failed to get same b_updated, is %lld, should be %lld", in_ll[3],
+            e->collect_group1.b_updated);
 
     out_ll[0] = data.inhibited;
     out_ll[1] = data.g_inhibited;
     out_ll[2] = data.s_inhibited;
-    if (MPI_Allreduce(out_ll, in_ll, 3, MPI_LONG_LONG_INT, MPI_SUM,
+    out_ll[3] = data.b_inhibited;
+    if (MPI_Allreduce(out_ll, in_ll, 4, MPI_LONG_LONG_INT, MPI_SUM,
                       MPI_COMM_WORLD) != MPI_SUCCESS)
       error("Failed to aggregate particle counts.");
     if (in_ll[0] != (long long)e->collect_group1.inhibited)
@@ -3195,6 +3202,9 @@ void engine_collect_end_of_step(struct engine *e, int apply) {
     if (in_ll[2] != (long long)e->collect_group1.s_inhibited)
       error("Failed to get same s_inhibited, is %lld, should be %lld", in_ll[2],
             e->collect_group1.s_inhibited);
+    if (in_ll[3] != (long long)e->collect_group1.b_inhibited)
+      error("Failed to get same b_inhibited, is %lld, should be %lld", in_ll[3],
+            e->collect_group1.b_inhibited);
 
     int buff = 0;
     if (MPI_Allreduce(&e->forcerebuild, &buff, 1, MPI_INT, MPI_MAX,
@@ -3301,8 +3311,9 @@ void engine_skip_force_and_kick(struct engine *e) {
 
     /* Skip everything that updates the particles */
     if (t->type == task_type_drift_part || t->type == task_type_drift_gpart ||
-        t->type == task_type_drift_spart || t->type == task_type_kick1 ||
-        t->type == task_type_kick2 || t->type == task_type_timestep ||
+        t->type == task_type_drift_spart || t->type == task_type_drift_bpart ||
+        t->type == task_type_kick1 || t->type == task_type_kick2 ||
+        t->type == task_type_timestep ||
         t->type == task_type_timestep_limiter ||
         t->subtype == task_subtype_force ||
         t->subtype == task_subtype_limiter || t->subtype == task_subtype_grav ||
@@ -3314,12 +3325,23 @@ void engine_skip_force_and_kick(struct engine *e) {
         t->type == task_type_stars_in || t->type == task_type_stars_out ||
         t->type == task_type_star_formation ||
         t->type == task_type_extra_ghost ||
+        t->type == task_type_bh_swallow_ghost1 ||
+        t->type == task_type_bh_swallow_ghost2 ||
         t->subtype == task_subtype_gradient ||
         t->subtype == task_subtype_stars_feedback ||
+        t->subtype == task_subtype_bh_feedback ||
+        t->subtype == task_subtype_bh_swallow ||
+        t->subtype == task_subtype_do_swallow ||
+        t->subtype == task_subtype_bpart_rho ||
+        t->subtype == task_subtype_part_swallow ||
+        t->subtype == task_subtype_bpart_swallow ||
+        t->subtype == task_subtype_bpart_feedback ||
         t->subtype == task_subtype_tend_part ||
         t->subtype == task_subtype_tend_gpart ||
         t->subtype == task_subtype_tend_spart ||
-        t->subtype == task_subtype_rho || t->subtype == task_subtype_gpart)
+        t->subtype == task_subtype_tend_bpart ||
+        t->subtype == task_subtype_rho || t->subtype == task_subtype_gpart ||
+        t->subtype == task_subtype_sf_counts)
       t->skip = 1;
   }
 
@@ -3416,7 +3438,6 @@ void engine_first_init_particles(struct engine *e) {
  * @param flag_entropy_ICs Did the 'Internal Energy' of the particles actually
  * contain entropy ?
  * @param clean_h_values Are we cleaning up the values of h before building
- * the tasks ?
  */
 void engine_init_particles(struct engine *e, int flag_entropy_ICs,
                            int clean_h_values) {
@@ -3547,6 +3568,7 @@ void engine_init_particles(struct engine *e, int flag_entropy_ICs,
 #ifdef SWIFT_DEBUG_CHECKS
   /* Make sure all woken-up particles have been processed */
   space_check_limiter(e->s);
+  space_check_swallow(e->s);
 #endif
 
   /* Recover the (integer) end of the next time-step */
@@ -3757,6 +3779,13 @@ void engine_step(struct engine *e) {
        ((double)e->total_nr_gparts) * e->gravity_properties->rebuild_frequency))
     e->forcerebuild = 1;
 
+  /* Trigger a FOF black hole seeding? */
+  if (e->policy & engine_policy_fof) {
+    if (e->ti_end_min > e->ti_next_fof && e->ti_next_fof > 0) {
+      e->run_fof = 1;
+    }
+  }
+
 #ifdef WITH_LOGGER
   /* Mark the current time step in the particle logger file. */
   logger_log_timestamp(e->logger, e->ti_current, e->time,
@@ -3827,6 +3856,8 @@ void engine_step(struct engine *e) {
 #ifdef SWIFT_DEBUG_CHECKS
   /* Make sure all woken-up particles have been processed */
   space_check_limiter(e->s);
+  space_check_sort_flags(e->s);
+  space_check_swallow(e->s);
 #endif
 
   /* Collect information about the next time-step */
@@ -4111,6 +4142,7 @@ void engine_unskip(struct engine *e) {
   const int with_ext_grav = e->policy & engine_policy_external_gravity;
   const int with_stars = e->policy & engine_policy_stars;
   const int with_feedback = e->policy & engine_policy_feedback;
+  const int with_black_holes = e->policy & engine_policy_black_holes;
 
 #ifdef WITH_PROFILER
   static int count = 0;
@@ -4130,7 +4162,8 @@ void engine_unskip(struct engine *e) {
         (with_ext_grav && c->nodeID == nodeID &&
          cell_is_active_gravity(c, e)) ||
         (with_feedback && cell_is_active_stars(c, e)) ||
-        (with_stars && c->nodeID == nodeID && cell_is_active_stars(c, e))) {
+        (with_stars && c->nodeID == nodeID && cell_is_active_stars(c, e)) ||
+        (with_black_holes && cell_is_active_black_holes(c, e))) {
 
       if (num_active_cells != k)
         memswap(&local_cells[k], &local_cells[num_active_cells], sizeof(int));
@@ -4843,6 +4876,7 @@ void engine_unpin(void) {
  * @param Ngas total number of gas particles in the simulation.
  * @param Ngparts total number of gravity particles in the simulation.
  * @param Nstars total number of star particles in the simulation.
+ * @param Nblackholes total number of black holes in the simulation.
  * @param policy The queuing policy to use.
  * @param verbose Is this #engine talkative ?
  * @param reparttype What type of repartition algorithm are we using ?
@@ -4853,26 +4887,31 @@ void engine_unpin(void) {
  * @param entropy_floor The #entropy_floor_properties for this run.
  * @param gravity The #gravity_props used for this run.
  * @param stars The #stars_props used for this run.
+ * @param black_holes The #black_holes_props used for this run.
  * @param feedback The #feedback_props used for this run.
  * @param mesh The #pm_mesh used for the long-range periodic forces.
  * @param potential The properties of the external potential.
  * @param cooling_func The properties of the cooling function.
  * @param starform The #star_formation model of this run.
  * @param chemistry The chemistry information.
+ * @param fof_properties The #fof_props.
  */
 void engine_init(struct engine *e, struct space *s, struct swift_params *params,
                  long long Ngas, long long Ngparts, long long Nstars,
-                 int policy, int verbose, struct repartition *reparttype,
+                 long long Nblackholes, int policy, int verbose,
+                 struct repartition *reparttype,
                  const struct unit_system *internal_units,
                  const struct phys_const *physical_constants,
                  struct cosmology *cosmo, struct hydro_props *hydro,
                  const struct entropy_floor_properties *entropy_floor,
                  struct gravity_props *gravity, const struct stars_props *stars,
+                 const struct black_holes_props *black_holes,
                  const struct feedback_props *feedback, struct pm_mesh *mesh,
                  const struct external_potential *potential,
                  struct cooling_function_data *cooling_func,
                  const struct star_formation *starform,
-                 const struct chemistry_global_data *chemistry) {
+                 const struct chemistry_global_data *chemistry,
+                 struct fof_props *fof_properties) {
 
   /* Clean-up everything */
   bzero(e, sizeof(struct engine));
@@ -4884,6 +4923,7 @@ void engine_init(struct engine *e, struct space *s, struct swift_params *params,
   e->total_nr_parts = Ngas;
   e->total_nr_gparts = Ngparts;
   e->total_nr_sparts = Nstars;
+  e->total_nr_bparts = Nblackholes;
   e->proxy_ind = NULL;
   e->nr_proxies = 0;
   e->reparttype = reparttype;
@@ -4927,6 +4967,8 @@ void engine_init(struct engine *e, struct space *s, struct swift_params *params,
   e->delta_time_statistics =
       parser_get_param_double(params, "Statistics:delta_time");
   e->ti_next_stats = 0;
+  e->ti_next_stf = 0;
+  e->ti_next_fof = 0;
   e->verbose = verbose;
   e->wallclock_time = 0.f;
   e->physical_constants = physical_constants;
@@ -4935,12 +4977,14 @@ void engine_init(struct engine *e, struct space *s, struct swift_params *params,
   e->entropy_floor = entropy_floor;
   e->gravity_properties = gravity;
   e->stars_properties = stars;
+  e->black_holes_properties = black_holes;
   e->mesh = mesh;
   e->external_potential = potential;
   e->cooling_func = cooling_func;
   e->star_formation = starform;
   e->feedback_props = feedback;
   e->chemistry = chemistry;
+  e->fof_properties = fof_properties;
   e->parameter_file = params;
 #ifdef WITH_MPI
   e->cputime_last_step = 0;
@@ -4956,6 +5000,14 @@ void engine_init(struct engine *e, struct space *s, struct swift_params *params,
 
   /* Make the space link back to the engine. */
   s->e = e;
+
+  /* Read the run label */
+  memset(e->run_name, 0, PARSER_MAX_LINE_SIZE);
+  parser_get_opt_param_string(params, "MetaData:run_name", e->run_name,
+                              "Untitled SWIFT simulation");
+  if (strlen(e->run_name) == 0) {
+    error("The run name in the parameter file cannot be an empty string.");
+  }
 
   /* Setup the timestep if non-cosmological */
   if (!(e->policy & engine_policy_cosmology)) {
@@ -4996,6 +5048,17 @@ void engine_init(struct engine *e, struct space *s, struct swift_params *params,
         parser_get_opt_param_double(params, "StructureFinding:delta_time", -1.);
   }
 
+  /* Initialise FoF calls frequency. */
+  if (e->policy & engine_policy_fof) {
+
+    e->time_first_fof_call =
+        parser_get_opt_param_double(params, "FOF:time_first", 0.);
+    e->a_first_fof_call =
+        parser_get_opt_param_double(params, "FOF:scale_factor_first", 0.1);
+    e->delta_time_fof =
+        parser_get_opt_param_double(params, "FOF:delta_time", -1.);
+  }
+
   engine_init_output_lists(e, params);
 }
 
@@ -5013,6 +5076,7 @@ void engine_init(struct engine *e, struct space *s, struct swift_params *params,
  * When not restarting params should be the same as given to engine_init().
  *
  * @param restart true when restarting the application.
+ * @param fof true when starting a stand-alone FOF call.
  * @param e The #engine.
  * @param params The parsed parameter file.
  * @param nr_nodes The number of MPI ranks.
@@ -5022,9 +5086,10 @@ void engine_init(struct engine *e, struct space *s, struct swift_params *params,
  * @param verbose Is this #engine talkative ?
  * @param restart_file The name of our restart file.
  */
-void engine_config(int restart, struct engine *e, struct swift_params *params,
-                   int nr_nodes, int nodeID, int nr_threads, int with_aff,
-                   int verbose, const char *restart_file) {
+void engine_config(int restart, int fof, struct engine *e,
+                   struct swift_params *params, int nr_nodes, int nodeID,
+                   int nr_threads, int with_aff, int verbose,
+                   const char *restart_file) {
 
   /* Store the values and initialise global fields. */
   e->nodeID = nodeID;
@@ -5047,7 +5112,17 @@ void engine_config(int restart, struct engine *e, struct swift_params *params,
   e->restart_file = restart_file;
   e->restart_next = 0;
   e->restart_dt = 0;
+  e->run_fof = 0;
   engine_rank = nodeID;
+
+  if (restart && fof) {
+    error(
+        "Can't configure the engine to be a stand-alone FOF and restarting "
+        "from a check-point at the same time!");
+  }
+
+  /* Welcome message */
+  if (e->nodeID == 0) message("Running simulation '%s'.", e->run_name);
 
   /* Get the number of queues */
   int nr_queues =
@@ -5186,8 +5261,8 @@ void engine_config(int restart, struct engine *e, struct swift_params *params,
 #endif
   }
 
-  /* Open some files */
-  if (e->nodeID == 0) {
+  /* Open some global files */
+  if (!fof && e->nodeID == 0) {
 
     /* When restarting append to these files. */
     const char *mode;
@@ -5238,13 +5313,15 @@ void engine_config(int restart, struct engine *e, struct swift_params *params,
           e->hydro_properties->eta_neighbours, configuration_options(),
           compilation_cflags());
 
-      fprintf(e->file_timesteps,
-              "# Step Properties: Rebuild=%d, Redistribute=%d, Repartition=%d, "
-              "Statistics=%d, Snapshot=%d, Restarts=%d STF=%d, logger=%d\n",
-              engine_step_prop_rebuild, engine_step_prop_redistribute,
-              engine_step_prop_repartition, engine_step_prop_statistics,
-              engine_step_prop_snapshot, engine_step_prop_restarts,
-              engine_step_prop_stf, engine_step_prop_logger_index);
+      fprintf(
+          e->file_timesteps,
+          "# Step Properties: Rebuild=%d, Redistribute=%d, Repartition=%d, "
+          "Statistics=%d, Snapshot=%d, Restarts=%d STF=%d, FOF=%d, logger=%d\n",
+          engine_step_prop_rebuild, engine_step_prop_redistribute,
+          engine_step_prop_repartition, engine_step_prop_statistics,
+          engine_step_prop_snapshot, engine_step_prop_restarts,
+          engine_step_prop_stf, engine_step_prop_fof,
+          engine_step_prop_logger_index);
 
       fprintf(
           e->file_timesteps,
@@ -5269,203 +5346,224 @@ void engine_config(int restart, struct engine *e, struct swift_params *params,
   /* Print policy */
   engine_print_policy(e);
 
-  /* Print information about the hydro scheme */
-  if (e->policy & engine_policy_hydro) {
-    if (e->nodeID == 0) hydro_props_print(e->hydro_properties);
-    if (e->nodeID == 0) entropy_floor_print(e->entropy_floor);
-  }
+  if (!fof) {
 
-  /* Print information about the gravity scheme */
-  if (e->policy & engine_policy_self_gravity)
-    if (e->nodeID == 0) gravity_props_print(e->gravity_properties);
+    /* Print information about the hydro scheme */
+    if (e->policy & engine_policy_hydro) {
+      if (e->nodeID == 0) hydro_props_print(e->hydro_properties);
+      if (e->nodeID == 0) entropy_floor_print(e->entropy_floor);
+    }
 
-  if (e->policy & engine_policy_stars)
-    if (e->nodeID == 0) stars_props_print(e->stars_properties);
+    /* Print information about the gravity scheme */
+    if (e->policy & engine_policy_self_gravity)
+      if (e->nodeID == 0) gravity_props_print(e->gravity_properties);
 
-  /* Check we have sensible time bounds */
-  if (e->time_begin >= e->time_end)
-    error(
-        "Final simulation time (t_end = %e) must be larger than the start time "
-        "(t_beg = %e)",
-        e->time_end, e->time_begin);
+    if (e->policy & engine_policy_stars)
+      if (e->nodeID == 0) stars_props_print(e->stars_properties);
 
-  /* Check we don't have inappropriate time labels */
-  if ((e->snapshot_int_time_label_on == 1) && (e->time_end <= 1.f))
-    error("Snapshot integer time labels enabled but end time <= 1");
-
-  /* Check we have sensible time-step values */
-  if (e->dt_min > e->dt_max)
-    error(
-        "Minimal time-step size (%e) must be smaller than maximal time-step "
-        "size (%e)",
-        e->dt_min, e->dt_max);
-
-  /* Info about time-steps */
-  if (e->nodeID == 0) {
-    message("Absolute minimal timestep size: %e", e->time_base);
-
-    float dt_min = e->time_end - e->time_begin;
-    while (dt_min > e->dt_min) dt_min /= 2.f;
-
-    message("Minimal timestep size (on time-line): %e", dt_min);
-
-    float dt_max = e->time_end - e->time_begin;
-    while (dt_max > e->dt_max) dt_max /= 2.f;
-
-    message("Maximal timestep size (on time-line): %e", dt_max);
-  }
-
-  if (e->dt_min < e->time_base && e->nodeID == 0)
-    error(
-        "Minimal time-step size smaller than the absolute possible minimum "
-        "dt=%e",
-        e->time_base);
-
-  if (!(e->policy & engine_policy_cosmology))
-    if (e->dt_max > (e->time_end - e->time_begin) && e->nodeID == 0)
-      error("Maximal time-step size larger than the simulation run time t=%e",
-            e->time_end - e->time_begin);
-
-  /* Deal with outputs */
-  if (e->policy & engine_policy_cosmology) {
-
-    if (e->delta_time_snapshot <= 1.)
-      error("Time between snapshots (%e) must be > 1.", e->delta_time_snapshot);
-
-    if (e->delta_time_statistics <= 1.)
-      error("Time between statistics (%e) must be > 1.",
-            e->delta_time_statistics);
-
-    if (e->a_first_snapshot < e->cosmology->a_begin)
+    /* Check we have sensible time bounds */
+    if (e->time_begin >= e->time_end)
       error(
-          "Scale-factor of first snapshot (%e) must be after the simulation "
-          "start a=%e.",
-          e->a_first_snapshot, e->cosmology->a_begin);
+          "Final simulation time (t_end = %e) must be larger than the start "
+          "time (t_beg = %e)",
+          e->time_end, e->time_begin);
 
-    if (e->a_first_statistics < e->cosmology->a_begin)
+    /* Check we don't have inappropriate time labels */
+    if ((e->snapshot_int_time_label_on == 1) && (e->time_end <= 1.f))
+      error("Snapshot integer time labels enabled but end time <= 1");
+
+    /* Check we have sensible time-step values */
+    if (e->dt_min > e->dt_max)
       error(
-          "Scale-factor of first stats output (%e) must be after the "
-          "simulation start a=%e.",
-          e->a_first_statistics, e->cosmology->a_begin);
+          "Minimal time-step size (%e) must be smaller than maximal time-step "
+          "size (%e)",
+          e->dt_min, e->dt_max);
 
-    if (e->policy & engine_policy_structure_finding) {
+    /* Info about time-steps */
+    if (e->nodeID == 0) {
+      message("Absolute minimal timestep size: %e", e->time_base);
 
-      if (e->delta_time_stf == -1. && !e->snapshot_invoke_stf)
-        error("A value for `StructureFinding:delta_time` must be specified");
+      float dt_min = e->time_end - e->time_begin;
+      while (dt_min > e->dt_min) dt_min /= 2.f;
 
-      if (e->delta_time_stf <= 1. && e->delta_time_stf != -1.)
-        error("Time between STF (%e) must be > 1.", e->delta_time_stf);
+      message("Minimal timestep size (on time-line): %e", dt_min);
 
-      if (e->a_first_stf_output < e->cosmology->a_begin)
+      float dt_max = e->time_end - e->time_begin;
+      while (dt_max > e->dt_max) dt_max /= 2.f;
+
+      message("Maximal timestep size (on time-line): %e", dt_max);
+    }
+
+    if (e->dt_min < e->time_base && e->nodeID == 0)
+      error(
+          "Minimal time-step size smaller than the absolute possible minimum "
+          "dt=%e",
+          e->time_base);
+
+    if (!(e->policy & engine_policy_cosmology))
+      if (e->dt_max > (e->time_end - e->time_begin) && e->nodeID == 0)
+        error("Maximal time-step size larger than the simulation run time t=%e",
+              e->time_end - e->time_begin);
+
+    /* Deal with outputs */
+    if (e->policy & engine_policy_cosmology) {
+
+      if (e->delta_time_snapshot <= 1.)
+        error("Time between snapshots (%e) must be > 1.",
+              e->delta_time_snapshot);
+
+      if (e->delta_time_statistics <= 1.)
+        error("Time between statistics (%e) must be > 1.",
+              e->delta_time_statistics);
+
+      if (e->a_first_snapshot < e->cosmology->a_begin)
         error(
-            "Scale-factor of first stf output (%e) must be after the "
+            "Scale-factor of first snapshot (%e) must be after the simulation "
+            "start a=%e.",
+            e->a_first_snapshot, e->cosmology->a_begin);
+
+      if (e->a_first_statistics < e->cosmology->a_begin)
+        error(
+            "Scale-factor of first stats output (%e) must be after the "
             "simulation start a=%e.",
-            e->a_first_stf_output, e->cosmology->a_begin);
-    }
-  } else {
+            e->a_first_statistics, e->cosmology->a_begin);
 
-    if (e->delta_time_snapshot <= 0.)
-      error("Time between snapshots (%e) must be positive.",
-            e->delta_time_snapshot);
+      if (e->policy & engine_policy_structure_finding) {
 
-    if (e->delta_time_statistics <= 0.)
-      error("Time between statistics (%e) must be positive.",
-            e->delta_time_statistics);
+        if (e->delta_time_stf == -1. && !e->snapshot_invoke_stf)
+          error("A value for `StructureFinding:delta_time` must be specified");
 
-    /* Find the time of the first output */
-    if (e->time_first_snapshot < e->time_begin)
-      error(
-          "Time of first snapshot (%e) must be after the simulation start "
-          "t=%e.",
-          e->time_first_snapshot, e->time_begin);
+        if (e->a_first_stf_output < e->cosmology->a_begin)
+          error(
+              "Scale-factor of first stf output (%e) must be after the "
+              "simulation start a=%e.",
+              e->a_first_stf_output, e->cosmology->a_begin);
+      }
 
-    if (e->time_first_statistics < e->time_begin)
-      error(
-          "Time of first stats output (%e) must be after the simulation start "
-          "t=%e.",
-          e->time_first_statistics, e->time_begin);
+      if (e->policy & engine_policy_fof) {
 
-    if (e->policy & engine_policy_structure_finding) {
+        if (e->delta_time_fof <= 1.)
+          error("Time between FOF (%e) must be > 1.", e->delta_time_fof);
 
-      if (e->delta_time_stf == -1. && !e->snapshot_invoke_stf)
-        error("A value for `StructureFinding:delta_time` must be specified");
+        if (e->a_first_fof_call < e->cosmology->a_begin)
+          error(
+              "Scale-factor of first fof call (%e) must be after the "
+              "simulation start a=%e.",
+              e->a_first_fof_call, e->cosmology->a_begin);
+      }
 
-      if (e->delta_time_stf <= 0. && e->delta_time_stf != -1.)
-        error("Time between STF (%e) must be positive.", e->delta_time_stf);
+    } else {
 
-      if (e->time_first_stf_output < e->time_begin)
-        error("Time of first STF (%e) must be after the simulation start t=%e.",
+      if (e->delta_time_snapshot <= 0.)
+        error("Time between snapshots (%e) must be positive.",
+              e->delta_time_snapshot);
+
+      if (e->delta_time_statistics <= 0.)
+        error("Time between statistics (%e) must be positive.",
+              e->delta_time_statistics);
+
+      /* Find the time of the first output */
+      if (e->time_first_snapshot < e->time_begin)
+        error(
+            "Time of first snapshot (%e) must be after the simulation start "
+            "t=%e.",
+            e->time_first_snapshot, e->time_begin);
+
+      if (e->time_first_statistics < e->time_begin)
+        error(
+            "Time of first stats output (%e) must be after the simulation "
+            "start t=%e.",
+            e->time_first_statistics, e->time_begin);
+
+      if (e->policy & engine_policy_structure_finding) {
+
+        if (e->delta_time_stf == -1. && !e->snapshot_invoke_stf)
+          error("A value for `StructureFinding:delta_time` must be specified");
+
+        if (e->delta_time_stf <= 0. && e->delta_time_stf != -1.)
+          error("Time between STF (%e) must be positive.", e->delta_time_stf);
+
+        if (e->time_first_stf_output < e->time_begin)
+          error(
+              "Time of first STF (%e) must be after the simulation start t=%e.",
               e->time_first_stf_output, e->time_begin);
+      }
     }
-  }
 
-  /* Get the total mass */
-  e->total_mass = 0.;
-  for (size_t i = 0; i < e->s->nr_gparts; ++i)
-    e->total_mass += e->s->gparts[i].mass;
+    /* Get the total mass */
+    e->total_mass = 0.;
+    for (size_t i = 0; i < e->s->nr_gparts; ++i)
+      e->total_mass += e->s->gparts[i].mass;
 
 /* Reduce the total mass */
 #ifdef WITH_MPI
-  MPI_Allreduce(MPI_IN_PLACE, &e->total_mass, 1, MPI_DOUBLE, MPI_SUM,
-                MPI_COMM_WORLD);
+    MPI_Allreduce(MPI_IN_PLACE, &e->total_mass, 1, MPI_DOUBLE, MPI_SUM,
+                  MPI_COMM_WORLD);
 #endif
 
 #if defined(WITH_LOGGER)
-  if (e->nodeID == 0)
-    message(
-        "WARNING: There is currently no way of predicting the output "
-        "size, please use it carefully");
+    if (e->nodeID == 0)
+      message(
+          "WARNING: There is currently no way of predicting the output "
+          "size, please use it carefully");
 #endif
 
-  /* Find the time of the first snapshot output */
-  engine_compute_next_snapshot_time(e);
+    /* Find the time of the first snapshot output */
+    engine_compute_next_snapshot_time(e);
 
-  /* Find the time of the first statistics output */
-  engine_compute_next_statistics_time(e);
+    /* Find the time of the first statistics output */
+    engine_compute_next_statistics_time(e);
 
-  /* Find the time of the first stf output */
-  if (e->policy & engine_policy_structure_finding) {
-    engine_compute_next_stf_time(e);
+    /* Find the time of the first stf output */
+    if (e->policy & engine_policy_structure_finding) {
+      engine_compute_next_stf_time(e);
+    }
+
+    /* Find the time of the first stf output */
+    if (e->policy & engine_policy_fof) {
+      engine_compute_next_fof_time(e);
+    }
+
+    /* Check that we are invoking VELOCIraptor only if we have it */
+    if (e->snapshot_invoke_stf &&
+        !(e->policy & engine_policy_structure_finding)) {
+      error(
+          "Invoking VELOCIraptor after snapshots but structure finding wasn't "
+          "activated at runtime (Use --velociraptor).");
+    }
+
+    /* Whether restarts are enabled. Yes by default. Can be changed on restart.
+     */
+    e->restart_dump = parser_get_opt_param_int(params, "Restarts:enable", 1);
+
+    /* Whether to save backup copies of the previous restart files. */
+    e->restart_save = parser_get_opt_param_int(params, "Restarts:save", 1);
+
+    /* Whether restarts should be dumped on exit. Not by default. Can be changed
+     * on restart. */
+    e->restart_onexit = parser_get_opt_param_int(params, "Restarts:onexit", 0);
+
+    /* Hours between restart dumps. Can be changed on restart. */
+    float dhours =
+        parser_get_opt_param_float(params, "Restarts:delta_hours", 5.0f);
+    if (e->nodeID == 0) {
+      if (e->restart_dump)
+        message("Restarts will be dumped every %f hours", dhours);
+      else
+        message("WARNING: restarts will not be dumped");
+
+      if (e->verbose && e->restart_onexit)
+        message("Restarts will be dumped after the final step");
+    }
+
+    /* Internally we use ticks, so convert into a delta ticks. Assumes we can
+     * convert from ticks into milliseconds. */
+    e->restart_dt = clocks_to_ticks(dhours * 60.0 * 60.0 * 1000.0);
+
+    /* The first dump will happen no sooner than restart_dt ticks in the
+     * future. */
+    e->restart_next = getticks() + e->restart_dt;
   }
-
-  /* Check that we are invoking VELOCIraptor only if we have it */
-  if (e->snapshot_invoke_stf &&
-      !(e->policy & engine_policy_structure_finding)) {
-    error(
-        "Invoking VELOCIraptor after snapshots but structure finding wasn't "
-        "activated at runtime (Use --velociraptor).");
-  }
-
-  /* Whether restarts are enabled. Yes by default. Can be changed on restart. */
-  e->restart_dump = parser_get_opt_param_int(params, "Restarts:enable", 1);
-
-  /* Whether to save backup copies of the previous restart files. */
-  e->restart_save = parser_get_opt_param_int(params, "Restarts:save", 1);
-
-  /* Whether restarts should be dumped on exit. Not by default. Can be changed
-   * on restart. */
-  e->restart_onexit = parser_get_opt_param_int(params, "Restarts:onexit", 0);
-
-  /* Hours between restart dumps. Can be changed on restart. */
-  float dhours =
-      parser_get_opt_param_float(params, "Restarts:delta_hours", 6.0);
-  if (e->nodeID == 0) {
-    if (e->restart_dump)
-      message("Restarts will be dumped every %f hours", dhours);
-    else
-      message("WARNING: restarts will not be dumped");
-
-    if (e->verbose && e->restart_onexit)
-      message("Restarts will be dumped after the final step");
-  }
-
-  /* Internally we use ticks, so convert into a delta ticks. Assumes we can
-   * convert from ticks into milliseconds. */
-  e->restart_dt = clocks_to_ticks(dhours * 60.0 * 60.0 * 1000.0);
-
-  /* The first dump will happen no sooner than restart_dt ticks in the
-   * future. */
-  e->restart_next = getticks() + e->restart_dt;
 
 /* Construct types for MPI communications */
 #ifdef WITH_MPI
@@ -5474,10 +5572,14 @@ void engine_config(int restart, struct engine *e, struct swift_params *params,
   stats_create_mpi_type();
   proxy_create_mpi_type();
   task_create_mpi_comms();
+  fof_create_mpi_types();
 #endif
 
-  /* Initialise the collection group. */
-  collectgroup_init();
+  if (!fof) {
+
+    /* Initialise the collection group. */
+    collectgroup_init();
+  }
 
   /* Initialize the threadpool. */
   threadpool_init(&e->threadpool, e->nr_threads);
@@ -5503,7 +5605,7 @@ void engine_config(int restart, struct engine *e, struct swift_params *params,
 
   /* Estimated number of links per tasks */
   e->links_per_tasks =
-      parser_get_opt_param_int(params, "Scheduler:links_per_tasks", 10);
+      parser_get_opt_param_int(params, "Scheduler:links_per_tasks", 25);
 
   /* Init the scheduler. */
   scheduler_init(&e->sched, e->s, maxtasks, nr_queues,
@@ -5838,6 +5940,67 @@ void engine_compute_next_stf_time(struct engine *e) {
 }
 
 /**
+ * @brief Computes the next time (on the time line) for FoF black holes seeding
+ *
+ * @param e The #engine.
+ */
+void engine_compute_next_fof_time(struct engine *e) {
+
+  /* Find upper-bound on last output */
+  double time_end;
+  if (e->policy & engine_policy_cosmology)
+    time_end = e->cosmology->a_end * e->delta_time_fof;
+  else
+    time_end = e->time_end + e->delta_time_fof;
+
+  /* Find next snasphot above current time */
+  double time;
+  if (e->policy & engine_policy_cosmology)
+    time = e->a_first_fof_call;
+  else
+    time = e->time_first_fof_call;
+
+  int found_fof_time = 0;
+  while (time < time_end) {
+
+    /* Output time on the integer timeline */
+    if (e->policy & engine_policy_cosmology)
+      e->ti_next_fof = log(time / e->cosmology->a_begin) / e->time_base;
+    else
+      e->ti_next_fof = (time - e->time_begin) / e->time_base;
+
+    /* Found it? */
+    if (e->ti_next_fof > e->ti_current) {
+      found_fof_time = 1;
+      break;
+    }
+
+    if (e->policy & engine_policy_cosmology)
+      time *= e->delta_time_fof;
+    else
+      time += e->delta_time_fof;
+  }
+
+  /* Deal with last snapshot */
+  if (!found_fof_time) {
+    e->ti_next_fof = -1;
+    if (e->verbose) message("No further FoF time.");
+  } else {
+
+    /* Be nice, talk... */
+    if (e->policy & engine_policy_cosmology) {
+      const float next_fof_time =
+          exp(e->ti_next_fof * e->time_base) * e->cosmology->a_begin;
+      // if (e->verbose)
+      message("Next FoF time set to a=%e.", next_fof_time);
+    } else {
+      const float next_fof_time = e->ti_next_fof * e->time_base + e->time_begin;
+      if (e->verbose) message("Next FoF time set to t=%e.", next_fof_time);
+    }
+  }
+}
+
+/**
  * @brief Initialize all the output_list required by the engine
  *
  * @param e The #engine.
@@ -6005,16 +6168,25 @@ void engine_recompute_displacement_constraint(struct engine *e) {
 
 /**
  * @brief Frees up the memory allocated for this #engine
+ *
+ * @param e The #engine to clean.
+ * @param fof Was this a stand-alone FOF run?
  */
-void engine_clean(struct engine *e) {
+void engine_clean(struct engine *e, const int fof) {
+  /* Start by telling the runners to stop. */
+  e->step_props = engine_step_prop_done;
+  swift_barrier_wait(&e->run_barrier);
 
-  for (int i = 0; i < e->nr_threads; ++i) {
+  /* Wait for each runner to come home. */
+  for (int k = 0; k < e->nr_threads; k++) {
+    if (pthread_join(e->runners[k].thread, /*retval=*/NULL) != 0)
+      error("Failed to join runner %i.", k);
 #ifdef WITH_VECTORIZATION
-    cache_clean(&e->runners[i].ci_cache);
-    cache_clean(&e->runners[i].cj_cache);
+    cache_clean(&e->runners[k].ci_cache);
+    cache_clean(&e->runners[k].cj_cache);
 #endif
-    gravity_cache_clean(&e->runners[i].ci_gravity_cache);
-    gravity_cache_clean(&e->runners[i].cj_gravity_cache);
+    gravity_cache_clean(&e->runners[k].ci_gravity_cache);
+    gravity_cache_clean(&e->runners[k].cj_gravity_cache);
   }
   swift_free("runners", e->runners);
   free(e->snapshot_units);
@@ -6033,7 +6205,7 @@ void engine_clean(struct engine *e) {
   threadpool_clean(&e->threadpool);
 
   /* Close files */
-  if (e->nodeID == 0) {
+  if (!fof && e->nodeID == 0) {
     fclose(e->file_timesteps);
     fclose(e->file_stats);
 
@@ -6078,7 +6250,10 @@ void engine_struct_dump(struct engine *e, FILE *stream) {
   potential_struct_dump(e->external_potential, stream);
   cooling_struct_dump(e->cooling_func, stream);
   starformation_struct_dump(e->star_formation, stream);
+  feedback_struct_dump(e->feedback_props, stream);
+  black_holes_struct_dump(e->black_holes_properties, stream);
   chemistry_struct_dump(e->chemistry, stream);
+  fof_struct_dump(e->fof_properties, stream);
   parser_struct_dump(e->parameter_file, stream);
   if (e->output_list_snapshots)
     output_list_struct_dump(e->output_list_snapshots, stream);
@@ -6180,11 +6355,26 @@ void engine_struct_restore(struct engine *e, FILE *stream) {
   starformation_struct_restore(star_formation, stream);
   e->star_formation = star_formation;
 
+  struct feedback_props *feedback_properties =
+      (struct feedback_props *)malloc(sizeof(struct feedback_props));
+  feedback_struct_restore(feedback_properties, stream);
+  e->feedback_props = feedback_properties;
+
+  struct black_holes_props *black_holes_properties =
+      (struct black_holes_props *)malloc(sizeof(struct black_holes_props));
+  black_holes_struct_restore(black_holes_properties, stream);
+  e->black_holes_properties = black_holes_properties;
+
   struct chemistry_global_data *chemistry =
       (struct chemistry_global_data *)malloc(
           sizeof(struct chemistry_global_data));
   chemistry_struct_restore(chemistry, stream);
   e->chemistry = chemistry;
+
+  struct fof_props *fof_props =
+      (struct fof_props *)malloc(sizeof(struct fof_props));
+  fof_struct_restore(fof_props, stream);
+  e->fof_properties = fof_props;
 
   struct swift_params *parameter_file =
       (struct swift_params *)malloc(sizeof(struct swift_params));
@@ -6219,4 +6409,122 @@ void engine_struct_restore(struct engine *e, FILE *stream) {
   /* Want to force a rebuild before using this engine. Wait to repartition.*/
   e->forcerebuild = 1;
   e->forcerepart = 0;
+}
+
+/**
+ * @brief Activate all the #gpart communications in preparation
+ * fof a call to FOF.
+ *
+ * @param e The #engine to act on.
+ */
+void engine_activate_gpart_comms(struct engine *e) {
+
+#ifdef WITH_MPI
+
+  const ticks tic = getticks();
+
+  struct scheduler *s = &e->sched;
+  const int nr_tasks = s->nr_tasks;
+  struct task *tasks = s->tasks;
+
+  for (int k = 0; k < nr_tasks; ++k) {
+
+    struct task *t = &tasks[k];
+
+    if ((t->type == task_type_send) && (t->subtype == task_subtype_gpart)) {
+      scheduler_activate(s, t);
+    } else if ((t->type == task_type_recv) &&
+               (t->subtype == task_subtype_gpart)) {
+      scheduler_activate(s, t);
+    } else {
+      t->skip = 1;
+    }
+  }
+
+  if (e->verbose)
+    message("took %.3f %s.", clocks_from_ticks(getticks() - tic),
+            clocks_getunit());
+
+#else
+  error("Calling an MPI function in non-MPI mode.");
+#endif
+}
+
+/**
+ * @brief Activate all the FOF tasks.
+ *
+ * Marks all the other task types to be skipped.
+ *
+ * @param e The #engine to act on.
+ */
+void engine_activate_fof_tasks(struct engine *e) {
+
+  const ticks tic = getticks();
+
+  struct scheduler *s = &e->sched;
+  const int nr_tasks = s->nr_tasks;
+  struct task *tasks = s->tasks;
+
+  for (int k = 0; k < nr_tasks; k++) {
+
+    struct task *t = &tasks[k];
+
+    if (t->type == task_type_fof_self || t->type == task_type_fof_pair)
+      scheduler_activate(s, t);
+    else
+      t->skip = 1;
+  }
+
+  if (e->verbose)
+    message("took %.3f %s.", clocks_from_ticks(getticks() - tic),
+            clocks_getunit());
+}
+
+/**
+ * @brief Run a FOF search.
+ *
+ * @param e the engine
+ * @param dump_results Are we writing group catalogues to output files?
+ * @param seed_black_holes Are we seeding black holes?
+ */
+void engine_fof(struct engine *e, const int dump_results,
+                const int seed_black_holes) {
+
+  ticks tic = getticks();
+
+  /* Compute number of DM particles */
+  const long long total_nr_baryons =
+      e->total_nr_parts + e->total_nr_sparts + e->total_nr_bparts;
+  const long long total_nr_dmparts = e->total_nr_gparts - total_nr_baryons;
+
+  /* Initialise FOF parameters and allocate FOF arrays. */
+  fof_allocate(e->s, total_nr_dmparts, e->fof_properties);
+
+  /* Make FOF tasks */
+  engine_make_fof_tasks(e);
+
+  /* and activate them. */
+  engine_activate_fof_tasks(e);
+
+  /* Perform local FOF tasks. */
+  engine_launch(e);
+
+  /* Perform FOF search over foreign particles and
+   * find groups which require black hole seeding.  */
+  fof_search_tree(e->fof_properties, e->black_holes_properties,
+                  e->physical_constants, e->cosmology, e->s, dump_results,
+                  seed_black_holes);
+
+  /* Reset flag. */
+  e->run_fof = 0;
+
+  /* Flag that a FOF has taken place */
+  e->step_props |= engine_step_prop_fof;
+
+  /* ... and find the next FOF time */
+  if (seed_black_holes) engine_compute_next_fof_time(e);
+
+  if (engine_rank == 0)
+    message("Complete FOF search took: %.3f %s.",
+            clocks_from_ticks(getticks() - tic), clocks_getunit());
 }

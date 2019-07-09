@@ -77,6 +77,7 @@ TASKTYPES = [
     "extra_ghost",
     "drift_part",
     "drift_spart",
+    "drift_bpart",
     "drift_gpart",
     "drift_gpart_out",
     "hydro_end_force",
@@ -103,6 +104,12 @@ TASKTYPES = [
     "stars_ghost",
     "stars_ghost_out",
     "stars_sort",
+    "stars_resort",
+    "bh_in",
+    "bh_out",
+    "bh_ghost",
+    "fof_self",
+    "fof_pair",
     "count",
 ]
 
@@ -117,6 +124,7 @@ SUBTYPES = [
     "tend_part",
     "tend_gpart",
     "tend_spart",
+    "tend_bpart",
     "xv",
     "rho",
     "gpart",
@@ -124,6 +132,12 @@ SUBTYPES = [
     "spart",
     "stars_density",
     "stars_feedback",
+    "sf_counts"
+    "bpart",
+    "bh_density",
+    "bh_swallow",
+    "do_swallow",
+    "bh_feedback",
     "count",
 ]
 
@@ -252,8 +266,10 @@ for rank in ranks:
     #  Sort by tic and gather used threads.
     threadids = []
     for i in range(maxthread):
-        tasks[i] = sorted(tasks[i], key=lambda task: task[0])
-        threadids.append(i)
+        itasks = sorted(tasks[i], key=lambda task: task[0])
+        if len(itasks) > 0:
+            threadids.append(i)
+            tasks[i] = itasks
 
     #  Times per task.
     print("# Task times:")
@@ -291,7 +307,7 @@ for rank in ranks:
             taskmax = max(tasktimes[key])
             tasksum = sum(tasktimes[key])
             print(
-                "{0:19s}: {1:7d} {2:9.4f} {3:9.4f} {4:9.4f} {5:9.4f} {6:9.2f}".format(
+                "{0:24s}: {1:7d} {2:9.4f} {3:9.4f} {4:9.4f} {5:9.4f} {6:9.2f}".format(
                     key,
                     len(tasktimes[key]),
                     taskmin,
@@ -309,7 +325,7 @@ for rank in ranks:
         taskmax = max(alltasktimes[key])
         tasksum = sum(alltasktimes[key])
         print(
-            "{0:18s}: {1:7d} {2:9.4f} {3:9.4f} {4:9.4f} {5:9.4f} {6:9.2f}".format(
+            "{0:23s}: {1:7d} {2:9.4f} {3:9.4f} {4:9.4f} {5:9.4f} {6:9.2f}".format(
                 key,
                 len(alltasktimes[key]),
                 taskmin,

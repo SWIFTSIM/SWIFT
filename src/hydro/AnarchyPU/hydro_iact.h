@@ -21,25 +21,24 @@
 #define SWIFT_ANARCHY_PU_HYDRO_IACT_H
 
 /**
- * @file PressureEnergy/hydro_iact.h
- * @brief P-U implementation of SPH (Neighbour loop equations)
+ * @file AnarchyPU/hydro_iact.h
+ * @brief P-U conservative implementation of SPH,
+ *        with added ANARCHY physics (Cullen & Denhen 2011 AV,
+ *        Price 2008 thermal diffusion) (Neighbour loop equations).
  *
- * The thermal variable is the internal energy (u). A simple constant
- * viscosity term with a Balsara switch is implemented.
- *
- * No thermal conduction term is implemented.
- *
- * See PressureEnergy/hydro.h for references.
+ * See AnarchyPU/hydro.h for references.
  */
 
 #include "adiabatic_index.h"
 #include "minmax.h"
 
+#include "./hydro_parameters.h"
+
 /**
- * @brief Density interaction between two part*icles.
+ * @brief Density interaction between two particles.
  *
- * @param r2 Comoving square distance between the two part*icles.
- * @param dx Comoving vector separating both part*icles (pi - pj).
+ * @param r2 Comoving square distance between the two particles.
+ * @param dx Comoving vector separating both particles (pi - pj).
  * @param hi Comoving smoothing-length of part*icle i.
  * @param hj Comoving smoothing-length of part*icle j.
  * @param pi First part*icle.
@@ -118,10 +117,10 @@ __attribute__((always_inline)) INLINE static void runner_iact_density(
 }
 
 /**
- * @brief Density interaction between two part*icles (non-symmetric).
+ * @brief Density interaction between two particles (non-symmetric).
  *
- * @param r2 Comoving square distance between the two part*icles.
- * @param dx Comoving vector separating both part*icles (pi - pj).
+ * @param r2 Comoving square distance between the two particles.
+ * @param dx Comoving vector separating both particles (pi - pj).
  * @param hi Comoving smoothing-length of part*icle i.
  * @param hj Comoving smoothing-length of part*icle j.
  * @param pi First part*icle.
@@ -305,10 +304,10 @@ __attribute__((always_inline)) INLINE static void runner_iact_nonsym_gradient(
 }
 
 /**
- * @brief Force interaction between two part*icles.
+ * @brief Force interaction between two particles.
  *
- * @param r2 Comoving square distance between the two part*icles.
- * @param dx Comoving vector separating both part*icles (pi - pj).
+ * @param r2 Comoving square distance between the two particles.
+ * @param dx Comoving vector separating both particles (pi - pj).
  * @param hi Comoving smoothing-length of part*icle i.
  * @param hj Comoving smoothing-length of part*icle j.
  * @param pi First part*icle.
@@ -364,7 +363,7 @@ __attribute__((always_inline)) INLINE static void runner_iact_force(
   /* Includes the hubble flow term; not used for du/dt */
   const float dvdr_Hubble = dvdr + a2_Hubble * r2;
 
-  /* Are the part*icles moving towards each others ? */
+  /* Are the particles moving towards each others ? */
   const float omega_ij = min(dvdr_Hubble, 0.f);
   const float mu_ij = fac_mu * r_inv * omega_ij; /* This is 0 or negative */
 
@@ -435,10 +434,10 @@ __attribute__((always_inline)) INLINE static void runner_iact_force(
 }
 
 /**
- * @brief Force interaction between two part*icles (non-symmetric).
+ * @brief Force interaction between two particles (non-symmetric).
  *
- * @param r2 Comoving square distance between the two part*icles.
- * @param dx Comoving vector separating both part*icles (pi - pj).
+ * @param r2 Comoving square distance between the two particles.
+ * @param dx Comoving vector separating both particles (pi - pj).
  * @param hi Comoving smoothing-length of part*icle i.
  * @param hj Comoving smoothing-length of part*icle j.
  * @param pi First part*icle.
@@ -495,7 +494,7 @@ __attribute__((always_inline)) INLINE static void runner_iact_nonsym_force(
   /* Includes the hubble flow term; not used for du/dt */
   const float dvdr_Hubble = dvdr + a2_Hubble * r2;
 
-  /* Are the part*icles moving towards each others ? */
+  /* Are the particles moving towards each others ? */
   const float omega_ij = min(dvdr_Hubble, 0.f);
   const float mu_ij = fac_mu * r_inv * omega_ij; /* This is 0 or negative */
 
@@ -558,8 +557,8 @@ __attribute__((always_inline)) INLINE static void runner_iact_nonsym_force(
 /**
  * @brief Timestep limiter loop
  *
- * @param r2 Comoving square distance between the two part*icles.
- * @param dx Comoving vector separating both part*icles (pi - pj).
+ * @param r2 Comoving square distance between the two particles.
+ * @param dx Comoving vector separating both particles (pi - pj).
  * @param hi Comoving smoothing-length of part*icle i.
  * @param hj Comoving smoothing-length of part*icle j.
  * @param pi First part*icle.
@@ -578,8 +577,8 @@ __attribute__((always_inline)) INLINE static void runner_iact_limiter(
 /**
  * @brief Timestep limiter loop (non-symmetric version)
  *
- * @param r2 Comoving square distance between the two part*icles.
- * @param dx Comoving vector separating both part*icles (pi - pj).
+ * @param r2 Comoving square distance between the two particles.
+ * @param dx Comoving vector separating both particles (pi - pj).
  * @param hi Comoving smoothing-length of part*icle i.
  * @param hj Comoving smoothing-length of part*icle j.
  * @param pi First part*icle.
@@ -600,4 +599,4 @@ __attribute__((always_inline)) INLINE static void runner_iact_nonsym_limiter(
   }
 }
 
-#endif /* SWIFT_MINIMAL_HYDRO_IACT_H */
+#endif /* SWIFT_ANARCHY_PU_HYDRO_IACT_H */

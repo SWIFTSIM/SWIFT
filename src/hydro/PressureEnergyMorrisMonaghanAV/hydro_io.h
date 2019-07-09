@@ -20,7 +20,7 @@
 #ifndef SWIFT_PRESSURE_ENERGY_MORRIS_HYDRO_IO_H
 #define SWIFT_PRESSURE_ENERGY_MORRIS_HYDRO_IO_H
 /**
- * @file PressureEnergy/hydro_io.h
+ * @file PressureEnergyMorrisMonaghanAV/hydro_io.h
  * @brief P-U implementation of SPH (i/o routines)
  *
  * The thermal variable is the internal energy (u). A simple variable
@@ -36,6 +36,8 @@
 #include "hydro.h"
 #include "io_properties.h"
 #include "kernel_hydro.h"
+
+#include "./hydro_parameters.h"
 
 /**
  * @brief Specifies which particle fields to read from a dataset

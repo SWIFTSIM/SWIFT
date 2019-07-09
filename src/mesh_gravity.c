@@ -624,6 +624,11 @@ void pm_mesh_init(struct pm_mesh* mesh, const struct gravity_props* props,
   mesh->r_cut_max = mesh->r_s * props->r_cut_max_ratio;
   mesh->r_cut_min = mesh->r_s * props->r_cut_min_ratio;
 
+  if (mesh->N > 1290)
+    error(
+        "Mesh too big. The number of cells is larger than 2^31. "
+        "Use a mesh side-length <= 1290.");
+
   if (2. * mesh->r_cut_max > box_size)
     error("Mesh too small or r_cut_max too big for this box size");
 

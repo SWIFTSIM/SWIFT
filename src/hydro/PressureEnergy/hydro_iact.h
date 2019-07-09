@@ -35,11 +35,13 @@
 #include "adiabatic_index.h"
 #include "minmax.h"
 
+#include "./hydro_parameters.h"
+
 /**
- * @brief Density interaction between two part*icles.
+ * @brief Density interaction between two particles.
  *
- * @param r2 Comoving square distance between the two part*icles.
- * @param dx Comoving vector separating both part*icles (pi - pj).
+ * @param r2 Comoving square distance between the two particles.
+ * @param dx Comoving vector separating both particles (pi - pj).
  * @param hi Comoving smoothing-length of part*icle i.
  * @param hj Comoving smoothing-length of part*icle j.
  * @param pi First part*icle.
@@ -118,10 +120,10 @@ __attribute__((always_inline)) INLINE static void runner_iact_density(
 }
 
 /**
- * @brief Density interaction between two part*icles (non-symmetric).
+ * @brief Density interaction between two particles (non-symmetric).
  *
- * @param r2 Comoving square distance between the two part*icles.
- * @param dx Comoving vector separating both part*icles (pi - pj).
+ * @param r2 Comoving square distance between the two particles.
+ * @param dx Comoving vector separating both particles (pi - pj).
  * @param hi Comoving smoothing-length of part*icle i.
  * @param hj Comoving smoothing-length of part*icle j.
  * @param pi First part*icle.
@@ -178,10 +180,10 @@ __attribute__((always_inline)) INLINE static void runner_iact_nonsym_density(
 }
 
 /**
- * @brief Force interaction between two part*icles.
+ * @brief Force interaction between two particles.
  *
- * @param r2 Comoving square distance between the two part*icles.
- * @param dx Comoving vector separating both part*icles (pi - pj).
+ * @param r2 Comoving square distance between the two particles.
+ * @param dx Comoving vector separating both particles (pi - pj).
  * @param hi Comoving smoothing-length of part*icle i.
  * @param hj Comoving smoothing-length of part*icle j.
  * @param pi First part*icle.
@@ -237,7 +239,7 @@ __attribute__((always_inline)) INLINE static void runner_iact_force(
   /* Includes the hubble flow term; not used for du/dt */
   const float dvdr_Hubble = dvdr + a2_Hubble * r2;
 
-  /* Are the part*icles moving towards each others ? */
+  /* Are the particles moving towards each others ? */
   const float omega_ij = min(dvdr_Hubble, 0.f);
   const float mu_ij = fac_mu * r_inv * omega_ij; /* This is 0 or negative */
 
@@ -304,10 +306,10 @@ __attribute__((always_inline)) INLINE static void runner_iact_force(
 }
 
 /**
- * @brief Force interaction between two part*icles (non-symmetric).
+ * @brief Force interaction between two particles (non-symmetric).
  *
- * @param r2 Comoving square distance between the two part*icles.
- * @param dx Comoving vector separating both part*icles (pi - pj).
+ * @param r2 Comoving square distance between the two particles.
+ * @param dx Comoving vector separating both particles (pi - pj).
  * @param hi Comoving smoothing-length of part*icle i.
  * @param hj Comoving smoothing-length of part*icle j.
  * @param pi First part*icle.
@@ -364,7 +366,7 @@ __attribute__((always_inline)) INLINE static void runner_iact_nonsym_force(
   /* Includes the hubble flow term; not used for du/dt */
   const float dvdr_Hubble = dvdr + a2_Hubble * r2;
 
-  /* Are the part*icles moving towards each others ? */
+  /* Are the particles moving towards each others ? */
   const float omega_ij = min(dvdr_Hubble, 0.f);
   const float mu_ij = fac_mu * r_inv * omega_ij; /* This is 0 or negative */
 

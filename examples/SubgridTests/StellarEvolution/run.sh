@@ -16,7 +16,7 @@ fi
 if [ ! -e yieldtables ]
 then
     echo "Fetching Yield tables..."
-    ./getYieldTable.sh
+    ./getEagleYieldTable.sh
 fi
 
 # Get the solutions

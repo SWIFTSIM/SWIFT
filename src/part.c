@@ -30,6 +30,7 @@
 
 /* Local headers */
 #include "error.h"
+#include "hydro.h"
 #include "part.h"
 
 /**
@@ -210,6 +211,13 @@ void part_verify_links(struct part *parts, struct gpart *gparts,
             part->x[1], part->x[2], gparts[k].x[0] - part->x[0],
             gparts[k].x[1] - part->x[1], gparts[k].x[2] - part->x[2]);
 
+      /* Check that the particles have the same mass */
+      if (gparts[k].mass != hydro_get_mass(part))
+        error(
+            "Linked particles do not have the same mass!\n"
+            "gp->m=%e p->m=%e",
+            gparts[k].mass, hydro_get_mass(part));
+
       /* Check that the particles are at the same time */
       if (gparts[k].time_bin != part->time_bin)
         error("Linked particles are not at the same time !");
@@ -236,6 +244,13 @@ void part_verify_links(struct part *parts, struct gpart *gparts,
             gparts[k].x[0], gparts[k].x[1], gparts[k].x[2], spart->x[0],
             spart->x[1], spart->x[2], gparts[k].x[0] - spart->x[0],
             gparts[k].x[1] - spart->x[1], gparts[k].x[2] - spart->x[2]);
+
+      /* Check that the particles have the same mass */
+      if (gparts[k].mass != spart->mass)
+        error(
+            "Linked particles do not have the same mass!\n"
+            "gp->m=%e sp->m=%e",
+            gparts[k].mass, spart->mass);
 
       /* Check that the particles are at the same time */
       if (gparts[k].time_bin != spart->time_bin)
@@ -264,6 +279,13 @@ void part_verify_links(struct part *parts, struct gpart *gparts,
             bpart->x[1], bpart->x[2], gparts[k].x[0] - bpart->x[0],
             gparts[k].x[1] - bpart->x[1], gparts[k].x[2] - bpart->x[2]);
 
+      /* Check that the particles have the same mass */
+      if (gparts[k].mass != bpart->mass)
+        error(
+            "Linked particles do not have the same mass!\n"
+            "gp->m=%e sp->m=%e",
+            gparts[k].mass, bpart->mass);
+
       /* Check that the particles are at the same time */
       if (gparts[k].time_bin != bpart->time_bin)
         error("Linked particles are not at the same time !");
@@ -287,6 +309,10 @@ void part_verify_links(struct part *parts, struct gpart *gparts,
           parts[k].x[2] != parts[k].gpart->x[2])
         error("Linked particles are not at the same position !");
 
+      /* Check that the particles have the same mass */
+      if (hydro_get_mass(&parts[k]) != parts[k].gpart->mass)
+        error("Linked particles do not have the same mass!\n");
+
       /* Check that the particles are at the same time */
       if (parts[k].time_bin != parts[k].gpart->time_bin)
         error("Linked particles are not at the same time !");
@@ -308,6 +334,10 @@ void part_verify_links(struct part *parts, struct gpart *gparts,
             sparts[k].x[1] != sparts[k].gpart->x[1] ||
             sparts[k].x[2] != sparts[k].gpart->x[2])
           error("Linked particles are not at the same position !");
+
+        /* Check that the particles have the same mass */
+        if (sparts[k].mass != sparts[k].gpart->mass)
+          error("Linked particles do not have the same mass!\n");
 
         /* Check that the particles are at the same time */
         if (sparts[k].time_bin != sparts[k].gpart->time_bin)
@@ -331,6 +361,10 @@ void part_verify_links(struct part *parts, struct gpart *gparts,
             bparts[k].x[1] != bparts[k].gpart->x[1] ||
             bparts[k].x[2] != bparts[k].gpart->x[2])
           error("Linked particles are not at the same position !");
+
+        /* Check that the particles have the same mass */
+        if (bparts[k].mass != bparts[k].gpart->mass)
+          error("Linked particles do not have the same mass!\n");
 
         /* Check that the particles are at the same time */
         if (bparts[k].time_bin != bparts[k].gpart->time_bin)

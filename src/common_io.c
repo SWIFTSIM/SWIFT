@@ -387,6 +387,59 @@ void io_write_engine_policy(hid_t h_file, const struct engine* e) {
   H5Gclose(h_grp);
 }
 
+static long long cell_count_non_inhibited_gas(const struct cell* c) {
+  const int total_count = c->hydro.count;
+  struct part* parts = c->hydro.parts;
+  long long count = 0;
+  for (int i = 0; i < total_count; ++i) {
+    if (!(parts[i].time_bin != time_bin_inhibited) &&
+        !(parts[i].time_bin != time_bin_not_created)) {
+      ++count;
+    }
+  }
+  return count;
+}
+
+static long long cell_count_non_inhibited_dark_matter(const struct cell* c) {
+  const int total_count = c->grav.count;
+  struct gpart* gparts = c->grav.parts;
+  long long count = 0;
+  for (int i = 0; i < total_count; ++i) {
+    if (!(gparts[i].time_bin != time_bin_inhibited) &&
+        !(gparts[i].time_bin != time_bin_not_created) &&
+        (gparts[i].type == swift_type_dark_matter)) {
+      ++count;
+    }
+  }
+  return count;
+}
+
+static long long cell_count_non_inhibited_stars(const struct cell* c) {
+  const int total_count = c->stars.count;
+  struct spart* sparts = c->stars.parts;
+  long long count = 0;
+  for (int i = 0; i < total_count; ++i) {
+    if (!(sparts[i].time_bin != time_bin_inhibited) &&
+        !(sparts[i].time_bin != time_bin_not_created)) {
+      ++count;
+    }
+  }
+  return count;
+}
+
+static long long cell_count_non_inhibited_black_holes(const struct cell* c) {
+  const int total_count = c->black_holes.count;
+  struct bpart* bparts = c->black_holes.parts;
+  long long count = 0;
+  for (int i = 0; i < total_count; ++i) {
+    if (!(bparts[i].time_bin != time_bin_inhibited) &&
+        !(bparts[i].time_bin != time_bin_not_created)) {
+      ++count;
+    }
+  }
+  return count;
+}
+
 void io_write_cell_offsets(hid_t h_grp, const int cdim[3],
                            const struct cell* cells_top, const int nr_cells,
                            const double width[3], const int nodeID,
@@ -438,15 +491,10 @@ void io_write_cell_offsets(hid_t h_grp, const int cdim[3],
       centres[i * 3 + 2] = cells_top[i].loc[2] + cell_width[2] * 0.5;
 
       /* Count real particles that will be written */
-      count_part[i] = cells_top[i].hydro.count - cells_top[i].hydro.inhibited;
-      count_gpart[i] = cells_top[i].grav.count - cells_top[i].grav.inhibited;
-      count_spart[i] = cells_top[i].stars.count - cells_top[i].stars.inhibited;
-      count_bpart[i] = cells_top[i].stars.count - cells_top[i].stars.inhibited;
-
-      /* Only count DM gpart (gpart without friends) */
-      count_gpart[i] -= count_part[i];
-      count_gpart[i] -= count_spart[i];
-      count_gpart[i] -= count_bpart[i];
+      count_part[i] = cell_count_non_inhibited_gas(&cells_top[i]);
+      count_gpart[i] = cell_count_non_inhibited_dark_matter(&cells_top[i]);
+      count_spart[i] = cell_count_non_inhibited_stars(&cells_top[i]);
+      count_bpart[i] = cell_count_non_inhibited_black_holes(&cells_top[i]);
 
       /* Offsets including the global offset of all particles on this MPI rank
        */
@@ -454,7 +502,8 @@ void io_write_cell_offsets(hid_t h_grp, const int cdim[3],
       offset_gpart[i] =
           local_offset_gpart + global_offsets[swift_type_dark_matter];
       offset_spart[i] = local_offset_spart + global_offsets[swift_type_stars];
-      offset_bpart[i] = local_offset_bpart + global_offsets[swift_type_stars];
+      offset_bpart[i] =
+          local_offset_bpart + global_offsets[swift_type_black_hole];
 
       local_offset_part += count_part[i];
       local_offset_gpart += count_gpart[i];
@@ -859,6 +908,28 @@ void io_convert_part_f_mapper(void* restrict temp, int N,
 }
 
 /**
+ * @brief Mapper function to copy #part into a buffer of ints using a
+ * conversion function.
+ */
+void io_convert_part_i_mapper(void* restrict temp, int N,
+                              void* restrict extra_data) {
+
+  const struct io_props props = *((const struct io_props*)extra_data);
+  const struct part* restrict parts = props.parts;
+  const struct xpart* restrict xparts = props.xparts;
+  const struct engine* e = props.e;
+  const size_t dim = props.dimension;
+
+  /* How far are we with this chunk? */
+  int* restrict temp_i = (int*)temp;
+  const ptrdiff_t delta = (temp_i - props.start_temp_i) / dim;
+
+  for (int i = 0; i < N; i++)
+    props.convert_part_i(e, parts + delta + i, xparts + delta + i,
+                         &temp_i[i * dim]);
+}
+
+/**
  * @brief Mapper function to copy #part into a buffer of doubles using a
  * conversion function.
  */
@@ -1125,6 +1196,18 @@ void io_copy_temp_buffer(void* temp, const struct engine* e,
       /* Copy the whole thing into a buffer */
       threadpool_map((struct threadpool*)&e->threadpool,
                      io_convert_part_f_mapper, temp_f, N, copySize, 0,
+                     (void*)&props);
+
+    } else if (props.convert_part_i != NULL) {
+
+      /* Prepare some parameters */
+      int* temp_i = (int*)temp;
+      props.start_temp_i = (int*)temp;
+      props.e = e;
+
+      /* Copy the whole thing into a buffer */
+      threadpool_map((struct threadpool*)&e->threadpool,
+                     io_convert_part_i_mapper, temp_i, N, copySize, 0,
                      (void*)&props);
 
     } else if (props.convert_part_d != NULL) {

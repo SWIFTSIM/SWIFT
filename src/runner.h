@@ -29,6 +29,7 @@
 /* Includes. */
 #include "cache.h"
 #include "gravity_cache.h"
+#include "task.h"
 
 struct cell;
 struct engine;
@@ -64,6 +65,11 @@ struct runner {
   /*! The particle cache of cell cj. */
   struct cache cj_cache;
 #endif
+
+#ifdef SWIFT_DEBUG_CHECKS
+  /*! Pointer to the task this runner is currently performing */
+  const struct task *t;
+#endif
 };
 
 /* Function prototypes. */
@@ -86,6 +92,9 @@ void runner_do_cooling(struct runner *r, struct cell *c, int timer);
 void runner_do_grav_external(struct runner *r, struct cell *c, int timer);
 void runner_do_grav_fft(struct runner *r, int timer);
 void runner_do_logger(struct runner *r, struct cell *c, int timer);
+void runner_do_fof_self(struct runner *r, struct cell *c, int timer);
+void runner_do_fof_pair(struct runner *r, struct cell *ci, struct cell *cj,
+                        int timer);
 void *runner_main(void *data);
 void runner_do_unskip_mapper(void *map_data, int num_elements,
                              void *extra_data);

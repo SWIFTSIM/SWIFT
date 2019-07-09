@@ -23,7 +23,7 @@
 /**
  * @brief Entry in a list of sorted indices.
  */
-struct entry {
+struct sort_entry {
 
   /*! Distance on the axis */
   float d;

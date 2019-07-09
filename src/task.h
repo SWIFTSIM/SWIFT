@@ -27,8 +27,12 @@
 
 /* Includes. */
 #include "align.h"
-#include "cell.h"
 #include "cycle.h"
+#include "timeline.h"
+
+/* Forward declarations to avoid circular inclusion dependencies. */
+struct cell;
+struct engine;
 
 #define task_align 128
 
@@ -80,6 +84,14 @@ enum task_types {
   task_type_stars_ghost,
   task_type_stars_ghost_out, /* Implicit */
   task_type_stars_sort,
+  task_type_stars_resort,
+  task_type_bh_in,  /* Implicit */
+  task_type_bh_out, /* Implicit */
+  task_type_bh_density_ghost,
+  task_type_bh_swallow_ghost1,
+  task_type_bh_swallow_ghost2,
+  task_type_fof_self,
+  task_type_fof_pair,
   task_type_count
 } __attribute__((packed));
 
@@ -100,11 +112,20 @@ enum task_subtypes {
   task_subtype_tend_bpart,
   task_subtype_xv,
   task_subtype_rho,
+  task_subtype_part_swallow,
   task_subtype_gpart,
   task_subtype_multipole,
   task_subtype_spart,
   task_subtype_stars_density,
   task_subtype_stars_feedback,
+  task_subtype_sf_counts,
+  task_subtype_bpart_rho,
+  task_subtype_bpart_swallow,
+  task_subtype_bpart_feedback,
+  task_subtype_bh_density,
+  task_subtype_bh_swallow,
+  task_subtype_do_swallow,
+  task_subtype_bh_feedback,
   task_subtype_count
 } __attribute__((packed));
 
@@ -116,6 +137,7 @@ enum task_actions {
   task_action_part,
   task_action_gpart,
   task_action_spart,
+  task_action_bpart,
   task_action_all,
   task_action_multipole,
   task_action_count

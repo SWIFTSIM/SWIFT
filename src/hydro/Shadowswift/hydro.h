@@ -23,6 +23,7 @@
 #include "adiabatic_index.h"
 #include "approx_math.h"
 #include "cosmology.h"
+#include "entropy_floor.h"
 #include "equation_of_state.h"
 #include "hydro_gradients.h"
 #include "hydro_properties.h"
@@ -431,7 +432,9 @@ __attribute__((always_inline)) INLINE static void hydro_convert_quantities(
  * @param dt The drift time-step.
  */
 __attribute__((always_inline)) INLINE static void hydro_predict_extra(
-    struct part* p, struct xpart* xp, float dt_drift, float dt_therm) {}
+    struct part* p, struct xpart* xp, float dt_drift, float dt_therm,
+    const struct cosmology* cosmo, const struct hydro_props* hydro_props,
+    const struct entropy_floor_properties* floor_props) {}
 
 /**
  * @brief Set the particle acceleration after the flux loop.
@@ -453,7 +456,8 @@ __attribute__((always_inline)) INLINE static void hydro_end_force(
 __attribute__((always_inline)) INLINE static void hydro_kick_extra(
     struct part* p, struct xpart* xp, float dt, float dt_grav, float dt_hydro,
     float dt_kick_corr, const struct cosmology* cosmo,
-    const struct hydro_props* hydro_props) {
+    const struct hydro_props* hydro_props,
+    const struct entropy_floor_properties* floor_props) {
 
   /* Update the conserved variables. We do this here and not in the kick,
      since we need the updated variables below. */
@@ -868,6 +872,28 @@ hydro_set_drifted_physical_internal_energy(struct part* p,
                                            const struct cosmology* cosmo,
                                            const float u) {
   error("Need implementing");
+}
+
+/**
+ * @brief Update the value of the viscosity alpha for the scheme.
+ *
+ * @param p the particle of interest
+ * @param alpha the new value for the viscosity coefficient.
+ */
+__attribute__((always_inline)) INLINE static void hydro_set_viscosity_alpha(
+    struct part* restrict p, float alpha) {
+  /* Purposefully left empty */
+}
+
+/**
+ * @brief Update the value of the viscosity alpha to the
+ *        feedback reset value for the scheme.
+ *
+ * @param p the particle of interest
+ */
+__attribute__((always_inline)) INLINE static void
+hydro_diffusive_feedback_reset(struct part* restrict p) {
+  /* Purposefully left empty */
 }
 
 /**

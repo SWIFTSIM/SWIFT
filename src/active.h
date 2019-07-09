@@ -372,7 +372,7 @@ __attribute__((always_inline)) INLINE static int bpart_is_active(
 
   if (ti_end < ti_current)
     error(
-        "s-particle in an impossible time-zone! bp->ti_end=%lld "
+        "b-particle in an impossible time-zone! bp->ti_end=%lld "
         "e->ti_current=%lld",
         ti_end, ti_current);
 #endif
@@ -494,6 +494,28 @@ __attribute__((always_inline)) INLINE static int cell_is_starting_stars(
 #endif
 
   return (c->stars.ti_beg_max == e->ti_current);
+}
+
+/**
+ * @brief Does a cell contain any b-particle starting their time-step now ?
+ *
+ * @param c The #cell.
+ * @param e The #engine containing information about the current time.
+ * @return 1 if the #cell contains at least an active particle, 0 otherwise.
+ */
+__attribute__((always_inline)) INLINE static int cell_is_starting_black_holes(
+    const struct cell *c, const struct engine *e) {
+
+#ifdef SWIFT_DEBUG_CHECKS
+  if (c->black_holes.ti_beg_max > e->ti_current)
+    error(
+        "cell in an impossible time-zone! c->ti_beg_max=%lld (t=%e) and "
+        "e->ti_current=%lld (t=%e, a=%e)",
+        c->black_holes.ti_beg_max, c->black_holes.ti_beg_max * e->time_base,
+        e->ti_current, e->ti_current * e->time_base, e->cosmology->a);
+#endif
+
+  return (c->black_holes.ti_beg_max == e->ti_current);
 }
 
 /**

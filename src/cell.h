@@ -28,6 +28,7 @@
 
 /* Includes. */
 #include <stddef.h>
+#include <stdint.h>
 
 /* Local includes. */
 #include "align.h"
@@ -71,6 +72,17 @@ struct link {
   /* The next pointer. */
   struct link *next;
 };
+
+/* Holds the pairs of progeny for each sid. */
+struct cell_split_pair {
+  int count;
+  struct {
+    int pid;
+    int pjd;
+    int sid;
+  } pairs[16];
+};
+extern struct cell_split_pair cell_split_pairs[13];
 
 /**
  * @brief Packed cell for information correct at rebuild time.
@@ -160,6 +172,26 @@ struct pcell {
 
   } stars;
 
+  /*! Black hole variables */
+  struct {
+
+    /*! Number of #spart in this cell. */
+    int count;
+
+    /*! Maximal smoothing length. */
+    double h_max;
+
+    /*! Minimal integer end-of-timestep in this cell for black hole tasks */
+    integertime_t ti_end_min;
+
+    /*! Maximal integer end-of-timestep in this cell for black hole tasks */
+    integertime_t ti_end_max;
+
+    /*! Integer time of the last drift of the #spart in this cell */
+    integertime_t ti_old_part;
+
+  } black_holes;
+
   /*! Maximal depth in that part of the tree */
   int maxdepth;
 
@@ -222,6 +254,45 @@ struct pcell_step_black_holes {
 };
 
 /**
+ * @brief Cell information to propagate the new counts of star particles.
+ */
+struct pcell_sf {
+
+  /*! Stars variables */
+  struct {
+
+    /* Distance by which the stars pointer has moved since the last rebuild */
+    ptrdiff_t delta_from_rebuild;
+
+    /* Number of particles in the cell */
+    int count;
+
+    /*! Maximum part movement in this cell since last construction. */
+    float dx_max_part;
+
+  } stars;
+};
+
+/** Bitmasks for the cell flags. Beware when adding flags that you don't exceed
+    the size of the flags variable in the struct cell. */
+enum cell_flags {
+  cell_flag_split = (1UL << 0),
+  cell_flag_do_hydro_drift = (1UL << 1),
+  cell_flag_do_hydro_sub_drift = (1UL << 2),
+  cell_flag_do_hydro_sub_sort = (1UL << 3),
+  cell_flag_do_hydro_limiter = (1UL << 4),
+  cell_flag_do_hydro_sub_limiter = (1UL << 5),
+  cell_flag_do_grav_drift = (1UL << 6),
+  cell_flag_do_grav_sub_drift = (1UL << 7),
+  cell_flag_do_stars_sub_sort = (1UL << 8),
+  cell_flag_do_stars_drift = (1UL << 9),
+  cell_flag_do_stars_sub_drift = (1UL << 10),
+  cell_flag_do_bh_drift = (1UL << 11),
+  cell_flag_do_bh_sub_drift = (1UL << 12),
+  cell_flag_do_stars_resort = (1UL << 13)
+};
+
+/**
  * @brief Cell within the tree structure.
  *
  * Contains particles, links to tasks, a multipole object and counters.
@@ -249,6 +320,9 @@ struct cell {
   /*! Super cell, i.e. the highest-level parent cell with *any* task */
   struct cell *super;
 
+  /*! Cell flags bit-mask. */
+  volatile uint32_t flags;
+
   /*! Hydro variables */
   struct {
 
@@ -259,8 +333,7 @@ struct cell {
     struct xpart *xparts;
 
     /*! Pointer for the sorted indices. */
-    struct entry *sort[13];
-    struct entry *sortptr;
+    struct sort_entry *sort[13];
 
     /*! Super cell, i.e. the highest-level parent cell that has a hydro
      * pair/self tasks */
@@ -305,6 +378,9 @@ struct cell {
     /*! Task for star formation */
     struct task *star_formation;
 
+    /*! Task for sorting the stars again after a SF event */
+    struct task *stars_resort;
+
     /*! Max smoothing length in this cell. */
     double h_max;
 
@@ -348,35 +424,17 @@ struct cell {
     /*! Number of #part updated in this cell. */
     int updated;
 
-    /*! Number of #part inhibited in this cell. */
-    int inhibited;
-
     /*! Is the #part data of this cell being used in a sub-cell? */
     int hold;
 
     /*! Bit mask of sort directions that will be needed in the next timestep. */
-    unsigned int requires_sorts;
+    uint16_t requires_sorts;
 
     /*! Bit mask of sorts that need to be computed for this cell. */
-    unsigned int do_sort;
+    uint16_t do_sort;
 
     /*! Bit-mask indicating the sorted directions */
-    unsigned int sorted;
-
-    /*! Does this cell need to be drifted (hydro)? */
-    char do_drift;
-
-    /*! Do any of this cell's sub-cells need to be drifted (hydro)? */
-    char do_sub_drift;
-
-    /*! Do any of this cell's sub-cells need to be sorted? */
-    char do_sub_sort;
-
-    /*! Does this cell need to be limited? */
-    char do_limiter;
-
-    /*! Do any of this cell's sub-cells need to be limited? */
-    char do_sub_limiter;
+    uint16_t sorted;
 
 #ifdef SWIFT_DEBUG_CHECKS
 
@@ -464,9 +522,6 @@ struct cell {
     /*! Number of #gpart updated in this cell. */
     int updated;
 
-    /*! Number of #gpart inhibited in this cell. */
-    int inhibited;
-
     /*! Is the #gpart data of this cell being used in a sub-cell? */
     int phold;
 
@@ -476,12 +531,6 @@ struct cell {
     /*! Number of M-M tasks that are associated with this cell. */
     short int nr_mm_tasks;
 
-    /*! Does this cell need to be drifted (gravity)? */
-    char do_drift;
-
-    /*! Do any of this cell's sub-cells need to be drifted (gravity)? */
-    char do_sub_drift;
-
   } grav;
 
   /*! Stars variables */
@@ -489,6 +538,9 @@ struct cell {
 
     /*! Pointer to the #spart data. */
     struct spart *parts;
+
+    /*! Pointer to the #spart data at rebuild time. */
+    struct spart *parts_rebuild;
 
     /*! The star ghost task itself */
     struct task *ghost;
@@ -545,21 +597,17 @@ struct cell {
     /*! Values of dx_max_sort before the drifts, used for sub-cell tasks. */
     float dx_max_sort_old;
 
-    /*! Bit mask of sort directions that will be needed in the next timestep. */
-    unsigned int requires_sorts;
-
     /*! Pointer for the sorted indices. */
-    struct entry *sort[13];
-    struct entry *sortptr;
+    struct sort_entry *sort[13];
+
+    /*! Bit mask of sort directions that will be needed in the next timestep. */
+    uint16_t requires_sorts;
 
     /*! Bit-mask indicating the sorted directions */
-    unsigned int sorted;
+    uint16_t sorted;
 
     /*! Bit mask of sorts that need to be computed for this cell. */
-    unsigned int do_sort;
-
-    /*! Do any of this cell's sub-cells need to be sorted? */
-    char do_sub_sort;
+    uint16_t do_sort;
 
     /*! Maximum end of (integer) time step in this cell for star tasks. */
     integertime_t ti_end_min;
@@ -574,17 +622,8 @@ struct cell {
     /*! Number of #spart updated in this cell. */
     int updated;
 
-    /*! Number of #spart inhibited in this cell. */
-    int inhibited;
-
     /*! Is the #spart data of this cell being used in a sub-cell? */
     int hold;
-
-    /*! Does this cell need to be drifted (stars)? */
-    char do_drift;
-
-    /*! Do any of this cell's sub-cells need to be drifted (stars)? */
-    char do_sub_drift;
 
     /*! Star formation history struct */
     struct star_formation_history sfh;
@@ -604,6 +643,32 @@ struct cell {
 
     /*! The drift task for bparts */
     struct task *drift;
+
+    /*! Implicit tasks marking the entry of the BH physics block of tasks
+     */
+    struct task *black_holes_in;
+
+    /*! Implicit tasks marking the exit of the BH physics block of tasks */
+    struct task *black_holes_out;
+
+    /*! The star ghost task itself */
+    struct task *density_ghost;
+
+    /*! The star ghost task itself */
+    struct task *swallow_ghost[2];
+
+    /*! Linked list of the tasks computing this cell's BH density. */
+    struct link *density;
+
+    /*! Linked list of the tasks computing this cell's BH swallowing and
+     * merging. */
+    struct link *swallow;
+
+    /*! Linked list of the tasks processing the particles to swallow */
+    struct link *do_swallow;
+
+    /*! Linked list of the tasks computing this cell's BH feedback. */
+    struct link *feedback;
 
     /*! Max smoothing length in this cell. */
     double h_max;
@@ -626,6 +691,9 @@ struct cell {
     /*! Maximum part movement in this cell since last construction. */
     float dx_max_part;
 
+    /*! Values of dx_max before the drifts, used for sub-cell tasks. */
+    float dx_max_part_old;
+
     /*! Maximum end of (integer) time step in this cell for black tasks. */
     integertime_t ti_end_min;
 
@@ -640,17 +708,8 @@ struct cell {
     /*! Number of #bpart updated in this cell. */
     int updated;
 
-    /*! Number of #bpart inhibited in this cell. */
-    int inhibited;
-
     /*! Is the #bpart data of this cell being used in a sub-cell? */
     int hold;
-
-    /*! Does this cell need to be drifted (black holes)? */
-    char do_drift;
-
-    /*! Do any of this cell's sub-cells need to be drifted (black holes)? */
-    char do_sub_drift;
 
   } black_holes;
 
@@ -658,71 +717,13 @@ struct cell {
   /*! MPI variables */
   struct {
 
-    struct {
-      /* Task receiving hydro data (positions). */
-      struct task *recv_xv;
-
-      /* Task receiving hydro data (density). */
-      struct task *recv_rho;
-
-      /* Task receiving hydro data (gradient). */
-      struct task *recv_gradient;
-
-      /* Task receiving data (time-step). */
-      struct task *recv_ti;
-
-      /* Linked list for sending hydro data (positions). */
-      struct link *send_xv;
-
-      /* Linked list for sending hydro data (density). */
-      struct link *send_rho;
-
-      /* Linked list for sending hydro data (gradient). */
-      struct link *send_gradient;
-
-      /* Linked list for sending data (time-step). */
-      struct link *send_ti;
-
-    } hydro;
-
-    struct {
-
-      /* Task receiving gpart data. */
-      struct task *recv;
-
-      /* Task receiving data (time-step). */
-      struct task *recv_ti;
-
-      /* Linked list for sending gpart data. */
+    union {
+      /* Single list of all send tasks associated with this cell. */
       struct link *send;
 
-      /* Linked list for sending data (time-step). */
-      struct link *send_ti;
-
-    } grav;
-
-    struct {
-      /* Task receiving spart data. */
-      struct task *recv;
-
-      /* Task receiving data (time-step). */
-      struct task *recv_ti;
-
-      /* Linked list for sending spart data. */
-      struct link *send;
-
-      /* Linked list for sending data (time-step). */
-      struct link *send_ti;
-
-    } stars;
-
-    struct {
-      /* Task receiving limiter data. */
-      struct task *recv;
-
-      /* Linked list for sending limiter data. */
-      struct link *send;
-    } limiter;
+      /* Single list of all recv tasks associated with this cell. */
+      struct link *recv;
+    };
 
     /*! Bit mask of the proxies this cell is registered with. */
     unsigned long long int sendto;
@@ -813,9 +814,15 @@ int cell_mlocktree(struct cell *c);
 void cell_munlocktree(struct cell *c);
 int cell_slocktree(struct cell *c);
 void cell_sunlocktree(struct cell *c);
+int cell_blocktree(struct cell *c);
+void cell_bunlocktree(struct cell *c);
 int cell_pack(struct cell *c, struct pcell *pc, const int with_gravity);
 int cell_unpack(struct pcell *pc, struct cell *c, struct space *s,
                 const int with_gravity);
+void cell_pack_part_swallow(const struct cell *c,
+                            struct black_holes_part_data *data);
+void cell_unpack_part_swallow(struct cell *c,
+                              const struct black_holes_part_data *data);
 int cell_pack_tags(const struct cell *c, int *tags);
 int cell_unpack_tags(const int *tags, struct cell *c);
 int cell_pack_end_step_hydro(struct cell *c, struct pcell_step_hydro *pcell);
@@ -830,6 +837,8 @@ int cell_unpack_end_step_black_holes(struct cell *c,
                                      struct pcell_step_black_holes *pcell);
 int cell_pack_multipoles(struct cell *c, struct gravity_tensors *m);
 int cell_unpack_multipoles(struct cell *c, struct gravity_tensors *m);
+int cell_pack_sf_counts(struct cell *c, struct pcell_sf *pcell);
+int cell_unpack_sf_counts(struct cell *c, struct pcell_sf *pcell);
 int cell_getsize(struct cell *c);
 int cell_link_parts(struct cell *c, struct part *parts);
 int cell_link_gparts(struct cell *c, struct gpart *gparts);
@@ -850,7 +859,9 @@ void cell_check_spart_drift_point(struct cell *c, void *data);
 void cell_check_multipole_drift_point(struct cell *c, void *data);
 void cell_reset_task_counters(struct cell *c);
 int cell_unskip_hydro_tasks(struct cell *c, struct scheduler *s);
-int cell_unskip_stars_tasks(struct cell *c, struct scheduler *s);
+int cell_unskip_stars_tasks(struct cell *c, struct scheduler *s,
+                            const int with_star_formation);
+int cell_unskip_black_holes_tasks(struct cell *c, struct scheduler *s);
 int cell_unskip_gravity_tasks(struct cell *c, struct scheduler *s);
 void cell_drift_part(struct cell *c, const struct engine *e, int force);
 void cell_drift_gpart(struct cell *c, const struct engine *e, int force);
@@ -865,13 +876,17 @@ void cell_activate_subcell_hydro_tasks(struct cell *ci, struct cell *cj,
 void cell_activate_subcell_grav_tasks(struct cell *ci, struct cell *cj,
                                       struct scheduler *s);
 void cell_activate_subcell_stars_tasks(struct cell *ci, struct cell *cj,
-                                       struct scheduler *s);
+                                       struct scheduler *s,
+                                       const int with_star_formation);
+void cell_activate_subcell_black_holes_tasks(struct cell *ci, struct cell *cj,
+                                             struct scheduler *s);
 void cell_activate_subcell_external_grav_tasks(struct cell *ci,
                                                struct scheduler *s);
 void cell_activate_super_spart_drifts(struct cell *c, struct scheduler *s);
 void cell_activate_drift_part(struct cell *c, struct scheduler *s);
 void cell_activate_drift_gpart(struct cell *c, struct scheduler *s);
 void cell_activate_drift_spart(struct cell *c, struct scheduler *s);
+void cell_activate_drift_bpart(struct cell *c, struct scheduler *s);
 void cell_activate_hydro_sorts(struct cell *c, int sid, struct scheduler *s);
 void cell_activate_stars_sorts(struct cell *c, int sid, struct scheduler *s);
 void cell_activate_limiter(struct cell *c, struct scheduler *s);
@@ -880,7 +895,9 @@ void cell_clear_limiter_flags(struct cell *c, void *data);
 void cell_set_super_mapper(void *map_data, int num_elements, void *extra_data);
 void cell_check_spart_pos(const struct cell *c,
                           const struct spart *global_sparts);
-void cell_clear_stars_sort_flags(struct cell *c);
+void cell_check_sort_flags(const struct cell *c);
+void cell_clear_stars_sort_flags(struct cell *c, const int unused_flags);
+void cell_clear_hydro_sort_flags(struct cell *c, const int unused_flags);
 int cell_has_tasks(struct cell *c);
 void cell_remove_part(const struct engine *e, struct cell *c, struct part *p,
                       struct xpart *xp);
@@ -1037,6 +1054,43 @@ cell_can_recurse_in_self_stars_task(const struct cell *c) {
 }
 
 /**
+ * @brief Can a sub-pair black hole task recurse to a lower level based
+ * on the status of the particles in the cell.
+ *
+ * @param ci The #cell with black holes.
+ * @param cj The #cell with hydro parts.
+ */
+__attribute__((always_inline)) INLINE static int
+cell_can_recurse_in_pair_black_holes_task(const struct cell *ci,
+                                          const struct cell *cj) {
+
+  /* Is the cell split ? */
+  /* If so, is the cut-off radius plus the max distance the parts have moved */
+  /* smaller than the sub-cell sizes ? */
+  /* Note: We use the _old values as these might have been updated by a drift */
+  return ci->split && cj->split &&
+         ((kernel_gamma * ci->black_holes.h_max_old +
+           ci->black_holes.dx_max_part_old) < 0.5f * ci->dmin) &&
+         ((kernel_gamma * cj->hydro.h_max_old + cj->hydro.dx_max_part_old) <
+          0.5f * cj->dmin);
+}
+
+/**
+ * @brief Can a sub-self black hole task recurse to a lower level based
+ * on the status of the particles in the cell.
+ *
+ * @param c The #cell.
+ */
+__attribute__((always_inline)) INLINE static int
+cell_can_recurse_in_self_black_holes_task(const struct cell *c) {
+
+  /* Is the cell split and not smaller than the smoothing length? */
+  return c->split &&
+         (kernel_gamma * c->black_holes.h_max_old < 0.5f * c->dmin) &&
+         (kernel_gamma * c->hydro.h_max_old < 0.5f * c->dmin);
+}
+
+/**
  * @brief Can a pair hydro task associated with a cell be split into smaller
  * sub-tasks.
  *
@@ -1052,7 +1106,8 @@ __attribute__((always_inline)) INLINE static int cell_can_split_pair_hydro_task(
   /* into account any part motion (i.e. dx_max == 0 here) */
   return c->split &&
          (space_stretch * kernel_gamma * c->hydro.h_max < 0.5f * c->dmin) &&
-         (space_stretch * kernel_gamma * c->stars.h_max < 0.5f * c->dmin);
+         (space_stretch * kernel_gamma * c->stars.h_max < 0.5f * c->dmin) &&
+         (space_stretch * kernel_gamma * c->black_holes.h_max < 0.5f * c->dmin);
 }
 
 /**
@@ -1071,7 +1126,8 @@ __attribute__((always_inline)) INLINE static int cell_can_split_self_hydro_task(
   /* tasks will be created. So no need to check for h_max */
   return c->split &&
          (space_stretch * kernel_gamma * c->hydro.h_max < 0.5f * c->dmin) &&
-         (space_stretch * kernel_gamma * c->stars.h_max < 0.5f * c->dmin);
+         (space_stretch * kernel_gamma * c->stars.h_max < 0.5f * c->dmin) &&
+         (space_stretch * kernel_gamma * c->black_holes.h_max < 0.5f * c->dmin);
 }
 
 /**
@@ -1101,6 +1157,20 @@ cell_can_split_self_gravity_task(const struct cell *c) {
 }
 
 /**
+ * @brief Can a self FOF task associated with a cell be split into smaller
+ * sub-tasks.
+ *
+ * @param c The #cell.
+ */
+__attribute__((always_inline)) INLINE static int cell_can_split_self_fof_task(
+    const struct cell *c) {
+
+  /* Is the cell split ? */
+  return c->split && c->grav.count > 5000 &&
+         ((c->maxdepth - c->depth) > space_subdepth_diff_grav);
+}
+
+/**
  * @brief Have gas particles in a pair of cells moved too much and require a
  * rebuild
  * ?
@@ -1121,6 +1191,7 @@ cell_need_rebuild_for_hydro_pair(const struct cell *ci, const struct cell *cj) {
   }
   return 0;
 }
+
 /**
  * @brief Have star particles in a pair of cells moved too much and require a
  * rebuild?
@@ -1136,6 +1207,28 @@ cell_need_rebuild_for_stars_pair(const struct cell *ci, const struct cell *cj) {
   /* Note ci->dmin == cj->dmin */
   if (kernel_gamma * max(ci->stars.h_max, cj->hydro.h_max) +
           ci->stars.dx_max_part + cj->hydro.dx_max_part >
+      cj->dmin) {
+    return 1;
+  }
+  return 0;
+}
+
+/**
+ * @brief Have star particles in a pair of cells moved too much and require a
+ * rebuild?
+ *
+ * @param ci The first #cell.
+ * @param cj The second #cell.
+ */
+__attribute__((always_inline)) INLINE static int
+cell_need_rebuild_for_black_holes_pair(const struct cell *ci,
+                                       const struct cell *cj) {
+
+  /* Is the cut-off radius plus the max distance the parts in both cells have */
+  /* moved larger than the cell size ? */
+  /* Note ci->dmin == cj->dmin */
+  if (kernel_gamma * max(ci->black_holes.h_max, cj->hydro.h_max) +
+          ci->black_holes.dx_max_part + cj->hydro.dx_max_part >
       cj->dmin) {
     return 1;
   }
@@ -1176,42 +1269,15 @@ __attribute__((always_inline)) INLINE static void cell_malloc_hydro_sorts(
 
   const int count = c->hydro.count;
 
+  /* Note that sorts can be used by different tasks at the same time (but not
+   * on the same dimensions), so we need separate allocations per dimension. */
   for (int j = 0; j < 13; j++) {
     if ((flags & (1 << j)) && c->hydro.sort[j] == NULL) {
-      if ((c->hydro.sort[j] = (struct entry *)swift_malloc(
-               "hydro.sort", sizeof(struct entry) * (count + 1))) == NULL)
+      if ((c->hydro.sort[j] = (struct sort_entry *)swift_malloc(
+               "hydro.sort", sizeof(struct sort_entry) * (count + 1))) == NULL)
         error("Failed to allocate sort memory.");
     }
   }
-
-  /* /\* Count the memory needed for all active dimensions. *\/ */
-  /* int count = 0; */
-  /* for (int j = 0; j < 13; j++) { */
-  /*   if ((flags & (1 << j)) && c->hydro.sort[j] == NULL) */
-  /*     count += (c->hydro.count + 1); */
-  /* } */
-
-  /* if(c->hydro.sortptr != NULL) */
-  /*   error("Reallocating hydro sorts!"); */
-
-  /* /\* Allocate as a single chunk. *\/ */
-  /* struct entry *memptr = NULL; */
-  /* /\* if ((memptr = (struct entry *)swift_malloc( *\/ */
-  /* /\*          "hydro.sort", sizeof(struct entry) * count)) == NULL) *\/ */
-  /* if ((memptr = (struct entry *)malloc( */
-  /* 				       sizeof(struct entry) * count)) == NULL)
-   */
-  /*   error("Failed to allocate sort memory."); */
-
-  /* c->hydro.sortptr = memptr; */
-
-  /* /\* And attach spans as needed. *\/ */
-  /* for (int j = 0; j < 13; j++) { */
-  /*   if ((flags & (1 << j)) && c->hydro.sort[j] == NULL) { */
-  /*     c->hydro.sort[j] = memptr; */
-  /*     memptr += (c->hydro.count + 1); */
-  /*   } */
-  /* } */
 }
 
 /**
@@ -1228,14 +1294,6 @@ __attribute__((always_inline)) INLINE static void cell_free_hydro_sorts(
       c->hydro.sort[i] = NULL;
     }
   }
-
-  /* /\* Note only one allocation for the dimensions. *\/ */
-  /* if (c->hydro.sortptr != NULL) { */
-  /*   //swift_free("hydro.sort", c->hydro.sortptr); */
-  /*   free(c->hydro.sortptr); */
-  /*   c->hydro.sortptr = NULL; */
-  /*   for (int i = 0; i < 13; i++) c->hydro.sort[i] = NULL; */
-  /* } */
 }
 
 /**
@@ -1249,39 +1307,15 @@ __attribute__((always_inline)) INLINE static void cell_malloc_stars_sorts(
 
   const int count = c->stars.count;
 
+  /* Note that sorts can be used by different tasks at the same time (but not
+   * on the same dimensions), so we need separate allocations per dimension. */
   for (int j = 0; j < 13; j++) {
     if ((flags & (1 << j)) && c->stars.sort[j] == NULL) {
-      if ((c->stars.sort[j] = (struct entry *)swift_malloc(
-               "stars.sort", sizeof(struct entry) * (count + 1))) == NULL)
+      if ((c->stars.sort[j] = (struct sort_entry *)swift_malloc(
+               "stars.sort", sizeof(struct sort_entry) * (count + 1))) == NULL)
         error("Failed to allocate sort memory.");
     }
   }
-
-  /* /\* Count the memory needed for all active dimensions. *\/ */
-  /* int count = 0; */
-  /* for (int j = 0; j < 13; j++) { */
-  /*   if ((flags & (1 << j)) && c->stars.sort[j] == NULL) */
-  /*     count += (c->stars.count + 1); */
-  /* } */
-
-  /* /\* Allocate as a single chunk. *\/ */
-  /* struct entry *memptr = NULL; */
-  /* /\* if ((memptr = (struct entry *)swift_malloc( *\/ */
-  /* /\*          "stars.sort", sizeof(struct entry) * count)) == NULL) *\/ */
-  /* if ((memptr = (struct entry *)malloc( */
-  /* 				       sizeof(struct entry) * count)) == NULL)
-   */
-  /*   error("Failed to allocate sort memory."); */
-
-  /* c->stars.sortptr = memptr; */
-
-  /* /\* And attach spans as needed. *\/ */
-  /* for (int j = 0; j < 13; j++) { */
-  /*   if ((flags & (1 << j)) && c->stars.sort[j] == NULL) { */
-  /*     c->stars.sort[j] = memptr; */
-  /*     memptr += (c->stars.count + 1); */
-  /*   } */
-  /* } */
 }
 
 /**
@@ -1298,14 +1332,38 @@ __attribute__((always_inline)) INLINE static void cell_free_stars_sorts(
       c->stars.sort[i] = NULL;
     }
   }
+}
 
-  /* /\* Note only one allocation for the dimensions. *\/ */
-  /* if (c->stars.sortptr != NULL) { */
-  /*   //swift_free("stars.sort", c->stars.sortptr); */
-  /*   free(c->stars.sortptr); */
-  /*   c->stars.sortptr = NULL; */
-  /*   for (int i = 0; i < 13; i++) c->stars.sort[i] = NULL; */
-  /* } */
+/** Set the given flag for the given cell. */
+__attribute__((always_inline)) INLINE static void cell_set_flag(struct cell *c,
+                                                                uint32_t flag) {
+  atomic_or(&c->flags, flag);
+}
+
+/** Clear the given flag for the given cell. */
+__attribute__((always_inline)) INLINE static void cell_clear_flag(
+    struct cell *c, uint32_t flag) {
+  atomic_and(&c->flags, ~flag);
+}
+
+/** Get the given flag for the given cell. */
+__attribute__((always_inline)) INLINE static int cell_get_flag(
+    const struct cell *c, uint32_t flag) {
+  return (c->flags & flag) > 0;
+}
+
+/**
+ * @brief Check if a cell has a recv task of the given subtype.
+ */
+__attribute__((always_inline)) INLINE static struct task *cell_get_recv(
+    const struct cell *c, enum task_subtypes subtype) {
+#ifdef WITH_MPI
+  struct link *l = c->mpi.recv;
+  while (l != NULL && l->t->subtype != subtype) l = l->next;
+  return (l != NULL) ? l->t : NULL;
+#else
+  return NULL;
+#endif
 }
 
 #endif /* SWIFT_CELL_H */

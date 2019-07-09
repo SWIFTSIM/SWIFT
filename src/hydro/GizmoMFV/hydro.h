@@ -23,6 +23,7 @@
 #include "adiabatic_index.h"
 #include "approx_math.h"
 #include "cosmology.h"
+#include "entropy_floor.h"
 #include "equation_of_state.h"
 #include "hydro_gradients.h"
 #include "hydro_properties.h"
@@ -540,7 +541,9 @@ __attribute__((always_inline)) INLINE static void hydro_reset_gradient(
  * @param xp The extended data of this particle.
  */
 __attribute__((always_inline)) INLINE static void hydro_reset_predicted_values(
-    struct part* restrict p, const struct xpart* restrict xp) {}
+    struct part* restrict p, const struct xpart* restrict xp) {
+  // MATTHIEU: Apply the entropy floor here.
+}
 
 /**
  * @brief Converts the hydrodynamic variables from the initial condition file to
@@ -568,7 +571,9 @@ __attribute__((always_inline)) INLINE static void hydro_convert_quantities(
  * @param dt_therm The drift time-step for thermal quantities.
  */
 __attribute__((always_inline)) INLINE static void hydro_predict_extra(
-    struct part* p, struct xpart* xp, float dt_drift, float dt_therm) {
+    struct part* p, struct xpart* xp, float dt_drift, float dt_therm,
+    const struct cosmology* cosmo, const struct hydro_props* hydro_props,
+    const struct entropy_floor_properties* floor_props) {
 
 #ifdef GIZMO_LLOYD_ITERATION
   return;
@@ -619,6 +624,8 @@ __attribute__((always_inline)) INLINE static void hydro_predict_extra(
     p->primitives.P = hydro_gamma_minus_one * u * p->primitives.rho;
 #endif
   }
+
+  // MATTHIEU: Apply the entropy floor here.
 
   /* we use a sneaky way to get the gravitational contribution to the
      velocity update */
@@ -671,11 +678,13 @@ __attribute__((always_inline)) INLINE static void hydro_end_force(
  * @param dt_kick_corr Gravity correction time-step @f$adt@f$.
  * @param cosmo Cosmology.
  * @param hydro_props Additional hydro properties.
+ * @param floor_props The properties of the entropy floor.
  */
 __attribute__((always_inline)) INLINE static void hydro_kick_extra(
     struct part* p, struct xpart* xp, float dt_therm, float dt_grav,
     float dt_hydro, float dt_kick_corr, const struct cosmology* cosmo,
-    const struct hydro_props* hydro_props) {
+    const struct hydro_props* hydro_props,
+    const struct entropy_floor_properties* floor_props) {
 
   float a_grav[3];
 
@@ -735,11 +744,13 @@ __attribute__((always_inline)) INLINE static void hydro_kick_extra(
 
   /* Apply the minimal energy limit */
   const float min_energy =
-      hydro_props->minimal_internal_energy * cosmo->a_factor_internal_energy;
+      hydro_props->minimal_internal_energy / cosmo->a_factor_internal_energy;
   if (p->conserved.energy < min_energy * p->conserved.mass) {
     p->conserved.energy = min_energy * p->conserved.mass;
     p->conserved.flux.energy = 0.f;
   }
+
+  // MATTHIEU: Apply the entropy floor here.
 
   gizmo_check_physical_quantities(
       "mass", "energy", p->conserved.mass, p->conserved.momentum[0],
@@ -1091,6 +1102,28 @@ hydro_set_drifted_physical_internal_energy(struct part* p,
 }
 
 /**
+ * @brief Update the value of the viscosity alpha for the scheme.
+ *
+ * @param p the particle of interest
+ * @param alpha the new value for the viscosity coefficient.
+ */
+__attribute__((always_inline)) INLINE static void hydro_set_viscosity_alpha(
+    struct part* restrict p, float alpha) {
+  /* Purposefully left empty */
+}
+
+/**
+ * @brief Update the value of the viscosity alpha to the
+ *        feedback reset value for the scheme.
+ *
+ * @param p the particle of interest
+ */
+__attribute__((always_inline)) INLINE static void
+hydro_diffusive_feedback_reset(struct part* restrict p) {
+  /* Purposefully left empty */
+}
+
+/**
  * @brief Returns the comoving density of a particle
  *
  * @param p The particle of interest
@@ -1177,15 +1210,10 @@ __attribute__((always_inline)) INLINE static void hydro_set_entropy(
 __attribute__((always_inline)) INLINE static void
 hydro_set_init_internal_energy(struct part* p, float u_init) {
 
-  p->conserved.energy = u_init * p->conserved.mass;
-#ifdef GIZMO_TOTAL_ENERGY
-  /* add the kinetic energy */
-  p->conserved.energy += 0.5f * p->conserved.mass *
-                         (p->conserved.momentum[0] * p->primitives.v[0] +
-                          p->conserved.momentum[1] * p->primitives.v[1] +
-                          p->conserved.momentum[2] * p->primitives.v[2]);
-#endif
-  p->primitives.P = hydro_gamma_minus_one * p->primitives.rho * u_init;
+  /* We store the initial energy per unit mass in the energy
+   * variable as the conversion to energy will be done later,
+   * in hydro_first_init_part(). */
+  p->conserved.energy = u_init;
 }
 
 /**

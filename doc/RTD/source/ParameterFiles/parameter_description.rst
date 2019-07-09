@@ -517,6 +517,14 @@ following pages:
 * :ref:`Output_list_label` (to have snapshots not evenly spaced in time),
 * :ref:`Output_selection_label` (to select what particle fields to write).
 
+.. _Parameters_fof:
+
+Friends-Of-Friends (FOF)
+------------------------
+
+The parameters are described separately on the page
+:ref:`Fof_Parameter_Description_label` within the more general
+:ref:`Friends_Of_Friends_label` description.
 
 .. _Parameters_statistics:
 
@@ -549,10 +557,10 @@ other options require the ``enable`` parameter to be set to ``1``.
 * Whether or not to dump a set of restart file on regular exit: ``onexit``
   (default: ``0``),
 * The wall-clock time in hours between two sets of restart files:
-  ``delta_hours`` (default: ``6.0``).
+  ``delta_hours`` (default: ``5.0``).
 
 Note that there is no buffer time added to the ``delta_hours`` value. If the
-system's batch queue run time limit is set to 6 hours, the user must specify a
+system's batch queue run time limit is set to 5 hours, the user must specify a
 smaller value to allow for enough time to safely dump the check-point files.
 
 * The sub-directory in which to store the restart files: ``subdir`` (default:
@@ -568,8 +576,9 @@ been activated, the previous set of restart files will be named
 ``basename_000000.rst.prev``.
 
 SWIFT can also be stopped by creating an empty file called ``stop`` in the
-directory where the code runs. This will make SWIFT dump a fresh set of restart
-file (irrespective of the specified ``delta_time`` between dumps) and exit
+directory where the restart files are written (i.e. the directory speicified by
+the parameter ``subdir``). This will make SWIFT dump a fresh set of restart file
+(irrespective of the specified ``delta_time`` between dumps) and exit
 cleanly. One parameter governs this behaviour:
 
 * Number of steps between two checks for the presence of a ``stop`` file:
@@ -604,7 +613,7 @@ hours after which a shell command will be run, one would use:
     onexit:             0
     subdir:             restart    # Sub-directory of the directory where SWIFT is run
     basename:           swift
-    delta_hours:        6.0
+    delta_hours:        5.0
     stop_steps:         100
     max_run_time:       24.0       # In hours
     resubmit_on_exit:   1
@@ -655,6 +664,17 @@ To control the number of self-gravity tasks we have the parameter:
 which stops these from being done at the scale of the leaf cells, of which
 there can be a large number. In this case cells with gravity tasks must be at
 least 4 levels above the leaf cells (when possible).
+
+To control the depth at which the ghost tasks are placed, there are
+two parameters (one for the gas, one for the stars). These specify the
+maximum number of particles allowed in such a task before splitting
+into finer ones. These parameters are:
+
+.. code:: YAML
+
+  engine_max_parts_per_ghost:   1000
+  engine_max_sparts_per_ghost:  1000
+
 
 Extra space is required when particles are created in the system (to the time
 of the next rebuild). These are controlled by:

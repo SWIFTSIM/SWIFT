@@ -111,8 +111,9 @@ void set_energy_state(struct part *part, enum pressure_field press, float size,
   part->entropy = pressure / pow_gamma(density);
 #elif defined(DEFAULT_SPH)
   part->u = pressure / (hydro_gamma_minus_one * density);
-#elif defined(MINIMAL_SPH) || defined(HOPKINS_PU_SPH) || \
-    defined(HOPKINS_PU_SPH_MONAGHAN) || defined(ANARCHY_PU_SPH)
+#elif defined(MINIMAL_SPH) || defined(HOPKINS_PU_SPH) ||           \
+    defined(HOPKINS_PU_SPH_MONAGHAN) || defined(ANARCHY_PU_SPH) || \
+    defined(ANARCHY_DU_SPH) || defined(DEFAULT_SPH)
   part->u = pressure / (hydro_gamma_minus_one * density);
 #elif defined(PLANETARY_SPH)
   part->u = pressure / (hydro_gamma_minus_one * density);
@@ -401,12 +402,11 @@ void dump_particle_fields(char *fileName, struct cell *main_cell,
             main_cell->hydro.parts[pid].v[0], main_cell->hydro.parts[pid].v[1],
             main_cell->hydro.parts[pid].v[2], main_cell->hydro.parts[pid].h,
             hydro_get_comoving_density(&main_cell->hydro.parts[pid]),
-#if defined(MINIMAL_SPH) || defined(PLANETARY_SPH) ||              \
-    defined(GIZMO_MFV_SPH) || defined(SHADOWFAX_SPH) ||            \
-    defined(HOPKINS_PU_SPH) || defined(HOPKINS_PU_SPH_MONAGHAN) || \
-    defined(ANARCHY_PU_SPH)
+#if defined(MINIMAL_SPH) || defined(PLANETARY_SPH) ||   \
+    defined(GIZMO_MFV_SPH) || defined(SHADOWFAX_SPH) || \
+    defined(HOPKINS_PU_SPH) || defined(HOPKINS_PU_SPH_MONAGHAN)
             0.f,
-#elif defined(ANARCHY_PU_SPH)
+#elif defined(ANARCHY_PU_SPH) || defined(ANARCHY_DU_SPH) || defined(DEFAULT_SPH)
             main_cell->hydro.parts[pid].viscosity.div_v,
 #else
             main_cell->hydro.parts[pid].density.div_v,
@@ -423,14 +423,11 @@ void dump_particle_fields(char *fileName, struct cell *main_cell,
 #if defined(GADGET2_SPH)
             main_cell->hydro.parts[pid].force.v_sig,
             main_cell->hydro.parts[pid].entropy_dt, 0.f
-#elif defined(DEFAULT_SPH)
-            main_cell->hydro.parts[pid].force.v_sig, 0.f,
-            main_cell->hydro.parts[pid].force.u_dt
 #elif defined(MINIMAL_SPH) || defined(HOPKINS_PU_SPH) || \
     defined(HOPKINS_PU_SPH_MONAGHAN)
             main_cell->hydro.parts[pid].force.v_sig, 0.f,
             main_cell->hydro.parts[pid].u_dt
-#elif defined(ANARCHY_PU_SPH)
+#elif defined(ANARCHY_PU_SPH) || defined(ANARCHY_DU_SPH) || defined(DEFAULT_SPH)
             main_cell->hydro.parts[pid].viscosity.v_sig, 0.f,
             main_cell->hydro.parts[pid].u_dt
 #else

@@ -69,6 +69,8 @@
 int space_splitsize = space_splitsize_default;
 int space_subsize_pair_hydro = space_subsize_pair_hydro_default;
 int space_subsize_self_hydro = space_subsize_self_hydro_default;
+int space_subsize_pair_stars = space_subsize_pair_stars_default;
+int space_subsize_self_stars = space_subsize_self_stars_default;
 int space_subsize_pair_grav = space_subsize_pair_grav_default;
 int space_subsize_self_grav = space_subsize_self_grav_default;
 int space_subdepth_diff_grav = space_subdepth_diff_grav_default;
@@ -85,6 +87,10 @@ int space_extra_bparts = space_extra_bparts_default;
 
 /*! Number of extra #gpart we allocate memory for per top-level cell */
 int space_extra_gparts = space_extra_gparts_default;
+
+/*! Maximum number of particles per ghost */
+int engine_max_parts_per_ghost = engine_max_parts_per_ghost_default;
+int engine_max_sparts_per_ghost = engine_max_sparts_per_ghost_default;
 
 /*! Expected maximal number of strays received at a rebuild */
 int space_expected_max_nr_strays = space_expected_max_nr_strays_default;
@@ -209,28 +215,33 @@ void space_rebuild_recycle_mapper(void *map_data, int num_elements,
     c->hydro.count = 0;
     c->hydro.count_total = 0;
     c->hydro.updated = 0;
-    c->hydro.inhibited = 0;
     c->grav.count = 0;
     c->grav.count_total = 0;
     c->grav.updated = 0;
-    c->grav.inhibited = 0;
     c->stars.count = 0;
     c->stars.count_total = 0;
     c->stars.updated = 0;
-    c->stars.inhibited = 0;
     c->black_holes.count = 0;
     c->black_holes.count_total = 0;
     c->black_holes.updated = 0;
-    c->black_holes.inhibited = 0;
     c->grav.init = NULL;
     c->grav.init_out = NULL;
     c->hydro.extra_ghost = NULL;
     c->hydro.ghost_in = NULL;
     c->hydro.ghost_out = NULL;
     c->hydro.ghost = NULL;
+    c->hydro.star_formation = NULL;
+    c->hydro.stars_resort = NULL;
     c->stars.ghost = NULL;
     c->stars.density = NULL;
     c->stars.feedback = NULL;
+    c->black_holes.density_ghost = NULL;
+    c->black_holes.swallow_ghost[0] = NULL;
+    c->black_holes.swallow_ghost[1] = NULL;
+    c->black_holes.density = NULL;
+    c->black_holes.swallow = NULL;
+    c->black_holes.do_swallow = NULL;
+    c->black_holes.feedback = NULL;
     c->kick1 = NULL;
     c->kick2 = NULL;
     c->timestep = NULL;
@@ -241,6 +252,8 @@ void space_rebuild_recycle_mapper(void *map_data, int num_elements,
     c->stars.stars_in = NULL;
     c->stars.stars_out = NULL;
     c->black_holes.drift = NULL;
+    c->black_holes.black_holes_in = NULL;
+    c->black_holes.black_holes_out = NULL;
     c->grav.drift = NULL;
     c->grav.drift_out = NULL;
     c->hydro.cooling = NULL;
@@ -257,15 +270,9 @@ void space_rebuild_recycle_mapper(void *map_data, int num_elements,
     c->hydro.xparts = NULL;
     c->grav.parts = NULL;
     c->stars.parts = NULL;
+    c->stars.parts_rebuild = NULL;
     c->black_holes.parts = NULL;
-    c->hydro.do_sub_sort = 0;
-    c->stars.do_sub_sort = 0;
-    c->hydro.do_sub_drift = 0;
-    c->grav.do_sub_drift = 0;
-    c->stars.do_sub_drift = 0;
-    c->black_holes.do_sub_drift = 0;
-    c->hydro.do_sub_limiter = 0;
-    c->hydro.do_limiter = 0;
+    c->flags = 0;
     c->hydro.ti_end_min = -1;
     c->hydro.ti_end_max = -1;
     c->grav.ti_end_min = -1;
@@ -285,26 +292,8 @@ void space_rebuild_recycle_mapper(void *map_data, int num_elements,
     cell_free_stars_sorts(c);
 #if WITH_MPI
     c->mpi.tag = -1;
-
-    c->mpi.hydro.recv_xv = NULL;
-    c->mpi.hydro.recv_rho = NULL;
-    c->mpi.hydro.recv_gradient = NULL;
-    c->mpi.hydro.recv_ti = NULL;
-    c->mpi.grav.recv = NULL;
-    c->mpi.grav.recv_ti = NULL;
-    c->mpi.stars.recv = NULL;
-    c->mpi.stars.recv_ti = NULL;
-    c->mpi.limiter.recv = NULL;
-
-    c->mpi.hydro.send_xv = NULL;
-    c->mpi.hydro.send_rho = NULL;
-    c->mpi.hydro.send_gradient = NULL;
-    c->mpi.hydro.send_ti = NULL;
-    c->mpi.grav.send = NULL;
-    c->mpi.grav.send_ti = NULL;
-    c->mpi.stars.send = NULL;
-    c->mpi.stars.send_ti = NULL;
-    c->mpi.limiter.send = NULL;
+    c->mpi.recv = NULL;
+    c->mpi.send = NULL;
 #endif
   }
 }
@@ -368,6 +357,7 @@ void space_regrid(struct space *s, int verbose) {
 
   const size_t nr_parts = s->nr_parts;
   const size_t nr_sparts = s->nr_sparts;
+  const size_t nr_bparts = s->nr_bparts;
   const ticks tic = getticks();
   const integertime_t ti_current = (s->e != NULL) ? s->e->ti_current : 0;
 
@@ -387,6 +377,9 @@ void space_regrid(struct space *s, int verbose) {
         if (c->stars.h_max > h_max) {
           h_max = c->stars.h_max;
         }
+        if (c->black_holes.h_max > h_max) {
+          h_max = c->black_holes.h_max;
+        }
       }
 
       /* Can we instead use all the top-level cells? */
@@ -399,6 +392,9 @@ void space_regrid(struct space *s, int verbose) {
         if (c->nodeID == engine_rank && c->stars.h_max > h_max) {
           h_max = c->stars.h_max;
         }
+        if (c->nodeID == engine_rank && c->black_holes.h_max > h_max) {
+          h_max = c->black_holes.h_max;
+        }
       }
 
       /* Last option: run through the particles */
@@ -408,6 +404,9 @@ void space_regrid(struct space *s, int verbose) {
       }
       for (size_t k = 0; k < nr_sparts; k++) {
         if (s->sparts[k].h > h_max) h_max = s->sparts[k].h;
+      }
+      for (size_t k = 0; k < nr_bparts; k++) {
+        if (s->bparts[k].h > h_max) h_max = s->bparts[k].h;
       }
     }
   }
@@ -576,6 +575,8 @@ void space_regrid(struct space *s, int verbose) {
         error("Failed to init spinlock for multipoles.");
       if (lock_init(&s->cells_top[k].stars.lock) != 0)
         error("Failed to init spinlock for stars.");
+      if (lock_init(&s->cells_top[k].black_holes.lock) != 0)
+        error("Failed to init spinlock for black holes.");
       if (lock_init(&s->cells_top[k].stars.star_formation_lock) != 0)
         error("Failed to init spinlock for star formation.");
     }
@@ -605,29 +606,12 @@ void space_regrid(struct space *s, int verbose) {
           c->hydro.ti_old_part = ti_current;
           c->grav.ti_old_part = ti_current;
           c->stars.ti_old_part = ti_current;
+          c->black_holes.ti_old_part = ti_current;
           c->grav.ti_old_multipole = ti_current;
 #ifdef WITH_MPI
           c->mpi.tag = -1;
-
-          c->mpi.hydro.recv_xv = NULL;
-          c->mpi.hydro.recv_rho = NULL;
-          c->mpi.hydro.recv_gradient = NULL;
-          c->mpi.hydro.recv_ti = NULL;
-          c->mpi.grav.recv = NULL;
-          c->mpi.grav.recv_ti = NULL;
-          c->mpi.stars.recv = NULL;
-          c->mpi.stars.recv_ti = NULL;
-          c->mpi.limiter.recv = NULL;
-
-          c->mpi.hydro.send_xv = NULL;
-          c->mpi.hydro.send_rho = NULL;
-          c->mpi.hydro.send_gradient = NULL;
-          c->mpi.hydro.send_ti = NULL;
-          c->mpi.grav.send = NULL;
-          c->mpi.grav.send_ti = NULL;
-          c->mpi.stars.send = NULL;
-          c->mpi.stars.send_ti = NULL;
-          c->mpi.limiter.send = NULL;
+          c->mpi.recv = NULL;
+          c->mpi.send = NULL;
 #endif  // WITH_MPI
           if (s->with_self_gravity) c->grav.multipole = &s->multipoles_top[cid];
 #if defined(SWIFT_DEBUG_CHECKS) || defined(SWIFT_CELL_GRAPH)
@@ -1885,7 +1869,8 @@ void space_rebuild(struct space *s, int repartitioned, int verbose) {
 
     const int is_local = (c->nodeID == engine_rank);
     const int has_particles = (c->hydro.count > 0) || (c->grav.count > 0) ||
-                              (c->stars.count > 0) | (c->black_holes.count > 0);
+                              (c->stars.count > 0) ||
+                              (c->black_holes.count > 0);
 
     if (is_local) {
       c->hydro.parts = finger;
@@ -1893,6 +1878,9 @@ void space_rebuild(struct space *s, int repartitioned, int verbose) {
       c->grav.parts = gfinger;
       c->stars.parts = sfinger;
       c->black_holes.parts = bfinger;
+
+      /* Store the state at rebuild time */
+      c->stars.parts_rebuild = c->stars.parts;
 
       c->hydro.count_total = c->hydro.count + space_extra_parts;
       c->grav.count_total = c->grav.count + space_extra_gparts;
@@ -3325,14 +3313,7 @@ void space_split_recursive(struct space *s, struct cell *c,
       cp->super = NULL;
       cp->hydro.super = NULL;
       cp->grav.super = NULL;
-      cp->hydro.do_sub_sort = 0;
-      cp->stars.do_sub_sort = 0;
-      cp->grav.do_sub_drift = 0;
-      cp->hydro.do_sub_drift = 0;
-      cp->stars.do_sub_drift = 0;
-      cp->black_holes.do_sub_drift = 0;
-      cp->hydro.do_sub_limiter = 0;
-      cp->hydro.do_limiter = 0;
+      cp->flags = 0;
 #ifdef WITH_MPI
       cp->mpi.tag = -1;
 #endif  // WITH_MPI
@@ -3341,7 +3322,7 @@ void space_split_recursive(struct space *s, struct cell *c,
 #endif
     }
 
-    /* Split the cell's partcle data. */
+    /* Split the cell's particle data. */
     cell_split(c, c->hydro.parts - s->parts, c->stars.parts - s->sparts,
                c->black_holes.parts - s->bparts, buff, sbuff, bbuff, gbuff);
 
@@ -3376,6 +3357,7 @@ void space_split_recursive(struct space *s, struct cell *c,
         /* Update the cell-wide properties */
         h_max = max(h_max, cp->hydro.h_max);
         stars_h_max = max(stars_h_max, cp->stars.h_max);
+        black_holes_h_max = max(black_holes_h_max, cp->black_holes.h_max);
         ti_hydro_end_min = min(ti_hydro_end_min, cp->hydro.ti_end_min);
         ti_hydro_end_max = max(ti_hydro_end_max, cp->hydro.ti_end_max);
         ti_hydro_beg_max = max(ti_hydro_beg_max, cp->hydro.ti_beg_max);
@@ -3726,8 +3708,9 @@ void space_split_mapper(void *map_data, int num_cells, void *extra_data) {
 void space_recycle(struct space *s, struct cell *c) {
 
   /* Clear the cell. */
-  if (lock_destroy(&c->lock) != 0 || lock_destroy(&c->grav.plock) != 0 ||
-      lock_destroy(&c->mlock) != 0 || lock_destroy(&c->stars.lock) != 0 ||
+  if (lock_destroy(&c->hydro.lock) != 0 || lock_destroy(&c->grav.plock) != 0 ||
+      lock_destroy(&c->grav.mlock) != 0 || lock_destroy(&c->stars.lock) != 0 ||
+      lock_destroy(&c->black_holes.lock) != 0 ||
       lock_destroy(&c->stars.star_formation_lock))
     error("Failed to destroy spinlocks.");
 
@@ -3776,8 +3759,11 @@ void space_recycle_list(struct space *s, struct cell *cell_list_begin,
   /* Clean up the list of cells. */
   for (struct cell *c = cell_list_begin; c != NULL; c = c->next) {
     /* Clear the cell. */
-    if (lock_destroy(&c->lock) != 0 || lock_destroy(&c->grav.plock) != 0 ||
-        lock_destroy(&c->mlock) != 0 || lock_destroy(&c->stars.lock) != 0 ||
+    if (lock_destroy(&c->hydro.lock) != 0 ||
+        lock_destroy(&c->grav.plock) != 0 ||
+        lock_destroy(&c->grav.mlock) != 0 ||
+        lock_destroy(&c->stars.lock) != 0 ||
+        lock_destroy(&c->black_holes.lock) != 0 ||
         lock_destroy(&c->stars.star_formation_lock))
       error("Failed to destroy spinlocks.");
 
@@ -3878,6 +3864,7 @@ void space_getcells(struct space *s, int nr_cells, struct cell **cells) {
         lock_init(&cells[j]->grav.plock) != 0 ||
         lock_init(&cells[j]->grav.mlock) != 0 ||
         lock_init(&cells[j]->stars.lock) != 0 ||
+        lock_init(&cells[j]->black_holes.lock) != 0 ||
         lock_init(&cells[j]->stars.star_formation_lock) != 0)
       error("Failed to initialize cell spinlocks.");
   }
@@ -3922,6 +3909,7 @@ void space_list_useful_top_level_cells(struct space *s) {
 
     const int has_particles =
         (c->hydro.count > 0) || (c->grav.count > 0) || (c->stars.count > 0) ||
+        (c->black_holes.count > 0) ||
         (c->grav.multipole != NULL && c->grav.multipole->m_pole.M_000 > 0.f);
 
     if (has_particles) {
@@ -3950,7 +3938,7 @@ void space_synchronize_particle_positions_mapper(void *map_data, int nr_gparts,
   for (int k = 0; k < nr_gparts; k++) {
 
     /* Get the particle */
-    const struct gpart *restrict gp = &gparts[k];
+    struct gpart *restrict gp = &gparts[k];
 
     if (gp->type == swift_type_dark_matter)
       continue;
@@ -3969,6 +3957,8 @@ void space_synchronize_particle_positions_mapper(void *map_data, int nr_gparts,
       xp->v_full[0] = gp->v_full[0];
       xp->v_full[1] = gp->v_full[1];
       xp->v_full[2] = gp->v_full[2];
+
+      gp->mass = hydro_get_mass(p);
     }
 
     else if (gp->type == swift_type_stars) {
@@ -3980,6 +3970,8 @@ void space_synchronize_particle_positions_mapper(void *map_data, int nr_gparts,
       sp->x[0] = gp->x[0];
       sp->x[1] = gp->x[1];
       sp->x[2] = gp->x[2];
+
+      gp->mass = sp->mass;
     }
 
     else if (gp->type == swift_type_black_hole) {
@@ -3991,6 +3983,8 @@ void space_synchronize_particle_positions_mapper(void *map_data, int nr_gparts,
       bp->x[0] = gp->x[0];
       bp->x[1] = gp->x[1];
       bp->x[2] = gp->x[2];
+
+      gp->mass = bp->mass;
     }
   }
 }
@@ -4067,6 +4061,13 @@ void space_first_init_parts_mapper(void *restrict map_data, int count,
 #endif
   }
 
+  /* Overwrite the internal energy? */
+  if (u_init > 0.f) {
+    for (int k = 0; k < count; k++) {
+      hydro_set_init_internal_energy(&p[k], u_init);
+    }
+  }
+
   /* Initialise the rest */
   for (int k = 0; k < count; k++) {
 
@@ -4074,9 +4075,6 @@ void space_first_init_parts_mapper(void *restrict map_data, int count,
 #ifdef WITH_LOGGER
     logger_part_data_init(&xp[k].logger_data);
 #endif
-
-    /* Overwrite the internal energy? */
-    if (u_init > 0.f) hydro_set_init_internal_energy(&p[k], u_init);
 
     /* Also initialise the chemistry */
     chemistry_first_init_part(phys_const, us, cosmo, chemistry, &p[k], &xp[k]);
@@ -4091,6 +4089,9 @@ void space_first_init_parts_mapper(void *restrict map_data, int count,
     /* And the tracers */
     tracers_first_init_xpart(&p[k], &xp[k], us, phys_const, cosmo, hydro_props,
                              cool_func);
+
+    /* And the black hole markers */
+    black_holes_mark_as_not_swallowed(&p[k].black_holes_data);
 
 #ifdef SWIFT_DEBUG_CHECKS
     /* Check part->gpart->part linkeage. */
@@ -4272,6 +4273,7 @@ void space_first_init_bparts_mapper(void *restrict map_data, int count,
   struct bpart *restrict bp = (struct bpart *)map_data;
   const struct space *restrict s = (struct space *)extra_data;
   const struct engine *e = s->e;
+  const struct black_holes_props *props = e->black_holes_properties;
 
 #ifdef SWIFT_DEBUG_CHECKS
   const ptrdiff_t delta = bp - s->bparts;
@@ -4305,10 +4307,17 @@ void space_first_init_bparts_mapper(void *restrict map_data, int count,
 #endif
   }
 
+  /* Check that the smoothing lengths are non-zero */
+  for (int k = 0; k < count; k++) {
+    if (bp[k].h <= 0.)
+      error("Invalid value of smoothing length for bpart %lld h=%e", bp[k].id,
+            bp[k].h);
+  }
+
   /* Initialise the rest */
   for (int k = 0; k < count; k++) {
 
-    black_holes_first_init_bpart(&bp[k]);
+    black_holes_first_init_bpart(&bp[k], props);
 
 #ifdef SWIFT_DEBUG_CHECKS
     if (bp[k].gpart && bp[k].gpart->id_or_neg_offset != -(k + delta))
@@ -4341,8 +4350,21 @@ void space_init_parts_mapper(void *restrict map_data, int count,
                              void *restrict extra_data) {
 
   struct part *restrict parts = (struct part *)map_data;
-  const struct hydro_space *restrict hs = (struct hydro_space *)extra_data;
-  for (int k = 0; k < count; k++) hydro_init_part(&parts[k], hs);
+  const struct engine *restrict e = (struct engine *)extra_data;
+  const struct hydro_space *restrict hs = &e->s->hs;
+  const int with_cosmology = (e->policy & engine_policy_cosmology);
+
+  size_t ind = parts - e->s->parts;
+  struct xpart *restrict xparts = e->s->xparts + ind;
+
+  for (int k = 0; k < count; k++) {
+    hydro_init_part(&parts[k], hs);
+    chemistry_init_part(&parts[k], e->chemistry);
+    star_formation_init_part(&parts[k], e->star_formation);
+    tracers_after_init(&parts[k], &xparts[k], e->internal_units,
+                       e->physical_constants, with_cosmology, e->cosmology,
+                       e->hydro_properties, e->cooling_func, e->time);
+  }
 }
 
 /**
@@ -4357,7 +4379,7 @@ void space_init_parts(struct space *s, int verbose) {
 
   if (s->nr_parts > 0)
     threadpool_map(&s->e->threadpool, space_init_parts_mapper, s->parts,
-                   s->nr_parts, sizeof(struct part), 0, &s->hs);
+                   s->nr_parts, sizeof(struct part), 0, s->e);
   if (verbose)
     message("took %.3f %s.", clocks_from_ticks(getticks() - tic),
             clocks_getunit());
@@ -4615,6 +4637,12 @@ void space_init(struct space *s, struct swift_params *params,
   space_subsize_self_hydro =
       parser_get_opt_param_int(params, "Scheduler:cell_sub_size_self_hydro",
                                space_subsize_self_hydro_default);
+  space_subsize_pair_stars =
+      parser_get_opt_param_int(params, "Scheduler:cell_sub_size_pair_stars",
+                               space_subsize_pair_stars_default);
+  space_subsize_self_stars =
+      parser_get_opt_param_int(params, "Scheduler:cell_sub_size_self_stars",
+                               space_subsize_self_stars_default);
   space_subsize_pair_grav =
       parser_get_opt_param_int(params, "Scheduler:cell_sub_size_pair_grav",
                                space_subsize_pair_grav_default);
@@ -4634,6 +4662,13 @@ void space_init(struct space *s, struct swift_params *params,
       params, "Scheduler:cell_extra_gparts", space_extra_gparts_default);
   space_extra_bparts = parser_get_opt_param_int(
       params, "Scheduler:cell_extra_bparts", space_extra_bparts_default);
+
+  engine_max_parts_per_ghost =
+      parser_get_opt_param_int(params, "Scheduler:engine_max_parts_per_ghost",
+                               engine_max_parts_per_ghost_default);
+  engine_max_sparts_per_ghost =
+      parser_get_opt_param_int(params, "Scheduler:engine_max_sparts_per_ghost",
+                               engine_max_sparts_per_ghost_default);
 
   if (verbose) {
     message("max_size set to %d split_size set to %d", space_maxsize,
@@ -4770,7 +4805,7 @@ void space_init(struct space *s, struct swift_params *params,
   last_cell_id = 1;
 #endif
 
-  /* Do we want any spare particles for on the fly cration? */
+  /* Do we want any spare particles for on the fly creation? */
   if (!star_formation) space_extra_sparts = 0;
 
   /* Build the cells recursively. */
@@ -5194,6 +5229,84 @@ void space_check_limiter(struct space *s) {
 }
 
 /**
+ * @brief #threadpool mapper function for the swallow debugging check
+ */
+void space_check_swallow_mapper(void *map_data, int nr_parts,
+                                void *extra_data) {
+#ifdef SWIFT_DEBUG_CHECKS
+  /* Unpack the data */
+  struct part *restrict parts = (struct part *)map_data;
+
+  /* Verify that all particles have been swallowed or are untouched */
+  for (int k = 0; k < nr_parts; k++) {
+
+    if (parts[k].time_bin == time_bin_inhibited) continue;
+
+    const long long swallow_id =
+        black_holes_get_swallow_id(&parts[k].black_holes_data);
+
+    if (swallow_id != -1)
+      error("Particle has not been swallowed! id=%lld", parts[k].id);
+  }
+#else
+  error("Calling debugging code without debugging flag activated.");
+#endif
+}
+
+/**
+ * @brief Checks that all particles have their swallow flag in a "no swallow"
+ * state.
+ *
+ * Should only be used for debugging purposes.
+ *
+ * @param s The #space to check.
+ */
+void space_check_swallow(struct space *s) {
+#ifdef SWIFT_DEBUG_CHECKS
+
+  threadpool_map(&s->e->threadpool, space_check_swallow_mapper, s->parts,
+                 s->nr_parts, sizeof(struct part), 1000, NULL);
+#else
+  error("Calling debugging code without debugging flag activated.");
+#endif
+}
+
+void space_check_sort_flags_mapper(void *map_data, int nr_cells,
+                                   void *extra_data) {
+
+#ifdef SWIFT_DEBUG_CHECKS
+
+  const struct space *s = (struct space *)extra_data;
+  int *local_cells_top = map_data;
+
+  for (int ind = 0; ind < nr_cells; ++ind) {
+    const struct cell *c = &s->cells_top[local_cells_top[ind]];
+
+    cell_check_sort_flags(c);
+  }
+
+#endif
+}
+
+/**
+ * @brief Checks that all cells have cleared their sort flags.
+ *
+ * Should only be used for debugging purposes.
+ *
+ * @param s The #space to check.
+ */
+void space_check_sort_flags(struct space *s) {
+#ifdef SWIFT_DEBUG_CHECKS
+
+  threadpool_map(&s->e->threadpool, space_check_sort_flags_mapper,
+                 s->local_cells_with_tasks_top, s->nr_local_cells_with_tasks,
+                 sizeof(int), 1, s);
+#else
+  error("Calling debugging code without debugging flag activated.");
+#endif
+}
+
+/**
  * @brief Resets all the individual cell task counters to 0.
  *
  * Should only be used for debugging purposes.
@@ -5241,6 +5354,34 @@ void space_struct_dump(struct space *s, FILE *stream) {
   restart_write_blocks(s, sizeof(struct space), 1, stream, "space",
                        "space struct");
 
+  /* Now all our globals. */
+  restart_write_blocks(&space_splitsize, sizeof(int), 1, stream,
+                       "space_splitsize", "space_splitsize");
+  restart_write_blocks(&space_maxsize, sizeof(int), 1, stream, "space_maxsize",
+                       "space_maxsize");
+  restart_write_blocks(&space_subsize_pair_hydro, sizeof(int), 1, stream,
+                       "space_subsize_pair_hydro", "space_subsize_pair_hydro");
+  restart_write_blocks(&space_subsize_self_hydro, sizeof(int), 1, stream,
+                       "space_subsize_self_hydro", "space_subsize_self_hydro");
+  restart_write_blocks(&space_subsize_pair_stars, sizeof(int), 1, stream,
+                       "space_subsize_pair_stars", "space_subsize_pair_stars");
+  restart_write_blocks(&space_subsize_self_stars, sizeof(int), 1, stream,
+                       "space_subsize_self_stars", "space_subsize_self_stars");
+  restart_write_blocks(&space_subsize_pair_grav, sizeof(int), 1, stream,
+                       "space_subsize_pair_grav", "space_subsize_pair_grav");
+  restart_write_blocks(&space_subsize_self_grav, sizeof(int), 1, stream,
+                       "space_subsize_self_grav", "space_subsize_self_grav");
+  restart_write_blocks(&space_subdepth_diff_grav, sizeof(int), 1, stream,
+                       "space_subdepth_diff_grav", "space_subdepth_diff_grav");
+  restart_write_blocks(&space_extra_parts, sizeof(int), 1, stream,
+                       "space_extra_parts", "space_extra_parts");
+  restart_write_blocks(&space_extra_gparts, sizeof(int), 1, stream,
+                       "space_extra_gparts", "space_extra_gparts");
+  restart_write_blocks(&space_extra_sparts, sizeof(int), 1, stream,
+                       "space_extra_sparts", "space_extra_sparts");
+  restart_write_blocks(&space_extra_bparts, sizeof(int), 1, stream,
+                       "space_extra_bparts", "space_extra_bparts");
+
   /* More things to write. */
   if (s->nr_parts > 0) {
     restart_write_blocks(s->parts, s->nr_parts, sizeof(struct part), stream,
@@ -5270,6 +5411,34 @@ void space_struct_dump(struct space *s, FILE *stream) {
 void space_struct_restore(struct space *s, FILE *stream) {
 
   restart_read_blocks(s, sizeof(struct space), 1, stream, NULL, "space struct");
+
+  /* Now all our globals. */
+  restart_read_blocks(&space_splitsize, sizeof(int), 1, stream, NULL,
+                      "space_splitsize");
+  restart_read_blocks(&space_maxsize, sizeof(int), 1, stream, NULL,
+                      "space_maxsize");
+  restart_read_blocks(&space_subsize_pair_hydro, sizeof(int), 1, stream, NULL,
+                      "space_subsize_pair_hydro");
+  restart_read_blocks(&space_subsize_self_hydro, sizeof(int), 1, stream, NULL,
+                      "space_subsize_self_hydro");
+  restart_read_blocks(&space_subsize_pair_stars, sizeof(int), 1, stream, NULL,
+                      "space_subsize_pair_stars");
+  restart_read_blocks(&space_subsize_self_stars, sizeof(int), 1, stream, NULL,
+                      "space_subsize_self_stars");
+  restart_read_blocks(&space_subsize_pair_grav, sizeof(int), 1, stream, NULL,
+                      "space_subsize_pair_grav");
+  restart_read_blocks(&space_subsize_self_grav, sizeof(int), 1, stream, NULL,
+                      "space_subsize_self_grav");
+  restart_read_blocks(&space_subdepth_diff_grav, sizeof(int), 1, stream, NULL,
+                      "space_subdepth_diff_grav");
+  restart_read_blocks(&space_extra_parts, sizeof(int), 1, stream, NULL,
+                      "space_extra_parts");
+  restart_read_blocks(&space_extra_gparts, sizeof(int), 1, stream, NULL,
+                      "space_extra_gparts");
+  restart_read_blocks(&space_extra_sparts, sizeof(int), 1, stream, NULL,
+                      "space_extra_sparts");
+  restart_read_blocks(&space_extra_bparts, sizeof(int), 1, stream, NULL,
+                      "space_extra_bparts");
 
   /* Things that should be reconstructed in a rebuild. */
   s->cells_top = NULL;

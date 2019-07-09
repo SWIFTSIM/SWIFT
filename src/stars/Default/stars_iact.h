@@ -79,7 +79,7 @@ runner_iact_nonsym_stars_density(const float r2, const float *dx,
 __attribute__((always_inline)) INLINE static void
 runner_iact_nonsym_stars_feedback(const float r2, const float *dx,
                                   const float hi, const float hj,
-                                  const struct spart *restrict si,
+                                  struct spart *restrict si,
                                   struct part *restrict pj, const float a,
                                   const float H) {
 #ifdef DEBUG_INTERACTIONS_STARS

@@ -20,6 +20,10 @@
 #define SWIFT_DEFAULT_BLACK_HOLES_H
 
 #include <float.h>
+
+/* Local includes */
+#include "black_holes_properties.h"
+#include "black_holes_struct.h"
 #include "dimension.h"
 #include "kernel_hydro.h"
 #include "minmax.h"
@@ -42,9 +46,10 @@ __attribute__((always_inline)) INLINE static float black_holes_compute_timestep(
  * read in to do some conversions.
  *
  * @param bp The particle to act upon
+ * @param props The properties of the black holes model.
  */
 __attribute__((always_inline)) INLINE static void black_holes_first_init_bpart(
-    struct bpart* bp) {
+    struct bpart* bp, const struct black_holes_props* props) {
 
   bp->time_bin = 0;
 }
@@ -136,6 +141,75 @@ black_holes_bpart_has_no_neighbours(struct bpart* restrict bp,
 }
 
 /**
+ * @brief Update the properties of a black hole particles by swallowing
+ * a gas particle.
+ *
+ * @param bp The #bpart to update.
+ * @param p The #part that is swallowed.
+ * @param xp The #xpart that is swallowed.
+ * @param cosmo The current cosmological model.
+ */
+__attribute__((always_inline)) INLINE static void black_holes_swallow_part(
+    struct bpart* bp, const struct part* p, const struct xpart* xp,
+    const struct cosmology* cosmo) {
+
+  /* Nothing to do here: No swallowing in the default model */
+}
+
+/**
+ * @brief Update a given #part's BH data field to mark the particle has
+ * not yet been swallowed.
+ *
+ * @param p_data The #part's #black_holes_part_data structure.
+ */
+__attribute__((always_inline)) INLINE static void
+black_holes_mark_as_not_swallowed(struct black_holes_part_data* p_data) {
+
+  /* Nothing to do here: No swallowing in the default model */
+}
+
+/**
+ * @brief Update a given #part's BH data field to mark the particle has
+ * having been been swallowed.
+ *
+ * @param p_data The #part's #black_holes_part_data structure.
+ */
+__attribute__((always_inline)) INLINE static void black_holes_mark_as_swallowed(
+    struct black_holes_part_data* p_data) {
+
+  /* Nothing to do here: No swallowing in the default model */
+}
+
+/**
+ * @brief Return the ID of the BH that should swallow this #part.
+ *
+ * @param p_data The #part's #black_holes_part_data structure.
+ */
+__attribute__((always_inline)) INLINE static long long
+black_holes_get_swallow_id(struct black_holes_part_data* p_data) {
+
+  /* Return a non-existing ID */
+  return -1;
+}
+
+/**
+ * @brief Compute the accretion rate of the black hole and all the quantites
+ * required for the feedback loop.
+ *
+ * Nothing to do here.
+ *
+ * @param bp The black hole particle.
+ * @param props The properties of the black hole scheme.
+ * @param constants The physical constants (in internal units).
+ * @param cosmo The cosmological model.
+ * @param dt The time-step size (in physical internal units).
+ */
+__attribute__((always_inline)) INLINE static void black_holes_prepare_feedback(
+    struct bpart* restrict bp, const struct black_holes_props* props,
+    const struct phys_const* constants, const struct cosmology* cosmo,
+    const double dt) {}
+
+/**
  * @brief Reset acceleration fields of a particle
  *
  * This is the equivalent of hydro_reset_acceleration.
@@ -152,6 +226,24 @@ __attribute__((always_inline)) INLINE static void black_holes_reset_feedback(
     bp->ids_ngbs_force[i] = -1;
   bp->num_ngb_force = 0;
 #endif
+}
+
+/**
+ * @brief Initialise a BH particle that has just been seeded.
+ *
+ * @param bp The #bpart to initialise.
+ * @param props The properties of the black hole scheme.
+ * @param constants The physical constants in internal units.
+ * @param cosmo The current cosmological model.
+ * @param p The #part that became a black hole.
+ */
+INLINE static void black_holes_create_from_gas(
+    struct bpart* bp, const struct black_holes_props* props,
+    const struct phys_const* constants, const struct cosmology* cosmo,
+    const struct part* p) {
+
+  /* First initialisation */
+  black_holes_init_bpart(bp);
 }
 
 #endif /* SWIFT_DEFAULT_BLACK_HOLES_H */

@@ -7,5 +7,5 @@ then
     ./getIC.sh
 fi
 
-../../swift --cosmology --hydro --self-gravity --stars --threads=16 eagle_6.yml 2>&1 | tee output.log
+../../swift --cosmology --hydro --self-gravity --stars --threads=4 --steps=200 --timers=100 eagle_6.yml 2>&1 | tee output.log
 

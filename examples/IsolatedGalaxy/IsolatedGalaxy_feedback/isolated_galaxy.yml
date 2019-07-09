@@ -10,8 +10,8 @@ InternalUnitSystem:
 Gravity:
   eta:          0.025               # Constant dimensionless multiplier for time integration.
   theta:        0.7                 # Opening angle (Multipole acceptance criterion).
-  comoving_softening:     0.01      # Comoving softening length (in internal units).
-  max_physical_softening: 0.01      # Physical softening length (in internal units).
+  comoving_softening:     0.1       # Comoving softening length (in internal units).
+  max_physical_softening: 0.1       # Physical softening length (in internal units).
 
 # Parameters governing the time integration (Set dt_min and dt_max to the same value for a fixed time-step run.)
 TimeIntegration:
@@ -69,16 +69,16 @@ EAGLEChemistry:
 
 # Hernquist potential parameters
 HernquistPotential:
-  useabspos:       0        # 0 -> positions based on centre, 1 -> absolute positions 
+  useabspos:       0       # 0 -> positions based on centre, 1 -> absolute positions 
   position:        [0.,0.,0.]    # Location of centre of isothermal potential with respect to centre of the box (if 0) otherwise absolute (if 1) (internal units)
-  idealizeddisk:   1        # Run with an idealized galaxy disk
+  idealizeddisk:   1       # Run with an idealized galaxy disk
   M200:            137.0   # M200 of the galaxy disk
-  h:               0.704    # reduced Hubble constant (value does not specify the used units!)
-  concentration:   9.0      # concentration of the Halo
-  diskfraction:              0.040   # Disk mass fraction
-  bulgefraction:              0.014   # Bulge mass fraction
-  timestep_mult:   0.01     # Dimensionless pre-factor for the time-step condition, basically determines the fraction of the orbital time we use to do the time integration
-  epsilon:         0.01      # Softening size (internal units)
+  h:               0.704   # reduced Hubble constant (value does not specify the used units!)
+  concentration:   9.0     # concentration of the Halo
+  diskfraction:    0.040   # Disk mass fraction
+  bulgefraction:   0.014   # Bulge mass fraction
+  timestep_mult:   0.01    # Dimensionless pre-factor for the time-step condition, basically determines the fraction of the orbital time we use to do the time integration
+  epsilon:         0.1     # Softening size (internal units)
  
 # EAGLE star formation parameters
 EAGLEStarFormation:
@@ -88,10 +88,10 @@ EAGLEStarFormation:
   gas_fraction:                      0.3       # The gas fraction used internally by the model.
   KS_normalisation:                  1.515e-4  # The normalization of the Kennicutt-Schmidt law in Msun / kpc^2 / yr.
   KS_exponent:                       1.4       # The exponent of the Kennicutt-Schmidt law.
-  KS_min_over_density:               57.7      # The over-density above which star-formation is allowed.
+  min_over_density:               57.7      # The over-density above which star-formation is allowed.
   KS_high_density_threshold_H_p_cm3: 1e3       # Hydrogen number density above which the Kennicut-Schmidt law changes slope in Hydrogen atoms per cm^3.
   KS_high_density_exponent:          2.0       # Slope of the Kennicut-Schmidt law above the high-density threshold.
-  KS_temperature_margin_dex:         0.5       # Logarithm base 10 of the maximal temperature difference above the EOS allowed to form stars.
+  EOS_temperature_margin_dex:         0.5       # Logarithm base 10 of the maximal temperature difference above the EOS allowed to form stars.
   threshold_norm_H_p_cm3:            0.1       # Normalisation of the metal-dependant density threshold for star formation in Hydrogen atoms per cm^3.
   threshold_Z0:                      0.002     # Reference metallicity (metal mass fraction) for the metal-dependant threshold for star formation.
   threshold_slope:                   -0.64     # Slope of the metal-dependant star formation threshold
@@ -108,7 +108,7 @@ EAGLEEntropyFloor:
   Cool_temperature_norm_K:        8000       # Temperature of the EAGLE Cool limiter entropy floor at the density threshold expressed in Kelvin.
   Cool_gamma_effective:           1.         # Slope the of the EAGLE Cool limiter entropy floor
 
-# EAGLE feedback model
+# EAGLE feedback model with constant feedback energy fraction
 EAGLEFeedback:
   use_SNII_feedback:                1               # Global switch for SNII thermal (stochastic) feedback.
   use_SNIa_feedback:                1               # Global switch for SNIa thermal (continuous) feedback.
@@ -123,8 +123,8 @@ EAGLEFeedback:
   SNII_wind_delay_Gyr:              0.03            # Time in Gyr between a star's birth and the SNII thermal feedback event.
   SNII_delta_T_K:                   3.16228e7       # Change in temperature to apply to the gas particle in a SNII thermal feedback event in Kelvin.
   SNII_energy_erg:                  1.0e51          # Energy of one SNII explosion in ergs.
-  SNII_energy_fraction_min:         3.0             # Maximal fraction of energy applied in a SNII feedback event.
-  SNII_energy_fraction_max:         0.3             # Minimal fraction of energy applied in a SNII feedback event.
+  SNII_energy_fraction_min:         1.0             # Minimal fraction of energy applied in a SNII feedback event.
+  SNII_energy_fraction_max:         1.0             # Maximal fraction of energy applied in a SNII feedback event.
   SNII_energy_fraction_Z_0:         0.0012663729    # Pivot point for the metallicity dependance of the SNII energy fraction (metal mass fraction).
   SNII_energy_fraction_n_0_H_p_cm3: 0.67            # Pivot point for the birth density dependance of the SNII energy fraction in cm^-3.
   SNII_energy_fraction_n_Z:         0.8686          # Power-law for the metallicity dependance of the SNII energy fraction.

@@ -53,6 +53,15 @@ SPH:
   CFL_condition:         0.1      # Courant-Friedrich-Levy condition for time integration.
   minimal_temperature:   100      # (internal units)
 
+# Parameters for the Friends-Of-Friends algorithm
+FOF:
+  basename:                        fof_output  # Filename for the FOF outputs.
+  min_group_size:                  256         # The minimum no. of particles required for a group.
+  linking_length_ratio:            0.2         # Linking length in units of the main inter-particle separation.
+  black_hole_seed_halo_mass_Msun:  1.5e10      # Minimal halo mass in which to seed a black hole (in solar masses).
+  scale_factor_first:              0.91        # Scale-factor of first FoF black hole seeding calls.
+  delta_time:                      1.005       # Scale-factor ratio between consecutive FoF black hole seeding calls.
+
 # Parameters related to the initial conditions
 InitialConditions:
   file_name:  ./EAGLE_ICs_50.hdf5     # The file to read
@@ -87,10 +96,10 @@ EAGLEStarFormation:
   EOS_gamma_effective:               1.3333333 # Slope the of the polytropic EOS assumed for the star-forming gas.
   KS_normalisation:                  1.515e-4  # The normalization of the Kennicutt-Schmidt law in Msun / kpc^2 / yr.
   KS_exponent:                       1.4       # The exponent of the Kennicutt-Schmidt law.
-  KS_min_over_density:               57.7      # The over-density above which star-formation is allowed.
+  min_over_density:                  57.7      # The over-density above which star-formation is allowed.
   KS_high_density_threshold_H_p_cm3: 1e3       # Hydrogen number density above which the Kennicut-Schmidt law changes slope in Hydrogen atoms per cm^3.
   KS_high_density_exponent:          2.0       # Slope of the Kennicut-Schmidt law above the high-density threshold.
-  KS_temperature_margin_dex:         0.5       # Logarithm base 10 of the maximal temperature difference above the EOS allowed to form stars.
+  EOS_temperature_margin_dex:        0.5       # Logarithm base 10 of the maximal temperature difference above the EOS allowed to form stars.
   threshold_norm_H_p_cm3:            0.1       # Normalisation of the metal-dependant density threshold for star formation in Hydrogen atoms per cm^3.
   threshold_Z0:                      0.002     # Reference metallicity (metal mass fraction) for the metal-dependant threshold for star formation.
   threshold_slope:                   -0.64     # Slope of the metal-dependant star formation threshold
@@ -122,8 +131,8 @@ EAGLEFeedback:
   SNII_wind_delay_Gyr:              0.03            # Time in Gyr between a star's birth and the SNII thermal feedback event.
   SNII_delta_T_K:                   3.16228e7       # Change in temperature to apply to the gas particle in a SNII thermal feedback event in Kelvin.
   SNII_energy_erg:                  1.0e51          # Energy of one SNII explosion in ergs.
-  SNII_energy_fraction_min:         3.0             # Maximal fraction of energy applied in a SNII feedback event.
-  SNII_energy_fraction_max:         0.3             # Minimal fraction of energy applied in a SNII feedback event.
+  SNII_energy_fraction_min:         0.3             # Minimal fraction of energy applied in a SNII feedback event.
+  SNII_energy_fraction_max:         3.0             # Maximal fraction of energy applied in a SNII feedback event.
   SNII_energy_fraction_Z_0:         0.0012663729    # Pivot point for the metallicity dependance of the SNII energy fraction (metal mass fraction).
   SNII_energy_fraction_n_0_H_p_cm3: 0.67            # Pivot point for the birth density dependance of the SNII energy fraction in cm^-3.
   SNII_energy_fraction_n_Z:         0.8686          # Power-law for the metallicity dependance of the SNII energy fraction.
@@ -142,3 +151,13 @@ EAGLEFeedback:
   SNII_yield_factor_Magnesium:      2.0             # (Optional) Correction factor to apply to the Magnesium yield from the SNII channel.
   SNII_yield_factor_Silicon:        1.0             # (Optional) Correction factor to apply to the Silicon yield from the SNII channel.
   SNII_yield_factor_Iron:           0.5             # (Optional) Correction factor to apply to the Iron yield from the SNII channel.
+
+# EAGLE AGN model
+EAGLEAGN:
+  subgrid_seed_mass_Msun:           1.5e5      # Black hole subgrid mass at creation time in solar masses.
+  max_eddington_fraction:           1.5        # Maximal allowed accretion rate in units of the Eddington rate.
+  viscous_alpha:                    1e6        # Normalisation constant of the Bondi viscuous time-scale accretion reduction term
+  radiative_efficiency:             0.1        # Fraction of the accreted mass that gets radiated.
+  coupling_efficiency:              0.15       # Fraction of the radiated energy that couples to the gas in feedback events.
+  AGN_delta_T_K:                    3.16228e8  # Change in temperature to apply to the gas particle in an AGN feedback event in Kelvin.
+  AGN_num_ngb_to_heat:              1.         # Target number of gas neighbours to heat in an AGN feedback event.

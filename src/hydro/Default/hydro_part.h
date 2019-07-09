@@ -1,6 +1,7 @@
 /*******************************************************************************
  * This file is part of SWIFT.
- * Copyright (c) 2012 Pedro Gonnet (pedro.gonnet@durham.ac.uk)
+ * Coypright (c) 2019 Josh Borrow (joshua.borrow@durham.ac.uk) &
+ *                    Matthieu Schaller (matthieu.schaller@durham.ac.uk)
  *
  * This program is free software: you can redistribute it and/or modify
  * it under the terms of the GNU Lesser General Public License as published
@@ -19,128 +20,184 @@
 #ifndef SWIFT_DEFAULT_HYDRO_PART_H
 #define SWIFT_DEFAULT_HYDRO_PART_H
 
+/**
+ * @file Default/hydro_part.h
+ * @brief Density-Energy conservative implementation of SPH,
+ *        with added diffusive physics (Cullen & Denhen 2011 AV,
+ *        Price 2017 (PHANTOM) diffusion) (particle definition)
+ */
+
+#include "black_holes_struct.h"
 #include "chemistry_struct.h"
 #include "cooling_struct.h"
 #include "star_formation_struct.h"
 #include "tracers_struct.h"
 
-/* Extra particle data not needed during the SPH loops over neighbours. */
+/**
+ * @brief Particle fields not needed during the SPH loops over neighbours.
+ *
+ * This structure contains the particle fields that are not used in the
+ * density or force loops. Quantities should be used in the kick, drift and
+ * potentially ghost tasks only.
+ */
 struct xpart {
 
-  /* Offset between current position and position at last tree rebuild. */
+  /*! Offset between current position and position at last tree rebuild. */
   float x_diff[3];
 
   /*! Offset between the current position and position at the last sort. */
   float x_diff_sort[3];
 
-  /* Velocity at the last full step. */
+  /*! Velocity at the last full step. */
   float v_full[3];
 
-  /* Gravitational acceleration at the last full step. */
+  /*! Gravitational acceleration at the last full step. */
   float a_grav[3];
 
-  /* Additional data used to record cooling information */
+  /*! Internal energy at the last full step. */
+  float u_full;
+
+  /*! Additional data used to record cooling information */
   struct cooling_xpart_data cooling_data;
 
   /* Additional data used by the tracers */
   struct tracers_xpart_data tracers_data;
 
-  /* Additional data used by the star formation */
+  /* Additional data used by the tracers */
   struct star_formation_xpart_data sf_data;
-
-  float u_full;
-
-  /* Old density. */
-  float omega;
 
 } SWIFT_STRUCT_ALIGN;
 
-/* Data of a single particle. */
+/**
+ * @brief Particle fields for the SPH particles
+ *
+ * The density and force substructures are used to contain variables only used
+ * within the density and force loops over neighbours. All more permanent
+ * variables should be declared in the main part of the part structure,
+ */
 struct part {
 
-  /* Particle ID. */
+  /*! Particle unique ID. */
   long long id;
 
-  /* Pointer to corresponding gravity part. */
+  /*! Pointer to corresponding gravity part. */
   struct gpart* gpart;
 
-  /* Particle position. */
+  /*! Particle position. */
   double x[3];
 
-  /* Particle predicted velocity. */
+  /*! Particle predicted velocity. */
   float v[3];
 
-  /* Particle acceleration. */
+  /*! Particle acceleration. */
   float a_hydro[3];
 
-  /* Particle cutoff radius. */
+  /*! Particle mass. */
+  float mass;
+
+  /*! Particle smoothing length. */
   float h;
 
-  /* Particle internal energy. */
+  /*! Particle internal energy. */
   float u;
 
-  /* Particle density. */
+  /*! Time derivative of the internal energy. */
+  float u_dt;
+
+  /*! Particle density. */
   float rho;
 
-  /* Derivative of the density with respect to this particle's smoothing length.
-   */
-  float rho_dh;
+  /* Store viscosity information in a separate struct. */
+  struct {
 
-  /* Particle viscosity parameter */
-  float alpha;
+    /*! Particle velocity divergence */
+    float div_v;
+
+    /*! Particle velocity divergence from previous step */
+    float div_v_previous_step;
+
+    /*! Artificial viscosity parameter */
+    float alpha;
+
+    /*! Signal velocity */
+    float v_sig;
+
+  } viscosity;
+
+  /* Store thermal diffusion information in a separate struct. */
+  struct {
+
+    /*! del^2 u, a smoothed quantity */
+    float laplace_u;
+
+    /*! Thermal diffusion coefficient */
+    float alpha;
+
+  } diffusion;
 
   /* Store density/force specific stuff. */
   union {
 
+    /**
+     * @brief Structure for the variables only used in the density loop over
+     * neighbours.
+     *
+     * Quantities in this sub-structure should only be accessed in the density
+     * loop over neighbours and the ghost task.
+     */
     struct {
 
-      /* Particle velocity divergence. */
-      float div_v;
+      /*! Neighbour number count. */
+      float wcount;
 
-      /* Derivative of particle number density. */
+      /*! Derivative of the neighbour number with respect to h. */
       float wcount_dh;
 
-      /* Particle velocity curl. */
-      float rot_v[3];
+      /*! Derivative of density with respect to h */
+      float rho_dh;
 
-      /* Particle number density. */
-      float wcount;
+      /*! Particle velocity curl. */
+      float rot_v[3];
 
     } density;
 
+    /**
+     * @brief Structure for the variables only used in the force loop over
+     * neighbours.
+     *
+     * Quantities in this sub-structure should only be accessed in the force
+     * loop over neighbours and the ghost, drift and kick tasks.
+     */
     struct {
 
-      /* Balsara switch */
-      float balsara;
+      /*! "Grad h" term -- only partial in P-U */
+      float f;
 
-      /* Aggregate quantities. */
-      float P_over_rho2;
+      /*! Particle pressure. */
+      float pressure;
 
-      /* Change in particle energy over time. */
-      float u_dt;
-
-      /* Signal velocity */
-      float v_sig;
-
-      /* Sound speed */
+      /*! Particle soundspeed. */
       float soundspeed;
 
-      /* Change in smoothing length over time. */
+      /*! Time derivative of smoothing length  */
       float h_dt;
+
+      /*! Balsara switch */
+      float balsara;
 
     } force;
   };
 
-  /* Particle mass. */
-  float mass;
-
   /* Chemistry information */
   struct chemistry_part_data chemistry_data;
 
-  /* Particle time-bin */
+  /*! Black holes information (e.g. swallowing ID) */
+  struct black_holes_part_data black_holes_data;
+
+  /*! Time-step length */
   timebin_t time_bin;
 
-  /* Need waking-up ? */
+  /* Need waking up ? */
   timebin_t wakeup;
 
 #ifdef SWIFT_DEBUG_CHECKS

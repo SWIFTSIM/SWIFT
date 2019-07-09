@@ -46,6 +46,25 @@ __attribute__((always_inline)) INLINE static int feedback_do_feedback(
 }
 
 /**
+ * @brief Should this particle be doing any feedback-related operation?
+ *
+ * Note: Since this 'none' feedback mode is used for testing the neighbour
+ * loops only, we want to always do feedback irrespective of the particle
+ * or of the system's state.
+ *
+ * @param sp The #spart.
+ * @param time The current simulation time (Non-cosmological runs).
+ * @param cosmo The cosmological model (cosmological runs).
+ * @param with_cosmology Are we doing a cosmological run?
+ */
+__attribute__((always_inline)) INLINE static int feedback_is_active(
+    const struct spart* sp, const float time, const struct cosmology* cosmo,
+    const int with_cosmology) {
+
+  return 1;
+}
+
+/**
  * @brief Prepares a star's feedback field before computing what
  * needs to be distributed.
  */
@@ -94,5 +113,25 @@ __attribute__((always_inline)) INLINE static void feedback_evolve_spart(
     struct spart* restrict sp, const struct feedback_props* feedback_props,
     const struct cosmology* cosmo, const struct unit_system* us,
     const double star_age_beg_step, const double dt) {}
+
+/**
+ * @brief Write a feedback struct to the given FILE as a stream of bytes.
+ *
+ * @param feedback the struct
+ * @param stream the file stream
+ */
+static INLINE void feedback_struct_dump(const struct feedback_props* feedback,
+                                        FILE* stream) {}
+
+/**
+ * @brief Restore a hydro_props struct from the given FILE as a stream of
+ * bytes.
+ *
+ * @param feedback the struct
+ * @param stream the file stream
+ * @param cosmo #cosmology structure
+ */
+static INLINE void feedback_struct_restore(struct feedback_props* feedback,
+                                           FILE* stream) {}
 
 #endif /* SWIFT_FEEDBACK_NONE_H */

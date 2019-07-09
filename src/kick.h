@@ -71,7 +71,7 @@ __attribute__((always_inline)) INLINE static void kick_gpart(
  * @param dt_kick_corr The kick time-step for the gizmo-mfv gravity correction.
  * @param cosmo The cosmological model.
  * @param hydro_props The constants used in the scheme.
- * @param entropy_floor_props Properties of the entropy floor.
+ * @param floor_props Properties of the entropy floor.
  * @param ti_start The starting (integer) time of the kick (for debugging
  * checks).
  * @param ti_end The ending (integer) time of the kick (for debugging checks).
@@ -80,8 +80,8 @@ __attribute__((always_inline)) INLINE static void kick_part(
     struct part *restrict p, struct xpart *restrict xp, double dt_kick_hydro,
     double dt_kick_grav, double dt_kick_therm, double dt_kick_corr,
     const struct cosmology *cosmo, const struct hydro_props *hydro_props,
-    const struct entropy_floor_properties *entropy_floor_props,
-    integertime_t ti_start, integertime_t ti_end) {
+    const struct entropy_floor_properties *floor_props, integertime_t ti_start,
+    integertime_t ti_end) {
 
 #ifdef SWIFT_DEBUG_CHECKS
   if (p->ti_kick != ti_start)
@@ -114,15 +114,8 @@ __attribute__((always_inline)) INLINE static void kick_part(
 
   /* Extra kick work */
   hydro_kick_extra(p, xp, dt_kick_therm, dt_kick_grav, dt_kick_hydro,
-                   dt_kick_corr, cosmo, hydro_props);
+                   dt_kick_corr, cosmo, hydro_props, floor_props);
   if (p->gpart != NULL) gravity_kick_extra(p->gpart, dt_kick_grav);
-
-  /* Verify that the particle is not below the entropy floor */
-  const float floor = entropy_floor(p, cosmo, entropy_floor_props);
-  if (hydro_get_physical_entropy(p, xp, cosmo) < floor) {
-    hydro_set_physical_entropy(p, xp, cosmo, floor);
-    hydro_set_physical_internal_energy_dt(p, cosmo, 0.f);
-  }
 }
 
 /**

@@ -20,9 +20,9 @@ AM_CFLAGS = -I$(top_srcdir)/src $(HDF5_CPPFLAGS) $(GSL_INCS) $(FFTW_INCS) $(NUMA
 AM_LDFLAGS = ../src/.libs/libswiftsim.a $(HDF5_LDFLAGS) $(HDF5_LIBS) $(FFTW_LIBS) $(NUMA_LIBS) $(TCMALLOC_LIBS) $(JEMALLOC_LIBS) $(TBBMALLOC_LIBS) $(GRACKLE_LIBS) $(GSL_LIBS) $(PROFILER_LIBS)
 
 # List of programs and scripts to run in the test suite
-TESTS = testGreetings testMaths testReading.sh testSingle testKernel \
+TESTS = testGreetings testMaths testReading.sh testKernel \
         testActivePair.sh test27cells.sh test27cellsPerturbed.sh  \
-        testParser.sh testSPHStep test125cells.sh test125cellsPerturbed.sh testFFT \
+        testParser.sh test125cells.sh test125cellsPerturbed.sh testFFT \
         testAdiabaticIndex testRandom \
         testMatrixInversion testThreadpool testDump testLogger testInteractions.sh \
         testVoronoi1D testVoronoi2D testVoronoi3D testGravityDerivatives \
@@ -32,8 +32,8 @@ TESTS = testGreetings testMaths testReading.sh testSingle testKernel \
 	test27cellsStars.sh test27cellsStarsPerturbed.sh
 
 # List of test programs to compile
-check_PROGRAMS = testGreetings testReading testSingle testTimeIntegration \
-		 testSPHStep testActivePair test27cells test27cells_subset test125cells testParser \
+check_PROGRAMS = testGreetings testReading testTimeIntegration \
+		 testActivePair test27cells test27cells_subset test125cells testParser \
                  testKernel testFFT testInteractions testMaths testRandom \
                  testSymmetry testThreadpool \
                  testAdiabaticIndex testRiemannExact testRiemannTRRS \
@@ -41,7 +41,7 @@ check_PROGRAMS = testGreetings testReading testSingle testTimeIntegration \
 		 testVoronoi1D testVoronoi2D testVoronoi3D testPeriodicBC \
 		 testGravityDerivatives testPotentialSelf testPotentialPair testEOS testUtilities \
 		 testSelectOutput testCbrt testCosmology testOutputList test27cellsStars \
-		 test27cellsStars_subset testCooling testFeedback
+		 test27cellsStars_subset testCooling testFeedback testHashmap
 
 # Rebuild tests when SWIFT is updated.
 $(check_PROGRAMS): ../src/.libs/libswiftsim.a
@@ -67,10 +67,6 @@ testSymmetry_SOURCES = testSymmetry.c
 testSymmetry_CFLAGS = $(AM_CFLAGS) -fno-builtin-memcmp
 
 testTimeIntegration_SOURCES = testTimeIntegration.c
-
-testSPHStep_SOURCES = testSPHStep.c
-
-testSingle_SOURCES = testSingle.c
 
 testActivePair_SOURCES = testActivePair.c
 
@@ -133,6 +129,8 @@ testUtilities_SOURCES = testUtilities.c
 testCooling_SOURCES = testCooling.c
 
 testFeedback_SOURCES = testFeedback.c
+
+testHashmap_SOURCES = testHashmap.c
 
 # Files necessary for distribution
 EXTRA_DIST = testReading.sh makeInput.py testActivePair.sh \

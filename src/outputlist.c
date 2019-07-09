@@ -257,7 +257,7 @@ void output_list_init(struct output_list **list, const struct engine *e,
 void output_list_print(const struct output_list *outputlist) {
 
   printf("/*\t Time Array\t */\n");
-  printf("Number of Line: %lu\n", outputlist->size);
+  printf("Number of Line: %zu\n", outputlist->size);
   for (size_t ind = 0; ind < outputlist->size; ind++) {
     if (ind == outputlist->cur_ind)
       printf("\t%lf <-- Current\n", outputlist->times[ind]);

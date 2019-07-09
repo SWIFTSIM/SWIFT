@@ -52,21 +52,21 @@ plot([1e-1, 1e-1], [20, 4000], "k:", lw=0.6)
 plot([3e-6, 3e-4], [28000, 28000], "k--", lw=0.6)
 
 text(
-    3e-6,
+    1e-6,
     22500,
-    "$n_{\\rm H}$^Cool_gamma_effective",
+    "$n_{\\rm H}$^Cool_gamma_effective - 1",
     va="top",
-    fontsize=6,
+    fontsize=5.5,
     family="monospace",
 )
 plot([3e-1, 3e1], [15000.0, 15000.0 * 10.0 ** (2.0 / 3.0)], "k--", lw=0.6)
 text(
-    3e-1,
-    200000,
-    "$n_{\\rm H}$^Jeans_gamma_effective",
+    1.2e-1,
+    190000,
+    "$n_{\\rm H}$^Jeans_gamma_effective - 1",
     va="top",
     rotation=43,
-    fontsize=6,
+    fontsize=5.5,
     family="monospace",
 )
 text(
@@ -76,7 +76,7 @@ text(
     rotation=90,
     va="bottom",
     ha="right",
-    fontsize=6,
+    fontsize=5.5,
     family="monospace",
 )
 text(
@@ -89,9 +89,9 @@ text(
     fontsize=5.5,
     family="monospace",
 )
-text(5e-8, 8800, "Cool_temperature_norm_K", va="bottom", fontsize=6, family="monospace")
+text(5e-8, 8800, "Cool_temperature_norm_K", va="bottom", fontsize=5.5, family="monospace")
 text(
-    5e-8, 4400, "Jeans_temperature_norm_K", va="bottom", fontsize=6, family="monospace"
+    5e-8, 4400, "Jeans_temperature_norm_K", va="bottom", fontsize=5.5, family="monospace"
 )
 fill_between([1e-5, 1e5], [10, 10], [8000, 8000], color="0.9")
 fill_between([1e-1, 1e5], [4000, 400000], color="0.9")

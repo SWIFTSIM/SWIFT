@@ -19,18 +19,17 @@
  ******************************************************************************/
 #ifndef SWIFT_ANARCHY_PU_HYDRO_PART_H
 #define SWIFT_ANARCHY_PU_HYDRO_PART_H
+
 /**
- * @file PressureEnergy/hydro_part.h
- * @brief P-U implementation of SPH (Particle definition)
+ * @file AnarchyPU/hydro_part.h
+ * @brief P-U conservative implementation of SPH,
+ *        with added ANARCHY physics (Cullen & Denhen 2011 AV,
+ *        Price 2008 thermal diffusion) (Particle definition)
  *
- * The thermal variable is the internal energy (u). A simple constant
- * viscosity term with a Balsara switch is implemented.
- *
- * No thermal conduction term is implemented.
- *
- * See PressureEnergy/hydro.h for references.
+ * See AnarchyPU/hydro.h for references.
  */
 
+#include "black_holes_struct.h"
 #include "chemistry_struct.h"
 #include "cooling_struct.h"
 #include "star_formation_struct.h"
@@ -196,6 +195,9 @@ struct part {
 
   /* Chemistry information */
   struct chemistry_part_data chemistry_data;
+
+  /*! Black holes information (e.g. swallowing ID) */
+  struct black_holes_part_data black_holes_data;
 
   /*! Time-step length */
   timebin_t time_bin;

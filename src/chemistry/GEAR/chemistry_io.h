@@ -113,6 +113,21 @@ INLINE static int chemistry_write_sparticles(const struct spart* sparts,
   return 3;
 }
 
+/**
+ * @brief Specifies which black hole particle fields to write to a dataset
+ *
+ * @param bparts The black hole particle array.
+ * @param list The list of i/o properties to write.
+ *
+ * @return Returns the number of fields to write.
+ */
+INLINE static int chemistry_write_bparticles(const struct bpart* bparts,
+                                             struct io_props* list) {
+
+  /* No fields to write here */
+  return 0;
+}
+
 #ifdef HAVE_HDF5
 
 /**

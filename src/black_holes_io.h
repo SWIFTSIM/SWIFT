@@ -24,6 +24,8 @@
 /* Load the correct star type */
 #if defined(BLACK_HOLES_NONE)
 #include "./black_holes/Default/black_holes_io.h"
+#elif defined(BLACK_HOLES_EAGLE)
+#include "./black_holes/EAGLE/black_holes_io.h"
 #else
 #error "Invalid choice of star model"
 #endif

@@ -4,11 +4,12 @@
 if [ ! -e square.hdf5 ]
 then
     echo "Generating initial conditions for the square test ..."
-    python makeIC.py
+    python makeICDifferentMasses.py
 fi
 
 # Run SWIFT
-../../swift --hydro --threads=1 square.yml 2>&1 | tee output.log
+../../swift --hydro --threads=4 square.yml 2>&1 | tee output.log
 
 # Plot the solution
-python plotSolution.py 5
+python plotSolution.py 40
+python makeMovie.py
