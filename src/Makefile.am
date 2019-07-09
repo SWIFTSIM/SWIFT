@@ -52,7 +52,7 @@ include_HEADERS = space.h runner.h queue.h task.h lock.h cell.h part.h const.h \
     logger_io.h tracers_io.h tracers.h tracers_struct.h star_formation_io.h fof.h \
     star_formation_struct.h star_formation.h star_formation_iact.h \
     star_formation_logger.h star_formation_logger_struct.h \
-    velociraptor_struct.h velociraptor_io.h random.h memuse.h black_holes.h black_holes_io.h \
+    velociraptor_struct.h velociraptor_io.h random.h memuse.h memuse_rnodes.h black_holes.h black_holes_io.h \
     black_holes_properties.h black_holes_struct.h feedback.h feedback_struct.h feedback_properties.h
 
 # source files for EAGLE cooling
@@ -78,7 +78,7 @@ AM_SOURCES = space.c runner.c queue.c task.c cell.c engine.c engine_maketasks.c 
     part_type.c xmf.c gravity_properties.c gravity.c \
     collectgroup.c hydro_space.c equation_of_state.c \
     chemistry.c cosmology.c restart.c mesh_gravity.c velociraptor_interface.c \
-    outputlist.c velociraptor_dummy.c logger_io.c memuse.c fof.c \
+    outputlist.c velociraptor_dummy.c logger_io.c memuse.c memuse_rnodes.c fof.c \
     hashmap.c \
     $(EAGLE_COOLING_SOURCES) $(EAGLE_FEEDBACK_SOURCES)
 
