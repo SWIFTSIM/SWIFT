@@ -42,8 +42,7 @@ struct memuse_rnode {
 
 void memuse_rnode_dump(int depth, struct memuse_rnode *node, int full);
 void memuse_rnode_insert_child(struct memuse_rnode *node, uint8_t depth,
-                               uint8_t *key, uint8_t keylen,
-                               void *value);
+                               uint8_t *key, uint8_t keylen, void *value);
 struct memuse_rnode *memuse_rnode_find_child(struct memuse_rnode *node,
                                              uint8_t depth, uint8_t *key,
                                              uint8_t keylen);

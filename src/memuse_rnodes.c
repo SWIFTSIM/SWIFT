@@ -26,9 +26,9 @@
 #include "../config.h"
 
 /* Standard includes. */
+#include <stdint.h>
 #include <stdio.h>
 #include <stdlib.h>
-#include <stdint.h>
 #include <string.h>
 #include <sys/types.h>
 #include <unistd.h>
@@ -150,8 +150,7 @@ static struct memuse_rnode *memuse_rnode_lookup(const struct memuse_rnode *node,
  * @param value pointer that will be stored as the value of the leaf node.
  */
 void memuse_rnode_insert_child(struct memuse_rnode *node, uint8_t depth,
-                               uint8_t *key, uint8_t keylen,
-                               void *value) {
+                               uint8_t *key, uint8_t keylen, void *value) {
 
   /* Check if keypart this already exists at this level and add new child if
    * not. */
