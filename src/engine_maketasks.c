@@ -2650,6 +2650,7 @@ void engine_make_extra_hydroloop_tasks_mapper(void *map_data, int num_elements,
     }
   }
 }
+
 /**
  * @brief Constructs the top-level pair tasks for the first hydro loop over
  * neighbours
@@ -2796,7 +2797,6 @@ void engine_addtasks_send_mapper(void *map_data, int num_elements,
     struct cell *cj = cell_type_pairs[k].cj;
     const int type = cell_type_pairs[k].type;
 
-<<<<<<< HEAD
     /* Find the proxy for this task. */
     int pid = 0;
     while (pid < e->nr_proxies && e->proxies[pid].nodeID != cj->nodeID) pid++;
@@ -2804,8 +2804,6 @@ void engine_addtasks_send_mapper(void *map_data, int num_elements,
     /* Add the send task for the particle timesteps. */
     // engine_addtasks_send_timestep(e, ci, cj, NULL, NULL, with_limiter);
 
-=======
->>>>>>> 8ba8cc33087bf59c407f50d29029e31ecc770108
     /* Add the send tasks for the cells in the proxy that have a hydro
      * connection. */
     if ((e->policy & engine_policy_hydro) && (type & proxy_cell_type_hydro))
