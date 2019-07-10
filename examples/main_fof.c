@@ -410,8 +410,9 @@ int main(int argc, char *argv[]) {
   cosmology_init(params, &us, &prog_const, &cosmo);
 
   /* Initialise the gravity scheme */
-  gravity_props_init(&gravity_properties, params, &cosmo, /*with_cosmology=*/1,
-                     periodic);
+  bzero(&gravity_properties, sizeof(struct gravity_props));
+  gravity_props_init(&gravity_properties, params, &prog_const, &cosmo,
+		     /*with_cosmology=*/1, periodic);
 
   /* Initialise the FOF properties */
   bzero(&fof_properties, sizeof(struct fof_props));

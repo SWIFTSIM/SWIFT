@@ -112,6 +112,7 @@ runner_iact_nonsym_bh_bh_swallow(const float r2, const float *dx,
                                  const struct bpart *restrict bi,
                                  struct bpart *restrict bj,
                                  const struct cosmology *cosmo,
+                                 const struct gravity_props *grav_props,
                                  const integertime_t ti_current) {}
 
 /**

@@ -209,7 +209,8 @@ void DOSELF1_BH(struct runner *r, struct cell *c, int timer) {
 #endif
 
       if (r2 < hig2) {
-        IACT_BH_BH(r2, dx, hi, hj, bi, bj, cosmo, ti_current);
+        IACT_BH_BH(r2, dx, hi, hj, bi, bj, cosmo, e->gravity_properties,
+                   ti_current);
       }
     } /* loop over the bparts in ci. */
   }   /* loop over the bparts in ci. */
@@ -355,7 +356,8 @@ void DO_NONSYM_PAIR1_BH_NAIVE(struct runner *r, struct cell *restrict ci,
 #endif
 
       if (r2 < hig2) {
-        IACT_BH_BH(r2, dx, hi, hj, bi, bj, cosmo, ti_current);
+        IACT_BH_BH(r2, dx, hi, hj, bi, bj, cosmo, e->gravity_properties,
+                   ti_current);
       }
     } /* loop over the bparts in cj. */
   }   /* loop over the bparts in ci. */

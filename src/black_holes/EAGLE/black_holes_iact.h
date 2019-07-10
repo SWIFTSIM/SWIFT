@@ -196,6 +196,7 @@ runner_iact_nonsym_bh_bh_swallow(const float r2, const float *dx,
                                  const struct bpart *restrict bi,
                                  struct bpart *restrict bj,
                                  const struct cosmology *cosmo,
+                                 const struct gravity_props *grav_props,
                                  const integertime_t ti_current) {
 
   /* Compute relative peculiar velocity between the two BHs
@@ -215,7 +216,11 @@ runner_iact_nonsym_bh_bh_swallow(const float r2, const float *dx,
     h = hj;
   }
 
-  const float G = 43.;  // MATTHIEU: Fix this!!!
+  const float max_distance2 = kernel_gravity_softening_plummer_equivalent_inv *
+                              kernel_gravity_softening_plummer_equivalent_inv *
+                              9.f * grav_props->epsilon_cur2;
+
+  const float G_Newton = grav_props->G_Newton;
 
   /* The BH with the smaller mass will be merged onto the one with the
    * larger mass.
@@ -224,12 +229,10 @@ runner_iact_nonsym_bh_bh_swallow(const float r2, const float *dx,
   if ((bj->subgrid_mass < bi->subgrid_mass) ||
       (bj->subgrid_mass == bi->subgrid_mass && bj->id < bi->id)) {
 
-    /* Merge if gravitationally bound
+    /* Merge if gravitationally bound AND if within max distance
      * Note that we use the kernel support here as the size and not just the
      * smoothing length */
-    if (v2_pec < G * M / (kernel_gamma * h)) {
-
-      // MATTHIEU: Also add distance check: factor * Plummer softening
+    if (v2_pec < G_Newton * M / (kernel_gamma * h) && (r2 < max_distance2)) {
 
       /* This particle is swallowed by the BH with the largest ID of all the
        * candidates wanting to swallow it */
