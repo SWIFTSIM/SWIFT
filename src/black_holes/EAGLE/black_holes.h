@@ -59,6 +59,8 @@ __attribute__((always_inline)) INLINE static void black_holes_first_init_bpart(
   bp->total_accreted_mass = 0.f;
   bp->accretion_rate = 0.f;
   bp->formation_time = -1.f;
+  bp->cumulative_number_seeds = 1;
+  bp->number_of_mergers = 0;
 }
 
 /**
@@ -244,6 +246,36 @@ __attribute__((always_inline)) INLINE static void black_holes_swallow_part(
  */
 __attribute__((always_inline)) INLINE static void black_holes_swallow_bpart(
     struct bpart* bpi, const struct bpart* bpj, const struct cosmology* cosmo) {
+
+  /* Get the current dynamical masses */
+  const float bpi_dyn_mass = bpi->mass;
+  const float bpj_dyn_mass = bpj->mass;
+
+  /* Increase the masses of the BH. */
+  bpi->mass += bpj->mass;
+  bpi->gpart->mass += bpj->mass;
+  bpi->subgrid_mass += bpj->subgrid_mass;
+
+  /* Update the BH momentum */
+  const float BH_mom[3] = {bpi_dyn_mass * bpi->v[0] + bpj_dyn_mass * bpj->v[0],
+                           bpi_dyn_mass * bpi->v[1] + bpj_dyn_mass * bpj->v[1],
+                           bpi_dyn_mass * bpi->v[2] + bpj_dyn_mass * bpj->v[2]};
+
+  bpi->v[0] = BH_mom[0] / bpi->mass;
+  bpi->v[1] = BH_mom[1] / bpi->mass;
+  bpi->v[2] = BH_mom[2] / bpi->mass;
+  bpi->gpart->v_full[0] = bpi->v[0];
+  bpi->gpart->v_full[1] = bpi->v[1];
+  bpi->gpart->v_full[2] = bpi->v[2];
+
+  /* Update the energy reservoir */
+  bpi->energy_reservoir += bpj->energy_reservoir;
+
+  /* Add up all the BH seeds */
+  bpi->cumulative_number_seeds += bpj->cumulative_number_seeds;
+
+  /* We had another merger */
+  bpi->number_of_mergers++;
 }
 
 /**
@@ -446,6 +478,8 @@ INLINE static void black_holes_create_from_gas(
 
   /* We haven't accreted anything yet */
   bp->total_accreted_mass = 0.f;
+  bp->cumulative_number_seeds = 1;
+  bp->number_of_mergers = 0;
 
   /* Initial metal masses */
   const float gas_mass = hydro_get_mass(p);

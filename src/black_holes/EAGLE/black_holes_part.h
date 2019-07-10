@@ -103,6 +103,12 @@ struct bpart {
   /*! Integer number of neighbours */
   int num_ngbs;
 
+  /*! Number of seeds in this BH (i.e. itself + the merged ones) */
+  int cumulative_number_seeds;
+
+  /*! Total number of BH merger events (i.e. not including all progenies) */
+  int number_of_mergers;
+
   /*! Properties used in the feedback loop to distribute to gas neighbours. */
   struct {
 
