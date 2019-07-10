@@ -438,7 +438,7 @@ in the internal units of time. Users also have to provide the difference in time
 In non-cosmological runs this is also expressed in internal units. For
 cosmological runs, this value is *multiplied* to obtain the
 scale-factor of the next snapshot. This implies that the outputs are
-equally space in :math:`\log(a)` (See :ref:`Output_list_label` to have
+equally spaced in :math:`\log(a)` (See :ref:`Output_list_label` to have
 snapshots not regularly spaced in time).
 
 When running the code with structure finding activated, it is often
@@ -935,8 +935,8 @@ to control whether they are used or not. If enabled these will be used to
 repartition after the second step, which will generally give as good a
 repartition immediately as you get at the first unforced repartition.
 
-Also once these have been enabled you can change the `trigger:` value to
-numbers greater than 2, and repartitioning will be forced every `trigger`
+Also once these have been enabled you can change the ``trigger`` value to
+numbers greater than 2, and repartitioning will be forced every ``trigger``
 steps. This latter option is probably only useful for developers, but tuning
 the second step to use fixed costs can give some improvements.
 
@@ -945,7 +945,70 @@ the second step to use fixed costs can give some improvements.
 Structure finding (VELOCIraptor)
 --------------------------------
 
+This section describes the behaviour of the on-the-fly structure
+finding using the VELOCIraptor library (see
+:ref:`VELOCIraptor_interface`). The section is named
+``StructureFinding`` and also governs the behaviour of the
+structure finding code when invoked at snapshots dumping time via
+the parameter ``Snapshots:invoke_stf``.
 
+The main parameters are:
+
+ * The VELOCIraptor parameter file to use for the run:
+   ``config_file_name``,
+ * The directory in which the structure catalogs will be written: ``basename``.
+
+Both these parameters must always be specified when running SWIFT with
+on-the-fly calls to the structure finding code. In particular, when
+only running VELOCIraptor when snapshots are written, nothing more is
+necessary and one would use:
+
+.. code:: YAML
+
+  Snapshots:
+    invoke_stf:        1                              # We want VELOCIraptor to be called when snapshots are dumped.
+    # ...
+    # Rest of the snapshots properties
+	  
+  StructureFinding:
+    config_file_name:  my_stf_configuration_file.cfg  # See the VELOCIraptor manual for the content of this file.
+    basename:          ./haloes/                      # Write the catalogs in this sub-directory
+     
+If one additionally want to call VELOCIraptor at times not linked with
+snapshots, the additional parameters need to be supplied.
+
+The time of the first call is controlled by the two following options:
+
+* Time of the first call to VELOCIraptor (non-cosmological runs): ``time_first``,
+* Scale-factor of the first call to VELOCIraptor (cosmological runs): ``scale_factor_first``.
+
+One of those two parameters has to be provided depending on the type of run. In
+the case of non-cosmological runs, the time of the first call is expressed
+in the internal units of time. Users also have to provide the difference in time
+(or scale-factor) between consecutive outputs:
+
+* Time difference between consecutive outputs: ``delta_time``.
+
+In non-cosmological runs this is also expressed in internal units. For
+cosmological runs, this value is *multiplied* to obtain the
+scale-factor of the next call. This implies that the outputs are
+equally spaced in :math:`\log(a)` (See :ref:`Output_list_label` to have
+calls not regularly spaced in time).
+
+Showing all the parameters for a basic cosmologica test-case, one would have:
+
+.. code:: YAML
+
+   StructureFinding:
+    config_file_name:     my_stf_configuration_file.cfg  # See the VELOCIraptor manual for the content of this file.
+    basename:             ./haloes/                      # Write the catalogs in this sub-directory
+    scale_factor_first:   0.1                            # Scale-factor of the first output
+    delta_time:           1.1                            # Delta log-a between outputs
+
+
+------------------------
+
+    
 .. [#f1] The thorough reader (or overly keen SWIFT tester) would find  that the speed of light is :math:`c=1.8026\times10^{12}\,\rm{fur}\,\rm{ftn}^{-1}`, Newton's constant becomes :math:`G_N=4.896735\times10^{-4}~\rm{fur}^3\,\rm{fir}^{-1}\,\rm{ftn}^{-2}` and Planck's constant turns into :math:`h=4.851453\times 10^{-34}~\rm{fur}^2\,\rm{fir}\,\rm{ftn}^{-1}`.
 
 
