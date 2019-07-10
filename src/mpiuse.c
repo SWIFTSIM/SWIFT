@@ -98,7 +98,6 @@ struct mpiuse_log_entry {
 static struct mpiuse_log_entry *volatile mpiuse_log = NULL;
 static volatile size_t mpiuse_log_size = 0;
 static volatile size_t mpiuse_log_count = 0;
-static volatile size_t mpiuse_old_count = 0;
 static volatile size_t mpiuse_log_done = 0;
 
 /**
@@ -186,7 +185,7 @@ void mpiuse_log_allocation(int type, int subtype, void *ptr, int activation,
 void mpiuse_log_dump(const char *filename) {
 
   /* Skip if nothing logged this step. */
-  if (mpiuse_log_count == mpiuse_old_count) return;
+  if (mpiuse_log_count == 0) return;
 
   // ticks tic = getticks();
 
@@ -196,7 +195,6 @@ void mpiuse_log_dump(const char *filename) {
 
   /* Stop any new logs from being processed while we are dumping. */
   size_t log_count = mpiuse_log_count;
-  size_t old_count = mpiuse_old_count;
 
   /* Open the output file. */
   FILE *fd;
@@ -215,7 +213,7 @@ void mpiuse_log_dump(const char *filename) {
   size_t mpiuse_max = 0;
   double mpiuse_sum = 0;
   size_t mpiuse_actcount = 0;
-  for (size_t k = old_count; k < log_count; k++) {
+  for (size_t k = 0; k < log_count; k++) {
 
     /* Check if this address has already been recorded. */
     struct memuse_rnode *child = memuse_rnode_find_child(
@@ -326,7 +324,7 @@ void mpiuse_log_dump(const char *filename) {
   /* Now check any still active logs, these are errors all should match. */
   if (mpiuse_current != 0) {
     message("Some MPI requests have not been completed");
-    for (size_t k = old_count; k < log_count; k++) {
+    for (size_t k = 0; k < log_count; k++) {
       if (mpiuse_log[k].active)
         message("%s/%s: %d->%d: %zd/%d)", taskID_names[mpiuse_log[k].type],
                 subtaskID_names[mpiuse_log[k].subtype], engine_rank,
@@ -336,6 +334,10 @@ void mpiuse_log_dump(const char *filename) {
 
   /* Finished with the rnodes. */
   memuse_rnode_cleanup(memuse_rnode_root);
+
+  /* Clear the log. We expect this to clear step to step, unlike memory. */
+  mpiuse_log_count = 0;
+  mpiuse_log_done = 0;
 
   /* Close the file. */
   fflush(fd);
