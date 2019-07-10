@@ -1165,7 +1165,7 @@ int main(int argc, char *argv[]) {
   }
 #endif
 
-  /* Dump MPI requests if collected. */
+    /* Dump MPI requests if collected. */
 #if defined(SWIFT_MPIUSE_REPORTS) && defined(WITH_MPI)
   {
     char dumpfile[40];
@@ -1235,7 +1235,7 @@ int main(int argc, char *argv[]) {
     }
 #endif
 
-    /* Dump MPI requests if collected. */
+      /* Dump MPI requests if collected. */
 #if defined(SWIFT_MPIUSE_REPORTS) && defined(WITH_MPI)
     {
       char dumpfile[40];
