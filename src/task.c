@@ -46,6 +46,7 @@
 #include "error.h"
 #include "inline.h"
 #include "lock.h"
+#include "mpiuse.h"
 
 /* Task type names. */
 const char *taskID_names[task_type_count] = {"none",
@@ -540,6 +541,10 @@ int task_lock(struct task *t) {
             "%s).",
             taskID_names[t->type], subtaskID_names[t->subtype], t->flags, buff);
       }
+
+      /* And log deactivation, if logging enabled. */
+      if (res) mpiuse_log_allocation(t->type, t->subtype, &t->req, 0, 0, 0, 0);
+
       return res;
 #else
       error("SWIFT was not compiled with MPI support.");
