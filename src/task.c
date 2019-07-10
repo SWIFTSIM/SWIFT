@@ -1116,7 +1116,7 @@ void task_dump_active(struct engine *e) {
   if (engine_rank == 0) {
     file_thread = fopen(dumpfile, "w");
     fprintf(file_thread,
-            "# rank type subtype waits pair tic toc"
+            "# rank otherrank type subtype waits pair tic toc"
             " ci.hydro.count cj.hydro.count ci.grav.count cj.grav.count"
             " flags\n");
     fclose(file_thread);
@@ -1138,31 +1138,29 @@ void task_dump_active(struct engine *e) {
       /* Add some information to help with the plots and conversion of ticks to
        * seconds. */
       fprintf(
-          file_thread, "%i none none -1 0 %lld %lld %lld %lld %lld 0 %lld\n",
+          file_thread, "%i 0 none none -1 0 %lld %lld %lld %lld %lld 0 %lld\n",
           engine_rank, (long long int)e->tic_step, (long long int)e->toc_step,
           e->updates, e->g_updates, e->s_updates, cpufreq);
       int count = 0;
       for (int l = 0; l < e->sched.nr_tasks; l++) {
+        struct task *t = &e->sched.tasks[l];
 
-        /* Not implicit and not skipped. Note tasks that have not ran will
-         * have a toc of zero. */
-        if (!e->sched.tasks[l].implicit && !e->sched.tasks[l].skip) {
-          fprintf(
-              file_thread, "%i %s %s %i %i %lli %lli %i %i %i %i %lli\n",
-              engine_rank, taskID_names[e->sched.tasks[l].type],
-              subtaskID_names[e->sched.tasks[l].subtype],
-              e->sched.tasks[l].wait, (e->sched.tasks[l].cj == NULL),
-              (long long int)e->sched.tasks[l].tic,
-              (long long int)e->sched.tasks[l].toc,
-              (e->sched.tasks[l].ci != NULL) ? e->sched.tasks[l].ci->hydro.count
-                                             : 0,
-              (e->sched.tasks[l].cj != NULL) ? e->sched.tasks[l].cj->hydro.count
-                                             : 0,
-              (e->sched.tasks[l].ci != NULL) ? e->sched.tasks[l].ci->grav.count
-                                             : 0,
-              (e->sched.tasks[l].cj != NULL) ? e->sched.tasks[l].cj->grav.count
-                                             : 0,
-              e->sched.tasks[l].flags);
+        /* Not implicit and not skipped. */
+        if (!t->implicit && !t->skip) {
+
+          /* Get destination rank of MPI requests. */
+          int paired = (t->cj != NULL);
+          int otherrank = t->ci->nodeID;
+          if (paired) otherrank = t->cj->nodeID;
+
+          fprintf(file_thread, "%i %i %s %s %i %i %lli %lli %i %i %i %i %lli\n",
+                  engine_rank, otherrank, taskID_names[t->type],
+                  subtaskID_names[t->subtype], t->wait, paired,
+                  (long long int)t->tic, (long long int)t->toc,
+                  (t->ci != NULL) ? t->ci->hydro.count : 0,
+                  (t->cj != NULL) ? t->cj->hydro.count : 0,
+                  (t->ci != NULL) ? t->ci->grav.count : 0,
+                  (t->cj != NULL) ? t->cj->grav.count : 0, t->flags);
         }
         count++;
       }
@@ -1189,21 +1187,16 @@ void task_dump_active(struct engine *e) {
           (unsigned long long)e->tic_step, (unsigned long long)e->toc_step,
           e->updates, e->g_updates, e->s_updates, cpufreq);
   for (int l = 0; l < e->sched.nr_tasks; l++) {
-    if (!e->sched.tasks[l].implicit && !e->sched.tasks[l].skip) {
-      fprintf(
-          file_thread, "%s %s %i %i %lli %lli %i %i %i %i\n",
-          taskID_names[e->sched.tasks[l].type],
-          subtaskID_names[e->sched.tasks[l].subtype], e->sched.tasks[l].wait,
-          (e->sched.tasks[l].cj == NULL),
-          (unsigned long long)e->sched.tasks[l].tic,
-          (unsigned long long)e->sched.tasks[l].toc,
-          (e->sched.tasks[l].ci == NULL) ? 0
-                                         : e->sched.tasks[l].ci->hydro.count,
-          (e->sched.tasks[l].cj == NULL) ? 0
-                                         : e->sched.tasks[l].cj->hydro.count,
-          (e->sched.tasks[l].ci == NULL) ? 0 : e->sched.tasks[l].ci->grav.count,
-          (e->sched.tasks[l].cj == NULL) ? 0
-                                         : e->sched.tasks[l].cj->grav.count);
+    struct task *t = &e->sched.tasks[l];
+    if (!t->implicit && !t->skip) {
+      fprintf(file_thread, "%s %s %i %i %lli %lli %i %i %i %i\n",
+              taskID_names[t->type], subtaskID_names[t->subtype], t->wait,
+              (t->cj == NULL), (unsigned long long)t->tic,
+              (unsigned long long)t->toc,
+              (t->ci == NULL) ? 0 : t->ci->hydro.count,
+              (t->cj == NULL) ? 0 : t->cj->hydro.count,
+              (t->ci == NULL) ? 0 : t->ci->grav.count,
+              (t->cj == NULL) ? 0 : t->cj->grav.count);
     }
   }
   fclose(file_thread);
