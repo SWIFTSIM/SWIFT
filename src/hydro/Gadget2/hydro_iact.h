@@ -34,6 +34,7 @@
 
 #include "cache.h"
 #include "minmax.h"
+#include "active.h"
 
 #include "./hydro_parameters.h"
 
@@ -530,34 +531,42 @@ __attribute__((always_inline)) INLINE static void runner_iact_force(
   /* Eventually got the acceleration */
   const float acc = visc_term + sph_term;
 
-  /* Use the force Luke ! */
-  pi->a_hydro[0] -= mj * acc * dx[0];
-  pi->a_hydro[1] -= mj * acc * dx[1];
-  pi->a_hydro[2] -= mj * acc * dx[2];
+  /* Check whether particle is decoupled */
+  const int pi_not_decoupled = !part_is_decoupled(pi);
+  const int pj_not_decoupled = !part_is_decoupled(pj);
 
-  pj->a_hydro[0] += mi * acc * dx[0];
-  pj->a_hydro[1] += mi * acc * dx[1];
-  pj->a_hydro[2] += mi * acc * dx[2];
+  /* Use the force Luke ! */
+  if (pi_not_decoupled) {
+    pi->a_hydro[0] -= mj * acc * dx[0];
+    pi->a_hydro[1] -= mj * acc * dx[1];
+    pi->a_hydro[2] -= mj * acc * dx[2];
+  }
+
+  if (pj_not_decoupled) {
+    pj->a_hydro[0] += mi * acc * dx[0];
+    pj->a_hydro[1] += mi * acc * dx[1];
+    pj->a_hydro[2] += mi * acc * dx[2];
+  }
 
   /* Get the time derivative for h. */
-  pi->force.h_dt -= mj * dvdr * r_inv / rhoj * wi_dr;
-  pj->force.h_dt -= mi * dvdr * r_inv / rhoi * wj_dr;
+  if (pi_not_decoupled) pi->force.h_dt -= mj * dvdr * r_inv / rhoj * wi_dr;
+  if (pj_not_decoupled) pj->force.h_dt -= mi * dvdr * r_inv / rhoi * wj_dr;
 
   /* Update the signal velocity. */
-  pi->force.v_sig = max(pi->force.v_sig, v_sig);
-  pj->force.v_sig = max(pj->force.v_sig, v_sig);
+  if (pi_not_decoupled) pi->force.v_sig = max(pi->force.v_sig, v_sig);
+  if (pj_not_decoupled) pj->force.v_sig = max(pj->force.v_sig, v_sig);
 
   /* Change in entropy */
-  pi->entropy_dt += mj * visc_term * dvdr_Hubble;
-  pj->entropy_dt += mi * visc_term * dvdr_Hubble;
+  if (pi_not_decoupled) pi->entropy_dt += mj * visc_term * dvdr_Hubble;
+  if (pj_not_decoupled) pj->entropy_dt += mi * visc_term * dvdr_Hubble;
 
 #ifdef DEBUG_INTERACTIONS_SPH
   /* Update ngb counters */
-  if (pi->num_ngb_force < MAX_NUM_OF_NEIGHBOURS)
+  if (pi->num_ngb_force < MAX_NUM_OF_NEIGHBOURS || pi_not_decoupled)
     pi->ids_ngbs_force[pi->num_ngb_force] = pj->id;
   ++pi->num_ngb_force;
 
-  if (pj->num_ngb_force < MAX_NUM_OF_NEIGHBOURS)
+  if (pj->num_ngb_force < MAX_NUM_OF_NEIGHBOURS || pi_not_decoupled)
     pj->ids_ngbs_force[pj->num_ngb_force] = pi->id;
   ++pj->num_ngb_force;
 #endif
@@ -578,6 +587,9 @@ __attribute__((always_inline)) INLINE static void runner_iact_force(
 __attribute__((always_inline)) INLINE static void runner_iact_nonsym_force(
     float r2, const float *dx, float hi, float hj, struct part *restrict pi,
     const struct part *restrict pj, float a, float H) {
+
+  /* Check if there's anything to do */
+  if (part_is_decoupled(pi)) return;
 
   float wi, wj, wi_dx, wj_dx;
 

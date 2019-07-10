@@ -386,7 +386,7 @@ __attribute__((always_inline)) INLINE static int bpart_is_active(
  * @param p The #part.
  * @return 1 if the #part is decoupled, 0 otherwise.
  */
-__attribute__((always_inline)) INLINE static int part_is_decoupled(
+__attribute__((always_inline)) INLINE int part_is_decoupled(
     const struct part *p) {
   return p->time_bin == time_bin_decoupled;
 }
