@@ -619,7 +619,13 @@ void cell_pack_bpart_swallow(const struct cell *c,
   const struct bpart *bparts = c->black_holes.parts;
 
   for (size_t i = 0; i < count; ++i) {
-    data[i] = bparts[i].merger_data;
+
+    message("Sending id=%lld swallowid=%lld",
+	    bparts[i].id,
+	    bparts[i].merger_data.swallow_id);
+  
+      
+      data[i] = bparts[i].merger_data;
   }
 }
 
@@ -630,7 +636,13 @@ void cell_unpack_bpart_swallow(struct cell *c,
   struct bpart *bparts = c->black_holes.parts;
 
   for (size_t i = 0; i < count; ++i) {
+  
     bparts[i].merger_data = data[i];
+
+    message("Receiving! id=%lld swallow_id=%lld",
+	    bparts[i].id,
+	    data[i].swallow_id);
+
   }
 }
 
@@ -4046,6 +4058,29 @@ int cell_unskip_black_holes_tasks(struct cell *c, struct scheduler *s) {
     }
   }
 
+  /* Un-skip the swallow tasks involved with this cell. */
+  for (struct link *l = c->black_holes.do_bh_swallow; l != NULL; l = l->next) {
+    struct task *t = l->t;
+    struct cell *ci = t->ci;
+    struct cell *cj = t->cj;
+    const int ci_active = cell_is_active_black_holes(ci, e);
+    const int cj_active = (cj != NULL) ? cell_is_active_black_holes(cj, e) : 0;
+#ifdef WITH_MPI
+    const int ci_nodeID = ci->nodeID;
+    const int cj_nodeID = (cj != NULL) ? cj->nodeID : -1;
+#else
+    const int ci_nodeID = nodeID;
+    const int cj_nodeID = nodeID;
+#endif
+
+    /* Only activate tasks that involve a local active cell. */
+    if ((ci_active || cj_active) &&
+        (ci_nodeID == nodeID || cj_nodeID == nodeID)) {
+
+      scheduler_activate(s, t);
+    }
+  }
+  
   /* Un-skip the feedback tasks involved with this cell. */
   for (struct link *l = c->black_holes.feedback; l != NULL; l = l->next) {
     struct task *t = l->t;

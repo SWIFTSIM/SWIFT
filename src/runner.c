@@ -3970,8 +3970,8 @@ void runner_do_bh_swallow(struct runner *r, struct cell *c, int timer) {
   struct bpart *cell_bparts = c->black_holes.parts;
 
   /* Early abort?
-   * (We only want cells for which we drifted the gas as these are
-   * the only ones that could have gas particles that have been flagged
+   * (We only want cells for which we drifted the BH as these are
+   * the only ones that could have BH particles that have been flagged
    * for swallowing) */
   if (c->black_holes.count == 0 ||
       c->black_holes.ti_old_part != e->ti_current) {
@@ -3997,8 +3997,6 @@ void runner_do_bh_swallow(struct runner *r, struct cell *c, int timer) {
       /* Get a handle on the part. */
       struct bpart *const cell_bp = &cell_bparts[k];
 
-      message("OO");
-      
       /* Ignore inhibited particles (they have already been removed!) */
       if (bpart_is_inhibited(cell_bp, e)) continue;
 
@@ -4006,7 +4004,8 @@ void runner_do_bh_swallow(struct runner *r, struct cell *c, int timer) {
       const long long swallow_id =
           black_holes_get_bpart_swallow_id(&cell_bp->merger_data);
 
-      message("%lld", swallow_id);
+      /* message("OO id=%lld swallow_id = %lld", cell_bp->id, */
+      /* 	      swallow_id); */
       
       /* Has this particle been flagged for swallowing? */
       if (swallow_id >= 0) {
@@ -4431,6 +4430,12 @@ void runner_do_recv_bpart(struct runner *r, struct cell *c, int clear_sorts,
 #ifdef DEBUG_INTERACTIONS_BLACK_HOLES
       bparts[k].num_ngb_force = 0;
 #endif
+
+      /* message("Receiving bparts id=%lld time_bin=%d", */
+      /* 	      bparts[k].id, bparts[k].time_bin); */
+  
+    
+
       if (bparts[k].time_bin == time_bin_inhibited) continue;
       time_bin_min = min(time_bin_min, bparts[k].time_bin);
       time_bin_max = max(time_bin_max, bparts[k].time_bin);
@@ -4600,12 +4605,15 @@ void *runner_main(void *data) {
             runner_dopair_branch_bh_density(r, ci, cj);
           else if (t->subtype == task_subtype_bh_swallow)
             runner_dopair_branch_bh_swallow(r, ci, cj);
-          else if (t->subtype == task_subtype_do_gas_swallow) {
+          else if (t->subtype == task_subtype_do_gas_swallow)
             runner_do_gas_swallow_pair(r, ci, cj, 1);
-          } else if (t->subtype == task_subtype_bh_feedback)
+          else if (t->subtype == task_subtype_do_bh_swallow)
+            runner_do_bh_swallow_pair(r, ci, cj, 1);
+	  else if (t->subtype == task_subtype_bh_feedback)
             runner_dopair_branch_bh_feedback(r, ci, cj);
           else
-            error("Unknown/invalid task subtype (%d).", t->subtype);
+            error("Unknown/invalid task subtype (%s/%s).",
+		  taskID_names[t->type], subtaskID_names[t->subtype]);
           break;
 
         case task_type_sub_self:
@@ -4629,10 +4637,13 @@ void *runner_main(void *data) {
             runner_dosub_self_bh_swallow(r, ci, 1);
           else if (t->subtype == task_subtype_do_gas_swallow)
             runner_do_gas_swallow_self(r, ci, 1);
+          else if (t->subtype == task_subtype_do_bh_swallow)
+            runner_do_bh_swallow_self(r, ci, 1);
           else if (t->subtype == task_subtype_bh_feedback)
             runner_dosub_self_bh_feedback(r, ci, 1);
           else
-            error("Unknown/invalid task subtype (%d).", t->subtype);
+            error("Unknown/invalid task subtype (%s/%s).",
+		  taskID_names[t->type], subtaskID_names[t->subtype]);
           break;
 
         case task_type_sub_pair:
@@ -4654,12 +4665,15 @@ void *runner_main(void *data) {
             runner_dosub_pair_bh_density(r, ci, cj, 1);
           else if (t->subtype == task_subtype_bh_swallow)
             runner_dosub_pair_bh_swallow(r, ci, cj, 1);
-          else if (t->subtype == task_subtype_do_gas_swallow) {
+          else if (t->subtype == task_subtype_do_gas_swallow)
             runner_do_gas_swallow_pair(r, ci, cj, 1);
-          } else if (t->subtype == task_subtype_bh_feedback)
+          else if (t->subtype == task_subtype_do_bh_swallow)
+            runner_do_bh_swallow_pair(r, ci, cj, 1);
+	  else if (t->subtype == task_subtype_bh_feedback)
             runner_dosub_pair_bh_feedback(r, ci, cj, 1);
           else
-            error("Unknown/invalid task subtype (%d).", t->subtype);
+            error("Unknown/invalid task subtype (%s/%s).",
+		  taskID_names[t->type], subtaskID_names[t->subtype]);
           break;
 
         case task_type_sort:

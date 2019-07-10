@@ -239,7 +239,8 @@ runner_iact_nonsym_bh_bh_swallow(const float r2, const float *dx,
           (bj->merger_data.swallow_mass == bi->subgrid_mass &&
            bj->merger_data.swallow_id < bi->id)) {
 
-        message("BH %lld wants to swallow BH particle %lld", bi->id, bj->id);
+        message("BH %lld wants to swallow BH particle %lld on node %d",
+		bi->id, bj->id, engine_rank);
 
         bj->merger_data.swallow_id = bi->id;
         bj->merger_data.swallow_mass = bi->subgrid_mass;

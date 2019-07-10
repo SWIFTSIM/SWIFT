@@ -417,6 +417,7 @@ void engine_marktasks_mapper(void *map_data, int num_elements,
       else if ((t_subtype == task_subtype_bh_density ||
                 t_subtype == task_subtype_bh_swallow ||
                 t_subtype == task_subtype_do_gas_swallow ||
+		t_subtype == task_subtype_do_bh_swallow ||
                 t_subtype == task_subtype_bh_feedback) &&
                (ci_active_black_holes || cj_active_black_holes) &&
                (ci_nodeID == nodeID || cj_nodeID == nodeID)) {
@@ -686,6 +687,7 @@ void engine_marktasks_mapper(void *map_data, int num_elements,
            * swallowing */
           scheduler_activate_recv(s, ci->mpi.recv, task_subtype_rho);
           scheduler_activate_recv(s, ci->mpi.recv, task_subtype_part_swallow);
+          scheduler_activate_recv(s, ci->mpi.recv, task_subtype_bpart_merger);
 
           /* Send the local BHs to tag the particles to swallow and to do
            * feedback */
@@ -713,6 +715,8 @@ void engine_marktasks_mapper(void *map_data, int num_elements,
           scheduler_activate_send(s, cj->mpi.send, task_subtype_rho, ci_nodeID);
           scheduler_activate_send(s, cj->mpi.send, task_subtype_part_swallow,
                                   ci_nodeID);
+          scheduler_activate_send(s, cj->mpi.send, task_subtype_bpart_merger,
+                                  ci_nodeID);
 
           /* Drift the cell which will be sent; note that not all sent
              particles will be drifted, only those that are needed. */
@@ -724,6 +728,7 @@ void engine_marktasks_mapper(void *map_data, int num_elements,
            * swallowing */
           scheduler_activate_recv(s, cj->mpi.recv, task_subtype_rho);
           scheduler_activate_recv(s, cj->mpi.recv, task_subtype_part_swallow);
+          scheduler_activate_recv(s, cj->mpi.recv, task_subtype_bpart_merger);
 
           /* Send the local BHs to tag the particles to swallow and to do
            * feedback */
@@ -750,6 +755,8 @@ void engine_marktasks_mapper(void *map_data, int num_elements,
           /* Send the local part information */
           scheduler_activate_send(s, ci->mpi.send, task_subtype_rho, cj_nodeID);
           scheduler_activate_send(s, ci->mpi.send, task_subtype_part_swallow,
+                                  cj_nodeID);
+          scheduler_activate_send(s, ci->mpi.send, task_subtype_bpart_merger,
                                   cj_nodeID);
 
           /* Drift the cell which will be sent; note that not all sent
