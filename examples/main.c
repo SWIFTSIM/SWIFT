@@ -1170,7 +1170,7 @@ int main(int argc, char *argv[]) {
   {
     char dumpfile[40];
     snprintf(dumpfile, 40, "mpiuse_report-rank%d-step%d.dat", engine_rank, 0);
-    mpiuse_log_dump(dumpfile);
+    mpiuse_log_dump(dumpfile, clocks_start_ticks);
   }
 #endif
 
@@ -1241,7 +1241,7 @@ int main(int argc, char *argv[]) {
       char dumpfile[40];
       snprintf(dumpfile, 40, "mpiuse_report-rank%d-step%d.dat", engine_rank,
                j + 1);
-      mpiuse_log_dump(dumpfile);
+      mpiuse_log_dump(dumpfile, e.tic_step);
     }
 #endif  // WITH_MPI
 

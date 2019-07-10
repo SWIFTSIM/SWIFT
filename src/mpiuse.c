@@ -77,8 +77,8 @@ struct mpiuse_log_entry {
     uint8_t vptr[sizeof(uintptr_t)]; /* For rnode keys. */
   };
 
-  /* Relative time of this action. */
-  ticks dtic;
+  /* Ticks at time of this action. */
+  ticks tic;
 
   /* Time taken for handoff of this action. */
   ticks acttic;
@@ -171,7 +171,7 @@ void mpiuse_log_allocation(int type, int subtype, void *ptr, int activation,
   mpiuse_log[ind].ptr = ptr;
   mpiuse_log[ind].otherrank = otherrank;
   mpiuse_log[ind].tag = tag;
-  mpiuse_log[ind].dtic = getticks() - clocks_start_ticks;
+  mpiuse_log[ind].tic = getticks();
   mpiuse_log[ind].acttic = 0;
   mpiuse_log[ind].active = 1;
   atomic_inc(&mpiuse_log_done);
@@ -181,8 +181,11 @@ void mpiuse_log_allocation(int type, int subtype, void *ptr, int activation,
  * @brief dump the log to a file and reset, if anything to dump.
  *
  * @param filename name of file for log dump.
+ * @param stepticks the clock ticks at the start of step, if dumping a step, 
+ *                  otherwise some locally relative time that might help
+ *                  synchronize across ranks.
  */
-void mpiuse_log_dump(const char *filename) {
+void mpiuse_log_dump(const char *filename, ticks stepticks) {
 
   /* Skip if nothing logged this step. */
   if (mpiuse_log_count == 0) return;
@@ -206,7 +209,7 @@ void mpiuse_log_dump(const char *filename) {
 
   /* Write a header. */
   fprintf(fd,
-          "# dtic acttic step rank otherrank type itype subtype isubtype "
+          "# stic etic dtic step rank otherrank type itype subtype isubtype "
           "activation tag size sum\n");
 
   size_t mpiuse_current = 0;
@@ -243,7 +246,7 @@ void mpiuse_log_dump(const char *filename) {
       mpiuse_log[k].tag = oldlog->tag;
 
       /* Time taken to handoff. */
-      mpiuse_log[k].acttic = mpiuse_log[k].dtic - oldlog->dtic;
+      mpiuse_log[k].acttic = mpiuse_log[k].tic - oldlog->tic;
 
       /* And deactivate this key. */
       child->ptr = NULL;
@@ -298,13 +301,14 @@ void mpiuse_log_dump(const char *filename) {
     }
 
     /* And output. */
-    fprintf(fd, "%lld %lld %d %d %d %s %d %s %d %d %d %zd %zd\n",
-            mpiuse_log[k].dtic, mpiuse_log[k].acttic, mpiuse_log[k].step,
-            engine_rank, mpiuse_log[k].otherrank,
-            taskID_names[mpiuse_log[k].type], mpiuse_log[k].type,
-            subtaskID_names[mpiuse_log[k].subtype], mpiuse_log[k].subtype,
-            mpiuse_log[k].activation, mpiuse_log[k].tag, mpiuse_log[k].size,
-            mpiuse_current);
+    fprintf(fd, "%lld %lld %lld %d %d %d %s %d %s %d %d %d %zd %zd\n",
+            mpiuse_log[k].tic - stepticks,
+            mpiuse_log[k].tic - clocks_start_ticks,
+            mpiuse_log[k].acttic, mpiuse_log[k].step, engine_rank,
+            mpiuse_log[k].otherrank, taskID_names[mpiuse_log[k].type],
+            mpiuse_log[k].type, subtaskID_names[mpiuse_log[k].subtype],
+            mpiuse_log[k].subtype, mpiuse_log[k].activation,
+            mpiuse_log[k].tag, mpiuse_log[k].size, mpiuse_current);
   }
 
 #ifdef MEMUSE_RNODE_DUMP
