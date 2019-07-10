@@ -3990,13 +3990,15 @@ void runner_do_bh_swallow(struct runner *r, struct cell *c, int timer) {
   } else {
 
     /* Loop over all the gas particles in the cell
-     * Note that the cell (and hence the parts) may be local or foreign. */
+     * Note that the cell (and hence the bparts) may be local or foreign. */
     const size_t nr_cell_bparts = c->black_holes.count;
     for (size_t k = 0; k < nr_cell_bparts; k++) {
 
       /* Get a handle on the part. */
       struct bpart *const cell_bp = &cell_bparts[k];
 
+      message("OO");
+      
       /* Ignore inhibited particles (they have already been removed!) */
       if (bpart_is_inhibited(cell_bp, e)) continue;
 
@@ -4004,6 +4006,8 @@ void runner_do_bh_swallow(struct runner *r, struct cell *c, int timer) {
       const long long swallow_id =
           black_holes_get_bpart_swallow_id(&cell_bp->merger_data);
 
+      message("%lld", swallow_id);
+      
       /* Has this particle been flagged for swallowing? */
       if (swallow_id >= 0) {
 
@@ -4741,6 +4745,8 @@ void *runner_main(void *data) {
             free(t->buff);
           } else if (t->subtype == task_subtype_part_swallow) {
             free(t->buff);
+          } else if (t->subtype == task_subtype_bpart_merger) {
+            free(t->buff);
           }
           break;
         case task_type_recv:
@@ -4770,6 +4776,10 @@ void *runner_main(void *data) {
           } else if (t->subtype == task_subtype_part_swallow) {
             cell_unpack_part_swallow(ci,
                                      (struct black_holes_part_data *)t->buff);
+            free(t->buff);
+          } else if (t->subtype == task_subtype_bpart_merger) {
+            cell_unpack_bpart_swallow(ci,
+                                      (struct black_holes_bpart_data *)t->buff);
             free(t->buff);
           } else if (t->subtype == task_subtype_limiter) {
             runner_do_recv_part(r, ci, 0, 1);

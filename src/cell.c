@@ -612,6 +612,28 @@ void cell_unpack_part_swallow(struct cell *c,
   }
 }
 
+void cell_pack_bpart_swallow(const struct cell *c,
+                             struct black_holes_bpart_data *data) {
+
+  const size_t count = c->black_holes.count;
+  const struct bpart *bparts = c->black_holes.parts;
+
+  for (size_t i = 0; i < count; ++i) {
+    data[i] = bparts[i].merger_data;
+  }
+}
+
+void cell_unpack_bpart_swallow(struct cell *c,
+                               const struct black_holes_bpart_data *data) {
+
+  const size_t count = c->black_holes.count;
+  struct bpart *bparts = c->black_holes.parts;
+
+  for (size_t i = 0; i < count; ++i) {
+    bparts[i].merger_data = data[i];
+  }
+}
+
 /**
  * @brief Unpack the data of a given cell and its sub-cells.
  *
