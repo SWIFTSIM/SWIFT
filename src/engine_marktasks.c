@@ -417,7 +417,7 @@ void engine_marktasks_mapper(void *map_data, int num_elements,
       else if ((t_subtype == task_subtype_bh_density ||
                 t_subtype == task_subtype_bh_swallow ||
                 t_subtype == task_subtype_do_gas_swallow ||
-		t_subtype == task_subtype_do_bh_swallow ||
+                t_subtype == task_subtype_do_bh_swallow ||
                 t_subtype == task_subtype_bh_feedback) &&
                (ci_active_black_holes || cj_active_black_holes) &&
                (ci_nodeID == nodeID || cj_nodeID == nodeID)) {

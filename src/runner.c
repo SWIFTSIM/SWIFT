@@ -4006,7 +4006,7 @@ void runner_do_bh_swallow(struct runner *r, struct cell *c, int timer) {
 
       /* message("OO id=%lld swallow_id = %lld", cell_bp->id, */
       /* 	      swallow_id); */
-      
+
       /* Has this particle been flagged for swallowing? */
       if (swallow_id >= 0) {
 
@@ -4433,8 +4433,6 @@ void runner_do_recv_bpart(struct runner *r, struct cell *c, int clear_sorts,
 
       /* message("Receiving bparts id=%lld time_bin=%d", */
       /* 	      bparts[k].id, bparts[k].time_bin); */
-  
-    
 
       if (bparts[k].time_bin == time_bin_inhibited) continue;
       time_bin_min = min(time_bin_min, bparts[k].time_bin);
@@ -4609,11 +4607,11 @@ void *runner_main(void *data) {
             runner_do_gas_swallow_pair(r, ci, cj, 1);
           else if (t->subtype == task_subtype_do_bh_swallow)
             runner_do_bh_swallow_pair(r, ci, cj, 1);
-	  else if (t->subtype == task_subtype_bh_feedback)
+          else if (t->subtype == task_subtype_bh_feedback)
             runner_dopair_branch_bh_feedback(r, ci, cj);
           else
             error("Unknown/invalid task subtype (%s/%s).",
-		  taskID_names[t->type], subtaskID_names[t->subtype]);
+                  taskID_names[t->type], subtaskID_names[t->subtype]);
           break;
 
         case task_type_sub_self:
@@ -4643,7 +4641,7 @@ void *runner_main(void *data) {
             runner_dosub_self_bh_feedback(r, ci, 1);
           else
             error("Unknown/invalid task subtype (%s/%s).",
-		  taskID_names[t->type], subtaskID_names[t->subtype]);
+                  taskID_names[t->type], subtaskID_names[t->subtype]);
           break;
 
         case task_type_sub_pair:
@@ -4669,11 +4667,11 @@ void *runner_main(void *data) {
             runner_do_gas_swallow_pair(r, ci, cj, 1);
           else if (t->subtype == task_subtype_do_bh_swallow)
             runner_do_bh_swallow_pair(r, ci, cj, 1);
-	  else if (t->subtype == task_subtype_bh_feedback)
+          else if (t->subtype == task_subtype_bh_feedback)
             runner_dosub_pair_bh_feedback(r, ci, cj, 1);
           else
             error("Unknown/invalid task subtype (%s/%s).",
-		  taskID_names[t->type], subtaskID_names[t->subtype]);
+                  taskID_names[t->type], subtaskID_names[t->subtype]);
           break;
 
         case task_type_sort:

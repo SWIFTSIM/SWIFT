@@ -356,9 +356,8 @@ void engine_addtasks_send_black_holes(struct engine *e, struct cell *ci,
       t_rho = scheduler_addtask(s, task_type_send, task_subtype_bpart_rho,
                                 ci->mpi.tag, 0, ci, cj);
 
-      t_bh_merger =
-          scheduler_addtask(s, task_type_send, task_subtype_bpart_merger,
-                            ci->mpi.tag, 0, ci, cj);
+      t_bh_merger = scheduler_addtask(
+          s, task_type_send, task_subtype_bpart_merger, ci->mpi.tag, 0, ci, cj);
 
       t_gas_swallow = scheduler_addtask(
           s, task_type_send, task_subtype_part_swallow, ci->mpi.tag, 0, ci, cj);
@@ -387,7 +386,7 @@ void engine_addtasks_send_black_holes(struct engine *e, struct cell *ci,
                           t_bh_merger);
       scheduler_addunlock(s, t_bh_merger,
                           ci->hydro.super->black_holes.swallow_ghost[2]);
-      
+
       scheduler_addunlock(s, ci->hydro.super->black_holes.swallow_ghost[0],
                           t_gas_swallow);
       scheduler_addunlock(s, t_gas_swallow,
@@ -635,9 +634,8 @@ void engine_addtasks_recv_black_holes(struct engine *e, struct cell *c,
     t_rho = scheduler_addtask(s, task_type_recv, task_subtype_bpart_rho,
                               c->mpi.tag, 0, c, NULL);
 
-    t_bh_merger = scheduler_addtask(s, task_type_recv,
-				    task_subtype_bpart_merger,
-				    c->mpi.tag, 0, c, NULL);
+    t_bh_merger = scheduler_addtask(
+        s, task_type_recv, task_subtype_bpart_merger, c->mpi.tag, 0, c, NULL);
 
     t_gas_swallow = scheduler_addtask(
         s, task_type_recv, task_subtype_part_swallow, c->mpi.tag, 0, c, NULL);
@@ -678,7 +676,7 @@ void engine_addtasks_recv_black_holes(struct engine *e, struct cell *c,
       scheduler_addunlock(s, t_gas_swallow, l->t);
     }
     for (struct link *l = c->black_holes.do_bh_swallow; l != NULL;
-	 l = l->next) {
+         l = l->next) {
       scheduler_addunlock(s, t_bh_merger, l->t);
       scheduler_addunlock(s, l->t, t_feedback);
     }
