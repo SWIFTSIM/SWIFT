@@ -21,6 +21,7 @@
 
 /* Local includes */
 #include "random.h"
+#include "active.h"
 
 /**
  * @brief Density interaction between two particles (non-symmetric).
@@ -71,17 +72,20 @@ runner_iact_nonsym_feedback_apply(const float r2, const float *dx,
                                   const struct cosmology *restrict cosmo,
                                   const integertime_t ti_current) {
   
-  if (ti_current == 0) return;
+  if (ti_current == 0 || part_is_decoupled(pj)) return;
 
   /* Get the probability of doing feedback */
-  // Compute mass loading which will determine probability
-  //const double prob_kick = 1./50.; // ALEXEI: just set to random constant for now
-  const double prob_kick = si->feedback_data.to_distribute.feedback_probability;
-  const double prob_heat = prob_kick; // ALEXEI: placeholder
+  //const float mass_frac = si->feedback_data.to_distribute.wind_mass/pj->mass;
+  //const double prob_kick = 1. - exp(-mass_frac);
+  const double prob_kick = 1./50.; // ALEXEI: placeholder
+  const double prob_heat = 0.3; // ALEXEI: placeholder
 
   /* First we kick a particle */
   /* Draw a random number (Note mixing both IDs) */
   const double rand_kick = random_unit_interval(si->id + pj->id, ti_current, random_number_stellar_feedback);
+
+  // ALEXEI: there might be some correlation here. maybe come up with a different seed (or think whether needed at all)
+  const double rand_heat = random_unit_interval(si->id * pj->id, ti_current, random_number_stellar_feedback);
 
   /* Are we lucky? */
   if (rand_kick < prob_kick) {
@@ -92,28 +96,19 @@ runner_iact_nonsym_feedback_apply(const float r2, const float *dx,
     hydro_set_velocity(pj,v_new);
 
     /* Heat particle */
-    const float u_init = hydro_get_physical_internal_energy(pj, xp, cosmo);
-    const float u_new = u_init + si->feedback_data.to_distribute.delta_u;
-    hydro_set_physical_internal_energy(pj, xp, cosmo, u_new);
-    hydro_set_drifted_physical_internal_energy(pj, cosmo, u_new);
+    // probability GALSF_SUBGRID HOTWIND = 0.3 in SIMBA
+    // Make sure star particle doesn't heat multiple times, i.e. it only launches eta*sm
+    if (rand_heat > prob_heat) {
+      const float u_init = hydro_get_physical_internal_energy(pj, xp, cosmo);
+      const float u_new = u_init + si->feedback_data.to_distribute.delta_u;
+      hydro_set_physical_internal_energy(pj, xp, cosmo, u_new);
+      hydro_set_drifted_physical_internal_energy(pj, cosmo, u_new);
+    }
 
     /* Set delaytime before which the particle cannot interact */
     pj->delay_time = si->feedback_data.to_distribute.simba_delay_time;
     pj->time_bin = time_bin_decoupled;
     message("spart id %llu decoupled particle %llu delay_time %.5e rand %.5e prob %.5e", si->id, pj->id, pj->delay_time, rand_kick, prob_kick);
-  }
-
-  /* Now we can heat some other neighbours */
-  if (si->feedback_data.to_distribute.u_extra > 0.) { 
-    /* Draw a random number (Note mixing both IDs) */
-    const float rand_heat = random_unit_interval(si->id * pj->id, ti_current, random_number_stellar_feedback);
-
-    /* Are we lucky? */
-    if (rand_heat > prob_heat) {
-      const float u_new = hydro_get_physical_internal_energy(pj, xp, cosmo) + si->feedback_data.to_distribute.u_extra;
-      hydro_set_physical_internal_energy(pj, xp, cosmo, u_new);
-      hydro_set_drifted_physical_internal_energy(pj, cosmo, u_new);
-    }
   }
 
 }

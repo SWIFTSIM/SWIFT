@@ -52,6 +52,8 @@ inline void compute_kick_speed(struct spart *sp, const struct feedback_props *fe
 
   // ALEXEI: temporarily set to arbitrary number for testing.
   sp->feedback_data.to_distribute.v_kick = 500.;
+
+  // To do: calculate normal direction to launch winds. or randomly with switch
   
 }
 
@@ -93,8 +95,10 @@ inline void compute_heating(struct spart *sp, const struct feedback_props *feedb
 
   // ALEXEI: should this be smoothed metal mass fraction?
   if (sp->chemistry_data.metal_mass_fraction[0] < 1.e-9) {
+    // Schaerer 2003
     u_SN *= exp10(-0.0029*pow(log10(sp->chemistry_data.metal_mass_fraction[0])+9,2.5)+0.417694); // ALEXEI: what are all these numbers?
   } else {
+    // As above but at zero metallicity
     u_SN *= 2.61634;
   }
 
@@ -106,11 +110,6 @@ inline void compute_heating(struct spart *sp, const struct feedback_props *feedb
   /* Now we can decide if there's any energy left over to distribute */
   sp->feedback_data.to_distribute.u_extra = max(u_SN - u_wind, 0.);
 };
-
-inline void compute_feedback_probability(struct spart *sp) {
-  const float mass_frac = sp->feedback_data.to_distribute.wind_mass/sp->mass;
-  sp->feedback_data.to_distribute.feedback_probability = 1. - exp(-mass_frac);
-}
 
 /**
  * @brief Prepares a s-particle for its feedback interactions
@@ -210,9 +209,6 @@ __attribute__((always_inline)) INLINE static void feedback_evolve_spart(
 
   /* Compute residual heating */
   compute_heating(sp, feedback_props);
-
-  /* Compute probability of doing feedback */
-  compute_feedback_probability(sp);
 
 }
 
