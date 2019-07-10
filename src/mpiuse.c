@@ -80,6 +80,9 @@ struct mpiuse_log_entry {
   /* Relative time of this action. */
   ticks dtic;
 
+  /* Time taken for handoff of this action. */
+  ticks acttic;
+
   /* Whether request is still active, i.e. successful test not seen. */
   int active;
 
@@ -149,7 +152,7 @@ static void mpiuse_log_reallocate(size_t ind) {
  * @param tag the MPI tag.
  */
 void mpiuse_log_allocation(int type, int subtype, void *ptr, int activation,
-                               size_t size, int otherrank, int tag) {
+                           size_t size, int otherrank, int tag) {
 
   size_t ind = atomic_inc(&mpiuse_log_count);
 
@@ -162,12 +165,15 @@ void mpiuse_log_allocation(int type, int subtype, void *ptr, int activation,
 
   /* Record the log. */
   mpiuse_log[ind].step = engine_current_step;
+  mpiuse_log[ind].type = type;
+  mpiuse_log[ind].subtype = subtype;
   mpiuse_log[ind].activation = activation;
   mpiuse_log[ind].size = size;
   mpiuse_log[ind].ptr = ptr;
   mpiuse_log[ind].otherrank = otherrank;
   mpiuse_log[ind].tag = tag;
   mpiuse_log[ind].dtic = getticks() - clocks_start_ticks;
+  mpiuse_log[ind].acttic = 0;
   mpiuse_log[ind].active = 1;
   atomic_inc(&mpiuse_log_done);
 }
@@ -202,9 +208,13 @@ void mpiuse_log_dump(const char *filename) {
 
   /* Write a header. */
   fprintf(fd,
-          "# dtic step rank otherrank type subtype activation tag size sum\n");
+          "# dtic acttic step rank otherrank type itype subtype isubtype "
+          "activation tag size sum\n");
 
   size_t mpiuse_current = 0;
+  size_t mpiuse_max = 0;
+  double mpiuse_sum = 0;
+  size_t mpiuse_actcount = 0;
   for (size_t k = old_count; k < log_count; k++) {
 
     /* Check if this address has already been recorded. */
@@ -223,18 +233,19 @@ void mpiuse_log_dump(const char *filename) {
             "(%s/%s: %d->%d: %zd/%d)",
             taskID_names[mpiuse_log[k].type],
             subtaskID_names[mpiuse_log[k].subtype], engine_rank,
-            mpiuse_log[k].otherrank, mpiuse_log[k].size,
-            mpiuse_log[k].tag);
+            mpiuse_log[k].otherrank, mpiuse_log[k].size, mpiuse_log[k].tag);
 #endif
         continue;
       }
 
       /* Free, update the missing fields, size of request is removed. */
-      struct mpiuse_log_entry *oldlog =
-          (struct mpiuse_log_entry *)child->ptr;
+      struct mpiuse_log_entry *oldlog = (struct mpiuse_log_entry *)child->ptr;
       mpiuse_log[k].size = -oldlog->size;
       mpiuse_log[k].otherrank = oldlog->otherrank;
       mpiuse_log[k].tag = oldlog->tag;
+
+      /* Time taken to handoff. */
+      mpiuse_log[k].acttic = mpiuse_log[k].dtic - oldlog->dtic;
 
       /* And deactivate this key. */
       child->ptr = NULL;
@@ -257,9 +268,8 @@ void mpiuse_log_dump(const char *filename) {
       if (mpiuse_log[k].ptr != NULL) {
         message("Unmatched MPI_Test found: (%s/%s: %d->%d: %zd/%d)",
                 taskID_names[mpiuse_log[k].type],
-                subtaskID_names[mpiuse_log[k].subtype],
-                engine_rank, mpiuse_log[k].otherrank,
-                mpiuse_log[k].size, mpiuse_log[k].tag);
+                subtaskID_names[mpiuse_log[k].subtype], engine_rank,
+                mpiuse_log[k].otherrank, mpiuse_log[k].size, mpiuse_log[k].tag);
       }
 #endif
       continue;
@@ -271,25 +281,32 @@ void mpiuse_log_dump(const char *filename) {
                                 sizeof(uintptr_t), &mpiuse_log[k]);
 
     } else {
-      /* Should not happen ... */
-      message("Weird MPI log record found: (%s/%s: %d->%d: %zd/%d)",
+      message("Weird MPI log record found: (%s/%s: %d->%d: %zd/%d/%d/%p)",
               taskID_names[mpiuse_log[k].type],
-              subtaskID_names[mpiuse_log[k].subtype],
-              engine_rank, mpiuse_log[k].otherrank,
-              mpiuse_log[k].size, mpiuse_log[k].tag);
+              subtaskID_names[mpiuse_log[k].subtype], engine_rank,
+              mpiuse_log[k].otherrank, mpiuse_log[k].size, mpiuse_log[k].tag,
+              mpiuse_log[k].activation, mpiuse_log[k].ptr);
       continue;
     }
 
     /* Sum of memory in flight. */
     mpiuse_current += mpiuse_log[k].size;
 
+    /* Gather for stats report. */
+    if (mpiuse_log[k].activation) {
+      if (mpiuse_log[k].size > mpiuse_max) mpiuse_max = mpiuse_log[k].size;
+      mpiuse_sum += (double)mpiuse_log[k].size;
+      mpiuse_actcount++;
+    }
+
     /* And output. */
-    fprintf(fd, "%lld %d %d %d %s %s %d %d %zd %zd\n", mpiuse_log[k].dtic,
-            mpiuse_log[k].step, engine_rank,
-            mpiuse_log[k].otherrank, taskID_names[mpiuse_log[k].type],
-            subtaskID_names[mpiuse_log[k].subtype],
-            mpiuse_log[k].activation, mpiuse_log[k].tag,
-            mpiuse_log[k].size, mpiuse_current);
+    fprintf(fd, "%lld %lld %d %d %d %s %d %s %d %d %d %zd %zd\n",
+            mpiuse_log[k].dtic, mpiuse_log[k].acttic, mpiuse_log[k].step,
+            engine_rank, mpiuse_log[k].otherrank,
+            taskID_names[mpiuse_log[k].type], mpiuse_log[k].type,
+            subtaskID_names[mpiuse_log[k].subtype], mpiuse_log[k].subtype,
+            mpiuse_log[k].activation, mpiuse_log[k].tag, mpiuse_log[k].size,
+            mpiuse_current);
   }
 
 #ifdef MEMUSE_RNODE_DUMP
@@ -297,15 +314,23 @@ void mpiuse_log_dump(const char *filename) {
     // memuse_rnode_dump(0, memuse_rnode_root, 0);
 #endif
 
+  /* Write our statistics. */
+  fprintf(fd, "##\n");
+  fprintf(fd, "## Number of requests: %zd\n", mpiuse_actcount);
+  fprintf(fd, "## Maximum request size: %.4f (MB)\n", mpiuse_max / MEGABYTE);
+  fprintf(fd, "## Sum of all requests: %.4f (MB)\n", mpiuse_sum / MEGABYTE);
+  fprintf(fd, "## Mean of all requests: %.4f (MB)\n",
+          mpiuse_sum / (double)mpiuse_actcount / MEGABYTE);
+  fprintf(fd, "##\n");
+
   /* Now check any still active logs, these are errors all should match. */
   if (mpiuse_current != 0) {
     message("Some MPI requests have not been completed");
     for (size_t k = old_count; k < log_count; k++) {
       if (mpiuse_log[k].active)
         message("%s/%s: %d->%d: %zd/%d)", taskID_names[mpiuse_log[k].type],
-                subtaskID_names[mpiuse_log[k].subtype],
-                engine_rank, mpiuse_log[k].otherrank,
-                mpiuse_log[k].size, mpiuse_log[k].tag);
+                subtaskID_names[mpiuse_log[k].subtype], engine_rank,
+                mpiuse_log[k].otherrank, mpiuse_log[k].size, mpiuse_log[k].tag);
     }
   }
 
@@ -321,4 +346,3 @@ void mpiuse_log_dump(const char *filename) {
 }
 
 #endif /* defined(SWIFT_MPIUSE_REPORTS) && defined(WITH_MPI) */
-

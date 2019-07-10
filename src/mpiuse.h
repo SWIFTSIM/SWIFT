@@ -29,12 +29,12 @@
 #if defined(SWIFT_MPIUSE_REPORTS) && defined(WITH_MPI)
 void mpiuse_log_dump(const char *filename);
 void mpiuse_log_allocation(int type, int subtype, void *ptr, int activation,
-                               size_t size, int otherrank, int tag);
+                           size_t size, int otherrank, int tag);
 #else
 
 /* No-op when not reporting. */
-#define mpiuse_log_allocation(type, subtype, ptr, activation, size, \
-                                  otherrank, tag)                       \
+#define mpiuse_log_allocation(type, subtype, ptr, activation, size, otherrank, \
+                              tag)                                             \
   ;
 #endif /* defined(SWIFT_MPIUSE_REPORTS) && defined(WITH_MPI) */
 
