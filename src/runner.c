@@ -4164,8 +4164,6 @@ void runner_do_bh_swallow_pair(struct runner *r, struct cell *ci,
 #ifdef SWIFT_DEBUG_CHECKS
   if (ci->nodeID != e->nodeID && cj->nodeID != e->nodeID)
     error("Running pair task on foreign node");
-  if (!cell_is_active_black_holes(ci, e) && !cell_is_active_black_holes(cj, e))
-    error("Running pair task with two inactive cells");
 #endif
 
   /* Run the swallowing loop only in the cell that is the neighbour of the
