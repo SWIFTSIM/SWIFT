@@ -77,20 +77,6 @@ INLINE static void star_formation_logger_init(
   sfh->new_stellar_mass = 0.f;
   sfh->number_new_stars = 0;
 }
-/**
- * @brief Initialize the star formation history struct in the #engine when
- * starting the simulation.
- *
- * @param sfh the star_formation_history struct we want to initialize
- */
-INLINE static void star_formation_logger_first_init(
-    struct star_formation_history *sfh) {
-  /* Initialize all values to zero */
-  sfh->new_stellar_mass = 0.f;
-  sfh->number_new_stars = 0;
-  sfh->total_number_stars = 0;
-  sfh->total_stellar_mass = 0.f;
-}
 
 /**
  * @brief add a star formation history struct to an other star formation history
@@ -109,43 +95,6 @@ INLINE static void star_formation_logger_add(
   sf_update->new_stellar_mass += sf_add->new_stellar_mass;
 }
 
-/**
- * @brief add a star formation history struct to an other star formation history
- * struct
- *
- * @param sf_add the star formation struct which we want to add to the star
- * formation history
- * @param sf_update the star formation structure which we want to update
- */
-INLINE static void star_formation_logger_add_to_engine(
-    struct star_formation_history *sf_update,
-    const struct star_formation_history *sf_add) {
-
-  /* Update the SFH structure */
-  sf_update->number_new_stars = sf_add->number_new_stars;
-  sf_update->new_stellar_mass = sf_add->new_stellar_mass;
-  sf_update->total_number_stars += sf_add->number_new_stars;
-  sf_update->total_stellar_mass += sf_add->new_stellar_mass;
-}
-
-/**
-za * @brief Write the final SFH to a file
- *
- * @param fp The file to write to.
- * @param time the simulation time (time since Big Bang) in internal units.
- * @param a the scale factor.
- * @param z the redshift.
- * @param sf the #star_formation_history struct.
- * @param step The time-step of the simulation.
- */
-INLINE static void star_formation_logger_write_to_log_file(
-    FILE *fp, const double time, const double a, const double z,
-    struct star_formation_history sf, const int step) {
-
-  fprintf(fp, "%6d %16e %12.7f %14e %14ld %14e %14ld %14e\n", step, time, a, z,
-          sf.total_number_stars, sf.total_stellar_mass, sf.number_new_stars,
-          sf.new_stellar_mass);
-}
 /**
  * @brief Initialize the SFH logger file
  *
@@ -216,5 +165,60 @@ INLINE static void star_formation_logger_log_active_part(
 INLINE static void star_formation_logger_log_inactive_part(
     const struct part *p, const struct xpart *xp,
     struct star_formation_history *sf) {}
+
+
+
+/**
+ * @brief add a star formation history struct to an other star formation history
+ * struct
+ *
+ * @param sf_add the star formation struct which we want to add to the star
+ * formation history
+ * @param sf_update the star formation structure which we want to update
+ */
+INLINE static void star_formation_logger_add_to_accumulator(
+    struct star_formation_history_accumulator *sf_update,
+    const struct star_formation_history *sf_add) {
+
+  /* Update the SFH structure */
+  sf_update->number_new_stars = sf_add->number_new_stars;
+  sf_update->new_stellar_mass = sf_add->new_stellar_mass;
+  sf_update->total_number_stars += sf_add->number_new_stars;
+  sf_update->total_stellar_mass += sf_add->new_stellar_mass;
+}
+
+/**
+ * @brief Write the final SFH to a file
+ *
+ * @param fp The file to write to.
+ * @param time the simulation time (time since Big Bang) in internal units.
+ * @param a the scale factor.
+ * @param z the redshift.
+ * @param sf the #star_formation_history struct.
+ * @param step The time-step of the simulation.
+ */
+INLINE static void star_formation_logger_write_to_log_file(
+    FILE *fp, const double time, const double a, const double z,
+    struct star_formation_history_accumulator sf, const int step) {
+
+  fprintf(fp, "%6d %16e %12.7f %14e %14ld %14e %14ld %14e\n", step, time, a, z,
+          sf.total_number_stars, sf.total_stellar_mass, sf.number_new_stars,
+          sf.new_stellar_mass);
+}
+
+/**
+ * @brief Initialize the star formation history struct in the #engine when
+ * starting the simulation.
+ *
+ * @param sfh the star_formation_history struct we want to initialize
+ */
+INLINE static void star_formation_logger_accumulator_init(
+    struct star_formation_history_accumulator *sfh) {
+  /* Initialize all values to zero */
+  sfh->new_stellar_mass = 0.f;
+  sfh->number_new_stars = 0;
+  sfh->total_number_stars = 0;
+  sfh->total_stellar_mass = 0.f;
+}
 
 #endif /* SWIFT_GEAR_STARFORMATION_LOGGER_H */
