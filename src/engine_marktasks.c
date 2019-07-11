@@ -424,7 +424,7 @@ void engine_marktasks_mapper(void *map_data, int num_elements,
 
         scheduler_activate(s, t);
 
-        /* Set the correct sorting flags */
+        /* Set the correct drifting flags */
         if (t_type == task_type_pair && t_subtype == task_subtype_bh_density) {
           if (ci_nodeID == nodeID) cell_activate_drift_bpart(ci, s);
           if (ci_nodeID == nodeID) cell_activate_drift_part(ci, s);
