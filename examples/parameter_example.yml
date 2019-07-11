@@ -78,8 +78,10 @@ FOF:
 Scheduler:
   nr_queues:                 0         # (Optional) The number of task queues to use. Use 0  to let the system decide.
   cell_max_size:             8000000   # (Optional) Maximal number of interactions per task if we force the split (this is the default value).
-  cell_sub_size_pair_hydro:  256000000 # (Optional) Maximal number of interactions per sub-pair hydro task  (this is the default value).
-  cell_sub_size_self_hydro:  32000     # (Optional) Maximal number of interactions per sub-self hydro task  (this is the default value).
+  cell_sub_size_pair_hydro:  256000000 # (Optional) Maximal number of hydro-hydro interactions per sub-pair hydro/star task (this is the default value).
+  cell_sub_size_self_hydro:  32000     # (Optional) Maximal number of hydro-hydro interactions per sub-self hydro/star task (this is the default value).
+  cell_sub_size_pair_stars:  256000000 # (Optional) Maximal number of hydro-star interactions per sub-pair hydro/star task (this is the default value).
+  cell_sub_size_self_stars:  32000     # (Optional) Maximal number of hydro-star interactions per sub-self hydro/star task (this is the default value).
   cell_sub_size_pair_grav:   256000000 # (Optional) Maximal number of interactions per sub-pair gravity task  (this is the default value).
   cell_sub_size_self_grav:   32000     # (Optional) Maximal number of interactions per sub-self gravity task  (this is the default value).
   cell_split_size:           400       # (Optional) Maximal number of particles per cell (this is the default value).
@@ -155,7 +157,7 @@ Restarts:
   onexit:             0          # (Optional) whether to dump restarts on exit (*needs enable*)
   subdir:             restart    # (Optional) name of subdirectory for restart files.
   basename:           swift      # (Optional) prefix used in naming restart files.
-  delta_hours:        6.0        # (Optional) decimal hours between dumps of restart files.
+  delta_hours:        5.0        # (Optional) decimal hours between dumps of restart files.
   stop_steps:         100        # (Optional) how many steps to process before checking if the <subdir>/stop file exists. When present the application will attempt to exit early, dumping restart files first.
   max_run_time:       24.0       # (optional) Maximal wall-clock time in hours. The application will exit when this limit is reached.
   resubmit_on_exit:   0          # (Optional) whether to run a command when exiting after the time limit has been reached.

@@ -1317,6 +1317,18 @@ void io_copy_temp_buffer(void* temp, const struct engine* e,
                      io_convert_gpart_i_mapper, temp_i, N, copySize, 0,
                      (void*)&props);
 
+    } else if (props.convert_gpart_i != NULL) {
+
+      /* Prepare some parameters */
+      int* temp_i = (int*)temp;
+      props.start_temp_i = (int*)temp;
+      props.e = e;
+
+      /* Copy the whole thing into a buffer */
+      threadpool_map((struct threadpool*)&e->threadpool,
+                     io_convert_gpart_i_mapper, temp_i, N, copySize, 0,
+                     (void*)&props);
+
     } else if (props.convert_gpart_d != NULL) {
 
       /* Prepare some parameters */
@@ -1352,6 +1364,18 @@ void io_copy_temp_buffer(void* temp, const struct engine* e,
       threadpool_map((struct threadpool*)&e->threadpool,
                      io_convert_spart_f_mapper, temp_f, N, copySize, 0,
                      (void*)&props);
+    } else if (props.convert_spart_i != NULL) {
+
+      /* Prepare some parameters */
+      int* temp_i = (int*)temp;
+      props.start_temp_i = (int*)temp;
+      props.e = e;
+
+      /* Copy the whole thing into a buffer */
+      threadpool_map((struct threadpool*)&e->threadpool,
+                     io_convert_spart_i_mapper, temp_i, N, copySize, 0,
+                     (void*)&props);
+
     } else if (props.convert_spart_i != NULL) {
 
       /* Prepare some parameters */

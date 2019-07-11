@@ -3431,6 +3431,7 @@ int cell_unskip_hydro_tasks(struct cell *c, struct scheduler *s) {
 
     if (c->top->hydro.star_formation != NULL) {
       scheduler_activate(s, c->top->hydro.star_formation);
+      scheduler_activate(s, c->top->hydro.stars_resort);
       cell_activate_drift_spart(c, s);
     }
   }
@@ -3584,13 +3585,6 @@ int cell_unskip_gravity_tasks(struct cell *c, struct scheduler *s) {
     if (c->grav.long_range != NULL) scheduler_activate(s, c->grav.long_range);
     if (c->grav.end_force != NULL) scheduler_activate(s, c->grav.end_force);
     if (c->logger != NULL) scheduler_activate(s, c->logger);
-
-    /* Subgrid tasks */
-    if ((e->policy & engine_policy_cooling) && c->hydro.cooling != NULL)
-      scheduler_activate(s, c->hydro.cooling);
-    if ((e->policy & engine_policy_star_formation) &&
-        c->hydro.star_formation != NULL)
-      scheduler_activate(s, c->hydro.star_formation);
   }
 
   return rebuild;
