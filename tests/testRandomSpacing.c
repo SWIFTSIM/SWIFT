@@ -133,7 +133,8 @@ int main(int argc, char* argv[]) {
       count[5] > expected_result_int[5] + numb_sigma*std_expected_result[5] ||
       count[5] < expected_result_int[5] - numb_sigma*std_expected_result[5]
   ) {
-    error("Not all criteria satisfied!");
+    message("Not all criteria satisfied!");
+    return 1;
   }
 
   
