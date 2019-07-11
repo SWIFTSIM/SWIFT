@@ -21,7 +21,7 @@
 #define SWIFT_GEAR_STAR_FORMATION_LOGGER_STRUCT_H
 
 /**
- * Structure containing the local star formation information.
+ * Structure containing the star formation information from the cells.
  */
 struct star_formation_history {
   /*! Stellar mass created in the current timestep */
@@ -32,7 +32,7 @@ struct star_formation_history {
 };
 
 /**
- * Structure containing the global star formation information.
+ * Structure containing the global star formation information (including time integrated variables).
  */
 struct star_formation_history_accumulator {
   /*! Total stellar mass from the begining of the simulation */
