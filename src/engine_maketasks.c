@@ -378,6 +378,7 @@ void engine_addtasks_send_black_holes(struct engine *e, struct cell *ci,
                           t_feedback);
 
       /* Ghost before you send */
+      scheduler_addunlock(s, ci->hydro.super->black_holes.drift, t_rho);
       scheduler_addunlock(s, ci->hydro.super->black_holes.density_ghost, t_rho);
       scheduler_addunlock(s, t_rho,
                           ci->hydro.super->black_holes.swallow_ghost[0]);
