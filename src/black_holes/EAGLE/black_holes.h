@@ -505,6 +505,8 @@ INLINE static void black_holes_create_from_gas(
 
   /* First initialisation */
   black_holes_init_bpart(bp);
+
+  black_holes_mark_bpart_as_not_swallowed(&bp->merger_data);
 }
 
 #endif /* SWIFT_EAGLE_BLACK_HOLES_H */
