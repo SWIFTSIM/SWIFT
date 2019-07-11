@@ -412,7 +412,7 @@ int main(int argc, char *argv[]) {
   /* Initialise the gravity scheme */
   bzero(&gravity_properties, sizeof(struct gravity_props));
   gravity_props_init(&gravity_properties, params, &prog_const, &cosmo,
-		     /*with_cosmology=*/1, periodic);
+                     /*with_cosmology=*/1, periodic);
 
   /* Initialise the FOF properties */
   bzero(&fof_properties, sizeof(struct fof_props));

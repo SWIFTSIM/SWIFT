@@ -319,7 +319,7 @@ void engine_addtasks_send_stars(struct engine *e, struct cell *ci,
  * @param ci The sending #cell.
  * @param cj Dummy cell containing the nodeID of the receiving node.
  * @param t_rho The density comm. task, if it has already been created.
- * @param t_swallow The BH swallow comm. task, if it has already been created.
+ * @param t_bh_merger The BH swallow comm. task, if it has already been created.
  * @param t_gas_swallow The gas swallow comm. task, if it has already been
  * created.
  * @param t_feedback The send_feed #task, if it has already been created.
@@ -606,7 +606,7 @@ void engine_addtasks_recv_stars(struct engine *e, struct cell *c,
  * @param e The #engine.
  * @param c The foreign #cell.
  * @param t_rho The density comm. task, if it has already been created.
- * @param t_swallow The BH swallow comm. task, if it has already been created.
+ * @param t_bh_merger The BH swallow comm. task, if it has already been created.
  * @param t_gas_swallow The gas swallow comm. task, if it has already been
  * created.
  * @param t_feedback The recv_feed #task, if it has already been created.

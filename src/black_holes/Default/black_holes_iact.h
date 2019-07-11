@@ -104,6 +104,7 @@ runner_iact_nonsym_bh_gas_swallow(const float r2, const float *dx,
  * @param bi First particle (black hole).
  * @param bj Second particle (black hole)
  * @param cosmo The cosmological model.
+ * @param grav_props The properties of the gravity scheme (softening, G, ...)
  * @param ti_current Current integer time value (for random numbers).
  */
 __attribute__((always_inline)) INLINE static void
