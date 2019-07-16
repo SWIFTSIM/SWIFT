@@ -104,6 +104,7 @@ TASKTYPES = [
     "stars_ghost",
     "stars_ghost_out",
     "stars_sort",
+    "stars_resort",
     "bh_in",
     "bh_out",
     "bh_ghost",

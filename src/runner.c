@@ -1211,12 +1211,39 @@ void runner_do_star_formation(struct runner *r, struct cell *c, int timer) {
    * re-compute them. */
   if (with_feedback && (c == c->top) &&
       (current_stars_count != c->stars.count)) {
-
+    cell_set_flag(c, cell_flag_do_stars_resort);
     cell_clear_stars_sort_flags(c, /*clear_unused_flags=*/0);
-    runner_do_all_stars_sort(r, c);
   }
 
   if (timer) TIMER_TOC(timer_do_star_formation);
+}
+
+/**
+ * @brief Sorts again all the stars in a given cell hierarchy.
+ *
+ * This is intended to be used after the star formation task has been run
+ * to get the cells back into a state where self/pair star tasks can be run.
+ *
+ * @param r The thread #runner.
+ * @param c The top-level cell to run on.
+ * @param timer Are we timing this?
+ */
+void runner_do_stars_resort(struct runner *r, struct cell *c, const int timer) {
+
+#ifdef SWIFT_DEBUG_CHECKS
+  if (c->nodeID != r->e->nodeID) error("Task must be run locally!");
+  if (c->depth != 0) error("Task must be run at the top-level");
+#endif
+
+  TIMER_TIC;
+
+  /* Did we demand a recalculation of the stars'sorts? */
+  if (cell_get_flag(c, cell_flag_do_stars_resort)) {
+    runner_do_all_stars_sort(r, c);
+    cell_clear_flag(c, cell_flag_do_stars_resort);
+  }
+
+  if (timer) TIMER_TOC(timer_do_stars_resort);
 }
 
 /**
@@ -3058,7 +3085,6 @@ void runner_do_timestep(struct runner *r, struct cell *c, int timer) {
   }
 
   int updated = 0, g_updated = 0, s_updated = 0, b_updated = 0;
-  int inhibited = 0, g_inhibited = 0, s_inhibited = 0, b_inhibited = 0;
   integertime_t ti_hydro_end_min = max_nr_timesteps, ti_hydro_end_max = 0,
                 ti_hydro_beg_max = 0;
   integertime_t ti_gravity_end_min = max_nr_timesteps, ti_gravity_end_max = 0,
@@ -3128,30 +3154,30 @@ void runner_do_timestep(struct runner *r, struct cell *c, int timer) {
 
       else { /* part is inactive */
 
-        /* Count the number of inhibited particles */
-        if (part_is_inhibited(p, e)) inhibited++;
+        if (!part_is_inhibited(p, e)) {
 
-        const integertime_t ti_end =
-            get_integer_time_end(ti_current, p->time_bin);
+          const integertime_t ti_end =
+              get_integer_time_end(ti_current, p->time_bin);
 
-        const integertime_t ti_beg =
-            get_integer_time_begin(ti_current + 1, p->time_bin);
-
-        /* What is the next sync-point ? */
-        ti_hydro_end_min = min(ti_end, ti_hydro_end_min);
-        ti_hydro_end_max = max(ti_end, ti_hydro_end_max);
-
-        /* What is the next starting point for this cell ? */
-        ti_hydro_beg_max = max(ti_beg, ti_hydro_beg_max);
-
-        if (p->gpart != NULL) {
+          const integertime_t ti_beg =
+              get_integer_time_begin(ti_current + 1, p->time_bin);
 
           /* What is the next sync-point ? */
-          ti_gravity_end_min = min(ti_end, ti_gravity_end_min);
-          ti_gravity_end_max = max(ti_end, ti_gravity_end_max);
+          ti_hydro_end_min = min(ti_end, ti_hydro_end_min);
+          ti_hydro_end_max = max(ti_end, ti_hydro_end_max);
 
           /* What is the next starting point for this cell ? */
-          ti_gravity_beg_max = max(ti_beg, ti_gravity_beg_max);
+          ti_hydro_beg_max = max(ti_beg, ti_hydro_beg_max);
+
+          if (p->gpart != NULL) {
+
+            /* What is the next sync-point ? */
+            ti_gravity_end_min = min(ti_end, ti_gravity_end_min);
+            ti_gravity_end_max = max(ti_end, ti_gravity_end_max);
+
+            /* What is the next starting point for this cell ? */
+            ti_gravity_beg_max = max(ti_beg, ti_gravity_beg_max);
+          }
         }
       }
     }
@@ -3197,21 +3223,21 @@ void runner_do_timestep(struct runner *r, struct cell *c, int timer) {
 
         } else { /* gpart is inactive */
 
-          /* Count the number of inhibited particles */
-          if (gpart_is_inhibited(gp, e)) g_inhibited++;
+          if (!gpart_is_inhibited(gp, e)) {
 
-          const integertime_t ti_end =
-              get_integer_time_end(ti_current, gp->time_bin);
+            const integertime_t ti_end =
+                get_integer_time_end(ti_current, gp->time_bin);
 
-          /* What is the next sync-point ? */
-          ti_gravity_end_min = min(ti_end, ti_gravity_end_min);
-          ti_gravity_end_max = max(ti_end, ti_gravity_end_max);
+            /* What is the next sync-point ? */
+            ti_gravity_end_min = min(ti_end, ti_gravity_end_min);
+            ti_gravity_end_max = max(ti_end, ti_gravity_end_max);
 
-          const integertime_t ti_beg =
-              get_integer_time_begin(ti_current + 1, gp->time_bin);
+            const integertime_t ti_beg =
+                get_integer_time_begin(ti_current + 1, gp->time_bin);
 
-          /* What is the next starting point for this cell ? */
-          ti_gravity_beg_max = max(ti_beg, ti_gravity_beg_max);
+            /* What is the next starting point for this cell ? */
+            ti_gravity_beg_max = max(ti_beg, ti_gravity_beg_max);
+          }
         }
       }
     }
@@ -3256,23 +3282,23 @@ void runner_do_timestep(struct runner *r, struct cell *c, int timer) {
         /* star particle is inactive but not inhibited */
       } else {
 
-        /* Count the number of inhibited particles */
-        if (spart_is_inhibited(sp, e)) ++s_inhibited;
+        if (!spart_is_inhibited(sp, e)) {
 
-        const integertime_t ti_end =
-            get_integer_time_end(ti_current, sp->time_bin);
+          const integertime_t ti_end =
+              get_integer_time_end(ti_current, sp->time_bin);
 
-        const integertime_t ti_beg =
-            get_integer_time_begin(ti_current + 1, sp->time_bin);
+          const integertime_t ti_beg =
+              get_integer_time_begin(ti_current + 1, sp->time_bin);
 
-        ti_stars_end_min = min(ti_end, ti_stars_end_min);
-        ti_stars_end_max = max(ti_end, ti_stars_end_max);
-        ti_gravity_end_min = min(ti_end, ti_gravity_end_min);
-        ti_gravity_end_max = max(ti_end, ti_gravity_end_max);
+          ti_stars_end_min = min(ti_end, ti_stars_end_min);
+          ti_stars_end_max = max(ti_end, ti_stars_end_max);
+          ti_gravity_end_min = min(ti_end, ti_gravity_end_min);
+          ti_gravity_end_max = max(ti_end, ti_gravity_end_max);
 
-        /* What is the next starting point for this cell ? */
-        ti_stars_beg_max = max(ti_beg, ti_stars_beg_max);
-        ti_gravity_beg_max = max(ti_beg, ti_gravity_beg_max);
+          /* What is the next starting point for this cell ? */
+          ti_stars_beg_max = max(ti_beg, ti_stars_beg_max);
+          ti_gravity_beg_max = max(ti_beg, ti_gravity_beg_max);
+        }
       }
     }
 
@@ -3318,23 +3344,23 @@ void runner_do_timestep(struct runner *r, struct cell *c, int timer) {
         /* star particle is inactive but not inhibited */
       } else {
 
-        /* Count the number of inhibited particles */
-        if (bpart_is_inhibited(bp, e)) ++b_inhibited;
+        if (!bpart_is_inhibited(bp, e)) {
 
-        const integertime_t ti_end =
-            get_integer_time_end(ti_current, bp->time_bin);
+          const integertime_t ti_end =
+              get_integer_time_end(ti_current, bp->time_bin);
 
-        const integertime_t ti_beg =
-            get_integer_time_begin(ti_current + 1, bp->time_bin);
+          const integertime_t ti_beg =
+              get_integer_time_begin(ti_current + 1, bp->time_bin);
 
-        ti_black_holes_end_min = min(ti_end, ti_black_holes_end_min);
-        ti_black_holes_end_max = max(ti_end, ti_black_holes_end_max);
-        ti_gravity_end_min = min(ti_end, ti_gravity_end_min);
-        ti_gravity_end_max = max(ti_end, ti_gravity_end_max);
+          ti_black_holes_end_min = min(ti_end, ti_black_holes_end_min);
+          ti_black_holes_end_max = max(ti_end, ti_black_holes_end_max);
+          ti_gravity_end_min = min(ti_end, ti_gravity_end_min);
+          ti_gravity_end_max = max(ti_end, ti_gravity_end_max);
 
-        /* What is the next starting point for this cell ? */
-        ti_black_holes_beg_max = max(ti_beg, ti_black_holes_beg_max);
-        ti_gravity_beg_max = max(ti_beg, ti_gravity_beg_max);
+          /* What is the next starting point for this cell ? */
+          ti_black_holes_beg_max = max(ti_beg, ti_black_holes_beg_max);
+          ti_gravity_beg_max = max(ti_beg, ti_gravity_beg_max);
+        }
       }
     }
 
@@ -3820,10 +3846,20 @@ void runner_do_swallow(struct runner *r, struct cell *c, int timer) {
 
               message("BH %lld removing particle %lld", bp->id, p->id);
 
-              /* Finally, remove the gas particle from the system */
-              struct gpart *gp = p->gpart;
-              cell_remove_part(e, c, p, xp);
-              cell_remove_gpart(e, c, gp);
+              lock_lock(&e->s->lock);
+
+              /* Re-check that the particle has not been removed
+               * by another thread before we do the deed. */
+              if (!part_is_inhibited(p, e)) {
+
+                /* Finally, remove the gas particle from the system */
+                struct gpart *gp = p->gpart;
+                cell_remove_part(e, c, p, xp);
+                cell_remove_gpart(e, c, gp);
+              }
+
+              if (lock_unlock(&e->s->lock) != 0)
+                error("Failed to unlock the space!");
             }
 
             /* In any case, prevent the particle from being re-swallowed */
@@ -3853,10 +3889,20 @@ void runner_do_swallow(struct runner *r, struct cell *c, int timer) {
               message("BH %lld removing particle %lld (foreign BH case)",
                       bp->id, p->id);
 
-              /* Finally, remove the gas particle from the system */
-              struct gpart *gp = p->gpart;
-              cell_remove_part(e, c, p, xp);
-              cell_remove_gpart(e, c, gp);
+              lock_lock(&e->s->lock);
+
+              /* Re-check that the particle has not been removed
+               * by another thread before we do the deed. */
+              if (!part_is_inhibited(p, e)) {
+
+                /* Finally, remove the gas particle from the system */
+                struct gpart *gp = p->gpart;
+                cell_remove_part(e, c, p, xp);
+                cell_remove_gpart(e, c, gp);
+              }
+
+              if (lock_unlock(&e->s->lock) != 0)
+                error("Failed to unlock the space!");
 
               found = 1;
               break;
@@ -4581,6 +4627,9 @@ void *runner_main(void *data) {
           break;
         case task_type_star_formation:
           runner_do_star_formation(r, t->ci, 1);
+          break;
+        case task_type_stars_resort:
+          runner_do_stars_resort(r, t->ci, 1);
           break;
         case task_type_fof_self:
           runner_do_fof_self(r, t->ci, 1);

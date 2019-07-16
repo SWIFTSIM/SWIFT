@@ -288,7 +288,8 @@ enum cell_flags {
   cell_flag_do_stars_drift = (1UL << 9),
   cell_flag_do_stars_sub_drift = (1UL << 10),
   cell_flag_do_bh_drift = (1UL << 11),
-  cell_flag_do_bh_sub_drift = (1UL << 12)
+  cell_flag_do_bh_sub_drift = (1UL << 12),
+  cell_flag_do_stars_resort = (1UL << 13)
 };
 
 /**
@@ -376,6 +377,9 @@ struct cell {
 
     /*! Task for star formation */
     struct task *star_formation;
+
+    /*! Task for sorting the stars again after a SF event */
+    struct task *stars_resort;
 
     /*! Max smoothing length in this cell. */
     double h_max;
