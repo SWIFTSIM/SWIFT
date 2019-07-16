@@ -192,6 +192,8 @@ void engine_addlink(struct engine *e, struct link **l, struct task *t) {
  * @param mpi_type the MPI_Datatype for these particles.
  * @param nr_nodes the number of nodes to exchange with.
  * @param nodeID the id of this node.
+ * @param syncredist whether to use slower more memory friendly synchronous
+ *                   exchanges.
  *
  * @result new particle data constructed from all the exchanges with the
  *         given alignment.
@@ -199,7 +201,7 @@ void engine_addlink(struct engine *e, struct link **l, struct task *t) {
 static void *engine_do_redistribute(const char *label, int *counts, char *parts,
                                     size_t new_nr_parts, size_t sizeofparts,
                                     size_t alignsize, MPI_Datatype mpi_type,
-                                    int nr_nodes, int nodeID) {
+                                    int nr_nodes, int nodeID, int syncredist) {
 
   /* Allocate a new particle array with some extra margin */
   char *parts_new = NULL;
@@ -208,99 +210,184 @@ static void *engine_do_redistribute(const char *label, int *counts, char *parts,
           sizeofparts * new_nr_parts * engine_redistribute_alloc_margin) != 0)
     error("Failed to allocate new particle data.");
 
-  /* Prepare MPI requests for the asynchronous communications */
-  MPI_Request *reqs;
-  if ((reqs = (MPI_Request *)malloc(sizeof(MPI_Request) * 2 * nr_nodes)) ==
-      NULL)
-    error("Failed to allocate MPI request list.");
+  if (syncredist) {
 
-  /* Only send and receive only "chunk" particles per request. So we need to
-   * loop as many times as necessary here. Make 2Gb/sizeofparts so we only
-   * send 2Gb packets. */
-  const int chunk = INT_MAX / sizeofparts;
-  int sent = 0;
-  int recvd = 0;
+    /* Slow synchronous redistribute,. */
+    size_t offset_send = 0, offset_recv = 0;
 
-  int activenodes = 1;
-  while (activenodes) {
-
-    for (int k = 0; k < 2 * nr_nodes; k++) reqs[k] = MPI_REQUEST_NULL;
-
-    /* Emit the sends and recvs for the data. */
-    size_t offset_send = sent;
-    size_t offset_recv = recvd;
-    activenodes = 0;
-
+    /* Only send and receive only "chunk" particles per request. */
+    const int chunk = INT_MAX / sizeofparts;
+    int res = 0;
     for (int k = 0; k < nr_nodes; k++) {
+      int kk = k;
 
-      /* Indices in the count arrays of the node of interest */
-      const int ind_send = nodeID * nr_nodes + k;
-      const int ind_recv = k * nr_nodes + nodeID;
+      /* Rank 0 decides the index of sending node */
+      MPI_Bcast(&kk, 1, MPI_INT, 0, MPI_COMM_WORLD);
 
-      /* Are we sending any data this loop? */
-      int sending = counts[ind_send] - sent;
-      if (sending > 0) {
-        activenodes++;
-        if (sending > chunk) sending = chunk;
+      int ind_recv = kk * nr_nodes + nodeID;
 
-        /* If the send and receive is local then just copy. */
-        if (k == nodeID) {
-          int receiving = counts[ind_recv] - recvd;
-          if (receiving > chunk) receiving = chunk;
-          memcpy(&parts_new[offset_recv * sizeofparts],
-                 &parts[offset_send * sizeofparts], sizeofparts * receiving);
-        } else {
-          /* Otherwise send it. */
-          int res =
+      if ( nodeID == kk ) {
+
+        /*  Send out our particles. */
+        offset_send = 0;
+        for (int j = 0; j < nr_nodes; j++) {
+
+          int ind_send = kk * nr_nodes + j;
+
+          /*  Just copy our own parts */
+          if ( counts[ind_send] > 0 ) {
+            if ( j == nodeID ) {
+              memcpy(&parts_new[offset_recv * sizeofparts], 
+                     &parts[offset_send * sizeofparts],
+                     sizeofparts * counts[ind_recv]);
+              offset_send += counts[ind_send];
+              offset_recv += counts[ind_recv];
+            }
+            else {
+              for (int i = 0; i < counts[ind_send];) {
+
+                /* Count and index, with chunk parts at most. */
+                size_t sendc = min(chunk, counts[ind_send] - i);
+                size_t sendo = offset_send + i;
+
+                res = MPI_Send(&parts[sendo * sizeofparts], sendc, mpi_type, j,
+                               ind_send * nr_nodes + i, MPI_COMM_WORLD);
+                if ( res != MPI_SUCCESS ) {
+                  mpi_error(res, "Failed to send parts to node %i from %i.",
+                            j, nodeID);
+                }
+                message("send %ld parts to node %i from %i, tag %d.",
+                        sendc, j, nodeID, ind_send * nr_nodes + i);
+
+                i += sendc;
+              }
+              offset_send += counts[ind_send];
+            }
+          }
+        }
+      }
+      else {
+        /*  Listen for sends from kk. */
+        if (counts[ind_recv] > 0) {
+          for (int i = 0; i < counts[ind_recv];) {
+            /* Count and index, with +chunk parts at most. */
+            size_t recvc = min(chunk, counts[ind_recv] - i);
+            size_t recvo = offset_recv + i;
+
+            MPI_Status status;
+            res = MPI_Recv(&parts_new[recvo * sizeofparts], recvc, mpi_type, kk,
+                           ind_recv * nr_nodes + i, MPI_COMM_WORLD, &status);
+            if ( res != MPI_SUCCESS ) {
+              mpi_error(res,"Failed to recv of parts from node %i to %i.",
+                        kk, nodeID);
+            }
+            message("recv %ld parts from node %i to %i, tag %d.",
+                    recvc, kk, nodeID, ind_recv * nr_nodes + i);
+
+            i += recvc;
+          }
+          offset_recv += counts[ind_recv];
+        }
+      }
+    }
+
+  } else {
+    /* Asynchronous redistribute, can take a lot of memory. */
+
+    /* Prepare MPI requests for the asynchronous communications */
+    MPI_Request *reqs;
+    if ((reqs = (MPI_Request *)malloc(sizeof(MPI_Request) * 2 * nr_nodes)) ==
+        NULL)
+      error("Failed to allocate MPI request list.");
+
+    /* Only send and receive only "chunk" particles per request. So we need to
+     * loop as many times as necessary here. Make 2Gb/sizeofparts so we only
+     * send 2Gb packets. */
+    const int chunk = INT_MAX / sizeofparts;
+    int sent = 0;
+    int recvd = 0;
+
+    int activenodes = 1;
+    while (activenodes) {
+
+      for (int k = 0; k < 2 * nr_nodes; k++) reqs[k] = MPI_REQUEST_NULL;
+
+      /* Emit the sends and recvs for the data. */
+      size_t offset_send = sent;
+      size_t offset_recv = recvd;
+      activenodes = 0;
+
+      for (int k = 0; k < nr_nodes; k++) {
+
+        /* Indices in the count arrays of the node of interest */
+        const int ind_send = nodeID * nr_nodes + k;
+        const int ind_recv = k * nr_nodes + nodeID;
+
+        /* Are we sending any data this loop? */
+        int sending = counts[ind_send] - sent;
+        if (sending > 0) {
+          activenodes++;
+          if (sending > chunk) sending = chunk;
+
+          /* If the send and receive is local then just copy. */
+          if (k == nodeID) {
+            int receiving = counts[ind_recv] - recvd;
+            if (receiving > chunk) receiving = chunk;
+            memcpy(&parts_new[offset_recv * sizeofparts],
+                   &parts[offset_send * sizeofparts], sizeofparts * receiving);
+          } else {
+            /* Otherwise send it. */
+            int res =
               MPI_Isend(&parts[offset_send * sizeofparts], sending, mpi_type, k,
                         ind_send, MPI_COMM_WORLD, &reqs[2 * k + 0]);
-          if (res != MPI_SUCCESS)
-            mpi_error(res, "Failed to isend parts to node %i.", k);
+            if (res != MPI_SUCCESS)
+              mpi_error(res, "Failed to isend parts to node %i.", k);
+          }
         }
+
+        /* If we're sending to this node, then move past it to next. */
+        if (counts[ind_send] > 0) offset_send += counts[ind_send];
+
+        /* Are we receiving any data from this node? Note already done if coming
+         * from this node. */
+        if (k != nodeID) {
+          int receiving = counts[ind_recv] - recvd;
+          if (receiving > 0) {
+            activenodes++;
+            if (receiving > chunk) receiving = chunk;
+            int res = MPI_Irecv(&parts_new[offset_recv * sizeofparts], receiving,
+                                mpi_type, k, ind_recv, MPI_COMM_WORLD,
+                                &reqs[2 * k + 1]);
+            if (res != MPI_SUCCESS)
+              mpi_error(res, "Failed to emit irecv of parts from node %i.", k);
+          }
+        }
+
+        /* If we're receiving from this node, then move past it to next. */
+        if (counts[ind_recv] > 0) offset_recv += counts[ind_recv];
       }
 
-      /* If we're sending to this node, then move past it to next. */
-      if (counts[ind_send] > 0) offset_send += counts[ind_send];
-
-      /* Are we receiving any data from this node? Note already done if coming
-       * from this node. */
-      if (k != nodeID) {
-        int receiving = counts[ind_recv] - recvd;
-        if (receiving > 0) {
-          activenodes++;
-          if (receiving > chunk) receiving = chunk;
-          int res = MPI_Irecv(&parts_new[offset_recv * sizeofparts], receiving,
-                              mpi_type, k, ind_recv, MPI_COMM_WORLD,
-                              &reqs[2 * k + 1]);
-          if (res != MPI_SUCCESS)
-            mpi_error(res, "Failed to emit irecv of parts from node %i.", k);
+      /* Wait for all the sends and recvs to tumble in. */
+      MPI_Status stats[2 * nr_nodes];
+      int res;
+      if ((res = MPI_Waitall(2 * nr_nodes, reqs, stats)) != MPI_SUCCESS) {
+        for (int k = 0; k < 2 * nr_nodes; k++) {
+          char buff[MPI_MAX_ERROR_STRING];
+          MPI_Error_string(stats[k].MPI_ERROR, buff, &res);
+          message("request from source %i, tag %i has error '%s'.",
+                  stats[k].MPI_SOURCE, stats[k].MPI_TAG, buff);
         }
+        error("Failed during waitall for part data.");
       }
 
-      /* If we're receiving from this node, then move past it to next. */
-      if (counts[ind_recv] > 0) offset_recv += counts[ind_recv];
+      /* Move to next chunks. */
+      sent += chunk;
+      recvd += chunk;
     }
 
-    /* Wait for all the sends and recvs to tumble in. */
-    MPI_Status stats[2 * nr_nodes];
-    int res;
-    if ((res = MPI_Waitall(2 * nr_nodes, reqs, stats)) != MPI_SUCCESS) {
-      for (int k = 0; k < 2 * nr_nodes; k++) {
-        char buff[MPI_MAX_ERROR_STRING];
-        MPI_Error_string(stats[k].MPI_ERROR, buff, &res);
-        message("request from source %i, tag %i has error '%s'.",
-                stats[k].MPI_SOURCE, stats[k].MPI_TAG, buff);
-      }
-      error("Failed during waitall for part data.");
-    }
-
-    /* Move to next chunks. */
-    sent += chunk;
-    recvd += chunk;
+    /* Free temps. */
+    free(reqs);
   }
-
-  /* Free temps. */
-  free(reqs);
 
   /* And return new memory. */
   return parts_new;
@@ -1043,7 +1130,7 @@ void engine_redistribute(struct engine *e) {
   /* SPH particles. */
   void *new_parts = engine_do_redistribute(
       "parts", counts, (char *)s->parts, nr_parts_new, sizeof(struct part),
-      part_align, part_mpi_type, nr_nodes, nodeID);
+      part_align, part_mpi_type, nr_nodes, nodeID, 1);
   swift_free("parts", s->parts);
   s->parts = (struct part *)new_parts;
   s->nr_parts = nr_parts_new;
@@ -1052,14 +1139,14 @@ void engine_redistribute(struct engine *e) {
   /* Extra SPH particle properties. */
   new_parts = engine_do_redistribute(
       "xparts", counts, (char *)s->xparts, nr_parts_new, sizeof(struct xpart),
-      xpart_align, xpart_mpi_type, nr_nodes, nodeID);
+      xpart_align, xpart_mpi_type, nr_nodes, nodeID, 1);
   swift_free("xparts", s->xparts);
   s->xparts = (struct xpart *)new_parts;
 
   /* Gravity particles. */
   new_parts = engine_do_redistribute(
       "gparts", g_counts, (char *)s->gparts, nr_gparts_new,
-      sizeof(struct gpart), gpart_align, gpart_mpi_type, nr_nodes, nodeID);
+      sizeof(struct gpart), gpart_align, gpart_mpi_type, nr_nodes, nodeID, 1);
   swift_free("gparts", s->gparts);
   s->gparts = (struct gpart *)new_parts;
   s->nr_gparts = nr_gparts_new;
@@ -1068,7 +1155,7 @@ void engine_redistribute(struct engine *e) {
   /* Star particles. */
   new_parts = engine_do_redistribute(
       "sparts", s_counts, (char *)s->sparts, nr_sparts_new,
-      sizeof(struct spart), spart_align, spart_mpi_type, nr_nodes, nodeID);
+      sizeof(struct spart), spart_align, spart_mpi_type, nr_nodes, nodeID, 1);
   swift_free("sparts", s->sparts);
   s->sparts = (struct spart *)new_parts;
   s->nr_sparts = nr_sparts_new;
@@ -1077,7 +1164,7 @@ void engine_redistribute(struct engine *e) {
   /* Black holes particles. */
   new_parts = engine_do_redistribute(
       "bparts", b_counts, (char *)s->bparts, nr_bparts_new,
-      sizeof(struct bpart), bpart_align, bpart_mpi_type, nr_nodes, nodeID);
+      sizeof(struct bpart), bpart_align, bpart_mpi_type, nr_nodes, nodeID, 1);
   swift_free("bparts", s->bparts);
   s->bparts = (struct bpart *)new_parts;
   s->nr_bparts = nr_bparts_new;
