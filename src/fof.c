@@ -51,7 +51,7 @@
 #define FOF_COMPRESS_PATHS_MIN_LENGTH (2)
 
 /* Are we timing the FOF? */
-//#define WITH_FOF_TIMING
+#define WITH_FOF_TIMING
 
 /**
  * @brief Properties of a group used for black hole seeding
@@ -268,17 +268,33 @@ void fof_allocate(const struct space *s, const long long total_nr_DM_particles,
 
   /* Set initial group ID of the gparts */
   size_t group_id_default = props->group_id_default;
+
+  ticks tic = getticks();
+  
   threadpool_map(&s->e->threadpool, fof_set_initial_group_id_mapper, s->gparts,
                  s->nr_gparts, sizeof(struct gpart), 0, &group_id_default);
+    
+  message("Setting initial group ID took: %.3f %s.",
+            clocks_from_ticks(getticks() - tic), clocks_getunit());
+
+  tic = getticks();
 
   /* Set initial group index */
   threadpool_map(&s->e->threadpool, fof_set_initial_group_index_mapper,
                  props->group_index, s->nr_gparts, sizeof(size_t), 0,
                  props->group_index);
 
+  message("Setting initial group index took: %.3f %s.",
+      clocks_from_ticks(getticks() - tic), clocks_getunit());
+
+  tic = getticks();
+
   /* Set initial group sizes */
   threadpool_map(&s->e->threadpool, fof_set_initial_group_size_mapper,
                  props->group_size, s->nr_gparts, sizeof(size_t), 0, NULL);
+
+  message("Setting initial group sizes took: %.3f %s.",
+      clocks_from_ticks(getticks() - tic), clocks_getunit());
 
 #ifdef SWIFT_DEBUG_CHECKS
   ti_current = s->e->ti_current;
