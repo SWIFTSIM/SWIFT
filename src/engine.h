@@ -361,6 +361,10 @@ struct engine {
 
   /* Step of last repartition. */
   int last_repartition;
+
+  /* Use synchronous redistributes. */
+  int syncredist;
+
 #endif
 
   /* Wallclock time of the last time-step */

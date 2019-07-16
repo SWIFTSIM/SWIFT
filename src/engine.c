@@ -215,7 +215,8 @@ static void *engine_do_redistribute(const char *label, int *counts, char *parts,
     /* Slow synchronous redistribute,. */
     size_t offset_send = 0, offset_recv = 0;
 
-    /* Only send and receive only "chunk" particles per request. */
+    /* Only send and receive only "chunk" particles per request.
+     * Fixing the message size to 2GB. */
     const int chunk = INT_MAX / sizeofparts;
     int res = 0;
     for (int k = 0; k < nr_nodes; k++) {
@@ -237,7 +238,7 @@ static void *engine_do_redistribute(const char *label, int *counts, char *parts,
           /*  Just copy our own parts */
           if ( counts[ind_send] > 0 ) {
             if ( j == nodeID ) {
-              memcpy(&parts_new[offset_recv * sizeofparts], 
+              memcpy(&parts_new[offset_recv * sizeofparts],
                      &parts[offset_send * sizeofparts],
                      sizeofparts * counts[ind_recv]);
               offset_send += counts[ind_send];
@@ -256,9 +257,6 @@ static void *engine_do_redistribute(const char *label, int *counts, char *parts,
                   mpi_error(res, "Failed to send parts to node %i from %i.",
                             j, nodeID);
                 }
-                message("send %ld parts to node %i from %i, tag %d.",
-                        sendc, j, nodeID, ind_send * nr_nodes + i);
-
                 i += sendc;
               }
               offset_send += counts[ind_send];
@@ -281,9 +279,6 @@ static void *engine_do_redistribute(const char *label, int *counts, char *parts,
               mpi_error(res,"Failed to recv of parts from node %i to %i.",
                         kk, nodeID);
             }
-            message("recv %ld parts from node %i to %i, tag %d.",
-                    recvc, kk, nodeID, ind_recv * nr_nodes + i);
-
             i += recvc;
           }
           offset_recv += counts[ind_recv];
@@ -665,7 +660,7 @@ static void engine_redistribute_relink_mapper(void *map_data, int num_elements,
  * 3) The particles to send are placed in a temporary buffer in which the
  * part-gpart links are preserved.
  * 4) Each node allocates enough space for the new particles.
- * 5) (Asynchronous) communications are issued to transfer the data.
+ * 5) Asynchronous or synchronous communications are issued to transfer the data.
  *
  *
  * @param e The #engine.
@@ -1130,7 +1125,7 @@ void engine_redistribute(struct engine *e) {
   /* SPH particles. */
   void *new_parts = engine_do_redistribute(
       "parts", counts, (char *)s->parts, nr_parts_new, sizeof(struct part),
-      part_align, part_mpi_type, nr_nodes, nodeID, 1);
+      part_align, part_mpi_type, nr_nodes, nodeID, e->syncredist);
   swift_free("parts", s->parts);
   s->parts = (struct part *)new_parts;
   s->nr_parts = nr_parts_new;
@@ -1139,14 +1134,15 @@ void engine_redistribute(struct engine *e) {
   /* Extra SPH particle properties. */
   new_parts = engine_do_redistribute(
       "xparts", counts, (char *)s->xparts, nr_parts_new, sizeof(struct xpart),
-      xpart_align, xpart_mpi_type, nr_nodes, nodeID, 1);
+      xpart_align, xpart_mpi_type, nr_nodes, nodeID, e->syncredist);
   swift_free("xparts", s->xparts);
   s->xparts = (struct xpart *)new_parts;
 
   /* Gravity particles. */
   new_parts = engine_do_redistribute(
       "gparts", g_counts, (char *)s->gparts, nr_gparts_new,
-      sizeof(struct gpart), gpart_align, gpart_mpi_type, nr_nodes, nodeID, 1);
+      sizeof(struct gpart), gpart_align, gpart_mpi_type, nr_nodes, nodeID,
+      e->syncredist);
   swift_free("gparts", s->gparts);
   s->gparts = (struct gpart *)new_parts;
   s->nr_gparts = nr_gparts_new;
@@ -1155,7 +1151,8 @@ void engine_redistribute(struct engine *e) {
   /* Star particles. */
   new_parts = engine_do_redistribute(
       "sparts", s_counts, (char *)s->sparts, nr_sparts_new,
-      sizeof(struct spart), spart_align, spart_mpi_type, nr_nodes, nodeID, 1);
+      sizeof(struct spart), spart_align, spart_mpi_type, nr_nodes, nodeID,
+      e->syncredist);
   swift_free("sparts", s->sparts);
   s->sparts = (struct spart *)new_parts;
   s->nr_sparts = nr_sparts_new;
@@ -1164,7 +1161,8 @@ void engine_redistribute(struct engine *e) {
   /* Black holes particles. */
   new_parts = engine_do_redistribute(
       "bparts", b_counts, (char *)s->bparts, nr_bparts_new,
-      sizeof(struct bpart), bpart_align, bpart_mpi_type, nr_nodes, nodeID, 1);
+      sizeof(struct bpart), bpart_align, bpart_mpi_type, nr_nodes, nodeID,
+      e->syncredist);
   swift_free("bparts", s->bparts);
   s->bparts = (struct bpart *)new_parts;
   s->nr_bparts = nr_bparts_new;
@@ -5345,6 +5343,11 @@ void engine_config(int restart, int fof, struct engine *e,
                                              engine_maxproxies)) == NULL)
       error("Failed to allocate memory for proxies.");
     e->nr_proxies = 0;
+
+    /* Use synchronous MPI sends and receives when redistributing. */
+    e->syncredist =
+        parser_get_opt_param_int(params, "DomainDecomposition:synchronous", 0);
+
 #endif
   }
 
