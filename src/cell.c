@@ -166,14 +166,14 @@ struct cell_split_pair cell_split_pairs[13] = {
  *
  * @param c The #cell.
  */
-int cell_getsize(struct cell *c) {
+int cell_get_subtree_size(struct cell *c) {
   /* Number of cells in this subtree. */
   int count = 1;
 
   /* Sum up the progeny if split. */
   if (c->split)
     for (int k = 0; k < 8; k++)
-      if (c->progeny[k] != NULL) count += cell_getsize(c->progeny[k]);
+      if (c->progeny[k] != NULL) count += cell_get_subtree_size(c->progeny[k]);
 
   /* Return the final count. */
   return count;
