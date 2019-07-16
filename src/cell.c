@@ -413,7 +413,7 @@ int cell_link_foreign_gparts(struct cell *c, struct gpart *gparts) {
  *
  * @return The number of particles linked.
  */
-int cell_count_parts_for_tasks(const struct cell *c) {
+int cell_count_parts_for_hydro_tasks(const struct cell *c) {
 #ifdef WITH_MPI
 
 #ifdef SWIFT_DEBUG_CHECKS
@@ -430,7 +430,7 @@ int cell_count_parts_for_tasks(const struct cell *c) {
     int count = 0;
     for (int k = 0; k < 8; ++k) {
       if (c->progeny[k] != NULL) {
-        count += cell_count_parts_for_tasks(c->progeny[k]);
+        count += cell_count_parts_for_hydro_tasks(c->progeny[k]);
       }
     }
     return count;
