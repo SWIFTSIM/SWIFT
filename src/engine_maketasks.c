@@ -120,104 +120,52 @@ void engine_addtasks_send_gravity(struct engine *e, struct cell *ci,
 /**
  * @brief Run through the hydro tasks in a cell hierarchy and mark the cells
  *        that need to be sent to the given node.
+ *
+ * @params e The #engine.
+ * @params ci The first #cell in a hydro pair.
+ * @params cj The second #cell in a hydro pair.
+ * @params proxy_id The index of the #proxy responsible for the foreign cell.
+ * @params recurse Try to split this pair as if they were part of a sub-cell
+ *         task.
  */
 #ifdef WITH_MPI
-void engine_mark_cells_for_hydro_send_tasks_rec(struct engine *e,
-                                                struct cell *ci,
-                                                struct cell *cj,
-                                                int foreign_node_id,
-                                                int proxy_id) {
+void engine_mark_cells_for_hydro_send_recv(struct engine *e, struct cell *ci,
+                                           struct cell *cj, int proxy_id,
+                                           int recurse) {
   /* Should we even bother? */
   if (ci->hydro.count == 0 || cj->hydro.count == 0) return;
 
-  /* Check if the local cell is already marked for sending, and if so, then
-     nothing to see here folks. */
-  if ((ci->nodeID == foreign_node_id &&
-       (cj->mpi.attach_send_recv_for_proxy & (1ULL << proxy_id))) ||
-      (cj->nodeID == foreign_node_id &&
-       (ci->mpi.attach_send_recv_for_proxy & (1ULL << proxy_id))))
+  /* Check if the both cells are already marked, and if so, then nothing to see
+   * here folks. */
+  if (ci->mpi.attach_send_recv_for_proxy & (1ULL << proxy_id) &&
+      cj->mpi.attach_send_recv_for_proxy & (1ULL << proxy_id))
     return;
-
-  /* Get the orientation of the pair. */
-  double shift[3];
-  int sid = space_getsid(e->s, &ci, &cj, shift);
 
   /* Recurse?
      Note that we don't check cell_can_recurse_pair_hydro_task, since that
      relies on the current h_max, whereas cell_can_split_pair_hydro_task takes
-     the current h_max times space_stretch. */
-  if (cell_can_split_pair_hydro_task(ci) &&
+     the current h_max times space_stretch. This is an upper bound on which
+     cells will interact. */
+  if (recurse && cell_can_split_pair_hydro_task(ci) &&
       cell_can_split_pair_hydro_task(cj)) {
+    double shift[3];
+    int sid = space_getsid(e->s, &ci, &cj, shift);
+
     struct cell_split_pair *csp = &cell_split_pairs[sid];
     for (int k = 0; k < csp->count; k++) {
-      const cell *cip = ci->progeny[csp->pairs[k].pid];
-      const cell *cjp = ci->progeny[csp->pairs[k].pjd];
+      struct cell *cip = ci->progeny[csp->pairs[k].pid];
+      struct cell *cjp = ci->progeny[csp->pairs[k].pjd];
       if (cip && cjp) {
-        engine_mark_cells_for_hydro_send_tasks_rec(e, cip, cjp, foreign_node_id,
-                                                   proxy_id);
+        engine_mark_cells_for_hydro_send_recv(e, cip, cjp, proxy_id, recurse);
       }
     }
   }
 
   /* If we didn't bail or recurse, then there will be an interaction between ci
-     and cj, so mark the local cell to be sent. */
+     and cj, so mark both cells. */
   else {
-    /* We don't know if the local cell is ci or cj, we have to check. */
-    if (ci->nodeID == foreign_node_id) {
-      cj->mpi.attach_send_recv_for_proxy |= (1ULL << proxy_id);
-    } else {
-      ci->mpi.attach_send_recv_for_proxy |= (1ULL << proxy_id);
-    }
-  }
-}
-
-void engine_mark_cells_for_hydro_send_tasks(struct engine *e, struct cell *c,
-                                            int foreign_node_id, int proxy_id) {
-  /* If this cell has already been marked for send, bail. */
-  if (c->mpi.attach_send_recv_for_proxy & (1ULL << proxy_id)) return;
-
-  /* Look for non-subcell hydro tasks involving the foreign_node_id. */
-  for (struct link *l = c->hydro.density; l != NULL; l = l->next) {
-    struct task *t = l->t;
-
-    /* Does this task involve the foreign cell? */
-    if (t->ci->nodeID == foreign_node_id ||
-        (t->cj != NULL && t->cj->nodeID == foreign_node_id)) {
-      /* If this is a non-sub task, mark for send and return immediately (no
-         need to recurse further). */
-      if (t->type == task_type_pair) {
-        c->mpi.attach_send_recv_for_proxy |= 1ULL << proxy_id;
-        return;
-      }
-    }
-  }
-
-  /* Look for subcell hydro tasks involving the foreign_node_id. We do this
-     only after checking for non-subcell tasks since any of those may have
-     already marked the cell for send. */
-  for (struct link *l = c->hydro.density; l != NULL; l = l->next) {
-    struct task *t = l->t;
-
-    /* Does this task involve the foreign cell? */
-    if (t->ci->nodeID == foreign_node_id ||
-        (t->cj != NULL && t->cj->nodeID == foreign_node_id)) {
-      /* If this is a sub-cell task, recurse on it. As opposed to the
-         non-subcell tasks, we don't bail here since we don't know at what level
-         the send/recv flags were set. */
-      if (t->type == task_type_sub_pair) {
-        engine_mark_cells_for_hydro_send_tasks_rec(e, t->ci, t->cj,
-                                                   foreign_node_id, proxy_id);
-      }
-    }
-  }
-
-  /* Recurse? */
-  if (c->mpi.attach_send_recv_for_proxy & (1ULL << proxy_id)) return;
-  if (c->split) {
-    for (int k = 0; k < 8; k++)
-      if (c->progeny[k] != NULL)
-        engine_mark_cells_for_hydro_send_tasks(e, c->progeny[k],
-                                               foreign_node_id, proxy_id);
+    ci->mpi.attach_send_recv_for_proxy |= (1ULL << proxy_id);
+    cj->mpi.attach_send_recv_for_proxy |= (1ULL << proxy_id);
   }
 }
 #endif  // WITH_MPI
@@ -240,7 +188,6 @@ void engine_addtasks_send_hydro(struct engine *e, struct cell *ci,
                                 struct task *t_gradient, struct task *t_ti) {
 #ifdef WITH_MPI
   struct scheduler *s = &e->sched;
-  const int nodeID = cj->nodeID;
 
   /* If this cell has to be sent, add the tasks. */
   if (ci->mpi.attach_send_recv_for_proxy & (1ULL << proxy_id)) {
@@ -1406,6 +1353,22 @@ void engine_count_and_link_tasks_mapper(void *map_data, int num_elements,
     struct cell *cj = t->cj;
     const enum task_types t_type = t->type;
     const enum task_subtypes t_subtype = t->subtype;
+
+#ifdef WITH_MPI
+    /* Check if this is a pair task with a foreign cell, and if so, mark
+       the hydro cells that will actually be used. */
+    if ((t->subtype == task_subtype_density) &&
+        (t->type == task_type_pair || t->type == task_type_sub_pair) &&
+        (ci->nodeID != engine_rank || cj->nodeID != engine_rank)) {
+      struct cell *foreign_cell = (ci->nodeID == engine_rank) ? cj : ci;
+      int proxy_id;
+      for (proxy_id = 0; e->proxies[proxy_id].nodeID != foreign_cell->nodeID;
+           proxy_id++)
+        ;
+      engine_mark_cells_for_hydro_send_recv(e, ci, cj, proxy_id,
+                                            t->type == task_type_sub_pair);
+    }
+#endif
 
     /* Link sort tasks to all the higher sort task. */
     if (t_type == task_type_sort) {
