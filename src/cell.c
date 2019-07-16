@@ -410,10 +410,11 @@ int cell_link_foreign_gparts(struct cell *c, struct gpart *gparts) {
  * are in cells with hydro-related tasks.
  *
  * @param c The #cell.
+ * @param proxy_id The id of the #proxy responsible for this cell.
  *
  * @return The number of particles linked.
  */
-int cell_count_parts_for_hydro_tasks(const struct cell *c) {
+int cell_count_parts_for_hydro_tasks(const struct cell *c, int proxy_id) {
 #ifdef WITH_MPI
 
 #ifdef SWIFT_DEBUG_CHECKS
@@ -422,7 +423,7 @@ int cell_count_parts_for_hydro_tasks(const struct cell *c) {
 #endif
 
   /* Do we have a hydro task at this level? */
-  if (cell_get_recv(c, task_subtype_xv) != NULL) {
+  if (c->mpi.attach_send_recv_for_proxy & (1ULL << proxy_id)) {
     return c->hydro.count;
   }
 
@@ -430,7 +431,7 @@ int cell_count_parts_for_hydro_tasks(const struct cell *c) {
     int count = 0;
     for (int k = 0; k < 8; ++k) {
       if (c->progeny[k] != NULL) {
-        count += cell_count_parts_for_hydro_tasks(c->progeny[k]);
+        count += cell_count_parts_for_hydro_tasks(c->progeny[k], proxy_id);
       }
     }
     return count;

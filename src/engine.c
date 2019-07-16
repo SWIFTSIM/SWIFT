@@ -2109,7 +2109,7 @@ void engine_allocate_foreign_particles(struct engine *e) {
 
       if (e->proxies[k].cells_in_type[j] & proxy_cell_type_hydro) {
         count_parts_in +=
-            cell_count_parts_for_hydro_tasks(e->proxies[k].cells_in[j]);
+            cell_count_parts_for_hydro_tasks(e->proxies[k].cells_in[j], k);
       }
 
       if (e->proxies[k].cells_in_type[j] & proxy_cell_type_gravity) {
