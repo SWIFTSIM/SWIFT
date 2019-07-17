@@ -4346,7 +4346,7 @@ void cell_drift_part(struct cell *c, const struct engine *e, int force) {
             cell_remove_part(e, c, p, xp);
 
             /* and its gravity friend */
-            if (gp != NULL && !gpart_is_inhibited(gp, e)) {
+            if (gp != NULL) {
               cell_remove_gpart(e, c, gp);
             }
           }
@@ -5296,7 +5296,7 @@ void cell_remove_part(const struct engine *e, struct cell *c, struct part *p,
   if (p->gpart) {
     p->gpart->time_bin = time_bin_inhibited;
     p->gpart->id_or_neg_offset = p->id;
-    p->gpart->type = swift_type_dark_matter;
+    //p->gpart->type = swift_type_dark_matter;
   }
 
   /* Un-link the part */
@@ -5319,6 +5319,7 @@ void cell_remove_part(const struct engine *e, struct cell *c, struct part *p,
  */
 void cell_remove_gpart(const struct engine *e, struct cell *c,
                        struct gpart *gp) {
+  
   /* Don't remove a particle twice */
   if (gp->time_bin == time_bin_inhibited)
     return;
