@@ -27,6 +27,7 @@
 #endif
 
 /* Local includes. */
+#include "kernel_gravity.h"
 #include "restart.h"
 
 /* Forward declarations */
