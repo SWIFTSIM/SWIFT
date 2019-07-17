@@ -266,18 +266,7 @@ void fof_allocate(const struct space *s, const long long total_nr_DM_particles,
                      s->nr_gparts * sizeof(size_t)) != 0)
     error("Failed to allocate list of group size for FOF search.");
 
-  /* Set initial group ID of the gparts */
-  size_t group_id_default = props->group_id_default;
-
   ticks tic = getticks();
-  
-  threadpool_map(&s->e->threadpool, fof_set_initial_group_id_mapper, s->gparts,
-                 s->nr_gparts, sizeof(struct gpart), 0, &group_id_default);
-    
-  message("Setting initial group ID took: %.3f %s.",
-            clocks_from_ticks(getticks() - tic), clocks_getunit());
-
-  tic = getticks();
 
   /* Set initial group index */
   threadpool_map(&s->e->threadpool, fof_set_initial_group_index_mapper,
@@ -2703,7 +2692,16 @@ void fof_search_tree(struct fof_props *props,
           clocks_getunit());
 
   /* Set default group ID for all particles */
-  for (size_t i = 0; i < nr_gparts; i++) gparts[i].group_id = group_id_default;
+  size_t group_id_default = props->group_id_default;
+
+  ticks tic = getticks();
+  
+  threadpool_map(&s->e->threadpool, fof_set_initial_group_id_mapper, s->gparts,
+                 s->nr_gparts, sizeof(struct gpart), 0, &group_id_default);
+    
+  message("Setting initial group ID took: %.3f %s.",
+            clocks_from_ticks(getticks() - tic), clocks_getunit());
+
 
   /* Assign final group IDs to local root particles where the global root is
    * on this node and the group is large enough. Within a node IDs are
