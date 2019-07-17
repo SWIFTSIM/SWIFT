@@ -4328,9 +4328,9 @@ void cell_drift_part(struct cell *c, const struct engine *e, int force) {
       if (!periodic) {
 
         /* Did the particle leave the box?  */
-        if ((p->x[0] > dim[0]) || (p->x[0] < 0.) ||  // x
-            (p->x[1] > dim[1]) || (p->x[1] < 0.) ||  // y
-            (p->x[2] > dim[2]) || (p->x[2] < 0.)) {  // z
+        if ((p->x[0] > dim[0]) || (p->x[0] < 0.) ||
+            (p->x[1] > dim[1]) || (p->x[1] < 0.) ||
+            (p->x[2] > dim[2]) || (p->x[2] < 0.)) {
 
           lock_lock(&e->s->lock);
 
@@ -4345,8 +4345,8 @@ void cell_drift_part(struct cell *c, const struct engine *e, int force) {
             struct gpart *gp = p->gpart;
             cell_remove_part(e, c, p, xp);
 
-            /* and it's gravity friend */
-            if(gp != NULL && !gpart_is_inhibited(gp, e)) {
+            /* and its gravity friend */
+            if (gp != NULL && !gpart_is_inhibited(gp, e)) {
               cell_remove_gpart(e, c, gp);
             }
           }
@@ -4499,9 +4499,9 @@ void cell_drift_gpart(struct cell *c, const struct engine *e, int force) {
       if (!periodic) {
 
         /* Did the particle leave the box?  */
-        if ((gp->x[0] > dim[0]) || (gp->x[0] < 0.) ||  // x
-            (gp->x[1] > dim[1]) || (gp->x[1] < 0.) ||  // y
-            (gp->x[2] > dim[2]) || (gp->x[2] < 0.)) {  // z
+        if ((gp->x[0] > dim[0]) || (gp->x[0] < 0.) ||
+            (gp->x[1] > dim[1]) || (gp->x[1] < 0.) ||
+            (gp->x[2] > dim[2]) || (gp->x[2] < 0.)) {
 
           lock_lock(&e->s->lock);
 
@@ -4510,7 +4510,9 @@ void cell_drift_gpart(struct cell *c, const struct engine *e, int force) {
           if (!gpart_is_inhibited(gp, e)) {
 
             /* Remove the particle entirely */
-            cell_remove_gpart(e, c, gp);
+            if (gp->type == swift_type_dark_matter) {
+              cell_remove_gpart(e, c, gp);
+            }
           }
 
           if (lock_unlock(&e->s->lock) != 0)
@@ -4640,9 +4642,9 @@ void cell_drift_spart(struct cell *c, const struct engine *e, int force) {
       if (!periodic) {
 
         /* Did the particle leave the box?  */
-        if ((sp->x[0] > dim[0]) || (sp->x[0] < 0.) ||  // x
-            (sp->x[1] > dim[1]) || (sp->x[1] < 0.) ||  // y
-            (sp->x[2] > dim[2]) || (sp->x[2] < 0.)) {  // z
+        if ((sp->x[0] > dim[0]) || (sp->x[0] < 0.) ||
+            (sp->x[1] > dim[1]) || (sp->x[1] < 0.) ||
+            (sp->x[2] > dim[2]) || (sp->x[2] < 0.)) {
 
           lock_lock(&e->s->lock);
 
@@ -4654,7 +4656,7 @@ void cell_drift_spart(struct cell *c, const struct engine *e, int force) {
             struct gpart *gp = sp->gpart;
             cell_remove_spart(e, c, sp);
 
-            /* and it's gravity friend */
+            /* and its gravity friend */
             cell_remove_gpart(e, c, gp);
           }
 
@@ -4815,9 +4817,9 @@ void cell_drift_bpart(struct cell *c, const struct engine *e, int force) {
       if (!periodic) {
 
         /* Did the particle leave the box?  */
-        if ((bp->x[0] > dim[0]) || (bp->x[0] < 0.) ||  // x
-            (bp->x[1] > dim[1]) || (bp->x[1] < 0.) ||  // y
-            (bp->x[2] > dim[2]) || (bp->x[2] < 0.)) {  // z
+        if ((bp->x[0] > dim[0]) || (bp->x[0] < 0.) ||
+            (bp->x[1] > dim[1]) || (bp->x[1] < 0.) ||
+            (bp->x[2] > dim[2]) || (bp->x[2] < 0.)) {
 
           lock_lock(&e->s->lock);
 
@@ -4829,7 +4831,7 @@ void cell_drift_bpart(struct cell *c, const struct engine *e, int force) {
             struct gpart *gp = bp->gpart;
             cell_remove_bpart(e, c, bp);
 
-            /* and it's gravity friend */
+            /* and its gravity friend */
             cell_remove_gpart(e, c, gp);
           }
 
