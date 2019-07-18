@@ -217,6 +217,7 @@ runner_iact_nonsym_bh_bh_swallow(const float r2, const float *dx,
     h = hj;
   }
 
+  /* Note the factor 9 is taken from EAGLE. Will be turned into a parameter */
   const float max_distance2 = kernel_gravity_softening_plummer_equivalent_inv *
                               kernel_gravity_softening_plummer_equivalent_inv *
                               9.f * grav_props->epsilon_cur2;
