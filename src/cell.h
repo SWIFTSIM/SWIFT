@@ -655,7 +655,7 @@ struct cell {
     struct task *density_ghost;
 
     /*! The star ghost task itself */
-    struct task *swallow_ghost[2];
+    struct task *swallow_ghost[3];
 
     /*! Linked list of the tasks computing this cell's BH density. */
     struct link *density;
@@ -665,7 +665,10 @@ struct cell {
     struct link *swallow;
 
     /*! Linked list of the tasks processing the particles to swallow */
-    struct link *do_swallow;
+    struct link *do_gas_swallow;
+
+    /*! Linked list of the tasks processing the particles to swallow */
+    struct link *do_bh_swallow;
 
     /*! Linked list of the tasks computing this cell's BH feedback. */
     struct link *feedback;
@@ -823,6 +826,10 @@ void cell_pack_part_swallow(const struct cell *c,
                             struct black_holes_part_data *data);
 void cell_unpack_part_swallow(struct cell *c,
                               const struct black_holes_part_data *data);
+void cell_pack_bpart_swallow(const struct cell *c,
+                             struct black_holes_bpart_data *data);
+void cell_unpack_bpart_swallow(struct cell *c,
+                               const struct black_holes_bpart_data *data);
 int cell_pack_tags(const struct cell *c, int *tags);
 int cell_unpack_tags(const int *tags, struct cell *c);
 int cell_pack_end_step_hydro(struct cell *c, struct pcell_step_hydro *pcell);

@@ -613,6 +613,28 @@ void cell_unpack_part_swallow(struct cell *c,
   }
 }
 
+void cell_pack_bpart_swallow(const struct cell *c,
+                             struct black_holes_bpart_data *data) {
+
+  const size_t count = c->black_holes.count;
+  const struct bpart *bparts = c->black_holes.parts;
+
+  for (size_t i = 0; i < count; ++i) {
+    data[i] = bparts[i].merger_data;
+  }
+}
+
+void cell_unpack_bpart_swallow(struct cell *c,
+                               const struct black_holes_bpart_data *data) {
+
+  const size_t count = c->black_holes.count;
+  struct bpart *bparts = c->black_holes.parts;
+
+  for (size_t i = 0; i < count; ++i) {
+    bparts[i].merger_data = data[i];
+  }
+}
+
 /**
  * @brief Unpack the data of a given cell and its sub-cells.
  *
@@ -1989,7 +2011,8 @@ void cell_clean_links(struct cell *c, void *data) {
   c->stars.feedback = NULL;
   c->black_holes.density = NULL;
   c->black_holes.swallow = NULL;
-  c->black_holes.do_swallow = NULL;
+  c->black_holes.do_gas_swallow = NULL;
+  c->black_holes.do_bh_swallow = NULL;
   c->black_holes.feedback = NULL;
 }
 
@@ -3996,7 +4019,30 @@ int cell_unskip_black_holes_tasks(struct cell *c, struct scheduler *s) {
   }
 
   /* Un-skip the swallow tasks involved with this cell. */
-  for (struct link *l = c->black_holes.do_swallow; l != NULL; l = l->next) {
+  for (struct link *l = c->black_holes.do_gas_swallow; l != NULL; l = l->next) {
+    struct task *t = l->t;
+    struct cell *ci = t->ci;
+    struct cell *cj = t->cj;
+    const int ci_active = cell_is_active_black_holes(ci, e);
+    const int cj_active = (cj != NULL) ? cell_is_active_black_holes(cj, e) : 0;
+#ifdef WITH_MPI
+    const int ci_nodeID = ci->nodeID;
+    const int cj_nodeID = (cj != NULL) ? cj->nodeID : -1;
+#else
+    const int ci_nodeID = nodeID;
+    const int cj_nodeID = nodeID;
+#endif
+
+    /* Only activate tasks that involve a local active cell. */
+    if ((ci_active || cj_active) &&
+        (ci_nodeID == nodeID || cj_nodeID == nodeID)) {
+
+      scheduler_activate(s, t);
+    }
+  }
+
+  /* Un-skip the swallow tasks involved with this cell. */
+  for (struct link *l = c->black_holes.do_bh_swallow; l != NULL; l = l->next) {
     struct task *t = l->t;
     struct cell *ci = t->ci;
     struct cell *cj = t->cj;
@@ -4044,23 +4090,14 @@ int cell_unskip_black_holes_tasks(struct cell *c, struct scheduler *s) {
   /* Unskip all the other task types. */
   if (c->nodeID == nodeID && cell_is_active_black_holes(c, e)) {
 
-    /* for (struct link *l = c->black_holes.swallow; l != NULL; l = l->next)
-     */
-    /*   scheduler_activate(s, l->t); */
-    /* for (struct link *l = c->black_holes.do_swallow; l != NULL; l =
-     * l->next)
-     */
-    /*   scheduler_activate(s, l->t); */
-    /* for (struct link *l = c->black_holes.feedback; l != NULL; l = l->next)
-     */
-    /*   scheduler_activate(s, l->t); */
-
     if (c->black_holes.density_ghost != NULL)
       scheduler_activate(s, c->black_holes.density_ghost);
     if (c->black_holes.swallow_ghost[0] != NULL)
       scheduler_activate(s, c->black_holes.swallow_ghost[0]);
     if (c->black_holes.swallow_ghost[1] != NULL)
       scheduler_activate(s, c->black_holes.swallow_ghost[1]);
+    if (c->black_holes.swallow_ghost[2] != NULL)
+      scheduler_activate(s, c->black_holes.swallow_ghost[2]);
     if (c->black_holes.black_holes_in != NULL)
       scheduler_activate(s, c->black_holes.black_holes_in);
     if (c->black_holes.black_holes_out != NULL)
@@ -4377,7 +4414,7 @@ void cell_drift_part(struct cell *c, const struct engine *e, int force) {
       cell_h_max = max(cell_h_max, p->h);
 
       /* Mark the particle has not being swallowed */
-      black_holes_mark_as_not_swallowed(&p->black_holes_data);
+      black_holes_mark_part_as_not_swallowed(&p->black_holes_data);
 
       /* Get ready for a density calculation */
       if (part_is_active(p, e)) {
@@ -4853,6 +4890,9 @@ void cell_drift_bpart(struct cell *c, const struct engine *e, int force) {
 
       /* Maximal smoothing length */
       cell_h_max = max(cell_h_max, bp->h);
+
+      /* Mark the particle has not being swallowed */
+      black_holes_mark_bpart_as_not_swallowed(&bp->merger_data);
 
       /* Get ready for a density calculation */
       if (bpart_is_active(bp, e)) {
