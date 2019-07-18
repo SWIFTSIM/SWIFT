@@ -338,8 +338,7 @@ void hydro_props_update(struct hydro_props *p, const struct gravity_props *gp,
    * is a fixed fraction of the radius at which the softened forces
    * recover a Newtonian behaviour (i.e. 2.8 * Plummer equivalent softening
    * in the case of a cubic spline kernel). */
-  // MATTHIEU
-  p->h_min = p->h_min_ratio * 1. /*gp->epsilon_cur*/ / kernel_gamma;
+  p->h_min = p->h_min_ratio * gp->epsilon_cur / kernel_gamma;
 }
 
 /**
