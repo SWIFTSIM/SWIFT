@@ -27,10 +27,12 @@
 #endif
 
 /* Local includes. */
+#include "kernel_gravity.h"
 #include "restart.h"
 
 /* Forward declarations */
 struct cosmology;
+struct phys_const;
 struct swift_params;
 
 /**
@@ -84,10 +86,15 @@ struct gravity_props {
 
   /*! Cube of the inverse of current oftening length */
   float epsilon_cur_inv3;
+
+  /*! Gravitational constant (in internal units, copied from the physical
+   * constants) */
+  float G_Newton;
 };
 
 void gravity_props_print(const struct gravity_props *p);
 void gravity_props_init(struct gravity_props *p, struct swift_params *params,
+                        const struct phys_const *phys_const,
                         const struct cosmology *cosmo, int with_cosmology,
                         int periodic);
 void gravity_props_update(struct gravity_props *p,
