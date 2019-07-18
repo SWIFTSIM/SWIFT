@@ -232,7 +232,7 @@ INLINE static void hydro_write_particles(const struct part* parts,
       parts, xparts, convert_Etot, "Total (co-moving) energy of the particles");
 
   list[10] = io_make_output_field_convert_part(
-      "Potential", FLOAT, 1, UNIT_CONV_POTENTIAL, -1.f, parts, xparts,
+      "Potentials", FLOAT, 1, UNIT_CONV_POTENTIAL, -1.f, parts, xparts,
       convert_part_potential, "Gravitational potentials of the particles");
 }
 
