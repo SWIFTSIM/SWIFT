@@ -77,7 +77,7 @@ INLINE static void black_holes_write_particles(const struct bpart *bparts,
                                                int *num_fields) {
 
   /* Say how much we want to write */
-  *num_fields = 12;
+  *num_fields = 13;
 
   /* List what we want to write */
   list[0] = io_make_output_field_convert_bpart(
@@ -106,6 +106,9 @@ INLINE static void black_holes_write_particles(const struct bpart *bparts,
   list[11] = io_make_output_field("TotalAccretedMass", FLOAT, 1,
                                   UNIT_CONV_MASS_PER_UNIT_TIME, bparts,
                                   total_accreted_mass);
+  list[12] =
+      io_make_output_field("CumulativeNumberSeeds", INT, 1, UNIT_CONV_NO_UNITS,
+                           bparts, cumulative_number_seeds);
 
 #ifdef DEBUG_INTERACTIONS_BLACK_HOLES
 

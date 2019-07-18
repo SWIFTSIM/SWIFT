@@ -59,6 +59,8 @@ __attribute__((always_inline)) INLINE static void black_holes_first_init_bpart(
   bp->total_accreted_mass = 0.f;
   bp->accretion_rate = 0.f;
   bp->formation_time = -1.f;
+  bp->cumulative_number_seeds = 1;
+  bp->number_of_mergers = 0;
 }
 
 /**
@@ -235,38 +237,45 @@ __attribute__((always_inline)) INLINE static void black_holes_swallow_part(
 }
 
 /**
- * @brief Update a given #part's BH data field to mark the particle has
- * not yet been swallowed.
+ * @brief Update the properties of a black hole particles by swallowing
+ * a BH particle.
  *
- * @param p_data The #part's #black_holes_part_data structure.
+ * @param bpi The #bpart to update.
+ * @param bpj The #bpart that is swallowed.
+ * @param cosmo The current cosmological model.
  */
-__attribute__((always_inline)) INLINE static void
-black_holes_mark_as_not_swallowed(struct black_holes_part_data* p_data) {
+__attribute__((always_inline)) INLINE static void black_holes_swallow_bpart(
+    struct bpart* bpi, const struct bpart* bpj, const struct cosmology* cosmo) {
 
-  p_data->swallow_id = -1;
-}
+  /* Get the current dynamical masses */
+  const float bpi_dyn_mass = bpi->mass;
+  const float bpj_dyn_mass = bpj->mass;
 
-/**
- * @brief Update a given #part's BH data field to mark the particle has
- * having been been swallowed.
- *
- * @param p_data The #part's #black_holes_part_data structure.
- */
-__attribute__((always_inline)) INLINE static void black_holes_mark_as_swallowed(
-    struct black_holes_part_data* p_data) {
+  /* Increase the masses of the BH. */
+  bpi->mass += bpj->mass;
+  bpi->gpart->mass += bpj->mass;
+  bpi->subgrid_mass += bpj->subgrid_mass;
 
-  p_data->swallow_id = -2;
-}
+  /* Update the BH momentum */
+  const float BH_mom[3] = {bpi_dyn_mass * bpi->v[0] + bpj_dyn_mass * bpj->v[0],
+                           bpi_dyn_mass * bpi->v[1] + bpj_dyn_mass * bpj->v[1],
+                           bpi_dyn_mass * bpi->v[2] + bpj_dyn_mass * bpj->v[2]};
 
-/**
- * @brief Return the ID of the BH that should swallow this #part.
- *
- * @param p_data The #part's #black_holes_part_data structure.
- */
-__attribute__((always_inline)) INLINE static long long
-black_holes_get_swallow_id(struct black_holes_part_data* p_data) {
+  bpi->v[0] = BH_mom[0] / bpi->mass;
+  bpi->v[1] = BH_mom[1] / bpi->mass;
+  bpi->v[2] = BH_mom[2] / bpi->mass;
+  bpi->gpart->v_full[0] = bpi->v[0];
+  bpi->gpart->v_full[1] = bpi->v[1];
+  bpi->gpart->v_full[2] = bpi->v[2];
 
-  return p_data->swallow_id;
+  /* Update the energy reservoir */
+  bpi->energy_reservoir += bpj->energy_reservoir;
+
+  /* Add up all the BH seeds */
+  bpi->cumulative_number_seeds += bpj->cumulative_number_seeds;
+
+  /* We had another merger */
+  bpi->number_of_mergers++;
 }
 
 /**
@@ -469,6 +478,8 @@ INLINE static void black_holes_create_from_gas(
 
   /* We haven't accreted anything yet */
   bp->total_accreted_mass = 0.f;
+  bp->cumulative_number_seeds = 1;
+  bp->number_of_mergers = 0;
 
   /* Initial metal masses */
   const float gas_mass = hydro_get_mass(p);
@@ -494,6 +505,8 @@ INLINE static void black_holes_create_from_gas(
 
   /* First initialisation */
   black_holes_init_bpart(bp);
+
+  black_holes_mark_bpart_as_not_swallowed(&bp->merger_data);
 }
 
 #endif /* SWIFT_EAGLE_BLACK_HOLES_H */

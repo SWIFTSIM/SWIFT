@@ -1359,8 +1359,8 @@ void write_output_serial(struct engine* e, const char* baseName,
 
           /* Did the user cancel this field? */
           char field[PARSER_MAX_LINE_SIZE];
-          sprintf(field, "SelectOutput:%s_%s", list[i].name,
-                  part_type_names[ptype]);
+          sprintf(field, "SelectOutput:%.*s_%s", FIELD_BUFFER_SIZE,
+                  list[i].name, part_type_names[ptype]);
           int should_write = parser_get_opt_param_int(params, field, 1);
 
           if (should_write)
