@@ -391,10 +391,8 @@ void DOPAIR1_BH_NAIVE(struct runner *r, struct cell *restrict ci,
   const int do_cj_bh = 1;
 #endif
 
-  if (do_ci_bh && ci->black_holes.count != 0 && cj->hydro.count != 0)
-    DO_NONSYM_PAIR1_BH_NAIVE(r, ci, cj);
-  if (do_cj_bh && cj->black_holes.count != 0 && ci->hydro.count != 0)
-    DO_NONSYM_PAIR1_BH_NAIVE(r, cj, ci);
+  if (do_ci_bh) DO_NONSYM_PAIR1_BH_NAIVE(r, ci, cj);
+  if (do_cj_bh) DO_NONSYM_PAIR1_BH_NAIVE(r, cj, ci);
 
   TIMER_TOC(TIMER_DOPAIR_BH);
 }
@@ -789,11 +787,24 @@ void DOSUB_PAIR1_BH(struct runner *r, struct cell *ci, struct cell *cj,
   struct space *s = r->e->s;
   const struct engine *e = r->e;
 
-  /* Should we even bother? */
+  /* Should we even bother?
+   * In the swallow case we care about BH-BH and BH-gas
+   * interactions.
+   * In all other cases only BH-gas so we can abort if there is
+   * is no gas in the cell */
+#if (FUNCTION_TASK_LOOP == TASK_LOOP_SWALLOW)
+  const int should_do_ci =
+      ci->black_holes.count != 0 && cell_is_active_black_holes(ci, e);
+  const int should_do_cj =
+      cj->black_holes.count != 0 && cell_is_active_black_holes(cj, e);
+#else
   const int should_do_ci = ci->black_holes.count != 0 && cj->hydro.count != 0 &&
                            cell_is_active_black_holes(ci, e);
   const int should_do_cj = cj->black_holes.count != 0 && ci->hydro.count != 0 &&
                            cell_is_active_black_holes(cj, e);
+
+#endif
+
   if (!should_do_ci && !should_do_cj) return;
 
   /* Get the type of pair and flip ci/cj if needed. */
@@ -819,17 +830,18 @@ void DOSUB_PAIR1_BH(struct runner *r, struct cell *ci, struct cell *cj,
     const int do_ci_bh = ci->nodeID == e->nodeID;
     const int do_cj_bh = cj->nodeID == e->nodeID;
 #elif (FUNCTION_TASK_LOOP == TASK_LOOP_FEEDBACK)
-    /* here we are updating the hydro -> switch ci, cj */
+    /* Here we are updating the hydro -> switch ci, cj */
     const int do_ci_bh = cj->nodeID == e->nodeID;
     const int do_cj_bh = ci->nodeID == e->nodeID;
 #else
+    /* Here we perform the task on both sides */
     const int do_ci_bh = 1;
     const int do_cj_bh = 1;
 #endif
 
-    const int do_ci = ci->black_holes.count != 0 && cj->hydro.count != 0 &&
+    const int do_ci = ci->black_holes.count != 0 &&
                       cell_is_active_black_holes(ci, e) && do_ci_bh;
-    const int do_cj = cj->black_holes.count != 0 && ci->hydro.count != 0 &&
+    const int do_cj = cj->black_holes.count != 0 &&
                       cell_is_active_black_holes(cj, e) && do_cj_bh;
 
     if (do_ci) {
@@ -838,14 +850,14 @@ void DOSUB_PAIR1_BH(struct runner *r, struct cell *ci, struct cell *cj,
       if (!cell_are_bpart_drifted(ci, e))
         error("Interacting undrifted cells (bparts).");
 
-      if (!cell_are_part_drifted(cj, e))
+      if (cj->hydro.count != 0 && !cell_are_part_drifted(cj, e))
         error("Interacting undrifted cells (parts).");
     }
 
     if (do_cj) {
 
       /* Make sure both cells are drifted to the current timestep. */
-      if (!cell_are_part_drifted(ci, e))
+      if (ci->hydro.count != 0 && !cell_are_part_drifted(ci, e))
         error("Interacting undrifted cells (parts).");
 
       if (!cell_are_bpart_drifted(cj, e))
@@ -869,15 +881,27 @@ void DOSUB_SELF1_BH(struct runner *r, struct cell *ci, int gettimer) {
 
   TIMER_TIC;
 
+  const struct engine *e = r->e;
+
 #ifdef SWIFT_DEBUG_CHECKS
   if (ci->nodeID != engine_rank)
     error("This function should not be called on foreign cells");
 #endif
 
-  /* Should we even bother? */
-  if (ci->hydro.count == 0 || ci->black_holes.count == 0 ||
-      !cell_is_active_black_holes(ci, r->e))
-    return;
+    /* Should we even bother?
+     * In the swallow case we care about BH-BH and BH-gas
+     * interactions.
+     * In all other cases only BH-gas so we can abort if there is
+     * is no gas in the cell */
+#if (FUNCTION_TASK_LOOP == TASK_LOOP_SWALLOW)
+  const int should_do_ci =
+      ci->black_holes.count != 0 && cell_is_active_black_holes(ci, e);
+#else
+  const int should_do_ci = ci->black_holes.count != 0 && ci->hydro.count != 0 &&
+                           cell_is_active_black_holes(ci, e);
+#endif
+
+  if (!should_do_ci) return;
 
   /* Recurse? */
   if (cell_can_recurse_in_self_black_holes_task(ci)) {
@@ -895,8 +919,11 @@ void DOSUB_SELF1_BH(struct runner *r, struct cell *ci, int gettimer) {
   /* Otherwise, compute self-interaction. */
   else {
 
-    /* Drift the cell to the current timestep if needed. */
-    if (!cell_are_bpart_drifted(ci, r->e)) error("Interacting undrifted cell.");
+    /* Check we did drift to the current time */
+    if (!cell_are_bpart_drifted(ci, e)) error("Interacting undrifted cell.");
+
+    if (ci->hydro.count != 0 && !cell_are_part_drifted(ci, e))
+      error("Interacting undrifted cells (bparts).");
 
     DOSELF1_BRANCH_BH(r, ci);
   }
