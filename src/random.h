@@ -24,8 +24,13 @@
 #include "../config.h"
 
 /* Standard header */
+#include <errno.h>
+#include <ieee754.h>
+#include <limits.h>
 #include <stdint.h>
 #include <stdlib.h>
+#include <string.h>
+#include <sys/types.h>
 
 /**
  * @brief The categories of random number generated.
@@ -49,11 +54,6 @@ enum random_number_type {
   random_number_BH_feedback = 1640531371LL,
   random_number_BH_swallow = 4947009007LL
 };
-
-#include <errno.h>
-#include <ieee754.h>
-#include <limits.h>
-#include <sys/types.h>
 
 /* Inline the default RNG functions to avoid costly function calls. These
    functions are minor modifications, but functional equivalents, of their glibc

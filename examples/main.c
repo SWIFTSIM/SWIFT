@@ -1099,7 +1099,6 @@ int main(int argc, char *argv[]) {
   if (s.periodic) gravity_exact_force_ewald_init(e.s->dim[0]);
 #endif
 
-
   if (!restart) {
 
 #ifdef WITH_MPI
