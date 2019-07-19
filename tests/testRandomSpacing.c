@@ -25,7 +25,6 @@
 /* Local headers. */
 #include "swift.h"
 
-
 /**
  * @brief Test to check that the pseodo-random numbers in SWIFT are random
  * enough for our purpose.
@@ -82,63 +81,88 @@ int main(int argc, char* argv[]) {
       if (r < boundary[3]) count[3] += 1;
       if (r < boundary[4]) count[4] += 1;
       if (r < boundary[5]) count[5] += 1;
-
     }
 
-  message("Categories           | %6.0e %6.0e %6.0e %6.0e %6.0e %6.0e",boundary[0], boundary[1], boundary[2], boundary[3], boundary[4], boundary[5]);
-  message("total = %12lld | %6d %6d %6d %6d %6d %6d", total, count[0], count[1], count[2], count[3], count[4], count[5]);
-  /* Calculate the expected amount of random numbers in this range */
-  double expected_result[6];
-  int expected_result_int[6];
-  expected_result[0] = total * boundary[0];
-  expected_result[1] = total * boundary[1];
-  expected_result[2] = total * boundary[2];
-  expected_result[3] = total * boundary[3];
-  expected_result[4] = total * boundary[4];
-  expected_result[5] = total * boundary[5];
-  
-  expected_result_int[0] = (int)expected_result[0];
-  expected_result_int[1] = (int)expected_result[1];
-  expected_result_int[2] = (int)expected_result[2];
-  expected_result_int[3] = (int)expected_result[3];
-  expected_result_int[4] = (int)expected_result[4];
-  expected_result_int[5] = (int)expected_result[5];
-  
-  message("expected             | %6d %6d %6d %6d %6d %6d", expected_result_int[0], expected_result_int[1], expected_result_int[2], expected_result_int[3], expected_result_int[4], expected_result_int[5]);
+    message("Categories           | %6.0e %6.0e %6.0e %6.0e %6.0e %6.0e",
+            boundary[0], boundary[1], boundary[2], boundary[3], boundary[4],
+            boundary[5]);
+    message("total = %12lld | %6d %6d %6d %6d %6d %6d", total, count[0],
+            count[1], count[2], count[3], count[4], count[5]);
+    /* Calculate the expected amount of random numbers in this range */
+    double expected_result[6];
+    int expected_result_int[6];
+    expected_result[0] = total * boundary[0];
+    expected_result[1] = total * boundary[1];
+    expected_result[2] = total * boundary[2];
+    expected_result[3] = total * boundary[3];
+    expected_result[4] = total * boundary[4];
+    expected_result[5] = total * boundary[5];
 
-  int std_expected_result[6];
-  std_expected_result[0] = (int)max(sqrt(expected_result[0]),1);
-  std_expected_result[1] = (int)max(sqrt(expected_result[1]),1);
-  std_expected_result[2] = (int)max(sqrt(expected_result[2]),1);
-  std_expected_result[3] = (int)max(sqrt(expected_result[3]),1);
-  std_expected_result[4] = (int)max(sqrt(expected_result[4]),1);
-  std_expected_result[5] = (int)max(sqrt(expected_result[5]),1);
+    expected_result_int[0] = (int)expected_result[0];
+    expected_result_int[1] = (int)expected_result[1];
+    expected_result_int[2] = (int)expected_result[2];
+    expected_result_int[3] = (int)expected_result[3];
+    expected_result_int[4] = (int)expected_result[4];
+    expected_result_int[5] = (int)expected_result[5];
 
-  const int numb_sigma = 5;
-  
-  message("Difference           | %6d %6d %6d %6d %6d %6d", abs(expected_result_int[0]-count[0]), abs(expected_result_int[1]-count[1]), abs(expected_result_int[2]-count[2]), abs(expected_result_int[3]-count[3]), abs(expected_result_int[4]-count[4]), abs(expected_result_int[5]-count[5]));
+    message("expected             | %6d %6d %6d %6d %6d %6d",
+            expected_result_int[0], expected_result_int[1],
+            expected_result_int[2], expected_result_int[3],
+            expected_result_int[4], expected_result_int[5]);
 
-  message("5 sigma difference   | %6d %6d %6d %6d %6d %6d", numb_sigma * std_expected_result[0], numb_sigma * std_expected_result[1], numb_sigma * std_expected_result[2], numb_sigma * std_expected_result[3], numb_sigma * std_expected_result[4], numb_sigma * std_expected_result[5]);
+    int std_expected_result[6];
+    std_expected_result[0] = (int)max(sqrt(expected_result[0]), 1);
+    std_expected_result[1] = (int)max(sqrt(expected_result[1]), 1);
+    std_expected_result[2] = (int)max(sqrt(expected_result[2]), 1);
+    std_expected_result[3] = (int)max(sqrt(expected_result[3]), 1);
+    std_expected_result[4] = (int)max(sqrt(expected_result[4]), 1);
+    std_expected_result[5] = (int)max(sqrt(expected_result[5]), 1);
 
-  if (count[0] > expected_result_int[0] + numb_sigma*std_expected_result[0] ||
-      count[0] < expected_result_int[0] - numb_sigma*std_expected_result[0] ||
-      count[1] > expected_result_int[1] + numb_sigma*std_expected_result[1] ||
-      count[1] < expected_result_int[1] - numb_sigma*std_expected_result[1] ||
-      count[2] > expected_result_int[2] + numb_sigma*std_expected_result[2] ||
-      count[2] < expected_result_int[2] - numb_sigma*std_expected_result[2] ||
-      count[3] > expected_result_int[3] + numb_sigma*std_expected_result[3] ||
-      count[3] < expected_result_int[3] - numb_sigma*std_expected_result[3] ||
-      count[4] > expected_result_int[4] + numb_sigma*std_expected_result[4] ||
-      count[4] < expected_result_int[4] - numb_sigma*std_expected_result[4] ||
-      count[5] > expected_result_int[5] + numb_sigma*std_expected_result[5] ||
-      count[5] < expected_result_int[5] - numb_sigma*std_expected_result[5]
-  ) {
-    message("Not all criteria satisfied!");
-    return 1;
-  }
+    const int numb_sigma = 5;
 
-  
+    message("Difference           | %6d %6d %6d %6d %6d %6d",
+            abs(expected_result_int[0] - count[0]),
+            abs(expected_result_int[1] - count[1]),
+            abs(expected_result_int[2] - count[2]),
+            abs(expected_result_int[3] - count[3]),
+            abs(expected_result_int[4] - count[4]),
+            abs(expected_result_int[5] - count[5]));
 
+    message("5 sigma difference   | %6d %6d %6d %6d %6d %6d",
+            numb_sigma * std_expected_result[0],
+            numb_sigma * std_expected_result[1],
+            numb_sigma * std_expected_result[2],
+            numb_sigma * std_expected_result[3],
+            numb_sigma * std_expected_result[4],
+            numb_sigma * std_expected_result[5]);
+
+    if (count[0] >
+            expected_result_int[0] + numb_sigma * std_expected_result[0] ||
+        count[0] <
+            expected_result_int[0] - numb_sigma * std_expected_result[0] ||
+        count[1] >
+            expected_result_int[1] + numb_sigma * std_expected_result[1] ||
+        count[1] <
+            expected_result_int[1] - numb_sigma * std_expected_result[1] ||
+        count[2] >
+            expected_result_int[2] + numb_sigma * std_expected_result[2] ||
+        count[2] <
+            expected_result_int[2] - numb_sigma * std_expected_result[2] ||
+        count[3] >
+            expected_result_int[3] + numb_sigma * std_expected_result[3] ||
+        count[3] <
+            expected_result_int[3] - numb_sigma * std_expected_result[3] ||
+        count[4] >
+            expected_result_int[4] + numb_sigma * std_expected_result[4] ||
+        count[4] <
+            expected_result_int[4] - numb_sigma * std_expected_result[4] ||
+        count[5] >
+            expected_result_int[5] + numb_sigma * std_expected_result[5] ||
+        count[5] <
+            expected_result_int[5] - numb_sigma * std_expected_result[5]) {
+      message("Not all criteria satisfied!");
+      return 1;
+    }
   }
 
   return 0;

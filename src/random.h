@@ -77,7 +77,7 @@ INLINE static int inl_rand_r(uint32_t *seed) {
   return result;
 }
 
-INLINE void inl_drand48_iterate(uint16_t xsubi[3]) {
+INLINE static void inl_drand48_iterate(uint16_t xsubi[3]) {
   uint64_t X;
   uint64_t result;
   const uint64_t __a = 0x5deece66dull;
@@ -93,7 +93,7 @@ INLINE void inl_drand48_iterate(uint16_t xsubi[3]) {
   xsubi[2] = (result >> 32) & 0xffff;
 }
 
-INLINE double inl_erand48(uint16_t xsubi[3]) {
+INLINE static double inl_erand48(uint16_t xsubi[3]) {
   union ieee754_double temp;
 
   /* Compute next state.  */
