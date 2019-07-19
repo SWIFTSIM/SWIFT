@@ -105,7 +105,7 @@ void DOSELF1_BH(struct runner *r, struct cell *c, int timer) {
   const struct cosmology *cosmo = e->cosmology;
 
   /* Anything to do here? */
-  if (c->hydro.count == 0 || c->black_holes.count == 0) return;
+  if (c->black_holes.count == 0) return;
   if (!cell_is_active_black_holes(c, e)) return;
 
   const int bcount = c->black_holes.count;
@@ -114,52 +114,56 @@ void DOSELF1_BH(struct runner *r, struct cell *c, int timer) {
   struct part *restrict parts = c->hydro.parts;
   struct xpart *restrict xparts = c->hydro.xparts;
 
-  /* Loop over the bparts in ci. */
-  for (int bid = 0; bid < bcount; bid++) {
+  /* Do we actually have any gas neighbours? */
+  if (c->hydro.count != 0) {
 
-    /* Get a hold of the ith bpart in ci. */
-    struct bpart *restrict bi = &bparts[bid];
+    /* Loop over the bparts in ci. */
+    for (int bid = 0; bid < bcount; bid++) {
 
-    /* Skip inactive particles */
-    if (!bpart_is_active(bi, e)) continue;
+      /* Get a hold of the ith bpart in ci. */
+      struct bpart *restrict bi = &bparts[bid];
 
-    const float hi = bi->h;
-    const float hig2 = hi * hi * kernel_gamma2;
-    const float bix[3] = {(float)(bi->x[0] - c->loc[0]),
-                          (float)(bi->x[1] - c->loc[1]),
-                          (float)(bi->x[2] - c->loc[2])};
+      /* Skip inactive particles */
+      if (!bpart_is_active(bi, e)) continue;
 
-    /* Loop over the parts in cj. */
-    for (int pjd = 0; pjd < count; pjd++) {
+      const float hi = bi->h;
+      const float hig2 = hi * hi * kernel_gamma2;
+      const float bix[3] = {(float)(bi->x[0] - c->loc[0]),
+                            (float)(bi->x[1] - c->loc[1]),
+                            (float)(bi->x[2] - c->loc[2])};
 
-      /* Get a pointer to the jth particle. */
-      struct part *restrict pj = &parts[pjd];
-      struct xpart *restrict xpj = &xparts[pjd];
-      const float hj = pj->h;
+      /* Loop over the parts in cj. */
+      for (int pjd = 0; pjd < count; pjd++) {
 
-      /* Early abort? */
-      if (part_is_inhibited(pj, e)) continue;
+        /* Get a pointer to the jth particle. */
+        struct part *restrict pj = &parts[pjd];
+        struct xpart *restrict xpj = &xparts[pjd];
+        const float hj = pj->h;
 
-      /* Compute the pairwise distance. */
-      const float pjx[3] = {(float)(pj->x[0] - c->loc[0]),
-                            (float)(pj->x[1] - c->loc[1]),
-                            (float)(pj->x[2] - c->loc[2])};
-      float dx[3] = {bix[0] - pjx[0], bix[1] - pjx[1], bix[2] - pjx[2]};
-      const float r2 = dx[0] * dx[0] + dx[1] * dx[1] + dx[2] * dx[2];
+        /* Early abort? */
+        if (part_is_inhibited(pj, e)) continue;
+
+        /* Compute the pairwise distance. */
+        const float pjx[3] = {(float)(pj->x[0] - c->loc[0]),
+                              (float)(pj->x[1] - c->loc[1]),
+                              (float)(pj->x[2] - c->loc[2])};
+        float dx[3] = {bix[0] - pjx[0], bix[1] - pjx[1], bix[2] - pjx[2]};
+        const float r2 = dx[0] * dx[0] + dx[1] * dx[1] + dx[2] * dx[2];
 
 #ifdef SWIFT_DEBUG_CHECKS
-      /* Check that particles have been drifted to the current time */
-      if (bi->ti_drift != e->ti_current)
-        error("Particle bi not drifted to current time");
-      if (pj->ti_drift != e->ti_current)
-        error("Particle pj not drifted to current time");
+        /* Check that particles have been drifted to the current time */
+        if (bi->ti_drift != e->ti_current)
+          error("Particle bi not drifted to current time");
+        if (pj->ti_drift != e->ti_current)
+          error("Particle pj not drifted to current time");
 #endif
 
-      if (r2 < hig2) {
-        IACT_BH_GAS(r2, dx, hi, hj, bi, pj, xpj, cosmo, ti_current);
-      }
-    } /* loop over the parts in ci. */
-  }   /* loop over the bparts in ci. */
+        if (r2 < hig2) {
+          IACT_BH_GAS(r2, dx, hi, hj, bi, pj, xpj, cosmo, ti_current);
+        }
+      } /* loop over the parts in ci. */
+    }   /* loop over the bparts in ci. */
+  }     /* Do we have gas particles in the cell? */
 
     /* When doing BH swallowing, we need a quick loop also over the BH
      * neighbours */
@@ -243,7 +247,7 @@ void DO_NONSYM_PAIR1_BH_NAIVE(struct runner *r, struct cell *restrict ci,
   const struct cosmology *cosmo = e->cosmology;
 
   /* Anything to do here? */
-  if (cj->hydro.count == 0 || ci->black_holes.count == 0) return;
+  if (ci->black_holes.count == 0) return;
   if (!cell_is_active_black_holes(ci, e)) return;
 
   const int bcount_i = ci->black_holes.count;
@@ -261,52 +265,56 @@ void DO_NONSYM_PAIR1_BH_NAIVE(struct runner *r, struct cell *restrict ci,
       shift[k] = -e->s->dim[k];
   }
 
-  /* Loop over the bparts in ci. */
-  for (int bid = 0; bid < bcount_i; bid++) {
+  /* Do we actually have any gas neighbours? */
+  if (cj->hydro.count != 0) {
 
-    /* Get a hold of the ith bpart in ci. */
-    struct bpart *restrict bi = &bparts_i[bid];
+    /* Loop over the bparts in ci. */
+    for (int bid = 0; bid < bcount_i; bid++) {
 
-    /* Skip inactive particles */
-    if (!bpart_is_active(bi, e)) continue;
+      /* Get a hold of the ith bpart in ci. */
+      struct bpart *restrict bi = &bparts_i[bid];
 
-    const float hi = bi->h;
-    const float hig2 = hi * hi * kernel_gamma2;
-    const float bix[3] = {(float)(bi->x[0] - (cj->loc[0] + shift[0])),
-                          (float)(bi->x[1] - (cj->loc[1] + shift[1])),
-                          (float)(bi->x[2] - (cj->loc[2] + shift[2]))};
+      /* Skip inactive particles */
+      if (!bpart_is_active(bi, e)) continue;
 
-    /* Loop over the parts in cj. */
-    for (int pjd = 0; pjd < count_j; pjd++) {
+      const float hi = bi->h;
+      const float hig2 = hi * hi * kernel_gamma2;
+      const float bix[3] = {(float)(bi->x[0] - (cj->loc[0] + shift[0])),
+                            (float)(bi->x[1] - (cj->loc[1] + shift[1])),
+                            (float)(bi->x[2] - (cj->loc[2] + shift[2]))};
 
-      /* Get a pointer to the jth particle. */
-      struct part *restrict pj = &parts_j[pjd];
-      struct xpart *restrict xpj = &xparts_j[pjd];
-      const float hj = pj->h;
+      /* Loop over the parts in cj. */
+      for (int pjd = 0; pjd < count_j; pjd++) {
 
-      /* Skip inhibited particles. */
-      if (part_is_inhibited(pj, e)) continue;
+        /* Get a pointer to the jth particle. */
+        struct part *restrict pj = &parts_j[pjd];
+        struct xpart *restrict xpj = &xparts_j[pjd];
+        const float hj = pj->h;
 
-      /* Compute the pairwise distance. */
-      const float pjx[3] = {(float)(pj->x[0] - cj->loc[0]),
-                            (float)(pj->x[1] - cj->loc[1]),
-                            (float)(pj->x[2] - cj->loc[2])};
-      float dx[3] = {bix[0] - pjx[0], bix[1] - pjx[1], bix[2] - pjx[2]};
-      const float r2 = dx[0] * dx[0] + dx[1] * dx[1] + dx[2] * dx[2];
+        /* Skip inhibited particles. */
+        if (part_is_inhibited(pj, e)) continue;
+
+        /* Compute the pairwise distance. */
+        const float pjx[3] = {(float)(pj->x[0] - cj->loc[0]),
+                              (float)(pj->x[1] - cj->loc[1]),
+                              (float)(pj->x[2] - cj->loc[2])};
+        float dx[3] = {bix[0] - pjx[0], bix[1] - pjx[1], bix[2] - pjx[2]};
+        const float r2 = dx[0] * dx[0] + dx[1] * dx[1] + dx[2] * dx[2];
 
 #ifdef SWIFT_DEBUG_CHECKS
-      /* Check that particles have been drifted to the current time */
-      if (bi->ti_drift != e->ti_current)
-        error("Particle bi not drifted to current time");
-      if (pj->ti_drift != e->ti_current)
-        error("Particle pj not drifted to current time");
+        /* Check that particles have been drifted to the current time */
+        if (bi->ti_drift != e->ti_current)
+          error("Particle bi not drifted to current time");
+        if (pj->ti_drift != e->ti_current)
+          error("Particle pj not drifted to current time");
 #endif
 
-      if (r2 < hig2) {
-        IACT_BH_GAS(r2, dx, hi, hj, bi, pj, xpj, cosmo, ti_current);
-      }
-    } /* loop over the parts in cj. */
-  }   /* loop over the bparts in ci. */
+        if (r2 < hig2) {
+          IACT_BH_GAS(r2, dx, hi, hj, bi, pj, xpj, cosmo, ti_current);
+        }
+      } /* loop over the parts in cj. */
+    }   /* loop over the bparts in ci. */
+  }     /* Do we have gas particles in the cell? */
 
     /* When doing BH swallowing, we need a quick loop also over the BH
      * neighbours */
@@ -383,10 +391,8 @@ void DOPAIR1_BH_NAIVE(struct runner *r, struct cell *restrict ci,
   const int do_cj_bh = 1;
 #endif
 
-  if (do_ci_bh && ci->black_holes.count != 0 && cj->hydro.count != 0)
-    DO_NONSYM_PAIR1_BH_NAIVE(r, ci, cj);
-  if (do_cj_bh && cj->black_holes.count != 0 && ci->hydro.count != 0)
-    DO_NONSYM_PAIR1_BH_NAIVE(r, cj, ci);
+  if (do_ci_bh) DO_NONSYM_PAIR1_BH_NAIVE(r, ci, cj);
+  if (do_cj_bh) DO_NONSYM_PAIR1_BH_NAIVE(r, cj, ci);
 
   TIMER_TOC(TIMER_DOPAIR_BH);
 }
@@ -781,11 +787,24 @@ void DOSUB_PAIR1_BH(struct runner *r, struct cell *ci, struct cell *cj,
   struct space *s = r->e->s;
   const struct engine *e = r->e;
 
-  /* Should we even bother? */
+  /* Should we even bother?
+   * In the swallow case we care about BH-BH and BH-gas
+   * interactions.
+   * In all other cases only BH-gas so we can abort if there is
+   * is no gas in the cell */
+#if (FUNCTION_TASK_LOOP == TASK_LOOP_SWALLOW)
+  const int should_do_ci =
+      ci->black_holes.count != 0 && cell_is_active_black_holes(ci, e);
+  const int should_do_cj =
+      cj->black_holes.count != 0 && cell_is_active_black_holes(cj, e);
+#else
   const int should_do_ci = ci->black_holes.count != 0 && cj->hydro.count != 0 &&
                            cell_is_active_black_holes(ci, e);
   const int should_do_cj = cj->black_holes.count != 0 && ci->hydro.count != 0 &&
                            cell_is_active_black_holes(cj, e);
+
+#endif
+
   if (!should_do_ci && !should_do_cj) return;
 
   /* Get the type of pair and flip ci/cj if needed. */
@@ -811,17 +830,18 @@ void DOSUB_PAIR1_BH(struct runner *r, struct cell *ci, struct cell *cj,
     const int do_ci_bh = ci->nodeID == e->nodeID;
     const int do_cj_bh = cj->nodeID == e->nodeID;
 #elif (FUNCTION_TASK_LOOP == TASK_LOOP_FEEDBACK)
-    /* here we are updating the hydro -> switch ci, cj */
+    /* Here we are updating the hydro -> switch ci, cj */
     const int do_ci_bh = cj->nodeID == e->nodeID;
     const int do_cj_bh = ci->nodeID == e->nodeID;
 #else
+    /* Here we perform the task on both sides */
     const int do_ci_bh = 1;
     const int do_cj_bh = 1;
 #endif
 
-    const int do_ci = ci->black_holes.count != 0 && cj->hydro.count != 0 &&
+    const int do_ci = ci->black_holes.count != 0 &&
                       cell_is_active_black_holes(ci, e) && do_ci_bh;
-    const int do_cj = cj->black_holes.count != 0 && ci->hydro.count != 0 &&
+    const int do_cj = cj->black_holes.count != 0 &&
                       cell_is_active_black_holes(cj, e) && do_cj_bh;
 
     if (do_ci) {
@@ -830,14 +850,14 @@ void DOSUB_PAIR1_BH(struct runner *r, struct cell *ci, struct cell *cj,
       if (!cell_are_bpart_drifted(ci, e))
         error("Interacting undrifted cells (bparts).");
 
-      if (!cell_are_part_drifted(cj, e))
+      if (cj->hydro.count != 0 && !cell_are_part_drifted(cj, e))
         error("Interacting undrifted cells (parts).");
     }
 
     if (do_cj) {
 
       /* Make sure both cells are drifted to the current timestep. */
-      if (!cell_are_part_drifted(ci, e))
+      if (ci->hydro.count != 0 && !cell_are_part_drifted(ci, e))
         error("Interacting undrifted cells (parts).");
 
       if (!cell_are_bpart_drifted(cj, e))
@@ -861,15 +881,27 @@ void DOSUB_SELF1_BH(struct runner *r, struct cell *ci, int gettimer) {
 
   TIMER_TIC;
 
+  const struct engine *e = r->e;
+
 #ifdef SWIFT_DEBUG_CHECKS
   if (ci->nodeID != engine_rank)
     error("This function should not be called on foreign cells");
 #endif
 
-  /* Should we even bother? */
-  if (ci->hydro.count == 0 || ci->black_holes.count == 0 ||
-      !cell_is_active_black_holes(ci, r->e))
-    return;
+    /* Should we even bother?
+     * In the swallow case we care about BH-BH and BH-gas
+     * interactions.
+     * In all other cases only BH-gas so we can abort if there is
+     * is no gas in the cell */
+#if (FUNCTION_TASK_LOOP == TASK_LOOP_SWALLOW)
+  const int should_do_ci =
+      ci->black_holes.count != 0 && cell_is_active_black_holes(ci, e);
+#else
+  const int should_do_ci = ci->black_holes.count != 0 && ci->hydro.count != 0 &&
+                           cell_is_active_black_holes(ci, e);
+#endif
+
+  if (!should_do_ci) return;
 
   /* Recurse? */
   if (cell_can_recurse_in_self_black_holes_task(ci)) {
@@ -887,8 +919,11 @@ void DOSUB_SELF1_BH(struct runner *r, struct cell *ci, int gettimer) {
   /* Otherwise, compute self-interaction. */
   else {
 
-    /* Drift the cell to the current timestep if needed. */
-    if (!cell_are_bpart_drifted(ci, r->e)) error("Interacting undrifted cell.");
+    /* Check we did drift to the current time */
+    if (!cell_are_bpart_drifted(ci, e)) error("Interacting undrifted cell.");
+
+    if (ci->hydro.count != 0 && !cell_are_part_drifted(ci, e))
+      error("Interacting undrifted cells (bparts).");
 
     DOSELF1_BRANCH_BH(r, ci);
   }
