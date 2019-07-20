@@ -57,7 +57,7 @@ int main(int argc, char* argv[]) {
   unsigned long long int total = 0;
 
   /* Try a few different values for the ID */
-  for (int i = 0; i < 1000; ++i) {
+  for (int i = 0; i < 10; ++i) {
 
     const long long id = rand() * (1LL << 31) + rand();
     const integertime_t increment = (1LL << time_bin);
@@ -165,5 +165,6 @@ int main(int argc, char* argv[]) {
     }
   }
 
+  message("All good!");
   return 0;
 }
