@@ -1350,7 +1350,7 @@ void write_output_serial(struct engine* e, const char* baseName,
               black_holes_write_particles(bparts_written, list, &num_fields);
               num_fields +=
                   chemistry_write_bparticles(bparts, list + num_fields);
-	      num_fields += fof_write_bparts(bparts_written, list + num_fields);
+              num_fields += fof_write_bparts(bparts_written, list + num_fields);
               if (with_stf) {
                 num_fields += velociraptor_write_bparts(bparts_written,
                                                         list + num_fields);
