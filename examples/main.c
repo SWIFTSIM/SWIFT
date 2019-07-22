@@ -368,6 +368,12 @@ int main(int argc, char *argv[]) {
     return 1;
   }
 
+  if (with_fof) {
+#ifndef WITH_FOF
+    error("Running with FOF but compiled without it!");
+#endif
+  }
+
   if (with_fof && !with_self_gravity) {
     if (myrank == 0)
       printf(
@@ -842,7 +848,9 @@ int main(int argc, char *argv[]) {
 
     /* Initialise the FOF properties */
     bzero(&fof_properties, sizeof(struct fof_props));
+#ifdef WITH_FOF
     if (with_fof) fof_init(&fof_properties, params, &prog_const, &us);
+#endif
 
     /* Be verbose about what happens next */
     if (myrank == 0) message("Reading ICs from file '%s'", ICfileName);

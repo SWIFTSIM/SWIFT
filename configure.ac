@@ -225,16 +225,6 @@ if test "x$enable_debug" = "xyes"; then
    fi
 fi
 
-# Check if stand-alone FoF is on.
-AC_ARG_ENABLE([stand-alone-fof],
-   [AS_HELP_STRING([--enable-stand-alone-fof],
-     [Activate the compilation of the stand-alone friends-of-friends post-processing tool.],
-   )],
-   [enable_standalone_fof="$enableval"],
-   [enable_standalone_fof="no"]
-)
-AM_CONDITIONAL([HAVEFOF],[test $enable_standalone_fof = "yes"])
-
 # Check if task debugging is on.
 AC_ARG_ENABLE([task-debugging],
    [AS_HELP_STRING([--enable-task-debugging],
@@ -1341,6 +1331,7 @@ case "$with_subgrid" in
 	with_subgrid_star_formation=GEAR
 	with_subgrid_feedback=none
 	with_subgrid_black_holes=none
+	enable_fof=no
    ;;
    EAGLE)
 	with_subgrid_cooling=EAGLE
@@ -1351,11 +1342,39 @@ case "$with_subgrid" in
 	with_subgrid_star_formation=EAGLE
 	with_subgrid_feedback=EAGLE
 	with_subgrid_black_holes=EAGLE
+	enable_fof=yes
    ;;
    *)
       AC_MSG_ERROR([Unknown subgrid choice: $with_subgrid])
    ;;
 esac
+
+# Check if FoF is on.
+AC_ARG_ENABLE([fof],
+   [AS_HELP_STRING([--enable-fof],
+     [Activate the friends-of-friends (FoF) code.],
+   )],
+   [enable_fof="$enableval"],
+   [enable_fof="no"]
+)
+if test "$enable_fof" = "yes"; then
+   AC_DEFINE([WITH_FOF], 1, [Enable FoF])
+fi
+
+# Check if stand-alone FoF is on.
+AC_ARG_ENABLE([stand-alone-fof],
+   [AS_HELP_STRING([--enable-stand-alone-fof],
+     [Activate the compilation of the stand-alone friends-of-friends (FoF) post-processing tool.],
+   )],
+   [enable_standalone_fof="$enableval"],
+   [enable_standalone_fof="no"]
+)
+if test "$enable_standalone_fof" = "yes"; then
+   enable_fof="yes + stand-alone tool"
+   AC_DEFINE([WITH_FOF], 1, [Enable FoF])
+   AC_DEFINE([WITH_STAND_ALONE_FOF], 1, [Enable stand-alone FoF])
+fi
+AM_CONDITIONAL([HAVESTANDALONEFOF],[test $enable_standalone_fof = "yes"])
 
 # Gravity scheme.
 AC_ARG_WITH([gravity],
@@ -1990,6 +2009,7 @@ AC_MSG_RESULT([
    Pthread barriers     : $have_pthread_barrier
    VELOCIraptor enabled : $have_velociraptor
    Particle Logger      : $with_logger
+   FoF activated:       : $enable_fof
 
    Hydro scheme       : $with_hydro
    Dimensionality     : $with_dimension
@@ -2013,7 +2033,6 @@ AC_MSG_RESULT([
    Star feedback model  : $with_feedback
    Black holes model    : $with_black_holes
 
-   Stand-alone FoF tool:       : $enable_standalone_fof
    Individual timers           : $enable_timers
    Task debugging              : $enable_task_debugging
    Threadpool debugging        : $enable_threadpool_debugging
