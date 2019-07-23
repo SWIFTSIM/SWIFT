@@ -89,6 +89,9 @@ __attribute__((always_inline)) INLINE static void black_holes_init_bpart(
   bp->circular_velocity_gas[2] = 0.f;
   bp->ngb_mass = 0.f;
   bp->num_ngbs = 0;
+  bp->reposition.x[0] = -FLT_MAX;
+  bp->reposition.x[1] = -FLT_MAX;
+  bp->reposition.x[2] = -FLT_MAX;
 }
 
 /**
@@ -98,7 +101,26 @@ __attribute__((always_inline)) INLINE static void black_holes_init_bpart(
  * @param dt_drift The drift time-step for positions.
  */
 __attribute__((always_inline)) INLINE static void black_holes_predict_extra(
-    struct bpart* restrict bp, float dt_drift) {}
+    struct bpart* restrict bp, float dt_drift) {
+
+  /* Are we doing some repositioning? */
+  if (bp->reposition.x[0] != -FLT_MAX) {
+
+#ifdef SWIFT_DEBUG_CHECKS
+    if (bp->reposition.x[1] == -FLT_MAX || bp->reposition.x[1] == -FLT_MAX) {
+      error("Something went wrong with the new repositioning position");
+    }
+#endif
+
+    bp->x[0] = bp->reposition.x[0];
+    bp->x[1] = bp->reposition.x[1];
+    bp->x[2] = bp->reposition.x[2];
+
+    bp->gpart->x[0] = bp->reposition.x[0];
+    bp->gpart->x[1] = bp->reposition.x[1];
+    bp->gpart->x[2] = bp->reposition.x[2];
+  }
+}
 
 /**
  * @brief Sets the values to be predicted in the drifts to their values at a

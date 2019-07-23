@@ -120,6 +120,13 @@ struct bpart {
 
   } to_distribute;
 
+  struct {
+
+    /*! New position of the BH following the reposition procedure */
+    double x[3];
+
+  } reposition;
+
   /*! Chemistry information (e.g. metal content at birth, swallowed metal
    * content, etc.) */
   struct chemistry_bpart_data chemistry_data;
