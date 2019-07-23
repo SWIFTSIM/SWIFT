@@ -89,10 +89,15 @@ runner_iact_nonsym_feedback_apply(const float r2, const float *dx,
 
   /* Are we lucky? */
   if (rand_kick < prob_kick) {
-    /* kick particle */
+    /* Determine direction to kick particle (v cross a_grav) */
     float v_new[3];
-    // ALEXEI: temporary simple definition. Change to be consistent with sfr_eff.c: 1565
-    for (int i = 0; i < 3; i++) v_new[i] = si->feedback_data.to_distribute.v_kick; 
+    v_new[0] = xp->a_grav[1] * pj->v[2] - xp->a_grav[2] * pj->v[1];
+    v_new[1] = xp->a_grav[2] * pj->v[0] - xp->a_grav[0] * pj->v[2];
+    v_new[2] = xp->a_grav[0] * pj->v[1] - xp->a_grav[1] * pj->v[0];
+
+    /* Now normalise and multiply by the kick velocity */
+    float v_new_norm = sqrt(v_new[0]*v_new[0] + v_new[1]*v_new[1] + v_new[2]*v_new[2]);
+    for (int i = 0; i < 3; i++) v_new[i] *= si->feedback_data.to_distribute.v_kick/v_new_norm; 
     hydro_set_velocity(pj,v_new);
 
     /* Heat particle */
