@@ -1,0 +1,17 @@
+Rayleigh Taylor
+---------------
+
+This is a common test for hydrodynamics (see Abel 2011, Saitoh and Makino 2013, Hopkins 2013).
+It consists in a low density layer of fluid at the bottom and a high density layer at the top.
+Due to a constant vertical gravitational acceleration, the two fluids mix togerther through the
+Rayleigh Taylor instability (e.g. nuclear mushroom cloud).
+
+In this example, we follow the implementation of Saitoh and Makino 2013, but with a longer box in order
+to avoid an interaction with the wall (see last image in Figure 10).
+
+The code needs to be compiled with the following options: `--with-hydro-dimension=2`,
+`--with-ext-potential=constant`, `--enable-boundary-particles` and `--with-adiabatic-index=7/5`.
+I also recommend to use `--with-kernel=wendland-C2`.
+
+The option `--enable-boundary-particles` requires the ID of the last boundary particle.
+This value is provided by the script makeIC.py and depends on the resolution.
