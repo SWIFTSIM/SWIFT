@@ -4342,13 +4342,7 @@ void cell_drift_part(struct cell *c, const struct engine *e, int force) {
             hydro_remove_part(p, xp);
 
             /* Remove the particle entirely */
-            struct gpart *gp = p->gpart;
             cell_remove_part(e, c, p, xp);
-
-            /* and its gravity friend */
-            if (gp != NULL) {
-              cell_remove_gpart(e, c, gp);
-            }
           }
 
           if (lock_unlock(&e->s->lock) != 0)
@@ -5296,15 +5290,17 @@ void cell_remove_part(const struct engine *e, struct cell *c, struct part *p,
   if (p->gpart) {
     p->gpart->time_bin = time_bin_inhibited;
     p->gpart->id_or_neg_offset = p->id;
-    //p->gpart->type = swift_type_dark_matter;
   }
-
-  /* Un-link the part */
-  p->gpart = NULL;
 
   /* Update the space-wide counters */
   const size_t one = 1;
   atomic_add(&e->s->nr_inhibited_parts, one);
+  if (p->gpart) {
+    atomic_add(&e->s->nr_inhibited_gparts, one);
+  }
+
+  /* Un-link the part */
+  p->gpart = NULL;
 }
 
 /**

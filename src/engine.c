@@ -2454,6 +2454,8 @@ int engine_estimate_nr_tasks(const struct engine *e) {
  */
 void engine_rebuild(struct engine *e, int repartitioned,
                     int clean_smoothing_length_values) {
+  //###
+  message("Rebuilding engine");
 
   const ticks tic = getticks();
 
