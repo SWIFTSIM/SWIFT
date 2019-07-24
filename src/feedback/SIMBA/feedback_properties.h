@@ -71,7 +71,7 @@ INLINE static void feedback_props_init(struct feedback_props *fp,
                                        struct swift_params *params,
                                        const struct hydro_props *hydro_props,
                                        const struct cosmology *cosmo) {
-  // ALEXEI: double check units!!!
+  // ALEXEI: double check units, make sure all use one system!!!
 
   /* Initialize parameters for calculating rotational velocity of galaxy */
   fp->simba_host_galaxy_mass_norm = parser_get_param_float(params, "SIMBAFeedback:galaxy_mass_norm") / units_cgs_conversion_factor(us, UNIT_CONV_MASS); // 102.329 ALEXEI: guide values added in until figured out what are appropriate values.

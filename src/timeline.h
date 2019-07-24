@@ -38,14 +38,14 @@ typedef int8_t timebin_t;
 /*! The maximal number of timesteps in a simulation */
 #define max_nr_timesteps (1LL << (num_time_bins + 1))
 
+/*! Fictitious time-bin to hold particles decoupled from hydro */
+#define time_bin_decoupled (num_time_bins + 2)
+
 /*! Fictious time-bin to hold inhibited particles */
-#define time_bin_inhibited (num_time_bins + 2)
+#define time_bin_inhibited (num_time_bins + 3)
 
 /*! Fictious time-bin to hold particles not yet created */
-#define time_bin_not_created (num_time_bins + 3)
-
-/*! Fictitious time-bin to hold particles decoupled from hydro */
-#define time_bin_decoupled (num_time_bins + 4)
+#define time_bin_not_created (num_time_bins + 4)
 
 /*! Fictitious time-bin for particles not awaken */
 #define time_bin_not_awake (-num_time_bins)

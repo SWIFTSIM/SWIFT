@@ -5625,6 +5625,8 @@ void space_check_limiter_mapper(void *map_data, int nr_parts,
   for (int k = 0; k < nr_parts; k++) {
 
     if (parts[k].time_bin == time_bin_inhibited) continue;
+    
+    if (parts[k].time_bin == time_bin_decoupled) continue;
 
     if (parts[k].time_bin < 0) error("Particle has negative time-bin!");
 
