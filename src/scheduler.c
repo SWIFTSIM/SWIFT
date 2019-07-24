@@ -1110,14 +1110,17 @@ void scheduler_set_unlocks(struct scheduler *s) {
   for (int k = 0; k < s->nr_unlocks; k++) {
     counts[s->unlock_ind[k]] += 1;
 
-#ifdef SWIFT_DEBUG_CHECKS
     /* Check that we are not overflowing */
     if (counts[s->unlock_ind[k]] < 0)
-      error("Task (type=%s/%s) unlocking more than %lld other tasks!",
-            taskID_names[s->tasks[s->unlock_ind[k]].type],
-            subtaskID_names[s->tasks[s->unlock_ind[k]].subtype],
-            (1LL << (8 * sizeof(short int) - 1)) - 1);
-#endif
+      error(
+          "Task (type=%s/%s) unlocking more than %lld other tasks!\n"
+          "This likely a result of having tasks at vastly different levels"
+          "in the tree.\nYou may want to play with the 'Scheduler' "
+          "parameters to modify the task splitting strategy and reduce"
+          "the difference in task depths.",
+          taskID_names[s->tasks[s->unlock_ind[k]].type],
+          subtaskID_names[s->tasks[s->unlock_ind[k]].subtype],
+          (1LL << (8 * sizeof(short int) - 1)) - 1);
   }
 
   /* Compute the offset for each unlock block. */
