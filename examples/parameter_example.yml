@@ -546,3 +546,4 @@ SIMBAFeedback:
   high_mass_power:                  -0.761
   sn_energy_erg:                    1.e51
   energy_limit:                     1.
+  density_threshold:                10.

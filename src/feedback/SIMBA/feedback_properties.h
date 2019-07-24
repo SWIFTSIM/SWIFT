@@ -50,6 +50,9 @@ struct feedback_props {
   float SN_energy;
   float simba_wind_energy_limit;
 
+  /* threshold density above which to recouple particles */
+  float recoupling_density;
+
 };
 
 /**
@@ -92,6 +95,10 @@ INLINE static void feedback_props_init(struct feedback_props *fp,
   /* read thermal feedback parameters */
   fp->simba_wind_energy_limit = parser_get_param_float(params,"SIMBAFeedback:energy_limit"); // ALEXEI: check units here
   fp->SN_energy = parser_get_param_float(params,"SIMBAFeedback:sn_energy_erg") / units_cgs_conversion_factor(us,UNIT_CONV_ENERGY);
+
+  /* read recoupling density threshold */
+  // ALEXEI: make sure this is either reading a number density and converting or convert number density to mass density.
+  fp->recoupling_density = parser_get_param_float(params,"SIMBAFeedback:density_threshold") / units_cgs_conversion_factor(us,UNIT_CONV_DENSITY);
 
 }
 

@@ -53,8 +53,6 @@ inline void compute_kick_speed(struct spart *sp, const struct feedback_props *fe
   // ALEXEI: temporarily set to arbitrary number for testing.
   sp->feedback_data.to_distribute.v_kick = 500.;
 
-  // To do: calculate normal direction to launch winds. or randomly with switch
-  
 }
 
 /**
