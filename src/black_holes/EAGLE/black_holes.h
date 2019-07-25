@@ -92,10 +92,14 @@ __attribute__((always_inline)) INLINE static void black_holes_init_bpart(
   bp->reposition.x[0] = -FLT_MAX;
   bp->reposition.x[1] = -FLT_MAX;
   bp->reposition.x[2] = -FLT_MAX;
+  bp->reposition.min_potential = FLT_MAX;
 }
 
 /**
  * @brief Predict additional particle fields forward in time when drifting
+ *
+ * The fields do not get predicted but we move the BH to its new position
+ * if a new one was calculated in the repositioning loop.
  *
  * @param bp The particle
  * @param dt_drift The drift time-step for positions.
@@ -104,10 +108,11 @@ __attribute__((always_inline)) INLINE static void black_holes_predict_extra(
     struct bpart* restrict bp, float dt_drift) {
 
   /* Are we doing some repositioning? */
-  if (bp->reposition.x[0] != -FLT_MAX) {
+  if (bp->reposition.min_potential != FLT_MAX) {
 
 #ifdef SWIFT_DEBUG_CHECKS
-    if (bp->reposition.x[1] == -FLT_MAX || bp->reposition.x[1] == -FLT_MAX) {
+    if (bp->reposition.x[0] == -FLT_MAX || bp->reposition.x[1] == -FLT_MAX ||
+        bp->reposition.x[1] == -FLT_MAX) {
       error("Something went wrong with the new repositioning position");
     }
 #endif

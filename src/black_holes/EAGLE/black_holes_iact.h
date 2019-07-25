@@ -20,6 +20,7 @@
 #define SWIFT_EAGLE_BH_IACT_H
 
 /* Local includes */
+#include "gravity.h"
 #include "hydro.h"
 #include "random.h"
 #include "space.h"
@@ -38,13 +39,11 @@
  * @param ti_current Current integer time value (for random numbers).
  */
 __attribute__((always_inline)) INLINE static void
-runner_iact_nonsym_bh_gas_density(const float r2, const float *dx,
-                                  const float hi, const float hj,
-                                  struct bpart *restrict bi,
-                                  const struct part *restrict pj,
-                                  const struct xpart *restrict xpj,
-                                  const struct cosmology *cosmo,
-                                  const integertime_t ti_current) {
+runner_iact_nonsym_bh_gas_density(
+    const float r2, const float *dx, const float hi, const float hj,
+    struct bpart *restrict bi, const struct part *restrict pj,
+    const struct xpart *restrict xpj, const struct cosmology *cosmo,
+    const struct gravity_props *grav_props, const integertime_t ti_current) {
 
   float wi, wi_dx;
 
@@ -120,13 +119,11 @@ runner_iact_nonsym_bh_gas_density(const float r2, const float *dx,
  * @param ti_current Current integer time value (for random numbers).
  */
 __attribute__((always_inline)) INLINE static void
-runner_iact_nonsym_bh_gas_swallow(const float r2, const float *dx,
-                                  const float hi, const float hj,
-                                  const struct bpart *restrict bi,
-                                  struct part *restrict pj,
-                                  struct xpart *restrict xpj,
-                                  const struct cosmology *cosmo,
-                                  const integertime_t ti_current) {
+runner_iact_nonsym_bh_gas_swallow(
+    const float r2, const float *dx, const float hi, const float hj,
+    struct bpart *restrict bi, struct part *restrict pj,
+    struct xpart *restrict xpj, const struct cosmology *cosmo,
+    const struct gravity_props *grav_props, const integertime_t ti_current) {
 
   float wi;
 
@@ -139,6 +136,44 @@ runner_iact_nonsym_bh_gas_swallow(const float r2, const float *dx,
   const float hi_inv_dim = pow_dimension(hi_inv);
   const float ui = r * hi_inv;
   kernel_eval(ui, &wi);
+
+  /* Start by checking the repositioning criteria */
+
+  /* Note the factor 9 is taken from EAGLE. Will be turned into a parameter */
+  const float max_dist_repos2 =
+      kernel_gravity_softening_plummer_equivalent_inv *
+      kernel_gravity_softening_plummer_equivalent_inv * 9.f *
+      grav_props->epsilon_cur2;
+
+  /* This gas neighbour is close enough that we can consider it's potential
+     for repositioning */
+  if (r2 < max_dist_repos2) {
+
+    /* Compute relative peculiar velocity between the two BHs
+     * Recall that in SWIFT v is (v_pec * a) */
+    const float delta_v[3] = {bi->v[0] - pj->v[0], bi->v[1] - pj->v[1],
+                              bi->v[2] - pj->v[2]};
+    const float v2 = delta_v[0] * delta_v[0] + delta_v[1] * delta_v[1] +
+                     delta_v[2] * delta_v[2];
+
+    const float v2_pec = v2 * cosmo->a2_inv;
+
+    /* Check the velocity criterion */
+    if (v2_pec < 0.25f * bi->sound_speed_gas * bi->sound_speed_gas) {
+
+      const float potential = gravity_get_comoving_potential(pj->gpart);
+
+      /* Is the potential lower? */
+      if (potential < bi->reposition.min_potential) {
+
+        /* Store this as our new best */
+        bi->reposition.min_potential = potential;
+        bi->reposition.x[0] = pj->x[0];
+        bi->reposition.x[1] = pj->x[1];
+        bi->reposition.x[2] = pj->x[2];
+      }
+    }
+  }
 
   /* Is the BH hungry? */
   if (bi->subgrid_mass > bi->mass) {
@@ -272,13 +307,11 @@ runner_iact_nonsym_bh_bh_swallow(const float r2, const float *dx,
  * @param ti_current Current integer time value (for random numbers).
  */
 __attribute__((always_inline)) INLINE static void
-runner_iact_nonsym_bh_gas_feedback(const float r2, const float *dx,
-                                   const float hi, const float hj,
-                                   const struct bpart *restrict bi,
-                                   struct part *restrict pj,
-                                   struct xpart *restrict xpj,
-                                   const struct cosmology *cosmo,
-                                   const integertime_t ti_current) {
+runner_iact_nonsym_bh_gas_feedback(
+    const float r2, const float *dx, const float hi, const float hj,
+    const struct bpart *restrict bi, struct part *restrict pj,
+    struct xpart *restrict xpj, const struct cosmology *cosmo,
+    const struct gravity_props *grav_props, const integertime_t ti_current) {
 
   /* Get the heating probability */
   const float prob = bi->to_distribute.AGN_heating_probability;

@@ -159,7 +159,8 @@ void DOSELF1_BH(struct runner *r, struct cell *c, int timer) {
 #endif
 
         if (r2 < hig2) {
-          IACT_BH_GAS(r2, dx, hi, hj, bi, pj, xpj, cosmo, ti_current);
+          IACT_BH_GAS(r2, dx, hi, hj, bi, pj, xpj, cosmo, e->gravity_properties,
+                      ti_current);
         }
       } /* loop over the parts in ci. */
     }   /* loop over the bparts in ci. */
@@ -310,7 +311,8 @@ void DO_NONSYM_PAIR1_BH_NAIVE(struct runner *r, struct cell *restrict ci,
 #endif
 
         if (r2 < hig2) {
-          IACT_BH_GAS(r2, dx, hi, hj, bi, pj, xpj, cosmo, ti_current);
+          IACT_BH_GAS(r2, dx, hi, hj, bi, pj, xpj, cosmo, e->gravity_properties,
+                      ti_current);
         }
       } /* loop over the parts in cj. */
     }   /* loop over the bparts in ci. */
@@ -475,7 +477,8 @@ void DOPAIR1_SUBSET_BH_NAIVE(struct runner *r, struct cell *restrict ci,
 #endif
       /* Hit or miss? */
       if (r2 < hig2) {
-        IACT_BH_GAS(r2, dx, hi, hj, bi, pj, xpj, cosmo, ti_current);
+        IACT_BH_GAS(r2, dx, hi, hj, bi, pj, xpj, cosmo, e->gravity_properties,
+                    ti_current);
       }
     } /* loop over the parts in cj. */
   }   /* loop over the parts in ci. */
@@ -550,7 +553,8 @@ void DOSELF1_SUBSET_BH(struct runner *r, struct cell *restrict ci,
 
       /* Hit or miss? */
       if (r2 < hig2) {
-        IACT_BH_GAS(r2, dx, hi, pj->h, bi, pj, xpj, cosmo, ti_current);
+        IACT_BH_GAS(r2, dx, hi, pj->h, bi, pj, xpj, cosmo,
+                    e->gravity_properties, ti_current);
       }
     } /* loop over the parts in cj. */
   }   /* loop over the parts in ci. */
