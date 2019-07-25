@@ -24,6 +24,7 @@
 #include "black_holes_struct.h"
 #include "cosmology.h"
 #include "dimension.h"
+#include "gravity.h"
 #include "kernel_hydro.h"
 #include "minmax.h"
 #include "physical_constants.h"
@@ -454,6 +455,24 @@ __attribute__((always_inline)) INLINE static void black_holes_prepare_feedback(
     /* Flag that we don't want to heat anyone */
     bp->to_distribute.AGN_heating_probability = 0.f;
     bp->to_distribute.AGN_delta_u = 0.f;
+  }
+}
+
+__attribute__((always_inline)) INLINE static void
+black_holes_end_reposition(struct bpart* restrict bp,
+			   const struct black_holes_props* props,
+			   const struct phys_const* constants,
+			   const struct cosmology* cosmo) {
+
+  const float potential = gravity_get_comoving_potential(bp->gpart);
+
+  /* Is the potential lower (i.e. the BH is at the bottom already)
+   * OR is the BH massive enough that we don't reposition? */
+  if (potential < bp->reposition.min_potential ||
+      bp->subgrid_mass > props->max_reposition_mass) {
+
+    /* No need to reposition */
+    bp->reposition.min_potential = FLT_MAX;
   }
 }
 
