@@ -229,7 +229,7 @@ runner_iact_nonsym_bh_gas_swallow(
 __attribute__((always_inline)) INLINE static void
 runner_iact_nonsym_bh_bh_swallow(const float r2, const float *dx,
                                  const float hi, const float hj,
-                                 const struct bpart *restrict bi,
+                                 struct bpart *restrict bi,
                                  struct bpart *restrict bj,
                                  const struct cosmology *cosmo,
                                  const struct gravity_props *grav_props,
@@ -244,6 +244,33 @@ runner_iact_nonsym_bh_bh_swallow(const float r2, const float *dx,
 
   const float v2_pec = v2 * cosmo->a2_inv;
 
+  /* Note the factor 9 is taken from EAGLE. Will be turned into a parameter */
+  const float max_dist_repos2 =
+      kernel_gravity_softening_plummer_equivalent_inv *
+      kernel_gravity_softening_plummer_equivalent_inv * 9.f *
+      grav_props->epsilon_cur2;
+
+  /* This gas neighbour is close enough that we can consider it's potential
+     for repositioning */
+  if (r2 < max_dist_repos2) {
+
+    /* Check the velocity criterion */
+    if (v2_pec < 0.25f * bi->sound_speed_gas * bi->sound_speed_gas) {
+
+      const float potential = gravity_get_comoving_potential(bj->gpart);
+
+      /* Is the potential lower? */
+      if (potential < bi->reposition.min_potential) {
+
+        /* Store this as our new best */
+        bi->reposition.min_potential = potential;
+        bi->reposition.x[0] = bj->x[0];
+        bi->reposition.x[1] = bj->x[1];
+        bi->reposition.x[2] = bj->x[2];
+      }
+    }
+  }
+
   /* Find the most massive of the two BHs */
   float M = bi->subgrid_mass;
   float h = hi;
@@ -253,9 +280,10 @@ runner_iact_nonsym_bh_bh_swallow(const float r2, const float *dx,
   }
 
   /* Note the factor 9 is taken from EAGLE. Will be turned into a parameter */
-  const float max_distance2 = kernel_gravity_softening_plummer_equivalent_inv *
-                              kernel_gravity_softening_plummer_equivalent_inv *
-                              9.f * grav_props->epsilon_cur2;
+  const float max_dist_merge2 =
+      kernel_gravity_softening_plummer_equivalent_inv *
+      kernel_gravity_softening_plummer_equivalent_inv * 9.f *
+      grav_props->epsilon_cur2;
 
   const float G_Newton = grav_props->G_Newton;
 
@@ -269,7 +297,7 @@ runner_iact_nonsym_bh_bh_swallow(const float r2, const float *dx,
     /* Merge if gravitationally bound AND if within max distance
      * Note that we use the kernel support here as the size and not just the
      * smoothing length */
-    if (v2_pec < G_Newton * M / (kernel_gamma * h) && (r2 < max_distance2)) {
+    if (v2_pec < G_Newton * M / (kernel_gamma * h) && (r2 < max_dist_merge2)) {
 
       /* This particle is swallowed by the BH with the largest ID of all the
        * candidates wanting to swallow it */
