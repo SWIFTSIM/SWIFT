@@ -5290,6 +5290,7 @@ void cell_remove_part(const struct engine *e, struct cell *c, struct part *p,
   if (p->gpart) {
     p->gpart->time_bin = time_bin_inhibited;
     p->gpart->id_or_neg_offset = p->id;
+    p->gpart->type = swift_type_dark_matter;
   }
 
   /* Update the space-wide counters */
