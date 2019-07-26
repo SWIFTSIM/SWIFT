@@ -1307,7 +1307,7 @@ void space_rebuild(struct space *s, int repartitioned, int verbose) {
     }
   }
 
-///### #ifdef SWIFT_DEBUG_CHECKS
+#ifdef SWIFT_DEBUG_CHECKS
   /* Check that all parts are in the correct places. */
   size_t check_count_inhibited_part = 0;
   for (size_t k = 0; k < nr_parts; k++) {
@@ -1323,7 +1323,7 @@ void space_rebuild(struct space *s, int repartitioned, int verbose) {
   }
   if (check_count_inhibited_part != count_inhibited_parts)
     error("Counts of inhibited particles do not match!");
-///### #endif /* SWIFT_DEBUG_CHECKS */
+#endif /* SWIFT_DEBUG_CHECKS */
 
   /* Move non-local sparts and inhibited sparts to the end of the list. */
   if (!repartitioned && (s->e->nr_nodes > 1 || count_inhibited_sparts > 0)) {
@@ -1465,7 +1465,7 @@ void space_rebuild(struct space *s, int repartitioned, int verbose) {
     }
   }
 
-///### #ifdef SWIFT_DEBUG_CHECKS
+#ifdef SWIFT_DEBUG_CHECKS
   /* Check that all gparts are in the correct place. */
   size_t check_count_inhibited_gpart = 0;
   for (size_t k = 0; k < nr_gparts; k++) {
@@ -1481,7 +1481,7 @@ void space_rebuild(struct space *s, int repartitioned, int verbose) {
   }
   if (check_count_inhibited_gpart != count_inhibited_gparts)
     error("Counts of inhibited g-particles do not match!");
-///### #endif /* SWIFT_DEBUG_CHECKS */
+#endif /* SWIFT_DEBUG_CHECKS */
 
 #ifdef WITH_MPI
 
@@ -1619,7 +1619,7 @@ void space_rebuild(struct space *s, int repartitioned, int verbose) {
     space_parts_sort(s->parts, s->xparts, h_index, cell_part_counts,
                      s->nr_cells, 0);
 
-///### #ifdef SWIFT_DEBUG_CHECKS
+#ifdef SWIFT_DEBUG_CHECKS
   /* Verify that the part have been sorted correctly. */
   for (size_t k = 0; k < nr_parts; k++) {
     const struct part *p = &s->parts[k];
@@ -1643,7 +1643,7 @@ void space_rebuild(struct space *s, int repartitioned, int verbose) {
         p->x[2] < c->loc[2] || p->x[2] > c->loc[2] + c->width[2])
       error("part not sorted into the right top-level cell!");
   }
-///### #endif /* SWIFT_DEBUG_CHECKS */
+#endif /* SWIFT_DEBUG_CHECKS */
 
   /* Sort the sparts according to their cells. */
   if (nr_sparts > 0)
@@ -1794,7 +1794,7 @@ void space_rebuild(struct space *s, int repartitioned, int verbose) {
     space_gparts_sort(s->gparts, s->parts, s->sparts, s->bparts, g_index,
                       cell_gpart_counts, s->nr_cells);
 
-///### #ifdef SWIFT_DEBUG_CHECKS
+#ifdef SWIFT_DEBUG_CHECKS
   /* Verify that the gpart have been sorted correctly. */
   for (size_t k = 0; k < nr_gparts; k++) {
     const struct gpart *gp = &s->gparts[k];
@@ -1818,7 +1818,7 @@ void space_rebuild(struct space *s, int repartitioned, int verbose) {
         gp->x[2] < c->loc[2] || gp->x[2] > c->loc[2] + c->width[2])
       error("gpart not sorted into the right top-level cell!");
   }
-///### #endif /* SWIFT_DEBUG_CHECKS */
+#endif /* SWIFT_DEBUG_CHECKS */
 
   /* Extract the cell counts from the sorted indices. Deduct the extra
    * particles. */
@@ -3945,7 +3945,7 @@ void space_synchronize_particle_positions_mapper(void *map_data, int nr_gparts,
 
     else if (gp->type == swift_type_gas) {
 
-      /* Get it's gassy friend */
+      /* Get its gassy friend */
       struct part *p = &s->parts[-gp->id_or_neg_offset];
       struct xpart *xp = &s->xparts[-gp->id_or_neg_offset];
 
@@ -3963,7 +3963,7 @@ void space_synchronize_particle_positions_mapper(void *map_data, int nr_gparts,
 
     else if (gp->type == swift_type_stars) {
 
-      /* Get it's stellar friend */
+      /* Get its stellar friend */
       struct spart *sp = &s->sparts[-gp->id_or_neg_offset];
 
       /* Synchronize positions */
@@ -3976,7 +3976,7 @@ void space_synchronize_particle_positions_mapper(void *map_data, int nr_gparts,
 
     else if (gp->type == swift_type_black_hole) {
 
-      /* Get it's black hole friend */
+      /* Get its black hole friend */
       struct bpart *bp = &s->bparts[-gp->id_or_neg_offset];
 
       /* Synchronize positions */

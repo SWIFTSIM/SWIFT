@@ -728,20 +728,6 @@ void write_output_single(struct engine* e, const char* baseName,
   const size_t Ndm_written =
       Ntot_written > 0 ? Ntot_written - Nbaryons_written : 0;
 
-  ///###
-  message("Ntot_written = %zd", Ntot_written);
-  message("Ngas_written = %zd", Ngas_written);
-  message("Nstars_written = %zd", Nstars_written);
-  message("Nblackholes_written = %zd", Nblackholes_written);
-  message("Nbaryons_written = %zd", Nbaryons_written);
-  message("Ndm_written = %zd", Ndm_written);
-  message("e->s->nr_gparts = %lu", e->s->nr_gparts);
-  message("e->s->nr_inhibited_gparts = %lu", e->s->nr_inhibited_gparts);
-  message("e->s->nr_extra_gparts = %lu", e->s->nr_extra_gparts);
-  message("e->s->nr_parts = %lu", e->s->nr_parts);
-  message("e->s->nr_inhibited_parts = %lu", e->s->nr_inhibited_parts);
-  message("e->s->nr_extra_parts = %lu", e->s->nr_extra_parts);
-
   /* Format things in a Gadget-friendly array */
   long long N_total[swift_type_count] = {
       (long long)Ngas_written,   (long long)Ndm_written,        0, 0,
