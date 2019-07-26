@@ -518,14 +518,8 @@ void velociraptor_invoke(struct engine *e, const int linked_with_snap) {
   char outputFileName[PARSER_MAX_LINE_SIZE + 128];
 
   /* What should the filename be? */
-  if (linked_with_snap) {
-    snprintf(outputFileName, PARSER_MAX_LINE_SIZE + 128,
-             "stf_%s_%04i.VELOCIraptor", e->snapshot_base_name,
-             e->snapshot_output_count);
-  } else {
-    snprintf(outputFileName, PARSER_MAX_LINE_SIZE + 128, "%s_%04i.VELOCIraptor",
-             e->stf_base_name, e->stf_output_count);
-  }
+  snprintf(outputFileName, PARSER_MAX_LINE_SIZE + 128, "%s_%04i.VELOCIraptor",
+           e->stf_base_name, e->stf_output_count);
 
   /* What is the snapshot number? */
   int snapnum;
