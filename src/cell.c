@@ -5323,6 +5323,9 @@ void cell_remove_part(const struct engine *e, struct cell *c, struct part *p,
   if (c->nodeID != e->nodeID)
     error("Can't remove a particle in a foreign cell.");
 
+  /* Don't remove a particle twice */
+  if (p->time_bin == time_bin_inhibited) return;
+
   /* Mark the particle as inhibited */
   p->time_bin = time_bin_inhibited;
 
@@ -5357,6 +5360,10 @@ void cell_remove_part(const struct engine *e, struct cell *c, struct part *p,
 void cell_remove_gpart(const struct engine *e, struct cell *c,
                        struct gpart *gp) {
 
+  /* Quick cross-check */
+  if (c->nodeID != e->nodeID)
+    error("Can't remove a particle in a foreign cell.");
+
   /* Don't remove a particle twice */
   if (gp->time_bin == time_bin_inhibited) return;
 
@@ -5387,6 +5394,9 @@ void cell_remove_spart(const struct engine *e, struct cell *c,
   /* Quick cross-check */
   if (c->nodeID != e->nodeID)
     error("Can't remove a particle in a foreign cell.");
+
+  /* Don't remove a particle twice */
+  if (sp->time_bin == time_bin_inhibited) return;
 
   /* Mark the particle as inhibited and stand-alone */
   sp->time_bin = time_bin_inhibited;
@@ -5420,6 +5430,9 @@ void cell_remove_bpart(const struct engine *e, struct cell *c,
   /* Quick cross-check */
   if (c->nodeID != e->nodeID)
     error("Can't remove a particle in a foreign cell.");
+
+  /* Don't remove a particle twice */
+  if (bp->time_bin == time_bin_inhibited) return;
 
   /* Mark the particle as inhibited and stand-alone */
   bp->time_bin = time_bin_inhibited;
