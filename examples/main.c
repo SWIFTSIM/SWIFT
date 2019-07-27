@@ -1123,7 +1123,8 @@ int main(int argc, char *argv[]) {
     logger_log_all(e.logger, &e);
     engine_dump_index(&e);
 #endif
-    engine_dump_snapshot(&e);
+    /* If not working with an output list dump initial state snapshot */
+    if (!e.output_list_snapshots) engine_dump_snapshot(&e);
     engine_print_stats(&e);
 
     /* Is there a dump before the end of the first time-step? */
@@ -1290,18 +1291,21 @@ int main(int argc, char *argv[]) {
     engine_dump_index(&e);
 #endif
 
+    /* Write a final snapshot if we are not working with an output list */
+    if (!e.output_list_snapshots) {
 #ifdef HAVE_VELOCIRAPTOR
-    if (with_structure_finding && e.snapshot_invoke_stf)
-      velociraptor_invoke(&e, /*linked_with_snap=*/1);
+      if (with_structure_finding && e.snapshot_invoke_stf)
+        velociraptor_invoke(&e, /*linked_with_snap=*/1);
 #endif
 
-    /* write a final snapshot */
-    engine_dump_snapshot(&e);
+      /* Write a final snapshot */
+      engine_dump_snapshot(&e);
 
 #ifdef HAVE_VELOCIRAPTOR
-    if (with_structure_finding && e.snapshot_invoke_stf)
-      free(e.s->gpart_group_data);
+      if (with_structure_finding && e.snapshot_invoke_stf)
+        free(e.s->gpart_group_data);
 #endif
+    }
   }
 
 #ifdef WITH_MPI
