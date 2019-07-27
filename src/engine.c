@@ -5441,6 +5441,12 @@ void engine_config(int restart, int fof, struct engine *e,
               "Scale-factor of first stf output (%e) must be after the "
               "simulation start a=%e.",
               e->a_first_stf_output, e->cosmology->a_begin);
+
+        if (e->snapshot_invoke_stf && e->output_list_stf)
+          error("Cannot run with invoke_stf alongside StructureFinding: "
+                "output_list.\nCan run either with invoke_stf using the Snapshots: "
+                "output_list or by having Snapshots: output_list and "
+                "StructureFinding:output_list both defined.");
       }
 
       if (e->policy & engine_policy_fof) {

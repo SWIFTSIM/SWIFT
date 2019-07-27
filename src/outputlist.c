@@ -137,6 +137,9 @@ void output_list_read_file(struct output_list *outputlist, const char *filename,
   /* set current indice to 0 */
   outputlist->cur_ind = 0;
 
+  /* We check if this is true later */
+  outputlist->final_step_dump = 0;
+
   fclose(file);
 }
 
@@ -162,7 +165,7 @@ void output_list_read_next_time(struct output_list *t, const struct engine *e,
   /* Find next snasphot above current time */
   double time = t->times[t->cur_ind];
   size_t ind = t->cur_ind;
-  while (time < time_end) {
+  while (time <= time_end) {
 
     /* Output time on the integer timeline */
     if (is_cosmo)
@@ -180,10 +183,18 @@ void output_list_read_next_time(struct output_list *t, const struct engine *e,
     t->cur_ind = ind;
   }
 
+  /* Do we need to do a dump at the end of the last timestep? */
+  if (time == time_end) {
+      t->final_step_dump = 1;
+      if (e->verbose)
+        message("Next output time for %s set to a=%e.", name, time_end);
+  }
+
   /* Deal with last statistics */
   if (*ti_next >= max_nr_timesteps || ind == t->size || time >= time_end) {
     *ti_next = -1;
-    if (e->verbose) message("No further output time for %s.", name);
+    if (e->verbose && t->final_step_dump != 1)
+      message("No further output time for %s.", name);
   } else {
 
     /* Be nice, talk... */

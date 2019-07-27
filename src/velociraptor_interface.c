@@ -517,10 +517,6 @@ void velociraptor_invoke(struct engine *e, const int linked_with_snap) {
   /* Append base name with the current output number */
   char outputFileName[PARSER_MAX_LINE_SIZE + 128];
 
-  /* What should the filename be? */
-  snprintf(outputFileName, PARSER_MAX_LINE_SIZE + 128, "%s_%04i.VELOCIraptor",
-           e->stf_base_name, e->stf_output_count);
-
   /* What is the snapshot number? */
   int snapnum;
   if (linked_with_snap) {
@@ -528,6 +524,10 @@ void velociraptor_invoke(struct engine *e, const int linked_with_snap) {
   } else {
     snapnum = e->stf_output_count;
   }
+
+  /* What should the filename be? */
+  snprintf(outputFileName, PARSER_MAX_LINE_SIZE + 128, "%s_%04i.VELOCIraptor",
+           e->stf_base_name, snapnum);
 
   tic = getticks();
 
