@@ -3614,6 +3614,26 @@ void runner_do_end_hydro_force(struct runner *r, struct cell *c, int timer) {
 
         /* Finish the force loop */
         hydro_end_force(p, cosmo);
+
+#ifdef SWIFT_BOUNDARY_PARTICLES
+
+        /* Get the ID of the part */
+        const long long id = p->id;
+
+        /* Cancel hdyro forces of these particles */
+        if (id < SWIFT_BOUNDARY_PARTICLES) {
+
+          /* Don't move ! */
+          hydro_reset_acceleration(p);
+
+#if defined(GIZMO_MFV_SPH) || defined(GIZMO_MFM_SPH)
+
+          /* Some values need to be reset in the Gizmo case. */
+          hydro_prepare_force(p, &c->hydro.xparts[k], cosmo,
+                              e->hydro_properties, 0);
+#endif
+        }
+#endif
       }
     }
   }
@@ -3757,7 +3777,7 @@ void runner_do_end_grav_force(struct runner *r, struct cell *c, int timer) {
  * @param c The #cell.
  * @param timer Are we timing this?
  */
-void runner_do_swallow(struct runner *r, struct cell *c, int timer) {
+void runner_do_gas_swallow(struct runner *r, struct cell *c, int timer) {
 
   struct engine *e = r->e;
   struct space *s = e->s;
@@ -3785,7 +3805,7 @@ void runner_do_swallow(struct runner *r, struct cell *c, int timer) {
       if (c->progeny[k] != NULL) {
         struct cell *restrict cp = c->progeny[k];
 
-        runner_do_swallow(r, cp, 0);
+        runner_do_gas_swallow(r, cp, 0);
       }
     }
   } else {
@@ -3804,7 +3824,7 @@ void runner_do_swallow(struct runner *r, struct cell *c, int timer) {
 
       /* Get the ID of the black holes that will swallow this part */
       const long long swallow_id =
-          black_holes_get_swallow_id(&p->black_holes_data);
+          black_holes_get_part_swallow_id(&p->black_holes_data);
 
       /* Has this particle been flagged for swallowing? */
       if (swallow_id >= 0) {
@@ -3839,12 +3859,12 @@ void runner_do_swallow(struct runner *r, struct cell *c, int timer) {
             if (lock_unlock(&s->lock) != 0)
               error("Failed to unlock the space.");
 
-            message("BH %lld swallowing particle %lld", bp->id, p->id);
+            message("BH %lld swallowing gas particle %lld", bp->id, p->id);
 
             /* If the gas particle is local, remove it */
             if (c->nodeID == e->nodeID) {
 
-              message("BH %lld removing particle %lld", bp->id, p->id);
+              message("BH %lld removing gas particle %lld", bp->id, p->id);
 
               lock_lock(&e->s->lock);
 
@@ -3863,7 +3883,7 @@ void runner_do_swallow(struct runner *r, struct cell *c, int timer) {
             }
 
             /* In any case, prevent the particle from being re-swallowed */
-            black_holes_mark_as_swallowed(&p->black_holes_data);
+            black_holes_mark_part_as_swallowed(&p->black_holes_data);
 
             found = 1;
             break;
@@ -3886,7 +3906,7 @@ void runner_do_swallow(struct runner *r, struct cell *c, int timer) {
 
             if (bp->id == BH_id) {
 
-              message("BH %lld removing particle %lld (foreign BH case)",
+              message("BH %lld removing gas particle %lld (foreign BH case)",
                       bp->id, p->id);
 
               lock_lock(&e->s->lock);
@@ -3929,7 +3949,7 @@ void runner_do_swallow(struct runner *r, struct cell *c, int timer) {
  * @param c The #cell.
  * @param timer Are we timing this?
  */
-void runner_do_swallow_self(struct runner *r, struct cell *c, int timer) {
+void runner_do_gas_swallow_self(struct runner *r, struct cell *c, int timer) {
 
 #ifdef SWIFT_DEBUG_CHECKS
   if (c->nodeID != r->e->nodeID) error("Running self task on foreign node");
@@ -3937,7 +3957,7 @@ void runner_do_swallow_self(struct runner *r, struct cell *c, int timer) {
     error("Running self task on inactive cell");
 #endif
 
-  runner_do_swallow(r, c, timer);
+  runner_do_gas_swallow(r, c, timer);
 }
 
 /**
@@ -3948,22 +3968,226 @@ void runner_do_swallow_self(struct runner *r, struct cell *c, int timer) {
  * @param cj Second #cell.
  * @param timer Are we timing this?
  */
-void runner_do_swallow_pair(struct runner *r, struct cell *ci, struct cell *cj,
-                            int timer) {
+void runner_do_gas_swallow_pair(struct runner *r, struct cell *ci,
+                                struct cell *cj, int timer) {
 
   const struct engine *e = r->e;
 
 #ifdef SWIFT_DEBUG_CHECKS
   if (ci->nodeID != e->nodeID && cj->nodeID != e->nodeID)
     error("Running pair task on foreign node");
-  if (!cell_is_active_black_holes(ci, e) && !cell_is_active_black_holes(cj, e))
-    error("Running pair task with two inactive cells");
 #endif
 
   /* Run the swallowing loop only in the cell that is the neighbour of the
    * active BH */
-  if (cell_is_active_black_holes(cj, e)) runner_do_swallow(r, ci, timer);
-  if (cell_is_active_black_holes(ci, e)) runner_do_swallow(r, cj, timer);
+  if (cell_is_active_black_holes(cj, e)) runner_do_gas_swallow(r, ci, timer);
+  if (cell_is_active_black_holes(ci, e)) runner_do_gas_swallow(r, cj, timer);
+}
+
+/**
+ * @brief Process all the BH particles in a cell that have been flagged for
+ * swallowing by a black hole.
+ *
+ * This is done by recursing down to the leaf-level and skipping the sub-cells
+ * that have not been drifted as they would not have any particles with
+ * swallowing flag. We then loop over the particles with a flag and look into
+ * the space-wide list of black holes for the particle with the corresponding
+ * ID. If found, the BH swallows the BH particle and the BH particle is
+ * removed. If the cell is local, we may be looking for a foreign BH, in which
+ * case, we do not update the BH (that will be done on its node) but just remove
+ * the BH particle.
+ *
+ * @param r The thread #runner.
+ * @param c The #cell.
+ * @param timer Are we timing this?
+ */
+void runner_do_bh_swallow(struct runner *r, struct cell *c, int timer) {
+
+  struct engine *e = r->e;
+  struct space *s = e->s;
+  struct bpart *bparts = s->bparts;
+  const size_t nr_bpart = s->nr_bparts;
+#ifdef WITH_MPI
+  struct bpart *bparts_foreign = s->bparts_foreign;
+  const size_t nr_bparts_foreign = s->nr_bparts_foreign;
+#endif
+
+  struct bpart *cell_bparts = c->black_holes.parts;
+
+  /* Early abort?
+   * (We only want cells for which we drifted the BH as these are
+   * the only ones that could have BH particles that have been flagged
+   * for swallowing) */
+  if (c->black_holes.count == 0 ||
+      c->black_holes.ti_old_part != e->ti_current) {
+    return;
+  }
+
+  /* Loop over the progeny ? */
+  if (c->split) {
+    for (int k = 0; k < 8; k++) {
+      if (c->progeny[k] != NULL) {
+        struct cell *restrict cp = c->progeny[k];
+
+        runner_do_bh_swallow(r, cp, 0);
+      }
+    }
+  } else {
+
+    /* Loop over all the gas particles in the cell
+     * Note that the cell (and hence the bparts) may be local or foreign. */
+    const size_t nr_cell_bparts = c->black_holes.count;
+    for (size_t k = 0; k < nr_cell_bparts; k++) {
+
+      /* Get a handle on the part. */
+      struct bpart *const cell_bp = &cell_bparts[k];
+
+      /* Ignore inhibited particles (they have already been removed!) */
+      if (bpart_is_inhibited(cell_bp, e)) continue;
+
+      /* Get the ID of the black holes that will swallow this part */
+      const long long swallow_id =
+          black_holes_get_bpart_swallow_id(&cell_bp->merger_data);
+
+      /* message("OO id=%lld swallow_id = %lld", cell_bp->id, */
+      /* 	      swallow_id); */
+
+      /* Has this particle been flagged for swallowing? */
+      if (swallow_id >= 0) {
+
+#ifdef SWIFT_DEBUG_CHECKS
+        if (cell_bp->ti_drift != e->ti_current)
+          error("Trying to swallow an un-drifted particle.");
+#endif
+
+        /* ID of the BH swallowing this particle */
+        const long long BH_id = swallow_id;
+
+        /* Have we found this particle's BH already? */
+        int found = 0;
+
+        /* Let's look for the hungry black hole in the local list */
+        for (size_t i = 0; i < nr_bpart; ++i) {
+
+          /* Get a handle on the bpart. */
+          struct bpart *bp = &bparts[i];
+
+          if (bp->id == BH_id) {
+
+            /* Lock the space as we are going to work directly on the bpart list
+             */
+            lock_lock(&s->lock);
+
+            /* Swallow the gas particle (i.e. update the BH properties) */
+            black_holes_swallow_bpart(bp, cell_bp, e->cosmology);
+
+            /* Release the space as we are done updating the bpart */
+            if (lock_unlock(&s->lock) != 0)
+              error("Failed to unlock the space.");
+
+            message("BH %lld swallowing BH particle %lld", bp->id, cell_bp->id);
+
+            /* If the gas particle is local, remove it */
+            if (c->nodeID == e->nodeID) {
+
+              message("BH %lld removing BH particle %lld", bp->id, cell_bp->id);
+
+              /* Finally, remove the gas particle from the system */
+              struct gpart *cell_gp = cell_bp->gpart;
+              cell_remove_bpart(e, c, cell_bp);
+              cell_remove_gpart(e, c, cell_gp);
+            }
+
+            /* In any case, prevent the particle from being re-swallowed */
+            black_holes_mark_bpart_as_merged(&cell_bp->merger_data);
+
+            found = 1;
+            break;
+          }
+
+        } /* Loop over local BHs */
+
+#ifdef WITH_MPI
+
+        /* We could also be in the case of a local BH particle being
+         * swallowed by a foreign BH. In this case, we won't update the
+         * foreign BH but just remove the particle from the local list. */
+        if (c->nodeID == e->nodeID && !found) {
+
+          /* Let's look for the foreign hungry black hole */
+          for (size_t i = 0; i < nr_bparts_foreign; ++i) {
+
+            /* Get a handle on the bpart. */
+            struct bpart *bp = &bparts_foreign[i];
+
+            if (bp->id == BH_id) {
+
+              message("BH %lld removing BH particle %lld (foreign BH case)",
+                      bp->id, cell_bp->id);
+
+              /* Finally, remove the gas particle from the system */
+              struct gpart *cell_gp = cell_bp->gpart;
+              cell_remove_bpart(e, c, cell_bp);
+              cell_remove_gpart(e, c, cell_gp);
+
+              found = 1;
+              break;
+            }
+          } /* Loop over foreign BHs */
+        }   /* Is the cell local? */
+#endif
+
+        /* If we have a local particle, we must have found the BH in one
+         * of our list of black holes. */
+        if (c->nodeID == e->nodeID && !found) {
+          error("BH particle %lld could not find BH %lld to be swallowed",
+                cell_bp->id, swallow_id);
+        }
+      } /* Part was flagged for swallowing */
+    }   /* Loop over the parts */
+  }     /* Cell is not split */
+}
+
+/**
+ * @brief Processing of bh particles to swallow - self task case.
+ *
+ * @param r The thread #runner.
+ * @param c The #cell.
+ * @param timer Are we timing this?
+ */
+void runner_do_bh_swallow_self(struct runner *r, struct cell *c, int timer) {
+
+#ifdef SWIFT_DEBUG_CHECKS
+  if (c->nodeID != r->e->nodeID) error("Running self task on foreign node");
+  if (!cell_is_active_black_holes(c, r->e))
+    error("Running self task on inactive cell");
+#endif
+
+  runner_do_bh_swallow(r, c, timer);
+}
+
+/**
+ * @brief Processing of bh particles to swallow - pair task case.
+ *
+ * @param r The thread #runner.
+ * @param ci First #cell.
+ * @param cj Second #cell.
+ * @param timer Are we timing this?
+ */
+void runner_do_bh_swallow_pair(struct runner *r, struct cell *ci,
+                               struct cell *cj, int timer) {
+
+  const struct engine *e = r->e;
+
+#ifdef SWIFT_DEBUG_CHECKS
+  if (ci->nodeID != e->nodeID && cj->nodeID != e->nodeID)
+    error("Running pair task on foreign node");
+#endif
+
+  /* Run the swallowing loop only in the cell that is the neighbour of the
+   * active BH */
+  if (cell_is_active_black_holes(cj, e)) runner_do_bh_swallow(r, ci, timer);
+  if (cell_is_active_black_holes(ci, e)) runner_do_bh_swallow(r, cj, timer);
 }
 
 /**
@@ -4249,6 +4473,10 @@ void runner_do_recv_bpart(struct runner *r, struct cell *c, int clear_sorts,
 #ifdef DEBUG_INTERACTIONS_BLACK_HOLES
       bparts[k].num_ngb_force = 0;
 #endif
+
+      /* message("Receiving bparts id=%lld time_bin=%d", */
+      /* 	      bparts[k].id, bparts[k].time_bin); */
+
       if (bparts[k].time_bin == time_bin_inhibited) continue;
       time_bin_min = min(time_bin_min, bparts[k].time_bin);
       time_bin_max = max(time_bin_max, bparts[k].time_bin);
@@ -4386,12 +4614,15 @@ void *runner_main(void *data) {
             runner_doself_branch_bh_density(r, ci);
           else if (t->subtype == task_subtype_bh_swallow)
             runner_doself_branch_bh_swallow(r, ci);
-          else if (t->subtype == task_subtype_do_swallow)
-            runner_do_swallow_self(r, ci, 1);
+          else if (t->subtype == task_subtype_do_gas_swallow)
+            runner_do_gas_swallow_self(r, ci, 1);
+          else if (t->subtype == task_subtype_do_bh_swallow)
+            runner_do_bh_swallow_self(r, ci, 1);
           else if (t->subtype == task_subtype_bh_feedback)
             runner_doself_branch_bh_feedback(r, ci);
           else
-            error("Unknown/invalid task subtype (%d).", t->subtype);
+            error("Unknown/invalid task subtype (%s).",
+                  subtaskID_names[t->subtype]);
           break;
 
         case task_type_pair:
@@ -4415,12 +4646,15 @@ void *runner_main(void *data) {
             runner_dopair_branch_bh_density(r, ci, cj);
           else if (t->subtype == task_subtype_bh_swallow)
             runner_dopair_branch_bh_swallow(r, ci, cj);
-          else if (t->subtype == task_subtype_do_swallow) {
-            runner_do_swallow_pair(r, ci, cj, 1);
-          } else if (t->subtype == task_subtype_bh_feedback)
+          else if (t->subtype == task_subtype_do_gas_swallow)
+            runner_do_gas_swallow_pair(r, ci, cj, 1);
+          else if (t->subtype == task_subtype_do_bh_swallow)
+            runner_do_bh_swallow_pair(r, ci, cj, 1);
+          else if (t->subtype == task_subtype_bh_feedback)
             runner_dopair_branch_bh_feedback(r, ci, cj);
           else
-            error("Unknown/invalid task subtype (%d).", t->subtype);
+            error("Unknown/invalid task subtype (%s/%s).",
+                  taskID_names[t->type], subtaskID_names[t->subtype]);
           break;
 
         case task_type_sub_self:
@@ -4442,12 +4676,15 @@ void *runner_main(void *data) {
             runner_dosub_self_bh_density(r, ci, 1);
           else if (t->subtype == task_subtype_bh_swallow)
             runner_dosub_self_bh_swallow(r, ci, 1);
-          else if (t->subtype == task_subtype_do_swallow)
-            runner_do_swallow_self(r, ci, 1);
+          else if (t->subtype == task_subtype_do_gas_swallow)
+            runner_do_gas_swallow_self(r, ci, 1);
+          else if (t->subtype == task_subtype_do_bh_swallow)
+            runner_do_bh_swallow_self(r, ci, 1);
           else if (t->subtype == task_subtype_bh_feedback)
             runner_dosub_self_bh_feedback(r, ci, 1);
           else
-            error("Unknown/invalid task subtype (%d).", t->subtype);
+            error("Unknown/invalid task subtype (%s/%s).",
+                  taskID_names[t->type], subtaskID_names[t->subtype]);
           break;
 
         case task_type_sub_pair:
@@ -4469,12 +4706,15 @@ void *runner_main(void *data) {
             runner_dosub_pair_bh_density(r, ci, cj, 1);
           else if (t->subtype == task_subtype_bh_swallow)
             runner_dosub_pair_bh_swallow(r, ci, cj, 1);
-          else if (t->subtype == task_subtype_do_swallow) {
-            runner_do_swallow_pair(r, ci, cj, 1);
-          } else if (t->subtype == task_subtype_bh_feedback)
+          else if (t->subtype == task_subtype_do_gas_swallow)
+            runner_do_gas_swallow_pair(r, ci, cj, 1);
+          else if (t->subtype == task_subtype_do_bh_swallow)
+            runner_do_bh_swallow_pair(r, ci, cj, 1);
+          else if (t->subtype == task_subtype_bh_feedback)
             runner_dosub_pair_bh_feedback(r, ci, cj, 1);
           else
-            error("Unknown/invalid task subtype (%d).", t->subtype);
+            error("Unknown/invalid task subtype (%s/%s).",
+                  taskID_names[t->type], subtaskID_names[t->subtype]);
           break;
 
         case task_type_sort:
@@ -4510,7 +4750,7 @@ void *runner_main(void *data) {
         case task_type_bh_density_ghost:
           runner_do_black_holes_density_ghost(r, ci, 1);
           break;
-        case task_type_bh_swallow_ghost2:
+        case task_type_bh_swallow_ghost3:
           runner_do_black_holes_swallow_ghost(r, ci, 1);
           break;
         case task_type_drift_part:
@@ -4560,6 +4800,8 @@ void *runner_main(void *data) {
             free(t->buff);
           } else if (t->subtype == task_subtype_part_swallow) {
             free(t->buff);
+          } else if (t->subtype == task_subtype_bpart_merger) {
+            free(t->buff);
           }
           break;
         case task_type_recv:
@@ -4589,6 +4831,10 @@ void *runner_main(void *data) {
           } else if (t->subtype == task_subtype_part_swallow) {
             cell_unpack_part_swallow(ci,
                                      (struct black_holes_part_data *)t->buff);
+            free(t->buff);
+          } else if (t->subtype == task_subtype_bpart_merger) {
+            cell_unpack_bpart_swallow(ci,
+                                      (struct black_holes_bpart_data *)t->buff);
             free(t->buff);
           } else if (t->subtype == task_subtype_limiter) {
             runner_do_recv_part(r, ci, 0, 1);
@@ -4747,6 +4993,8 @@ void runner_do_logger(struct runner *r, struct cell *c, int timer) {
  */
 void runner_do_fof_self(struct runner *r, struct cell *c, int timer) {
 
+#ifdef WITH_FOF
+
   TIMER_TIC;
 
   const struct engine *e = r->e;
@@ -4759,6 +5007,10 @@ void runner_do_fof_self(struct runner *r, struct cell *c, int timer) {
   rec_fof_search_self(e->fof_properties, dim, search_r2, periodic, gparts, c);
 
   if (timer) TIMER_TOC(timer_fof_self);
+
+#else
+  error("SWIFT was not compiled with FOF enabled!");
+#endif
 }
 
 /**
@@ -4771,6 +5023,8 @@ void runner_do_fof_self(struct runner *r, struct cell *c, int timer) {
  */
 void runner_do_fof_pair(struct runner *r, struct cell *ci, struct cell *cj,
                         int timer) {
+
+#ifdef WITH_FOF
 
   TIMER_TIC;
 
@@ -4785,4 +5039,7 @@ void runner_do_fof_pair(struct runner *r, struct cell *ci, struct cell *cj,
                       cj);
 
   if (timer) TIMER_TOC(timer_fof_pair);
+#else
+  error("SWIFT was not compiled with FOF enabled!");
+#endif
 }

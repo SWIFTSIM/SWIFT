@@ -3327,13 +3327,16 @@ void engine_skip_force_and_kick(struct engine *e) {
         t->type == task_type_extra_ghost ||
         t->type == task_type_bh_swallow_ghost1 ||
         t->type == task_type_bh_swallow_ghost2 ||
+        t->type == task_type_bh_swallow_ghost3 ||
         t->subtype == task_subtype_gradient ||
         t->subtype == task_subtype_stars_feedback ||
         t->subtype == task_subtype_bh_feedback ||
         t->subtype == task_subtype_bh_swallow ||
-        t->subtype == task_subtype_do_swallow ||
+        t->subtype == task_subtype_do_gas_swallow ||
+        t->subtype == task_subtype_do_bh_swallow ||
         t->subtype == task_subtype_bpart_rho ||
         t->subtype == task_subtype_part_swallow ||
+        t->subtype == task_subtype_bpart_merger ||
         t->subtype == task_subtype_bpart_swallow ||
         t->subtype == task_subtype_bpart_feedback ||
         t->subtype == task_subtype_tend_part ||
@@ -5572,8 +5575,10 @@ void engine_config(int restart, int fof, struct engine *e,
   stats_create_mpi_type();
   proxy_create_mpi_type();
   task_create_mpi_comms();
+#ifdef WITH_FOF
   fof_create_mpi_types();
-#endif
+#endif /* WITH_FOF */
+#endif /* WITH_MPI */
 
   if (!fof) {
 
@@ -6253,7 +6258,9 @@ void engine_struct_dump(struct engine *e, FILE *stream) {
   feedback_struct_dump(e->feedback_props, stream);
   black_holes_struct_dump(e->black_holes_properties, stream);
   chemistry_struct_dump(e->chemistry, stream);
+#ifdef WITH_FOF
   fof_struct_dump(e->fof_properties, stream);
+#endif
   parser_struct_dump(e->parameter_file, stream);
   if (e->output_list_snapshots)
     output_list_struct_dump(e->output_list_snapshots, stream);
@@ -6371,10 +6378,12 @@ void engine_struct_restore(struct engine *e, FILE *stream) {
   chemistry_struct_restore(chemistry, stream);
   e->chemistry = chemistry;
 
+#ifdef WITH_FOF
   struct fof_props *fof_props =
       (struct fof_props *)malloc(sizeof(struct fof_props));
   fof_struct_restore(fof_props, stream);
   e->fof_properties = fof_props;
+#endif
 
   struct swift_params *parameter_file =
       (struct swift_params *)malloc(sizeof(struct swift_params));
@@ -6490,6 +6499,8 @@ void engine_activate_fof_tasks(struct engine *e) {
 void engine_fof(struct engine *e, const int dump_results,
                 const int seed_black_holes) {
 
+#ifdef WITH_FOF
+
   ticks tic = getticks();
 
   /* Compute number of DM particles */
@@ -6527,4 +6538,7 @@ void engine_fof(struct engine *e, const int dump_results,
   if (engine_rank == 0)
     message("Complete FOF search took: %.3f %s.",
             clocks_from_ticks(getticks() - tic), clocks_getunit());
+#else
+  error("SWIFT was not compiled with FOF enabled!");
+#endif
 }

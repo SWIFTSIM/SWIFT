@@ -39,6 +39,7 @@
 #define gravity_props_default_rebuild_frequency 0.01f
 
 void gravity_props_init(struct gravity_props *p, struct swift_params *params,
+                        const struct phys_const *phys_const,
                         const struct cosmology *cosmo, int with_cosmology,
                         int periodic) {
 
@@ -97,6 +98,9 @@ void gravity_props_init(struct gravity_props *p, struct swift_params *params,
         parser_get_param_double(params, "Gravity:max_physical_softening");
     p->epsilon_comoving = p->epsilon_max_physical;
   }
+
+  /* Copy over the gravitational constant */
+  p->G_Newton = phys_const->const_newton_G;
 
   /* Set the softening to the current time */
   gravity_props_update(p, cosmo);

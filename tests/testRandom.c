@@ -150,6 +150,9 @@ int main(int argc, char* argv[]) {
 
       const double r =
           random_unit_interval(id, ti_current, random_number_star_formation);
+      if (r < 0.0 || r >= 1.0) {
+        error("Generated random vlaue %f is not in [0, 1).", r);
+      }
 
       total += r;
       total2 += r * r;
@@ -163,6 +166,9 @@ int main(int argc, char* argv[]) {
       /* Calculate if there is a correlation between different ids */
       const double r_2ndid = random_unit_interval(idoffset, ti_current,
                                                   random_number_star_formation);
+      if (r_2ndid < 0.0 || r_2ndid >= 1.0) {
+        error("Generated random vlaue %f is not in [0, 1).", r_2ndid);
+      }
 
       /* Pearson correlation for small different IDs */
       pearsonIDs += r * r_2ndid;
@@ -174,12 +180,21 @@ int main(int argc, char* argv[]) {
 
       const double r_sf =
           random_unit_interval(id, ti_current, random_number_stellar_feedback);
+      if (r_sf < 0.0 || r_sf >= 1.0) {
+        error("Generated random vlaue %f is not in [0, 1).", r_sf);
+      }
 
       const double r_se = random_unit_interval(
           id, ti_current, random_number_stellar_enrichment);
+      if (r_se < 0.0 || r_se >= 1.0) {
+        error("Generated random vlaue %f is not in [0, 1).", r_se);
+      }
 
       const double r_bh =
           random_unit_interval(id, ti_current, random_number_BH_feedback);
+      if (r_bh < 0.0 || r_bh >= 1.0) {
+        error("Generated random vlaue %f is not in [0, 1).", r_bh);
+      }
 
       /* Calculate the correlation between the different processes */
       total_sf += r_sf;
@@ -266,11 +281,11 @@ int main(int argc, char* argv[]) {
               1. / 12., 0.);
       message("ID part");
       message(
-          "Result:     count%d mean=%f var=%f"
+          "Result:    count=%d mean=%f var=%f"
           " correlation=%f",
           count, meanID, varID, correlationID);
       message(
-          "Expected:   count%d mean=%f var=%f"
+          "Expected:  count=%d mean=%f var=%f"
           " correlation=%f",
           count, .5f, 1. / 12., 0.);
       message("Different physical processes:");
@@ -291,12 +306,12 @@ int main(int argc, char* argv[]) {
           " enrichement=%f black holes=%f",
           1. / 12., 1. / 12., 1 / 12., 1. / 12.);
       message(
-          "Correlation: stars-sf=%f stars-se=%f stars-bh=%f"
+          "Correlation: stars-sf=%f stars-se=%f stars-bh=%f "
           "sf-se=%f sf-bh=%f se-bh=%f",
           corr_star_sf, corr_star_se, corr_star_bh, corr_sf_se, corr_sf_bh,
           corr_se_bh);
       message(
-          "Expected:    stars-sf=%f stars-se=%f stars-bh=%f"
+          "Expected:    stars-sf=%f stars-se=%f stars-bh=%f "
           "sf-se=%f sf-bh=%f se-bh=%f",
           0., 0., 0., 0., 0., 0.);
       return 1;

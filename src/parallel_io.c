@@ -45,6 +45,7 @@
 #include "engine.h"
 #include "entropy_floor.h"
 #include "error.h"
+#include "fof_io.h"
 #include "gravity_io.h"
 #include "gravity_properties.h"
 #include "hydro_io.h"
@@ -1206,6 +1207,7 @@ void prepare_file(struct engine* e, const char* baseName, long long N_total[6],
                                               with_cosmology);
         num_fields +=
             star_formation_write_particles(parts, xparts, list + num_fields);
+        num_fields += fof_write_parts(parts, xparts, list + num_fields);
         if (with_stf) {
           num_fields +=
               velociraptor_write_parts(parts, xparts, list + num_fields);
@@ -1214,6 +1216,7 @@ void prepare_file(struct engine* e, const char* baseName, long long N_total[6],
 
       case swift_type_dark_matter:
         darkmatter_write_particles(gparts, list, &num_fields);
+        num_fields += fof_write_gparts(gparts, list + num_fields);
         if (with_stf) {
           num_fields += velociraptor_write_gparts(e->s->gpart_group_data,
                                                   list + num_fields);
@@ -1225,6 +1228,7 @@ void prepare_file(struct engine* e, const char* baseName, long long N_total[6],
         num_fields += chemistry_write_sparticles(sparts, list + num_fields);
         num_fields +=
             tracers_write_sparticles(sparts, list + num_fields, with_cosmology);
+        num_fields += fof_write_sparts(sparts, list + num_fields);
         if (with_stf) {
           num_fields += velociraptor_write_sparts(sparts, list + num_fields);
         }
@@ -1233,6 +1237,7 @@ void prepare_file(struct engine* e, const char* baseName, long long N_total[6],
       case swift_type_black_hole:
         black_holes_write_particles(bparts, list, &num_fields);
         num_fields += chemistry_write_bparticles(bparts, list + num_fields);
+        num_fields += fof_write_bparts(bparts, list + num_fields);
         if (with_stf) {
           num_fields += velociraptor_write_bparts(bparts, list + num_fields);
         }
@@ -1247,7 +1252,7 @@ void prepare_file(struct engine* e, const char* baseName, long long N_total[6],
 
       /* Did the user cancel this field? */
       char field[PARSER_MAX_LINE_SIZE];
-      sprintf(field, "SelectOutput:%s_%s", list[i].name,
+      sprintf(field, "SelectOutput:%.*s_%s", FIELD_BUFFER_SIZE, list[i].name,
               part_type_names[ptype]);
       int should_write = parser_get_opt_param_int(params, field, 1);
 
@@ -1535,6 +1540,7 @@ void write_output_parallel(struct engine* e, const char* baseName,
             num_fields += cooling_write_particles(
                 parts, xparts, list + num_fields, e->cooling_func);
           }
+          num_fields += fof_write_parts(parts, xparts, list + num_fields);
           if (with_stf) {
             num_fields +=
                 velociraptor_write_parts(parts, xparts, list + num_fields);
@@ -1573,6 +1579,8 @@ void write_output_parallel(struct engine* e, const char* baseName,
                 cooling_write_particles(parts_written, xparts_written,
                                         list + num_fields, e->cooling_func);
           }
+          num_fields +=
+              fof_write_parts(parts_written, xparts_written, list + num_fields);
           if (with_stf) {
             num_fields += velociraptor_write_parts(
                 parts_written, xparts_written, list + num_fields);
@@ -1590,6 +1598,7 @@ void write_output_parallel(struct engine* e, const char* baseName,
           /* This is a DM-only run without inhibited particles */
           Nparticles = Ntot;
           darkmatter_write_particles(gparts, list, &num_fields);
+          num_fields += fof_write_gparts(gparts, list + num_fields);
           if (with_stf) {
             num_fields += velociraptor_write_gparts(e->s->gpart_group_data,
                                                     list + num_fields);
@@ -1622,11 +1631,10 @@ void write_output_parallel(struct engine* e, const char* baseName,
 
           /* Select the fields to write */
           darkmatter_write_particles(gparts_written, list, &num_fields);
+          num_fields += fof_write_gparts(gparts_written, list + num_fields);
           if (with_stf) {
-#ifdef HAVE_VELOCIRAPTOR
             num_fields += velociraptor_write_gparts(gpart_group_data_written,
                                                     list + num_fields);
-#endif
           }
         }
       } break;
@@ -1640,6 +1648,7 @@ void write_output_parallel(struct engine* e, const char* baseName,
           num_fields += chemistry_write_sparticles(sparts, list + num_fields);
           num_fields += tracers_write_sparticles(sparts, list + num_fields,
                                                  with_cosmology);
+          num_fields += fof_write_sparts(sparts, list + num_fields);
           if (with_stf) {
             num_fields += velociraptor_write_sparts(sparts, list + num_fields);
           }
@@ -1663,6 +1672,7 @@ void write_output_parallel(struct engine* e, const char* baseName,
           num_fields += chemistry_write_sparticles(sparts, list + num_fields);
           num_fields += tracers_write_sparticles(sparts, list + num_fields,
                                                  with_cosmology);
+          num_fields += fof_write_sparts(sparts_written, list + num_fields);
           if (with_stf) {
             num_fields +=
                 velociraptor_write_sparts(sparts_written, list + num_fields);
@@ -1677,7 +1687,7 @@ void write_output_parallel(struct engine* e, const char* baseName,
           Nparticles = Nblackholes;
           black_holes_write_particles(bparts, list, &num_fields);
           num_fields += chemistry_write_bparticles(bparts, list + num_fields);
-
+          num_fields += fof_write_bparts(bparts, list + num_fields);
           if (with_stf) {
             num_fields += velociraptor_write_bparts(bparts, list + num_fields);
           }
@@ -1699,7 +1709,7 @@ void write_output_parallel(struct engine* e, const char* baseName,
           /* Select the fields to write */
           black_holes_write_particles(bparts_written, list, &num_fields);
           num_fields += chemistry_write_bparticles(bparts, list + num_fields);
-
+          num_fields += fof_write_bparts(bparts_written, list + num_fields);
           if (with_stf) {
             num_fields +=
                 velociraptor_write_bparts(bparts_written, list + num_fields);
@@ -1716,7 +1726,7 @@ void write_output_parallel(struct engine* e, const char* baseName,
 
       /* Did the user cancel this field? */
       char field[PARSER_MAX_LINE_SIZE];
-      sprintf(field, "SelectOutput:%s_%s", list[i].name,
+      sprintf(field, "SelectOutput:%.*s_%s", FIELD_BUFFER_SIZE, list[i].name,
               part_type_names[ptype]);
       int should_write = parser_get_opt_param_int(params, field, 1);
 

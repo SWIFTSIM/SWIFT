@@ -225,16 +225,6 @@ if test "x$enable_debug" = "xyes"; then
    fi
 fi
 
-# Check if stand-alone FoF is on.
-AC_ARG_ENABLE([stand-alone-fof],
-   [AS_HELP_STRING([--enable-stand-alone-fof],
-     [Activate the compilation of the stand-alone friends-of-friends post-processing tool.],
-   )],
-   [enable_standalone_fof="$enableval"],
-   [enable_standalone_fof="no"]
-)
-AM_CONDITIONAL([HAVEFOF],[test $enable_standalone_fof = "yes"])
-
 # Check if task debugging is on.
 AC_ARG_ENABLE([task-debugging],
    [AS_HELP_STRING([--enable-task-debugging],
@@ -370,6 +360,21 @@ if test "$no_gravity_below_id" == "yes"; then
    AC_MSG_ERROR(Need to specify the ID below which particles get zero forces when using --enable-no-gravity-below-id!)
 elif test "$no_gravity_below_id" != "no"; then
    AC_DEFINE_UNQUOTED([SWIFT_NO_GRAVITY_BELOW_ID], [$enableval] ,[Particles with smaller ID than this will have zero gravity forces])
+fi
+
+# Check if we want to use boundary particles.
+AC_ARG_ENABLE([boundary-particles],
+   [AS_HELP_STRING([--enable-boundary-particles],
+     [Set all particles with an ID smaller than @<:@N@:>@ as boundary particles (i.e. receive zero gravity + hydro forces).]
+   )],
+   [boundary_particles="$enableval"],
+   [boundary_particles="no"]
+)
+if test "$boundary_particles" == "yes"; then
+   AC_MSG_ERROR(Need to specify the ID below which particles get zero forces when using --enable-boundary-particles!)
+elif test "$boundary_particles" != "no"; then
+   AC_DEFINE_UNQUOTED([SWIFT_NO_GRAVITY_BELOW_ID], [$enableval] ,[Particles with smaller ID than this will have zero gravity forces])
+   AC_DEFINE_UNQUOTED([SWIFT_BOUNDARY_PARTICLES], [$enableval] ,[Particles with smaller ID than this will be considered as boundaries.])
 fi
 
 # Check whether we have any of the ARM v8.1 tick timers
@@ -1086,7 +1091,7 @@ if test "x$with_velociraptor" != "xno"; then
    AC_PROG_FC
    AC_FC_LIBRARY_LDFLAGS
    if test "x$with_velociraptor" != "xyes" -a "x$with_velociraptor" != "x"; then
-      VELOCIRAPTOR_LIBS="-L$with_velociraptor -lvelociraptor -lmpi -lstdc++ -lhdf5_cpp"
+      VELOCIRAPTOR_LIBS="-L$with_velociraptor -lvelociraptor -lmpi -lstdc++ -lhdf5"
       CFLAGS="$CFLAGS -fopenmp"
    else
       VELOCIRAPTOR_LIBS=""
@@ -1341,6 +1346,7 @@ case "$with_subgrid" in
 	with_subgrid_star_formation=GEAR
 	with_subgrid_feedback=none
 	with_subgrid_black_holes=none
+	enable_fof=no
    ;;
    EAGLE)
 	with_subgrid_cooling=EAGLE
@@ -1351,11 +1357,39 @@ case "$with_subgrid" in
 	with_subgrid_star_formation=EAGLE
 	with_subgrid_feedback=EAGLE
 	with_subgrid_black_holes=EAGLE
+	enable_fof=yes
    ;;
    *)
       AC_MSG_ERROR([Unknown subgrid choice: $with_subgrid])
    ;;
 esac
+
+# Check if FoF is on.
+AC_ARG_ENABLE([fof],
+   [AS_HELP_STRING([--enable-fof],
+     [Activate the friends-of-friends (FoF) code.],
+   )],
+   [enable_fof="$enableval"],
+   [enable_fof="no"]
+)
+if test "$enable_fof" = "yes"; then
+   AC_DEFINE([WITH_FOF], 1, [Enable FoF])
+fi
+
+# Check if stand-alone FoF is on.
+AC_ARG_ENABLE([stand-alone-fof],
+   [AS_HELP_STRING([--enable-stand-alone-fof],
+     [Activate the compilation of the stand-alone friends-of-friends (FoF) post-processing tool.],
+   )],
+   [enable_standalone_fof="$enableval"],
+   [enable_standalone_fof="no"]
+)
+if test "$enable_standalone_fof" = "yes"; then
+   enable_fof="yes + stand-alone tool"
+   AC_DEFINE([WITH_FOF], 1, [Enable FoF])
+   AC_DEFINE([WITH_STAND_ALONE_FOF], 1, [Enable stand-alone FoF])
+fi
+AM_CONDITIONAL([HAVESTANDALONEFOF],[test $enable_standalone_fof = "yes"])
 
 # Gravity scheme.
 AC_ARG_WITH([gravity],
@@ -1813,7 +1847,7 @@ esac
 #  External potential
 AC_ARG_WITH([ext-potential],
    [AS_HELP_STRING([--with-ext-potential=<pot>],
-      [external potential @<:@none, point-mass, point-mass-ring, point-mass-softened, isothermal, nfw, hernquist, disc-patch, sine-wave, default: none@:>@]
+      [external potential @<:@none, point-mass, point-mass-ring, point-mass-softened, isothermal, nfw, hernquist, disc-patch, sine-wave, constant, default: none@:>@]
    )],
    [with_potential="$withval"],
    [with_potential="none"]
@@ -1845,6 +1879,9 @@ case "$with_potential" in
    ;;
    point-mass-softened)
       AC_DEFINE([EXTERNAL_POTENTIAL_POINTMASS_SOFT], [1], [Softened point-mass potential with form 1/(r^2 + softening^2).])
+   ;;
+   constant)
+      AC_DEFINE([EXTERNAL_POTENTIAL_CONSTANT], [1], [Constant gravitational acceleration.])
    ;;
    *)
       AC_MSG_ERROR([Unknown external potential: $with_potential])
@@ -1990,6 +2027,7 @@ AC_MSG_RESULT([
    Pthread barriers     : $have_pthread_barrier
    VELOCIraptor enabled : $have_velociraptor
    Particle Logger      : $with_logger
+   FoF activated:       : $enable_fof
 
    Hydro scheme       : $with_hydro
    Dimensionality     : $with_dimension
@@ -2013,7 +2051,6 @@ AC_MSG_RESULT([
    Star feedback model  : $with_feedback
    Black holes model    : $with_black_holes
 
-   Stand-alone FoF tool:       : $enable_standalone_fof
    Individual timers           : $enable_timers
    Task debugging              : $enable_task_debugging
    Threadpool debugging        : $enable_threadpool_debugging
@@ -2024,5 +2061,6 @@ AC_MSG_RESULT([
    Naive stars interactions    : $enable_naive_interactions_stars
    Gravity checks              : $gravity_force_checks
    Custom icbrtf               : $enable_custom_icbrtf
+   Boundary particles          : $boundary_particles
 
  ------------------------])

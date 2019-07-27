@@ -207,14 +207,26 @@ void engine_marktasks_mapper(void *map_data, int num_elements,
       }
 
       else if (t_type == task_type_self &&
-               t_subtype == task_subtype_do_swallow) {
+               t_subtype == task_subtype_do_gas_swallow) {
         if (ci_active_black_holes) {
           scheduler_activate(s, t);
         }
       }
 
       else if (t_type == task_type_sub_self &&
-               t_subtype == task_subtype_do_swallow) {
+               t_subtype == task_subtype_do_gas_swallow) {
+        if (ci_active_black_holes) scheduler_activate(s, t);
+      }
+
+      else if (t_type == task_type_self &&
+               t_subtype == task_subtype_do_bh_swallow) {
+        if (ci_active_black_holes) {
+          scheduler_activate(s, t);
+        }
+      }
+
+      else if (t_type == task_type_sub_self &&
+               t_subtype == task_subtype_do_bh_swallow) {
         if (ci_active_black_holes) scheduler_activate(s, t);
       }
 
@@ -404,14 +416,15 @@ void engine_marktasks_mapper(void *map_data, int num_elements,
       /* Black_Holes density */
       else if ((t_subtype == task_subtype_bh_density ||
                 t_subtype == task_subtype_bh_swallow ||
-                t_subtype == task_subtype_do_swallow ||
+                t_subtype == task_subtype_do_gas_swallow ||
+                t_subtype == task_subtype_do_bh_swallow ||
                 t_subtype == task_subtype_bh_feedback) &&
                (ci_active_black_holes || cj_active_black_holes) &&
                (ci_nodeID == nodeID || cj_nodeID == nodeID)) {
 
         scheduler_activate(s, t);
 
-        /* Set the correct sorting flags */
+        /* Set the correct drifting flags */
         if (t_type == task_type_pair && t_subtype == task_subtype_bh_density) {
           if (ci_nodeID == nodeID) cell_activate_drift_bpart(ci, s);
           if (ci_nodeID == nodeID) cell_activate_drift_part(ci, s);
@@ -674,6 +687,7 @@ void engine_marktasks_mapper(void *map_data, int num_elements,
            * swallowing */
           scheduler_activate_recv(s, ci->mpi.recv, task_subtype_rho);
           scheduler_activate_recv(s, ci->mpi.recv, task_subtype_part_swallow);
+          scheduler_activate_recv(s, ci->mpi.recv, task_subtype_bpart_merger);
 
           /* Send the local BHs to tag the particles to swallow and to do
            * feedback */
@@ -701,6 +715,8 @@ void engine_marktasks_mapper(void *map_data, int num_elements,
           scheduler_activate_send(s, cj->mpi.send, task_subtype_rho, ci_nodeID);
           scheduler_activate_send(s, cj->mpi.send, task_subtype_part_swallow,
                                   ci_nodeID);
+          scheduler_activate_send(s, cj->mpi.send, task_subtype_bpart_merger,
+                                  ci_nodeID);
 
           /* Drift the cell which will be sent; note that not all sent
              particles will be drifted, only those that are needed. */
@@ -712,6 +728,7 @@ void engine_marktasks_mapper(void *map_data, int num_elements,
            * swallowing */
           scheduler_activate_recv(s, cj->mpi.recv, task_subtype_rho);
           scheduler_activate_recv(s, cj->mpi.recv, task_subtype_part_swallow);
+          scheduler_activate_recv(s, cj->mpi.recv, task_subtype_bpart_merger);
 
           /* Send the local BHs to tag the particles to swallow and to do
            * feedback */
@@ -738,6 +755,8 @@ void engine_marktasks_mapper(void *map_data, int num_elements,
           /* Send the local part information */
           scheduler_activate_send(s, ci->mpi.send, task_subtype_rho, cj_nodeID);
           scheduler_activate_send(s, ci->mpi.send, task_subtype_part_swallow,
+                                  cj_nodeID);
+          scheduler_activate_send(s, ci->mpi.send, task_subtype_bpart_merger,
                                   cj_nodeID);
 
           /* Drift the cell which will be sent; note that not all sent
@@ -892,7 +911,8 @@ void engine_marktasks_mapper(void *map_data, int num_elements,
     /* Black hole ghost tasks ? */
     else if (t_type == task_type_bh_density_ghost ||
              t_type == task_type_bh_swallow_ghost1 ||
-             t_type == task_type_bh_swallow_ghost2) {
+             t_type == task_type_bh_swallow_ghost2 ||
+             t_type == task_type_bh_swallow_ghost3) {
       if (cell_is_active_black_holes(t->ci, e)) scheduler_activate(s, t);
     }
 

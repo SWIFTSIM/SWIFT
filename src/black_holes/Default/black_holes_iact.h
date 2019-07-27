@@ -32,11 +32,14 @@
  * @param cosmo The cosmological model.
  * @param ti_current Current integer time value (for random numbers).
  */
-__attribute__((always_inline)) INLINE static void runner_iact_nonsym_bh_density(
-    const float r2, const float *dx, const float hi, const float hj,
-    struct bpart *restrict bi, const struct part *restrict pj,
-    const struct xpart *restrict xpj, const struct cosmology *cosmo,
-    const integertime_t ti_current) {
+__attribute__((always_inline)) INLINE static void
+runner_iact_nonsym_bh_gas_density(const float r2, const float *dx,
+                                  const float hi, const float hj,
+                                  struct bpart *restrict bi,
+                                  const struct part *restrict pj,
+                                  const struct xpart *restrict xpj,
+                                  const struct cosmology *cosmo,
+                                  const integertime_t ti_current) {
 
   float wi, wi_dx;
 
@@ -79,11 +82,39 @@ __attribute__((always_inline)) INLINE static void runner_iact_nonsym_bh_density(
  * @param cosmo The cosmological model.
  * @param ti_current Current integer time value (for random numbers).
  */
-__attribute__((always_inline)) INLINE static void runner_iact_nonsym_bh_swallow(
-    const float r2, const float *dx, const float hi, const float hj,
-    struct bpart *restrict bi, struct part *restrict pj,
-    struct xpart *restrict xpj, const struct cosmology *cosmo,
-    const integertime_t ti_current) {}
+__attribute__((always_inline)) INLINE static void
+runner_iact_nonsym_bh_gas_swallow(const float r2, const float *dx,
+                                  const float hi, const float hj,
+                                  const struct bpart *restrict bi,
+                                  struct part *restrict pj,
+                                  struct xpart *restrict xpj,
+                                  const struct cosmology *cosmo,
+                                  const integertime_t ti_current) {}
+
+/**
+ * @brief Swallowing interaction between two BH particles (non-symmetric).
+ *
+ * Function used to flag the BH particles that will be swallowed
+ * by the black hole particle.
+ *
+ * @param r2 Comoving square distance between the two particles.
+ * @param dx Comoving vector separating both particles (pi - pj).
+ * @param hi Comoving smoothing-length of particle i.
+ * @param hj Comoving smoothing-length of particle j.
+ * @param bi First particle (black hole).
+ * @param bj Second particle (black hole)
+ * @param cosmo The cosmological model.
+ * @param grav_props The properties of the gravity scheme (softening, G, ...)
+ * @param ti_current Current integer time value (for random numbers).
+ */
+__attribute__((always_inline)) INLINE static void
+runner_iact_nonsym_bh_bh_swallow(const float r2, const float *dx,
+                                 const float hi, const float hj,
+                                 const struct bpart *restrict bi,
+                                 struct bpart *restrict bj,
+                                 const struct cosmology *cosmo,
+                                 const struct gravity_props *grav_props,
+                                 const integertime_t ti_current) {}
 
 /**
  * @brief Feedback interaction between two particles (non-symmetric).
@@ -99,12 +130,13 @@ __attribute__((always_inline)) INLINE static void runner_iact_nonsym_bh_swallow(
  * @param ti_current Current integer time value (for random numbers).
  */
 __attribute__((always_inline)) INLINE static void
-runner_iact_nonsym_bh_feedback(const float r2, const float *dx, const float hi,
-                               const float hj, struct bpart *restrict bi,
-                               struct part *restrict pj,
-                               const struct xpart *restrict xpj,
-                               const struct cosmology *cosmo,
-                               const integertime_t ti_current) {
+runner_iact_nonsym_bh_gas_feedback(const float r2, const float *dx,
+                                   const float hi, const float hj,
+                                   struct bpart *restrict bi,
+                                   struct part *restrict pj,
+                                   struct xpart *restrict xpj,
+                                   const struct cosmology *cosmo,
+                                   const integertime_t ti_current) {
 #ifdef DEBUG_INTERACTIONS_BH
   /* Update ngb counters */
   if (si->num_ngb_force < MAX_NUM_OF_NEIGHBOURS_BH)

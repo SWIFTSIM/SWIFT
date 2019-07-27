@@ -20,11 +20,14 @@
 #ifndef SWIFT_RANDOM_H
 #define SWIFT_RANDOM_H
 
-/* COde configuration */
+/* Code configuration */
 #include "../config.h"
 
 /* Standard header */
+#include <stdint.h>
 #include <stdlib.h>
+#include <string.h>
+#include <sys/types.h>
 
 /**
  * @brief The categories of random number generated.
@@ -49,6 +52,78 @@ enum random_number_type {
   random_number_BH_swallow = 4947009007LL
 };
 
+#ifndef __APPLE__
+
+#include <errno.h>
+#include <ieee754.h>
+#include <limits.h>
+
+/* Inline the default RNG functions to avoid costly function calls. These
+   functions are minor modifications, but functional equivalents, of their glibc
+   counterparts. */
+
+INLINE static int inl_rand_r(uint32_t *seed) {
+  uint32_t next = *seed;
+  int result;
+  next *= 1103515245;
+  next += 12345;
+  result = (uint32_t)(next / 65536) % 2048;
+  next *= 1103515245;
+  next += 12345;
+  result <<= 10;
+  result ^= (uint32_t)(next / 65536) % 1024;
+  next *= 1103515245;
+  next += 12345;
+  result <<= 10;
+  result ^= (uint32_t)(next / 65536) % 1024;
+  *seed = next;
+  return result;
+}
+
+INLINE static void inl_drand48_iterate(uint16_t xsubi[3]) {
+  uint64_t X;
+  uint64_t result;
+  const uint64_t __a = 0x5deece66dull;
+  const uint16_t __c = 0xb;
+
+  /* Do the real work.  We choose a data type which contains at least
+     48 bits.  Because we compute the modulus it does not care how
+     many bits really are computed.  */
+  X = (uint64_t)xsubi[2] << 32 | (uint32_t)xsubi[1] << 16 | xsubi[0];
+  result = X * __a + __c;
+  xsubi[0] = result & 0xffff;
+  xsubi[1] = (result >> 16) & 0xffff;
+  xsubi[2] = (result >> 32) & 0xffff;
+}
+
+INLINE static double inl_erand48(uint16_t xsubi[3]) {
+  union ieee754_double temp;
+
+  /* Compute next state.  */
+  inl_drand48_iterate(xsubi);
+
+  /* Construct a positive double with the 48 random bits distributed over
+     its fractional part so the resulting FP number is [0.0,1.0).  */
+  temp.ieee.negative = 0;
+  temp.ieee.exponent = IEEE754_DOUBLE_BIAS;
+  temp.ieee.mantissa0 = (xsubi[2] << 4) | (xsubi[1] >> 12);
+  temp.ieee.mantissa1 = ((xsubi[1] & 0xfff) << 20) | (xsubi[0] << 4);
+
+  /* Please note the lower 4 bits of mantissa1 are always 0.  */
+  return temp.d - 1.0;
+}
+
+#else
+
+/* In the case of OSX, we default to the platform's
+   default implementation. */
+
+INLINE static int inl_rand_r(uint32_t *seed) { return rand_r(seed); }
+
+INLINE static double inl_erand48(uint16_t xsubi[3]) { return erand48(xsubi); }
+
+#endif
+
 /**
  * @brief Returns a pseudo-random number in the range [0, 1[.
  *
@@ -62,55 +137,38 @@ enum random_number_type {
  * @param type The #random_number_type to generate.
  * @return a random number in the interval [0, 1.[.
  */
-INLINE static double random_unit_interval(const long long int id,
+INLINE static double random_unit_interval(int64_t id,
                                           const integertime_t ti_current,
                                           const enum random_number_type type) {
+  /* Start by packing the state into a sequence of 16-bit seeds for rand_r. */
+  uint16_t buff[9];
+  id += type;
+  memcpy(&buff[0], &id, 8);
+  memcpy(&buff[4], &ti_current, 8);
 
-  /* Range used for the seeds. Best if prime */
-  static const long long seed_range = RAND_MAX;
-  static const double RAND_MAX_inv = 1. / ((double)RAND_MAX);
-  static const long long mwc_number = (1LL << 32) - 1LL;
+  /* The inputs give 16 bytes of state, but we need a multiple of 6 for the
+     calls to erand48(), so we add an additional aribrary constant two-byte
+     value to get 18 bytes of state. */
+  buff[8] = 6178;
 
-  /* Calculate the seed */
-  /* WARNING: Only change the math if you really know what you are doing!
-   * The numbers are carefully chosen prime numbers that prevent correlation
-   * with either the current integer time or the particle IDs. The current
-   * method also prevents any correlation between different random number
-   * types.
-   * The calculation overflows on purpose.
-   * 1. The first step is calculating the seed by using a multiply with carry
-   * (MWC) method, this method depends on the type of random number and
-   * this therefore also prevents that there is any correlation between
-   * the different types of random numbers.
-   * 2. After this we use the 64 bit Xorshift method to randomize the seeds
-   * even more.
-   * 3. We calculate a prime multiplication for the id with a quadratic
-   * term.
-   * 4. We calculate the seed by using a Quadratic congruential generator,
-   * in which we use the id part and the current time step bin.
-   */
-  unsigned long long number = ti_current;
+  /* Shuffle the buffer values, this will be our source of entropy for
+     the erand48 generator. */
+  uint32_t seed16 = 0;
+  for (int k = 0; k < 9; k++) {
+    seed16 ^= buff[k];
+    inl_rand_r(&seed16);
+  }
+  for (int k = 0; k < 9; k++) buff[k] ^= inl_rand_r(&seed16) & 0xffff;
 
-  /* Multiply with carry (MWC), (adviced variables by NR) */
-  number = 4294957665LL * (number & (mwc_number)) + (number >> 32);
+  /* Do three steps of erand48() over the state generated previously. */
+  uint16_t seed48[3] = {0, 0, 0};
+  for (int k = 0; k < 3; k++) {
+    for (int j = 0; j < 3; j++) seed48[j] ^= buff[3 * k + j];
+    inl_erand48(seed48);
+  }
 
-  /* 64-bit Xorshift (adviced variables by NR) */
-  number ^= number << 21;
-  number ^= number >> 35;
-  number ^= number << 4;
-
-  /* Add constant to ID */
-  const unsigned long long idt = id + type;
-
-  /* Nonlinear congruential generator */
-  const unsigned long long idpart =
-      3457LL * idt + 593LL * idt * ti_current + 5417LL * idt * idt;
-  unsigned int seed =
-      (937LL * number + 5171LL * number * number + idpart + 1109LL) %
-      9996361LL % seed_range;
-
-  /* Generate a random number between 0 and 1. */
-  return rand_r(&seed) * RAND_MAX_inv;
+  /* Generate one final value, this is our output. */
+  return inl_erand48(seed48);
 }
 
 #endif /* SWIFT_RANDOM_H */
