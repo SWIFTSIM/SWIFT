@@ -3947,7 +3947,7 @@ void space_synchronize_particle_positions_mapper(void *map_data, int nr_gparts,
 
     else if (gp->type == swift_type_gas) {
 
-      /* Get it's gassy friend */
+      /* Get its gassy friend */
       struct part *p = &s->parts[-gp->id_or_neg_offset];
       struct xpart *xp = &s->xparts[-gp->id_or_neg_offset];
 
@@ -3965,7 +3965,7 @@ void space_synchronize_particle_positions_mapper(void *map_data, int nr_gparts,
 
     else if (gp->type == swift_type_stars) {
 
-      /* Get it's stellar friend */
+      /* Get its stellar friend */
       struct spart *sp = &s->sparts[-gp->id_or_neg_offset];
 
       /* Synchronize positions */
@@ -3978,7 +3978,7 @@ void space_synchronize_particle_positions_mapper(void *map_data, int nr_gparts,
 
     else if (gp->type == swift_type_black_hole) {
 
-      /* Get it's black hole friend */
+      /* Get its black hole friend */
       struct bpart *bp = &s->bparts[-gp->id_or_neg_offset];
 
       /* Synchronize positions */
