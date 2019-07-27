@@ -4365,9 +4365,9 @@ void cell_drift_part(struct cell *c, const struct engine *e, int force) {
       if (!periodic) {
 
         /* Did the particle leave the box?  */
-        if ((p->x[0] > dim[0]) || (p->x[0] < 0.) ||
-            (p->x[1] > dim[1]) || (p->x[1] < 0.) ||
-            (p->x[2] > dim[2]) || (p->x[2] < 0.)) {
+        if ((p->x[0] > dim[0]) || (p->x[0] < 0.) ||  // x
+            (p->x[1] > dim[1]) || (p->x[1] < 0.) ||  // y
+            (p->x[2] > dim[2]) || (p->x[2] < 0.)) {  // z
 
           lock_lock(&e->s->lock);
 
@@ -4530,9 +4530,9 @@ void cell_drift_gpart(struct cell *c, const struct engine *e, int force) {
       if (!periodic) {
 
         /* Did the particle leave the box?  */
-        if ((gp->x[0] > dim[0]) || (gp->x[0] < 0.) ||
-            (gp->x[1] > dim[1]) || (gp->x[1] < 0.) ||
-            (gp->x[2] > dim[2]) || (gp->x[2] < 0.)) {
+        if ((gp->x[0] > dim[0]) || (gp->x[0] < 0.) ||  // x
+            (gp->x[1] > dim[1]) || (gp->x[1] < 0.) ||  // y
+            (gp->x[2] > dim[2]) || (gp->x[2] < 0.)) {  // z
 
           lock_lock(&e->s->lock);
 
@@ -4673,9 +4673,9 @@ void cell_drift_spart(struct cell *c, const struct engine *e, int force) {
       if (!periodic) {
 
         /* Did the particle leave the box?  */
-        if ((sp->x[0] > dim[0]) || (sp->x[0] < 0.) ||
-            (sp->x[1] > dim[1]) || (sp->x[1] < 0.) ||
-            (sp->x[2] > dim[2]) || (sp->x[2] < 0.)) {
+        if ((sp->x[0] > dim[0]) || (sp->x[0] < 0.) ||  // x
+            (sp->x[1] > dim[1]) || (sp->x[1] < 0.) ||  // y
+            (sp->x[2] > dim[2]) || (sp->x[2] < 0.)) {  // z
 
           lock_lock(&e->s->lock);
 
@@ -4848,9 +4848,9 @@ void cell_drift_bpart(struct cell *c, const struct engine *e, int force) {
       if (!periodic) {
 
         /* Did the particle leave the box?  */
-        if ((bp->x[0] > dim[0]) || (bp->x[0] < 0.) ||
-            (bp->x[1] > dim[1]) || (bp->x[1] < 0.) ||
-            (bp->x[2] > dim[2]) || (bp->x[2] < 0.)) {
+        if ((bp->x[0] > dim[0]) || (bp->x[0] < 0.) ||  // x
+            (bp->x[1] > dim[1]) || (bp->x[1] < 0.) ||  // y
+            (bp->x[2] > dim[2]) || (bp->x[2] < 0.)) {  // z
 
           lock_lock(&e->s->lock);
 
@@ -5356,11 +5356,10 @@ void cell_remove_part(const struct engine *e, struct cell *c, struct part *p,
  */
 void cell_remove_gpart(const struct engine *e, struct cell *c,
                        struct gpart *gp) {
-  
+
   /* Don't remove a particle twice */
-  if (gp->time_bin == time_bin_inhibited)
-    return;
-  
+  if (gp->time_bin == time_bin_inhibited) return;
+
   /* Quick cross-check */
   if (c->nodeID != e->nodeID)
     error("Can't remove a particle in a foreign cell.");

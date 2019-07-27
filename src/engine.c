@@ -3407,7 +3407,7 @@ void engine_launch(struct engine *e) {
 
   /* Sit back and wait for the runners to come home. */
   swift_barrier_wait(&e->wait_barrier);
-  
+
   if (e->verbose)
     message("took %.3f %s.", clocks_from_ticks(getticks() - tic),
             clocks_getunit());
