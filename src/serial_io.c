@@ -846,6 +846,7 @@ void write_output_serial(struct engine* e, const char* baseName,
   const int with_cosmology = e->policy & engine_policy_cosmology;
   const int with_cooling = e->policy & engine_policy_cooling;
   const int with_temperature = e->policy & engine_policy_temperature;
+  const int with_fof = e->policy & engine_policy_fof;
 #ifdef HAVE_VELOCIRAPTOR
   const int with_stf = (e->policy & engine_policy_structure_finding) &&
                        (e->s->gpart_group_data != NULL);
@@ -1181,7 +1182,9 @@ void write_output_serial(struct engine* e, const char* baseName,
                 num_fields += cooling_write_particles(
                     parts, xparts, list + num_fields, e->cooling_func);
               }
-              num_fields += fof_write_parts(parts, xparts, list + num_fields);
+              if (with_fof) {
+                num_fields += fof_write_parts(parts, xparts, list + num_fields);
+              }
               if (with_stf) {
                 num_fields +=
                     velociraptor_write_parts(parts, xparts, list + num_fields);
@@ -1220,8 +1223,10 @@ void write_output_serial(struct engine* e, const char* baseName,
                     cooling_write_particles(parts_written, xparts_written,
                                             list + num_fields, e->cooling_func);
               }
-              num_fields += fof_write_parts(parts_written, xparts_written,
-                                            list + num_fields);
+              if (with_fof) {
+                num_fields += fof_write_parts(parts_written, xparts_written,
+                                              list + num_fields);
+              }
               if (with_stf) {
                 num_fields += velociraptor_write_parts(
                     parts_written, xparts_written, list + num_fields);
@@ -1240,7 +1245,10 @@ void write_output_serial(struct engine* e, const char* baseName,
               /* This is a DM-only run without inhibited particles */
               Nparticles = Ntot;
               darkmatter_write_particles(gparts, list, &num_fields);
-              num_fields += fof_write_gparts(gparts_written, list + num_fields);
+              if (with_fof) {
+                num_fields +=
+                    fof_write_gparts(gparts_written, list + num_fields);
+              }
               if (with_stf) {
                 num_fields += velociraptor_write_gparts(e->s->gpart_group_data,
                                                         list + num_fields);
@@ -1274,7 +1282,10 @@ void write_output_serial(struct engine* e, const char* baseName,
 
               /* Select the fields to write */
               darkmatter_write_particles(gparts_written, list, &num_fields);
-              num_fields += fof_write_gparts(gparts_written, list + num_fields);
+              if (with_fof) {
+                num_fields +=
+                    fof_write_gparts(gparts_written, list + num_fields);
+              }
               if (with_stf) {
                 num_fields += velociraptor_write_gparts(
                     gpart_group_data_written, list + num_fields);
@@ -1292,7 +1303,9 @@ void write_output_serial(struct engine* e, const char* baseName,
                   chemistry_write_sparticles(sparts, list + num_fields);
               num_fields += tracers_write_sparticles(sparts, list + num_fields,
                                                      with_cosmology);
-              num_fields += fof_write_sparts(sparts, list + num_fields);
+              if (with_fof) {
+                num_fields += fof_write_sparts(sparts, list + num_fields);
+              }
               if (with_stf) {
                 num_fields +=
                     velociraptor_write_sparts(sparts, list + num_fields);
@@ -1319,7 +1332,10 @@ void write_output_serial(struct engine* e, const char* baseName,
                   chemistry_write_sparticles(sparts_written, list + num_fields);
               num_fields += tracers_write_sparticles(
                   sparts_written, list + num_fields, with_cosmology);
-              num_fields += fof_write_sparts(sparts_written, list + num_fields);
+              if (with_fof) {
+                num_fields +=
+                    fof_write_sparts(sparts_written, list + num_fields);
+              }
               if (with_stf) {
                 num_fields += velociraptor_write_sparts(sparts_written,
                                                         list + num_fields);
@@ -1336,7 +1352,9 @@ void write_output_serial(struct engine* e, const char* baseName,
                                           with_cosmology);
               num_fields +=
                   chemistry_write_bparticles(bparts, list + num_fields);
-              num_fields += fof_write_bparts(bparts, list + num_fields);
+              if (with_fof) {
+                num_fields += fof_write_bparts(bparts, list + num_fields);
+              }
               if (with_stf) {
                 num_fields +=
                     velociraptor_write_bparts(bparts, list + num_fields);
@@ -1361,7 +1379,10 @@ void write_output_serial(struct engine* e, const char* baseName,
                                           with_cosmology);
               num_fields +=
                   chemistry_write_bparticles(bparts, list + num_fields);
-              num_fields += fof_write_bparts(bparts_written, list + num_fields);
+              if (with_fof) {
+                num_fields +=
+                    fof_write_bparts(bparts_written, list + num_fields);
+              }
               if (with_stf) {
                 num_fields += velociraptor_write_bparts(bparts_written,
                                                         list + num_fields);
