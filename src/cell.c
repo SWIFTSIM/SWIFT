@@ -5398,12 +5398,15 @@ void cell_remove_spart(const struct engine *e, struct cell *c,
     sp->gpart->type = swift_type_dark_matter;
   }
 
-  /* Un-link the spart */
-  sp->gpart = NULL;
-
   /* Update the space-wide counters */
   const size_t one = 1;
   atomic_add(&e->s->nr_inhibited_sparts, one);
+  if (sp->gpart) {
+    atomic_add(&e->s->nr_inhibited_gparts, one);
+  }
+
+  /* Un-link the spart */
+  sp->gpart = NULL;
 }
 
 /**
@@ -5434,12 +5437,15 @@ void cell_remove_bpart(const struct engine *e, struct cell *c,
     bp->gpart->type = swift_type_dark_matter;
   }
 
-  /* Un-link the bpart */
-  bp->gpart = NULL;
-
   /* Update the space-wide counters */
   const size_t one = 1;
   atomic_add(&e->s->nr_inhibited_bparts, one);
+  if (bp->gpart) {
+    atomic_add(&e->s->nr_inhibited_gparts, one);
+  }
+
+  /* Un-link the bpart */
+  bp->gpart = NULL;
 }
 
 /**
