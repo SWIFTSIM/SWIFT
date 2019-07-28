@@ -60,9 +60,10 @@ INLINE static int fof_write_parts(const struct part* parts,
 
 #ifdef WITH_FOF
 
-  list[0] = io_make_output_field_convert_part("GroupIDs", LONGLONG, 1,
-                                              UNIT_CONV_NO_UNITS, parts, xparts,
-                                              convert_part_group_id);
+  list[0] = io_make_output_field_convert_part(
+      "GroupIDs", LONGLONG, 1, UNIT_CONV_NO_UNITS, 0.f, parts, xparts,
+      convert_part_group_id,
+      "Friends-Of-Friends ID of the group this particle belongs to");
   return 1;
 #else
   return 0;
@@ -82,8 +83,10 @@ INLINE static int fof_write_gparts(const struct gpart* gparts,
 
 #ifdef WITH_FOF
 
-  list[0] = io_make_output_field("GroupIDs", LONGLONG, 1, UNIT_CONV_NO_UNITS,
-                                 gparts, fof_data.group_id);
+  list[0] = io_make_output_field(
+      "GroupIDs", LONGLONG, 1, UNIT_CONV_NO_UNITS, 0.f, gparts,
+      fof_data.group_id,
+      "Friends-Of-Friends ID of the group this particle belongs to");
 
   return 1;
 #else
@@ -104,9 +107,10 @@ INLINE static int fof_write_sparts(const struct spart* sparts,
 
 #ifdef WITH_FOF
 
-  list[0] = io_make_output_field_convert_spart("GroupIDs", LONGLONG, 1,
-                                               UNIT_CONV_NO_UNITS, sparts,
-                                               convert_spart_group_id);
+  list[0] = io_make_output_field_convert_spart(
+      "GroupIDs", LONGLONG, 1, UNIT_CONV_NO_UNITS, 0.f, sparts,
+      convert_spart_group_id,
+      "Friends-Of-Friends ID of the group this particle belongs to");
   return 1;
 #else
   return 0;
@@ -126,9 +130,10 @@ INLINE static int fof_write_bparts(const struct bpart* bparts,
 
 #ifdef WITH_FOF
 
-  list[0] = io_make_output_field_convert_bpart("GroupIDs", LONGLONG, 1,
-                                               UNIT_CONV_NO_UNITS, bparts,
-                                               convert_bpart_group_id);
+  list[0] = io_make_output_field_convert_bpart(
+      "GroupIDs", LONGLONG, 1, UNIT_CONV_NO_UNITS, 0.f, bparts,
+      convert_bpart_group_id,
+      "Friends-Of-Friends ID of the group this particle belongs to");
   return 1;
 #else
   return 0;
