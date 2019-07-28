@@ -146,7 +146,7 @@ def taskIsBlackHoles(name):
     name: str
         Task name
     """
-    if "bh" in name or "bpart" in name:
+    if "bh" in name or "bpart" in name or "swallow" in name:
         return True
     return False
 
@@ -181,13 +181,13 @@ def taskIsHydro(name):
         return True
     if "density" in name and "stars" not in name and "bh" not in name:
         return True
-    if "rho" in name:
+    if "rho" in name and "bpart" not in name:
         return True
     if "gradient" in name:
         return True
     if "force" in name:
         return True
-    if "xv" in name:
+    if "xv" in name and "bpart" not in name:
         return True
 
     task_name = [

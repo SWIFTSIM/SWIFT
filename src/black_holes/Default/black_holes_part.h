@@ -19,8 +19,7 @@
 #ifndef SWIFT_DEFAULT_BLACK_HOLE_PART_H
 #define SWIFT_DEFAULT_BLACK_HOLE_PART_H
 
-/* Some standard headers. */
-#include <stdlib.h>
+#include "chemistry_struct.h"
 
 #include "timeline.h"
 
@@ -64,6 +63,13 @@ struct bpart {
     float wcount_dh;
 
   } density;
+
+  /*! Chemistry information (e.g. metal content at birth, swallowed metal
+   * content, etc.) */
+  struct chemistry_bpart_data chemistry_data;
+
+  /*! Black holes merger information (e.g. merging ID) */
+  struct black_holes_bpart_data merger_data;
 
 #ifdef SWIFT_DEBUG_CHECKS
 

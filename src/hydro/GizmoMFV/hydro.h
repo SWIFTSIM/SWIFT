@@ -1119,7 +1119,7 @@ __attribute__((always_inline)) INLINE static void hydro_set_viscosity_alpha(
  * @param p the particle of interest
  */
 __attribute__((always_inline)) INLINE static void
-hydro_set_viscosity_alpha_max_feedback(struct part* restrict p) {
+hydro_diffusive_feedback_reset(struct part* restrict p) {
   /* Purposefully left empty */
 }
 

@@ -1,0 +1,30 @@
+nIFTy Cluster
+=============
+
+
+Initial conditions
+------------------
+
+These initial conditions are reproduced, with permission, from
+the original authors. The initial conditions here contain
+baryons, and are the ones that were used in
+https://ui.adsabs.harvard.edu/abs/2016MNRAS.457.4063S/abstract.
+
+We have modified these initial conditions (initially Gadget binary)
+to work with SWIFT, which only accepts HDF5. There are scripts
+in this folder that download the required python modules and
+create the initial conditions from the Gadget style ones, should
+you have them available. Alternatively you can download the
+initial conditions from our webstorage with the getIC.sh script.
+
+
+About the simulation
+--------------------
+
+This is a very deep zoom, with 4 levels of hierarchy. You should
+run SWIFT in multi-softening mode to complete this in reasonable time.
+Usually we would expect this to run in about a day on a single Skylake
+HPC node.
+
+Some boilerplate for running on a SLURM batch system is included in
+the `run.sh` script.

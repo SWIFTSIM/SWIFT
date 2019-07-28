@@ -45,6 +45,7 @@
 #include "engine.h"
 #include "entropy_floor.h"
 #include "error.h"
+#include "fof_io.h"
 #include "gravity_io.h"
 #include "gravity_properties.h"
 #include "hydro_io.h"
@@ -426,18 +427,18 @@ void prepareArray(struct engine* e, hid_t grp, char* fileName, FILE* xmfFile,
   if (h_data < 0) error("Error while creating dataspace '%s'.", props.name);
 
   /* Write unit conversion factors for this data set */
-  char buffer[FIELD_BUFFER_SIZE] = {0};
-  units_cgs_conversion_string(buffer, snapshot_units, props.units,
-                              props.scale_factor_exponent);
+  char buffer[FIELD_BUFFER_SIZE];
+  units_cgs_conversion_string(buffer, snapshot_units, props.units);
   float baseUnitsExp[5];
   units_get_base_unit_exponents_array(baseUnitsExp, props.units);
+  const float a_factor_exp = units_a_factor(snapshot_units, props.units);
   io_write_attribute_f(h_data, "U_M exponent", baseUnitsExp[UNIT_MASS]);
   io_write_attribute_f(h_data, "U_L exponent", baseUnitsExp[UNIT_LENGTH]);
   io_write_attribute_f(h_data, "U_t exponent", baseUnitsExp[UNIT_TIME]);
   io_write_attribute_f(h_data, "U_I exponent", baseUnitsExp[UNIT_CURRENT]);
   io_write_attribute_f(h_data, "U_T exponent", baseUnitsExp[UNIT_TEMPERATURE]);
-  io_write_attribute_f(h_data, "h-scale exponent", 0.f);
-  io_write_attribute_f(h_data, "a-scale exponent", props.scale_factor_exponent);
+  io_write_attribute_f(h_data, "h-scale exponent", 0);
+  io_write_attribute_f(h_data, "a-scale exponent", a_factor_exp);
   io_write_attribute_s(h_data, "Expression for physical CGS units", buffer);
 
   /* Write the actual number this conversion factor corresponds to */
@@ -450,15 +451,7 @@ void prepareArray(struct engine* e, hid_t grp, char* fileName, FILE* xmfFile,
   io_write_attribute_d(
       h_data,
       "Conversion factor to phyical CGS (including cosmological corrections)",
-      factor * pow(e->cosmology->a, props.scale_factor_exponent));
-
-#ifdef SWIFT_DEBUG_CHECKS
-  if (strlen(props.description) == 0)
-    error("Invalid (empty) description of the field '%s'", props.name);
-#endif
-
-  /* Write the full description */
-  io_write_attribute_s(h_data, "Description", props.description);
+      factor * pow(e->cosmology->a, a_factor_exp));
 
   /* Add a line to the XMF */
   if (xmfFile != NULL)
@@ -1214,6 +1207,7 @@ void prepare_file(struct engine* e, const char* baseName, long long N_total[6],
                                               with_cosmology);
         num_fields +=
             star_formation_write_particles(parts, xparts, list + num_fields);
+        num_fields += fof_write_parts(parts, xparts, list + num_fields);
         if (with_stf) {
           num_fields +=
               velociraptor_write_parts(parts, xparts, list + num_fields);
@@ -1222,6 +1216,7 @@ void prepare_file(struct engine* e, const char* baseName, long long N_total[6],
 
       case swift_type_dark_matter:
         darkmatter_write_particles(gparts, list, &num_fields);
+        num_fields += fof_write_gparts(gparts, list + num_fields);
         if (with_stf) {
           num_fields += velociraptor_write_gparts(e->s->gpart_group_data,
                                                   list + num_fields);
@@ -1233,6 +1228,7 @@ void prepare_file(struct engine* e, const char* baseName, long long N_total[6],
         num_fields += chemistry_write_sparticles(sparts, list + num_fields);
         num_fields +=
             tracers_write_sparticles(sparts, list + num_fields, with_cosmology);
+        num_fields += fof_write_sparts(sparts, list + num_fields);
         if (with_stf) {
           num_fields += velociraptor_write_sparts(sparts, list + num_fields);
         }
@@ -1240,6 +1236,8 @@ void prepare_file(struct engine* e, const char* baseName, long long N_total[6],
 
       case swift_type_black_hole:
         black_holes_write_particles(bparts, list, &num_fields, with_cosmology);
+        num_fields += chemistry_write_bparticles(bparts, list + num_fields);
+        num_fields += fof_write_bparts(bparts, list + num_fields);
         if (with_stf) {
           num_fields += velociraptor_write_bparts(bparts, list + num_fields);
         }
@@ -1254,7 +1252,7 @@ void prepare_file(struct engine* e, const char* baseName, long long N_total[6],
 
       /* Did the user cancel this field? */
       char field[PARSER_MAX_LINE_SIZE];
-      sprintf(field, "SelectOutput:%s_%s", list[i].name,
+      sprintf(field, "SelectOutput:%.*s_%s", FIELD_BUFFER_SIZE, list[i].name,
               part_type_names[ptype]);
       int should_write = parser_get_opt_param_int(params, field, 1);
 
@@ -1542,6 +1540,7 @@ void write_output_parallel(struct engine* e, const char* baseName,
             num_fields += cooling_write_particles(
                 parts, xparts, list + num_fields, e->cooling_func);
           }
+          num_fields += fof_write_parts(parts, xparts, list + num_fields);
           if (with_stf) {
             num_fields +=
                 velociraptor_write_parts(parts, xparts, list + num_fields);
@@ -1560,11 +1559,11 @@ void write_output_parallel(struct engine* e, const char* baseName,
           if (swift_memalign("parts_written", (void**)&parts_written,
                              part_align,
                              Ngas_written * sizeof(struct part)) != 0)
-            error("Error while allocating temporart memory for parts");
+            error("Error while allocating temporary memory for parts");
           if (swift_memalign("xparts_written", (void**)&xparts_written,
                              xpart_align,
                              Ngas_written * sizeof(struct xpart)) != 0)
-            error("Error while allocating temporart memory for xparts");
+            error("Error while allocating temporary memory for xparts");
 
           /* Collect the particles we want to write */
           io_collect_parts_to_write(parts, xparts, parts_written,
@@ -1580,6 +1579,8 @@ void write_output_parallel(struct engine* e, const char* baseName,
                 cooling_write_particles(parts_written, xparts_written,
                                         list + num_fields, e->cooling_func);
           }
+          num_fields +=
+              fof_write_parts(parts_written, xparts_written, list + num_fields);
           if (with_stf) {
             num_fields += velociraptor_write_parts(
                 parts_written, xparts_written, list + num_fields);
@@ -1597,6 +1598,7 @@ void write_output_parallel(struct engine* e, const char* baseName,
           /* This is a DM-only run without inhibited particles */
           Nparticles = Ntot;
           darkmatter_write_particles(gparts, list, &num_fields);
+          num_fields += fof_write_gparts(gparts, list + num_fields);
           if (with_stf) {
             num_fields += velociraptor_write_gparts(e->s->gpart_group_data,
                                                     list + num_fields);
@@ -1610,7 +1612,7 @@ void write_output_parallel(struct engine* e, const char* baseName,
           if (swift_memalign("gparts_written", (void**)&gparts_written,
                              gpart_align,
                              Ndm_written * sizeof(struct gpart)) != 0)
-            error("Error while allocating temporart memory for gparts");
+            error("Error while allocating temporary memory for gparts");
 
           if (with_stf) {
             if (swift_memalign(
@@ -1618,7 +1620,7 @@ void write_output_parallel(struct engine* e, const char* baseName,
                     gpart_align,
                     Ndm_written * sizeof(struct velociraptor_gpart_data)) != 0)
               error(
-                  "Error while allocating temporart memory for gparts STF "
+                  "Error while allocating temporary memory for gparts STF "
                   "data");
           }
 
@@ -1629,11 +1631,10 @@ void write_output_parallel(struct engine* e, const char* baseName,
 
           /* Select the fields to write */
           darkmatter_write_particles(gparts_written, list, &num_fields);
+          num_fields += fof_write_gparts(gparts_written, list + num_fields);
           if (with_stf) {
-#ifdef HAVE_VELOCIRAPTOR
             num_fields += velociraptor_write_gparts(gpart_group_data_written,
                                                     list + num_fields);
-#endif
           }
         }
       } break;
@@ -1647,6 +1648,7 @@ void write_output_parallel(struct engine* e, const char* baseName,
           num_fields += chemistry_write_sparticles(sparts, list + num_fields);
           num_fields += tracers_write_sparticles(sparts, list + num_fields,
                                                  with_cosmology);
+          num_fields += fof_write_sparts(sparts, list + num_fields);
           if (with_stf) {
             num_fields += velociraptor_write_sparts(sparts, list + num_fields);
           }
@@ -1659,7 +1661,7 @@ void write_output_parallel(struct engine* e, const char* baseName,
           if (swift_memalign("sparts_written", (void**)&sparts_written,
                              spart_align,
                              Nstars_written * sizeof(struct spart)) != 0)
-            error("Error while allocating temporart memory for sparts");
+            error("Error while allocating temporary memory for sparts");
 
           /* Collect the particles we want to write */
           io_collect_sparts_to_write(sparts, sparts_written, Nstars,
@@ -1671,6 +1673,7 @@ void write_output_parallel(struct engine* e, const char* baseName,
           num_fields += chemistry_write_sparticles(sparts, list + num_fields);
           num_fields += tracers_write_sparticles(sparts, list + num_fields,
                                                  with_cosmology);
+          num_fields += fof_write_sparts(sparts_written, list + num_fields);
           if (with_stf) {
             num_fields +=
                 velociraptor_write_sparts(sparts_written, list + num_fields);
@@ -1685,6 +1688,8 @@ void write_output_parallel(struct engine* e, const char* baseName,
           Nparticles = Nblackholes;
           black_holes_write_particles(bparts, list, &num_fields,
                                       with_cosmology);
+          num_fields += chemistry_write_bparticles(bparts, list + num_fields);
+          num_fields += fof_write_bparts(bparts, list + num_fields);
           if (with_stf) {
             num_fields += velociraptor_write_bparts(bparts, list + num_fields);
           }
@@ -1697,7 +1702,7 @@ void write_output_parallel(struct engine* e, const char* baseName,
           if (swift_memalign("bparts_written", (void**)&bparts_written,
                              bpart_align,
                              Nblackholes_written * sizeof(struct bpart)) != 0)
-            error("Error while allocating temporart memory for bparts");
+            error("Error while allocating temporary memory for bparts");
 
           /* Collect the particles we want to write */
           io_collect_bparts_to_write(bparts, bparts_written, Nblackholes,
@@ -1706,6 +1711,8 @@ void write_output_parallel(struct engine* e, const char* baseName,
           /* Select the fields to write */
           black_holes_write_particles(bparts_written, list, &num_fields,
                                       with_cosmology);
+          num_fields += chemistry_write_bparticles(bparts, list + num_fields);
+          num_fields += fof_write_bparts(bparts_written, list + num_fields);
           if (with_stf) {
             num_fields +=
                 velociraptor_write_bparts(bparts_written, list + num_fields);
@@ -1722,7 +1729,7 @@ void write_output_parallel(struct engine* e, const char* baseName,
 
       /* Did the user cancel this field? */
       char field[PARSER_MAX_LINE_SIZE];
-      sprintf(field, "SelectOutput:%s_%s", list[i].name,
+      sprintf(field, "SelectOutput:%.*s_%s", FIELD_BUFFER_SIZE, list[i].name,
               part_type_names[ptype]);
       int should_write = parser_get_opt_param_int(params, field, 1);
 

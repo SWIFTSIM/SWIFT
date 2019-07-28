@@ -432,13 +432,13 @@ __attribute__((always_inline)) INLINE static void hydro_set_viscosity_alpha(
 }
 
 /**
- * @brief Update the value of the viscosity alpha to the
+ * @brief Update the value of the diffusive coefficients to the
  *        feedback reset value for the scheme.
  *
  * @param p the particle of interest
  */
 __attribute__((always_inline)) INLINE static void
-hydro_set_viscosity_alpha_max_feedback(struct part *restrict p) {
+hydro_diffusive_feedback_reset(struct part *restrict p) {
   /* This scheme has fixed alpha */
 }
 
@@ -601,8 +601,8 @@ __attribute__((always_inline)) INLINE static void hydro_prepare_force(
   /* Compute the "grad h" term */
   const float rho_inv = 1.f / p->rho;
   float rho_dh = p->density.rho_dh;
-  /* Ignore changing-kernel effects when h is h_max */
-  if (p->h == hydro_props->h_max) {
+  /* Ignore changing-kernel effects when h ~= h_max */
+  if (p->h > 0.9999f * hydro_props->h_max) {
     rho_dh = 0.f;
   }
   const float grad_h_term =
@@ -869,7 +869,9 @@ hydro_set_init_internal_energy(struct part *p, float u_init) {
 __attribute__((always_inline)) INLINE static void hydro_remove_part(
     const struct part *p, const struct xpart *xp) {
 
+  printf("Removed particle id=%lld \n", p->id);
   printParticle_single(p, xp);
+  fflush(stdout);
 }
 
 #endif /* SWIFT_PLANETARY_HYDRO_H */

@@ -22,6 +22,7 @@
 /* Local includes */
 #include "hydro.h"
 #include "random.h"
+#include "space.h"
 
 /**
  * @brief Density interaction between two particles (non-symmetric).
@@ -36,11 +37,14 @@
  * @param cosmo The cosmological model.
  * @param ti_current Current integer time value (for random numbers).
  */
-__attribute__((always_inline)) INLINE static void runner_iact_nonsym_bh_density(
-    const float r2, const float *dx, const float hi, const float hj,
-    struct bpart *restrict bi, const struct part *restrict pj,
-    const struct xpart *restrict xpj, const struct cosmology *cosmo,
-    const integertime_t ti_current) {
+__attribute__((always_inline)) INLINE static void
+runner_iact_nonsym_bh_gas_density(const float r2, const float *dx,
+                                  const float hi, const float hj,
+                                  struct bpart *restrict bi,
+                                  const struct part *restrict pj,
+                                  const struct xpart *restrict xpj,
+                                  const struct cosmology *cosmo,
+                                  const integertime_t ti_current) {
 
   float wi, wi_dx;
 
@@ -83,6 +87,12 @@ __attribute__((always_inline)) INLINE static void runner_iact_nonsym_bh_density(
   bi->velocity_gas[1] += mj * vj[1] * wi;
   bi->velocity_gas[2] += mj * vj[2] * wi;
 
+  /* Contribution to the circular valocity */
+  const float dv[3] = {bi->v[0] - vj[0], bi->v[1] - vj[1], bi->v[2] - vj[2]};
+  bi->circular_velocity_gas[0] += mj * wi * (dx[1] * dv[2] - dx[2] * dv[1]);
+  bi->circular_velocity_gas[1] += mj * wi * (dx[2] * dv[0] - dx[0] * dv[2]);
+  bi->circular_velocity_gas[2] += mj * wi * (dx[0] * dv[1] - dx[1] * dv[0]);
+
 #ifdef DEBUG_INTERACTIONS_BH
   /* Update ngb counters */
   if (si->num_ngb_density < MAX_NUM_OF_NEIGHBOURS_BH)
@@ -91,6 +101,161 @@ __attribute__((always_inline)) INLINE static void runner_iact_nonsym_bh_density(
   /* Update ngb counters */
   ++si->num_ngb_density;
 #endif
+}
+
+/**
+ * @brief Swallowing interaction between two particles (non-symmetric).
+ *
+ * Function used to flag the gas particles that will be swallowed
+ * by the black hole particle.
+ *
+ * @param r2 Comoving square distance between the two particles.
+ * @param dx Comoving vector separating both particles (pi - pj).
+ * @param hi Comoving smoothing-length of particle i.
+ * @param hj Comoving smoothing-length of particle j.
+ * @param bi First particle (black hole).
+ * @param pj Second particle (gas)
+ * @param xpj The extended data of the second particle.
+ * @param cosmo The cosmological model.
+ * @param ti_current Current integer time value (for random numbers).
+ */
+__attribute__((always_inline)) INLINE static void
+runner_iact_nonsym_bh_gas_swallow(const float r2, const float *dx,
+                                  const float hi, const float hj,
+                                  const struct bpart *restrict bi,
+                                  struct part *restrict pj,
+                                  struct xpart *restrict xpj,
+                                  const struct cosmology *cosmo,
+                                  const integertime_t ti_current) {
+
+  float wi;
+
+  /* Get r and 1/r. */
+  const float r_inv = 1.0f / sqrtf(r2);
+  const float r = r2 * r_inv;
+
+  /* Compute the kernel function */
+  const float hi_inv = 1.0f / hi;
+  const float hi_inv_dim = pow_dimension(hi_inv);
+  const float ui = r * hi_inv;
+  kernel_eval(ui, &wi);
+
+  /* Is the BH hungry? */
+  if (bi->subgrid_mass > bi->mass) {
+
+    /* Probability to swallow this particle
+     * Recall that in SWIFT the SPH kernel is recovered by computing
+     * kernel_eval() and muliplying by (1/h^d) */
+    const float prob =
+        (bi->subgrid_mass - bi->mass) * hi_inv_dim * wi / bi->rho_gas;
+
+    /* Draw a random number (Note mixing both IDs) */
+    const float rand = random_unit_interval(bi->id + pj->id, ti_current,
+                                            random_number_BH_swallow);
+
+    /* Are we lucky? */
+    if (rand < prob) {
+
+      /* This particle is swallowed by the BH with the largest ID of all the
+       * candidates wanting to swallow it */
+      if (pj->black_holes_data.swallow_id < bi->id) {
+
+        message("BH %lld wants to swallow gas particle %lld", bi->id, pj->id);
+
+        pj->black_holes_data.swallow_id = bi->id;
+
+      } else {
+
+        message(
+            "BH %lld wants to swallow gas particle %lld BUT CANNOT (old "
+            "swallow id=%lld)",
+            bi->id, pj->id, pj->black_holes_data.swallow_id);
+      }
+    }
+  }
+}
+
+/**
+ * @brief Swallowing interaction between two BH particles (non-symmetric).
+ *
+ * Function used to flag the BH particles that will be swallowed
+ * by the black hole particle.
+ *
+ * @param r2 Comoving square distance between the two particles.
+ * @param dx Comoving vector separating both particles (pi - pj).
+ * @param hi Comoving smoothing-length of particle i.
+ * @param hj Comoving smoothing-length of particle j.
+ * @param bi First particle (black hole).
+ * @param bj Second particle (black hole)
+ * @param cosmo The cosmological model.
+ * @param grav_props The properties of the gravity scheme (softening, G, ...)
+ * @param ti_current Current integer time value (for random numbers).
+ */
+__attribute__((always_inline)) INLINE static void
+runner_iact_nonsym_bh_bh_swallow(const float r2, const float *dx,
+                                 const float hi, const float hj,
+                                 const struct bpart *restrict bi,
+                                 struct bpart *restrict bj,
+                                 const struct cosmology *cosmo,
+                                 const struct gravity_props *grav_props,
+                                 const integertime_t ti_current) {
+
+  /* Compute relative peculiar velocity between the two BHs
+   * Recall that in SWIFT v is (v_pec * a) */
+  const float delta_v[3] = {bi->v[0] - bj->v[0], bi->v[1] - bj->v[1],
+                            bi->v[2] - bj->v[2]};
+  const float v2 = delta_v[0] * delta_v[0] + delta_v[1] * delta_v[1] +
+                   delta_v[2] * delta_v[2];
+
+  const float v2_pec = v2 * cosmo->a2_inv;
+
+  /* Find the most massive of the two BHs */
+  float M = bi->subgrid_mass;
+  float h = hi;
+  if (bj->subgrid_mass > M) {
+    M = bj->subgrid_mass;
+    h = hj;
+  }
+
+  /* Note the factor 9 is taken from EAGLE. Will be turned into a parameter */
+  const float max_distance2 = kernel_gravity_softening_plummer_equivalent_inv *
+                              kernel_gravity_softening_plummer_equivalent_inv *
+                              9.f * grav_props->epsilon_cur2;
+
+  const float G_Newton = grav_props->G_Newton;
+
+  /* The BH with the smaller mass will be merged onto the one with the
+   * larger mass.
+   * To avoid rounding issues, we additionally check for IDs if the BHs
+   * have the exact same mass. */
+  if ((bj->subgrid_mass < bi->subgrid_mass) ||
+      (bj->subgrid_mass == bi->subgrid_mass && bj->id < bi->id)) {
+
+    /* Merge if gravitationally bound AND if within max distance
+     * Note that we use the kernel support here as the size and not just the
+     * smoothing length */
+    if (v2_pec < G_Newton * M / (kernel_gamma * h) && (r2 < max_distance2)) {
+
+      /* This particle is swallowed by the BH with the largest ID of all the
+       * candidates wanting to swallow it */
+      if ((bj->merger_data.swallow_mass < bi->subgrid_mass) ||
+          (bj->merger_data.swallow_mass == bi->subgrid_mass &&
+           bj->merger_data.swallow_id < bi->id)) {
+
+        message("BH %lld wants to swallow BH particle %lld", bi->id, bj->id);
+
+        bj->merger_data.swallow_id = bi->id;
+        bj->merger_data.swallow_mass = bi->subgrid_mass;
+
+      } else {
+
+        message(
+            "BH %lld wants to swallow gas particle %lld BUT CANNOT (old "
+            "swallow id=%lld)",
+            bi->id, bj->id, bj->merger_data.swallow_id);
+      }
+    }
+  }
 }
 
 /**
@@ -107,12 +272,13 @@ __attribute__((always_inline)) INLINE static void runner_iact_nonsym_bh_density(
  * @param ti_current Current integer time value (for random numbers).
  */
 __attribute__((always_inline)) INLINE static void
-runner_iact_nonsym_bh_feedback(const float r2, const float *dx, const float hi,
-                               const float hj, struct bpart *restrict bi,
-                               struct part *restrict pj,
-                               struct xpart *restrict xpj,
-                               const struct cosmology *cosmo,
-                               const integertime_t ti_current) {
+runner_iact_nonsym_bh_gas_feedback(const float r2, const float *dx,
+                                   const float hi, const float hj,
+                                   const struct bpart *restrict bi,
+                                   struct part *restrict pj,
+                                   struct xpart *restrict xpj,
+                                   const struct cosmology *cosmo,
+                                   const integertime_t ti_current) {
 
   /* Get the heating probability */
   const float prob = bi->to_distribute.AGN_heating_probability;
@@ -136,7 +302,12 @@ runner_iact_nonsym_bh_feedback(const float r2, const float *dx, const float hi,
       hydro_set_drifted_physical_internal_energy(pj, cosmo, u_new);
 
       /* Impose maximal viscosity */
-      hydro_set_viscosity_alpha_max_feedback(pj);
+      hydro_diffusive_feedback_reset(pj);
+
+      /* message( */
+      /*     "We did some AGN heating! id %llu BH id %llu probability " */
+      /*     " %.5e  random_num %.5e du %.5e du/ini %.5e", */
+      /*     pj->id, bi->id, prob, rand, delta_u, delta_u / u_init); */
     }
   }
 

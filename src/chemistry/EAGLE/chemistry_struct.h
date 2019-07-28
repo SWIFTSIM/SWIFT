@@ -89,4 +89,37 @@ struct chemistry_part_data {
   float smoothed_iron_mass_fraction_from_SNIa;
 };
 
+/**
+ * @brief Chemical abundances traced by the #bpart in the EAGLE model.
+ */
+struct chemistry_bpart_data {
+
+  /*! Mass in a given element */
+  float metal_mass[chemistry_element_count];
+
+  /*! Mass in *all* metals */
+  float metal_mass_total;
+
+  /*! Mass coming from SNIa */
+  float mass_from_SNIa;
+
+  /*! Mass coming from AGB */
+  float mass_from_AGB;
+
+  /*! Mass coming from SNII */
+  float mass_from_SNII;
+
+  /*! Metal mass coming from SNIa */
+  float metal_mass_from_SNIa;
+
+  /*! Metal mass coming from AGB */
+  float metal_mass_from_AGB;
+
+  /*! Metal mass coming from SNII */
+  float metal_mass_from_SNII;
+
+  /*! Iron mass coming from SNIa */
+  float iron_mass_from_SNIa;
+};
+
 #endif /* SWIFT_CHEMISTRY_STRUCT_EAGLE_H */

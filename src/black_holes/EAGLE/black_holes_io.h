@@ -29,9 +29,9 @@
  * @param list The list of i/o properties to read.
  * @param num_fields The number of i/o fields to read.
  */
-INLINE static void black_holes_read_particles(struct bpart* bparts,
-                                              struct io_props* list,
-                                              int* num_fields) {
+INLINE static void black_holes_read_particles(struct bpart *bparts,
+                                              struct io_props *list,
+                                              int *num_fields) {
 
   /* Say how much we want to read */
   *num_fields = 6;
@@ -170,7 +170,12 @@ INLINE static void black_holes_write_particles(const struct bpart* bparts,
   list[11] = io_make_output_field(
       "TotalAccretedMasses", FLOAT, 1, UNIT_CONV_MASS_PER_UNIT_TIME, 0.f,
       bparts, total_accreted_mass,
-      "Total masses accreted onto the particles since its birth");
+      "Total mass accreted onto the particles since its birth");
+
+  list[12] =
+      io_make_output_field("CumulativeNumberSeeds", INT, 1, UNIT_CONV_NO_UNITS, 0.f,
+                           bparts, cumulative_number_seeds,
+                           "Total number of BH seeds that have merged into this black hole");
 
 #ifdef DEBUG_INTERACTIONS_BLACK_HOLES
 

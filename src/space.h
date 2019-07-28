@@ -52,6 +52,8 @@ struct cosmology;
 #define space_expected_max_nr_strays_default 100
 #define space_subsize_pair_hydro_default 256000000
 #define space_subsize_self_hydro_default 32000
+#define space_subsize_pair_stars_default 256000000
+#define space_subsize_self_stars_default 32000
 #define space_subsize_pair_grav_default 256000000
 #define space_subsize_self_grav_default 32000
 #define space_subdepth_diff_grav_default 4
@@ -68,6 +70,8 @@ extern int space_splitsize;
 extern int space_maxsize;
 extern int space_subsize_pair_hydro;
 extern int space_subsize_self_hydro;
+extern int space_subsize_pair_stars;
+extern int space_subsize_self_stars;
 extern int space_subsize_pair_grav;
 extern int space_subsize_self_grav;
 extern int space_subdepth_diff_grav;
@@ -354,6 +358,7 @@ void space_check_top_multipoles_drift_point(struct space *s,
                                             integertime_t ti_drift);
 void space_check_timesteps(struct space *s);
 void space_check_limiter(struct space *s);
+void space_check_swallow(struct space *s);
 void space_check_sort_flags(struct space *s);
 void space_replicate(struct space *s, int replicate, int verbose);
 void space_generate_gas(struct space *s, const struct cosmology *cosmo,

@@ -681,7 +681,7 @@ void DOPAIR_SUBSET(struct runner *r, struct cell *restrict ci,
   const float H = cosmo->H;
 
   /* Pick-out the sorted lists. */
-  const struct entry *restrict sort_j = cj->hydro.sort[sid];
+  const struct sort_entry *restrict sort_j = cj->hydro.sort[sid];
   const float dxj = cj->hydro.dx_max_sort;
 
   /* Parts are on the left? */
@@ -984,8 +984,8 @@ void DOPAIR1(struct runner *r, struct cell *ci, struct cell *cj, const int sid,
   for (int k = 0; k < 3; k++) rshift += shift[k] * runner_shift[sid][k];
 
   /* Pick-out the sorted lists. */
-  const struct entry *restrict sort_i = ci->hydro.sort[sid];
-  const struct entry *restrict sort_j = cj->hydro.sort[sid];
+  const struct sort_entry *restrict sort_i = ci->hydro.sort[sid];
+  const struct sort_entry *restrict sort_j = cj->hydro.sort[sid];
 
 #ifdef SWIFT_DEBUG_CHECKS
   /* Some constants used to checks that the parts are in the right frame */
@@ -1231,8 +1231,8 @@ void DOPAIR1_BRANCH(struct runner *r, struct cell *ci, struct cell *cj) {
 
 #ifdef SWIFT_DEBUG_CHECKS
   /* Pick-out the sorted lists. */
-  const struct entry *restrict sort_i = ci->hydro.sort[sid];
-  const struct entry *restrict sort_j = cj->hydro.sort[sid];
+  const struct sort_entry *restrict sort_i = ci->hydro.sort[sid];
+  const struct sort_entry *restrict sort_j = cj->hydro.sort[sid];
 
   /* Check that the dx_max_sort values in the cell are indeed an upper
      bound on particle movement. */
@@ -1309,8 +1309,8 @@ void DOPAIR2(struct runner *r, struct cell *ci, struct cell *cj, const int sid,
   for (int k = 0; k < 3; k++) rshift += shift[k] * runner_shift[sid][k];
 
   /* Pick-out the sorted lists. */
-  struct entry *restrict sort_i = ci->hydro.sort[sid];
-  struct entry *restrict sort_j = cj->hydro.sort[sid];
+  struct sort_entry *restrict sort_i = ci->hydro.sort[sid];
+  struct sort_entry *restrict sort_j = cj->hydro.sort[sid];
 
 #ifdef SWIFT_DEBUG_CHECKS
   /* Some constants used to checks that the parts are in the right frame */
@@ -1350,7 +1350,8 @@ void DOPAIR2(struct runner *r, struct cell *ci, struct cell *cj, const int sid,
   const double shift_j[3] = {cj->loc[0], cj->loc[1], cj->loc[2]};
 
   int count_active_i = 0, count_active_j = 0;
-  struct entry *restrict sort_active_i = NULL, *restrict sort_active_j = NULL;
+  struct sort_entry *restrict sort_active_i = NULL,
+                              *restrict sort_active_j = NULL;
 
   if (cell_is_all_active_hydro(ci, e)) {
     /* If everybody is active don't bother copying */
@@ -1358,7 +1359,7 @@ void DOPAIR2(struct runner *r, struct cell *ci, struct cell *cj, const int sid,
     count_active_i = count_i;
   } else if (cell_is_active_hydro(ci, e)) {
     if (posix_memalign((void **)&sort_active_i, SWIFT_CACHE_ALIGNMENT,
-                       sizeof(struct entry) * count_i) != 0)
+                       sizeof(struct sort_entry) * count_i) != 0)
       error("Failed to allocate active sortlists.");
 
     /* Collect the active particles in ci */
@@ -1376,7 +1377,7 @@ void DOPAIR2(struct runner *r, struct cell *ci, struct cell *cj, const int sid,
     count_active_j = count_j;
   } else if (cell_is_active_hydro(cj, e)) {
     if (posix_memalign((void **)&sort_active_j, SWIFT_CACHE_ALIGNMENT,
-                       sizeof(struct entry) * count_j) != 0)
+                       sizeof(struct sort_entry) * count_j) != 0)
       error("Failed to allocate active sortlists.");
 
     /* Collect the active particles in cj */
@@ -1423,6 +1424,14 @@ void DOPAIR2(struct runner *r, struct cell *ci, struct cell *cj, const int sid,
 
         /* Recover pj */
         struct part *pj = &parts_j[sort_active_j[pjd].i];
+
+        /* Skip inhibited particles.
+         * Note we are looping over active particles but in the case where
+         * the cell thinks all the particles are active (because of the
+         * ti_end_max), particles may have nevertheless been inhibted by BH
+         * swallowing in the mean time. */
+        if (part_is_inhibited(pj, e)) continue;
+
         const float hj = pj->h;
 
         /* Get the position of pj in the right frame */
@@ -1464,6 +1473,7 @@ void DOPAIR2(struct runner *r, struct cell *ci, struct cell *cj, const int sid,
         /* Check that particles have been drifted to the current time */
         if (pi->ti_drift != e->ti_current)
           error("Particle pi not drifted to current time");
+
         if (pj->ti_drift != e->ti_current)
           error("Particle pj not drifted to current time");
 #endif
@@ -1532,6 +1542,7 @@ void DOPAIR2(struct runner *r, struct cell *ci, struct cell *cj, const int sid,
         /* Check that particles have been drifted to the current time */
         if (pi->ti_drift != e->ti_current)
           error("Particle pi not drifted to current time");
+
         if (pj->ti_drift != e->ti_current)
           error("Particle pj not drifted to current time");
 #endif
@@ -1593,6 +1604,14 @@ void DOPAIR2(struct runner *r, struct cell *ci, struct cell *cj, const int sid,
 
         /* Recover pi */
         struct part *pi = &parts_i[sort_active_i[pid].i];
+
+        /* Skip inhibited particles.
+         * Note we are looping over active particles but in the case where
+         * the cell thinks all the particles are active (because of the
+         * ti_end_max), particles may have nevertheless been inhibted by BH
+         * swallowing in the mean time. */
+        if (part_is_inhibited(pi, e)) continue;
+
         const float hi = pi->h;
         const float hig2 = hi * hi * kernel_gamma2;
 
@@ -1778,8 +1797,8 @@ void DOPAIR2_BRANCH(struct runner *r, struct cell *ci, struct cell *cj) {
 
 #ifdef SWIFT_DEBUG_CHECKS
   /* Pick-out the sorted lists. */
-  const struct entry *restrict sort_i = ci->hydro.sort[sid];
-  const struct entry *restrict sort_j = cj->hydro.sort[sid];
+  const struct sort_entry *restrict sort_i = ci->hydro.sort[sid];
+  const struct sort_entry *restrict sort_j = cj->hydro.sort[sid];
 
   /* Check that the dx_max_sort values in the cell are indeed an upper
      bound on particle movement. */

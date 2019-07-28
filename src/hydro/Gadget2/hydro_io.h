@@ -64,8 +64,8 @@ INLINE static void convert_part_u(const struct engine* e, const struct part* p,
   ret[0] = hydro_get_comoving_internal_energy(p, xp);
 }
 
-INLINE static void convert_P(const struct engine* e, const struct part* p,
-                             const struct xpart* xp, float* ret) {
+INLINE static void convert_part_P(const struct engine* e, const struct part* p,
+                                  const struct xpart* xp, float* ret) {
 
   ret[0] = hydro_get_comoving_pressure(p);
 }
@@ -130,16 +130,6 @@ INLINE static void convert_part_potential(const struct engine* e,
     ret[0] = 0.f;
 }
 
-INLINE static void convert_part_group_id(const struct engine* e,
-                                         const struct part* p,
-                                         const struct xpart* xp, int* ret) {
-
-  if (p->gpart != NULL)
-    ret[0] = p->gpart->group_id;
-  else
-    ret[0] = 0;
-}
-
 /**
  * @brief Specifies which particle fields to write to a dataset
  *
@@ -153,7 +143,7 @@ INLINE static void hydro_write_particles(const struct part* parts,
                                          struct io_props* list,
                                          int* num_fields) {
 
-  *num_fields = 11;
+  *num_fields = 10;
 
   /* List what we want to write */
   list[0] = io_make_output_field_convert_part(
@@ -198,12 +188,6 @@ INLINE static void hydro_write_particles(const struct part* parts,
       "Potentials", FLOAT, 1, UNIT_CONV_POTENTIAL, -1.f, parts, xparts,
       convert_part_potential,
       "Co-moving gravitational potential at position of the particles");
-
-  /* TODO: Add this to the other schemes too. */
-  list[10] = io_make_output_field_convert_part(
-      "GroupIDs", INT, 1, UNIT_CONV_NO_UNITS, 0.f, parts, xparts,
-      convert_part_group_id,
-      "Internal 3D Friends-of-Friends group identifier.");
 
 #ifdef DEBUG_INTERACTIONS_SPH
 

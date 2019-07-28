@@ -195,6 +195,42 @@ void engine_marktasks_mapper(void *map_data, int num_elements,
       }
 
       else if (t_type == task_type_self &&
+               t_subtype == task_subtype_bh_swallow) {
+        if (ci_active_black_holes) {
+          scheduler_activate(s, t);
+        }
+      }
+
+      else if (t_type == task_type_sub_self &&
+               t_subtype == task_subtype_bh_swallow) {
+        if (ci_active_black_holes) scheduler_activate(s, t);
+      }
+
+      else if (t_type == task_type_self &&
+               t_subtype == task_subtype_do_gas_swallow) {
+        if (ci_active_black_holes) {
+          scheduler_activate(s, t);
+        }
+      }
+
+      else if (t_type == task_type_sub_self &&
+               t_subtype == task_subtype_do_gas_swallow) {
+        if (ci_active_black_holes) scheduler_activate(s, t);
+      }
+
+      else if (t_type == task_type_self &&
+               t_subtype == task_subtype_do_bh_swallow) {
+        if (ci_active_black_holes) {
+          scheduler_activate(s, t);
+        }
+      }
+
+      else if (t_type == task_type_sub_self &&
+               t_subtype == task_subtype_do_bh_swallow) {
+        if (ci_active_black_holes) scheduler_activate(s, t);
+      }
+
+      else if (t_type == task_type_self &&
                t_subtype == task_subtype_bh_feedback) {
         if (ci_active_black_holes) {
           scheduler_activate(s, t);
@@ -378,58 +414,29 @@ void engine_marktasks_mapper(void *map_data, int num_elements,
       }
 
       /* Black_Holes density */
-      else if ((t_subtype == task_subtype_bh_density) &&
+      else if ((t_subtype == task_subtype_bh_density ||
+                t_subtype == task_subtype_bh_swallow ||
+                t_subtype == task_subtype_do_gas_swallow ||
+                t_subtype == task_subtype_do_bh_swallow ||
+                t_subtype == task_subtype_bh_feedback) &&
                (ci_active_black_holes || cj_active_black_holes) &&
                (ci_nodeID == nodeID || cj_nodeID == nodeID)) {
 
         scheduler_activate(s, t);
 
-        /* Set the correct sorting flags */
-        if (t_type == task_type_pair) {
+        /* Set the correct drifting flags */
+        if (t_type == task_type_pair && t_subtype == task_subtype_bh_density) {
+          if (ci_nodeID == nodeID) cell_activate_drift_bpart(ci, s);
+          if (ci_nodeID == nodeID) cell_activate_drift_part(ci, s);
 
-          /* Do ci */
-          if (ci_active_black_holes) {
-
-            /* Activate the drift tasks. */
-            if (ci_nodeID == nodeID) cell_activate_drift_bpart(ci, s);
-            if (cj_nodeID == nodeID) cell_activate_drift_part(cj, s);
-          }
-
-          /* Do cj */
-          if (cj_active_black_holes) {
-
-            /* Activate the drift tasks. */
-            if (ci_nodeID == nodeID) cell_activate_drift_part(ci, s);
-            if (cj_nodeID == nodeID) cell_activate_drift_bpart(cj, s);
-          }
+          if (cj_nodeID == nodeID) cell_activate_drift_part(cj, s);
+          if (cj_nodeID == nodeID) cell_activate_drift_bpart(cj, s);
         }
 
         /* Store current values of dx_max and h_max. */
         else if (t_type == task_type_sub_pair &&
                  t_subtype == task_subtype_bh_density) {
           cell_activate_subcell_black_holes_tasks(ci, cj, s);
-        }
-      }
-
-      /* Black_Holes feedback */
-      else if (t_subtype == task_subtype_bh_feedback) {
-
-        /* We only want to activate the task if the cell is active and is
-           going to update some gas on the *local* node */
-        if ((ci_nodeID == nodeID && cj_nodeID == nodeID) &&
-            (ci_active_black_holes || cj_active_black_holes)) {
-
-          scheduler_activate(s, t);
-
-        } else if ((ci_nodeID == nodeID && cj_nodeID != nodeID) &&
-                   (cj_active_black_holes)) {
-
-          scheduler_activate(s, t);
-
-        } else if ((ci_nodeID != nodeID && cj_nodeID == nodeID) &&
-                   (ci_active_black_holes)) {
-
-          scheduler_activate(s, t);
         }
       }
 
@@ -669,68 +676,92 @@ void engine_marktasks_mapper(void *map_data, int num_elements,
         if (cell_need_rebuild_for_black_holes_pair(ci, cj)) *rebuild_space = 1;
         if (cell_need_rebuild_for_black_holes_pair(cj, ci)) *rebuild_space = 1;
 
+        scheduler_activate(s, ci->hydro.super->black_holes.swallow_ghost[0]);
+        scheduler_activate(s, cj->hydro.super->black_holes.swallow_ghost[0]);
+
 #ifdef WITH_MPI
         /* Activate the send/recv tasks. */
         if (ci_nodeID != nodeID) {
 
-          if (cj_active_black_holes) {
-            scheduler_activate_recv(s, ci->mpi.recv, task_subtype_xv);
+          /* Receive the foreign parts to compute BH accretion rates and do the
+           * swallowing */
+          scheduler_activate_recv(s, ci->mpi.recv, task_subtype_rho);
+          scheduler_activate_recv(s, ci->mpi.recv, task_subtype_part_swallow);
+          scheduler_activate_recv(s, ci->mpi.recv, task_subtype_bpart_merger);
 
-            /* If the local cell is active, more stuff will be needed. */
-            scheduler_activate_send(s, cj->mpi.send, task_subtype_bpart,
-                                    ci_nodeID);
-            cell_activate_drift_bpart(cj, s);
+          /* Send the local BHs to tag the particles to swallow and to do
+           * feedback */
+          scheduler_activate_send(s, cj->mpi.send, task_subtype_bpart_rho,
+                                  ci_nodeID);
+          scheduler_activate_send(s, cj->mpi.send, task_subtype_bpart_feedback,
+                                  ci_nodeID);
 
-            /* If the local cell is active, send its ti_end values. */
-            scheduler_activate_send(s, cj->mpi.send, task_subtype_tend_bpart,
-                                    ci_nodeID);
-          }
+          /* Drift before you send */
+          cell_activate_drift_bpart(cj, s);
 
-          if (ci_active_black_holes) {
-            scheduler_activate_recv(s, ci->mpi.recv, task_subtype_bpart);
+          /* Send the new BH time-steps */
+          scheduler_activate_send(s, cj->mpi.send, task_subtype_tend_bpart,
+                                  ci_nodeID);
 
-            /* If the foreign cell is active, we want its ti_end values. */
-            scheduler_activate_recv(s, ci->mpi.recv, task_subtype_tend_bpart);
+          /* Receive the foreign BHs to tag particles to swallow and for
+           * feedback */
+          scheduler_activate_recv(s, ci->mpi.recv, task_subtype_bpart_rho);
+          scheduler_activate_recv(s, ci->mpi.recv, task_subtype_bpart_feedback);
 
-            /* Is the foreign cell active and will need stuff from us? */
-            scheduler_activate_send(s, cj->mpi.send, task_subtype_xv,
-                                    ci_nodeID);
+          /* Receive the foreign BH time-steps */
+          scheduler_activate_recv(s, ci->mpi.recv, task_subtype_tend_bpart);
 
-            /* Drift the cell which will be sent; note that not all sent
-               particles will be drifted, only those that are needed. */
-            cell_activate_drift_part(cj, s);
-          }
+          /* Send the local part information */
+          scheduler_activate_send(s, cj->mpi.send, task_subtype_rho, ci_nodeID);
+          scheduler_activate_send(s, cj->mpi.send, task_subtype_part_swallow,
+                                  ci_nodeID);
+          scheduler_activate_send(s, cj->mpi.send, task_subtype_bpart_merger,
+                                  ci_nodeID);
+
+          /* Drift the cell which will be sent; note that not all sent
+             particles will be drifted, only those that are needed. */
+          cell_activate_drift_part(cj, s);
 
         } else if (cj_nodeID != nodeID) {
 
-          /* If the local cell is active, receive data from the foreign cell. */
-          if (ci_active_black_holes) {
-            scheduler_activate_recv(s, cj->mpi.recv, task_subtype_xv);
+          /* Receive the foreign parts to compute BH accretion rates and do the
+           * swallowing */
+          scheduler_activate_recv(s, cj->mpi.recv, task_subtype_rho);
+          scheduler_activate_recv(s, cj->mpi.recv, task_subtype_part_swallow);
+          scheduler_activate_recv(s, cj->mpi.recv, task_subtype_bpart_merger);
 
-            /* If the local cell is active, more stuff will be needed. */
-            scheduler_activate_send(s, ci->mpi.send, task_subtype_bpart,
-                                    cj_nodeID);
-            cell_activate_drift_bpart(ci, s);
+          /* Send the local BHs to tag the particles to swallow and to do
+           * feedback */
+          scheduler_activate_send(s, ci->mpi.send, task_subtype_bpart_rho,
+                                  cj_nodeID);
+          scheduler_activate_send(s, ci->mpi.send, task_subtype_bpart_feedback,
+                                  cj_nodeID);
 
-            /* If the local cell is active, send its ti_end values. */
-            scheduler_activate_send(s, ci->mpi.send, task_subtype_tend_bpart,
-                                    cj_nodeID);
-          }
+          /* Drift before you send */
+          cell_activate_drift_bpart(ci, s);
 
-          if (cj_active_black_holes) {
-            scheduler_activate_recv(s, cj->mpi.recv, task_subtype_bpart);
+          /* Send the new BH time-steps */
+          scheduler_activate_send(s, ci->mpi.send, task_subtype_tend_bpart,
+                                  cj_nodeID);
 
-            /* If the foreign cell is active, we want its ti_end values. */
-            scheduler_activate_recv(s, cj->mpi.recv, task_subtype_tend_bpart);
+          /* Receive the foreign BHs to tag particles to swallow and for
+           * feedback */
+          scheduler_activate_recv(s, cj->mpi.recv, task_subtype_bpart_rho);
+          scheduler_activate_recv(s, cj->mpi.recv, task_subtype_bpart_feedback);
 
-            /* Is the foreign cell active and will need stuff from us? */
-            scheduler_activate_send(s, ci->mpi.send, task_subtype_xv,
-                                    cj_nodeID);
+          /* Receive the foreign BH time-steps */
+          scheduler_activate_recv(s, cj->mpi.recv, task_subtype_tend_bpart);
 
-            /* Drift the cell which will be sent; note that not all sent
-               particles will be drifted, only those that are needed. */
-            cell_activate_drift_part(ci, s);
-          }
+          /* Send the local part information */
+          scheduler_activate_send(s, ci->mpi.send, task_subtype_rho, cj_nodeID);
+          scheduler_activate_send(s, ci->mpi.send, task_subtype_part_swallow,
+                                  cj_nodeID);
+          scheduler_activate_send(s, ci->mpi.send, task_subtype_bpart_merger,
+                                  cj_nodeID);
+
+          /* Drift the cell which will be sent; note that not all sent
+             particles will be drifted, only those that are needed. */
+          cell_activate_drift_part(ci, s);
         }
 #endif
       }
@@ -878,7 +909,10 @@ void engine_marktasks_mapper(void *map_data, int num_elements,
     }
 
     /* Black hole ghost tasks ? */
-    else if (t_type == task_type_bh_ghost) {
+    else if (t_type == task_type_bh_density_ghost ||
+             t_type == task_type_bh_swallow_ghost1 ||
+             t_type == task_type_bh_swallow_ghost2 ||
+             t_type == task_type_bh_swallow_ghost3) {
       if (cell_is_active_black_holes(t->ci, e)) scheduler_activate(s, t);
     }
 
@@ -905,7 +939,8 @@ void engine_marktasks_mapper(void *map_data, int num_elements,
     }
 
     /* Subgrid tasks: star formation */
-    else if (t_type == task_type_star_formation) {
+    else if (t_type == task_type_star_formation ||
+             t_type == task_type_stars_resort) {
       if (cell_is_active_hydro(t->ci, e)) {
         scheduler_activate(s, t);
         cell_activate_super_spart_drifts(t->ci, s);

@@ -2715,7 +2715,7 @@ void engine_collect_end_of_step_recurse_hydro(struct cell *c,
 #endif
 
   /* Counters for the different quantities. */
-  size_t updated = 0, inhibited = 0;
+  size_t updated = 0;
   integertime_t ti_hydro_end_min = max_nr_timesteps, ti_hydro_end_max = 0,
                 ti_hydro_beg_max = 0;
 
@@ -2739,7 +2739,6 @@ void engine_collect_end_of_step_recurse_hydro(struct cell *c,
       ti_hydro_beg_max = max(ti_hydro_beg_max, cp->hydro.ti_beg_max);
 
       updated += cp->hydro.updated;
-      inhibited += cp->hydro.inhibited;
 
       /* Check if the cell is inactive and in that case reorder the SFH */
       if (!cell_is_starting_hydro(cp, e)) {
@@ -2759,7 +2758,7 @@ void engine_collect_end_of_step_recurse_hydro(struct cell *c,
   c->hydro.ti_end_max = ti_hydro_end_max;
   c->hydro.ti_beg_max = ti_hydro_beg_max;
   c->hydro.updated = updated;
-  c->hydro.inhibited = inhibited;
+  // c->hydro.inhibited = inhibited;
 
   /* Store the star formation history in the parent cell */
   star_formation_logger_add(&c->stars.sfh, &sfh_updated);
@@ -2790,7 +2789,7 @@ void engine_collect_end_of_step_recurse_grav(struct cell *c,
 #endif
 
   /* Counters for the different quantities. */
-  size_t updated = 0, inhibited = 0;
+  size_t updated = 0;
   integertime_t ti_grav_end_min = max_nr_timesteps, ti_grav_end_max = 0,
                 ti_grav_beg_max = 0;
 
@@ -2808,7 +2807,6 @@ void engine_collect_end_of_step_recurse_grav(struct cell *c,
       ti_grav_beg_max = max(ti_grav_beg_max, cp->grav.ti_beg_max);
 
       updated += cp->grav.updated;
-      inhibited += cp->grav.inhibited;
 
       /* Collected, so clear for next time. */
       cp->grav.updated = 0;
@@ -2820,7 +2818,6 @@ void engine_collect_end_of_step_recurse_grav(struct cell *c,
   c->grav.ti_end_max = ti_grav_end_max;
   c->grav.ti_beg_max = ti_grav_beg_max;
   c->grav.updated = updated;
-  c->grav.inhibited = inhibited;
 }
 
 /**
@@ -2847,7 +2844,7 @@ void engine_collect_end_of_step_recurse_stars(struct cell *c,
 #endif
 
   /* Counters for the different quantities. */
-  size_t updated = 0, inhibited = 0;
+  size_t updated = 0;
   integertime_t ti_stars_end_min = max_nr_timesteps, ti_stars_end_max = 0,
                 ti_stars_beg_max = 0;
 
@@ -2865,7 +2862,6 @@ void engine_collect_end_of_step_recurse_stars(struct cell *c,
       ti_stars_beg_max = max(ti_stars_beg_max, cp->stars.ti_beg_max);
 
       updated += cp->stars.updated;
-      inhibited += cp->stars.inhibited;
 
       /* Collected, so clear for next time. */
       cp->stars.updated = 0;
@@ -2877,7 +2873,6 @@ void engine_collect_end_of_step_recurse_stars(struct cell *c,
   c->stars.ti_end_max = ti_stars_end_max;
   c->stars.ti_beg_max = ti_stars_beg_max;
   c->stars.updated = updated;
-  c->stars.inhibited = inhibited;
 }
 
 /**
@@ -2904,7 +2899,7 @@ void engine_collect_end_of_step_recurse_black_holes(struct cell *c,
 #endif
 
   /* Counters for the different quantities. */
-  size_t updated = 0, inhibited = 0;
+  size_t updated = 0;
   integertime_t ti_black_holes_end_min = max_nr_timesteps,
                 ti_black_holes_end_max = 0, ti_black_holes_beg_max = 0;
 
@@ -2925,7 +2920,6 @@ void engine_collect_end_of_step_recurse_black_holes(struct cell *c,
           max(ti_black_holes_beg_max, cp->black_holes.ti_beg_max);
 
       updated += cp->black_holes.updated;
-      inhibited += cp->black_holes.inhibited;
 
       /* Collected, so clear for next time. */
       cp->black_holes.updated = 0;
@@ -2937,7 +2931,6 @@ void engine_collect_end_of_step_recurse_black_holes(struct cell *c,
   c->black_holes.ti_end_max = ti_black_holes_end_max;
   c->black_holes.ti_beg_max = ti_black_holes_beg_max;
   c->black_holes.updated = updated;
-  c->black_holes.inhibited = inhibited;
 }
 
 /**
@@ -2968,7 +2961,6 @@ void engine_collect_end_of_step_mapper(void *map_data, int num_elements,
 
   /* Local collectible */
   size_t updated = 0, g_updated = 0, s_updated = 0, b_updated = 0;
-  size_t inhibited = 0, g_inhibited = 0, s_inhibited = 0, b_inhibited = 0;
   integertime_t ti_hydro_end_min = max_nr_timesteps, ti_hydro_end_max = 0,
                 ti_hydro_beg_max = 0;
   integertime_t ti_gravity_end_min = max_nr_timesteps, ti_gravity_end_max = 0,
@@ -3033,11 +3025,6 @@ void engine_collect_end_of_step_mapper(void *map_data, int num_elements,
       s_updated += c->stars.updated;
       b_updated += c->black_holes.updated;
 
-      inhibited += c->hydro.inhibited;
-      g_inhibited += c->grav.inhibited;
-      s_inhibited += c->stars.inhibited;
-      b_inhibited += c->black_holes.inhibited;
-
       /* Check if the cell is inactive and in that case reorder the SFH */
       if (!cell_is_starting_hydro(c, e)) {
         star_formation_logger_log_inactive_cell(&c->stars.sfh);
@@ -3062,11 +3049,6 @@ void engine_collect_end_of_step_mapper(void *map_data, int num_elements,
     data->g_updated += g_updated;
     data->s_updated += s_updated;
     data->b_updated += b_updated;
-
-    data->inhibited += inhibited;
-    data->g_inhibited += g_inhibited;
-    data->s_inhibited += s_inhibited;
-    data->b_inhibited += b_inhibited;
 
     /* Add the SFH information from this engine to the global data */
     star_formation_logger_add(sfh_top, &sfh_updated);
@@ -3124,8 +3106,6 @@ void engine_collect_end_of_step(struct engine *e, int apply) {
   struct space *s = e->s;
   struct end_of_step_data data;
   data.updated = 0, data.g_updated = 0, data.s_updated = 0, data.b_updated = 0;
-  data.inhibited = 0, data.g_inhibited = 0, data.s_inhibited = 0,
-  data.b_inhibited = 0;
   data.ti_hydro_end_min = max_nr_timesteps, data.ti_hydro_end_max = 0,
   data.ti_hydro_beg_max = 0;
   data.ti_gravity_end_min = max_nr_timesteps, data.ti_gravity_end_max = 0,
@@ -3144,11 +3124,12 @@ void engine_collect_end_of_step(struct engine *e, int apply) {
                  s->local_cells_with_tasks_top, s->nr_local_cells_with_tasks,
                  sizeof(int), 0, &data);
 
-  /* Store the local number of inhibited particles */
-  s->nr_inhibited_parts = data.inhibited;
-  s->nr_inhibited_gparts = data.g_inhibited;
-  s->nr_inhibited_sparts = data.s_inhibited;
-  s->nr_inhibited_bparts = data.b_inhibited;
+  /* Get the number of inhibited particles from the space-wide counters
+   * since these have been updated atomically during the time-steps. */
+  data.inhibited = s->nr_inhibited_parts;
+  data.g_inhibited = s->nr_inhibited_gparts;
+  data.s_inhibited = s->nr_inhibited_sparts;
+  data.b_inhibited = s->nr_inhibited_bparts;
 
   /* Store these in the temporary collection group. */
   collectgroup1_init(
@@ -3184,11 +3165,12 @@ void engine_collect_end_of_step(struct engine *e, int apply) {
       error("Failed to get same ti_gravity_end_min, is %lld, should be %lld",
             in_i[1], e->collect_group1.ti_gravity_end_min);
 
-    long long in_ll[3], out_ll[3];
+    long long in_ll[4], out_ll[4];
     out_ll[0] = data.updated;
     out_ll[1] = data.g_updated;
     out_ll[2] = data.s_updated;
-    if (MPI_Allreduce(out_ll, in_ll, 3, MPI_LONG_LONG_INT, MPI_SUM,
+    out_ll[3] = data.b_updated;
+    if (MPI_Allreduce(out_ll, in_ll, 4, MPI_LONG_LONG_INT, MPI_SUM,
                       MPI_COMM_WORLD) != MPI_SUCCESS)
       error("Failed to aggregate particle counts.");
     if (in_ll[0] != (long long)e->collect_group1.updated)
@@ -3200,11 +3182,15 @@ void engine_collect_end_of_step(struct engine *e, int apply) {
     if (in_ll[2] != (long long)e->collect_group1.s_updated)
       error("Failed to get same s_updated, is %lld, should be %lld", in_ll[2],
             e->collect_group1.s_updated);
+    if (in_ll[3] != (long long)e->collect_group1.b_updated)
+      error("Failed to get same b_updated, is %lld, should be %lld", in_ll[3],
+            e->collect_group1.b_updated);
 
     out_ll[0] = data.inhibited;
     out_ll[1] = data.g_inhibited;
     out_ll[2] = data.s_inhibited;
-    if (MPI_Allreduce(out_ll, in_ll, 3, MPI_LONG_LONG_INT, MPI_SUM,
+    out_ll[3] = data.b_inhibited;
+    if (MPI_Allreduce(out_ll, in_ll, 4, MPI_LONG_LONG_INT, MPI_SUM,
                       MPI_COMM_WORLD) != MPI_SUCCESS)
       error("Failed to aggregate particle counts.");
     if (in_ll[0] != (long long)e->collect_group1.inhibited)
@@ -3216,6 +3202,9 @@ void engine_collect_end_of_step(struct engine *e, int apply) {
     if (in_ll[2] != (long long)e->collect_group1.s_inhibited)
       error("Failed to get same s_inhibited, is %lld, should be %lld", in_ll[2],
             e->collect_group1.s_inhibited);
+    if (in_ll[3] != (long long)e->collect_group1.b_inhibited)
+      error("Failed to get same b_inhibited, is %lld, should be %lld", in_ll[3],
+            e->collect_group1.b_inhibited);
 
     int buff = 0;
     if (MPI_Allreduce(&e->forcerebuild, &buff, 1, MPI_INT, MPI_MAX,
@@ -3336,9 +3325,20 @@ void engine_skip_force_and_kick(struct engine *e) {
         t->type == task_type_stars_in || t->type == task_type_stars_out ||
         t->type == task_type_star_formation ||
         t->type == task_type_extra_ghost ||
+        t->type == task_type_bh_swallow_ghost1 ||
+        t->type == task_type_bh_swallow_ghost2 ||
+        t->type == task_type_bh_swallow_ghost3 ||
         t->subtype == task_subtype_gradient ||
         t->subtype == task_subtype_stars_feedback ||
         t->subtype == task_subtype_bh_feedback ||
+        t->subtype == task_subtype_bh_swallow ||
+        t->subtype == task_subtype_do_gas_swallow ||
+        t->subtype == task_subtype_do_bh_swallow ||
+        t->subtype == task_subtype_bpart_rho ||
+        t->subtype == task_subtype_part_swallow ||
+        t->subtype == task_subtype_bpart_merger ||
+        t->subtype == task_subtype_bpart_swallow ||
+        t->subtype == task_subtype_bpart_feedback ||
         t->subtype == task_subtype_tend_part ||
         t->subtype == task_subtype_tend_gpart ||
         t->subtype == task_subtype_tend_spart ||
@@ -3571,6 +3571,7 @@ void engine_init_particles(struct engine *e, int flag_entropy_ICs,
 #ifdef SWIFT_DEBUG_CHECKS
   /* Make sure all woken-up particles have been processed */
   space_check_limiter(e->s);
+  space_check_swallow(e->s);
 #endif
 
   /* Recover the (integer) end of the next time-step */
@@ -3859,6 +3860,7 @@ void engine_step(struct engine *e) {
   /* Make sure all woken-up particles have been processed */
   space_check_limiter(e->s);
   space_check_sort_flags(e->s);
+  space_check_swallow(e->s);
 #endif
 
   /* Collect information about the next time-step */
@@ -5546,7 +5548,7 @@ void engine_config(int restart, int fof, struct engine *e,
 
     /* Hours between restart dumps. Can be changed on restart. */
     float dhours =
-        parser_get_opt_param_float(params, "Restarts:delta_hours", 6.0);
+        parser_get_opt_param_float(params, "Restarts:delta_hours", 5.0f);
     if (e->nodeID == 0) {
       if (e->restart_dump)
         message("Restarts will be dumped every %f hours", dhours);
@@ -5573,8 +5575,10 @@ void engine_config(int restart, int fof, struct engine *e,
   stats_create_mpi_type();
   proxy_create_mpi_type();
   task_create_mpi_comms();
+#ifdef WITH_FOF
   fof_create_mpi_types();
-#endif
+#endif /* WITH_FOF */
+#endif /* WITH_MPI */
 
   if (!fof) {
 
@@ -6254,7 +6258,9 @@ void engine_struct_dump(struct engine *e, FILE *stream) {
   feedback_struct_dump(e->feedback_props, stream);
   black_holes_struct_dump(e->black_holes_properties, stream);
   chemistry_struct_dump(e->chemistry, stream);
+#ifdef WITH_FOF
   fof_struct_dump(e->fof_properties, stream);
+#endif
   parser_struct_dump(e->parameter_file, stream);
   if (e->output_list_snapshots)
     output_list_struct_dump(e->output_list_snapshots, stream);
@@ -6372,10 +6378,12 @@ void engine_struct_restore(struct engine *e, FILE *stream) {
   chemistry_struct_restore(chemistry, stream);
   e->chemistry = chemistry;
 
+#ifdef WITH_FOF
   struct fof_props *fof_props =
       (struct fof_props *)malloc(sizeof(struct fof_props));
   fof_struct_restore(fof_props, stream);
   e->fof_properties = fof_props;
+#endif
 
   struct swift_params *parameter_file =
       (struct swift_params *)malloc(sizeof(struct swift_params));
@@ -6491,6 +6499,8 @@ void engine_activate_fof_tasks(struct engine *e) {
 void engine_fof(struct engine *e, const int dump_results,
                 const int seed_black_holes) {
 
+#ifdef WITH_FOF
+
   ticks tic = getticks();
 
   /* Compute number of DM particles */
@@ -6510,14 +6520,6 @@ void engine_fof(struct engine *e, const int dump_results,
   /* Perform local FOF tasks. */
   engine_launch(e);
 
-#ifdef WITH_MPI
-  /* Exchange the gparts that now contain all their local group information */
-  engine_activate_gpart_comms(e);
-
-  /* Perform the communications */
-  engine_launch(e);
-#endif
-
   /* Perform FOF search over foreign particles and
    * find groups which require black hole seeding.  */
   fof_search_tree(e->fof_properties, e->black_holes_properties,
@@ -6536,4 +6538,7 @@ void engine_fof(struct engine *e, const int dump_results,
   if (engine_rank == 0)
     message("Complete FOF search took: %.3f %s.",
             clocks_from_ticks(getticks() - tic), clocks_getunit());
+#else
+  error("SWIFT was not compiled with FOF enabled!");
+#endif
 }
