@@ -222,34 +222,54 @@ INLINE static int chemistry_write_bparticles(const struct bpart* bparts,
                                              struct io_props* list) {
 
   /* List what we want to write */
-  list[0] =
-      io_make_output_field("ElementMass", FLOAT, chemistry_element_count,
-                           UNIT_CONV_MASS, bparts, chemistry_data.metal_mass);
+  list[0] = io_make_output_field(
+      "ElementMasses", FLOAT, chemistry_element_count, UNIT_CONV_MASS, 0.f,
+      bparts, chemistry_data.metal_mass,
+      "Mass contents of the BH particles in a given element");
 
-  list[1] = io_make_output_field("MetalMass", FLOAT, chemistry_element_count,
-                                 UNIT_CONV_MASS, bparts,
-                                 chemistry_data.metal_mass_total);
+  list[1] = io_make_output_field(
+      "MetalMasses", FLOAT, chemistry_element_count, UNIT_CONV_MASS, 0.f,
+      bparts, chemistry_data.metal_mass_total,
+      "Mass contents of the BH particles in a metals");
 
-  list[2] = io_make_output_field("MassFromSNIa", FLOAT, 1, UNIT_CONV_MASS,
-                                 bparts, chemistry_data.mass_from_SNIa);
+  list[2] = io_make_output_field(
+      "MassesFromSNIa", FLOAT, 1, UNIT_CONV_MASS, 0.f, bparts,
+      chemistry_data.mass_from_SNIa,
+      "Masses of the BH particles that have been produced by SNIa stars");
 
-  list[3] = io_make_output_field("MassFromSNII", FLOAT, 1, UNIT_CONV_MASS,
-                                 bparts, chemistry_data.mass_from_SNII);
+  list[3] = io_make_output_field(
+      "MassFromSNII", FLOAT, 1, UNIT_CONV_MASS, 0.f, bparts,
+      chemistry_data.mass_from_SNII,
+      "Masses of the BH particles that have been produced by SNII stars");
 
-  list[4] = io_make_output_field("MassFromAGB", FLOAT, 1, UNIT_CONV_MASS,
-                                 bparts, chemistry_data.mass_from_AGB);
+  list[4] = io_make_output_field(
+      "MassFromAGB", FLOAT, 1, UNIT_CONV_MASS, 0.f, bparts,
+      chemistry_data.mass_from_AGB,
+      "Masses of the BH particles that have been produced by AGB stars");
 
-  list[5] = io_make_output_field("MetalMassFromSNIa", FLOAT, 1, UNIT_CONV_MASS,
-                                 bparts, chemistry_data.metal_mass_from_SNIa);
+  list[5] =
+      io_make_output_field("MetalMassFromSNIa", FLOAT, 1, UNIT_CONV_MASS, 0.f,
+                           bparts, chemistry_data.metal_mass_from_SNIa,
+                           "Masses of the BH particles in metals that have "
+                           "been produced by SNIa stars");
 
-  list[6] = io_make_output_field("MetalMassFromSNII", FLOAT, 1, UNIT_CONV_MASS,
-                                 bparts, chemistry_data.metal_mass_from_SNII);
+  list[6] =
+      io_make_output_field("MetalMassFromSNII", FLOAT, 1, UNIT_CONV_MASS, 0.f,
+                           bparts, chemistry_data.metal_mass_from_SNII,
+                           "Masses of the BH particles in metals that have "
+                           "been produced by SNII stars");
 
-  list[7] = io_make_output_field("MetalMassFromAGB", FLOAT, 1, UNIT_CONV_MASS,
-                                 bparts, chemistry_data.metal_mass_from_AGB);
+  list[7] =
+      io_make_output_field("MetalMassFromAGB", FLOAT, 1, UNIT_CONV_MASS, 0.f,
+                           bparts, chemistry_data.metal_mass_from_AGB,
+                           "Masses of the BH particles in metals that have "
+                           "been produced by AGB stars");
 
-  list[8] = io_make_output_field("IronMassFromSNIa", FLOAT, 1, UNIT_CONV_MASS,
-                                 bparts, chemistry_data.iron_mass_from_SNIa);
+  list[8] =
+      io_make_output_field("IronMassFromSNIa", FLOAT, 1, UNIT_CONV_MASS, 0.f,
+                           bparts, chemistry_data.iron_mass_from_SNIa,
+                           "Masses of the BH particles in iron that have been "
+                           "produced by SNIa stars");
 
   return 9;
 }
