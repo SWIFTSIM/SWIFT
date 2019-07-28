@@ -30,7 +30,9 @@
 /* Local includes. */
 #include "black_holes_io.h"
 #include "chemistry_io.h"
+#include "cooling_io.h"
 #include "error.h"
+#include "fof_io.h"
 #include "gravity_io.h"
 #include "hydro.h"
 #include "hydro_io.h"
@@ -38,9 +40,12 @@
 #include "kernel_hydro.h"
 #include "part.h"
 #include "part_type.h"
+#include "star_formation_io.h"
 #include "stars_io.h"
 #include "threadpool.h"
+#include "tracers_io.h"
 #include "units.h"
+#include "velociraptor_io.h"
 #include "version.h"
 
 /* Some standard headers. */
@@ -1892,13 +1897,6 @@ void io_collect_gparts_to_write(
 void io_check_output_fields(const struct swift_params* params,
                             const long long N_total[3]) {
 
-  /* Create some fake particles as arguments for the writing routines */
-  struct part p;
-  struct xpart xp;
-  struct spart sp;
-  struct gpart gp;
-  struct bpart bp;
-
   /* Copy N_total to array with length == 6 */
   const long long nr_total[swift_type_count] = {N_total[0], N_total[1], 0,
                                                 0,          N_total[2], 0};
@@ -1916,20 +1914,39 @@ void io_check_output_fields(const struct swift_params* params,
     switch (ptype) {
 
       case swift_type_gas:
-        hydro_write_particles(&p, &xp, list, &num_fields);
-        num_fields += chemistry_write_particles(&p, list + num_fields);
+        hydro_write_particles(NULL, NULL, list, &num_fields);
+        num_fields += chemistry_write_particles(NULL, list + num_fields);
+        num_fields +=
+            cooling_write_particles(NULL, NULL, list + num_fields, NULL);
+        num_fields += tracers_write_particles(NULL, NULL, list + num_fields,
+                                              /*with_cosmology=*/1);
+        num_fields +=
+            star_formation_write_particles(NULL, NULL, list + num_fields);
+        num_fields += fof_write_parts(NULL, NULL, list + num_fields);
+        num_fields += velociraptor_write_parts(NULL, NULL, list + num_fields);
         break;
 
       case swift_type_dark_matter:
-        darkmatter_write_particles(&gp, list, &num_fields);
+        darkmatter_write_particles(NULL, list, &num_fields);
+        num_fields += fof_write_gparts(NULL, list + num_fields);
+        num_fields += velociraptor_write_gparts(NULL, list + num_fields);
         break;
 
       case swift_type_stars:
-        stars_write_particles(&sp, list, &num_fields, 1);
+        stars_write_particles(NULL, list, &num_fields, /*with_cosmology=*/1);
+        num_fields += chemistry_write_sparticles(NULL, list + num_fields);
+        num_fields += tracers_write_sparticles(NULL, list + num_fields,
+                                               /*with_cosmology=*/1);
+        num_fields += fof_write_sparts(NULL, list + num_fields);
+        num_fields += velociraptor_write_sparts(NULL, list + num_fields);
         break;
 
       case swift_type_black_hole:
-        black_holes_write_particles(&bp, list, &num_fields, 1);
+        black_holes_write_particles(NULL, list, &num_fields,
+                                    /*with_cosmology=*/1);
+        num_fields += chemistry_write_bparticles(NULL, list + num_fields);
+        num_fields += fof_write_bparts(NULL, list + num_fields);
+        num_fields += velociraptor_write_bparts(NULL, list + num_fields);
         break;
 
       default:
@@ -2012,18 +2029,37 @@ void io_write_output_field_parameter(const char* filename) {
       case swift_type_gas:
         hydro_write_particles(NULL, NULL, list, &num_fields);
         num_fields += chemistry_write_particles(NULL, list + num_fields);
+        num_fields +=
+            cooling_write_particles(NULL, NULL, list + num_fields, NULL);
+        num_fields += tracers_write_particles(NULL, NULL, list + num_fields,
+                                              /*with_cosmology=*/1);
+        num_fields +=
+            star_formation_write_particles(NULL, NULL, list + num_fields);
+        num_fields += fof_write_parts(NULL, NULL, list + num_fields);
+        num_fields += velociraptor_write_parts(NULL, NULL, list + num_fields);
         break;
 
       case swift_type_dark_matter:
         darkmatter_write_particles(NULL, list, &num_fields);
+        num_fields += fof_write_gparts(NULL, list + num_fields);
+        num_fields += velociraptor_write_gparts(NULL, list + num_fields);
         break;
 
       case swift_type_stars:
-        stars_write_particles(NULL, list, &num_fields, 1);
+        stars_write_particles(NULL, list, &num_fields, /*with_cosmology=*/1);
+        num_fields += chemistry_write_sparticles(NULL, list + num_fields);
+        num_fields += tracers_write_sparticles(NULL, list + num_fields,
+                                               /*with_cosmology=*/1);
+        num_fields += fof_write_sparts(NULL, list + num_fields);
+        num_fields += velociraptor_write_sparts(NULL, list + num_fields);
         break;
 
       case swift_type_black_hole:
-        black_holes_write_particles(NULL, list, &num_fields, 1);
+        black_holes_write_particles(NULL, list, &num_fields,
+                                    /*with_cosmology=*/1);
+        num_fields += chemistry_write_bparticles(NULL, list + num_fields);
+        num_fields += fof_write_bparts(NULL, list + num_fields);
+        num_fields += velociraptor_write_bparts(NULL, list + num_fields);
         break;
 
       default:
