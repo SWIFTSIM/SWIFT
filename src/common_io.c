@@ -400,8 +400,8 @@ static long long cell_count_non_inhibited_gas(const struct cell* c) {
   struct part* parts = c->hydro.parts;
   long long count = 0;
   for (int i = 0; i < total_count; ++i) {
-    if (!(parts[i].time_bin != time_bin_inhibited) &&
-        !(parts[i].time_bin != time_bin_not_created)) {
+    if ((parts[i].time_bin != time_bin_inhibited) &&
+        (parts[i].time_bin != time_bin_not_created)) {
       ++count;
     }
   }
@@ -413,8 +413,8 @@ static long long cell_count_non_inhibited_dark_matter(const struct cell* c) {
   struct gpart* gparts = c->grav.parts;
   long long count = 0;
   for (int i = 0; i < total_count; ++i) {
-    if (!(gparts[i].time_bin != time_bin_inhibited) &&
-        !(gparts[i].time_bin != time_bin_not_created) &&
+    if ((gparts[i].time_bin != time_bin_inhibited) &&
+        (gparts[i].time_bin != time_bin_not_created) &&
         (gparts[i].type == swift_type_dark_matter)) {
       ++count;
     }
@@ -427,8 +427,8 @@ static long long cell_count_non_inhibited_stars(const struct cell* c) {
   struct spart* sparts = c->stars.parts;
   long long count = 0;
   for (int i = 0; i < total_count; ++i) {
-    if (!(sparts[i].time_bin != time_bin_inhibited) &&
-        !(sparts[i].time_bin != time_bin_not_created)) {
+    if ((sparts[i].time_bin != time_bin_inhibited) &&
+        (sparts[i].time_bin != time_bin_not_created)) {
       ++count;
     }
   }
@@ -440,8 +440,8 @@ static long long cell_count_non_inhibited_black_holes(const struct cell* c) {
   struct bpart* bparts = c->black_holes.parts;
   long long count = 0;
   for (int i = 0; i < total_count; ++i) {
-    if (!(bparts[i].time_bin != time_bin_inhibited) &&
-        !(bparts[i].time_bin != time_bin_not_created)) {
+    if ((bparts[i].time_bin != time_bin_inhibited) &&
+        (bparts[i].time_bin != time_bin_not_created)) {
       ++count;
     }
   }
