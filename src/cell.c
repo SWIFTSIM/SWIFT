@@ -4684,11 +4684,7 @@ void cell_drift_spart(struct cell *c, const struct engine *e, int force) {
           if (!spart_is_inhibited(sp, e)) {
 
             /* Remove the particle entirely */
-            struct gpart *gp = sp->gpart;
             cell_remove_spart(e, c, sp);
-
-            /* and its gravity friend */
-            cell_remove_gpart(e, c, gp);
           }
 
           if (lock_unlock(&e->s->lock) != 0)
@@ -4859,11 +4855,7 @@ void cell_drift_bpart(struct cell *c, const struct engine *e, int force) {
           if (!bpart_is_inhibited(bp, e)) {
 
             /* Remove the particle entirely */
-            struct gpart *gp = bp->gpart;
             cell_remove_bpart(e, c, bp);
-
-            /* and its gravity friend */
-            cell_remove_gpart(e, c, gp);
           }
 
           if (lock_unlock(&e->s->lock) != 0)
