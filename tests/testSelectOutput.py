@@ -39,8 +39,8 @@ if "Coordinates" not in part0:
 if "Masses" not in part0:
     raise Exception("`Masses` not present in HDF5 but should be written")
 
-if "Density" not in part0:
-    raise Exception("`Density` not present in HDF5 but should be written")
+if "Densities" not in part0:
+    raise Exception("`Densities` not present in HDF5 but should be written")
 
 
 # check error detection
