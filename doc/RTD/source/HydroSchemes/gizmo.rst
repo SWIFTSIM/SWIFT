@@ -25,3 +25,6 @@ this at compile-time with the following configuration flags:
 .. code-block:: bash
    
    ./configure --with-hydro="gizmo-mfm" --with-riemann-solver="hllc"
+
+
+These schemes should be treated as experimental and not used for production runs.
