@@ -64,7 +64,7 @@ INLINE static int chemistry_write_particles(const struct part* parts,
       "Fractions of the particles' masses that are in the given element");
 
   list[1] = io_make_output_field(
-      "SmoothedElementAbundances", FLOAT, chemistry_element_count,
+      "SmoothedElementMassFractions", FLOAT, chemistry_element_count,
       UNIT_CONV_NO_UNITS, 0.f, parts,
       chemistry_data.smoothed_metal_mass_fraction,
       "Smoothed fractions of the particles' masses that are "
@@ -146,7 +146,7 @@ INLINE static int chemistry_write_sparticles(const struct spart* sparts,
       "Fractions of the particles' masses that are in the given element");
 
   list[1] = io_make_output_field(
-      "SmoothedElementAbundances", FLOAT, chemistry_element_count,
+      "SmoothedElementMassFractions", FLOAT, chemistry_element_count,
       UNIT_CONV_NO_UNITS, 0.f, sparts,
       chemistry_data.smoothed_metal_mass_fraction,
       "Smoothed fractions of the particles' masses that are "
@@ -238,12 +238,12 @@ INLINE static int chemistry_write_bparticles(const struct bpart* bparts,
       "Masses of the BH particles that have been produced by SNIa stars");
 
   list[3] = io_make_output_field(
-      "MassFromSNII", FLOAT, 1, UNIT_CONV_MASS, 0.f, bparts,
+      "MassesFromSNII", FLOAT, 1, UNIT_CONV_MASS, 0.f, bparts,
       chemistry_data.mass_from_SNII,
       "Masses of the BH particles that have been produced by SNII stars");
 
   list[4] = io_make_output_field(
-      "MassFromAGB", FLOAT, 1, UNIT_CONV_MASS, 0.f, bparts,
+      "MassesFromAGB", FLOAT, 1, UNIT_CONV_MASS, 0.f, bparts,
       chemistry_data.mass_from_AGB,
       "Masses of the BH particles that have been produced by AGB stars");
 
