@@ -1082,6 +1082,7 @@ struct task *scheduler_addtask(struct scheduler *s, enum task_types type,
   t->nr_unlock_tasks = 0;
 #ifdef SWIFT_DEBUG_TASKS
   t->rid = -1;
+  t->qtic = 0;
 #endif
   t->tic = 0;
   t->toc = 0;
@@ -1578,6 +1579,7 @@ void scheduler_start(struct scheduler *s) {
     s->tasks[i].toc = 0;
 #ifdef SWIFT_DEBUG_TASKS
     s->tasks[i].rid = -1;
+    s->tasks[i].qtic = 0;
 #endif
   }
 
@@ -1932,6 +1934,11 @@ void scheduler_enqueue(struct scheduler *s, struct task *t) {
 
     /* Increase the waiting counter. */
     atomic_inc(&s->waiting);
+
+#ifdef SWIFT_DEBUG_TASKS
+    /* Start time for this task. */
+    t->qtic = getticks();
+#endif
 
     /* Insert the task into that queue. */
     queue_insert(&s->queues[qid], t);

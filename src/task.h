@@ -214,10 +214,14 @@ struct task {
 
   /*! Information about the direction of the pair task */
   short int sid;
+
+  /*! Time when task was queued. */
+  ticks qtic;
 #endif
 
   /*! Start and end time of this task */
   ticks tic, toc;
+
 
 #ifdef SWIFT_DEBUG_CHECKS
   /* When was this task last run? */
