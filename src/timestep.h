@@ -174,6 +174,7 @@ __attribute__((always_inline)) INLINE static integertime_t get_part_timestep(
       (p->force.h_dt != 0.0f)
           ? fabsf(e->hydro_properties->log_max_h_change * p->h / p->force.h_dt)
           : FLT_MAX;
+  if (dt_h_change <= 0.) error("id %llu dt_h_change %e log_max_h_change %e h %e h_dt %e", p->id, dt_h_change, e->hydro_properties->log_max_h_change, p->h, p->force.h_dt);
 
   new_dt = min(new_dt, dt_h_change);
 
@@ -187,8 +188,11 @@ __attribute__((always_inline)) INLINE static integertime_t get_part_timestep(
   new_dt = min(new_dt, e->dt_max);
 
   if (new_dt < e->dt_min)
-    error("part (id=%lld) wants a time-step (%e) below dt_min (%e)", p->id,
-          new_dt, e->dt_min);
+    error("part (id=%lld) wants a time-step (%e) below dt_min (%e), dt_hydro %e, dt_cooling %e, dt_grav %e, dt_h_change %e, dt_max_RMS %e, cosmo_factor %e", p->id,
+          new_dt, e->dt_min, new_dt_hydro, new_dt_cooling, new_dt_grav, dt_h_change, e->dt_max_RMS_displacement, e->cosmology->time_step_factor);
+    // ALEXEI: original statement:
+    //error("part (id=%lld) wants a time-step (%e) below dt_min (%e)", p->id,
+    //      new_dt, e->dt_min);
 
   /* Convert to integer time */
   const integertime_t new_dti = make_integer_timestep(

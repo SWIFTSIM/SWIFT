@@ -94,7 +94,7 @@ INLINE static void feedback_props_init(struct feedback_props *fp,
 
   /* read thermal feedback parameters */
   fp->simba_wind_energy_limit = parser_get_param_float(params,"SIMBAFeedback:energy_limit"); // ALEXEI: check units here
-  fp->SN_energy = parser_get_param_float(params,"SIMBAFeedback:sn_energy_erg") / units_cgs_conversion_factor(us,UNIT_CONV_ENERGY);
+  fp->SN_energy = parser_get_param_double(params,"SIMBAFeedback:sn_energy_erg") / units_cgs_conversion_factor(us,UNIT_CONV_ENERGY);
 
   /* read recoupling density threshold */
   // ALEXEI: make sure this is either reading a number density and converting or convert number density to mass density.

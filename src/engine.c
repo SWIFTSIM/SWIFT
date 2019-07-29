@@ -2722,6 +2722,18 @@ void engine_step(struct engine *e) {
   e->s_updates_since_rebuild += e->collect_group1.s_updated;
   e->b_updates_since_rebuild += e->collect_group1.b_updated;
 
+  // ALEXEI: Temporary attempt to recouple particles
+  // Loop over all the particles in space, check delay_time counter, possibly recouple, give timebin corresponding to next timestep. (get_time_bin(ti_next) or similar)
+
+  if (e->s->cells_top != NULL && e->s->nr_sparts > 0) {
+    int recoupled = 0;
+    for (int i = 0; i < e->s->nr_cells; i++) {
+      struct cell *c = &e->s->cells_top[i];
+      recoupled = cell_recouple(c, e);
+    }
+    if (recoupled) e->ti_end_min = e->ti_current + get_integer_timestep(e->min_active_bin);
+  }
+ 
 #ifdef SWIFT_DEBUG_CHECKS
   /* Verify that all cells have correct time-step information */
   space_check_timesteps(e->s);

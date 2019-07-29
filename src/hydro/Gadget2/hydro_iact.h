@@ -542,6 +542,7 @@ __attribute__((always_inline)) INLINE static void runner_iact_force(
   /* Get the time derivative for h. */
   pi->force.h_dt -= mj * dvdr * r_inv / rhoj * wi_dr;
   pj->force.h_dt -= mi * dvdr * r_inv / rhoi * wj_dr;
+  if (!isfinite(pj->force.h_dt)) error("pj id %llu pi id %llu mi %e dvdr %e r_inv %e rhoi %e wj_dr %e", pj->id, pi->id, mi, dvdr, r_inv, rhoi, wj_dr);
 
   /* Update the signal velocity. */
   pi->force.v_sig = max(pi->force.v_sig, v_sig);

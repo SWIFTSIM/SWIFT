@@ -33,7 +33,7 @@ typedef long long integertime_t;
 typedef int8_t timebin_t;
 
 /*! The number of time bins */
-#define num_time_bins 56
+#define num_time_bins 46
 
 /*! The maximal number of timesteps in a simulation */
 #define max_nr_timesteps (1LL << (num_time_bins + 1))
