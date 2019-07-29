@@ -208,11 +208,11 @@ INLINE static void hydro_write_particles(const struct part* parts,
       convert_part_potential, "Gravitational potentials of the particles");
 
   list[10] = io_make_output_field_convert_part(
-      "Viscosity", FLOAT, 1, UNIT_CONV_NO_UNITS, 0.f, parts, xparts,
+      "ViscosityParameters", FLOAT, 1, UNIT_CONV_NO_UNITS, 0.f, parts, xparts,
       convert_viscosity, "Visosity coefficient (alpha_visc) of the particles");
 
   list[11] = io_make_output_field_convert_part(
-      "Diffusion", FLOAT, 1, UNIT_CONV_NO_UNITS, 0.f, parts, xparts,
+      "DiffusionParameters", FLOAT, 1, UNIT_CONV_NO_UNITS, 0.f, parts, xparts,
       convert_diffusion, "Diffusion coefficient (alpha_diff) of the particles");
 }
 
