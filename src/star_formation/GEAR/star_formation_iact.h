@@ -57,12 +57,16 @@ __attribute__((always_inline)) INLINE static void runner_iact_star_formation(
     pi->v[2] - pj->v[2]
   };
 
-  /* Square of delta v */
-  float norm_v2 = dv[0] * dv[0] + dv[1] * dv[1] + dv[2] * dv[2];
+  /* Norms at power 2 */
+  const float norm_v2 = dv[0] * dv[0] + dv[1] * dv[1] + dv[2] * dv[2];
+  const float norm_x2 = dx[0] * dx[0] + dx[1] * dx[1] + dx[2] * dx[2];
 
   /* Compute the velocity dispersion */
-  pi->sf_data.sigma2 += norm_v2 * wi * hydro_get_mass(pj);
-  pj->sf_data.sigma2 += norm_v2 * wj * hydro_get_mass(pi);
+  const float sigma2 = norm_v2 + H * norm_x2;
+
+  /* Compute the velocity dispersion */
+  pi->sf_data.sigma2 += sigma2 * wi * hydro_get_mass(pj);
+  pj->sf_data.sigma2 += sigma2 * wj * hydro_get_mass(pi);
 }
 
 /**
@@ -94,11 +98,15 @@ runner_iact_nonsym_star_formation(float r2, const float *dx, float hi, float hj,
     pi->v[2] - pj->v[2]
   };
 
-  /* Square of delta v */
-  float norm_v2 = dv[0] * dv[0] + dv[1] * dv[1] + dv[2] * dv[2];
+  /* Norms at power 2 */
+  const float norm_v2 = dv[0] * dv[0] + dv[1] * dv[1] + dv[2] * dv[2];
+  const float norm_x2 = dx[0] * dx[0] + dx[1] * dx[1] + dx[2] * dx[2];
 
   /* Compute the velocity dispersion */
-  pi->sf_data.sigma2 += norm_v2 * wi * hydro_get_mass(pj);
+  const float sigma2 = norm_v2 + H * norm_x2;
+
+  /* Compute the velocity dispersion */
+  pi->sf_data.sigma2 += sigma2 * wi * hydro_get_mass(pj);
 }
 
 #endif /* SWIFT_GEAR_STAR_FORMATION_IACT_H */

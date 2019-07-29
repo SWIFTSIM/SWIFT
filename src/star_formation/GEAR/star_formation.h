@@ -85,11 +85,7 @@ INLINE static int star_formation_is_star_forming(
 					  / (mu * phys_const->const_proton_mass) + sigma2);
 
   /* Check the density criterion */
-  if (density > density_criterion) {
-    return 1;
-  } else {
-    return 0;
-  }
+  return density > density_criterion;
 }
 
 /**
@@ -139,20 +135,15 @@ INLINE static int star_formation_should_convert_to_star(
   const float density = hydro_get_physical_density(p, cosmo);
 
   /* Compute the probability */
-  const float inv_free_fall_time = sqrtf(density * 32. * G / (3. * M_PI));
-  const float prob = 1. - exp(-starform->star_formation_efficiency * inv_free_fall_time * dt_star);
+  const float inv_free_fall_time = sqrtf(density * 32.f * G * 0.33333333f * M_1_PI);
+  const float prob = 1.f - exp(-starform->star_formation_efficiency * inv_free_fall_time * dt_star);
 
   /* Roll the dice... */
   const float random_number =
     random_unit_interval(p->id, e->ti_current, random_number_star_formation);
 
-  if (random_number > prob) {
-    /* No star for you */
-    return 0;
-  } else {
-    /* You get a star, you get a star, everybody gets a star */
-    return 1;
-  }
+  /* Can we form a star? */
+  return random_number < prob;
 }
 
 /**
@@ -241,6 +232,9 @@ __attribute__((always_inline)) INLINE static void star_formation_end_density(
   // TODO move into pressure floor
   /* To finish the turbulence estimation we devide by the density */
   p->sf_data.sigma2 /= pow_dimension(p->h) * hydro_get_physical_density(p, cosmo);
+
+  /* Add the cosmological factor */
+  p->sf_data.sigma2 *= cosmo->a * cosmo->a;
 }
 
 /**
