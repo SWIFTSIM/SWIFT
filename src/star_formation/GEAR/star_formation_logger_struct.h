@@ -32,7 +32,8 @@ struct star_formation_history {
 };
 
 /**
- * Structure containing the global star formation information (including time integrated variables).
+ * Structure containing the global star formation information (including time
+ * integrated variables).
  */
 struct star_formation_history_accumulator {
   /*! Total stellar mass from the begining of the simulation */

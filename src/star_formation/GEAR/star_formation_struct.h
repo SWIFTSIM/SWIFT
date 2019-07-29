@@ -25,7 +25,6 @@
  */
 struct star_formation_xpart_data {};
 
-
 struct star_formation_part_data {
   // TODO move it to the pressure floor
   /*! Estimation of local turbulence (squared) */
@@ -38,7 +37,8 @@ struct star_formation_part_data {
 struct star_formation {
 
   // TODO move it to pressure floor
-  /*! Number of particle required to resolved the Jeans criterion (at power 2/3) */
+  /*! Number of particle required to resolved the Jeans criterion (at power 2/3)
+   */
   float n_jeans_2_3;
 
   /*! Maximal temperature for forming a star */

@@ -88,11 +88,11 @@ INLINE static void star_formation_logger_add(
 }
 
 /**
- * @brief add a star formation history struct to the engine star formation history
- * accumulator struct
+ * @brief add a star formation history struct to the engine star formation
+ * history accumulator struct
  *
- * @param sf_add the star formation accumulator struct which we want to add to the star
- * formation history
+ * @param sf_add the star formation accumulator struct which we want to add to
+ * the star formation history
  * @param sf_update the star formation structure which we want to update
  */
 INLINE static void star_formation_logger_add_to_accumulator(
@@ -144,7 +144,6 @@ INLINE static void star_formation_logger_accumulator_init(
 
   sfh->SFR_inactive = 0.f;
 }
-
 
 /**
  * @brief Write the final SFH to a file

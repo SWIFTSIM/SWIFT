@@ -22,7 +22,6 @@
 /* Starformation history struct */
 struct star_formation_history {};
 
-
 /* Starformation history accumulator struct.
    This structure is only defined in the engine and
    allows the user to integrate some quantities over time.

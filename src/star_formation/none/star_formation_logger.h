@@ -59,13 +59,12 @@ INLINE static void star_formation_logger_add(
     struct star_formation_history *sf_update,
     const struct star_formation_history *sf_add) {}
 
-
 /**
- * @brief add a star formation history accumulator struct to an other star formation history
- * struct
+ * @brief add a star formation history accumulator struct to an other star
+ * formation history struct
  *
- * @param sf_add the star formation accumulator struct which we want to add to the star
- * formation history
+ * @param sf_add the star formation accumulator struct which we want to add to
+ * the star formation history
  * @param sf_update the star formation structure which we want to update
  */
 INLINE static void star_formation_logger_add_to_accumulator(

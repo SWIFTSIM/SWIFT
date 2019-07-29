@@ -166,8 +166,6 @@ INLINE static void star_formation_logger_log_inactive_part(
     const struct part *p, const struct xpart *xp,
     struct star_formation_history *sf) {}
 
-
-
 /**
  * @brief add a star formation history struct to an other star formation history
  * struct

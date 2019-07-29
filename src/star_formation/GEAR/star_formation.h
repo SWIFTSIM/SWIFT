@@ -59,8 +59,8 @@ INLINE static int star_formation_is_star_forming(
     const struct cooling_function_data* restrict cooling,
     const struct entropy_floor_properties* restrict entropy_floor) {
 
-  const float temperature =
-      cooling_get_temperature(phys_const, hydro_props, us, cosmo, cooling, p, xp);
+  const float temperature = cooling_get_temperature(phys_const, hydro_props, us,
+                                                    cosmo, cooling, p, xp);
 
   const float temperature_max = starform->maximal_temperature;
 
@@ -80,9 +80,12 @@ INLINE static int star_formation_is_star_forming(
   const float mu = hydro_props->mu_neutral;
 
   /* Compute the density criterion */
-  const float coef = M_PI_4 / (phys_const->const_newton_G * n_jeans_2_3 * h * h);
-  const float density_criterion = coef * (hydro_gamma * phys_const->const_boltzmann_k * temperature
-					  / (mu * phys_const->const_proton_mass) + sigma2);
+  const float coef =
+      M_PI_4 / (phys_const->const_newton_G * n_jeans_2_3 * h * h);
+  const float density_criterion =
+      coef * (hydro_gamma * phys_const->const_boltzmann_k * temperature /
+                  (mu * phys_const->const_proton_mass) +
+              sigma2);
 
   /* Check the density criterion */
   return density > density_criterion;
@@ -91,7 +94,8 @@ INLINE static int star_formation_is_star_forming(
 /**
  * @brief Compute the star-formation rate of a given particle.
  *
- * Nothing to do here. Everything is done in #star_formation_should_convert_to_star.
+ * Nothing to do here. Everything is done in
+ * #star_formation_should_convert_to_star.
  *
  * @param p #part.
  * @param xp the #xpart.
@@ -123,7 +127,7 @@ INLINE static int star_formation_should_convert_to_star(
     const struct engine* e, const double dt_star) {
 
   const struct phys_const* phys_const = e->physical_constants;
-  const struct cosmology *cosmo = e->cosmology;
+  const struct cosmology* cosmo = e->cosmology;
 
   /* Check that we are running a full time step */
   if (dt_star == 0.) {
@@ -135,12 +139,14 @@ INLINE static int star_formation_should_convert_to_star(
   const float density = hydro_get_physical_density(p, cosmo);
 
   /* Compute the probability */
-  const float inv_free_fall_time = sqrtf(density * 32.f * G * 0.33333333f * M_1_PI);
-  const float prob = 1.f - exp(-starform->star_formation_efficiency * inv_free_fall_time * dt_star);
+  const float inv_free_fall_time =
+      sqrtf(density * 32.f * G * 0.33333333f * M_1_PI);
+  const float prob = 1.f - exp(-starform->star_formation_efficiency *
+                               inv_free_fall_time * dt_star);
 
   /* Roll the dice... */
   const float random_number =
-    random_unit_interval(p->id, e->ti_current, random_number_star_formation);
+      random_unit_interval(p->id, e->ti_current, random_number_star_formation);
 
   /* Can we form a star? */
   return random_number < prob;
@@ -203,9 +209,8 @@ INLINE static void star_formation_copy_properties(
   sp->birth.density = hydro_get_physical_density(p, cosmo);
 
   /* Store the birth temperature*/
-  sp->birth.temperature =
-      cooling_get_temperature(phys_const, hydro_props, us,
-			      cosmo, cooling, p, xp);
+  sp->birth.temperature = cooling_get_temperature(phys_const, hydro_props, us,
+                                                  cosmo, cooling, p, xp);
 }
 
 /**
@@ -227,11 +232,13 @@ INLINE static void starformation_print_backend(
  * @param cosmo The current cosmological model.
  */
 __attribute__((always_inline)) INLINE static void star_formation_end_density(
-    struct part* restrict p, const struct star_formation* sf, const struct cosmology* cosmo) {
+    struct part* restrict p, const struct star_formation* sf,
+    const struct cosmology* cosmo) {
 
   // TODO move into pressure floor
   /* To finish the turbulence estimation we devide by the density */
-  p->sf_data.sigma2 /= pow_dimension(p->h) * hydro_get_physical_density(p, cosmo);
+  p->sf_data.sigma2 /=
+      pow_dimension(p->h) * hydro_get_physical_density(p, cosmo);
 
   /* Add the cosmological factor */
   p->sf_data.sigma2 *= cosmo->a * cosmo->a;
@@ -285,11 +292,10 @@ star_formation_first_init_part(const struct phys_const* restrict phys_const,
                                const struct cosmology* restrict cosmo,
                                const struct star_formation* data,
                                struct part* restrict p,
-			       struct xpart* restrict xp) {
+                               struct xpart* restrict xp) {
 
   /* Nothing special here */
   star_formation_init_part(p, xp, data);
 }
-
 
 #endif /* SWIFT_GEAR_STAR_FORMATION_H */

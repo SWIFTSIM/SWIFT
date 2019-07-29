@@ -51,11 +51,7 @@ __attribute__((always_inline)) INLINE static void runner_iact_star_formation(
   kernel_eval(sqrt(r2) / hj, &wj);
 
   /* Delta v */
-  float dv[3] = {
-    pi->v[0] - pj->v[0],
-    pi->v[1] - pj->v[1],
-    pi->v[2] - pj->v[2]
-  };
+  float dv[3] = {pi->v[0] - pj->v[0], pi->v[1] - pj->v[1], pi->v[2] - pj->v[2]};
 
   /* Norms at power 2 */
   const float norm_v2 = dv[0] * dv[0] + dv[1] * dv[1] + dv[2] * dv[2];
@@ -92,11 +88,7 @@ runner_iact_nonsym_star_formation(float r2, const float *dx, float hi, float hj,
   kernel_eval(sqrt(r2) / hi, &wi);
 
   /* Delta v */
-  float dv[3] = {
-    pi->v[0] - pj->v[0],
-    pi->v[1] - pj->v[1],
-    pi->v[2] - pj->v[2]
-  };
+  float dv[3] = {pi->v[0] - pj->v[0], pi->v[1] - pj->v[1], pi->v[2] - pj->v[2]};
 
   /* Norms at power 2 */
   const float norm_v2 = dv[0] * dv[0] + dv[1] * dv[1] + dv[2] * dv[2];

@@ -34,7 +34,6 @@ struct star_formation_history {
   float SFRdt_active;
 };
 
-
 /* Starformation history struct for the engine.
  Allows to integrate in time some values.
  Nothing to do in EAGLE => copy of star_formation_history */
@@ -51,6 +50,5 @@ struct star_formation_history_accumulator {
   /*! SFR*dt of active particles */
   float SFRdt_active;
 };
-
 
 #endif /* SWIFT_EAGLE_STAR_FORMATION_LOGGER_STRUCT_H */
