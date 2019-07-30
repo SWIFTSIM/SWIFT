@@ -30,6 +30,7 @@ examples/fof_mpi
 examples/*/*/*.xmf
 examples/*/*/*.dat
 examples/*/*/*.png
+examples/*/*/*.pdf
 examples/*/*/*.mp4
 examples/*/*/*.txt
 examples/*/*/*.rst

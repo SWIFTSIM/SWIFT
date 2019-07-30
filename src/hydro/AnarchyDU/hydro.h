@@ -616,6 +616,7 @@ __attribute__((always_inline)) INLINE static void hydro_reset_gradient(
     struct part *restrict p) {
 
   p->viscosity.v_sig = 2.f * p->force.soundspeed;
+  p->force.alpha_visc_max_ngb = p->viscosity.alpha;
 }
 
 /**
@@ -775,9 +776,21 @@ __attribute__((always_inline)) INLINE static void hydro_prepare_force(
 
   /* Consistency checks to ensure min < alpha < max */
   new_diffusion_alpha =
-      min(new_diffusion_alpha, hydro_props->diffusion.alpha_max);
-  new_diffusion_alpha =
       max(new_diffusion_alpha, hydro_props->diffusion.alpha_min);
+
+  /* Now we limit in viscous flows; remove diffusion there. If we
+   * don't do that, then we end up diffusing energy away in supernovae.
+   * This is an EAGLE-specific fix. We limit based on the maximal
+   * viscous alpha over our neighbours in an attempt to keep diffusion
+   * low near to supernovae sites. */
+
+  /* This also enforces alpha_diff < alpha_diff_max */
+
+  const float viscous_diffusion_limit =
+      hydro_props->diffusion.alpha_max *
+      (1.f - p->force.alpha_visc_max_ngb / hydro_props->viscosity.alpha_max);
+
+  new_diffusion_alpha = min(new_diffusion_alpha, viscous_diffusion_limit);
 
   p->diffusion.alpha = new_diffusion_alpha;
 }

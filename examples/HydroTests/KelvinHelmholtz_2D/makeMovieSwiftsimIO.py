@@ -14,17 +14,15 @@ import h5py as h5
 import numpy as np
 import scipy.interpolate as si
 
+from swiftsimio import load
+from swiftsimio.visualisation import project_gas_pixel_grid
 
 def load_and_extract(filename):
     """
     Load the data and extract relevant info.
     """
-
-    with h5.File(filename, "r") as f:
-        x, y, _ = f["PartType0/Coordinates"][...].T
-        density = f["PartType0/Density"][...]
-
-    return x, y, density
+    
+    return load(filename)
 
 
 def make_plot(filename, array, nx, ny, dx, dy):
@@ -34,15 +32,9 @@ def make_plot(filename, array, nx, ny, dx, dy):
     the density.
     """
 
-    data_x, data_y, density = load_and_extract(filename)
+    data = load_and_extract(filename)
 
-    # Make the grid
-    x = np.linspace(*dx, nx)
-    y = np.linspace(*dy, ny)
-
-    xv, yv = np.meshgrid(x, y)
-
-    mesh = si.griddata((data_x, data_y), density, (xv, yv), method="nearest")
+    mesh = project_gas_pixel_grid(data, nx)
 
     array.set_array(mesh)
 
@@ -93,13 +85,10 @@ if __name__ == "__main__":
     fig, ax = plt.subplots(1, 1, figsize=(1, 1), frameon=False)
     ax.axis("off")  # Remove annoying black frame.
 
-    data_x, data_y, density = load_and_extract("kelvinHelmholtz_0000.hdf5")
+    data = load_and_extract("kelvinHelmholtz_0000.hdf5")
 
-    x = np.linspace(0, 1, dpi)
-    y = np.linspace(0, 1, dpi)
-    xv, yv = np.meshgrid(x, y)
 
-    mesh = si.griddata((data_x, data_y), density, (xv, yv), method="nearest")
+    mesh = project_gas_pixel_grid(data, dpi)
     
     # Global variable for set_array
     plot = ax.imshow(mesh, extent=[0, 1, 0, 1], animated=True, interpolation="none")
