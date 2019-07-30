@@ -393,6 +393,9 @@ for rank in ranks:
         else:
             predeadtimes.append(0.0)
 
+    if len(predeadtimes) == 0:
+        predeadtimes.append(0)
+
     predeadmin = min(predeadtimes)
     predeadmax = max(predeadtimes)
     predeadsum = sum(predeadtimes)
@@ -427,6 +430,9 @@ for rank in ranks:
             postdeadtimes.append(postdeadtime)
         else:
             postdeadtimes.append(0.0)
+
+    if len(postdeadtimes) == 0:
+        postdeadtimes.append(0)
 
     postdeadmin = min(postdeadtimes)
     postdeadmax = max(postdeadtimes)
@@ -490,6 +496,9 @@ for rank in ranks:
         )
         enginedeadtimes.extend(deadtimes)
 
+    if len(enginedeadtimes) == 0:
+        enginedeadtimes.append(0)
+
     deadmin = min(enginedeadtimes)
     deadmax = max(enginedeadtimes)
     deadsum = sum(enginedeadtimes)
@@ -538,6 +547,9 @@ for rank in ranks:
             )
         )
         alldeadtimes.extend(deadtimes)
+
+    if len(alldeadtimes) == 0:
+        alldeadtimes.append(0)
 
     deadmin = min(alldeadtimes)
     deadmax = max(alldeadtimes)
