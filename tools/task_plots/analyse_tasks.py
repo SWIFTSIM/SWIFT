@@ -270,6 +270,9 @@ for rank in ranks:
         if len(itasks) > 0:
             threadids.append(i)
             tasks[i] = itasks
+    nthreadids = len(threadids)
+    if len(threadids) == 0:
+        nthreadids = 1
 
     #  Times per task.
     print("# Task times:")
@@ -332,7 +335,7 @@ for rank in ranks:
                 taskmax,
                 tasksum,
                 tasksum / len(alltasktimes[key]),
-                tasksum / (len(threadids) * total_t) * 100.0,
+                tasksum / (nthreadids * total_t) * 100.0,
             )
         )
     print()
@@ -367,7 +370,7 @@ for rank in ranks:
                 sidmax,
                 sidsum,
                 sidmean,
-                sidsum / (len(threadids) * total_t) * 100.0,
+                sidsum / (nthreadids * total_t) * 100.0,
             )
         )
     print()
@@ -405,7 +408,7 @@ for rank in ranks:
             predeadmax,
             predeadsum,
             predeadsum / len(predeadtimes),
-            predeadsum / (len(threadids) * total_t) * 100.0,
+            predeadsum / (nthreadids * total_t) * 100.0,
         )
     )
     print()
@@ -440,7 +443,7 @@ for rank in ranks:
             postdeadmax,
             postdeadsum,
             postdeadsum / len(postdeadtimes),
-            postdeadsum / (len(threadids) * total_t) * 100.0,
+            postdeadsum / (nthreadids * total_t) * 100.0,
         )
     )
     print()
@@ -497,7 +500,7 @@ for rank in ranks:
             deadmax,
             deadsum,
             deadsum / len(enginedeadtimes),
-            deadsum / (len(threadids) * total_t) * 100.0,
+            deadsum / (nthreadids * total_t) * 100.0,
         )
     )
     print()
@@ -546,7 +549,7 @@ for rank in ranks:
             deadmax,
             deadsum,
             deadsum / len(alldeadtimes),
-            deadsum / (len(threadids) * total_t) * 100.0,
+            deadsum / (nthreadids * total_t) * 100.0,
         )
     )
     print()
