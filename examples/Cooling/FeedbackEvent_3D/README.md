@@ -17,3 +17,11 @@ This test emulates what the EAGLE model does to particles for feedback, i.e.
 + Heats a single particle to 10^7.5 K
 + Does _not_ switch off cooling
 + Runs to completion.
+
+
+Running Multiple Tests
+----------------------
+
+If you would like to run a suite of tests, try the runs.sh script. You'll
+need to set the directories in the parameter file to be one higher, i.e.
+../coolingtables rather than ./coolingtables.
