@@ -335,7 +335,7 @@ void prepareArray(const struct engine* e, hid_t grp, char* fileName,
       factor);
   io_write_attribute_d(
       h_data,
-      "Conversion factor to phyical CGS (including cosmological corrections)",
+      "Conversion factor to physical CGS (including cosmological corrections)",
       factor * pow(e->cosmology->a, props.scale_factor_exponent));
 
 #ifdef SWIFT_DEBUG_CHECKS
