@@ -3872,10 +3872,10 @@ void runner_do_gas_swallow(struct runner *r, struct cell *c, int timer) {
                * by another thread before we do the deed. */
               if (!part_is_inhibited(p, e)) {
 
-                /* Finally, remove the gas particle from the system */
-                struct gpart *gp = p->gpart;
+                /* Finally, remove the gas particle from the system
+                 * Recall that the gpart associated with it is also removed
+                 * at the same time. */
                 cell_remove_part(e, c, p, xp);
-                cell_remove_gpart(e, c, gp);
               }
 
               if (lock_unlock(&e->s->lock) != 0)
@@ -3916,9 +3916,7 @@ void runner_do_gas_swallow(struct runner *r, struct cell *c, int timer) {
               if (!part_is_inhibited(p, e)) {
 
                 /* Finally, remove the gas particle from the system */
-                struct gpart *gp = p->gpart;
                 cell_remove_part(e, c, p, xp);
-                cell_remove_gpart(e, c, gp);
               }
 
               if (lock_unlock(&e->s->lock) != 0)
@@ -4092,10 +4090,10 @@ void runner_do_bh_swallow(struct runner *r, struct cell *c, int timer) {
 
               message("BH %lld removing BH particle %lld", bp->id, cell_bp->id);
 
-              /* Finally, remove the gas particle from the system */
-              struct gpart *cell_gp = cell_bp->gpart;
+              /* Finally, remove the gas particle from the system
+               * Recall that the gpart associated with it is also removed
+               * at the same time. */
               cell_remove_bpart(e, c, cell_bp);
-              cell_remove_gpart(e, c, cell_gp);
             }
 
             /* In any case, prevent the particle from being re-swallowed */
@@ -4126,9 +4124,7 @@ void runner_do_bh_swallow(struct runner *r, struct cell *c, int timer) {
                       bp->id, cell_bp->id);
 
               /* Finally, remove the gas particle from the system */
-              struct gpart *cell_gp = cell_bp->gpart;
               cell_remove_bpart(e, c, cell_bp);
-              cell_remove_gpart(e, c, cell_gp);
 
               found = 1;
               break;
