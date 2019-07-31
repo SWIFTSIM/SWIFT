@@ -55,34 +55,63 @@ INLINE static void stars_read_particles(struct spart *sparts,
  * @param sparts The s-particle array.
  * @param list The list of i/o properties to write.
  * @param num_fields The number of i/o fields to write.
+ * @param with_cosmology Is it a cosmological run?
  */
 INLINE static void stars_write_particles(const struct spart *sparts,
                                          struct io_props *list,
-                                         int *num_fields) {
+                                         int *num_fields,
+					 const int with_cosmology) {
 
   /* Say how much we want to write */
   *num_fields = 9;
 
   /* List what we want to write */
-  list[0] = io_make_output_field("Coordinates", DOUBLE, 3, UNIT_CONV_LENGTH,
-                                 sparts, x);
+  list[0] = io_make_output_field("Coordinates", DOUBLE, 3, UNIT_CONV_LENGTH, 1.,
+                                 sparts, x, "Co-moving positions of the particles");
+
   list[1] =
-      io_make_output_field("Velocities", FLOAT, 3, UNIT_CONV_SPEED, sparts, v);
+    io_make_output_field("Velocities", FLOAT, 3, UNIT_CONV_SPEED, 0.f, sparts, v,
+			 "Peculiar velocities of the stars. This is (a * dx/dt) where x is the "
+			 "co-moving positions of the particles");
+
   list[2] =
-      io_make_output_field("Masses", FLOAT, 1, UNIT_CONV_MASS, sparts, mass);
+    io_make_output_field("Masses", FLOAT, 1, UNIT_CONV_MASS, 0.f, sparts, mass,
+			 "Masses of the particles");
+
   list[3] = io_make_output_field("ParticleIDs", LONGLONG, 1, UNIT_CONV_NO_UNITS,
-                                 sparts, id);
+				 0.f, sparts, id,
+				 "Unique IDs of the particles");
+
   list[4] = io_make_output_field("SmoothingLength", FLOAT, 1, UNIT_CONV_LENGTH,
-                                 sparts, h);
-  list[5] = io_make_output_field("BirthTime", FLOAT, 1, UNIT_CONV_TIME, sparts,
-                                 birth_time);
-  list[6] = io_make_output_field("BirthDensity", FLOAT, 1, UNIT_CONV_DENSITY,
-                                 sparts, birth.density);
+                                 1.f, sparts, h,
+				 "Co-moving smoothing lengths (FWHM of the kernel) of the particles");
+
+  if (with_cosmology) {
+    list[5] = io_make_output_field(
+        "BirthScaleFactors", FLOAT, 1, UNIT_CONV_NO_UNITS, 0.f, sparts,
+        birth_scale_factor, "Scale-factors at which the stars were born");
+  } else {
+    list[5] = io_make_output_field("BirthTimes", FLOAT, 1, UNIT_CONV_TIME, 0.f,
+                                   sparts, birth_time,
+                                   "Times at which the stars were born");
+  }
+
+  list[6] = io_make_output_field(
+      "BirthDensities", FLOAT, 1, UNIT_CONV_DENSITY, 0.f, sparts, birth.density,
+      "Physical densities at the time of birth of the gas particles that "
+      "turned into stars (note that "
+      "we store the physical density at the birth redshift, no conversion is "
+      "needed)");
+
   list[7] =
-      io_make_output_field("BirthTemperature", FLOAT, 1, UNIT_CONV_TEMPERATURE,
-                           sparts, birth.temperature);
-  list[8] = io_make_output_field("BirthMass", FLOAT, 1, UNIT_CONV_MASS, sparts,
-                                 birth.mass);
+      io_make_output_field("BirthTemperatures", FLOAT, 1, UNIT_CONV_TEMPERATURE,
+                           0.f, sparts, birth.temperature,
+                           "Temperatures at the time of birth of the gas "
+                           "particles that turned into stars");
+
+  list[7] = io_make_output_field("BirthMasses", FLOAT, 1, UNIT_CONV_MASS, 0.f,
+                                 sparts, birth.mass,
+                                 "Masses of the star particles at birth time");
 
 #ifdef DEBUG_INTERACTIONS_STARS
 
