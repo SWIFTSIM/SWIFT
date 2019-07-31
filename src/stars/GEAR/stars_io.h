@@ -58,33 +58,32 @@ INLINE static void stars_read_particles(struct spart *sparts,
  * @param with_cosmology Is it a cosmological run?
  */
 INLINE static void stars_write_particles(const struct spart *sparts,
-                                         struct io_props *list,
-                                         int *num_fields,
-					 const int with_cosmology) {
+                                         struct io_props *list, int *num_fields,
+                                         const int with_cosmology) {
 
   /* Say how much we want to write */
   *num_fields = 9;
 
   /* List what we want to write */
-  list[0] = io_make_output_field("Coordinates", DOUBLE, 3, UNIT_CONV_LENGTH, 1.,
-                                 sparts, x, "Co-moving positions of the particles");
+  list[0] =
+      io_make_output_field("Coordinates", DOUBLE, 3, UNIT_CONV_LENGTH, 1.,
+                           sparts, x, "Co-moving positions of the particles");
 
-  list[1] =
-    io_make_output_field("Velocities", FLOAT, 3, UNIT_CONV_SPEED, 0.f, sparts, v,
-			 "Peculiar velocities of the stars. This is (a * dx/dt) where x is the "
-			 "co-moving positions of the particles");
+  list[1] = io_make_output_field(
+      "Velocities", FLOAT, 3, UNIT_CONV_SPEED, 0.f, sparts, v,
+      "Peculiar velocities of the stars. This is (a * dx/dt) where x is the "
+      "co-moving positions of the particles");
 
-  list[2] =
-    io_make_output_field("Masses", FLOAT, 1, UNIT_CONV_MASS, 0.f, sparts, mass,
-			 "Masses of the particles");
+  list[2] = io_make_output_field("Masses", FLOAT, 1, UNIT_CONV_MASS, 0.f,
+                                 sparts, mass, "Masses of the particles");
 
-  list[3] = io_make_output_field("ParticleIDs", LONGLONG, 1, UNIT_CONV_NO_UNITS,
-				 0.f, sparts, id,
-				 "Unique IDs of the particles");
+  list[3] =
+      io_make_output_field("ParticleIDs", LONGLONG, 1, UNIT_CONV_NO_UNITS, 0.f,
+                           sparts, id, "Unique IDs of the particles");
 
-  list[4] = io_make_output_field("SmoothingLength", FLOAT, 1, UNIT_CONV_LENGTH,
-                                 1.f, sparts, h,
-				 "Co-moving smoothing lengths (FWHM of the kernel) of the particles");
+  list[4] = io_make_output_field(
+      "SmoothingLength", FLOAT, 1, UNIT_CONV_LENGTH, 1.f, sparts, h,
+      "Co-moving smoothing lengths (FWHM of the kernel) of the particles");
 
   if (with_cosmology) {
     list[5] = io_make_output_field(
