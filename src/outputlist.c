@@ -187,7 +187,11 @@ void output_list_read_next_time(struct output_list *t, const struct engine *e,
   if (time == time_end) {
       t->final_step_dump = 1;
       if (e->verbose)
-        message("Next output time for %s set to a=%e.", name, time_end);
+        if (is_cosmo) {
+          message("Next output time for %s set to a=%e.", name, time_end);
+        } else {
+          message("Next output time for %s set to t=%e.", name, time_end);
+        }
   }
 
   /* Deal with last statistics */
