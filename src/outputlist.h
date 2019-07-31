@@ -51,7 +51,7 @@ struct output_list {
   size_t cur_ind;
 
   /* Dump on final timestep? */
-  char final_step_dump;
+  int final_step_dump;
 };
 
 void output_list_read_file(struct output_list *outputlist, const char *filename,
