@@ -612,6 +612,28 @@ void cell_unpack_part_swallow(struct cell *c,
   }
 }
 
+void cell_pack_bpart_swallow(const struct cell *c,
+                             struct black_holes_bpart_data *data) {
+
+  const size_t count = c->black_holes.count;
+  const struct bpart *bparts = c->black_holes.parts;
+
+  for (size_t i = 0; i < count; ++i) {
+    data[i] = bparts[i].merger_data;
+  }
+}
+
+void cell_unpack_bpart_swallow(struct cell *c,
+                               const struct black_holes_bpart_data *data) {
+
+  const size_t count = c->black_holes.count;
+  struct bpart *bparts = c->black_holes.parts;
+
+  for (size_t i = 0; i < count; ++i) {
+    bparts[i].merger_data = data[i];
+  }
+}
+
 /**
  * @brief Unpack the data of a given cell and its sub-cells.
  *
@@ -1988,7 +2010,8 @@ void cell_clean_links(struct cell *c, void *data) {
   c->stars.feedback = NULL;
   c->black_holes.density = NULL;
   c->black_holes.swallow = NULL;
-  c->black_holes.do_swallow = NULL;
+  c->black_holes.do_gas_swallow = NULL;
+  c->black_holes.do_bh_swallow = NULL;
   c->black_holes.feedback = NULL;
 }
 
@@ -3995,7 +4018,30 @@ int cell_unskip_black_holes_tasks(struct cell *c, struct scheduler *s) {
   }
 
   /* Un-skip the swallow tasks involved with this cell. */
-  for (struct link *l = c->black_holes.do_swallow; l != NULL; l = l->next) {
+  for (struct link *l = c->black_holes.do_gas_swallow; l != NULL; l = l->next) {
+    struct task *t = l->t;
+    struct cell *ci = t->ci;
+    struct cell *cj = t->cj;
+    const int ci_active = cell_is_active_black_holes(ci, e);
+    const int cj_active = (cj != NULL) ? cell_is_active_black_holes(cj, e) : 0;
+#ifdef WITH_MPI
+    const int ci_nodeID = ci->nodeID;
+    const int cj_nodeID = (cj != NULL) ? cj->nodeID : -1;
+#else
+    const int ci_nodeID = nodeID;
+    const int cj_nodeID = nodeID;
+#endif
+
+    /* Only activate tasks that involve a local active cell. */
+    if ((ci_active || cj_active) &&
+        (ci_nodeID == nodeID || cj_nodeID == nodeID)) {
+
+      scheduler_activate(s, t);
+    }
+  }
+
+  /* Un-skip the swallow tasks involved with this cell. */
+  for (struct link *l = c->black_holes.do_bh_swallow; l != NULL; l = l->next) {
     struct task *t = l->t;
     struct cell *ci = t->ci;
     struct cell *cj = t->cj;
@@ -4043,23 +4089,14 @@ int cell_unskip_black_holes_tasks(struct cell *c, struct scheduler *s) {
   /* Unskip all the other task types. */
   if (c->nodeID == nodeID && cell_is_active_black_holes(c, e)) {
 
-    /* for (struct link *l = c->black_holes.swallow; l != NULL; l = l->next)
-     */
-    /*   scheduler_activate(s, l->t); */
-    /* for (struct link *l = c->black_holes.do_swallow; l != NULL; l =
-     * l->next)
-     */
-    /*   scheduler_activate(s, l->t); */
-    /* for (struct link *l = c->black_holes.feedback; l != NULL; l = l->next)
-     */
-    /*   scheduler_activate(s, l->t); */
-
     if (c->black_holes.density_ghost != NULL)
       scheduler_activate(s, c->black_holes.density_ghost);
     if (c->black_holes.swallow_ghost[0] != NULL)
       scheduler_activate(s, c->black_holes.swallow_ghost[0]);
     if (c->black_holes.swallow_ghost[1] != NULL)
       scheduler_activate(s, c->black_holes.swallow_ghost[1]);
+    if (c->black_holes.swallow_ghost[2] != NULL)
+      scheduler_activate(s, c->black_holes.swallow_ghost[2]);
     if (c->black_holes.black_holes_in != NULL)
       scheduler_activate(s, c->black_holes.black_holes_in);
     if (c->black_holes.black_holes_out != NULL)
@@ -4342,13 +4379,7 @@ void cell_drift_part(struct cell *c, const struct engine *e, int force) {
             hydro_remove_part(p, xp);
 
             /* Remove the particle entirely */
-            struct gpart *gp = p->gpart;
             cell_remove_part(e, c, p, xp);
-
-            /* and it's gravity friend */
-            if (gp != NULL) {
-              cell_remove_gpart(e, c, gp);
-            }
           }
 
           if (lock_unlock(&e->s->lock) != 0)
@@ -4376,13 +4407,13 @@ void cell_drift_part(struct cell *c, const struct engine *e, int force) {
       cell_h_max = max(cell_h_max, p->h);
 
       /* Mark the particle has not being swallowed */
-      black_holes_mark_as_not_swallowed(&p->black_holes_data);
+      black_holes_mark_part_as_not_swallowed(&p->black_holes_data);
 
       /* Get ready for a density calculation */
       if (part_is_active(p, e)) {
         hydro_init_part(p, &e->s->hs);
         chemistry_init_part(p, e->chemistry);
-        star_formation_init_part(p, e->star_formation);
+        star_formation_init_part(p, xp, e->star_formation);
         tracers_after_init(p, xp, e->internal_units, e->physical_constants,
                            with_cosmology, e->cosmology, e->hydro_properties,
                            e->cooling_func, e->time);
@@ -4510,7 +4541,9 @@ void cell_drift_gpart(struct cell *c, const struct engine *e, int force) {
           if (!gpart_is_inhibited(gp, e)) {
 
             /* Remove the particle entirely */
-            cell_remove_gpart(e, c, gp);
+            if (gp->type == swift_type_dark_matter) {
+              cell_remove_gpart(e, c, gp);
+            }
           }
 
           if (lock_unlock(&e->s->lock) != 0)
@@ -4651,11 +4684,7 @@ void cell_drift_spart(struct cell *c, const struct engine *e, int force) {
           if (!spart_is_inhibited(sp, e)) {
 
             /* Remove the particle entirely */
-            struct gpart *gp = sp->gpart;
             cell_remove_spart(e, c, sp);
-
-            /* and it's gravity friend */
-            cell_remove_gpart(e, c, gp);
           }
 
           if (lock_unlock(&e->s->lock) != 0)
@@ -4826,11 +4855,7 @@ void cell_drift_bpart(struct cell *c, const struct engine *e, int force) {
           if (!bpart_is_inhibited(bp, e)) {
 
             /* Remove the particle entirely */
-            struct gpart *gp = bp->gpart;
             cell_remove_bpart(e, c, bp);
-
-            /* and it's gravity friend */
-            cell_remove_gpart(e, c, gp);
           }
 
           if (lock_unlock(&e->s->lock) != 0)
@@ -4852,6 +4877,9 @@ void cell_drift_bpart(struct cell *c, const struct engine *e, int force) {
 
       /* Maximal smoothing length */
       cell_h_max = max(cell_h_max, bp->h);
+
+      /* Mark the particle has not being swallowed */
+      black_holes_mark_bpart_as_not_swallowed(&bp->merger_data);
 
       /* Get ready for a density calculation */
       if (bpart_is_active(bp, e)) {
@@ -5287,6 +5315,9 @@ void cell_remove_part(const struct engine *e, struct cell *c, struct part *p,
   if (c->nodeID != e->nodeID)
     error("Can't remove a particle in a foreign cell.");
 
+  /* Don't remove a particle twice */
+  if (p->time_bin == time_bin_inhibited) return;
+
   /* Mark the particle as inhibited */
   p->time_bin = time_bin_inhibited;
 
@@ -5297,12 +5328,15 @@ void cell_remove_part(const struct engine *e, struct cell *c, struct part *p,
     p->gpart->type = swift_type_dark_matter;
   }
 
-  /* Un-link the part */
-  p->gpart = NULL;
-
   /* Update the space-wide counters */
   const size_t one = 1;
   atomic_add(&e->s->nr_inhibited_parts, one);
+  if (p->gpart) {
+    atomic_add(&e->s->nr_inhibited_gparts, one);
+  }
+
+  /* Un-link the part */
+  p->gpart = NULL;
 }
 
 /**
@@ -5317,6 +5351,14 @@ void cell_remove_part(const struct engine *e, struct cell *c, struct part *p,
  */
 void cell_remove_gpart(const struct engine *e, struct cell *c,
                        struct gpart *gp) {
+
+  /* Quick cross-check */
+  if (c->nodeID != e->nodeID)
+    error("Can't remove a particle in a foreign cell.");
+
+  /* Don't remove a particle twice */
+  if (gp->time_bin == time_bin_inhibited) return;
+
   /* Quick cross-check */
   if (c->nodeID != e->nodeID)
     error("Can't remove a particle in a foreign cell.");
@@ -5345,6 +5387,9 @@ void cell_remove_spart(const struct engine *e, struct cell *c,
   if (c->nodeID != e->nodeID)
     error("Can't remove a particle in a foreign cell.");
 
+  /* Don't remove a particle twice */
+  if (sp->time_bin == time_bin_inhibited) return;
+
   /* Mark the particle as inhibited and stand-alone */
   sp->time_bin = time_bin_inhibited;
   if (sp->gpart) {
@@ -5353,12 +5398,15 @@ void cell_remove_spart(const struct engine *e, struct cell *c,
     sp->gpart->type = swift_type_dark_matter;
   }
 
-  /* Un-link the spart */
-  sp->gpart = NULL;
-
   /* Update the space-wide counters */
   const size_t one = 1;
   atomic_add(&e->s->nr_inhibited_sparts, one);
+  if (sp->gpart) {
+    atomic_add(&e->s->nr_inhibited_gparts, one);
+  }
+
+  /* Un-link the spart */
+  sp->gpart = NULL;
 }
 
 /**
@@ -5378,6 +5426,9 @@ void cell_remove_bpart(const struct engine *e, struct cell *c,
   if (c->nodeID != e->nodeID)
     error("Can't remove a particle in a foreign cell.");
 
+  /* Don't remove a particle twice */
+  if (bp->time_bin == time_bin_inhibited) return;
+
   /* Mark the particle as inhibited and stand-alone */
   bp->time_bin = time_bin_inhibited;
   if (bp->gpart) {
@@ -5386,12 +5437,15 @@ void cell_remove_bpart(const struct engine *e, struct cell *c,
     bp->gpart->type = swift_type_dark_matter;
   }
 
-  /* Un-link the bpart */
-  bp->gpart = NULL;
-
   /* Update the space-wide counters */
   const size_t one = 1;
   atomic_add(&e->s->nr_inhibited_bparts, one);
+  if (bp->gpart) {
+    atomic_add(&e->s->nr_inhibited_gparts, one);
+  }
+
+  /* Un-link the bpart */
+  bp->gpart = NULL;
 }
 
 /**

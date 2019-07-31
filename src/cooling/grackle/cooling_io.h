@@ -63,23 +63,29 @@ __attribute__((always_inline)) INLINE static int cooling_write_particles(
 
 #if COOLING_GRACKLE_MODE >= 1
   /* List what we want to write */
-  list[0] = io_make_output_field("HI", FLOAT, 1, UNIT_CONV_NO_UNITS, xparts,
-                                 cooling_data.HI_frac);
+  list[0] =
+      io_make_output_field("HI", FLOAT, 1, UNIT_CONV_NO_UNITS, 0.f, xparts,
+                           cooling_data.HI_frac, "HI mass fraction");
 
-  list[1] = io_make_output_field("HII", FLOAT, 1, UNIT_CONV_NO_UNITS, xparts,
-                                 cooling_data.HII_frac);
+  list[1] =
+      io_make_output_field("HII", FLOAT, 1, UNIT_CONV_NO_UNITS, 0.f, xparts,
+                           cooling_data.HII_frac, "HII mass fraction");
 
-  list[2] = io_make_output_field("HeI", FLOAT, 1, UNIT_CONV_NO_UNITS, xparts,
-                                 cooling_data.HeI_frac);
+  list[2] =
+      io_make_output_field("HeI", FLOAT, 1, UNIT_CONV_NO_UNITS, 0.f, xparts,
+                           cooling_data.HeI_frac, "HeI mass fraction");
 
-  list[3] = io_make_output_field("HeII", FLOAT, 1, UNIT_CONV_NO_UNITS, xparts,
-                                 cooling_data.HeII_frac);
+  list[3] =
+      io_make_output_field("HeII", FLOAT, 1, UNIT_CONV_NO_UNITS, 0.f, xparts,
+                           cooling_data.HeII_frac, "HeII mass fraction");
 
-  list[4] = io_make_output_field("HeIII", FLOAT, 1, UNIT_CONV_NO_UNITS, xparts,
-                                 cooling_data.HeIII_frac);
+  list[4] =
+      io_make_output_field("HeIII", FLOAT, 1, UNIT_CONV_NO_UNITS, 0.f, xparts,
+                           cooling_data.HeIII_frac, "HeIII mass fraction");
 
-  list[5] = io_make_output_field("e", FLOAT, 1, UNIT_CONV_NO_UNITS, xparts,
-                                 cooling_data.e_frac);
+  list[5] =
+      io_make_output_field("e", FLOAT, 1, UNIT_CONV_NO_UNITS, 0.f, xparts,
+                           cooling_data.e_frac, "free electron mass fraction");
 
   num += 6;
 #endif
@@ -87,14 +93,17 @@ __attribute__((always_inline)) INLINE static int cooling_write_particles(
 #if COOLING_GRACKLE_MODE >= 2
   list += num;
 
-  list[0] = io_make_output_field("HM", FLOAT, 1, UNIT_CONV_NO_UNITS, xparts,
-                                 cooling_data.HM_frac);
+  list[0] =
+      io_make_output_field("HM", FLOAT, 1, UNIT_CONV_NO_UNITS, 0.f, xparts,
+                           cooling_data.HM_frac, "H- mass fraction");
 
-  list[1] = io_make_output_field("H2I", FLOAT, 1, UNIT_CONV_NO_UNITS, xparts,
-                                 cooling_data.H2I_frac);
+  list[1] =
+      io_make_output_field("H2I", FLOAT, 1, UNIT_CONV_NO_UNITS, 0.f, xparts,
+                           cooling_data.H2I_frac, "H2I mass fraction");
 
-  list[2] = io_make_output_field("H2II", FLOAT, 1, UNIT_CONV_NO_UNITS, xparts,
-                                 cooling_data.H2II_frac);
+  list[2] =
+      io_make_output_field("H2II", FLOAT, 1, UNIT_CONV_NO_UNITS, 0.f, xparts,
+                           cooling_data.H2II_frac, "H2II mass fraction");
 
   num += 3;
 #endif
@@ -102,14 +111,17 @@ __attribute__((always_inline)) INLINE static int cooling_write_particles(
 #if COOLING_GRACKLE_MODE >= 3
   list += num;
 
-  list[0] = io_make_output_field("DI", FLOAT, 1, UNIT_CONV_NO_UNITS, xparts,
-                                 cooling_data.DI_frac);
+  list[0] =
+      io_make_output_field("DI", FLOAT, 1, UNIT_CONV_NO_UNITS, 0.f, xparts,
+                           cooling_data.DI_frac, "DI mass fraction");
 
-  list[1] = io_make_output_field("DII", FLOAT, 1, UNIT_CONV_NO_UNITS, xparts,
-                                 cooling_data.DII_frac);
+  list[1] =
+      io_make_output_field("DII", FLOAT, 1, UNIT_CONV_NO_UNITS, 0.f, xparts,
+                           cooling_data.DII_frac, "DII mass fraction");
 
-  list[2] = io_make_output_field("HDI", FLOAT, 1, UNIT_CONV_NO_UNITS, xparts,
-                                 cooling_data.HDI_frac);
+  list[2] =
+      io_make_output_field("HDI", FLOAT, 1, UNIT_CONV_NO_UNITS, 0.f, xparts,
+                           cooling_data.HDI_frac, "HDI mass fraction");
 
   num += 3;
 #endif

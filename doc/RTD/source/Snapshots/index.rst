@@ -122,6 +122,72 @@ the OWLS and EAGLE extensions).
 The last column in the table gives the ``enum`` value from ``part_type.h``
 corresponding to a given entry in the files.
 
+Unit information for individual fields
+--------------------------------------
+
+Each particle field contains meta-data about the units and how to
+convert it to CGS in physical or co-moving frames. The meta-data is in
+part designed for users to directly read and in part for machine
+reading of the information. Each field contains the exponent of the
+scale-factor, reduced Hubble constant [#f1]_ and each of the 5 base units
+that is required to convert the field values to physical CGS
+units. These fields are:
+
++----------------------+---------------------------------------+
+| Meta-data field name | Description                           |
++======================+=======================================+
+| ``U_L exponent``     | Power of the length unit              |
++----------------------+---------------------------------------+
+| ``U_M exponent``     | Power of the mass unit                |
++----------------------+---------------------------------------+
+| ``U_t exponent``     | Power of the time unit                |
++----------------------+---------------------------------------+
+| ``U_I exponent``     | Power of the current unit             |
++----------------------+---------------------------------------+
+| ``U_T exponent``     | Power of the temperature unit         |
++----------------------+---------------------------------------+
+| ``a-scale exponent`` | Power of the scale-factor             |
++----------------------+---------------------------------------+
+| ``h-scale exponent`` | Power of the reduced Hubble constant  |
++----------------------+---------------------------------------+
+
+These are used by the ``swiftsimio`` python library to read units and
+we encourage users to use this meta-data directly in their automated
+tools.
+
+As an example, the fluid densities (which are written in the co-moving
+frame) have the following conversion factors:
+
+ * ``U_L exponent``: -3
+ * ``U_M exponent``: 1
+ * ``a-scale exponent``: -3
+
+This condensed information is stored in the string ``Expression for
+physical CGS units``, which in the case of the densities would read
+``a^-3 U_M U_L^-3 [ g cm^-3 ]``. The values of the ``U_x`` can be
+found in the ``Units System`` group at the root of the snapshot (see
+above). Note that only unit factors with non-zero exponents are
+printed to this string.
+
+Additionally, the meta-data contains the numerical conversion factor
+from the field to co-moving CGS and physical CGS assuming the units in
+the ``Unit System`` group. These are:
+
+ * ``Conversion factor to CGS (not including cosmological corrections``
+ * ``Conversion factor to phyical CGS (including cosmological corrections)``
+
+These are designed for the users to directly use if they don't want to
+compute the individual exponents themselves. As an example, in the
+case of the densities and assuming the usual system of units
+(:math:`10^{10} \rm{M}_\odot`, :math:`100 \rm{km/s}`, :math:`\rm{Mpc}`) at redshift
+0.1, the conversion factors are:
+
+ * Conversion to CGS: :math:`6.76814403 \times 10^{-31}`
+ * Conversion to physical CGS: :math:`9.00808555 \times 10^{-31}`
+
+In the case of a non-cosmological simulation, these two expressions
+are identical since :math:`a=1`.
+   
 Quick access to particles via hash-tables
 -----------------------------------------
 
@@ -197,3 +263,13 @@ position `[1, 1, 1]` one could use a piece of code similar to:
 
 For large simulations, this vastly reduces the amount of data that needs to be read
 from the disk.
+
+Note that this is all automated in the ``swiftsimio`` python library
+and we highly encourage its use.
+
+.. [#f1] Note that all quantities in SWIFT are always "h-free" in the
+	 sense that they are expressed in units withouy any h
+	 terms. This implies that the ``h-scale exponent`` field value
+	 is always 0. SWIFT nevertheless includes this field to be
+	 comprehensive and to prevent confusion with other software
+         packages that express their quantities with h-full units.

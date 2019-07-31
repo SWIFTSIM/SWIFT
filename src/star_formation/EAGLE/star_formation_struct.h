@@ -29,4 +29,6 @@ struct star_formation_xpart_data {
   float SFR;
 };
 
+struct star_formation_part_data {};
+
 #endif /* SWIFT_EAGLE_STAR_FORMATION_STRUCT_H */
