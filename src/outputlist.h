@@ -64,5 +64,7 @@ void output_list_print(const struct output_list *outputlist);
 void output_list_clean(struct output_list **outputlist);
 void output_list_struct_dump(struct output_list *list, FILE *stream);
 void output_list_struct_restore(struct output_list *list, FILE *stream);
+int output_list_check_duplicates(const struct output_list *list_a,
+                                 const struct output_list *list_b);
 
 #endif /* SWIFT_OUTPUT_LIST_H */
