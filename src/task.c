@@ -1051,6 +1051,9 @@ void task_dump_stats(const char *dumpfile, struct engine *e, int header,
       if (tic < tmin[type][subtype]) {
         tmin[type][subtype] = tic;
       }
+      if (dt > max[type][subtype]) {
+        max[type][subtype] = dt;
+      }
       if (tic > tmax[type][subtype]) {
         tmax[type][subtype] = tic;
       }
