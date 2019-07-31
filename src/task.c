@@ -994,7 +994,8 @@ void task_dump_all(struct engine *e, int step) {
  * Note that when running under MPI all the tasks can be summed into this single
  * file. In the fuller, human readable file, the statistics included are the
  * number of task of each type/subtype followed by the minimum, maximum, mean
- * and total time, in millisec and then the fixed costs value.
+ * and total time taken and the same numbers for the start of the task,
+ * in millisec and then the fixed costs value.
  *
  * If header is set, only the fixed costs value is written into the output
  * file in a format that is suitable for inclusion in SWIFT (as
@@ -1011,16 +1012,22 @@ void task_dump_stats(const char *dumpfile, struct engine *e, int header,
 
   /* Need arrays for sum, min and max across all types and subtypes. */
   double sum[task_type_count][task_subtype_count];
+  double tsum[task_type_count][task_subtype_count];
   double min[task_type_count][task_subtype_count];
+  double tmin[task_type_count][task_subtype_count];
   double max[task_type_count][task_subtype_count];
+  double tmax[task_type_count][task_subtype_count];
   int count[task_type_count][task_subtype_count];
 
   for (int j = 0; j < task_type_count; j++) {
     for (int k = 0; k < task_subtype_count; k++) {
       sum[j][k] = 0.0;
+      tsum[j][k] = 0.0;
       count[j][k] = 0;
       min[j][k] = DBL_MAX;
+      tmin[j][k] = DBL_MAX;
       max[j][k] = 0.0;
+      tmax[j][k] = 0.0;
     }
   }
 
@@ -1028,20 +1035,24 @@ void task_dump_stats(const char *dumpfile, struct engine *e, int header,
   for (int l = 0; l < e->sched.nr_tasks; l++) {
     int type = e->sched.tasks[l].type;
 
-    /* Skip implicit tasks, tasks that didn't run and MPI send/recv as these
-     * are not interesting (or meaningfully measured). */
-    if (!e->sched.tasks[l].implicit && e->sched.tasks[l].toc != 0 &&
-        type != task_type_send && type != task_type_recv) {
+    /* Skip implicit tasks, tasks that didn't run. */
+    if (!e->sched.tasks[l].implicit && e->sched.tasks[l].toc != 0) {
       int subtype = e->sched.tasks[l].subtype;
 
       double dt = e->sched.tasks[l].toc - e->sched.tasks[l].tic;
       sum[type][subtype] += dt;
+
+      double tic = (double)e->sched.tasks[l].tic;
+      tsum[type][subtype] += tic;
       count[type][subtype] += 1;
       if (dt < min[type][subtype]) {
         min[type][subtype] = dt;
       }
-      if (dt > max[type][subtype]) {
-        max[type][subtype] = dt;
+      if (tic < tmin[type][subtype]) {
+        tmin[type][subtype] = tic;
+      }
+      if (tic > tmax[type][subtype]) {
+        tmax[type][subtype] = tic;
       }
       total[0] += dt;
     }
@@ -1056,6 +1067,10 @@ void task_dump_stats(const char *dumpfile, struct engine *e, int header,
                          MPI_DOUBLE, MPI_SUM, 0, MPI_COMM_WORLD);
     if (res != MPI_SUCCESS) mpi_error(res, "Failed to reduce task sums");
 
+    res = MPI_Reduce((engine_rank == 0 ? MPI_IN_PLACE : tsum), tsum, size,
+                     MPI_DOUBLE, MPI_SUM, 0, MPI_COMM_WORLD);
+    if (res != MPI_SUCCESS) mpi_error(res, "Failed to reduce task tsums");
+
     res = MPI_Reduce((engine_rank == 0 ? MPI_IN_PLACE : count), count, size,
                      MPI_INT, MPI_SUM, 0, MPI_COMM_WORLD);
     if (res != MPI_SUCCESS) mpi_error(res, "Failed to reduce task counts");
@@ -1064,7 +1079,15 @@ void task_dump_stats(const char *dumpfile, struct engine *e, int header,
                      MPI_DOUBLE, MPI_MIN, 0, MPI_COMM_WORLD);
     if (res != MPI_SUCCESS) mpi_error(res, "Failed to reduce task minima");
 
+    res = MPI_Reduce((engine_rank == 0 ? MPI_IN_PLACE : tmin), tmin, size,
+                     MPI_DOUBLE, MPI_MIN, 0, MPI_COMM_WORLD);
+    if (res != MPI_SUCCESS) mpi_error(res, "Failed to reduce task minima");
+
     res = MPI_Reduce((engine_rank == 0 ? MPI_IN_PLACE : max), max, size,
+                     MPI_DOUBLE, MPI_MAX, 0, MPI_COMM_WORLD);
+    if (res != MPI_SUCCESS) mpi_error(res, "Failed to reduce task maxima");
+
+    res = MPI_Reduce((engine_rank == 0 ? MPI_IN_PLACE : tmax), tmax, size,
                      MPI_DOUBLE, MPI_MAX, 0, MPI_COMM_WORLD);
     if (res != MPI_SUCCESS) mpi_error(res, "Failed to reduce task maxima");
 
@@ -1081,29 +1104,36 @@ void task_dump_stats(const char *dumpfile, struct engine *e, int header,
       fprintf(dfile, "/* use as src/partition_fixed_costs.h */\n");
       fprintf(dfile, "#define HAVE_FIXED_COSTS 1\n");
     } else {
-      fprintf(dfile, "# task ntasks min max sum mean percent fixed_cost\n");
+      fprintf(dfile,
+              "# task ntasks min max sum mean percent mintic maxtic"
+              " meantic fixed_cost\n");
     }
 
     for (int j = 0; j < task_type_count; j++) {
       const char *taskID = taskID_names[j];
       for (int k = 0; k < task_subtype_count; k++) {
         if (sum[j][k] > 0.0) {
-          double mean = sum[j][k] / (double)count[j][k];
-          double perc = 100.0 * sum[j][k] / total[0];
 
           /* Fixed cost is in .1ns as we want to compare between runs in
            * some absolute units. */
+          double mean = sum[j][k] / (double)count[j][k];
           int fixed_cost = (int)(clocks_from_ticks(mean) * 10000.f);
           if (header) {
             fprintf(dfile, "repartition_costs[%d][%d] = %10d; /* %s/%s */\n", j,
                     k, fixed_cost, taskID, subtaskID_names[k]);
           } else {
+            double perc = 100.0 * sum[j][k] / total[0];
+            double mintic = tmin[j][k] - e->tic_step;
+            double maxtic = tmax[j][k] - e->tic_step;
+            double meantic = tsum[j][k] / (double)count[j][k] - e->tic_step;
             fprintf(dfile,
-                    "%15s/%-10s %10d %14.4f %14.4f %14.4f %14.4f %14.4f %10d\n",
+                    "%15s/%-10s %10d %14.4f %14.4f %14.4f %14.4f %14.4f"
+                    " %14.4f %14.4f %14.4f %10d\n",
                     taskID, subtaskID_names[k], count[j][k],
                     clocks_from_ticks(min[j][k]), clocks_from_ticks(max[j][k]),
                     clocks_from_ticks(sum[j][k]), clocks_from_ticks(mean), perc,
-                    fixed_cost);
+                    clocks_from_ticks(mintic), clocks_from_ticks(maxtic),
+                    clocks_from_ticks(meantic), fixed_cost);
           }
         }
       }
