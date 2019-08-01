@@ -875,8 +875,13 @@ void write_output_serial(struct engine* e, const char* baseName,
     snprintf(fileName, FILENAME_BUFFER_SIZE, "%s_%06i.hdf5", baseName,
              (int)round(e->time));
   else
-    snprintf(fileName, FILENAME_BUFFER_SIZE, "%s_%04i.hdf5", baseName,
-             e->snapshot_output_count);
+    if (e->snapshot_invoke_stf) {
+      snprintf(fileName, FILENAME_BUFFER_SIZE, "%s_%04i.hdf5", baseName,
+               e->stf_output_count);
+    } else {
+      snprintf(fileName, FILENAME_BUFFER_SIZE, "%s_%04i.hdf5", baseName,
+               e->snapshot_output_count);
+    }
 
   /* Compute offset in the file and total number of particles */
   size_t N[swift_type_count] = {Ngas_written,   Ndm_written,        0, 0,
@@ -1408,6 +1413,7 @@ void write_output_serial(struct engine* e, const char* baseName,
 
   /* message("Done writing particles..."); */
   e->snapshot_output_count++;
+  if (e->snapshot_invoke_stf) e->stf_output_count++;
 }
 
 #endif /* HAVE_HDF5 && HAVE_MPI */

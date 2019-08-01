@@ -603,7 +603,7 @@ void velociraptor_invoke(struct engine *e, const int linked_with_snap) {
   /* Reset the pthread affinity mask after VELOCIraptor returns. */
   pthread_setaffinity_np(thread, sizeof(cpu_set_t), engine_entry_affinity());
 
-  /* Increase output counter (if not linked with snapshots) */
+  /* Increase output counter (if not linked with snapshot) */
   if (!linked_with_snap) e->stf_output_count++;
 
   /* Record we have ran stf this timestep */
