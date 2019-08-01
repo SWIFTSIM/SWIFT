@@ -185,13 +185,14 @@ void output_list_read_next_time(struct output_list *t, const struct engine *e,
 
   /* Do we need to do a dump at the end of the last timestep? */
   if (time == time_end) {
-      t->final_step_dump = 1;
-      if (e->verbose)
-        if (is_cosmo) {
-          message("Next output time for %s set to a=%e.", name, time_end);
-        } else {
-          message("Next output time for %s set to t=%e.", name, time_end);
-        }
+    t->final_step_dump = 1;
+    if (e->verbose) {
+      if (is_cosmo) {
+        message("Next output time for %s set to a=%e.", name, time_end);
+      } else {
+        message("Next output time for %s set to t=%e.", name, time_end);
+      }
+    }
   }
 
   /* Deal with last statistics */
@@ -324,8 +325,8 @@ void output_list_struct_restore(struct output_list *list, FILE *stream) {
 int output_list_check_duplicates(const struct output_list *list_a,
                                  const struct output_list *list_b) {
 
-  for (size_t ind_a=0; ind_a < list_a->size; ind_a++) {
-    for (size_t ind_b=0; ind_b < list_a->size; ind_b++) {
+  for (size_t ind_a = 0; ind_a < list_a->size; ind_a++) {
+    for (size_t ind_b = 0; ind_b < list_a->size; ind_b++) {
       if (list_a->times[ind_a] == list_b->times[ind_b]) return 1;
     }
   }

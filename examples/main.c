@@ -1125,7 +1125,7 @@ int main(int argc, char *argv[]) {
 #endif
     /* Dump initial state snapshot, if not working with an output list */
     if (!e.output_list_snapshots) engine_dump_snapshot(&e);
-    
+
     /* Dump initial state statistics, if not working with an output list */
     if (!e.output_list_stats) engine_print_stats(&e);
 
@@ -1300,20 +1300,20 @@ int main(int argc, char *argv[]) {
 #endif
 
     /* Write final snapshot? */
-    if ((e.output_list_snapshots && e.output_list_snapshots->final_step_dump)
-        || !e.output_list_snapshots) {
+    if ((e.output_list_snapshots && e.output_list_snapshots->final_step_dump) ||
+        !e.output_list_snapshots) {
 #ifdef HAVE_VELOCIRAPTOR
-        if (with_structure_finding && e.snapshot_invoke_stf)
-          velociraptor_invoke(&e, /*linked_with_snap=*/1);
+      if (with_structure_finding && e.snapshot_invoke_stf)
+        velociraptor_invoke(&e, /*linked_with_snap=*/1);
 #endif
-        engine_dump_snapshot(&e);
+      engine_dump_snapshot(&e);
 #ifdef HAVE_VELOCIRAPTOR
-        if (with_structure_finding && e.snapshot_invoke_stf)
-          free(e.s->gpart_group_data);
+      if (with_structure_finding && e.snapshot_invoke_stf)
+        free(e.s->gpart_group_data);
 #endif
     }
 
-    /* Write final stf? */
+      /* Write final stf? */
 #ifdef HAVE_VELOCIRAPTOR
     if (with_structure_finding && e.output_list_stf) {
       if (e.output_list_stf->final_step_dump)

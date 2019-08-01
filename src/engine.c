@@ -5446,11 +5446,11 @@ void engine_config(int restart, int fof, struct engine *e,
              e->output_list_snapshots) &&
             (output_list_check_duplicates(e->output_list_snapshots,
                                           e->output_list_stf)))
-            error("Cannot have duplicate time entries between "
-                  "StructureFinding:output_list and "
-                  "Snapshots:output_list when Snapshots:invoke_stf "
-                  "is selected.");
-
+          error(
+              "Cannot have duplicate time entries between "
+              "StructureFinding:output_list and "
+              "Snapshots:output_list when Snapshots:invoke_stf "
+              "is selected.");
       }
 
       if (e->policy & engine_policy_fof) {
