@@ -1303,12 +1303,12 @@ int main(int argc, char *argv[]) {
     if ((e.output_list_snapshots && e.output_list_snapshots->final_step_dump)
         || !e.output_list_snapshots) {
 #ifdef HAVE_VELOCIRAPTOR
-        if (with_structure_finding && e.snapshot_invoke_stf)
+        if (with_structure_finding && e.snapshot_invoke_stf && !e.stf_this_timestep)
           velociraptor_invoke(&e, /*linked_with_snap=*/1);
 #endif
         engine_dump_snapshot(&e);
 #ifdef HAVE_VELOCIRAPTOR
-        if (with_structure_finding && e.snapshot_invoke_stf)
+        if (with_structure_finding && e.snapshot_invoke_stf && !e.stf_this_timestep)
           free(e.s->gpart_group_data);
 #endif
     }
@@ -1316,7 +1316,7 @@ int main(int argc, char *argv[]) {
     /* Write final stf? */
 #ifdef HAVE_VELOCIRAPTOR
     if (with_structure_finding && e.output_list_stf) {
-      if (e.output_list_stf->final_step_dump)
+      if (e.output_list_stf->final_step_dump && !e.stf_this_timestep)
         velociraptor_invoke(&e, /*linked_with_snap=*/0);
     }
 #endif
