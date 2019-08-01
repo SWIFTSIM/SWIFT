@@ -5,3 +5,4 @@
 
 # Plot the solution
 python plotSolution.py 5
+python plotEnergy.py

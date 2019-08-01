@@ -237,7 +237,7 @@ struct engine {
   long long b_updates_since_rebuild;
 
   /* Star formation logger information */
-  struct star_formation_history sfh;
+  struct star_formation_history_accumulator sfh;
 
   /* Properties of the previous step */
   int step_props;

@@ -125,10 +125,6 @@ float units_general_h_factor(const struct unit_system* us,
                              const float baseUnitsExponents[5]);
 float units_h_factor(const struct unit_system* us,
                      enum unit_conversion_factor unit);
-float units_general_a_factor(const struct unit_system* us,
-                             const float baseUnitsExponents[5]);
-float units_a_factor(const struct unit_system* us,
-                     enum unit_conversion_factor unit);
 
 /* Conversion to CGS */
 double units_general_cgs_conversion_factor(const struct unit_system* us,
@@ -137,9 +133,11 @@ double units_cgs_conversion_factor(const struct unit_system* us,
                                    enum unit_conversion_factor unit);
 void units_general_cgs_conversion_string(char* buffer,
                                          const struct unit_system* us,
-                                         const float baseUnitsExponents[5]);
+                                         const float baseUnitsExponents[5],
+                                         float scale_factor_exponent);
 void units_cgs_conversion_string(char* buffer, const struct unit_system* us,
-                                 enum unit_conversion_factor unit);
+                                 enum unit_conversion_factor unit,
+                                 float scale_factor_exponent);
 
 /* Conversion between systems */
 double units_general_conversion_factor(const struct unit_system* from,

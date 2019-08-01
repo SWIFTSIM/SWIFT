@@ -24,10 +24,15 @@
 /* This object's header. */
 #include "common_io.h"
 
-/* Local includes. */
-#include "chemistry_io.h"
+/* First common header */
 #include "engine.h"
+
+/* Local includes. */
+#include "black_holes_io.h"
+#include "chemistry_io.h"
+#include "cooling_io.h"
 #include "error.h"
+#include "fof_io.h"
 #include "gravity_io.h"
 #include "hydro.h"
 #include "hydro_io.h"
@@ -35,9 +40,12 @@
 #include "kernel_hydro.h"
 #include "part.h"
 #include "part_type.h"
+#include "star_formation_io.h"
 #include "stars_io.h"
 #include "threadpool.h"
+#include "tracers_io.h"
 #include "units.h"
+#include "velociraptor_io.h"
 #include "version.h"
 
 /* Some standard headers. */
@@ -392,8 +400,8 @@ static long long cell_count_non_inhibited_gas(const struct cell* c) {
   struct part* parts = c->hydro.parts;
   long long count = 0;
   for (int i = 0; i < total_count; ++i) {
-    if (!(parts[i].time_bin != time_bin_inhibited) &&
-        !(parts[i].time_bin != time_bin_not_created)) {
+    if ((parts[i].time_bin != time_bin_inhibited) &&
+        (parts[i].time_bin != time_bin_not_created)) {
       ++count;
     }
   }
@@ -405,8 +413,8 @@ static long long cell_count_non_inhibited_dark_matter(const struct cell* c) {
   struct gpart* gparts = c->grav.parts;
   long long count = 0;
   for (int i = 0; i < total_count; ++i) {
-    if (!(gparts[i].time_bin != time_bin_inhibited) &&
-        !(gparts[i].time_bin != time_bin_not_created) &&
+    if ((gparts[i].time_bin != time_bin_inhibited) &&
+        (gparts[i].time_bin != time_bin_not_created) &&
         (gparts[i].type == swift_type_dark_matter)) {
       ++count;
     }
@@ -419,8 +427,8 @@ static long long cell_count_non_inhibited_stars(const struct cell* c) {
   struct spart* sparts = c->stars.parts;
   long long count = 0;
   for (int i = 0; i < total_count; ++i) {
-    if (!(sparts[i].time_bin != time_bin_inhibited) &&
-        !(sparts[i].time_bin != time_bin_not_created)) {
+    if ((sparts[i].time_bin != time_bin_inhibited) &&
+        (sparts[i].time_bin != time_bin_not_created)) {
       ++count;
     }
   }
@@ -432,8 +440,8 @@ static long long cell_count_non_inhibited_black_holes(const struct cell* c) {
   struct bpart* bparts = c->black_holes.parts;
   long long count = 0;
   for (int i = 0; i < total_count; ++i) {
-    if (!(bparts[i].time_bin != time_bin_inhibited) &&
-        !(bparts[i].time_bin != time_bin_not_created)) {
+    if ((bparts[i].time_bin != time_bin_inhibited) &&
+        (bparts[i].time_bin != time_bin_not_created)) {
       ++count;
     }
   }
@@ -1889,12 +1897,6 @@ void io_collect_gparts_to_write(
 void io_check_output_fields(const struct swift_params* params,
                             const long long N_total[3]) {
 
-  /* Create some fake particles as arguments for the writing routines */
-  struct part p;
-  struct xpart xp;
-  struct spart sp;
-  struct gpart gp;
-
   /* Copy N_total to array with length == 6 */
   const long long nr_total[swift_type_count] = {N_total[0], N_total[1], 0,
                                                 0,          N_total[2], 0};
@@ -1912,16 +1914,39 @@ void io_check_output_fields(const struct swift_params* params,
     switch (ptype) {
 
       case swift_type_gas:
-        hydro_write_particles(&p, &xp, list, &num_fields);
-        num_fields += chemistry_write_particles(&p, list + num_fields);
+        hydro_write_particles(NULL, NULL, list, &num_fields);
+        num_fields += chemistry_write_particles(NULL, list + num_fields);
+        num_fields +=
+            cooling_write_particles(NULL, NULL, list + num_fields, NULL);
+        num_fields += tracers_write_particles(NULL, NULL, list + num_fields,
+                                              /*with_cosmology=*/1);
+        num_fields +=
+            star_formation_write_particles(NULL, NULL, list + num_fields);
+        num_fields += fof_write_parts(NULL, NULL, list + num_fields);
+        num_fields += velociraptor_write_parts(NULL, NULL, list + num_fields);
         break;
 
       case swift_type_dark_matter:
-        darkmatter_write_particles(&gp, list, &num_fields);
+        darkmatter_write_particles(NULL, list, &num_fields);
+        num_fields += fof_write_gparts(NULL, list + num_fields);
+        num_fields += velociraptor_write_gparts(NULL, list + num_fields);
         break;
 
       case swift_type_stars:
-        stars_write_particles(&sp, list, &num_fields);
+        stars_write_particles(NULL, list, &num_fields, /*with_cosmology=*/1);
+        num_fields += chemistry_write_sparticles(NULL, list + num_fields);
+        num_fields += tracers_write_sparticles(NULL, list + num_fields,
+                                               /*with_cosmology=*/1);
+        num_fields += fof_write_sparts(NULL, list + num_fields);
+        num_fields += velociraptor_write_sparts(NULL, list + num_fields);
+        break;
+
+      case swift_type_black_hole:
+        black_holes_write_particles(NULL, list, &num_fields,
+                                    /*with_cosmology=*/1);
+        num_fields += chemistry_write_bparticles(NULL, list + num_fields);
+        num_fields += fof_write_bparts(NULL, list + num_fields);
+        num_fields += velociraptor_write_bparts(NULL, list + num_fields);
         break;
 
       default:
@@ -1980,12 +2005,16 @@ void io_check_output_fields(const struct swift_params* params,
 /**
  * @brief Write the output field parameters file
  *
- * @param filename The file to write
+ * @param filename The file to write.
  */
 void io_write_output_field_parameter(const char* filename) {
 
   FILE* file = fopen(filename, "w");
   if (file == NULL) error("Error opening file '%s'", filename);
+
+  /* Create a fake unit system for the snapshots */
+  struct unit_system snapshot_units;
+  units_init_cgs(&snapshot_units);
 
   /* Loop over all particle types */
   fprintf(file, "SelectOutput:\n");
@@ -2000,14 +2029,37 @@ void io_write_output_field_parameter(const char* filename) {
       case swift_type_gas:
         hydro_write_particles(NULL, NULL, list, &num_fields);
         num_fields += chemistry_write_particles(NULL, list + num_fields);
+        num_fields +=
+            cooling_write_particles(NULL, NULL, list + num_fields, NULL);
+        num_fields += tracers_write_particles(NULL, NULL, list + num_fields,
+                                              /*with_cosmology=*/1);
+        num_fields +=
+            star_formation_write_particles(NULL, NULL, list + num_fields);
+        num_fields += fof_write_parts(NULL, NULL, list + num_fields);
+        num_fields += velociraptor_write_parts(NULL, NULL, list + num_fields);
         break;
 
       case swift_type_dark_matter:
         darkmatter_write_particles(NULL, list, &num_fields);
+        num_fields += fof_write_gparts(NULL, list + num_fields);
+        num_fields += velociraptor_write_gparts(NULL, list + num_fields);
         break;
 
       case swift_type_stars:
-        stars_write_particles(NULL, list, &num_fields);
+        stars_write_particles(NULL, list, &num_fields, /*with_cosmology=*/1);
+        num_fields += chemistry_write_sparticles(NULL, list + num_fields);
+        num_fields += tracers_write_sparticles(NULL, list + num_fields,
+                                               /*with_cosmology=*/1);
+        num_fields += fof_write_sparts(NULL, list + num_fields);
+        num_fields += velociraptor_write_sparts(NULL, list + num_fields);
+        break;
+
+      case swift_type_black_hole:
+        black_holes_write_particles(NULL, list, &num_fields,
+                                    /*with_cosmology=*/1);
+        num_fields += chemistry_write_bparticles(NULL, list + num_fields);
+        num_fields += fof_write_bparts(NULL, list + num_fields);
+        num_fields += velociraptor_write_bparts(NULL, list + num_fields);
         break;
 
       default:
@@ -2020,8 +2072,17 @@ void io_write_output_field_parameter(const char* filename) {
     fprintf(file, "  # Particle Type %s\n", part_type_names[ptype]);
 
     /* Write all the fields of this particle type */
-    for (int i = 0; i < num_fields; ++i)
-      fprintf(file, "  %s_%s: 1\n", list[i].name, part_type_names[ptype]);
+    for (int i = 0; i < num_fields; ++i) {
+
+      char buffer[FIELD_BUFFER_SIZE] = {0};
+      units_cgs_conversion_string(buffer, &snapshot_units, list[i].units,
+                                  list[i].scale_factor_exponent);
+
+      fprintf(file,
+              "  %s_%s: %*d \t # %s. ::: Conversion to physical CGS: %s\n",
+              list[i].name, part_type_names[ptype],
+              (int)(28 - strlen(list[i].name)), 1, list[i].description, buffer);
+    }
 
     fprintf(file, "\n");
   }
