@@ -606,6 +606,8 @@ void velociraptor_invoke(struct engine *e, const int linked_with_snap) {
   /* Increase output counter (if not linked with snapshots) */
   if (!linked_with_snap) e->stf_output_count++;
 
+  /* Record we have ran stf this timestep */
+  e->stf_this_timestep = 1;
 #else
   error("SWIFT not configure to run with VELOCIraptor.");
 #endif /* HAVE_VELOCIRAPTOR */

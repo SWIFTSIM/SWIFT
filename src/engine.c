@@ -3742,6 +3742,7 @@ void engine_step(struct engine *e) {
   e->step += 1;
   engine_current_step = e->step;
   e->step_props = engine_step_prop_none;
+  e->stf_this_timestep = 0;
 
   /* When restarting, move everyone to the current time. */
   if (e->restarting) engine_drift_all(e, /*drift_mpole=*/1);
@@ -3973,7 +3974,7 @@ void engine_check_for_dumps(struct engine *e) {
       case output_snapshot:
 
         /* Do we want a corresponding VELOCIraptor output? */
-        if (with_stf && e->snapshot_invoke_stf) {
+        if (with_stf && e->snapshot_invoke_stf && !e->stf_this_timestep) {
 
 #ifdef HAVE_VELOCIRAPTOR
           velociraptor_invoke(e, /*linked_with_snap=*/1);
@@ -3994,7 +3995,7 @@ void engine_check_for_dumps(struct engine *e) {
 #endif
 
         /* Free the memory allocated for VELOCIraptor i/o. */
-        if (with_stf && e->snapshot_invoke_stf) {
+        if (with_stf && e->snapshot_invoke_stf && !e->stf_this_timestep) {
 #ifdef HAVE_VELOCIRAPTOR
           swift_free("gpart_group_data", e->s->gpart_group_data);
           e->s->gpart_group_data = NULL;
@@ -4019,8 +4020,10 @@ void engine_check_for_dumps(struct engine *e) {
 
 #ifdef HAVE_VELOCIRAPTOR
         /* Unleash the raptor! */
-        velociraptor_invoke(e, /*linked_with_snap=*/0);
-        e->step_props |= engine_step_prop_stf;
+        if (!e->stf_this_timestep) {
+          velociraptor_invoke(e, /*linked_with_snap=*/0);
+          e->step_props |= engine_step_prop_stf;
+        }
 
         /* ... and find the next output time */
         engine_compute_next_stf_time(e);
@@ -4989,6 +4992,7 @@ void engine_init(struct engine *e, struct space *s, struct swift_params *params,
   e->chemistry = chemistry;
   e->fof_properties = fof_properties;
   e->parameter_file = params;
+  e->stf_this_timestep = 0;
 #ifdef WITH_MPI
   e->cputime_last_step = 0;
   e->last_repartition = 0;
@@ -5441,16 +5445,6 @@ void engine_config(int restart, int fof, struct engine *e,
               "Scale-factor of first stf output (%e) must be after the "
               "simulation start a=%e.",
               e->a_first_stf_output, e->cosmology->a_begin);
-
-        if ((e->snapshot_invoke_stf && e->output_list_stf &&
-             e->output_list_snapshots) &&
-            (output_list_check_duplicates(e->output_list_snapshots,
-                                          e->output_list_stf)))
-            error("Cannot have duplicate time entries between "
-                  "StructureFinding:output_list and "
-                  "Snapshots:output_list when Snapshots:invoke_stf "
-                  "is selected.");
-
       }
 
       if (e->policy & engine_policy_fof) {

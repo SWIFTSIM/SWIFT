@@ -314,20 +314,3 @@ void output_list_struct_restore(struct output_list *list, FILE *stream) {
   restart_read_blocks(list->times, list->size, sizeof(double), stream, NULL,
                       "times");
 }
-
-/**
- * @brief Check if there are duplicate times between two output lists
- *
- * @param list_a The first #output_list.
- * @param list_b THe second #output_list.
- */
-int output_list_check_duplicates(const struct output_list *list_a,
-                                 const struct output_list *list_b) {
-
-  for (size_t ind_a=0; ind_a < list_a->size; ind_a++) {
-    for (size_t ind_b=0; ind_b < list_a->size; ind_b++) {
-      if (list_a->times[ind_a] == list_b->times[ind_b]) return 1;
-    }
-  }
-  return 0;
-}
