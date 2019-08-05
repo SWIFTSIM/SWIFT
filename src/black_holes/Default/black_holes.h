@@ -187,6 +187,10 @@ __attribute__((always_inline)) INLINE static void black_holes_prepare_feedback(
     const struct phys_const* constants, const struct cosmology* cosmo,
     const double dt) {}
 
+__attribute__((always_inline)) INLINE static void black_holes_end_reposition(
+    struct bpart* restrict bp, const struct black_holes_props* props,
+    const struct phys_const* constants, const struct cosmology* cosmo) {}
+
 /**
  * @brief Reset acceleration fields of a particle
  *

@@ -36,6 +36,7 @@
  * @param pj Second particle (gas, not updated).
  * @param xpj The extended data of the second particle (not updated).
  * @param cosmo The cosmological model.
+ * @param grav_props The properties of the gravity scheme (softening, G, ...).
  * @param ti_current Current integer time value (for random numbers).
  */
 __attribute__((always_inline)) INLINE static void
@@ -116,6 +117,7 @@ runner_iact_nonsym_bh_gas_density(
  * @param pj Second particle (gas)
  * @param xpj The extended data of the second particle.
  * @param cosmo The cosmological model.
+ * @param grav_props The properties of the gravity scheme (softening, G, ...).
  * @param ti_current Current integer time value (for random numbers).
  */
 __attribute__((always_inline)) INLINE static void
@@ -223,7 +225,7 @@ runner_iact_nonsym_bh_gas_swallow(
  * @param bi First particle (black hole).
  * @param bj Second particle (black hole)
  * @param cosmo The cosmological model.
- * @param grav_props The properties of the gravity scheme (softening, G, ...)
+ * @param grav_props The properties of the gravity scheme (softening, G, ...).
  * @param ti_current Current integer time value (for random numbers).
  */
 __attribute__((always_inline)) INLINE static void
@@ -332,6 +334,7 @@ runner_iact_nonsym_bh_bh_swallow(const float r2, const float *dx,
  * @param pj Second particle (gas)
  * @param xpj The extended data of the second particle.
  * @param cosmo The cosmological model.
+ * @param grav_props The properties of the gravity scheme (softening, G, ...).
  * @param ti_current Current integer time value (for random numbers).
  */
 __attribute__((always_inline)) INLINE static void
