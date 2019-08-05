@@ -836,7 +836,7 @@ INLINE static struct io_props io_make_output_field_convert_spart_LONGLONG(
  *
  * Do not call this function directly. Use the macro defined above.
  */
-INLINE static struct io_props io_make_output_field_convert_spart_INT(
+INLINE static struct io_props io_make_output_field_convert_bpart_INT(
     const char name[FIELD_BUFFER_SIZE], enum IO_DATA_TYPE type, int dimension,
     enum unit_conversion_factor units, float a_exponent, size_t bpartSize,
     const struct bpart* bparts, conversion_func_bpart_int functionPtr,
