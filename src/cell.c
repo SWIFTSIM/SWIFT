@@ -4379,13 +4379,7 @@ void cell_drift_part(struct cell *c, const struct engine *e, int force) {
             hydro_remove_part(p, xp);
 
             /* Remove the particle entirely */
-            struct gpart *gp = p->gpart;
             cell_remove_part(e, c, p, xp);
-
-            /* and it's gravity friend */
-            if (gp != NULL) {
-              cell_remove_gpart(e, c, gp);
-            }
           }
 
           if (lock_unlock(&e->s->lock) != 0)
@@ -4419,7 +4413,7 @@ void cell_drift_part(struct cell *c, const struct engine *e, int force) {
       if (part_is_active(p, e)) {
         hydro_init_part(p, &e->s->hs);
         chemistry_init_part(p, e->chemistry);
-        star_formation_init_part(p, e->star_formation);
+        star_formation_init_part(p, xp, e->star_formation);
         tracers_after_init(p, xp, e->internal_units, e->physical_constants,
                            with_cosmology, e->cosmology, e->hydro_properties,
                            e->cooling_func, e->time);
@@ -4547,7 +4541,9 @@ void cell_drift_gpart(struct cell *c, const struct engine *e, int force) {
           if (!gpart_is_inhibited(gp, e)) {
 
             /* Remove the particle entirely */
-            cell_remove_gpart(e, c, gp);
+            if (gp->type == swift_type_dark_matter) {
+              cell_remove_gpart(e, c, gp);
+            }
           }
 
           if (lock_unlock(&e->s->lock) != 0)
@@ -4688,11 +4684,7 @@ void cell_drift_spart(struct cell *c, const struct engine *e, int force) {
           if (!spart_is_inhibited(sp, e)) {
 
             /* Remove the particle entirely */
-            struct gpart *gp = sp->gpart;
             cell_remove_spart(e, c, sp);
-
-            /* and it's gravity friend */
-            cell_remove_gpart(e, c, gp);
           }
 
           if (lock_unlock(&e->s->lock) != 0)
@@ -4863,11 +4855,7 @@ void cell_drift_bpart(struct cell *c, const struct engine *e, int force) {
           if (!bpart_is_inhibited(bp, e)) {
 
             /* Remove the particle entirely */
-            struct gpart *gp = bp->gpart;
             cell_remove_bpart(e, c, bp);
-
-            /* and it's gravity friend */
-            cell_remove_gpart(e, c, gp);
           }
 
           if (lock_unlock(&e->s->lock) != 0)
@@ -5327,6 +5315,9 @@ void cell_remove_part(const struct engine *e, struct cell *c, struct part *p,
   if (c->nodeID != e->nodeID)
     error("Can't remove a particle in a foreign cell.");
 
+  /* Don't remove a particle twice */
+  if (p->time_bin == time_bin_inhibited) return;
+
   /* Mark the particle as inhibited */
   p->time_bin = time_bin_inhibited;
 
@@ -5337,12 +5328,15 @@ void cell_remove_part(const struct engine *e, struct cell *c, struct part *p,
     p->gpart->type = swift_type_dark_matter;
   }
 
-  /* Un-link the part */
-  p->gpart = NULL;
-
   /* Update the space-wide counters */
   const size_t one = 1;
   atomic_add(&e->s->nr_inhibited_parts, one);
+  if (p->gpart) {
+    atomic_add(&e->s->nr_inhibited_gparts, one);
+  }
+
+  /* Un-link the part */
+  p->gpart = NULL;
 }
 
 /**
@@ -5357,6 +5351,14 @@ void cell_remove_part(const struct engine *e, struct cell *c, struct part *p,
  */
 void cell_remove_gpart(const struct engine *e, struct cell *c,
                        struct gpart *gp) {
+
+  /* Quick cross-check */
+  if (c->nodeID != e->nodeID)
+    error("Can't remove a particle in a foreign cell.");
+
+  /* Don't remove a particle twice */
+  if (gp->time_bin == time_bin_inhibited) return;
+
   /* Quick cross-check */
   if (c->nodeID != e->nodeID)
     error("Can't remove a particle in a foreign cell.");
@@ -5385,6 +5387,9 @@ void cell_remove_spart(const struct engine *e, struct cell *c,
   if (c->nodeID != e->nodeID)
     error("Can't remove a particle in a foreign cell.");
 
+  /* Don't remove a particle twice */
+  if (sp->time_bin == time_bin_inhibited) return;
+
   /* Mark the particle as inhibited and stand-alone */
   sp->time_bin = time_bin_inhibited;
   if (sp->gpart) {
@@ -5393,12 +5398,15 @@ void cell_remove_spart(const struct engine *e, struct cell *c,
     sp->gpart->type = swift_type_dark_matter;
   }
 
-  /* Un-link the spart */
-  sp->gpart = NULL;
-
   /* Update the space-wide counters */
   const size_t one = 1;
   atomic_add(&e->s->nr_inhibited_sparts, one);
+  if (sp->gpart) {
+    atomic_add(&e->s->nr_inhibited_gparts, one);
+  }
+
+  /* Un-link the spart */
+  sp->gpart = NULL;
 }
 
 /**
@@ -5418,6 +5426,9 @@ void cell_remove_bpart(const struct engine *e, struct cell *c,
   if (c->nodeID != e->nodeID)
     error("Can't remove a particle in a foreign cell.");
 
+  /* Don't remove a particle twice */
+  if (bp->time_bin == time_bin_inhibited) return;
+
   /* Mark the particle as inhibited and stand-alone */
   bp->time_bin = time_bin_inhibited;
   if (bp->gpart) {
@@ -5426,12 +5437,15 @@ void cell_remove_bpart(const struct engine *e, struct cell *c,
     bp->gpart->type = swift_type_dark_matter;
   }
 
-  /* Un-link the bpart */
-  bp->gpart = NULL;
-
   /* Update the space-wide counters */
   const size_t one = 1;
   atomic_add(&e->s->nr_inhibited_bparts, one);
+  if (bp->gpart) {
+    atomic_add(&e->s->nr_inhibited_gparts, one);
+  }
+
+  /* Un-link the bpart */
+  bp->gpart = NULL;
 }
 
 /**

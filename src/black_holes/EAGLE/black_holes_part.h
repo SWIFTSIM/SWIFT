@@ -20,6 +20,7 @@
 #define SWIFT_EAGLE_BLACK_HOLE_PART_H
 
 #include "chemistry_struct.h"
+#include "timeline.h"
 
 /**
  * @brief Particle fields for the black hole particles.
