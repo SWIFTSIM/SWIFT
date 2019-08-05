@@ -105,6 +105,7 @@ INLINE static void convert_spart_vel(const struct engine *e,
  * @param sparts The s-particle array.
  * @param list The list of i/o properties to write.
  * @param num_fields The number of i/o fields to write.
+ * @param with_cosmology Are we running a cosmological simulation?
  */
 INLINE static void stars_write_particles(const struct spart *sparts,
                                          struct io_props *list, int *num_fields,
