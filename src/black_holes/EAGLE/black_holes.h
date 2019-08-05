@@ -113,7 +113,7 @@ __attribute__((always_inline)) INLINE static void black_holes_predict_extra(
 
 #ifdef SWIFT_DEBUG_CHECKS
     if (bp->reposition.x[0] == -FLT_MAX || bp->reposition.x[1] == -FLT_MAX ||
-        bp->reposition.x[1] == -FLT_MAX) {
+        bp->reposition.x[2] == -FLT_MAX) {
       error("Something went wrong with the new repositioning position");
     }
 #endif
@@ -460,6 +460,16 @@ __attribute__((always_inline)) INLINE static void black_holes_prepare_feedback(
   }
 }
 
+/**
+ * @brief Finish the calculation of the new BH position.
+ *
+ * Here, we check that the BH should indeed be moved in the next drift.
+ *
+ * @param bp The black hole particle.
+ * @param props The properties of the black hole scheme.
+ * @param constants The physical constants (in internal units).
+ * @param cosmo The cosmological model.
+ */
 __attribute__((always_inline)) INLINE static void black_holes_end_reposition(
     struct bpart* restrict bp, const struct black_holes_props* props,
     const struct phys_const* constants, const struct cosmology* cosmo) {
@@ -470,8 +480,6 @@ __attribute__((always_inline)) INLINE static void black_holes_end_reposition(
    * OR is the BH massive enough that we don't reposition? */
   if (potential < bp->reposition.min_potential ||
       bp->subgrid_mass > props->max_reposition_mass) {
-
-    message("No repo!");
 
     /* No need to reposition */
     bp->reposition.min_potential = FLT_MAX;
