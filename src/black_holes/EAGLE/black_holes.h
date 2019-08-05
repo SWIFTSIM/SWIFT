@@ -118,8 +118,6 @@ __attribute__((always_inline)) INLINE static void black_holes_predict_extra(
     }
 #endif
 
-    message("Reposition!");
-
     bp->x[0] = bp->reposition.x[0];
     bp->x[1] = bp->reposition.x[1];
     bp->x[2] = bp->reposition.x[2];
