@@ -880,7 +880,7 @@ void task_create_mpi_comms(void) {
  *
  * Dumps the information to a file "thread_info-stepn.dat" where n is the
  * given step value, or "thread_info_MPI-stepn.dat", if we are running
- * under MPI. Note if running under MPIU all the ranks are dumped into this
+ * under MPI. Note if running under MPI all the ranks are dumped into this
  * one file, which has an additional field to identify the rank.
  *
  * @param e the #engine
@@ -1145,4 +1145,117 @@ void task_dump_stats(const char *dumpfile, struct engine *e, int header,
 #ifdef WITH_MPI
   }
 #endif
+}
+
+/**
+ * @brief dump all the active tasks of all the known engines into a file.
+ *
+ * Dumps the information to a file "task_dump-stepn.dat" where n is the given
+ * step value, or "task_dump_MPI-stepn.dat", if we are running under MPI. Note
+ * if running under MPI all the ranks are dumped into this one file, which has
+ * an additional field to identify the rank. Very similar to task_dump_all()
+ * except for the additional fields used in task debugging and we record tasks
+ * that have not ran (i.e !skip, but toc == 0) and how many waits are still
+ * active.
+ *
+ * @param e the #engine
+ */
+void task_dump_active(struct engine *e) {
+
+  /* Need this to convert ticks to seconds. */
+  unsigned long long cpufreq = clocks_get_cpufreq();
+
+#ifdef WITH_MPI
+  /* Make sure output file is empty, only on one rank. */
+  char dumpfile[35];
+  snprintf(dumpfile, sizeof(dumpfile), "task_dump_MPI-step%d.dat", e->step);
+  FILE *file_thread;
+  if (engine_rank == 0) {
+    file_thread = fopen(dumpfile, "w");
+    fprintf(file_thread,
+            "# rank otherrank type subtype waits pair tic toc"
+            " ci.hydro.count cj.hydro.count ci.grav.count cj.grav.count"
+            " flags\n");
+    fclose(file_thread);
+  }
+  MPI_Barrier(MPI_COMM_WORLD);
+
+  for (int i = 0; i < e->nr_nodes; i++) {
+
+    /* Rank 0 decides the index of the writing node, this happens
+     * one-by-one. */
+    int kk = i;
+    MPI_Bcast(&kk, 1, MPI_INT, 0, MPI_COMM_WORLD);
+
+    if (i == engine_rank) {
+
+      /* Open file and position at end. */
+      file_thread = fopen(dumpfile, "a");
+
+      /* Add some information to help with the plots and conversion of ticks to
+       * seconds. */
+      fprintf(
+          file_thread, "%i 0 none none -1 0 %lld %lld %lld %lld %lld 0 %lld\n",
+          engine_rank, (long long int)e->tic_step, (long long int)e->toc_step,
+          e->updates, e->g_updates, e->s_updates, cpufreq);
+      int count = 0;
+      for (int l = 0; l < e->sched.nr_tasks; l++) {
+        struct task *t = &e->sched.tasks[l];
+
+        /* Not implicit and not skipped. */
+        if (!t->implicit && !t->skip) {
+
+          /* Get destination rank of MPI requests. */
+          int paired = (t->cj != NULL);
+          int otherrank = t->ci->nodeID;
+          if (paired) otherrank = t->cj->nodeID;
+
+          fprintf(file_thread, "%i %i %s %s %i %i %lli %lli %i %i %i %i %lli\n",
+                  engine_rank, otherrank, taskID_names[t->type],
+                  subtaskID_names[t->subtype], t->wait, paired,
+                  (long long int)t->tic, (long long int)t->toc,
+                  (t->ci != NULL) ? t->ci->hydro.count : 0,
+                  (t->cj != NULL) ? t->cj->hydro.count : 0,
+                  (t->ci != NULL) ? t->ci->grav.count : 0,
+                  (t->cj != NULL) ? t->cj->grav.count : 0, t->flags);
+        }
+        count++;
+      }
+      fclose(file_thread);
+    }
+
+    /* And we wait for all to synchronize. */
+    MPI_Barrier(MPI_COMM_WORLD);
+  }
+
+#else
+  /* Non-MPI, so just a single engine's worth of tasks to dump. */
+  char dumpfile[32];
+  snprintf(dumpfile, sizeof(dumpfile), "task_dump-step%d.dat", e->step);
+  FILE *file_thread;
+  file_thread = fopen(dumpfile, "w");
+  fprintf(file_thread,
+          "#type subtype waits pair tic toc ci.hydro.count cj.hydro.count "
+          "ci.grav.count cj.grav.count\n");
+
+  /* Add some information to help with the plots and conversion of ticks to
+   * seconds. */
+  fprintf(file_thread, "none none -1 0, %lld %lld %lld %lld %lld %lld\n",
+          (unsigned long long)e->tic_step, (unsigned long long)e->toc_step,
+          e->updates, e->g_updates, e->s_updates, cpufreq);
+  for (int l = 0; l < e->sched.nr_tasks; l++) {
+    struct task *t = &e->sched.tasks[l];
+    if (!t->implicit && !t->skip) {
+      fprintf(file_thread, "%s %s %i %i %lli %lli %i %i %i %i\n",
+              taskID_names[t->type], subtaskID_names[t->subtype], t->wait,
+              (t->cj == NULL), (unsigned long long)t->tic,
+              (unsigned long long)t->toc,
+              (t->ci == NULL) ? 0 : t->ci->hydro.count,
+              (t->cj == NULL) ? 0 : t->cj->hydro.count,
+              (t->ci == NULL) ? 0 : t->ci->grav.count,
+              (t->cj == NULL) ? 0 : t->cj->grav.count);
+    }
+  }
+  fclose(file_thread);
+#endif  // WITH_MPI
 }
