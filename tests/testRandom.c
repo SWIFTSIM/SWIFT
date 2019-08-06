@@ -101,10 +101,10 @@ int main(int argc, char* argv[]) {
   srand(seed);
 
   /* Time-step size */
-  const int time_bin = 29;
+  const int time_bin = 30;
 
   /* Try a few different values for the ID */
-  for (int i = 0; i < 20; ++i) {
+  for (int i = 0; i < 10; ++i) {
 
     const long long id = rand() * (1LL << 31) + rand();
     const integertime_t increment = (1LL << time_bin);
