@@ -115,6 +115,7 @@ tests/testInteractions.sh
 tests/testSymmetry
 tests/testMaths
 tests/testRandom
+tests/testRandomSpacing
 tests/testThreadpool
 tests/testParser
 tests/testFeedback
