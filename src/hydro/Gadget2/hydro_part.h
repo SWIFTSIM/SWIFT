@@ -155,9 +155,6 @@ struct part {
   /*! Black holes information (e.g. swallowing ID) */
   struct black_holes_part_data black_holes_data;
 
-  /* Additional data used by the star formation */
-  struct star_formation_part_data sf_data;
-
   /* Time-step length */
   timebin_t time_bin;
 

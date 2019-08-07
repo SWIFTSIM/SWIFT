@@ -884,6 +884,7 @@ void DOSELF_SUBSET(struct runner *r, struct cell *restrict ci,
 
   const int count_i = ci->hydro.count;
   struct part *restrict parts_j = ci->hydro.parts;
+
   /* Loop over the parts in ci. */
   for (int pid = 0; pid < count; pid++) {
 

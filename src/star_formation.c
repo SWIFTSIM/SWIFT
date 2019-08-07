@@ -24,7 +24,6 @@
 #include "part.h"
 #include "restart.h"
 #include "star_formation.h"
-#include "star_formation_io.h"
 #include "units.h"
 
 /**

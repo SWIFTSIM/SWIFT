@@ -5062,11 +5062,6 @@ void engine_init(struct engine *e, struct space *s, struct swift_params *params,
         parser_get_opt_param_double(params, "FOF:delta_time", -1.);
   }
 
-  /* Initialize the star formation history structure */
-  if (e->policy & engine_policy_star_formation) {
-    star_formation_logger_accumulator_init(&e->sfh);
-  }
-
   engine_init_output_lists(e, params);
 }
 

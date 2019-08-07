@@ -88,52 +88,12 @@ INLINE static void star_formation_logger_add(
 }
 
 /**
- * @brief add a star formation history struct to the engine star formation
- * history accumulator struct
- *
- * @param sf_add the star formation accumulator struct which we want to add to
- * the star formation history
- * @param sf_update the star formation structure which we want to update
- */
-INLINE static void star_formation_logger_add_to_accumulator(
-    struct star_formation_history_accumulator *sf_update,
-    const struct star_formation_history *sf_add) {
-
-  /* Update the SFH structure */
-  sf_update->new_stellar_mass += sf_add->new_stellar_mass;
-
-  sf_update->SFR_active += sf_add->SFR_active;
-
-  sf_update->SFRdt_active += sf_add->SFRdt_active;
-
-  sf_update->SFR_inactive += sf_add->SFR_inactive;
-}
-
-/**
  * @brief Initialize the star formation history structure in the #engine
  *
  * @param sfh The pointer to the star formation history structure
  */
 INLINE static void star_formation_logger_init(
     struct star_formation_history *sfh) {
-
-  /* Initialize the collecting SFH structure to zero */
-  sfh->new_stellar_mass = 0.f;
-
-  sfh->SFR_active = 0.f;
-
-  sfh->SFRdt_active = 0.f;
-
-  sfh->SFR_inactive = 0.f;
-}
-
-/**
- * @brief Initialize the star formation history structure in the #engine
- *
- * @param sfh The pointer to the star formation history structure
- */
-INLINE static void star_formation_logger_accumulator_init(
-    struct star_formation_history_accumulator *sfh) {
 
   /* Initialize the collecting SFH structure to zero */
   sfh->new_stellar_mass = 0.f;
@@ -157,7 +117,7 @@ INLINE static void star_formation_logger_accumulator_init(
  */
 INLINE static void star_formation_logger_write_to_log_file(
     FILE *fp, const double time, const double a, const double z,
-    const struct star_formation_history_accumulator sf, const int step) {
+    const struct star_formation_history sf, const int step) {
 
   /* Calculate the total SFR */
   const float totalSFR = sf.SFR_active + sf.SFR_inactive;

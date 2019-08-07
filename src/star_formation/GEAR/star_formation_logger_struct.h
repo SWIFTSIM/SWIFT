@@ -1,7 +1,6 @@
 /*******************************************************************************
  * This file is part of SWIFT.
- * Coypright (c) 2019 Loic Hausammann (loic.hausammann@epfl.ch)
- *               2019 Fabien Jeanquartier (fabien.jeanquartier@epfl.ch)
+ * Copyright (c) 2019 Folkert Nobels (nobels@strw.leidenuniv.nl)
  *
  * This program is free software: you can redistribute it and/or modify
  * it under the terms of the GNU Lesser General Public License as published
@@ -20,33 +19,7 @@
 #ifndef SWIFT_GEAR_STAR_FORMATION_LOGGER_STRUCT_H
 #define SWIFT_GEAR_STAR_FORMATION_LOGGER_STRUCT_H
 
-/**
- * Structure containing the star formation information from the cells.
- */
-struct star_formation_history {
-  /*! Stellar mass created in the current timestep */
-  float new_stellar_mass;
+/* Starformation history struct */
+struct star_formation_history {};
 
-  /*! Number of stars created in this timestep */
-  long int number_new_stars;
-};
-
-/**
- * Structure containing the global star formation information (including time
- * integrated variables).
- */
-struct star_formation_history_accumulator {
-  /*! Total stellar mass from the begining of the simulation */
-  float total_stellar_mass;
-
-  /*! Total number of stars */
-  long int total_number_stars;
-
-  /*! Stellar mass created in the current timestep */
-  float new_stellar_mass;
-
-  /*! Number of stars created in this timestep */
-  long int number_new_stars;
-};
-
-#endif /* SWIFT_GEAR_STAR_FORMATION_LOGGER_STRUCT_H */
+#endif /* SWIFT_NONE_STAR_FORMATION_STRUCT_H */

@@ -697,17 +697,6 @@ __attribute__((always_inline)) INLINE static void cooling_cool_part(
   xp->cooling_data.radiated_energy -= hydro_get_mass(p) * cooling_du_dt * dt;
 }
 
-/**
- * @brief Compute the temperature of a #part based on the cooling function.
- *
- * @param phys_const #phys_const data structure.
- * @param hydro_props The properties of the hydro scheme.
- * @param us The internal system of units.
- * @param cosmo #cosmology data structure.
- * @param cooling #cooling_function_data struct.
- * @param p #part data.
- * @param xp Pointer to the #xpart data.
- */
 static INLINE float cooling_get_temperature(
     const struct phys_const* restrict phys_const,
     const struct hydro_props* restrict hydro_props,
@@ -715,30 +704,9 @@ static INLINE float cooling_get_temperature(
     const struct cosmology* restrict cosmo,
     const struct cooling_function_data* restrict cooling,
     const struct part* restrict p, const struct xpart* restrict xp) {
-  // TODO use the grackle library
 
-  /* Physical constants */
-  const double m_H = phys_const->const_proton_mass;
-  const double k_B = phys_const->const_boltzmann_k;
-
-  /* Gas properties */
-  const double T_transition = hydro_props->hydrogen_ionization_temperature;
-  const double mu_neutral = hydro_props->mu_neutral;
-  const double mu_ionised = hydro_props->mu_ionised;
-
-  /* Particle temperature */
-  const double u = hydro_get_physical_internal_energy(p, xp, cosmo);
-
-  /* Temperature over mean molecular weight */
-  const double T_over_mu = hydro_gamma_minus_one * u * m_H / k_B;
-
-  /* Are we above or below the HII -> HI transition? */
-  if (T_over_mu > (T_transition + 1.) / mu_ionised)
-    return T_over_mu * mu_ionised;
-  else if (T_over_mu < (T_transition - 1.) / mu_neutral)
-    return T_over_mu * mu_neutral;
-  else
-    return T_transition;
+  error("This function needs implementing!!");
+  return 0.;
 }
 
 /**
