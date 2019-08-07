@@ -100,13 +100,13 @@ INLINE static void star_formation_logger_add_to_accumulator(
     const struct star_formation_history *sf_add) {
 
   /* Update the SFH structure */
-  sf_update->new_stellar_mass += sf_add->new_stellar_mass;
+  sf_update->new_stellar_mass = sf_add->new_stellar_mass;
 
-  sf_update->SFR_active += sf_add->SFR_active;
+  sf_update->SFR_active = sf_add->SFR_active;
 
-  sf_update->SFRdt_active += sf_add->SFRdt_active;
+  sf_update->SFRdt_active = sf_add->SFRdt_active;
 
-  sf_update->SFR_inactive += sf_add->SFR_inactive;
+  sf_update->SFR_inactive = sf_add->SFR_inactive;
 }
 
 /**
