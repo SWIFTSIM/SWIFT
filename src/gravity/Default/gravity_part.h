@@ -26,14 +26,11 @@ struct gpart {
      which this gpart is linked. */
   long long id_or_neg_offset;
 
+  /* Particle group ID and size in the FOF. */
+  size_t group_id, group_size;
+  
   /*! Particle position. */
   double x[3];
-
-  /*! Particle velocity. */
-  float v_full[3];
-
-  /*! Particle acceleration. */
-  float a_grav[3];
 
   /*! Particle mass. */
   float mass;
@@ -44,8 +41,11 @@ struct gpart {
   /*! Type of the #gpart (DM, gas, star, ...) */
   enum part_type type;
 
-  /* Particle group ID and size in the FOF. */
-  size_t group_id, group_size;
+  /*! Particle velocity. */
+  char v_full[3];
+
+  /*! Particle acceleration. */
+  char a_grav[3];
 
 #ifdef SWIFT_DEBUG_CHECKS
 
