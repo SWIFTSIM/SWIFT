@@ -119,9 +119,8 @@ struct gravity_props {
 void gravity_props_print(const struct gravity_props *p);
 void gravity_props_init(struct gravity_props *p, struct swift_params *params,
                         const struct phys_const *phys_const,
-                        const struct cosmology *cosmo,
-                        const double high_res_DM_mass, const int with_cosmology,
-                        const int periodic);
+                        const struct cosmology *cosmo, const int with_cosmology,
+                        const int is_zoom_simulation, const int periodic);
 void gravity_props_update(struct gravity_props *p,
                           const struct cosmology *cosmo);
 

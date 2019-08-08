@@ -971,7 +971,8 @@ int main(int argc, char *argv[]) {
     bzero(&gravity_properties, sizeof(struct gravity_props));
     if (with_self_gravity)
       gravity_props_init(&gravity_properties, params, &prog_const, &cosmo,
-                         high_res_DM_mass, with_cosmology, periodic);
+                         with_cosmology, with_DM_background_particles,
+                         periodic);
 
     /* Initialise the external potential properties */
     bzero(&potential, sizeof(struct external_potential));

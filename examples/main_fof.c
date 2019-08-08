@@ -519,7 +519,8 @@ int main(int argc, char *argv[]) {
   /* Initialise the gravity scheme */
   bzero(&gravity_properties, sizeof(struct gravity_props));
   gravity_props_init(&gravity_properties, params, &prog_const, &cosmo,
-                     high_res_DM_mass, /*with_cosmology=*/1, periodic);
+                     /*with_cosmology=*/1, with_DM_background_particles,
+                     periodic);
 
   /* Initialise the long-range gravity mesh */
   if (periodic) {

@@ -40,9 +40,8 @@
 
 void gravity_props_init(struct gravity_props *p, struct swift_params *params,
                         const struct phys_const *phys_const,
-                        const struct cosmology *cosmo,
-                        const double high_res_DM_mass, const int with_cosmology,
-                        const int periodic) {
+                        const struct cosmology *cosmo, const int with_cosmology,
+                        const int is_zoom_simulation, const int periodic) {
 
   /* Tree updates */
   p->rebuild_frequency =
@@ -103,20 +102,23 @@ void gravity_props_init(struct gravity_props *p, struct swift_params *params,
     p->epsilon_baryon_comoving =
         parser_get_param_double(params, "Gravity:comoving_baryon_softening");
 
-    /* Compute the comoving softening length for background particles as
-     * a fraction of the mean inter-particle density of the background DM
-     * particles Since they have variable masses the mass factor will be
-     * multiplied in later on. Note that we already multiply in the conversion
-     * from Plummer -> real softening length */
-    const double ratio_background =
-        parser_get_param_double(params, "Gravity:softening_ratio_background");
+    if (is_zoom_simulation) {
 
-    const double mean_matter_density =
-        cosmo->Omega_m * cosmo->critical_density_0;
+      /* Compute the comoving softening length for background particles as
+       * a fraction of the mean inter-particle density of the background DM
+       * particles Since they have variable masses the mass factor will be
+       * multiplied in later on. Note that we already multiply in the conversion
+       * from Plummer -> real softening length */
+      const double ratio_background =
+          parser_get_param_double(params, "Gravity:softening_ratio_background");
 
-    p->epsilon_background_fac = kernel_gravity_softening_plummer_equivalent *
-                                ratio_background *
-                                cbrt(1. / mean_matter_density);
+      const double mean_matter_density =
+          cosmo->Omega_m * cosmo->critical_density_0;
+
+      p->epsilon_background_fac = kernel_gravity_softening_plummer_equivalent *
+                                  ratio_background *
+                                  cbrt(1. / mean_matter_density);
+    }
 
   } else {
 
