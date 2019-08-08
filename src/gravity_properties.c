@@ -40,9 +40,8 @@
 
 void gravity_props_init(struct gravity_props *p, struct swift_params *params,
                         const struct phys_const *phys_const,
-                        const struct cosmology *cosmo, 
-                        const double high_res_DM_mass, 
-                        const int with_cosmology,
+                        const struct cosmology *cosmo,
+                        const double high_res_DM_mass, const int with_cosmology,
                         const int periodic) {
 
   /* DM particle mass in the zoom region */

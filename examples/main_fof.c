@@ -409,11 +409,6 @@ int main(int argc, char *argv[]) {
   /* Initialise the cosmology */
   cosmology_init(params, &us, &prog_const, &cosmo);
 
-  /* Initialise the gravity scheme */
-  bzero(&gravity_properties, sizeof(struct gravity_props));
-  gravity_props_init(&gravity_properties, params, &prog_const, &cosmo,
-                     /*with_cosmology=*/1, periodic);
-
   /* Initialise the FOF properties */
   bzero(&fof_properties, sizeof(struct fof_props));
   if (with_fof) fof_init(&fof_properties, params, &prog_const, &us);
@@ -430,21 +425,22 @@ int main(int argc, char *argv[]) {
   int flag_entropy_ICs = 0;
   size_t Ngas = 0, Ngpart = 0, Ngpart_background = 0, Nspart = 0, Nbpart = 0;
   double dim[3] = {0., 0., 0.};
+  float high_res_DM_mass = -1.f;
   if (myrank == 0) clocks_gettime(&tic);
 #if defined(HAVE_HDF5)
 #if defined(WITH_MPI)
 #if defined(HAVE_PARALLEL_HDF5)
   read_ic_parallel(ICfileName, &us, dim, &parts, &gparts, &sparts, &bparts,
                    &Ngas, &Ngpart, &Ngpart_background, &Nspart, &Nbpart,
-                   &flag_entropy_ICs, with_hydro, /*with_grav=*/1, with_stars,
-                   with_black_holes, cleanup_h, cleanup_sqrt_a, cosmo.h,
-                   cosmo.a, myrank, nr_nodes, MPI_COMM_WORLD, MPI_INFO_NULL,
-                   nr_threads,
+                   &flag_entropy_ICs, &high_res_DM_mass, with_hydro,
+                   /*with_grav=*/1, with_stars, with_black_holes, cleanup_h,
+                   cleanup_sqrt_a, cosmo.h, cosmo.a, myrank, nr_nodes,
+                   MPI_COMM_WORLD, MPI_INFO_NULL, nr_threads,
                    /*dry_run=*/0);
 #else
   read_ic_serial(ICfileName, &us, dim, &parts, &gparts, &sparts, &bparts, &Ngas,
                  &Ngpart, &Ngpart_background, &Nspart, &Nbpart,
-                 &flag_entropy_ICs, with_hydro,
+                 &flag_entropy_ICs, &high_res_DM_mass, with_hydro,
                  /*with_grav=*/1, with_stars, with_black_holes, cleanup_h,
                  cleanup_sqrt_a, cosmo.h, cosmo.a, myrank, nr_nodes,
                  MPI_COMM_WORLD, MPI_INFO_NULL, nr_threads, /*dry_run=*/0);
@@ -452,7 +448,7 @@ int main(int argc, char *argv[]) {
 #else
   read_ic_single(ICfileName, &us, dim, &parts, &gparts, &sparts, &bparts, &Ngas,
                  &Ngpart, &Ngpart_background, &Nspart, &Nbpart,
-                 &flag_entropy_ICs, with_hydro,
+                 &flag_entropy_ICs, &high_res_DM_mass, with_hydro,
                  /*with_grav=*/1, with_stars, with_black_holes, cleanup_h,
                  cleanup_sqrt_a, cosmo.h, cosmo.a, nr_threads, /*dry_run=*/0);
 #endif
@@ -519,6 +515,11 @@ int main(int argc, char *argv[]) {
             clocks_getunit());
     fflush(stdout);
   }
+
+  /* Initialise the gravity scheme */
+  bzero(&gravity_properties, sizeof(struct gravity_props));
+  gravity_props_init(&gravity_properties, params, &prog_const, &cosmo,
+                     high_res_DM_mass, /*with_cosmology=*/1, periodic);
 
   /* Initialise the long-range gravity mesh */
   if (periodic) {

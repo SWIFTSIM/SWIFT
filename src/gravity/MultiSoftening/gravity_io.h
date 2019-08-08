@@ -111,21 +111,28 @@ INLINE static void darkmatter_write_particles(const struct gpart* gparts,
                                               int* num_fields) {
 
   /* Say how much we want to write */
-  *num_fields = 6;
+  *num_fields = 5;
 
   /* List what we want to write */
   list[0] = io_make_output_field_convert_gpart(
-      "Coordinates", DOUBLE, 3, UNIT_CONV_LENGTH, gparts, convert_gpart_pos);
+      "Coordinates", DOUBLE, 3, UNIT_CONV_LENGTH, 1.f, gparts,
+      convert_gpart_pos, "Co-moving position of the particles");
+
   list[1] = io_make_output_field_convert_gpart(
-      "Velocities", FLOAT, 3, UNIT_CONV_SPEED, gparts, convert_gpart_vel);
-  list[2] =
-      io_make_output_field("Masses", FLOAT, 1, UNIT_CONV_MASS, gparts, mass);
-  list[3] = io_make_output_field("ParticleIDs", ULONGLONG, 1,
-                                 UNIT_CONV_NO_UNITS, gparts, id_or_neg_offset);
-  list[4] = io_make_output_field("GroupIDs", INT, 1, UNIT_CONV_NO_UNITS, gparts,
-                                 group_id);
-  list[5] = io_make_output_field_convert_gpart(
-      "Softenings", FLOAT, 1, UNIT_CONV_LENGTH, gparts, convert_gpart_soft);
+      "Velocities", FLOAT, 3, UNIT_CONV_SPEED, 0.f, gparts, convert_gpart_vel,
+      "Peculiar velocities of the stars. This is a * dx/dt where x is the "
+      "co-moving position of the particles.");
+
+  list[2] = io_make_output_field("Masses", FLOAT, 1, UNIT_CONV_MASS, 0.f,
+                                 gparts, mass, "Masses of the particles");
+
+  list[3] = io_make_output_field(
+      "ParticleIDs", ULONGLONG, 1, UNIT_CONV_NO_UNITS, 0.f, gparts,
+      id_or_neg_offset, "Unique ID of the particles");
+
+  list[4] = io_make_output_field_convert_gpart(
+      "Softenings", FLOAT, 1, UNIT_CONV_LENGTH, 1.f, gparts, convert_gpart_soft,
+      "Co-moving Plummer-equivalent softening lengths of the particles.");
 }
 
 #endif /* SWIFT_DEFAULT_GRAVITY_IO_H */

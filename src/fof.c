@@ -1961,9 +1961,9 @@ void fof_dump_group_data(const struct fof_props *props,
             max_part_density[i], max_part_density_index[i], part_id);
 #else
     fprintf(file, "  %8zu %12zu %12e %12e %18lld %18lld\n",
-            (size_t)gparts[group_offset].fof_data.group_id, group_size[group_offset],
-            group_mass[i], max_part_density[i], max_part_density_index[i],
-            part_id);
+            (size_t)gparts[group_offset].fof_data.group_id,
+            group_size[group_offset], group_mass[i], max_part_density[i],
+            max_part_density_index[i], part_id);
 #endif
   }
 

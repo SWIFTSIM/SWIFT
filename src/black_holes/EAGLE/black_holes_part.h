@@ -19,6 +19,7 @@
 #ifndef SWIFT_EAGLE_BLACK_HOLE_PART_H
 #define SWIFT_EAGLE_BLACK_HOLE_PART_H
 
+#include "black_holes_struct.h"
 #include "chemistry_struct.h"
 #include "timeline.h"
 

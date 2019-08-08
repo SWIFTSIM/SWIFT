@@ -20,7 +20,6 @@
 #define SWIFT_DEFAULT_BLACK_HOLES_IO_H
 
 #include "black_holes_part.h"
-#include "engine.h"
 #include "io_properties.h"
 
 /**

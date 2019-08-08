@@ -19,6 +19,8 @@
 #ifndef SWIFT_DEFAULT_GRAVITY_PART_H
 #define SWIFT_DEFAULT_GRAVITY_PART_H
 
+#include "fof_struct.h"
+
 /* Gravity particle. */
 struct gpart {
 
@@ -38,13 +40,14 @@ struct gpart {
   /*! Particle mass. */
   float mass;
 
+  /*! Particle FoF properties (group ID, group size, ...) */
+  struct fof_gpart_data fof_data;
+
   /*! Time-step length */
   timebin_t time_bin;
 
   /*! Type of the #gpart (DM, gas, star, ...) */
   enum part_type type;
-
-  unsigned char group_id, group_size;
 
 #ifdef SWIFT_DEBUG_CHECKS
 

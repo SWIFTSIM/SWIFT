@@ -851,6 +851,7 @@ int main(int argc, char *argv[]) {
     /* Get ready to read particles of all kinds */
     size_t Ngas = 0, Ngpart = 0, Ngpart_background = 0, Nspart = 0, Nbpart = 0;
     double dim[3] = {0., 0., 0.};
+    float high_res_DM_mass = -1.f;
     if (myrank == 0) clocks_gettime(&tic);
 #if defined(HAVE_HDF5)
 #if defined(WITH_MPI)
@@ -969,8 +970,8 @@ int main(int argc, char *argv[]) {
     /* Initialise the gravity properties */
     bzero(&gravity_properties, sizeof(struct gravity_props));
     if (with_self_gravity)
-      gravity_props_init(&gravity_properties, params, &cosmo, high_res_DM_mass,
-                         with_cosmology, periodic);
+      gravity_props_init(&gravity_properties, params, &prog_const, &cosmo,
+                         high_res_DM_mass, with_cosmology, periodic);
 
     /* Initialise the external potential properties */
     bzero(&potential, sizeof(struct external_potential));

@@ -1273,7 +1273,6 @@ void prepare_file(struct engine* e, const char* baseName, long long N_total[6],
         }
         break;
 
-
       case swift_type_stars:
         stars_write_particles(sparts, list, &num_fields, with_cosmology);
         num_fields += chemistry_write_sparticles(sparts, list + num_fields);

@@ -1357,8 +1357,7 @@ void write_output_serial(struct engine* e, const char* baseName,
             /* Select the fields to write */
             darkmatter_write_particles(gparts_written, list, &num_fields);
             if (with_fof) {
-              num_fields +=
-                  fof_write_gparts(gparts_written, list + num_fields);
+              num_fields += fof_write_gparts(gparts_written, list + num_fields);
             }
             if (with_stf) {
               num_fields += velociraptor_write_gparts(gpart_group_data_written,

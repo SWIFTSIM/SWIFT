@@ -24,11 +24,13 @@
 /* This object's header. */
 #include "common_io.h"
 
+/* Pre-inclusion as needed in other headers */
+#include "engine.h"
+
 /* Local includes. */
 #include "black_holes_io.h"
 #include "chemistry_io.h"
 #include "cooling_io.h"
-#include "engine.h"
 #include "error.h"
 #include "fof_io.h"
 #include "gravity_io.h"
@@ -1398,29 +1400,6 @@ void io_copy_temp_buffer(void* temp, const struct engine* e,
       threadpool_map((struct threadpool*)&e->threadpool,
                      io_convert_gpart_f_mapper, temp_f, N, copySize, 0,
                      (void*)&props);
-    } else if (props.convert_gpart_i != NULL) {
-
-      /* Prepare some parameters */
-      int* temp_i = (int*)temp;
-      props.start_temp_i = (int*)temp;
-      props.e = e;
-
-      /* Copy the whole thing into a buffer */
-      threadpool_map((struct threadpool*)&e->threadpool,
-                     io_convert_gpart_i_mapper, temp_i, N, copySize, 0,
-                     (void*)&props);
-
-    } else if (props.convert_gpart_i != NULL) {
-
-      /* Prepare some parameters */
-      int* temp_i = (int*)temp;
-      props.start_temp_i = (int*)temp;
-      props.e = e;
-
-      /* Copy the whole thing into a buffer */
-      threadpool_map((struct threadpool*)&e->threadpool,
-                     io_convert_gpart_i_mapper, temp_i, N, copySize, 0,
-                     (void*)&props);
 
     } else if (props.convert_gpart_i != NULL) {
 
@@ -1468,29 +1447,6 @@ void io_copy_temp_buffer(void* temp, const struct engine* e,
       /* Copy the whole thing into a buffer */
       threadpool_map((struct threadpool*)&e->threadpool,
                      io_convert_spart_f_mapper, temp_f, N, copySize, 0,
-                     (void*)&props);
-    } else if (props.convert_spart_i != NULL) {
-
-      /* Prepare some parameters */
-      int* temp_i = (int*)temp;
-      props.start_temp_i = (int*)temp;
-      props.e = e;
-
-      /* Copy the whole thing into a buffer */
-      threadpool_map((struct threadpool*)&e->threadpool,
-                     io_convert_spart_i_mapper, temp_i, N, copySize, 0,
-                     (void*)&props);
-
-    } else if (props.convert_spart_i != NULL) {
-
-      /* Prepare some parameters */
-      int* temp_i = (int*)temp;
-      props.start_temp_i = (int*)temp;
-      props.e = e;
-
-      /* Copy the whole thing into a buffer */
-      threadpool_map((struct threadpool*)&e->threadpool,
-                     io_convert_spart_i_mapper, temp_i, N, copySize, 0,
                      (void*)&props);
 
     } else if (props.convert_spart_i != NULL) {
@@ -2076,10 +2032,6 @@ void io_collect_gparts_background_to_write(
  */
 void io_check_output_fields(const struct swift_params* params,
                             const long long N_total[swift_type_count]) {
-
-  /* Copy N_total to array with length == 6 */
-  const long long nr_total[swift_type_count] = {N_total[0], N_total[1], 0,
-                                                0,          N_total[2], 0};
 
   /* Loop over all particle types to check the fields */
   for (int ptype = 0; ptype < swift_type_count; ptype++) {
