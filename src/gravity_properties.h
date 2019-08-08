@@ -40,10 +40,15 @@ struct swift_params;
  */
 struct gravity_props {
 
-  /* -------------- Softening for the regular DM and baryons ----------- */
+  /* -------------- Softening for the regular particles ---------------- */
 
-  /*! Softening length for high-res. particles at the current redshift.  */
-  float epsilon_cur;
+  /*! Co-moving softening length for high-res. DM particles at the current
+   * redshift.  */
+  float epsilon_DM_cur;
+
+  /*! Co-moving softening length for high-res. baryon particles at the current
+   * redshift.  */
+  float epsilon_baryon_cur;
 
   /* -------------- Softening for the background DM -------------------- */
 
@@ -64,23 +69,23 @@ struct gravity_props {
 
   /* ------------- Properties of the softened gravity ------------------ */
 
+  /*! Co-moving softening length for for high-res. DM particles */
+  float epsilon_DM_comoving;
+
+  /*! Maximal softening length in physical coordinates for the high-res.
+   * DM particles */
+  float epsilon_DM_max_physical;
+
+  /*! Co-moving softening length for for high-res. baryon particles */
+  float epsilon_baryon_comoving;
+
+  /*! Maximal softening length in physical coordinates for the high-res.
+   * baryon particles */
+  float epsilon_baryon_max_physical;
+
   /*! Fraction of the mean inter particle separation corresponding to the
    * co-moving softening length of the low-res. particles (DM + baryons) */
   float mean_inter_particle_fraction_high_res;
-
-  /*! Co-moving softening length for for high-res. particles (DM + baryons)
-   * assuming a constant fraction of the mean inter-particle separation
-   * and a constant particle mass */
-  float epsilon_comoving;
-
-  /*! Maximal softening length in physical coordinates for the high-res.
-   * particles (DM + baryons) */
-  float epsilon_max_physical;
-
-  /*! In case of zoom runs: mass of the DM particles in the zoom region in
-   * internal units. Otherwise: mass of the DM particles in internal units. -1
-   * If there are no dark matter particles. */
-  float high_res_DM_mass;
 
   /* ------------- Properties of the time integration  ----------------- */
 
