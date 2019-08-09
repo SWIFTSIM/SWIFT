@@ -1400,6 +1400,12 @@ AC_ARG_WITH([gravity],
    [with_gravity="default"]
 )
 
+if test "$with_subgrid" = "EAGLE"; then
+   if test "$with_gravity" = "default"; then
+      with_gravity="with-potential"
+   fi
+fi
+
 case "$with_gravity" in
    with-potential)
       AC_DEFINE([POTENTIAL_GRAVITY], [1], [Gravity scheme with potential calculation])
@@ -1960,6 +1966,13 @@ AC_DEFINE_UNQUOTED([SELF_GRAVITY_MULTIPOLE_ORDER], [$with_multipole_order], [Mul
 # Check for git, needed for revision stamps.
 AC_PATH_PROG([GIT_CMD], [git])
 AC_SUBST([GIT_CMD])
+
+# Check that the gravity model is compatible with the subgrid
+if test $with_black_holes = "EAGLE"; then
+   if test $with_gravity != "with-potential"; then
+      AC_MSG_ERROR([The EAGLE BH model needs the gravity scheme to provide potentials. The code must be compile with --with-gravity=with-potential.])
+   fi
+fi
 
 # Make the documentation. Add conditional to handle disable option.
 DX_INIT_DOXYGEN(libswift,doc/Doxyfile,doc/)

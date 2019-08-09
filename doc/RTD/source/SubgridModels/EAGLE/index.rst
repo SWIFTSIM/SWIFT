@@ -577,6 +577,11 @@ Black-hole creation
 Black-hole accretion
 ~~~~~~~~~~~~~~~~~~~~
 
+.. _EAGLE_black_hole_reposition:
+
+Black-hole repositioning
+~~~~~~~~~~~~~~~~~~~~~~~~
+
 .. _EAGLE_black_hole_feedback:
 
 AGN feedback
