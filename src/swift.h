@@ -64,6 +64,7 @@
 #include "periodic.h"
 #include "physical_constants.h"
 #include "potential.h"
+#include "pressure_floor.h"
 #include "profiler.h"
 #include "queue.h"
 #include "random.h"

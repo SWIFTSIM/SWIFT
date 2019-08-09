@@ -46,6 +46,7 @@
 #include "hydro_space.h"
 #include "kernel_hydro.h"
 #include "minmax.h"
+#include "pressure_floor.h"
 
 #include "./hydro_parameters.h"
 
@@ -221,7 +222,9 @@ hydro_get_comoving_soundspeed(const struct part *restrict p) {
 
   /* Compute the sound speed -- see theory section for justification */
   /* IDEAL GAS ONLY -- P-U does not work with generic EoS. */
-  const float square_rooted = sqrtf(hydro_gamma * p->pressure_bar / p->rho);
+  const float comoving_pressure =
+      pressure_floor_get_pressure(p, p->rho, p->pressure_bar);
+  const float square_rooted = sqrtf(hydro_gamma * comoving_pressure / p->rho);
 
   return square_rooted;
 }
@@ -236,7 +239,10 @@ __attribute__((always_inline)) INLINE static float
 hydro_get_physical_soundspeed(const struct part *restrict p,
                               const struct cosmology *cosmo) {
 
-  return cosmo->a_factor_sound_speed * p->force.soundspeed;
+  const float phys_rho = hydro_get_physical_density(p, cosmo);
+
+  return pressure_floor_get_pressure(
+      p, phys_rho, cosmo->a_factor_sound_speed * p->force.soundspeed);
 }
 
 /**
@@ -640,10 +646,15 @@ __attribute__((always_inline)) INLINE static void hydro_prepare_force(
                              hydro_one_over_gamma_minus_one) /
                             (1.f + common_factor * p->density.wcount_dh);
 
+  /* Get the pressures */
+  const float comoving_pressure_with_floor =
+      pressure_floor_get_pressure(p, p->rho, p->pressure_bar);
+
   /* Update variables. */
   p->force.f = grad_h_term;
   p->force.soundspeed = soundspeed;
   p->force.balsara = balsara;
+  p->force.pressure_bar_with_floor = comoving_pressure_with_floor;
 }
 
 /**
@@ -755,6 +766,11 @@ __attribute__((always_inline)) INLINE static void hydro_predict_extra(
   const float soundspeed = hydro_get_comoving_soundspeed(p);
 
   p->force.soundspeed = soundspeed;
+
+  /* update the required variables */
+  const float comoving_pressure_with_floor =
+      pressure_floor_get_pressure(p, p->rho, p->pressure_bar);
+  p->force.pressure_bar_with_floor = comoving_pressure_with_floor;
 }
 
 /**

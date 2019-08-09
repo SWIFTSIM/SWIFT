@@ -99,3 +99,6 @@ GrackleCooling:
 
 GearChemistry:
   InitialMetallicity: 0.01295
+
+GEARPressureFloor:
+  Jeans_factor: 10.       # Number of particles required to suppose a resolved clump and avoid the pressure floor.

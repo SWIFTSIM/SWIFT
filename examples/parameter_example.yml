@@ -285,6 +285,11 @@ EAGLEEntropyFloor:
   Cool_temperature_norm_K:         8000      # Temperature of the EAGLE Cool limiter entropy floor at the density threshold expressed in Kelvin.
   Cool_gamma_effective:            1.        # Slope the of the EAGLE Cool limiter entropy floor
   
+# Parameters related to pressure floors    ----------------------------------------------
+
+GEARPressureFloor:
+  Jeans_factor: 10.       # Number of particles required to suppose a resolved clump and avoid the pressure floor.
+
 # Parameters related to cooling function  ----------------------------------------------
 
 # Constant du/dt cooling function
