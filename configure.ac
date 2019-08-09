@@ -1327,6 +1327,7 @@ with_subgrid_cooling=none
 with_subgrid_chemistry=none
 with_subgrid_tracers=none
 with_subgrid_entropy_floor=none
+with_subgrid_pressure_floor=none
 with_subgrid_stars=none
 with_subgrid_star_formation=none
 with_subgrid_feedback=none
@@ -1338,10 +1339,9 @@ case "$with_subgrid" in
    none)
    ;;
    GEAR)
-	with_subgrid_cooling=grackle
+	with_subgrid_cooling=grackle_0
 	with_subgrid_chemistry=GEAR
-	with_subgrid_tracers=none
-	with_subgrid_entropy_floor=none
+	with_subgrid_pressure_floor=GEAR
 	with_subgrid_stars=GEAR
 	with_subgrid_star_formation=GEAR
 	with_subgrid_feedback=none
@@ -1646,7 +1646,8 @@ esac
 #  Cooling function
 AC_ARG_WITH([cooling],
    [AS_HELP_STRING([--with-cooling=<function>],
-      [cooling function @<:@none, const-du, const-lambda, EAGLE, grackle, grackle1, grackle2, grackle3 default: none@:>@]
+      [cooling function @<:@none, const-du, const-lambda, EAGLE, grackle_* default: none@:>@.
+      For Grackle, you need to provide the primordial chemistry parameter (e.g. grackle_0)]
    )],
    [with_cooling="$withval"],
    [with_cooling="none"]
@@ -1673,21 +1674,10 @@ case "$with_cooling" in
    compton)
       AC_DEFINE([COOLING_COMPTON], [1], [Compton cooling off the CMB])
    ;;
-   grackle)
+   grackle_*)
       AC_DEFINE([COOLING_GRACKLE], [1], [Cooling via the grackle library])
-      AC_DEFINE([COOLING_GRACKLE_MODE], [0], [Grackle chemistry network, mode 0])
-   ;;
-   grackle1)
-      AC_DEFINE([COOLING_GRACKLE], [1], [Cooling via the grackle library])
-      AC_DEFINE([COOLING_GRACKLE_MODE], [1], [Grackle chemistry network, mode 1])
-   ;;
-   grackle2)
-      AC_DEFINE([COOLING_GRACKLE], [1], [Cooling via the grackle library])
-      AC_DEFINE([COOLING_GRACKLE_MODE], [2], [Grackle chemistry network, mode 2])
-   ;;
-   grackle3)
-      AC_DEFINE([COOLING_GRACKLE], [1], [Cooling via the grackle library])
-      AC_DEFINE([COOLING_GRACKLE_MODE], [3], [Grackle chemistry network, mode 3])
+      primordial_chemistry=${with_cooling:8}
+      AC_DEFINE_UNQUOTED([COOLING_GRACKLE_MODE], [$primordial_chemistry], [Grackle chemistry network])
    ;;
    EAGLE)
       AC_DEFINE([COOLING_EAGLE], [1], [Cooling following the EAGLE model])
@@ -1922,6 +1912,35 @@ case "$with_entropy_floor" in
    ;;
 esac 
 
+#  Pressure floor
+AC_ARG_WITH([pressure-floor], 
+    [AS_HELP_STRING([--with-pressure-floor=<floor>],
+       [pressure floor @<:@none, GEAR, default: none@:>@
+       The hydro model needs to be compatible.]
+    )],
+    [with_pressure_floor="$withval"],
+    [with_pressure_floor="none"]
+)
+if test "$with_subgrid" != "none"; then
+   if test "$with_pressure_floor" != "none"; then
+      AC_MSG_ERROR([Cannot provide with-subgrid and with-pressure-floor together])
+   else
+      with_pressure_floor="$with_subgrid_pressure_floor"
+   fi
+fi
+
+case "$with_pressure_floor" in
+   none)
+      AC_DEFINE([PRESSURE_FLOOR_NONE], [1], [No pressure floor])
+   ;;
+   GEAR)
+      AC_DEFINE([PRESSURE_FLOOR_GEAR], [1], [GEAR pressure floor])
+   ;;
+   *)
+      AC_MSG_ERROR([Unknown pressure floor model])
+   ;;
+esac 
+
 #  Star formation
 AC_ARG_WITH([star-formation], 
     [AS_HELP_STRING([--with-star-formation=<sfm>],
@@ -2056,6 +2075,7 @@ AC_MSG_RESULT([
    External potential  : $with_potential
 
    Entropy floor        : $with_entropy_floor
+   Pressure floor       : $with_pressure_floor
    Cooling function     : $with_cooling
    Chemistry            : $with_chemistry
    Tracers              : $with_tracers

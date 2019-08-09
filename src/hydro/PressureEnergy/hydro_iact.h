@@ -259,11 +259,18 @@ __attribute__((always_inline)) INLINE static void runner_iact_force(
   /* Convolve with the kernel */
   const float visc_acc_term = 0.5f * visc * (wi_dr + wj_dr) * r_inv;
 
+  /* Compute the ratio of pressures */
+  const float pressure_inverse_i =
+      pi->force.pressure_bar_with_floor / (pi->pressure_bar * pi->pressure_bar);
+  const float pressure_inverse_j =
+      pj->force.pressure_bar_with_floor / (pj->pressure_bar * pj->pressure_bar);
+
   /* SPH acceleration term */
-  const float sph_acc_term =
-      pj->u * pi->u * hydro_gamma_minus_one * hydro_gamma_minus_one *
-      ((f_ij / pi->pressure_bar) * wi_dr + (f_ji / pj->pressure_bar) * wj_dr) *
-      r_inv;
+  const float sph_acc_term = pj->u * pi->u * hydro_gamma_minus_one *
+                             hydro_gamma_minus_one *
+                             ((f_ij * pressure_inverse_i) * wi_dr +
+                              (f_ji * pressure_inverse_j) * wj_dr) *
+                             r_inv;
 
   /* Assemble the acceleration */
   const float acc = sph_acc_term + visc_acc_term;
@@ -278,11 +285,13 @@ __attribute__((always_inline)) INLINE static void runner_iact_force(
   pj->a_hydro[2] += mi * acc * dx[2];
 
   /* Get the time derivative for u. */
+
   const float sph_du_term_i = hydro_gamma_minus_one * hydro_gamma_minus_one *
-                              pj->u * pi->u * (f_ij / pi->pressure_bar) *
+                              pj->u * pi->u * (f_ij * pressure_inverse_i) *
                               wi_dr * dvdr * r_inv;
+
   const float sph_du_term_j = hydro_gamma_minus_one * hydro_gamma_minus_one *
-                              pi->u * pj->u * (f_ji / pj->pressure_bar) *
+                              pi->u * pj->u * (f_ji * pressure_inverse_j) *
                               wj_dr * dvdr * r_inv;
 
   /* Viscosity term */
@@ -386,11 +395,18 @@ __attribute__((always_inline)) INLINE static void runner_iact_nonsym_force(
   /* Convolve with the kernel */
   const float visc_acc_term = 0.5f * visc * (wi_dr + wj_dr) * r_inv;
 
+  /* Compute the ratio of pressures */
+  const float pressure_inverse_i =
+      pi->force.pressure_bar_with_floor / (pi->pressure_bar * pi->pressure_bar);
+  const float pressure_inverse_j =
+      pj->force.pressure_bar_with_floor / (pj->pressure_bar * pj->pressure_bar);
+
   /* SPH acceleration term */
-  const float sph_acc_term =
-      pj->u * pi->u * hydro_gamma_minus_one * hydro_gamma_minus_one *
-      ((f_ij / pi->pressure_bar) * wi_dr + (f_ji / pj->pressure_bar) * wj_dr) *
-      r_inv;
+  const float sph_acc_term = pj->u * pi->u * hydro_gamma_minus_one *
+                             hydro_gamma_minus_one *
+                             ((f_ij * pressure_inverse_i) * wi_dr +
+                              (f_ji * pressure_inverse_j) * wj_dr) *
+                             r_inv;
 
   /* Assemble the acceleration */
   const float acc = sph_acc_term + visc_acc_term;
@@ -402,7 +418,7 @@ __attribute__((always_inline)) INLINE static void runner_iact_nonsym_force(
 
   /* Get the time derivative for u. */
   const float sph_du_term_i = hydro_gamma_minus_one * hydro_gamma_minus_one *
-                              pj->u * pi->u * (f_ij / pi->pressure_bar) *
+                              pj->u * pi->u * (f_ij * pressure_inverse_i) *
                               wi_dr * dvdr * r_inv;
 
   /* Viscosity term */
