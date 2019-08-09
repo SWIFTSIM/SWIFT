@@ -977,7 +977,8 @@ void engine_add_ghosts(struct engine *e, struct cell *c, struct task *ghost_in,
  * @param e The #engine.
  * @param c The #cell.
  */
-void engine_make_hierarchical_tasks_hydro(struct engine *e, struct cell *c) {
+void engine_make_hierarchical_tasks_hydro(struct engine *e, struct cell *c,
+                                          struct cell *star_resort_cell) {
 
   struct scheduler *s = &e->sched;
   const int with_stars = (e->policy & engine_policy_stars);
@@ -985,6 +986,33 @@ void engine_make_hierarchical_tasks_hydro(struct engine *e, struct cell *c) {
   const int with_cooling = (e->policy & engine_policy_cooling);
   const int with_star_formation = (e->policy & engine_policy_star_formation);
   const int with_black_holes = (e->policy & engine_policy_black_holes);
+
+  /* Are we at the top-level but this is also the super-level? */
+  if (c->top == c && c->hydro.super == c && c->nodeID == e->nodeID) {
+
+    /* Record this is the level where we re-sort */
+    star_resort_cell = c;
+
+    if (with_star_formation && c->hydro.count > 0) {
+      c->hydro.stars_resort = scheduler_addtask(
+          s, task_type_stars_resort, task_subtype_none, 0, 0, c, NULL);
+      scheduler_addunlock(s, c->hydro.star_formation, c->hydro.stars_resort);
+    }
+  }
+
+  if (c->depth == 1 && c->nodeID == e->nodeID) {
+
+    /* Record this is the level where we re-sort */
+    star_resort_cell = c;
+
+    if (with_star_formation && c->hydro.count > 0) {
+      c->hydro.stars_resort = scheduler_addtask(
+          s, task_type_stars_resort, task_subtype_none, 0, 0, c, NULL);
+
+      scheduler_addunlock(s, c->top->hydro.star_formation,
+                          c->hydro.stars_resort);
+    }
+  }
 
   /* Are we in a super-cell ? */
   if (c->hydro.super == c) {
@@ -1075,13 +1103,8 @@ void engine_make_hierarchical_tasks_hydro(struct engine *e, struct cell *c) {
         scheduler_addunlock(s, c->stars.stars_out, c->super->timestep);
 
         if (with_star_formation && c->hydro.count > 0) {
-
-          c->hydro.stars_resort = scheduler_addtask(
-              s, task_type_stars_resort, task_subtype_none, 0, 0, c, NULL);
-          scheduler_addunlock(s, c->top->hydro.star_formation,
-                              c->hydro.stars_resort);
-
-          scheduler_addunlock(s, c->hydro.stars_resort, c->stars.stars_in);
+          scheduler_addunlock(s, star_resort_cell->hydro.stars_resort,
+                              c->stars.stars_in);
         }
       }
 
@@ -1117,7 +1140,8 @@ void engine_make_hierarchical_tasks_hydro(struct engine *e, struct cell *c) {
     if (c->split)
       for (int k = 0; k < 8; k++)
         if (c->progeny[k] != NULL)
-          engine_make_hierarchical_tasks_hydro(e, c->progeny[k]);
+          engine_make_hierarchical_tasks_hydro(e, c->progeny[k],
+                                               star_resort_cell);
   }
 }
 
@@ -1134,7 +1158,8 @@ void engine_make_hierarchical_tasks_mapper(void *map_data, int num_elements,
     /* Make the common tasks (time integration) */
     engine_make_hierarchical_tasks_common(e, c);
     /* Add the hydro stuff */
-    if (with_hydro) engine_make_hierarchical_tasks_hydro(e, c);
+    if (with_hydro)
+      engine_make_hierarchical_tasks_hydro(e, c, /*star_resort_cell=*/NULL);
     /* And the gravity stuff */
     if (with_self_gravity || with_ext_gravity)
       engine_make_hierarchical_tasks_gravity(e, c);
