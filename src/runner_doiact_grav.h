@@ -219,8 +219,14 @@ static INLINE void runner_dopair_grav_pp_full(
 
       const float r2 = dx * dx + dy * dy + dz * dz;
 
+      /* Pick the maximal softening length of i and j */
+      const float h = max(h_i, h_j);
+      const float h2 = h * h;
+      const float h_inv = 1.f / h;
+      const float h_inv_3 = h_inv * h_inv * h_inv;
+
 #ifdef SWIFT_DEBUG_CHECKS
-      if (r2 == 0.f && h2_i == 0.)
+      if (r2 == 0.f && h2 == 0.)
         error("Interacting particles with 0 distance and 0 softening.");
 
       /* Check that particles have been drifted to the current time */
@@ -243,11 +249,6 @@ static INLINE void runner_dopair_grav_pp_full(
       if (gparts_i[pid].initialised == 0)
         error("Adding forces to an un-initialised gpart.");
 #endif
-
-      const float h = max(h_i, h_j);
-      const float h2 = h * h;
-      const float h_inv = 1.f / h;
-      const float h_inv_3 = h_inv * h_inv * h_inv;
 
       /* Interact! */
       float f_ij, pot_ij;
@@ -361,8 +362,14 @@ static INLINE void runner_dopair_grav_pp_truncated(
 
       const float r2 = dx * dx + dy * dy + dz * dz;
 
+      /* Pick the maximal softening length of i and j */
+      const float h = max(h_i, h_j);
+      const float h2 = h * h;
+      const float h_inv = 1.f / h;
+      const float h_inv_3 = h_inv * h_inv * h_inv;
+
 #ifdef SWIFT_DEBUG_CHECKS
-      if (r2 == 0.f && h2_i == 0.)
+      if (r2 == 0.f && h2 == 0.)
         error("Interacting particles with 0 distance and 0 softening.");
 
       /* Check that particles have been drifted to the current time */
@@ -385,11 +392,6 @@ static INLINE void runner_dopair_grav_pp_truncated(
       if (gparts_i[pid].initialised == 0)
         error("Adding forces to an un-initialised gpart.");
 #endif
-
-      const float h = max(h_i, h_j);
-      const float h2 = h * h;
-      const float h_inv = 1.f / h;
-      const float h_inv_3 = h_inv * h_inv * h_inv;
 
       /* Interact! */
       float f_ij, pot_ij;
@@ -952,8 +954,14 @@ static INLINE void runner_doself_grav_pp_full(
       const float dz = z_j - z_i;
       const float r2 = dx * dx + dy * dy + dz * dz;
 
+      /* Pick the maximal softening length of i and j */
+      const float h = max(h_i, h_j);
+      const float h2 = h * h;
+      const float h_inv = 1.f / h;
+      const float h_inv_3 = h_inv * h_inv * h_inv;
+
 #ifdef SWIFT_DEBUG_CHECKS
-      if (r2 == 0.f && h2_i == 0.)
+      if (r2 == 0.f && h2 == 0.)
         error("Interacting particles with 0 distance and 0 softening.");
 
       /* Check that particles have been drifted to the current time */
@@ -975,11 +983,6 @@ static INLINE void runner_doself_grav_pp_full(
       if (gparts[pid].initialised == 0)
         error("Adding forces to an un-initialised gpart.");
 #endif
-
-      const float h = max(h_i, h_j);
-      const float h2 = h * h;
-      const float h_inv = 1.f / h;
-      const float h_inv_3 = h_inv * h_inv * h_inv;
 
       /* Interact! */
       float f_ij, pot_ij;
@@ -1077,8 +1080,14 @@ static INLINE void runner_doself_grav_pp_truncated(
 
       const float r2 = dx * dx + dy * dy + dz * dz;
 
+      /* Pick the maximal softening length of i and j */
+      const float h = max(h_i, h_j);
+      const float h2 = h * h;
+      const float h_inv = 1.f / h;
+      const float h_inv_3 = h_inv * h_inv * h_inv;
+
 #ifdef SWIFT_DEBUG_CHECKS
-      if (r2 == 0.f && h2_i == 0.)
+      if (r2 == 0.f && h2 == 0.)
         error("Interacting particles with 0 distance and 0 softening.");
 
       /* Check that particles have been drifted to the current time */
@@ -1100,11 +1109,6 @@ static INLINE void runner_doself_grav_pp_truncated(
       if (gparts[pid].initialised == 0)
         error("Adding forces to an un-initialised gpart.");
 #endif
-
-      const float h = max(h_i, h_j);
-      const float h2 = h * h;
-      const float h_inv = 1.f / h;
-      const float h_inv_3 = h_inv * h_inv * h_inv;
 
       /* Interact! */
       float f_ij, pot_ij;
