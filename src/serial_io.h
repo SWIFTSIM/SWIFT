@@ -39,11 +39,11 @@ void read_ic_serial(char* fileName, const struct unit_system* internal_units,
                     double dim[3], struct part** parts, struct gpart** gparts,
                     struct spart** sparts, struct bpart** bparts, size_t* Ngas,
                     size_t* Ngparts, size_t* Ngparts_background, size_t* Nstars,
-                    size_t* Nblackholes, int* flag_entropy, float* gpart_mass,
-                    int with_hydro, int with_gravity, int with_stars,
-                    int with_black_holes, int cleanup_h, int cleanup_sqrt_a,
-                    double h, double a, int mpi_rank, int mpi_size,
-                    MPI_Comm comm, MPI_Info info, int n_threads, int dry_run);
+                    size_t* Nblackholes, int* flag_entropy, int with_hydro,
+                    int with_gravity, int with_stars, int with_black_holes,
+                    int cleanup_h, int cleanup_sqrt_a, double h, double a,
+                    int mpi_rank, int mpi_size, MPI_Comm comm, MPI_Info info,
+                    int n_threads, int dry_run);
 
 void write_output_serial(struct engine* e, const char* baseName,
                          const struct unit_system* internal_units,
@@ -56,6 +56,7 @@ void writeArray(const struct engine* e, hid_t grp, char* fileName,
                 int mpi_rank, long long offset,
                 const struct unit_system* internal_units,
                 const struct unit_system* snapshot_units);
-#endif
+
+#endif /* HAVE_HDF5 && WITH_MPI && !HAVE_PARALLEL_HDF5 */
 
 #endif /* SWIFT_SERIAL_IO_H */

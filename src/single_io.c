@@ -405,10 +405,10 @@ void read_ic_single(const char* fileName,
                     struct part** parts, struct gpart** gparts,
                     struct spart** sparts, struct bpart** bparts, size_t* Ngas,
                     size_t* Ngparts, size_t* Ngparts_background, size_t* Nstars,
-                    size_t* Nblackholes, int* flag_entropy, float* gpart_mass,
-                    int with_hydro, int with_gravity, int with_stars,
-                    int with_black_holes, int cleanup_h, int cleanup_sqrt_a,
-                    double h, double a, int n_threads, int dry_run) {
+                    size_t* Nblackholes, int* flag_entropy, int with_hydro,
+                    int with_gravity, int with_stars, int with_black_holes,
+                    int cleanup_h, int cleanup_sqrt_a, double h, double a,
+                    int n_threads, int dry_run) {
 
   hid_t h_file = 0, h_grp = 0;
   /* GADGET has only cubic boxes (in cosmological mode) */
@@ -664,9 +664,6 @@ void read_ic_single(const char* fileName,
 
     /* Prepare the DM particles */
     io_prepare_dm_gparts(&tp, *gparts, Ndm);
-
-    /* Record the mass of the DM particles */
-    *gpart_mass = (*gparts)[0].mass;
 
     /* Prepare the DM background particles */
     io_prepare_dm_background_gparts(&tp, *gparts + Ndm, Ndm_background);
@@ -1290,4 +1287,4 @@ void write_output_single(struct engine* e, const char* baseName,
   e->snapshot_output_count++;
 }
 
-#endif /* HAVE_HDF5 */
+#endif /* HAVE_HDF5 && !WITH_MPI */
