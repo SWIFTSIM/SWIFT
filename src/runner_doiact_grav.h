@@ -1585,7 +1585,9 @@ static INLINE void runner_dopair_recursive_grav(struct runner *r,
    * option... */
 
   /* Can we use M-M interactions ? */
-  if (gravity_M2L_accept(multi_i->r_max, multi_j->r_max, theta_crit2, r2)) {
+  if (gravity_M2L_accept(multi_i->r_max, multi_j->r_max, theta_crit2, r2,
+                         multi_i->m_pole.max_softening,
+                         multi_j->m_pole.max_softening)) {
 
     /* Go M-M */
     runner_dopair_grav_mm(r, ci, cj);
@@ -1807,7 +1809,9 @@ static INLINE void runner_do_grav_long_range(struct runner *r, struct cell *ci,
 
     /* Are we in charge of this cell pair? */
     if (gravity_M2L_accept(multi_top->r_max_rebuild, multi_j->r_max_rebuild,
-                           theta_crit2, r2_rebuild)) {
+                           theta_crit2, r2_rebuild,
+                           multi_top->m_pole.max_softening,
+                           multi_j->m_pole.max_softening)) {
 
       /* Call the PM interaction fucntion on the active sub-cells of ci */
       runner_dopair_grav_mm_nonsym(r, ci, cj);

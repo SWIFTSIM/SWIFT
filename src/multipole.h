@@ -2575,23 +2575,31 @@ INLINE static void gravity_L2P(const struct grav_tensor *lb,
  * We use the multipole acceptance criterion of Dehnen, 2002, JCoPh, Volume 179,
  * Issue 1, pp.27-42, equation 10.
  *
+ * We also additionally check that the distance between the multipoles
+ * is larger than the softening lengths (here the distance at which
+ * the gravity becomes Newtonian again, not the Plummer-equivalent quantity).
+ *
  * @param r_crit_a The size of the multipole A.
  * @param r_crit_b The size of the multipole B.
  * @param theta_crit2 The square of the critical opening angle.
  * @param r2 Square of the distance (periodically wrapped) between the
  * multipoles.
+ * @param epsilon_a The maximal softening length of any particle in A.
+ * @param epsilon_a The maximal softening length of any particle in B.
  */
 __attribute__((always_inline, const)) INLINE static int gravity_M2L_accept(
     const double r_crit_a, const double r_crit_b, const double theta_crit2,
-    const double r2) {
+    const double r2, const double epsilon_a, const double epsilon_b) {
 
   const double size = r_crit_a + r_crit_b;
   const double size2 = size * size;
+  const double epsilon_a2 = epsilon_a * epsilon_a;
+  const double epsilon_b2 = epsilon_b * epsilon_b;
 
   // MATTHIEU: Make this mass-dependent ?
 
   /* Multipole acceptance criterion (Dehnen 2002, eq.10) */
-  return (r2 * theta_crit2 > size2);
+  return (r2 * theta_crit2 > size2) && (r2 > epsilon_a2) && (r2 > epsilon_b2);
 }
 
 /**
@@ -2602,7 +2610,7 @@ __attribute__((always_inline, const)) INLINE static int gravity_M2L_accept(
  * Issue 1, pp.27-42, equation 10.
  *
  * We also additionally check that the distance between the particle and the
- * multipole is larger than then softening length (here the distance at which
+ * multipole is larger than the softening length (here the distance at which
  * the gravity becomes Newtonian again, not the Plummer-equivalent quantity).
  *
  * @param r_max2 The square of the size of the multipole.

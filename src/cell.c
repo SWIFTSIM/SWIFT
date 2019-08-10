@@ -5822,7 +5822,11 @@ int cell_can_use_pair_mm(const struct cell *ci, const struct cell *cj,
   }
   const double r2 = dx * dx + dy * dy + dz * dz;
 
-  return gravity_M2L_accept(multi_i->r_max, multi_j->r_max, theta_crit2, r2);
+  const double epsilon_i = multi_i->m_pole.max_softening;
+  const double epsilon_j = multi_j->m_pole.max_softening;
+
+  return gravity_M2L_accept(multi_i->r_max, multi_j->r_max, theta_crit2, r2,
+                            epsilon_i, epsilon_j);
 }
 
 /**
@@ -5884,6 +5888,9 @@ int cell_can_use_pair_mm_rebuild(const struct cell *ci, const struct cell *cj,
   }
   const double r2 = dx * dx + dy * dy + dz * dz;
 
+  const double epsilon_i = multi_i->m_pole.max_softening;
+  const double epsilon_j = multi_j->m_pole.max_softening;
+
   return gravity_M2L_accept(multi_i->r_max_rebuild, multi_j->r_max_rebuild,
-                            theta_crit2, r2);
+                            theta_crit2, r2, epsilon_i, epsilon_j);
 }

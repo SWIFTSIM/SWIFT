@@ -4405,19 +4405,26 @@ void engine_makeproxies(struct engine *e) {
                       sqrt(min_dist_centres2) - 2. * delta_CoM;
                   const double min_dist_CoM2 = min_dist_CoM * min_dist_CoM;
 
+                  /* We also assume that the softening is negligible compared
+                     to the cell size */
+                  const double epsilon_i = 0.;
+                  const double epsilon_j = 0.;
+
                   /* Are we beyond the distance where the truncated forces are 0
                    * but not too far such that M2L can be used? */
                   if (periodic) {
 
                     if ((min_dist_CoM2 < max_mesh_dist2) &&
                         (!gravity_M2L_accept(r_max, r_max, theta_crit2,
-                                             min_dist_CoM2)))
+                                             min_dist_CoM2, epsilon_i,
+                                             epsilon_j)))
                       proxy_type |= (int)proxy_cell_type_gravity;
 
                   } else {
 
                     if (!gravity_M2L_accept(r_max, r_max, theta_crit2,
-                                            min_dist_CoM2))
+                                            min_dist_CoM2, epsilon_i,
+                                            epsilon_j))
                       proxy_type |= (int)proxy_cell_type_gravity;
                   }
                 }
