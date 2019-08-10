@@ -607,7 +607,7 @@ __attribute__((always_inline)) INLINE static void hydro_prepare_force(
   }
   const float grad_h_term =
       1.f / (1.f + hydro_dimension_inv * p->h * rho_dh * rho_inv);
-      
+
   /* Compute the Balsara switch */
 #ifdef PLANETARY_SPH_NO_BALSARA
   const float balsara = hydro_props->viscosity.alpha;
