@@ -49,7 +49,7 @@ Gravity:
   
 # Parameters for the hydrodynamics scheme
 SPH:
-  resolution_eta:        1.48691 # 100 ngb with wendland0-c2
+  resolution_eta:        1.48691  # 100 ngb with wendland0-c2
   h_min_ratio:           0.1      # Minimal smoothing in units of softening.
   CFL_condition:         0.1      # Courant-Friedrich-Levy condition for time integration.
   minimal_temperature:   100      # (internal units)

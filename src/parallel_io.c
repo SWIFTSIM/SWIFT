@@ -706,10 +706,10 @@ void read_ic_parallel(char* fileName, const struct unit_system* internal_units,
                       struct spart** sparts, struct bpart** bparts,
                       size_t* Ngas, size_t* Ngparts, size_t* Ngparts_background,
                       size_t* Nstars, size_t* Nblackholes, int* flag_entropy,
-                      float* gpart_mass, int with_hydro, int with_gravity,
-                      int with_stars, int with_black_holes, int cleanup_h,
-                      int cleanup_sqrt_a, double h, double a, int mpi_rank,
-                      int mpi_size, MPI_Comm comm, MPI_Info info, int n_threads,
+                      int with_hydro, int with_gravity, int with_stars,
+                      int with_black_holes, int cleanup_h, int cleanup_sqrt_a,
+                      double h, double a, int mpi_rank, int mpi_size,
+                      MPI_Comm comm, MPI_Info info, int n_threads,
                       int dry_run) {
 
   hid_t h_file = 0, h_grp = 0;
@@ -980,13 +980,6 @@ void read_ic_parallel(char* fileName, const struct unit_system* internal_units,
 
     /* Prepare the DM particles */
     io_prepare_dm_gparts(&tp, *gparts, Ndm);
-
-    /* Record the mass of the DM particles */
-    const float local_gpart_mass = (*gparts)[0].mass;
-    float global_gpart_mass;
-    MPI_Allreduce(&local_gpart_mass, &global_gpart_mass, 1, MPI_FLOAT, MPI_MAX,
-                  comm);
-    *gpart_mass = global_gpart_mass;
 
     /* Prepare the DM background particles */
     io_prepare_dm_background_gparts(&tp, *gparts + Ndm, Ndm_background);
