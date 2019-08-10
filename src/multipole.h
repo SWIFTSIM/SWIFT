@@ -2601,18 +2601,24 @@ __attribute__((always_inline, const)) INLINE static int gravity_M2L_accept(
  * We use the multipole acceptance criterion of Dehnen, 2002, JCoPh, Volume 179,
  * Issue 1, pp.27-42, equation 10.
  *
+ * We also additionally check that the distance between the particle and the
+ * multipole is larger than then softening length (here the distance at which
+ * the gravity becomes Newtonian again, not the Plummer-equivalent quantity).
+ *
  * @param r_max2 The square of the size of the multipole.
  * @param theta_crit2 The square of the critical opening angle.
  * @param r2 Square of the distance (periodically wrapped) between the
  * particle and the multipole.
+ * @param epsilon2 The square of the softening length of the particle.
  */
 __attribute__((always_inline, const)) INLINE static int gravity_M2P_accept(
-    const float r_max2, const float theta_crit2, const float r2) {
+    const float r_max2, const float theta_crit2, const float r2,
+    const float epsilon2) {
 
   // MATTHIEU: Make this mass-dependent ?
 
   /* Multipole acceptance criterion (Dehnen 2002, eq.10) */
-  return (r2 * theta_crit2 > r_max2);
+  return (r2 * theta_crit2 > r_max2) && (r2 > epsilon2);
 }
 
 #endif /* SWIFT_MULTIPOLE_H */
