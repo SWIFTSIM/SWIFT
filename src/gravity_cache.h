@@ -253,11 +253,10 @@ __attribute__((always_inline)) INLINE static void gravity_cache_populate(
       dz = nearestf(dz, dim[2]);
     }
     const float r2 = dx * dx + dy * dy + dz * dz;
-    const float epsilon2 = epsilon[i] * epsilon[i];
 
     /* Check whether we can use the multipole instead of P-P */
     use_mpole[i] =
-        allow_mpole && gravity_M2P_accept(r_max2, theta_crit2, r2, epsilon2);
+        allow_mpole && gravity_M2P_accept(r_max2, theta_crit2, r2, epsilon[i]);
   }
 
 #ifdef SWIFT_DEBUG_CHECKS
@@ -437,9 +436,8 @@ gravity_cache_populate_all_mpole(const timebin_t max_active_bin,
       dz = nearestf(dz, dim[2]);
     }
     const float r2 = dx * dx + dy * dy + dz * dz;
-    const float epsilon2 = epsilon[i] * epsilon[i];
 
-    if (!gravity_M2P_accept(r_max2, theta_crit2, r2, epsilon2))
+    if (!gravity_M2P_accept(r_max2, theta_crit2, r2, epsilon[i]))
       error("Using m-pole where the test fails");
 #endif
   }

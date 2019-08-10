@@ -2609,16 +2609,16 @@ __attribute__((always_inline, const)) INLINE static int gravity_M2L_accept(
  * @param theta_crit2 The square of the critical opening angle.
  * @param r2 Square of the distance (periodically wrapped) between the
  * particle and the multipole.
- * @param epsilon2 The square of the softening length of the particle.
+ * @param epsilon The softening length of the particle.
  */
 __attribute__((always_inline, const)) INLINE static int gravity_M2P_accept(
     const float r_max2, const float theta_crit2, const float r2,
-    const float epsilon2) {
+    const float epsilon) {
 
   // MATTHIEU: Make this mass-dependent ?
 
   /* Multipole acceptance criterion (Dehnen 2002, eq.10) */
-  return (r2 * theta_crit2 > r_max2) && (r2 > epsilon2);
+  return (r2 * theta_crit2 > r_max2) && (r2 > epsilon * epsilon);
 }
 
 #endif /* SWIFT_MULTIPOLE_H */

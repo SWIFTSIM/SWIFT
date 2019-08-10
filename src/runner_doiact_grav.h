@@ -519,7 +519,7 @@ static INLINE void runner_dopair_grav_pm_full(
     const float theta_crit2 = e->gravity_properties->theta_crit2;
 
     /* Note: 1.1 to avoid FP rounding false-positives */
-    if (!gravity_M2P_accept(r_max2, theta_crit2 * 1.1, r2, h_i * h_i))
+    if (!gravity_M2P_accept(r_max2, theta_crit2 * 1.1, r2, h_i))
       error(
           "use_mpole[i] set when M2P accept fails CoM=[%e %e %e] pos=[%e %e "
           "%e], rmax=%e",
@@ -650,7 +650,7 @@ static INLINE void runner_dopair_grav_pm_truncated(
     const float theta_crit2 = e->gravity_properties->theta_crit2;
 
     /* 1.1 to avoid FP rounding false-positives */
-    if (!gravity_M2P_accept(r_max2, theta_crit2 * 1.1, r2, h_i * h_i))
+    if (!gravity_M2P_accept(r_max2, theta_crit2 * 1.1, r2, h_i))
       error(
           "use_mpole[i] set when M2P accept fails CoM=[%e %e %e] pos=[%e %e "
           "%e], rmax=%e",
