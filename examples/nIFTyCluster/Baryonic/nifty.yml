@@ -37,14 +37,16 @@ Statistics:
 
 # Parameters for the self-gravity scheme
 Gravity:
-  eta:                    0.025    # Constant dimensionless multiplier for time integration. 
-  theta:                  0.7     # Opening angle (Multipole acceptance criterion)
-  comoving_softening:     20.0 # Comoving softening length (in internal units).
-  max_physical_softening: 5.0    # Physical softening length (in internal units).
-  mesh_side_length:       512
-  softening_ratio:        0.04   # 1/25
-  softening_ratio_background:        0.04   # 1/25
+  eta:                           0.025  # Constant dimensionless multiplier for time integration. 
+  theta:                         0.5    # Opening angle (Multipole acceptance criterion)
+  comoving_DM_softening:        20.0    # Comoving softening length (in internal units).
+  comoving_baryon_softening:    20.0    # Comoving softening length (in internal units).
+  max_physical_DM_softening:     5.0    # Max physical softening length (in internal units).
+  max_physical_baryon_softening: 5.0    # Max physical softening length (in internal units).
+  softening_ratio_background:    0.04   # 1/25th of mean inter-particle separation
+  mesh_side_length:              512
 
+  
 # Parameters for the hydrodynamics scheme
 SPH:
   resolution_eta:        1.48691 # 100 ngb with wendland0-c2
