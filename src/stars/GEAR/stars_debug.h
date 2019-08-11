@@ -1,6 +1,6 @@
 /*******************************************************************************
  * This file is part of SWIFT.
- * Copyright (c) 2018 Folkert Nobels (nobels@strw.leidenuniv.nl)
+ * Coypright (c) 2019 Loic Hausammann (loic.hausammann@epfl.ch)
  *
  * This program is free software: you can redistribute it and/or modify
  * it under the terms of the GNU Lesser General Public License as published
@@ -16,36 +16,16 @@
  * along with this program.  If not, see <http://www.gnu.org/licenses/>.
  *
  ******************************************************************************/
-#ifndef SWIFT_GEAR_STAR_FORMATION_STRUCT_H
-#define SWIFT_GEAR_STAR_FORMATION_STRUCT_H
+#ifndef SWIFT_GEAR_STARS_DEBUG_H
+#define SWIFT_GEAR_STARS_DEBUG_H
 
-/**
- * @brief Star-formation-related properties stored in the extended particle
- * data.
- */
-struct star_formation_xpart_data {};
+__attribute__((always_inline)) INLINE static void stars_debug_particle(
+    const struct spart* p) {
+  printf(
+      "x=[%.3e,%.3e,%.3e], "
+      "v_full=[%.3e,%.3e,%.3e] p->mass=%.3e \n t_begin=%d, t_end=%d\n",
+      p->x[0], p->x[1], p->x[2], p->v_full[0], p->v_full[1], p->v_full[2],
+      p->mass, p->ti_begin, p->ti_end);
+}
 
-struct star_formation_part_data {
-  // TODO move it to the pressure floor
-  /*! Estimation of local turbulence (squared) */
-  float sigma2;
-};
-
-/**
- * @brief Global star formation properties
- */
-struct star_formation {
-
-  // TODO move it to pressure floor
-  /*! Number of particle required to resolved the Jeans criterion (at power 2/3)
-   */
-  float n_jeans_2_3;
-
-  /*! Maximal temperature for forming a star */
-  float maximal_temperature;
-
-  /*! Star formation efficiency */
-  float star_formation_efficiency;
-};
-
-#endif /* SWIFT_GEAR_STAR_FORMATION_STRUCT_H */
+#endif /* SWIFT_GEAR_STARS_DEBUG_H */

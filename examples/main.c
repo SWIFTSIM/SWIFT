@@ -771,6 +771,13 @@ int main(int argc, char *argv[]) {
     else
       bzero(&entropy_floor, sizeof(struct entropy_floor_properties));
 
+    /* Initialise the pressure floor */
+    if (with_hydro)
+      pressure_floor_init(&pressure_floor_props, &prog_const, &us,
+                          &hydro_properties, params);
+    else
+      bzero(&pressure_floor_props, sizeof(struct pressure_floor_properties));
+
     /* Initialise the stars properties */
     if (with_stars)
       stars_props_init(&stars_properties, &prog_const, &us, params,

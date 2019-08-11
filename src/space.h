@@ -115,9 +115,6 @@ struct space {
   /*! The minimum top-level cell width allowed. */
   double cell_min;
 
-  /*! Current maximum displacement for particles. */
-  float dx_max;
-
   /*! Space dimensions in number of top-cells. */
   int cdim[3];
 

@@ -34,6 +34,7 @@
 #include "hydro.h"
 #include "kernel_hydro.h"
 #include "parser.h"
+#include "pressure_floor.h"
 #include "units.h"
 
 #define hydro_props_default_max_iterations 30
@@ -186,6 +187,9 @@ void hydro_props_print(const struct hydro_props *p) {
   /* Print equation of state first */
   eos_print(&eos);
 
+  /* Then the pressure floor */
+  pressure_floor_print(&pressure_floor_props);
+
   /* Now SPH */
   message("Hydrodynamic scheme: %s in %dD.", SPH_IMPLEMENTATION,
           (int)hydro_dimension);
@@ -238,6 +242,7 @@ void hydro_props_print(const struct hydro_props *p) {
 void hydro_props_print_snapshot(hid_t h_grpsph, const struct hydro_props *p) {
 
   eos_print_snapshot(h_grpsph, &eos);
+  pressure_floor_print_snapshot(h_grpsph);
 
   io_write_attribute_i(h_grpsph, "Dimension", (int)hydro_dimension);
   io_write_attribute_s(h_grpsph, "Scheme", SPH_IMPLEMENTATION);

@@ -74,6 +74,11 @@ struct black_holes_props {
   /*! Number of gas neighbours to heat in a feedback event */
   float num_ngbs_to_heat;
 
+  /* ---- Properties of the repositioning model --- */
+
+  /*! Maximal mass of BH to reposition */
+  float max_reposition_mass;
+
   /* ---- Common conversion factors --------------- */
 
   /*! Conversion factor from temperature to internal energy */
@@ -156,6 +161,14 @@ INLINE static void black_holes_props_init(struct black_holes_props *bp,
 
   bp->num_ngbs_to_heat =
       parser_get_param_float(params, "EAGLEAGN:AGN_num_ngb_to_heat");
+
+  /* Reposition parameters --------------------------------- */
+
+  bp->max_reposition_mass =
+      parser_get_param_float(params, "EAGLEAGN:max_reposition_mass");
+
+  /* Convert to internal units */
+  bp->max_reposition_mass *= phys_const->const_solar_mass;
 
   /* Common conversion factors ----------------------------- */
 

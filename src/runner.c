@@ -905,6 +905,10 @@ void runner_do_black_holes_swallow_ghost(struct runner *r, struct cell *c,
 
       if (bpart_is_active(bp, e)) {
 
+        /* Compute the final operations for repositioning of this BH */
+        black_holes_end_reposition(bp, e->black_holes_properties,
+                                   e->physical_constants, e->cosmology);
+
         /* Get particle time-step */
         double dt;
         if (with_cosmology) {
@@ -2272,7 +2276,7 @@ void runner_do_ghost(struct runner *r, struct cell *c, int timer) {
             /* Re-initialise everything */
             hydro_init_part(p, hs);
             chemistry_init_part(p, chemistry);
-            star_formation_init_part(p, star_formation);
+            star_formation_init_part(p, xp, star_formation);
             tracers_after_init(p, xp, e->internal_units, e->physical_constants,
                                with_cosmology, e->cosmology,
                                e->hydro_properties, e->cooling_func, e->time);
