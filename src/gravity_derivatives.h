@@ -208,7 +208,8 @@ potential_derivatives_compute_M2L(const float r_x, const float r_y,
                                   struct potential_derivatives_M2L *pot) {
 
 #ifdef SWIFT_DEBUG_CHECKS
-  if (r2 < eps * eps) error("Computing M2L derivatives below softening length");
+  if (r2 < 0.99f * eps * eps)
+    error("Computing M2L derivatives below softening length");
 #endif
 
   float Dt_1;
@@ -436,7 +437,8 @@ potential_derivatives_compute_M2P(const float r_x, const float r_y,
                                   struct potential_derivatives_M2P *pot) {
 
 #ifdef SWIFT_DEBUG_CHECKS
-  if (r2 < eps * eps) error("Computing M2L derivatives below softening length");
+  if (r2 < 0.99f * eps * eps)
+    error("Computing M2P derivatives below softening length");
 #endif
 
   float Dt_1;
