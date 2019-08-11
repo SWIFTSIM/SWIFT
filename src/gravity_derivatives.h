@@ -207,6 +207,10 @@ potential_derivatives_compute_M2L(const float r_x, const float r_y,
                                   const float r_s_inv,
                                   struct potential_derivatives_M2L *pot) {
 
+#ifdef SWIFT_DEBUG_CHECKS
+  if (r2 < eps * eps) error("Computing M2L derivatives below softening length");
+#endif
+
   float Dt_1;
 #if SELF_GRAVITY_MULTIPOLE_ORDER > 0
   float Dt_3;
@@ -224,8 +228,8 @@ potential_derivatives_compute_M2L(const float r_x, const float r_y,
   float Dt_11;
 #endif
 
-  /* Un-softened un-truncated case (Newtonian potential) */
-  if (!periodic && r2 > eps * eps) {
+  /* Un-truncated case (Newtonian potential) */
+  if (!periodic) {
 
     Dt_1 = r_inv;
 #if SELF_GRAVITY_MULTIPOLE_ORDER > 0
@@ -248,8 +252,8 @@ potential_derivatives_compute_M2L(const float r_x, const float r_y,
 #error "Missing implementation for order >5"
 #endif
 
-    /* Un-softened truncated case */
-  } else if (periodic && r2 > eps * eps) {
+    /* Truncated case */
+  } else {
 
     /* Get the derivatives of the truncated potential */
     const float r = r2 * r_inv;
@@ -288,38 +292,6 @@ potential_derivatives_compute_M2L(const float r_x, const float r_y,
              105.f * r * r * r * derivs.chi_3 - 420.f * r * r * derivs.chi_2 +
              945.f * r * derivs.chi_1 - 945.f * derivs.chi_0) *
             r_inv11;
-#endif
-#if SELF_GRAVITY_MULTIPOLE_ORDER > 5
-#error "Missing implementation for order >5"
-#endif
-
-    /* Softened case */
-  } else {
-    const float r = r2 * r_inv;
-    const float u = r * eps_inv;
-    const float u_inv = r_inv * eps;
-
-    Dt_1 = eps_inv * D_soft_1(u, u_inv);
-#if SELF_GRAVITY_MULTIPOLE_ORDER > 0
-    const float eps_inv2 = eps_inv * eps_inv;
-    const float eps_inv3 = eps_inv * eps_inv2;
-    Dt_3 = -eps_inv3 * D_soft_3(u, u_inv);
-#endif
-#if SELF_GRAVITY_MULTIPOLE_ORDER > 1
-    const float eps_inv5 = eps_inv3 * eps_inv2;
-    Dt_5 = eps_inv5 * D_soft_5(u, u_inv);
-#endif
-#if SELF_GRAVITY_MULTIPOLE_ORDER > 2
-    const float eps_inv7 = eps_inv5 * eps_inv2;
-    Dt_7 = -eps_inv7 * D_soft_7(u, u_inv);
-#endif
-#if SELF_GRAVITY_MULTIPOLE_ORDER > 3
-    const float eps_inv9 = eps_inv7 * eps_inv2;
-    Dt_9 = eps_inv9 * D_soft_9(u, u_inv);
-#endif
-#if SELF_GRAVITY_MULTIPOLE_ORDER > 4
-    const float eps_inv11 = eps_inv9 * eps_inv2;
-    Dt_11 = -eps_inv11 * D_soft_11(u, u_inv);
 #endif
 #if SELF_GRAVITY_MULTIPOLE_ORDER > 5
 #error "Missing implementation for order >5"
@@ -463,6 +435,10 @@ potential_derivatives_compute_M2P(const float r_x, const float r_y,
                                   const float r_s_inv,
                                   struct potential_derivatives_M2P *pot) {
 
+#ifdef SWIFT_DEBUG_CHECKS
+  if (r2 < eps * eps) error("Computing M2L derivatives below softening length");
+#endif
+
   float Dt_1;
   float Dt_3;
   float Dt_5;
@@ -471,8 +447,8 @@ potential_derivatives_compute_M2P(const float r_x, const float r_y,
   float Dt_9;
 #endif
 
-  /* Un-softened un-truncated case (Newtonian potential) */
-  if (!periodic && r2 > eps * eps) {
+  /* Un-truncated case (Newtonian potential) */
+  if (!periodic) {
 
     const float r_inv2 = r_inv * r_inv;
 
@@ -484,8 +460,8 @@ potential_derivatives_compute_M2P(const float r_x, const float r_y,
     Dt_9 = -7.f * Dt_7 * r_inv2; /* -105 / r^9 */
 #endif
 
-    /* Un-softened truncated case */
-  } else if (periodic && r2 > eps * eps) {
+    /* Truncated case */
+  } else if (periodic) {
 
     /* Get the derivatives of the truncated potential */
     const float r = r2 * r_inv;
@@ -511,30 +487,6 @@ potential_derivatives_compute_M2P(const float r_x, const float r_y,
     Dt_9 = (r * r * r * r * d.chi_4 - 10.f * r * r * r * d.chi_3 +
             45.f * r * r * d.chi_2 - 105.f * r * d.chi_1 + 105.f * d.chi_0) *
            r_inv9;
-#endif
-
-    /* Softened case */
-  } else {
-
-    const float r = r2 * r_inv;
-    const float u = r * eps_inv;
-    const float u_inv = r_inv * eps;
-    const float eps_inv2 = eps_inv * eps_inv;
-
-    Dt_1 = eps_inv * D_soft_1(u, u_inv);
-
-    const float eps_inv3 = eps_inv * eps_inv2;
-    Dt_3 = -eps_inv3 * D_soft_3(u, u_inv);
-
-    const float eps_inv5 = eps_inv3 * eps_inv2;
-    Dt_5 = eps_inv5 * D_soft_5(u, u_inv);
-
-    const float eps_inv7 = eps_inv5 * eps_inv2;
-    Dt_7 = -eps_inv7 * D_soft_7(u, u_inv);
-
-#if SELF_GRAVITY_MULTIPOLE_ORDER > 3
-    const float eps_inv9 = eps_inv7 * eps_inv2;
-    Dt_9 = eps_inv9 * D_soft_9(u, u_inv);
 #endif
   }
 

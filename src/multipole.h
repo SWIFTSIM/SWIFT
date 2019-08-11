@@ -2039,7 +2039,7 @@ INLINE static void gravity_M2L_symmetric(
     const float rs_inv) {
 
   /* Recover some constants */
-  const float eps = m_a->max_softening;
+  const float eps = max(m_a->max_softening, m_b->max_softening);
   const float eps_inv = 1.f / eps;
 
   /* Compute distance vector */
