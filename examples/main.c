@@ -951,6 +951,11 @@ int main(int argc, char *argv[]) {
           N_total[swift_type_black_hole], N_total[swift_type_dark_matter],
           N_total[swift_type_dark_matter_background]);
 
+    const int with_DM_particles = N_total[swift_type_dark_matter] > 0;
+    const int with_baryon_particles =
+        (N_total[swift_type_gas] + N_total[swift_type_stars] +
+         N_total[swift_type_black_hole]) > 0;
+
     /* Do we have background DM particles? */
     const int with_DM_background_particles =
         N_total[swift_type_dark_matter_background] > 0;
@@ -976,7 +981,8 @@ int main(int argc, char *argv[]) {
     bzero(&gravity_properties, sizeof(struct gravity_props));
     if (with_self_gravity)
       gravity_props_init(&gravity_properties, params, &prog_const, &cosmo,
-                         with_cosmology, with_DM_background_particles,
+                         with_cosmology, with_baryon_particles,
+                         with_DM_particles, with_DM_background_particles,
                          periodic);
 
     /* Initialise the external potential properties */

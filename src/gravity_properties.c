@@ -41,6 +41,7 @@
 void gravity_props_init(struct gravity_props *p, struct swift_params *params,
                         const struct phys_const *phys_const,
                         const struct cosmology *cosmo, const int with_cosmology,
+                        const int has_baryons, const int has_DM,
                         const int is_zoom_simulation, const int periodic) {
 
   /* Tree updates */
@@ -90,17 +91,25 @@ void gravity_props_init(struct gravity_props *p, struct swift_params *params,
   /* Softening parameters */
   if (with_cosmology) {
 
-    /* Maximal physical softening taken straight from the parameter file */
-    p->epsilon_DM_max_physical =
-        parser_get_param_double(params, "Gravity:max_physical_DM_softening");
-    p->epsilon_baryon_max_physical = parser_get_param_double(
-        params, "Gravity:max_physical_baryon_softening");
+    if (has_DM) {
+      /* Maximal physical softening taken straight from the parameter file */
+      p->epsilon_DM_max_physical =
+          parser_get_param_double(params, "Gravity:max_physical_DM_softening");
 
-    /* Co-moving softenings taken straight from the parameter file */
-    p->epsilon_DM_comoving =
-        parser_get_param_double(params, "Gravity:comoving_DM_softening");
-    p->epsilon_baryon_comoving =
-        parser_get_param_double(params, "Gravity:comoving_baryon_softening");
+      /* Co-moving softenings taken straight from the parameter file */
+      p->epsilon_DM_comoving =
+          parser_get_param_double(params, "Gravity:comoving_DM_softening");
+    }
+
+    if (has_baryons) {
+      /* Maximal physical softening taken straight from the parameter file */
+      p->epsilon_baryon_max_physical = parser_get_param_double(
+          params, "Gravity:max_physical_baryon_softening");
+
+      /* Co-moving softenings taken straight from the parameter file */
+      p->epsilon_baryon_comoving =
+          parser_get_param_double(params, "Gravity:comoving_baryon_softening");
+    }
 
     if (is_zoom_simulation) {
 
@@ -122,10 +131,14 @@ void gravity_props_init(struct gravity_props *p, struct swift_params *params,
 
   } else {
 
-    p->epsilon_DM_max_physical =
-        parser_get_param_double(params, "Gravity:max_physical_DM_softening");
-    p->epsilon_baryon_max_physical = parser_get_param_double(
-        params, "Gravity:max_physical_baryon_softening");
+    if (has_DM) {
+      p->epsilon_DM_max_physical =
+          parser_get_param_double(params, "Gravity:max_physical_DM_softening");
+    }
+    if (has_baryons) {
+      p->epsilon_baryon_max_physical = parser_get_param_double(
+          params, "Gravity:max_physical_baryon_softening");
+    }
 
     p->epsilon_DM_comoving = p->epsilon_DM_max_physical;
     p->epsilon_baryon_comoving = p->epsilon_baryon_max_physical;
