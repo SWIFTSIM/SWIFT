@@ -522,8 +522,8 @@ static INLINE void runner_dopair_grav_pm_full(
     if (!gravity_M2P_accept(r_max2, theta_crit2 * 1.1, r2, h_i))
       error(
           "use_mpole[i] set when M2P accept fails CoM=[%e %e %e] pos=[%e %e "
-          "%e], rmax=%e",
-          CoM_j[0], CoM_j[1], CoM_j[2], x_i, y_i, z_i, r_max_j);
+          "%e], rmax=%e r=%e epsilon=%e",
+          CoM_j[0], CoM_j[1], CoM_j[2], x_i, y_i, z_i, r_max_j, sqrtf(r2), h_i);
 #endif
 
     /* Interact! */
