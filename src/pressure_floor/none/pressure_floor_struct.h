@@ -25,5 +25,4 @@
  */
 struct pressure_floor_part_data {};
 
-
-#endif // SWIFT_PRESSURE_FLOOR_PART_NONE_H
+#endif  // SWIFT_PRESSURE_FLOOR_PART_NONE_H

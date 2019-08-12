@@ -21,7 +21,7 @@
 
 /* Forward declaration */
 __attribute__((always_inline)) static INLINE float pressure_floor_get_pressure(
-    const struct part *p, const float rho, const float pressure);
+    const struct part* p, const float rho, const float pressure);
 
 #include "adiabatic_index.h"
 #include "cosmology.h"
@@ -65,11 +65,11 @@ struct pressure_floor_properties {
  * @return The physical or comoving pressure with the floor.
  */
 __attribute__((always_inline)) static INLINE float pressure_floor_get_pressure(
-    const struct part *p, const float rho, const float pressure) {
+    const struct part* p, const float rho, const float pressure) {
 
   /* Compute pressure floor */
-  float floor = p->h * p->h * rho * pressure_floor_props.constants
-    - p->pressure_floor_data.sigma2;
+  float floor = p->h * p->h * rho * pressure_floor_props.constants -
+                p->pressure_floor_data.sigma2;
   floor *= rho * hydro_one_over_gamma;
 
   return fmax(pressure, floor);
@@ -89,11 +89,9 @@ __attribute__((always_inline)) static INLINE float pressure_floor_get_pressure(
  * @param props The pressure floor properties to fill.
  */
 __attribute__((always_inline)) static INLINE void pressure_floor_init(
-    struct pressure_floor_properties *props,
-    const struct phys_const *phys_const,
-    const struct unit_system *us,
-    const struct hydro_props *hydro_props,
-    struct swift_params *params) {
+    struct pressure_floor_properties* props,
+    const struct phys_const* phys_const, const struct unit_system* us,
+    const struct hydro_props* hydro_props, struct swift_params* params) {
 
   /* Read the Jeans factor */
   props->n_jeans =
@@ -110,7 +108,7 @@ __attribute__((always_inline)) static INLINE void pressure_floor_init(
  * @param props The pressure floor properties.
  */
 __attribute__((always_inline)) static INLINE void pressure_floor_print(
-    const struct pressure_floor_properties *props) {
+    const struct pressure_floor_properties* props) {
 
   message("Pressure floor is 'GEAR' with:");
   message("Jeans factor: %g", props->n_jeans);
@@ -122,7 +120,8 @@ __attribute__((always_inline)) static INLINE void pressure_floor_print(
  * @brief Writes the current model of pressure floor to the file
  * @param h_grp The HDF5 group in which to write
  */
-__attribute__((always_inline)) INLINE static void pressure_floor_print_snapshot(hid_t h_grp) {
+__attribute__((always_inline)) INLINE static void pressure_floor_print_snapshot(
+    hid_t h_grp) {
 
   io_write_attribute_s(h_grp, "Pressure floor", "GEAR");
 }
@@ -134,8 +133,7 @@ __attribute__((always_inline)) INLINE static void pressure_floor_print_snapshot(
  * @param cosmo The current cosmological model.
  */
 __attribute__((always_inline)) INLINE static void pressure_floor_end_density(
-    struct part* restrict p,
-    const struct cosmology* cosmo) {
+    struct part* restrict p, const struct cosmology* cosmo) {
 
   /* To finish the turbulence estimation we devide by the density */
   p->pressure_floor_data.sigma2 /=
@@ -173,7 +171,6 @@ __attribute__((always_inline)) INLINE static void pressure_floor_init_part(
   p->pressure_floor_data.sigma2 = 0.f;
 }
 
-
 /**
  * @brief Sets the pressure_floor properties of the (x-)particles to a valid
  * start state.
@@ -184,12 +181,12 @@ __attribute__((always_inline)) INLINE static void pressure_floor_init_part(
  * @param p Pointer to the particle data.
  * @param xp Pointer to the extended particle data.
  */
-__attribute__((always_inline)) INLINE static void pressure_floor_first_init_part(
-    const struct phys_const* restrict phys_const,
-    const struct unit_system* restrict us,
-    const struct cosmology* restrict cosmo,
-    struct part* restrict p,
-    struct xpart* restrict xp) {
+__attribute__((always_inline)) INLINE static void
+pressure_floor_first_init_part(const struct phys_const* restrict phys_const,
+                               const struct unit_system* restrict us,
+                               const struct cosmology* restrict cosmo,
+                               struct part* restrict p,
+                               struct xpart* restrict xp) {
 
   pressure_floor_init_part(p, xp);
 }

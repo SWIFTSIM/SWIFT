@@ -4081,8 +4081,7 @@ void space_first_init_parts_mapper(void *restrict map_data, int count,
     chemistry_first_init_part(phys_const, us, cosmo, chemistry, &p[k], &xp[k]);
 
     /* Also initialise the pressure floor */
-    pressure_floor_first_init_part(phys_const, us, cosmo, &p[k],
-                                   &xp[k]);
+    pressure_floor_first_init_part(phys_const, us, cosmo, &p[k], &xp[k]);
 
     /* And the cooling */
     cooling_first_init_part(phys_const, us, cosmo, cool_func, &p[k], &xp[k]);

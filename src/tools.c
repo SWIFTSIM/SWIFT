@@ -45,8 +45,8 @@
 #include "hydro.h"
 #include "part.h"
 #include "periodic.h"
-#include "runner.h"
 #include "pressure_floor_iact.h"
+#include "runner.h"
 #include "stars.h"
 
 /**
