@@ -110,8 +110,7 @@ hydro_get_drifted_physical_internal_energy(const struct part *restrict p,
 __attribute__((always_inline)) INLINE static float hydro_get_comoving_pressure(
     const struct part *restrict p) {
 
-  const float comoving_pressure = gas_pressure_from_entropy(p->rho, p->entropy);
-  return pressure_floor_get_pressure(p, p->rho, comoving_pressure);
+  return gas_pressure_from_entropy(p->rho, p->entropy);
 }
 
 /**
@@ -123,10 +122,7 @@ __attribute__((always_inline)) INLINE static float hydro_get_comoving_pressure(
 __attribute__((always_inline)) INLINE static float hydro_get_physical_pressure(
     const struct part *restrict p, const struct cosmology *cosmo) {
 
-  const float phys_pressure =
-      gas_pressure_from_entropy(p->rho * cosmo->a3_inv, p->entropy);
-  const float phys_rho = hydro_get_physical_density(p, cosmo);
-  return pressure_floor_get_pressure(p, phys_rho, phys_pressure);
+  return gas_pressure_from_entropy(p->rho * cosmo->a3_inv, p->entropy);
 }
 
 /**
