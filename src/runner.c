@@ -1215,6 +1215,11 @@ void runner_do_star_formation(struct runner *r, struct cell *c, int timer) {
   if (with_feedback && (c == c->top) &&
       (current_stars_count != c->stars.count)) {
     cell_set_flag(c, cell_flag_do_stars_resort);
+    if (c->split) {
+      for (int k = 0; k < 8; ++k)
+        if (c->progeny[k] != NULL)
+          cell_set_flag(c->progeny[k], cell_flag_do_stars_resort);
+    }
     cell_clear_stars_sort_flags(c, /*clear_unused_flags=*/0);
   }
 
@@ -1235,7 +1240,6 @@ void runner_do_stars_resort(struct runner *r, struct cell *c, const int timer) {
 
 #ifdef SWIFT_DEBUG_CHECKS
   if (c->nodeID != r->e->nodeID) error("Task must be run locally!");
-  if (c->hydro.super != c) error("Task must be run at the super-level");
 #endif
 
   TIMER_TIC;
