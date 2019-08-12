@@ -2397,6 +2397,34 @@ void cell_clear_limiter_flags(struct cell *c, void *data) {
                   cell_flag_do_hydro_limiter | cell_flag_do_hydro_sub_limiter);
 }
 
+void cell_activate_star_formation_tasks(struct cell *c, struct scheduler *s) {
+
+  if (c->depth != 0) error("Function should be called at the top-level only");
+
+  /* Have we already unskipped that task? */
+  if (c->hydro.star_formation->skip == 0) return;
+
+  /* Activate the star formation task */
+  scheduler_activate(s, c->hydro.star_formation);
+  scheduler_activate(s, c->hydro.stars_resort);
+
+  /* Shallow tree case -> the resort task is at this level */
+  if (c->hydro.super == c) {
+    scheduler_activate(s, c->hydro.stars_resort);
+  }
+
+  /* Deep tree case -> the resort is in the progenies */
+  else {
+
+    for (int k = 0; k < 8; ++k) {
+      if (c->progeny[k] != NULL) {
+        message("hello");
+        scheduler_activate(s, c->progeny[k]->hydro.stars_resort);
+      }
+    }
+  }
+}
+
 /**
  * @brief Recurse down in a cell hierarchy until the hydro.super level is
  * reached and activate the spart drift at that level.
@@ -3430,12 +3458,7 @@ int cell_unskip_hydro_tasks(struct cell *c, struct scheduler *s) {
     if (c->logger != NULL) scheduler_activate(s, c->logger);
 
     if (c->top->hydro.star_formation != NULL) {
-      scheduler_activate(s, c->top->hydro.star_formation);
-    }
-
-    if (c->hydro.super != NULL && c->hydro.super->hydro.stars_resort != NULL) {
-      scheduler_activate(s, c->hydro.super->hydro.stars_resort);
-      cell_activate_drift_spart(c, s);
+      cell_activate_star_formation_tasks(c->top, s);
     }
   }
 
