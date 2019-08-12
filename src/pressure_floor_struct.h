@@ -21,19 +21,19 @@
 
 /**
  * @file src/pressure_floor_struct.h
- * @brief Branches between the different particle data SF tracers
+ * @brief Branches between the different pressure floor data
  */
 
 /* Config parameters. */
 #include "../config.h"
 
-/* Import the right cooling definition */
+/* Import the right pressure floor definition */
 #if defined(PRESSURE_FLOOR_NONE)
 #include "./pressure_floor/none/pressure_floor_struct.h"
 #elif defined(PRESSURE_FLOOR_GEAR)
 #include "./pressure_floor/GEAR/pressure_floor_struct.h"
 #else
-#error "Invalid choice of star formation structure."
+#error "Invalid choice of pressure floor structure."
 #endif
 
 #endif /* SWIFT_PRESSURE_FLOOR_STRUCT_H */

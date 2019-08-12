@@ -108,7 +108,7 @@ INLINE static void stars_write_particles(const struct spart *sparts,
                            "Temperatures at the time of birth of the gas "
                            "particles that turned into stars");
 
-  list[7] = io_make_output_field("BirthMasses", FLOAT, 1, UNIT_CONV_MASS, 0.f,
+  list[8] = io_make_output_field("BirthMasses", FLOAT, 1, UNIT_CONV_MASS, 0.f,
                                  sparts, birth.mass,
                                  "Masses of the star particles at birth time");
 

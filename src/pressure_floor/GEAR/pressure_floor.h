@@ -68,8 +68,8 @@ __attribute__((always_inline)) static INLINE float pressure_floor_get_pressure(
     const struct part *p, const float rho, const float pressure) {
 
   /* Compute pressure floor */
-  float floor = p->h * p->h * rho * pressure_floor_props.constants;
-    //- p->pressure_floor_data.sigma2;
+  float floor = p->h * p->h * rho * pressure_floor_props.constants
+    - p->pressure_floor_data.sigma2;
   floor *= rho * hydro_one_over_gamma;
 
   return fmax(pressure, floor);

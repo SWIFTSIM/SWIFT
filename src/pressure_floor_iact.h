@@ -21,19 +21,19 @@
 
 /**
  * @file src/pressure_floor_iact.h
- * @brief Branches between the different star formation iact.
+ * @brief Branches between the different pressure floor iact.
  */
 
 /* Config parameters. */
 #include "../config.h"
 
-/* Import the right star formation law definition */
+/* Import the right pressure floor definition */
 #if defined(PRESSURE_FLOOR_NONE)
 #include "./pressure_floor/none/pressure_floor_iact.h"
 #elif defined(PRESSURE_FLOOR_GEAR)
 #include "./pressure_floor/GEAR/pressure_floor_iact.h"
 #else
-#error "Invalid choice of star formation law"
+#error "Invalid choice of pressure floor"
 #endif
 
 #endif /* SWIFT_PRESSURE_FLOOR_IACT_H */
