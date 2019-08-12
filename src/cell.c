@@ -2406,7 +2406,6 @@ void cell_activate_star_formation_tasks(struct cell *c, struct scheduler *s) {
 
   /* Activate the star formation task */
   scheduler_activate(s, c->hydro.star_formation);
-  scheduler_activate(s, c->hydro.stars_resort);
 
   /* Shallow tree case -> the resort task is at this level */
   if (c->hydro.super == c) {
@@ -2418,7 +2417,6 @@ void cell_activate_star_formation_tasks(struct cell *c, struct scheduler *s) {
 
     for (int k = 0; k < 8; ++k) {
       if (c->progeny[k] != NULL) {
-        message("hello");
         scheduler_activate(s, c->progeny[k]->hydro.stars_resort);
       }
     }
