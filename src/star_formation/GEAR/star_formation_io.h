@@ -64,6 +64,9 @@ INLINE static void starformation_init_backend(
   starform->maximal_temperature = parser_get_param_double(
       parameter_file, "GEARStarFormation:maximal_temperature");
 
+  /* Get the jeans factor */
+  starform->n_jeans_2_3 = pow(pressure_floor_props.n_jeans, 2. / 3.);
+
   /* Apply unit change */
   starform->maximal_temperature *=
       units_cgs_conversion_factor(us, UNIT_CONV_TEMPERATURE);

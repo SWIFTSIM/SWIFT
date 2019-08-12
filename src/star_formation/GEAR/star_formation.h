@@ -71,8 +71,7 @@ INLINE static int star_formation_is_star_forming(
 
   /* Get the required variables */
   const float sigma2 = p->pressure_floor_data.sigma2;
-  // TODO precompute it
-  const float n_jeans_2_3 = pow(pressure_floor_props.n_jeans, 2. / 3.);
+  const float n_jeans_2_3 = starform->n_jeans_2_3;
 
   const float h = p->h;
   const float density = hydro_get_physical_density(p, cosmo);

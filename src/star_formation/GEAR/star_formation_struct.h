@@ -30,6 +30,10 @@ struct star_formation_xpart_data {};
  */
 struct star_formation {
 
+  /*! Number of particle required to resolved the
+   * Jeans criterion (at power 2/3) */
+  float n_jeans_2_3;
+
   /*! Maximal temperature for forming a star */
   float maximal_temperature;
 
