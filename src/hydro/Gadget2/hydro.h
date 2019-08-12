@@ -466,7 +466,7 @@ __attribute__((always_inline)) INLINE static void hydro_timestep_extra(
  * @brief Prepares a particle for the density calculation.
  *
  * Zeroes all the relevant arrays in preparation for the sums taking place in
- * the variaous density tasks
+ * the various density tasks
  *
  * @param p The particle to act upon
  * @param hs #hydro_space containing hydro specific space information.

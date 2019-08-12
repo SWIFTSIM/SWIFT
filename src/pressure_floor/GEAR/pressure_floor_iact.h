@@ -17,16 +17,16 @@
  * along with this program.  If not, see <http://www.gnu.org/licenses/>.
  *
  ******************************************************************************/
-#ifndef SWIFT_GEAR_STAR_FORMATION_IACT_H
-#define SWIFT_GEAR_STAR_FORMATION_IACT_H
+#ifndef SWIFT_GEAR_PRESSURE_FLOOR_IACT_H
+#define SWIFT_GEAR_PRESSURE_FLOOR_IACT_H
 
 /**
- * @file GEAR/star_formation_iact.h
+ * @file GEAR/pressure_floor_iact.h
  * @brief Density computation
  */
 
 /**
- * @brief do star_formation computation after the runner_iact_density (symmetric
+ * @brief do pressure_floor computation after the runner_iact_density (symmetric
  * version)
  *
  * Compute the velocity dispersion follow eq. 2 in Revaz & Jablonka 2018.
@@ -40,7 +40,7 @@
  * @param a Current scale factor.
  * @param H Current Hubble parameter.
  */
-__attribute__((always_inline)) INLINE static void runner_iact_star_formation(
+__attribute__((always_inline)) INLINE static void runner_iact_pressure_floor(
     float r2, const float *dx, float hi, float hj, struct part *restrict pi,
     struct part *restrict pj, float a, float H) {
 
@@ -61,12 +61,12 @@ __attribute__((always_inline)) INLINE static void runner_iact_star_formation(
   const float sigma2 = norm_v2 + H * norm_x2;
 
   /* Compute the velocity dispersion */
-  pi->sf_data.sigma2 += sigma2 * wi * hydro_get_mass(pj);
-  pj->sf_data.sigma2 += sigma2 * wj * hydro_get_mass(pi);
+  pi->pressure_floor_data.sigma2 += sigma2 * wi * hydro_get_mass(pj);
+  pj->pressure_floor_data.sigma2 += sigma2 * wj * hydro_get_mass(pi);
 }
 
 /**
- * @brief do star_formation computation after the runner_iact_density (non
+ * @brief do pressure_floor computation after the runner_iact_density (non
  * symmetric version)
  *
  * @param r2 Comoving square distance between the two particles.
@@ -79,7 +79,7 @@ __attribute__((always_inline)) INLINE static void runner_iact_star_formation(
  * @param H Current Hubble parameter.
  */
 __attribute__((always_inline)) INLINE static void
-runner_iact_nonsym_star_formation(float r2, const float *dx, float hi, float hj,
+runner_iact_nonsym_pressure_floor(float r2, const float *dx, float hi, float hj,
                                   struct part *restrict pi,
                                   const struct part *restrict pj, float a,
                                   float H) {
@@ -98,7 +98,7 @@ runner_iact_nonsym_star_formation(float r2, const float *dx, float hi, float hj,
   const float sigma2 = norm_v2 + H * norm_x2;
 
   /* Compute the velocity dispersion */
-  pi->sf_data.sigma2 += sigma2 * wi * hydro_get_mass(pj);
+  pi->pressure_floor_data.sigma2 += sigma2 * wi * hydro_get_mass(pj);
 }
 
-#endif /* SWIFT_GEAR_STAR_FORMATION_IACT_H */
+#endif /* SWIFT_GEAR_PRESSURE_FLOOR_IACT_H */

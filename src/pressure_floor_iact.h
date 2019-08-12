@@ -1,6 +1,6 @@
 /*******************************************************************************
  * This file is part of SWIFT.
- * Copyright (c) 2018 Folkert Nobels (nobels@strw.leidenuniv.nl)
+ * Copyright (c) 2019 Loic Hausammann (loic.hausammann@epfl.ch)
  *
  * This program is free software: you can redistribute it and/or modify
  * it under the terms of the GNU Lesser General Public License as published
@@ -16,11 +16,11 @@
  * along with this program.  If not, see <http://www.gnu.org/licenses/>.
  *
  ******************************************************************************/
-#ifndef SWIFT_STAR_FORMATION_IACT_H
-#define SWIFT_STAR_FORMATION_IACT_H
+#ifndef SWIFT_PRESSURE_FLOOR_IACT_H
+#define SWIFT_PRESSURE_FLOOR_IACT_H
 
 /**
- * @file src/star_formation_iact.h
+ * @file src/pressure_floor_iact.h
  * @brief Branches between the different star formation iact.
  */
 
@@ -28,14 +28,12 @@
 #include "../config.h"
 
 /* Import the right star formation law definition */
-#if defined(STAR_FORMATION_NONE)
-#include "./star_formation/none/star_formation_iact.h"
-#elif defined(STAR_FORMATION_EAGLE)
-#include "./star_formation/EAGLE/star_formation_iact.h"
-#elif defined(STAR_FORMATION_GEAR)
-#include "./star_formation/GEAR/star_formation_iact.h"
+#if defined(PRESSURE_FLOOR_NONE)
+#include "./pressure_floor/none/pressure_floor_iact.h"
+#elif defined(PRESSURE_FLOOR_GEAR)
+#include "./pressure_floor/GEAR/pressure_floor_iact.h"
 #else
 #error "Invalid choice of star formation law"
 #endif
 
-#endif /* SWIFT_STAR_FORMATION_IACT_H */
+#endif /* SWIFT_PRESSURE_FLOOR_IACT_H */
