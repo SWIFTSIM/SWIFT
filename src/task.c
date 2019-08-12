@@ -101,14 +101,14 @@ const char *taskID_names[task_type_count] = {"none",
 
 /* Sub-task type names. */
 const char *subtaskID_names[task_subtype_count] = {
-    "none",       "density",      "gradient",       "force",
-    "limiter",    "grav",         "external_grav",  "tend_part",
-    "tend_gpart", "tend_spart",   "tend_bpart",     "xv",
-    "rho",        "part_swallow", "bpart_merger",   "gpart",
-    "multipole",  "spart",        "stars_density",  "stars_feedback",
-    "sf_count",   "bpart_rho",    "bpart_swallow",  "bpart_feedback",
-    "bh_density", "bh_swallow",   "do_gas_swallow", "do_bh_swallow",
-    "bh_feedback"};
+    "none",        "density",      "gradient",       "force",
+    "limiter",     "grav",         "external_grav",  "tend_part",
+    "tend_gpart",  "tend_spart",   "tend_bpart",     "xv",
+    "rho",         "part_swallow", "bpart_merger",   "gpart",
+    "multipole",   "spart",        "stars_density",  "stars_feedback",
+    "sf_count",    "bpart_rho",    "bpart_swallow",  "bpart_feedback",
+    "bh_density",  "bh_swallow",   "do_gas_swallow", "do_bh_swallow",
+    "bh_feedback", "testsome"};
 
 #ifdef WITH_MPI
 /* MPI communicators for the subtypes. */
@@ -237,7 +237,9 @@ __attribute__((always_inline)) INLINE static enum task_actions task_acts_on(
     case task_type_timestep:
     case task_type_send:
     case task_type_recv:
-      if (t->ci->hydro.count > 0 && t->ci->grav.count > 0)
+      if (t->subtype == task_subtype_testsome) {
+        return task_action_none;
+      } else if (t->ci->hydro.count > 0 && t->ci->grav.count > 0)
         return task_action_all;
       else if (t->ci->hydro.count > 0)
         return task_action_part;
@@ -539,6 +541,43 @@ int task_lock(struct task *t) {
 
     /* Communication task? */
     case task_type_recv:
+#ifdef WITH_MPI
+      if (t->subtype == task_subtype_testsome) {
+
+          /* Check for any messages that could be received. */
+        struct scheduler *s = myscheduler;
+        int outcount = 0;
+        int indices[s->nr_requests];
+
+        err = MPI_Testsome(s->nr_requests, s->requests, &outcount, indices,
+                           MPI_STATUSES_IGNORE);
+        if (err != MPI_SUCCESS) {
+            mpi_error(err, "Failed to test for recv messages");
+        }
+
+        /* Mark any released tasks as ready. */
+        for (int k = 0; k < outcount; k++) {
+          s->tasks_requests[indices[k]]->req = MPI_REQUEST_NULL;
+          s->tasks_requests[indices[k]]->recv_ready = 1;
+        }
+
+        /* XXX could remove from requests list? */
+
+        /* Decrement total recvs we've seen. Careful with special values. */
+        if (outcount > 0) {
+            s->nr_recv_tasks -= outcount;
+            return 1;
+        }
+        return 0;
+      }
+
+      /* Actual recv that is ready to run. */
+      return 1;
+#else
+      error("SWIFT was not compiled with MPI support.");
+#endif
+      break;
+
     case task_type_send:
 #ifdef WITH_MPI
       /* Check the status of the MPI request. */
@@ -551,6 +590,9 @@ int task_lock(struct task *t) {
             "%s).",
             taskID_names[t->type], subtaskID_names[t->subtype], t->flags, buff);
       }
+      //if (res)
+      //    message("sent: %s/%s to %d", taskID_names[t->type],
+      //            subtaskID_names[t->subtype], t->cj->nodeID);
       return res;
 #else
       error("SWIFT was not compiled with MPI support.");
@@ -1198,7 +1240,6 @@ void task_dump_active(struct engine *e) {
           file_thread, "%i 0 none none -1 0 %lld %lld %lld %lld %lld 0 %lld\n",
           engine_rank, (long long int)e->tic_step, (long long int)e->toc_step,
           e->updates, e->g_updates, e->s_updates, cpufreq);
-      int count = 0;
       for (int l = 0; l < e->sched.nr_tasks; l++) {
         struct task *t = &e->sched.tasks[l];
 
@@ -1207,7 +1248,7 @@ void task_dump_active(struct engine *e) {
 
           /* Get destination rank of MPI requests. */
           int paired = (t->cj != NULL);
-          int otherrank = t->ci->nodeID;
+          int otherrank = (t->ci == NULL) ? -1: t->ci->nodeID;
           if (paired) otherrank = t->cj->nodeID;
 
           fprintf(file_thread, "%i %i %s %s %i %i %lli %lli %i %i %i %i %lli\n",
@@ -1219,7 +1260,6 @@ void task_dump_active(struct engine *e) {
                   (t->ci != NULL) ? t->ci->grav.count : 0,
                   (t->cj != NULL) ? t->cj->grav.count : 0, t->flags);
         }
-        count++;
       }
       fclose(file_thread);
     }

@@ -4174,6 +4174,10 @@ void engine_unskip(struct engine *e) {
     }
   }
 
+#ifdef WITH_MPI
+  e->sched.nr_requests = 0;
+#endif
+
   /* Activate all the regular tasks */
   threadpool_map(&e->threadpool, runner_do_unskip_mapper, local_cells,
                  num_active_cells, sizeof(int), 1, e);

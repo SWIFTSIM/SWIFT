@@ -212,17 +212,23 @@ SUBTYPES = [
     "tend_bpart",
     "xv",
     "rho",
+    "part_swallow",
+    "bpart_merger",
     "gpart",
     "multipole",
     "spart",
     "stars_density",
     "stars_feedback",
     "sf_counts",
-    "bpart",
+    "bpart_rho",
+    "bpart_swallow",
+    "bpart_feedback",
     "bh_density",
     "bh_swallow",
-    "do_swallow",
+    "do_gas_swallow",
+    "do_bh_swallow",
     "bh_feedback",
+    "testsome",
     "count",
 ]
 
@@ -290,6 +296,7 @@ FULLTYPES = [
     "pair/bh_feedback",
     "sub_self/bh_feedback",
     "sub_pair/bh_feedback",
+    "recv/testsome",
 ]
 
 #  A number of colours for the various types. Recycled when there are

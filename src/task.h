@@ -129,6 +129,7 @@ enum task_subtypes {
   task_subtype_do_gas_swallow,
   task_subtype_do_bh_swallow,
   task_subtype_bh_feedback,
+  task_subtype_testsome,
   task_subtype_count
 } __attribute__((packed));
 
@@ -184,6 +185,12 @@ struct task {
 
   /*! MPI request corresponding to this task */
   MPI_Request req;
+
+  /* Flag to indicate receive request is started. */
+  int recv_started;
+
+  /* Flag to indicate ready, i.e. received, but not yet ran. */
+  int recv_ready;
 
 #endif
 

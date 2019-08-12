@@ -55,6 +55,9 @@
 #include "timers.h"
 #include "version.h"
 
+/* XXX hack reference to the scheduler instance. */
+struct scheduler *myscheduler;
+
 /**
  * @brief Re-set the list of active tasks.
  */
@@ -1085,6 +1088,11 @@ struct task *scheduler_addtask(struct scheduler *s, enum task_types type,
 #endif
   t->tic = 0;
   t->toc = 0;
+#ifdef WITH_MPI
+  t->req = MPI_REQUEST_NULL;
+  t->recv_ready = 0;
+  t->recv_started = 0;
+#endif
 
   /* Add an index for it. */
   // lock_lock( &s->lock );
@@ -1278,6 +1286,9 @@ void scheduler_reset(struct scheduler *s, int size) {
   /* Reset the counters. */
   s->size = size;
   s->nr_tasks = 0;
+#ifdef WITH_MPI
+  s->nr_size_requests = 0;
+#endif
   s->tasks_next = 0;
   s->waiting = 0;
   s->nr_unlocks = 0;
@@ -1560,10 +1571,23 @@ void scheduler_enqueue_mapper(void *map_data, int num_elements,
   struct scheduler *s = (struct scheduler *)extra_data;
   const int *tid = (int *)map_data;
   struct task *tasks = s->tasks;
+
   for (int ind = 0; ind < num_elements; ind++) {
     struct task *t = &tasks[tid[ind]];
     if (atomic_dec(&t->wait) == 1 && !t->skip) {
       scheduler_enqueue(s, t);
+
+#ifdef WITH_MPI
+    } else if (!t->skip) {
+      /* Recv tasks are not enqueued until marked as ready by the testsome
+       * tasks, but we do need to start the MPI recv for them for that to be
+       * possible, so do that if needed. */
+      //if (t->type == task_type_recv && t->subtype != task_subtype_testsome
+      //    && t->wait == 1) {
+      if (t->type == task_type_recv && t->subtype != task_subtype_testsome) {
+        scheduler_start_recv(s, t);
+      }
+#endif
     }
   }
   pthread_cond_broadcast(&s->sleep_cond);
@@ -1575,6 +1599,12 @@ void scheduler_enqueue_mapper(void *map_data, int num_elements,
  * @param s The #scheduler.
  */
 void scheduler_start(struct scheduler *s) {
+
+#ifdef WITH_MPI
+    s->nr_recv_tasks = 0;
+    s->nr_requests = 0;
+#endif
+
   /* Reset all task timers. */
   for (int i = 0; i < s->nr_tasks; ++i) {
     s->tasks[i].tic = 0;
@@ -1582,7 +1612,30 @@ void scheduler_start(struct scheduler *s) {
 #ifdef SWIFT_DEBUG_TASKS
     s->tasks[i].rid = -1;
 #endif
+
+#ifdef WITH_MPI
+    /* Variables that control when recv tasks are started, queued and ran. */
+    s->tasks[i].recv_ready = 0;
+    s->tasks[i].recv_started = 0;
+    if (!s->tasks[i].skip && s->tasks[i].type == task_type_recv &&
+        s->tasks[i].subtype != task_subtype_testsome) s->nr_recv_tasks++;
+#endif
   }
+
+#ifdef WITH_MPI
+  message("number of recv tasks: %d", s->nr_recv_tasks);
+
+  /* Initialise the requests storage. */
+  if (s->nr_size_requests < s->nr_recv_tasks) {
+      swift_free("requests", s->requests);
+      swift_free("ind_requests", s->tasks_requests);
+      s->requests =
+          (MPI_Request *)swift_malloc("requests", sizeof(MPI_Request) * s->nr_recv_tasks);
+      s->tasks_requests = (struct task **)
+          swift_malloc("tasks_requests", sizeof(struct task *) * s->nr_recv_tasks);
+      s->nr_size_requests = s->nr_recv_tasks;
+  }
+#endif
 
   /* Re-wait the tasks. */
   if (s->active_count > 1000) {
@@ -1621,6 +1674,21 @@ void scheduler_enqueue(struct scheduler *s, struct task *t) {
 
   /* Ignore skipped tasks */
   if (t->skip) return;
+
+#ifdef WITH_MPI
+  /* Recv tasks are not enqueued immediately, we need to make sure that they
+   * are ready first (using the testsome task). We do, however, need to start
+   * the MPI recv for them for that to be possible, so do that if needed. */
+  //if (t->type == task_type_recv && t->subtype != task_subtype_testsome) {
+  //    if (!t->recv_started) {
+  //      message("Trying to enqueue recv task %s/%s %d", taskID_names[t->type],
+  //              subtaskID_names[t->subtype], t->recv_ready);
+  //      scheduler_start_recv(s, t);
+  //      return;
+  //    }
+  //    message("Ready to run");
+  //}
+#endif
 
   /* If this is an implicit task, just pretend it's done. */
   if (t->implicit) {
@@ -1676,90 +1744,7 @@ void scheduler_enqueue(struct scheduler *s, struct task *t) {
         break;
       case task_type_recv:
 #ifdef WITH_MPI
-        if (t->subtype == task_subtype_tend_part) {
-          t->buff = (struct pcell_step_hydro *)malloc(
-              sizeof(struct pcell_step_hydro) * t->ci->mpi.pcell_size);
-          err = MPI_Irecv(
-              t->buff, t->ci->mpi.pcell_size * sizeof(struct pcell_step_hydro),
-              MPI_BYTE, t->ci->nodeID, t->flags, subtaskMPI_comms[t->subtype],
-              &t->req);
-        } else if (t->subtype == task_subtype_tend_gpart) {
-          t->buff = (struct pcell_step_grav *)malloc(
-              sizeof(struct pcell_step_grav) * t->ci->mpi.pcell_size);
-          err = MPI_Irecv(
-              t->buff, t->ci->mpi.pcell_size * sizeof(struct pcell_step_grav),
-              MPI_BYTE, t->ci->nodeID, t->flags, subtaskMPI_comms[t->subtype],
-              &t->req);
-        } else if (t->subtype == task_subtype_tend_spart) {
-          t->buff = (struct pcell_step_stars *)malloc(
-              sizeof(struct pcell_step_stars) * t->ci->mpi.pcell_size);
-          err = MPI_Irecv(
-              t->buff, t->ci->mpi.pcell_size * sizeof(struct pcell_step_stars),
-              MPI_BYTE, t->ci->nodeID, t->flags, subtaskMPI_comms[t->subtype],
-              &t->req);
-        } else if (t->subtype == task_subtype_tend_bpart) {
-          t->buff = (struct pcell_step_black_holes *)malloc(
-              sizeof(struct pcell_step_black_holes) * t->ci->mpi.pcell_size);
-          err = MPI_Irecv(
-              t->buff,
-              t->ci->mpi.pcell_size * sizeof(struct pcell_step_black_holes),
-              MPI_BYTE, t->ci->nodeID, t->flags, subtaskMPI_comms[t->subtype],
-              &t->req);
-        } else if (t->subtype == task_subtype_part_swallow) {
-          t->buff = (struct black_holes_part_data *)malloc(
-              sizeof(struct black_holes_part_data) * t->ci->hydro.count);
-          err = MPI_Irecv(
-              t->buff,
-              t->ci->hydro.count * sizeof(struct black_holes_part_data),
-              MPI_BYTE, t->ci->nodeID, t->flags, subtaskMPI_comms[t->subtype],
-              &t->req);
-        } else if (t->subtype == task_subtype_bpart_merger) {
-          t->buff = (struct black_holes_bpart_data *)malloc(
-              sizeof(struct black_holes_bpart_data) * t->ci->black_holes.count);
-          err = MPI_Irecv(
-              t->buff,
-              t->ci->black_holes.count * sizeof(struct black_holes_bpart_data),
-              MPI_BYTE, t->ci->nodeID, t->flags, subtaskMPI_comms[t->subtype],
-              &t->req);
-        } else if (t->subtype == task_subtype_xv ||
-                   t->subtype == task_subtype_rho ||
-                   t->subtype == task_subtype_gradient) {
-          err = MPI_Irecv(t->ci->hydro.parts, t->ci->hydro.count, part_mpi_type,
-                          t->ci->nodeID, t->flags, subtaskMPI_comms[t->subtype],
-                          &t->req);
-        } else if (t->subtype == task_subtype_gpart) {
-          err = MPI_Irecv(t->ci->grav.parts, t->ci->grav.count, gpart_mpi_type,
-                          t->ci->nodeID, t->flags, subtaskMPI_comms[t->subtype],
-                          &t->req);
-        } else if (t->subtype == task_subtype_spart) {
-          err = MPI_Irecv(t->ci->stars.parts, t->ci->stars.count,
-                          spart_mpi_type, t->ci->nodeID, t->flags,
-                          subtaskMPI_comms[t->subtype], &t->req);
-        } else if (t->subtype == task_subtype_bpart_rho ||
-                   t->subtype == task_subtype_bpart_swallow ||
-                   t->subtype == task_subtype_bpart_feedback) {
-          err = MPI_Irecv(t->ci->black_holes.parts, t->ci->black_holes.count,
-                          bpart_mpi_type, t->ci->nodeID, t->flags,
-                          subtaskMPI_comms[t->subtype], &t->req);
-        } else if (t->subtype == task_subtype_multipole) {
-          t->buff = (struct gravity_tensors *)malloc(
-              sizeof(struct gravity_tensors) * t->ci->mpi.pcell_size);
-          err = MPI_Irecv(t->buff, t->ci->mpi.pcell_size, multipole_mpi_type,
-                          t->ci->nodeID, t->flags, subtaskMPI_comms[t->subtype],
-                          &t->req);
-        } else if (t->subtype == task_subtype_sf_counts) {
-          t->buff = (struct pcell_sf *)malloc(sizeof(struct pcell_sf) *
-                                              t->ci->mpi.pcell_size);
-          err = MPI_Irecv(t->buff,
-                          t->ci->mpi.pcell_size * sizeof(struct pcell_sf),
-                          MPI_BYTE, t->ci->nodeID, t->flags,
-                          subtaskMPI_comms[t->subtype], &t->req);
-        } else {
-          error("Unknown communication sub-type");
-        }
-        if (err != MPI_SUCCESS) {
-          mpi_error(err, "Failed to emit irecv for particle data.");
-        }
+        /* Just pick a queue. */
         qid = 1 % s->nr_queues;
 #else
         error("SWIFT was not compiled with MPI support.");
@@ -1979,6 +1964,7 @@ void scheduler_enqueue(struct scheduler *s, struct task *t) {
  *         been identified.
  */
 struct task *scheduler_done(struct scheduler *s, struct task *t) {
+
   /* Release whatever locks this task held. */
   if (!t->implicit) task_unlock(t);
 
@@ -1987,6 +1973,19 @@ struct task *scheduler_done(struct scheduler *s, struct task *t) {
   for (int k = 0; k < t->nr_unlock_tasks; k++) {
     struct task *t2 = t->unlock_tasks[k];
     if (t2->skip) continue;
+
+#ifdef WITH_MPI
+    if (t->subtype == task_subtype_testsome) {
+
+      if (t2->req != MPI_REQUEST_NULL) {
+        /* Not skipped and request not cancelled, so will not be ready. */
+        continue;
+      }
+
+      /* Should be ready or already ran, make sure we don't run twice. */
+      if (atomic_swap(&t2->recv_ready, 0) == 0) continue;
+    }
+#endif
 
     const int res = atomic_dec(&t2->wait);
     if (res < 1) {
@@ -2007,6 +2006,19 @@ struct task *scheduler_done(struct scheduler *s, struct task *t) {
 
   /* Mark the task as skip. */
   t->skip = 1;
+
+#ifdef WITH_MPI
+  if (t->subtype == task_subtype_testsome) {
+      /* The testsome task may have more work to do. We compare the number of
+       * processed recv's to the total non-skipped ones in the task lists. */
+      if (s->nr_recv_tasks > 0) {
+          t->skip = 0;
+          scheduler_enqueue(s, t);
+      } else {
+          message("testsome task complete this step");
+      }
+  }
+#endif
 
   /* Return the next best task. Note that we currently do not
      implement anything that does this, as getting it to respect
@@ -2064,13 +2076,14 @@ struct task *scheduler_gettask(struct scheduler *s, int qid,
                                const struct task *prev) {
   struct task *res = NULL;
   const int nr_queues = s->nr_queues;
-  unsigned int seed = qid;
+  //unsigned int seed = qid;
 
   /* Check qid. */
   if (qid >= nr_queues || qid < 0) error("Bad queue ID.");
 
   /* Loop as long as there are tasks... */
   while (s->waiting > 0 && res == NULL) {
+
     /* Try more than once before sleeping. */
     for (int tries = 0; res == NULL && s->waiting && tries < scheduler_maxtries;
          tries++) {
@@ -2083,24 +2096,24 @@ struct task *scheduler_gettask(struct scheduler *s, int qid,
       }
 
       /* If unsuccessful, try stealing from the other queues. */
-      if (s->flags & scheduler_flag_steal) {
-        int count = 0, qids[nr_queues];
-        for (int k = 0; k < nr_queues; k++)
-          if (s->queues[k].count > 0 || s->queues[k].count_incoming > 0) {
-            qids[count++] = k;
-          }
-        for (int k = 0; k < scheduler_maxsteal && count > 0; k++) {
-          const int ind = rand_r(&seed) % count;
-          TIMER_TIC
-          res = queue_gettask(&s->queues[qids[ind]], prev, 0);
-          TIMER_TOC(timer_qsteal);
-          if (res != NULL)
-            break;
-          else
-            qids[ind] = qids[--count];
-        }
-        if (res != NULL) break;
-      }
+      //if (s->flags & scheduler_flag_steal) {
+      //  int count = 0, qids[nr_queues];
+      //  for (int k = 0; k < nr_queues; k++)
+      //    if (s->queues[k].count > 0 || s->queues[k].count_incoming > 0) {
+      //      qids[count++] = k;
+      //    }
+      //  for (int k = 0; k < scheduler_maxsteal && count > 0; k++) {
+      //    const int ind = rand_r(&seed) % count;
+      //    TIMER_TIC
+      //    res = queue_gettask(&s->queues[qids[ind]], prev, 0);
+      //    TIMER_TOC(timer_qsteal);
+      //    if (res != NULL)
+      //      break;
+      //    else
+      //      qids[ind] = qids[--count];
+      //  }
+      // if (res != NULL) break;
+      //}
     }
 
 /* If we failed, take a short nap. */
@@ -2184,6 +2197,9 @@ void scheduler_init(struct scheduler *s, struct space *space, int nr_tasks,
   s->tasks_ind = NULL;
   pthread_key_create(&s->local_seed_pointer, NULL);
   scheduler_reset(s, nr_tasks);
+
+  /* XXX yes we did this... */
+  myscheduler = s;
 }
 
 /**
@@ -2295,4 +2311,116 @@ void scheduler_write_task_level(const struct scheduler *s) {
   /* clean up */
   fclose(f);
   free(count);
+}
+
+void scheduler_start_recv(struct scheduler *s, struct task *t) {
+
+#ifdef WITH_MPI
+
+  size_t size = 0;              /* Size in bytes. */
+  size_t count = 0;             /* Number of elements to receive */
+  MPI_Datatype type = MPI_BYTE; /* Type of the elements */
+  void *buff = NULL;            /* Buffer to accept elements */
+
+  /* Only do this once. */
+  if (atomic_swap(&t->recv_started, 1) == 1) return;
+
+  if (t->subtype == task_subtype_tend_part) {
+
+    count = size = t->ci->mpi.pcell_size * sizeof(struct pcell_step_hydro);
+    buff = t->buff = malloc(count);
+
+  } else if (t->subtype == task_subtype_tend_gpart) {
+
+    count = size = t->ci->mpi.pcell_size * sizeof(struct pcell_step_grav);
+    buff = t->buff = malloc(count);
+
+  } else if (t->subtype == task_subtype_tend_spart) {
+
+    count = size = t->ci->mpi.pcell_size * sizeof(struct pcell_step_stars);
+    buff = t->buff = malloc(count);
+
+  } else if (t->subtype == task_subtype_tend_bpart) {
+
+    count = size =
+        t->ci->mpi.pcell_size * sizeof(struct pcell_step_black_holes);
+    buff = t->buff = malloc(count);
+
+  } else if (t->subtype == task_subtype_part_swallow) {
+
+    count = size = t->ci->hydro.count * sizeof(struct black_holes_part_data);
+    buff = t->buff = malloc(count);
+
+  } else if (t->subtype == task_subtype_xv || t->subtype == task_subtype_rho ||
+             t->subtype == task_subtype_gradient) {
+
+    count = t->ci->hydro.count;
+    size = count * sizeof(struct part);
+    type = part_mpi_type;
+    buff = t->ci->hydro.parts;
+
+  } else if (t->subtype == task_subtype_gpart) {
+
+    count = t->ci->grav.count;
+    size = count * sizeof(struct gpart);
+    type = gpart_mpi_type;
+    buff = t->ci->grav.parts;
+
+  } else if (t->subtype == task_subtype_spart) {
+
+    count = t->ci->stars.count;
+    size = count * sizeof(struct spart);
+    type = spart_mpi_type;
+    buff = t->ci->stars.parts;
+
+  } else if (t->subtype == task_subtype_bpart_rho ||
+             t->subtype == task_subtype_bpart_swallow ||
+             t->subtype == task_subtype_bpart_feedback) {
+
+    count = t->ci->black_holes.count;
+    size = count * sizeof(struct bpart);
+    type = bpart_mpi_type;
+    buff = t->ci->black_holes.parts;
+
+  } else if (t->subtype == task_subtype_multipole) {
+
+    count = t->ci->mpi.pcell_size;
+    size = count * sizeof(struct gravity_tensors);
+    type = multipole_mpi_type;
+    buff = t->buff = malloc(size);
+
+  } else if (t->subtype == task_subtype_sf_counts) {
+
+    count = size = t->ci->mpi.pcell_size * sizeof(struct pcell_sf);
+    buff = t->buff = malloc(count);
+
+  } else if (t->subtype == task_subtype_testsome) {
+
+    /* Nothing to do. */
+
+  } else {
+    error("Unknown communication sub-type");
+  }
+
+  if (t->subtype != task_subtype_testsome) {
+    // XXX debugging.
+    if (t->req != MPI_REQUEST_NULL) error("MPI request is not MPI_REQUEST_NULL");
+    int err = MPI_Irecv(buff, count, type, t->ci->nodeID, t->flags,
+                        subtaskMPI_comms[t->subtype], &t->req);
+
+    if (err != MPI_SUCCESS) {
+      mpi_error(err, "Failed to emit irecv for particle data.");
+    }
+
+    /* Record request and associated task. */
+    int ind = atomic_inc(&s->nr_requests);
+    //message("index = %d for %s/%s size: %zd, from: %d, tag: %lld", ind,
+    //        taskID_names[t->type], subtaskID_names[t->subtype],
+    //        size, t->ci->nodeID, t->flags);
+    s->requests[ind] = t->req;
+    s->tasks_requests[ind] = t;
+  }
+
+#endif
+  return;
 }

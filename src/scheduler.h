@@ -54,6 +54,10 @@
 #define scheduler_flag_none 0
 #define scheduler_flag_steal (1 << 1)
 
+/* XXX hack reference to a scheduler... */
+extern struct scheduler *myscheduler;
+
+
 /* Data of a scheduler. */
 struct scheduler {
   /* Scheduler flags. */
@@ -69,7 +73,7 @@ struct scheduler {
   int nr_tasks, size, tasks_next;
 
   /* Total number of waiting tasks. */
-  int waiting;
+  volatile int waiting;
 
   /* The task array. */
   struct task *tasks;
@@ -108,6 +112,18 @@ struct scheduler {
 
   /* 'Pointer' to the seed for the random number generator */
   pthread_key_t local_seed_pointer;
+
+#ifdef WITH_MPI
+  /* Task that tests for acknowledged MPI recv requests. */
+  struct task *testsome;
+
+  /* Array of MPI recv requests and associated task indices. */
+  MPI_Request *requests;
+  int nr_requests;
+  int nr_size_requests;
+  struct task **tasks_requests;
+  int nr_recv_tasks;
+#endif
 };
 
 /* Inlined functions (for speed). */
@@ -172,6 +188,11 @@ scheduler_activate_recv(struct scheduler *s, struct link *link,
     error("Missing link to recv task.");
   }
   scheduler_activate(s, l->t);
+
+  /* Make sure to activate the testsome task. */
+#ifdef WITH_MPI
+  if (s->testsome->skip) scheduler_activate(s, s->testsome);
+#endif
   return l;
 }
 
@@ -201,5 +222,6 @@ void scheduler_clean(struct scheduler *s);
 void scheduler_free_tasks(struct scheduler *s);
 void scheduler_write_dependencies(struct scheduler *s, int verbose);
 void scheduler_write_task_level(const struct scheduler *s);
+void scheduler_start_recv(struct scheduler *s, struct task *t);
 
 #endif /* SWIFT_SCHEDULER_H */

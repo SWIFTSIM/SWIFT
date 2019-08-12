@@ -4804,20 +4804,25 @@ void *runner_main(void *data) {
           if (t->subtype == task_subtype_tend_part) {
             cell_unpack_end_step_hydro(ci, (struct pcell_step_hydro *)t->buff);
             free(t->buff);
+            t->buff = NULL;
           } else if (t->subtype == task_subtype_tend_gpart) {
             cell_unpack_end_step_grav(ci, (struct pcell_step_grav *)t->buff);
             free(t->buff);
+            t->buff = NULL;
           } else if (t->subtype == task_subtype_tend_spart) {
             cell_unpack_end_step_stars(ci, (struct pcell_step_stars *)t->buff);
             free(t->buff);
+            t->buff = NULL;
           } else if (t->subtype == task_subtype_tend_bpart) {
             cell_unpack_end_step_black_holes(
                 ci, (struct pcell_step_black_holes *)t->buff);
             free(t->buff);
+            t->buff = NULL;
           } else if (t->subtype == task_subtype_sf_counts) {
             cell_unpack_sf_counts(ci, (struct pcell_sf *)t->buff);
             cell_clear_stars_sort_flags(ci, /*clear_unused_flags=*/0);
             free(t->buff);
+            t->buff = NULL;
           } else if (t->subtype == task_subtype_xv) {
             runner_do_recv_part(r, ci, 1, 1);
           } else if (t->subtype == task_subtype_rho) {
@@ -4828,10 +4833,12 @@ void *runner_main(void *data) {
             cell_unpack_part_swallow(ci,
                                      (struct black_holes_part_data *)t->buff);
             free(t->buff);
+            t->buff = NULL;
           } else if (t->subtype == task_subtype_bpart_merger) {
             cell_unpack_bpart_swallow(ci,
                                       (struct black_holes_bpart_data *)t->buff);
             free(t->buff);
+            t->buff = NULL;
           } else if (t->subtype == task_subtype_limiter) {
             runner_do_recv_part(r, ci, 0, 1);
           } else if (t->subtype == task_subtype_gpart) {
@@ -4847,7 +4854,8 @@ void *runner_main(void *data) {
           } else if (t->subtype == task_subtype_multipole) {
             cell_unpack_multipoles(ci, (struct gravity_tensors *)t->buff);
             free(t->buff);
-          } else {
+            t->buff = NULL;
+          } else if (t->subtype != task_subtype_testsome) {
             error("Unknown/invalid task subtype (%d).", t->subtype);
           }
           break;
