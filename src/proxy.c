@@ -72,7 +72,8 @@ void proxy_tags_exchange(struct proxy *proxies, int num_proxies,
   /* Run through the cells and get the size of the tags that will be sent off.
    */
   int count_out = 0;
-  int offset_out[s->nr_cells];
+  int *offset_out = malloc(s->nr_cells * sizeof(int));
+  if (offset_out == NULL) error("Not enough memory to allocate offset_out array");
   for (int k = 0; k < s->nr_cells; k++) {
     offset_out[k] = count_out;
     if (s->cells_top[k].mpi.sendto) {
@@ -85,7 +86,9 @@ void proxy_tags_exchange(struct proxy *proxies, int num_proxies,
   
   /* Run through the proxies and get the count of incoming tags. */
   int count_in = 0;
-  int offset_in[s->nr_cells];
+  int *offset_in = malloc(s->nr_cells * sizeof(int));
+  if (offset_in == NULL) error("Not enough memory to allocate offset_in array");
+
   for (int k = 0; k < num_proxies; k++) {
     for (int j = 0; j < proxies[k].nr_cells_in; j++) {
       offset_in[proxies[k].cells_in[j] - s->cells_top] = count_in;
@@ -399,7 +402,9 @@ void proxy_cells_exchange(struct proxy *proxies, int num_proxies,
                  s->nr_cells, sizeof(struct cell), /*chunk=*/0,
                  /*extra_data=*/NULL);
   int count_out = 0;
-  int offset[s->nr_cells];
+  int *offset = malloc(s->nr_cells * sizeof(int));
+  if (offset == NULL) error("Not enough memory to allocate offset array");
+  
   for (int k = 0; k < s->nr_cells; k++) {
     offset[k] = count_out;
     if (s->cells_top[k].mpi.sendto) count_out += s->cells_top[k].mpi.pcell_size;

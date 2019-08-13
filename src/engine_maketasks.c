@@ -3059,10 +3059,6 @@ void engine_maketasks(struct engine *e) {
 
   tic2 = getticks();
 
-  char dumpfile[40];
-  snprintf(dumpfile, 40, "memuse_report-rank%d-linked-gravity-tasks.dat", engine_rank);
-  memuse_log_dump(dumpfile);
-
 #ifdef WITH_MPI
   /* Add the communication tasks if MPI is being used. */
   if (e->policy & engine_policy_mpi) {
@@ -3104,10 +3100,6 @@ void engine_maketasks(struct engine *e) {
     if (e->verbose)
       message("Creating send tasks took %.3f %s.",
               clocks_from_ticks(getticks() - tic2), clocks_getunit());
-
-    char dumpfile2[40];
-    snprintf(dumpfile2, 40, "memuse_report-rank%d-after-send-tasks.dat", engine_rank);
-    memuse_log_dump(dumpfile2);
 
     tic2 = getticks();
 
