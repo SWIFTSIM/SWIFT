@@ -72,7 +72,7 @@ __attribute__((always_inline)) static INLINE float pressure_floor_get_physical_p
                 p->pressure_floor_data.sigma2 * cosmo->a * cosmo->a;
   floor *= rho * hydro_one_over_gamma;
 
-  return fmax(pressure, floor);
+  return fmaxf(pressure, floor);
 }
 
 /**
@@ -94,7 +94,7 @@ __attribute__((always_inline)) static INLINE float pressure_floor_get_comoving_p
                 p->pressure_floor_data.sigma2;
   floor *= rho * hydro_one_over_gamma;
 
-  return fmax(pressure, floor);
+  return fmaxf(pressure, floor);
 }
 
 /**
