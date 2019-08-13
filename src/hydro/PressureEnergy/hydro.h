@@ -239,10 +239,8 @@ __attribute__((always_inline)) INLINE static float
 hydro_get_physical_soundspeed(const struct part *restrict p,
                               const struct cosmology *cosmo) {
 
-  const float phys_rho = hydro_get_physical_density(p, cosmo);
-
-  return pressure_floor_get_physical_pressure(
-      p, phys_rho, cosmo->a_factor_sound_speed * p->force.soundspeed, cosmo);
+  /* The pressure floor is already included in p->force.soundspeed */
+  return cosmo->a_factor_sound_speed * p->force.soundspeed;
 }
 
 /**
