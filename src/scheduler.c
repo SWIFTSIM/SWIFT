@@ -2265,3 +2265,61 @@ void scheduler_write_task_level(const struct scheduler *s) {
   fclose(f);
   free(count);
 }
+/**
+ * @brief dump all the active queues of all the known schedulers into a file.
+ *
+ * @param e the #scheduler
+ */
+void scheduler_dump_queues(struct engine *e) {
+
+  struct scheduler *s = &e->sched;
+
+#ifdef WITH_MPI
+
+  /* Make sure output file is empty, only on one rank. */
+  char dumpfile[35];
+  snprintf(dumpfile, sizeof(dumpfile), "queue_dump_MPI-step%d.dat", e->step);
+  FILE *file_thread;
+  if (engine_rank == 0) {
+    file_thread = fopen(dumpfile, "w");
+    fprintf(file_thread, "# rank queue index type subtype waits\n");
+    fclose(file_thread);
+  }
+  MPI_Barrier(MPI_COMM_WORLD);
+
+  for (int i = 0; i < e->nr_nodes; i++) {
+
+    /* Rank 0 decides the index of the writing node, this happens
+     * one-by-one. */
+    int kk = i;
+    MPI_Bcast(&kk, 1, MPI_INT, 0, MPI_COMM_WORLD);
+
+    if (i == engine_rank) {
+
+      /* Open file and position at end. */
+      file_thread = fopen(dumpfile, "a");
+
+      for (int l = 0; l < s->nr_queues; l++) {
+        queue_dump(engine_rank, l, file_thread, &s->queues[l]);
+      }
+      fclose(file_thread);
+    }
+
+    /* And we wait for all to synchronize. */
+    MPI_Barrier(MPI_COMM_WORLD);
+  }
+
+#else
+
+  /* Non-MPI, so just a single schedulers worth of queues to dump. */
+  char dumpfile[32];
+  snprintf(dumpfile, sizeof(dumpfile), "queue_dump-step%d.dat", e->step);
+  FILE *file_thread;
+  file_thread = fopen(dumpfile, "w");
+  fprintf(file_thread, "# rank queue index type subtype waits\n");
+  for (int l = 0; l < s->nr_queues; l++) {
+    queue_dump(engine_rank, l, file_thread, &s->queues[l]);
+  }
+  fclose(file_thread);
+#endif  // WITH_MPI
+}

@@ -4886,6 +4886,7 @@ static void *engine_dumper_poll(void *p) {
 #endif
 
       /* Add more interesting diagnostics. */
+      scheduler_dump_queues(e);
 
       /* Delete the file. */
       unlink(".dump");
