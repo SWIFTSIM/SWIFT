@@ -95,7 +95,7 @@ runner_iact_nonsym_pressure_floor(float r2, const float *dx, float hi, float hj,
   const float r = sqrtf(r2);
 
   /* Compute the velocity dispersion */
-  const float sigma2 = norm_v2 + H^2 * r2 + 2 * H * r * norm_v;
+  const float sigma2 = norm_v2 + H * H * r2 + 2 * H * r * norm_v;
 
   /* Compute the velocity dispersion */
   pi->pressure_floor_data.sigma2 += sigma2 * wi * hydro_get_mass(pj);

@@ -25,7 +25,7 @@
  */
 struct pressure_floor_part_data {
   /*! Estimation of local turbulence (squared)
-   * Units: lenght^2 / time^2 (physical) */
+   * Units: lenght^2 / time^2 (comoving) */
   float sigma2;
 };
 

@@ -223,7 +223,7 @@ hydro_get_comoving_soundspeed(const struct part *restrict p) {
   /* Compute the sound speed -- see theory section for justification */
   /* IDEAL GAS ONLY -- P-U does not work with generic EoS. */
   const float comoving_pressure =
-      pressure_floor_get_pressure(p, p->rho, p->pressure_bar);
+      pressure_floor_get_comoving_pressure(p, p->rho, p->pressure_bar);
   const float square_rooted = sqrtf(hydro_gamma * comoving_pressure / p->rho);
 
   return square_rooted;
@@ -241,8 +241,8 @@ hydro_get_physical_soundspeed(const struct part *restrict p,
 
   const float phys_rho = hydro_get_physical_density(p, cosmo);
 
-  return pressure_floor_get_pressure(
-      p, phys_rho, cosmo->a_factor_sound_speed * p->force.soundspeed);
+  return pressure_floor_get_physical_pressure(
+      p, phys_rho, cosmo->a_factor_sound_speed * p->force.soundspeed, cosmo);
 }
 
 /**
@@ -648,7 +648,7 @@ __attribute__((always_inline)) INLINE static void hydro_prepare_force(
 
   /* Get the pressures */
   const float comoving_pressure_with_floor =
-      pressure_floor_get_pressure(p, p->rho, p->pressure_bar);
+      pressure_floor_get_comoving_pressure(p, p->rho, p->pressure_bar);
 
   /* Update variables. */
   p->force.f = grad_h_term;
@@ -769,7 +769,7 @@ __attribute__((always_inline)) INLINE static void hydro_predict_extra(
 
   /* update the required variables */
   const float comoving_pressure_with_floor =
-      pressure_floor_get_pressure(p, p->rho, p->pressure_bar);
+      pressure_floor_get_comoving_pressure(p, p->rho, p->pressure_bar);
   p->force.pressure_bar_with_floor = comoving_pressure_with_floor;
 }
 

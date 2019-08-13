@@ -42,18 +42,32 @@ struct pressure_floor_properties {};
  *
  * Note that the particle is not updated!!
  *
- * The inputs can be either in physical or comoving coordinates (the output is
- * in the same coordinates).
+ * @param p The #part.
+ * @param rho The physical or comoving density.
+ * @param pressure The physical pressure without any pressure floor.
+ *
+ * @return The physical pressure with the floor.
+ */
+static INLINE float pressure_floor_get_physical_pressure(const struct part* p,
+							 const float rho,
+							 const float pressure) {
+  return pressure;
+}
+
+/**
+ * @brief Compute the comoving pressure floor of a given #part.
+ *
+ * Note that the particle is not updated!!
  *
  * @param p The #part.
  * @param rho The physical or comoving density.
- * @param pressure The physical or comoving pressure without any pressure floor.
+ * @param pressure The comoving pressure without any pressure floor.
  *
- * @return The physical or comoving pressure with the floor.
+ * @return The comoving pressure with the floor.
  */
-static INLINE float pressure_floor_get_pressure(const struct part* p,
-                                                const float rho,
-                                                const float pressure) {
+static INLINE float pressure_floor_get_comoving_pressure(const struct part* p,
+							 const float rho,
+							 const float pressure) {
   return pressure;
 }
 
