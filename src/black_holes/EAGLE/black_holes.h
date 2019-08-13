@@ -24,6 +24,7 @@
 #include "black_holes_struct.h"
 #include "cosmology.h"
 #include "dimension.h"
+#include "gravity.h"
 #include "kernel_hydro.h"
 #include "minmax.h"
 #include "physical_constants.h"
@@ -59,6 +60,8 @@ __attribute__((always_inline)) INLINE static void black_holes_first_init_bpart(
   bp->total_accreted_mass = 0.f;
   bp->accretion_rate = 0.f;
   bp->formation_time = -1.f;
+  bp->cumulative_number_seeds = 1;
+  bp->number_of_mergers = 0;
 }
 
 /**
@@ -87,16 +90,43 @@ __attribute__((always_inline)) INLINE static void black_holes_init_bpart(
   bp->circular_velocity_gas[2] = 0.f;
   bp->ngb_mass = 0.f;
   bp->num_ngbs = 0;
+  bp->reposition.x[0] = -FLT_MAX;
+  bp->reposition.x[1] = -FLT_MAX;
+  bp->reposition.x[2] = -FLT_MAX;
+  bp->reposition.min_potential = FLT_MAX;
 }
 
 /**
  * @brief Predict additional particle fields forward in time when drifting
  *
+ * The fields do not get predicted but we move the BH to its new position
+ * if a new one was calculated in the repositioning loop.
+ *
  * @param bp The particle
  * @param dt_drift The drift time-step for positions.
  */
 __attribute__((always_inline)) INLINE static void black_holes_predict_extra(
-    struct bpart* restrict bp, float dt_drift) {}
+    struct bpart* restrict bp, float dt_drift) {
+
+  /* Are we doing some repositioning? */
+  if (bp->reposition.min_potential != FLT_MAX) {
+
+#ifdef SWIFT_DEBUG_CHECKS
+    if (bp->reposition.x[0] == -FLT_MAX || bp->reposition.x[1] == -FLT_MAX ||
+        bp->reposition.x[2] == -FLT_MAX) {
+      error("Something went wrong with the new repositioning position");
+    }
+#endif
+
+    bp->x[0] = bp->reposition.x[0];
+    bp->x[1] = bp->reposition.x[1];
+    bp->x[2] = bp->reposition.x[2];
+
+    bp->gpart->x[0] = bp->reposition.x[0];
+    bp->gpart->x[1] = bp->reposition.x[1];
+    bp->gpart->x[2] = bp->reposition.x[2];
+  }
+}
 
 /**
  * @brief Sets the values to be predicted in the drifts to their values at a
@@ -235,38 +265,45 @@ __attribute__((always_inline)) INLINE static void black_holes_swallow_part(
 }
 
 /**
- * @brief Update a given #part's BH data field to mark the particle has
- * not yet been swallowed.
+ * @brief Update the properties of a black hole particles by swallowing
+ * a BH particle.
  *
- * @param p_data The #part's #black_holes_part_data structure.
+ * @param bpi The #bpart to update.
+ * @param bpj The #bpart that is swallowed.
+ * @param cosmo The current cosmological model.
  */
-__attribute__((always_inline)) INLINE static void
-black_holes_mark_as_not_swallowed(struct black_holes_part_data* p_data) {
+__attribute__((always_inline)) INLINE static void black_holes_swallow_bpart(
+    struct bpart* bpi, const struct bpart* bpj, const struct cosmology* cosmo) {
 
-  p_data->swallow_id = -1;
-}
+  /* Get the current dynamical masses */
+  const float bpi_dyn_mass = bpi->mass;
+  const float bpj_dyn_mass = bpj->mass;
 
-/**
- * @brief Update a given #part's BH data field to mark the particle has
- * having been been swallowed.
- *
- * @param p_data The #part's #black_holes_part_data structure.
- */
-__attribute__((always_inline)) INLINE static void black_holes_mark_as_swallowed(
-    struct black_holes_part_data* p_data) {
+  /* Increase the masses of the BH. */
+  bpi->mass += bpj->mass;
+  bpi->gpart->mass += bpj->mass;
+  bpi->subgrid_mass += bpj->subgrid_mass;
 
-  p_data->swallow_id = -2;
-}
+  /* Update the BH momentum */
+  const float BH_mom[3] = {bpi_dyn_mass * bpi->v[0] + bpj_dyn_mass * bpj->v[0],
+                           bpi_dyn_mass * bpi->v[1] + bpj_dyn_mass * bpj->v[1],
+                           bpi_dyn_mass * bpi->v[2] + bpj_dyn_mass * bpj->v[2]};
 
-/**
- * @brief Return the ID of the BH that should swallow this #part.
- *
- * @param p_data The #part's #black_holes_part_data structure.
- */
-__attribute__((always_inline)) INLINE static long long
-black_holes_get_swallow_id(struct black_holes_part_data* p_data) {
+  bpi->v[0] = BH_mom[0] / bpi->mass;
+  bpi->v[1] = BH_mom[1] / bpi->mass;
+  bpi->v[2] = BH_mom[2] / bpi->mass;
+  bpi->gpart->v_full[0] = bpi->v[0];
+  bpi->gpart->v_full[1] = bpi->v[1];
+  bpi->gpart->v_full[2] = bpi->v[2];
 
-  return p_data->swallow_id;
+  /* Update the energy reservoir */
+  bpi->energy_reservoir += bpj->energy_reservoir;
+
+  /* Add up all the BH seeds */
+  bpi->cumulative_number_seeds += bpj->cumulative_number_seeds;
+
+  /* We had another merger */
+  bpi->number_of_mergers++;
 }
 
 /**
@@ -422,6 +459,35 @@ __attribute__((always_inline)) INLINE static void black_holes_prepare_feedback(
 }
 
 /**
+ * @brief Finish the calculation of the new BH position.
+ *
+ * Here, we check that the BH should indeed be moved in the next drift.
+ *
+ * @param bp The black hole particle.
+ * @param props The properties of the black hole scheme.
+ * @param constants The physical constants (in internal units).
+ * @param cosmo The cosmological model.
+ */
+__attribute__((always_inline)) INLINE static void black_holes_end_reposition(
+    struct bpart* restrict bp, const struct black_holes_props* props,
+    const struct phys_const* constants, const struct cosmology* cosmo) {
+
+  const float potential = gravity_get_comoving_potential(bp->gpart);
+
+  /* Is the potential lower (i.e. the BH is at the bottom already)
+   * OR is the BH massive enough that we don't reposition? */
+  if (potential < bp->reposition.min_potential ||
+      bp->subgrid_mass > props->max_reposition_mass) {
+
+    /* No need to reposition */
+    bp->reposition.min_potential = FLT_MAX;
+    bp->reposition.x[0] = -FLT_MAX;
+    bp->reposition.x[1] = -FLT_MAX;
+    bp->reposition.x[2] = -FLT_MAX;
+  }
+}
+
+/**
  * @brief Reset acceleration fields of a particle
  *
  * This is the equivalent of hydro_reset_acceleration.
@@ -469,6 +535,8 @@ INLINE static void black_holes_create_from_gas(
 
   /* We haven't accreted anything yet */
   bp->total_accreted_mass = 0.f;
+  bp->cumulative_number_seeds = 1;
+  bp->number_of_mergers = 0;
 
   /* Initial metal masses */
   const float gas_mass = hydro_get_mass(p);
@@ -494,6 +562,8 @@ INLINE static void black_holes_create_from_gas(
 
   /* First initialisation */
   black_holes_init_bpart(bp);
+
+  black_holes_mark_bpart_as_not_swallowed(&bp->merger_data);
 }
 
 #endif /* SWIFT_EAGLE_BLACK_HOLES_H */

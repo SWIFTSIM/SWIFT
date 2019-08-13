@@ -88,8 +88,9 @@ enum task_types {
   task_type_bh_in,  /* Implicit */
   task_type_bh_out, /* Implicit */
   task_type_bh_density_ghost,
-  task_type_bh_swallow_ghost1,
+  task_type_bh_swallow_ghost1, /* Implicit */
   task_type_bh_swallow_ghost2,
+  task_type_bh_swallow_ghost3, /* Implicit */
   task_type_fof_self,
   task_type_fof_pair,
   task_type_count
@@ -113,6 +114,7 @@ enum task_subtypes {
   task_subtype_xv,
   task_subtype_rho,
   task_subtype_part_swallow,
+  task_subtype_bpart_merger,
   task_subtype_gpart,
   task_subtype_multipole,
   task_subtype_spart,
@@ -124,7 +126,8 @@ enum task_subtypes {
   task_subtype_bpart_feedback,
   task_subtype_bh_density,
   task_subtype_bh_swallow,
-  task_subtype_do_swallow,
+  task_subtype_do_gas_swallow,
+  task_subtype_do_bh_swallow,
   task_subtype_bh_feedback,
   task_subtype_count
 } __attribute__((packed));

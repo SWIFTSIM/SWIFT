@@ -27,7 +27,8 @@
 #include "part_type.h"
 #include "units.h"
 
-#define FIELD_BUFFER_SIZE 200
+#define FIELD_BUFFER_SIZE 64
+#define DESCRIPTION_BUFFER_SIZE 256
 #define PARTICLE_GROUP_BUFFER_SIZE 50
 #define FILENAME_BUFFER_SIZE 150
 #define IO_BUFFER_ALIGNMENT 1024

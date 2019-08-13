@@ -238,9 +238,11 @@ void space_rebuild_recycle_mapper(void *map_data, int num_elements,
     c->black_holes.density_ghost = NULL;
     c->black_holes.swallow_ghost[0] = NULL;
     c->black_holes.swallow_ghost[1] = NULL;
+    c->black_holes.swallow_ghost[2] = NULL;
     c->black_holes.density = NULL;
     c->black_holes.swallow = NULL;
-    c->black_holes.do_swallow = NULL;
+    c->black_holes.do_gas_swallow = NULL;
+    c->black_holes.do_bh_swallow = NULL;
     c->black_holes.feedback = NULL;
     c->kick1 = NULL;
     c->kick2 = NULL;
@@ -3945,7 +3947,7 @@ void space_synchronize_particle_positions_mapper(void *map_data, int nr_gparts,
 
     else if (gp->type == swift_type_gas) {
 
-      /* Get it's gassy friend */
+      /* Get its gassy friend */
       struct part *p = &s->parts[-gp->id_or_neg_offset];
       struct xpart *xp = &s->xparts[-gp->id_or_neg_offset];
 
@@ -3963,7 +3965,7 @@ void space_synchronize_particle_positions_mapper(void *map_data, int nr_gparts,
 
     else if (gp->type == swift_type_stars) {
 
-      /* Get it's stellar friend */
+      /* Get its stellar friend */
       struct spart *sp = &s->sparts[-gp->id_or_neg_offset];
 
       /* Synchronize positions */
@@ -3976,7 +3978,7 @@ void space_synchronize_particle_positions_mapper(void *map_data, int nr_gparts,
 
     else if (gp->type == swift_type_black_hole) {
 
-      /* Get it's black hole friend */
+      /* Get its black hole friend */
       struct bpart *bp = &s->bparts[-gp->id_or_neg_offset];
 
       /* Synchronize positions */
@@ -4091,7 +4093,7 @@ void space_first_init_parts_mapper(void *restrict map_data, int count,
                              cool_func);
 
     /* And the black hole markers */
-    black_holes_mark_as_not_swallowed(&p[k].black_holes_data);
+    black_holes_mark_part_as_not_swallowed(&p[k].black_holes_data);
 
 #ifdef SWIFT_DEBUG_CHECKS
     /* Check part->gpart->part linkeage. */
@@ -4319,6 +4321,9 @@ void space_first_init_bparts_mapper(void *restrict map_data, int count,
 
     black_holes_first_init_bpart(&bp[k], props);
 
+    /* And the black hole merger markers */
+    black_holes_mark_bpart_as_not_swallowed(&bp[k].merger_data);
+
 #ifdef SWIFT_DEBUG_CHECKS
     if (bp[k].gpart && bp[k].gpart->id_or_neg_offset != -(k + delta))
       error("Invalid gpart -> bpart link");
@@ -4360,7 +4365,7 @@ void space_init_parts_mapper(void *restrict map_data, int count,
   for (int k = 0; k < count; k++) {
     hydro_init_part(&parts[k], hs);
     chemistry_init_part(&parts[k], e->chemistry);
-    star_formation_init_part(&parts[k], e->star_formation);
+    star_formation_init_part(&parts[k], &xparts[k], e->star_formation);
     tracers_after_init(&parts[k], &xparts[k], e->internal_units,
                        e->physical_constants, with_cosmology, e->cosmology,
                        e->hydro_properties, e->cooling_func, e->time);
@@ -4627,48 +4632,6 @@ void space_init(struct space *s, struct swift_params *params,
         "Scheduler:max_top_level_cells is too small %d, needs to be at "
         "least %d",
         maxtcells, needtcells);
-
-  /* Get the constants for the scheduler */
-  space_maxsize = parser_get_opt_param_int(params, "Scheduler:cell_max_size",
-                                           space_maxsize_default);
-  space_subsize_pair_hydro =
-      parser_get_opt_param_int(params, "Scheduler:cell_sub_size_pair_hydro",
-                               space_subsize_pair_hydro_default);
-  space_subsize_self_hydro =
-      parser_get_opt_param_int(params, "Scheduler:cell_sub_size_self_hydro",
-                               space_subsize_self_hydro_default);
-  space_subsize_pair_stars =
-      parser_get_opt_param_int(params, "Scheduler:cell_sub_size_pair_stars",
-                               space_subsize_pair_stars_default);
-  space_subsize_self_stars =
-      parser_get_opt_param_int(params, "Scheduler:cell_sub_size_self_stars",
-                               space_subsize_self_stars_default);
-  space_subsize_pair_grav =
-      parser_get_opt_param_int(params, "Scheduler:cell_sub_size_pair_grav",
-                               space_subsize_pair_grav_default);
-  space_subsize_self_grav =
-      parser_get_opt_param_int(params, "Scheduler:cell_sub_size_self_grav",
-                               space_subsize_self_grav_default);
-  space_splitsize = parser_get_opt_param_int(
-      params, "Scheduler:cell_split_size", space_splitsize_default);
-  space_subdepth_diff_grav =
-      parser_get_opt_param_int(params, "Scheduler:cell_subdepth_diff_grav",
-                               space_subdepth_diff_grav_default);
-  space_extra_parts = parser_get_opt_param_int(
-      params, "Scheduler:cell_extra_parts", space_extra_parts_default);
-  space_extra_sparts = parser_get_opt_param_int(
-      params, "Scheduler:cell_extra_sparts", space_extra_sparts_default);
-  space_extra_gparts = parser_get_opt_param_int(
-      params, "Scheduler:cell_extra_gparts", space_extra_gparts_default);
-  space_extra_bparts = parser_get_opt_param_int(
-      params, "Scheduler:cell_extra_bparts", space_extra_bparts_default);
-
-  engine_max_parts_per_ghost =
-      parser_get_opt_param_int(params, "Scheduler:engine_max_parts_per_ghost",
-                               engine_max_parts_per_ghost_default);
-  engine_max_sparts_per_ghost =
-      parser_get_opt_param_int(params, "Scheduler:engine_max_sparts_per_ghost",
-                               engine_max_sparts_per_ghost_default);
 
   if (verbose) {
     message("max_size set to %d split_size set to %d", space_maxsize,
@@ -5231,8 +5194,8 @@ void space_check_limiter(struct space *s) {
 /**
  * @brief #threadpool mapper function for the swallow debugging check
  */
-void space_check_swallow_mapper(void *map_data, int nr_parts,
-                                void *extra_data) {
+void space_check_part_swallow_mapper(void *map_data, int nr_parts,
+                                     void *extra_data) {
 #ifdef SWIFT_DEBUG_CHECKS
   /* Unpack the data */
   struct part *restrict parts = (struct part *)map_data;
@@ -5243,10 +5206,35 @@ void space_check_swallow_mapper(void *map_data, int nr_parts,
     if (parts[k].time_bin == time_bin_inhibited) continue;
 
     const long long swallow_id =
-        black_holes_get_swallow_id(&parts[k].black_holes_data);
+        black_holes_get_part_swallow_id(&parts[k].black_holes_data);
 
     if (swallow_id != -1)
       error("Particle has not been swallowed! id=%lld", parts[k].id);
+  }
+#else
+  error("Calling debugging code without debugging flag activated.");
+#endif
+}
+
+/**
+ * @brief #threadpool mapper function for the swallow debugging check
+ */
+void space_check_bpart_swallow_mapper(void *map_data, int nr_bparts,
+                                      void *extra_data) {
+#ifdef SWIFT_DEBUG_CHECKS
+  /* Unpack the data */
+  struct bpart *restrict bparts = (struct bpart *)map_data;
+
+  /* Verify that all particles have been swallowed or are untouched */
+  for (int k = 0; k < nr_bparts; k++) {
+
+    if (bparts[k].time_bin == time_bin_inhibited) continue;
+
+    const long long swallow_id =
+        black_holes_get_bpart_swallow_id(&bparts[k].merger_data);
+
+    if (swallow_id != -1)
+      error("BH particle has not been swallowed! id=%lld", bparts[k].id);
   }
 #else
   error("Calling debugging code without debugging flag activated.");
@@ -5264,8 +5252,11 @@ void space_check_swallow_mapper(void *map_data, int nr_parts,
 void space_check_swallow(struct space *s) {
 #ifdef SWIFT_DEBUG_CHECKS
 
-  threadpool_map(&s->e->threadpool, space_check_swallow_mapper, s->parts,
-                 s->nr_parts, sizeof(struct part), 1000, NULL);
+  threadpool_map(&s->e->threadpool, space_check_part_swallow_mapper, s->parts,
+                 s->nr_parts, sizeof(struct part), 0, NULL);
+
+  threadpool_map(&s->e->threadpool, space_check_bpart_swallow_mapper, s->bparts,
+                 s->nr_bparts, sizeof(struct bpart), 0, NULL);
 #else
   error("Calling debugging code without debugging flag activated.");
 #endif

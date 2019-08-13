@@ -687,9 +687,11 @@ star_formation_first_init_part(const struct phys_const* restrict phys_const,
  * density loop for the EAGLE star formation model.
  *
  * @param p Pointer to the particle data.
+ * @param xp Pointer to the extended particle data.
  * @param data The global star_formation information.
  */
 __attribute__((always_inline)) INLINE static void star_formation_init_part(
-    struct part* restrict p, const struct star_formation* data) {}
+    struct part* restrict p, struct xpart* restrict xp,
+    const struct star_formation* data) {}
 
 #endif /* SWIFT_EAGLE_STAR_FORMATION_H */

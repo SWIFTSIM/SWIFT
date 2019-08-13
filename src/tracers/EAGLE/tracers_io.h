@@ -54,20 +54,23 @@ __attribute__((always_inline)) INLINE static int tracers_write_particles(
     const struct part* parts, const struct xpart* xparts, struct io_props* list,
     const int with_cosmology) {
 
-  list[0] = io_make_output_field("Maximal Temperature", FLOAT, 1,
-                                 UNIT_CONV_TEMPERATURE, xparts,
-                                 tracers_data.maximum_temperature);
+  list[0] = io_make_output_field(
+      "MaximalTemperatures", FLOAT, 1, UNIT_CONV_TEMPERATURE, 0.f, xparts,
+      tracers_data.maximum_temperature,
+      "Maximal temperatures ever reached by the particles");
 
   if (with_cosmology) {
     list[1] = io_make_output_field(
-        "Maximal Temperature scale-factor", FLOAT, 1, UNIT_CONV_NO_UNITS,
-        xparts, tracers_data.maximum_temperature_scale_factor);
+        "MaximalTemperatureScaleFactors", FLOAT, 1, UNIT_CONV_NO_UNITS, 0.f,
+        xparts, tracers_data.maximum_temperature_scale_factor,
+        "Scale-factors at which the maximal temperature was reached");
 
   } else {
 
-    list[1] = io_make_output_field("Maximal Temperature time", FLOAT, 1,
-                                   UNIT_CONV_NO_UNITS, xparts,
-                                   tracers_data.maximum_temperature_time);
+    list[1] = io_make_output_field(
+        "MaximalTemperatureTimes", FLOAT, 1, UNIT_CONV_NO_UNITS, 0.f, xparts,
+        tracers_data.maximum_temperature_time,
+        "Times at which the maximal temperature was reached");
   }
 
   return 2;
@@ -77,22 +80,27 @@ __attribute__((always_inline)) INLINE static int tracers_write_sparticles(
     const struct spart* sparts, struct io_props* list,
     const int with_cosmology) {
 
-  list[0] = io_make_output_field("Maximal Temperature", FLOAT, 1,
-                                 UNIT_CONV_TEMPERATURE, sparts,
-                                 tracers_data.maximum_temperature);
+  list[0] = io_make_output_field(
+      "MaximalTemperatures", FLOAT, 1, UNIT_CONV_TEMPERATURE, 0.f, sparts,
+      tracers_data.maximum_temperature,
+      "Maximal temperatures ever reached by the particles before they got "
+      "converted to stars");
 
   if (with_cosmology) {
     list[1] = io_make_output_field(
-        "Maximal Temperature scale-factor", FLOAT, 1, UNIT_CONV_NO_UNITS,
-        sparts, tracers_data.maximum_temperature_scale_factor);
+        "MaximalTemperatureScaleFactors", FLOAT, 1, UNIT_CONV_NO_UNITS, 0.f,
+        sparts, tracers_data.maximum_temperature_scale_factor,
+        "Scale-factors at which the maximal temperature was reached");
 
   } else {
 
-    list[1] = io_make_output_field("Maximal Temperature time", FLOAT, 1,
-                                   UNIT_CONV_NO_UNITS, sparts,
-                                   tracers_data.maximum_temperature_time);
+    list[1] = io_make_output_field(
+        "MaximalTemperatureTimes", FLOAT, 1, UNIT_CONV_NO_UNITS, 0.f, sparts,
+        tracers_data.maximum_temperature_time,
+        "Times at which the maximal temperature was reached");
   }
 
   return 2;
 }
+
 #endif /* SWIFT_TRACERS_EAGLE_IO_H */

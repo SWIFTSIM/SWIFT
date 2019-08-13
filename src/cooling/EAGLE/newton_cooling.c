@@ -214,7 +214,7 @@ __attribute__((always_inline)) INLINE double eagle_convert_u_to_temp(
  */
 INLINE static double eagle_metal_cooling_rate(
     double log10_u_cgs, double redshift, double n_H_cgs,
-    const float solar_ratio[chemistry_element_count + 2], int n_H_index,
+    const float solar_ratio[eagle_cooling_N_abundances], int n_H_index,
     float d_n_H, int He_index, float d_He,
     const struct cooling_function_data *restrict cooling, double *dlambda_du,
     double *element_lambda) {
@@ -569,7 +569,7 @@ INLINE static double eagle_metal_cooling_rate(
    */
   INLINE static double eagle_cooling_rate(
       double log_u_cgs, double redshift, double n_H_cgs,
-      const float abundance_ratio[chemistry_element_count + 2], int n_H_index,
+      const float abundance_ratio[eagle_cooling_N_abundances], int n_H_index,
       float d_n_H, int He_index, float d_He,
       const struct cooling_function_data *restrict cooling,
       double *dLambdaNet_du) {
@@ -609,7 +609,7 @@ INLINE static double eagle_metal_cooling_rate(
                     const struct cosmology *restrict cosmo,
                     const struct cooling_function_data *restrict cooling,
                     const struct phys_const *restrict phys_const,
-                    const float abundance_ratio[chemistry_element_count + 2],
+                    const float abundance_ratio[eagle_cooling_N_abundances],
                     float dt, int *bisection_flag) {
 
     double logu, logu_old;

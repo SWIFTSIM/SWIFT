@@ -43,16 +43,13 @@
  * We also re-order the elements such that they match the order of the
  * tables. This is [H, He, C, N, O, Ne, Mg, Si, S, Ca, Fe].
  *
- * The solar abundances table (from the cooling struct) is arranged as
- * [H, He, C, N, O, Ne, Mg, Si, S, Ca, Fe].
- *
  * @param p Pointer to #part struct.
  * @param cooling #cooling_function_data struct.
  * @param ratio_solar (return) Array of ratios to solar abundances.
  */
 __attribute__((always_inline)) INLINE void abundance_ratio_to_solar(
     const struct part *p, const struct cooling_function_data *cooling,
-    float ratio_solar[chemistry_element_count + 2]) {
+    float ratio_solar[eagle_cooling_N_abundances]) {
 
   ratio_solar[0] =
       p->chemistry_data.smoothed_metal_mass_fraction[chemistry_element_H] *
@@ -313,7 +310,7 @@ __attribute__((always_inline)) INLINE double eagle_Compton_cooling_rate(
  */
 INLINE static double eagle_metal_cooling_rate(
     const double log10_u_cgs, const double redshift, const double n_H_cgs,
-    const float solar_ratio[chemistry_element_count + 2], const int n_H_index,
+    const float solar_ratio[eagle_cooling_N_abundances], const int n_H_index,
     const float d_n_H, const int He_index, const float d_He,
     const struct cooling_function_data *cooling, double *element_lambda) {
 
@@ -537,7 +534,7 @@ INLINE static double eagle_metal_cooling_rate(
  */
 INLINE static double eagle_cooling_rate(
     const double log10_u_cgs, const double redshift, const double n_H_cgs,
-    const float abundance_ratio[chemistry_element_count + 2],
+    const float abundance_ratio[eagle_cooling_N_abundances],
     const int n_H_index, const float d_n_H, const int He_index,
     const float d_He, const struct cooling_function_data *cooling) {
 

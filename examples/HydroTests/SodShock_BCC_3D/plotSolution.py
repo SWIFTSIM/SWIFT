@@ -35,7 +35,7 @@ from analyticSolution import analytic
 
 snap = int(sys.argv[1])
 
-sim = load(f"sodshock_{snap:04d}.hdf5")
+sim = load(f"sodShock_{snap:04d}.hdf5")
 
 # Set up plotting stuff
 try:
