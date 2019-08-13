@@ -123,6 +123,7 @@ struct scheduler {
   int nr_size_requests;
   struct task **tasks_requests;
   int nr_recv_tasks;
+  swift_lock_type lock_requests;
 #endif
 };
 

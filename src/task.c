@@ -544,12 +544,15 @@ int task_lock(struct task *t) {
 #ifdef WITH_MPI
       if (t->subtype == task_subtype_testsome) {
 
-          /* Check for any messages that could be received. */
+        /* Check for any messages that could be received. */
         struct scheduler *s = myscheduler;
-        int outcount = 0;
-        int indices[s->nr_requests];
 
-        err = MPI_Testsome(s->nr_requests, s->requests, &outcount, indices,
+        /* Don't want this to change when MPI is using it. */
+        int nr_requests = s->nr_requests;
+        int outcount = 0;
+        int indices[nr_requests];
+
+        err = MPI_Testsome(nr_requests, s->requests, &outcount, indices,
                            MPI_STATUSES_IGNORE);
         if (err != MPI_SUCCESS) {
             mpi_error(err, "Failed to test for recv messages");
@@ -561,11 +564,11 @@ int task_lock(struct task *t) {
           s->tasks_requests[indices[k]]->recv_ready = 1;
         }
 
-        /* XXX could remove from requests list? */
+        /* XXX could remove from requests list? Would need a lock. */
 
         /* Decrement total recvs we've seen. Careful with special values. */
         if (outcount > 0) {
-            s->nr_recv_tasks -= outcount;
+            atomic_sub(&s->nr_recv_tasks, outcount);
             return 1;
         }
         return 0;

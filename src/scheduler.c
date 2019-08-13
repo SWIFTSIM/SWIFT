@@ -1507,10 +1507,14 @@ void scheduler_reweight(struct scheduler *s, int verbose) {
           cost = 2e9;
         break;
       case task_type_recv:
-        if (count_i < 1e5)
-          cost = 5.f * (wscale * count_i) * count_i;
-        else
-          cost = 1e9;
+        if (t->subtype == task_subtype_testsome) {
+           cost = 1.0f;
+        } else {
+          if (count_i < 1e5)
+            cost = 5.f * (wscale * count_i) * count_i;
+          else
+            cost = 1e9;
+        }
         break;
       default:
         cost = 0;
@@ -1582,8 +1586,6 @@ void scheduler_enqueue_mapper(void *map_data, int num_elements,
       /* Recv tasks are not enqueued until marked as ready by the testsome
        * tasks, but we do need to start the MPI recv for them for that to be
        * possible, so do that if needed. */
-      //if (t->type == task_type_recv && t->subtype != task_subtype_testsome
-      //    && t->wait == 1) {
       if (t->type == task_type_recv && t->subtype != task_subtype_testsome) {
         scheduler_start_recv(s, t);
       }
@@ -1968,6 +1970,11 @@ struct task *scheduler_done(struct scheduler *s, struct task *t) {
   /* Release whatever locks this task held. */
   if (!t->implicit) task_unlock(t);
 
+#ifdef WITH_MPI
+  /* Keep against changes between now and use. */
+  int nr_recv_tasks = s->nr_recv_tasks;
+#endif
+
   /* Loop through the dependencies and add them to a queue if
      they are ready. */
   for (int k = 0; k < t->nr_unlock_tasks; k++) {
@@ -1999,7 +2006,15 @@ struct task *scheduler_done(struct scheduler *s, struct task *t) {
   if (!t->implicit) {
     t->toc = getticks();
     pthread_mutex_lock(&s->sleep_mutex);
-    atomic_dec(&s->waiting);
+
+#ifdef WITH_MPI
+    /* Need to defer this as we may requeue, which could leave waiting at 0
+     * for a while... */
+    if (t->subtype != task_subtype_testsome) {
+      atomic_dec(&s->waiting);
+    }
+#endif
+
     pthread_cond_broadcast(&s->sleep_cond);
     pthread_mutex_unlock(&s->sleep_mutex);
   }
@@ -2011,12 +2026,19 @@ struct task *scheduler_done(struct scheduler *s, struct task *t) {
   if (t->subtype == task_subtype_testsome) {
       /* The testsome task may have more work to do. We compare the number of
        * processed recv's to the total non-skipped ones in the task lists. */
-      if (s->nr_recv_tasks > 0) {
+      if (nr_recv_tasks > 0) {
           t->skip = 0;
           scheduler_enqueue(s, t);
       } else {
-          message("testsome task complete this step");
+          message("testsome task complete this step (%d/%d)", nr_recv_tasks,
+                  s->nr_recv_tasks);
       }
+
+      /* Now remove the old waiting count. */
+      pthread_mutex_lock(&s->sleep_mutex);
+      atomic_dec(&s->waiting);
+      pthread_cond_broadcast(&s->sleep_cond);
+      pthread_mutex_unlock(&s->sleep_mutex);
   }
 #endif
 
@@ -2197,6 +2219,11 @@ void scheduler_init(struct scheduler *s, struct space *space, int nr_tasks,
   s->tasks_ind = NULL;
   pthread_key_create(&s->local_seed_pointer, NULL);
   scheduler_reset(s, nr_tasks);
+
+#ifdef WITH_MPI
+  /* Init the requests lock. */
+  lock_init(&s->lock_requests);
+#endif
 
   /* XXX yes we did this... */
   myscheduler = s;
