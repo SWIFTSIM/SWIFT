@@ -55,6 +55,7 @@
 #include "map.h"
 #include "memuse.h"
 #include "mesh_gravity.h"
+#include "minmax.h"
 #include "multipole.h"
 #include "outputlist.h"
 #include "parallel_io.h"
