@@ -260,28 +260,25 @@ int main(int argc, char* argv[]) {
     const double std_check = 5.;
 
     /* The mean is expected to deviate a maximum of std_check * std / sqrt(N) */
-    const double tolmean = std_check/sqrtf(12.f * count);
+    const double tolmean = std_check / sqrtf(12.f * count);
 
-    /* the variance is expected to deviate a maximum of std_check * variance 
+    /* the variance is expected to deviate a maximum of std_check * variance
      * * sqrt(2/(n-1)) */
-    const double tolvar = std_check * sqrtf(2.f / (12.f*((double)count-1.f)));
+    const double tolvar =
+        std_check * sqrtf(2.f / (12.f * ((double)count - 1.f)));
 
-    /* The correlation coefficient is expected to deviate sqrt(1-R^2) 
+    /* The correlation coefficient is expected to deviate sqrt(1-R^2)
      * / sqrt(n-2), in our case <R> = 0, so we get 1/sqrt(n-2) */
-    const double tolcorr = std_check/sqrtf((double)count -2.);
+    const double tolcorr = std_check / sqrtf((double)count - 2.);
 
-    if ((fabs(mean - 0.5) > tolmean) ||
-        (fabs(var - 1. / 12.) > tolvar) ||
+    if ((fabs(mean - 0.5) > tolmean) || (fabs(var - 1. / 12.) > tolvar) ||
         (fabs(correlation) > tolcorr) || (fabs(correlationID) > tolcorr) ||
-        (fabs(meanID - 0.5) > tolmean) ||
-        (fabs(varID - 1. / 12.) > tolvar) ||
+        (fabs(meanID - 0.5) > tolmean) || (fabs(varID - 1. / 12.) > tolvar) ||
         (fabs(corr_star_sf) > tolcorr) || (fabs(corr_star_se) > tolcorr) ||
         (fabs(corr_star_bh) > tolcorr) || (fabs(corr_sf_se) > tolcorr) ||
         (fabs(corr_sf_bh) > tolcorr) || (fabs(corr_se_bh) > tolcorr) ||
-        (fabs(mean_sf - 0.5) > tolmean) ||
-        (fabs(mean_se - 0.5) > tolmean) ||
-        (fabs(mean_bh - 0.5) > tolmean) ||
-        (fabs(var_sf - 1. / 12.) > tolvar) ||
+        (fabs(mean_sf - 0.5) > tolmean) || (fabs(mean_se - 0.5) > tolmean) ||
+        (fabs(mean_bh - 0.5) > tolmean) || (fabs(var_sf - 1. / 12.) > tolvar) ||
         (fabs(var_se - 1. / 12.) > tolvar) ||
         (fabs(var_bh - 1. / 12.) > tolvar)) {
       message("Test failed!");
@@ -290,10 +287,10 @@ int main(int argc, char* argv[]) {
               var, correlation);
       message("Expected:  count=%d mean=%f var=%f, correlation=%f", count, 0.5f,
               1. / 12., 0.);
-      message("Max difference:           mean=%f var=%f, correlation=%f", 
+      message("Max difference:           mean=%f var=%f, correlation=%f",
               tolmean, tolvar, tolcorr);
-      message("Difference:               mean=%f var=%f, correlation=%f", 
-              fabs(mean-0.5f), fabs(var-1./12.),fabs(correlation));
+      message("Difference:               mean=%f var=%f, correlation=%f",
+              fabs(mean - 0.5f), fabs(var - 1. / 12.), fabs(correlation));
       message("ID part");
       message(
           "Result:    count=%d mean=%f var=%f"
@@ -306,7 +303,7 @@ int main(int argc, char* argv[]) {
       message("Max difference:           mean=%f var=%f, correlation=%f",
               tolmean, tolvar, tolcorr);
       message("Difference:               mean=%f var=%f, correlation=%f",
-              fabs(meanID-0.5f), fabs(varID-1./12.),fabs(correlation));
+              fabs(meanID - 0.5f), fabs(varID - 1. / 12.), fabs(correlation));
       message("Different physical processes:");
       message(
           "Means:    stars=%f stellar feedback=%f stellar "
@@ -318,11 +315,13 @@ int main(int argc, char* argv[]) {
           .5f, .5f, .5f, .5f);
       message(
           "Max diff: stars=%f stellar feedback=%f stellar "
-          " enrichment=%f black holes=%f", tolmean, tolmean, tolmean, tolmean);
+          " enrichment=%f black holes=%f",
+          tolmean, tolmean, tolmean, tolmean);
       message(
           "Diff:     stars=%f stellar feedback=%f stellar "
-          " enrichment=%f black holes=%f", fabs(mean-.5f), fabs(mean_sf-.5f),
-          fabs(mean_se-.5f), fabs(mean_bh-.5f));
+          " enrichment=%f black holes=%f",
+          fabs(mean - .5f), fabs(mean_sf - .5f), fabs(mean_se - .5f),
+          fabs(mean_bh - .5f));
       message(" ");
       message(
           "Var:      stars=%f stellar feedback=%f stellar "
@@ -334,11 +333,13 @@ int main(int argc, char* argv[]) {
           1. / 12., 1. / 12., 1 / 12., 1. / 12.);
       message(
           "Max diff: stars=%f stellar feedback=%f stellar "
-          " enrichment=%f black holes=%f", tolvar, tolvar, tolvar, tolvar);
+          " enrichment=%f black holes=%f",
+          tolvar, tolvar, tolvar, tolvar);
       message(
           "Diff:     stars=%f stellar feedback=%f stellar "
-          " enrichment=%f black holes=%f", fabs(var-1./12.),
-          fabs(var_sf-1./12.), fabs(var_se-1./12.), fabs(var_bh-1./12.));
+          " enrichment=%f black holes=%f",
+          fabs(var - 1. / 12.), fabs(var_sf - 1. / 12.),
+          fabs(var_se - 1. / 12.), fabs(var_bh - 1. / 12.));
       message(" ");
       message(
           "Correlation: stars-sf=%f stars-se=%f stars-bh=%f "
@@ -351,13 +352,13 @@ int main(int argc, char* argv[]) {
           0., 0., 0., 0., 0., 0.);
       message(
           "Max diff:    stars-sf=%f stars-se=%f stars-bh=%f "
-          "sf-se=%f sf-bh=%f se-bh=%f", tolcorr, tolcorr, tolcorr, tolcorr,
-          tolcorr, tolcorr);
+          "sf-se=%f sf-bh=%f se-bh=%f",
+          tolcorr, tolcorr, tolcorr, tolcorr, tolcorr, tolcorr);
       message(
           "Diff:        stars-sf=%f stars-se=%f stars-bh=%f "
-          "sf-se=%f sf-bh=%f se-bh=%f", fabs(corr_star_sf), fabs(corr_star_se),
-          fabs(corr_star_bh), fabs(corr_sf_se), fabs(corr_sf_bh), 
-          fabs(corr_se_bh));
+          "sf-se=%f sf-bh=%f se-bh=%f",
+          fabs(corr_star_sf), fabs(corr_star_se), fabs(corr_star_bh),
+          fabs(corr_sf_se), fabs(corr_sf_bh), fabs(corr_se_bh));
       return 1;
     }
   }
