@@ -194,7 +194,7 @@ void part_verify_links(struct part *parts, struct gpart *gparts,
 
       /* Check that it's not linked */
       if (gparts[k].id_or_neg_offset <= 0)
-        error("DM gpart particle linked to something !");
+        error("Background DM gpart particle linked to something !");
     }
 
     /* We have a gas particle */
