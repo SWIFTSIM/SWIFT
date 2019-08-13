@@ -116,20 +116,26 @@ int main(int argc, char* argv[]) {
     int std_expected_result[6];
 
     /* Calculate the allowed standard error deviation the maximum of:
-     * 1. the standard error of the expected number doing sqrt(N_expected) 
+     * 1. the standard error of the expected number doing sqrt(N_expected)
      * 2. The standard error of the counted number doing sqrt(N_count)
      * 3. 1 to prevent low number statistics to crash for 1 while expected
-     *    close to zero. 
+     *    close to zero.
      *
      * 1 and 2 are for large numbers essentially the same but for small numbers
      * it becomes imporatant (e.g. count=6 expected=.9, allowed 5+.9 so 6
      * fails, but sqrt(6) ~ 2.5 so it should be fine) */
-    std_expected_result[0] = (int)max3(sqrt(expected_result[0]), 1, sqrt(count[0]));
-    std_expected_result[1] = (int)max3(sqrt(expected_result[1]), 1, sqrt(count[1]));
-    std_expected_result[2] = (int)max3(sqrt(expected_result[2]), 1, sqrt(count[2]));
-    std_expected_result[3] = (int)max3(sqrt(expected_result[3]), 1, sqrt(count[3]));
-    std_expected_result[4] = (int)max3(sqrt(expected_result[4]), 1, sqrt(count[4]));
-    std_expected_result[5] = (int)max3(sqrt(expected_result[5]), 1, sqrt(count[5]));
+    std_expected_result[0] =
+        (int)max3(sqrt(expected_result[0]), 1, sqrt(count[0]));
+    std_expected_result[1] =
+        (int)max3(sqrt(expected_result[1]), 1, sqrt(count[1]));
+    std_expected_result[2] =
+        (int)max3(sqrt(expected_result[2]), 1, sqrt(count[2]));
+    std_expected_result[3] =
+        (int)max3(sqrt(expected_result[3]), 1, sqrt(count[3]));
+    std_expected_result[4] =
+        (int)max3(sqrt(expected_result[4]), 1, sqrt(count[4]));
+    std_expected_result[5] =
+        (int)max3(sqrt(expected_result[5]), 1, sqrt(count[5]));
 
     /* We want 5 sigma (can be changed if necessary) */
     const int numb_sigma = 5;
