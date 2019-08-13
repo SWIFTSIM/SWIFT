@@ -53,11 +53,13 @@ __attribute__((always_inline)) INLINE static void runner_iact_pressure_floor(
   /* Delta v */
   float dv[3] = {pi->v[0] - pj->v[0], pi->v[1] - pj->v[1], pi->v[2] - pj->v[2]};
 
-  /* Norms at power 2 */
+  /* Norms */
   const float norm_v2 = dv[0] * dv[0] + dv[1] * dv[1] + dv[2] * dv[2];
+  const float norm_v = sqrtf(norm_v2);
+  const float r = sqrtf(r2);
 
   /* Compute the velocity dispersion */
-  const float sigma2 = norm_v2 + H * r2;
+  const float sigma2 = norm_v2 + H * H * r2 + 2 * H * r * norm_v;
 
   /* Compute the velocity dispersion */
   pi->pressure_floor_data.sigma2 += sigma2 * wi * hydro_get_mass(pj);

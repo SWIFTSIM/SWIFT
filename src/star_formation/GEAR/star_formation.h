@@ -70,7 +70,7 @@ INLINE static int star_formation_is_star_forming(
   }
 
   /* Get the required variables */
-  const float sigma2 = p->pressure_floor_data.sigma2;
+  const float sigma2 = p->pressure_floor_data.sigma2 * cosmo->a * cosmo->a;
   const float n_jeans_2_3 = starform->n_jeans_2_3;
 
   const float h = p->h;
