@@ -544,34 +544,38 @@ int task_lock(struct task *t) {
 #ifdef WITH_MPI
       if (t->subtype == task_subtype_testsome) {
 
-        /* Check for any messages that could be received. */
-        struct scheduler *s = myscheduler;
+        /* Check for any messages that could be received.
+         * Don't want any of this to change when MPI is using it,
+         * but lets not block. */
+        struct scheduler *s = scheduler_scheduler;
+        if (lock_trylock(&s->lock_requests) == 0) {
+          int nr_requests = s->nr_requests;
+          int outcount = 0;
+          int indices[nr_requests];
 
-        /* Don't want this to change when MPI is using it. */
-        int nr_requests = s->nr_requests;
-        int outcount = 0;
-        int indices[nr_requests];
-
-        err = MPI_Testsome(nr_requests, s->requests, &outcount, indices,
-                           MPI_STATUSES_IGNORE);
-        if (err != MPI_SUCCESS) {
+          err = MPI_Testsome(nr_requests, s->requests, &outcount, indices,
+                             MPI_STATUSES_IGNORE);
+          if (err != MPI_SUCCESS) {
             mpi_error(err, "Failed to test for recv messages");
-        }
+          }
 
-        /* Mark any released tasks as ready. */
-        for (int k = 0; k < outcount; k++) {
-          s->tasks_requests[indices[k]]->req = MPI_REQUEST_NULL;
-          s->tasks_requests[indices[k]]->recv_ready = 1;
-        }
+          /* Mark any released tasks as ready. */
+          for (int k = 0; k < outcount; k++) {
+            s->tasks_requests[indices[k]]->req = MPI_REQUEST_NULL;
+            s->tasks_requests[indices[k]]->recv_ready = 1;
+          }
 
-        /* XXX could remove from requests list? Would need a lock. */
+          /* XXX could remove from requests list?. */
 
-        /* Decrement total recvs we've seen. Careful with special values. */
-        if (outcount > 0) {
+          /* Decrement total recvs we've seen. Careful with special values. */
+          if (outcount > 0) {
             atomic_sub(&s->nr_recv_tasks, outcount);
-            return 1;
+            res = 1;
+          }
+          if (lock_unlock(&s->lock_requests) != 0)
+            error("Failed to lock requests");
         }
-        return 0;
+        return res;
       }
 
       /* Actual recv that is ready to run. */
@@ -593,7 +597,7 @@ int task_lock(struct task *t) {
             "%s).",
             taskID_names[t->type], subtaskID_names[t->subtype], t->flags, buff);
       }
-      //if (res)
+      // if (res)
       //    message("sent: %s/%s to %d", taskID_names[t->type],
       //            subtaskID_names[t->subtype], t->cj->nodeID);
       return res;
@@ -1251,7 +1255,7 @@ void task_dump_active(struct engine *e) {
 
           /* Get destination rank of MPI requests. */
           int paired = (t->cj != NULL);
-          int otherrank = (t->ci == NULL) ? -1: t->ci->nodeID;
+          int otherrank = (t->ci == NULL) ? -1 : t->ci->nodeID;
           if (paired) otherrank = t->cj->nodeID;
 
           fprintf(file_thread, "%i %i %s %s %i %i %lli %lli %i %i %i %i %lli\n",

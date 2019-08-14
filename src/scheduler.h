@@ -55,8 +55,7 @@
 #define scheduler_flag_steal (1 << 1)
 
 /* XXX hack reference to a scheduler... */
-extern struct scheduler *myscheduler;
-
+extern struct scheduler *scheduler_scheduler;
 
 /* Data of a scheduler. */
 struct scheduler {

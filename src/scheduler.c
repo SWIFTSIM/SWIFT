@@ -56,7 +56,7 @@
 #include "version.h"
 
 /* XXX hack reference to the scheduler instance. */
-struct scheduler *myscheduler;
+struct scheduler *scheduler_scheduler;
 
 /**
  * @brief Re-set the list of active tasks.
@@ -1508,7 +1508,7 @@ void scheduler_reweight(struct scheduler *s, int verbose) {
         break;
       case task_type_recv:
         if (t->subtype == task_subtype_testsome) {
-           cost = 1.0f;
+          cost = 1.0f;
         } else {
           if (count_i < 1e5)
             cost = 5.f * (wscale * count_i) * count_i;
@@ -1603,8 +1603,8 @@ void scheduler_enqueue_mapper(void *map_data, int num_elements,
 void scheduler_start(struct scheduler *s) {
 
 #ifdef WITH_MPI
-    s->nr_recv_tasks = 0;
-    s->nr_requests = 0;
+  s->nr_recv_tasks = 0;
+  s->nr_requests = 0;
 #endif
 
   /* Reset all task timers. */
@@ -1620,7 +1620,8 @@ void scheduler_start(struct scheduler *s) {
     s->tasks[i].recv_ready = 0;
     s->tasks[i].recv_started = 0;
     if (!s->tasks[i].skip && s->tasks[i].type == task_type_recv &&
-        s->tasks[i].subtype != task_subtype_testsome) s->nr_recv_tasks++;
+        s->tasks[i].subtype != task_subtype_testsome)
+      s->nr_recv_tasks++;
 #endif
   }
 
@@ -1629,13 +1630,13 @@ void scheduler_start(struct scheduler *s) {
 
   /* Initialise the requests storage. */
   if (s->nr_size_requests < s->nr_recv_tasks) {
-      swift_free("requests", s->requests);
-      swift_free("ind_requests", s->tasks_requests);
-      s->requests =
-          (MPI_Request *)swift_malloc("requests", sizeof(MPI_Request) * s->nr_recv_tasks);
-      s->tasks_requests = (struct task **)
-          swift_malloc("tasks_requests", sizeof(struct task *) * s->nr_recv_tasks);
-      s->nr_size_requests = s->nr_recv_tasks;
+    swift_free("requests", s->requests);
+    swift_free("ind_requests", s->tasks_requests);
+    s->requests = (MPI_Request *)swift_malloc(
+        "requests", sizeof(MPI_Request) * s->nr_recv_tasks);
+    s->tasks_requests = (struct task **)swift_malloc(
+        "tasks_requests", sizeof(struct task *) * s->nr_recv_tasks);
+    s->nr_size_requests = s->nr_recv_tasks;
   }
 #endif
 
@@ -1678,18 +1679,19 @@ void scheduler_enqueue(struct scheduler *s, struct task *t) {
   if (t->skip) return;
 
 #ifdef WITH_MPI
-  /* Recv tasks are not enqueued immediately, we need to make sure that they
-   * are ready first (using the testsome task). We do, however, need to start
-   * the MPI recv for them for that to be possible, so do that if needed. */
-  //if (t->type == task_type_recv && t->subtype != task_subtype_testsome) {
-  //    if (!t->recv_started) {
-  //      message("Trying to enqueue recv task %s/%s %d", taskID_names[t->type],
-  //              subtaskID_names[t->subtype], t->recv_ready);
-  //      scheduler_start_recv(s, t);
-  //      return;
-  //    }
-  //    message("Ready to run");
-  //}
+    /* Recv tasks are not enqueued immediately, we need to make sure that they
+     * are ready first (using the testsome task). We do, however, need to start
+     * the MPI recv for them for that to be possible, so do that if needed. */
+    // if (t->type == task_type_recv && t->subtype != task_subtype_testsome) {
+    //    if (!t->recv_started) {
+    //      message("Trying to enqueue recv task %s/%s %d",
+    //      taskID_names[t->type],
+    //              subtaskID_names[t->subtype], t->recv_ready);
+    //      scheduler_start_recv(s, t);
+    //      return;
+    //    }
+    //    message("Ready to run");
+    //}
 #endif
 
   /* If this is an implicit task, just pretend it's done. */
@@ -2024,21 +2026,21 @@ struct task *scheduler_done(struct scheduler *s, struct task *t) {
 
 #ifdef WITH_MPI
   if (t->subtype == task_subtype_testsome) {
-      /* The testsome task may have more work to do. We compare the number of
-       * processed recv's to the total non-skipped ones in the task lists. */
-      if (nr_recv_tasks > 0) {
-          t->skip = 0;
-          scheduler_enqueue(s, t);
-      } else {
-          message("testsome task complete this step (%d/%d)", nr_recv_tasks,
-                  s->nr_recv_tasks);
-      }
+    /* The testsome task may have more work to do. We compare the number of
+     * processed recv's to the total non-skipped ones in the task lists. */
+    if (nr_recv_tasks > 0) {
+      t->skip = 0;
+      scheduler_enqueue(s, t);
+    } else {
+      message("testsome task complete this step (%d/%d)", nr_recv_tasks,
+              s->nr_recv_tasks);
+    }
 
-      /* Now remove the old waiting count. */
-      pthread_mutex_lock(&s->sleep_mutex);
-      atomic_dec(&s->waiting);
-      pthread_cond_broadcast(&s->sleep_cond);
-      pthread_mutex_unlock(&s->sleep_mutex);
+    /* Now remove the old waiting count. */
+    pthread_mutex_lock(&s->sleep_mutex);
+    atomic_dec(&s->waiting);
+    pthread_cond_broadcast(&s->sleep_cond);
+    pthread_mutex_unlock(&s->sleep_mutex);
   }
 #endif
 
@@ -2098,7 +2100,7 @@ struct task *scheduler_gettask(struct scheduler *s, int qid,
                                const struct task *prev) {
   struct task *res = NULL;
   const int nr_queues = s->nr_queues;
-  //unsigned int seed = qid;
+  // unsigned int seed = qid;
 
   /* Check qid. */
   if (qid >= nr_queues || qid < 0) error("Bad queue ID.");
@@ -2118,7 +2120,7 @@ struct task *scheduler_gettask(struct scheduler *s, int qid,
       }
 
       /* If unsuccessful, try stealing from the other queues. */
-      //if (s->flags & scheduler_flag_steal) {
+      // if (s->flags & scheduler_flag_steal) {
       //  int count = 0, qids[nr_queues];
       //  for (int k = 0; k < nr_queues; k++)
       //    if (s->queues[k].count > 0 || s->queues[k].count_incoming > 0) {
@@ -2180,8 +2182,14 @@ struct task *scheduler_gettask(struct scheduler *s, int qid,
 void scheduler_init(struct scheduler *s, struct space *space, int nr_tasks,
                     int nr_queues, unsigned int flags, int nodeID,
                     struct threadpool *tp) {
-  /* Init the lock. */
+  /* Init the locks. */
   lock_init(&s->lock);
+#ifdef WITH_MPI
+  lock_init(&s->lock_requests);
+#endif
+
+  /* Globally accessible pointer. XXX yes we did this... */
+  scheduler_scheduler = s;
 
   /* Allocate the queues. */
   if (swift_memalign("queues", (void **)&s->queues, queue_struct_align,
@@ -2219,14 +2227,6 @@ void scheduler_init(struct scheduler *s, struct space *space, int nr_tasks,
   s->tasks_ind = NULL;
   pthread_key_create(&s->local_seed_pointer, NULL);
   scheduler_reset(s, nr_tasks);
-
-#ifdef WITH_MPI
-  /* Init the requests lock. */
-  lock_init(&s->lock_requests);
-#endif
-
-  /* XXX yes we did this... */
-  myscheduler = s;
 }
 
 /**
@@ -2431,7 +2431,8 @@ void scheduler_start_recv(struct scheduler *s, struct task *t) {
 
   if (t->subtype != task_subtype_testsome) {
     // XXX debugging.
-    if (t->req != MPI_REQUEST_NULL) error("MPI request is not MPI_REQUEST_NULL");
+    if (t->req != MPI_REQUEST_NULL)
+      error("MPI request is not MPI_REQUEST_NULL");
     int err = MPI_Irecv(buff, count, type, t->ci->nodeID, t->flags,
                         subtaskMPI_comms[t->subtype], &t->req);
 
@@ -2439,13 +2440,16 @@ void scheduler_start_recv(struct scheduler *s, struct task *t) {
       mpi_error(err, "Failed to emit irecv for particle data.");
     }
 
-    /* Record request and associated task. */
+    /* Record request and associated task. Need to lock this down so we don't
+     * have an invalid extra request for a while. */
+    if (lock_lock(&s->lock_requests) != 0) error("Failed to lock requests");
     int ind = atomic_inc(&s->nr_requests);
-    //message("index = %d for %s/%s size: %zd, from: %d, tag: %lld", ind,
+    // message("index = %d for %s/%s size: %zd, from: %d, tag: %lld", ind,
     //        taskID_names[t->type], subtaskID_names[t->subtype],
     //        size, t->ci->nodeID, t->flags);
     s->requests[ind] = t->req;
     s->tasks_requests[ind] = t;
+    if (lock_unlock(&s->lock_requests) != 0) error("Failed to unlock requests");
   }
 
 #endif
@@ -2473,7 +2477,6 @@ void scheduler_dump_queues(struct engine *e) {
     fclose(file_thread);
   }
   MPI_Barrier(MPI_COMM_WORLD);
-
 
   for (int i = 0; i < e->nr_nodes; i++) {
 

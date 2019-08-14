@@ -302,7 +302,6 @@ void queue_clean(struct queue *q) {
   free(q->tid_incoming);
 }
 
-
 /**
  * @brief Dump a formatted list of tasks in the queue to the given file stream.
  *

@@ -3190,9 +3190,8 @@ void engine_maketasks(struct engine *e) {
     }
 
     /* Create the testsome task. */
-    sched->testsome = scheduler_addtask(sched, task_type_recv,
-                                        task_subtype_testsome,
-                                        0, 0, NULL, NULL);
+    sched->testsome = scheduler_addtask(
+        sched, task_type_recv, task_subtype_testsome, 0, 0, NULL, NULL);
 
     threadpool_map(&e->threadpool, engine_addtasks_recv_mapper,
                    recv_cell_type_pairs, num_recv_cells,
