@@ -1215,7 +1215,6 @@ void runner_do_star_formation(struct runner *r, struct cell *c, int timer) {
   if (with_feedback && (c == c->top) &&
       (current_stars_count != c->stars.count)) {
     cell_set_star_resort_flag(c);
-    cell_clear_stars_sort_flags(c, /*clear_unused_flags=*/0);
   }
 
   if (timer) TIMER_TOC(timer_do_star_formation);

@@ -5202,10 +5202,17 @@ void cell_recursively_shift_sparts(struct cell *c,
   /* When directly above the leaf with the new particle: increase the particle
    * count */
   /* When after the leaf with the new particle: shift by one position */
-  if (main_branch)
+  if (main_branch) {
     c->stars.count++;
-  else
+
+    /* Indicate that the cell is not sorted and cancel the pointer sorting
+     * arrays. */
+    c->stars.sorted = 0;
+    cell_free_stars_sorts(c);
+
+  } else {
     c->stars.parts++;
+  }
 }
 
 /**
