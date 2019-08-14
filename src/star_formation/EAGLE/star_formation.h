@@ -281,6 +281,7 @@ INLINE static void star_formation_compute_SFR(
   }
 
   /* Hydrogen number density of this particle */
+  const double physical_density = hydro_get_physical_density(p, cosmo);
   const float* const metal_fraction =
       chemistry_get_metal_mass_fraction_for_star_formation(p);
   const double X_H = metal_fraction[chemistry_element_H];
