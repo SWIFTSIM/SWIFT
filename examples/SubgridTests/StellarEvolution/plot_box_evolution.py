@@ -112,16 +112,16 @@ for i in range(n_snapshots):
 	star_masses = sim["/PartType4/Masses"][:]
 	swift_box_star_mass[i] = np.sum(star_masses)
 
-	metallicities = sim["/PartType0/Metallicity"][:]
+	metallicities = sim["/PartType0/Metallicities"][:]
 	swift_box_gas_metal_mass[i] = np.sum(metallicities * masses)
 
-	element_abundances = sim["/PartType0/ElementAbundance"][:][:]
+	element_abundances = sim["/PartType0/ElementMassFractions"][:][:]
 	for j in range(n_elements):
 		swift_element_mass[i,j] = np.sum(element_abundances[:,j] * masses)
 
         v = sim["/PartType0/Velocities"][:,:]
         v2 = v[:,0]**2 + v[:,1]**2 + v[:,2]**2
-        u = sim["/PartType0/InternalEnergy"][:]
+        u = sim["/PartType0/InternalEnergies"][:]
         swift_internal_energy[i] = np.sum(masses * u)
         swift_kinetic_energy[i] = np.sum(0.5 * masses * v2)
         swift_total_energy[i] = swift_kinetic_energy[i] + swift_internal_energy[i]

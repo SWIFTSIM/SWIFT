@@ -109,19 +109,19 @@ for i in range(119):
     z[i] = sim["/Cosmology"].attrs["Redshift"][0]
     a[i] = sim["/Cosmology"].attrs["Scale-factor"][0]
     
-    S = sim["/PartType0/Entropy"][:]
+    S = sim["/PartType0/Entropies"][:]
     S_mean[i] = np.mean(S)
     S_std[i] = np.std(S)
     
-    u = sim["/PartType0/InternalEnergy"][:]
+    u = sim["/PartType0/InternalEnergies"][:]
     u_mean[i] = np.mean(u)
     u_std[i] = np.std(u)
 
-    P = sim["/PartType0/Pressure"][:]
+    P = sim["/PartType0/Pressures"][:]
     P_mean[i] = np.mean(P)
     P_std[i] = np.std(P)
 
-    rho = sim["/PartType0/Density"][:]
+    rho = sim["/PartType0/Densities"][:]
     rho_mean[i] = np.mean(rho)
     rho_std[i] = np.std(rho)
 

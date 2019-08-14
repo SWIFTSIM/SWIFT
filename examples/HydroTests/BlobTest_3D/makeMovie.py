@@ -24,7 +24,7 @@ resolution = 1024
 snapshot_name = "blob"
 cmap = "Spectral_r"
 text_args = dict(color="black")
-# plot = "pressure"
+# plot = "pressures"
 # name = "Pressure $P$"
 plot = "density"
 name = "Fluid Density $\\rho$"

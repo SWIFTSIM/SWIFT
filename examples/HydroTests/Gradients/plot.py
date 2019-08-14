@@ -30,7 +30,7 @@ inputfile = sys.argv[1]
 outputfile = "gradients_{0}.png".format(sys.argv[2])
 
 f = h5py.File(inputfile, "r")
-rho = np.array(f["/PartType0/Density"])
+rho = np.array(f["/PartType0/Densities"])
 gradrho = np.array(f["/PartType0/GradDensity"])
 coords = np.array(f["/PartType0/Coordinates"])
 

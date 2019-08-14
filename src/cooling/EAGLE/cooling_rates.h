@@ -43,61 +43,57 @@
  * We also re-order the elements such that they match the order of the
  * tables. This is [H, He, C, N, O, Ne, Mg, Si, S, Ca, Fe].
  *
+ * The solar abundances table (from the cooling struct) is arranged as
+ * [H, He, C, N, O, Ne, Mg, Si, S, Ca, Fe].
+ *
  * @param p Pointer to #part struct.
  * @param cooling #cooling_function_data struct.
  * @param ratio_solar (return) Array of ratios to solar abundances.
  */
-__attribute__((always_inline)) INLINE void abundance_ratio_to_solar(
+__attribute__((always_inline)) INLINE static void abundance_ratio_to_solar(
     const struct part *p, const struct cooling_function_data *cooling,
     float ratio_solar[eagle_cooling_N_abundances]) {
 
-  ratio_solar[0] =
-      p->chemistry_data.smoothed_metal_mass_fraction[chemistry_element_H] *
-      cooling->SolarAbundances_inv[0 /* H */];
+  /* Get the individual metal mass fractions from the particle */
+  const float *const metal_fraction =
+      chemistry_get_metal_mass_fraction_for_cooling(p);
 
-  ratio_solar[1] =
-      p->chemistry_data.smoothed_metal_mass_fraction[chemistry_element_He] *
-      cooling->SolarAbundances_inv[1 /* He */];
+  ratio_solar[0] = metal_fraction[chemistry_element_H] *
+                   cooling->SolarAbundances_inv[0 /* H */];
 
-  ratio_solar[2] =
-      p->chemistry_data.smoothed_metal_mass_fraction[chemistry_element_C] *
-      cooling->SolarAbundances_inv[2 /* C */];
+  ratio_solar[1] = metal_fraction[chemistry_element_He] *
+                   cooling->SolarAbundances_inv[1 /* He */];
 
-  ratio_solar[3] =
-      p->chemistry_data.smoothed_metal_mass_fraction[chemistry_element_N] *
-      cooling->SolarAbundances_inv[3 /* N */];
+  ratio_solar[2] = metal_fraction[chemistry_element_C] *
+                   cooling->SolarAbundances_inv[2 /* C */];
 
-  ratio_solar[4] =
-      p->chemistry_data.smoothed_metal_mass_fraction[chemistry_element_O] *
-      cooling->SolarAbundances_inv[4 /* O */];
+  ratio_solar[3] = metal_fraction[chemistry_element_N] *
+                   cooling->SolarAbundances_inv[3 /* N */];
 
-  ratio_solar[5] =
-      p->chemistry_data.smoothed_metal_mass_fraction[chemistry_element_Ne] *
-      cooling->SolarAbundances_inv[5 /* Ne */];
+  ratio_solar[4] = metal_fraction[chemistry_element_O] *
+                   cooling->SolarAbundances_inv[4 /* O */];
 
-  ratio_solar[6] =
-      p->chemistry_data.smoothed_metal_mass_fraction[chemistry_element_Mg] *
-      cooling->SolarAbundances_inv[6 /* Mg */];
+  ratio_solar[5] = metal_fraction[chemistry_element_Ne] *
+                   cooling->SolarAbundances_inv[5 /* Ne */];
 
-  ratio_solar[7] =
-      p->chemistry_data.smoothed_metal_mass_fraction[chemistry_element_Si] *
-      cooling->SolarAbundances_inv[7 /* Si */];
+  ratio_solar[6] = metal_fraction[chemistry_element_Mg] *
+                   cooling->SolarAbundances_inv[6 /* Mg */];
+
+  ratio_solar[7] = metal_fraction[chemistry_element_Si] *
+                   cooling->SolarAbundances_inv[7 /* Si */];
 
   /* For S, we use the same ratio as Si */
-  ratio_solar[8] =
-      p->chemistry_data.smoothed_metal_mass_fraction[chemistry_element_Si] *
-      cooling->SolarAbundances_inv[7 /* Si */] *
-      cooling->S_over_Si_ratio_in_solar;
+  ratio_solar[8] = metal_fraction[chemistry_element_Si] *
+                   cooling->SolarAbundances_inv[7 /* Si */] *
+                   cooling->S_over_Si_ratio_in_solar;
 
   /* For Ca, we use the same ratio as Si */
-  ratio_solar[9] =
-      p->chemistry_data.smoothed_metal_mass_fraction[chemistry_element_Si] *
-      cooling->SolarAbundances_inv[7 /* Si */] *
-      cooling->Ca_over_Si_ratio_in_solar;
+  ratio_solar[9] = metal_fraction[chemistry_element_Si] *
+                   cooling->SolarAbundances_inv[7 /* Si */] *
+                   cooling->Ca_over_Si_ratio_in_solar;
 
-  ratio_solar[10] =
-      p->chemistry_data.smoothed_metal_mass_fraction[chemistry_element_Fe] *
-      cooling->SolarAbundances_inv[10 /* Fe */];
+  ratio_solar[10] = metal_fraction[chemistry_element_Fe] *
+                    cooling->SolarAbundances_inv[10 /* Fe */];
 }
 
 /**

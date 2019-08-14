@@ -132,9 +132,6 @@ struct part {
       /*! Derivative of the neighbour number with respect to h. */
       float wcount_dh;
 
-      /*! Derivative of density with respect to h */
-      float rho_dh;
-
       /*! Derivative of the weighted pressure with respect to h */
       float pressure_bar_dh;
 
