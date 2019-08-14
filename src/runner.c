@@ -1214,12 +1214,7 @@ void runner_do_star_formation(struct runner *r, struct cell *c, int timer) {
    * re-compute them. */
   if (with_feedback && (c == c->top) &&
       (current_stars_count != c->stars.count)) {
-    cell_set_flag(c, cell_flag_do_stars_resort);
-    if (c->split) {
-      for (int k = 0; k < 8; ++k)
-        if (c->progeny[k] != NULL)
-          cell_set_flag(c->progeny[k], cell_flag_do_stars_resort);
-    }
+    cell_set_star_resort_flag(c);
     cell_clear_stars_sort_flags(c, /*clear_unused_flags=*/0);
   }
 

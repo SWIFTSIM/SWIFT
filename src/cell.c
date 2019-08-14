@@ -2399,6 +2399,19 @@ void cell_clear_limiter_flags(struct cell *c, void *data) {
                   cell_flag_do_hydro_limiter | cell_flag_do_hydro_sub_limiter);
 }
 
+void cell_set_star_resort_flag(struct cell *c) {
+
+  cell_set_flag(c, cell_flag_do_stars_resort);
+
+  /* Abort if we reched the level where the resorting task lives */
+  if (c->depth == engine_star_resort_task_depth || c->hydro.super == c) return;
+
+  if (c->split) {
+    for (int k = 0; k < 8; ++k)
+      if (c->progeny[k] != NULL) cell_set_star_resort_flag(c->progeny[k]);
+  }
+}
+
 void cell_activate_star_resort_tasks(struct cell *c, struct scheduler *s) {
 
   if (c->depth == engine_star_resort_task_depth || c->hydro.super == c) {
