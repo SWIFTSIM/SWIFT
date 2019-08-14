@@ -24,6 +24,7 @@ import numpy as np
 
 try:
     from scipy.integrate import solve_ivp
+
     solve_ode = True
 except:
     solve_ode = False
@@ -31,6 +32,7 @@ except:
 from swiftsimio import load
 
 matplotlib.use("Agg")
+
 
 def solve_analytic(u_0, u_1, t_0, t_1, alpha=0.1):
     """
@@ -63,7 +65,12 @@ def solve_analytic(u_0, u_1, t_0, t_1, alpha=0.1):
 
         return np.array([-1.0 * common, 1.0 * common])
 
-    ret = solve_ivp(gradient, t_span=[t_0.value, t_1.value], y0=[u_0.value, u_1.value], t_eval=np.linspace(t_0.value, t_1.value, 100))
+    ret = solve_ivp(
+        gradient,
+        t_span=[t_0.value, t_1.value],
+        y0=[u_0.value, u_1.value],
+        t_eval=np.linspace(t_0.value, t_1.value, 100),
+    )
 
     t = ret.t
     high = ret.y[1]
@@ -81,7 +88,7 @@ def get_data_dump(metadata):
         viscosity = metadata.viscosity_info
     except:
         viscosity = "No info"
-    
+
     try:
         diffusion = metadata.diffusion_info
     except:
@@ -136,6 +143,7 @@ def setup_axes(size=[8, 8], dpi=300):
 
     return fig, ax
 
+
 def mean_std_max_min(data):
     """
     Returns:
@@ -157,7 +165,7 @@ def extract_plottables_u(data_list):
     """
 
     data = [
-        np.diff(x.gas.internal_energy.value) / np.mean(x.gas.internal_energy.value)
+        np.diff(x.gas.internal_energies.value) / np.mean(x.gas.internal_energies.value)
         for x in data_list
     ]
 
@@ -175,8 +183,10 @@ def extract_plottables_x(data_list):
     dx = boxsize / n_part
 
     original_x = np.arange(n_part, dtype=float) * dx + (0.5 * dx)
-    
-    deviations = [1e6 * abs(original_x - x.gas.coordinates.value[:, 0]) / dx for x in data_list]
+
+    deviations = [
+        1e6 * abs(original_x - x.gas.coordinates.value[:, 0]) / dx for x in data_list
+    ]
 
     return mean_std_max_min(deviations)
 
@@ -187,7 +197,7 @@ def extract_plottables_rho(data_list):
     mean, stdev, max, min * 1e6 deviations from mean density 
     """
 
-    P = [x.gas.density.value for x in data_list]
+    P = [x.gas.densities.value for x in data_list]
     mean_P = [np.mean(x) for x in P]
     deviations = [1e6 * (x - y) / x for x, y in zip(mean_P, P)]
 
@@ -241,28 +251,34 @@ def make_plot(start: int, stop: int, handle: str):
 
     if solve_ode:
         times_ode, diff = solve_analytic(
-            u_0=data_list[0].gas.internal_energy.min(),
-            u_1=data_list[0].gas.internal_energy.max(),
+            u_0=data_list[0].gas.internal_energies.min(),
+            u_1=data_list[0].gas.internal_energies.max(),
             t_0=t[0],
             t_1=t[-1],
             alpha=(
-                np.sqrt(5.0/3.0 * (5.0/3.0 - 1.0)) * 
-                alpha / data_list[0].gas.smoothing_length[0].value
-            )
+                np.sqrt(5.0 / 3.0 * (5.0 / 3.0 - 1.0))
+                * alpha
+                / data_list[0].gas.smoothing_length[0].value
+            ),
         )
 
         ax[1].plot(
             times_ode,
-            (diff) / np.mean(data_list[0].gas.internal_energy),
+            (diff) / np.mean(data_list[0].gas.internal_energies),
             label="Analytic",
             linestyle="dotted",
-            c="C3"
+            c="C3",
         )
 
-        #import pdb;pdb.set_trace()
+        # import pdb;pdb.set_trace()
 
     ax[2].fill_between(
-        t, x_means - x_stdevs, x_means + x_stdevs, color="C0", alpha=0.5, edgecolor="none"
+        t,
+        x_means - x_stdevs,
+        x_means + x_stdevs,
+        color="C0",
+        alpha=0.5,
+        edgecolor="none",
     )
     ax[2].plot(t, x_means, label="Mean", c="C0")
     ax[2].plot(t, x_maxs, label="Max", linestyle="dashed", c="C1")
@@ -270,11 +286,18 @@ def make_plot(start: int, stop: int, handle: str):
 
     try:
         # Give diffusion info a go; this may not be present
-        diff_means, diff_stdevs, diff_maxs, diff_mins = extract_plottables_diff(data_list)
+        diff_means, diff_stdevs, diff_maxs, diff_mins = extract_plottables_diff(
+            data_list
+        )
 
         ax[3].set_ylabel(r"Diffusion parameter $\alpha_{diff}$")
         ax[3].fill_between(
-            t, diff_means - diff_stdevs, diff_means + diff_stdevs, color="C0", alpha=0.5, edgecolor="none"
+            t,
+            diff_means - diff_stdevs,
+            diff_means + diff_stdevs,
+            color="C0",
+            alpha=0.5,
+            edgecolor="none",
         )
         ax[3].plot(t, diff_means, label="Mean", c="C0")
         ax[3].plot(t, diff_maxs, label="Max", linestyle="dashed", c="C1")
@@ -284,9 +307,16 @@ def make_plot(start: int, stop: int, handle: str):
         # Diffusion info must not be present.
         rho_means, rho_stdevs, rho_maxs, rho_mins = extract_plottables_rho(data_list)
 
-        ax[3].set_ylabel("Deviation from mean density $(\\rho_i - \\bar{\\rho}) / \\bar{\\rho}$ [$\\times 10^{6}$]")
+        ax[3].set_ylabel(
+            "Deviation from mean density $(\\rho_i - \\bar{\\rho}) / \\bar{\\rho}$ [$\\times 10^{6}$]"
+        )
         ax[3].fill_between(
-            t, rho_means - rho_stdevs, rho_means + rho_stdevs, color="C0", alpha=0.5, edgecolor="none"
+            t,
+            rho_means - rho_stdevs,
+            rho_means + rho_stdevs,
+            color="C0",
+            alpha=0.5,
+            edgecolor="none",
         )
         ax[3].plot(t, rho_means, label="Mean", c="C0")
         ax[3].plot(t, rho_maxs, label="Max", linestyle="dashed", c="C1")

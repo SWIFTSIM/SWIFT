@@ -43,9 +43,9 @@ fileName = sys.argv[1]
 
 file = h5py.File(fileName, 'r')
 coords = np.array(file["/PartType0/Coordinates"])
-rho = np.array(file["/PartType0/Density"])
-P = np.array(file["/PartType0/Pressure"])
-u = np.array(file["/PartType0/InternalEnergy"])
+rho = np.array(file["/PartType0/Densities"])
+P = np.array(file["/PartType0/Pressures"])
+u = np.array(file["/PartType0/InternalEnergies"])
 m = np.array(file["/PartType0/Masses"])
 vs = np.array(file["/PartType0/Velocities"])
 ids = np.array(file["/PartType0/ParticleIDs"])
