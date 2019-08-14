@@ -66,11 +66,11 @@ struct pressure_floor_properties {
 __attribute__((always_inline)) static INLINE float pressure_floor_get_physical_pressure(
     const struct part* p, const float pressure_physical, const struct cosmology *cosmo) {
 
-  const float h_phys = p->h * cosmo->a_inv;
+  const float H_phys = p->h * cosmo->a_inv * kernel_gamma;
   const float rho = hydro_get_physical_density(p, cosmo);
 
   /* Compute the pressure floor */
-  float floor = h_phys * h_phys * rho * pressure_floor_props.constants -
+  float floor = H_phys * H_phys * rho * pressure_floor_props.constants -
     p->pressure_floor_data.sigma2;
   floor *= rho * hydro_one_over_gamma;
 
@@ -94,8 +94,8 @@ __attribute__((always_inline)) static INLINE float pressure_floor_get_comoving_p
   const float rho = hydro_get_comoving_density(p);
   
   /* Compute the pressure floor */
-  float floor = p->h * p->h * rho * pressure_floor_props.constants -
-    p->pressure_floor_data.sigma2 * cosmo->a * cosmo->a;
+  float floor = kernel_gamma * kernel_gamma * p->h * p->h * rho * pressure_floor_props.constants;
+  floor -= p->pressure_floor_data.sigma2 * cosmo->a * cosmo->a;
   floor *= a_coef * rho * hydro_one_over_gamma;
 
   return fmaxf(pressure_comoving, floor);
