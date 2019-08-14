@@ -423,10 +423,10 @@ void cooling_cool_part(const struct phys_const *phys_const,
   abundance_ratio_to_solar(p, cooling, abundance_ratio);
 
   /* Get the Hydrogen and Helium mass fractions */
-  const float XH =
-      p->chemistry_data.smoothed_metal_mass_fraction[chemistry_element_H];
-  const float XHe =
-      p->chemistry_data.smoothed_metal_mass_fraction[chemistry_element_He];
+  const float *const metal_fraction =
+      chemistry_get_metal_mass_fraction_for_cooling(p);
+  const float XH = metal_fraction[chemistry_element_H];
+  const float XHe = metal_fraction[chemistry_element_He];
 
   /* Get the Helium mass fraction. Note that this is He / (H + He), i.e. a
    * metal-free Helium mass fraction as per the Wiersma+08 definition */
@@ -600,10 +600,10 @@ float cooling_get_temperature(
   const double u_cgs = u * cooling->internal_energy_to_cgs;
 
   /* Get the Hydrogen and Helium mass fractions */
-  const float XH =
-      p->chemistry_data.smoothed_metal_mass_fraction[chemistry_element_H];
-  const float XHe =
-      p->chemistry_data.smoothed_metal_mass_fraction[chemistry_element_He];
+  const float *const metal_fraction =
+      chemistry_get_metal_mass_fraction_for_cooling(p);
+  const float XH = metal_fraction[chemistry_element_H];
+  const float XHe = metal_fraction[chemistry_element_He];
 
   /* Get the Helium mass fraction. Note that this is He / (H + He), i.e. a
    * metal-free Helium mass fraction as per the Wiersma+08 definition */
