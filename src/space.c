@@ -4591,8 +4591,9 @@ void space_init(struct space *s, struct swift_params *params,
     Ngpart = s->nr_gparts;
 
 #ifdef SWIFT_DEBUG_CHECKS
-    part_verify_links(parts, gparts, sparts, bparts, Npart, Ngpart, Nspart,
-                      Nbpart, 1);
+    if(!dry_run)
+      part_verify_links(parts, gparts, sparts, bparts, Npart, Ngpart, Nspart,
+			Nbpart, 1);
 #endif
   }
 
