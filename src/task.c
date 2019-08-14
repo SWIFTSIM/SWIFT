@@ -548,7 +548,7 @@ int task_lock(struct task *t) {
          * Don't want any of this to change when MPI is using it,
          * but lets not block. */
         struct scheduler *s = scheduler_scheduler;
-        if (lock_trylock(&s->lock_requests) == 0) {
+        if (s->nr_requests > 0 && lock_trylock(&s->lock_requests) == 0) {
           int nr_requests = s->nr_requests;
           int outcount = 0;
           int indices[nr_requests];
@@ -559,17 +559,25 @@ int task_lock(struct task *t) {
             mpi_error(err, "Failed to test for recv messages");
           }
 
-          /* Mark any released tasks as ready. */
-          for (int k = 0; k < outcount; k++) {
-            s->tasks_requests[indices[k]]->req = MPI_REQUEST_NULL;
-            s->tasks_requests[indices[k]]->recv_ready = 1;
-          }
-
-          /* XXX could remove from requests list?. */
-
-          /* Decrement total recvs we've seen. Careful with special values. */
           if (outcount > 0) {
-            atomic_sub(&s->nr_recv_tasks, outcount);
+
+            /* Mark any released tasks as ready. */
+            for (int k = 0; k < outcount; k++) {
+              int ind = indices[k];
+              s->tasks_requests[ind]->req = MPI_REQUEST_NULL;
+              s->tasks_requests[ind]->recv_ready = 1;
+
+              /* And remove from the requests lists by swapping with end. */
+              if (ind < nr_requests - 1) {
+                s->requests[ind] = s->requests[nr_requests - 1];
+                s->tasks_requests[ind] = s->tasks_requests[nr_requests - 1];
+                nr_requests--;
+              }
+            }
+            s->nr_requests = nr_requests;
+
+            /* Decrement total recvs we've seen. */
+            s->nr_recv_tasks -= outcount;
             res = 1;
           }
           if (lock_unlock(&s->lock_requests) != 0)

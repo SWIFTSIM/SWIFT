@@ -1627,7 +1627,6 @@ void scheduler_start(struct scheduler *s) {
   }
 
 #ifdef WITH_MPI
-  message("number of recv tasks: %d", s->nr_recv_tasks);
 
   /* Initialise the requests storage. */
   if (s->nr_size_requests < s->nr_recv_tasks) {
@@ -2027,9 +2026,6 @@ struct task *scheduler_done(struct scheduler *s, struct task *t) {
     if (nr_recv_tasks > 0) {
       t->skip = 0;
       scheduler_enqueue(s, t);
-    } else {
-      message("testsome task complete this step (%d/%d)", nr_recv_tasks,
-              s->nr_recv_tasks);
     }
 
     /* Now remove the old waiting count. */
@@ -2439,12 +2435,12 @@ void scheduler_start_recv(struct scheduler *s, struct task *t) {
     /* Record request and associated task. Need to lock this down so we don't
      * have an invalid extra request for a while. */
     if (lock_lock(&s->lock_requests) != 0) error("Failed to lock requests");
-    int ind = atomic_inc(&s->nr_requests);
-    // message("index = %d for %s/%s size: %zd, from: %d, tag: %lld", ind,
-    //        taskID_names[t->type], subtaskID_names[t->subtype],
-    //        size, t->ci->nodeID, t->flags);
+
+    int ind = s->nr_requests;
+    s->nr_requests++;
     s->requests[ind] = t->req;
     s->tasks_requests[ind] = t;
+
     if (lock_unlock(&s->lock_requests) != 0) error("Failed to unlock requests");
   }
 
