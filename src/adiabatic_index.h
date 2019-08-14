@@ -545,4 +545,39 @@ pow_three_gamma_minus_five_over_two(float x) {
 #endif
 }
 
+
+/**
+ * @brief Return the argument to the power three (adiabatic index - 1).
+ *
+ * Computes \f$x^{3(\gamma - 1)}\f$.
+ *
+ * @param x Argument
+ */
+__attribute__((always_inline, const)) INLINE static float
+pow_three_gamma_minus_one(float x) {
+
+#if defined(HYDRO_GAMMA_5_3)
+
+  return x * x; /* x^(2) */
+
+#elif defined(HYDRO_GAMMA_7_5)
+
+  return powf(x, 1.2f); /* x^(6/5) */
+
+#elif defined(HYDRO_GAMMA_4_3)
+
+  return x; /* x^(1) */
+
+#elif defined(HYDRO_GAMMA_2_1)
+
+  return x * x * x; /* x^(3) */
+
+#else
+
+  error("The adiabatic index is not defined !");
+  return 0.f;
+
+#endif
+}
+
 #endif /* SWIFT_ADIABATIC_INDEX_H */

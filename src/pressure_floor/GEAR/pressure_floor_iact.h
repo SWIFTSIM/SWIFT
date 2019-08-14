@@ -53,13 +53,17 @@ __attribute__((always_inline)) INLINE static void runner_iact_pressure_floor(
   /* Delta v */
   float dv[3] = {pi->v[0] - pj->v[0], pi->v[1] - pj->v[1], pi->v[2] - pj->v[2]};
 
-  /* Norms */
-  const float norm_v2 = dv[0] * dv[0] + dv[1] * dv[1] + dv[2] * dv[2];
-  const float norm_v = sqrtf(norm_v2);
-  const float r = sqrtf(r2);
-
   /* Compute the velocity dispersion */
-  const float sigma2 = norm_v2 + H * H * r2 + 2 * H * r * norm_v;
+  const float a2H = a * a * H;
+  const float sigma[3] = {
+    dv[0] + a2H * dx[0],
+    dv[1] + a2H * dx[1],
+    dv[2] + a2H * dx[2]
+  };
+  const float sigma2 =
+    sigma[0] * sigma[0] +
+    sigma[1] * sigma[1] +
+    sigma[2] * sigma[2];
 
   /* Compute the velocity dispersion */
   pi->pressure_floor_data.sigma2 += sigma2 * wi * hydro_get_mass(pj);
@@ -91,13 +95,17 @@ runner_iact_nonsym_pressure_floor(float r2, const float *dx, float hi, float hj,
   /* Delta v */
   float dv[3] = {pi->v[0] - pj->v[0], pi->v[1] - pj->v[1], pi->v[2] - pj->v[2]};
 
-  /* Norms */
-  const float norm_v2 = dv[0] * dv[0] + dv[1] * dv[1] + dv[2] * dv[2];
-  const float norm_v = sqrtf(norm_v2);
-  const float r = sqrtf(r2);
-
   /* Compute the velocity dispersion */
-  const float sigma2 = norm_v2 + H * H * r2 + 2 * H * r * norm_v;
+  const float a2H = a * a * H;
+  const float sigma[3] = {
+    dv[0] + a2H * dx[0],
+    dv[1] + a2H * dx[1],
+    dv[2] + a2H * dx[2]
+  };
+  const float sigma2 =
+    sigma[0] * sigma[0] +
+    sigma[1] * sigma[1] +
+    sigma[2] * sigma[2];
 
   /* Compute the velocity dispersion */
   pi->pressure_floor_data.sigma2 += sigma2 * wi * hydro_get_mass(pj);
