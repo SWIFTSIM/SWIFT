@@ -94,15 +94,17 @@ def get_data(handle: float, n_snaps: int):
                 t0 = data.metadata.t.to(Myr).value
 
             times.append(data.metadata.t.to(Myr).value - t0)
-            temps.append(np.mean(data.gas.temperature.to(K).value))
+            temps.append(np.mean(data.gas.temperatures.to(K).value))
             densities.append(
-                np.mean(data.gas.density.to(mh / cm ** 3).value)
+                np.mean(data.gas.densities.to(mh / cm ** 3).value)
                 / (data.metadata.scale_factor ** 3)
             )
 
             try:
                 energies.append(
-                    np.mean((data.gas.internal_energy * data.gas.masses).to(erg).value)
+                    np.mean(
+                        (data.gas.internal_energies * data.gas.masses).to(erg).value
+                    )
                     * data.metadata.scale_factor ** (2)
                 )
                 radiated_energies.append(

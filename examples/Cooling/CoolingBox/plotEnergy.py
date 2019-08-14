@@ -87,7 +87,7 @@ temp_snap = np.zeros(N)
 time_snap_cgs = np.zeros(N)
 for i in range(N):
     snap = File(files[i], 'r')
-    u = snap["/PartType0/InternalEnergy"][:] * snap["/PartType0/Masses"][:]
+    u = snap["/PartType0/InternalEnergies"][:] * snap["/PartType0/Masses"][:]
     u = sum(u) / total_mass[0]
     temp_snap[i] = energyUnits(u)
     time_snap_cgs[i] = snap["/Header"].attrs["Time"] * unit_time
