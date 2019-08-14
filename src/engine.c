@@ -33,7 +33,10 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
+#include <sys/types.h>
+#include <sys/stat.h>
 #include <unistd.h>
+
 
 /* MPI headers. */
 #ifdef WITH_MPI
@@ -4920,9 +4923,13 @@ static void *engine_dumper_poll(void *p) {
  */
 static void engine_dumper_init(struct engine *e) {
   pthread_t dumper;
-  pthread_create(&dumper, NULL, &engine_dumper_poll, e);
 
-  /* Thread does not exit, so nothing to do. */
+  /* Make sure the .dump file is not present, that is bad when starting up. */
+  struct stat buf;
+  if (stat(".dump", &buf) == 0) unlink(".dump");
+
+  /* Thread does not exit, so nothing to do but create it. */
+  pthread_create(&dumper, NULL, &engine_dumper_poll, e);
 }
 #endif /* SWIFT_DUMPER_THREAD */
 
