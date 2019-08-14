@@ -1585,8 +1585,9 @@ void scheduler_enqueue_mapper(void *map_data, int num_elements,
     } else if (!t->skip) {
       /* Recv tasks are not enqueued until marked as ready by the testsome
        * tasks, but we do need to start the MPI recv for them for that to be
-       * possible, so do that if needed. */
-      if (t->type == task_type_recv && t->subtype != task_subtype_testsome) {
+       * possible, so do for tasks only being held by testsome. */
+      if (t->wait == 1 && t->type == task_type_recv &&
+          t->subtype != task_subtype_testsome) {
         scheduler_start_recv(s, t);
       }
 #endif
@@ -1677,22 +1678,6 @@ void scheduler_enqueue(struct scheduler *s, struct task *t) {
 
   /* Ignore skipped tasks */
   if (t->skip) return;
-
-#ifdef WITH_MPI
-    /* Recv tasks are not enqueued immediately, we need to make sure that they
-     * are ready first (using the testsome task). We do, however, need to start
-     * the MPI recv for them for that to be possible, so do that if needed. */
-    // if (t->type == task_type_recv && t->subtype != task_subtype_testsome) {
-    //    if (!t->recv_started) {
-    //      message("Trying to enqueue recv task %s/%s %d",
-    //      taskID_names[t->type],
-    //              subtaskID_names[t->subtype], t->recv_ready);
-    //      scheduler_start_recv(s, t);
-    //      return;
-    //    }
-    //    message("Ready to run");
-    //}
-#endif
 
   /* If this is an implicit task, just pretend it's done. */
   if (t->implicit) {
@@ -1986,8 +1971,8 @@ struct task *scheduler_done(struct scheduler *s, struct task *t) {
 #ifdef WITH_MPI
     if (t->subtype == task_subtype_testsome) {
 
+      /* Not skipped and request not cancelled, so will not be ready. */
       if (t2->req != MPI_REQUEST_NULL) {
-        /* Not skipped and request not cancelled, so will not be ready. */
         continue;
       }
 
@@ -2002,6 +1987,17 @@ struct task *scheduler_done(struct scheduler *s, struct task *t) {
     } else if (res == 1) {
       scheduler_enqueue(s, t2);
     }
+#ifdef WITH_MPI
+    else if (res == 2) {
+      if (t2->type == task_type_recv) {
+        /* Recv tasks are not enqueued immediately, we need to make sure that
+         * they are ready first (using the testsome task). We do, however,
+         * need to start the MPI recv for them for that to be possible, so do
+         * that if needed. */
+        if (!t2->recv_started) scheduler_start_recv(s, t2);
+      }
+    }
+#endif
   }
 
   /* Task definitely done, signal any sleeping runners. */
