@@ -2092,7 +2092,7 @@ struct task *scheduler_gettask(struct scheduler *s, int qid,
                                const struct task *prev) {
   struct task *res = NULL;
   const int nr_queues = s->nr_queues;
-  // unsigned int seed = qid;
+  unsigned int seed = qid;
 
   /* Check qid. */
   if (qid >= nr_queues || qid < 0) error("Bad queue ID.");
@@ -2112,24 +2112,24 @@ struct task *scheduler_gettask(struct scheduler *s, int qid,
       }
 
       /* If unsuccessful, try stealing from the other queues. */
-      // if (s->flags & scheduler_flag_steal) {
-      //  int count = 0, qids[nr_queues];
-      //  for (int k = 0; k < nr_queues; k++)
-      //    if (s->queues[k].count > 0 || s->queues[k].count_incoming > 0) {
-      //      qids[count++] = k;
-      //    }
-      //  for (int k = 0; k < scheduler_maxsteal && count > 0; k++) {
-      //    const int ind = rand_r(&seed) % count;
-      //    TIMER_TIC
-      //    res = queue_gettask(&s->queues[qids[ind]], prev, 0);
-      //    TIMER_TOC(timer_qsteal);
-      //    if (res != NULL)
-      //      break;
-      //    else
-      //      qids[ind] = qids[--count];
-      //  }
-      // if (res != NULL) break;
-      //}
+      if (s->flags & scheduler_flag_steal) {
+        int count = 0, qids[nr_queues];
+        for (int k = 0; k < nr_queues; k++)
+          if (s->queues[k].count > 0 || s->queues[k].count_incoming > 0) {
+            qids[count++] = k;
+          }
+        for (int k = 0; k < scheduler_maxsteal && count > 0; k++) {
+          const int ind = rand_r(&seed) % count;
+          TIMER_TIC
+          res = queue_gettask(&s->queues[qids[ind]], prev, 0);
+          TIMER_TOC(timer_qsteal);
+          if (res != NULL)
+            break;
+          else
+            qids[ind] = qids[--count];
+        }
+       if (res != NULL) break;
+      }
     }
 
 /* If we failed, take a short nap. */
