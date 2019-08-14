@@ -54,6 +54,7 @@
 
 extern int engine_max_parts_per_ghost;
 extern int engine_max_sparts_per_ghost;
+extern int engine_star_resort_task_depth;
 
 /**
  * @brief Add send tasks for the gravity pairs to a hierarchy of cells.
@@ -987,29 +988,17 @@ void engine_make_hierarchical_tasks_hydro(struct engine *e, struct cell *c,
   const int with_star_formation = (e->policy & engine_policy_star_formation);
   const int with_black_holes = (e->policy & engine_policy_black_holes);
 
-  /* Are we at the top-level but this is also the super-level? */
-  if (c->top == c && c->nodeID == e->nodeID) {
-
-    /* Record this is the level where we re-sort */
-    star_resort_cell = c;
-
-    if (with_star_formation && c->hydro.count > 0) {
-
-      if (c->hydro.super == c) {
-
-        c->hydro.stars_resort = scheduler_addtask(
-            s, task_type_stars_resort, task_subtype_none, 0, 0, c, NULL);
-        scheduler_addunlock(s, c->hydro.star_formation, c->hydro.stars_resort);
-      }
-    }
-  }
-
-  if (c->depth == 1 && c->nodeID == e->nodeID) {
-
-    /* Record this is the level where we re-sort */
-    star_resort_cell = c;
+  /* Are we are the level where we create the stars' resort tasks?
+   * If the tree is shallow, we need to do this at the super-level if the
+   * super-level is above the level we want */
+  if ((c->nodeID == e->nodeID) && (star_resort_cell == NULL) &&
+      (c->depth == engine_star_resort_task_depth || c->hydro.super == c)) {
 
     if (with_star_formation && c->hydro.count > 0) {
+
+      /* Record this is the level where we re-sort */
+      star_resort_cell = c;
+
       c->hydro.stars_resort = scheduler_addtask(
           s, task_type_stars_resort, task_subtype_none, 0, 0, c, NULL);
 

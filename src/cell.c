@@ -70,6 +70,8 @@
 #include "tools.h"
 #include "tracers.h"
 
+extern int engine_star_resort_task_depth;
+
 /* Global variables. */
 int cell_next_tag = 0;
 
@@ -2397,6 +2399,19 @@ void cell_clear_limiter_flags(struct cell *c, void *data) {
                   cell_flag_do_hydro_limiter | cell_flag_do_hydro_sub_limiter);
 }
 
+void cell_activate_star_resort_tasks(struct cell *c, struct scheduler *s) {
+
+  if (c->depth == engine_star_resort_task_depth || c->hydro.super == c) {
+    scheduler_activate(s, c->hydro.stars_resort);
+  } else {
+    for (int k = 0; k < 8; ++k) {
+      if (c->progeny[k] != NULL) {
+        cell_activate_star_resort_tasks(c->progeny[k], s);
+      }
+    }
+  }
+}
+
 void cell_activate_star_formation_tasks(struct cell *c, struct scheduler *s) {
 
   if (c->depth != 0) error("Function should be called at the top-level only");
@@ -2407,20 +2422,8 @@ void cell_activate_star_formation_tasks(struct cell *c, struct scheduler *s) {
   /* Activate the star formation task */
   scheduler_activate(s, c->hydro.star_formation);
 
-  /* Shallow tree case -> the resort task is at this level */
-  if (c->hydro.super == c) {
-    scheduler_activate(s, c->hydro.stars_resort);
-  }
-
-  /* Deep tree case -> the resort is in the progenies */
-  else {
-
-    for (int k = 0; k < 8; ++k) {
-      if (c->progeny[k] != NULL) {
-        scheduler_activate(s, c->progeny[k]->hydro.stars_resort);
-      }
-    }
-  }
+  /* Activate the star resort tasks at whatever level they are */
+  cell_activate_star_resort_tasks(c, s);
 }
 
 /**

@@ -91,6 +91,7 @@ int space_extra_gparts = space_extra_gparts_default;
 /*! Maximum number of particles per ghost */
 int engine_max_parts_per_ghost = engine_max_parts_per_ghost_default;
 int engine_max_sparts_per_ghost = engine_max_sparts_per_ghost_default;
+int engine_star_resort_task_depth = engine_star_resort_task_depth_default;
 
 /*! Expected maximal number of strays received at a rebuild */
 int space_expected_max_nr_strays = space_expected_max_nr_strays_default;
