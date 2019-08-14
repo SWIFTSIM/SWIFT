@@ -94,10 +94,10 @@ time = sim.metadata.t.value
 data = dict(
     x=sim.gas.coordinates.value[:, 0],
     v=sim.gas.velocities.value[:, 0],
-    u=sim.gas.internal_energy.value,
-    S=sim.gas.entropy.value,
-    P=sim.gas.pressure.value,
-    rho=sim.gas.density.value,
+    u=sim.gas.internal_energies.value,
+    S=sim.gas.entropies.value,
+    P=sim.gas.pressures.value,
+    rho=sim.gas.densities.value,
     y=sim.gas.coordinates.value[:, 1],
     z=sim.gas.coordinates.value[:, 2],
 )
@@ -164,12 +164,9 @@ for key, label in plot.items():
             zorder=-1,
         )
 
-        mask_noraster = np.logical_and.reduce([
-            data["y"] < 0.52,
-            data["y"] > 0.48,
-            data["z"] < 0.52,
-            data["z"] > 0.48
-        ])
+        mask_noraster = np.logical_and.reduce(
+            [data["y"] < 0.52, data["y"] > 0.48, data["z"] < 0.52, data["z"] > 0.48]
+        )
 
         axis.plot(
             data["x"][mask_noraster],

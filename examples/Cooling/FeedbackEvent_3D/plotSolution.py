@@ -50,7 +50,6 @@ except:
     plt.rcParams.update(rcParams)
 
 
-
 def get_data_dump(metadata):
     """
     Gets a big data dump from the SWIFT metadata
@@ -104,10 +103,10 @@ r = r.to(kpc).value
 data = dict(
     x=r,
     v_r=v_r,
-    u=sim.gas.temperature.to(K).value,
-    S=sim.gas.entropy.to(keV / K).value,
-    P=sim.gas.pressure.to(kPa).value,
-    rho=sim.gas.density.to(mh / (cm ** 3)).value,
+    u=sim.gas.temperatures.to(K).value,
+    S=sim.gas.entropies.to(keV / K).value,
+    P=sim.gas.pressures.to(kPa).value,
+    rho=sim.gas.densities.to(mh / (cm ** 3)).value,
 )
 
 # Try to add on the viscosity and diffusion.
@@ -156,8 +155,13 @@ log = dict(
     v_r=False, v_phi=False, u=False, S=False, P=False, rho=False, visc=False, diff=False
 )
 ylim = dict(
-    v_r=[-4, 25], u=[4750, 6000], rho=[0.09, 0.16], visc=[0, 2.0], diff=[0, 0.25],
-    P=[3e-18, 10e-18], S=[-0.5e60, 4e60] 
+    v_r=[-4, 25],
+    u=[4750, 6000],
+    rho=[0.09, 0.16],
+    visc=[0, 2.0],
+    diff=[0, 0.25],
+    P=[3e-18, 10e-18],
+    S=[-0.5e60, 4e60],
 )
 
 current_axis = 0

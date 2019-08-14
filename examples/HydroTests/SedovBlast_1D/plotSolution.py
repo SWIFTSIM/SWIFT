@@ -78,13 +78,13 @@ x = pos[:,0] - boxSize / 2
 vel = sim["/PartType0/Velocities"][:,:]
 r = abs(x)
 v_r = x * vel[:,0] / r
-u = sim["/PartType0/InternalEnergy"][:]
-S = sim["/PartType0/Entropy"][:]
-P = sim["/PartType0/Pressure"][:]
-rho = sim["/PartType0/Density"][:]
+u = sim["/PartType0/InternalEnergies"][:]
+S = sim["/PartType0/Entropies"][:]
+P = sim["/PartType0/Pressures"][:]
+rho = sim["/PartType0/Densities"][:]
 
 try:
-    alpha = sim["/PartType0/Viscosity"][:]
+    alpha = sim["/PartType0/ViscosityParameters"][:]
     plot_alpha = True 
 except:
     plot_alpha = False

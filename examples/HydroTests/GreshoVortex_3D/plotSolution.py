@@ -103,19 +103,19 @@ r = sqrt(x**2 + y**2)
 v_r = (x * vel[:,0] + y * vel[:,1]) / r
 v_phi = (-y * vel[:,0] + x * vel[:,1]) / r
 v_norm = sqrt(vel[:,0]**2 + vel[:,1]**2)
-rho = sim["/PartType0/Density"][:]
-u = sim["/PartType0/InternalEnergy"][:]
-S = sim["/PartType0/Entropy"][:]
-P = sim["/PartType0/Pressure"][:]
+rho = sim["/PartType0/Densities"][:]
+u = sim["/PartType0/InternalEnergies"][:]
+S = sim["/PartType0/Entropies"][:]
+P = sim["/PartType0/Pressures"][:]
 
 try:
-    diffusion = sim["/PartType0/Diffusion"][:]
+    diffusion = sim["/PartType0/DiffusionParameters"][:]
     plot_diffusion = True
 except:
     plot_diffusion = False
 
 try:
-    viscosity = sim["/PartType0/Viscosity"][:]
+    viscosity = sim["/PartType0/ViscosityParameters"][:]
     plot_viscosity = True
 except:
     plot_viscosity = False

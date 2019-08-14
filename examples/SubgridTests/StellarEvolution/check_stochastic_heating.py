@@ -93,7 +93,7 @@ for i in range(n_snapshots):
 	sim = h5py.File("stellar_evolution_%04d.hdf5"%i, "r")
 	print('reading snapshot '+str(i))
 	masses[:,i] = sim["/PartType0/Masses"]
-	internal_energy[:,i] = sim["/PartType0/InternalEnergy"]
+	internal_energy[:,i] = sim["/PartType0/InternalEnergies"]
 	velocity_parts[:,:,i] = sim["/PartType0/Velocities"]
 	time[i] = sim["/Header"].attrs["Time"][0]
 
