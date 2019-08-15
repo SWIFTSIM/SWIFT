@@ -143,7 +143,7 @@ INLINE static void hydro_write_particles(const struct part* parts,
       convert_part_pos, "Co-moving positions of the particles");
 
   list[1] = io_make_output_field(
-       "Velocities", FLOAT, 3, UNIT_CONV_SPEED, 0.f, parts, primitives.v,
+      "Velocities", FLOAT, 3, UNIT_CONV_SPEED, 0.f, parts, primitives.v,
       "Peculiar velocities of the stars. This is (a * dx/dt) where x is the "
       "co-moving positions of the particles");
 

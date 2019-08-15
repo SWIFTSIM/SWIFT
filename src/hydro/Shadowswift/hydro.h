@@ -401,7 +401,7 @@ __attribute__((always_inline)) INLINE static void hydro_reset_acceleration(
  */
 __attribute__((always_inline)) INLINE static void hydro_reset_predicted_values(
     struct part* restrict p, const struct xpart* restrict xp,
-    const struct cosmology *cosmo) {}
+    const struct cosmology* cosmo) {}
 
 /**
  * @brief Converts the hydrodynamic variables from the initial condition file to
@@ -799,7 +799,7 @@ __attribute__((always_inline)) INLINE static float hydro_get_comoving_density(
  */
 __attribute__((always_inline)) INLINE static float
 hydro_get_physical_internal_energy(const struct part* restrict p,
-                                   const struct xpart *restrict xp,
+                                   const struct xpart* restrict xp,
                                    const struct cosmology* cosmo) {
 
   return cosmo->a_factor_internal_energy *
@@ -903,7 +903,7 @@ hydro_get_drifted_physical_internal_energy(const struct part* p,
  */
 __attribute__((always_inline)) INLINE static float
 hydro_get_drifted_physical_entropy(const struct part* p,
-				   const struct cosmology* cosmo) {
+                                   const struct cosmology* cosmo) {
   error("Need implementing");
 
   return 0;

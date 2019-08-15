@@ -20,10 +20,12 @@
 #define SWIFT_PRESSURE_FLOOR_GEAR_H
 
 /* Forward declaration */
-__attribute__((always_inline)) static INLINE float pressure_floor_get_comoving_pressure(
-    const struct part* p, const float pressure, const struct cosmology *cosmo);
-__attribute__((always_inline)) static INLINE float pressure_floor_get_physical_pressure(
-    const struct part* p, const float pressure, const struct cosmology *cosmo);
+__attribute__((always_inline)) static INLINE float
+pressure_floor_get_comoving_pressure(const struct part* p, const float pressure,
+                                     const struct cosmology* cosmo);
+__attribute__((always_inline)) static INLINE float
+pressure_floor_get_physical_pressure(const struct part* p, const float pressure,
+                                     const struct cosmology* cosmo);
 
 #include "adiabatic_index.h"
 #include "cosmology.h"
@@ -63,15 +65,17 @@ struct pressure_floor_properties {
  *
  * @return The physical pressure with the floor.
  */
-__attribute__((always_inline)) static INLINE float pressure_floor_get_physical_pressure(
-    const struct part* p, const float pressure_physical, const struct cosmology *cosmo) {
+__attribute__((always_inline)) static INLINE float
+pressure_floor_get_physical_pressure(const struct part* p,
+                                     const float pressure_physical,
+                                     const struct cosmology* cosmo) {
 
   const float H_phys = p->h * cosmo->a_inv * kernel_gamma;
   const float rho = hydro_get_physical_density(p, cosmo);
 
   /* Compute the pressure floor */
   float floor = H_phys * H_phys * rho * pressure_floor_props.constants -
-    p->pressure_floor_data.sigma2;
+                p->pressure_floor_data.sigma2;
   floor *= rho * hydro_one_over_gamma;
 
   return fmaxf(pressure_physical, floor);
@@ -88,14 +92,17 @@ __attribute__((always_inline)) static INLINE float pressure_floor_get_physical_p
  *
  * @return The physical or comoving pressure with the floor.
  */
-__attribute__((always_inline)) static INLINE float pressure_floor_get_comoving_pressure(
-    const struct part* p, const float pressure_comoving, const struct cosmology *cosmo) {
+__attribute__((always_inline)) static INLINE float
+pressure_floor_get_comoving_pressure(const struct part* p,
+                                     const float pressure_comoving,
+                                     const struct cosmology* cosmo) {
 
   const float a_coef = pow_three_gamma_minus_one(cosmo->a);
   const float rho = hydro_get_comoving_density(p);
-  
+
   /* Compute the pressure floor */
-  float floor = kernel_gamma * kernel_gamma * p->h * p->h * rho * pressure_floor_props.constants;
+  float floor = kernel_gamma * kernel_gamma * p->h * p->h * rho *
+                pressure_floor_props.constants;
   floor -= p->pressure_floor_data.sigma2 * cosmo->a * cosmo->a;
   floor *= a_coef * rho * hydro_one_over_gamma;
 

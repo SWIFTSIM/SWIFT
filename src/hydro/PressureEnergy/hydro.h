@@ -212,21 +212,19 @@ hydro_get_drifted_physical_entropy(const struct part *restrict p,
   return gas_entropy_from_internal_energy(p->rho, p->u);
 }
 
-
 /**
  * @brief Update the sound speed of a particle
  *
  * @param p The particle of interest.
  * @param cosmo The cosmological model.
  */
-__attribute__((always_inline)) INLINE static void
-hydro_update_soundspeed(struct part *restrict p,
-			const struct cosmology *cosmo) {
+__attribute__((always_inline)) INLINE static void hydro_update_soundspeed(
+    struct part *restrict p, const struct cosmology *cosmo) {
 
   /* Compute the sound speed -- see theory section for justification */
   /* IDEAL GAS ONLY -- P-U does not work with generic EoS. */
   const float comoving_pressure =
-    pressure_floor_get_comoving_pressure(p, p->pressure_bar, cosmo);
+      pressure_floor_get_comoving_pressure(p, p->pressure_bar, cosmo);
   p->force.soundspeed = sqrtf(hydro_gamma * comoving_pressure / p->rho);
 }
 
@@ -656,7 +654,7 @@ __attribute__((always_inline)) INLINE static void hydro_prepare_force(
 
   /* Get the pressures */
   const float comoving_pressure_with_floor =
-    pressure_floor_get_comoving_pressure(p, p->pressure_bar, cosmo);
+      pressure_floor_get_comoving_pressure(p, p->pressure_bar, cosmo);
 
   /* Update variables. */
   p->force.f = grad_h_term;
@@ -774,7 +772,7 @@ __attribute__((always_inline)) INLINE static void hydro_predict_extra(
 
   /* update the required variables */
   const float comoving_pressure_with_floor =
-    pressure_floor_get_comoving_pressure(p, p->pressure_bar, cosmo);
+      pressure_floor_get_comoving_pressure(p, p->pressure_bar, cosmo);
   p->force.pressure_bar_with_floor = comoving_pressure_with_floor;
 }
 

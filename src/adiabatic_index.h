@@ -545,7 +545,6 @@ pow_three_gamma_minus_five_over_two(float x) {
 #endif
 }
 
-
 /**
  * @brief Return the argument to the power three (adiabatic index - 1).
  *

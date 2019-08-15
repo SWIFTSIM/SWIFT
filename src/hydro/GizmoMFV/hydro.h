@@ -543,7 +543,7 @@ __attribute__((always_inline)) INLINE static void hydro_reset_gradient(
  */
 __attribute__((always_inline)) INLINE static void hydro_reset_predicted_values(
     struct part* restrict p, const struct xpart* restrict xp,
-    const struct cosmology *cosmo) {
+    const struct cosmology* cosmo) {
   // MATTHIEU: Apply the entropy floor here.
 }
 

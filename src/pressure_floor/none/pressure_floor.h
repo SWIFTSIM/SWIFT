@@ -49,7 +49,8 @@ struct pressure_floor_properties {};
  * @return The physical pressure with the floor.
  */
 static INLINE float pressure_floor_get_physical_pressure(
-    const struct part* p, const float physical_pressure, const struct cosmology *cosmo) {
+    const struct part* p, const float physical_pressure,
+    const struct cosmology* cosmo) {
   return physical_pressure;
 }
 
@@ -65,7 +66,8 @@ static INLINE float pressure_floor_get_physical_pressure(
  * @return The comoving pressure with the floor.
  */
 static INLINE float pressure_floor_get_comoving_pressure(
-    const struct part* p, const float comoving_pressure, const struct cosmology *cosmo) {
+    const struct part* p, const float comoving_pressure,
+    const struct cosmology* cosmo) {
   return comoving_pressure;
 }
 

@@ -390,7 +390,8 @@ hydro_set_drifted_physical_internal_energy(struct part *p,
 
   /* Compute the pressure */
   float comoving_pressure = gas_pressure_from_entropy(p->rho, p->entropy);
-  comoving_pressure = pressure_floor_get_comoving_pressure(p, comoving_pressure, cosmo);
+  comoving_pressure =
+      pressure_floor_get_comoving_pressure(p, comoving_pressure, cosmo);
 
   /* Compute the sound speed */
   const float soundspeed =
@@ -595,7 +596,8 @@ __attribute__((always_inline)) INLINE static void hydro_prepare_force(
 
   /* Compute the pressure */
   float comoving_pressure = gas_pressure_from_entropy(p->rho, p->entropy);
-  comoving_pressure = pressure_floor_get_comoving_pressure(p, comoving_pressure, cosmo);
+  comoving_pressure =
+      pressure_floor_get_comoving_pressure(p, comoving_pressure, cosmo);
 
   /* Compute the sound speed */
   const float soundspeed =
@@ -673,7 +675,8 @@ __attribute__((always_inline)) INLINE static void hydro_reset_predicted_values(
 
   /* Re-compute the pressure */
   float comoving_pressure = gas_pressure_from_entropy(p->rho, p->entropy);
-  comoving_pressure = pressure_floor_get_comoving_pressure(p, comoving_pressure, cosmo);
+  comoving_pressure =
+      pressure_floor_get_comoving_pressure(p, comoving_pressure, cosmo);
 
   /* Compute the new sound speed */
   const float soundspeed =
@@ -740,7 +743,8 @@ __attribute__((always_inline)) INLINE static void hydro_predict_extra(
 
   /* Re-compute the pressure */
   float comoving_pressure = gas_pressure_from_entropy(p->rho, p->entropy);
-  comoving_pressure = pressure_floor_get_comoving_pressure(p, comoving_pressure, cosmo);
+  comoving_pressure =
+      pressure_floor_get_comoving_pressure(p, comoving_pressure, cosmo);
 
   /* Compute the new sound speed */
   const float soundspeed =
@@ -852,7 +856,8 @@ __attribute__((always_inline)) INLINE static void hydro_convert_quantities(
 
   /* Compute the pressure */
   float comoving_pressure = gas_pressure_from_entropy(p->rho, p->entropy);
-  comoving_pressure = pressure_floor_get_comoving_pressure(p, comoving_pressure, cosmo);
+  comoving_pressure =
+      pressure_floor_get_comoving_pressure(p, comoving_pressure, cosmo);
 
   /* Compute the sound speed */
   const float soundspeed =

@@ -55,15 +55,10 @@ __attribute__((always_inline)) INLINE static void runner_iact_pressure_floor(
 
   /* Compute the velocity dispersion */
   const float a2H = a * a * H;
-  const float sigma[3] = {
-    dv[0] + a2H * dx[0],
-    dv[1] + a2H * dx[1],
-    dv[2] + a2H * dx[2]
-  };
+  const float sigma[3] = {dv[0] + a2H * dx[0], dv[1] + a2H * dx[1],
+                          dv[2] + a2H * dx[2]};
   const float sigma2 =
-    sigma[0] * sigma[0] +
-    sigma[1] * sigma[1] +
-    sigma[2] * sigma[2];
+      sigma[0] * sigma[0] + sigma[1] * sigma[1] + sigma[2] * sigma[2];
 
   /* Compute the velocity dispersion */
   pi->pressure_floor_data.sigma2 += sigma2 * wi * hydro_get_mass(pj);
@@ -97,15 +92,10 @@ runner_iact_nonsym_pressure_floor(float r2, const float *dx, float hi, float hj,
 
   /* Compute the velocity dispersion */
   const float a2H = a * a * H;
-  const float sigma[3] = {
-    dv[0] + a2H * dx[0],
-    dv[1] + a2H * dx[1],
-    dv[2] + a2H * dx[2]
-  };
+  const float sigma[3] = {dv[0] + a2H * dx[0], dv[1] + a2H * dx[1],
+                          dv[2] + a2H * dx[2]};
   const float sigma2 =
-    sigma[0] * sigma[0] +
-    sigma[1] * sigma[1] +
-    sigma[2] * sigma[2];
+      sigma[0] * sigma[0] + sigma[1] * sigma[1] + sigma[2] * sigma[2];
 
   /* Compute the velocity dispersion */
   pi->pressure_floor_data.sigma2 += sigma2 * wi * hydro_get_mass(pj);
