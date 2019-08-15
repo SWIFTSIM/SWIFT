@@ -977,6 +977,8 @@ void engine_add_ghosts(struct engine *e, struct cell *c, struct task *ghost_in,
  *
  * @param e The #engine.
  * @param c The #cell.
+ * @param star_resort_cell Pointer to the cell where the star_resort task has
+ * been created. NULL above that level or if not running with star formation.
  */
 void engine_make_hierarchical_tasks_hydro(struct engine *e, struct cell *c,
                                           struct cell *star_resort_cell) {

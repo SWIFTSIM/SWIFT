@@ -2399,6 +2399,11 @@ void cell_clear_limiter_flags(struct cell *c, void *data) {
                   cell_flag_do_hydro_limiter | cell_flag_do_hydro_sub_limiter);
 }
 
+/**
+ * @brief Recursively clear the stars_resort flag in a cell hierarchy.
+ *
+ * @param c The #cell to act on.
+ */
 void cell_set_star_resort_flag(struct cell *c) {
 
   cell_set_flag(c, cell_flag_do_stars_resort);
@@ -2412,8 +2417,24 @@ void cell_set_star_resort_flag(struct cell *c) {
   }
 }
 
+/**
+ * @brief Recurses in a cell hierarchy down to the level where the
+ * star resort tasks are and activates them.
+ *
+ * The function will fail if called *below* the super-level
+ *
+ * @param c The #cell to recurse into.
+ * @param s The #scheduler.
+ */
 void cell_activate_star_resort_tasks(struct cell *c, struct scheduler *s) {
 
+#ifdef SWIFT_DEBUG_CHECKS
+  if (c->hydro.super != NULL && c->hydro.super != c)
+    error("Function called below the super level!");
+#endif
+
+  /* The resort tasks are at either the chosen depth or the super level,
+   * whichever comes first. */
   if (c->depth == engine_star_resort_task_depth || c->hydro.super == c) {
     scheduler_activate(s, c->hydro.stars_resort);
   } else {
@@ -2425,9 +2446,19 @@ void cell_activate_star_resort_tasks(struct cell *c, struct scheduler *s) {
   }
 }
 
+/**
+ * @brief Activate the star formation task as well as the resorting of stars
+ *
+ * Must be called at the top-level in the tree (where the SF task is...)
+ *
+ * @param c The (top-level) #cell.
+ * @param s The #scheduler.
+ */
 void cell_activate_star_formation_tasks(struct cell *c, struct scheduler *s) {
 
+#ifdef SWIFT_DEBUG_CHECKS
   if (c->depth != 0) error("Function should be called at the top-level only");
+#endif
 
   /* Have we already unskipped that task? */
   if (c->hydro.star_formation->skip == 0) return;
