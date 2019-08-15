@@ -397,9 +397,11 @@ __attribute__((always_inline)) INLINE static void hydro_reset_acceleration(
  *
  * @param p The particle.
  * @param xp The extended data of this particle.
+ * @param cosmo The cosmological model.
  */
 __attribute__((always_inline)) INLINE static void hydro_reset_predicted_values(
-    struct part* restrict p, const struct xpart* restrict xp) {}
+    struct part* restrict p, const struct xpart* restrict xp,
+    const struct cosmology *cosmo) {}
 
 /**
  * @brief Converts the hydrodynamic variables from the initial condition file to
@@ -797,6 +799,7 @@ __attribute__((always_inline)) INLINE static float hydro_get_comoving_density(
  */
 __attribute__((always_inline)) INLINE static float
 hydro_get_physical_internal_energy(const struct part* restrict p,
+                                   const struct xpart *restrict xp,
                                    const struct cosmology* cosmo) {
 
   return cosmo->a_factor_internal_energy *
@@ -872,6 +875,38 @@ hydro_set_drifted_physical_internal_energy(struct part* p,
                                            const struct cosmology* cosmo,
                                            const float u) {
   error("Need implementing");
+}
+
+/**
+ * @brief Gets the drifted physical internal energy of a particle
+ *
+ * @param p The particle of interest.
+ * @param cosmo Cosmology data structure
+ *
+ * @return The physical internal energy
+ */
+__attribute__((always_inline)) INLINE static float
+hydro_get_drifted_physical_internal_energy(const struct part* p,
+                                           const struct cosmology* cosmo) {
+  error("Need implementing");
+
+  return 0;
+}
+
+/**
+ * @brief Gets the drifted physical entropy of a particle
+ *
+ * @param p The particle of interest.
+ * @param cosmo Cosmology data structure
+ *
+ * @return The physical entropy
+ */
+__attribute__((always_inline)) INLINE static float
+hydro_get_drifted_physical_entropy(const struct part* p,
+				   const struct cosmology* cosmo) {
+  error("Need implementing");
+
+  return 0;
 }
 
 /**

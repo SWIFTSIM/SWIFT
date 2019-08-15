@@ -539,9 +539,11 @@ __attribute__((always_inline)) INLINE static void hydro_reset_gradient(
  *
  * @param p The particle.
  * @param xp The extended data of this particle.
+ * @param cosmo The cosmological model.
  */
 __attribute__((always_inline)) INLINE static void hydro_reset_predicted_values(
-    struct part* restrict p, const struct xpart* restrict xp) {
+    struct part* restrict p, const struct xpart* restrict xp,
+    const struct cosmology *cosmo) {
   // MATTHIEU: Apply the entropy floor here.
 }
 
