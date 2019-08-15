@@ -44,13 +44,12 @@ struct pressure_floor_properties {};
  *
  * @param p The #part.
  * @param rho The physical or comoving density.
- * @param pressure The physical pressure without any pressure floor.
+ * @param cosmo The #cosmology model.
  *
  * @return The physical pressure with the floor.
  */
-static INLINE float pressure_floor_get_physical_pressure(const struct part* p,
-							 const float rho,
-							 const float pressure) {
+static INLINE float pressure_floor_get_physical_pressure(
+    const struct part* p, const float rho, const struct cosmology *cosmo) {
   return pressure;
 }
 
@@ -61,13 +60,12 @@ static INLINE float pressure_floor_get_physical_pressure(const struct part* p,
  *
  * @param p The #part.
  * @param rho The physical or comoving density.
- * @param pressure The comoving pressure without any pressure floor.
+ * @param cosmo The #cosmology model.
  *
  * @return The comoving pressure with the floor.
  */
-static INLINE float pressure_floor_get_comoving_pressure(const struct part* p,
-							 const float rho,
-							 const float pressure) {
+static INLINE float pressure_floor_get_comoving_pressure(
+    const struct part* p, const float rho, const struct cosmology *cosmo) {
   return pressure;
 }
 

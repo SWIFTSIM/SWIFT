@@ -61,6 +61,7 @@
 #include "hydro_properties.h"
 #include "memswap.h"
 #include "minmax.h"
+#include "pressure_floor.h"
 #include "scheduler.h"
 #include "space.h"
 #include "space_getsid.h"
