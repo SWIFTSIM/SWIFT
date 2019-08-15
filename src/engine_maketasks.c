@@ -444,21 +444,21 @@ void engine_addtasks_recv_hydro(struct engine *e, struct cell *c,
     /* Create the tasks. */
     t_xv = scheduler_addtask(s, task_type_recv, task_subtype_xv, c->mpi.tag, 0,
                              c, NULL);
-    scheduler_addunlock(s, s->testsome, t_xv);
+    scheduler_addunlock(s, s->testsome[task_subtype_xv], t_xv);
 
     t_rho = scheduler_addtask(s, task_type_recv, task_subtype_rho, c->mpi.tag,
                               0, c, NULL);
-    scheduler_addunlock(s, s->testsome, t_rho);
+    scheduler_addunlock(s, s->testsome[task_subtype_rho], t_rho);
 
 #ifdef EXTRA_HYDRO_LOOP
     t_gradient = scheduler_addtask(s, task_type_recv, task_subtype_gradient,
                                    c->mpi.tag, 0, c, NULL);
-    scheduler_addunlock(s, s->testsome, t_gradient);
+    scheduler_addunlock(s, s->testsome[task_subtype_gradient], t_gradient);
 #endif
 
     t_ti = scheduler_addtask(s, task_type_recv, task_subtype_tend_part,
                              c->mpi.tag, 0, c, NULL);
-    scheduler_addunlock(s, s->testsome, t_ti);
+    scheduler_addunlock(s, s->testsome[task_subtype_tend_part], t_ti);
   }
 
   if (t_xv != NULL) {
@@ -549,7 +549,7 @@ void engine_addtasks_recv_stars(struct engine *e, struct cell *c,
     t_sf_counts = scheduler_addtask(s, task_type_recv, task_subtype_sf_counts,
                                     c->mpi.tag, 0, c, NULL);
     /* Add testsome dependencies. */
-    scheduler_addunlock(s, s->testsome, t_sf_counts);
+    scheduler_addunlock(s, s->testsome[task_subtype_sf_counts], t_sf_counts);
   }
 
   /* Have we reached a level where there are any stars tasks ? */
@@ -563,11 +563,11 @@ void engine_addtasks_recv_stars(struct engine *e, struct cell *c,
     /* Create the tasks. */
     t_feedback = scheduler_addtask(s, task_type_recv, task_subtype_spart,
                                    c->mpi.tag, 0, c, NULL);
-    scheduler_addunlock(s, s->testsome, t_feedback);
+    scheduler_addunlock(s, s->testsome[task_subtype_spart], t_feedback);
 
     t_ti = scheduler_addtask(s, task_type_recv, task_subtype_tend_spart,
                              c->mpi.tag, 0, c, NULL);
-    scheduler_addunlock(s, s->testsome, t_ti);
+    scheduler_addunlock(s, s->testsome[task_subtype_tend_spart], t_ti);
 
     if (with_star_formation && c->hydro.count > 0) {
 
@@ -644,23 +644,23 @@ void engine_addtasks_recv_black_holes(struct engine *e, struct cell *c,
     /* Create the tasks. */
     t_rho = scheduler_addtask(s, task_type_recv, task_subtype_bpart_rho,
                               c->mpi.tag, 0, c, NULL);
-    scheduler_addunlock(s, s->testsome, t_rho);
+    scheduler_addunlock(s, s->testsome[task_subtype_bpart_rho], t_rho);
 
     t_bh_merger = scheduler_addtask(
         s, task_type_recv, task_subtype_bpart_merger, c->mpi.tag, 0, c, NULL);
-    scheduler_addunlock(s, s->testsome, t_bh_merger);
+    scheduler_addunlock(s, s->testsome[task_subtype_bpart_merger], t_bh_merger);
 
     t_gas_swallow = scheduler_addtask(
         s, task_type_recv, task_subtype_part_swallow, c->mpi.tag, 0, c, NULL);
-    scheduler_addunlock(s, s->testsome, t_gas_swallow);
+    scheduler_addunlock(s, s->testsome[task_subtype_part_swallow], t_gas_swallow);
 
     t_feedback = scheduler_addtask(
         s, task_type_recv, task_subtype_bpart_feedback, c->mpi.tag, 0, c, NULL);
-    scheduler_addunlock(s, s->testsome, t_feedback);
+    scheduler_addunlock(s, s->testsome[task_subtype_bpart_feedback], t_feedback);
 
     t_ti = scheduler_addtask(s, task_type_recv, task_subtype_tend_bpart,
                              c->mpi.tag, 0, c, NULL);
-    scheduler_addunlock(s, s->testsome, t_ti);
+    scheduler_addunlock(s, s->testsome[task_subtype_tend_bpart], t_ti);
   }
 
   if (t_rho != NULL) {
@@ -739,11 +739,11 @@ void engine_addtasks_recv_gravity(struct engine *e, struct cell *c,
     /* Create the tasks. */
     t_grav = scheduler_addtask(s, task_type_recv, task_subtype_gpart,
                                c->mpi.tag, 0, c, NULL);
-    scheduler_addunlock(s, s->testsome, t_grav);
+    scheduler_addunlock(s, s->testsome[task_subtype_gpart], t_grav);
 
     t_ti = scheduler_addtask(s, task_type_recv, task_subtype_tend_gpart,
                              c->mpi.tag, 0, c, NULL);
-    scheduler_addunlock(s, s->testsome, t_ti);
+    scheduler_addunlock(s, s->testsome[task_subtype_tend_gpart], t_ti);
   }
 
   /* If we have tasks, link them. */
@@ -3189,9 +3189,12 @@ void engine_maketasks(struct engine *e) {
       }
     }
 
-    /* Create the testsome task. */
-    sched->testsome = scheduler_addtask(
-        sched, task_type_recv, task_subtype_testsome, 0, 0, NULL, NULL);
+    /* Create the testsome tasks, one per subtype. */
+    for (int k = 0; k < task_subtype_count; k++) {
+        sched->testsome[k] =
+            scheduler_addtask(sched, task_type_recv, task_subtype_testsome, k,
+                              0, NULL, NULL);
+    }
 
     threadpool_map(&e->threadpool, engine_addtasks_recv_mapper,
                    recv_cell_type_pairs, num_recv_cells,

@@ -113,16 +113,16 @@ struct scheduler {
   pthread_key_t local_seed_pointer;
 
 #ifdef WITH_MPI
-  /* Task that tests for acknowledged MPI recv requests. */
-  struct task *testsome;
+  /* Tasks that test for acknowledged MPI recv requests. */
+  struct task *testsome[task_subtype_count];
 
   /* Array of MPI recv requests and associated task indices. */
-  MPI_Request *requests;
-  int nr_requests;
-  int nr_size_requests;
-  struct task **tasks_requests;
-  int nr_recv_tasks;
-  swift_lock_type lock_requests;
+  MPI_Request *requests[task_subtype_count];
+  int nr_recv_tasks[task_subtype_count];
+  int nr_requests[task_subtype_count];
+  int nr_size_requests[task_subtype_count];
+  struct task **tasks_requests[task_subtype_count];
+  swift_lock_type lock_requests[task_subtype_count];
 #endif
 };
 
@@ -191,7 +191,8 @@ scheduler_activate_recv(struct scheduler *s, struct link *link,
 
   /* Make sure to activate the testsome task. */
 #ifdef WITH_MPI
-  if (s->testsome->skip) scheduler_activate(s, s->testsome);
+  if (s->testsome[l->t->subtype]->skip)
+      scheduler_activate(s, s->testsome[l->t->subtype]);
 #endif
   return l;
 }

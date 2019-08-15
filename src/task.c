@@ -542,19 +542,27 @@ int task_lock(struct task *t) {
     /* Communication task? */
     case task_type_recv:
 #ifdef WITH_MPI
-      if (t->subtype == task_subtype_testsome) {
+      if (subtype == task_subtype_testsome) {
 
-        /* Check for any messages that could be received.
-         * Don't want any of this to change when MPI is using it,
-         * but lets not block. */
+        /* Check for any messages that could be received. */
+        /* Need the global reference to the scheduler. */
         struct scheduler *s = scheduler_scheduler;
-        if (s->nr_requests > 0 && lock_trylock(&s->lock_requests) == 0) {
-          int nr_requests = s->nr_requests;
+
+        /* Related subtype of recv tasks. */
+        int asubtype = t->flags;
+        swift_lock_type *lock = &s->lock_requests[asubtype];
+
+        /* Don't want any of this to change when MPI is using it,
+         * but lets not block. */
+        if (s->nr_requests[asubtype] > 0 && lock_trylock(lock) == 0) {
+          int nr_requests = s->nr_requests[asubtype];
           int outcount = 0;
           int indices[nr_requests];
+          MPI_Request *requests = s->requests[asubtype];
+          struct task **tasks = s->tasks_requests[asubtype];
 
-          err = MPI_Testsome(nr_requests, s->requests, &outcount, indices,
-                             MPI_STATUSES_IGNORE);
+          err = MPI_Testsome(nr_requests, requests, &outcount,
+                             indices, MPI_STATUSES_IGNORE);
           if (err != MPI_SUCCESS) {
             mpi_error(err, "Failed to test for recv messages");
           }
@@ -564,24 +572,23 @@ int task_lock(struct task *t) {
             /* Mark any released tasks as ready. */
             for (int k = 0; k < outcount; k++) {
               int ind = indices[k];
-              s->tasks_requests[ind]->req = MPI_REQUEST_NULL;
-              s->tasks_requests[ind]->recv_ready = 1;
+              tasks[ind]->req = MPI_REQUEST_NULL;
+              tasks[ind]->recv_ready = 1;
 
               /* And remove from the requests lists by swapping with end. */
               if (ind < nr_requests - 1) {
-                s->requests[ind] = s->requests[nr_requests - 1];
-                s->tasks_requests[ind] = s->tasks_requests[nr_requests - 1];
+                requests[ind] = requests[nr_requests - 1];
+                tasks[ind] = tasks[nr_requests - 1];
                 nr_requests--;
               }
             }
-            s->nr_requests = nr_requests;
+            s->nr_requests[asubtype] = nr_requests;
 
             /* Decrement total recvs we've seen. */
-            s->nr_recv_tasks -= outcount;
+            s->nr_recv_tasks[asubtype] -= outcount;
             res = 1;
           }
-          if (lock_unlock(&s->lock_requests) != 0)
-            error("Failed to lock requests");
+          if (lock_unlock(lock) != 0) error("Failed to unlock requests");
         }
         return res;
       }

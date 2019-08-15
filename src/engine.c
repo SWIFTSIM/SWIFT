@@ -3352,6 +3352,14 @@ void engine_skip_force_and_kick(struct engine *e) {
         t->subtype == task_subtype_rho || t->subtype == task_subtype_gpart ||
         t->subtype == task_subtype_sf_counts)
       t->skip = 1;
+
+#ifdef WITH_MPI
+    /* Skip testsome tasks for subtypes that are not xv. */
+    else if (t->type == task_type_recv && t->subtype == task_subtype_testsome
+             && t->flags != task_subtype_xv) 
+      t->skip = 1;
+#endif
+
   }
 
   /* Run through the cells and clear some flags. */
@@ -4181,7 +4189,7 @@ void engine_unskip(struct engine *e) {
   }
 
 #ifdef WITH_MPI
-  e->sched.nr_requests = 0;
+  for (int k = 0; k < task_subtype_count; k++) e->sched.nr_requests[k] = 0;
 #endif
 
   /* Activate all the regular tasks */

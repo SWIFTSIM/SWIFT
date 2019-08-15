@@ -1287,7 +1287,7 @@ void scheduler_reset(struct scheduler *s, int size) {
   s->size = size;
   s->nr_tasks = 0;
 #ifdef WITH_MPI
-  s->nr_size_requests = 0;
+  for (int k = 0; k < task_subtype_count; k++) s->nr_size_requests[k] = 0;
 #endif
   s->tasks_next = 0;
   s->waiting = 0;
@@ -1585,7 +1585,7 @@ void scheduler_enqueue_mapper(void *map_data, int num_elements,
     } else if (!t->skip) {
       /* Recv tasks are not enqueued until marked as ready by the testsome
        * tasks, but we do need to start the MPI recv for them for that to be
-       * possible, so do for tasks only being held by testsome. */
+       * possible, so do for tasks only being held by a testsome. */
       if (t->wait == 1 && t->type == task_type_recv &&
           t->subtype != task_subtype_testsome) {
         scheduler_start_recv(s, t);
@@ -1604,8 +1604,10 @@ void scheduler_enqueue_mapper(void *map_data, int num_elements,
 void scheduler_start(struct scheduler *s) {
 
 #ifdef WITH_MPI
-  s->nr_recv_tasks = 0;
-  s->nr_requests = 0;
+  for (int k = 0; k < task_subtype_count; k++) {
+    s->nr_size_requests[k] = 0;
+    s->nr_recv_tasks[k] = 0;
+  }
 #endif
 
   /* Reset all task timers. */
@@ -1622,21 +1624,22 @@ void scheduler_start(struct scheduler *s) {
     s->tasks[i].recv_started = 0;
     if (!s->tasks[i].skip && s->tasks[i].type == task_type_recv &&
         s->tasks[i].subtype != task_subtype_testsome)
-      s->nr_recv_tasks++;
+      s->nr_recv_tasks[s->tasks[i].subtype]++;
 #endif
   }
 
 #ifdef WITH_MPI
 
   /* Initialise the requests storage. */
-  if (s->nr_size_requests < s->nr_recv_tasks) {
-    swift_free("requests", s->requests);
-    swift_free("ind_requests", s->tasks_requests);
-    s->requests = (MPI_Request *)swift_malloc(
-        "requests", sizeof(MPI_Request) * s->nr_recv_tasks);
-    s->tasks_requests = (struct task **)swift_malloc(
-        "tasks_requests", sizeof(struct task *) * s->nr_recv_tasks);
-    s->nr_size_requests = s->nr_recv_tasks;
+  for (int i = 0; i < task_subtype_count; i++) {
+    if (s->nr_size_requests[i] < s->nr_recv_tasks[i]) {
+      swift_free("requests", s->requests[i]);
+      swift_free("ind_requests", s->tasks_requests[i]);
+      s->requests[i] = (MPI_Request *)swift_malloc("requests", sizeof(MPI_Request) * s->nr_recv_tasks[i]);
+          s->tasks_requests[i] = (struct task **)swift_malloc(
+                                                              "tasks_requests", sizeof(struct task *) * s->nr_recv_tasks[i]);
+          s->nr_size_requests[i] = s->nr_recv_tasks[i];
+      }
   }
 #endif
 
@@ -1958,7 +1961,7 @@ struct task *scheduler_done(struct scheduler *s, struct task *t) {
 
 #ifdef WITH_MPI
   /* Keep against changes between now and use. */
-  int nr_recv_tasks = s->nr_recv_tasks;
+  int nr_recv_tasks = s->nr_recv_tasks[t->flags];
 #endif
 
   /* Loop through the dependencies and add them to a queue if
@@ -2027,6 +2030,7 @@ struct task *scheduler_done(struct scheduler *s, struct task *t) {
       t->skip = 0;
       scheduler_enqueue(s, t);
     }
+
 
     /* Now remove the old waiting count. */
     pthread_mutex_lock(&s->sleep_mutex);
@@ -2177,7 +2181,7 @@ void scheduler_init(struct scheduler *s, struct space *space, int nr_tasks,
   /* Init the locks. */
   lock_init(&s->lock);
 #ifdef WITH_MPI
-  lock_init(&s->lock_requests);
+  for (int k = 0; k < task_subtype_count; k++) lock_init(&s->lock_requests[k]);
 #endif
 
   /* Globally accessible pointer. XXX yes we did this... */
@@ -2422,9 +2426,9 @@ void scheduler_start_recv(struct scheduler *s, struct task *t) {
   }
 
   if (t->subtype != task_subtype_testsome) {
-    // XXX debugging.
     if (t->req != MPI_REQUEST_NULL)
       error("MPI request is not MPI_REQUEST_NULL");
+
     int err = MPI_Irecv(buff, count, type, t->ci->nodeID, t->flags,
                         subtaskMPI_comms[t->subtype], &t->req);
 
@@ -2434,14 +2438,16 @@ void scheduler_start_recv(struct scheduler *s, struct task *t) {
 
     /* Record request and associated task. Need to lock this down so we don't
      * have an invalid extra request for a while. */
-    if (lock_lock(&s->lock_requests) != 0) error("Failed to lock requests");
+    if (lock_lock(&s->lock_requests[t->subtype]) != 0)
+      error("Failed to lock requests");
 
-    int ind = s->nr_requests;
-    s->nr_requests++;
-    s->requests[ind] = t->req;
-    s->tasks_requests[ind] = t;
+    int ind = s->nr_requests[t->subtype];
+    s->nr_requests[t->subtype]++;
+    s->requests[t->subtype][ind] = t->req;
+    s->tasks_requests[t->subtype][ind] = t;
 
-    if (lock_unlock(&s->lock_requests) != 0) error("Failed to unlock requests");
+    if (lock_unlock(&s->lock_requests[t->subtype]) != 0)
+      error("Failed to unlock requests");
   }
 
 #endif
@@ -2465,7 +2471,7 @@ void scheduler_dump_queues(struct engine *e) {
   FILE *file_thread;
   if (engine_rank == 0) {
     file_thread = fopen(dumpfile, "w");
-    fprintf(file_thread, "# rank queue index type subtype waits\n");
+    fprintf(file_thread, "# rank queue index type subtype weight flags\n");
     fclose(file_thread);
   }
   MPI_Barrier(MPI_COMM_WORLD);

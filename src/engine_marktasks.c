@@ -962,7 +962,7 @@ int engine_marktasks(struct engine *e) {
 
 #ifdef WITH_MPI
   /* Reset number of requests, these are regenerated. */
-  s->nr_requests = 0;
+  for (int k = 0; k < task_subtype_count; k++) s->nr_requests[k] = 0;
 #endif
 
   /* Run through the tasks and mark as skip or not. */
