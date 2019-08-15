@@ -88,6 +88,36 @@ __attribute__((always_inline)) INLINE static void chemistry_end_density(
     const struct cosmology* cosmo) {}
 
 /**
+ * @brief Updates to the chemistry data after the hydro force loop.
+ *
+ * Nothing to do here in EAGLE.
+ *
+ * @param p The particle to act upon.
+ * @param cosmo The current cosmological model.
+ */
+__attribute__((always_inline)) INLINE static void chemistry_end_force(
+    struct part* restrict p, const struct cosmology* cosmo) {}
+
+/**
+ * @brief Computes the chemistry-related time-step constraint.
+ *
+ * @param phys_const The physical constants in internal units.
+ * @param cosmo The current cosmological model.
+ * @param us The internal system of units.
+ * @param hydro_props The properties of the hydro scheme.
+ * @param cd The global properties of the chemistry scheme.
+ * @param p Pointer to the particle data.
+ */
+__attribute__((always_inline)) INLINE static float chemistry_timestep(
+    const struct phys_const* restrict phys_const,
+    const struct cosmology* restrict cosmo,
+    const struct unit_system* restrict us,
+    const struct hydro_props* hydro_props,
+    const struct chemistry_global_data* cd, const struct part* restrict p) {
+  return FLT_MAX;
+}
+
+/**
  * @brief Sets all particle fields to sensible values when the #part has 0 ngbs.
  *
  * @param p The particle to act upon
