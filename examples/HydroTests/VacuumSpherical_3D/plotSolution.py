@@ -64,12 +64,12 @@ file = h5py.File("vacuum_{0:04d}.hdf5".format(snap), "r")
 coords = file["/PartType0/Coordinates"]
 x = np.sqrt((coords[:,0] - 0.5)**2 + (coords[:,1] - 0.5)**2 + \
             (coords[:,2] - 0.5)**2)
-rho = file["/PartType0/Density"][:]
+rho = file["/PartType0/Densities"][:]
 vels = file["/PartType0/Velocities"]
 v = np.sqrt(vels[:,0]**2 + vels[:,1]**2 + vels[:,2]**2)
-u = file["/PartType0/InternalEnergy"][:]
-S = file["/PartType0/Entropy"][:]
-P = file["/PartType0/Pressure"][:]
+u = file["/PartType0/InternalEnergies"][:]
+S = file["/PartType0/Entropies"][:]
+P = file["/PartType0/Pressures"][:]
 time = file["/Header"].attrs["Time"][0]
 
 scheme = file["/HydroScheme"].attrs["Scheme"]

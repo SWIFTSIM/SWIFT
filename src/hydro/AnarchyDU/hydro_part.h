@@ -185,6 +185,9 @@ struct part {
       /*! Balsara switch */
       float balsara;
 
+      /*! Maximal alpha (viscosity) over neighbours */
+      float alpha_visc_max_ngb;
+
     } force;
   };
 

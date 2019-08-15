@@ -37,14 +37,14 @@ MPI_FLAGS = -DWITH_MPI $(PARMETIS_INCS) $(METIS_INCS)
 bin_PROGRAMS = swift
 
 # Also build the FOF tool?
-if HAVEFOF
+if HAVESTANDALONEFOF
 bin_PROGRAMS += fof
 endif
 
 # Build MPI versions as well?
 if HAVEMPI
 bin_PROGRAMS += swift_mpi
-if HAVEFOF
+if HAVESTANDALONEFOF
 bin_PROGRAMS += fof_mpi
 endif
 endif

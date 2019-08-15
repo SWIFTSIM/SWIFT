@@ -227,6 +227,13 @@ __attribute__((always_inline)) INLINE static void runner_iact_gradient(
   const float delta_u_factor = (pi->u - pj->u) * r_inv;
   pi->diffusion.laplace_u += pj->mass * delta_u_factor * wi_dx / pj->rho;
   pj->diffusion.laplace_u -= pi->mass * delta_u_factor * wj_dx / pi->rho;
+
+  /* Set the maximal alpha from the previous step over the neighbours
+   * (this is used to limit the diffusion in hydro_prepare_force) */
+  const float alpha_i = pi->viscosity.alpha;
+  const float alpha_j = pj->viscosity.alpha;
+  pi->force.alpha_visc_max_ngb = max(pi->force.alpha_visc_max_ngb, alpha_j);
+  pj->force.alpha_visc_max_ngb = max(pj->force.alpha_visc_max_ngb, alpha_i);
 }
 
 /**
@@ -289,6 +296,11 @@ __attribute__((always_inline)) INLINE static void runner_iact_nonsym_gradient(
 
   const float delta_u_factor = (pi->u - pj->u) * r_inv;
   pi->diffusion.laplace_u += pj->mass * delta_u_factor * wi_dx / pj->rho;
+
+  /* Set the maximal alpha from the previous step over the neighbours
+   * (this is used to limit the diffusion in hydro_prepare_force) */
+  const float alpha_j = pj->viscosity.alpha;
+  pi->force.alpha_visc_max_ngb = max(pi->force.alpha_visc_max_ngb, alpha_j);
 }
 
 /**
@@ -397,12 +409,13 @@ __attribute__((always_inline)) INLINE static void runner_iact_force(
   const float visc_du_term = 0.5f * visc_acc_term * dvdr_Hubble;
 
   /* Diffusion term */
-  const float v_diff =
-      max(pi->force.soundspeed + pj->force.soundspeed + dvdr_Hubble, 0.f);
   const float alpha_diff = 0.5f * (pi->diffusion.alpha + pj->diffusion.alpha);
+  const float v_diff = alpha_diff * 0.5f *
+                       (sqrtf(2.f * fabsf(pressurei - pressurej) / rho_ij) +
+                        fabsf(fac_mu * r_inv * dvdr_Hubble));
   /* wi_dx + wj_dx / 2 is F_ij */
   const float diff_du_term =
-      alpha_diff * fac_mu * v_diff * (pi->u - pj->u) * (wi_dr + wj_dr) / rho_ij;
+      v_diff * (pi->u - pj->u) * (wi_dr / rhoi + wj_dr / rhoj);
 
   /* Assemble the energy equation term */
   const float du_dt_i = sph_du_term_i + visc_du_term + diff_du_term;
@@ -415,6 +428,12 @@ __attribute__((always_inline)) INLINE static void runner_iact_force(
   /* Get the time derivative for h. */
   pi->force.h_dt -= mj * dvdr * r_inv / rhoj * wi_dr;
   pj->force.h_dt -= mi * dvdr * r_inv / rhoi * wj_dr;
+
+  /* Update if we need to; this should be guaranteed by the gradient loop but
+   * due to some possible synchronisation problems this is here as a _quick
+   * fix_. Added: 14th August 2019. To be removed by 1st Jan 2020. (JB) */
+  pi->viscosity.v_sig = max(pi->viscosity.v_sig, v_sig);
+  pj->viscosity.v_sig = max(pj->viscosity.v_sig, v_sig);
 }
 
 /**
@@ -518,12 +537,13 @@ __attribute__((always_inline)) INLINE static void runner_iact_nonsym_force(
   const float visc_du_term = 0.5f * visc_acc_term * dvdr_Hubble;
 
   /* Diffusion term */
-  const float v_diff =
-      max(pi->force.soundspeed + pj->force.soundspeed + dvdr_Hubble, 0.f);
   const float alpha_diff = 0.5f * (pi->diffusion.alpha + pj->diffusion.alpha);
+  const float v_diff = alpha_diff * 0.5f *
+                       (sqrtf(2.f * fabsf(pressurei - pressurej) / rho_ij) +
+                        fabsf(fac_mu * r_inv * dvdr_Hubble));
   /* wi_dx + wj_dx / 2 is F_ij */
   const float diff_du_term =
-      alpha_diff * fac_mu * v_diff * (pi->u - pj->u) * (wi_dr + wj_dr) / rho_ij;
+      v_diff * (pi->u - pj->u) * (wi_dr / rhoi + wj_dr / rhoj);
 
   /* Assemble the energy equation term */
   const float du_dt_i = sph_du_term_i + visc_du_term + diff_du_term;
@@ -533,6 +553,11 @@ __attribute__((always_inline)) INLINE static void runner_iact_nonsym_force(
 
   /* Get the time derivative for h. */
   pi->force.h_dt -= mj * dvdr * r_inv / rhoj * wi_dr;
+
+  /* Update if we need to; this should be guaranteed by the gradient loop but
+   * due to some possible synchronisation problems this is here as a _quick
+   * fix_. Added: 14th August 2019. To be removed by 1st Jan 2020. (JB) */
+  pi->viscosity.v_sig = max(pi->viscosity.v_sig, v_sig);
 }
 
 /**

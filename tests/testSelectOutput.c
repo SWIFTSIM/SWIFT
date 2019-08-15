@@ -138,6 +138,7 @@ int main(int argc, char *argv[]) {
   /* pseudo initialization of the engine */
   message("Initialization of the engine.");
   struct engine e;
+  sprintf(e.run_name, "Select Output Test");
   select_output_engine_init(&e, &s, &cosmo, &param_file, &cooling,
                             &hydro_properties);
 

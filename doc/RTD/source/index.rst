@@ -21,6 +21,7 @@ difference is the parameter file that will need to be adapted for SWIFT.
    Snapshots/index
    HydroSchemes/index
    SubgridModels/index
+   random
    FriendsOfFriends/index
    EquationOfState/index
    ExternalPotentials/index

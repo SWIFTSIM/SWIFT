@@ -71,7 +71,7 @@ if __name__ == "__main__":
 
     import matplotlib.pyplot as plt
 
-    filename = "kelvinhelmholtz"
+    filename = "kelvinHelmholtz"
     dpi = 512
 
 
@@ -93,7 +93,7 @@ if __name__ == "__main__":
     fig, ax = plt.subplots(1, 1, figsize=(1, 1), frameon=False)
     ax.axis("off")  # Remove annoying black frame.
 
-    data_x, data_y, density = load_and_extract("kelvinhelmholtz_0000.hdf5")
+    data_x, data_y, density = load_and_extract("kelvinHelmholtz_0000.hdf5")
 
     x = np.linspace(0, 1, dpi)
     y = np.linspace(0, 1, dpi)

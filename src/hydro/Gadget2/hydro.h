@@ -41,6 +41,7 @@
 #include "hydro_space.h"
 #include "kernel_hydro.h"
 #include "minmax.h"
+#include "pressure_floor.h"
 
 #include "./hydro_parameters.h"
 
@@ -109,7 +110,8 @@ hydro_get_drifted_physical_internal_energy(const struct part *restrict p,
 __attribute__((always_inline)) INLINE static float hydro_get_comoving_pressure(
     const struct part *restrict p) {
 
-  return gas_pressure_from_entropy(p->rho, p->entropy);
+  const float comoving_pressure = gas_pressure_from_entropy(p->rho, p->entropy);
+  return pressure_floor_get_pressure(p, p->rho, comoving_pressure);
 }
 
 /**
@@ -121,7 +123,10 @@ __attribute__((always_inline)) INLINE static float hydro_get_comoving_pressure(
 __attribute__((always_inline)) INLINE static float hydro_get_physical_pressure(
     const struct part *restrict p, const struct cosmology *cosmo) {
 
-  return gas_pressure_from_entropy(p->rho * cosmo->a3_inv, p->entropy);
+  const float phys_pressure =
+      gas_pressure_from_entropy(p->rho * cosmo->a3_inv, p->entropy);
+  const float phys_rho = hydro_get_physical_density(p, cosmo);
+  return pressure_floor_get_pressure(p, phys_rho, phys_pressure);
 }
 
 /**
@@ -388,13 +393,15 @@ hydro_set_drifted_physical_internal_energy(struct part *p,
   const float rho_inv = 1.f / p->rho;
 
   /* Compute the pressure */
-  const float pressure = gas_pressure_from_entropy(p->rho, p->entropy);
+  float comoving_pressure = gas_pressure_from_entropy(p->rho, p->entropy);
+  comoving_pressure = pressure_floor_get_pressure(p, p->rho, comoving_pressure);
 
   /* Compute the sound speed */
-  const float soundspeed = gas_soundspeed_from_pressure(p->rho, pressure);
+  const float soundspeed =
+      gas_soundspeed_from_pressure(p->rho, comoving_pressure);
 
   /* Divide the pressure by the density squared to get the SPH term */
-  const float P_over_rho2 = pressure * rho_inv * rho_inv;
+  const float P_over_rho2 = comoving_pressure * rho_inv * rho_inv;
 
   /* Update variables. */
   p->force.P_over_rho2 = P_over_rho2;
@@ -591,13 +598,15 @@ __attribute__((always_inline)) INLINE static void hydro_prepare_force(
   const float abs_div_physical_v = fabsf(div_physical_v);
 
   /* Compute the pressure */
-  const float pressure = gas_pressure_from_entropy(p->rho, p->entropy);
+  float comoving_pressure = gas_pressure_from_entropy(p->rho, p->entropy);
+  comoving_pressure = pressure_floor_get_pressure(p, p->rho, comoving_pressure);
 
   /* Compute the sound speed */
-  const float soundspeed = gas_soundspeed_from_pressure(p->rho, pressure);
+  const float soundspeed =
+      gas_soundspeed_from_pressure(p->rho, comoving_pressure);
 
   /* Divide the pressure by the density squared to get the SPH term */
-  const float P_over_rho2 = pressure * rho_inv * rho_inv;
+  const float P_over_rho2 = comoving_pressure * rho_inv * rho_inv;
 
   /* Compute the Balsara switch */
   /* Pre-multiply in the AV factor; hydro_props are not passed to the iact
@@ -665,14 +674,16 @@ __attribute__((always_inline)) INLINE static void hydro_reset_predicted_values(
   p->entropy = xp->entropy_full;
 
   /* Re-compute the pressure */
-  const float pressure = gas_pressure_from_entropy(p->rho, p->entropy);
+  float comoving_pressure = gas_pressure_from_entropy(p->rho, p->entropy);
+  comoving_pressure = pressure_floor_get_pressure(p, p->rho, comoving_pressure);
 
   /* Compute the new sound speed */
-  const float soundspeed = gas_soundspeed_from_pressure(p->rho, pressure);
+  const float soundspeed =
+      gas_soundspeed_from_pressure(p->rho, comoving_pressure);
 
   /* Divide the pressure by the density squared to get the SPH term */
   const float rho_inv = 1.f / p->rho;
-  const float P_over_rho2 = pressure * rho_inv * rho_inv;
+  const float P_over_rho2 = comoving_pressure * rho_inv * rho_inv;
 
   /* Update variables */
   p->force.soundspeed = soundspeed;
@@ -730,14 +741,16 @@ __attribute__((always_inline)) INLINE static void hydro_predict_extra(
     p->rho *= expf(w2);
 
   /* Re-compute the pressure */
-  const float pressure = gas_pressure_from_entropy(p->rho, p->entropy);
+  float comoving_pressure = gas_pressure_from_entropy(p->rho, p->entropy);
+  comoving_pressure = pressure_floor_get_pressure(p, p->rho, comoving_pressure);
 
   /* Compute the new sound speed */
-  const float soundspeed = gas_soundspeed_from_pressure(p->rho, pressure);
+  const float soundspeed =
+      gas_soundspeed_from_pressure(p->rho, comoving_pressure);
 
   /* Divide the pressure by the density squared to get the SPH term */
   const float rho_inv = 1.f / p->rho;
-  const float P_over_rho2 = pressure * rho_inv * rho_inv;
+  const float P_over_rho2 = comoving_pressure * rho_inv * rho_inv;
 
   /* Update variables */
   p->force.soundspeed = soundspeed;
@@ -840,14 +853,16 @@ __attribute__((always_inline)) INLINE static void hydro_convert_quantities(
   }
 
   /* Compute the pressure */
-  const float pressure = gas_pressure_from_entropy(p->rho, p->entropy);
+  float comoving_pressure = gas_pressure_from_entropy(p->rho, p->entropy);
+  comoving_pressure = pressure_floor_get_pressure(p, p->rho, comoving_pressure);
 
   /* Compute the sound speed */
-  const float soundspeed = gas_soundspeed_from_pressure(p->rho, pressure);
+  const float soundspeed =
+      gas_soundspeed_from_pressure(p->rho, comoving_pressure);
 
   /* Divide the pressure by the density squared to get the SPH term */
   const float rho_inv = 1.f / p->rho;
-  const float P_over_rho2 = pressure * rho_inv * rho_inv;
+  const float P_over_rho2 = comoving_pressure * rho_inv * rho_inv;
 
   p->force.soundspeed = soundspeed;
   p->force.P_over_rho2 = P_over_rho2;

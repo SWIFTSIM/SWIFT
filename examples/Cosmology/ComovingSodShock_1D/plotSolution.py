@@ -82,12 +82,12 @@ git = str(sim["Code"].attrs["Git Revision"])
 
 x = sim["/PartType0/Coordinates"][:,0]
 v = sim["/PartType0/Velocities"][:,0] * anow
-u = sim["/PartType0/InternalEnergy"][:]
-S = sim["/PartType0/Entropy"][:]
-P = sim["/PartType0/Pressure"][:]
-rho = sim["/PartType0/Density"][:]
+u = sim["/PartType0/InternalEnergies"][:]
+S = sim["/PartType0/Entropies"][:]
+P = sim["/PartType0/Pressures"][:]
+rho = sim["/PartType0/Densities"][:]
 try:
-    alpha = sim["/PartType0/Viscosity"][:]
+    alpha = sim["/PartType0/ViscosityParameters"][:]
     plot_alpha = True 
 except:
     plot_alpha = False

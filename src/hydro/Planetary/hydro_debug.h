@@ -42,7 +42,7 @@ __attribute__((always_inline)) INLINE static void hydro_debug_particle(
       "v_full=[%.3g, %.3g, %.3g], a=[%.3g, %.3g, %.3g], \n "
       "m=%.3g, u=%.3g, du/dt=%.3g, P=%.3g, c_s=%.3g, \n "
       "v_sig=%.3g, h=%.3g, dh/dt=%.3g, wcount=%.3g, rho=%.3g, \n "
-      "dh_drho=%.3g, time_bin=%d, wakeup=%d mat_id=%d \n",
+      "dh_drho=%.3g, time_bin=%d, wakeup=%d, mat_id=%d \n",
       p->x[0], p->x[1], p->x[2], p->v[0], p->v[1], p->v[2], xp->v_full[0],
       xp->v_full[1], xp->v_full[2], p->a_hydro[0], p->a_hydro[1], p->a_hydro[2],
       p->mass, p->u, p->u_dt, hydro_get_comoving_pressure(p),

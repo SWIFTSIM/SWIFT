@@ -101,10 +101,10 @@ int main(int argc, char* argv[]) {
   srand(seed);
 
   /* Time-step size */
-  const int time_bin = 29;
+  const int time_bin = 30;
 
   /* Try a few different values for the ID */
-  for (int i = 0; i < 20; ++i) {
+  for (int i = 0; i < 10; ++i) {
 
     const long long id = rand() * (1LL << 31) + rand();
     const integertime_t increment = (1LL << time_bin);
@@ -150,6 +150,9 @@ int main(int argc, char* argv[]) {
 
       const double r =
           random_unit_interval(id, ti_current, random_number_star_formation);
+      if (r < 0.0 || r >= 1.0) {
+        error("Generated random vlaue %f is not in [0, 1).", r);
+      }
 
       total += r;
       total2 += r * r;
@@ -163,6 +166,9 @@ int main(int argc, char* argv[]) {
       /* Calculate if there is a correlation between different ids */
       const double r_2ndid = random_unit_interval(idoffset, ti_current,
                                                   random_number_star_formation);
+      if (r_2ndid < 0.0 || r_2ndid >= 1.0) {
+        error("Generated random vlaue %f is not in [0, 1).", r_2ndid);
+      }
 
       /* Pearson correlation for small different IDs */
       pearsonIDs += r * r_2ndid;
@@ -174,12 +180,21 @@ int main(int argc, char* argv[]) {
 
       const double r_sf =
           random_unit_interval(id, ti_current, random_number_stellar_feedback);
+      if (r_sf < 0.0 || r_sf >= 1.0) {
+        error("Generated random vlaue %f is not in [0, 1).", r_sf);
+      }
 
       const double r_se = random_unit_interval(
           id, ti_current, random_number_stellar_enrichment);
+      if (r_se < 0.0 || r_se >= 1.0) {
+        error("Generated random vlaue %f is not in [0, 1).", r_se);
+      }
 
       const double r_bh =
           random_unit_interval(id, ti_current, random_number_BH_feedback);
+      if (r_bh < 0.0 || r_bh >= 1.0) {
+        error("Generated random vlaue %f is not in [0, 1).", r_bh);
+      }
 
       /* Calculate the correlation between the different processes */
       total_sf += r_sf;
@@ -240,65 +255,110 @@ int main(int argc, char* argv[]) {
 
     /* Verify that the mean and variance match the expected values for a uniform
      * distribution */
-    const double tolmean = 2e-4;
-    const double tolvar = 1e-3;
-    const double tolcorr = 4e-4;
 
-    if ((fabs(mean - 0.5) / 0.5 > tolmean) ||
-        (fabs(var - 1. / 12.) / (1. / 12.) > tolvar) ||
-        (correlation > tolcorr) || (correlationID > tolcorr) ||
-        (fabs(meanID - 0.5) / 0.5 > tolmean) ||
-        (fabs(varID - 1. / 12.) / (1. / 12.) > tolvar) ||
-        (corr_star_sf > tolcorr) || (corr_star_se > tolcorr) ||
-        (corr_star_bh > tolcorr) || (corr_sf_se > tolcorr) ||
-        (corr_sf_bh > tolcorr) || (corr_se_bh > tolcorr) ||
-        (fabs(mean_sf - 0.5) / 0.5 > tolmean) ||
-        (fabs(mean_se - 0.5) / 0.5 > tolmean) ||
-        (fabs(mean_bh - 0.5) / 0.5 > tolmean) ||
-        (fabs(var_sf - 1. / 12.) / (1. / 12.) > tolvar) ||
-        (fabs(var_se - 1. / 12.) / (1. / 12.) > tolvar) ||
-        (fabs(var_bh - 1. / 12.) / (1. / 12.) > tolvar)) {
+    /* Set the allowed standard deviation */
+    const double std_check = 5.;
+
+    /* The mean is expected to deviate a maximum of std_check * std / sqrt(N) */
+    const double tolmean = std_check / sqrtf(12.f * count);
+
+    /* the variance is expected to deviate a maximum of std_check * variance
+     * * sqrt(2/(n-1)) */
+    const double tolvar =
+        std_check * sqrtf(2.f / (12.f * ((double)count - 1.f)));
+
+    /* The correlation coefficient is expected to deviate sqrt(1-R^2)
+     * / sqrt(n-2), in our case <R> = 0, so we get 1/sqrt(n-2) */
+    const double tolcorr = std_check / sqrtf((double)count - 2.);
+
+    if ((fabs(mean - 0.5) > tolmean) || (fabs(var - 1. / 12.) > tolvar) ||
+        (fabs(correlation) > tolcorr) || (fabs(correlationID) > tolcorr) ||
+        (fabs(meanID - 0.5) > tolmean) || (fabs(varID - 1. / 12.) > tolvar) ||
+        (fabs(corr_star_sf) > tolcorr) || (fabs(corr_star_se) > tolcorr) ||
+        (fabs(corr_star_bh) > tolcorr) || (fabs(corr_sf_se) > tolcorr) ||
+        (fabs(corr_sf_bh) > tolcorr) || (fabs(corr_se_bh) > tolcorr) ||
+        (fabs(mean_sf - 0.5) > tolmean) || (fabs(mean_se - 0.5) > tolmean) ||
+        (fabs(mean_bh - 0.5) > tolmean) || (fabs(var_sf - 1. / 12.) > tolvar) ||
+        (fabs(var_se - 1. / 12.) > tolvar) ||
+        (fabs(var_bh - 1. / 12.) > tolvar)) {
       message("Test failed!");
       message("Global result:");
       message("Result:    count=%d mean=%f var=%f, correlation=%f", count, mean,
               var, correlation);
       message("Expected:  count=%d mean=%f var=%f, correlation=%f", count, 0.5f,
               1. / 12., 0.);
+      message("Max difference:           mean=%f var=%f, correlation=%f",
+              tolmean, tolvar, tolcorr);
+      message("Difference:               mean=%f var=%f, correlation=%f",
+              fabs(mean - 0.5f), fabs(var - 1. / 12.), fabs(correlation));
       message("ID part");
       message(
-          "Result:     count%d mean=%f var=%f"
+          "Result:    count=%d mean=%f var=%f"
           " correlation=%f",
           count, meanID, varID, correlationID);
       message(
-          "Expected:   count%d mean=%f var=%f"
+          "Expected:  count=%d mean=%f var=%f"
           " correlation=%f",
           count, .5f, 1. / 12., 0.);
+      message("Max difference:           mean=%f var=%f, correlation=%f",
+              tolmean, tolvar, tolcorr);
+      message("Difference:               mean=%f var=%f, correlation=%f",
+              fabs(meanID - 0.5f), fabs(varID - 1. / 12.), fabs(correlation));
       message("Different physical processes:");
       message(
           "Means:    stars=%f stellar feedback=%f stellar "
-          " enrichement=%f black holes=%f",
+          " enrichment=%f black holes=%f",
           mean, mean_sf, mean_se, mean_bh);
       message(
           "Expected: stars=%f stellar feedback=%f stellar "
-          " enrichement=%f black holes=%f",
+          " enrichment=%f black holes=%f",
           .5f, .5f, .5f, .5f);
       message(
+          "Max diff: stars=%f stellar feedback=%f stellar "
+          " enrichment=%f black holes=%f",
+          tolmean, tolmean, tolmean, tolmean);
+      message(
+          "Diff:     stars=%f stellar feedback=%f stellar "
+          " enrichment=%f black holes=%f",
+          fabs(mean - .5f), fabs(mean_sf - .5f), fabs(mean_se - .5f),
+          fabs(mean_bh - .5f));
+      message(" ");
+      message(
           "Var:      stars=%f stellar feedback=%f stellar "
-          " enrichement=%f black holes=%f",
+          " enrichment=%f black holes=%f",
           var, var_sf, var_se, var_bh);
       message(
           "Expected: stars=%f stellar feedback=%f stellar "
-          " enrichement=%f black holes=%f",
+          " enrichment=%f black holes=%f",
           1. / 12., 1. / 12., 1 / 12., 1. / 12.);
       message(
-          "Correlation: stars-sf=%f stars-se=%f stars-bh=%f"
+          "Max diff: stars=%f stellar feedback=%f stellar "
+          " enrichment=%f black holes=%f",
+          tolvar, tolvar, tolvar, tolvar);
+      message(
+          "Diff:     stars=%f stellar feedback=%f stellar "
+          " enrichment=%f black holes=%f",
+          fabs(var - 1. / 12.), fabs(var_sf - 1. / 12.),
+          fabs(var_se - 1. / 12.), fabs(var_bh - 1. / 12.));
+      message(" ");
+      message(
+          "Correlation: stars-sf=%f stars-se=%f stars-bh=%f "
           "sf-se=%f sf-bh=%f se-bh=%f",
           corr_star_sf, corr_star_se, corr_star_bh, corr_sf_se, corr_sf_bh,
           corr_se_bh);
       message(
-          "Expected:    stars-sf=%f stars-se=%f stars-bh=%f"
+          "Expected:    stars-sf=%f stars-se=%f stars-bh=%f "
           "sf-se=%f sf-bh=%f se-bh=%f",
           0., 0., 0., 0., 0., 0.);
+      message(
+          "Max diff:    stars-sf=%f stars-se=%f stars-bh=%f "
+          "sf-se=%f sf-bh=%f se-bh=%f",
+          tolcorr, tolcorr, tolcorr, tolcorr, tolcorr, tolcorr);
+      message(
+          "Diff:        stars-sf=%f stars-se=%f stars-bh=%f "
+          "sf-se=%f sf-bh=%f se-bh=%f",
+          fabs(corr_star_sf), fabs(corr_star_se), fabs(corr_star_bh),
+          fabs(corr_sf_se), fabs(corr_sf_bh), fabs(corr_se_bh));
       return 1;
     }
   }

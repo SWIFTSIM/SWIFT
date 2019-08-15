@@ -30,6 +30,7 @@ examples/fof_mpi
 examples/*/*/*.xmf
 examples/*/*/*.dat
 examples/*/*/*.png
+examples/*/*/*.pdf
 examples/*/*/*.mp4
 examples/*/*/*.txt
 examples/*/*/*.rst
@@ -40,12 +41,14 @@ examples/*/*/partition_fixed_costs.h
 examples/*/*/memuse_report-step*.dat
 examples/*/*/memuse_report-step*.log
 examples/*/*/restart/*
-examples/*/*/used_parameters.yml
 examples/*/stf_output*
 examples/*/stf.*
 examples/*/fof_output*
 examples/*/log*
+examples/*/*/used_parameters.yml
 examples/*/*/unused_parameters.yml
+examples/*/*/fof_used_parameters.yml
+examples/*/*/fof_unused_parameters.yml
 examples/*/*.mpg
 examples/*/*/gravity_checks_*.dat
 examples/*/*/coolingtables.tar.gz
@@ -112,6 +115,7 @@ tests/testInteractions.sh
 tests/testSymmetry
 tests/testMaths
 tests/testRandom
+tests/testRandomSpacing
 tests/testThreadpool
 tests/testParser
 tests/testFeedback

@@ -232,8 +232,11 @@ INLINE static int star_formation_is_star_forming(
    * because we also need to check if the physical density exceeded
    * the appropriate limit */
 
-  const double Z = p->chemistry_data.smoothed_metal_mass_fraction_total;
-  const double X_H = p->chemistry_data.smoothed_metal_mass_fraction[0];
+  const double Z =
+      chemistry_get_total_metal_mass_fraction_for_star_formation(p);
+  const float* const metal_fraction =
+      chemistry_get_metal_mass_fraction_for_star_formation(p);
+  const double X_H = metal_fraction[chemistry_element_H];
   const double n_H = physical_density * X_H;
 
   /* Get the density threshold */
@@ -279,7 +282,9 @@ INLINE static void star_formation_compute_SFR(
 
   /* Hydrogen number density of this particle */
   const double physical_density = hydro_get_physical_density(p, cosmo);
-  const double X_H = p->chemistry_data.smoothed_metal_mass_fraction[0];
+  const float* const metal_fraction =
+      chemistry_get_metal_mass_fraction_for_star_formation(p);
+  const double X_H = metal_fraction[chemistry_element_H];
   const double n_H = physical_density * X_H / phys_const->const_proton_mass;
 
   /* Are we above the threshold for automatic star formation? */
@@ -687,9 +692,11 @@ star_formation_first_init_part(const struct phys_const* restrict phys_const,
  * density loop for the EAGLE star formation model.
  *
  * @param p Pointer to the particle data.
+ * @param xp Pointer to the extended particle data.
  * @param data The global star_formation information.
  */
 __attribute__((always_inline)) INLINE static void star_formation_init_part(
-    struct part* restrict p, const struct star_formation* data) {}
+    struct part* restrict p, struct xpart* restrict xp,
+    const struct star_formation* data) {}
 
 #endif /* SWIFT_EAGLE_STAR_FORMATION_H */

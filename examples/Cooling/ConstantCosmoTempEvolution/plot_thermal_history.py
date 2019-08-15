@@ -68,21 +68,21 @@ for snap in snap_list:
     z = np.append(z, data.metadata.z)
         
     # Convert gas temperatures and densities to right units
-    data.gas.temperature.convert_to_cgs()
+    data.gas.temperatures.convert_to_cgs()
 
     # Get mean and standard deviation of temperature
-    T_mean.append(np.mean(data.gas.temperature) * data.gas.temperature.units)
-    T_std.append(np.std(data.gas.temperature) * data.gas.temperature.units)
+    T_mean.append(np.mean(data.gas.temperatures) * data.gas.temperatures.units)
+    T_std.append(np.std(data.gas.temperatures) * data.gas.temperatures.units)
 
     # Get mean and standard deviation of density
-    rho_mean.append(np.mean(data.gas.density) * data.gas.density.units)
-    rho_std.append(np.std(data.gas.density) * data.gas.density.units)
+    rho_mean.append(np.mean(data.gas.densities) * data.gas.densities.units)
+    rho_std.append(np.std(data.gas.densities) * data.gas.densities.units)
     
 ## Turn into numpy arrays
-T_mean = np.array(T_mean) * data.gas.temperature.units
-T_std = np.array(T_std) * data.gas.temperature.units
-rho_mean = np.array(rho_mean) * data.gas.density.units
-rho_std = np.array(rho_std) * data.gas.density.units
+T_mean = np.array(T_mean) * data.gas.temperatures.units
+T_std = np.array(T_std) * data.gas.temperatures.units
+rho_mean = np.array(rho_mean) * data.gas.densities.units
+rho_std = np.array(rho_std) * data.gas.densities.units
 
 ## Put Density into units of mean baryon density today
 
