@@ -225,7 +225,7 @@ __attribute__((always_inline)) INLINE static void hydro_update_soundspeed(
   /* IDEAL GAS ONLY -- P-U does not work with generic EoS. */
   const float comoving_pressure =
       pressure_floor_get_comoving_pressure(p, p->pressure_bar, cosmo);
-  p->force.soundspeed = sqrtf(hydro_gamma * comoving_pressure / p->rho);
+  p->force.soundspeed = gas_soundspeed_from_pressure(p->rho, comoving_pressure);
 }
 
 /**
