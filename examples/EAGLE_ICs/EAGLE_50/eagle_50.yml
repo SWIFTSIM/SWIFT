@@ -66,6 +66,7 @@ Scheduler:
   tasks_per_cell:        5
 
 Restarts:
+  onexit:       1
   delta_hours:  1.0
 
 # Parameters related to the initial conditions
