@@ -156,7 +156,7 @@ INLINE static void hydro_write_particles(const struct part* parts,
 
   list[4] = io_make_output_field_convert_part(
       "InternalEnergies", FLOAT, 1, UNIT_CONV_ENERGY_PER_UNIT_MASS,
-      3. * hydro_gamma_minus_one, parts, xparts, convert_u,
+      -3.f * hydro_gamma_minus_one, parts, xparts, convert_u,
       "Co-moving thermal energies per unit mass of the particles");
 
   list[5] =
@@ -168,13 +168,13 @@ INLINE static void hydro_write_particles(const struct part* parts,
                                  "Accelerations of the particles(does not "
                                  "work in non-cosmological runs).");
 
-  list[7] = io_make_output_field("Densities", FLOAT, 1, UNIT_CONV_DENSITY,
-                                 3.f * hydro_gamma, parts, primitives.rho,
+  list[7] = io_make_output_field("Densities", FLOAT, 1, UNIT_CONV_DENSITY, -3.f,
+                                 parts, primitives.rho,
                                  "Co-moving mass densities of the particles");
 
-  list[8] = io_make_output_field("Volumes", FLOAT, 1, UNIT_CONV_VOLUME,
-                                 3.f * hydro_gamma, parts, cell.volume,
-                                 "Co-moving volumes of the particles");
+  list[8] =
+      io_make_output_field("Volumes", FLOAT, 1, UNIT_CONV_VOLUME, -3.f, parts,
+                           cell.volume, "Co-moving volumes of the particles");
 
   list[9] = io_make_output_field("GradDensities", FLOAT, 3, UNIT_CONV_DENSITY,
                                  1.f, parts, primitives.gradients.rho,
@@ -185,11 +185,11 @@ INLINE static void hydro_write_particles(const struct part* parts,
       "Co-moving entropies of the particles");
 
   list[11] = io_make_output_field("Pressures", FLOAT, 1, UNIT_CONV_PRESSURE,
-                                  3.f * hydro_gamma, parts, primitives.P,
+                                  -3.f * hydro_gamma, parts, primitives.P,
                                   "Co-moving pressures of the particles");
 
   list[12] = io_make_output_field_convert_part(
-      "TotalEnergies", FLOAT, 1, UNIT_CONV_ENERGY, 3.f * hydro_gamma_minus_one,
+      "TotalEnergies", FLOAT, 1, UNIT_CONV_ENERGY, -3.f * hydro_gamma_minus_one,
       parts, xparts, convert_Etot, "Total (co-moving) energy of the particles");
 }
 
