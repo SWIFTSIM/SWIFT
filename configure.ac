@@ -380,6 +380,7 @@ fi
 # Check whether we have any of the ARM v8.1 tick timers
 AX_ASM_ARM_PMCCNTR
 AX_ASM_ARM_CNTVCT
+
 # See if we want memuse reporting.
 AC_ARG_ENABLE([memuse-reports],
    [AS_HELP_STRING([--enable-memuse-reports],
@@ -390,6 +391,18 @@ AC_ARG_ENABLE([memuse-reports],
 )
 if test "$enable_memuse_reports" = "yes"; then
    AC_DEFINE([SWIFT_MEMUSE_REPORTS],1,[Enable memory usage reports])
+fi
+
+# Check if we want to make the dumper thread active.
+AC_ARG_ENABLE([dumper],
+   [AS_HELP_STRING([--enable-dumper],
+     [Dump active tasks and memory use (if configured)@<:@yes/no@:>@]
+   )],
+   [enable_dumper="$enableval"],
+   [enable_dumper="no"]
+)
+if test "$enable_dumper" = "yes"; then
+   AC_DEFINE([SWIFT_DUMPER_THREAD],1,[Enable dumper thread])
 fi
 
 
