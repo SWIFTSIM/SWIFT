@@ -1961,7 +1961,8 @@ struct task *scheduler_done(struct scheduler *s, struct task *t) {
 
 #ifdef WITH_MPI
   /* Keep against changes between now and use. */
-  int nr_recv_tasks = s->nr_recv_tasks[t->flags];
+  int nr_recv_tasks = 0;
+  if (t->subtype == task_subtype_testsome) nr_recv_tasks = s->nr_recv_tasks[t->flags];
 #endif
 
   /* Loop through the dependencies and add them to a queue if
