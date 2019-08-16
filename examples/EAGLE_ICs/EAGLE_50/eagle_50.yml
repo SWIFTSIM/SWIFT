@@ -29,6 +29,8 @@ Snapshots:
   basename:            eagle # Common part of the name of output files
   scale_factor_first:  0.05
   delta_time:          1.02
+  output_list_on:      1
+  output_list:         ./output_list.txt
 
 # Parameters governing the conserved quantities statistics
 Statistics:
