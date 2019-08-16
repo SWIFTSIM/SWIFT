@@ -325,8 +325,8 @@ void queue_dump(int nodeID, int index, FILE *file, struct queue *q) {
   for (int k = 0; k < q->count; k++) {
     struct task *t = &q->tasks[q->tid[k]];
 
-    fprintf(file, "%d %d %d %s %s %d\n", nodeID, index, k,
-            taskID_names[t->type], subtaskID_names[t->subtype], t->wait);
+    fprintf(file, "%d %d %d %s %s %.2f\n", nodeID, index, k,
+            taskID_names[t->type], subtaskID_names[t->subtype], t->weight);
   }
 
   /* Release the task lock. */

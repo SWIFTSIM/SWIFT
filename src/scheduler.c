@@ -2305,17 +2305,23 @@ void scheduler_dump_queues(struct engine *e) {
 
   struct scheduler *s = &e->sched;
 
-#ifdef WITH_MPI
-
-  /* Make sure output file is empty, only on one rank. */
+  /* Open the file and write the header. */
   char dumpfile[35];
+#ifdef WITH_MPI
   snprintf(dumpfile, sizeof(dumpfile), "queue_dump_MPI-step%d.dat", e->step);
-  FILE *file_thread;
+#else
+  snprintf(dumpfile, sizeof(dumpfile), "queue_dump-step%d.dat", e->step);
+#endif
+  FILE *file_thread = NULL;
   if (engine_rank == 0) {
     file_thread = fopen(dumpfile, "w");
-    fprintf(file_thread, "# rank queue index type subtype waits\n");
-    fclose(file_thread);
+    fprintf(file_thread, "# rank queue index type subtype weight\n");
   }
+
+#ifdef WITH_MPI
+
+  /* Make sure output file is closed and empty, then we reopen on each rank. */
+  if (engine_rank == 0) fclose(file_thread);
   MPI_Barrier(MPI_COMM_WORLD);
 
   for (int i = 0; i < e->nr_nodes; i++) {
@@ -2343,11 +2349,6 @@ void scheduler_dump_queues(struct engine *e) {
 #else
 
   /* Non-MPI, so just a single schedulers worth of queues to dump. */
-  char dumpfile[32];
-  snprintf(dumpfile, sizeof(dumpfile), "queue_dump-step%d.dat", e->step);
-  FILE *file_thread;
-  file_thread = fopen(dumpfile, "w");
-  fprintf(file_thread, "# rank queue index type subtype waits\n");
   for (int l = 0; l < s->nr_queues; l++) {
     queue_dump(engine_rank, l, file_thread, &s->queues[l]);
   }
