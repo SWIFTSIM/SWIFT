@@ -78,10 +78,10 @@ gas_gamma = sim["/HydroScheme"].attrs["Adiabatic index"][0]
 
 x = sim["/PartType0/Coordinates"][:,0]
 v = sim["/PartType0/Velocities"][:,0]
-u = sim["/PartType0/InternalEnergy"][:]
-S = sim["/PartType0/Entropy"][:]
-P = sim["/PartType0/Pressure"][:]
-rho = sim["/PartType0/Density"][:]
+u = sim["/PartType0/InternalEnergies"][:]
+S = sim["/PartType0/Entropies"][:]
+P = sim["/PartType0/Pressures"][:]
+rho = sim["/PartType0/Densities"][:]
 m = sim["/PartType0/Masses"][:]
 try:
     phi = sim["/PartType0/Potential"][:]
@@ -98,8 +98,8 @@ if os.path.exists(filename_g):
     sim_g = h5py.File(filename_g, "r")
     x_g = sim_g["/PartType0/Coordinates"][:,0]
     v_g = sim_g["/PartType0/Velocities"][:,0]
-    u_g = sim_g["/PartType0/InternalEnergy"][:]
-    rho_g = sim_g["/PartType0/Density"][:]
+    u_g = sim_g["/PartType0/InternalEnergies"][:]
+    rho_g = sim_g["/PartType0/Densities"][:]
     phi_g = sim_g["/PartType0/Potential"][:]
     a_g = sim_g["/Header"].attrs["Time"]
     print("Gadget Scale-factor:", a_g, "redshift:", 1/a_g - 1.)

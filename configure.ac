@@ -1327,6 +1327,7 @@ with_subgrid_cooling=none
 with_subgrid_chemistry=none
 with_subgrid_tracers=none
 with_subgrid_entropy_floor=none
+with_subgrid_pressure_floor=none
 with_subgrid_stars=none
 with_subgrid_star_formation=none
 with_subgrid_feedback=none
@@ -1338,10 +1339,9 @@ case "$with_subgrid" in
    none)
    ;;
    GEAR)
-	with_subgrid_cooling=grackle
+	with_subgrid_cooling=grackle_0
 	with_subgrid_chemistry=GEAR
-	with_subgrid_tracers=none
-	with_subgrid_entropy_floor=none
+	with_subgrid_pressure_floor=GEAR
 	with_subgrid_stars=GEAR
 	with_subgrid_star_formation=GEAR
 	with_subgrid_feedback=none
@@ -1399,6 +1399,12 @@ AC_ARG_WITH([gravity],
    [with_gravity="$withval"],
    [with_gravity="default"]
 )
+
+if test "$with_subgrid" = "EAGLE"; then
+   if test "$with_gravity" = "default"; then
+      with_gravity="with-potential"
+   fi
+fi
 
 case "$with_gravity" in
    with-potential)
@@ -1640,7 +1646,8 @@ esac
 #  Cooling function
 AC_ARG_WITH([cooling],
    [AS_HELP_STRING([--with-cooling=<function>],
-      [cooling function @<:@none, const-du, const-lambda, EAGLE, grackle, grackle1, grackle2, grackle3 default: none@:>@]
+      [cooling function @<:@none, const-du, const-lambda, EAGLE, grackle_* default: none@:>@.
+      For Grackle, you need to provide the primordial chemistry parameter (e.g. grackle_0)]
    )],
    [with_cooling="$withval"],
    [with_cooling="none"]
@@ -1667,21 +1674,10 @@ case "$with_cooling" in
    compton)
       AC_DEFINE([COOLING_COMPTON], [1], [Compton cooling off the CMB])
    ;;
-   grackle)
+   grackle_*)
       AC_DEFINE([COOLING_GRACKLE], [1], [Cooling via the grackle library])
-      AC_DEFINE([COOLING_GRACKLE_MODE], [0], [Grackle chemistry network, mode 0])
-   ;;
-   grackle1)
-      AC_DEFINE([COOLING_GRACKLE], [1], [Cooling via the grackle library])
-      AC_DEFINE([COOLING_GRACKLE_MODE], [1], [Grackle chemistry network, mode 1])
-   ;;
-   grackle2)
-      AC_DEFINE([COOLING_GRACKLE], [1], [Cooling via the grackle library])
-      AC_DEFINE([COOLING_GRACKLE_MODE], [2], [Grackle chemistry network, mode 2])
-   ;;
-   grackle3)
-      AC_DEFINE([COOLING_GRACKLE], [1], [Cooling via the grackle library])
-      AC_DEFINE([COOLING_GRACKLE_MODE], [3], [Grackle chemistry network, mode 3])
+      primordial_chemistry=${with_cooling:8}
+      AC_DEFINE_UNQUOTED([COOLING_GRACKLE_MODE], [$primordial_chemistry], [Grackle chemistry network])
    ;;
    EAGLE)
       AC_DEFINE([COOLING_EAGLE], [1], [Cooling following the EAGLE model])
@@ -1916,6 +1912,35 @@ case "$with_entropy_floor" in
    ;;
 esac 
 
+#  Pressure floor
+AC_ARG_WITH([pressure-floor], 
+    [AS_HELP_STRING([--with-pressure-floor=<floor>],
+       [pressure floor @<:@none, GEAR, default: none@:>@
+       The hydro model needs to be compatible.]
+    )],
+    [with_pressure_floor="$withval"],
+    [with_pressure_floor="none"]
+)
+if test "$with_subgrid" != "none"; then
+   if test "$with_pressure_floor" != "none"; then
+      AC_MSG_ERROR([Cannot provide with-subgrid and with-pressure-floor together])
+   else
+      with_pressure_floor="$with_subgrid_pressure_floor"
+   fi
+fi
+
+case "$with_pressure_floor" in
+   none)
+      AC_DEFINE([PRESSURE_FLOOR_NONE], [1], [No pressure floor])
+   ;;
+   GEAR)
+      AC_DEFINE([PRESSURE_FLOOR_GEAR], [1], [GEAR pressure floor])
+   ;;
+   *)
+      AC_MSG_ERROR([Unknown pressure floor model])
+   ;;
+esac 
+
 #  Star formation
 AC_ARG_WITH([star-formation], 
     [AS_HELP_STRING([--with-star-formation=<sfm>],
@@ -1960,6 +1985,13 @@ AC_DEFINE_UNQUOTED([SELF_GRAVITY_MULTIPOLE_ORDER], [$with_multipole_order], [Mul
 # Check for git, needed for revision stamps.
 AC_PATH_PROG([GIT_CMD], [git])
 AC_SUBST([GIT_CMD])
+
+# Check that the gravity model is compatible with the subgrid
+if test $with_black_holes = "EAGLE"; then
+   if test $with_gravity != "with-potential"; then
+      AC_MSG_ERROR([The EAGLE BH model needs the gravity scheme to provide potentials. The code must be compile with --with-gravity=with-potential.])
+   fi
+fi
 
 # Make the documentation. Add conditional to handle disable option.
 DX_INIT_DOXYGEN(libswift,doc/Doxyfile,doc/)
@@ -2042,6 +2074,7 @@ AC_MSG_RESULT([
    Make gravity glass  : $gravity_glass_making
    External potential  : $with_potential
 
+   Pressure floor       : $with_pressure_floor
    Entropy floor        : $with_entropy_floor
    Cooling function     : $with_cooling
    Chemistry            : $with_chemistry

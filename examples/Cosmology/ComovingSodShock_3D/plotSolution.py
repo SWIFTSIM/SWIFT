@@ -83,19 +83,19 @@ git = sim["Code"].attrs["Git Revision"]
 
 x = sim["/PartType0/Coordinates"][:,0]
 v = sim["/PartType0/Velocities"][:,0] * anow
-u = sim["/PartType0/InternalEnergy"][:]
-S = sim["/PartType0/Entropy"][:]
-P = sim["/PartType0/Pressure"][:]
-rho = sim["/PartType0/Density"][:]
+u = sim["/PartType0/InternalEnergies"][:]
+S = sim["/PartType0/Entropies"][:]
+P = sim["/PartType0/Pressures"][:]
+rho = sim["/PartType0/Densities"][:]
 
 try:
-    diffusion = sim["/PartType0/Diffusion"][:]
+    diffusion = sim["/PartType0/DiffusionParameters"][:]
     plot_diffusion = True
 except:
     plot_diffusion = False
 
 try:
-    viscosity = sim["/PartType0/Viscosity"][:]
+    viscosity = sim["/PartType0/ViscosityParameters"][:]
     plot_viscosity = True
 except:
     plot_viscosity = False

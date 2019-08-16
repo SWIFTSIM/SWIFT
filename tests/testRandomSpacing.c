@@ -50,7 +50,7 @@ int main(int argc, char* argv[]) {
   srand(seed);
 
   /* Time-step size */
-  const int time_bin = 29;
+  const int time_bin = 30;
 
   const double boundary[6] = {1e-5, 1e-6, 1e-7, 1e-8, 1e-9, 1e-10};
   int count[6] = {0};
@@ -75,6 +75,7 @@ int main(int argc, char* argv[]) {
       const double r =
           random_unit_interval(id, ti_current, random_number_star_formation);
 
+      /* Count the number of random numbers below the boundaries */
       if (r < boundary[0]) count[0] += 1;
       if (r < boundary[1]) count[1] += 1;
       if (r < boundary[2]) count[2] += 1;
@@ -83,6 +84,7 @@ int main(int argc, char* argv[]) {
       if (r < boundary[5]) count[5] += 1;
     }
 
+    /* Print counted number of random numbers below the boundaries */
     message("Categories           | %6.0e %6.0e %6.0e %6.0e %6.0e %6.0e",
             boundary[0], boundary[1], boundary[2], boundary[3], boundary[4],
             boundary[5]);
@@ -105,21 +107,40 @@ int main(int argc, char* argv[]) {
     expected_result_int[4] = (int)expected_result[4];
     expected_result_int[5] = (int)expected_result[5];
 
+    /* Print the expected numbers */
     message("expected             | %6d %6d %6d %6d %6d %6d",
             expected_result_int[0], expected_result_int[1],
             expected_result_int[2], expected_result_int[3],
             expected_result_int[4], expected_result_int[5]);
 
     int std_expected_result[6];
-    std_expected_result[0] = (int)max(sqrt(expected_result[0]), 1);
-    std_expected_result[1] = (int)max(sqrt(expected_result[1]), 1);
-    std_expected_result[2] = (int)max(sqrt(expected_result[2]), 1);
-    std_expected_result[3] = (int)max(sqrt(expected_result[3]), 1);
-    std_expected_result[4] = (int)max(sqrt(expected_result[4]), 1);
-    std_expected_result[5] = (int)max(sqrt(expected_result[5]), 1);
 
+    /* Calculate the allowed standard error deviation the maximum of:
+     * 1. the standard error of the expected number doing sqrt(N_expected)
+     * 2. The standard error of the counted number doing sqrt(N_count)
+     * 3. 1 to prevent low number statistics to crash for 1 while expected
+     *    close to zero.
+     *
+     * 1 and 2 are for large numbers essentially the same but for small numbers
+     * it becomes imporatant (e.g. count=6 expected=.9, allowed 5+.9 so 6
+     * fails, but sqrt(6) ~ 2.5 so it should be fine) */
+    std_expected_result[0] =
+        (int)max3(sqrt(expected_result[0]), 1, sqrt(count[0]));
+    std_expected_result[1] =
+        (int)max3(sqrt(expected_result[1]), 1, sqrt(count[1]));
+    std_expected_result[2] =
+        (int)max3(sqrt(expected_result[2]), 1, sqrt(count[2]));
+    std_expected_result[3] =
+        (int)max3(sqrt(expected_result[3]), 1, sqrt(count[3]));
+    std_expected_result[4] =
+        (int)max3(sqrt(expected_result[4]), 1, sqrt(count[4]));
+    std_expected_result[5] =
+        (int)max3(sqrt(expected_result[5]), 1, sqrt(count[5]));
+
+    /* We want 5 sigma (can be changed if necessary) */
     const int numb_sigma = 5;
 
+    /* Print the differences and the 5 sigma differences */
     message("Difference           | %6d %6d %6d %6d %6d %6d",
             abs(expected_result_int[0] - count[0]),
             abs(expected_result_int[1] - count[1]),
@@ -136,6 +157,7 @@ int main(int argc, char* argv[]) {
             numb_sigma * std_expected_result[4],
             numb_sigma * std_expected_result[5]);
 
+    /* Fail if it is not within numb_sigma (5) of the expected difference. */
     if (count[0] >
             expected_result_int[0] + numb_sigma * std_expected_result[0] ||
         count[0] <

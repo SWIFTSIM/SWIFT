@@ -466,25 +466,34 @@ INLINE static struct io_props io_make_output_field_convert_part_LONGLONG(
  * @param type The type of the data
  * @param dimension Dataset dimension (1D, 3D, ...)
  * @param units The units of the dataset
+ * @param a_exponent Exponent of the scale-factor to convert to physical units.
  * @param gpartSize The size in byte of the particle
  * @param gparts The particle array
  * @param functionPtr The function used to convert a g-particle to a float
+ * @param description Description of the field added to the meta-data.
  *
  * Do not call this function directly. Use the macro defined above.
  */
 INLINE static struct io_props io_make_output_field_convert_gpart_INT(
     const char name[FIELD_BUFFER_SIZE], enum IO_DATA_TYPE type, int dimension,
-    enum unit_conversion_factor units, size_t gpartSize,
-    const struct gpart* gparts, conversion_func_gpart_int functionPtr) {
+    enum unit_conversion_factor units, float a_exponent, size_t gpartSize,
+    const struct gpart* gparts, conversion_func_gpart_int functionPtr,
+    const char description[DESCRIPTION_BUFFER_SIZE]) {
 
   struct io_props r;
   bzero(&r, sizeof(struct io_props));
 
   strcpy(r.name, name);
+  if (strlen(description) == 0) {
+    sprintf(r.description, "No description given");
+  } else {
+    strcpy(r.description, description);
+  }
   r.type = type;
   r.dimension = dimension;
   r.importance = UNUSED;
   r.units = units;
+  r.scale_factor_exponent = a_exponent;
   r.partSize = gpartSize;
   r.gparts = gparts;
   r.conversion = 1;
@@ -500,9 +509,11 @@ INLINE static struct io_props io_make_output_field_convert_gpart_INT(
  * @param type The type of the data
  * @param dimension Dataset dimension (1D, 3D, ...)
  * @param units The units of the dataset
+ * @param a_exponent Exponent of the scale-factor to convert to physical units.
  * @param gpartSize The size in byte of the particle
  * @param gparts The particle array
  * @param functionPtr The function used to convert a g-particle to a float
+ * @param description Description of the field added to the meta-data.
  *
  * Do not call this function directly. Use the macro defined above.
  */
@@ -639,23 +650,31 @@ INLINE static struct io_props io_make_output_field_convert_gpart_LONGLONG(
  * @param a_exponent Exponent of the scale-factor to convert to physical units.
  * @param spartSize The size in byte of the particle
  * @param sparts The particle array
- * @param functionPtr The function used to convert a g-particle to a float
+ * @param functionPtr The function used to convert a s-particle to a float
+ * @param description Description of the field added to the meta-data.
  *
  * Do not call this function directly. Use the macro defined above.
  */
 INLINE static struct io_props io_make_output_field_convert_spart_INT(
     const char name[FIELD_BUFFER_SIZE], enum IO_DATA_TYPE type, int dimension,
-    enum unit_conversion_factor units, size_t spartSize,
-    const struct spart* sparts, conversion_func_spart_int functionPtr) {
+    enum unit_conversion_factor units, float a_exponent, size_t spartSize,
+    const struct spart* sparts, conversion_func_spart_int functionPtr,
+    const char description[DESCRIPTION_BUFFER_SIZE]) {
 
   struct io_props r;
   bzero(&r, sizeof(struct io_props));
 
   strcpy(r.name, name);
+  if (strlen(description) == 0) {
+    sprintf(r.description, "No description given");
+  } else {
+    strcpy(r.description, description);
+  }
   r.type = type;
   r.dimension = dimension;
   r.importance = UNUSED;
   r.units = units;
+  r.scale_factor_exponent = a_exponent;
   r.partSize = spartSize;
   r.sparts = sparts;
   r.conversion = 1;
@@ -671,9 +690,11 @@ INLINE static struct io_props io_make_output_field_convert_spart_INT(
  * @param type The type of the data
  * @param dimension Dataset dimension (1D, 3D, ...)
  * @param units The units of the dataset
+ * @param a_exponent Exponent of the scale-factor to convert to physical units.
  * @param spartSize The size in byte of the particle
  * @param sparts The particle array
  * @param functionPtr The function used to convert a g-particle to a float
+ * @param description Description of the field added to the meta-data.
  *
  * Do not call this function directly. Use the macro defined above.
  */
@@ -799,6 +820,49 @@ INLINE static struct io_props io_make_output_field_convert_spart_LONGLONG(
   io_make_output_field_convert_bpart_##type(name, type, dim, units,            \
                                             a_exponent, sizeof(bpart[0]),      \
                                             bpart, convert, desc)
+
+/**
+ * @brief Construct an #io_props from its parameters
+ *
+ * @param name Name of the field to read
+ * @param type The type of the data
+ * @param dimension Dataset dimension (1D, 3D, ...)
+ * @param units The units of the dataset
+ * @param a_exponent Exponent of the scale-factor to convert to physical units.
+ * @param bpartSize The size in byte of the particle
+ * @param bparts The particle array
+ * @param functionPtr The function used to convert a b-particle to a float
+ * @param description Description of the field added to the meta-data.
+ *
+ * Do not call this function directly. Use the macro defined above.
+ */
+INLINE static struct io_props io_make_output_field_convert_bpart_INT(
+    const char name[FIELD_BUFFER_SIZE], enum IO_DATA_TYPE type, int dimension,
+    enum unit_conversion_factor units, float a_exponent, size_t bpartSize,
+    const struct bpart* bparts, conversion_func_bpart_int functionPtr,
+    const char description[DESCRIPTION_BUFFER_SIZE]) {
+
+  struct io_props r;
+  bzero(&r, sizeof(struct io_props));
+
+  strcpy(r.name, name);
+  if (strlen(description) == 0) {
+    sprintf(r.description, "No description given");
+  } else {
+    strcpy(r.description, description);
+  }
+  r.type = type;
+  r.dimension = dimension;
+  r.importance = UNUSED;
+  r.units = units;
+  r.scale_factor_exponent = a_exponent;
+  r.partSize = bpartSize;
+  r.bparts = bparts;
+  r.conversion = 1;
+  r.convert_bpart_i = functionPtr;
+
+  return r;
+}
 
 /**
  * @brief Construct an #io_props from its parameters

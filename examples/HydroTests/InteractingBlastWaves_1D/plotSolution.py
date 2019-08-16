@@ -55,11 +55,11 @@ snap = int(sys.argv[1])
 # Open the file and read the relevant data
 file = h5py.File("interactingBlastWaves_{0:04d}.hdf5".format(snap), "r")
 x = file["/PartType0/Coordinates"][:,0]
-rho = file["/PartType0/Density"]
+rho = file["/PartType0/Densities"]
 v = file["/PartType0/Velocities"][:,0]
-u = file["/PartType0/InternalEnergy"]
-S = file["/PartType0/Entropy"]
-P = file["/PartType0/Pressure"]
+u = file["/PartType0/InternalEnergies"]
+S = file["/PartType0/Entropies"]
+P = file["/PartType0/Pressures"]
 time = file["/Header"].attrs["Time"][0]
 
 scheme = file["/HydroScheme"].attrs["Scheme"]

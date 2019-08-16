@@ -80,10 +80,10 @@ y = pos[:,1] - boxSize / 2
 vel = sim["/PartType0/Velocities"][:,:]
 r = sqrt(x**2 + y**2)
 v_r = (x * vel[:,0] + y * vel[:,1]) / r
-u = sim["/PartType0/InternalEnergy"][:]
-S = sim["/PartType0/Entropy"][:]
-P = sim["/PartType0/Pressure"][:]
-rho = sim["/PartType0/Density"][:]
+u = sim["/PartType0/InternalEnergies"][:]
+S = sim["/PartType0/Entropies"][:]
+P = sim["/PartType0/Pressures"][:]
+rho = sim["/PartType0/Densities"][:]
 
 # Bin te data
 r_bin_edge = np.arange(0., 0.5, 0.01)

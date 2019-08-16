@@ -219,15 +219,15 @@ INLINE static void hydro_write_particles(const struct part* parts,
                                  "Co-moving mass densities of the particles");
 
   list[7] = io_make_output_field_convert_part(
-      "Entropy", FLOAT, 1, UNIT_CONV_ENTROPY, 0.f, parts, xparts, convert_A,
+      "Entropies", FLOAT, 1, UNIT_CONV_ENTROPY, 0.f, parts, xparts, convert_A,
       "Co-moving entropies of the particles");
 
-  list[8] = io_make_output_field("Pressure", FLOAT, 1, UNIT_CONV_PRESSURE,
-                                 3.f * hydro_gamma, parts, primitives.P,
+  list[8] = io_make_output_field("Pressures", FLOAT, 1, UNIT_CONV_PRESSURE,
+                                 -3.f * hydro_gamma, parts, primitives.P,
                                  "Co-moving pressures of the particles");
 
   list[9] = io_make_output_field_convert_part(
-      "TotalEnergies", FLOAT, 1, UNIT_CONV_ENERGY, 3.f * hydro_gamma_minus_one,
+      "TotalEnergies", FLOAT, 1, UNIT_CONV_ENERGY, -3.f * hydro_gamma_minus_one,
       parts, xparts, convert_Etot, "Total (co-moving) energy of the particles");
 
   list[10] = io_make_output_field_convert_part(

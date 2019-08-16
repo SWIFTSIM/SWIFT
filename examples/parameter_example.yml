@@ -285,6 +285,11 @@ EAGLEEntropyFloor:
   Cool_temperature_norm_K:         8000      # Temperature of the EAGLE Cool limiter entropy floor at the density threshold expressed in Kelvin.
   Cool_gamma_effective:            1.        # Slope the of the EAGLE Cool limiter entropy floor
   
+# Parameters related to pressure floors    ----------------------------------------------
+
+GEARPressureFloor:
+  Jeans_factor: 10.       # Number of particles required to suppose a resolved clump and avoid the pressure floor.
+
 # Parameters related to cooling function  ----------------------------------------------
 
 # Constant du/dt cooling function
@@ -408,4 +413,4 @@ EAGLEAGN:
   coupling_efficiency:              0.15       # Fraction of the radiated energy that couples to the gas in feedback events.
   AGN_delta_T_K:                    3.16228e8  # Change in temperature to apply to the gas particle in an AGN feedback event in Kelvin.
   AGN_num_ngb_to_heat:              1.         # Target number of gas neighbours to heat in an AGN feedback event.
-
+  max_reposition_mass:              2e8        # Maximal BH mass considered for BH repositioning in solar masses.

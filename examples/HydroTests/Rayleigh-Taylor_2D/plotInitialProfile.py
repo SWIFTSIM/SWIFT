@@ -12,8 +12,8 @@ f = load(filename)
 
 # Get data from snapshot
 x, y, _ = f.gas.coordinates.value.T
-rho = f.gas.density.value
-a = f.gas.entropy.value
+rho = f.gas.densities.value
+a = f.gas.entropies.value
 
 # Get analytical solution
 y_an = np.linspace(0, makeIC.box_size[1], N)

@@ -489,7 +489,9 @@ float units_general_h_factor(const struct unit_system* us,
  * 140 chars at most)
  * @param us The UnitsSystem in use.
  * @param baseUnitsExponents The exponent of each base units required to form
- * the desired quantity. See conversionFactor() for a working example
+ * the desired quantity. See conversionFactor() for a working example.
+ * @param scale_factor_exponent The scale-factor exponent to use to convert this
+ * unit to physical units.
  */
 void units_general_cgs_conversion_string(char* buffer,
                                          const struct unit_system* us,

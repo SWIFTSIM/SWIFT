@@ -176,7 +176,7 @@ INLINE static void hydro_write_particles(const struct part* parts,
 
   list[4] = io_make_output_field(
       "InternalEnergies", FLOAT, 1, UNIT_CONV_ENERGY_PER_UNIT_MASS,
-      3. * hydro_gamma_minus_one, parts, u,
+      -3.f * hydro_gamma_minus_one, parts, u,
       "Co-moving thermal energies per unit mass of the particles");
 
   list[5] =
@@ -188,7 +188,7 @@ INLINE static void hydro_write_particles(const struct part* parts,
                                  "Co-moving mass densities of the particles");
 
   list[7] = io_make_output_field(
-      "Pressure", FLOAT, 1, UNIT_CONV_PRESSURE, 3.f * hydro_gamma, parts,
+      "Pressures", FLOAT, 1, UNIT_CONV_PRESSURE, -3.f * hydro_gamma, parts,
       pressure_bar, "Co-moving smoothed pressures of the particles");
 
   list[8] = io_make_output_field_convert_part(
@@ -196,12 +196,12 @@ INLINE static void hydro_write_particles(const struct part* parts,
       xparts, convert_S, "Co-moving entropies per unit mass of the particles");
 
   list[9] = io_make_output_field_convert_part(
-      "Potentials", FLOAT, 1, UNIT_CONV_POTENTIAL, parts, xparts,
+      "Potentials", FLOAT, 1, UNIT_CONV_POTENTIAL, -1.f, parts, xparts,
       convert_part_potential, "Gravitational potentials of the particles");
 
-  list[10] = io_make_output_field_convert_part(
-      "ViscosityParameters", FLOAT, 1, UNIT_CONV_NO_UNITS, 0.f, parts, xparts,
-      convert_viscosity, "Visosity coefficient (alpha_visc) of the particles");
+  list[10] = io_make_output_field(
+      "ViscosityParameters", FLOAT, 1, UNIT_CONV_NO_UNITS, 0.f, parts, alpha,
+      "Visosity coefficient (alpha_visc) of the particles");
 }
 
 /**
