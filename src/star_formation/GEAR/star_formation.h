@@ -70,7 +70,7 @@ INLINE static int star_formation_is_star_forming(
   }
 
   /* Get the required variables */
-  const float sigma2 = p->sf_data.sigma2;
+  const float sigma2 = p->pressure_floor_data.sigma2 * cosmo->a * cosmo->a;
   const float n_jeans_2_3 = starform->n_jeans_2_3;
 
   const float h = p->h;
@@ -221,81 +221,6 @@ INLINE static void star_formation_copy_properties(
 INLINE static void starformation_print_backend(
     const struct star_formation* starform) {
   message("Star formation law is 'GEAR'");
-}
-
-/**
- * @brief Finishes the density calculation.
- *
- * @param p The particle to act upon
- * @param xp The extended particle data to act upon
- * @param sf The global star_formation information.
- * @param cosmo The current cosmological model.
- */
-__attribute__((always_inline)) INLINE static void star_formation_end_density(
-    struct part* restrict p, const struct star_formation* sf,
-    const struct cosmology* cosmo) {
-
-  // TODO move into pressure floor
-  /* To finish the turbulence estimation we devide by the density */
-  p->sf_data.sigma2 /=
-      pow_dimension(p->h) * hydro_get_physical_density(p, cosmo);
-
-  /* Add the cosmological factor */
-  p->sf_data.sigma2 *= cosmo->a * cosmo->a;
-}
-
-/**
- * @brief Sets all particle fields to sensible values when the #part has 0 ngbs.
- *
- * @param p The particle to act upon
- * @param xp The extended particle data to act upon
- * @param cd #star_formation containing star_formation informations.
- * @param cosmo The current cosmological model.
- */
-__attribute__((always_inline)) INLINE static void
-star_formation_part_has_no_neighbours(struct part* restrict p,
-                                      struct xpart* restrict xp,
-                                      const struct star_formation* cd,
-                                      const struct cosmology* cosmo) {
-
-  // TODO move into pressure floor
-  /* If part has 0 neighbours, the estimation of turbulence is 0 */
-  p->sf_data.sigma2 = 0.f;
-}
-
-/**
- * @brief Sets the star_formation properties of the (x-)particles to a valid
- * start state.
- *
- * @param p Pointer to the particle data.
- * @param xp Pointer to extended particle data
- * @param data The global star_formation information.
- */
-__attribute__((always_inline)) INLINE static void star_formation_init_part(
-    struct part* restrict p, struct xpart* restrict xp,
-    const struct star_formation* data) {
-  p->sf_data.sigma2 = 0.f;
-}
-
-/**
- * @brief Sets the star_formation properties of the (x-)particles to a valid
- * start state.
- * @param phys_const The physical constant in internal units.
- * @param us The unit system.
- * @param cosmo The current cosmological model.
- * @param data The global star_formation information used for this run.
- * @param p Pointer to the particle data.
- */
-__attribute__((always_inline)) INLINE static void
-star_formation_first_init_part(const struct phys_const* restrict phys_const,
-                               const struct unit_system* restrict us,
-                               const struct cosmology* restrict cosmo,
-                               const struct star_formation* data,
-                               struct part* restrict p,
-                               struct xpart* restrict xp) {
-
-  /* Nothing special here */
-  star_formation_init_part(p, xp, data);
 }
 
 #endif /* SWIFT_GEAR_STAR_FORMATION_H */

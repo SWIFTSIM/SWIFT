@@ -110,8 +110,7 @@ hydro_get_drifted_physical_internal_energy(const struct part *restrict p,
 __attribute__((always_inline)) INLINE static float hydro_get_comoving_pressure(
     const struct part *restrict p) {
 
-  const float comoving_pressure = gas_pressure_from_entropy(p->rho, p->entropy);
-  return pressure_floor_get_pressure(p, p->rho, comoving_pressure);
+  return gas_pressure_from_entropy(p->rho, p->entropy);
 }
 
 /**
@@ -123,10 +122,7 @@ __attribute__((always_inline)) INLINE static float hydro_get_comoving_pressure(
 __attribute__((always_inline)) INLINE static float hydro_get_physical_pressure(
     const struct part *restrict p, const struct cosmology *cosmo) {
 
-  const float phys_pressure =
-      gas_pressure_from_entropy(p->rho * cosmo->a3_inv, p->entropy);
-  const float phys_rho = hydro_get_physical_density(p, cosmo);
-  return pressure_floor_get_pressure(p, phys_rho, phys_pressure);
+  return gas_pressure_from_entropy(p->rho * cosmo->a3_inv, p->entropy);
 }
 
 /**
@@ -394,7 +390,8 @@ hydro_set_drifted_physical_internal_energy(struct part *p,
 
   /* Compute the pressure */
   float comoving_pressure = gas_pressure_from_entropy(p->rho, p->entropy);
-  comoving_pressure = pressure_floor_get_pressure(p, p->rho, comoving_pressure);
+  comoving_pressure =
+      pressure_floor_get_comoving_pressure(p, comoving_pressure, cosmo);
 
   /* Compute the sound speed */
   const float soundspeed =
@@ -466,7 +463,7 @@ __attribute__((always_inline)) INLINE static void hydro_timestep_extra(
  * @brief Prepares a particle for the density calculation.
  *
  * Zeroes all the relevant arrays in preparation for the sums taking place in
- * the variaous density tasks
+ * the various density tasks
  *
  * @param p The particle to act upon
  * @param hs #hydro_space containing hydro specific space information.
@@ -599,7 +596,8 @@ __attribute__((always_inline)) INLINE static void hydro_prepare_force(
 
   /* Compute the pressure */
   float comoving_pressure = gas_pressure_from_entropy(p->rho, p->entropy);
-  comoving_pressure = pressure_floor_get_pressure(p, p->rho, comoving_pressure);
+  comoving_pressure =
+      pressure_floor_get_comoving_pressure(p, comoving_pressure, cosmo);
 
   /* Compute the sound speed */
   const float soundspeed =
@@ -661,9 +659,11 @@ __attribute__((always_inline)) INLINE static void hydro_reset_acceleration(
  *
  * @param p The particle.
  * @param xp The extended data of this particle.
+ * @param cosmo The cosmological model.
  */
 __attribute__((always_inline)) INLINE static void hydro_reset_predicted_values(
-    struct part *restrict p, const struct xpart *restrict xp) {
+    struct part *restrict p, const struct xpart *restrict xp,
+    const struct cosmology *cosmo) {
 
   /* Re-set the predicted velocities */
   p->v[0] = xp->v_full[0];
@@ -675,7 +675,8 @@ __attribute__((always_inline)) INLINE static void hydro_reset_predicted_values(
 
   /* Re-compute the pressure */
   float comoving_pressure = gas_pressure_from_entropy(p->rho, p->entropy);
-  comoving_pressure = pressure_floor_get_pressure(p, p->rho, comoving_pressure);
+  comoving_pressure =
+      pressure_floor_get_comoving_pressure(p, comoving_pressure, cosmo);
 
   /* Compute the new sound speed */
   const float soundspeed =
@@ -742,7 +743,8 @@ __attribute__((always_inline)) INLINE static void hydro_predict_extra(
 
   /* Re-compute the pressure */
   float comoving_pressure = gas_pressure_from_entropy(p->rho, p->entropy);
-  comoving_pressure = pressure_floor_get_pressure(p, p->rho, comoving_pressure);
+  comoving_pressure =
+      pressure_floor_get_comoving_pressure(p, comoving_pressure, cosmo);
 
   /* Compute the new sound speed */
   const float soundspeed =
@@ -854,7 +856,8 @@ __attribute__((always_inline)) INLINE static void hydro_convert_quantities(
 
   /* Compute the pressure */
   float comoving_pressure = gas_pressure_from_entropy(p->rho, p->entropy);
-  comoving_pressure = pressure_floor_get_pressure(p, p->rho, comoving_pressure);
+  comoving_pressure =
+      pressure_floor_get_comoving_pressure(p, comoving_pressure, cosmo);
 
   /* Compute the sound speed */
   const float soundspeed =

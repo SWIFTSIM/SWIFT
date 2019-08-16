@@ -60,13 +60,14 @@
 #include "logger.h"
 #include "memuse.h"
 #include "minmax.h"
+#include "pressure_floor.h"
+#include "pressure_floor_iact.h"
 #include "runner_doiact_vec.h"
 #include "scheduler.h"
 #include "sort_part.h"
 #include "space.h"
 #include "space_getsid.h"
 #include "star_formation.h"
-#include "star_formation_iact.h"
 #include "star_formation_logger.h"
 #include "stars.h"
 #include "task.h"
@@ -2032,7 +2033,6 @@ void runner_do_ghost(struct runner *r, struct cell *c, int timer) {
   const struct hydro_space *hs = &s->hs;
   const struct cosmology *cosmo = e->cosmology;
   const struct chemistry_global_data *chemistry = e->chemistry;
-  const struct star_formation *star_formation = e->star_formation;
 
   const int with_cosmology = (e->policy & engine_policy_cosmology);
 
@@ -2129,7 +2129,7 @@ void runner_do_ghost(struct runner *r, struct cell *c, int timer) {
           /* Finish the density calculation */
           hydro_end_density(p, cosmo);
           chemistry_end_density(p, chemistry, cosmo);
-          star_formation_end_density(p, star_formation, cosmo);
+          pressure_floor_end_density(p, cosmo);
 
           /* Compute one step of the Newton-Raphson scheme */
           const float n_sum = p->density.wcount * h_old_dim;
@@ -2276,7 +2276,7 @@ void runner_do_ghost(struct runner *r, struct cell *c, int timer) {
             /* Re-initialise everything */
             hydro_init_part(p, hs);
             chemistry_init_part(p, chemistry);
-            star_formation_init_part(p, xp, star_formation);
+            pressure_floor_init_part(p, xp);
             tracers_after_init(p, xp, e->internal_units, e->physical_constants,
                                with_cosmology, e->cosmology,
                                e->hydro_properties, e->cooling_func, e->time);
@@ -2298,8 +2298,7 @@ void runner_do_ghost(struct runner *r, struct cell *c, int timer) {
             if (has_no_neighbours) {
               hydro_part_has_no_neighbours(p, xp, cosmo);
               chemistry_part_has_no_neighbours(p, xp, chemistry, cosmo);
-              star_formation_part_has_no_neighbours(p, xp, star_formation,
-                                                    cosmo);
+              pressure_floor_part_has_no_neighbours(p, xp, cosmo);
             }
 
           } else {
@@ -2962,7 +2961,7 @@ void runner_do_kick2(struct runner *r, struct cell *c, int timer) {
 #endif
 
         /* Prepare the values to be drifted */
-        hydro_reset_predicted_values(p, xp);
+        hydro_reset_predicted_values(p, xp, cosmo);
       }
     }
 
@@ -3618,6 +3617,7 @@ void runner_do_end_hydro_force(struct runner *r, struct cell *c, int timer) {
 
         /* Finish the force loop */
         hydro_end_force(p, cosmo);
+        chemistry_end_force(p, cosmo);
 
 #ifdef SWIFT_BOUNDARY_PARTICLES
 

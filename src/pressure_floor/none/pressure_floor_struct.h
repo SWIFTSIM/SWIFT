@@ -1,6 +1,6 @@
 /*******************************************************************************
  * This file is part of SWIFT.
- * Copyright (c) 2018 Folkert Nobels (nobels@strw.leidenuniv.nl)
+ * Copyright (c) 2019 Matthieu Schaller (schaller@strw.leidenuniv.nl)
  *
  * This program is free software: you can redistribute it and/or modify
  * it under the terms of the GNU Lesser General Public License as published
@@ -16,13 +16,13 @@
  * along with this program.  If not, see <http://www.gnu.org/licenses/>.
  *
  ******************************************************************************/
-#ifndef SWIFT_NONE_STAR_FORMATION_STRUCT_H
-#define SWIFT_NONE_STAR_FORMATION_STRUCT_H
+#ifndef SWIFT_PRESSURE_FLOOR_PART_NONE_H
+#define SWIFT_PRESSURE_FLOOR_PART_NONE_H
 
 /**
- * @brief Star-formation-related properties stored in the extended particle
- * data.
+ * Structure containing the required variables for the pressure
+ * floor in the density loop.
  */
-struct star_formation_xpart_data {};
+struct pressure_floor_part_data {};
 
-#endif /* SWIFT_NONE_STAR_FORMATION_STRUCT_H */
+#endif  // SWIFT_PRESSURE_FLOOR_PART_NONE_H
