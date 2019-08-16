@@ -4948,7 +4948,7 @@ void engine_init(struct engine *e, struct space *s, struct swift_params *params,
   e->time_first_snapshot =
       parser_get_opt_param_double(params, "Snapshots:time_first", 0.);
   e->delta_time_snapshot =
-      parser_get_param_double(params, "Snapshots:delta_time");
+      parser_get_opt_param_double(params, "Snapshots:delta_time", -1.);
   e->ti_next_snapshot = 0;
   parser_get_param_string(params, "Snapshots:basename", e->snapshot_base_name);
   e->snapshot_compression =
