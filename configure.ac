@@ -2087,8 +2087,8 @@ AC_MSG_RESULT([
    Make gravity glass  : $gravity_glass_making
    External potential  : $with_potential
 
-   Entropy floor        : $with_entropy_floor
    Pressure floor       : $with_pressure_floor
+   Entropy floor        : $with_entropy_floor
    Cooling function     : $with_cooling
    Chemistry            : $with_chemistry
    Tracers              : $with_tracers

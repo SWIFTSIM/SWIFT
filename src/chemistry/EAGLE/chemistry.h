@@ -243,8 +243,9 @@ static INLINE void chemistry_print_backend(
 }
 
 /**
- * @brief Updates the metal mass fractions after diffusion at the end of the
- * force loop.
+ * @brief Updates to the chemistry data after the hydro force loop.
+ *
+ * Nothing to do here in EAGLE.
  *
  * @param p The particle to act upon.
  * @param cosmo The current cosmological model.
@@ -255,10 +256,13 @@ __attribute__((always_inline)) INLINE static void chemistry_end_force(
 /**
  * @brief Computes the chemistry-related time-step constraint.
  *
+ * No constraints in the EAGLE model (no diffusion etc.) --> FLT_MAX
+ *
  * @param phys_const The physical constants in internal units.
  * @param cosmo The current cosmological model.
  * @param us The internal system of units.
  * @param hydro_props The properties of the hydro scheme.
+ * @param cd The global properties of the chemistry scheme.
  * @param p Pointer to the particle data.
  */
 __attribute__((always_inline)) INLINE static float chemistry_timestep(
