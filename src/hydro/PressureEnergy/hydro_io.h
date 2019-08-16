@@ -187,7 +187,7 @@ INLINE static void hydro_write_particles(const struct part* parts,
                                  "Co-moving mass densities of the particles");
 
   list[7] = io_make_output_field(
-      "Pressure", FLOAT, 1, UNIT_CONV_PRESSURE, 3.f * hydro_gamma, parts,
+      "Pressures", FLOAT, 1, UNIT_CONV_PRESSURE, 3.f * hydro_gamma, parts,
       pressure_bar, "Co-moving smoothed pressures of the particles");
 
   list[8] = io_make_output_field_convert_part(

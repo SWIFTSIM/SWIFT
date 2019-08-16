@@ -1,6 +1,6 @@
 /*******************************************************************************
  * This file is part of SWIFT.
- * Copyright (c) 2019 Matthieu Schaller (schaller@strw.leidenuniv.nl)
+ * Copyright (c) 2019 Loic Hausammann (loic.hausammann@epfl.ch)
  *
  * This program is free software: you can redistribute it and/or modify
  * it under the terms of the GNU Lesser General Public License as published
@@ -19,9 +19,19 @@
 #ifndef SWIFT_PRESSURE_FLOOR_GEAR_H
 #define SWIFT_PRESSURE_FLOOR_GEAR_H
 
+/* Forward declaration */
+__attribute__((always_inline)) static INLINE float
+pressure_floor_get_comoving_pressure(const struct part* p, const float pressure,
+                                     const struct cosmology* cosmo);
+__attribute__((always_inline)) static INLINE float
+pressure_floor_get_physical_pressure(const struct part* p, const float pressure,
+                                     const struct cosmology* cosmo);
+
 #include "adiabatic_index.h"
 #include "cosmology.h"
+#include "dimension.h"
 #include "equation_of_state.h"
+#include "hydro.h"
 #include "hydro_properties.h"
 #include "parser.h"
 #include "part.h"
@@ -49,25 +59,54 @@ struct pressure_floor_properties {
  *
  * Note that the particle is not updated!!
  *
- * The inputs can be either in physical or comoving coordinates (the output is
- * in the same coordinates).
+ * @param p The #part.
+ * @param pressure_physical The physical pressure without any pressure floor.
+ * @param cosmo The #cosmology model.
+ *
+ * @return The physical pressure with the floor.
+ */
+__attribute__((always_inline)) static INLINE float
+pressure_floor_get_physical_pressure(const struct part* p,
+                                     const float pressure_physical,
+                                     const struct cosmology* cosmo) {
+
+  const float H_phys = p->h * cosmo->a_inv * kernel_gamma;
+  const float rho = hydro_get_physical_density(p, cosmo);
+
+  /* Compute the pressure floor */
+  float floor = H_phys * H_phys * rho * pressure_floor_props.constants -
+                p->pressure_floor_data.sigma2;
+  floor *= rho * hydro_one_over_gamma;
+
+  return fmaxf(pressure_physical, floor);
+}
+
+/**
+ * @brief Compute the comoving pressure floor of a given #part.
+ *
+ * Note that the particle is not updated!!
  *
  * @param p The #part.
- * @param rho The physical or comoving density.
- * @param pressure The physical or comoving pressure without any pressure floor.
+ * @param pressure_comoving The comoving pressure without any pressure floor.
+ * @param cosmo The #cosmology model.
  *
  * @return The physical or comoving pressure with the floor.
  */
-static INLINE float pressure_floor_get_pressure(const struct part *p,
-                                                const float rho,
-                                                const float pressure) {
+__attribute__((always_inline)) static INLINE float
+pressure_floor_get_comoving_pressure(const struct part* p,
+                                     const float pressure_comoving,
+                                     const struct cosmology* cosmo) {
 
-  /* Compute pressure floor */
-  float floor = p->h * p->h * rho * pressure_floor_props.constants;
-  // TODO add sigma (will be done once the SF is merged)
-  floor *= rho * hydro_one_over_gamma;
+  const float a_coef = pow_three_gamma_minus_one(cosmo->a);
+  const float rho = hydro_get_comoving_density(p);
 
-  return fmax(pressure, floor);
+  /* Compute the pressure floor */
+  float floor = kernel_gamma * kernel_gamma * p->h * p->h * rho *
+                pressure_floor_props.constants;
+  floor -= p->pressure_floor_data.sigma2 * cosmo->a * cosmo->a;
+  floor *= a_coef * rho * hydro_one_over_gamma;
+
+  return fmaxf(pressure_comoving, floor);
 }
 
 /**
@@ -83,11 +122,10 @@ static INLINE float pressure_floor_get_pressure(const struct part *p,
  * @param hydro_props The propoerties of the hydro scheme.
  * @param props The pressure floor properties to fill.
  */
-static INLINE void pressure_floor_init(struct pressure_floor_properties *props,
-                                       const struct phys_const *phys_const,
-                                       const struct unit_system *us,
-                                       const struct hydro_props *hydro_props,
-                                       struct swift_params *params) {
+__attribute__((always_inline)) static INLINE void pressure_floor_init(
+    struct pressure_floor_properties* props,
+    const struct phys_const* phys_const, const struct unit_system* us,
+    const struct hydro_props* hydro_props, struct swift_params* params) {
 
   /* Read the Jeans factor */
   props->n_jeans =
@@ -103,8 +141,8 @@ static INLINE void pressure_floor_init(struct pressure_floor_properties *props,
  *
  * @param props The pressure floor properties.
  */
-static INLINE void pressure_floor_print(
-    const struct pressure_floor_properties *props) {
+__attribute__((always_inline)) static INLINE void pressure_floor_print(
+    const struct pressure_floor_properties* props) {
 
   message("Pressure floor is 'GEAR' with:");
   message("Jeans factor: %g", props->n_jeans);
@@ -116,9 +154,76 @@ static INLINE void pressure_floor_print(
  * @brief Writes the current model of pressure floor to the file
  * @param h_grp The HDF5 group in which to write
  */
-INLINE static void pressure_floor_print_snapshot(hid_t h_grp) {
+__attribute__((always_inline)) INLINE static void pressure_floor_print_snapshot(
+    hid_t h_grp) {
 
   io_write_attribute_s(h_grp, "Pressure floor", "GEAR");
 }
+
+/**
+ * @brief Finishes the density calculation.
+ *
+ * @param p The particle to act upon
+ * @param cosmo The current cosmological model.
+ */
+__attribute__((always_inline)) INLINE static void pressure_floor_end_density(
+    struct part* restrict p, const struct cosmology* cosmo) {
+
+  /* To finish the turbulence estimation we devide by the density */
+  p->pressure_floor_data.sigma2 /=
+      pow_dimension(p->h) * hydro_get_comoving_density(p);
+
+  /* Add the cosmological term */
+  p->pressure_floor_data.sigma2 *= cosmo->a2_inv;
+}
+
+/**
+ * @brief Sets all particle fields to sensible values when the #part has 0 ngbs.
+ *
+ * @param p The particle to act upon
+ * @param xp The extended particle data to act upon
+ * @param cosmo The current cosmological model.
+ */
+__attribute__((always_inline)) INLINE static void
+pressure_floor_part_has_no_neighbours(struct part* restrict p,
+                                      struct xpart* restrict xp,
+                                      const struct cosmology* cosmo) {
+
+  /* If part has 0 neighbours, the estimation of turbulence is 0 */
+  p->pressure_floor_data.sigma2 = 0.f;
+}
+
+/**
+ * @brief Sets the pressure_floor properties of the (x-)particles to a valid
+ * start state.
+ *
+ * @param p Pointer to the particle data.
+ * @param xp Pointer to the extended particle data.
+ */
+__attribute__((always_inline)) INLINE static void pressure_floor_init_part(
+    struct part* restrict p, struct xpart* restrict xp) {
+  p->pressure_floor_data.sigma2 = 0.f;
+}
+
+/**
+ * @brief Sets the pressure_floor properties of the (x-)particles to a valid
+ * start state.
+ *
+ * @param phys_const The physical constant in internal units.
+ * @param us The unit system.
+ * @param cosmo The current cosmological model.
+ * @param p Pointer to the particle data.
+ * @param xp Pointer to the extended particle data.
+ */
+__attribute__((always_inline)) INLINE static void
+pressure_floor_first_init_part(const struct phys_const* restrict phys_const,
+                               const struct unit_system* restrict us,
+                               const struct cosmology* restrict cosmo,
+                               struct part* restrict p,
+                               struct xpart* restrict xp) {
+
+  pressure_floor_init_part(p, xp);
+}
+
 #endif
 #endif /* SWIFT_PRESSURE_FLOOR_GEAR_H */
