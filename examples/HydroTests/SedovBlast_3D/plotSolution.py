@@ -81,19 +81,19 @@ z = pos[:,2] - boxSize / 2
 vel = sim["/PartType0/Velocities"][:,:]
 r = sqrt(x**2 + y**2 + z**2)
 v_r = (x * vel[:,0] + y * vel[:,1] + z * vel[:,2]) / r
-u = sim["/PartType0/InternalEnergy"][:]
-S = sim["/PartType0/Entropy"][:]
-P = sim["/PartType0/Pressure"][:]
-rho = sim["/PartType0/Density"][:]
+u = sim["/PartType0/InternalEnergies"][:]
+S = sim["/PartType0/Entropies"][:]
+P = sim["/PartType0/Pressures"][:]
+rho = sim["/PartType0/Densities"][:]
 
 try:
-    diffusion = sim["/PartType0/Diffusion"][:]
+    diffusion = sim["/PartType0/DiffusionParameters"][:]
     plot_diffusion = True
 except:
     plot_diffusion = False
 
 try:
-    viscosity = sim["/PartType0/Viscosity"][:]
+    viscosity = sim["/PartType0/ViscosityParameters"][:]
     plot_viscosity = True
 except:
     plot_viscosity = False

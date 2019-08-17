@@ -50,8 +50,9 @@ include_HEADERS = space.h runner.h queue.h task.h lock.h cell.h part.h const.h \
     chemistry.h chemistry_io.h chemistry_struct.h cosmology.h restart.h space_getsid.h utilities.h \
     mesh_gravity.h cbrt.h exp10.h velociraptor_interface.h swift_velociraptor_part.h outputlist.h \
     logger_io.h tracers_io.h tracers.h tracers_struct.h star_formation_io.h fof.h fof_struct.h fof_io.h \
-    star_formation_struct.h star_formation.h star_formation_iact.h \
+    star_formation_struct.h star_formation.h \
     star_formation_logger.h star_formation_logger_struct.h \
+    pressure_floor.h pressure_floor_struct.h pressure_floor_iact.h \
     velociraptor_struct.h velociraptor_io.h random.h memuse.h black_holes.h black_holes_io.h \
     black_holes_properties.h black_holes_struct.h feedback.h feedback_struct.h feedback_properties.h
 
@@ -172,11 +173,11 @@ nobase_noinst_HEADERS = align.h approx_math.h atomic.h barrier.h cycle.h error.h
                  potential/isothermal/potential.h potential/disc_patch/potential.h \
                  potential/sine_wave/potential.h \
 		 star_formation/none/star_formation.h star_formation/none/star_formation_struct.h \
-		 star_formation/none/star_formation_io.h star_formation/none/star_formation_iact.h \
+		 star_formation/none/star_formation_io.h \
 		 star_formation/EAGLE/star_formation.h star_formation/EAGLE/star_formation_struct.h \
-		 star_formation/EAGLE/star_formation_io.h star_formation/EAGLE/star_formation_iact.h \
+		 star_formation/EAGLE/star_formation_io.h \
 		 star_formation/GEAR/star_formation.h star_formation/GEAR/star_formation_struct.h \
-		 star_formation/GEAR/star_formation_io.h star_formation/GEAR/star_formation_iact.h \
+		 star_formation/GEAR/star_formation_io.h \
                  star_formation/EAGLE/star_formation_logger.h star_formation/EAGLE/star_formation_logger_struct.h \
                  star_formation/GEAR/star_formation_logger.h star_formation/GEAR/star_formation_logger_struct.h \
                  star_formation/none/star_formation_logger.h star_formation/none/star_formation_logger_struct.h \
@@ -223,8 +224,9 @@ nobase_noinst_HEADERS = align.h approx_math.h atomic.h barrier.h cycle.h error.h
 		 black_holes/EAGLE/black_holes_part.h black_holes/EAGLE/black_holes_iact.h \
                  black_holes/EAGLE/black_holes_properties.h \
                  black_holes/EAGLE/black_holes_struct.h \
-                 pressure_floor.h \
-		 pressure_floor/GEAR/pressure_floor.h pressure_floor/none/pressure_floor.h
+		 pressure_floor/GEAR/pressure_floor.h pressure_floor/none/pressure_floor.h \
+		 pressure_floor/GEAR/pressure_floor_iact.h pressure_floor/none/pressure_floor_iact.h \
+		 pressure_floor/GEAR/pressure_floor_struct.h pressure_floor/none/pressure_floor_struct.h
 
 
 # Sources and flags for regular library

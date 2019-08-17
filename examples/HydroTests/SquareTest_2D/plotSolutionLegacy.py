@@ -88,10 +88,10 @@ while centre_y < 0.:
 pos = sim["/PartType0/Coordinates"][:,:]
 vel = sim["/PartType0/Velocities"][:,:]
 v_norm = sqrt(vel[:,0]**2 + vel[:,1]**2)
-rho = sim["/PartType0/Density"][:]
-u = sim["/PartType0/InternalEnergy"][:]
-S = sim["/PartType0/Entropy"][:]
-P = sim["/PartType0/Pressure"][:]
+rho = sim["/PartType0/Densities"][:]
+u = sim["/PartType0/InternalEnergies"][:]
+S = sim["/PartType0/Entropies"][:]
+P = sim["/PartType0/Pressures"][:]
 x = pos[:,0] - centre_x
 y = pos[:,1] - centre_y
 

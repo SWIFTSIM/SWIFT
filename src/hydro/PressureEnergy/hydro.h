@@ -213,20 +213,30 @@ hydro_get_drifted_physical_entropy(const struct part *restrict p,
 }
 
 /**
- * @brief Returns the comoving sound speed of a particle
+ * @brief Update the sound speed of a particle
  *
- * @param p The particle of interest
+ * @param p The particle of interest.
+ * @param cosmo The cosmological model.
  */
-__attribute__((always_inline)) INLINE static float
-hydro_get_comoving_soundspeed(const struct part *restrict p) {
+__attribute__((always_inline)) INLINE static void hydro_update_soundspeed(
+    struct part *restrict p, const struct cosmology *cosmo) {
 
   /* Compute the sound speed -- see theory section for justification */
   /* IDEAL GAS ONLY -- P-U does not work with generic EoS. */
   const float comoving_pressure =
-      pressure_floor_get_pressure(p, p->rho, p->pressure_bar);
-  const float square_rooted = sqrtf(hydro_gamma * comoving_pressure / p->rho);
+      pressure_floor_get_comoving_pressure(p, p->pressure_bar, cosmo);
+  p->force.soundspeed = gas_soundspeed_from_pressure(p->rho, comoving_pressure);
+}
 
-  return square_rooted;
+/**
+ * @brief Returns the comoving sound speed of a particle
+ *
+ * @param p The particle of interest.
+ */
+__attribute__((always_inline)) INLINE static float
+hydro_get_comoving_soundspeed(const struct part *restrict p) {
+
+  return p->force.soundspeed;
 }
 
 /**
@@ -239,10 +249,8 @@ __attribute__((always_inline)) INLINE static float
 hydro_get_physical_soundspeed(const struct part *restrict p,
                               const struct cosmology *cosmo) {
 
-  const float phys_rho = hydro_get_physical_density(p, cosmo);
-
-  return pressure_floor_get_pressure(
-      p, phys_rho, cosmo->a_factor_sound_speed * p->force.soundspeed);
+  /* The pressure floor is already included in p->force.soundspeed */
+  return cosmo->a_factor_sound_speed * p->force.soundspeed;
 }
 
 /**
@@ -420,11 +428,8 @@ hydro_set_drifted_physical_internal_energy(struct part *p,
 
   /* Now recompute the extra quantities */
 
-  /* Compute the sound speed */
-  const float soundspeed = hydro_get_comoving_soundspeed(p);
-
   /* Update variables. */
-  p->force.soundspeed = soundspeed;
+  hydro_update_soundspeed(p, cosmo);
 }
 
 /**
@@ -503,7 +508,6 @@ __attribute__((always_inline)) INLINE static void hydro_init_part(
   p->density.wcount = 0.f;
   p->density.wcount_dh = 0.f;
   p->rho = 0.f;
-  p->density.rho_dh = 0.f;
   p->pressure_bar = 0.f;
   p->density.pressure_bar_dh = 0.f;
 
@@ -537,7 +541,6 @@ __attribute__((always_inline)) INLINE static void hydro_end_density(
 
   /* Final operation on the density (add self-contribution). */
   p->rho += p->mass * kernel_root;
-  p->density.rho_dh -= hydro_dimension * p->mass * kernel_root;
   p->pressure_bar += p->mass * p->u * kernel_root;
   p->density.pressure_bar_dh -= hydro_dimension * p->mass * p->u * kernel_root;
   p->density.wcount += kernel_root;
@@ -545,7 +548,6 @@ __attribute__((always_inline)) INLINE static void hydro_end_density(
 
   /* Finish the calculation by inserting the missing h-factors */
   p->rho *= h_inv_dim;
-  p->density.rho_dh *= h_inv_dim_plus_one;
   p->pressure_bar *= (h_inv_dim * hydro_gamma_minus_one);
   p->density.pressure_bar_dh *= (h_inv_dim_plus_one * hydro_gamma_minus_one);
   p->density.wcount *= h_inv_dim;
@@ -590,7 +592,6 @@ __attribute__((always_inline)) INLINE static void hydro_part_has_no_neighbours(
   p->pressure_bar =
       p->mass * p->u * hydro_gamma_minus_one * kernel_root * h_inv_dim;
   p->density.wcount = kernel_root * h_inv_dim;
-  p->density.rho_dh = 0.f;
   p->density.wcount_dh = 0.f;
   p->density.pressure_bar_dh = 0.f;
 
@@ -633,6 +634,7 @@ __attribute__((always_inline)) INLINE static void hydro_prepare_force(
   const float abs_div_v = fabsf(p->density.div_v);
 
   /* Compute the sound speed -- see theory section for justification */
+  hydro_update_soundspeed(p, cosmo);
   const float soundspeed = hydro_get_comoving_soundspeed(p);
 
   /* Compute the Balsara switch */
@@ -648,11 +650,10 @@ __attribute__((always_inline)) INLINE static void hydro_prepare_force(
 
   /* Get the pressures */
   const float comoving_pressure_with_floor =
-      pressure_floor_get_pressure(p, p->rho, p->pressure_bar);
+      pressure_floor_get_comoving_pressure(p, p->pressure_bar, cosmo);
 
   /* Update variables. */
   p->force.f = grad_h_term;
-  p->force.soundspeed = soundspeed;
   p->force.balsara = balsara;
   p->force.pressure_bar_with_floor = comoving_pressure_with_floor;
 }
@@ -685,9 +686,11 @@ __attribute__((always_inline)) INLINE static void hydro_reset_acceleration(
  *
  * @param p The particle.
  * @param xp The extended data of this particle.
+ * @param cosmo The cosmological model.
  */
 __attribute__((always_inline)) INLINE static void hydro_reset_predicted_values(
-    struct part *restrict p, const struct xpart *restrict xp) {
+    struct part *restrict p, const struct xpart *restrict xp,
+    const struct cosmology *cosmo) {
 
   /* Re-set the predicted velocities */
   p->v[0] = xp->v_full[0];
@@ -698,9 +701,7 @@ __attribute__((always_inline)) INLINE static void hydro_reset_predicted_values(
   p->u = xp->u_full;
 
   /* Compute the sound speed */
-  const float soundspeed = hydro_get_comoving_soundspeed(p);
-
-  p->force.soundspeed = soundspeed;
+  hydro_update_soundspeed(p, cosmo);
 }
 
 /**
@@ -763,13 +764,11 @@ __attribute__((always_inline)) INLINE static void hydro_predict_extra(
   }
 
   /* Compute the new sound speed */
-  const float soundspeed = hydro_get_comoving_soundspeed(p);
-
-  p->force.soundspeed = soundspeed;
+  hydro_update_soundspeed(p, cosmo);
 
   /* update the required variables */
   const float comoving_pressure_with_floor =
-      pressure_floor_get_pressure(p, p->rho, p->pressure_bar);
+      pressure_floor_get_comoving_pressure(p, p->pressure_bar, cosmo);
   p->force.pressure_bar_with_floor = comoving_pressure_with_floor;
 }
 

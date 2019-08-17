@@ -1,6 +1,6 @@
 /*******************************************************************************
  * This file is part of SWIFT.
- * Copyright (c) 2018 Folkert Nobels (nobels@strw.leidenuniv.nl)
+ * Copyright (c) 2019 Loic Hausammann (loic.hausammann@epfl.ch)
  *
  * This program is free software: you can redistribute it and/or modify
  * it under the terms of the GNU Lesser General Public License as published
@@ -16,13 +16,24 @@
  * along with this program.  If not, see <http://www.gnu.org/licenses/>.
  *
  ******************************************************************************/
-#ifndef SWIFT_NONE_STAR_FORMATION_STRUCT_H
-#define SWIFT_NONE_STAR_FORMATION_STRUCT_H
+#ifndef SWIFT_PRESSURE_FLOOR_IACT_H
+#define SWIFT_PRESSURE_FLOOR_IACT_H
 
 /**
- * @brief Star-formation-related properties stored in the extended particle
- * data.
+ * @file src/pressure_floor_iact.h
+ * @brief Branches between the different pressure floor iact.
  */
-struct star_formation_xpart_data {};
 
-#endif /* SWIFT_NONE_STAR_FORMATION_STRUCT_H */
+/* Config parameters. */
+#include "../config.h"
+
+/* Import the right pressure floor definition */
+#if defined(PRESSURE_FLOOR_NONE)
+#include "./pressure_floor/none/pressure_floor_iact.h"
+#elif defined(PRESSURE_FLOOR_GEAR)
+#include "./pressure_floor/GEAR/pressure_floor_iact.h"
+#else
+#error "Invalid choice of pressure floor"
+#endif
+
+#endif /* SWIFT_PRESSURE_FLOOR_IACT_H */

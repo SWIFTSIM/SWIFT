@@ -56,9 +56,9 @@
 #include "memuse.h"
 #include "minmax.h"
 #include "multipole.h"
+#include "pressure_floor.h"
 #include "restart.h"
 #include "sort_part.h"
-#include "star_formation.h"
 #include "star_formation_logger.h"
 #include "stars.h"
 #include "threadpool.h"
@@ -4038,7 +4038,6 @@ void space_first_init_parts_mapper(void *restrict map_data, int count,
   const int with_gravity = e->policy & engine_policy_self_gravity;
 
   const struct chemistry_global_data *chemistry = e->chemistry;
-  const struct star_formation *star_formation = e->star_formation;
   const struct cooling_function_data *cool_func = e->cooling_func;
 
   /* Check that the smoothing lengths are non-zero */
@@ -4089,9 +4088,8 @@ void space_first_init_parts_mapper(void *restrict map_data, int count,
     /* Also initialise the chemistry */
     chemistry_first_init_part(phys_const, us, cosmo, chemistry, &p[k], &xp[k]);
 
-    /* Also initialise the star formation */
-    star_formation_first_init_part(phys_const, us, cosmo, star_formation, &p[k],
-                                   &xp[k]);
+    /* Also initialise the pressure floor */
+    pressure_floor_first_init_part(phys_const, us, cosmo, &p[k], &xp[k]);
 
     /* And the cooling */
     cooling_first_init_part(phys_const, us, cosmo, cool_func, &p[k], &xp[k]);
@@ -4373,7 +4371,7 @@ void space_init_parts_mapper(void *restrict map_data, int count,
   for (int k = 0; k < count; k++) {
     hydro_init_part(&parts[k], hs);
     chemistry_init_part(&parts[k], e->chemistry);
-    star_formation_init_part(&parts[k], &xparts[k], e->star_formation);
+    pressure_floor_init_part(&parts[k], &xparts[k]);
     tracers_after_init(&parts[k], &xparts[k], e->internal_units,
                        e->physical_constants, with_cosmology, e->cosmology,
                        e->hydro_properties, e->cooling_func, e->time);
@@ -4602,8 +4600,9 @@ void space_init(struct space *s, struct swift_params *params,
     Ngpart = s->nr_gparts;
 
 #ifdef SWIFT_DEBUG_CHECKS
-    part_verify_links(parts, gparts, sparts, bparts, Npart, Ngpart, Nspart,
-                      Nbpart, 1);
+    if (!dry_run)
+      part_verify_links(parts, gparts, sparts, bparts, Npart, Ngpart, Nspart,
+                        Nbpart, 1);
 #endif
   }
 

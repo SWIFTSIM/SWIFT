@@ -74,10 +74,10 @@ z = sim["/PartType0/Coordinates"][:,2]
 vx = sim["/PartType0/Velocities"][:,0]
 vy = sim["/PartType0/Velocities"][:,1]
 vz = sim["/PartType0/Velocities"][:,2]
-u = sim["/PartType0/InternalEnergy"][:]
-S = sim["/PartType0/Entropy"][:]
-P = sim["/PartType0/Pressure"][:]
-rho = sim["/PartType0/Density"][:]
+u = sim["/PartType0/InternalEnergies"][:]
+S = sim["/PartType0/Entropies"][:]
+P = sim["/PartType0/Pressures"][:]
+rho = sim["/PartType0/Densities"][:]
 
 r = np.sqrt((x-1)**2 + (y-1)**2 + (z-1)**2)
 v = -np.sqrt(vx**2 + vy**2 + vz**2)

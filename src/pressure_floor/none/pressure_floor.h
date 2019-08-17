@@ -42,19 +42,33 @@ struct pressure_floor_properties {};
  *
  * Note that the particle is not updated!!
  *
- * The inputs can be either in physical or comoving coordinates (the output is
- * in the same coordinates).
+ * @param p The #part.
+ * @param physical_pressure The physical pressure without any pressure floor.
+ * @param cosmo The #cosmology model.
+ *
+ * @return The physical pressure with the floor.
+ */
+static INLINE float pressure_floor_get_physical_pressure(
+    const struct part* p, const float physical_pressure,
+    const struct cosmology* cosmo) {
+  return physical_pressure;
+}
+
+/**
+ * @brief Compute the comoving pressure floor of a given #part.
+ *
+ * Note that the particle is not updated!!
  *
  * @param p The #part.
- * @param rho The physical or comoving density.
- * @param pressure The physical or comoving pressure without any pressure floor.
+ * @param comoving_pressure The comoving pressure without any pressure floor.
+ * @param cosmo The #cosmology model.
  *
- * @return The physical or comoving pressure with the floor.
+ * @return The comoving pressure with the floor.
  */
-static INLINE float pressure_floor_get_pressure(const struct part *p,
-                                                const float rho,
-                                                const float pressure) {
-  return pressure;
+static INLINE float pressure_floor_get_comoving_pressure(
+    const struct part* p, const float comoving_pressure,
+    const struct cosmology* cosmo) {
+  return comoving_pressure;
 }
 
 /**
@@ -70,11 +84,11 @@ static INLINE float pressure_floor_get_pressure(const struct part *p,
  * @param hydro_props The propoerties of the hydro scheme.
  * @param props The pressure floor properties to fill.
  */
-static INLINE void pressure_floor_init(struct pressure_floor_properties *props,
-                                       const struct phys_const *phys_const,
-                                       const struct unit_system *us,
-                                       const struct hydro_props *hydro_props,
-                                       struct swift_params *params) {}
+static INLINE void pressure_floor_init(struct pressure_floor_properties* props,
+                                       const struct phys_const* phys_const,
+                                       const struct unit_system* us,
+                                       const struct hydro_props* hydro_props,
+                                       struct swift_params* params) {}
 
 /**
  * @brief Print the properties of the pressure floor to stdout.
@@ -82,7 +96,7 @@ static INLINE void pressure_floor_init(struct pressure_floor_properties *props,
  * @param props The pressure floor properties.
  */
 static INLINE void pressure_floor_print(
-    const struct pressure_floor_properties *props) {}
+    const struct pressure_floor_properties* props) {}
 
 #ifdef HAVE_HDF5
 
@@ -95,5 +109,53 @@ INLINE static void pressure_floor_print_snapshot(hid_t h_grp) {
   io_write_attribute_s(h_grp, "Pressure floor", "none");
 }
 #endif
+
+/**
+ * @brief Finishes the density calculation.
+ *
+ * @param p The particle to act upon
+ * @param cosmo The current cosmological model.
+ */
+__attribute__((always_inline)) INLINE static void pressure_floor_end_density(
+    struct part* restrict p, const struct cosmology* cosmo) {}
+
+/**
+ * @brief Sets all particle fields to sensible values when the #part has 0 ngbs.
+ *
+ * @param p The particle to act upon
+ * @param xp The extended particle data to act upon
+ * @param cosmo The current cosmological model.
+ */
+__attribute__((always_inline)) INLINE static void
+pressure_floor_part_has_no_neighbours(struct part* restrict p,
+                                      struct xpart* restrict xp,
+                                      const struct cosmology* cosmo) {}
+
+/**
+ * @brief Sets the pressure_floor properties of the (x-)particles to a valid
+ * start state.
+ *
+ * @param p Pointer to the particle data.
+ * @param xp Pointer to the extended particle data.
+ */
+__attribute__((always_inline)) INLINE static void pressure_floor_init_part(
+    struct part* restrict p, struct xpart* restrict xp) {}
+
+/**
+ * @brief Sets the pressure_floor properties of the (x-)particles to a valid
+ * start state.
+ *
+ * @param phys_const The physical constant in internal units.
+ * @param us The unit system.
+ * @param cosmo The current cosmological model.
+ * @param p Pointer to the particle data.
+ * @param xp Pointer to the extended particle data.
+ */
+__attribute__((always_inline)) INLINE static void
+pressure_floor_first_init_part(const struct phys_const* restrict phys_const,
+                               const struct unit_system* restrict us,
+                               const struct cosmology* restrict cosmo,
+                               struct part* restrict p,
+                               struct xpart* restrict xp) {}
 
 #endif /* SWIFT_PRESSURE_FLOOR_NONE_H */

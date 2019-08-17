@@ -112,8 +112,8 @@ def T(u, H_frac=H_mass_fraction, T_trans=H_transition_temp):
     return ret
 
 
-rho = sim["/PartType0/Density"][:]
-u = sim["/PartType0/InternalEnergy"][:]
+rho = sim["/PartType0/Densities"][:]
+u = sim["/PartType0/InternalEnergies"][:]
 
 # Compute the temperature
 u *= unit_length_in_si ** 2 / unit_time_in_si ** 2

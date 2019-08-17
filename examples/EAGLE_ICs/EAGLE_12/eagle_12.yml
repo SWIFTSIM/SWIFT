@@ -27,8 +27,8 @@ TimeIntegration:
 # Parameters governing the snapshots
 Snapshots:
   basename:            eagle # Common part of the name of output files
-  scale_factor_first:  0.05
-  delta_time:          1.02
+  output_list_on:      1
+  output_list:         ./output_list.txt
 
 # Parameters governing the conserved quantities statistics
 Statistics:
@@ -66,6 +66,7 @@ Scheduler:
   tasks_per_cell:        5
 
 Restarts:
+  onexit:       1
   delta_hours:  1.0
 
 # Parameters related to the initial conditions
@@ -92,7 +93,7 @@ EAGLEChemistry:
 
 EAGLECooling:
   dir_name:                ./coolingtables/
-  H_reion_z:               11.5 
+  H_reion_z:               7.5                 # Planck 2018
   H_reion_eV_p_H:          2.0
   He_reion_z_centre:       3.5
   He_reion_z_sigma:        0.5

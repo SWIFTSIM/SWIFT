@@ -34,6 +34,7 @@
 #include "black_holes_struct.h"
 #include "chemistry_struct.h"
 #include "cooling_struct.h"
+#include "pressure_floor_struct.h"
 #include "star_formation_struct.h"
 #include "tracers_struct.h"
 
@@ -132,9 +133,6 @@ struct part {
       /*! Derivative of the neighbour number with respect to h. */
       float wcount_dh;
 
-      /*! Derivative of density with respect to h */
-      float rho_dh;
-
       /*! Derivative of the weighted pressure with respect to h */
       float pressure_bar_dh;
 
@@ -179,6 +177,9 @@ struct part {
 
   /*! Black holes information (e.g. swallowing ID) */
   struct black_holes_part_data black_holes_data;
+
+  /* Additional data used by the pressure floor */
+  struct pressure_floor_part_data pressure_floor_data;
 
   /*! Time-step length */
   timebin_t time_bin;

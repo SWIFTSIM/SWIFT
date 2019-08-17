@@ -75,10 +75,10 @@ x = sqrt((coords[:,0] - 0.5 * boxSize)**2 + (coords[:,1] - 0.5 * boxSize)**2 + \
          (coords[:,2] - 0.5 * boxSize)**2)
 vels = sim["/PartType0/Velocities"]
 v = sqrt(vels[:,0]**2 + vels[:,1]**2 + vels[:,2]**2)
-u = sim["/PartType0/InternalEnergy"][:]
-S = sim["/PartType0/Entropy"][:]
-P = sim["/PartType0/Pressure"][:]
-rho = sim["/PartType0/Density"][:]
+u = sim["/PartType0/InternalEnergies"][:]
+S = sim["/PartType0/Entropies"][:]
+P = sim["/PartType0/Pressures"][:]
+rho = sim["/PartType0/Densities"][:]
 
 # Bin the data
 x_bin_edge = logspace(-3., log10(2.), 100)

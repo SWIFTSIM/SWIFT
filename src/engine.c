@@ -130,6 +130,9 @@ int engine_rank;
 /** The current step of the engine as a global variable (for messages). */
 int engine_current_step;
 
+extern int engine_max_parts_per_ghost;
+extern int engine_max_sparts_per_ghost;
+
 /**
  * @brief Data collected from the cells at the end of a time-step
  */
@@ -4952,7 +4955,7 @@ void engine_init(struct engine *e, struct space *s, struct swift_params *params,
   e->time_first_snapshot =
       parser_get_opt_param_double(params, "Snapshots:time_first", 0.);
   e->delta_time_snapshot =
-      parser_get_param_double(params, "Snapshots:delta_time");
+      parser_get_opt_param_double(params, "Snapshots:delta_time", -1.);
   e->ti_next_snapshot = 0;
   parser_get_param_string(params, "Snapshots:basename", e->snapshot_base_name);
   e->snapshot_compression =
@@ -5634,6 +5637,51 @@ void engine_config(int restart, int fof, struct engine *e,
    */
   e->sched.mpi_message_limit =
       parser_get_opt_param_int(params, "Scheduler:mpi_message_limit", 4) * 1024;
+
+  if (restart) {
+
+    /* Overwrite the constants for the scheduler */
+    space_maxsize = parser_get_opt_param_int(params, "Scheduler:cell_max_size",
+                                             space_maxsize_default);
+    space_subsize_pair_hydro =
+        parser_get_opt_param_int(params, "Scheduler:cell_sub_size_pair_hydro",
+                                 space_subsize_pair_hydro_default);
+    space_subsize_self_hydro =
+        parser_get_opt_param_int(params, "Scheduler:cell_sub_size_self_hydro",
+                                 space_subsize_self_hydro_default);
+    space_subsize_pair_stars =
+        parser_get_opt_param_int(params, "Scheduler:cell_sub_size_pair_stars",
+                                 space_subsize_pair_stars_default);
+    space_subsize_self_stars =
+        parser_get_opt_param_int(params, "Scheduler:cell_sub_size_self_stars",
+                                 space_subsize_self_stars_default);
+    space_subsize_pair_grav =
+        parser_get_opt_param_int(params, "Scheduler:cell_sub_size_pair_grav",
+                                 space_subsize_pair_grav_default);
+    space_subsize_self_grav =
+        parser_get_opt_param_int(params, "Scheduler:cell_sub_size_self_grav",
+                                 space_subsize_self_grav_default);
+    space_splitsize = parser_get_opt_param_int(
+        params, "Scheduler:cell_split_size", space_splitsize_default);
+    space_subdepth_diff_grav =
+        parser_get_opt_param_int(params, "Scheduler:cell_subdepth_diff_grav",
+                                 space_subdepth_diff_grav_default);
+    space_extra_parts = parser_get_opt_param_int(
+        params, "Scheduler:cell_extra_parts", space_extra_parts_default);
+    space_extra_sparts = parser_get_opt_param_int(
+        params, "Scheduler:cell_extra_sparts", space_extra_sparts_default);
+    space_extra_gparts = parser_get_opt_param_int(
+        params, "Scheduler:cell_extra_gparts", space_extra_gparts_default);
+    space_extra_bparts = parser_get_opt_param_int(
+        params, "Scheduler:cell_extra_bparts", space_extra_bparts_default);
+
+    engine_max_parts_per_ghost =
+        parser_get_opt_param_int(params, "Scheduler:engine_max_parts_per_ghost",
+                                 engine_max_parts_per_ghost_default);
+    engine_max_sparts_per_ghost = parser_get_opt_param_int(
+        params, "Scheduler:engine_max_sparts_per_ghost",
+        engine_max_sparts_per_ghost_default);
+  }
 
   /* Allocate and init the threads. */
   if (swift_memalign("runners", (void **)&e->runners, SWIFT_CACHE_ALIGNMENT,
