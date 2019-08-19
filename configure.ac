@@ -1394,27 +1394,21 @@ AM_CONDITIONAL([HAVESTANDALONEFOF],[test $enable_standalone_fof = "yes"])
 # Gravity scheme.
 AC_ARG_WITH([gravity],
    [AS_HELP_STRING([--with-gravity=<scheme>],
-      [Gravity scheme to use @<:@default, with-potential, with-multi-softening default: default@:>@]
+      [Gravity scheme to use @<:@basic, with-potential, with-multi-softening default: with-multi-softening@:>@]
    )],
    [with_gravity="$withval"],
-   [with_gravity="default"]
+   [with_gravity="with-multi-softening"]
 )
-
-if test "$with_subgrid" = "EAGLE"; then
-   if test "$with_gravity" = "default"; then
-      with_gravity="with-potential"
-   fi
-fi
 
 case "$with_gravity" in
    with-potential)
-      AC_DEFINE([POTENTIAL_GRAVITY], [1], [Gravity scheme with potential calculation])
+      AC_DEFINE([POTENTIAL_GRAVITY], [1], [Basic gravity scheme with potential calculation])
    ;;
    with-multi-softening)
-      AC_DEFINE([MULTI_SOFTENING_GRAVITY], [1], [Gravity scheme with per-particle softening value calculated from their mass])
+      AC_DEFINE([MULTI_SOFTENING_GRAVITY], [1], [Gravity scheme with per-particle type softening value and background particles])
    ;;
-   default)
-      AC_DEFINE([DEFAULT_GRAVITY], [1], [Default gravity scheme])
+   basic)
+      AC_DEFINE([DEFAULT_GRAVITY], [1], [Basic gravity scheme])
    ;;
    *)
       AC_MSG_ERROR([Unknown gravity scheme: $with_gravity])
@@ -1988,13 +1982,6 @@ AC_DEFINE_UNQUOTED([SELF_GRAVITY_MULTIPOLE_ORDER], [$with_multipole_order], [Mul
 # Check for git, needed for revision stamps.
 AC_PATH_PROG([GIT_CMD], [git])
 AC_SUBST([GIT_CMD])
-
-# Check that the gravity model is compatible with the subgrid
-#if test $with_black_holes = "EAGLE"; then
-#   if test $with_gravity != "with-potential"; then
-#      AC_MSG_ERROR([The EAGLE BH model needs the gravity scheme to provide potentials. The code must be compile with --with-gravity=with-potential.])
-#   fi
-#fi
 
 # Make the documentation. Add conditional to handle disable option.
 DX_INIT_DOXYGEN(libswift,doc/Doxyfile,doc/)
