@@ -1990,11 +1990,11 @@ AC_PATH_PROG([GIT_CMD], [git])
 AC_SUBST([GIT_CMD])
 
 # Check that the gravity model is compatible with the subgrid
-if test $with_black_holes = "EAGLE"; then
-   if test $with_gravity != "with-potential"; then
-      AC_MSG_ERROR([The EAGLE BH model needs the gravity scheme to provide potentials. The code must be compile with --with-gravity=with-potential.])
-   fi
-fi
+#if test $with_black_holes = "EAGLE"; then
+#   if test $with_gravity != "with-potential"; then
+#      AC_MSG_ERROR([The EAGLE BH model needs the gravity scheme to provide potentials. The code must be compile with --with-gravity=with-potential.])
+#   fi
+#fi
 
 # Make the documentation. Add conditional to handle disable option.
 DX_INIT_DOXYGEN(libswift,doc/Doxyfile,doc/)

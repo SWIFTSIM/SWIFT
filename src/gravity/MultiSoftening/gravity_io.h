@@ -16,8 +16,8 @@
  * along with this program.  If not, see <http://www.gnu.org/licenses/>.
  *
  ******************************************************************************/
-#ifndef SWIFT_DEFAULT_GRAVITY_IO_H
-#define SWIFT_DEFAULT_GRAVITY_IO_H
+#ifndef SWIFT_MULTI_SOFTENING_GRAVITY_IO_H
+#define SWIFT_MULTI_SOFTENING_GRAVITY_IO_H
 
 #include "io_properties.h"
 
@@ -135,4 +135,4 @@ INLINE static void darkmatter_write_particles(const struct gpart* gparts,
       "Co-moving Plummer-equivalent softening lengths of the particles.");
 }
 
-#endif /* SWIFT_DEFAULT_GRAVITY_IO_H */
+#endif /* SWIFT_MULTI_SOFTENING_GRAVITY_IO_H */

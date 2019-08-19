@@ -178,7 +178,7 @@ __attribute__((always_inline)) INLINE static void runner_iact_grav_pm_full(
   *f_z = m->M_000 * d.D_001;
   *pot = m->M_000 * d.D_000;
 
-#if SELF_GRAVITY_MULTIPOLE_ORDER > 0
+#if SELF_GRAVITY_MULTIPOLE_ORDER > 1
 
   /* 1st order contributions */
 
@@ -290,7 +290,7 @@ __attribute__((always_inline)) INLINE static void runner_iact_grav_pm_truncated(
   *f_z = m->M_000 * d.D_001;
   *pot = m->M_000 * d.D_000;
 
-#if SELF_GRAVITY_MULTIPOLE_ORDER > 0
+#if SELF_GRAVITY_MULTIPOLE_ORDER > 1
 
   /* 1st order contributions */
 

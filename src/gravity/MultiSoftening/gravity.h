@@ -17,8 +17,8 @@
  * along with this program.  If not, see <http://www.gnu.org/licenses/>.
  *
  ******************************************************************************/
-#ifndef SWIFT_DEFAULT_GRAVITY_H
-#define SWIFT_DEFAULT_GRAVITY_H
+#ifndef SWIFT_MULTI_SOFTENING_GRAVITY_H
+#define SWIFT_MULIT_SOFTENING_GRAVITY_H
 
 #include <float.h>
 
@@ -72,33 +72,28 @@ __attribute__((always_inline)) INLINE static float gravity_get_softening(
 /**
  * @brief Add a contribution to this particle's potential.
  *
- * Here we do nothing as this version does not accumulate potential.
- *
  * @param gp The particle.
  * @param pot The contribution to add.
  */
 __attribute__((always_inline)) INLINE static void
-gravity_add_comoving_potential(struct gpart* restrict gp, float pot) {}
+gravity_add_comoving_potential(struct gpart* restrict gp, float pot) {
+
+  gp->potential += pot;
+}
 
 /**
  * @brief Returns the comoving potential of a particle.
- *
- * This returns 0 as this flavour of gravity does not compute the
- * particles' potential.
  *
  * @param gp The particle of interest
  */
 __attribute__((always_inline)) INLINE static float
 gravity_get_comoving_potential(const struct gpart* restrict gp) {
 
-  return 0.f;
+  return gp->potential;
 }
 
 /**
  * @brief Returns the physical potential of a particle
- *
- * This returns 0 as this flavour of gravity does not compute the
- * particles' potential.
  *
  * @param gp The particle of interest.
  * @param cosmo The cosmological model.
@@ -107,7 +102,7 @@ __attribute__((always_inline)) INLINE static float
 gravity_get_physical_potential(const struct gpart* restrict gp,
                                const struct cosmology* cosmo) {
 
-  return 0.f;
+  return gp->potential * cosmo->a_inv;
 }
 
 /**
@@ -164,6 +159,7 @@ __attribute__((always_inline)) INLINE static void gravity_init_gpart(
   gp->a_grav[0] = 0.f;
   gp->a_grav[1] = 0.f;
   gp->a_grav[2] = 0.f;
+  gp->potential = 0.f;
 
 #ifdef SWIFT_GRAVITY_FORCE_CHECKS
   gp->potential_PM = 0.f;
@@ -196,10 +192,14 @@ __attribute__((always_inline)) INLINE static void gravity_end_force(
     struct gpart* gp, float const_G, const float potential_normalisation,
     const int periodic) {
 
+  /* Apply the periodic correction to the peculiar potential */
+  if (periodic) gp->potential += potential_normalisation;
+
   /* Let's get physical... */
   gp->a_grav[0] *= const_G;
   gp->a_grav[1] *= const_G;
   gp->a_grav[2] *= const_G;
+  gp->potential *= const_G;
 
 #ifdef SWIFT_GRAVITY_FORCE_CHECKS
   gp->potential_PM *= const_G;
@@ -248,4 +248,4 @@ __attribute__((always_inline)) INLINE static void gravity_first_init_gpart(
   gravity_init_gpart(gp);
 }
 
-#endif /* SWIFT_DEFAULT_GRAVITY_H */
+#endif /* SWIFT_MULTI_SOFTENING_GRAVITY_H */

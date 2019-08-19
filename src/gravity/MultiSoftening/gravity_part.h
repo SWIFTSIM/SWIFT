@@ -16,8 +16,8 @@
  * along with this program.  If not, see <http://www.gnu.org/licenses/>.
  *
  ******************************************************************************/
-#ifndef SWIFT_DEFAULT_GRAVITY_PART_H
-#define SWIFT_DEFAULT_GRAVITY_PART_H
+#ifndef SWIFT_MULTI_SOFTENING_GRAVITY_PART_H
+#define SWIFT_MULTI_SOFTENING_GRAVITY_PART_H
 
 #include "fof_struct.h"
 
@@ -36,6 +36,9 @@ struct gpart {
 
   /*! Particle acceleration. */
   float a_grav[3];
+
+  /*! Gravitational potential */
+  float potential;
 
   /*! Particle mass. */
   float mass;
@@ -82,4 +85,4 @@ struct gpart {
 
 } SWIFT_STRUCT_ALIGN;
 
-#endif /* SWIFT_DEFAULT_GRAVITY_PART_H */
+#endif /* SWIFT_MULTI_SOFTENING_GRAVITY_PART_H */
