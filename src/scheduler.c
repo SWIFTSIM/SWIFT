@@ -1083,6 +1083,7 @@ struct task *scheduler_addtask(struct scheduler *s, enum task_types type,
 #ifdef SWIFT_DEBUG_TASKS
   t->rid = -1;
   t->qtic = 0;
+  t->nr_locks = 0;
 #endif
   t->tic = 0;
   t->toc = 0;
@@ -1583,6 +1584,7 @@ void scheduler_start(struct scheduler *s) {
 #ifdef SWIFT_DEBUG_TASKS
     s->tasks[i].rid = -1;
     s->tasks[i].qtic = 0;
+    s->tasks[i].nr_locks = 0;
 #endif
   }
 

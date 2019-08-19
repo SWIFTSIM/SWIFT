@@ -220,6 +220,9 @@ struct task {
 
   /*! Time when task was queued. */
   ticks qtic;
+
+  /* How many attempts to lock task. */
+  size_t nr_locks;
 #endif
 
   /*! Start and end time of this task */

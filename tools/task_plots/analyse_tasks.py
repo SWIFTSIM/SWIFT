@@ -163,7 +163,7 @@ full_step = data[0, :]
 
 #  Do we have an MPI file?
 full_step = data[0, :]
-if full_step.size == 14:
+if full_step.size == 15:
     print("# MPI mode")
     mpimode = True
     nranks = int(max(data[:, 0])) + 1
