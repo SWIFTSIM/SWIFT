@@ -735,7 +735,7 @@ __attribute__((always_inline)) INLINE static void hydro_predict_extra(
     float dt_therm, const struct cosmology *cosmo,
     const struct hydro_props *hydro_props,
     const struct entropy_floor_properties *floor_props) {
-      
+
   /* Store ratio of new internal energy to old internal energy, as we use this
    * in the drifting of the pressure. */
   float internal_energy_ratio = 1.f / p->u;

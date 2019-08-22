@@ -422,11 +422,12 @@ hydro_set_drifted_physical_internal_energy(struct part *p,
   /* Now recompute the extra quantities */
 
   /* Compute the sound speed */
-  const float soundspeed = gas_soundspeed_from_pressure(p->rho, p->pressure_bar);
+  const float soundspeed =
+      gas_soundspeed_from_pressure(p->rho, p->pressure_bar);
 
   /* Update variables. */
   p->force.soundspeed = soundspeed;
-  
+
   p->viscosity.v_sig = max(p->viscosity.v_sig, 2.f * soundspeed);
 }
 
@@ -887,9 +888,9 @@ __attribute__((always_inline)) INLINE static void hydro_predict_extra(
   p->u += p->u_dt * dt_therm;
   internal_energy_ratio *= p->u;
 
-  /* Now we can use this to 'update' the value of the smoothed pressure. To truly
-   * update this variable, we would need another loop over neighbours using the new
-   * internal energies of everyone, but that's not feasible. */
+  /* Now we can use this to 'update' the value of the smoothed pressure. To
+   * truly update this variable, we would need another loop over neighbours
+   * using the new internal energies of everyone, but that's not feasible. */
   p->pressure_bar *= internal_energy_ratio;
 
   /* Check against entropy floor */
@@ -926,7 +927,8 @@ __attribute__((always_inline)) INLINE static void hydro_predict_extra(
   }
 
   /* Compute the new sound speed */
-  const float soundspeed = gas_soundspeed_from_pressure(p->rho, p->pressure_bar);
+  const float soundspeed =
+      gas_soundspeed_from_pressure(p->rho, p->pressure_bar);
   p->force.soundspeed = soundspeed;
 
   /* Update the signal velocity */

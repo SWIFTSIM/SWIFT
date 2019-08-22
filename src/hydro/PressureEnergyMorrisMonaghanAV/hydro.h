@@ -788,7 +788,8 @@ __attribute__((always_inline)) INLINE static void hydro_predict_extra(
   }
 
   /* Compute the new sound speed */
-  const float soundspeed = gas_soundspeed_from_pressure(p->rho, p->pressure_bar);
+  const float soundspeed =
+      gas_soundspeed_from_pressure(p->rho, p->pressure_bar);
 
   p->force.soundspeed = soundspeed;
   p->viscosity.v_sig = max(p->viscosity.v_sig, 2.f * soundspeed);
