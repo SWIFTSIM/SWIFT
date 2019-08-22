@@ -398,17 +398,23 @@ hydro_set_drifted_physical_internal_energy(struct part *p,
                                            const struct cosmology *cosmo,
                                            const float u) {
 
+  /* There is no need to use the floor here as this function is called in the
+   * feedback, so the new value of the internal energy should be strictly
+   * higher than the old value. */
+
   p->u = u / cosmo->a_factor_internal_energy;
 
   /* Now recompute the extra quantities */
 
   /* Compute the sound speed */
-  const float soundspeed = hydro_get_comoving_soundspeed(p);
-  const float pressure = hydro_get_comoving_pressure(p);
+  const float pressure = gas_pressure_from_internal_energy(p->rho, p->u);
+  const float soundspeed = gas_soundspeed_from_pressure(p->rho, pressure);
 
   /* Update variables. */
   p->force.soundspeed = soundspeed;
   p->force.pressure = pressure;
+  
+  p->viscosity.v_sig = max(p->viscosity.v_sig, 2.f * soundspeed); 
 }
 
 /**
@@ -842,6 +848,9 @@ __attribute__((always_inline)) INLINE static void hydro_reset_predicted_values(
 
   p->force.pressure = pressure;
   p->force.soundspeed = soundspeed;
+
+  /* Update the signal velocity, if we need to. */
+  p->viscosity.v_sig = max(p->viscosity.v_sig, 2.f * soundspeed);
 }
 
 /**
@@ -903,10 +912,13 @@ __attribute__((always_inline)) INLINE static void hydro_predict_extra(
 
   /* Compute the new sound speed */
   const float pressure = gas_pressure_from_internal_energy(p->rho, p->u);
-  const float soundspeed = hydro_get_comoving_soundspeed(p);
+  const float soundspeed = gas_soundspeed_from_pressure(p->rho, pressure); 
 
   p->force.pressure = pressure;
   p->force.soundspeed = soundspeed;
+
+  /* Update signal velocity if we need to */
+  p->viscosity.v_sig = max(p->viscosity.v_sig, 2.f * soundspeed);
 }
 
 /**

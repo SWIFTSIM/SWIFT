@@ -403,6 +403,8 @@ hydro_set_drifted_physical_internal_energy(struct part *p,
   /* Update variables. */
   p->force.P_over_rho2 = P_over_rho2;
   p->force.soundspeed = soundspeed;
+
+  p->force.v_sig = max(p->force.v_sig, 2.f * soundspeed);
 }
 
 /**
@@ -650,7 +652,7 @@ __attribute__((always_inline)) INLINE static void hydro_reset_acceleration(
   p->force.h_dt = 0.0f;
 
   /* Reset maximal signal velocity */
-  p->force.v_sig = p->force.soundspeed;
+  p->force.v_sig = 2.f * p->force.soundspeed;
 }
 
 /**
@@ -757,6 +759,8 @@ __attribute__((always_inline)) INLINE static void hydro_predict_extra(
   /* Update variables */
   p->force.soundspeed = soundspeed;
   p->force.P_over_rho2 = P_over_rho2;
+
+  p->force.v_sig = max(p->force.v_sig, 2.f * soundspeed);
 }
 
 /**
