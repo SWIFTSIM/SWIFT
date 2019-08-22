@@ -422,7 +422,7 @@ hydro_set_drifted_physical_internal_energy(struct part *p,
   /* Now recompute the extra quantities */
 
   /* Compute the sound speed */
-  const float soundspeed = gas_soundspeed_from_pressure(p->rho; p->pressure_bar);
+  const float soundspeed = gas_soundspeed_from_pressure(p->rho, p->pressure_bar);
 
   /* Update variables. */
   p->force.soundspeed = soundspeed;
