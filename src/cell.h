@@ -731,8 +731,8 @@ struct cell {
     /*! Bit mask of the proxies this cell is registered with. */
     uint64_t sendto;
 
-    /*! Bitmaks for whethter this cell needs a send/recv task attached to it for
-        the given proxy. */
+    /*! Bitmasks for whethter this cell needs a send/recv task attached to it
+       for the given proxy. */
     uint64_t attach_send_recv_for_proxy;
 
     /*! Pointer to this cell's packed representation. */

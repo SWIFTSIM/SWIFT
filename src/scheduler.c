@@ -1886,14 +1886,48 @@ void scheduler_enqueue(struct scheduler *s, struct task *t) {
         } else if (t->subtype == task_subtype_xv ||
                    t->subtype == task_subtype_rho ||
                    t->subtype == task_subtype_gradient) {
-          if ((t->ci->hydro.count * sizeof(struct part)) > s->mpi_message_limit)
-            err = MPI_Isend(t->ci->hydro.parts, t->ci->hydro.count,
-                            part_mpi_type, t->cj->nodeID, t->ci->mpi.tag,
-                            subtaskMPI_comms[t->subtype], &t->req);
-          else
-            err = MPI_Issend(t->ci->hydro.parts, t->ci->hydro.count,
-                             part_mpi_type, t->cj->nodeID, t->ci->mpi.tag,
-                             subtaskMPI_comms[t->subtype], &t->req);
+          /* Can we send all the parts in one go? The task flags is the proxy
+           * id. */
+          if (t->ci->mpi.attach_send_recv_for_proxy & (1ULL << t->flags)) {
+            if ((t->ci->hydro.count * sizeof(struct part)) >
+                s->mpi_message_limit)
+              err = MPI_Isend(t->ci->hydro.parts, t->ci->hydro.count,
+                              part_mpi_type, t->cj->nodeID, t->ci->mpi.tag,
+                              subtaskMPI_comms[t->subtype], &t->req);
+            else
+              err = MPI_Issend(t->ci->hydro.parts, t->ci->hydro.count,
+                               part_mpi_type, t->cj->nodeID, t->ci->mpi.tag,
+                               subtaskMPI_comms[t->subtype], &t->req);
+          }
+          /* Otherwise, create a custom datatype that maps to the parts of the
+             subcells that will be sent, and use that. */
+          else {
+            MPI_Datatype subcell_parts_mpi_type;
+            int num_parts = 0;
+            const int num_cells =
+                cell_count_parts_for_hydro_tasks(t->ci, t->flags, &num_parts);
+            int *counts = malloc(sizeof(int) * 2 * num_cells);
+            int *offsets = &counts[num_cells];
+            cell_populate_counts_and_offsets_for_hydro_tasks(
+                t->ci, t->flags, t->ci->hydro.parts, counts, offsets);
+            if ((err = MPI_Type_indexed(
+                     num_cells, counts, offsets, part_mpi_type,
+                     &subcell_parts_mpi_type)) != MPI_SUCCESS ||
+                (err = MPI_Type_commit(&subcell_parts_mpi_type)) !=
+                    MPI_SUCCESS) {
+              mpi_error(err, "Unable to create indexed type.");
+            }
+            if ((num_parts * sizeof(struct part)) > s->mpi_message_limit)
+              err = MPI_Isend(t->ci->hydro.parts, 1, subcell_parts_mpi_type,
+                              t->cj->nodeID, t->ci->mpi.tag,
+                              subtaskMPI_comms[t->subtype], &t->req);
+            else
+              err = MPI_Issend(t->ci->hydro.parts, 1, subcell_parts_mpi_type,
+                               t->cj->nodeID, t->ci->mpi.tag,
+                               subtaskMPI_comms[t->subtype], &t->req);
+            MPI_Type_free(&subcell_parts_mpi_type);
+            free(counts);
+          }
         } else if (t->subtype == task_subtype_gpart) {
           if ((t->ci->grav.count * sizeof(struct gpart)) > s->mpi_message_limit)
             err = MPI_Isend(t->ci->grav.parts, t->ci->grav.count,
