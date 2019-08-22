@@ -443,7 +443,54 @@ int cell_count_parts_for_hydro_tasks(const struct cell *c, int proxy_id,
   }
 
 #else
-  error("Calling linking of foregin particles in non-MPI mode.");
+  error("Calling MPI code in non-MPI mode.");
+#endif
+}
+
+/**
+ * @brief Recursively count the number of #part in a hierarchy of cells that
+ * need to be exchanged via the given proxy.
+ *
+ * @param c The #cell.
+ * @param proxy_id The id of the #proxy used.
+ * @param root The beginning of the #part array in the root cell.
+ * @param counts Array in which to store the per-cell particle counts.
+ * @param offsets Offsets in the particle array for each sub-cell.
+ *
+ * @return The number of cells that need to be sent/received.
+ */
+int cell_populate_counts_and_offsets_for_hydro_tasks(const struct cell *c,
+                                                     int proxy_id,
+                                                     const struct part *root,
+                                                     int *counts,
+                                                     int *offsets) {
+#ifdef WITH_MPI
+
+  /* Do we have a hydro task at this level? */
+  if (c->mpi.attach_send_recv_for_proxy & (1ULL << proxy_id)) {
+    *counts = c->hydro.count;
+    *offsets = c->hydro.parts - root;
+    return 1;
+  }
+
+  if (c->split) {
+    int total_num_cells = 0;
+    for (int k = 0; k < 8; ++k) {
+      if (c->progeny[k] != NULL) {
+        const int num_cells = cell_populate_counts_and_offsets_for_hydro_tasks(
+            c->progeny[k], proxy_id, root, counts, offsets);
+        counts += num_cells;
+        offsets += num_cells;
+        total_num_cells += num_cells;
+      }
+    }
+    return total_num_cells;
+  } else {
+    return 0;
+  }
+
+#else
+  error("Calling MPI code in non-MPI mode.");
 #endif
 }
 
