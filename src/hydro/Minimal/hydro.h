@@ -390,10 +390,14 @@ hydro_set_drifted_physical_internal_energy(struct part *p,
   /* Now recompute the extra quantities */
 
   /* Compute the sound speed */
-  const float soundspeed = hydro_get_comoving_soundspeed(p);
+  const float pressure = gas_pressure_from_internal_energy(p->rho, p->u);
+  const float soundspeed = gas_soundspeed_from_pressure(p->rho, pressure);
 
   /* Update variables. */
+  p->force.pressure = pressure;
   p->force.soundspeed = soundspeed;
+
+  p->force.v_sig = max(p->force.v_sig, 2.f * soundspeed);
 }
 
 /**
@@ -633,7 +637,7 @@ __attribute__((always_inline)) INLINE static void hydro_reset_acceleration(
   /* Reset the time derivatives. */
   p->u_dt = 0.0f;
   p->force.h_dt = 0.0f;
-  p->force.v_sig = p->force.soundspeed;
+  p->force.v_sig = 2.f * p->force.soundspeed;
 }
 
 /**
@@ -665,6 +669,8 @@ __attribute__((always_inline)) INLINE static void hydro_reset_predicted_values(
   /* Update variables */
   p->force.pressure = pressure;
   p->force.soundspeed = soundspeed;
+
+  p->force.v_sig = max(p->force.v_sig, 2.f * soundspeed);
 }
 
 /**
@@ -728,6 +734,8 @@ __attribute__((always_inline)) INLINE static void hydro_predict_extra(
 
   p->force.pressure = pressure;
   p->force.soundspeed = soundspeed;
+
+  p->force.v_sig = max(p->force.v_sig, 2.f * soundspeed);
 }
 
 /**
