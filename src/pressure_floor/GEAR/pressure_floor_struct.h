@@ -1,6 +1,6 @@
 /*******************************************************************************
  * This file is part of SWIFT.
- * Copyright (c) 2018 Folkert Nobels (nobels@strw.leidenuniv.nl)
+ * Copyright (c) 2019 Matthieu Schaller (schaller@strw.leidenuniv.nl)
  *
  * This program is free software: you can redistribute it and/or modify
  * it under the terms of the GNU Lesser General Public License as published
@@ -16,26 +16,17 @@
  * along with this program.  If not, see <http://www.gnu.org/licenses/>.
  *
  ******************************************************************************/
-#ifndef SWIFT_STAR_FORMATION_IACT_H
-#define SWIFT_STAR_FORMATION_IACT_H
+#ifndef SWIFT_PRESSURE_FLOOR_PART_GEAR_H
+#define SWIFT_PRESSURE_FLOOR_PART_GEAR_H
 
 /**
- * @file src/star_formation_iact.h
- * @brief Branches between the different star formation iact.
+ * Structure containing the required variables for the pressure
+ * floor in the density loop.
  */
+struct pressure_floor_part_data {
+  /*! Estimation of local turbulence (squared)
+   * Units: length^2 / time^2 (physical) */
+  float sigma2;
+};
 
-/* Config parameters. */
-#include "../config.h"
-
-/* Import the right star formation law definition */
-#if defined(STAR_FORMATION_NONE)
-#include "./star_formation/none/star_formation_iact.h"
-#elif defined(STAR_FORMATION_EAGLE)
-#include "./star_formation/EAGLE/star_formation_iact.h"
-#elif defined(STAR_FORMATION_GEAR)
-#include "./star_formation/GEAR/star_formation_iact.h"
-#else
-#error "Invalid choice of star formation law"
-#endif
-
-#endif /* SWIFT_STAR_FORMATION_IACT_H */
+#endif  // SWIFT_PRESSURE_FLOOR_PART_GEAR_H

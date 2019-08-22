@@ -13,7 +13,7 @@ Cosmology:
   a_end:          1.0           # Final scale factor of the simulation
   Omega_m:        0.307         # Matter density parameter
   Omega_lambda:   0.693         # Dark-energy density parameter
-  Omega_b:        0.0455        # Baryon density parameter
+  Omega_b:        0.0482519     # Baryon density parameter
   
 # Parameters governing the time integration
 TimeIntegration:

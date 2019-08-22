@@ -29,6 +29,7 @@ from scipy import stats
 from unyt import cm, s, km, kpc, Pa, msun, K, keV, mh
 
 kPa = 1000 * Pa
+plot_radius = 7 * kpc
 
 from swiftsimio import load
 
@@ -47,7 +48,6 @@ except:
         "font.size": 8,
     }
     plt.rcParams.update(rcParams)
-
 
 
 def get_data_dump(metadata):
@@ -103,10 +103,10 @@ r = r.to(kpc).value
 data = dict(
     x=r,
     v_r=v_r,
-    u=sim.gas.temperature.to(K).value,
-    S=sim.gas.entropy.to(keV / K).value,
-    P=sim.gas.pressure.to(kPa).value,
-    rho=sim.gas.density.to(mh / (cm ** 3)).value,
+    u=sim.gas.temperatures.to(K).value,
+    S=sim.gas.entropies.to(keV / K).value,
+    P=sim.gas.pressures.to(kPa).value,
+    rho=sim.gas.densities.to(mh / (cm ** 3)).value,
 )
 
 # Try to add on the viscosity and diffusion.
@@ -155,8 +155,13 @@ log = dict(
     v_r=False, v_phi=False, u=False, S=False, P=False, rho=False, visc=False, diff=False
 )
 ylim = dict(
-    v_r=[-8, 5], u=[3500, 5500], rho=[0.02, 0.15], visc=[0, 2.0], diff=[0, 0.25],
-    P=[3e-18, 10e-18], S=[-0.5e60, 4e60] 
+    v_r=[-4, 25],
+    u=[4750, 6000],
+    rho=[0.09, 0.16],
+    visc=[0, 2.0],
+    diff=[0, 0.25],
+    P=[3e-18, 10e-18],
+    S=[-0.5e60, 4e60],
 )
 
 current_axis = 0
@@ -198,7 +203,7 @@ for key, label in plot.items():
         axis.set_xlabel("Radius ($r$) [kpc]", labelpad=0)
         axis.set_ylabel(label, labelpad=0)
 
-        axis.set_xlim(0.0, 0.7 * boxSize.to(kpc).value)
+        axis.set_xlim(0.0, plot_radius.to(kpc))
 
         try:
             axis.set_ylim(*ylim[key])

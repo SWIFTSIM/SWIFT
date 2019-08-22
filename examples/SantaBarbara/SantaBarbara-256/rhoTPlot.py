@@ -28,10 +28,10 @@ def get_data(filename):
 
     data = SWIFTDataset(filename)
 
-    data.gas.density.convert_to_units(mh / (cm ** 3))
-    data.gas.temperature.convert_to_cgs()
+    data.gas.densities.convert_to_units(mh / (cm ** 3))
+    data.gas.temperatures.convert_to_cgs()
 
-    return data.gas.density, data.gas.temperature
+    return data.gas.densities, data.gas.temperatures
 
 
 def make_hist(filename, density_bounds, temperature_bounds, bins):
@@ -155,10 +155,8 @@ def make_movie(args, density_bounds, temperature_bounds, bins):
     def format_metadata(metadata: SWIFTMetadata):
         t = metadata.t * units.units["Unit time in cgs (U_t)"]
         t.convert_to_units(Gyr)
-        
-        x = "$a$: {:2.2f}\n$z$: {:2.2f}\n$t$: {:2.2f}".format(
-            metadata.a, metadata.z, t
-        )
+
+        x = "$a$: {:2.2f}\n$z$: {:2.2f}\n$t$: {:2.2f}".format(metadata.a, metadata.z, t)
 
         return x
 

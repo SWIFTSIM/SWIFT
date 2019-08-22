@@ -285,6 +285,11 @@ EAGLEEntropyFloor:
   Cool_temperature_norm_K:         8000      # Temperature of the EAGLE Cool limiter entropy floor at the density threshold expressed in Kelvin.
   Cool_gamma_effective:            1.        # Slope the of the EAGLE Cool limiter entropy floor
   
+# Parameters related to pressure floors    ----------------------------------------------
+
+GEARPressureFloor:
+  Jeans_factor: 10.       # Number of particles required to suppose a resolved clump and avoid the pressure floor.
+
 # Parameters related to cooling function  ----------------------------------------------
 
 # Constant du/dt cooling function
@@ -337,6 +342,11 @@ EAGLEChemistry:
   init_abundance_Iron:      0.000        # Inital fraction of particle mass in Iron
 
 # Parameters related to star formation models  -----------------------------------------------
+
+# GEAR star formation model (Revaz and Jablonka 2018)
+GEARStarFormation:
+  star_formation_efficiency: 0.01   # star formation efficiency (c_*)
+  maximal_temperature:  3e4         # Upper limit to the temperature of a star forming particle
 
 # EAGLE star formation model (Schaye and Dalla Vecchia 2008)
 EAGLEStarFormation:
@@ -394,6 +404,8 @@ EAGLEFeedback:
   SNII_yield_factor_Silicon:        1.0             # (Optional) Correction factor to apply to the Silicon yield from the SNII channel.
   SNII_yield_factor_Iron:           0.5             # (Optional) Correction factor to apply to the Iron yield from the SNII channel.
 
+# Parameters related to AGN models  -----------------------------------------------
+  
 # EAGLE AGN model
 EAGLEAGN:
   subgrid_seed_mass_Msun:           1.5e5      # Black hole subgrid mass at creation time in solar masses.
@@ -403,4 +415,4 @@ EAGLEAGN:
   coupling_efficiency:              0.15       # Fraction of the radiated energy that couples to the gas in feedback events.
   AGN_delta_T_K:                    3.16228e8  # Change in temperature to apply to the gas particle in an AGN feedback event in Kelvin.
   AGN_num_ngb_to_heat:              1.         # Target number of gas neighbours to heat in an AGN feedback event.
-
+  max_reposition_mass:              2e8        # Maximal BH mass considered for BH repositioning in solar masses.

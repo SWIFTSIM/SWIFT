@@ -61,6 +61,7 @@
 #include "hydro_properties.h"
 #include "memswap.h"
 #include "minmax.h"
+#include "pressure_floor.h"
 #include "scheduler.h"
 #include "space.h"
 #include "space_getsid.h"
@@ -69,6 +70,8 @@
 #include "timers.h"
 #include "tools.h"
 #include "tracers.h"
+
+extern int engine_star_resort_task_depth;
 
 /* Global variables. */
 int cell_next_tag = 0;
@@ -2399,6 +2402,77 @@ void cell_clear_limiter_flags(struct cell *c, void *data) {
 }
 
 /**
+ * @brief Recursively clear the stars_resort flag in a cell hierarchy.
+ *
+ * @param c The #cell to act on.
+ */
+void cell_set_star_resort_flag(struct cell *c) {
+
+  cell_set_flag(c, cell_flag_do_stars_resort);
+
+  /* Abort if we reched the level where the resorting task lives */
+  if (c->depth == engine_star_resort_task_depth || c->hydro.super == c) return;
+
+  if (c->split) {
+    for (int k = 0; k < 8; ++k)
+      if (c->progeny[k] != NULL) cell_set_star_resort_flag(c->progeny[k]);
+  }
+}
+
+/**
+ * @brief Recurses in a cell hierarchy down to the level where the
+ * star resort tasks are and activates them.
+ *
+ * The function will fail if called *below* the super-level
+ *
+ * @param c The #cell to recurse into.
+ * @param s The #scheduler.
+ */
+void cell_activate_star_resort_tasks(struct cell *c, struct scheduler *s) {
+
+#ifdef SWIFT_DEBUG_CHECKS
+  if (c->hydro.super != NULL && c->hydro.super != c)
+    error("Function called below the super level!");
+#endif
+
+  /* The resort tasks are at either the chosen depth or the super level,
+   * whichever comes first. */
+  if (c->depth == engine_star_resort_task_depth || c->hydro.super == c) {
+    scheduler_activate(s, c->hydro.stars_resort);
+  } else {
+    for (int k = 0; k < 8; ++k) {
+      if (c->progeny[k] != NULL) {
+        cell_activate_star_resort_tasks(c->progeny[k], s);
+      }
+    }
+  }
+}
+
+/**
+ * @brief Activate the star formation task as well as the resorting of stars
+ *
+ * Must be called at the top-level in the tree (where the SF task is...)
+ *
+ * @param c The (top-level) #cell.
+ * @param s The #scheduler.
+ */
+void cell_activate_star_formation_tasks(struct cell *c, struct scheduler *s) {
+
+#ifdef SWIFT_DEBUG_CHECKS
+  if (c->depth != 0) error("Function should be called at the top-level only");
+#endif
+
+  /* Have we already unskipped that task? */
+  if (c->hydro.star_formation->skip == 0) return;
+
+  /* Activate the star formation task */
+  scheduler_activate(s, c->hydro.star_formation);
+
+  /* Activate the star resort tasks at whatever level they are */
+  cell_activate_star_resort_tasks(c, s);
+}
+
+/**
  * @brief Recurse down in a cell hierarchy until the hydro.super level is
  * reached and activate the spart drift at that level.
  *
@@ -3431,9 +3505,7 @@ int cell_unskip_hydro_tasks(struct cell *c, struct scheduler *s) {
     if (c->logger != NULL) scheduler_activate(s, c->logger);
 
     if (c->top->hydro.star_formation != NULL) {
-      scheduler_activate(s, c->top->hydro.star_formation);
-      scheduler_activate(s, c->top->hydro.stars_resort);
-      cell_activate_drift_spart(c, s);
+      cell_activate_star_formation_tasks(c->top, s);
     }
   }
 
@@ -4380,13 +4452,7 @@ void cell_drift_part(struct cell *c, const struct engine *e, int force) {
             hydro_remove_part(p, xp);
 
             /* Remove the particle entirely */
-            struct gpart *gp = p->gpart;
             cell_remove_part(e, c, p, xp);
-
-            /* and it's gravity friend */
-            if (gp != NULL) {
-              cell_remove_gpart(e, c, gp);
-            }
           }
 
           if (lock_unlock(&e->s->lock) != 0)
@@ -4420,7 +4486,7 @@ void cell_drift_part(struct cell *c, const struct engine *e, int force) {
       if (part_is_active(p, e)) {
         hydro_init_part(p, &e->s->hs);
         chemistry_init_part(p, e->chemistry);
-        star_formation_init_part(p, e->star_formation);
+        pressure_floor_init_part(p, xp);
         tracers_after_init(p, xp, e->internal_units, e->physical_constants,
                            with_cosmology, e->cosmology, e->hydro_properties,
                            e->cooling_func, e->time);
@@ -4548,7 +4614,9 @@ void cell_drift_gpart(struct cell *c, const struct engine *e, int force) {
           if (!gpart_is_inhibited(gp, e)) {
 
             /* Remove the particle entirely */
-            cell_remove_gpart(e, c, gp);
+            if (gp->type == swift_type_dark_matter) {
+              cell_remove_gpart(e, c, gp);
+            }
           }
 
           if (lock_unlock(&e->s->lock) != 0)
@@ -4689,11 +4757,7 @@ void cell_drift_spart(struct cell *c, const struct engine *e, int force) {
           if (!spart_is_inhibited(sp, e)) {
 
             /* Remove the particle entirely */
-            struct gpart *gp = sp->gpart;
             cell_remove_spart(e, c, sp);
-
-            /* and it's gravity friend */
-            cell_remove_gpart(e, c, gp);
           }
 
           if (lock_unlock(&e->s->lock) != 0)
@@ -4864,11 +4928,7 @@ void cell_drift_bpart(struct cell *c, const struct engine *e, int force) {
           if (!bpart_is_inhibited(bp, e)) {
 
             /* Remove the particle entirely */
-            struct gpart *gp = bp->gpart;
             cell_remove_bpart(e, c, bp);
-
-            /* and it's gravity friend */
-            cell_remove_gpart(e, c, gp);
           }
 
           if (lock_unlock(&e->s->lock) != 0)
@@ -5175,10 +5235,17 @@ void cell_recursively_shift_sparts(struct cell *c,
   /* When directly above the leaf with the new particle: increase the particle
    * count */
   /* When after the leaf with the new particle: shift by one position */
-  if (main_branch)
+  if (main_branch) {
     c->stars.count++;
-  else
+
+    /* Indicate that the cell is not sorted and cancel the pointer sorting
+     * arrays. */
+    c->stars.sorted = 0;
+    cell_free_stars_sorts(c);
+
+  } else {
     c->stars.parts++;
+  }
 }
 
 /**
@@ -5328,6 +5395,9 @@ void cell_remove_part(const struct engine *e, struct cell *c, struct part *p,
   if (c->nodeID != e->nodeID)
     error("Can't remove a particle in a foreign cell.");
 
+  /* Don't remove a particle twice */
+  if (p->time_bin == time_bin_inhibited) return;
+
   /* Mark the particle as inhibited */
   p->time_bin = time_bin_inhibited;
 
@@ -5338,12 +5408,15 @@ void cell_remove_part(const struct engine *e, struct cell *c, struct part *p,
     p->gpart->type = swift_type_dark_matter;
   }
 
-  /* Un-link the part */
-  p->gpart = NULL;
-
   /* Update the space-wide counters */
   const size_t one = 1;
   atomic_add(&e->s->nr_inhibited_parts, one);
+  if (p->gpart) {
+    atomic_add(&e->s->nr_inhibited_gparts, one);
+  }
+
+  /* Un-link the part */
+  p->gpart = NULL;
 }
 
 /**
@@ -5358,6 +5431,14 @@ void cell_remove_part(const struct engine *e, struct cell *c, struct part *p,
  */
 void cell_remove_gpart(const struct engine *e, struct cell *c,
                        struct gpart *gp) {
+
+  /* Quick cross-check */
+  if (c->nodeID != e->nodeID)
+    error("Can't remove a particle in a foreign cell.");
+
+  /* Don't remove a particle twice */
+  if (gp->time_bin == time_bin_inhibited) return;
+
   /* Quick cross-check */
   if (c->nodeID != e->nodeID)
     error("Can't remove a particle in a foreign cell.");
@@ -5386,6 +5467,9 @@ void cell_remove_spart(const struct engine *e, struct cell *c,
   if (c->nodeID != e->nodeID)
     error("Can't remove a particle in a foreign cell.");
 
+  /* Don't remove a particle twice */
+  if (sp->time_bin == time_bin_inhibited) return;
+
   /* Mark the particle as inhibited and stand-alone */
   sp->time_bin = time_bin_inhibited;
   if (sp->gpart) {
@@ -5394,12 +5478,15 @@ void cell_remove_spart(const struct engine *e, struct cell *c,
     sp->gpart->type = swift_type_dark_matter;
   }
 
-  /* Un-link the spart */
-  sp->gpart = NULL;
-
   /* Update the space-wide counters */
   const size_t one = 1;
   atomic_add(&e->s->nr_inhibited_sparts, one);
+  if (sp->gpart) {
+    atomic_add(&e->s->nr_inhibited_gparts, one);
+  }
+
+  /* Un-link the spart */
+  sp->gpart = NULL;
 }
 
 /**
@@ -5419,6 +5506,9 @@ void cell_remove_bpart(const struct engine *e, struct cell *c,
   if (c->nodeID != e->nodeID)
     error("Can't remove a particle in a foreign cell.");
 
+  /* Don't remove a particle twice */
+  if (bp->time_bin == time_bin_inhibited) return;
+
   /* Mark the particle as inhibited and stand-alone */
   bp->time_bin = time_bin_inhibited;
   if (bp->gpart) {
@@ -5427,12 +5517,15 @@ void cell_remove_bpart(const struct engine *e, struct cell *c,
     bp->gpart->type = swift_type_dark_matter;
   }
 
-  /* Un-link the bpart */
-  bp->gpart = NULL;
-
   /* Update the space-wide counters */
   const size_t one = 1;
   atomic_add(&e->s->nr_inhibited_bparts, one);
+  if (bp->gpart) {
+    atomic_add(&e->s->nr_inhibited_gparts, one);
+  }
+
+  /* Un-link the bpart */
+  bp->gpart = NULL;
 }
 
 /**

@@ -55,6 +55,7 @@
 
 extern int engine_max_parts_per_ghost;
 extern int engine_max_sparts_per_ghost;
+extern int engine_star_resort_task_depth;
 
 /**
  * @brief Add send tasks for the gravity pairs to a hierarchy of cells.
@@ -808,9 +809,6 @@ void engine_make_hierarchical_tasks_common(struct engine *e, struct cell *c) {
     if (with_star_formation && c->hydro.count > 0) {
       c->hydro.star_formation = scheduler_addtask(
           s, task_type_star_formation, task_subtype_none, 0, 0, c, NULL);
-      c->hydro.stars_resort = scheduler_addtask(
-          s, task_type_stars_resort, task_subtype_none, 0, 0, c, NULL);
-      scheduler_addunlock(s, c->hydro.star_formation, c->hydro.stars_resort);
     }
   }
 
@@ -1001,14 +999,37 @@ void engine_add_ghosts(struct engine *e, struct cell *c, struct task *ghost_in,
  *
  * @param e The #engine.
  * @param c The #cell.
+ * @param star_resort_cell Pointer to the cell where the star_resort task has
+ * been created. NULL above that level or if not running with star formation.
  */
-void engine_make_hierarchical_tasks_hydro(struct engine *e, struct cell *c) {
+void engine_make_hierarchical_tasks_hydro(struct engine *e, struct cell *c,
+                                          struct cell *star_resort_cell) {
+
   struct scheduler *s = &e->sched;
   const int with_stars = (e->policy & engine_policy_stars);
   const int with_feedback = (e->policy & engine_policy_feedback);
   const int with_cooling = (e->policy & engine_policy_cooling);
   const int with_star_formation = (e->policy & engine_policy_star_formation);
   const int with_black_holes = (e->policy & engine_policy_black_holes);
+
+  /* Are we are the level where we create the stars' resort tasks?
+   * If the tree is shallow, we need to do this at the super-level if the
+   * super-level is above the level we want */
+  if ((c->nodeID == e->nodeID) && (star_resort_cell == NULL) &&
+      (c->depth == engine_star_resort_task_depth || c->hydro.super == c)) {
+
+    if (with_star_formation && c->hydro.count > 0) {
+
+      /* Record this is the level where we re-sort */
+      star_resort_cell = c;
+
+      c->hydro.stars_resort = scheduler_addtask(
+          s, task_type_stars_resort, task_subtype_none, 0, 0, c, NULL);
+
+      scheduler_addunlock(s, c->top->hydro.star_formation,
+                          c->hydro.stars_resort);
+    }
+  }
 
   /* Are we in a super-cell ? */
   if (c->hydro.super == c) {
@@ -1095,7 +1116,8 @@ void engine_make_hierarchical_tasks_hydro(struct engine *e, struct cell *c) {
         scheduler_addunlock(s, c->stars.stars_out, c->super->timestep);
 
         if (with_star_formation && c->hydro.count > 0) {
-          scheduler_addunlock(s, c->top->hydro.stars_resort, c->stars.stars_in);
+          scheduler_addunlock(s, star_resort_cell->hydro.stars_resort,
+                              c->stars.stars_in);
         }
       }
 
@@ -1131,7 +1153,8 @@ void engine_make_hierarchical_tasks_hydro(struct engine *e, struct cell *c) {
     if (c->split)
       for (int k = 0; k < 8; k++)
         if (c->progeny[k] != NULL)
-          engine_make_hierarchical_tasks_hydro(e, c->progeny[k]);
+          engine_make_hierarchical_tasks_hydro(e, c->progeny[k],
+                                               star_resort_cell);
   }
 }
 
@@ -1147,7 +1170,8 @@ void engine_make_hierarchical_tasks_mapper(void *map_data, int num_elements,
     /* Make the common tasks (time integration) */
     engine_make_hierarchical_tasks_common(e, c);
     /* Add the hydro stuff */
-    if (with_hydro) engine_make_hierarchical_tasks_hydro(e, c);
+    if (with_hydro)
+      engine_make_hierarchical_tasks_hydro(e, c, /*star_resort_cell=*/NULL);
     /* And the gravity stuff */
     if (with_self_gravity || with_ext_gravity)
       engine_make_hierarchical_tasks_gravity(e, c);

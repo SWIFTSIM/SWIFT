@@ -113,6 +113,7 @@ enum engine_step_properties {
 #define engine_default_timesteps_file_name "timesteps"
 #define engine_max_parts_per_ghost_default 1000
 #define engine_max_sparts_per_ghost_default 1000
+#define engine_star_resort_task_depth_default 2
 #define engine_tasks_per_cell_margin 1.2
 
 /**
@@ -237,7 +238,7 @@ struct engine {
   long long b_updates_since_rebuild;
 
   /* Star formation logger information */
-  struct star_formation_history sfh;
+  struct star_formation_history_accumulator sfh;
 
   /* Properties of the previous step */
   int step_props;

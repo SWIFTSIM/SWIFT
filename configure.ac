@@ -16,7 +16,7 @@
 # along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
 # Init the project.
-AC_INIT([SWIFT],[0.8.3],[https://gitlab.cosma.dur.ac.uk/swift/swiftsim])
+AC_INIT([SWIFT],[0.8.4],[https://gitlab.cosma.dur.ac.uk/swift/swiftsim])
 swift_config_flags="$*"
 
 #  We want to stop when given unrecognised options. No subdirs so this is safe.
@@ -225,16 +225,6 @@ if test "x$enable_debug" = "xyes"; then
    fi
 fi
 
-# Check if stand-alone FoF is on.
-AC_ARG_ENABLE([stand-alone-fof],
-   [AS_HELP_STRING([--enable-stand-alone-fof],
-     [Activate the compilation of the stand-alone friends-of-friends post-processing tool.],
-   )],
-   [enable_standalone_fof="$enableval"],
-   [enable_standalone_fof="no"]
-)
-AM_CONDITIONAL([HAVEFOF],[test $enable_standalone_fof = "yes"])
-
 # Check if task debugging is on.
 AC_ARG_ENABLE([task-debugging],
    [AS_HELP_STRING([--enable-task-debugging],
@@ -370,6 +360,21 @@ if test "$no_gravity_below_id" == "yes"; then
    AC_MSG_ERROR(Need to specify the ID below which particles get zero forces when using --enable-no-gravity-below-id!)
 elif test "$no_gravity_below_id" != "no"; then
    AC_DEFINE_UNQUOTED([SWIFT_NO_GRAVITY_BELOW_ID], [$enableval] ,[Particles with smaller ID than this will have zero gravity forces])
+fi
+
+# Check if we want to use boundary particles.
+AC_ARG_ENABLE([boundary-particles],
+   [AS_HELP_STRING([--enable-boundary-particles],
+     [Set all particles with an ID smaller than @<:@N@:>@ as boundary particles (i.e. receive zero gravity + hydro forces).]
+   )],
+   [boundary_particles="$enableval"],
+   [boundary_particles="no"]
+)
+if test "$boundary_particles" == "yes"; then
+   AC_MSG_ERROR(Need to specify the ID below which particles get zero forces when using --enable-boundary-particles!)
+elif test "$boundary_particles" != "no"; then
+   AC_DEFINE_UNQUOTED([SWIFT_NO_GRAVITY_BELOW_ID], [$enableval] ,[Particles with smaller ID than this will have zero gravity forces])
+   AC_DEFINE_UNQUOTED([SWIFT_BOUNDARY_PARTICLES], [$enableval] ,[Particles with smaller ID than this will be considered as boundaries.])
 fi
 
 # Check whether we have any of the ARM v8.1 tick timers
@@ -1086,7 +1091,7 @@ if test "x$with_velociraptor" != "xno"; then
    AC_PROG_FC
    AC_FC_LIBRARY_LDFLAGS
    if test "x$with_velociraptor" != "xyes" -a "x$with_velociraptor" != "x"; then
-      VELOCIRAPTOR_LIBS="-L$with_velociraptor -lvelociraptor -lmpi -lstdc++ -lhdf5_cpp"
+      VELOCIRAPTOR_LIBS="-L$with_velociraptor -lvelociraptor -lmpi -lstdc++ -lhdf5"
       CFLAGS="$CFLAGS -fopenmp"
    else
       VELOCIRAPTOR_LIBS=""
@@ -1322,6 +1327,7 @@ with_subgrid_cooling=none
 with_subgrid_chemistry=none
 with_subgrid_tracers=none
 with_subgrid_entropy_floor=none
+with_subgrid_pressure_floor=none
 with_subgrid_stars=none
 with_subgrid_star_formation=none
 with_subgrid_feedback=none
@@ -1333,14 +1339,14 @@ case "$with_subgrid" in
    none)
    ;;
    GEAR)
-	with_subgrid_cooling=grackle
+	with_subgrid_cooling=grackle_0
 	with_subgrid_chemistry=GEAR
-	with_subgrid_tracers=none
-	with_subgrid_entropy_floor=none
+	with_subgrid_pressure_floor=GEAR
 	with_subgrid_stars=GEAR
 	with_subgrid_star_formation=GEAR
 	with_subgrid_feedback=none
 	with_subgrid_black_holes=none
+	enable_fof=no
    ;;
    EAGLE)
 	with_subgrid_cooling=EAGLE
@@ -1351,11 +1357,39 @@ case "$with_subgrid" in
 	with_subgrid_star_formation=EAGLE
 	with_subgrid_feedback=EAGLE
 	with_subgrid_black_holes=EAGLE
+	enable_fof=yes
    ;;
    *)
       AC_MSG_ERROR([Unknown subgrid choice: $with_subgrid])
    ;;
 esac
+
+# Check if FoF is on.
+AC_ARG_ENABLE([fof],
+   [AS_HELP_STRING([--enable-fof],
+     [Activate the friends-of-friends (FoF) code.],
+   )],
+   [enable_fof="$enableval"],
+   [enable_fof="no"]
+)
+if test "$enable_fof" = "yes"; then
+   AC_DEFINE([WITH_FOF], 1, [Enable FoF])
+fi
+
+# Check if stand-alone FoF is on.
+AC_ARG_ENABLE([stand-alone-fof],
+   [AS_HELP_STRING([--enable-stand-alone-fof],
+     [Activate the compilation of the stand-alone friends-of-friends (FoF) post-processing tool.],
+   )],
+   [enable_standalone_fof="$enableval"],
+   [enable_standalone_fof="no"]
+)
+if test "$enable_standalone_fof" = "yes"; then
+   enable_fof="yes + stand-alone tool"
+   AC_DEFINE([WITH_FOF], 1, [Enable FoF])
+   AC_DEFINE([WITH_STAND_ALONE_FOF], 1, [Enable stand-alone FoF])
+fi
+AM_CONDITIONAL([HAVESTANDALONEFOF],[test $enable_standalone_fof = "yes"])
 
 # Gravity scheme.
 AC_ARG_WITH([gravity],
@@ -1365,6 +1399,12 @@ AC_ARG_WITH([gravity],
    [with_gravity="$withval"],
    [with_gravity="default"]
 )
+
+if test "$with_subgrid" = "EAGLE"; then
+   if test "$with_gravity" = "default"; then
+      with_gravity="with-potential"
+   fi
+fi
 
 case "$with_gravity" in
    with-potential)
@@ -1606,7 +1646,8 @@ esac
 #  Cooling function
 AC_ARG_WITH([cooling],
    [AS_HELP_STRING([--with-cooling=<function>],
-      [cooling function @<:@none, const-du, const-lambda, EAGLE, grackle, grackle1, grackle2, grackle3 default: none@:>@]
+      [cooling function @<:@none, const-du, const-lambda, EAGLE, grackle_* default: none@:>@.
+      For Grackle, you need to provide the primordial chemistry parameter (e.g. grackle_0)]
    )],
    [with_cooling="$withval"],
    [with_cooling="none"]
@@ -1633,21 +1674,10 @@ case "$with_cooling" in
    compton)
       AC_DEFINE([COOLING_COMPTON], [1], [Compton cooling off the CMB])
    ;;
-   grackle)
+   grackle_*)
       AC_DEFINE([COOLING_GRACKLE], [1], [Cooling via the grackle library])
-      AC_DEFINE([COOLING_GRACKLE_MODE], [0], [Grackle chemistry network, mode 0])
-   ;;
-   grackle1)
-      AC_DEFINE([COOLING_GRACKLE], [1], [Cooling via the grackle library])
-      AC_DEFINE([COOLING_GRACKLE_MODE], [1], [Grackle chemistry network, mode 1])
-   ;;
-   grackle2)
-      AC_DEFINE([COOLING_GRACKLE], [1], [Cooling via the grackle library])
-      AC_DEFINE([COOLING_GRACKLE_MODE], [2], [Grackle chemistry network, mode 2])
-   ;;
-   grackle3)
-      AC_DEFINE([COOLING_GRACKLE], [1], [Cooling via the grackle library])
-      AC_DEFINE([COOLING_GRACKLE_MODE], [3], [Grackle chemistry network, mode 3])
+      primordial_chemistry=${with_cooling:8}
+      AC_DEFINE_UNQUOTED([COOLING_GRACKLE_MODE], [$primordial_chemistry], [Grackle chemistry network])
    ;;
    EAGLE)
       AC_DEFINE([COOLING_EAGLE], [1], [Cooling following the EAGLE model])
@@ -1813,7 +1843,7 @@ esac
 #  External potential
 AC_ARG_WITH([ext-potential],
    [AS_HELP_STRING([--with-ext-potential=<pot>],
-      [external potential @<:@none, point-mass, point-mass-ring, point-mass-softened, isothermal, nfw, hernquist, disc-patch, sine-wave, default: none@:>@]
+      [external potential @<:@none, point-mass, point-mass-ring, point-mass-softened, isothermal, nfw, hernquist, disc-patch, sine-wave, constant, default: none@:>@]
    )],
    [with_potential="$withval"],
    [with_potential="none"]
@@ -1846,6 +1876,9 @@ case "$with_potential" in
    point-mass-softened)
       AC_DEFINE([EXTERNAL_POTENTIAL_POINTMASS_SOFT], [1], [Softened point-mass potential with form 1/(r^2 + softening^2).])
    ;;
+   constant)
+      AC_DEFINE([EXTERNAL_POTENTIAL_CONSTANT], [1], [Constant gravitational acceleration.])
+   ;;
    *)
       AC_MSG_ERROR([Unknown external potential: $with_potential])
    ;;
@@ -1876,6 +1909,35 @@ case "$with_entropy_floor" in
    ;;
    *)
       AC_MSG_ERROR([Unknown entropy floor model])
+   ;;
+esac 
+
+#  Pressure floor
+AC_ARG_WITH([pressure-floor], 
+    [AS_HELP_STRING([--with-pressure-floor=<floor>],
+       [pressure floor @<:@none, GEAR, default: none@:>@
+       The hydro model needs to be compatible.]
+    )],
+    [with_pressure_floor="$withval"],
+    [with_pressure_floor="none"]
+)
+if test "$with_subgrid" != "none"; then
+   if test "$with_pressure_floor" != "none"; then
+      AC_MSG_ERROR([Cannot provide with-subgrid and with-pressure-floor together])
+   else
+      with_pressure_floor="$with_subgrid_pressure_floor"
+   fi
+fi
+
+case "$with_pressure_floor" in
+   none)
+      AC_DEFINE([PRESSURE_FLOOR_NONE], [1], [No pressure floor])
+   ;;
+   GEAR)
+      AC_DEFINE([PRESSURE_FLOOR_GEAR], [1], [GEAR pressure floor])
+   ;;
+   *)
+      AC_MSG_ERROR([Unknown pressure floor model])
    ;;
 esac 
 
@@ -1923,6 +1985,13 @@ AC_DEFINE_UNQUOTED([SELF_GRAVITY_MULTIPOLE_ORDER], [$with_multipole_order], [Mul
 # Check for git, needed for revision stamps.
 AC_PATH_PROG([GIT_CMD], [git])
 AC_SUBST([GIT_CMD])
+
+# Check that the gravity model is compatible with the subgrid
+if test $with_black_holes = "EAGLE"; then
+   if test $with_gravity != "with-potential"; then
+      AC_MSG_ERROR([The EAGLE BH model needs the gravity scheme to provide potentials. The code must be compile with --with-gravity=with-potential.])
+   fi
+fi
 
 # Make the documentation. Add conditional to handle disable option.
 DX_INIT_DOXYGEN(libswift,doc/Doxyfile,doc/)
@@ -1990,6 +2059,7 @@ AC_MSG_RESULT([
    Pthread barriers     : $have_pthread_barrier
    VELOCIraptor enabled : $have_velociraptor
    Particle Logger      : $with_logger
+   FoF activated:       : $enable_fof
 
    Hydro scheme       : $with_hydro
    Dimensionality     : $with_dimension
@@ -2004,6 +2074,7 @@ AC_MSG_RESULT([
    Make gravity glass  : $gravity_glass_making
    External potential  : $with_potential
 
+   Pressure floor       : $with_pressure_floor
    Entropy floor        : $with_entropy_floor
    Cooling function     : $with_cooling
    Chemistry            : $with_chemistry
@@ -2013,7 +2084,6 @@ AC_MSG_RESULT([
    Star feedback model  : $with_feedback
    Black holes model    : $with_black_holes
 
-   Stand-alone FoF tool:       : $enable_standalone_fof
    Individual timers           : $enable_timers
    Task debugging              : $enable_task_debugging
    Threadpool debugging        : $enable_threadpool_debugging
@@ -2024,5 +2094,6 @@ AC_MSG_RESULT([
    Naive stars interactions    : $enable_naive_interactions_stars
    Gravity checks              : $gravity_force_checks
    Custom icbrtf               : $enable_custom_icbrtf
+   Boundary particles          : $boundary_particles
 
  ------------------------])

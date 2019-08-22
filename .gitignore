@@ -30,12 +30,16 @@ examples/fof_mpi
 examples/*/*/*.xmf
 examples/*/*/*.dat
 examples/*/*/*.png
+examples/*/*/*.pdf
 examples/*/*/*.mp4
-examples/*/*/*.txt
 examples/*/*/*.rst
 examples/*/*/*.hdf5
 examples/*/*/*.csv
 examples/*/*/*.dot
+examples/*/*/energy.txt
+examples/*/*/task_level.txt
+examples/*/*/timesteps_*.txt
+examples/*/*/SFR.txt
 examples/*/*/partition_fixed_costs.h
 examples/*/*/memuse_report-step*.dat
 examples/*/*/memuse_report-step*.log
@@ -114,6 +118,7 @@ tests/testInteractions.sh
 tests/testSymmetry
 tests/testMaths
 tests/testRandom
+tests/testRandomSpacing
 tests/testThreadpool
 tests/testParser
 tests/testFeedback

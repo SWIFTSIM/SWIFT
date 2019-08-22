@@ -428,30 +428,18 @@ float units_h_factor(const struct unit_system* us,
 }
 
 /**
- * @brief Returns the scaling factor exponentiation for a given unit
- * @param us The system of units in use
- * @param unit The unit to convert
- */
-float units_a_factor(const struct unit_system* us,
-                     enum unit_conversion_factor unit) {
-  float baseUnitsExp[5] = {0.f};
-
-  units_get_base_unit_exponents_array(baseUnitsExp, unit);
-
-  return units_general_a_factor(us, baseUnitsExp);
-}
-
-/**
  * @brief Returns a string containing the exponents of the base units making up
  * the conversion factors
  */
 void units_cgs_conversion_string(char* buffer, const struct unit_system* us,
-                                 enum unit_conversion_factor unit) {
+                                 enum unit_conversion_factor unit,
+                                 float scale_factor_exponent) {
   float baseUnitsExp[5] = {0.f};
 
   units_get_base_unit_exponents_array(baseUnitsExp, unit);
 
-  units_general_cgs_conversion_string(buffer, us, baseUnitsExp);
+  units_general_cgs_conversion_string(buffer, us, baseUnitsExp,
+                                      scale_factor_exponent);
 }
 
 /**
@@ -491,22 +479,6 @@ float units_general_h_factor(const struct unit_system* us,
 }
 
 /**
- * @brief Returns the scaling factor exponentiation for a given unit (expressed
- * in terms of the 5 fundamental units)
- * @param us The unit system used
- * @param baseUnitsExponents The exponent of each base units required to form
- * the desired quantity. See conversionFactor() for a working example
- */
-float units_general_a_factor(const struct unit_system* us,
-                             const float baseUnitsExponents[5]) {
-  float factor_exp = 0.f;
-
-  factor_exp += baseUnitsExponents[UNIT_LENGTH];
-
-  return factor_exp;
-}
-
-/**
  * @brief Returns a string containing the exponents of the base units making up
  * the conversion factors (expressed in terms of the 5 fundamental units)
  *
@@ -517,13 +489,16 @@ float units_general_a_factor(const struct unit_system* us,
  * 140 chars at most)
  * @param us The UnitsSystem in use.
  * @param baseUnitsExponents The exponent of each base units required to form
- * the desired quantity. See conversionFactor() for a working example
+ * the desired quantity. See conversionFactor() for a working example.
+ * @param scale_factor_exponent The scale-factor exponent to use to convert this
+ * unit to physical units.
  */
 void units_general_cgs_conversion_string(char* buffer,
                                          const struct unit_system* us,
-                                         const float baseUnitsExponents[5]) {
-  char temp[32];
-  const double a_exp = units_general_a_factor(us, baseUnitsExponents);
+                                         const float baseUnitsExponents[5],
+                                         float scale_factor_exponent) {
+  char temp[32] = {0};
+  const double a_exp = scale_factor_exponent;
   const double h_exp = 0.; /* There are no h-factors in SWIFT outputs. */
 
   /* Check whether we are unitless or not */

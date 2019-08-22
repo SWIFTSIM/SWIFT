@@ -130,6 +130,9 @@ int engine_rank;
 /** The current step of the engine as a global variable (for messages). */
 int engine_current_step;
 
+extern int engine_max_parts_per_ghost;
+extern int engine_max_sparts_per_ghost;
+
 /**
  * @brief Data collected from the cells at the end of a time-step
  */
@@ -3325,7 +3328,7 @@ void engine_skip_force_and_kick(struct engine *e) {
         t->type == task_type_drift_gpart_out || t->type == task_type_cooling ||
         t->type == task_type_stars_in || t->type == task_type_stars_out ||
         t->type == task_type_star_formation ||
-        t->type == task_type_extra_ghost ||
+        t->type == task_type_stars_resort || t->type == task_type_extra_ghost ||
         t->type == task_type_bh_swallow_ghost1 ||
         t->type == task_type_bh_swallow_ghost2 ||
         t->type == task_type_bh_swallow_ghost3 ||
@@ -4946,7 +4949,7 @@ void engine_init(struct engine *e, struct space *s, struct swift_params *params,
   e->time_first_snapshot =
       parser_get_opt_param_double(params, "Snapshots:time_first", 0.);
   e->delta_time_snapshot =
-      parser_get_param_double(params, "Snapshots:delta_time");
+      parser_get_opt_param_double(params, "Snapshots:delta_time", -1.);
   e->ti_next_snapshot = 0;
   parser_get_param_string(params, "Snapshots:basename", e->snapshot_base_name);
   e->snapshot_compression =
@@ -5061,6 +5064,11 @@ void engine_init(struct engine *e, struct space *s, struct swift_params *params,
         parser_get_opt_param_double(params, "FOF:scale_factor_first", 0.1);
     e->delta_time_fof =
         parser_get_opt_param_double(params, "FOF:delta_time", -1.);
+  }
+
+  /* Initialize the star formation history structure */
+  if (e->policy & engine_policy_star_formation) {
+    star_formation_logger_accumulator_init(&e->sfh);
   }
 
   engine_init_output_lists(e, params);
@@ -5576,8 +5584,10 @@ void engine_config(int restart, int fof, struct engine *e,
   stats_create_mpi_type();
   proxy_create_mpi_type();
   task_create_mpi_comms();
+#ifdef WITH_FOF
   fof_create_mpi_types();
-#endif
+#endif /* WITH_FOF */
+#endif /* WITH_MPI */
 
   if (!fof) {
 
@@ -5621,6 +5631,51 @@ void engine_config(int restart, int fof, struct engine *e,
    */
   e->sched.mpi_message_limit =
       parser_get_opt_param_int(params, "Scheduler:mpi_message_limit", 4) * 1024;
+
+  if (restart) {
+
+    /* Overwrite the constants for the scheduler */
+    space_maxsize = parser_get_opt_param_int(params, "Scheduler:cell_max_size",
+                                             space_maxsize_default);
+    space_subsize_pair_hydro =
+        parser_get_opt_param_int(params, "Scheduler:cell_sub_size_pair_hydro",
+                                 space_subsize_pair_hydro_default);
+    space_subsize_self_hydro =
+        parser_get_opt_param_int(params, "Scheduler:cell_sub_size_self_hydro",
+                                 space_subsize_self_hydro_default);
+    space_subsize_pair_stars =
+        parser_get_opt_param_int(params, "Scheduler:cell_sub_size_pair_stars",
+                                 space_subsize_pair_stars_default);
+    space_subsize_self_stars =
+        parser_get_opt_param_int(params, "Scheduler:cell_sub_size_self_stars",
+                                 space_subsize_self_stars_default);
+    space_subsize_pair_grav =
+        parser_get_opt_param_int(params, "Scheduler:cell_sub_size_pair_grav",
+                                 space_subsize_pair_grav_default);
+    space_subsize_self_grav =
+        parser_get_opt_param_int(params, "Scheduler:cell_sub_size_self_grav",
+                                 space_subsize_self_grav_default);
+    space_splitsize = parser_get_opt_param_int(
+        params, "Scheduler:cell_split_size", space_splitsize_default);
+    space_subdepth_diff_grav =
+        parser_get_opt_param_int(params, "Scheduler:cell_subdepth_diff_grav",
+                                 space_subdepth_diff_grav_default);
+    space_extra_parts = parser_get_opt_param_int(
+        params, "Scheduler:cell_extra_parts", space_extra_parts_default);
+    space_extra_sparts = parser_get_opt_param_int(
+        params, "Scheduler:cell_extra_sparts", space_extra_sparts_default);
+    space_extra_gparts = parser_get_opt_param_int(
+        params, "Scheduler:cell_extra_gparts", space_extra_gparts_default);
+    space_extra_bparts = parser_get_opt_param_int(
+        params, "Scheduler:cell_extra_bparts", space_extra_bparts_default);
+
+    engine_max_parts_per_ghost =
+        parser_get_opt_param_int(params, "Scheduler:engine_max_parts_per_ghost",
+                                 engine_max_parts_per_ghost_default);
+    engine_max_sparts_per_ghost = parser_get_opt_param_int(
+        params, "Scheduler:engine_max_sparts_per_ghost",
+        engine_max_sparts_per_ghost_default);
+  }
 
   /* Allocate and init the threads. */
   if (swift_memalign("runners", (void **)&e->runners, SWIFT_CACHE_ALIGNMENT,
@@ -6257,7 +6312,9 @@ void engine_struct_dump(struct engine *e, FILE *stream) {
   feedback_struct_dump(e->feedback_props, stream);
   black_holes_struct_dump(e->black_holes_properties, stream);
   chemistry_struct_dump(e->chemistry, stream);
+#ifdef WITH_FOF
   fof_struct_dump(e->fof_properties, stream);
+#endif
   parser_struct_dump(e->parameter_file, stream);
   if (e->output_list_snapshots)
     output_list_struct_dump(e->output_list_snapshots, stream);
@@ -6375,10 +6432,12 @@ void engine_struct_restore(struct engine *e, FILE *stream) {
   chemistry_struct_restore(chemistry, stream);
   e->chemistry = chemistry;
 
+#ifdef WITH_FOF
   struct fof_props *fof_props =
       (struct fof_props *)malloc(sizeof(struct fof_props));
   fof_struct_restore(fof_props, stream);
   e->fof_properties = fof_props;
+#endif
 
   struct swift_params *parameter_file =
       (struct swift_params *)malloc(sizeof(struct swift_params));
@@ -6494,6 +6553,8 @@ void engine_activate_fof_tasks(struct engine *e) {
 void engine_fof(struct engine *e, const int dump_results,
                 const int seed_black_holes) {
 
+#ifdef WITH_FOF
+
   ticks tic = getticks();
 
   /* Compute number of DM particles */
@@ -6531,4 +6592,7 @@ void engine_fof(struct engine *e, const int dump_results,
   if (engine_rank == 0)
     message("Complete FOF search took: %.3f %s.",
             clocks_from_ticks(getticks() - tic), clocks_getunit());
+#else
+  error("SWIFT was not compiled with FOF enabled!");
+#endif
 }

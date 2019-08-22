@@ -38,8 +38,8 @@ fileName = sys.argv[1]
 
 file = h5py.File(fileName, 'r')
 coords = np.array(file["/PartType0/Coordinates"])
-rho = np.array(file["/PartType0/Density"])
-u = np.array(file["/PartType0/InternalEnergy"])
+rho = np.array(file["/PartType0/Densities"])
+u = np.array(file["/PartType0/InternalEnergies"])
 agrav = np.array(file["/PartType0/GravAcceleration"])
 m = np.array(file["/PartType0/Masses"])
 ids = np.array(file["/PartType0/ParticleIDs"])

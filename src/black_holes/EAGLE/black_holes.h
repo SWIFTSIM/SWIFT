@@ -24,6 +24,7 @@
 #include "black_holes_struct.h"
 #include "cosmology.h"
 #include "dimension.h"
+#include "gravity.h"
 #include "kernel_hydro.h"
 #include "minmax.h"
 #include "physical_constants.h"
@@ -89,16 +90,43 @@ __attribute__((always_inline)) INLINE static void black_holes_init_bpart(
   bp->circular_velocity_gas[2] = 0.f;
   bp->ngb_mass = 0.f;
   bp->num_ngbs = 0;
+  bp->reposition.x[0] = -FLT_MAX;
+  bp->reposition.x[1] = -FLT_MAX;
+  bp->reposition.x[2] = -FLT_MAX;
+  bp->reposition.min_potential = FLT_MAX;
 }
 
 /**
  * @brief Predict additional particle fields forward in time when drifting
  *
+ * The fields do not get predicted but we move the BH to its new position
+ * if a new one was calculated in the repositioning loop.
+ *
  * @param bp The particle
  * @param dt_drift The drift time-step for positions.
  */
 __attribute__((always_inline)) INLINE static void black_holes_predict_extra(
-    struct bpart* restrict bp, float dt_drift) {}
+    struct bpart* restrict bp, float dt_drift) {
+
+  /* Are we doing some repositioning? */
+  if (bp->reposition.min_potential != FLT_MAX) {
+
+#ifdef SWIFT_DEBUG_CHECKS
+    if (bp->reposition.x[0] == -FLT_MAX || bp->reposition.x[1] == -FLT_MAX ||
+        bp->reposition.x[2] == -FLT_MAX) {
+      error("Something went wrong with the new repositioning position");
+    }
+#endif
+
+    bp->x[0] = bp->reposition.x[0];
+    bp->x[1] = bp->reposition.x[1];
+    bp->x[2] = bp->reposition.x[2];
+
+    bp->gpart->x[0] = bp->reposition.x[0];
+    bp->gpart->x[1] = bp->reposition.x[1];
+    bp->gpart->x[2] = bp->reposition.x[2];
+  }
+}
 
 /**
  * @brief Sets the values to be predicted in the drifts to their values at a
@@ -427,6 +455,35 @@ __attribute__((always_inline)) INLINE static void black_holes_prepare_feedback(
     /* Flag that we don't want to heat anyone */
     bp->to_distribute.AGN_heating_probability = 0.f;
     bp->to_distribute.AGN_delta_u = 0.f;
+  }
+}
+
+/**
+ * @brief Finish the calculation of the new BH position.
+ *
+ * Here, we check that the BH should indeed be moved in the next drift.
+ *
+ * @param bp The black hole particle.
+ * @param props The properties of the black hole scheme.
+ * @param constants The physical constants (in internal units).
+ * @param cosmo The cosmological model.
+ */
+__attribute__((always_inline)) INLINE static void black_holes_end_reposition(
+    struct bpart* restrict bp, const struct black_holes_props* props,
+    const struct phys_const* constants, const struct cosmology* cosmo) {
+
+  const float potential = gravity_get_comoving_potential(bp->gpart);
+
+  /* Is the potential lower (i.e. the BH is at the bottom already)
+   * OR is the BH massive enough that we don't reposition? */
+  if (potential < bp->reposition.min_potential ||
+      bp->subgrid_mass > props->max_reposition_mass) {
+
+    /* No need to reposition */
+    bp->reposition.min_potential = FLT_MAX;
+    bp->reposition.x[0] = -FLT_MAX;
+    bp->reposition.x[1] = -FLT_MAX;
+    bp->reposition.x[2] = -FLT_MAX;
   }
 }
 
