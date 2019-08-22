@@ -197,18 +197,18 @@ void engine_addtasks_send_hydro(struct engine *e, struct cell *ci,
       /* Make sure this cell is tagged. */
       cell_ensure_tagged(ci);
 
-      t_xv = scheduler_addtask(s, task_type_send, task_subtype_xv, ci->mpi.tag,
+      t_xv = scheduler_addtask(s, task_type_send, task_subtype_xv, proxy_id,
                                0, ci, cj);
       t_rho = scheduler_addtask(s, task_type_send, task_subtype_rho,
-                                ci->mpi.tag, 0, ci, cj);
+                                proxy_id, 0, ci, cj);
 
 #ifdef EXTRA_HYDRO_LOOP
       t_gradient = scheduler_addtask(s, task_type_send, task_subtype_gradient,
-                                     ci->mpi.tag, 0, ci, cj);
+                                     proxy_id, 0, ci, cj);
 #endif
 
       t_ti = scheduler_addtask(s, task_type_send, task_subtype_tend_part,
-                               ci->mpi.tag, 0, ci, cj);
+                               proxy_id, 0, ci, cj);
 
 #ifdef EXTRA_HYDRO_LOOP
 

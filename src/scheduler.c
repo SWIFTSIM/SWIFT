@@ -1888,11 +1888,11 @@ void scheduler_enqueue(struct scheduler *s, struct task *t) {
                    t->subtype == task_subtype_gradient) {
           if ((t->ci->hydro.count * sizeof(struct part)) > s->mpi_message_limit)
             err = MPI_Isend(t->ci->hydro.parts, t->ci->hydro.count,
-                            part_mpi_type, t->cj->nodeID, t->flags,
+                            part_mpi_type, t->cj->nodeID, t->ci->mpi.tag,
                             subtaskMPI_comms[t->subtype], &t->req);
           else
             err = MPI_Issend(t->ci->hydro.parts, t->ci->hydro.count,
-                             part_mpi_type, t->cj->nodeID, t->flags,
+                             part_mpi_type, t->cj->nodeID, t->ci->mpi.tag,
                              subtaskMPI_comms[t->subtype], &t->req);
         } else if (t->subtype == task_subtype_gpart) {
           if ((t->ci->grav.count * sizeof(struct gpart)) > s->mpi_message_limit)
