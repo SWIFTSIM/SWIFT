@@ -409,24 +409,23 @@ int cell_link_foreign_gparts(struct cell *c, struct gpart *gparts) {
 }
 
 /**
- * @brief Recursively count the number of #part in foreign cells that
- * are in cells with hydro-related tasks.
+ * @brief Recursively count the number of #part in a hierarchy of cells that
+ * need to be exchanged via the given proxy.
  *
  * @param c The #cell.
- * @param proxy_id The id of the #proxy responsible for this cell.
+ * @param proxy_id The id of the #proxy used.
+ * @param num_cells Optional pointer to the number of cells that need to be
+ *        sent/received.
  *
  * @return The number of particles linked.
  */
-int cell_count_parts_for_hydro_tasks(const struct cell *c, int proxy_id) {
+int cell_count_parts_for_hydro_tasks(const struct cell *c, int proxy_id,
+                                     int *num_cells) {
 #ifdef WITH_MPI
-
-#ifdef SWIFT_DEBUG_CHECKS
-  if (c->nodeID == engine_rank)
-    error("Counting foreign particles in a local cell!");
-#endif
 
   /* Do we have a hydro task at this level? */
   if (c->mpi.attach_send_recv_for_proxy & (1ULL << proxy_id)) {
+    if (num_cells) *num_cells += 1;
     return c->hydro.count;
   }
 
@@ -434,7 +433,8 @@ int cell_count_parts_for_hydro_tasks(const struct cell *c, int proxy_id) {
     int count = 0;
     for (int k = 0; k < 8; ++k) {
       if (c->progeny[k] != NULL) {
-        count += cell_count_parts_for_hydro_tasks(c->progeny[k], proxy_id);
+        count += cell_count_parts_for_hydro_tasks(c->progeny[k], proxy_id,
+                                                  num_cells);
       }
     }
     return count;

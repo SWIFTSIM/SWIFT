@@ -853,7 +853,8 @@ int cell_link_sparts(struct cell *c, struct spart *sparts);
 int cell_link_bparts(struct cell *c, struct bpart *bparts);
 int cell_link_foreign_parts(struct cell *c, struct part *parts);
 int cell_link_foreign_gparts(struct cell *c, struct gpart *gparts);
-int cell_count_parts_for_hydro_tasks(const struct cell *c, int proxy_id);
+int cell_count_parts_for_hydro_tasks(const struct cell *c, int proxy_id,
+                                     int *num_cells);
 int cell_count_gparts_for_tasks(const struct cell *c);
 void cell_clean_links(struct cell *c, void *data);
 void cell_make_multipoles(struct cell *c, integertime_t ti_current);
