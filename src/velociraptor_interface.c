@@ -464,12 +464,30 @@ void velociraptor_invoke(struct engine *e, const int linked_with_snap) {
       sim_info.izoomsim = 0;
     }
 
+    /* Collect the mass of the non-background gpart */
+    double high_res_DM_mass = 0.;
+    for (size_t i = 0; i < e->s->nr_gparts; ++i) {
+      const struct gpart *gp = &e->s->gparts[i];
+      if (gp->type == swift_type_dark_matter &&
+          gp->time_bin != time_bin_inhibited &&
+          gp->time_bin != time_bin_not_created) {
+        high_res_DM_mass = gp->mass;
+        break;
+      }
+    }
+
+#ifdef WITH_MPI
+    /* We need to all-reduce this in case one of the nodes had 0 DM particles.
+     */
+    MPI_Allreduce(MPI_IN_PLACE, &high_res_DM_mass, 1, MPI_DOUBLE, MPI_MAX,
+                  MPI_COMM_WORLD);
+#endif
+
     /* Linking length based on the mean DM inter-particle separation
      * in the zoom region and assuming the mean density of the Universe
      * is used in the zoom region. */
     const double mean_matter_density =
         e->cosmology->Omega_m * e->cosmology->critical_density_0;
-    const double high_res_DM_mass = e->gravity_properties->high_res_DM_mass;
     sim_info.interparticlespacing =
         cbrt(high_res_DM_mass / mean_matter_density);
 
