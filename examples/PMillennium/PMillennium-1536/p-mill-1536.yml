@@ -43,9 +43,9 @@ Statistics:
 Gravity:
   eta:                    0.025         
   theta:                  0.5          
-  comoving_softening:     0.0208333  # 20.8333 kpc = 1/25 mean inter-particle separation
-  max_physical_softening: 0.0208333  # 20.8333 kpc = 1/25 mean inter-particle separation
-  mesh_side_length:       256
+  comoving_DM_softening:     0.0208333  # 20.8333 kpc = 1/25 mean inter-particle separation
+  max_physical_DM_softening: 0.0208333  # 20.8333 kpc = 1/25 mean inter-particle separation
+  mesh_side_length:       512
   
 # Parameters related to the initial conditions
 InitialConditions:

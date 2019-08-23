@@ -29,9 +29,9 @@ TimeIntegration:
 # Parameters for the self-gravity scheme
 Gravity:
   eta:          0.025         
-  theta:        0.3           
-  comoving_softening:     0.0889     # 1/25th of the mean inter-particle separation: 88.9 kpc
-  max_physical_softening: 0.0889     # 1/25th of the mean inter-particle separation: 88.9 kpc
+  theta:        0.5           
+  comoving_DM_softening:     0.0889     # 1/25th of the mean inter-particle separation: 88.9 kpc
+  max_physical_DM_softening: 0.0889     # 1/25th of the mean inter-particle separation: 88.9 kpc
   mesh_side_length:       64
 
 # Parameters governing the snapshots
