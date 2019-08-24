@@ -1088,12 +1088,14 @@ int main(int argc, char *argv[]) {
 
     /* Initialize the engine with the space and policies. */
     if (myrank == 0) clocks_gettime(&tic);
-    engine_init(&e, &s, params, N_total[0], N_total[1], N_total[2], N_total[3],
-                engine_policies, talking, &reparttype, &us, &prog_const, &cosmo,
-                &hydro_properties, &entropy_floor, &gravity_properties,
-                &stars_properties, &black_holes_properties,
-                &feedback_properties, &mesh, &potential, &cooling_func,
-                &starform, &chemistry, &fof_properties);
+    engine_init(
+        &e, &s, params, N_total[swift_type_gas], N_total[swift_type_count],
+        N_total[swift_type_stars], N_total[swift_type_black_hole],
+        N_total[swift_type_dark_matter_background], engine_policies, talking,
+        &reparttype, &us, &prog_const, &cosmo, &hydro_properties,
+        &entropy_floor, &gravity_properties, &stars_properties,
+        &black_holes_properties, &feedback_properties, &mesh, &potential,
+        &cooling_func, &starform, &chemistry, &fof_properties);
     engine_config(/*restart=*/0, /*fof=*/0, &e, params, nr_nodes, myrank,
                   nr_threads, with_aff, talking, restart_file);
 

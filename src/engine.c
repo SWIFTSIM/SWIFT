@@ -4890,6 +4890,7 @@ void engine_unpin(void) {
  * @param Ngparts total number of gravity particles in the simulation.
  * @param Nstars total number of star particles in the simulation.
  * @param Nblackholes total number of black holes in the simulation.
+ * @param Nbackground_gparts Total number of background DM particles.
  * @param policy The queuing policy to use.
  * @param verbose Is this #engine talkative ?
  * @param reparttype What type of repartition algorithm are we using ?
@@ -4911,8 +4912,8 @@ void engine_unpin(void) {
  */
 void engine_init(struct engine *e, struct space *s, struct swift_params *params,
                  long long Ngas, long long Ngparts, long long Nstars,
-                 long long Nblackholes, int policy, int verbose,
-                 struct repartition *reparttype,
+                 long long Nblackholes, long long Nbackground_gparts,
+                 int policy, int verbose, struct repartition *reparttype,
                  const struct unit_system *internal_units,
                  const struct phys_const *physical_constants,
                  struct cosmology *cosmo, struct hydro_props *hydro,
@@ -4937,6 +4938,7 @@ void engine_init(struct engine *e, struct space *s, struct swift_params *params,
   e->total_nr_gparts = Ngparts;
   e->total_nr_sparts = Nstars;
   e->total_nr_bparts = Nblackholes;
+  e->total_nr_DM_background_gparts = Nbackground_gparts;
   e->proxy_ind = NULL;
   e->nr_proxies = 0;
   e->reparttype = reparttype;
@@ -6162,11 +6164,17 @@ void engine_recompute_displacement_constraint(struct engine *e) {
 #endif
 
   /* Get the counts of each particle types */
+  const long long total_nr_baryons =
+      e->total_nr_parts + e->total_nr_sparts + e->total_nr_bparts;
   const long long total_nr_dm_gparts =
-      e->total_nr_gparts - e->total_nr_parts - e->total_nr_sparts;
+      e->total_nr_gparts - e->total_nr_DM_background_gparts - total_nr_baryons;
   float count_parts[swift_type_count] = {
-      (float)e->total_nr_parts,  (float)total_nr_dm_gparts, 0.f, 0.f,
-      (float)e->total_nr_sparts, (float)e->total_nr_bparts};
+      (float)e->total_nr_parts,
+      (float)total_nr_dm_gparts,
+      (float)e->total_nr_DM_background_gparts,
+      0.f,
+      (float)e->total_nr_sparts,
+      (float)e->total_nr_bparts};
 
   /* Count of particles for the two species */
   const float N_dm = count_parts[1];
@@ -6566,7 +6574,8 @@ void engine_fof(struct engine *e, const int dump_results,
   /* Compute number of DM particles */
   const long long total_nr_baryons =
       e->total_nr_parts + e->total_nr_sparts + e->total_nr_bparts;
-  const long long total_nr_dmparts = e->total_nr_gparts - total_nr_baryons;
+  const long long total_nr_dmparts =
+      e->total_nr_gparts - e->total_nr_DM_background_gparts - total_nr_baryons;
 
   /* Initialise FOF parameters and allocate FOF arrays. */
   fof_allocate(e->s, total_nr_dmparts, e->fof_properties);
