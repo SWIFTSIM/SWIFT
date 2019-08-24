@@ -2583,7 +2583,7 @@ INLINE static void gravity_L2P(const struct grav_tensor *lb,
  * @param r2 Square of the distance (periodically wrapped) between the
  * multipoles.
  * @param epsilon_a The maximal softening length of any particle in A.
- * @param epsilon_a The maximal softening length of any particle in B.
+ * @param epsilon_b The maximal softening length of any particle in B.
  */
 __attribute__((always_inline, const)) INLINE static int gravity_M2L_accept(
     const double r_crit_a, const double r_crit_b, const double theta_crit2,

@@ -460,6 +460,8 @@ void writeArray(const struct engine* e, hid_t grp, char* fileName,
  * @param bparts (output) Array of #bpart particles.
  * @param Ngas (output) The number of #part read from the file on that node.
  * @param Ngparts (output) The number of #gpart read from the file on that node.
+ * @param Ngparts_background (output) The number of background #gpart (type 2)
+ * read from the file on that node.
  * @param Nstars (output) The number of #spart read from the file on that node.
  * @param Nblackholes (output) The number of #bpart read from the file on that
  * node.

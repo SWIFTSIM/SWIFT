@@ -2327,6 +2327,7 @@ void cell_check_foreign_multipole(const struct cell *c) {
  * recursively computed one.
  *
  * @param c Cell to act upon
+ * @param grav_props The properties of the gravity scheme.
  */
 void cell_check_multipole(struct cell *c,
                           const struct gravity_props *const grav_props) {
