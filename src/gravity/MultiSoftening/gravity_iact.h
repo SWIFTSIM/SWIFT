@@ -169,8 +169,8 @@ __attribute__((always_inline)) INLINE static void runner_iact_grav_pm_full(
 
   /* Compute the derivatives of the potential */
   struct potential_derivatives_M2P d;
-  potential_derivatives_compute_M2P(r_x, r_y, r_z, r2, r_inv, h, h_inv, 0, 0.f,
-                                    &d);
+  potential_derivatives_compute_M2P(r_x, r_y, r_z, r2, r_inv, h,
+                                    /*periodic=*/0, /*r_s_inv=*/0.f, &d);
 
   /* 0th order contributions */
   *f_x = m->M_000 * d.D_100;
@@ -281,7 +281,7 @@ __attribute__((always_inline)) INLINE static void runner_iact_grav_pm_truncated(
 
   /* Compute the derivatives of the potential */
   struct potential_derivatives_M2P d;
-  potential_derivatives_compute_M2P(r_x, r_y, r_z, r2, r_inv, h, h_inv, 1,
+  potential_derivatives_compute_M2P(r_x, r_y, r_z, r2, r_inv, h, /*periodic=*/1,
                                     r_s_inv, &d);
 
   /* 0th order contributions */

@@ -194,7 +194,6 @@ potential_derivatives_flip_signs(struct potential_derivatives_M2L *pot) {
  * @param r2 Square norm of distance vector
  * @param r_inv Inverse norm of distance vector
  * @param eps Softening length.
- * @param eps_inv Inverse of softening length.
  * @param periodic Is the calculation periodic ?
  * @param r_s_inv Inverse of the long-range gravity mesh smoothing length.
  * @param pot (return) The structure containing all the derivatives.
@@ -203,8 +202,7 @@ __attribute__((always_inline)) INLINE static void
 potential_derivatives_compute_M2L(const float r_x, const float r_y,
                                   const float r_z, const float r2,
                                   const float r_inv, const float eps,
-                                  const float eps_inv, const int periodic,
-                                  const float r_s_inv,
+                                  const int periodic, const float r_s_inv,
                                   struct potential_derivatives_M2L *pot) {
 
 #ifdef SWIFT_DEBUG_CHECKS
@@ -423,7 +421,6 @@ potential_derivatives_compute_M2L(const float r_x, const float r_y,
  * @param r2 Square norm of distance vector
  * @param r_inv Inverse norm of distance vector
  * @param eps Softening length.
- * @param eps_inv Inverse of softening length.
  * @param periodic Is the calculation using periodic BCs?
  * @param r_s_inv The inverse of the gravity mesh-smoothing scale.
  * @param pot (return) The structure containing all the derivatives.
@@ -432,8 +429,7 @@ __attribute__((always_inline)) INLINE static void
 potential_derivatives_compute_M2P(const float r_x, const float r_y,
                                   const float r_z, const float r2,
                                   const float r_inv, const float eps,
-                                  const float eps_inv, const int periodic,
-                                  const float r_s_inv,
+                                  const int periodic, const float r_s_inv,
                                   struct potential_derivatives_M2P *pot) {
 
 #ifdef SWIFT_DEBUG_CHECKS

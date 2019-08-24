@@ -1989,7 +1989,6 @@ INLINE static void gravity_M2L_nonsym(
 
   /* Recover some constants */
   const float eps = m_a->max_softening;
-  const float eps_inv = 1.f / eps;
 
   /* Compute distance vector */
   float dx = (float)(pos_b[0] - pos_a[0]);
@@ -2009,8 +2008,8 @@ INLINE static void gravity_M2L_nonsym(
 
   /* Compute all derivatives */
   struct potential_derivatives_M2L pot;
-  potential_derivatives_compute_M2L(dx, dy, dz, r2, r_inv, eps, eps_inv,
-                                    periodic, rs_inv, &pot);
+  potential_derivatives_compute_M2L(dx, dy, dz, r2, r_inv, eps, periodic,
+                                    rs_inv, &pot);
 
   /* Do the M2L tensor multiplication */
   gravity_M2L_apply(l_b, m_a, &pot);
@@ -2040,7 +2039,6 @@ INLINE static void gravity_M2L_symmetric(
 
   /* Recover some constants */
   const float eps = max(m_a->max_softening, m_b->max_softening);
-  const float eps_inv = 1.f / eps;
 
   /* Compute distance vector */
   float dx = (float)(pos_b[0] - pos_a[0]);
@@ -2060,8 +2058,8 @@ INLINE static void gravity_M2L_symmetric(
 
   /* Compute all derivatives */
   struct potential_derivatives_M2L pot;
-  potential_derivatives_compute_M2L(dx, dy, dz, r2, r_inv, eps, eps_inv,
-                                    periodic, rs_inv, &pot);
+  potential_derivatives_compute_M2L(dx, dy, dz, r2, r_inv, eps, periodic,
+                                    rs_inv, &pot);
 
   /* Do the first M2L tensor multiplication */
   gravity_M2L_apply(l_b, m_a, &pot);
