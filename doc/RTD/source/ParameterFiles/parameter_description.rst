@@ -174,7 +174,7 @@ use the following parameters:
      h:              0.6777
      Omega_m:        0.307
      Omega_lambda:   0.693
-     Omega_b:        0.0455
+     Omega_b:        0.0482519
      Omega_r:        0.            # (Optional)
      w_0:            -1.0          # (Optional)
      w_a:            0.            # (Optional)
@@ -191,12 +191,32 @@ The behaviour of the self-gravity solver can be modified by the parameters
 provided in the ``Gravity`` section. The theory document puts these parameters into the
 context of the equations being solved. We give a brief overview here.
 
-* The Plummer-equivalent co-moving softening length used for all particles :math:`\epsilon_{com}`: ``comoving_softening``,
-* The Plummer-equivalent maximal physical softening length used for all particles :math:`\epsilon_{max}`: ``comoving_softening``,
+* The Plummer-equivalent co-moving softening length used for all dark matter particles :math:`\epsilon_{\rm com,DM}`: ``comoving_DM_softening``,
+* The Plummer-equivalent co-moving softening length used for all baryon particles (gas, stars, BHs) :math:`\epsilon_{\rm com,bar}`: ``comoving_baryon_softening``,
+* The Plummer-equivalent maximal physical softening length used for all dark matter particles :math:`\epsilon_{\rm max,DM}`: ``max_physical_DM_softening``,
+* The Plummer-equivalent maximal physical softening length used for all baryon particles (gas, stars, BHs) :math:`\epsilon_{\rm max,bar}`: ``max_physical_baryon_softening``,
 
-At any redshift :math:`z`, the Plummer-equivalent softening length used by the
-code will be :math:`\epsilon=\min(\epsilon_{max},
-\frac{\epsilon_{com}}{z+1})`. This is expressed in internal units.
+At any redshift :math:`z`, the Plummer-equivalent softening length used by
+the code will be :math:`\epsilon=\min(\epsilon_{max},
+\frac{\epsilon_{com}}{z+1})`. The same calculation is performed
+independently for the dark matter and baryon particles. All the softening
+quantities are expressed in internal units. Calculations that only involve
+DM or baryons can leave the unused quantities out of the parameter
+file. For non-cosmological runs, only the physical softening lengths need
+to be supplied.
+
+In case of zoom simulations, the softening of the additional, more massive, background
+particles is specified via the parameter
+``softening_ratio_background``. Since these particles will typically have
+different masses to degrade the resolution away from the zoom region, the
+particles won't have a single softening value. Instead, we specify the
+fraction of the mean inter-particle separation to use. The code will then
+derive the softening length of each particle assuming the mean density of
+the Universe. That is :math:`\epsilon_{\rm background} =
+f\sqrt[3]{\frac{m}{\Omega_m\rho_{\rm crit}}}`, where :math:`f` is the
+user-defined value (typically of order 0.05).
+
+The accuracy of the gravity calculation is governed by the following two parameters:
 
 * The opening angle (multipole acceptance criterion) used in the FMM :math:`\theta`: ``theta``,
 * The time-step size pre-factor :math:`\eta`: ``eta``,
@@ -236,15 +256,17 @@ simulation:
 
    # Parameters for the self-gravity scheme for the EAGLE-100 box
    Gravity:
-     eta:          0.025
-     theta:        0.7
-     comoving_softening:     0.0026994  # 0.7 proper kpc at z=2.8.
-     max_physical_softening: 0.0007     # 0.7 proper kpc
-     rebuild_frequency:      0.01       # Default optional value
+     eta:                    0.025
+     theta:                  0.7
      mesh_side_length:       512
-     a_smooth:     1.25                 # Default optional value
-     r_cut_max:    4.5                  # Default optional value
-     r_cut_min:    0.1                  # Default optional value
+     comoving_DM_softening:         0.0026994  # 0.7 proper kpc at z=2.8.
+     max_physical_DM_softening:     0.0007     # 0.7 proper kpc
+     comoving_baryon_softening:     0.0026994  # 0.7 proper kpc at z=2.8.
+     max_physical_baryon_softening: 0.0007     # 0.7 proper kpc
+     rebuild_frequency:      0.01   # Default optional value
+     a_smooth:     1.25             # Default optional value
+     r_cut_max:    4.5              # Default optional value
+     r_cut_min:    0.1              # Default optional value
 
 
 .. _Parameters_SPH:
