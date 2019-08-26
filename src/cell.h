@@ -756,8 +756,8 @@ struct cell {
   struct task *timestep_limiter;
 
 #ifdef WITH_LOGGER
-    /*! The logger task */
-    struct task *logger;
+  /*! The logger task */
+  struct task *logger;
 #endif
 
   /*! Minimum dimension, i.e. smallest edge of this cell (min(width)). */

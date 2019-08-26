@@ -3903,7 +3903,7 @@ int cell_unskip_stars_tasks(struct cell *c, struct scheduler *s,
       if (c->kick2 != NULL) scheduler_activate(s, c->kick2);
       if (c->timestep != NULL) scheduler_activate(s, c->timestep);
 #ifdef WITH_LOGGER
-    if (c->logger != NULL) scheduler_activate(s, c->logger);
+      if (c->logger != NULL) scheduler_activate(s, c->logger);
 #endif
     }
   }
