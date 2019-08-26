@@ -219,9 +219,7 @@ hydro_get_comoving_soundspeed(const struct part *restrict p) {
   /* Compute the sound speed -- see theory section for justification */
   /* IDEAL GAS ONLY -- P-U does not work with generic EoS. */
 
-  const float square_rooted = sqrtf(hydro_gamma * p->pressure_bar / p->rho);
-
-  return square_rooted;
+  return gas_soundspeed_from_pressure(p->rho, p->pressure_bar);
 }
 
 /**
@@ -408,15 +406,29 @@ hydro_set_drifted_physical_internal_energy(struct part *p,
                                            const struct cosmology *cosmo,
                                            const float u) {
 
+  /* Store ratio of new internal energy to old internal energy, as we use this
+   * in the drifting of the pressure. */
+  float internal_energy_ratio = 1.f / p->u;
+
+  /* Update the internal energy */
   p->u = u / cosmo->a_factor_internal_energy;
+  internal_energy_ratio *= p->u;
+
+  /* Now we can use this to 'update' the value of the smoothed pressure. To
+   * truly update this variable, we would need another loop over neighbours
+   * using the new internal energies of everyone, but that's not feasible. */
+  p->pressure_bar *= internal_energy_ratio;
 
   /* Now recompute the extra quantities */
 
   /* Compute the sound speed */
-  const float soundspeed = hydro_get_comoving_soundspeed(p);
+  const float soundspeed =
+      gas_soundspeed_from_pressure(p->rho, p->pressure_bar);
 
   /* Update variables. */
   p->force.soundspeed = soundspeed;
+
+  p->viscosity.v_sig = max(p->viscosity.v_sig, 2.f * soundspeed);
 }
 
 /**
@@ -467,10 +479,7 @@ __attribute__((always_inline)) INLINE static float hydro_compute_timestep(
   const float dt_cfl = 2.f * kernel_gamma * CFL_condition * cosmo->a * p->h /
                        (cosmo->a_factor_sound_speed * p->viscosity.v_sig);
 
-  const float dt_u_change =
-      (p->u_dt != 0.0f) ? fabsf(const_max_u_change * p->u / p->u_dt) : FLT_MAX;
-
-  return fminf(dt_cfl, dt_u_change);
+  return dt_cfl;
 }
 
 /**
@@ -871,8 +880,18 @@ __attribute__((always_inline)) INLINE static void hydro_predict_extra(
     const struct hydro_props *hydro_props,
     const struct entropy_floor_properties *floor_props) {
 
+  /* Store ratio of new internal energy to old internal energy, as we use this
+   * in the drifting of the pressure. */
+  float internal_energy_ratio = 1.f / p->u;
+
   /* Predict the internal energy */
   p->u += p->u_dt * dt_therm;
+  internal_energy_ratio *= p->u;
+
+  /* Now we can use this to 'update' the value of the smoothed pressure. To
+   * truly update this variable, we would need another loop over neighbours
+   * using the new internal energies of everyone, but that's not feasible. */
+  p->pressure_bar *= internal_energy_ratio;
 
   /* Check against entropy floor */
   const float floor_A = entropy_floor(p, cosmo, floor_props);
@@ -908,9 +927,12 @@ __attribute__((always_inline)) INLINE static void hydro_predict_extra(
   }
 
   /* Compute the new sound speed */
-  const float soundspeed = hydro_get_comoving_soundspeed(p);
-
+  const float soundspeed =
+      gas_soundspeed_from_pressure(p->rho, p->pressure_bar);
   p->force.soundspeed = soundspeed;
+
+  /* Update the signal velocity */
+  p->viscosity.v_sig = max(p->viscosity.v_sig, 2.f * soundspeed);
 }
 
 /**

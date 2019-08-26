@@ -923,7 +923,7 @@ at some arbitrary steps, and indeed do better than the initial partition
 earlier in the run. This can be done using *fixed cost* repartitioning.
 
 Fixed costs are output during each repartition step into the file
-`partition_fixed_costs.h`, this should be created by a test run of your your
+`partition_fixed_costs.h`, this should be created by a test run of your
 full simulation (with possibly with a smaller volume, but all the physics
 enabled). This file can then be used to replace the same file found in the
 `src/` directory and SWIFT should then be recompiled. Once you have that, you

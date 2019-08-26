@@ -404,6 +404,8 @@ EAGLEFeedback:
   SNII_yield_factor_Silicon:        1.0             # (Optional) Correction factor to apply to the Silicon yield from the SNII channel.
   SNII_yield_factor_Iron:           0.5             # (Optional) Correction factor to apply to the Iron yield from the SNII channel.
 
+# Parameters related to AGN models  -----------------------------------------------
+  
 # EAGLE AGN model
 EAGLEAGN:
   subgrid_seed_mass_Msun:           1.5e5      # Black hole subgrid mass at creation time in solar masses.
