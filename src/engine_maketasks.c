@@ -795,7 +795,7 @@ void engine_make_hierarchical_tasks_common(struct engine *e, struct cell *c) {
 #if defined(WITH_LOGGER)
       /* Add the hydro logger task. */
       c->logger = scheduler_addtask(s, task_type_logger, task_subtype_none, 0,
-	0, c, NULL);
+                                    0, c, NULL);
 
       /* Add the kick2 dependency */
       scheduler_addunlock(s, c->kick2, c->logger);
@@ -828,7 +828,6 @@ void engine_make_hierarchical_tasks_common(struct engine *e, struct cell *c) {
         scheduler_addunlock(s, c->timestep, c->timestep_limiter);
         scheduler_addunlock(s, c->timestep_limiter, c->kick1);
       }
-
     }
   } else { /* We are above the super-cell so need to go deeper */
 
@@ -1135,7 +1134,8 @@ void engine_make_hierarchical_tasks_hydro(struct engine *e, struct cell *c,
         c->black_holes.swallow_ghost[2] = scheduler_addtask(
             s, task_type_bh_swallow_ghost3, task_subtype_none, 0, 0, c, NULL);
 
-        scheduler_addunlock(s, c_kick2_or_logger, c->black_holes.black_holes_in);
+        scheduler_addunlock(s, c_kick2_or_logger,
+                            c->black_holes.black_holes_in);
         scheduler_addunlock(s, c->black_holes.black_holes_out,
                             c->super->timestep);
       }
@@ -1773,10 +1773,12 @@ void engine_make_extra_hydroloop_tasks_mapper(void *map_data, int num_elements,
     struct cell *cj = t->cj;
 #ifdef WITH_LOGGER
     struct task *ci_super_kick2_or_logger = ci->super->logger;
-    struct task *cj_super_kick2_or_logger = (cj == NULL)? NULL : cj->super->logger;
+    struct task *cj_super_kick2_or_logger =
+        (cj == NULL) ? NULL : cj->super->logger;
 #else
     struct task *ci_super_kick2_or_logger = ci->super->kick2;
-    struct task *cj_super_kick2_or_logger = (cj == NULL)? NULL : cj->super->kick2;
+    struct task *cj_super_kick2_or_logger =
+        (cj == NULL) ? NULL : cj->super->kick2;
 #endif
 
     /* Sort tasks depend on the drift of the cell (gas version). */
