@@ -167,7 +167,7 @@ int scheduler_get_number_relation(const struct scheduler *s,
 #define MAX_NUMBER_DEP 128
 
 /**
- * @brief Informations about all the task dependencies of
+ * @brief Information about all the task dependencies of
  *   a single task.
  */
 struct task_dependency {
@@ -1760,7 +1760,7 @@ void scheduler_enqueue(struct scheduler *s, struct task *t) {
         if (err != MPI_SUCCESS) {
           mpi_error(err, "Failed to emit irecv for particle data.");
         }
-        qid = 1 % s->nr_queues;
+        qid = 0; /* All MPI tasks are restricted to one thread. */
 #else
         error("SWIFT was not compiled with MPI support.");
 #endif
@@ -1946,7 +1946,7 @@ void scheduler_enqueue(struct scheduler *s, struct task *t) {
         if (err != MPI_SUCCESS) {
           mpi_error(err, "Failed to emit isend for particle data.");
         }
-        qid = 0;
+        qid = 0; /* All MPI tasks are restricted to one task. */
 #else
         error("SWIFT was not compiled with MPI support.");
 #endif
@@ -1958,9 +1958,8 @@ void scheduler_enqueue(struct scheduler *s, struct task *t) {
     if (qid >= s->nr_queues) error("Bad computed qid.");
 
     /* If no previous owner, pick a random queue. */
-    /* Note that getticks() is random enough, XXX don't use qids 0 and 1, keep
-     * those for MPI */
-    if (qid < 0) qid = (getticks() % (s->nr_queues - 2)) + 2;
+    /* Note that getticks() is random enough, XXX don't use qid 0 that for MPI */
+    if (qid < 0) qid = (getticks() % (s->nr_queues - 1)) + 1;
 
     /* Increase the waiting counter. */
     atomic_inc(&s->waiting);
@@ -1971,6 +1970,9 @@ void scheduler_enqueue(struct scheduler *s, struct task *t) {
 #endif
 
     /* Insert the task into that queue. */
+    if ((t->type == task_type_recv || t->type == task_type_send) && qid != 0)
+      error("Inserting non-MPI task into qid 0 (%s/%s: %d)",
+            taskID_names[t->type], subtaskID_names[t->subtype], t->ci->hydro.super->owner);
     queue_insert(&s->queues[qid], t);
   }
 }
@@ -2017,12 +2019,6 @@ struct task *scheduler_done(struct scheduler *s, struct task *t) {
   /* Return the next best task. Note that we currently do not
      implement anything that does this, as getting it to respect
      priorities is too tricky and currently unnecessary. */
-
-  /* Dump the queue occasionally. XXX only one thread. */
-  //if (t->type == task_type_drift_part || t->type == task_type_drift_gpart) {
-  //    if (t->rid == 1) scheduler_dump_queues(s->space->e);
-  //}
-
   return NULL;
 }
 
@@ -2095,15 +2091,18 @@ struct task *scheduler_gettask(struct scheduler *s, int qid,
       }
 
       /* If unsuccessful, try stealing from the other queues. */
-      if ((s->flags & scheduler_flag_steal) && qid > 1) {
+      if ((s->flags & scheduler_flag_steal)) {
         int count = 0, qids[nr_queues];
-        for (int k = 2; k < nr_queues; k++)
+
+        /* Don't steal from qid == 0. */
+        for (int k = 1; k < nr_queues; k++)
           if (s->queues[k].count > 0 || s->queues[k].count_incoming > 0) {
             qids[count++] = k;
           }
         for (int k = 0; k < scheduler_maxsteal && count > 0; k++) {
           const int ind = rand_r(&seed) % count;
           TIMER_TIC
+          if (qids[ind] == 0) error ("Stealing from qid == 0");
           res = queue_gettask(&s->queues[qids[ind]], prev, 0);
           TIMER_TOC(timer_qsteal);
           if (res != NULL)
@@ -2117,7 +2116,7 @@ struct task *scheduler_gettask(struct scheduler *s, int qid,
 
 /* If we failed, take a short nap. */
 #ifdef WITH_MPI
-    if (res == NULL && qid > 1)
+    if (res == NULL && qid > 0)
 #else
     if (res == NULL)
 #endif
