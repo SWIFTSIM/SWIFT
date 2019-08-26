@@ -197,6 +197,16 @@ __attribute__((always_inline)) INLINE static void chemistry_first_init_spart(
       sp->chemistry_data.metal_mass_fraction[elem] =
           data->initial_metal_mass_fraction[elem];
   }
+
+  /* Initialize mass fractions for total metals and each metal individually */
+  if (data->initial_metal_mass_fraction_total != -1) {
+    sp->chemistry_data.smoothed_metal_mass_fraction_total =
+        data->initial_metal_mass_fraction_total;
+
+    for (int elem = 0; elem < chemistry_element_count; ++elem)
+      sp->chemistry_data.smoothed_metal_mass_fraction[elem] =
+          data->initial_metal_mass_fraction[elem];
+  }
 }
 
 /**
