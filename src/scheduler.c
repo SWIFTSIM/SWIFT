@@ -30,6 +30,8 @@
 #include <stdlib.h>
 #include <string.h>
 #include <sys/stat.h>
+#include <unistd.h>
+#include <sys/syscall.h>
 
 /* MPI headers. */
 #ifdef WITH_MPI
@@ -1447,19 +1449,19 @@ void scheduler_reweight(struct scheduler *s, int verbose) {
         if (t->ci == t->ci->hydro.super) cost = wscale * bcount_i;
         break;
       case task_type_drift_part:
-        cost = wscale * count_i;
+        cost = 1.0e10; //10000.f * wscale * count_i;
         break;
       case task_type_drift_gpart:
-        cost = wscale * gcount_i;
+          cost = 1.0e10; //100000.f * wscale * gcount_i;
         break;
       case task_type_drift_spart:
-        cost = wscale * scount_i;
+        cost = 1.0e10; //10000.f * wscale * scount_i;
         break;
       case task_type_drift_bpart:
         cost = wscale * bcount_i;
         break;
       case task_type_init_grav:
-        cost = wscale * gcount_i;
+        cost = 1.0e6; //100.0f * wscale * gcount_i;
         break;
       case task_type_grav_down:
         cost = wscale * gcount_i;
@@ -1492,16 +1494,10 @@ void scheduler_reweight(struct scheduler *s, int verbose) {
         cost = wscale * (count_i + gcount_i + scount_i + bcount_i);
         break;
       case task_type_send:
-        if (count_i < 1e5)
-          cost = 10.f * (wscale * count_i) * count_i;
-        else
-          cost = 2e9;
+        cost = 1.0e9; //FLT_MAX * 0.1;//10000.f * (wscale * count_i) * count_i;
         break;
       case task_type_recv:
-        if (count_i < 1e5)
-          cost = 5.f * (wscale * count_i) * count_i;
-        else
-          cost = 1e9;
+        cost = 1.0e6; //FLT_MAX * 0.001; //5.f * wscale * count_i;
         break;
       default:
         cost = 0;
@@ -1962,8 +1958,9 @@ void scheduler_enqueue(struct scheduler *s, struct task *t) {
     if (qid >= s->nr_queues) error("Bad computed qid.");
 
     /* If no previous owner, pick a random queue. */
-    /* Note that getticks() is random enough */
-    if (qid < 0) qid = getticks() % s->nr_queues;
+    /* Note that getticks() is random enough, XXX don't use qids 0 and 1, keep
+     * those for MPI */
+    if (qid < 0) qid = (getticks() % (s->nr_queues - 2)) + 2;
 
     /* Increase the waiting counter. */
     atomic_inc(&s->waiting);
@@ -2020,6 +2017,12 @@ struct task *scheduler_done(struct scheduler *s, struct task *t) {
   /* Return the next best task. Note that we currently do not
      implement anything that does this, as getting it to respect
      priorities is too tricky and currently unnecessary. */
+
+  /* Dump the queue occasionally. XXX only one thread. */
+  //if (t->type == task_type_drift_part || t->type == task_type_drift_gpart) {
+  //    if (t->rid == 1) scheduler_dump_queues(s->space->e);
+  //}
+
   return NULL;
 }
 
@@ -2092,9 +2095,9 @@ struct task *scheduler_gettask(struct scheduler *s, int qid,
       }
 
       /* If unsuccessful, try stealing from the other queues. */
-      if (s->flags & scheduler_flag_steal) {
+      if ((s->flags & scheduler_flag_steal) && qid > 1) {
         int count = 0, qids[nr_queues];
-        for (int k = 0; k < nr_queues; k++)
+        for (int k = 2; k < nr_queues; k++)
           if (s->queues[k].count > 0 || s->queues[k].count_incoming > 0) {
             qids[count++] = k;
           }
@@ -2315,11 +2318,13 @@ void scheduler_dump_queues(struct engine *e) {
   struct scheduler *s = &e->sched;
 
   /* Open the file and write the header. */
-  char dumpfile[35];
+  char dumpfile[120];
 #ifdef WITH_MPI
-  snprintf(dumpfile, sizeof(dumpfile), "queue_dump_MPI-step%d.dat", e->step);
+  snprintf(dumpfile, sizeof(dumpfile), "queue_dump_MPI-step%d_%lld.dat",
+           e->step, getticks());
 #else
-  snprintf(dumpfile, sizeof(dumpfile), "queue_dump-step%d.dat", e->step);
+  snprintf(dumpfile, sizeof(dumpfile), "queue_dump-step%d_%lld.dat",
+           e->step, getticks());
 #endif
   FILE *file_thread = NULL;
   if (engine_rank == 0) {

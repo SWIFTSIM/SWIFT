@@ -3646,20 +3646,18 @@ void space_split_recursive(struct space *s, struct cell *c,
   c->maxdepth = maxdepth;
 
   /* Set ownership according to the start of the parts array. */
+  /* Avoid queues 0 and 1, these are for MPI. */
+  int nq = s->nr_queues - 2;
   if (s->nr_parts > 0)
-    c->owner = ((c->hydro.parts - s->parts) % s->nr_parts) * s->nr_queues /
-               s->nr_parts;
-  else if (s->nr_sparts > 0)
-    c->owner = ((c->stars.parts - s->sparts) % s->nr_sparts) * s->nr_queues /
-               s->nr_sparts;
-  else if (s->nr_bparts > 0)
-    c->owner = ((c->black_holes.parts - s->bparts) % s->nr_bparts) *
-               s->nr_queues / s->nr_bparts;
+    c->owner = ((c->hydro.parts - s->parts) % s->nr_parts) * nq / s->nr_parts + 2;
   else if (s->nr_gparts > 0)
-    c->owner = ((c->grav.parts - s->gparts) % s->nr_gparts) * s->nr_queues /
-               s->nr_gparts;
+    c->owner = ((c->grav.parts - s->gparts) % s->nr_gparts) * nq / s->nr_gparts + 2;
+  else if (s->nr_sparts > 0)
+    c->owner = ((c->stars.parts - s->sparts) % s->nr_sparts) * nq / s->nr_sparts + 2;
+  else if (s->nr_bparts > 0)
+    c->owner = ((c->black_holes.parts - s->bparts) % s->nr_bparts) * nq / s->nr_bparts + 2;
   else
-    c->owner = 0; /* Ok, there is really nothing on this rank... */
+    c->owner = -1; /* Ok, there is really nothing on this rank (XXX pick a random queue anyway?) */
 
   /* Clean up. */
   if (allocate_buffer) {
