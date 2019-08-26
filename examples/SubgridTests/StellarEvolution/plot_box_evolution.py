@@ -104,15 +104,15 @@ for i in range(n_snapshots):
 	#print("reading snapshot "+str(i))
 	sim = h5py.File("stellar_evolution_%04d.hdf5"%i, "r")
 	t[i] = sim["/Header"].attrs["Time"][0]
-	
+
 	masses = sim["/PartType0/Masses"][:]
 	swift_box_gas_mass[i] = np.sum(masses)
 
-        Z_star = sim["/PartType4/Metallicity"][0]
+        Z_star = sim["/PartType4/MetalMassFractions"][0]
 	star_masses = sim["/PartType4/Masses"][:]
 	swift_box_star_mass[i] = np.sum(star_masses)
 
-	metallicities = sim["/PartType0/Metallicities"][:]
+	metallicities = sim["/PartType0/MetalMassFractions"][:]
 	swift_box_gas_metal_mass[i] = np.sum(metallicities * masses)
 
 	element_abundances = sim["/PartType0/ElementMassFractions"][:][:]
