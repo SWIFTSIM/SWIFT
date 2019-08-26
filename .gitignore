@@ -62,6 +62,7 @@ examples/Cooling/CoolingRates/cooling_rates
 examples/Cooling/CoolingRates/cooling_element_*.dat
 examples/Cooling/CoolingRates/cooling_output.dat
 examples/SubgridTests/StellarEvolution/StellarEvolutionSolution*
+examples/SubgridTests/CosmologicalStellarEvolution/StellarEvolutionSolution*
 
 tests/testActivePair
 tests/testActivePair.sh
