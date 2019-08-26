@@ -1013,11 +1013,6 @@ void engine_make_hierarchical_tasks_hydro(struct engine *e, struct cell *c,
                           c->hydro.stars_resort);
     }
   }
-#ifdef WITH_LOGGER
-  struct task *c_kick2_or_logger = c->logger;
-#else
-  struct task *c_kick2_or_logger = c->kick2;
-#endif
 
   /* Are we in a super-cell ? */
   if (c->hydro.super == c) {
@@ -1104,7 +1099,11 @@ void engine_make_hierarchical_tasks_hydro(struct engine *e, struct cell *c,
         c->stars.ghost = scheduler_addtask(s, task_type_stars_ghost,
                                            task_subtype_none, 0, 0, c, NULL);
 
-        scheduler_addunlock(s, c_kick2_or_logger, c->stars.stars_in);
+#ifdef WITH_LOGGER
+        scheduler_addunlock(s, c->super->logger, c->stars.stars_in);
+#else
+        scheduler_addunlock(s, c->super->kick2, c->stars.stars_in);
+#endif
         scheduler_addunlock(s, c->stars.stars_out, c->super->timestep);
 
         if (with_star_formation && c->hydro.count > 0) {
@@ -1134,8 +1133,11 @@ void engine_make_hierarchical_tasks_hydro(struct engine *e, struct cell *c,
         c->black_holes.swallow_ghost[2] = scheduler_addtask(
             s, task_type_bh_swallow_ghost3, task_subtype_none, 0, 0, c, NULL);
 
-        scheduler_addunlock(s, c_kick2_or_logger,
-                            c->black_holes.black_holes_in);
+#ifdef WITH_LOGGER
+        scheduler_addunlock(s, c->super->logger, c->black_holes.black_holes_in);
+#else
+        scheduler_addunlock(s, c->super->kick2, c->black_holes.black_holes_in);
+#endif
         scheduler_addunlock(s, c->black_holes.black_holes_out,
                             c->super->timestep);
       }
@@ -1769,15 +1771,19 @@ void engine_make_extra_hydroloop_tasks_mapper(void *map_data, int num_elements,
     const enum task_types t_type = t->type;
     const enum task_subtypes t_subtype = t->subtype;
     const long long flags = t->flags;
-    struct cell *ci = t->ci;
-    struct cell *cj = t->cj;
+    struct cell *const ci = t->ci;
+    struct cell *const cj = t->cj;
+
+    /* Escape early */
+    if (t->type == task_type_none) continue;
+
 #ifdef WITH_LOGGER
-    struct task *ci_super_kick2_or_logger = ci->super->logger;
-    struct task *cj_super_kick2_or_logger =
+    struct task *const ci_super_kick2_or_logger = ci->super->logger;
+    struct task *const cj_super_kick2_or_logger =
         (cj == NULL) ? NULL : cj->super->logger;
 #else
-    struct task *ci_super_kick2_or_logger = ci->super->kick2;
-    struct task *cj_super_kick2_or_logger =
+    struct task *const ci_super_kick2_or_logger = ci->super->kick2;
+    struct task *const cj_super_kick2_or_logger =
         (cj == NULL) ? NULL : cj->super->kick2;
 #endif
 
