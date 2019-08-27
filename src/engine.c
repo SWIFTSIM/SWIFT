@@ -245,14 +245,14 @@ static void *engine_do_redistribute(const char *label, int *counts, char *parts,
               offset_recv += counts[ind_recv];
             }
             else {
-              for (int i = 0; i < counts[ind_send];) {
+              for (int i = 0, n = 0; i < counts[ind_send]; n++) {
 
                 /* Count and index, with chunk parts at most. */
                 size_t sendc = min(chunk, counts[ind_send] - i);
                 size_t sendo = offset_send + i;
 
                 res = MPI_Send(&parts[sendo * sizeofparts], sendc, mpi_type, j,
-                               ind_send * nr_nodes + i, MPI_COMM_WORLD);
+                               n, MPI_COMM_WORLD);
                 if ( res != MPI_SUCCESS ) {
                   mpi_error(res, "Failed to send parts to node %i from %i.",
                             j, nodeID);
@@ -267,14 +267,14 @@ static void *engine_do_redistribute(const char *label, int *counts, char *parts,
       else {
         /*  Listen for sends from kk. */
         if (counts[ind_recv] > 0) {
-          for (int i = 0; i < counts[ind_recv];) {
+          for (int i = 0, n = 0; i < counts[ind_recv]; n++) {
             /* Count and index, with +chunk parts at most. */
             size_t recvc = min(chunk, counts[ind_recv] - i);
             size_t recvo = offset_recv + i;
 
             MPI_Status status;
             res = MPI_Recv(&parts_new[recvo * sizeofparts], recvc, mpi_type, kk,
-                           ind_recv * nr_nodes + i, MPI_COMM_WORLD, &status);
+                           n, MPI_COMM_WORLD, &status);
             if ( res != MPI_SUCCESS ) {
               mpi_error(res,"Failed to recv of parts from node %i to %i.",
                         kk, nodeID);
