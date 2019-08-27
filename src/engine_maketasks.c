@@ -2988,7 +2988,7 @@ void engine_make_fof_tasks(struct engine *e) {
   tic = getticks();
 
   /* Split the tasks. */
-  scheduler_splittasks(sched, /*fof_tasks=*/1);
+  scheduler_splittasks(sched, /*fof_tasks=*/1, e->verbose);
 
   if (e->verbose)
     message("Splitting FOF tasks took %.3f %s.",
@@ -3064,7 +3064,7 @@ void engine_maketasks(struct engine *e) {
   tic2 = getticks();
 
   /* Split the tasks. */
-  scheduler_splittasks(sched, /*fof_tasks=*/0);
+  scheduler_splittasks(sched, /*fof_tasks=*/0, e->verbose);
 
   if (e->verbose)
     message("Splitting tasks took %.3f %s.",
