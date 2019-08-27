@@ -69,7 +69,9 @@ struct bpart {
   struct chemistry_bpart_data chemistry_data;
 
   /*! Black holes merger information (e.g. merging ID) */
+#ifndef WITH_ENGINEERING
   struct black_holes_bpart_data merger_data;
+#endif
 
 #ifdef SWIFT_DEBUG_CHECKS
 

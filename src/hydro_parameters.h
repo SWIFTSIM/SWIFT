@@ -51,6 +51,14 @@
 #include "./hydro/AnarchyDU/hydro_parameters.h"
 #elif defined(ANARCHY_PU_SPH)
 #include "./hydro/AnarchyPU/hydro_parameters.h"
+#elif defined(EULER_ENG_SPH)
+#include "./hydro/Euler/hydro_parameters.h"
+#elif defined(NAV_STOK_SPH)
+#include "./hydro/NavierStokes/hydro_parameters.h"
+#elif defined(EULER_ART_VIS_SPH)
+#include "./hydro/Euler_art_vis/hydro_parameters.h"
+#elif defined(MORRIS_FOX_ZHU_97_SPH)
+#include "./hydro/MorrisFoxZhu97/hydro_parameters.h"
 #else
 #error "Invalid choice of SPH variant"
 #endif

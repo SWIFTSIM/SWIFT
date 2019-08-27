@@ -46,6 +46,54 @@ struct end_of_step_data {
   struct star_formation_history sfh;
 };
 
+#ifdef WITH_ENGINEERING
+
+void engine_recurse_fix_timesteps(struct cell *c, struct engine *e){
+ 
+  c->hydro.ti_end_min = e->ti_end_min;
+  c->hydro.ti_end_max = e->ti_end_min;
+  if(c->split){
+    for (int k = 0; k < 8; k++) {
+      struct cell *cp = c->progeny[k];
+      if(cp != NULL){
+        engine_recurse_fix_timesteps(cp, e);
+      }
+    }
+
+  }else if(c->nodeID == e->nodeID){
+    for(int k = 0; k < c->hydro.count; k++){
+      struct part *p = &c->hydro.parts[k];
+      p->time_bin = e->min_active_bin;
+    }
+  }
+}
+
+void engine_fix_timestep_mapper(void *map_data, int num_elements,
+                                        void *extra_data){
+  struct engine *e = (struct engine*) extra_data;
+  struct cell *current_cells = (struct cell*)map_data;
+//  int *cell_indices = e->s->local_cells_top;
+  for (int ind = 0; ind < num_elements; ind++) {
+    struct cell *c = &current_cells[ind];
+    engine_recurse_fix_timesteps(c, e);
+
+  }
+}
+
+void engine_fix_timestep(struct engine *e){
+  /* Fix the particle timesteps to the minimum computed. */
+#ifdef WITH_MPI
+  MPI_Allreduce(MPI_IN_PLACE, &e->ti_end_min, 1, MPI_LONG_LONG, MPI_MIN, MPI_COMM_WORLD);
+#endif
+  threadpool_map(&e->threadpool, engine_fix_timestep_mapper,
+                 e->s->cells_top, e->s->nr_cells/*local_cells*/,
+                 sizeof(struct cell), 0, e);
+
+}
+#endif
+
+
+
 /**
  * @brief Recursive function gathering end-of-step data.
  *

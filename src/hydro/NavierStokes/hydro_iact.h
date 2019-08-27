@@ -61,6 +61,9 @@ __attribute__((always_inline)) INLINE static void runner_iact_density(
     float dv[3];
     float mi, mj;
 
+
+    pi->neighbours++;
+    pj->neighbours++;
     mi = pi->mass;
     mj = pj->mass;
     rhoi = pi->rho;
@@ -87,37 +90,41 @@ __attribute__((always_inline)) INLINE static void runner_iact_density(
 
    const float dvdr = dx[0]*dv[0] + dx[1]*dv[1] + dx[2]*dv[2];
 
-    pi->div_v -= rhoi_inv * wi_dx * mj * ( dvdr );
-    pj->div_v -= rhoj_inv * wj_dx * mi * ( dvdr );
+
+    pi->div_v += rhoi_inv * wi_dx * mj * ( dvdr );
+    pj->div_v += rhoj_inv * wj_dx * mi * ( dvdr );
 
     const float faci = rhoi_inv * wi_dx * mj;
     const float facj = rhoj_inv * wj_dx * mi;
-    pi->dvx_xx -= faci * ( dv[0] * dx[0] ); //*dx[0] i think.
-    pj->dvx_xx -= facj * ( dv[0] * dx[0] );
+    pi->dvx_xx += faci * ( dv[0] * dx[0] ); //*dx[0] i think.
+    pj->dvx_xx += facj * ( dv[0] * dx[0] );
+//    float test;
+ //   kernel_deval(xi, &wi, &test);
+    pi->dvx_xy += faci * ( dv[0] * dx[1]);
+    pj->dvx_xy += facj * ( dv[0] * dx[1]);
 
-    pi->dvx_xy -= faci * ( dv[0] * dx[1]);
-    pj->dvx_xy -= facj * ( dv[0] * dx[1]);
+  //  if((pi->id == 6144 || pi->id == 7008) && dv[0] != 0.0) printf("%llu,%e,%e\n", pi->id, faci * (dv[0] * dx[0]),pi->dvx_xx);
+ //   if((pj->id == 6144 || pj->id == 7008) && dv[0] != 0.0) printf("%llu,%e,%e\n", pj->id, facj * (dv[0] * dx[0]),pj->dvx_xx);
+    pi->dvx_xz += faci * ( dv[0] * dx[2]);
+    pj->dvx_xz += facj * ( dv[0] * dx[2]);
 
-    pi->dvx_xz -= faci * ( dv[0] * dx[2]);
-    pj->dvx_xz -= facj * ( dv[0] * dx[2]);
+    pi->dvy_xx += faci * ( dv[1] * dx[0]);
+    pj->dvy_xx += facj * ( dv[1] * dx[0]);
 
-    pi->dvy_xx -= faci * ( dv[1] * dx[0]);
-    pj->dvy_xx -= facj * ( dv[1] * dx[0]);
-
-    pi->dvy_xy -= faci * ( dv[1] * dx[1]);
-    pj->dvy_xy -= facj * ( dv[1] * dx[1]);
+    pi->dvy_xy += faci * ( dv[1] * dx[1]);
+    pj->dvy_xy += facj * ( dv[1] * dx[1]);
    
-    pi->dvy_xz -= faci * ( dv[1] * dx[2]);
-    pj->dvy_xz -= facj * ( dv[1] * dx[2]);
+    pi->dvy_xz += faci * ( dv[1] * dx[2]);
+    pj->dvy_xz += facj * ( dv[1] * dx[2]);
  
-    pi->dvz_xx -= faci * ( dv[2] * dx[0]);
-    pj->dvz_xx -= facj * ( dv[2] * dx[0]);
+    pi->dvz_xx += faci * ( dv[2] * dx[0]);
+    pj->dvz_xx += facj * ( dv[2] * dx[0]);
 
-    pi->dvz_xy -= faci * ( dv[2] * dx[1]);
-    pj->dvz_xy -= facj * ( dv[2] * dx[1]);
+    pi->dvz_xy += faci * ( dv[2] * dx[1]);
+    pj->dvz_xy += facj * ( dv[2] * dx[1]);
  
-    pi->dvz_xz -= faci * ( dv[2] * dx[2]);
-    pj->dvz_xz -= facj * ( dv[2] * dx[2]);
+    pi->dvz_xz += faci * ( dv[2] * dx[2]);
+    pj->dvz_xz += facj * ( dv[2] * dx[2]);
 
 }
 
@@ -146,6 +153,7 @@ __attribute__((always_inline)) INLINE static void runner_iact_nonsym_density(
     float dv[3];
     const float mj = pj->mass;
 
+    pi->neighbours++;
     rhoi = pi->rho;
     rhoi_inv = 1.0f / rhoi;
 
@@ -160,21 +168,26 @@ __attribute__((always_inline)) INLINE static void runner_iact_nonsym_density(
     kernel_deval(xi, &wi, &wi_dx);
     wi_dx = wi_dx * inv_hidim_pow_plus_one;
 
+    //const float dvdr = dx[0]*dv[0] + dx[1]*dv[1] + dx[2]*dv[2];
     const float dvdr = dx[0]*dv[0] + dx[1]*dv[1] + dx[2]*dv[2];
 
-    pi->div_v -= rhoi_inv * wi_dx * mj * ( dvdr );
+    pi->div_v += rhoi_inv * wi_dx * mj * ( dvdr );
 
+//    if(pi->id == 57600 && pi->is_boundary && !pj->is_boundary) printf("neighbour = %llu\n", pj->id);
     const float faci = rhoi_inv * wi_dx * mj;
-
-    pi->dvx_xx -= faci * ( dv[0] * dx[0] );
-    pi->dvx_xy -= faci * ( dv[0] * dx[1] );
-    pi->dvx_xz -= faci * ( dv[0] * dx[2] );
-    pi->dvy_xx -= faci * ( dv[1] * dx[0] );
-    pi->dvy_xy -= faci * ( dv[1] * dx[1] );
-    pi->dvy_xz -= faci * ( dv[1] * dx[2] );
-    pi->dvz_xx -= faci * ( dv[2] * dx[0] );
-    pi->dvz_xy -= faci * ( dv[2] * dx[1] );
-    pi->dvz_xz -= faci * ( dv[2] * dx[2] );
+    float test;
+    kernel_deval(xi, &wi, &test);
+//    if(pi->id == 115200 || pi->id == 153120 ) printf("%llu %llu %e %e %e %e %e %e %e %e %e %e %e %e %e %e\n",pi->id, pj->id, faci * ( dv[0] * dx[0]), faci * dx[1] * dv[1], faci * dx[2] * dv[2], dx[0], dx[1], dx[2],dv[0], r, pj->x[0], pj->x[1], pj->x[2], test, wi, dvdr);
+    pi->dvx_xx += faci * ( dv[0] * dx[0] );
+//    if((pi->id == 6144 || pi->id == 7008) && dv[0] != 0.0) printf("%llu,%e,%e\n", pi->id, faci * (dv[0] * dx[0]),pi->dvx_xx);
+    pi->dvx_xy += faci * ( dv[0] * dx[1] );
+    pi->dvx_xz += faci * ( dv[0] * dx[2] );
+    pi->dvy_xx += faci * ( dv[1] * dx[0] );
+    pi->dvy_xy += faci * ( dv[1] * dx[1] );
+    pi->dvy_xz += faci * ( dv[1] * dx[2] );
+    pi->dvz_xx += faci * ( dv[2] * dx[0] );
+    pi->dvz_xy += faci * ( dv[2] * dx[1] );
+    pi->dvz_xz += faci * ( dv[2] * dx[2] );
 
 }
 
@@ -254,33 +267,61 @@ __attribute__((always_inline)) INLINE static void runner_iact_force(
     printf("r2 = %f, pressure = %f, xi=%f, rho=%f, acc=%f, wi_dx=%f, dx[1]=%f drho_dt=%f\n",r2,pi->pressure,xi, pi->rho, acc, wi_dx, dx[1], mj*dens);
     printf("hydro_i = %f, hydro_j = %f\n", -mj*acc*wi_dx*dx[1], mi*acc*wj_dx*dx[1]);
 }*/
-  const float taui_over_rhosq_xx = pi->tau_xx * rhoi_inv_sq;
-  const float tauj_over_rhosq_xx = pj->tau_xx * rhoj_inv_sq;
-  const float taui_over_rhosq_xy = pi->tau_xy * rhoi_inv_sq;
-  const float tauj_over_rhosq_xy = pj->tau_xy * rhoj_inv_sq;
-  const float taui_over_rhosq_xz = pi->tau_xz * rhoi_inv_sq;
-  const float tauj_over_rhosq_xz = pj->tau_xz * rhoj_inv_sq;
-  const float taui_over_rhosq_yy = pi->tau_yy * rhoi_inv_sq;
-  const float tauj_over_rhosq_yy = pj->tau_yy * rhoj_inv_sq;
-  const float taui_over_rhosq_yz = pi->tau_yz * rhoi_inv_sq;
-  const float tauj_over_rhosq_yz = pj->tau_yz * rhoj_inv_sq;
-  const float taui_over_rhosq_zz = pi->tau_zz * rhoi_inv_sq;
-  const float tauj_over_rhosq_zz = pj->tau_zz * rhoj_inv_sq;
+  const double taui_over_rhosq_xx = pi->tau_xx * rhoi_inv_sq;
+  const double tauj_over_rhosq_xx = pj->tau_xx * rhoj_inv_sq;
+  const double taui_over_rhosq_xy = pi->tau_xy * rhoi_inv_sq;
+  const double tauj_over_rhosq_xy = pj->tau_xy * rhoj_inv_sq;
+  const double taui_over_rhosq_xz = pi->tau_xz * rhoi_inv_sq;
+  const double tauj_over_rhosq_xz = pj->tau_xz * rhoj_inv_sq;
+  const double taui_over_rhosq_yy = pi->tau_yy * rhoi_inv_sq;
+  const double tauj_over_rhosq_yy = pj->tau_yy * rhoj_inv_sq;
+  const double taui_over_rhosq_yz = pi->tau_yz * rhoi_inv_sq;
+  const double tauj_over_rhosq_yz = pj->tau_yz * rhoj_inv_sq;
+  const double taui_over_rhosq_zz = pi->tau_zz * rhoi_inv_sq;
+  const double tauj_over_rhosq_zz = pj->tau_zz * rhoj_inv_sq;
 
 //  printf("dens=%f, dv[0]=%f, dx[0]=%f\n", dens,dv[0],dx[0]);
+//    if(pi->id == 115440 && pj->is_boundary) printf("xx = %e, xy = %e, xz = %e\n", taui_over_rhosq_xx, taui_over_rhosq_xy, taui_over_rhosq_xz);
+//    if(pj->id == 115440 && pi->is_boundary) printf("xx = %e, xy = %e, xz = %e\n", tauj_over_rhosq_xx, tauj_over_rhosq_xy, tauj_over_rhosq_xz);
+
+  const float i_x_visc_acc = mj *( (wi_dx * dx[0] * (taui_over_rhosq_xx + tauj_over_rhosq_xx)) + (wi_dx * dx[1] * (taui_over_rhosq_xy + tauj_over_rhosq_xy) ) + (wi_dx * dx[2] * (taui_over_rhosq_xz + tauj_over_rhosq_xz)));
+  const double i_y_visc_acc = mj *( ( wi_dx * dx[0] * (taui_over_rhosq_xy + tauj_over_rhosq_xy)) + (wi_dx * dx[1] * (taui_over_rhosq_yy + tauj_over_rhosq_yy)) + (wi_dx * dx[2] * (taui_over_rhosq_yz + tauj_over_rhosq_yz)) );
+  const float i_z_visc_acc = mj *( ( wi_dx * dx[0] * (taui_over_rhosq_xz + tauj_over_rhosq_xz)) + (wi_dx * dx[1] * (taui_over_rhosq_yz + tauj_over_rhosq_yz)) + (wi_dx * dx[2]  * (taui_over_rhosq_zz + tauj_over_rhosq_zz)) );
+  const float i_x_hydro_acc = mj * acc * wi_dx * dx[0];
+  const float i_y_hydro_acc = mj * acc * wi_dx * dx[1];
+  const float i_z_hydro_acc = mj * acc * wi_dx * dx[2];
 
   pi->drho_dt += mj * dens;
-  pi->a_hydro[0] -= mj * acc * wi_dx * dx[0] + mj * wi_dx * dx[0] * (taui_over_rhosq_xx + tauj_over_rhosq_xx) * (taui_over_rhosq_xy + tauj_over_rhosq_xy) * (taui_over_rhosq_xz + tauj_over_rhosq_xz);
-  pi->a_hydro[1] -= mj * acc * wi_dx * dx[1] + mj * wi_dx * dx[1] * (taui_over_rhosq_xy + tauj_over_rhosq_xy) * (taui_over_rhosq_yy + tauj_over_rhosq_yy) * (taui_over_rhosq_yz + tauj_over_rhosq_yz);
-  pi->a_hydro[2] -= mj * acc * wi_dx * dx[2] + mj * wi_dx * dx[2] * (taui_over_rhosq_xz + tauj_over_rhosq_xz) * (taui_over_rhosq_yz + tauj_over_rhosq_yz) * (taui_over_rhosq_zz + tauj_over_rhosq_zz);
+  pi->a_viscosity[0] -= i_x_visc_acc;
+  pi->a_viscosity[1] -= i_y_visc_acc;
+  if(pi->id == 6144) printf("%e,%e,%e,%e,%e\n", i_y_visc_acc, pi->a_viscosity[1],dx[0],dx[1],dx[2]);
+  pi->a_viscosity[2] -= i_z_visc_acc;
+//  pi->a_hydro[0] += i_x_visc_acc - i_x_hydro_acc;
+ // pi->a_hydro[1] += i_y_visc_acc - i_y_hydro_acc;
+  //pi->a_hydro[2] += i_z_visc_acc - i_z_hydro_acc;
+  pi->a_hydro[0] -= i_x_hydro_acc;
+  pi->a_hydro[1] -= i_y_hydro_acc;
+  pi->a_hydro[2] -= i_z_hydro_acc;
 
+  const float j_x_visc_acc = mi *( (wj_dx * -dx[0] * (taui_over_rhosq_xx + tauj_over_rhosq_xx)) + (wi_dx * -dx[1] * (taui_over_rhosq_xy + tauj_over_rhosq_xy) ) + (wi_dx * -dx[2] * (taui_over_rhosq_xz + tauj_over_rhosq_xz)));
+  const double j_y_visc_acc = mi *( ( wj_dx * -dx[0] * (taui_over_rhosq_xy + tauj_over_rhosq_xy)) + (wi_dx * -dx[1] * (taui_over_rhosq_yy + tauj_over_rhosq_yy)) + (wi_dx * -dx[2] * (taui_over_rhosq_yz + tauj_over_rhosq_yz)) );
+  const float j_z_visc_acc = mi *( ( wj_dx * -dx[0] * (taui_over_rhosq_xz + tauj_over_rhosq_xz)) + (wi_dx * -dx[1] * (taui_over_rhosq_yz + tauj_over_rhosq_yz)) + (wi_dx * -dx[2]  * (taui_over_rhosq_zz + tauj_over_rhosq_zz)) );
+  const float j_x_hydro_acc = mi * acc * wj_dx * -dx[0];
+  const float j_y_hydro_acc = mi * acc * wj_dx * -dx[1];
+  const float j_z_hydro_acc = mi * acc * wj_dx * -dx[2];
   /* Compute density of pj. */
   pj->drho_dt +=  mi * dens;
-  pj->a_hydro[0] += mi * acc * wj_dx * dx[0] + mi * wj_dx * dx[0] * (taui_over_rhosq_xx + tauj_over_rhosq_xx) * (taui_over_rhosq_xy + tauj_over_rhosq_xy) * (taui_over_rhosq_xz + tauj_over_rhosq_xz);
-  pj->a_hydro[1] += mi * acc * wj_dx * dx[1] + mi * wj_dx * dx[1] * (taui_over_rhosq_xy + tauj_over_rhosq_xy) * (taui_over_rhosq_yy + tauj_over_rhosq_yy) * (taui_over_rhosq_yz + tauj_over_rhosq_yz);
-  pj->a_hydro[2] += mi * acc * wj_dx * dx[2] + mi * wj_dx * dx[2] * (taui_over_rhosq_xz + tauj_over_rhosq_xz) * (taui_over_rhosq_yz + tauj_over_rhosq_yz) * (taui_over_rhosq_zz + tauj_over_rhosq_zz);
+  pj->a_viscosity[0] -= j_x_visc_acc;
+  pj->a_viscosity[1] -= j_y_visc_acc;
+  if(pj->id == 6144) printf("%e,%e,%e,%e,%e\n", j_y_visc_acc, pj->a_viscosity[1],dx[0],dx[1],dx[2]);
+  pj->a_viscosity[2] -= j_z_visc_acc;
+//  pj->a_hydro[0] += j_x_visc_acc - j_x_hydro_acc;
+//  pj->a_hydro[1] += j_y_visc_acc - j_y_hydro_acc;
+//  pj->a_hydro[2] += j_z_visc_acc - j_z_hydro_acc;
+  pj->a_hydro[0] -= j_x_hydro_acc;
+  pj->a_hydro[1] -= j_y_hydro_acc;
+  pj->a_hydro[2] -= j_z_hydro_acc;
   
-
 }
 
 /**
@@ -351,25 +392,37 @@ __attribute__((always_inline)) INLINE static void runner_iact_nonsym_force(
   const float dens = dv[0] * wi_dx*dx[0] + dv[1] * wi_dx*dx[1] + dv[2] * wi_dx*dx[2];
 //  printf("dens=%f dv[0]=%f dx[0]=%f \n", dens, dv[0], dx[0]);
 
-  const float taui_over_rhosq_xx = pi->tau_xx * rhoi_inv_sq;
-  const float tauj_over_rhosq_xx = pj->tau_xx * rhoj_inv_sq;
-  const float taui_over_rhosq_xy = pi->tau_xy * rhoi_inv_sq;
-  const float tauj_over_rhosq_xy = pj->tau_xy * rhoj_inv_sq;
-  const float taui_over_rhosq_xz = pi->tau_xz * rhoi_inv_sq;
-  const float tauj_over_rhosq_xz = pj->tau_xz * rhoj_inv_sq;
-  const float taui_over_rhosq_yy = pi->tau_yy * rhoi_inv_sq;
-  const float tauj_over_rhosq_yy = pj->tau_yy * rhoj_inv_sq;
-  const float taui_over_rhosq_yz = pi->tau_yz * rhoi_inv_sq;
-  const float tauj_over_rhosq_yz = pj->tau_yz * rhoj_inv_sq;
-  const float taui_over_rhosq_zz = pi->tau_zz * rhoi_inv_sq;
-  const float tauj_over_rhosq_zz = pj->tau_zz * rhoj_inv_sq;
+  const double taui_over_rhosq_xx = pi->tau_xx * rhoi_inv_sq;
+  const double tauj_over_rhosq_xx = pj->tau_xx * rhoj_inv_sq;
+  const double taui_over_rhosq_xy = pi->tau_xy * rhoi_inv_sq;
+  const double tauj_over_rhosq_xy = pj->tau_xy * rhoj_inv_sq;
+  const double taui_over_rhosq_xz = pi->tau_xz * rhoi_inv_sq;
+  const double tauj_over_rhosq_xz = pj->tau_xz * rhoj_inv_sq;
+  const double taui_over_rhosq_yy = pi->tau_yy * rhoi_inv_sq;
+  const double tauj_over_rhosq_yy = pj->tau_yy * rhoj_inv_sq;
+  const double taui_over_rhosq_yz = pi->tau_yz * rhoi_inv_sq;
+  const double tauj_over_rhosq_yz = pj->tau_yz * rhoj_inv_sq;
+  const double taui_over_rhosq_zz = pi->tau_zz * rhoi_inv_sq;
+  const double tauj_over_rhosq_zz = pj->tau_zz * rhoj_inv_sq;
 
 
+  const float i_x_visc_acc = mj *( (wi_dx * dx[0] * (taui_over_rhosq_xx + tauj_over_rhosq_xx)) + (wi_dx * dx[1] * (taui_over_rhosq_xy + tauj_over_rhosq_xy) ) + (wi_dx * dx[2] * (taui_over_rhosq_xz + tauj_over_rhosq_xz)));
+  const double i_y_visc_acc = mj *( ( wi_dx * dx[0] * (taui_over_rhosq_xy + tauj_over_rhosq_xy)) + (wi_dx * dx[1] * (taui_over_rhosq_yy + tauj_over_rhosq_yy)) + (wi_dx * dx[2] * (taui_over_rhosq_yz + tauj_over_rhosq_yz)) );
+  const float i_z_visc_acc = mj *( ( wi_dx * dx[0] * (taui_over_rhosq_xz + tauj_over_rhosq_xz)) + (wi_dx * dx[1] * (taui_over_rhosq_yz + tauj_over_rhosq_yz)) + (wi_dx * dx[2]  * (taui_over_rhosq_zz + tauj_over_rhosq_zz)) );
+  const float i_x_hydro_acc = mj * acc * wi_dx * dx[0];
+  const float i_y_hydro_acc = mj * acc * wi_dx * dx[1];
+  const float i_z_hydro_acc = mj * acc * wi_dx * dx[2];
   pi->drho_dt += mj * dens;
-  pi->a_hydro[0] -= mj * acc * wi_dx * dx[0] + mj * wi_dx * dx[0] * (taui_over_rhosq_xx + tauj_over_rhosq_xx) * (taui_over_rhosq_xy + tauj_over_rhosq_xy) * (taui_over_rhosq_xz + tauj_over_rhosq_xz);
-  pi->a_hydro[1] -= mj * acc * wi_dx * dx[1] + mj * wi_dx * dx[1] * (taui_over_rhosq_xy + tauj_over_rhosq_xy) * (taui_over_rhosq_yy + tauj_over_rhosq_yy) * (taui_over_rhosq_yz + tauj_over_rhosq_yz);
-  pi->a_hydro[2] -= mj * acc * wi_dx * dx[2] + mj * wi_dx * dx[2] * (taui_over_rhosq_xz + tauj_over_rhosq_xz) * (taui_over_rhosq_yz + tauj_over_rhosq_yz) * (taui_over_rhosq_zz + tauj_over_rhosq_zz);
-
+  pi->a_viscosity[0] -= i_x_visc_acc;
+  pi->a_viscosity[1] -= i_y_visc_acc;
+  if(pi->id == 6144) printf("%e,%e,%e,%e,%e\n", i_y_visc_acc, pi->a_viscosity[1],dx[0],dx[1],dx[2]);
+  pi->a_viscosity[2] -= i_z_visc_acc;
+//  pi->a_hydro[0] += i_x_visc_acc - i_x_hydro_acc;
+ // pi->a_hydro[1] += i_y_visc_acc - i_y_hydro_acc;
+  //pi->a_hydro[2] += i_z_visc_acc - i_z_hydro_acc;
+  pi->a_hydro[0] -= i_x_hydro_acc;
+  pi->a_hydro[1] -= i_y_hydro_acc;
+  pi->a_hydro[2] -= i_z_hydro_acc;
 }
 //#endif
 

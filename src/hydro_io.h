@@ -49,6 +49,10 @@
 #include "./hydro/Euler/hydro_io.h"
 #elif defined(NAV_STOK_SPH)
 #include "./hydro/NavierStokes/hydro_io.h"
+#elif defined(EULER_ART_VIS_SPH)
+#include "./hydro/Euler_art_vis/hydro_io.h"
+#elif defined(MORRIS_FOX_ZHU_97_SPH)
+#include "./hydro/MorrisFoxZhu97/hydro_io.h"
 #else
 #error "Invalid choice of SPH variant"
 #endif

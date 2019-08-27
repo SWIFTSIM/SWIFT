@@ -186,16 +186,16 @@ INLINE static void hydro_write_flavour(hid_t h_grpsph) {
   /* Viscosity and thermal conduction */
   io_write_attribute_s(h_grpsph, "Thermal Conductivity Model",
                        "Price (2008) without switch");
-  io_write_attribute_f(h_grpsph, "Thermal Conductivity alpha",
+/*  io_write_attribute_f(h_grpsph, "Thermal Conductivity alpha",
                        const_conductivity_alpha);
   io_write_attribute_s(
       h_grpsph, "Viscosity Model",
       "Morris & Monaghan (1997), Rosswog, Davies, Thielemann & "
-      "Piran (2000) with additional Balsara (1995) switch");
+      "Piran (2000) with additional Balsara (1995) switch");*/
 
   /* Time integration properties */
-  io_write_attribute_f(h_grpsph, "Maximal Delta u change over dt",
-                       const_max_u_change);
+/*  io_write_attribute_f(h_grpsph, "Maximal Delta u change over dt",
+                       const_max_u_change);*/
 }
 
 /**

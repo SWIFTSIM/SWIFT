@@ -199,6 +199,9 @@ hydro_set_drifted_physical_internal_energy(struct part *p,
 }
 
 
+#define kappa 0.09
+#define lambda 0.1
+#define iota 0.3
 /**
  * @brief Computes the hydro time-step of a given particle
  *
@@ -215,23 +218,33 @@ __attribute__((always_inline)) INLINE static float hydro_compute_timestep(
     const struct hydro_props *restrict hydro_properties,
     const struct cosmology *restrict cosmo) {
 
-//const float kappa =0.09;
-//const float lambda = 0.1;
-//const float iota= 0.3;
-//#define alpha 
-//#define beta
-  //const float speed = p->v[0] * p->v[0] + p->v[1] * p->v[1] + p->v[2] * p->v[2];
- // const float ispeed = 1.0f / sqrt(speed);
+//  const float speed = p->v[0] * p->v[0] + p->v[1] * p->v[1] + p->v[2] * p->v[2];
+//  const float ispeed = 1.0f / sqrt(speed);
 
 //  printf("%f %f\n", p->h, ispeed);
   /*TODO re-enable CFL condition */
-//  const float dt_cfl = kappa * sqrt(( p->h * ispeed )) * 0.01;
-//  const float cv = hydro_properties
-//  const float dt_cv = iota * ( p->h
+//  const float dt_cfl = kappa * ( p->h * ispeed );
+/*#include <float.h>
+   const float dt_cfl = 0.25 * p->h / p->soundspeed; 
+   float dt_accels = FLT_MAX;
+   if(p->a_hydro[0] > 0.0){
+     dt_accels = 0.25 * sqrtf(p->h / p->a_hydro[0]);
+   }
+   if(p->a_hydro[1] > 0.0){
+ 
+     dt_accels = fminf(dt_accels,0.25 * sqrtf(p->h / p->a_hydro[1]));
+   }
+   if(p->a_hydro[2] > 0.0){
 
+     dt_accels = fminf(dt_accels,0.25 * sqrtf(p->h / p->a_hydro[2]));
+   }
+   const float dt_visc = 0.125 * p->h * p->h / p->dynamic_viscosity;
+
+   float result = fminf(dt_cfl, dt_accels);
+   result = fminf(result, dt_visc);*/
+   return 1e-4;
 //  return dt_cfl;
-//  return dt_cfl;
-    return 0.001;
+//   return result;
 }
 
 /**
@@ -256,7 +269,7 @@ __attribute__((always_inline)) INLINE static void hydro_timestep_extra(
  */
 __attribute__((always_inline)) INLINE static void hydro_init_part(
     struct part *restrict p, const struct hydro_space *hs) {
-  p->neighbours=0;
+
 }
 
 /**
@@ -314,41 +327,7 @@ __attribute__((always_inline)) INLINE static void hydro_prepare_force(
     struct part *restrict p, struct xpart *restrict xp,
     const struct cosmology *cosmo, const struct hydro_props *hydro_props,
     const float dt_alpha) {
-
-   //const float eta_xx = p->dvx_xx - 0.3333333333f*p->div_v;
-   const float trace = p->dvx_xx + p->dvy_xy + p->dvz_xz;
-   const float eta_xx = p->dvx_xx;
-   const float eta_xy = 0.5*(p->dvx_xy + p->dvy_xx);
-   const float eta_xz = 0.5*(p->dvx_xz + p->dvz_xx);
-   //const float eta_yy = p->dvy_xy - 0.3333333333f*p->div_v;
-   const float eta_yy = p->dvy_xy;
-   const float eta_yz = 0.5*(p->dvy_xz + p->dvz_xy);
-   //const float eta_zz = p->dvz_xz - 0.3333333333f*p->div_v;
-   const float eta_zz = p->dvz_xz;
-
-   p->tau_xx = 2.0 * p->viscosity * (eta_xx - 0.6666666666f * trace);
-   p->tau_xy = 2.0 * p->viscosity * eta_xy ;
-   //if(p->id == 115440) printf("dvx_xy = %f, viscosity = %f xy=%f\n", p->dvx_xy, p->viscosity, p->tau_xy);
-   p->tau_yx = p->tau_xy;
-   p->tau_xz = 2.0 * p->viscosity * eta_xz ;
-   p->tau_zx = p->tau_xz;
-   p->tau_yy = 2.0 * p->viscosity * (eta_yy - 0.6666666666f * trace);
-   p->tau_yz = 2.0 * p->viscosity * eta_yz;
-   p->tau_zy = p->tau_yz;
-   p->tau_zz = 2.0 * p->viscosity * (eta_zz - 0.6666666666f * trace);
-//  if(p->id == 115200 || p->id == 153120) 
-  if( p->id == 6144 || p->id == 7008 )
-  {printf("ID: %llu, viscosity = %e\n", p->id, p->viscosity);
-printf("tensor:\n");
-   printf("[ %e %e %e ]\n", p->tau_xx, p->tau_yx, p->tau_zx);
-   printf("[ %e %e %e ]\n", p->tau_xy, p->tau_yy, p->tau_zy);
-   printf("[ %e %e %e ]\n", p->tau_xz, p->tau_yz, p->tau_zz);
-   printf("div_v:\n");
-   printf("[ %e %e %e ]\n", p->dvx_xx, p->dvy_xx, p->dvz_xx);
-   printf("[ %e %e %e ]\n", p->dvx_xy, p->dvy_xy, p->dvz_xy);
-   printf("[ %e %e %e ]\n", p->dvx_xz, p->dvy_xz, p->dvz_xz);
-   printf("trace = %e, div_v = %e, diff = %e\n", p->dvx_xx + p->dvy_xy + p->dvz_xz, p->div_v,  p->dvx_xx + p->dvy_xy + p->dvz_xz - p->div_v);
-   }
+    p->soundspeed = gas_soundspeed_from_pressure(p->rho, p->pressure);
 }
 
 /**
@@ -369,9 +348,6 @@ __attribute__((always_inline)) INLINE static void hydro_reset_acceleration(
   p->a_hydro[0] = 0.0f;
   p->a_hydro[1] = 0.0f;
   p->a_hydro[2] = 0.0f;
-  p->a_viscosity[0] = 0.0f;
-  p->a_viscosity[1] = 0.0f;
-  p->a_viscosity[2] = 0.0f;
 
 }
 
@@ -427,33 +403,18 @@ __attribute__((always_inline)) INLINE static void hydro_predict_extra(
  */
 __attribute__((always_inline)) INLINE static void hydro_end_force(
     struct part *restrict p, const struct cosmology *cosmo) {
-  
-  if( p->id == 6144 || p->id == 7008 || p->id == 2496 )
-  {printf("ID: %llu a_hydro=[%e %e], a_viscosity=[%e %e] a_constant=%e boundary=%i\n", p->id, p->a_hydro[0]/*-p->a_viscosity[0]*/, p->a_hydro[1], p->a_viscosity[0], p->a_viscosity[1], p->a_constant[0], p->is_boundary);
-   }
+
   if(p->is_boundary){
     p->a_hydro[0] = 0.0;
     p->a_hydro[1] = 0.0;
     p->a_hydro[2] = 0.0;
   }else{
-    p->a_hydro[0] += p->a_viscosity[0];
-    p->a_hydro[1] += p->a_viscosity[1];
-    p->a_hydro[2] += p->a_viscosity[2];
+  //  printf("Particle a_hydro[1] = %f, a_hydro[0] = %.15f, a_constant = %f\n",p->a_hydro[1],p->a_hydro[0], p->a_constant[1]);
   }
   p->a_hydro[0] += p->a_constant[0];
   p->a_hydro[1] += p->a_constant[1];
   p->a_hydro[2] += p->a_constant[2];
-//  if(p->id == 115440) printf("a_hydro[0] = %f, a_constant[0] = %f, v[0] = %f, viscosity=%e\n", p->a_hydro[0], p->a_constant[0], p->v[0], p->viscosity);
-  p->div_v = 0.0f;
-  p->dvx_xx = 0.0f;
-  p->dvx_xy = 0.0f;
-  p->dvx_xz = 0.0f;
-  p->dvy_xx = 0.0f;
-  p->dvy_xy = 0.0f;
-  p->dvy_xz = 0.0f;
-  p->dvz_xx = 0.0f;
-  p->dvz_xy = 0.0f;
-  p->dvz_xz = 0.0f;
+
 }
 
 /**
@@ -485,7 +446,7 @@ __attribute__((always_inline)) INLINE static void hydro_kick_extra(
 #endif
 
   /* Update the density. */
-  float drho = p->drho_dt*dt_hydro;
+  double drho = p->drho_dt*dt_hydro;
 //  float temp = p->rho;
   p->rho = p->rho + drho;
 //  p->rho_t_minus1 = temp;
@@ -547,16 +508,6 @@ __attribute__((always_inline)) INLINE static void hydro_first_init_part(
   p->rho_t_minus1 = p->rho;
   p->since_euler = 49; //Fake timestep we don't use euler
 
-  p->div_v = 0.0f;
-  p->dvx_xx = 0.0f;
-  p->dvx_xy = 0.0f;
-  p->dvx_xz = 0.0f;
-  p->dvy_xx = 0.0f;
-  p->dvy_xy = 0.0f;
-  p->dvy_xz = 0.0f;
-  p->dvz_xx = 0.0f;
-  p->dvz_xy = 0.0f;
-  p->dvz_xz = 0.0f;
   hydro_reset_acceleration(p);
   hydro_init_part(p, NULL);
 }

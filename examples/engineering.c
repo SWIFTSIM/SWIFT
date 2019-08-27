@@ -68,8 +68,21 @@ struct cmdparams {
   cmdps->nparam++;
   return 1;
 }*/
+#include <execinfo.h>
+#include <signal.h>
 
+void seg_handler(int sig){
+ void *array[10];
+  size_t size;
 
+  // get void*'s for all entries on the stack
+  size = backtrace(array, 10);
+
+  // print out all the frames to stderr
+  fprintf(stderr, "Error: signal %d:\n", sig);
+  backtrace_symbols_fd(array, size, STDERR_FILENO);
+  exit(1);
+}
 
     
 
@@ -90,7 +103,7 @@ const int cleanup_sqrt_a = 0;
 size_t Ngas = 0, Ngpart = 0, Nspart = 0, Nboundary = 0, Nfluid = 0, Nblackhole=0;
 double dim[3] = {0., 0., 0.};
 int nr_nodes = 1, myrank = 0;
-
+//signal(SIGSEGV,seg_handler);
 #if defined(WITH_MPI)
   int res = 0, prov = 0;
   if ((res = MPI_Init_thread(&argc, &argv, MPI_THREAD_MULTIPLE, &prov)) !=
@@ -401,6 +414,11 @@ param_filename = argv[0];
    struct chemistry_global_data chemistry;
    bzero(&chemistry, sizeof(struct chemistry_global_data));
 
+   /* Initialise the FOF properties */
+   struct fof_props fof_properties;
+   bzero(&fof_properties, sizeof(struct fof_props));
+
+
    /* Nullify hydro properties for now - these need changing for Engineering SPH */
    struct hydro_props hydro_properties;
    hydro_props_init(&hydro_properties, &prog_const, &us, params);
@@ -426,10 +444,18 @@ param_filename = argv[0];
 
 #if defined(HAVE_HDF5)
 #if defined(WITH_MPI)
-    read_ic_serial("boundary_test.hdf5",&us, dim, &parts, &gparts, &sparts, &bparts, &Ngas,
+#if defined(HAVE_PARALLEL_HDF5)
+    read_ic_parallel(ICfileName, &us, dim, &parts, &gparts, &sparts, &bparts,
+                     &Ngas, &Ngpart, &Nspart, &Nblackhole, &Nboundary, &Nfluid, &flag_entropy_ICs,
+                     0,0, 0, 0, 1,cleanup_h, cleanup_sqrt_a,
+                     1.0, 1.0, myrank, nr_nodes, MPI_COMM_WORLD,
+                     MPI_INFO_NULL, 1, 0);
+#else
+    read_ic_serial(ICfileName,&us, dim, &parts, &gparts, &sparts, &bparts, &Ngas,
                    &Ngpart, &Nspart, &Nboundary, &Nblackhole, &Nfluid, &flag_entropy_ICs, 0,
                    0, 0, 0, 1, cleanup_h, cleanup_sqrt_a, 1.0, 1.0, myrank, nr_nodes, MPI_COMM_WORLD,
                    MPI_INFO_NULL, 1, 0);
+#endif
 #else
     read_ic_single(ICfileName,&us, dim, &parts, &gparts, &sparts, &bparts, &Ngas,
                    &Ngpart, &Nspart, &Nblackhole, &Nboundary, &Nfluid, &flag_entropy_ICs, 0,
@@ -439,15 +465,16 @@ param_filename = argv[0];
     error("Failed to find MPI and HDF5");
 #endif
 
-long long N_total[3] = {0, 0, 0};
+long long N_total[4] = {0, 0, 0, 0};
 #if defined(WITH_MPI)
-    long long N_long[3] = {Ngas, Ngpart, Nspart};
-    MPI_Allreduce(&N_long, &N_total, 3, MPI_LONG_LONG_INT, MPI_SUM,
+    long long N_long[4] = {Nfluid+Nboundary, 0, 0, 0};
+    MPI_Allreduce(&N_long, &N_total, 4, MPI_LONG_LONG_INT, MPI_SUM,
                   MPI_COMM_WORLD);
 #else
     N_total[0] = Nfluid + Nboundary;
     N_total[1] = 0;
     N_total[2] = 0;
+    N_total[3] = 0;
 #endif
 
 /* Engineering doesn't read gas, dark matter or star particles, so lets check. */
@@ -509,12 +536,12 @@ engine_policies |= engine_policy_engineering;
 
 
 
-engine_init(&e, &s, params, N_total[0], N_total[1], N_total[2],
+engine_init(&e, &s, params, N_total[0], N_total[1], N_total[2], N_total[3],
             engine_policies, talking, &reparttype, &us, &prog_const, &cosmo,
             &hydro_properties, &entropy_floor, &gravity_properties,
             &stars_properties, &black_hole_properties, &feedback_properties, &mesh, &potential, &cooling_func, &starform,
-            &chemistry);
-engine_config(0, &e, params, nr_nodes, myrank, nr_threads, with_aff,
+            &chemistry, &fof_properties);
+engine_config(0, 0, &e, params, nr_nodes, myrank, nr_threads, with_aff,
               talking, restart_file);
 
 #ifdef WITH_MPI
@@ -549,23 +576,79 @@ engine_print_stats(&e);
     feenableexcept(FE_DIVBYZERO | FE_INVALID | FE_OVERFLOW);
 #endif
 
-  for (int j = 0; !engine_is_done(&e) && e.step -1 != 2202199; j++){
+  for (int j = 0; !engine_is_done(&e) && e.step -1 != 5000000; j++){
     timers_reset_all();
 
     engine_step(&e);
-for(size_t i = 0; i < Nboundary+Nfluid; i++){
+/*for(size_t i = 0; i < Nboundary+Nfluid; i++){
   if(!parts[i].is_boundary){
    printf("%f %f\n", parts[i].a_hydro[0], parts[i].a_constant[0]);
     break;
   }
-}
+}*/
+//    printf("id=%llu %i div_v=%f a_hydro=%f v=%f dvx_xx=%f dvx_xy=%f\n", parts[152243].id, parts[152243].is_boundary, parts[152243].div_v, parts[152243].a_hydro[0], parts[152243].v[0], parts[0].dvx_xx, parts[0].dvx_xy);
+//double max_x = 0.0;
 for(size_t i = 0; i < Nboundary; i++){
+//  if(parts[i].x[0] == 0.0 && parts[i].x[2] == 0.0) printf("Part at [%e %e %e]\n", parts[i].x[0], parts[i].x[1], parts[i].x[2]);
+ // if(parts[i].id == 57600) printf("Found p0, %i %f %f %f\n", parts[i].is_boundary, parts[i].x[0], parts[i].x[1], parts[i].x[2]);
+//  if(parts[i].x[0] > 1.4937 && parts[i].x[1] < 0.00126 && parts[i].x[1] > 0.00124 && parts[i].x[2] < 0.007 && parts[i].x[2] > 0.006) {printf("found a boundary with id %llu\n", parts[i].id); return 0;}
+//  if(parts[i].x[0] < 0.507 && parts[i].x[0] > 0.505 && parts[i].x[1] > 1.224 && parts[i].x[1] < 1.226 && parts[i].x[2] >= 0.000 && parts[i].x[2] < 0.001){printf("Found part with id %llu\n", parts[i].id);}
+//    if(parts[i].x[0] < 0.001  && parts[i].x[1] >= 1.237490  && parts[i].x[2] < 0.001) printf("Particle %llu at [%f %f %f]\n", parts[i].id, parts[i].x[0], parts[i].x[1], parts[i].x[2]);
+//    if(parts[i].x[0] < 0.001  && parts[i].x[1] >= 1.24  && parts[i].x[2] < 0.001 && !parts[i].is_boundary) printf("Particle %llu at [%f %f %f]\n", parts[i].id, parts[i].x[0], parts[i].x[1], parts[i].x[2]);
+//  if(parts[i].x[0] < 0.0001  && parts[i].x[1] < 0.184376 && parts[i].x[1] > 0.184374 && parts[i].x[2] < 0.001){printf("Found part with id %llu\n", parts[i].id);}
+//  if(parts[i].x[0] < 0.0001  && parts[i].x[1] < 0.015626 && parts[i].x[1] > 0.015624 && parts[i].x[2] < 0.001){printf("Found part with id %llu\n", parts[i].id);}
+//  if(parts[i].x[0] < 0.0001  && parts[i].x[1] < 0.103126 && parts[i].x[1] > 0.103124 && parts[i].x[2] < 0.001){printf("Found part with id %llu\n", parts[i].id);}
+//
+//  if(parts[i].x[0] > max_x) max_x = parts[i].x[0];
     //printf("%f %f %f %f %f %i\n",parts[i].x[0], parts[i].x[1], /*parts[i].drho_dt,*/ parts[i].v[1], parts[i].h, parts[i].rho, part_is_active(&parts[i], &e)/*, parts[i].is_boundary*/);
   //  printf("%f %f %f %f %f %f %i %i\n",parts[i].x[0], parts[i].x[1], parts[i].drho_dt, parts[i].v[1], parts[i].h, parts[i].rho, part_is_active(&parts[i], &e), parts[i].is_boundary);
+//   if(parts[i].x[0] ==
+//   if(parts[i].id == 115200 || parts[i].id == 153120){
+//     printf("id: %llu x=[%f %f %f] a_hydro=[%e %e %e] v = [%e %e %e] rho=%e neighbours=%i h=%f\n", parts[i].id, parts[i].x[0], parts[i].x[1], parts[i].x[2],parts[i].a_hydro[0], parts[i].a_hydro[1], parts[i].a_hydro[2], parts[i].v[0], parts[i].v[1], parts[i].v[2], parts[i].rho, parts[i].neighbours, parts[i].h);
+//  //   break;
+//   }
+//  if(parts[i].x[0] < 0.0001 && parts[i].x[2] < 0.0001 && !parts[i].is_boundary) printf("Found part with id %llu at pos [%f %f %f]\n", parts[i].id, parts[i].x[0], parts[i].x[1], parts[i].x[2]);
+//   if(parts[i].id == 6144 || parts[i].id == 6592 || parts[i].id == 7008){
+ //    printf("id: %llu x=[%f %f %f] a_hydro=[%e %e %e] v = [%e %e %e] rho=%e pressure=%e neighbours=%i h=%f\n", parts[i].id, parts[i].x[0], parts[i].x[1], parts[i].x[2],parts[i].a_hydro[0], parts[i].a_hydro[1], parts[i].a_hydro[2], parts[i].v[0], parts[i].v[1], parts[i].v[2], parts[i].rho, parts[i].pressure ,/*parts[i].neighbours*/(int)i, parts[i].h);
+//   break;
+//   }
+//      if(parts[i].id == 86400) printf("id: %llu x=[%f %f %f] a_hydro=[%e %e %e] v = [%e %e %e] rho=%e pressure=%e neighbours=%i h=%f\n", parts[i].id, parts[i].x[0], parts[i].x[1], parts[i].x[2],parts[i].a_hydro[0], parts[i].a_hydro[1], parts[i].a_hydro[2], parts[i].v[0], parts[i].v[1], parts[i].v[2], parts[i].rho, parts[i].pressure ,/*parts[i].neighbours*/(int)i, parts[i].h);
+/*if(parts[i].x[0] > max_x && !parts[i].is_boundary){
+max_x = parts[i].x[0];
+}
+if(parts[i].x[0] < min_x && !parts[i].is_boundary){
+min_x = parts[i].x[0];
+}*/
+      if(parts[i].id == 65744) printf("id: %llu x=[%f %f %f] a_hydro=[%e %e %e] v = [%e %e %e] rho=%e pressure=%e h=%f\n", parts[i].id, parts[i].x[0], parts[i].x[1], parts[i].x[2],parts[i].a_hydro[0], parts[i].a_hydro[1], parts[i].a_hydro[2], parts[i].v[0], parts[i].v[1], parts[i].v[2], parts[i].rho, parts[i].pressure , parts[i].h);
 }
 for(size_t i = Nboundary; i < Nboundary+Nfluid; i++){
+      if(parts[i].id == 65744) printf("id: %llu x=[%f %f %f] a_hydro=[%e %e %e] v = [%e %e %e] rho=%e pressure=%e h=%f\n", parts[i].id, parts[i].x[0], parts[i].x[1], parts[i].x[2],parts[i].a_hydro[0], parts[i].a_hydro[1], parts[i].a_hydro[2], parts[i].v[0], parts[i].v[1], parts[i].v[2], parts[i].rho, parts[i].pressure , parts[i].h);
+//`  if(parts[i].x[0] == 0.0 && parts[i].x[2] == 0.0) printf("Part at [%e %e %e]\n", parts[i].x[0], parts[i].x[1], parts[i].x[2]);
+//  if(parts[i].id == 57600) printf("Found p0, %i %f %f %f\n", parts[i].is_boundary, parts[i].x[0], parts[i].x[1], parts[i].x[2]);
+//  if(parts[i].x[0] > 1.4937 && parts[i].x[1] < 0.00126 && parts[i].x[1] > 0.00124 && parts[i].x[2] < 0.007 && parts[i].x[2] > 0.006) {printf("found a boundary with id %llu\n", parts[i].id); return 0;}
+///  if(parts[i].x[0] < 0.507 && parts[i].x[0] > 0.505 && parts[i].x[1] > 1.224 && parts[i].x[1] < 1.226 && parts[i].x[2] >= 0.000 && parts[i].x[2] < 0.001){printf("Found part with id %llu\n", parts[i].id);}
+//  if(parts[i].x[0] < 0.0001  && parts[i].x[1] < 0.184376 && parts[i].x[1] > 0.184374 && parts[i].x[2] < 0.001){printf("Found part with id %llu\n", parts[i].id);}
+//  if(parts[i].x[0] < 0.0001  && parts[i].x[1] < 0.015626 && parts[i].x[1] > 0.015624 && parts[i].x[2] < 0.001){printf("Found part with id %llu\n", parts[i].id);}
+//  if(parts[i].x[0] > 1.4937) printf("found a particle\n");
+ // if(parts[i].x[0] > max_x) max_x = parts[i].x[0];
+//    if(parts[i].x[0] < 0.001  && parts[i].x[1] >= 1.24  && parts[i].x[2] < 0.001 && !parts[i].is_boundary) printf("Particle %llu at [%f %f %f]\n", parts[i].id, parts[i].x[0], parts[i].x[1], parts[i].x[2]);
+//   if(parts[i].id == 115200 || parts[i].id == 153120){
+//     printf("id: %llu x=[%f %f %f] a_hydro=[%e %e %e] v = [%e %e %e] rho=%e neighbours=%i h=%f\n", parts[i].id, parts[i].x[0], parts[i].x[1], parts[i].x[2],parts[i].a_hydro[0], parts[i].a_hydro[1], parts[i].a_hydro[2], parts[i].v[0], parts[i].v[1], parts[i].v[2], parts[i].rho, parts[i].neighbours, parts[i].h);
+//  //   break;
+//  //   break;
+//   }
+  //if(parts[i].x[0] < 0.0001  && parts[i].x[1] < 0.103126 && parts[i].x[1] > 0.103124 && parts[i].x[2] < 0.001){printf("Found part with id %llu\n", parts[i].id);}
+//  if(parts[i].x[0] < 0.0001 && parts[i].x[2] < 0.0001 && !parts[i].is_boundary) printf("Found part with id %llu at pos [%f %f %f]\n", parts[i].id, parts[i].x[0], parts[i].x[1], parts[i].x[2]);
+//   if(parts[i].id == 6144 || parts[i].id == 6592 || parts[i].id == 7008){
+//     printf("id: %llu x=[%f %f %f] a_hydro=[%e %e %e] v = [%e %e %e] rho=%e pressure=%e neighbours=%i h=%f\n", parts[i].id, parts[i].x[0], parts[i].x[1], parts[i].x[2],parts[i].a_hydro[0], parts[i].a_hydro[1], parts[i].a_hydro[2], parts[i].v[0], parts[i].v[1], parts[i].v[2], parts[i].rho, parts[i].pressure ,/*parts[i].neighbours*/(int)i, parts[i].h);
+  //   break;
+//   }
+//   if(parts[i].id == 0){
+//     printf("id: %llu x=[%f %f %f] a_hydro=[%e %e %e] v = [%e %e %e] rho=%e pressure=%e neighbours=%i h=%f\n", parts[i].id, parts[i].x[0], parts[i].x[1], parts[i].x[2],parts[i].a_hydro[0], parts[i].a_hydro[1], parts[i].a_hydro[2], parts[i].v[0], parts[i].v[1], parts[i].v[2], parts[i].rho, parts[i].pressure ,/*parts[i].neighbours*/(int)i, parts[i].h);
+//   }
     //printf("%f %f %f %f %f %i\n",parts[i].x[0], parts[i].x[1], /*parts[i].drho_dt,*/ parts[i].v[1], parts[i].h, parts[i].rho, part_is_active(&parts[i], &e)/*, parts[i].is_boundary*/);
 //    printf("%f %f %f %f %f %f %i %i\n",parts[i].x[0], parts[i].x[1], parts[i].drho_dt, parts[i].v[1], parts[i].h, parts[i].rho, part_is_active(&parts[i], &e), parts[i].is_boundary);
+//      if(parts[i].id == 86400) printf("id: %llu x=[%f %f %f] a_hydro=[%e %e %e] v = [%e %e %e] rho=%e pressure=%e neighbours=%i h=%f\n", parts[i].id, parts[i].x[0], parts[i].x[1], parts[i].x[2],parts[i].a_hydro[0], parts[i].a_hydro[1], parts[i].a_hydro[2], parts[i].v[0], parts[i].v[1], parts[i].v[2], parts[i].rho, parts[i].pressure ,/*parts[i].neighbours*/(int)i, parts[i].h);
 }
 
 /*for(int i = 0; i < e.s->nr_cells_with_particles; i++){
@@ -600,7 +683,7 @@ message("%i %i %i", nr_nodes, talking, clean_smoothing_length_values);
 #if defined(WITH_MPI)
 MPI_Finalize();
 #endif
-  engine_clean(&e);
+  engine_clean(&e,0);
 free(params);
 
 

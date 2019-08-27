@@ -90,9 +90,12 @@ __attribute__((always_inline)) INLINE static void kick_part(
 
 
     if(p->since_euler == 0){
-      float temp = p->rho;
+      double temp = p->rho;
       p->rho = p->rho + p->drho_dt*dt_kick_hydro;
       p->rho_t_minus1 = temp;
+/*    if(p->id == 65744){
+         printf("p->rho = %e, drho = %e, diff = %e\n", p->rho, p->drho_dt * dt_kick_hydro, p->rho - 1e-3);
+      }*/
 
       p->x[0] = p->x[0] + p->v[0]*dt_kick_hydro + 0.5*p->a_hydro[0]*dt_kick_hydro*dt_kick_hydro;
       p->x[1] = p->x[1] + p->v[1]*dt_kick_hydro + 0.5*p->a_hydro[1]*dt_kick_hydro*dt_kick_hydro;
@@ -113,9 +116,10 @@ __attribute__((always_inline)) INLINE static void kick_part(
 
 
     }else{
-      float temp = p->rho;
+      double temp = p->rho;
       p->rho = p->rho_t_minus1 + 2*dt_kick_hydro*p->drho_dt;
       p->rho_t_minus1 = temp;
+
       p->x[0] = p->x[0] + p->v[0]*dt_kick_hydro + 0.5*p->a_hydro[0]*dt_kick_hydro*dt_kick_hydro;
       p->x[1] = p->x[1] + p->v[1]*dt_kick_hydro + 0.5*p->a_hydro[1]*dt_kick_hydro*dt_kick_hydro;
       p->x[2] = p->x[2] + p->v[2]*dt_kick_hydro + 0.5*p->a_hydro[2]*dt_kick_hydro*dt_kick_hydro;
@@ -132,6 +136,9 @@ __attribute__((always_inline)) INLINE static void kick_part(
       p->v_minus1[2] = temp;
       p->pressure = pressure_from_density(p->rho);
 
+      /*if(p->id == 65744){
+         printf("p->rho = %e, drho = %e, diff = %e\n", p->rho, p->drho_dt * dt_kick_hydro, p->rho - 1e-3);
+      }*/
 
     }
     p->since_euler += 1;

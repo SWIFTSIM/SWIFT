@@ -39,15 +39,13 @@ __attribute__((always_inline)) INLINE static void hydro_debug_particle(
       "\n "
       "x=[%.9g, %.9g, %.9g], v=[%.9g, %.9g, %.9g], \n "
       "v_full=[%.9g, %.9g, %.9g], a=[%.9g, %.9g, %.9g], \n "
-      "m=%.9g, a_const=[%.9g, %.9g, %.9g], a_viscosity[%.9g, %.9g, %.9g], P=%.9g, \n "
+      "m=%.9g, a_const=[%.9g, %.9g, %.9g], P=%.9g, \n "
       "rho=%.9g, drho_dt=%.9g, h=%.9g \n "
       "time_bin=%d wakeup=%d \n",
       p->x[0], p->x[1], p->x[2], p->v[0], p->v[1], p->v[2], xp->v_full[0],
       xp->v_full[1], xp->v_full[2], p->a_hydro[0], p->a_hydro[1], p->a_hydro[2],
-      p->mass, p->a_constant[0], p->a_constant[1], p->a_constant[2], p->a_viscosity[0], p->a_viscosity[1], p->a_viscosity[2], p->pressure,
+      p->mass, p->a_constant[0], p->a_constant[1], p->a_constant[2], p->pressure,
       p->rho, p->drho_dt, p->h, p->time_bin, p->wakeup);
-  printf("Tensor=[%.9g %.9g %.9g %.9g %.9g %.9g]\n div_v = %.9g\n", 
-      p->dvx_xx, p->dvx_xy, p->dvx_xz, p->dvy_xy, p->dvy_xz, p->dvz_xz, p->div_v);
 }
 
 #endif /* SWIFT_MINIMAL_HYDRO_DEBUG_H */

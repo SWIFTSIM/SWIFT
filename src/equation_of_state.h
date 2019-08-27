@@ -38,6 +38,8 @@
 #include "./equation_of_state/planetary/equation_of_state.h"
 #elif defined(EOS_WEAKLY_COMPRESSIBLE)
 #include "./equation_of_state/weakly_compressible/equation_of_state.h"
+#elif defined(EOS_TAIT)
+#include "./equation_of_state/Tait_equation/equation_of_state.h"
 #else
 #error "Invalid choice of equation of state"
 #endif

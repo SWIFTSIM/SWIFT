@@ -19,6 +19,7 @@
 #ifndef SWIFT_EULER_HYDRO_PART_H
 #define SWIFT_EULER_HYDRO_PART_H
 
+#include "black_holes_struct.h"
 #include "chemistry_struct.h"
 #include "cooling_struct.h"
 #include "star_formation_struct.h"
@@ -60,8 +61,6 @@ struct part {
   /* Particle acceleration. */
   float a_hydro[3];
 
-  double a_viscosity[3];
-
   /* Particle constant acceleration (e.g. input acceleration) */
   float a_constant[3];
 
@@ -72,31 +71,25 @@ struct part {
   float u;
 
   /* Particle density. */
-  float rho;
+  double rho;
 
   /* Particle density at the previous timestep. */
-  float rho_t_minus1;
+  double rho_t_minus1;
 
   /* Derivative of the density with respect to time */
-  float drho_dt;
+  double drho_dt;
 
   /* Particle pressure. */
   float pressure;
 
+  /* Particle soundspeed. */
+  float soundspeed;
+
   /* Particle mass. */
   float mass;
 
-  /* Particle viscosity*/
-  float viscosity;
-
-   //TODO DELETE
-  int neighbours;
-
-  /* Values to compute the tensor. */
-  double div_v, dvx_xx, dvx_xy, dvx_xz, dvy_xx, dvy_xy, dvy_xz, dvz_xx, dvz_xy, dvz_xz;
-
-  /* The Cauchy stress tensor. */
-  double tau_xx, tau_xy, tau_xz, tau_yx, tau_yy, tau_yz, tau_zx, tau_zy, tau_zz;
+  /* Particle viscosity */
+  float dynamic_viscosity;
 
   /* Is the particle a boundary particle. */
   int is_boundary;

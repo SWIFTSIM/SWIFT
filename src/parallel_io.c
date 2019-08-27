@@ -689,6 +689,8 @@ void writeArray(struct engine* e, hid_t grp, char* fileName,
  * from the file.
  * @param Nstars (output) The number of particles read from the file.
  * @param Nblackholes (output) The number of particles read from the file.
+ * @param Nboundary (output) The number of particles read from the file.
+ * @param Nfluid (output) The number of particles read from the file.
  * @param flag_entropy (output) 1 if the ICs contained Entropy in the
  * InternalEnergy field
  * @param with_hydro Are we running with hydro ?
@@ -696,6 +698,7 @@ void writeArray(struct engine* e, hid_t grp, char* fileName,
  * @param with_stars Are we running with stars ?
  * @param with_black_holes Are we running with black holes ?
  * @param with_cosmology Are we running with cosmology ?
+ * @param with_engineering_hydro Are we running with engineering ?
  * @param cleanup_h Are we cleaning-up h-factors from the quantities we read?
  * @param cleanup_sqrt_a Are we cleaning-up the sqrt(a) factors in the Gadget
  * IC velocities?
@@ -713,12 +716,12 @@ void read_ic_parallel(char* fileName, const struct unit_system* internal_units,
                       double dim[3], struct part** parts, struct gpart** gparts,
                       struct spart** sparts, struct bpart** bparts,
                       size_t* Ngas, size_t* Ngparts, size_t* Ngparts_background,
-                      size_t* Nstars, size_t* Nblackholes, int* flag_entropy,
+                      size_t* Nsparts, size_t* Nbparts, size_t* Nboundary, size_t* Nfluid, int* flag_entropy,
                       int with_hydro, int with_gravity, int with_stars,
-                      int with_black_holes, int with_cosmology, int cleanup_h,
+                      int with_black_holes,  int with_engineering_hydro, int with_cosmology, int cleanup_h,
                       int cleanup_sqrt_a, double h, double a, int mpi_rank,
-                      int mpi_size, MPI_Comm comm, MPI_Info info, int n_threads,
-                      int dry_run) {
+                      int mpi_size, MPI_Comm comm, MPI_Info info,
+                      int nr_threads, int dry_run) {
 
   hid_t h_file = 0, h_grp = 0;
   /* GADGET has only cubic boxes (in cosmological mode) */
@@ -734,7 +737,7 @@ void read_ic_parallel(char* fileName, const struct unit_system* internal_units,
 
   /* Initialise counters */
   *Ngas = 0, *Ngparts = 0, *Ngparts_background = 0, *Nstars = 0,
-  *Nblackholes = 0;
+  *Nblackholes = 0, *Nfluid = 0;
 
   /* Open file */
   /* message("Opening file '%s' as IC.", fileName); */
@@ -907,6 +910,16 @@ void read_ic_parallel(char* fileName, const struct unit_system* internal_units,
     bzero(*gparts, *Ngparts * sizeof(struct gpart));
   }
 
+  if (with_engineering_hydro) {
+    *Nboundary = N[swift_type_boundary];
+    *Nfluid = N[swift_type_fluid];
+    if (swift_memalign("parts", (void**)parts, part_align,
+                       (*Nboundary+*Nfluid) * sizeof(struct part)) != 0)
+      error("Error while allocating memory for SPH particles");
+    bzero(*parts, (*Nboundary+*Nfluid) * sizeof(struct part));
+  }
+
+
   /* message("Allocated %8.2f MB for particles.", *N * sizeof(struct part) /
    * (1024.*1024.)); */
 
@@ -970,12 +983,26 @@ void read_ic_parallel(char* fileName, const struct unit_system* internal_units,
         }
         break;
 
+     case swift_type_boundary:
+       if (with_engineering_hydro) {
+         Nparticles = *Nboundary;
+         hydro_read_particles(*parts, list, &num_fields);
+       }
+       break;
+
+      case swift_type_fluid:
+        if (with_engineering_hydro) {
+          Nparticles = *Nfluid;
+          hydro_read_particles( &(*parts)[*Nboundary], list, &num_fields);
+        }
+        break;
+
+
       default:
         if (mpi_rank == 0)
           message("Particle Type %d not yet supported. Particles ignored",
                   ptype);
     }
-
     /* Read everything */
     if (!dry_run)
       for (int i = 0; i < num_fields; ++i)
@@ -1038,7 +1065,7 @@ void read_ic_parallel(char* fileName, const struct unit_system* internal_units,
  * @param internal_units The #unit_system used internally.
  * @param snapshot_units The #unit_system used in the snapshots.
  */
-void prepare_file(struct engine* e, const char* baseName, long long N_total[6],
+void prepare_file(struct engine* e, const char* baseName, long long N_total[swift_type_count],
                   const struct unit_system* internal_units,
                   const struct unit_system* snapshot_units) {
 
@@ -1052,6 +1079,7 @@ void prepare_file(struct engine* e, const char* baseName, long long N_total[6],
   const int with_cooling = e->policy & engine_policy_cooling;
   const int with_temperature = e->policy & engine_policy_temperature;
   const int with_fof = e->policy & engine_policy_fof;
+  const int with_engineering = e->policy & engine_policy_engineering;
 #ifdef HAVE_VELOCIRAPTOR
   const int with_stf = (e->policy & engine_policy_structure_finding) &&
                        (e->s->gpart_group_data != NULL);
@@ -1244,6 +1272,7 @@ void prepare_file(struct engine* e, const char* baseName, long long N_total[6],
     switch (ptype) {
 
       case swift_type_gas:
+      if(!with_engineering){
         hydro_write_particles(parts, xparts, list, &num_fields);
         num_fields += chemistry_write_particles(parts, list + num_fields);
         if (with_cooling || with_temperature) {
@@ -1261,6 +1290,7 @@ void prepare_file(struct engine* e, const char* baseName, long long N_total[6],
           num_fields +=
               velociraptor_write_parts(parts, xparts, list + num_fields);
         }
+      }
         break;
 
       case swift_type_dark_matter:
@@ -1309,6 +1339,10 @@ void prepare_file(struct engine* e, const char* baseName, long long N_total[6],
         }
         break;
 
+      case swift_type_fluid:
+        hydro_write_particles(parts, xparts, list, &num_fields);
+      break;
+
       default:
         error("Particle Type %d not yet supported. Aborting", ptype);
     }
@@ -1321,7 +1355,6 @@ void prepare_file(struct engine* e, const char* baseName, long long N_total[6],
       sprintf(field, "SelectOutput:%.*s_%s", FIELD_BUFFER_SIZE, list[i].name,
               part_type_names[ptype]);
       int should_write = parser_get_opt_param_int(params, field, 1);
-
       if (should_write)
         prepareArray(e, h_grp, fileName, xmfFile, partTypeGroupName, list[i],
                      N_total[ptype], snapshot_units);
@@ -1379,6 +1412,7 @@ void write_output_parallel(struct engine* e, const char* baseName,
   const int with_temperature = e->policy & engine_policy_temperature;
   const int with_fof = e->policy & engine_policy_fof;
   const int with_DM_background = e->s->with_DM_background;
+  const int with_engineering = e->policy & engine_policy_engineering;
 #ifdef HAVE_VELOCIRAPTOR
   const int with_stf = (e->policy & engine_policy_structure_finding) &&
                        (e->s->gpart_group_data != NULL);
@@ -1388,9 +1422,10 @@ void write_output_parallel(struct engine* e, const char* baseName,
 
   /* Number of particles currently in the arrays */
   const size_t Ntot = e->s->nr_gparts;
-  const size_t Ngas = e->s->nr_parts;
+  const size_t Ngas = e->s->nr_parts * (with_engineering == 0);
   const size_t Nstars = e->s->nr_sparts;
   const size_t Nblackholes = e->s->nr_bparts;
+  const size_t Nfluid = (e->s->nr_parts) * (with_engineering != 0);
   // const size_t Nbaryons = Ngas + Nstars;
   // const size_t Ndm = Ntot > 0 ? Ntot - Nbaryons : 0;
 
@@ -1403,7 +1438,7 @@ void write_output_parallel(struct engine* e, const char* baseName,
   const size_t Ntot_written =
       e->s->nr_gparts - e->s->nr_inhibited_gparts - e->s->nr_extra_gparts;
   const size_t Ngas_written =
-      e->s->nr_parts - e->s->nr_inhibited_parts - e->s->nr_extra_parts;
+      (e->s->nr_parts - e->s->nr_inhibited_parts - e->s->nr_extra_parts) * (with_engineering == 0);
   const size_t Nstars_written =
       e->s->nr_sparts - e->s->nr_inhibited_sparts - e->s->nr_extra_sparts;
   const size_t Nblackholes_written =
@@ -1414,9 +1449,8 @@ void write_output_parallel(struct engine* e, const char* baseName,
       Ntot_written > 0 ? Ntot_written - Nbaryons_written - Ndm_background : 0;
 
   /* Compute offset in the file and total number of particles */
-  size_t N[swift_type_count] = {Ngas_written,   Ndm_written,
-                                Ndm_background, 0,
-                                Nstars_written, Nblackholes_written};
+  size_t N[swift_type_count] = {
+      Ngas_written, Ndm_written, Ndm_background, 0, Nstars_written, 0, 0, Nfluid};
   long long N_total[swift_type_count] = {0};
   long long offset[swift_type_count] = {0};
   MPI_Exscan(&N, &offset, swift_type_count, MPI_LONG_LONG_INT, MPI_SUM, comm);
@@ -1425,7 +1459,7 @@ void write_output_parallel(struct engine* e, const char* baseName,
 
   /* The last rank now has the correct N_total. Let's
    * broadcast from there */
-  MPI_Bcast(&N_total, 6, MPI_LONG_LONG_INT, mpi_size - 1, comm);
+  MPI_Bcast(&N_total, swift_type_count, MPI_LONG_LONG_INT, mpi_size - 1, comm);
 
   /* Now everybody konws its offset and the total number of
    * particles of each type */
@@ -1851,9 +1885,14 @@ void write_output_parallel(struct engine* e, const char* baseName,
           }
         }
       } break;
+     
+      case swift_type_fluid: {
+            Nparticles = Nfluid;
+            hydro_write_particles(parts, xparts, list, &num_fields);
+      } break;
 
       default:
-        error("Particle Type %d not yet supported. Aborting", ptype);
+        error("Particle Type %d not yet supported. %llu parts of type. Aborting", ptype, N_total[ptype]);
     }
 
     /* Write everything that is not cancelled */
@@ -1864,7 +1903,6 @@ void write_output_parallel(struct engine* e, const char* baseName,
       sprintf(field, "SelectOutput:%.*s_%s", FIELD_BUFFER_SIZE, list[i].name,
               part_type_names[ptype]);
       int should_write = parser_get_opt_param_int(params, field, 1);
-
       if (should_write)
         writeArray(e, h_grp, fileName, partTypeGroupName, list[i], Nparticles,
                    N_total[ptype], mpi_rank, offset[ptype], internal_units,

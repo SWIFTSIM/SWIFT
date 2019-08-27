@@ -1571,8 +1571,16 @@ case "$with_hydro" in
       AC_DEFINE([WITH_ENGINEERING], [1], [Engineering SPH enabled])
       with_engineering = "yes"
    ;;
-
-
+   euler-art-vis)
+      AC_DEFINE([EULER_ART_VIS_SPH], [1], [Euler SPH with Artificial Viscosity])
+      AC_DEFINE([WITH_ENGINEERING], [1], [Engineering SPH enabled])
+      with_engineering = "yes"
+   ;;
+   MorrisFoxZhu97)
+      AC_DEFINE([MORRIS_FOX_ZHU_97_SPH], [1], [Morris Fox Zhu 97 Viscosity])
+      AC_DEFINE([WITH_ENGINEERING], [1], [Engineering SPH enabled])
+      with_engineering = "yes"
+   ;;
    *)
       AC_MSG_ERROR([Unknown hydrodynamics scheme: $with_hydro])
    ;;
@@ -1618,6 +1626,18 @@ if test "$enable_debug_interactions" != "no"; then
   else
     [enable_debug_interactions="no (only available for gadget2 hydro scheme)"]
   fi
+fi
+
+#Check if we're using exact cell containment
+AC_ARG_ENABLE([exact-cells],
+    [AS_HELP_STRING([--enable-exact-cells],
+        [Activate using exact cell rebuilds, where all particles must be contained within the cell volume, rather than the smarter neighbour finding. Useful only if you have two fluids seperated by a vacuum])],
+  [enable_exact_cells="$enableval"],
+  [enable_exact_cells="no"]
+)
+
+if test "$enable_exact_cells" != "no"; then
+    AC_DEFINE([EXACT_CELLS],1,[Enable Exact Cells])
 fi
 
 
@@ -1696,6 +1716,9 @@ case "$with_eos" in
    ;;
    weakly-compressible)
      AC_DEFINE([EOS_WEAKLY_COMPRESSIBLE], [1], [Weakly compressible equation of state])
+   ;;
+   tait)
+     AC_DEFINE([EOS_TAIT], [1], [Tait equation of state])
    ;;
    *)
       AC_MSG_ERROR([Unknown equation of state: $with_eos])
@@ -2205,6 +2228,7 @@ AC_MSG_RESULT([
    VELOCIraptor enabled : $have_velociraptor
    FoF activated:       : $enable_fof
    Engineering enabled  : $with_engineering
+   Exact cells enabled  : $enable_exact_cells
 
    Hydro scheme       : $with_hydro
    Dimensionality     : $with_dimension

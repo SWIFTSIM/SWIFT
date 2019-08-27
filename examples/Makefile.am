@@ -20,7 +20,7 @@ MYFLAGS =
 
 # Add the source directory and the non-standard paths to the included library headers to CFLAGS
 AM_CFLAGS = -I$(top_srcdir)/src -I$(top_srcdir)/argparse $(HDF5_CPPFLAGS) \
-	$(GSL_INCS) $(FFTW_INCS) $(NUMA_INCS) $(GRACKLE_INCS)
+	$(GSL_INCS) $(FFTW_INCS) $(NUMA_INCS) $(GRACKLE_INCS) 
 
 AM_LDFLAGS = $(HDF5_LDFLAGS)
 
@@ -46,7 +46,7 @@ if HAVEMPI
 if HAVESTANDALONEFOF
 bin_PROGRAMS += fof_mpi
 endif
-bin_PROGRAMS += swift_mpi #swift_engineering_mpi
+bin_PROGRAMS += swift_mpi swift_engineering_mpi
 endif
 
 # engine_policy_setaffinity is available?

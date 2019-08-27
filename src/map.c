@@ -156,7 +156,7 @@ void map_maxdepth(struct cell *c, void *data) {
  * @brief Mapping function for neighbour count.
  */
 void map_count(struct part *p, struct cell *c, void *data) {
-#if defined(EULER_ENG_SPH) || defined(NAV_STOK_SPH)
+#if defined(WITH_ENGINEERING)
 
 #else
   double *wcount = (double *)data;
@@ -167,7 +167,7 @@ void map_count(struct part *p, struct cell *c, void *data) {
 #endif
 }
 void map_wcount_min(struct part *p, struct cell *c, void *data) {
-#if defined(EULER_ENG_SPH) || defined(NAV_STOK_SPH)
+#if defined(WITH_ENGINEERING)
 
 #else
   struct part **p2 = (struct part **)data;
@@ -177,7 +177,7 @@ void map_wcount_min(struct part *p, struct cell *c, void *data) {
 }
 
 void map_wcount_max(struct part *p, struct cell *c, void *data) {
-#if defined(EULER_ENG_SPH) || defined(NAV_STOK_SPH)
+#if defined(WITH_ENGINEERING)
 
 #else
   struct part **p2 = (struct part **)data;

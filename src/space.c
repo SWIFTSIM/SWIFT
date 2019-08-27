@@ -353,7 +353,6 @@ void space_regrid(struct space *s, int verbose) {
   const size_t nr_bparts = s->nr_bparts;
   const ticks tic = getticks();
   const integertime_t ti_current = (s->e != NULL) ? s->e->ti_current : 0;
-
   /* Run through the cells and get the current h_max. */
   // tic = getticks();
   float h_max = s->cell_min / kernel_gamma / space_stretch;
@@ -1663,8 +1662,9 @@ void space_rebuild(struct space *s, int repartitioned, int verbose) {
     space_parts_sort(s->parts, s->xparts, h_index, cell_part_counts,
                      s->nr_cells, 0);
 
-#ifdef SWIFT_DEBUG_CHECKS
+//#ifdef SWIFT_DEBUG_CHECKS
   /* Verify that the part have been sorted correctly. */
+//message("Verifying particles are correctly sorted");
   for (size_t k = 0; k < nr_parts; k++) {
     const struct part *p = &s->parts[k];
 
@@ -1687,7 +1687,7 @@ void space_rebuild(struct space *s, int repartitioned, int verbose) {
         p->x[2] < c->loc[2] || p->x[2] > c->loc[2] + c->width[2])
       error("part not sorted into the right top-level cell!");
   }
-#endif /* SWIFT_DEBUG_CHECKS */
+//#endif /* SWIFT_DEBUG_CHECKS */
 
   /* Sort the sparts according to their cells. */
   if (nr_sparts > 0)
@@ -2153,16 +2153,15 @@ void space_parts_get_cell_index_mapper(void *map_data, int nr_parts,
     /* Get the particle */
     struct part *restrict p = &parts[k];
 
-    double old_pos_x = p->x[0];
-    double old_pos_y = p->x[1];
-    double old_pos_z = p->x[2];
-
+    const double old_pos_x = (p->x[0] + dim_x) - dim_x;
+    const double old_pos_y = (p->x[1] + dim_y) - dim_y;
+    const double old_pos_z = (p->x[2] + dim_z) - dim_z;
+   
     if (periodic && dithering && p->time_bin != time_bin_not_created) {
       old_pos_x += delta_dithering_x;
       old_pos_y += delta_dithering_y;
       old_pos_z += delta_dithering_z;
     }
-
 #ifdef SWIFT_DEBUG_CHECKS
     if (!periodic && p->time_bin != time_bin_inhibited) {
       if (old_pos_x < 0. || old_pos_x > dim_x)
@@ -2175,24 +2174,27 @@ void space_parts_get_cell_index_mapper(void *map_data, int nr_parts,
 #endif
 
     /* Put it back into the simulation volume */
-    const double pos_x = box_wrap(old_pos_x, 0.0, dim_x);
-    const double pos_y = box_wrap(old_pos_y, 0.0, dim_y);
-    const double pos_z = box_wrap(old_pos_z, 0.0, dim_z);
-
+    /*const*/ double pos_x = box_wrap(old_pos_x, 0.0, dim_x);
+    /*const*/ double pos_y = box_wrap(old_pos_y, 0.0, dim_y);
+    /*const*/ double pos_z = box_wrap(old_pos_z, 0.0, dim_z);
+    if(pos_x == dim_x) pos_x = 0.0; 
+    if(pos_y == dim_y) pos_y = 0.0; 
+    if(pos_z == dim_z) pos_z = 0.0; 
     /* Get its cell index */
     const int index =
         cell_getid(cdim, pos_x * ih_x, pos_y * ih_y, pos_z * ih_z);
 
-#ifdef SWIFT_DEBUG_CHECKS
+//#ifdef SWIFT_DEBUG_CHECKS
     if (index < 0 || index >= cdim[0] * cdim[1] * cdim[2])
       error("Invalid index=%d cdim=[%d %d %d] p->x=[%e %e %e]", index, cdim[0],
             cdim[1], cdim[2], pos_x, pos_y, pos_z);
 
     if (pos_x >= dim_x || pos_y >= dim_y || pos_z >= dim_z || pos_x < 0. ||
         pos_y < 0. || pos_z < 0.)
-      error("Particle outside of simulation box. p->x=[%e %e %e]", pos_x, pos_y,
-            pos_z);
-#endif
+      error("Particle outside of simulation box. p->x=[%e %e %e] original p->x=[%e %e %e] oldpos = [%e %e %e]", pos_x, pos_y,
+            pos_z, p->x[0], p->x[1], p->x[2], old_pos_x, old_pos_y, old_pos_z);
+ 
+//#endif
 
     if (p->time_bin == time_bin_inhibited) {
       /* Is this particle to be removed? */
@@ -3366,8 +3368,30 @@ void space_split_recursive(struct space *s, struct cell *c,
 
   /* If the depth is too large, we have a problem and should stop. */
   if (maxdepth > space_cell_maxdepth) {
-    error("Exceeded maximum depth (%d) when splitting cells, aborting",
-          space_cell_maxdepth);
+    printf("Cell location [%f %f %f] and size [%e %e %e], nodeID = %i\n", c->loc[0], c->loc[1], c->loc[2], c->width[0], c->width[1], c->width[2], c->nodeID);
+    for(int k = 0; k < c->hydro.count; k++){
+    //for(int k = 0; k < count; k++){
+       printf("Particle %lli position = [%f %f %f] v= [%f %f %f] \n", c->hydro.parts[k].id, c->hydro.parts[k].x[0],  c->hydro.parts[k].x[1],  c->hydro.parts[k].x[2], c->hydro.parts[k].v[0], c->hydro.parts[k].v[1], c->hydro.parts[k].v[2]);
+      for(int l = 0; l < s->nr_cells; l++){
+          if(s->cells_top[l].loc[0] + s->cells_top[l].width[0] > c->hydro.parts[k].x[0] && s->cells_top[l].loc[0] <= c->hydro.parts[k].x[0] && 
+          s->cells_top[l].loc[1] + s->cells_top[l].width[1] > c->hydro.parts[k].x[1] && s->cells_top[l].loc[1] <= c->hydro.parts[k].x[1] &&
+          s->cells_top[l].loc[2] + s->cells_top[l].width[2] > c->hydro.parts[k].x[2] && s->cells_top[l].loc[2] <= c->hydro.parts[k].x[2] ){
+            printf("Particle %lli should be in top level cell %i [%f %f %f] with %i parts which is on node %i\n", c->hydro.parts[k].id, l, s->cells_top[l].loc[0], s->cells_top[l].loc[1], s->cells_top[l].loc[2], s->cells_top[l].hydro.count, s->cells_top[l].nodeID);
+            if(s->cells_top[l].nodeID == s->e->nodeID)
+                for(int m = 0; m < s->cells_top[l].hydro.count; m++){
+                  if(c->hydro.parts[k].id == s->cells_top[l].hydro.parts[l].id)
+                    printf("Particle in 2 cells uhoh\n");
+                }
+         }
+      }
+    }
+    struct cell *z = c;
+    while( z->parent != NULL){
+      z = z->parent;
+    }
+    printf("highest parent: Cell location [%f %f %f] and size [%e %e %e], nodeID = %i\n", z->loc[0], z->loc[1], z->loc[2], z->width[0], z->width[1], z->width[2], z->nodeID);
+    error("Exceeded maximum depth (%d) when splitting cells, count is %d, parent count is %d, parent parent count is %d, super count is %p aborting",
+          space_cell_maxdepth, count, c->parent->hydro.count, c->parent->parent->hydro.count, c->super);
   }
 
   /* Split or let it be? */
@@ -4273,7 +4297,9 @@ void space_first_init_parts_mapper(void *restrict map_data, int count,
                              cool_func);
 
     /* And the black hole markers */
+#if !defined(WITH_ENGINEERING)
     black_holes_mark_part_as_not_swallowed(&p[k].black_holes_data);
+#endif
 
 #ifdef SWIFT_DEBUG_CHECKS
     /* Check part->gpart->part linkeage. */
@@ -4511,8 +4537,10 @@ void space_first_init_bparts_mapper(void *restrict map_data, int count,
 
     black_holes_first_init_bpart(&bp[k], props);
 
+#if !defined(WITH_ENGINEERING)
     /* And the black hole merger markers */
     black_holes_mark_bpart_as_not_swallowed(&bp[k].merger_data);
+#endif
 
 #ifdef SWIFT_DEBUG_CHECKS
     if (bp[k].gpart && bp[k].gpart->id_or_neg_offset != -(k + delta))

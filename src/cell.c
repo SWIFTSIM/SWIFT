@@ -596,46 +596,61 @@ int cell_pack_tags(const struct cell *c, int *tags) {
 
 void cell_pack_part_swallow(const struct cell *c,
                             struct black_holes_part_data *data) {
+#if defined(WITH_ENGINEERING)
 
+#else
   const size_t count = c->hydro.count;
   const struct part *parts = c->hydro.parts;
 
   for (size_t i = 0; i < count; ++i) {
     data[i] = parts[i].black_holes_data;
   }
+#endif
 }
 
 void cell_unpack_part_swallow(struct cell *c,
                               const struct black_holes_part_data *data) {
 
+#if defined(WITH_ENGINEERING)
+
+#else
   const size_t count = c->hydro.count;
   struct part *parts = c->hydro.parts;
 
   for (size_t i = 0; i < count; ++i) {
     parts[i].black_holes_data = data[i];
   }
+#endif
 }
 
 void cell_pack_bpart_swallow(const struct cell *c,
                              struct black_holes_bpart_data *data) {
 
+#if defined(WITH_ENGINEERING)
+
+#else
   const size_t count = c->black_holes.count;
   const struct bpart *bparts = c->black_holes.parts;
 
   for (size_t i = 0; i < count; ++i) {
     data[i] = bparts[i].merger_data;
   }
+#endif
 }
 
 void cell_unpack_bpart_swallow(struct cell *c,
                                const struct black_holes_bpart_data *data) {
 
+#if defined(WITH_ENGINEERING)
+
+#else
   const size_t count = c->black_holes.count;
   struct bpart *bparts = c->black_holes.parts;
 
   for (size_t i = 0; i < count; ++i) {
     bparts[i].merger_data = data[i];
   }
+#endif
 }
 
 /**
@@ -3394,7 +3409,10 @@ int cell_unskip_hydro_tasks(struct cell *c, struct scheduler *s) {
 #endif
   int rebuild = 0;
 
-  if(cell_need_rebuild_for_hydro_self(c)) rebuild = 1;
+#ifdef EXACT_CELLS
+  
+  if(c->nodeID == e->nodeID && cell_need_rebuild_for_hydro_self(c)) rebuild = 1;
+#endif
   /* Un-skip the density tasks involved with this cell. */
   for (struct link *l = c->hydro.density; l != NULL; l = l->next) {
     struct task *t = l->t;
@@ -4615,8 +4633,12 @@ void cell_drift_part(struct cell *c, const struct engine *e, int force) {
       /* Update the maximal smoothing length in the cell */
       cell_h_max = max(cell_h_max, p->h);
 
+#if defined(WITH_ENGINEERING)
+
+#else
       /* Mark the particle has not being swallowed */
       black_holes_mark_part_as_not_swallowed(&p->black_holes_data);
+#endif
 
       /* Get ready for a density calculation */
       if (part_is_active(p, e)) {
@@ -5089,8 +5111,12 @@ void cell_drift_bpart(struct cell *c, const struct engine *e, int force) {
       /* Maximal smoothing length */
       cell_h_max = max(cell_h_max, bp->h);
 
+#if defined(WITH_ENGINEERING)
+
+#else
       /* Mark the particle has not being swallowed */
       black_holes_mark_bpart_as_not_swallowed(&bp->merger_data);
+#endif
 
       /* Get ready for a density calculation */
       if (bpart_is_active(bp, e)) {

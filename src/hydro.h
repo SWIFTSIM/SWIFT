@@ -83,6 +83,16 @@
 #include "./hydro/NavierStokes/hydro.h"
 #include "./hydro/NavierStokes/hydro_iact.h"
 #define SPH_IMPLEMENTATION "Navier-Stokes Fluid SPH"
+#elif defined(EULER_ART_VIS_SPH)
+#include "./hydro/Euler_art_vis/hydro.h"
+#include "./hydro/Euler_art_vis/hydro_iact.h"
+#define SPH_IMPLEMENTATION \
+  "Euler Fluid SPH with added artificial viscosity"
+#elif defined(MORRIS_FOX_ZHU_97_SPH)
+#include "./hydro/MorrisFoxZhu97/hydro.h"
+#include "./hydro/MorrisFoxZhu97/hydro_iact.h"
+#define SPH_IMPLEMENTATION \
+  "Euler Fluis SPH wtih MorrisFoxZhu97 viscosity"
 #else
 #error "Invalid choice of SPH variant"
 #endif

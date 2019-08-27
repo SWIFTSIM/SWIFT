@@ -35,7 +35,7 @@ INLINE static void hydro_read_particles(struct part* parts,
                                         struct io_props* list,
                                         int* num_fields) {
 
-  *num_fields = 11;
+  *num_fields = 12;
 
   /* List what we want to read */
   list[0] = io_make_input_field("Coordinates", DOUBLE, 3, COMPULSORY,
@@ -50,7 +50,7 @@ INLINE static void hydro_read_particles(struct part* parts,
                                 UNIT_CONV_NO_UNITS, parts, id);
   list[5] = io_make_input_field("Accelerations", FLOAT, 3, OPTIONAL,
                                 UNIT_CONV_ACCELERATION, parts, a_hydro);
-  list[6] = io_make_input_field("Density", FLOAT, 1, COMPULSORY,
+  list[6] = io_make_input_field("Density", DOUBLE, 1, COMPULSORY,
                                 UNIT_CONV_DENSITY, parts, rho);
   list[7] = io_make_input_field("ConstantAcceleration", FLOAT, 3, OPTIONAL,
                                 UNIT_CONV_ACCELERATION, parts, a_constant);
@@ -58,8 +58,10 @@ INLINE static void hydro_read_particles(struct part* parts,
                                  UNIT_CONV_NO_UNITS, parts, is_boundary);
   list[9] = io_make_input_field("Velocities", FLOAT, 3, COMPULSORY,
                                  UNIT_CONV_SPEED, parts, v_minus1);
-  list[10] = io_make_input_field("Viscosity", FLOAT, 1, COMPULSORY, UNIT_CONV_NO_UNITS,
-                                  parts, viscosity);
+  list[10] = io_make_input_field("Soundspeed", FLOAT, 1, COMPULSORY,
+                                 UNIT_CONV_SPEED, parts, soundspeed);
+  list[11] = io_make_input_field("Viscosity", FLOAT, 1, COMPULSORY,
+                                 UNIT_CONV_NO_UNITS, parts, dynamic_viscosity); 
 }
 INLINE static void convert_S(const struct engine* e, const struct part* p,
                              const struct xpart* xp, float* ret) {
@@ -145,37 +147,29 @@ INLINE static void hydro_write_particles(const struct part* parts,
                                          struct io_props* list,
                                          int* num_fields) {
 
-  *num_fields = 13;
+  *num_fields = 10;
 
   /* List what we want to write */
   list[0] = io_make_output_field_convert_part("Coordinates", DOUBLE, 3,
-                                              UNIT_CONV_LENGTH, parts, xparts,
-                                              convert_part_pos);
+                                              UNIT_CONV_LENGTH, 0.0f, parts, xparts,
+                                              convert_part_pos, "Particle positions");
   list[1] = io_make_output_field_convert_part(
-      "Velocities", FLOAT, 3, UNIT_CONV_SPEED, parts, xparts, convert_part_vel);
+      "Velocities", FLOAT, 3, UNIT_CONV_SPEED, 0.0f, parts, xparts, convert_part_vel, "Particle velocities");
   list[2] =
-      io_make_output_field("Masses", FLOAT, 1, UNIT_CONV_MASS, parts, mass);
-  list[3] = io_make_output_field("SmoothingLength", FLOAT, 1, UNIT_CONV_LENGTH,
-                                 parts, h);
-  list[4] = io_make_output_field("InternalEnergy", FLOAT, 1,
-                                 UNIT_CONV_ENERGY_PER_UNIT_MASS, parts, u);
-  list[5] = io_make_output_field("ParticleIDs", ULONGLONG, 1,
-                                 UNIT_CONV_NO_UNITS, parts, id);
-  list[6] =
-      io_make_output_field("Density", FLOAT, 1, UNIT_CONV_DENSITY, parts, rho);
-  list[7] = io_make_output_field_convert_part("Entropy", FLOAT, 1,
-                                              UNIT_CONV_ENTROPY_PER_UNIT_MASS,
-                                              parts, xparts, convert_S);
-  list[8] = io_make_output_field_convert_part(
-      "Pressure", FLOAT, 1, UNIT_CONV_PRESSURE, parts, xparts, convert_P);
+      io_make_output_field("Masses", FLOAT, 1, UNIT_CONV_MASS, 0.0f, parts, mass, "Particle masses");
+  list[3] = io_make_output_field("SmoothingLength", FLOAT, 1, UNIT_CONV_LENGTH, 0.f,
+                                 parts, h, "Particle smoothing lengths");
+  list[4] = io_make_output_field("ParticleIDs", ULONGLONG, 1,
+                                 UNIT_CONV_NO_UNITS, 0.f, parts, id, "Particle IDs");
+  list[5] =
+      io_make_output_field("Density", DOUBLE, 1, UNIT_CONV_DENSITY, 0.f, parts, rho, "Particle Densities");
+  list[6] = io_make_output_field(
+      "Pressure", FLOAT, 1, UNIT_CONV_PRESSURE, 0.f, parts, pressure, "Particle Pressures");
 
-  list[9] = io_make_output_field_convert_part("Potential", FLOAT, 1,
-                                              UNIT_CONV_POTENTIAL, parts,
-                                              xparts, convert_part_potential);
-  list[10] = io_make_output_field("ConstantAcceleration", DOUBLE, 3,
-                                               UNIT_CONV_ACCELERATION, parts, a_constant);
-  list[11] = io_make_output_field("IsBoundary", INT, 1, UNIT_CONV_NO_UNITS, parts, is_boundary);
-  list[12] = io_make_output_field("Acceleration", FLOAT, 3, UNIT_CONV_ACCELERATION, parts, a_hydro);
+  list[7] = io_make_output_field("ConstantAcceleration", DOUBLE, 3,
+                                               UNIT_CONV_ACCELERATION, 0.f, parts, a_constant, "Particle constant force (acceleration)");
+  list[8] = io_make_output_field("IsBoundary", INT, 1, UNIT_CONV_NO_UNITS, 0.f, parts, is_boundary, "Is particle a boundary particle");
+  list[9] = io_make_output_field("Acceleration", FLOAT, 3, UNIT_CONV_ACCELERATION,0.f, parts, a_hydro, "Particle Acceleration");
                                              
 }
 
@@ -188,16 +182,16 @@ INLINE static void hydro_write_flavour(hid_t h_grpsph) {
   /* Viscosity and thermal conduction */
   io_write_attribute_s(h_grpsph, "Thermal Conductivity Model",
                        "Price (2008) without switch");
-//  io_write_attribute_f(h_grpsph, "Thermal Conductivity alpha",
-//                       const_conductivity_alpha);
-//  io_write_attribute_s(
-//      h_grpsph, "Viscosity Model",
-//      "Morris & Monaghan (1997), Rosswog, Davies, Thielemann & "
-//      "Piran (2000) with additional Balsara (1995) switch");
-//
-//  /* Time integration properties */
-//  io_write_attribute_f(h_grpsph, "Maximal Delta u change over dt",
-//                       const_max_u_change);
+/*  io_write_attribute_f(h_grpsph, "Thermal Conductivity alpha",
+                       const_conductivity_alpha);
+  io_write_attribute_s(
+      h_grpsph, "Viscosity Model",
+      "Morris & Monaghan (1997), Rosswog, Davies, Thielemann & "
+      "Piran (2000) with additional Balsara (1995) switch");*/
+
+  /* Time integration properties */
+/*  io_write_attribute_f(h_grpsph, "Maximal Delta u change over dt",
+                       const_max_u_change);*/
 }
 
 /**

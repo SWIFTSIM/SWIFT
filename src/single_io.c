@@ -1293,7 +1293,7 @@ void write_output_single(struct engine* e, const char* baseName,
       case swift_type_fluid: {
         N = Nfluid;
         hydro_write_particles( parts, xparts, list, &num_fields);        
-
+        message("FLUID");
       } break;
 
       default:
