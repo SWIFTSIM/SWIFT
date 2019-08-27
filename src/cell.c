@@ -71,6 +71,8 @@
 #include "tools.h"
 #include "tracers.h"
 
+extern int engine_star_resort_task_depth;
+
 /* Global variables. */
 int cell_next_tag = 0;
 
@@ -2399,6 +2401,77 @@ void cell_clear_limiter_flags(struct cell *c, void *data) {
 }
 
 /**
+ * @brief Recursively clear the stars_resort flag in a cell hierarchy.
+ *
+ * @param c The #cell to act on.
+ */
+void cell_set_star_resort_flag(struct cell *c) {
+
+  cell_set_flag(c, cell_flag_do_stars_resort);
+
+  /* Abort if we reched the level where the resorting task lives */
+  if (c->depth == engine_star_resort_task_depth || c->hydro.super == c) return;
+
+  if (c->split) {
+    for (int k = 0; k < 8; ++k)
+      if (c->progeny[k] != NULL) cell_set_star_resort_flag(c->progeny[k]);
+  }
+}
+
+/**
+ * @brief Recurses in a cell hierarchy down to the level where the
+ * star resort tasks are and activates them.
+ *
+ * The function will fail if called *below* the super-level
+ *
+ * @param c The #cell to recurse into.
+ * @param s The #scheduler.
+ */
+void cell_activate_star_resort_tasks(struct cell *c, struct scheduler *s) {
+
+#ifdef SWIFT_DEBUG_CHECKS
+  if (c->hydro.super != NULL && c->hydro.super != c)
+    error("Function called below the super level!");
+#endif
+
+  /* The resort tasks are at either the chosen depth or the super level,
+   * whichever comes first. */
+  if (c->depth == engine_star_resort_task_depth || c->hydro.super == c) {
+    scheduler_activate(s, c->hydro.stars_resort);
+  } else {
+    for (int k = 0; k < 8; ++k) {
+      if (c->progeny[k] != NULL) {
+        cell_activate_star_resort_tasks(c->progeny[k], s);
+      }
+    }
+  }
+}
+
+/**
+ * @brief Activate the star formation task as well as the resorting of stars
+ *
+ * Must be called at the top-level in the tree (where the SF task is...)
+ *
+ * @param c The (top-level) #cell.
+ * @param s The #scheduler.
+ */
+void cell_activate_star_formation_tasks(struct cell *c, struct scheduler *s) {
+
+#ifdef SWIFT_DEBUG_CHECKS
+  if (c->depth != 0) error("Function should be called at the top-level only");
+#endif
+
+  /* Have we already unskipped that task? */
+  if (c->hydro.star_formation->skip == 0) return;
+
+  /* Activate the star formation task */
+  scheduler_activate(s, c->hydro.star_formation);
+
+  /* Activate the star resort tasks at whatever level they are */
+  cell_activate_star_resort_tasks(c, s);
+}
+
+/**
  * @brief Recurse down in a cell hierarchy until the hydro.super level is
  * reached and activate the spart drift at that level.
  *
@@ -3428,12 +3501,12 @@ int cell_unskip_hydro_tasks(struct cell *c, struct scheduler *s) {
     if (c->timestep != NULL) scheduler_activate(s, c->timestep);
     if (c->hydro.end_force != NULL) scheduler_activate(s, c->hydro.end_force);
     if (c->hydro.cooling != NULL) scheduler_activate(s, c->hydro.cooling);
+#ifdef WITH_LOGGER
     if (c->logger != NULL) scheduler_activate(s, c->logger);
+#endif
 
     if (c->top->hydro.star_formation != NULL) {
-      scheduler_activate(s, c->top->hydro.star_formation);
-      scheduler_activate(s, c->top->hydro.stars_resort);
-      cell_activate_drift_spart(c, s);
+      cell_activate_star_formation_tasks(c->top, s);
     }
   }
 
@@ -3585,7 +3658,9 @@ int cell_unskip_gravity_tasks(struct cell *c, struct scheduler *s) {
     if (c->grav.mesh != NULL) scheduler_activate(s, c->grav.mesh);
     if (c->grav.long_range != NULL) scheduler_activate(s, c->grav.long_range);
     if (c->grav.end_force != NULL) scheduler_activate(s, c->grav.end_force);
+#ifdef WITH_LOGGER
     if (c->logger != NULL) scheduler_activate(s, c->logger);
+#endif
   }
 
   return rebuild;
@@ -3827,7 +3902,9 @@ int cell_unskip_stars_tasks(struct cell *c, struct scheduler *s,
       if (c->kick1 != NULL) scheduler_activate(s, c->kick1);
       if (c->kick2 != NULL) scheduler_activate(s, c->kick2);
       if (c->timestep != NULL) scheduler_activate(s, c->timestep);
+#ifdef WITH_LOGGER
       if (c->logger != NULL) scheduler_activate(s, c->logger);
+#endif
     }
   }
 
@@ -4105,7 +4182,9 @@ int cell_unskip_black_holes_tasks(struct cell *c, struct scheduler *s) {
     if (c->kick1 != NULL) scheduler_activate(s, c->kick1);
     if (c->kick2 != NULL) scheduler_activate(s, c->kick2);
     if (c->timestep != NULL) scheduler_activate(s, c->timestep);
+#ifdef WITH_LOGGER
     if (c->logger != NULL) scheduler_activate(s, c->logger);
+#endif
   }
 
   return rebuild;
@@ -5163,10 +5242,17 @@ void cell_recursively_shift_sparts(struct cell *c,
   /* When directly above the leaf with the new particle: increase the particle
    * count */
   /* When after the leaf with the new particle: shift by one position */
-  if (main_branch)
+  if (main_branch) {
     c->stars.count++;
-  else
+
+    /* Indicate that the cell is not sorted and cancel the pointer sorting
+     * arrays. */
+    c->stars.sorted = 0;
+    cell_free_stars_sorts(c);
+
+  } else {
     c->stars.parts++;
+  }
 }
 
 /**

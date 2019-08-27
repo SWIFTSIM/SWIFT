@@ -35,7 +35,7 @@ INLINE static void stars_read_particles(struct spart *sparts,
                                         int *num_fields) {
 
   /* Say how much we want to read */
-  *num_fields = 6;
+  *num_fields = 7;
 
   /* List what we want to read */
   list[0] = io_make_input_field("Coordinates", DOUBLE, 3, COMPULSORY,
@@ -50,6 +50,8 @@ INLINE static void stars_read_particles(struct spart *sparts,
                                 UNIT_CONV_LENGTH, sparts, h);
   list[5] = io_make_input_field("Masses", FLOAT, 1, COMPULSORY, UNIT_CONV_MASS,
                                 sparts, mass_init);
+  list[6] = io_make_input_field("StellarFormationTime", FLOAT, 1, OPTIONAL,
+                                UNIT_CONV_NO_UNITS, sparts, birth_time);
 }
 
 INLINE static void convert_spart_pos(const struct engine *e,
@@ -218,7 +220,7 @@ INLINE static void stars_props_init(struct stars_props *sp,
   /* Read birth time to set all stars in ICs to (defaults to -1 to indicate star
    * present in ICs) */
   sp->spart_first_init_birth_time =
-      parser_get_opt_param_float(params, "Stars:birth_time", -1);
+      parser_get_opt_param_float(params, "Stars:birth_time", -1.f);
 }
 
 /**

@@ -153,7 +153,7 @@ struct stars_props {
   /*! Maximal change of h over one time-step */
   float log_max_h_change;
 
-  /*! Value to set birth time of stars read from ICs */
+  /*! Value to set birth time of stars read from ICs if not set to -1 */
   float spart_first_init_birth_time;
 };
 

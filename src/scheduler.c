@@ -568,6 +568,7 @@ static void scheduler_splittask_hydro(struct task *t, struct scheduler *s) {
     if (!is_self && !is_pair) {
       t->type = task_type_none;
       t->subtype = task_subtype_none;
+      t->ci = NULL;
       t->cj = NULL;
       t->skip = 1;
       break;
@@ -767,6 +768,7 @@ static void scheduler_splittask_gravity(struct task *t, struct scheduler *s) {
     if ((t->ci == NULL) || (t->type == task_type_pair && t->cj == NULL)) {
       t->type = task_type_none;
       t->subtype = task_subtype_none;
+      t->ci = NULL;
       t->cj = NULL;
       t->skip = 1;
       break;
@@ -912,6 +914,7 @@ static void scheduler_splittask_fof(struct task *t, struct scheduler *s) {
         t->ci->grav.count == 0 || (t->cj != NULL && t->cj->grav.count == 0)) {
       t->type = task_type_none;
       t->subtype = task_subtype_none;
+      t->ci = NULL;
       t->cj = NULL;
       t->skip = 1;
       break;

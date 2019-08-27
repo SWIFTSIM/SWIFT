@@ -755,8 +755,10 @@ struct cell {
   /*! The task to limit the time-step of inactive particles */
   struct task *timestep_limiter;
 
+#ifdef WITH_LOGGER
   /*! The logger task */
   struct task *logger;
+#endif
 
   /*! Minimum dimension, i.e. smallest edge of this cell (min(width)). */
   float dmin;
@@ -874,6 +876,8 @@ void cell_drift_multipole(struct cell *c, const struct engine *e);
 void cell_drift_all_multipoles(struct cell *c, const struct engine *e);
 void cell_check_timesteps(struct cell *c);
 void cell_store_pre_drift_values(struct cell *c);
+void cell_set_star_resort_flag(struct cell *c);
+void cell_activate_star_formation_tasks(struct cell *c, struct scheduler *s);
 void cell_activate_subcell_hydro_tasks(struct cell *ci, struct cell *cj,
                                        struct scheduler *s);
 void cell_activate_subcell_grav_tasks(struct cell *ci, struct cell *cj,

@@ -939,10 +939,9 @@ void engine_marktasks_mapper(void *map_data, int num_elements,
     }
 
     /* Subgrid tasks: star formation */
-    else if (t_type == task_type_star_formation ||
-             t_type == task_type_stars_resort) {
+    else if (t_type == task_type_star_formation) {
       if (cell_is_active_hydro(t->ci, e)) {
-        scheduler_activate(s, t);
+        cell_activate_star_formation_tasks(t->ci, s);
         cell_activate_super_spart_drifts(t->ci, s);
       }
     }
