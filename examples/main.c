@@ -112,13 +112,13 @@ int main(int argc, char *argv[]) {
 #ifdef WITH_MPI
   /* Start by initializing MPI. */
   int res = 0, prov = 0;
-  if ((res = MPI_Init_thread(&argc, &argv, MPI_THREAD_MULTIPLE, &prov)) !=
+  if ((res = MPI_Init_thread(&argc, &argv, MPI_THREAD_SERIALIZED, &prov)) !=
       MPI_SUCCESS)
     error("Call to MPI_Init failed with error %i.", res);
-  if (prov != MPI_THREAD_MULTIPLE)
+  if (prov != MPI_THREAD_SERIALIZED)
     error(
         "MPI does not provide the level of threading"
-        " required (MPI_THREAD_MULTIPLE).");
+        " required (MPI_THREAD_SERIALIZED).");
   if ((res = MPI_Comm_size(MPI_COMM_WORLD, &nr_nodes)) != MPI_SUCCESS)
     error("MPI_Comm_size failed with error %i.", res);
   if ((res = MPI_Comm_rank(MPI_COMM_WORLD, &myrank)) != MPI_SUCCESS)

@@ -54,6 +54,10 @@
 #define scheduler_flag_none 0
 #define scheduler_flag_steal (1 << 1)
 
+/* Maximum size of task messages, in bytes, to sent using non-buffered
+ * MPI. */
+extern size_t scheduler_mpi_message_limit;
+
 /* Data of a scheduler. */
 struct scheduler {
   /* Scheduler flags. */
@@ -101,10 +105,6 @@ struct scheduler {
 
   /* The node we are working on. */
   int nodeID;
-
-  /* Maximum size of task messages, in bytes, to sent using non-buffered
-   * MPI. */
-  size_t mpi_message_limit;
 
   /* 'Pointer' to the seed for the random number generator */
   pthread_key_t local_seed_pointer;

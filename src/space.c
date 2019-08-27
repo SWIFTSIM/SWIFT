@@ -3653,13 +3653,18 @@ void space_split_recursive(struct space *s, struct cell *c,
    * threads we need to make this optional). */
   int nq = s->nr_queues - 1;
   if (s->nr_parts > 0)
-    c->owner = ((c->hydro.parts - s->parts) % s->nr_parts) * nq / s->nr_parts + 1;
+    c->owner =
+        ((c->hydro.parts - s->parts) % s->nr_parts) * nq / s->nr_parts + 1;
   else if (s->nr_gparts > 0)
-    c->owner = ((c->grav.parts - s->gparts) % s->nr_gparts) * nq / s->nr_gparts + 1;
+    c->owner =
+        ((c->grav.parts - s->gparts) % s->nr_gparts) * nq / s->nr_gparts + 1;
   else if (s->nr_sparts > 0)
-    c->owner = ((c->stars.parts - s->sparts) % s->nr_sparts) * nq / s->nr_sparts + 1;
+    c->owner =
+        ((c->stars.parts - s->sparts) % s->nr_sparts) * nq / s->nr_sparts + 1;
   else if (s->nr_bparts > 0)
-    c->owner = ((c->black_holes.parts - s->bparts) % s->nr_bparts) * nq / s->nr_bparts + 1;
+    c->owner = ((c->black_holes.parts - s->bparts) % s->nr_bparts) * nq /
+                   s->nr_bparts +
+               1;
   else
     c->owner = 0; /* Ok, there is really nothing on this rank */
 

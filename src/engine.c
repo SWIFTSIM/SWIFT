@@ -33,10 +33,9 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
-#include <sys/types.h>
 #include <sys/stat.h>
+#include <sys/types.h>
 #include <unistd.h>
-
 
 /* MPI headers. */
 #ifdef WITH_MPI
@@ -5692,7 +5691,7 @@ void engine_config(int restart, int fof, struct engine *e,
    * that is sent using MPI_Issend, not MPI_Isend. 4Mb by default. Can be
    * changed on restart.
    */
-  e->sched.mpi_message_limit =
+  scheduler_mpi_message_limit =
       parser_get_opt_param_int(params, "Scheduler:mpi_message_limit", 4) * 1024;
 
   if (restart) {

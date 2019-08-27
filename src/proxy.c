@@ -428,10 +428,12 @@ void proxy_cells_exchange(struct proxy *proxies, int num_proxies,
             clocks_getunit());
 
   /* Launch the first part of the exchange. */
-  threadpool_map(&s->e->threadpool, proxy_cells_exchange_first_mapper, proxies,
-                 num_proxies, sizeof(struct proxy), /*chunk=*/0,
-                 /*extra_data=*/NULL);
+  // threadpool_map(&s->e->threadpool, proxy_cells_exchange_first_mapper,
+  // proxies,
+  //               num_proxies, sizeof(struct proxy), /*chunk=*/0,
+  //               /*extra_data=*/NULL);
   for (int k = 0; k < num_proxies; k++) {
+    proxy_cells_exchange_first(&proxies[k]);
     reqs_in[k] = proxies[k].req_cells_count_in;
     reqs_out[k] = proxies[k].req_cells_count_out;
   }
