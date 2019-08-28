@@ -28,7 +28,7 @@
 
 int main(int argc, char *argv[]) {
 
-  size_t Ngas = 0, Ngpart = 0, Nspart = 0, Nbpart = 0;
+  size_t Ngas = 0, Ngpart = 0, Ngpart_background = 0, Nspart = 0, Nbpart = 0;
   int flag_entropy_ICs = -1;
   int i, j, k;
   double dim[3];
@@ -51,8 +51,15 @@ int main(int argc, char *argv[]) {
 
   /* Read data */
   read_ic_single("input.hdf5", &us, dim, &parts, &gparts, &sparts, &bparts,
-                 &Ngas, &Ngpart, &Nspart, &Nbpart, &flag_entropy_ICs, 1, 1, 0,
-                 0, 0, 0, 1., 1., 1, 0);
+                 &Ngas, &Ngpart, &Ngpart_background, &Nspart, &Nbpart,
+                 &flag_entropy_ICs,
+                 /*with_hydro=*/1,
+                 /*with_gravity=*/1,
+                 /*with_stars=*/0,
+                 /*with_black_holes=*/0,
+                 /*cleanup_h=*/0,
+                 /*cleanup_sqrt_a=*/0,
+                 /*h=*/1., /*a=*/1., /*n_threads=*/1, /*dry_run=*/0);
 
   /* Check global properties read are correct */
   assert(dim[0] == boxSize);

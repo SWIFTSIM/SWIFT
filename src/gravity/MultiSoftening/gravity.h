@@ -62,11 +62,6 @@ __attribute__((always_inline)) INLINE static float gravity_get_softening(
     default:
       return 0.f;
   }
-
-  /* if (gp->type == swift_type_dark_matter_background) */
-  /*   return grav_props->epsilon_background_fac * cbrtf(gp->mass); */
-  /* else */
-  /*   return grav_props->epsilon_cur; */
 }
 
 /**
