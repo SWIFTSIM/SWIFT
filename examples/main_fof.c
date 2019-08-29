@@ -468,7 +468,7 @@ int main(int argc, char *argv[]) {
 
   /* Get the total number of particles across all nodes. */
   long long N_total[swift_type_count + 1] = {0};
-  const long long Nbaryons = Ngas + Nspart + Nbpart;
+  long long Nbaryons = Ngas + Nspart + Nbpart;
 #if defined(WITH_MPI)
   long long N_long[swift_type_count + 1] = {0};
   N_long[swift_type_gas] = Ngas;
@@ -539,17 +539,22 @@ int main(int argc, char *argv[]) {
     pm_mesh_init_no_mesh(&mesh, s.dim);
   }
 
-    /* Also update the total counts (in case of changes due to replication) */
+  /* Also update the total counts (in case of changes due to replication) */
+  Nbaryons = s.nr_parts + s.nr_sparts + s.nr_bparts;
 #if defined(WITH_MPI)
-  N_long[0] = s.nr_parts;
-  N_long[1] = s.nr_gparts;
-  N_long[2] = s.nr_sparts;
-  MPI_Allreduce(&N_long, &N_total, 3, MPI_LONG_LONG_INT, MPI_SUM,
-                MPI_COMM_WORLD);
+  N_long[swift_type_gas] = s.nr_parts;
+  N_long[swift_type_dark_matter] = s.nr_gparts - Ngpart_background - Nbaryons;
+  N_long[swift_type_count] = s.nr_gparts;
+  N_long[swift_type_stars] = s.nr_sparts;
+  N_long[swift_type_black_hole] = s.nr_bparts;
+  MPI_Allreduce(&N_long, &N_total, swift_type_count + 1, MPI_LONG_LONG_INT,
+                MPI_SUM, MPI_COMM_WORLD);
 #else
-  N_total[0] = s.nr_parts;
-  N_total[1] = s.nr_gparts;
-  N_total[2] = s.nr_sparts;
+  N_total[swift_type_gas] = s.nr_parts;
+  N_total[swift_type_dark_matter] = s.nr_gparts - Ngpart_background - Nbaryons;
+  N_total[swift_type_count] = s.nr_gparts;
+  N_total[swift_type_stars] = s.nr_sparts;
+  N_total[swift_type_black_hole] = s.nr_bparts;
 #endif
 
   /* Say a few nice things about the space we just created. */
@@ -596,12 +601,13 @@ int main(int argc, char *argv[]) {
 
   /* Get some info to the user. */
   if (myrank == 0) {
-    long long N_DM = N_total[1] - N_total[2] - N_total[3] - N_total[0];
+    const long long N_DM = N_total[swift_type_dark_matter] +
+                           N_total[swift_type_dark_matter_background];
     message(
-        "Running on %lld gas particles, %lld stars particles %lld black "
+        "Running FOF on %lld gas particles, %lld stars particles %lld black "
         "hole particles and %lld DM particles (%lld gravity particles)",
-        N_total[0], N_total[2], N_total[3], N_total[1] > 0 ? N_DM : 0,
-        N_total[1]);
+        N_total[swift_type_gas], N_total[swift_type_stars],
+        N_total[swift_type_black_hole], N_DM, N_total[swift_type_count]);
     message(
         "from t=%.3e until t=%.3e with %d ranks, %d threads / rank and %d "
         "task queues / rank (dt_min=%.3e, dt_max=%.3e)...",
