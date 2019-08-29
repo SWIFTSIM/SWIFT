@@ -4852,16 +4852,19 @@ void space_replicate(struct space *s, int replicate, int verbose) {
   const size_t nr_parts = s->nr_parts;
   const size_t nr_gparts = s->nr_gparts;
   const size_t nr_sparts = s->nr_sparts;
+  const size_t nr_bparts = s->nr_bparts;
   const size_t nr_dm = nr_gparts - nr_parts - nr_sparts;
 
   s->size_parts = s->nr_parts = nr_parts * factor;
   s->size_gparts = s->nr_gparts = nr_gparts * factor;
   s->size_sparts = s->nr_sparts = nr_sparts * factor;
+  s->size_bparts = s->nr_bparts = nr_bparts * factor;
 
   /* Allocate space for new particles */
   struct part *parts = NULL;
   struct gpart *gparts = NULL;
   struct spart *sparts = NULL;
+  struct bpart *bparts = NULL;
 
   if (swift_memalign("parts", (void **)&parts, part_align,
                      s->nr_parts * sizeof(struct part)) != 0)
@@ -4875,6 +4878,10 @@ void space_replicate(struct space *s, int replicate, int verbose) {
                      s->nr_sparts * sizeof(struct spart)) != 0)
     error("Failed to allocate new spart array.");
 
+  if (swift_memalign("bparts", (void **)&bparts, bpart_align,
+                     s->nr_bparts * sizeof(struct bpart)) != 0)
+    error("Failed to allocate new bpart array.");
+
   /* Replicate everything */
   for (int i = 0; i < replicate; ++i) {
     for (int j = 0; j < replicate; ++j) {
@@ -4886,6 +4893,8 @@ void space_replicate(struct space *s, int replicate, int verbose) {
                nr_parts * sizeof(struct part));
         memcpy(sparts + offset * nr_sparts, s->sparts,
                nr_sparts * sizeof(struct spart));
+        memcpy(bparts + offset * nr_bparts, s->bparts,
+               nr_bparts * sizeof(struct bpart));
         memcpy(gparts + offset * nr_gparts, s->gparts,
                nr_gparts * sizeof(struct gpart));
 
@@ -4906,6 +4915,11 @@ void space_replicate(struct space *s, int replicate, int verbose) {
           sparts[n].x[0] += shift[0];
           sparts[n].x[1] += shift[1];
           sparts[n].x[2] += shift[2];
+        }
+        for (size_t n = offset * nr_bparts; n < (offset + 1) * nr_bparts; ++n) {
+          bparts[n].x[0] += shift[0];
+          bparts[n].x[1] += shift[1];
+          bparts[n].x[2] += shift[2];
         }
 
         /* Set the correct links (recall gpart are sorted by type at start-up):
@@ -4928,6 +4942,16 @@ void space_replicate(struct space *s, int replicate, int verbose) {
             gparts[offset_gpart + n].id_or_neg_offset = -(offset_spart + n);
           }
         }
+        if (nr_bparts > 0 && nr_gparts > 0) {
+          const size_t offset_bpart = offset * nr_bparts;
+          const size_t offset_gpart =
+              offset * nr_gparts + nr_dm + nr_parts + nr_sparts;
+
+          for (size_t n = 0; n < nr_bparts; ++n) {
+            bparts[offset_bpart + n].gpart = &gparts[offset_gpart + n];
+            gparts[offset_gpart + n].id_or_neg_offset = -(offset_bpart + n);
+          }
+        }
       }
     }
   }
@@ -4936,9 +4960,11 @@ void space_replicate(struct space *s, int replicate, int verbose) {
   swift_free("parts", s->parts);
   swift_free("gparts", s->gparts);
   swift_free("sparts", s->sparts);
+  swift_free("bparts", s->bparts);
   s->parts = parts;
   s->gparts = gparts;
   s->sparts = sparts;
+  s->bparts = bparts;
 
   /* Finally, update the domain size */
   s->dim[0] *= replicate;
