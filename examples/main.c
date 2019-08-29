@@ -440,6 +440,9 @@ int main(int argc, char *argv[]) {
   /* Genesis 1.1: And then, there was time ! */
   clocks_set_cpufreq(cpufreq);
 
+  /* Are we running with gravity */
+  const int with_gravity = (with_self_gravity || with_external_gravity);
+
   /* How vocal are we ? */
   const int talking = (verbose == 1 && myrank == 0) || (verbose == 2);
 
@@ -863,25 +866,24 @@ int main(int argc, char *argv[]) {
 #if defined(HAVE_HDF5)
 #if defined(WITH_MPI)
 #if defined(HAVE_PARALLEL_HDF5)
-    read_ic_parallel(
-        ICfileName, &us, dim, &parts, &gparts, &sparts, &bparts, &Ngas, &Ngpart,
-        &Ngpart_background, &Nspart, &Nbpart, &flag_entropy_ICs, with_hydro,
-        (with_external_gravity || with_self_gravity), with_stars,
-        with_black_holes, cleanup_h, cleanup_sqrt_a, cosmo.h, cosmo.a, myrank,
-        nr_nodes, MPI_COMM_WORLD, MPI_INFO_NULL, nr_threads, dry_run);
+    read_ic_parallel(ICfileName, &us, dim, &parts, &gparts, &sparts, &bparts,
+                     &Ngas, &Ngpart, &Ngpart_background, &Nspart, &Nbpart,
+                     &flag_entropy_ICs, with_hydro, with_gravity, with_stars,
+                     with_black_holes, cleanup_h, cleanup_sqrt_a, cosmo.h,
+                     cosmo.a, myrank, nr_nodes, MPI_COMM_WORLD, MPI_INFO_NULL,
+                     nr_threads, dry_run);
 #else
-    read_ic_serial(
-        ICfileName, &us, dim, &parts, &gparts, &sparts, &bparts, &Ngas, &Ngpart,
-        &Ngpart_background, &Nspart, &Nbpart, &flag_entropy_ICs, with_hydro,
-        (with_external_gravity || with_self_gravity), with_stars,
-        with_black_holes, cleanup_h, cleanup_sqrt_a, cosmo.h, cosmo.a, myrank,
-        nr_nodes, MPI_COMM_WORLD, MPI_INFO_NULL, nr_threads, dry_run);
+    read_ic_serial(ICfileName, &us, dim, &parts, &gparts, &sparts, &bparts,
+                   &Ngas, &Ngpart, &Ngpart_background, &Nspart, &Nbpart,
+                   &flag_entropy_ICs, with_hydro, with_gravity, with_stars,
+                   with_black_holes, cleanup_h, cleanup_sqrt_a, cosmo.h,
+                   cosmo.a, myrank, nr_nodes, MPI_COMM_WORLD, MPI_INFO_NULL,
+                   nr_threads, dry_run);
 #endif
 #else
     read_ic_single(ICfileName, &us, dim, &parts, &gparts, &sparts, &bparts,
                    &Ngas, &Ngpart, &Ngpart_background, &Nspart, &Nbpart,
-                   &flag_entropy_ICs, with_hydro,
-                   (with_external_gravity || with_self_gravity), with_stars,
+                   &flag_entropy_ICs, with_hydro, with_gravity, with_stars,
                    with_black_holes, cleanup_h, cleanup_sqrt_a, cosmo.h,
                    cosmo.a, nr_threads, dry_run);
 #endif
@@ -922,11 +924,12 @@ int main(int argc, char *argv[]) {
 
     /* Get the total number of particles across all nodes. */
     long long N_total[swift_type_count + 1] = {0};
-    const long long Nbaryons = Ngas + Nspart + Nbpart;
+    long long Nbaryons = Ngas + Nspart + Nbpart;
 #if defined(WITH_MPI)
     long long N_long[swift_type_count + 1] = {0};
     N_long[swift_type_gas] = Ngas;
-    N_long[swift_type_dark_matter] = Ngpart - Ngpart_background - Nbaryons;
+    N_long[swift_type_dark_matter] =
+        with_gravity ? Ngpart - Ngpart_background - Nbaryons : 0;
     N_long[swift_type_dark_matter_background] = Ngpart_background;
     N_long[swift_type_stars] = Nspart;
     N_long[swift_type_black_hole] = Nbpart;
@@ -935,7 +938,8 @@ int main(int argc, char *argv[]) {
                   MPI_SUM, MPI_COMM_WORLD);
 #else
     N_total[swift_type_gas] = Ngas;
-    N_total[swift_type_dark_matter] = Ngpart - Ngpart_background - Nbaryons;
+    N_total[swift_type_dark_matter] =
+        with_gravity ? Ngpart - Ngpart_background - Nbaryons : 0;
     N_total[swift_type_dark_matter_background] = Ngpart_background;
     N_total[swift_type_stars] = Nspart;
     N_total[swift_type_black_hole] = Nbpart;
@@ -1009,19 +1013,24 @@ int main(int argc, char *argv[]) {
     if (with_cosmology && with_self_gravity && !dry_run)
       space_check_cosmology(&s, &cosmo, myrank);
 
-/* Also update the total counts (in case of changes due to replication) */
+    /* Also update the total counts (in case of changes due to replication) */
+    Nbaryons = s.nr_parts + s.nr_sparts + s.nr_bparts;
 #if defined(WITH_MPI)
-    N_long[0] = s.nr_parts;
-    N_long[1] = s.nr_gparts;
-    N_long[2] = s.nr_sparts;
-    N_long[3] = s.nr_bparts;
-    MPI_Allreduce(&N_long, &N_total, 4, MPI_LONG_LONG_INT, MPI_SUM,
-                  MPI_COMM_WORLD);
+    N_long[swift_type_gas] = s.nr_parts;
+    N_long[swift_type_dark_matter] =
+        with_gravity ? s.nr_gparts - Ngpart_background - Nbaryons : 0;
+    N_long[swift_type_count] = s.nr_gparts;
+    N_long[swift_type_stars] = s.nr_sparts;
+    N_long[swift_type_black_hole] = s.nr_bparts;
+    MPI_Allreduce(&N_long, &N_total, swift_type_count + 1, MPI_LONG_LONG_INT,
+                  MPI_SUM, MPI_COMM_WORLD);
 #else
-    N_total[0] = s.nr_parts;
-    N_total[1] = s.nr_gparts;
-    N_total[2] = s.nr_sparts;
-    N_total[3] = s.nr_bparts;
+    N_total[swift_type_gas] = s.nr_parts;
+    N_total[swift_type_dark_matter] =
+        with_gravity ? s.nr_gparts - Ngpart_background - Nbaryons : 0;
+    N_total[swift_type_count] = s.nr_gparts;
+    N_total[swift_type_stars] = s.nr_sparts;
+    N_total[swift_type_black_hole] = s.nr_bparts;
 #endif
 
     /* Say a few nice things about the space we just created. */
@@ -1045,7 +1054,7 @@ int main(int argc, char *argv[]) {
           "ERROR: Running with hydrodynamics but no gas particles found in the "
           "ICs!");
     }
-    if ((with_self_gravity || with_external_gravity) && N_total[1] == 0) {
+    if (with_gravity && N_total[1] == 0) {
       error(
           "ERROR: Running with gravity but no gravity particles found in "
           "the ICs!");
@@ -1108,12 +1117,13 @@ int main(int argc, char *argv[]) {
 
     /* Get some info to the user. */
     if (myrank == 0) {
-      long long N_DM = N_total[1] - N_total[2] - N_total[3] - N_total[0];
+      const long long N_DM = N_total[swift_type_dark_matter] +
+                             N_total[swift_type_dark_matter_background];
       message(
           "Running on %lld gas particles, %lld stars particles %lld black "
           "hole particles and %lld DM particles (%lld gravity particles)",
-          N_total[0], N_total[2], N_total[3], N_total[1] > 0 ? N_DM : 0,
-          N_total[1]);
+          N_total[swift_type_gas], N_total[swift_type_stars],
+          N_total[swift_type_black_hole], N_DM, N_total[swift_type_count]);
       message(
           "from t=%.3e until t=%.3e with %d ranks, %d threads / rank and %d "
           "task queues / rank (dt_min=%.3e, dt_max=%.3e)...",
