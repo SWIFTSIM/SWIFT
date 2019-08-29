@@ -4614,6 +4614,9 @@ void space_init(struct space *s, struct swift_params *params,
     error("Value of 'InitialConditions:replicate' (%d) is too small",
           replicate);
   if (replicate > 1) {
+    if (DM_background)
+      error("Can't replicate the space if background DM particles are in use.");
+
     space_replicate(s, replicate, verbose);
     parts = s->parts;
     gparts = s->gparts;
@@ -4853,7 +4856,7 @@ void space_replicate(struct space *s, int replicate, int verbose) {
   const size_t nr_gparts = s->nr_gparts;
   const size_t nr_sparts = s->nr_sparts;
   const size_t nr_bparts = s->nr_bparts;
-  const size_t nr_dm = nr_gparts - nr_parts - nr_sparts;
+  const size_t nr_dm = nr_gparts - nr_parts - nr_sparts - nr_bparts;
 
   s->size_parts = s->nr_parts = nr_parts * factor;
   s->size_gparts = s->nr_gparts = nr_gparts * factor;
