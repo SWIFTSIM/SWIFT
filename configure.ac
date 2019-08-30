@@ -433,7 +433,9 @@ HAVEVECTORIZATION=0
 if test "$enable_opt" = "yes" ; then
 
    # Choose the best flags for this compiler and architecture
+   ac_test_CFLAGS="no"
    AX_CC_MAXOPT
+   ac_test_CFLAGS="yes"
 
    # Check SSE & AVX support (some overlap with AX_CC_MAXOPT).
    # Don't use the SIMD_FLAGS result with Intel compilers. The -x<code>
