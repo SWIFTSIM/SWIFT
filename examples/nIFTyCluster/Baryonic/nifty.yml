@@ -1,7 +1,7 @@
 # Define the system of units to use internally. 
 InternalUnitSystem:
   UnitMass_in_cgs:     1.98848e43    # 10^10 M_sun in grams
-  UnitLength_in_cgs:   3.08567758e21 # kpc in centimeters
+  UnitLength_in_cgs:   3.08567758e24 # Mpc in centimeters
   UnitVelocity_in_cgs: 1e5           # km/s in centimeters per second
   UnitCurrent_in_cgs:  1             # Amperes
   UnitTemp_in_cgs:     1             # Kelvin
@@ -47,7 +47,7 @@ Gravity:
 
 # Parameters for the hydrodynamics scheme
 SPH:
-  resolution_eta:        1.48691 # 100 ngb with wendland0-c2
+  resolution_eta:        1.2      # ~50 ngb with Wendland-C2 
   h_min_ratio:           0.1      # Minimal smoothing in units of softening.
   CFL_condition:         0.1      # Courant-Friedrich-Levy condition for time integration.
   minimal_temperature:   100      # (internal units)
