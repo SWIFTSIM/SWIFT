@@ -432,14 +432,8 @@ HAVEVECTORIZATION=0
 
 if test "$enable_opt" = "yes" ; then
 
-   # Add code optimisation flags and tuning to host. This is a funny macro
-   # that does not like CFLAGS being already set. Work around that as we have
-   # at least set it to "", so it is set.
-   ac_test_CFLAGS="no"
-   old_CFLAGS="$CFLAGS"
+   # Choose the best flags for this compiler and architecture
    AX_CC_MAXOPT
-   ac_test_CFLAGS="yes"
-   CFLAGS="$old_CFLAGS $CFLAGS"
 
    # Check SSE & AVX support (some overlap with AX_CC_MAXOPT).
    # Don't use the SIMD_FLAGS result with Intel compilers. The -x<code>

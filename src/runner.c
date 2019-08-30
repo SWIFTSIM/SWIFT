@@ -4934,7 +4934,7 @@ void runner_do_logger(struct runner *r, struct cell *c, int timer) {
   const int count = c->hydro.count;
 
   /* Anything to do here? */
-  if (!cell_is_starting_hydro(c, e) && !cell_is_starting_gravity(c, e)) return;
+  if (!cell_is_active_hydro(c, e) && !cell_is_active_gravity(c, e)) return;
 
   /* Recurse? Avoid spending too much time in useless cells. */
   if (c->split) {
@@ -4952,7 +4952,7 @@ void runner_do_logger(struct runner *r, struct cell *c, int timer) {
       /* If particle needs to be log */
       /* This is the same function than part_is_active, except for
        * debugging checks */
-      if (part_is_starting(p, e)) {
+      if (part_is_active(p, e)) {
 
         if (logger_should_write(&xp->logger_data, e->logger)) {
           /* Write particle */

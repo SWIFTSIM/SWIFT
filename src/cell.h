@@ -755,8 +755,10 @@ struct cell {
   /*! The task to limit the time-step of inactive particles */
   struct task *timestep_limiter;
 
+#ifdef WITH_LOGGER
   /*! The logger task */
   struct task *logger;
+#endif
 
   /*! Minimum dimension, i.e. smallest edge of this cell (min(width)). */
   float dmin;
