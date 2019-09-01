@@ -955,12 +955,11 @@ int main(int argc, char* argv[]) {
     const double r_inv = 1. / sqrt(r2);
     const double r = r2 * r_inv;
     const double eps = r / 10.;
-    const double eps_inv = 1. / eps;
 
     /* Compute all derivatives */
     struct potential_derivatives_M2L pot;
-    potential_derivatives_compute_M2L(dx, dy, dz, r2, r_inv, eps, eps_inv,
-                                      periodic, r_s_inv, &pot);
+    potential_derivatives_compute_M2L(dx, dy, dz, r2, r_inv, eps, periodic,
+                                      r_s_inv, &pot);
 
     /* Minimal value we care about */
     const double min = 1e-9;

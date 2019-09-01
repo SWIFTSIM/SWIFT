@@ -1,3 +1,6 @@
+MetaData:
+  run_name:   EAGLE-L0025N0376-Ref
+
 # Define the system of units to use internally. 
 InternalUnitSystem:
   UnitMass_in_cgs:     1.98848e43    # 10^10 M_sun in grams
@@ -49,10 +52,13 @@ Statistics:
 # Parameters for the self-gravity scheme
 Gravity:
   eta:                    0.025    # Constant dimensionless multiplier for time integration. 
-  theta:                  0.7     # Opening angle (Multipole acceptance criterion)
-  comoving_softening:     0.0026994 # Comoving softening length (in internal units).
-  max_physical_softening: 0.0007    # Physical softening length (in internal units).
+  theta:                  0.7      # Opening angle (Multipole acceptance criterion)
   mesh_side_length:       64
+  comoving_DM_softening:         0.0026994 # Comoving DM softening length (in internal units).
+  max_physical_DM_softening:     0.0007    # Max physical DM softening length (in internal units).
+  comoving_baryon_softening:     0.0026994 # Comoving DM softening length (in internal units).
+  max_physical_baryon_softening: 0.0007    # Max physical DM softening length (in internal units).
+
 
 # Parameters for the hydrodynamics scheme
 SPH:

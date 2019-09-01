@@ -182,12 +182,7 @@ static INLINE void runner_dopair_grav_pp_full(
     const float x_i = ci_cache->x[pid];
     const float y_i = ci_cache->y[pid];
     const float z_i = ci_cache->z[pid];
-
-    /* Some powers of the softening length */
     const float h_i = ci_cache->epsilon[pid];
-    const float h2_i = h_i * h_i;
-    const float h_inv_i = 1.f / h_i;
-    const float h_inv3_i = h_inv_i * h_inv_i * h_inv_i;
 
     /* Local accumulators for the acceleration and potential */
     float a_x = 0.f, a_y = 0.f, a_z = 0.f, pot = 0.f;
@@ -197,6 +192,7 @@ static INLINE void runner_dopair_grav_pp_full(
     swift_align_information(float, cj_cache->y, SWIFT_CACHE_ALIGNMENT);
     swift_align_information(float, cj_cache->z, SWIFT_CACHE_ALIGNMENT);
     swift_align_information(float, cj_cache->m, SWIFT_CACHE_ALIGNMENT);
+    swift_align_information(float, cj_cache->epsilon, SWIFT_CACHE_ALIGNMENT);
     swift_assume_size(gcount_padded_j, VEC_SIZE);
 
     /* Loop over every particle in the other cell. */
@@ -207,6 +203,7 @@ static INLINE void runner_dopair_grav_pp_full(
       const float y_j = cj_cache->y[pjd];
       const float z_j = cj_cache->z[pjd];
       const float mass_j = cj_cache->m[pjd];
+      const float h_j = cj_cache->epsilon[pjd];
 
       /* Compute the pairwise distance. */
       float dx = x_j - x_i;
@@ -222,8 +219,14 @@ static INLINE void runner_dopair_grav_pp_full(
 
       const float r2 = dx * dx + dy * dy + dz * dz;
 
+      /* Pick the maximal softening length of i and j */
+      const float h = max(h_i, h_j);
+      const float h2 = h * h;
+      const float h_inv = 1.f / h;
+      const float h_inv_3 = h_inv * h_inv * h_inv;
+
 #ifdef SWIFT_DEBUG_CHECKS
-      if (r2 == 0.f && h2_i == 0.)
+      if (r2 == 0.f && h2 == 0.)
         error("Interacting particles with 0 distance and 0 softening.");
 
       /* Check that particles have been drifted to the current time */
@@ -249,8 +252,7 @@ static INLINE void runner_dopair_grav_pp_full(
 
       /* Interact! */
       float f_ij, pot_ij;
-      runner_iact_grav_pp_full(r2, h2_i, h_inv_i, h_inv3_i, mass_j, &f_ij,
-                               &pot_ij);
+      runner_iact_grav_pp_full(r2, h2, h_inv, h_inv_3, mass_j, &f_ij, &pot_ij);
 
       /* Store it back */
       a_x += f_ij * dx;
@@ -325,12 +327,7 @@ static INLINE void runner_dopair_grav_pp_truncated(
     const float x_i = ci_cache->x[pid];
     const float y_i = ci_cache->y[pid];
     const float z_i = ci_cache->z[pid];
-
-    /* Some powers of the softening length */
     const float h_i = ci_cache->epsilon[pid];
-    const float h2_i = h_i * h_i;
-    const float h_inv_i = 1.f / h_i;
-    const float h_inv3_i = h_inv_i * h_inv_i * h_inv_i;
 
     /* Local accumulators for the acceleration and potential */
     float a_x = 0.f, a_y = 0.f, a_z = 0.f, pot = 0.f;
@@ -340,6 +337,7 @@ static INLINE void runner_dopair_grav_pp_truncated(
     swift_align_information(float, cj_cache->y, SWIFT_CACHE_ALIGNMENT);
     swift_align_information(float, cj_cache->z, SWIFT_CACHE_ALIGNMENT);
     swift_align_information(float, cj_cache->m, SWIFT_CACHE_ALIGNMENT);
+    swift_align_information(float, cj_cache->epsilon, SWIFT_CACHE_ALIGNMENT);
     swift_assume_size(gcount_padded_j, VEC_SIZE);
 
     /* Loop over every particle in the other cell. */
@@ -350,6 +348,7 @@ static INLINE void runner_dopair_grav_pp_truncated(
       const float y_j = cj_cache->y[pjd];
       const float z_j = cj_cache->z[pjd];
       const float mass_j = cj_cache->m[pjd];
+      const float h_j = cj_cache->epsilon[pjd];
 
       /* Compute the pairwise distance. */
       float dx = x_j - x_i;
@@ -363,8 +362,14 @@ static INLINE void runner_dopair_grav_pp_truncated(
 
       const float r2 = dx * dx + dy * dy + dz * dz;
 
+      /* Pick the maximal softening length of i and j */
+      const float h = max(h_i, h_j);
+      const float h2 = h * h;
+      const float h_inv = 1.f / h;
+      const float h_inv_3 = h_inv * h_inv * h_inv;
+
 #ifdef SWIFT_DEBUG_CHECKS
-      if (r2 == 0.f && h2_i == 0.)
+      if (r2 == 0.f && h2 == 0.)
         error("Interacting particles with 0 distance and 0 softening.");
 
       /* Check that particles have been drifted to the current time */
@@ -390,8 +395,8 @@ static INLINE void runner_dopair_grav_pp_truncated(
 
       /* Interact! */
       float f_ij, pot_ij;
-      runner_iact_grav_pp_truncated(r2, h2_i, h_inv_i, h_inv3_i, mass_j,
-                                    r_s_inv, &f_ij, &pot_ij);
+      runner_iact_grav_pp_truncated(r2, h2, h_inv, h_inv_3, mass_j, r_s_inv,
+                                    &f_ij, &pot_ij);
 
       /* Store it back */
       a_x += f_ij * dx;
@@ -513,12 +518,12 @@ static INLINE void runner_dopair_grav_pm_full(
     const float r_max2 = r_max_j * r_max_j;
     const float theta_crit2 = e->gravity_properties->theta_crit2;
 
-    /* Note: 1.1 to avoid FP rounding false-positives */
-    if (!gravity_M2P_accept(r_max2, theta_crit2 * 1.1, r2))
+    /* Note: 0.99 and 1.1 to avoid FP rounding false-positives */
+    if (!gravity_M2P_accept(r_max2, theta_crit2 * 1.1, r2, 0.99 * h_i))
       error(
           "use_mpole[i] set when M2P accept fails CoM=[%e %e %e] pos=[%e %e "
-          "%e], rmax=%e",
-          CoM_j[0], CoM_j[1], CoM_j[2], x_i, y_i, z_i, r_max_j);
+          "%e], rmax=%e r=%e epsilon=%e",
+          CoM_j[0], CoM_j[1], CoM_j[2], x_i, y_i, z_i, r_max_j, sqrtf(r2), h_i);
 #endif
 
     /* Interact! */
@@ -644,8 +649,8 @@ static INLINE void runner_dopair_grav_pm_truncated(
     const float r_max2 = r_max_j * r_max_j;
     const float theta_crit2 = e->gravity_properties->theta_crit2;
 
-    /* 1.1 to avoid FP rounding false-positives */
-    if (!gravity_M2P_accept(r_max2, theta_crit2 * 1.1, r2))
+    /* 0.99 and 1.1 to avoid FP rounding false-positives */
+    if (!gravity_M2P_accept(r_max2, theta_crit2 * 1.1, r2, 0.99 * h_i))
       error(
           "use_mpole[i] set when M2P accept fails CoM=[%e %e %e] pos=[%e %e "
           "%e], rmax=%e",
@@ -916,12 +921,7 @@ static INLINE void runner_doself_grav_pp_full(
     const float x_i = ci_cache->x[pid];
     const float y_i = ci_cache->y[pid];
     const float z_i = ci_cache->z[pid];
-
-    /* Some powers of the softening length */
     const float h_i = ci_cache->epsilon[pid];
-    const float h2_i = h_i * h_i;
-    const float h_inv_i = 1.f / h_i;
-    const float h_inv3_i = h_inv_i * h_inv_i * h_inv_i;
 
     /* Local accumulators for the acceleration */
     float a_x = 0.f, a_y = 0.f, a_z = 0.f, pot = 0.f;
@@ -931,6 +931,7 @@ static INLINE void runner_doself_grav_pp_full(
     swift_align_information(float, ci_cache->y, SWIFT_CACHE_ALIGNMENT);
     swift_align_information(float, ci_cache->z, SWIFT_CACHE_ALIGNMENT);
     swift_align_information(float, ci_cache->m, SWIFT_CACHE_ALIGNMENT);
+    swift_align_information(float, ci_cache->epsilon, SWIFT_CACHE_ALIGNMENT);
     swift_assume_size(gcount_padded, VEC_SIZE);
 
     /* Loop over every other particle in the cell. */
@@ -944,6 +945,7 @@ static INLINE void runner_doself_grav_pp_full(
       const float y_j = ci_cache->y[pjd];
       const float z_j = ci_cache->z[pjd];
       const float mass_j = ci_cache->m[pjd];
+      const float h_j = ci_cache->epsilon[pjd];
 
       /* Compute the pairwise (square) distance. */
       /* Note: no need for periodic wrapping inside a cell */
@@ -952,8 +954,14 @@ static INLINE void runner_doself_grav_pp_full(
       const float dz = z_j - z_i;
       const float r2 = dx * dx + dy * dy + dz * dz;
 
+      /* Pick the maximal softening length of i and j */
+      const float h = max(h_i, h_j);
+      const float h2 = h * h;
+      const float h_inv = 1.f / h;
+      const float h_inv_3 = h_inv * h_inv * h_inv;
+
 #ifdef SWIFT_DEBUG_CHECKS
-      if (r2 == 0.f && h2_i == 0.)
+      if (r2 == 0.f && h2 == 0.)
         error("Interacting particles with 0 distance and 0 softening.");
 
       /* Check that particles have been drifted to the current time */
@@ -978,8 +986,7 @@ static INLINE void runner_doself_grav_pp_full(
 
       /* Interact! */
       float f_ij, pot_ij;
-      runner_iact_grav_pp_full(r2, h2_i, h_inv_i, h_inv3_i, mass_j, &f_ij,
-                               &pot_ij);
+      runner_iact_grav_pp_full(r2, h2, h_inv, h_inv_3, mass_j, &f_ij, &pot_ij);
 
       /* Store it back */
       a_x += f_ij * dx;
@@ -1039,12 +1046,7 @@ static INLINE void runner_doself_grav_pp_truncated(
     const float x_i = ci_cache->x[pid];
     const float y_i = ci_cache->y[pid];
     const float z_i = ci_cache->z[pid];
-
-    /* Some powers of the softening length */
     const float h_i = ci_cache->epsilon[pid];
-    const float h2_i = h_i * h_i;
-    const float h_inv_i = 1.f / h_i;
-    const float h_inv3_i = h_inv_i * h_inv_i * h_inv_i;
 
     /* Local accumulators for the acceleration and potential */
     float a_x = 0.f, a_y = 0.f, a_z = 0.f, pot = 0.f;
@@ -1054,6 +1056,7 @@ static INLINE void runner_doself_grav_pp_truncated(
     swift_align_information(float, ci_cache->y, SWIFT_CACHE_ALIGNMENT);
     swift_align_information(float, ci_cache->z, SWIFT_CACHE_ALIGNMENT);
     swift_align_information(float, ci_cache->m, SWIFT_CACHE_ALIGNMENT);
+    swift_align_information(float, ci_cache->epsilon, SWIFT_CACHE_ALIGNMENT);
     swift_assume_size(gcount_padded, VEC_SIZE);
 
     /* Loop over every other particle in the cell. */
@@ -1067,6 +1070,7 @@ static INLINE void runner_doself_grav_pp_truncated(
       const float y_j = ci_cache->y[pjd];
       const float z_j = ci_cache->z[pjd];
       const float mass_j = ci_cache->m[pjd];
+      const float h_j = ci_cache->epsilon[pjd];
 
       /* Compute the pairwise (square) distance. */
       /* Note: no need for periodic wrapping inside a cell */
@@ -1076,8 +1080,14 @@ static INLINE void runner_doself_grav_pp_truncated(
 
       const float r2 = dx * dx + dy * dy + dz * dz;
 
+      /* Pick the maximal softening length of i and j */
+      const float h = max(h_i, h_j);
+      const float h2 = h * h;
+      const float h_inv = 1.f / h;
+      const float h_inv_3 = h_inv * h_inv * h_inv;
+
 #ifdef SWIFT_DEBUG_CHECKS
-      if (r2 == 0.f && h2_i == 0.)
+      if (r2 == 0.f && h2 == 0.)
         error("Interacting particles with 0 distance and 0 softening.");
 
       /* Check that particles have been drifted to the current time */
@@ -1102,8 +1112,8 @@ static INLINE void runner_doself_grav_pp_truncated(
 
       /* Interact! */
       float f_ij, pot_ij;
-      runner_iact_grav_pp_truncated(r2, h2_i, h_inv_i, h_inv3_i, mass_j,
-                                    r_s_inv, &f_ij, &pot_ij);
+      runner_iact_grav_pp_truncated(r2, h2, h_inv, h_inv_3, mass_j, r_s_inv,
+                                    &f_ij, &pot_ij);
 
       /* Store it back */
       a_x += f_ij * dx;
@@ -1575,7 +1585,9 @@ static INLINE void runner_dopair_recursive_grav(struct runner *r,
    * option... */
 
   /* Can we use M-M interactions ? */
-  if (gravity_M2L_accept(multi_i->r_max, multi_j->r_max, theta_crit2, r2)) {
+  if (gravity_M2L_accept(multi_i->r_max, multi_j->r_max, theta_crit2, r2,
+                         multi_i->m_pole.max_softening,
+                         multi_j->m_pole.max_softening)) {
 
     /* Go M-M */
     runner_dopair_grav_mm(r, ci, cj);
@@ -1797,7 +1809,9 @@ static INLINE void runner_do_grav_long_range(struct runner *r, struct cell *ci,
 
     /* Are we in charge of this cell pair? */
     if (gravity_M2L_accept(multi_top->r_max_rebuild, multi_j->r_max_rebuild,
-                           theta_crit2, r2_rebuild)) {
+                           theta_crit2, r2_rebuild,
+                           multi_top->m_pole.max_softening,
+                           multi_j->m_pole.max_softening)) {
 
       /* Call the PM interaction fucntion on the active sub-cells of ci */
       runner_dopair_grav_mm_nonsym(r, ci, cj);

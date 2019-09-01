@@ -107,17 +107,19 @@ There are several groups that contain 'auxiliary' information, such as
 the particles. The type use the naming convention of Gadget-2 (with
 the OWLS and EAGLE extensions).
 
-+---------------------+------------------------+----------------------------+
-| HDF5 Group Name     | Physical Particle Type | In code ``enum part_type`` |
-+=====================+========================+============================+
-| ``/PartType0/``     | Gas                    | ``swift_type_gas``         |
-+---------------------+------------------------+----------------------------+
-| ``/PartType1/``     | Dark Matter            | ``swift_type_dark_matter`` |
-+---------------------+------------------------+----------------------------+
-| ``/PartType4/``     | Stars                  | ``swift_type_star``        |
-+---------------------+------------------------+----------------------------+
-| ``/PartType5/``     | Black Holes            | ``swift_type_black_hole``  |
-+---------------------+------------------------+----------------------------+
++---------------------+------------------------+----------------------------------------+
+| HDF5 Group Name     | Physical Particle Type | In code ``enum part_type``             |
++=====================+========================+========================================+
+| ``/PartType0/``     | Gas                    | ``swift_type_gas``                     |
++---------------------+------------------------+----------------------------------------+
+| ``/PartType1/``     | Dark Matter            | ``swift_type_dark_matter``             |
++---------------------+------------------------+----------------------------------------+
+| ``/PartType2/``     | Background Dark Matter | ``swift_type_dark_matter_background``  |
++---------------------+------------------------+----------------------------------------+
+| ``/PartType4/``     | Stars                  | ``swift_type_star``                    |
++---------------------+------------------------+----------------------------------------+
+| ``/PartType5/``     | Black Holes            | ``swift_type_black_hole``              |
++---------------------+------------------------+----------------------------------------+
 
 The last column in the table gives the ``enum`` value from ``part_type.h``
 corresponding to a given entry in the files.

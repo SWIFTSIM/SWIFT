@@ -41,12 +41,11 @@ Statistics:
 
 # Parameters for the self-gravity scheme
 Gravity:
-  mesh_side_length:       32
   eta:                    0.025     # Constant dimensionless multiplier for time integration.
   theta:                  0.7       # Opening angle (Multipole acceptance criterion)
-  comoving_softening:     0.0026994 # Comoving softening length (in internal units).
-  max_physical_softening: 0.0007    # Physical softening length (in internal units).
   mesh_side_length:       32
+  comoving_DM_softening:         0.0026994 # Comoving DM softening length (in internal units).
+  max_physical_DM_softening:     0.0007    # Max physical DM softening length (in internal units).
 
 # Parameters related to the initial conditions
 InitialConditions:

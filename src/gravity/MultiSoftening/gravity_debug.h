@@ -16,24 +16,22 @@
  * along with this program.  If not, see <http://www.gnu.org/licenses/>.
  *
  ******************************************************************************/
-#ifndef SWIFT_GRAVITY_IO_H
-#define SWIFT_GRAVITY_IO_H
+#ifndef SWIFT_MULTI_SOFTENING_GRAVITY_DEBUG_H
+#define SWIFT_MULTI_SOFTENING_GRAVITY_DEBUG_H
 
-/* Config parameters. */
-#include "../config.h"
-
-/* Local headers. */
-#include "./const.h"
-
-/* Import the right functions */
-#if defined(DEFAULT_GRAVITY)
-#include "./gravity/Default/gravity_io.h"
-#elif defined(POTENTIAL_GRAVITY)
-#include "./gravity/Potential/gravity_io.h"
-#elif defined(MULTI_SOFTENING_GRAVITY)
-#include "./gravity/MultiSoftening/gravity_io.h"
-#else
-#error "Invalid choice of gravity variant"
+__attribute__((always_inline)) INLINE static void gravity_debug_particle(
+    const struct gpart* p) {
+  printf(
+      "mass=%.3e time_bin=%d\n"
+      "x=[%.5e,%.5e,%.5e], v_full=[%.5e,%.5e,%.5e], type=%d, "
+      "a=[%.5e,%.5e,%.5e], pot=%.5e\n",
+      p->mass, p->time_bin, p->x[0], p->x[1], p->x[2], p->v_full[0],
+      p->v_full[1], p->v_full[2], (int)p->type, p->a_grav[0], p->a_grav[1],
+      p->a_grav[2], p->potential);
+#ifdef SWIFT_DEBUG_CHECKS
+  printf("num_interacted=%lld ti_drift=%lld ti_kick=%lld\n", p->num_interacted,
+         p->ti_drift, p->ti_kick);
 #endif
+}
 
-#endif /* SWIFT_GRAVITY_IO_H */
+#endif /* SWIFT_MULTI_SOFTENING_GRAVITY_DEBUG_H */

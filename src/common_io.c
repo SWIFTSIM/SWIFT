@@ -24,7 +24,7 @@
 /* This object's header. */
 #include "common_io.h"
 
-/* First common header */
+/* Pre-inclusion as needed in other headers */
 #include "engine.h"
 
 /* Local includes. */
@@ -422,6 +422,21 @@ static long long cell_count_non_inhibited_dark_matter(const struct cell* c) {
   return count;
 }
 
+static long long cell_count_non_inhibited_background_dark_matter(
+    const struct cell* c) {
+  const int total_count = c->grav.count;
+  struct gpart* gparts = c->grav.parts;
+  long long count = 0;
+  for (int i = 0; i < total_count; ++i) {
+    if ((gparts[i].time_bin != time_bin_inhibited) &&
+        (gparts[i].time_bin != time_bin_not_created) &&
+        (gparts[i].type == swift_type_dark_matter_background)) {
+      ++count;
+    }
+  }
+  return count;
+}
+
 static long long cell_count_non_inhibited_stars(const struct cell* c) {
   const int total_count = c->stars.count;
   struct spart* sparts = c->stars.parts;
@@ -463,30 +478,36 @@ void io_write_cell_offsets(hid_t h_grp, const int cdim[3],
   centres = (double*)malloc(3 * nr_cells * sizeof(double));
 
   /* Count of particles in each cell */
-  long long *count_part = NULL, *count_gpart = NULL, *count_spart = NULL,
+  long long *count_part = NULL, *count_gpart = NULL,
+            *count_background_gpart = NULL, *count_spart = NULL,
             *count_bpart = NULL;
   count_part = (long long*)malloc(nr_cells * sizeof(long long));
   count_gpart = (long long*)malloc(nr_cells * sizeof(long long));
+  count_background_gpart = (long long*)malloc(nr_cells * sizeof(long long));
   count_spart = (long long*)malloc(nr_cells * sizeof(long long));
   count_bpart = (long long*)malloc(nr_cells * sizeof(long long));
 
   /* Global offsets of particles in each cell */
-  long long *offset_part = NULL, *offset_gpart = NULL, *offset_spart = NULL,
+  long long *offset_part = NULL, *offset_gpart = NULL,
+            *offset_background_gpart = NULL, *offset_spart = NULL,
             *offset_bpart = NULL;
   offset_part = (long long*)malloc(nr_cells * sizeof(long long));
   offset_gpart = (long long*)malloc(nr_cells * sizeof(long long));
+  offset_background_gpart = (long long*)malloc(nr_cells * sizeof(long long));
   offset_spart = (long long*)malloc(nr_cells * sizeof(long long));
   offset_bpart = (long long*)malloc(nr_cells * sizeof(long long));
 
   /* Offsets of the 0^th element */
   offset_part[0] = 0;
   offset_gpart[0] = 0;
+  offset_background_gpart[0] = 0;
   offset_spart[0] = 0;
   offset_bpart[0] = 0;
 
   /* Collect the cell information of *local* cells */
   long long local_offset_part = 0;
   long long local_offset_gpart = 0;
+  long long local_offset_background_gpart = 0;
   long long local_offset_spart = 0;
   long long local_offset_bpart = 0;
   for (int i = 0; i < nr_cells; ++i) {
@@ -501,6 +522,8 @@ void io_write_cell_offsets(hid_t h_grp, const int cdim[3],
       /* Count real particles that will be written */
       count_part[i] = cell_count_non_inhibited_gas(&cells_top[i]);
       count_gpart[i] = cell_count_non_inhibited_dark_matter(&cells_top[i]);
+      count_background_gpart[i] =
+          cell_count_non_inhibited_background_dark_matter(&cells_top[i]);
       count_spart[i] = cell_count_non_inhibited_stars(&cells_top[i]);
       count_bpart[i] = cell_count_non_inhibited_black_holes(&cells_top[i]);
 
@@ -509,12 +532,16 @@ void io_write_cell_offsets(hid_t h_grp, const int cdim[3],
       offset_part[i] = local_offset_part + global_offsets[swift_type_gas];
       offset_gpart[i] =
           local_offset_gpart + global_offsets[swift_type_dark_matter];
+      offset_background_gpart[i] =
+          local_offset_background_gpart +
+          global_offsets[swift_type_dark_matter_background];
       offset_spart[i] = local_offset_spart + global_offsets[swift_type_stars];
       offset_bpart[i] =
           local_offset_bpart + global_offsets[swift_type_black_hole];
 
       local_offset_part += count_part[i];
       local_offset_gpart += count_gpart[i];
+      local_offset_background_gpart += count_background_gpart[i];
       local_offset_spart += count_spart[i];
       local_offset_bpart += count_bpart[i];
 
@@ -528,11 +555,13 @@ void io_write_cell_offsets(hid_t h_grp, const int cdim[3],
 
       count_part[i] = 0;
       count_gpart[i] = 0;
+      count_background_gpart[i] = 0;
       count_spart[i] = 0;
       count_bpart[i] = 0;
 
       offset_part[i] = 0;
       offset_gpart[i] = 0;
+      offset_background_gpart[i] = 0;
       offset_spart[i] = 0;
       offset_bpart[i] = 0;
     }
@@ -548,13 +577,19 @@ void io_write_cell_offsets(hid_t h_grp, const int cdim[3],
     MPI_Reduce(count_part, NULL, nr_cells, MPI_LONG_LONG_INT, MPI_BOR, 0,
                MPI_COMM_WORLD);
   }
-
   if (nodeID == 0) {
     MPI_Reduce(MPI_IN_PLACE, count_gpart, nr_cells, MPI_LONG_LONG_INT, MPI_BOR,
                0, MPI_COMM_WORLD);
   } else {
     MPI_Reduce(count_gpart, NULL, nr_cells, MPI_LONG_LONG_INT, MPI_BOR, 0,
                MPI_COMM_WORLD);
+  }
+  if (nodeID == 0) {
+    MPI_Reduce(MPI_IN_PLACE, count_background_gpart, nr_cells,
+               MPI_LONG_LONG_INT, MPI_BOR, 0, MPI_COMM_WORLD);
+  } else {
+    MPI_Reduce(count_background_gpart, NULL, nr_cells, MPI_LONG_LONG_INT,
+               MPI_BOR, 0, MPI_COMM_WORLD);
   }
   if (nodeID == 0) {
     MPI_Reduce(MPI_IN_PLACE, count_spart, nr_cells, MPI_LONG_LONG_INT, MPI_BOR,
@@ -584,6 +619,13 @@ void io_write_cell_offsets(hid_t h_grp, const int cdim[3],
   } else {
     MPI_Reduce(offset_gpart, NULL, nr_cells, MPI_LONG_LONG_INT, MPI_BOR, 0,
                MPI_COMM_WORLD);
+  }
+  if (nodeID == 0) {
+    MPI_Reduce(MPI_IN_PLACE, offset_background_gpart, nr_cells,
+               MPI_LONG_LONG_INT, MPI_BOR, 0, MPI_COMM_WORLD);
+  } else {
+    MPI_Reduce(offset_background_gpart, NULL, nr_cells, MPI_LONG_LONG_INT,
+               MPI_BOR, 0, MPI_COMM_WORLD);
   }
   if (nodeID == 0) {
     MPI_Reduce(MPI_IN_PLACE, offset_spart, nr_cells, MPI_LONG_LONG_INT, MPI_BOR,
@@ -700,6 +742,28 @@ void io_write_cell_offsets(hid_t h_grp, const int cdim[3],
       H5Sclose(h_space);
     }
 
+    if (global_counts[swift_type_dark_matter_background] > 0) {
+
+      shape[0] = nr_cells;
+      shape[1] = 1;
+      h_space = H5Screate(H5S_SIMPLE);
+      if (h_space < 0)
+        error("Error while creating data space for background DM offsets");
+      h_err = H5Sset_extent_simple(h_space, 1, shape, shape);
+      if (h_err < 0)
+        error(
+            "Error while changing shape of background DM offsets data space.");
+      h_data = H5Dcreate(h_subgrp, "PartType2", io_hdf5_type(LONGLONG), h_space,
+                         H5P_DEFAULT, H5P_DEFAULT, H5P_DEFAULT);
+      if (h_data < 0)
+        error("Error while creating dataspace for background DM offsets.");
+      h_err = H5Dwrite(h_data, io_hdf5_type(LONGLONG), h_space, H5S_ALL,
+                       H5P_DEFAULT, offset_background_gpart);
+      if (h_err < 0) error("Error while writing background DM offsets.");
+      H5Dclose(h_data);
+      H5Sclose(h_space);
+    }
+
     if (global_counts[swift_type_stars] > 0) {
 
       shape[0] = nr_cells;
@@ -786,6 +850,27 @@ void io_write_cell_offsets(hid_t h_grp, const int cdim[3],
       H5Sclose(h_space);
     }
 
+    if (global_counts[swift_type_dark_matter_background] > 0) {
+
+      shape[0] = nr_cells;
+      shape[1] = 1;
+      h_space = H5Screate(H5S_SIMPLE);
+      if (h_space < 0)
+        error("Error while creating data space for background DM counts");
+      h_err = H5Sset_extent_simple(h_space, 1, shape, shape);
+      if (h_err < 0)
+        error("Error while changing shape of background DM counts data space.");
+      h_data = H5Dcreate(h_subgrp, "PartType2", io_hdf5_type(LONGLONG), h_space,
+                         H5P_DEFAULT, H5P_DEFAULT, H5P_DEFAULT);
+      if (h_data < 0)
+        error("Error while creating dataspace for background DM counts.");
+      h_err = H5Dwrite(h_data, io_hdf5_type(LONGLONG), h_space, H5S_ALL,
+                       H5P_DEFAULT, count_background_gpart);
+      if (h_err < 0) error("Error while writing background DM counts.");
+      H5Dclose(h_data);
+      H5Sclose(h_space);
+    }
+
     if (global_counts[swift_type_stars] > 0) {
 
       shape[0] = nr_cells;
@@ -834,10 +919,12 @@ void io_write_cell_offsets(hid_t h_grp, const int cdim[3],
   free(centres);
   free(count_part);
   free(count_gpart);
+  free(count_background_gpart);
   free(count_spart);
   free(count_bpart);
   free(offset_part);
   free(offset_gpart);
+  free(offset_background_gpart);
   free(offset_spart);
   free(offset_bpart);
 }
@@ -1313,29 +1400,6 @@ void io_copy_temp_buffer(void* temp, const struct engine* e,
       threadpool_map((struct threadpool*)&e->threadpool,
                      io_convert_gpart_f_mapper, temp_f, N, copySize, 0,
                      (void*)&props);
-    } else if (props.convert_gpart_i != NULL) {
-
-      /* Prepare some parameters */
-      int* temp_i = (int*)temp;
-      props.start_temp_i = (int*)temp;
-      props.e = e;
-
-      /* Copy the whole thing into a buffer */
-      threadpool_map((struct threadpool*)&e->threadpool,
-                     io_convert_gpart_i_mapper, temp_i, N, copySize, 0,
-                     (void*)&props);
-
-    } else if (props.convert_gpart_i != NULL) {
-
-      /* Prepare some parameters */
-      int* temp_i = (int*)temp;
-      props.start_temp_i = (int*)temp;
-      props.e = e;
-
-      /* Copy the whole thing into a buffer */
-      threadpool_map((struct threadpool*)&e->threadpool,
-                     io_convert_gpart_i_mapper, temp_i, N, copySize, 0,
-                     (void*)&props);
 
     } else if (props.convert_gpart_i != NULL) {
 
@@ -1383,29 +1447,6 @@ void io_copy_temp_buffer(void* temp, const struct engine* e,
       /* Copy the whole thing into a buffer */
       threadpool_map((struct threadpool*)&e->threadpool,
                      io_convert_spart_f_mapper, temp_f, N, copySize, 0,
-                     (void*)&props);
-    } else if (props.convert_spart_i != NULL) {
-
-      /* Prepare some parameters */
-      int* temp_i = (int*)temp;
-      props.start_temp_i = (int*)temp;
-      props.e = e;
-
-      /* Copy the whole thing into a buffer */
-      threadpool_map((struct threadpool*)&e->threadpool,
-                     io_convert_spart_i_mapper, temp_i, N, copySize, 0,
-                     (void*)&props);
-
-    } else if (props.convert_spart_i != NULL) {
-
-      /* Prepare some parameters */
-      int* temp_i = (int*)temp;
-      props.start_temp_i = (int*)temp;
-      props.e = e;
-
-      /* Copy the whole thing into a buffer */
-      threadpool_map((struct threadpool*)&e->threadpool,
-                     io_convert_spart_i_mapper, temp_i, N, copySize, 0,
                      (void*)&props);
 
     } else if (props.convert_spart_i != NULL) {
@@ -1549,6 +1590,56 @@ void io_prepare_dm_gparts(struct threadpool* tp, struct gpart* const gparts,
 
   threadpool_map(tp, io_prepare_dm_gparts_mapper, gparts, Ndm,
                  sizeof(struct gpart), 0, NULL);
+}
+
+void io_prepare_dm_background_gparts_mapper(void* restrict data, int Ndm,
+                                            void* dummy) {
+
+  struct gpart* restrict gparts = (struct gpart*)data;
+
+  /* Let's give all these gparts a negative id */
+  for (int i = 0; i < Ndm; ++i) {
+
+    /* Negative ids are not allowed */
+    if (gparts[i].id_or_neg_offset < 0)
+      error("Negative ID for DM particle %i: ID=%lld", i,
+            gparts[i].id_or_neg_offset);
+
+    /* Set gpart type */
+    gparts[i].type = swift_type_dark_matter_background;
+  }
+}
+
+/**
+ * @brief Prepare the DM backgorund particles (in gparts) read in
+ * for the addition of the other particle types
+ *
+ * This function assumes that the DM particles are all at the start of the
+ * gparts array and that the background particles directly follow them.
+ *
+ * @param tp The current #threadpool.
+ * @param gparts The array of #gpart freshly read in.
+ * @param Ndm The number of DM particles read in.
+ */
+void io_prepare_dm_background_gparts(struct threadpool* tp,
+                                     struct gpart* const gparts, size_t Ndm) {
+
+  threadpool_map(tp, io_prepare_dm_background_gparts_mapper, gparts, Ndm,
+                 sizeof(struct gpart), 0, NULL);
+}
+
+size_t io_count_dm_background_gparts(const struct gpart* const gparts,
+                                     const size_t Ndm) {
+
+  swift_declare_aligned_ptr(const struct gpart, gparts_array, gparts,
+                            gpart_align);
+
+  size_t count = 0;
+  for (size_t i = 0; i < Ndm; ++i) {
+    if (gparts[i].type == swift_type_dark_matter_background) ++count;
+  }
+
+  return count;
 }
 
 struct duplication_data {
@@ -1846,7 +1937,8 @@ void io_collect_bparts_to_write(const struct bpart* restrict bparts,
 }
 
 /**
- * @brief Copy every non-inhibited DM #gpart into the gparts_written array.
+ * @brief Copy every non-inhibited regulat DM #gpart into the gparts_written
+ * array.
  *
  * @param gparts The array of #gpart containing all particles.
  * @param vr_data The array of gpart-related VELOCIraptor output.
@@ -1889,17 +1981,57 @@ void io_collect_gparts_to_write(
 }
 
 /**
+ * @brief Copy every non-inhibited background DM #gpart into the gparts_written
+ * array.
+ *
+ * @param gparts The array of #gpart containing all particles.
+ * @param vr_data The array of gpart-related VELOCIraptor output.
+ * @param gparts_written The array of #gpart to fill with particles we want to
+ * write.
+ * @param vr_data_written The array of gpart-related VELOCIraptor with particles
+ * we want to write.
+ * @param Ngparts The total number of #part.
+ * @param Ngparts_written The total number of #part to write.
+ * @param with_stf Are we running with STF? i.e. do we want to collect vr data?
+ */
+void io_collect_gparts_background_to_write(
+    const struct gpart* restrict gparts,
+    const struct velociraptor_gpart_data* restrict vr_data,
+    struct gpart* restrict gparts_written,
+    struct velociraptor_gpart_data* restrict vr_data_written,
+    const size_t Ngparts, const size_t Ngparts_written, const int with_stf) {
+
+  size_t count = 0;
+
+  /* Loop over all parts */
+  for (size_t i = 0; i < Ngparts; ++i) {
+
+    /* And collect the ones that have not been removed */
+    if ((gparts[i].time_bin != time_bin_inhibited) &&
+        (gparts[i].time_bin != time_bin_not_created) &&
+        (gparts[i].type == swift_type_dark_matter_background)) {
+
+      if (with_stf) vr_data_written[count] = vr_data[i];
+
+      gparts_written[count] = gparts[i];
+      count++;
+    }
+  }
+
+  /* Check that everything is fine */
+  if (count != Ngparts_written)
+    error("Collected the wrong number of g-particles (%zu vs. %zu expected)",
+          count, Ngparts_written);
+}
+
+/**
  * @brief Verify the io parameter file
  *
  * @param params The #swift_params
  * @param N_total The total number of each particle type.
  */
 void io_check_output_fields(const struct swift_params* params,
-                            const long long N_total[3]) {
-
-  /* Copy N_total to array with length == 6 */
-  const long long nr_total[swift_type_count] = {N_total[0], N_total[1], 0,
-                                                0,          N_total[2], 0};
+                            const long long N_total[swift_type_count]) {
 
   /* Loop over all particle types to check the fields */
   for (int ptype = 0; ptype < swift_type_count; ptype++) {
@@ -1908,7 +2040,7 @@ void io_check_output_fields(const struct swift_params* params,
     struct io_props list[100];
 
     /* Don't do anything if no particle of this kind */
-    if (nr_total[ptype] == 0) continue;
+    if (N_total[ptype] == 0) continue;
 
     /* Gather particle fields from the particle structures */
     switch (ptype) {
@@ -1927,6 +2059,12 @@ void io_check_output_fields(const struct swift_params* params,
         break;
 
       case swift_type_dark_matter:
+        darkmatter_write_particles(NULL, list, &num_fields);
+        num_fields += fof_write_gparts(NULL, list + num_fields);
+        num_fields += velociraptor_write_gparts(NULL, list + num_fields);
+        break;
+
+      case swift_type_dark_matter_background:
         darkmatter_write_particles(NULL, list, &num_fields);
         num_fields += fof_write_gparts(NULL, list + num_fields);
         num_fields += velociraptor_write_gparts(NULL, list + num_fields);
@@ -2040,6 +2178,12 @@ void io_write_output_field_parameter(const char* filename) {
         break;
 
       case swift_type_dark_matter:
+        darkmatter_write_particles(NULL, list, &num_fields);
+        num_fields += fof_write_gparts(NULL, list + num_fields);
+        num_fields += velociraptor_write_gparts(NULL, list + num_fields);
+        break;
+
+      case swift_type_dark_matter_background:
         darkmatter_write_particles(NULL, list, &num_fields);
         num_fields += fof_write_gparts(NULL, list + num_fields);
         num_fields += velociraptor_write_gparts(NULL, list + num_fields);
