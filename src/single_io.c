@@ -385,6 +385,7 @@ void writeArray(const struct engine* e, hid_t grp, char* fileName,
  * @param with_gravity Are we reading/creating #gpart arrays ?
  * @param with_stars Are we reading star particles ?
  * @param with_black_hole Are we reading black hole particles ?
+ * @param with_cosmology Are we running with cosmology ?
  * @param cleanup_h Are we cleaning-up h-factors from the quantities we read?
  * @param cleanup_sqrt_a Are we cleaning-up the sqrt(a) factors in the Gadget
  * IC velocities?
@@ -407,8 +408,8 @@ void read_ic_single(const char* fileName,
                     size_t* Ngparts, size_t* Ngparts_background, size_t* Nstars,
                     size_t* Nblackholes, int* flag_entropy, int with_hydro,
                     int with_gravity, int with_stars, int with_black_holes,
-                    int cleanup_h, int cleanup_sqrt_a, double h, double a,
-                    int n_threads, int dry_run) {
+                    int with_cosmology, int cleanup_h, int cleanup_sqrt_a,
+                    double h, double a, int n_threads, int dry_run) {
 
   hid_t h_file = 0, h_grp = 0;
   /* GADGET has only cubic boxes (in cosmological mode) */
@@ -467,6 +468,13 @@ void read_ic_single(const char* fileName,
   io_read_attribute(h_grp, "NumPart_Total", LONGLONG, numParticles);
   io_read_attribute(h_grp, "NumPart_Total_HighWord", LONGLONG,
                     numParticles_highWord);
+
+  /* Check that the user is not doing something silly when they e.g. restart
+   * from a snapshot by asserting that the current scale-factor (from
+   * parameter file) and the redshift in the header are consistent */
+  if (with_cosmology) {
+    io_assert_valid_header_cosmology(h_grp, a);
+  }
 
   for (int ptype = 0; ptype < swift_type_count; ++ptype)
     N[ptype] = (numParticles[ptype]) + (numParticles_highWord[ptype] << 32);

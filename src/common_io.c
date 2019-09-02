@@ -30,6 +30,7 @@
 /* Local includes. */
 #include "black_holes_io.h"
 #include "chemistry_io.h"
+#include "const.h"
 #include "cooling_io.h"
 #include "error.h"
 #include "fof_io.h"
@@ -136,6 +137,85 @@ void io_read_attribute(hid_t grp, const char* name, enum IO_DATA_TYPE type,
   if (h_err < 0) error("Error while reading attribute '%s'", name);
 
   H5Aclose(h_attr);
+}
+
+/**
+ * @brief Reads an attribute from a given HDF5 group.
+ *
+ * @param grp The group from which to read.
+ * @param name The name of the attribute to read.
+ * @param type The #IO_DATA_TYPE of the attribute.
+ * @param data (output) The attribute read from the HDF5 group.
+ *
+ * Exits gracefully (i.e. does not read the attribute at all) if
+ * it is not present, unless debugging checks are activated. If they are,
+ * and the read fails, we print a warning.
+ */
+void io_read_attribute_graceful(hid_t grp, const char* name,
+                                enum IO_DATA_TYPE type, void* data) {
+
+  /* First, we need to check if this attribute exists to avoid raising errors
+   * within the HDF5 library if we attempt to access an attribute that does
+   * not exist. */
+  const htri_t h_exists = H5Aexists(grp, name);
+
+  if (h_exists <= 0) {
+  /* Attribute either does not exist (0) or function failed (-ve) */
+#ifdef SWIFT_DEBUG_CHECKS
+    message("WARNING: attribute '%s' does not exist.", name);
+#endif
+  } else {
+    /* Ok, now we know that it exists we can read it. */
+    const hid_t h_attr = H5Aopen(grp, name, H5P_DEFAULT);
+
+    if (h_attr >= 0) {
+      const hid_t h_err = H5Aread(h_attr, io_hdf5_type(type), data);
+      if (h_err < 0) {
+      /* Explicitly do nothing unless debugging checks are activated */
+#ifdef SWIFT_DEBUG_CHECKS
+        message("WARNING: unable to read attribute '%s'", name);
+#endif
+      }
+    } else {
+#ifdef SWIFT_DEBUG_CHECKS
+      if (h_attr < 0) {
+        message("WARNING: was unable to open attribute '%s'", name);
+      }
+#endif
+    }
+
+    H5Aclose(h_attr);
+  }
+}
+
+/**
+ * @brief Asserts that the redshift in the initial conditions and the one
+ *        specified by the parameter file match.
+ *
+ * @param h_grp The Header group from the ICs
+ * @param a Current scale factor as specified by parameter file
+ */
+void io_assert_valid_header_cosmology(hid_t h_grp, double a) {
+
+  double redshift_from_snapshot = -1.0;
+  io_read_attribute_graceful(h_grp, "Redshift", DOUBLE,
+                             &redshift_from_snapshot);
+
+  /* If the Header/Redshift value is not present, then we skip this check */
+  if (redshift_from_snapshot == -1.0) {
+    return;
+  }
+
+  const double current_redshift = 1.0 / a - 1.0;
+  const double redshift_fractional_difference =
+      fabs(redshift_from_snapshot - current_redshift) / current_redshift;
+
+  if (redshift_fractional_difference >= io_redshift_tolerance) {
+    error(
+        "Initial redshift specified in parameter file (%lf) and redshift "
+        "read from initial conditions (%lf) are inconsistent.",
+        current_redshift, redshift_from_snapshot);
+  }
 }
 
 /**
