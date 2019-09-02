@@ -1028,6 +1028,7 @@ void scheduler_splittasks_mapper(void *map_data, int num_elements,
  * @param s The #scheduler.
  * @param fof_tasks Are we splitting the FOF tasks (1)? Or the regular tasks
  * (0)?
+ * @param verbose Are we talkative?
  */
 void scheduler_splittasks(struct scheduler *s, const int fof_tasks,
                           const int verbose) {
