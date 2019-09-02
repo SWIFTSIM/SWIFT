@@ -101,10 +101,14 @@ struct potential_derivatives_M2P {
 
   /* 1st order terms */
   float D_100, D_010, D_001;
+#endif
+#if SELF_GRAVITY_MULTIPOLE_ORDER > 0
 
   /* 2nd order terms */
   float D_200, D_020, D_002;
   float D_110, D_101, D_011;
+#endif
+#if SELF_GRAVITY_MULTIPOLE_ORDER > 1
 
   /* 3rd order terms */
   float D_300, D_030, D_003;
@@ -112,8 +116,8 @@ struct potential_derivatives_M2P {
   float D_120, D_021;
   float D_102, D_012;
   float D_111;
-
-#if SELF_GRAVITY_MULTIPOLE_ORDER > 3
+#endif
+#if SELF_GRAVITY_MULTIPOLE_ORDER > 2
 
   /* 4th order terms */
   float D_400, D_040, D_004;
@@ -122,6 +126,17 @@ struct potential_derivatives_M2P {
   float D_103, D_013;
   float D_220, D_202, D_022;
   float D_211, D_121, D_112;
+#endif
+#if SELF_GRAVITY_MULTIPOLE_ORDER > 3
+
+  /* 5th order terms */
+  float D_005, D_014, D_023;
+  float D_032, D_041, D_050;
+  float D_104, D_113, D_122;
+  float D_131, D_140, D_203;
+  float D_212, D_221, D_230;
+  float D_302, D_311, D_320;
+  float D_401, D_410, D_500;
 #endif
 };
 
