@@ -274,6 +274,103 @@ simulation:
 SPH
 ---
 
+The ``SPH`` section is used to set parameters that describe the SPH
+calculations. There are some scheme-specific values that are detailed in the
+:ref:`hydro` section. The common parameters are detailed below.
+
+In all cases, users have to specify two values:
+
+* The smoothing length in terms of mean inter-particle separation:
+  ``resolution_eta``
+* The CFL condition that enters the time-step calculation: ``CFL_condition``
+
+These quantities are dimensionless. The first, ``resolution_eta``, specifies
+how smooth the simulation should be, and is used here instead of the number
+of neighbours to smooth over as this also takes into account non-uniform
+particle distributions. A value of 1.2348 gives approximately 48 neighbours
+in 3D with the cubic spline kernel. More information on the choices behind
+these parameters can be found in
+`Dehnen & Aly 2012 <https://ui.adsabs.harvard.edu/abs/2012MNRAS.425.1068D/>`_.
+
+
+The second quantity, the CFL condition, specifies how accurate the time
+integration should be and enters as a pre-factor into the hydrodynamics
+time-step calculation. This factor should be strictly bounded by 0 and 1, and
+typically takes a value of 0.1 for SPH calculations.
+
+The next set of parameters deal with the calculation of the smoothing lengths
+directly and are all optional:
+
+* The (relative) tolerance to converge smoothing lengths within:
+  ``h_tolerance`` (Default: 1e-4)
+* The maximal smoothing length in internal units: ``h_max`` (Default: FLT_MAX)
+* The minimal allowed smoothing length in terms of the gravitational
+  softening: ``h_min_ratio`` (Default: 0.0, i.e. no minimum)
+* The maximal (relative) allowed change in volume over one time-step:
+  ``max_volume_change`` (Default: 1.4)
+* The maximal number of iterations allowed to converge the smoothing
+  lengths: ``max_ghost_iterations`` (Default: 30)
+
+These parameters all set the accuracy of the smoothing lengths in various
+ways. The first, the relative tolerance for the smoothing length, specifies
+the convergence criteria for the smoothing length when using the
+Newton-Raphson scheme. This works with the maximal number of iterations,
+``max_ghost_iterations`` (so called because the smoothing length calculation
+occurs in the ghost task), to ensure that the values of the smoothing lengths
+are consistent with the local number density. We solve:
+
+.. math::
+   (\eta h_i)^{n_D} = n_i^{-1}
+
+with :math:`h` the smoothing length, :math:`n_D` the number of spatial
+dimensions, :math:`\eta` the value of ``resolution_eta``, and :math:`n_i` the
+local number density. We change the value of the smoothing length, :math:`h`,
+to be consistent with the number density.
+
+The maximal smoothing length, by default, is set to ``FLT_MAX``, and if set
+prevents the smoothing length from going beyond ``h_max`` (in internal units)
+during the run, irrespective of the above equation. The minimal smoothing
+length is set in terms of the gravitational softening, ``h_min_ratio``, to
+prevent the smoothing length from going below this value in dense
+environments. This will lead to smoothing over more particles than specified
+by :math:`\eta`.
+
+The final set of parameters in this section determine the initial and minimum
+temperatures of the particles.
+
+* The initial temperature of all particles: ``initial_temperature`` (Default:
+  InternalEnergy from the initial conditions)
+* The minimal temperature of any particle: ``minimal_temperature`` (Default: 0)
+* The mass fraction of hydrogen used to set the initial temperature:
+  ``H_mass_fraction`` (Default: 0.755)
+* The ionization temperature (from neutral to ionized) for primordial gas,
+  again used in this conversion: ``H_ionization_temperature`` (Default: 1e4)
+
+These parameters, if not present, are set to the default values. The initial
+temperature is used, along with the hydrogen mass fraction and ionization
+temperature, to set the initial internal energy per unit mass (or entropy per
+unit mass) of the particles.
+
+Throughout the run, if the temperature of a particle drops below
+``minimal_temperature``, the particle has energy added to it such that it
+remains at that temperature. The run is not terminated prematurely. The
+temperatures specified in this section are in internal units.
+
+The full section to start a typical cosmological run would be:
+
+.. code:: YAML
+
+   SPH:
+     resolution_eta:           1.2
+     CFL_condition:            0.1
+     h_tolerance:              1e-4
+     h_min_ratio:              0.1
+     initial_temperature:      273
+     minimal_temperature:      100
+     H_mass_fraction:          0.755
+     H_ionization_temperature: 1e4
+
+
 .. _Parameters_time_integration:
 
 Time Integration
@@ -313,7 +410,9 @@ end scale-factors in the cosmology section of the parameter file.
 Additionally, when running a cosmological volume, advanced users can specify the
 value of the dimensionless pre-factor entering the time-step condition linked
 with the motion of particles with respect to the background expansion and mesh
-size. See the theory document for the exact equations.
+size. See the theory document for the exact equations. Note that we explicitly
+ignore the ``Header/Time`` attribute in initial conditions files, and only read
+the start and end times or scale factors from the parameter file.
 
 * Dimensionless pre-factor of the maximal allowed displacement:
   ``max_dt_RMS_factor`` (default: ``0.25``)

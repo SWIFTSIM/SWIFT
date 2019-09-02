@@ -123,8 +123,8 @@ GADGET-2 based analysis programs:
   this to 1. If this field is present in a SWIFT IC file and has a
   value different from 1, the code will return an error message.
 + ``Time``, time of the start of the simulation in internal units or expressed
-  as a scale-factor for cosmological runs. SWIFT ignores this and reads it from
-  the parameter file.
+  as a scale-factor for cosmological runs. **SWIFT ignores this and reads it
+  from the parameter file**, behaviour that matches the GADGET-2 code.
 
 
 Particle Data
