@@ -5415,6 +5415,7 @@ void space_clean(struct space *s) {
   swift_free("xparts", s->xparts);
   swift_free("gparts", s->gparts);
   swift_free("sparts", s->sparts);
+  swift_free("bparts", s->bparts);
 }
 
 /**
