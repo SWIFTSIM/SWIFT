@@ -41,9 +41,9 @@ void read_ic_serial(char* fileName, const struct unit_system* internal_units,
                     size_t* Ngparts, size_t* Ngparts_background, size_t* Nstars,
                     size_t* Nblackholes, int* flag_entropy, int with_hydro,
                     int with_gravity, int with_stars, int with_black_holes,
-                    int cleanup_h, int cleanup_sqrt_a, double h, double a,
-                    int mpi_rank, int mpi_size, MPI_Comm comm, MPI_Info info,
-                    int n_threads, int dry_run);
+                    int with_cosmology, int cleanup_h, int cleanup_sqrt_a,
+                    double h, double a, int mpi_rank, int mpi_size,
+                    MPI_Comm comm, MPI_Info info, int n_threads, int dry_run);
 
 void write_output_serial(struct engine* e, const char* baseName,
                          const struct unit_system* internal_units,

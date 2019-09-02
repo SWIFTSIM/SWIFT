@@ -688,6 +688,7 @@ void writeArray(struct engine* e, hid_t grp, char* fileName,
  * @param with_gravity Are we running with gravity ?
  * @param with_stars Are we running with stars ?
  * @param with_black_holes Are we running with black holes ?
+ * @param with_cosmology Are we running with cosmology ?
  * @param cleanup_h Are we cleaning-up h-factors from the quantities we read?
  * @param cleanup_sqrt_a Are we cleaning-up the sqrt(a) factors in the Gadget
  * IC velocities?
@@ -707,9 +708,9 @@ void read_ic_parallel(char* fileName, const struct unit_system* internal_units,
                       size_t* Ngas, size_t* Ngparts, size_t* Ngparts_background,
                       size_t* Nstars, size_t* Nblackholes, int* flag_entropy,
                       int with_hydro, int with_gravity, int with_stars,
-                      int with_black_holes, int cleanup_h, int cleanup_sqrt_a,
-                      double h, double a, int mpi_rank, int mpi_size,
-                      MPI_Comm comm, MPI_Info info, int n_threads,
+                      int with_black_holes, int with_cosmology, int cleanup_h,
+                      int cleanup_sqrt_a, double h, double a, int mpi_rank,
+                      int mpi_size, MPI_Comm comm, MPI_Info info, int n_threads,
                       int dry_run) {
 
   hid_t h_file = 0, h_grp = 0;
@@ -772,6 +773,13 @@ void read_ic_parallel(char* fileName, const struct unit_system* internal_units,
   io_read_attribute(h_grp, "NumPart_Total", LONGLONG, numParticles);
   io_read_attribute(h_grp, "NumPart_Total_HighWord", LONGLONG,
                     numParticles_highWord);
+
+  /* Check that the user is not doing something silly when they e.g. restart
+   * from a snapshot by asserting that the current scale-factor (from
+   * parameter file) and the redshift in the header are consistent */
+  if (with_cosmology) {
+    io_assert_valid_header_cosmology(h_grp, a);
+  }
 
   for (int ptype = 0; ptype < swift_type_count; ++ptype)
     N_total[ptype] =
