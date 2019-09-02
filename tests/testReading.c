@@ -57,6 +57,7 @@ int main(int argc, char *argv[]) {
                  /*with_gravity=*/1,
                  /*with_stars=*/0,
                  /*with_black_holes=*/0,
+                 /*with_cosmology=*/0,
                  /*cleanup_h=*/0,
                  /*cleanup_sqrt_a=*/0,
                  /*h=*/1., /*a=*/1., /*n_threads=*/1, /*dry_run=*/0);
