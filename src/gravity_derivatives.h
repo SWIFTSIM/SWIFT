@@ -101,7 +101,7 @@ struct potential_derivatives_M2P {
 
   /* 1st order terms */
   float D_100, D_010, D_001;
-#endif
+
 #if SELF_GRAVITY_MULTIPOLE_ORDER > 0
 
   /* 2nd order terms */
