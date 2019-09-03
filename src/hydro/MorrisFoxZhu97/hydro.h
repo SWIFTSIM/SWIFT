@@ -227,16 +227,9 @@ __attribute__((always_inline)) INLINE static float hydro_compute_timestep(
 /*#include <float.h>
    const float dt_cfl = 0.25 * p->h / p->soundspeed; 
    float dt_accels = FLT_MAX;
-   if(p->a_hydro[0] > 0.0){
-     dt_accels = 0.25 * sqrtf(p->h / p->a_hydro[0]);
-   }
-   if(p->a_hydro[1] > 0.0){
- 
-     dt_accels = fminf(dt_accels,0.25 * sqrtf(p->h / p->a_hydro[1]));
-   }
-   if(p->a_hydro[2] > 0.0){
-
-     dt_accels = fminf(dt_accels,0.25 * sqrtf(p->h / p->a_hydro[2]));
+   const float a_hydro = sqrtf(p->a_hydro[0]*p->a_hydro[0] + p->a_hydro[1]*p->a_hydro[1] + p->a_hydro[2]*p->a_hydro[2]);
+   if(a_hydro > 0.0){
+     dt_accels = 0.25 * sqrtf(p->h / a_hydro);
    }
    const float dt_visc = 0.125 * p->h * p->h / p->dynamic_viscosity;
 
@@ -348,6 +341,7 @@ __attribute__((always_inline)) INLINE static void hydro_reset_acceleration(
   p->a_hydro[0] = 0.0f;
   p->a_hydro[1] = 0.0f;
   p->a_hydro[2] = 0.0f;
+  if(p->id == 3374) printf("visc = %e, mass = %e\n", p->dynamic_viscosity, p->mass);
 
 }
 
