@@ -300,6 +300,21 @@ chemistry_get_total_metal_mass_fraction_for_feedback(
 }
 
 /**
+ * @brief Returns the abundance array (metal mass fractions) of the
+ * star particle to be used in feedback/enrichment related routines.
+ *
+ * EAGLE uses smooth abundances for everything.
+ *
+ * @param sp Pointer to the particle data.
+ */
+__attribute__((always_inline)) INLINE static float const*
+chemistry_get_metal_mass_fraction_for_feedback(
+    const struct spart* restrict sp) {
+
+  return sp->chemistry_data.smoothed_metal_mass_fraction;
+}
+
+/**
  * @brief Returns the total metallicity (metal mass fraction) of the
  * gas particle to be used in cooling related routines.
  *
