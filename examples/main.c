@@ -1050,12 +1050,12 @@ int main(int argc, char *argv[]) {
     }
 
     /* Verify that we are not using basic modes incorrectly */
-    if (with_hydro && N_total[0] == 0) {
+    if (with_hydro && N_total[swift_type_gas] == 0) {
       error(
           "ERROR: Running with hydrodynamics but no gas particles found in the "
           "ICs!");
     }
-    if (with_gravity && N_total[1] == 0) {
+    if (with_gravity && N_total[swift_type_count] == 0) {
       error(
           "ERROR: Running with gravity but no gravity particles found in "
           "the ICs!");
