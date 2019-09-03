@@ -18,7 +18,7 @@
  *
  ******************************************************************************/
 #ifndef SWIFT_MULTI_SOFTENING_GRAVITY_H
-#define SWIFT_MULIT_SOFTENING_GRAVITY_H
+#define SWIFT_MULTI_SOFTENING_GRAVITY_H
 
 #include <float.h>
 
