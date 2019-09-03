@@ -1712,11 +1712,11 @@ size_t io_count_dm_background_gparts(const struct gpart* const gparts,
                                      const size_t Ndm) {
 
   swift_declare_aligned_ptr(const struct gpart, gparts_array, gparts,
-                            gpart_align);
+                            SWIFT_STRUCT_ALIGNMENT);
 
   size_t count = 0;
   for (size_t i = 0; i < Ndm; ++i) {
-    if (gparts[i].type == swift_type_dark_matter_background) ++count;
+    if (gparts_array[i].type == swift_type_dark_matter_background) ++count;
   }
 
   return count;
