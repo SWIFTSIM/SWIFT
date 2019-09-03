@@ -136,9 +136,9 @@ __attribute__((always_inline)) INLINE static void kick_part(
       p->v_minus1[2] = temp;
       p->pressure = pressure_from_density(p->rho);
 
-      /*if(p->id == 65744){
-         printf("p->rho = %e, drho = %e, diff = %e\n", p->rho, p->drho_dt * dt_kick_hydro, p->rho - 1e-3);
-      }*/
+      if(p->id == 65744){
+         printf("p->rho = %.11e, drho = %.11e, drho_dt = %.11e\n", p->rho, p->drho_dt * dt_kick_hydro, p->drho_dt);
+      }
 
     }
     p->since_euler += 1;
