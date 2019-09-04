@@ -959,7 +959,9 @@ int main(int argc, char *argv[]) {
     const int with_DM_particles = N_total[swift_type_dark_matter] > 0;
     const int with_baryon_particles =
         (N_total[swift_type_gas] + N_total[swift_type_stars] +
-         N_total[swift_type_black_hole]) > 0;
+             N_total[swift_type_black_hole] >
+         0) ||
+        (with_DM_particles && generate_gas_in_ics);
 
     /* Do we have background DM particles? */
     const int with_DM_background_particles =
