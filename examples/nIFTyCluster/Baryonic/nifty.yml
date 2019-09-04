@@ -1,3 +1,6 @@
+MetaData:
+  run_name:   nIFTY cluster
+
 # Define the system of units to use internally. 
 InternalUnitSystem:
   UnitMass_in_cgs:     1.98848e43    # 10^10 M_sun in grams
@@ -39,10 +42,10 @@ Statistics:
 Gravity:
   eta:                           0.025  # Constant dimensionless multiplier for time integration. 
   theta:                         0.5    # Opening angle (Multipole acceptance criterion)
-  comoving_DM_softening:        20.0    # Comoving softening length (in internal units).
-  comoving_baryon_softening:    20.0    # Comoving softening length (in internal units).
-  max_physical_DM_softening:     5.0    # Max physical softening length (in internal units).
-  max_physical_baryon_softening: 5.0    # Max physical softening length (in internal units).
+  comoving_DM_softening:         0.02   # Comoving softening length (in internal units).
+  comoving_baryon_softening:     0.02   # Comoving softening length (in internal units).
+  max_physical_DM_softening:     0.005  # Max physical softening length (in internal units).
+  max_physical_baryon_softening: 0.005  # Max physical softening length (in internal units).
   softening_ratio_background:    0.04   # 1/25th of mean inter-particle separation
   mesh_side_length:              512
 
@@ -54,7 +57,7 @@ SPH:
   minimal_temperature:   100      # (internal units)
 
 Scheduler:
-  max_top_level_cells:  32        # (Optional) Maximal number of top-level cells in any dimension. The number of top-level cells will be the cube of this (this is the default value).
+  max_top_level_cells:  32
 
 # Parameters related to the initial conditions
 InitialConditions:
