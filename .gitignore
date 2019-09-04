@@ -117,6 +117,7 @@ tests/testFFT
 tests/testInteractions
 tests/testInteractions.sh
 tests/testSymmetry
+tests/testHydroMPIrules
 tests/testMaths
 tests/testRandom
 tests/testRandomSpacing
