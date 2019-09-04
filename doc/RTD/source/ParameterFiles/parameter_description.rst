@@ -222,7 +222,7 @@ The accuracy of the gravity calculation is governed by the following two paramet
 * The time-step size pre-factor :math:`\eta`: ``eta``,
 
 The time-step of a given particle is given by :math:`\Delta t =
-\eta\sqrt{\frac{\epsilon}{|\overrightarrow{a}|}}`, where
+\sqrt{\frac{2\eta\epsilon}{|\overrightarrow{a}|}}`, where
 :math:`\overrightarrow{a}` is the particle's acceleration. `Power et al. (2003) <http://adsabs.harvard.edu/abs/2003MNRAS.338...14P>`_ recommend using :math:`\eta=0.025`.
 The last tree-related parameter is
 
