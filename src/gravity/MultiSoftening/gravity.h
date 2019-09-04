@@ -24,6 +24,7 @@
 
 /* Local includes. */
 #include "cosmology.h"
+#include "error.h"
 #include "gravity_properties.h"
 #include "kernel_gravity.h"
 #include "minmax.h"
@@ -60,6 +61,9 @@ __attribute__((always_inline)) INLINE static float gravity_get_softening(
     case swift_type_dark_matter_background:
       return grav_props->epsilon_background_fac * cbrtf(gp->mass);
     default:
+#ifdef SWIFT_DEBUG_CHECKS
+      error("Invalid gpart type!");
+#endif
       return 0.f;
   }
 }
