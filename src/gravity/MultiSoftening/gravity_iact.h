@@ -146,8 +146,9 @@ __attribute__((always_inline)) INLINE static void runner_iact_grav_pp_truncated(
  */
 __attribute__((always_inline)) INLINE static void runner_iact_grav_pm_full(
     const float r_x, const float r_y, const float r_z, const float r2,
-    const float h, const float h_inv, const struct multipole *m, float *f_x,
-    float *f_y, float *f_z, float *pot) {
+    const float h, const float h_inv, const struct multipole *m,
+    float *restrict f_x, float *restrict f_y, float *restrict f_z,
+    float *restrict pot) {
 
 /* In the case where the order is < 3, then there is only a monopole term left.
  * We can default to the normal P-P interaction with the mass of the multipole
@@ -259,7 +260,8 @@ __attribute__((always_inline)) INLINE static void runner_iact_grav_pm_full(
 __attribute__((always_inline)) INLINE static void runner_iact_grav_pm_truncated(
     const float r_x, const float r_y, const float r_z, const float r2,
     const float h, const float h_inv, const float r_s_inv,
-    const struct multipole *m, float *f_x, float *f_y, float *f_z, float *pot) {
+    const struct multipole *m, float *restrict f_x, float *restrict f_y,
+    float *restrict f_z, float *restrict pot) {
 
 /* In the case where the order is < 3, then there is only a monopole term left.
  * We can default to the normal P-P interaction with the mass of the multipole
