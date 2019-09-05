@@ -149,10 +149,10 @@ __attribute__((always_inline)) INLINE static void runner_iact_grav_pm_full(
     const float h, const float h_inv, const struct multipole *m, float *f_x,
     float *f_y, float *f_z, float *pot) {
 
-/* In the case where the order is < 3, then there is only a monopole term left.
+/* In the case where the order is < 2, then there is only a monopole term left.
  * We can default to the normal P-P interaction with the mass of the multipole
  * and its CoM as the "particle" property */
-#if SELF_GRAVITY_MULTIPOLE_ORDER < 3
+#if SELF_GRAVITY_MULTIPOLE_ORDER < 2
 
   float f_ij, pot_ij;
   runner_iact_grav_pp_full(r2, h * h, h_inv, h_inv * h_inv * h_inv, m->M_000,
@@ -178,7 +178,7 @@ __attribute__((always_inline)) INLINE static void runner_iact_grav_pm_full(
   *f_z = m->M_000 * d.D_001;
   *pot = m->M_000 * d.D_000;
 
-#if SELF_GRAVITY_MULTIPOLE_ORDER > 1
+#if SELF_GRAVITY_MULTIPOLE_ORDER > 0
 
   /* 1st order contributions */
 
@@ -190,8 +190,7 @@ __attribute__((always_inline)) INLINE static void runner_iact_grav_pm_full(
   /* *pot = m->M_001 * d.D_001 + m->M_010 * d.D_010 + m->M_100 * d.D_100 ; */
 
 #endif
-
-#if SELF_GRAVITY_MULTIPOLE_ORDER > 2
+#if SELF_GRAVITY_MULTIPOLE_ORDER > 1
 
   /* 2nd order contributions */
   *f_x += m->M_002 * d.D_102 + m->M_011 * d.D_111 + m->M_020 * d.D_120 +
@@ -204,8 +203,7 @@ __attribute__((always_inline)) INLINE static void runner_iact_grav_pm_full(
           m->M_101 * d.D_101 + m->M_110 * d.D_110 + m->M_200 * d.D_200;
 
 #endif
-
-#if SELF_GRAVITY_MULTIPOLE_ORDER > 3
+#if SELF_GRAVITY_MULTIPOLE_ORDER > 2
 
   /* 3rd order contributions */
   *f_x += m->M_003 * d.D_103 + m->M_012 * d.D_112 + m->M_021 * d.D_121 +
@@ -226,7 +224,31 @@ __attribute__((always_inline)) INLINE static void runner_iact_grav_pm_full(
           m->M_300 * d.D_300;
 
 #endif
+#if SELF_GRAVITY_MULTIPOLE_ORDER > 3
 
+  /* 4th order contributions */
+  *f_x += m->M_004 * d.D_104 + m->M_013 * d.D_113 + m->M_022 * d.D_122 +
+          m->M_031 * d.D_131 + m->M_040 * d.D_140 + m->M_103 * d.D_203 +
+          m->M_112 * d.D_212 + m->M_121 * d.D_221 + m->M_130 * d.D_230 +
+          m->M_202 * d.D_302 + m->M_211 * d.D_311 + m->M_220 * d.D_320 +
+          m->M_301 * d.D_401 + m->M_310 * d.D_410 + m->M_400 * d.D_500;
+  *f_y += m->M_004 * d.D_014 + m->M_013 * d.D_023 + m->M_022 * d.D_032 +
+          m->M_031 * d.D_041 + m->M_040 * d.D_050 + m->M_103 * d.D_113 +
+          m->M_112 * d.D_122 + m->M_121 * d.D_131 + m->M_130 * d.D_140 +
+          m->M_202 * d.D_212 + m->M_211 * d.D_221 + m->M_220 * d.D_230 +
+          m->M_301 * d.D_311 + m->M_310 * d.D_320 + m->M_400 * d.D_410;
+  *f_z += m->M_004 * d.D_005 + m->M_013 * d.D_014 + m->M_022 * d.D_023 +
+          m->M_031 * d.D_032 + m->M_040 * d.D_041 + m->M_103 * d.D_104 +
+          m->M_112 * d.D_113 + m->M_121 * d.D_122 + m->M_130 * d.D_131 +
+          m->M_202 * d.D_203 + m->M_211 * d.D_212 + m->M_220 * d.D_221 +
+          m->M_301 * d.D_302 + m->M_310 * d.D_311 + m->M_400 * d.D_401;
+  *pot += m->M_004 * d.D_004 + m->M_013 * d.D_013 + m->M_022 * d.D_022 +
+          m->M_031 * d.D_031 + m->M_040 * d.D_040 + m->M_103 * d.D_103 +
+          m->M_112 * d.D_112 + m->M_121 * d.D_121 + m->M_130 * d.D_130 +
+          m->M_202 * d.D_202 + m->M_211 * d.D_211 + m->M_220 * d.D_220 +
+          m->M_301 * d.D_301 + m->M_310 * d.D_310 + m->M_400 * d.D_400;
+
+#endif
   /* Take care of the the sign convention */
   *f_x *= -1.f;
   *f_y *= -1.f;
@@ -261,10 +283,10 @@ __attribute__((always_inline)) INLINE static void runner_iact_grav_pm_truncated(
     const float h, const float h_inv, const float r_s_inv,
     const struct multipole *m, float *f_x, float *f_y, float *f_z, float *pot) {
 
-/* In the case where the order is < 3, then there is only a monopole term left.
+/* In the case where the order is < 2, then there is only a monopole term left.
  * We can default to the normal P-P interaction with the mass of the multipole
  * and its CoM as the "particle" property */
-#if SELF_GRAVITY_MULTIPOLE_ORDER < 3
+#if SELF_GRAVITY_MULTIPOLE_ORDER < 2
 
   float f_ij, pot_ij;
   runner_iact_grav_pp_truncated(r2, h * h, h_inv, h_inv * h_inv * h_inv,
@@ -290,7 +312,7 @@ __attribute__((always_inline)) INLINE static void runner_iact_grav_pm_truncated(
   *f_z = m->M_000 * d.D_001;
   *pot = m->M_000 * d.D_000;
 
-#if SELF_GRAVITY_MULTIPOLE_ORDER > 1
+#if SELF_GRAVITY_MULTIPOLE_ORDER > 0
 
   /* 1st order contributions */
 
@@ -302,8 +324,7 @@ __attribute__((always_inline)) INLINE static void runner_iact_grav_pm_truncated(
   /* *pot = m->M_001 * d.D_001 + m->M_010 * d.D_010 + m->M_100 * d.D_100 ; */
 
 #endif
-
-#if SELF_GRAVITY_MULTIPOLE_ORDER > 2
+#if SELF_GRAVITY_MULTIPOLE_ORDER > 1
 
   /* 2nd order contributions */
   *f_x += m->M_002 * d.D_102 + m->M_011 * d.D_111 + m->M_020 * d.D_120 +
@@ -316,8 +337,7 @@ __attribute__((always_inline)) INLINE static void runner_iact_grav_pm_truncated(
           m->M_101 * d.D_101 + m->M_110 * d.D_110 + m->M_200 * d.D_200;
 
 #endif
-
-#if SELF_GRAVITY_MULTIPOLE_ORDER > 3
+#if SELF_GRAVITY_MULTIPOLE_ORDER > 2
 
   /* 3rd order contributions */
   *f_x += m->M_003 * d.D_103 + m->M_012 * d.D_112 + m->M_021 * d.D_121 +
@@ -338,7 +358,31 @@ __attribute__((always_inline)) INLINE static void runner_iact_grav_pm_truncated(
           m->M_300 * d.D_300;
 
 #endif
+#if SELF_GRAVITY_MULTIPOLE_ORDER > 3
 
+  /* 4th order contributions */
+  *f_x += m->M_004 * d.D_104 + m->M_013 * d.D_113 + m->M_022 * d.D_122 +
+          m->M_031 * d.D_131 + m->M_040 * d.D_140 + m->M_103 * d.D_203 +
+          m->M_112 * d.D_212 + m->M_121 * d.D_221 + m->M_130 * d.D_230 +
+          m->M_202 * d.D_302 + m->M_211 * d.D_311 + m->M_220 * d.D_320 +
+          m->M_301 * d.D_401 + m->M_310 * d.D_410 + m->M_400 * d.D_500;
+  *f_y += m->M_004 * d.D_014 + m->M_013 * d.D_023 + m->M_022 * d.D_032 +
+          m->M_031 * d.D_041 + m->M_040 * d.D_050 + m->M_103 * d.D_113 +
+          m->M_112 * d.D_122 + m->M_121 * d.D_131 + m->M_130 * d.D_140 +
+          m->M_202 * d.D_212 + m->M_211 * d.D_221 + m->M_220 * d.D_230 +
+          m->M_301 * d.D_311 + m->M_310 * d.D_320 + m->M_400 * d.D_410;
+  *f_z += m->M_004 * d.D_005 + m->M_013 * d.D_014 + m->M_022 * d.D_023 +
+          m->M_031 * d.D_032 + m->M_040 * d.D_041 + m->M_103 * d.D_104 +
+          m->M_112 * d.D_113 + m->M_121 * d.D_122 + m->M_130 * d.D_131 +
+          m->M_202 * d.D_203 + m->M_211 * d.D_212 + m->M_220 * d.D_221 +
+          m->M_301 * d.D_302 + m->M_310 * d.D_311 + m->M_400 * d.D_401;
+  *pot += m->M_004 * d.D_004 + m->M_013 * d.D_013 + m->M_022 * d.D_022 +
+          m->M_031 * d.D_031 + m->M_040 * d.D_040 + m->M_103 * d.D_103 +
+          m->M_112 * d.D_112 + m->M_121 * d.D_121 + m->M_130 * d.D_130 +
+          m->M_202 * d.D_202 + m->M_211 * d.D_211 + m->M_220 * d.D_220 +
+          m->M_301 * d.D_301 + m->M_310 * d.D_310 + m->M_400 * d.D_400;
+
+#endif
   /* Take care of the the sign convention */
   *f_x *= -1.f;
   *f_y *= -1.f;
