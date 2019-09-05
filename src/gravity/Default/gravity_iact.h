@@ -148,10 +148,10 @@ __attribute__((always_inline)) INLINE static void runner_iact_grav_pm_full(
     float *restrict f_x, float *restrict f_y, float *restrict f_z,
     float *restrict pot) {
 
-/* In the case where the order is < 3, then there is only a monopole term left.
+/* In the case where the order is < 2, then there is only a monopole term left.
  * We can default to the normal P-P interaction with the mass of the multipole
  * and its CoM as the "particle" property */
-#if SELF_GRAVITY_MULTIPOLE_ORDER < 3
+#if SELF_GRAVITY_MULTIPOLE_ORDER < 2
 
   float f_ij, pot_ij;
   runner_iact_grav_pp_full(r2, h * h, h_inv, h_inv * h_inv * h_inv, m->M_000,
@@ -186,8 +186,7 @@ __attribute__((always_inline)) INLINE static void runner_iact_grav_pm_full(
   /* *f_z = m->M_001 * d.D_002 + m->M_010 * d.D_011 + m->M_100 * d.D_101 ; */
 
 #endif
-
-#if SELF_GRAVITY_MULTIPOLE_ORDER > 2
+#if SELF_GRAVITY_MULTIPOLE_ORDER > 1
 
   /* 2nd order contributions */
   *f_x += m->M_002 * d.D_102 + m->M_011 * d.D_111 + m->M_020 * d.D_120 +
@@ -198,8 +197,7 @@ __attribute__((always_inline)) INLINE static void runner_iact_grav_pm_full(
           m->M_101 * d.D_102 + m->M_110 * d.D_111 + m->M_200 * d.D_201;
 
 #endif
-
-#if SELF_GRAVITY_MULTIPOLE_ORDER > 3
+#if SELF_GRAVITY_MULTIPOLE_ORDER > 2
 
   /* 3rd order contributions */
   *f_x += m->M_003 * d.D_103 + m->M_012 * d.D_112 + m->M_021 * d.D_121 +
@@ -215,6 +213,25 @@ __attribute__((always_inline)) INLINE static void runner_iact_grav_pm_full(
           m->M_120 * d.D_121 + m->M_201 * d.D_202 + m->M_210 * d.D_211 +
           m->M_300 * d.D_301;
 
+#endif
+#if SELF_GRAVITY_MULTIPOLE_ORDER > 3
+
+  /* 4th order contributions */
+  *f_x += m->M_004 * d.D_104 + m->M_013 * d.D_113 + m->M_022 * d.D_122 +
+          m->M_031 * d.D_131 + m->M_040 * d.D_140 + m->M_103 * d.D_203 +
+          m->M_112 * d.D_212 + m->M_121 * d.D_221 + m->M_130 * d.D_230 +
+          m->M_202 * d.D_302 + m->M_211 * d.D_311 + m->M_220 * d.D_320 +
+          m->M_301 * d.D_401 + m->M_310 * d.D_410 + m->M_400 * d.D_500;
+  *f_y += m->M_004 * d.D_014 + m->M_013 * d.D_023 + m->M_022 * d.D_032 +
+          m->M_031 * d.D_041 + m->M_040 * d.D_050 + m->M_103 * d.D_113 +
+          m->M_112 * d.D_122 + m->M_121 * d.D_131 + m->M_130 * d.D_140 +
+          m->M_202 * d.D_212 + m->M_211 * d.D_221 + m->M_220 * d.D_230 +
+          m->M_301 * d.D_311 + m->M_310 * d.D_320 + m->M_400 * d.D_410;
+  *f_z += m->M_004 * d.D_005 + m->M_013 * d.D_014 + m->M_022 * d.D_023 +
+          m->M_031 * d.D_032 + m->M_040 * d.D_041 + m->M_103 * d.D_104 +
+          m->M_112 * d.D_113 + m->M_121 * d.D_122 + m->M_130 * d.D_131 +
+          m->M_202 * d.D_203 + m->M_211 * d.D_212 + m->M_220 * d.D_221 +
+          m->M_301 * d.D_302 + m->M_310 * d.D_311 + m->M_400 * d.D_401;
 #endif
 
   /* Take care of the the sign convention */
@@ -254,10 +271,10 @@ __attribute__((always_inline)) INLINE static void runner_iact_grav_pm_truncated(
     const struct multipole *m, float *restrict f_x, float *restrict f_y,
     float *restrict f_z, float *restrict pot) {
 
-/* In the case where the order is < 3, then there is only a monopole term left.
+/* In the case where the order is < 2, then there is only a monopole term left.
  * We can default to the normal P-P interaction with the mass of the multipole
  * and its CoM as the "particle" property */
-#if SELF_GRAVITY_MULTIPOLE_ORDER < 3
+#if SELF_GRAVITY_MULTIPOLE_ORDER < 2
 
   float f_ij, pot_ij;
   runner_iact_grav_pp_truncated(r2, h * h, h_inv, h_inv * h_inv * h_inv,
@@ -292,8 +309,7 @@ __attribute__((always_inline)) INLINE static void runner_iact_grav_pm_truncated(
   /* *f_z = m->M_001 * d.D_002 + m->M_010 * d.D_011 + m->M_100 * d.D_101 ; */
 
 #endif
-
-#if SELF_GRAVITY_MULTIPOLE_ORDER > 2
+#if SELF_GRAVITY_MULTIPOLE_ORDER > 1
 
   /* 2nd order contributions */
   *f_x += m->M_002 * d.D_102 + m->M_011 * d.D_111 + m->M_020 * d.D_120 +
@@ -304,8 +320,7 @@ __attribute__((always_inline)) INLINE static void runner_iact_grav_pm_truncated(
           m->M_101 * d.D_102 + m->M_110 * d.D_111 + m->M_200 * d.D_201;
 
 #endif
-
-#if SELF_GRAVITY_MULTIPOLE_ORDER > 3
+#if SELF_GRAVITY_MULTIPOLE_ORDER > 2
 
   /* 3rd order contributions */
   *f_x += m->M_003 * d.D_103 + m->M_012 * d.D_112 + m->M_021 * d.D_121 +
@@ -321,7 +336,25 @@ __attribute__((always_inline)) INLINE static void runner_iact_grav_pm_truncated(
           m->M_120 * d.D_121 + m->M_201 * d.D_202 + m->M_210 * d.D_211 +
           m->M_300 * d.D_301;
 #endif
+#if SELF_GRAVITY_MULTIPOLE_ORDER > 3
 
+  /* 4th order contributions */
+  *f_x += m->M_004 * d.D_104 + m->M_013 * d.D_113 + m->M_022 * d.D_122 +
+          m->M_031 * d.D_131 + m->M_040 * d.D_140 + m->M_103 * d.D_203 +
+          m->M_112 * d.D_212 + m->M_121 * d.D_221 + m->M_130 * d.D_230 +
+          m->M_202 * d.D_302 + m->M_211 * d.D_311 + m->M_220 * d.D_320 +
+          m->M_301 * d.D_401 + m->M_310 * d.D_410 + m->M_400 * d.D_500;
+  *f_y += m->M_004 * d.D_014 + m->M_013 * d.D_023 + m->M_022 * d.D_032 +
+          m->M_031 * d.D_041 + m->M_040 * d.D_050 + m->M_103 * d.D_113 +
+          m->M_112 * d.D_122 + m->M_121 * d.D_131 + m->M_130 * d.D_140 +
+          m->M_202 * d.D_212 + m->M_211 * d.D_221 + m->M_220 * d.D_230 +
+          m->M_301 * d.D_311 + m->M_310 * d.D_320 + m->M_400 * d.D_410;
+  *f_z += m->M_004 * d.D_005 + m->M_013 * d.D_014 + m->M_022 * d.D_023 +
+          m->M_031 * d.D_032 + m->M_040 * d.D_041 + m->M_103 * d.D_104 +
+          m->M_112 * d.D_113 + m->M_121 * d.D_122 + m->M_130 * d.D_131 +
+          m->M_202 * d.D_203 + m->M_211 * d.D_212 + m->M_220 * d.D_221 +
+          m->M_301 * d.D_302 + m->M_310 * d.D_311 + m->M_400 * d.D_401;
+#endif
   /* Take care of the the sign convention */
   *f_x *= -1.f;
   *f_y *= -1.f;
