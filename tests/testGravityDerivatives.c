@@ -959,6 +959,7 @@ int main(int argc, char* argv[]) {
 
     /* Compute all derivatives */
     struct potential_derivatives_M2L pot;
+    bzero(&pot, sizeof(struct potential_derivatives_M2L));
     potential_derivatives_compute_M2L(dx, dy, dz, r2, r_inv, eps, periodic,
                                       r_s_inv, &pot);
 
@@ -1077,25 +1078,27 @@ int main(int argc, char* argv[]) {
 
     /* Compute all derivatives */
     struct potential_derivatives_M2P pot;
+    bzero(&pot, sizeof(struct potential_derivatives_M2P));
     potential_derivatives_compute_M2P(dx, dy, dz, r2, r_inv, eps, periodic,
                                       r_s_inv, &pot);
 
     /* Minimal value we care about */
     const double min = 1e-9;
 
-    /* Now check everything... */
+    /* Now check everything...
+     *
+     * Note that the M2P derivatives are computed to order
+     * SELF_GRAVITY_MULTIPOLE_ORDER + 1 by the function above. */
 
     /* 0th order terms */
     test(pot.D_000, D_000(dx, dy, dz, r_inv), tol, min, "M2P D_000");
-
-#if SELF_GRAVITY_MULTIPOLE_ORDER > 0
 
     /* 1st order terms */
     test(pot.D_100, D_100(dx, dy, dz, r_inv), tol, min, "M2P D_100");
     test(pot.D_010, D_010(dx, dy, dz, r_inv), tol, min, "M2P D_010");
     test(pot.D_001, D_001(dx, dy, dz, r_inv), tol, min, "M2P D_001");
-#endif
-#if SELF_GRAVITY_MULTIPOLE_ORDER > 1
+
+#if SELF_GRAVITY_MULTIPOLE_ORDER > 0
 
     /* 2nd order terms */
     test(pot.D_200, D_200(dx, dy, dz, r_inv), tol, min, "M2P D_200");
@@ -1105,7 +1108,7 @@ int main(int argc, char* argv[]) {
     test(pot.D_101, D_101(dx, dy, dz, r_inv), tol, min, "M2P D_101");
     test(pot.D_011, D_011(dx, dy, dz, r_inv), tol, min, "M2P D_011");
 #endif
-#if SELF_GRAVITY_MULTIPOLE_ORDER > 2
+#if SELF_GRAVITY_MULTIPOLE_ORDER > 1
 
     tol *= 2.5;
 
@@ -1121,7 +1124,7 @@ int main(int argc, char* argv[]) {
     test(pot.D_012, D_012(dx, dy, dz, r_inv), tol, min, "M2P D_012");
     test(pot.D_111, D_111(dx, dy, dz, r_inv), tol, min, "M2P D_111");
 #endif
-#if SELF_GRAVITY_MULTIPOLE_ORDER > 3
+#if SELF_GRAVITY_MULTIPOLE_ORDER > 2
 
     /* 4th order terms */
     test(pot.D_400, D_400(dx, dy, dz, r_inv), tol, min, "M2P D_400");
@@ -1140,7 +1143,7 @@ int main(int argc, char* argv[]) {
     test(pot.D_121, D_121(dx, dy, dz, r_inv), tol, min, "M2P D_121");
     test(pot.D_112, D_112(dx, dy, dz, r_inv), tol, min, "M2P D_112");
 #endif
-#if SELF_GRAVITY_MULTIPOLE_ORDER > 4
+#if SELF_GRAVITY_MULTIPOLE_ORDER > 3
 
     tol *= 2.5;
 
