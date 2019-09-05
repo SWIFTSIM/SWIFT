@@ -147,7 +147,7 @@ __attribute__((always_inline)) INLINE static void runner_iact_grav_pm_full(
     const float h, const float h_inv, const struct multipole *m, float *f_x,
     float *f_y, float *f_z, float *pot) {
 
-/* In the case where the order is < 3, then there is only a monopole term left.
+/* In the case where the order is < 2, then there is only a monopole term left.
  * We can default to the normal P-P interaction with the mass of the multipole
  * and its CoM as the "particle" property */
 #if SELF_GRAVITY_MULTIPOLE_ORDER < 2
@@ -269,7 +269,7 @@ __attribute__((always_inline)) INLINE static void runner_iact_grav_pm_truncated(
     const float h, const float h_inv, const float r_s_inv,
     const struct multipole *m, float *f_x, float *f_y, float *f_z, float *pot) {
 
-/* In the case where the order is < 3, then there is only a monopole term left.
+/* In the case where the order is < 2, then there is only a monopole term left.
  * We can default to the normal P-P interaction with the mass of the multipole
  * and its CoM as the "particle" property */
 #if SELF_GRAVITY_MULTIPOLE_ORDER < 2
