@@ -455,19 +455,19 @@ potential_derivatives_compute_M2P(const float r_x, const float r_y,
     error("Computing M2P derivatives below softening length");
 #endif
 
-  float Dt_1 = 0.f;
-  float Dt_3 = 0.f;
+  float Dt_1;
+  float Dt_3;
 #if SELF_GRAVITY_MULTIPOLE_ORDER > 0
-  float Dt_5 = 0.f;
+  float Dt_5;
 #endif
 #if SELF_GRAVITY_MULTIPOLE_ORDER > 1
-  float Dt_7 = 0.f;
+  float Dt_7;
 #endif
 #if SELF_GRAVITY_MULTIPOLE_ORDER > 2
-  float Dt_9 = 0.f;
+  float Dt_9;
 #endif
 #if SELF_GRAVITY_MULTIPOLE_ORDER > 3
-  float Dt_11 = 0.f;
+  float Dt_11;
 #endif
 
   /* Un-truncated case (Newtonian potential) */
