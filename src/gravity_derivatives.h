@@ -473,7 +473,7 @@ potential_derivatives_compute_M2P(const float r_x, const float r_y,
   /* Un-truncated case (Newtonian potential) */
   if (!periodic) {
 
-	const float r_inv2 = r_inv * r_inv;
+    const float r_inv2 = r_inv * r_inv;
     Dt_1 = r_inv;
     Dt_3 = -1.f * Dt_1 * r_inv2; /* -1 / r^3 */
 #if SELF_GRAVITY_MULTIPOLE_ORDER > 0
