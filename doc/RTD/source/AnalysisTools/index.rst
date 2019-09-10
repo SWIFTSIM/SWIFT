@@ -101,5 +101,5 @@ The stic values should be synchronized between ranks as all ranks have a
 barrier in place to make sure they start the step together, so should be
 suitable for matching between ranks. The unique keys to associate records
 between ranks (so that the MPI_Isend and MPI_Irecv pairs can be identified)
-are "rank/otherrank/type/subtype/tag/size" and
-"otherrank/rank/type/subtype/tag/size".
+are "otherrank/rank/subtype/tag/size" and "rank/otherrank/subtype/tag/size"
+for send and recv respectively. When matching ignore step0.
