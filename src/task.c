@@ -555,7 +555,9 @@ int task_lock(struct task *t) {
       }
 
       /* And log deactivation, if logging enabled. */
-      if (res) mpiuse_log_allocation(t->type, t->subtype, &t->req, 0, 0, 0, 0);
+      if (res) {
+        mpiuse_log_allocation(t->type, t->subtype, &t->req, 0, 0, 0, 0);
+      }
 
       return res;
 #else
