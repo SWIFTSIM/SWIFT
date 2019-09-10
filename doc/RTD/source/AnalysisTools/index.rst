@@ -29,7 +29,7 @@ With chrome, you cannot access the files directly, you will need to either acces
 or install ``npm`` and then run the following commands
 
 .. code-block:: bash
-   
+
    npm install http-server -g
    http-server .
 
@@ -68,3 +68,38 @@ the step, and the total memory still in use per label. Note this includes
 memory still active from previous steps and the total memory is also continued
 from the previous dump.
 
+MPI task communication reports
+------------------------------
+
+When SWIFT is configured using the ``--enable-mpiuse-reports`` flag it will
+log any all asynchronous MPI communications made to send particle updates
+between nodes to support the tasks.
+
+The output files are called ``mpiuse_report-rank<m>-step<n>.dat``, i.e. one
+per rank per step. These have a line for each request for communication, either
+an MPI_Irecv or MPI_Isend and a line for the subsequent completion (successful
+MPI_Test).
+
+Each line of the logs contains the following information:
+
+.. code-block:: none
+
+   stic:             ticks since the start of this step
+   etic:             ticks since the start of the simulation
+   dtic:             ticks that the request was active
+   step:             current step
+   rank:             current rank
+   otherrank:        rank that the request was sent to or expected from
+   type itype:       task type as string and enum
+   subtype isubtype: task subtype as string and enum
+   activation:       1 if record for the start of a request, 0 if request completion
+   tag:              MPI tag of the request
+   size:             size, in bytes, of the request
+   sum:              sum, in bytes, of all requests that are currently not logged as complete 
+
+The stic values should be synchronized between ranks as all ranks have a
+barrier in place to make sure they start the step together, so should be
+suitable for matching between ranks. The unique keys to associate records
+between ranks (so that the MPI_Isend and MPI_Irecv pairs can be identified)
+are "rank/otherrank/type/subtype/tag/size" and
+"otherrank/rank/type/subtype/tag/size".

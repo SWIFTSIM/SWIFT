@@ -18,7 +18,7 @@
  ******************************************************************************/
 
 /**
- *  @file memuse_rnode.c
+ *  @file memuse_rnodes.c
  *  @brief file of routines used for radix nodes in memory loggers.
  */
 
