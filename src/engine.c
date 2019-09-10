@@ -3327,7 +3327,7 @@ void engine_skip_force_and_kick(struct engine *e) {
         t->type == task_type_drift_gpart_out || t->type == task_type_cooling ||
         t->type == task_type_stars_in || t->type == task_type_stars_out ||
         t->type == task_type_star_formation ||
-        t->type == task_type_extra_ghost ||
+        t->type == task_type_stars_resort || t->type == task_type_extra_ghost ||
         t->type == task_type_bh_swallow_ghost1 ||
         t->type == task_type_bh_swallow_ghost2 ||
         t->type == task_type_bh_swallow_ghost3 ||
@@ -4206,7 +4206,7 @@ void engine_do_reconstruct_multipoles_mapper(void *map_data, int num_elements,
     if (c != NULL && c->nodeID == e->nodeID) {
 
       /* Construct the multipoles in this cell hierarchy */
-      cell_make_multipoles(c, e->ti_current);
+      cell_make_multipoles(c, e->ti_current, e->gravity_properties);
     }
   }
 }
@@ -4413,19 +4413,26 @@ void engine_makeproxies(struct engine *e) {
                       sqrt(min_dist_centres2) - 2. * delta_CoM;
                   const double min_dist_CoM2 = min_dist_CoM * min_dist_CoM;
 
+                  /* We also assume that the softening is negligible compared
+                     to the cell size */
+                  const double epsilon_i = 0.;
+                  const double epsilon_j = 0.;
+
                   /* Are we beyond the distance where the truncated forces are 0
                    * but not too far such that M2L can be used? */
                   if (periodic) {
 
                     if ((min_dist_CoM2 < max_mesh_dist2) &&
                         (!gravity_M2L_accept(r_max, r_max, theta_crit2,
-                                             min_dist_CoM2)))
+                                             min_dist_CoM2, epsilon_i,
+                                             epsilon_j)))
                       proxy_type |= (int)proxy_cell_type_gravity;
 
                   } else {
 
                     if (!gravity_M2L_accept(r_max, r_max, theta_crit2,
-                                            min_dist_CoM2))
+                                            min_dist_CoM2, epsilon_i,
+                                            epsilon_j))
                       proxy_type |= (int)proxy_cell_type_gravity;
                   }
                 }
@@ -4888,6 +4895,7 @@ void engine_unpin(void) {
  * @param Ngparts total number of gravity particles in the simulation.
  * @param Nstars total number of star particles in the simulation.
  * @param Nblackholes total number of black holes in the simulation.
+ * @param Nbackground_gparts Total number of background DM particles.
  * @param policy The queuing policy to use.
  * @param verbose Is this #engine talkative ?
  * @param reparttype What type of repartition algorithm are we using ?
@@ -4909,8 +4917,8 @@ void engine_unpin(void) {
  */
 void engine_init(struct engine *e, struct space *s, struct swift_params *params,
                  long long Ngas, long long Ngparts, long long Nstars,
-                 long long Nblackholes, int policy, int verbose,
-                 struct repartition *reparttype,
+                 long long Nblackholes, long long Nbackground_gparts,
+                 int policy, int verbose, struct repartition *reparttype,
                  const struct unit_system *internal_units,
                  const struct phys_const *physical_constants,
                  struct cosmology *cosmo, struct hydro_props *hydro,
@@ -4935,6 +4943,7 @@ void engine_init(struct engine *e, struct space *s, struct swift_params *params,
   e->total_nr_gparts = Ngparts;
   e->total_nr_sparts = Nstars;
   e->total_nr_bparts = Nblackholes;
+  e->total_nr_DM_background_gparts = Nbackground_gparts;
   e->proxy_ind = NULL;
   e->nr_proxies = 0;
   e->reparttype = reparttype;
@@ -4953,7 +4962,7 @@ void engine_init(struct engine *e, struct space *s, struct swift_params *params,
   e->time_first_snapshot =
       parser_get_opt_param_double(params, "Snapshots:time_first", 0.);
   e->delta_time_snapshot =
-      parser_get_param_double(params, "Snapshots:delta_time");
+      parser_get_opt_param_double(params, "Snapshots:delta_time", -1.);
   e->ti_next_snapshot = 0;
   parser_get_param_string(params, "Snapshots:basename", e->snapshot_base_name);
   e->snapshot_compression =
@@ -6160,11 +6169,17 @@ void engine_recompute_displacement_constraint(struct engine *e) {
 #endif
 
   /* Get the counts of each particle types */
+  const long long total_nr_baryons =
+      e->total_nr_parts + e->total_nr_sparts + e->total_nr_bparts;
   const long long total_nr_dm_gparts =
-      e->total_nr_gparts - e->total_nr_parts - e->total_nr_sparts;
+      e->total_nr_gparts - e->total_nr_DM_background_gparts - total_nr_baryons;
   float count_parts[swift_type_count] = {
-      (float)e->total_nr_parts,  (float)total_nr_dm_gparts, 0.f, 0.f,
-      (float)e->total_nr_sparts, (float)e->total_nr_bparts};
+      (float)e->total_nr_parts,
+      (float)total_nr_dm_gparts,
+      (float)e->total_nr_DM_background_gparts,
+      0.f,
+      (float)e->total_nr_sparts,
+      (float)e->total_nr_bparts};
 
   /* Count of particles for the two species */
   const float N_dm = count_parts[1];
@@ -6564,7 +6579,8 @@ void engine_fof(struct engine *e, const int dump_results,
   /* Compute number of DM particles */
   const long long total_nr_baryons =
       e->total_nr_parts + e->total_nr_sparts + e->total_nr_bparts;
-  const long long total_nr_dmparts = e->total_nr_gparts - total_nr_baryons;
+  const long long total_nr_dmparts =
+      e->total_nr_gparts - e->total_nr_DM_background_gparts - total_nr_baryons;
 
   /* Initialise FOF parameters and allocate FOF arrays. */
   fof_allocate(e->s, total_nr_dmparts, e->fof_properties);

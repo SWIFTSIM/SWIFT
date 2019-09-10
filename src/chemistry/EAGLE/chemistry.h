@@ -197,6 +197,16 @@ __attribute__((always_inline)) INLINE static void chemistry_first_init_spart(
       sp->chemistry_data.metal_mass_fraction[elem] =
           data->initial_metal_mass_fraction[elem];
   }
+
+  /* Initialize mass fractions for total metals and each metal individually */
+  if (data->initial_metal_mass_fraction_total != -1) {
+    sp->chemistry_data.smoothed_metal_mass_fraction_total =
+        data->initial_metal_mass_fraction_total;
+
+    for (int elem = 0; elem < chemistry_element_count; ++elem)
+      sp->chemistry_data.smoothed_metal_mass_fraction[elem] =
+          data->initial_metal_mass_fraction[elem];
+  }
 }
 
 /**
@@ -287,6 +297,21 @@ chemistry_get_total_metal_mass_fraction_for_feedback(
     const struct spart* restrict sp) {
 
   return sp->chemistry_data.smoothed_metal_mass_fraction_total;
+}
+
+/**
+ * @brief Returns the abundance array (metal mass fractions) of the
+ * star particle to be used in feedback/enrichment related routines.
+ *
+ * EAGLE uses smooth abundances for everything.
+ *
+ * @param sp Pointer to the particle data.
+ */
+__attribute__((always_inline)) INLINE static float const*
+chemistry_get_metal_mass_fraction_for_feedback(
+    const struct spart* restrict sp) {
+
+  return sp->chemistry_data.smoothed_metal_mass_fraction;
 }
 
 /**

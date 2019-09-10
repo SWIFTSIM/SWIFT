@@ -6,15 +6,6 @@ InternalUnitSystem:
   UnitCurrent_in_cgs:  1.            # Amperes
   UnitTemp_in_cgs:     1.            # Kelvin
 
-# Cosmological parameters
-Cosmology:
-  h:              0.6777        # Reduced Hubble constant
-  a_begin:        0.5           # Initial scale-factor of the simulation
-  a_end:          1.0           # Final scale factor of the simulation
-  Omega_m:        0.307         # Matter density parameter
-  Omega_lambda:   0.693         # Dark-energy density parameter
-  Omega_b:        0.0455        # Baryon density parameter
-
 # Parameters governing the time integration
 TimeIntegration:
   time_begin: 0      # The starting time of the simulation (in internal units).
@@ -27,6 +18,7 @@ Snapshots:
   basename:            stellar_evolution # Common part of the name of output files
   time_first:          0.       # Time of the first output (in internal units)
   delta_time:          3.e-5    # Time difference between consecutive outputs without cosmology (internal units)
+  compression:         4
 
 # Parameters governing the conserved quantities statistics
 Statistics:
@@ -88,7 +80,7 @@ EAGLECooling:
 # Properties of the EAGLE feedback and enrichment model.
 EAGLEFeedback:
   use_SNII_feedback:                0               # Global switch for SNII thermal (stochastic) feedback.
-  use_SNIa_feedback:                1               # Global switch for SNIa thermal (continuous) feedback.
+  use_SNIa_feedback:                0               # Global switch for SNIa thermal (continuous) feedback.
   use_AGB_enrichment:               1               # Global switch for enrichement from AGB stars.
   use_SNII_enrichment:              1               # Global switch for enrichement from SNII stars.
   use_SNIa_enrichment:              1               # Global switch for enrichement from SNIa stars.

@@ -145,7 +145,7 @@ runner_iact_nonsym_bh_gas_swallow(
   const float max_dist_repos2 =
       kernel_gravity_softening_plummer_equivalent_inv *
       kernel_gravity_softening_plummer_equivalent_inv * 9.f *
-      grav_props->epsilon_cur2;
+      grav_props->epsilon_baryon_cur * grav_props->epsilon_baryon_cur;
 
   /* This gas neighbour is close enough that we can consider it's potential
      for repositioning */
@@ -250,7 +250,7 @@ runner_iact_nonsym_bh_bh_swallow(const float r2, const float *dx,
   const float max_dist_repos2 =
       kernel_gravity_softening_plummer_equivalent_inv *
       kernel_gravity_softening_plummer_equivalent_inv * 9.f *
-      grav_props->epsilon_cur2;
+      grav_props->epsilon_baryon_cur * grav_props->epsilon_baryon_cur;
 
   /* This gas neighbour is close enough that we can consider it's potential
      for repositioning */
@@ -285,7 +285,7 @@ runner_iact_nonsym_bh_bh_swallow(const float r2, const float *dx,
   const float max_dist_merge2 =
       kernel_gravity_softening_plummer_equivalent_inv *
       kernel_gravity_softening_plummer_equivalent_inv * 9.f *
-      grav_props->epsilon_cur2;
+      grav_props->epsilon_baryon_cur * grav_props->epsilon_baryon_cur;
 
   const float G_Newton = grav_props->G_Newton;
 

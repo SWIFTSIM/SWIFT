@@ -1216,8 +1216,7 @@ void runner_do_star_formation(struct runner *r, struct cell *c, int timer) {
    * re-compute them. */
   if (with_feedback && (c == c->top) &&
       (current_stars_count != c->stars.count)) {
-    cell_set_flag(c, cell_flag_do_stars_resort);
-    cell_clear_stars_sort_flags(c, /*clear_unused_flags=*/0);
+    cell_set_star_resort_flag(c);
   }
 
   if (timer) TIMER_TOC(timer_do_star_formation);
@@ -1237,7 +1236,6 @@ void runner_do_stars_resort(struct runner *r, struct cell *c, const int timer) {
 
 #ifdef SWIFT_DEBUG_CHECKS
   if (c->nodeID != r->e->nodeID) error("Task must be run locally!");
-  if (c->depth != 0) error("Task must be run at the top-level");
 #endif
 
   TIMER_TIC;
@@ -2778,7 +2776,9 @@ void runner_do_kick1(struct runner *r, struct cell *c, int timer) {
       struct gpart *restrict gp = &gparts[k];
 
       /* If the g-particle has no counterpart and needs to be kicked */
-      if (gp->type == swift_type_dark_matter && gpart_is_starting(gp, e)) {
+      if ((gp->type == swift_type_dark_matter ||
+           gp->type == swift_type_dark_matter_background) &&
+          gpart_is_starting(gp, e)) {
 
         const integertime_t ti_step = get_integer_timestep(gp->time_bin);
         const integertime_t ti_begin =
@@ -2972,7 +2972,9 @@ void runner_do_kick2(struct runner *r, struct cell *c, int timer) {
       struct gpart *restrict gp = &gparts[k];
 
       /* If the g-particle has no counterpart and needs to be kicked */
-      if (gp->type == swift_type_dark_matter && gpart_is_active(gp, e)) {
+      if ((gp->type == swift_type_dark_matter ||
+           gp->type == swift_type_dark_matter_background) &&
+          gpart_is_active(gp, e)) {
 
         const integertime_t ti_step = get_integer_timestep(gp->time_bin);
         const integertime_t ti_begin =
@@ -3192,7 +3194,8 @@ void runner_do_timestep(struct runner *r, struct cell *c, int timer) {
       struct gpart *restrict gp = &gparts[k];
 
       /* If the g-particle has no counterpart */
-      if (gp->type == swift_type_dark_matter) {
+      if (gp->type == swift_type_dark_matter ||
+          gp->type == swift_type_dark_matter_background) {
 
         /* need to be updated ? */
         if (gpart_is_active(gp, e)) {
@@ -4931,7 +4934,7 @@ void runner_do_logger(struct runner *r, struct cell *c, int timer) {
   const int count = c->hydro.count;
 
   /* Anything to do here? */
-  if (!cell_is_starting_hydro(c, e) && !cell_is_starting_gravity(c, e)) return;
+  if (!cell_is_active_hydro(c, e) && !cell_is_active_gravity(c, e)) return;
 
   /* Recurse? Avoid spending too much time in useless cells. */
   if (c->split) {
@@ -4949,7 +4952,7 @@ void runner_do_logger(struct runner *r, struct cell *c, int timer) {
       /* If particle needs to be log */
       /* This is the same function than part_is_active, except for
        * debugging checks */
-      if (part_is_starting(p, e)) {
+      if (part_is_active(p, e)) {
 
         if (logger_should_write(&xp->logger_data, e->logger)) {
           /* Write particle */

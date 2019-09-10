@@ -117,6 +117,9 @@ struct multipole {
   /*! Minimal velocity along each axis of all #gpart */
   float min_delta_vel[3];
 
+  /*! Maximal co-moving softening of all the #gpart in the mulipole */
+  float max_softening;
+
   /* 0th order term */
   float M_000;
 
@@ -459,6 +462,7 @@ INLINE static void gravity_multipole_init(struct multipole *m) {
  */
 INLINE static void gravity_multipole_print(const struct multipole *m) {
 
+  printf("eps_max = %12.5e\n", m->max_softening);
   printf("Vel= [%12.5e %12.5e %12.5e]\n", m->vel[0], m->vel[1], m->vel[2]);
   printf("-------------------------\n");
   printf("M_000= %12.5e\n", m->M_000);
@@ -511,6 +515,9 @@ INLINE static void gravity_multipole_print(const struct multipole *m) {
  */
 INLINE static void gravity_multipole_add(struct multipole *restrict ma,
                                          const struct multipole *restrict mb) {
+
+  /* Maximum of both softenings */
+  ma->max_softening = max(ma->max_softening, mb->max_softening);
 
   /* Add 0th order term */
   ma->M_000 += mb->M_000;
@@ -629,6 +636,14 @@ INLINE static int gravity_multipole_equal(const struct gravity_tensors *ga,
 
   const double v2 = ma->vel[0] * ma->vel[0] + ma->vel[1] * ma->vel[1] +
                     ma->vel[2] * ma->vel[2];
+
+  /* Check maximal softening */
+  if (fabsf(ma->max_softening - mb->max_softening) /
+          fabsf(ma->max_softening + mb->max_softening) >
+      tolerance) {
+    message("max softening different!");
+    return 0;
+  }
 
   /* Check bulk velocity (if non-zero and component > 1% of norm)*/
   if (fabsf(ma->vel[0] + mb->vel[0]) > 1e-10 &&
@@ -1022,11 +1037,14 @@ INLINE static int gravity_multipole_equal(const struct gravity_tensors *ga,
  * @param multi The #multipole (content will  be overwritten).
  * @param gparts The #gpart.
  * @param gcount The number of particles.
+ * @param grav_props The properties of the gravity scheme.
  */
 INLINE static void gravity_P2M(struct gravity_tensors *multi,
-                               const struct gpart *gparts, int gcount) {
+                               const struct gpart *gparts, const int gcount,
+                               const struct gravity_props *const grav_props) {
 
   /* Temporary variables */
+  float epsilon_max = 0.f;
   double mass = 0.0;
   double com[3] = {0.0, 0.0, 0.0};
   double vel[3] = {0.f, 0.f, 0.f};
@@ -1034,12 +1052,14 @@ INLINE static void gravity_P2M(struct gravity_tensors *multi,
   /* Collect the particle data for CoM. */
   for (int k = 0; k < gcount; k++) {
     const double m = gparts[k].mass;
+    const float epsilon = gravity_get_softening(&gparts[k], grav_props);
 
 #ifdef SWIFT_DEBUG_CHECKS
     if (gparts[k].time_bin == time_bin_inhibited)
       error("Inhibited particle in P2M. Should have been removed earlier.");
 #endif
 
+    epsilon_max = max(epsilon_max, epsilon);
     mass += m;
     com[0] += gparts[k].x[0] * m;
     com[1] += gparts[k].x[1] * m;
@@ -1203,6 +1223,7 @@ INLINE static void gravity_P2M(struct gravity_tensors *multi,
 #endif
 
   /* Store the data on the multipole. */
+  multi->m_pole.max_softening = epsilon_max;
   multi->m_pole.M_000 = mass;
   multi->r_max = sqrt(r_max2);
   multi->CoM[0] = com[0];
@@ -1315,6 +1336,9 @@ INLINE static void gravity_P2M(struct gravity_tensors *multi,
 INLINE static void gravity_M2M(struct multipole *restrict m_a,
                                const struct multipole *restrict m_b,
                                const double pos_a[3], const double pos_b[3]) {
+
+  /* "shift" the softening */
+  m_a->max_softening = m_b->max_softening;
 
   /* Shift 0th order term */
   m_a->M_000 = m_b->M_000;
@@ -1964,8 +1988,7 @@ INLINE static void gravity_M2L_nonsym(
     const int periodic, const double dim[3], const float rs_inv) {
 
   /* Recover some constants */
-  const float eps = props->epsilon_cur;
-  const float eps_inv = props->epsilon_cur_inv;
+  const float eps = m_a->max_softening;
 
   /* Compute distance vector */
   float dx = (float)(pos_b[0] - pos_a[0]);
@@ -1985,8 +2008,8 @@ INLINE static void gravity_M2L_nonsym(
 
   /* Compute all derivatives */
   struct potential_derivatives_M2L pot;
-  potential_derivatives_compute_M2L(dx, dy, dz, r2, r_inv, eps, eps_inv,
-                                    periodic, rs_inv, &pot);
+  potential_derivatives_compute_M2L(dx, dy, dz, r2, r_inv, eps, periodic,
+                                    rs_inv, &pot);
 
   /* Do the M2L tensor multiplication */
   gravity_M2L_apply(l_b, m_a, &pot);
@@ -2015,8 +2038,7 @@ INLINE static void gravity_M2L_symmetric(
     const float rs_inv) {
 
   /* Recover some constants */
-  const float eps = props->epsilon_cur;
-  const float eps_inv = props->epsilon_cur_inv;
+  const float eps = max(m_a->max_softening, m_b->max_softening);
 
   /* Compute distance vector */
   float dx = (float)(pos_b[0] - pos_a[0]);
@@ -2036,8 +2058,8 @@ INLINE static void gravity_M2L_symmetric(
 
   /* Compute all derivatives */
   struct potential_derivatives_M2L pot;
-  potential_derivatives_compute_M2L(dx, dy, dz, r2, r_inv, eps, eps_inv,
-                                    periodic, rs_inv, &pot);
+  potential_derivatives_compute_M2L(dx, dy, dz, r2, r_inv, eps, periodic,
+                                    rs_inv, &pot);
 
   /* Do the first M2L tensor multiplication */
   gravity_M2L_apply(l_b, m_a, &pot);
@@ -2551,23 +2573,31 @@ INLINE static void gravity_L2P(const struct grav_tensor *lb,
  * We use the multipole acceptance criterion of Dehnen, 2002, JCoPh, Volume 179,
  * Issue 1, pp.27-42, equation 10.
  *
+ * We also additionally check that the distance between the multipoles
+ * is larger than the softening lengths (here the distance at which
+ * the gravity becomes Newtonian again, not the Plummer-equivalent quantity).
+ *
  * @param r_crit_a The size of the multipole A.
  * @param r_crit_b The size of the multipole B.
  * @param theta_crit2 The square of the critical opening angle.
  * @param r2 Square of the distance (periodically wrapped) between the
  * multipoles.
+ * @param epsilon_a The maximal softening length of any particle in A.
+ * @param epsilon_b The maximal softening length of any particle in B.
  */
 __attribute__((always_inline, const)) INLINE static int gravity_M2L_accept(
     const double r_crit_a, const double r_crit_b, const double theta_crit2,
-    const double r2) {
+    const double r2, const double epsilon_a, const double epsilon_b) {
 
   const double size = r_crit_a + r_crit_b;
   const double size2 = size * size;
+  const double epsilon_a2 = epsilon_a * epsilon_a;
+  const double epsilon_b2 = epsilon_b * epsilon_b;
 
   // MATTHIEU: Make this mass-dependent ?
 
   /* Multipole acceptance criterion (Dehnen 2002, eq.10) */
-  return (r2 * theta_crit2 > size2);
+  return (r2 * theta_crit2 > size2) && (r2 > epsilon_a2) && (r2 > epsilon_b2);
 }
 
 /**
@@ -2577,18 +2607,24 @@ __attribute__((always_inline, const)) INLINE static int gravity_M2L_accept(
  * We use the multipole acceptance criterion of Dehnen, 2002, JCoPh, Volume 179,
  * Issue 1, pp.27-42, equation 10.
  *
+ * We also additionally check that the distance between the particle and the
+ * multipole is larger than the softening length (here the distance at which
+ * the gravity becomes Newtonian again, not the Plummer-equivalent quantity).
+ *
  * @param r_max2 The square of the size of the multipole.
  * @param theta_crit2 The square of the critical opening angle.
  * @param r2 Square of the distance (periodically wrapped) between the
  * particle and the multipole.
+ * @param epsilon The softening length of the particle.
  */
 __attribute__((always_inline, const)) INLINE static int gravity_M2P_accept(
-    const float r_max2, const float theta_crit2, const float r2) {
+    const float r_max2, const float theta_crit2, const float r2,
+    const float epsilon) {
 
   // MATTHIEU: Make this mass-dependent ?
 
   /* Multipole acceptance criterion (Dehnen 2002, eq.10) */
-  return (r2 * theta_crit2 > r_max2);
+  return (r2 * theta_crit2 > r_max2) && (r2 > epsilon * epsilon);
 }
 
 #endif /* SWIFT_MULTIPOLE_H */

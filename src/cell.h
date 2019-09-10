@@ -755,8 +755,10 @@ struct cell {
   /*! The task to limit the time-step of inactive particles */
   struct task *timestep_limiter;
 
+#ifdef WITH_LOGGER
   /*! The logger task */
   struct task *logger;
+#endif
 
   /*! Minimum dimension, i.e. smallest edge of this cell (min(width)). */
   float dmin;
@@ -852,8 +854,10 @@ int cell_link_foreign_gparts(struct cell *c, struct gpart *gparts);
 int cell_count_parts_for_tasks(const struct cell *c);
 int cell_count_gparts_for_tasks(const struct cell *c);
 void cell_clean_links(struct cell *c, void *data);
-void cell_make_multipoles(struct cell *c, integertime_t ti_current);
-void cell_check_multipole(struct cell *c);
+void cell_make_multipoles(struct cell *c, integertime_t ti_current,
+                          const struct gravity_props *const grav_props);
+void cell_check_multipole(struct cell *c,
+                          const struct gravity_props *const grav_props);
 void cell_check_foreign_multipole(const struct cell *c);
 void cell_clean(struct cell *c);
 void cell_check_part_drift_point(struct cell *c, void *data);
@@ -874,6 +878,8 @@ void cell_drift_multipole(struct cell *c, const struct engine *e);
 void cell_drift_all_multipoles(struct cell *c, const struct engine *e);
 void cell_check_timesteps(struct cell *c);
 void cell_store_pre_drift_values(struct cell *c);
+void cell_set_star_resort_flag(struct cell *c);
+void cell_activate_star_formation_tasks(struct cell *c, struct scheduler *s);
 void cell_activate_subcell_hydro_tasks(struct cell *ci, struct cell *cj,
                                        struct scheduler *s);
 void cell_activate_subcell_grav_tasks(struct cell *ci, struct cell *cj,
