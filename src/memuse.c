@@ -20,7 +20,6 @@
 /**
  *  @file memuse.c
  *  @brief file of routines to report about memory use in SWIFT.
- *  Includes MPI exchanges made by the tasks.
  *  Note reports are in KB.
  */
 
