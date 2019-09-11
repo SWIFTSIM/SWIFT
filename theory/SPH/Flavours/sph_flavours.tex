@@ -462,8 +462,8 @@ motion:
   \frac{\mathrm{d} \mathbf{v}_i}{\mathrm{d} t} = -\sum_j (\gamma - 1)^2 m_j u_j
 u_i
 	 &\left[\frac{f_{ij}}{\bar{P}_i} \nabla_i W_{ij}(h_i) ~+ \right. \nonumber \\
-	       &\frac{f_{ji}}{\bar{P}_j} \nabla_i W_{ji}(h_j) ~+ \nonumber \\
-	       & \left.\nu_{ij}\bar{\nabla_i W_{ij}}\right]~.
+	       &\left.\frac{f_{ji}}{\bar{P}_j} \nabla_i W_{ji}(h_j)\right] ~+ \nonumber \\
+	       & m_j \nu_{ij}\bar{\nabla_i W_{ij}}~.
   \label{eq:sph:pu:eom}
 \end{align}
 which includes the Monaghan artificial viscosity term and Balsara switch in

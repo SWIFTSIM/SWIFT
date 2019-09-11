@@ -125,7 +125,8 @@ int main(int argc, char *argv[]) {
 
   struct gravity_props props;
   props.theta_crit2 = 0.;
-  props.epsilon_cur = eps;
+  props.epsilon_DM_cur = eps;
+  props.epsilon_baryon_cur = eps;
   e.gravity_properties = &props;
 
   struct runner r;
@@ -386,7 +387,7 @@ int main(int argc, char *argv[]) {
 
   /* Now let's make a multipole out of it. */
   gravity_reset(ci.grav.multipole);
-  gravity_P2M(ci.grav.multipole, ci.grav.parts, ci.grav.count);
+  gravity_P2M(ci.grav.multipole, ci.grav.parts, ci.grav.count, &props);
 
   gravity_multipole_print(&ci.grav.multipole->m_pole);
 

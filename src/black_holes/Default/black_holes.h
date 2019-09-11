@@ -157,39 +157,17 @@ __attribute__((always_inline)) INLINE static void black_holes_swallow_part(
 }
 
 /**
- * @brief Update a given #part's BH data field to mark the particle has
- * not yet been swallowed.
+ * @brief Update the properties of a black hole particles by swallowing
+ * a BH particle.
  *
- * @param p_data The #part's #black_holes_part_data structure.
+ * @param bpi The #bpart to update.
+ * @param bpj The #bpart that is swallowed.
+ * @param cosmo The current cosmological model.
  */
-__attribute__((always_inline)) INLINE static void
-black_holes_mark_as_not_swallowed(struct black_holes_part_data* p_data) {
+__attribute__((always_inline)) INLINE static void black_holes_swallow_bpart(
+    struct bpart* bpi, const struct bpart* bpj, const struct cosmology* cosmo) {
 
-  /* Nothing to do here: No swallowing in the default model */
-}
-
-/**
- * @brief Update a given #part's BH data field to mark the particle has
- * having been been swallowed.
- *
- * @param p_data The #part's #black_holes_part_data structure.
- */
-__attribute__((always_inline)) INLINE static void black_holes_mark_as_swallowed(
-    struct black_holes_part_data* p_data) {
-
-  /* Nothing to do here: No swallowing in the default model */
-}
-
-/**
- * @brief Return the ID of the BH that should swallow this #part.
- *
- * @param p_data The #part's #black_holes_part_data structure.
- */
-__attribute__((always_inline)) INLINE static long long
-black_holes_get_swallow_id(struct black_holes_part_data* p_data) {
-
-  /* Return a non-existing ID */
-  return -1;
+  /* Nothing to do here: No merging in the default model */
 }
 
 /**
@@ -208,6 +186,20 @@ __attribute__((always_inline)) INLINE static void black_holes_prepare_feedback(
     struct bpart* restrict bp, const struct black_holes_props* props,
     const struct phys_const* constants, const struct cosmology* cosmo,
     const double dt) {}
+
+/**
+ * @brief Finish the calculation of the new BH position.
+ *
+ * Nothing to do here.
+ *
+ * @param bp The black hole particle.
+ * @param props The properties of the black hole scheme.
+ * @param constants The physical constants (in internal units).
+ * @param cosmo The cosmological model.
+ */
+__attribute__((always_inline)) INLINE static void black_holes_end_reposition(
+    struct bpart* restrict bp, const struct black_holes_props* props,
+    const struct phys_const* constants, const struct cosmology* cosmo) {}
 
 /**
  * @brief Reset acceleration fields of a particle

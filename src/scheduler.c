@@ -568,6 +568,7 @@ static void scheduler_splittask_hydro(struct task *t, struct scheduler *s) {
     if (!is_self && !is_pair) {
       t->type = task_type_none;
       t->subtype = task_subtype_none;
+      t->ci = NULL;
       t->cj = NULL;
       t->skip = 1;
       break;
@@ -767,6 +768,7 @@ static void scheduler_splittask_gravity(struct task *t, struct scheduler *s) {
     if ((t->ci == NULL) || (t->type == task_type_pair && t->cj == NULL)) {
       t->type = task_type_none;
       t->subtype = task_subtype_none;
+      t->ci = NULL;
       t->cj = NULL;
       t->skip = 1;
       break;
@@ -912,6 +914,7 @@ static void scheduler_splittask_fof(struct task *t, struct scheduler *s) {
         t->ci->grav.count == 0 || (t->cj != NULL && t->cj->grav.count == 0)) {
       t->type = task_type_none;
       t->subtype = task_subtype_none;
+      t->ci = NULL;
       t->cj = NULL;
       t->skip = 1;
       break;
@@ -1025,8 +1028,19 @@ void scheduler_splittasks_mapper(void *map_data, int num_elements,
  * @param s The #scheduler.
  * @param fof_tasks Are we splitting the FOF tasks (1)? Or the regular tasks
  * (0)?
+ * @param verbose Are we talkative?
  */
-void scheduler_splittasks(struct scheduler *s, const int fof_tasks) {
+void scheduler_splittasks(struct scheduler *s, const int fof_tasks,
+                          const int verbose) {
+
+  if (verbose) {
+    message("space_subsize_self_hydro= %d", space_subsize_self_hydro);
+    message("space_subsize_pair_hydro= %d", space_subsize_pair_hydro);
+    message("space_subsize_self_stars= %d", space_subsize_self_stars);
+    message("space_subsize_pair_stars= %d", space_subsize_pair_stars);
+    message("space_subsize_self_grav= %d", space_subsize_self_grav);
+    message("space_subsize_pair_grav= %d", space_subsize_pair_grav);
+  }
 
   if (fof_tasks) {
     /* Call the mapper on each current task. */
@@ -1110,14 +1124,17 @@ void scheduler_set_unlocks(struct scheduler *s) {
   for (int k = 0; k < s->nr_unlocks; k++) {
     counts[s->unlock_ind[k]] += 1;
 
-#ifdef SWIFT_DEBUG_CHECKS
     /* Check that we are not overflowing */
     if (counts[s->unlock_ind[k]] < 0)
-      error("Task (type=%s/%s) unlocking more than %lld other tasks!",
-            taskID_names[s->tasks[s->unlock_ind[k]].type],
-            subtaskID_names[s->tasks[s->unlock_ind[k]].subtype],
-            (1LL << (8 * sizeof(short int) - 1)) - 1);
-#endif
+      error(
+          "Task (type=%s/%s) unlocking more than %lld other tasks!\n"
+          "This likely a result of having tasks at vastly different levels"
+          "in the tree.\nYou may want to play with the 'Scheduler' "
+          "parameters to modify the task splitting strategy and reduce"
+          "the difference in task depths.",
+          taskID_names[s->tasks[s->unlock_ind[k]].type],
+          subtaskID_names[s->tasks[s->unlock_ind[k]].subtype],
+          (1LL << (8 * sizeof(short int) - 1)) - 1);
   }
 
   /* Compute the offset for each unlock block. */
@@ -1710,6 +1727,14 @@ void scheduler_enqueue(struct scheduler *s, struct task *t) {
               t->ci->hydro.count * sizeof(struct black_holes_part_data),
               MPI_BYTE, t->ci->nodeID, t->flags, subtaskMPI_comms[t->subtype],
               &t->req);
+        } else if (t->subtype == task_subtype_bpart_merger) {
+          t->buff = (struct black_holes_bpart_data *)malloc(
+              sizeof(struct black_holes_bpart_data) * t->ci->black_holes.count);
+          err = MPI_Irecv(
+              t->buff,
+              t->ci->black_holes.count * sizeof(struct black_holes_bpart_data),
+              MPI_BYTE, t->ci->nodeID, t->flags, subtaskMPI_comms[t->subtype],
+              &t->req);
         } else if (t->subtype == task_subtype_xv ||
                    t->subtype == task_subtype_rho ||
                    t->subtype == task_subtype_gradient) {
@@ -1850,6 +1875,26 @@ void scheduler_enqueue(struct scheduler *s, struct task *t) {
                 t->ci->hydro.count * sizeof(struct black_holes_part_data),
                 MPI_BYTE, t->cj->nodeID, t->flags, subtaskMPI_comms[t->subtype],
                 &t->req);
+          }
+        } else if (t->subtype == task_subtype_bpart_merger) {
+          t->buff = (struct black_holes_bpart_data *)malloc(
+              sizeof(struct black_holes_bpart_data) * t->ci->black_holes.count);
+          cell_pack_bpart_swallow(t->ci,
+                                  (struct black_holes_bpart_data *)t->buff);
+
+          if (t->ci->black_holes.count * sizeof(struct black_holes_bpart_data) >
+              s->mpi_message_limit) {
+            err = MPI_Isend(t->buff,
+                            t->ci->black_holes.count *
+                                sizeof(struct black_holes_bpart_data),
+                            MPI_BYTE, t->cj->nodeID, t->flags,
+                            subtaskMPI_comms[t->subtype], &t->req);
+          } else {
+            err = MPI_Issend(t->buff,
+                             t->ci->black_holes.count *
+                                 sizeof(struct black_holes_bpart_data),
+                             MPI_BYTE, t->cj->nodeID, t->flags,
+                             subtaskMPI_comms[t->subtype], &t->req);
           }
 
         } else if (t->subtype == task_subtype_xv ||

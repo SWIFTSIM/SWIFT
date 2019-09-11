@@ -21,6 +21,8 @@
 
 #include "chemistry_struct.h"
 
+#include "timeline.h"
+
 /**
  * @brief Particle fields for the black hole particles.
  *
@@ -65,6 +67,9 @@ struct bpart {
   /*! Chemistry information (e.g. metal content at birth, swallowed metal
    * content, etc.) */
   struct chemistry_bpart_data chemistry_data;
+
+  /*! Black holes merger information (e.g. merging ID) */
+  struct black_holes_bpart_data merger_data;
 
 #ifdef SWIFT_DEBUG_CHECKS
 

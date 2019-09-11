@@ -23,25 +23,25 @@ AM_LDFLAGS = ../src/.libs/libswiftsim.a $(HDF5_LDFLAGS) $(HDF5_LIBS) $(FFTW_LIBS
 TESTS = testGreetings testMaths testReading.sh testKernel \
         testActivePair.sh test27cells.sh test27cellsPerturbed.sh  \
         testParser.sh test125cells.sh test125cellsPerturbed.sh testFFT \
-        testAdiabaticIndex testRandom \
+        testAdiabaticIndex testRandom testRandomSpacing \
         testMatrixInversion testThreadpool testDump testLogger testInteractions.sh \
         testVoronoi1D testVoronoi2D testVoronoi3D testGravityDerivatives \
 	testPeriodicBC.sh testPeriodicBCPerturbed.sh testPotentialSelf \
 	testPotentialPair testEOS testUtilities testSelectOutput.sh \
 	testCbrt testCosmology testOutputList testFormat.sh \
-	test27cellsStars.sh test27cellsStarsPerturbed.sh
+	test27cellsStars.sh test27cellsStarsPerturbed.sh testHydroMPIrules
 
 # List of test programs to compile
 check_PROGRAMS = testGreetings testReading testTimeIntegration \
 		 testActivePair test27cells test27cells_subset test125cells testParser \
                  testKernel testFFT testInteractions testMaths testRandom \
-                 testSymmetry testThreadpool \
+                 testSymmetry testThreadpool testRandomSpacing \
                  testAdiabaticIndex testRiemannExact testRiemannTRRS \
                  testRiemannHLLC testMatrixInversion testDump testLogger \
 		 testVoronoi1D testVoronoi2D testVoronoi3D testPeriodicBC \
 		 testGravityDerivatives testPotentialSelf testPotentialPair testEOS testUtilities \
 		 testSelectOutput testCbrt testCosmology testOutputList test27cellsStars \
-		 test27cellsStars_subset testCooling testFeedback testHashmap
+		 test27cellsStars_subset testCooling testFeedback testHashmap testHydroMPIrules
 
 # Rebuild tests when SWIFT is updated.
 $(check_PROGRAMS): ../src/.libs/libswiftsim.a
@@ -52,6 +52,8 @@ testGreetings_SOURCES = testGreetings.c
 testMaths_SOURCES = testMaths.c
 
 testRandom_SOURCES = testRandom.c
+
+testRandomSpacing_SOURCES = testRandomSpacing.c
 
 testReading_SOURCES = testReading.c
 
@@ -131,6 +133,8 @@ testCooling_SOURCES = testCooling.c
 testFeedback_SOURCES = testFeedback.c
 
 testHashmap_SOURCES = testHashmap.c
+
+testHydroMPIrules = testHydroMPIrules.c
 
 # Files necessary for distribution
 EXTRA_DIST = testReading.sh makeInput.py testActivePair.sh \

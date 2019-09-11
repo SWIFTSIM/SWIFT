@@ -19,6 +19,8 @@
 #ifndef SWIFT_BLACK_HOLES_STRUCT_EAGLE_H
 #define SWIFT_BLACK_HOLES_STRUCT_EAGLE_H
 
+#include "inline.h"
+
 /**
  * @brief Black holes-related fields carried by each *gas* particle.
  */
@@ -27,5 +29,89 @@ struct black_holes_part_data {
   /*! ID of the black-hole that will swallow this #part. */
   long long swallow_id;
 };
+
+/**
+ * @brief Black holes-related fields carried by each *BH* particle.
+ */
+struct black_holes_bpart_data {
+
+  /*! ID of the black-hole that will swallow this #bpart. */
+  long long swallow_id;
+
+  /*! Mass of the black-hole that will swallow this #bpart. */
+  float swallow_mass;
+};
+
+/**
+ * @brief Update a given #part's BH data field to mark the particle has
+ * not yet been swallowed.
+ *
+ * @param p_data The #part's #black_holes_part_data structure.
+ */
+__attribute__((always_inline)) INLINE static void
+black_holes_mark_part_as_not_swallowed(struct black_holes_part_data* p_data) {
+
+  p_data->swallow_id = -1;
+}
+
+/**
+ * @brief Update a given #part's BH data field to mark the particle has
+ * having been been swallowed.
+ *
+ * @param p_data The #part's #black_holes_part_data structure.
+ */
+__attribute__((always_inline)) INLINE static void
+black_holes_mark_part_as_swallowed(struct black_holes_part_data* p_data) {
+
+  p_data->swallow_id = -2;
+}
+
+/**
+ * @brief Return the ID of the BH that should swallow this #part.
+ *
+ * @param p_data The #part's #black_holes_part_data structure.
+ */
+__attribute__((always_inline)) INLINE static long long
+black_holes_get_part_swallow_id(struct black_holes_part_data* p_data) {
+
+  return p_data->swallow_id;
+}
+
+/**
+ * @brief Update a given #bpart's BH data field to mark the particle has
+ * not yet been swallowed.
+ *
+ * @param p_data The #bpart's #black_holes_bpart_data structure.
+ */
+__attribute__((always_inline)) INLINE static void
+black_holes_mark_bpart_as_not_swallowed(struct black_holes_bpart_data* p_data) {
+
+  p_data->swallow_id = -1;
+  p_data->swallow_mass = 0.f;
+}
+
+/**
+ * @brief Update a given #bpart's BH data field to mark the particle has
+ * having been been swallowed.
+ *
+ * @param p_data The #bpart's #black_holes_bpart_data structure.
+ */
+__attribute__((always_inline)) INLINE static void
+black_holes_mark_bpart_as_merged(struct black_holes_bpart_data* p_data) {
+
+  p_data->swallow_id = -2;
+  p_data->swallow_mass = -1.f;
+}
+
+/**
+ * @brief Return the ID of the BH that should swallow this #bpart.
+ *
+ * @param p_data The #bpart's #black_holes_bpart_data structure.
+ */
+__attribute__((always_inline)) INLINE static long long
+black_holes_get_bpart_swallow_id(struct black_holes_bpart_data* p_data) {
+
+  return p_data->swallow_id;
+}
 
 #endif /* SWIFT_BLACK_HOLES_STRUCT_EAGLE_H */

@@ -29,6 +29,9 @@
 #elif defined(STARS_EAGLE)
 #include "./stars/EAGLE/stars.h"
 #include "./stars/EAGLE/stars_iact.h"
+#elif defined(STARS_GEAR)
+#include "./stars/GEAR/stars.h"
+#include "./stars/GEAR/stars_iact.h"
 #else
 #error "Invalid choice of star model"
 #endif

@@ -44,27 +44,29 @@ There are several groups that contain 'auxiliary' information, such as
 the particles. Some types are currently ignored by SWIFT but are kept in the
 file format for compatibility reasons.
 
-+---------------------+------------------------+----------------------------+
-| HDF5 Group Name     | Physical Particle Type | In code ``enum part_type`` |
-+=====================+========================+============================+
-| ``/PartType0/``     | Gas                    | ``swift_type_gas``         |
-+---------------------+------------------------+----------------------------+
-| ``/PartType1/``     | Dark Matter            | ``swift_type_dark_matter`` |
-+---------------------+------------------------+----------------------------+
-| ``/PartType2/``     | Ignored                |                            |
-+---------------------+------------------------+----------------------------+
-| ``/PartType3/``     | Ignored                |                            |
-+---------------------+------------------------+----------------------------+
-| ``/PartType4/``     | Stars                  | ``swift_type_star``        |
-+---------------------+------------------------+----------------------------+
-| ``/PartType5/``     | Black Holes            | ``swift_type_black_hole``  |
-+---------------------+------------------------+----------------------------+
++---------------------+------------------------+----------------------------------------+
+| HDF5 Group Name     | Physical Particle Type | In code ``enum part_type``             |
++=====================+========================+========================================+
+| ``/PartType0/``     | Gas                    | ``swift_type_gas``                     |
++---------------------+------------------------+----------------------------------------+
+| ``/PartType1/``     | Dark Matter            | ``swift_type_dark_matter``             |
++---------------------+------------------------+----------------------------------------+
+| ``/PartType2/``     | Background Dark Matter | ``swift_type_dark_matter_background``  |
++---------------------+------------------------+----------------------------------------+
+| ``/PartType3/``     | Ignored                |                                        |
++---------------------+------------------------+----------------------------------------+
+| ``/PartType4/``     | Stars                  | ``swift_type_star``                    |
++---------------------+------------------------+----------------------------------------+
+| ``/PartType5/``     | Black Holes            | ``swift_type_black_hole``              |
++---------------------+------------------------+----------------------------------------+
 
 The last column in the table gives the ``enum`` value from ``part_type.h``
 corresponding to a given entry in the files.
 
-Note that the only particles that have hydrodynamical forces calculated between
-them are those in ``PartType0``.
+Note that the only particles that have hydrodynamical forces calculated
+between them are those in ``PartType0``. The background dark matter
+particles are used for zoom-in simulations and can have different masses
+(and as a consequence softening length) within the ``/PartType2`` arrays.
 
 
 Necessary Components
@@ -121,8 +123,14 @@ GADGET-2 based analysis programs:
   this to 1. If this field is present in a SWIFT IC file and has a
   value different from 1, the code will return an error message.
 + ``Time``, time of the start of the simulation in internal units or expressed
-  as a scale-factor for cosmological runs. SWIFT ignores this and reads it from
-  the parameter file.
+  as a scale-factor for cosmological runs. **SWIFT ignores this and reads it
+  from the parameter file**, behaviour that matches the GADGET-2 code.  Note
+  that SWIFT writes the current time since the Big Bang, not scale-factor, to
+  this variable in snapshots.
++ ``Redshift``, the redshift at the start of the simulation. SWIFT checks this
+  (if present) against ``a_begin`` in the parameter file at the start of
+  cosmological runs.  Note that we explicitly do **not** compare the ``Time``
+  variable due to its ambiguous meaning.
 
 
 Particle Data
@@ -137,8 +145,8 @@ individual particle type (e.g. ``/PartType0/``) that have the following *dataset
   within [0, L)^3 where L is the side-length of the simulation volume. In the
   case of cosmological simulations, these are the co-moving positions.
 + ``Velocities``, an array of shape (N, 3) that is the cartesian velocities of
-  the particles. When running cosmological simulations, these are the peculiar
-  velocities. Note that this is different from GADGET which uses peculiar
+  the particles. When running cosmological simulations, these are the **peculiar
+  velocities**. Note that this is different from GADGET which uses peculiar
   velocities divided by ``sqrt(a)`` (see below for a fix).
 + ``ParticleIDs``, an array of length N that are unique identifying numbers for
   each particle. Note that these have to be unique to a particle, and cannot be

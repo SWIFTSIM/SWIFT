@@ -34,6 +34,7 @@
 #include "hydro.h"
 #include "kernel_hydro.h"
 #include "parser.h"
+#include "pressure_floor.h"
 #include "units.h"
 
 #define hydro_props_default_max_iterations 30
@@ -186,6 +187,9 @@ void hydro_props_print(const struct hydro_props *p) {
   /* Print equation of state first */
   eos_print(&eos);
 
+  /* Then the pressure floor */
+  pressure_floor_print(&pressure_floor_props);
+
   /* Now SPH */
   message("Hydrodynamic scheme: %s in %dD.", SPH_IMPLEMENTATION,
           (int)hydro_dimension);
@@ -238,6 +242,7 @@ void hydro_props_print(const struct hydro_props *p) {
 void hydro_props_print_snapshot(hid_t h_grpsph, const struct hydro_props *p) {
 
   eos_print_snapshot(h_grpsph, &eos);
+  pressure_floor_print_snapshot(h_grpsph);
 
   io_write_attribute_i(h_grpsph, "Dimension", (int)hydro_dimension);
   io_write_attribute_s(h_grpsph, "Scheme", SPH_IMPLEMENTATION);
@@ -338,7 +343,7 @@ void hydro_props_update(struct hydro_props *p, const struct gravity_props *gp,
    * is a fixed fraction of the radius at which the softened forces
    * recover a Newtonian behaviour (i.e. 2.8 * Plummer equivalent softening
    * in the case of a cubic spline kernel). */
-  p->h_min = p->h_min_ratio * gp->epsilon_cur / kernel_gamma;
+  p->h_min = p->h_min_ratio * gp->epsilon_baryon_cur / kernel_gamma;
 }
 
 /**

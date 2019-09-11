@@ -88,6 +88,34 @@ __attribute__((always_inline)) INLINE static void chemistry_end_density(
     const struct cosmology* cosmo) {}
 
 /**
+ * @brief Updates to the chemistry data after the hydro force loop.
+ *
+ * @param p The particle to act upon.
+ * @param cosmo The current cosmological model.
+ */
+__attribute__((always_inline)) INLINE static void chemistry_end_force(
+    struct part* restrict p, const struct cosmology* cosmo) {}
+
+/**
+ * @brief Computes the chemistry-related time-step constraint.
+ *
+ * @param phys_const The physical constants in internal units.
+ * @param cosmo The current cosmological model.
+ * @param us The internal system of units.
+ * @param hydro_props The properties of the hydro scheme.
+ * @param cd The global properties of the chemistry scheme.
+ * @param p Pointer to the particle data.
+ */
+__attribute__((always_inline)) INLINE static float chemistry_timestep(
+    const struct phys_const* restrict phys_const,
+    const struct cosmology* restrict cosmo,
+    const struct unit_system* restrict us,
+    const struct hydro_props* hydro_props,
+    const struct chemistry_global_data* cd, const struct part* restrict p) {
+  return FLT_MAX;
+}
+
+/**
  * @brief Sets all particle fields to sensible values when the #part has 0 ngbs.
  *
  * @param p The particle to act upon
@@ -146,4 +174,88 @@ __attribute__((always_inline)) INLINE static void chemistry_init_part(
  */
 __attribute__((always_inline)) INLINE static void chemistry_first_init_spart(
     const struct chemistry_global_data* data, struct spart* restrict sp) {}
+
+/**
+ * @brief Returns the total metallicity (metal mass fraction) of the
+ * star particle to be used in feedback/enrichment related routines.
+ *
+ * No metallicity treatment here -> return 0.
+ *
+ * @param sp Pointer to the particle data.
+ */
+__attribute__((always_inline)) INLINE static float
+chemistry_get_total_metal_mass_fraction_for_feedback(
+    const struct spart* restrict sp) {
+
+  return 0.f;
+}
+
+/**
+ * @brief Returns the abundance array (metal mass fractions) of the
+ * star particle to be used in feedback/enrichment related routines.
+ *
+ * @param sp Pointer to the particle data.
+ */
+__attribute__((always_inline)) INLINE static float const*
+chemistry_get_metal_mass_fraction_for_feedback(
+    const struct spart* restrict sp) {
+
+  return NULL;
+}
+
+/**
+ * @brief Returns the total metallicity (metal mass fraction) of the
+ * gas particle to be used in cooling related routines.
+ *
+ * No metallicity treatment here -> return 0.
+ *
+ * @param p Pointer to the particle data.
+ */
+__attribute__((always_inline)) INLINE static float
+chemistry_get_total_metal_mass_fraction_for_cooling(
+    const struct part* restrict p) {
+
+  return 0.f;
+}
+
+/**
+ * @brief Returns the abundance array (metal mass fractions) of the
+ * gas particle to be used in cooling related routines.
+ *
+ * @param p Pointer to the particle data.
+ */
+__attribute__((always_inline)) INLINE static float const*
+chemistry_get_metal_mass_fraction_for_cooling(const struct part* restrict p) {
+
+  return NULL;
+}
+
+/**
+ * @brief Returns the total metallicity (metal mass fraction) of the
+ * gas particle to be used in star formation related routines.
+ *
+ * No metallicity treatment here -> return 0.
+ *
+ * @param p Pointer to the particle data.
+ */
+__attribute__((always_inline)) INLINE static float
+chemistry_get_total_metal_mass_fraction_for_star_formation(
+    const struct part* restrict p) {
+
+  return 0.f;
+}
+
+/**
+ * @brief Returns the abundance array (metal mass fractions) of the
+ * gas particle to be used in star formation related routines.
+ *
+ * @param p Pointer to the particle data.
+ */
+__attribute__((always_inline)) INLINE static float const*
+chemistry_get_metal_mass_fraction_for_star_formation(
+    const struct part* restrict p) {
+
+  return NULL;
+}
+
 #endif /* SWIFT_CHEMISTRY_NONE_H */

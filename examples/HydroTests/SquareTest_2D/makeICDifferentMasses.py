@@ -26,11 +26,11 @@ from numpy import *
 # Parameters
 L = 2 * 64  # Number of particles on the side
 gamma = 5.0 / 3.0  # Gas adiabatic index
-rho0 = 4  # Gas central density
-rho1 = 1  # Gas outskirt density
-P0 = 2.5  # Gas central pressure
-P1 = 2.5  # Gas central pressure
-vx = 0.0  # Random velocity for all particles
+rho0 = 4.0 # Gas central density
+rho1 = 1.0 # Gas outskirt density
+P0 = 2.5   # Gas central pressure
+P1 = 2.5   # Gas central pressure
+vx = 0.0   # Random velocity for all particles
 vy = 0.0
 fileOutputName = "square.hdf5"
 # ---------------------------------------------------

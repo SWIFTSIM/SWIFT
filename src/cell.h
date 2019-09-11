@@ -655,7 +655,7 @@ struct cell {
     struct task *density_ghost;
 
     /*! The star ghost task itself */
-    struct task *swallow_ghost[2];
+    struct task *swallow_ghost[3];
 
     /*! Linked list of the tasks computing this cell's BH density. */
     struct link *density;
@@ -665,7 +665,10 @@ struct cell {
     struct link *swallow;
 
     /*! Linked list of the tasks processing the particles to swallow */
-    struct link *do_swallow;
+    struct link *do_gas_swallow;
+
+    /*! Linked list of the tasks processing the particles to swallow */
+    struct link *do_bh_swallow;
 
     /*! Linked list of the tasks computing this cell's BH feedback. */
     struct link *feedback;
@@ -752,8 +755,10 @@ struct cell {
   /*! The task to limit the time-step of inactive particles */
   struct task *timestep_limiter;
 
+#ifdef WITH_LOGGER
   /*! The logger task */
   struct task *logger;
+#endif
 
   /*! Minimum dimension, i.e. smallest edge of this cell (min(width)). */
   float dmin;
@@ -819,6 +824,10 @@ void cell_pack_part_swallow(const struct cell *c,
                             struct black_holes_part_data *data);
 void cell_unpack_part_swallow(struct cell *c,
                               const struct black_holes_part_data *data);
+void cell_pack_bpart_swallow(const struct cell *c,
+                             struct black_holes_bpart_data *data);
+void cell_unpack_bpart_swallow(struct cell *c,
+                               const struct black_holes_bpart_data *data);
 int cell_pack_tags(const struct cell *c, int *tags);
 int cell_unpack_tags(const int *tags, struct cell *c);
 int cell_pack_end_step_hydro(struct cell *c, struct pcell_step_hydro *pcell);
@@ -845,8 +854,10 @@ int cell_link_foreign_gparts(struct cell *c, struct gpart *gparts);
 int cell_count_parts_for_tasks(const struct cell *c);
 int cell_count_gparts_for_tasks(const struct cell *c);
 void cell_clean_links(struct cell *c, void *data);
-void cell_make_multipoles(struct cell *c, integertime_t ti_current);
-void cell_check_multipole(struct cell *c);
+void cell_make_multipoles(struct cell *c, integertime_t ti_current,
+                          const struct gravity_props *const grav_props);
+void cell_check_multipole(struct cell *c,
+                          const struct gravity_props *const grav_props);
 void cell_check_foreign_multipole(const struct cell *c);
 void cell_clean(struct cell *c);
 void cell_check_part_drift_point(struct cell *c, void *data);
@@ -867,6 +878,8 @@ void cell_drift_multipole(struct cell *c, const struct engine *e);
 void cell_drift_all_multipoles(struct cell *c, const struct engine *e);
 void cell_check_timesteps(struct cell *c);
 void cell_store_pre_drift_values(struct cell *c);
+void cell_set_star_resort_flag(struct cell *c);
+void cell_activate_star_formation_tasks(struct cell *c, struct scheduler *s);
 void cell_activate_subcell_hydro_tasks(struct cell *ci, struct cell *cj,
                                        struct scheduler *s);
 void cell_activate_subcell_grav_tasks(struct cell *ci, struct cell *cj,

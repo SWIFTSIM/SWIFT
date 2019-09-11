@@ -18,12 +18,12 @@ filename = "/cosma7/data/dp004/jlvc76/nIFTy/IC_CLUSTER_00019"
 
 length = unyt.kpc
 mass = 1e10 * unyt.msun
-time = unyt.s * unyt.kpc / unyt.km
+time = (1.0 * unyt.s * unyt.kpc / unyt.km).to("s")
 velocity = length / time
 energy_per_unit_mass = (length / time) ** 2
 
 
-nifty_units = unyt.UnitSystem("nifty", length, mass, time)
+nifty_units = unyt.UnitSystem("nifty", 1e3 * length, mass, time)
 
 writer = Writer(
     unit_system=nifty_units,

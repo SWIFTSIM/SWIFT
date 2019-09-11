@@ -56,9 +56,9 @@
 #include "memuse.h"
 #include "minmax.h"
 #include "multipole.h"
+#include "pressure_floor.h"
 #include "restart.h"
 #include "sort_part.h"
-#include "star_formation.h"
 #include "star_formation_logger.h"
 #include "stars.h"
 #include "threadpool.h"
@@ -91,6 +91,9 @@ int space_extra_gparts = space_extra_gparts_default;
 /*! Maximum number of particles per ghost */
 int engine_max_parts_per_ghost = engine_max_parts_per_ghost_default;
 int engine_max_sparts_per_ghost = engine_max_sparts_per_ghost_default;
+
+/*! Maximal depth at which the stars resort task can be pushed */
+int engine_star_resort_task_depth = engine_star_resort_task_depth_default;
 
 /*! Expected maximal number of strays received at a rebuild */
 int space_expected_max_nr_strays = space_expected_max_nr_strays_default;
@@ -238,9 +241,11 @@ void space_rebuild_recycle_mapper(void *map_data, int num_elements,
     c->black_holes.density_ghost = NULL;
     c->black_holes.swallow_ghost[0] = NULL;
     c->black_holes.swallow_ghost[1] = NULL;
+    c->black_holes.swallow_ghost[2] = NULL;
     c->black_holes.density = NULL;
     c->black_holes.swallow = NULL;
-    c->black_holes.do_swallow = NULL;
+    c->black_holes.do_gas_swallow = NULL;
+    c->black_holes.do_bh_swallow = NULL;
     c->black_holes.feedback = NULL;
     c->kick1 = NULL;
     c->kick2 = NULL;
@@ -1926,7 +1931,7 @@ void space_rebuild(struct space *s, int repartitioned, int verbose) {
   /* Check that the multipole construction went OK */
   if (s->with_self_gravity)
     for (int k = 0; k < s->nr_cells; k++)
-      cell_check_multipole(&s->cells_top[k]);
+      cell_check_multipole(&s->cells_top[k], s->e->gravity_properties);
 #endif
 
   /* Clean up any stray sort indices in the cell buffer. */
@@ -3601,7 +3606,8 @@ void space_split_recursive(struct space *s, struct cell *c,
     if (s->with_self_gravity) {
       if (gcount > 0) {
 
-        gravity_P2M(c->grav.multipole, c->grav.parts, c->grav.count);
+        gravity_P2M(c->grav.multipole, c->grav.parts, c->grav.count,
+                    e->gravity_properties);
 
       } else {
 
@@ -3943,9 +3949,12 @@ void space_synchronize_particle_positions_mapper(void *map_data, int nr_gparts,
     if (gp->type == swift_type_dark_matter)
       continue;
 
+    else if (gp->type == swift_type_dark_matter_background)
+      continue;
+
     else if (gp->type == swift_type_gas) {
 
-      /* Get it's gassy friend */
+      /* Get its gassy friend */
       struct part *p = &s->parts[-gp->id_or_neg_offset];
       struct xpart *xp = &s->xparts[-gp->id_or_neg_offset];
 
@@ -3963,7 +3972,7 @@ void space_synchronize_particle_positions_mapper(void *map_data, int nr_gparts,
 
     else if (gp->type == swift_type_stars) {
 
-      /* Get it's stellar friend */
+      /* Get its stellar friend */
       struct spart *sp = &s->sparts[-gp->id_or_neg_offset];
 
       /* Synchronize positions */
@@ -3976,7 +3985,7 @@ void space_synchronize_particle_positions_mapper(void *map_data, int nr_gparts,
 
     else if (gp->type == swift_type_black_hole) {
 
-      /* Get it's black hole friend */
+      /* Get its black hole friend */
       struct bpart *bp = &s->bparts[-gp->id_or_neg_offset];
 
       /* Synchronize positions */
@@ -3985,6 +3994,10 @@ void space_synchronize_particle_positions_mapper(void *map_data, int nr_gparts,
       bp->x[2] = gp->x[2];
 
       gp->mass = bp->mass;
+    }
+
+    else {
+      error("Invalid type!");
     }
   }
 }
@@ -4028,7 +4041,6 @@ void space_first_init_parts_mapper(void *restrict map_data, int count,
   const int with_gravity = e->policy & engine_policy_self_gravity;
 
   const struct chemistry_global_data *chemistry = e->chemistry;
-  const struct star_formation *star_formation = e->star_formation;
   const struct cooling_function_data *cool_func = e->cooling_func;
 
   /* Check that the smoothing lengths are non-zero */
@@ -4079,9 +4091,8 @@ void space_first_init_parts_mapper(void *restrict map_data, int count,
     /* Also initialise the chemistry */
     chemistry_first_init_part(phys_const, us, cosmo, chemistry, &p[k], &xp[k]);
 
-    /* Also initialise the star formation */
-    star_formation_first_init_part(phys_const, us, cosmo, star_formation, &p[k],
-                                   &xp[k]);
+    /* Also initialise the pressure floor */
+    pressure_floor_first_init_part(phys_const, us, cosmo, &p[k], &xp[k]);
 
     /* And the cooling */
     cooling_first_init_part(phys_const, us, cosmo, cool_func, &p[k], &xp[k]);
@@ -4091,7 +4102,7 @@ void space_first_init_parts_mapper(void *restrict map_data, int count,
                              cool_func);
 
     /* And the black hole markers */
-    black_holes_mark_as_not_swallowed(&p[k].black_holes_data);
+    black_holes_mark_part_as_not_swallowed(&p[k].black_holes_data);
 
 #ifdef SWIFT_DEBUG_CHECKS
     /* Check part->gpart->part linkeage. */
@@ -4319,6 +4330,9 @@ void space_first_init_bparts_mapper(void *restrict map_data, int count,
 
     black_holes_first_init_bpart(&bp[k], props);
 
+    /* And the black hole merger markers */
+    black_holes_mark_bpart_as_not_swallowed(&bp[k].merger_data);
+
 #ifdef SWIFT_DEBUG_CHECKS
     if (bp[k].gpart && bp[k].gpart->id_or_neg_offset != -(k + delta))
       error("Invalid gpart -> bpart link");
@@ -4360,7 +4374,7 @@ void space_init_parts_mapper(void *restrict map_data, int count,
   for (int k = 0; k < count; k++) {
     hydro_init_part(&parts[k], hs);
     chemistry_init_part(&parts[k], e->chemistry);
-    star_formation_init_part(&parts[k], e->star_formation);
+    pressure_floor_init_part(&parts[k], &xparts[k]);
     tracers_after_init(&parts[k], &xparts[k], e->internal_units,
                        e->physical_constants, with_cosmology, e->cosmology,
                        e->hydro_properties, e->cooling_func, e->time);
@@ -4520,6 +4534,7 @@ void space_convert_quantities(struct space *s, int verbose) {
  * @param hydro flag whether we are doing hydro or not?
  * @param self_gravity flag whether we are doing gravity or not?
  * @param star_formation flag whether we are doing star formation or not?
+ * @param DM_background Are we running with some DM background particles?
  * @param verbose Print messages to stdout or not.
  * @param dry_run If 1, just initialise stuff, don't do anything with the parts.
  *
@@ -4534,7 +4549,8 @@ void space_init(struct space *s, struct swift_params *params,
                 struct bpart *bparts, size_t Npart, size_t Ngpart,
                 size_t Nspart, size_t Nbpart, int periodic, int replicate,
                 int generate_gas_in_ics, int hydro, int self_gravity,
-                int star_formation, int verbose, int dry_run) {
+                int star_formation, int DM_background, int verbose,
+                int dry_run) {
 
   /* Clean-up everything */
   bzero(s, sizeof(struct space));
@@ -4547,6 +4563,7 @@ void space_init(struct space *s, struct swift_params *params,
   s->with_self_gravity = self_gravity;
   s->with_hydro = hydro;
   s->with_star_formation = star_formation;
+  s->with_DM_background = DM_background;
   s->nr_parts = Npart;
   s->nr_gparts = Ngpart;
   s->nr_sparts = Nspart;
@@ -4586,8 +4603,9 @@ void space_init(struct space *s, struct swift_params *params,
     Ngpart = s->nr_gparts;
 
 #ifdef SWIFT_DEBUG_CHECKS
-    part_verify_links(parts, gparts, sparts, bparts, Npart, Ngpart, Nspart,
-                      Nbpart, 1);
+    if (!dry_run)
+      part_verify_links(parts, gparts, sparts, bparts, Npart, Ngpart, Nspart,
+                        Nbpart, 1);
 #endif
   }
 
@@ -4596,6 +4614,9 @@ void space_init(struct space *s, struct swift_params *params,
     error("Value of 'InitialConditions:replicate' (%d) is too small",
           replicate);
   if (replicate > 1) {
+    if (DM_background)
+      error("Can't replicate the space if background DM particles are in use.");
+
     space_replicate(s, replicate, verbose);
     parts = s->parts;
     gparts = s->gparts;
@@ -4834,16 +4855,19 @@ void space_replicate(struct space *s, int replicate, int verbose) {
   const size_t nr_parts = s->nr_parts;
   const size_t nr_gparts = s->nr_gparts;
   const size_t nr_sparts = s->nr_sparts;
-  const size_t nr_dm = nr_gparts - nr_parts - nr_sparts;
+  const size_t nr_bparts = s->nr_bparts;
+  const size_t nr_dm = nr_gparts - nr_parts - nr_sparts - nr_bparts;
 
   s->size_parts = s->nr_parts = nr_parts * factor;
   s->size_gparts = s->nr_gparts = nr_gparts * factor;
   s->size_sparts = s->nr_sparts = nr_sparts * factor;
+  s->size_bparts = s->nr_bparts = nr_bparts * factor;
 
   /* Allocate space for new particles */
   struct part *parts = NULL;
   struct gpart *gparts = NULL;
   struct spart *sparts = NULL;
+  struct bpart *bparts = NULL;
 
   if (swift_memalign("parts", (void **)&parts, part_align,
                      s->nr_parts * sizeof(struct part)) != 0)
@@ -4857,6 +4881,10 @@ void space_replicate(struct space *s, int replicate, int verbose) {
                      s->nr_sparts * sizeof(struct spart)) != 0)
     error("Failed to allocate new spart array.");
 
+  if (swift_memalign("bparts", (void **)&bparts, bpart_align,
+                     s->nr_bparts * sizeof(struct bpart)) != 0)
+    error("Failed to allocate new bpart array.");
+
   /* Replicate everything */
   for (int i = 0; i < replicate; ++i) {
     for (int j = 0; j < replicate; ++j) {
@@ -4868,6 +4896,8 @@ void space_replicate(struct space *s, int replicate, int verbose) {
                nr_parts * sizeof(struct part));
         memcpy(sparts + offset * nr_sparts, s->sparts,
                nr_sparts * sizeof(struct spart));
+        memcpy(bparts + offset * nr_bparts, s->bparts,
+               nr_bparts * sizeof(struct bpart));
         memcpy(gparts + offset * nr_gparts, s->gparts,
                nr_gparts * sizeof(struct gpart));
 
@@ -4888,6 +4918,11 @@ void space_replicate(struct space *s, int replicate, int verbose) {
           sparts[n].x[0] += shift[0];
           sparts[n].x[1] += shift[1];
           sparts[n].x[2] += shift[2];
+        }
+        for (size_t n = offset * nr_bparts; n < (offset + 1) * nr_bparts; ++n) {
+          bparts[n].x[0] += shift[0];
+          bparts[n].x[1] += shift[1];
+          bparts[n].x[2] += shift[2];
         }
 
         /* Set the correct links (recall gpart are sorted by type at start-up):
@@ -4910,6 +4945,16 @@ void space_replicate(struct space *s, int replicate, int verbose) {
             gparts[offset_gpart + n].id_or_neg_offset = -(offset_spart + n);
           }
         }
+        if (nr_bparts > 0 && nr_gparts > 0) {
+          const size_t offset_bpart = offset * nr_bparts;
+          const size_t offset_gpart =
+              offset * nr_gparts + nr_dm + nr_parts + nr_sparts;
+
+          for (size_t n = 0; n < nr_bparts; ++n) {
+            bparts[offset_bpart + n].gpart = &gparts[offset_gpart + n];
+            gparts[offset_gpart + n].id_or_neg_offset = -(offset_bpart + n);
+          }
+        }
       }
     }
   }
@@ -4918,9 +4963,11 @@ void space_replicate(struct space *s, int replicate, int verbose) {
   swift_free("parts", s->parts);
   swift_free("gparts", s->gparts);
   swift_free("sparts", s->sparts);
+  swift_free("bparts", s->bparts);
   s->parts = parts;
   s->gparts = gparts;
   s->sparts = sparts;
+  s->bparts = bparts;
 
   /* Finally, update the domain size */
   s->dim[0] *= replicate;
@@ -5231,8 +5278,8 @@ void space_check_limiter(struct space *s) {
 /**
  * @brief #threadpool mapper function for the swallow debugging check
  */
-void space_check_swallow_mapper(void *map_data, int nr_parts,
-                                void *extra_data) {
+void space_check_part_swallow_mapper(void *map_data, int nr_parts,
+                                     void *extra_data) {
 #ifdef SWIFT_DEBUG_CHECKS
   /* Unpack the data */
   struct part *restrict parts = (struct part *)map_data;
@@ -5243,10 +5290,35 @@ void space_check_swallow_mapper(void *map_data, int nr_parts,
     if (parts[k].time_bin == time_bin_inhibited) continue;
 
     const long long swallow_id =
-        black_holes_get_swallow_id(&parts[k].black_holes_data);
+        black_holes_get_part_swallow_id(&parts[k].black_holes_data);
 
     if (swallow_id != -1)
       error("Particle has not been swallowed! id=%lld", parts[k].id);
+  }
+#else
+  error("Calling debugging code without debugging flag activated.");
+#endif
+}
+
+/**
+ * @brief #threadpool mapper function for the swallow debugging check
+ */
+void space_check_bpart_swallow_mapper(void *map_data, int nr_bparts,
+                                      void *extra_data) {
+#ifdef SWIFT_DEBUG_CHECKS
+  /* Unpack the data */
+  struct bpart *restrict bparts = (struct bpart *)map_data;
+
+  /* Verify that all particles have been swallowed or are untouched */
+  for (int k = 0; k < nr_bparts; k++) {
+
+    if (bparts[k].time_bin == time_bin_inhibited) continue;
+
+    const long long swallow_id =
+        black_holes_get_bpart_swallow_id(&bparts[k].merger_data);
+
+    if (swallow_id != -1)
+      error("BH particle has not been swallowed! id=%lld", bparts[k].id);
   }
 #else
   error("Calling debugging code without debugging flag activated.");
@@ -5264,8 +5336,11 @@ void space_check_swallow_mapper(void *map_data, int nr_parts,
 void space_check_swallow(struct space *s) {
 #ifdef SWIFT_DEBUG_CHECKS
 
-  threadpool_map(&s->e->threadpool, space_check_swallow_mapper, s->parts,
-                 s->nr_parts, sizeof(struct part), 1000, NULL);
+  threadpool_map(&s->e->threadpool, space_check_part_swallow_mapper, s->parts,
+                 s->nr_parts, sizeof(struct part), 0, NULL);
+
+  threadpool_map(&s->e->threadpool, space_check_bpart_swallow_mapper, s->bparts,
+                 s->nr_bparts, sizeof(struct bpart), 0, NULL);
 #else
   error("Calling debugging code without debugging flag activated.");
 #endif
@@ -5340,6 +5415,7 @@ void space_clean(struct space *s) {
   swift_free("xparts", s->xparts);
   swift_free("gparts", s->gparts);
   swift_free("sparts", s->sparts);
+  swift_free("bparts", s->bparts);
 }
 
 /**
@@ -5381,6 +5457,18 @@ void space_struct_dump(struct space *s, FILE *stream) {
                        "space_extra_sparts", "space_extra_sparts");
   restart_write_blocks(&space_extra_bparts, sizeof(int), 1, stream,
                        "space_extra_bparts", "space_extra_bparts");
+  restart_write_blocks(&space_expected_max_nr_strays, sizeof(int), 1, stream,
+                       "space_expected_max_nr_strays",
+                       "space_expected_max_nr_strays");
+  restart_write_blocks(&engine_max_parts_per_ghost, sizeof(int), 1, stream,
+                       "engine_max_parts_per_ghost",
+                       "engine_max_parts_per_ghost");
+  restart_write_blocks(&engine_max_sparts_per_ghost, sizeof(int), 1, stream,
+                       "engine_max_sparts_per_ghost",
+                       "engine_max_sparts_per_ghost");
+  restart_write_blocks(&engine_star_resort_task_depth, sizeof(int), 1, stream,
+                       "engine_star_resort_task_depth",
+                       "engine_star_resort_task_depth");
 
   /* More things to write. */
   if (s->nr_parts > 0) {
@@ -5439,6 +5527,14 @@ void space_struct_restore(struct space *s, FILE *stream) {
                       "space_extra_sparts");
   restart_read_blocks(&space_extra_bparts, sizeof(int), 1, stream, NULL,
                       "space_extra_bparts");
+  restart_read_blocks(&space_expected_max_nr_strays, sizeof(int), 1, stream,
+                      NULL, "space_expected_max_nr_strays");
+  restart_read_blocks(&engine_max_parts_per_ghost, sizeof(int), 1, stream, NULL,
+                      "engine_max_parts_per_ghost");
+  restart_read_blocks(&engine_max_sparts_per_ghost, sizeof(int), 1, stream,
+                      NULL, "engine_max_sparts_per_ghost");
+  restart_read_blocks(&engine_star_resort_task_depth, sizeof(int), 1, stream,
+                      NULL, "engine_star_resort_task_depth");
 
   /* Things that should be reconstructed in a rebuild. */
   s->cells_top = NULL;

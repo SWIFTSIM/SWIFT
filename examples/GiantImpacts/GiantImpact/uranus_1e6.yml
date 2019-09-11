@@ -48,8 +48,8 @@ SPH:
 Gravity:
     eta:                    0.025       # Constant dimensionless multiplier for time integration.
     theta:                  0.7         # Opening angle (Multipole acceptance criterion)
-    comoving_softening:     0.003       # Comoving softening length (in internal units).
-    max_physical_softening: 0.003       # Physical softening length (in internal units).
+    comoving_baryon_softening:     0.003       # Comoving softening length (in internal units).
+    max_physical_baryon_softening: 0.003       # Physical softening length (in internal units).
 
 # Parameters for the task scheduling
 Scheduler:

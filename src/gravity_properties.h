@@ -27,10 +27,12 @@
 #endif
 
 /* Local includes. */
+#include "kernel_gravity.h"
 #include "restart.h"
 
 /* Forward declarations */
 struct cosmology;
+struct phys_const;
 struct swift_params;
 
 /**
@@ -38,8 +40,62 @@ struct swift_params;
  */
 struct gravity_props {
 
+  /* -------------- Softening for the regular particles ---------------- */
+
+  /*! Co-moving softening length for high-res. DM particles at the current
+   * redshift.  */
+  float epsilon_DM_cur;
+
+  /*! Co-moving softening length for high-res. baryon particles at the current
+   * redshift.  */
+  float epsilon_baryon_cur;
+
+  /* -------------- Softening for the background DM -------------------- */
+
+  /*! Conversion factor from cbrt of particle mass to softening assuming
+   * a constant fraction of the mean inter-particle separation at that mass. */
+  float epsilon_background_fac;
+
+  /* -------------- Properties of the FFM gravity ---------------------- */
+
+  /*! Tree opening angle (Multipole acceptance criterion) */
+  double theta_crit;
+
+  /*! Square of opening angle */
+  double theta_crit2;
+
+  /*! Inverse of opening angle */
+  double theta_crit_inv;
+
+  /* ------------- Properties of the softened gravity ------------------ */
+
+  /*! Co-moving softening length for for high-res. DM particles */
+  float epsilon_DM_comoving;
+
+  /*! Maximal softening length in physical coordinates for the high-res.
+   * DM particles */
+  float epsilon_DM_max_physical;
+
+  /*! Co-moving softening length for for high-res. baryon particles */
+  float epsilon_baryon_comoving;
+
+  /*! Maximal softening length in physical coordinates for the high-res.
+   * baryon particles */
+  float epsilon_baryon_max_physical;
+
+  /*! Fraction of the mean inter particle separation corresponding to the
+   * co-moving softening length of the low-res. particles (DM + baryons) */
+  float mean_inter_particle_fraction_high_res;
+
+  /* ------------- Properties of the time integration  ----------------- */
+
   /*! Frequency of tree-rebuild in units of #gpart updates. */
   float rebuild_frequency;
+
+  /*! Time integration dimensionless multiplier */
+  float eta;
+
+  /* ------------- Properties of the mesh-based gravity ---------------- */
 
   /*! Periodic long-range mesh side-length */
   int mesh_size;
@@ -55,41 +111,17 @@ struct gravity_props {
    * a_smooth */
   float r_cut_max_ratio;
 
-  /*! Time integration dimensionless multiplier */
-  float eta;
-
-  /*! Tree opening angle (Multipole acceptance criterion) */
-  double theta_crit;
-
-  /*! Square of opening angle */
-  double theta_crit2;
-
-  /*! Inverse of opening angle */
-  double theta_crit_inv;
-
-  /*! Comoving softening */
-  double epsilon_comoving;
-
-  /*! Maxium physical softening */
-  double epsilon_max_physical;
-
-  /*! Current softening length */
-  float epsilon_cur;
-
-  /*! Square of current softening length */
-  float epsilon_cur2;
-
-  /*! Inverse of current softening length */
-  float epsilon_cur_inv;
-
-  /*! Cube of the inverse of current oftening length */
-  float epsilon_cur_inv3;
+  /*! Gravitational constant (in internal units, copied from the physical
+   * constants) */
+  float G_Newton;
 };
 
 void gravity_props_print(const struct gravity_props *p);
 void gravity_props_init(struct gravity_props *p, struct swift_params *params,
-                        const struct cosmology *cosmo, int with_cosmology,
-                        int periodic);
+                        const struct phys_const *phys_const,
+                        const struct cosmology *cosmo, const int with_cosmology,
+                        const int has_baryons, const int has_DM,
+                        const int is_zoom_simulation, const int periodic);
 void gravity_props_update(struct gravity_props *p,
                           const struct cosmology *cosmo);
 

@@ -130,6 +130,9 @@ int engine_rank;
 /** The current step of the engine as a global variable (for messages). */
 int engine_current_step;
 
+extern int engine_max_parts_per_ghost;
+extern int engine_max_sparts_per_ghost;
+
 /**
  * @brief Data collected from the cells at the end of a time-step
  */
@@ -3409,16 +3412,19 @@ void engine_skip_force_and_kick(struct engine *e) {
         t->type == task_type_drift_gpart_out || t->type == task_type_cooling ||
         t->type == task_type_stars_in || t->type == task_type_stars_out ||
         t->type == task_type_star_formation ||
-        t->type == task_type_extra_ghost ||
+        t->type == task_type_stars_resort || t->type == task_type_extra_ghost ||
         t->type == task_type_bh_swallow_ghost1 ||
         t->type == task_type_bh_swallow_ghost2 ||
+        t->type == task_type_bh_swallow_ghost3 ||
         t->subtype == task_subtype_gradient ||
         t->subtype == task_subtype_stars_feedback ||
         t->subtype == task_subtype_bh_feedback ||
         t->subtype == task_subtype_bh_swallow ||
-        t->subtype == task_subtype_do_swallow ||
+        t->subtype == task_subtype_do_gas_swallow ||
+        t->subtype == task_subtype_do_bh_swallow ||
         t->subtype == task_subtype_bpart_rho ||
         t->subtype == task_subtype_part_swallow ||
+        t->subtype == task_subtype_bpart_merger ||
         t->subtype == task_subtype_bpart_swallow ||
         t->subtype == task_subtype_bpart_feedback ||
         t->subtype == task_subtype_tend_part ||
@@ -4280,7 +4286,7 @@ void engine_do_reconstruct_multipoles_mapper(void *map_data, int num_elements,
     if (c != NULL && c->nodeID == e->nodeID) {
 
       /* Construct the multipoles in this cell hierarchy */
-      cell_make_multipoles(c, e->ti_current);
+      cell_make_multipoles(c, e->ti_current, e->gravity_properties);
     }
   }
 }
@@ -4487,19 +4493,26 @@ void engine_makeproxies(struct engine *e) {
                       sqrt(min_dist_centres2) - 2. * delta_CoM;
                   const double min_dist_CoM2 = min_dist_CoM * min_dist_CoM;
 
+                  /* We also assume that the softening is negligible compared
+                     to the cell size */
+                  const double epsilon_i = 0.;
+                  const double epsilon_j = 0.;
+
                   /* Are we beyond the distance where the truncated forces are 0
                    * but not too far such that M2L can be used? */
                   if (periodic) {
 
                     if ((min_dist_CoM2 < max_mesh_dist2) &&
                         (!gravity_M2L_accept(r_max, r_max, theta_crit2,
-                                             min_dist_CoM2)))
+                                             min_dist_CoM2, epsilon_i,
+                                             epsilon_j)))
                       proxy_type |= (int)proxy_cell_type_gravity;
 
                   } else {
 
                     if (!gravity_M2L_accept(r_max, r_max, theta_crit2,
-                                            min_dist_CoM2))
+                                            min_dist_CoM2, epsilon_i,
+                                            epsilon_j))
                       proxy_type |= (int)proxy_cell_type_gravity;
                   }
                 }
@@ -4962,6 +4975,7 @@ void engine_unpin(void) {
  * @param Ngparts total number of gravity particles in the simulation.
  * @param Nstars total number of star particles in the simulation.
  * @param Nblackholes total number of black holes in the simulation.
+ * @param Nbackground_gparts Total number of background DM particles.
  * @param policy The queuing policy to use.
  * @param verbose Is this #engine talkative ?
  * @param reparttype What type of repartition algorithm are we using ?
@@ -4983,8 +4997,8 @@ void engine_unpin(void) {
  */
 void engine_init(struct engine *e, struct space *s, struct swift_params *params,
                  long long Ngas, long long Ngparts, long long Nstars,
-                 long long Nblackholes, int policy, int verbose,
-                 struct repartition *reparttype,
+                 long long Nblackholes, long long Nbackground_gparts,
+                 int policy, int verbose, struct repartition *reparttype,
                  const struct unit_system *internal_units,
                  const struct phys_const *physical_constants,
                  struct cosmology *cosmo, struct hydro_props *hydro,
@@ -5009,6 +5023,7 @@ void engine_init(struct engine *e, struct space *s, struct swift_params *params,
   e->total_nr_gparts = Ngparts;
   e->total_nr_sparts = Nstars;
   e->total_nr_bparts = Nblackholes;
+  e->total_nr_DM_background_gparts = Nbackground_gparts;
   e->proxy_ind = NULL;
   e->nr_proxies = 0;
   e->reparttype = reparttype;
@@ -5027,7 +5042,7 @@ void engine_init(struct engine *e, struct space *s, struct swift_params *params,
   e->time_first_snapshot =
       parser_get_opt_param_double(params, "Snapshots:time_first", 0.);
   e->delta_time_snapshot =
-      parser_get_param_double(params, "Snapshots:delta_time");
+      parser_get_opt_param_double(params, "Snapshots:delta_time", -1.);
   e->ti_next_snapshot = 0;
   parser_get_param_string(params, "Snapshots:basename", e->snapshot_base_name);
   e->snapshot_compression =
@@ -5142,6 +5157,11 @@ void engine_init(struct engine *e, struct space *s, struct swift_params *params,
         parser_get_opt_param_double(params, "FOF:scale_factor_first", 0.1);
     e->delta_time_fof =
         parser_get_opt_param_double(params, "FOF:delta_time", -1.);
+  }
+
+  /* Initialize the star formation history structure */
+  if (e->policy & engine_policy_star_formation) {
+    star_formation_logger_accumulator_init(&e->sfh);
   }
 
   engine_init_output_lists(e, params);
@@ -5662,8 +5682,10 @@ void engine_config(int restart, int fof, struct engine *e,
   stats_create_mpi_type();
   proxy_create_mpi_type();
   task_create_mpi_comms();
+#ifdef WITH_FOF
   fof_create_mpi_types();
-#endif
+#endif /* WITH_FOF */
+#endif /* WITH_MPI */
 
   if (!fof) {
 
@@ -5707,6 +5729,51 @@ void engine_config(int restart, int fof, struct engine *e,
    */
   e->sched.mpi_message_limit =
       parser_get_opt_param_int(params, "Scheduler:mpi_message_limit", 4) * 1024;
+
+  if (restart) {
+
+    /* Overwrite the constants for the scheduler */
+    space_maxsize = parser_get_opt_param_int(params, "Scheduler:cell_max_size",
+                                             space_maxsize_default);
+    space_subsize_pair_hydro =
+        parser_get_opt_param_int(params, "Scheduler:cell_sub_size_pair_hydro",
+                                 space_subsize_pair_hydro_default);
+    space_subsize_self_hydro =
+        parser_get_opt_param_int(params, "Scheduler:cell_sub_size_self_hydro",
+                                 space_subsize_self_hydro_default);
+    space_subsize_pair_stars =
+        parser_get_opt_param_int(params, "Scheduler:cell_sub_size_pair_stars",
+                                 space_subsize_pair_stars_default);
+    space_subsize_self_stars =
+        parser_get_opt_param_int(params, "Scheduler:cell_sub_size_self_stars",
+                                 space_subsize_self_stars_default);
+    space_subsize_pair_grav =
+        parser_get_opt_param_int(params, "Scheduler:cell_sub_size_pair_grav",
+                                 space_subsize_pair_grav_default);
+    space_subsize_self_grav =
+        parser_get_opt_param_int(params, "Scheduler:cell_sub_size_self_grav",
+                                 space_subsize_self_grav_default);
+    space_splitsize = parser_get_opt_param_int(
+        params, "Scheduler:cell_split_size", space_splitsize_default);
+    space_subdepth_diff_grav =
+        parser_get_opt_param_int(params, "Scheduler:cell_subdepth_diff_grav",
+                                 space_subdepth_diff_grav_default);
+    space_extra_parts = parser_get_opt_param_int(
+        params, "Scheduler:cell_extra_parts", space_extra_parts_default);
+    space_extra_sparts = parser_get_opt_param_int(
+        params, "Scheduler:cell_extra_sparts", space_extra_sparts_default);
+    space_extra_gparts = parser_get_opt_param_int(
+        params, "Scheduler:cell_extra_gparts", space_extra_gparts_default);
+    space_extra_bparts = parser_get_opt_param_int(
+        params, "Scheduler:cell_extra_bparts", space_extra_bparts_default);
+
+    engine_max_parts_per_ghost =
+        parser_get_opt_param_int(params, "Scheduler:engine_max_parts_per_ghost",
+                                 engine_max_parts_per_ghost_default);
+    engine_max_sparts_per_ghost = parser_get_opt_param_int(
+        params, "Scheduler:engine_max_sparts_per_ghost",
+        engine_max_sparts_per_ghost_default);
+  }
 
   /* Allocate and init the threads. */
   if (swift_memalign("runners", (void **)&e->runners, SWIFT_CACHE_ALIGNMENT,
@@ -6187,11 +6254,17 @@ void engine_recompute_displacement_constraint(struct engine *e) {
 #endif
 
   /* Get the counts of each particle types */
+  const long long total_nr_baryons =
+      e->total_nr_parts + e->total_nr_sparts + e->total_nr_bparts;
   const long long total_nr_dm_gparts =
-      e->total_nr_gparts - e->total_nr_parts - e->total_nr_sparts;
+      e->total_nr_gparts - e->total_nr_DM_background_gparts - total_nr_baryons;
   float count_parts[swift_type_count] = {
-      (float)e->total_nr_parts,  (float)total_nr_dm_gparts, 0.f, 0.f,
-      (float)e->total_nr_sparts, (float)e->total_nr_bparts};
+      (float)e->total_nr_parts,
+      (float)total_nr_dm_gparts,
+      (float)e->total_nr_DM_background_gparts,
+      0.f,
+      (float)e->total_nr_sparts,
+      (float)e->total_nr_bparts};
 
   /* Count of particles for the two species */
   const float N_dm = count_parts[1];
@@ -6343,7 +6416,9 @@ void engine_struct_dump(struct engine *e, FILE *stream) {
   feedback_struct_dump(e->feedback_props, stream);
   black_holes_struct_dump(e->black_holes_properties, stream);
   chemistry_struct_dump(e->chemistry, stream);
+#ifdef WITH_FOF
   fof_struct_dump(e->fof_properties, stream);
+#endif
   parser_struct_dump(e->parameter_file, stream);
   if (e->output_list_snapshots)
     output_list_struct_dump(e->output_list_snapshots, stream);
@@ -6461,10 +6536,12 @@ void engine_struct_restore(struct engine *e, FILE *stream) {
   chemistry_struct_restore(chemistry, stream);
   e->chemistry = chemistry;
 
+#ifdef WITH_FOF
   struct fof_props *fof_props =
       (struct fof_props *)malloc(sizeof(struct fof_props));
   fof_struct_restore(fof_props, stream);
   e->fof_properties = fof_props;
+#endif
 
   struct swift_params *parameter_file =
       (struct swift_params *)malloc(sizeof(struct swift_params));
@@ -6580,12 +6657,15 @@ void engine_activate_fof_tasks(struct engine *e) {
 void engine_fof(struct engine *e, const int dump_results,
                 const int seed_black_holes) {
 
+#ifdef WITH_FOF
+
   ticks tic = getticks();
 
   /* Compute number of DM particles */
   const long long total_nr_baryons =
       e->total_nr_parts + e->total_nr_sparts + e->total_nr_bparts;
-  const long long total_nr_dmparts = e->total_nr_gparts - total_nr_baryons;
+  const long long total_nr_dmparts =
+      e->total_nr_gparts - e->total_nr_DM_background_gparts - total_nr_baryons;
 
   /* Initialise FOF parameters and allocate FOF arrays. */
   fof_allocate(e->s, total_nr_dmparts, e->fof_properties);
@@ -6617,4 +6697,7 @@ void engine_fof(struct engine *e, const int dump_results,
   if (engine_rank == 0)
     message("Complete FOF search took: %.3f %s.",
             clocks_from_ticks(getticks() - tic), clocks_getunit());
+#else
+  error("SWIFT was not compiled with FOF enabled!");
+#endif
 }

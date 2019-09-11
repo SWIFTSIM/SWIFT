@@ -403,12 +403,14 @@ hydro_set_drifted_physical_internal_energy(struct part *p,
   /* Now recompute the extra quantities */
 
   /* Compute the sound speed */
-  const float soundspeed = hydro_get_comoving_soundspeed(p);
-  const float pressure = hydro_get_comoving_pressure(p);
+  const float pressure = gas_pressure_from_internal_energy(p->rho, p->u);
+  const float soundspeed = gas_soundspeed_from_pressure(p->rho, pressure);
 
   /* Update variables. */
   p->force.soundspeed = soundspeed;
   p->force.pressure = pressure;
+
+  p->viscosity.v_sig = max(p->viscosity.v_sig, 2.f * soundspeed);
 }
 
 /**
@@ -766,9 +768,11 @@ __attribute__((always_inline)) INLINE static void hydro_reset_acceleration(
  *
  * @param p The particle.
  * @param xp The extended data of this particle.
+ * @param cosmo The cosmological model.
  */
 __attribute__((always_inline)) INLINE static void hydro_reset_predicted_values(
-    struct part *restrict p, const struct xpart *restrict xp) {
+    struct part *restrict p, const struct xpart *restrict xp,
+    const struct cosmology *cosmo) {
 
   /* Re-set the predicted velocities */
   p->v[0] = xp->v_full[0];
@@ -780,10 +784,12 @@ __attribute__((always_inline)) INLINE static void hydro_reset_predicted_values(
 
   /* Compute the sound speed */
   const float pressure = gas_pressure_from_internal_energy(p->rho, p->u);
-  const float soundspeed = hydro_get_comoving_soundspeed(p);
+  const float soundspeed = gas_soundspeed_from_pressure(p->rho, pressure);
 
   p->force.pressure = pressure;
   p->force.soundspeed = soundspeed;
+
+  p->viscosity.v_sig = max(p->viscosity.v_sig, 2.f * soundspeed);
 }
 
 /**
@@ -845,10 +851,12 @@ __attribute__((always_inline)) INLINE static void hydro_predict_extra(
 
   /* Compute the new sound speed */
   const float pressure = gas_pressure_from_internal_energy(p->rho, p->u);
-  const float soundspeed = hydro_get_comoving_soundspeed(p);
+  const float soundspeed = gas_soundspeed_from_pressure(p->rho, pressure);
 
   p->force.pressure = pressure;
   p->force.soundspeed = soundspeed;
+
+  p->viscosity.v_sig = max(p->viscosity.v_sig, 2.f * soundspeed);
 }
 
 /**

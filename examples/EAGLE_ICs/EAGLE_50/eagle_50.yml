@@ -17,7 +17,7 @@ Cosmology:
   a_end:          1.0           # Final scale factor of the simulation
   Omega_m:        0.307         # Matter density parameter
   Omega_lambda:   0.693         # Dark-energy density parameter
-  Omega_b:        0.0455        # Baryon density parameter
+  Omega_b:        0.0482519     # Baryon density parameter
 
 # Parameters governing the time integration
 TimeIntegration:
@@ -27,8 +27,8 @@ TimeIntegration:
 # Parameters governing the snapshots
 Snapshots:
   basename:            eagle # Common part of the name of output files
-  scale_factor_first:  0.05
-  delta_time:          1.02
+  output_list_on:      1
+  output_list:         ./output_list.txt
 
 # Parameters governing the conserved quantities statistics
 Statistics:
@@ -39,9 +39,11 @@ Statistics:
 Gravity:
   eta:                    0.025     # Constant dimensionless multiplier for time integration.
   theta:                  0.7       # Opening angle (Multipole acceptance criterion)
-  comoving_softening:     0.0026994 # Comoving softening length (in internal units).
-  max_physical_softening: 0.0007    # Physical softening length (in internal units).
   mesh_side_length:       256
+  comoving_DM_softening:         0.0026994 # Comoving DM softening length (in internal units).
+  max_physical_DM_softening:     0.0007    # Max physical DM softening length (in internal units).
+  comoving_baryon_softening:     0.0026994 # Comoving DM softening length (in internal units).
+  max_physical_baryon_softening: 0.0007    # Max physical DM softening length (in internal units).
   
 # Parameters for the hydrodynamics scheme
 SPH:
@@ -66,6 +68,7 @@ Scheduler:
   tasks_per_cell:        5
 
 Restarts:
+  onexit:       1
   delta_hours:  1.0
 
 # Parameters related to the initial conditions
@@ -93,7 +96,7 @@ EAGLEChemistry:
 # EAGLE cooling parameters
 EAGLECooling:
   dir_name:                ./coolingtables/
-  H_reion_z:               11.5 
+  H_reion_z:               7.5                 # Planck 2018
   H_reion_eV_p_H:          2.0
   He_reion_z_centre:       3.5
   He_reion_z_sigma:        0.5
@@ -171,5 +174,4 @@ EAGLEAGN:
   coupling_efficiency:              0.15       # Fraction of the radiated energy that couples to the gas in feedback events.
   AGN_delta_T_K:                    3.16228e8  # Change in temperature to apply to the gas particle in an AGN feedback event in Kelvin.
   AGN_num_ngb_to_heat:              1.         # Target number of gas neighbours to heat in an AGN feedback event.
-
-  
+  max_reposition_mass:              2e8        # Maximal BH mass considered for BH repositioning in solar masses.

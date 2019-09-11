@@ -24,10 +24,16 @@
 /* This object's header. */
 #include "common_io.h"
 
-/* Local includes. */
-#include "chemistry_io.h"
+/* Pre-inclusion as needed in other headers */
 #include "engine.h"
+
+/* Local includes. */
+#include "black_holes_io.h"
+#include "chemistry_io.h"
+#include "const.h"
+#include "cooling_io.h"
 #include "error.h"
+#include "fof_io.h"
 #include "gravity_io.h"
 #include "hydro.h"
 #include "hydro_io.h"
@@ -35,9 +41,12 @@
 #include "kernel_hydro.h"
 #include "part.h"
 #include "part_type.h"
+#include "star_formation_io.h"
 #include "stars_io.h"
 #include "threadpool.h"
+#include "tracers_io.h"
 #include "units.h"
+#include "velociraptor_io.h"
 #include "version.h"
 
 /* Some standard headers. */
@@ -128,6 +137,85 @@ void io_read_attribute(hid_t grp, const char* name, enum IO_DATA_TYPE type,
   if (h_err < 0) error("Error while reading attribute '%s'", name);
 
   H5Aclose(h_attr);
+}
+
+/**
+ * @brief Reads an attribute from a given HDF5 group.
+ *
+ * @param grp The group from which to read.
+ * @param name The name of the attribute to read.
+ * @param type The #IO_DATA_TYPE of the attribute.
+ * @param data (output) The attribute read from the HDF5 group.
+ *
+ * Exits gracefully (i.e. does not read the attribute at all) if
+ * it is not present, unless debugging checks are activated. If they are,
+ * and the read fails, we print a warning.
+ */
+void io_read_attribute_graceful(hid_t grp, const char* name,
+                                enum IO_DATA_TYPE type, void* data) {
+
+  /* First, we need to check if this attribute exists to avoid raising errors
+   * within the HDF5 library if we attempt to access an attribute that does
+   * not exist. */
+  const htri_t h_exists = H5Aexists(grp, name);
+
+  if (h_exists <= 0) {
+  /* Attribute either does not exist (0) or function failed (-ve) */
+#ifdef SWIFT_DEBUG_CHECKS
+    message("WARNING: attribute '%s' does not exist.", name);
+#endif
+  } else {
+    /* Ok, now we know that it exists we can read it. */
+    const hid_t h_attr = H5Aopen(grp, name, H5P_DEFAULT);
+
+    if (h_attr >= 0) {
+      const hid_t h_err = H5Aread(h_attr, io_hdf5_type(type), data);
+      if (h_err < 0) {
+      /* Explicitly do nothing unless debugging checks are activated */
+#ifdef SWIFT_DEBUG_CHECKS
+        message("WARNING: unable to read attribute '%s'", name);
+#endif
+      }
+    } else {
+#ifdef SWIFT_DEBUG_CHECKS
+      if (h_attr < 0) {
+        message("WARNING: was unable to open attribute '%s'", name);
+      }
+#endif
+    }
+
+    H5Aclose(h_attr);
+  }
+}
+
+/**
+ * @brief Asserts that the redshift in the initial conditions and the one
+ *        specified by the parameter file match.
+ *
+ * @param h_grp The Header group from the ICs
+ * @param a Current scale factor as specified by parameter file
+ */
+void io_assert_valid_header_cosmology(hid_t h_grp, double a) {
+
+  double redshift_from_snapshot = -1.0;
+  io_read_attribute_graceful(h_grp, "Redshift", DOUBLE,
+                             &redshift_from_snapshot);
+
+  /* If the Header/Redshift value is not present, then we skip this check */
+  if (redshift_from_snapshot == -1.0) {
+    return;
+  }
+
+  const double current_redshift = 1.0 / a - 1.0;
+  const double redshift_fractional_difference =
+      fabs(redshift_from_snapshot - current_redshift) / current_redshift;
+
+  if (redshift_fractional_difference >= io_redshift_tolerance) {
+    error(
+        "Initial redshift specified in parameter file (%lf) and redshift "
+        "read from initial conditions (%lf) are inconsistent.",
+        current_redshift, redshift_from_snapshot);
+  }
 }
 
 /**
@@ -392,8 +480,8 @@ static long long cell_count_non_inhibited_gas(const struct cell* c) {
   struct part* parts = c->hydro.parts;
   long long count = 0;
   for (int i = 0; i < total_count; ++i) {
-    if (!(parts[i].time_bin != time_bin_inhibited) &&
-        !(parts[i].time_bin != time_bin_not_created)) {
+    if ((parts[i].time_bin != time_bin_inhibited) &&
+        (parts[i].time_bin != time_bin_not_created)) {
       ++count;
     }
   }
@@ -405,9 +493,24 @@ static long long cell_count_non_inhibited_dark_matter(const struct cell* c) {
   struct gpart* gparts = c->grav.parts;
   long long count = 0;
   for (int i = 0; i < total_count; ++i) {
-    if (!(gparts[i].time_bin != time_bin_inhibited) &&
-        !(gparts[i].time_bin != time_bin_not_created) &&
+    if ((gparts[i].time_bin != time_bin_inhibited) &&
+        (gparts[i].time_bin != time_bin_not_created) &&
         (gparts[i].type == swift_type_dark_matter)) {
+      ++count;
+    }
+  }
+  return count;
+}
+
+static long long cell_count_non_inhibited_background_dark_matter(
+    const struct cell* c) {
+  const int total_count = c->grav.count;
+  struct gpart* gparts = c->grav.parts;
+  long long count = 0;
+  for (int i = 0; i < total_count; ++i) {
+    if ((gparts[i].time_bin != time_bin_inhibited) &&
+        (gparts[i].time_bin != time_bin_not_created) &&
+        (gparts[i].type == swift_type_dark_matter_background)) {
       ++count;
     }
   }
@@ -419,8 +522,8 @@ static long long cell_count_non_inhibited_stars(const struct cell* c) {
   struct spart* sparts = c->stars.parts;
   long long count = 0;
   for (int i = 0; i < total_count; ++i) {
-    if (!(sparts[i].time_bin != time_bin_inhibited) &&
-        !(sparts[i].time_bin != time_bin_not_created)) {
+    if ((sparts[i].time_bin != time_bin_inhibited) &&
+        (sparts[i].time_bin != time_bin_not_created)) {
       ++count;
     }
   }
@@ -432,8 +535,8 @@ static long long cell_count_non_inhibited_black_holes(const struct cell* c) {
   struct bpart* bparts = c->black_holes.parts;
   long long count = 0;
   for (int i = 0; i < total_count; ++i) {
-    if (!(bparts[i].time_bin != time_bin_inhibited) &&
-        !(bparts[i].time_bin != time_bin_not_created)) {
+    if ((bparts[i].time_bin != time_bin_inhibited) &&
+        (bparts[i].time_bin != time_bin_not_created)) {
       ++count;
     }
   }
@@ -455,30 +558,36 @@ void io_write_cell_offsets(hid_t h_grp, const int cdim[3],
   centres = (double*)malloc(3 * nr_cells * sizeof(double));
 
   /* Count of particles in each cell */
-  long long *count_part = NULL, *count_gpart = NULL, *count_spart = NULL,
+  long long *count_part = NULL, *count_gpart = NULL,
+            *count_background_gpart = NULL, *count_spart = NULL,
             *count_bpart = NULL;
   count_part = (long long*)malloc(nr_cells * sizeof(long long));
   count_gpart = (long long*)malloc(nr_cells * sizeof(long long));
+  count_background_gpart = (long long*)malloc(nr_cells * sizeof(long long));
   count_spart = (long long*)malloc(nr_cells * sizeof(long long));
   count_bpart = (long long*)malloc(nr_cells * sizeof(long long));
 
   /* Global offsets of particles in each cell */
-  long long *offset_part = NULL, *offset_gpart = NULL, *offset_spart = NULL,
+  long long *offset_part = NULL, *offset_gpart = NULL,
+            *offset_background_gpart = NULL, *offset_spart = NULL,
             *offset_bpart = NULL;
   offset_part = (long long*)malloc(nr_cells * sizeof(long long));
   offset_gpart = (long long*)malloc(nr_cells * sizeof(long long));
+  offset_background_gpart = (long long*)malloc(nr_cells * sizeof(long long));
   offset_spart = (long long*)malloc(nr_cells * sizeof(long long));
   offset_bpart = (long long*)malloc(nr_cells * sizeof(long long));
 
   /* Offsets of the 0^th element */
   offset_part[0] = 0;
   offset_gpart[0] = 0;
+  offset_background_gpart[0] = 0;
   offset_spart[0] = 0;
   offset_bpart[0] = 0;
 
   /* Collect the cell information of *local* cells */
   long long local_offset_part = 0;
   long long local_offset_gpart = 0;
+  long long local_offset_background_gpart = 0;
   long long local_offset_spart = 0;
   long long local_offset_bpart = 0;
   for (int i = 0; i < nr_cells; ++i) {
@@ -493,6 +602,8 @@ void io_write_cell_offsets(hid_t h_grp, const int cdim[3],
       /* Count real particles that will be written */
       count_part[i] = cell_count_non_inhibited_gas(&cells_top[i]);
       count_gpart[i] = cell_count_non_inhibited_dark_matter(&cells_top[i]);
+      count_background_gpart[i] =
+          cell_count_non_inhibited_background_dark_matter(&cells_top[i]);
       count_spart[i] = cell_count_non_inhibited_stars(&cells_top[i]);
       count_bpart[i] = cell_count_non_inhibited_black_holes(&cells_top[i]);
 
@@ -501,12 +612,16 @@ void io_write_cell_offsets(hid_t h_grp, const int cdim[3],
       offset_part[i] = local_offset_part + global_offsets[swift_type_gas];
       offset_gpart[i] =
           local_offset_gpart + global_offsets[swift_type_dark_matter];
+      offset_background_gpart[i] =
+          local_offset_background_gpart +
+          global_offsets[swift_type_dark_matter_background];
       offset_spart[i] = local_offset_spart + global_offsets[swift_type_stars];
       offset_bpart[i] =
           local_offset_bpart + global_offsets[swift_type_black_hole];
 
       local_offset_part += count_part[i];
       local_offset_gpart += count_gpart[i];
+      local_offset_background_gpart += count_background_gpart[i];
       local_offset_spart += count_spart[i];
       local_offset_bpart += count_bpart[i];
 
@@ -520,11 +635,13 @@ void io_write_cell_offsets(hid_t h_grp, const int cdim[3],
 
       count_part[i] = 0;
       count_gpart[i] = 0;
+      count_background_gpart[i] = 0;
       count_spart[i] = 0;
       count_bpart[i] = 0;
 
       offset_part[i] = 0;
       offset_gpart[i] = 0;
+      offset_background_gpart[i] = 0;
       offset_spart[i] = 0;
       offset_bpart[i] = 0;
     }
@@ -540,13 +657,19 @@ void io_write_cell_offsets(hid_t h_grp, const int cdim[3],
     MPI_Reduce(count_part, NULL, nr_cells, MPI_LONG_LONG_INT, MPI_BOR, 0,
                MPI_COMM_WORLD);
   }
-
   if (nodeID == 0) {
     MPI_Reduce(MPI_IN_PLACE, count_gpart, nr_cells, MPI_LONG_LONG_INT, MPI_BOR,
                0, MPI_COMM_WORLD);
   } else {
     MPI_Reduce(count_gpart, NULL, nr_cells, MPI_LONG_LONG_INT, MPI_BOR, 0,
                MPI_COMM_WORLD);
+  }
+  if (nodeID == 0) {
+    MPI_Reduce(MPI_IN_PLACE, count_background_gpart, nr_cells,
+               MPI_LONG_LONG_INT, MPI_BOR, 0, MPI_COMM_WORLD);
+  } else {
+    MPI_Reduce(count_background_gpart, NULL, nr_cells, MPI_LONG_LONG_INT,
+               MPI_BOR, 0, MPI_COMM_WORLD);
   }
   if (nodeID == 0) {
     MPI_Reduce(MPI_IN_PLACE, count_spart, nr_cells, MPI_LONG_LONG_INT, MPI_BOR,
@@ -576,6 +699,13 @@ void io_write_cell_offsets(hid_t h_grp, const int cdim[3],
   } else {
     MPI_Reduce(offset_gpart, NULL, nr_cells, MPI_LONG_LONG_INT, MPI_BOR, 0,
                MPI_COMM_WORLD);
+  }
+  if (nodeID == 0) {
+    MPI_Reduce(MPI_IN_PLACE, offset_background_gpart, nr_cells,
+               MPI_LONG_LONG_INT, MPI_BOR, 0, MPI_COMM_WORLD);
+  } else {
+    MPI_Reduce(offset_background_gpart, NULL, nr_cells, MPI_LONG_LONG_INT,
+               MPI_BOR, 0, MPI_COMM_WORLD);
   }
   if (nodeID == 0) {
     MPI_Reduce(MPI_IN_PLACE, offset_spart, nr_cells, MPI_LONG_LONG_INT, MPI_BOR,
@@ -692,6 +822,28 @@ void io_write_cell_offsets(hid_t h_grp, const int cdim[3],
       H5Sclose(h_space);
     }
 
+    if (global_counts[swift_type_dark_matter_background] > 0) {
+
+      shape[0] = nr_cells;
+      shape[1] = 1;
+      h_space = H5Screate(H5S_SIMPLE);
+      if (h_space < 0)
+        error("Error while creating data space for background DM offsets");
+      h_err = H5Sset_extent_simple(h_space, 1, shape, shape);
+      if (h_err < 0)
+        error(
+            "Error while changing shape of background DM offsets data space.");
+      h_data = H5Dcreate(h_subgrp, "PartType2", io_hdf5_type(LONGLONG), h_space,
+                         H5P_DEFAULT, H5P_DEFAULT, H5P_DEFAULT);
+      if (h_data < 0)
+        error("Error while creating dataspace for background DM offsets.");
+      h_err = H5Dwrite(h_data, io_hdf5_type(LONGLONG), h_space, H5S_ALL,
+                       H5P_DEFAULT, offset_background_gpart);
+      if (h_err < 0) error("Error while writing background DM offsets.");
+      H5Dclose(h_data);
+      H5Sclose(h_space);
+    }
+
     if (global_counts[swift_type_stars] > 0) {
 
       shape[0] = nr_cells;
@@ -778,6 +930,27 @@ void io_write_cell_offsets(hid_t h_grp, const int cdim[3],
       H5Sclose(h_space);
     }
 
+    if (global_counts[swift_type_dark_matter_background] > 0) {
+
+      shape[0] = nr_cells;
+      shape[1] = 1;
+      h_space = H5Screate(H5S_SIMPLE);
+      if (h_space < 0)
+        error("Error while creating data space for background DM counts");
+      h_err = H5Sset_extent_simple(h_space, 1, shape, shape);
+      if (h_err < 0)
+        error("Error while changing shape of background DM counts data space.");
+      h_data = H5Dcreate(h_subgrp, "PartType2", io_hdf5_type(LONGLONG), h_space,
+                         H5P_DEFAULT, H5P_DEFAULT, H5P_DEFAULT);
+      if (h_data < 0)
+        error("Error while creating dataspace for background DM counts.");
+      h_err = H5Dwrite(h_data, io_hdf5_type(LONGLONG), h_space, H5S_ALL,
+                       H5P_DEFAULT, count_background_gpart);
+      if (h_err < 0) error("Error while writing background DM counts.");
+      H5Dclose(h_data);
+      H5Sclose(h_space);
+    }
+
     if (global_counts[swift_type_stars] > 0) {
 
       shape[0] = nr_cells;
@@ -826,10 +999,12 @@ void io_write_cell_offsets(hid_t h_grp, const int cdim[3],
   free(centres);
   free(count_part);
   free(count_gpart);
+  free(count_background_gpart);
   free(count_spart);
   free(count_bpart);
   free(offset_part);
   free(offset_gpart);
+  free(offset_background_gpart);
   free(offset_spart);
   free(offset_bpart);
 }
@@ -1497,6 +1672,56 @@ void io_prepare_dm_gparts(struct threadpool* tp, struct gpart* const gparts,
                  sizeof(struct gpart), 0, NULL);
 }
 
+void io_prepare_dm_background_gparts_mapper(void* restrict data, int Ndm,
+                                            void* dummy) {
+
+  struct gpart* restrict gparts = (struct gpart*)data;
+
+  /* Let's give all these gparts a negative id */
+  for (int i = 0; i < Ndm; ++i) {
+
+    /* Negative ids are not allowed */
+    if (gparts[i].id_or_neg_offset < 0)
+      error("Negative ID for DM particle %i: ID=%lld", i,
+            gparts[i].id_or_neg_offset);
+
+    /* Set gpart type */
+    gparts[i].type = swift_type_dark_matter_background;
+  }
+}
+
+/**
+ * @brief Prepare the DM backgorund particles (in gparts) read in
+ * for the addition of the other particle types
+ *
+ * This function assumes that the DM particles are all at the start of the
+ * gparts array and that the background particles directly follow them.
+ *
+ * @param tp The current #threadpool.
+ * @param gparts The array of #gpart freshly read in.
+ * @param Ndm The number of DM particles read in.
+ */
+void io_prepare_dm_background_gparts(struct threadpool* tp,
+                                     struct gpart* const gparts, size_t Ndm) {
+
+  threadpool_map(tp, io_prepare_dm_background_gparts_mapper, gparts, Ndm,
+                 sizeof(struct gpart), 0, NULL);
+}
+
+size_t io_count_dm_background_gparts(const struct gpart* const gparts,
+                                     const size_t Ndm) {
+
+  swift_declare_aligned_ptr(const struct gpart, gparts_array, gparts,
+                            SWIFT_STRUCT_ALIGNMENT);
+
+  size_t count = 0;
+  for (size_t i = 0; i < Ndm; ++i) {
+    if (gparts_array[i].type == swift_type_dark_matter_background) ++count;
+  }
+
+  return count;
+}
+
 struct duplication_data {
 
   struct part* parts;
@@ -1792,7 +2017,8 @@ void io_collect_bparts_to_write(const struct bpart* restrict bparts,
 }
 
 /**
- * @brief Copy every non-inhibited DM #gpart into the gparts_written array.
+ * @brief Copy every non-inhibited regulat DM #gpart into the gparts_written
+ * array.
  *
  * @param gparts The array of #gpart containing all particles.
  * @param vr_data The array of gpart-related VELOCIraptor output.
@@ -1835,23 +2061,57 @@ void io_collect_gparts_to_write(
 }
 
 /**
+ * @brief Copy every non-inhibited background DM #gpart into the gparts_written
+ * array.
+ *
+ * @param gparts The array of #gpart containing all particles.
+ * @param vr_data The array of gpart-related VELOCIraptor output.
+ * @param gparts_written The array of #gpart to fill with particles we want to
+ * write.
+ * @param vr_data_written The array of gpart-related VELOCIraptor with particles
+ * we want to write.
+ * @param Ngparts The total number of #part.
+ * @param Ngparts_written The total number of #part to write.
+ * @param with_stf Are we running with STF? i.e. do we want to collect vr data?
+ */
+void io_collect_gparts_background_to_write(
+    const struct gpart* restrict gparts,
+    const struct velociraptor_gpart_data* restrict vr_data,
+    struct gpart* restrict gparts_written,
+    struct velociraptor_gpart_data* restrict vr_data_written,
+    const size_t Ngparts, const size_t Ngparts_written, const int with_stf) {
+
+  size_t count = 0;
+
+  /* Loop over all parts */
+  for (size_t i = 0; i < Ngparts; ++i) {
+
+    /* And collect the ones that have not been removed */
+    if ((gparts[i].time_bin != time_bin_inhibited) &&
+        (gparts[i].time_bin != time_bin_not_created) &&
+        (gparts[i].type == swift_type_dark_matter_background)) {
+
+      if (with_stf) vr_data_written[count] = vr_data[i];
+
+      gparts_written[count] = gparts[i];
+      count++;
+    }
+  }
+
+  /* Check that everything is fine */
+  if (count != Ngparts_written)
+    error("Collected the wrong number of g-particles (%zu vs. %zu expected)",
+          count, Ngparts_written);
+}
+
+/**
  * @brief Verify the io parameter file
  *
  * @param params The #swift_params
  * @param N_total The total number of each particle type.
  */
 void io_check_output_fields(const struct swift_params* params,
-                            const long long N_total[3]) {
-
-  /* Create some fake particles as arguments for the writing routines */
-  struct part p;
-  struct xpart xp;
-  struct spart sp;
-  struct gpart gp;
-
-  /* Copy N_total to array with length == 6 */
-  const long long nr_total[swift_type_count] = {N_total[0], N_total[1], 0,
-                                                0,          N_total[2], 0};
+                            const long long N_total[swift_type_count]) {
 
   /* Loop over all particle types to check the fields */
   for (int ptype = 0; ptype < swift_type_count; ptype++) {
@@ -1860,22 +2120,51 @@ void io_check_output_fields(const struct swift_params* params,
     struct io_props list[100];
 
     /* Don't do anything if no particle of this kind */
-    if (nr_total[ptype] == 0) continue;
+    if (N_total[ptype] == 0) continue;
 
     /* Gather particle fields from the particle structures */
     switch (ptype) {
 
       case swift_type_gas:
-        hydro_write_particles(&p, &xp, list, &num_fields);
-        num_fields += chemistry_write_particles(&p, list + num_fields);
+        hydro_write_particles(NULL, NULL, list, &num_fields);
+        num_fields += chemistry_write_particles(NULL, list + num_fields);
+        num_fields +=
+            cooling_write_particles(NULL, NULL, list + num_fields, NULL);
+        num_fields += tracers_write_particles(NULL, NULL, list + num_fields,
+                                              /*with_cosmology=*/1);
+        num_fields +=
+            star_formation_write_particles(NULL, NULL, list + num_fields);
+        num_fields += fof_write_parts(NULL, NULL, list + num_fields);
+        num_fields += velociraptor_write_parts(NULL, NULL, list + num_fields);
         break;
 
       case swift_type_dark_matter:
-        darkmatter_write_particles(&gp, list, &num_fields);
+        darkmatter_write_particles(NULL, list, &num_fields);
+        num_fields += fof_write_gparts(NULL, list + num_fields);
+        num_fields += velociraptor_write_gparts(NULL, list + num_fields);
+        break;
+
+      case swift_type_dark_matter_background:
+        darkmatter_write_particles(NULL, list, &num_fields);
+        num_fields += fof_write_gparts(NULL, list + num_fields);
+        num_fields += velociraptor_write_gparts(NULL, list + num_fields);
         break;
 
       case swift_type_stars:
-        stars_write_particles(&sp, list, &num_fields);
+        stars_write_particles(NULL, list, &num_fields, /*with_cosmology=*/1);
+        num_fields += chemistry_write_sparticles(NULL, list + num_fields);
+        num_fields += tracers_write_sparticles(NULL, list + num_fields,
+                                               /*with_cosmology=*/1);
+        num_fields += fof_write_sparts(NULL, list + num_fields);
+        num_fields += velociraptor_write_sparts(NULL, list + num_fields);
+        break;
+
+      case swift_type_black_hole:
+        black_holes_write_particles(NULL, list, &num_fields,
+                                    /*with_cosmology=*/1);
+        num_fields += chemistry_write_bparticles(NULL, list + num_fields);
+        num_fields += fof_write_bparts(NULL, list + num_fields);
+        num_fields += velociraptor_write_bparts(NULL, list + num_fields);
         break;
 
       default:
@@ -1901,8 +2190,8 @@ void io_check_output_fields(const struct swift_params* params,
       /* loop over each possible output field */
       for (int field_id = 0; field_id < num_fields; field_id++) {
         char field_name[PARSER_MAX_LINE_SIZE];
-        sprintf(field_name, "SelectOutput:%s_%s", list[field_id].name,
-                part_type_names[ptype]);
+        sprintf(field_name, "SelectOutput:%.*s_%s", FIELD_BUFFER_SIZE,
+                list[field_id].name, part_type_names[ptype]);
 
         if (strcmp(param_name, field_name) == 0) {
           found = 1;
@@ -1934,12 +2223,16 @@ void io_check_output_fields(const struct swift_params* params,
 /**
  * @brief Write the output field parameters file
  *
- * @param filename The file to write
+ * @param filename The file to write.
  */
 void io_write_output_field_parameter(const char* filename) {
 
   FILE* file = fopen(filename, "w");
   if (file == NULL) error("Error opening file '%s'", filename);
+
+  /* Create a fake unit system for the snapshots */
+  struct unit_system snapshot_units;
+  units_init_cgs(&snapshot_units);
 
   /* Loop over all particle types */
   fprintf(file, "SelectOutput:\n");
@@ -1954,14 +2247,43 @@ void io_write_output_field_parameter(const char* filename) {
       case swift_type_gas:
         hydro_write_particles(NULL, NULL, list, &num_fields);
         num_fields += chemistry_write_particles(NULL, list + num_fields);
+        num_fields +=
+            cooling_write_particles(NULL, NULL, list + num_fields, NULL);
+        num_fields += tracers_write_particles(NULL, NULL, list + num_fields,
+                                              /*with_cosmology=*/1);
+        num_fields +=
+            star_formation_write_particles(NULL, NULL, list + num_fields);
+        num_fields += fof_write_parts(NULL, NULL, list + num_fields);
+        num_fields += velociraptor_write_parts(NULL, NULL, list + num_fields);
         break;
 
       case swift_type_dark_matter:
         darkmatter_write_particles(NULL, list, &num_fields);
+        num_fields += fof_write_gparts(NULL, list + num_fields);
+        num_fields += velociraptor_write_gparts(NULL, list + num_fields);
+        break;
+
+      case swift_type_dark_matter_background:
+        darkmatter_write_particles(NULL, list, &num_fields);
+        num_fields += fof_write_gparts(NULL, list + num_fields);
+        num_fields += velociraptor_write_gparts(NULL, list + num_fields);
         break;
 
       case swift_type_stars:
-        stars_write_particles(NULL, list, &num_fields);
+        stars_write_particles(NULL, list, &num_fields, /*with_cosmology=*/1);
+        num_fields += chemistry_write_sparticles(NULL, list + num_fields);
+        num_fields += tracers_write_sparticles(NULL, list + num_fields,
+                                               /*with_cosmology=*/1);
+        num_fields += fof_write_sparts(NULL, list + num_fields);
+        num_fields += velociraptor_write_sparts(NULL, list + num_fields);
+        break;
+
+      case swift_type_black_hole:
+        black_holes_write_particles(NULL, list, &num_fields,
+                                    /*with_cosmology=*/1);
+        num_fields += chemistry_write_bparticles(NULL, list + num_fields);
+        num_fields += fof_write_bparts(NULL, list + num_fields);
+        num_fields += velociraptor_write_bparts(NULL, list + num_fields);
         break;
 
       default:
@@ -1974,8 +2296,17 @@ void io_write_output_field_parameter(const char* filename) {
     fprintf(file, "  # Particle Type %s\n", part_type_names[ptype]);
 
     /* Write all the fields of this particle type */
-    for (int i = 0; i < num_fields; ++i)
-      fprintf(file, "  %s_%s: 1\n", list[i].name, part_type_names[ptype]);
+    for (int i = 0; i < num_fields; ++i) {
+
+      char buffer[FIELD_BUFFER_SIZE] = {0};
+      units_cgs_conversion_string(buffer, &snapshot_units, list[i].units,
+                                  list[i].scale_factor_exponent);
+
+      fprintf(file,
+              "  %s_%s: %*d \t # %s. ::: Conversion to physical CGS: %s\n",
+              list[i].name, part_type_names[ptype],
+              (int)(28 - strlen(list[i].name)), 1, list[i].description, buffer);
+    }
 
     fprintf(file, "\n");
   }

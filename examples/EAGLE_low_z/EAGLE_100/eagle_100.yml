@@ -1,3 +1,6 @@
+MetaData:
+  run_name:   EAGLE-L0100N1504-Ref
+
 # Define the system of units to use internally. 
 InternalUnitSystem:
   UnitMass_in_cgs:     1.98848e43    # 10^10 M_sun in grams
@@ -13,7 +16,7 @@ Cosmology:
   a_end:          1.0           # Final scale factor of the simulation
   Omega_m:        0.307         # Matter density parameter
   Omega_lambda:   0.693         # Dark-energy density parameter
-  Omega_b:        0.0455        # Baryon density parameter
+  Omega_b:        0.0482519     # Baryon density parameter
   
 # Parameters governing the time integration
 TimeIntegration:
@@ -42,9 +45,11 @@ Statistics:
 Gravity:
   eta:                    0.025    # Constant dimensionless multiplier for time integration. 
   theta:                  0.85      # Opening angle (Multipole acceptance criterion)
-  comoving_softening:     0.0026994 # Comoving softening length (in internal units).
-  max_physical_softening: 0.0007    # Physical softening length (in internal units).
   mesh_side_length:       256
+  comoving_DM_softening:         0.0026994 # Comoving DM softening length (in internal units).
+  max_physical_DM_softening:     0.0007    # Max physical DM softening length (in internal units).
+  comoving_baryon_softening:     0.0026994 # Comoving DM softening length (in internal units).
+  max_physical_baryon_softening: 0.0007    # Max physical DM softening length (in internal units).
 
 # Parameters for the hydrodynamics scheme
 SPH:
