@@ -73,6 +73,8 @@
 #include "./gravity/Default/gravity_debug.h"
 #elif defined(POTENTIAL_GRAVITY)
 #include "./gravity/Potential/gravity_debug.h"
+#elif defined(MULTI_SOFTENING_GRAVITY)
+#include "./gravity/MultiSoftening/gravity_debug.h"
 #else
 #error "Invalid choice of gravity variant"
 #endif

@@ -190,7 +190,8 @@ void scheduler_reweight(struct scheduler *s, int verbose);
 struct task *scheduler_addtask(struct scheduler *s, enum task_types type,
                                enum task_subtypes subtype, int flags,
                                int implicit, struct cell *ci, struct cell *cj);
-void scheduler_splittasks(struct scheduler *s, const int fof_tasks);
+void scheduler_splittasks(struct scheduler *s, const int fof_tasks,
+                          const int verbose);
 struct task *scheduler_done(struct scheduler *s, struct task *t);
 struct task *scheduler_unlock(struct scheduler *s, struct task *t);
 void scheduler_addunlock(struct scheduler *s, struct task *ta, struct task *tb);

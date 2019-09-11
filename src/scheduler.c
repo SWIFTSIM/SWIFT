@@ -1028,8 +1028,19 @@ void scheduler_splittasks_mapper(void *map_data, int num_elements,
  * @param s The #scheduler.
  * @param fof_tasks Are we splitting the FOF tasks (1)? Or the regular tasks
  * (0)?
+ * @param verbose Are we talkative?
  */
-void scheduler_splittasks(struct scheduler *s, const int fof_tasks) {
+void scheduler_splittasks(struct scheduler *s, const int fof_tasks,
+                          const int verbose) {
+
+  if (verbose) {
+    message("space_subsize_self_hydro= %d", space_subsize_self_hydro);
+    message("space_subsize_pair_hydro= %d", space_subsize_pair_hydro);
+    message("space_subsize_self_stars= %d", space_subsize_self_stars);
+    message("space_subsize_pair_stars= %d", space_subsize_pair_stars);
+    message("space_subsize_self_grav= %d", space_subsize_self_grav);
+    message("space_subsize_pair_grav= %d", space_subsize_pair_grav);
+  }
 
   if (fof_tasks) {
     /* Call the mapper on each current task. */

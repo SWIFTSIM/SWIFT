@@ -26,22 +26,22 @@ then
     ./getSolutions.sh
 fi
 
-../../swift  --feedback --stars --hydro --external-gravity --threads=4 stellar_evolution.yml -P EAGLEChemistry:init_abundance_metal:0.08 2>&1 | tee output_0p08.log
+../../swift  --temperature --feedback --stars --hydro --external-gravity --threads=4 stellar_evolution.yml -P EAGLEChemistry:init_abundance_metal:0.08 2>&1 | tee output_0p08.log
 
 python plot_box_evolution.py
 
-../../swift  --feedback --stars --hydro --external-gravity --threads=4 stellar_evolution.yml -P EAGLEChemistry:init_abundance_metal:0.04 2>&1 | tee output_0p04.log
+../../swift  --temperature --feedback --stars --hydro --external-gravity --threads=4 stellar_evolution.yml -P EAGLEChemistry:init_abundance_metal:0.04 2>&1 | tee output_0p04.log
 
 python plot_box_evolution.py
 
-../../swift  --feedback --stars --hydro --external-gravity --threads=4 stellar_evolution.yml -P EAGLEChemistry:init_abundance_metal:0.01 2>&1 | tee output_0p01.log
+../../swift  --temperature --feedback --stars --hydro --external-gravity --threads=4 stellar_evolution.yml -P EAGLEChemistry:init_abundance_metal:0.01 2>&1 | tee output_0p01.log
 
 python plot_box_evolution.py
 
-../../swift  --feedback --stars --hydro --external-gravity --threads=4 stellar_evolution.yml -P EAGLEChemistry:init_abundance_metal:0.001 2>&1 | tee output_0p001.log
+../../swift  --temperature --feedback --stars --hydro --external-gravity --threads=4 stellar_evolution.yml -P EAGLEChemistry:init_abundance_metal:0.001 2>&1 | tee output_0p001.log
 
 python plot_box_evolution.py
 
-../../swift  --feedback --stars --hydro --external-gravity --threads=4 stellar_evolution.yml -P EAGLEChemistry:init_abundance_metal:0.0001 2>&1 | tee output_0p0001.log
+../../swift  --temperature --feedback --stars --hydro --external-gravity --threads=4 stellar_evolution.yml -P EAGLEChemistry:init_abundance_metal:0.0001 2>&1 | tee output_0p0001.log
 
 python plot_box_evolution.py

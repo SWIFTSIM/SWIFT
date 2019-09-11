@@ -49,6 +49,8 @@ Gravity:
   mesh_side_length:   32
   eta: 0.025
   theta: 0.3
-  comoving_softening: 0.08	# 80 kpc = 1/25 of mean inter-particle separation
-  max_physical_softening: 0.08  # 80 kpc = 1/25 of mean inter-particle separation
+  comoving_DM_softening: 0.08	# 80 kpc = 1/25 of mean inter-particle separation
+  max_physical_DM_softening: 0.08  # 80 kpc = 1/25 of mean inter-particle separation
+  comoving_baryon_softening: 0.08	# 80 kpc = 1/25 of mean inter-particle separation
+  max_physical_baryon_softening: 0.08  # 80 kpc = 1/25 of mean inter-particle separation
 

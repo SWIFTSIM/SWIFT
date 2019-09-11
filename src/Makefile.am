@@ -94,6 +94,8 @@ nobase_noinst_HEADERS = align.h approx_math.h atomic.h barrier.h cycle.h error.h
 		 gravity/Default/gravity_debug.h gravity/Default/gravity_part.h  \
 		 gravity/Potential/gravity.h gravity/Potential/gravity_iact.h gravity/Potential/gravity_io.h \
 		 gravity/Potential/gravity_debug.h gravity/Potential/gravity_part.h  \
+		 gravity/MultiSoftening/gravity.h gravity/MultiSoftening/gravity_iact.h gravity/MultiSoftening/gravity_io.h \
+		 gravity/MultiSoftening/gravity_debug.h gravity/MultiSoftening/gravity_part.h  \
 		 equation_of_state.h \
 		 equation_of_state/ideal_gas/equation_of_state.h equation_of_state/isothermal/equation_of_state.h \
 	 	 hydro.h hydro_io.h hydro_parameters.h \

@@ -283,6 +283,13 @@ void velociraptor_convert_particles_mapper(void *map_data, int nr_gparts,
         swift_parts[i].T = 0.f;
         break;
 
+      case swift_type_dark_matter_background:
+
+        swift_parts[i].id = gparts[i].id_or_neg_offset;
+        swift_parts[i].u = 0.f;
+        swift_parts[i].T = 0.f;
+        break;
+
       default:
         error("Particle type not handled by VELOCIraptor.");
     }
@@ -334,13 +341,19 @@ void velociraptor_init(struct engine *e) {
   } else {
     sim_info.icosmologicalsim = 0;
   }
-  sim_info.izoomsim = 0;
+
+  /* Are we running a zoom? */
+  if (e->s->with_DM_background) {
+    sim_info.izoomsim = 1;
+  } else {
+    sim_info.izoomsim = 0;
+  }
 
   /* Tell VELOCIraptor what we have in the simulation */
   sim_info.idarkmatter = (e->total_nr_gparts - e->total_nr_parts > 0);
   sim_info.igas = (e->policy & engine_policy_hydro);
   sim_info.istar = (e->policy & engine_policy_stars);
-  sim_info.ibh = 0;  // sim_info.ibh = (e->policy&engine_policy_bh);
+  sim_info.ibh = (e->policy & engine_policy_black_holes);
   sim_info.iother = 0;
 
   /* Be nice, talk! */
@@ -443,14 +456,45 @@ void velociraptor_invoke(struct engine *e, const int linked_with_snap) {
   /* Are we running with cosmology? */
   if (e->policy & engine_policy_cosmology) {
     sim_info.icosmologicalsim = 1;
-    sim_info.izoomsim = 0;
-    const size_t total_nr_baryons = e->total_nr_parts + e->total_nr_sparts;
-    const size_t total_nr_dmparts = e->total_nr_gparts - total_nr_baryons;
-    sim_info.interparticlespacing = sim_info.period / cbrt(total_nr_dmparts);
+
+    /* Are we running a zoom? */
+    if (e->s->with_DM_background) {
+      sim_info.izoomsim = 1;
+    } else {
+      sim_info.izoomsim = 0;
+    }
+
+    /* Collect the mass of the non-background gpart */
+    double high_res_DM_mass = 0.;
+    for (size_t i = 0; i < e->s->nr_gparts; ++i) {
+      const struct gpart *gp = &e->s->gparts[i];
+      if (gp->type == swift_type_dark_matter &&
+          gp->time_bin != time_bin_inhibited &&
+          gp->time_bin != time_bin_not_created) {
+        high_res_DM_mass = gp->mass;
+        break;
+      }
+    }
+
+#ifdef WITH_MPI
+    /* We need to all-reduce this in case one of the nodes had 0 DM particles.
+     */
+    MPI_Allreduce(MPI_IN_PLACE, &high_res_DM_mass, 1, MPI_DOUBLE, MPI_MAX,
+                  MPI_COMM_WORLD);
+#endif
+
+    /* Linking length based on the mean DM inter-particle separation
+     * in the zoom region and assuming the mean density of the Universe
+     * is used in the zoom region. */
+    const double mean_matter_density =
+        e->cosmology->Omega_m * e->cosmology->critical_density_0;
+    sim_info.interparticlespacing =
+        cbrt(high_res_DM_mass / mean_matter_density);
+
   } else {
-    sim_info.icosmologicalsim = 0;
     sim_info.izoomsim = 0;
-    sim_info.interparticlespacing = -1;
+    sim_info.icosmologicalsim = 0;
+    sim_info.interparticlespacing = -1.;
   }
 
   /* Set the spatial extent of the simulation volume */

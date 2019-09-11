@@ -1931,7 +1931,7 @@ void space_rebuild(struct space *s, int repartitioned, int verbose) {
   /* Check that the multipole construction went OK */
   if (s->with_self_gravity)
     for (int k = 0; k < s->nr_cells; k++)
-      cell_check_multipole(&s->cells_top[k]);
+      cell_check_multipole(&s->cells_top[k], s->e->gravity_properties);
 #endif
 
   /* Clean up any stray sort indices in the cell buffer. */
@@ -3606,7 +3606,8 @@ void space_split_recursive(struct space *s, struct cell *c,
     if (s->with_self_gravity) {
       if (gcount > 0) {
 
-        gravity_P2M(c->grav.multipole, c->grav.parts, c->grav.count);
+        gravity_P2M(c->grav.multipole, c->grav.parts, c->grav.count,
+                    e->gravity_properties);
 
       } else {
 
@@ -3948,6 +3949,9 @@ void space_synchronize_particle_positions_mapper(void *map_data, int nr_gparts,
     if (gp->type == swift_type_dark_matter)
       continue;
 
+    else if (gp->type == swift_type_dark_matter_background)
+      continue;
+
     else if (gp->type == swift_type_gas) {
 
       /* Get its gassy friend */
@@ -3990,6 +3994,10 @@ void space_synchronize_particle_positions_mapper(void *map_data, int nr_gparts,
       bp->x[2] = gp->x[2];
 
       gp->mass = bp->mass;
+    }
+
+    else {
+      error("Invalid type!");
     }
   }
 }
@@ -4526,6 +4534,7 @@ void space_convert_quantities(struct space *s, int verbose) {
  * @param hydro flag whether we are doing hydro or not?
  * @param self_gravity flag whether we are doing gravity or not?
  * @param star_formation flag whether we are doing star formation or not?
+ * @param DM_background Are we running with some DM background particles?
  * @param verbose Print messages to stdout or not.
  * @param dry_run If 1, just initialise stuff, don't do anything with the parts.
  *
@@ -4540,7 +4549,8 @@ void space_init(struct space *s, struct swift_params *params,
                 struct bpart *bparts, size_t Npart, size_t Ngpart,
                 size_t Nspart, size_t Nbpart, int periodic, int replicate,
                 int generate_gas_in_ics, int hydro, int self_gravity,
-                int star_formation, int verbose, int dry_run) {
+                int star_formation, int DM_background, int verbose,
+                int dry_run) {
 
   /* Clean-up everything */
   bzero(s, sizeof(struct space));
@@ -4553,6 +4563,7 @@ void space_init(struct space *s, struct swift_params *params,
   s->with_self_gravity = self_gravity;
   s->with_hydro = hydro;
   s->with_star_formation = star_formation;
+  s->with_DM_background = DM_background;
   s->nr_parts = Npart;
   s->nr_gparts = Ngpart;
   s->nr_sparts = Nspart;
@@ -4603,6 +4614,9 @@ void space_init(struct space *s, struct swift_params *params,
     error("Value of 'InitialConditions:replicate' (%d) is too small",
           replicate);
   if (replicate > 1) {
+    if (DM_background)
+      error("Can't replicate the space if background DM particles are in use.");
+
     space_replicate(s, replicate, verbose);
     parts = s->parts;
     gparts = s->gparts;
@@ -4841,16 +4855,19 @@ void space_replicate(struct space *s, int replicate, int verbose) {
   const size_t nr_parts = s->nr_parts;
   const size_t nr_gparts = s->nr_gparts;
   const size_t nr_sparts = s->nr_sparts;
-  const size_t nr_dm = nr_gparts - nr_parts - nr_sparts;
+  const size_t nr_bparts = s->nr_bparts;
+  const size_t nr_dm = nr_gparts - nr_parts - nr_sparts - nr_bparts;
 
   s->size_parts = s->nr_parts = nr_parts * factor;
   s->size_gparts = s->nr_gparts = nr_gparts * factor;
   s->size_sparts = s->nr_sparts = nr_sparts * factor;
+  s->size_bparts = s->nr_bparts = nr_bparts * factor;
 
   /* Allocate space for new particles */
   struct part *parts = NULL;
   struct gpart *gparts = NULL;
   struct spart *sparts = NULL;
+  struct bpart *bparts = NULL;
 
   if (swift_memalign("parts", (void **)&parts, part_align,
                      s->nr_parts * sizeof(struct part)) != 0)
@@ -4864,6 +4881,10 @@ void space_replicate(struct space *s, int replicate, int verbose) {
                      s->nr_sparts * sizeof(struct spart)) != 0)
     error("Failed to allocate new spart array.");
 
+  if (swift_memalign("bparts", (void **)&bparts, bpart_align,
+                     s->nr_bparts * sizeof(struct bpart)) != 0)
+    error("Failed to allocate new bpart array.");
+
   /* Replicate everything */
   for (int i = 0; i < replicate; ++i) {
     for (int j = 0; j < replicate; ++j) {
@@ -4875,6 +4896,8 @@ void space_replicate(struct space *s, int replicate, int verbose) {
                nr_parts * sizeof(struct part));
         memcpy(sparts + offset * nr_sparts, s->sparts,
                nr_sparts * sizeof(struct spart));
+        memcpy(bparts + offset * nr_bparts, s->bparts,
+               nr_bparts * sizeof(struct bpart));
         memcpy(gparts + offset * nr_gparts, s->gparts,
                nr_gparts * sizeof(struct gpart));
 
@@ -4895,6 +4918,11 @@ void space_replicate(struct space *s, int replicate, int verbose) {
           sparts[n].x[0] += shift[0];
           sparts[n].x[1] += shift[1];
           sparts[n].x[2] += shift[2];
+        }
+        for (size_t n = offset * nr_bparts; n < (offset + 1) * nr_bparts; ++n) {
+          bparts[n].x[0] += shift[0];
+          bparts[n].x[1] += shift[1];
+          bparts[n].x[2] += shift[2];
         }
 
         /* Set the correct links (recall gpart are sorted by type at start-up):
@@ -4917,6 +4945,16 @@ void space_replicate(struct space *s, int replicate, int verbose) {
             gparts[offset_gpart + n].id_or_neg_offset = -(offset_spart + n);
           }
         }
+        if (nr_bparts > 0 && nr_gparts > 0) {
+          const size_t offset_bpart = offset * nr_bparts;
+          const size_t offset_gpart =
+              offset * nr_gparts + nr_dm + nr_parts + nr_sparts;
+
+          for (size_t n = 0; n < nr_bparts; ++n) {
+            bparts[offset_bpart + n].gpart = &gparts[offset_gpart + n];
+            gparts[offset_gpart + n].id_or_neg_offset = -(offset_bpart + n);
+          }
+        }
       }
     }
   }
@@ -4925,9 +4963,11 @@ void space_replicate(struct space *s, int replicate, int verbose) {
   swift_free("parts", s->parts);
   swift_free("gparts", s->gparts);
   swift_free("sparts", s->sparts);
+  swift_free("bparts", s->bparts);
   s->parts = parts;
   s->gparts = gparts;
   s->sparts = sparts;
+  s->bparts = bparts;
 
   /* Finally, update the domain size */
   s->dim[0] *= replicate;
@@ -5375,6 +5415,7 @@ void space_clean(struct space *s) {
   swift_free("xparts", s->xparts);
   swift_free("gparts", s->gparts);
   swift_free("sparts", s->sparts);
+  swift_free("bparts", s->bparts);
 }
 
 /**

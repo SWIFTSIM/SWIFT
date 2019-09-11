@@ -51,5 +51,7 @@ Gravity:
   eta: 0.025
   theta: 0.3
   r_cut_max: 5.
-  comoving_softening: 0.001
-  max_physical_softening: 0.001
+  comoving_DM_softening: 0.001
+  max_physical_DM_softening: 0.001
+  comoving_baryon_softening: 0.001
+  max_physical_baryon_softening: 0.001

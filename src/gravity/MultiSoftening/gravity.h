@@ -17,13 +17,14 @@
  * along with this program.  If not, see <http://www.gnu.org/licenses/>.
  *
  ******************************************************************************/
-#ifndef SWIFT_POTENTIAL_GRAVITY_H
-#define SWIFT_POTENTIAL_GRAVITY_H
+#ifndef SWIFT_MULTI_SOFTENING_GRAVITY_H
+#define SWIFT_MULTI_SOFTENING_GRAVITY_H
 
 #include <float.h>
 
 /* Local includes. */
 #include "cosmology.h"
+#include "error.h"
 #include "gravity_properties.h"
 #include "kernel_gravity.h"
 #include "minmax.h"
@@ -42,16 +43,29 @@ __attribute__((always_inline)) INLINE static float gravity_get_mass(
 /**
  * @brief Returns the current co-moving softening of a particle
  *
- * Note that in this basic gravity scheme, all particles have
- * the same softening length.
- *
  * @param gp The particle of interest
  * @param grav_props The global gravity properties.
  */
 __attribute__((always_inline)) INLINE static float gravity_get_softening(
     const struct gpart* gp, const struct gravity_props* restrict grav_props) {
 
-  return grav_props->epsilon_DM_cur;
+  switch (gp->type) {
+    case swift_type_dark_matter:
+      return grav_props->epsilon_DM_cur;
+    case swift_type_stars:
+      return grav_props->epsilon_baryon_cur;
+    case swift_type_gas:
+      return grav_props->epsilon_baryon_cur;
+    case swift_type_black_hole:
+      return grav_props->epsilon_baryon_cur;
+    case swift_type_dark_matter_background:
+      return grav_props->epsilon_background_fac * cbrtf(gp->mass);
+    default:
+#ifdef SWIFT_DEBUG_CHECKS
+      error("Invalid gpart type!");
+#endif
+      return 0.f;
+  }
 }
 
 /**
@@ -67,7 +81,7 @@ gravity_add_comoving_potential(struct gpart* restrict gp, float pot) {
 }
 
 /**
- * @brief Returns the comoving potential of a particle
+ * @brief Returns the comoving potential of a particle.
  *
  * @param gp The particle of interest
  */
@@ -165,9 +179,13 @@ __attribute__((always_inline)) INLINE static void gravity_init_gpart(
  * Multiplies the forces and accelerations by the appropiate constants.
  * Applies cosmological correction for periodic BCs.
  *
+ * No need to apply the potential normalisation correction for periodic
+ * BCs here since we do not compute the potential.
+ *
  * @param gp The particle to act upon
  * @param const_G Newton's constant in internal units.
  * @param potential_normalisation Term to be added to all the particles.
+ * @param periodic Are we using periodic BCs?
  */
 __attribute__((always_inline)) INLINE static void gravity_end_force(
     struct gpart* gp, float const_G, const float potential_normalisation,
@@ -229,4 +247,4 @@ __attribute__((always_inline)) INLINE static void gravity_first_init_gpart(
   gravity_init_gpart(gp);
 }
 
-#endif /* SWIFT_POTENTIAL_GRAVITY_H */
+#endif /* SWIFT_MULTI_SOFTENING_GRAVITY_H */

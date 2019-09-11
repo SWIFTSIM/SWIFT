@@ -688,6 +688,7 @@ void writeArray(struct engine* e, hid_t grp, char* fileName,
  * @param with_gravity Are we running with gravity ?
  * @param with_stars Are we running with stars ?
  * @param with_black_holes Are we running with black holes ?
+ * @param with_cosmology Are we running with cosmology ?
  * @param cleanup_h Are we cleaning-up h-factors from the quantities we read?
  * @param cleanup_sqrt_a Are we cleaning-up the sqrt(a) factors in the Gadget
  * IC velocities?
@@ -704,12 +705,13 @@ void writeArray(struct engine* e, hid_t grp, char* fileName,
 void read_ic_parallel(char* fileName, const struct unit_system* internal_units,
                       double dim[3], struct part** parts, struct gpart** gparts,
                       struct spart** sparts, struct bpart** bparts,
-                      size_t* Ngas, size_t* Ngparts, size_t* Nstars,
-                      size_t* Nblackholes, int* flag_entropy, int with_hydro,
-                      int with_gravity, int with_stars, int with_black_holes,
-                      int cleanup_h, int cleanup_sqrt_a, double h, double a,
-                      int mpi_rank, int mpi_size, MPI_Comm comm, MPI_Info info,
-                      int n_threads, int dry_run) {
+                      size_t* Ngas, size_t* Ngparts, size_t* Ngparts_background,
+                      size_t* Nstars, size_t* Nblackholes, int* flag_entropy,
+                      int with_hydro, int with_gravity, int with_stars,
+                      int with_black_holes, int with_cosmology, int cleanup_h,
+                      int cleanup_sqrt_a, double h, double a, int mpi_rank,
+                      int mpi_size, MPI_Comm comm, MPI_Info info, int n_threads,
+                      int dry_run) {
 
   hid_t h_file = 0, h_grp = 0;
   /* GADGET has only cubic boxes (in cosmological mode) */
@@ -721,9 +723,11 @@ void read_ic_parallel(char* fileName, const struct unit_system* internal_units,
   long long offset[swift_type_count] = {0};
   int dimension = 3; /* Assume 3D if nothing is specified */
   size_t Ndm = 0;
+  size_t Ndm_background = 0;
 
   /* Initialise counters */
-  *Ngas = 0, *Ngparts = 0, *Nstars = 0, *Nblackholes = 0;
+  *Ngas = 0, *Ngparts = 0, *Ngparts_background = 0, *Nstars = 0,
+  *Nblackholes = 0;
 
   /* Open file */
   /* message("Opening file '%s' as IC.", fileName); */
@@ -769,6 +773,13 @@ void read_ic_parallel(char* fileName, const struct unit_system* internal_units,
   io_read_attribute(h_grp, "NumPart_Total", LONGLONG, numParticles);
   io_read_attribute(h_grp, "NumPart_Total_HighWord", LONGLONG,
                     numParticles_highWord);
+
+  /* Check that the user is not doing something silly when they e.g. restart
+   * from a snapshot by asserting that the current scale-factor (from
+   * parameter file) and the redshift in the header are consistent */
+  if (with_cosmology) {
+    io_assert_valid_header_cosmology(h_grp, a);
+  }
 
   for (int ptype = 0; ptype < swift_type_count; ++ptype)
     N_total[ptype] =
@@ -875,11 +886,14 @@ void read_ic_parallel(char* fileName, const struct unit_system* internal_units,
 
   /* Allocate memory to store gravity particles */
   if (with_gravity) {
-    Ndm = N[1];
+    Ndm = N[swift_type_dark_matter];
+    Ndm_background = N[swift_type_dark_matter_background];
     *Ngparts = (with_hydro ? N[swift_type_gas] : 0) +
                N[swift_type_dark_matter] +
+               N[swift_type_dark_matter_background] +
                (with_stars ? N[swift_type_stars] : 0) +
                (with_black_holes ? N[swift_type_black_hole] : 0);
+    *Ngparts_background = Ndm_background;
     if (swift_memalign("gparts", (void**)gparts, gpart_align,
                        *Ngparts * sizeof(struct gpart)) != 0)
       error("Error while allocating memory for gravity particles");
@@ -928,6 +942,13 @@ void read_ic_parallel(char* fileName, const struct unit_system* internal_units,
         }
         break;
 
+      case swift_type_dark_matter_background:
+        if (with_gravity) {
+          Nparticles = Ndm_background;
+          darkmatter_read_particles(*gparts + Ndm, list, &num_fields);
+        }
+        break;
+
       case swift_type_stars:
         if (with_stars) {
           Nparticles = *Nstars;
@@ -968,17 +989,23 @@ void read_ic_parallel(char* fileName, const struct unit_system* internal_units,
     /* Prepare the DM particles */
     io_prepare_dm_gparts(&tp, *gparts, Ndm);
 
+    /* Prepare the DM background particles */
+    io_prepare_dm_background_gparts(&tp, *gparts + Ndm, Ndm_background);
+
     /* Duplicate the hydro particles into gparts */
-    if (with_hydro) io_duplicate_hydro_gparts(&tp, *parts, *gparts, *Ngas, Ndm);
+    if (with_hydro)
+      io_duplicate_hydro_gparts(&tp, *parts, *gparts, *Ngas,
+                                Ndm + Ndm_background);
 
     /* Duplicate the stars particles into gparts */
     if (with_stars)
-      io_duplicate_stars_gparts(&tp, *sparts, *gparts, *Nstars, Ndm + *Ngas);
+      io_duplicate_stars_gparts(&tp, *sparts, *gparts, *Nstars,
+                                Ndm + Ndm_background + *Ngas);
 
     /* Duplicate the stars particles into gparts */
     if (with_black_holes)
       io_duplicate_black_holes_gparts(&tp, *bparts, *gparts, *Nblackholes,
-                                      Ndm + *Ngas + *Nstars);
+                                      Ndm + Ndm_background + *Ngas + *Nstars);
 
     threadpool_clean(&tp);
   }
@@ -1236,6 +1263,17 @@ void prepare_file(struct engine* e, const char* baseName, long long N_total[6],
         }
         break;
 
+      case swift_type_dark_matter_background:
+        darkmatter_write_particles(gparts, list, &num_fields);
+        if (with_fof) {
+          num_fields += fof_write_gparts(gparts, list + num_fields);
+        }
+        if (with_stf) {
+          num_fields += velociraptor_write_gparts(e->s->gpart_group_data,
+                                                  list + num_fields);
+        }
+        break;
+
       case swift_type_stars:
         stars_write_particles(sparts, list, &num_fields, with_cosmology);
         num_fields += chemistry_write_sparticles(sparts, list + num_fields);
@@ -1329,6 +1367,7 @@ void write_output_parallel(struct engine* e, const char* baseName,
   const int with_cooling = e->policy & engine_policy_cooling;
   const int with_temperature = e->policy & engine_policy_temperature;
   const int with_fof = e->policy & engine_policy_fof;
+  const int with_DM_background = e->s->with_DM_background;
 #ifdef HAVE_VELOCIRAPTOR
   const int with_stf = (e->policy & engine_policy_structure_finding) &&
                        (e->s->gpart_group_data != NULL);
@@ -1344,6 +1383,11 @@ void write_output_parallel(struct engine* e, const char* baseName,
   // const size_t Nbaryons = Ngas + Nstars;
   // const size_t Ndm = Ntot > 0 ? Ntot - Nbaryons : 0;
 
+  size_t Ndm_background = 0;
+  if (with_DM_background) {
+    Ndm_background = io_count_dm_background_gparts(gparts, Ntot);
+  }
+
   /* Number of particles that we will write */
   const size_t Ntot_written =
       e->s->nr_gparts - e->s->nr_inhibited_gparts - e->s->nr_extra_gparts;
@@ -1356,10 +1400,11 @@ void write_output_parallel(struct engine* e, const char* baseName,
   const size_t Nbaryons_written =
       Ngas_written + Nstars_written + Nblackholes_written;
   const size_t Ndm_written =
-      Ntot_written > 0 ? Ntot_written - Nbaryons_written : 0;
+      Ntot_written > 0 ? Ntot_written - Nbaryons_written - Ndm_background : 0;
 
   /* Compute offset in the file and total number of particles */
-  size_t N[swift_type_count] = {Ngas_written,   Ndm_written,        0, 0,
+  size_t N[swift_type_count] = {Ngas_written,   Ndm_written,
+                                Ndm_background, 0,
                                 Nstars_written, Nblackholes_written};
   long long N_total[swift_type_count] = {0};
   long long offset[swift_type_count] = {0};
@@ -1663,6 +1708,43 @@ void write_output_parallel(struct engine* e, const char* baseName,
                                                     list + num_fields);
           }
         }
+      } break;
+
+      case swift_type_dark_matter_background: {
+
+        /* Ok, we need to fish out the particles we want */
+        Nparticles = Ndm_background;
+
+        /* Allocate temporary array */
+        if (swift_memalign("gparts_written", (void**)&gparts_written,
+                           gpart_align,
+                           Ndm_background * sizeof(struct gpart)) != 0)
+          error("Error while allocating temporart memory for gparts");
+
+        if (with_stf) {
+          if (swift_memalign(
+                  "gpart_group_written", (void**)&gpart_group_data_written,
+                  gpart_align,
+                  Ndm_background * sizeof(struct velociraptor_gpart_data)) != 0)
+            error(
+                "Error while allocating temporart memory for gparts STF "
+                "data");
+        }
+
+        /* Collect the non-inhibited DM particles from gpart */
+        io_collect_gparts_background_to_write(
+            gparts, e->s->gpart_group_data, gparts_written,
+            gpart_group_data_written, Ntot, Ndm_background, with_stf);
+
+        /* Select the fields to write */
+        darkmatter_write_particles(gparts_written, list, &num_fields);
+        if (with_stf) {
+#ifdef HAVE_VELOCIRAPTOR
+          num_fields += velociraptor_write_gparts(gpart_group_data_written,
+                                                  list + num_fields);
+#endif
+        }
+
       } break;
 
       case swift_type_stars: {
