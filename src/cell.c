@@ -2443,7 +2443,8 @@ void cell_activate_star_resort_tasks(struct cell *c, struct scheduler *s) {
 
   /* The resort tasks are at either the chosen depth or the super level,
    * whichever comes first. */
-  if (c->depth == engine_star_resort_task_depth || c->hydro.super == c) {
+  if ((c->depth == engine_star_resort_task_depth || c->hydro.super == c) &&
+      c->hydro.count > 0) {
     scheduler_activate(s, c->hydro.stars_resort);
   } else {
     for (int k = 0; k < 8; ++k) {
@@ -2486,6 +2487,10 @@ void cell_activate_star_formation_tasks(struct cell *c, struct scheduler *s) {
  * @param s The #scheduler.
  */
 void cell_activate_super_spart_drifts(struct cell *c, struct scheduler *s) {
+
+  /* Early abort? */
+  if (c->hydro.count == 0) return;
+
   if (c == c->hydro.super) {
     cell_activate_drift_spart(c, s);
   } else {
