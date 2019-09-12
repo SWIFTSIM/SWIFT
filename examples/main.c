@@ -764,6 +764,13 @@ int main(int argc, char *argv[]) {
         params, "InitialConditions:cleanup_velocity_factors", 0);
     const int generate_gas_in_ics = parser_get_opt_param_int(
         params, "InitialConditions:generate_gas_in_ics", 0);
+    const int with_dithering =
+        parser_get_opt_param_int(params, "InitialConditions:dithering", 0);
+    int dithering_ratio = 0.;
+    if (with_dithering) {
+      dithering_ratio =
+          parser_get_param_double(params, "InitialConditions:dithering_ratio");
+    }
 
     /* Initialise the cosmology */
     if (with_cosmology)
@@ -992,7 +999,8 @@ int main(int argc, char *argv[]) {
     space_init(&s, params, &cosmo, dim, parts, gparts, sparts, bparts, Ngas,
                Ngpart, Nspart, Nbpart, periodic, replicate, generate_gas_in_ics,
                with_hydro, with_self_gravity, with_star_formation,
-               with_DM_background_particles, talking, dry_run);
+               with_DM_background_particles, with_dithering, dithering_ratio,
+               talking, dry_run);
 
     if (myrank == 0) {
       clocks_gettime(&toc);

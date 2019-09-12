@@ -1187,6 +1187,10 @@ void space_rebuild(struct space *s, int repartitioned, int verbose) {
       /* Tell everyone what value to use */
       MPI_Bcast(s->pos_dithering, 3, MPI_DOUBLE, 0, MPI_COMM_WORLD);
 #endif
+
+      if (verbose)
+        message("Dithering the particle positions by [%e %e %e]",
+                s->pos_dithering[0], s->pos_dithering[1], s->pos_dithering[2]);
     }
   }
 
@@ -4629,8 +4633,8 @@ void space_init(struct space *s, struct swift_params *params,
                 struct bpart *bparts, size_t Npart, size_t Ngpart,
                 size_t Nspart, size_t Nbpart, int periodic, int replicate,
                 int generate_gas_in_ics, int hydro, int self_gravity,
-                int star_formation, int DM_background, int verbose,
-                int dry_run) {
+                int star_formation, int DM_background, int dithering,
+                double dithering_ratio, int verbose, int dry_run) {
 
   /* Clean-up everything */
   bzero(s, sizeof(struct space));
@@ -4672,6 +4676,8 @@ void space_init(struct space *s, struct swift_params *params,
   s->sum_gpart_vel_norm = 0.f;
   s->sum_spart_vel_norm = 0.f;
   s->sum_bpart_vel_norm = 0.f;
+  s->dithering = dithering;
+  s->dithering_ratio = dithering_ratio;
   s->nr_queues = 1; /* Temporary value until engine construction */
 
   /* Initialise some randomness */
