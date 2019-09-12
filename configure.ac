@@ -1007,6 +1007,10 @@ AC_ARG_WITH([python],
     [with_python="no"]
 )
 if test "x$with_python" != "xno"; then
+   if test "$with_python" == ""; then
+      # use linux default python
+      with_python="/usr/"
+   fi
    AM_PATH_PYTHON([3], [], [AC_MSG_ERROR(python not found)])   
    AC_ARG_VAR([PYTHON_INCS], [Include flags for python, bypassing python-config])
    AC_ARG_VAR([PYTHON_CONFIG], [Path to python-config])
