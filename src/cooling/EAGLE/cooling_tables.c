@@ -295,7 +295,7 @@ void read_cooling_header(const char *fname,
 
     /* Compute inverse of solar mass fractions */
 #if defined(__ICC)
-#pragma novec
+#pragma novector
 #endif
   for (int i = 0; i < N_SolarAbundances; ++i) {
     cooling->SolarAbundances_inv[i] = 1.f / cooling->SolarAbundances[i];
