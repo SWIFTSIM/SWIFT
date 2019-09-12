@@ -71,33 +71,3 @@ liblogger_la_LDFLAGS = $(AM_LDFLAGS) $(EXTRA_LIBS) $(BIN_LDFLAGS)
 # liblogger_mpi_la_LDFLAGS = $(AM_LDFLAGS) $(MPI_LIBS) $(EXTRA_LIBS)
 # liblogger_mpi_la_SHORTNAME = mpi
 # liblogger_mpi_la_LIBADD =
-
-# Versioning. If any sources change then update the version_string.h file with
-# the current git revision and package version.
-# May have a checkout without a version_string.h file and no git command (tar/zip
-# download), allow that, but make sure we know it.
-version_string.h: ../src/version_string.h.in $(AM_SOURCES) $(include_HEADERS) $(noinst_HEADERS)
-	if test "X$(GIT_CMD)" != "X"; then \
-	    GIT_REVISION=`$(GIT_CMD) describe --abbrev=8  --always --tags --dirty`; \
-	    GIT_BRANCH=`$(GIT_CMD) branch | sed -n 's/^\* \(.*\)/\1/p'`; \
-            GIT_DATE=`$(GIT_CMD) log -1 --format=%ci`; \
-	    sed -e "s,@PACKAGE_VERSION\@,$(PACKAGE_VERSION)," \
-	        -e "s,@GIT_REVISION\@,$${GIT_REVISION}," \
-	        -e "s|@GIT_BRANCH\@|$${GIT_BRANCH}|" \
-	        -e "s|@GIT_DATE\@|$${GIT_DATE}|" \
-	        -e "s|@SWIFT_CFLAGS\@|$(CFLAGS)|" $< > version_string.h; \
-	else \
-	    if test ! -f version_string.h; then \
-	        sed -e "s,@PACKAGE_VERSION\@,$(PACKAGE_VERSION)," \
-	            -e "s,@GIT_REVISION\@,unknown," \
-		    -e "s,@GIT_BRANCH\@,unknown," \
-		    -e "s,@GIT_DATE\@,unknown," \
-	            -e "s|@SWIFT_CFLAGS\@|$(CFLAGS)|" $< > version_string.h; \
-	    fi; \
-	fi
-
-#  Make sure version_string.h is built first.
-BUILT_SOURCES = version_string.h
-
-#  And distribute the built files.
-EXTRA_DIST = version_string.h ../src/version_string.h.in
