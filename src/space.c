@@ -2281,7 +2281,7 @@ void space_gparts_get_cell_index_mapper(void *map_data, int nr_gparts,
     }
 
 #ifdef SWIFT_DEBUG_CHECKS
-    if (periodic && gp->time_bin != time_bin_inhibited) {
+    if (!periodic && gp->time_bin != time_bin_inhibited) {
       if (old_pos_x < 0. || old_pos_x > dim_x)
         error("Particle outside of volume along X.");
       if (old_pos_y < 0. || old_pos_y > dim_y)
