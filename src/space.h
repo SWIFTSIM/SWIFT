@@ -123,6 +123,9 @@ struct space {
     time (value at the previous rebuild) */
   double pos_dithering_old[3];
 
+  /*! Max dithering distance in units of the top-level cell sizes */
+  double dithering_ratio;
+
   /*! The minimum top-level cell width allowed. */
   double cell_min;
 

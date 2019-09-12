@@ -1166,6 +1166,30 @@ void space_rebuild(struct space *s, int repartitioned, int verbose) {
   /* Allocate extra space for particles that will be created */
   if (s->with_star_formation) space_allocate_extras(s, verbose);
 
+  if (s->dithering) {
+
+    /* Store the old dithering vector */
+    s->pos_dithering_old[0] = s->pos_dithering[0];
+    s->pos_dithering_old[1] = s->pos_dithering[1];
+    s->pos_dithering_old[2] = s->pos_dithering[2];
+
+    if (s->e->nodeID == 0) {
+
+      /* Compute the new dithering vector */
+      s->pos_dithering[0] =
+          s->dithering_ratio * s->width[0] * rand() / ((double)RAND_MAX);
+      s->pos_dithering[1] =
+          s->dithering_ratio * s->width[1] * rand() / ((double)RAND_MAX);
+      s->pos_dithering[2] =
+          s->dithering_ratio * s->width[2] * rand() / ((double)RAND_MAX);
+
+#ifdef WITH_MPI
+      /* Tell everyone what value to use */
+      MPI_Bcast(s->pos_dithering, 3, MPI_DOUBLE, 0, MPI_COMM_WORLD);
+#endif
+    }
+  }
+
   struct cell *cells_top = s->cells_top;
   const integertime_t ti_current = (s->e != NULL) ? s->e->ti_current : 0;
   const int local_nodeID = s->e->nodeID;
@@ -4649,6 +4673,9 @@ void space_init(struct space *s, struct swift_params *params,
   s->sum_spart_vel_norm = 0.f;
   s->sum_bpart_vel_norm = 0.f;
   s->nr_queues = 1; /* Temporary value until engine construction */
+
+  /* Initialise some randomness */
+  srand(42);
 
   /* Are we generating gas from the DM-only ICs? */
   if (generate_gas_in_ics) {
