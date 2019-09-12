@@ -2080,9 +2080,7 @@ AC_MSG_RESULT([
    CPU profiler         : $have_profiler
    Pthread barriers     : $have_pthread_barrier
    VELOCIraptor enabled : $have_velociraptor
-   Particle Logger      : $with_logger
    FoF activated:       : $enable_fof
-   Python enabled       : $have_python
 
    Hydro scheme       : $with_hydro
    Dimensionality     : $with_dimension
@@ -2118,5 +2116,8 @@ AC_MSG_RESULT([
    Gravity checks              : $gravity_force_checks
    Custom icbrtf               : $enable_custom_icbrtf
    Boundary particles          : $boundary_particles
+
+   Particle Logger      : $with_logger
+   Python enabled       : $have_python
 
  ------------------------])
