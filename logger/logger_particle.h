@@ -16,8 +16,8 @@
  * along with this program.  If not, see <http://www.gnu.org/licenses/>.
  *
  ******************************************************************************/
-#ifndef __LOGGER_LOGGER_PARTICLE_H__
-#define __LOGGER_LOGGER_PARTICLE_H__
+#ifndef LOGGER_LOGGER_PARTICLE_H
+#define LOGGER_LOGGER_PARTICLE_H
 
 #include "logger_header.h"
 #include "logger_time.h"
@@ -104,4 +104,4 @@ void logger_particle_interpolate(struct logger_particle *part_curr,
                                  const struct logger_particle *part_next,
                                  const double time);
 
-#endif  //__LOGGER_LOGGER_PARTICLE_H__
+#endif  //LOGGER_LOGGER_PARTICLE_H

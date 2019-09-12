@@ -16,8 +16,8 @@
  * along with this program.  If not, see <http://www.gnu.org/licenses/>.
  *
  ******************************************************************************/
-#ifndef __LOGGER_LOGGER_HEADER_H__
-#define __LOGGER_LOGGER_HEADER_H__
+#ifndef LOGGER_LOGGER_HEADER_H
+#define LOGGER_LOGGER_HEADER_H
 
 #include "logger_tools.h"
 
@@ -116,4 +116,4 @@ __attribute__((always_inline)) INLINE static int header_is_corrupted(
   return h->offset_direction == logger_offset_corrupted;
 }
 
-#endif  // __LOGGER_LOGGER_HEADER_H__
+#endif  // LOGGER_LOGGER_HEADER_H

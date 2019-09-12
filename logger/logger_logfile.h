@@ -20,8 +20,8 @@
  * @file logger_logfile.h
  * @brief This file contains the high level function for the log.
  */
-#ifndef __LOGGER_LOGGER_LOGFILE_H__
-#define __LOGGER_LOGGER_LOGFILE_H__
+#ifndef LOGGER_LOGGER_LOGFILE_H
+#define LOGGER_LOGGER_LOGFILE_H
 
 #include "logger_header.h"
 #include "logger_time.h"
@@ -66,4 +66,4 @@ void logger_logfile_init_from_file(struct logger_logfile *log, char *filename,
 void logger_logfile_reverse_offset(struct logger_logfile *log, char *filename);
 void logger_logfile_free(struct logger_logfile *log);
 
-#endif  // __LOGGER_LOGGER_LOGFILE_H__
+#endif  // LOGGER_LOGGER_LOGFILE_H

@@ -20,8 +20,8 @@
  * @file logger_loader_io.h
  * @brief This file contains basic IO function.
  */
-#ifndef __LOGGER_LOGGER_LOADER_IO_H__
-#define __LOGGER_LOGGER_LOADER_IO_H__
+#ifndef LOGGER_LOGGER_LOADER_IO_H
+#define LOGGER_LOGGER_LOADER_IO_H
 
 #include "logger_header.h"
 #include "logger_tools.h"
@@ -95,4 +95,4 @@ __attribute__((always_inline)) INLINE static void *logger_loader_io_write_data(
   return data + size;
 };
 
-#endif  // __LOGGER_LOGGER_LOADER_IO_H__
+#endif  // LOGGER_LOGGER_LOADER_IO_H

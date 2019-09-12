@@ -44,8 +44,8 @@
  * record for this particle.
  */
 
-#ifndef __LOGGER_LOGGER_READER_H__
-#define __LOGGER_LOGGER_READER_H__
+#ifndef LOGGER_LOGGER_READER_H
+#define LOGGER_LOGGER_READER_H
 
 #include "logger_loader_io.h"
 #include "logger_logfile.h"
@@ -78,4 +78,4 @@ void logger_reader_free(struct logger_reader *reader);
 size_t reader_read_record(struct logger_reader *reader,
                           struct logger_particle *lp, double *time,
                           int *is_particle, size_t offset);
-#endif  // __LOGGER_LOGGER_READER_H__
+#endif  // LOGGER_LOGGER_READER_H

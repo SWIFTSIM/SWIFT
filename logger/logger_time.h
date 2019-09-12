@@ -16,8 +16,8 @@
  * along with this program.  If not, see <http://www.gnu.org/licenses/>.
  *
  ******************************************************************************/
-#ifndef __LOGGER_LOGGER_TIMELINE_H__
-#define __LOGGER_LOGGER_TIMELINE_H__
+#ifndef LOGGER_LOGGER_TIMELINE_H
+#define LOGGER_LOGGER_TIMELINE_H
 
 #include "logger_header.h"
 #include "logger_tools.h"
@@ -92,4 +92,4 @@ void time_array_print_offset(const struct time_array *t);
 
 size_t time_offset_first_record(const struct header *h);
 
-#endif  // __LOGGER_LOGGER_TIMELINE_H__
+#endif  // LOGGER_LOGGER_TIMELINE_H

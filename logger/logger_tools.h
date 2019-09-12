@@ -19,8 +19,8 @@
 /**
  * @brief This file contains functions that help to navigate in the logs.
  */
-#ifndef __LOGGER_LOGGER_TOOLS_H__
-#define __LOGGER_LOGGER_TOOLS_H__
+#ifndef LOGGER_LOGGER_TOOLS_H
+#define LOGGER_LOGGER_TOOLS_H
 
 #include "../config.h"
 
@@ -56,4 +56,4 @@ size_t tools_reverse_offset(const struct header *h, void *map, size_t offset);
 size_t tools_check_record_consistency(const struct logger_reader *reader,
                                       size_t offset);
 
-#endif  //__LOGGER_LOGGER_TOOLS_H__
+#endif  // LOGGER_LOGGER_TOOLS_H
