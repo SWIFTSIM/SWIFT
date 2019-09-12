@@ -106,11 +106,22 @@ struct space {
   /*! Are we running with some DM background particles? */
   int with_DM_background;
 
+  /*! Are we dithering the particle positions at every rebuild? */
+  int dithering;
+
   /*! Width of the top-level cells. */
   double width[3];
 
   /*! Inverse of the top-level cell width */
   double iwidth[3];
+
+  /*! Position vector added to all the particles at rebuild
+    time */
+  double pos_dithering[3];
+
+  /*! Position vector added to all the particles at rebuild
+    time (value at the previous rebuild) */
+  double pos_dithering_old[3];
 
   /*! The minimum top-level cell width allowed. */
   double cell_min;
