@@ -21,7 +21,7 @@
 /* Config parameters. */
 #include "../config.h"
 
-#ifdef WITH_LOGGER
+#if defined(WITH_LOGGER) && defined(HAVE_HDF5) && !defined(WITH_MPI)
 
 /* Some standard headers. */
 #include <hdf5.h>
@@ -87,7 +87,7 @@ void write_index_single(struct engine* e, const char* baseName,
   // struct spart* sparts = e->s->sparts;
   static int outputCount = 0;
 
-  struct logger* log = e->logger;
+  struct logger_writer* log = e->logger;
 
   /* Number of unassociated gparts */
   const size_t Ndm = Ntot > 0 ? Ntot - (Ngas + Nstars) : 0;
@@ -296,4 +296,4 @@ void write_index_single(struct engine* e, const char* baseName,
   ++outputCount;
 }
 
-#endif /* HAVE_HDF5 */
+#endif /* WITH_LOGGER && HAVE_HDF5 && !WITH_MPI */

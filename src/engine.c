@@ -4791,7 +4791,7 @@ void engine_dump_snapshot(struct engine *e) {
  */
 void engine_dump_index(struct engine *e) {
 
-#if defined(WITH_LOGGER)
+#if defined(WITH_LOGGER) && !defined(WITH_MPI)
   struct clocks_time time1, time2;
   clocks_gettime(&time1);
 
@@ -5008,7 +5008,7 @@ void engine_init(struct engine *e, struct space *s, struct swift_params *params,
   e->total_nr_tasks = 0;
 
 #if defined(WITH_LOGGER)
-  e->logger = (struct logger *)malloc(sizeof(struct logger));
+  e->logger = (struct logger_writer *)malloc(sizeof(struct logger_writer));
   logger_init(e->logger, params);
 #endif
 
@@ -5751,7 +5751,7 @@ void engine_config(int restart, int fof, struct engine *e,
 
 #ifdef WITH_LOGGER
   /* Write the particle logger header */
-  logger_write_file_header(e->logger, e);
+  logger_write_file_header(e->logger);
 #endif
 
   /* Initialise the structure finder */
@@ -6269,7 +6269,7 @@ void engine_clean(struct engine *e, const int fof) {
 
   swift_free("links", e->links);
 #if defined(WITH_LOGGER)
-  logger_clean(e->logger);
+  logger_free(e->logger);
   free(e->logger);
 #endif
   scheduler_clean(&e->sched);

@@ -50,11 +50,13 @@ __attribute__((always_inline)) INLINE static void hydro_write_index(
   *num_fields = 2;
 
   /* List what we want to write */
-  list[0] = io_make_output_field("ParticleIDs", ULONGLONG, 1,
-                                 UNIT_CONV_NO_UNITS, parts, id);
+  list[0] =
+      io_make_output_field("ParticleIDs", ULONGLONG, 1, UNIT_CONV_NO_UNITS, 0.f,
+                           parts, id, "will be erased");
 
-  list[1] = io_make_output_field("Offset", ULONGLONG, 1, UNIT_CONV_NO_UNITS,
-                                 xparts, logger_data.last_offset);
+  list[1] =
+      io_make_output_field("Offset", ULONGLONG, 1, UNIT_CONV_NO_UNITS, 0.f,
+                           xparts, logger_data.last_offset, "will be erased");
 }
 #endif
 
