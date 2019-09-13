@@ -45,7 +45,6 @@ void time_array_ensure_size(struct time_array *t) {
 
   /* Set the pointer to the new array */
   t->records = tmp;
-  
 }
 
 /**
@@ -236,14 +235,12 @@ size_t time_array_get_index(const struct time_array *t, const size_t offset) {
   while (left <= right) {
     size_t center = (left + right) / 2;
     const size_t offset_center = t->records[center].offset;
-    
+
     if (offset > offset_center) {
       left = center + 1;
-    }
-    else if (offset < offset_center) {
+    } else if (offset < offset_center) {
       right = center - 1;
-    }
-    else {
+    } else {
       return center;
     }
   }
@@ -277,8 +274,8 @@ void time_array_print(const struct time_array *t) {
   size_t n = t->size;
   size_t up_threshold = n - threshold;
 
-  printf("Times (size %lu): [%lli (%g)", n,
-	 t->records[0].int_time, t->records[0].time);
+  printf("Times (size %lu): [%lli (%g)", n, t->records[0].int_time,
+         t->records[0].time);
 
   /* Loop over all elements. */
   for (size_t i = 1; i < n; i++) {
@@ -308,7 +305,8 @@ void time_array_print_offset(const struct time_array *t) {
   /* Loop over all elements. */
   for (size_t i = 1; i < n; i++) {
     /* Skip the offset in the middle of the array. */
-    if (i < threshold || i > up_threshold) printf(", %lu", t->records[i].offset);
+    if (i < threshold || i > up_threshold)
+      printf(", %lu", t->records[i].offset);
 
     if (i == threshold) printf(", ...");
   }

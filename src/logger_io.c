@@ -21,7 +21,7 @@
 /* Config parameters. */
 #include "../config.h"
 
-#ifdef WITH_LOGGER
+#if defined(WITH_LOGGER) && defined(HAVE_HDF5) && !defined(WITH_MPI)
 
 /* Some standard headers. */
 #include <hdf5.h>
@@ -296,4 +296,4 @@ void write_index_single(struct engine* e, const char* baseName,
   ++outputCount;
 }
 
-#endif /* HAVE_HDF5 */
+#endif /* WITH_LOGGER && HAVE_HDF5 && !WITH_MPI */

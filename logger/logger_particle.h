@@ -104,4 +104,4 @@ void logger_particle_interpolate(struct logger_particle *part_curr,
                                  const struct logger_particle *part_next,
                                  const double time);
 
-#endif  //LOGGER_LOGGER_PARTICLE_H
+#endif  // LOGGER_LOGGER_PARTICLE_H

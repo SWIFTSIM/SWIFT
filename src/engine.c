@@ -4792,7 +4792,7 @@ void engine_dump_snapshot(struct engine *e) {
  */
 void engine_dump_index(struct engine *e) {
 
-#if defined(WITH_LOGGER)
+#if defined(WITH_LOGGER) && !defined(WITH_MPI)
   struct clocks_time time1, time2;
   clocks_gettime(&time1);
 

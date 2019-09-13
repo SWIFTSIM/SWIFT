@@ -17,9 +17,9 @@
  *
  ******************************************************************************/
 
-#include "logger_time.h"
-#include <time.h>
 #include <stdlib.h>
+#include <time.h>
+#include "logger_time.h"
 
 #define NUMBER_OF_ELEMENT 10000
 #define TIME_BASE 0.04
@@ -40,16 +40,16 @@ int main(int argc, char *argv[]) {
   time_array_init(&times);
 
   /* Add elements */
-  for(size_t i = 0; i < NUMBER_OF_ELEMENT; i++) {
+  for (size_t i = 0; i < NUMBER_OF_ELEMENT; i++) {
     integertime_t int_time = i;
     double time = i * TIME_BASE;
     size_t offset = i * OFFSET_BASE;
-   
+
     time_array_append(&times, int_time, time, offset);
   }
 
   /* Check the elements */
-  for(size_t i = 0; i < NUMBER_OF_ELEMENT; i++) {
+  for (size_t i = 0; i < NUMBER_OF_ELEMENT; i++) {
     integertime_t int_time = i;
     double time = i * TIME_BASE;
     size_t offset = i * OFFSET_BASE;
@@ -66,14 +66,13 @@ int main(int argc, char *argv[]) {
 
     /* Get the index from the offset */
     size_t ind = time_array_get_index(&times, read_offset);
-    
+
     /* Check the values obtained */
     assert(i == ind);
     assert(int_time == times.records[ind].int_time);
     assert(time == times.records[ind].time);
-    assert(offset == times.records[ind].offset);    
+    assert(offset == times.records[ind].offset);
   }
-
 
   return 0;
 }
