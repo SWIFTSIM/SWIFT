@@ -542,9 +542,12 @@ int main(int argc, char *argv[]) {
   if (with_mpole_reconstruction && nr_nodes > 1)
     error("Cannot reconstruct m-poles every step over MPI (yet).");
   if (with_limiter) error("Can't run with time-step limiter over MPI (yet)");
+#ifdef WITH_LOGGER
+  error("Can't run with the particle logger over MPI (yet)");
+#endif
 #endif
 
-    /* Temporary early aborts for modes not supported with hand-vec. */
+  /* Temporary early aborts for modes not supported with hand-vec. */
 #if defined(WITH_VECTORIZATION) && defined(GADGET2_SPH) && \
     !defined(CHEMISTRY_NONE)
   error(
