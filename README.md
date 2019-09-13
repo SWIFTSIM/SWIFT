@@ -122,6 +122,8 @@ Parameters:
                                       from all ranks.
     -y, --task-dumps=<int>            Time-step frequency at which task analysis
                                       files and/or tasks are dumped.
+    --cell-dumps=<int>                Time-step frequency at which cell graphs 
+                                      are dumped. 
     -Y, --threadpool-dumps=<int>      Time-step frequency at which threadpool
                                       tasks are dumped.
 

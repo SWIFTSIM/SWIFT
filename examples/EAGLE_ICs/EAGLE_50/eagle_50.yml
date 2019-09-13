@@ -53,6 +53,11 @@ SPH:
   minimal_temperature:   100.0    # (internal units)
   initial_temperature:   268.7
 
+# Parameters of the stars neighbour search
+Stars:
+  resolution_eta:        1.1642   # Target smoothing length in units of the mean inter-particle separation
+  h_tolerance:           7e-3
+
 # Parameters for the Friends-Of-Friends algorithm
 FOF:
   basename:                        fof_output  # Filename for the FOF outputs.

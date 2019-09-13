@@ -293,7 +293,10 @@ void read_cooling_header(const char *fname,
     cooling->nH[i] = log10(cooling->nH[i]);
   }
 
-  /* Compute inverse of solar mass fractions */
+    /* Compute inverse of solar mass fractions */
+#if defined(__ICC)
+#pragma novector
+#endif
   for (int i = 0; i < N_SolarAbundances; ++i) {
     cooling->SolarAbundances_inv[i] = 1.f / cooling->SolarAbundances[i];
   }
