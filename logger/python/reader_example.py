@@ -14,8 +14,8 @@ import liblogger as logger
 # Get filenames
 if len(sys.argv) != 3:
     print("WARNING missing arguments. Will use the default ones")
-    index = "../../examples/SedovBlast_3D/index_0002.hdf5"
-    dump = "../../examples/SedovBlast_3D/index.dump"
+    index = "../../examples/HydroTests/SedovBlast_3D/index_0002.hdf5"
+    dump = "../../examples/HydroTests/SedovBlast_3D/index.dump"
 else:
     index = sys.argv[-1]
     dump = sys.argv[-2]
