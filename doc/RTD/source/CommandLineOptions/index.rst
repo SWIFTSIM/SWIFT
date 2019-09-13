@@ -11,7 +11,10 @@ For instance, just running the ``swift`` binary will not use any SPH or gravity;
 the particles will just sit still!
 
 Below is a list of the command line options and when they should be used. The same list
-can be found by typing ``./swift -h``::
+can be found by typing ``./swift -h``:
+
+.. code-block:: none
+
 
     -h, --help                        show this help message and exit
 
