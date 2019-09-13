@@ -134,9 +134,9 @@ Snapshots:
 # Parameters governing the logger snapshot system
 Logger:
   delta_step:           10     # Update the particle log every this many updates
-  initial_buffer_size:  1      # buffer size in GB
-  buffer_scale:		10     # (Optional) When buffer size is too small, update it with required memory times buffer_scale
   basename:             index  # Common part of the filenames
+  initial_buffer_size:  1      # (Optional) Buffer size in GB
+  buffer_scale:	        10     # (Optional) When buffer size is too small, update it with required memory times buffer_scale
   
 # Parameters governing the conserved quantities statistics
 Statistics:
