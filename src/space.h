@@ -374,6 +374,6 @@ void space_free_foreign_parts(struct space *s);
 
 void space_struct_dump(struct space *s, FILE *stream);
 void space_struct_restore(struct space *s, FILE *stream);
-void space_write_cell_hierarchy(const struct space *s);
+void space_write_cell_hierarchy(const struct space *s, int j);
 
 #endif /* SWIFT_SPACE_H */
