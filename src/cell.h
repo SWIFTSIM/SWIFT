@@ -273,8 +273,10 @@ struct pcell_sf {
   } stars;
 };
 
-/** Bitmasks for the cell flags. Beware when adding flags that you don't exceed
-    the size of the flags variable in the struct cell. */
+/**
+ * @brief Bitmasks for the cell flags. Beware when adding flags that you don't
+ * exceed the size of the flags variable in the struct cell.
+ */
 enum cell_flags {
   cell_flag_split = (1UL << 0),
   cell_flag_do_hydro_drift = (1UL << 1),
@@ -289,7 +291,8 @@ enum cell_flags {
   cell_flag_do_stars_sub_drift = (1UL << 10),
   cell_flag_do_bh_drift = (1UL << 11),
   cell_flag_do_bh_sub_drift = (1UL << 12),
-  cell_flag_do_stars_resort = (1UL << 13)
+  cell_flag_do_stars_resort = (1UL << 13),
+  cell_flag_has_tasks = (1UL << 14),
 };
 
 /**
