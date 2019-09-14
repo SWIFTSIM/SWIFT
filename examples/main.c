@@ -766,7 +766,7 @@ int main(int argc, char *argv[]) {
         params, "InitialConditions:generate_gas_in_ics", 0);
     const int with_dithering =
         parser_get_opt_param_int(params, "InitialConditions:dithering", 0);
-    int dithering_ratio = 0.;
+    double dithering_ratio = 0.;
     if (with_dithering) {
       dithering_ratio =
           parser_get_param_double(params, "InitialConditions:dithering_ratio");
