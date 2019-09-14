@@ -96,8 +96,6 @@ void runner_do_fof_self(struct runner *r, struct cell *c, int timer);
 void runner_do_fof_pair(struct runner *r, struct cell *ci, struct cell *cj,
                         int timer);
 void *runner_main(void *data);
-void runner_do_unskip_mapper(void *map_data, int num_elements,
-                             void *extra_data);
 void runner_do_drift_all_mapper(void *map_data, int num_elements,
                                 void *extra_data);
 
