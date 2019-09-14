@@ -1182,16 +1182,16 @@ void space_rebuild(struct space *s, int repartitioned, int verbose) {
           s->dithering_ratio * s->width[1] * rand() / ((double)RAND_MAX);
       s->pos_dithering[2] =
           s->dithering_ratio * s->width[2] * rand() / ((double)RAND_MAX);
+    }
 
 #ifdef WITH_MPI
-      /* Tell everyone what value to use */
-      MPI_Bcast(s->pos_dithering, 3, MPI_DOUBLE, 0, MPI_COMM_WORLD);
+    /* Tell everyone what value to use */
+    MPI_Bcast(s->pos_dithering, 3, MPI_DOUBLE, 0, MPI_COMM_WORLD);
 #endif
 
-      if (verbose)
-        message("Dithering the particle positions by [%e %e %e]",
-                s->pos_dithering[0], s->pos_dithering[1], s->pos_dithering[2]);
-    }
+    if (verbose)
+      message("Dithering the particle positions by [%e %e %e]",
+              s->pos_dithering[0], s->pos_dithering[1], s->pos_dithering[2]);
   }
 
   struct cell *cells_top = s->cells_top;
@@ -2419,7 +2419,7 @@ void space_sparts_get_cell_index_mapper(void *map_data, int nr_sparts,
     }
 
 #ifdef SWIFT_DEBUG_CHECKS
-    if (periodic && sp->time_bin != time_bin_inhibited) {
+    if (!periodic && sp->time_bin != time_bin_inhibited) {
       if (old_pos_x < 0. || old_pos_x > dim_x)
         error("Particle outside of volume along X.");
       if (old_pos_y < 0. || old_pos_y > dim_y)
