@@ -301,6 +301,8 @@ typically takes a value of 0.1 for SPH calculations.
 The next set of parameters deal with the calculation of the smoothing lengths
 directly and are all optional:
 
+* Whether to use or not the mass-weighted definition of the SPH number of
+  neighbours: ``use_mass_weighted_num_ngb`` (Default: 0)
 * The (relative) tolerance to converge smoothing lengths within:
   ``h_tolerance`` (Default: 1e-4)
 * The maximal smoothing length in internal units: ``h_max`` (Default: FLT_MAX)
@@ -312,7 +314,25 @@ directly and are all optional:
   lengths: ``max_ghost_iterations`` (Default: 30)
 
 These parameters all set the accuracy of the smoothing lengths in various
-ways. The first, the relative tolerance for the smoothing length, specifies
+ways. The first one specified what definition of the local number density
+of particles to use. By default, we use
+
+.. math::
+   n_i = \sum_j W(\|\mathbf{r}_i - \mathbf{r}_j\|, h_i)
+
+but switching on the ``use_mass_weighted_num_ngb`` flag changes the
+defintion to:
+
+.. math::
+   n_i = \frac{\rho_i}{m_i}
+
+where the density has been computed in the traditional SPH way
+(i.e. :math:`\rho_i = \sum_j m_j W(\|\mathbf{r}_i - \mathbf{r}_j\|,
+h_i)`). Note that in the case where all the particles in the simulation
+have the same mass, the two definitions lead to the same number density
+value.
+
+The second one, the relative tolerance for the smoothing length, specifies
 the convergence criteria for the smoothing length when using the
 Newton-Raphson scheme. This works with the maximal number of iterations,
 ``max_ghost_iterations`` (so called because the smoothing length calculation
@@ -320,12 +340,13 @@ occurs in the ghost task), to ensure that the values of the smoothing lengths
 are consistent with the local number density. We solve:
 
 .. math::
-   (\eta h_i)^{n_D} = n_i^{-1}
+   (\eta \gamma)^{n_D} = n_i
 
-with :math:`h` the smoothing length, :math:`n_D` the number of spatial
-dimensions, :math:`\eta` the value of ``resolution_eta``, and :math:`n_i` the
-local number density. We change the value of the smoothing length, :math:`h`,
-to be consistent with the number density.
+with :math:`\gamma` the ratio of smoothing length to kernel support (this
+is fixed for a given kernel shape), :math:`n_D` the number of spatial
+dimensions, :math:`\eta` the value of ``resolution_eta``, and :math:`n_i`
+the local number density. We adapt the value of the smoothing length,
+:math:`h`, to be consistent with the number density.
 
 The maximal smoothing length, by default, is set to ``FLT_MAX``, and if set
 prevents the smoothing length from going beyond ``h_max`` (in internal units)
