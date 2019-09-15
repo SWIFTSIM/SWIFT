@@ -71,6 +71,9 @@ struct hydro_props {
   /*! Maximal number of iterations to converge h */
   int max_smoothing_iterations;
 
+  /*! Are we using the mass-weighted definition of neighbour number? */
+  int use_mass_weighted_num_ngb;
+
   /*! Time integration properties */
   float CFL_condition;
 
