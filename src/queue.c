@@ -116,7 +116,6 @@ int queue_sift_down(struct queue *q, int ind) {
 void queue_get_incoming(struct queue *q) {
 
   int *tid = q->tid;
-  struct task *tasks = q->tasks;
 
   /* Loop over the incoming DEQ. */
   while (1) {
@@ -147,13 +146,6 @@ void queue_get_incoming(struct queue *q) {
 
     /* Re-heap by bubbling up the new (last) element. */
     queue_bubble_up(q, q->count - 1);
-    for (int k = q->count - 1; k > 0; k = (k - 1) / 2)
-      if (tasks[tid[k]].weight > tasks[tid[(k - 1) / 2]].weight) {
-        int temp = tid[k];
-        tid[k] = tid[(k - 1) / 2];
-        tid[(k - 1) / 2] = temp;
-      } else
-        break;
 
 #ifdef SWIFT_DEBUG_CHECK
     /* Check the queue's consistency. */
