@@ -680,6 +680,8 @@ void writeArray(struct engine* e, hid_t grp, char* fileName,
  * @param bparts (output) The array of #bpart read from the file.
  * @param Ngas (output) The number of particles read from the file.
  * @param Ngparts (output) The number of particles read from the file.
+ * @param Ngparts_background (output) The number of background DM particles read
+ * from the file.
  * @param Nstars (output) The number of particles read from the file.
  * @param Nblackholes (output) The number of particles read from the file.
  * @param flag_entropy (output) 1 if the ICs contained Entropy in the
