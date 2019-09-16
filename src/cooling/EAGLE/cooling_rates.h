@@ -503,8 +503,10 @@ INLINE static double eagle_metal_cooling_rate(
 
   /* Sum up all the contributions */
   double Lambda_net = Lambda_free + Lambda_Compton;
+  if (isnan(Lambda_net)) error("Lambda_net is nan free %.5e compton %.5e", Lambda_free, Lambda_Compton);
   for (int elem = 2; elem < eagle_cooling_N_metal + 2; ++elem) {
     Lambda_net += lambda_metal[elem];
+    if (isnan(Lambda_net)) error("Lambda_net is nan elem %d lambda_metal %.5e", elem, lambda_metal[elem]);
   }
 
   return Lambda_net;
