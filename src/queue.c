@@ -38,6 +38,77 @@
 #include "error.h"
 
 /**
+ * @brief Push the task at the given index up the heap until it is either at the
+ * top or smaller than its parent.
+ *
+ * @param q The task #queue.
+ * @param ind The index of the task to be sifted-down in the queue.
+ *
+ * @return The new index of the entry.
+ */
+int queue_bubble_up(struct queue *q, int ind) {
+  /* Set some pointers we will use often. */
+  int *qtid = q->tid;
+  struct task *qtasks = q->tasks;
+  const float w = qtasks[qtid[ind]].weight;
+
+  /* While we are not yet at the top of the heap... */
+  while (ind > 0) {
+    /* Check if the parent is larger and bail if not.. */
+    const int parent = (ind - 1) / 2;
+    if (w < qtasks[qtid[parent]].weight) break;
+
+    /* Parent is not larger, so swap. */
+    int temp = q->tid[ind];
+    q->tid[ind] = q->tid[parent];
+    q->tid[parent] = temp;
+    ind = parent;
+  }
+
+  return ind;
+}
+
+/**
+ * @brief Push the task at the given index down the heap until both its children
+ * have a smaller weight.
+ *
+ * @param q The task #queue.
+ * @param ind The index of the task to be sifted-down in the queue.
+ *
+ * @return The new index of the entry.
+ */
+int queue_sift_down(struct queue *q, int ind) {
+  /* Set some pointers we will use often. */
+  int *qtid = q->tid;
+  struct task *qtasks = q->tasks;
+  const int qcount = q->count;
+  const float w = qtasks[qtid[ind]].weight;
+
+  /* While we still have at least one child... */
+  while (1) {
+    /* Check if we still have children. */
+    int child = 2 * ind + 1;
+    if (child >= qcount) break;
+
+    /* Which of both children is the largest? */
+    if (child + 1 < qcount &&
+        qtasks[qtid[child + 1]].weight > qtasks[qtid[child]].weight)
+      child += 1;
+
+    /* Do we want to swap with the largest child? */
+    if (qtasks[qtid[child]].weight > w) {
+      int temp = qtid[child];
+      qtid[child] = qtid[ind];
+      qtid[ind] = temp;
+      ind = child;
+    } else
+      break;
+  }
+
+  return ind;
+}
+
+/**
  * @brief Enqueue all tasks in the incoming DEQ.
  *
  * @param q The #queue, assumed to be locked.
@@ -74,7 +145,8 @@ void queue_get_incoming(struct queue *q) {
     q->count += 1;
     atomic_dec(&q->count_incoming);
 
-    /* Shuffle up. */
+    /* Re-heap by bubbling up the new (last) element. */
+    queue_bubble_up(q, q->count - 1);
     for (int k = q->count - 1; k > 0; k = (k - 1) / 2)
       if (tasks[tid[k]].weight > tasks[tid[(k - 1) / 2]].weight) {
         int temp = tid[k];
@@ -83,10 +155,12 @@ void queue_get_incoming(struct queue *q) {
       } else
         break;
 
+#ifdef SWIFT_DEBUG_CHECK
     /* Check the queue's consistency. */
-    /* for (int k = 1; k < q->count; k++)
-        if ( tasks[ tid[(k-1)/2] ].weight < tasks[ tid[k] ].weight )
-            error( "Queue heap is disordered." ); */
+    for (int k = 1; k < q->count; k++)
+      if (tasks[tid[(k - 1) / 2]].weight < tasks[tid[k]].weight)
+        error("Queue heap is disordered.");
+#endif
   }
 }
 
@@ -256,38 +330,21 @@ struct task *queue_gettask(struct queue *q, const struct task *prev,
     res = &qtasks[tid];
 
     /* Swap this task with the last task and re-heap. */
-    int k = ind;
-    if (k < qcount) {
-      qtid[k] = qtid[qcount];
-      const float w = qtasks[qtid[k]].weight;
-      while (k > 0 && w > qtasks[qtid[(k - 1) / 2]].weight) {
-        int temp = q->tid[k];
-        q->tid[k] = q->tid[(k - 1) / 2];
-        q->tid[(k - 1) / 2] = temp;
-        k = (k - 1) / 2;
-      }
-      int i;
-      while ((i = 2 * k + 1) < qcount) {
-        if (i + 1 < qcount &&
-            qtasks[qtid[i + 1]].weight > qtasks[qtid[i]].weight)
-          i += 1;
-        if (qtasks[qtid[i]].weight > w) {
-          int temp = qtid[i];
-          qtid[i] = qtid[k];
-          qtid[k] = temp;
-          k = i;
-        } else
-          break;
-      }
+    if (ind < qcount) {
+      qtid[ind] = qtid[qcount];
+      ind = queue_bubble_up(q, ind);
+      ind = queue_sift_down(q, ind);
     }
 
   } else
     res = NULL;
 
+#ifdef SWIFT_DEBUG_CHECKS
   /* Check the queue's consistency. */
-  /* for ( k = 1 ; k < q->count ; k++ )
-      if ( qtasks[ qtid[(k-1)/2] ].weight < qtasks[ qtid[k] ].weight )
-          error( "Queue heap is disordered." ); */
+  for (int k = 1; k < q->count; k++)
+    if (qtasks[qtid[(k - 1) / 2]].weight < qtasks[qtid[k]].weight)
+      error("Queue heap is disordered.");
+#endif
 
   /* Release the task lock. */
   if (lock_unlock(qlock) != 0) error("Unlocking the qlock failed.\n");
