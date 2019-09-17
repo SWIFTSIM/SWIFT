@@ -370,6 +370,45 @@ The full section to start a typical cosmological run would be:
      H_mass_fraction:          0.755
      H_ionization_temperature: 1e4
 
+.. _Parameters_Stars:
+
+Stars
+-----
+
+The ``Stars`` section is used to set parameters that describe the Stars
+calculations when doing feedback or enrichment. Note that if stars only act
+gravitationally (i.e. SWIFT is run *without* ``--feedback``) no parameters
+in this section are used. 
+
+The first four parameters are related to the neighbour search:
+
+* The (relative) tolerance to converge smoothing lengths within:
+  ``h_tolerance`` (Default: same as SPH scheme)
+* The maximal smoothing length in internal units: ``h_max`` (Default: same
+  as SPH scheme)
+* The minimal allowed smoothing length in terms of the gravitational
+  softening: ``h_min_ratio`` (Default: same as SPH scheme)
+* The maximal (relative) allowed change in volume over one time-step:
+  ``max_volume_change`` (Default: same as SPH scheme)
+
+These four parameters are optional and will default to their SPH equivalent
+if left unspecified. That is the value specified by the user in that
+section or the default SPH value if left unspecified there as well.
+
+The two remaining parameters can be used to overwrite the birth time (or
+scale-factor) of the stars that were read from the ICs. This can be useful
+to start a simulation with stars already of a given age. The parameters
+are:
+
+* Whether or not to overwrite anything: ``overwrite_birth_time``
+  (Default: 0)
+* The value to use: ``birth_time``
+
+If the birth time is set to ``-1`` then the stars will never enter any
+feedback or enrichment loop. When these values are not specified, SWIFT
+will start and use the birth times specified in the ICs. If no values are
+given in the ICs, the stars' birth times will be zeroed, which can cause
+issues depending on the type of run performed.
 
 .. _Parameters_time_integration:
 
