@@ -71,6 +71,8 @@ SPH:
 Stars:
   resolution_eta:        1.1642   # Target smoothing length in units of the mean inter-particle separation
   h_tolerance:           7e-3
+  overwrite_birth_time:  1
+  birth_time:            0.33333  # Pretend all the stars were born at z = 2
 
 # Parameters for the Friends-Of-Friends algorithm
 FOF:

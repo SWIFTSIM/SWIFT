@@ -45,6 +45,11 @@ SPH:
   h_max:                 10.
   minimal_temperature:   10.      # Kelvin
 
+# Parameters for the stars neighbour search
+Stars:
+  overwrite_birth_time:    1     # Make sure the stars in the ICs do not do any feedback
+  birth_time:             -1.    # by setting all of their birth times to -1  
+  
 # Standard EAGLE cooling options
 EAGLECooling:
   dir_name:                ./coolingtables/  # Location of the Wiersma+08 cooling tables
