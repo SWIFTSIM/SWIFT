@@ -102,6 +102,12 @@ void hydro_props_init(struct hydro_props *p,
   p->use_mass_weighted_num_ngb =
       parser_get_opt_param_int(params, "SPH:use_mass_weighted_num_ngb", 0);
 
+  if (p->use_mass_weighted_num_ngb) {
+#if defined(GIZMO_MFV_SPH) || defined(GIZMO_MFM_SPH) || defined(SHADOWFAX_SPH)
+    error("Can't use alternative neighbour definition with this scheme!");
+#endif
+  }
+
   /* Time integration properties */
   p->CFL_condition = parser_get_param_float(params, "SPH:CFL_condition");
   const float max_volume_change = parser_get_opt_param_float(
