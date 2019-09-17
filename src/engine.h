@@ -379,7 +379,7 @@ struct engine {
   struct repartition *reparttype;
 
 #ifdef WITH_LOGGER
-  struct logger *logger;
+  struct logger_writer *logger;
 #endif
 
   /* How many steps have we done with the same set of tasks? */

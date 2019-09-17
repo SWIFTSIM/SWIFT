@@ -44,11 +44,6 @@
 #include <numa.h>
 #endif
 
-/* Load the profiler header, if needed. */
-#ifdef WITH_PROFILER
-#include <gperftools/profiler.h>
-#endif
-
 /* This object's header. */
 #include "engine.h"
 
@@ -3557,7 +3552,6 @@ void engine_init_particles(struct engine *e, int flag_entropy_ICs,
 #endif
 
   scheduler_write_dependencies(&e->sched, e->verbose);
-  space_write_cell_hierarchy(e->s);
   if (e->nodeID == 0) scheduler_write_task_level(&e->sched);
 
   /* Run the 0th time-step */
@@ -4135,64 +4129,6 @@ void engine_dump_restarts(struct engine *e, int drifted_all, int force) {
  */
 int engine_is_done(struct engine *e) {
   return !(e->ti_current < max_nr_timesteps);
-}
-
-/**
- * @brief Unskip all the tasks that act on active cells at this time.
- *
- * @param e The #engine.
- */
-void engine_unskip(struct engine *e) {
-
-  const ticks tic = getticks();
-  struct space *s = e->s;
-  const int nodeID = e->nodeID;
-
-  const int with_hydro = e->policy & engine_policy_hydro;
-  const int with_self_grav = e->policy & engine_policy_self_gravity;
-  const int with_ext_grav = e->policy & engine_policy_external_gravity;
-  const int with_stars = e->policy & engine_policy_stars;
-  const int with_feedback = e->policy & engine_policy_feedback;
-  const int with_black_holes = e->policy & engine_policy_black_holes;
-
-#ifdef WITH_PROFILER
-  static int count = 0;
-  char filename[100];
-  sprintf(filename, "/tmp/swift_runner_do_usnkip_mapper_%06i.prof", count++);
-  ProfilerStart(filename);
-#endif  // WITH_PROFILER
-
-  /* Move the active local cells to the top of the list. */
-  int *local_cells = e->s->local_cells_with_tasks_top;
-  int num_active_cells = 0;
-  for (int k = 0; k < s->nr_local_cells_with_tasks; k++) {
-    struct cell *c = &s->cells_top[local_cells[k]];
-
-    if ((with_hydro && cell_is_active_hydro(c, e)) ||
-        (with_self_grav && cell_is_active_gravity(c, e)) ||
-        (with_ext_grav && c->nodeID == nodeID &&
-         cell_is_active_gravity(c, e)) ||
-        (with_feedback && cell_is_active_stars(c, e)) ||
-        (with_stars && c->nodeID == nodeID && cell_is_active_stars(c, e)) ||
-        (with_black_holes && cell_is_active_black_holes(c, e))) {
-
-      if (num_active_cells != k)
-        memswap(&local_cells[k], &local_cells[num_active_cells], sizeof(int));
-      num_active_cells += 1;
-    }
-  }
-
-  /* Activate all the regular tasks */
-  threadpool_map(&e->threadpool, runner_do_unskip_mapper, local_cells,
-                 num_active_cells, sizeof(int), 1, e);
-
-#ifdef WITH_PROFILER
-  ProfilerStop();
-#endif  // WITH_PROFILER
-
-  if (e->verbose)
-    message("took %.3f %s.", clocks_from_ticks(getticks() - tic),
-            clocks_getunit());
 }
 
 void engine_do_reconstruct_multipoles_mapper(void *map_data, int num_elements,
@@ -4797,7 +4733,7 @@ void engine_dump_snapshot(struct engine *e) {
  */
 void engine_dump_index(struct engine *e) {
 
-#if defined(WITH_LOGGER)
+#if defined(WITH_LOGGER) && !defined(WITH_MPI)
   struct clocks_time time1, time2;
   clocks_gettime(&time1);
 
@@ -5014,7 +4950,7 @@ void engine_init(struct engine *e, struct space *s, struct swift_params *params,
   e->total_nr_tasks = 0;
 
 #if defined(WITH_LOGGER)
-  e->logger = (struct logger *)malloc(sizeof(struct logger));
+  e->logger = (struct logger_writer *)malloc(sizeof(struct logger_writer));
   logger_init(e->logger, params);
 #endif
 
@@ -5757,7 +5693,7 @@ void engine_config(int restart, int fof, struct engine *e,
 
 #ifdef WITH_LOGGER
   /* Write the particle logger header */
-  logger_write_file_header(e->logger, e);
+  logger_write_file_header(e->logger);
 #endif
 
   /* Initialise the structure finder */
@@ -6275,7 +6211,7 @@ void engine_clean(struct engine *e, const int fof) {
 
   swift_free("links", e->links);
 #if defined(WITH_LOGGER)
-  logger_clean(e->logger);
+  logger_free(e->logger);
   free(e->logger);
 #endif
   scheduler_clean(&e->sched);

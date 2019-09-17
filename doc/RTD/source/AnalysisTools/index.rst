@@ -21,11 +21,13 @@ Cell graph
 ----------
 
 An interactive graph of the cells is available with the configuration option ``--enable-cell-graph``.
-During a run, SWIFT will generate a ``cell_hierarchy_*.csv`` file per MPI rank.
-The command ``tools/make_cell_hierarchy.sh cell_hierarchy_*.csv`` merges the files together and generates the file ``cell_hierarchy.html``
+During a run, SWIFT will generate a ``cell_hierarchy_*.csv`` file per MPI rank at the frequency given by the parameter ``--cell-dumps=n``.
+The command ``tools/make_cell_hierarchy.sh cell_hierarchy_0000_*.csv`` merges the files at time step 0 together and generates the file ``cell_hierarchy.html``
 that contains the graph and can be read with your favorite web browser.
 
-With chrome, you cannot access the files directly, you will need to either access them through an existing server (e.g. public http provided by your university)
+With most web browsers, you cannot access the files directly.
+If it is the case, the cells will never appear (but everything else should be fine).
+To solve this problem, you will need to either access them through an existing server (e.g. public http provided by your university)
 or install ``npm`` and then run the following commands
 
 .. code-block:: bash
@@ -34,6 +36,14 @@ or install ``npm`` and then run the following commands
    http-server .
 
 Now you can open the web page ``http://localhost:8080/cell_hierarchy.html``.
+When running a large simulation, the data loading may take a while (a few seconds for EAGLE_6).
+Your browser should not be hanging, but will seems to be idle.
+
+If you wish to add some information to the graph, you can do it by modifying the files ``src/space.c`` and ``tools/data/cell_hierarchy.html``.
+In the first one, you will need to modify the calls to ``fprintf`` in the functions ``space_write_cell_hierarchy`` and ``space_write_cell``.
+Here the code is simply writing CSV files containing all the required information about the cells.
+In the second one, you will need to find the function ``mouseover`` and add the field that you have created.
+You can also increase the size of the bubble through the style parameter ``height``.
 
 Memory usage reports
 --------------------

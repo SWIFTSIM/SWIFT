@@ -44,44 +44,41 @@
 /*
  * Thoses are definitions from the format and therefore should not be changed!
  */
-/* number of bytes for a mask */
+/* Number of bytes for a mask. */
 // TODO change this to number of bits
 #define logger_mask_size 1
 
-/* number of bits for chunk header */
+/* Number of bits for chunk header. */
 #define logger_header_bytes 8
 
-/* number bytes for an offset */
+/* Number bytes for an offset. */
 #define logger_offset_size logger_header_bytes - logger_mask_size
 
-/* number of bytes for the version information */
-#define logger_version_size 20
+/* Number of bytes for the file format information. */
+#define logger_format_size 20
 
-/* number of bytes for the labels in the header */
+/* Number of bytes for the labels in the header. */
 #define logger_label_size 20
 
-/* number of bytes for the number in the header */
-#define logger_number_size 4
-
-char logger_version[logger_version_size] = "0.1";
+char logger_file_format[logger_format_size] = "SWIFT_LOGGER";
 
 const struct mask_data logger_mask_data[logger_count_mask] = {
-    /* Particle's position */
+    /* Particle's position. */
     {3 * sizeof(double), 1 << logger_x, "positions"},
-    /* Particle's velocity */
+    /* Particle's velocity. */
     {3 * sizeof(float), 1 << logger_v, "velocities"},
-    /* Particle's acceleration */
+    /* Particle's acceleration. */
     {3 * sizeof(float), 1 << logger_a, "accelerations"},
-    /* Particle's entropy */
+    /* Particle's entropy. */
     {sizeof(float), 1 << logger_u, "entropy"},
-    /* Particle's smoothing length */
+    /* Particle's smoothing length. */
     {sizeof(float), 1 << logger_h, "smoothing length"},
-    /* Particle's density */
+    /* Particle's density. */
     {sizeof(float), 1 << logger_rho, "density"},
-    /* Particle's constants: mass (float) and ID (long long) */
+    /* Particle's constants: mass (float) and ID (long long). */
     {sizeof(float) + sizeof(long long), 1 << logger_consts, "consts"},
     /* Simulation time stamp: integertime and double time (e.g. scale
-       factor or time) */
+       factor or time). */
     {sizeof(integertime_t) + sizeof(double), 1 << logger_timestamp,
      "timestamp"}};
 
@@ -99,11 +96,11 @@ const struct mask_data logger_mask_data[logger_count_mask] = {
  */
 char *logger_write_chunk_header(char *buff, const unsigned int *mask,
                                 const size_t *offset, const size_t offset_new) {
-  /* write mask */
+  /* write mask. */
   memcpy(buff, mask, logger_mask_size);
   buff += logger_mask_size;
 
-  /* write offset */
+  /* write offset. */
   size_t diff_offset = offset_new - *offset;
   memcpy(buff, &diff_offset, logger_offset_size);
   buff += logger_offset_size;
@@ -112,7 +109,7 @@ char *logger_write_chunk_header(char *buff, const unsigned int *mask,
 }
 
 /**
- * @brief Write to the dump
+ * @brief Write to the dump.
  *
  * @param d #dump file
  * @param offset (return) offset of the data
@@ -121,13 +118,13 @@ char *logger_write_chunk_header(char *buff, const unsigned int *mask,
  */
 void logger_write_data(struct dump *d, size_t *offset, size_t size,
                        const void *p) {
-  /* get buffer */
+  /* get buffer. */
   char *buff = dump_get(d, size, offset);
 
-  /* write data to the buffer */
+  /* write data to the buffer. */
   memcpy(buff, p, size);
 
-  /* Update offset to end of chunk */
+  /* Update offset to end of chunk. */
   *offset += size;
 }
 
@@ -171,15 +168,15 @@ int logger_compute_chunk_size(unsigned int mask) {
  * @param log The #logger
  * @param e The #engine
  */
-void logger_log_all(struct logger *log, const struct engine *e) {
+void logger_log_all(struct logger_writer *log, const struct engine *e) {
 
-  /* Ensure that enough space is available */
+  /* Ensure that enough space is available. */
   logger_ensure_size(log, e->total_nr_parts, e->total_nr_gparts, 0);
 #ifdef SWIFT_DEBUG_CHECKS
   message("Need to implement stars");
 #endif
 
-  /* some constants */
+  /* some constants. */
   const struct space *s = e->s;
   const unsigned int mask =
       logger_mask_data[logger_x].mask | logger_mask_data[logger_v].mask |
@@ -187,17 +184,17 @@ void logger_log_all(struct logger *log, const struct engine *e) {
       logger_mask_data[logger_h].mask | logger_mask_data[logger_rho].mask |
       logger_mask_data[logger_consts].mask;
 
-  /* loop over all parts */
+  /* loop over all parts. */
   for (long long i = 0; i < e->total_nr_parts; i++) {
     logger_log_part(log, &s->parts[i], mask,
                     &s->xparts[i].logger_data.last_offset);
     s->xparts[i].logger_data.steps_since_last_output = 0;
   }
 
-  /* loop over all gparts */
+  /* loop over all gparts. */
   if (e->total_nr_gparts > 0) error("Not implemented");
 
-  /* loop over all sparts */
+  /* loop over all sparts. */
   // TODO
 }
 
@@ -210,7 +207,7 @@ void logger_log_all(struct logger *log, const struct engine *e) {
  * @param offset Pointer to the offset of the previous log of this particle;
  * (return) offset of this log.
  */
-void logger_log_part(struct logger *log, const struct part *p,
+void logger_log_part(struct logger_writer *log, const struct part *p,
                      unsigned int mask, size_t *offset) {
 
   /* Make sure we're not writing a timestamp. */
@@ -289,7 +286,7 @@ void logger_log_part(struct logger *log, const struct part *p,
  * @param offset Pointer to the offset of the previous log of this particle;
  * (return) offset of this log.
  */
-void logger_log_gpart(struct logger *log, const struct gpart *p,
+void logger_log_gpart(struct logger_writer *log, const struct gpart *p,
                       unsigned int mask, size_t *offset) {
 
   /* Make sure we're not writing a timestamp. */
@@ -331,7 +328,7 @@ void logger_log_gpart(struct logger *log, const struct gpart *p,
 
   /* Particle constants, which is a bit more complicated. */
   if (mask & logger_mask_data[logger_consts].mask) {
-    // TODO make it dependent of logger_mask_data
+    // TODO make it dependent of logger_mask_data.
     memcpy(buff, &p->mass, sizeof(float));
     buff += sizeof(float);
     memcpy(buff, &p->id_or_neg_offset, sizeof(long long));
@@ -351,7 +348,7 @@ void logger_log_gpart(struct logger *log, const struct gpart *p,
  * @param offset Pointer to the offset of the previous log of this particle;
  * (return) offset of this log.
  */
-void logger_log_timestamp(struct logger *log, integertime_t timestamp,
+void logger_log_timestamp(struct logger_writer *log, integertime_t timestamp,
                           double time, size_t *offset) {
   struct dump *dump = &log->dump;
 
@@ -368,11 +365,11 @@ void logger_log_timestamp(struct logger *log, integertime_t timestamp,
   buff = logger_write_chunk_header(buff, &mask, offset, offset_new);
 
   /* Store the timestamp. */
-  // TODO make it dependent of logger_mask_data
+  // TODO make it dependent of logger_mask_data.
   memcpy(buff, &timestamp, sizeof(integertime_t));
   buff += sizeof(integertime_t);
 
-  /* Store the time */
+  /* Store the time. */
   memcpy(buff, &time, sizeof(double));
 
   /* Update the log message offset. */
@@ -390,21 +387,21 @@ void logger_log_timestamp(struct logger *log, integertime_t timestamp,
  * @param total_nr_gparts total number of gpart
  * @param total_nr_sparts total number of spart
  */
-void logger_ensure_size(struct logger *log, size_t total_nr_parts,
+void logger_ensure_size(struct logger_writer *log, size_t total_nr_parts,
                         size_t total_nr_gparts, size_t total_nr_sparts) {
 
-  /* count part memory */
+  /* count part memory. */
   size_t limit = log->max_chunk_size;
 
   limit *= total_nr_parts;
 
-  /* count gpart memory */
+  /* count gpart memory. */
   if (total_nr_gparts > 0) error("Not implemented");
 
-  /* count spart memory */
+  /* count spart memory. */
   if (total_nr_sparts > 0) error("Not implemented");
 
-  /* ensure enough space in dump */
+  /* ensure enough space in dump. */
   dump_ensure(&log->dump, limit, log->buffer_scale * limit);
 }
 
@@ -414,8 +411,8 @@ void logger_ensure_size(struct logger *log, size_t total_nr_parts,
  * @param log The #logger
  * @param params The #swift_params
  */
-void logger_init(struct logger *log, struct swift_params *params) {
-  /* read parameters */
+void logger_init(struct logger_writer *log, struct swift_params *params) {
+  /* read parameters. */
   log->delta_step = parser_get_param_int(params, "Logger:delta_step");
   size_t buffer_size =
       parser_get_opt_param_float(params, "Logger:initial_buffer_size", 0.5) *
@@ -424,24 +421,24 @@ void logger_init(struct logger *log, struct swift_params *params) {
       parser_get_opt_param_float(params, "Logger:buffer_scale", 10);
   parser_get_param_string(params, "Logger:basename", log->base_name);
 
-  /* set initial value of parameters */
+  /* set initial value of parameters. */
   log->timestamp_offset = 0;
 
-  /* generate dump filename */
+  /* generate dump filename. */
   char logger_name_file[PARSER_MAX_LINE_SIZE];
   strcpy(logger_name_file, log->base_name);
   strcat(logger_name_file, ".dump");
 
-  /* Compute max size for a particle chunk */
+  /* Compute max size for a particle chunk. */
   int max_size = logger_offset_size + logger_mask_size;
 
-  /* Loop over all fields except timestamp */
+  /* Loop over all fields except timestamp. */
   for (int i = 0; i < logger_count_mask - 1; i++) {
     max_size += logger_mask_data[i].size;
   }
   log->max_chunk_size = max_size;
 
-  /* init dump */
+  /* init dump. */
   dump_init(&log->dump, logger_name_file, buffer_size);
 }
 
@@ -450,18 +447,17 @@ void logger_init(struct logger *log, struct swift_params *params) {
  *
  * @param log The #logger
  */
-void logger_clean(struct logger *log) { dump_close(&log->dump); }
+void logger_free(struct logger_writer *log) { dump_close(&log->dump); }
 
 /**
  * @brief Write a file header to a logger file
  *
  * @param log The #logger
- * @param dump The #dump in which to log the particle data.
  *
  */
-void logger_write_file_header(struct logger *log, const struct engine *e) {
+void logger_write_file_header(struct logger_writer *log) {
 
-  /* get required variables */
+  /* get required variables. */
   struct dump *dump = &log->dump;
 
   size_t file_offset = dump->file_offset;
@@ -471,37 +467,46 @@ void logger_write_file_header(struct logger *log, const struct engine *e) {
         "The logger is not empty."
         "This function should be called before writing anything in the logger");
 
-  /* Write version information */
-  logger_write_data(dump, &file_offset, logger_version_size, &logger_version);
+  /* Write format information. */
+  logger_write_data(dump, &file_offset, logger_format_size,
+                    &logger_file_format);
 
-  /* write offset direction */
+  /* Write the major version number. */
+  int major = logger_major_version;
+  logger_write_data(dump, &file_offset, sizeof(int), &major);
+
+  /* Write the minor version number. */
+  int minor = logger_minor_version;
+  logger_write_data(dump, &file_offset, sizeof(int), &minor);
+
+  /* write offset direction. */
   const int reversed = 0;
-  logger_write_data(dump, &file_offset, logger_number_size, &reversed);
+  logger_write_data(dump, &file_offset, sizeof(int), &reversed);
 
-  /* placeholder to write the offset of the first log here */
+  /* placeholder to write the offset of the first log here. */
   char *skip_header = dump_get(dump, logger_offset_size, &file_offset);
 
-  /* write number of bytes used for names */
-  const int label_size = logger_label_size;
-  logger_write_data(dump, &file_offset, logger_number_size, &label_size);
+  /* write number of bytes used for names. */
+  const unsigned int label_size = logger_label_size;
+  logger_write_data(dump, &file_offset, sizeof(unsigned int), &label_size);
 
-  /* write number of masks */
-  int count_mask = logger_count_mask;
-  logger_write_data(dump, &file_offset, logger_number_size, &count_mask);
+  /* write number of masks. */
+  const unsigned int count_mask = logger_count_mask;
+  logger_write_data(dump, &file_offset, sizeof(unsigned int), &count_mask);
 
-  /* write masks */
-  // loop over all mask type
+  /* write masks. */
+  // loop over all mask type.
   for (int i = 0; i < logger_count_mask; i++) {
-    // mask name
+    // mask name.
     logger_write_data(dump, &file_offset, logger_label_size,
                       &logger_mask_data[i].name);
 
-    // mask size
-    logger_write_data(dump, &file_offset, logger_number_size,
+    // mask size.
+    logger_write_data(dump, &file_offset, sizeof(unsigned int),
                       &logger_mask_data[i].size);
   }
 
-  /* last step: write first offset */
+  /* last step: write first offset. */
   memcpy(skip_header, &file_offset, logger_offset_size);
 }
 
@@ -591,7 +596,7 @@ int logger_read_part(struct part *p, size_t *offset, const char *buff) {
 
   /* Particle constants, which is a bit more complicated. */
   if (mask & logger_mask_data[logger_rho].mask) {
-    // TODO make it dependent of logger_mask_data
+    // TODO make it dependent of logger_mask_data.
     memcpy(&p->mass, buff, sizeof(float));
     buff += sizeof(float);
     memcpy(&p->id, buff, sizeof(long long));
@@ -694,7 +699,7 @@ int logger_read_timestamp(unsigned long long int *t, double *time,
     error("Timestamp message contains extra fields.");
 
   /* Copy the timestamp value from the buffer. */
-  // TODO make it dependent of logger_mask_data
+  // TODO make it dependent of logger_mask_data.
   memcpy(t, buff, sizeof(unsigned long long int));
   buff += sizeof(unsigned long long int);
 
