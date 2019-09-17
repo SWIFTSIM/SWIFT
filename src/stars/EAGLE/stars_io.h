@@ -222,8 +222,10 @@ INLINE static void stars_props_init(struct stars_props *sp,
       parser_get_opt_param_int(params, "Stars:overwrite_birth_time", 0);
 
   /* Read birth time to set all stars in ICs */
-  sp->spart_first_init_birth_time =
-      parser_get_opt_param_float(params, "Stars:birth_time", -1.f);
+  if (sp->overwrite_birth_time) {
+    sp->spart_first_init_birth_time =
+      parser_get_param_float(params, "Stars:birth_time");
+  }
 }
 
 /**
