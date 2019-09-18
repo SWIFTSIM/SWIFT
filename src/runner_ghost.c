@@ -1044,15 +1044,11 @@ void runner_do_ghost(struct runner *r, struct cell *c, int timer) {
           pressure_floor_end_density(p, cosmo);
 
           /* Are we using the alternative definition of the
-
              number of neighbours? */
-
           if (use_mass_weighted_num_ngb) {
 #if defined(GIZMO_MFV_SPH) || defined(GIZMO_MFM_SPH) || defined(SHADOWFAX_SPH)
-
             error(
                 "Can't use alternative neighbour definition with this scheme!");
-
 #else
             const float inv_mass = 1.f / hydro_get_mass(p);
             p->density.wcount = p->rho * inv_mass;
