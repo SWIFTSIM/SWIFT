@@ -696,9 +696,8 @@ static INLINE void runner_dopair_grav_pm_truncated(
  * @param symmetric Are we updating both cells (1) or just ci (0) ?
  * @param allow_mpole Are we allowing the use of P2M interactions ?
  */
-INLINE void runner_dopair_grav_pp(struct runner *r, struct cell *ci,
-                                  struct cell *cj, const int symmetric,
-                                  const int allow_mpole) {
+void runner_dopair_grav_pp(struct runner *r, struct cell *ci, struct cell *cj,
+                           const int symmetric, const int allow_mpole) {
 
   /* Recover some useful constants */
   const struct engine *e = r->e;
@@ -1151,7 +1150,7 @@ static INLINE void runner_doself_grav_pp_truncated(
  * @param r The #runner.
  * @param c The #cell.
  */
-INLINE void runner_doself_grav_pp(struct runner *r, struct cell *c) {
+void runner_doself_grav_pp(struct runner *r, struct cell *c) {
 
   /* Recover some useful constants */
   const struct engine *e = r->e;
