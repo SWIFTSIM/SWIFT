@@ -48,7 +48,7 @@ void set_quantities(struct part *restrict p, struct xpart *restrict xp,
                     double u, integertime_t ti_current) {
 
   /* Update cosmology quantities */
-  cosmology_update(cosmo, phys_const, ti_current);
+  //cosmology_update(cosmo, phys_const, ti_current);
 
   /* calculate density */
   double hydrogen_number_density = nh_cgs / cooling->number_density_to_cgs;
@@ -61,6 +61,8 @@ void set_quantities(struct part *restrict p, struct xpart *restrict xp,
                    p->rho * (hydro_gamma_minus_one);
   p->entropy = pressure * (pow(p->rho, -hydro_gamma));
   xp->entropy_full = p->entropy;
+
+  p->entropy_dt = 0.f;
 }
 
 /*
@@ -87,12 +89,12 @@ int main(int argc, char **argv) {
 
   /* Number of values to test for in redshift,
    * hydrogen number density and internal energy */
-  const int n_z = 50;
-  const int n_nh = 50;
-  const int n_u = 50;
-  //const int n_z = 2;
-  //const int n_nh = 2;
-  //const int n_u = 2;
+  //const int n_z = 50;
+  //const int n_nh = 50;
+  //const int n_u = 50;
+  const int n_z = 3;
+  const int n_nh = 1;
+  const int n_u = 1;
 
   /* Number of subcycles and tolerance used to compare
    * subcycled and implicit solution. Note, high value
@@ -100,10 +102,6 @@ int main(int argc, char **argv) {
    * implicit solution for large timesteps */
   const int n_subcycle = 10000;
   const float integration_tolerance = 0.2;
-
-  /* Set dt */
-  const float dt_cool = 1.0e-5;
-  const float dt_therm = 1.0e-5;
 
   /* Read the parameter file */
   if (params == NULL) error("Error allocating memory for the parameter file.");
@@ -123,7 +121,13 @@ int main(int argc, char **argv) {
   /* Init cosmology */
   cosmology_init(params, &us, &phys_const, &cosmo);
   cosmology_print(&cosmo);
-  
+
+  /* Set dt */
+  const int timebin = 38;
+  float dt_cool, dt_therm;
+  //float dt_cool = get_timestep(timebin,cosmo.time_base);
+  //float dt_therm = dt_cool;
+
   /* Init hydro_props */
   struct hydro_props hydro_properties;
   hydro_props_init(&hydro_properties, &phys_const, &us, params);
@@ -158,38 +162,51 @@ int main(int argc, char **argv) {
 
 
   /* calculate spacing in nh and u */
-  const float delta_nh = (cooling.nH[eagle_cooling_N_density - 1] - cooling.nH[0]) / n_nh;
-  const float delta_u =
-      (cooling.Therm[eagle_cooling_N_temperature - 1] - cooling.Therm[0]) / n_u;
+  //const float delta_nh = (cooling.nH[eagle_cooling_N_density - 1] - cooling.nH[0]) / n_nh;
+  //const float delta_u =
+  //    (cooling.Therm[eagle_cooling_N_temperature - 1] - cooling.Therm[0]) / n_u;
 
   /* Declare variables we will be checking */
-  double u_implicit_cgs, u_check_cgs;
+  double du_dt_implicit, du_dt_check;
   integertime_t ti_current;
 
   for (int nh_i = 0; nh_i < n_nh; nh_i++) {
-    nh = exp(M_LN10 * cooling.nH[0] + delta_nh * nh_i);
+    //nh = exp(M_LN10 * cooling.nH[0] + delta_nh * nh_i);
+    nh = 0.1;
     for (int u_i = 0; u_i < n_u; u_i++) {
-      u = exp(M_LN10 * cooling.Therm[0] + delta_u * u_i);
-      //u = exp(M_LN10 * cooling.Therm[0] + delta_u * u_i + 3.f);
+      //u = exp(M_LN10 * cooling.Therm[0] + delta_u * u_i);
+      u = 1.0e13;
+      cooling_update(&cosmo, &cooling, 0);
 
       if (comoving_check) {
           /* reset quantities to nh, u, and z that we want to test */
-          ti_current = 0;
+          ti_current = max_nr_timesteps;
+          cosmology_update(&cosmo, &phys_const, ti_current);
           set_quantities(&p, &xp, &us, &cooling, &cosmo, &phys_const, nh, u,
                          ti_current);
+
+          /* Set dt */
+          integertime_t t_begin = get_integer_time_begin(ti_current,timebin);
+          integertime_t t_end = get_integer_time_end(ti_current,timebin);
+          dt_cool = cosmology_get_delta_time(&cosmo, t_begin, t_end);
+          dt_therm = dt_cool;
+
+          cooling_init(params, &us, &phys_const, &hydro_properties, &cooling);
+          cooling_update(&cosmo, &cooling, 0);
 
           /* compute implicit solution */
           cooling_cool_part(&phys_const, &us, &cosmo, &hydro_properties, &floor_props, 
                             &cooling, &p, &xp, dt_cool, dt_therm);
-          u_check_cgs =
-              hydro_get_physical_internal_energy(&p, &xp, &cosmo) *
-              cooling.internal_energy_to_cgs;
+          du_dt_check =
+              hydro_get_physical_internal_energy_dt(&p, &cosmo);
       }
-      for (int z_i = 0; z_i < n_z; z_i++) {
-        ti_current = max_nr_timesteps / n_z * z_i;
+      for (int z_i = 0; z_i <= n_z; z_i++) {
+        ti_current = max_nr_timesteps / n_z * z_i + 1;
 
         if (!comoving_check) {
           /* update nh, u, z */
+          cosmology_update(&cosmo, &phys_const, ti_current);
+          cooling_update(&cosmo, &cooling, 0);
           set_quantities(&p, &xp, &us, &cooling, &cosmo, &phys_const, nh, u,
                          ti_current);
 
@@ -201,63 +218,73 @@ int main(int argc, char **argv) {
                               dt_therm / n_subcycle);
             xp.entropy_full += p.entropy_dt * dt_therm / n_subcycle;
           }
-          u_check_cgs =
-              hydro_get_physical_internal_energy(&p, &xp, &cosmo) *
-              cooling.internal_energy_to_cgs;
+          du_dt_check =
+              hydro_get_physical_internal_energy_dt(&p, &cosmo);
           
           /* reset quantities to nh, u, and z that we want to test */
+          cosmology_update(&cosmo, &phys_const, ti_current);
           set_quantities(&p, &xp, &us, &cooling, &cosmo, &phys_const, nh, u,
                          ti_current);
-
+          
           /* compute implicit solution */
           cooling_cool_part(&phys_const, &us, &cosmo, &hydro_properties, &floor_props, 
                             &cooling, &p, &xp, dt_cool, dt_therm);
-          u_implicit_cgs =
-              hydro_get_physical_internal_energy(&p, &xp, &cosmo) *
-              cooling.internal_energy_to_cgs;
+          du_dt_implicit =
+              hydro_get_physical_internal_energy_dt(&p, &cosmo);
 
         } else {
           /* use set_quantities to set the redshift (and scalefactor) */
-          set_quantities(&p, &xp, &us, &cooling, &cosmo, &phys_const, nh, u,
-                         ti_current);
-          float density_1_physical = hydro_get_physical_density(&p, &cosmo);
-          float density_1_comoving = hydro_get_comoving_density(&p);
-          float internal_energy_1_physical = hydro_get_physical_internal_energy(&p, &xp, &cosmo);
-          float internal_energy_1_comoving = hydro_get_comoving_internal_energy(&p, &xp);
+          //set_quantities(&p, &xp, &us, &cooling, &cosmo, &phys_const, nh, u,
+          //               ti_current);
+          //float density_1_physical = hydro_get_physical_density(&p, &cosmo);
+          //float density_1_comoving = hydro_get_comoving_density(&p);
+          //float internal_energy_1_physical = hydro_get_physical_internal_energy(&p, &xp, &cosmo);
+          //float internal_energy_1_comoving = hydro_get_comoving_internal_energy(&p, &xp);
 
           /* reset to get the comoving density */
+          cosmology_update(&cosmo, &phys_const, ti_current);
           set_quantities(&p, &xp, &us, &cooling, &cosmo, &phys_const, nh * cosmo.a*cosmo.a*cosmo.a, u / cosmo.a2_inv,
                          ti_current);
-          float density_2_physical = hydro_get_physical_density(&p, &cosmo);
-          float density_2_comoving = hydro_get_comoving_density(&p);
-          float internal_energy_2_physical = hydro_get_physical_internal_energy(&p, &xp, &cosmo);
-          float internal_energy_2_comoving = hydro_get_comoving_internal_energy(&p, &xp);
+          //float density_2_physical = hydro_get_physical_density(&p, &cosmo);
+          //float density_2_comoving = hydro_get_comoving_density(&p);
+          //float internal_energy_2_physical = hydro_get_physical_internal_energy(&p, &xp, &cosmo);
+          //float internal_energy_2_comoving = hydro_get_comoving_internal_energy(&p, &xp);
 
-          message("scale factor %.5e density 1 2 physical comoving %.5e %.5e %.5e %.5e", cosmo.a, density_1_physical, density_1_comoving, density_2_physical, density_2_comoving);
-          message("scale factor %.5e internal_energy 1 2 physical comoving %.5e %.5e %.5e %.5e", cosmo.a, internal_energy_1_physical, internal_energy_1_comoving, internal_energy_2_physical, internal_energy_2_comoving);
+          //message("scale factor %.5e density physical comoving %.5e %.5e", cosmo.a, density_2_physical, density_2_comoving);
+          //message("scale factor %.5e internal_energy physical comoving %.5e %.5e", cosmo.a, internal_energy_2_physical, internal_energy_2_comoving);
+          //message("scale factor %.5e density 1 2 physical comoving %.5e %.5e %.5e %.5e", cosmo.a, density_1_physical, density_1_comoving, density_2_physical, density_2_comoving);
+          //message("scale factor %.5e internal_energy 1 2 physical comoving %.5e %.5e %.5e %.5e", cosmo.a, internal_energy_1_physical, internal_energy_1_comoving, internal_energy_2_physical, internal_energy_2_comoving);
+
+          /* Set dt */
+          integertime_t t_begin = get_integer_time_begin(ti_current,timebin);
+          integertime_t t_end = get_integer_time_end(ti_current,timebin);
+          dt_cool = cosmology_get_delta_time(&cosmo, t_begin, t_end);
+          dt_therm = dt_cool;
+          
+          cooling_init(params, &us, &phys_const, &hydro_properties, &cooling);
+          cooling_update(&cosmo, &cooling, 0);
 
           /* compute implicit solution */
           cooling_cool_part(&phys_const, &us, &cosmo, &hydro_properties, &floor_props, 
                             &cooling, &p, &xp, dt_cool, dt_therm);
-          u_implicit_cgs =
-              hydro_get_physical_internal_energy(&p, &xp, &cosmo) *
-              cooling.internal_energy_to_cgs;
+          du_dt_implicit =
+              hydro_get_physical_internal_energy_dt(&p, &cosmo);
         }
 
         /* check if the two solutions are consistent */
-        if (fabs((u_implicit_cgs - u_check_cgs) / u_check_cgs) >
+        if (fabs((du_dt_implicit - du_dt_check) / du_dt_check) >
             integration_tolerance) {
           message(
-              "implicit and reference solutions do not match. z_i %d nh_i %d "
+              "implicit and reference solutions do not match. scale factor %.5e z_i %d nh_i %d "
               "u_i %d implicit %.5e reference %.5e error %.5e",
-              z_i, nh_i, u_i, u_implicit_cgs, u_check_cgs,
-              fabs((u_implicit_cgs - u_check_cgs) / u_check_cgs));
+              cosmo.a, z_i, nh_i, u_i, du_dt_implicit, du_dt_check,
+              fabs((du_dt_implicit - du_dt_check) / du_dt_check));
         } else {
-          //message(
-          //    "implicit and reference solutions match. z_i %d nh_i %d "
-          //    "u_i %d implicit %.5e reference %.5e error %.5e",
-          //    z_i, nh_i, u_i, u_implicit_cgs, u_check_cgs,
-          //    fabs((u_implicit_cgs - u_check_cgs) / u_check_cgs));
+          message(
+              "implicit and reference solutions match. scale factor %.5e z_i %d nh_i %d "
+              "u_i %d implicit %.5e reference %.5e error %.5e",
+              cosmo.a, z_i, nh_i, u_i, du_dt_implicit, du_dt_check,
+              fabs((du_dt_implicit - du_dt_check) / du_dt_check));
         }
       }
     }
