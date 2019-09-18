@@ -86,6 +86,7 @@ AC_ARG_ENABLE([logger],
 if test "$with_logger" = "yes"; then
    AC_DEFINE([WITH_LOGGER], 1, [logger enabled])
 fi
+AM_CONDITIONAL([HAVELOGGER],[test $with_logger = "yes"])
 
 # Interprocedural optimization support. Needs special handling for linking and
 # archiving as well as compilation with Intels, needs to be done before
@@ -995,6 +996,41 @@ if test "x$with_tbbmalloc" != "xno"; then
 fi
 AC_SUBST([TBBMALLOC_LIBS])
 AM_CONDITIONAL([HAVETBBMALLOC],[test -n "$TBBMALLOC_LIBS"])
+
+# Check for python.
+have_python="no"
+AC_ARG_WITH([python],
+    [AS_HELP_STRING([--with-python=PATH],
+       [root directory where python is installed @<:@yes/no@:>@]
+    )],
+    [with_python="$withval"],
+    [with_python="no"]
+)
+if test "x$with_python" != "xno"; then
+   if test "$with_python" == ""; then
+      # use linux default python
+      with_python="/usr/"
+   fi
+   AM_PATH_PYTHON([3], [], [AC_MSG_ERROR(python not found)])   
+   AC_ARG_VAR([PYTHON_INCS], [Include flags for python, bypassing python-config])
+   AC_ARG_VAR([PYTHON_CONFIG], [Path to python-config])
+   AS_IF([test -z "$PYTHON_INCS"], [
+      AS_IF([test -z "$PYTHON_CONFIG"], [
+      	AC_PATH_PROGS([PYTHON_CONFIG],
+	          [python$PYTHON_VERSION-config python-config],
+                  [no],
+                  [`dirname $PYTHON`])
+    	AS_IF([test "$PYTHON_CONFIG" = no], [AC_MSG_ERROR([cannot find python-config for $PYTHON.])])
+      ])
+      AC_MSG_CHECKING([python include flags])
+      PYTHON_INCS=`$PYTHON_CONFIG --includes`
+      AC_MSG_RESULT([$PYTHON_INCS])
+  ])
+  have_python="yes"
+fi
+AC_SUBST([PYTHON_INCS])
+AM_CONDITIONAL([HAVEPYTHON],[test -n "$PYTHON_INCS"])
+
 
 # Check for HDF5. This is required.
 AX_LIB_HDF5
@@ -1991,7 +2027,7 @@ AM_CONDITIONAL([HAVEEAGLEFEEDBACK], [test $with_feedback = "EAGLE"])
 
 # Handle .in files.
 AC_CONFIG_FILES([Makefile src/Makefile examples/Makefile examples/Cooling/CoolingRates/Makefile doc/Makefile doc/Doxyfile tests/Makefile])
-AC_CONFIG_FILES([argparse/Makefile tools/Makefile])
+AC_CONFIG_FILES([argparse/Makefile tools/Makefile logger/Makefile logger/tests/Makefile])
 AC_CONFIG_FILES([tests/testReading.sh], [chmod +x tests/testReading.sh])
 AC_CONFIG_FILES([tests/testActivePair.sh], [chmod +x tests/testActivePair.sh])
 AC_CONFIG_FILES([tests/test27cells.sh], [chmod +x tests/test27cells.sh])
@@ -2044,7 +2080,6 @@ AC_MSG_RESULT([
    CPU profiler         : $have_profiler
    Pthread barriers     : $have_pthread_barrier
    VELOCIraptor enabled : $have_velociraptor
-   Particle Logger      : $with_logger
    FoF activated:       : $enable_fof
 
    Hydro scheme       : $with_hydro
@@ -2081,5 +2116,8 @@ AC_MSG_RESULT([
    Gravity checks              : $gravity_force_checks
    Custom icbrtf               : $enable_custom_icbrtf
    Boundary particles          : $boundary_particles
+
+   Particle Logger      : $with_logger
+   Python enabled       : $have_python
 
  ------------------------])

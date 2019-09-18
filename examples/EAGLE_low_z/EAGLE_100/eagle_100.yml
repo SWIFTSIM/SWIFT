@@ -57,6 +57,13 @@ SPH:
   h_min_ratio:           0.1      # Minimal smoothing in units of softening.
   CFL_condition:         0.1      # Courant-Friedrich-Levy condition for time integration.
   minimal_temperature:   100      # (internal units)
+  overwrite_birth_time:  1
+  birth_time:            0.33333  # Pretend all the stars were born at z = 2
+
+# Parameters of the stars neighbour search
+Stars:
+  resolution_eta:        1.1642   # Target smoothing length in units of the mean inter-particle separation
+  h_tolerance:           7e-3
 
 # Parameters related to the initial conditions
 InitialConditions:

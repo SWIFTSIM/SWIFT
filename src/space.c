@@ -5670,14 +5670,15 @@ void space_write_cell(const struct space *s, FILE *f, const struct cell *c) {
  * @brief Write a csv file containing the cell hierarchy
  *
  * @param s The #space.
+ * @param j The file number.
  */
-void space_write_cell_hierarchy(const struct space *s) {
+void space_write_cell_hierarchy(const struct space *s, int j) {
 
 #ifdef SWIFT_CELL_GRAPH
 
   /* Open file */
   char filename[200];
-  sprintf(filename, "cell_hierarchy_%04i.csv", engine_rank);
+  sprintf(filename, "cell_hierarchy_%04i_%04i.csv", j, engine_rank);
   FILE *f = fopen(filename, "w");
   if (f == NULL) error("Error opening task level file.");
 
