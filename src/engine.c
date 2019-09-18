@@ -1213,6 +1213,30 @@ void engine_allocate_foreign_particles(struct engine *e) {
 #endif
 }
 
+void engine_do_tasks_count_mapper(void *map_data, int num_elements,
+                                  void *extra_data) {
+
+  const struct task *tasks = (struct task *)map_data;
+  int *const global_counts = (int *)extra_data;
+
+  /* Local accumulator copy */
+  int local_counts[task_type_count + 1];
+  for (int k = 0; k <= task_type_count; k++) local_counts[k] = 0;
+
+  /* Add task counts locally */
+  for (int k = 0; k < num_elements; k++) {
+    if (tasks[k].skip)
+      local_counts[task_type_count] += 1;
+    else
+      local_counts[(int)tasks[k].type] += 1;
+  }
+
+  /* Update the global counts */
+  for (int k = 0; k <= task_type_count; k++) {
+    if (local_counts[k]) atomic_add(global_counts + k, local_counts[k]);
+  }
+}
+
 /**
  * @brief Prints the number of tasks in the engine
  *
@@ -1257,12 +1281,9 @@ void engine_print_task_counts(const struct engine *e) {
   /* Count and print the number of each task type. */
   int counts[task_type_count + 1];
   for (int k = 0; k <= task_type_count; k++) counts[k] = 0;
-  for (int k = 0; k < nr_tasks; k++) {
-    if (tasks[k].skip)
-      counts[task_type_count] += 1;
-    else
-      counts[(int)tasks[k].type] += 1;
-  }
+  threadpool_map((struct threadpool *)&e->threadpool,
+                 engine_do_tasks_count_mapper, (void *)tasks, nr_tasks,
+                 sizeof(struct task), 0, counts);
 
 #ifdef WITH_MPI
   printf("[%04i] %s engine_print_task_counts: task counts are [ %s=%i",
