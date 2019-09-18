@@ -53,11 +53,12 @@ void set_quantities(struct part *restrict p, struct xpart *restrict xp,
   /* calculate density */
   double hydrogen_number_density = nh_cgs / cooling->number_density_to_cgs;
   p->rho = hydrogen_number_density * phys_const->const_proton_mass /
-           p->chemistry_data.metal_mass_fraction[chemistry_element_H] *
-           (cosmo->a * cosmo->a * cosmo->a);
+           p->chemistry_data.metal_mass_fraction[chemistry_element_H];// *
+           //(cosmo->a * cosmo->a * cosmo->a);
 
   /* update entropy based on internal energy */
-  float pressure = (u * cosmo->a * cosmo->a) * cooling->internal_energy_from_cgs *
+  //float pressure = (u * cosmo->a * cosmo->a) * cooling->internal_energy_from_cgs *
+  float pressure = (u) * cooling->internal_energy_from_cgs *
                    p->rho * (hydro_gamma_minus_one);
   p->entropy = pressure * (pow(p->rho, -hydro_gamma));
   xp->entropy_full = p->entropy;
@@ -176,7 +177,6 @@ int main(int argc, char **argv) {
     for (int u_i = 0; u_i < n_u; u_i++) {
       //u = exp(M_LN10 * cooling.Therm[0] + delta_u * u_i);
       u = 1.0e13;
-      cooling_update(&cosmo, &cooling, 0);
 
       if (comoving_check) {
           /* reset quantities to nh, u, and z that we want to test */
@@ -186,10 +186,13 @@ int main(int argc, char **argv) {
                          ti_current);
 
           /* Set dt */
-          integertime_t t_begin = get_integer_time_begin(ti_current,timebin);
-          integertime_t t_end = get_integer_time_end(ti_current,timebin);
-          dt_cool = cosmology_get_delta_time(&cosmo, t_begin, t_end);
-          dt_therm = dt_cool;
+          const integertime_t ti_step = get_integer_timestep(timebin);
+          const integertime_t ti_begin =
+              get_integer_time_begin(ti_current - 1, timebin);
+          dt_cool =
+              cosmology_get_delta_time(&cosmo, ti_begin, ti_begin + ti_step);
+          dt_therm = cosmology_get_therm_kick_factor(&cosmo, ti_begin,
+                                                     ti_begin + ti_step);
 
           cooling_init(params, &us, &phys_const, &hydro_properties, &cooling);
           cooling_update(&cosmo, &cooling, 0);
@@ -256,11 +259,15 @@ int main(int argc, char **argv) {
           //message("scale factor %.5e internal_energy 1 2 physical comoving %.5e %.5e %.5e %.5e", cosmo.a, internal_energy_1_physical, internal_energy_1_comoving, internal_energy_2_physical, internal_energy_2_comoving);
 
           /* Set dt */
-          integertime_t t_begin = get_integer_time_begin(ti_current,timebin);
-          integertime_t t_end = get_integer_time_end(ti_current,timebin);
-          dt_cool = cosmology_get_delta_time(&cosmo, t_begin, t_end);
-          dt_therm = dt_cool;
+          const integertime_t ti_step = get_integer_timestep(timebin);
+          const integertime_t ti_begin =
+              get_integer_time_begin(ti_current - 1, timebin);
+          dt_cool =
+              cosmology_get_delta_time(&cosmo, ti_begin, ti_begin + ti_step);
+          dt_therm = cosmology_get_therm_kick_factor(&cosmo, ti_begin,
+                                                     ti_begin + ti_step);
           
+          /* Load the appropriate tables */
           cooling_init(params, &us, &phys_const, &hydro_properties, &cooling);
           cooling_update(&cosmo, &cooling, 0);
 
