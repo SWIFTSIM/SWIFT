@@ -951,6 +951,8 @@ void runner_do_ghost(struct runner *r, struct cell *c, int timer) {
   const float eps = e->hydro_properties->h_tolerance;
   const float hydro_eta_dim =
       pow_dimension(e->hydro_properties->eta_neighbours);
+  const int use_mass_weighted_num_ngb =
+      e->hydro_properties->use_mass_weighted_num_ngb;
   const int max_smoothing_iter = e->hydro_properties->max_smoothing_iterations;
   int redo = 0, count = 0;
 
@@ -1040,6 +1042,23 @@ void runner_do_ghost(struct runner *r, struct cell *c, int timer) {
           hydro_end_density(p, cosmo);
           chemistry_end_density(p, chemistry, cosmo);
           pressure_floor_end_density(p, cosmo);
+
+          /* Are we using the alternative definition of the
+
+             number of neighbours? */
+
+          if (use_mass_weighted_num_ngb) {
+#if defined(GIZMO_MFV_SPH) || defined(GIZMO_MFM_SPH) || defined(SHADOWFAX_SPH)
+
+            error(
+                "Can't use alternative neighbour definition with this scheme!");
+
+#else
+            const float inv_mass = 1.f / hydro_get_mass(p);
+            p->density.wcount = p->rho * inv_mass;
+            p->density.wcount_dh = p->density.rho_dh * inv_mass;
+#endif
+          }
 
           /* Compute one step of the Newton-Raphson scheme */
           const float n_sum = p->density.wcount * h_old_dim;
