@@ -88,9 +88,11 @@ void runner_do_kick1(struct runner *r, struct cell *c, int timer) {
   struct xpart *restrict xparts = c->hydro.xparts;
   struct gpart *restrict gparts = c->grav.parts;
   struct spart *restrict sparts = c->stars.parts;
+  struct bpart *restrict bparts = c->black_holes.parts;
   const int count = c->hydro.count;
   const int gcount = c->grav.count;
   const int scount = c->stars.count;
+  const int bcount = c->black_holes.count;
   const integertime_t ti_current = e->ti_current;
   const double time_base = e->time_base;
 
@@ -249,6 +251,44 @@ void runner_do_kick1(struct runner *r, struct cell *c, int timer) {
         kick_spart(sp, dt_kick_grav, ti_begin, ti_begin + ti_step / 2);
       }
     }
+
+    /* Loop over the black hole particles in this cell. */
+    for (int k = 0; k < bcount; k++) {
+
+      /* Get a handle on the s-part. */
+      struct bpart *restrict bp = &bparts[k];
+
+      /* If particle needs to be kicked */
+      if (bpart_is_starting(bp, e)) {
+
+        const integertime_t ti_step = get_integer_timestep(bp->time_bin);
+        const integertime_t ti_begin =
+            get_integer_time_begin(ti_current + 1, bp->time_bin);
+
+#ifdef SWIFT_DEBUG_CHECKS
+        const integertime_t ti_end =
+            get_integer_time_end(ti_current + 1, bp->time_bin);
+
+        if (ti_begin != ti_current)
+          error(
+              "Particle in wrong time-bin, ti_end=%lld, ti_begin=%lld, "
+              "ti_step=%lld time_bin=%d ti_current=%lld",
+              ti_end, ti_begin, ti_step, bp->time_bin, ti_current);
+#endif
+
+        /* Time interval for this half-kick */
+        double dt_kick_grav;
+        if (with_cosmology) {
+          dt_kick_grav = cosmology_get_grav_kick_factor(cosmo, ti_begin,
+                                                        ti_begin + ti_step / 2);
+        } else {
+          dt_kick_grav = (ti_step / 2) * time_base;
+        }
+
+        /* do the kick */
+        kick_bpart(bp, dt_kick_grav, ti_begin, ti_begin + ti_step / 2);
+      }
+    }
   }
 
   if (timer) TIMER_TOC(timer_kick1);
@@ -273,10 +313,12 @@ void runner_do_kick2(struct runner *r, struct cell *c, int timer) {
   const int count = c->hydro.count;
   const int gcount = c->grav.count;
   const int scount = c->stars.count;
+  const int bcount = c->black_holes.count;
   struct part *restrict parts = c->hydro.parts;
   struct xpart *restrict xparts = c->hydro.xparts;
   struct gpart *restrict gparts = c->grav.parts;
   struct spart *restrict sparts = c->stars.parts;
+  struct bpart *restrict bparts = c->black_holes.parts;
   const integertime_t ti_current = e->ti_current;
   const double time_base = e->time_base;
 
@@ -451,6 +493,48 @@ void runner_do_kick2(struct runner *r, struct cell *c, int timer) {
 
         /* Prepare the values to be drifted */
         stars_reset_predicted_values(sp);
+      }
+    }
+
+    /* Loop over the particles in this cell. */
+    for (int k = 0; k < bcount; k++) {
+
+      /* Get a handle on the part. */
+      struct bpart *restrict bp = &bparts[k];
+
+      /* If particle needs to be kicked */
+      if (bpart_is_active(bp, e)) {
+
+        const integertime_t ti_step = get_integer_timestep(bp->time_bin);
+        const integertime_t ti_begin =
+            get_integer_time_begin(ti_current, bp->time_bin);
+
+#ifdef SWIFT_DEBUG_CHECKS
+        if (ti_begin + ti_step != ti_current)
+          error("Particle in wrong time-bin");
+#endif
+
+        /* Time interval for this half-kick */
+        double dt_kick_grav;
+        if (with_cosmology) {
+          dt_kick_grav = cosmology_get_grav_kick_factor(
+              cosmo, ti_begin + ti_step / 2, ti_begin + ti_step);
+        } else {
+          dt_kick_grav = (ti_step / 2) * time_base;
+        }
+
+        /* Finish the time-step with a second half-kick */
+        kick_bpart(bp, dt_kick_grav, ti_begin + ti_step / 2,
+                   ti_begin + ti_step);
+
+#ifdef SWIFT_DEBUG_CHECKS
+        /* Check that kick and the drift are synchronized */
+        if (bp->ti_drift != bp->ti_kick)
+          error("Error integrating b-part in time.");
+#endif
+
+        /* Prepare the values to be drifted */
+        black_holes_reset_predicted_values(bp);
       }
     }
   }
