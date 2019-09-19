@@ -342,7 +342,9 @@ __attribute__((always_inline)) INLINE static void hydro_reset_acceleration(
  * @param xp The extended data of this particle.
  */
 __attribute__((always_inline)) INLINE static void hydro_reset_predicted_values(
-    struct part *restrict p, const struct xpart *restrict xp) {
+    struct part *restrict p, const struct xpart *restrict xp,
+    const struct cosmology *cosmo) {
+
 
   /* Re-set the predicted velocities */
  /* p->v[0] = xp->v_full[0];

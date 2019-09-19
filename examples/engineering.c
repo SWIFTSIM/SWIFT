@@ -100,7 +100,7 @@ int flag_entropy_ICs = 0;
 const int cleanup_h = 0;
 const int cleanup_sqrt_a = 0;
 
-size_t Ngas = 0, Ngpart = 0, Nspart = 0, Nboundary = 0, Nfluid = 0, Nblackhole=0;
+size_t Ngas = 0, Ngpart = 0, Nspart = 0, Nboundary = 0, Nfluid = 0, Nblackhole=0, Ngparts_background=0;
 double dim[3] = {0., 0., 0.};
 int nr_nodes = 1, myrank = 0;
 //signal(SIGSEGV,seg_handler);
@@ -446,35 +446,36 @@ param_filename = argv[0];
 #if defined(WITH_MPI)
 #if defined(HAVE_PARALLEL_HDF5)
     read_ic_parallel(ICfileName, &us, dim, &parts, &gparts, &sparts, &bparts,
-                     &Ngas, &Ngpart, &Nspart, &Nblackhole, &Nboundary, &Nfluid, &flag_entropy_ICs,
-                     0,0, 0, 0, 1,cleanup_h, cleanup_sqrt_a,
+                     &Ngas, &Ngpart, &Ngparts_background, &Nspart, &Nblackhole, &Nboundary, &Nfluid, &flag_entropy_ICs,
+                     0,0, 0, 0, 1,0,cleanup_h, cleanup_sqrt_a,
                      1.0, 1.0, myrank, nr_nodes, MPI_COMM_WORLD,
                      MPI_INFO_NULL, 1, 0);
 #else
     read_ic_serial(ICfileName,&us, dim, &parts, &gparts, &sparts, &bparts, &Ngas,
-                   &Ngpart, &Nspart, &Nboundary, &Nblackhole, &Nfluid, &flag_entropy_ICs, 0,
-                   0, 0, 0, 1, cleanup_h, cleanup_sqrt_a, 1.0, 1.0, myrank, nr_nodes, MPI_COMM_WORLD,
+                   &Ngpart, &Ngparts_background, &Nspart, &Nblackhole, &Nboundary, &Nfluid, &flag_entropy_ICs, 0,
+                   0, 0, 0, 1,0, cleanup_h, cleanup_sqrt_a, 1.0, 1.0, myrank, nr_nodes, MPI_COMM_WORLD,
                    MPI_INFO_NULL, 1, 0);
 #endif
 #else
     read_ic_single(ICfileName,&us, dim, &parts, &gparts, &sparts, &bparts, &Ngas,
-                   &Ngpart, &Nspart, &Nblackhole, &Nboundary, &Nfluid, &flag_entropy_ICs, 0,
-                   0, 0, 0, 1, cleanup_h, cleanup_sqrt_a, 1.0, 1.0, 1, 0);
+                   &Ngpart, &Ngparts_background, &Nspart, &Nblackhole, &Nboundary, &Nfluid, &flag_entropy_ICs, 0,
+                   0, 0, 0, 1, 0, cleanup_h, cleanup_sqrt_a, 1.0, 1.0, 1, 0);
 #endif
 #else
     error("Failed to find MPI and HDF5");
 #endif
 
-long long N_total[4] = {0, 0, 0, 0};
+long long N_total[5] = {0, 0, 0, 0, 0};
 #if defined(WITH_MPI)
-    long long N_long[4] = {Nfluid+Nboundary, 0, 0, 0};
-    MPI_Allreduce(&N_long, &N_total, 4, MPI_LONG_LONG_INT, MPI_SUM,
+    long long N_long[54] = {Nfluid+Nboundary, 0, 0, 0, 0};
+    MPI_Allreduce(&N_long, &N_total, 5, MPI_LONG_LONG_INT, MPI_SUM,
                   MPI_COMM_WORLD);
 #else
     N_total[0] = Nfluid + Nboundary;
     N_total[1] = 0;
     N_total[2] = 0;
     N_total[3] = 0;
+    N_total[4] = 0;
 #endif
 
 /* Engineering doesn't read gas, dark matter or star particles, so lets check. */
@@ -522,7 +523,7 @@ for(size_t i = Nboundary; i < Nboundary+Nfluid; i++){
 
 space_init(&s, params, &cosmo, dim, parts, gparts, sparts, bparts, Nfluid+Nboundary, Ngpart,
            Nspart, Nblackhole, periodic, replicate, generate_gas_in_ics, 1 /*with_hydro*/, 0 /*with_self_gravity*/,
-           0 /*with_star_formation*/, talking, 0 /*dry_run*/); 
+           0 /*with_star_formation*/,0/*DM_Background*/, talking, 0 /*dry_run*/); 
 
 
    /* No gravity with engineering */
@@ -536,7 +537,7 @@ engine_policies |= engine_policy_engineering;
 
 
 
-engine_init(&e, &s, params, N_total[0], N_total[1], N_total[2], N_total[3],
+engine_init(&e, &s, params, N_total[0], N_total[1], N_total[2], N_total[3], N_total[4],
             engine_policies, talking, &reparttype, &us, &prog_const, &cosmo,
             &hydro_properties, &entropy_floor, &gravity_properties,
             &stars_properties, &black_hole_properties, &feedback_properties, &mesh, &potential, &cooling_func, &starform,
