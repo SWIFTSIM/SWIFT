@@ -109,6 +109,7 @@ __attribute__((always_inline)) INLINE static void runner_iact_force(
   rhoj = pj->rho;
   rhoi_inv = 1.0f / rhoi;
   rhoj_inv = 1.0f / rhoj;
+  const float r_inv = 1.0 / r;
 
   /* Compute dv */
   dv[0] = pi->v[0] - pj->v[0];
@@ -136,7 +137,7 @@ __attribute__((always_inline)) INLINE static void runner_iact_force(
 
   /* Acceleration term (needs multiplying by the dx in relevant dimension to correctly
  *   calculate the grad W term. */
-  const float acc = (Pi_over_rhosq + Pj_over_rhosq);
+  const float acc = (Pi_over_rhosq + Pj_over_rhosq) * r_inv;
 
   /* drho_dt term exclusing particle masses */
   const float dens = dv[0] * wi_dx*dx[0] + dv[1] * wi_dx*dx[1] + dv[2] * wi_dx*dx[2];
@@ -202,6 +203,7 @@ __attribute__((always_inline)) INLINE static void runner_iact_nonsym_force(
   rhoj = pj->rho;
   rhoi_inv = 1.0f / rhoi;
   rhoj_inv = 1.0f / rhoj;
+  const float r_inv = 1.0 / r;
 
   /* Compute dv */
   dv[0] = pi->v[0] - pj->v[0];
@@ -223,7 +225,7 @@ __attribute__((always_inline)) INLINE static void runner_iact_nonsym_force(
 
   /* Acceleration term (needs multiplying by the dx in relevant dimension to correctly
  *   calculate the grad W term. */
-  const float acc = (Pi_over_rhosq + Pj_over_rhosq);
+  const float acc = (Pi_over_rhosq + Pj_over_rhosq) * r_inv;
 
   /* drho_dt term exclusing particle masses */
   const float dens = dv[0] * wi_dx*dx[0] + dv[1] * wi_dx*dx[1] + dv[2] * wi_dx*dx[2];

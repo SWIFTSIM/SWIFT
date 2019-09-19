@@ -35,6 +35,7 @@
 
 #include "adiabatic_index.h"
 #include "approx_math.h"
+#include "boundary.h"
 #include "cosmology.h"
 #include "dimension.h"
 #include "equation_of_state.h"
@@ -320,7 +321,7 @@ __attribute__((always_inline)) INLINE static void hydro_prepare_force(
     struct part *restrict p, struct xpart *restrict xp,
     const struct cosmology *cosmo, const struct hydro_props *hydro_props,
     const float dt_alpha) {
-    p->soundspeed = gas_soundspeed_from_pressure(p->rho, p->pressure);
+//    p->soundspeed = gas_soundspeed_from_pressure(p->rho, p->pressure);
 }
 
 /**
@@ -341,7 +342,9 @@ __attribute__((always_inline)) INLINE static void hydro_reset_acceleration(
   p->a_hydro[0] = 0.0f;
   p->a_hydro[1] = 0.0f;
   p->a_hydro[2] = 0.0f;
-  if(p->id == 3374) printf("visc = %e, mass = %e\n", p->dynamic_viscosity, p->mass);
+  p->a_visc[0] = 0.0f;
+  p->a_visc[1] = 0.0f;
+  p->a_visc[2] = 0.0f;
 
 }
 
@@ -398,17 +401,12 @@ __attribute__((always_inline)) INLINE static void hydro_predict_extra(
 __attribute__((always_inline)) INLINE static void hydro_end_force(
     struct part *restrict p, const struct cosmology *cosmo) {
 
-  if(p->is_boundary){
-    p->a_hydro[0] = 0.0;
-    p->a_hydro[1] = 0.0;
-    p->a_hydro[2] = 0.0;
-  }else{
-  //  printf("Particle a_hydro[1] = %f, a_hydro[0] = %.15f, a_constant = %f\n",p->a_hydro[1],p->a_hydro[0], p->a_constant[1]);
-  }
+  boundary_end_force(p);
   p->a_hydro[0] += p->a_constant[0];
   p->a_hydro[1] += p->a_constant[1];
   p->a_hydro[2] += p->a_constant[2];
 
+  if(p->id == 3374) printf("visc = [%e %e], hydro = [%e %e]\n", p->a_visc[0], p->a_visc[1], p->a_hydro[0] - p->a_visc[0], p->a_hydro[1] - p->a_visc[1]);
 }
 
 /**

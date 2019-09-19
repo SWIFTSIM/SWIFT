@@ -576,7 +576,7 @@ engine_print_stats(&e);
     feenableexcept(FE_DIVBYZERO | FE_INVALID | FE_OVERFLOW);
 #endif
 
-  for (int j = 0; !engine_is_done(&e) && e.step -1 != 5000000; j++){
+  for (int j = 0; !engine_is_done(&e) /*&& e.step -1 != 5000000*/; j++){
     timers_reset_all();
 
     engine_step(&e);
@@ -619,10 +619,11 @@ max_x = parts[i].x[0];
 if(parts[i].x[0] < min_x && !parts[i].is_boundary){
 min_x = parts[i].x[0];
 }*/
-      if(parts[i].id == 65744) printf("id: %llu x=[%f %f %f] a_hydro=[%e %e %e] v = [%e %e %e] rho=%e pressure=%e h=%f\n", parts[i].id, parts[i].x[0], parts[i].x[1], parts[i].x[2],parts[i].a_hydro[0], parts[i].a_hydro[1], parts[i].a_hydro[2], parts[i].v[0], parts[i].v[1], parts[i].v[2], parts[i].rho, parts[i].pressure , parts[i].h);
+
+      if(parts[i].id == 1329) printf("id: %llu x=[%f %f %f] a_hydro=[%e %e %e] v = [%e %e %e] rho=%e pressure=%e h=%f drho_dt=%e\n", parts[i].id, parts[i].x[0], parts[i].x[1], parts[i].x[2],parts[i].a_hydro[0], parts[i].a_hydro[1], parts[i].a_hydro[2], parts[i].v[0], parts[i].v[1], parts[i].v[2], parts[i].rho, parts[i].pressure , parts[i].h, parts[i].drho_dt);
 }
 for(size_t i = Nboundary; i < Nboundary+Nfluid; i++){
-      if(parts[i].id == 65744) printf("id: %llu x=[%f %f %f] a_hydro=[%e %e %e] v = [%e %e %e] rho=%e pressure=%e h=%f\n", parts[i].id, parts[i].x[0], parts[i].x[1], parts[i].x[2],parts[i].a_hydro[0], parts[i].a_hydro[1], parts[i].a_hydro[2], parts[i].v[0], parts[i].v[1], parts[i].v[2], parts[i].rho, parts[i].pressure , parts[i].h);
+      if(parts[i].id == 1329) printf("id: %llu x=[%f %f %f] a_hydro=[%e %e %e] v = [%e %e %e] rho=%e pressure=%e h=%f drho_dt=%e\n", parts[i].id, parts[i].x[0], parts[i].x[1], parts[i].x[2],parts[i].a_hydro[0], parts[i].a_hydro[1], parts[i].a_hydro[2], parts[i].v[0], parts[i].v[1], parts[i].v[2], parts[i].rho, parts[i].pressure , parts[i].h, parts[i].drho_dt);
 //`  if(parts[i].x[0] == 0.0 && parts[i].x[2] == 0.0) printf("Part at [%e %e %e]\n", parts[i].x[0], parts[i].x[1], parts[i].x[2]);
 //  if(parts[i].id == 57600) printf("Found p0, %i %f %f %f\n", parts[i].is_boundary, parts[i].x[0], parts[i].x[1], parts[i].x[2]);
 //  if(parts[i].x[0] > 1.4937 && parts[i].x[1] < 0.00126 && parts[i].x[1] > 0.00124 && parts[i].x[2] < 0.007 && parts[i].x[2] > 0.006) {printf("found a boundary with id %llu\n", parts[i].id); return 0;}

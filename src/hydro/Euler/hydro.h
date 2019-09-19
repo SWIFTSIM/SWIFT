@@ -35,6 +35,7 @@
 
 #include "adiabatic_index.h"
 #include "approx_math.h"
+#include "boundary.h"
 #include "cosmology.h"
 #include "dimension.h"
 #include "equation_of_state.h"
@@ -386,13 +387,7 @@ __attribute__((always_inline)) INLINE static void hydro_predict_extra(
 __attribute__((always_inline)) INLINE static void hydro_end_force(
     struct part *restrict p, const struct cosmology *cosmo) {
 
-  if(p->is_boundary){
-    p->a_hydro[0] = 0.0;
-    p->a_hydro[1] = 0.0;
-    p->a_hydro[2] = 0.0;
-  }else{
-  //  printf("Particle a_hydro[1] = %f, a_hydro[0] = %.15f, a_constant = %f\n",p->a_hydro[1],p->a_hydro[0], p->a_constant[1]);
-  }
+  boundary_end_force(p);
   p->a_hydro[0] += p->a_constant[0];
   p->a_hydro[1] += p->a_constant[1];
   p->a_hydro[2] += p->a_constant[2];

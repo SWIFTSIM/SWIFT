@@ -55,14 +55,17 @@ struct part {
   double x[3];
 
   /* Particle predicted velocity. */
-  double v[3];
-  double v_minus1[3];
+  float/*double*/ v[3];
+  float/*double*/ v_minus1[3];
 
   /* Particle acceleration. */
   float a_hydro[3];
 
   /* Particle constant acceleration (e.g. input acceleration) */
-  double a_constant[3];
+  float/*double*/ a_constant[3];
+
+  /* TODO: DEBUG */
+  float a_visc[3];
 
   /* Particle cutoff radius. */
   float h;

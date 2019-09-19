@@ -256,14 +256,6 @@ static const float kernel_coeffs[(kernel_degree + 1) * (kernel_ivals + 1)]
  */
 __attribute__((always_inline)) INLINE static void kernel_deval(
     float u, float *restrict W, float *restrict dW_dx) {
-/*#ifdef QUINTIC_SPLINE_KERNEL
-  const float x = u * kernel_gamma_inv;
-  const float x_1 = x-1.0;
-  const float x_1_2 = x_1*x_1;
-  const float x_1_4 = x_1_2*x_1_2;
-  float w = -1.0*(x_1_4 * x_1);
-  float dw_dx = -5.0*(x_1_4); 
-#else*/
   /* Go to the range [0,1[ from [0,H[ */
   const float x = u * kernel_gamma_inv;
 
@@ -281,10 +273,8 @@ __attribute__((always_inline)) INLINE static void kernel_deval(
     dw_dx = dw_dx * x + w;
     w = x * w + coeffs[k];
   }
-//  printf("%e %e\n", w, dw_dx);
   w = max(w, 0.f);
   dw_dx = min(dw_dx, 0.f);
-//#endif
   /* Return everything */
   *W = w * kernel_constant * kernel_gamma_inv_dim;
   *dW_dx = dw_dx * kernel_constant * kernel_gamma_inv_dim_plus_one;

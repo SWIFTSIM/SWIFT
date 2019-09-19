@@ -109,6 +109,7 @@ __attribute__((always_inline)) INLINE static void runner_iact_force(
   rhoj = (float)pj->rho;
   rhoi_inv = 1.0f / rhoi;
   rhoj_inv = 1.0f / rhoj;
+  const int r_inv = 1.0 / r;
 
   /* Compute dv */
   dv[0] = pi->v[0] - pj->v[0];
@@ -134,45 +135,45 @@ __attribute__((always_inline)) INLINE static void runner_iact_force(
   kernel_deval(xj, &wj, &wj_dx);
   wj_dx = wj_dx * inv_hjdim_pow_plus_one;
 
-  /* Compute the artificial viscosity term */
-//  printf("pi->visc = %f\n", pi->dynamic_viscosity);
+/* Now we can do the calculation of the equations of motion */
+
+  /* Do the 'regular' hydro forces... */
+  const float acc_sph_i = (Pi_over_rhosq + Pj_over_rhosq) * r_inv * wi_dx;
+  const float acc_sph_j = (Pi_over_rhosq + Pj_over_rhosq) * r_inv * wj_dx;
+  
+  /* Viscosity implementation */
   const float mu_i = rhoi * pi->dynamic_viscosity;
   const float mu_j = rhoj * pj->dynamic_viscosity;
   const float mu_sum = mu_i + mu_j;
   const float dens_ij_inv = rhoi_inv * rhoj_inv;
-
-  /* Acceleration term (needs multiplying by the dx in relevant dimension to correctly
- *   calculate the grad W term. */
-  const float acc = (Pi_over_rhosq + Pj_over_rhosq);
-
-  /* drho_dt term exclusing particle masses */
-  const float dens = dv[0] * wi_dx*dx[0] + dv[1] * wi_dx*dx[1] + dv[2] * wi_dx*dx[2];
-//  if((pi->id == 86400 && pj->is_boundary) || (pi->is_boundary && pj->id == 86400)) printf("pi_ab = %f, v_dot_r = %f\n", pi_ab, v_dot_r);
-/*  if( (!pj->is_boundary) || (!pi->is_boundary)){
-    printf("r2 = %f, pressure = %f, xi=%f, rho=%f, acc=%f, wi_dx=%f, dx[1]=%f drho_dt=%f\n",r2,pi->pressure,xi, pi->rho, acc, wi_dx, dx[1], mj*dens);
-    printf("hydro_i = %f, hydro_j = %f\n", -mj*acc*wi_dx*dx[1], mi*acc*wj_dx*dx[1]);
-}*/
-//  if(pi->id == 6144 || pj->id == 6144) printf("v_dot_r = %f, pi_ab = %f\n", v_dot_r, pi_ab); 
-//  printf("dens=%f, dv[0]=%f, dx[0]=%f\n", dens,dv[0],dx[0]);
-  pi->drho_dt += mj * dens;
-  pi->a_hydro[0] -= mj * acc * wi_dx * dx[0];
-  pi->a_hydro[0] += (mj * mu_sum * dv[0] * dens_ij_inv) * wi_dx /r;
-  pi->a_hydro[1] -= mj * acc * wi_dx * dx[1];
-  pi->a_hydro[1] += (mj * mu_sum * dv[1] * dens_ij_inv) * wi_dx /r;
-  pi->a_hydro[2] -= mj * acc * wi_dx * dx[2];
-  pi->a_hydro[2] += (mj * mu_sum * dv[2] * dens_ij_inv) * wi_dx /r;
-
-  /* Compute density of pj. */
-  pj->drho_dt +=  mi * dens;
-  pj->a_hydro[0] += mi * acc * wj_dx * dx[0];
-  pj->a_hydro[0] -= (mi * mu_sum * dv[0] * dens_ij_inv) * wj_dx /r;
-  pj->a_hydro[1] += mi * acc * wj_dx * dx[1];
-  pj->a_hydro[1] -= (mi * mu_sum * dv[1] * dens_ij_inv) * wj_dx /r;
-  pj->a_hydro[2] += mi * acc * wj_dx * dx[2];
-  pj->a_hydro[2] -= (mi * mu_sum * dv[2] * dens_ij_inv) * wj_dx /r;
+  const float acc_visc_i = mu_sum * wi_dx * dens_ij_inv * r_inv;
+  const float acc_visc_j = mu_sum * wj_dx * dens_ij_inv * r_inv;
+  const float dens_i = dv[0] * wi_dx*dx[0] + dv[1] * wi_dx*dx[1] + dv[2] * wi_dx*dx[2];
+  const float dens_j = dv[0] * wj_dx*dx[0] + dv[1] * wj_dx*dx[1] + dv[2] * wj_dx*dx[2];
   
-//if(pi->id == 65744) printf("hydro = %e, visco = %e, sum = %e\n", -mj * acc * wi_dx * dx[0], (mj * mu_sum * dv[0] * dens_ij_inv) * wi_dx /r, pi->a_hydro[0]);
-//if(pj->id == 65744) printf("hydro = %e, visco = %e, sum = %e\n", mi * acc * wj_dx * dx[0], -(mi * mu_sum * dv[0] * dens_ij_inv) * wj_dx /r, pj->a_hydro[0]);
+  /* Apply forces */
+  pi->drho_dt += mj * dens_i;
+  pi->a_hydro[0] += mj * (acc_visc_i * dv[0] - acc_sph_i * dx[0]);
+  pi->a_hydro[1] += mj * (acc_visc_i * dv[1] - acc_sph_i * dx[1]);
+  pi->a_hydro[2] += mj * (acc_visc_i * dv[2] - acc_sph_i * dx[2]);
+
+  pi->a_visc[0] += mj * acc_visc_i * dv[0];
+  pi->a_visc[1] += mj * acc_visc_i * dv[1];
+  pi->a_visc[2] += mj * acc_visc_i * dv[2];
+
+  pj->drho_dt += mi * dens_j;
+  pj->a_hydro[0] -= mi * (acc_visc_j * dv[0] - acc_sph_j * dx[0]);
+  pj->a_hydro[1] -= mi * (acc_visc_j * dv[1] - acc_sph_j * dx[1]);
+  pj->a_hydro[2] -= mi * (acc_visc_j * dv[2] - acc_sph_j * dx[2]);
+
+  pj->a_visc[0] -= mi * acc_visc_j * dv[0];
+  pj->a_visc[1] -= mi * acc_visc_j * dv[1];
+  pj->a_visc[2] -= mi * acc_visc_j * dv[2];
+
+  if(pi->id == 3374 && pj->is_boundary) printf("i: hydro = [%e %e %e, dv[0] = %e, dx[0] = %e, dx[1]=%e, r=%e P=%e, dens=%e, P/rho=%e, w_dx=%e\n", -mj * acc_sph_i * dx[0], -mj * acc_sph_i * dx[1], -mj * acc_sph_i * dx[2], dv[0], dx[0], dx[1], r, pj->pressure, mj*dens_i,(Pi_over_rhosq + Pj_over_rhosq),wi_dx );
+  if(pj->id == 3374 && pi->is_boundary) printf("j: hydro = [%e %e %e], dv[0] = %e, dx[0] = %e, dx[1]=%e, r=%e P=%e, dens=%e,  P/rho=%e, w_dx=%e\n", mi * acc_sph_j * dx[0], mi * acc_sph_j * dx[1], mi * acc_sph_j * dx[2], -dv[0], -dx[0], dx[1], r, pi->pressure, mi*dens_j, (Pi_over_rhosq + Pj_over_rhosq),wj_dx );  
+//  if(pi->id == 3374) printf("viscosity a[0] = [ %e %e %e], hydro = [%e %e %e]\n", mj * acc_visc_i * dv[0],mj * acc_visc_i * dv[1], mj * acc_visc_i * dv[2], -mj * acc_sph_i * dx[0], -mj * acc_sph_i * dx[1], -mj * acc_sph_i * dx[2] );  
+//  if(pj->id == 3374) printf("viscosity a[0] = [ %e %e %e], hydro = [%e %e %e]\n", -mi * acc_visc_j * dv[0], -mi * acc_visc_j * dv[1], -mi * acc_visc_j * dv[2], mi * acc_sph_j * dx[0], mi * acc_sph_j * dx[1], mi * acc_sph_j * dx[2] );  
 
 }
 
@@ -215,6 +216,7 @@ __attribute__((always_inline)) INLINE static void runner_iact_nonsym_force(
   rhoj = pj->rho;
   rhoi_inv = 1.0f / rhoi;
   rhoj_inv = 1.0f / rhoj;
+  const int r_inv = 1.0 / r;
 
   /* Compute dv */
   dv[0] = pi->v[0] - pj->v[0];
@@ -234,29 +236,29 @@ __attribute__((always_inline)) INLINE static void runner_iact_nonsym_force(
   kernel_deval(xi, &wi, &wi_dx);
   wi_dx = wi_dx * inv_hidim_pow_plus_one;
 
-  /* Compute the artificial viscosity term */
+  /* Do the 'regular' hydro forces... */
+  const float acc_sph_i = (Pi_over_rhosq + Pj_over_rhosq) * r_inv * wi_dx;
+
+  /* Viscosity implementation */
   const float mu_i = rhoi * pi->dynamic_viscosity;
   const float mu_j = rhoj * pj->dynamic_viscosity;
   const float mu_sum = mu_i + mu_j;
   const float dens_ij_inv = rhoi_inv * rhoj_inv;
-
-
-//  if((pi->id == 86400 && pj->is_boundary)) printf("pi_ab = %f, v_dot_r = %f\n", pi_ab, v_dot_r);
-  /* Acceleration term (needs multiplying by the dx in relevant dimension to correctly
- *   calculate the grad W term. */
-  const float acc = (Pi_over_rhosq + Pj_over_rhosq);
-
-  /* drho_dt term exclusing particle masses */
+  const float acc_visc_i = mu_sum * wi_dx * dens_ij_inv * r_inv;
   const float dens = dv[0] * wi_dx*dx[0] + dv[1] * wi_dx*dx[1] + dv[2] * wi_dx*dx[2];
-//  printf("dens=%f dv[0]=%f dx[0]=%f \n", dens, dv[0], dx[0]);
-  pi->drho_dt += mj * dens;
-  pi->a_hydro[0] -= mj * acc * wi_dx * dx[0];
-  pi->a_hydro[0] += (mj * mu_sum * dv[0] * dens_ij_inv) * wi_dx /r;
-  pi->a_hydro[1] -= mj * acc * wi_dx * dx[1];
-  pi->a_hydro[1] += (mj * mu_sum * dv[1] * dens_ij_inv) * wi_dx /r;
-  pi->a_hydro[2] -= mj * acc * wi_dx * dx[2];
-  pi->a_hydro[2] += (mj * mu_sum * dv[2] * dens_ij_inv) * wi_dx /r;
 
+  /* Apply forces */
+  pi->drho_dt += mj * dens;
+  pi->a_hydro[0] += mj * (acc_visc_i * dv[0] - acc_sph_i * dx[0]); 
+  pi->a_hydro[1] += mj * (acc_visc_i * dv[1] - acc_sph_i * dx[1]);
+  pi->a_hydro[2] += mj * (acc_visc_i * dv[2] - acc_sph_i * dx[2]);
+
+  pi->a_visc[0] += mj * acc_visc_i * dv[0];
+  pi->a_visc[1] += mj * acc_visc_i * dv[1];
+  pi->a_visc[2] += mj * acc_visc_i * dv[2];
+
+  if(pi->id == 3374 && pj->is_boundary) printf("i: hydro = [%e %e %e, dv[0] = %e, dx[0] = %e, dx[1]=%e, r=%e P=%e, dens=%e, P/rho=%e, w_dx=%e\n", -mj * acc_sph_i * dx[0], -mj * acc_sph_i * dx[1], -mj * acc_sph_i * dx[2], dv[0], dx[0], dx[1], r, pj->pressure, mj*dens,(Pi_over_rhosq + Pj_over_rhosq),wi_dx );
+  ///*if(pi->id == 3374)*/ printf("viscosity a[0] = [ %e %e %e], hydro = [%e %e %e]\n", mj * acc_visc_i * dv[0],mj * acc_visc_i * dv[1], mj * acc_visc_i * dv[2], -mj * acc_sph_i * dx[0], -mj * acc_sph_i * dx[1], -mj * acc_sph_i * dx[2] );  
 }
 //#endif
 

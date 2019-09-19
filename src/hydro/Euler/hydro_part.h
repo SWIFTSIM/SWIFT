@@ -19,6 +19,7 @@
 #ifndef SWIFT_EULER_HYDRO_PART_H
 #define SWIFT_EULER_HYDRO_PART_H
 
+#include "black_holes_struct.h"
 #include "chemistry_struct.h"
 #include "cooling_struct.h"
 #include "star_formation_struct.h"

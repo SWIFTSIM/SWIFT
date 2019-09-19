@@ -147,33 +147,33 @@ INLINE static void hydro_write_particles(const struct part* parts,
 
   /* List what we want to write */
   list[0] = io_make_output_field_convert_part("Coordinates", DOUBLE, 3,
-                                              UNIT_CONV_LENGTH, parts, xparts,
-                                              convert_part_pos);
+                                              UNIT_CONV_LENGTH, 0.f, parts, xparts,
+                                              convert_part_pos, "coords");
   list[1] = io_make_output_field_convert_part(
-      "Velocities", FLOAT, 3, UNIT_CONV_SPEED, parts, xparts, convert_part_vel);
+      "Velocities", FLOAT, 3, UNIT_CONV_SPEED, 0.f, parts, xparts, convert_part_vel, "vels");
   list[2] =
-      io_make_output_field("Masses", FLOAT, 1, UNIT_CONV_MASS, parts, mass);
+      io_make_output_field("Masses", FLOAT, 1, UNIT_CONV_MASS, 0.f, parts, mass, "mass");
   list[3] = io_make_output_field("SmoothingLength", FLOAT, 1, UNIT_CONV_LENGTH,
-                                 parts, h);
+                                 0.f, parts, h, "h");
   list[4] = io_make_output_field("InternalEnergy", FLOAT, 1,
-                                 UNIT_CONV_ENERGY_PER_UNIT_MASS, parts, u);
+                                 UNIT_CONV_ENERGY_PER_UNIT_MASS, 0.f, parts, u, "u");
   list[5] = io_make_output_field("ParticleIDs", ULONGLONG, 1,
-                                 UNIT_CONV_NO_UNITS, parts, id);
+                                 UNIT_CONV_NO_UNITS,0.f, parts, id, "id");
   list[6] =
-      io_make_output_field("Density", FLOAT, 1, UNIT_CONV_DENSITY, parts, rho);
+      io_make_output_field("Density", FLOAT, 1, UNIT_CONV_DENSITY,0.f, parts, rho, "rho");
   list[7] = io_make_output_field_convert_part("Entropy", FLOAT, 1,
                                               UNIT_CONV_ENTROPY_PER_UNIT_MASS,
-                                              parts, xparts, convert_S);
+                                              0.f,parts, xparts, convert_S, "n/a");
   list[8] = io_make_output_field_convert_part(
-      "Pressure", FLOAT, 1, UNIT_CONV_PRESSURE, parts, xparts, convert_P);
+      "Pressure", FLOAT, 1, UNIT_CONV_PRESSURE,0.f, parts, xparts, convert_P, "n/a");
 
   list[9] = io_make_output_field_convert_part("Potential", FLOAT, 1,
-                                              UNIT_CONV_POTENTIAL, parts,
-                                              xparts, convert_part_potential);
+                                              UNIT_CONV_POTENTIAL,0.f, parts,
+                                              xparts, convert_part_potential, "n/a");
   list[10] = io_make_output_field("ConstantAcceleration", DOUBLE, 3,
-                                               UNIT_CONV_ACCELERATION, parts, a_constant);
-  list[11] = io_make_output_field("IsBoundary", INT, 1, UNIT_CONV_NO_UNITS, parts, is_boundary);
-  list[12] = io_make_output_field("Acceleration", FLOAT, 3, UNIT_CONV_ACCELERATION, parts, a_hydro);
+                                               UNIT_CONV_ACCELERATION, 0.f, parts, a_constant, "a_constant");
+  list[11] = io_make_output_field("IsBoundary", INT, 1, UNIT_CONV_NO_UNITS, 0.f, parts, is_boundary, "is_boundary");
+  list[12] = io_make_output_field("Acceleration", FLOAT, 3, UNIT_CONV_ACCELERATION, 0.f, parts, a_hydro, "a_hydro");
                                              
 }
 

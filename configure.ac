@@ -391,6 +391,28 @@ elif test "$boundary_particles" != "no"; then
    AC_DEFINE_UNQUOTED([SWIFT_BOUNDARY_PARTICLES], [$enableval] ,[Particles with smaller ID than this will be considered as boundaries.])
 fi
 
+#Choose Engineering Boundary rule
+# Hydro scheme.
+AC_ARG_WITH([boundary],
+   [AS_HELP_STRING([--with-boundary=<scheme>],
+      [Engineering boundary option to use @<:@no_boundary, fixed_fluid default: no_boundary@:>@]
+   )],
+   [with_boundary="$withval"],
+   [with_boundary="no_boundary"]
+)
+
+
+case "$with_boundary" in
+   no_boundary)
+      AC_DEFINE([NO_BOUNDARY], [1], [No Engineering Boundary])
+   ;;
+   fixed_fluid)
+      AC_DEFINE([FIXED_FLUID_BOUNDARY], [1], [Fixed Fluid Boundary])
+   ;;
+esac
+
+
+
 # Check whether we have any of the ARM v8.1 tick timers
 AX_ASM_ARM_PMCCNTR
 AX_ASM_ARM_CNTVCT
@@ -2228,6 +2250,7 @@ AC_MSG_RESULT([
    VELOCIraptor enabled : $have_velociraptor
    FoF activated:       : $enable_fof
    Engineering enabled  : $with_engineering
+   Engineering boundary : $with_boundary
    Exact cells enabled  : $enable_exact_cells
 
    Hydro scheme       : $with_hydro
