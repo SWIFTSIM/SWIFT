@@ -32,6 +32,12 @@
 #define queue_incoming_size 10240
 #define queue_struct_align 64
 
+/* Constants dealing with task de-priorization. */
+#define queue_lock_fail_reweight_factor 0.5
+/* #define queue_lock_fail_reweight_mask \
+  ((1ULL << task_type_send) | (1ULL << task_type_recv)) */
+#define queue_lock_fail_reweight_mask ((1ULL << task_type_count) - 1)
+
 /* Counters. */
 enum {
   queue_counter_swap = 0,

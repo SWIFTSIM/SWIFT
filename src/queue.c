@@ -252,71 +252,32 @@ struct task *queue_gettask(struct queue *q, const struct task *prev,
   struct task *qtasks = q->tasks;
   const int old_qcount = q->count;
 
-  /* Data for the sliding window in which to try the task with the
-     best overlap with the previous task. */
-  struct {
-    int ind, tid;
-    float score;
-  } window[queue_search_window];
-  int window_count = 0;
-  int tid = -1;
-  int ind = -1;
-
   /* Loop over the queue entries. */
-  for (int k = 0; k < old_qcount; k++) {
-    if (k < queue_search_window) {
-      window[window_count].ind = k;
-      window[window_count].tid = entries[k].tid;
-      window[window_count].score = task_overlap(prev, &qtasks[entries[k].tid]);
-      window_count += 1;
-    } else {
-      /* Find the task with the largest overlap. */
-      int ind_max = 0;
-      for (int i = 1; i < window_count; i++)
-        if (window[i].score > window[ind_max].score) ind_max = i;
+  int ind;
+  for (ind = 0; ind < old_qcount; ind++) {
 
-      /* Try to lock that task. */
-      if (task_lock(&qtasks[window[ind_max].tid])) {
-        tid = window[ind_max].tid;
-        ind = window[ind_max].ind;
-        // message("best task has overlap %f.", window[ind_max].score);
-        break;
+    /* Try to lock the next task. */
+    if (task_lock(&qtasks[entries[ind].tid])) break;
 
-        /* Otherwise, replace it with a new one from the queue. */
-      } else {
-        window[ind_max].ind = k;
-        window[ind_max].tid = entries[k].tid;
-        window[ind_max].score = task_overlap(prev, &qtasks[entries[k].tid]);
-      }
-    }
-  }
+    /* Should we de-prioritize this task? */
+    if ((1ULL << qtasks[entries[ind].tid].type) &
+        queue_lock_fail_reweight_mask) {
+      /* Scale the task's weight. */
+      entries[ind].weight *= queue_lock_fail_reweight_factor;
 
-  /* If we didn't get a task, loop through whatever is left in the window. */
-  if (tid < 0) {
-    while (window_count > 0) {
-      int ind_max = 0;
-      for (int i = 1; i < window_count; i++)
-        if (window[i].score > window[ind_max].score) ind_max = i;
-      if (task_lock(&qtasks[window[ind_max].tid])) {
-        tid = window[ind_max].tid;
-        ind = window[ind_max].ind;
-        // message("best task has overlap %f.", window[ind_max].score);
-        break;
-      } else {
-        window_count -= 1;
-        window[ind_max] = window[window_count];
-      }
+      /* Send it down the binary heap. */
+      if (queue_sift_down(q, ind) != ind) ind -= 1;
     }
   }
 
   /* Did we get a task? */
-  if (ind >= 0) {
+  if (ind < old_qcount) {
 
     /* Another one bites the dust. */
     const int qcount = q->count -= 1;
 
     /* Get a pointer on the task that we want to return. */
-    res = &qtasks[tid];
+    res = &qtasks[entries[ind].tid];
 
     /* Swap this task with the last task and re-heap. */
     if (ind < qcount) {
