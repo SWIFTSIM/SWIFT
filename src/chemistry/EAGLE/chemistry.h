@@ -236,6 +236,41 @@ static INLINE void chemistry_init_backend(struct swift_params* parameter_file,
       data->initial_metal_mass_fraction[elem] =
           parser_get_param_float(parameter_file, buffer);
     }
+
+    /* Let's check that things make sense (broadly) */
+
+    /* H + He + Z should be ~1 */
+    float total_frac = data->initial_metal_mass_fraction[chemistry_element_H] +
+                       data->initial_metal_mass_fraction[chemistry_element_He] +
+                       data->initial_metal_mass_fraction_total;
+
+    if (total_frac < 0.98 || total_frac > 1.02)
+      error("The abundances provided seem odd! H + He + Z = %f =/= 1.",
+            total_frac);
+
+    /* Sum of metal elements should be <= Z */
+    total_frac = 0.f;
+    for (int elem = 0; elem < chemistry_element_count; ++elem) {
+      if (elem != chemistry_element_H && elem != chemistry_element_He) {
+        total_frac += data->initial_metal_mass_fraction[elem];
+      }
+    }
+
+    if (total_frac > 1.02 * data->initial_metal_mass_fraction_total)
+      error(
+          "The abundances provided seem odd! \\sum metal elements (%f) > Z "
+          "(%f)",
+          total_frac, data->initial_metal_mass_fraction_total);
+
+    /* Sum of all elements should be <= 1 */
+    total_frac = 0.f;
+    for (int elem = 0; elem < chemistry_element_count; ++elem) {
+      total_frac += data->initial_metal_mass_fraction[elem];
+    }
+
+    if (total_frac > 1.02)
+      error("The abundances provided seem odd! \\sum elements (%f) > 1",
+            total_frac);
   }
 }
 
