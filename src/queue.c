@@ -36,6 +36,7 @@
 /* Local headers. */
 #include "atomic.h"
 #include "error.h"
+#include "memswap.h"
 
 /**
  * @brief Push the task at the given index up the heap until it is either at the
@@ -48,20 +49,17 @@
  */
 int queue_bubble_up(struct queue *q, int ind) {
   /* Set some pointers we will use often. */
-  int *qtid = q->tid;
-  struct task *qtasks = q->tasks;
-  const float w = qtasks[qtid[ind]].weight;
+  struct queue_entry *entries = q->entries;
+  const float w = entries[ind].weight;
 
   /* While we are not yet at the top of the heap... */
   while (ind > 0) {
     /* Check if the parent is larger and bail if not.. */
     const int parent = (ind - 1) / 2;
-    if (w < qtasks[qtid[parent]].weight) break;
+    if (w < entries[parent].weight) break;
 
     /* Parent is not larger, so swap. */
-    int temp = q->tid[ind];
-    q->tid[ind] = q->tid[parent];
-    q->tid[parent] = temp;
+    memswap(&entries[ind], &entries[parent], sizeof(struct queue_entry));
     ind = parent;
   }
 
@@ -79,10 +77,9 @@ int queue_bubble_up(struct queue *q, int ind) {
  */
 int queue_sift_down(struct queue *q, int ind) {
   /* Set some pointers we will use often. */
-  int *qtid = q->tid;
-  struct task *qtasks = q->tasks;
+  struct queue_entry *entries = q->entries;
   const int qcount = q->count;
-  const float w = qtasks[qtid[ind]].weight;
+  const float w = entries[ind].weight;
 
   /* While we still have at least one child... */
   while (1) {
@@ -91,15 +88,12 @@ int queue_sift_down(struct queue *q, int ind) {
     if (child >= qcount) break;
 
     /* Which of both children is the largest? */
-    if (child + 1 < qcount &&
-        qtasks[qtid[child + 1]].weight > qtasks[qtid[child]].weight)
+    if (child + 1 < qcount && entries[child + 1].weight > entries[child].weight)
       child += 1;
 
     /* Do we want to swap with the largest child? */
-    if (qtasks[qtid[child]].weight > w) {
-      int temp = qtid[child];
-      qtid[child] = qtid[ind];
-      qtid[ind] = temp;
+    if (entries[child].weight > w) {
+      memswap(&entries[ind], &entries[child], sizeof(struct queue_entry));
       ind = child;
     } else
       break;
@@ -115,7 +109,7 @@ int queue_sift_down(struct queue *q, int ind) {
  */
 void queue_get_incoming(struct queue *q) {
 
-  int *tid = q->tid;
+  struct queue_entry *entries = q->entries;
 
   /* Loop over the incoming DEQ. */
   while (1) {
@@ -130,17 +124,19 @@ void queue_get_incoming(struct queue *q) {
 
     /* Does the queue need to be grown? */
     if (q->count == q->size) {
-      int *temp;
+      struct queue_entry *temp;
       q->size *= queue_sizegrow;
-      if ((temp = (int *)malloc(sizeof(int) * q->size)) == NULL)
+      if ((temp = (struct queue_entry *)malloc(sizeof(struct queue_entry) *
+                                               q->size)) == NULL)
         error("Failed to allocate new indices.");
-      memcpy(temp, tid, sizeof(int) * q->count);
-      free(tid);
-      q->tid = tid = temp;
+      memcpy(temp, entries, sizeof(struct queue_entry) * q->count);
+      free(entries);
+      q->entries = entries = temp;
     }
 
     /* Drop the task at the end of the queue. */
-    tid[q->count] = offset;
+    entries[q->count].tid = offset;
+    entries[q->count].weight = q->tasks[offset].weight;
     q->count += 1;
     atomic_dec(&q->count_incoming);
 
@@ -150,7 +146,7 @@ void queue_get_incoming(struct queue *q) {
 #ifdef SWIFT_DEBUG_CHECK
     /* Check the queue's consistency. */
     for (int k = 1; k < q->count; k++)
-      if (tasks[tid[(k - 1) / 2]].weight < tasks[tid[k]].weight)
+      if (entries[(k - 1) / 2].weight < entries[k].weight)
         error("Queue heap is disordered.");
 #endif
   }
@@ -197,8 +193,9 @@ void queue_init(struct queue *q, struct task *tasks) {
 
   /* Allocate the task list if needed. */
   q->size = queue_sizeinit;
-  if ((q->tid = (int *)malloc(sizeof(int) * q->size)) == NULL)
-    error("Failed to allocate queue tids.");
+  if ((q->entries = (struct queue_entry *)malloc(sizeof(struct queue_entry) *
+                                                 q->size)) == NULL)
+    error("Failed to allocate queue entries.");
 
   /* Set the tasks pointer. */
   q->tasks = tasks;
@@ -251,7 +248,7 @@ struct task *queue_gettask(struct queue *q, const struct task *prev,
   }
 
   /* Set some pointers we will use often. */
-  int *qtid = q->tid;
+  struct queue_entry *entries = q->entries;
   struct task *qtasks = q->tasks;
   const int old_qcount = q->count;
 
@@ -269,8 +266,8 @@ struct task *queue_gettask(struct queue *q, const struct task *prev,
   for (int k = 0; k < old_qcount; k++) {
     if (k < queue_search_window) {
       window[window_count].ind = k;
-      window[window_count].tid = qtid[k];
-      window[window_count].score = task_overlap(prev, &qtasks[qtid[k]]);
+      window[window_count].tid = entries[k].tid;
+      window[window_count].score = task_overlap(prev, &qtasks[entries[k].tid]);
       window_count += 1;
     } else {
       /* Find the task with the largest overlap. */
@@ -288,8 +285,8 @@ struct task *queue_gettask(struct queue *q, const struct task *prev,
         /* Otherwise, replace it with a new one from the queue. */
       } else {
         window[ind_max].ind = k;
-        window[ind_max].tid = qtid[k];
-        window[ind_max].score = task_overlap(prev, &qtasks[qtid[k]]);
+        window[ind_max].tid = entries[k].tid;
+        window[ind_max].score = task_overlap(prev, &qtasks[entries[k].tid]);
       }
     }
   }
@@ -323,7 +320,7 @@ struct task *queue_gettask(struct queue *q, const struct task *prev,
 
     /* Swap this task with the last task and re-heap. */
     if (ind < qcount) {
-      qtid[ind] = qtid[qcount];
+      entries[ind] = entries[qcount];
       ind = queue_bubble_up(q, ind);
       ind = queue_sift_down(q, ind);
     }
@@ -334,7 +331,7 @@ struct task *queue_gettask(struct queue *q, const struct task *prev,
 #ifdef SWIFT_DEBUG_CHECKS
   /* Check the queue's consistency. */
   for (int k = 1; k < q->count; k++)
-    if (qtasks[qtid[(k - 1) / 2]].weight < qtasks[qtid[k]].weight)
+    if (entries[(k - 1) / 2].weight < entries[k].weight)
       error("Queue heap is disordered.");
 #endif
 
@@ -347,6 +344,6 @@ struct task *queue_gettask(struct queue *q, const struct task *prev,
 
 void queue_clean(struct queue *q) {
 
-  free(q->tid);
+  free(q->entries);
   free(q->tid_incoming);
 }

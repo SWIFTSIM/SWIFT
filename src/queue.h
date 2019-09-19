@@ -39,6 +39,17 @@ enum {
 };
 extern int queue_counter[queue_counter_count];
 
+/** Struct containing a task offset and a weight, used to build the binary heap
+ * of tasks in the queue. */
+struct queue_entry {
+  /* The offset of the task in the task list. */
+  int tid;
+
+  /* The weight of the task. This is stored in queue as well since it may well
+   * be adjusted dynamically. */
+  float weight;
+};
+
 /** The queue struct. */
 struct queue {
 
@@ -51,8 +62,8 @@ struct queue {
   /* The actual tasks to which the indices refer. */
   struct task *tasks;
 
-  /* The task indices. */
-  int *tid;
+  /* The task indices and weights. */
+  struct queue_entry *entries;
 
   /* DEQ for incoming tasks. */
   int *tid_incoming;
