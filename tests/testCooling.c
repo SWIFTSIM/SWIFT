@@ -45,20 +45,14 @@ void set_quantities(struct part *restrict p, struct xpart *restrict xp,
                     const struct cooling_function_data *restrict cooling,
                     struct cosmology *restrict cosmo,
                     const struct phys_const *restrict phys_const, float nh_cgs,
-                    double u, integertime_t ti_current) {
-
-  /* Update cosmology quantities */
-  //cosmology_update(cosmo, phys_const, ti_current);
-
+                    double u_cgs, integertime_t ti_current) {
   /* calculate density */
   double hydrogen_number_density = nh_cgs / cooling->number_density_to_cgs;
   p->rho = hydrogen_number_density * phys_const->const_proton_mass /
-           p->chemistry_data.metal_mass_fraction[chemistry_element_H];// *
-           //(cosmo->a * cosmo->a * cosmo->a);
+           p->chemistry_data.metal_mass_fraction[chemistry_element_H];
 
   /* update entropy based on internal energy */
-  //float pressure = (u * cosmo->a * cosmo->a) * cooling->internal_energy_from_cgs *
-  float pressure = (u) * cooling->internal_energy_from_cgs *
+  float pressure = (u_cgs) * cooling->internal_energy_from_cgs *
                    p->rho * (hydro_gamma_minus_one);
   p->entropy = pressure * (pow(p->rho, -hydro_gamma));
   xp->entropy_full = p->entropy;
@@ -82,20 +76,19 @@ int main(int argc, char **argv) {
   struct cosmology cosmo;
   char *parametersFileName = "./testCooling.yml";
 
-  float nh;  // hydrogen number density
-  double u;  // internal energy
+  float nh_cgs;  // hydrogen number density
+  double u_cgs;  // internal energy
+
+  const float seconds_per_year = 3.154e7;
 
   /* switch between checking comoving cooling and subcycling */
-  const int comoving_check = 1;
+  const int comoving_check = 0;
 
   /* Number of values to test for in redshift,
    * hydrogen number density and internal energy */
-  //const int n_z = 50;
-  //const int n_nh = 50;
-  //const int n_u = 50;
-  const int n_z = 3;
-  const int n_nh = 1;
-  const int n_u = 1;
+  const int n_z = 5;
+  const int n_nh = 5;
+  const int n_u = 5;
 
   /* Number of subcycles and tolerance used to compare
    * subcycled and implicit solution. Note, high value
@@ -126,8 +119,6 @@ int main(int argc, char **argv) {
   /* Set dt */
   const int timebin = 38;
   float dt_cool, dt_therm;
-  //float dt_cool = get_timestep(timebin,cosmo.time_base);
-  //float dt_therm = dt_cool;
 
   /* Init hydro_props */
   struct hydro_props hydro_properties;
@@ -163,26 +154,27 @@ int main(int argc, char **argv) {
 
 
   /* calculate spacing in nh and u */
-  //const float delta_nh = (cooling.nH[eagle_cooling_N_density - 1] - cooling.nH[0]) / n_nh;
-  //const float delta_u =
-  //    (cooling.Therm[eagle_cooling_N_temperature - 1] - cooling.Therm[0]) / n_u;
+  const float log_u_min_cgs = 11, log_u_max_cgs = 17;
+  const float log_nh_min_cgs = -6, log_nh_max_cgs = 3;
+  const float delta_log_nh_cgs = (log_nh_max_cgs - log_nh_min_cgs) / n_nh;
+  const float delta_log_u_cgs = (log_u_max_cgs - log_u_min_cgs) / n_u;
 
   /* Declare variables we will be checking */
   double du_dt_implicit, du_dt_check;
   integertime_t ti_current;
 
+  /* Loop over values of nh and u */
   for (int nh_i = 0; nh_i < n_nh; nh_i++) {
-    //nh = exp(M_LN10 * cooling.nH[0] + delta_nh * nh_i);
-    nh = 0.1;
+    nh_cgs = exp(M_LN10 * log_nh_min_cgs + delta_log_nh_cgs * nh_i);
     for (int u_i = 0; u_i < n_u; u_i++) {
-      //u = exp(M_LN10 * cooling.Therm[0] + delta_u * u_i);
-      u = 1.0e13;
+      u_cgs = exp(M_LN10 * log_u_min_cgs + delta_log_u_cgs * u_i);
 
+      /* Calculate cooling solution at redshift zero if we're doing the comoving check */
       if (comoving_check) {
           /* reset quantities to nh, u, and z that we want to test */
           ti_current = max_nr_timesteps;
           cosmology_update(&cosmo, &phys_const, ti_current);
-          set_quantities(&p, &xp, &us, &cooling, &cosmo, &phys_const, nh, u,
+          set_quantities(&p, &xp, &us, &cooling, &cosmo, &phys_const, nh_cgs, u_cgs,
                          ti_current);
 
           /* Set dt */
@@ -203,15 +195,27 @@ int main(int argc, char **argv) {
           du_dt_check =
               hydro_get_physical_internal_energy_dt(&p, &cosmo);
       }
+      /* Loop over z */
       for (int z_i = 0; z_i <= n_z; z_i++) {
         ti_current = max_nr_timesteps / n_z * z_i + 1;
 
+        /* If we're not doing comoving check, confirm that implicit and subcycled explicit solution match */
         if (!comoving_check) {
           /* update nh, u, z */
           cosmology_update(&cosmo, &phys_const, ti_current);
+          cooling_init(params, &us, &phys_const, &hydro_properties, &cooling);
           cooling_update(&cosmo, &cooling, 0);
-          set_quantities(&p, &xp, &us, &cooling, &cosmo, &phys_const, nh, u,
+          set_quantities(&p, &xp, &us, &cooling, &cosmo, &phys_const, nh_cgs, u_cgs,
                          ti_current);
+
+          /* Set dt */
+          const integertime_t ti_step = get_integer_timestep(timebin);
+          const integertime_t ti_begin =
+              get_integer_time_begin(ti_current - 1, timebin);
+          dt_cool =
+              cosmology_get_delta_time(&cosmo, ti_begin, ti_begin + ti_step);
+          dt_therm = cosmology_get_therm_kick_factor(&cosmo, ti_begin,
+                                                     ti_begin + ti_step);
 
           /* calculate subcycled solution */
           for (int t_subcycle = 0; t_subcycle < n_subcycle; t_subcycle++) {
@@ -226,7 +230,7 @@ int main(int argc, char **argv) {
           
           /* reset quantities to nh, u, and z that we want to test */
           cosmology_update(&cosmo, &phys_const, ti_current);
-          set_quantities(&p, &xp, &us, &cooling, &cosmo, &phys_const, nh, u,
+          set_quantities(&p, &xp, &us, &cooling, &cosmo, &phys_const, nh_cgs, u_cgs,
                          ti_current);
           
           /* compute implicit solution */
@@ -236,37 +240,12 @@ int main(int argc, char **argv) {
               hydro_get_physical_internal_energy_dt(&p, &cosmo);
 
         } else {
-          /* use set_quantities to set the redshift (and scalefactor) */
-          //set_quantities(&p, &xp, &us, &cooling, &cosmo, &phys_const, nh, u,
-          //               ti_current);
-          //float density_1_physical = hydro_get_physical_density(&p, &cosmo);
-          //float density_1_comoving = hydro_get_comoving_density(&p);
-          //float internal_energy_1_physical = hydro_get_physical_internal_energy(&p, &xp, &cosmo);
-          //float internal_energy_1_comoving = hydro_get_comoving_internal_energy(&p, &xp);
-
           /* reset to get the comoving density */
           cosmology_update(&cosmo, &phys_const, ti_current);
-          set_quantities(&p, &xp, &us, &cooling, &cosmo, &phys_const, nh * cosmo.a*cosmo.a*cosmo.a, u / cosmo.a2_inv,
+          cosmo.z = 0.f;
+          set_quantities(&p, &xp, &us, &cooling, &cosmo, &phys_const, nh_cgs * cosmo.a*cosmo.a*cosmo.a, u_cgs / cosmo.a2_inv,
                          ti_current);
-          //float density_2_physical = hydro_get_physical_density(&p, &cosmo);
-          //float density_2_comoving = hydro_get_comoving_density(&p);
-          //float internal_energy_2_physical = hydro_get_physical_internal_energy(&p, &xp, &cosmo);
-          //float internal_energy_2_comoving = hydro_get_comoving_internal_energy(&p, &xp);
 
-          //message("scale factor %.5e density physical comoving %.5e %.5e", cosmo.a, density_2_physical, density_2_comoving);
-          //message("scale factor %.5e internal_energy physical comoving %.5e %.5e", cosmo.a, internal_energy_2_physical, internal_energy_2_comoving);
-          //message("scale factor %.5e density 1 2 physical comoving %.5e %.5e %.5e %.5e", cosmo.a, density_1_physical, density_1_comoving, density_2_physical, density_2_comoving);
-          //message("scale factor %.5e internal_energy 1 2 physical comoving %.5e %.5e %.5e %.5e", cosmo.a, internal_energy_1_physical, internal_energy_1_comoving, internal_energy_2_physical, internal_energy_2_comoving);
-
-          /* Set dt */
-          const integertime_t ti_step = get_integer_timestep(timebin);
-          const integertime_t ti_begin =
-              get_integer_time_begin(ti_current - 1, timebin);
-          dt_cool =
-              cosmology_get_delta_time(&cosmo, ti_begin, ti_begin + ti_step);
-          dt_therm = cosmology_get_therm_kick_factor(&cosmo, ti_begin,
-                                                     ti_begin + ti_step);
-          
           /* Load the appropriate tables */
           cooling_init(params, &us, &phys_const, &hydro_properties, &cooling);
           cooling_update(&cosmo, &cooling, 0);
@@ -280,23 +259,25 @@ int main(int argc, char **argv) {
 
         /* check if the two solutions are consistent */
         if (fabs((du_dt_implicit - du_dt_check) / du_dt_check) >
-            integration_tolerance) {
+            integration_tolerance || 
+            (du_dt_check == 0.0 && du_dt_implicit != 0.0))
           message(
-              "implicit and reference solutions do not match. scale factor %.5e z_i %d nh_i %d "
-              "u_i %d implicit %.5e reference %.5e error %.5e",
-              cosmo.a, z_i, nh_i, u_i, du_dt_implicit, du_dt_check,
+              "Solutions do not match. scale factor %.5e z %.5e nh_cgs %.5e "
+              "u_cgs %.5e dt (years) %.5e du cgs implicit %.5e reference %.5e error %.5e",
+              cosmo.a, cosmo.z, nh_cgs, 
+              u_cgs, 
+              dt_cool * units_cgs_conversion_factor(&us, UNIT_CONV_TIME)/seconds_per_year,
+              du_dt_implicit * units_cgs_conversion_factor(&us, UNIT_CONV_ENERGY_PER_UNIT_MASS) * dt_therm, 
+              du_dt_check * units_cgs_conversion_factor(&us, UNIT_CONV_ENERGY_PER_UNIT_MASS) * dt_therm,
               fabs((du_dt_implicit - du_dt_check) / du_dt_check));
-        } else {
-          message(
-              "implicit and reference solutions match. scale factor %.5e z_i %d nh_i %d "
-              "u_i %d implicit %.5e reference %.5e error %.5e",
-              cosmo.a, z_i, nh_i, u_i, du_dt_implicit, du_dt_check,
-              fabs((du_dt_implicit - du_dt_check) / du_dt_check));
-        }
       }
     }
   }
-  message("done test");
+  if (comoving_check) {
+    message("done comoving cooling test");
+  } else {
+    message("done explicit subcycling cooling test");
+  }
 
   free(params);
   return 0;
