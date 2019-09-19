@@ -238,6 +238,13 @@ Whilst one would use the following values for solar abundances
      init_abundance_Silicon:      6.825874e-4  # Mass fraction in Silicon
      init_abundance_Iron:         1.1032152e-3 # Mass fraction in Iron
 
+Note that the code will verify that the input values make broad sense. This
+means that SWIFT checks on startup that:
+
+ * :math:`Z_{\rm H}+Z_{\rm He}+Z_{\rm metals} \approx 1`
+ * :math:`Z_{\rm C} + Z_{\rm N} + Z_{\rm O} + Z_{\rm Ne} + Z_{\rm Mg} + Z_{\rm Si} + Z_{\rm Fe} \lesssim Z_{\rm metals}`
+ * :math:`Z_{\rm H} + Z_{\rm He} + Z_{\rm C} + Z_{\rm N} + Z_{\rm O} + Z_{\rm Ne} + Z_{\rm Mg} + Z_{\rm Si} + Z_{\rm Fe} \approx 1`
+
 Individual element abundances for each particle can also be read
 directly from the ICs. By default these are overwritten in the code by
 the values read from the YAML file. However, users can set the
