@@ -181,7 +181,7 @@ void mpiuse_log_allocation(int type, int subtype, void *ptr, int activation,
  * @brief dump the log to a file and reset, if anything to dump.
  *
  * @param filename name of file for log dump.
- * @param stepticks the clock ticks at the start of step, if dumping a step, 
+ * @param stepticks the clock ticks at the start of step, if dumping a step,
  *                  otherwise some locally relative time that might help
  *                  synchronize across ranks.
  */
@@ -303,12 +303,12 @@ void mpiuse_log_dump(const char *filename, ticks stepticks) {
     /* And output. */
     fprintf(fd, "%lld %lld %lld %d %d %d %s %d %s %d %d %d %zd %zd\n",
             mpiuse_log[k].tic - stepticks,
-            mpiuse_log[k].tic - clocks_start_ticks,
-            mpiuse_log[k].acttic, mpiuse_log[k].step, engine_rank,
-            mpiuse_log[k].otherrank, taskID_names[mpiuse_log[k].type],
-            mpiuse_log[k].type, subtaskID_names[mpiuse_log[k].subtype],
-            mpiuse_log[k].subtype, mpiuse_log[k].activation,
-            mpiuse_log[k].tag, mpiuse_log[k].size, mpiuse_current);
+            mpiuse_log[k].tic - clocks_start_ticks, mpiuse_log[k].acttic,
+            mpiuse_log[k].step, engine_rank, mpiuse_log[k].otherrank,
+            taskID_names[mpiuse_log[k].type], mpiuse_log[k].type,
+            subtaskID_names[mpiuse_log[k].subtype], mpiuse_log[k].subtype,
+            mpiuse_log[k].activation, mpiuse_log[k].tag, mpiuse_log[k].size,
+            mpiuse_current);
   }
 
 #ifdef MEMUSE_RNODE_DUMP

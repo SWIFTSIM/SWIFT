@@ -112,7 +112,7 @@ static void memuse_rnode_add_child(struct memuse_rnode *node,
   void *mem = realloc(node->children,
                       (node->count + 1) * sizeof(struct memuse_rnode *));
   if (mem == NULL) error("Failed to reallocate rnodes\n");
-  node->children = mem;
+  node->children = (struct memuse_rnode **)mem;
 
   /* Insert the new child. */
   memuse_rnode_binsert_child(child, node->children, &node->count);
@@ -157,7 +157,7 @@ void memuse_rnode_insert_child(struct memuse_rnode *node, uint8_t depth,
   uint8_t keypart = key[depth];
   struct memuse_rnode *child = memuse_rnode_lookup(node, keypart);
   if (child == NULL) {
-    child = calloc(1, sizeof(struct memuse_rnode));
+    child = (struct memuse_rnode *)calloc(1, sizeof(struct memuse_rnode));
     child->keypart = keypart;
     memuse_rnode_add_child(node, child);
   }
