@@ -670,12 +670,8 @@ star_formation_part_has_no_neighbours(struct part* restrict p,
  * Nothing to do here. We do not need to compute any quantity in the hydro
  * density loop for the EAGLE star formation model.
  *
- * @param phys_const The physical constant in internal units.
- * @param us The unit system.
- * @param cosmo The current cosmological model.
  * @param data The global star_formation information used for this run.
  * @param p Pointer to the particle data.
- * @param xp Pointer to the extended particle data.
  */
 __attribute__((always_inline)) INLINE static void star_formation_init_part(
     struct part* restrict p, const struct star_formation* data) {}
