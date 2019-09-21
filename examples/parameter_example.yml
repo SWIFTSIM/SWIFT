@@ -180,6 +180,7 @@ DomainDecomposition:
                               #            "region", "memory", or "vectorized".
   initial_grid: [10,10,10]    # (Optional) Grid sizes if the "grid" strategy is chosen.
 
+  synchronous:      0         # (Optional) Use synchronous MPI requests to redistribute, uses less system memory, but slower.
   repartition_type: fullcosts # (Optional) The re-decomposition strategy, one of:
                               # "none", "fullcosts", "edgecosts", "memory" or
                               # "timecosts".

@@ -3684,6 +3684,11 @@ void engine_config(int restart, int fof, struct engine *e,
                                              engine_maxproxies)) == NULL)
       error("Failed to allocate memory for proxies.");
     e->nr_proxies = 0;
+
+    /* Use synchronous MPI sends and receives when redistributing. */
+    e->syncredist =
+        parser_get_opt_param_int(params, "DomainDecomposition:synchronous", 0);
+
 #endif
   }
 
