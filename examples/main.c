@@ -1231,6 +1231,15 @@ int main(int argc, char *argv[]) {
   }
 #endif
 
+    /* Dump MPI requests if collected. */
+#if defined(SWIFT_MPIUSE_REPORTS) && defined(WITH_MPI)
+  {
+    char dumpfile[40];
+    snprintf(dumpfile, 40, "mpiuse_report-rank%d-step%d.dat", engine_rank, 0);
+    mpiuse_log_dump(dumpfile, clocks_start_ticks);
+  }
+#endif
+
   /* Main simulation loop */
   /* ==================== */
   int force_stop = 0, resubmit = 0;
@@ -1298,6 +1307,16 @@ int main(int argc, char *argv[]) {
       memuse_log_dump(dumpfile);
     }
 #endif
+
+      /* Dump MPI requests if collected. */
+#if defined(SWIFT_MPIUSE_REPORTS) && defined(WITH_MPI)
+    {
+      char dumpfile[40];
+      snprintf(dumpfile, 40, "mpiuse_report-rank%d-step%d.dat", engine_rank,
+               j + 1);
+      mpiuse_log_dump(dumpfile, e.tic_step);
+    }
+#endif  // WITH_MPI
 
 #ifdef SWIFT_DEBUG_THREADPOOL
     /* Dump the task data using the given frequency. */

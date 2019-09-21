@@ -47,6 +47,7 @@
 #include "intrinsics.h"
 #include "kernel_hydro.h"
 #include "memuse.h"
+#include "mpiuse.h"
 #include "queue.h"
 #include "sort_part.h"
 #include "space.h"
@@ -1694,281 +1695,234 @@ void scheduler_enqueue(struct scheduler *s, struct task *t) {
         break;
       case task_type_recv:
 #ifdef WITH_MPI
+      {
+        size_t size = 0;              /* Size in bytes. */
+        size_t count = 0;             /* Number of elements to receive */
+        MPI_Datatype type = MPI_BYTE; /* Type of the elements */
+        void *buff = NULL;            /* Buffer to accept elements */
+
         if (t->subtype == task_subtype_tend_part) {
-          t->buff = (struct pcell_step_hydro *)malloc(
-              sizeof(struct pcell_step_hydro) * t->ci->mpi.pcell_size);
-          err = MPI_Irecv(
-              t->buff, t->ci->mpi.pcell_size * sizeof(struct pcell_step_hydro),
-              MPI_BYTE, t->ci->nodeID, t->flags, subtaskMPI_comms[t->subtype],
-              &t->req);
+
+          count = size =
+              t->ci->mpi.pcell_size * sizeof(struct pcell_step_hydro);
+          buff = t->buff = malloc(count);
+
         } else if (t->subtype == task_subtype_tend_gpart) {
-          t->buff = (struct pcell_step_grav *)malloc(
-              sizeof(struct pcell_step_grav) * t->ci->mpi.pcell_size);
-          err = MPI_Irecv(
-              t->buff, t->ci->mpi.pcell_size * sizeof(struct pcell_step_grav),
-              MPI_BYTE, t->ci->nodeID, t->flags, subtaskMPI_comms[t->subtype],
-              &t->req);
+
+          count = size = t->ci->mpi.pcell_size * sizeof(struct pcell_step_grav);
+          buff = t->buff = malloc(count);
+
         } else if (t->subtype == task_subtype_tend_spart) {
-          t->buff = (struct pcell_step_stars *)malloc(
-              sizeof(struct pcell_step_stars) * t->ci->mpi.pcell_size);
-          err = MPI_Irecv(
-              t->buff, t->ci->mpi.pcell_size * sizeof(struct pcell_step_stars),
-              MPI_BYTE, t->ci->nodeID, t->flags, subtaskMPI_comms[t->subtype],
-              &t->req);
+
+          count = size =
+              t->ci->mpi.pcell_size * sizeof(struct pcell_step_stars);
+          buff = t->buff = malloc(count);
+
         } else if (t->subtype == task_subtype_tend_bpart) {
-          t->buff = (struct pcell_step_black_holes *)malloc(
-              sizeof(struct pcell_step_black_holes) * t->ci->mpi.pcell_size);
-          err = MPI_Irecv(
-              t->buff,
-              t->ci->mpi.pcell_size * sizeof(struct pcell_step_black_holes),
-              MPI_BYTE, t->ci->nodeID, t->flags, subtaskMPI_comms[t->subtype],
-              &t->req);
+
+          count = size =
+              t->ci->mpi.pcell_size * sizeof(struct pcell_step_black_holes);
+          buff = t->buff = malloc(count);
+
         } else if (t->subtype == task_subtype_part_swallow) {
-          t->buff = (struct black_holes_part_data *)malloc(
-              sizeof(struct black_holes_part_data) * t->ci->hydro.count);
-          err = MPI_Irecv(
-              t->buff,
-              t->ci->hydro.count * sizeof(struct black_holes_part_data),
-              MPI_BYTE, t->ci->nodeID, t->flags, subtaskMPI_comms[t->subtype],
-              &t->req);
+
+          count = size =
+              t->ci->hydro.count * sizeof(struct black_holes_part_data);
+          buff = t->buff = malloc(count);
+
         } else if (t->subtype == task_subtype_bpart_merger) {
-          t->buff = (struct black_holes_bpart_data *)malloc(
-              sizeof(struct black_holes_bpart_data) * t->ci->black_holes.count);
-          err = MPI_Irecv(
-              t->buff,
-              t->ci->black_holes.count * sizeof(struct black_holes_bpart_data),
-              MPI_BYTE, t->ci->nodeID, t->flags, subtaskMPI_comms[t->subtype],
-              &t->req);
+          count = size =
+              sizeof(struct black_holes_bpart_data) * t->ci->black_holes.count;
+          buff = t->buff = malloc(count);
+
         } else if (t->subtype == task_subtype_xv ||
                    t->subtype == task_subtype_rho ||
                    t->subtype == task_subtype_gradient) {
-          err = MPI_Irecv(t->ci->hydro.parts, t->ci->hydro.count, part_mpi_type,
-                          t->ci->nodeID, t->flags, subtaskMPI_comms[t->subtype],
-                          &t->req);
+
+          count = t->ci->hydro.count;
+          size = count * sizeof(struct part);
+          type = part_mpi_type;
+          buff = t->ci->hydro.parts;
+
         } else if (t->subtype == task_subtype_gpart) {
-          err = MPI_Irecv(t->ci->grav.parts, t->ci->grav.count, gpart_mpi_type,
-                          t->ci->nodeID, t->flags, subtaskMPI_comms[t->subtype],
-                          &t->req);
+
+          count = t->ci->grav.count;
+          size = count * sizeof(struct gpart);
+          type = gpart_mpi_type;
+          buff = t->ci->grav.parts;
+
         } else if (t->subtype == task_subtype_spart) {
-          err = MPI_Irecv(t->ci->stars.parts, t->ci->stars.count,
-                          spart_mpi_type, t->ci->nodeID, t->flags,
-                          subtaskMPI_comms[t->subtype], &t->req);
+
+          count = t->ci->stars.count;
+          size = count * sizeof(struct spart);
+          type = spart_mpi_type;
+          buff = t->ci->stars.parts;
+
         } else if (t->subtype == task_subtype_bpart_rho ||
                    t->subtype == task_subtype_bpart_swallow ||
                    t->subtype == task_subtype_bpart_feedback) {
-          err = MPI_Irecv(t->ci->black_holes.parts, t->ci->black_holes.count,
-                          bpart_mpi_type, t->ci->nodeID, t->flags,
-                          subtaskMPI_comms[t->subtype], &t->req);
+
+          count = t->ci->black_holes.count;
+          size = count * sizeof(struct bpart);
+          type = bpart_mpi_type;
+          buff = t->ci->black_holes.parts;
+
         } else if (t->subtype == task_subtype_multipole) {
-          t->buff = (struct gravity_tensors *)malloc(
-              sizeof(struct gravity_tensors) * t->ci->mpi.pcell_size);
-          err = MPI_Irecv(t->buff, t->ci->mpi.pcell_size, multipole_mpi_type,
-                          t->ci->nodeID, t->flags, subtaskMPI_comms[t->subtype],
-                          &t->req);
+
+          count = t->ci->mpi.pcell_size;
+          size = count * sizeof(struct gravity_tensors);
+          type = multipole_mpi_type;
+          buff = t->buff = malloc(size);
+
         } else if (t->subtype == task_subtype_sf_counts) {
-          t->buff = (struct pcell_sf *)malloc(sizeof(struct pcell_sf) *
-                                              t->ci->mpi.pcell_size);
-          err = MPI_Irecv(t->buff,
-                          t->ci->mpi.pcell_size * sizeof(struct pcell_sf),
-                          MPI_BYTE, t->ci->nodeID, t->flags,
-                          subtaskMPI_comms[t->subtype], &t->req);
+
+          count = size = t->ci->mpi.pcell_size * sizeof(struct pcell_sf);
+          buff = t->buff = malloc(count);
+
         } else {
           error("Unknown communication sub-type");
         }
+
+        err = MPI_Irecv(buff, count, type, t->ci->nodeID, t->flags,
+                        subtaskMPI_comms[t->subtype], &t->req);
+
         if (err != MPI_SUCCESS) {
           mpi_error(err, "Failed to emit irecv for particle data.");
         }
+
+        /* And log, if logging enabled. */
+        mpiuse_log_allocation(t->type, t->subtype, &t->req, 1, size,
+                              t->ci->nodeID, t->flags);
+
         qid = 1 % s->nr_queues;
+      }
 #else
         error("SWIFT was not compiled with MPI support.");
 #endif
-        break;
+      break;
       case task_type_send:
 #ifdef WITH_MPI
+      {
+        size_t size = 0;              /* Size in bytes. */
+        size_t count = 0;             /* Number of elements to send */
+        MPI_Datatype type = MPI_BYTE; /* Type of the elements */
+        void *buff = NULL;            /* Buffer to send */
+
         if (t->subtype == task_subtype_tend_part) {
-          t->buff = (struct pcell_step_hydro *)malloc(
-              sizeof(struct pcell_step_hydro) * t->ci->mpi.pcell_size);
-          cell_pack_end_step_hydro(t->ci, (struct pcell_step_hydro *)t->buff);
 
-          if ((t->ci->mpi.pcell_size * sizeof(struct pcell_step_hydro)) >
-              s->mpi_message_limit) {
-            err = MPI_Isend(
-                t->buff,
-                t->ci->mpi.pcell_size * sizeof(struct pcell_step_hydro),
-                MPI_BYTE, t->cj->nodeID, t->flags, subtaskMPI_comms[t->subtype],
-                &t->req);
-          } else {
-            err = MPI_Issend(
-                t->buff,
-                t->ci->mpi.pcell_size * sizeof(struct pcell_step_hydro),
-                MPI_BYTE, t->cj->nodeID, t->flags, subtaskMPI_comms[t->subtype],
-                &t->req);
-          }
+          size = count =
+              t->ci->mpi.pcell_size * sizeof(struct pcell_step_hydro);
+          buff = t->buff = malloc(size);
+          cell_pack_end_step_hydro(t->ci, (struct pcell_step_hydro *)buff);
+
         } else if (t->subtype == task_subtype_tend_gpart) {
-          t->buff = (struct pcell_step_grav *)malloc(
-              sizeof(struct pcell_step_grav) * t->ci->mpi.pcell_size);
-          cell_pack_end_step_grav(t->ci, (struct pcell_step_grav *)t->buff);
 
-          if ((t->ci->mpi.pcell_size * sizeof(struct pcell_step_grav)) >
-              s->mpi_message_limit) {
-            err = MPI_Isend(
-                t->buff, t->ci->mpi.pcell_size * sizeof(struct pcell_step_grav),
-                MPI_BYTE, t->cj->nodeID, t->flags, subtaskMPI_comms[t->subtype],
-                &t->req);
-          } else {
-            err = MPI_Issend(
-                t->buff, t->ci->mpi.pcell_size * sizeof(struct pcell_step_grav),
-                MPI_BYTE, t->cj->nodeID, t->flags, subtaskMPI_comms[t->subtype],
-                &t->req);
-          }
+          size = count = t->ci->mpi.pcell_size * sizeof(struct pcell_step_grav);
+          buff = t->buff = malloc(size);
+          cell_pack_end_step_grav(t->ci, (struct pcell_step_grav *)buff);
+
         } else if (t->subtype == task_subtype_tend_spart) {
-          t->buff = (struct pcell_step_stars *)malloc(
-              sizeof(struct pcell_step_stars) * t->ci->mpi.pcell_size);
-          cell_pack_end_step_stars(t->ci, (struct pcell_step_stars *)t->buff);
 
-          if ((t->ci->mpi.pcell_size * sizeof(struct pcell_step_stars)) >
-              s->mpi_message_limit) {
-            err = MPI_Isend(
-                t->buff,
-                t->ci->mpi.pcell_size * sizeof(struct pcell_step_stars),
-                MPI_BYTE, t->cj->nodeID, t->flags, subtaskMPI_comms[t->subtype],
-                &t->req);
-          } else {
-            err = MPI_Issend(
-                t->buff,
-                t->ci->mpi.pcell_size * sizeof(struct pcell_step_stars),
-                MPI_BYTE, t->cj->nodeID, t->flags, subtaskMPI_comms[t->subtype],
-                &t->req);
-          }
+          size = count =
+              t->ci->mpi.pcell_size * sizeof(struct pcell_step_stars);
+          buff = t->buff = malloc(size);
+          cell_pack_end_step_stars(t->ci, (struct pcell_step_stars *)buff);
+
         } else if (t->subtype == task_subtype_tend_bpart) {
-          t->buff = (struct pcell_step_black_holes *)malloc(
-              sizeof(struct pcell_step_black_holes) * t->ci->mpi.pcell_size);
-          cell_pack_end_step_black_holes(
-              t->ci, (struct pcell_step_black_holes *)t->buff);
 
-          if ((t->ci->mpi.pcell_size * sizeof(struct pcell_step_black_holes)) >
-              s->mpi_message_limit) {
-            err = MPI_Isend(
-                t->buff,
-                t->ci->mpi.pcell_size * sizeof(struct pcell_step_black_holes),
-                MPI_BYTE, t->cj->nodeID, t->flags, subtaskMPI_comms[t->subtype],
-                &t->req);
-          } else {
-            err = MPI_Issend(
-                t->buff,
-                t->ci->mpi.pcell_size * sizeof(struct pcell_step_black_holes),
-                MPI_BYTE, t->cj->nodeID, t->flags, subtaskMPI_comms[t->subtype],
-                &t->req);
-          }
+          size = count =
+              t->ci->mpi.pcell_size * sizeof(struct pcell_step_black_holes);
+          buff = t->buff = malloc(size);
+          cell_pack_end_step_black_holes(t->ci,
+                                         (struct pcell_step_black_holes *)buff);
+
         } else if (t->subtype == task_subtype_part_swallow) {
-          t->buff = (struct black_holes_part_data *)malloc(
-              sizeof(struct black_holes_part_data) * t->ci->hydro.count);
-          cell_pack_part_swallow(t->ci,
-                                 (struct black_holes_part_data *)t->buff);
 
-          if (t->ci->hydro.count * sizeof(struct black_holes_part_data) >
-              s->mpi_message_limit) {
-            err = MPI_Isend(
-                t->buff,
-                t->ci->hydro.count * sizeof(struct black_holes_part_data),
-                MPI_BYTE, t->cj->nodeID, t->flags, subtaskMPI_comms[t->subtype],
-                &t->req);
-          } else {
-            err = MPI_Issend(
-                t->buff,
-                t->ci->hydro.count * sizeof(struct black_holes_part_data),
-                MPI_BYTE, t->cj->nodeID, t->flags, subtaskMPI_comms[t->subtype],
-                &t->req);
-          }
+          size = count =
+              t->ci->hydro.count * sizeof(struct black_holes_part_data);
+          buff = t->buff = malloc(size);
+          cell_pack_part_swallow(t->ci, (struct black_holes_part_data *)buff);
+
         } else if (t->subtype == task_subtype_bpart_merger) {
-          t->buff = (struct black_holes_bpart_data *)malloc(
-              sizeof(struct black_holes_bpart_data) * t->ci->black_holes.count);
+
+          size = count =
+              sizeof(struct black_holes_bpart_data) * t->ci->black_holes.count;
+          buff = t->buff = malloc(size);
           cell_pack_bpart_swallow(t->ci,
                                   (struct black_holes_bpart_data *)t->buff);
-
-          if (t->ci->black_holes.count * sizeof(struct black_holes_bpart_data) >
-              s->mpi_message_limit) {
-            err = MPI_Isend(t->buff,
-                            t->ci->black_holes.count *
-                                sizeof(struct black_holes_bpart_data),
-                            MPI_BYTE, t->cj->nodeID, t->flags,
-                            subtaskMPI_comms[t->subtype], &t->req);
-          } else {
-            err = MPI_Issend(t->buff,
-                             t->ci->black_holes.count *
-                                 sizeof(struct black_holes_bpart_data),
-                             MPI_BYTE, t->cj->nodeID, t->flags,
-                             subtaskMPI_comms[t->subtype], &t->req);
-          }
 
         } else if (t->subtype == task_subtype_xv ||
                    t->subtype == task_subtype_rho ||
                    t->subtype == task_subtype_gradient) {
-          if ((t->ci->hydro.count * sizeof(struct part)) > s->mpi_message_limit)
-            err = MPI_Isend(t->ci->hydro.parts, t->ci->hydro.count,
-                            part_mpi_type, t->cj->nodeID, t->flags,
-                            subtaskMPI_comms[t->subtype], &t->req);
-          else
-            err = MPI_Issend(t->ci->hydro.parts, t->ci->hydro.count,
-                             part_mpi_type, t->cj->nodeID, t->flags,
-                             subtaskMPI_comms[t->subtype], &t->req);
+
+          count = t->ci->hydro.count;
+          size = count * sizeof(struct part);
+          type = part_mpi_type;
+          buff = t->ci->hydro.parts;
+
         } else if (t->subtype == task_subtype_gpart) {
-          if ((t->ci->grav.count * sizeof(struct gpart)) > s->mpi_message_limit)
-            err = MPI_Isend(t->ci->grav.parts, t->ci->grav.count,
-                            gpart_mpi_type, t->cj->nodeID, t->flags,
-                            subtaskMPI_comms[t->subtype], &t->req);
-          else
-            err = MPI_Issend(t->ci->grav.parts, t->ci->grav.count,
-                             gpart_mpi_type, t->cj->nodeID, t->flags,
-                             subtaskMPI_comms[t->subtype], &t->req);
+
+          count = t->ci->grav.count;
+          size = count * sizeof(struct gpart);
+          type = gpart_mpi_type;
+          buff = t->ci->grav.parts;
+
         } else if (t->subtype == task_subtype_spart) {
-          if ((t->ci->stars.count * sizeof(struct spart)) >
-              s->mpi_message_limit)
-            err = MPI_Isend(t->ci->stars.parts, t->ci->stars.count,
-                            spart_mpi_type, t->cj->nodeID, t->flags,
-                            subtaskMPI_comms[t->subtype], &t->req);
-          else
-            err = MPI_Issend(t->ci->stars.parts, t->ci->stars.count,
-                             spart_mpi_type, t->cj->nodeID, t->flags,
-                             subtaskMPI_comms[t->subtype], &t->req);
+
+          count = t->ci->stars.count;
+          size = count * sizeof(struct spart);
+          type = spart_mpi_type;
+          buff = t->ci->stars.parts;
+
         } else if (t->subtype == task_subtype_bpart_rho ||
                    t->subtype == task_subtype_bpart_swallow ||
                    t->subtype == task_subtype_bpart_feedback) {
-          if ((t->ci->black_holes.count * sizeof(struct bpart)) >
-              s->mpi_message_limit)
-            err = MPI_Isend(t->ci->black_holes.parts, t->ci->black_holes.count,
-                            bpart_mpi_type, t->cj->nodeID, t->flags,
-                            subtaskMPI_comms[t->subtype], &t->req);
-          else
-            err = MPI_Issend(t->ci->black_holes.parts, t->ci->black_holes.count,
-                             bpart_mpi_type, t->cj->nodeID, t->flags,
-                             subtaskMPI_comms[t->subtype], &t->req);
+
+          count = t->ci->black_holes.count;
+          size = count * sizeof(struct bpart);
+          type = bpart_mpi_type;
+          buff = t->ci->black_holes.parts;
+
         } else if (t->subtype == task_subtype_multipole) {
-          t->buff = (struct gravity_tensors *)malloc(
-              sizeof(struct gravity_tensors) * t->ci->mpi.pcell_size);
-          cell_pack_multipoles(t->ci, (struct gravity_tensors *)t->buff);
-          err = MPI_Isend(t->buff, t->ci->mpi.pcell_size, multipole_mpi_type,
-                          t->cj->nodeID, t->flags, subtaskMPI_comms[t->subtype],
-                          &t->req);
+
+          count = t->ci->mpi.pcell_size;
+          size = count * sizeof(struct gravity_tensors);
+          type = multipole_mpi_type;
+          buff = t->buff = malloc(size);
+          cell_pack_multipoles(t->ci, (struct gravity_tensors *)buff);
+
         } else if (t->subtype == task_subtype_sf_counts) {
-          t->buff = (struct pcell_sf *)malloc(sizeof(struct pcell_sf) *
-                                              t->ci->mpi.pcell_size);
+
+          size = count = t->ci->mpi.pcell_size * sizeof(struct pcell_sf);
+          buff = t->buff = malloc(size);
           cell_pack_sf_counts(t->ci, (struct pcell_sf *)t->buff);
-          err = MPI_Isend(t->buff,
-                          t->ci->mpi.pcell_size * sizeof(struct pcell_sf),
-                          MPI_BYTE, t->cj->nodeID, t->flags,
-                          subtaskMPI_comms[t->subtype], &t->req);
+
         } else {
           error("Unknown communication sub-type");
         }
+
+        if (size > s->mpi_message_limit) {
+          err = MPI_Isend(buff, count, type, t->cj->nodeID, t->flags,
+                          subtaskMPI_comms[t->subtype], &t->req);
+        } else {
+          err = MPI_Issend(buff, count, type, t->cj->nodeID, t->flags,
+                           subtaskMPI_comms[t->subtype], &t->req);
+        }
+
         if (err != MPI_SUCCESS) {
           mpi_error(err, "Failed to emit isend for particle data.");
         }
+
+        /* And log, if logging enabled. */
+        mpiuse_log_allocation(t->type, t->subtype, &t->req, 1, size,
+                              t->cj->nodeID, t->flags);
+
         qid = 0;
+      }
 #else
         error("SWIFT was not compiled with MPI support.");
 #endif
-        break;
+      break;
       default:
         qid = -1;
     }

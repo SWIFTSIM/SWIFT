@@ -2156,6 +2156,11 @@ void engine_step(struct engine *e) {
   struct clocks_time time1, time2;
   clocks_gettime(&time1);
 
+#if defined(SWIFT_MPIUSE_REPORTS) && defined(WITH_MPI)
+  /* We may want to compare times across ranks, so make sure all steps start
+   * at the same time, just different ticks. */
+  MPI_Barrier(MPI_COMM_WORLD);
+#endif
   e->tic_step = getticks();
 
   if (e->nodeID == 0) {
