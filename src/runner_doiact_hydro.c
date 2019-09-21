@@ -30,6 +30,7 @@
 #include "runner.h"
 #include "runner_doiact_hydro_vec.h"
 #include "space_getsid.h"
+#include "star_formation_iact.h"
 #include "timers.h"
 
 /* Import the density loop functions. */

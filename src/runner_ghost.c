@@ -34,6 +34,7 @@
 #include "pressure_floor.h"
 #include "pressure_floor_iact.h"
 #include "space_getsid.h"
+#include "star_formation.h"
 #include "stars.h"
 #include "timers.h"
 #include "tracers.h"
@@ -943,6 +944,7 @@ void runner_do_ghost(struct runner *r, struct cell *c, int timer) {
   const struct hydro_space *hs = &s->hs;
   const struct cosmology *cosmo = e->cosmology;
   const struct chemistry_global_data *chemistry = e->chemistry;
+  const struct star_formation *star_formation = e->star_formation;
 
   const int with_cosmology = (e->policy & engine_policy_cosmology);
 
@@ -1040,6 +1042,7 @@ void runner_do_ghost(struct runner *r, struct cell *c, int timer) {
           hydro_end_density(p, cosmo);
           chemistry_end_density(p, chemistry, cosmo);
           pressure_floor_end_density(p, cosmo);
+          star_formation_end_density(p, star_formation, cosmo);
 
           /* Compute one step of the Newton-Raphson scheme */
           const float n_sum = p->density.wcount * h_old_dim;
@@ -1189,6 +1192,7 @@ void runner_do_ghost(struct runner *r, struct cell *c, int timer) {
             hydro_init_part(p, hs);
             chemistry_init_part(p, chemistry);
             pressure_floor_init_part(p, xp);
+            star_formation_init_part(p, star_formation);
             tracers_after_init(p, xp, e->internal_units, e->physical_constants,
                                with_cosmology, e->cosmology,
                                e->hydro_properties, e->cooling_func, e->time);
@@ -1211,6 +1215,8 @@ void runner_do_ghost(struct runner *r, struct cell *c, int timer) {
               hydro_part_has_no_neighbours(p, xp, cosmo);
               chemistry_part_has_no_neighbours(p, xp, chemistry, cosmo);
               pressure_floor_part_has_no_neighbours(p, xp, cosmo);
+              star_formation_part_has_no_neighbours(p, xp, star_formation,
+                                                    cosmo);
             }
 
           } else {
