@@ -66,9 +66,6 @@ void proxy_tags_exchange(struct proxy *proxies, int num_proxies,
 
   ticks tic2 = getticks();
 
-  message("Getting size of outgoing tags...");
-  MPI_Barrier(MPI_COMM_WORLD);
-  
   /* Run through the cells and get the size of the tags that will be sent off.
    */
   int count_out = 0;
@@ -83,9 +80,6 @@ void proxy_tags_exchange(struct proxy *proxies, int num_proxies,
     }
   }
 
-  message("Getting size of incoming tags...");
-  MPI_Barrier(MPI_COMM_WORLD);
-  
   /* Run through the proxies and get the count of incoming tags. */
   int count_in = 0;
   int *offset_in =
@@ -98,10 +92,6 @@ void proxy_tags_exchange(struct proxy *proxies, int num_proxies,
       count_in += proxies[k].cells_in[j]->mpi.pcell_size;
     }
   }
-
-  message("Allocating %d tags_in and %d tags_out.", count_in, count_out);
-
-  MPI_Barrier(MPI_COMM_WORLD);
 
   /* Allocate the tags. */
   int *tags_in = NULL;

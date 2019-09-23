@@ -1227,7 +1227,7 @@ int main(int argc, char *argv[]) {
 #else
     snprintf(dumpfile, 40, "memuse_report-step%d.dat", 0);
 #endif  // WITH_MPI
-    //memuse_log_dump(dumpfile);
+    memuse_log_dump(dumpfile);
   }
 #endif
 
@@ -1304,7 +1304,7 @@ int main(int argc, char *argv[]) {
 #else
       snprintf(dumpfile, 40, "memuse_report-step%d.dat", j + 1);
 #endif  // WITH_MPI
-      //memuse_log_dump(dumpfile);
+      memuse_log_dump(dumpfile);
     }
 #endif
 

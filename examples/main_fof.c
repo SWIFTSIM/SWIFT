@@ -637,7 +637,7 @@ int main(int argc, char *argv[]) {
   engine_fof(&e, /*dump_results=*/1, /*seed_black_holes=*/0);
 
   /* Write output. */
-  //engine_dump_snapshot(&e);
+  engine_dump_snapshot(&e);
 
 #ifdef WITH_MPI
   MPI_Barrier(MPI_COMM_WORLD);

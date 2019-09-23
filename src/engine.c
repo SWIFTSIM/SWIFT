@@ -1534,9 +1534,6 @@ void engine_rebuild(struct engine *e, int repartitioned,
   engine_exchange_cells(e);
 #endif
 
-  MPI_Barrier(MPI_COMM_WORLD);
-  message("engine_exchange_cells() finished.");
-
 #ifdef SWIFT_DEBUG_CHECKS
 
   /* Let's check that what we received makes sense */

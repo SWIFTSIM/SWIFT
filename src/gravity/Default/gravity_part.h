@@ -33,6 +33,12 @@ struct gpart {
   /*! Particle position. */
   double x[3];
 
+  /*! Particle velocity. */
+  float v_full[3];
+
+  /*! Particle acceleration. */
+  float a_grav[3];
+
   /*! Particle mass. */
   float mass;
 

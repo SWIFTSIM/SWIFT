@@ -3062,8 +3062,6 @@ void engine_maketasks(struct engine *e) {
     threadpool_map(&e->threadpool, engine_make_hydroloop_tasks_mapper, NULL,
                    s->nr_cells, 1, 0, e);
 
-  MPI_Barrier(MPI_COMM_WORLD);
-  
   if (e->verbose)
     message("Making hydro tasks took %.3f %s.",
             clocks_from_ticks(getticks() - tic2), clocks_getunit());
@@ -3076,8 +3074,6 @@ void engine_maketasks(struct engine *e) {
                    s->nr_cells, 1, 0, e);
   }
 
-  MPI_Barrier(MPI_COMM_WORLD);
-  
   if (e->verbose)
     message("Making gravity tasks took %.3f %s.",
             clocks_from_ticks(getticks() - tic2), clocks_getunit());
@@ -3094,8 +3090,6 @@ void engine_maketasks(struct engine *e) {
   /* Split the tasks. */
   scheduler_splittasks(sched, /*fof_tasks=*/0, e->verbose);
 
-  MPI_Barrier(MPI_COMM_WORLD);
-  
   if (e->verbose)
     message("Splitting tasks took %.3f %s.",
             clocks_from_ticks(getticks() - tic2), clocks_getunit());
@@ -3112,9 +3106,6 @@ void engine_maketasks(struct engine *e) {
   if (e->links != NULL) swift_free("links", e->links);
   e->size_links = e->sched.nr_tasks * e->links_per_tasks;
 
-  MPI_Barrier(MPI_COMM_WORLD);
-  message("Freed old list of cell-task links.");
-  
   /* Make sure that we have space for more links than last time. */
   if (e->size_links < e->nr_links * engine_rebuild_link_alloc_margin)
     e->size_links = e->nr_links * engine_rebuild_link_alloc_margin;
@@ -3124,9 +3115,6 @@ void engine_maketasks(struct engine *e) {
            "links", sizeof(struct link) * e->size_links)) == NULL)
     error("Failed to allocate cell-task links.");
   e->nr_links = 0;
-  
-  MPI_Barrier(MPI_COMM_WORLD);
-  message("Allocated new link list.");
 
   tic2 = getticks();
 
@@ -3136,8 +3124,6 @@ void engine_maketasks(struct engine *e) {
   threadpool_map(&e->threadpool, engine_count_and_link_tasks_mapper,
                  sched->tasks, sched->nr_tasks, sizeof(struct task), 0, e);
 
-  MPI_Barrier(MPI_COMM_WORLD);
-  
   if (e->verbose)
     message("Counting and linking tasks took %.3f %s.",
             clocks_from_ticks(getticks() - tic2), clocks_getunit());
@@ -3154,8 +3140,6 @@ void engine_maketasks(struct engine *e) {
    * pointers. */
   threadpool_map(&e->threadpool, cell_set_super_mapper, cells, nr_cells,
                  sizeof(struct cell), 0, e);
-  
-  MPI_Barrier(MPI_COMM_WORLD);
 
   if (e->verbose)
     message("Setting super-pointers took %.3f %s.",
@@ -3165,9 +3149,6 @@ void engine_maketasks(struct engine *e) {
   threadpool_map(&e->threadpool, engine_make_hierarchical_tasks_mapper, cells,
                  nr_cells, sizeof(struct cell), 0, e);
 
-  MPI_Barrier(MPI_COMM_WORLD);
-  message("Appended hierarchical tasks to each cell.");
-  
   tic2 = getticks();
 
   /* Run through the tasks and make force tasks for each density task.
@@ -3176,8 +3157,6 @@ void engine_maketasks(struct engine *e) {
   if (e->policy & engine_policy_hydro)
     threadpool_map(&e->threadpool, engine_make_extra_hydroloop_tasks_mapper,
                    sched->tasks, sched->nr_tasks, sizeof(struct task), 0, e);
-
-  MPI_Barrier(MPI_COMM_WORLD);
 
   if (e->verbose)
     message("Making extra hydroloop tasks took %.3f %s.",
@@ -3188,8 +3167,6 @@ void engine_maketasks(struct engine *e) {
   /* Add the dependencies for the gravity stuff */
   if (e->policy & (engine_policy_self_gravity | engine_policy_external_gravity))
     engine_link_gravity_tasks(e);
-  
-  MPI_Barrier(MPI_COMM_WORLD);
 
   if (e->verbose)
     message("Linking gravity tasks took %.3f %s.",
@@ -3232,8 +3209,6 @@ void engine_maketasks(struct engine *e) {
                    /*chunk=*/0, e);
 
     free(send_cell_type_pairs);
-  
-    MPI_Barrier(MPI_COMM_WORLD);
 
     if (e->verbose)
       message("Creating send tasks took %.3f %s.",
@@ -3244,9 +3219,6 @@ void engine_maketasks(struct engine *e) {
     /* Exchange the cell tags. */
     proxy_tags_exchange(e->proxies, e->nr_proxies, s);
 
-  
-    MPI_Barrier(MPI_COMM_WORLD);
-    
     if (e->verbose)
       message("Exchanging cell tags took %.3f %s.",
               clocks_from_ticks(getticks() - tic2), clocks_getunit());
@@ -3277,8 +3249,6 @@ void engine_maketasks(struct engine *e) {
                    sizeof(struct cell_type_pair),
                    /*chunk=*/0, e);
     free(recv_cell_type_pairs);
-  
-    MPI_Barrier(MPI_COMM_WORLD);
 
     if (e->verbose)
       message("Creating recv tasks took %.3f %s.",
@@ -3287,9 +3257,6 @@ void engine_maketasks(struct engine *e) {
 
   /* Allocate memory for foreign particles */
   engine_allocate_foreign_particles(e);
-  
-  MPI_Barrier(MPI_COMM_WORLD);
-  message("Allocated memory for foreign particles.");
 
 #endif
 
@@ -3312,8 +3279,6 @@ void engine_maketasks(struct engine *e) {
 
   /* Set the unlocks per task. */
   scheduler_set_unlocks(sched);
-  
-  MPI_Barrier(MPI_COMM_WORLD);
 
   if (e->verbose)
     message("Setting unlocks took %.3f %s.",
@@ -3323,8 +3288,6 @@ void engine_maketasks(struct engine *e) {
 
   /* Rank the tasks. */
   scheduler_ranktasks(sched);
-  
-  MPI_Barrier(MPI_COMM_WORLD);
 
   if (e->verbose)
     message("Ranking the tasks took %.3f %s.",
@@ -3332,8 +3295,6 @@ void engine_maketasks(struct engine *e) {
 
   /* Weight the tasks. */
   scheduler_reweight(sched, e->verbose);
-  
-  MPI_Barrier(MPI_COMM_WORLD);
 
   /* Set the tasks age. */
   e->tasks_age = 0;
