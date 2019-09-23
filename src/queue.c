@@ -69,6 +69,45 @@ void queue_get_incoming(struct queue *q) {
       q->tid = tid = temp;
     }
 
+      /* Is the next task a comms task? If so, store it in the mpi_requests
+       * buffer. */
+#ifdef WITH_MPI
+    if (tasks[offset].type == task_type_send ||
+        tasks[offset].type == task_type_recv) {
+      /* Do we need to grow the requests buffer? */
+      if (q->mpi_requests_count == q->mpi_requests_size) {
+        q->mpi_requests_size *= 2;
+        MPI_Request *mpi_requests_new = NULL;
+        int *mpi_requests_tid_new = NULL;
+        int *mpi_requests_index_new = NULL;
+        if ((mpi_requests_new = (MPI_Request *)malloc(
+                 sizeof(MPI_Request) * q->mpi_requests_size)) == NULL ||
+            (mpi_requests_tid_new =
+                 (int *)malloc(sizeof(int) * q->mpi_requests_size)) == NULL ||
+            (mpi_requests_index_new =
+                 (int *)malloc(sizeof(int) * q->mpi_requests_size)) == NULL)
+          error("Failed to re-allocate MPI_Request buffers.");
+        memcpy(mpi_requests_new, q->mpi_requests,
+               sizeof(MPI_Request) * q->mpi_requests_count);
+        memcpy(mpi_requests_tid_new, q->mpi_requests_tid,
+               sizeof(int) * q->mpi_requests_count);
+        memcpy(mpi_requests_index_new, q->mpi_requests_index,
+               sizeof(int) * q->mpi_requests_count);
+        free(q->mpi_requests);
+        q->mpi_requests = mpi_requests_new;
+        free(q->mpi_requests_tid);
+        q->mpi_requests_tid = mpi_requests_tid_new;
+        free(q->mpi_requests_index);
+        q->mpi_requests_index = mpi_requests_index_new;
+      }
+
+      /* Add the MPI_Request to the list of monitored requests. */
+      q->mpi_requests[q->mpi_requests_count] = tasks[offset].req;
+      q->mpi_requests_tid[q->mpi_requests_count] = offset;
+      q->mpi_requests_count += 1;
+    }
+#endif  // WITH_MPI
+
     /* Drop the task at the end of the queue. */
     tid[q->count] = offset;
     q->count += 1;
@@ -165,7 +204,7 @@ void queue_init(struct queue *q, struct task *tasks) {
     error("Failed to allocate MPI_Request buffers.");
   q->mpi_requests_size = queue_sizeinit;
   q->mpi_requests_count = 0;
-#endif WITH_MPI
+#endif  // WITH_MPI
 }
 
 /**
@@ -315,6 +354,6 @@ void queue_clean(struct queue *q) {
 #ifdef WITH_MPI
   free(q->mpi_requests);
   free(q->mpi_requests_tid);
-  free(q->mpi_requests_count);
+  free(q->mpi_requests_index);
 #endif  // WITH_MPI
 }
