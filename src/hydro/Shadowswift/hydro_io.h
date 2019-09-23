@@ -138,34 +138,59 @@ INLINE static void hydro_write_particles(const struct part* parts,
   *num_fields = 13;
 
   /* List what we want to write */
-  list[0] = io_make_output_field_convert_part("Coordinates", DOUBLE, 3,
-                                              UNIT_CONV_LENGTH, parts, xparts,
-                                              convert_part_pos);
-  list[1] = io_make_output_field("Velocities", FLOAT, 3, UNIT_CONV_SPEED, parts,
-                                 primitives.v);
-  list[2] = io_make_output_field("Masses", FLOAT, 1, UNIT_CONV_MASS, parts,
-                                 conserved.mass);
-  list[3] = io_make_output_field("SmoothingLength", FLOAT, 1, UNIT_CONV_LENGTH,
-                                 parts, h);
-  list[4] = io_make_output_field_convert_part("InternalEnergy", FLOAT, 1,
-                                              UNIT_CONV_ENERGY_PER_UNIT_MASS,
-                                              parts, xparts, convert_u);
-  list[5] = io_make_output_field("ParticleIDs", ULONGLONG, 1,
-                                 UNIT_CONV_NO_UNITS, parts, id);
-  list[6] = io_make_output_field("Acceleration", FLOAT, 3,
-                                 UNIT_CONV_ACCELERATION, parts, a_hydro);
-  list[7] = io_make_output_field("Density", FLOAT, 1, UNIT_CONV_DENSITY, parts,
-                                 primitives.rho);
-  list[8] = io_make_output_field("Volume", FLOAT, 1, UNIT_CONV_VOLUME, parts,
-                                 cell.volume);
-  list[9] = io_make_output_field("GradDensity", FLOAT, 3, UNIT_CONV_DENSITY,
-                                 parts, primitives.gradients.rho);
+  list[0] = io_make_output_field_convert_part(
+      "Coordinates", DOUBLE, 3, UNIT_CONV_LENGTH, 1.f, parts, xparts,
+      convert_part_pos, "Co-moving positions of the particles");
+
+  list[1] = io_make_output_field(
+      "Velocities", FLOAT, 3, UNIT_CONV_SPEED, 0.f, parts, primitives.v,
+      "Peculiar velocities of the stars. This is (a * dx/dt) where x is the "
+      "co-moving positions of the particles");
+
+  list[2] = io_make_output_field("Masses", FLOAT, 1, UNIT_CONV_MASS, 0.f, parts,
+                                 conserved.mass, "Masses of the particles");
+
+  list[3] = io_make_output_field(
+      "SmoothingLengths", FLOAT, 1, UNIT_CONV_LENGTH, 1.f, parts, h,
+      "Co-moving smoothing lengths (FWHM of the kernel) of the particles");
+
+  list[4] = io_make_output_field_convert_part(
+      "InternalEnergies", FLOAT, 1, UNIT_CONV_ENERGY_PER_UNIT_MASS,
+      -3.f * hydro_gamma_minus_one, parts, xparts, convert_u,
+      "Co-moving thermal energies per unit mass of the particles");
+
+  list[5] =
+      io_make_output_field("ParticleIDs", ULONGLONG, 1, UNIT_CONV_NO_UNITS, 0.f,
+                           parts, id, "Unique IDs of the particles");
+
+  list[6] = io_make_output_field("Accelerations", FLOAT, 3,
+                                 UNIT_CONV_ACCELERATION, 1.f, parts, a_hydro,
+                                 "Accelerations of the particles(does not "
+                                 "work in non-cosmological runs).");
+
+  list[7] = io_make_output_field("Densities", FLOAT, 1, UNIT_CONV_DENSITY, -3.f,
+                                 parts, primitives.rho,
+                                 "Co-moving mass densities of the particles");
+
+  list[8] =
+      io_make_output_field("Volumes", FLOAT, 1, UNIT_CONV_VOLUME, -3.f, parts,
+                           cell.volume, "Co-moving volumes of the particles");
+
+  list[9] = io_make_output_field("GradDensities", FLOAT, 3, UNIT_CONV_DENSITY,
+                                 1.f, parts, primitives.gradients.rho,
+                                 "Gradient densities of the particles");
+
   list[10] = io_make_output_field_convert_part(
-      "Entropy", FLOAT, 1, UNIT_CONV_ENTROPY, parts, xparts, convert_A);
-  list[11] = io_make_output_field("Pressure", FLOAT, 1, UNIT_CONV_PRESSURE,
-                                  parts, primitives.P);
+      "Entropies", FLOAT, 1, UNIT_CONV_ENTROPY, 1.f, parts, xparts, convert_A,
+      "Co-moving entropies of the particles");
+
+  list[11] = io_make_output_field("Pressures", FLOAT, 1, UNIT_CONV_PRESSURE,
+                                  -3.f * hydro_gamma, parts, primitives.P,
+                                  "Co-moving pressures of the particles");
+
   list[12] = io_make_output_field_convert_part(
-      "TotEnergy", FLOAT, 1, UNIT_CONV_ENERGY, parts, xparts, convert_Etot);
+      "TotalEnergies", FLOAT, 1, UNIT_CONV_ENERGY, -3.f * hydro_gamma_minus_one,
+      parts, xparts, convert_Etot, "Total (co-moving) energy of the particles");
 }
 
 /**

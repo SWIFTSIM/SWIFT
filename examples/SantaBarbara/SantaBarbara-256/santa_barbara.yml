@@ -43,9 +43,11 @@ Statistics:
 Gravity:
   eta:                    0.025  
   theta:                  0.5
-  comoving_softening:     0.01    # 10 kpc = 1/25 mean inter-particle separation
-  max_physical_softening: 0.00263 # 10 ckpc = 2.63 pkpc at z=2.8 (EAGLE-like evolution of softening).
-  mesh_side_length:       128
+  comoving_DM_softening:         0.01    # 10 kpc = 1/25 mean inter-particle separation
+  max_physical_DM_softening:     0.00263 # 10 ckpc = 2.63 pkpc at z=2.8 (EAGLE-like evolution of softening).
+  comoving_baryon_softening:     0.01    # 10 kpc = 1/25 mean inter-particle separation
+  max_physical_baryon_softening: 0.00263 # 10 ckpc = 2.63 pkpc at z=2.8 (EAGLE-like evolution of softening).
+  mesh_side_length:       256
 
 # Parameters of the hydro scheme
 SPH:

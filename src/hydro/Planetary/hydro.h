@@ -601,8 +601,8 @@ __attribute__((always_inline)) INLINE static void hydro_prepare_force(
   /* Compute the "grad h" term */
   const float rho_inv = 1.f / p->rho;
   float rho_dh = p->density.rho_dh;
-  /* Ignore changing-kernel effects when h is h_max */
-  if (p->h == hydro_props->h_max) {
+  /* Ignore changing-kernel effects when h ~= h_max */
+  if (p->h > 0.9999f * hydro_props->h_max) {
     rho_dh = 0.f;
   }
   const float grad_h_term =
@@ -652,9 +652,11 @@ __attribute__((always_inline)) INLINE static void hydro_reset_acceleration(
  *
  * @param p The particle.
  * @param xp The extended data of this particle.
+ * @param cosmo The cosmological model.
  */
 __attribute__((always_inline)) INLINE static void hydro_reset_predicted_values(
-    struct part *restrict p, const struct xpart *restrict xp) {
+    struct part *restrict p, const struct xpart *restrict xp,
+    const struct cosmology *cosmo) {
 
   /* Re-set the predicted velocities */
   p->v[0] = xp->v_full[0];
@@ -869,7 +871,9 @@ hydro_set_init_internal_energy(struct part *p, float u_init) {
 __attribute__((always_inline)) INLINE static void hydro_remove_part(
     const struct part *p, const struct xpart *xp) {
 
+  printf("Removed particle id=%lld \n", p->id);
   printParticle_single(p, xp);
+  fflush(stdout);
 }
 
 #endif /* SWIFT_PLANETARY_HYDRO_H */

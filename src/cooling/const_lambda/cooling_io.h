@@ -72,12 +72,14 @@ __attribute__((always_inline)) INLINE static int cooling_write_particles(
     const struct part* parts, const struct xpart* xparts, struct io_props* list,
     const struct cooling_function_data* cooling) {
 
-  list[0] = io_make_output_field_convert_part("Temperature", FLOAT, 1,
-                                              UNIT_CONV_TEMPERATURE, parts,
-                                              xparts, convert_part_T);
+  list[0] = io_make_output_field_convert_part(
+      "Temperature", FLOAT, 1, UNIT_CONV_TEMPERATURE, 0.f, parts, xparts,
+      convert_part_T, "Temperatures of the gas particles");
 
-  list[1] = io_make_output_field("RadiatedEnergy", FLOAT, 1, UNIT_CONV_ENERGY,
-                                 xparts, cooling_data.radiated_energy);
+  list[1] = io_make_output_field(
+      "RadiatedEnergies", FLOAT, 1, UNIT_CONV_ENERGY, 0.f, xparts,
+      cooling_data.radiated_energy,
+      "Thermal energies radiated by the cooling mechanism");
 
   return 2;
 }

@@ -23,20 +23,6 @@
 #include "io_properties.h"
 #include "stars_part.h"
 
-INLINE static void convert_spart_pos(const struct engine *e,
-                                     const struct spart *sp, double *ret) {
-
-  if (e->s->periodic) {
-    ret[0] = box_wrap(sp->x[0], 0.0, e->s->dim[0]);
-    ret[1] = box_wrap(sp->x[1], 0.0, e->s->dim[1]);
-    ret[2] = box_wrap(sp->x[2], 0.0, e->s->dim[2]);
-  } else {
-    ret[0] = sp->x[0];
-    ret[1] = sp->x[1];
-    ret[2] = sp->x[2];
-  }
-}
-
 /**
  * @brief Specifies which s-particle fields to read from a dataset
  *
@@ -49,7 +35,7 @@ INLINE static void stars_read_particles(struct spart *sparts,
                                         int *num_fields) {
 
   /* Say how much we want to read */
-  *num_fields = 6;
+  *num_fields = 7;
 
   /* List what we want to read */
   list[0] = io_make_input_field("Coordinates", DOUBLE, 3, COMPULSORY,
@@ -64,6 +50,55 @@ INLINE static void stars_read_particles(struct spart *sparts,
                                 UNIT_CONV_LENGTH, sparts, h);
   list[5] = io_make_input_field("Masses", FLOAT, 1, COMPULSORY, UNIT_CONV_MASS,
                                 sparts, mass_init);
+  list[6] = io_make_input_field("StellarFormationTime", FLOAT, 1, OPTIONAL,
+                                UNIT_CONV_NO_UNITS, sparts, birth_time);
+}
+
+INLINE static void convert_spart_pos(const struct engine *e,
+                                     const struct spart *sp, double *ret) {
+
+  if (e->s->periodic) {
+    ret[0] = box_wrap(sp->x[0], 0.0, e->s->dim[0]);
+    ret[1] = box_wrap(sp->x[1], 0.0, e->s->dim[1]);
+    ret[2] = box_wrap(sp->x[2], 0.0, e->s->dim[2]);
+  } else {
+    ret[0] = sp->x[0];
+    ret[1] = sp->x[1];
+    ret[2] = sp->x[2];
+  }
+}
+
+INLINE static void convert_spart_vel(const struct engine *e,
+                                     const struct spart *sp, float *ret) {
+
+  const int with_cosmology = (e->policy & engine_policy_cosmology);
+  const struct cosmology *cosmo = e->cosmology;
+  const integertime_t ti_current = e->ti_current;
+  const double time_base = e->time_base;
+
+  const integertime_t ti_beg = get_integer_time_begin(ti_current, sp->time_bin);
+  const integertime_t ti_end = get_integer_time_end(ti_current, sp->time_bin);
+
+  /* Get time-step since the last kick */
+  float dt_kick_grav;
+  if (with_cosmology) {
+    dt_kick_grav = cosmology_get_grav_kick_factor(cosmo, ti_beg, ti_current);
+    dt_kick_grav -=
+        cosmology_get_grav_kick_factor(cosmo, ti_beg, (ti_beg + ti_end) / 2);
+  } else {
+    dt_kick_grav = (ti_current - ((ti_beg + ti_end) / 2)) * time_base;
+  }
+
+  /* Extrapolate the velocites to the current time */
+  const struct gpart *gp = sp->gpart;
+  ret[0] = gp->v_full[0] + gp->a_grav[0] * dt_kick_grav;
+  ret[1] = gp->v_full[1] + gp->a_grav[1] * dt_kick_grav;
+  ret[2] = gp->v_full[2] + gp->a_grav[2] * dt_kick_grav;
+
+  /* Conversion from internal units to peculiar velocities */
+  ret[0] *= cosmo->a_inv;
+  ret[1] *= cosmo->a_inv;
+  ret[2] *= cosmo->a_inv;
 }
 
 /**
@@ -72,36 +107,68 @@ INLINE static void stars_read_particles(struct spart *sparts,
  * @param sparts The s-particle array.
  * @param list The list of i/o properties to write.
  * @param num_fields The number of i/o fields to write.
+ * @param with_cosmology Are we running a cosmological simulation?
  */
 INLINE static void stars_write_particles(const struct spart *sparts,
-                                         struct io_props *list,
-                                         int *num_fields) {
+                                         struct io_props *list, int *num_fields,
+                                         const int with_cosmology) {
 
   /* Say how much we want to write */
   *num_fields = 10;
 
   /* List what we want to write */
   list[0] = io_make_output_field_convert_spart(
-      "Coordinates", DOUBLE, 3, UNIT_CONV_LENGTH, sparts, convert_spart_pos);
-  list[1] =
-      io_make_output_field("Velocities", FLOAT, 3, UNIT_CONV_SPEED, sparts, v);
-  list[2] =
-      io_make_output_field("Masses", FLOAT, 1, UNIT_CONV_MASS, sparts, mass);
+      "Coordinates", DOUBLE, 3, UNIT_CONV_LENGTH, 1.f, sparts,
+      convert_spart_pos, "Co-moving position of the particles");
+
+  list[1] = io_make_output_field_convert_spart(
+      "Velocities", FLOAT, 3, UNIT_CONV_SPEED, 0.f, sparts, convert_spart_vel,
+      "Peculiar velocities of the particles. This is a * dx/dt where x is the "
+      "co-moving position of the particles.");
+
+  list[2] = io_make_output_field("Masses", FLOAT, 1, UNIT_CONV_MASS, 0.f,
+                                 sparts, mass,
+                                 "Masses of the particles at the current point "
+                                 "in time (i.e. after stellar losses");
+
   list[3] = io_make_output_field("ParticleIDs", LONGLONG, 1, UNIT_CONV_NO_UNITS,
-                                 sparts, id);
-  list[4] = io_make_output_field("SmoothingLength", FLOAT, 1, UNIT_CONV_LENGTH,
-                                 sparts, h);
-  list[5] = io_make_output_field("BirthDensity", FLOAT, 1, UNIT_CONV_DENSITY,
-                                 sparts, birth_density);
-  list[6] = io_make_output_field("InitialMasses", FLOAT, 1, UNIT_CONV_MASS,
-                                 sparts, mass_init);
-  list[7] = io_make_output_field("BirthTime", FLOAT, 1, UNIT_CONV_TIME, sparts,
-                                 birth_time);
-  list[8] = io_make_output_field("FeedbackEnergyFraction", FLOAT, 1,
-                                 UNIT_CONV_NO_UNITS, sparts, f_E);
+                                 0.f, sparts, id, "Unique ID of the particles");
+
+  list[4] = io_make_output_field(
+      "SmoothingLengths", FLOAT, 1, UNIT_CONV_LENGTH, 1.f, sparts, h,
+      "Co-moving smoothing lengths (FWHM of the kernel) of the particles");
+
+  list[5] = io_make_output_field(
+      "BirthDensities", FLOAT, 1, UNIT_CONV_DENSITY, 0.f, sparts, birth_density,
+      "Physical densities at the time of birth of the gas particles that "
+      "turned into stars (note that "
+      "we store the physical density at the birth redshift, no conversion is "
+      "needed)");
+
+  list[6] = io_make_output_field("InitialMasses", FLOAT, 1, UNIT_CONV_MASS, 0.f,
+                                 sparts, mass_init,
+                                 "Masses of the star particles at birth time");
+
+  if (with_cosmology) {
+    list[7] = io_make_output_field(
+        "BirthScaleFactors", FLOAT, 1, UNIT_CONV_NO_UNITS, 0.f, sparts,
+        birth_scale_factor, "Scale-factors at which the stars were born");
+  } else {
+    list[7] = io_make_output_field("BirthTimes", FLOAT, 1, UNIT_CONV_TIME, 0.f,
+                                   sparts, birth_time,
+                                   "Times at which the stars were born");
+  }
+
+  list[8] = io_make_output_field(
+      "FeedbackEnergyFractions", FLOAT, 1, UNIT_CONV_NO_UNITS, 0.f, sparts, f_E,
+      "Fractions of the canonical feedback energy that was used for the stars' "
+      "SNII feedback events");
+
   list[9] =
-      io_make_output_field("BirthTemperature", FLOAT, 1, UNIT_CONV_TEMPERATURE,
-                           sparts, birth_temperature);
+      io_make_output_field("BirthTemperatures", FLOAT, 1, UNIT_CONV_TEMPERATURE,
+                           0.f, sparts, birth_temperature,
+                           "Temperatures at the time of birth of the gas "
+                           "particles that turned into stars");
 }
 
 /**
@@ -150,10 +217,15 @@ INLINE static void stars_props_init(struct stars_props *sp,
   else
     sp->log_max_h_change = logf(powf(max_volume_change, hydro_dimension_inv));
 
-  /* Read birth time to set all stars in ICs to (defaults to -1 to indicate star
-   * present in ICs) */
-  sp->spart_first_init_birth_time =
-      parser_get_opt_param_float(params, "Stars:birth_time", -1);
+  /* Do we want to overwrite the stars' birth time? */
+  sp->overwrite_birth_time =
+      parser_get_opt_param_int(params, "Stars:overwrite_birth_time", 0);
+
+  /* Read birth time to set all stars in ICs */
+  if (sp->overwrite_birth_time) {
+    sp->spart_first_init_birth_time =
+        parser_get_param_float(params, "Stars:birth_time");
+  }
 }
 
 /**
@@ -177,6 +249,10 @@ INLINE static void stars_props_print(const struct stars_props *sp) {
 
   message("Maximal iterations in ghost task set to %d",
           sp->max_smoothing_iterations);
+
+  if (sp->overwrite_birth_time)
+    message("Stars' birth time read from the ICs will be overwritten to %f",
+            sp->spart_first_init_birth_time);
 }
 
 #if defined(HAVE_HDF5)

@@ -57,7 +57,7 @@ Runtime parameters
  /____/ |__/|__/___/_/    /_/
  SPH With Inter-dependent Fine-grained Tasking
 
- Version : 0.8.3
+ Version : 0.8.4
  Website: www.swiftsim.com
  Twitter: @SwiftSimulation
 
@@ -122,6 +122,8 @@ Parameters:
                                       from all ranks.
     -y, --task-dumps=<int>            Time-step frequency at which task analysis
                                       files and/or tasks are dumped.
+    --cell-dumps=<int>                Time-step frequency at which cell graphs 
+                                      are dumped. 
     -Y, --threadpool-dumps=<int>      Time-step frequency at which threadpool
                                       tasks are dumped.
 

@@ -72,8 +72,10 @@ void proxy_tags_exchange(struct proxy *proxies, int num_proxies,
   /* Run through the cells and get the size of the tags that will be sent off.
    */
   int count_out = 0;
-  int *offset_out = malloc(s->nr_cells * sizeof(int));
-  if (offset_out == NULL) error("Not enough memory to allocate offset_out array");
+  int *offset_out =
+      (int *)swift_malloc("tags_offsets_out", s->nr_cells * sizeof(int));
+  if (offset_out == NULL) error("Error allocating memory for tag offsets");
+
   for (int k = 0; k < s->nr_cells; k++) {
     offset_out[k] = count_out;
     if (s->cells_top[k].mpi.sendto) {
@@ -86,8 +88,9 @@ void proxy_tags_exchange(struct proxy *proxies, int num_proxies,
   
   /* Run through the proxies and get the count of incoming tags. */
   int count_in = 0;
-  int *offset_in = malloc(s->nr_cells * sizeof(int));
-  if (offset_in == NULL) error("Not enough memory to allocate offset_in array");
+  int *offset_in =
+      (int *)swift_malloc("tags_offsets_in", s->nr_cells * sizeof(int));
+  if (offset_in == NULL) error("Error allocating memory for tag offsets");
 
   for (int k = 0; k < num_proxies; k++) {
     for (int j = 0; j < proxies[k].nr_cells_in; j++) {
@@ -183,6 +186,8 @@ void proxy_tags_exchange(struct proxy *proxies, int num_proxies,
   /* Clean up. */
   swift_free("tags_in", tags_in);
   swift_free("tags_out", tags_out);
+  swift_free("tags_offsets_in", offset_in);
+  swift_free("tags_offsets_out", offset_out);
   free(reqs_in);
   free(cids_in);
 
@@ -402,9 +407,10 @@ void proxy_cells_exchange(struct proxy *proxies, int num_proxies,
                  s->nr_cells, sizeof(struct cell), /*chunk=*/0,
                  /*extra_data=*/NULL);
   int count_out = 0;
-  int *offset = malloc(s->nr_cells * sizeof(int));
-  if (offset == NULL) error("Not enough memory to allocate offset array");
-  
+  int *offset =
+      (int *)swift_malloc("proxy_cell_offset", s->nr_cells * sizeof(int));
+  if (offset == NULL) error("Error allocating memory for proxy cell offsets");
+
   for (int k = 0; k < s->nr_cells; k++) {
     offset[k] = count_out;
     if (s->cells_top[k].mpi.sendto) count_out += s->cells_top[k].mpi.pcell_size;
@@ -487,6 +493,7 @@ void proxy_cells_exchange(struct proxy *proxies, int num_proxies,
   /* Clean up. */
   free(reqs);
   swift_free("pcells", pcells);
+  swift_free("proxy_cell_offset", offset);
 
 #else
   error("SWIFT was not compiled with MPI support.");

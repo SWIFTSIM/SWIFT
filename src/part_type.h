@@ -27,6 +27,7 @@
 enum part_type {
   swift_type_gas = 0,
   swift_type_dark_matter = 1,
+  swift_type_dark_matter_background = 2,
   swift_type_stars = 4,
   swift_type_black_hole = 5,
   swift_type_count

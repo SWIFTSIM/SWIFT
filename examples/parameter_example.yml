@@ -21,7 +21,7 @@ Cosmology:
   a_end:          1.0           # Final scale factor of the simulation
   Omega_m:        0.307         # Matter density parameter
   Omega_lambda:   0.693         # Dark-energy density parameter
-  Omega_b:        0.0455        # Baryon density parameter
+  Omega_b:        0.0482519     # Baryon density parameter
   Omega_r:        0.            # (Optional) Radiation density parameter
   w_0:            -1.0          # (Optional) Dark-energy equation-of-state parameter at z=0.
   w_a:            0.            # (Optional) Dark-energy equation-of-state time evolution parameter.
@@ -48,18 +48,29 @@ SPH:
   diffusion_alpha_max:   1.0      # (Optional) Override the maximal thermal diffusion coefficient that is allowed for a given particle.
   diffusion_alpha_min:   0.0      # (Optional) Override the minimal thermal diffusion coefficient that is allowed for a given particle.
 
+# Parameters of the stars neighbour search
+Stars:
+  resolution_eta:       1.2348   # (Optional) Target smoothing length in units of the mean inter-particle separation (1.2348 == 48Ngbs with the cubic spline kernel). Defaults to the SPH value.
+  h_tolerance:          1e-4     # (Optional) Relative accuracy of the Netwon-Raphson scheme for the smoothing lengths. Defaults to the SPH value.
+  max_ghost_iterations: 30       # (Optional) Maximal number of iterations allowed to converge towards the smoothing length. Defaults to the SPH value.
+  max_volume_change:    1.4      # (Optional) Maximal allowed change of kernel volume over one time-step. Defaults to the SPH value.
+  overwrite_birth_time:  0       # (Optional) Do we want to overwrite the birth time of the stars read from the ICs? (default: 0).
+  birth_time:           -1       # (Optional) Initial birth times of *all* the stars to be used if we are overwriting them. (-1 means the stars remain inactive feedback-wise througout the run).
 
 # Parameters for the self-gravity scheme
 Gravity:
-  mesh_side_length:       32        # Number of cells along each axis for the periodic gravity mesh.
-  eta:          0.025               # Constant dimensionless multiplier for time integration.
-  theta:        0.7                 # Opening angle (Multipole acceptance criterion).
-  comoving_softening:     0.0026994 # Comoving softening length (in internal units).
-  max_physical_softening: 0.0007    # Physical softening length (in internal units).
-  rebuild_frequency:      0.01      # (Optional) Frequency of the gravity-tree rebuild in units of the number of g-particles (this is the default value).
-  a_smooth:     1.25                # (Optional) Smoothing scale in top-level cell sizes to smooth the long-range forces over (this is the default value).
-  r_cut_max:    4.5                 # (Optional) Cut-off in number of top-level cells beyond which no FMM forces are computed (this is the default value).
-  r_cut_min:    0.1                 # (Optional) Cut-off in number of top-level cells below which no truncation of FMM forces are performed (this is the default value).
+  mesh_side_length:       32               # Number of cells along each axis for the periodic gravity mesh.
+  eta:          0.025                      # Constant dimensionless multiplier for time integration.
+  theta:        0.7                        # Opening angle (Multipole acceptance criterion).
+  comoving_DM_softening:     0.0026994     # Comoving Plummer-equivalent softening length for DM particles (in internal units).
+  max_physical_DM_softening: 0.0007        # Maximal Plummer-equivalent softening length in physical coordinates for DM particles (in internal units).
+  comoving_baryon_softening:     0.0026994 # Comoving Plummer-equivalent softening length for baryon particles (in internal units).
+  max_physical_baryon_softening: 0.0007    # Maximal Plummer-equivalent softening length in physical coordinates for baryon particles (in internal units).
+  softening_ratio_background:    0.04      # Fraction of the mean inter-particle separation to use as Plummer-equivalent softening for the background DM particles.
+  rebuild_frequency:      0.01             # (Optional) Frequency of the gravity-tree rebuild in units of the number of g-particles (this is the default value).
+  a_smooth:     1.25                       # (Optional) Smoothing scale in top-level cell sizes to smooth the long-range forces over (this is the default value).
+  r_cut_max:    4.5                        # (Optional) Cut-off in number of top-level cells beyond which no FMM forces are computed (this is the default value).
+  r_cut_min:    0.1                        # (Optional) Cut-off in number of top-level cells below which no truncation of FMM forces are performed (this is the default value).
 
 # Parameters for the Friends-Of-Friends algorithm
 FOF:
@@ -124,9 +135,9 @@ Snapshots:
 # Parameters governing the logger snapshot system
 Logger:
   delta_step:           10     # Update the particle log every this many updates
-  initial_buffer_size:  1      # buffer size in GB
-  buffer_scale:		10     # (Optional) When buffer size is too small, update it with required memory times buffer_scale
   basename:             index  # Common part of the filenames
+  initial_buffer_size:  1      # (Optional) Buffer size in GB
+  buffer_scale:	        10     # (Optional) When buffer size is too small, update it with required memory times buffer_scale
   
 # Parameters governing the conserved quantities statistics
 Statistics:
@@ -286,6 +297,11 @@ EAGLEEntropyFloor:
   Cool_temperature_norm_K:         8000      # Temperature of the EAGLE Cool limiter entropy floor at the density threshold expressed in Kelvin.
   Cool_gamma_effective:            1.        # Slope the of the EAGLE Cool limiter entropy floor
   
+# Parameters related to pressure floors    ----------------------------------------------
+
+GEARPressureFloor:
+  Jeans_factor: 10.       # Number of particles required to suppose a resolved clump and avoid the pressure floor.
+
 # Parameters related to cooling function  ----------------------------------------------
 
 # Constant du/dt cooling function
@@ -338,6 +354,11 @@ EAGLEChemistry:
   init_abundance_Iron:      0.000        # Inital fraction of particle mass in Iron
 
 # Parameters related to star formation models  -----------------------------------------------
+
+# GEAR star formation model (Revaz and Jablonka 2018)
+GEARStarFormation:
+  star_formation_efficiency: 0.01   # star formation efficiency (c_*)
+  maximal_temperature:  3e4         # Upper limit to the temperature of a star forming particle
 
 # EAGLE star formation model (Schaye and Dalla Vecchia 2008)
 EAGLEStarFormation:
@@ -395,6 +416,8 @@ EAGLEFeedback:
   SNII_yield_factor_Silicon:        1.0             # (Optional) Correction factor to apply to the Silicon yield from the SNII channel.
   SNII_yield_factor_Iron:           0.5             # (Optional) Correction factor to apply to the Iron yield from the SNII channel.
 
+# Parameters related to AGN models  -----------------------------------------------
+  
 # EAGLE AGN model
 EAGLEAGN:
   subgrid_seed_mass_Msun:           1.5e5      # Black hole subgrid mass at creation time in solar masses.
@@ -404,4 +427,4 @@ EAGLEAGN:
   coupling_efficiency:              0.15       # Fraction of the radiated energy that couples to the gas in feedback events.
   AGN_delta_T_K:                    3.16228e8  # Change in temperature to apply to the gas particle in an AGN feedback event in Kelvin.
   AGN_num_ngb_to_heat:              1.         # Target number of gas neighbours to heat in an AGN feedback event.
-
+  max_reposition_mass:              2e8        # Maximal BH mass considered for BH repositioning in solar masses.

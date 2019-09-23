@@ -1,3 +1,6 @@
+MetaData:
+  run_name:   EAGLE-L0025N0376-Ref
+
 # Define the system of units to use internally. 
 InternalUnitSystem:
   UnitMass_in_cgs:     1.98848e43    # 10^10 M_sun in grams
@@ -21,7 +24,7 @@ Cosmology:
   a_end:          1.0           # Final scale factor of the simulation
   Omega_m:        0.307         # Matter density parameter
   Omega_lambda:   0.693         # Dark-energy density parameter
-  Omega_b:        0.0455        # Baryon density parameter
+  Omega_b:        0.0482519     # Baryon density parameter
 
 Scheduler:
   links_per_tasks: 500
@@ -49,10 +52,13 @@ Statistics:
 # Parameters for the self-gravity scheme
 Gravity:
   eta:                    0.025    # Constant dimensionless multiplier for time integration. 
-  theta:                  0.7     # Opening angle (Multipole acceptance criterion)
-  comoving_softening:     0.0026994 # Comoving softening length (in internal units).
-  max_physical_softening: 0.0007    # Physical softening length (in internal units).
+  theta:                  0.7      # Opening angle (Multipole acceptance criterion)
   mesh_side_length:       64
+  comoving_DM_softening:         0.0026994 # Comoving DM softening length (in internal units).
+  max_physical_DM_softening:     0.0007    # Max physical DM softening length (in internal units).
+  comoving_baryon_softening:     0.0026994 # Comoving DM softening length (in internal units).
+  max_physical_baryon_softening: 0.0007    # Max physical DM softening length (in internal units).
+
 
 # Parameters for the hydrodynamics scheme
 SPH:
@@ -60,6 +66,13 @@ SPH:
   h_min_ratio:           0.1      # Minimal smoothing in units of softening.
   CFL_condition:         0.1      # Courant-Friedrich-Levy condition for time integration.
   minimal_temperature:   100      # (internal units)
+
+# Parameters of the stars neighbour search
+Stars:
+  resolution_eta:        1.1642   # Target smoothing length in units of the mean inter-particle separation
+  h_tolerance:           7e-3
+  overwrite_birth_time:  1
+  birth_time:            0.33333  # Pretend all the stars were born at z = 2
 
 # Parameters for the Friends-Of-Friends algorithm
 FOF:
@@ -169,3 +182,4 @@ EAGLEAGN:
   coupling_efficiency:              0.15       # Fraction of the radiated energy that couples to the gas in feedback events.
   AGN_delta_T_K:                    3.16228e8  # Change in temperature to apply to the gas particle in an AGN feedback event in Kelvin.
   AGN_num_ngb_to_heat:              1.         # Target number of gas neighbours to heat in an AGN feedback event.
+  max_reposition_mass:              2e8        # Maximal BH mass considered for BH repositioning in solar masses.

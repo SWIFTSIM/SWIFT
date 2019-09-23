@@ -84,7 +84,7 @@ int main(int argc, char *argv[]) {
   clocks_set_cpufreq(cpufreq);
 
   char *base_name = "testSelectOutput";
-  size_t Ngas = 0, Ngpart = 0, Nspart = 0, Nbpart = 0;
+  size_t Ngas = 0, Ngpart = 0, Ngpart_background = 0, Nspart = 0, Nbpart = 0;
   int flag_entropy_ICs = -1;
   int periodic = 1;
   double dim[3];
@@ -112,8 +112,16 @@ int main(int argc, char *argv[]) {
   /* Read data */
   message("Reading initial conditions.");
   read_ic_single("input.hdf5", &us, dim, &parts, &gparts, &sparts, &bparts,
-                 &Ngas, &Ngpart, &Nspart, &Nbpart, &flag_entropy_ICs, 1, 0, 0,
-                 0, 0, 0, 1., 1., 1, 0);
+                 &Ngas, &Ngpart, &Ngpart_background, &Nspart, &Nbpart,
+                 &flag_entropy_ICs,
+                 /*with_hydro=*/1,
+                 /*with_gravity=*/0,
+                 /*with_stars=*/0,
+                 /*with_black_holes=*/0,
+                 /*with_cosmology=*/0,
+                 /*cleanup_h=*/0,
+                 /*cleanup_sqrt_a=*/0,
+                 /*h=*/1., /*a=*/1., /*n_threads=*/1, /*dry_run=*/0);
 
   /* pseudo initialization of the space */
   message("Initialization of the space.");
@@ -138,6 +146,7 @@ int main(int argc, char *argv[]) {
   /* pseudo initialization of the engine */
   message("Initialization of the engine.");
   struct engine e;
+  sprintf(e.run_name, "Select Output Test");
   select_output_engine_init(&e, &s, &cosmo, &param_file, &cooling,
                             &hydro_properties);
 

@@ -398,17 +398,23 @@ hydro_set_drifted_physical_internal_energy(struct part *p,
                                            const struct cosmology *cosmo,
                                            const float u) {
 
+  /* There is no need to use the floor here as this function is called in the
+   * feedback, so the new value of the internal energy should be strictly
+   * higher than the old value. */
+
   p->u = u / cosmo->a_factor_internal_energy;
 
   /* Now recompute the extra quantities */
 
   /* Compute the sound speed */
-  const float soundspeed = hydro_get_comoving_soundspeed(p);
-  const float pressure = hydro_get_comoving_pressure(p);
+  const float pressure = gas_pressure_from_internal_energy(p->rho, p->u);
+  const float soundspeed = gas_soundspeed_from_pressure(p->rho, pressure);
 
   /* Update variables. */
   p->force.soundspeed = soundspeed;
   p->force.pressure = pressure;
+
+  p->viscosity.v_sig = max(p->viscosity.v_sig, 2.f * soundspeed);
 }
 
 /**
@@ -616,6 +622,7 @@ __attribute__((always_inline)) INLINE static void hydro_reset_gradient(
     struct part *restrict p) {
 
   p->viscosity.v_sig = 2.f * p->force.soundspeed;
+  p->force.alpha_visc_max_ngb = p->viscosity.alpha;
 }
 
 /**
@@ -775,9 +782,21 @@ __attribute__((always_inline)) INLINE static void hydro_prepare_force(
 
   /* Consistency checks to ensure min < alpha < max */
   new_diffusion_alpha =
-      min(new_diffusion_alpha, hydro_props->diffusion.alpha_max);
-  new_diffusion_alpha =
       max(new_diffusion_alpha, hydro_props->diffusion.alpha_min);
+
+  /* Now we limit in viscous flows; remove diffusion there. If we
+   * don't do that, then we end up diffusing energy away in supernovae.
+   * This is an EAGLE-specific fix. We limit based on the maximal
+   * viscous alpha over our neighbours in an attempt to keep diffusion
+   * low near to supernovae sites. */
+
+  /* This also enforces alpha_diff < alpha_diff_max */
+
+  const float viscous_diffusion_limit =
+      hydro_props->diffusion.alpha_max *
+      (1.f - p->force.alpha_visc_max_ngb / hydro_props->viscosity.alpha_max);
+
+  new_diffusion_alpha = min(new_diffusion_alpha, viscous_diffusion_limit);
 
   p->diffusion.alpha = new_diffusion_alpha;
 }
@@ -809,9 +828,11 @@ __attribute__((always_inline)) INLINE static void hydro_reset_acceleration(
  *
  * @param p The particle.
  * @param xp The extended data of this particle.
+ * @param cosmo The cosmological model.
  */
 __attribute__((always_inline)) INLINE static void hydro_reset_predicted_values(
-    struct part *restrict p, const struct xpart *restrict xp) {
+    struct part *restrict p, const struct xpart *restrict xp,
+    const struct cosmology *cosmo) {
 
   /* Re-set the predicted velocities */
   p->v[0] = xp->v_full[0];
@@ -827,6 +848,9 @@ __attribute__((always_inline)) INLINE static void hydro_reset_predicted_values(
 
   p->force.pressure = pressure;
   p->force.soundspeed = soundspeed;
+
+  /* Update the signal velocity, if we need to. */
+  p->viscosity.v_sig = max(p->viscosity.v_sig, 2.f * soundspeed);
 }
 
 /**
@@ -888,10 +912,13 @@ __attribute__((always_inline)) INLINE static void hydro_predict_extra(
 
   /* Compute the new sound speed */
   const float pressure = gas_pressure_from_internal_energy(p->rho, p->u);
-  const float soundspeed = hydro_get_comoving_soundspeed(p);
+  const float soundspeed = gas_soundspeed_from_pressure(p->rho, pressure);
 
   p->force.pressure = pressure;
   p->force.soundspeed = soundspeed;
+
+  /* Update signal velocity if we need to */
+  p->viscosity.v_sig = max(p->viscosity.v_sig, 2.f * soundspeed);
 }
 
 /**

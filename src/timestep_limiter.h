@@ -22,6 +22,9 @@
 /* Config parameters. */
 #include "../config.h"
 
+/* Local headers. */
+#include "kick.h"
+
 /**
  * @brief Wakes up a particle by rewinding it's kick1 back in time and applying
  * a new one such that the particle becomes active again in the next time-step.

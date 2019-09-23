@@ -1,6 +1,8 @@
 /*******************************************************************************
  * This file is part of SWIFT.
- * Copyright (c) 2018 Folkert Nobels (nobels@strw.leidenuniv.nl)
+ * Copyright (c) 2012 Pedro Gonnet (pedro.gonnet@durham.ac.uk)
+ *                    Matthieu Schaller (matthieu.schaller@durham.ac.uk)
+ *               2015 Peter W. Draper (p.w.draper@durham.ac.uk)
  *
  * This program is free software: you can redistribute it and/or modify
  * it under the terms of the GNU Lesser General Public License as published
@@ -16,26 +18,30 @@
  * along with this program.  If not, see <http://www.gnu.org/licenses/>.
  *
  ******************************************************************************/
-#ifndef SWIFT_STAR_FORMATION_IACT_H
-#define SWIFT_STAR_FORMATION_IACT_H
-
-/**
- * @file src/star_formation_iact.h
- * @brief Branches between the different star formation iact.
- */
 
 /* Config parameters. */
 #include "../config.h"
 
-/* Import the right star formation law definition */
-#if defined(STAR_FORMATION_NONE)
-#include "./star_formation/none/star_formation_iact.h"
-#elif defined(STAR_FORMATION_EAGLE)
-#include "./star_formation/EAGLE/star_formation_iact.h"
-#elif defined(STAR_FORMATION_GEAR)
-#include "./star_formation/GEAR/star_formation_iact.h"
-#else
-#error "Invalid choice of star formation law"
-#endif
+/* Local headers. */
+#include "active.h"
+#include "cell.h"
+#include "engine.h"
+#include "feedback.h"
+#include "runner.h"
+#include "space_getsid.h"
+#include "stars.h"
+#include "timers.h"
 
-#endif /* SWIFT_STAR_FORMATION_IACT_H */
+/* Import the stars density loop functions. */
+#define FUNCTION density
+#define FUNCTION_TASK_LOOP TASK_LOOP_DENSITY
+#include "runner_doiact_functions_stars.h"
+#undef FUNCTION_TASK_LOOP
+#undef FUNCTION
+
+/* Import the stars feedback loop functions. */
+#define FUNCTION feedback
+#define FUNCTION_TASK_LOOP TASK_LOOP_FEEDBACK
+#include "runner_doiact_functions_stars.h"
+#undef FUNCTION_TASK_LOOP
+#undef FUNCTION

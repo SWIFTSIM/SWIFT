@@ -100,10 +100,10 @@ r = sqrt(x**2 + y**2)
 v_r = (x * vel[:,0] + y * vel[:,1]) / r
 v_phi = (-y * vel[:,0] + x * vel[:,1]) / r
 v_norm = sqrt(vel[:,0]**2 + vel[:,1]**2)
-rho = sim["/PartType0/Density"][:]
-u = sim["/PartType0/InternalEnergy"][:]
-S = sim["/PartType0/Entropy"][:]
-P = sim["/PartType0/Pressure"][:]
+rho = sim["/PartType0/Densities"][:]
+u = sim["/PartType0/InternalEnergies"][:]
+S = sim["/PartType0/Entropies"][:]
+P = sim["/PartType0/Pressures"][:]
 
 # Bin te data
 r_bin_edge = np.arange(0., 1., 0.02)
