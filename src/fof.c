@@ -53,7 +53,7 @@
 #define FOF_COMPRESS_PATHS_MIN_LENGTH (2)
 
 /* Are we timing the FOF? */
-#define WITH_FOF_TIMING
+//#define WITH_FOF_TIMING
 
 /**
  * @brief Properties of a group used for black hole seeding
@@ -180,6 +180,13 @@ void fof_create_mpi_types() {
 #endif
 }
 
+/**
+ * @brief Mapper function to set the initial group indices.
+ *
+ * @param map_data The array of group indices.
+ * @param num_elements Chunk size.
+ * @param extra_data Pointer to first group index.
+ */
 void fof_set_initial_group_index_mapper(void *map_data, int num_elements,
                                         void *extra_data) {
   size_t *group_index = (size_t *)map_data;
@@ -192,6 +199,13 @@ void fof_set_initial_group_index_mapper(void *map_data, int num_elements,
   }
 }
 
+/**
+ * @brief Mapper function to set the initial group sizes.
+ *
+ * @param map_data The array of group sizes.
+ * @param num_elements Chunk size.
+ * @param extra_data N/A.
+ */
 void fof_set_initial_group_size_mapper(void *map_data, int num_elements,
                                        void *extra_data) {
 
@@ -201,6 +215,13 @@ void fof_set_initial_group_size_mapper(void *map_data, int num_elements,
   }
 }
 
+/**
+ * @brief Mapper function to set the initial group IDs.
+ *
+ * @param map_data The array of #gpart%s.
+ * @param num_elements Chunk size.
+ * @param extra_data Pointer to the default group ID.
+ */
 void fof_set_initial_group_id_mapper(void *map_data, int num_elements,
                                      void *extra_data) {
 
@@ -229,6 +250,7 @@ void fof_allocate(const struct space *s, const long long total_nr_DM_particles,
   const double mean_inter_particle_sep =
       s->dim[0] / cbrt((double)total_nr_DM_particles);
   const double l_x = props->l_x_ratio * mean_inter_particle_sep;
+  int verbose = s->e->verbose;
 
   /* Are we using the aboslute value or the one derived from the mean
      inter-particle sepration? */
@@ -275,9 +297,10 @@ void fof_allocate(const struct space *s, const long long total_nr_DM_particles,
   
   threadpool_map(&s->e->threadpool, fof_set_initial_group_id_mapper, s->gparts,
                  s->nr_gparts, sizeof(struct gpart), 0, (void *)&group_id_default);
-    
-  message("Setting initial group ID took: %.3f %s.",
-            clocks_from_ticks(getticks() - tic), clocks_getunit());
+   
+  if(verbose) 
+    message("Setting initial group ID took: %.3f %s.",
+        clocks_from_ticks(getticks() - tic), clocks_getunit());
 
   tic = getticks();
 
@@ -286,8 +309,9 @@ void fof_allocate(const struct space *s, const long long total_nr_DM_particles,
                  props->group_index, s->nr_gparts, sizeof(size_t), 0,
                  props->group_index);
 
-  message("Setting initial group index took: %.3f %s.",
-      clocks_from_ticks(getticks() - tic), clocks_getunit());
+  if(verbose) 
+    message("Setting initial group index took: %.3f %s.",
+        clocks_from_ticks(getticks() - tic), clocks_getunit());
 
   tic = getticks();
 
@@ -295,8 +319,9 @@ void fof_allocate(const struct space *s, const long long total_nr_DM_particles,
   threadpool_map(&s->e->threadpool, fof_set_initial_group_size_mapper,
                  props->group_size, s->nr_gparts, sizeof(size_t), 0, NULL);
 
-  message("Setting initial group sizes took: %.3f %s.",
-      clocks_from_ticks(getticks() - tic), clocks_getunit());
+  if(verbose) 
+    message("Setting initial group sizes took: %.3f %s.",
+        clocks_from_ticks(getticks() - tic), clocks_getunit());
 
 #ifdef SWIFT_DEBUG_CHECKS
   ti_current = s->e->ti_current;
@@ -2037,6 +2062,13 @@ struct mapper_data {
   struct gpart *space_gparts;
 };
 
+/**
+ * @brief Mapper function to set the roots of #gpart%s going to other MPI ranks.
+ *
+ * @param map_data The list of outgoing local cells.
+ * @param num_elements Chunk size.
+ * @param extra_data Pointer to mapper data.
+ */
 void fof_set_outgoing_root_mapper(void *map_data, int num_elements,
                                   void *extra_data) {
 #ifdef WITH_MPI
@@ -2559,9 +2591,9 @@ void fof_search_tree(struct fof_props *props,
   MPI_Scan(&nr_gparts_local, &nr_gparts_cumulative, 1, MPI_LONG_LONG, MPI_SUM,
            MPI_COMM_WORLD);
 
-  // if (verbose)
-  message("MPI_Scan Imbalance took: %.3f %s.",
-          clocks_from_ticks(getticks() - comms_tic), clocks_getunit());
+  if (verbose)
+    message("MPI_Scan Imbalance took: %.3f %s.",
+        clocks_from_ticks(getticks() - comms_tic), clocks_getunit());
 
   node_offset = nr_gparts_cumulative - nr_gparts_local;
 
@@ -2580,10 +2612,10 @@ void fof_search_tree(struct fof_props *props,
 
   threadpool_map(&s->e->threadpool, fof_calc_group_size_mapper, gparts,
                  nr_gparts, sizeof(struct gpart), 0, s);
-
-  message("FOF calc group size took (FOF SCALING): %.3f %s.",
-          clocks_from_ticks(getticks() - tic_calc_group_size),
-          clocks_getunit());
+  if(verbose)
+    message("FOF calc group size took (FOF SCALING): %.3f %s.",
+        clocks_from_ticks(getticks() - tic_calc_group_size),
+        clocks_getunit());
 
 #ifdef WITH_MPI
   if (nr_nodes > 1) {
@@ -2593,13 +2625,15 @@ void fof_search_tree(struct fof_props *props,
     /* Search for group links across MPI domains. */
     fof_search_foreign_cells(props, s);
 
-    message("fof_search_foreign_cells() took (FOF SCALING): %.3f %s.",
-            clocks_from_ticks(getticks() - tic_mpi), clocks_getunit());
+    if(verbose) {
+      message("fof_search_foreign_cells() took (FOF SCALING): %.3f %s.",
+          clocks_from_ticks(getticks() - tic_mpi), clocks_getunit());
 
-    message(
-        "fof_search_foreign_cells() + calc_group_size took (FOF SCALING): %.3f "
-        "%s.",
-        clocks_from_ticks(getticks() - tic_total), clocks_getunit());
+      message(
+          "fof_search_foreign_cells() + calc_group_size took (FOF SCALING): %.3f "
+          "%s.",
+          clocks_from_ticks(getticks() - tic_total), clocks_getunit());
+    }
   }
 #endif
 
@@ -2634,9 +2668,10 @@ void fof_search_tree(struct fof_props *props,
 #endif
   }
 
-  message(
-      "Calculating the total no. of local groups took: (FOF SCALING): %.3f %s.",
-      clocks_from_ticks(getticks() - tic_num_groups_calc), clocks_getunit());
+  if(verbose)
+    message(
+        "Calculating the total no. of local groups took: (FOF SCALING): %.3f %s.",
+        clocks_from_ticks(getticks() - tic_num_groups_calc), clocks_getunit());
 
   /* Sort the groups in descending order based upon size and re-label their IDs
    * 0-num_groups. */
@@ -2672,9 +2707,10 @@ void fof_search_tree(struct fof_props *props,
   MPI_Allreduce(&num_groups_local, &num_groups, 1, MPI_INT, MPI_SUM,
                 MPI_COMM_WORLD);
 
-  message("Finding the total no. of groups took: (FOF SCALING): %.3f %s.",
-          clocks_from_ticks(getticks() - tic_num_groups_calc),
-          clocks_getunit());
+  if(verbose)
+    message("Finding the total no. of groups took: (FOF SCALING): %.3f %s.",
+        clocks_from_ticks(getticks() - tic_num_groups_calc),
+        clocks_getunit());
 
 #ifndef WITH_FOF_TIMING
   MPI_Reduce(&num_parts_in_groups_local, &num_parts_in_groups, 1, MPI_INT,
@@ -2702,9 +2738,14 @@ void fof_search_tree(struct fof_props *props,
   const size_t num_groups_prev = (size_t)(ngsum - nglocal);
 #endif /* WITH_MPI */
 
-  message("Finding the total no. of groups took: (FOF SCALING): %.3f %s.",
-          clocks_from_ticks(getticks() - tic_num_groups_calc),
-          clocks_getunit());
+  if(verbose)
+    message("Finding the total no. of groups took: (FOF SCALING): %.3f %s.",
+        clocks_from_ticks(getticks() - tic_num_groups_calc),
+        clocks_getunit());
+
+  /* Sort local groups into descending order of size */
+  qsort(high_group_sizes, num_groups_local, sizeof(struct group_length),
+      cmp_func_group_size);
 
   /* Set default group ID for all particles */
   for (size_t i = 0; i < nr_gparts; i++)
