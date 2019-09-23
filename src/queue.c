@@ -36,6 +36,7 @@
 /* Local headers. */
 #include "atomic.h"
 #include "error.h"
+#include "memswap.h"
 
 /**
  * @brief Enqueue all tasks in the incoming DEQ.
@@ -207,6 +208,7 @@ void queue_init(struct queue *q, struct task *tasks) {
     error("Failed to allocate MPI_Request buffers.");
   q->mpi_requests_size = queue_sizeinit;
   q->mpi_requests_count = 0;
+  q->mpi_requests_index_count = 0;
 #endif  // WITH_MPI
 }
 
@@ -222,7 +224,10 @@ struct task *queue_get_comm_task(struct queue *q) {
   /* Bail if we don't have any requests. */
   if (q->mpi_requests_count == 0) return NULL;
 
-  /* Check if any of the requests are done. */
+    /* Check if any of the requests are done. */
+#if 0
+  /* Don't do anything clever, call MPI_Testany and take the first request
+     that completed. */
   int offset = MPI_UNDEFINED;
   MPI_Status status;
   int res;
@@ -232,15 +237,57 @@ struct task *queue_get_comm_task(struct queue *q) {
     mpi_error(res, "MPI_Testany failed.");
 
   /* Did we get anything useful? */
-  if (!flag) return NULL;
+  if (flag) {
+    /* Swap things around and return the completed task. */
+    struct task *task = &q->tasks[q->mpi_requests_tid[offset]];
+    q->mpi_requests_count -= 1;
+    q->mpi_requests[offset] = q->mpi_requests[q->mpi_requests_count];
+    q->mpi_requests_tid[offset] = q->mpi_requests_tid[q->mpi_requests_count];
+    return task;
+  }
+#else
+  /* Try to be clever and populate an array of indices of completed tasks with
+     MPI_Testsome, and return a task from that index. This could reduce the
+     number of times we run through the whole array of requests with
+     MPI_Testany. */
+  /* Populate the completed request indices, if needed. */
+  if (q->mpi_requests_index_count == 0) {
+    int res;
+    if ((res = MPI_Testsome(q->mpi_requests_count, q->mpi_requests,
+                            &q->mpi_requests_index_count, q->mpi_requests_index,
+                            MPI_STATUSES_IGNORE)) != MPI_SUCCESS)
+      mpi_error(res, "MPI_Testsome failed.");
 
-  /* Swap things around and return the completed task. */
-  struct task *task = &q->tasks[q->mpi_requests_tid[offset]];
-  q->mpi_requests_count -= 1;
-  q->mpi_requests[offset] = q->mpi_requests[q->mpi_requests_count];
-  q->mpi_requests_tid[offset] = q->mpi_requests_tid[q->mpi_requests_count];
-  q->mpi_requests_index[offset] = q->mpi_requests_index[q->mpi_requests_count];
-  return task;
+    /* Ensure that the indices are sorted in increasing order. We do this to
+       be sure that every time we take a request off the mpi_requests list
+       below, we won't mess up the indices themselves. */
+    for (int k = 0; k < q->mpi_requests_index_count - 1; k++) {
+      for (int j = k + 1; j < q->mpi_requests_index_count; j++) {
+        if (q->mpi_requests_index[k] > q->mpi_requests_index[j]) {
+          memswap(&q->mpi_requests_index[k], &q->mpi_requests_index[j],
+                  sizeof(int));
+        }
+      }
+    }
+  }
+
+  /* Check if we already have the index of a completed comm task. */
+  if (q->mpi_requests_index_count > 0) {
+    /* Pick the task of the index. */
+    q->mpi_requests_index_count -= 1;
+    const int offset = q->mpi_requests_index[q->mpi_requests_index_count];
+    struct task *task = &q->tasks[q->mpi_requests_tid[offset]];
+
+    /* Remove the task from the list of mpi_requests. */
+    q->mpi_requests_count -= 1;
+    q->mpi_requests[offset] = q->mpi_requests[q->mpi_requests_count];
+    q->mpi_requests_tid[offset] = q->mpi_requests_tid[q->mpi_requests_count];
+    return task;
+  }
+#endif
+
+  /* Fall-through, didn't find anything. */
+  return NULL;
 }
 #endif  // WITH_MPI
 

@@ -65,6 +65,7 @@ struct queue {
   int *mpi_requests_index;
   int mpi_requests_count;
   int mpi_requests_size;
+  int mpi_requests_index_count;
 #endif  // WITH_MPI
 
 } __attribute__((aligned(queue_struct_align)));
