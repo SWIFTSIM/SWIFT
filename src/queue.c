@@ -153,6 +153,19 @@ void queue_init(struct queue *q, struct task *tasks) {
   q->first_incoming = 0;
   q->last_incoming = 0;
   q->count_incoming = 0;
+
+#ifdef WITH_MPI
+  /* Allocate buffers for special treatment of communication tasks. */
+  if ((q->mpi_requests = (MPI_Request *)malloc(sizeof(MPI_Request) *
+                                               queue_sizeinit)) == NULL ||
+      (q->mpi_requests_tid = (int *)malloc(sizeof(int) * queue_sizeinit)) ==
+          NULL ||
+      (q->mpi_requests_index = (int *)malloc(sizeof(int) * queue_sizeinit)) ==
+          NULL)
+    error("Failed to allocate MPI_Request buffers.");
+  q->mpi_requests_size = queue_sizeinit;
+  q->mpi_requests_count = 0;
+#endif WITH_MPI
 }
 
 /**
@@ -297,7 +310,11 @@ struct task *queue_gettask(struct queue *q, const struct task *prev,
 }
 
 void queue_clean(struct queue *q) {
-
   free(q->tid);
   free(q->tid_incoming);
+#ifdef WITH_MPI
+  free(q->mpi_requests);
+  free(q->mpi_requests_tid);
+  free(q->mpi_requests_count);
+#endif  // WITH_MPI
 }

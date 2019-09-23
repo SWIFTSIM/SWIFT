@@ -58,6 +58,15 @@ struct queue {
   int *tid_incoming;
   volatile unsigned int first_incoming, last_incoming, count_incoming;
 
+  /* Queue of MPI_Requests that this queue is wating on. */
+#ifdef WITH_MPI
+  MPI_Request *mpi_requests;
+  int *mpi_requests_tid;
+  int *mpi_requests_index;
+  int mpi_requests_count;
+  int mpi_requests_size;
+#endif  // WITH_MPI
+
 } __attribute__((aligned(queue_struct_align)));
 
 /* Function prototypes. */
