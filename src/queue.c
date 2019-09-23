@@ -105,6 +105,9 @@ void queue_get_incoming(struct queue *q) {
       q->mpi_requests[q->mpi_requests_count] = tasks[offset].req;
       q->mpi_requests_tid[q->mpi_requests_count] = offset;
       q->mpi_requests_count += 1;
+
+      /* Don't need to add this task to the regular queue. */
+      continue;
     }
 #endif  // WITH_MPI
 
@@ -208,6 +211,40 @@ void queue_init(struct queue *q, struct task *tasks) {
 }
 
 /**
+ * @breif Check if we have any ready MPI tasks in the mpi_requests list.
+ *
+ * @param queue The #queue we're checking, should be locked.
+ *
+ * @return A pointer to a task that's ready to run, or NULL.
+ */
+#ifdef WITH_MPI
+struct task *queue_get_comm_task(struct queue *q) {
+  /* Bail if we don't have any requests. */
+  if (q->mpi_requests_count == 0) return NULL;
+
+  /* Check if any of the requests are done. */
+  int offset = MPI_UNDEFINED;
+  MPI_Status status;
+  int res;
+  int flag;
+  if ((res = MPI_Testany(q->mpi_requests_count, q->mpi_requests, &offset, &flag,
+                         &status)) != MPI_SUCCESS)
+    mpi_error(res, "MPI_Testany failed.");
+
+  /* Did we get anything useful? */
+  if (!flag) return NULL;
+
+  /* Swap things around and return the completed task. */
+  struct task *task = &q->tasks[q->mpi_requests_tid[offset]];
+  q->mpi_requests_count -= 1;
+  q->mpi_requests[offset] = q->mpi_requests[q->mpi_requests_count];
+  q->mpi_requests_tid[offset] = q->mpi_requests_tid[q->mpi_requests_count];
+  q->mpi_requests_index[offset] = q->mpi_requests_index[q->mpi_requests_count];
+  return task;
+}
+#endif  // WITH_MPI
+
+/**
  * @brief Get a task free of dependencies and conflicts.
  *
  * @param q The task #queue.
@@ -231,10 +268,22 @@ struct task *queue_gettask(struct queue *q, const struct task *prev,
   queue_get_incoming(q);
 
   /* If there are no tasks, leave immediately. */
+#ifdef WITH_MPI
+  if (q->count == 0 && q->mpi_requests_count == 0) {
+#else
   if (q->count == 0) {
+#endif  // WITH_MPI
     lock_unlock_blind(qlock);
     return NULL;
   }
+
+#ifdef WITH_MPI
+  /* Try to get a comms task first. */
+  if ((res = queue_get_comm_task(q)) != NULL) {
+    lock_unlock_blind(qlock);
+    return res;
+  }
+#endif  // WITH_MPI
 
   /* Set some pointers we will use often. */
   int *qtid = q->tid;
