@@ -98,6 +98,16 @@ void hydro_props_init(struct hydro_props *p,
   if (p->max_smoothing_iterations <= 10)
     error("The number of smoothing length iterations should be > 10");
 
+  /* Non-conventional neighbour number definition */
+  p->use_mass_weighted_num_ngb =
+      parser_get_opt_param_int(params, "SPH:use_mass_weighted_num_ngb", 0);
+
+  if (p->use_mass_weighted_num_ngb) {
+#if defined(GIZMO_MFV_SPH) || defined(GIZMO_MFM_SPH) || defined(SHADOWFAX_SPH)
+    error("Can't use alternative neighbour definition with this scheme!");
+#endif
+  }
+
   /* Time integration properties */
   p->CFL_condition = parser_get_param_float(params, "SPH:CFL_condition");
   const float max_volume_change = parser_get_opt_param_float(
@@ -202,17 +212,15 @@ void hydro_props_print(const struct hydro_props *p) {
 
   message("Hydrodynamic integration: CFL parameter: %.4f.", p->CFL_condition);
 
-  /* Print out the implementation-dependent viscosity parameters
-   * (see hydro/SCHEME/hydro_parameters.h for this implementation) */
-  viscosity_print(&(p->viscosity));
-
-  /* Same for the diffusion */
-  diffusion_print(&(p->diffusion));
-
   message(
       "Hydrodynamic integration: Max change of volume: %.2f "
       "(max|dlog(h)/dt|=%f).",
       pow_dimension(expf(p->log_max_h_change)), p->log_max_h_change);
+
+  if (p->use_mass_weighted_num_ngb)
+    message("Neighbour number definition: Mass-weighted.");
+  else
+    message("Neighbour number definition: Unweighted.");
 
   if (p->h_max != hydro_props_default_h_max)
     message("Maximal smoothing length allowed: %.4f", p->h_max);
@@ -227,7 +235,14 @@ void hydro_props_print(const struct hydro_props *p) {
   if (p->minimal_temperature != hydro_props_default_min_temp)
     message("Minimal gas temperature set to %f", p->minimal_temperature);
 
-    // Matthieu: Temporary location for this i/o business.
+  /* Print out the implementation-dependent viscosity parameters
+   * (see hydro/SCHEME/hydro_parameters.h for this implementation) */
+  viscosity_print(&(p->viscosity));
+
+  /* Same for the diffusion */
+  diffusion_print(&(p->diffusion));
+
+  // MATTHIEU: Temporary location for this planetary SPH i/o business.
 
 #ifdef PLANETARY_SPH
 #ifdef PLANETARY_SPH_NO_BALSARA
@@ -245,6 +260,12 @@ void hydro_props_print_snapshot(hid_t h_grpsph, const struct hydro_props *p) {
   pressure_floor_print_snapshot(h_grpsph);
 
   io_write_attribute_i(h_grpsph, "Dimension", (int)hydro_dimension);
+  if (p->use_mass_weighted_num_ngb) {
+    io_write_attribute_s(h_grpsph, "Neighbour number definition",
+                         "mass-weighted");
+  } else {
+    io_write_attribute_s(h_grpsph, "Neighbour number definition", "unweighted");
+  }
   io_write_attribute_s(h_grpsph, "Scheme", SPH_IMPLEMENTATION);
   io_write_attribute_s(h_grpsph, "Kernel function", kernel_name);
   io_write_attribute_f(h_grpsph, "Kernel target N_ngb", p->target_neighbours);
