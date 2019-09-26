@@ -332,6 +332,10 @@ h_i)`). Note that in the case where all the particles in the simulation
 have the same mass, the two definitions lead to the same number density
 value.
 
+**We dot not recommend using this alternative neighbour number definition
+in production runs.** It is mainly provided for backward compatibility with
+earlier simulations.
+
 The second one, the relative tolerance for the smoothing length, specifies
 the convergence criteria for the smoothing length when using the
 Newton-Raphson scheme. This works with the maximal number of iterations,
