@@ -499,8 +499,11 @@ class Container:
         wcanvas.config(width=1000, height=300)
         wcanvas.pack(side=tk.TOP, expand=True, fill=tk.BOTH)
 
-        toolbar= tkagg.NavigationToolbar2TkAgg(canvas, self.window)
+        toolbar = tkagg.NavigationToolbar2TkAgg(canvas, self.window)
         toolbar.update()
+        self.output = tk.StringVar()
+        label = tk.Label(self.window, textvariable=self.output, bg="white", fg="red", bd=2)
+        label.pack(side=tk.RIGHT, expand=True, fill=tk.X)
         wcanvas.pack(side=tk.TOP, expand=True, fill=tk.BOTH)
 
         canvas.draw()
@@ -512,12 +515,7 @@ class Container:
             fig.canvas.mpl_connect('button_press_event', self.onclick)
 
     def onclick(self, event):
-        #print('%s click: button=%d, x=%d, y=%d, xdata=%f, ydata=%f' %
-        #      ('double' if event.dblclick else 'single', event.button,
-        #       event.x, event.y, event.xdata, event.ydata))
-
-        # Find thread, then scan for task.
-        # XXX are sorted by tic? If so could break earlier.
+        # Find thread, then scan for bounded task.
         try:
             thread = int(round(event.ydata)) - 1
             if thread >= 0 and thread < self.nthread:
@@ -526,7 +524,10 @@ class Container:
                 labels = self.llabels[thread]
                 for i in range(len(tics)):
                     if event.xdata > tics[i] and event.xdata < tocs[i]:
-                        print "task = ", labels[i], " tic/toc = ", tics[i], "/", tocs[i]
+                        tic = "{0:.3f}".format(tics[i])
+                        toc = "{0:.3f}".format(tocs[i])
+                        outstr = "task =  " + labels[i] + ",  tic/toc =  " + tic + " / " + toc
+                        self.output.set(outstr)
                         break
         except TypeError:
             #  Ignore out of bounds.
