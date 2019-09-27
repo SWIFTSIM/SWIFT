@@ -235,7 +235,7 @@ void memuse_rnode_dump(int depth, struct memuse_rnode *node, int full) {
     // char ptr[MEMUSE_MAXLABLEN];
     uint8_t key[sizeof(uintptr_t)];
     void *ptr;
-  } keyparts = {0};
+  } keyparts = {{0}};
 
   /* Record keypart at this depth. Root has no keypart. */
   if (depth != 0) keyparts.key[depth - 1] = node->keypart;
