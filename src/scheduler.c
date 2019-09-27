@@ -719,7 +719,7 @@ static void scheduler_splittask_hydro(struct task *t, struct scheduler *s) {
           t->ci = ci->progeny[csp->pairs[0].pid];
           t->cj = cj->progeny[csp->pairs[0].pjd];
           cell_set_flag(t->ci, cell_flag_has_tasks);
-          cell_set_flag(t->cj, cell_flag_has_tasks);
+          if (t->cj != NULL)cell_set_flag(t->cj, cell_flag_has_tasks);
 
           t->flags = csp->pairs[0].sid;
           for (int k = 1; k < csp->count; k++) {
