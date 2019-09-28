@@ -945,6 +945,7 @@ void runner_do_ghost(struct runner *r, struct cell *c, int timer) {
   const struct cosmology *cosmo = e->cosmology;
   const struct chemistry_global_data *chemistry = e->chemistry;
   const struct star_formation *star_formation = e->star_formation;
+  const struct hydro_props *hydro_props = e->hydro_properties;
 
   const int with_cosmology = (e->policy & engine_policy_cosmology);
 
@@ -1095,7 +1096,7 @@ void runner_do_ghost(struct runner *r, struct cell *c, int timer) {
             /* The force variables are set in the extra ghost. */
 
             /* Compute variables required for the gradient loop */
-            hydro_prepare_gradient(p, xp, cosmo);
+            hydro_prepare_gradient(p, xp, cosmo, hydro_props);
 
             /* The particle gradient values are now set.  Do _NOT_
                try to read any particle density variables! */
@@ -1105,8 +1106,6 @@ void runner_do_ghost(struct runner *r, struct cell *c, int timer) {
             hydro_reset_gradient(p);
 
 #else
-            const struct hydro_props *hydro_props = e->hydro_properties;
-
             /* Calculate the time-step for passing to hydro_prepare_force, used
              * for the evolution of alpha factors (i.e. those involved in the
              * artificial viscosity and thermal conduction terms) */
@@ -1252,7 +1251,7 @@ void runner_do_ghost(struct runner *r, struct cell *c, int timer) {
         /* The force variables are set in the extra ghost. */
 
         /* Compute variables required for the gradient loop */
-        hydro_prepare_gradient(p, xp, cosmo);
+        hydro_prepare_gradient(p, xp, cosmo, hydro_props);
 
         /* The particle gradient values are now set.  Do _NOT_
            try to read any particle density variables! */
@@ -1261,7 +1260,6 @@ void runner_do_ghost(struct runner *r, struct cell *c, int timer) {
         hydro_reset_gradient(p);
 
 #else
-        const struct hydro_props *hydro_props = e->hydro_properties;
 
         /* Calculate the time-step for passing to hydro_prepare_force, used
          * for the evolution of alpha factors (i.e. those involved in the
