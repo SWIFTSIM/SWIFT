@@ -589,12 +589,12 @@ __attribute__((always_inline)) INLINE static void hydro_prepare_force(
     rho_dh = 0.f;
   }
   const float rho_inv = 1.f / p->rho;
-  const float rho_dh =
+  const float rho_dh_term =
       1.f / (1.f + hydro_dimension_inv * p->h * rho_dh * rho_inv);
-  const float pressure_dh =
+  const float pressure_dh_term =
       p->density.pressure_dh * rho_inv * p->h * hydro_dimension_inv;
 
-  const float grad_h_term = rho_dh * pressure_dh;
+  const float grad_h_term = rho_dh_term * pressure_dh_term;
 
   /* Update variables. */
   p->force.soundspeed = soundspeed;
