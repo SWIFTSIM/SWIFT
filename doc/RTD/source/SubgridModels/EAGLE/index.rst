@@ -553,10 +553,10 @@ Supernova feedback: Dalla Vecchia+2012 & Schaye+2015
     SNII_wind_delay_Gyr:              0.03            # Time in Gyr between a star's birth and the SNII thermal feedback event.
     SNII_delta_T_K:                   3.16228e7       # Change in temperature to apply to the gas particle in a SNII thermal feedback event in Kelvin.
     SNII_energy_erg:                  1.0e51          # Energy of one SNII explosion in ergs.
-    SNII_energy_fraction_min:         3.0             # Maximal fraction of energy applied in a SNII feedback event.
-    SNII_energy_fraction_max:         0.3             # Minimal fraction of energy applied in a SNII feedback event.
+    SNII_energy_fraction_min:         0.3             # Maximal fraction of energy applied in a SNII feedback event.
+    SNII_energy_fraction_max:         3.0             # Minimal fraction of energy applied in a SNII feedback event.
     SNII_energy_fraction_Z_0:         0.0012663729    # Pivot point for the metallicity dependance of the SNII energy fraction (metal mass fraction).
-    SNII_energy_fraction_n_0_H_p_cm3: 0.67            # Pivot point for the birth density dependance of the SNII energy fraction in cm^-3.
+    SNII_energy_fraction_n_0_H_p_cm3: 1.4588          # Pivot point for the birth density dependance of the SNII energy fraction in cm^-3.
     SNII_energy_fraction_n_Z:         0.8686          # Power-law for the metallicity dependance of the SNII energy fraction.
     SNII_energy_fraction_n_n:         0.8686          # Power-law for the birth density dependance of the SNII energy fraction.
     SNIa_max_mass_Msun:              8.0              # Maximal mass considered for SNIa feedback and enrichment in solar masses.
@@ -574,6 +574,11 @@ Supernova feedback: Dalla Vecchia+2012 & Schaye+2015
     SNII_yield_factor_Silicon:        1.0             # (Optional) Correction factor to apply to the Silicon yield from the SNII channel.
     SNII_yield_factor_Iron:           0.5             # (Optional) Correction factor to apply to the Iron yield from the SNII channel.
 
+Note that the value of ``SNII_energy_fraction_n_0_H_p_cm3`` given here is
+different from the value (:math:`0.67`) reported in table 3 of `Schaye
+(2015) <http://adsabs.harvard.edu/abs/2015MNRAS.446..521S>`_ , as a factor
+of :math:`h^{-2} = 0.6777^{-2} = 2.1773` is missing in the paper.
+    
 .. _EAGLE_black_hole_seeding:
 
 Black-hole creation
