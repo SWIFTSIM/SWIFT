@@ -590,7 +590,7 @@ __attribute__((always_inline)) INLINE static void hydro_prepare_force(
   }
   const float rho_inv = 1.f / p->rho;
   const float rho_dh =
-      1.f / (1.f + hydro_dimension_inv * p->h * p->rho_dh * rho_inv);
+      1.f / (1.f + hydro_dimension_inv * p->h * rho_dh * rho_inv);
   const float pressure_dh =
       p->density.pressure_dh * rho_inv * p->h * hydro_dimension_inv;
 
