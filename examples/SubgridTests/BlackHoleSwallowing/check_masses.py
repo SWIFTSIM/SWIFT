@@ -66,5 +66,5 @@ for i in range(np.size(ids_removed)):
     result = np.where(ids_gas == ids_removed)
     print result
 
-#rho_gas = f["/PartType0/Density"][:]
+#rho_gas = f["/PartType0/Densities"][:]
 #print np.mean(rho_gas), np.std(rho_gas)

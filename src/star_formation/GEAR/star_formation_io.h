@@ -56,11 +56,6 @@ INLINE static void starformation_init_backend(
     const struct unit_system* us, const struct hydro_props* hydro_props,
     struct star_formation* starform) {
 
-  // TODO move into pressure floor
-  starform->n_jeans_2_3 =
-      parser_get_param_float(parameter_file, "GEARStarFormation:NJeans");
-  starform->n_jeans_2_3 = pow(starform->n_jeans_2_3, 2. / 3.);
-
   /* Star formation efficiency */
   starform->star_formation_efficiency = parser_get_param_double(
       parameter_file, "GEARStarFormation:star_formation_efficiency");
@@ -68,6 +63,9 @@ INLINE static void starformation_init_backend(
   /* Maximum temperature for star formation */
   starform->maximal_temperature = parser_get_param_double(
       parameter_file, "GEARStarFormation:maximal_temperature");
+
+  /* Get the jeans factor */
+  starform->n_jeans_2_3 = pow(pressure_floor_props.n_jeans, 2. / 3.);
 
   /* Apply unit change */
   starform->maximal_temperature *=

@@ -213,10 +213,6 @@ void read_cooling_header(const char *fname,
   if (N_SolarAbundances != eagle_cooling_N_abundances)
     error("Invalid solar abundances array length.");
 
-  /* Check value */
-  if (N_SolarAbundances != chemistry_element_count + 2)
-    error("Number of abundances not compatible with the chemistry model.");
-
   dataset = H5Dopen(tempfile_id, "/Header/Number_of_metals", H5P_DEFAULT);
   status = H5Dread(dataset, H5T_NATIVE_INT, H5S_ALL, H5S_ALL, H5P_DEFAULT,
                    &N_Elements);
@@ -297,7 +293,10 @@ void read_cooling_header(const char *fname,
     cooling->nH[i] = log10(cooling->nH[i]);
   }
 
-  /* Compute inverse of solar mass fractions */
+    /* Compute inverse of solar mass fractions */
+#if defined(__ICC)
+#pragma novector
+#endif
   for (int i = 0; i < N_SolarAbundances; ++i) {
     cooling->SolarAbundances_inv[i] = 1.f / cooling->SolarAbundances[i];
   }

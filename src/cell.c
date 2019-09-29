@@ -61,6 +61,7 @@
 #include "hydro_properties.h"
 #include "memswap.h"
 #include "minmax.h"
+#include "pressure_floor.h"
 #include "scheduler.h"
 #include "space.h"
 #include "space_getsid.h"
@@ -69,6 +70,8 @@
 #include "timers.h"
 #include "tools.h"
 #include "tracers.h"
+
+extern int engine_star_resort_task_depth;
 
 /* Global variables. */
 int cell_next_tag = 0;
@@ -2175,8 +2178,11 @@ void cell_reset_task_counters(struct cell *c) {
  *
  * @param c The #cell.
  * @param ti_current The current integer time.
+ * @param grav_props The properties of the gravity scheme.
  */
-void cell_make_multipoles(struct cell *c, integertime_t ti_current) {
+void cell_make_multipoles(struct cell *c, integertime_t ti_current,
+                          const struct gravity_props *const grav_props) {
+
   /* Reset everything */
   gravity_reset(c->grav.multipole);
 
@@ -2184,7 +2190,7 @@ void cell_make_multipoles(struct cell *c, integertime_t ti_current) {
     /* Start by recursing */
     for (int k = 0; k < 8; ++k) {
       if (c->progeny[k] != NULL)
-        cell_make_multipoles(c->progeny[k], ti_current);
+        cell_make_multipoles(c->progeny[k], ti_current, grav_props);
     }
 
     /* Compute CoM of all progenies */
@@ -2245,7 +2251,7 @@ void cell_make_multipoles(struct cell *c, integertime_t ti_current) {
 
   } else {
     if (c->grav.count > 0) {
-      gravity_P2M(c->grav.multipole, c->grav.parts, c->grav.count);
+      gravity_P2M(c->grav.multipole, c->grav.parts, c->grav.count, grav_props);
       const double dx =
           c->grav.multipole->CoM[0] > c->loc[0] + c->width[0] * 0.5
               ? c->grav.multipole->CoM[0] - c->loc[0]
@@ -2321,8 +2327,11 @@ void cell_check_foreign_multipole(const struct cell *c) {
  * recursively computed one.
  *
  * @param c Cell to act upon
+ * @param grav_props The properties of the gravity scheme.
  */
-void cell_check_multipole(struct cell *c) {
+void cell_check_multipole(struct cell *c,
+                          const struct gravity_props *const grav_props) {
+
 #ifdef SWIFT_DEBUG_CHECKS
   struct gravity_tensors ma;
   const double tolerance = 1e-3; /* Relative */
@@ -2330,11 +2339,12 @@ void cell_check_multipole(struct cell *c) {
   /* First recurse */
   if (c->split)
     for (int k = 0; k < 8; k++)
-      if (c->progeny[k] != NULL) cell_check_multipole(c->progeny[k]);
+      if (c->progeny[k] != NULL)
+        cell_check_multipole(c->progeny[k], grav_props);
 
   if (c->grav.count > 0) {
     /* Brute-force calculation */
-    gravity_P2M(&ma, c->grav.parts, c->grav.count);
+    gravity_P2M(&ma, c->grav.parts, c->grav.count, grav_props);
 
     /* Now  compare the multipole expansion */
     if (!gravity_multipole_equal(&ma, c->grav.multipole, tolerance)) {
@@ -2398,6 +2408,122 @@ void cell_clear_limiter_flags(struct cell *c, void *data) {
 }
 
 /**
+ * @brief Recursively clear the stars_resort flag in a cell hierarchy.
+ *
+ * @param c The #cell to act on.
+ */
+void cell_set_star_resort_flag(struct cell *c) {
+
+  cell_set_flag(c, cell_flag_do_stars_resort);
+
+  /* Abort if we reched the level where the resorting task lives */
+  if (c->depth == engine_star_resort_task_depth || c->hydro.super == c) return;
+
+  if (c->split) {
+    for (int k = 0; k < 8; ++k)
+      if (c->progeny[k] != NULL) cell_set_star_resort_flag(c->progeny[k]);
+  }
+}
+
+/**
+ * @brief Recurses in a cell hierarchy down to the level where the
+ * star resort tasks are and activates them.
+ *
+ * The function will fail if called *below* the super-level
+ *
+ * @param c The #cell to recurse into.
+ * @param s The #scheduler.
+ */
+void cell_activate_star_resort_tasks(struct cell *c, struct scheduler *s) {
+
+#ifdef SWIFT_DEBUG_CHECKS
+  if (c->hydro.super != NULL && c->hydro.super != c)
+    error("Function called below the super level!");
+#endif
+
+  /* The resort tasks are at either the chosen depth or the super level,
+   * whichever comes first. */
+  if ((c->depth == engine_star_resort_task_depth || c->hydro.super == c) &&
+      c->hydro.count > 0) {
+    scheduler_activate(s, c->hydro.stars_resort);
+  } else {
+    for (int k = 0; k < 8; ++k) {
+      if (c->progeny[k] != NULL) {
+        cell_activate_star_resort_tasks(c->progeny[k], s);
+      }
+    }
+  }
+}
+
+/**
+ * @brief Activate the star formation task as well as the resorting of stars
+ *
+ * Must be called at the top-level in the tree (where the SF task is...)
+ *
+ * @param c The (top-level) #cell.
+ * @param s The #scheduler.
+ */
+void cell_activate_star_formation_tasks(struct cell *c, struct scheduler *s) {
+
+#ifdef SWIFT_DEBUG_CHECKS
+  if (c->depth != 0) error("Function should be called at the top-level only");
+#endif
+
+  /* Have we already unskipped that task? */
+  if (c->hydro.star_formation->skip == 0) return;
+
+  /* Activate the star formation task */
+  scheduler_activate(s, c->hydro.star_formation);
+
+  /* Activate the star resort tasks at whatever level they are */
+  cell_activate_star_resort_tasks(c, s);
+}
+
+/**
+ * @brief Recursively activate the hydro ghosts (and implicit links) in a cell
+ * hierarchy.
+ *
+ * @param c The #cell.
+ * @param s The #scheduler.
+ * @param e The #engine.
+ */
+void cell_recursively_activate_hydro_ghosts(struct cell *c, struct scheduler *s,
+                                            const struct engine *e) {
+  /* Early abort? */
+  if ((c->hydro.count == 0) || !cell_is_active_hydro(c, e)) return;
+
+  /* Is the ghost at this level? */
+  if (c->hydro.ghost != NULL) {
+    scheduler_activate(s, c->hydro.ghost);
+  } else {
+
+#ifdef SWIFT_DEBUG_CHECKS
+    if (!c->split)
+      error("Reached the leaf level without finding a hydro ghost!");
+#endif
+
+    /* Keep recursing */
+    for (int k = 0; k < 8; k++)
+      if (c->progeny[k] != NULL)
+        cell_recursively_activate_hydro_ghosts(c->progeny[k], s, e);
+  }
+}
+
+/**
+ * @brief Activate the hydro ghosts (and implicit links) in a cell hierarchy.
+ *
+ * @param c The #cell.
+ * @param s The #scheduler.
+ * @param e The #engine.
+ */
+void cell_activate_hydro_ghosts(struct cell *c, struct scheduler *s,
+                                const struct engine *e) {
+  scheduler_activate(s, c->hydro.ghost_in);
+  scheduler_activate(s, c->hydro.ghost_out);
+  cell_recursively_activate_hydro_ghosts(c, s, e);
+}
+
+/**
  * @brief Recurse down in a cell hierarchy until the hydro.super level is
  * reached and activate the spart drift at that level.
  *
@@ -2405,6 +2531,10 @@ void cell_clear_limiter_flags(struct cell *c, void *data) {
  * @param s The #scheduler.
  */
 void cell_activate_super_spart_drifts(struct cell *c, struct scheduler *s) {
+
+  /* Early abort? */
+  if (c->hydro.count == 0) return;
+
   if (c == c->hydro.super) {
     cell_activate_drift_spart(c, s);
   } else {
@@ -3419,20 +3549,18 @@ int cell_unskip_hydro_tasks(struct cell *c, struct scheduler *s) {
 
     if (c->hydro.extra_ghost != NULL)
       scheduler_activate(s, c->hydro.extra_ghost);
-    if (c->hydro.ghost_in != NULL) scheduler_activate(s, c->hydro.ghost_in);
-    if (c->hydro.ghost_out != NULL) scheduler_activate(s, c->hydro.ghost_out);
-    if (c->hydro.ghost != NULL) scheduler_activate(s, c->hydro.ghost);
+    if (c->hydro.ghost_in != NULL) cell_activate_hydro_ghosts(c, s, e);
     if (c->kick1 != NULL) scheduler_activate(s, c->kick1);
     if (c->kick2 != NULL) scheduler_activate(s, c->kick2);
     if (c->timestep != NULL) scheduler_activate(s, c->timestep);
     if (c->hydro.end_force != NULL) scheduler_activate(s, c->hydro.end_force);
     if (c->hydro.cooling != NULL) scheduler_activate(s, c->hydro.cooling);
+#ifdef WITH_LOGGER
     if (c->logger != NULL) scheduler_activate(s, c->logger);
+#endif
 
     if (c->top->hydro.star_formation != NULL) {
-      scheduler_activate(s, c->top->hydro.star_formation);
-      scheduler_activate(s, c->top->hydro.stars_resort);
-      cell_activate_drift_spart(c, s);
+      cell_activate_star_formation_tasks(c->top, s);
     }
   }
 
@@ -3584,7 +3712,9 @@ int cell_unskip_gravity_tasks(struct cell *c, struct scheduler *s) {
     if (c->grav.mesh != NULL) scheduler_activate(s, c->grav.mesh);
     if (c->grav.long_range != NULL) scheduler_activate(s, c->grav.long_range);
     if (c->grav.end_force != NULL) scheduler_activate(s, c->grav.end_force);
+#ifdef WITH_LOGGER
     if (c->logger != NULL) scheduler_activate(s, c->logger);
+#endif
   }
 
   return rebuild;
@@ -3826,7 +3956,9 @@ int cell_unskip_stars_tasks(struct cell *c, struct scheduler *s,
       if (c->kick1 != NULL) scheduler_activate(s, c->kick1);
       if (c->kick2 != NULL) scheduler_activate(s, c->kick2);
       if (c->timestep != NULL) scheduler_activate(s, c->timestep);
+#ifdef WITH_LOGGER
       if (c->logger != NULL) scheduler_activate(s, c->logger);
+#endif
     }
   }
 
@@ -4104,7 +4236,9 @@ int cell_unskip_black_holes_tasks(struct cell *c, struct scheduler *s) {
     if (c->kick1 != NULL) scheduler_activate(s, c->kick1);
     if (c->kick2 != NULL) scheduler_activate(s, c->kick2);
     if (c->timestep != NULL) scheduler_activate(s, c->timestep);
+#ifdef WITH_LOGGER
     if (c->logger != NULL) scheduler_activate(s, c->logger);
+#endif
   }
 
   return rebuild;
@@ -4413,7 +4547,7 @@ void cell_drift_part(struct cell *c, const struct engine *e, int force) {
       if (part_is_active(p, e)) {
         hydro_init_part(p, &e->s->hs);
         chemistry_init_part(p, e->chemistry);
-        star_formation_init_part(p, xp, e->star_formation);
+        pressure_floor_init_part(p, xp);
         tracers_after_init(p, xp, e->internal_units, e->physical_constants,
                            with_cosmology, e->cosmology, e->hydro_properties,
                            e->cooling_func, e->time);
@@ -5162,10 +5296,17 @@ void cell_recursively_shift_sparts(struct cell *c,
   /* When directly above the leaf with the new particle: increase the particle
    * count */
   /* When after the leaf with the new particle: shift by one position */
-  if (main_branch)
+  if (main_branch) {
     c->stars.count++;
-  else
+
+    /* Indicate that the cell is not sorted and cancel the pointer sorting
+     * arrays. */
+    c->stars.sorted = 0;
+    cell_free_stars_sorts(c);
+
+  } else {
     c->stars.parts++;
+  }
 }
 
 /**
@@ -5362,6 +5503,9 @@ void cell_remove_gpart(const struct engine *e, struct cell *c,
   /* Quick cross-check */
   if (c->nodeID != e->nodeID)
     error("Can't remove a particle in a foreign cell.");
+
+  if (gp->type == swift_type_dark_matter_background)
+    error("Can't remove a DM background particle!");
 
   /* Mark the particle as inhibited */
   gp->time_bin = time_bin_inhibited;
@@ -5813,7 +5957,11 @@ int cell_can_use_pair_mm(const struct cell *ci, const struct cell *cj,
   }
   const double r2 = dx * dx + dy * dy + dz * dz;
 
-  return gravity_M2L_accept(multi_i->r_max, multi_j->r_max, theta_crit2, r2);
+  const double epsilon_i = multi_i->m_pole.max_softening;
+  const double epsilon_j = multi_j->m_pole.max_softening;
+
+  return gravity_M2L_accept(multi_i->r_max, multi_j->r_max, theta_crit2, r2,
+                            epsilon_i, epsilon_j);
 }
 
 /**
@@ -5875,6 +6023,9 @@ int cell_can_use_pair_mm_rebuild(const struct cell *ci, const struct cell *cj,
   }
   const double r2 = dx * dx + dy * dy + dz * dz;
 
+  const double epsilon_i = multi_i->m_pole.max_softening;
+  const double epsilon_j = multi_j->m_pole.max_softening;
+
   return gravity_M2L_accept(multi_i->r_max_rebuild, multi_j->r_max_rebuild,
-                            theta_crit2, r2);
+                            theta_crit2, r2, epsilon_i, epsilon_j);
 }

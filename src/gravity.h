@@ -34,6 +34,9 @@
 #elif defined(POTENTIAL_GRAVITY)
 #include "./gravity/Potential/gravity.h"
 #define GRAVITY_IMPLEMENTATION "With potential calculation"
+#elif defined(MULTI_SOFTENING_GRAVITY)
+#include "./gravity/MultiSoftening/gravity.h"
+#define GRAVITY_IMPLEMENTATION "With per-particle softening"
 #else
 #error "Invalid choice of gravity variant"
 #endif

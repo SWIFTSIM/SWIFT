@@ -35,7 +35,7 @@ INLINE static void stars_read_particles(struct spart *sparts,
                                         int *num_fields) {
 
   /* Say how much we want to read */
-  *num_fields = 6;
+  *num_fields = 7;
 
   /* List what we want to read */
   list[0] = io_make_input_field("Coordinates", DOUBLE, 3, COMPULSORY,
@@ -50,6 +50,8 @@ INLINE static void stars_read_particles(struct spart *sparts,
                                 UNIT_CONV_LENGTH, sparts, h);
   list[5] = io_make_input_field("Masses", FLOAT, 1, COMPULSORY, UNIT_CONV_MASS,
                                 sparts, mass_init);
+  list[6] = io_make_input_field("StellarFormationTime", FLOAT, 1, OPTIONAL,
+                                UNIT_CONV_NO_UNITS, sparts, birth_time);
 }
 
 INLINE static void convert_spart_pos(const struct engine *e,
@@ -105,6 +107,7 @@ INLINE static void convert_spart_vel(const struct engine *e,
  * @param sparts The s-particle array.
  * @param list The list of i/o properties to write.
  * @param num_fields The number of i/o fields to write.
+ * @param with_cosmology Are we running a cosmological simulation?
  */
 INLINE static void stars_write_particles(const struct spart *sparts,
                                          struct io_props *list, int *num_fields,
@@ -214,10 +217,15 @@ INLINE static void stars_props_init(struct stars_props *sp,
   else
     sp->log_max_h_change = logf(powf(max_volume_change, hydro_dimension_inv));
 
-  /* Read birth time to set all stars in ICs to (defaults to -1 to indicate star
-   * present in ICs) */
-  sp->spart_first_init_birth_time =
-      parser_get_opt_param_float(params, "Stars:birth_time", -1);
+  /* Do we want to overwrite the stars' birth time? */
+  sp->overwrite_birth_time =
+      parser_get_opt_param_int(params, "Stars:overwrite_birth_time", 0);
+
+  /* Read birth time to set all stars in ICs */
+  if (sp->overwrite_birth_time) {
+    sp->spart_first_init_birth_time =
+        parser_get_param_float(params, "Stars:birth_time");
+  }
 }
 
 /**
@@ -241,6 +249,10 @@ INLINE static void stars_props_print(const struct stars_props *sp) {
 
   message("Maximal iterations in ghost task set to %d",
           sp->max_smoothing_iterations);
+
+  if (sp->overwrite_birth_time)
+    message("Stars' birth time read from the ICs will be overwritten to %f",
+            sp->spart_first_init_birth_time);
 }
 
 #if defined(HAVE_HDF5)

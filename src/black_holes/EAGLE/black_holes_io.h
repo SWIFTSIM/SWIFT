@@ -104,6 +104,7 @@ INLINE static void convert_bpart_vel(const struct engine* e,
  * @param bparts The b-particle array.
  * @param list The list of i/o properties to write.
  * @param num_fields The number of i/o fields to write.
+ * @param with_cosmology Are we running a cosmological simulation?
  */
 INLINE static void black_holes_write_particles(const struct bpart* bparts,
                                                struct io_props* list,

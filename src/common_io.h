@@ -68,6 +68,9 @@ hid_t io_hdf5_type(enum IO_DATA_TYPE type);
 
 void io_read_attribute(hid_t grp, const char* name, enum IO_DATA_TYPE type,
                        void* data);
+void io_read_attribute_graceful(hid_t grp, const char* name,
+                                enum IO_DATA_TYPE type, void* data);
+void io_assert_valid_header_cosmology(hid_t h_grp, double a);
 
 void io_write_attribute(hid_t grp, const char* name, enum IO_DATA_TYPE type,
                         const void* data, int num);
@@ -125,8 +128,18 @@ void io_collect_gparts_to_write(const struct gpart* restrict gparts,
                                 struct velociraptor_gpart_data* vr_data_written,
                                 const size_t Ngparts,
                                 const size_t Ngparts_written, int with_stf);
+void io_collect_gparts_background_to_write(
+    const struct gpart* restrict gparts,
+    const struct velociraptor_gpart_data* vr_data,
+    struct gpart* restrict gparts_written,
+    struct velociraptor_gpart_data* vr_data_written, const size_t Ngparts,
+    const size_t Ngparts_written, int with_stf);
 void io_prepare_dm_gparts(struct threadpool* tp, struct gpart* const gparts,
                           size_t Ndm);
+void io_prepare_dm_background_gparts(struct threadpool* tp,
+                                     struct gpart* const gparts, size_t Ndm);
+size_t io_count_dm_background_gparts(const struct gpart* const gparts,
+                                     size_t Ndm);
 void io_duplicate_hydro_gparts(struct threadpool* tp, struct part* const parts,
                                struct gpart* const gparts, size_t Ngas,
                                size_t Ndm);

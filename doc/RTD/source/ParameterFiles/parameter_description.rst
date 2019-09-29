@@ -174,7 +174,7 @@ use the following parameters:
      h:              0.6777
      Omega_m:        0.307
      Omega_lambda:   0.693
-     Omega_b:        0.0455
+     Omega_b:        0.0482519
      Omega_r:        0.            # (Optional)
      w_0:            -1.0          # (Optional)
      w_a:            0.            # (Optional)
@@ -191,18 +191,38 @@ The behaviour of the self-gravity solver can be modified by the parameters
 provided in the ``Gravity`` section. The theory document puts these parameters into the
 context of the equations being solved. We give a brief overview here.
 
-* The Plummer-equivalent co-moving softening length used for all particles :math:`\epsilon_{com}`: ``comoving_softening``,
-* The Plummer-equivalent maximal physical softening length used for all particles :math:`\epsilon_{max}`: ``comoving_softening``,
+* The Plummer-equivalent co-moving softening length used for all dark matter particles :math:`\epsilon_{\rm com,DM}`: ``comoving_DM_softening``,
+* The Plummer-equivalent co-moving softening length used for all baryon particles (gas, stars, BHs) :math:`\epsilon_{\rm com,bar}`: ``comoving_baryon_softening``,
+* The Plummer-equivalent maximal physical softening length used for all dark matter particles :math:`\epsilon_{\rm max,DM}`: ``max_physical_DM_softening``,
+* The Plummer-equivalent maximal physical softening length used for all baryon particles (gas, stars, BHs) :math:`\epsilon_{\rm max,bar}`: ``max_physical_baryon_softening``,
 
-At any redshift :math:`z`, the Plummer-equivalent softening length used by the
-code will be :math:`\epsilon=\min(\epsilon_{max},
-\frac{\epsilon_{com}}{z+1})`. This is expressed in internal units.
+At any redshift :math:`z`, the Plummer-equivalent softening length used by
+the code will be :math:`\epsilon=\min(\epsilon_{max},
+\frac{\epsilon_{com}}{z+1})`. The same calculation is performed
+independently for the dark matter and baryon particles. All the softening
+quantities are expressed in internal units. Calculations that only involve
+DM or baryons can leave the unused quantities out of the parameter
+file. For non-cosmological runs, only the physical softening lengths need
+to be supplied.
+
+In case of zoom simulations, the softening of the additional, more massive, background
+particles is specified via the parameter
+``softening_ratio_background``. Since these particles will typically have
+different masses to degrade the resolution away from the zoom region, the
+particles won't have a single softening value. Instead, we specify the
+fraction of the mean inter-particle separation to use. The code will then
+derive the softening length of each particle assuming the mean density of
+the Universe. That is :math:`\epsilon_{\rm background} =
+f\sqrt[3]{\frac{m}{\Omega_m\rho_{\rm crit}}}`, where :math:`f` is the
+user-defined value (typically of order 0.05).
+
+The accuracy of the gravity calculation is governed by the following two parameters:
 
 * The opening angle (multipole acceptance criterion) used in the FMM :math:`\theta`: ``theta``,
 * The time-step size pre-factor :math:`\eta`: ``eta``,
 
 The time-step of a given particle is given by :math:`\Delta t =
-\eta\sqrt{\frac{\epsilon}{|\overrightarrow{a}|}}`, where
+\sqrt{\frac{2\eta\epsilon}{|\overrightarrow{a}|}}`, where
 :math:`\overrightarrow{a}` is the particle's acceleration. `Power et al. (2003) <http://adsabs.harvard.edu/abs/2003MNRAS.338...14P>`_ recommend using :math:`\eta=0.025`.
 The last tree-related parameter is
 
@@ -236,21 +256,184 @@ simulation:
 
    # Parameters for the self-gravity scheme for the EAGLE-100 box
    Gravity:
-     eta:          0.025
-     theta:        0.7
-     comoving_softening:     0.0026994  # 0.7 proper kpc at z=2.8.
-     max_physical_softening: 0.0007     # 0.7 proper kpc
-     rebuild_frequency:      0.01       # Default optional value
+     eta:                    0.025
+     theta:                  0.7
      mesh_side_length:       512
-     a_smooth:     1.25                 # Default optional value
-     r_cut_max:    4.5                  # Default optional value
-     r_cut_min:    0.1                  # Default optional value
+     comoving_DM_softening:         0.0026994  # 0.7 proper kpc at z=2.8.
+     max_physical_DM_softening:     0.0007     # 0.7 proper kpc
+     comoving_baryon_softening:     0.0026994  # 0.7 proper kpc at z=2.8.
+     max_physical_baryon_softening: 0.0007     # 0.7 proper kpc
+     rebuild_frequency:      0.01   # Default optional value
+     a_smooth:     1.25             # Default optional value
+     r_cut_max:    4.5              # Default optional value
+     r_cut_min:    0.1              # Default optional value
 
 
 .. _Parameters_SPH:
 
 SPH
 ---
+
+The ``SPH`` section is used to set parameters that describe the SPH
+calculations. There are some scheme-specific values that are detailed in the
+:ref:`hydro` section. The common parameters are detailed below.
+
+In all cases, users have to specify two values:
+
+* The smoothing length in terms of mean inter-particle separation:
+  ``resolution_eta``
+* The CFL condition that enters the time-step calculation: ``CFL_condition``
+
+These quantities are dimensionless. The first, ``resolution_eta``, specifies
+how smooth the simulation should be, and is used here instead of the number
+of neighbours to smooth over as this also takes into account non-uniform
+particle distributions. A value of 1.2348 gives approximately 48 neighbours
+in 3D with the cubic spline kernel. More information on the choices behind
+these parameters can be found in
+`Dehnen & Aly 2012 <https://ui.adsabs.harvard.edu/abs/2012MNRAS.425.1068D/>`_.
+
+
+The second quantity, the CFL condition, specifies how accurate the time
+integration should be and enters as a pre-factor into the hydrodynamics
+time-step calculation. This factor should be strictly bounded by 0 and 1, and
+typically takes a value of 0.1 for SPH calculations.
+
+The next set of parameters deal with the calculation of the smoothing lengths
+directly and are all optional:
+
+* Whether to use or not the mass-weighted definition of the SPH number of
+  neighbours: ``use_mass_weighted_num_ngb`` (Default: 0)
+* The (relative) tolerance to converge smoothing lengths within:
+  ``h_tolerance`` (Default: 1e-4)
+* The maximal smoothing length in internal units: ``h_max`` (Default: FLT_MAX)
+* The minimal allowed smoothing length in terms of the gravitational
+  softening: ``h_min_ratio`` (Default: 0.0, i.e. no minimum)
+* The maximal (relative) allowed change in volume over one time-step:
+  ``max_volume_change`` (Default: 1.4)
+* The maximal number of iterations allowed to converge the smoothing
+  lengths: ``max_ghost_iterations`` (Default: 30)
+
+These parameters all set the accuracy of the smoothing lengths in various
+ways. The first one specified what definition of the local number density
+of particles to use. By default, we use
+
+.. math::
+   n_i = \sum_j W(\|\mathbf{r}_i - \mathbf{r}_j\|, h_i)
+
+but switching on the ``use_mass_weighted_num_ngb`` flag changes the
+defintion to:
+
+.. math::
+   n_i = \frac{\rho_i}{m_i}
+
+where the density has been computed in the traditional SPH way
+(i.e. :math:`\rho_i = \sum_j m_j W(\|\mathbf{r}_i - \mathbf{r}_j\|,
+h_i)`). Note that in the case where all the particles in the simulation
+have the same mass, the two definitions lead to the same number density
+value.
+
+**We dot not recommend using this alternative neighbour number definition
+in production runs.** It is mainly provided for backward compatibility with
+earlier simulations.
+
+The second one, the relative tolerance for the smoothing length, specifies
+the convergence criteria for the smoothing length when using the
+Newton-Raphson scheme. This works with the maximal number of iterations,
+``max_ghost_iterations`` (so called because the smoothing length calculation
+occurs in the ghost task), to ensure that the values of the smoothing lengths
+are consistent with the local number density. We solve:
+
+.. math::
+   (\eta \gamma)^{n_D} = n_i
+
+with :math:`\gamma` the ratio of smoothing length to kernel support (this
+is fixed for a given kernel shape), :math:`n_D` the number of spatial
+dimensions, :math:`\eta` the value of ``resolution_eta``, and :math:`n_i`
+the local number density. We adapt the value of the smoothing length,
+:math:`h`, to be consistent with the number density.
+
+The maximal smoothing length, by default, is set to ``FLT_MAX``, and if set
+prevents the smoothing length from going beyond ``h_max`` (in internal units)
+during the run, irrespective of the above equation. The minimal smoothing
+length is set in terms of the gravitational softening, ``h_min_ratio``, to
+prevent the smoothing length from going below this value in dense
+environments. This will lead to smoothing over more particles than specified
+by :math:`\eta`.
+
+The final set of parameters in this section determine the initial and minimum
+temperatures of the particles.
+
+* The initial temperature of all particles: ``initial_temperature`` (Default:
+  InternalEnergy from the initial conditions)
+* The minimal temperature of any particle: ``minimal_temperature`` (Default: 0)
+* The mass fraction of hydrogen used to set the initial temperature:
+  ``H_mass_fraction`` (Default: 0.755)
+* The ionization temperature (from neutral to ionized) for primordial gas,
+  again used in this conversion: ``H_ionization_temperature`` (Default: 1e4)
+
+These parameters, if not present, are set to the default values. The initial
+temperature is used, along with the hydrogen mass fraction and ionization
+temperature, to set the initial internal energy per unit mass (or entropy per
+unit mass) of the particles.
+
+Throughout the run, if the temperature of a particle drops below
+``minimal_temperature``, the particle has energy added to it such that it
+remains at that temperature. The run is not terminated prematurely. The
+temperatures specified in this section are in internal units.
+
+The full section to start a typical cosmological run would be:
+
+.. code:: YAML
+
+   SPH:
+     resolution_eta:           1.2
+     CFL_condition:            0.1
+     h_tolerance:              1e-4
+     h_min_ratio:              0.1
+     initial_temperature:      273
+     minimal_temperature:      100
+     H_mass_fraction:          0.755
+     H_ionization_temperature: 1e4
+
+.. _Parameters_Stars:
+
+Stars
+-----
+
+The ``Stars`` section is used to set parameters that describe the Stars
+calculations when doing feedback or enrichment. Note that if stars only act
+gravitationally (i.e. SWIFT is run *without* ``--feedback``) no parameters
+in this section are used. 
+
+The first four parameters are related to the neighbour search:
+
+* The (relative) tolerance to converge smoothing lengths within:
+  ``h_tolerance`` (Default: same as SPH scheme)
+* The maximal smoothing length in internal units: ``h_max`` (Default: same
+  as SPH scheme)
+* The minimal allowed smoothing length in terms of the gravitational
+  softening: ``h_min_ratio`` (Default: same as SPH scheme)
+* The maximal (relative) allowed change in volume over one time-step:
+  ``max_volume_change`` (Default: same as SPH scheme)
+
+These four parameters are optional and will default to their SPH equivalent
+if left unspecified. That is the value specified by the user in that
+section or the default SPH value if left unspecified there as well.
+
+The two remaining parameters can be used to overwrite the birth time (or
+scale-factor) of the stars that were read from the ICs. This can be useful
+to start a simulation with stars already of a given age. The parameters
+are:
+
+* Whether or not to overwrite anything: ``overwrite_birth_time``
+  (Default: 0)
+* The value to use: ``birth_time``
+
+If the birth time is set to ``-1`` then the stars will never enter any
+feedback or enrichment loop. When these values are not specified, SWIFT
+will start and use the birth times specified in the ICs. If no values are
+given in the ICs, the stars' birth times will be zeroed, which can cause
+issues depending on the type of run performed.
 
 .. _Parameters_time_integration:
 
@@ -291,7 +474,9 @@ end scale-factors in the cosmology section of the parameter file.
 Additionally, when running a cosmological volume, advanced users can specify the
 value of the dimensionless pre-factor entering the time-step condition linked
 with the motion of particles with respect to the background expansion and mesh
-size. See the theory document for the exact equations.
+size. See the theory document for the exact equations. Note that we explicitly
+ignore the ``Header/Time`` attribute in initial conditions files, and only read
+the start and end times or scale factors from the parameter file.
 
 * Dimensionless pre-factor of the maximal allowed displacement:
   ``max_dt_RMS_factor`` (default: ``0.25``)
@@ -923,7 +1108,7 @@ at some arbitrary steps, and indeed do better than the initial partition
 earlier in the run. This can be done using *fixed cost* repartitioning.
 
 Fixed costs are output during each repartition step into the file
-`partition_fixed_costs.h`, this should be created by a test run of your your
+`partition_fixed_costs.h`, this should be created by a test run of your
 full simulation (with possibly with a smaller volume, but all the physics
 enabled). This file can then be used to replace the same file found in the
 `src/` directory and SWIFT should then be recompiled. Once you have that, you

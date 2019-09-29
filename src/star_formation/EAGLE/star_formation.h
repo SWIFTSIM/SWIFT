@@ -232,8 +232,11 @@ INLINE static int star_formation_is_star_forming(
    * because we also need to check if the physical density exceeded
    * the appropriate limit */
 
-  const double Z = p->chemistry_data.smoothed_metal_mass_fraction_total;
-  const double X_H = p->chemistry_data.smoothed_metal_mass_fraction[0];
+  const double Z =
+      chemistry_get_total_metal_mass_fraction_for_star_formation(p);
+  const float* const metal_fraction =
+      chemistry_get_metal_mass_fraction_for_star_formation(p);
+  const double X_H = metal_fraction[chemistry_element_H];
   const double n_H = physical_density * X_H;
 
   /* Get the density threshold */
@@ -279,7 +282,9 @@ INLINE static void star_formation_compute_SFR(
 
   /* Hydrogen number density of this particle */
   const double physical_density = hydro_get_physical_density(p, cosmo);
-  const double X_H = p->chemistry_data.smoothed_metal_mass_fraction[0];
+  const float* const metal_fraction =
+      chemistry_get_metal_mass_fraction_for_star_formation(p);
+  const double X_H = metal_fraction[chemistry_element_H];
   const double n_H = physical_density * X_H / phys_const->const_proton_mass;
 
   /* Are we above the threshold for automatic star formation? */
@@ -660,7 +665,20 @@ star_formation_part_has_no_neighbours(struct part* restrict p,
 
 /**
  * @brief Sets the star_formation properties of the (x-)particles to a valid
- * start state.
+ * state to start the density loop.
+ *
+ * Nothing to do here. We do not need to compute any quantity in the hydro
+ * density loop for the EAGLE star formation model.
+ *
+ * @param data The global star_formation information used for this run.
+ * @param p Pointer to the particle data.
+ */
+__attribute__((always_inline)) INLINE static void star_formation_init_part(
+    struct part* restrict p, const struct star_formation* data) {}
+
+/**
+ * @brief Sets the star_formation properties of the (x-)particles to a valid
+ * start state at the beginning of the simulation after the ICs have been read.
  *
  * Nothing to do here.
  *
@@ -678,19 +696,5 @@ star_formation_first_init_part(const struct phys_const* restrict phys_const,
                                const struct star_formation* data,
                                const struct part* restrict p,
                                struct xpart* restrict xp) {}
-
-/**
- * @brief Sets the star_formation properties of the (x-)particles to a valid
- * start state.
- *
- * Nothing to do here. We do not need to compute any quantity in the hydro
- * density loop for the EAGLE star formation model.
- *
- * @param p Pointer to the particle data.
- * @param data The global star_formation information.
- */
-__attribute__((always_inline)) INLINE static void star_formation_init_part(
-    struct part* restrict p, struct xpart* restrict xp,
-    const struct star_formation* data) {}
 
 #endif /* SWIFT_EAGLE_STAR_FORMATION_H */

@@ -128,7 +128,7 @@ for i in range(n_snapshots):
     z[i] = sim["/Cosmology"].attrs["Redshift"][0]
     a[i] = sim["/Cosmology"].attrs["Scale-factor"][0]
 
-    u = sim["/PartType0/InternalEnergy"][:]
+    u = sim["/PartType0/InternalEnergies"][:]
 
     # Compute the temperature
     u *= unit_length_in_si ** 2 / unit_time_in_si ** 2

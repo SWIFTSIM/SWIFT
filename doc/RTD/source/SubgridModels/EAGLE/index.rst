@@ -238,6 +238,13 @@ Whilst one would use the following values for solar abundances
      init_abundance_Silicon:      6.825874e-4  # Mass fraction in Silicon
      init_abundance_Iron:         1.1032152e-3 # Mass fraction in Iron
 
+Note that the code will verify that the input values make broad sense. This
+means that SWIFT checks on startup that:
+
+ * :math:`Z_{\rm H}+Z_{\rm He}+Z_{\rm metals} \approx 1`
+ * :math:`Z_{\rm C} + Z_{\rm N} + Z_{\rm O} + Z_{\rm Ne} + Z_{\rm Mg} + Z_{\rm Si} + Z_{\rm Fe} \lesssim Z_{\rm metals}`
+ * :math:`Z_{\rm H} + Z_{\rm He} + Z_{\rm C} + Z_{\rm N} + Z_{\rm O} + Z_{\rm Ne} + Z_{\rm Mg} + Z_{\rm Si} + Z_{\rm Fe} \approx 1`
+
 Individual element abundances for each particle can also be read
 directly from the ICs. By default these are overwritten in the code by
 the values read from the YAML file. However, users can set the
@@ -546,10 +553,10 @@ Supernova feedback: Dalla Vecchia+2012 & Schaye+2015
     SNII_wind_delay_Gyr:              0.03            # Time in Gyr between a star's birth and the SNII thermal feedback event.
     SNII_delta_T_K:                   3.16228e7       # Change in temperature to apply to the gas particle in a SNII thermal feedback event in Kelvin.
     SNII_energy_erg:                  1.0e51          # Energy of one SNII explosion in ergs.
-    SNII_energy_fraction_min:         3.0             # Maximal fraction of energy applied in a SNII feedback event.
-    SNII_energy_fraction_max:         0.3             # Minimal fraction of energy applied in a SNII feedback event.
+    SNII_energy_fraction_min:         0.3             # Maximal fraction of energy applied in a SNII feedback event.
+    SNII_energy_fraction_max:         3.0             # Minimal fraction of energy applied in a SNII feedback event.
     SNII_energy_fraction_Z_0:         0.0012663729    # Pivot point for the metallicity dependance of the SNII energy fraction (metal mass fraction).
-    SNII_energy_fraction_n_0_H_p_cm3: 0.67            # Pivot point for the birth density dependance of the SNII energy fraction in cm^-3.
+    SNII_energy_fraction_n_0_H_p_cm3: 1.4588          # Pivot point for the birth density dependance of the SNII energy fraction in cm^-3.
     SNII_energy_fraction_n_Z:         0.8686          # Power-law for the metallicity dependance of the SNII energy fraction.
     SNII_energy_fraction_n_n:         0.8686          # Power-law for the birth density dependance of the SNII energy fraction.
     SNIa_max_mass_Msun:              8.0              # Maximal mass considered for SNIa feedback and enrichment in solar masses.
@@ -567,6 +574,11 @@ Supernova feedback: Dalla Vecchia+2012 & Schaye+2015
     SNII_yield_factor_Silicon:        1.0             # (Optional) Correction factor to apply to the Silicon yield from the SNII channel.
     SNII_yield_factor_Iron:           0.5             # (Optional) Correction factor to apply to the Iron yield from the SNII channel.
 
+Note that the value of ``SNII_energy_fraction_n_0_H_p_cm3`` given here is
+different from the value (:math:`0.67`) reported in table 3 of `Schaye
+(2015) <http://adsabs.harvard.edu/abs/2015MNRAS.446..521S>`_ , as a factor
+of :math:`h^{-2} = 0.6777^{-2} = 2.1773` is missing in the paper.
+    
 .. _EAGLE_black_hole_seeding:
 
 Black-hole creation
@@ -576,6 +588,11 @@ Black-hole creation
 
 Black-hole accretion
 ~~~~~~~~~~~~~~~~~~~~
+
+.. _EAGLE_black_hole_reposition:
+
+Black-hole repositioning
+~~~~~~~~~~~~~~~~~~~~~~~~
 
 .. _EAGLE_black_hole_feedback:
 

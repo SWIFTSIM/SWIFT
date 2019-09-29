@@ -23,8 +23,10 @@ TimeIntegration:
 Gravity:
   eta:          0.025         
   theta:        0.3           
-  comoving_softening:     0.0889     # 1/25th of the mean inter-particle separation: 88.9 kpc
-  max_physical_softening: 0.0889     # 1/25th of the mean inter-particle separation: 88.9 kpc
+  comoving_DM_softening:         0.0889     # 1/25th of the mean inter-particle separation: 88.9 kpc
+  max_physical_DM_softening:     0.0889     # 1/25th of the mean inter-particle separation: 88.9 kpc
+  comoving_baryon_softening:     0.0889     # 1/25th of the mean inter-particle separation: 88.9 kpc
+  max_physical_baryon_softening: 0.0889     # 1/25th of the mean inter-particle separation: 88.9 kpc
   mesh_side_length:       64
 
 # Parameters of the hydro scheme
@@ -85,6 +87,16 @@ EAGLEChemistry:
   init_abundance_Silicon:   0.0
   init_abundance_Iron:      0.0
 
+EAGLEEntropyFloor:
+  Jeans_density_threshold_H_p_cm3: 0.1       # Physical density above which the EAGLE Jeans limiter entropy floor kicks in expressed in Hydrogen atoms per cm^3.
+  Jeans_over_density_threshold:    10.       # Overdensity above which the EAGLE Jeans limiter entropy floor can kick in.
+  Jeans_temperature_norm_K:        8000      # Temperature of the EAGLE Jeans limiter entropy floor at the density threshold expressed in Kelvin.
+  Jeans_gamma_effective:           1.3333333 # Slope the of the EAGLE Jeans limiter entropy floor
+  Cool_density_threshold_H_p_cm3:  1e-5      # Physical density above which the EAGLE Cool limiter entropy floor kicks in expressed in Hydrogen atoms per cm^3.
+  Cool_over_density_threshold:     10.       # Overdensity above which the EAGLE Cool limiter entropy floor can kick in.
+  Cool_temperature_norm_K:         8000      # Temperature of the EAGLE Cool limiter entropy floor at the density threshold expressed in Kelvin.
+  Cool_gamma_effective:            1.        # Slope the of the EAGLE Cool limiter entropy floor
+  
 # Cooling with Grackle 3.0
 GrackleCooling:
   CloudyTable: CloudyData_UVB=HM2012.h5 # Name of the Cloudy Table (available on the grackle bitbucket repository)
@@ -99,3 +111,6 @@ GrackleCooling:
 
 GearChemistry:
   InitialMetallicity: 0.01295
+
+GEARPressureFloor:
+  Jeans_factor: 10.       # Number of particles required to suppose a resolved clump and avoid the pressure floor.

@@ -32,11 +32,15 @@ examples/*/*/*.dat
 examples/*/*/*.png
 examples/*/*/*.pdf
 examples/*/*/*.mp4
-examples/*/*/*.txt
 examples/*/*/*.rst
 examples/*/*/*.hdf5
 examples/*/*/*.csv
 examples/*/*/*.dot
+examples/*/*/cell_hierarchy.html
+examples/*/*/energy.txt
+examples/*/*/task_level.txt
+examples/*/*/timesteps_*.txt
+examples/*/*/SFR.txt
 examples/*/*/partition_fixed_costs.h
 examples/*/*/memuse_report-step*.dat
 examples/*/*/memuse_report-step*.log
@@ -59,6 +63,7 @@ examples/Cooling/CoolingRates/cooling_rates
 examples/Cooling/CoolingRates/cooling_element_*.dat
 examples/Cooling/CoolingRates/cooling_output.dat
 examples/SubgridTests/StellarEvolution/StellarEvolutionSolution*
+examples/SubgridTests/CosmologicalStellarEvolution/StellarEvolutionSolution*
 
 tests/testActivePair
 tests/testActivePair.sh
@@ -113,8 +118,10 @@ tests/testFFT
 tests/testInteractions
 tests/testInteractions.sh
 tests/testSymmetry
+tests/testHydroMPIrules
 tests/testMaths
 tests/testRandom
+tests/testRandomSpacing
 tests/testThreadpool
 tests/testParser
 tests/testFeedback

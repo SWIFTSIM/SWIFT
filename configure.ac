@@ -86,6 +86,7 @@ AC_ARG_ENABLE([logger],
 if test "$with_logger" = "yes"; then
    AC_DEFINE([WITH_LOGGER], 1, [logger enabled])
 fi
+AM_CONDITIONAL([HAVELOGGER],[test $with_logger = "yes"])
 
 # Interprocedural optimization support. Needs special handling for linking and
 # archiving as well as compilation with Intels, needs to be done before
@@ -380,6 +381,7 @@ fi
 # Check whether we have any of the ARM v8.1 tick timers
 AX_ASM_ARM_PMCCNTR
 AX_ASM_ARM_CNTVCT
+
 # See if we want memuse reporting.
 AC_ARG_ENABLE([memuse-reports],
    [AS_HELP_STRING([--enable-memuse-reports],
@@ -390,6 +392,18 @@ AC_ARG_ENABLE([memuse-reports],
 )
 if test "$enable_memuse_reports" = "yes"; then
    AC_DEFINE([SWIFT_MEMUSE_REPORTS],1,[Enable memory usage reports])
+fi
+
+# See if we want mpi reporting.
+AC_ARG_ENABLE([mpiuse-reports],
+   [AS_HELP_STRING([--enable-mpiuse-reports],
+     [Output reports about MPI tasks requests@<:@yes/no@:>@]
+   )],
+   [enable_mpiuse_reports="$enableval"],
+   [enable_mpiuse_reports="no"]
+)
+if test "$enable_mpiuse_reports" = "yes"; then
+   AC_DEFINE([SWIFT_MPIUSE_REPORTS],1,[Enable MPI task reports])
 fi
 
 
@@ -432,14 +446,10 @@ HAVEVECTORIZATION=0
 
 if test "$enable_opt" = "yes" ; then
 
-   # Add code optimisation flags and tuning to host. This is a funny macro
-   # that does not like CFLAGS being already set. Work around that as we have
-   # at least set it to "", so it is set.
+   # Choose the best flags for this compiler and architecture
    ac_test_CFLAGS="no"
-   old_CFLAGS="$CFLAGS"
    AX_CC_MAXOPT
    ac_test_CFLAGS="yes"
-   CFLAGS="$old_CFLAGS $CFLAGS"
 
    # Check SSE & AVX support (some overlap with AX_CC_MAXOPT).
    # Don't use the SIMD_FLAGS result with Intel compilers. The -x<code>
@@ -1000,6 +1010,41 @@ fi
 AC_SUBST([TBBMALLOC_LIBS])
 AM_CONDITIONAL([HAVETBBMALLOC],[test -n "$TBBMALLOC_LIBS"])
 
+# Check for python.
+have_python="no"
+AC_ARG_WITH([python],
+    [AS_HELP_STRING([--with-python=PATH],
+       [root directory where python is installed @<:@yes/no@:>@]
+    )],
+    [with_python="$withval"],
+    [with_python="no"]
+)
+if test "x$with_python" != "xno"; then
+   if test "$with_python" == ""; then
+      # use linux default python
+      with_python="/usr/"
+   fi
+   AM_PATH_PYTHON([3], [], [AC_MSG_ERROR(python not found)])   
+   AC_ARG_VAR([PYTHON_INCS], [Include flags for python, bypassing python-config])
+   AC_ARG_VAR([PYTHON_CONFIG], [Path to python-config])
+   AS_IF([test -z "$PYTHON_INCS"], [
+      AS_IF([test -z "$PYTHON_CONFIG"], [
+      	AC_PATH_PROGS([PYTHON_CONFIG],
+	          [python$PYTHON_VERSION-config python-config],
+                  [no],
+                  [`dirname $PYTHON`])
+    	AS_IF([test "$PYTHON_CONFIG" = no], [AC_MSG_ERROR([cannot find python-config for $PYTHON.])])
+      ])
+      AC_MSG_CHECKING([python include flags])
+      PYTHON_INCS=`$PYTHON_CONFIG --includes`
+      AC_MSG_RESULT([$PYTHON_INCS])
+  ])
+  have_python="yes"
+fi
+AC_SUBST([PYTHON_INCS])
+AM_CONDITIONAL([HAVEPYTHON],[test -n "$PYTHON_INCS"])
+
+
 # Check for HDF5. This is required.
 AX_LIB_HDF5
 if test "$with_hdf5" != "yes"; then
@@ -1327,6 +1372,7 @@ with_subgrid_cooling=none
 with_subgrid_chemistry=none
 with_subgrid_tracers=none
 with_subgrid_entropy_floor=none
+with_subgrid_pressure_floor=none
 with_subgrid_stars=none
 with_subgrid_star_formation=none
 with_subgrid_feedback=none
@@ -1338,10 +1384,9 @@ case "$with_subgrid" in
    none)
    ;;
    GEAR)
-	with_subgrid_cooling=grackle
+	with_subgrid_cooling=grackle_0
 	with_subgrid_chemistry=GEAR
-	with_subgrid_tracers=none
-	with_subgrid_entropy_floor=none
+	with_subgrid_pressure_floor=GEAR
 	with_subgrid_stars=GEAR
 	with_subgrid_star_formation=GEAR
 	with_subgrid_feedback=none
@@ -1394,18 +1439,21 @@ AM_CONDITIONAL([HAVESTANDALONEFOF],[test $enable_standalone_fof = "yes"])
 # Gravity scheme.
 AC_ARG_WITH([gravity],
    [AS_HELP_STRING([--with-gravity=<scheme>],
-      [Gravity scheme to use @<:@default, with-potential, default: default@:>@]
+      [Gravity scheme to use @<:@basic, with-potential, with-multi-softening default: with-multi-softening@:>@]
    )],
    [with_gravity="$withval"],
-   [with_gravity="default"]
+   [with_gravity="with-multi-softening"]
 )
 
 case "$with_gravity" in
    with-potential)
-      AC_DEFINE([POTENTIAL_GRAVITY], [1], [Gravity scheme with potential calculation])
+      AC_DEFINE([POTENTIAL_GRAVITY], [1], [Basic gravity scheme with potential calculation])
    ;;
-   default)
-      AC_DEFINE([DEFAULT_GRAVITY], [1], [Default gravity scheme])
+   with-multi-softening)
+      AC_DEFINE([MULTI_SOFTENING_GRAVITY], [1], [Gravity scheme with per-particle type softening value and background particles])
+   ;;
+   basic)
+      AC_DEFINE([DEFAULT_GRAVITY], [1], [Basic gravity scheme])
    ;;
    *)
       AC_MSG_ERROR([Unknown gravity scheme: $with_gravity])
@@ -1640,7 +1688,8 @@ esac
 #  Cooling function
 AC_ARG_WITH([cooling],
    [AS_HELP_STRING([--with-cooling=<function>],
-      [cooling function @<:@none, const-du, const-lambda, EAGLE, grackle, grackle1, grackle2, grackle3 default: none@:>@]
+      [cooling function @<:@none, const-du, const-lambda, EAGLE, grackle_* default: none@:>@.
+      For Grackle, you need to provide the primordial chemistry parameter (e.g. grackle_0)]
    )],
    [with_cooling="$withval"],
    [with_cooling="none"]
@@ -1667,21 +1716,10 @@ case "$with_cooling" in
    compton)
       AC_DEFINE([COOLING_COMPTON], [1], [Compton cooling off the CMB])
    ;;
-   grackle)
+   grackle_*)
       AC_DEFINE([COOLING_GRACKLE], [1], [Cooling via the grackle library])
-      AC_DEFINE([COOLING_GRACKLE_MODE], [0], [Grackle chemistry network, mode 0])
-   ;;
-   grackle1)
-      AC_DEFINE([COOLING_GRACKLE], [1], [Cooling via the grackle library])
-      AC_DEFINE([COOLING_GRACKLE_MODE], [1], [Grackle chemistry network, mode 1])
-   ;;
-   grackle2)
-      AC_DEFINE([COOLING_GRACKLE], [1], [Cooling via the grackle library])
-      AC_DEFINE([COOLING_GRACKLE_MODE], [2], [Grackle chemistry network, mode 2])
-   ;;
-   grackle3)
-      AC_DEFINE([COOLING_GRACKLE], [1], [Cooling via the grackle library])
-      AC_DEFINE([COOLING_GRACKLE_MODE], [3], [Grackle chemistry network, mode 3])
+      primordial_chemistry=${with_cooling:8}
+      AC_DEFINE_UNQUOTED([COOLING_GRACKLE_MODE], [$primordial_chemistry], [Grackle chemistry network])
    ;;
    EAGLE)
       AC_DEFINE([COOLING_EAGLE], [1], [Cooling following the EAGLE model])
@@ -1916,6 +1954,35 @@ case "$with_entropy_floor" in
    ;;
 esac 
 
+#  Pressure floor
+AC_ARG_WITH([pressure-floor], 
+    [AS_HELP_STRING([--with-pressure-floor=<floor>],
+       [pressure floor @<:@none, GEAR, default: none@:>@
+       The hydro model needs to be compatible.]
+    )],
+    [with_pressure_floor="$withval"],
+    [with_pressure_floor="none"]
+)
+if test "$with_subgrid" != "none"; then
+   if test "$with_pressure_floor" != "none"; then
+      AC_MSG_ERROR([Cannot provide with-subgrid and with-pressure-floor together])
+   else
+      with_pressure_floor="$with_subgrid_pressure_floor"
+   fi
+fi
+
+case "$with_pressure_floor" in
+   none)
+      AC_DEFINE([PRESSURE_FLOOR_NONE], [1], [No pressure floor])
+   ;;
+   GEAR)
+      AC_DEFINE([PRESSURE_FLOOR_GEAR], [1], [GEAR pressure floor])
+   ;;
+   *)
+      AC_MSG_ERROR([Unknown pressure floor model])
+   ;;
+esac 
+
 #  Star formation
 AC_ARG_WITH([star-formation], 
     [AS_HELP_STRING([--with-star-formation=<sfm>],
@@ -1973,7 +2040,7 @@ AM_CONDITIONAL([HAVEEAGLEFEEDBACK], [test $with_feedback = "EAGLE"])
 
 # Handle .in files.
 AC_CONFIG_FILES([Makefile src/Makefile examples/Makefile examples/Cooling/CoolingRates/Makefile doc/Makefile doc/Doxyfile tests/Makefile])
-AC_CONFIG_FILES([argparse/Makefile tools/Makefile])
+AC_CONFIG_FILES([argparse/Makefile tools/Makefile logger/Makefile logger/tests/Makefile])
 AC_CONFIG_FILES([tests/testReading.sh], [chmod +x tests/testReading.sh])
 AC_CONFIG_FILES([tests/testActivePair.sh], [chmod +x tests/testActivePair.sh])
 AC_CONFIG_FILES([tests/test27cells.sh], [chmod +x tests/test27cells.sh])
@@ -2026,7 +2093,6 @@ AC_MSG_RESULT([
    CPU profiler         : $have_profiler
    Pthread barriers     : $have_pthread_barrier
    VELOCIraptor enabled : $have_velociraptor
-   Particle Logger      : $with_logger
    FoF activated:       : $enable_fof
 
    Hydro scheme       : $with_hydro
@@ -2042,6 +2108,7 @@ AC_MSG_RESULT([
    Make gravity glass  : $gravity_glass_making
    External potential  : $with_potential
 
+   Pressure floor       : $with_pressure_floor
    Entropy floor        : $with_entropy_floor
    Cooling function     : $with_cooling
    Chemistry            : $with_chemistry
@@ -2062,5 +2129,8 @@ AC_MSG_RESULT([
    Gravity checks              : $gravity_force_checks
    Custom icbrtf               : $enable_custom_icbrtf
    Boundary particles          : $boundary_particles
+
+   Particle Logger      : $with_logger
+   Python enabled       : $have_python
 
  ------------------------])

@@ -19,6 +19,7 @@
 #ifndef SWIFT_EAGLE_BLACK_HOLE_PART_H
 #define SWIFT_EAGLE_BLACK_HOLE_PART_H
 
+#include "black_holes_struct.h"
 #include "chemistry_struct.h"
 #include "timeline.h"
 
@@ -120,6 +121,16 @@ struct bpart {
     float AGN_delta_u;
 
   } to_distribute;
+
+  struct {
+
+    /*! Value of the minimum potential across all neighbours. */
+    float min_potential;
+
+    /*! New position of the BH following the reposition procedure */
+    double x[3];
+
+  } reposition;
 
   /*! Chemistry information (e.g. metal content at birth, swallowed metal
    * content, etc.) */

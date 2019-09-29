@@ -10,8 +10,8 @@ InternalUnitSystem:
 Gravity:
   eta:          0.025               # Constant dimensionless multiplier for time integration.
   theta:        0.7                 # Opening angle (Multipole acceptance criterion).
-  comoving_softening:     0.1       # Comoving softening length (in internal units).
-  max_physical_softening: 0.1       # Physical softening length (in internal units).
+  max_physical_DM_softening:     0.1       # Physical softening length (in internal units).
+  max_physical_baryon_softening: 0.1       # Physical softening length (in internal units).
 
 # Parameters governing the time integration (Set dt_min and dt_max to the same value for a fixed time-step run.)
 TimeIntegration:
@@ -44,6 +44,11 @@ SPH:
   h_min_ratio:           0.1      # Minimal smoothing in units of softening.
   h_max:                 10.
   minimal_temperature:   100.
+
+# Parameters for the stars neighbour search
+Stars:
+  overwrite_birth_time:    1     # Make sure the stars in the ICs do not do any feedback
+  birth_time:             -1.    # by setting all of their birth times to -1  
 
 # Standard EAGLE cooling options
 EAGLECooling:
@@ -126,7 +131,7 @@ EAGLEFeedback:
   SNII_energy_fraction_min:         1.0             # Minimal fraction of energy applied in a SNII feedback event.
   SNII_energy_fraction_max:         1.0             # Maximal fraction of energy applied in a SNII feedback event.
   SNII_energy_fraction_Z_0:         0.0012663729    # Pivot point for the metallicity dependance of the SNII energy fraction (metal mass fraction).
-  SNII_energy_fraction_n_0_H_p_cm3: 0.67            # Pivot point for the birth density dependance of the SNII energy fraction in cm^-3.
+  SNII_energy_fraction_n_0_H_p_cm3: 1.4588          # Pivot point for the birth density dependance of the SNII energy fraction in cm^-3.
   SNII_energy_fraction_n_Z:         0.8686          # Power-law for the metallicity dependance of the SNII energy fraction.
   SNII_energy_fraction_n_n:         0.8686          # Power-law for the birth density dependance of the SNII energy fraction.
   SNIa_max_mass_Msun:              8.0              # Maximal mass considered for SNIa feedback and enrichment in solar masses.

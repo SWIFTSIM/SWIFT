@@ -113,6 +113,7 @@ enum engine_step_properties {
 #define engine_default_timesteps_file_name "timesteps"
 #define engine_max_parts_per_ghost_default 1000
 #define engine_max_sparts_per_ghost_default 1000
+#define engine_star_resort_task_depth_default 2
 #define engine_tasks_per_cell_margin 1.2
 
 /**
@@ -247,6 +248,7 @@ struct engine {
   long long total_nr_gparts;
   long long total_nr_sparts;
   long long total_nr_bparts;
+  long long total_nr_DM_background_gparts;
 
   /* Total numbers of cells (top-level and sub-cells) in the system. */
   long long total_nr_cells;
@@ -361,6 +363,10 @@ struct engine {
 
   /* Step of last repartition. */
   int last_repartition;
+
+  /* Use synchronous redistributes. */
+  int syncredist;
+
 #endif
 
   /* Wallclock time of the last time-step */
@@ -377,7 +383,7 @@ struct engine {
   struct repartition *reparttype;
 
 #ifdef WITH_LOGGER
-  struct logger *logger;
+  struct logger_writer *logger;
 #endif
 
   /* How many steps have we done with the same set of tasks? */
@@ -491,12 +497,13 @@ void engine_reconstruct_multipoles(struct engine *e);
 void engine_allocate_foreign_particles(struct engine *e);
 void engine_print_stats(struct engine *e);
 void engine_check_for_dumps(struct engine *e);
+void engine_collect_end_of_step(struct engine *e, int apply);
 void engine_dump_snapshot(struct engine *e);
 void engine_init_output_lists(struct engine *e, struct swift_params *params);
 void engine_init(struct engine *e, struct space *s, struct swift_params *params,
                  long long Ngas, long long Ngparts, long long Nstars,
-                 long long Nblackholes, int policy, int verbose,
-                 struct repartition *reparttype,
+                 long long Nblackholes, long long Nbackground_gparts,
+                 int policy, int verbose, struct repartition *reparttype,
                  const struct unit_system *internal_units,
                  const struct phys_const *physical_constants,
                  struct cosmology *cosmo, struct hydro_props *hydro,

@@ -583,13 +583,18 @@ __attribute__((always_inline)) INLINE static void hydro_prepare_force(
   const float P_over_rho2 = pressure * rho_bar_inv * rho_bar_inv;
 
   /* Compute "grad h" term (note we use rho here and not rho_bar !)*/
+  float rho_dh = p->density.rho_dh;
+  /* Ignore changing-kernel effects when h ~= h_max */
+  if (p->h > 0.9999f * hydro_props->h_max) {
+    rho_dh = 0.f;
+  }
   const float rho_inv = 1.f / p->rho;
-  const float rho_dh =
-      1.f / (1.f + hydro_dimension_inv * p->h * p->density.rho_dh * rho_inv);
-  const float pressure_dh =
+  const float rho_dh_term =
+      1.f / (1.f + hydro_dimension_inv * p->h * rho_dh * rho_inv);
+  const float pressure_dh_term =
       p->density.pressure_dh * rho_inv * p->h * hydro_dimension_inv;
 
-  const float grad_h_term = rho_dh * pressure_dh;
+  const float grad_h_term = rho_dh_term * pressure_dh_term;
 
   /* Update variables. */
   p->force.soundspeed = soundspeed;
@@ -628,9 +633,11 @@ __attribute__((always_inline)) INLINE static void hydro_reset_acceleration(
  *
  * @param p The particle.
  * @param xp The extended data of this particle.
+ * @param cosmo The cosmological model.
  */
 __attribute__((always_inline)) INLINE static void hydro_reset_predicted_values(
-    struct part *restrict p, const struct xpart *restrict xp) {
+    struct part *restrict p, const struct xpart *restrict xp,
+    const struct cosmology *cosmo) {
 
   /* Re-set the predicted velocities */
   p->v[0] = xp->v_full[0];

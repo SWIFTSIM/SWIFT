@@ -56,6 +56,7 @@
 #include "memuse.h"
 #include "minmax.h"
 #include "multipole.h"
+#include "pressure_floor.h"
 #include "restart.h"
 #include "sort_part.h"
 #include "star_formation.h"
@@ -91,6 +92,9 @@ int space_extra_gparts = space_extra_gparts_default;
 /*! Maximum number of particles per ghost */
 int engine_max_parts_per_ghost = engine_max_parts_per_ghost_default;
 int engine_max_sparts_per_ghost = engine_max_sparts_per_ghost_default;
+
+/*! Maximal depth at which the stars resort task can be pushed */
+int engine_star_resort_task_depth = engine_star_resort_task_depth_default;
 
 /*! Expected maximal number of strays received at a rebuild */
 int space_expected_max_nr_strays = space_expected_max_nr_strays_default;
@@ -1928,7 +1932,7 @@ void space_rebuild(struct space *s, int repartitioned, int verbose) {
   /* Check that the multipole construction went OK */
   if (s->with_self_gravity)
     for (int k = 0; k < s->nr_cells; k++)
-      cell_check_multipole(&s->cells_top[k]);
+      cell_check_multipole(&s->cells_top[k], s->e->gravity_properties);
 #endif
 
   /* Clean up any stray sort indices in the cell buffer. */
@@ -3603,7 +3607,8 @@ void space_split_recursive(struct space *s, struct cell *c,
     if (s->with_self_gravity) {
       if (gcount > 0) {
 
-        gravity_P2M(c->grav.multipole, c->grav.parts, c->grav.count);
+        gravity_P2M(c->grav.multipole, c->grav.parts, c->grav.count,
+                    e->gravity_properties);
 
       } else {
 
@@ -3945,6 +3950,9 @@ void space_synchronize_particle_positions_mapper(void *map_data, int nr_gparts,
     if (gp->type == swift_type_dark_matter)
       continue;
 
+    else if (gp->type == swift_type_dark_matter_background)
+      continue;
+
     else if (gp->type == swift_type_gas) {
 
       /* Get its gassy friend */
@@ -3987,6 +3995,10 @@ void space_synchronize_particle_positions_mapper(void *map_data, int nr_gparts,
       bp->x[2] = gp->x[2];
 
       gp->mass = bp->mass;
+    }
+
+    else {
+      error("Invalid type!");
     }
   }
 }
@@ -4080,6 +4092,9 @@ void space_first_init_parts_mapper(void *restrict map_data, int count,
 
     /* Also initialise the chemistry */
     chemistry_first_init_part(phys_const, us, cosmo, chemistry, &p[k], &xp[k]);
+
+    /* Also initialise the pressure floor */
+    pressure_floor_first_init_part(phys_const, us, cosmo, &p[k], &xp[k]);
 
     /* Also initialise the star formation */
     star_formation_first_init_part(phys_const, us, cosmo, star_formation, &p[k],
@@ -4365,7 +4380,7 @@ void space_init_parts_mapper(void *restrict map_data, int count,
   for (int k = 0; k < count; k++) {
     hydro_init_part(&parts[k], hs);
     chemistry_init_part(&parts[k], e->chemistry);
-    star_formation_init_part(&parts[k], &xparts[k], e->star_formation);
+    pressure_floor_init_part(&parts[k], &xparts[k]);
     tracers_after_init(&parts[k], &xparts[k], e->internal_units,
                        e->physical_constants, with_cosmology, e->cosmology,
                        e->hydro_properties, e->cooling_func, e->time);
@@ -4525,6 +4540,7 @@ void space_convert_quantities(struct space *s, int verbose) {
  * @param hydro flag whether we are doing hydro or not?
  * @param self_gravity flag whether we are doing gravity or not?
  * @param star_formation flag whether we are doing star formation or not?
+ * @param DM_background Are we running with some DM background particles?
  * @param verbose Print messages to stdout or not.
  * @param dry_run If 1, just initialise stuff, don't do anything with the parts.
  *
@@ -4539,7 +4555,8 @@ void space_init(struct space *s, struct swift_params *params,
                 struct bpart *bparts, size_t Npart, size_t Ngpart,
                 size_t Nspart, size_t Nbpart, int periodic, int replicate,
                 int generate_gas_in_ics, int hydro, int self_gravity,
-                int star_formation, int verbose, int dry_run) {
+                int star_formation, int DM_background, int verbose,
+                int dry_run) {
 
   /* Clean-up everything */
   bzero(s, sizeof(struct space));
@@ -4552,6 +4569,7 @@ void space_init(struct space *s, struct swift_params *params,
   s->with_self_gravity = self_gravity;
   s->with_hydro = hydro;
   s->with_star_formation = star_formation;
+  s->with_DM_background = DM_background;
   s->nr_parts = Npart;
   s->nr_gparts = Ngpart;
   s->nr_sparts = Nspart;
@@ -4584,15 +4602,16 @@ void space_init(struct space *s, struct swift_params *params,
 
   /* Are we generating gas from the DM-only ICs? */
   if (generate_gas_in_ics) {
-    space_generate_gas(s, cosmo, periodic, dim, verbose);
+    space_generate_gas(s, cosmo, periodic, DM_background, dim, verbose);
     parts = s->parts;
     gparts = s->gparts;
     Npart = s->nr_parts;
     Ngpart = s->nr_gparts;
 
 #ifdef SWIFT_DEBUG_CHECKS
-    part_verify_links(parts, gparts, sparts, bparts, Npart, Ngpart, Nspart,
-                      Nbpart, 1);
+    if (!dry_run)
+      part_verify_links(parts, gparts, sparts, bparts, Npart, Ngpart, Nspart,
+                        Nbpart, 1);
 #endif
   }
 
@@ -4601,6 +4620,9 @@ void space_init(struct space *s, struct swift_params *params,
     error("Value of 'InitialConditions:replicate' (%d) is too small",
           replicate);
   if (replicate > 1) {
+    if (DM_background)
+      error("Can't replicate the space if background DM particles are in use.");
+
     space_replicate(s, replicate, verbose);
     parts = s->parts;
     gparts = s->gparts;
@@ -4839,16 +4861,19 @@ void space_replicate(struct space *s, int replicate, int verbose) {
   const size_t nr_parts = s->nr_parts;
   const size_t nr_gparts = s->nr_gparts;
   const size_t nr_sparts = s->nr_sparts;
-  const size_t nr_dm = nr_gparts - nr_parts - nr_sparts;
+  const size_t nr_bparts = s->nr_bparts;
+  const size_t nr_dm = nr_gparts - nr_parts - nr_sparts - nr_bparts;
 
   s->size_parts = s->nr_parts = nr_parts * factor;
   s->size_gparts = s->nr_gparts = nr_gparts * factor;
   s->size_sparts = s->nr_sparts = nr_sparts * factor;
+  s->size_bparts = s->nr_bparts = nr_bparts * factor;
 
   /* Allocate space for new particles */
   struct part *parts = NULL;
   struct gpart *gparts = NULL;
   struct spart *sparts = NULL;
+  struct bpart *bparts = NULL;
 
   if (swift_memalign("parts", (void **)&parts, part_align,
                      s->nr_parts * sizeof(struct part)) != 0)
@@ -4862,6 +4887,10 @@ void space_replicate(struct space *s, int replicate, int verbose) {
                      s->nr_sparts * sizeof(struct spart)) != 0)
     error("Failed to allocate new spart array.");
 
+  if (swift_memalign("bparts", (void **)&bparts, bpart_align,
+                     s->nr_bparts * sizeof(struct bpart)) != 0)
+    error("Failed to allocate new bpart array.");
+
   /* Replicate everything */
   for (int i = 0; i < replicate; ++i) {
     for (int j = 0; j < replicate; ++j) {
@@ -4873,6 +4902,8 @@ void space_replicate(struct space *s, int replicate, int verbose) {
                nr_parts * sizeof(struct part));
         memcpy(sparts + offset * nr_sparts, s->sparts,
                nr_sparts * sizeof(struct spart));
+        memcpy(bparts + offset * nr_bparts, s->bparts,
+               nr_bparts * sizeof(struct bpart));
         memcpy(gparts + offset * nr_gparts, s->gparts,
                nr_gparts * sizeof(struct gpart));
 
@@ -4893,6 +4924,11 @@ void space_replicate(struct space *s, int replicate, int verbose) {
           sparts[n].x[0] += shift[0];
           sparts[n].x[1] += shift[1];
           sparts[n].x[2] += shift[2];
+        }
+        for (size_t n = offset * nr_bparts; n < (offset + 1) * nr_bparts; ++n) {
+          bparts[n].x[0] += shift[0];
+          bparts[n].x[1] += shift[1];
+          bparts[n].x[2] += shift[2];
         }
 
         /* Set the correct links (recall gpart are sorted by type at start-up):
@@ -4915,6 +4951,16 @@ void space_replicate(struct space *s, int replicate, int verbose) {
             gparts[offset_gpart + n].id_or_neg_offset = -(offset_spart + n);
           }
         }
+        if (nr_bparts > 0 && nr_gparts > 0) {
+          const size_t offset_bpart = offset * nr_bparts;
+          const size_t offset_gpart =
+              offset * nr_gparts + nr_dm + nr_parts + nr_sparts;
+
+          for (size_t n = 0; n < nr_bparts; ++n) {
+            bparts[offset_bpart + n].gpart = &gparts[offset_gpart + n];
+            gparts[offset_gpart + n].id_or_neg_offset = -(offset_bpart + n);
+          }
+        }
       }
     }
   }
@@ -4923,9 +4969,11 @@ void space_replicate(struct space *s, int replicate, int verbose) {
   swift_free("parts", s->parts);
   swift_free("gparts", s->gparts);
   swift_free("sparts", s->sparts);
+  swift_free("bparts", s->bparts);
   s->parts = parts;
   s->gparts = gparts;
   s->sparts = sparts;
+  s->bparts = bparts;
 
   /* Finally, update the domain size */
   s->dim[0] *= replicate;
@@ -4948,14 +4996,18 @@ void space_replicate(struct space *s, int replicate, int verbose) {
  * gas un-initialised as they will be given a value from the parameter file at a
  * later stage.
  *
+ * Background DM particles are not duplicated.
+ *
  * @param s The #space to create the particles in.
  * @param cosmo The current #cosmology model.
  * @param periodic Are we using periodic boundary conditions?
+ * @param with_background Are we using background DM particles?
  * @param dim The size of the box (for periodic wrapping).
  * @param verbose Are we talkative?
  */
 void space_generate_gas(struct space *s, const struct cosmology *cosmo,
-                        int periodic, const double dim[3], int verbose) {
+                        const int periodic, const int with_background,
+                        const double dim[3], const int verbose) {
 
   /* Check that this is a sensible ting to do */
   if (!s->with_hydro)
@@ -4967,14 +5019,33 @@ void space_generate_gas(struct space *s, const struct cosmology *cosmo,
   if (verbose) message("Generating gas particles from gparts");
 
   /* Store the current values */
-  const size_t nr_parts = s->nr_parts;
-  const size_t nr_gparts = s->nr_gparts;
+  const size_t current_nr_parts = s->nr_parts;
+  const size_t current_nr_gparts = s->nr_gparts;
 
-  if (nr_parts != 0)
+  if (current_nr_parts != 0)
     error("Generating gas particles from DM but gas already exists!");
 
-  s->size_parts = s->nr_parts = nr_gparts;
-  s->size_gparts = s->nr_gparts = 2 * nr_gparts;
+  if (s->nr_sparts != 0)
+    error("Generating gas particles from DM but stars already exists!");
+
+  if (s->nr_bparts != 0)
+    error("Generating gas particles from DM but BHs already exists!");
+
+  /* Start by counting the number of background and zoom DM particles */
+  size_t nr_background_gparts = 0;
+  if (with_background) {
+    for (size_t i = 0; i < current_nr_gparts; ++i)
+      if (s->gparts[i].type == swift_type_dark_matter_background)
+        ++nr_background_gparts;
+  }
+  const size_t nr_zoom_gparts = current_nr_gparts - nr_background_gparts;
+
+  if (nr_zoom_gparts == 0)
+    error("Can't generate gas from ICs if there are no high res. particles");
+
+  /* New particle counts after replication */
+  s->size_parts = s->nr_parts = nr_zoom_gparts;
+  s->size_gparts = s->nr_gparts = 2 * nr_zoom_gparts + nr_background_gparts;
 
   /* Allocate space for new particles */
   struct part *parts = NULL;
@@ -4988,11 +5059,8 @@ void space_generate_gas(struct space *s, const struct cosmology *cosmo,
                      s->nr_gparts * sizeof(struct gpart)) != 0)
     error("Failed to allocate new gpart array.");
 
-  /* Start by copying the gparts */
-  memcpy(gparts, s->gparts, nr_gparts * sizeof(struct gpart));
-  memcpy(gparts + nr_gparts, s->gparts, nr_gparts * sizeof(struct gpart));
-
   /* And zero the parts */
+  bzero(gparts, s->nr_gparts * sizeof(struct gpart));
   bzero(parts, s->nr_parts * sizeof(struct part));
 
   /* Compute some constants */
@@ -5000,73 +5068,93 @@ void space_generate_gas(struct space *s, const struct cosmology *cosmo,
   const double bg_density = cosmo->Omega_m * cosmo->critical_density_0;
   const double bg_density_inv = 1. / bg_density;
 
+  message("%zd", current_nr_gparts);
+
   /* Update the particle properties */
-  for (size_t i = 0; i < nr_gparts; ++i) {
+  size_t j = 0;
+  for (size_t i = 0; i < current_nr_gparts; ++i) {
 
-    struct part *p = &parts[i];
-    struct gpart *gp_gas = &gparts[i];
-    struct gpart *gp_dm = &gparts[nr_gparts + i];
+    /* For the background DM particles, just copy the data */
+    if (s->gparts[i].type == swift_type_dark_matter_background) {
 
-    /* Set the IDs */
-    p->id = gp_gas->id_or_neg_offset * 2 + 1;
-    gp_dm->id_or_neg_offset *= 2;
+      memcpy(&gparts[i], &s->gparts[i], sizeof(struct gpart));
 
-    if (gp_dm->id_or_neg_offset < 0)
-      error("DM particle ID overflowd (DM id=%lld gas id=%lld)",
-            gp_dm->id_or_neg_offset, p->id);
+    } else {
 
-    if (p->id < 0) error("gas particle ID overflowd (id=%lld)", p->id);
+      /* For the zoom DM particles, there is a lot of work to do */
 
-    /* Set the links correctly */
-    p->gpart = gp_gas;
-    gp_gas->id_or_neg_offset = -i;
-    gp_gas->type = swift_type_gas;
+      struct part *p = &parts[j];
+      struct gpart *gp_gas = &gparts[current_nr_gparts + j];
+      struct gpart *gp_dm = &gparts[i];
 
-    /* Compute positions shift */
-    const double d = cbrt(gp_dm->mass * bg_density_inv);
-    const double shift_dm = 0.5 * d * mass_ratio;
-    const double shift_gas = 0.5 * d * (1. - mass_ratio);
+      /* Start by copying over the gpart */
+      memcpy(gp_gas, &s->gparts[i], sizeof(struct gpart));
+      memcpy(gp_dm, &s->gparts[i], sizeof(struct gpart));
 
-    /* Set the masses */
-    gp_dm->mass *= (1. - mass_ratio);
-    gp_gas->mass *= mass_ratio;
-    hydro_set_mass(p, gp_gas->mass);
+      /* Set the IDs */
+      p->id = gp_gas->id_or_neg_offset * 2 + 1;
+      gp_dm->id_or_neg_offset *= 2;
 
-    /* Set the new positions */
-    gp_dm->x[0] += shift_dm;
-    gp_dm->x[1] += shift_dm;
-    gp_dm->x[2] += shift_dm;
-    gp_gas->x[0] -= shift_gas;
-    gp_gas->x[1] -= shift_gas;
-    gp_gas->x[2] -= shift_gas;
+      if (gp_dm->id_or_neg_offset < 0)
+        error("DM particle ID overflowd (DM id=%lld gas id=%lld)",
+              gp_dm->id_or_neg_offset, p->id);
 
-    /* Make sure the positions are identical between linked particles */
-    p->x[0] = gp_gas->x[0];
-    p->x[1] = gp_gas->x[1];
-    p->x[2] = gp_gas->x[2];
+      if (p->id < 0) error("gas particle ID overflowd (id=%lld)", p->id);
 
-    /* Box-wrap the whole thing to be safe */
-    if (periodic) {
-      gp_dm->x[0] = box_wrap(gp_dm->x[0], 0., dim[0]);
-      gp_dm->x[1] = box_wrap(gp_dm->x[1], 0., dim[1]);
-      gp_dm->x[2] = box_wrap(gp_dm->x[2], 0., dim[2]);
-      gp_gas->x[0] = box_wrap(gp_gas->x[0], 0., dim[0]);
-      gp_gas->x[1] = box_wrap(gp_gas->x[1], 0., dim[1]);
-      gp_gas->x[2] = box_wrap(gp_gas->x[2], 0., dim[2]);
-      p->x[0] = box_wrap(p->x[0], 0., dim[0]);
-      p->x[1] = box_wrap(p->x[1], 0., dim[1]);
-      p->x[2] = box_wrap(p->x[2], 0., dim[2]);
+      /* Set the links correctly */
+      p->gpart = gp_gas;
+      gp_gas->id_or_neg_offset = -j;
+      gp_gas->type = swift_type_gas;
+
+      /* Compute positions shift */
+      const double d = cbrt(gp_dm->mass * bg_density_inv);
+      const double shift_dm = 0.5 * d * mass_ratio;
+      const double shift_gas = 0.5 * d * (1. - mass_ratio);
+
+      /* Set the masses */
+      gp_dm->mass *= (1. - mass_ratio);
+      gp_gas->mass *= mass_ratio;
+      hydro_set_mass(p, gp_gas->mass);
+
+      /* Set the new positions */
+      gp_dm->x[0] += shift_dm;
+      gp_dm->x[1] += shift_dm;
+      gp_dm->x[2] += shift_dm;
+      gp_gas->x[0] -= shift_gas;
+      gp_gas->x[1] -= shift_gas;
+      gp_gas->x[2] -= shift_gas;
+
+      /* Make sure the positions are identical between linked particles */
+      p->x[0] = gp_gas->x[0];
+      p->x[1] = gp_gas->x[1];
+      p->x[2] = gp_gas->x[2];
+
+      /* Box-wrap the whole thing to be safe */
+      if (periodic) {
+        gp_dm->x[0] = box_wrap(gp_dm->x[0], 0., dim[0]);
+        gp_dm->x[1] = box_wrap(gp_dm->x[1], 0., dim[1]);
+        gp_dm->x[2] = box_wrap(gp_dm->x[2], 0., dim[2]);
+        gp_gas->x[0] = box_wrap(gp_gas->x[0], 0., dim[0]);
+        gp_gas->x[1] = box_wrap(gp_gas->x[1], 0., dim[1]);
+        gp_gas->x[2] = box_wrap(gp_gas->x[2], 0., dim[2]);
+        p->x[0] = box_wrap(p->x[0], 0., dim[0]);
+        p->x[1] = box_wrap(p->x[1], 0., dim[1]);
+        p->x[2] = box_wrap(p->x[2], 0., dim[2]);
+      }
+
+      /* Also copy the velocities */
+      p->v[0] = gp_gas->v_full[0];
+      p->v[1] = gp_gas->v_full[1];
+      p->v[2] = gp_gas->v_full[2];
+
+      /* Set the smoothing length to the mean inter-particle separation */
+      p->h = d;
+
+      /* Note that the thermodynamic properties (u, S, ...) will be set later */
+
+      /* Move on to the next free gas slot */
+      ++j;
     }
-
-    /* Also copy the velocities */
-    p->v[0] = gp_gas->v_full[0];
-    p->v[1] = gp_gas->v_full[1];
-    p->v[2] = gp_gas->v_full[2];
-
-    /* Set the smoothing length to the mean inter-particle separation */
-    p->h = d;
-
-    /* Note that the thermodynamic properties (u, S, ...) will be set later */
   }
 
   /* Replace the content of the space */
@@ -5373,6 +5461,7 @@ void space_clean(struct space *s) {
   swift_free("xparts", s->xparts);
   swift_free("gparts", s->gparts);
   swift_free("sparts", s->sparts);
+  swift_free("bparts", s->bparts);
 }
 
 /**
@@ -5414,6 +5503,18 @@ void space_struct_dump(struct space *s, FILE *stream) {
                        "space_extra_sparts", "space_extra_sparts");
   restart_write_blocks(&space_extra_bparts, sizeof(int), 1, stream,
                        "space_extra_bparts", "space_extra_bparts");
+  restart_write_blocks(&space_expected_max_nr_strays, sizeof(int), 1, stream,
+                       "space_expected_max_nr_strays",
+                       "space_expected_max_nr_strays");
+  restart_write_blocks(&engine_max_parts_per_ghost, sizeof(int), 1, stream,
+                       "engine_max_parts_per_ghost",
+                       "engine_max_parts_per_ghost");
+  restart_write_blocks(&engine_max_sparts_per_ghost, sizeof(int), 1, stream,
+                       "engine_max_sparts_per_ghost",
+                       "engine_max_sparts_per_ghost");
+  restart_write_blocks(&engine_star_resort_task_depth, sizeof(int), 1, stream,
+                       "engine_star_resort_task_depth",
+                       "engine_star_resort_task_depth");
 
   /* More things to write. */
   if (s->nr_parts > 0) {
@@ -5472,6 +5573,14 @@ void space_struct_restore(struct space *s, FILE *stream) {
                       "space_extra_sparts");
   restart_read_blocks(&space_extra_bparts, sizeof(int), 1, stream, NULL,
                       "space_extra_bparts");
+  restart_read_blocks(&space_expected_max_nr_strays, sizeof(int), 1, stream,
+                      NULL, "space_expected_max_nr_strays");
+  restart_read_blocks(&engine_max_parts_per_ghost, sizeof(int), 1, stream, NULL,
+                      "engine_max_parts_per_ghost");
+  restart_read_blocks(&engine_max_sparts_per_ghost, sizeof(int), 1, stream,
+                      NULL, "engine_max_sparts_per_ghost");
+  restart_read_blocks(&engine_star_resort_task_depth, sizeof(int), 1, stream,
+                      NULL, "engine_star_resort_task_depth");
 
   /* Things that should be reconstructed in a rebuild. */
   s->cells_top = NULL;
@@ -5607,14 +5716,15 @@ void space_write_cell(const struct space *s, FILE *f, const struct cell *c) {
  * @brief Write a csv file containing the cell hierarchy
  *
  * @param s The #space.
+ * @param j The file number.
  */
-void space_write_cell_hierarchy(const struct space *s) {
+void space_write_cell_hierarchy(const struct space *s, int j) {
 
 #ifdef SWIFT_CELL_GRAPH
 
   /* Open file */
   char filename[200];
-  sprintf(filename, "cell_hierarchy_%04i.csv", engine_rank);
+  sprintf(filename, "cell_hierarchy_%04i_%04i.csv", j, engine_rank);
   FILE *f = fopen(filename, "w");
   if (f == NULL) error("Error opening task level file.");
 

@@ -398,17 +398,23 @@ hydro_set_drifted_physical_internal_energy(struct part *p,
                                            const struct cosmology *cosmo,
                                            const float u) {
 
+  /* There is no need to use the floor here as this function is called in the
+   * feedback, so the new value of the internal energy should be strictly
+   * higher than the old value. */
+
   p->u = u / cosmo->a_factor_internal_energy;
 
   /* Now recompute the extra quantities */
 
   /* Compute the sound speed */
-  const float soundspeed = hydro_get_comoving_soundspeed(p);
-  const float pressure = hydro_get_comoving_pressure(p);
+  const float pressure = gas_pressure_from_internal_energy(p->rho, p->u);
+  const float soundspeed = gas_soundspeed_from_pressure(p->rho, pressure);
 
   /* Update variables. */
   p->force.soundspeed = soundspeed;
   p->force.pressure = pressure;
+
+  p->viscosity.v_sig = max(p->viscosity.v_sig, 2.f * soundspeed);
 }
 
 /**
@@ -568,10 +574,11 @@ __attribute__((always_inline)) INLINE static void hydro_end_density(
  * @param p The particle to act upon.
  * @param xp The extended particle data to act upon.
  * @param cosmo The cosmological model.
+ * @param hydro_props Hydrodynamic properties.
  */
 __attribute__((always_inline)) INLINE static void hydro_prepare_gradient(
     struct part *restrict p, struct xpart *restrict xp,
-    const struct cosmology *cosmo) {
+    const struct cosmology *cosmo, const struct hydro_props *hydro_props) {
 
   const float fac_B = cosmo->a_factor_Balsara_eps;
 
@@ -593,8 +600,14 @@ __attribute__((always_inline)) INLINE static void hydro_prepare_gradient(
 
   /* Compute the "grad h" term */
   const float rho_inv = 1.f / p->rho;
+  float rho_dh = p->density.rho_dh;
+  /* Ignore changing-kernel effects when h ~= h_max */
+  if (p->h > 0.9999f * hydro_props->h_max) {
+    rho_dh = 0.f;
+  }
+
   const float grad_h_term =
-      1.f / (1.f + hydro_dimension_inv * p->h * p->density.rho_dh * rho_inv);
+      1.f / (1.f + hydro_dimension_inv * p->h * rho_dh * rho_inv);
 
   /* Update variables. */
   p->force.f = grad_h_term;
@@ -822,9 +835,11 @@ __attribute__((always_inline)) INLINE static void hydro_reset_acceleration(
  *
  * @param p The particle.
  * @param xp The extended data of this particle.
+ * @param cosmo The cosmological model.
  */
 __attribute__((always_inline)) INLINE static void hydro_reset_predicted_values(
-    struct part *restrict p, const struct xpart *restrict xp) {
+    struct part *restrict p, const struct xpart *restrict xp,
+    const struct cosmology *cosmo) {
 
   /* Re-set the predicted velocities */
   p->v[0] = xp->v_full[0];
@@ -840,6 +855,9 @@ __attribute__((always_inline)) INLINE static void hydro_reset_predicted_values(
 
   p->force.pressure = pressure;
   p->force.soundspeed = soundspeed;
+
+  /* Update the signal velocity, if we need to. */
+  p->viscosity.v_sig = max(p->viscosity.v_sig, 2.f * soundspeed);
 }
 
 /**
@@ -901,10 +919,13 @@ __attribute__((always_inline)) INLINE static void hydro_predict_extra(
 
   /* Compute the new sound speed */
   const float pressure = gas_pressure_from_internal_energy(p->rho, p->u);
-  const float soundspeed = hydro_get_comoving_soundspeed(p);
+  const float soundspeed = gas_soundspeed_from_pressure(p->rho, pressure);
 
   p->force.pressure = pressure;
   p->force.soundspeed = soundspeed;
+
+  /* Update signal velocity if we need to */
+  p->viscosity.v_sig = max(p->viscosity.v_sig, 2.f * soundspeed);
 }
 
 /**

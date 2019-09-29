@@ -68,9 +68,9 @@ __attribute__((always_inline)) static INLINE int row_major_index_3d(
  * @param dx offset within cell to interpolate
  */
 __attribute__((always_inline)) static INLINE double interpolate_1d(
-    const double* table, const int i, const float dx) {
+    const double* const table, const int i, const double dx) {
 
-  const float tx = 1.f - dx;
+  const double tx = 1. - dx;
 
   return tx * table[i] + dx * table[i + 1];
 }

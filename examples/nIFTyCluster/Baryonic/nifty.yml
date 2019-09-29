@@ -1,7 +1,10 @@
+MetaData:
+  run_name:   nIFTY cluster
+
 # Define the system of units to use internally. 
 InternalUnitSystem:
   UnitMass_in_cgs:     1.98848e43    # 10^10 M_sun in grams
-  UnitLength_in_cgs:   3.08567758e21 # kpc in centimeters
+  UnitLength_in_cgs:   3.08567758e24 # Mpc in centimeters
   UnitVelocity_in_cgs: 1e5           # km/s in centimeters per second
   UnitCurrent_in_cgs:  1             # Amperes
   UnitTemp_in_cgs:     1             # Kelvin
@@ -37,23 +40,24 @@ Statistics:
 
 # Parameters for the self-gravity scheme
 Gravity:
-  eta:                    0.025    # Constant dimensionless multiplier for time integration. 
-  theta:                  0.7     # Opening angle (Multipole acceptance criterion)
-  comoving_softening:     20.0 # Comoving softening length (in internal units).
-  max_physical_softening: 5.0    # Physical softening length (in internal units).
-  mesh_side_length:       512
-  softening_ratio:        0.04   # 1/25
-  softening_ratio_background:        0.04   # 1/25
+  eta:                           0.025  # Constant dimensionless multiplier for time integration. 
+  theta:                         0.5    # Opening angle (Multipole acceptance criterion)
+  comoving_DM_softening:         0.02   # Comoving softening length (in internal units).
+  comoving_baryon_softening:     0.02   # Comoving softening length (in internal units).
+  max_physical_DM_softening:     0.005  # Max physical softening length (in internal units).
+  max_physical_baryon_softening: 0.005  # Max physical softening length (in internal units).
+  softening_ratio_background:    0.04   # 1/25th of mean inter-particle separation
+  mesh_side_length:              512
 
 # Parameters for the hydrodynamics scheme
 SPH:
-  resolution_eta:        1.48691 # 100 ngb with wendland0-c2
+  resolution_eta:        1.2      # ~50 ngb with Wendland-C2 
   h_min_ratio:           0.1      # Minimal smoothing in units of softening.
   CFL_condition:         0.1      # Courant-Friedrich-Levy condition for time integration.
   minimal_temperature:   100      # (internal units)
 
 Scheduler:
-  max_top_level_cells:  32        # (Optional) Maximal number of top-level cells in any dimension. The number of top-level cells will be the cube of this (this is the default value).
+  max_top_level_cells:  32
 
 # Parameters related to the initial conditions
 InitialConditions:

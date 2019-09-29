@@ -25,10 +25,4 @@
  */
 struct star_formation_xpart_data {};
 
-/**
- * @brief Star-formation-related properties stored in the particle
- * data.
- */
-struct star_formation_part_data {};
-
 #endif /* SWIFT_NONE_STAR_FORMATION_STRUCT_H */

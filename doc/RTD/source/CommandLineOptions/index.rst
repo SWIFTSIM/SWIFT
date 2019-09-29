@@ -11,7 +11,10 @@ For instance, just running the ``swift`` binary will not use any SPH or gravity;
 the particles will just sit still!
 
 Below is a list of the command line options and when they should be used. The same list
-can be found by typing ``./swift -h``::
+can be found by typing ``./swift -h``:
+
+.. code-block:: none
+
 
     -h, --help                        show this help message and exit
 
@@ -65,5 +68,7 @@ can be found by typing ``./swift -h``::
                                       from all ranks.
     -y, --task-dumps=<int>            Time-step frequency at which task analysis
                                       files and/or tasks are dumped.
+    --cell-dumps=<int>                Time-step frequency at which cell graphs 
+                                      are dumped. 
     -Y, --threadpool-dumps=<int>      Time-step frequency at which threadpool
                                       tasks are dumped.

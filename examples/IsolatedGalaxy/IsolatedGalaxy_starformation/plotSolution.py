@@ -49,7 +49,7 @@ rcParams.update(params)
 rc("font", **{"family": "sans-serif", "sans-serif": ["Times"]})
 
 snap = int(sys.argv[1])
-filename = "output_%.4d.hdf5"%snap
+filename = "output_%.4d.hdf5" % snap
 
 f = h5.File(filename, "r")
 
@@ -60,7 +60,7 @@ year_in_cgs = 3600.0 * 24 * 365.0
 Msun_in_cgs = 1.98848e33
 G_in_cgs = 6.67259e-8
 pc_in_cgs = 3.08567758e18
-Msun_p_pc2 = Msun_in_cgs / pc_in_cgs**2
+Msun_p_pc2 = Msun_in_cgs / pc_in_cgs ** 2
 
 # Gemoetry info
 boxsize = f["/Header"].attrs["BoxSize"]
@@ -72,67 +72,95 @@ unit_mass_in_cgs = f["/Units"].attrs["Unit mass in cgs (U_M)"]
 unit_time_in_cgs = f["/Units"].attrs["Unit time in cgs (U_t)"]
 
 # Calculate Gravitational constant in internal units
-G = G_in_cgs * ( unit_length_in_cgs**3 / unit_mass_in_cgs / unit_time_in_cgs**2)**(-1)
+G = G_in_cgs * (unit_length_in_cgs ** 3 / unit_mass_in_cgs / unit_time_in_cgs ** 2) ** (
+    -1
+)
 
 # Read parameters of the SF model
 KS_law_slope = float(f["/Parameters"].attrs["EAGLEStarFormation:KS_exponent"])
 KS_law_norm = float(f["/Parameters"].attrs["EAGLEStarFormation:KS_normalisation"])
 KS_thresh_Z0 = float(f["/Parameters"].attrs["EAGLEStarFormation:threshold_Z0"])
 KS_thresh_slope = float(f["/Parameters"].attrs["EAGLEStarFormation:threshold_slope"])
-KS_thresh_norm = float(f["/Parameters"].attrs["EAGLEStarFormation:threshold_norm_H_p_cm3"])
+KS_thresh_norm = float(
+    f["/Parameters"].attrs["EAGLEStarFormation:threshold_norm_H_p_cm3"]
+)
 KS_gas_fraction = float(f["/Parameters"].attrs["EAGLEStarFormation:gas_fraction"])
-KS_thresh_max_norm = float(f["/Parameters"].attrs["EAGLEStarFormation:threshold_max_density_H_p_cm3"])
-KS_high_den_thresh = float(f["/Parameters"].attrs["EAGLEStarFormation:KS_high_density_threshold_H_p_cm3"])
-KS_law_slope_high_den = float(f["/Parameters"].attrs["EAGLEStarFormation:KS_high_density_exponent"])
-EOS_gamma_effective = float(f["/Parameters"].attrs["EAGLEStarFormation:EOS_gamma_effective"])                           
-EOS_density_norm = float(f["/Parameters"].attrs["EAGLEStarFormation:EOS_density_norm_H_p_cm3"])                           
-EOS_temp_norm = float(f["/Parameters"].attrs["EAGLEStarFormation:EOS_temperature_norm_K"])                           
+KS_thresh_max_norm = float(
+    f["/Parameters"].attrs["EAGLEStarFormation:threshold_max_density_H_p_cm3"]
+)
+KS_high_den_thresh = float(
+    f["/Parameters"].attrs["EAGLEStarFormation:KS_high_density_threshold_H_p_cm3"]
+)
+KS_law_slope_high_den = float(
+    f["/Parameters"].attrs["EAGLEStarFormation:KS_high_density_exponent"]
+)
+EOS_gamma_effective = float(
+    f["/Parameters"].attrs["EAGLEStarFormation:EOS_gamma_effective"]
+)
+EOS_density_norm = float(
+    f["/Parameters"].attrs["EAGLEStarFormation:EOS_density_norm_H_p_cm3"]
+)
+EOS_temp_norm = float(
+    f["/Parameters"].attrs["EAGLEStarFormation:EOS_temperature_norm_K"]
+)
 
 # Read reference metallicity
 EAGLE_Z = float(f["/Parameters"].attrs["EAGLEChemistry:init_abundance_metal"])
 
 # Read parameters of the entropy floor
-EAGLEfloor_Jeans_rho_norm = float(f["/Parameters"].attrs["EAGLEEntropyFloor:Jeans_density_threshold_H_p_cm3"])
-EAGLEfloor_Jeans_temperature_norm_K = float(f["/Parameters"].attrs["EAGLEEntropyFloor:Jeans_temperature_norm_K"])
-EAGLEfloor_Jeans_gamma_effective = float(f["/Parameters"].attrs["EAGLEEntropyFloor:Jeans_gamma_effective"])
-EAGLEfloor_cool_rho_norm = float(f["/Parameters"].attrs["EAGLEEntropyFloor:Cool_density_threshold_H_p_cm3"])
-EAGLEfloor_cool_temperature_norm_K = float(f["/Parameters"].attrs["EAGLEEntropyFloor:Cool_temperature_norm_K"])
-EAGLEfloor_cool_gamma_effective = float(f["/Parameters"].attrs["EAGLEEntropyFloor:Cool_gamma_effective"])
+EAGLEfloor_Jeans_rho_norm = float(
+    f["/Parameters"].attrs["EAGLEEntropyFloor:Jeans_density_threshold_H_p_cm3"]
+)
+EAGLEfloor_Jeans_temperature_norm_K = float(
+    f["/Parameters"].attrs["EAGLEEntropyFloor:Jeans_temperature_norm_K"]
+)
+EAGLEfloor_Jeans_gamma_effective = float(
+    f["/Parameters"].attrs["EAGLEEntropyFloor:Jeans_gamma_effective"]
+)
+EAGLEfloor_cool_rho_norm = float(
+    f["/Parameters"].attrs["EAGLEEntropyFloor:Cool_density_threshold_H_p_cm3"]
+)
+EAGLEfloor_cool_temperature_norm_K = float(
+    f["/Parameters"].attrs["EAGLEEntropyFloor:Cool_temperature_norm_K"]
+)
+EAGLEfloor_cool_gamma_effective = float(
+    f["/Parameters"].attrs["EAGLEEntropyFloor:Cool_gamma_effective"]
+)
 
 # Properties of the KS law
-KS_law_norm_cgs = KS_law_norm * Msun_in_cgs / ( 1e6 * pc_in_cgs**2 * year_in_cgs )
-gamma = 5./3.
+KS_law_norm_cgs = KS_law_norm * Msun_in_cgs / (1e6 * pc_in_cgs ** 2 * year_in_cgs)
+gamma = 5.0 / 3.0
 EOS_press_norm = k_in_cgs * EOS_temp_norm * EOS_density_norm
 
 # Star formation threshold
-SF_thresh = KS_thresh_norm * (EAGLE_Z / KS_thresh_Z0)**(KS_thresh_slope)
+SF_thresh = KS_thresh_norm * (EAGLE_Z / KS_thresh_Z0) ** (KS_thresh_slope)
 
 # Read gas properties
 gas_pos = f["/PartType0/Coordinates"][:, :]
 gas_mass = f["/PartType0/Masses"][:]
-gas_rho = f["/PartType0/Density"][:]
-gas_T = f["/PartType0/Temperature"][:]
-gas_SFR = f["/PartType0/SFR"][:]
-gas_XH = f["/PartType0/ElementAbundance"][:, 0]
-gas_Z = f["/PartType0/Metallicity"][:]
-gas_hsml = f["/PartType0/SmoothingLength"][:]
+gas_rho = f["/PartType0/Densities"][:]
+gas_T = f["/PartType0/Temperatures"][:]
+gas_SFR = f["/PartType0/StarFormationRates"][:]
+gas_XH = f["/PartType0/ElementMassFractions"][:, 0]
+gas_Z = f["/PartType0/MetalMassFractions"][:]
+gas_hsml = f["/PartType0/SmoothingLengths"][:]
 gas_sSFR = gas_SFR / gas_mass
 
 # Read the Star properties
 stars_pos = f["/PartType4/Coordinates"][:, :]
-stars_BirthDensity = f["/PartType4/BirthDensity"][:]
-stars_BirthTime = f["/PartType4/BirthTime"][:]
-stars_XH = f["/PartType4/ElementAbundance"][:,0]
-stars_BirthTemperature = f["/PartType4/BirthTemperature"][:]
+stars_BirthDensity = f["/PartType4/BirthDensities"][:]
+stars_BirthTime = f["/PartType4/BirthTimes"][:]
+stars_XH = f["/PartType4/ElementMassFractions"][:, 0]
+stars_BirthTemperature = f["/PartType4/BirthTemperatures"][:]
 
 # Centre the box
 gas_pos[:, 0] -= centre[0]
 gas_pos[:, 1] -= centre[1]
 gas_pos[:, 2] -= centre[2]
 
-stars_pos[:,0] -= centre[0]
-stars_pos[:,1] -= centre[1]
-stars_pos[:,2] -= centre[2]
+stars_pos[:, 0] -= centre[0]
+stars_pos[:, 1] -= centre[1]
+stars_pos[:, 2] -= centre[2]
 
 # Turn the mass into better units
 gas_mass *= unit_mass_in_cgs / Msun_in_cgs
@@ -156,9 +184,13 @@ stars_BirthDensity *= stars_XH
 
 # Equations of state
 eos_cool_rho = np.logspace(-5, 5, 1000)
-eos_cool_T = EAGLEfloor_cool_temperature_norm_K * (eos_cool_rho / EAGLEfloor_cool_rho_norm) ** ( EAGLEfloor_cool_gamma_effective - 1.0 )
+eos_cool_T = EAGLEfloor_cool_temperature_norm_K * (
+    eos_cool_rho / EAGLEfloor_cool_rho_norm
+) ** (EAGLEfloor_cool_gamma_effective - 1.0)
 eos_Jeans_rho = np.logspace(-1, 5, 1000)
-eos_Jeans_T = EAGLEfloor_Jeans_temperature_norm_K * (eos_Jeans_rho / EAGLEfloor_Jeans_rho_norm) ** (EAGLEfloor_Jeans_gamma_effective - 1.0 ) 
+eos_Jeans_T = EAGLEfloor_Jeans_temperature_norm_K * (
+    eos_Jeans_rho / EAGLEfloor_Jeans_rho_norm
+) ** (EAGLEfloor_Jeans_gamma_effective - 1.0)
 
 ########################################################################3
 
@@ -180,7 +212,15 @@ subplot(111, xscale="log", yscale="log")
 plot(eos_cool_rho, eos_cool_T, "k--", lw=0.6)
 plot(eos_Jeans_rho, eos_Jeans_T, "k--", lw=0.6)
 plot([SF_thresh, SF_thresh], [1, 1e10], "k:", lw=0.6)
-text(SF_thresh*0.9, 2e4, "$n_{\\rm H, thresh}=%.3f~{\\rm cm^{-3}}$"%SF_thresh, fontsize=8, rotation=90, ha="right", va="bottom")
+text(
+    SF_thresh * 0.9,
+    2e4,
+    "$n_{\\rm H, thresh}=%.3f~{\\rm cm^{-3}}$" % SF_thresh,
+    fontsize=8,
+    rotation=90,
+    ha="right",
+    va="bottom",
+)
 scatter(gas_nH[gas_SFR > 0.0], gas_T[gas_SFR > 0.0], s=0.2)
 xlabel("${\\rm Density}~n_{\\rm H}~[{\\rm cm^{-3}}]$", labelpad=0)
 ylabel("${\\rm Temperature}~T~[{\\rm K}]$", labelpad=2)
@@ -199,66 +239,92 @@ star_mask = (
     & (stars_pos[:, 2] > -1.0)
 )
 
-stars_BirthDensity = stars_BirthDensity[star_mask] 
-#stars_BirthFlag = stars_BirthFlag[star_mask]
+stars_BirthDensity = stars_BirthDensity[star_mask]
+# stars_BirthFlag = stars_BirthFlag[star_mask]
 stars_BirthTime = stars_BirthTime[star_mask]
 
 # Histogram of the birth density
 figure()
 subplot(111, xscale="linear", yscale="linear")
-hist(np.log10(stars_BirthDensity),density=True,bins=20,range=[-2,5])
+hist(np.log10(stars_BirthDensity), density=True, bins=20, range=[-2, 5])
 xlabel("${\\rm Stellar~birth~density}~n_{\\rm H}~[{\\rm cm^{-3}}]$", labelpad=0)
 ylabel("${\\rm Probability}$", labelpad=3)
 savefig("BirthDensity.png", dpi=200)
 
-# Histogram of the birth temperature 
+# Histogram of the birth temperature
 figure()
 subplot(111, xscale="linear", yscale="linear")
-hist(np.log10(stars_BirthTemperature),density=True,bins=20,range=[3.5,5.0])
+hist(np.log10(stars_BirthTemperature), density=True, bins=20, range=[3.5, 5.0])
 xlabel("${\\rm Stellar~birth~temperature}~[{\\rm K}]$", labelpad=0)
 ylabel("${\\rm Probability}$", labelpad=3)
 savefig("BirthTemperature.png", dpi=200)
 
 # Plot of the specific star formation rate in the galaxy
-rhos = 10**np.linspace(-1,np.log10(KS_high_den_thresh),100)
-rhoshigh = 10**np.linspace(np.log10(KS_high_den_thresh),5,100)
+rhos = 10 ** np.linspace(-1, np.log10(KS_high_den_thresh), 100)
+rhoshigh = 10 ** np.linspace(np.log10(KS_high_den_thresh), 5, 100)
 
-P_effective = EOS_press_norm * ( rhos / EOS_density_norm)**(EOS_gamma_effective)
-P_norm_high = EOS_press_norm * (KS_high_den_thresh  / EOS_density_norm)**(EOS_gamma_effective)
-sSFR = KS_law_norm_cgs * (Msun_p_pc2)**(-KS_law_slope) * (gamma/G_in_cgs * KS_gas_fraction *P_effective)**((KS_law_slope-1.)/2.)
-KS_law_norm_high_den_cgs = KS_law_norm_cgs * (Msun_p_pc2)**(-KS_law_slope) * (gamma/G_in_cgs * KS_gas_fraction * P_norm_high)**((KS_law_slope-1.)/2.)
-sSFR_high_den = KS_law_norm_high_den_cgs * ((rhoshigh/KS_high_den_thresh)**EOS_gamma_effective)**((KS_law_slope_high_den-1)/2.)
+P_effective = EOS_press_norm * (rhos / EOS_density_norm) ** (EOS_gamma_effective)
+P_norm_high = EOS_press_norm * (KS_high_den_thresh / EOS_density_norm) ** (
+    EOS_gamma_effective
+)
+sSFR = (
+    KS_law_norm_cgs
+    * (Msun_p_pc2) ** (-KS_law_slope)
+    * (gamma / G_in_cgs * KS_gas_fraction * P_effective) ** ((KS_law_slope - 1.0) / 2.0)
+)
+KS_law_norm_high_den_cgs = (
+    KS_law_norm_cgs
+    * (Msun_p_pc2) ** (-KS_law_slope)
+    * (gamma / G_in_cgs * KS_gas_fraction * P_norm_high) ** ((KS_law_slope - 1.0) / 2.0)
+)
+sSFR_high_den = KS_law_norm_high_den_cgs * (
+    (rhoshigh / KS_high_den_thresh) ** EOS_gamma_effective
+) ** ((KS_law_slope_high_den - 1) / 2.0)
 
 # density - sSFR plane
 figure()
 subplot(111)
-hist2d(np.log10(gas_nH), np.log10(gas_sSFR), bins=50,range=[[-1.5,5],[-.5,2.5]])
-plot(np.log10(rhos),np.log10(sSFR)+np.log10(year_in_cgs)+9.,'k--',label='sSFR low density EAGLE')
-plot(np.log10(rhoshigh),np.log10(sSFR_high_den)+np.log10(year_in_cgs)+9.,'k--',label='sSFR high density EAGLE')
+hist2d(np.log10(gas_nH), np.log10(gas_sSFR), bins=50, range=[[-1.5, 5], [-0.5, 2.5]])
+plot(
+    np.log10(rhos),
+    np.log10(sSFR) + np.log10(year_in_cgs) + 9.0,
+    "k--",
+    label="sSFR low density EAGLE",
+)
+plot(
+    np.log10(rhoshigh),
+    np.log10(sSFR_high_den) + np.log10(year_in_cgs) + 9.0,
+    "k--",
+    label="sSFR high density EAGLE",
+)
 xlabel("${\\rm Density}~n_{\\rm H}~[{\\rm cm^{-3}}]$", labelpad=2)
 ylabel("${\\rm sSFR}~[{\\rm Gyr^{-1}}]$", labelpad=0)
-xticks([-1, 0, 1, 2, 3, 4], ["$10^{-1}$", "$10^0$", "$10^1$", "$10^2$", "$10^3$", "$10^4$"])
+xticks(
+    [-1, 0, 1, 2, 3, 4], ["$10^{-1}$", "$10^0$", "$10^1$", "$10^2$", "$10^3$", "$10^4$"]
+)
 yticks([0, 1, 2], ["$10^0$", "$10^1$", "$10^2$"])
 xlim(-1.4, 4.9)
 ylim(-0.5, 2.2)
 savefig("density-sSFR.png", dpi=200)
 
-SFR_low = 10**(np.log10(sSFR)+np.log10(year_in_cgs)+np.log10(median_gas_mass))
-SFR_high = 10**(np.log10(sSFR_high_den)+np.log10(year_in_cgs)+np.log10(median_gas_mass))
-SFR_low_min = np.floor(np.log10(.75*np.min(SFR_low)))
-SFR_high_max = np.ceil(np.log10(1.25*np.max(SFR_high)))
+SFR_low = 10 ** (np.log10(sSFR) + np.log10(year_in_cgs) + np.log10(median_gas_mass))
+SFR_high = 10 ** (
+    np.log10(sSFR_high_den) + np.log10(year_in_cgs) + np.log10(median_gas_mass)
+)
+SFR_low_min = np.floor(np.log10(0.75 * np.min(SFR_low)))
+SFR_high_max = np.ceil(np.log10(1.25 * np.max(SFR_high)))
 
 # 3D Density vs SFR
 rcParams.update({"figure.subplot.left": 0.18})
 figure()
 subplot(111, xscale="log", yscale="log")
 scatter(gas_nH, gas_SFR, s=0.2)
-plot(rhos,SFR_low,'k--',lw=1,label='SFR low density EAGLE')
-plot(rhoshigh,SFR_high,'k--',lw=1,label='SFR high density EAGLE')
+plot(rhos, SFR_low, "k--", lw=1, label="SFR low density EAGLE")
+plot(rhoshigh, SFR_high, "k--", lw=1, label="SFR high density EAGLE")
 xlabel("${\\rm Density}~n_{\\rm H}~[{\\rm cm^{-3}}]$", labelpad=0)
 ylabel("${\\rm SFR}~[{\\rm M_\\odot~\\cdot~yr^{-1}}]$", labelpad=2)
 xlim(1e-2, 1e5)
-ylim(10**SFR_low_min, 10**(SFR_high_max+0.1))
+ylim(10 ** SFR_low_min, 10 ** (SFR_high_max + 0.1))
 savefig("rho_SFR.png", dpi=200)
 rcParams.update({"figure.subplot.left": 0.15})
 ########################################################################3

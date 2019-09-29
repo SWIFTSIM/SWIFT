@@ -27,7 +27,7 @@
 /* Config parameters. */
 #include "../config.h"
 
-/* Import the right cooling definition */
+/* Import the right star formation definition */
 #if defined(STAR_FORMATION_NONE)
 #include "./star_formation/none/star_formation_struct.h"
 #elif defined(STAR_FORMATION_EAGLE)

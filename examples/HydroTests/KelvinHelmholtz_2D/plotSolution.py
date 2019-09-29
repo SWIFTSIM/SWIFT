@@ -77,10 +77,10 @@ x = pos[:,0] - boxSize / 2
 y = pos[:,1] - boxSize / 2
 vel = sim["/PartType0/Velocities"][:,:]
 v_norm = sqrt(vel[:,0]**2 + vel[:,1]**2)
-rho = sim["/PartType0/Density"][:]
-u = sim["/PartType0/InternalEnergy"][:]
-S = sim["/PartType0/Entropy"][:]
-P = sim["/PartType0/Pressure"][:]
+rho = sim["/PartType0/Densities"][:]
+u = sim["/PartType0/InternalEnergies"][:]
+S = sim["/PartType0/Entropies"][:]
+P = sim["/PartType0/Pressures"][:]
 
 # Plot the interesting quantities
 figure()

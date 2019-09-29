@@ -26,6 +26,11 @@
 /* Time-step limiter maximal difference in signal velocity */
 #define const_limiter_max_v_sig_ratio 4.1f
 
+/* I/O Constant; this determines the relative tolerance between the value of
+ * redshift read from the snapshot, and the value from the parameter file. This
+ * current value asserts that they must match within 0.1%. */
+#define io_redshift_tolerance 1e-3f
+
 /* Type of gradients to use (GIZMO_SPH only) */
 /* If no option is chosen, no gradients are used (first order scheme) */
 //#define GRADIENTS_SPH

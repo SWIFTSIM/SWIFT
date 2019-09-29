@@ -52,7 +52,7 @@ static gr_float cooling_time(
     const struct unit_system* restrict us,
     const struct cosmology* restrict cosmo,
     const struct cooling_function_data* restrict cooling,
-    const struct part* restrict p, const struct xpart* restrict xp);
+    const struct part* restrict p, struct xpart* restrict xp);
 static gr_float cooling_new_energy(
     const struct phys_const* restrict phys_const,
     const struct unit_system* restrict us,
@@ -573,7 +573,7 @@ __attribute__((always_inline)) INLINE static gr_float cooling_time(
     const struct unit_system* restrict us,
     const struct cosmology* restrict cosmo,
     const struct cooling_function_data* restrict cooling,
-    const struct part* restrict p, const struct xpart* restrict xp) {
+    const struct part* restrict p, struct xpart* restrict xp) {
 
   /* set current time */
   code_units units = cooling->units;

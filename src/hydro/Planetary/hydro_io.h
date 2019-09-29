@@ -176,7 +176,7 @@ INLINE static void hydro_write_particles(const struct part* parts,
       "Smoothing lengths (FWHM of the kernel) of the particles");
   list[4] = io_make_output_field(
       "InternalEnergies", FLOAT, 1, UNIT_CONV_ENERGY_PER_UNIT_MASS,
-      3. * hydro_gamma_minus_one, parts, u,
+      -3.f * hydro_gamma_minus_one, parts, u,
       "Thermal energies per unit mass of the particles");
   list[5] =
       io_make_output_field("ParticleIDs", ULONGLONG, 1, UNIT_CONV_NO_UNITS, 0.f,
@@ -190,7 +190,7 @@ INLINE static void hydro_write_particles(const struct part* parts,
       io_make_output_field("MaterialIDs", INT, 1, UNIT_CONV_NO_UNITS, 0.f,
                            parts, mat_id, "Material IDs of the particles");
   list[9] = io_make_output_field_convert_part(
-      "Pressures", FLOAT, 1, UNIT_CONV_PRESSURE, 3.f * hydro_gamma, parts,
+      "Pressures", FLOAT, 1, UNIT_CONV_PRESSURE, -3.f * hydro_gamma, parts,
       xparts, convert_P, "Pressures of the particles");
   list[10] = io_make_output_field_convert_part(
       "Potentials", FLOAT, 1, UNIT_CONV_POTENTIAL, 0.f, parts, xparts,

@@ -146,8 +146,14 @@ __attribute__((always_inline)) INLINE static integertime_t get_part_timestep(
     new_dt_grav = min(new_dt_self_grav, new_dt_ext_grav);
   }
 
-  /* Final time-step is minimum of hydro and gravity */
-  float new_dt = min3(new_dt_hydro, new_dt_cooling, new_dt_grav);
+  /* Compute the next timestep (chemistry condition, e.g. diffusion) */
+  const float new_dt_chemistry =
+      chemistry_timestep(e->physical_constants, e->cosmology, e->internal_units,
+                         e->hydro_properties, e->chemistry, p);
+
+  /* Final time-step is minimum of hydro, gravity and subgrid */
+  float new_dt =
+      min4(new_dt_hydro, new_dt_cooling, new_dt_grav, new_dt_chemistry);
 
   /* Limit change in smoothing length */
   const float dt_h_change =
