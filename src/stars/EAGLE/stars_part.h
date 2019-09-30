@@ -144,7 +144,7 @@ struct stars_props {
   /*! Smoothing length tolerance */
   float h_tolerance;
 
-  /*! Tolerance on neighbour number  (for info only)*/
+  /*! Tolerance on neighbour number  (for info only) */
   float delta_neighbours;
 
   /*! Maximal number of iterations to converge h */
@@ -153,7 +153,10 @@ struct stars_props {
   /*! Maximal change of h over one time-step */
   float log_max_h_change;
 
-  /*! Value to set birth time of stars read from ICs if not set to -1 */
+  /*! Are we overwriting the stars' birth time read from the ICs? */
+  int overwrite_birth_time;
+
+  /*! Value to set birth time of stars read from ICs */
   float spart_first_init_birth_time;
 };
 

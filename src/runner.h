@@ -26,13 +26,21 @@
 /* Config parameters. */
 #include "../config.h"
 
-/* Includes. */
+/* Local headers. */
 #include "cache.h"
 #include "gravity_cache.h"
-#include "task.h"
 
 struct cell;
 struct engine;
+struct task;
+
+/* Unique identifier of loop types */
+#define TASK_LOOP_DENSITY 0
+#define TASK_LOOP_GRADIENT 1
+#define TASK_LOOP_FORCE 2
+#define TASK_LOOP_LIMITER 3
+#define TASK_LOOP_FEEDBACK 4
+#define TASK_LOOP_SWALLOW 5
 
 /**
  * @brief A struct representing a runner's thread and its data.
@@ -75,6 +83,12 @@ struct runner {
 /* Function prototypes. */
 void runner_do_ghost(struct runner *r, struct cell *c, int timer);
 void runner_do_extra_ghost(struct runner *r, struct cell *c, int timer);
+void runner_do_stars_ghost(struct runner *r, struct cell *c, int timer);
+void runner_do_black_holes_density_ghost(struct runner *r, struct cell *c,
+                                         int timer);
+void runner_do_black_holes_swallow_ghost(struct runner *r, struct cell *c,
+                                         int timer);
+void runner_do_init_grav(struct runner *r, struct cell *c, int timer);
 void runner_do_hydro_sort(struct runner *r, struct cell *c, int flag,
                           int cleanup, int clock);
 void runner_do_stars_sort(struct runner *r, struct cell *c, int flag,
@@ -84,19 +98,38 @@ void runner_do_all_stars_sort(struct runner *r, struct cell *c);
 void runner_do_drift_part(struct runner *r, struct cell *c, int timer);
 void runner_do_drift_gpart(struct runner *r, struct cell *c, int timer);
 void runner_do_drift_spart(struct runner *r, struct cell *c, int timer);
+void runner_do_drift_bpart(struct runner *r, struct cell *c, int timer);
 void runner_do_kick1(struct runner *r, struct cell *c, int timer);
 void runner_do_kick2(struct runner *r, struct cell *c, int timer);
+void runner_do_timestep(struct runner *r, struct cell *c, int timer);
 void runner_do_end_hydro_force(struct runner *r, struct cell *c, int timer);
+void runner_do_end_grav_force(struct runner *r, struct cell *c, int timer);
 void runner_do_init(struct runner *r, struct cell *c, int timer);
 void runner_do_cooling(struct runner *r, struct cell *c, int timer);
+void runner_do_limiter(struct runner *r, struct cell *c, int force, int timer);
+void runner_do_grav_mesh(struct runner *r, struct cell *c, int timer);
 void runner_do_grav_external(struct runner *r, struct cell *c, int timer);
 void runner_do_grav_fft(struct runner *r, int timer);
 void runner_do_logger(struct runner *r, struct cell *c, int timer);
 void runner_do_fof_self(struct runner *r, struct cell *c, int timer);
 void runner_do_fof_pair(struct runner *r, struct cell *ci, struct cell *cj,
                         int timer);
+void runner_do_gas_swallow_self(struct runner *r, struct cell *c, int timer);
+void runner_do_bh_swallow_self(struct runner *r, struct cell *c, int timer);
+void runner_do_gas_swallow_pair(struct runner *r, struct cell *ci,
+                                struct cell *cj, int timer);
+void runner_do_bh_swallow_pair(struct runner *r, struct cell *ci,
+                               struct cell *cj, int timer);
+void runner_do_star_formation(struct runner *r, struct cell *c, int timer);
+void runner_do_stars_resort(struct runner *r, struct cell *c, const int timer);
+
+void runner_do_recv_gpart(struct runner *r, struct cell *c, int timer);
+void runner_do_recv_part(struct runner *r, struct cell *c, int clear_sorts,
+                         int timer);
+void runner_do_recv_spart(struct runner *r, struct cell *c, int clear_sorts,
+                          int timer);
+void runner_do_recv_bpart(struct runner *r, struct cell *c, int clear_sorts,
+                          int timer);
 void *runner_main(void *data);
-void runner_do_drift_all_mapper(void *map_data, int num_elements,
-                                void *extra_data);
 
 #endif /* SWIFT_RUNNER_H */

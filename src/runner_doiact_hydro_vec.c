@@ -21,7 +21,7 @@
 #include "../config.h"
 
 /* This object's header. */
-#include "runner_doiact_vec.h"
+#include "runner_doiact_hydro_vec.h"
 
 #if defined(WITH_VECTORIZATION) && defined(GADGET2_SPH)
 

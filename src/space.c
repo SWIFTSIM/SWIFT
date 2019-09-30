@@ -59,6 +59,7 @@
 #include "pressure_floor.h"
 #include "restart.h"
 #include "sort_part.h"
+#include "star_formation.h"
 #include "star_formation_logger.h"
 #include "stars.h"
 #include "threadpool.h"
@@ -4125,6 +4126,7 @@ void space_first_init_parts_mapper(void *restrict map_data, int count,
   const int with_gravity = e->policy & engine_policy_self_gravity;
 
   const struct chemistry_global_data *chemistry = e->chemistry;
+  const struct star_formation *star_formation = e->star_formation;
   const struct cooling_function_data *cool_func = e->cooling_func;
 
   /* Check that the smoothing lengths are non-zero */
@@ -4177,6 +4179,10 @@ void space_first_init_parts_mapper(void *restrict map_data, int count,
 
     /* Also initialise the pressure floor */
     pressure_floor_first_init_part(phys_const, us, cosmo, &p[k], &xp[k]);
+
+    /* Also initialise the star formation */
+    star_formation_first_init_part(phys_const, us, cosmo, star_formation, &p[k],
+                                   &xp[k]);
 
     /* And the cooling */
     cooling_first_init_part(phys_const, us, cosmo, cool_func, &p[k], &xp[k]);
@@ -4685,7 +4691,7 @@ void space_init(struct space *s, struct swift_params *params,
 
   /* Are we generating gas from the DM-only ICs? */
   if (generate_gas_in_ics) {
-    space_generate_gas(s, cosmo, periodic, dim, verbose);
+    space_generate_gas(s, cosmo, periodic, DM_background, dim, verbose);
     parts = s->parts;
     gparts = s->gparts;
     Npart = s->nr_parts;
@@ -5079,14 +5085,18 @@ void space_replicate(struct space *s, int replicate, int verbose) {
  * gas un-initialised as they will be given a value from the parameter file at a
  * later stage.
  *
+ * Background DM particles are not duplicated.
+ *
  * @param s The #space to create the particles in.
  * @param cosmo The current #cosmology model.
  * @param periodic Are we using periodic boundary conditions?
+ * @param with_background Are we using background DM particles?
  * @param dim The size of the box (for periodic wrapping).
  * @param verbose Are we talkative?
  */
 void space_generate_gas(struct space *s, const struct cosmology *cosmo,
-                        int periodic, const double dim[3], int verbose) {
+                        const int periodic, const int with_background,
+                        const double dim[3], const int verbose) {
 
   /* Check that this is a sensible ting to do */
   if (!s->with_hydro)
@@ -5098,14 +5108,33 @@ void space_generate_gas(struct space *s, const struct cosmology *cosmo,
   if (verbose) message("Generating gas particles from gparts");
 
   /* Store the current values */
-  const size_t nr_parts = s->nr_parts;
-  const size_t nr_gparts = s->nr_gparts;
+  const size_t current_nr_parts = s->nr_parts;
+  const size_t current_nr_gparts = s->nr_gparts;
 
-  if (nr_parts != 0)
+  if (current_nr_parts != 0)
     error("Generating gas particles from DM but gas already exists!");
 
-  s->size_parts = s->nr_parts = nr_gparts;
-  s->size_gparts = s->nr_gparts = 2 * nr_gparts;
+  if (s->nr_sparts != 0)
+    error("Generating gas particles from DM but stars already exists!");
+
+  if (s->nr_bparts != 0)
+    error("Generating gas particles from DM but BHs already exists!");
+
+  /* Start by counting the number of background and zoom DM particles */
+  size_t nr_background_gparts = 0;
+  if (with_background) {
+    for (size_t i = 0; i < current_nr_gparts; ++i)
+      if (s->gparts[i].type == swift_type_dark_matter_background)
+        ++nr_background_gparts;
+  }
+  const size_t nr_zoom_gparts = current_nr_gparts - nr_background_gparts;
+
+  if (nr_zoom_gparts == 0)
+    error("Can't generate gas from ICs if there are no high res. particles");
+
+  /* New particle counts after replication */
+  s->size_parts = s->nr_parts = nr_zoom_gparts;
+  s->size_gparts = s->nr_gparts = 2 * nr_zoom_gparts + nr_background_gparts;
 
   /* Allocate space for new particles */
   struct part *parts = NULL;
@@ -5119,11 +5148,8 @@ void space_generate_gas(struct space *s, const struct cosmology *cosmo,
                      s->nr_gparts * sizeof(struct gpart)) != 0)
     error("Failed to allocate new gpart array.");
 
-  /* Start by copying the gparts */
-  memcpy(gparts, s->gparts, nr_gparts * sizeof(struct gpart));
-  memcpy(gparts + nr_gparts, s->gparts, nr_gparts * sizeof(struct gpart));
-
   /* And zero the parts */
+  bzero(gparts, s->nr_gparts * sizeof(struct gpart));
   bzero(parts, s->nr_parts * sizeof(struct part));
 
   /* Compute some constants */
@@ -5131,73 +5157,93 @@ void space_generate_gas(struct space *s, const struct cosmology *cosmo,
   const double bg_density = cosmo->Omega_m * cosmo->critical_density_0;
   const double bg_density_inv = 1. / bg_density;
 
+  message("%zd", current_nr_gparts);
+
   /* Update the particle properties */
-  for (size_t i = 0; i < nr_gparts; ++i) {
+  size_t j = 0;
+  for (size_t i = 0; i < current_nr_gparts; ++i) {
 
-    struct part *p = &parts[i];
-    struct gpart *gp_gas = &gparts[i];
-    struct gpart *gp_dm = &gparts[nr_gparts + i];
+    /* For the background DM particles, just copy the data */
+    if (s->gparts[i].type == swift_type_dark_matter_background) {
 
-    /* Set the IDs */
-    p->id = gp_gas->id_or_neg_offset * 2 + 1;
-    gp_dm->id_or_neg_offset *= 2;
+      memcpy(&gparts[i], &s->gparts[i], sizeof(struct gpart));
 
-    if (gp_dm->id_or_neg_offset < 0)
-      error("DM particle ID overflowd (DM id=%lld gas id=%lld)",
-            gp_dm->id_or_neg_offset, p->id);
+    } else {
 
-    if (p->id < 0) error("gas particle ID overflowd (id=%lld)", p->id);
+      /* For the zoom DM particles, there is a lot of work to do */
 
-    /* Set the links correctly */
-    p->gpart = gp_gas;
-    gp_gas->id_or_neg_offset = -i;
-    gp_gas->type = swift_type_gas;
+      struct part *p = &parts[j];
+      struct gpart *gp_gas = &gparts[current_nr_gparts + j];
+      struct gpart *gp_dm = &gparts[i];
 
-    /* Compute positions shift */
-    const double d = cbrt(gp_dm->mass * bg_density_inv);
-    const double shift_dm = 0.5 * d * mass_ratio;
-    const double shift_gas = 0.5 * d * (1. - mass_ratio);
+      /* Start by copying over the gpart */
+      memcpy(gp_gas, &s->gparts[i], sizeof(struct gpart));
+      memcpy(gp_dm, &s->gparts[i], sizeof(struct gpart));
 
-    /* Set the masses */
-    gp_dm->mass *= (1. - mass_ratio);
-    gp_gas->mass *= mass_ratio;
-    hydro_set_mass(p, gp_gas->mass);
+      /* Set the IDs */
+      p->id = gp_gas->id_or_neg_offset * 2 + 1;
+      gp_dm->id_or_neg_offset *= 2;
 
-    /* Set the new positions */
-    gp_dm->x[0] += shift_dm;
-    gp_dm->x[1] += shift_dm;
-    gp_dm->x[2] += shift_dm;
-    gp_gas->x[0] -= shift_gas;
-    gp_gas->x[1] -= shift_gas;
-    gp_gas->x[2] -= shift_gas;
+      if (gp_dm->id_or_neg_offset < 0)
+        error("DM particle ID overflowd (DM id=%lld gas id=%lld)",
+              gp_dm->id_or_neg_offset, p->id);
 
-    /* Make sure the positions are identical between linked particles */
-    p->x[0] = gp_gas->x[0];
-    p->x[1] = gp_gas->x[1];
-    p->x[2] = gp_gas->x[2];
+      if (p->id < 0) error("gas particle ID overflowd (id=%lld)", p->id);
 
-    /* Box-wrap the whole thing to be safe */
-    if (periodic) {
-      gp_dm->x[0] = box_wrap(gp_dm->x[0], 0., dim[0]);
-      gp_dm->x[1] = box_wrap(gp_dm->x[1], 0., dim[1]);
-      gp_dm->x[2] = box_wrap(gp_dm->x[2], 0., dim[2]);
-      gp_gas->x[0] = box_wrap(gp_gas->x[0], 0., dim[0]);
-      gp_gas->x[1] = box_wrap(gp_gas->x[1], 0., dim[1]);
-      gp_gas->x[2] = box_wrap(gp_gas->x[2], 0., dim[2]);
-      p->x[0] = box_wrap(p->x[0], 0., dim[0]);
-      p->x[1] = box_wrap(p->x[1], 0., dim[1]);
-      p->x[2] = box_wrap(p->x[2], 0., dim[2]);
+      /* Set the links correctly */
+      p->gpart = gp_gas;
+      gp_gas->id_or_neg_offset = -j;
+      gp_gas->type = swift_type_gas;
+
+      /* Compute positions shift */
+      const double d = cbrt(gp_dm->mass * bg_density_inv);
+      const double shift_dm = 0.5 * d * mass_ratio;
+      const double shift_gas = 0.5 * d * (1. - mass_ratio);
+
+      /* Set the masses */
+      gp_dm->mass *= (1. - mass_ratio);
+      gp_gas->mass *= mass_ratio;
+      hydro_set_mass(p, gp_gas->mass);
+
+      /* Set the new positions */
+      gp_dm->x[0] += shift_dm;
+      gp_dm->x[1] += shift_dm;
+      gp_dm->x[2] += shift_dm;
+      gp_gas->x[0] -= shift_gas;
+      gp_gas->x[1] -= shift_gas;
+      gp_gas->x[2] -= shift_gas;
+
+      /* Make sure the positions are identical between linked particles */
+      p->x[0] = gp_gas->x[0];
+      p->x[1] = gp_gas->x[1];
+      p->x[2] = gp_gas->x[2];
+
+      /* Box-wrap the whole thing to be safe */
+      if (periodic) {
+        gp_dm->x[0] = box_wrap(gp_dm->x[0], 0., dim[0]);
+        gp_dm->x[1] = box_wrap(gp_dm->x[1], 0., dim[1]);
+        gp_dm->x[2] = box_wrap(gp_dm->x[2], 0., dim[2]);
+        gp_gas->x[0] = box_wrap(gp_gas->x[0], 0., dim[0]);
+        gp_gas->x[1] = box_wrap(gp_gas->x[1], 0., dim[1]);
+        gp_gas->x[2] = box_wrap(gp_gas->x[2], 0., dim[2]);
+        p->x[0] = box_wrap(p->x[0], 0., dim[0]);
+        p->x[1] = box_wrap(p->x[1], 0., dim[1]);
+        p->x[2] = box_wrap(p->x[2], 0., dim[2]);
+      }
+
+      /* Also copy the velocities */
+      p->v[0] = gp_gas->v_full[0];
+      p->v[1] = gp_gas->v_full[1];
+      p->v[2] = gp_gas->v_full[2];
+
+      /* Set the smoothing length to the mean inter-particle separation */
+      p->h = d;
+
+      /* Note that the thermodynamic properties (u, S, ...) will be set later */
+
+      /* Move on to the next free gas slot */
+      ++j;
     }
-
-    /* Also copy the velocities */
-    p->v[0] = gp_gas->v_full[0];
-    p->v[1] = gp_gas->v_full[1];
-    p->v[2] = gp_gas->v_full[2];
-
-    /* Set the smoothing length to the mean inter-particle separation */
-    p->h = d;
-
-    /* Note that the thermodynamic properties (u, S, ...) will be set later */
   }
 
   /* Replace the content of the space */

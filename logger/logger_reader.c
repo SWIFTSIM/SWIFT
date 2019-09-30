@@ -53,7 +53,7 @@ void logger_reader_free(struct logger_reader *reader) {
 /**
  * @brief Read a record (timestamp or particle)
  *
- * @param reader The #reader.
+ * @param reader The #logger_reader.
  * @param lp (out) The #logger_particle (if the record is a particle).
  * @param time (out) The time read (if the record is a timestamp).
  * @param is_particle Is the record a particle (or a timestamp)?

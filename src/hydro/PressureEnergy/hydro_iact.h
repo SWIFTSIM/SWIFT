@@ -69,6 +69,7 @@ __attribute__((always_inline)) INLINE static void runner_iact_density(
   kernel_deval(ui, &wi, &wi_dx);
 
   pi->rho += mj * wi;
+  pi->density.rho_dh -= mj * (hydro_dimension * wi + ui * wi_dx);
 
   pi->pressure_bar += mj * wi * pj->u;
   pi->density.pressure_bar_dh -=
@@ -82,6 +83,8 @@ __attribute__((always_inline)) INLINE static void runner_iact_density(
   kernel_deval(uj, &wj, &wj_dx);
 
   pj->rho += mi * wj;
+  pj->density.rho_dh -= mi * (hydro_dimension * wj + uj * wj_dx);
+
   pj->pressure_bar += mi * wj * pi->u;
   pj->density.pressure_bar_dh -=
       mi * pi->u * (hydro_dimension * wj + uj * wj_dx);
@@ -147,6 +150,7 @@ __attribute__((always_inline)) INLINE static void runner_iact_nonsym_density(
   kernel_deval(ui, &wi, &wi_dx);
 
   pi->rho += mj * wi;
+  pi->density.rho_dh -= mj * (hydro_dimension * wi + ui * wi_dx);
 
   pi->pressure_bar += mj * wi * pj->u;
 
