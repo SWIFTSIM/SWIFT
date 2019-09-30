@@ -1308,14 +1308,15 @@ void space_rebuild(struct space *s, int repartitioned, int verbose) {
 #endif
 
   /* Move non-local parts and inhibited parts to the end of the list. */
-  if (!repartitioned && (s->e->nr_nodes > 1 || count_inhibited_parts > 0)) {
+  if ((s->dithering || !repartitioned) &&
+      (s->e->nr_nodes > 1 || count_inhibited_parts > 0)) {
+
     for (size_t k = 0; k < nr_parts; /* void */) {
 
       /* Inhibited particle or foreign particle */
       if (h_index[k] == -1 || cells_top[h_index[k]].nodeID != local_nodeID) {
 
         /* One fewer particle */
-
         nr_parts -= 1;
 
         /* Swap the particle */
@@ -1360,7 +1361,9 @@ void space_rebuild(struct space *s, int repartitioned, int verbose) {
 #endif /* SWIFT_DEBUG_CHECKS */
 
   /* Move non-local sparts and inhibited sparts to the end of the list. */
-  if (!repartitioned && (s->e->nr_nodes > 1 || count_inhibited_sparts > 0)) {
+  if ((s->dithering || !repartitioned) &&
+      (s->e->nr_nodes > 1 || count_inhibited_sparts > 0)) {
+
     for (size_t k = 0; k < nr_sparts; /* void */) {
 
       /* Inhibited particle or foreign particle */
@@ -1409,7 +1412,9 @@ void space_rebuild(struct space *s, int repartitioned, int verbose) {
 #endif /* SWIFT_DEBUG_CHECKS */
 
   /* Move non-local bparts and inhibited bparts to the end of the list. */
-  if (!repartitioned && (s->e->nr_nodes > 1 || count_inhibited_bparts > 0)) {
+  if ((s->dithering || !repartitioned) &&
+      (s->e->nr_nodes > 1 || count_inhibited_bparts > 0)) {
+
     for (size_t k = 0; k < nr_bparts; /* void */) {
 
       /* Inhibited particle or foreign particle */
@@ -1458,7 +1463,9 @@ void space_rebuild(struct space *s, int repartitioned, int verbose) {
 #endif /* SWIFT_DEBUG_CHECKS */
 
   /* Move non-local gparts and inhibited parts to the end of the list. */
-  if (!repartitioned && (s->e->nr_nodes > 1 || count_inhibited_gparts > 0)) {
+  if ((s->dithering || !repartitioned) &&
+      (s->e->nr_nodes > 1 || count_inhibited_gparts > 0)) {
+
     for (size_t k = 0; k < nr_gparts; /* void */) {
 
       /* Inhibited particle or foreign particle */
@@ -1522,7 +1529,7 @@ void space_rebuild(struct space *s, int repartitioned, int verbose) {
   /* Exchange the strays, note that this potentially re-allocates
      the parts arrays. This can be skipped if we just repartitioned space
      as there should be no strays in that case */
-  if (!repartitioned) {
+  if (s->dithering || !repartitioned) {
 
     size_t nr_parts_exchanged = s->nr_parts - nr_parts;
     size_t nr_gparts_exchanged = s->nr_gparts - nr_gparts;
