@@ -52,8 +52,8 @@
 #define UNION_BY_SIZE_OVER_MPI (1)
 #define FOF_COMPRESS_PATHS_MIN_LENGTH (2)
 
-/* Are we timing the FOF? */
-//#define WITH_FOF_TIMING
+/* Are we timing calculating group properties in the FOF? */
+//#define WITHOUT_GROUP_PROPS
 
 /**
  * @brief Properties of a group used for black hole seeding
@@ -437,7 +437,7 @@ __attribute__((always_inline)) INLINE static size_t fof_find_global(
 
 #endif /* WITH_MPI */
 
-#ifndef WITH_FOF_TIMING
+#ifndef WITHOUT_GROUP_PROPS
 /**
  * @brief   Finds the local root ID of the group a particle exists in
  * when group_index contains globally unique identifiers -
@@ -472,7 +472,7 @@ __attribute__((always_inline)) INLINE static size_t fof_find_local(
   return root;
 #endif
 }
-#endif /* #ifndef WITH_FOF_TIMING */
+#endif /* #ifndef WITHOUT_GROUP_PROPS */
 
 /**
  * @brief Finds the local root ID of the group a particle exists in.
@@ -2541,7 +2541,7 @@ void fof_search_tree(struct fof_props *props,
 
   const size_t nr_gparts = s->nr_gparts;
   const size_t min_group_size = props->min_group_size;
-#ifndef WITH_FOF_TIMING
+#ifndef WITHOUT_GROUP_PROPS
   const size_t group_id_offset = props->group_id_offset;
   const size_t group_id_default = props->group_id_default;
 #endif
@@ -2626,7 +2626,7 @@ void fof_search_tree(struct fof_props *props,
 #endif
 
   size_t num_groups_local = 0;
-#ifndef WITH_FOF_TIMING
+#ifndef WITHOUT_GROUP_PROPS
   size_t num_parts_in_groups_local = 0;
   size_t max_group_size_local = 0;
 #endif
@@ -2645,7 +2645,7 @@ void fof_search_tree(struct fof_props *props,
       num_groups_local++;
 #endif
 
-#ifndef WITH_FOF_TIMING
+#ifndef WITHOUT_GROUP_PROPS
     /* Find the total number of particles in groups. */
     if (group_size[i] >= min_group_size)
       num_parts_in_groups_local += group_size[i];
@@ -2663,7 +2663,7 @@ void fof_search_tree(struct fof_props *props,
 
   /* Sort the groups in descending order based upon size and re-label their IDs
    * 0-num_groups. */
-#ifndef WITH_FOF_TIMING
+#ifndef WITHOUT_GROUP_PROPS
   struct group_length *high_group_sizes = NULL;
   int group_count = 0;
 
@@ -2688,7 +2688,7 @@ void fof_search_tree(struct fof_props *props,
   }
 
   ticks tic = getticks();
-#endif /* #ifndef WITH_FOF_TIMING */
+#endif /* #ifndef WITHOUT_GROUP_PROPS */
 
   /* Find global properties. */
 #ifdef WITH_MPI
@@ -2700,23 +2700,23 @@ void fof_search_tree(struct fof_props *props,
         clocks_from_ticks(getticks() - tic_num_groups_calc),
         clocks_getunit());
 
-#ifndef WITH_FOF_TIMING
+#ifndef WITHOUT_GROUP_PROPS
   MPI_Reduce(&num_parts_in_groups_local, &num_parts_in_groups, 1, MPI_INT,
              MPI_SUM, 0, MPI_COMM_WORLD);
   MPI_Reduce(&max_group_size_local, &max_group_size, 1, MPI_INT, MPI_MAX, 0,
              MPI_COMM_WORLD);
-#endif /* #ifndef WITH_FOF_TIMING */
+#endif /* #ifndef WITHOUT_GROUP_PROPS */
 #else
   num_groups = num_groups_local;
 
-#ifndef WITH_FOF_TIMING
+#ifndef WITHOUT_GROUP_PROPS
   num_parts_in_groups = num_parts_in_groups_local;
   max_group_size = max_group_size_local;
-#endif /* #ifndef WITH_FOF_TIMING */
+#endif /* #ifndef WITHOUT_GROUP_PROPS */
 #endif /* WITH_MPI */
   props->num_groups = num_groups;
 
-#ifndef WITH_FOF_TIMING
+#ifndef WITHOUT_GROUP_PROPS
 
   /* Find number of groups on lower numbered MPI ranks */
 #ifdef WITH_MPI
@@ -2917,7 +2917,7 @@ void fof_search_tree(struct fof_props *props,
 
   /* Free the left-overs */
   swift_free("fof_high_group_sizes", high_group_sizes);
-#endif /* #ifndef WITH_FOF_TIMING */
+#endif /* #ifndef WITHOUT_GROUP_PROPS */
   swift_free("fof_group_index", props->group_index);
   swift_free("fof_group_size", props->group_size);
   swift_free("fof_group_mass", props->group_mass);
