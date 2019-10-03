@@ -183,6 +183,9 @@ struct part {
   /* Need waking-up ? */
   timebin_t wakeup;
 
+  /*! Minimal time-bin across all neighbours */
+  timebin_t min_ngb_time_bin;
+
 #ifdef SWIFT_DEBUG_CHECKS
 
   /* Time of the last drift */

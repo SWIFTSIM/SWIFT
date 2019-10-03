@@ -622,6 +622,7 @@ __attribute__((always_inline)) INLINE static void hydro_prepare_force(
   p->force.pressure = pressure;
   p->force.soundspeed = soundspeed;
   p->force.balsara = balsara;
+  p->min_ngb_time_bin = num_time_bins + 1;
 }
 
 /**
@@ -760,6 +761,10 @@ __attribute__((always_inline)) INLINE static void hydro_end_force(
     struct part *restrict p, const struct cosmology *cosmo) {
 
   p->force.h_dt *= p->h * hydro_dimension_inv;
+
+#ifdef SWIFT_DEBUG_CHECKS
+  if (p->min_ngb_time_bin == 0) error("Minimal time-bin of neighbours is 0");
+#endif
 }
 
 /**
@@ -863,6 +868,7 @@ __attribute__((always_inline)) INLINE static void hydro_first_init_part(
     struct part *restrict p, struct xpart *restrict xp) {
 
   p->time_bin = 0;
+  p->min_ngb_time_bin = num_time_bins + 1;
   p->wakeup = time_bin_not_awake;
   xp->v_full[0] = p->v[0];
   xp->v_full[1] = p->v[1];

@@ -180,7 +180,12 @@ __attribute__((always_inline)) INLINE static integertime_t get_part_timestep(
   const integertime_t new_dti = make_integer_timestep(
       new_dt, p->time_bin, e->ti_current, e->time_base_inv);
 
-  return new_dti;
+  /* Are we allowed to use this bin given the neighbours? */
+  timebin_t new_bin = get_time_bin(new_dti);
+  new_bin =
+      min(new_bin, p->min_ngb_time_bin + const_timestep_limiter_max_delta_bin);
+
+  return get_integer_timestep(new_bin);
 }
 
 /**
