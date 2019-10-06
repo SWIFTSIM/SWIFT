@@ -77,6 +77,7 @@ extern MPI_Datatype statistics_mpi_type;
 extern MPI_Op statistics_mpi_reduce_op;
 
 void stats_create_mpi_type(void);
+void stats_free_mpi_type(void);
 #endif
 
 #endif /* SWIFT_STATISTICS_H */

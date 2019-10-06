@@ -4693,6 +4693,14 @@ void engine_clean(struct engine *e, const int fof) {
   }
   free(e->proxy_ind);
   free(e->proxies);
+
+  /* Free types */
+  part_free_mpi_types();
+  multipole_free_mpi_types();
+  stats_free_mpi_type();
+  proxy_free_mpi_type();
+  task_free_mpi_comms();
+  mpicollect_free_MPI_type();
 #endif
 
   /* Close files */

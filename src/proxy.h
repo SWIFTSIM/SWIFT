@@ -113,5 +113,6 @@ void proxy_cells_exchange(struct proxy *proxies, int num_proxies,
 void proxy_tags_exchange(struct proxy *proxies, int num_proxies,
                          struct space *s);
 void proxy_create_mpi_type(void);
+void proxy_free_mpi_type(void);
 
 #endif /* SWIFT_PROXY_H */

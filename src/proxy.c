@@ -1021,3 +1021,11 @@ void proxy_create_mpi_type(void) {
   error("SWIFT was not compiled with MPI support.");
 #endif
 }
+
+void proxy_free_mpi_type(void) {
+#ifdef WITH_MPI
+  MPI_Type_free(&pcell_mpi_type);
+#else
+  error("SWIFT was not compiled with MPI support.");
+#endif
+}
