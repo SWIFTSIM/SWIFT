@@ -297,9 +297,9 @@ void fof_allocate(const struct space *s, const long long total_nr_DM_particles,
                  props->group_index, s->nr_gparts, sizeof(size_t), 0,
                  props->group_index);
 
-  if(verbose) 
+  if (verbose)
     message("Setting initial group index took: %.3f %s.",
-        clocks_from_ticks(getticks() - tic), clocks_getunit());
+            clocks_from_ticks(getticks() - tic), clocks_getunit());
 
   tic = getticks();
 
@@ -307,9 +307,9 @@ void fof_allocate(const struct space *s, const long long total_nr_DM_particles,
   threadpool_map(&s->e->threadpool, fof_set_initial_group_size_mapper,
                  props->group_size, s->nr_gparts, sizeof(size_t), 0, NULL);
 
-  if(verbose) 
+  if (verbose)
     message("Setting initial group sizes took: %.3f %s.",
-        clocks_from_ticks(getticks() - tic), clocks_getunit());
+            clocks_from_ticks(getticks() - tic), clocks_getunit());
 
 #ifdef SWIFT_DEBUG_CHECKS
   ti_current = s->e->ti_current;
@@ -2233,7 +2233,7 @@ void fof_search_foreign_cells(struct fof_props *props, const struct space *s) {
       }
     }
   }
-  
+
   /* Now set the roots */
   struct mapper_data data;
   data.group_index = group_index;
@@ -2581,7 +2581,7 @@ void fof_search_tree(struct fof_props *props,
 
   if (verbose)
     message("MPI_Scan Imbalance took: %.3f %s.",
-        clocks_from_ticks(getticks() - comms_tic), clocks_getunit());
+            clocks_from_ticks(getticks() - comms_tic), clocks_getunit());
 
   node_offset = nr_gparts_cumulative - nr_gparts_local;
 
@@ -2600,10 +2600,10 @@ void fof_search_tree(struct fof_props *props,
 
   threadpool_map(&s->e->threadpool, fof_calc_group_size_mapper, gparts,
                  nr_gparts, sizeof(struct gpart), 0, s);
-  if(verbose)
+  if (verbose)
     message("FOF calc group size took (FOF SCALING): %.3f %s.",
-        clocks_from_ticks(getticks() - tic_calc_group_size),
-        clocks_getunit());
+            clocks_from_ticks(getticks() - tic_calc_group_size),
+            clocks_getunit());
 
 #ifdef WITH_MPI
   if (nr_nodes > 1) {
@@ -2613,12 +2613,13 @@ void fof_search_tree(struct fof_props *props,
     /* Search for group links across MPI domains. */
     fof_search_foreign_cells(props, s);
 
-    if(verbose) {
+    if (verbose) {
       message("fof_search_foreign_cells() took (FOF SCALING): %.3f %s.",
-          clocks_from_ticks(getticks() - tic_mpi), clocks_getunit());
+              clocks_from_ticks(getticks() - tic_mpi), clocks_getunit());
 
       message(
-          "fof_search_foreign_cells() + calc_group_size took (FOF SCALING): %.3f "
+          "fof_search_foreign_cells() + calc_group_size took (FOF SCALING): "
+          "%.3f "
           "%s.",
           clocks_from_ticks(getticks() - tic_total), clocks_getunit());
     }
@@ -2656,13 +2657,14 @@ void fof_search_tree(struct fof_props *props,
 #endif
   }
 
-  if(verbose)
+  if (verbose)
     message(
-        "Calculating the total no. of local groups took: (FOF SCALING): %.3f %s.",
+        "Calculating the total no. of local groups took: (FOF SCALING): %.3f "
+        "%s.",
         clocks_from_ticks(getticks() - tic_num_groups_calc), clocks_getunit());
 
-  /* Sort the groups in descending order based upon size and re-label their IDs
-   * 0-num_groups. */
+    /* Sort the groups in descending order based upon size and re-label their
+     * IDs 0-num_groups. */
 #ifndef WITHOUT_GROUP_PROPS
   struct group_length *high_group_sizes = NULL;
   int group_count = 0;
@@ -2695,10 +2697,10 @@ void fof_search_tree(struct fof_props *props,
   MPI_Allreduce(&num_groups_local, &num_groups, 1, MPI_INT, MPI_SUM,
                 MPI_COMM_WORLD);
 
-  if(verbose)
+  if (verbose)
     message("Finding the total no. of groups took: (FOF SCALING): %.3f %s.",
-        clocks_from_ticks(getticks() - tic_num_groups_calc),
-        clocks_getunit());
+            clocks_from_ticks(getticks() - tic_num_groups_calc),
+            clocks_getunit());
 
 #ifndef WITHOUT_GROUP_PROPS
   MPI_Reduce(&num_parts_in_groups_local, &num_parts_in_groups, 1, MPI_INT,
@@ -2726,24 +2728,25 @@ void fof_search_tree(struct fof_props *props,
   const size_t num_groups_prev = (size_t)(ngsum - nglocal);
 #endif /* WITH_MPI */
 
-  if(verbose)
+  if (verbose)
     message("Finding the total no. of groups took: (FOF SCALING): %.3f %s.",
-        clocks_from_ticks(getticks() - tic_num_groups_calc),
-        clocks_getunit());
+            clocks_from_ticks(getticks() - tic_num_groups_calc),
+            clocks_getunit());
 
   /* Sort local groups into descending order of size */
   qsort(high_group_sizes, num_groups_local, sizeof(struct group_length),
-      cmp_func_group_size);
+        cmp_func_group_size);
 
   tic = getticks();
-  
+
   /* Set default group ID for all particles */
   threadpool_map(&s->e->threadpool, fof_set_initial_group_id_mapper, s->gparts,
-                 s->nr_gparts, sizeof(struct gpart), 0, (void *)&group_id_default);
-   
-  if(verbose) 
+                 s->nr_gparts, sizeof(struct gpart), 0,
+                 (void *)&group_id_default);
+
+  if (verbose)
     message("Setting default group ID took: %.3f %s.",
-        clocks_from_ticks(getticks() - tic), clocks_getunit());
+            clocks_from_ticks(getticks() - tic), clocks_getunit());
 
   /* Assign final group IDs to local root particles where the global root is
    * on this node and the group is large enough. Within a node IDs are
