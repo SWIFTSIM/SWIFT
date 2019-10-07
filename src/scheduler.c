@@ -522,6 +522,10 @@ void scheduler_write_dependencies(struct scheduler *s, int verbose) {
 
   /* Be clean */
   free(task_dep);
+#ifdef WITH_MPI
+  MPI_Type_free(&data_type);
+  MPI_Op_free(&sum);
+#endif
 
   if (verbose)
     message("Printing task graph took %.3f %s.",

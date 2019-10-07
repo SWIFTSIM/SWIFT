@@ -5462,6 +5462,12 @@ void space_clean(struct space *s) {
   swift_free("gparts", s->gparts);
   swift_free("sparts", s->sparts);
   swift_free("bparts", s->bparts);
+#ifdef WITH_MPI
+  swift_free("parts_foreign", s->parts_foreign);
+  swift_free("sparts_foreign", s->sparts_foreign);
+  swift_free("gparts_foreign", s->gparts_foreign);
+  swift_free("bparts_foreign", s->bparts_foreign);
+#endif
 }
 
 /**

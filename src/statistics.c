@@ -414,4 +414,9 @@ void stats_create_mpi_type(void) {
   /* Create the reduction operation */
   MPI_Op_create(stats_add_mpi, 1, &statistics_mpi_reduce_op);
 }
+
+void stats_free_mpi_type(void) {
+  MPI_Type_free(&statistics_mpi_type);
+  MPI_Op_free(&statistics_mpi_reduce_op);
+}
 #endif

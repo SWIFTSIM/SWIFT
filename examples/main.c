@@ -1394,11 +1394,6 @@ int main(int argc, char *argv[]) {
 #endif
   }
 
-#ifdef WITH_MPI
-  if ((res = MPI_Finalize()) != MPI_SUCCESS)
-    error("call to MPI_Finalize failed with error %i.", res);
-#endif
-
   /* Remove the stop file if used. Do this anyway, we could have missed the
    * stop file if normal exit happened first. */
   if (myrank == 0) force_stop = restart_stop_now(restart_dir, 1);
@@ -1419,6 +1414,11 @@ int main(int argc, char *argv[]) {
   if (with_cooling || with_temperature) cooling_clean(&cooling_func);
   engine_clean(&e, /*fof=*/0);
   free(params);
+
+#ifdef WITH_MPI
+  if ((res = MPI_Finalize()) != MPI_SUCCESS)
+    error("call to MPI_Finalize failed with error %i.", res);
+#endif
 
   /* Say goodbye. */
   if (myrank == 0) message("done. Bye.");
