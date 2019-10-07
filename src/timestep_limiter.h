@@ -59,6 +59,8 @@ __attribute__((always_inline)) INLINE static integertime_t timestep_limit_part(
     old_time_bin = -p->wakeup;
   }
 
+  message("Limiting particle %lld wakeup=%d", p->id, p->wakeup);
+
   const integertime_t old_dti = old_ti_end - old_ti_beg;
 
   /* The new fake time-step the particle will be on */
@@ -137,7 +139,10 @@ __attribute__((always_inline)) INLINE static integertime_t timestep_limit_part(
             new_ti_beg + new_dti / 2);
 
   /* Remember the old time-bin */
-  p->wakeup = old_time_bin;
+  if (p->wakeup == time_bin_awake)
+    p->wakeup = old_time_bin;
+  else
+    p->wakeup = time_bin_not_awake;
 
   /* Update the time bin of this particle */
   p->time_bin = e->min_active_bin;
