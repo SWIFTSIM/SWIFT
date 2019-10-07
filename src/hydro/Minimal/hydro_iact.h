@@ -456,7 +456,16 @@ __attribute__((always_inline)) INLINE static void runner_iact_nonsym_limiter(
   /* Wake up the neighbour? */
   if (pi->force.v_sig > const_limiter_max_v_sig_ratio * pj->force.v_sig) {
 
-    pj->wakeup = time_bin_awake;
+    if (pj->wakeup == time_bin_not_awake)
+      pj->wakeup = time_bin_awake;
+    else if (pj->wakeup > 0)
+      pj->wakeup = -pj->wakeup;
+    else {
+#ifdef SWIFT_DEBUG_CHECKS
+      if (pj->wakeup != time_bin_awake)
+        error("Invalid wakeup flag=%d", pj->wakeup);
+#endif
+    }
   }
 }
 
