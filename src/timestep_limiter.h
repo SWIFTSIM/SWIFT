@@ -53,13 +53,13 @@ __attribute__((always_inline)) INLINE static integertime_t timestep_limit_part(
     old_time_bin = p->time_bin;
   } else {
 
+    message("Relimiting particle %lld wakeup=%d", p->id, p->wakeup);
+
     /* Particle that was limited in the previous step already */
     old_ti_beg = get_integer_time_begin(e->ti_current, -p->wakeup);
     old_ti_end = get_integer_time_end(e->ti_current, p->time_bin);
     old_time_bin = -p->wakeup;
   }
-
-  message("Limiting particle %lld wakeup=%d", p->id, p->wakeup);
 
   const integertime_t old_dti = old_ti_end - old_ti_beg;
 
@@ -139,10 +139,7 @@ __attribute__((always_inline)) INLINE static integertime_t timestep_limit_part(
             new_ti_beg + new_dti / 2);
 
   /* Remember the old time-bin */
-  if (p->wakeup == time_bin_awake)
-    p->wakeup = old_time_bin;
-  else
-    p->wakeup = time_bin_not_awake;
+  p->wakeup = old_time_bin;
 
   /* Update the time bin of this particle */
   p->time_bin = e->min_active_bin;

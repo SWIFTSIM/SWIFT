@@ -460,12 +460,6 @@ __attribute__((always_inline)) INLINE static void runner_iact_nonsym_limiter(
       pj->wakeup = time_bin_awake;
     else if (pj->wakeup > 0)
       pj->wakeup = -pj->wakeup;
-    else {
-#ifdef SWIFT_DEBUG_CHECKS
-      if (pj->wakeup != time_bin_awake)
-        error("Invalid wakeup flag=%d", pj->wakeup);
-#endif
-    }
   }
 }
 
