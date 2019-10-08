@@ -367,7 +367,7 @@ void runner_do_kick2(struct runner *r, struct cell *c, int timer) {
           ti_step = ti_end - ti_begin;
 
           /* Reset the flag. Everything is back to normal from now on. */
-          p->wakeup = time_bin_awake;
+          p->wakeup = time_bin_not_awake;
         }
 
 #ifdef SWIFT_DEBUG_CHECKS
