@@ -5295,6 +5295,8 @@ void space_check_limiter_mapper(void *map_data, int nr_parts,
     if (parts[k].wakeup == time_bin_awake)
       error("Particle still woken up! id=%lld", parts[k].id);
 
+    if (parts[k].synchronized != 0) error("Synchronized particle not treated!");
+
     if (parts[k].gpart != NULL)
       if (parts[k].time_bin != parts[k].gpart->time_bin)
         error("Gpart not on the same time-bin as part");
