@@ -21,6 +21,7 @@
 
 /* Local includes */
 #include "random.h"
+#include "timestep_sync.h"
 
 /**
  * @brief Density interaction between two particles (non-symmetric).
@@ -36,13 +37,11 @@
  * @param ti_current Current integer time value
  */
 __attribute__((always_inline)) INLINE static void
-runner_iact_nonsym_feedback_density(const float r2, const float *dx,
-                                    const float hi, const float hj,
-                                    struct spart *restrict si,
-                                    const struct part *restrict pj,
-                                    const struct xpart *restrict xpj,
-                                    const struct cosmology *restrict cosmo,
-                                    const integertime_t ti_current) {
+runner_iact_nonsym_feedback_density(
+    const float r2, const float *dx, const float hi, const float hj,
+    struct spart *restrict si, const struct part *restrict pj,
+    const struct xpart *restrict xpj, const struct cosmology *restrict cosmo,
+    const struct engine *e, const integertime_t ti_current) {
 
   /* Get the gas mass. */
   const float mj = hydro_get_mass(pj);
@@ -85,13 +84,11 @@ runner_iact_nonsym_feedback_density(const float r2, const float *dx,
  * generator
  */
 __attribute__((always_inline)) INLINE static void
-runner_iact_nonsym_feedback_apply(const float r2, const float *dx,
-                                  const float hi, const float hj,
-                                  const struct spart *restrict si,
-                                  struct part *restrict pj,
-                                  struct xpart *restrict xpj,
-                                  const struct cosmology *restrict cosmo,
-                                  const integertime_t ti_current) {
+runner_iact_nonsym_feedback_apply(
+    const float r2, const float *dx, const float hi, const float hj,
+    const struct spart *restrict si, struct part *restrict pj,
+    struct xpart *restrict xpj, const struct cosmology *restrict cosmo,
+    const struct engine *e, const integertime_t ti_current) {
 
   /* Get r and 1/r. */
   const float r_inv = 1.0f / sqrtf(r2);
@@ -292,10 +289,13 @@ runner_iact_nonsym_feedback_apply(const float r2, const float *dx,
       /* Impose maximal viscosity */
       hydro_diffusive_feedback_reset(pj);
 
-      /* message( */
-      /*     "We did some heating! id %llu star id %llu probability %.5e " */
-      /*     "random_num %.5e du %.5e du/ini %.5e", */
-      /*     pj->id, si->id, prob, rand, delta_u, delta_u / u_init); */
+      message(
+          "We did some heating! id %llu star id %llu probability %.5e "
+          "random_num %.5e du %.5e du/ini %.5e",
+          pj->id, si->id, prob, rand, delta_u, delta_u / u_init);
+
+      /* Synchronize the particle on the timeline */
+      timestep_sync_part(pj, xpj, e, cosmo);
     }
   }
 }
