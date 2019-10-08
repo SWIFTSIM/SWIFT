@@ -23,8 +23,8 @@
 #include "../config.h"
 
 /* Local headers. */
-#include "const.h"
 #include "black_holes.h"
+#include "const.h"
 #include "debug.h"
 #include "stars.h"
 #include "timeline.h"
