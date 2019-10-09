@@ -717,6 +717,14 @@ void compute_stellar_evolution(const struct feedback_props* feedback_props,
 
   /* Properties collected in the stellar density loop. */
   const float ngb_gas_mass = sp->feedback_data.to_collect.ngb_mass;
+
+  /* Check if there are neighbours, otherwise exit */
+  if (ngb_gas_mass == 0.f) {
+    feedback_reset_feedback(sp, feedback_props);
+    return;
+  }
+
+  /* Update the enrichment weights */
   const float enrichment_weight_inv =
       sp->feedback_data.to_collect.enrichment_weight_inv;
 
@@ -727,8 +735,7 @@ void compute_stellar_evolution(const struct feedback_props* feedback_props,
   feedback_reset_feedback(sp, feedback_props);
 
   /* Update the weights used for distribution */
-  const float enrichment_weight =
-      (enrichment_weight_inv != 0.f) ? 1.f / enrichment_weight_inv : 0.f;
+  const float enrichment_weight = 1.f / enrichment_weight_inv;
   sp->feedback_data.to_distribute.enrichment_weight = enrichment_weight;
 
   /* Compute properties of the stochastic SNII feedback model. */
