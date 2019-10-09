@@ -735,7 +735,8 @@ void compute_stellar_evolution(const struct feedback_props* feedback_props,
   feedback_reset_feedback(sp, feedback_props);
 
   /* Update the weights used for distribution */
-  const float enrichment_weight = 1.f / enrichment_weight_inv;
+  const float enrichment_weight =
+      (enrichment_weight_inv != 0.f) ? 1.f / enrichment_weight_inv : 0.f;
   sp->feedback_data.to_distribute.enrichment_weight = enrichment_weight;
 
   /* Compute properties of the stochastic SNII feedback model. */
