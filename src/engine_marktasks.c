@@ -921,6 +921,12 @@ void engine_marktasks_mapper(void *map_data, int num_elements,
       if (cell_is_active_black_holes(t->ci, e)) scheduler_activate(s, t);
     }
 
+    /* Limiter implicit tasks? */
+    else if (t_type == task_type_limiter_in ||
+             t_type == task_type_limiter_out) {
+      if (cell_is_active_hydro(t->ci, e)) scheduler_activate(s, t);
+    }
+
     /* Time-step? */
     else if (t_type == task_type_timestep) {
       t->ci->hydro.updated = 0;
@@ -958,6 +964,8 @@ int engine_marktasks(struct engine *e) {
   struct scheduler *s = &e->sched;
   const ticks tic = getticks();
   int rebuild_space = 0;
+
+  message("MARKTASKS!");
 
   /* Run through the tasks and mark as skip or not. */
   size_t extra_data[3] = {(size_t)e, (size_t)rebuild_space, (size_t)&e->sched};

@@ -3553,6 +3553,9 @@ int cell_unskip_hydro_tasks(struct cell *c, struct scheduler *s) {
     if (c->kick1 != NULL) scheduler_activate(s, c->kick1);
     if (c->kick2 != NULL) scheduler_activate(s, c->kick2);
     if (c->timestep != NULL) scheduler_activate(s, c->timestep);
+    if (c->hydro.limiter_in != NULL) scheduler_activate(s, c->hydro.limiter_in);
+    if (c->hydro.limiter_out != NULL)
+      scheduler_activate(s, c->hydro.limiter_out);
     if (c->hydro.end_force != NULL) scheduler_activate(s, c->hydro.end_force);
     if (c->hydro.cooling != NULL) scheduler_activate(s, c->hydro.cooling);
 #ifdef WITH_LOGGER

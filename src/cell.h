@@ -360,6 +360,12 @@ struct cell {
     /*! Linked list of the tasks computing this cell's limiter. */
     struct link *limiter;
 
+    /*! Dependency implicit task for the time-step limiter  (in->limiter->out)*/
+    struct task *limiter_in;
+
+    /*! Dependency implicit task for the time-step limiter  (in->limiter->out)*/
+    struct task *limiter_out;
+
     /*! Dependency implicit task for the ghost  (in->ghost->out)*/
     struct task *ghost_in;
 
