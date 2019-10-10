@@ -2723,7 +2723,8 @@ void cell_activate_limiter(struct cell *c, struct scheduler *s) {
     if (c->timestep_limiter == NULL)
       error("Trying to activate un-existing c->timestep_limiter");
 #endif
-    scheduler_activate(s, c->hydro.limiter_out);
+    if(c == c->hydro.super)
+      scheduler_activate(s, c->hydro.limiter_out);
     scheduler_activate(s, c->timestep_limiter);
   } else {
     for (struct cell *parent = c->parent;
@@ -2738,7 +2739,8 @@ void cell_activate_limiter(struct cell *c, struct scheduler *s) {
         if (parent->timestep_limiter == NULL)
           error("Trying to activate un-existing parent->timestep_limiter");
 #endif
-        scheduler_activate(s, parent->hydro.limiter_out);
+	if(parent == parent->hydro.super)
+	  scheduler_activate(s, parent->hydro.limiter_out);
         scheduler_activate(s, parent->timestep_limiter);
         break;
       }
