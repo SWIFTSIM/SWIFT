@@ -791,7 +791,6 @@ void engine_addtasks_recv_gravity(struct engine *e, struct cell *c,
 void engine_make_hierarchical_tasks_common(struct engine *e, struct cell *c) {
 
   struct scheduler *s = &e->sched;
-  const int with_limiter = (e->policy & engine_policy_limiter);
   const int with_star_formation = (e->policy & engine_policy_star_formation);
 
   /* Are we at the top-level? */
@@ -841,16 +840,6 @@ void engine_make_hierarchical_tasks_common(struct engine *e, struct cell *c) {
       if (with_star_formation && c->hydro.count > 0) {
         scheduler_addunlock(s, kick2_or_logger, c->top->hydro.star_formation);
         scheduler_addunlock(s, c->top->hydro.star_formation, c->timestep);
-      }
-
-      /* Time-step limiting */
-      if (with_limiter) {
-        c->timestep_limiter = scheduler_addtask(
-            s, task_type_timestep_limiter, task_subtype_none, 0, 0, c, NULL);
-
-        /* Make sure it is not run before kick2 */
-        scheduler_addunlock(s, c->timestep, c->timestep_limiter);
-        scheduler_addunlock(s, c->timestep_limiter, c->kick1);
       }
     }
   } else { /* We are above the super-cell so need to go deeper */
@@ -1170,6 +1159,9 @@ void engine_make_hierarchical_tasks_hydro(struct engine *e, struct cell *c,
       /* Time-step limiter */
       if (with_limiter) {
 
+        c->hydro.timestep_limiter = scheduler_addtask(
+            s, task_type_timestep_limiter, task_subtype_none, 0, 0, c, NULL);
+
         c->hydro.limiter_in =
             scheduler_addtask(s, task_type_limiter_in, task_subtype_none, 0,
                               /* implicit = */ 1, c, NULL);
@@ -1180,8 +1172,9 @@ void engine_make_hierarchical_tasks_hydro(struct engine *e, struct cell *c,
 
         scheduler_addunlock(s, c->super->kick2, c->hydro.limiter_in);
         scheduler_addunlock(s, c->hydro.limiter_out, c->super->timestep);
-        scheduler_addunlock(s, c->hydro.limiter_out,
-                            c->super->timestep_limiter);
+        scheduler_addunlock(s, c->hydro.limiter_out, c->hydro.timestep_limiter);
+        scheduler_addunlock(s, c->super->timestep, c->hydro.timestep_limiter);
+        scheduler_addunlock(s, c->hydro.timestep_limiter, c->super->kick1);
 
         if (with_feedback) {
           scheduler_addunlock(s, c->stars.stars_out, c->hydro.limiter_in);

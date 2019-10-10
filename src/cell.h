@@ -366,6 +366,9 @@ struct cell {
     /*! Dependency implicit task for the time-step limiter  (in->limiter->out)*/
     struct task *limiter_out;
 
+    /*! The task to limit the time-step of inactive particles */
+    struct task *timestep_limiter;
+
     /*! Dependency implicit task for the ghost  (in->ghost->out)*/
     struct task *ghost_in;
 
@@ -760,9 +763,6 @@ struct cell {
 
   /*! The task to compute time-steps */
   struct task *timestep;
-
-  /*! The task to limit the time-step of inactive particles */
-  struct task *timestep_limiter;
 
 #ifdef WITH_LOGGER
   /*! The logger task */

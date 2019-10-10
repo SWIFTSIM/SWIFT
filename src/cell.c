@@ -2718,14 +2718,15 @@ void cell_activate_limiter(struct cell *c, struct scheduler *s) {
 
   /* Set the do_sub_limiter all the way up and activate the super limiter
      if this has not yet been done. */
-  if (c == c->super) {
+  if (c == c->hydro.super) {
 #ifdef SWIFT_DEBUG_CHECKS
-    if (c->timestep_limiter == NULL)
+    if (c->hydro.limiter_out == NULL)
+      error("Trying to activate un-existing c->timestep_limiter");
+    if (c->hydro.timestep_limiter == NULL)
       error("Trying to activate un-existing c->timestep_limiter");
 #endif
-    if(c == c->hydro.super)
-      scheduler_activate(s, c->hydro.limiter_out);
-    scheduler_activate(s, c->timestep_limiter);
+    scheduler_activate(s, c->hydro.limiter_out);
+    scheduler_activate(s, c->hydro.timestep_limiter);
   } else {
     for (struct cell *parent = c->parent;
          parent != NULL &&
@@ -2734,14 +2735,15 @@ void cell_activate_limiter(struct cell *c, struct scheduler *s) {
       /* Mark this cell for limiting */
       cell_set_flag(parent, cell_flag_do_hydro_sub_limiter);
 
-      if (parent == c->super) {
+      if (parent == c->hydro.super) {
 #ifdef SWIFT_DEBUG_CHECKS
-        if (parent->timestep_limiter == NULL)
+        if (parent->hydro.timestep_limiter == NULL)
+          error("Trying to activate un-existing parent->timestep_limiter");
+        if (parent->hydro.limiter_out == NULL)
           error("Trying to activate un-existing parent->timestep_limiter");
 #endif
-	if(parent == parent->hydro.super)
-	  scheduler_activate(s, parent->hydro.limiter_out);
-        scheduler_activate(s, parent->timestep_limiter);
+        scheduler_activate(s, parent->hydro.limiter_out);
+        scheduler_activate(s, parent->hydro.timestep_limiter);
         break;
       }
     }
