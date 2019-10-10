@@ -883,6 +883,14 @@ void task_create_mpi_comms(void) {
     MPI_Comm_dup(MPI_COMM_WORLD, &subtaskMPI_comms[i]);
   }
 }
+/**
+ * @brief Create global communicators for each of the subtasks.
+ */
+void task_free_mpi_comms(void) {
+  for (int i = 0; i < task_subtype_count; i++) {
+    MPI_Comm_free(&subtaskMPI_comms[i]);
+  }
+}
 #endif
 
 /**

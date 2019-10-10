@@ -383,4 +383,9 @@ static void mpicollect_create_MPI_type(void) {
   /* Create the reduction operation */
   MPI_Op_create(mpicollectgroup1_reduce, 1, &mpicollectgroup1_reduce_op);
 }
+
+void mpicollect_free_MPI_type(void) {
+  MPI_Type_free(&mpicollectgroup1_type);
+  MPI_Op_free(&mpicollectgroup1_reduce_op);
+}
 #endif
