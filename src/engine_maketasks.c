@@ -1176,6 +1176,10 @@ void engine_make_hierarchical_tasks_hydro(struct engine *e, struct cell *c,
         scheduler_addunlock(s, c->super->timestep, c->hydro.timestep_limiter);
         scheduler_addunlock(s, c->hydro.timestep_limiter, c->super->kick1);
 
+        if (with_star_formation && c->hydro.count > 0) {
+          scheduler_addunlock(s, c->top->hydro.star_formation,
+                              c->hydro.limiter_in);
+        }
         if (with_feedback) {
           scheduler_addunlock(s, c->stars.stars_out, c->hydro.limiter_in);
         }
