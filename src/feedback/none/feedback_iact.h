@@ -32,6 +32,7 @@
  * @param pj Second particle (not updated).
  * @param xp Extra particle data (not updated).
  * @param cosmo The cosmological model.
+ * @param e The #engine (for particle synchronization).
  * @param ti_current Current integer time value
  */
 __attribute__((always_inline)) INLINE static void
@@ -57,6 +58,7 @@ runner_iact_nonsym_feedback_density(const float r2, const float *dx,
  * @param pj Second (gas) particle.
  * @param xp Extra particle data
  * @param cosmo The cosmological model.
+ * @param e The #engine (for particle synchronization).
  * @param ti_current Current integer time used value for seeding random number
  * generator
  */

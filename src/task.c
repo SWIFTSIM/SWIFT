@@ -71,6 +71,7 @@ const char *taskID_names[task_type_count] = {"none",
                                              "kick2",
                                              "timestep",
                                              "timestep_limiter",
+					     "timestep_sync",
                                              "limiter_in",
                                              "limiter_out",
                                              "send",
@@ -433,6 +434,7 @@ void task_unlock(struct task *t) {
     case task_type_extra_ghost:
     case task_type_end_hydro_force:
     case task_type_timestep_limiter:
+    case task_type_timestep_sync:
       cell_unlocktree(ci);
       break;
 
@@ -585,6 +587,7 @@ int task_lock(struct task *t) {
     case task_type_extra_ghost:
     case task_type_end_hydro_force:
     case task_type_timestep_limiter:
+    case task_type_timestep_sync:
       if (ci->hydro.hold) return 0;
       if (cell_locktree(ci) != 0) return 0;
       break;

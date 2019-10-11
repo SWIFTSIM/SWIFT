@@ -155,6 +155,8 @@ INLINE static void compute_SNII_feedback(
       return;
     }
 
+    message("Doing SNII feedback for star %lld", sp->id);
+
     /* Properties of the model (all in internal units) */
     const double delta_T =
         eagle_feedback_temperature_change(sp, feedback_props);

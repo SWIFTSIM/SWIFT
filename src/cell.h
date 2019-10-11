@@ -293,6 +293,8 @@ enum cell_flags {
   cell_flag_do_bh_sub_drift = (1UL << 12),
   cell_flag_do_stars_resort = (1UL << 13),
   cell_flag_has_tasks = (1UL << 14),
+  cell_flag_do_hydro_sync = (1UL << 15),
+  cell_flag_do_hydro_sub_sync = (1UL << 16)
 };
 
 /**
@@ -764,6 +766,9 @@ struct cell {
   /*! The task to limit the time-step of inactive particles */
   struct task *timestep_limiter;
 
+  /*! The task to synchronize the time-step of inactive particles hit by feedback */
+  struct task *timestep_sync;
+  
 #ifdef WITH_LOGGER
   /*! The logger task */
   struct task *logger;

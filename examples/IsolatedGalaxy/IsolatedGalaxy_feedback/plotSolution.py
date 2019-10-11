@@ -119,18 +119,18 @@ SF_thresh = KS_thresh_norm * (EAGLE_Z / KS_thresh_Z0) ** (KS_thresh_slope)
 gas_pos = f["/PartType0/Coordinates"][:, :]
 gas_mass = f["/PartType0/Masses"][:]
 gas_rho = f["/PartType0/Densities"][:]
-gas_T = f["/PartType0/Temperature"][:]
-gas_SFR = f["/PartType0/SFR"][:]
+gas_T = f["/PartType0/Temperatures"][:]
+gas_SFR = f["/PartType0/StarFormationRates"][:]
 gas_XH = f["/PartType0/ElementMassFractions"][:, 0]
-gas_Z = f["/PartType0/Metallicities"][:]
+gas_Z = f["/PartType0/MetalMassFractions"][:]
 gas_hsml = f["/PartType0/SmoothingLengths"][:]
 gas_sSFR = gas_SFR / gas_mass
 
 # Read the Star properties
 stars_pos = f["/PartType4/Coordinates"][:, :]
-stars_BirthDensity = f["/PartType4/BirthDensity"][:]
-stars_BirthTime = f["/PartType4/BirthTime"][:]
-stars_XH = f["/PartType4/ElementAbundance"][:, 0]
+stars_BirthDensity = f["/PartType4/BirthDensities"][:]
+stars_BirthTime = f["/PartType4/BirthTimes"][:]
+stars_XH = f["/PartType4/ElementMassFractions"][:, 0]
 
 # Centre the box
 gas_pos[:, 0] -= centre[0]

@@ -849,8 +849,13 @@ void engine_make_hierarchical_tasks_common(struct engine *e, struct cell *c) {
         c->timestep_limiter = scheduler_addtask(
             s, task_type_timestep_limiter, task_subtype_none, 0, 0, c, NULL);
 
+        c->timestep_sync = scheduler_addtask(
+            s, task_type_timestep_sync, task_subtype_none, 0, 0, c, NULL);
+	
         scheduler_addunlock(s, c->timestep, c->timestep_limiter);
         scheduler_addunlock(s, c->timestep_limiter, c->kick1);
+        scheduler_addunlock(s, c->timestep, c->timestep_sync);
+        scheduler_addunlock(s, c->timestep_sync, c->kick1);
       }
     }
   } else { /* We are above the super-cell so need to go deeper */
@@ -1182,6 +1187,8 @@ void engine_make_hierarchical_tasks_hydro(struct engine *e, struct cell *c,
         scheduler_addunlock(s, c->hydro.limiter_out, c->super->timestep);
         scheduler_addunlock(s, c->hydro.limiter_out,
                             c->super->timestep_limiter);
+        scheduler_addunlock(s, c->hydro.limiter_out,
+                            c->super->timestep_sync);
 
         if (with_star_formation && c->hydro.count > 0) {
           scheduler_addunlock(s, c->top->hydro.star_formation,

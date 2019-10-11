@@ -254,6 +254,7 @@ void space_rebuild_recycle_mapper(void *map_data, int num_elements,
     c->hydro.limiter_in = NULL;
     c->hydro.limiter_out = NULL;
     c->timestep_limiter = NULL;
+    c->timestep_sync = NULL;
     c->hydro.end_force = NULL;
     c->hydro.drift = NULL;
     c->stars.drift = NULL;
@@ -5297,9 +5298,9 @@ void space_check_limiter_mapper(void *map_data, int nr_parts,
     if (parts[k].wakeup == time_bin_awake)
       error("Particle still woken up! id=%lld", parts[k].id);
 
-    if (parts[k].synchronized != 0)
+    if (parts[k].to_be_synchronized != 0)
       error("Synchronized particle not treated! id=%lld synchronized=%d",
-            parts[k].id, parts[k].synchronized);
+            parts[k].id, parts[k].to_be_synchronized);
 
     if (parts[k].gpart != NULL)
       if (parts[k].time_bin != parts[k].gpart->time_bin)

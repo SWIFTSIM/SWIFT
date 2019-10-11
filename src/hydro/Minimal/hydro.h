@@ -870,6 +870,7 @@ __attribute__((always_inline)) INLINE static void hydro_first_init_part(
   p->time_bin = 0;
   p->min_ngb_time_bin = num_time_bins + 1;
   p->wakeup = time_bin_not_awake;
+  p->to_be_synchronized = 0;
   xp->v_full[0] = p->v[0];
   xp->v_full[1] = p->v[1];
   xp->v_full[2] = p->v[2];

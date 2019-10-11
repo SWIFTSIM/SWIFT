@@ -367,6 +367,9 @@ void *runner_main(void *data) {
         case task_type_timestep_limiter:
           runner_do_limiter(r, ci, 0, 1);
           break;
+        case task_type_timestep_sync:
+          runner_do_sync(r, ci, 0, 1);
+          break;
 #ifdef WITH_MPI
         case task_type_send:
           if (t->subtype == task_subtype_tend_part) {

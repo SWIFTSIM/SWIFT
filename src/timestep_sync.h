@@ -24,9 +24,16 @@
 
 #include "kick.h"
 
-INLINE static void timestep_sync_part(struct part *p, struct xpart *xp,
-                                      const struct engine *e,
-                                      const struct cosmology *cosmo) {
+__attribute__((always_inline)) INLINE static void timestep_sync_part(struct part *p) {
+  p->to_be_synchronized = 1;
+
+  message("Demanding a synchronization for particle %lld", p->id);  
+}
+
+
+INLINE static void timestep_process_sync_part(struct part *p, struct xpart *xp,
+					      const struct engine *e,
+					      const struct cosmology *cosmo) {
 
   const int with_cosmology = (e->policy & engine_policy_cosmology);
   const integertime_t ti_current = e->ti_current;

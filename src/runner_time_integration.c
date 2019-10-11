@@ -34,6 +34,7 @@
 #include "timers.h"
 #include "timestep.h"
 #include "timestep_limiter.h"
+#include "timestep_sync.h"
 #include "tracers.h"
 
 /**
@@ -1076,4 +1077,78 @@ void runner_do_limiter(struct runner *r, struct cell *c, int force, int timer) {
                   cell_flag_do_hydro_limiter | cell_flag_do_hydro_sub_limiter);
 
   if (timer) TIMER_TOC(timer_do_limiter);
+}
+
+void runner_do_sync(struct runner *r, struct cell *c, int force, int timer) {
+  
+  const struct engine *e = r->e;
+  const struct cosmology *cosmo = e->cosmology;
+  const int count = c->hydro.count;
+  struct part *restrict parts = c->hydro.parts;
+  struct xpart *restrict xparts = c->hydro.xparts;
+
+  TIMER_TIC;
+
+#ifdef SWIFT_DEBUG_CHECKS
+  /* Check that we only sync local cells. */
+  if (c->nodeID != engine_rank) error("Syncing of a foreign cell is nope.");
+#endif
+
+  /* integertime_t ti_hydro_end_min = max_nr_timesteps, ti_hydro_end_max = 0, */
+  /*               ti_hydro_beg_max = 0; */
+  /* integertime_t ti_gravity_end_min = max_nr_timesteps, ti_gravity_end_max = 0, */
+  /*               ti_gravity_beg_max = 0; */
+
+  /* Limit irrespective of cell flags? */
+  force = (force || cell_get_flag(c, cell_flag_do_hydro_sync));
+
+  /* Early abort? */
+  if (c->hydro.count == 0) {
+
+    /* Clear the sync flags. */
+    cell_clear_flag(c, cell_flag_do_hydro_sync | cell_flag_do_hydro_sub_sync);
+    return;
+  }
+
+  /* Loop over the progeny ? */
+  if (c->split && (force || cell_get_flag(c, cell_flag_do_hydro_sub_sync))) {
+    for (int k = 0; k < 8; k++) {
+      if (c->progeny[k] != NULL) {
+        struct cell *restrict cp = c->progeny[k];
+
+	/* Recurse */
+	runner_do_sync(r, cp, force, 0);
+      }
+    }
+    
+  } else if (!c->split && force) {
+
+    /* Loop over the gas particles in this cell. */
+    for (int k = 0; k < count; k++) {
+
+      /* Get a handle on the part. */
+      struct part *restrict p = &parts[k];
+      struct xpart *restrict xp = &xparts[k];
+      
+      /* Avoid inhibited particles */
+      if (part_is_inhibited(p, e)) continue;
+      
+      /* If the particle is active no need to sync it */
+      if (part_is_active(p, e) && p->to_be_synchronized)
+	p->to_be_synchronized = 0;
+	      
+      if (p->to_be_synchronized) {
+
+	timestep_process_sync_part(p, xp, e, cosmo);
+
+      }     
+    }    
+  }
+
+  /* Clear the sync flags. */
+  cell_clear_flag(c,
+                  cell_flag_do_hydro_sync | cell_flag_do_hydro_sub_sync);
+
+  if (timer) TIMER_TOC(timer_do_sync);
+
 }

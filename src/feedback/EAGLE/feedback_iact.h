@@ -34,6 +34,7 @@
  * @param pj Second particle (not updated).
  * @param xpj Extra particle data (not updated).
  * @param cosmo The cosmological model.
+ * @param e The #engine (for particle synchronization).
  * @param ti_current Current integer time value
  */
 __attribute__((always_inline)) INLINE static void
@@ -82,6 +83,7 @@ runner_iact_nonsym_feedback_density(const float r2, const float *dx,
  * @param pj Second (gas) particle.
  * @param xpj Extra particle data
  * @param cosmo The cosmological model.
+ * @param e The #engine (for particle synchronization).
  * @param ti_current Current integer time used value for seeding random number
  * generator
  */
@@ -298,7 +300,9 @@ runner_iact_nonsym_feedback_apply(const float r2, const float *dx,
           pj->id, si->id, prob, rand, delta_u, delta_u / u_init);
 
       /* Synchronize the particle on the timeline */
-      timestep_sync_part(pj, xpj, e, cosmo);
+      timestep_sync_part(pj);
+
+      /* Recompute the signal velocity */
     }
   }
 }
