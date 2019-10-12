@@ -5295,6 +5295,8 @@ void space_check_limiter_mapper(void *map_data, int nr_parts,
 
     if (parts[k].time_bin == time_bin_inhibited) continue;
 
+    if (parts[k].time_bin < 0) error("Particle has negative time-bin!");
+
     if (parts[k].wakeup == time_bin_awake)
       error("Particle still woken up! id=%lld", parts[k].id);
 

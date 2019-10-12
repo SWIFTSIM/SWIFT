@@ -24,22 +24,24 @@
 
 #include "kick.h"
 
-__attribute__((always_inline)) INLINE static void timestep_sync_part(struct part *p) {
+__attribute__((always_inline)) INLINE static void timestep_sync_part(
+    struct part *p) {
   p->to_be_synchronized = 1;
 
-  message("Demanding a synchronization for particle %lld", p->id);  
+  message("Demanding a synchronization for particle %lld", p->id);
 }
 
-
 INLINE static void timestep_process_sync_part(struct part *p, struct xpart *xp,
-					      const struct engine *e,
-					      const struct cosmology *cosmo) {
+                                              const struct engine *e,
+                                              const struct cosmology *cosmo) {
 
   const int with_cosmology = (e->policy & engine_policy_cosmology);
   const integertime_t ti_current = e->ti_current;
   const timebin_t max_active_bin = e->max_active_bin;
   const timebin_t min_active_bin = e->min_active_bin;
   const double time_base = e->time_base;
+
+  p->to_be_synchronized = 0;
 
   /* This particle is already active. Nothing to do here... */
   if (p->time_bin <= max_active_bin) return;
@@ -105,16 +107,16 @@ INLINE static void timestep_process_sync_part(struct part *p, struct xpart *xp,
             e->cosmology, e->hydro_properties, e->entropy_floor,
             old_ti_beg + old_dti / 2, old_ti_beg);
 
-  /* ...and apply the new one (dt is positiive) */
+  /* We can now produce a kick to the current point */
   if (with_cosmology) {
     dt_kick_hydro = cosmology_get_hydro_kick_factor(cosmo, new_ti_beg,
                                                     new_ti_beg + new_dti);
     dt_kick_grav =
-        cosmology_get_grav_kick_factor(cosmo, new_ti_beg, new_ti_beg + new_dti);
-    dt_kick_therm = cosmology_get_therm_kick_factor(cosmo, new_ti_beg,
+        cosmology_get_grav_kick_factor(cosmo, old_ti_beg, new_ti_beg + new_dti);
+    dt_kick_therm = cosmology_get_therm_kick_factor(cosmo, old_ti_beg,
                                                     new_ti_beg + new_dti);
     dt_kick_corr =
-        cosmology_get_corr_kick_factor(cosmo, new_ti_beg, new_ti_beg + new_dti);
+        cosmology_get_corr_kick_factor(cosmo, old_ti_beg, new_ti_beg + new_dti);
   } else {
     dt_kick_hydro = (new_dti)*time_base;
     dt_kick_grav = (new_dti)*time_base;
@@ -126,17 +128,10 @@ INLINE static void timestep_process_sync_part(struct part *p, struct xpart *xp,
             e->cosmology, e->hydro_properties, e->entropy_floor, new_ti_beg,
             new_ti_beg + new_dti);
 
-#ifdef SWIFT_DEBUG_CHECKS
-  if (p->ti_kick != ti_current)
-    error("Particle has not been synchronized correctly.");
-  p->synchronized = 1;
-#endif
-
-  p->time_bin = min_active_bin;
-  p->wakeup = time_bin_not_awake;
-
   /* The particle is now ready to compute its new time-step size and for the
    * next kick */
+  p->time_bin = -min_active_bin;
+  p->wakeup = time_bin_not_awake;
 }
 
 #endif /* SWIFT_TIMESTEP_SYNC_H */

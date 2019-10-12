@@ -2589,6 +2589,42 @@ void cell_activate_drift_part(struct cell *c, struct scheduler *s) {
   }
 }
 
+void cell_activate_sync_part(struct cell *c, struct scheduler *s) {
+  /* If this cell is already marked for drift, quit early. */
+  if (cell_get_flag(c, cell_flag_do_hydro_sync)) return;
+
+  /* Mark this cell for synchronization. */
+  cell_set_flag(c, cell_flag_do_hydro_sync);
+
+  /* Set the do_sub_sync all the way up and activate the super sync
+     if this has not yet been done. */
+  if (c == c->super) {
+#ifdef SWIFT_DEBUG_CHECKS
+    if (c->timestep_sync == NULL)
+      error("Trying to activate un-existing c->timestep_sync");
+#endif
+    scheduler_activate(s, c->timestep_sync);
+    scheduler_activate(s, c->kick1);
+  } else {
+    for (struct cell *parent = c->parent;
+         parent != NULL && !cell_get_flag(parent, cell_flag_do_hydro_sub_sync);
+         parent = parent->parent) {
+      /* Mark this cell for drifting */
+      cell_set_flag(parent, cell_flag_do_hydro_sub_sync);
+
+      if (parent == c->super) {
+#ifdef SWIFT_DEBUG_CHECKS
+        if (parent->timestep_sync == NULL)
+          error("Trying to activate un-existing parent->timestep_sync");
+#endif
+        scheduler_activate(s, parent->timestep_sync);
+        scheduler_activate(s, parent->kick1);
+        break;
+      }
+    }
+  }
+}
+
 /**
  * @brief Activate the #gpart drifts on the given cell.
  */
@@ -3017,6 +3053,7 @@ void cell_activate_subcell_stars_tasks(struct cell *ci, struct cell *cj,
       /* We have reached the bottom of the tree: activate drift */
       cell_activate_drift_spart(ci, s);
       cell_activate_drift_part(ci, s);
+      cell_activate_sync_part(ci, s);
     }
   }
 
@@ -3064,6 +3101,7 @@ void cell_activate_subcell_stars_tasks(struct cell *ci, struct cell *cj,
         /* Activate the drifts if the cells are local. */
         if (ci->nodeID == engine_rank) cell_activate_drift_spart(ci, s);
         if (cj->nodeID == engine_rank) cell_activate_drift_part(cj, s);
+        if (cj->nodeID == engine_rank) cell_activate_sync_part(cj, s);
 
         /* Do we need to sort the cells? */
         cell_activate_hydro_sorts(cj, sid, s);
@@ -3082,6 +3120,7 @@ void cell_activate_subcell_stars_tasks(struct cell *ci, struct cell *cj,
         /* Activate the drifts if the cells are local. */
         if (ci->nodeID == engine_rank) cell_activate_drift_part(ci, s);
         if (cj->nodeID == engine_rank) cell_activate_drift_spart(cj, s);
+        if (ci->nodeID == engine_rank) cell_activate_sync_part(ci, s);
 
         /* Do we need to sort the cells? */
         cell_activate_hydro_sorts(ci, sid, s);
@@ -3775,8 +3814,9 @@ int cell_unskip_stars_tasks(struct cell *c, struct scheduler *s,
 
     /* Activate the drifts */
     if (t->type == task_type_self && ci_active) {
-      cell_activate_drift_part(ci, s);
       cell_activate_drift_spart(ci, s);
+      cell_activate_drift_part(ci, s);
+      cell_activate_sync_part(ci, s);
     }
 
     /* Only activate tasks that involve a local active cell. */
@@ -3798,6 +3838,7 @@ int cell_unskip_stars_tasks(struct cell *c, struct scheduler *s,
           /* Activate the drift tasks. */
           if (ci_nodeID == nodeID) cell_activate_drift_spart(ci, s);
           if (cj_nodeID == nodeID) cell_activate_drift_part(cj, s);
+          if (cj_nodeID == nodeID) cell_activate_sync_part(cj, s);
 
           /* Check the sorts and activate them if needed. */
           cell_activate_stars_sorts(ci, t->flags, s);
@@ -3817,6 +3858,7 @@ int cell_unskip_stars_tasks(struct cell *c, struct scheduler *s,
           /* Activate the drift tasks. */
           if (cj_nodeID == nodeID) cell_activate_drift_spart(cj, s);
           if (ci_nodeID == nodeID) cell_activate_drift_part(ci, s);
+          if (ci_nodeID == nodeID) cell_activate_sync_part(ci, s);
 
           /* Check the sorts and activate them if needed. */
           cell_activate_hydro_sorts(ci, t->flags, s);

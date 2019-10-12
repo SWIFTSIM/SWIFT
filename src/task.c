@@ -71,7 +71,7 @@ const char *taskID_names[task_type_count] = {"none",
                                              "kick2",
                                              "timestep",
                                              "timestep_limiter",
-					     "timestep_sync",
+                                             "timestep_sync",
                                              "limiter_in",
                                              "limiter_out",
                                              "send",
@@ -168,6 +168,7 @@ __attribute__((always_inline)) INLINE static enum task_actions task_acts_on(
     case task_type_ghost:
     case task_type_extra_ghost:
     case task_type_timestep_limiter:
+    case task_type_timestep_sync:
     case task_type_cooling:
     case task_type_end_hydro_force:
       return task_action_part;

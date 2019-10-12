@@ -160,6 +160,8 @@ void runner_do_kick1(struct runner *r, struct cell *c, int timer) {
           dt_kick_corr = (ti_step / 2) * time_base;
         }
 
+        if (p->id == ICHECK) message("kick1");
+
         /* do the kick */
         kick_part(p, xp, dt_kick_hydro, dt_kick_grav, dt_kick_therm,
                   dt_kick_corr, cosmo, hydro_props, entropy_floor, ti_begin,
@@ -196,7 +198,7 @@ void runner_do_kick1(struct runner *r, struct cell *c, int timer) {
 
         if (ti_begin != ti_current)
           error(
-              "Particle in wrong time-bin, ti_end=%lld, ti_begin=%lld, "
+              "G-particle in wrong time-bin, ti_end=%lld, ti_begin=%lld, "
               "ti_step=%lld time_bin=%d ti_current=%lld",
               ti_end, ti_begin, ti_step, gp->time_bin, ti_current);
 #endif
@@ -234,7 +236,7 @@ void runner_do_kick1(struct runner *r, struct cell *c, int timer) {
 
         if (ti_begin != ti_current)
           error(
-              "Particle in wrong time-bin, ti_end=%lld, ti_begin=%lld, "
+              "S-particle in wrong time-bin, ti_end=%lld, ti_begin=%lld, "
               "ti_step=%lld time_bin=%d ti_current=%lld",
               ti_end, ti_begin, ti_step, sp->time_bin, ti_current);
 #endif
@@ -272,7 +274,7 @@ void runner_do_kick1(struct runner *r, struct cell *c, int timer) {
 
         if (ti_begin != ti_current)
           error(
-              "Particle in wrong time-bin, ti_end=%lld, ti_begin=%lld, "
+              "B-particle in wrong time-bin, ti_end=%lld, ti_begin=%lld, "
               "ti_step=%lld time_bin=%d ti_current=%lld",
               ti_end, ti_begin, ti_step, bp->time_bin, ti_current);
 #endif
@@ -395,6 +397,8 @@ void runner_do_kick2(struct runner *r, struct cell *c, int timer) {
           dt_kick_therm = (ti_end - (ti_begin + ti_step / 2)) * time_base;
           dt_kick_corr = (ti_end - (ti_begin + ti_step / 2)) * time_base;
         }
+
+        if (p->id == ICHECK) message("kick2");
 
         /* Finish the time-step with a second half-kick */
         kick_part(p, xp, dt_kick_hydro, dt_kick_grav, dt_kick_therm,
@@ -1080,9 +1084,11 @@ void runner_do_limiter(struct runner *r, struct cell *c, int force, int timer) {
 }
 
 void runner_do_sync(struct runner *r, struct cell *c, int force, int timer) {
-  
+
   const struct engine *e = r->e;
+  const integertime_t ti_current = e->ti_current;
   const struct cosmology *cosmo = e->cosmology;
+  const int with_cosmology = (e->policy & engine_policy_cosmology);
   const int count = c->hydro.count;
   struct part *restrict parts = c->hydro.parts;
   struct xpart *restrict xparts = c->hydro.xparts;
@@ -1094,10 +1100,10 @@ void runner_do_sync(struct runner *r, struct cell *c, int force, int timer) {
   if (c->nodeID != engine_rank) error("Syncing of a foreign cell is nope.");
 #endif
 
-  /* integertime_t ti_hydro_end_min = max_nr_timesteps, ti_hydro_end_max = 0, */
-  /*               ti_hydro_beg_max = 0; */
-  /* integertime_t ti_gravity_end_min = max_nr_timesteps, ti_gravity_end_max = 0, */
-  /*               ti_gravity_beg_max = 0; */
+  integertime_t ti_hydro_end_min = max_nr_timesteps, ti_hydro_end_max = 0,
+                ti_hydro_beg_max = 0;
+  integertime_t ti_gravity_end_min = max_nr_timesteps, ti_gravity_end_max = 0,
+                ti_gravity_beg_max = 0;
 
   /* Limit irrespective of cell flags? */
   force = (force || cell_get_flag(c, cell_flag_do_hydro_sync));
@@ -1116,12 +1122,35 @@ void runner_do_sync(struct runner *r, struct cell *c, int force, int timer) {
       if (c->progeny[k] != NULL) {
         struct cell *restrict cp = c->progeny[k];
 
-	/* Recurse */
-	runner_do_sync(r, cp, force, 0);
+        /* Recurse */
+        runner_do_sync(r, cp, force, 0);
+
+        /* And aggregate */
+        ti_hydro_end_min = min(cp->hydro.ti_end_min, ti_hydro_end_min);
+        ti_hydro_end_max = max(cp->hydro.ti_end_max, ti_hydro_end_max);
+        ti_hydro_beg_max = max(cp->hydro.ti_beg_max, ti_hydro_beg_max);
+        ti_gravity_end_min = min(cp->grav.ti_end_min, ti_gravity_end_min);
+        ti_gravity_end_max = max(cp->grav.ti_end_max, ti_gravity_end_max);
+        ti_gravity_beg_max = max(cp->grav.ti_beg_max, ti_gravity_beg_max);
       }
     }
-    
+
+    /* Store the updated values */
+    c->hydro.ti_end_min = min(c->hydro.ti_end_min, ti_hydro_end_min);
+    c->hydro.ti_end_max = max(c->hydro.ti_end_max, ti_hydro_end_max);
+    c->hydro.ti_beg_max = max(c->hydro.ti_beg_max, ti_hydro_beg_max);
+    c->grav.ti_end_min = min(c->grav.ti_end_min, ti_gravity_end_min);
+    c->grav.ti_end_max = max(c->grav.ti_end_max, ti_gravity_end_max);
+    c->grav.ti_beg_max = max(c->grav.ti_beg_max, ti_gravity_beg_max);
+
   } else if (!c->split && force) {
+
+    ti_hydro_end_min = c->hydro.ti_end_min;
+    ti_hydro_end_max = c->hydro.ti_end_max;
+    ti_hydro_beg_max = c->hydro.ti_beg_max;
+    ti_gravity_end_min = c->grav.ti_end_min;
+    ti_gravity_end_max = c->grav.ti_end_max;
+    ti_gravity_beg_max = c->grav.ti_beg_max;
 
     /* Loop over the gas particles in this cell. */
     for (int k = 0; k < count; k++) {
@@ -1129,26 +1158,72 @@ void runner_do_sync(struct runner *r, struct cell *c, int force, int timer) {
       /* Get a handle on the part. */
       struct part *restrict p = &parts[k];
       struct xpart *restrict xp = &xparts[k];
-      
+
       /* Avoid inhibited particles */
       if (part_is_inhibited(p, e)) continue;
-      
+
       /* If the particle is active no need to sync it */
       if (part_is_active(p, e) && p->to_be_synchronized)
-	p->to_be_synchronized = 0;
-	      
+        p->to_be_synchronized = 0;
+
       if (p->to_be_synchronized) {
 
-	timestep_process_sync_part(p, xp, e, cosmo);
+        /* Finish this particle's time-step */
+        timestep_process_sync_part(p, xp, e, cosmo);
 
-      }     
-    }    
+        /* Get new time-step */
+        integertime_t ti_new_step = get_part_timestep(p, xp, e);
+        const timebin_t new_time_bin =
+            min(get_time_bin(ti_new_step), e->min_active_bin);
+        ti_new_step = get_integer_timestep(new_time_bin);
+
+        /* Update particle */
+        p->time_bin = new_time_bin;
+        if (p->gpart != NULL) p->gpart->time_bin = new_time_bin;
+
+        message("new time_bin = %d", new_time_bin);
+
+        /* Update the tracers properties */
+        tracers_after_timestep(p, xp, e->internal_units, e->physical_constants,
+                               with_cosmology, e->cosmology,
+                               e->hydro_properties, e->cooling_func, e->time);
+
+        /* What is the next sync-point ? */
+        ti_hydro_end_min = min(ti_current + ti_new_step, ti_hydro_end_min);
+        ti_hydro_end_max = max(ti_current + ti_new_step, ti_hydro_end_max);
+
+        /* What is the next starting point for this cell ? */
+        ti_hydro_beg_max = max(ti_current, ti_hydro_beg_max);
+
+        /* Also limit the gpart counter-part */
+        if (p->gpart != NULL) {
+
+          /* Register the time-bin */
+          p->gpart->time_bin = p->time_bin;
+
+          /* What is the next sync-point ? */
+          ti_gravity_end_min =
+              min(ti_current + ti_new_step, ti_gravity_end_min);
+          ti_gravity_end_max =
+              max(ti_current + ti_new_step, ti_gravity_end_max);
+
+          /* What is the next starting point for this cell ? */
+          ti_gravity_beg_max = max(ti_current, ti_gravity_beg_max);
+        }
+      }
+    }
+
+    /* Store the updated values */
+    c->hydro.ti_end_min = min(c->hydro.ti_end_min, ti_hydro_end_min);
+    c->hydro.ti_end_max = max(c->hydro.ti_end_max, ti_hydro_end_max);
+    c->hydro.ti_beg_max = max(c->hydro.ti_beg_max, ti_hydro_beg_max);
+    c->grav.ti_end_min = min(c->grav.ti_end_min, ti_gravity_end_min);
+    c->grav.ti_end_max = max(c->grav.ti_end_max, ti_gravity_end_max);
+    c->grav.ti_beg_max = max(c->grav.ti_beg_max, ti_gravity_beg_max);
   }
 
   /* Clear the sync flags. */
-  cell_clear_flag(c,
-                  cell_flag_do_hydro_sync | cell_flag_do_hydro_sub_sync);
+  cell_clear_flag(c, cell_flag_do_hydro_sync | cell_flag_do_hydro_sub_sync);
 
   if (timer) TIMER_TOC(timer_do_sync);
-
 }
