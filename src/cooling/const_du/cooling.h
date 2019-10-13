@@ -235,11 +235,13 @@ __attribute__((always_inline)) INLINE static float cooling_get_radiated_energy(
  * @param parameter_file The parsed parameter file.
  * @param us The current internal system of units.
  * @param phys_const The physical constants in internal units.
+ * @param hydro_props The properties of the hydro scheme.
  * @param cooling The cooling properties to initialize
  */
 static INLINE void cooling_init_backend(struct swift_params* parameter_file,
                                         const struct unit_system* us,
                                         const struct phys_const* phys_const,
+                                        const struct hydro_props* hydro_props,
                                         struct cooling_function_data* cooling) {
 
   cooling->cooling_rate =
