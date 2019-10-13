@@ -197,9 +197,6 @@ struct part {
   /* Time of the last kick */
   integertime_t ti_kick;
 
-  /* Has the particle been synchronised back on the timeline this step? */
-  char synchronized;
-
 #endif
 
 } SWIFT_STRUCT_ALIGN;

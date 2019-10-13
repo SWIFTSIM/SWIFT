@@ -1988,7 +1988,7 @@ void engine_make_extra_hydroloop_tasks_mapper(void *map_data, int num_elements,
         scheduler_addunlock(sched, ci->hydro.super->hydro.drift, t_limiter);
         scheduler_addunlock(sched, t_limiter,
                             ci->hydro.super->hydro.limiter_out);
-	scheduler_addunlock(sched, t_limiter, ci->super->timestep_limiter);
+        scheduler_addunlock(sched, t_limiter, ci->super->timestep_limiter);
 
         if (with_feedback) {
           scheduler_addunlock(sched, t_star_feedback, ci->super->timestep_sync);
@@ -2185,7 +2185,7 @@ void engine_make_extra_hydroloop_tasks_mapper(void *map_data, int num_elements,
                               t_limiter);
           scheduler_addunlock(sched, t_limiter,
                               ci->hydro.super->hydro.limiter_out);
-	  scheduler_addunlock(sched, t_limiter, ci->super->timestep_limiter);
+          scheduler_addunlock(sched, t_limiter, ci->super->timestep_limiter);
           if (with_feedback) {
             scheduler_addunlock(sched, t_star_feedback,
                                 ci->super->timestep_sync);
@@ -2279,7 +2279,7 @@ void engine_make_extra_hydroloop_tasks_mapper(void *map_data, int num_elements,
               scheduler_addunlock(sched, t_star_feedback,
                                   cj->super->timestep_sync);
             }
-	    scheduler_addunlock(sched, t_limiter, cj->super->timestep_limiter);
+            scheduler_addunlock(sched, t_limiter, cj->super->timestep_limiter);
           }
         }
 
@@ -2452,7 +2452,7 @@ void engine_make_extra_hydroloop_tasks_mapper(void *map_data, int num_elements,
         scheduler_addunlock(sched, t_limiter,
                             ci->hydro.super->hydro.limiter_out);
 
-	scheduler_addunlock(sched, t_limiter, ci->super->timestep_limiter);
+        scheduler_addunlock(sched, t_limiter, ci->super->timestep_limiter);
 
         if (with_feedback) {
           scheduler_addunlock(sched, t_star_feedback, ci->super->timestep_sync);
@@ -2653,7 +2653,7 @@ void engine_make_extra_hydroloop_tasks_mapper(void *map_data, int num_elements,
                               t_limiter);
           scheduler_addunlock(sched, t_limiter,
                               ci->hydro.super->hydro.limiter_out);
-	  scheduler_addunlock(sched, t_limiter, ci->super->timestep_limiter);
+          scheduler_addunlock(sched, t_limiter, ci->super->timestep_limiter);
 
           if (with_feedback) {
             scheduler_addunlock(sched, t_star_feedback,
@@ -2753,7 +2753,7 @@ void engine_make_extra_hydroloop_tasks_mapper(void *map_data, int num_elements,
                                   cj->super->timestep_sync);
             }
 
-	    scheduler_addunlock(sched, t_limiter, cj->super->timestep_limiter);
+            scheduler_addunlock(sched, t_limiter, cj->super->timestep_limiter);
           }
         }
       } else /* cj->nodeID != nodeID */ {

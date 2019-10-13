@@ -625,10 +625,6 @@ void runner_do_timestep(struct runner *r, struct cell *c, int timer) {
                                with_cosmology, e->cosmology,
                                e->hydro_properties, e->cooling_func, e->time);
 
-#ifdef SWIFT_DEBUG_CHECKS
-        p->synchronized = 0;
-#endif
-
         /* Number of updated particles */
         updated++;
         if (p->gpart != NULL) g_updated++;
@@ -654,10 +650,6 @@ void runner_do_timestep(struct runner *r, struct cell *c, int timer) {
       }
 
       else { /* part is inactive */
-
-#ifdef SWIFT_DEBUG_CHECKS
-        if (p->synchronized) p->synchronized = 2;
-#endif
 
         if (!part_is_inhibited(p, e)) {
 

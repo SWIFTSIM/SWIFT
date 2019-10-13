@@ -28,7 +28,8 @@ __attribute__((always_inline)) INLINE static void timestep_sync_part(
     struct part *p) {
   p->to_be_synchronized = 1;
 
-  message("Demanding a synchronization for particle %lld current time_bin=%d", p->id, p->time_bin);
+  message("Demanding a synchronization for particle %lld current time_bin=%d",
+          p->id, p->time_bin);
 }
 
 INLINE static void timestep_process_sync_part(struct part *p, struct xpart *xp,
