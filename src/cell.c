@@ -3011,6 +3011,7 @@ void cell_activate_subcell_stars_tasks(struct cell *ci, struct cell *cj,
                                        struct scheduler *s,
                                        const int with_star_formation) {
   const struct engine *e = s->space->e;
+  const int with_limiter = (e->policy & engine_policy_limiter);
 
   /* Store the current dx_max and h_max values. */
   ci->stars.dx_max_part_old = ci->stars.dx_max_part;
@@ -3053,7 +3054,7 @@ void cell_activate_subcell_stars_tasks(struct cell *ci, struct cell *cj,
       /* We have reached the bottom of the tree: activate drift */
       cell_activate_drift_spart(ci, s);
       cell_activate_drift_part(ci, s);
-      cell_activate_sync_part(ci, s);
+      if (with_limiter) cell_activate_sync_part(ci, s);
     }
   }
 
@@ -3101,7 +3102,8 @@ void cell_activate_subcell_stars_tasks(struct cell *ci, struct cell *cj,
         /* Activate the drifts if the cells are local. */
         if (ci->nodeID == engine_rank) cell_activate_drift_spart(ci, s);
         if (cj->nodeID == engine_rank) cell_activate_drift_part(cj, s);
-        if (cj->nodeID == engine_rank) cell_activate_sync_part(cj, s);
+        if (cj->nodeID == engine_rank && with_limiter)
+          cell_activate_sync_part(cj, s);
 
         /* Do we need to sort the cells? */
         cell_activate_hydro_sorts(cj, sid, s);
@@ -3120,7 +3122,8 @@ void cell_activate_subcell_stars_tasks(struct cell *ci, struct cell *cj,
         /* Activate the drifts if the cells are local. */
         if (ci->nodeID == engine_rank) cell_activate_drift_part(ci, s);
         if (cj->nodeID == engine_rank) cell_activate_drift_spart(cj, s);
-        if (ci->nodeID == engine_rank) cell_activate_sync_part(ci, s);
+        if (ci->nodeID == engine_rank && with_limiter)
+          cell_activate_sync_part(ci, s);
 
         /* Do we need to sort the cells? */
         cell_activate_hydro_sorts(ci, sid, s);
@@ -3784,6 +3787,7 @@ int cell_unskip_stars_tasks(struct cell *c, struct scheduler *s,
                             const int with_star_formation) {
 
   struct engine *e = s->space->e;
+  const int with_limiter = (e->policy & engine_policy_limiter);
   const int nodeID = e->nodeID;
   int rebuild = 0;
 
@@ -3819,7 +3823,7 @@ int cell_unskip_stars_tasks(struct cell *c, struct scheduler *s,
     if (t->type == task_type_self && ci_active) {
       cell_activate_drift_spart(ci, s);
       cell_activate_drift_part(ci, s);
-      cell_activate_sync_part(ci, s);
+      if (with_limiter) cell_activate_sync_part(ci, s);
     }
 
     /* Only activate tasks that involve a local active cell. */
@@ -3841,7 +3845,8 @@ int cell_unskip_stars_tasks(struct cell *c, struct scheduler *s,
           /* Activate the drift tasks. */
           if (ci_nodeID == nodeID) cell_activate_drift_spart(ci, s);
           if (cj_nodeID == nodeID) cell_activate_drift_part(cj, s);
-          if (cj_nodeID == nodeID) cell_activate_sync_part(cj, s);
+          if (cj_nodeID == nodeID && with_limiter)
+            cell_activate_sync_part(cj, s);
 
           /* Check the sorts and activate them if needed. */
           cell_activate_stars_sorts(ci, t->flags, s);
@@ -3861,7 +3866,8 @@ int cell_unskip_stars_tasks(struct cell *c, struct scheduler *s,
           /* Activate the drift tasks. */
           if (cj_nodeID == nodeID) cell_activate_drift_spart(cj, s);
           if (ci_nodeID == nodeID) cell_activate_drift_part(ci, s);
-          if (ci_nodeID == nodeID) cell_activate_sync_part(ci, s);
+          if (ci_nodeID == nodeID && with_limiter)
+            cell_activate_sync_part(ci, s);
 
           /* Check the sorts and activate them if needed. */
           cell_activate_hydro_sorts(ci, t->flags, s);
