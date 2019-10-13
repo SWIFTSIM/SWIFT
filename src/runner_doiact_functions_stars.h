@@ -821,10 +821,8 @@ void DOPAIR1_SUBSET_STARS_NAIVE(struct runner *r, struct cell *restrict ci,
 void DOSELF1_SUBSET_STARS(struct runner *r, struct cell *restrict ci,
                           struct spart *restrict sparts, int *restrict ind,
                           int scount) {
-  !
-
 #ifdef SWIFT_DEBUG_CHECKS
-      if (ci->nodeID != engine_rank) error("Should be run on a different node");
+  if (ci->nodeID != engine_rank) error("Should be run on a different node");
 #endif
 
   const struct engine *e = r->e;

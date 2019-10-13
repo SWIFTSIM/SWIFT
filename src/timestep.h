@@ -180,9 +180,6 @@ __attribute__((always_inline)) INLINE static integertime_t get_part_timestep(
   const integertime_t new_dti = make_integer_timestep(
       new_dt, p->time_bin, e->ti_current, e->time_base_inv);
 
-  if (p->id == ICHECK)
-    message("Computing dt for particle %lld dt=%lld", p->id, new_dti);
-
   /* Are we allowed to use this bin given the neighbours? */
   timebin_t new_bin = get_time_bin(new_dti);
   new_bin =
@@ -225,7 +222,7 @@ __attribute__((always_inline)) INLINE static integertime_t get_spart_timestep(
   new_dt *= e->cosmology->time_step_factor;
 
   /* Limit timestep within the allowed range */
-  new_dt = min(new_dt, e->dt_max) / 16.;
+  new_dt = min(new_dt, e->dt_max);
   if (new_dt < e->dt_min) {
     error("spart (id=%lld) wants a time-step (%e) below dt_min (%e)", sp->id,
           new_dt, e->dt_min);
