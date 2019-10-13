@@ -28,8 +28,11 @@ __attribute__((always_inline)) INLINE static void timestep_sync_part(
     struct part *p) {
   p->to_be_synchronized = 1;
 
-  message("Demanding a synchronization for particle %lld current time_bin=%d",
-          p->id, p->time_bin);
+#ifdef SWIFT_DEBUG_CHECKS
+  /* message("Demanding a synchronization for particle %lld current
+   * time_bin=%d", */
+  /*         p->id, p->time_bin); */
+#endif
 }
 
 INLINE static void timestep_process_sync_part(struct part *p, struct xpart *xp,
@@ -47,7 +50,7 @@ INLINE static void timestep_process_sync_part(struct part *p, struct xpart *xp,
   /* This particle is already active. Nothing to do here... */
   if (p->time_bin <= max_active_bin) return;
 
-  message("Synchronizing particle %lld", p->id);
+  /* message("Synchronizing particle %lld", p->id); */
 
   /* We want to make the particle finish it's time-step now. */
 

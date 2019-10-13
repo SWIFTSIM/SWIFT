@@ -34,8 +34,6 @@
  * current value asserts that they must match within 0.1%. */
 #define io_redshift_tolerance 1e-3f
 
-#define ICHECK 12510
-
 /* Type of gradients to use (GIZMO_SPH only) */
 /* If no option is chosen, no gradients are used (first order scheme) */
 //#define GRADIENTS_SPH

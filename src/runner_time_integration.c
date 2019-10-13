@@ -160,8 +160,6 @@ void runner_do_kick1(struct runner *r, struct cell *c, int timer) {
           dt_kick_corr = (ti_step / 2) * time_base;
         }
 
-        if (p->id == ICHECK) message("kick1");
-
         /* do the kick */
         kick_part(p, xp, dt_kick_hydro, dt_kick_grav, dt_kick_therm,
                   dt_kick_corr, cosmo, hydro_props, entropy_floor, ti_begin,
@@ -397,8 +395,6 @@ void runner_do_kick2(struct runner *r, struct cell *c, int timer) {
           dt_kick_therm = (ti_end - (ti_begin + ti_step / 2)) * time_base;
           dt_kick_corr = (ti_end - (ti_begin + ti_step / 2)) * time_base;
         }
-
-        if (p->id == ICHECK) message("kick2");
 
         /* Finish the time-step with a second half-kick */
         kick_part(p, xp, dt_kick_hydro, dt_kick_grav, dt_kick_therm,
@@ -1172,8 +1168,6 @@ void runner_do_sync(struct runner *r, struct cell *c, int force, int timer) {
         /* Update particle */
         p->time_bin = new_time_bin;
         if (p->gpart != NULL) p->gpart->time_bin = new_time_bin;
-
-        message("new time_bin = %d", new_time_bin);
 
         /* Update the tracers properties */
         tracers_after_timestep(p, xp, e->internal_units, e->physical_constants,

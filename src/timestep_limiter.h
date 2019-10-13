@@ -53,8 +53,6 @@ __attribute__((always_inline)) INLINE static integertime_t timestep_limit_part(
     old_time_bin = p->time_bin;
   } else {
 
-    message("Relimiting particle %lld wakeup=%d", p->id, p->wakeup);
-
     /* Particle that was limited in the previous step already */
     old_ti_beg = get_integer_time_begin(e->ti_current, -p->wakeup);
     old_ti_end = get_integer_time_end(e->ti_current, p->time_bin);

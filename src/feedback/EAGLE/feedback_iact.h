@@ -290,10 +290,10 @@ runner_iact_nonsym_feedback_apply(const float r2, const float *dx,
       /* Impose maximal viscosity */
       hydro_diffusive_feedback_reset(pj);
 
-      message(
-          "We did some heating! id %llu star id %llu probability %.5e "
-          "random_num %.5e du %.5e du/ini %.5e",
-          pj->id, si->id, prob, rand, delta_u, delta_u / u_init);
+      /* message( */
+      /*     "We did some heating! id %llu star id %llu probability %.5e " */
+      /*     "random_num %.5e du %.5e du/ini %.5e", */
+      /*     pj->id, si->id, prob, rand, delta_u, delta_u / u_init); */
 
       /* Synchronize the particle on the timeline */
       timestep_sync_part(pj);
