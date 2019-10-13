@@ -110,9 +110,9 @@ void DOSELF1_STARS(struct runner *r, struct cell *c, int timer) {
         IACT_STARS(r2, dx, hi, hj, si, pj, a, H);
 #if (FUNCTION_TASK_LOOP == TASK_LOOP_DENSITY)
         runner_iact_nonsym_feedback_density(r2, dx, hi, hj, si, pj, NULL, cosmo,
-                                            e, ti_current);
+                                            ti_current);
 #elif (FUNCTION_TASK_LOOP == TASK_LOOP_FEEDBACK)
-        runner_iact_nonsym_feedback_apply(r2, dx, hi, hj, si, pj, xpj, cosmo, e,
+        runner_iact_nonsym_feedback_apply(r2, dx, hi, hj, si, pj, xpj, cosmo,
                                           ti_current);
 #endif
       }
@@ -219,9 +219,9 @@ void DO_NONSYM_PAIR1_STARS_NAIVE(struct runner *r, struct cell *restrict ci,
 
 #if (FUNCTION_TASK_LOOP == TASK_LOOP_DENSITY)
         runner_iact_nonsym_feedback_density(r2, dx, hi, hj, si, pj, NULL, cosmo,
-                                            e, ti_current);
+                                            ti_current);
 #elif (FUNCTION_TASK_LOOP == TASK_LOOP_FEEDBACK)
-        runner_iact_nonsym_feedback_apply(r2, dx, hi, hj, si, pj, xpj, cosmo, e,
+        runner_iact_nonsym_feedback_apply(r2, dx, hi, hj, si, pj, xpj, cosmo,
                                           ti_current);
 #endif
       }
@@ -392,10 +392,10 @@ void DO_SYM_PAIR1_STARS(struct runner *r, struct cell *ci, struct cell *cj,
 
 #if (FUNCTION_TASK_LOOP == TASK_LOOP_DENSITY)
           runner_iact_nonsym_feedback_density(r2, dx, hi, hj, spi, pj, NULL,
-                                              cosmo, e, ti_current);
+                                              cosmo, ti_current);
 #elif (FUNCTION_TASK_LOOP == TASK_LOOP_FEEDBACK)
           runner_iact_nonsym_feedback_apply(r2, dx, hi, hj, spi, pj, xpj, cosmo,
-                                            e, ti_current);
+                                            ti_current);
 #endif
         }
       } /* loop over the parts in cj. */
@@ -521,10 +521,10 @@ void DO_SYM_PAIR1_STARS(struct runner *r, struct cell *ci, struct cell *cj,
 
 #if (FUNCTION_TASK_LOOP == TASK_LOOP_DENSITY)
           runner_iact_nonsym_feedback_density(r2, dx, hj, hi, spj, pi, xpi,
-                                              cosmo, e, ti_current);
+                                              cosmo, ti_current);
 #elif (FUNCTION_TASK_LOOP == TASK_LOOP_FEEDBACK)
           runner_iact_nonsym_feedback_apply(r2, dx, hj, hi, spj, pi, xpi, cosmo,
-                                            e, ti_current);
+                                            ti_current);
 #endif
         }
       } /* loop over the parts in ci. */
@@ -642,12 +642,11 @@ void DOPAIR1_SUBSET_STARS(struct runner *r, struct cell *restrict ci,
 
 #if (FUNCTION_TASK_LOOP == TASK_LOOP_DENSITY)
           runner_iact_nonsym_feedback_density(r2, dx, hi, hj, spi, pj, NULL,
-                                              cosmo, e, e->ti_current);
+                                              cosmo, e->ti_current);
 #elif (FUNCTION_TASK_LOOP == TASK_LOOP_FEEDBACK)
-          error("This call makes no sense!");
+          error("No subset feedback iact functions do (or should) exist!");
           /* runner_iact_nonsym_feedback_apply(r2, dx, hi, hj, spi, pj, xpj,
-           * cosmo, */
-          /*                                   e, ti_current); */
+           * cosmo, ti_current); */
 #endif
         }
       } /* loop over the parts in cj. */
@@ -703,12 +702,11 @@ void DOPAIR1_SUBSET_STARS(struct runner *r, struct cell *restrict ci,
 
 #if (FUNCTION_TASK_LOOP == TASK_LOOP_DENSITY)
           runner_iact_nonsym_feedback_density(r2, dx, hi, hj, spi, pj, NULL,
-                                              cosmo, e, e->ti_current);
+                                              cosmo, e->ti_current);
 #elif (FUNCTION_TASK_LOOP == TASK_LOOP_FEEDBACK)
-          error("This call makes no sense!");
+          error("No subset feedback iact functions do (or should) exist!");
           /* runner_iact_nonsym_feedback_apply(r2, dx, hi, hj, spi, pj, xpj,
-           * cosmo, */
-          /*                                   e, ti_current); */
+           * cosmo, ti_current); */
 #endif
         }
       } /* loop over the parts in cj. */
@@ -799,12 +797,11 @@ void DOPAIR1_SUBSET_STARS_NAIVE(struct runner *r, struct cell *restrict ci,
 
 #if (FUNCTION_TASK_LOOP == TASK_LOOP_DENSITY)
         runner_iact_nonsym_feedback_density(r2, dx, hi, hj, spi, pj, NULL,
-                                            cosmo, e, e->ti_current);
+                                            cosmo, e->ti_current);
 #elif (FUNCTION_TASK_LOOP == TASK_LOOP_FEEDBACK)
-        error("This call makes no sense!");
+        error("No subset feedback iact functions do (or should) exist! .");
         /* runner_iact_nonsym_feedback_apply(r2, dx, hi, hj, spi, pj, xpj,
-         * cosmo, */
-        /*                                   e, ti_current); */
+         * cosmo, ti_current); */
 #endif
       }
     } /* loop over the parts in cj. */
@@ -824,9 +821,10 @@ void DOPAIR1_SUBSET_STARS_NAIVE(struct runner *r, struct cell *restrict ci,
 void DOSELF1_SUBSET_STARS(struct runner *r, struct cell *restrict ci,
                           struct spart *restrict sparts, int *restrict ind,
                           int scount) {
+  !
 
 #ifdef SWIFT_DEBUG_CHECKS
-  if (ci->nodeID != engine_rank) error("Should be run on a different node");
+      if (ci->nodeID != engine_rank) error("Should be run on a different node");
 #endif
 
   const struct engine *e = r->e;
@@ -885,9 +883,9 @@ void DOSELF1_SUBSET_STARS(struct runner *r, struct cell *restrict ci,
         IACT_STARS(r2, dx, hi, pj->h, spi, pj, a, H);
 #if (FUNCTION_TASK_LOOP == TASK_LOOP_DENSITY)
         runner_iact_nonsym_feedback_density(r2, dx, hi, pj->h, spi, pj, NULL,
-                                            cosmo, e, e->ti_current);
+                                            cosmo, e->ti_current);
 #elif (FUNCTION_TASK_LOOP == TASK_LOOP_FEEDBACK)
-        error("This call makes no sense!");
+        error("No subset feedback iact functions do (or should) exist!");
         /* runner_iact_nonsym_feedback_apply(r2, dx, hi, pj->h, spi, pj, xpj, */
         /*                                   cosmo, e, ti_current); */
 #endif
