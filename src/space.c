@@ -5289,6 +5289,8 @@ void space_check_limiter_mapper(void *map_data, int nr_parts,
 #ifdef SWIFT_DEBUG_CHECKS
   /* Unpack the data */
   struct part *restrict parts = (struct part *)map_data;
+  const struct space *s = (struct space *)extra_data;
+  const int with_limiter = (s->e->policy & engine_policy_limiter);
 
   /* Verify that all limited particles have been treated */
   for (int k = 0; k < nr_parts; k++) {
@@ -5300,7 +5302,7 @@ void space_check_limiter_mapper(void *map_data, int nr_parts,
     if (parts[k].wakeup == time_bin_awake)
       error("Particle still woken up! id=%lld", parts[k].id);
 
-    if (parts[k].to_be_synchronized != 0)
+    if (with_limiter && parts[k].to_be_synchronized != 0)
       error("Synchronized particle not treated! id=%lld synchronized=%d",
             parts[k].id, parts[k].to_be_synchronized);
 
@@ -5324,7 +5326,7 @@ void space_check_limiter(struct space *s) {
 #ifdef SWIFT_DEBUG_CHECKS
 
   threadpool_map(&s->e->threadpool, space_check_limiter_mapper, s->parts,
-                 s->nr_parts, sizeof(struct part), 1000, NULL);
+                 s->nr_parts, sizeof(struct part), 1000, s);
 #else
   error("Calling debugging code without debugging flag activated.");
 #endif
