@@ -297,8 +297,6 @@ runner_iact_nonsym_feedback_apply(const float r2, const float *dx,
 
       /* Synchronize the particle on the timeline */
       timestep_sync_part(pj);
-
-      /* Recompute the signal velocity */
     }
   }
 }
