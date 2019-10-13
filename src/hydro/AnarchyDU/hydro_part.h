@@ -203,6 +203,12 @@ struct part {
   /* Need waking up ? */
   timebin_t wakeup;
 
+  /*! Minimal time-bin across all neighbours */
+  timebin_t min_ngb_time_bin;
+
+  /* Do we want this particle to be synched back on the time-line? */
+  char to_be_synchronized;
+
 #ifdef SWIFT_DEBUG_CHECKS
 
   /* Time of the last drift */

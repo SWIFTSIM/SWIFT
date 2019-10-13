@@ -434,6 +434,12 @@ __attribute__((always_inline)) INLINE static void runner_iact_force(
    * fix_. Added: 14th August 2019. To be removed by 1st Jan 2020. (JB) */
   pi->viscosity.v_sig = max(pi->viscosity.v_sig, v_sig);
   pj->viscosity.v_sig = max(pj->viscosity.v_sig, v_sig);
+
+  /* Update the minimal time-bin */
+  if (pj->time_bin > 0)
+    pi->min_ngb_time_bin = min(pi->min_ngb_time_bin, pj->time_bin);
+  if (pi->time_bin > 0)
+    pj->min_ngb_time_bin = min(pj->min_ngb_time_bin, pi->time_bin);
 }
 
 /**
@@ -558,6 +564,10 @@ __attribute__((always_inline)) INLINE static void runner_iact_nonsym_force(
    * due to some possible synchronisation problems this is here as a _quick
    * fix_. Added: 14th August 2019. To be removed by 1st Jan 2020. (JB) */
   pi->viscosity.v_sig = max(pi->viscosity.v_sig, v_sig);
+
+  /* Update the minimal time-bin */
+  if (pj->time_bin > 0)
+    pi->min_ngb_time_bin = min(pi->min_ngb_time_bin, pj->time_bin);
 }
 
 /**
@@ -601,7 +611,10 @@ __attribute__((always_inline)) INLINE static void runner_iact_nonsym_limiter(
   if (pi->viscosity.v_sig >
       const_limiter_max_v_sig_ratio * pj->viscosity.v_sig) {
 
-    pj->wakeup = time_bin_awake;
+    if (pj->wakeup == time_bin_not_awake)
+      pj->wakeup = time_bin_awake;
+    else if (pj->wakeup > 0)
+      pj->wakeup = -pj->wakeup;
   }
 }
 
