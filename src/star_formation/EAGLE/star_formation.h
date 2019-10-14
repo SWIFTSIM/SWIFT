@@ -295,8 +295,12 @@ INLINE static void star_formation_compute_SFR(
     return;
   }
 
-  /* Pressure on the effective EOS for this particle */
-  const double pressure = EOS_pressure(n_H, starform);
+  /* Get the pressure used for the star formation, this is 
+   * the maximum of the star formation EOS pressure, 
+   * the physical pressure of the particle and the 
+   * floor pressure. The floor pressure is used implicitly 
+   * when getting the physical pressure. */
+  const double pressure = max(EOS_pressure(n_H, starform), hydro_get_physical_pressure(p, cosmo));
 
   /* Calculate the specific star formation rate */
   double SFRpergasmass;
