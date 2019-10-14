@@ -555,10 +555,14 @@ void writeArray_chunk(struct engine* e, hid_t h_data,
   else
     H5Sselect_none(h_filespace);
 
-    /* message("Writing %lld '%s', %zd elements = %zd bytes (int=%d) at offset
-     * %zd", N, props.name, N * props.dimension, N * props.dimension * typeSize,
-     */
-    /* 	  (int)(N * props.dimension * typeSize), offset); */
+  /* message("Writing %lld '%s', %zd elements = %zd bytes (int=%d) at offset
+   * %zd", N, props.name, N * props.dimension, N * props.dimension * typeSize,
+   */
+  /* 	  (int)(N * props.dimension * typeSize), offset); */
+
+  /* Make a dataset creation property list and set MPI-I/O mode */
+  hid_t h_plist_id = H5Pcreate(H5P_DATASET_XFER);
+  H5Pset_dxpl_mpio(h_plist_id, H5FD_MPIO_COLLECTIVE);
 
 #ifdef IO_SPEED_MEASUREMENT
   MPI_Barrier(MPI_COMM_WORLD);
@@ -567,7 +571,7 @@ void writeArray_chunk(struct engine* e, hid_t h_data,
 
   /* Write temporary buffer to HDF5 dataspace */
   h_err = H5Dwrite(h_data, io_hdf5_type(props.type), h_memspace, h_filespace,
-                   H5P_DEFAULT, temp);
+                   h_plist_id, temp);
   if (h_err < 0) error("Error while writing data array '%s'.", props.name);
 
 #ifdef IO_SPEED_MEASUREMENT
@@ -584,6 +588,7 @@ void writeArray_chunk(struct engine* e, hid_t h_data,
 
   /* Free and close everything */
   swift_free("writebuff", temp);
+  H5Pclose(h_plist_id);
   H5Sclose(h_memspace);
   H5Sclose(h_filespace);
 }

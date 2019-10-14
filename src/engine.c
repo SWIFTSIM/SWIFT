@@ -37,6 +37,7 @@
 
 /* MPI headers. */
 #ifdef WITH_MPI
+
 #include <mpi.h>
 #endif
 
@@ -1113,8 +1114,7 @@ void engine_allocate_foreign_particles(struct engine *e) {
 
   /* Allocate space for the foreign particles we will receive */
   if (count_parts_in > s->size_parts_foreign) {
-    if (s->parts_foreign != NULL)
-      swift_free("sparts_foreign", s->parts_foreign);
+    if (s->parts_foreign != NULL) swift_free("parts_foreign", s->parts_foreign);
     s->size_parts_foreign = engine_foreign_alloc_margin * count_parts_in;
     if (swift_memalign("parts_foreign", (void **)&s->parts_foreign, part_align,
                        sizeof(struct part) * s->size_parts_foreign) != 0)
@@ -4691,6 +4691,21 @@ void engine_clean(struct engine *e, const int fof) {
   scheduler_clean(&e->sched);
   space_clean(e->s);
   threadpool_clean(&e->threadpool);
+#if defined(WITH_MPI)
+  for (int i = 0; i < e->nr_proxies; ++i) {
+    proxy_clean(&e->proxies[i]);
+  }
+  free(e->proxy_ind);
+  free(e->proxies);
+
+  /* Free types */
+  part_free_mpi_types();
+  multipole_free_mpi_types();
+  stats_free_mpi_type();
+  proxy_free_mpi_type();
+  task_free_mpi_comms();
+  mpicollect_free_MPI_type();
+#endif
 
   /* Close files */
   if (!fof && e->nodeID == 0) {
