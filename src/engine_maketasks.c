@@ -1993,6 +1993,9 @@ void engine_make_extra_hydroloop_tasks_mapper(void *map_data, int num_elements,
         if (with_feedback) {
           scheduler_addunlock(sched, t_star_feedback, ci->super->timestep_sync);
         }
+        if (with_black_holes && bcount_i > 0) {
+          scheduler_addunlock(sched, t_bh_feedback, ci->super->timestep_sync);
+        }
       }
     }
 
@@ -2190,6 +2193,9 @@ void engine_make_extra_hydroloop_tasks_mapper(void *map_data, int num_elements,
             scheduler_addunlock(sched, t_star_feedback,
                                 ci->super->timestep_sync);
           }
+          if (with_black_holes && (bcount_i > 0 || bcount_j > 0)) {
+            scheduler_addunlock(sched, t_bh_feedback, ci->super->timestep_sync);
+          }
         }
       } else /*(ci->nodeID != nodeID) */ {
         if (with_feedback) {
@@ -2277,6 +2283,10 @@ void engine_make_extra_hydroloop_tasks_mapper(void *map_data, int num_elements,
           if (with_limiter) {
             if (with_feedback) {
               scheduler_addunlock(sched, t_star_feedback,
+                                  cj->super->timestep_sync);
+            }
+            if (with_black_holes && (bcount_i > 0 || bcount_j > 0)) {
+              scheduler_addunlock(sched, t_bh_feedback,
                                   cj->super->timestep_sync);
             }
             scheduler_addunlock(sched, t_limiter, cj->super->timestep_limiter);
@@ -2457,8 +2467,10 @@ void engine_make_extra_hydroloop_tasks_mapper(void *map_data, int num_elements,
         if (with_feedback) {
           scheduler_addunlock(sched, t_star_feedback, ci->super->timestep_sync);
         }
+        if (with_black_holes && bcount_i > 0) {
+          scheduler_addunlock(sched, t_bh_feedback, ci->super->timestep_sync);
+        }
       }
-
     }
 
     /* Otherwise, sub-pair interaction? */
@@ -2659,6 +2671,9 @@ void engine_make_extra_hydroloop_tasks_mapper(void *map_data, int num_elements,
             scheduler_addunlock(sched, t_star_feedback,
                                 ci->super->timestep_sync);
           }
+          if (with_black_holes && (bcount_i > 0 || bcount_j > 0)) {
+            scheduler_addunlock(sched, t_bh_feedback, ci->super->timestep_sync);
+          }
         }
       } else /* ci->nodeID != nodeID */ {
 
@@ -2750,6 +2765,10 @@ void engine_make_extra_hydroloop_tasks_mapper(void *map_data, int num_elements,
 
             if (with_feedback) {
               scheduler_addunlock(sched, t_star_feedback,
+                                  cj->super->timestep_sync);
+            }
+            if (with_black_holes && (bcount_i > 0 || bcount_j > 0)) {
+              scheduler_addunlock(sched, t_bh_feedback,
                                   cj->super->timestep_sync);
             }
 

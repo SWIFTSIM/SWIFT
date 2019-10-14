@@ -22,8 +22,6 @@
 /* Config parameters. */
 #include "../config.h"
 
-#include "kick.h"
-
 __attribute__((always_inline)) INLINE static void timestep_sync_part(
     struct part *p) {
   p->to_be_synchronized = 1;
@@ -34,6 +32,9 @@ __attribute__((always_inline)) INLINE static void timestep_sync_part(
   /*         p->id, p->time_bin); */
 #endif
 }
+
+#include "engine.h"
+#include "kick.h"
 
 INLINE static void timestep_process_sync_part(struct part *p, struct xpart *xp,
                                               const struct engine *e,
