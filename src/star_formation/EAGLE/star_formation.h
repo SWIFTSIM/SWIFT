@@ -199,8 +199,8 @@ INLINE static double EOS_pressure(const double n_H,
  * @return The pressure on the equation of state in internal units.
  */
 INLINE static double EOS_entropy(const double n_H,
-                                          const struct star_formation* starform,
-                                          const double rho) {
+                                 const struct star_formation* starform,
+                                 const double rho) {
 
   return gas_entropy_from_pressure(rho, EOS_pressure(n_H, starform));
 }
@@ -268,9 +268,8 @@ INLINE static int star_formation_is_star_forming(
   /* Calculate the entropy that will be used to calculate
    * the off-set, this is the maximum between the entropy
    * floor and the star formation polytropic EOS. */
-  const double entropy_eos =
-      max(entropy_floor(p, cosmo, entropy_floor_props),
-          EOS_entropy(n_H, starform, physical_density));
+  const double entropy_eos = max(entropy_floor(p, cosmo, entropy_floor_props),
+                                 EOS_entropy(n_H, starform, physical_density));
 
   /* Check the Scahye & Dalla Vecchia 2012 EOS-based temperature critrion */
   return (entropy <
