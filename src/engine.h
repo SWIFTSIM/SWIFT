@@ -479,7 +479,7 @@ struct engine {
   char run_name[PARSER_MAX_LINE_SIZE];
 
   /* Has there been an stf this timestep? */
-  int stf_this_timestep;
+  char stf_this_timestep;
 };
 
 /* Function prototypes, engine.c. */

@@ -647,6 +647,7 @@ void velociraptor_invoke(struct engine *e, const int linked_with_snap) {
 
   /* Record we have ran stf this timestep */
   e->stf_this_timestep = 1;
+
 #else
   error("SWIFT not configure to run with VELOCIraptor.");
 #endif /* HAVE_VELOCIRAPTOR */

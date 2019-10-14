@@ -2209,7 +2209,6 @@ void engine_step(struct engine *e) {
   e->step += 1;
   engine_current_step = e->step;
   e->step_props = engine_step_prop_none;
-  e->stf_this_timestep = 0;
 
   /* When restarting, move everyone to the current time. */
   if (e->restarting) engine_drift_all(e, /*drift_mpole=*/1);
@@ -2389,6 +2388,7 @@ void engine_check_for_dumps(struct engine *e) {
    * before the next time-step */
   enum output_type type = output_none;
   integertime_t ti_output = max_nr_timesteps;
+  e->stf_this_timestep = 0;
 
   /* Save some statistics ? */
   if (e->ti_end_min > e->ti_next_stats && e->ti_next_stats > 0) {
@@ -2462,7 +2462,7 @@ void engine_check_for_dumps(struct engine *e) {
 #endif
 
         /* Free the memory allocated for VELOCIraptor i/o. */
-        if (with_stf && e->snapshot_invoke_stf && !e->stf_this_timestep) {
+        if (with_stf && e->snapshot_invoke_stf && e->s->gpart_group_data) {
 #ifdef HAVE_VELOCIRAPTOR
           swift_free("gpart_group_data", e->s->gpart_group_data);
           e->s->gpart_group_data = NULL;

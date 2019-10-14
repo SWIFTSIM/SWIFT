@@ -1393,13 +1393,15 @@ int main(int argc, char *argv[]) {
     if ((e.output_list_snapshots && e.output_list_snapshots->final_step_dump) ||
         !e.output_list_snapshots) {
 #ifdef HAVE_VELOCIRAPTOR
-        if (with_structure_finding && e.snapshot_invoke_stf && !e.stf_this_timestep)
-          velociraptor_invoke(&e, /*linked_with_snap=*/1);
+      if (with_structure_finding && e.snapshot_invoke_stf &&
+          !e.stf_this_timestep)
+        velociraptor_invoke(&e, /*linked_with_snap=*/1);
 #endif
       engine_dump_snapshot(&e);
 #ifdef HAVE_VELOCIRAPTOR
-        if (with_structure_finding && e.snapshot_invoke_stf && !e.stf_this_timestep)
-          free(e.s->gpart_group_data);
+      if (with_structure_finding && e.snapshot_invoke_stf &&
+          e.s->gpart_group_data)
+        swift_free("gpart_group_data", e.s->gpart_group_data);
 #endif
     }
 

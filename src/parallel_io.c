@@ -1073,14 +1073,13 @@ void prepare_file(struct engine* e, const char* baseName, long long N_total[6],
   if (e->snapshot_int_time_label_on)
     snprintf(fileName, FILENAME_BUFFER_SIZE, "%s_%06i.hdf5", baseName,
              (int)round(e->time));
-  else
-    if (e->snapshot_invoke_stf) {
-      snprintf(fileName, FILENAME_BUFFER_SIZE, "%s_%04i.hdf5", baseName,
+  else if (e->snapshot_invoke_stf) {
+    snprintf(fileName, FILENAME_BUFFER_SIZE, "%s_%04i.hdf5", baseName,
              e->stf_output_count);
-    } else {
-      snprintf(fileName, FILENAME_BUFFER_SIZE, "%s_%04i.hdf5", baseName,
-               e->snapshot_output_count);
-    }
+  } else {
+    snprintf(fileName, FILENAME_BUFFER_SIZE, "%s_%04i.hdf5", baseName,
+             e->snapshot_output_count);
+  }
 
   /* Open HDF5 file with the chosen parameters */
   hid_t h_file = H5Fcreate(fileName, H5F_ACC_TRUNC, H5P_DEFAULT, H5P_DEFAULT);
@@ -1454,14 +1453,13 @@ void write_output_parallel(struct engine* e, const char* baseName,
   if (e->snapshot_int_time_label_on)
     snprintf(fileName, FILENAME_BUFFER_SIZE, "%s_%06i.hdf5", baseName,
              (int)round(e->time));
-  else
-    if (e->snapshot_invoke_stf) {
-      snprintf(fileName, FILENAME_BUFFER_SIZE, "%s_%04i.hdf5", baseName,
-               e->stf_output_count);
-    } else {
-      snprintf(fileName, FILENAME_BUFFER_SIZE, "%s_%04i.hdf5", baseName,
-               e->snapshot_output_count);
-    }
+  else if (e->snapshot_invoke_stf) {
+    snprintf(fileName, FILENAME_BUFFER_SIZE, "%s_%04i.hdf5", baseName,
+             e->stf_output_count);
+  } else {
+    snprintf(fileName, FILENAME_BUFFER_SIZE, "%s_%04i.hdf5", baseName,
+             e->snapshot_output_count);
+  }
 
   /* Now write the top-level cell structure */
   hid_t h_file_cells = 0, h_grp_cells = 0;
