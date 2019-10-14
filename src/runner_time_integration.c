@@ -1170,8 +1170,7 @@ void runner_do_sync(struct runner *r, struct cell *c, int force, int timer) {
 
         /* Get new time-step */
         integertime_t ti_new_step = get_part_timestep(p, xp, e);
-        const timebin_t new_time_bin =
-            min(get_time_bin(ti_new_step), e->min_active_bin);
+        const timebin_t new_time_bin = get_time_bin(ti_new_step);
         ti_new_step = get_integer_timestep(new_time_bin);
 
         /* Update particle */
