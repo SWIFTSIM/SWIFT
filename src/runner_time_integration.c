@@ -1071,6 +1071,15 @@ void runner_do_limiter(struct runner *r, struct cell *c, int force, int timer) {
   if (timer) TIMER_TOC(timer_do_limiter);
 }
 
+/**
+ * @brief Apply the time-step synchronization proceduere to all flagged
+ * particles in a cell hierarchy.
+ *
+ * @param r The task #runner.
+ * @param c The #cell.
+ * @param force Limit the particles irrespective of the #cell flags.
+ * @param timer Are we timing this ?
+ */
 void runner_do_sync(struct runner *r, struct cell *c, int force, int timer) {
 
   const struct engine *e = r->e;

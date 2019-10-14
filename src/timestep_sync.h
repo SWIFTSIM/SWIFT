@@ -22,20 +22,23 @@
 /* Config parameters. */
 #include "../config.h"
 
-__attribute__((always_inline)) INLINE static void timestep_sync_part(
-    struct part *p) {
-  p->to_be_synchronized = 1;
-
-#ifdef SWIFT_DEBUG_CHECKS
-  /* message("Demanding a synchronization for particle %lld current
-   * time_bin=%d", */
-  /*         p->id, p->time_bin); */
-#endif
-}
-
+/* Local includes */
 #include "engine.h"
 #include "kick.h"
 
+/**
+ * @brief Processes a particle that has been flagged for synchronization on the
+ * time-line.
+ *
+ * We revert the particle's kick and apply a new one that ends at the current
+ * time. The particle is then ready to compute a new time-step and proceed with
+ * a regular kick1.
+ *
+ * @param p The #part.
+ * @param xp The #xpart.
+ * @param e The #engine.
+ * @param cosmo The cosmology model.
+ */
 INLINE static void timestep_process_sync_part(struct part *p, struct xpart *xp,
                                               const struct engine *e,
                                               const struct cosmology *cosmo) {
