@@ -10,8 +10,8 @@ InternalUnitSystem:
 Gravity:
   eta:          0.025                 # Constant dimensionless multiplier for time integration.
   theta:        0.7                   # Opening angle (Multipole acceptance criterion).
-  max_physical_DM_softening:     0.1  # Physical softening length (in internal units).
-  max_physical_baryon_softening: 0.1  # Physical softening length (in internal units).
+  max_physical_DM_softening:     0.2  # Physical softening length (in internal units).
+  max_physical_baryon_softening: 0.2  # Physical softening length (in internal units).
 
 # Parameters governing the time integration (Set dt_min and dt_max to the same value for a fixed time-step run.)
 TimeIntegration:
@@ -45,6 +45,11 @@ SPH:
   h_max:                 10.
   minimal_temperature:   10.      # Kelvin
 
+# Parameters for the stars neighbour search
+Stars:
+  overwrite_birth_time:    1     # Make sure the stars in the ICs do not do any feedback
+  birth_time:             -1.    # by setting all of their birth times to -1  
+  
 # Standard EAGLE cooling options
 EAGLECooling:
   dir_name:                ./coolingtables/  # Location of the Wiersma+08 cooling tables
@@ -78,7 +83,7 @@ HernquistPotential:
   diskfraction:              0.040   # Disk mass fraction
   bulgefraction:              0.014   # Bulge mass fraction
   timestep_mult:   0.01     # Dimensionless pre-factor for the time-step condition, basically determines the fraction of the orbital time we use to do the time integration
-  epsilon:         0.01      # Softening size (internal units)
+  epsilon:         0.2      # Softening size (internal units)
  
 # EAGLE star formation parameters
 EAGLEStarFormation:

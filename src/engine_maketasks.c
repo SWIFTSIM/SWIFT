@@ -74,6 +74,9 @@ void engine_addtasks_send_gravity(struct engine *e, struct cell *ci,
   struct scheduler *s = &e->sched;
   const int nodeID = cj->nodeID;
 
+  /* Early abort (are we below the level where tasks are)? */
+  if (!cell_get_flag(ci, cell_flag_has_tasks)) return;
+
   /* Check if any of the gravity tasks are for the target node. */
   for (l = ci->grav.grav; l != NULL; l = l->next)
     if (l->t->ci->nodeID == nodeID ||
@@ -140,6 +143,9 @@ void engine_addtasks_send_hydro(struct engine *e, struct cell *ci,
   struct link *l = NULL;
   struct scheduler *s = &e->sched;
   const int nodeID = cj->nodeID;
+
+  /* Early abort (are we below the level where tasks are)? */
+  if (!cell_get_flag(ci, cell_flag_has_tasks)) return;
 
   /* Check if any of the density tasks are for the target node. */
   for (l = ci->hydro.density; l != NULL; l = l->next)
@@ -248,6 +254,9 @@ void engine_addtasks_send_stars(struct engine *e, struct cell *ci,
   struct scheduler *s = &e->sched;
   const int nodeID = cj->nodeID;
 
+  /* Early abort (are we below the level where tasks are)? */
+  if (!cell_get_flag(ci, cell_flag_has_tasks)) return;
+
   if (t_sf_counts == NULL && with_star_formation && ci->hydro.count > 0) {
 #ifdef SWIFT_DEBUG_CHECKS
     if (ci->depth != 0)
@@ -338,6 +347,9 @@ void engine_addtasks_send_black_holes(struct engine *e, struct cell *ci,
   struct link *l = NULL;
   struct scheduler *s = &e->sched;
   const int nodeID = cj->nodeID;
+
+  /* Early abort (are we below the level where tasks are)? */
+  if (!cell_get_flag(ci, cell_flag_has_tasks)) return;
 
   /* Check if any of the density tasks are for the target node. */
   for (l = ci->black_holes.density; l != NULL; l = l->next)
@@ -433,6 +445,9 @@ void engine_addtasks_recv_hydro(struct engine *e, struct cell *c,
 
 #ifdef WITH_MPI
   struct scheduler *s = &e->sched;
+
+  /* Early abort (are we below the level where tasks are)? */
+  if (!cell_get_flag(c, cell_flag_has_tasks)) return;
 
   /* Have we reached a level where there are any hydro tasks ? */
   if (t_xv == NULL && c->hydro.density != NULL) {
@@ -533,6 +548,9 @@ void engine_addtasks_recv_stars(struct engine *e, struct cell *c,
 #ifdef WITH_MPI
   struct scheduler *s = &e->sched;
 
+  /* Early abort (are we below the level where tasks are)? */
+  if (!cell_get_flag(c, cell_flag_has_tasks)) return;
+
   if (t_sf_counts == NULL && with_star_formation && c->hydro.count > 0) {
 #ifdef SWIFT_DEBUG_CHECKS
     if (c->depth != 0)
@@ -624,6 +642,9 @@ void engine_addtasks_recv_black_holes(struct engine *e, struct cell *c,
 #ifdef WITH_MPI
   struct scheduler *s = &e->sched;
 
+  /* Early abort (are we below the level where tasks are)? */
+  if (!cell_get_flag(c, cell_flag_has_tasks)) return;
+
   /* Have we reached a level where there are any black_holes tasks ? */
   if (t_rho == NULL && c->black_holes.density != NULL) {
 
@@ -713,6 +734,9 @@ void engine_addtasks_recv_gravity(struct engine *e, struct cell *c,
 
 #ifdef WITH_MPI
   struct scheduler *s = &e->sched;
+
+  /* Early abort (are we below the level where tasks are)? */
+  if (!cell_get_flag(c, cell_flag_has_tasks)) return;
 
   /* Have we reached a level where there are any gravity tasks ? */
   if (t_grav == NULL && c->grav.grav != NULL) {

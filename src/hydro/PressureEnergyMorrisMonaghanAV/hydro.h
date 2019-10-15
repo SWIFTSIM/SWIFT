@@ -427,7 +427,7 @@ hydro_set_drifted_physical_internal_energy(struct part *p,
 
   /* Update variables. */
   p->force.soundspeed = soundspeed;
-  p->viscosity.v_sig = max(p->viscosity.v_sig, 2.f * soundspeed);
+  p->force.v_sig = max(p->force.v_sig, 2.f * soundspeed);
 }
 
 /**
@@ -792,7 +792,7 @@ __attribute__((always_inline)) INLINE static void hydro_predict_extra(
       gas_soundspeed_from_pressure(p->rho, p->pressure_bar);
 
   p->force.soundspeed = soundspeed;
-  p->viscosity.v_sig = max(p->viscosity.v_sig, 2.f * soundspeed);
+  p->force.v_sig = max(p->force.v_sig, 2.f * soundspeed);
 }
 
 /**

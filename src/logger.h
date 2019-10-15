@@ -28,12 +28,14 @@
 #include "timeline.h"
 #include "units.h"
 
-/* Forward declaration */
+/* Forward declaration. */
 struct dump;
 struct gpart;
 struct part;
-/* TODO remove dependency */
 struct engine;
+
+#define logger_major_version 0
+#define logger_minor_version 1
 
 /**
  * Logger entries contain messages representing the particle data at a given
@@ -82,16 +84,18 @@ enum logger_masks_number {
   logger_h = 4,
   logger_rho = 5,
   logger_consts = 6,
-  logger_timestamp = 7,  /* expect it to be before count */
-  logger_count_mask = 8, /* Need to be the last */
+  logger_timestamp = 7,  /* expect it to be before count. */
+  logger_count_mask = 8, /* Need to be the last. */
 } __attribute__((packed));
 
 struct mask_data {
-  /* Number of bytes for a mask */
+  /* Number of bytes for a mask. */
   int size;
-  /* Mask value */
+
+  /* Mask value. */
   unsigned int mask;
-  /* name of the mask */
+
+  /* Name of the mask. */
   char name[100];
 };
 
@@ -100,51 +104,52 @@ extern const struct mask_data logger_mask_data[logger_count_mask];
 /* Size of the strings. */
 #define logger_string_length 200
 
-/* structure containing global data */
-struct logger {
-  /* Number of particle steps between dumping a chunk of data */
+/* structure containing global data. */
+struct logger_writer {
+  /* Number of particle steps between dumping a chunk of data. */
   short int delta_step;
 
-  /* Logger basename */
+  /* Logger basename. */
   char base_name[logger_string_length];
 
-  /* Dump file */
+  /*  Dump file (In the reader, the dump is cleaned, therefore it is renamed
+   * logfile). */
   struct dump dump;
 
-  /* timestamp offset for logger*/
+  /* timestamp offset for logger. */
   size_t timestamp_offset;
 
-  /* scaling factor when buffer is too small */
+  /* scaling factor when buffer is too small. */
   float buffer_scale;
 
-  /* Size of a chunk if every mask are activated */
+  /* Size of a chunk if every mask are activated. */
   int max_chunk_size;
 
 } SWIFT_STRUCT_ALIGN;
 
-/* required structure for each particle type */
+/* required structure for each particle type. */
 struct logger_part_data {
-  /* Number of particle updates since last output */
+  /* Number of particle updates since last output. */
   int steps_since_last_output;
 
-  /* offset of last particle log entry */
+  /* offset of last particle log entry. */
   size_t last_offset;
 };
 
 /* Function prototypes. */
 int logger_compute_chunk_size(unsigned int mask);
-void logger_log_all(struct logger *log, const struct engine *e);
-void logger_log_part(struct logger *log, const struct part *p,
+void logger_log_all(struct logger_writer *log, const struct engine *e);
+void logger_log_part(struct logger_writer *log, const struct part *p,
                      unsigned int mask, size_t *offset);
-void logger_log_gpart(struct logger *log, const struct gpart *p,
+void logger_log_gpart(struct logger_writer *log, const struct gpart *p,
                       unsigned int mask, size_t *offset);
-void logger_init(struct logger *log, struct swift_params *params);
-void logger_clean(struct logger *log);
-void logger_log_timestamp(struct logger *log, integertime_t t, double time,
-                          size_t *offset);
-void logger_ensure_size(struct logger *log, size_t total_nr_parts,
+void logger_init(struct logger_writer *log, struct swift_params *params);
+void logger_free(struct logger_writer *log);
+void logger_log_timestamp(struct logger_writer *log, integertime_t t,
+                          double time, size_t *offset);
+void logger_ensure_size(struct logger_writer *log, size_t total_nr_parts,
                         size_t total_nr_gparts, size_t total_nr_sparts);
-void logger_write_file_header(struct logger *log, const struct engine *e);
+void logger_write_file_header(struct logger_writer *log);
 
 int logger_read_part(struct part *p, size_t *offset, const char *buff);
 int logger_read_gpart(struct gpart *p, size_t *offset, const char *buff);
@@ -164,12 +169,14 @@ INLINE static void logger_part_data_init(struct logger_part_data *logger) {
 /**
  * @brief Should this particle write its data now ?
  *
- * @param xp The #xpart.
- * @param e The #engine containing information about the current time.
- * @return 1 if the #part should write, 0 otherwise.
+ * @param logger_data The #logger_part_data of a particle.
+ * @param log The #logger.
+ *
+ * @return 1 if the particule should be writen, 0 otherwise.
  */
 __attribute__((always_inline)) INLINE static int logger_should_write(
-    const struct logger_part_data *logger_data, const struct logger *log) {
+    const struct logger_part_data *logger_data,
+    const struct logger_writer *log) {
 
   return (logger_data->steps_since_last_output > log->delta_step);
 }

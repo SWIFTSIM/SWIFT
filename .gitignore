@@ -36,6 +36,7 @@ examples/*/*/*.rst
 examples/*/*/*.hdf5
 examples/*/*/*.csv
 examples/*/*/*.dot
+examples/*/*/cell_hierarchy.html
 examples/*/*/energy.txt
 examples/*/*/task_level.txt
 examples/*/*/timesteps_*.txt

@@ -9,7 +9,7 @@ then
    rm $csv_output
 fi
 
-for filename in ./cell_hierarchy_*.csv;
+for filename in $@;
 do
     cat $filename >> cell_hierarchy.csv
 done

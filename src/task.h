@@ -244,5 +244,6 @@ void task_get_group_name(int type, int subtype, char *cluster);
 
 #ifdef WITH_MPI
 void task_create_mpi_comms(void);
+void task_free_mpi_comms(void);
 #endif
 #endif /* SWIFT_TASK_H */

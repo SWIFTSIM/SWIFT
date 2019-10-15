@@ -363,7 +363,8 @@ void space_check_swallow(struct space *s);
 void space_check_sort_flags(struct space *s);
 void space_replicate(struct space *s, int replicate, int verbose);
 void space_generate_gas(struct space *s, const struct cosmology *cosmo,
-                        int periodic, const double dim[3], int verbose);
+                        const int periodic, const int with_DM_background,
+                        const double dim[3], const int verbose);
 void space_check_cosmology(struct space *s, const struct cosmology *cosmo,
                            int rank);
 void space_reset_task_counters(struct space *s);
@@ -374,6 +375,6 @@ void space_free_foreign_parts(struct space *s);
 
 void space_struct_dump(struct space *s, FILE *stream);
 void space_struct_restore(struct space *s, FILE *stream);
-void space_write_cell_hierarchy(const struct space *s);
+void space_write_cell_hierarchy(const struct space *s, int j);
 
 #endif /* SWIFT_SPACE_H */

@@ -40,7 +40,8 @@ SPH:
 
 # Properties of the stars
 Stars:
-  birth_time:  0.00991   # Give the star in the ICs a decent birth time
+  overwrite_birth_time: 1
+  birth_time:           0.00991   # Give the star in the ICs a decent birth time
   
 # Parameters related to the initial conditions
 InitialConditions:

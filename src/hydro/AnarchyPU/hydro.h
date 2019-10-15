@@ -594,10 +594,11 @@ __attribute__((always_inline)) INLINE static void hydro_end_density(
  * @param p The particle to act upon.
  * @param xp The extended particle data to act upon.
  * @param cosmo The cosmological model.
+ * @param hydro_props Hydrodynamic properties.
  */
 __attribute__((always_inline)) INLINE static void hydro_prepare_gradient(
     struct part *restrict p, struct xpart *restrict xp,
-    const struct cosmology *cosmo) {
+    const struct cosmology *cosmo, const struct hydro_props *hydro_props) {
 
   const float fac_B = cosmo->a_factor_Balsara_eps;
 

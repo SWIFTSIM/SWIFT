@@ -148,6 +148,7 @@ int main(int argc, char *argv[]) {
   int with_aff = 0;
   int dry_run = 0;
   int dump_tasks = 0;
+  int dump_cells = 0;
   int dump_threadpool = 0;
   int nsteps = -2;
   int restart = 0;
@@ -263,6 +264,9 @@ int main(int argc, char *argv[]) {
       OPT_INTEGER('y', "task-dumps", &dump_tasks,
                   "Time-step frequency at which task graphs are dumped.", NULL,
                   0, 0),
+      OPT_INTEGER(0, "cell-dumps", &dump_cells,
+                  "Time-step frequency at which cell graphs are dumped.", NULL,
+                  0, 0),
       OPT_INTEGER('Y', "threadpool-dumps", &dump_threadpool,
                   "Time-step frequency at which threadpool tasks are dumped.",
                   NULL, 0, 0),
@@ -319,6 +323,16 @@ int main(int argc, char *argv[]) {
           "WARNING: complete task dumps are only created when "
           "configured with --enable-task-debugging.");
       message("         Basic task statistics will be output.");
+    }
+  }
+#endif
+
+#ifndef SWIFT_CELL_GRAPH
+  if (dump_cells) {
+    if (myrank == 0) {
+      error(
+          "complete cell dumps are only created when "
+          "configured with --enable-cell-graph.");
     }
   }
 #endif
@@ -542,9 +556,12 @@ int main(int argc, char *argv[]) {
   if (with_mpole_reconstruction && nr_nodes > 1)
     error("Cannot reconstruct m-poles every step over MPI (yet).");
   if (with_limiter) error("Can't run with time-step limiter over MPI (yet)");
+#ifdef WITH_LOGGER
+  error("Can't run with the particle logger over MPI (yet)");
+#endif
 #endif
 
-    /* Temporary early aborts for modes not supported with hand-vec. */
+  /* Temporary early aborts for modes not supported with hand-vec. */
 #if defined(WITH_VECTORIZATION) && defined(GADGET2_SPH) && \
     !defined(CHEMISTRY_NONE)
   error(
@@ -1214,6 +1231,15 @@ int main(int argc, char *argv[]) {
   }
 #endif
 
+    /* Dump MPI requests if collected. */
+#if defined(SWIFT_MPIUSE_REPORTS) && defined(WITH_MPI)
+  {
+    char dumpfile[40];
+    snprintf(dumpfile, 40, "mpiuse_report-rank%d-step%d.dat", engine_rank, 0);
+    mpiuse_log_dump(dumpfile, clocks_start_ticks);
+  }
+#endif
+
   /* Main simulation loop */
   /* ==================== */
   int force_stop = 0, resubmit = 0;
@@ -1261,6 +1287,13 @@ int main(int argc, char *argv[]) {
       task_dump_stats(dumpfile, &e, /* header = */ 0, /* allranks = */ 1);
     }
 
+#ifdef SWIFT_CELL_GRAPH
+    /* Dump the cell data using the given frequency. */
+    if (dump_cells && (dump_cells == 1 || j % dump_cells == 1)) {
+      space_write_cell_hierarchy(e.s, j + 1);
+    }
+#endif
+
       /* Dump memory use report if collected. */
 #ifdef SWIFT_MEMUSE_REPORTS
     {
@@ -1274,6 +1307,16 @@ int main(int argc, char *argv[]) {
       memuse_log_dump(dumpfile);
     }
 #endif
+
+      /* Dump MPI requests if collected. */
+#if defined(SWIFT_MPIUSE_REPORTS) && defined(WITH_MPI)
+    {
+      char dumpfile[40];
+      snprintf(dumpfile, 40, "mpiuse_report-rank%d-step%d.dat", engine_rank,
+               j + 1);
+      mpiuse_log_dump(dumpfile, e.tic_step);
+    }
+#endif  // WITH_MPI
 
 #ifdef SWIFT_DEBUG_THREADPOOL
     /* Dump the task data using the given frequency. */
@@ -1351,11 +1394,6 @@ int main(int argc, char *argv[]) {
 #endif
   }
 
-#ifdef WITH_MPI
-  if ((res = MPI_Finalize()) != MPI_SUCCESS)
-    error("call to MPI_Finalize failed with error %i.", res);
-#endif
-
   /* Remove the stop file if used. Do this anyway, we could have missed the
    * stop file if normal exit happened first. */
   if (myrank == 0) force_stop = restart_stop_now(restart_dir, 1);
@@ -1376,6 +1414,11 @@ int main(int argc, char *argv[]) {
   if (with_cooling || with_temperature) cooling_clean(&cooling_func);
   engine_clean(&e, /*fof=*/0);
   free(params);
+
+#ifdef WITH_MPI
+  if ((res = MPI_Finalize()) != MPI_SUCCESS)
+    error("call to MPI_Finalize failed with error %i.", res);
+#endif
 
   /* Say goodbye. */
   if (myrank == 0) message("done. Bye.");

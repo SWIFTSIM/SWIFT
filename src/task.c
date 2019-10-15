@@ -46,6 +46,7 @@
 #include "error.h"
 #include "inline.h"
 #include "lock.h"
+#include "mpiuse.h"
 
 /* Task type names. */
 const char *taskID_names[task_type_count] = {"none",
@@ -552,6 +553,12 @@ int task_lock(struct task *t) {
             "%s).",
             taskID_names[t->type], subtaskID_names[t->subtype], t->flags, buff);
       }
+
+      /* And log deactivation, if logging enabled. */
+      if (res) {
+        mpiuse_log_allocation(t->type, t->subtype, &t->req, 0, 0, 0, 0);
+      }
+
       return res;
 #else
       error("SWIFT was not compiled with MPI support.");
@@ -874,6 +881,14 @@ void task_create_mpi_comms(void) {
     MPI_Comm_dup(MPI_COMM_WORLD, &subtaskMPI_comms[i]);
   }
 }
+/**
+ * @brief Create global communicators for each of the subtasks.
+ */
+void task_free_mpi_comms(void) {
+  for (int i = 0; i < task_subtype_count; i++) {
+    MPI_Comm_free(&subtaskMPI_comms[i]);
+  }
+}
 #endif
 
 /**
@@ -893,7 +908,7 @@ void task_dump_all(struct engine *e, int step) {
 #ifdef SWIFT_DEBUG_TASKS
 
   /* Need this to convert ticks to seconds. */
-  unsigned long long cpufreq = clocks_get_cpufreq();
+  const unsigned long long cpufreq = clocks_get_cpufreq();
 
 #ifdef WITH_MPI
   /* Make sure output file is empty, only on one rank. */
@@ -926,7 +941,8 @@ void task_dump_all(struct engine *e, int step) {
               e->s_updates, cpufreq);
       int count = 0;
       for (int l = 0; l < e->sched.nr_tasks; l++) {
-        if (!e->sched.tasks[l].implicit && e->sched.tasks[l].toc != 0) {
+        if (!e->sched.tasks[l].implicit &&
+            e->sched.tasks[l].tic > e->tic_step) {
           fprintf(
               file_thread, " %03i %i %i %i %i %lli %lli %i %i %i %i %lli %i\n",
               engine_rank, e->sched.tasks[l].rid, e->sched.tasks[l].type,
@@ -966,7 +982,7 @@ void task_dump_all(struct engine *e, int step) {
           (unsigned long long)e->toc_step, e->updates, e->g_updates,
           e->s_updates, 0, cpufreq);
   for (int l = 0; l < e->sched.nr_tasks; l++) {
-    if (!e->sched.tasks[l].implicit && e->sched.tasks[l].toc != 0) {
+    if (!e->sched.tasks[l].implicit && e->sched.tasks[l].tic > e->tic_step) {
       fprintf(
           file_thread, " %i %i %i %i %lli %lli %i %i %i %i %i\n",
           e->sched.tasks[l].rid, e->sched.tasks[l].type,
@@ -1037,8 +1053,8 @@ void task_dump_stats(const char *dumpfile, struct engine *e, int header,
   for (int l = 0; l < e->sched.nr_tasks; l++) {
     int type = e->sched.tasks[l].type;
 
-    /* Skip implicit tasks, tasks that didn't run. */
-    if (!e->sched.tasks[l].implicit && e->sched.tasks[l].toc != 0) {
+    /* Skip implicit tasks, tasks that didn't run this step. */
+    if (!e->sched.tasks[l].implicit && e->sched.tasks[l].tic > e->tic_step) {
       int subtype = e->sched.tasks[l].subtype;
 
       double dt = e->sched.tasks[l].toc - e->sched.tasks[l].tic;
