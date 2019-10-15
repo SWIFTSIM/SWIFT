@@ -83,7 +83,7 @@ HernquistPotential:
   diskfraction:              0.040   # Disk mass fraction
   bulgefraction:              0.014   # Bulge mass fraction
   timestep_mult:   0.01     # Dimensionless pre-factor for the time-step condition, basically determines the fraction of the orbital time we use to do the time integration
-  epsilon:         0.1      # Softening size (internal units)
+  epsilon:         0.2      # Softening size (internal units)
  
 # EAGLE star formation parameters
 EAGLEStarFormation:
