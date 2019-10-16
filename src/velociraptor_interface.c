@@ -561,23 +561,12 @@ void velociraptor_invoke(struct engine *e, const int linked_with_snap) {
   /* Append base name with the current output number */
   char outputFileName[PARSER_MAX_LINE_SIZE + 128];
 
-  /* What should the filename be? */
-  if (linked_with_snap) {
-    snprintf(outputFileName, PARSER_MAX_LINE_SIZE + 128,
-             "stf_%s_%04i.VELOCIraptor", e->snapshot_base_name,
-             e->snapshot_output_count);
-  } else {
-    snprintf(outputFileName, PARSER_MAX_LINE_SIZE + 128, "%s_%04i.VELOCIraptor",
-             e->stf_base_name, e->stf_output_count);
-  }
-
   /* What is the snapshot number? */
-  int snapnum;
-  if (linked_with_snap) {
-    snapnum = e->snapshot_output_count;
-  } else {
-    snapnum = e->stf_output_count;
-  }
+  int snapnum = e->stf_output_count;
+
+  /* What should the filename be? */
+  snprintf(outputFileName, PARSER_MAX_LINE_SIZE + 128, "%s_%04i.VELOCIraptor",
+           e->stf_base_name, snapnum);
 
   tic = getticks();
 
@@ -653,8 +642,11 @@ void velociraptor_invoke(struct engine *e, const int linked_with_snap) {
   /* Reset the pthread affinity mask after VELOCIraptor returns. */
   pthread_setaffinity_np(thread, sizeof(cpu_set_t), engine_entry_affinity());
 
-  /* Increase output counter (if not linked with snapshots) */
+  /* Increase output counter (if not linked with snapshot) */
   if (!linked_with_snap) e->stf_output_count++;
+
+  /* Record we have ran stf this timestep */
+  e->stf_this_timestep = 1;
 
 #else
   error("SWIFT not configure to run with VELOCIraptor.");
