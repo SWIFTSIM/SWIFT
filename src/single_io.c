@@ -785,8 +785,7 @@ void write_output_single(struct engine* e, const char* baseName,
   else if (e->snapshot_invoke_stf) {
     snprintf(fileName, FILENAME_BUFFER_SIZE, "%s_%04i.hdf5", baseName,
              e->stf_output_count);
-  } 
-  else
+  } else
     snprintf(fileName, FILENAME_BUFFER_SIZE, "%s_%04i.hdf5", baseName,
              e->snapshot_output_count);
 
