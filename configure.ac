@@ -457,20 +457,21 @@ if test "$enable_opt" = "yes" ; then
    # Choose the best flags for the gravity sub-library on this compiler and architecture
    if test "$ax_cv_c_compiler_vendor" = "intel"; then
       if test "$detected_ax_icc_flag" = "-xCORE-AVX512"; then
-         GRAVITY_CFLAGS="-qopt-zmm-usage=high"
+         GRAVITY_CFLAGS="$GRAVITY_CFLAGS -qopt-zmm-usage=high"
       else
          AC_MSG_WARN([No additional flags needed for gravity on this platform])
       fi
    elif test "$ax_cv_c_compiler_vendor" = "gnu"; then
       if test "$detected_ax_gcc_arch" = "skylake-avx512"; then
-         GRAVITY_CFLAGS="-mprefer-vector-width=512"
+         GRAVITY_CFLAGS="$GRAVITY_CFLAGS -mprefer-vector-width=512"
       else
          AC_MSG_WARN([No additional flags needed for gravity on this platform])
       fi
    else
       AC_MSG_WARN([Do not know what best gravity vectorization flags to choose for this compiler])
    fi
-   AC_SUBST([GRAVITY_CFLAGS])
+   AC_ARG_VAR([GRAVITY_CFLAGS], [C compiler flags added to the basic CFLAGS to compile
+   				 the gravity-related files.])
 
    # Check SSE & AVX support (some overlap with AX_CC_MAXOPT).
    # Don't use the SIMD_FLAGS result with Intel compilers. The -x<code>
