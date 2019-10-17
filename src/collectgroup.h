@@ -77,5 +77,7 @@ void collectgroup1_init(
     long long total_nr_cells, long long total_nr_tasks, float tasks_per_cell,
     const struct star_formation_history sfh);
 void collectgroup1_reduce(struct collectgroup1 *grp1);
-
+#ifdef WITH_MPI
+void mpicollect_free_MPI_type(void);
+#endif
 #endif /* SWIFT_COLLECTGROUP_H */

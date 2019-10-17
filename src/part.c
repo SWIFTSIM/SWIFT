@@ -433,4 +433,13 @@ void part_create_mpi_types(void) {
     error("Failed to create MPI type for bparts.");
   }
 }
+
+void part_free_mpi_types(void) {
+
+  MPI_Type_free(&part_mpi_type);
+  MPI_Type_free(&xpart_mpi_type);
+  MPI_Type_free(&gpart_mpi_type);
+  MPI_Type_free(&spart_mpi_type);
+  MPI_Type_free(&bpart_mpi_type);
+}
 #endif

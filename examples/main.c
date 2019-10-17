@@ -1187,8 +1187,11 @@ int main(int argc, char *argv[]) {
     logger_log_all(e.logger, &e);
     engine_dump_index(&e);
 #endif
-    engine_dump_snapshot(&e);
-    engine_print_stats(&e);
+    /* Dump initial state snapshot, if not working with an output list */
+    if (!e.output_list_snapshots) engine_dump_snapshot(&e);
+
+    /* Dump initial state statistics, if not working with an output list */
+    if (!e.output_list_stats) engine_print_stats(&e);
 
     /* Is there a dump before the end of the first time-step? */
     engine_check_for_dumps(&e);
@@ -1374,30 +1377,42 @@ int main(int argc, char *argv[]) {
     engine_current_step = e.step;
 
     engine_drift_all(&e, /*drift_mpole=*/0);
-    engine_print_stats(&e);
+
+    /* Write final statistics? */
+    if (e.output_list_stats) {
+      if (e.output_list_stats->final_step_dump) engine_print_stats(&e);
+    } else {
+      engine_print_stats(&e);
+    }
 #ifdef WITH_LOGGER
     logger_log_all(e.logger, &e);
     engine_dump_index(&e);
 #endif
 
+    /* Write final snapshot? */
+    if ((e.output_list_snapshots && e.output_list_snapshots->final_step_dump) ||
+        !e.output_list_snapshots) {
 #ifdef HAVE_VELOCIRAPTOR
-    if (with_structure_finding && e.snapshot_invoke_stf)
-      velociraptor_invoke(&e, /*linked_with_snap=*/1);
+      if (with_structure_finding && e.snapshot_invoke_stf &&
+          !e.stf_this_timestep)
+        velociraptor_invoke(&e, /*linked_with_snap=*/1);
 #endif
-
-    /* write a final snapshot */
-    engine_dump_snapshot(&e);
-
+      engine_dump_snapshot(&e);
 #ifdef HAVE_VELOCIRAPTOR
-    if (with_structure_finding && e.snapshot_invoke_stf)
-      free(e.s->gpart_group_data);
+      if (with_structure_finding && e.snapshot_invoke_stf &&
+          e.s->gpart_group_data)
+        swift_free("gpart_group_data", e.s->gpart_group_data);
+#endif
+    }
+
+      /* Write final stf? */
+#ifdef HAVE_VELOCIRAPTOR
+    if (with_structure_finding && e.output_list_stf) {
+      if (e.output_list_stf->final_step_dump && !e.stf_this_timestep)
+        velociraptor_invoke(&e, /*linked_with_snap=*/0);
+    }
 #endif
   }
-
-#ifdef WITH_MPI
-  if ((res = MPI_Finalize()) != MPI_SUCCESS)
-    error("call to MPI_Finalize failed with error %i.", res);
-#endif
 
   /* Remove the stop file if used. Do this anyway, we could have missed the
    * stop file if normal exit happened first. */
@@ -1419,6 +1434,11 @@ int main(int argc, char *argv[]) {
   if (with_cooling || with_temperature) cooling_clean(&cooling_func);
   engine_clean(&e, /*fof=*/0);
   free(params);
+
+#ifdef WITH_MPI
+  if ((res = MPI_Finalize()) != MPI_SUCCESS)
+    error("call to MPI_Finalize failed with error %i.", res);
+#endif
 
   /* Say goodbye. */
   if (myrank == 0) message("done. Bye.");
