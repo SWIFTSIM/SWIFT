@@ -472,7 +472,7 @@ if test "$enable_opt" = "yes" ; then
       if test "$gcc_handles_avx512" = "yes"; then
          case "$ax_gcc_arch" in
 	    *skylake-avx512*)
-               [GRAVITY_CFLAGS="$GRAVITY_CFLAGS -mprefer-vector-width=512"],
+               GRAVITY_CFLAGS="$GRAVITY_CFLAGS -mprefer-vector-width=512"
 	       ;;
 	    *)
 	       AC_MSG_WARN([No additional flags needed for gravity on this platform])
