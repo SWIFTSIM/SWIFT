@@ -451,22 +451,25 @@ if test "$enable_opt" = "yes" ; then
    AX_CC_MAXOPT
    ac_test_CFLAGS="yes"
 
-   detected_ax_gcc_arch=`echo $ax_gcc_arch | awk '{print $1;}'`
-   detected_ax_icc_flag=`echo $icc_flags | awk '{print $1;}'`
-
    # Choose the best flags for the gravity sub-library on this compiler and architecture
    if test "$ax_cv_c_compiler_vendor" = "intel"; then
-      if test "$detected_ax_icc_flag" = "-xCORE-AVX512"; then
-         GRAVITY_CFLAGS="$GRAVITY_CFLAGS -qopt-zmm-usage=high"
-      else
-         AC_MSG_WARN([No additional flags needed for gravity on this platform])
-      fi
+      case "$icc_flags" in
+      	 *CORE-AVX512*)
+            GRAVITY_CFLAGS="$GRAVITY_CFLAGS -qopt-zmm-usage=high"
+	    ;;
+	 *)
+	    AC_MSG_WARN([No additional flags needed for gravity on this platform])
+	    ;;
+      esac
    elif test "$ax_cv_c_compiler_vendor" = "gnu"; then
-      if test "$detected_ax_gcc_arch" = "skylake-avx512"; then
-         GRAVITY_CFLAGS="$GRAVITY_CFLAGS -mprefer-vector-width=512"
-      else
-         AC_MSG_WARN([No additional flags needed for gravity on this platform])
-      fi
+      case "$ax_gcc_arch" in
+      	 *skylake-avx512*)
+            GRAVITY_CFLAGS="$GRAVITY_CFLAGS -mprefer-vector-width=512"
+	    ;;
+	 *)
+	    AC_MSG_WARN([No additional flags needed for gravity on this platform])
+	    ;;
+      esac
    else
       AC_MSG_WARN([Do not know what best gravity vectorization flags to choose for this compiler])
    fi
