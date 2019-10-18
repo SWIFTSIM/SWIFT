@@ -71,6 +71,13 @@ AC_USE_SYSTEM_EXTENSIONS
 AX_COMPILER_VENDOR
 AX_COMPILER_VERSION
 
+# Check whether we have a recent enough GCC
+if test "$ax_cv_c_compiler_vendor" = "gnu"; then
+   AX_COMPARE_VERSION([$ax_cv_c_compiler_version], [ge], [8.1.0],
+		      [gcc_handles_avx512="yes"],
+		      [gcc_handles_avx512="no"])
+fi
+
 #  Restrict support.
 AC_C_RESTRICT
 
@@ -462,14 +469,18 @@ if test "$enable_opt" = "yes" ; then
 	    ;;
       esac
    elif test "$ax_cv_c_compiler_vendor" = "gnu"; then
-      case "$ax_gcc_arch" in
-      	 *skylake-avx512*)
-            GRAVITY_CFLAGS="$GRAVITY_CFLAGS -mprefer-vector-width=512"
-	    ;;
-	 *)
-	    AC_MSG_WARN([No additional flags needed for gravity on this platform])
-	    ;;
-      esac
+      if test "$gcc_handles_avx512" = "yes"; then
+         case "$ax_gcc_arch" in
+	    *skylake-avx512*)
+               [GRAVITY_CFLAGS="$GRAVITY_CFLAGS -mprefer-vector-width=512"],
+	       ;;
+	    *)
+	       AC_MSG_WARN([No additional flags needed for gravity on this platform])
+	       ;;
+         esac
+      else
+         AC_MSG_WARN([No additional flags needed for gravity on this platform])
+      fi
    else
       AC_MSG_WARN([Do not know what best gravity vectorization flags to choose for this compiler])
    fi
