@@ -81,20 +81,17 @@ int main(int argc, char **argv) {
 
   const float seconds_per_year = 3.154e7;
 
-  /* switch between checking comoving cooling and subcycling */
-  const int comoving_check = 0;
-
   /* Number of values to test for in redshift,
    * hydrogen number density and internal energy */
-  const int n_z = 5;
-  const int n_nh = 5;
-  const int n_u = 5;
+  const int n_z = 10;
+  const int n_nh = 10;
+  const int n_u = 10;
 
   /* Number of subcycles and tolerance used to compare
    * subcycled and implicit solution. Note, high value
    * of tolerance due to mismatch between explicit and
    * implicit solution for large timesteps */
-  const int n_subcycle = 10000;
+  const int n_subcycle = 1000;
   const float integration_tolerance = 0.2;
 
   /* Read the parameter file */
@@ -169,99 +166,53 @@ int main(int argc, char **argv) {
     for (int u_i = 0; u_i < n_u; u_i++) {
       u_cgs = exp(M_LN10 * log_u_min_cgs + delta_log_u_cgs * u_i);
 
-      /* Calculate cooling solution at redshift zero if we're doing the comoving check */
-      if (comoving_check) {
-          /* reset quantities to nh, u, and z that we want to test */
-          ti_current = max_nr_timesteps;
-          cosmology_update(&cosmo, &phys_const, ti_current);
-          set_quantities(&p, &xp, &us, &cooling, &cosmo, &phys_const, nh_cgs, u_cgs,
-                         ti_current);
-
-          /* Set dt */
-          const integertime_t ti_step = get_integer_timestep(timebin);
-          const integertime_t ti_begin =
-              get_integer_time_begin(ti_current - 1, timebin);
-          dt_cool =
-              cosmology_get_delta_time(&cosmo, ti_begin, ti_begin + ti_step);
-          dt_therm = cosmology_get_therm_kick_factor(&cosmo, ti_begin,
-                                                     ti_begin + ti_step);
-
-          cooling_init(params, &us, &phys_const, &hydro_properties, &cooling);
-          cooling_update(&cosmo, &cooling, 0);
-
-          /* compute implicit solution */
-          cooling_cool_part(&phys_const, &us, &cosmo, &hydro_properties, &floor_props, 
-                            &cooling, &p, &xp, dt_cool, dt_therm);
-          du_dt_check =
-              hydro_get_physical_internal_energy_dt(&p, &cosmo);
-      }
       /* Loop over z */
       for (int z_i = 0; z_i <= n_z; z_i++) {
         ti_current = max_nr_timesteps / n_z * z_i + 1;
 
-        /* If we're not doing comoving check, confirm that implicit and subcycled explicit solution match */
-        if (!comoving_check) {
-          /* update nh, u, z */
-          cosmology_update(&cosmo, &phys_const, ti_current);
-          cooling_init(params, &us, &phys_const, &hydro_properties, &cooling);
-          cooling_update(&cosmo, &cooling, 0);
-          set_quantities(&p, &xp, &us, &cooling, &cosmo, &phys_const, nh_cgs, u_cgs,
-                         ti_current);
+        /* update nh, u, z */
+        cosmology_update(&cosmo, &phys_const, ti_current);
+        cooling_init(params, &us, &phys_const, &hydro_properties, &cooling);
+        cooling_update(&cosmo, &cooling, 0);
+        set_quantities(&p, &xp, &us, &cooling, &cosmo, &phys_const, nh_cgs, u_cgs,
+                       ti_current);
 
-          /* Set dt */
-          const integertime_t ti_step = get_integer_timestep(timebin);
-          const integertime_t ti_begin =
-              get_integer_time_begin(ti_current - 1, timebin);
-          dt_cool =
-              cosmology_get_delta_time(&cosmo, ti_begin, ti_begin + ti_step);
-          dt_therm = cosmology_get_therm_kick_factor(&cosmo, ti_begin,
-                                                     ti_begin + ti_step);
+        /* Set dt */
+        const integertime_t ti_step = get_integer_timestep(timebin);
+        const integertime_t ti_begin =
+            get_integer_time_begin(ti_current - 1, timebin);
+        dt_cool =
+            cosmology_get_delta_time(&cosmo, ti_begin, ti_begin + ti_step);
+        dt_therm = cosmology_get_therm_kick_factor(&cosmo, ti_begin,
+                                                   ti_begin + ti_step);
 
-          /* calculate subcycled solution */
-          for (int t_subcycle = 0; t_subcycle < n_subcycle; t_subcycle++) {
-            p.entropy_dt = 0;
-            cooling_cool_part(&phys_const, &us, &cosmo, &hydro_properties,
-                              &floor_props, &cooling, &p, &xp, dt_cool / n_subcycle,
-                              dt_therm / n_subcycle);
-            xp.entropy_full += p.entropy_dt * dt_therm / n_subcycle;
-          }
-          du_dt_check =
-              hydro_get_physical_internal_energy_dt(&p, &cosmo);
-          
-          /* reset quantities to nh, u, and z that we want to test */
-          cosmology_update(&cosmo, &phys_const, ti_current);
-          set_quantities(&p, &xp, &us, &cooling, &cosmo, &phys_const, nh_cgs, u_cgs,
-                         ti_current);
-          
-          /* compute implicit solution */
-          cooling_cool_part(&phys_const, &us, &cosmo, &hydro_properties, &floor_props, 
-                            &cooling, &p, &xp, dt_cool, dt_therm);
-          du_dt_implicit =
-              hydro_get_physical_internal_energy_dt(&p, &cosmo);
-
-        } else {
-          /* reset to get the comoving density */
-          cosmology_update(&cosmo, &phys_const, ti_current);
-          cosmo.z = 0.f;
-          set_quantities(&p, &xp, &us, &cooling, &cosmo, &phys_const, nh_cgs * cosmo.a*cosmo.a*cosmo.a, u_cgs / cosmo.a2_inv,
-                         ti_current);
-
-          /* Load the appropriate tables */
-          cooling_init(params, &us, &phys_const, &hydro_properties, &cooling);
-          cooling_update(&cosmo, &cooling, 0);
-
-          /* compute implicit solution */
-          cooling_cool_part(&phys_const, &us, &cosmo, &hydro_properties, &floor_props, 
-                            &cooling, &p, &xp, dt_cool, dt_therm);
-          du_dt_implicit =
-              hydro_get_physical_internal_energy_dt(&p, &cosmo);
+        /* calculate subcycled solution */
+        for (int t_subcycle = 0; t_subcycle < n_subcycle; t_subcycle++) {
+          p.entropy_dt = 0;
+          cooling_cool_part(&phys_const, &us, &cosmo, &hydro_properties,
+                            &floor_props, &cooling, &p, &xp, dt_cool / n_subcycle,
+                            dt_therm / n_subcycle);
+          xp.entropy_full += p.entropy_dt * dt_therm / n_subcycle;
         }
+        du_dt_check =
+            hydro_get_physical_internal_energy_dt(&p, &cosmo);
+        
+        /* reset quantities to nh, u, and z that we want to test */
+        cosmology_update(&cosmo, &phys_const, ti_current);
+        set_quantities(&p, &xp, &us, &cooling, &cosmo, &phys_const, nh_cgs, u_cgs,
+                       ti_current);
+        
+        /* compute implicit solution */
+        cooling_cool_part(&phys_const, &us, &cosmo, &hydro_properties, &floor_props, 
+                          &cooling, &p, &xp, dt_cool, dt_therm);
+        du_dt_implicit =
+            hydro_get_physical_internal_energy_dt(&p, &cosmo);
 
         /* check if the two solutions are consistent */
         if (fabs((du_dt_implicit - du_dt_check) / du_dt_check) >
             integration_tolerance || 
             (du_dt_check == 0.0 && du_dt_implicit != 0.0))
-          message(
+          error(
               "Solutions do not match. scale factor %.5e z %.5e nh_cgs %.5e "
               "u_cgs %.5e dt (years) %.5e du cgs implicit %.5e reference %.5e error %.5e",
               cosmo.a, cosmo.z, nh_cgs, 
@@ -273,11 +224,7 @@ int main(int argc, char **argv) {
       }
     }
   }
-  if (comoving_check) {
-    message("done comoving cooling test");
-  } else {
-    message("done explicit subcycling cooling test");
-  }
+  message("done explicit subcycling cooling test");
 
   free(params);
   return 0;
