@@ -34,6 +34,7 @@
 #include "pressure_floor.h"
 #include "pressure_floor_iact.h"
 #include "space_getsid.h"
+#include "star_formation.h"
 #include "stars.h"
 #include "timers.h"
 #include "tracers.h"
@@ -943,6 +944,8 @@ void runner_do_ghost(struct runner *r, struct cell *c, int timer) {
   const struct hydro_space *hs = &s->hs;
   const struct cosmology *cosmo = e->cosmology;
   const struct chemistry_global_data *chemistry = e->chemistry;
+  const struct star_formation *star_formation = e->star_formation;
+  const struct hydro_props *hydro_props = e->hydro_properties;
 
   const int with_cosmology = (e->policy & engine_policy_cosmology);
 
@@ -951,6 +954,8 @@ void runner_do_ghost(struct runner *r, struct cell *c, int timer) {
   const float eps = e->hydro_properties->h_tolerance;
   const float hydro_eta_dim =
       pow_dimension(e->hydro_properties->eta_neighbours);
+  const int use_mass_weighted_num_ngb =
+      e->hydro_properties->use_mass_weighted_num_ngb;
   const int max_smoothing_iter = e->hydro_properties->max_smoothing_iterations;
   int redo = 0, count = 0;
 
@@ -1040,6 +1045,20 @@ void runner_do_ghost(struct runner *r, struct cell *c, int timer) {
           hydro_end_density(p, cosmo);
           chemistry_end_density(p, chemistry, cosmo);
           pressure_floor_end_density(p, cosmo);
+          star_formation_end_density(p, star_formation, cosmo);
+
+          /* Are we using the alternative definition of the
+             number of neighbours? */
+          if (use_mass_weighted_num_ngb) {
+#if defined(GIZMO_MFV_SPH) || defined(GIZMO_MFM_SPH) || defined(SHADOWFAX_SPH)
+            error(
+                "Can't use alternative neighbour definition with this scheme!");
+#else
+            const float inv_mass = 1.f / hydro_get_mass(p);
+            p->density.wcount = p->rho * inv_mass;
+            p->density.wcount_dh = p->density.rho_dh * inv_mass;
+#endif
+          }
 
           /* Compute one step of the Newton-Raphson scheme */
           const float n_sum = p->density.wcount * h_old_dim;
@@ -1077,7 +1096,7 @@ void runner_do_ghost(struct runner *r, struct cell *c, int timer) {
             /* The force variables are set in the extra ghost. */
 
             /* Compute variables required for the gradient loop */
-            hydro_prepare_gradient(p, xp, cosmo);
+            hydro_prepare_gradient(p, xp, cosmo, hydro_props);
 
             /* The particle gradient values are now set.  Do _NOT_
                try to read any particle density variables! */
@@ -1087,8 +1106,6 @@ void runner_do_ghost(struct runner *r, struct cell *c, int timer) {
             hydro_reset_gradient(p);
 
 #else
-            const struct hydro_props *hydro_props = e->hydro_properties;
-
             /* Calculate the time-step for passing to hydro_prepare_force, used
              * for the evolution of alpha factors (i.e. those involved in the
              * artificial viscosity and thermal conduction terms) */
@@ -1189,6 +1206,7 @@ void runner_do_ghost(struct runner *r, struct cell *c, int timer) {
             hydro_init_part(p, hs);
             chemistry_init_part(p, chemistry);
             pressure_floor_init_part(p, xp);
+            star_formation_init_part(p, star_formation);
             tracers_after_init(p, xp, e->internal_units, e->physical_constants,
                                with_cosmology, e->cosmology,
                                e->hydro_properties, e->cooling_func, e->time);
@@ -1211,6 +1229,8 @@ void runner_do_ghost(struct runner *r, struct cell *c, int timer) {
               hydro_part_has_no_neighbours(p, xp, cosmo);
               chemistry_part_has_no_neighbours(p, xp, chemistry, cosmo);
               pressure_floor_part_has_no_neighbours(p, xp, cosmo);
+              star_formation_part_has_no_neighbours(p, xp, star_formation,
+                                                    cosmo);
             }
 
           } else {
@@ -1231,7 +1251,7 @@ void runner_do_ghost(struct runner *r, struct cell *c, int timer) {
         /* The force variables are set in the extra ghost. */
 
         /* Compute variables required for the gradient loop */
-        hydro_prepare_gradient(p, xp, cosmo);
+        hydro_prepare_gradient(p, xp, cosmo, hydro_props);
 
         /* The particle gradient values are now set.  Do _NOT_
            try to read any particle density variables! */
@@ -1240,7 +1260,6 @@ void runner_do_ghost(struct runner *r, struct cell *c, int timer) {
         hydro_reset_gradient(p);
 
 #else
-        const struct hydro_props *hydro_props = e->hydro_properties;
 
         /* Calculate the time-step for passing to hydro_prepare_force, used
          * for the evolution of alpha factors (i.e. those involved in the

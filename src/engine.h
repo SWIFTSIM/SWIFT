@@ -363,6 +363,10 @@ struct engine {
 
   /* Step of last repartition. */
   int last_repartition;
+
+  /* Use synchronous redistributes. */
+  int syncredist;
+
 #endif
 
   /* Wallclock time of the last time-step */
@@ -473,6 +477,9 @@ struct engine {
 
   /* Label of the run */
   char run_name[PARSER_MAX_LINE_SIZE];
+
+  /* Has there been an stf this timestep? */
+  char stf_this_timestep;
 };
 
 /* Function prototypes, engine.c. */

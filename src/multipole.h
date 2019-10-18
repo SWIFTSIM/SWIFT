@@ -215,6 +215,7 @@ struct gravity_tensors {
 extern MPI_Datatype multipole_mpi_type;
 extern MPI_Op multipole_mpi_reduce_op;
 void multipole_create_mpi_types(void);
+void multipole_free_mpi_types(void);
 #endif
 
 /**

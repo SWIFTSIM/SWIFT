@@ -50,11 +50,12 @@ include_HEADERS = space.h runner.h queue.h task.h lock.h cell.h part.h const.h \
     chemistry.h chemistry_io.h chemistry_struct.h cosmology.h restart.h space_getsid.h utilities.h \
     mesh_gravity.h cbrt.h exp10.h velociraptor_interface.h swift_velociraptor_part.h outputlist.h \
     logger_io.h tracers_io.h tracers.h tracers_struct.h star_formation_io.h fof.h fof_struct.h fof_io.h \
-    star_formation_struct.h star_formation.h \
+    star_formation_struct.h star_formation.h star_formation_iact.h \
     star_formation_logger.h star_formation_logger_struct.h \
     pressure_floor.h pressure_floor_struct.h pressure_floor_iact.h \
-    velociraptor_struct.h velociraptor_io.h random.h memuse.h black_holes.h black_holes_io.h \
-    black_holes_properties.h black_holes_struct.h feedback.h feedback_struct.h feedback_properties.h
+    velociraptor_struct.h velociraptor_io.h random.h memuse.h mpiuse.h memuse_rnodes.h \
+    black_holes.h black_holes_io.h black_holes_properties.h black_holes_struct.h \
+    feedback.h feedback_struct.h feedback_properties.h
 
 # source files for EAGLE cooling
 EAGLE_COOLING_SOURCES =
@@ -84,7 +85,7 @@ AM_SOURCES = space.c runner_main.c runner_doiact_hydro.c runner_doiact_grav.c \
     part_type.c xmf.c gravity_properties.c gravity.c \
     collectgroup.c hydro_space.c equation_of_state.c \
     chemistry.c cosmology.c restart.c mesh_gravity.c velociraptor_interface.c \
-    outputlist.c velociraptor_dummy.c logger_io.c memuse.c fof.c \
+    outputlist.c velociraptor_dummy.c logger_io.c memuse.c mpiuse.c memuse_rnodes.c fof.c \
     hashmap.c pressure_floor.c \
     $(EAGLE_COOLING_SOURCES) $(EAGLE_FEEDBACK_SOURCES)
 
@@ -182,11 +183,11 @@ nobase_noinst_HEADERS = align.h approx_math.h atomic.h barrier.h cycle.h error.h
                  potential/isothermal/potential.h potential/disc_patch/potential.h \
                  potential/sine_wave/potential.h \
 		 star_formation/none/star_formation.h star_formation/none/star_formation_struct.h \
-		 star_formation/none/star_formation_io.h \
+		 star_formation/none/star_formation_io.h star_formation/none/star_formation_iact.h \
 		 star_formation/EAGLE/star_formation.h star_formation/EAGLE/star_formation_struct.h \
-		 star_formation/EAGLE/star_formation_io.h \
+		 star_formation/EAGLE/star_formation_io.h star_formation/EAGLE/star_formation_iact.h \
 		 star_formation/GEAR/star_formation.h star_formation/GEAR/star_formation_struct.h \
-		 star_formation/GEAR/star_formation_io.h \
+		 star_formation/GEAR/star_formation_io.h star_formation/GEAR/star_formation_iact.h \
                  star_formation/EAGLE/star_formation_logger.h star_formation/EAGLE/star_formation_logger_struct.h \
                  star_formation/GEAR/star_formation_logger.h star_formation/GEAR/star_formation_logger_struct.h \
                  star_formation/none/star_formation_logger.h star_formation/none/star_formation_logger_struct.h \

@@ -70,7 +70,7 @@ def getSFH(filename, points):
         box_size = f["/Header"].attrs["BoxSize"][0]
         coordinates = f["/PartType4/Coordinates"][:, :]
         mass = f["/PartType4/Masses"][:]
-        birth_time = f["/PartType4/BirthTime"][:]
+        birth_time = f["/PartType4/BirthTimes"][:]
 
     absmaxz = 2  # kpc
     absmaxxy = 10  # kpc
@@ -111,7 +111,7 @@ def getsfrsnapwide(numbsnaps):
         with h5.File(filename, "r") as f:
             box_size = f["/Header"].attrs["BoxSize"][0]
             coordinates = f["/PartType0/Coordinates"][:, :]
-            SFR = f["/PartType0/SFR"][:]
+            SFR = f["/PartType0/StarFormationRates"][:]
             coordinates_star = f["/PartType4/Coordinates"][:, :]
             masses_star = f["/PartType4/Masses"][:]
             time[i] = f["/Header"].attrs["Time"]
@@ -154,7 +154,7 @@ if __name__ == "__main__":
 
     # Calculate the Cumulative sum of the particles from the snap shots
     f = h5.File("./output_0100.hdf5", "r")
-    birthtime = f["/PartType4/BirthTime"][:] * 9.778131e2
+    birthtime = f["/PartType4/BirthTimes"][:] * 9.778131e2
     mass = f["/PartType4/Masses"][:] * 1e10
     CSFH_birth = np.zeros(len(logdata[:, 0]))
     for i in tqdm(range(len(timelog))):

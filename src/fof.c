@@ -52,6 +52,9 @@
 #define UNION_BY_SIZE_OVER_MPI (1)
 #define FOF_COMPRESS_PATHS_MIN_LENGTH (2)
 
+/* Are we timing calculating group properties in the FOF? */
+//#define WITHOUT_GROUP_PROPS
+
 /**
  * @brief Properties of a group used for black hole seeding
  */
@@ -178,6 +181,60 @@ void fof_create_mpi_types() {
 }
 
 /**
+ * @brief Mapper function to set the initial group indices.
+ *
+ * @param map_data The array of group indices.
+ * @param num_elements Chunk size.
+ * @param extra_data Pointer to first group index.
+ */
+void fof_set_initial_group_index_mapper(void *map_data, int num_elements,
+                                        void *extra_data) {
+  size_t *group_index = (size_t *)map_data;
+  size_t *group_index_start = (size_t *)extra_data;
+
+  const ptrdiff_t offset = group_index - group_index_start;
+
+  for (int i = 0; i < num_elements; ++i) {
+    group_index[i] = i + offset;
+  }
+}
+
+/**
+ * @brief Mapper function to set the initial group sizes.
+ *
+ * @param map_data The array of group sizes.
+ * @param num_elements Chunk size.
+ * @param extra_data N/A.
+ */
+void fof_set_initial_group_size_mapper(void *map_data, int num_elements,
+                                       void *extra_data) {
+
+  size_t *group_size = (size_t *)map_data;
+  for (int i = 0; i < num_elements; ++i) {
+    group_size[i] = 1;
+  }
+}
+
+/**
+ * @brief Mapper function to set the initial group IDs.
+ *
+ * @param map_data The array of #gpart%s.
+ * @param num_elements Chunk size.
+ * @param extra_data Pointer to the default group ID.
+ */
+void fof_set_initial_group_id_mapper(void *map_data, int num_elements,
+                                     void *extra_data) {
+
+  /* Unpack the information */
+  struct gpart *gparts = (struct gpart *)map_data;
+  const size_t group_id_default = *((size_t *)extra_data);
+
+  for (int i = 0; i < num_elements; ++i) {
+    gparts[i].fof_data.group_id = group_id_default;
+  }
+}
+
+/**
  * @brief Allocate the memory and initialise the arrays for a FOF calculation.
  *
  * @param s The #space to act on.
@@ -193,6 +250,7 @@ void fof_allocate(const struct space *s, const long long total_nr_DM_particles,
   const double mean_inter_particle_sep =
       s->dim[0] / cbrt((double)total_nr_DM_particles);
   const double l_x = props->l_x_ratio * mean_inter_particle_sep;
+  int verbose = s->e->verbose;
 
   /* Are we using the aboslute value or the one derived from the mean
      inter-particle sepration? */
@@ -222,32 +280,36 @@ void fof_allocate(const struct space *s, const long long total_nr_DM_particles,
         "check more than one layer of top-level cells for links.");
 #endif
 
-  const size_t nr_local_gparts = s->nr_gparts;
-  struct gpart *gparts = s->gparts;
-
   /* Allocate and initialise a group index array. */
   if (swift_memalign("fof_group_index", (void **)&props->group_index, 64,
-                     nr_local_gparts * sizeof(size_t)) != 0)
+                     s->nr_gparts * sizeof(size_t)) != 0)
     error("Failed to allocate list of particle group indices for FOF search.");
 
   /* Allocate and initialise a group size array. */
   if (swift_memalign("fof_group_size", (void **)&props->group_size, 64,
-                     nr_local_gparts * sizeof(size_t)) != 0)
+                     s->nr_gparts * sizeof(size_t)) != 0)
     error("Failed to allocate list of group size for FOF search.");
 
-  /* Set initial group ID of the gparts */
-  const size_t group_id_default = props->group_id_default;
-  for (size_t i = 0; i < nr_local_gparts; i++) {
-    gparts[i].fof_data.group_id = group_id_default;
-  }
+  ticks tic = getticks();
 
-  /* Set initial group index and group size */
-  size_t *group_index = props->group_index;
-  size_t *group_size = props->group_size;
-  for (size_t i = 0; i < nr_local_gparts; i++) {
-    group_index[i] = i;
-    group_size[i] = 1;
-  }
+  /* Set initial group index */
+  threadpool_map(&s->e->threadpool, fof_set_initial_group_index_mapper,
+                 props->group_index, s->nr_gparts, sizeof(size_t), 0,
+                 props->group_index);
+
+  if (verbose)
+    message("Setting initial group index took: %.3f %s.",
+            clocks_from_ticks(getticks() - tic), clocks_getunit());
+
+  tic = getticks();
+
+  /* Set initial group sizes */
+  threadpool_map(&s->e->threadpool, fof_set_initial_group_size_mapper,
+                 props->group_size, s->nr_gparts, sizeof(size_t), 0, NULL);
+
+  if (verbose)
+    message("Setting initial group sizes took: %.3f %s.",
+            clocks_from_ticks(getticks() - tic), clocks_getunit());
 
 #ifdef SWIFT_DEBUG_CHECKS
   ti_current = s->e->ti_current;
@@ -375,6 +437,7 @@ __attribute__((always_inline)) INLINE static size_t fof_find_global(
 
 #endif /* WITH_MPI */
 
+#ifndef WITHOUT_GROUP_PROPS
 /**
  * @brief   Finds the local root ID of the group a particle exists in
  * when group_index contains globally unique identifiers -
@@ -409,6 +472,7 @@ __attribute__((always_inline)) INLINE static size_t fof_find_local(
   return root;
 #endif
 }
+#endif /* #ifndef WITHOUT_GROUP_PROPS */
 
 /**
  * @brief Finds the local root ID of the group a particle exists in.
@@ -1979,6 +2043,58 @@ void fof_dump_group_data(const struct fof_props *props,
   fclose(file);
 }
 
+struct mapper_data {
+  size_t *group_index;
+  size_t *group_size;
+  size_t nr_gparts;
+  struct gpart *space_gparts;
+};
+
+/**
+ * @brief Mapper function to set the roots of #gpart%s going to other MPI ranks.
+ *
+ * @param map_data The list of outgoing local cells.
+ * @param num_elements Chunk size.
+ * @param extra_data Pointer to mapper data.
+ */
+void fof_set_outgoing_root_mapper(void *map_data, int num_elements,
+                                  void *extra_data) {
+#ifdef WITH_MPI
+
+  /* Unpack the data */
+  struct cell **local_cells = (struct cell **)map_data;
+  const struct mapper_data *data = (struct mapper_data *)extra_data;
+  const size_t *const group_index = data->group_index;
+  const size_t *const group_size = data->group_size;
+  const size_t nr_gparts = data->nr_gparts;
+  const struct gpart *const space_gparts = data->space_gparts;
+
+  /* Loop over the out-going local cells */
+  for (int i = 0; i < num_elements; ++i) {
+
+    /* Get the cell and its gparts */
+    struct cell *local_cell = local_cells[i];
+    struct gpart *gparts = local_cell->grav.parts;
+
+    /* Make a list of particle offsets into the global gparts array. */
+    const size_t *const offset =
+        group_index + (ptrdiff_t)(gparts - space_gparts);
+
+    /* Set each particle's root and group properties found in the local FOF.*/
+    for (int k = 0; k < local_cell->grav.count; k++) {
+      const size_t root =
+          fof_find_global(offset[k] - node_offset, group_index, nr_gparts);
+
+      gparts[k].fof_data.group_id = root;
+      gparts[k].fof_data.group_size = group_size[root - node_offset];
+    }
+  }
+
+#else
+  error("Calling MPI function in non-MPI mode");
+#endif
+}
+
 /**
  * @brief Search foreign cells for links and communicate any found to the
  * appropriate node.
@@ -2031,6 +2147,12 @@ void fof_search_foreign_cells(struct fof_props *props, const struct space *s) {
     }
   }
 
+  if (verbose)
+    message(
+        "Finding max no. of cells + offset IDs"
+        "took: %.3f %s.",
+        clocks_from_ticks(getticks() - tic), clocks_getunit());
+
   const int cell_pair_size = num_cells_in * num_cells_out;
 
   if (swift_memalign("fof_group_links", (void **)&props->group_links,
@@ -2042,6 +2164,8 @@ void fof_search_foreign_cells(struct fof_props *props, const struct space *s) {
                      SWIFT_STRUCT_ALIGNMENT,
                      cell_pair_size * sizeof(struct cell_pair_indices)) != 0)
     error("Error while allocating memory for FOF cell pair indices");
+
+  ticks tic_pairs = getticks();
 
   /* Loop over cells_in and cells_out for each proxy and find which cells are in
    * range of each other to perform the FOF search. Store local cells that are
@@ -2085,26 +2209,47 @@ void fof_search_foreign_cells(struct fof_props *props, const struct space *s) {
     }
   }
 
-  /* Set the root of outgoing particles. */
-  for (int i = 0; i < e->nr_proxies; i++) {
+  if (verbose)
+    message(
+        "Finding local/foreign cell pairs"
+        "took: %.3f %s.",
+        clocks_from_ticks(getticks() - tic_pairs), clocks_getunit());
 
+  ticks tic_set_roots = getticks();
+
+  /* Set the root of outgoing particles. */
+
+  /* Allocate array of outgoing cells and populate it */
+  struct cell **local_cells = malloc(num_cells_out * sizeof(struct cell *));
+  int count = 0;
+  for (int i = 0; i < e->nr_proxies; i++) {
     for (int j = 0; j < e->proxies[i].nr_cells_out; j++) {
 
-      struct cell *restrict local_cell = e->proxies[i].cells_out[j];
-      struct gpart *gparts = local_cell->grav.parts;
+      /* Only include gravity cells. */
+      if (e->proxies[i].cells_out_type[j] & proxy_cell_type_gravity) {
 
-      /* Make a list of particle offsets into the global gparts array. */
-      size_t *const offset = group_index + (ptrdiff_t)(gparts - s->gparts);
-
-      /* Set each particle's root and group properties found in the local FOF.*/
-      for (int k = 0; k < local_cell->grav.count; k++) {
-        const size_t root =
-            fof_find_global(offset[k] - node_offset, group_index, nr_gparts);
-        gparts[k].fof_data.group_id = root;
-        gparts[k].fof_data.group_size = group_size[root - node_offset];
+        local_cells[count] = e->proxies[i].cells_out[j];
+        ++count;
       }
     }
   }
+
+  /* Now set the roots */
+  struct mapper_data data;
+  data.group_index = group_index;
+  data.group_size = group_size;
+  data.nr_gparts = nr_gparts;
+  data.space_gparts = s->gparts;
+  threadpool_map(&e->threadpool, fof_set_outgoing_root_mapper, local_cells,
+                 num_cells_out, sizeof(struct cell **), 0, &data);
+
+  if (verbose)
+    message(
+        "Initialising particle roots "
+        "took: %.3f %s.",
+        clocks_from_ticks(getticks() - tic_set_roots), clocks_getunit());
+
+  free(local_cells);
 
   if (verbose)
     message(
@@ -2112,6 +2257,7 @@ void fof_search_foreign_cells(struct fof_props *props, const struct space *s) {
         "took: %.3f %s.",
         clocks_from_ticks(getticks() - tic), clocks_getunit());
 
+  /* Activate the tasks exchanging all the required gparts */
   engine_activate_gpart_comms(e);
 
   ticks local_fof_tic = getticks();
@@ -2395,7 +2541,11 @@ void fof_search_tree(struct fof_props *props,
 
   const size_t nr_gparts = s->nr_gparts;
   const size_t min_group_size = props->min_group_size;
+#ifndef WITHOUT_GROUP_PROPS
   const size_t group_id_offset = props->group_id_offset;
+  const size_t group_id_default = props->group_id_default;
+#endif
+
 #ifdef WITH_MPI
   const int nr_nodes = s->e->nr_nodes;
 #endif
@@ -2415,8 +2565,6 @@ void fof_search_tree(struct fof_props *props,
   if (engine_rank == 0 && verbose)
     message("Size of hash table element: %ld", sizeof(hashmap_element_t));
 
-  const size_t group_id_default = props->group_id_default;
-
 #ifdef WITH_MPI
 
   /* Reset global variable */
@@ -2425,8 +2573,16 @@ void fof_search_tree(struct fof_props *props,
   /* Determine number of gparts on lower numbered MPI ranks */
   long long nr_gparts_cumulative;
   long long nr_gparts_local = s->nr_gparts;
+
+  ticks comms_tic = getticks();
+
   MPI_Scan(&nr_gparts_local, &nr_gparts_cumulative, 1, MPI_LONG_LONG, MPI_SUM,
            MPI_COMM_WORLD);
+
+  if (verbose)
+    message("MPI_Scan Imbalance took: %.3f %s.",
+            clocks_from_ticks(getticks() - comms_tic), clocks_getunit());
+
   node_offset = nr_gparts_cumulative - nr_gparts_local;
 
   snprintf(output_file_name + strlen(output_file_name), FILENAME_BUFFER_SIZE,
@@ -2444,9 +2600,8 @@ void fof_search_tree(struct fof_props *props,
 
   threadpool_map(&s->e->threadpool, fof_calc_group_size_mapper, gparts,
                  nr_gparts, sizeof(struct gpart), 0, s);
-
   if (verbose)
-    message("FOF calc group size took (scaling): %.3f %s.",
+    message("FOF calc group size took (FOF SCALING): %.3f %s.",
             clocks_from_ticks(getticks() - tic_calc_group_size),
             clocks_getunit());
 
@@ -2458,14 +2613,26 @@ void fof_search_tree(struct fof_props *props,
     /* Search for group links across MPI domains. */
     fof_search_foreign_cells(props, s);
 
-    if (verbose)
-      message("fof_search_foreign_cells() took: %.3f %s.",
+    if (verbose) {
+      message("fof_search_foreign_cells() took (FOF SCALING): %.3f %s.",
               clocks_from_ticks(getticks() - tic_mpi), clocks_getunit());
+
+      message(
+          "fof_search_foreign_cells() + calc_group_size took (FOF SCALING): "
+          "%.3f "
+          "%s.",
+          clocks_from_ticks(getticks() - tic_total), clocks_getunit());
+    }
   }
 #endif
 
-  size_t num_groups_local = 0, num_parts_in_groups_local = 0,
-         max_group_size_local = 0;
+  size_t num_groups_local = 0;
+#ifndef WITHOUT_GROUP_PROPS
+  size_t num_parts_in_groups_local = 0;
+  size_t max_group_size_local = 0;
+#endif
+
+  ticks tic_num_groups_calc = getticks();
 
   for (size_t i = 0; i < nr_gparts; i++) {
 
@@ -2479,6 +2646,7 @@ void fof_search_tree(struct fof_props *props,
       num_groups_local++;
 #endif
 
+#ifndef WITHOUT_GROUP_PROPS
     /* Find the total number of particles in groups. */
     if (group_size[i] >= min_group_size)
       num_parts_in_groups_local += group_size[i];
@@ -2486,10 +2654,18 @@ void fof_search_tree(struct fof_props *props,
     /* Find the largest group. */
     if (group_size[i] > max_group_size_local)
       max_group_size_local = group_size[i];
+#endif
   }
 
-  /* Sort the groups in descending order based upon size and re-label their IDs
-   * 0-num_groups. */
+  if (verbose)
+    message(
+        "Calculating the total no. of local groups took: (FOF SCALING): %.3f "
+        "%s.",
+        clocks_from_ticks(getticks() - tic_num_groups_calc), clocks_getunit());
+
+    /* Sort the groups in descending order based upon size and re-label their
+     * IDs 0-num_groups. */
+#ifndef WITHOUT_GROUP_PROPS
   struct group_length *high_group_sizes = NULL;
   int group_count = 0;
 
@@ -2514,21 +2690,35 @@ void fof_search_tree(struct fof_props *props,
   }
 
   ticks tic = getticks();
+#endif /* #ifndef WITHOUT_GROUP_PROPS */
 
   /* Find global properties. */
 #ifdef WITH_MPI
   MPI_Allreduce(&num_groups_local, &num_groups, 1, MPI_INT, MPI_SUM,
                 MPI_COMM_WORLD);
+
+  if (verbose)
+    message("Finding the total no. of groups took: (FOF SCALING): %.3f %s.",
+            clocks_from_ticks(getticks() - tic_num_groups_calc),
+            clocks_getunit());
+
+#ifndef WITHOUT_GROUP_PROPS
   MPI_Reduce(&num_parts_in_groups_local, &num_parts_in_groups, 1, MPI_INT,
              MPI_SUM, 0, MPI_COMM_WORLD);
   MPI_Reduce(&max_group_size_local, &max_group_size, 1, MPI_INT, MPI_MAX, 0,
              MPI_COMM_WORLD);
+#endif /* #ifndef WITHOUT_GROUP_PROPS */
 #else
   num_groups = num_groups_local;
+
+#ifndef WITHOUT_GROUP_PROPS
   num_parts_in_groups = num_parts_in_groups_local;
   max_group_size = max_group_size_local;
+#endif /* #ifndef WITHOUT_GROUP_PROPS */
 #endif /* WITH_MPI */
   props->num_groups = num_groups;
+
+#ifndef WITHOUT_GROUP_PROPS
 
   /* Find number of groups on lower numbered MPI ranks */
 #ifdef WITH_MPI
@@ -2538,19 +2728,29 @@ void fof_search_tree(struct fof_props *props,
   const size_t num_groups_prev = (size_t)(ngsum - nglocal);
 #endif /* WITH_MPI */
 
+  if (verbose)
+    message("Finding the total no. of groups took: (FOF SCALING): %.3f %s.",
+            clocks_from_ticks(getticks() - tic_num_groups_calc),
+            clocks_getunit());
+
   /* Sort local groups into descending order of size */
   qsort(high_group_sizes, num_groups_local, sizeof(struct group_length),
         cmp_func_group_size);
 
-  /* Set default group ID for all particles */
-  for (size_t i = 0; i < nr_gparts; i++)
-    gparts[i].fof_data.group_id = group_id_default;
+  tic = getticks();
 
-  /*
-    Assign final group IDs to local root particles where the global root is on
-    this node and the group is large enough. Within a node IDs are assigned in
-    descending order of particle number.
-  */
+  /* Set default group ID for all particles */
+  threadpool_map(&s->e->threadpool, fof_set_initial_group_id_mapper, s->gparts,
+                 s->nr_gparts, sizeof(struct gpart), 0,
+                 (void *)&group_id_default);
+
+  if (verbose)
+    message("Setting default group ID took: %.3f %s.",
+            clocks_from_ticks(getticks() - tic), clocks_getunit());
+
+  /* Assign final group IDs to local root particles where the global root is
+   * on this node and the group is large enough. Within a node IDs are
+   * assigned in descending order of particle number. */
   for (size_t i = 0; i < num_groups_local; i++) {
 #ifdef WITH_MPI
     gparts[high_group_sizes[i].index - node_offset].fof_data.group_id =
@@ -2561,24 +2761,21 @@ void fof_search_tree(struct fof_props *props,
   }
 
 #ifdef WITH_MPI
-  /*
-     Now, for each local root where the global root is on some other node
-     AND the total size of the group is >= min_group_size we need to retrieve
-     the gparts.group_id we just assigned to the global root.
 
-     Will do that by sending the group_index of these lcoal roots to the node
-     where their global root is stored and receiving back the new group_id
-     associated with that particle.
-  */
-
-  /*
-     Identify local roots with global root on another node and large enough
-     group_size. Store index of the local and global roots in these cases.
-
-     NOTE: if group_size only contains the total FoF mass for global roots,
-     then we have to communicate ALL fragments where the global root is not
-     on this node. Hence the commented out extra conditions below.
-  */
+  /* Now, for each local root where the global root is on some other node
+   * AND the total size of the group is >= min_group_size we need to
+   * retrieve the gparts.group_id we just assigned to the global root.
+   *
+   * Will do that by sending the group_index of these lcoal roots to the
+   * node where their global root is stored and receiving back the new
+   * group_id associated with that particle.
+   *
+   * Identify local roots with global root on another node and large enough
+   * group_size. Store index of the local and global roots in these cases.
+   *
+   * NOTE: if group_size only contains the total FoF mass for global roots,
+   * then we have to communicate ALL fragments where the global root is not
+   * on this node. Hence the commented out extra conditions below.*/
   size_t nsend = 0;
   for (size_t i = 0; i < nr_gparts; i += 1) {
     if ((!is_local(group_index[i],
@@ -2723,6 +2920,7 @@ void fof_search_tree(struct fof_props *props,
 
   /* Free the left-overs */
   swift_free("fof_high_group_sizes", high_group_sizes);
+#endif /* #ifndef WITHOUT_GROUP_PROPS */
   swift_free("fof_group_index", props->group_index);
   swift_free("fof_group_size", props->group_size);
   swift_free("fof_group_mass", props->group_mass);

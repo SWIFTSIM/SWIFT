@@ -46,6 +46,7 @@
 #include "error.h"
 #include "inline.h"
 #include "lock.h"
+#include "mpiuse.h"
 
 /* Task type names. */
 const char *taskID_names[task_type_count] = {"none",
@@ -552,6 +553,12 @@ int task_lock(struct task *t) {
             "%s).",
             taskID_names[t->type], subtaskID_names[t->subtype], t->flags, buff);
       }
+
+      /* And log deactivation, if logging enabled. */
+      if (res) {
+        mpiuse_log_allocation(t->type, t->subtype, &t->req, 0, 0, 0, 0);
+      }
+
       return res;
 #else
       error("SWIFT was not compiled with MPI support.");
@@ -872,6 +879,14 @@ void task_get_full_name(int type, int subtype, char *name) {
 void task_create_mpi_comms(void) {
   for (int i = 0; i < task_subtype_count; i++) {
     MPI_Comm_dup(MPI_COMM_WORLD, &subtaskMPI_comms[i]);
+  }
+}
+/**
+ * @brief Create global communicators for each of the subtasks.
+ */
+void task_free_mpi_comms(void) {
+  for (int i = 0; i < task_subtype_count; i++) {
+    MPI_Comm_free(&subtaskMPI_comms[i]);
   }
 }
 #endif
