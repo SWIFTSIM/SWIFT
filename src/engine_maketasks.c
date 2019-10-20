@@ -50,6 +50,7 @@
 #include "debug.h"
 #include "error.h"
 #include "proxy.h"
+#include "task_order.h"
 #include "timers.h"
 
 extern int engine_max_parts_per_ghost;
@@ -1022,7 +1023,8 @@ void engine_make_hierarchical_tasks_hydro(struct engine *e, struct cell *c,
   /* Are we are the level where we create the stars' resort tasks?
    * If the tree is shallow, we need to do this at the super-level if the
    * super-level is above the level we want */
-  if ((c->nodeID == e->nodeID) && (star_resort_cell == NULL) &&
+  if (task_order_need_resort_stars &&
+      (c->nodeID == e->nodeID) && (star_resort_cell == NULL) &&
       (c->depth == engine_star_resort_task_depth || c->hydro.super == c)) {
 
     if (with_star_formation && c->hydro.count > 0) {
@@ -1131,8 +1133,7 @@ void engine_make_hierarchical_tasks_hydro(struct engine *e, struct cell *c,
         scheduler_addunlock(s, c->stars.stars_out, c->super->timestep);
 
         if (with_star_formation && c->hydro.count > 0) {
-          scheduler_addunlock(s, star_resort_cell->hydro.stars_resort,
-                              c->stars.stars_in);
+          task_order_addunlock_star_formation_feedback(s, c, star_resort_cell);
         }
       }
 

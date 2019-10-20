@@ -67,6 +67,7 @@
 #include "space_getsid.h"
 #include "star_formation.h"
 #include "stars.h"
+#include "task_order.h"
 #include "timers.h"
 #include "tools.h"
 #include "tracers.h"
@@ -2476,7 +2477,9 @@ void cell_activate_star_formation_tasks(struct cell *c, struct scheduler *s) {
   scheduler_activate(s, c->hydro.star_formation);
 
   /* Activate the star resort tasks at whatever level they are */
-  cell_activate_star_resort_tasks(c, s);
+  if (task_order_need_resort_stars) {
+    cell_activate_star_resort_tasks(c, s);
+  }
 }
 
 /**
