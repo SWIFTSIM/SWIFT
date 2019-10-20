@@ -258,7 +258,8 @@ void engine_addtasks_send_stars(struct engine *e, struct cell *ci,
   /* Early abort (are we below the level where tasks are)? */
   if (!cell_get_flag(ci, cell_flag_has_tasks)) return;
 
-  if (t_sf_counts == NULL && with_star_formation && ci->hydro.count > 0) {
+  if (task_order_star_formation_before_feedback &&
+      t_sf_counts == NULL && with_star_formation && ci->hydro.count > 0) {
 #ifdef SWIFT_DEBUG_CHECKS
     if (ci->depth != 0)
       error(
@@ -306,7 +307,8 @@ void engine_addtasks_send_stars(struct engine *e, struct cell *ci,
 
     engine_addlink(e, &ci->mpi.send, t_feedback);
     engine_addlink(e, &ci->mpi.send, t_ti);
-    if (with_star_formation && ci->hydro.count > 0) {
+    if (task_order_star_formation_before_feedback &&
+        with_star_formation && ci->hydro.count > 0) {
       engine_addlink(e, &ci->mpi.send, t_sf_counts);
     }
   }
@@ -552,7 +554,8 @@ void engine_addtasks_recv_stars(struct engine *e, struct cell *c,
   /* Early abort (are we below the level where tasks are)? */
   if (!cell_get_flag(c, cell_flag_has_tasks)) return;
 
-  if (t_sf_counts == NULL && with_star_formation && c->hydro.count > 0) {
+  if (task_order_star_formation_before_feedback &&
+      t_sf_counts == NULL && with_star_formation && c->hydro.count > 0) {
 #ifdef SWIFT_DEBUG_CHECKS
     if (c->depth != 0)
       error(
@@ -579,7 +582,8 @@ void engine_addtasks_recv_stars(struct engine *e, struct cell *c,
     t_ti = scheduler_addtask(s, task_type_recv, task_subtype_tend_spart,
                              c->mpi.tag, 0, c, NULL);
 
-    if (with_star_formation && c->hydro.count > 0) {
+    if (task_order_star_formation_before_feedback &&
+        with_star_formation && c->hydro.count > 0) {
 
       /* Receive the stars only once the counts have been received */
       scheduler_addunlock(s, t_sf_counts, t_feedback);
@@ -589,7 +593,8 @@ void engine_addtasks_recv_stars(struct engine *e, struct cell *c,
   if (t_feedback != NULL) {
     engine_addlink(e, &c->mpi.recv, t_feedback);
     engine_addlink(e, &c->mpi.recv, t_ti);
-    if (with_star_formation && c->hydro.count > 0) {
+    if (task_order_star_formation_before_feedback &&
+        with_star_formation && c->hydro.count > 0) {
       engine_addlink(e, &c->mpi.recv, t_sf_counts);
     }
 
@@ -1023,7 +1028,7 @@ void engine_make_hierarchical_tasks_hydro(struct engine *e, struct cell *c,
   /* Are we are the level where we create the stars' resort tasks?
    * If the tree is shallow, we need to do this at the super-level if the
    * super-level is above the level we want */
-  if (task_order_need_resort_stars &&
+  if (task_order_star_formation_before_feedback &&
       (c->nodeID == e->nodeID) && (star_resort_cell == NULL) &&
       (c->depth == engine_star_resort_task_depth || c->hydro.super == c)) {
 

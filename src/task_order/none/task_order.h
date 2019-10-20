@@ -22,7 +22,7 @@
 
 #include "cell.h"
 
-#define task_order_need_resort_stars 1
+#define task_order_star_formation_before_feedback 1
 
 
 __attribute__((always_inline)) INLINE static void task_order_addunlock_star_formation_feedback(

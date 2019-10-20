@@ -2477,7 +2477,7 @@ void cell_activate_star_formation_tasks(struct cell *c, struct scheduler *s) {
   scheduler_activate(s, c->hydro.star_formation);
 
   /* Activate the star resort tasks at whatever level they are */
-  if (task_order_need_resort_stars) {
+  if (task_order_star_formation_before_feedback) {
     cell_activate_star_resort_tasks(c, s);
   }
 }
@@ -3461,12 +3461,16 @@ int cell_unskip_hydro_tasks(struct cell *c, struct scheduler *s) {
         /* Propagating new star counts? */
         if (with_star_formation && with_feedback) {
           if (ci_active && ci->hydro.count > 0) {
-            scheduler_activate_recv(s, ci->mpi.recv, task_subtype_sf_counts);
+            if (task_order_star_formation_before_feedback) {
+              scheduler_activate_recv(s, ci->mpi.recv, task_subtype_sf_counts);
+            }
             scheduler_activate_recv(s, ci->mpi.recv, task_subtype_tend_spart);
           }
           if (cj_active && cj->hydro.count > 0) {
-            scheduler_activate_send(s, cj->mpi.send, task_subtype_sf_counts,
-                                    ci_nodeID);
+            if (task_order_star_formation_before_feedback) {
+              scheduler_activate_send(s, cj->mpi.send, task_subtype_sf_counts,
+                                      ci_nodeID);
+            }
             scheduler_activate_send(s, cj->mpi.send, task_subtype_tend_spart,
                                     ci_nodeID);
           }
@@ -3526,12 +3530,16 @@ int cell_unskip_hydro_tasks(struct cell *c, struct scheduler *s) {
         /* Propagating new star counts? */
         if (with_star_formation && with_feedback) {
           if (cj_active && cj->hydro.count > 0) {
-            scheduler_activate_recv(s, cj->mpi.recv, task_subtype_sf_counts);
+            if (task_order_star_formation_before_feedback) {
+              scheduler_activate_recv(s, cj->mpi.recv, task_subtype_sf_counts);
+            }
             scheduler_activate_recv(s, cj->mpi.recv, task_subtype_tend_spart);
           }
           if (ci_active && ci->hydro.count > 0) {
-            scheduler_activate_send(s, ci->mpi.send, task_subtype_sf_counts,
-                                    cj_nodeID);
+            if (task_order_star_formation_before_feedback) {
+              scheduler_activate_send(s, ci->mpi.send, task_subtype_sf_counts,
+                                      cj_nodeID);
+            }
             scheduler_activate_send(s, ci->mpi.send, task_subtype_tend_spart,
                                     cj_nodeID);
           }

@@ -24,6 +24,10 @@
 
 #ifdef TASK_ORDER_NONE
 #include "task_order/none/task_order.h"
+#elif TASK_ORDER_GEAR
+#include "task_order/GEAR/task_order.h"
+#elif TASK_ORDER_EAGLE
+#include "task_order/EAGLE/task_order.h"
 #else
 #error undefined task order
 #endif
