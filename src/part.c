@@ -391,6 +391,10 @@ void part_verify_links(struct part *parts, struct gpart *gparts,
 #ifdef WITH_MPI
 /* MPI data type for the particle transfers */
 MPI_Datatype part_mpi_type;
+int part_mpi_type_size;
+MPI_Datatype part_mpi_xvtype;
+int part_mpi_xvtype_size;
+
 MPI_Datatype xpart_mpi_type;
 MPI_Datatype gpart_mpi_type;
 MPI_Datatype spart_mpi_type;
@@ -432,11 +436,40 @@ void part_create_mpi_types(void) {
       MPI_Type_commit(&bpart_mpi_type) != MPI_SUCCESS) {
     error("Failed to create MPI type for bparts.");
   }
+
+  /* Types for sending specific fields of our structs.
+   * -------------------------------------------------
+   * We use MPI_Type_indexed to pick out elements of the struct that we want
+   * to send, note that guard elements at byte 0 and the last byte must also
+   * be included to keep the stride of the struct in alignment. If the first
+   * and last elements are named then don't add guard bytes. */
+
+
+  /* "task_subtype_xv:" send three doubles in the "x" field. */
+  int displacements[3];
+  displacements[0] = 0;
+  displacements[1] = offsetof(struct part, x);
+  displacements[2] = sizeof(struct part) - 1;
+
+  int block_lengths[3] = {1,                     // First byte.
+                          3 * sizeof(double),    // x[3]
+                          1};                    // Last byte.
+
+  if (MPI_Type_indexed(3, block_lengths, displacements, MPI_BYTE,
+                       &part_mpi_xvtype) != MPI_SUCCESS ||
+      MPI_Type_commit(&part_mpi_xvtype) != MPI_SUCCESS) {
+    error("Failed to create MPI type for xvparts.");
+  }
+
+  /* Get sizes for efficiency. */
+  MPI_Type_size(part_mpi_xvtype, &part_mpi_xvtype_size);
+  MPI_Type_size(part_mpi_type, &part_mpi_type_size);
 }
 
 void part_free_mpi_types(void) {
 
   MPI_Type_free(&part_mpi_type);
+  MPI_Type_free(&part_mpi_xvtype);
   MPI_Type_free(&xpart_mpi_type);
   MPI_Type_free(&gpart_mpi_type);
   MPI_Type_free(&spart_mpi_type);

@@ -185,6 +185,10 @@ struct task {
   /*! MPI request corresponding to this task */
   MPI_Request req;
 
+  /*! Need a full send (after cell teardown), otherwise we can send partial
+   *  updates.*/
+  int sendfull;
+
 #endif
 
   /*! Rank of a task in the order */

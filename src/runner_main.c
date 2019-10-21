@@ -369,7 +369,13 @@ void *runner_main(void *data) {
           break;
 #ifdef WITH_MPI
         case task_type_send:
-          if (t->subtype == task_subtype_tend_part) {
+
+          if (t->subtype == task_subtype_xv) {
+            /* Sent all the attributes at least once, OK to send partial
+             * updates now. */
+            //message("send: %d %s/%s %d", t->sendfull, t->type, t->subtype, t->flags);
+            t->sendfull = 0;
+          } else if (t->subtype == task_subtype_tend_part) {
             free(t->buff);
           } else if (t->subtype == task_subtype_tend_gpart) {
             free(t->buff);
@@ -404,6 +410,10 @@ void *runner_main(void *data) {
             cell_clear_stars_sort_flags(ci, /*clear_unused_flags=*/0);
             free(t->buff);
           } else if (t->subtype == task_subtype_xv) {
+            /* Received all the attributes at least once, OK to send partial
+             * updates now. */
+            //message("send: %d %s/%s %d", t->sendfull, t->type, t->subtype, t->flags);
+            t->sendfull = 0;
             runner_do_recv_part(r, ci, 1, 1);
           } else if (t->subtype == task_subtype_rho) {
             runner_do_recv_part(r, ci, 0, 1);

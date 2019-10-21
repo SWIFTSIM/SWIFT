@@ -1739,8 +1739,20 @@ void scheduler_enqueue(struct scheduler *s, struct task *t) {
               sizeof(struct black_holes_bpart_data) * t->ci->black_holes.count;
           buff = t->buff = malloc(count);
 
-        } else if (t->subtype == task_subtype_xv ||
-                   t->subtype == task_subtype_rho ||
+        } else if (t->subtype == task_subtype_xv) {
+          if (t->sendfull) {
+            count = t->ci->hydro.count;
+            size = count * sizeof(struct part);
+            type = part_mpi_type;
+            buff = t->ci->hydro.parts;
+          } else {
+            count = t->ci->hydro.count;
+            size = count * part_mpi_xvtype_size;
+            type = part_mpi_xvtype;
+            buff = t->ci->hydro.parts;
+          }
+
+        } else if (t->subtype == task_subtype_rho ||
                    t->subtype == task_subtype_gradient) {
 
           count = t->ci->hydro.count;
@@ -1855,8 +1867,21 @@ void scheduler_enqueue(struct scheduler *s, struct task *t) {
           cell_pack_bpart_swallow(t->ci,
                                   (struct black_holes_bpart_data *)t->buff);
 
-        } else if (t->subtype == task_subtype_xv ||
-                   t->subtype == task_subtype_rho ||
+        } else if (t->subtype == task_subtype_xv) {
+
+          if (t->sendfull) {
+            count = t->ci->hydro.count;
+            size = count * sizeof(struct part);
+            type = part_mpi_type;
+            buff = t->ci->hydro.parts;
+          } else {
+            count = t->ci->hydro.count;
+            size = count * part_mpi_xvtype_size;
+            type = part_mpi_xvtype;
+            buff = t->ci->hydro.parts;
+          }
+
+        } else if (t->subtype == task_subtype_rho ||
                    t->subtype == task_subtype_gradient) {
 
           count = t->ci->hydro.count;

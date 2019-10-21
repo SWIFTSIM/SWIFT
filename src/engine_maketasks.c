@@ -164,6 +164,10 @@ void engine_addtasks_send_hydro(struct engine *e, struct cell *ci,
 
       t_xv = scheduler_addtask(s, task_type_send, task_subtype_xv, ci->mpi.tag,
                                0, ci, cj);
+
+      /* We send full data first time this task runs. */
+      t_xv->sendfull = 1;
+
       t_rho = scheduler_addtask(s, task_type_send, task_subtype_rho,
                                 ci->mpi.tag, 0, ci, cj);
 
@@ -460,6 +464,10 @@ void engine_addtasks_recv_hydro(struct engine *e, struct cell *c,
     /* Create the tasks. */
     t_xv = scheduler_addtask(s, task_type_recv, task_subtype_xv, c->mpi.tag, 0,
                              c, NULL);
+
+    /* Expecting a full send first time. */
+    t_xv->sendfull = 1;
+
     t_rho = scheduler_addtask(s, task_type_recv, task_subtype_rho, c->mpi.tag,
                               0, c, NULL);
 #ifdef EXTRA_HYDRO_LOOP
