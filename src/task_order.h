@@ -32,4 +32,4 @@
 #error undefined task order
 #endif
 
-#endif // SWIFT_TASK_ORDER_H
+#endif  // SWIFT_TASK_ORDER_H

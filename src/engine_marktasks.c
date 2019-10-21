@@ -517,14 +517,15 @@ void engine_marktasks_mapper(void *map_data, int num_elements,
           if (with_star_formation && with_feedback) {
             if (ci_active_hydro && ci->hydro.count > 0) {
               if (task_order_star_formation_before_feedback) {
-                scheduler_activate_recv(s, ci->mpi.recv, task_subtype_sf_counts);
+                scheduler_activate_recv(s, ci->mpi.recv,
+                                        task_subtype_sf_counts);
               }
               scheduler_activate_recv(s, ci->mpi.recv, task_subtype_tend_spart);
             }
             if (cj_active_hydro && cj->hydro.count > 0) {
               if (task_order_star_formation_before_feedback) {
                 scheduler_activate_send(s, cj->mpi.send, task_subtype_sf_counts,
-                                      ci_nodeID);
+                                        ci_nodeID);
               }
               scheduler_activate_send(s, cj->mpi.send, task_subtype_tend_spart,
                                       ci_nodeID);
@@ -582,7 +583,8 @@ void engine_marktasks_mapper(void *map_data, int num_elements,
           if (with_star_formation && with_feedback) {
             if (cj_active_hydro && cj->hydro.count > 0) {
               if (task_order_star_formation_before_feedback) {
-                scheduler_activate_recv(s, cj->mpi.recv, task_subtype_sf_counts);
+                scheduler_activate_recv(s, cj->mpi.recv,
+                                        task_subtype_sf_counts);
               }
               scheduler_activate_recv(s, cj->mpi.recv, task_subtype_tend_spart);
             }

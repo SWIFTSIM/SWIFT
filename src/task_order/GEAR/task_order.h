@@ -24,13 +24,12 @@
 
 #define task_order_star_formation_before_feedback 0
 
+__attribute__((always_inline)) INLINE static void
+task_order_addunlock_star_formation_feedback(struct scheduler *s,
+                                             struct cell *c,
+                                             struct cell *star_resort_cell) {
 
-__attribute__((always_inline)) INLINE static void task_order_addunlock_star_formation_feedback(
-    struct scheduler *s, struct cell *c, struct cell *star_resort_cell) {
-
-  scheduler_addunlock(s, c->stars.stars_out,
-                      c->top->hydro.star_formation);
-
+  scheduler_addunlock(s, c->stars.stars_out, c->top->hydro.star_formation);
 }
 
-#endif // SWIFT_TASK_ORDER_GEAR_H
+#endif  // SWIFT_TASK_ORDER_GEAR_H
