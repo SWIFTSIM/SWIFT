@@ -19,10 +19,10 @@
 #include "../config.h"
 
 /* Local headers. */
-#include "swift.h"
 #include "../src/cooling/EAGLE/cooling_rates.h"
-#include "../src/cooling/EAGLE/interpolate.h"
 #include "../src/cooling/EAGLE/cooling_tables.h"
+#include "../src/cooling/EAGLE/interpolate.h"
+#include "swift.h"
 
 /*
  * @brief Assign particle density and entropy corresponding to the
@@ -50,8 +50,8 @@ void set_quantities(struct part *restrict p, struct xpart *restrict xp,
            p->chemistry_data.metal_mass_fraction[chemistry_element_H];
 
   /* update entropy based on internal energy */
-  float pressure = (u_cgs) * cooling->internal_energy_from_cgs *
-                   p->rho * (hydro_gamma_minus_one);
+  float pressure = (u_cgs)*cooling->internal_energy_from_cgs * p->rho *
+                   (hydro_gamma_minus_one);
   p->entropy = pressure * (pow(p->rho, -hydro_gamma));
   xp->entropy_full = p->entropy;
 
@@ -103,7 +103,7 @@ int main(int argc, char **argv) {
   /* Init chemistry */
   chemistry_init(params, &us, &phys_const, &chem_data);
   chemistry_first_init_part(&phys_const, &us, &cosmo, &chem_data, &p, &xp);
-  chemistry_part_has_no_neighbours(&p,&xp,&chem_data,&cosmo);
+  chemistry_part_has_no_neighbours(&p, &xp, &chem_data, &cosmo);
   chemistry_print(&chem_data);
 
   /* Init cosmology */
@@ -126,7 +126,7 @@ int main(int argc, char **argv) {
   /* Init entropy floor */
   struct entropy_floor_properties floor_props;
   entropy_floor_init(&floor_props, &phys_const, &us, &hydro_properties, params);
-  
+
   /* Cooling function needs to know the minimal energy. Set it to the lowest
    * internal energy in the cooling table. */
   hydro_properties.minimal_internal_energy =
@@ -146,7 +146,6 @@ int main(int argc, char **argv) {
   float d_He;
   get_index_1d(cooling.HeFrac, eagle_cooling_N_He_frac, HeFrac, &He_i, &d_He);
 
-
   /* calculate spacing in nh and u */
   const float log_u_min_cgs = 11, log_u_max_cgs = 17;
   const float log_nh_min_cgs = -6, log_nh_max_cgs = 3;
@@ -163,7 +162,8 @@ int main(int argc, char **argv) {
     for (int u_i = 0; u_i < n_u; u_i++) {
       u_cgs = exp(M_LN10 * log_u_min_cgs + delta_log_u_cgs * u_i);
 
-      /* Calculate cooling solution at redshift zero if we're doing the comoving check */
+      /* Calculate cooling solution at redshift zero if we're doing the comoving
+       * check */
       /* reset quantities to nh, u, and z that we want to test */
       ti_current = max_nr_timesteps;
       cosmology_update(&cosmo, &phys_const, ti_current);
@@ -174,52 +174,58 @@ int main(int argc, char **argv) {
       const integertime_t ti_step = get_integer_timestep(timebin);
       const integertime_t ti_begin =
           get_integer_time_begin(ti_current - 1, timebin);
-      dt_cool =
-          cosmology_get_delta_time(&cosmo, ti_begin, ti_begin + ti_step);
-      dt_therm = cosmology_get_therm_kick_factor(&cosmo, ti_begin,
-                                                 ti_begin + ti_step);
+      dt_cool = cosmology_get_delta_time(&cosmo, ti_begin, ti_begin + ti_step);
+      dt_therm =
+          cosmology_get_therm_kick_factor(&cosmo, ti_begin, ti_begin + ti_step);
 
       cooling_init(params, &us, &phys_const, &hydro_properties, &cooling);
       cooling_update(&cosmo, &cooling, 0);
 
       /* compute implicit solution */
-      cooling_cool_part(&phys_const, &us, &cosmo, &hydro_properties, &floor_props, 
-                        &cooling, &p, &xp, dt_cool, dt_therm);
-      du_dt_check =
-          hydro_get_physical_internal_energy_dt(&p, &cosmo);
-      
-      /* Now we can test the cooling at various redshifts and compare the result to the redshift zero solution */
+      cooling_cool_part(&phys_const, &us, &cosmo, &hydro_properties,
+                        &floor_props, &cooling, &p, &xp, dt_cool, dt_therm);
+      du_dt_check = hydro_get_physical_internal_energy_dt(&p, &cosmo);
+
+      /* Now we can test the cooling at various redshifts and compare the result
+       * to the redshift zero solution */
       for (int z_i = 0; z_i <= n_z; z_i++) {
         ti_current = max_nr_timesteps / n_z * z_i + 1;
 
         /* reset to get the comoving density */
         cosmology_update(&cosmo, &phys_const, ti_current);
         cosmo.z = 0.f;
-        set_quantities(&p, &xp, &us, &cooling, &cosmo, &phys_const, nh_cgs * cosmo.a*cosmo.a*cosmo.a, u_cgs / cosmo.a2_inv,
-                       ti_current);
+        set_quantities(&p, &xp, &us, &cooling, &cosmo, &phys_const,
+                       nh_cgs * cosmo.a * cosmo.a * cosmo.a,
+                       u_cgs / cosmo.a2_inv, ti_current);
 
         /* Load the appropriate tables */
         cooling_init(params, &us, &phys_const, &hydro_properties, &cooling);
         cooling_update(&cosmo, &cooling, 0);
 
         /* compute implicit solution */
-        cooling_cool_part(&phys_const, &us, &cosmo, &hydro_properties, &floor_props, 
-                          &cooling, &p, &xp, dt_cool, dt_therm);
-        du_dt_implicit =
-            hydro_get_physical_internal_energy_dt(&p, &cosmo);
+        cooling_cool_part(&phys_const, &us, &cosmo, &hydro_properties,
+                          &floor_props, &cooling, &p, &xp, dt_cool, dt_therm);
+        du_dt_implicit = hydro_get_physical_internal_energy_dt(&p, &cosmo);
 
         /* check if the two solutions are consistent */
         if (fabs((du_dt_implicit - du_dt_check) / du_dt_check) >
-            integration_tolerance || 
+                integration_tolerance ||
             (du_dt_check == 0.0 && du_dt_implicit != 0.0))
           error(
               "Solutions do not match. scale factor %.5e z %.5e nh_cgs %.5e "
-              "u_cgs %.5e dt (years) %.5e du cgs implicit %.5e reference %.5e error %.5e",
-              cosmo.a, cosmo.z, nh_cgs, 
-              u_cgs, 
-              dt_cool * units_cgs_conversion_factor(&us, UNIT_CONV_TIME)/seconds_per_year,
-              du_dt_implicit * units_cgs_conversion_factor(&us, UNIT_CONV_ENERGY_PER_UNIT_MASS) * dt_therm, 
-              du_dt_check * units_cgs_conversion_factor(&us, UNIT_CONV_ENERGY_PER_UNIT_MASS) * dt_therm,
+              "u_cgs %.5e dt (years) %.5e du cgs implicit %.5e reference %.5e "
+              "error %.5e",
+              cosmo.a, cosmo.z, nh_cgs, u_cgs,
+              dt_cool * units_cgs_conversion_factor(&us, UNIT_CONV_TIME) /
+                  seconds_per_year,
+              du_dt_implicit *
+                  units_cgs_conversion_factor(&us,
+                                              UNIT_CONV_ENERGY_PER_UNIT_MASS) *
+                  dt_therm,
+              du_dt_check *
+                  units_cgs_conversion_factor(&us,
+                                              UNIT_CONV_ENERGY_PER_UNIT_MASS) *
+                  dt_therm,
               fabs((du_dt_implicit - du_dt_check) / du_dt_check));
       }
     }

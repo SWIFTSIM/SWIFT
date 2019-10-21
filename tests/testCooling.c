@@ -19,10 +19,10 @@
 #include "../config.h"
 
 /* Local headers. */
-#include "swift.h"
 #include "../src/cooling/EAGLE/cooling_rates.h"
-#include "../src/cooling/EAGLE/interpolate.h"
 #include "../src/cooling/EAGLE/cooling_tables.h"
+#include "../src/cooling/EAGLE/interpolate.h"
+#include "swift.h"
 
 /*
  * @brief Assign particle density and entropy corresponding to the
@@ -50,8 +50,8 @@ void set_quantities(struct part *restrict p, struct xpart *restrict xp,
            p->chemistry_data.metal_mass_fraction[chemistry_element_H];
 
   /* update entropy based on internal energy */
-  float pressure = (u_cgs) * cooling->internal_energy_from_cgs *
-                   p->rho * (hydro_gamma_minus_one);
+  float pressure = (u_cgs)*cooling->internal_energy_from_cgs * p->rho *
+                   (hydro_gamma_minus_one);
   p->entropy = pressure * (pow(p->rho, -hydro_gamma));
   xp->entropy_full = p->entropy;
 
@@ -104,7 +104,7 @@ int main(int argc, char **argv) {
   /* Init chemistry */
   chemistry_init(params, &us, &phys_const, &chem_data);
   chemistry_first_init_part(&phys_const, &us, &cosmo, &chem_data, &p, &xp);
-  chemistry_part_has_no_neighbours(&p,&xp,&chem_data,&cosmo);
+  chemistry_part_has_no_neighbours(&p, &xp, &chem_data, &cosmo);
   chemistry_print(&chem_data);
 
   /* Init cosmology */
@@ -127,7 +127,7 @@ int main(int argc, char **argv) {
   /* Init entropy floor */
   struct entropy_floor_properties floor_props;
   entropy_floor_init(&floor_props, &phys_const, &us, &hydro_properties, params);
-  
+
   /* Cooling function needs to know the minimal energy. Set it to the lowest
    * internal energy in the cooling table. */
   hydro_properties.minimal_internal_energy =
@@ -146,7 +146,6 @@ int main(int argc, char **argv) {
   int He_i;
   float d_He;
   get_index_1d(cooling.HeFrac, eagle_cooling_N_He_frac, HeFrac, &He_i, &d_He);
-
 
   /* calculate spacing in nh and u */
   const float log_u_min_cgs = 11, log_u_max_cgs = 17;
@@ -172,8 +171,8 @@ int main(int argc, char **argv) {
         cosmology_update(&cosmo, &phys_const, ti_current);
         cooling_init(params, &us, &phys_const, &hydro_properties, &cooling);
         cooling_update(&cosmo, &cooling, 0);
-        set_quantities(&p, &xp, &us, &cooling, &cosmo, &phys_const, nh_cgs, u_cgs,
-                       ti_current);
+        set_quantities(&p, &xp, &us, &cooling, &cosmo, &phys_const, nh_cgs,
+                       u_cgs, ti_current);
 
         /* Set dt */
         const integertime_t ti_step = get_integer_timestep(timebin);
@@ -188,36 +187,41 @@ int main(int argc, char **argv) {
         for (int t_subcycle = 0; t_subcycle < n_subcycle; t_subcycle++) {
           p.entropy_dt = 0;
           cooling_cool_part(&phys_const, &us, &cosmo, &hydro_properties,
-                            &floor_props, &cooling, &p, &xp, dt_cool / n_subcycle,
-                            dt_therm / n_subcycle);
+                            &floor_props, &cooling, &p, &xp,
+                            dt_cool / n_subcycle, dt_therm / n_subcycle);
           xp.entropy_full += p.entropy_dt * dt_therm / n_subcycle;
         }
-        du_dt_check =
-            hydro_get_physical_internal_energy_dt(&p, &cosmo);
-        
+        du_dt_check = hydro_get_physical_internal_energy_dt(&p, &cosmo);
+
         /* reset quantities to nh, u, and z that we want to test */
         cosmology_update(&cosmo, &phys_const, ti_current);
-        set_quantities(&p, &xp, &us, &cooling, &cosmo, &phys_const, nh_cgs, u_cgs,
-                       ti_current);
-        
+        set_quantities(&p, &xp, &us, &cooling, &cosmo, &phys_const, nh_cgs,
+                       u_cgs, ti_current);
+
         /* compute implicit solution */
-        cooling_cool_part(&phys_const, &us, &cosmo, &hydro_properties, &floor_props, 
-                          &cooling, &p, &xp, dt_cool, dt_therm);
-        du_dt_implicit =
-            hydro_get_physical_internal_energy_dt(&p, &cosmo);
+        cooling_cool_part(&phys_const, &us, &cosmo, &hydro_properties,
+                          &floor_props, &cooling, &p, &xp, dt_cool, dt_therm);
+        du_dt_implicit = hydro_get_physical_internal_energy_dt(&p, &cosmo);
 
         /* check if the two solutions are consistent */
         if (fabs((du_dt_implicit - du_dt_check) / du_dt_check) >
-            integration_tolerance || 
+                integration_tolerance ||
             (du_dt_check == 0.0 && du_dt_implicit != 0.0))
           error(
               "Solutions do not match. scale factor %.5e z %.5e nh_cgs %.5e "
-              "u_cgs %.5e dt (years) %.5e du cgs implicit %.5e reference %.5e error %.5e",
-              cosmo.a, cosmo.z, nh_cgs, 
-              u_cgs, 
-              dt_cool * units_cgs_conversion_factor(&us, UNIT_CONV_TIME)/seconds_per_year,
-              du_dt_implicit * units_cgs_conversion_factor(&us, UNIT_CONV_ENERGY_PER_UNIT_MASS) * dt_therm, 
-              du_dt_check * units_cgs_conversion_factor(&us, UNIT_CONV_ENERGY_PER_UNIT_MASS) * dt_therm,
+              "u_cgs %.5e dt (years) %.5e du cgs implicit %.5e reference %.5e "
+              "error %.5e",
+              cosmo.a, cosmo.z, nh_cgs, u_cgs,
+              dt_cool * units_cgs_conversion_factor(&us, UNIT_CONV_TIME) /
+                  seconds_per_year,
+              du_dt_implicit *
+                  units_cgs_conversion_factor(&us,
+                                              UNIT_CONV_ENERGY_PER_UNIT_MASS) *
+                  dt_therm,
+              du_dt_check *
+                  units_cgs_conversion_factor(&us,
+                                              UNIT_CONV_ENERGY_PER_UNIT_MASS) *
+                  dt_therm,
               fabs((du_dt_implicit - du_dt_check) / du_dt_check));
       }
     }
