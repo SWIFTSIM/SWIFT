@@ -51,7 +51,8 @@ inline void compute_kick_speed(struct spart *sp, const struct feedback_props *fe
       * v_circ;
 
   // ALEXEI: temporarily set to arbitrary number for testing.
-  sp->feedback_data.to_distribute.v_kick = 500.;
+  //sp->feedback_data.to_distribute.v_kick = 500.;
+  sp->feedback_data.to_distribute.v_kick = 0.;
 
 }
 

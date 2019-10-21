@@ -97,7 +97,19 @@ runner_iact_nonsym_feedback_apply(const float r2, const float *dx,
 
     /* Now normalise and multiply by the kick velocity */
     float v_new_norm = sqrt(v_new[0]*v_new[0] + v_new[1]*v_new[1] + v_new[2]*v_new[2]);
-    for (int i = 0; i < 3; i++) v_new[i] *= si->feedback_data.to_distribute.v_kick/v_new_norm; 
+    /* If for some reason the norm is zero, arbitrarily choose a direction */
+    if (v_new_norm == 0) {
+      v_new_norm = 1.;
+      v_new[0] = 1.;
+      v_new[1] = 0.;
+      v_new[2] = 0.;
+    }
+    // ALEXEI: check if we need to add the particle's existing velocity to the kick
+    //for (int i = 0; i < 3; i++) v_new[i] *= si->feedback_data.to_distribute.v_kick/v_new_norm; 
+    for (int i = 0; i < 3; i++) v_new[i] = v_new[i]*si->feedback_data.to_distribute.v_kick/v_new_norm + pj->v[i]; 
+    //message("v old %.5e %.5e %.5e v_new %.5e %.5e %.5e a_grav %.5e %.5e %.5e", pj->v[0], pj->v[1], pj->v[2], v_new[0], v_new[1], v_new[2], xp->a_grav[0], xp->a_grav[1], xp->a_grav[2]);
+
+    /* Set the velocity */
     hydro_set_velocity(pj,v_new);
 
     /* Heat particle */
@@ -116,6 +128,10 @@ runner_iact_nonsym_feedback_apply(const float r2, const float *dx,
     // ALEXEI: debugging print statement
     //if (pj->id == SIMBA_DEBUG_ID) message("spart id %llu decoupled particle %llu delay_time %.5e rand %.5e prob %.5e", si->id, pj->id, pj->delay_time, rand_kick, prob_kick);
     message("spart id %llu decoupled particle %llu delay_time %.5e rand %.5e prob %.5e", si->id, pj->id, pj->delay_time, rand_kick, prob_kick);
+
+#ifdef SWIFT_DEBUG_CHECKS
+    pj->ti_decoupled = ti_current;
+#endif
   }
 
 }
