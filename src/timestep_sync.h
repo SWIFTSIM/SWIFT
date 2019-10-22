@@ -54,7 +54,7 @@ INLINE static void timestep_process_sync_part(struct part *p, struct xpart *xp,
   /* This particle is already active. Nothing to do here... */
   if (p->time_bin <= max_active_bin) return;
 
-  /* message("Synchronizing particle %lld", p->id); */
+  message("Synchronizing particle %lld", p->id);
 
   /* We want to make the particle finish it's time-step now. */
 

@@ -1169,9 +1169,8 @@ void runner_do_sync(struct runner *r, struct cell *c, int force, int timer) {
         timestep_process_sync_part(p, xp, e, cosmo);
 
         /* Get new time-step */
-        integertime_t ti_new_step = get_part_timestep(p, xp, e);
+        const integertime_t ti_new_step = get_part_timestep(p, xp, e);
         const timebin_t new_time_bin = get_time_bin(ti_new_step);
-        ti_new_step = get_integer_timestep(new_time_bin);
 
         /* Update particle */
         p->time_bin = new_time_bin;
