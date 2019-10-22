@@ -8,10 +8,10 @@ InternalUnitSystem:
 
 # Parameters for the self-gravity scheme
 Gravity:
-  eta:          0.025               # Constant dimensionless multiplier for time integration.
-  theta:        0.7                 # Opening angle (Multipole acceptance criterion).
-  max_physical_DM_softening:     0.1       # Physical softening length (in internal units).
-  max_physical_baryon_softening: 0.1       # Physical softening length (in internal units).
+  eta:          0.025                 # Constant dimensionless multiplier for time integration.
+  theta:        0.7                   # Opening angle (Multipole acceptance criterion).
+  max_physical_DM_softening:     0.35 # Physical softening length (in internal units).
+  max_physical_baryon_softening: 0.35 # Physical softening length (in internal units).
 
 # Parameters governing the time integration (Set dt_min and dt_max to the same value for a fixed time-step run.)
 TimeIntegration:
@@ -84,7 +84,7 @@ HernquistPotential:
   diskfraction:    0.040   # Disk mass fraction
   bulgefraction:   0.014   # Bulge mass fraction
   timestep_mult:   0.01    # Dimensionless pre-factor for the time-step condition, basically determines the fraction of the orbital time we use to do the time integration
-  epsilon:         0.1     # Softening size (internal units)
+  epsilon:         0.35     # Softening size (internal units)
  
 # EAGLE star formation parameters
 EAGLEStarFormation:

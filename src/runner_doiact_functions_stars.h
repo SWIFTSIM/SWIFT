@@ -298,9 +298,8 @@ void DO_SYM_PAIR1_STARS(struct runner *r, struct cell *ci, struct cell *cj,
     struct xpart *restrict xparts_j = cj->hydro.xparts;
 #endif
     const double dj_min = sort_j[0].d;
-    const float dx_max_rshift =
-        (ci->stars.dx_max_sort + cj->hydro.dx_max_sort) - rshift;
     const float dx_max = (ci->stars.dx_max_sort + cj->hydro.dx_max_sort);
+    const float hydro_dx_max_rshift = cj->hydro.dx_max_sort - rshift;
 
     /* Loop over the sparts in ci. */
     for (int pid = count_i - 1;
@@ -322,7 +321,7 @@ void DO_SYM_PAIR1_STARS(struct runner *r, struct cell *ci, struct cell *cj,
                    px[2] * runner_shift[sid][2];
 
       /* Is there anything we need to interact with ? */
-      const double di = dist + hi * kernel_gamma + dx_max_rshift;
+      const double di = dist + hi * kernel_gamma + hydro_dx_max_rshift;
       if (di < dj_min) continue;
 
       /* Get some additional information about pi */
@@ -428,9 +427,8 @@ void DO_SYM_PAIR1_STARS(struct runner *r, struct cell *ci, struct cell *cj,
     struct xpart *restrict xparts_i = ci->hydro.xparts;
     struct spart *restrict sparts_j = cj->stars.parts;
     const double di_max = sort_i[count_i - 1].d - rshift;
-    const float dx_max_rshift =
-        (ci->hydro.dx_max_sort + cj->stars.dx_max_sort) + rshift;
     const float dx_max = (ci->hydro.dx_max_sort + cj->stars.dx_max_sort);
+    const float hydro_dx_max_rshift = ci->hydro.dx_max_sort - rshift;
 
     /* Loop over the parts in cj. */
     for (int pjd = 0; pjd < count_j && sort_j[pjd].d - hj_max - dx_max < di_max;
@@ -452,7 +450,7 @@ void DO_SYM_PAIR1_STARS(struct runner *r, struct cell *ci, struct cell *cj,
                    px[2] * runner_shift[sid][2];
 
       /* Is there anything we need to interact with ? */
-      const double dj = dist - hj * kernel_gamma - dx_max_rshift;
+      const double dj = dist - hj * kernel_gamma - hydro_dx_max_rshift;
       if (dj - rshift > di_max) continue;
 
       /* Get some additional information about pj */

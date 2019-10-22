@@ -2183,7 +2183,11 @@ void engine_step(struct engine *e) {
                                               e->cosmology->a, e->cosmology->z,
                                               e->sfh, e->step);
 
+#ifdef SWIFT_DEBUG_CHECKS
       fflush(e->sfh_logger);
+#else
+      if (e->step % 32 == 0) fflush(e->sfh_logger);
+#endif
     }
 
     if (!e->restarting)
@@ -2389,6 +2393,7 @@ void engine_check_for_dumps(struct engine *e) {
    * before the next time-step */
   enum output_type type = output_none;
   integertime_t ti_output = max_nr_timesteps;
+  e->stf_this_timestep = 0;
 
   /* Save some statistics ? */
   if (e->ti_end_min > e->ti_next_stats && e->ti_next_stats > 0) {
@@ -2441,7 +2446,7 @@ void engine_check_for_dumps(struct engine *e) {
       case output_snapshot:
 
         /* Do we want a corresponding VELOCIraptor output? */
-        if (with_stf && e->snapshot_invoke_stf) {
+        if (with_stf && e->snapshot_invoke_stf && !e->stf_this_timestep) {
 
 #ifdef HAVE_VELOCIRAPTOR
           velociraptor_invoke(e, /*linked_with_snap=*/1);
@@ -2462,7 +2467,7 @@ void engine_check_for_dumps(struct engine *e) {
 #endif
 
         /* Free the memory allocated for VELOCIraptor i/o. */
-        if (with_stf && e->snapshot_invoke_stf) {
+        if (with_stf && e->snapshot_invoke_stf && e->s->gpart_group_data) {
 #ifdef HAVE_VELOCIRAPTOR
           swift_free("gpart_group_data", e->s->gpart_group_data);
           e->s->gpart_group_data = NULL;
@@ -2487,8 +2492,10 @@ void engine_check_for_dumps(struct engine *e) {
 
 #ifdef HAVE_VELOCIRAPTOR
         /* Unleash the raptor! */
-        velociraptor_invoke(e, /*linked_with_snap=*/0);
-        e->step_props |= engine_step_prop_stf;
+        if (!e->stf_this_timestep) {
+          velociraptor_invoke(e, /*linked_with_snap=*/0);
+          e->step_props |= engine_step_prop_stf;
+        }
 
         /* ... and find the next output time */
         engine_compute_next_stf_time(e);
@@ -3408,6 +3415,7 @@ void engine_init(struct engine *e, struct space *s, struct swift_params *params,
   e->chemistry = chemistry;
   e->fof_properties = fof_properties;
   e->parameter_file = params;
+  e->stf_this_timestep = 0;
 #ifdef WITH_MPI
   e->cputime_last_step = 0;
   e->last_repartition = 0;

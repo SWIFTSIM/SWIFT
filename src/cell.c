@@ -4607,6 +4607,7 @@ void cell_drift_part(struct cell *c, const struct engine *e, int force) {
         hydro_init_part(p, &e->s->hs);
         chemistry_init_part(p, e->chemistry);
         pressure_floor_init_part(p, xp);
+        star_formation_init_part(p, e->star_formation);
         tracers_after_init(p, xp, e->internal_units, e->physical_constants,
                            with_cosmology, e->cosmology, e->hydro_properties,
                            e->cooling_func, e->time);
