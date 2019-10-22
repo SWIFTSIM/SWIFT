@@ -69,7 +69,7 @@ void engine_marktasks_mapper(void *map_data, int num_elements,
   struct scheduler *s = (struct scheduler *)(((size_t *)extra_data)[2]);
   struct engine *e = (struct engine *)((size_t *)extra_data)[0];
   const int nodeID = e->nodeID;
-  const int with_limiter = e->policy & engine_policy_limiter;
+  const int with_limiter = e->policy & engine_policy_timestep_limiter;
   const int with_star_formation = e->policy & engine_policy_star_formation;
 #ifdef WITH_MPI
   const int with_feedback = e->policy & engine_policy_feedback;

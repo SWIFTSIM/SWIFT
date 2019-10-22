@@ -5347,7 +5347,7 @@ void space_check_limiter_mapper(void *map_data, int nr_parts,
   /* Unpack the data */
   struct part *restrict parts = (struct part *)map_data;
   const struct space *s = (struct space *)extra_data;
-  const int with_limiter = (s->e->policy & engine_policy_limiter);
+  const int with_limiter = (s->e->policy & engine_policy_timestep_limiter);
 
   /* Verify that all limited particles have been treated */
   for (int k = 0; k < nr_parts; k++) {

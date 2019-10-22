@@ -2915,7 +2915,7 @@ void cell_activate_stars_sorts(struct cell *c, int sid, struct scheduler *s) {
 void cell_activate_subcell_hydro_tasks(struct cell *ci, struct cell *cj,
                                        struct scheduler *s) {
   const struct engine *e = s->space->e;
-  const int with_limiter = (e->policy & engine_policy_limiter);
+  const int with_limiter = (e->policy & engine_policy_timestep_limiter);
 
   /* Store the current dx_max and h_max values. */
   ci->hydro.dx_max_part_old = ci->hydro.dx_max_part;
@@ -3011,7 +3011,7 @@ void cell_activate_subcell_stars_tasks(struct cell *ci, struct cell *cj,
                                        struct scheduler *s,
                                        const int with_star_formation) {
   const struct engine *e = s->space->e;
-  const int with_limiter = (e->policy & engine_policy_limiter);
+  const int with_limiter = (e->policy & engine_policy_timestep_limiter);
 
   /* Store the current dx_max and h_max values. */
   ci->stars.dx_max_part_old = ci->stars.dx_max_part;
@@ -3381,7 +3381,7 @@ void cell_activate_subcell_external_grav_tasks(struct cell *ci,
 int cell_unskip_hydro_tasks(struct cell *c, struct scheduler *s) {
   struct engine *e = s->space->e;
   const int nodeID = e->nodeID;
-  const int with_limiter = (e->policy & engine_policy_limiter);
+  const int with_limiter = (e->policy & engine_policy_timestep_limiter);
 
 #ifdef WITH_MPI
   const int with_star_formation = e->policy & engine_policy_star_formation;
@@ -3787,7 +3787,7 @@ int cell_unskip_stars_tasks(struct cell *c, struct scheduler *s,
                             const int with_star_formation) {
 
   struct engine *e = s->space->e;
-  const int with_limiter = (e->policy & engine_policy_limiter);
+  const int with_limiter = (e->policy & engine_policy_timestep_limiter);
   const int nodeID = e->nodeID;
   int rebuild = 0;
 

@@ -792,7 +792,7 @@ void engine_make_hierarchical_tasks_common(struct engine *e, struct cell *c) {
 
   struct scheduler *s = &e->sched;
   const int with_star_formation = (e->policy & engine_policy_star_formation);
-  const int with_limiter = (e->policy & engine_policy_limiter);
+  const int with_limiter = (e->policy & engine_policy_timestep_limiter);
 
   /* Are we at the top-level? */
   if (c->top == c && c->nodeID == e->nodeID) {
@@ -1023,7 +1023,7 @@ void engine_make_hierarchical_tasks_hydro(struct engine *e, struct cell *c,
   const int with_cooling = (e->policy & engine_policy_cooling);
   const int with_star_formation = (e->policy & engine_policy_star_formation);
   const int with_black_holes = (e->policy & engine_policy_black_holes);
-  const int with_limiter = (e->policy & engine_policy_limiter);
+  const int with_limiter = (e->policy & engine_policy_timestep_limiter);
 
   /* Are we are the level where we create the stars' resort tasks?
    * If the tree is shallow, we need to do this at the super-level if the
@@ -1809,7 +1809,7 @@ void engine_make_extra_hydroloop_tasks_mapper(void *map_data, int num_elements,
   struct scheduler *sched = &e->sched;
   const int nodeID = e->nodeID;
   const int with_cooling = (e->policy & engine_policy_cooling);
-  const int with_limiter = (e->policy & engine_policy_limiter);
+  const int with_limiter = (e->policy & engine_policy_timestep_limiter);
   const int with_feedback = (e->policy & engine_policy_feedback);
   const int with_black_holes = (e->policy & engine_policy_black_holes);
 #ifdef EXTRA_HYDRO_LOOP

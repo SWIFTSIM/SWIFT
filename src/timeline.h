@@ -53,7 +53,6 @@ typedef int8_t timebin_t;
 /* Maximal difference in time-bins between neighbouring particles */
 #define time_bin_neighbour_max_delta_bin 2
 
-
 /**
  * @brief Returns the integer time interval corresponding to a time bin
  *
