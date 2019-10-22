@@ -69,7 +69,8 @@ void engine_marktasks_mapper(void *map_data, int num_elements,
   struct scheduler *s = (struct scheduler *)(((size_t *)extra_data)[2]);
   struct engine *e = (struct engine *)((size_t *)extra_data)[0];
   const int nodeID = e->nodeID;
-  const int with_limiter = e->policy & engine_policy_timestep_limiter;
+  const int with_timestep_limiter = e->policy & engine_policy_timestep_limiter;
+  const int with_timestep_sync = e->policy & engine_policy_timestep_sync;
   const int with_star_formation = e->policy & engine_policy_star_formation;
 #ifdef WITH_MPI
   const int with_feedback = e->policy & engine_policy_feedback;
@@ -102,7 +103,7 @@ void engine_marktasks_mapper(void *map_data, int num_elements,
         if (ci_active_hydro) {
           scheduler_activate(s, t);
           cell_activate_drift_part(ci, s);
-          if (with_limiter) cell_activate_limiter(ci, s);
+          if (with_timestep_limiter) cell_activate_limiter(ci, s);
         }
       }
 
@@ -112,7 +113,7 @@ void engine_marktasks_mapper(void *map_data, int num_elements,
         if (ci_active_hydro) {
           scheduler_activate(s, t);
           cell_activate_subcell_hydro_tasks(ci, NULL, s);
-          if (with_limiter) cell_activate_limiter(ci, s);
+          if (with_timestep_limiter) cell_activate_limiter(ci, s);
         }
       }
 
@@ -151,7 +152,7 @@ void engine_marktasks_mapper(void *map_data, int num_elements,
           scheduler_activate(s, t);
           cell_activate_drift_part(ci, s);
           cell_activate_drift_spart(ci, s);
-          if (with_limiter) cell_activate_sync_part(ci, s);
+          if (with_timestep_sync) cell_activate_sync_part(ci, s);
         }
       }
 
@@ -318,8 +319,10 @@ void engine_marktasks_mapper(void *map_data, int num_elements,
           if (cj_nodeID == nodeID) cell_activate_drift_part(cj, s);
 
           /* And the limiter */
-          if (ci_nodeID == nodeID && with_limiter) cell_activate_limiter(ci, s);
-          if (cj_nodeID == nodeID && with_limiter) cell_activate_limiter(cj, s);
+          if (ci_nodeID == nodeID && with_timestep_limiter)
+            cell_activate_limiter(ci, s);
+          if (cj_nodeID == nodeID && with_timestep_limiter)
+            cell_activate_limiter(cj, s);
 
           /* Check the sorts and activate them if needed. */
           cell_activate_hydro_sorts(ci, t->flags, s);
@@ -358,7 +361,7 @@ void engine_marktasks_mapper(void *map_data, int num_elements,
             /* Activate the drift tasks. */
             if (ci_nodeID == nodeID) cell_activate_drift_spart(ci, s);
             if (cj_nodeID == nodeID) cell_activate_drift_part(cj, s);
-            if (cj_nodeID == nodeID && with_limiter)
+            if (cj_nodeID == nodeID && with_timestep_sync)
               cell_activate_sync_part(cj, s);
 
             /* Check the sorts and activate them if needed. */
@@ -380,7 +383,7 @@ void engine_marktasks_mapper(void *map_data, int num_elements,
             /* Activate the drift tasks. */
             if (ci_nodeID == nodeID) cell_activate_drift_part(ci, s);
             if (cj_nodeID == nodeID) cell_activate_drift_spart(cj, s);
-            if (ci_nodeID == nodeID && with_limiter)
+            if (ci_nodeID == nodeID && with_timestep_sync)
               cell_activate_sync_part(ci, s);
 
             /* Check the sorts and activate them if needed. */

@@ -5347,7 +5347,9 @@ void space_check_limiter_mapper(void *map_data, int nr_parts,
   /* Unpack the data */
   struct part *restrict parts = (struct part *)map_data;
   const struct space *s = (struct space *)extra_data;
-  const int with_limiter = (s->e->policy & engine_policy_timestep_limiter);
+  const int with_timestep_limiter =
+      (s->e->policy & engine_policy_timestep_limiter);
+  const int with_timestep_sync = (s->e->policy & engine_policy_timestep_sync);
 
   /* Verify that all limited particles have been treated */
   for (int k = 0; k < nr_parts; k++) {
@@ -5356,10 +5358,10 @@ void space_check_limiter_mapper(void *map_data, int nr_parts,
 
     if (parts[k].time_bin < 0) error("Particle has negative time-bin!");
 
-    if (parts[k].wakeup == time_bin_awake)
+    if (with_timestep_limiter && parts[k].wakeup == time_bin_awake)
       error("Particle still woken up! id=%lld", parts[k].id);
 
-    if (with_limiter && parts[k].to_be_synchronized != 0)
+    if (with_timestep_sync && parts[k].to_be_synchronized != 0)
       error("Synchronized particle not treated! id=%lld synchronized=%d",
             parts[k].id, parts[k].to_be_synchronized);
 
