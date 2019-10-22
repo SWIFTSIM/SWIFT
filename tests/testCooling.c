@@ -19,10 +19,9 @@
 #include "../config.h"
 
 /* Local headers. */
-#include "../src/cooling/EAGLE/cooling_rates.h"
-#include "../src/cooling/EAGLE/cooling_tables.h"
-#include "../src/cooling/EAGLE/interpolate.h"
 #include "swift.h"
+
+#if defined(CHEMISTRY_EAGLE) && defined(COOLING_EAGLE)
 
 /*
  * @brief Assign particle density and entropy corresponding to the
@@ -231,3 +230,9 @@ int main(int argc, char **argv) {
   free(params);
   return 0;
 }
+
+#else
+
+int main(int argc, char **argv) { return 0; }
+
+#endif

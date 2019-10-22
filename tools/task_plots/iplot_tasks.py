@@ -402,7 +402,7 @@ data = data[1:, :]
 # Exit if no data.
 if data.size == 0:
     print(("# Rank ", rank, " has no tasks"))
-    os.exit(1)
+    sys.exit(1)
 
 start_t = float(tic_step)
 data[:, ticcol] -= start_t
