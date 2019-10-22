@@ -31,7 +31,7 @@
  * @brief Compute a valid integer time-step form a given time-step
  *
  * We consider the minimal time-bin of any neighbours and prevent particles
- * to differ from it by a fixed constant `const_timestep_limiter_max_delta_bin`.
+ * to differ from it by a fixed constant `time_bin_neighbour_max_delta_bin`.
  *
  * If min_ngb_bin is set to `num_time_bins`, then no limit from the neighbours
  * is imposed.
@@ -53,7 +53,7 @@ make_integer_timestep(const float new_dt, const timebin_t old_bin,
 
   /* Are we allowed to use this bin given the neighbours? */
   timebin_t new_bin = get_time_bin(new_dti);
-  new_bin = min(new_bin, min_ngb_bin + const_timestep_limiter_max_delta_bin);
+  new_bin = min(new_bin, min_ngb_bin + time_bin_neighbour_max_delta_bin);
   new_dti = get_integer_timestep(new_bin);
 
   /* Current time-step */

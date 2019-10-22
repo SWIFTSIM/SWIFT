@@ -26,9 +26,6 @@
 /* Time-step limiter maximal difference in signal velocity */
 #define const_limiter_max_v_sig_ratio 4.1f
 
-/* Maximal difference in time-bins between neighbouring particles */
-#define const_timestep_limiter_max_delta_bin 2
-
 /* I/O Constant; this determines the relative tolerance between the value of
  * redshift read from the snapshot, and the value from the parameter file. This
  * current value asserts that they must match within 0.1%. */

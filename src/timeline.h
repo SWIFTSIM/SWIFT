@@ -50,6 +50,10 @@ typedef int8_t timebin_t;
 /*! Fictitious time-bin for particles woken up */
 #define time_bin_awake (-1)
 
+/* Maximal difference in time-bins between neighbouring particles */
+#define time_bin_neighbour_max_delta_bin 2
+
+
 /**
  * @brief Returns the integer time interval corresponding to a time bin
  *
