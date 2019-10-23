@@ -5654,8 +5654,9 @@ int cell_recouple(struct cell *c,
 	  if (p->id == SIMBA_DEBUG_ID) message("id %llu ti_current %llu half step %llu ti_kick %llu ti_drift %llu", p->id, e->ti_current, get_integer_timestep(e->min_active_bin)/2, p->ti_kick, p->ti_drift);
 #endif
           // ALEXEI: debugging print statement
-          //if (e->ti_current * e->time_base > 0. && p->id == SIMBA_DEBUG_ID) message("particle %llu recoupled", p->id);
-          if (e->ti_current * e->time_base > 0.) message("particle %llu recoupled", p->id);
+#if SWIFT_DEBUG_CHECKS
+          if (e->ti_current * e->time_base > 0.) message("particle %llu recoupled time elapsed %.5e ti_kick %llu ti_current %llu step/2 %llu ti_end_min %llu recouple min active bin %d timebin %d", p->id, (e->ti_current - p->ti_decoupled)*e->time_base, p->ti_kick, e->ti_current, get_integer_timestep(min_active_bin)/2, c->hydro.ti_end_min, min_active_bin, p->time_bin);
+#endif
 
 	  recoupled = 1;
         }

@@ -184,6 +184,9 @@ struct part {
   /* Time of the last kick */
   integertime_t ti_kick;
 
+  /* Time when particle last decoupled */
+  integertime_t ti_decoupled;
+
 #endif
 
 #ifdef DEBUG_INTERACTIONS_SPH
