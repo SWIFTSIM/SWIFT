@@ -182,7 +182,7 @@ void *runner_main(void *data) {
           else if (t->subtype == task_subtype_force)
             runner_doself2_branch_force(r, ci);
           else if (t->subtype == task_subtype_limiter)
-            runner_doself2_branch_limiter(r, ci);
+            runner_doself1_branch_limiter(r, ci);
           else if (t->subtype == task_subtype_grav)
             runner_doself_recursive_grav(r, ci, 1);
           else if (t->subtype == task_subtype_external_grav)
@@ -216,7 +216,7 @@ void *runner_main(void *data) {
           else if (t->subtype == task_subtype_force)
             runner_dopair2_branch_force(r, ci, cj);
           else if (t->subtype == task_subtype_limiter)
-            runner_dopair2_branch_limiter(r, ci, cj);
+            runner_dopair1_branch_limiter(r, ci, cj);
           else if (t->subtype == task_subtype_grav)
             runner_dopair_recursive_grav(r, ci, cj, 1);
           else if (t->subtype == task_subtype_stars_density)
@@ -248,7 +248,7 @@ void *runner_main(void *data) {
           else if (t->subtype == task_subtype_force)
             runner_dosub_self2_force(r, ci, 1);
           else if (t->subtype == task_subtype_limiter)
-            runner_dosub_self2_limiter(r, ci, 1);
+            runner_dosub_self1_limiter(r, ci, 1);
           else if (t->subtype == task_subtype_stars_density)
             runner_dosub_self_stars_density(r, ci, 1);
           else if (t->subtype == task_subtype_stars_feedback)
@@ -278,7 +278,7 @@ void *runner_main(void *data) {
           else if (t->subtype == task_subtype_force)
             runner_dosub_pair2_force(r, ci, cj, 1);
           else if (t->subtype == task_subtype_limiter)
-            runner_dosub_pair2_limiter(r, ci, cj, 1);
+            runner_dosub_pair1_limiter(r, ci, cj, 1);
           else if (t->subtype == task_subtype_stars_density)
             runner_dosub_pair_stars_density(r, ci, cj, 1);
           else if (t->subtype == task_subtype_stars_feedback)
