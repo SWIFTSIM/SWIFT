@@ -52,7 +52,7 @@ inline void compute_kick_speed(struct spart *sp, const struct feedback_props *fe
 
   // ALEXEI: temporarily set to arbitrary number for testing.
   //sp->feedback_data.to_distribute.v_kick = 500.;
-  sp->feedback_data.to_distribute.v_kick = 0.;
+  sp->feedback_data.to_distribute.v_kick = 5.;
 
 }
 
@@ -101,10 +101,11 @@ inline void compute_heating(struct spart *sp, const struct feedback_props *feedb
     u_SN *= 2.61634;
   }
 
-  if (u_wind > feedback_props->simba_wind_energy_limit) 
-    sp->feedback_data.to_distribute.v_kick *= sqrt(feedback_props->simba_wind_energy_limit*u_SN/u_wind);
-  if (feedback_props->simba_wind_energy_limit < 1.f) 
-    u_SN *= feedback_props->simba_wind_energy_limit;
+  // ALEXEI: commented out for debugging
+  //if (u_wind > feedback_props->simba_wind_energy_limit) 
+  //  sp->feedback_data.to_distribute.v_kick *= sqrt(feedback_props->simba_wind_energy_limit*u_SN/u_wind);
+  //if (feedback_props->simba_wind_energy_limit < 1.f) 
+  //  u_SN *= feedback_props->simba_wind_energy_limit;
 
   /* Now we can decide if there's any energy left over to distribute */
   sp->feedback_data.to_distribute.u_extra = max(u_SN - u_wind, 0.);

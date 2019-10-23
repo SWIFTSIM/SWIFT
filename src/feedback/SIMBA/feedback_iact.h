@@ -107,10 +107,9 @@ runner_iact_nonsym_feedback_apply(const float r2, const float *dx,
     // ALEXEI: check if we need to add the particle's existing velocity to the kick
     //for (int i = 0; i < 3; i++) v_new[i] *= si->feedback_data.to_distribute.v_kick/v_new_norm; 
     for (int i = 0; i < 3; i++) v_new[i] = v_new[i]*si->feedback_data.to_distribute.v_kick/v_new_norm + pj->v[i]; 
-    //message("v old %.5e %.5e %.5e v_new %.5e %.5e %.5e a_grav %.5e %.5e %.5e", pj->v[0], pj->v[1], pj->v[2], v_new[0], v_new[1], v_new[2], xp->a_grav[0], xp->a_grav[1], xp->a_grav[2]);
 
     /* Set the velocity */
-    hydro_set_velocity(pj,v_new);
+    hydro_set_velocity(pj, xp, v_new);
 
     /* Heat particle */
     // probability GALSF_SUBGRID HOTWIND = 0.3 in SIMBA
@@ -127,7 +126,7 @@ runner_iact_nonsym_feedback_apply(const float r2, const float *dx,
     pj->time_bin = time_bin_decoupled;
     // ALEXEI: debugging print statement
     //if (pj->id == SIMBA_DEBUG_ID) message("spart id %llu decoupled particle %llu delay_time %.5e rand %.5e prob %.5e", si->id, pj->id, pj->delay_time, rand_kick, prob_kick);
-    message("spart id %llu decoupled particle %llu delay_time %.5e rand %.5e prob %.5e", si->id, pj->id, pj->delay_time, rand_kick, prob_kick);
+    message("spart id %llu decoupled particle %llu delay_time %.5e rand %.5e prob %.5e new velocity %.5e", si->id, pj->id, pj->delay_time, rand_kick, prob_kick, sqrt(v_new[0]*v_new[0]+v_new[1]*v_new[1]+v_new[2]*v_new[2]));
 
 #ifdef SWIFT_DEBUG_CHECKS
     pj->ti_decoupled = ti_current;
