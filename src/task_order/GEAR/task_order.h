@@ -16,20 +16,27 @@
  * along with this program.  If not, see <http://www.gnu.org/licenses/>.
  *
  ******************************************************************************/
-
 #ifndef SWIFT_TASK_ORDER_GEAR_H
 #define SWIFT_TASK_ORDER_GEAR_H
 
-#include "cell.h"
-
 #define task_order_star_formation_before_feedback 0
 
-__attribute__((always_inline)) INLINE static void
-task_order_addunlock_star_formation_feedback(struct scheduler *s,
-                                             struct cell *c,
-                                             struct cell *star_resort_cell) {
+/**
+ * @brief Place the star formation cell at the right place in the dependency
+ * graph.
+ *
+ * In GEAR, star formation takes place after the feedback tasks (that are
+ * finishing with the stars_out task).
+ *
+ * @param s The #scheduler.
+ * @param c The #cell on which to act.
+ * @param star_resort_cell The #cell where the stars re-sorting task is in this
+ * hierarchy.
+ */
+INLINE static void task_order_addunlock_star_formation_feedback(
+    struct scheduler *s, struct cell *c, struct cell *star_resort_cell) {
 
   scheduler_addunlock(s, c->stars.stars_out, c->top->hydro.star_formation);
 }
 
-#endif  // SWIFT_TASK_ORDER_GEAR_H
+#endif /* SWIFT_TASK_ORDER_GEAR_H */

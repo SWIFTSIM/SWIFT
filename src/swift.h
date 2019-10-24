@@ -83,7 +83,6 @@
 #include "stars.h"
 #include "stars_io.h"
 #include "task.h"
-#include "task_order.h"
 #include "threadpool.h"
 #include "timeline.h"
 #include "timers.h"

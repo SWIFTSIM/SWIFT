@@ -1428,7 +1428,7 @@ case "$with_subgrid" in
 	with_subgrid_star_formation=GEAR
 	with_subgrid_feedback=none
 	with_subgrid_black_holes=none
-  with_subgrid_task_order=GEAR
+	with_subgrid_task_order=GEAR
 	enable_fof=no
    ;;
    EAGLE)
@@ -1440,7 +1440,7 @@ case "$with_subgrid" in
 	with_subgrid_star_formation=EAGLE
 	with_subgrid_feedback=EAGLE
 	with_subgrid_black_holes=EAGLE
-  with_subgrid_task_order=EAGLE
+	with_subgrid_task_order=EAGLE
 	enable_fof=yes
    ;;
    *)
@@ -1959,7 +1959,7 @@ GEAR)
 AC_DEFINE([TASK_ORDER_GEAR], [1], [GEAR task order])
 ;;
 *)
-AC_MSG_ERROR([Unknown feedback model: $with_feedback])
+AC_MSG_ERROR([Unknown task ordering: $with_task_order])
 ;;
 esac
 
@@ -2198,7 +2198,7 @@ AC_MSG_RESULT([
    Star formation model : $with_star_formation
    Star feedback model  : $with_feedback
    Black holes model    : $with_black_holes
-   Task order           : $with_task_order
+   Task dependencies    : $with_task_order
 
    Individual timers           : $enable_timers
    Task debugging              : $enable_task_debugging
