@@ -541,7 +541,7 @@ SIMBAFeedback:
   wind_scatter:                     0.1
   delay_time:                       0.05
   wind_mass_eta:                    9.
-  wind_mass_spectrum_break:         5.2e9
+  wind_mass_spectrum_break_msun:    5.2e9
   low_mass_power:                   -0.317
   high_mass_power:                  -0.761
   sn_energy_erg:                    1.e51

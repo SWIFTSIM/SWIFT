@@ -42,7 +42,7 @@ struct feedback_props {
 
   /* mass loading parameters */
   float simba_wind_mass_eta;
-  float simba_mass_spectrum_break;
+  float simba_mass_spectrum_break_msun;
   float simba_low_mass_power;
   float simba_high_mass_power;
 
@@ -73,6 +73,8 @@ INLINE static void feedback_props_init(struct feedback_props *fp,
                                        const struct cosmology *cosmo) {
   // ALEXEI: double check units, make sure all use one system!!!
 
+  const double msun = 1.989e33 / units_cgs_conversion_factor(us, UNIT_CONV_MASS);
+
   /* Initialize parameters for calculating rotational velocity of galaxy */
   fp->simba_host_galaxy_mass_norm = parser_get_param_float(params, "SIMBAFeedback:galaxy_mass_norm") / units_cgs_conversion_factor(us, UNIT_CONV_MASS); // 102.329 ALEXEI: guide values added in until figured out what are appropriate values.
   fp->simba_v_circ_exp = parser_get_param_float(params, "SIMBAFeedback:v_circ_exp"); // 0.26178;
@@ -88,7 +90,7 @@ INLINE static void feedback_props_init(struct feedback_props *fp,
 
   /* read parameters for mass loading calculation */
   fp->simba_wind_mass_eta = parser_get_param_float(params,"SIMBAFeedback:wind_mass_eta");
-  fp->simba_mass_spectrum_break = parser_get_param_float(params,"SIMBAFeedback:wind_mass_spectrum_break") / units_cgs_conversion_factor(us,UNIT_CONV_MASS);
+  fp->simba_mass_spectrum_break_msun = parser_get_param_float(params,"SIMBAFeedback:wind_mass_spectrum_break_msun") / msun;
   fp->simba_low_mass_power = parser_get_param_float(params,"SIMBAFeedback:low_mass_power");
   fp->simba_high_mass_power = parser_get_param_float(params,"SIMBAFeedback:high_mass_power");
 

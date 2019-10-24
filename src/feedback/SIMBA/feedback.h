@@ -65,12 +65,12 @@ inline void compute_kick_speed(struct spart *sp, const struct feedback_props *fe
  */
 inline void compute_mass_loading(struct spart *sp, const struct feedback_props *feedback_props) {
   // ALEXEI: check units of host_galaxy_mass with Romeel: is this a mass or mass/msun?
-  if (sp->mass < feedback_props->simba_mass_spectrum_break) {
+  if (sp->mass < feedback_props->simba_mass_spectrum_break_msun) {
     sp->feedback_data.to_distribute.wind_mass = feedback_props->simba_wind_mass_eta 
-        * sp->feedback_data.host_galaxy_mass * pow(sp->mass/feedback_props->simba_mass_spectrum_break,feedback_props->simba_low_mass_power);
+        * sp->feedback_data.host_galaxy_mass * pow(sp->mass/feedback_props->simba_mass_spectrum_break_msun,feedback_props->simba_low_mass_power);
   } else {
     sp->feedback_data.to_distribute.wind_mass = feedback_props->simba_wind_mass_eta 
-        * sp->feedback_data.host_galaxy_mass * pow(sp->mass/feedback_props->simba_mass_spectrum_break,feedback_props->simba_high_mass_power);
+        * sp->feedback_data.host_galaxy_mass * pow(sp->mass/feedback_props->simba_mass_spectrum_break_msun,feedback_props->simba_high_mass_power);
   }
 };
 
@@ -101,11 +101,12 @@ inline void compute_heating(struct spart *sp, const struct feedback_props *feedb
     u_SN *= 2.61634;
   }
 
-  // ALEXEI: commented out for debugging
-  //if (u_wind > feedback_props->simba_wind_energy_limit) 
-  //  sp->feedback_data.to_distribute.v_kick *= sqrt(feedback_props->simba_wind_energy_limit*u_SN/u_wind);
-  //if (feedback_props->simba_wind_energy_limit < 1.f) 
-  //  u_SN *= feedback_props->simba_wind_energy_limit;
+  if (u_wind > feedback_props->simba_wind_energy_limit) {
+    sp->feedback_data.to_distribute.v_kick *= sqrt(feedback_props->simba_wind_energy_limit*u_SN/u_wind);
+  }
+  if (feedback_props->simba_wind_energy_limit < 1.f) {
+    u_SN *= feedback_props->simba_wind_energy_limit;
+  }
 
   /* Now we can decide if there's any energy left over to distribute */
   sp->feedback_data.to_distribute.u_extra = max(u_SN - u_wind, 0.);
