@@ -439,24 +439,13 @@ void part_create_mpi_types(void) {
 
   /* Types for sending specific fields of our structs.
    * -------------------------------------------------
-   * We use MPI_Type_indexed to pick out elements of the struct that we want
-   * to send, note that guard elements at byte 0 and the last byte must also
-   * be included to keep the stride of the struct in alignment. If the first
-   * and last elements are named then don't add guard bytes. */
-
+   * Trying vector as may be fast, but difficult to extend idea without
+   * reorganizing the structs so we have contiguity. */
 
   /* "task_subtype_xv:" send three doubles in the "x" field. */
-  int displacements[3];
-  displacements[0] = 0;
-  displacements[1] = offsetof(struct part, x);
-  displacements[2] = sizeof(struct part) - 1;
-
-  int block_lengths[3] = {1,                     // First byte.
-                          3 * sizeof(double),    // x[3]
-                          1};                    // Last byte.
-
-  if (MPI_Type_indexed(3, block_lengths, displacements, MPI_BYTE,
-                       &part_mpi_xvtype) != MPI_SUCCESS ||
+  int block_length = 3 * sizeof(double);
+  if (MPI_Type_vector(1, block_length, sizeof(struct part), MPI_BYTE,
+                      &part_mpi_xvtype) != MPI_SUCCESS ||
       MPI_Type_commit(&part_mpi_xvtype) != MPI_SUCCESS) {
     error("Failed to create MPI type for xvparts.");
   }

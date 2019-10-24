@@ -1740,16 +1740,19 @@ void scheduler_enqueue(struct scheduler *s, struct task *t) {
           buff = t->buff = malloc(count);
 
         } else if (t->subtype == task_subtype_xv) {
+
+          count = t->ci->hydro.count;
+
           if (t->sendfull) {
-            count = t->ci->hydro.count;
-            size = count * sizeof(struct part);
             type = part_mpi_type;
             buff = t->ci->hydro.parts;
+            size = count * sizeof(struct part);
           } else {
-            count = t->ci->hydro.count;
-            size = count * part_mpi_xvtype_size;
+
+            /* Start at first element of x. */
             type = part_mpi_xvtype;
-            buff = t->ci->hydro.parts;
+            buff = &t->ci->hydro.parts[0].x[0];
+            size = count * 3 * sizeof(double);
           }
 
         } else if (t->subtype == task_subtype_rho ||
@@ -1869,16 +1872,18 @@ void scheduler_enqueue(struct scheduler *s, struct task *t) {
 
         } else if (t->subtype == task_subtype_xv) {
 
+          count = t->ci->hydro.count;
+
           if (t->sendfull) {
-            count = t->ci->hydro.count;
-            size = count * sizeof(struct part);
             type = part_mpi_type;
             buff = t->ci->hydro.parts;
+            size = count * sizeof(struct part);
           } else {
-            count = t->ci->hydro.count;
-            size = count * part_mpi_xvtype_size;
+
+            /* Start at first element of x. */
             type = part_mpi_xvtype;
-            buff = t->ci->hydro.parts;
+            buff = &t->ci->hydro.parts[0].x[0];
+            size = count * 3 * sizeof(double);
           }
 
         } else if (t->subtype == task_subtype_rho ||
