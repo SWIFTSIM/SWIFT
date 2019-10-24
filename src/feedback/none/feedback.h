@@ -115,6 +115,15 @@ __attribute__((always_inline)) INLINE static void feedback_evolve_spart(
     const double star_age_beg_step, const double dt) {}
 
 /**
+ * @brief Clean-up the memory allocated for the feedback routines
+ *
+ * We simply free all the arrays.
+ *
+ * @param feedback_props the feedback data structure.
+ */
+static INLINE void feedback_clean(struct feedback_props* feedback_props) {}
+
+/**
  * @brief Write a feedback struct to the given FILE as a stream of bytes.
  *
  * @param feedback the struct
