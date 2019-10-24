@@ -1797,6 +1797,14 @@ case "$with_chemistry" in
    ;;
 esac
 
+if test "$with_chemistry" != "none"; then
+   if test "$enable_hand_vec" == "yes"; then
+      if test "$with_hydro" == "gadget2"; then
+      AC_MSG_ERROR([Cannot run with hand vectorisation and chemistry yet. Please use --disable-hand-vec])
+      fi
+   fi
+fi
+
 #  Particle tracers
 AC_ARG_WITH([tracers],
    [AS_HELP_STRING([--with-tracers=<function>],
