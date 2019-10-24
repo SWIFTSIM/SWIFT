@@ -1077,6 +1077,60 @@ void feedback_restore_tables(struct feedback_props* fp) {
 }
 
 /**
+ * @brief Clean-up the memory allocated for the feedback routines
+ *
+ * We simply free all the arrays.
+ *
+ * @param feedback_props the feedback data structure.
+ */
+void feedback_clean(struct feedback_props* feedback_props) {
+
+  swift_free("imf-tables", feedback_props->imf);
+  swift_free("imf-tables", feedback_props->imf_mass_bin);
+  swift_free("imf-tables", feedback_props->imf_mass_bin_log10);
+  swift_free("feedback-tables", feedback_props->yields_SNIa);
+  swift_free("feedback-tables", feedback_props->yield_SNIa_IMF_resampled);
+  swift_free("feedback-tables", feedback_props->yield_AGB.mass);
+  swift_free("feedback-tables", feedback_props->yield_AGB.metallicity);
+  swift_free("feedback-tables", feedback_props->yield_AGB.yield);
+  swift_free("feedback-tables", feedback_props->yield_AGB.yield_IMF_resampled);
+  swift_free("feedback-tables", feedback_props->yield_AGB.ejecta);
+  swift_free("feedback-tables", feedback_props->yield_AGB.ejecta_IMF_resampled);
+  swift_free("feedback-tables", feedback_props->yield_AGB.total_metals);
+  swift_free("feedback-tables",
+             feedback_props->yield_AGB.total_metals_IMF_resampled);
+  swift_free("feedback-tables", feedback_props->yield_SNII.mass);
+  swift_free("feedback-tables", feedback_props->yield_SNII.metallicity);
+  swift_free("feedback-tables", feedback_props->yield_SNII.yield);
+  swift_free("feedback-tables", feedback_props->yield_SNII.yield_IMF_resampled);
+  swift_free("feedback-tables", feedback_props->yield_SNII.ejecta);
+  swift_free("feedback-tables",
+             feedback_props->yield_SNII.ejecta_IMF_resampled);
+  swift_free("feedback-tables", feedback_props->yield_SNII.total_metals);
+  swift_free("feedback-tables",
+             feedback_props->yield_SNII.total_metals_IMF_resampled);
+  swift_free("feedback-tables", feedback_props->lifetimes.mass);
+  swift_free("feedback-tables", feedback_props->lifetimes.metallicity);
+  swift_free("feedback-tables", feedback_props->yield_mass_bins);
+  for (int i = 0; i < eagle_feedback_lifetime_N_metals; i++) {
+    free(feedback_props->lifetimes.dyingtime[i]);
+  }
+  free(feedback_props->lifetimes.dyingtime);
+  for (int i = 0; i < eagle_feedback_SNIa_N_elements; i++) {
+    free(feedback_props->SNIa_element_names[i]);
+  }
+  free(feedback_props->SNIa_element_names);
+  for (int i = 0; i < eagle_feedback_SNII_N_elements; i++) {
+    free(feedback_props->SNII_element_names[i]);
+  }
+  free(feedback_props->SNII_element_names);
+  for (int i = 0; i < eagle_feedback_AGB_N_elements; i++) {
+    free(feedback_props->AGB_element_names[i]);
+  }
+  free(feedback_props->AGB_element_names);
+}
+
+/**
  * @brief Write a feedback struct to the given FILE as a stream of bytes.
  *
  * @param feedback the struct
