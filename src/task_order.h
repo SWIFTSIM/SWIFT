@@ -16,7 +16,6 @@
  * along with this program.  If not, see <http://www.gnu.org/licenses/>.
  *
  ******************************************************************************/
-
 #ifndef SWIFT_TASK_ORDER_H
 #define SWIFT_TASK_ORDER_H
 
@@ -32,4 +31,4 @@
 #error undefined task order
 #endif
 
-#endif  // SWIFT_TASK_ORDER_H
+#endif  /* SWIFT_TASK_ORDER_H */
