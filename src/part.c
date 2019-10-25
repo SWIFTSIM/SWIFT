@@ -396,7 +396,12 @@ MPI_Datatype part_mpi_xvtype;
 int part_mpi_xvtype_size;
 
 MPI_Datatype xpart_mpi_type;
+
 MPI_Datatype gpart_mpi_type;
+int gpart_mpi_type_size;
+MPI_Datatype gpart_mpi_xvtype;
+int gpart_mpi_xvtype_size;
+
 MPI_Datatype spart_mpi_type;
 MPI_Datatype bpart_mpi_type;
 
@@ -453,6 +458,22 @@ void part_create_mpi_types(void) {
   /* Get sizes for efficiency. */
   MPI_Type_size(part_mpi_xvtype, &part_mpi_xvtype_size);
   MPI_Type_size(part_mpi_type, &part_mpi_type_size);
+
+
+  /* Gravity. */
+  /* "task_subtype_gpart:" everything from x to time_bin. */
+  
+  block_length = offsetof(struct gpart, time_bin) + sizeof(timebin_t) - 
+      offsetof(struct gpart, x);
+  if (MPI_Type_vector(1, block_length, sizeof(struct gpart), MPI_BYTE,
+                      &gpart_mpi_xvtype) != MPI_SUCCESS ||
+      MPI_Type_commit(&gpart_mpi_xvtype) != MPI_SUCCESS) {
+    error("Failed to create MPI type for xvgparts.");
+  }
+
+  /* Get sizes for efficiency. */
+  MPI_Type_size(gpart_mpi_xvtype, &gpart_mpi_xvtype_size);
+  MPI_Type_size(gpart_mpi_type, &gpart_mpi_type_size);
 }
 
 void part_free_mpi_types(void) {
@@ -461,6 +482,7 @@ void part_free_mpi_types(void) {
   MPI_Type_free(&part_mpi_xvtype);
   MPI_Type_free(&xpart_mpi_type);
   MPI_Type_free(&gpart_mpi_type);
+  MPI_Type_free(&gpart_mpi_xvtype);
   MPI_Type_free(&spart_mpi_type);
   MPI_Type_free(&bpart_mpi_type);
 }

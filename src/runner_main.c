@@ -373,8 +373,11 @@ void *runner_main(void *data) {
           if (t->subtype == task_subtype_xv) {
             /* Sent all the attributes at least once, OK to send partial
              * updates now. */
-            //message("send: %d %s/%s %d", t->sendfull, t->type, t->subtype, t->flags);
             t->sendfull = 0;
+          } else if (t->subtype == task_subtype_gpart) {
+            /* Sent all the attributes at least once, OK to send partial
+             * updates now. */
+            t->sendgfull = 0;
           } else if (t->subtype == task_subtype_tend_part) {
             free(t->buff);
           } else if (t->subtype == task_subtype_tend_gpart) {
@@ -430,6 +433,9 @@ void *runner_main(void *data) {
           } else if (t->subtype == task_subtype_limiter) {
             runner_do_recv_part(r, ci, 0, 1);
           } else if (t->subtype == task_subtype_gpart) {
+            /* Sent all the attributes at least once, OK to send partial
+             * updates now. */
+            t->sendgfull = 0;
             runner_do_recv_gpart(r, ci, 1);
           } else if (t->subtype == task_subtype_spart) {
             runner_do_recv_spart(r, ci, 1, 1);

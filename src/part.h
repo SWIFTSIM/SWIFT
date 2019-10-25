@@ -152,7 +152,13 @@ extern MPI_Datatype part_mpi_xvtype;
 extern int part_mpi_xvtype_size;
 
 extern MPI_Datatype xpart_mpi_type;
+
+extern MPI_Datatype gpart_mpi_xvtype;
+extern int gpart_mpi_xvtype_size;
+
 extern MPI_Datatype gpart_mpi_type;
+extern int gpart_mpi_type_size;
+
 extern MPI_Datatype spart_mpi_type;
 extern MPI_Datatype bpart_mpi_type;
 

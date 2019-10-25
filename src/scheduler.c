@@ -1764,11 +1764,17 @@ void scheduler_enqueue(struct scheduler *s, struct task *t) {
           buff = t->ci->hydro.parts;
 
         } else if (t->subtype == task_subtype_gpart) {
-
+            
           count = t->ci->grav.count;
-          size = count * sizeof(struct gpart);
-          type = gpart_mpi_type;
-          buff = t->ci->grav.parts;
+          size = count * sizeof(struct gpart); /* Wrong for xv */
+
+          if (t->sendgfull) {
+            type = gpart_mpi_type;
+            buff = t->ci->grav.parts;
+          } else {
+            type = gpart_mpi_xvtype;
+            buff = &t->ci->grav.parts[0].x[0];
+          }
 
         } else if (t->subtype == task_subtype_spart) {
 
@@ -1897,9 +1903,15 @@ void scheduler_enqueue(struct scheduler *s, struct task *t) {
         } else if (t->subtype == task_subtype_gpart) {
 
           count = t->ci->grav.count;
-          size = count * sizeof(struct gpart);
-          type = gpart_mpi_type;
-          buff = t->ci->grav.parts;
+          size = count * sizeof(struct gpart); /* Wrong for xv */
+
+          if (t->sendgfull) {
+            type = gpart_mpi_type;
+            buff = t->ci->grav.parts;
+          } else {
+            type = gpart_mpi_xvtype;
+            buff = &t->ci->grav.parts[0].x[0];
+          }
 
         } else if (t->subtype == task_subtype_spart) {
 

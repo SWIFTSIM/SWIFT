@@ -95,6 +95,9 @@ void engine_addtasks_send_gravity(struct engine *e, struct cell *ci,
       t_grav = scheduler_addtask(s, task_type_send, task_subtype_gpart,
                                  ci->mpi.tag, 0, ci, cj);
 
+      /* We send full data first time this task runs. */
+      t_grav->sendgfull = 1;
+
       t_ti = scheduler_addtask(s, task_type_send, task_subtype_tend_gpart,
                                ci->mpi.tag, 0, ci, cj);
 
@@ -757,6 +760,9 @@ void engine_addtasks_recv_gravity(struct engine *e, struct cell *c,
     /* Create the tasks. */
     t_grav = scheduler_addtask(s, task_type_recv, task_subtype_gpart,
                                c->mpi.tag, 0, c, NULL);
+
+    /* We send full data first time this task runs. */
+    t_grav->sendgfull = 1;
 
     t_ti = scheduler_addtask(s, task_type_recv, task_subtype_tend_gpart,
                              c->mpi.tag, 0, c, NULL);

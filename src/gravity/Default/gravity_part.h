@@ -33,23 +33,23 @@ struct gpart {
   /*! Particle position. */
   double x[3];
 
+  /*! Particle mass. */
+  float mass;
+
+  /*! Type of the #gpart (DM, gas, star, ...) */
+  enum part_type type;
+
+  /*! Time-step length */
+  timebin_t time_bin;
+
   /*! Particle velocity. */
   float v_full[3];
 
   /*! Particle acceleration. */
   float a_grav[3];
 
-  /*! Particle mass. */
-  float mass;
-
   /*! Particle FoF properties (group ID, group size, ...) */
   struct fof_gpart_data fof_data;
-
-  /*! Time-step length */
-  timebin_t time_bin;
-
-  /*! Type of the #gpart (DM, gas, star, ...) */
-  enum part_type type;
 
 #ifdef SWIFT_DEBUG_CHECKS
 
