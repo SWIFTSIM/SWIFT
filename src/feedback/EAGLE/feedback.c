@@ -728,6 +728,11 @@ void compute_stellar_evolution(const struct feedback_props* feedback_props,
   const float enrichment_weight_inv =
       sp->feedback_data.to_collect.enrichment_weight_inv;
 
+#ifdef SWIFT_DEBUG_CHECKS
+  if (sp->feedback_data.to_collect.enrichment_weight_inv < 0.)
+    error("Negative inverse weight!");
+#endif
+
   /* Now we start filling the data structure for information to apply to the
    * particles. Do _NOT_ read from the to_collect substructure any more. */
 
@@ -738,6 +743,11 @@ void compute_stellar_evolution(const struct feedback_props* feedback_props,
   const float enrichment_weight =
       (enrichment_weight_inv != 0.f) ? 1.f / enrichment_weight_inv : 0.f;
   sp->feedback_data.to_distribute.enrichment_weight = enrichment_weight;
+
+#ifdef SWIFT_DEBUG_CHECKS
+  if (sp->feedback_data.to_collect.enrichment_weight < 0.)
+    error("Negative weight!");
+#endif
 
   /* Compute properties of the stochastic SNII feedback model. */
   if (feedback_props->with_SNII_feedback) {
