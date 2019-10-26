@@ -162,6 +162,7 @@ tests/testOutputList
 tests/testCbrt
 tests/testFormat.sh
 tests/testCooling
+tests/testComovingCooling
 tests/testHashmap
 tests/*.png
 tests/*.txt

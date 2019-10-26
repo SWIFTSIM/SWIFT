@@ -21,7 +21,7 @@
 /* Local headers. */
 #include "swift.h"
 
-#if defined(CHEMISTRY_EAGLE) && defined(COOLING_EAGLE)
+#if defined(CHEMISTRY_EAGLE) && defined(COOLING_EAGLE) && defined(GADGET2_SPH)
 
 /*
  * @brief Assign particle density and entropy corresponding to the
