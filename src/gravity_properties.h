@@ -111,6 +111,12 @@ struct gravity_props {
    * a_smooth */
   float r_cut_max_ratio;
 
+  /*! Are we dithering the particles at every rebuild? */
+  int with_dithering;
+
+  /*! Fraction of the top-level cell size used to normalize the dithering */
+  double dithering_ratio;
+
   /*! Gravitational constant (in internal units, copied from the physical
    * constants) */
   float G_Newton;

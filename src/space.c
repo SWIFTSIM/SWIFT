@@ -1141,6 +1141,37 @@ void space_allocate_extras(struct space *s, int verbose) {
   free(local_cells);
 }
 
+void space_dither(struct space *s, int verbose) {
+
+  /* Store the old dithering vector */
+  s->pos_dithering_old[0] = s->pos_dithering[0];
+  s->pos_dithering_old[1] = s->pos_dithering[1];
+  s->pos_dithering_old[2] = s->pos_dithering[2];
+
+  if (s->e->nodeID == 0) {
+
+    const double dithering_ratio = s->e->gravity_properties->dithering_ratio;
+
+    /* Compute the new dithering vector */
+    const double rand_x = rand() / ((double)RAND_MAX);
+    const double rand_y = rand() / ((double)RAND_MAX);
+    const double rand_z = rand() / ((double)RAND_MAX);
+
+    s->pos_dithering[0] = dithering_ratio * s->width[0] * rand_x;
+    s->pos_dithering[1] = dithering_ratio * s->width[1] * rand_y;
+    s->pos_dithering[2] = dithering_ratio * s->width[2] * rand_z;
+  }
+
+#ifdef WITH_MPI
+  /* Tell everyone what value to use */
+  MPI_Bcast(s->pos_dithering, 3, MPI_DOUBLE, 0, MPI_COMM_WORLD);
+#endif
+
+  if (verbose)
+    message("Dithering the particle positions by [%e %e %e]",
+            s->pos_dithering[0], s->pos_dithering[1], s->pos_dithering[2]);
+}
+
 /**
  * @brief Re-build the cells as well as the tasks.
  *
@@ -1167,34 +1198,9 @@ void space_rebuild(struct space *s, int repartitioned, int verbose) {
   /* Allocate extra space for particles that will be created */
   if (s->with_star_formation) space_allocate_extras(s, verbose);
 
-  if (s->dithering) {
-
-    /* Store the old dithering vector */
-    s->pos_dithering_old[0] = s->pos_dithering[0];
-    s->pos_dithering_old[1] = s->pos_dithering[1];
-    s->pos_dithering_old[2] = s->pos_dithering[2];
-
-    if (s->e->nodeID == 0) {
-
-      /* Compute the new dithering vector */
-      const double rand_x = rand() / ((double)RAND_MAX);
-      const double rand_y = rand() / ((double)RAND_MAX);
-      const double rand_z = rand() / ((double)RAND_MAX);
-
-      s->pos_dithering[0] = s->dithering_ratio * s->width[0] * rand_x;
-      s->pos_dithering[1] = s->dithering_ratio * s->width[1] * rand_y;
-      s->pos_dithering[2] = s->dithering_ratio * s->width[2] * rand_z;
-    }
-
-#ifdef WITH_MPI
-    /* Tell everyone what value to use */
-    MPI_Bcast(s->pos_dithering, 3, MPI_DOUBLE, 0, MPI_COMM_WORLD);
-#endif
-
-    if (verbose)
-      message("Dithering the particle positions by [%e %e %e]",
-              s->pos_dithering[0], s->pos_dithering[1], s->pos_dithering[2]);
-  }
+  /* Are we dithering the particles? */
+  const int with_dithering = s->e->gravity_properties->with_dithering;
+  if (s->with_self_gravity && with_dithering) space_dither(s, verbose);
 
   struct cell *cells_top = s->cells_top;
   const integertime_t ti_current = (s->e != NULL) ? s->e->ti_current : 0;
@@ -1309,7 +1315,7 @@ void space_rebuild(struct space *s, int repartitioned, int verbose) {
 #endif
 
   /* Move non-local parts and inhibited parts to the end of the list. */
-  if ((s->dithering || !repartitioned) &&
+  if ((with_dithering || !repartitioned) &&
       (s->e->nr_nodes > 1 || count_inhibited_parts > 0)) {
 
     for (size_t k = 0; k < nr_parts; /* void */) {
@@ -1362,7 +1368,7 @@ void space_rebuild(struct space *s, int repartitioned, int verbose) {
 #endif /* SWIFT_DEBUG_CHECKS */
 
   /* Move non-local sparts and inhibited sparts to the end of the list. */
-  if ((s->dithering || !repartitioned) &&
+  if ((with_dithering || !repartitioned) &&
       (s->e->nr_nodes > 1 || count_inhibited_sparts > 0)) {
 
     for (size_t k = 0; k < nr_sparts; /* void */) {
@@ -1413,7 +1419,7 @@ void space_rebuild(struct space *s, int repartitioned, int verbose) {
 #endif /* SWIFT_DEBUG_CHECKS */
 
   /* Move non-local bparts and inhibited bparts to the end of the list. */
-  if ((s->dithering || !repartitioned) &&
+  if ((with_dithering || !repartitioned) &&
       (s->e->nr_nodes > 1 || count_inhibited_bparts > 0)) {
 
     for (size_t k = 0; k < nr_bparts; /* void */) {
@@ -1464,7 +1470,7 @@ void space_rebuild(struct space *s, int repartitioned, int verbose) {
 #endif /* SWIFT_DEBUG_CHECKS */
 
   /* Move non-local gparts and inhibited parts to the end of the list. */
-  if ((s->dithering || !repartitioned) &&
+  if ((with_dithering || !repartitioned) &&
       (s->e->nr_nodes > 1 || count_inhibited_gparts > 0)) {
 
     for (size_t k = 0; k < nr_gparts; /* void */) {
@@ -1530,7 +1536,7 @@ void space_rebuild(struct space *s, int repartitioned, int verbose) {
   /* Exchange the strays, note that this potentially re-allocates
      the parts arrays. This can be skipped if we just repartitioned space
      as there should be no strays in that case */
-  if (s->dithering || !repartitioned) {
+  if (with_dithering || !repartitioned) {
 
     size_t nr_parts_exchanged = s->nr_parts - nr_parts;
     size_t nr_gparts_exchanged = s->nr_gparts - nr_gparts;
@@ -2115,7 +2121,7 @@ void space_parts_get_cell_index_mapper(void *map_data, int nr_parts,
 
   /* Get some constants */
   const int periodic = s->periodic;
-  const int dithering = s->dithering;
+  const int dithering = s->e->gravity_properties->with_dithering;
   const double delta_dithering_x =
       s->pos_dithering[0] - s->pos_dithering_old[0];
   const double delta_dithering_y =
@@ -2248,7 +2254,7 @@ void space_gparts_get_cell_index_mapper(void *map_data, int nr_gparts,
 
   /* Get some constants */
   const int periodic = s->periodic;
-  const int dithering = s->dithering;
+  const int dithering = s->e->gravity_properties->with_dithering;
   const double delta_dithering_x =
       s->pos_dithering[0] - s->pos_dithering_old[0];
   const double delta_dithering_y =
@@ -2386,7 +2392,7 @@ void space_sparts_get_cell_index_mapper(void *map_data, int nr_sparts,
 
   /* Get some constants */
   const int periodic = s->periodic;
-  const int dithering = s->dithering;
+  const int dithering = s->e->gravity_properties->with_dithering;
   const double delta_dithering_x =
       s->pos_dithering[0] - s->pos_dithering_old[0];
   const double delta_dithering_y =
@@ -2520,7 +2526,7 @@ void space_bparts_get_cell_index_mapper(void *map_data, int nr_bparts,
 
   /* Get some constants */
   const int periodic = s->periodic;
-  const int dithering = s->dithering;
+  const int dithering = s->e->gravity_properties->with_dithering;
   const double delta_dithering_x =
       s->pos_dithering[0] - s->pos_dithering_old[0];
   const double delta_dithering_y =
@@ -4704,8 +4710,8 @@ void space_init(struct space *s, struct swift_params *params,
                 struct bpart *bparts, size_t Npart, size_t Ngpart,
                 size_t Nspart, size_t Nbpart, int periodic, int replicate,
                 int generate_gas_in_ics, int hydro, int self_gravity,
-                int star_formation, int DM_background, int dithering,
-                double dithering_ratio, int verbose, int dry_run) {
+                int star_formation, int DM_background, int verbose,
+                int dry_run) {
 
   /* Clean-up everything */
   bzero(s, sizeof(struct space));
@@ -4747,8 +4753,6 @@ void space_init(struct space *s, struct swift_params *params,
   s->sum_gpart_vel_norm = 0.f;
   s->sum_spart_vel_norm = 0.f;
   s->sum_bpart_vel_norm = 0.f;
-  s->dithering = dithering;
-  s->dithering_ratio = dithering_ratio;
   s->nr_queues = 1; /* Temporary value until engine construction */
 
   /* Initiate some basic randomness */
