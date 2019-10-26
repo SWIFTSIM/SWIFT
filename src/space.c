@@ -1141,6 +1141,13 @@ void space_allocate_extras(struct space *s, int verbose) {
   free(local_cells);
 }
 
+/**
+ * @brief Compute a new dithering vector to apply to all the particles
+ * in the simulation.
+ *
+ * @param s The #space.
+ * @param verbose Are we talkative?
+ */
 void space_dither(struct space *s, int verbose) {
 
   /* Store the old dithering vector */
