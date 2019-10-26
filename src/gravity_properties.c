@@ -41,6 +41,7 @@
 void gravity_props_init(struct gravity_props *p, struct swift_params *params,
                         const struct phys_const *phys_const,
                         const struct cosmology *cosmo, const int with_cosmology,
+                        const int with_external_potential,
                         const int has_baryons, const int has_DM,
                         const int is_zoom_simulation, const int periodic) {
 
@@ -88,11 +89,14 @@ void gravity_props_init(struct gravity_props *p, struct swift_params *params,
   p->theta_crit2 = p->theta_crit * p->theta_crit;
   p->theta_crit_inv = 1. / p->theta_crit;
 
-  p->with_dithering =
-      parser_get_opt_param_int(params, "InitialConditions:dithering", 1);
-  if (p->with_dithering) {
-    p->dithering_ratio = parser_get_opt_param_double(
-        params, "InitialConditions:dithering_ratio", 1.0);
+  /* Mesh dithering */
+  if (periodic && !with_external_potential) {
+    p->with_dithering =
+        parser_get_opt_param_int(params, "InitialConditions:dithering", 1);
+    if (p->with_dithering) {
+      p->dithering_ratio = parser_get_opt_param_double(
+          params, "InitialConditions:dithering_ratio", 1.0);
+    }
   }
 
   /* Softening parameters */
