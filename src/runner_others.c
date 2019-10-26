@@ -58,9 +58,6 @@
 /**
  * @brief Calculate gravity acceleration from external potential
  *
- * When dithering of the self-gravity is on, we start by removing
- * the dithered vector from the #gpart and then compute the accelerations.
- *
  * @param r runner task
  * @param c cell
  * @param timer 1 if the time is to be recorded.
@@ -73,8 +70,6 @@ void runner_do_grav_external(struct runner *r, struct cell *c, int timer) {
   const struct external_potential *potential = e->external_potential;
   const struct phys_const *constants = e->physical_constants;
   const double time = r->e->time;
-  const double pos_dithering[3] = {
-      e->s->pos_dithering[0], e->s->pos_dithering[1], e->s->pos_dithering[2]};
 
   TIMER_TIC;
 
@@ -95,22 +90,7 @@ void runner_do_grav_external(struct runner *r, struct cell *c, int timer) {
 
       /* Is this part within the time step? */
       if (gpart_is_active(gp, e)) {
-
-        /* Save the dithered position */
-        const double current_pos[3] = {gp->x[0], gp->x[1], gp->x[2]};
-
-        /* Undo the dithering */
-        gp->x[0] -= pos_dithering[0];
-        gp->x[1] -= pos_dithering[1];
-        gp->x[2] -= pos_dithering[2];
-
-        /* Compute the acceleration from the external potential */
         external_gravity_acceleration(time, potential, constants, gp);
-
-        /* Restore the dithered position */
-        gp->x[0] = current_pos[0];
-        gp->x[1] = current_pos[1];
-        gp->x[2] = current_pos[2];
       }
     }
   }
