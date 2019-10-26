@@ -1177,12 +1177,13 @@ void space_rebuild(struct space *s, int repartitioned, int verbose) {
     if (s->e->nodeID == 0) {
 
       /* Compute the new dithering vector */
-      s->pos_dithering[0] =
-          s->dithering_ratio * s->width[0] * rand() / ((double)RAND_MAX);
-      s->pos_dithering[1] =
-          s->dithering_ratio * s->width[1] * rand() / ((double)RAND_MAX);
-      s->pos_dithering[2] =
-          s->dithering_ratio * s->width[2] * rand() / ((double)RAND_MAX);
+      const double rand_x = rand() / ((double)RAND_MAX);
+      const double rand_y = rand() / ((double)RAND_MAX);
+      const double rand_z = rand() / ((double)RAND_MAX);
+
+      s->pos_dithering[0] = s->dithering_ratio * s->width[0] * rand_x;
+      s->pos_dithering[1] = s->dithering_ratio * s->width[1] * rand_y;
+      s->pos_dithering[2] = s->dithering_ratio * s->width[2] * rand_z;
     }
 
 #ifdef WITH_MPI
@@ -4750,7 +4751,7 @@ void space_init(struct space *s, struct swift_params *params,
   s->dithering_ratio = dithering_ratio;
   s->nr_queues = 1; /* Temporary value until engine construction */
 
-  /* Initialise some randomness */
+  /* Initiate some basic randomness */
   srand(42);
 
   /* Are we generating gas from the DM-only ICs? */
