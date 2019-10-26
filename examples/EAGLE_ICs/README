@@ -6,3 +6,13 @@ difference is the file format, adapted for SWIFT.
 The scripts in this directory download the tables required to
 run the EAGLE model. Plotting scripts are also provided
 for basic quantities.
+
+VELOCIraptor can be run on the output. The code is compiled
+using
+
+cmake -DVR_USE_GAS=ON -DVR_USE_STAR=ON -DV_USE_BH=ON
+
+and run using
+
+stf -C vrconfig_3dfof_subhalos_SO_hydro.cfg -i eagle_0035 -o halos_0035 -I 2
+

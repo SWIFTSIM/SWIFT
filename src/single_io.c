@@ -782,7 +782,10 @@ void write_output_single(struct engine* e, const char* baseName,
   if (e->snapshot_int_time_label_on)
     snprintf(fileName, FILENAME_BUFFER_SIZE, "%s_%06i.hdf5", baseName,
              (int)round(e->time));
-  else
+  else if (e->snapshot_invoke_stf) {
+    snprintf(fileName, FILENAME_BUFFER_SIZE, "%s_%04i.hdf5", baseName,
+             e->stf_output_count);
+  } else
     snprintf(fileName, FILENAME_BUFFER_SIZE, "%s_%04i.hdf5", baseName,
              e->snapshot_output_count);
 
@@ -1293,6 +1296,7 @@ void write_output_single(struct engine* e, const char* baseName,
   H5Fclose(h_file);
 
   e->snapshot_output_count++;
+  if (e->snapshot_invoke_stf) e->stf_output_count++;
 }
 
 #endif /* HAVE_HDF5 && !WITH_MPI */

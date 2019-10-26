@@ -4027,82 +4027,138 @@ void space_list_useful_top_level_cells(struct space *s) {
             clocks_getunit());
 }
 
-void space_synchronize_particle_positions_mapper(void *map_data, int nr_gparts,
-                                                 void *extra_data) {
+void space_synchronize_part_positions_mapper(void *map_data, int nr_parts,
+                                             void *extra_data) {
   /* Unpack the data */
-  struct gpart *restrict gparts = (struct gpart *)map_data;
+  const struct part *parts = (struct part *)map_data;
   struct space *s = (struct space *)extra_data;
+  const ptrdiff_t offset = parts - s->parts;
+  const struct xpart *xparts = s->xparts + offset;
 
-  for (int k = 0; k < nr_gparts; k++) {
+  for (int k = 0; k < nr_parts; k++) {
 
     /* Get the particle */
-    struct gpart *restrict gp = &gparts[k];
+    const struct part *p = &parts[k];
+    const struct xpart *xp = &xparts[k];
 
-    if (gp->type == swift_type_dark_matter)
+    /* Skip unimportant particles */
+    if (p->time_bin == time_bin_not_created ||
+        p->time_bin == time_bin_inhibited)
       continue;
 
-    else if (gp->type == swift_type_dark_matter_background)
-      continue;
+    /* Get its gravity friend */
+    struct gpart *gp = p->gpart;
 
-    else if (gp->type == swift_type_gas) {
+#ifdef SWIFT_DEBUG_CHECKS
+    if (gp == NULL) error("Unlinked particle!");
+#endif
 
-      /* Get its gassy friend */
-      struct part *p = &s->parts[-gp->id_or_neg_offset];
-      struct xpart *xp = &s->xparts[-gp->id_or_neg_offset];
+    /* Synchronize positions, velocities and masses */
+    gp->x[0] = p->x[0];
+    gp->x[1] = p->x[1];
+    gp->x[2] = p->x[2];
 
-      /* Synchronize positions and velocities */
-      p->x[0] = gp->x[0];
-      p->x[1] = gp->x[1];
-      p->x[2] = gp->x[2];
+    gp->v_full[0] = xp->v_full[0];
+    gp->v_full[1] = xp->v_full[1];
+    gp->v_full[2] = xp->v_full[2];
 
-      xp->v_full[0] = gp->v_full[0];
-      xp->v_full[1] = gp->v_full[1];
-      xp->v_full[2] = gp->v_full[2];
-
-      gp->mass = hydro_get_mass(p);
-    }
-
-    else if (gp->type == swift_type_stars) {
-
-      /* Get its stellar friend */
-      struct spart *sp = &s->sparts[-gp->id_or_neg_offset];
-
-      /* Synchronize positions */
-      sp->x[0] = gp->x[0];
-      sp->x[1] = gp->x[1];
-      sp->x[2] = gp->x[2];
-
-      gp->mass = sp->mass;
-    }
-
-    else if (gp->type == swift_type_black_hole) {
-
-      /* Get its black hole friend */
-      struct bpart *bp = &s->bparts[-gp->id_or_neg_offset];
-
-      /* Synchronize positions */
-      bp->x[0] = gp->x[0];
-      bp->x[1] = gp->x[1];
-      bp->x[2] = gp->x[2];
-
-      gp->mass = bp->mass;
-    }
-
-    else {
-      error("Invalid type!");
-    }
+    gp->mass = hydro_get_mass(p);
   }
 }
 
+void space_synchronize_spart_positions_mapper(void *map_data, int nr_sparts,
+                                              void *extra_data) {
+  /* Unpack the data */
+  const struct spart *sparts = (struct spart *)map_data;
+
+  for (int k = 0; k < nr_sparts; k++) {
+
+    /* Get the particle */
+    const struct spart *sp = &sparts[k];
+
+    /* Skip unimportant particles */
+    if (sp->time_bin == time_bin_not_created ||
+        sp->time_bin == time_bin_inhibited)
+      continue;
+
+    /* Get its gravity friend */
+    struct gpart *gp = sp->gpart;
+
+#ifdef SWIFT_DEBUG_CHECKS
+    if (gp == NULL) error("Unlinked particle!");
+#endif
+
+    /* Synchronize positions, velocities and masses */
+    gp->x[0] = sp->x[0];
+    gp->x[1] = sp->x[1];
+    gp->x[2] = sp->x[2];
+
+    gp->v_full[0] = sp->v[0];
+    gp->v_full[1] = sp->v[1];
+    gp->v_full[2] = sp->v[2];
+
+    gp->mass = sp->mass;
+  }
+}
+
+void space_synchronize_bpart_positions_mapper(void *map_data, int nr_bparts,
+                                              void *extra_data) {
+  /* Unpack the data */
+  const struct bpart *bparts = (struct bpart *)map_data;
+
+  for (int k = 0; k < nr_bparts; k++) {
+
+    /* Get the particle */
+    const struct bpart *bp = &bparts[k];
+
+    /* Skip unimportant particles */
+    if (bp->time_bin == time_bin_not_created ||
+        bp->time_bin == time_bin_inhibited)
+      continue;
+
+    /* Get its gravity friend */
+    struct gpart *gp = bp->gpart;
+
+#ifdef SWIFT_DEBUG_CHECKS
+    if (gp == NULL) error("Unlinked particle!");
+#endif
+
+    /* Synchronize positions, velocities and masses */
+    gp->x[0] = bp->x[0];
+    gp->x[1] = bp->x[1];
+    gp->x[2] = bp->x[2];
+
+    gp->v_full[0] = bp->v[0];
+    gp->v_full[1] = bp->v[1];
+    gp->v_full[2] = bp->v[2];
+
+    gp->mass = bp->mass;
+  }
+}
+
+/**
+ * @brief Make sure the baryon particles are at the same position and
+ * have the same velocity and mass as their #gpart friends.
+ *
+ * We copy the baryon particle properties to the #gpart type-by-type.
+ *
+ * @param s The #space.
+ */
 void space_synchronize_particle_positions(struct space *s) {
 
   const ticks tic = getticks();
 
-  if ((s->nr_gparts > 0 && s->nr_parts > 0) ||
-      (s->nr_gparts > 0 && s->nr_sparts > 0))
-    threadpool_map(&s->e->threadpool,
-                   space_synchronize_particle_positions_mapper, s->gparts,
-                   s->nr_gparts, sizeof(struct gpart), 0, (void *)s);
+  if (s->nr_gparts > 0 && s->nr_parts > 0)
+    threadpool_map(&s->e->threadpool, space_synchronize_part_positions_mapper,
+                   s->parts, s->nr_parts, sizeof(struct part), 0, (void *)s);
+
+  if (s->nr_gparts > 0 && s->nr_sparts > 0)
+    threadpool_map(&s->e->threadpool, space_synchronize_spart_positions_mapper,
+                   s->sparts, s->nr_sparts, sizeof(struct spart), 0, NULL);
+
+  if (s->nr_gparts > 0 && s->nr_bparts > 0)
+    threadpool_map(&s->e->threadpool, space_synchronize_bpart_positions_mapper,
+                   s->bparts, s->nr_bparts, sizeof(struct bpart), 0, NULL);
 
   if (s->e->verbose)
     message("took %.3f %s.", clocks_from_ticks(getticks() - tic),
@@ -4472,6 +4528,7 @@ void space_init_parts_mapper(void *restrict map_data, int count,
     hydro_init_part(&parts[k], hs);
     chemistry_init_part(&parts[k], e->chemistry);
     pressure_floor_init_part(&parts[k], &xparts[k]);
+    star_formation_init_part(&parts[k], e->star_formation);
     tracers_after_init(&parts[k], &xparts[k], e->internal_units,
                        e->physical_constants, with_cosmology, e->cosmology,
                        e->hydro_properties, e->cooling_func, e->time);
@@ -5558,6 +5615,12 @@ void space_clean(struct space *s) {
   swift_free("gparts", s->gparts);
   swift_free("sparts", s->sparts);
   swift_free("bparts", s->bparts);
+#ifdef WITH_MPI
+  swift_free("parts_foreign", s->parts_foreign);
+  swift_free("sparts_foreign", s->sparts_foreign);
+  swift_free("gparts_foreign", s->gparts_foreign);
+  swift_free("bparts_foreign", s->bparts_foreign);
+#endif
 }
 
 /**

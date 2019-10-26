@@ -172,6 +172,8 @@ __attribute__((always_inline)) INLINE static void feedback_evolve_spart(
   sp->mass -= sp->feedback_data.to_distribute.mass;
 }
 
+void feedback_clean(struct feedback_props* feedback_props);
+
 void feedback_struct_dump(const struct feedback_props* feedback, FILE* stream);
 
 void feedback_struct_restore(struct feedback_props* feedback, FILE* stream);
