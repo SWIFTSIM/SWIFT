@@ -92,10 +92,10 @@ void gravity_props_init(struct gravity_props *p, struct swift_params *params,
   /* Mesh dithering */
   if (periodic && !with_external_potential) {
     p->with_dithering =
-        parser_get_opt_param_int(params, "InitialConditions:dithering", 1);
+        parser_get_opt_param_int(params, "Gravity:dithering", 1);
     if (p->with_dithering) {
-      p->dithering_ratio = parser_get_opt_param_double(
-          params, "InitialConditions:dithering_ratio", 1.0);
+      p->dithering_ratio =
+          parser_get_opt_param_double(params, "Gravity:dithering_ratio", 1.0);
     }
   }
 
