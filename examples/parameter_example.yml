@@ -369,13 +369,13 @@ EAGLEStarFormation:
   EOS_temperature_norm_K:            8000      # Temperature om the polytropic EOS assumed for star-forming gas at the density normalisation in Kelvin.
   EOS_gamma_effective:               1.3333333 # Slope the of the polytropic EOS assumed for the star-forming gas.
   gas_fraction:                      0.25      # (Optional) The gas fraction used internally by the model (Defaults to 1).
-  KS_normalisation:                  1.515e-4  # The normalization of the Kennicutt-Schmidt law in Msun / kpc^2 / yr.
-  KS_exponent:                       1.4       # The exponent of the Kennicutt-Schmidt law.
-  min_over_density:               57.7      # The over-density above which star-formation is allowed.
+  KS_normalisation:                  1.515e-4  # Normalization of the Kennicutt-Schmidt law in Msun / kpc^2 / yr.
+  KS_exponent:                       1.4       # Exponent of the Kennicutt-Schmidt law.
+  min_over_density:                  57.7      # Over-density above which star-formation is allowed.
   KS_high_density_threshold_H_p_cm3: 1e3       # Hydrogen number density above which the Kennicut-Schmidt law changes slope in Hydrogen atoms per cm^3.
   KS_high_density_exponent:          2.0       # Slope of the Kennicut-Schmidt law above the high-density threshold.
   KS_max_density_threshold_H_p_cm3:  1e5       # (Optional) Density above which a gas particle gets automatically turned into a star in Hydrogen atoms per cm^3 (Defaults to FLT_MAX).
-  EOS_temperature_margin_dex:         0.5       # (Optional) Logarithm base 10 of the maximal temperature difference above the EOS allowed to form stars (Defaults to FLT_MAX).
+  EOS_entropy_margin_dex:            0.5       # (Optional) Logarithm base 10 of the maximal entropy above the EOS at which stars can form.
   threshold_norm_H_p_cm3:            0.1       # Normalisation of the metal-dependant density threshold for star formation in Hydrogen atoms per cm^3.
   threshold_Z0:                      0.002     # Reference metallicity (metal mass fraction) for the metal-dependant threshold for star formation.
   threshold_slope:                   -0.64     # Slope of the metal-dependant star formation threshold

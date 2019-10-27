@@ -69,11 +69,11 @@ struct star_formation {
   /*! Critical overdensity */
   double min_over_den;
 
-  /*! Dalla Vecchia & Schaye temperature criteria */
-  double temperature_margin_threshold_dex;
+  /*! Dalla Vecchia & Schaye entropy differnce criterion */
+  double entropy_margin_threshold_dex;
 
-  /*! 10^Tdex of Dalla Vecchia & SChaye temperature criteria */
-  double ten_to_temperature_margin_threshold_dex;
+  /*! 10^Tdex of Dalla Vecchia & Schaye entropy difference criterion */
+  double ten_to_entropy_margin_threshold_dex;
 
   /*! gas fraction */
   double fgas;
@@ -273,7 +273,7 @@ INLINE static int star_formation_is_star_forming(
 
   /* Check the Scahye & Dalla Vecchia 2012 EOS-based temperature critrion */
   return (entropy <
-          entropy_eos * starform->ten_to_temperature_margin_threshold_dex);
+          entropy_eos * starform->ten_to_entropy_margin_threshold_dex);
 }
 
 /**
@@ -587,11 +587,11 @@ INLINE static void starformation_init_backend(
   starform->max_gas_density =
       starform->max_gas_density_HpCM3 * number_density_from_cgs;
 
-  starform->temperature_margin_threshold_dex = parser_get_opt_param_double(
-      parameter_file, "EAGLEStarFormation:EOS_temperature_margin_dex", FLT_MAX);
+  starform->entropy_margin_threshold_dex = parser_get_opt_param_double(
+      parameter_file, "EAGLEStarFormation:EOS_entropy_margin_dex", FLT_MAX);
 
-  starform->ten_to_temperature_margin_threshold_dex =
-      exp10(starform->temperature_margin_threshold_dex);
+  starform->ten_to_entropy_margin_threshold_dex =
+      exp10(starform->entropy_margin_threshold_dex);
 
   /* Read the normalization of the metallicity dependent critical
    * density*/
@@ -651,7 +651,7 @@ INLINE static void starformation_print_backend(
       starform->density_threshold_max_HpCM3);
   message("Temperature threshold is given by Dalla Vecchia and Schaye (2012)");
   message("The temperature threshold offset from the EOS is given by: %e dex",
-          starform->temperature_margin_threshold_dex);
+          starform->entropy_margin_threshold_dex);
   message("Running with a maximum gas density given by: %e #/cm^3",
           starform->max_gas_density_HpCM3);
 }
