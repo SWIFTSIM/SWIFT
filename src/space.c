@@ -1142,6 +1142,44 @@ void space_allocate_extras(struct space *s, int verbose) {
 }
 
 /**
+ * @brief Compute a new dithering vector to apply to all the particles
+ * in the simulation.
+ *
+ * @param s The #space.
+ * @param verbose Are we talkative?
+ */
+void space_dither(struct space *s, int verbose) {
+
+  /* Store the old dithering vector */
+  s->pos_dithering_old[0] = s->pos_dithering[0];
+  s->pos_dithering_old[1] = s->pos_dithering[1];
+  s->pos_dithering_old[2] = s->pos_dithering[2];
+
+  if (s->e->nodeID == 0) {
+
+    const double dithering_ratio = s->e->gravity_properties->dithering_ratio;
+
+    /* Compute the new dithering vector */
+    const double rand_x = rand() / ((double)RAND_MAX);
+    const double rand_y = rand() / ((double)RAND_MAX);
+    const double rand_z = rand() / ((double)RAND_MAX);
+
+    s->pos_dithering[0] = dithering_ratio * s->width[0] * rand_x;
+    s->pos_dithering[1] = dithering_ratio * s->width[1] * rand_y;
+    s->pos_dithering[2] = dithering_ratio * s->width[2] * rand_z;
+  }
+
+#ifdef WITH_MPI
+  /* Tell everyone what value to use */
+  MPI_Bcast(s->pos_dithering, 3, MPI_DOUBLE, 0, MPI_COMM_WORLD);
+#endif
+
+  if (verbose)
+    message("Dithering the particle positions by [%e %e %e]",
+            s->pos_dithering[0], s->pos_dithering[1], s->pos_dithering[2]);
+}
+
+/**
  * @brief Re-build the cells as well as the tasks.
  *
  * @param s The #space in which to update the cells.
@@ -1166,6 +1204,10 @@ void space_rebuild(struct space *s, int repartitioned, int verbose) {
 
   /* Allocate extra space for particles that will be created */
   if (s->with_star_formation) space_allocate_extras(s, verbose);
+
+  /* Are we dithering the particles? */
+  const int with_dithering = s->e->gravity_properties->with_dithering;
+  if (s->with_self_gravity && with_dithering) space_dither(s, verbose);
 
   struct cell *cells_top = s->cells_top;
   const integertime_t ti_current = (s->e != NULL) ? s->e->ti_current : 0;
@@ -1280,14 +1322,15 @@ void space_rebuild(struct space *s, int repartitioned, int verbose) {
 #endif
 
   /* Move non-local parts and inhibited parts to the end of the list. */
-  if (!repartitioned && (s->e->nr_nodes > 1 || count_inhibited_parts > 0)) {
+  if ((with_dithering || !repartitioned) &&
+      (s->e->nr_nodes > 1 || count_inhibited_parts > 0)) {
+
     for (size_t k = 0; k < nr_parts; /* void */) {
 
       /* Inhibited particle or foreign particle */
       if (h_index[k] == -1 || cells_top[h_index[k]].nodeID != local_nodeID) {
 
         /* One fewer particle */
-
         nr_parts -= 1;
 
         /* Swap the particle */
@@ -1332,7 +1375,9 @@ void space_rebuild(struct space *s, int repartitioned, int verbose) {
 #endif /* SWIFT_DEBUG_CHECKS */
 
   /* Move non-local sparts and inhibited sparts to the end of the list. */
-  if (!repartitioned && (s->e->nr_nodes > 1 || count_inhibited_sparts > 0)) {
+  if ((with_dithering || !repartitioned) &&
+      (s->e->nr_nodes > 1 || count_inhibited_sparts > 0)) {
+
     for (size_t k = 0; k < nr_sparts; /* void */) {
 
       /* Inhibited particle or foreign particle */
@@ -1381,7 +1426,9 @@ void space_rebuild(struct space *s, int repartitioned, int verbose) {
 #endif /* SWIFT_DEBUG_CHECKS */
 
   /* Move non-local bparts and inhibited bparts to the end of the list. */
-  if (!repartitioned && (s->e->nr_nodes > 1 || count_inhibited_bparts > 0)) {
+  if ((with_dithering || !repartitioned) &&
+      (s->e->nr_nodes > 1 || count_inhibited_bparts > 0)) {
+
     for (size_t k = 0; k < nr_bparts; /* void */) {
 
       /* Inhibited particle or foreign particle */
@@ -1430,7 +1477,9 @@ void space_rebuild(struct space *s, int repartitioned, int verbose) {
 #endif /* SWIFT_DEBUG_CHECKS */
 
   /* Move non-local gparts and inhibited parts to the end of the list. */
-  if (!repartitioned && (s->e->nr_nodes > 1 || count_inhibited_gparts > 0)) {
+  if ((with_dithering || !repartitioned) &&
+      (s->e->nr_nodes > 1 || count_inhibited_gparts > 0)) {
+
     for (size_t k = 0; k < nr_gparts; /* void */) {
 
       /* Inhibited particle or foreign particle */
@@ -1494,7 +1543,7 @@ void space_rebuild(struct space *s, int repartitioned, int verbose) {
   /* Exchange the strays, note that this potentially re-allocates
      the parts arrays. This can be skipped if we just repartitioned space
      as there should be no strays in that case */
-  if (!repartitioned) {
+  if (with_dithering || !repartitioned) {
 
     size_t nr_parts_exchanged = s->nr_parts - nr_parts;
     size_t nr_gparts_exchanged = s->nr_gparts - nr_gparts;
@@ -2078,6 +2127,14 @@ void space_parts_get_cell_index_mapper(void *map_data, int nr_parts,
   int *const ind = data->ind + (ptrdiff_t)(parts - s->parts);
 
   /* Get some constants */
+  const int periodic = s->periodic;
+  const int dithering = s->e->gravity_properties->with_dithering;
+  const double delta_dithering_x =
+      s->pos_dithering[0] - s->pos_dithering_old[0];
+  const double delta_dithering_y =
+      s->pos_dithering[1] - s->pos_dithering_old[1];
+  const double delta_dithering_z =
+      s->pos_dithering[2] - s->pos_dithering_old[2];
   const double dim_x = s->dim[0];
   const double dim_y = s->dim[1];
   const double dim_z = s->dim[2];
@@ -2103,12 +2160,18 @@ void space_parts_get_cell_index_mapper(void *map_data, int nr_parts,
     /* Get the particle */
     struct part *restrict p = &parts[k];
 
-    const double old_pos_x = p->x[0];
-    const double old_pos_y = p->x[1];
-    const double old_pos_z = p->x[2];
+    double old_pos_x = p->x[0];
+    double old_pos_y = p->x[1];
+    double old_pos_z = p->x[2];
+
+    if (periodic && dithering) {
+      old_pos_x += delta_dithering_x;
+      old_pos_y += delta_dithering_y;
+      old_pos_z += delta_dithering_z;
+    }
 
 #ifdef SWIFT_DEBUG_CHECKS
-    if (!s->periodic && p->time_bin != time_bin_inhibited) {
+    if (!periodic && p->time_bin != time_bin_inhibited) {
       if (old_pos_x < 0. || old_pos_x > dim_x)
         error("Particle outside of volume along X.");
       if (old_pos_y < 0. || old_pos_y > dim_y)
@@ -2197,6 +2260,14 @@ void space_gparts_get_cell_index_mapper(void *map_data, int nr_gparts,
   int *const ind = data->ind + (ptrdiff_t)(gparts - s->gparts);
 
   /* Get some constants */
+  const int periodic = s->periodic;
+  const int dithering = s->e->gravity_properties->with_dithering;
+  const double delta_dithering_x =
+      s->pos_dithering[0] - s->pos_dithering_old[0];
+  const double delta_dithering_y =
+      s->pos_dithering[1] - s->pos_dithering_old[1];
+  const double delta_dithering_z =
+      s->pos_dithering[2] - s->pos_dithering_old[2];
   const double dim_x = s->dim[0];
   const double dim_y = s->dim[1];
   const double dim_z = s->dim[2];
@@ -2221,12 +2292,18 @@ void space_gparts_get_cell_index_mapper(void *map_data, int nr_gparts,
     /* Get the particle */
     struct gpart *restrict gp = &gparts[k];
 
-    const double old_pos_x = gp->x[0];
-    const double old_pos_y = gp->x[1];
-    const double old_pos_z = gp->x[2];
+    double old_pos_x = gp->x[0];
+    double old_pos_y = gp->x[1];
+    double old_pos_z = gp->x[2];
+
+    if (periodic && dithering) {
+      old_pos_x += delta_dithering_x;
+      old_pos_y += delta_dithering_y;
+      old_pos_z += delta_dithering_z;
+    }
 
 #ifdef SWIFT_DEBUG_CHECKS
-    if (!s->periodic && gp->time_bin != time_bin_inhibited) {
+    if (!periodic && gp->time_bin != time_bin_inhibited) {
       if (old_pos_x < 0. || old_pos_x > dim_x)
         error("Particle outside of volume along X.");
       if (old_pos_y < 0. || old_pos_y > dim_y)
@@ -2321,6 +2398,14 @@ void space_sparts_get_cell_index_mapper(void *map_data, int nr_sparts,
   int *const ind = data->ind + (ptrdiff_t)(sparts - s->sparts);
 
   /* Get some constants */
+  const int periodic = s->periodic;
+  const int dithering = s->e->gravity_properties->with_dithering;
+  const double delta_dithering_x =
+      s->pos_dithering[0] - s->pos_dithering_old[0];
+  const double delta_dithering_y =
+      s->pos_dithering[1] - s->pos_dithering_old[1];
+  const double delta_dithering_z =
+      s->pos_dithering[2] - s->pos_dithering_old[2];
   const double dim_x = s->dim[0];
   const double dim_y = s->dim[1];
   const double dim_z = s->dim[2];
@@ -2345,12 +2430,18 @@ void space_sparts_get_cell_index_mapper(void *map_data, int nr_sparts,
     /* Get the particle */
     struct spart *restrict sp = &sparts[k];
 
-    const double old_pos_x = sp->x[0];
-    const double old_pos_y = sp->x[1];
-    const double old_pos_z = sp->x[2];
+    double old_pos_x = sp->x[0];
+    double old_pos_y = sp->x[1];
+    double old_pos_z = sp->x[2];
+
+    if (periodic && dithering) {
+      old_pos_x += delta_dithering_x;
+      old_pos_y += delta_dithering_y;
+      old_pos_z += delta_dithering_z;
+    }
 
 #ifdef SWIFT_DEBUG_CHECKS
-    if (!s->periodic && sp->time_bin != time_bin_inhibited) {
+    if (!periodic && sp->time_bin != time_bin_inhibited) {
       if (old_pos_x < 0. || old_pos_x > dim_x)
         error("Particle outside of volume along X.");
       if (old_pos_y < 0. || old_pos_y > dim_y)
@@ -2441,6 +2532,14 @@ void space_bparts_get_cell_index_mapper(void *map_data, int nr_bparts,
   int *const ind = data->ind + (ptrdiff_t)(bparts - s->bparts);
 
   /* Get some constants */
+  const int periodic = s->periodic;
+  const int dithering = s->e->gravity_properties->with_dithering;
+  const double delta_dithering_x =
+      s->pos_dithering[0] - s->pos_dithering_old[0];
+  const double delta_dithering_y =
+      s->pos_dithering[1] - s->pos_dithering_old[1];
+  const double delta_dithering_z =
+      s->pos_dithering[2] - s->pos_dithering_old[2];
   const double dim_x = s->dim[0];
   const double dim_y = s->dim[1];
   const double dim_z = s->dim[2];
@@ -2465,12 +2564,18 @@ void space_bparts_get_cell_index_mapper(void *map_data, int nr_bparts,
     /* Get the particle */
     struct bpart *restrict bp = &bparts[k];
 
-    const double old_pos_x = bp->x[0];
-    const double old_pos_y = bp->x[1];
-    const double old_pos_z = bp->x[2];
+    double old_pos_x = bp->x[0];
+    double old_pos_y = bp->x[1];
+    double old_pos_z = bp->x[2];
+
+    if (periodic && dithering) {
+      old_pos_x += delta_dithering_x;
+      old_pos_y += delta_dithering_y;
+      old_pos_z += delta_dithering_z;
+    }
 
 #ifdef SWIFT_DEBUG_CHECKS
-    if (!s->periodic) {
+    if (!periodic && bp->time_bin != time_bin_inhibited) {
       if (old_pos_x < 0. || old_pos_x > dim_x)
         error("Particle outside of volume along X.");
       if (old_pos_y < 0. || old_pos_y > dim_y)
@@ -4656,6 +4761,9 @@ void space_init(struct space *s, struct swift_params *params,
   s->sum_spart_vel_norm = 0.f;
   s->sum_bpart_vel_norm = 0.f;
   s->nr_queues = 1; /* Temporary value until engine construction */
+
+  /* Initiate some basic randomness */
+  srand(42);
 
   /* Are we generating gas from the DM-only ICs? */
   if (generate_gas_in_ics) {
