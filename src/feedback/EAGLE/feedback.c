@@ -745,7 +745,7 @@ void compute_stellar_evolution(const struct feedback_props* feedback_props,
   sp->feedback_data.to_distribute.enrichment_weight = enrichment_weight;
 
 #ifdef SWIFT_DEBUG_CHECKS
-  if (sp->feedback_data.to_collect.enrichment_weight < 0.)
+  if (sp->feedback_data.to_distribute.enrichment_weight < 0.)
     error("Negative weight!");
 #endif
 
