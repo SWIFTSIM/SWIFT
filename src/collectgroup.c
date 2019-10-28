@@ -31,6 +31,7 @@
 /* Local headers. */
 #include "engine.h"
 #include "error.h"
+#include "star_formation_logger.h"
 
 #ifdef WITH_MPI
 

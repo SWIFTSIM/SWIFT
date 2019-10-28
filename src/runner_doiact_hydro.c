@@ -25,6 +25,7 @@
 /* Local headers. */
 #include "active.h"
 #include "cell.h"
+#include "chemistry.h"
 #include "engine.h"
 #include "pressure_floor_iact.h"
 #include "runner.h"

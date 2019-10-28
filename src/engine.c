@@ -51,6 +51,7 @@
 /* Local headers. */
 #include "active.h"
 #include "atomic.h"
+#include "black_holes.h"
 #include "cell.h"
 #include "chemistry.h"
 #include "clocks.h"
@@ -83,7 +84,6 @@
 #include "sort_part.h"
 #include "star_formation.h"
 #include "star_formation_logger.h"
-#include "star_formation_logger_struct.h"
 #include "stars_io.h"
 #include "statistics.h"
 #include "timers.h"

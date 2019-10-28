@@ -30,7 +30,6 @@
 #include <stddef.h>
 
 /* Includes. */
-#include "gravity_properties.h"
 #include "hydro_space.h"
 #include "lock.h"
 #include "parser.h"
@@ -40,6 +39,7 @@
 /* Avoid cyclic inclusions */
 struct cell;
 struct cosmology;
+struct gravity_props;
 
 /* Some constants. */
 #define space_cellallocchunk 1000
