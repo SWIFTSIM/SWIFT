@@ -21,6 +21,7 @@
 
 /* Local includes */
 #include "adiabatic_index.h"
+#include "chemistry.h"
 #include "cooling.h"
 #include "cosmology.h"
 #include "engine.h"
