@@ -34,13 +34,9 @@
 
 /* Includes. */
 #include "barrier.h"
-#include "black_holes_properties.h"
-#include "chemistry_struct.h"
 #include "clocks.h"
 #include "collectgroup.h"
-#include "cooling_struct.h"
 #include "dump.h"
-#include "gravity_properties.h"
 #include "mesh_gravity.h"
 #include "parser.h"
 #include "partition.h"
@@ -48,10 +44,11 @@
 #include "runner.h"
 #include "scheduler.h"
 #include "space.h"
-#include "star_formation_logger.h"
 #include "task.h"
 #include "units.h"
 #include "velociraptor_interface.h"
+
+struct black_holes_properties;
 
 /**
  * @brief The different policies the #engine can follow.

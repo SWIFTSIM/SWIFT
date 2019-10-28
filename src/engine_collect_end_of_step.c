@@ -27,6 +27,7 @@
 
 /* Local headers. */
 #include "active.h"
+#include "star_formation_logger.h"
 #include "timeline.h"
 
 /**

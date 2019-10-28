@@ -47,9 +47,8 @@ runner_iact_nonsym_feedback_density(const float r2, const float *dx,
   /* Get the gas mass. */
   const float mj = hydro_get_mass(pj);
 
-  /* Get r and 1/r. */
-  const float r_inv = 1.0f / sqrtf(r2);
-  const float r = r2 * r_inv;
+  /* Get r. */
+  const float r = sqrtf(r2);
 
   /* Compute the kernel function */
   const float hi_inv = 1.0f / hi;
@@ -92,9 +91,8 @@ runner_iact_nonsym_feedback_apply(const float r2, const float *dx,
                                   const struct cosmology *cosmo,
                                   const integertime_t ti_current) {
 
-  /* Get r and 1/r. */
-  const float r_inv = 1.0f / sqrtf(r2);
-  const float r = r2 * r_inv;
+  /* Get r. */
+  const float r = sqrtf(r2);
 
   /* Compute the kernel function */
   const float hi_inv = 1.0f / hi;
@@ -114,7 +112,7 @@ runner_iact_nonsym_feedback_apply(const float r2, const float *dx,
   }
 
 #ifdef SWIFT_DEBUG_CHECKS
-  if (Omega_frac < 0. || Omega_frac > 1.00001)
+  if (Omega_frac < 0. || Omega_frac > 1.01)
     error("Invalid fraction of material to distribute. Omega_frac=%e",
           Omega_frac);
 #endif

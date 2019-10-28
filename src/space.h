@@ -30,7 +30,6 @@
 #include <stddef.h>
 
 /* Includes. */
-#include "gravity_properties.h"
 #include "hydro_space.h"
 #include "lock.h"
 #include "parser.h"
@@ -40,6 +39,7 @@
 /* Avoid cyclic inclusions */
 struct cell;
 struct cosmology;
+struct gravity_props;
 
 /* Some constants. */
 #define space_cellallocchunk 1000
@@ -111,6 +111,14 @@ struct space {
 
   /*! Inverse of the top-level cell width */
   double iwidth[3];
+
+  /*! Position vector added to all the particles at rebuild
+    time */
+  double pos_dithering[3];
+
+  /*! Position vector added to all the particles at rebuild
+    time (value at the previous rebuild) */
+  double pos_dithering_old[3];
 
   /*! The minimum top-level cell width allowed. */
   double cell_min;

@@ -222,8 +222,12 @@ The accuracy of the gravity calculation is governed by the following two paramet
 * The time-step size pre-factor :math:`\eta`: ``eta``,
 
 The time-step of a given particle is given by :math:`\Delta t =
-\sqrt{\frac{2\eta\epsilon}{|\overrightarrow{a}|}}`, where
-:math:`\overrightarrow{a}` is the particle's acceleration. `Power et al. (2003) <http://adsabs.harvard.edu/abs/2003MNRAS.338...14P>`_ recommend using :math:`\eta=0.025`.
+\sqrt{2\eta\epsilon_i/|\overrightarrow{a}_i|}`, where
+:math:`\overrightarrow{a}_i` is the particle's acceleration and
+:math:`\epsilon_i` its (spline) softening length. `Power et al. (2003)
+<http://adsabs.harvard.edu/abs/2003MNRAS.338...14P>`_ recommend using
+:math:`\eta=0.025`.
+
 The last tree-related parameter is
 
 * The tree rebuild frequency: ``rebuild_frequency``.
@@ -233,7 +237,7 @@ The tree rebuild frequency is an optional parameter defaulting to
 fraction of the particles have been integrated (kicked) forward in time.
 
 Simulations using periodic boundary conditions use additional parameters for the
-Particle-Mesh part of the calculation. The last three are optional:
+Particle-Mesh part of the calculation. The last five are optional:
 
 * The number cells along each axis of the mesh :math:`N`: ``mesh_side_length``,
 * The mesh smoothing scale in units of the mesh cell-size :math:`a_{\rm
@@ -244,9 +248,17 @@ Particle-Mesh part of the calculation. The last three are optional:
 * The scale below which the short-range forces are assumed to be exactly Newtonian (in units of
   the mesh cell-size multiplied by :math:`a_{\rm smooth}`) :math:`r_{\rm
   cut,min}`: ``r_cut_min`` (default: ``0.1``),
+* Whether or not to dither the particles randomly at each tree rebuild:
+  ``dithering`` (default: ``1``),
+* The magnitude of each component of the dithering vector to use in units of the
+  top-level cell sizes: ``dithering_ratio`` (default: ``1.0``).
 
 For most runs, the default values can be used. Only the number of cells along
-each axis needs to be specified. The remaining three values are best described
+each axis needs to be specified. The mesh dithering is only used for simulations
+using periodic boundary conditions and in the absence of an external potential.
+At each tree rebuild time, all the particles are moved by a random vector (the
+same for all particles) and the periodic BCs are then applied. This reduces the
+correlation of erros across time. The remaining three values are best described
 in the context of the full set of equations in the theory documents.
 
 As a summary, here are the values used for the EAGLE :math:`100^3~{\rm Mpc}^3`
@@ -257,17 +269,18 @@ simulation:
    # Parameters for the self-gravity scheme for the EAGLE-100 box
    Gravity:
      eta:                    0.025
-     theta:                  0.7
+     theta:                  0.6
      mesh_side_length:       512
      comoving_DM_softening:         0.0026994  # 0.7 proper kpc at z=2.8.
      max_physical_DM_softening:     0.0007     # 0.7 proper kpc
      comoving_baryon_softening:     0.0026994  # 0.7 proper kpc at z=2.8.
      max_physical_baryon_softening: 0.0007     # 0.7 proper kpc
      rebuild_frequency:      0.01   # Default optional value
-     a_smooth:     1.25             # Default optional value
-     r_cut_max:    4.5              # Default optional value
-     r_cut_min:    0.1              # Default optional value
-
+     a_smooth:          1.25        # Default optional value
+     r_cut_max:         4.5         # Default optional value
+     r_cut_min:         0.1         # Default optional value
+     dithering:         1           # Default optional value
+     dithering_ratio:   1.0         # Default optional value 
 
 .. _Parameters_SPH:
 
