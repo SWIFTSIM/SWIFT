@@ -19,6 +19,7 @@
 #ifndef SWIFT_EAGLE_BLACK_HOLES_IO_H
 #define SWIFT_EAGLE_BLACK_HOLES_IO_H
 
+#include "adiabatic_index.h"
 #include "black_holes_part.h"
 #include "io_properties.h"
 
