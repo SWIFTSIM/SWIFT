@@ -454,12 +454,12 @@ __attribute__((always_inline)) INLINE static void runner_iact_nonsym_limiter(
     struct part *restrict pj, float a, float H) {
 
   /* Wake up the neighbour? */
-  if (pi->force.v_sig > const_limiter_max_v_sig_ratio * pj->force.v_sig) {
+  if (pj->time_bin > pi->time_bin + 2) {
 
-    if (pj->wakeup == time_bin_not_awake)
-      pj->wakeup = time_bin_awake;
-    else if (pj->wakeup > 0)
-      pj->wakeup = -pj->wakeup;
+    message("aa");
+
+    /* Store the smallest time bin that woke up this particle */
+    pj->wakeup = max(pj->wakeup, -pi->time_bin);
   }
 }
 
