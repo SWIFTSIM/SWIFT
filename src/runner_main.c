@@ -65,7 +65,7 @@
 /* Import the limiter loop functions. */
 #define FUNCTION limiter
 #define FUNCTION_TASK_LOOP TASK_LOOP_LIMITER
-#include "runner_doiact_hydro.h"
+#include "runner_doiact_limiter.h"
 #undef FUNCTION
 #undef FUNCTION_TASK_LOOP
 

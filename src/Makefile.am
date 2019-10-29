@@ -72,7 +72,7 @@ EAGLE_FEEDBACK_SOURCES += feedback/EAGLE/feedback.c
 endif
 
 # Common source files
-AM_SOURCES = space.c runner_main.c runner_doiact_hydro.c \
+AM_SOURCES = space.c runner_main.c runner_doiact_hydro.c runner_doiact_limiter.c \
     runner_doiact_stars.c runner_doiact_black_holes.c runner_ghost.c runner_recv.c \
     runner_sort.c runner_drift.c runner_black_holes.c runner_time_integration.c \
     runner_doiact_hydro_vec.c runner_others.c\
