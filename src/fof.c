@@ -1968,6 +1968,9 @@ void fof_seed_black_holes(const struct fof_props *props,
       /* Set a smoothing length */
       bp->h = p->h;
 
+      /* Save the ID */
+      bp->id = p->id;
+
 #ifdef SWIFT_DEBUG_CHECKS
       bp->ti_kick = p->ti_kick;
       bp->ti_drift = p->ti_drift;
