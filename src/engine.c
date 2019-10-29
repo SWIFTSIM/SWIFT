@@ -1832,7 +1832,7 @@ void engine_skip_drift(struct engine *e) {
 
     /* Skip everything that moves the particles */
     if (t->type == task_type_drift_part || t->type == task_type_drift_gpart ||
-        t->type == task_type_drift_spart)
+        t->type == task_type_drift_spart || t->type == task_type_drift_bpart)
       t->skip = 1;
   }
 
