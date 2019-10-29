@@ -5466,8 +5466,9 @@ void space_check_limiter_mapper(void *map_data, int nr_parts,
 
     if (parts[k].time_bin < 0) error("Particle has negative time-bin!");
 
-    if (with_timestep_limiter && parts[k].wakeup == time_bin_awake)
-      error("Particle still woken up! id=%lld", parts[k].id);
+    if (with_timestep_limiter && parts[k].wakeup != time_bin_not_awake)
+      error("Particle still woken up! id=%lld wakeup=%d", parts[k].id,
+            parts[k].wakeup);
 
     if (with_timestep_sync && parts[k].to_be_synchronized != 0)
       error("Synchronized particle not treated! id=%lld synchronized=%d",

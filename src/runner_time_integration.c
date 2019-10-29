@@ -121,12 +121,9 @@ void runner_do_kick1(struct runner *r, struct cell *c, int timer) {
       if (part_is_starting(p, e)) {
 
 #ifdef SWIFT_DEBUG_CHECKS
-        if (p->wakeup == time_bin_awake)
+        if (p->wakeup != time_bin_not_awake)
           error("Woken-up particle that has not been processed in kick1");
 #endif
-
-        /* Skip particles that have been woken up and treated by the limiter. */
-        if (p->wakeup != time_bin_not_awake) continue;
 
         const integertime_t ti_step = get_integer_timestep(p->time_bin);
         const integertime_t ti_begin =
@@ -349,9 +346,11 @@ void runner_do_kick2(struct runner *r, struct cell *c, int timer) {
         integertime_t ti_begin, ti_end, ti_step;
 
 #ifdef SWIFT_DEBUG_CHECKS
-        if (p->wakeup == time_bin_awake)
+        if (p->wakeup != time_bin_not_awake)
           error("Woken-up particle that has not been processed in kick1");
 #endif
+
+        // MATTHIEU
 
         if (p->wakeup == time_bin_not_awake) {
 
@@ -1020,12 +1019,8 @@ void runner_do_limiter(struct runner *r, struct cell *c, int force, int timer) {
       /* Avoid inhibited particles */
       if (part_is_inhibited(p, e)) continue;
 
-      /* If the particle will be active no need to wake it up */
-      if (part_is_active(p, e) && p->wakeup != time_bin_not_awake)
-        p->wakeup = time_bin_not_awake;
-
       /* Bip, bip, bip... wake-up time */
-      if (p->wakeup <= time_bin_awake) {
+      if (p->wakeup != time_bin_not_awake) {
 
         /* Apply the limiter and get the new time-step size */
         const integertime_t ti_new_step = timestep_limit_part(p, xp, e);
@@ -1160,8 +1155,10 @@ void runner_do_sync(struct runner *r, struct cell *c, int force, int timer) {
       if (part_is_inhibited(p, e)) continue;
 
       /* If the particle is active no need to sync it */
-      if (part_is_active(p, e) && p->to_be_synchronized)
+      if (part_is_active(p, e) && p->to_be_synchronized) {
+        message("Particle %lld already synchronized!", p->id);
         p->to_be_synchronized = 0;
+      }
 
       if (p->to_be_synchronized) {
 

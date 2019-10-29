@@ -52,7 +52,10 @@ INLINE static void timestep_process_sync_part(struct part *p, struct xpart *xp,
   p->to_be_synchronized = 0;
 
   /* This particle is already active. Nothing to do here... */
-  if (p->time_bin <= max_active_bin) return;
+  if (p->time_bin <= max_active_bin) {
+    message("Particle %lld already synchronized!", p->id);
+    return;
+  }
 
   message("Synchronizing particle %lld old bin: %d", p->id, p->time_bin);
 

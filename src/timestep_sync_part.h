@@ -32,9 +32,8 @@ __attribute__((always_inline)) INLINE static void timestep_sync_part(
   p->to_be_synchronized = 1;
 
 #ifdef SWIFT_DEBUG_CHECKS
-  /* message("Demanding a synchronization for particle %lld current
-   * time_bin=%d", */
-  /*         p->id, p->time_bin); */
+  message("Demanding a synchronization for particle %lld current time_bin=%d",
+          p->id, p->time_bin);
 #endif
 }
 
