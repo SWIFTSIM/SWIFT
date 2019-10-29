@@ -1795,9 +1795,10 @@ void write_output_parallel(struct engine* e, const char* baseName,
           /* Select the fields to write */
           stars_write_particles(sparts_written, list, &num_fields,
                                 with_cosmology);
-          num_fields += chemistry_write_sparticles(sparts, list + num_fields);
-          num_fields += tracers_write_sparticles(sparts, list + num_fields,
-                                                 with_cosmology);
+          num_fields +=
+              chemistry_write_sparticles(sparts_written, list + num_fields);
+          num_fields += tracers_write_sparticles(
+              sparts_written, list + num_fields, with_cosmology);
           if (with_fof) {
             num_fields += fof_write_sparts(sparts_written, list + num_fields);
           }
