@@ -870,6 +870,10 @@ void engine_make_hierarchical_tasks_common(struct engine *e, struct cell *c) {
         scheduler_addunlock(s, c->timestep, c->timestep_sync);
         scheduler_addunlock(s, c->timestep_sync, c->kick1);
       }
+
+      if (with_timestep_limiter && with_timestep_sync) {	
+	scheduler_addunlock(s, c->timestep_limiter, c->timestep_sync);
+      }
     }
   } else { /* We are above the super-cell so need to go deeper */
 
