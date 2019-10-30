@@ -1779,8 +1779,7 @@ void engine_skip_force_and_kick(struct engine *e) {
         t->type == task_type_kick1 || t->type == task_type_kick2 ||
         t->type == task_type_timestep ||
         t->type == task_type_timestep_limiter ||
-        t->type == task_type_timestep_sync || t->type == task_type_limiter_in ||
-        t->type == task_type_limiter_out || t->subtype == task_subtype_force ||
+        t->type == task_type_timestep_sync || t->subtype == task_subtype_force ||
         t->subtype == task_subtype_limiter || t->subtype == task_subtype_grav ||
         t->type == task_type_end_hydro_force ||
         t->type == task_type_end_grav_force ||
