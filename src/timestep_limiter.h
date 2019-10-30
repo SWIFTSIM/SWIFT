@@ -32,6 +32,8 @@
  * @param p The #part to update.
  * @param xp Its #xpart companion.
  * @param e The #engine (to extract time-line information).
+ *
+ * @return The updated integer end-of-step of the particle.
  */
 __attribute__((always_inline)) INLINE static integertime_t timestep_limit_part(
     struct part *restrict p, struct xpart *restrict xp,
@@ -58,7 +60,8 @@ __attribute__((always_inline)) INLINE static integertime_t timestep_limit_part(
     /* Mark the particle as being rady to be time integrated */
     p->wakeup = time_bin_not_awake;
 
-    return get_integer_timestep(p->time_bin);
+    /* Return the new end-of-step for this particle */
+    return ti_current + get_integer_timestep(p->time_bin);
 
   } else {
 
@@ -115,20 +118,6 @@ __attribute__((always_inline)) INLINE static integertime_t timestep_limit_part(
     double dt_kick_grav = 0., dt_kick_hydro = 0., dt_kick_therm = 0.,
            dt_kick_corr = 0.;
 
-    /* if (with_cosmology) { */
-
-    /* } else { */
-    /*   dt_kick_hydro = (ti_beg_new - ti_beg_old) * time_base; */
-    /*   dt_kick_grav = (ti_beg_new - ti_beg_old) * time_base; */
-    /*   dt_kick_therm = (ti_beg_new - ti_beg_old) * time_base; */
-    /*   dt_kick_corr = (ti_beg_new - ti_beg_old) * time_base; */
-    /* } */
-
-    /* kick_part(p, xp, dt_kick_hydro, dt_kick_grav, dt_kick_therm,
-     * dt_kick_corr, */
-    /*           e->cosmology, e->hydro_properties, e->entropy_floor, */
-    /*           ti_beg_new, ti_beg_old); */
-
     /* Now we need to reverse the kick1... (the dt are negative here) */
     if (with_cosmology) {
       dt_kick_hydro = -cosmology_get_hydro_kick_factor(
@@ -154,7 +143,8 @@ __attribute__((always_inline)) INLINE static integertime_t timestep_limit_part(
       message("ti_kick=%lld (%d)", p->ti_kick, get_time_bin(p->ti_kick) + 1);
     }
 
-    /* ...and apply the new one (dt is positiive) */
+    /* ...and apply the new one (dt is positiive).
+     * This brought us to the current time. */
     if (with_cosmology) {
       dt_kick_hydro = cosmology_get_hydro_kick_factor(cosmo, ti_beg_new,
                                                       ti_beg_new + dti_new / 2);
@@ -179,7 +169,21 @@ __attribute__((always_inline)) INLINE static integertime_t timestep_limit_part(
       message("ti_kick=%lld (%d)", p->ti_kick, get_time_bin(p->ti_kick) + 1);
     }
 
+    /* The particle has now been kicked to the current time */
+
+    /* New time-bin of this particle */
+    p->time_bin = new_bin;
+
+    /* Mark the particle as being ready to be time integrated */
+    p->wakeup = time_bin_not_awake;
+
+    if (p->id == ICHECK) message("new time bin=%d", p->time_bin);
+
+    /* Do we need to apply the mising kick1 or is this bin active and
+       it will be done in the kick task? */
     if (new_bin > e->max_active_bin) {
+
+      /* Apply the missing kick1 */
 
       if (with_cosmology) {
         dt_kick_hydro = cosmology_get_hydro_kick_factor(
@@ -200,17 +204,17 @@ __attribute__((always_inline)) INLINE static integertime_t timestep_limit_part(
       kick_part(p, xp, dt_kick_hydro, dt_kick_grav, dt_kick_therm, dt_kick_corr,
                 e->cosmology, e->hydro_properties, e->entropy_floor, ti_beg_new,
                 ti_beg_new + dti_new / 2);
+
+      /* Return the new end-of-step for this particle */
+      return ti_beg_new + dti_new;
+
+    } else {
+
+      /* No kick to do here */
+
+      /* Return the new end-of-step for this particle */
+      return ti_current + get_integer_timestep(p->time_bin);
     }
-
-    /* New time-bin of this particle */
-    p->time_bin = new_bin;
-
-    /* Mark the particle as being ready to be time integrated */
-    p->wakeup = time_bin_not_awake;
-
-    if (p->id == ICHECK) message("new time bin=%d", p->time_bin);
-
-    return get_integer_timestep(new_bin);
   }
 }
 

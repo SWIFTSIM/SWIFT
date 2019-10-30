@@ -1037,21 +1037,21 @@ void runner_do_limiter(struct runner *r, struct cell *c, int force, int timer) {
       if (p->wakeup != time_bin_not_awake) {
 
         if (p->id == ICHECK)
-          message("cell ti_beg_max=%lld ti_current=%lld", ti_hydro_beg_max,
+          message("ti_end_min=%lld ti_current=%lld", ti_hydro_end_min,
                   e->ti_current);
 
-        /* Apply the limiter and get the new time-step size */
-        const integertime_t ti_new_step = timestep_limit_part(p, xp, e);
+        /* Apply the limiter and get the new end of time-step */
+        const integertime_t ti_end_new = timestep_limit_part(p, xp, e);
 
         /* What is the next sync-point ? */
-        ti_hydro_end_min = min(ti_current + ti_new_step, ti_hydro_end_min);
-        ti_hydro_end_max = max(ti_current + ti_new_step, ti_hydro_end_max);
+        ti_hydro_end_min = min(ti_end_new, ti_hydro_end_min);
+        ti_hydro_end_max = max(ti_end_new, ti_hydro_end_max);
 
         /* What is the next starting point for this cell ? */
         ti_hydro_beg_max = max(ti_current, ti_hydro_beg_max);
 
         if (p->id == ICHECK)
-          message("ti_beg=%lld ti_current=%lld", ti_hydro_beg_max,
+          message("ti_end_min=%lld ti_current=%lld", ti_hydro_end_min,
                   e->ti_current);
 
         /* Also limit the gpart counter-part */
@@ -1061,10 +1061,8 @@ void runner_do_limiter(struct runner *r, struct cell *c, int force, int timer) {
           p->gpart->time_bin = p->time_bin;
 
           /* What is the next sync-point ? */
-          ti_gravity_end_min =
-              min(ti_current + ti_new_step, ti_gravity_end_min);
-          ti_gravity_end_max =
-              max(ti_current + ti_new_step, ti_gravity_end_max);
+          ti_gravity_end_min = min(ti_end_new, ti_gravity_end_min);
+          ti_gravity_end_max = max(ti_end_new, ti_gravity_end_max);
 
           /* What is the next starting point for this cell ? */
           ti_gravity_beg_max = max(ti_current, ti_gravity_beg_max);

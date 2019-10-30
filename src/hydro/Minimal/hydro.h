@@ -470,6 +470,8 @@ __attribute__((always_inline)) INLINE static void hydro_timestep_extra(
 __attribute__((always_inline)) INLINE static void hydro_init_part(
     struct part *restrict p, const struct hydro_space *hs) {
 
+  if (p->id == ICHECK) message("INIT");
+
   p->density.wcount = 0.f;
   p->density.wcount_dh = 0.f;
   p->rho = 0.f;
@@ -516,6 +518,8 @@ __attribute__((always_inline)) INLINE static void hydro_end_density(
 
   const float rho_inv = 1.f / p->rho;
   const float a_inv2 = cosmo->a2_inv;
+
+  if (p->rho == 0.f) error("Found a density of 0! p->id=%lld", p->id);
 
   /* Finish calculation of the (physical) velocity curl components */
   p->density.rot_v[0] *= h_inv_dim_plus_one * a_inv2 * rho_inv;
@@ -645,6 +649,8 @@ __attribute__((always_inline)) INLINE static void hydro_reset_acceleration(
   p->u_dt = 0.0f;
   p->force.h_dt = 0.0f;
   p->force.v_sig = 2.f * p->force.soundspeed;
+
+  if (p->id == ICHECK) message("RESET ACC h_dt=%e", p->force.h_dt);
 }
 
 /**
@@ -761,6 +767,8 @@ __attribute__((always_inline)) INLINE static void hydro_end_force(
     struct part *restrict p, const struct cosmology *cosmo) {
 
   p->force.h_dt *= p->h * hydro_dimension_inv;
+
+  if (p->id == ICHECK) message("END-FORCE h_dt=%e", p->force.h_dt);
 
 #ifdef SWIFT_DEBUG_CHECKS
   if (p->min_ngb_time_bin == 0) error("Minimal time-bin of neighbours is 0");
