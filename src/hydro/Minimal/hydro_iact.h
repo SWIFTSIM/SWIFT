@@ -456,7 +456,7 @@ __attribute__((always_inline)) INLINE static void runner_iact_nonsym_limiter(
   /* Wake up the neighbour? */
   if (pj->time_bin > pi->time_bin + 2) {
 
-    message("aa");
+    // message("aa");
 
     /* Store the smallest time bin that woke up this particle */
     pj->wakeup = max(pj->wakeup, -pi->time_bin);

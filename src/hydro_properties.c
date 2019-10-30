@@ -293,8 +293,6 @@ void hydro_props_print_snapshot(hid_t h_grpsph, const struct hydro_props *p) {
                        p->hydrogen_mass_fraction);
   io_write_attribute_f(h_grpsph, "Hydrogen ionization transition temperature",
                        p->hydrogen_ionization_temperature);
-  io_write_attribute_f(h_grpsph, "Max v_sig ratio (limiter)",
-                       const_limiter_max_v_sig_ratio);
 
   /* Write out the implementation-dependent viscosity parameters
    * (see hydro/SCHEME/hydro_parameters.h for this implementation) */

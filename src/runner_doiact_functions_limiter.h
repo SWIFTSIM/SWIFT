@@ -44,7 +44,7 @@ void DOPAIR1_NAIVE(struct runner *r, struct cell *restrict ci,
   TIMER_TIC;
 
   /* Anything to do here? */
-  if (!cell_is_active_hydro(ci, e) && !cell_is_active_hydro(cj, e)) return;
+  if (!cell_is_starting_hydro(ci, e) && !cell_is_starting_hydro(cj, e)) return;
 
   const int count_i = ci->hydro.count;
   const int count_j = cj->hydro.count;
@@ -73,7 +73,7 @@ void DOPAIR1_NAIVE(struct runner *r, struct cell *restrict ci,
     /* Skip inhibited particles. */
     if (part_is_inhibited(pi, e)) continue;
 
-    const int pi_active = part_is_active(pi, e);
+    const int pi_active = part_is_starting(pi, e);
     const float hi = pi->h;
     const float hig2 = hi * hi * kernel_gamma2;
     const float pix[3] = {(float)(pi->x[0] - (cj->loc[0] + shift[0])),
@@ -91,7 +91,7 @@ void DOPAIR1_NAIVE(struct runner *r, struct cell *restrict ci,
 
       const float hj = pj->h;
       const float hjg2 = hj * hj * kernel_gamma2;
-      const int pj_active = part_is_active(pj, e);
+      const int pj_active = part_is_starting(pj, e);
 
       /* Compute the pairwise distance. */
       const float pjx[3] = {(float)(pj->x[0] - cj->loc[0]),
@@ -154,7 +154,7 @@ void DOSELF1_NAIVE(struct runner *r, struct cell *restrict c) {
   TIMER_TIC;
 
   /* Anything to do here? */
-  if (!cell_is_active_hydro(c, e)) return;
+  if (!cell_is_starting_hydro(c, e)) return;
 
   /* Cosmological terms */
   const float a = cosmo->a;
@@ -172,7 +172,7 @@ void DOSELF1_NAIVE(struct runner *r, struct cell *restrict c) {
     /* Skip inhibited particles. */
     if (part_is_inhibited(pi, e)) continue;
 
-    const int pi_active = part_is_active(pi, e);
+    const int pi_active = part_is_starting(pi, e);
     const float hi = pi->h;
     const float hig2 = hi * hi * kernel_gamma2;
     const float pix[3] = {(float)(pi->x[0] - c->loc[0]),
@@ -190,7 +190,7 @@ void DOSELF1_NAIVE(struct runner *r, struct cell *restrict c) {
 
       const float hj = pj->h;
       const float hjg2 = hj * hj * kernel_gamma2;
-      const int pj_active = part_is_active(pj, e);
+      const int pj_active = part_is_starting(pj, e);
 
       /* Compute the pairwise distance. */
       const float pjx[3] = {(float)(pj->x[0] - c->loc[0]),
@@ -299,7 +299,7 @@ void DOPAIR1(struct runner *r, struct cell *ci, struct cell *cj, const int sid,
   const float a = cosmo->a;
   const float H = cosmo->H;
 
-  if (cell_is_active_hydro(ci, e)) {
+  if (cell_is_starting_hydro(ci, e)) {
 
     /* Loop over the parts in ci. */
     for (int pid = count_i - 1;
@@ -310,7 +310,7 @@ void DOPAIR1(struct runner *r, struct cell *ci, struct cell *cj, const int sid,
       const float hi = pi->h;
 
       /* Skip inactive particles */
-      if (!part_is_active(pi, e)) continue;
+      if (!part_is_starting(pi, e)) continue;
 
       /* Is there anything we need to interact with ? */
       const double di = sort_i[pid].d + hi * kernel_gamma + dx_max - rshift;
@@ -388,7 +388,7 @@ void DOPAIR1(struct runner *r, struct cell *ci, struct cell *cj, const int sid,
     }   /* loop over the parts in ci. */
   }     /* Cell ci is active */
 
-  if (cell_is_active_hydro(cj, e)) {
+  if (cell_is_starting_hydro(cj, e)) {
 
     /* Loop over the parts in cj. */
     for (int pjd = 0; pjd < count_j && sort_j[pjd].d - hj_max - dx_max < di_max;
@@ -399,7 +399,7 @@ void DOPAIR1(struct runner *r, struct cell *ci, struct cell *cj, const int sid,
       const float hj = pj->h;
 
       /* Skip inactive particles */
-      if (!part_is_active(pj, e)) continue;
+      if (!part_is_starting(pj, e)) continue;
 
       /* Is there anything we need to interact with ? */
       const double dj = sort_j[pjd].d - hj * kernel_gamma - dx_max + rshift;
@@ -497,7 +497,7 @@ void DOPAIR1_BRANCH(struct runner *r, struct cell *ci, struct cell *cj) {
   if (ci->hydro.count == 0 || cj->hydro.count == 0) return;
 
   /* Anything to do here? */
-  if (!cell_is_active_hydro(ci, e) && !cell_is_active_hydro(cj, e)) return;
+  if (!cell_is_starting_hydro(ci, e) && !cell_is_starting_hydro(cj, e)) return;
 
   /* Check that cells are drifted. */
   if (!cell_are_part_drifted(ci, e) || !cell_are_part_drifted(cj, e))
@@ -596,7 +596,7 @@ void DOSELF1(struct runner *r, struct cell *restrict c) {
                      count * sizeof(int)) != 0)
     error("Failed to allocate indt.");
   for (int k = 0; k < count; k++)
-    if (part_is_active(&parts[k], e)) {
+    if (part_is_starting(&parts[k], e)) {
       indt[countdt] = k;
       countdt += 1;
     }
@@ -621,7 +621,7 @@ void DOSELF1(struct runner *r, struct cell *restrict c) {
     const float hig2 = hi * hi * kernel_gamma2;
 
     /* Is the ith particle inactive? */
-    if (!part_is_active(pi, e)) {
+    if (!part_is_starting(pi, e)) {
 
       /* Loop over the other particles .*/
       for (int pjd = firstdt; pjd < countdt; pjd++) {
@@ -684,7 +684,7 @@ void DOSELF1(struct runner *r, struct cell *restrict c) {
           r2 += dx[k] * dx[k];
         }
         const int doj =
-            (part_is_active(pj, e)) && (r2 < hj * hj * kernel_gamma2);
+            (part_is_starting(pj, e)) && (r2 < hj * hj * kernel_gamma2);
 
         const int doi = (r2 < hig2);
 
@@ -754,7 +754,7 @@ void DOSELF1_BRANCH(struct runner *r, struct cell *c) {
   if (c->hydro.count == 0) return;
 
   /* Anything to do here? */
-  if (!cell_is_active_hydro(c, e)) return;
+  if (!cell_is_starting_hydro(c, e)) return;
 
   /* Did we mess up the recursion? */
   if (c->hydro.h_max_old * kernel_gamma > c->dmin)
@@ -793,7 +793,7 @@ void DOSUB_PAIR1(struct runner *r, struct cell *ci, struct cell *cj,
   TIMER_TIC;
 
   /* Should we even bother? */
-  if (!cell_is_active_hydro(ci, e) && !cell_is_active_hydro(cj, e)) return;
+  if (!cell_is_starting_hydro(ci, e) && !cell_is_starting_hydro(cj, e)) return;
   if (ci->hydro.count == 0 || cj->hydro.count == 0) return;
 
   /* Get the type of pair and flip ci/cj if needed. */
@@ -813,7 +813,7 @@ void DOSUB_PAIR1(struct runner *r, struct cell *ci, struct cell *cj,
   }
 
   /* Otherwise, compute the pair directly. */
-  else if (cell_is_active_hydro(ci, e) || cell_is_active_hydro(cj, e)) {
+  else if (cell_is_starting_hydro(ci, e) || cell_is_starting_hydro(cj, e)) {
 
     /* Make sure both cells are drifted to the current timestep. */
     if (!cell_are_part_drifted(ci, e) || !cell_are_part_drifted(cj, e))
@@ -852,7 +852,7 @@ void DOSUB_SELF1(struct runner *r, struct cell *ci, int gettimer) {
   TIMER_TIC;
 
   /* Should we even bother? */
-  if (ci->hydro.count == 0 || !cell_is_active_hydro(ci, r->e)) return;
+  if (ci->hydro.count == 0 || !cell_is_starting_hydro(ci, r->e)) return;
 
   /* Recurse? */
   if (cell_can_recurse_in_self_hydro_task(ci)) {

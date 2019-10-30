@@ -94,6 +94,9 @@ __attribute__((always_inline)) INLINE static void drift_part(
   p->ti_drift = ti_current;
 #endif
 
+  if (p->id == ICHECK)
+    message("DRIFT id=%lld ti_current=%lld", p->id, ti_current);
+
   /* Drift... */
   p->x[0] += xp->v_full[0] * dt_drift;
   p->x[1] += xp->v_full[1] * dt_drift;
