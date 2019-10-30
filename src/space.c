@@ -251,8 +251,6 @@ void space_rebuild_recycle_mapper(void *map_data, int num_elements,
     c->kick1 = NULL;
     c->kick2 = NULL;
     c->timestep = NULL;
-    c->hydro.limiter_in = NULL;
-    c->hydro.limiter_out = NULL;
     c->timestep_limiter = NULL;
     c->timestep_sync = NULL;
     c->hydro.end_force = NULL;
