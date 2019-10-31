@@ -304,8 +304,10 @@ INLINE static void evolve_SNIa(
     double star_age_Gyr, const double dt_Gyr,
     struct feedback_spart_data* const feedback_data) {
 
+  const double star_age_end_step_Gyr = star_age_Gyr + dt_Gyr;
+
   /* Check if we're outside the mass range for SNIa */
-  if (star_age_Gyr + dt_Gyr < props->SNIa_DTD_delay_Gyr) return;
+  if (star_age_end_step_Gyr < props->SNIa_DTD_delay_Gyr) return;
 
 #ifdef SWIFT_DEBUG_CHECKS
   if (dt_Gyr < 0.) error("Negative time-step length!");
@@ -317,7 +319,7 @@ INLINE static void evolve_SNIa(
 
   /* Compute the number of SNIa */
   const float num_SNIa = eagle_feedback_number_of_SNIa(
-      M_init, star_age_Gyr, star_age_Gyr + dt_Gyr, props);
+      M_init, star_age_Gyr, star_age_end_step_Gyr, props);
 
   /* Compute mass of each metal */
   for (int i = 0; i < chemistry_element_count; i++) {
@@ -967,17 +969,23 @@ void feedback_props_init(struct feedback_props* fp,
 
   if (strcmp(temp, "Exponential") == 0) {
 
+    fp->SNIa_DTD = eagle_feedback_SNIa_DTD_exponential;
+
     /* Read SNIa exponential DTD model parameters */
     fp->SNIa_DTD_exp_norm = parser_get_param_float(
         params, "EAGLEFeedback:SNIa_DTD_exp_norm_p_Msun");
     fp->SNIa_DTD_exp_timescale_Gyr = parser_get_param_float(
         params, "EAGLEFeedback:SNIa_DTD_exp_timescale_Gyr");
     fp->SNIa_DTD_exp_timescale_Gyr_inv = 1.f / fp->SNIa_DTD_exp_timescale_Gyr;
+
   } else if (strcmp(temp, "PowerLaw") == 0) {
+
+    fp->SNIa_DTD = eagle_feedback_SNIa_DTD_power_law;
 
     /* Read SNIa power-law DTD model parameters */
     fp->SNIa_DTD_power_law_norm = parser_get_param_float(
         params, "EAGLEFeedback:SNIa_DTD_power_law_norm_p_Msun");
+
   } else {
     error("Invalid SNIa DTD model: '%s'", temp);
   }

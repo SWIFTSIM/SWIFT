@@ -75,8 +75,12 @@ struct lifetime_table {
  * @brief Functional form of the SNIa delay time distribution.
  */
 enum eagle_feedback_SNIa_DTD {
-  eagle_feedback_SNIa_DTD_power_law,  /*!< Power-law with slope -1 */
-  eagle_feedback_SNIa_DTD_exponential /*!< Exponential model (EAGLE default) */
+
+  /*! Power-law with slope -1 */
+  eagle_feedback_SNIa_DTD_power_law = 1,
+
+  /*! Exponential model (EAGLE default) */
+  eagle_feedback_SNIa_DTD_exponential = 2
 };
 
 /**
