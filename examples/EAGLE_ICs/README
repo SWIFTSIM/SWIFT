@@ -3,6 +3,13 @@ the EAGLE suite of simulations. The cosmology, resolution
 and phases are the same as used in the original suite. The only
 difference is the file format, adapted for SWIFT.
 
+Compared to the original EAGLE runs, the following changes have been
+made:
+
+ - The redshift of reionization has been lowered to 7.5 (from 11.5)
+ - The Magnesium yields from SNII stars have been boosted by a
+   factor of 2.
+
 The scripts in this directory download the tables required to
 run the EAGLE model. Plotting scripts are also provided
 for basic quantities.
