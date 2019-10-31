@@ -72,6 +72,14 @@ struct lifetime_table {
 };
 
 /**
+ * @brief Functional form of the SNIa delay time distribution.
+ */
+enum eagle_feedback_SNIa_DTD {
+  eagle_feedback_SNIa_DTD_power_law,  /*!< Power-law with slope -1 */
+  eagle_feedback_SNIa_DTD_exponential /*!< Exponential model (EAGLE default) */
+};
+
+/**
  * @brief Properties of the EAGLE feedback model.
  */
 struct feedback_props {
@@ -127,20 +135,25 @@ struct feedback_props {
 
   /* ------------- SNIa parameters    --------------- */
 
-  /*! Efficiency of the SNIa model */
-  float SNIa_efficiency;
+  /* What delay time distribution are we using? */
+  enum eagle_feedback_SNIa_DTD SNIa_DTD;
 
-  /*! Time-scale of the SNIa decay function in Giga-years */
-  float SNIa_timescale_Gyr;
+  /*! Normalisation of the SNIa DTD in the exponential model */
+  float SNIa_DTD_exp_norm;
 
-  /*! Inverse of time-scale of the SNIa decay function in Giga-years */
-  float SNIa_timescale_Gyr_inv;
+  /*! Time-scale of the SNIa decay function in the exponential model in
+   * Giga-years */
+  float SNIa_DTD_exp_timescale_Gyr;
 
-  /*! Maximal mass used for SNIa feedback (in solar masses) */
-  double SNIa_max_mass_msun;
+  /*! Inverse of time-scale of the SNIa decay function in the exponential model
+   * in Giga-years */
+  float SNIa_DTD_exp_timescale_Gyr_inv;
 
-  /*! Log 10 of the maximal mass used for SNIa feedback (in solar masses) */
-  double log10_SNIa_max_mass_msun;
+  /*! Normalisation of the SNIa DTD in the power-law model */
+  float SNIa_DTD_power_law_norm;
+
+  /*! Stellar age below which no SNIa explode in Giga-years */
+  float SNIa_DTD_delay_Gyr;
 
   /*! Energy released by one supernova type II in cgs units */
   double E_SNIa_cgs;

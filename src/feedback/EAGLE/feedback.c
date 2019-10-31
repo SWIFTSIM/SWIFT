@@ -59,9 +59,7 @@ double eagle_feedback_number_of_SNII(const struct spart* sp,
 
 /**
  * @brief Computes the number of supernovae of type Ia exploding for a given
- * star particle between time t and t+dt
- *
- * We follow Foerster et al. 2006, MNRAS, 368
+ * star particle between time t0 and t1
  *
  * @param M_init The inital mass of the star particle in internal units.
  * @param t0 The initial time (in Gyr).
@@ -72,11 +70,42 @@ double eagle_feedback_number_of_SNIa(const double M_init, const double t0,
                                      const double t1,
                                      const struct feedback_props* props) {
 
-  /* The calculation is written as the integral between t0 and t1 of
-   * eq. 3 of Schaye 2015 paper. */
-  const double tau = props->SNIa_timescale_Gyr_inv;
-  const double nu = props->SNIa_efficiency;
-  const double num_SNIa_per_Msun = nu * (exp(-t0 * tau) - exp(-t1 * tau));
+  double num_SNIa_per_Msun = 0.;
+
+#ifdef SWIFT_DEBUG_CHECKS
+  if (t1 < t0) error("Negative time range!");
+  if (t0 < props->SNIa_DTD_delay_Gyr)
+    error("Initial time smaller than the delay time!");
+#endif
+
+  switch (props->SNIa_DTD) {
+
+    case eagle_feedback_SNIa_DTD_exponential: {
+
+      /* We follow Foerster et al. 2006, MNRAS, 368 */
+
+      /* The calculation is written as the integral between t0 and t1 of
+       * eq. 3 of Schaye 2015 paper. */
+      const double tau = props->SNIa_DTD_exp_timescale_Gyr_inv;
+      const double nu = props->SNIa_DTD_exp_norm;
+      num_SNIa_per_Msun = nu * (exp(-t0 * tau) - exp(-t1 * tau));
+      break;
+    }
+
+    case eagle_feedback_SNIa_DTD_power_law: {
+
+      /* We follow Graur et al. 2011, MNRAS, 417 */
+
+      const double norm = props->SNIa_DTD_power_law_norm;
+      num_SNIa_per_Msun = norm * log(t1 / t0);
+      break;
+    }
+
+    default: {
+      num_SNIa_per_Msun = 0.;
+      error("Invalid choice of SNIa delay time distribution!");
+    }
+  }
 
   return num_SNIa_per_Msun * M_init * props->mass_to_solar_mass;
 }
@@ -272,27 +301,19 @@ INLINE static void determine_bin_yields(int* index_Z_low, int* index_Z_high,
 INLINE static void evolve_SNIa(
     const double log10_min_mass, const double log10_max_mass,
     const double M_init, const double Z, const struct feedback_props* props,
-    double star_age_Gyr, double dt_Gyr,
+    double star_age_Gyr, const double dt_Gyr,
     struct feedback_spart_data* const feedback_data) {
 
   /* Check if we're outside the mass range for SNIa */
-  if (log10_min_mass >= props->log10_SNIa_max_mass_msun) return;
+  if (star_age_Gyr + dt_Gyr < props->SNIa_DTD_delay_Gyr) return;
 
 #ifdef SWIFT_DEBUG_CHECKS
   if (dt_Gyr < 0.) error("Negative time-step length!");
   if (star_age_Gyr < 0.) error("Negative age!");
 #endif
 
-  /* If the max mass is outside the mass range update it to be the maximum
-   * and use updated values for the star's age and timestep in this function */
-  if (log10_max_mass > props->log10_SNIa_max_mass_msun) {
-
-    const double max_mass = props->SNIa_max_mass_msun;
-    const double lifetime_Gyr = lifetime_in_Gyr(max_mass, Z, props);
-
-    dt_Gyr = max(star_age_Gyr + dt_Gyr - lifetime_Gyr, 0.);
-    star_age_Gyr = lifetime_Gyr;
-  }
+  /* Only consider stars beyond the minimal age for SNIa */
+  star_age_Gyr = max(star_age_Gyr, props->SNIa_DTD_delay_Gyr);
 
   /* Compute the number of SNIa */
   const float num_SNIa = eagle_feedback_number_of_SNIa(
@@ -938,16 +959,28 @@ void feedback_props_init(struct feedback_props* fp,
 
   /* Properties of the SNIa enrichment model -------------------------------- */
 
-  fp->SNIa_max_mass_msun =
-      parser_get_param_double(params, "EAGLEFeedback:SNIa_max_mass_Msun");
-  fp->log10_SNIa_max_mass_msun = log10(fp->SNIa_max_mass_msun);
+  fp->SNIa_DTD_delay_Gyr =
+      parser_get_param_double(params, "EAGLEFeedback:SNIa_DTD_delay_Gyr");
 
-  /* Read SNIa timescale model parameters */
-  fp->SNIa_efficiency =
-      parser_get_param_float(params, "EAGLEFeedback:SNIa_efficiency_p_Msun");
-  fp->SNIa_timescale_Gyr =
-      parser_get_param_float(params, "EAGLEFeedback:SNIa_timescale_Gyr");
-  fp->SNIa_timescale_Gyr_inv = 1.f / fp->SNIa_timescale_Gyr;
+  char temp[32] = {0};
+  parser_get_param_string(params, "EAGLEFeedback:SNIa_DTD", temp);
+
+  if (strcmp(temp, "Exponential") == 0) {
+
+    /* Read SNIa exponential DTD model parameters */
+    fp->SNIa_DTD_exp_norm = parser_get_param_float(
+        params, "EAGLEFeedback:SNIa_DTD_exp_norm_p_Msun");
+    fp->SNIa_DTD_exp_timescale_Gyr = parser_get_param_float(
+        params, "EAGLEFeedback:SNIa_DTD_exp_timescale_Gyr");
+    fp->SNIa_DTD_exp_timescale_Gyr_inv = 1.f / fp->SNIa_DTD_exp_timescale_Gyr;
+  } else if (strcmp(temp, "PowerLaw") == 0) {
+
+    /* Read SNIa power-law DTD model parameters */
+    fp->SNIa_DTD_power_law_norm = parser_get_param_float(
+        params, "EAGLEFeedback:SNIa_DTD_power_law_norm_p_Msun");
+  } else {
+    error("Invalid SNIa DTD model: '%s'", temp);
+  }
 
   /* Energy released by supernova type Ia */
   fp->E_SNIa_cgs =
