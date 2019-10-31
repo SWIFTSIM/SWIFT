@@ -986,6 +986,10 @@ void feedback_props_init(struct feedback_props* fp,
     fp->SNIa_DTD_power_law_norm = parser_get_param_float(
         params, "EAGLEFeedback:SNIa_DTD_power_law_norm_p_Msun");
 
+    /* Renormalize everything such that the integral converges to
+       'SNIa_DTD_power_law_norm' over 13.6 Gyr. */
+    fp->SNIa_DTD_power_law_norm /= log(13.6 / fp->SNIa_DTD_delay_Gyr);
+
   } else {
     error("Invalid SNIa DTD model: '%s'", temp);
   }
