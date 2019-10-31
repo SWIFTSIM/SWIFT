@@ -358,25 +358,10 @@ void runner_do_kick2(struct runner *r, struct cell *c, int timer) {
           error("Woken-up particle that has not been processed in kick1");
 #endif
 
-        // MATTHIEU
-
-        if (p->wakeup == time_bin_not_awake) {
-
-          /* Time-step from a regular kick */
-          ti_step = get_integer_timestep(p->time_bin);
-          ti_begin = get_integer_time_begin(ti_current, p->time_bin);
-          ti_end = ti_begin + ti_step;
-
-        } else {
-
-          /* Time-step that follows a wake-up call */
-          ti_begin = get_integer_time_begin(ti_current, p->wakeup);
-          ti_end = get_integer_time_end(ti_current, p->time_bin);
-          ti_step = ti_end - ti_begin;
-
-          /* Reset the flag. Everything is back to normal from now on. */
-          p->wakeup = time_bin_not_awake;
-        }
+        /* Time-step length on the integer timeline */
+        ti_step = get_integer_timestep(p->time_bin);
+        ti_begin = get_integer_time_begin(ti_current, p->time_bin);
+        ti_end = ti_begin + ti_step;
 
 #ifdef SWIFT_DEBUG_CHECKS
         if (ti_begin + ti_step != ti_current)
@@ -1043,6 +1028,9 @@ void runner_do_limiter(struct runner *r, struct cell *c, int force, int timer) {
         /* Apply the limiter and get the new end of time-step */
         const integertime_t ti_end_new = timestep_limit_part(p, xp, e);
 
+        /* Mark this particle has not needing synchronization */
+        p->to_be_synchronized = 0;
+
         /* What is the next sync-point ? */
         ti_hydro_end_min = min(ti_end_new, ti_hydro_end_min);
         ti_hydro_end_max = max(ti_end_new, ti_hydro_end_max);
@@ -1176,7 +1164,7 @@ void runner_do_sync(struct runner *r, struct cell *c, int force, int timer) {
 
       /* If the particle is active no need to sync it */
       if (part_is_active(p, e) && p->to_be_synchronized) {
-        message("Particle %lld already synchronized!", p->id);
+        // message("Particle %lld already synchronized!", p->id);
         p->to_be_synchronized = 0;
       }
 
@@ -1189,7 +1177,8 @@ void runner_do_sync(struct runner *r, struct cell *c, int force, int timer) {
         const integertime_t ti_new_step = get_part_timestep(p, xp, e);
         const timebin_t new_time_bin = get_time_bin(ti_new_step);
 
-        message("Synchronized particle %lld new bin: %d", p->id, new_time_bin);
+        // message("Synchronized particle %lld new bin: %d", p->id,
+        // new_time_bin);
 
         /* Update particle */
         p->time_bin = new_time_bin;
