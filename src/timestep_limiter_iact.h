@@ -37,7 +37,7 @@ __attribute__((always_inline)) INLINE static void runner_iact_nonsym_limiter(
     struct part *restrict pj, float a, float H) {
 
   /* Wake up the neighbour? */
-  if (pj->time_bin > pi->time_bin + 2) {
+  if (pj->time_bin > pi->time_bin + time_bin_neighbour_max_delta_bin) {
 
     /* Store the smallest time bin that woke up this particle */
     pj->wakeup = max(pj->wakeup, -pi->time_bin);
