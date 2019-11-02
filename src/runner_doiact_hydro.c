@@ -33,6 +33,7 @@
 #include "space_getsid.h"
 #include "star_formation_iact.h"
 #include "timers.h"
+#include "timestep_limiter_iact.h"
 
 /* Import the density loop functions. */
 #define FUNCTION density

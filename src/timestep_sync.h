@@ -49,15 +49,12 @@ INLINE static void timestep_process_sync_part(struct part *p, struct xpart *xp,
   const timebin_t min_active_bin = e->min_active_bin;
   const double time_base = e->time_base;
 
-  p->to_be_synchronized = 0;
+  p->limiter_data.to_be_synchronized = 0;
 
   /* This particle is already active. Nothing to do here... */
   if (p->time_bin <= max_active_bin) {
-    message("Particle %lld already synchronized!", p->id);
     return;
   }
-
-  message("Synchronizing particle %lld old bin: %d", p->id, p->time_bin);
 
   /* We want to make the particle finish it's time-step now. */
 
@@ -142,7 +139,7 @@ INLINE static void timestep_process_sync_part(struct part *p, struct xpart *xp,
   /* The particle is now ready to compute its new time-step size and for the
    * next kick */
   p->time_bin = -min_active_bin;
-  p->wakeup = time_bin_not_awake;
+  p->limiter_data.wakeup = time_bin_not_awake;
 }
 
 #endif /* SWIFT_TIMESTEP_SYNC_H */

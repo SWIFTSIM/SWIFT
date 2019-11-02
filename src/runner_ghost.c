@@ -37,6 +37,7 @@
 #include "star_formation.h"
 #include "stars.h"
 #include "timers.h"
+#include "timestep_limiter.h"
 #include "tracers.h"
 
 /* Import the density loop functions. */
@@ -910,6 +911,7 @@ void runner_do_extra_ghost(struct runner *r, struct cell *c, int timer) {
 
         /* Compute variables required for the force loop */
         hydro_prepare_force(p, xp, cosmo, hydro_props, dt_alpha);
+        timestep_limiter_prepare_force(p, xp);
 
         /* The particle force values are now set.  Do _NOT_
            try to read any particle density variables! */
@@ -1128,6 +1130,7 @@ void runner_do_ghost(struct runner *r, struct cell *c, int timer) {
 
             /* Compute variables required for the force loop */
             hydro_prepare_force(p, xp, cosmo, hydro_props, dt_alpha);
+            timestep_limiter_prepare_force(p, xp);
 
             /* The particle force values are now set.  Do _NOT_
                try to read any particle density variables! */
@@ -1283,6 +1286,7 @@ void runner_do_ghost(struct runner *r, struct cell *c, int timer) {
 
         /* Compute variables required for the force loop */
         hydro_prepare_force(p, xp, cosmo, hydro_props, dt_alpha);
+        timestep_limiter_prepare_force(p, xp);
 
         /* The particle force values are now set.  Do _NOT_
            try to read any particle density variables! */

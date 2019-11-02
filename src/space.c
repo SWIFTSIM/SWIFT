@@ -4298,6 +4298,10 @@ void space_first_init_parts_mapper(void *restrict map_data, int count,
   for (int k = 0; k < count; k++) {
 
     hydro_first_init_part(&p[k], &xp[k]);
+    p[k].limiter_data.min_ngb_time_bin = num_time_bins + 1;
+    p[k].limiter_data.wakeup = time_bin_not_awake;
+    p[k].limiter_data.to_be_synchronized = 0;
+
 #ifdef WITH_LOGGER
     logger_part_data_init(&xp[k].logger_data);
 #endif
@@ -5514,13 +5518,14 @@ void space_check_limiter_mapper(void *map_data, int nr_parts,
 
     if (parts[k].time_bin < 0) error("Particle has negative time-bin!");
 
-    if (with_timestep_limiter && parts[k].wakeup != time_bin_not_awake)
+    if (with_timestep_limiter &&
+        parts[k].limiter_data.wakeup != time_bin_not_awake)
       error("Particle still woken up! id=%lld wakeup=%d", parts[k].id,
-            parts[k].wakeup);
+            parts[k].limiter_data.wakeup);
 
-    if (with_timestep_sync && parts[k].to_be_synchronized != 0)
+    if (with_timestep_sync && parts[k].limiter_data.to_be_synchronized != 0)
       error("Synchronized particle not treated! id=%lld synchronized=%d",
-            parts[k].id, parts[k].to_be_synchronized);
+            parts[k].id, parts[k].limiter_data.to_be_synchronized);
 
     if (parts[k].gpart != NULL)
       if (parts[k].time_bin != parts[k].gpart->time_bin)

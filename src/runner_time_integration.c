@@ -121,7 +121,7 @@ void runner_do_kick1(struct runner *r, struct cell *c, int timer) {
       if (part_is_starting(p, e)) {
 
 #ifdef SWIFT_DEBUG_CHECKS
-        if (p->wakeup != time_bin_not_awake)
+        if (p->limiter_data.wakeup != time_bin_not_awake)
           error("Woken-up particle that has not been processed in kick1");
 #endif
 
@@ -136,7 +136,8 @@ void runner_do_kick1(struct runner *r, struct cell *c, int timer) {
           error(
               "Particle in wrong time-bin, ti_end=%lld, ti_begin=%lld, "
               "ti_step=%lld time_bin=%d wakeup=%d ti_current=%lld",
-              ti_end, ti_begin, ti_step, p->time_bin, p->wakeup, ti_current);
+              ti_end, ti_begin, ti_step, p->time_bin, p->limiter_data.wakeup,
+              ti_current);
 #endif
 
         /* Time interval for this half-kick */
@@ -346,7 +347,7 @@ void runner_do_kick2(struct runner *r, struct cell *c, int timer) {
         integertime_t ti_begin, ti_end, ti_step;
 
 #ifdef SWIFT_DEBUG_CHECKS
-        if (p->wakeup != time_bin_not_awake)
+        if (p->limiter_data.wakeup != time_bin_not_awake)
           error("Woken-up particle that has not been processed in kick1");
 #endif
 
@@ -360,7 +361,8 @@ void runner_do_kick2(struct runner *r, struct cell *c, int timer) {
           error(
               "Particle in wrong time-bin, ti_begin=%lld, ti_step=%lld "
               "time_bin=%d wakeup=%d ti_current=%lld",
-              ti_begin, ti_step, p->time_bin, p->wakeup, ti_current);
+              ti_begin, ti_step, p->time_bin, p->limiter_data.wakeup,
+              ti_current);
 #endif
         /* Time interval for this half-kick */
         double dt_kick_grav, dt_kick_hydro, dt_kick_therm, dt_kick_corr;
@@ -1005,13 +1007,13 @@ void runner_do_limiter(struct runner *r, struct cell *c, int force, int timer) {
       if (part_is_inhibited(p, e)) continue;
 
       /* Bip, bip, bip... wake-up time */
-      if (p->wakeup != time_bin_not_awake) {
+      if (p->limiter_data.wakeup != time_bin_not_awake) {
 
         /* Apply the limiter and get the new end of time-step */
         const integertime_t ti_end_new = timestep_limit_part(p, xp, e);
 
         /* Mark this particle has not needing synchronization */
-        p->to_be_synchronized = 0;
+        p->limiter_data.to_be_synchronized = 0;
 
         /* What is the next sync-point ? */
         ti_hydro_end_min = min(ti_end_new, ti_hydro_end_min);
@@ -1141,12 +1143,11 @@ void runner_do_sync(struct runner *r, struct cell *c, int force, int timer) {
       if (part_is_inhibited(p, e)) continue;
 
       /* If the particle is active no need to sync it */
-      if (part_is_active(p, e) && p->to_be_synchronized) {
-        // message("Particle %lld already synchronized!", p->id);
-        p->to_be_synchronized = 0;
+      if (part_is_active(p, e) && p->limiter_data.to_be_synchronized) {
+        p->limiter_data.to_be_synchronized = 0;
       }
 
-      if (p->to_be_synchronized) {
+      if (p->limiter_data.to_be_synchronized) {
 
         /* Finish this particle's time-step */
         timestep_process_sync_part(p, xp, e, cosmo);
@@ -1154,9 +1155,6 @@ void runner_do_sync(struct runner *r, struct cell *c, int force, int timer) {
         /* Get new time-step */
         const integertime_t ti_new_step = get_part_timestep(p, xp, e);
         const timebin_t new_time_bin = get_time_bin(ti_new_step);
-
-        // message("Synchronized particle %lld new bin: %d", p->id,
-        // new_time_bin);
 
         /* Update particle */
         p->time_bin = new_time_bin;

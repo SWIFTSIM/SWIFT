@@ -191,9 +191,9 @@ __attribute__((always_inline)) INLINE static integertime_t get_part_timestep(
           new_dt, e->dt_min);
 
   /* Convert to integer time */
-  const integertime_t new_dti =
-      make_integer_timestep(new_dt, p->time_bin, p->min_ngb_time_bin,
-                            e->ti_current, e->time_base_inv);
+  const integertime_t new_dti = make_integer_timestep(
+      new_dt, p->time_bin, p->limiter_data.min_ngb_time_bin, e->ti_current,
+      e->time_base_inv);
 
   return new_dti;
 }

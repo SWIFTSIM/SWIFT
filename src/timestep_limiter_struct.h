@@ -16,20 +16,33 @@
  * along with this program.  If not, see <http://www.gnu.org/licenses/>.
  *
  ******************************************************************************/
-#ifndef SWIFT_TIMESTEP_SYNC_PART_H
-#define SWIFT_TIMESTEP_SYNC_PART_H
+#ifndef SWIFT_TIMESTEP_LIMITER_STRUCT_H
+#define SWIFT_TIMESTEP_LIMITER_STRUCT_H
+
+/**
+ * @file src/chemistry_struct.h
+ * @brief Branches between the different chemistry functions.
+ */
 
 /* Config parameters. */
 #include "../config.h"
 
-/**
- * @brief Flag a particle for synchronization on the time-line.
- *
- * @param p The #part.
- */
-__attribute__((always_inline)) INLINE static void timestep_sync_part(
-    struct part *p) {
-  p->limiter_data.to_be_synchronized = 1;
-}
+/* Local includes */
+#include "timeline.h"
 
-#endif /* SWIFT_TIMESTEP_SYNC_PART_H */
+/**
+ * @brief #part-carried quantities for the time-step limiter
+ */
+struct timestep_limiter_data {
+
+  /* Need waking-up ? */
+  timebin_t wakeup;
+
+  /*! Minimal time-bin across all neighbours */
+  timebin_t min_ngb_time_bin;
+
+  /* Do we want this particle to be synched back on the time-line? */
+  char to_be_synchronized;
+};
+
+#endif /* SWIFT_TIMESTEP_LIMITER_STRUCT_H */

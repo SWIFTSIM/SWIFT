@@ -306,12 +306,6 @@ __attribute__((always_inline)) INLINE static void runner_iact_force(
   /* Update the signal velocity. */
   pi->force.v_sig = max(pi->force.v_sig, v_sig);
   pj->force.v_sig = max(pj->force.v_sig, v_sig);
-
-  /* Update the minimal time-bin */
-  if (pj->time_bin > 0)
-    pi->min_ngb_time_bin = min(pi->min_ngb_time_bin, pj->time_bin);
-  if (pi->time_bin > 0)
-    pj->min_ngb_time_bin = min(pj->min_ngb_time_bin, pi->time_bin);
 }
 
 /**
@@ -430,10 +424,6 @@ __attribute__((always_inline)) INLINE static void runner_iact_nonsym_force(
 
   /* Update the signal velocity. */
   pi->force.v_sig = max(pi->force.v_sig, v_sig);
-
-  /* Update the minimal time-bin */
-  if (pj->time_bin > 0)
-    pi->min_ngb_time_bin = min(pi->min_ngb_time_bin, pj->time_bin);
 }
 
 #endif /* SWIFT_MINIMAL_HYDRO_IACT_H */

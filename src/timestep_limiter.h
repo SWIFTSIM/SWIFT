@@ -26,6 +26,34 @@
 #include "kick.h"
 
 /**
+ * @brief Prepare the limiter-quantities for a hydro force calculation.
+ *
+ * @param p The #part.
+ * @param xp The #xpart.
+ */
+__attribute__((always_inline)) INLINE static void
+timestep_limiter_prepare_force(struct part *restrict p,
+                               struct xpart *restrict xp) {
+
+  p->limiter_data.min_ngb_time_bin = num_time_bins + 1;
+}
+
+/**
+ * @brief Terminate the limiter-quantities after a hydro force calculation.
+ *
+ * @param p The #part.
+ */
+__attribute__((always_inline)) INLINE static void timestep_limiter_end_force(
+    struct part *restrict p) {
+#ifdef SWIFT_DEBUG_CHECKS
+  if (p->limiter_data.min_ngb_time_bin == num_time_bins + 1)
+    error("Minimal time-bin not computed!");
+  if (p->limiter_data.min_ngb_time_bin == 0)
+    error("Minimal time-bin of neighbours is 0");
+#endif
+}
+
+/**
  * @brief Wakes up a particle by rewinding it's kick1 back in time and applying
  * a new one such that the particle becomes active again in the next time-step.
  *
@@ -50,10 +78,10 @@ __attribute__((always_inline)) INLINE static integertime_t timestep_limit_part(
        of its next time-step */
 
     /* New time-bin of this particle */
-    p->time_bin = -p->wakeup + 2;
+    p->time_bin = -p->limiter_data.wakeup + 2;
 
     /* Mark the particle as being rady to be time integrated */
-    p->wakeup = time_bin_not_awake;
+    p->limiter_data.wakeup = time_bin_not_awake;
 
     /* Return the new end-of-step for this particle */
     return ti_current + get_integer_timestep(p->time_bin);
@@ -65,7 +93,7 @@ __attribute__((always_inline)) INLINE static integertime_t timestep_limit_part(
 
     /* The timebins to play with */
     const timebin_t old_bin = p->time_bin;
-    const timebin_t new_bin = -p->wakeup + 2;
+    const timebin_t new_bin = -p->limiter_data.wakeup + 2;
 
     /* Current start and end time of this particle */
     const integertime_t ti_beg_old =
@@ -154,7 +182,7 @@ __attribute__((always_inline)) INLINE static integertime_t timestep_limit_part(
     p->time_bin = new_bin;
 
     /* Mark the particle as being ready to be time integrated */
-    p->wakeup = time_bin_not_awake;
+    p->limiter_data.wakeup = time_bin_not_awake;
 
     /* Do we need to apply the mising kick1 or is this bin active and
        it will be done in the kick task? */
