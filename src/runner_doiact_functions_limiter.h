@@ -112,11 +112,6 @@ void DOPAIR1_NAIVE(struct runner *r, struct cell *restrict ci,
       if (r2 < hig2 && pi_active) {
 
         IACT_NONSYM(r2, dx, hi, hj, pi, pj, a, H);
-#if (FUNCTION_TASK_LOOP == TASK_LOOP_DENSITY)
-        runner_iact_nonsym_chemistry(r2, dx, hi, hj, pi, pj, a, H);
-        runner_iact_nonsym_pressure_floor(r2, dx, hi, hj, pi, pj, a, H);
-        runner_iact_nonsym_star_formation(r2, dx, hi, hj, pi, pj, a, H);
-#endif
       }
       if (r2 < hjg2 && pj_active) {
 
@@ -125,11 +120,6 @@ void DOPAIR1_NAIVE(struct runner *r, struct cell *restrict ci,
         dx[2] = -dx[2];
 
         IACT_NONSYM(r2, dx, hj, hi, pj, pi, a, H);
-#if (FUNCTION_TASK_LOOP == TASK_LOOP_DENSITY)
-        runner_iact_nonsym_chemistry(r2, dx, hj, hi, pj, pi, a, H);
-        runner_iact_nonsym_pressure_floor(r2, dx, hj, hi, pj, pi, a, H);
-        runner_iact_nonsym_star_formation(r2, dx, hj, hi, pj, pi, a, H);
-#endif
       }
 
     } /* loop over the parts in cj. */
@@ -214,19 +204,9 @@ void DOSELF1_NAIVE(struct runner *r, struct cell *restrict c) {
       if (doi && doj) {
 
         IACT(r2, dx, hi, hj, pi, pj, a, H);
-#if (FUNCTION_TASK_LOOP == TASK_LOOP_DENSITY)
-        runner_iact_chemistry(r2, dx, hi, hj, pi, pj, a, H);
-        runner_iact_pressure_floor(r2, dx, hi, hj, pi, pj, a, H);
-        runner_iact_star_formation(r2, dx, hi, hj, pi, pj, a, H);
-#endif
       } else if (doi) {
 
         IACT_NONSYM(r2, dx, hi, hj, pi, pj, a, H);
-#if (FUNCTION_TASK_LOOP == TASK_LOOP_DENSITY)
-        runner_iact_nonsym_chemistry(r2, dx, hi, hj, pi, pj, a, H);
-        runner_iact_nonsym_pressure_floor(r2, dx, hi, hj, pi, pj, a, H);
-        runner_iact_nonsym_star_formation(r2, dx, hi, hj, pi, pj, a, H);
-#endif
       } else if (doj) {
 
         dx[0] = -dx[0];
@@ -234,11 +214,6 @@ void DOSELF1_NAIVE(struct runner *r, struct cell *restrict c) {
         dx[2] = -dx[2];
 
         IACT_NONSYM(r2, dx, hj, hi, pj, pi, a, H);
-#if (FUNCTION_TASK_LOOP == TASK_LOOP_DENSITY)
-        runner_iact_nonsym_chemistry(r2, dx, hj, hi, pj, pi, a, H);
-        runner_iact_nonsym_pressure_floor(r2, dx, hj, hi, pj, pi, a, H);
-        runner_iact_nonsym_star_formation(r2, dx, hj, hi, pj, pi, a, H);
-#endif
       }
     } /* loop over the parts in cj. */
   }   /* loop over the parts in ci. */
@@ -378,11 +353,6 @@ void DOPAIR1(struct runner *r, struct cell *ci, struct cell *cj, const int sid,
         if (r2 < hig2) {
 
           IACT_NONSYM(r2, dx, hi, hj, pi, pj, a, H);
-#if (FUNCTION_TASK_LOOP == TASK_LOOP_DENSITY)
-          runner_iact_nonsym_chemistry(r2, dx, hi, hj, pi, pj, a, H);
-          runner_iact_nonsym_pressure_floor(r2, dx, hi, hj, pi, pj, a, H);
-          runner_iact_nonsym_star_formation(r2, dx, hi, hj, pi, pj, a, H);
-#endif
         }
       } /* loop over the parts in cj. */
     }   /* loop over the parts in ci. */
@@ -467,11 +437,6 @@ void DOPAIR1(struct runner *r, struct cell *ci, struct cell *cj, const int sid,
         if (r2 < hjg2) {
 
           IACT_NONSYM(r2, dx, hj, hi, pj, pi, a, H);
-#if (FUNCTION_TASK_LOOP == TASK_LOOP_DENSITY)
-          runner_iact_nonsym_chemistry(r2, dx, hj, hi, pj, pi, a, H);
-          runner_iact_nonsym_pressure_floor(r2, dx, hj, hi, pj, pi, a, H);
-          runner_iact_nonsym_star_formation(r2, dx, hj, hi, pj, pi, a, H);
-#endif
         }
       } /* loop over the parts in ci. */
     }   /* loop over the parts in cj. */
@@ -562,12 +527,6 @@ void DOPAIR1_BRANCH(struct runner *r, struct cell *ci, struct cell *cj) {
 
 #if defined(SWIFT_USE_NAIVE_INTERACTIONS)
   DOPAIR1_NAIVE(r, ci, cj);
-#elif defined(WITH_VECTORIZATION) && defined(GADGET2_SPH) && \
-    (FUNCTION_TASK_LOOP == TASK_LOOP_DENSITY)
-  if (!sort_is_corner(sid))
-    runner_dopair1_density_vec(r, ci, cj, sid, shift);
-  else
-    DOPAIR1(r, ci, cj, sid, shift);
 #else
   DOPAIR1(r, ci, cj, sid, shift);
 #endif
@@ -650,11 +609,6 @@ void DOSELF1(struct runner *r, struct cell *restrict c) {
         if (r2 < hj * hj * kernel_gamma2) {
 
           IACT_NONSYM(r2, dx, hj, hi, pj, pi, a, H);
-#if (FUNCTION_TASK_LOOP == TASK_LOOP_DENSITY)
-          runner_iact_nonsym_chemistry(r2, dx, hj, hi, pj, pi, a, H);
-          runner_iact_nonsym_pressure_floor(r2, dx, hj, hi, pj, pi, a, H);
-          runner_iact_nonsym_star_formation(r2, dx, hj, hi, pj, pi, a, H);
-#endif
         }
       } /* loop over all other particles. */
     }
@@ -703,30 +657,15 @@ void DOSELF1(struct runner *r, struct cell *restrict c) {
           if (doi && doj) {
 
             IACT(r2, dx, hi, hj, pi, pj, a, H);
-#if (FUNCTION_TASK_LOOP == TASK_LOOP_DENSITY)
-            runner_iact_chemistry(r2, dx, hi, hj, pi, pj, a, H);
-            runner_iact_pressure_floor(r2, dx, hi, hj, pi, pj, a, H);
-            runner_iact_star_formation(r2, dx, hi, hj, pi, pj, a, H);
-#endif
           } else if (doi) {
 
             IACT_NONSYM(r2, dx, hi, hj, pi, pj, a, H);
-#if (FUNCTION_TASK_LOOP == TASK_LOOP_DENSITY)
-            runner_iact_nonsym_chemistry(r2, dx, hi, hj, pi, pj, a, H);
-            runner_iact_nonsym_pressure_floor(r2, dx, hi, hj, pi, pj, a, H);
-            runner_iact_nonsym_star_formation(r2, dx, hi, hj, pi, pj, a, H);
-#endif
           } else if (doj) {
 
             dx[0] = -dx[0];
             dx[1] = -dx[1];
             dx[2] = -dx[2];
             IACT_NONSYM(r2, dx, hj, hi, pj, pi, a, H);
-#if (FUNCTION_TASK_LOOP == TASK_LOOP_DENSITY)
-            runner_iact_nonsym_chemistry(r2, dx, hj, hi, pj, pi, a, H);
-            runner_iact_nonsym_pressure_floor(r2, dx, hj, hi, pj, pi, a, H);
-            runner_iact_nonsym_star_formation(r2, dx, hj, hi, pj, pi, a, H);
-#endif
           }
         }
       } /* loop over all other particles. */
@@ -765,9 +704,6 @@ void DOSELF1_BRANCH(struct runner *r, struct cell *c) {
 
 #if defined(SWIFT_USE_NAIVE_INTERACTIONS)
   DOSELF1_NAIVE(r, c);
-#elif defined(WITH_VECTORIZATION) && defined(GADGET2_SPH) && \
-    (FUNCTION_TASK_LOOP == TASK_LOOP_DENSITY)
-  runner_doself1_density_vec(r, c);
 #else
   DOSELF1(r, c);
 #endif
