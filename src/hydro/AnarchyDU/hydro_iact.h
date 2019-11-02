@@ -570,49 +570,4 @@ __attribute__((always_inline)) INLINE static void runner_iact_nonsym_force(
     pi->min_ngb_time_bin = min(pi->min_ngb_time_bin, pj->time_bin);
 }
 
-/**
- * @brief Timestep limiter loop
- *
- * @param r2 Comoving square distance between the two particles.
- * @param dx Comoving vector separating both particles (pi - pj).
- * @param hi Comoving smoothing-length of part*icle i.
- * @param hj Comoving smoothing-length of part*icle j.
- * @param pi First part*icle.
- * @param pj Second part*icle (not updated).
- * @param a Current scale factor.
- * @param H Current Hubble parameter.
- *
- */
-__attribute__((always_inline)) INLINE static void runner_iact_limiter(
-    float r2, const float* dx, float hi, float hj, struct part* restrict pi,
-    struct part* restrict pj, float a, float H) {
-
-  /* Nothing to do here if both particles are active */
-}
-
-/**
- * @brief Timestep limiter loop (non-symmetric version)
- *
- * @param r2 Comoving square distance between the two particles.
- * @param dx Comoving vector separating both particles (pi - pj).
- * @param hi Comoving smoothing-length of part*icle i.
- * @param hj Comoving smoothing-length of part*icle j.
- * @param pi First part*icle.
- * @param pj Second part*icle (not updated).
- * @param a Current scale factor.
- * @param H Current Hubble parameter.
- *
- */
-__attribute__((always_inline)) INLINE static void runner_iact_nonsym_limiter(
-    float r2, const float* dx, float hi, float hj, struct part* restrict pi,
-    struct part* restrict pj, float a, float H) {
-
-  /* Wake up the neighbour? */
-  if (pj->time_bin > pi->time_bin + 2) {
-
-    /* Store the smallest time bin that woke up this particle */
-    pj->wakeup = max(pj->wakeup, -pi->time_bin);
-  }
-}
-
 #endif /* SWIFT_ANARCHY_DU_HYDRO_IACT_H */

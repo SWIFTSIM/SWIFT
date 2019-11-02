@@ -436,31 +436,4 @@ __attribute__((always_inline)) INLINE static void runner_iact_nonsym_force(
     pi->min_ngb_time_bin = min(pi->min_ngb_time_bin, pj->time_bin);
 }
 
-/**
- * @brief Timestep limiter loop
- */
-__attribute__((always_inline)) INLINE static void runner_iact_limiter(
-    float r2, const float *dx, float hi, float hj, struct part *restrict pi,
-    struct part *restrict pj, float a, float H) {
-
-  /* Nothing to do here if both particles are active */
-}
-
-/**
- * @brief Timestep limiter loop (non-symmetric version)
- */
-__attribute__((always_inline)) INLINE static void runner_iact_nonsym_limiter(
-    float r2, const float *dx, float hi, float hj, struct part *restrict pi,
-    struct part *restrict pj, float a, float H) {
-
-  /* Wake up the neighbour? */
-  if (pj->time_bin > pi->time_bin + 2) {
-
-    // message("aa");
-
-    /* Store the smallest time bin that woke up this particle */
-    pj->wakeup = max(pj->wakeup, -pi->time_bin);
-  }
-}
-
 #endif /* SWIFT_MINIMAL_HYDRO_IACT_H */

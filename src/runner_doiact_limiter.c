@@ -26,10 +26,10 @@
 #include "active.h"
 #include "cell.h"
 #include "engine.h"
-#include "hydro.h"
 #include "runner.h"
 #include "space_getsid.h"
 #include "timers.h"
+#include "timestep_limiter_iact.h"
 
 /* Import the limiter loop functions. */
 #define FUNCTION limiter
