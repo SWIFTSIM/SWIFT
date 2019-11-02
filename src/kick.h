@@ -94,8 +94,6 @@ __attribute__((always_inline)) INLINE static void kick_part(
   p->ti_kick = ti_end;
 #endif
 
-  if (p->id == ICHECK) message("KICK ti_end=%lld", ti_end);
-
   /* Kick particles in momentum space (hydro acc.) */
   xp->v_full[0] += p->a_hydro[0] * dt_kick_hydro;
   xp->v_full[1] += p->a_hydro[1] * dt_kick_hydro;

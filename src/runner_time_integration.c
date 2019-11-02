@@ -117,13 +117,8 @@ void runner_do_kick1(struct runner *r, struct cell *c, int timer) {
       struct part *restrict p = &parts[k];
       struct xpart *restrict xp = &xparts[k];
 
-      if (p->id == ICHECK)
-        message("is_starting=%d wakeup=%d", part_is_starting(p, e), p->wakeup);
-
       /* If particle needs to be kicked */
       if (part_is_starting(p, e)) {
-
-      // p->wakeup = time_bin_not_awake;
 
 #ifdef SWIFT_DEBUG_CHECKS
         if (p->wakeup != time_bin_not_awake)
@@ -161,9 +156,6 @@ void runner_do_kick1(struct runner *r, struct cell *c, int timer) {
           dt_kick_therm = (ti_step / 2) * time_base;
           dt_kick_corr = (ti_step / 2) * time_base;
         }
-
-        if (p->id == ICHECK)
-          message("KICK1 id=%lld ti_end=%lld", p->id, ti_begin + ti_step / 2);
 
         /* do the kick */
         kick_part(p, xp, dt_kick_hydro, dt_kick_grav, dt_kick_therm,
@@ -388,9 +380,6 @@ void runner_do_kick2(struct runner *r, struct cell *c, int timer) {
           dt_kick_corr = (ti_end - (ti_begin + ti_step / 2)) * time_base;
         }
 
-        if (p->id == ICHECK)
-          message("KICK2 id=%lld ti_end=%lld", p->id, ti_end);
-
         /* Finish the time-step with a second half-kick */
         kick_part(p, xp, dt_kick_hydro, dt_kick_grav, dt_kick_therm,
                   dt_kick_corr, cosmo, hydro_props, entropy_floor,
@@ -610,9 +599,6 @@ void runner_do_timestep(struct runner *r, struct cell *c, int timer) {
         /* Update particle */
         p->time_bin = get_time_bin(ti_new_step);
         if (p->gpart != NULL) p->gpart->time_bin = p->time_bin;
-
-        if (p->id == ICHECK)
-          message("TIMESTEP bin=%d time_step=%lld", p->time_bin, ti_new_step);
 
         /* Update the tracers properties */
         tracers_after_timestep(p, xp, e->internal_units, e->physical_constants,
@@ -1021,10 +1007,6 @@ void runner_do_limiter(struct runner *r, struct cell *c, int force, int timer) {
       /* Bip, bip, bip... wake-up time */
       if (p->wakeup != time_bin_not_awake) {
 
-        if (p->id == ICHECK)
-          message("ti_end_min=%lld ti_current=%lld", ti_hydro_end_min,
-                  e->ti_current);
-
         /* Apply the limiter and get the new end of time-step */
         const integertime_t ti_end_new = timestep_limit_part(p, xp, e);
 
@@ -1037,10 +1019,6 @@ void runner_do_limiter(struct runner *r, struct cell *c, int force, int timer) {
 
         /* What is the next starting point for this cell ? */
         ti_hydro_beg_max = max(ti_current, ti_hydro_beg_max);
-
-        if (p->id == ICHECK)
-          message("ti_end_min=%lld ti_current=%lld", ti_hydro_end_min,
-                  e->ti_current);
 
         /* Also limit the gpart counter-part */
         if (p->gpart != NULL) {

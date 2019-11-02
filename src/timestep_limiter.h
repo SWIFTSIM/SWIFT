@@ -44,12 +44,7 @@ __attribute__((always_inline)) INLINE static integertime_t timestep_limit_part(
   const double time_base = e->time_base;
   const integertime_t ti_current = e->ti_current;
 
-  if (p->id == ICHECK)
-    message("LIMITER time_bin=%d wakeup=%d", p->time_bin, p->wakeup);
-
   if (part_is_active(p, e)) {
-
-    // message("Limiting active particle!");
 
     /* First case, the particle was active so we only need to update the length
        of its next time-step */
@@ -64,8 +59,6 @@ __attribute__((always_inline)) INLINE static integertime_t timestep_limit_part(
     return ti_current + get_integer_timestep(p->time_bin);
 
   } else {
-
-    // message("Limiting inactive particle!");
 
     /* Second case, the particle was inactive so we need to interrupt its
        time-step, undo the "kick" operator and assign a new time-step size */
@@ -88,12 +81,6 @@ __attribute__((always_inline)) INLINE static integertime_t timestep_limit_part(
     while (ti_beg_old + k * dti_new <= ti_current) k++;
 
     const integertime_t ti_beg_new = ti_beg_old + (k - 1) * dti_new;
-
-    if (p->id == ICHECK) {
-      message("ti_kick=%lld (%d)", p->ti_kick, get_time_bin(p->ti_kick) + 1);
-      message("ti_beg_new = %lld", ti_beg_new);
-      message("ti_beg_old = %lld", ti_beg_new);
-    }
 
 #ifdef SWIFT_DEBUG_CHECKS
     /* Some basic safety checks */
@@ -139,12 +126,8 @@ __attribute__((always_inline)) INLINE static integertime_t timestep_limit_part(
               e->cosmology, e->hydro_properties, e->entropy_floor,
               ti_beg_old + dti_old / 2, ti_beg_old);
 
-    if (p->id == ICHECK) {
-      message("ti_kick=%lld (%d)", p->ti_kick, get_time_bin(p->ti_kick) + 1);
-    }
-
     /* ...and apply the new one (dt is positiive).
-     * This brought us to the current time. */
+     * This brings us to the current time. */
     if (with_cosmology) {
       dt_kick_hydro = cosmology_get_hydro_kick_factor(cosmo, ti_beg_new,
                                                       ti_beg_new + dti_new / 2);
@@ -165,10 +148,6 @@ __attribute__((always_inline)) INLINE static integertime_t timestep_limit_part(
               e->cosmology, e->hydro_properties, e->entropy_floor, ti_beg_old,
               ti_beg_new);
 
-    if (p->id == ICHECK) {
-      message("ti_kick=%lld (%d)", p->ti_kick, get_time_bin(p->ti_kick) + 1);
-    }
-
     /* The particle has now been kicked to the current time */
 
     /* New time-bin of this particle */
@@ -176,8 +155,6 @@ __attribute__((always_inline)) INLINE static integertime_t timestep_limit_part(
 
     /* Mark the particle as being ready to be time integrated */
     p->wakeup = time_bin_not_awake;
-
-    if (p->id == ICHECK) message("new time bin=%d", p->time_bin);
 
     /* Do we need to apply the mising kick1 or is this bin active and
        it will be done in the kick task? */

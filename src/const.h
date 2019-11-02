@@ -23,8 +23,6 @@
 /* Time integration constants. */
 #define const_max_u_change 0.1f
 
-#define ICHECK 116567
-
 /* I/O Constant; this determines the relative tolerance between the value of
  * redshift read from the snapshot, and the value from the parameter file. This
  * current value asserts that they must match within 0.1%. */

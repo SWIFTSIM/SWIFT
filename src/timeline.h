@@ -33,7 +33,7 @@ typedef long long integertime_t;
 typedef int8_t timebin_t;
 
 /*! The number of time bins */
-#define num_time_bins 26
+#define num_time_bins 56
 
 /*! The maximal number of timesteps in a simulation */
 #define max_nr_timesteps (1LL << (num_time_bins + 1))
@@ -48,7 +48,7 @@ typedef int8_t timebin_t;
 #define time_bin_not_awake (-num_time_bins)
 
 /*! Fictitious time-bin for particles woken up */
-#define time_bin_awake (-(num_time_bins + 1))
+//#define time_bin_awake (-(num_time_bins + 1))
 
 /* Maximal difference in time-bins between neighbouring particles */
 #define time_bin_neighbour_max_delta_bin 2
