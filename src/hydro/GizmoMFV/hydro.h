@@ -123,7 +123,6 @@ __attribute__((always_inline)) INLINE static void hydro_first_init_part(
   const float mass = p->conserved.mass;
 
   p->time_bin = 0;
-  p->wakeup = time_bin_not_awake;
 
   p->primitives.v[0] = p->v[0];
   p->primitives.v[1] = p->v[1];

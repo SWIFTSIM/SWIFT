@@ -54,7 +54,7 @@ __attribute__((always_inline)) INLINE static void hydro_debug_particle(
       "wcount_dh=%.3e, "
       "wcount=%.3e}\n",
       p->x[0], p->x[1], p->x[2], p->v[0], p->v[1], p->v[2], p->a_hydro[0],
-      p->a_hydro[1], p->a_hydro[2], p->h, p->time_bin, p->wakeup,
+      p->a_hydro[1], p->a_hydro[2], p->h, p->time_bin, p->limiter_data.wakeup,
       p->primitives.v[0], p->primitives.v[1], p->primitives.v[2],
       p->primitives.rho, p->primitives.P, p->primitives.gradients.rho[0],
       p->primitives.gradients.rho[1], p->primitives.gradients.rho[2],

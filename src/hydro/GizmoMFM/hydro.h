@@ -139,7 +139,6 @@ __attribute__((always_inline)) INLINE static void hydro_first_init_part(
 #endif
 
   p->time_bin = 0;
-  p->wakeup = time_bin_not_awake;
 
   /* initialize the particle velocity based on the primitive fluid velocity */
   xp->v_full[0] = p->v[0];

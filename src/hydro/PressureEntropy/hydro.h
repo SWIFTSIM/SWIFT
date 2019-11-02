@@ -832,7 +832,6 @@ __attribute__((always_inline)) INLINE static void hydro_first_init_part(
     struct part *restrict p, struct xpart *restrict xp) {
 
   p->time_bin = 0;
-  p->wakeup = time_bin_not_awake;
   p->rho_bar = 0.f;
   p->entropy_one_over_gamma = pow_one_over_gamma(p->entropy);
   xp->v_full[0] = p->v[0];

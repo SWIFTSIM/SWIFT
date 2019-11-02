@@ -517,8 +517,6 @@ __attribute__((always_inline)) INLINE static void hydro_end_density(
   const float rho_inv = 1.f / p->rho;
   const float a_inv2 = cosmo->a2_inv;
 
-  if (p->rho == 0.f) error("Found a density of 0! p->id=%lld", p->id);
-
   /* Finish calculation of the (physical) velocity curl components */
   p->density.rot_v[0] *= h_inv_dim_plus_one * a_inv2 * rho_inv;
   p->density.rot_v[1] *= h_inv_dim_plus_one * a_inv2 * rho_inv;

@@ -37,6 +37,7 @@
 #include "logger.h"
 #include "pressure_floor_struct.h"
 #include "star_formation_struct.h"
+#include "timestep_limiter_struct.h"
 #include "tracers_struct.h"
 
 /* Extra particle data not needed during the SPH loops over neighbours. */
@@ -162,14 +163,8 @@ struct part {
   /* Time-step length */
   timebin_t time_bin;
 
-  /* Need waking-up ? */
-  timebin_t wakeup;
-
-  /*! Minimal time-bin across all neighbours */
-  timebin_t min_ngb_time_bin;
-
-  /* Do we want this particle to be synched back on the time-line? */
-  char to_be_synchronized;
+  /*! Time-step limiter information */
+  struct timestep_limiter_data limiter_data;
 
 #ifdef SWIFT_DEBUG_CHECKS
 
