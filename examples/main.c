@@ -560,6 +560,8 @@ int main(int argc, char *argv[]) {
     error("Cannot reconstruct m-poles every step over MPI (yet).");
   if (with_timestep_limiter)
     error("Can't run with time-step limiter over MPI (yet)");
+  if (with_timestep_sync)
+    error("Can't run with time-step synchronization over MPI (yet)");
 #ifdef WITH_LOGGER
   error("Can't run with the particle logger over MPI (yet)");
 #endif
