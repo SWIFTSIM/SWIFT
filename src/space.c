@@ -724,6 +724,20 @@ void space_allocate_extras(struct space *s, int verbose) {
                                      0.5 * cells[0].width[1],
                                      0.5 * cells[0].width[2]};
 
+  /* The dithering vector
+   * Note that we use the old dithering vector here since
+   * (new - old) will be added to all positions further down */
+  const double pos_dithering[3] = {s->pos_dithering_old[0],
+                                   s->pos_dithering_old[1],
+                                   s->pos_dithering_old[2]};
+#ifdef SWIFT_DEBUG_CHECKS
+  if (!s->e->gravity_properties->with_dithering) {
+    if (s->pos_dithering[0] != 0. || s->pos_dithering[1] != 0. ||
+        s->pos_dithering[2] != 0.)
+      error("Non-zero dithering vector when dithering is off!");
+  }
+#endif
+
   /* The current number of particles (including spare ones) */
   size_t nr_parts = s->nr_parts;
   size_t nr_gparts = s->nr_gparts;
@@ -844,9 +858,12 @@ void space_allocate_extras(struct space *s, int verbose) {
       if (s->gparts[i].time_bin == time_bin_not_created) {
 
         /* We want the extra particles to be at the centre of their cell */
-        s->gparts[i].x[0] = cells[current_cell].loc[0] + half_cell_width[0];
-        s->gparts[i].x[1] = cells[current_cell].loc[1] + half_cell_width[1];
-        s->gparts[i].x[2] = cells[current_cell].loc[2] + half_cell_width[2];
+        s->gparts[i].x[0] =
+            cells[current_cell].loc[0] + half_cell_width[0] - pos_dithering[0];
+        s->gparts[i].x[1] =
+            cells[current_cell].loc[1] + half_cell_width[1] - pos_dithering[1];
+        s->gparts[i].x[2] =
+            cells[current_cell].loc[2] + half_cell_width[2] - pos_dithering[2];
         ++count_in_cell;
         count_extra_gparts++;
       }
@@ -876,7 +893,7 @@ void space_allocate_extras(struct space *s, int verbose) {
 
   /* Do we have enough space for the extra parts (i.e. we haven't used up any) ?
    */
-  if (expected_num_extra_parts > s->nr_extra_parts) {
+  if (nr_actual_parts + expected_num_extra_parts > nr_parts) {
 
     /* Ok... need to put some more in the game */
 
@@ -918,7 +935,7 @@ void space_allocate_extras(struct space *s, int verbose) {
       bzero(&s->parts[i], sizeof(struct part));
       bzero(&s->xparts[i], sizeof(struct xpart));
       s->parts[i].time_bin = time_bin_not_created;
-      s->parts[i].id = -1;
+      s->parts[i].id = -42;
     }
 
     /* Put the spare particles in their correct cell */
@@ -936,9 +953,12 @@ void space_allocate_extras(struct space *s, int verbose) {
       if (s->parts[i].time_bin == time_bin_not_created) {
 
         /* We want the extra particles to be at the centre of their cell */
-        s->parts[i].x[0] = cells[current_cell].loc[0] + half_cell_width[0];
-        s->parts[i].x[1] = cells[current_cell].loc[1] + half_cell_width[1];
-        s->parts[i].x[2] = cells[current_cell].loc[2] + half_cell_width[2];
+        s->parts[i].x[0] =
+            cells[current_cell].loc[0] + half_cell_width[0] - pos_dithering[0];
+        s->parts[i].x[1] =
+            cells[current_cell].loc[1] + half_cell_width[1] - pos_dithering[1];
+        s->parts[i].x[2] =
+            cells[current_cell].loc[2] + half_cell_width[2] - pos_dithering[2];
         ++count_in_cell;
         count_extra_parts++;
       }
@@ -1018,9 +1038,12 @@ void space_allocate_extras(struct space *s, int verbose) {
       if (s->sparts[i].time_bin == time_bin_not_created) {
 
         /* We want the extra particles to be at the centre of their cell */
-        s->sparts[i].x[0] = cells[current_cell].loc[0] + half_cell_width[0];
-        s->sparts[i].x[1] = cells[current_cell].loc[1] + half_cell_width[1];
-        s->sparts[i].x[2] = cells[current_cell].loc[2] + half_cell_width[2];
+        s->sparts[i].x[0] =
+            cells[current_cell].loc[0] + half_cell_width[0] - pos_dithering[0];
+        s->sparts[i].x[1] =
+            cells[current_cell].loc[1] + half_cell_width[1] - pos_dithering[1];
+        s->sparts[i].x[2] =
+            cells[current_cell].loc[2] + half_cell_width[2] - pos_dithering[2];
         ++count_in_cell;
         count_extra_sparts++;
       }
@@ -1100,9 +1123,12 @@ void space_allocate_extras(struct space *s, int verbose) {
       if (s->bparts[i].time_bin == time_bin_not_created) {
 
         /* We want the extra particles to be at the centre of their cell */
-        s->bparts[i].x[0] = cells[current_cell].loc[0] + half_cell_width[0];
-        s->bparts[i].x[1] = cells[current_cell].loc[1] + half_cell_width[1];
-        s->bparts[i].x[2] = cells[current_cell].loc[2] + half_cell_width[2];
+        s->bparts[i].x[0] =
+            cells[current_cell].loc[0] + half_cell_width[0] - pos_dithering[0];
+        s->bparts[i].x[1] =
+            cells[current_cell].loc[1] + half_cell_width[1] - pos_dithering[1];
+        s->bparts[i].x[2] =
+            cells[current_cell].loc[2] + half_cell_width[2] - pos_dithering[2];
         ++count_in_cell;
         count_extra_bparts++;
       }
@@ -1203,12 +1229,12 @@ void space_rebuild(struct space *s, int repartitioned, int verbose) {
   /* Re-grid if necessary, or just re-set the cell data. */
   space_regrid(s, verbose);
 
-  /* Allocate extra space for particles that will be created */
-  if (s->with_star_formation) space_allocate_extras(s, verbose);
-
   /* Are we dithering the particles? */
   const int with_dithering = s->e->gravity_properties->with_dithering;
   if (s->with_self_gravity && with_dithering) space_dither(s, verbose);
+
+  /* Allocate extra space for particles that will be created */
+  if (s->with_star_formation) space_allocate_extras(s, verbose);
 
   struct cell *cells_top = s->cells_top;
   const integertime_t ti_current = (s->e != NULL) ? s->e->ti_current : 0;
@@ -2211,6 +2237,12 @@ void space_parts_get_cell_index_mapper(void *map_data, int nr_parts,
       ind[k] = index;
       cell_counts[index]++;
       ++count_extra_part;
+
+      /* Update the position (since we may have dithered) */
+      p->x[0] = pos_x;
+      p->x[1] = pos_y;
+      p->x[2] = pos_z;
+
     } else {
       /* Normal case: list its top-level cell index */
       ind[k] = index;
@@ -2343,6 +2375,12 @@ void space_gparts_get_cell_index_mapper(void *map_data, int nr_gparts,
       ind[k] = index;
       cell_counts[index]++;
       ++count_extra_gpart;
+
+      /* Update the position (since we may have dithered) */
+      gp->x[0] = pos_x;
+      gp->x[1] = pos_y;
+      gp->x[2] = pos_z;
+
     } else {
       /* List its top-level cell index */
       ind[k] = index;
@@ -2481,6 +2519,12 @@ void space_sparts_get_cell_index_mapper(void *map_data, int nr_sparts,
       ind[k] = index;
       cell_counts[index]++;
       ++count_extra_spart;
+
+      /* Update the position (since we may have dithered) */
+      sp->x[0] = pos_x;
+      sp->x[1] = pos_y;
+      sp->x[2] = pos_z;
+
     } else {
       /* List its top-level cell index */
       ind[k] = index;
@@ -2615,6 +2659,12 @@ void space_bparts_get_cell_index_mapper(void *map_data, int nr_bparts,
       ind[k] = index;
       cell_counts[index]++;
       ++count_extra_bpart;
+
+      /* Update the position (since we may have dithered) */
+      bp->x[0] = pos_x;
+      bp->x[1] = pos_y;
+      bp->x[2] = pos_z;
+
     } else {
       /* List its top-level cell index */
       ind[k] = index;
