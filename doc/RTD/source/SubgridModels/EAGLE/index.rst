@@ -547,6 +547,89 @@ For a normal EAGLE run, that section of the parameter file reads:
 Stellar enrichment: Wiersma+2009b
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
+The enrichment is governed by three "master" parameters in the
+``EAGLEFeedback`` section of the parameter file. Each individual channel
+can be switched on or off individually:
+
+.. code:: YAML
+
+  # EAGLE stellar enrichment master modes
+  EAGLEFeedback:
+    use_AGB_enrichment:    1  # Global switch for enrichement from AGB stars.
+    use_SNII_enrichment:   1  # Global switch for enrichement from SNII stars.
+    use_SNIa_enrichment:   1  # Global switch for enrichement from SNIa stars.
+
+Setting one of these switches to 0 will cancel the mass transfer, metal
+mass transfer and energy transfer (AGB only) from the stars.
+
+The lifetime and yield tables are provided to the code via pre-computed
+tables whose location is given by the ``filename`` parameter.
+
+Choice of IMF properies
+-----------------------
+
+Enrichment from SNII & AGB stars
+--------------------------------
+
+Enrichment from SNIa stars
+--------------------------
+
+The enrichment from SNIa is done over the lifetime of the stars and uses a
+delay time distribution (DTD) to parametrize the number of SNIa events for
+a star of a given age. Two functional forms are available: an exponentially
+decaying function and a power-law with a slope of -1. The parameter
+``SNIa_DTD`` can hence take the two values: ``PowerLaw`` or
+``Exponential``.
+
+In the case of an exponential DTD, two parameters must be defined, the
+normalisation (``SNIa_DTD_exp_norm_p_Msun``) and the time-scale
+(``SNIa_DTD_exp_timescale_Gyr``). The original EAGLE model is reproduced by
+setting the parameters to :math:`0.002` and :math:`2.0` respectively.
+
+In the case of a power-law DTD, only a normalisation needs to be provided
+via the parameter (``SNIa_DTD_power_law_norm_p_Msun``). The examples in the
+repository use a value of :math:`0.0012` for this.
+
+Additionally, the age above which SNIa stars start to go off has to be
+provided. Below that age, there are no explosions; above that age, the DTD
+is used to determine the number of supernovae exploding in a given
+time-step. This is controlled by the parameter ``SNIa_DTD_delay_Gyr`` which
+sets the minimal age of SNIa in giga-years. A value of :math:`0.04~\rm{Gyr}
+= 40~\rm{Myr}` is used in all the examples. This corresponds
+approximatively to the lifetime of stars of mass :math:`8~\rm{M}_\odot`.
+
+Finally, the energy injected by a single SNIa explosion has to be provided
+via the parameter ``SNIa_energy_erg``. The canonical value of
+:math:`10^{51}~\rm{erg}` is used in all the examples.
+
+The SNIa section of the YAML file for an original EAGLE run looks like:
+
+.. code:: YAML
+
+  # EAGLE-Ref SNIa enrichment and feedback options
+  EAGLEFeedback:
+    use_SNIa_feedback:              1
+    use_SNIa_enrichment:            1
+    SNIa_DTD:                       Exponential
+    SNIa_DTD_exp_norm_p_Msun:       0.002           
+    SNIa_DTD_exp_timescale_Gyr:     2.0             
+    SNIa_DTD_delay_Gyr:             0.04
+    SNIa_energy_erg:                1.0e51          
+
+whilst for the more recent runs we use:
+
+.. code:: YAML
+
+  # EAGLE-Ref SNIa enrichment and feedback options
+  EAGLEFeedback:
+    use_SNIa_feedback:              1
+    use_SNIa_enrichment:            1
+    SNIa_DTD:                       PowerLaw
+    SNIa_DTD_power_law_norm_p_Msun: 0.0012
+    SNIa_DTD_delay_Gyr:             0.04
+    SNIa_energy_erg:                1.0e51          
+
+    
 .. _EAGLE_feedback:
 
 Supernova feedback: Dalla Vecchia+2012 & Schaye+2015
@@ -575,9 +658,11 @@ Supernova feedback: Dalla Vecchia+2012 & Schaye+2015
     SNII_energy_fraction_n_0_H_p_cm3: 1.4588          # Pivot point for the birth density dependance of the SNII energy fraction in cm^-3.
     SNII_energy_fraction_n_Z:         0.8686          # Power-law for the metallicity dependance of the SNII energy fraction.
     SNII_energy_fraction_n_n:         0.8686          # Power-law for the birth density dependance of the SNII energy fraction.
-    SNIa_max_mass_Msun:              8.0              # Maximal mass considered for SNIa feedback and enrichment in solar masses.
-    SNIa_timescale_Gyr:              2.0              # Time-scale of the exponential decay of the SNIa rates in Gyr.
-    SNIa_efficiency_p_Msun:          0.002            # Normalisation of the SNIa rates in inverse solar masses.
+    SNIa_DTD:                         PowerLaw        # Functional form of the SNIa delay time distribution Two choices: 'PowerLaw' or 'Exponential'.
+    SNIa_DTD_delay_Gyr:               0.04            # Stellar age after which SNIa start in Gyr (40 Myr corresponds to stars ~ 8 Msun).
+    SNIa_DTD_power_law_norm_p_Msun:   0.0012          # Normalization of the SNIa delay time distribution in the power-law DTD case (in Msun^-1).
+    SNIa_DTD_exp_norm_p_Msun:         0.002           # Normalization of the SNIa delay time distribution in the exponential DTD case (in Msun^-1).
+    SNIa_DTD_exp_timescale_Gyr:       2.0             # Time-scale of the SNIa delay time distribution in the exponential DTD case (in Gyr).
     SNIa_energy_erg:                 1.0e51           # Energy of one SNIa explosion in ergs.
     AGB_ejecta_velocity_km_p_s:      10.0             # Velocity of the AGB ejectas in km/s.
     SNII_yield_factor_Hydrogen:       1.0             # (Optional) Correction factor to apply to the Hydrogen yield from the SNII channel.
@@ -586,7 +671,7 @@ Supernova feedback: Dalla Vecchia+2012 & Schaye+2015
     SNII_yield_factor_Nitrogen:       1.0             # (Optional) Correction factor to apply to the Nitrogen yield from the SNII channel.
     SNII_yield_factor_Oxygen:         1.0             # (Optional) Correction factor to apply to the Oxygen yield from the SNII channel.
     SNII_yield_factor_Neon:           1.0             # (Optional) Correction factor to apply to the Neon yield from the SNII channel.
-    SNII_yield_factor_Magnesium:      2.0             # (Optional) Correction factor to apply to the Magnesium yield from the SNII channel.
+    SNII_yield_factor_Magnesium:      4.0             # (Optional) Correction factor to apply to the Magnesium yield from the SNII channel.
     SNII_yield_factor_Silicon:        1.0             # (Optional) Correction factor to apply to the Silicon yield from the SNII channel.
     SNII_yield_factor_Iron:           0.5             # (Optional) Correction factor to apply to the Iron yield from the SNII channel.
 
@@ -594,6 +679,11 @@ Note that the value of ``SNII_energy_fraction_n_0_H_p_cm3`` given here is
 different from the value (:math:`0.67`) reported in table 3 of `Schaye
 (2015) <http://adsabs.harvard.edu/abs/2015MNRAS.446..521S>`_ , as a factor
 of :math:`h^{-2} = 0.6777^{-2} = 2.1773` is missing in the paper.
+
+The Magnesium yields from SNII have also been doubled since the
+original EAGLE simulations were run.
+
+
     
 .. _EAGLE_black_hole_seeding:
 
