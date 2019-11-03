@@ -33,7 +33,7 @@ fi
     --cosmology --hydro --self-gravity \
     --stars --star-formation \
     --cooling --feedback \
-    --limiter \
+    --limiter --sync \
     --black-holes --fof \
     --threads=16 --pin \
     eagle_50.yml
