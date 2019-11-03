@@ -43,6 +43,8 @@ struct feedback_spart_data {
 
     /**
      * @brief Values to be distributed to the gas neighbours.
+     *
+     * WARNING: The first two elements must be the enrichment_weight and mass!!
      */
     struct {
 
