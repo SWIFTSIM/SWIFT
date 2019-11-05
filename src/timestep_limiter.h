@@ -46,7 +46,7 @@ timestep_limiter_prepare_force(struct part *restrict p,
 __attribute__((always_inline)) INLINE static void timestep_limiter_end_force(
     struct part *restrict p) {
 #ifdef SWIFT_DEBUG_CHECKS
-  if (p->limiter_data.min_ngb_time_bin == num_time_bins + 1)
+  if (p->time_bin > 0 && p->limiter_data.min_ngb_time_bin == num_time_bins + 1)
     error("Minimal time-bin not computed!");
   if (p->limiter_data.min_ngb_time_bin == 0)
     error("Minimal time-bin of neighbours is 0");
