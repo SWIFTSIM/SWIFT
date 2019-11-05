@@ -2352,8 +2352,7 @@ void engine_step(struct engine *e) {
   /********************************************************/
 
   /* Create a restart file if needed. */
-  engine_dump_restarts(e, /*drifted_all=*/0,
-                       e->restart_onexit && engine_is_done(e));
+  engine_dump_restarts(e, 0, e->restart_onexit && engine_is_done(e));
 
   engine_check_for_dumps(e);
 

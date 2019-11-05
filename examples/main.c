@@ -1275,17 +1275,8 @@ int main(int argc, char *argv[]) {
 
     /* Also if using nsteps to exit, will not have saved any restarts on exit,
      * make sure we do that (useful in testing only). */
-    if (force_stop || (e.restart_onexit && e.step - 1 == nsteps)) {
-
-      /* Check whether we dumped snapshots/stats/groups and hence do not
-         need to drift (as we might drift to the past) */
-      int drifted_all = 0;
-      drifted_all |= (e.step_props & engine_step_prop_snapshot);
-      drifted_all |= (e.step_props & engine_step_prop_statistics);
-      drifted_all |= (e.step_props & engine_step_prop_stf);
-
-      engine_dump_restarts(&e, drifted_all, /*force=*/1);
-    }
+    if (force_stop || (e.restart_onexit && e.step - 1 == nsteps))
+      engine_dump_restarts(&e, 0, 1);
 
     /* Dump the task data using the given frequency. */
     if (dump_tasks && (dump_tasks == 1 || j % dump_tasks == 1)) {
