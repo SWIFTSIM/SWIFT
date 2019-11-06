@@ -1805,6 +1805,8 @@ void engine_make_extra_hydroloop_tasks_mapper(void *map_data, int num_elements,
 
     /* Escape early */
     if (t->type == task_type_none) continue;
+    if (t->type == task_type_stars_resort) continue;
+    if (t->type == task_type_star_formation) continue;
 
 #ifdef WITH_LOGGER
     struct task *const ci_super_kick2_or_logger = ci->super->logger;
