@@ -16,30 +16,22 @@
  * along with this program.  If not, see <http://www.gnu.org/licenses/>.
  *
  ******************************************************************************/
-#ifndef SWIFT_STAR_FORMATION_LOGGER_STRUCT_H
-#define SWIFT_STAR_FORMATION_LOGGER_STRUCT_H
+#ifndef SWIFT_EAGLE_STAR_FORMATION_LOGGER_STRUCT_H
+#define SWIFT_EAGLE_STAR_FORMATION_LOGGER_STRUCT_H
 
-/**
- * @file src/star_formation_logger_struct.h
- * @brief Branches between the different SFH loggers
- */
+/* Starformation history struct */
+struct star_formation_history {
+  /*! Total new stellar mass */
+  float new_stellar_mass;
 
-/* Config parameters. */
-#include "../config.h"
+  /*! SFR of all particles */
+  float SFR_inactive;
 
-/* Import the right SFH logger struct definition */
-#if defined(STAR_FORMATION_NONE)
-#include "./star_formation/none/star_formation_logger_struct.h"
-#elif defined(STAR_FORMATION_QLA)
-#include "./star_formation/none/star_formation_logger_struct.h"
-#elif defined(STAR_FORMATION_EAGLE)
-#include "./star_formation/EAGLE/star_formation_logger_struct.h"
-#elif defined(STAR_FORMATION_GEAR)
-#include "./star_formation/GEAR/star_formation_logger_struct.h"
-#elif defined(STAR_FORMATION_SIMBA)
-#include "./star_formation/SIMBA/star_formation_logger_struct.h"
-#else
-#error "Invalid choice of star formation structure."
-#endif
+  /*! SFR of active particles */
+  float SFR_active;
 
-#endif /* SWIFT_STAR_FORMATION_LOGGER_STRUCT_H */
+  /*! SFR*dt of active particles */
+  float SFRdt_active;
+};
+
+#endif /* SWIFT_EAGLE_STAR_FORMATION_LOGGER_STRUCT_H */

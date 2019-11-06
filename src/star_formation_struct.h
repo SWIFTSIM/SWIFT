@@ -36,6 +36,8 @@
 #include "./star_formation/EAGLE/star_formation_struct.h"
 #elif defined(STAR_FORMATION_GEAR)
 #include "./star_formation/GEAR/star_formation_struct.h"
+#elif defined(STAR_FORMATION_SIMBA)
+#include "./star_formation/SIMBA/star_formation_struct.h"
 #else
 #error "Invalid choice of star formation structure."
 #endif

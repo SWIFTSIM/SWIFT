@@ -37,6 +37,7 @@
 inline void compute_kick_speed(struct spart *sp, const struct feedback_props *feedback_props, const struct cosmology *cosmo) {
 
   /* Calculate circular velocity based on Baryonic Tully-Fisher relation*/
+  // ALEXEI: check whether this formula is correct wrt comoving coordinates
   const float v_circ = pow(sp->feedback_data.host_galaxy_mass/feedback_props->simba_host_galaxy_mass_norm, feedback_props->simba_v_circ_exp);
 
   /* checkout what this random number does and how to generate it */
@@ -64,7 +65,7 @@ inline void compute_kick_speed(struct spart *sp, const struct feedback_props *fe
  * @param feedback_props The properties of the feedback model
  */
 inline void compute_mass_loading(struct spart *sp, const struct feedback_props *feedback_props) {
-  // ALEXEI: check units of host_galaxy_mass with Romeel: is this a mass or mass/msun?
+  // ALEXEI: Think this should be star particle mass, not host galaxy mass. Check with Romeel
   if (sp->mass < feedback_props->simba_mass_spectrum_break_msun) {
     sp->feedback_data.to_distribute.wind_mass = feedback_props->simba_wind_mass_eta 
         * sp->feedback_data.host_galaxy_mass * pow(sp->mass/feedback_props->simba_mass_spectrum_break_msun,feedback_props->simba_low_mass_power);
@@ -89,6 +90,7 @@ inline void compute_heating(struct spart *sp, const struct feedback_props *feedb
   float u_wind = 0.5*sp->feedback_data.to_distribute.v_kick*sp->feedback_data.to_distribute.v_kick;
 
   /* Calculate internal energy contribution from SN */
+  // ALEXEI: Think this should be star particle mass, not host galaxy mass. Check with Romeel
   float u_SN = feedback_props->SN_energy * sp->feedback_data.host_galaxy_mass 
                / sp->feedback_data.to_distribute.wind_mass;
 
@@ -212,6 +214,10 @@ __attribute__((always_inline)) INLINE static void feedback_evolve_spart(
   compute_heating(sp, feedback_props);
 
 }
+
+__attribute__((always_inline)) INLINE static void star_formation_launch_wind(
+    struct part* restrict p, struct xpart* restrict xp, 
+    const struct cosmology* cosmo){}
 
 /**
  * @brief Write a feedback struct to the given FILE as a stream of bytes.
