@@ -125,6 +125,12 @@ __attribute__((always_inline)) INLINE static void black_holes_predict_extra(
     bp->gpart->x[0] = bp->reposition.x[0];
     bp->gpart->x[1] = bp->reposition.x[1];
     bp->gpart->x[2] = bp->reposition.x[2];
+
+    /* Reset the reposition variables */
+    bp->reposition.x[0] = -FLT_MAX;
+    bp->reposition.x[1] = -FLT_MAX;
+    bp->reposition.x[2] = -FLT_MAX;
+    bp->reposition.min_potential = FLT_MAX;
   }
 }
 
