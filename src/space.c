@@ -112,20 +112,6 @@ struct qstack {
 };
 
 /**
- * @brief Parallel particle-sorting stack
- */
-struct parallel_sort {
-  struct part *parts;
-  struct gpart *gparts;
-  struct xpart *xparts;
-  struct spart *sparts;
-  int *ind;
-  struct qstack *stack;
-  unsigned int stack_size;
-  volatile unsigned int first, last, waiting;
-};
-
-/**
  * @brief Information required to compute the particle cell indices.
  */
 struct index_data {
@@ -714,7 +700,7 @@ void space_allocate_extras(struct space *s, int verbose) {
 
   /* Anything to do here? (Abort if we don't want extras)*/
   if (space_extra_parts == 0 && space_extra_gparts == 0 &&
-      space_extra_sparts == 0)
+      space_extra_sparts == 0 && space_extra_bparts == 0)
     return;
 
   /* The top-level cells */
@@ -791,6 +777,8 @@ void space_allocate_extras(struct space *s, int verbose) {
   if (expected_num_extra_gparts < s->nr_extra_gparts)
     error("Reduction in top-level cells number not handled.");
   if (expected_num_extra_sparts < s->nr_extra_sparts)
+    error("Reduction in top-level cells number not handled.");
+  if (expected_num_extra_bparts < s->nr_extra_bparts)
     error("Reduction in top-level cells number not handled.");
 
   /* Do we have enough space for the extra gparts (i.e. we haven't used up any)
@@ -2104,6 +2092,10 @@ void space_reorder_extras(struct space *s, int verbose) {
   if (space_extra_sparts)
     threadpool_map(&s->e->threadpool, space_reorder_extra_sparts_mapper,
                    s->local_cells_top, s->nr_local_cells, sizeof(int), 0, s);
+
+  /* Re-order the black hole particles */
+  if (space_extra_bparts)
+    error("Missing implementation of BH extra reordering");
 }
 
 /**
@@ -3722,9 +3714,9 @@ void space_split_recursive(struct space *s, struct cell *c,
     for (int k = 0; k < bcount; k++) {
 #ifdef SWIFT_DEBUG_CHECKS
       if (bparts[k].time_bin == time_bin_not_created)
-        error("Extra s-particle present in space_split()");
+        error("Extra b-particle present in space_split()");
       if (bparts[k].time_bin == time_bin_inhibited)
-        error("Inhibited s-particle present in space_split()");
+        error("Inhibited b-particle present in space_split()");
 #endif
       black_holes_time_bin_min =
           min(black_holes_time_bin_min, bparts[k].time_bin);
