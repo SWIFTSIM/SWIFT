@@ -101,13 +101,15 @@ INLINE static int star_formation_is_star_forming(
  * @param xp the #xpart.
  * @param starform the star formation law properties to use
  * @param phys_const the physical constants in internal units.
+ * @param hydro_props The properties of the hydro scheme.
  * @param cosmo the cosmological parameters and properties.
  * @param dt_star The time-step of this particle.
  */
 INLINE static void star_formation_compute_SFR(
     struct part* restrict p, struct xpart* restrict xp,
     const struct star_formation* starform, const struct phys_const* phys_const,
-    const struct cosmology* cosmo, const double dt_star) {}
+    const struct hydro_props* hydro_props, const struct cosmology* cosmo,
+    const double dt_star) {}
 
 /**
  * @brief Decides whether a particle should be converted into a

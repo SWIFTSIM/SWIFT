@@ -249,14 +249,12 @@ INLINE static int star_formation_is_star_forming(
    * because we also need to check if the physical density exceeded
    * the appropriate limit */
 
+  /* Get the Hydrogen number density (assuming primordial H abundance) */
+  const double n_H = physical_density * hydro_props->hydrogen_mass_fraction;
+
+  /* Get the density threshold for star formation */
   const double Z =
       chemistry_get_total_metal_mass_fraction_for_star_formation(p);
-  const float* const metal_fraction =
-      chemistry_get_metal_mass_fraction_for_star_formation(p);
-  const double X_H = metal_fraction[chemistry_element_H];
-  const double n_H = physical_density * X_H;
-
-  /* Get the density threshold */
   const double density_threshold =
       star_formation_threshold(Z, starform, phys_const);
 
@@ -285,13 +283,15 @@ INLINE static int star_formation_is_star_forming(
  * @param xp the #xpart.
  * @param starform the star formation law properties to use
  * @param phys_const the physical constants in internal units.
+ * @param hydro_props The properties of the hydro scheme.
  * @param cosmo the cosmological parameters and properties.
  * @param dt_star The time-step of this particle.
  */
 INLINE static void star_formation_compute_SFR(
     const struct part* restrict p, struct xpart* restrict xp,
     const struct star_formation* starform, const struct phys_const* phys_const,
-    const struct cosmology* cosmo, const double dt_star) {
+    const struct hydro_props* hydro_props, const struct cosmology* cosmo,
+    const double dt_star) {
 
   /* Abort early if time-step size is 0 */
   if (dt_star == 0.) {
@@ -300,12 +300,10 @@ INLINE static void star_formation_compute_SFR(
     return;
   }
 
-  /* Hydrogen number density of this particle */
+  /* Hydrogen number density of this particle (assuming primordial H abundance)
+   */
   const double physical_density = hydro_get_physical_density(p, cosmo);
-  const float* const metal_fraction =
-      chemistry_get_metal_mass_fraction_for_star_formation(p);
-  const double X_H = metal_fraction[chemistry_element_H];
-  const double n_H = physical_density * X_H / phys_const->const_proton_mass;
+  const double n_H = physical_density * hydro_props->hydrogen_mass_fraction;
 
   /* Are we above the threshold for automatic star formation? */
   if (physical_density >
@@ -325,7 +323,7 @@ INLINE static void star_formation_compute_SFR(
 
   /* Calculate the specific star formation rate */
   double SFRpergasmass;
-  if (hydro_get_physical_density(p, cosmo) <
+  if (physical_density <
       starform->KS_high_den_thresh * phys_const->const_proton_mass) {
 
     SFRpergasmass =
