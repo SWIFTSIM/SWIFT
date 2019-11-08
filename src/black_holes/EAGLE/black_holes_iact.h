@@ -170,9 +170,9 @@ runner_iact_nonsym_bh_gas_swallow(
 
         /* Store this as our new best */
         bi->reposition.min_potential = potential;
-        bi->reposition.x[0] = pj->x[0];
-        bi->reposition.x[1] = pj->x[1];
-        bi->reposition.x[2] = pj->x[2];
+        bi->reposition.delta_x[0] = -dx[0];
+        bi->reposition.delta_x[1] = -dx[1];
+        bi->reposition.delta_x[2] = -dx[2];
       }
     }
   }
@@ -266,9 +266,9 @@ runner_iact_nonsym_bh_bh_swallow(const float r2, const float *dx,
 
         /* Store this as our new best */
         bi->reposition.min_potential = potential;
-        bi->reposition.x[0] = bj->x[0];
-        bi->reposition.x[1] = bj->x[1];
-        bi->reposition.x[2] = bj->x[2];
+        bi->reposition.delta_x[0] = -dx[0];
+        bi->reposition.delta_x[1] = -dx[1];
+        bi->reposition.delta_x[2] = -dx[2];
       }
     }
   }
