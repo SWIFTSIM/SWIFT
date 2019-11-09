@@ -222,7 +222,9 @@ int main(int argc, char *argv[]) {
                   "Run with structure finding.", NULL, 0, 0),
       OPT_BOOLEAN(0, "limiter", &with_timestep_limiter,
                   "Run with time-step limiter.", NULL, 0, 0),
-      OPT_BOOLEAN(0, "sync", &with_timestep_sync, "Run with time-step sync.",
+      OPT_BOOLEAN(0, "sync", &with_timestep_sync,
+                  "Run with time-step synchronization of particles hit by "
+                  "feedback events.",
                   NULL, 0, 0),
 
       OPT_GROUP("  Control options:\n"),
