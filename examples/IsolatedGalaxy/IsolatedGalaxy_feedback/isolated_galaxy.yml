@@ -17,14 +17,15 @@ Gravity:
 TimeIntegration:
   time_begin:        0.    # The starting time of the simulation (in internal units).
   time_end:          0.1   # The end time of the simulation (in internal units).
-  dt_min:            1e-14  # The minimal time-step size of the simulation (in internal units).
+  dt_min:            1e-9  # The minimal time-step size of the simulation (in internal units).
   dt_max:            1e-2  # The maximal time-step size of the simulation (in internal units).
 
 # Parameters governing the snapshots
 Snapshots:
-  basename:   output      # Common part of the name of output files
-  time_first: 0.          # (Optional) Time of the first output if non-cosmological time-integration (in internal units)
-  delta_time: 0.001        # Time difference between consecutive outputs (in internal units)
+  basename:    output      # Common part of the name of output files
+  time_first:  0.          # Time of the first output if non-cosmological time-integration (in internal units)
+  delta_time:  0.001       # Time difference between consecutive outputs (in internal units)
+  compression: 4           # Compress the snapshots
 
 # Parameters governing the conserved quantities statistics
 Statistics:

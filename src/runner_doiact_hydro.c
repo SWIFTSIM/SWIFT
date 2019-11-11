@@ -33,6 +33,7 @@
 #include "space_getsid.h"
 #include "star_formation_iact.h"
 #include "timers.h"
+#include "timestep_limiter_iact.h"
 
 /* Import the density loop functions. */
 #define FUNCTION density
@@ -53,13 +54,6 @@
 /* Import the force loop functions. */
 #define FUNCTION force
 #define FUNCTION_TASK_LOOP TASK_LOOP_FORCE
-#include "runner_doiact_functions_hydro.h"
-#undef FUNCTION
-#undef FUNCTION_TASK_LOOP
-
-/* Import the limiter loop functions. */
-#define FUNCTION limiter
-#define FUNCTION_TASK_LOOP TASK_LOOP_LIMITER
 #include "runner_doiact_functions_hydro.h"
 #undef FUNCTION
 #undef FUNCTION_TASK_LOOP

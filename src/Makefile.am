@@ -72,7 +72,7 @@ EAGLE_FEEDBACK_SOURCES += feedback/EAGLE/feedback.c
 endif
 
 # Common source files
-AM_SOURCES = space.c runner_main.c runner_doiact_hydro.c \
+AM_SOURCES = space.c runner_main.c runner_doiact_hydro.c runner_doiact_limiter.c \
     runner_doiact_stars.c runner_doiact_black_holes.c runner_ghost.c runner_recv.c \
     runner_sort.c runner_drift.c runner_black_holes.c runner_time_integration.c \
     runner_doiact_hydro_vec.c runner_others.c\
@@ -96,10 +96,10 @@ nobase_noinst_HEADERS = align.h approx_math.h atomic.h barrier.h cycle.h error.h
 		 gravity_iact.h kernel_long_gravity.h vector.h cache.h \
 	         runner_doiact_nosort.h runner_doiact_hydro.h runner_doiact_stars.h runner_doiact_black_holes.h runner_doiact_grav.h \
                  runner_doiact_functions_hydro.h runner_doiact_functions_stars.h runner_doiact_functions_black_holes.h \
-		 units.h intrinsics.h minmax.h \
+		 runner_doiact_functions_limiter.h runner_doiact_limiter.h units.h intrinsics.h minmax.h \
                  kick.h timestep.h drift.h adiabatic_index.h io_properties.h dimension.h part_type.h periodic.h memswap.h \
-                 dump.h logger.h sign.h logger_io.h timestep_limiter.h hashmap.h \
-		 gravity.h gravity_io.h gravity_cache.h \
+                 dump.h logger.h sign.h logger_io.h timestep_limiter.h timestep_limiter_iact.h timestep_sync.h timestep_sync_part.h \
+		 hashmap.h gravity.h gravity_io.h gravity_cache.h \
 		 gravity/Default/gravity.h gravity/Default/gravity_iact.h gravity/Default/gravity_io.h \
 		 gravity/Default/gravity_debug.h gravity/Default/gravity_part.h  \
 		 gravity/Potential/gravity.h gravity/Potential/gravity_iact.h gravity/Potential/gravity_io.h \

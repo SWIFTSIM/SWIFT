@@ -20,6 +20,7 @@ difference is the parameter file that will need to be adapted for SWIFT.
    InitialConditions/index
    Snapshots/index
    HydroSchemes/index
+   TimeStepping/index
    SubgridModels/index
    random
    FriendsOfFriends/index

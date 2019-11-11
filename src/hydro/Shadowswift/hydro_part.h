@@ -24,6 +24,7 @@
 #include "black_holes_struct.h"
 #include "chemistry_struct.h"
 #include "cooling_struct.h"
+#include "timestep_limiter_struct.h"
 #include "tracers_struct.h"
 #include "voronoi_cell.h"
 
@@ -189,8 +190,8 @@ struct part {
   /* Time-step length */
   timebin_t time_bin;
 
-  /* Need waking-up ? */
-  timebin_t wakeup;
+  /*! Time-step limiter information */
+  struct timestep_limiter_data limiter_data;
 
 #ifdef SWIFT_DEBUG_CHECKS
 

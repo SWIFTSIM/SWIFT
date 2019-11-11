@@ -38,6 +38,8 @@ can be found by typing ``./swift -h``:
                                       perform black hole seeding.
     -x, --velociraptor                Run with structure finding.
     --limiter                         Run with time-step limiter.
+    --sync                            Run with time-step synchronization
+                                      of particles hit by feedback events.
 
   Control options:
 

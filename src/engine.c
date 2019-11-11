@@ -117,7 +117,8 @@ const char *engine_policy_names[] = {"none",
                                      "feedback",
                                      "black holes",
                                      "fof search",
-                                     "time-step limiter"};
+                                     "time-step limiter",
+                                     "time-step sync"};
 
 /** The rank of the engine as a global variable (for messages). */
 int engine_rank;
@@ -1353,7 +1354,7 @@ int engine_estimate_nr_tasks(const struct engine *e) {
 #endif
 #endif
   }
-  if (e->policy & engine_policy_limiter) {
+  if (e->policy & engine_policy_timestep_limiter) {
     n1 += 18;
     n2 += 1;
   }
@@ -1778,6 +1779,7 @@ void engine_skip_force_and_kick(struct engine *e) {
         t->type == task_type_kick1 || t->type == task_type_kick2 ||
         t->type == task_type_timestep ||
         t->type == task_type_timestep_limiter ||
+        t->type == task_type_timestep_sync ||
         t->subtype == task_subtype_force ||
         t->subtype == task_subtype_limiter || t->subtype == task_subtype_grav ||
         t->type == task_type_end_hydro_force ||
@@ -2167,8 +2169,8 @@ void engine_step(struct engine *e) {
 
     /* Print some information to the screen */
     printf(
-        "  %6d %14e %12.7f %12.7f %14e %4d %4d %12lld %12lld %12lld %12lld "
-        "%21.3f %6d\n",
+        "  %6d %14e %12.7f %12.7f %14e %4d %4d %12lld %12lld %12lld "
+        "%12lld %21.3f %6d\n",
         e->step, e->time, e->cosmology->a, e->cosmology->z, e->time_step,
         e->min_active_bin, e->max_active_bin, e->updates, e->g_updates,
         e->s_updates, e->b_updates, e->wallclock_time, e->step_props);

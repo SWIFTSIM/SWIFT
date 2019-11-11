@@ -21,6 +21,7 @@
 
 /* Local includes */
 #include "random.h"
+#include "timestep_sync_part.h"
 
 /**
  * @brief Density interaction between two particles (non-symmetric).
@@ -38,10 +39,9 @@
 __attribute__((always_inline)) INLINE static void
 runner_iact_nonsym_feedback_density(const float r2, const float *dx,
                                     const float hi, const float hj,
-                                    struct spart *restrict si,
-                                    const struct part *restrict pj,
-                                    const struct xpart *restrict xpj,
-                                    const struct cosmology *restrict cosmo,
+                                    struct spart *si, const struct part *pj,
+                                    const struct xpart *xpj,
+                                    const struct cosmology *cosmo,
                                     const integertime_t ti_current) {
 
   /* Get the gas mass. */
@@ -86,10 +86,9 @@ runner_iact_nonsym_feedback_density(const float r2, const float *dx,
 __attribute__((always_inline)) INLINE static void
 runner_iact_nonsym_feedback_apply(const float r2, const float *dx,
                                   const float hi, const float hj,
-                                  const struct spart *restrict si,
-                                  struct part *restrict pj,
-                                  struct xpart *restrict xpj,
-                                  const struct cosmology *restrict cosmo,
+                                  const struct spart *si, struct part *pj,
+                                  struct xpart *xpj,
+                                  const struct cosmology *cosmo,
                                   const integertime_t ti_current) {
 
   /* Get r. */
@@ -293,6 +292,9 @@ runner_iact_nonsym_feedback_apply(const float r2, const float *dx,
       /*     "We did some heating! id %llu star id %llu probability %.5e " */
       /*     "random_num %.5e du %.5e du/ini %.5e", */
       /*     pj->id, si->id, prob, rand, delta_u, delta_u / u_init); */
+
+      /* Synchronize the particle on the timeline */
+      timestep_sync_part(pj);
     }
   }
 }

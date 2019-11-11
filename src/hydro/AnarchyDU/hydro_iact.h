@@ -560,49 +560,4 @@ __attribute__((always_inline)) INLINE static void runner_iact_nonsym_force(
   pi->viscosity.v_sig = max(pi->viscosity.v_sig, v_sig);
 }
 
-/**
- * @brief Timestep limiter loop
- *
- * @param r2 Comoving square distance between the two particles.
- * @param dx Comoving vector separating both particles (pi - pj).
- * @param hi Comoving smoothing-length of part*icle i.
- * @param hj Comoving smoothing-length of part*icle j.
- * @param pi First part*icle.
- * @param pj Second part*icle (not updated).
- * @param a Current scale factor.
- * @param H Current Hubble parameter.
- *
- */
-__attribute__((always_inline)) INLINE static void runner_iact_limiter(
-    float r2, const float* dx, float hi, float hj, struct part* restrict pi,
-    struct part* restrict pj, float a, float H) {
-
-  /* Nothing to do here if both particles are active */
-}
-
-/**
- * @brief Timestep limiter loop (non-symmetric version)
- *
- * @param r2 Comoving square distance between the two particles.
- * @param dx Comoving vector separating both particles (pi - pj).
- * @param hi Comoving smoothing-length of part*icle i.
- * @param hj Comoving smoothing-length of part*icle j.
- * @param pi First part*icle.
- * @param pj Second part*icle (not updated).
- * @param a Current scale factor.
- * @param H Current Hubble parameter.
- *
- */
-__attribute__((always_inline)) INLINE static void runner_iact_nonsym_limiter(
-    float r2, const float* dx, float hi, float hj, struct part* restrict pi,
-    struct part* restrict pj, float a, float H) {
-
-  /* Wake up the neighbour? */
-  if (pi->viscosity.v_sig >
-      const_limiter_max_v_sig_ratio * pj->viscosity.v_sig) {
-
-    pj->wakeup = time_bin_awake;
-  }
-}
-
 #endif /* SWIFT_ANARCHY_DU_HYDRO_IACT_H */

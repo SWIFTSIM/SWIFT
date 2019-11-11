@@ -238,6 +238,7 @@ void space_rebuild_recycle_mapper(void *map_data, int num_elements,
     c->kick2 = NULL;
     c->timestep = NULL;
     c->timestep_limiter = NULL;
+    c->timestep_sync = NULL;
     c->hydro.end_force = NULL;
     c->hydro.drift = NULL;
     c->stars.drift = NULL;
@@ -4289,6 +4290,10 @@ void space_first_init_parts_mapper(void *restrict map_data, int count,
   for (int k = 0; k < count; k++) {
 
     hydro_first_init_part(&p[k], &xp[k]);
+    p[k].limiter_data.min_ngb_time_bin = num_time_bins + 1;
+    p[k].limiter_data.wakeup = time_bin_not_awake;
+    p[k].limiter_data.to_be_synchronized = 0;
+
 #ifdef WITH_LOGGER
     logger_part_data_init(&xp[k].logger_data);
 #endif
@@ -5493,14 +5498,26 @@ void space_check_limiter_mapper(void *map_data, int nr_parts,
 #ifdef SWIFT_DEBUG_CHECKS
   /* Unpack the data */
   struct part *restrict parts = (struct part *)map_data;
+  const struct space *s = (struct space *)extra_data;
+  const int with_timestep_limiter =
+      (s->e->policy & engine_policy_timestep_limiter);
+  const int with_timestep_sync = (s->e->policy & engine_policy_timestep_sync);
 
   /* Verify that all limited particles have been treated */
   for (int k = 0; k < nr_parts; k++) {
 
     if (parts[k].time_bin == time_bin_inhibited) continue;
 
-    if (parts[k].wakeup == time_bin_awake)
-      error("Particle still woken up! id=%lld", parts[k].id);
+    if (parts[k].time_bin < 0) error("Particle has negative time-bin!");
+
+    if (with_timestep_limiter &&
+        parts[k].limiter_data.wakeup != time_bin_not_awake)
+      error("Particle still woken up! id=%lld wakeup=%d", parts[k].id,
+            parts[k].limiter_data.wakeup);
+
+    if (with_timestep_sync && parts[k].limiter_data.to_be_synchronized != 0)
+      error("Synchronized particle not treated! id=%lld synchronized=%d",
+            parts[k].id, parts[k].limiter_data.to_be_synchronized);
 
     if (parts[k].gpart != NULL)
       if (parts[k].time_bin != parts[k].gpart->time_bin)
@@ -5522,7 +5539,7 @@ void space_check_limiter(struct space *s) {
 #ifdef SWIFT_DEBUG_CHECKS
 
   threadpool_map(&s->e->threadpool, space_check_limiter_mapper, s->parts,
-                 s->nr_parts, sizeof(struct part), 1000, NULL);
+                 s->nr_parts, sizeof(struct part), 1000, s);
 #else
   error("Calling debugging code without debugging flag activated.");
 #endif
