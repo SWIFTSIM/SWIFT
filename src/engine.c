@@ -595,7 +595,6 @@ void engine_exchange_strays(struct engine *e, const size_t offset_parts,
 
   /* Reallocate the particle arrays if necessary */
   if (offset_parts + count_parts_in > s->size_parts) {
-    message("re-allocating parts array.");
     s->size_parts = (offset_parts + count_parts_in) * engine_parts_size_grow;
     struct part *parts_new = NULL;
     struct xpart *xparts_new = NULL;
@@ -620,7 +619,6 @@ void engine_exchange_strays(struct engine *e, const size_t offset_parts,
   }
 
   if (offset_sparts + count_sparts_in > s->size_sparts) {
-    message("re-allocating sparts array.");
     s->size_sparts = (offset_sparts + count_sparts_in) * engine_parts_size_grow;
     struct spart *sparts_new = NULL;
     if (swift_memalign("sparts", (void **)&sparts_new, spart_align,
@@ -639,7 +637,6 @@ void engine_exchange_strays(struct engine *e, const size_t offset_parts,
   }
 
   if (offset_bparts + count_bparts_in > s->size_bparts) {
-    message("re-allocating bparts array.");
     s->size_bparts = (offset_bparts + count_bparts_in) * engine_parts_size_grow;
     struct bpart *bparts_new = NULL;
     if (swift_memalign("bparts", (void **)&bparts_new, bpart_align,
@@ -658,7 +655,6 @@ void engine_exchange_strays(struct engine *e, const size_t offset_parts,
   }
 
   if (offset_gparts + count_gparts_in > s->size_gparts) {
-    message("re-allocating gparts array.");
     s->size_gparts = (offset_gparts + count_gparts_in) * engine_parts_size_grow;
     struct gpart *gparts_new = NULL;
     if (swift_memalign("gparts", (void **)&gparts_new, gpart_align,
