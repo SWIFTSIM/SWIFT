@@ -64,4 +64,31 @@ struct feedback_spart_data {
   };
 };
 
+/**
+ * @brief Feedback data carried by each of the gas particles' xparts
+ */
+struct feedback_xpart_data {
+  
+  /* Velocity to update particles with */
+  float v_kick;
+
+  /* Remaining energy to distribute as heat */
+  float delta_u; // ALEXEI: surely this should be an energy and not an internal energy because don't know particle's mass we're distributing to.
+
+  /* Delay time */
+  double simba_delay_time; // ALEXEI: think of a better place to put this
+
+  /* wind mass loading */
+  float wind_mass;
+
+  /* Excess energy after kicking particle converted to thermal */
+  float u_extra;
+
+  /* Probability of kicking particle */
+  double feedback_probability;
+    
+  /* mass of host galaxy */
+  float host_galaxy_mass;
+};
+
 #endif /* SWIFT_FEEDBACK_STRUCT_SIMBA_H */

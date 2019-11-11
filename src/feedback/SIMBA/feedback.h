@@ -19,6 +19,7 @@
 #ifndef SWIFT_FEEDBACK_SIMBA_H
 #define SWIFT_FEEDBACK_SIMBA_H
 
+#include "active.h"
 #include "cosmology.h"
 #include "error.h"
 #include "feedback_properties.h"
@@ -34,26 +35,26 @@
  * @param sp The sparticle doing the feedback
  * @param feedback_props The properties of the feedback model
  */
-inline void compute_kick_speed(struct spart *sp, const struct feedback_props *feedback_props, const struct cosmology *cosmo) {
+inline void compute_kick_speed(struct xpart *xp, const struct feedback_props *feedback_props, const struct cosmology *cosmo) {
 
   /* Calculate circular velocity based on Baryonic Tully-Fisher relation*/
   // ALEXEI: check whether this formula is correct wrt comoving coordinates
-  const float v_circ = pow(sp->feedback_data.host_galaxy_mass/feedback_props->simba_host_galaxy_mass_norm, feedback_props->simba_v_circ_exp);
+  const float v_circ = pow(xp->feedback_data.host_galaxy_mass/feedback_props->simba_host_galaxy_mass_norm, feedback_props->simba_v_circ_exp);
 
   /* checkout what this random number does and how to generate it */
   const float random_num = 1.;
 
   /* Calculate wind speed */
   // ALEXEI: checkout what the numbers in this equation mean. Maybe possible future simplifications
-  sp->feedback_data.to_distribute.v_kick = feedback_props->galsf_firevel 
+  xp->feedback_data.v_kick = feedback_props->galsf_firevel 
       * pow(v_circ * cosmo->a /feedback_props->scale_factor_norm,feedback_props->galsf_firevel_slope) 
       * pow(feedback_props->scale_factor_norm,0.12 - feedback_props->galsf_firevel_slope)
       * (1. - feedback_props->vwvf_scatter - 2.*feedback_props->vwvf_scatter*random_num)
       * v_circ;
 
   // ALEXEI: temporarily set to arbitrary number for testing.
-  //sp->feedback_data.to_distribute.v_kick = 500.;
-  sp->feedback_data.to_distribute.v_kick = 5.;
+  //xp->feedback_data.v_kick = 500.;
+  xp->feedback_data.v_kick = 5.;
 
 }
 
@@ -64,14 +65,16 @@ inline void compute_kick_speed(struct spart *sp, const struct feedback_props *fe
  * @param sp The sparticle doing the feedback
  * @param feedback_props The properties of the feedback model
  */
-inline void compute_mass_loading(struct spart *sp, const struct feedback_props *feedback_props) {
+inline void compute_mass_loading(struct xpart *xp, const struct feedback_props *feedback_props) {
   // ALEXEI: Think this should be star particle mass, not host galaxy mass. Check with Romeel
-  if (sp->mass < feedback_props->simba_mass_spectrum_break_msun) {
-    sp->feedback_data.to_distribute.wind_mass = feedback_props->simba_wind_mass_eta 
-        * sp->feedback_data.host_galaxy_mass * pow(sp->mass/feedback_props->simba_mass_spectrum_break_msun,feedback_props->simba_low_mass_power);
+  float galaxy_mass = xp->feedback_data.host_galaxy_mass;
+  float star_mass = xp->sf_data.star_mass_formed;
+  if (galaxy_mass < feedback_props->simba_mass_spectrum_break_msun) {
+    xp->feedback_data.wind_mass = feedback_props->simba_wind_mass_eta 
+        * star_mass * pow(galaxy_mass/feedback_props->simba_mass_spectrum_break_msun,feedback_props->simba_low_mass_power);
   } else {
-    sp->feedback_data.to_distribute.wind_mass = feedback_props->simba_wind_mass_eta 
-        * sp->feedback_data.host_galaxy_mass * pow(sp->mass/feedback_props->simba_mass_spectrum_break_msun,feedback_props->simba_high_mass_power);
+    xp->feedback_data.wind_mass = feedback_props->simba_wind_mass_eta 
+        * star_mass * pow(galaxy_mass/feedback_props->simba_mass_spectrum_break_msun,feedback_props->simba_high_mass_power);
   }
 };
 
@@ -83,35 +86,36 @@ inline void compute_mass_loading(struct spart *sp, const struct feedback_props *
  * @param sp The sparticle doing the feedback
  * @param feedback_props The properties of the feedback model
  */
-inline void compute_heating(struct spart *sp, const struct feedback_props *feedback_props) {
+inline void compute_heating(struct xpart *xp, const struct feedback_props *feedback_props) {
   /* Calculate the amount of energy injected in the wind. 
    * This is in terms of internal energy because we don't 
    * know the mass of the particle being kicked yet. */
-  float u_wind = 0.5*sp->feedback_data.to_distribute.v_kick*sp->feedback_data.to_distribute.v_kick;
+  // ALEXEI: Put this back in and sort out what's going on here.
+  //float u_wind = 0.5*xp->feedback_data.v_kick*xp->feedback_data.v_kick;
 
-  /* Calculate internal energy contribution from SN */
-  // ALEXEI: Think this should be star particle mass, not host galaxy mass. Check with Romeel
-  float u_SN = feedback_props->SN_energy * sp->feedback_data.host_galaxy_mass 
-               / sp->feedback_data.to_distribute.wind_mass;
+  ///* Calculate internal energy contribution from SN */
+  //// ALEXEI: Think this should be star particle mass, not host galaxy mass. Check with Romeel
+  //float u_SN = feedback_props->SN_energy * sp->feedback_data.host_galaxy_mass 
+  //             / sp->feedback_data.to_distribute.wind_mass;
 
-  // ALEXEI: should this be smoothed metal mass fraction?
-  if (sp->chemistry_data.metal_mass_fraction[0] < 1.e-9) {
-    // Schaerer 2003
-    u_SN *= exp10(-0.0029*pow(log10(sp->chemistry_data.metal_mass_fraction[0])+9,2.5)+0.417694); // ALEXEI: what are all these numbers?
-  } else {
-    // As above but at zero metallicity
-    u_SN *= 2.61634;
-  }
+  //// ALEXEI: should this be smoothed metal mass fraction?
+  //if (sp->chemistry_data.metal_mass_fraction[0] < 1.e-9) {
+  //  // Schaerer 2003
+  //  u_SN *= exp10(-0.0029*pow(log10(sp->chemistry_data.metal_mass_fraction[0])+9,2.5)+0.417694); // ALEXEI: what are all these numbers?
+  //} else {
+  //  // As above but at zero metallicity
+  //  u_SN *= 2.61634;
+  //}
 
-  if (u_wind > feedback_props->simba_wind_energy_limit) {
-    sp->feedback_data.to_distribute.v_kick *= sqrt(feedback_props->simba_wind_energy_limit*u_SN/u_wind);
-  }
-  if (feedback_props->simba_wind_energy_limit < 1.f) {
-    u_SN *= feedback_props->simba_wind_energy_limit;
-  }
+  //if (u_wind > feedback_props->simba_wind_energy_limit) {
+  //  sp->feedback_data.to_distribute.v_kick *= sqrt(feedback_props->simba_wind_energy_limit*u_SN/u_wind);
+  //}
+  //if (feedback_props->simba_wind_energy_limit < 1.f) {
+  //  u_SN *= feedback_props->simba_wind_energy_limit;
+  //}
 
-  /* Now we can decide if there's any energy left over to distribute */
-  sp->feedback_data.to_distribute.u_extra = max(u_SN - u_wind, 0.);
+  ///* Now we can decide if there's any energy left over to distribute */
+  //xp->feedback_data.u_extra = max(u_SN - u_wind, 0.);
 };
 
 /**
@@ -204,20 +208,86 @@ __attribute__((always_inline)) INLINE static void feedback_evolve_spart(
     const struct cosmology* cosmo, const struct unit_system* us,
     const double star_age_beg_step, const double dt) {
   
+}
+
+/**
+ * @brief If gas particle isn't transformed into a star, kick the particle
+ * based on quantities for feedback. 
+ *
+ * @param p Gas particle of interest
+ * @param xp Corresponding xpart
+ * @param cosmo Cosmology data structure
+ * @param ti_current current integer time
+ */
+__attribute__((always_inline)) INLINE static void launch_wind(
+    struct part* restrict p, struct xpart* restrict xp, 
+    const struct cosmology* cosmo, const integertime_t ti_current){
+
+  if (ti_current == 0 || part_is_decoupled(p)) return;
+
+  /* Determine direction to kick particle (v cross a_grav) */
+  float v_new[3];
+  v_new[0] = xp->a_grav[1] * p->v[2] - xp->a_grav[2] * p->v[1];
+  v_new[1] = xp->a_grav[2] * p->v[0] - xp->a_grav[0] * p->v[2];
+  v_new[2] = xp->a_grav[0] * p->v[1] - xp->a_grav[1] * p->v[0];
+
+  /* Now normalise and multiply by the kick velocity */
+  float v_new_norm = sqrt(v_new[0]*v_new[0] + v_new[1]*v_new[1] + v_new[2]*v_new[2]);
+  /* If for some reason the norm is zero, arbitrarily choose a direction */
+  if (v_new_norm == 0) {
+    v_new_norm = 1.;
+    v_new[0] = 1.;
+    v_new[1] = 0.;
+    v_new[2] = 0.;
+  }
+  // ALEXEI: check if we need to add the particle's existing velocity to the kick
+  for (int i = 0; i < 3; i++) v_new[i] = v_new[i]*xp->feedback_data.v_kick/v_new_norm + p->v[i]; 
+
+  /* Set the velocity */
+  hydro_set_velocity(p, xp, v_new);
+
+  /* Heat particle */
+  // probability GALSF_SUBGRID HOTWIND = 0.3 in SIMBA
+  // Make sure star particle doesn't heat multiple times, i.e. it only launches eta*sm
+  // Reinstate random heating
+  //if (rand_heat > prob_heat) {
+    const float u_init = hydro_get_physical_internal_energy(p, xp, cosmo);
+    const float u_new = u_init + xp->feedback_data.delta_u;
+    hydro_set_physical_internal_energy(p, xp, cosmo, u_new);
+    hydro_set_drifted_physical_internal_energy(p, cosmo, u_new);
+  //}
+
+  /* Set delaytime before which the particle cannot interact */
+  p->delay_time = xp->feedback_data.simba_delay_time;
+  p->time_bin = time_bin_decoupled;
+  // ALEXEI: debugging print statement
+  //if (p->id == SIMBA_DEBUG_ID) message("spart id %llu decoupled particle %llu delay_time %.5e rand %.5e prob %.5e", si->id, p->id, p->delay_time, rand_kick, prob_kick);
+  //message("spart id %llu decoupled particle %llu delay_time %.5e rand %.5e prob %.5e new velocity %.5e", si->id, p->id, p->delay_time, rand_kick, prob_kick, sqrt(v_new[0]*v_new[0]+v_new[1]*v_new[1]+v_new[2]*v_new[2]));
+
+#ifdef SWIFT_DEBUG_CHECKS
+  p->ti_decoupled = ti_current;
+#endif
+}
+
+__attribute__((always_inline)) INLINE static void star_formation_feedback(
+    struct part* restrict p, struct xpart* restrict xp, 
+    const struct cosmology* cosmo,
+    const struct feedback_props* feedback_props, 
+    const integertime_t ti_current) {
   /* Calculate the velocity to kick neighbouring particles with */
-  compute_kick_speed(sp, feedback_props, cosmo);
+  compute_kick_speed(xp, feedback_props, cosmo);
 
   /* Compute wind mass loading */
-  compute_mass_loading(sp, feedback_props);
+  compute_mass_loading(xp, feedback_props);
 
   /* Compute residual heating */
-  compute_heating(sp, feedback_props);
+  compute_heating(xp, feedback_props);
+
+  /* Launch wind */
+  launch_wind(p, xp, cosmo, ti_current);
 
 }
 
-__attribute__((always_inline)) INLINE static void star_formation_launch_wind(
-    struct part* restrict p, struct xpart* restrict xp, 
-    const struct cosmology* cosmo){}
 
 /**
  * @brief Write a feedback struct to the given FILE as a stream of bytes.

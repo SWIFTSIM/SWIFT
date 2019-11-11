@@ -72,66 +72,66 @@ runner_iact_nonsym_feedback_apply(const float r2, const float *dx,
                                   const struct cosmology *restrict cosmo,
                                   const integertime_t ti_current) {
   
-  if (ti_current == 0 || part_is_decoupled(pj)) return;
+  //if (ti_current == 0 || part_is_decoupled(pj)) return;
 
-  /* Get the probability of doing feedback */
-  //const float mass_frac = si->feedback_data.to_distribute.wind_mass/pj->mass;
-  //const double prob_kick = 1. - exp(-mass_frac);
-  const double prob_kick = 1./50.; // ALEXEI: placeholder
-  const double prob_heat = 0.3; // ALEXEI: placeholder
+  ///* Get the probability of doing feedback */
+  ////const float mass_frac = si->feedback_data.to_distribute.wind_mass/pj->mass;
+  ////const double prob_kick = 1. - exp(-mass_frac);
+  //const double prob_kick = 1./50.; // ALEXEI: placeholder
+  //const double prob_heat = 0.3; // ALEXEI: placeholder
 
-  /* First we kick a particle */
-  /* Draw a random number (Note mixing both IDs) */
-  const double rand_kick = random_unit_interval(si->id + pj->id, ti_current, random_number_stellar_feedback);
+  ///* First we kick a particle */
+  ///* Draw a random number (Note mixing both IDs) */
+  //const double rand_kick = random_unit_interval(si->id + pj->id, ti_current, random_number_stellar_feedback);
 
-  // ALEXEI: there might be some correlation here. maybe come up with a different seed (or think whether needed at all)
-  const double rand_heat = random_unit_interval(si->id * pj->id, ti_current, random_number_stellar_feedback);
+  //// ALEXEI: there might be some correlation here. maybe come up with a different seed (or think whether needed at all)
+  //const double rand_heat = random_unit_interval(si->id * pj->id, ti_current, random_number_stellar_feedback);
 
-  /* Are we lucky? */
-  if (rand_kick < prob_kick) {
-    /* Determine direction to kick particle (v cross a_grav) */
-    float v_new[3];
-    v_new[0] = xp->a_grav[1] * pj->v[2] - xp->a_grav[2] * pj->v[1];
-    v_new[1] = xp->a_grav[2] * pj->v[0] - xp->a_grav[0] * pj->v[2];
-    v_new[2] = xp->a_grav[0] * pj->v[1] - xp->a_grav[1] * pj->v[0];
+  ///* Are we lucky? */
+  //if (rand_kick < prob_kick) {
+  //  /* Determine direction to kick particle (v cross a_grav) */
+  //  float v_new[3];
+  //  v_new[0] = xp->a_grav[1] * pj->v[2] - xp->a_grav[2] * pj->v[1];
+  //  v_new[1] = xp->a_grav[2] * pj->v[0] - xp->a_grav[0] * pj->v[2];
+  //  v_new[2] = xp->a_grav[0] * pj->v[1] - xp->a_grav[1] * pj->v[0];
 
-    /* Now normalise and multiply by the kick velocity */
-    float v_new_norm = sqrt(v_new[0]*v_new[0] + v_new[1]*v_new[1] + v_new[2]*v_new[2]);
-    /* If for some reason the norm is zero, arbitrarily choose a direction */
-    if (v_new_norm == 0) {
-      v_new_norm = 1.;
-      v_new[0] = 1.;
-      v_new[1] = 0.;
-      v_new[2] = 0.;
-    }
-    // ALEXEI: check if we need to add the particle's existing velocity to the kick
-    //for (int i = 0; i < 3; i++) v_new[i] *= si->feedback_data.to_distribute.v_kick/v_new_norm; 
-    for (int i = 0; i < 3; i++) v_new[i] = v_new[i]*si->feedback_data.to_distribute.v_kick/v_new_norm + pj->v[i]; 
+  //  /* Now normalise and multiply by the kick velocity */
+  //  float v_new_norm = sqrt(v_new[0]*v_new[0] + v_new[1]*v_new[1] + v_new[2]*v_new[2]);
+  //  /* If for some reason the norm is zero, arbitrarily choose a direction */
+  //  if (v_new_norm == 0) {
+  //    v_new_norm = 1.;
+  //    v_new[0] = 1.;
+  //    v_new[1] = 0.;
+  //    v_new[2] = 0.;
+  //  }
+  //  // ALEXEI: check if we need to add the particle's existing velocity to the kick
+  //  //for (int i = 0; i < 3; i++) v_new[i] *= si->feedback_data.to_distribute.v_kick/v_new_norm; 
+  //  for (int i = 0; i < 3; i++) v_new[i] = v_new[i]*si->feedback_data.to_distribute.v_kick/v_new_norm + pj->v[i]; 
 
-    /* Set the velocity */
-    hydro_set_velocity(pj, xp, v_new);
+  //  /* Set the velocity */
+  //  hydro_set_velocity(pj, xp, v_new);
 
-    /* Heat particle */
-    // probability GALSF_SUBGRID HOTWIND = 0.3 in SIMBA
-    // Make sure star particle doesn't heat multiple times, i.e. it only launches eta*sm
-    if (rand_heat > prob_heat) {
-      const float u_init = hydro_get_physical_internal_energy(pj, xp, cosmo);
-      const float u_new = u_init + si->feedback_data.to_distribute.delta_u;
-      hydro_set_physical_internal_energy(pj, xp, cosmo, u_new);
-      hydro_set_drifted_physical_internal_energy(pj, cosmo, u_new);
-    }
+  //  /* Heat particle */
+  //  // probability GALSF_SUBGRID HOTWIND = 0.3 in SIMBA
+  //  // Make sure star particle doesn't heat multiple times, i.e. it only launches eta*sm
+  //  if (rand_heat > prob_heat) {
+  //    const float u_init = hydro_get_physical_internal_energy(pj, xp, cosmo);
+  //    const float u_new = u_init + si->feedback_data.to_distribute.delta_u;
+  //    hydro_set_physical_internal_energy(pj, xp, cosmo, u_new);
+  //    hydro_set_drifted_physical_internal_energy(pj, cosmo, u_new);
+  //  }
 
-    /* Set delaytime before which the particle cannot interact */
-    pj->delay_time = si->feedback_data.to_distribute.simba_delay_time;
-    pj->time_bin = time_bin_decoupled;
-    // ALEXEI: debugging print statement
-    //if (pj->id == SIMBA_DEBUG_ID) message("spart id %llu decoupled particle %llu delay_time %.5e rand %.5e prob %.5e", si->id, pj->id, pj->delay_time, rand_kick, prob_kick);
-    message("spart id %llu decoupled particle %llu delay_time %.5e rand %.5e prob %.5e new velocity %.5e", si->id, pj->id, pj->delay_time, rand_kick, prob_kick, sqrt(v_new[0]*v_new[0]+v_new[1]*v_new[1]+v_new[2]*v_new[2]));
+  //  /* Set delaytime before which the particle cannot interact */
+  //  pj->delay_time = si->feedback_data.to_distribute.simba_delay_time;
+  //  pj->time_bin = time_bin_decoupled;
+  //  // ALEXEI: debugging print statement
+  //  //if (pj->id == SIMBA_DEBUG_ID) message("spart id %llu decoupled particle %llu delay_time %.5e rand %.5e prob %.5e", si->id, pj->id, pj->delay_time, rand_kick, prob_kick);
+  //  message("spart id %llu decoupled particle %llu delay_time %.5e rand %.5e prob %.5e new velocity %.5e", si->id, pj->id, pj->delay_time, rand_kick, prob_kick, sqrt(v_new[0]*v_new[0]+v_new[1]*v_new[1]+v_new[2]*v_new[2]));
 
 #ifdef SWIFT_DEBUG_CHECKS
-    pj->ti_decoupled = ti_current;
+  //  pj->ti_decoupled = ti_current;
 #endif
-  }
+  //}
 
 }
 

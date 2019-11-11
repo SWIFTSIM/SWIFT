@@ -275,6 +275,7 @@ INLINE static void star_formation_compute_SFR(
   if (dt_star == 0.) {
 
     xp->sf_data.SFR = 0.f;
+    xp->sf_data.star_mass_formed = 0.f;
     return;
   }
 
@@ -288,6 +289,7 @@ INLINE static void star_formation_compute_SFR(
       starform->max_gas_density * phys_const->const_proton_mass) {
 
     xp->sf_data.SFR = hydro_get_mass(p) / dt_star;
+    xp->sf_data.star_mass_formed = hydro_get_mass(p);
     return;
   }
 
@@ -308,8 +310,9 @@ INLINE static void star_formation_compute_SFR(
                     pow(pressure, starform->SF_high_den_power_law);
   }
 
-  /* Store the SFR */
+  /* Store the SFR and stellar mass formed in this step */
   xp->sf_data.SFR = SFRpergasmass * hydro_get_mass(p);
+  xp->sf_data.star_mass_formed = xp->sf_data.SFR * dt_star;
 }
 
 /**
@@ -366,7 +369,7 @@ INLINE static void star_formation_update_part_not_SFR(
     }
   
     /* In SIMBA feedback model we launch winds here */
-    star_formation_launch_wind(p, xp, e->cosmology);
+    star_formation_feedback(p, xp, e->cosmology, e->feedback_props, e->ti_current);
   }
 }
 
