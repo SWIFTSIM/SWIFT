@@ -221,6 +221,7 @@ __attribute__((always_inline)) INLINE static void feedback_evolve_spart(
  */
 __attribute__((always_inline)) INLINE static void launch_wind(
     struct part* restrict p, struct xpart* restrict xp, 
+    const struct feedback_props* feedback_props,
     const struct cosmology* cosmo, const integertime_t ti_current){
 
   if (ti_current == 0 || part_is_decoupled(p)) return;
@@ -258,11 +259,11 @@ __attribute__((always_inline)) INLINE static void launch_wind(
   //}
 
   /* Set delaytime before which the particle cannot interact */
-  p->delay_time = xp->feedback_data.simba_delay_time;
+  p->delay_time = feedback_props->simba_delay_time;
   p->time_bin = time_bin_decoupled;
   // ALEXEI: debugging print statement
   //if (p->id == SIMBA_DEBUG_ID) message("spart id %llu decoupled particle %llu delay_time %.5e rand %.5e prob %.5e", si->id, p->id, p->delay_time, rand_kick, prob_kick);
-  //message("spart id %llu decoupled particle %llu delay_time %.5e rand %.5e prob %.5e new velocity %.5e", si->id, p->id, p->delay_time, rand_kick, prob_kick, sqrt(v_new[0]*v_new[0]+v_new[1]*v_new[1]+v_new[2]*v_new[2]));
+  //message("decoupled particle %llu delay_time %.5e new velocity %.5e", p->id, p->delay_time, sqrt(v_new[0]*v_new[0]+v_new[1]*v_new[1]+v_new[2]*v_new[2]));
 
 #ifdef SWIFT_DEBUG_CHECKS
   p->ti_decoupled = ti_current;
@@ -284,7 +285,7 @@ __attribute__((always_inline)) INLINE static void star_formation_feedback(
   compute_heating(xp, feedback_props);
 
   /* Launch wind */
-  launch_wind(p, xp, cosmo, ti_current);
+  launch_wind(p, xp, feedback_props, cosmo, ti_current);
 
 }
 

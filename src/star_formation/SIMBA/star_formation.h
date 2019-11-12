@@ -329,7 +329,7 @@ INLINE static void star_formation_compute_SFR(
  * @return 1 if a conversion should be done, 0 otherwise.
  */
 INLINE static int star_formation_should_convert_to_star(
-    const struct part* p, const struct xpart* xp,
+    struct part* p, struct xpart* xp,
     const struct star_formation* starform, const struct engine* e,
     const double dt_star) {
 
@@ -341,6 +341,10 @@ INLINE static int star_formation_should_convert_to_star(
       random_unit_interval(p->id, e->ti_current, random_number_star_formation);
 
   /* Have we been lucky and need to form a star? */
+  if (prob <= random_number && dt_star > 0) {
+    /* In SIMBA feedback model we launch winds here */
+    star_formation_feedback(p, xp, e->cosmology, e->feedback_props, e->ti_current);
+  }
   return (prob > random_number);
 }
 
@@ -367,9 +371,6 @@ INLINE static void star_formation_update_part_not_SFR(
     } else {
       xp->sf_data.SFR = -e->time;
     }
-  
-    /* In SIMBA feedback model we launch winds here */
-    star_formation_feedback(p, xp, e->cosmology, e->feedback_props, e->ti_current);
   }
 }
 
