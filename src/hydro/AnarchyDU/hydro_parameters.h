@@ -71,9 +71,7 @@
 /*! Maximal value for the viscosity alpha in variable schemes. */
 #define hydro_props_default_viscosity_alpha_max 2.0f
 
-/*! Decay length for the viscosity scheme. This is scheme dependent. In
- * non-variable schemes this must be defined but is not used. This also
- * sets the decay length for the diffusion. */
+/*! Decay length for the viscosity scheme. This is scheme dependent. */
 #define hydro_props_default_viscosity_length 0.25f
 
 /* Diffusion parameters -- FIXED -- MUST BE DEFINED AT COMPILE-TIME */
@@ -95,7 +93,7 @@
  * very small in schemes where little diffusion is needed, 0.2-1.0 in
  * schemes (e.g. density-energy) where diffusion is needed to solve
  * the contact discontinuity problem. */
-#define hydro_props_default_diffusion_beta 0.25f
+#define hydro_props_default_diffusion_beta 1.0f
 
 /*! Maximal value for the diffusion alpha in variable schemes. */
 #define hydro_props_default_diffusion_alpha_max 1.0f
