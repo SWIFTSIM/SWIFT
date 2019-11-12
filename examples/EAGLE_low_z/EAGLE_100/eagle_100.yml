@@ -55,6 +55,7 @@ Gravity:
 SPH:
   resolution_eta:        1.2348   # Target smoothing length in units of the mean inter-particle separation (1.2348 == 48Ngbs with the cubic spline kernel).
   h_min_ratio:           0.1      # Minimal smoothing in units of softening.
+  h_max:                 0.5      # Maximal softening in co-moving internal units.
   CFL_condition:         0.1      # Courant-Friedrich-Levy condition for time integration.
   minimal_temperature:   100      # (internal units)
   overwrite_birth_time:  1
