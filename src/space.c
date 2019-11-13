@@ -733,7 +733,7 @@ void space_allocate_extras(struct space *s, int verbose) {
     error("Failed to allocate list of local top-level cells");
 
   /* List the local cells */
-  int nr_local_cells = 0;
+  size_t nr_local_cells = 0;
   for (int i = 0; i < s->nr_cells; ++i) {
     if (s->cells_top[i].nodeID == local_nodeID) {
       local_cells[nr_local_cells] = i;
@@ -818,7 +818,7 @@ void space_allocate_extras(struct space *s, int verbose) {
     }
 
     /* Put the spare particles in their correct cell */
-    int local_cell_id = 0;
+    size_t local_cell_id = 0;
     int current_cell = local_cells[local_cell_id];
     int count_in_cell = 0;
     size_t count_extra_gparts = 0;
@@ -910,7 +910,7 @@ void space_allocate_extras(struct space *s, int verbose) {
     }
 
     /* Put the spare particles in their correct cell */
-    int local_cell_id = 0;
+    size_t local_cell_id = 0;
     int current_cell = local_cells[local_cell_id];
     int count_in_cell = 0;
     size_t count_extra_parts = 0;
@@ -992,7 +992,7 @@ void space_allocate_extras(struct space *s, int verbose) {
     }
 
     /* Put the spare particles in their correct cell */
-    int local_cell_id = 0;
+    size_t local_cell_id = 0;
     int current_cell = local_cells[local_cell_id];
     int count_in_cell = 0;
     size_t count_extra_sparts = 0;
@@ -1074,7 +1074,7 @@ void space_allocate_extras(struct space *s, int verbose) {
     }
 
     /* Put the spare particles in their correct cell */
-    int local_cell_id = 0;
+    size_t local_cell_id = 0;
     int current_cell = local_cells[local_cell_id];
     int count_in_cell = 0;
     size_t count_extra_bparts = 0;
