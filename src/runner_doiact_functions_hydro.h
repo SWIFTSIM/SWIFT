@@ -236,6 +236,9 @@ void DOPAIR2_NAIVE(struct runner *r, struct cell *restrict ci,
           runner_iact_pressure_floor(r2, dx, hi, hj, pi, pj, a, H);
           runner_iact_star_formation(r2, dx, hi, hj, pi, pj, a, H);
 #endif
+#if (FUNCTION_TASK_LOOP == TASK_LOOP_FORCE)
+          runner_iact_timebin(r2, dx, hi, hj, pi, pj, a, H);
+#endif
         } else if (pi_active) {
 
           IACT_NONSYM(r2, dx, hi, hj, pi, pj, a, H);
