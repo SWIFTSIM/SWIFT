@@ -169,6 +169,7 @@ int main(int argc, char *argv[]) {
   int with_drift_all = 0;
   int with_mpole_reconstruction = 0;
   int with_structure_finding = 0;
+  int with_eagle = 0;
   int verbose = 0;
   int nr_threads = 1;
   int with_verbose_timers = 0;
@@ -227,6 +228,14 @@ int main(int argc, char *argv[]) {
                   "feedback events.",
                   NULL, 0, 0),
 
+      OPT_GROUP("  Simulation meta-options:\n"),
+      OPT_BOOLEAN(
+          0, "eagle", &with_eagle,
+          "Run with all the options needed for the EAGLE model. This is "
+          "equivalent to --hydro --limiter --sync --self-gravity --stars "
+          "--star-formation --cooling --feedback --black-holes --fof.",
+          NULL, 0, 0),
+
       OPT_GROUP("  Control options:\n"),
       OPT_BOOLEAN('a', "pin", &with_aff,
                   "Pin runners using processor affinity.", NULL, 0, 0),
@@ -283,6 +292,20 @@ int main(int argc, char *argv[]) {
                     "\nSee the file examples/parameter_example.yml for an "
                     "example of parameter file.");
   int nargs = argparse_parse(&argparse, argc, (const char **)argv);
+
+  /* Deal with meta options */
+  if (with_eagle) {
+    with_hydro = 1;
+    with_timestep_limiter = 1;
+    with_timestep_sync = 1;
+    with_self_gravity = 1;
+    with_stars = 1;
+    with_star_formation = 1;
+    with_cooling = 1;
+    with_feedback = 1;
+    with_black_holes = 1;
+    with_fof = 1;
+  }
 
   /* Write output parameter file */
   if (myrank == 0 && output_parameters_filename != NULL) {
