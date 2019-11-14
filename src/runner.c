@@ -2844,9 +2844,10 @@ void runner_do_kick2(struct runner *r, struct cell *c, int timer) {
           dt_kick_corr = (ti_end - (ti_begin + ti_step / 2)) * time_base;
         }
 
+#ifdef SWIFT_DEBUG_CHECKS
 	// ALEXEI: debugging
 	if (p->ti_kick != ti_begin + ti_step/2) message("particle %llu ti_kick %llu ti_begin %llu ti_current %llu ti_step/2 %llu time bin %d min active bin %d", p->id, p->ti_kick, ti_begin, ti_current, ti_step/2, p->time_bin, e->min_active_bin);
-
+#endif
         /* Finish the time-step with a second half-kick */
         kick_part(p, xp, dt_kick_hydro, dt_kick_grav, dt_kick_therm,
                   dt_kick_corr, cosmo, hydro_props, entropy_floor,

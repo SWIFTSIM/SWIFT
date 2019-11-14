@@ -124,11 +124,7 @@ inline void compute_heating(struct xpart *xp, const struct feedback_props *feedb
  * @param sp The particle to act upon
  */
 __attribute__((always_inline)) INLINE static void feedback_init_spart(
-    struct spart* sp) {
-  // Temporarily set the particle's galaxy host mass artificially.
-  sp->feedback_data.host_galaxy_mass = 1.;
-
-}
+    struct spart* sp) {}
 
 /**
  * @brief Should we do feedback for this star?
@@ -275,6 +271,10 @@ __attribute__((always_inline)) INLINE static void star_formation_feedback(
     const struct cosmology* cosmo,
     const struct feedback_props* feedback_props, 
     const integertime_t ti_current) {
+  
+  // ALEXEI: temporarily set host galaxy mass here
+  xp->feedback_data.host_galaxy_mass = 7.4;
+
   /* Calculate the velocity to kick neighbouring particles with */
   compute_kick_speed(xp, feedback_props, cosmo);
 
