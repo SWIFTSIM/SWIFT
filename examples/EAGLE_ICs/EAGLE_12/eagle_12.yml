@@ -40,10 +40,10 @@ Gravity:
   eta:                    0.025     # Constant dimensionless multiplier for time integration.
   theta:                  0.7       # Opening angle (Multipole acceptance criterion)
   mesh_side_length:       64
-  comoving_DM_softening:         0.0026596 # Comoving softening for DM: 1/25th of mean inter-particle separation = 2.6596 (comoving) kpc.
-  max_physical_DM_softening:     0.0007    # Physical softening for DM: 700 (physical) pc.
-  comoving_baryon_softening:     0.0026596 # Comoving softening for baryons: 1/25th of mean inter-particle separation = 2.6596 (comoving) kpc.
-  max_physical_baryon_softening: 0.0007    # Physical softening for baryons: 700 (physical) pc.
+  comoving_DM_softening:         0.003320 # Comoving softening for DM (3.32 ckpc)
+  max_physical_DM_softening:     0.001300 # Physical softening for DM (1.30 pkpc)
+  comoving_baryon_softening:     0.001790 # Comoving softening for baryons (1.79 ckpc)
+  max_physical_baryon_softening: 0.000700 # Physical softening for baryons (0.70 pkpc)
   
 # Parameters for the hydrodynamics scheme
 SPH:
