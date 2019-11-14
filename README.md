@@ -94,7 +94,14 @@ Parameters:
     --limiter                         Run with time-step limiter.
     --sync                            Run with time-step synchronization
                                       of particles hit by feedback events.
+  Simulation meta-options:
 
+    --eagle                           Run with all the options needed for the 
+                                      EAGLE model. This is equivalent to --hydro 
+                                      --limiter --sync --self-gravity --stars 
+                                      --star-formation --cooling --feedback 
+                                      --black-holes --fof.
+				      
   Control options:
   
     -a, --pin                         Pin runners using processor affinity.

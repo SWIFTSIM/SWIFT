@@ -30,10 +30,6 @@ fi
 # The corresponding parameter file for this run
 
 ../../swift \
-    --cosmology --hydro --self-gravity \
-    --stars --star-formation \
-    --cooling --feedback \
-    --limiter --sync \
-    --black-holes --fof \
+    --cosmology --eagle \
     --threads=16 --pin \
     eagle_25.yml
