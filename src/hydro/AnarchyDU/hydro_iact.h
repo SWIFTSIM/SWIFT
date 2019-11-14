@@ -409,7 +409,13 @@ __attribute__((always_inline)) INLINE static void runner_iact_force(
   const float visc_du_term = 0.5f * visc_acc_term * dvdr_Hubble;
 
   /* Diffusion term */
-  const float alpha_diff = 0.5f * (pi->diffusion.alpha + pj->diffusion.alpha);
+  /* Combine the alpha_diff into a pressure-based switch -- this allows the
+   * alpha from the highest pressure particle to dominate, so that the
+   * diffusion limited particles always take precedence - another trick to
+   * allow the scheme to work with thermal feedback. */
+  const float alpha_diff =
+      (pressurei * pi->diffusion.alpha + pressurej * pj->diffusion.alpha) /
+      (pressurei + pressurej);
   const float v_diff = alpha_diff * 0.5f *
                        (sqrtf(2.f * fabsf(pressurei - pressurej) / rho_ij) +
                         fabsf(fac_mu * r_inv * dvdr_Hubble));
@@ -537,7 +543,13 @@ __attribute__((always_inline)) INLINE static void runner_iact_nonsym_force(
   const float visc_du_term = 0.5f * visc_acc_term * dvdr_Hubble;
 
   /* Diffusion term */
-  const float alpha_diff = 0.5f * (pi->diffusion.alpha + pj->diffusion.alpha);
+  /* Combine the alpha_diff into a pressure-based switch -- this allows the
+   * alpha from the highest pressure particle to dominate, so that the
+   * diffusion limited particles always take precedence - another trick to
+   * allow the scheme to work with thermal feedback. */
+  const float alpha_diff =
+      (pressurei * pi->diffusion.alpha + pressurej * pj->diffusion.alpha) /
+      (pressurei + pressurej);
   const float v_diff = alpha_diff * 0.5f *
                        (sqrtf(2.f * fabsf(pressurei - pressurej) / rho_ij) +
                         fabsf(fac_mu * r_inv * dvdr_Hubble));
