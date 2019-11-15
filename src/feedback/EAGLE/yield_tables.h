@@ -90,8 +90,9 @@ INLINE static void read_yield_tables(struct feedback_props *feedback_props) {
 
   /* filenames to read HDF5 files */
   char fname[256], setname[100];
+  char **temp;
 
-  hid_t file_id, dataset, datatype;
+  hid_t file_id, dataset, dataset2, datatype, dataspace;
   herr_t status;
 
   /* Open SNIa tables for reading */
@@ -99,17 +100,33 @@ INLINE static void read_yield_tables(struct feedback_props *feedback_props) {
   file_id = H5Fopen(fname, H5F_ACC_RDONLY, H5P_DEFAULT);
   if (file_id < 0) error("unable to open file %s\n", fname);
 
-  /* read element name array */
+  /* read element name array into temporary array */
   datatype = H5Tcopy(H5T_C_S1);
   H5Tset_size(datatype, H5T_VARIABLE);
   dataset = H5Dopen(file_id, "Species_names", H5P_DEFAULT);
-  status = H5Dread(dataset, datatype, H5S_ALL, H5S_ALL, H5P_DEFAULT,
-                   feedback_props->SNIa_element_names);
+  dataspace = H5Dget_space(dataset);
+
+  temp = (char **)malloc(eagle_feedback_SNIa_N_elements * sizeof(char *));
+  status = H5Dread(dataset, datatype, H5S_ALL, H5S_ALL, H5P_DEFAULT, temp);
   if (status < 0) error("error reading SNIa element names");
+
+  /* Copy the element names into their final destination */
+  for (int i = 0; i < eagle_feedback_SNIa_N_elements; i++) {
+    memcpy(feedback_props->SNIa_element_names[i], temp[i], strlen(temp[i]));
+  }
+
+  /* Release the memory allocated by HDF5 for the strings */
+  status = H5Dvlen_reclaim(datatype, dataspace, H5P_DEFAULT, temp);
+  if (status < 0) error("error freeing string memory");
   status = H5Dclose(dataset);
   if (status < 0) error("error closing dataset");
   status = H5Tclose(datatype);
   if (status < 0) error("error closing datatype");
+  status = H5Sclose(dataspace);
+  if (status < 0) error("error closing dataspace");
+
+  /* Free the temporary memory */
+  free(temp);
 
   /* read SNIa yields */
   dataset = H5Dopen(file_id, "Yield", H5P_DEFAULT);
@@ -130,22 +147,40 @@ INLINE static void read_yield_tables(struct feedback_props *feedback_props) {
   status = H5Fclose(file_id);
   if (status < 0) error("error closing SNIa file");
 
+  /**************************************************************************/
+
   /* Open SNII tables for reading */
   sprintf(fname, "%s/SNII.hdf5", feedback_props->yield_table_path);
   file_id = H5Fopen(fname, H5F_ACC_RDONLY, H5P_DEFAULT);
   if (file_id < 0) error("unable to open file %s\n", fname);
 
-  /* read element name array */
+  /* read element name array into temporary array */
   datatype = H5Tcopy(H5T_C_S1);
   H5Tset_size(datatype, H5T_VARIABLE);
   dataset = H5Dopen(file_id, "Species_names", H5P_DEFAULT);
-  status = H5Dread(dataset, datatype, H5S_ALL, H5S_ALL, H5P_DEFAULT,
-                   feedback_props->SNII_element_names);
+  dataspace = H5Dget_space(dataset);
+
+  temp = (char **)malloc(eagle_feedback_SNII_N_elements * sizeof(char *));
+  status = H5Dread(dataset, datatype, H5S_ALL, H5S_ALL, H5P_DEFAULT, temp);
   if (status < 0) error("error reading SNII element names");
+
+  /* Copy the element names into their final destination */
+  for (int i = 0; i < eagle_feedback_SNII_N_elements; i++) {
+    memcpy(feedback_props->SNII_element_names[i], temp[i], strlen(temp[i]));
+  }
+
+  /* Release the memory allocated by HDF5 for the strings */
+  status = H5Dvlen_reclaim(datatype, dataspace, H5P_DEFAULT, temp);
+  if (status < 0) error("error freeing string memory");
   status = H5Dclose(dataset);
   if (status < 0) error("error closing dataset");
   status = H5Tclose(datatype);
   if (status < 0) error("error closing datatype");
+  status = H5Sclose(dataspace);
+  if (status < 0) error("error closing dataspace");
+
+  /* Free the temporary memory */
+  free(temp);
 
   /* read array of masses */
   dataset = H5Dopen(file_id, "Masses", H5P_DEFAULT);
@@ -173,14 +208,12 @@ INLINE static void read_yield_tables(struct feedback_props *feedback_props) {
   /* read metallicity names */
   datatype = H5Tcopy(H5T_C_S1);
   H5Tset_size(datatype, H5T_VARIABLE);
-  dataset = H5Dopen(file_id, "Yield_names", H5P_DEFAULT);
-  status = H5Dread(dataset, datatype, H5S_ALL, H5S_ALL, H5P_DEFAULT,
+  dataset2 = H5Dopen(file_id, "Yield_names", H5P_DEFAULT);
+  dataspace = H5Dget_space(dataset2);
+
+  status = H5Dread(dataset2, datatype, H5S_ALL, H5S_ALL, H5P_DEFAULT,
                    metallicity_yield_table_name_SNII);
   if (status < 0) error("error reading yield table names");
-  status = H5Dclose(dataset);
-  if (status < 0) error("error closing dataset");
-  status = H5Tclose(datatype);
-  if (status < 0) error("error closing datatype");
 
   /* read SNII yield tables */
   for (int i = 0; i < eagle_feedback_SNII_N_metals; i++) {
@@ -233,8 +266,21 @@ INLINE static void read_yield_tables(struct feedback_props *feedback_props) {
     }
   }
 
+  /* Release the memory allocated by HDF5 for the strings */
+  status = H5Dvlen_reclaim(datatype, dataspace, H5P_DEFAULT,
+                           metallicity_yield_table_name_SNII);
+  if (status < 0) error("error freeing string memory");
+  status = H5Dclose(dataset2);
+  if (status < 0) error("error closing dataset");
+  status = H5Tclose(datatype);
+  if (status < 0) error("error closing datatype");
+  status = H5Sclose(dataspace);
+  if (status < 0) error("error closing dataspace");
+
   status = H5Fclose(file_id);
   if (status < 0) error("error closing file");
+
+  /**************************************************************************/
 
   /* Read AGB tables */
   sprintf(fname, "%s/AGB.hdf5", feedback_props->yield_table_path);
@@ -245,13 +291,29 @@ INLINE static void read_yield_tables(struct feedback_props *feedback_props) {
   datatype = H5Tcopy(H5T_C_S1);
   H5Tset_size(datatype, H5T_VARIABLE);
   dataset = H5Dopen(file_id, "Species_names", H5P_DEFAULT);
-  status = H5Dread(dataset, datatype, H5S_ALL, H5S_ALL, H5P_DEFAULT,
-                   feedback_props->AGB_element_names);
+  dataspace = H5Dget_space(dataset);
+
+  temp = (char **)malloc(eagle_feedback_AGB_N_elements * sizeof(char *));
+  status = H5Dread(dataset, datatype, H5S_ALL, H5S_ALL, H5P_DEFAULT, temp);
   if (status < 0) error("error reading AGB element names");
+
+  /* Copy the element names into their final destination */
+  for (int i = 0; i < eagle_feedback_AGB_N_elements; i++) {
+    memcpy(feedback_props->AGB_element_names[i], temp[i], strlen(temp[i]));
+  }
+
+  /* Release the memory allocated by HDF5 for the strings */
+  status = H5Dvlen_reclaim(datatype, dataspace, H5P_DEFAULT, temp);
+  if (status < 0) error("error freeing string memory");
   status = H5Dclose(dataset);
   if (status < 0) error("error closing dataset");
   status = H5Tclose(datatype);
   if (status < 0) error("error closing datatype");
+  status = H5Sclose(dataspace);
+  if (status < 0) error("error closing dataspace");
+
+  /* Free the temporary memory */
+  free(temp);
 
   /* read array of masses */
   dataset = H5Dopen(file_id, "Masses", H5P_DEFAULT);
@@ -279,14 +341,12 @@ INLINE static void read_yield_tables(struct feedback_props *feedback_props) {
   /* read metallicity names */
   datatype = H5Tcopy(H5T_C_S1);
   H5Tset_size(datatype, H5T_VARIABLE);
-  dataset = H5Dopen(file_id, "Yield_names", H5P_DEFAULT);
-  status = H5Dread(dataset, datatype, H5S_ALL, H5S_ALL, H5P_DEFAULT,
+  dataset2 = H5Dopen(file_id, "Yield_names", H5P_DEFAULT);
+  dataspace = H5Dget_space(dataset2);
+
+  status = H5Dread(dataset2, datatype, H5S_ALL, H5S_ALL, H5P_DEFAULT,
                    metallicity_yield_table_name_AGB);
   if (status < 0) error("error reading yield table names");
-  status = H5Dclose(dataset);
-  if (status < 0) error("error closing dataset");
-  status = H5Tclose(datatype);
-  if (status < 0) error("error closing datatype");
 
   /* read AGB yield tables */
   for (int i = 0; i < eagle_feedback_AGB_N_metals; i++) {
@@ -337,6 +397,17 @@ INLINE static void read_yield_tables(struct feedback_props *feedback_props) {
       }
     }
   }
+
+  /* Release the memory allocated by HDF5 for the strings */
+  status = H5Dvlen_reclaim(datatype, dataspace, H5P_DEFAULT,
+                           metallicity_yield_table_name_AGB);
+  if (status < 0) error("error freeing string memory");
+  status = H5Dclose(dataset2);
+  if (status < 0) error("error closing dataset");
+  status = H5Tclose(datatype);
+  if (status < 0) error("error closing datatype");
+  status = H5Sclose(dataspace);
+  if (status < 0) error("error closing dataspace");
 
   status = H5Fclose(file_id);
   if (status < 0) error("error closing file");
@@ -579,18 +650,24 @@ INLINE static void allocate_yield_tables(
   for (int i = 0; i < eagle_feedback_SNIa_N_elements; i++) {
     feedback_props->SNIa_element_names[i] =
         (char *)malloc(eagle_feedback_element_name_length * sizeof(char));
+    memset(feedback_props->SNIa_element_names[i], 0,
+           eagle_feedback_element_name_length);
   }
   feedback_props->SNII_element_names =
       (char **)malloc(eagle_feedback_SNII_N_elements * sizeof(char *));
   for (int i = 0; i < eagle_feedback_SNII_N_elements; i++) {
     feedback_props->SNII_element_names[i] =
         (char *)malloc(eagle_feedback_element_name_length * sizeof(char));
+    memset(feedback_props->SNII_element_names[i], 0,
+           eagle_feedback_element_name_length);
   }
   feedback_props->AGB_element_names =
       (char **)malloc(eagle_feedback_AGB_N_elements * sizeof(char *));
   for (int i = 0; i < eagle_feedback_AGB_N_elements; i++) {
     feedback_props->AGB_element_names[i] =
         (char *)malloc(eagle_feedback_element_name_length * sizeof(char));
+    memset(feedback_props->AGB_element_names[i], 0,
+           eagle_feedback_element_name_length);
   }
 
   /* Allocate array of IMF mass bins */
