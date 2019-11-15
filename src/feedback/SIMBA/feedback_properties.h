@@ -76,7 +76,7 @@ INLINE static void feedback_props_init(struct feedback_props *fp,
   const double msun = 1.989e33 / units_cgs_conversion_factor(us, UNIT_CONV_MASS);
 
   /* Initialize parameters for calculating rotational velocity of galaxy */
-  fp->simba_host_galaxy_mass_norm = parser_get_param_float(params, "SIMBAFeedback:galaxy_mass_norm") / units_cgs_conversion_factor(us, UNIT_CONV_MASS); // 102.329 ALEXEI: guide values added in until figured out what are appropriate values.
+  fp->simba_host_galaxy_mass_norm = parser_get_param_float(params, "SIMBAFeedback:galaxy_mass_norm"); // 102.329 ALEXEI: guide values added in until figured out what are appropriate values.
   fp->simba_v_circ_exp = parser_get_param_float(params, "SIMBAFeedback:v_circ_exp"); // 0.26178;
 
   /* Initialize parameters for calculating ejection velocity */

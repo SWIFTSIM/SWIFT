@@ -54,7 +54,7 @@ inline void compute_kick_speed(struct xpart *xp, const struct feedback_props *fe
 
   // ALEXEI: temporarily set to arbitrary number for testing.
   //xp->feedback_data.v_kick = 500.;
-  xp->feedback_data.v_kick = 5.;
+  xp->feedback_data.v_kick = 1.e-3;
 
 }
 
@@ -248,10 +248,10 @@ __attribute__((always_inline)) INLINE static void launch_wind(
   // Make sure star particle doesn't heat multiple times, i.e. it only launches eta*sm
   // Reinstate random heating
   //if (rand_heat > prob_heat) {
-    const float u_init = hydro_get_physical_internal_energy(p, xp, cosmo);
-    const float u_new = u_init + xp->feedback_data.delta_u;
-    hydro_set_physical_internal_energy(p, xp, cosmo, u_new);
-    hydro_set_drifted_physical_internal_energy(p, cosmo, u_new);
+  //  const float u_init = hydro_get_physical_internal_energy(p, xp, cosmo);
+  //  const float u_new = u_init + xp->feedback_data.delta_u;
+  //  hydro_set_physical_internal_energy(p, xp, cosmo, u_new);
+  //  hydro_set_drifted_physical_internal_energy(p, cosmo, u_new);
   //}
 
   /* Set delaytime before which the particle cannot interact */
