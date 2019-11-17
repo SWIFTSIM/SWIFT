@@ -1048,7 +1048,7 @@ void engine_make_hierarchical_tasks_hydro(struct engine *e, struct cell *c,
       (star_resort_cell == NULL) &&
       (c->depth == engine_star_resort_task_depth || c->hydro.super == c)) {
 
-    if (with_star_formation && c->hydro.count > 0) {
+    if (with_feedback && with_star_formation && c->hydro.count > 0) {
 
       /* Record this is the level where we re-sort */
       star_resort_cell = c;
@@ -1152,7 +1152,7 @@ void engine_make_hierarchical_tasks_hydro(struct engine *e, struct cell *c,
 #endif
         scheduler_addunlock(s, c->stars.stars_out, c->super->timestep);
 
-        if (with_star_formation && c->hydro.count > 0) {
+        if (with_feedback && with_star_formation && c->hydro.count > 0) {
           task_order_addunlock_star_formation_feedback(s, c, star_resort_cell);
         }
       }

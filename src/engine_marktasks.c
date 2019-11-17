@@ -73,9 +73,7 @@ void engine_marktasks_mapper(void *map_data, int num_elements,
   const int with_timestep_limiter = e->policy & engine_policy_timestep_limiter;
   const int with_timestep_sync = e->policy & engine_policy_timestep_sync;
   const int with_star_formation = e->policy & engine_policy_star_formation;
-#ifdef WITH_MPI
   const int with_feedback = e->policy & engine_policy_feedback;
-#endif
 
   for (int ind = 0; ind < num_elements; ind++) {
 
@@ -960,7 +958,7 @@ void engine_marktasks_mapper(void *map_data, int num_elements,
     /* Subgrid tasks: star formation */
     else if (t_type == task_type_star_formation) {
       if (cell_is_active_hydro(t->ci, e)) {
-        cell_activate_star_formation_tasks(t->ci, s);
+        cell_activate_star_formation_tasks(t->ci, s, with_feedback);
         cell_activate_super_spart_drifts(t->ci, s);
       }
     }

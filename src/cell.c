@@ -2463,8 +2463,10 @@ void cell_activate_star_resort_tasks(struct cell *c, struct scheduler *s) {
  *
  * @param c The (top-level) #cell.
  * @param s The #scheduler.
+ * @param with_feedback Are we running with feedback?
  */
-void cell_activate_star_formation_tasks(struct cell *c, struct scheduler *s) {
+void cell_activate_star_formation_tasks(struct cell *c, struct scheduler *s,
+                                        const int with_feedback) {
 
 #ifdef SWIFT_DEBUG_CHECKS
   if (c->depth != 0) error("Function should be called at the top-level only");
@@ -2477,7 +2479,7 @@ void cell_activate_star_formation_tasks(struct cell *c, struct scheduler *s) {
   scheduler_activate(s, c->hydro.star_formation);
 
   /* Activate the star resort tasks at whatever level they are */
-  if (task_order_star_formation_before_feedback) {
+  if (task_order_star_formation_before_feedback && with_feedback) {
     cell_activate_star_resort_tasks(c, s);
   }
 }
@@ -3379,12 +3381,12 @@ void cell_activate_subcell_external_grav_tasks(struct cell *ci,
 int cell_unskip_hydro_tasks(struct cell *c, struct scheduler *s) {
   struct engine *e = s->space->e;
   const int nodeID = e->nodeID;
+  const int with_feedback = e->policy & engine_policy_feedback;
   const int with_timestep_limiter =
       (e->policy & engine_policy_timestep_limiter);
 
 #ifdef WITH_MPI
   const int with_star_formation = e->policy & engine_policy_star_formation;
-  const int with_feedback = e->policy & engine_policy_feedback;
 #endif
   int rebuild = 0;
 
@@ -3620,7 +3622,7 @@ int cell_unskip_hydro_tasks(struct cell *c, struct scheduler *s) {
 #endif
 
     if (c->top->hydro.star_formation != NULL) {
-      cell_activate_star_formation_tasks(c->top, s);
+      cell_activate_star_formation_tasks(c->top, s, with_feedback);
     }
   }
 
