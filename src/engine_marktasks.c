@@ -111,7 +111,7 @@ void engine_marktasks_mapper(void *map_data, int num_elements,
                t_subtype == task_subtype_density) {
         if (ci_active_hydro) {
           scheduler_activate(s, t);
-          cell_activate_subcell_hydro_tasks(ci, NULL, s);
+          cell_activate_subcell_hydro_tasks(ci, NULL, s, with_timestep_limiter);
           if (with_timestep_limiter) cell_activate_limiter(ci, s);
         }
       }
@@ -160,7 +160,8 @@ void engine_marktasks_mapper(void *map_data, int num_elements,
                t_subtype == task_subtype_stars_density) {
         if (ci_active_stars) {
           scheduler_activate(s, t);
-          cell_activate_subcell_stars_tasks(ci, NULL, s, with_star_formation);
+          cell_activate_subcell_stars_tasks(ci, NULL, s, with_star_formation,
+                                            with_timestep_sync);
         }
       }
 
@@ -332,7 +333,8 @@ void engine_marktasks_mapper(void *map_data, int num_elements,
         /* Store current values of dx_max and h_max. */
         else if (t_type == task_type_sub_pair &&
                  t_subtype == task_subtype_density) {
-          cell_activate_subcell_hydro_tasks(t->ci, t->cj, s);
+          cell_activate_subcell_hydro_tasks(t->ci, t->cj, s,
+                                            with_timestep_limiter);
         }
       }
 
@@ -394,7 +396,8 @@ void engine_marktasks_mapper(void *map_data, int num_elements,
         /* Store current values of dx_max and h_max. */
         else if (t_type == task_type_sub_pair &&
                  t_subtype == task_subtype_stars_density) {
-          cell_activate_subcell_stars_tasks(ci, cj, s, with_star_formation);
+          cell_activate_subcell_stars_tasks(ci, cj, s, with_star_formation,
+                                            with_timestep_sync);
         }
       }
 

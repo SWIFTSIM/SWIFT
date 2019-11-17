@@ -2910,12 +2910,12 @@ void cell_activate_stars_sorts(struct cell *c, int sid, struct scheduler *s) {
  * @param ci The first #cell we recurse in.
  * @param cj The second #cell we recurse in.
  * @param s The task #scheduler.
+ * @param with_timestep_limiter Are we running with time-step limiting on?
  */
 void cell_activate_subcell_hydro_tasks(struct cell *ci, struct cell *cj,
-                                       struct scheduler *s) {
+                                       struct scheduler *s,
+                                       const int with_timestep_limiter) {
   const struct engine *e = s->space->e;
-  const int with_timestep_limiter =
-      (e->policy & engine_policy_timestep_limiter);
 
   /* Store the current dx_max and h_max values. */
   ci->hydro.dx_max_part_old = ci->hydro.dx_max_part;
@@ -2936,11 +2936,12 @@ void cell_activate_subcell_hydro_tasks(struct cell *ci, struct cell *cj,
       /* Loop over all progenies and pairs of progenies */
       for (int j = 0; j < 8; j++) {
         if (ci->progeny[j] != NULL) {
-          cell_activate_subcell_hydro_tasks(ci->progeny[j], NULL, s);
+          cell_activate_subcell_hydro_tasks(ci->progeny[j], NULL, s,
+                                            with_timestep_limiter);
           for (int k = j + 1; k < 8; k++)
             if (ci->progeny[k] != NULL)
               cell_activate_subcell_hydro_tasks(ci->progeny[j], ci->progeny[k],
-                                                s);
+                                                s, with_timestep_limiter);
         }
       }
     } else {
@@ -2969,7 +2970,7 @@ void cell_activate_subcell_hydro_tasks(struct cell *ci, struct cell *cj,
         const int pjd = csp->pairs[k].pjd;
         if (ci->progeny[pid] != NULL && cj->progeny[pjd] != NULL)
           cell_activate_subcell_hydro_tasks(ci->progeny[pid], cj->progeny[pjd],
-                                            s);
+                                            s, with_timestep_limiter);
       }
     }
 
@@ -3006,12 +3007,13 @@ void cell_activate_subcell_hydro_tasks(struct cell *ci, struct cell *cj,
  * @param cj The second #cell we recurse in.
  * @param s The task #scheduler.
  * @param with_star_formation Are we running with star formation switched on?
+ * @param with_timestep_sync Are we running with time-step synchronization on?
  */
 void cell_activate_subcell_stars_tasks(struct cell *ci, struct cell *cj,
                                        struct scheduler *s,
-                                       const int with_star_formation) {
+                                       const int with_star_formation,
+                                       const int with_timestep_sync) {
   const struct engine *e = s->space->e;
-  const int with_timestep_sync = (e->policy & engine_policy_timestep_sync);
 
   /* Store the current dx_max and h_max values. */
   ci->stars.dx_max_part_old = ci->stars.dx_max_part;
@@ -3042,12 +3044,13 @@ void cell_activate_subcell_stars_tasks(struct cell *ci, struct cell *cj,
       /* Loop over all progenies and pairs of progenies */
       for (int j = 0; j < 8; j++) {
         if (ci->progeny[j] != NULL) {
-          cell_activate_subcell_stars_tasks(ci->progeny[j], NULL, s,
-                                            with_star_formation);
+          cell_activate_subcell_stars_tasks(
+              ci->progeny[j], NULL, s, with_star_formation, with_timestep_sync);
           for (int k = j + 1; k < 8; k++)
             if (ci->progeny[k] != NULL)
               cell_activate_subcell_stars_tasks(ci->progeny[j], ci->progeny[k],
-                                                s, with_star_formation);
+                                                s, with_star_formation,
+                                                with_timestep_sync);
         }
       }
     } else {
@@ -3083,7 +3086,8 @@ void cell_activate_subcell_stars_tasks(struct cell *ci, struct cell *cj,
         const int pjd = csp->pairs[k].pjd;
         if (ci->progeny[pid] != NULL && cj->progeny[pjd] != NULL)
           cell_activate_subcell_stars_tasks(ci->progeny[pid], cj->progeny[pjd],
-                                            s, with_star_formation);
+                                            s, with_star_formation,
+                                            with_timestep_sync);
       }
     }
 
@@ -3442,12 +3446,12 @@ int cell_unskip_hydro_tasks(struct cell *c, struct scheduler *s) {
 
       /* Store current values of dx_max and h_max. */
       else if (t->type == task_type_sub_self) {
-        cell_activate_subcell_hydro_tasks(ci, NULL, s);
+        cell_activate_subcell_hydro_tasks(ci, NULL, s, with_timestep_limiter);
       }
 
       /* Store current values of dx_max and h_max. */
       else if (t->type == task_type_sub_pair) {
-        cell_activate_subcell_hydro_tasks(ci, cj, s);
+        cell_activate_subcell_hydro_tasks(ci, cj, s, with_timestep_limiter);
       }
     }
 
@@ -3885,11 +3889,13 @@ int cell_unskip_stars_tasks(struct cell *c, struct scheduler *s,
       }
 
       else if (t->type == task_type_sub_self) {
-        cell_activate_subcell_stars_tasks(ci, NULL, s, with_star_formation);
+        cell_activate_subcell_stars_tasks(ci, NULL, s, with_star_formation,
+                                          with_timestep_sync);
       }
 
       else if (t->type == task_type_sub_pair) {
-        cell_activate_subcell_stars_tasks(ci, cj, s, with_star_formation);
+        cell_activate_subcell_stars_tasks(ci, cj, s, with_star_formation,
+                                          with_timestep_sync);
       }
     }
 
