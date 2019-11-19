@@ -3422,6 +3422,7 @@ void space_split_recursive(struct space *s, struct cell *c,
       cp->hydro.super = NULL;
       cp->grav.super = NULL;
       cp->flags = 0;
+      star_formation_logger_init(&cp->stars.sfh);
 #ifdef WITH_MPI
       cp->mpi.tag = -1;
 #endif  // WITH_MPI
