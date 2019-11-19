@@ -6,13 +6,6 @@ InternalUnitSystem:
   UnitCurrent_in_cgs:  1             # Amperes
   UnitTemp_in_cgs:     1             # Kelvin
 
-# Structure finding options
-StructureFinding:
-  config_file_name:     stf_input_6dfof_dmonly_sub.cfg
-  basename:             ./stf
-  scale_factor_first:   0.02
-  delta_time:           1.02
-
 Cosmology:                      # WMAP9 cosmology
   Omega_m:        0.276
   Omega_lambda:   0.724
@@ -37,8 +30,9 @@ Gravity:
 # Parameters governing the snapshots
 Snapshots:
   basename:            snap
-  delta_time:          1.02
-  scale_factor_first:  0.02
+  delta_time:          1.0816  # Only every second VELOCIraptor invoke gets a full snapshot dump.
+  scale_factor_first:  0.1     # z = 9
+  compression:         4
   
 # Parameters governing the conserved quantities statistics
 Statistics:
@@ -51,7 +45,15 @@ Scheduler:
   
 # Parameters related to the initial conditions
 InitialConditions:
-  file_name:  vrconfig_3dfof_subhalos_SO_hydro.cfg
+  file_name:                   small_cosmo_volume.hdf5
   periodic:                    1
   cleanup_h_factors:           1    
   cleanup_velocity_factors:    1  
+
+# Structure finding options
+StructureFinding:
+  config_file_name:     vrconfig_3dfof_subhalos_SO_hydro.cfg
+  basename:             ./stf
+  scale_factor_first:   0.1       # z = 9
+  delta_time:           1.04
+
