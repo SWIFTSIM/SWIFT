@@ -54,7 +54,7 @@ inline void compute_kick_speed(struct xpart *xp, const struct feedback_props *fe
 
   // ALEXEI: temporarily set to arbitrary number for testing.
   //xp->feedback_data.v_kick = 500.;
-  xp->feedback_data.v_kick = 1.e-3;
+  //xp->feedback_data.v_kick = 1.e-3;
 
 }
 
@@ -86,36 +86,34 @@ inline void compute_mass_loading(struct xpart *xp, const struct feedback_props *
  * @param sp The sparticle doing the feedback
  * @param feedback_props The properties of the feedback model
  */
-inline void compute_heating(struct xpart *xp, const struct feedback_props *feedback_props) {
+inline void compute_heating(struct part *p, struct xpart *xp, const struct feedback_props *feedback_props) {
   /* Calculate the amount of energy injected in the wind. 
    * This is in terms of internal energy because we don't 
    * know the mass of the particle being kicked yet. */
-  // ALEXEI: Put this back in and sort out what's going on here.
-  //float u_wind = 0.5*xp->feedback_data.v_kick*xp->feedback_data.v_kick;
+  float u_wind = 0.5*xp->feedback_data.v_kick*xp->feedback_data.v_kick;
 
-  ///* Calculate internal energy contribution from SN */
-  //// ALEXEI: Think this should be star particle mass, not host galaxy mass. Check with Romeel
-  //float u_SN = feedback_props->SN_energy * sp->feedback_data.host_galaxy_mass 
-  //             / sp->feedback_data.to_distribute.wind_mass;
+  /* Calculate internal energy contribution from SN */
+  float u_SN = feedback_props->SN_energy * xp->sf_data.star_mass_formed 
+               / xp->feedback_data.wind_mass;
 
-  //// ALEXEI: should this be smoothed metal mass fraction?
-  //if (sp->chemistry_data.metal_mass_fraction[0] < 1.e-9) {
-  //  // Schaerer 2003
-  //  u_SN *= exp10(-0.0029*pow(log10(sp->chemistry_data.metal_mass_fraction[0])+9,2.5)+0.417694); // ALEXEI: what are all these numbers?
-  //} else {
-  //  // As above but at zero metallicity
-  //  u_SN *= 2.61634;
-  //}
+  // ALEXEI: should this be smoothed metal mass fraction?
+  if (p->chemistry_data.metal_mass_fraction[0] < 1.e-9) {
+    // Schaerer 2003
+    u_SN *= exp10(-0.0029*pow(log10(p->chemistry_data.metal_mass_fraction[0])+9,2.5)+0.417694); // ALEXEI: what are all these numbers?
+  } else {
+    // As above but at zero metallicity
+    u_SN *= 2.61634;
+  }
 
-  //if (u_wind > feedback_props->simba_wind_energy_limit) {
-  //  sp->feedback_data.to_distribute.v_kick *= sqrt(feedback_props->simba_wind_energy_limit*u_SN/u_wind);
-  //}
-  //if (feedback_props->simba_wind_energy_limit < 1.f) {
-  //  u_SN *= feedback_props->simba_wind_energy_limit;
-  //}
+  if (u_wind > u_SN * feedback_props->simba_wind_energy_limit) {
+    xp->feedback_data.v_kick *= sqrt(feedback_props->simba_wind_energy_limit*u_SN/u_wind);
+  }
+  if (feedback_props->simba_wind_energy_limit < 1.f) {
+    u_SN *= feedback_props->simba_wind_energy_limit;
+  }
 
-  ///* Now we can decide if there's any energy left over to distribute */
-  //xp->feedback_data.u_extra = max(u_SN - u_wind, 0.);
+  /* Now we can decide if there's any energy left over to distribute */
+  xp->feedback_data.u_extra = max(u_SN - u_wind, 0.);
 };
 
 /**
@@ -248,10 +246,10 @@ __attribute__((always_inline)) INLINE static void launch_wind(
   // Make sure star particle doesn't heat multiple times, i.e. it only launches eta*sm
   // Reinstate random heating
   //if (rand_heat > prob_heat) {
-  //  const float u_init = hydro_get_physical_internal_energy(p, xp, cosmo);
-  //  const float u_new = u_init + xp->feedback_data.delta_u;
-  //  hydro_set_physical_internal_energy(p, xp, cosmo, u_new);
-  //  hydro_set_drifted_physical_internal_energy(p, cosmo, u_new);
+    const float u_init = hydro_get_physical_internal_energy(p, xp, cosmo);
+    const float u_new = u_init + xp->feedback_data.u_extra;
+    hydro_set_physical_internal_energy(p, xp, cosmo, u_new);
+    hydro_set_drifted_physical_internal_energy(p, cosmo, u_new);
   //}
 
   /* Set delaytime before which the particle cannot interact */
@@ -260,6 +258,7 @@ __attribute__((always_inline)) INLINE static void launch_wind(
   // ALEXEI: debugging print statement
   //if (p->id == SIMBA_DEBUG_ID) message("spart id %llu decoupled particle %llu delay_time %.5e rand %.5e prob %.5e", si->id, p->id, p->delay_time, rand_kick, prob_kick);
   //message("decoupled particle %llu delay_time %.5e new velocity %.5e", p->id, p->delay_time, sqrt(v_new[0]*v_new[0]+v_new[1]*v_new[1]+v_new[2]*v_new[2]));
+  //if (p->id <= SIMBA_DEBUG_ID) message("decoupled particle %llu position %.5e %.5e %.5e velocity %.5e %.5e %.5e delay time %.5e", p->id, p->x[0], p->x[1], p->x[2], p->v[0], p->v[1], p->v[2], p->delay_time);
 
 #ifdef SWIFT_DEBUG_CHECKS
   p->ti_decoupled = ti_current;
@@ -282,7 +281,7 @@ __attribute__((always_inline)) INLINE static void star_formation_feedback(
   compute_mass_loading(xp, feedback_props);
 
   /* Compute residual heating */
-  compute_heating(xp, feedback_props);
+  compute_heating(p, xp, feedback_props);
 
   /* Launch wind */
   launch_wind(p, xp, feedback_props, cosmo, ti_current);

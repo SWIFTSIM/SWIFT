@@ -5655,7 +5655,9 @@ int cell_recouple(struct cell *c,
           
 	  // ALEXEI: debugging print statement
           //if (e->ti_current * e->time_base > 0.) message("particle %llu recoupled time elapsed %.5e ti_kick %llu ti_current %llu step/2 %llu ti_end_min %llu recouple min active bin %d timebin %d", p->id, (e->ti_current - p->ti_decoupled)*e->time_base, p->ti_kick, e->ti_current, get_integer_timestep(min_active_bin)/2, c->hydro.ti_end_min, min_active_bin, p->time_bin);
+          //if (e->ti_current * e->time_base > 0. && p->id <= SIMBA_DEBUG_ID) message("particle %llu recoupled position %.5e %.5e %.5e velocity %.5e %.5e %.5e", p->id, p->x[0], p->x[1], p->x[2], p->v[0], p->v[1], p->v[2]);
 #endif
+          //if (e->ti_current * e->time_base > 0. && p->id <= SIMBA_DEBUG_ID) message("recoupled particle %llu position %.5e %.5e %.5e velocity %.5e %.5e %.5e delay time %.5e", p->id, p->x[0], p->x[1], p->x[2], p->v[0], p->v[1], p->v[2], p->delay_time);
 
 	  recoupled = 1;
         }
