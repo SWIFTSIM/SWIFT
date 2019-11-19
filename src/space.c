@@ -3467,6 +3467,7 @@ void space_split_recursive(struct space *s, struct cell *c,
         h_max = max(h_max, cp->hydro.h_max);
         stars_h_max = max(stars_h_max, cp->stars.h_max);
         black_holes_h_max = max(black_holes_h_max, cp->black_holes.h_max);
+
         ti_hydro_end_min = min(ti_hydro_end_min, cp->hydro.ti_end_min);
         ti_hydro_end_max = max(ti_hydro_end_max, cp->hydro.ti_end_max);
         ti_hydro_beg_max = max(ti_hydro_beg_max, cp->hydro.ti_beg_max);
@@ -3474,14 +3475,15 @@ void space_split_recursive(struct space *s, struct cell *c,
         ti_gravity_end_max = max(ti_gravity_end_max, cp->grav.ti_end_max);
         ti_gravity_beg_max = max(ti_gravity_beg_max, cp->grav.ti_beg_max);
         ti_stars_end_min = min(ti_stars_end_min, cp->stars.ti_end_min);
-        ti_stars_end_max = min(ti_stars_end_max, cp->stars.ti_end_max);
-        ti_stars_beg_max = min(ti_stars_beg_max, cp->stars.ti_beg_max);
+        ti_stars_end_max = max(ti_stars_end_max, cp->stars.ti_end_max);
+        ti_stars_beg_max = max(ti_stars_beg_max, cp->stars.ti_beg_max);
         ti_black_holes_end_min =
             min(ti_black_holes_end_min, cp->black_holes.ti_end_min);
         ti_black_holes_end_max =
-            min(ti_black_holes_end_max, cp->black_holes.ti_end_max);
+            max(ti_black_holes_end_max, cp->black_holes.ti_end_max);
         ti_black_holes_beg_max =
-            min(ti_black_holes_beg_max, cp->black_holes.ti_beg_max);
+            max(ti_black_holes_beg_max, cp->black_holes.ti_beg_max);
+
         star_formation_logger_add(&c->stars.sfh, &cp->stars.sfh);
 
         /* Increase the depth */
