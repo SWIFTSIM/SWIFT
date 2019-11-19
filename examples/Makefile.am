@@ -116,7 +116,7 @@ EXTRA_DIST = Cooling/CoolingBox/coolingBox.yml Cooling/CoolingBox/plotEnergy.py 
 	     HydroTests/UniformBox_2D/makeIC.py HydroTests/UniformBox_2D/run.sh HydroTests/UniformBox_2D/uniformPlane.yml \
 	     HydroTests/UniformBox_3D/makeICbig.py HydroTests/UniformBox_3D/makeIC.py HydroTests/UniformBox_3D/run.sh HydroTests/UniformBox_3D/uniformBox.yml \
              SmallCosmoVolume/SmallCosmoVolume_hydro/README SmallCosmoVolume/SmallCosmoVolume_hydro/getIC.sh SmallCosmoVolume/SmallCosmoVolume_hydro/run.sh SmallCosmoVolume/SmallCosmoVolume_hydro/small_cosmo_volume.yml SmallCosmoVolume/SmallCosmoVolume_hydro/plotTempEvolution.py \
-             SmallCosmoVolume/SmallCosmoVolume_DM/README SmallCosmoVolume/SmallCosmoVolume_DM/getIC.sh SmallCosmoVolume/SmallCosmoVolume_DM/run.sh SmallCosmoVolume/SmallCosmoVolume_DM/small_cosmo_volume_dm.yml SmallCosmoVolume/SmallCosmoVolume_DM/stf_input_6dfof_dmonly_sub.cfg \
+             SmallCosmoVolume/SmallCosmoVolume_DM/README SmallCosmoVolume/SmallCosmoVolume_DM/getIC.sh SmallCosmoVolume/SmallCosmoVolume_DM/run.sh SmallCosmoVolume/SmallCosmoVolume_DM/small_cosmo_volume_dm.yml SmallCosmoVolume/SmallCosmoVolume_DM/vrconfig_3dfof_subhalos_SO_hydro.cfg \
 	     PMillennium/PMillennium-384/p-mill-384.yml \
              PMillennium/PMillennium-768/p-mill-768.yml \
              PMillennium/PMillennium-1536/p-mill-1536.yml \
