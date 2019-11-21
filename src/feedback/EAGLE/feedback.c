@@ -44,7 +44,7 @@ double eagle_feedback_temperature_change(const struct spart* sp,
 
 /**
  * @brief Computes the number of supernovae of type II exploding for a given
- * star particle.
+ * star particle assuming that all the SNII stars go off at once.
  *
  * @param sp The #spart.
  * @param props The properties of the stellar model.
@@ -52,9 +52,111 @@ double eagle_feedback_temperature_change(const struct spart* sp,
 double eagle_feedback_number_of_SNII(const struct spart* sp,
                                      const struct feedback_props* props) {
 
-  /* Note: For a Chabrier 2003 IMF and SNII going off between 6 and 100
-   * M_sun, the first term is 0.017362 M_sun^-1 */
+  /* Note: For a Chabrier 2003 IMF and SNII going off
+   * - between 6 and 100 M_sun, the first term is 0.017362 M_sun^-1 (EAGLE)
+   * - between 8 and 100 M_sun, the first term is 0.011801 M_sun^-1 (EAGLE-XL)
+   */
   return props->num_SNII_per_msun * sp->mass_init * props->mass_to_solar_mass;
+}
+
+/**
+ * @brief Computes the number of supernovae of type II exploding for a given
+ * star particle between two mass limits
+ *
+ * @param sp The #spart.
+ * @param props The properties of the stellar model.
+ * @param min_dying_mass_Msun Minimal star mass dying this step (in solar
+ * masses).
+ * @param max_dying_mass_Msun Maximal star mass dying this step (in solar
+ * masses).
+ */
+double eagle_feedback_number_of_sampled_SNII(const struct spart* sp,
+                                             const struct feedback_props* props,
+                                             const double min_dying_mass_Msun,
+                                             const double max_dying_mass_Msun) {
+
+  /* The max dying star mass is below the SNII mass window
+   * --> No SNII */
+  if (max_dying_mass_Msun < props->SNII_min_mass_msun) return 0.;
+
+  /* The min dying star mass is above the SNII mass window
+   * --> No SNII */
+  if (min_dying_mass_Msun > props->SNII_max_mass_msun) return 0.;
+
+  /* Ok, we have some overlap with the SNII mass window. */
+
+  double log10_min_mass_Msun = -10.;
+  double log10_max_mass_Msun = -10.;
+
+  /* The min dying star mass dies inside the SNII mass window */
+  if (min_dying_mass_Msun <= props->SNII_max_mass_msun &&
+      min_dying_mass_Msun > props->SNII_min_mass_msun) {
+
+    /* Now, check the max dying star mass */
+
+    /* The max dying star mass is also inside the SNII mass window */
+    if (max_dying_mass_Msun <= props->SNII_max_mass_msun) {
+      log10_min_mass_Msun = log10(min_dying_mass_Msun);
+      log10_max_mass_Msun = log10(max_dying_mass_Msun);
+    }
+
+    /* The max dying star is above the SNII mass window */
+    else {
+      log10_min_mass_Msun = log10(min_dying_mass_Msun);
+      log10_max_mass_Msun = props->log10_SNII_max_mass_msun;
+    }
+
+  }
+
+  /* The min dying star mass dies below the SNII mass window */
+  else if (min_dying_mass_Msun <= props->SNII_min_mass_msun) {
+
+    /* Now, check the max dying star mass */
+
+    /* The max dying star mass is inside the SNII mass window */
+    if (max_dying_mass_Msun > props->SNII_min_mass_msun &&
+        max_dying_mass_Msun <= props->SNII_max_mass_msun) {
+      log10_min_mass_Msun = props->log10_SNII_min_mass_msun;
+      log10_max_mass_Msun = log10(max_dying_mass_Msun);
+    }
+
+    /* The max dying star is above the SNII mass window */
+    else if (max_dying_mass_Msun > props->SNII_max_mass_msun) {
+      log10_min_mass_Msun = props->log10_SNII_min_mass_msun;
+      log10_max_mass_Msun = props->log10_SNII_max_mass_msun;
+    }
+
+    /* The max dying star mass is also below the SNII mass window */
+    else {
+
+    /* We already excluded this at the star of the function */
+#ifdef SWIFT_DEBUG_CHECKS
+      error("Error in the logic");
+#endif
+    }
+  }
+
+  /* The min dying star mass dies above the SNII mass window */
+  else {
+
+  /* We already excluded this at the star of the function */
+#ifdef SWIFT_DEBUG_CHECKS
+    error("Error in the logic");
+#endif
+  }
+
+#ifdef SWIFT_DEBUG_CHECKS
+  if (log10_min_mass_Msun == -10. || log10_max_mass_Msun == -10.)
+    error("Something went wrong in the calculation of the number of SNII.");
+#endif
+
+  /* Calculate how many supernovae have exploded in this timestep
+   * by integrating the IMF between the bounds we chose */
+  const double num_SNII_per_msun =
+      integrate_imf(log10_min_mass_Msun, log10_max_mass_Msun,
+                    eagle_imf_integration_no_weight, NULL, props);
+
+  return num_SNII_per_msun * sp->mass_init * props->mass_to_solar_mass;
 }
 
 /**
@@ -161,22 +263,32 @@ double eagle_feedback_energy_fraction(const struct spart* sp,
  * @param dt Length of time-step in internal units.
  * @param ngb_gas_mass Total un-weighted mass in the star's kernel.
  * @param feedback_props The properties of the feedback model.
+ * @param min_dying_mass_Msun Minimal star mass dying this step (in solar
+ * masses).
+ * @param max_dying_mass_Msun Maximal star mass dying this step (in solar
+ * masses).
  */
 INLINE static void compute_SNII_feedback(
     struct spart* sp, const double star_age, const double dt,
-    const float ngb_gas_mass, const struct feedback_props* feedback_props) {
+    const float ngb_gas_mass, const struct feedback_props* feedback_props,
+    const double min_dying_mass_Msun, const double max_dying_mass_Msun) {
 
-  /* Time after birth considered for SNII feedback (internal units) */
+  /* Are we sampling the delay function or using a fixed delay? */
+  const int SNII_sampled_delay = feedback_props->SNII_sampled_delay;
+
+  /* Time after birth considered for SNII feedback (internal units)
+   * when using a fixed delay */
   const double SNII_wind_delay = feedback_props->SNII_wind_delay;
 
   /* Are we doing feedback this step?
    * Note that since the ages are calculated using an interpolation table we
    * must allow some tolerance here*/
-  if (star_age <= SNII_wind_delay &&
-      (star_age + 1.0001 * dt) > SNII_wind_delay) {
+  if ((SNII_sampled_delay) || (star_age <= SNII_wind_delay &&
+                               (star_age + 1.001 * dt) > SNII_wind_delay)) {
 
-    /* Make sure a star does not do feedback twice! */
-    if (sp->f_E != -1.f) {
+    /* Make sure a star does not do feedback twice
+     * when using a fixed delay! */
+    if (!SNII_sampled_delay && sp->f_E != -1.f) {
 #ifdef SWIFT_DEBUG_CHECKS
       message("Star has already done feedback! sp->id=%lld age=%e d=%e", sp->id,
               star_age, dt);
@@ -187,9 +299,20 @@ INLINE static void compute_SNII_feedback(
     /* Properties of the model (all in internal units) */
     const double delta_T =
         eagle_feedback_temperature_change(sp, feedback_props);
-    const double N_SNe = eagle_feedback_number_of_SNII(sp, feedback_props);
     const double E_SNe = feedback_props->E_SNII;
     const double f_E = eagle_feedback_energy_fraction(sp, feedback_props);
+
+    /* Number of SNe at this time-step */
+    double N_SNe;
+    if (SNII_sampled_delay) {
+      N_SNe = eagle_feedback_number_of_sampled_SNII(
+          sp, feedback_props, min_dying_mass_Msun, max_dying_mass_Msun);
+    } else {
+      N_SNe = eagle_feedback_number_of_SNII(sp, feedback_props);
+    }
+
+    /* Abort if there are no SNe exploding this step */
+    if (N_SNe == 0.) return;
 
     /* Conversion factor from T to internal energy */
     const double conv_factor = feedback_props->temp_to_u_factor;
@@ -720,7 +843,7 @@ void compute_stellar_evolution(const struct feedback_props* feedback_props,
 #endif
 
   /* Convert dt and stellar age from internal units to Gyr. */
-  const double Gyr_in_cgs = 1e9 * 365. * 24. * 3600.;
+  const double Gyr_in_cgs = 1e9 * 365.25 * 24. * 3600.;
   const double time_to_cgs = units_cgs_conversion_factor(us, UNIT_CONV_TIME);
   const double conversion_factor = time_to_cgs / Gyr_in_cgs;
   const double dt_Gyr = dt * conversion_factor;
@@ -772,11 +895,6 @@ void compute_stellar_evolution(const struct feedback_props* feedback_props,
     error("Negative weight!");
 #endif
 
-  /* Compute properties of the stochastic SNII feedback model. */
-  if (feedback_props->with_SNII_feedback) {
-    compute_SNII_feedback(sp, age, dt, ngb_gas_mass, feedback_props);
-  }
-
   /* Calculate mass of stars that has died from the star's birth up to the
    * beginning and end of timestep */
   const double max_dying_mass_Msun =
@@ -784,12 +902,18 @@ void compute_stellar_evolution(const struct feedback_props* feedback_props,
   const double min_dying_mass_Msun =
       dying_mass_msun(star_age_Gyr + dt_Gyr, Z, feedback_props);
 
-#ifdef SWIFT_DEBUG_CHECK
+#ifdef SWIFT_DEBUG_CHECKS
   /* Sanity check. Worth investigating if necessary as functions for evaluating
    * mass of stars dying might be strictly decreasing.  */
   if (min_dying_mass_Msun > max_dying_mass_Msun)
     error("min dying mass is greater than max dying mass");
 #endif
+
+  /* Compute properties of the stochastic SNII feedback model. */
+  if (feedback_props->with_SNII_feedback) {
+    compute_SNII_feedback(sp, age, dt, ngb_gas_mass, feedback_props,
+                          min_dying_mass_Msun, max_dying_mass_Msun);
+  }
 
   /* Integration interval is zero - this can happen if minimum and maximum
    * dying masses are above imf_max_mass_Msun. Return without doing any
@@ -896,11 +1020,18 @@ void feedback_props_init(struct feedback_props* fp,
 
   /* Properties of the SNII energy feedback model ------------------------- */
 
-  /* Set the delay time before SNII occur */
-  const double Gyr_in_cgs = 1.0e9 * 365. * 24. * 3600.;
-  fp->SNII_wind_delay =
-      parser_get_param_double(params, "EAGLEFeedback:SNII_wind_delay_Gyr") *
-      Gyr_in_cgs / units_cgs_conversion_factor(us, UNIT_CONV_TIME);
+  /* Are we sampling the SNII lifetimes for feedback or using a fixed delay? */
+  fp->SNII_sampled_delay =
+      parser_get_param_int(params, "EAGLEFeedback:SNII_sampled_delay");
+
+  if (!fp->SNII_sampled_delay) {
+
+    /* Set the delay time before SNII occur */
+    const double Gyr_in_cgs = 1.0e9 * 365.25 * 24. * 3600.;
+    fp->SNII_wind_delay =
+        parser_get_param_double(params, "EAGLEFeedback:SNII_wind_delay_Gyr") *
+        Gyr_in_cgs / units_cgs_conversion_factor(us, UNIT_CONV_TIME);
+  }
 
   /* Read the temperature change to use in stochastic heating */
   fp->SNe_deltaT_desired =
@@ -925,6 +1056,8 @@ void feedback_props_init(struct feedback_props* fp,
     error("Can't have the max SNII mass smaller than the min SNII mass!");
   }
 
+  fp->SNII_min_mass_msun = SNII_min_mass_msun;
+  fp->SNII_max_mass_msun = SNII_max_mass_msun;
   fp->log10_SNII_min_mass_msun = log10(SNII_min_mass_msun);
   fp->log10_SNII_max_mass_msun = log10(SNII_max_mass_msun);
 

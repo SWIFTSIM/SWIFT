@@ -647,9 +647,10 @@ Supernova feedback: Dalla Vecchia+2012 & Schaye+2015
     filename:                         ./yieldtables/  # Path to the directory containing the EAGLE yield tables.
     IMF_min_mass_Msun:                0.1             # Minimal stellar mass considered for the Chabrier IMF in solar masses.
     IMF_max_mass_Msun:              100.0             # Maximal stellar mass considered for the Chabrier IMF in solar masses.
-    SNII_min_mass_Msun:               6.0             # Minimal mass considered for SNII feedback (not SNII enrichment!) in solar masses.
-    SNII_max_mass_Msun:             100.0             # Maximal mass considered for SNII feedback (not SNII enrichment!) in solar masses.
-    SNII_wind_delay_Gyr:              0.03            # Time in Gyr between a star's birth and the SNII thermal feedback event.
+    SNII_min_mass_Msun:               8.0             # Minimal mass considered for SNII stars in solar masses.
+    SNII_max_mass_Msun:             100.0             # Maximal mass considered for SNII stars in solar masses.
+    SNII_sampled_delay:               1               # Sample the SNII lifetimes to do feedback.
+    SNII_wind_delay_Gyr:              0.03            # Time in Gyr between a star's birth and the SNII thermal feedback event when not sampling.
     SNII_delta_T_K:                   3.16228e7       # Change in temperature to apply to the gas particle in a SNII thermal feedback event in Kelvin.
     SNII_energy_erg:                  1.0e51          # Energy of one SNII explosion in ergs.
     SNII_energy_fraction_min:         0.3             # Maximal fraction of energy applied in a SNII feedback event.
@@ -681,7 +682,8 @@ different from the value (:math:`0.67`) reported in table 3 of `Schaye
 of :math:`h^{-2} = 0.6777^{-2} = 2.1773` is missing in the paper.
 
 The Magnesium yields from SNII have also been doubled since the
-original EAGLE simulations were run.
+original EAGLE simulations were run and the minimal mass for SNII stars has
+been raised to 8 solar masses (from 6).
 
 
     

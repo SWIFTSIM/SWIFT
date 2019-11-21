@@ -212,6 +212,12 @@ struct feedback_props {
 
   /* ------------ SNe feedback properties ------------ */
 
+  /*! Minimal stellar mass considered for SNII feedback (in solar masses) */
+  double SNII_min_mass_msun;
+
+  /*! Maximal stellar mass considered for SNII feedback (in solar masses) */
+  double SNII_max_mass_msun;
+
   /*! Log 10 of the minimal stellar mass considered for SNII feedback (in solar
    * masses) */
   double log10_SNII_min_mass_msun;
@@ -223,7 +229,10 @@ struct feedback_props {
   /*! Number of type II supernovae per solar mass */
   float num_SNII_per_msun;
 
-  /*! Wind delay time for SNII */
+  /*! Are we sampling the SNII life-times or using a fixed delay? */
+  int SNII_sampled_delay;
+
+  /*! Wind delay time for SNII when using a fixed delay */
   double SNII_wind_delay;
 
   /*! Temperature increase induced by SNe feedback */
