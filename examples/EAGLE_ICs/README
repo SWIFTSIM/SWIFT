@@ -10,6 +10,9 @@ made:
    uses the smoothed metallicities and not the raw metallicities
    any more.
  - The redshift of H reionization has been lowered to 7.5 (from 11.5).
+ - The minimal mass of SNII stars has been raised to 8 Msun (from 6).
+ - The SNII feedback delay is done by sampling the stellar age
+   distribution and not using a fixed delay of 30 Myr any more.
  - The Magnesium yields from SNII stars have been boosted by a
    factor of 2.
  - The delay time distribution of the SNIa has been changed to a
