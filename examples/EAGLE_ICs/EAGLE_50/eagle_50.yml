@@ -44,7 +44,8 @@ Gravity:
   max_physical_DM_softening:     0.001300 # Physical softening for DM (1.30 pkpc)
   comoving_baryon_softening:     0.001790 # Comoving softening for baryons (1.79 ckpc)
   max_physical_baryon_softening: 0.000700 # Physical softening for baryons (0.70 pkpc)
-  
+  dithering:             0
+
 # Parameters for the hydrodynamics scheme
 SPH:
   resolution_eta:        1.2348   # Target smoothing length in units of the mean inter-particle separation (1.2348 == 48Ngbs with the cubic spline kernel).
@@ -71,7 +72,8 @@ FOF:
 Scheduler:
   max_top_level_cells:   32
   tasks_per_cell:        5
-
+  cell_split_size:       200
+  
 Restarts:
   onexit:       1
   delta_hours:  1.0
