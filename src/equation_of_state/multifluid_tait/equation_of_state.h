@@ -16,8 +16,8 @@
  * along with this program.  If not, see <http://www.gnu.org/licenses/>.
  *
  ******************************************************************************/
-#ifndef SWIFT_TAIT_EQUATION_OF_STATE_H
-#define SWIFT_TAIT_EQUATION_OF_STATE_H
+#ifndef SWIFT_MULTI_TAIT_EQUATION_OF_STATE_H
+#define SWIFT_MULTI_TAIT_EQUATION_OF_STATE_H
 
 /* Some standard headers. */
 #include <math.h>
@@ -39,9 +39,7 @@ struct eos_parameters {
 
   float soundspeed;
   float soundspeed_squared;
-  float density_reference;
-  float gamma; //Not used.
-  float B;
+  float gamma;
 };
 
 __attribute__((always_inline, const)) INLINE static float
@@ -51,14 +49,15 @@ gas_soundspeed_from_pressure(float density, float P) {
 }
 
 
-__attribute__((always_inline)) INLINE static float pressure_from_density( double density ){
-   const double rho_over_rho0 = density / eos.density_reference;
+__attribute__((always_inline)) INLINE static float pressure_from_density( double density, double reference_density ){ 
+   const double B = eos.soundspeed_squared * reference_density / eos.gamma;
+   const double rho_over_rho0 = density / reference_density;
    const double rho_over_rho0_2 = rho_over_rho0 * rho_over_rho0;
    const double rho_over_rho0_4 = rho_over_rho0_2 * rho_over_rho0_2;
    const double rho_over_rho0_6 = rho_over_rho0_4 * rho_over_rho0_2;
    const double rho_over_rho0_7 = rho_over_rho0_6 * rho_over_rho0;
 
-   return eos.B * ( rho_over_rho0_7 - 1.0);
+   return B * ( rho_over_rho0_7 - 1.0);
 }
 
 INLINE static void eos_init(struct eos_parameters *e,
@@ -67,11 +66,9 @@ INLINE static void eos_init(struct eos_parameters *e,
                             struct swift_params *params){
 //  e->B = parser_get_opt_param_float(params, "EoS:B", 0.01);
   e->soundspeed = parser_get_param_float(params, "EoS:soundspeed");
-  e->density_reference = parser_get_param_float(params, "EoS:density_reference");
-//  e->gamma = 7.0;
+  e->gamma = 7.0;
 //  e->soundspeed = sqrt((double)e->gamma * (double)e->B / (double)e->density_reference);
   e->soundspeed_squared = e->soundspeed * e->soundspeed;
-  e->B = e->soundspeed_squared * e->density_reference / 7.0/*e->gamma*/;
 }
 
 /**
@@ -81,9 +78,9 @@ INLINE static void eos_init(struct eos_parameters *e,
  */
 INLINE static void eos_print(const struct eos_parameters *e) {
 
-  message("Equation of state: Weakly compressible.");
+  message("Equation of state: Multifluid Tait.");
 
-  message("Soundspeed: %f.\n Density reference %f.\n B = %e.", eos.soundspeed, eos.density_reference, eos.B);
+  message("Soundspeed: %f.\n", eos.soundspeed);
 }
 
 #if defined(HAVE_HDF5)

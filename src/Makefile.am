@@ -88,7 +88,8 @@ AM_SOURCES = space.c runner_main.c runner_doiact_hydro.c runner_doiact_limiter.c
     collectgroup.c hydro_space.c equation_of_state.c \
     chemistry.c cosmology.c restart.c mesh_gravity.c velociraptor_interface.c \
     outputlist.c velociraptor_dummy.c logger_io.c memuse.c mpiuse.c memuse_rnodes.c fof.c \
-    hashmap.c pressure_floor.c \
+    hashmap.c pressure_floor.c boundary_movement.c boundary.c density_diffusion.c \
+    particle_shifting.c \
     $(EAGLE_COOLING_SOURCES) $(EAGLE_FEEDBACK_SOURCES)
 
 # Include files for distribution, not installation.
@@ -252,7 +253,11 @@ nobase_noinst_HEADERS = align.h approx_math.h atomic.h barrier.h cycle.h error.h
 		 pressure_floor/GEAR/pressure_floor_struct.h pressure_floor/none/pressure_floor_struct.h \
 	         task_order/GEAR/task_order.h task_order/EAGLE/task_order.h task_order/none/task_order.h \
                  boundary/fixed_fluid_boundary/boundary.h \
-                 boundary/no_boundary/boundary.h
+                 boundary/no_boundary/boundary.h \
+                 boundary_motion/no_movement/boundary_movement.h \
+                 boundary_motion/sinusoidal/boundary_movement.h \
+                 density_diffusion/no_diffusion/density_diffusion.h \
+                 density_diffusion/Molteni09/density_diffusion.h
 
 
 # Sources and special flags for the gravity library

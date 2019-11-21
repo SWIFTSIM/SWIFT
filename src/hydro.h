@@ -93,6 +93,11 @@
 #include "./hydro/MorrisFoxZhu97/hydro_iact.h"
 #define SPH_IMPLEMENTATION \
   "Euler Fluis SPH wtih MorrisFoxZhu97 viscosity"
+#elif defined(LAMINAR_SPS_SPH)
+#include "./hydro/LaminarSPS/hydro.h"
+#include "./hydro/LaminarSPS/hydro_iact.h"
+#define SPH_IMPLEMENTATION \
+  "Euler Fluid SPH with Laminar SPS viscosity"
 #else
 #error "Invalid choice of SPH variant"
 #endif

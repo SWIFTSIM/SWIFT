@@ -423,8 +423,14 @@ param_filename = argv[0];
    struct hydro_props hydro_properties;
    hydro_props_init(&hydro_properties, &prog_const, &us, params);
 
+   init_shifting_parameters( &psp, params);
+
+   init_diffusive_term(&dtp, params);
    /* Nullify equation of state for now - these need changing for Engineering SPH */
    eos_init(&eos, &prog_const, &us, params);
+
+   /* Initialise boundary */
+   init_boundary(&boundary_params, params);
 
    /* Nullify entropy floor for now, no idea what it is. */
    struct entropy_floor_properties entropy_floor;
@@ -544,7 +550,7 @@ engine_init(&e, &s, params, N_total[0], N_total[1], N_total[2], N_total[3], N_to
             &chemistry, &fof_properties);
 engine_config(0, 0, &e, params, nr_nodes, myrank, nr_threads, with_aff,
               talking, restart_file);
-
+init_boundary_motion(&bom, e.time_base, params);
 #ifdef WITH_MPI
 /* Split the space. */
 engine_split(&e, &initial_partition);
@@ -620,11 +626,10 @@ max_x = parts[i].x[0];
 if(parts[i].x[0] < min_x && !parts[i].is_boundary){
 min_x = parts[i].x[0];
 }*/
-
-      if(parts[i].id == 1329) printf("id: %llu x=[%f %f %f] a_hydro=[%e %e %e] v = [%e %e %e] rho=%e pressure=%e h=%f drho_dt=%e\n", parts[i].id, parts[i].x[0], parts[i].x[1], parts[i].x[2],parts[i].a_hydro[0], parts[i].a_hydro[1], parts[i].a_hydro[2], parts[i].v[0], parts[i].v[1], parts[i].v[2], parts[i].rho, parts[i].pressure , parts[i].h, parts[i].drho_dt);
+      if(parts[i].id == 4281 || parts[i].id == 1029/*862*//*4129*/) printf("id: %llu x=[%f %f %f] a_hydro=[%e %e %e] v = [%e %e %e] rho=%e pressure=%e h=%f drho_dt=%e\n", parts[i].id, parts[i].x[0], parts[i].x[1], parts[i].x[2],parts[i].a_hydro[0], parts[i].a_hydro[1], parts[i].a_hydro[2], parts[i].v[0], parts[i].v[1], parts[i].v[2], parts[i].rho, parts[i].pressure , parts[i].h, parts[i].drho_dt);
 }
 for(size_t i = Nboundary; i < Nboundary+Nfluid; i++){
-      if(parts[i].id == 1329) printf("id: %llu x=[%f %f %f] a_hydro=[%e %e %e] v = [%e %e %e] rho=%e pressure=%e h=%f drho_dt=%e\n", parts[i].id, parts[i].x[0], parts[i].x[1], parts[i].x[2],parts[i].a_hydro[0], parts[i].a_hydro[1], parts[i].a_hydro[2], parts[i].v[0], parts[i].v[1], parts[i].v[2], parts[i].rho, parts[i].pressure , parts[i].h, parts[i].drho_dt);
+      if(parts[i].id == 4281 || parts[i].id == 1029/*862*//*4129*/) printf("id: %llu x=[%f %f %f] a_hydro=[%e %e %e] v = [%e %e %e] rho=%e pressure=%e h=%f drho_dt=%e\n", parts[i].id, parts[i].x[0], parts[i].x[1], parts[i].x[2],parts[i].a_hydro[0], parts[i].a_hydro[1], parts[i].a_hydro[2], parts[i].v[0], parts[i].v[1], parts[i].v[2], parts[i].rho, parts[i].pressure , parts[i].h, parts[i].drho_dt);
 //`  if(parts[i].x[0] == 0.0 && parts[i].x[2] == 0.0) printf("Part at [%e %e %e]\n", parts[i].x[0], parts[i].x[1], parts[i].x[2]);
 //  if(parts[i].id == 57600) printf("Found p0, %i %f %f %f\n", parts[i].is_boundary, parts[i].x[0], parts[i].x[1], parts[i].x[2]);
 //  if(parts[i].x[0] > 1.4937 && parts[i].x[1] < 0.00126 && parts[i].x[1] > 0.00124 && parts[i].x[2] < 0.007 && parts[i].x[2] > 0.006) {printf("found a boundary with id %llu\n", parts[i].id); return 0;}

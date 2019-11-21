@@ -140,7 +140,9 @@ __attribute__((always_inline)) INLINE static int cell_is_active_hydro(
         c->hydro.ti_end_min, c->hydro.ti_end_min * e->time_base, e->ti_current,
         e->ti_current * e->time_base, e->cosmology->a);
 #endif
-
+  if(! (c->hydro.ti_end_min == e->ti_current)){
+    error("Found inactive cell");
+  }
   return (c->hydro.ti_end_min == e->ti_current);
 }
 
@@ -287,7 +289,6 @@ __attribute__((always_inline)) INLINE static int part_is_active(
         "e->ti_current=%lld",
         ti_end, ti_current);
 #endif
-
   return (part_bin <= max_active_bin);
 }
 

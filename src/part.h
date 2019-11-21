@@ -94,6 +94,9 @@
 #elif defined(MORRIS_FOX_ZHU_97_SPH)
 #include "./hydro/MorrisFoxZhu97/hydro_part.h"
 #define hydro_need_extra_init_loop 0
+#elif defined(LAMINAR_SPS_SPH)
+#include "./hydro/LaminarSPS/hydro_part.h"
+#define hydro_need_extra_init_loop 0
 #else
 #error "Invalid choice of SPH variant"
 #endif

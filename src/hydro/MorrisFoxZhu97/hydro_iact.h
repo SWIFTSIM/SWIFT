@@ -34,6 +34,7 @@
 
 #include "adiabatic_index.h"
 #include "minmax.h"
+#include "boundary.h"
 
 /**
  * @brief Density interaction between two particles.
@@ -170,8 +171,11 @@ __attribute__((always_inline)) INLINE static void runner_iact_force(
   pj->a_visc[1] -= mi * acc_visc_j * dv[1];
   pj->a_visc[2] -= mi * acc_visc_j * dv[2];
 
-  if(pi->id == 3374 && pj->is_boundary) printf("i: hydro = [%e %e %e, dv[0] = %e, dx[0] = %e, dx[1]=%e, r=%e P=%e, dens=%e, P/rho=%e, w_dx=%e\n", -mj * acc_sph_i * dx[0], -mj * acc_sph_i * dx[1], -mj * acc_sph_i * dx[2], dv[0], dx[0], dx[1], r, pj->pressure, mj*dens_i,(Pi_over_rhosq + Pj_over_rhosq),wi_dx );
-  if(pj->id == 3374 && pi->is_boundary) printf("j: hydro = [%e %e %e], dv[0] = %e, dx[0] = %e, dx[1]=%e, r=%e P=%e, dens=%e,  P/rho=%e, w_dx=%e\n", mi * acc_sph_j * dx[0], mi * acc_sph_j * dx[1], mi * acc_sph_j * dx[2], -dv[0], -dx[0], dx[1], r, pi->pressure, mi*dens_j, (Pi_over_rhosq + Pj_over_rhosq),wj_dx );  
+
+  boundary_fluid_interaction(pi, pj, r, r2, dx);
+
+ // if(pi->id == 3374 && pj->is_boundary) printf("i: hydro = [%e %e %e, dv[0] = %e, dx[0] = %e, dx[1]=%e, r=%e P=%e, dens=%e, P/rho=%e, w_dx=%e\n", -mj * acc_sph_i * dx[0], -mj * acc_sph_i * dx[1], -mj * acc_sph_i * dx[2], dv[0], dx[0], dx[1], r, pj->pressure, mj*dens_i,(Pi_over_rhosq + Pj_over_rhosq),wi_dx );
+//  if(pj->id == 3374 && pi->is_boundary) printf("j: hydro = [%e %e %e], dv[0] = %e, dx[0] = %e, dx[1]=%e, r=%e P=%e, dens=%e,  P/rho=%e, w_dx=%e\n", mi * acc_sph_j * dx[0], mi * acc_sph_j * dx[1], mi * acc_sph_j * dx[2], -dv[0], -dx[0], dx[1], r, pi->pressure, mi*dens_j, (Pi_over_rhosq + Pj_over_rhosq),wj_dx );  
 //  if(pi->id == 3374) printf("viscosity a[0] = [ %e %e %e], hydro = [%e %e %e]\n", mj * acc_visc_i * dv[0],mj * acc_visc_i * dv[1], mj * acc_visc_i * dv[2], -mj * acc_sph_i * dx[0], -mj * acc_sph_i * dx[1], -mj * acc_sph_i * dx[2] );  
 //  if(pj->id == 3374) printf("viscosity a[0] = [ %e %e %e], hydro = [%e %e %e]\n", -mi * acc_visc_j * dv[0], -mi * acc_visc_j * dv[1], -mi * acc_visc_j * dv[2], mi * acc_sph_j * dx[0], mi * acc_sph_j * dx[1], mi * acc_sph_j * dx[2] );  
 
@@ -257,7 +261,9 @@ __attribute__((always_inline)) INLINE static void runner_iact_nonsym_force(
   pi->a_visc[1] += mj * acc_visc_i * dv[1];
   pi->a_visc[2] += mj * acc_visc_i * dv[2];
 
-  if(pi->id == 3374 && pj->is_boundary) printf("i: hydro = [%e %e %e, dv[0] = %e, dx[0] = %e, dx[1]=%e, r=%e P=%e, dens=%e, P/rho=%e, w_dx=%e\n", -mj * acc_sph_i * dx[0], -mj * acc_sph_i * dx[1], -mj * acc_sph_i * dx[2], dv[0], dx[0], dx[1], r, pj->pressure, mj*dens,(Pi_over_rhosq + Pj_over_rhosq),wi_dx );
+  boundary_fluid_interaction_nonsym(pi, pj, r, r2, dx);
+
+//  if(pi->id == 3374 && pj->is_boundary) printf("i: hydro = [%e %e %e, dv[0] = %e, dx[0] = %e, dx[1]=%e, r=%e P=%e, dens=%e, P/rho=%e, w_dx=%e\n", -mj * acc_sph_i * dx[0], -mj * acc_sph_i * dx[1], -mj * acc_sph_i * dx[2], dv[0], dx[0], dx[1], r, pj->pressure, mj*dens,(Pi_over_rhosq + Pj_over_rhosq),wi_dx );
   ///*if(pi->id == 3374)*/ printf("viscosity a[0] = [ %e %e %e], hydro = [%e %e %e]\n", mj * acc_visc_i * dv[0],mj * acc_visc_i * dv[1], mj * acc_visc_i * dv[2], -mj * acc_sph_i * dx[0], -mj * acc_sph_i * dx[1], -mj * acc_sph_i * dx[2] );  
 }
 //#endif

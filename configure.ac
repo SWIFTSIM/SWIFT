@@ -395,11 +395,12 @@ fi
 # Hydro scheme.
 AC_ARG_WITH([boundary],
    [AS_HELP_STRING([--with-boundary=<scheme>],
-      [Engineering boundary option to use @<:@no_boundary, fixed_fluid default: no_boundary@:>@]
+      [Engineering boundary option to use @<:@no_boundary, fixed_fluid, monaghan94 default: no_boundary@:>@]
    )],
    [with_boundary="$withval"],
    [with_boundary="no_boundary"]
 )
+
 
 
 case "$with_boundary" in
@@ -409,9 +410,51 @@ case "$with_boundary" in
    fixed_fluid)
       AC_DEFINE([FIXED_FLUID_BOUNDARY], [1], [Fixed Fluid Boundary])
    ;;
+   monaghan94)
+      AC_DEFINE([MONAGHAN94_BOUNDARY], [1], [Monaghan 94 repulsive Boundary])
+   ;;
+   *)
+       AC_MSG_ERROR([Unknown boundary type: $with_boundary])
+   ;;
+esac
+
+AC_ARG_WITH([particle-shifting],
+   [AS_HELP_STRING([--with-particle-shifting=<scheme>],
+      [Engineering Particle shifting option to use @<:@no_shifting, Mokos13 default: no_shifting@<:@]
+   )],
+   [with_particle_shifting="$withval"],
+   [with_particle_shifting="no_shifting"]
+)
+
+case "$with_particle_shifting" in
+  no_shifting)
+    AC_DEFINE([NO_PARTICLE_SHIFTING], [1], [No particle shifting])
+  ;;
+  Mokos13)
+    AC_DEFINE([MOKOS13_SHIFTING], [1], [Mokos13 particle shifting])
+  ;;
+  *)
+      AC_MSG_ERROR([Unknown particle shifting scheme: $with_hydro])
+  ;;
 esac
 
 
+AC_ARG_WITH([moving-boundary],
+  [AS_HELP_STRING([--with-moving-boundary=<scheme>],
+    [Moving Engineering boundary option to use@<:@no_movement, sinusoidal default: no_movement@:>@]
+  )],
+  [with_moving_boundary="$withval"],
+  [with_moving_boundary="no_movement"]
+)
+
+case "$with_moving_boundary" in 
+  no_movement)
+    AC_DEFINE([NO_BOUNDARY_MOVEMENT], [1], [No Moving Boundary])
+  ;;
+  sinusoidal)
+    AC_DEFINE([SINUSOIDAL_BOUNDARY_MOVEMENT], [1], [Sinusoidal Boundary Movement])
+  ;;
+esac
 
 # Check whether we have any of the ARM v8.1 tick timers
 AX_ASM_ARM_PMCCNTR
@@ -1538,7 +1581,7 @@ AC_ARG_WITH([hydro],
 
 AC_ARG_WITH([engineering],
     [AS_HELP_STRING([--with-engineering=<scheme>],
-        [Engineering-style hydrodynamics enabled. Hydrdynamics schemes to use @<:@euler, navier-stokes default: euler@:>@]
+        [Engineering-style hydrodynamics enabled. Hydrdynamics schemes to use @<:@euler, MorrisFoxZhu97, LaminarSPS default: gadget2 non-engineering hydro@:>@]
      )],
      [with_hydro="$withval"],
      [with_hydro="gadget2"]
@@ -1603,9 +1646,35 @@ case "$with_hydro" in
       AC_DEFINE([WITH_ENGINEERING], [1], [Engineering SPH enabled])
       with_engineering = "yes"
    ;;
+   LaminarSPS)
+     AC_DEFINE([LAMINAR_SPS_SPH], [1], [Euler SPH with Laminar SPS])
+     AC_DEFINE([WITH_ENGINEERING], [1], [Engineering SPH enabled])
+     with_engineering = "yes"
+  ;;
    *)
       AC_MSG_ERROR([Unknown hydrodynamics scheme: $with_hydro])
    ;;
+esac
+
+AC_ARG_ENABLE([density-diffusion],
+    [AS_HELP_STRING([--enable-density-diffusion],
+       [Activate density diffusion. Options @<:@ Molteni09, None. Default: None@<:@]
+   )],
+   [enable_density_diffusion="$enableval"],
+   [enable_density_diffusion="None"]
+)
+
+case "$enable_density_diffusion" in
+  None)
+    AC_DEFINE([NO_DENSITY_DIFFUSION], [1], [No Density Diffusion])
+;;
+  Molteni09)
+    AC_DEFINE([MOLTENI09_DIFFUSION], [1], [Molteni09 Density Diffusion])
+;;
+  *)
+    AC_MSG_ERROR([Unknown density diffusion scheme: $enable_density_diffusion])
+;;
+
 esac
 
 # Check if debugging interactions stars is switched on.
@@ -1741,6 +1810,9 @@ case "$with_eos" in
    ;;
    tait)
      AC_DEFINE([EOS_TAIT], [1], [Tait equation of state])
+   ;;
+   multifluid_tait)
+     AC_DEFINE([EOS_MULTIFLUID_TAIT], [1], [Tait equation of state for multifluid])
    ;;
    *)
       AC_MSG_ERROR([Unknown equation of state: $with_eos])
@@ -2251,7 +2323,9 @@ AC_MSG_RESULT([
    FoF activated:       : $enable_fof
    Engineering enabled  : $with_engineering
    Engineering boundary : $with_boundary
+   Moving Boundary      : $with_moving_boundary
    Exact cells enabled  : $enable_exact_cells
+   Particle shifting    : $with_particle_shifting
 
    Hydro scheme       : $with_hydro
    Dimensionality     : $with_dimension

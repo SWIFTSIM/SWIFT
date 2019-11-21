@@ -59,6 +59,8 @@
 #include "./hydro/Euler_art_vis/hydro_parameters.h"
 #elif defined(MORRIS_FOX_ZHU_97_SPH)
 #include "./hydro/MorrisFoxZhu97/hydro_parameters.h"
+#elif defined(LAMINAR_SPS_SPH)
+#include "./hydro/LaminarSPS/hydro_parameters.h"
 #else
 #error "Invalid choice of SPH variant"
 #endif

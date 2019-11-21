@@ -2186,13 +2186,13 @@ void space_parts_get_cell_index_mapper(void *map_data, int nr_parts,
 
 //#ifdef SWIFT_DEBUG_CHECKS
     if (index < 0 || index >= cdim[0] * cdim[1] * cdim[2])
-      error("Invalid index=%d cdim=[%d %d %d] p->x=[%e %e %e]", index, cdim[0],
-            cdim[1], cdim[2], pos_x, pos_y, pos_z);
+      error("Invalid index=%d cdim=[%d %d %d] p->x=[%e %e %e] a=[%e %e %e] v=[%e %e %e] old_v=[%e %e %e] pid=%lli h=%f", index, cdim[0],
+            cdim[1], cdim[2], pos_x, pos_y, pos_z, p->a_hydro[0], p->a_hydro[1], p->a_hydro[2], p->v[0], p->v[1], p->v[2], p->v_minus1[0],  p->v_minus1[1],  p->v_minus1[2], p->id, p->h);
 
     if (pos_x >= dim_x || pos_y >= dim_y || pos_z >= dim_z || pos_x < 0. ||
         pos_y < 0. || pos_z < 0.)
-      error("Particle outside of simulation box. p->x=[%e %e %e] original p->x=[%e %e %e] oldpos = [%e %e %e]", pos_x, pos_y,
-            pos_z, p->x[0], p->x[1], p->x[2], old_pos_x, old_pos_y, old_pos_z);
+      error("Particle outside of simulation box. p->x=[%e %e %e] original p->x=[%e %e %e] oldpos = [%e %e %e] v=[%e %e %e] old_v=[%e %e %e], pid=%lli", pos_x, pos_y,
+            pos_z, p->x[0], p->x[1], p->x[2], old_pos_x, old_pos_y, old_pos_z, p->v[0], p->v[1], p->v[2], p->v_minus1[0],  p->v_minus1[1],  p->v_minus1[2], p->id);
  
 //#endif
 

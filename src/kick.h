@@ -28,6 +28,7 @@
 #include "debug.h"
 #include "stars.h"
 #include "timeline.h"
+#include "boundary_movement.h"
 
 /**
  * @brief Perform the 'kick' operation on a #gpart
@@ -87,7 +88,10 @@ __attribute__((always_inline)) INLINE static void kick_part(
     const struct entropy_floor_properties *entropy_floor_props,
     integertime_t ti_start, integertime_t ti_end) {
     if(p->since_euler >= 50) p->since_euler = 0;
-
+    apply_boundary_motion(p, ti_start);
+    if(!p->is_boundary){
+      compute_particle_shifting(p, dt_kick_hydro);
+    }
 
     if(p->since_euler == 0){
       double temp = p->rho;
@@ -96,10 +100,11 @@ __attribute__((always_inline)) INLINE static void kick_part(
 /*    if(p->id == 65744){
          printf("p->rho = %e, drho = %e, diff = %e\n", p->rho, p->drho_dt * dt_kick_hydro, p->rho - 1e-3);
       }*/
-
-      p->x[0] = p->x[0] + p->v[0]*dt_kick_hydro + 0.5*p->a_hydro[0]*dt_kick_hydro*dt_kick_hydro;
-      p->x[1] = p->x[1] + p->v[1]*dt_kick_hydro + 0.5*p->a_hydro[1]*dt_kick_hydro*dt_kick_hydro;
-      p->x[2] = p->x[2] + p->v[2]*dt_kick_hydro + 0.5*p->a_hydro[2]*dt_kick_hydro*dt_kick_hydro;
+/*      if(!p->is_boundary){*/
+        p->x[0] = p->x[0] + p->v[0]*dt_kick_hydro + 0.5*p->a_hydro[0]*dt_kick_hydro*dt_kick_hydro;
+        p->x[1] = p->x[1] + p->v[1]*dt_kick_hydro + 0.5*p->a_hydro[1]*dt_kick_hydro*dt_kick_hydro;
+        p->x[2] = p->x[2] + p->v[2]*dt_kick_hydro + 0.5*p->a_hydro[2]*dt_kick_hydro*dt_kick_hydro;
+/*      }*/
 
       temp = p->v[0];
       p->v[0] = p->v[0] + p->a_hydro[0]*dt_kick_hydro;
@@ -112,17 +117,25 @@ __attribute__((always_inline)) INLINE static void kick_part(
       temp = p->v[2];
       p->v[2] = p->v[2] + p->a_hydro[2]*dt_kick_hydro;
       p->v_minus1[2] = temp;
+#if defined(EOS_MULTIFLUID_TAIT)
+      p->pressure = pressure_from_density(p->rho, p->rho_base);
+/*  if(p->id == 462){
+    printf("rho=%e, rho_base=%e, pressure=%e drho=%e\n", p->rho, p->rho_base, p->pressure, p->drho_dt*dt_kick_hydro);
+  }*/
+#else
       p->pressure = pressure_from_density(p->rho);
+#endif
 
 
     }else{
       double temp = p->rho;
       p->rho = p->rho_t_minus1 + 2*dt_kick_hydro*p->drho_dt;
       p->rho_t_minus1 = temp;
-
-      p->x[0] = p->x[0] + p->v[0]*dt_kick_hydro + 0.5*p->a_hydro[0]*dt_kick_hydro*dt_kick_hydro;
-      p->x[1] = p->x[1] + p->v[1]*dt_kick_hydro + 0.5*p->a_hydro[1]*dt_kick_hydro*dt_kick_hydro;
-      p->x[2] = p->x[2] + p->v[2]*dt_kick_hydro + 0.5*p->a_hydro[2]*dt_kick_hydro*dt_kick_hydro;
+//      if(!p->is_boundary){
+        p->x[0] = p->x[0] + p->v[0]*dt_kick_hydro + 0.5*p->a_hydro[0]*dt_kick_hydro*dt_kick_hydro;
+        p->x[1] = p->x[1] + p->v[1]*dt_kick_hydro + 0.5*p->a_hydro[1]*dt_kick_hydro*dt_kick_hydro;
+        p->x[2] = p->x[2] + p->v[2]*dt_kick_hydro + 0.5*p->a_hydro[2]*dt_kick_hydro*dt_kick_hydro;
+//      }
       temp = p->v[0];
       p->v[0] = p->v_minus1[0] + 2*p->a_hydro[0]*dt_kick_hydro;
       p->v_minus1[0] = temp;
@@ -134,17 +147,27 @@ __attribute__((always_inline)) INLINE static void kick_part(
       temp = p->v[2];
       p->v[2] = p->v_minus1[2] + 2*p->a_hydro[2]*dt_kick_hydro;
       p->v_minus1[2] = temp;
+#if defined(EOS_MULTIFLUID_TAIT)
+      p->pressure = pressure_from_density(p->rho, p->rho_base);
+  if(p->id == 462){
+    printf("rho=%e, rho_base=%e, pressure=%e drho=%e\n", p->rho, p->rho_base, p->pressure, p->drho_dt*dt_kick_hydro);
+  }
+#else
       p->pressure = pressure_from_density(p->rho);
+#endif
 
-      if(p->id == 65744){
-         printf("p->rho = %.11e, drho = %.11e, drho_dt = %.11e\n", p->rho, p->drho_dt * dt_kick_hydro, p->drho_dt);
-      }
+//      if(p->id == 65744){
+//         printf("p->rho = %.11e, drho = %.11e, drho_dt = %.11e\n", p->rho, p->drho_dt * dt_kick_hydro, p->drho_dt);
+//      }
 
     }
     p->since_euler += 1;
   /* Compute offsets since last cell construction */
   for (int k = 0; k < 3; k++) {
     const float dx = p->v[k]*dt_kick_hydro + 0.5*p->a_hydro[k]*dt_kick_hydro*dt_kick_hydro;
+    if(dx != dx){
+      error("NaN found %e %e %e %e %e %i", p->v[k], p->a_hydro[k], p->rho, p->rho_base, p->pressure, p->is_boundary);
+    }
     xp->x_diff[k] -= dx;
     xp->x_diff_sort[k] -= dx;
   }
