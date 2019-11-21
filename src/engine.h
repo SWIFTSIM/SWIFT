@@ -77,7 +77,7 @@ enum engine_policy {
   engine_policy_black_holes = (1 << 19),
   engine_policy_fof = (1 << 20),
   engine_policy_timestep_limiter = (1 << 21),
-  engine_policy_timestep_sync = (1 << 22)
+  engine_policy_timestep_sync = (1 << 22),
   engine_policy_engineering = (1 << 23)
 };
 #define engine_maxpolicy 24

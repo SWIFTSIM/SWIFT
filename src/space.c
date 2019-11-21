@@ -2153,9 +2153,9 @@ void space_parts_get_cell_index_mapper(void *map_data, int nr_parts,
     /* Get the particle */
     struct part *restrict p = &parts[k];
 
-    const double old_pos_x = (p->x[0] + dim_x) - dim_x;
-    const double old_pos_y = (p->x[1] + dim_y) - dim_y;
-    const double old_pos_z = (p->x[2] + dim_z) - dim_z;
+    double old_pos_x = (p->x[0] + dim_x) - dim_x;
+    double old_pos_y = (p->x[1] + dim_y) - dim_y;
+    double old_pos_z = (p->x[2] + dim_z) - dim_z;
    
     if (periodic && dithering && p->time_bin != time_bin_not_created) {
       old_pos_x += delta_dithering_x;

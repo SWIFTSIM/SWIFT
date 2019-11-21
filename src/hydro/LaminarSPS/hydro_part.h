@@ -22,6 +22,7 @@
 #include "chemistry_struct.h"
 #include "cooling_struct.h"
 #include "star_formation_struct.h"
+#include "timestep_limiter_struct.h"
 #include "tracers_struct.h"
 #include "black_holes_struct.h"
 #include "density_diffusion_part_data.h"
@@ -113,6 +114,9 @@ struct part {
   struct density_diffusion_part_data density_diffusive_data;
   /* Extra data only required for the particle shifting. */
   struct particle_shifting_part_data particle_shifting_data;
+
+  /*! Time-step limiter information */
+  struct timestep_limiter_data limiter_data;
 
   /* Particle time-bin */
   timebin_t time_bin;

@@ -451,23 +451,4 @@ __attribute__((always_inline)) INLINE static void runner_iact_nonsym_force(
 }
 //#endif
 
-/**
- * @brief Timestep limiter loop
- */
-__attribute__((always_inline)) INLINE static void runner_iact_limiter(
-    float r2, const float *dx, float hi, float hj, struct part *restrict pi,
-    struct part *restrict pj, float a, float H) {
-
-  /* Nothing to do here if both particles are active */
-}
-
-/**
- * @brief Timestep limiter loop (non-symmetric version)
- */
-__attribute__((always_inline)) INLINE static void runner_iact_nonsym_limiter(
-    float r2, const float *dx, float hi, float hj, struct part *restrict pi,
-    struct part *restrict pj, float a, float H) {
-
-}
-
 #endif /* SWIFT_MINIMAL_HYDRO_IACT_H */
