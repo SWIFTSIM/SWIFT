@@ -207,7 +207,7 @@ INLINE static void hydro_write_particles(const struct part* parts,
       "Co-moving smoothing lengths (FWHM of the kernel) of the particles");
 
   list[4] = io_make_output_field_convert_part(
-      "InternalEnergy", FLOAT, 1, UNIT_CONV_ENERGY_PER_UNIT_MASS,
+      "InternalEnergies", FLOAT, 1, UNIT_CONV_ENERGY_PER_UNIT_MASS,
       3.f * hydro_gamma_minus_one, parts, xparts, convert_u,
       "Co-moving thermal energies per unit mass of the particles");
 
