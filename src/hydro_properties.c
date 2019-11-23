@@ -274,6 +274,7 @@ void hydro_props_print_snapshot(hid_t h_grpsph, const struct hydro_props *p) {
   io_write_attribute_f(h_grpsph, "Kernel target N_ngb", p->target_neighbours);
   io_write_attribute_f(h_grpsph, "Kernel delta N_ngb", p->delta_neighbours);
   io_write_attribute_f(h_grpsph, "Kernel eta", p->eta_neighbours);
+  io_write_attribute_f(h_grpsph, "Kernel gamma", kernel_gamma);
   io_write_attribute_f(h_grpsph, "Smoothing length tolerance", p->h_tolerance);
   io_write_attribute_f(h_grpsph, "Maximal smoothing length [internal units]",
                        p->h_max);
