@@ -2819,9 +2819,8 @@ void engine_addtasks_send_mapper(void *map_data, int num_elements,
     struct cell *cj = cell_type_pairs[k].cj;
     const int type = cell_type_pairs[k].type;
 
-    /* Find the proxy for this task. */
-    int pid = 0;
-    while (pid < e->nr_proxies && e->proxies[pid].nodeID != cj->nodeID) pid++;
+    /* Find the proxy for this task's destination node. */
+    const int pid = e->proxy_ind[cj->nodeID];
 
     /* Add the send task for the particle timesteps. */
     // engine_addtasks_send_timestep(e, ci, cj, NULL, NULL, with_limiter);
@@ -2868,9 +2867,8 @@ void engine_addtasks_recv_mapper(void *map_data, int num_elements,
     struct cell *ci = cell_type_pairs[k].ci;
     const int type = cell_type_pairs[k].type;
 
-    /* Find the proxy for this task. */
-    int pid = 0;
-    while (pid < e->nr_proxies && e->proxies[pid].nodeID != ci->nodeID) pid++;
+    /* Find the proxy for this task's source node. */
+    const int pid = e->proxy_ind[ci->nodeID];
 
     /* Add the recv tasks for the cells in the proxy that have a hydro
      * connection. */
