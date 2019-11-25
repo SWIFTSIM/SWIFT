@@ -445,6 +445,9 @@ hydro_set_velocity(struct part *restrict p, struct xpart *restrict xp, const flo
   p->gpart->v_full[0] = v[0];
   p->gpart->v_full[1] = v[1];
   p->gpart->v_full[2] = v[2];
+  p->v[0] = v[0];
+  p->v[1] = v[1];
+  p->v[2] = v[2];
 }
 
 /**

@@ -39,22 +39,22 @@ inline void compute_kick_speed(struct xpart *xp, const struct feedback_props *fe
 
   /* Calculate circular velocity based on Baryonic Tully-Fisher relation*/
   // ALEXEI: check whether this formula is correct wrt comoving coordinates
-  const float v_circ = pow(xp->feedback_data.host_galaxy_mass/feedback_props->simba_host_galaxy_mass_norm, feedback_props->simba_v_circ_exp);
+  const float v_circ = pow(xp->feedback_data.host_galaxy_mass/feedback_props->simba_host_galaxy_mass_norm, feedback_props->simba_v_circ_exp);// *
+                       //cbrt(cosmo->H);
 
   /* checkout what this random number does and how to generate it */
-  const float random_num = 1.;
+  //const float random_num = 1.;
 
   /* Calculate wind speed */
   // ALEXEI: checkout what the numbers in this equation mean. Maybe possible future simplifications
   xp->feedback_data.v_kick = feedback_props->galsf_firevel 
       * pow(v_circ * cosmo->a /feedback_props->scale_factor_norm,feedback_props->galsf_firevel_slope) 
-      * pow(feedback_props->scale_factor_norm,0.12 - feedback_props->galsf_firevel_slope)
-      * (1. - feedback_props->vwvf_scatter - 2.*feedback_props->vwvf_scatter*random_num)
+      //* pow(feedback_props->scale_factor_norm,0.12 - feedback_props->galsf_firevel_slope) // this term seems to be just =1 since exponent is zero
+      //* (1. - feedback_props->vwvf_scatter - 2.*feedback_props->vwvf_scatter*random_num)  // check if this randomness is necessary
       * v_circ;
 
   // ALEXEI: temporarily set to arbitrary number for testing.
-  //xp->feedback_data.v_kick = 500.;
-  //xp->feedback_data.v_kick = 1.e-3;
+  xp->feedback_data.v_kick = 0.e1;
 
 }
 
@@ -239,17 +239,19 @@ __attribute__((always_inline)) INLINE static void launch_wind(
   for (int i = 0; i < 3; i++) v_new[i] = v_new[i]*xp->feedback_data.v_kick/v_new_norm + p->v[i]; 
 
   /* Set the velocity */
-  hydro_set_velocity(p, xp, v_new);
+  //message("particle %llu old velocity %.5e %.5e %.5e", p->id, p->v[0], p->v[1], p->v[2]);
+  //hydro_set_velocity(p, xp, v_new);
+  //message("particle %llu new velocity %.5e %.5e %.5e", p->id, p->v[0], p->v[1], p->v[2]);
 
   /* Heat particle */
   // probability GALSF_SUBGRID HOTWIND = 0.3 in SIMBA
   // Make sure star particle doesn't heat multiple times, i.e. it only launches eta*sm
   // Reinstate random heating
   //if (rand_heat > prob_heat) {
-    const float u_init = hydro_get_physical_internal_energy(p, xp, cosmo);
-    const float u_new = u_init + xp->feedback_data.u_extra;
-    hydro_set_physical_internal_energy(p, xp, cosmo, u_new);
-    hydro_set_drifted_physical_internal_energy(p, cosmo, u_new);
+    //const float u_init = hydro_get_physical_internal_energy(p, xp, cosmo);
+    //const float u_new = u_init + xp->feedback_data.u_extra;
+    //hydro_set_physical_internal_energy(p, xp, cosmo, u_new);
+    //hydro_set_drifted_physical_internal_energy(p, cosmo, u_new);
   //}
 
   /* Set delaytime before which the particle cannot interact */
@@ -258,7 +260,7 @@ __attribute__((always_inline)) INLINE static void launch_wind(
   // ALEXEI: debugging print statement
   //if (p->id == SIMBA_DEBUG_ID) message("spart id %llu decoupled particle %llu delay_time %.5e rand %.5e prob %.5e", si->id, p->id, p->delay_time, rand_kick, prob_kick);
   //message("decoupled particle %llu delay_time %.5e new velocity %.5e", p->id, p->delay_time, sqrt(v_new[0]*v_new[0]+v_new[1]*v_new[1]+v_new[2]*v_new[2]));
-  //if (p->id <= SIMBA_DEBUG_ID) message("decoupled particle %llu position %.5e %.5e %.5e velocity %.5e %.5e %.5e delay time %.5e", p->id, p->x[0], p->x[1], p->x[2], p->v[0], p->v[1], p->v[2], p->delay_time);
+  //if (p->id <= SIMBA_DEBUG_ID) message("decoupled particle %llu position %.5e %.5e %.5e velocity %.5e %.5e %.5e kick %.5e delay time %.5e", p->id, p->x[0], p->x[1], p->x[2], p->v[0], p->v[1], p->v[2], xp->feedback_data.v_kick, p->delay_time);
 
 #ifdef SWIFT_DEBUG_CHECKS
   p->ti_decoupled = ti_current;
@@ -281,7 +283,7 @@ __attribute__((always_inline)) INLINE static void star_formation_feedback(
   compute_mass_loading(xp, feedback_props);
 
   /* Compute residual heating */
-  compute_heating(p, xp, feedback_props);
+  //compute_heating(p, xp, feedback_props);
 
   /* Launch wind */
   launch_wind(p, xp, feedback_props, cosmo, ti_current);
