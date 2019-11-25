@@ -74,6 +74,9 @@ void engine_addtasks_send_gravity(struct engine *e, struct cell *ci,
   struct scheduler *s = &e->sched;
   const int nodeID = cj->nodeID;
 
+  /* Early abort (are we below the level where tasks are)? */
+  if (!cell_get_flag(ci, cell_flag_has_tasks)) return;
+
   /* Check if any of the gravity tasks are for the target node. */
   for (l = ci->grav.grav; l != NULL; l = l->next)
     if (l->t->ci->nodeID == nodeID ||
@@ -289,6 +292,9 @@ void engine_addtasks_send_stars(struct engine *e, struct cell *ci,
   struct scheduler *s = &e->sched;
   const int nodeID = cj->nodeID;
 
+  /* Early abort (are we below the level where tasks are)? */
+  if (!cell_get_flag(ci, cell_flag_has_tasks)) return;
+
   if (t_sf_counts == NULL && with_star_formation && ci->hydro.count > 0) {
 #ifdef SWIFT_DEBUG_CHECKS
     if (ci->depth != 0)
@@ -379,6 +385,9 @@ void engine_addtasks_send_black_holes(struct engine *e, struct cell *ci,
   struct link *l = NULL;
   struct scheduler *s = &e->sched;
   const int nodeID = cj->nodeID;
+
+  /* Early abort (are we below the level where tasks are)? */
+  if (!cell_get_flag(ci, cell_flag_has_tasks)) return;
 
   /* Check if any of the density tasks are for the target node. */
   for (l = ci->black_holes.density; l != NULL; l = l->next)
@@ -473,6 +482,9 @@ void engine_addtasks_recv_hydro(struct engine *e, struct cell *c,
                                 struct task *t_gradient, struct task *t_ti) {
 #ifdef WITH_MPI
   struct scheduler *s = &e->sched;
+
+  /* Early abort (are we below the level where tasks are)? */
+  if (!cell_get_flag(c, cell_flag_has_tasks)) return;
 
   /* Have we reached a level where there are any hydro tasks ? */
   if (t_xv == NULL && c->hydro.density != NULL) {
@@ -571,6 +583,9 @@ void engine_addtasks_recv_stars(struct engine *e, struct cell *c,
 #ifdef WITH_MPI
   struct scheduler *s = &e->sched;
 
+  /* Early abort (are we below the level where tasks are)? */
+  if (!cell_get_flag(c, cell_flag_has_tasks)) return;
+
   if (t_sf_counts == NULL && with_star_formation && c->hydro.count > 0) {
 #ifdef SWIFT_DEBUG_CHECKS
     if (c->depth != 0)
@@ -661,6 +676,9 @@ void engine_addtasks_recv_black_holes(struct engine *e, struct cell *c,
 #ifdef WITH_MPI
   struct scheduler *s = &e->sched;
 
+  /* Early abort (are we below the level where tasks are)? */
+  if (!cell_get_flag(c, cell_flag_has_tasks)) return;
+
   /* Have we reached a level where there are any black_holes tasks ? */
   if (t_rho == NULL && c->black_holes.density != NULL) {
 
@@ -750,6 +768,9 @@ void engine_addtasks_recv_gravity(struct engine *e, struct cell *c,
 #ifdef WITH_MPI
   struct scheduler *s = &e->sched;
 
+  /* Early abort (are we below the level where tasks are)? */
+  if (!cell_get_flag(c, cell_flag_has_tasks)) return;
+
   /* Have we reached a level where there are any gravity tasks ? */
   if (t_grav == NULL && c->grav.grav != NULL) {
 #ifdef SWIFT_DEBUG_CHECKS
@@ -820,24 +841,33 @@ void engine_make_hierarchical_tasks_common(struct engine *e, struct cell *c) {
       c->kick1 = scheduler_addtask(s, task_type_kick1, task_subtype_none, 0, 0,
                                    c, NULL);
 
-#if defined(WITH_LOGGER)
-      c->logger = scheduler_addtask(s, task_type_logger, task_subtype_none, 0,
-                                    0, c, NULL);
-#endif
-
       c->kick2 = scheduler_addtask(s, task_type_kick2, task_subtype_none, 0, 0,
                                    c, NULL);
+
+#if defined(WITH_LOGGER)
+      /* Add the hydro logger task. */
+      c->logger = scheduler_addtask(s, task_type_logger, task_subtype_none, 0,
+                                    0, c, NULL);
+
+      /* Add the kick2 dependency */
+      scheduler_addunlock(s, c->kick2, c->logger);
+
+      /* Create a variable in order to avoid to many ifdef */
+      struct task *kick2_or_logger = c->logger;
+#else
+      struct task *kick2_or_logger = c->kick2;
+#endif
 
       /* Add the time-step calculation task and its dependency */
       c->timestep = scheduler_addtask(s, task_type_timestep, task_subtype_none,
                                       0, 0, c, NULL);
 
-      scheduler_addunlock(s, c->kick2, c->timestep);
+      scheduler_addunlock(s, kick2_or_logger, c->timestep);
       scheduler_addunlock(s, c->timestep, c->kick1);
 
       /* Subgrid tasks: star formation */
       if (with_star_formation && c->hydro.count > 0) {
-        scheduler_addunlock(s, c->kick2, c->top->hydro.star_formation);
+        scheduler_addunlock(s, kick2_or_logger, c->top->hydro.star_formation);
         scheduler_addunlock(s, c->top->hydro.star_formation, c->timestep);
       }
 
@@ -850,10 +880,6 @@ void engine_make_hierarchical_tasks_common(struct engine *e, struct cell *c) {
         scheduler_addunlock(s, c->timestep, c->timestep_limiter);
         scheduler_addunlock(s, c->timestep_limiter, c->kick1);
       }
-
-#if defined(WITH_LOGGER)
-      scheduler_addunlock(s, c->kick1, c->logger);
-#endif
     }
   } else { /* We are above the super-cell so need to go deeper */
 
@@ -1112,7 +1138,11 @@ void engine_make_hierarchical_tasks_hydro(struct engine *e, struct cell *c,
         c->stars.ghost = scheduler_addtask(s, task_type_stars_ghost,
                                            task_subtype_none, 0, 0, c, NULL);
 
+#ifdef WITH_LOGGER
+        scheduler_addunlock(s, c->super->logger, c->stars.stars_in);
+#else
         scheduler_addunlock(s, c->super->kick2, c->stars.stars_in);
+#endif
         scheduler_addunlock(s, c->stars.stars_out, c->super->timestep);
 
         if (with_star_formation && c->hydro.count > 0) {
@@ -1142,7 +1172,11 @@ void engine_make_hierarchical_tasks_hydro(struct engine *e, struct cell *c,
         c->black_holes.swallow_ghost[2] = scheduler_addtask(
             s, task_type_bh_swallow_ghost3, task_subtype_none, 0, 0, c, NULL);
 
+#ifdef WITH_LOGGER
+        scheduler_addunlock(s, c->super->logger, c->black_holes.black_holes_in);
+#else
         scheduler_addunlock(s, c->super->kick2, c->black_holes.black_holes_in);
+#endif
         scheduler_addunlock(s, c->black_holes.black_holes_out,
                             c->super->timestep);
       }
@@ -1763,8 +1797,21 @@ void engine_make_extra_hydroloop_tasks_mapper(void *map_data, int num_elements,
     const enum task_types t_type = t->type;
     const enum task_subtypes t_subtype = t->subtype;
     const long long flags = t->flags;
-    struct cell *ci = t->ci;
-    struct cell *cj = t->cj;
+    struct cell *const ci = t->ci;
+    struct cell *const cj = t->cj;
+
+    /* Escape early */
+    if (t->type == task_type_none) continue;
+
+#ifdef WITH_LOGGER
+    struct task *const ci_super_kick2_or_logger = ci->super->logger;
+    struct task *const cj_super_kick2_or_logger =
+        (cj == NULL) ? NULL : cj->super->logger;
+#else
+    struct task *const ci_super_kick2_or_logger = ci->super->kick2;
+    struct task *const cj_super_kick2_or_logger =
+        (cj == NULL) ? NULL : cj->super->kick2;
+#endif
 
     /* Sort tasks depend on the drift of the cell (gas version). */
     if (t_type == task_type_sort && ci->nodeID == nodeID) {
@@ -1910,7 +1957,7 @@ void engine_make_extra_hydroloop_tasks_mapper(void *map_data, int num_elements,
       }
 
       if (with_limiter) {
-        scheduler_addunlock(sched, ci->super->kick2, t_limiter);
+        scheduler_addunlock(sched, ci_super_kick2_or_logger, t_limiter);
         scheduler_addunlock(sched, t_limiter, ci->super->timestep);
         scheduler_addunlock(sched, t_limiter, ci->super->timestep_limiter);
       }
@@ -2098,7 +2145,7 @@ void engine_make_extra_hydroloop_tasks_mapper(void *map_data, int num_elements,
         }
 
         if (with_limiter) {
-          scheduler_addunlock(sched, ci->super->kick2, t_limiter);
+          scheduler_addunlock(sched, ci_super_kick2_or_logger, t_limiter);
           scheduler_addunlock(sched, t_limiter, ci->super->timestep);
           scheduler_addunlock(sched, t_limiter, ci->super->timestep_limiter);
         }
@@ -2173,7 +2220,7 @@ void engine_make_extra_hydroloop_tasks_mapper(void *map_data, int num_elements,
           }
 
           if (with_limiter) {
-            scheduler_addunlock(sched, cj->super->kick2, t_limiter);
+            scheduler_addunlock(sched, cj_super_kick2_or_logger, t_limiter);
             scheduler_addunlock(sched, t_limiter, cj->super->timestep);
             scheduler_addunlock(sched, t_limiter, cj->super->timestep_limiter);
           }
@@ -2339,7 +2386,7 @@ void engine_make_extra_hydroloop_tasks_mapper(void *map_data, int num_elements,
       }
 
       if (with_limiter) {
-        scheduler_addunlock(sched, ci->super->kick2, t_limiter);
+        scheduler_addunlock(sched, ci_super_kick2_or_logger, t_limiter);
         scheduler_addunlock(sched, t_limiter, ci->super->timestep);
         scheduler_addunlock(sched, t_limiter, ci->super->timestep_limiter);
       }
@@ -2531,7 +2578,7 @@ void engine_make_extra_hydroloop_tasks_mapper(void *map_data, int num_elements,
         }
 
         if (with_limiter) {
-          scheduler_addunlock(sched, ci->super->kick2, t_limiter);
+          scheduler_addunlock(sched, ci_super_kick2_or_logger, t_limiter);
           scheduler_addunlock(sched, t_limiter, ci->super->timestep);
           scheduler_addunlock(sched, t_limiter, ci->super->timestep_limiter);
         }
@@ -2607,7 +2654,7 @@ void engine_make_extra_hydroloop_tasks_mapper(void *map_data, int num_elements,
           }
 
           if (with_limiter) {
-            scheduler_addunlock(sched, cj->super->kick2, t_limiter);
+            scheduler_addunlock(sched, cj_super_kick2_or_logger, t_limiter);
             scheduler_addunlock(sched, t_limiter, cj->super->timestep);
             scheduler_addunlock(sched, t_limiter, cj->super->timestep_limiter);
           }
@@ -2954,7 +3001,7 @@ void engine_make_fof_tasks(struct engine *e) {
   tic = getticks();
 
   /* Split the tasks. */
-  scheduler_splittasks(sched, /*fof_tasks=*/1);
+  scheduler_splittasks(sched, /*fof_tasks=*/1, e->verbose);
 
   if (e->verbose)
     message("Splitting FOF tasks took %.3f %s.",
@@ -3029,7 +3076,7 @@ void engine_maketasks(struct engine *e) {
   tic2 = getticks();
 
   /* Split the tasks. */
-  scheduler_splittasks(sched, /*fof_tasks=*/0);
+  scheduler_splittasks(sched, /*fof_tasks=*/0, e->verbose);
 
   if (e->verbose)
     message("Splitting tasks took %.3f %s.",

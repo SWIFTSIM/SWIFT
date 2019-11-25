@@ -1,3 +1,6 @@
+MetaData:
+  run_name:   EAGLE-L0012N0188-Ref
+
 # Define the system of units to use internally. 
 InternalUnitSystem:
   UnitMass_in_cgs:     1.98848e43    # 10^10 M_sun in grams
@@ -43,9 +46,11 @@ Statistics:
 Gravity:
   eta:                    0.025     # Constant dimensionless multiplier for time integration.
   theta:                  0.7       # Opening angle (Multipole acceptance criterion)
-  comoving_softening:     0.0026994 # Comoving softening length (in internal units).
-  max_physical_softening: 0.0007    # Physical softening length (in internal units).
   mesh_side_length:       32
+  comoving_DM_softening:         0.0026994 # Comoving DM softening length (in internal units).
+  max_physical_DM_softening:     0.0007    # Max physical DM softening length (in internal units).
+  comoving_baryon_softening:     0.0026994 # Comoving DM softening length (in internal units).
+  max_physical_baryon_softening: 0.0007    # Max physical DM softening length (in internal units).
   
 # Parameters for the hydrodynamics scheme
 SPH:
@@ -54,6 +59,13 @@ SPH:
   CFL_condition:         0.1      # Courant-Friedrich-Levy condition for time integration.
   minimal_temperature:   100      # (internal units)
 
+# Parameters of the stars neighbour search
+Stars:
+  resolution_eta:        1.1642   # Target smoothing length in units of the mean inter-particle separation
+  h_tolerance:           7e-3
+  overwrite_birth_time:  1
+  birth_time:            0.33333  # Pretend all the stars were born at z = 2
+  
 # Parameters for the Friends-Of-Friends algorithm
 FOF:
   basename:                        fof_output  # Filename for the FOF outputs.

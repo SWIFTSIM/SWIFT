@@ -273,8 +273,10 @@ struct pcell_sf {
   } stars;
 };
 
-/** Bitmasks for the cell flags. Beware when adding flags that you don't exceed
-    the size of the flags variable in the struct cell. */
+/**
+ * @brief Bitmasks for the cell flags. Beware when adding flags that you don't
+ * exceed the size of the flags variable in the struct cell.
+ */
 enum cell_flags {
   cell_flag_split = (1UL << 0),
   cell_flag_do_hydro_drift = (1UL << 1),
@@ -289,7 +291,8 @@ enum cell_flags {
   cell_flag_do_stars_sub_drift = (1UL << 10),
   cell_flag_do_bh_drift = (1UL << 11),
   cell_flag_do_bh_sub_drift = (1UL << 12),
-  cell_flag_do_stars_resort = (1UL << 13)
+  cell_flag_do_stars_resort = (1UL << 13),
+  cell_flag_has_tasks = (1UL << 14),
 };
 
 /**
@@ -759,8 +762,10 @@ struct cell {
   /*! The task to limit the time-step of inactive particles */
   struct task *timestep_limiter;
 
+#ifdef WITH_LOGGER
   /*! The logger task */
   struct task *logger;
+#endif
 
   /*! Minimum dimension, i.e. smallest edge of this cell (min(width)). */
   float dmin;
@@ -861,8 +866,10 @@ int cell_populate_counts_and_offsets_for_hydro_tasks(const struct cell *c,
                                                      int *counts, int *offsets);
 int cell_count_gparts_for_tasks(const struct cell *c);
 void cell_clean_links(struct cell *c, void *data);
-void cell_make_multipoles(struct cell *c, integertime_t ti_current);
-void cell_check_multipole(struct cell *c);
+void cell_make_multipoles(struct cell *c, integertime_t ti_current,
+                          const struct gravity_props *const grav_props);
+void cell_check_multipole(struct cell *c,
+                          const struct gravity_props *const grav_props);
 void cell_check_foreign_multipole(const struct cell *c);
 void cell_clean(struct cell *c);
 void cell_check_part_drift_point(struct cell *c, void *data);

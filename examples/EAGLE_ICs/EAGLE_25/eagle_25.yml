@@ -38,10 +38,12 @@ Statistics:
 # Parameters for the self-gravity scheme
 Gravity:
   eta:                    0.025     # Constant dimensionless multiplier for time integration.
-  theta:                  0.7       # Opening angle (Multipole acceptance criterion)
-  comoving_softening:     0.0026994 # Comoving softening length (in internal units).
-  max_physical_softening: 0.0007    # Physical softening length (in internal units).
+  theta:                  0.5       # Opening angle (Multipole acceptance criterion)
   mesh_side_length:       128
+  comoving_DM_softening:         0.0026994 # Comoving DM softening length (in internal units).
+  max_physical_DM_softening:     0.0007    # Max physical DM softening length (in internal units).
+  comoving_baryon_softening:     0.0026994 # Comoving DM softening length (in internal units).
+  max_physical_baryon_softening: 0.0007    # Max physical DM softening length (in internal units).
   
 # Parameters for the hydrodynamics scheme
 SPH:
@@ -50,6 +52,11 @@ SPH:
   CFL_condition:         0.1      # Courant-Friedrich-Levy condition for time integration.
   minimal_temperature:   100.0    # (internal units)
   initial_temperature:   268.7
+
+# Parameters of the stars neighbour search
+Stars:
+  resolution_eta:        1.1642   # Target smoothing length in units of the mean inter-particle separation
+  h_tolerance:           7e-3
 
 # Parameters for the Friends-Of-Friends algorithm
 FOF:
@@ -62,7 +69,6 @@ FOF:
 
 Scheduler:
   max_top_level_cells:   16
-  cell_split_size:       100
   tasks_per_cell:        5
 
 Restarts:

@@ -568,6 +568,7 @@ static void scheduler_splittask_hydro(struct task *t, struct scheduler *s) {
     if (!is_self && !is_pair) {
       t->type = task_type_none;
       t->subtype = task_subtype_none;
+      t->ci = NULL;
       t->cj = NULL;
       t->skip = 1;
       break;
@@ -600,7 +601,10 @@ static void scheduler_splittask_hydro(struct task *t, struct scheduler *s) {
           /* Add the self tasks. */
           int first_child = 0;
           while (ci->progeny[first_child] == NULL) first_child++;
+
           t->ci = ci->progeny[first_child];
+          cell_set_flag(t->ci, cell_flag_has_tasks);
+
           for (int k = first_child + 1; k < 8; k++) {
             /* Do we have a non-empty progenitor? */
             if (ci->progeny[k] != NULL &&
@@ -710,8 +714,12 @@ static void scheduler_splittask_hydro(struct task *t, struct scheduler *s) {
           /* Loop over the sub-cell pairs for the current sid and add new tasks
            * for them. */
           struct cell_split_pair *csp = &cell_split_pairs[sid];
+
           t->ci = ci->progeny[csp->pairs[0].pid];
           t->cj = cj->progeny[csp->pairs[0].pjd];
+          cell_set_flag(t->ci, cell_flag_has_tasks);
+          cell_set_flag(t->cj, cell_flag_has_tasks);
+
           t->flags = csp->pairs[0].sid;
           for (int k = 1; k < csp->count; k++) {
             scheduler_splittask_hydro(
@@ -767,6 +775,7 @@ static void scheduler_splittask_gravity(struct task *t, struct scheduler *s) {
     if ((t->ci == NULL) || (t->type == task_type_pair && t->cj == NULL)) {
       t->type = task_type_none;
       t->subtype = task_subtype_none;
+      t->ci = NULL;
       t->cj = NULL;
       t->skip = 1;
       break;
@@ -794,7 +803,9 @@ static void scheduler_splittask_gravity(struct task *t, struct scheduler *s) {
           /* Add the self tasks. */
           int first_child = 0;
           while (ci->progeny[first_child] == NULL) first_child++;
+
           t->ci = ci->progeny[first_child];
+          cell_set_flag(t->ci, cell_flag_has_tasks);
 
           for (int k = first_child + 1; k < 8; k++)
             if (ci->progeny[k] != NULL)
@@ -912,6 +923,7 @@ static void scheduler_splittask_fof(struct task *t, struct scheduler *s) {
         t->ci->grav.count == 0 || (t->cj != NULL && t->cj->grav.count == 0)) {
       t->type = task_type_none;
       t->subtype = task_subtype_none;
+      t->ci = NULL;
       t->cj = NULL;
       t->skip = 1;
       break;
@@ -1025,8 +1037,19 @@ void scheduler_splittasks_mapper(void *map_data, int num_elements,
  * @param s The #scheduler.
  * @param fof_tasks Are we splitting the FOF tasks (1)? Or the regular tasks
  * (0)?
+ * @param verbose Are we talkative?
  */
-void scheduler_splittasks(struct scheduler *s, const int fof_tasks) {
+void scheduler_splittasks(struct scheduler *s, const int fof_tasks,
+                          const int verbose) {
+
+  if (verbose) {
+    message("space_subsize_self_hydro= %d", space_subsize_self_hydro);
+    message("space_subsize_pair_hydro= %d", space_subsize_pair_hydro);
+    message("space_subsize_self_stars= %d", space_subsize_self_stars);
+    message("space_subsize_pair_stars= %d", space_subsize_pair_stars);
+    message("space_subsize_self_grav= %d", space_subsize_self_grav);
+    message("space_subsize_pair_grav= %d", space_subsize_pair_grav);
+  }
 
   if (fof_tasks) {
     /* Call the mapper on each current task. */
@@ -1085,6 +1108,9 @@ struct task *scheduler_addtask(struct scheduler *s, enum task_types type,
 #endif
   t->tic = 0;
   t->toc = 0;
+
+  if (ci != NULL) cell_set_flag(ci, cell_flag_has_tasks);
+  if (cj != NULL) cell_set_flag(cj, cell_flag_has_tasks);
 
   /* Add an index for it. */
   // lock_lock( &s->lock );
@@ -1575,14 +1601,6 @@ void scheduler_enqueue_mapper(void *map_data, int num_elements,
  * @param s The #scheduler.
  */
 void scheduler_start(struct scheduler *s) {
-  /* Reset all task timers. */
-  for (int i = 0; i < s->nr_tasks; ++i) {
-    s->tasks[i].tic = 0;
-    s->tasks[i].toc = 0;
-#ifdef SWIFT_DEBUG_TASKS
-    s->tasks[i].rid = -1;
-#endif
-  }
 
   /* Re-wait the tasks. */
   if (s->active_count > 1000) {

@@ -58,7 +58,7 @@ INLINE static void determine_imf_bins(
 #endif
 
   const int N_bins = eagle_feedback_N_imf_bins;
-  const float *imf_bins_log10 = feedback_props->imf_mass_bin_log10;
+  const double *const imf_bins_log10 = feedback_props->imf_mass_bin_log10;
 
   /* Check whether lower mass is within the IMF mass bin range */
   log10_min_mass = max(log10_min_mass, imf_bins_log10[0]);
@@ -91,19 +91,19 @@ INLINE static void determine_imf_bins(
  * yield-weighted integration.
  * @param feedback_props the #feedback_props data structure
  */
-INLINE static float integrate_imf(const float log10_min_mass,
-                                  const float log10_max_mass,
-                                  const enum eagle_imf_integration_type mode,
-                                  const float *stellar_yields,
-                                  const struct feedback_props *feedback_props) {
+INLINE static double integrate_imf(
+    const double log10_min_mass, const double log10_max_mass,
+    const enum eagle_imf_integration_type mode,
+    const double stellar_yields[eagle_feedback_N_imf_bins],
+    const struct feedback_props *feedback_props) {
 
   /* Pull out some common terms */
-  const float *imf = feedback_props->imf;
-  const float *imf_mass_bin = feedback_props->imf_mass_bin;
-  const float *imf_mass_bin_log10 = feedback_props->imf_mass_bin_log10;
+  const double *imf = feedback_props->imf;
+  const double *imf_mass_bin = feedback_props->imf_mass_bin;
+  const double *imf_mass_bin_log10 = feedback_props->imf_mass_bin_log10;
 
   /* IMF mass bin spacing in log10 space. Assumes uniform spacing. */
-  const float imf_log10_mass_bin_size =
+  const double imf_log10_mass_bin_size =
       imf_mass_bin_log10[1] - imf_mass_bin_log10[0];
 
   /* Determine bins to integrate over based on integration bounds */
@@ -112,7 +112,7 @@ INLINE static float integrate_imf(const float log10_min_mass,
                      feedback_props);
 
   /* Array for the integrand */
-  float integrand[eagle_feedback_N_imf_bins];
+  double integrand[eagle_feedback_N_imf_bins];
 
   /* Add up the contribution from each of the IMF mass bins */
   switch (mode) {
@@ -153,7 +153,7 @@ INLINE static float integrate_imf(const float log10_min_mass,
   }
 
   /* Integrate using trapezoidal rule */
-  float result = 0.f;
+  double result = 0.;
   for (int i = i_min; i < i_max + 1; i++) {
     result += integrand[i];
   }
@@ -163,31 +163,31 @@ INLINE static float integrate_imf(const float log10_min_mass,
   result -= 0.5 * (integrand[i_min] + integrand[i_max]);
 
   /* Correct first bin */
-  const float first_bin_offset =
+  const double first_bin_offset =
       (log10_min_mass - imf_mass_bin_log10[i_min]) / imf_log10_mass_bin_size;
 
-  if (first_bin_offset < 0.5f) {
+  if (first_bin_offset < 0.5) {
     result -= first_bin_offset * integrand[i_min];
   } else {
-    result -= 0.5f * integrand[i_min];
-    result -= (first_bin_offset - 0.5f) * integrand[i_min + 1];
+    result -= 0.5 * integrand[i_min];
+    result -= (first_bin_offset - 0.5) * integrand[i_min + 1];
   }
 
   /* Correct last bin */
-  const float last_bin_offset =
+  const double last_bin_offset =
       (log10_max_mass - imf_mass_bin_log10[i_max - 1]) /
       imf_log10_mass_bin_size;
 
   if (last_bin_offset < 0.5) {
-    result -= 0.5f * integrand[i_max];
-    result -= (0.5f - last_bin_offset) * integrand[i_max - 1];
+    result -= 0.5 * integrand[i_max];
+    result -= (0.5 - last_bin_offset) * integrand[i_max - 1];
   } else {
-    result -= (1.f - last_bin_offset) * integrand[i_max];
+    result -= (1.0 - last_bin_offset) * integrand[i_max];
   }
 
   /* The IMF is tabulated in log10, multiply by log10(mass bin size) to get
    * result of integrating IMF */
-  return result * imf_log10_mass_bin_size * ((float)M_LN10);
+  return result * imf_log10_mass_bin_size * M_LN10;
 }
 
 /**
@@ -207,19 +207,19 @@ INLINE static void init_imf(struct feedback_props *feedback_props) {
   /* Allocate IMF array */
   if (swift_memalign("imf-tables", (void **)&feedback_props->imf,
                      SWIFT_STRUCT_ALIGNMENT,
-                     eagle_feedback_N_imf_bins * sizeof(float)) != 0)
+                     eagle_feedback_N_imf_bins * sizeof(double)) != 0)
     error("Failed to allocate IMF bins table");
 
   /* Allocate array to store IMF mass bins */
   if (swift_memalign("imf-tables", (void **)&feedback_props->imf_mass_bin,
                      SWIFT_STRUCT_ALIGNMENT,
-                     eagle_feedback_N_imf_bins * sizeof(float)) != 0)
+                     eagle_feedback_N_imf_bins * sizeof(double)) != 0)
     error("Failed to allocate IMF bins table");
 
   /* Allocate array to store IMF mass bins in log10 space */
   if (swift_memalign("imf-tables", (void **)&feedback_props->imf_mass_bin_log10,
                      SWIFT_STRUCT_ALIGNMENT,
-                     eagle_feedback_N_imf_bins * sizeof(float)) != 0)
+                     eagle_feedback_N_imf_bins * sizeof(double)) != 0)
     error("Failed to allocate IMF bins table");
 
   /* Set IMF from Chabrier 2003, PASP, 115, 763
@@ -271,11 +271,9 @@ INLINE static void init_imf(struct feedback_props *feedback_props) {
  * @param feedback_props the #feedback_props data structure.
  * @return Mass of stars died up to that age in solar masses.
  */
-INLINE static float dying_mass_msun(
-    const float age_Gyr, const float Z,
+INLINE static double dying_mass_msun(
+    const double age_Gyr, const double Z,
     const struct feedback_props *feedback_props) {
-
-  // MATTHIEU check this!!!
 
   /* Pull out some common terms */
   const double *lifetime_Z = feedback_props->lifetimes.metallicity;
@@ -285,62 +283,69 @@ INLINE static float dying_mass_msun(
   const int n_m = eagle_feedback_lifetime_N_masses;
 
   /* Early abort? */
-  if (age_Gyr <= 0.f) {
+  if (age_Gyr <= 0.) {
     return feedback_props->imf_max_mass_msun;
   }
 
-  const float log10_age_yr = log10f(age_Gyr * 1e9f);
+  const double log10_age_yr = log10(age_Gyr * 1.0e9);
 
   /* Calculate index along the metallicity axis */
   int Z_index;
-  float Z_offset;
+  double Z_offset;
   if (Z <= lifetime_Z[0]) {
 
     /* Before start of the table */
     Z_index = 0;
-    Z_offset = 0.f;
+    Z_offset = 0.;
 
   } else if (Z >= lifetime_Z[n_Z - 1]) {
 
     /* After end of the table */
     Z_index = n_Z - 2;
-    Z_offset = 1.f;
+    Z_offset = 1.;
 
   } else {
 
     /* Normal case: Somewhere inside the table */
-    for (Z_index = 0; Z_index < n_Z - 1; Z_index++) {
-      if (lifetime_Z[Z_index + 1] > Z) break;
+    Z_index = 0;
+    while (Z_index < n_Z - 1 && lifetime_Z[Z_index + 1] <= Z) {
+      Z_index++;
     }
+
+#ifdef SWIFT_DEBUG_CHECKS
+    if (Z_index >= n_Z) error("Z_index is beyond the range  of the table");
+#endif
 
     Z_offset = (Z - lifetime_Z[Z_index]) /
                (lifetime_Z[Z_index + 1] - lifetime_Z[Z_index]);
   }
 
-  /* Check whether we are not beyond the table */
+  /* Check whether we are not beyond the age table for the low metallicity end
+   */
   int time_index_lowZ = -1;
-  float time_offset_lowZ = 0.f;
+  double time_offset_lowZ = 0.;
   if (log10_age_yr >= dying_times[Z_index][0]) {
 
     /* Before start of the table */
     time_index_lowZ = 0;
-    time_offset_lowZ = 0.f;
+    time_offset_lowZ = 0.;
 
   } else if (log10_age_yr <= dying_times[Z_index][n_m - 1]) {
 
     /* After end of the table */
     time_index_lowZ = n_m - 2;
-    time_offset_lowZ = 1.0;
+    time_offset_lowZ = 1.;
   }
 
-  /* Check whether we are not beyond the table */
+  /* Check whether we are not beyond the age table for the high metallicity end
+   */
   int time_index_highZ = -1;
-  float time_offset_highZ = 0.f;
+  double time_offset_highZ = 0.;
   if (log10_age_yr >= dying_times[Z_index + 1][0]) {
 
     /* Before start of the table */
     time_index_highZ = 0;
-    time_offset_highZ = 0.f;
+    time_offset_highZ = 0.;
 
   } else if (log10_age_yr <= dying_times[Z_index + 1][n_m - 1]) {
 
@@ -350,11 +355,9 @@ INLINE static float dying_mass_msun(
   }
 
   /* Search the table starting from the largest times until we reach
-     a solution for the two bounds */
-  int i = n_m;
-  while (i >= 0 && (time_index_lowZ == -1 || time_index_highZ == -1)) {
-
-    i--;
+     a solution for the low-metallicity bound */
+  int i = n_m - 1;
+  while (i >= 0 && time_index_lowZ == -1) {
 
     if (dying_times[Z_index][i] >= log10_age_yr && time_index_lowZ == -1) {
 
@@ -366,7 +369,20 @@ INLINE static float dying_mass_msun(
           (log10_age_yr - dying_times[Z_index][time_index_lowZ]) /
           (dying_times[Z_index][time_index_lowZ + 1] -
            dying_times[Z_index][time_index_lowZ]);
+
+      break;
     }
+    i--;
+  }
+
+#ifdef SWIFT_DEBUG_CHECKS
+  if (time_index_lowZ == -1) error("Could not find low-metallicity bound!");
+#endif
+
+  /* Search the table starting from the largest times until we reach
+     a solution for the high-metallicity bound */
+  i = n_m - 1;
+  while (i >= 0 && time_index_highZ == -1) {
 
     if (dying_times[Z_index + 1][i] >= log10_age_yr && time_index_highZ == -1) {
 
@@ -378,16 +394,23 @@ INLINE static float dying_mass_msun(
           (log10_age_yr - dying_times[Z_index + 1][time_index_highZ]) /
           (dying_times[Z_index + 1][time_index_highZ + 1] -
            dying_times[Z_index + 1][time_index_highZ]);
+
+      break;
     }
+    i--;
   }
 
+#ifdef SWIFT_DEBUG_CHECKS
+  if (time_index_highZ == -1) error("Could not find high-metallicity bound!");
+#endif
+
   /* And now interpolate the solution */
-  const float mass_low_Z =
+  const double mass_low_Z =
       interpolate_1d(lifetime_m, time_index_lowZ, time_offset_lowZ);
-  const float mass_high_Z =
+  const double mass_high_Z =
       interpolate_1d(lifetime_m, time_index_highZ, time_offset_highZ);
 
-  float mass = (1.f - Z_offset) * mass_low_Z + Z_offset * mass_high_Z;
+  double mass = (1. - Z_offset) * mass_low_Z + Z_offset * mass_high_Z;
 
   /* Check that we haven't killed too many stars */
   mass = min(mass, feedback_props->imf_max_mass_msun);

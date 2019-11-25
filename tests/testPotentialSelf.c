@@ -115,7 +115,8 @@ int main(int argc, char *argv[]) {
 
   struct gravity_props props;
   props.a_smooth = 1.25;
-  props.epsilon_cur = eps;
+  props.epsilon_DM_cur = eps;
+  props.epsilon_baryon_cur = eps;
   e.gravity_properties = &props;
 
   struct runner r;
