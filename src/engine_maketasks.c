@@ -472,42 +472,41 @@ void engine_addtasks_send_black_holes(struct engine *e, struct cell *ci,
  *
  * @param e The #engine.
  * @param c The foreign #cell.
+ * @param proxy_id The ID of the #proxy associated with the receiving cell.
  * @param t_xv The recv_xv #task, if it has already been created.
  * @param t_rho The recv_rho #task, if it has already been created.
  * @param t_gradient The recv_gradient #task, if it has already been created.
  * @param t_ti The recv_ti_end #task, if it has already been created.
  */
-void engine_addtasks_recv_hydro(struct engine *e, struct cell *c,
+void engine_addtasks_recv_hydro(struct engine *e, struct cell *c, int proxy_id,
                                 struct task *t_xv, struct task *t_rho,
                                 struct task *t_gradient, struct task *t_ti) {
 #ifdef WITH_MPI
   struct scheduler *s = &e->sched;
 
-  /* Early abort (are we below the level where tasks are)? */
-  if (!cell_get_flag(c, cell_flag_has_tasks)) return;
+  /* If this cell has to be received, add the tasks. */
+  if (c->mpi.attach_send_recv_for_proxy & (1ULL << proxy_id)) {
 
-  /* Have we reached a level where there are any hydro tasks ? */
-  if (t_xv == NULL && c->hydro.density != NULL) {
 #ifdef SWIFT_DEBUG_CHECKS
     /* Make sure this cell has a valid tag. */
     if (c->mpi.tag < 0) error("Trying to receive from untagged cell.");
 #endif  // SWIFT_DEBUG_CHECKS
 
-    /* Create the tasks. */
-    t_xv = scheduler_addtask(s, task_type_recv, task_subtype_xv, c->mpi.tag, 0,
-                             c, NULL);
-    t_rho = scheduler_addtask(s, task_type_recv, task_subtype_rho, c->mpi.tag,
-                              0, c, NULL);
+    /* Create the recv tasks if they have not been provided. */
+    if (t_xv == NULL) {
+      t_xv = scheduler_addtask(s, task_type_recv, task_subtype_xv, proxy_id, 0,
+                               c, NULL);
+      t_rho = scheduler_addtask(s, task_type_recv, task_subtype_rho, proxy_id,
+                                0, c, NULL);
 #ifdef EXTRA_HYDRO_LOOP
-    t_gradient = scheduler_addtask(s, task_type_recv, task_subtype_gradient,
-                                   c->mpi.tag, 0, c, NULL);
+      t_gradient = scheduler_addtask(s, task_type_recv, task_subtype_gradient,
+                                     proxy_id, 0, c, NULL);
 #endif
 
-    t_ti = scheduler_addtask(s, task_type_recv, task_subtype_tend_part,
-                             c->mpi.tag, 0, c, NULL);
-  }
+      t_ti = scheduler_addtask(s, task_type_recv, task_subtype_tend_part,
+                               proxy_id, 0, c, NULL);
+    }
 
-  if (t_xv != NULL) {
     engine_addlink(e, &c->mpi.recv, t_xv);
     engine_addlink(e, &c->mpi.recv, t_rho);
 #ifdef EXTRA_HYDRO_LOOP
@@ -558,8 +557,8 @@ void engine_addtasks_recv_hydro(struct engine *e, struct cell *c,
   if (c->split)
     for (int k = 0; k < 8; k++)
       if (c->progeny[k] != NULL)
-        engine_addtasks_recv_hydro(e, c->progeny[k], t_xv, t_rho, t_gradient,
-                                   t_ti);
+        engine_addtasks_recv_hydro(e, c->progeny[k], proxy_id, t_xv, t_rho,
+                                   t_gradient, t_ti);
 
 #else
   error("SWIFT was not compiled with MPI support.");
@@ -2869,10 +2868,14 @@ void engine_addtasks_recv_mapper(void *map_data, int num_elements,
     struct cell *ci = cell_type_pairs[k].ci;
     const int type = cell_type_pairs[k].type;
 
+    /* Find the proxy for this task. */
+    int pid = 0;
+    while (pid < e->nr_proxies && e->proxies[pid].nodeID != ci->nodeID) pid++;
+
     /* Add the recv tasks for the cells in the proxy that have a hydro
      * connection. */
     if ((e->policy & engine_policy_hydro) && (type & proxy_cell_type_hydro))
-      engine_addtasks_recv_hydro(e, ci, /*t_xv=*/NULL, /*t_rho=*/NULL,
+      engine_addtasks_recv_hydro(e, ci, pid, /*t_xv=*/NULL, /*t_rho=*/NULL,
                                  /*t_gradient=*/NULL, /*t_ti=*/NULL);
 
     /* Add the recv tasks for the cells in the proxy that have a stars
