@@ -1171,31 +1171,29 @@ void engine_allocate_foreign_particles(struct engine *e) {
   struct gpart *gparts = s->gparts_foreign;
   struct spart *sparts = s->sparts_foreign;
   struct bpart *bparts = s->bparts_foreign;
-  for (int k = 0; k < nr_proxies; k++) {
-    for (int j = 0; j < e->proxies[k].nr_cells_in; j++) {
+  for (int pid = 0; pid < nr_proxies; pid++) {
+    const struct proxy *p = &e->proxies[pid];
+    for (int j = 0; j < p->nr_cells_in; j++) {
 
-      if (e->proxies[k].cells_in_type[j] & proxy_cell_type_hydro) {
-
+      if (p->cells_in_type[j] & proxy_cell_type_hydro) {
         const size_t count_parts =
-            cell_link_foreign_parts(e->proxies[k].cells_in[j], parts);
+            cell_link_foreign_parts(p->cells_in[j], pid, parts);
         parts = &parts[count_parts];
       }
 
-      if (e->proxies[k].cells_in_type[j] & proxy_cell_type_gravity) {
-
+      if (p->cells_in_type[j] & proxy_cell_type_gravity) {
         const size_t count_gparts =
-            cell_link_foreign_gparts(e->proxies[k].cells_in[j], gparts);
+            cell_link_foreign_gparts(p->cells_in[j], gparts);
         gparts = &gparts[count_gparts];
       }
 
       /* For stars, we just use the numbers in the top-level cells */
-      cell_link_sparts(e->proxies[k].cells_in[j], sparts);
-      sparts =
-          &sparts[e->proxies[k].cells_in[j]->stars.count + space_extra_sparts];
+      cell_link_sparts(p->cells_in[j], sparts);
+      sparts = &sparts[p->cells_in[j]->stars.count + space_extra_sparts];
 
       /* For black holes, we just use the numbers in the top-level cells */
-      cell_link_bparts(e->proxies[k].cells_in[j], bparts);
-      bparts = &bparts[e->proxies[k].cells_in[j]->black_holes.count];
+      cell_link_bparts(p->cells_in[j], bparts);
+      bparts = &bparts[p->cells_in[j]->black_holes.count];
     }
   }
 

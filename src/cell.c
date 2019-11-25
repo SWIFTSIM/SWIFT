@@ -318,11 +318,12 @@ int cell_link_bparts(struct cell *c, struct bpart *bparts) {
  * level.
  *
  * @param c The #cell.
+ * @param proxy_id The offset of the #proxy from which we receive the parts.
  * @param parts The #part array.
  *
  * @return The number of particles linked.
  */
-int cell_link_foreign_parts(struct cell *c, struct part *parts) {
+int cell_link_foreign_parts(struct cell *c, int proxy_id, struct part *parts) {
 #ifdef WITH_MPI
 
 #ifdef SWIFT_DEBUG_CHECKS
@@ -330,16 +331,11 @@ int cell_link_foreign_parts(struct cell *c, struct part *parts) {
     error("Linking foreign particles in a local cell!");
 #endif
 
-  /* Do we have a hydro task at this level? */
-  if (cell_get_recv(c, task_subtype_xv) != NULL) {
+  /* Do we have hydro interactions with the given proxy at this level? */
+  if (c->mpi.attach_send_recv_for_proxy & (1ULL << proxy_id)) {
 
     /* Recursively attach the parts */
-    const int counts = cell_link_parts(c, parts);
-#ifdef SWIFT_DEBUG_CHECKS
-    if (counts != c->hydro.count)
-      error("Something is wrong with the foreign counts");
-#endif
-    return counts;
+    return cell_link_parts(c, parts);
   }
 
   /* Go deeper to find the level where the tasks are */
@@ -347,13 +343,15 @@ int cell_link_foreign_parts(struct cell *c, struct part *parts) {
     int count = 0;
     for (int k = 0; k < 8; k++) {
       if (c->progeny[k] != NULL) {
-        count += cell_link_foreign_parts(c->progeny[k], &parts[count]);
+        count +=
+            cell_link_foreign_parts(c->progeny[k], proxy_id, &parts[count]);
       }
     }
     return count;
-  } else {
-    return 0;
   }
+
+  /* Otherwise do nothing. */
+  return 0;
 
 #else
   error("Calling linking of foregin particles in non-MPI mode.");
