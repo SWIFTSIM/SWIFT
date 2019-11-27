@@ -87,6 +87,20 @@ __attribute__((always_inline)) INLINE static void hydro_gradients_finalize(
 #endif
 
 /**
+ * @brief Extrapolate the given gradient over the given distance.
+ *
+ * @param gradient Gradient of a quantity.
+ * @param dx Distance vector.
+ * @return Change in the quantity after a displacement along the given distance
+ * vector.
+ */
+__attribute__((always_inline)) INLINE static float hydro_gradients_extrapolate(
+    const float* gradient, const float* dx) {
+
+  return gradient[0] * dx[0] + gradient[1] * dx[1] + gradient[2] * dx[2];
+}
+
+/**
  * @brief Gradients reconstruction. Is the same for all gradient types (although
  * gradients_none does nothing, since all gradients are zero -- are they?).
  */
@@ -105,18 +119,18 @@ __attribute__((always_inline)) INLINE static void hydro_gradients_predict(
   hydro_part_get_gradients(pj, drho_j, dvx_j, dvy_j, dvz_j, dP_j);
 
   float dWi[5];
-  dWi[0] = drho_i[0] * xij_i[0] + drho_i[1] * xij_i[1] + drho_i[2] * xij_i[2];
-  dWi[1] = dvx_i[0] * xij_i[0] + dvx_i[1] * xij_i[1] + dvx_i[2] * xij_i[2];
-  dWi[2] = dvy_i[0] * xij_i[0] + dvy_i[1] * xij_i[1] + dvy_i[2] * xij_i[2];
-  dWi[3] = dvz_i[0] * xij_i[0] + dvz_i[1] * xij_i[1] + dvz_i[2] * xij_i[2];
-  dWi[4] = dP_i[0] * xij_i[0] + dP_i[1] * xij_i[1] + dP_i[2] * xij_i[2];
+  dWi[0] = hydro_gradients_extrapolate(drho_i, xij_i);
+  dWi[1] = hydro_gradients_extrapolate(dvx_i, xij_i);
+  dWi[2] = hydro_gradients_extrapolate(dvy_i, xij_i);
+  dWi[3] = hydro_gradients_extrapolate(dvz_i, xij_i);
+  dWi[4] = hydro_gradients_extrapolate(dP_i, xij_i);
 
   float dWj[5];
-  dWj[0] = drho_j[0] * xij_j[0] + drho_j[1] * xij_j[1] + drho_j[2] * xij_j[2];
-  dWj[1] = dvx_j[0] * xij_j[0] + dvx_j[1] * xij_j[1] + dvx_j[2] * xij_j[2];
-  dWj[2] = dvy_j[0] * xij_j[0] + dvy_j[1] * xij_j[1] + dvy_j[2] * xij_j[2];
-  dWj[3] = dvz_j[0] * xij_j[0] + dvz_j[1] * xij_j[1] + dvz_j[2] * xij_j[2];
-  dWj[4] = dP_j[0] * xij_j[0] + dP_j[1] * xij_j[1] + dP_j[2] * xij_j[2];
+  dWj[0] = hydro_gradients_extrapolate(drho_j, xij_j);
+  dWj[1] = hydro_gradients_extrapolate(dvx_j, xij_j);
+  dWj[2] = hydro_gradients_extrapolate(dvy_j, xij_j);
+  dWj[3] = hydro_gradients_extrapolate(dvz_j, xij_j);
+  dWj[4] = hydro_gradients_extrapolate(dP_j, xij_j);
 
   /* Apply the slope limiter at this interface */
   hydro_slope_limit_face(Wi, Wj, dWi, dWj, xij_i, xij_j, r);
