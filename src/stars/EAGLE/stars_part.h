@@ -103,6 +103,11 @@ struct spart {
   /*! Particle time bin */
   timebin_t time_bin;
 
+#ifdef WITH_LOGGER
+  /* Additional data for the particle logger */
+  struct logger_part_data logger_data;
+#endif
+
 #ifdef SWIFT_DEBUG_CHECKS
 
   /* Time of the last drift */

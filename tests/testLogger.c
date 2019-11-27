@@ -51,12 +51,13 @@ void test_log_parts(struct logger_writer *log) {
           logger_mask_data[logger_a].mask | logger_mask_data[logger_u].mask |
           logger_mask_data[logger_h].mask | logger_mask_data[logger_rho].mask |
           logger_mask_data[logger_consts].mask,
-      &offset);
+      &offset, /* special flags */ 0);
   printf("Wrote part at offset %#016zx.\n", offset);
 
   /* Write only the position. */
   p.x[0] = 2.0;
-  logger_log_part(log, &p, logger_mask_data[logger_x].mask, &offset);
+  logger_log_part(log, &p, logger_mask_data[logger_x].mask, &offset,
+                  /* special flags */ 0);
   printf("Wrote part at offset %#016zx.\n", offset);
 
   /* Write the position and velocity. */
@@ -65,7 +66,7 @@ void test_log_parts(struct logger_writer *log) {
   logger_log_part(
       log, &p,
       logger_mask_data[logger_x].mask | logger_mask_data[logger_v].mask,
-      &offset);
+      &offset, /* special flags */ 0);
   printf("Wrote part at offset %#016zx.\n", offset);
 
   /* Recover the last part from the dump. */
@@ -126,12 +127,13 @@ void test_log_gparts(struct logger_writer *log) {
       logger_mask_data[logger_x].mask | logger_mask_data[logger_v].mask |
           logger_mask_data[logger_a].mask | logger_mask_data[logger_h].mask |
           logger_mask_data[logger_consts].mask,
-      &offset);
+      &offset, /* special flags */ 0);
   printf("Wrote gpart at offset %#016zx.\n", offset);
 
   /* Write only the position. */
   p.x[0] = 2.0;
-  logger_log_gpart(log, &p, logger_mask_data[logger_x].mask, &offset);
+  logger_log_gpart(log, &p, logger_mask_data[logger_x].mask, &offset,
+                   /* special flags */ 0);
   printf("Wrote gpart at offset %#016zx.\n", offset);
 
   /* Write the position and velocity. */
@@ -140,7 +142,7 @@ void test_log_gparts(struct logger_writer *log) {
   logger_log_gpart(
       log, &p,
       logger_mask_data[logger_x].mask | logger_mask_data[logger_v].mask,
-      &offset);
+      &offset, /* special flags */ 0);
   printf("Wrote gpart at offset %#016zx.\n", offset);
 
   /* Recover the last part from the dump. */

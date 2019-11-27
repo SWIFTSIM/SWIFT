@@ -55,11 +55,13 @@ enum IO_DATA_TYPE {
   LONG,
   LONGLONG,
   UINT,
+  UINT64,
   ULONG,
   ULONGLONG,
   FLOAT,
   DOUBLE,
-  CHAR
+  CHAR,
+  SIZE_T,
 };
 
 #if defined(HAVE_HDF5)

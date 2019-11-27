@@ -56,4 +56,3 @@ StructureFinding:
   basename:             ./stf
   scale_factor_first:   0.1       # z = 9
   delta_time:           1.04
-

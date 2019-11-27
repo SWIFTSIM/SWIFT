@@ -1952,7 +1952,8 @@ void engine_init_particles(struct engine *e, int flag_entropy_ICs,
                        &e->logger->timestamp_offset);
   /* Make sure that we have enough space in the particle logger file
    * to store the particles in current time step. */
-  logger_ensure_size(e->logger, e->total_nr_parts, e->total_nr_gparts, 0);
+  logger_ensure_size(e->logger, s->nr_parts, s->nr_gparts, s->nr_sparts);
+  logger_write_description(e->logger, e);
 #endif
 
   /* Now, launch the calculation */
@@ -2264,7 +2265,8 @@ void engine_step(struct engine *e) {
                        &e->logger->timestamp_offset);
   /* Make sure that we have enough space in the particle logger file
    * to store the particles in current time step. */
-  logger_ensure_size(e->logger, e->total_nr_parts, e->total_nr_gparts, 0);
+  logger_ensure_size(e->logger, e->s->nr_parts, e->s->nr_gparts,
+                     e->s->nr_sparts);
 #endif
 
   /* Are we drifting everything (a la Gadget/GIZMO) ? */
@@ -2353,6 +2355,9 @@ void engine_step(struct engine *e) {
   engine_dump_restarts(e, 0, e->restart_onexit && engine_is_done(e));
 
   engine_check_for_dumps(e);
+#ifdef WITH_LOGGER
+  engine_check_for_index_dump(e);
+#endif
 
   TIMER_TOC2(timer_step);
 
@@ -2382,7 +2387,7 @@ void engine_check_for_dumps(struct engine *e) {
     output_none,
     output_snapshot,
     output_statistics,
-    output_stf
+    output_stf,
   };
 
   /* What kind of output do we want? And at which time ?
@@ -2440,6 +2445,7 @@ void engine_check_for_dumps(struct engine *e) {
 
     /* Write some form of output */
     switch (type) {
+
       case output_snapshot:
 
         /* Do we want a corresponding VELOCIraptor output? */
@@ -2455,13 +2461,8 @@ void engine_check_for_dumps(struct engine *e) {
 #endif
         }
 
-          /* Dump... */
-#ifdef WITH_LOGGER
-        /* Write a file containing the offsets in the particle logger. */
-        engine_dump_index(e);
-#else
+        /* Dump... */
         engine_dump_snapshot(e);
-#endif
 
         /* Free the memory allocated for VELOCIraptor i/o. */
         if (with_stf && e->snapshot_invoke_stf && e->s->gpart_group_data) {
@@ -2547,6 +2548,38 @@ void engine_check_for_dumps(struct engine *e) {
     cosmology_update(e->cosmology, e->physical_constants, e->ti_current);
   e->max_active_bin = max_active_bin;
   e->time = time;
+}
+
+/**
+ * @brief Check whether an index file has to be written during this
+ * step.
+ *
+ * @param e The #engine.
+ */
+void engine_check_for_index_dump(struct engine *e) {
+#ifdef WITH_LOGGER
+  /* Get a few variables */
+  struct logger_writer *log = e->logger;
+  const size_t dump_size = log->dump.count;
+  const size_t old_dump_size = log->index.dump_size_last_output;
+  const float mem_frac = log->index.mem_frac;
+  const size_t total_nr_parts =
+      (e->total_nr_parts + e->total_nr_gparts + e->total_nr_sparts +
+       e->total_nr_bparts + e->total_nr_DM_background_gparts);
+  const size_t index_file_size =
+      total_nr_parts * sizeof(struct logger_part_data);
+
+  /* Check if we should write a file */
+  if (mem_frac * (dump_size - old_dump_size) > index_file_size) {
+    /* Write an index file */
+    engine_dump_index(e);
+
+    /* Update the dump size for last output */
+    log->index.dump_size_last_output = dump_size;
+  }
+#else
+  error("This function should not be called without the logger.");
+#endif
 }
 
 /**
@@ -3217,8 +3250,7 @@ void engine_dump_index(struct engine *e) {
   }
 
   /* Dump... */
-  write_index_single(e, e->logger->base_name, e->internal_units,
-                     e->snapshot_units);
+  logger_write_index_file(e->logger, e);
 
   /* Flag that we dumped a snapshot */
   e->step_props |= engine_step_prop_logger_index;

@@ -74,10 +74,16 @@ struct logger_particle {
   float mass;
 
   /* unique id. */
-  size_t id;
+  long long id;
 
   /* time of the record. */
   double time;
+
+  /* offset of the particle */
+  size_t offset;
+
+  /* The particle type */
+  int type;
 };
 
 /**

@@ -1,6 +1,7 @@
 /*******************************************************************************
  * This file is part of SWIFT.
  * Copyright (c) 2017 Pedro Gonnet (pedro.gonnet@durham.ac.uk)
+ *               2018 Loic Hausammann (loic.hausammann@epfl.ch)
  *
  * This program is free software: you can redistribute it and/or modify
  * it under the terms of the GNU Lesser General Public License as published
@@ -19,6 +20,8 @@
 #ifndef SWIFT_LOGGER_H
 #define SWIFT_LOGGER_H
 
+#include "../config.h"
+
 #ifdef WITH_LOGGER
 
 /* Includes. */
@@ -35,7 +38,7 @@ struct part;
 struct engine;
 
 #define logger_major_version 0
-#define logger_minor_version 1
+#define logger_minor_version 2
 
 /**
  * Logger entries contain messages representing the particle data at a given
@@ -84,8 +87,11 @@ enum logger_masks_number {
   logger_h = 4,
   logger_rho = 5,
   logger_consts = 6,
-  logger_timestamp = 7,  /* expect it to be before count. */
-  logger_count_mask = 8, /* Need to be the last. */
+  logger_special_flags =
+      7,                 /* < 0 for MPI rank changes, 0 for none,
+                            > 0 for particle type changes, > part_type for deletion */
+  logger_timestamp = 8,  /* expect it to be before count. */
+  logger_count_mask = 9, /* Need to be the last. */
 } __attribute__((packed));
 
 struct mask_data {
@@ -104,13 +110,23 @@ extern const struct mask_data logger_mask_data[logger_count_mask];
 /* Size of the strings. */
 #define logger_string_length 200
 
-/* structure containing global data. */
+/**
+ * @brief structure containing global data for the particle logger.
+ */
 struct logger_writer {
   /* Number of particle steps between dumping a chunk of data. */
   short int delta_step;
 
   /* Logger basename. */
   char base_name[logger_string_length];
+
+  struct {
+    /* The total memory fraction reserved for the index files. */
+    float mem_frac;
+
+    /* Size of the dump since at the last output */
+    size_t dump_size_last_output;
+  } index;
 
   /*  Dump file (In the reader, the dump is cleaned, therefore it is renamed
    * logfile). */
@@ -133,16 +149,21 @@ struct logger_part_data {
   int steps_since_last_output;
 
   /* offset of last particle log entry. */
-  size_t last_offset;
+  uint64_t last_offset;
 };
 
 /* Function prototypes. */
 int logger_compute_chunk_size(unsigned int mask);
 void logger_log_all(struct logger_writer *log, const struct engine *e);
 void logger_log_part(struct logger_writer *log, const struct part *p,
-                     unsigned int mask, size_t *offset);
+                     unsigned int mask, size_t *offset,
+                     const int special_flags);
+void logger_log_spart(struct logger_writer *log, const struct spart *p,
+                      unsigned int mask, size_t *offset,
+                      const int special_flags);
 void logger_log_gpart(struct logger_writer *log, const struct gpart *p,
-                      unsigned int mask, size_t *offset);
+                      unsigned int mask, size_t *offset,
+                      const int special_flags);
 void logger_init(struct logger_writer *log, struct swift_params *params);
 void logger_free(struct logger_writer *log);
 void logger_log_timestamp(struct logger_writer *log, integertime_t t,
@@ -170,9 +191,9 @@ INLINE static void logger_part_data_init(struct logger_part_data *logger) {
  * @brief Should this particle write its data now ?
  *
  * @param logger_data The #logger_part_data of a particle.
- * @param log The #logger.
+ * @param log The #logger_writer.
  *
- * @return 1 if the particule should be writen, 0 otherwise.
+ * @return 1 if the particle should be writen, 0 otherwise.
  */
 __attribute__((always_inline)) INLINE static int logger_should_write(
     const struct logger_part_data *logger_data,
