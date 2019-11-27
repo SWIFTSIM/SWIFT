@@ -22,30 +22,16 @@
  *
  * @param p Particle.
  */
-#ifndef SWIFT_GIZMO_MFM_HYDRO_SPH_GRADIENTS_H
-#define SWIFT_GIZMO_MFM_HYDRO_SPH_GRADIENTS_H
+#ifndef SWIFT_GIZMO_HYDRO_SPH_GRADIENTS_H
+#define SWIFT_GIZMO_HYDRO_SPH_GRADIENTS_H
+
+#include "hydro_getters.h"
+#include "hydro_setters.h"
 
 __attribute__((always_inline)) INLINE static void hydro_gradients_init(
     struct part *p) {
 
-  p->gradients.rho[0] = 0.0f;
-  p->gradients.rho[1] = 0.0f;
-  p->gradients.rho[2] = 0.0f;
-
-  p->gradients.v[0][0] = 0.0f;
-  p->gradients.v[0][1] = 0.0f;
-  p->gradients.v[0][2] = 0.0f;
-
-  p->gradients.v[1][0] = 0.0f;
-  p->gradients.v[1][1] = 0.0f;
-  p->gradients.v[1][2] = 0.0f;
-  p->gradients.v[2][0] = 0.0f;
-  p->gradients.v[2][1] = 0.0f;
-  p->gradients.v[2][2] = 0.0f;
-
-  p->gradients.P[0] = 0.0f;
-  p->gradients.P[1] = 0.0f;
-  p->gradients.P[2] = 0.0f;
+  hydro_part_reset_gradients(p);
 
   hydro_slope_limit_cell_init(p);
 }
@@ -72,29 +58,37 @@ __attribute__((always_inline)) INLINE static void hydro_gradients_collect(
   const float xi = r * hi_inv;
   kernel_deval(xi, &wi, &wi_dx);
 
-  const float dW[5] = {pi->rho - pj->rho, pi->v[0] - pj->v[0],
-                       pi->v[1] - pj->v[1], pi->v[2] - pj->v[2], pi->P - pj->P};
+  float Wi[5], Wj[5];
+  hydro_part_get_primitive_variables(pi, Wi);
+  hydro_part_get_primitive_variables(pj, Wj);
+
+  const float dW[5] = {Wi[0] - Wj[0], Wi[1] - Wj[1], Wi[2] - Wj[2],
+                       Wi[3] - Wj[3], Wi[4] - Wj[4]};
 
   const float normi = wi_dx * r_inv;
   const float nidx[3] = {normi * dx[0], normi * dx[1], normi * dx[2]};
 
-  pi->gradients.rho[0] -= dW[0] * nidx[0];
-  pi->gradients.rho[1] -= dW[0] * nidx[1];
-  pi->gradients.rho[2] -= dW[0] * nidx[2];
+  float drho_i[3], dvx_i[3], dvy_i[3], dvz_i[3], dP_i[3];
 
-  pi->gradients.v[0][0] -= dW[1] * nidx[0];
-  pi->gradients.v[0][1] -= dW[1] * nidx[1];
-  pi->gradients.v[0][2] -= dW[1] * nidx[2];
-  pi->gradients.v[1][0] -= dW[2] * nidx[0];
-  pi->gradients.v[1][1] -= dW[2] * nidx[1];
-  pi->gradients.v[1][2] -= dW[2] * nidx[2];
-  pi->gradients.v[2][0] -= dW[3] * nidx[0];
-  pi->gradients.v[2][1] -= dW[3] * nidx[1];
-  pi->gradients.v[2][2] -= dW[3] * nidx[2];
+  drho_i[0] = -dW[0] * nidx[0];
+  drho_i[1] = -dW[0] * nidx[1];
+  drho_i[2] = -dW[0] * nidx[2];
 
-  pi->gradients.P[0] -= dW[4] * nidx[0];
-  pi->gradients.P[1] -= dW[4] * nidx[1];
-  pi->gradients.P[2] -= dW[4] * nidx[2];
+  dvx_i[0] = -dW[1] * nidx[0];
+  dvx_i[1] = -dW[1] * nidx[1];
+  dvx_i[2] = -dW[1] * nidx[2];
+  dvy_i[0] = -dW[2] * nidx[0];
+  dvy_i[1] = -dW[2] * nidx[1];
+  dvy_i[2] = -dW[2] * nidx[2];
+  dvz_i[0] = -dW[3] * nidx[0];
+  dvz_i[1] = -dW[3] * nidx[1];
+  dvz_i[2] = -dW[3] * nidx[2];
+
+  dP_i[0] = -dW[4] * nidx[0];
+  dP_i[1] = -dW[4] * nidx[1];
+  dP_i[2] = -dW[4] * nidx[2];
+
+  hydro_part_update_gradients(pi, drho_i, dvx_i, dvy_i, dvz_i, dP_i);
 
   hydro_slope_limit_cell_collect(pi, pj, r);
 
@@ -106,24 +100,28 @@ __attribute__((always_inline)) INLINE static void hydro_gradients_collect(
   const float normj = wj_dx * r_inv;
   const float njdx[3] = {normj * dx[0], normj * dx[1], normj * dx[2]};
 
+  float drho_j[3], dvx_j[3], dvy_j[3], dvz_j[3], dP_j[3];
+
   /* signs are the same as before, since we swap i and j twice */
-  pj->gradients.rho[0] -= dW[0] * njdx[0];
-  pj->gradients.rho[1] -= dW[0] * njdx[1];
-  pj->gradients.rho[2] -= dW[0] * njdx[2];
+  drho_j[0] = -dW[0] * njdx[0];
+  drho_j[1] = -dW[0] * njdx[1];
+  drho_j[2] = -dW[0] * njdx[2];
 
-  pj->gradients.v[0][0] -= dW[1] * njdx[0];
-  pj->gradients.v[0][1] -= dW[1] * njdx[1];
-  pj->gradients.v[0][2] -= dW[1] * njdx[2];
-  pj->gradients.v[1][0] -= dW[2] * njdx[0];
-  pj->gradients.v[1][1] -= dW[2] * njdx[1];
-  pj->gradients.v[1][2] -= dW[2] * njdx[2];
-  pj->gradients.v[2][0] -= dW[3] * njdx[0];
-  pj->gradients.v[2][1] -= dW[3] * njdx[1];
-  pj->gradients.v[2][2] -= dW[3] * njdx[2];
+  dvx_j[0] = -dW[1] * njdx[0];
+  dvx_j[1] = -dW[1] * njdx[1];
+  dvx_j[2] = -dW[1] * njdx[2];
+  dvy_j[0] = -dW[2] * njdx[0];
+  dvy_j[1] = -dW[2] * njdx[1];
+  dvy_j[2] = -dW[2] * njdx[2];
+  dvz_j[0] = -dW[3] * njdx[0];
+  dvz_j[1] = -dW[3] * njdx[1];
+  dvz_j[2] = -dW[3] * njdx[2];
 
-  pj->gradients.P[0] -= dW[4] * njdx[0];
-  pj->gradients.P[1] -= dW[4] * njdx[1];
-  pj->gradients.P[2] -= dW[4] * njdx[2];
+  dP_j[0] = -dW[4] * njdx[0];
+  dP_j[1] = -dW[4] * njdx[1];
+  dP_j[2] = -dW[4] * njdx[2];
+
+  hydro_part_update_gradients(pj, drho_j, dvx_j, dvy_j, dvz_j, dP_j);
 
   hydro_slope_limit_cell_collect(pj, pi, r);
 }
@@ -152,29 +150,37 @@ hydro_gradients_nonsym_collect(float r2, const float *dx, float hi, float hj,
   const float xi = r * hi_inv;
   kernel_deval(xi, &wi, &wi_dx);
 
-  const float dW[5] = {pi->rho - pj->rho, pi->v[0] - pj->v[0],
-                       pi->v[1] - pj->v[1], pi->v[2] - pj->v[2], pi->P - pj->P};
+  float Wi[5], Wj[5];
+  hydro_part_get_primitive_variables(pi, Wi);
+  hydro_part_get_primitive_variables(pj, Wj);
+
+  const float dW[5] = {Wi[0] - Wj[0], Wi[1] - Wj[1], Wi[2] - Wj[2],
+                       Wi[3] - Wj[3], Wi[4] - Wj[4]};
 
   const float normi = wi_dx * r_inv;
   const float nidx[3] = {normi * dx[0], normi * dx[1], normi * dx[2]};
 
-  pi->gradients.rho[0] -= dW[0] * nidx[0];
-  pi->gradients.rho[1] -= dW[0] * nidx[1];
-  pi->gradients.rho[2] -= dW[0] * nidx[2];
+  float drho_i[3], dvx_i[3], dvy_i[3], dvz_i[3], dP_i[3];
 
-  pi->gradients.v[0][0] -= dW[1] * nidx[0];
-  pi->gradients.v[0][1] -= dW[1] * nidx[1];
-  pi->gradients.v[0][2] -= dW[1] * nidx[2];
-  pi->gradients.v[1][0] -= dW[2] * nidx[0];
-  pi->gradients.v[1][1] -= dW[2] * nidx[1];
-  pi->gradients.v[1][2] -= dW[2] * nidx[2];
-  pi->gradients.v[2][0] -= dW[3] * nidx[0];
-  pi->gradients.v[2][1] -= dW[3] * nidx[1];
-  pi->gradients.v[2][2] -= dW[3] * nidx[2];
+  drho_i[0] = -dW[0] * nidx[0];
+  drho_i[1] = -dW[0] * nidx[1];
+  drho_i[2] = -dW[0] * nidx[2];
 
-  pi->gradients.P[0] -= dW[4] * nidx[0];
-  pi->gradients.P[1] -= dW[4] * nidx[1];
-  pi->gradients.P[2] -= dW[4] * nidx[2];
+  dvx_i[0] = -dW[1] * nidx[0];
+  dvx_i[1] = -dW[1] * nidx[1];
+  dvx_i[2] = -dW[1] * nidx[2];
+  dvy_i[0] = -dW[2] * nidx[0];
+  dvy_i[1] = -dW[2] * nidx[1];
+  dvy_i[2] = -dW[2] * nidx[2];
+  dvz_i[0] = -dW[3] * nidx[0];
+  dvz_i[1] = -dW[3] * nidx[1];
+  dvz_i[2] = -dW[3] * nidx[2];
+
+  dP_i[0] = -dW[4] * nidx[0];
+  dP_i[1] = -dW[4] * nidx[1];
+  dP_i[2] = -dW[4] * nidx[2];
+
+  hydro_part_update_gradients(pi, drho_i, dvx_i, dvy_i, dvz_i, dP_i);
 
   hydro_slope_limit_cell_collect(pi, pj, r);
 }
@@ -192,30 +198,10 @@ __attribute__((always_inline)) INLINE static void hydro_gradients_finalize(
   const float ihdimp1 = pow_dimension_plus_one(ih);
   const float volume = p->geometry.volume;
 
-  const float norm = ihdimp1 * volume;
-
   /* finalize gradients by multiplying with volume */
-  p->gradients.rho[0] *= norm;
-  p->gradients.rho[1] *= norm;
-  p->gradients.rho[2] *= norm;
-
-  p->gradients.v[0][0] *= norm;
-  p->gradients.v[0][1] *= norm;
-  p->gradients.v[0][2] *= norm;
-
-  p->gradients.v[1][0] *= norm;
-  p->gradients.v[1][1] *= norm;
-  p->gradients.v[1][2] *= norm;
-
-  p->gradients.v[2][0] *= norm;
-  p->gradients.v[2][1] *= norm;
-  p->gradients.v[2][2] *= norm;
-
-  p->gradients.P[0] *= norm;
-  p->gradients.P[1] *= norm;
-  p->gradients.P[2] *= norm;
+  hydro_part_normalise_gradients(p, ihdimp1 * volume);
 
   hydro_slope_limit_cell(p);
 }
 
-#endif /* SWIFT_GIZMO_MFM_HYDRO_SPH_GRADIENTS_H */
+#endif /* SWIFT_GIZMO_HYDRO_SPH_GRADIENTS_H */

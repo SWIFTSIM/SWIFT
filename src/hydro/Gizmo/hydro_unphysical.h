@@ -16,8 +16,8 @@
  * along with this program.  If not, see <http://www.gnu.org/licenses/>.
  *
  ******************************************************************************/
-#ifndef SWIFT_HYDRO_UNPHYSICAL_H
-#define SWIFT_HYDRO_UNPHYSICAL_H
+#ifndef SWIFT_GIZMO_HYDRO_UNPHYSICAL_H
+#define SWIFT_GIZMO_HYDRO_UNPHYSICAL_H
 
 #if defined(GIZMO_UNPHYSICAL_ERROR) || defined(GIZMO_UNPHYSICAL_RESCUE)
 
@@ -66,4 +66,4 @@
 
 #endif  // defined(GIZMO_UNPHYSICAL_ERROR) || defined(GIZMO_UNPHYSICAL_RESCUE)
 
-#endif /* SWIFT_HYDRO_UNPHYSICAL_H */
+#endif /* SWIFT_GIZMO_HYDRO_UNPHYSICAL_H */

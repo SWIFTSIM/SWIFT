@@ -20,15 +20,15 @@
 #ifndef SWIFT_GIZMO_MFV_HYDRO_H
 #define SWIFT_GIZMO_MFV_HYDRO_H
 
+#include "../hydro_gradients.h"
+#include "../hydro_unphysical.h"
 #include "adiabatic_index.h"
 #include "approx_math.h"
 #include "cosmology.h"
 #include "entropy_floor.h"
 #include "equation_of_state.h"
-#include "hydro_gradients.h"
 #include "hydro_properties.h"
 #include "hydro_space.h"
-#include "hydro_unphysical.h"
 #include "hydro_velocities.h"
 #include "minmax.h"
 #include "riemann.h"

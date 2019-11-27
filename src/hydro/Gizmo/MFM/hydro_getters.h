@@ -38,6 +38,39 @@ hydro_part_get_primitive_variables(const struct part *restrict p, float *W) {
 }
 
 /**
+ * @brief Get the gradients of the primitive variables for the given particle.
+ *
+ * @param p Particle.
+ * @param drho Density gradient (of size 3 or more).
+ * @param ddvx x velocity gradient (of size 3 or more).
+ * @param ddvy y velocity gradient (of size 3 or more).
+ * @param ddvz z velocity gradient (of size 3 or more).
+ * @param dP Pressure gradient (of size 3 or more).
+ */
+__attribute__((always_inline)) INLINE static void hydro_part_get_gradients(
+    const struct part *restrict p, float *drho, float *dvx, float *dvy,
+    float *dvz, float *dP) {
+
+  drho[0] = p->gradients.rho[0];
+  drho[1] = p->gradients.rho[1];
+  drho[2] = p->gradients.rho[2];
+
+  dvx[0] = p->gradients.v[0][0];
+  dvx[1] = p->gradients.v[0][1];
+  dvx[2] = p->gradients.v[0][2];
+  dvy[0] = p->gradients.v[1][0];
+  dvy[1] = p->gradients.v[1][1];
+  dvy[2] = p->gradients.v[1][2];
+  dvz[0] = p->gradients.v[2][0];
+  dvz[1] = p->gradients.v[2][1];
+  dvz[2] = p->gradients.v[2][2];
+
+  dP[0] = p->gradients.P[0];
+  dP[1] = p->gradients.P[1];
+  dP[2] = p->gradients.P[2];
+}
+
+/**
  * @brief Check if the gradient matrix for this particle is well behaved.
  */
 #define hydro_part_geometry_well_behaved(p) \

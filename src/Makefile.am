@@ -141,16 +141,16 @@ nobase_noinst_HEADERS = align.h approx_math.h atomic.h barrier.h cycle.h error.h
                  hydro/Gizmo/hydro_getters.h \
                  hydro/Gizmo/hydro_setters.h \
                  hydro/Gizmo/hydro_flux.h \
+                 hydro/Gizmo/hydro_slope_limiters.h \
+                 hydro/Gizmo/hydro_unphysical.h \
+                 hydro/Gizmo/hydro_gradients_sph.h \
+                 hydro/Gizmo/hydro_gradients_gizmo.h \
 		 hydro/Gizmo/MFV/hydro.h \
                  hydro/Gizmo/MFV/hydro_io.h hydro/Gizmo/MFV/hydro_debug.h \
                  hydro/Gizmo/MFV/hydro_part.h \
-                 hydro/Gizmo/MFV/hydro_gradients_gizmo.h \
-                 hydro/Gizmo/MFV/hydro_gradients.h \
-                 hydro/Gizmo/MFV/hydro_gradients_sph.h \
                  hydro/Gizmo/MFV/hydro_slope_limiters_cell.h \
                  hydro/Gizmo/MFV/hydro_slope_limiters_face.h \
                  hydro/Gizmo/MFV/hydro_slope_limiters.h \
-                 hydro/Gizmo/MFV/hydro_unphysical.h \
                  hydro/Gizmo/MFV/hydro_velocities.h \
 		 hydro/Gizmo/MFV/hydro_parameters.h \
                  hydro/Gizmo/MFV/hydro_getters.h \
@@ -159,13 +159,9 @@ nobase_noinst_HEADERS = align.h approx_math.h atomic.h barrier.h cycle.h error.h
 		 hydro/Gizmo/MFM/hydro.h \
                  hydro/Gizmo/MFM/hydro_io.h hydro/Gizmo/MFM/hydro_debug.h \
                  hydro/Gizmo/MFM/hydro_part.h \
-                 hydro/Gizmo/MFM/hydro_gradients_gizmo.h \
-                 hydro/Gizmo/MFM/hydro_gradients.h \
-                 hydro/Gizmo/MFM/hydro_gradients_sph.h \
                  hydro/Gizmo/MFM/hydro_slope_limiters_cell.h \
                  hydro/Gizmo/MFM/hydro_slope_limiters_face.h \
                  hydro/Gizmo/MFM/hydro_slope_limiters.h \
-                 hydro/Gizmo/MFM/hydro_unphysical.h \
 		 hydro/Gizmo/MFM/hydro_parameters.h \
                  hydro/Gizmo/MFM/hydro_getters.h \
                  hydro/Gizmo/MFM/hydro_setters.h \
