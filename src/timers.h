@@ -124,6 +124,7 @@ enum {
   timer_do_stars_resort,
   timer_fof_self,
   timer_fof_pair,
+  timer_do_sync,
   timer_count,
 };
 

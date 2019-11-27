@@ -239,9 +239,9 @@ __attribute__((always_inline)) INLINE static float hydro_compute_timestep(
   const float dt_cv = p->h / (fmaxf(eos.soundspeed, 10.0*speed) + p->h*p->max_visc);
 
   const float CFL = hydro_properties->CFL_condition;
-  if(/*p->id == 3287*/ CFL * fminf(dt_f, dt_cv) < 1e-7){
-    printf("CFL = %e, speed = %e, dt_f = %e dt_cv = %e\n",CFL * fminf(dt_f, dt_cv), speed, dt_f, dt_cv);
-  }
+//  if(/*p->id == 3287*/ CFL * fminf(dt_f, dt_cv) < 1e-7){
+//    printf("CFL = %e, speed = %e, dt_f = %e dt_cv = %e\n",CFL * fminf(dt_f, dt_cv), speed, dt_f, dt_cv);
+//  }
   return CFL * fminf(dt_f, dt_cv);
   /*return 0.0001;*/
 }

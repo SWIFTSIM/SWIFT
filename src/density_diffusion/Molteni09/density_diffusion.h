@@ -38,6 +38,11 @@ INLINE void compute_density_diffusive_term(struct part *restrict pi, struct part
     pj->density_diffusive_data.delta = NAN; 
     return;
   }
+#ifdef EOS_MULTIFLUID_TAIT
+  if(pi->rho_base != pj->rho_base){
+    return;
+  }
+#endif
   const float mi = pi->mass;
   const float mj = pj->mass;
   const float rho_i = pi->rho;
@@ -79,6 +84,11 @@ INLINE void compute_density_diffusive_term_asym(struct part *restrict pi, const 
     pi->density_diffusive_data.delta = NAN;
     return;
   }
+#ifdef EOS_MULTIFLUID_TAIT
+  if(pi->rho_base != pj->rho_base){
+    return;
+  }
+#endif
   const float mj = pj->mass;
   const float rho_i = pi->rho;
   const float rho_j = pj->rho;

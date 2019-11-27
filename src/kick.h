@@ -149,9 +149,9 @@ __attribute__((always_inline)) INLINE static void kick_part(
       p->v_minus1[2] = temp;
 #if defined(EOS_MULTIFLUID_TAIT)
       p->pressure = pressure_from_density(p->rho, p->rho_base);
-  if(p->id == 462){
+/*  if(p->id == 462){
     printf("rho=%e, rho_base=%e, pressure=%e drho=%e\n", p->rho, p->rho_base, p->pressure, p->drho_dt*dt_kick_hydro);
-  }
+  }*/
 #else
       p->pressure = pressure_from_density(p->rho);
 #endif

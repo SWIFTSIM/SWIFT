@@ -21,13 +21,13 @@ INLINE void diffusive_end_force(struct part *restrict p){
 }
 
 
-INLINE void compute_density_diffusive_term(const struct part *pi, const struct part *pj,  float r2,  float r,  float wi_dx,  float wj_dx){
+INLINE void compute_density_diffusive_term(struct part *restrict pi, struct part *restrict pj, float r2, float r, float wi_dx, float wj_dx, const float *dx){
 
 
 }
 
 
-INLINE void compute_density_diffusive_term_asym(const struct part *pi, const struct part *pj,  float r2,  float r,  float wi_dx){
+INLINE void compute_density_diffusive_term_asym(struct part *restrict pi, const struct part *restrict pj, float r2, float r, float wi_dx, const float *dx){
 
 }
 #endif

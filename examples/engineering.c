@@ -146,6 +146,7 @@ int with_fp_exceptions = 0;
 char *cpufreqarg = NULL;
 int nr_threads = 1;
 int verbose = 0;
+int with_verbose_timers=0;
 struct cmdparams cmdps;
 cmdps.nparam = 0;
 cmdps.param[0] = NULL;
@@ -174,6 +175,8 @@ struct argparse_option options[] = {
                 "The number of threads to use on each MPI rank. Defaults to "
                 "1 if not specified.",
                   NULL, 0, 0),
+    OPT_INTEGER('T', "timers", &with_verbose_timers,
+                  "Print timers every time-step.", NULL, 0, 0),
     OPT_INTEGER('v', "verbose", &verbose,
                 "Run in verbose mode, in MPI mode 2 outputs from all ranks.",
                 NULL, 0, 0),
@@ -573,6 +576,7 @@ engine_print_stats(&e);
     fflush(stdout);
   }
 
+  if (with_verbose_timers) timers_open_file(myrank); 
   /* dump the parameters as used. */
 
   /* used parameters */
@@ -587,6 +591,8 @@ engine_print_stats(&e);
     timers_reset_all();
 
     engine_step(&e);
+
+    if (with_verbose_timers) timers_print(e.step);
 /*for(size_t i = 0; i < Nboundary+Nfluid; i++){
   if(!parts[i].is_boundary){
    printf("%f %f\n", parts[i].a_hydro[0], parts[i].a_constant[0]);
@@ -595,7 +601,7 @@ engine_print_stats(&e);
 }*/
 //    printf("id=%llu %i div_v=%f a_hydro=%f v=%f dvx_xx=%f dvx_xy=%f\n", parts[152243].id, parts[152243].is_boundary, parts[152243].div_v, parts[152243].a_hydro[0], parts[152243].v[0], parts[0].dvx_xx, parts[0].dvx_xy);
 //double max_x = 0.0;
-for(size_t i = 0; i < Nboundary; i++){
+//for(size_t i = 0; i < Nboundary; i++){
 //  if(parts[i].x[0] == 0.0 && parts[i].x[2] == 0.0) printf("Part at [%e %e %e]\n", parts[i].x[0], parts[i].x[1], parts[i].x[2]);
  // if(parts[i].id == 57600) printf("Found p0, %i %f %f %f\n", parts[i].is_boundary, parts[i].x[0], parts[i].x[1], parts[i].x[2]);
 //  if(parts[i].x[0] > 1.4937 && parts[i].x[1] < 0.00126 && parts[i].x[1] > 0.00124 && parts[i].x[2] < 0.007 && parts[i].x[2] > 0.006) {printf("found a boundary with id %llu\n", parts[i].id); return 0;}
@@ -626,10 +632,10 @@ max_x = parts[i].x[0];
 if(parts[i].x[0] < min_x && !parts[i].is_boundary){
 min_x = parts[i].x[0];
 }*/
-      if(parts[i].id == 4281 || parts[i].id == 1029/*862*//*4129*/) printf("id: %llu x=[%f %f %f] a_hydro=[%e %e %e] v = [%e %e %e] rho=%e pressure=%e h=%f drho_dt=%e\n", parts[i].id, parts[i].x[0], parts[i].x[1], parts[i].x[2],parts[i].a_hydro[0], parts[i].a_hydro[1], parts[i].a_hydro[2], parts[i].v[0], parts[i].v[1], parts[i].v[2], parts[i].rho, parts[i].pressure , parts[i].h, parts[i].drho_dt);
-}
-for(size_t i = Nboundary; i < Nboundary+Nfluid; i++){
-      if(parts[i].id == 4281 || parts[i].id == 1029/*862*//*4129*/) printf("id: %llu x=[%f %f %f] a_hydro=[%e %e %e] v = [%e %e %e] rho=%e pressure=%e h=%f drho_dt=%e\n", parts[i].id, parts[i].x[0], parts[i].x[1], parts[i].x[2],parts[i].a_hydro[0], parts[i].a_hydro[1], parts[i].a_hydro[2], parts[i].v[0], parts[i].v[1], parts[i].v[2], parts[i].rho, parts[i].pressure , parts[i].h, parts[i].drho_dt);
+//      if(parts[i].id == 4281 || parts[i].id == 1029/*862*//*4129*/) printf("id: %llu x=[%f %f %f] a_hydro=[%e %e %e] v = [%e %e %e] rho=%e pressure=%e h=%f drho_dt=%e\n", parts[i].id, parts[i].x[0], parts[i].x[1], parts[i].x[2],parts[i].a_hydro[0], parts[i].a_hydro[1], parts[i].a_hydro[2], parts[i].v[0], parts[i].v[1], parts[i].v[2], parts[i].rho, parts[i].pressure , parts[i].h, parts[i].drho_dt);
+//}
+//for(size_t i = Nboundary; i < Nboundary+Nfluid; i++){
+//      if(parts[i].id == 4281 || parts[i].id == 1029/*862*//*4129*/) printf("id: %llu x=[%f %f %f] a_hydro=[%e %e %e] v = [%e %e %e] rho=%e pressure=%e h=%f drho_dt=%e\n", parts[i].id, parts[i].x[0], parts[i].x[1], parts[i].x[2],parts[i].a_hydro[0], parts[i].a_hydro[1], parts[i].a_hydro[2], parts[i].v[0], parts[i].v[1], parts[i].v[2], parts[i].rho, parts[i].pressure , parts[i].h, parts[i].drho_dt);
 //`  if(parts[i].x[0] == 0.0 && parts[i].x[2] == 0.0) printf("Part at [%e %e %e]\n", parts[i].x[0], parts[i].x[1], parts[i].x[2]);
 //  if(parts[i].id == 57600) printf("Found p0, %i %f %f %f\n", parts[i].is_boundary, parts[i].x[0], parts[i].x[1], parts[i].x[2]);
 //  if(parts[i].x[0] > 1.4937 && parts[i].x[1] < 0.00126 && parts[i].x[1] > 0.00124 && parts[i].x[2] < 0.007 && parts[i].x[2] > 0.006) {printf("found a boundary with id %llu\n", parts[i].id); return 0;}
@@ -656,7 +662,7 @@ for(size_t i = Nboundary; i < Nboundary+Nfluid; i++){
     //printf("%f %f %f %f %f %i\n",parts[i].x[0], parts[i].x[1], /*parts[i].drho_dt,*/ parts[i].v[1], parts[i].h, parts[i].rho, part_is_active(&parts[i], &e)/*, parts[i].is_boundary*/);
 //    printf("%f %f %f %f %f %f %i %i\n",parts[i].x[0], parts[i].x[1], parts[i].drho_dt, parts[i].v[1], parts[i].h, parts[i].rho, part_is_active(&parts[i], &e), parts[i].is_boundary);
 //      if(parts[i].id == 86400) printf("id: %llu x=[%f %f %f] a_hydro=[%e %e %e] v = [%e %e %e] rho=%e pressure=%e neighbours=%i h=%f\n", parts[i].id, parts[i].x[0], parts[i].x[1], parts[i].x[2],parts[i].a_hydro[0], parts[i].a_hydro[1], parts[i].a_hydro[2], parts[i].v[0], parts[i].v[1], parts[i].v[2], parts[i].rho, parts[i].pressure ,/*parts[i].neighbours*/(int)i, parts[i].h);
-}
+//}
 
 /*for(int i = 0; i < e.s->nr_cells_with_particles; i++){
   struct cell *c = &e.s->cells_top[e.s->cells_with_particles_top[i]];
@@ -687,6 +693,7 @@ printf("e.ti_current = %lli\n", e.ti_current);
 /*TODO Work around compile error*/
 message("%i %i %i", nr_nodes, talking, clean_smoothing_length_values);
 
+  if (with_verbose_timers) timers_close_file();
 #if defined(WITH_MPI)
 MPI_Finalize();
 #endif

@@ -123,6 +123,7 @@ const char* timers_names[timer_count] = {
     "do_stars_resort",
     "fof_self",
     "fof_pair",
+     "do_sync",
 };
 
 /* File to store the timers */
