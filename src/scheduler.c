@@ -1920,6 +1920,11 @@ void scheduler_enqueue(struct scheduler *s, struct task *t) {
           /* Otherwise, create a custom datatype that maps to the parts of the
              subcells that will be sent, and use that. */
           else {
+            /* This should actually never happen (yet).
+             * We are only adding send/recv tasks where at the points where
+             * they actually happen. */
+            error("This should not happen.");
+
             MPI_Datatype subcell_parts_mpi_type;
             int num_parts = 0;
             const int num_cells =
