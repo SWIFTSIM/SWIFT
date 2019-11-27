@@ -485,7 +485,7 @@ void engine_addtasks_recv_hydro(struct engine *e, struct cell *c, int proxy_id,
 #ifdef SWIFT_DEBUG_CHECKS
       /* Make sure this cell has a valid tag. */
       if (c->mpi.tag < 0) {
-        error("Trying to receive from untagged cell %#010x.", hash);
+        error("Trying to receive from untagged cell %#010x.", cell_hash(c));
       }
 #endif  // SWIFT_DEBUG_CHECKS
 
