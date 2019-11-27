@@ -5650,7 +5650,7 @@ int cell_recouple(struct cell *c,
 	    parent_cell = parent_cell->parent;
 	  }
 #if SWIFT_DEBUG_CHECKS
-          p->ti_kick = e->ti_current + get_integer_timestep(min_active_bin)/2;
+          p->ti_kick = e->ti_current + get_integer_timestep(e->min_active_bin)/2;
 	  //if (p->id == SIMBA_DEBUG_ID) message("id %llu ti_current %llu half step %llu ti_kick %llu ti_drift %llu", p->id, e->ti_current, get_integer_timestep(min_active_bin)/2, p->ti_kick, p->ti_drift);
           
 	  // ALEXEI: debugging print statement

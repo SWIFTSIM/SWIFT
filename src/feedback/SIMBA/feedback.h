@@ -255,6 +255,7 @@ __attribute__((always_inline)) INLINE static void launch_wind(
   //}
 
   /* Set delaytime before which the particle cannot interact */
+  // ALEXEI: temporarily comment for debugging
   p->delay_time = feedback_props->simba_delay_time;
   p->time_bin = time_bin_decoupled;
   // ALEXEI: debugging print statement
@@ -310,5 +311,14 @@ static INLINE void feedback_struct_dump(const struct feedback_props* feedback,
  */
 static INLINE void feedback_struct_restore(struct feedback_props* feedback,
                                            FILE* stream) {}
+
+/**
+ * @brief Clean-up the memory allocated for the feedback routines
+ *
+ * We simply free all the arrays.
+ *
+ * @param feedback_props the feedback data structure.
+ */
+static INLINE void feedback_clean(struct feedback_props* feedback_props) {}
 
 #endif /* SWIFT_FEEDBACK_SIMBA_H */

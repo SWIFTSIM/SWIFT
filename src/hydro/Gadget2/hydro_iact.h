@@ -452,6 +452,10 @@ __attribute__((always_inline)) INLINE static void runner_iact_force(
 
   float wi, wj, wi_dx, wj_dx;
 
+  // ALEXEI: debugging
+  //if (pi->id == SIMBA_DEBUG_ID) message("piid %llu min ngb timebin %d", pi->id, pi->limiter_data.min_ngb_time_bin);
+  //if (pj->id == SIMBA_DEBUG_ID) message("pjid %llu min ngb timebin %d", pj->id, pj->limiter_data.min_ngb_time_bin);
+
 #ifdef SWIFT_DEBUG_CHECKS
   if (pi->time_bin >= time_bin_inhibited)
     error("Inhibited pi in interaction function!");
@@ -581,6 +585,10 @@ __attribute__((always_inline)) INLINE static void runner_iact_nonsym_force(
     const struct part *restrict pj, float a, float H) {
 
   float wi, wj, wi_dx, wj_dx;
+
+  // ALEXEI: debugging
+  //if (pi->id == SIMBA_DEBUG_ID) message("piid %llu min ngb timebin %d", pi->id, pi->limiter_data.min_ngb_time_bin);
+  //if (pj->id == SIMBA_DEBUG_ID) message("pjid %llu min ngb timebin %d", pj->id, pj->limiter_data.min_ngb_time_bin);
 
 #ifdef SWIFT_DEBUG_CHECKS
   if (pi->time_bin >= time_bin_inhibited)

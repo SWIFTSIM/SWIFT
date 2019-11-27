@@ -170,6 +170,15 @@ void *runner_main(void *data) {
       r->t = t;
 #endif
 
+      // ALEXEI: debugging
+      //if (t->type == task_subtype_force) {
+      //   for (int i = 0; i < ci->hydro.count; i++)
+      //     if (ci->hydro.parts[i].id == SIMBA_DEBUG_ID) message("start cell ci particle 1 ngb time bin %d",ci->hydro.parts[i].limiter_data.min_ngb_time_bin);
+      //}
+      //if (t->type == task_subtype_force) {
+      //   for (int i = 0; i < cj->hydro.count; i++)
+      //     if (cj->hydro.parts[i].id == SIMBA_DEBUG_ID) message("start cell cj particle 1 ngb time bin %d",cj->hydro.parts[i].limiter_data.min_ngb_time_bin);
+      //}
       /* Different types of tasks... */
       switch (t->type) {
         case task_type_self:
@@ -485,6 +494,16 @@ void *runner_main(void *data) {
       /* This runner is not doing a task anymore */
       r->t = NULL;
 #endif
+      
+      // ALEXEI: debugging
+      //if (t->type == task_subtype_force) {
+      //   for (int i = 0; i < ci->hydro.count; i++)
+      //     if (ci->hydro.parts[i].id == SIMBA_DEBUG_ID) message("end cell ci particle 1 ngb time bin %d",ci->hydro.parts[i].limiter_data.min_ngb_time_bin);
+      //}
+      //if (t->type == task_subtype_force) {
+      //   for (int i = 0; i < cj->hydro.count; i++)
+      //     if (cj->hydro.parts[i].id == SIMBA_DEBUG_ID) message("end cell cj particle 1 ngb time bin %d",cj->hydro.parts[i].limiter_data.min_ngb_time_bin);
+      //}
 
       /* We're done with this task, see if we get a next one. */
       prev = t;

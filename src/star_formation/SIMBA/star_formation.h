@@ -269,6 +269,7 @@ INLINE static int star_formation_is_star_forming(
 INLINE static void star_formation_compute_SFR(
     const struct part* restrict p, struct xpart* restrict xp,
     const struct star_formation* starform, const struct phys_const* phys_const,
+    const struct hydro_props* hydro_props,
     const struct cosmology* cosmo, const double dt_star) {
 
   /* Abort early if time-step size is 0 */

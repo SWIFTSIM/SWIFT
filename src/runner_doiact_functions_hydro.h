@@ -92,6 +92,9 @@ void DOPAIR1_NAIVE(struct runner *r, struct cell *restrict ci,
       /* Get a pointer to the jth particle. */
       struct part *restrict pj = &parts_j[pjd];
 
+      // ALEXEI: check if ngbs are decoupled
+      if (pi->id == SIMBA_DEBUG_ID && !part_is_decoupled(pj)) message("neighbour %llu of %llu not decoupled", pj->id, pi->id);
+
       /* Skip inhibited particles. */
       if (part_is_inhibited(pj, e)) continue;
 
@@ -131,6 +134,8 @@ void DOPAIR1_NAIVE(struct runner *r, struct cell *restrict ci,
 #endif
 #if (FUNCTION_TASK_LOOP == TASK_LOOP_FORCE)
         runner_iact_nonsym_timebin(r2, dx, hi, hj, pi, pj, a, H);
+        //if (pi->id == SIMBA_DEBUG_ID) message("1 pi id %llu updated min timebin %d", pi->id, pi->limiter_data.min_ngb_time_bin);
+        //if (pj->id == SIMBA_DEBUG_ID) message("1 pj id %llu min timebin %d", pj->id, pj->limiter_data.min_ngb_time_bin);
 #endif
       }
       if (r2 < hjg2 && pj_active) {
@@ -147,6 +152,8 @@ void DOPAIR1_NAIVE(struct runner *r, struct cell *restrict ci,
 #endif
 #if (FUNCTION_TASK_LOOP == TASK_LOOP_FORCE)
         runner_iact_nonsym_timebin(r2, dx, hj, hi, pj, pi, a, H);
+        //if (pi->id == SIMBA_DEBUG_ID) message("2 pi id %llu min timebin %d", pi->id, pi->limiter_data.min_ngb_time_bin);
+        //if (pj->id == SIMBA_DEBUG_ID) message("2 pj id %llu updated min timebin %d", pj->id, pj->limiter_data.min_ngb_time_bin);
 #endif
       }
     } /* loop over the parts in cj. */
@@ -224,6 +231,9 @@ void DOPAIR2_NAIVE(struct runner *r, struct cell *restrict ci,
       /* Skip inhibited particles. */
       if (part_is_inhibited(pj, e)) continue;
 
+      // ALEXEI: check if ngbs are decoupled
+      if (pi->id == SIMBA_DEBUG_ID && !part_is_decoupled(pj)) message("neighbour %llu of %llu not decoupled", pj->id, pi->id);
+
       /* Skip decoupled particles. */
     // ALEXEI: improve this implementation!!!
 #if (FUNCTION_TASK_LOOP != TASK_LOOP_DENSITY)
@@ -273,6 +283,8 @@ void DOPAIR2_NAIVE(struct runner *r, struct cell *restrict ci,
 #endif
 #if (FUNCTION_TASK_LOOP == TASK_LOOP_FORCE)
           runner_iact_nonsym_timebin(r2, dx, hi, hj, pi, pj, a, H);
+        //if (pi->id == SIMBA_DEBUG_ID) message("3 pi id %llu updated min timebin %d", pi->id, pi->limiter_data.min_ngb_time_bin);
+        //if (pj->id == SIMBA_DEBUG_ID) message("3 pj id %llu min timebin %d", pj->id, pj->limiter_data.min_ngb_time_bin);
 #endif
         } else if (pj_active) {
 
@@ -288,6 +300,8 @@ void DOPAIR2_NAIVE(struct runner *r, struct cell *restrict ci,
 #endif
 #if (FUNCTION_TASK_LOOP == TASK_LOOP_FORCE)
           runner_iact_nonsym_timebin(r2, dx, hj, hi, pj, pi, a, H);
+        //if (pi->id == SIMBA_DEBUG_ID) message("4 pi id %llu min timebin %d", pi->id, pi->limiter_data.min_ngb_time_bin);
+        //if (pj->id == SIMBA_DEBUG_ID) message("4 pj id %llu updated min timebin %d", pj->id, pj->limiter_data.min_ngb_time_bin);
 #endif
         }
       }
@@ -353,6 +367,9 @@ void DOSELF1_NAIVE(struct runner *r, struct cell *restrict c) {
       /* Skip inhibited particles. */
       if (part_is_inhibited(pj, e)) continue;
 
+      // ALEXEI: check if ngbs are decoupled
+      if (pi->id == SIMBA_DEBUG_ID && !part_is_decoupled(pj)) message("neighbour %llu of %llu not decoupled", pj->id, pi->id);
+
       /* Skip decoupled particles. */
     // ALEXEI: improve this implementation!!!
 #if (FUNCTION_TASK_LOOP != TASK_LOOP_DENSITY)
@@ -403,6 +420,8 @@ void DOSELF1_NAIVE(struct runner *r, struct cell *restrict c) {
 #endif
 #if (FUNCTION_TASK_LOOP == TASK_LOOP_FORCE)
         runner_iact_nonsym_timebin(r2, dx, hi, hj, pi, pj, a, H);
+        //if (pi->id == SIMBA_DEBUG_ID) message("5 pi id %llu updated min timebin %d", pi->id, pi->limiter_data.min_ngb_time_bin);
+        //if (pj->id == SIMBA_DEBUG_ID) message("5 pj id %llu min timebin %d", pj->id, pj->limiter_data.min_ngb_time_bin);
 #endif
       } else if (doj) {
 
@@ -418,6 +437,8 @@ void DOSELF1_NAIVE(struct runner *r, struct cell *restrict c) {
 #endif
 #if (FUNCTION_TASK_LOOP == TASK_LOOP_FORCE)
         runner_iact_nonsym_timebin(r2, dx, hj, hi, pj, pi, a, H);
+        //if (pi->id == SIMBA_DEBUG_ID) message("6 pi id %llu min timebin %d", pi->id, pi->limiter_data.min_ngb_time_bin);
+        //if (pj->id == SIMBA_DEBUG_ID) message("6 pj id %llu updated min timebin %d", pj->id, pj->limiter_data.min_ngb_time_bin);
 #endif
       }
     } /* loop over the parts in cj. */
@@ -482,6 +503,9 @@ void DOSELF2_NAIVE(struct runner *r, struct cell *restrict c) {
       /* Skip inhibited particles. */
       if (part_is_inhibited(pj, e)) continue;
 
+      // ALEXEI: check if ngbs are decoupled
+      if (pi->id == SIMBA_DEBUG_ID && !part_is_decoupled(pj)) message("neighbour %llu of %llu not decoupled", pj->id, pi->id);
+
       /* Skip decoupled particles. */
     // ALEXEI: improve this implementation!!!
 #if (FUNCTION_TASK_LOOP != TASK_LOOP_DENSITY)
@@ -532,6 +556,8 @@ void DOSELF2_NAIVE(struct runner *r, struct cell *restrict c) {
 #endif
 #if (FUNCTION_TASK_LOOP == TASK_LOOP_FORCE)
         runner_iact_nonsym_timebin(r2, dx, hi, hj, pi, pj, a, H);
+        //if (pi->id == SIMBA_DEBUG_ID) message("7 pi id %llu updated min timebin %d", pi->id, pi->limiter_data.min_ngb_time_bin);
+        //if (pj->id == SIMBA_DEBUG_ID) message("7 pj id %llu min timebin %d", pj->id, pj->limiter_data.min_ngb_time_bin);
 #endif
       } else if (doj) {
 
@@ -547,6 +573,8 @@ void DOSELF2_NAIVE(struct runner *r, struct cell *restrict c) {
 #endif
 #if (FUNCTION_TASK_LOOP == TASK_LOOP_FORCE)
         runner_iact_nonsym_timebin(r2, dx, hj, hi, pj, pi, a, H);
+        //if (pi->id == SIMBA_DEBUG_ID) message("8 pi id %llu min timebin %d", pi->id, pi->limiter_data.min_ngb_time_bin);
+        //if (pj->id == SIMBA_DEBUG_ID) message("8 pj id %llu updated min timebin %d", pj->id, pj->limiter_data.min_ngb_time_bin);
 #endif
       }
     } /* loop over the parts in cj. */
@@ -610,6 +638,9 @@ void DOPAIR_SUBSET_NAIVE(struct runner *r, struct cell *restrict ci,
       /* Skip inhibited particles. */
       if (part_is_inhibited(pj, e)) continue;
 
+      // ALEXEI: check if ngbs are decoupled
+      if (pi->id == SIMBA_DEBUG_ID && !part_is_decoupled(pj)) message("neighbour %llu of %llu not decoupled", pj->id, pi->id);
+
       /* Skip decoupled particles. */
     // ALEXEI: improve this implementation!!!
 #if (FUNCTION_TASK_LOOP != TASK_LOOP_DENSITY)
@@ -643,6 +674,8 @@ void DOPAIR_SUBSET_NAIVE(struct runner *r, struct cell *restrict ci,
 #endif
 #if (FUNCTION_TASK_LOOP == TASK_LOOP_FORCE)
         runner_iact_nonsym_timebin(r2, dx, hi, pj->h, pi, pj, a, H);
+        //if (pi->id == SIMBA_DEBUG_ID) message("9 pi id %llu updated min timebin %d", pi->id, pi->limiter_data.min_ngb_time_bin);
+        //if (pj->id == SIMBA_DEBUG_ID) message("9 pj id %llu min timebin %d", pj->id, pj->limiter_data.min_ngb_time_bin);
 #endif
       }
     } /* loop over the parts in cj. */
@@ -711,6 +744,9 @@ void DOPAIR_SUBSET(struct runner *r, struct cell *restrict ci,
         /* Skip inhibited particles. */
         if (part_is_inhibited(pj, e)) continue;
 
+      // ALEXEI: check if ngbs are decoupled
+      if (pi->id == SIMBA_DEBUG_ID && !part_is_decoupled(pj)) message("neighbour %llu of %llu not decoupled", pj->id, pi->id);
+
         /* Skip decoupled particles. */
     // ALEXEI: improve this implementation!!!
 #if (FUNCTION_TASK_LOOP != TASK_LOOP_DENSITY)
@@ -746,6 +782,8 @@ void DOPAIR_SUBSET(struct runner *r, struct cell *restrict ci,
 #endif
 #if (FUNCTION_TASK_LOOP == TASK_LOOP_FORCE)
           runner_iact_nonsym_timebin(r2, dx, hi, hj, pi, pj, a, H);
+        //if (pi->id == SIMBA_DEBUG_ID) message("10 pi id %llu updated min timebin %d", pi->id, pi->limiter_data.min_ngb_time_bin);
+        //if (pj->id == SIMBA_DEBUG_ID) message("10 pj id %llu min timebin %d", pj->id, pj->limiter_data.min_ngb_time_bin);
 #endif
         }
       } /* loop over the parts in cj. */
@@ -777,6 +815,9 @@ void DOPAIR_SUBSET(struct runner *r, struct cell *restrict ci,
         /* Skip inhibited particles. */
         if (part_is_inhibited(pj, e)) continue;
 
+      // ALEXEI: check if ngbs are decoupled
+      if (pi->id == SIMBA_DEBUG_ID && !part_is_decoupled(pj)) message("neighbour %llu of %llu not decoupled", pj->id, pi->id);
+
         /* Skip decoupled particles. */
     // ALEXEI: improve this implementation!!!
 #if (FUNCTION_TASK_LOOP != TASK_LOOP_DENSITY)
@@ -812,6 +853,8 @@ void DOPAIR_SUBSET(struct runner *r, struct cell *restrict ci,
 #endif
 #if (FUNCTION_TASK_LOOP == TASK_LOOP_FORCE)
           runner_iact_nonsym_timebin(r2, dx, hi, hj, pi, pj, a, H);
+        //if (pi->id == SIMBA_DEBUG_ID) message("11 pi id %llu updated min timebin %d", pi->id, pi->limiter_data.min_ngb_time_bin);
+        //if (pj->id == SIMBA_DEBUG_ID) message("11 pj id %llu min timebin %d", pj->id, pj->limiter_data.min_ngb_time_bin);
 #endif
         }
       } /* loop over the parts in cj. */
@@ -930,6 +973,9 @@ void DOSELF_SUBSET(struct runner *r, struct cell *restrict ci,
       /* Skip inhibited particles. */
       if (part_is_inhibited(pj, e)) continue;
 
+      // ALEXEI: check if ngbs are decoupled
+      if (pi->id == SIMBA_DEBUG_ID && !part_is_decoupled(pj)) message("neighbour %llu of %llu not decoupled", pj->id, pi->id);
+
       /* Skip decoupled particles. */
     // ALEXEI: improve this implementation!!!
 #if (FUNCTION_TASK_LOOP != TASK_LOOP_DENSITY)
@@ -964,6 +1010,8 @@ void DOSELF_SUBSET(struct runner *r, struct cell *restrict ci,
 #endif
 #if (FUNCTION_TASK_LOOP == TASK_LOOP_FORCE)
         runner_iact_nonsym_timebin(r2, dx, hi, hj, pi, pj, a, H);
+        //if (pi->id == SIMBA_DEBUG_ID) message("12 pi id %llu updated min timebin %d", pi->id, pi->limiter_data.min_ngb_time_bin);
+        //if (pj->id == SIMBA_DEBUG_ID) message("12 pj id %llu min timebin %d", pj->id, pj->limiter_data.min_ngb_time_bin);
 #endif
       }
     } /* loop over the parts in cj. */
@@ -1078,6 +1126,9 @@ void DOPAIR1(struct runner *r, struct cell *ci, struct cell *cj, const int sid,
         /* Skip inhibited particles. */
         if (part_is_inhibited(pj, e)) continue;
 
+      // ALEXEI: check if ngbs are decoupled
+      if (pi->id == SIMBA_DEBUG_ID && !part_is_decoupled(pj)) message("neighbour %llu of %llu not decoupled", pj->id, pi->id);
+
         /* Skip decoupled particles. */
     // ALEXEI: improve this implementation!!!
 #if (FUNCTION_TASK_LOOP != TASK_LOOP_DENSITY)
@@ -1138,6 +1189,8 @@ void DOPAIR1(struct runner *r, struct cell *ci, struct cell *cj, const int sid,
 #endif
 #if (FUNCTION_TASK_LOOP == TASK_LOOP_FORCE)
           runner_iact_nonsym_timebin(r2, dx, hi, hj, pi, pj, a, H);
+        //if (pi->id == SIMBA_DEBUG_ID) message("13 pi id %llu updated min timebin %d", pi->id, pi->limiter_data.min_ngb_time_bin);
+        //if (pj->id == SIMBA_DEBUG_ID) message("13 pj id %llu min timebin %d", pj->id, pj->limiter_data.min_ngb_time_bin);
 #endif
         }
       } /* loop over the parts in cj. */
@@ -1175,6 +1228,9 @@ void DOPAIR1(struct runner *r, struct cell *ci, struct cell *cj, const int sid,
 
         /* Skip inhibited particles. */
         if (part_is_inhibited(pi, e)) continue;
+
+      // ALEXEI: check if ngbs are decoupled
+      if (pj->id == SIMBA_DEBUG_ID && !part_is_decoupled(pi)) message("neighbour %llu of %llu not decoupled", pi->id, pj->id);
 
         /* Skip decoupled particles. */
     // ALEXEI: improve this implementation!!!
@@ -1236,6 +1292,8 @@ void DOPAIR1(struct runner *r, struct cell *ci, struct cell *cj, const int sid,
 #endif
 #if (FUNCTION_TASK_LOOP == TASK_LOOP_FORCE)
           runner_iact_nonsym_timebin(r2, dx, hj, hi, pj, pi, a, H);
+        //if (pi->id == SIMBA_DEBUG_ID) message("14 pi id %llu min timebin %d", pi->id, pi->limiter_data.min_ngb_time_bin);
+        //if (pj->id == SIMBA_DEBUG_ID) message("14 pj id %llu updated min timebin %d", pj->id, pj->limiter_data.min_ngb_time_bin);
 #endif
         }
       } /* loop over the parts in ci. */
@@ -1494,6 +1552,9 @@ void DOPAIR2(struct runner *r, struct cell *ci, struct cell *cj, const int sid,
         /* Recover pj */
         struct part *pj = &parts_j[sort_active_j[pjd].i];
 
+      // ALEXEI: check if ngbs are decoupled
+      if (pi->id == SIMBA_DEBUG_ID && !part_is_decoupled(pj)) message("neighbour %llu of %llu not decoupled", pj->id, pi->id);
+
         /* Skip inhibited particles.
          * Note we are looping over active particles but in the case where
          * the cell thinks all the particles are active (because of the
@@ -1558,6 +1619,8 @@ void DOPAIR2(struct runner *r, struct cell *ci, struct cell *cj, const int sid,
 #endif
 #if (FUNCTION_TASK_LOOP == TASK_LOOP_FORCE)
           runner_iact_nonsym_timebin(r2, dx, hj, hi, pj, pi, a, H);
+        //if (pi->id == SIMBA_DEBUG_ID) message("15 pi id %llu min timebin %d", pi->id, pi->limiter_data.min_ngb_time_bin);
+        //if (pj->id == SIMBA_DEBUG_ID) message("15 pj id %llu updated min timebin %d", pj->id, pj->limiter_data.min_ngb_time_bin);
 #endif
         }
       } /* loop over the active parts in cj. */
@@ -1573,6 +1636,9 @@ void DOPAIR2(struct runner *r, struct cell *ci, struct cell *cj, const int sid,
 
         /* Skip inhibited particles. */
         if (part_is_inhibited(pj, e)) continue;
+
+      // ALEXEI: check if ngbs are decoupled
+      if (pi->id == SIMBA_DEBUG_ID && !part_is_decoupled(pj)) message("neighbour %llu of %llu not decoupled", pj->id, pi->id);
 
         /* Skip decoupled particles. */
     // ALEXEI: improve this implementation!!!
@@ -1649,6 +1715,8 @@ void DOPAIR2(struct runner *r, struct cell *ci, struct cell *cj, const int sid,
 #endif
 #if (FUNCTION_TASK_LOOP == TASK_LOOP_FORCE)
             runner_iact_nonsym_timebin(r2, dx, hi, hj, pi, pj, a, H);
+        //if (pi->id == SIMBA_DEBUG_ID) message("16 pi id %llu updated min timebin %d", pi->id, pi->limiter_data.min_ngb_time_bin);
+        //if (pj->id == SIMBA_DEBUG_ID) message("16 pj id %llu min timebin %d", pj->id, pj->limiter_data.min_ngb_time_bin);
 #endif
           }
         }
@@ -1762,6 +1830,8 @@ void DOPAIR2(struct runner *r, struct cell *ci, struct cell *cj, const int sid,
 #endif
 #if (FUNCTION_TASK_LOOP == TASK_LOOP_FORCE)
           runner_iact_nonsym_timebin(r2, dx, hi, hj, pi, pj, a, H);
+        //if (pi->id == SIMBA_DEBUG_ID) message("17 pi id %llu updated min timebin %d", pi->id, pi->limiter_data.min_ngb_time_bin);
+        //if (pj->id == SIMBA_DEBUG_ID) message("17 pj id %llu min timebin %d", pj->id, pj->limiter_data.min_ngb_time_bin);
 #endif
         }
       } /* loop over the active parts in ci. */
@@ -1778,6 +1848,9 @@ void DOPAIR2(struct runner *r, struct cell *ci, struct cell *cj, const int sid,
 
         /* Skip inhibited particles. */
         if (part_is_inhibited(pi, e)) continue;
+
+      // ALEXEI: check if ngbs are decoupled
+      if (pj->id == SIMBA_DEBUG_ID && !part_is_decoupled(pi)) message("neighbour %llu of %llu not decoupled", pi->id, pj->id);
 
         /* Skip decoupled particles. */
     // ALEXEI: improve this implementation!!!
@@ -1855,6 +1928,8 @@ void DOPAIR2(struct runner *r, struct cell *ci, struct cell *cj, const int sid,
 #endif
 #if (FUNCTION_TASK_LOOP == TASK_LOOP_FORCE)
             runner_iact_nonsym_timebin(r2, dx, hj, hi, pj, pi, a, H);
+        //if (pi->id == SIMBA_DEBUG_ID) message("18 pi id %llu min timebin %d", pi->id, pi->limiter_data.min_ngb_time_bin);
+        //if (pj->id == SIMBA_DEBUG_ID) message("18 pj id %llu updated min timebin %d", pj->id, pj->limiter_data.min_ngb_time_bin);
 #endif
           }
         }
@@ -2062,6 +2137,8 @@ void DOSELF1(struct runner *r, struct cell *restrict c) {
 #endif
 #if (FUNCTION_TASK_LOOP == TASK_LOOP_FORCE)
           runner_iact_nonsym_timebin(r2, dx, hj, hi, pj, pi, a, H);
+        //if (pi->id == SIMBA_DEBUG_ID) message("19 pi id %llu min timebin %d", pi->id, pi->limiter_data.min_ngb_time_bin);
+        //if (pj->id == SIMBA_DEBUG_ID) message("19 pj id %llu updated min timebin %d", pj->id, pj->limiter_data.min_ngb_time_bin);
 #endif
         }
       } /* loop over all other particles. */
@@ -2081,6 +2158,9 @@ void DOSELF1(struct runner *r, struct cell *restrict c) {
 
         /* Skip inhibited particles. */
         if (part_is_inhibited(pj, e)) continue;
+
+      // ALEXEI: check if ngbs are decoupled
+      if (pi->id == SIMBA_DEBUG_ID && !part_is_decoupled(pj)) message("neighbour %llu of %llu not decoupled", pj->id, pi->id);
 
         /* Skip decoupled particles. */
     // ALEXEI: improve this implementation!!!
@@ -2135,6 +2215,8 @@ void DOSELF1(struct runner *r, struct cell *restrict c) {
 #endif
 #if (FUNCTION_TASK_LOOP == TASK_LOOP_FORCE)
             runner_iact_nonsym_timebin(r2, dx, hi, hj, pi, pj, a, H);
+        //if (pi->id == SIMBA_DEBUG_ID) message("20 pi id %llu updated min timebin %d", pi->id, pi->limiter_data.min_ngb_time_bin);
+        //if (pj->id == SIMBA_DEBUG_ID) message("20 pj id %llu min timebin %d", pj->id, pj->limiter_data.min_ngb_time_bin);
 #endif
           } else if (doj) {
 
@@ -2149,6 +2231,8 @@ void DOSELF1(struct runner *r, struct cell *restrict c) {
 #endif
 #if (FUNCTION_TASK_LOOP == TASK_LOOP_FORCE)
             runner_iact_nonsym_timebin(r2, dx, hj, hi, pj, pi, a, H);
+        //if (pi->id == SIMBA_DEBUG_ID) message("21 pi id %llu min timebin %d", pi->id, pi->limiter_data.min_ngb_time_bin);
+        //if (pj->id == SIMBA_DEBUG_ID) message("21 pj id %llu updated min timebin %d", pj->id, pj->limiter_data.min_ngb_time_bin);
 #endif
           }
         }
@@ -2286,6 +2370,8 @@ void DOSELF2(struct runner *r, struct cell *restrict c) {
 #endif
 #if (FUNCTION_TASK_LOOP == TASK_LOOP_FORCE)
           runner_iact_nonsym_timebin(r2, dx, hj, hi, pj, pi, a, H);
+        //if (pi->id == SIMBA_DEBUG_ID) message("22 pi id %llu min timebin %d", pi->id, pi->limiter_data.min_ngb_time_bin);
+        //if (pj->id == SIMBA_DEBUG_ID) message("22 pj id %llu updated min timebin %d", pj->id, pj->limiter_data.min_ngb_time_bin);
 #endif
         }
       } /* loop over all other particles. */
@@ -2305,6 +2391,9 @@ void DOSELF2(struct runner *r, struct cell *restrict c) {
 
         /* Skip inhibited particles. */
         if (part_is_inhibited(pj, e)) continue;
+
+      // ALEXEI: check if ngbs are decoupled
+      if (pi->id == SIMBA_DEBUG_ID && !part_is_decoupled(pj)) message("neighbour %llu of %llu not decoupled", pj->id, pi->id);
 
         /* Skip decoupled particles. */
     // ALEXEI: improve this implementation!!!
@@ -2353,6 +2442,8 @@ void DOSELF2(struct runner *r, struct cell *restrict c) {
 #endif
 #if (FUNCTION_TASK_LOOP == TASK_LOOP_FORCE)
             runner_iact_nonsym_timebin(r2, dx, hi, hj, pi, pj, a, H);
+        //if (pi->id == SIMBA_DEBUG_ID) message("23 pi id %llu updated min timebin %d", pi->id, pi->limiter_data.min_ngb_time_bin);
+        //if (pj->id == SIMBA_DEBUG_ID) message("23 pj id %llu min timebin %d", pj->id, pj->limiter_data.min_ngb_time_bin);
 #endif
           }
         }
