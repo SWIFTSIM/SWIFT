@@ -133,29 +133,33 @@ nobase_noinst_HEADERS = align.h approx_math.h atomic.h barrier.h cycle.h error.h
 		 hydro/AnarchyDU/hydro.h hydro/PressureEnergy/hydro_iact.h hydro/PressureEnergy/hydro_io.h \
                  hydro/AnarchyDU/hydro_debug.h hydro/PressureEnergy/hydro_part.h \
 		 hydro/AnarchyDU/hydro_parameters.h \
-		 hydro/GizmoMFV/hydro.h hydro/GizmoMFV/hydro_iact.h \
-                 hydro/GizmoMFV/hydro_io.h hydro/GizmoMFV/hydro_debug.h \
-                 hydro/GizmoMFV/hydro_part.h \
-                 hydro/GizmoMFV/hydro_gradients_gizmo.h \
-                 hydro/GizmoMFV/hydro_gradients.h \
-                 hydro/GizmoMFV/hydro_gradients_sph.h \
-                 hydro/GizmoMFV/hydro_slope_limiters_cell.h \
-                 hydro/GizmoMFV/hydro_slope_limiters_face.h \
-                 hydro/GizmoMFV/hydro_slope_limiters.h \
-                 hydro/GizmoMFV/hydro_unphysical.h \
-                 hydro/GizmoMFV/hydro_velocities.h \
-		 hydro/GizmoMFV/hydro_parameters.h \
-		 hydro/GizmoMFM/hydro.h hydro/GizmoMFM/hydro_iact.h \
-                 hydro/GizmoMFM/hydro_io.h hydro/GizmoMFM/hydro_debug.h \
-                 hydro/GizmoMFM/hydro_part.h \
-                 hydro/GizmoMFM/hydro_gradients_gizmo.h \
-                 hydro/GizmoMFM/hydro_gradients.h \
-                 hydro/GizmoMFM/hydro_gradients_sph.h \
-                 hydro/GizmoMFM/hydro_slope_limiters_cell.h \
-                 hydro/GizmoMFM/hydro_slope_limiters_face.h \
-                 hydro/GizmoMFM/hydro_slope_limiters.h \
-                 hydro/GizmoMFM/hydro_unphysical.h \
-		 hydro/GizmoMFM/hydro_parameters.h \
+		 hydro/Gizmo/hydro_parameters.h \
+                 hydro/Gizmo/hydro_io.h hydro/Gizmo/hydro_debug.h \
+                 hydro/Gizmo/hydro.h hydro/Gizmo/hydro_iact.h \
+                 hydro/Gizmo/hydro_part.h \
+		 hydro/Gizmo/MFV/hydro.h hydro/Gizmo/MFV/hydro_iact.h \
+                 hydro/Gizmo/MFV/hydro_io.h hydro/Gizmo/MFV/hydro_debug.h \
+                 hydro/Gizmo/MFV/hydro_part.h \
+                 hydro/Gizmo/MFV/hydro_gradients_gizmo.h \
+                 hydro/Gizmo/MFV/hydro_gradients.h \
+                 hydro/Gizmo/MFV/hydro_gradients_sph.h \
+                 hydro/Gizmo/MFV/hydro_slope_limiters_cell.h \
+                 hydro/Gizmo/MFV/hydro_slope_limiters_face.h \
+                 hydro/Gizmo/MFV/hydro_slope_limiters.h \
+                 hydro/Gizmo/MFV/hydro_unphysical.h \
+                 hydro/Gizmo/MFV/hydro_velocities.h \
+		 hydro/Gizmo/MFV/hydro_parameters.h \
+		 hydro/Gizmo/MFM/hydro.h hydro/Gizmo/MFM/hydro_iact.h \
+                 hydro/Gizmo/MFM/hydro_io.h hydro/Gizmo/MFM/hydro_debug.h \
+                 hydro/Gizmo/MFM/hydro_part.h \
+                 hydro/Gizmo/MFM/hydro_gradients_gizmo.h \
+                 hydro/Gizmo/MFM/hydro_gradients.h \
+                 hydro/Gizmo/MFM/hydro_gradients_sph.h \
+                 hydro/Gizmo/MFM/hydro_slope_limiters_cell.h \
+                 hydro/Gizmo/MFM/hydro_slope_limiters_face.h \
+                 hydro/Gizmo/MFM/hydro_slope_limiters.h \
+                 hydro/Gizmo/MFM/hydro_unphysical.h \
+		 hydro/Gizmo/MFM/hydro_parameters.h \
                  hydro/Shadowswift/hydro_debug.h \
                  hydro/Shadowswift/hydro_gradients.h hydro/Shadowswift/hydro.h \
                  hydro/Shadowswift/hydro_iact.h \
