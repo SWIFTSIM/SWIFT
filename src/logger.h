@@ -38,7 +38,7 @@ struct part;
 struct engine;
 
 #define logger_major_version 0
-#define logger_minor_version 2
+#define logger_minor_version 3
 
 /**
  * Logger entries contain messages representing the particle data at a given
@@ -95,8 +95,10 @@ enum logger_masks_number {
 } __attribute__((packed));
 
 enum logger_special_flags {
-  logger_flag_change_type = 0,
-  logger_flag_mpi = 1,
+  logger_flag_change_type = 1 << 0, /* Flag for a change of particle type */
+  logger_flag_mpi = 1 << 1, /* Flag for a change of MPI rank */
+  logger_flag_delete = 1 << 2, /* Flag for a deleted particle */
+  logger_flag_create = 1 << 3 /* Flag for a created particle */
 } __attribute__((packed));
 
 struct mask_data {
@@ -185,7 +187,7 @@ void logger_struct_dump(const struct logger_writer *log, FILE *stream);
 void logger_struct_restore(struct logger_writer *log, FILE *stream);
 
 
-int logger_generate_flag(enum logger_special_flags flag, int data) {
+INLINE static int logger_generate_flag(enum logger_special_flags flag, int data) {
 #ifdef SWIFT_DEBUG_CHECKS
   if (flag & 0xFFFFFF00) {
     error("The special flag in the logger cannot be larger than 1 byte.");
@@ -206,6 +208,15 @@ void logger_log_after_communcations(
   struct gpart *gparts, size_t nr_gparts, int *g_counts,
   struct spart *sparts, size_t nr_sparts, int *s_counts,
   struct bpart *bparts, size_t nr_bparts, int *b_counts);
+
+void logger_log_recv_strays(
+  struct logger_writer *log,
+  struct part *parts, struct xpart *xparts, size_t nr_parts,
+  struct gpart *gparts, size_t nr_gparts,
+  struct spart *sparts, size_t nr_sparts,
+  struct bpart *bparts, size_t nr_bparts,
+  int node_id);
+
 #endif
 
 /**

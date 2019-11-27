@@ -407,7 +407,6 @@ void engine_exchange_strays(struct engine *e, const size_t offset_parts,
                             size_t *Nbpart) {
 
 #ifdef WITH_MPI
-
   struct space *s = e->s;
   ticks tic = getticks();
 
@@ -455,8 +454,11 @@ void engine_exchange_strays(struct engine *e, const size_t offset_parts,
                      &s->xparts[offset_parts + k], 1);
 
 #ifdef WITH_LOGGER
+    const int logger_flag = logger_generate_flag(
+      logger_flag_mpi | logger_flag_delete, node_id);
+
     /* Log the particle when leaving a rank. */
-    logger_log_part(e->log, s->parts[offset_parts + k],
+    logger_log_part(e->logger, &s->parts[offset_parts + k],
                     logger_mask_data[logger_x].mask |
                     logger_mask_data[logger_v].mask |
                     logger_mask_data[logger_a].mask |
@@ -465,8 +467,8 @@ void engine_exchange_strays(struct engine *e, const size_t offset_parts,
                     logger_mask_data[logger_rho].mask |
                     logger_mask_data[logger_consts].mask |
                     logger_mask_data[logger_special_flags].mask,
-                    s->xparts[offset_parts + k].logger_data.last_offset,
-                    logger_generate_flag(logger_flag_mpi, node_id));
+                    &s->xparts[offset_parts + k].logger_data.last_offset,
+                    logger_flag);
 #endif
   }
 
@@ -505,14 +507,17 @@ void engine_exchange_strays(struct engine *e, const size_t offset_parts,
     proxy_sparts_load(&e->proxies[pid], &s->sparts[offset_sparts + k], 1);
 
 #ifdef WITH_LOGGER
-    /* Log the particle when leaving a rank. */
-    logger_log_spart(e->log, s->sparts[offset_sparts + k],
+    const int logger_flag = logger_generate_flag(
+      logger_flag_mpi | logger_flag_delete, node_id);
+
+      /* Log the particle when leaving a rank. */
+    logger_log_spart(e->logger, &s->sparts[offset_sparts + k],
                      logger_mask_data[logger_x].mask |
                      logger_mask_data[logger_v].mask |
                      logger_mask_data[logger_consts].mask |
                      logger_mask_data[logger_special_flags].mask,
-                     s->sparts[offset_parts + k].logger_data.last_offset,
-                     logger_generate_flag(logger_flag_mpi, node_id));
+                     &s->sparts[offset_parts + k].logger_data.last_offset,
+                     logger_flag);
 #endif
   }
 
@@ -585,17 +590,20 @@ void engine_exchange_strays(struct engine *e, const size_t offset_parts,
 
 #ifdef WITH_LOGGER
     /* Write only the dark matter particles */
-    if (gp->type == swift_type_dark_matter) {
+    if (s->gparts[offset_gparts + k].type == swift_type_dark_matter) {
+
+      const int logger_flag = logger_generate_flag(
+         logger_flag_mpi | logger_flag_delete, node_id);
 
       /* Log the particle when leaving a rank. */
-      logger_log_gpart(e->log, s->gparts[offset_gparts + k],
+      logger_log_gpart(e->logger, &s->gparts[offset_gparts + k],
                        logger_mask_data[logger_x].mask |
                        logger_mask_data[logger_v].mask |
                        logger_mask_data[logger_a].mask |
                        logger_mask_data[logger_consts].mask |
                        logger_mask_data[logger_special_flags].mask,
-                       s->sparts[offset_parts + k].logger_data.last_offset,
-                       logger_generate_flag(logger_flag_mpi, node_id));
+                       &s->sparts[offset_parts + k].logger_data.last_offset,
+                       logger_flag);
     }
 #endif
   }
@@ -819,7 +827,8 @@ void engine_exchange_strays(struct engine *e, const size_t offset_parts,
              sizeof(struct bpart) * prox->nr_bparts_in);
 
 #ifdef WITH_LOGGER
-      logger_log_recv_strays(e->log, &s->parts[offset_parts + count_parts], prox->nr_parts_in,
+      logger_log_recv_strays(e->logger, &s->parts[offset_parts + count_parts],
+                             &s->xparts[offset_parts + count_parts], prox->nr_parts_in,
                              &s->gparts[offset_gparts + count_gparts], prox->nr_gparts_in,
                              &s->sparts[offset_sparts + count_sparts], prox->nr_sparts_in,
                              &s->bparts[offset_bparts + count_bparts], prox->nr_bparts_in,

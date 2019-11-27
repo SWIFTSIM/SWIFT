@@ -915,11 +915,62 @@ void logger_log_after_communcations(
  */
 void logger_log_recv_strays(
     struct logger_writer *log,
-    struct part *parts, size_t nr_parts, int *counts,
-    struct gpart *gparts, size_t nr_gparts, int *g_counts,
-    struct spart *sparts, size_t nr_sparts, int *s_counts,
-    struct bpart *bparts, size_t nr_bparts, int *b_counts) {
-  error("TODO");
+    struct part *parts, struct xpart *xparts, size_t nr_parts,
+    struct gpart *gparts, size_t nr_gparts,
+    struct spart *sparts, size_t nr_sparts,
+    struct bpart *bparts, size_t nr_bparts,
+    int node_id) {
+
+  const int flag = logger_generate_flag(logger_flag_mpi | logger_flag_create,
+                                        node_id);
+
+  /* Log the gas particles */
+  const unsigned int mask_hydro =
+    logger_mask_data[logger_x].mask | logger_mask_data[logger_v].mask |
+    logger_mask_data[logger_a].mask | logger_mask_data[logger_u].mask |
+    logger_mask_data[logger_h].mask | logger_mask_data[logger_rho].mask |
+    logger_mask_data[logger_consts].mask |
+    logger_mask_data[logger_special_flags].mask;
+
+  for(size_t i = 0; i < nr_parts; i++) {
+    logger_log_part(log, &parts[i], mask_hydro,
+                    &xparts[i].logger_data.last_offset,
+                    flag);
+    xparts[i].logger_data.steps_since_last_output = 0;
+  }
+
+  /* Log the stellar particles */
+  const unsigned int mask_stars = logger_mask_data[logger_x].mask |
+    logger_mask_data[logger_v].mask |
+    logger_mask_data[logger_consts].mask |
+    logger_mask_data[logger_special_flags].mask;
+  for(size_t i = 0; i < nr_sparts; i++) {
+    logger_log_spart(log, &sparts[i], mask_stars,
+                     &sparts[i].logger_data.last_offset,
+                     /* Special flags */ 0);
+    sparts[i].logger_data.steps_since_last_output = 0;
+  }
+
+
+  /* Log the gparts */
+  const unsigned int mask_grav =
+    logger_mask_data[logger_x].mask | logger_mask_data[logger_v].mask |
+    logger_mask_data[logger_a].mask | logger_mask_data[logger_consts].mask |
+    logger_mask_data[logger_special_flags].mask;
+  for(size_t i = 0; i < nr_gparts; i++) {
+    /* Log only the dark matter */
+    if (gparts[i].type != swift_type_dark_matter) continue;
+
+    logger_log_gpart(log, &gparts[i], mask_grav,
+                     &gparts[i].logger_data.last_offset,
+                     /* Special flags */ 0);
+    gparts[i].logger_data.steps_since_last_output = 0;
+  }
+
+  /* Log the bparts */
+  if (nr_bparts > 0) {
+    error("TODO");
+  }
 }
 
 #endif
@@ -935,6 +986,9 @@ void logger_struct_dump(const struct logger_writer *log, FILE *stream) {
                        "logger", "logger");
 }
 
+
+// TODO remove that
+void dump_restart(struct dump *dump, char *log_name, int size) {}
 /**
  * @brief Restore a logger struct from the given FILE as a stream of
  * bytes.

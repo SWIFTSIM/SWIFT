@@ -1039,9 +1039,9 @@ void engine_redistribute(struct engine *e) {
 #ifdef WITH_LOGGER
   /* Log the received particles */
   logger_log_after_communcations(s->parts, s->nr_parts, counts,
-                                 s->gparts, s->nr_gparts, gcounts,
-                                 s->sparts, s->nr_sparts, scounts,
-                                 s->bparts, s->nr_bparts, bcounts);
+                                 s->gparts, s->nr_gparts, g_counts,
+                                 s->sparts, s->nr_sparts, s_counts,
+                                 s->bparts, s->nr_bparts, b_counts);
 #endif
 
   /* Restore the part<->gpart and spart<->gpart links.
