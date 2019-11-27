@@ -22,11 +22,15 @@
 /* Config parameters. */
 #include "../config.h"
 
+/* Some standard headers. */
+#include <stdint.h>
+
 /* Includes. */
 #include "cell.h"
 #include "part.h"
 #include "space.h"
 
+uint32_t quick_hash(const void *data, size_t length);
 void printParticle(const struct part *parts, const struct xpart *xparts,
                    long long int id, size_t N);
 void printgParticle(const struct gpart *gparts, const struct part *parts,

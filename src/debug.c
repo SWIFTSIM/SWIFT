@@ -27,6 +27,7 @@
 
 /* Some standard headers. */
 #include <float.h>
+#include <stdint.h>
 #include <stdio.h>
 #include <unistd.h>
 
@@ -78,6 +79,23 @@
 #else
 #error "Invalid choice of gravity variant"
 #endif
+
+/**
+ * @brief Computes a 32-bit hash of an arbitrary sequence of bytes, useful for
+ *        tagging random stuff.
+ *
+ * @param data The bytes from which to compute the hash.
+ * @param length The number of bytes over which to compute the hash.
+ * @return An unsigned 32-bit integer hash of the provided data.
+ */
+uint32_t quick_hash(const void *data, size_t length) {
+  const char *char_data = (const char *)data;
+  uint32_t state = char_data[0];
+  for (size_t k = 0; k < length; k++) {
+    state = (state << 8) | ((rand_r(&state) ^ char_data[k]) & 0xff);
+  }
+  return state;
+}
 
 /**
  * @brief Looks for the particle with the given id and prints its information to

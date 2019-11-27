@@ -32,6 +32,7 @@
 
 /* Local includes. */
 #include "align.h"
+#include "debug.h"
 #include "kernel_hydro.h"
 #include "lock.h"
 #include "multipole.h"
@@ -45,6 +46,7 @@
 /* Avoid cyclic inclusions */
 struct engine;
 struct scheduler;
+uint32_t quick_hash(const void *, size_t);
 
 /* Max tag size set to 2^29 to take into account some MPI implementations
  * that use 2^31 as the upper bound on MPI tags and the fact that
@@ -65,7 +67,6 @@ struct cell_buff {
 
 /* Mini struct to link cells to tasks. Used as a linked list. */
 struct link {
-
   /* The task pointer. */
   struct task *t;
 
@@ -90,10 +91,8 @@ extern struct cell_split_pair cell_split_pairs[13];
  * Contains all the information for a tree walk in a non-local cell.
  */
 struct pcell {
-
   /*! Hydro variables */
   struct {
-
     /*! Maximal smoothing length. */
     double h_max;
 
@@ -116,7 +115,6 @@ struct pcell {
 
   /*! Gravity variables */
   struct {
-
     /*! This cell's gravity-related tensors */
     struct multipole m_pole;
 
@@ -154,7 +152,6 @@ struct pcell {
 
   /*! Stars variables */
   struct {
-
     /*! Number of #spart in this cell. */
     int count;
 
@@ -174,7 +171,6 @@ struct pcell {
 
   /*! Black hole variables */
   struct {
-
     /*! Number of #spart in this cell. */
     int count;
 
@@ -209,7 +205,6 @@ struct pcell {
  * @brief Cell information at the end of a time-step.
  */
 struct pcell_step_hydro {
-
   /*! Minimal integer end-of-timestep in this cell (hydro) */
   integertime_t ti_end_min;
 
@@ -221,7 +216,6 @@ struct pcell_step_hydro {
 };
 
 struct pcell_step_grav {
-
   /*! Minimal integer end-of-timestep in this cell (gravity) */
   integertime_t ti_end_min;
 
@@ -230,7 +224,6 @@ struct pcell_step_grav {
 };
 
 struct pcell_step_stars {
-
   /*! Minimal integer end-of-timestep in this cell (stars) */
   integertime_t ti_end_min;
 
@@ -242,7 +235,6 @@ struct pcell_step_stars {
 };
 
 struct pcell_step_black_holes {
-
   /*! Minimal integer end-of-timestep in this cell (black_holes) */
   integertime_t ti_end_min;
 
@@ -257,10 +249,8 @@ struct pcell_step_black_holes {
  * @brief Cell information to propagate the new counts of star particles.
  */
 struct pcell_sf {
-
   /*! Stars variables */
   struct {
-
     /* Distance by which the stars pointer has moved since the last rebuild */
     ptrdiff_t delta_from_rebuild;
 
@@ -301,7 +291,6 @@ enum cell_flags {
  * Contains particles, links to tasks, a multipole object and counters.
  */
 struct cell {
-
   /*! The cell location on the grid. */
   double loc[3];
 
@@ -328,7 +317,6 @@ struct cell {
 
   /*! Hydro variables */
   struct {
-
     /*! Pointer to the #part data. */
     struct part *parts;
 
@@ -450,7 +438,6 @@ struct cell {
 
   /*! Grav variables */
   struct {
-
     /*! Pointer to the #gpart data. */
     struct gpart *parts;
 
@@ -538,7 +525,6 @@ struct cell {
 
   /*! Stars variables */
   struct {
-
     /*! Pointer to the #spart data. */
     struct spart *parts;
 
@@ -640,7 +626,6 @@ struct cell {
 
   /*! Black hole variables */
   struct {
-
     /*! Pointer to the #bpart data. */
     struct bpart *parts;
 
@@ -722,7 +707,6 @@ struct cell {
 #ifdef WITH_MPI
   /*! MPI variables */
   struct {
-
     union {
       /* Single list of all send tasks associated with this cell. */
       struct link *send;
@@ -956,7 +940,6 @@ int cell_can_use_pair_mm_rebuild(const struct cell *ci, const struct cell *cj,
 __attribute__((always_inline)) INLINE static double cell_min_dist2_same_size(
     const struct cell *restrict ci, const struct cell *restrict cj,
     const int periodic, const double dim[3]) {
-
 #ifdef SWIFT_DEBUG_CHECKS
   if (ci->width[0] != cj->width[0]) error("Cells of different size!");
   if (ci->width[1] != cj->width[1]) error("Cells of different size!");
@@ -978,7 +961,6 @@ __attribute__((always_inline)) INLINE static double cell_min_dist2_same_size(
   const double cjz_max = cj->loc[2] + cj->width[2];
 
   if (periodic) {
-
     const double dx = min4(fabs(nearest(cix_min - cjx_min, dim[0])),
                            fabs(nearest(cix_min - cjx_max, dim[0])),
                            fabs(nearest(cix_max - cjx_min, dim[0])),
@@ -997,7 +979,6 @@ __attribute__((always_inline)) INLINE static double cell_min_dist2_same_size(
     return dx * dx + dy * dy + dz * dz;
 
   } else {
-
     const double dx = min(fabs(cix_max - cjx_min), fabs(cix_min - cjx_max));
     const double dy = min(fabs(ciy_max - cjy_min), fabs(ciy_min - cjy_max));
     const double dz = min(fabs(ciz_max - cjz_min), fabs(ciz_min - cjz_max));
@@ -1016,7 +997,6 @@ __attribute__((always_inline)) INLINE static double cell_min_dist2_same_size(
  */
 __attribute__((always_inline)) INLINE static int
 cell_can_recurse_in_pair_hydro_task(const struct cell *c) {
-
   /* Is the cell split ? */
   /* If so, is the cut-off radius plus the max distance the parts have moved */
   /* smaller than the sub-cell sizes ? */
@@ -1033,7 +1013,6 @@ cell_can_recurse_in_pair_hydro_task(const struct cell *c) {
  */
 __attribute__((always_inline)) INLINE static int
 cell_can_recurse_in_self_hydro_task(const struct cell *c) {
-
   /* Is the cell split and not smaller than the smoothing length? */
   return c->split && (kernel_gamma * c->hydro.h_max_old < 0.5f * c->dmin);
 }
@@ -1048,7 +1027,6 @@ cell_can_recurse_in_self_hydro_task(const struct cell *c) {
 __attribute__((always_inline)) INLINE static int
 cell_can_recurse_in_pair_stars_task(const struct cell *ci,
                                     const struct cell *cj) {
-
   /* Is the cell split ? */
   /* If so, is the cut-off radius plus the max distance the parts have moved */
   /* smaller than the sub-cell sizes ? */
@@ -1068,7 +1046,6 @@ cell_can_recurse_in_pair_stars_task(const struct cell *ci,
  */
 __attribute__((always_inline)) INLINE static int
 cell_can_recurse_in_self_stars_task(const struct cell *c) {
-
   /* Is the cell split and not smaller than the smoothing length? */
   return c->split && (kernel_gamma * c->stars.h_max_old < 0.5f * c->dmin) &&
          (kernel_gamma * c->hydro.h_max_old < 0.5f * c->dmin);
@@ -1084,7 +1061,6 @@ cell_can_recurse_in_self_stars_task(const struct cell *c) {
 __attribute__((always_inline)) INLINE static int
 cell_can_recurse_in_pair_black_holes_task(const struct cell *ci,
                                           const struct cell *cj) {
-
   /* Is the cell split ? */
   /* If so, is the cut-off radius plus the max distance the parts have moved */
   /* smaller than the sub-cell sizes ? */
@@ -1104,7 +1080,6 @@ cell_can_recurse_in_pair_black_holes_task(const struct cell *ci,
  */
 __attribute__((always_inline)) INLINE static int
 cell_can_recurse_in_self_black_holes_task(const struct cell *c) {
-
   /* Is the cell split and not smaller than the smoothing length? */
   return c->split &&
          (kernel_gamma * c->black_holes.h_max_old < 0.5f * c->dmin) &&
@@ -1119,7 +1094,6 @@ cell_can_recurse_in_self_black_holes_task(const struct cell *c) {
  */
 __attribute__((always_inline)) INLINE static int cell_can_split_pair_hydro_task(
     const struct cell *c) {
-
   /* Is the cell split ? */
   /* If so, is the cut-off radius with some leeway smaller than */
   /* the sub-cell sizes ? */
@@ -1139,7 +1113,6 @@ __attribute__((always_inline)) INLINE static int cell_can_split_pair_hydro_task(
  */
 __attribute__((always_inline)) INLINE static int cell_can_split_self_hydro_task(
     const struct cell *c) {
-
   /* Is the cell split ? */
   /* If so, is the cut-off radius with some leeway smaller than */
   /* the sub-cell sizes ? */
@@ -1159,7 +1132,6 @@ __attribute__((always_inline)) INLINE static int cell_can_split_self_hydro_task(
  */
 __attribute__((always_inline)) INLINE static int
 cell_can_split_pair_gravity_task(const struct cell *c) {
-
   /* Is the cell split and still far from the leaves ? */
   return c->split && ((c->maxdepth - c->depth) > space_subdepth_diff_grav);
 }
@@ -1172,7 +1144,6 @@ cell_can_split_pair_gravity_task(const struct cell *c) {
  */
 __attribute__((always_inline)) INLINE static int
 cell_can_split_self_gravity_task(const struct cell *c) {
-
   /* Is the cell split and still far from the leaves ? */
   return c->split && ((c->maxdepth - c->depth) > space_subdepth_diff_grav);
 }
@@ -1185,7 +1156,6 @@ cell_can_split_self_gravity_task(const struct cell *c) {
  */
 __attribute__((always_inline)) INLINE static int cell_can_split_self_fof_task(
     const struct cell *c) {
-
   /* Is the cell split ? */
   return c->split && c->grav.count > 5000 &&
          ((c->maxdepth - c->depth) > space_subdepth_diff_grav);
@@ -1201,7 +1171,6 @@ __attribute__((always_inline)) INLINE static int cell_can_split_self_fof_task(
  */
 __attribute__((always_inline)) INLINE static int
 cell_need_rebuild_for_hydro_pair(const struct cell *ci, const struct cell *cj) {
-
   /* Is the cut-off radius plus the max distance the parts in both cells have */
   /* moved larger than the cell size ? */
   /* Note ci->dmin == cj->dmin */
@@ -1222,7 +1191,6 @@ cell_need_rebuild_for_hydro_pair(const struct cell *ci, const struct cell *cj) {
  */
 __attribute__((always_inline)) INLINE static int
 cell_need_rebuild_for_stars_pair(const struct cell *ci, const struct cell *cj) {
-
   /* Is the cut-off radius plus the max distance the parts in both cells have */
   /* moved larger than the cell size ? */
   /* Note ci->dmin == cj->dmin */
@@ -1244,7 +1212,6 @@ cell_need_rebuild_for_stars_pair(const struct cell *ci, const struct cell *cj) {
 __attribute__((always_inline)) INLINE static int
 cell_need_rebuild_for_black_holes_pair(const struct cell *ci,
                                        const struct cell *cj) {
-
   /* Is the cut-off radius plus the max distance the parts in both cells have */
   /* moved larger than the cell size ? */
   /* Note ci->dmin == cj->dmin */
@@ -1254,6 +1221,15 @@ cell_need_rebuild_for_black_holes_pair(const struct cell *ci,
     return 1;
   }
   return 0;
+}
+
+/**
+ * @brief Retuns a hash of a cell computed from its location and width.
+ */
+__attribute__((always_inline)) INLINE static uint32_t cell_hash(
+    const struct cell *c) {
+  return quick_hash(c->loc, sizeof(c->loc)) ^
+         quick_hash(c->width, sizeof(c->width));
 }
 
 /**
@@ -1287,7 +1263,6 @@ __attribute__((always_inline)) INLINE static void cell_ensure_tagged(
  */
 __attribute__((always_inline)) INLINE static void cell_malloc_hydro_sorts(
     struct cell *c, int flags) {
-
   const int count = c->hydro.count;
 
   /* Note that sorts can be used by different tasks at the same time (but not
@@ -1308,7 +1283,6 @@ __attribute__((always_inline)) INLINE static void cell_malloc_hydro_sorts(
  */
 __attribute__((always_inline)) INLINE static void cell_free_hydro_sorts(
     struct cell *c) {
-
   for (int i = 0; i < 13; i++) {
     if (c->hydro.sort[i] != NULL) {
       swift_free("hydro.sort", c->hydro.sort[i]);
@@ -1325,7 +1299,6 @@ __attribute__((always_inline)) INLINE static void cell_free_hydro_sorts(
  */
 __attribute__((always_inline)) INLINE static void cell_malloc_stars_sorts(
     struct cell *c, int flags) {
-
   const int count = c->stars.count;
 
   /* Note that sorts can be used by different tasks at the same time (but not
@@ -1346,7 +1319,6 @@ __attribute__((always_inline)) INLINE static void cell_malloc_stars_sorts(
  */
 __attribute__((always_inline)) INLINE static void cell_free_stars_sorts(
     struct cell *c) {
-
   for (int i = 0; i < 13; i++) {
     if (c->stars.sort[i] != NULL) {
       swift_free("stars.sort", c->stars.sort[i]);
