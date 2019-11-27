@@ -453,6 +453,21 @@ void engine_exchange_strays(struct engine *e, const size_t offset_parts,
     /* Load the part and xpart into the proxy. */
     proxy_parts_load(&e->proxies[pid], &s->parts[offset_parts + k],
                      &s->xparts[offset_parts + k], 1);
+
+#ifdef WITH_LOGGER
+    /* Log the particle when leaving a rank. */
+    logger_log_part(e->log, s->parts[offset_parts + k],
+                    logger_mask_data[logger_x].mask |
+                    logger_mask_data[logger_v].mask |
+                    logger_mask_data[logger_a].mask |
+                    logger_mask_data[logger_u].mask |
+                    logger_mask_data[logger_h].mask |
+                    logger_mask_data[logger_rho].mask |
+                    logger_mask_data[logger_consts].mask |
+                    logger_mask_data[logger_special_flags].mask,
+                    s->xparts[offset_parts + k].logger_data.last_offset,
+                    logger_generate_flag(logger_flag_mpi, node_id));
+#endif
   }
 
   /* Put the sparts into the corresponding proxies. */
@@ -488,6 +503,17 @@ void engine_exchange_strays(struct engine *e, const size_t offset_parts,
 
     /* Load the spart into the proxy */
     proxy_sparts_load(&e->proxies[pid], &s->sparts[offset_sparts + k], 1);
+
+#ifdef WITH_LOGGER
+    /* Log the particle when leaving a rank. */
+    logger_log_spart(e->log, s->sparts[offset_sparts + k],
+                     logger_mask_data[logger_x].mask |
+                     logger_mask_data[logger_v].mask |
+                     logger_mask_data[logger_consts].mask |
+                     logger_mask_data[logger_special_flags].mask,
+                     s->sparts[offset_parts + k].logger_data.last_offset,
+                     logger_generate_flag(logger_flag_mpi, node_id));
+#endif
   }
 
   /* Put the bparts into the corresponding proxies. */
@@ -523,6 +549,10 @@ void engine_exchange_strays(struct engine *e, const size_t offset_parts,
 
     /* Load the bpart into the proxy */
     proxy_bparts_load(&e->proxies[pid], &s->bparts[offset_bparts + k], 1);
+
+#ifdef WITH_LOGGER
+    error("TODO");
+#endif
   }
 
   /* Put the gparts into the corresponding proxies. */
@@ -552,6 +582,22 @@ void engine_exchange_strays(struct engine *e, const size_t offset_parts,
 
     /* Load the gpart into the proxy */
     proxy_gparts_load(&e->proxies[pid], &s->gparts[offset_gparts + k], 1);
+
+#ifdef WITH_LOGGER
+    /* Write only the dark matter particles */
+    if (gp->type == swift_type_dark_matter) {
+
+      /* Log the particle when leaving a rank. */
+      logger_log_gpart(e->log, s->gparts[offset_gparts + k],
+                       logger_mask_data[logger_x].mask |
+                       logger_mask_data[logger_v].mask |
+                       logger_mask_data[logger_a].mask |
+                       logger_mask_data[logger_consts].mask |
+                       logger_mask_data[logger_special_flags].mask,
+                       s->sparts[offset_parts + k].logger_data.last_offset,
+                       logger_generate_flag(logger_flag_mpi, node_id));
+    }
+#endif
   }
 
   /* Launch the proxies. */
@@ -771,6 +817,14 @@ void engine_exchange_strays(struct engine *e, const size_t offset_parts,
              sizeof(struct spart) * prox->nr_sparts_in);
       memcpy(&s->bparts[offset_bparts + count_bparts], prox->bparts_in,
              sizeof(struct bpart) * prox->nr_bparts_in);
+
+#ifdef WITH_LOGGER
+      logger_log_recv_strays(e->log, &s->parts[offset_parts + count_parts], prox->nr_parts_in,
+                             &s->gparts[offset_gparts + count_gparts], prox->nr_gparts_in,
+                             &s->sparts[offset_sparts + count_sparts], prox->nr_sparts_in,
+                             &s->bparts[offset_bparts + count_bparts], prox->nr_bparts_in,
+                             prox->nodeID);
+#endif
       /* for (int k = offset; k < offset + count; k++)
          message(
             "received particle %lli, x=[%.3e %.3e %.3e], h=%.3e, from node %i.",
@@ -3297,7 +3351,7 @@ void engine_dump_snapshot(struct engine *e) {
  */
 void engine_dump_index(struct engine *e) {
 
-#if defined(WITH_LOGGER) && !defined(WITH_MPI)
+#if defined(WITH_LOGGER)
   struct clocks_time time1, time2;
   clocks_gettime(&time1);
 

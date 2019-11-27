@@ -190,8 +190,8 @@ void logger_write_index_file(struct logger_writer* log, struct engine* e) {
 
   /* File name */
   char fileName[FILENAME_BUFFER_SIZE];
-  snprintf(fileName, FILENAME_BUFFER_SIZE, "%.100s_%04i.index",
-           e->logger->base_name, outputCount);
+  snprintf(fileName, FILENAME_BUFFER_SIZE, "%.100s_%04i_%04i.index",
+           e->logger->base_name, engine_rank, outputCount);
 
   /* Open file */
   FILE* f = NULL;
@@ -366,6 +366,10 @@ void logger_write_index_file(struct logger_writer* log, struct engine* e) {
  * @params e The #engine.
  */
 void logger_write_description(struct logger_writer* log, struct engine* e) {
+  /* Only the master writes the description */
+  if (engine_rank != 0) {
+    return;
+  }
   /* const struct unit_system *internal_units = e->internal_units; */
   /* const struct unit_system *snapshot_units = e->snapshot_units; */
 

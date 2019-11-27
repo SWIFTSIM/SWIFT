@@ -325,7 +325,7 @@ void runner_do_star_formation(struct runner *r, struct cell *c, int timer) {
                                 logger_mask_data[logger_consts].mask |
                                 logger_mask_data[logger_special_flags].mask,
                             &xp->logger_data.last_offset,
-                            /* special flags */ swift_type_stars);
+                            logger_generate_flag(logger_flag_change_type, swift_type_stars));
 #endif
 
             /* Convert the gas particle to a star particle */

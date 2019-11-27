@@ -94,6 +94,11 @@ enum logger_masks_number {
   logger_count_mask = 9, /* Need to be the last. */
 } __attribute__((packed));
 
+enum logger_special_flags {
+  logger_flag_change_type = 0,
+  logger_flag_mpi = 1,
+} __attribute__((packed));
+
 struct mask_data {
   /* Number of bytes for a mask. */
   int size;
@@ -178,6 +183,30 @@ int logger_read_timestamp(unsigned long long int *t, double *time,
                           size_t *offset, const char *buff);
 void logger_struct_dump(const struct logger_writer *log, FILE *stream);
 void logger_struct_restore(struct logger_writer *log, FILE *stream);
+
+
+int logger_generate_flag(enum logger_special_flags flag, int data) {
+#ifdef SWIFT_DEBUG_CHECKS
+  if (flag & 0xFFFFFF00) {
+    error("The special flag in the logger cannot be larger than 1 byte.");
+  }
+#endif
+  return (flag << (3 * 8)) | (data & 0xFFFFFF);
+}
+
+#ifdef WITH_MPI
+void logger_log_before_communcations(
+  struct part *parts, size_t nr_parts, int *counts,
+  struct gpart *gparts, size_t nr_gparts, int *g_counts,
+  struct spart *sparts, size_t nr_sparts, int *s_counts,
+  struct bpart *bparts, size_t nr_bparts, int *b_counts);
+
+void logger_log_after_communcations(
+  struct part *parts, size_t nr_parts, int *counts,
+  struct gpart *gparts, size_t nr_gparts, int *g_counts,
+  struct spart *sparts, size_t nr_sparts, int *s_counts,
+  struct bpart *bparts, size_t nr_bparts, int *b_counts);
+#endif
 
 /**
  * @brief Initialize the logger data for a particle.

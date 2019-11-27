@@ -976,6 +976,14 @@ void engine_redistribute(struct engine *e) {
   for (int k = 0; k < nr_nodes; k++)
     nr_bparts_new += b_counts[k * nr_nodes + nodeID];
 
+#ifdef WITH_LOGGER
+  /* Log the particles before sending them out */
+  logger_log_before_communcations(s->parts, nr_parts_new, counts,
+                                  s->gparts, nr_gparts_new, g_counts,
+                                  s->sparts, nr_sparts_new, s_counts,
+                                  s->bparts, nr_bparts_new, b_counts);
+#endif
+
   /* Now exchange the particles, type by type to keep the memory required
    * under control. */
 
@@ -1027,6 +1035,14 @@ void engine_redistribute(struct engine *e) {
 
   /* All particles have now arrived. Time for some final operations on the
      stuff we just received */
+
+#ifdef WITH_LOGGER
+  /* Log the received particles */
+  logger_log_after_communcations(s->parts, s->nr_parts, counts,
+                                 s->gparts, s->nr_gparts, gcounts,
+                                 s->sparts, s->nr_sparts, scounts,
+                                 s->bparts, s->nr_bparts, bcounts);
+#endif
 
   /* Restore the part<->gpart and spart<->gpart links.
    * Generate indices and counts for threadpool tasks. Note we process a node

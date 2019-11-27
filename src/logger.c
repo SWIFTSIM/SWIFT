@@ -523,6 +523,15 @@ void logger_ensure_size(struct logger_writer *log, size_t total_nr_parts,
   dump_ensure(&log->dump, limit, log->buffer_scale * limit);
 }
 
+/** @brief Generate the name of the dump files
+ *
+ * @param log The #logger_writer.
+ * @param filename The filename of the dump file.
+ */
+void logger_get_dump_name(struct logger_writer *log, char *filename) {
+  sprintf(filename, "%s_%04i.dump", log->base_name, engine_rank);
+}
+
 /**
  * @brief intialize the logger structure
  *
@@ -548,8 +557,7 @@ void logger_init(struct logger_writer *log, struct swift_params *params) {
 
   /* generate dump filename. */
   char logger_name_file[PARSER_MAX_LINE_SIZE];
-  strcpy(logger_name_file, log->base_name);
-  strcat(logger_name_file, ".dump");
+  logger_get_dump_name(log, logger_name_file);
 
   /* Compute max size for a particle chunk. */
   int max_size = logger_offset_size + logger_mask_size;
@@ -836,6 +844,86 @@ int logger_read_timestamp(unsigned long long int *t, double *time,
   return mask;
 }
 
+
+#ifdef WITH_MPI
+/**
+ * @brief Log all the particles leaving the current rank.
+ *
+ * @param parts The list of #part.
+ * @param nr_parts The number of parts.
+ * @param count The number of parts in each ranks.
+ * @param gparts The list of #gpart.
+ * @param nr_gparts The number of gparts.
+ * @param gcount The number of gparts in each ranks.
+ * @param sparts The list of #spart.
+ * @param nr_sparts The number of sparts.
+ * @param s_counts The number of sparts in each ranks.
+ * @param bparts The list of #bpart.
+ * @param nr_bparts The number of bparts.
+ * @param b_counts The number of bparts in each ranks.
+ *
+ */
+void logger_log_before_communcations(
+    struct part *parts, size_t nr_parts, int *counts,
+    struct gpart *gparts, size_t nr_gparts, int *g_counts,
+    struct spart *sparts, size_t nr_sparts, int *s_counts,
+    struct bpart *bparts, size_t nr_bparts, int *b_counts) {
+  error("TODO");
+}
+
+/**
+ * @brief Log all the particles arriving in the current rank.
+ *
+ * @param parts The list of #part.
+ * @param nr_parts The number of parts.
+ * @param count The number of parts in each ranks.
+ * @param gparts The list of #gpart.
+ * @param nr_gparts The number of gparts.
+ * @param gcount The number of gparts in each ranks.
+ * @param sparts The list of #spart.
+ * @param nr_sparts The number of sparts.
+ * @param s_counts The number of sparts in each ranks.
+ * @param bparts The list of #bpart.
+ * @param nr_bparts The number of bparts.
+ * @param b_counts The number of bparts in each ranks.
+ *
+ */
+void logger_log_after_communcations(
+    struct part *parts, size_t nr_parts, int *counts,
+    struct gpart *gparts, size_t nr_gparts, int *g_counts,
+    struct spart *sparts, size_t nr_sparts, int *s_counts,
+    struct bpart *bparts, size_t nr_bparts, int *b_counts) {
+  error("TODO");
+}
+
+/**
+ * @brief Log all the particles arriving in the current rank.
+ *
+ * @param parts The list of #part.
+ * @param nr_parts The number of parts.
+ * @param count The number of parts in each ranks.
+ * @param gparts The list of #gpart.
+ * @param nr_gparts The number of gparts.
+ * @param gcount The number of gparts in each ranks.
+ * @param sparts The list of #spart.
+ * @param nr_sparts The number of sparts.
+ * @param s_counts The number of sparts in each ranks.
+ * @param bparts The list of #bpart.
+ * @param nr_bparts The number of bparts.
+ * @param b_counts The number of bparts in each ranks.
+ *
+ */
+void logger_log_recv_strays(
+    struct logger_writer *log,
+    struct part *parts, size_t nr_parts, int *counts,
+    struct gpart *gparts, size_t nr_gparts, int *g_counts,
+    struct spart *sparts, size_t nr_sparts, int *s_counts,
+    struct bpart *bparts, size_t nr_bparts, int *b_counts) {
+  error("TODO");
+}
+
+#endif
+
 /**
  * @brief Write a swift_params struct to the given FILE as a stream of bytes.
  *
@@ -861,10 +949,9 @@ void logger_struct_restore(struct logger_writer *log, FILE *stream) {
 
   /* generate dump filename */
   char logger_name_file[PARSER_MAX_LINE_SIZE];
-  strcpy(logger_name_file, log->base_name);
-  strcat(logger_name_file, ".dump");
+  logger_get_dump_name(log, logger_name_file);
 
-  dump_restart(&log->dump, logger_name_file);
+  dump_restart(&log->dump, logger_name_file, log->dump.size);
 }
 
 #endif /* WITH_LOGGER */
