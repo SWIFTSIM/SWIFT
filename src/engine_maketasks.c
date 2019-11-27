@@ -140,7 +140,7 @@ void engine_mark_cells_for_hydro_send_recv(struct engine *e, struct cell *ci,
   if (ci->hydro.count == 0 || cj->hydro.count == 0) return;
 
   /* Check if the both cells are already marked, and if so, then nothing to see
-   * here folks. */
+     here folks. */
   if (ci->mpi.attach_send_recv_for_proxy & (1ULL << proxy_id) &&
       cj->mpi.attach_send_recv_for_proxy & (1ULL << proxy_id))
     return;
@@ -158,7 +158,7 @@ void engine_mark_cells_for_hydro_send_recv(struct engine *e, struct cell *ci,
     struct cell_split_pair *csp = &cell_split_pairs[sid];
     for (int k = 0; k < csp->count; k++) {
       struct cell *cip = ci->progeny[csp->pairs[k].pid];
-      struct cell *cjp = ci->progeny[csp->pairs[k].pjd];
+      struct cell *cjp = cj->progeny[csp->pairs[k].pjd];
       if (cip && cjp) {
         engine_mark_cells_for_hydro_send_recv(e, cip, cjp, proxy_id, recurse);
       }
@@ -168,8 +168,8 @@ void engine_mark_cells_for_hydro_send_recv(struct engine *e, struct cell *ci,
   /* If we didn't bail or recurse, then there will be an interaction between ci
      and cj, so mark both cells. */
   else {
-    ci->mpi.attach_send_recv_for_proxy |= (1ULL << proxy_id);
-    cj->mpi.attach_send_recv_for_proxy |= (1ULL << proxy_id);
+    atomic_or(&ci->mpi.attach_send_recv_for_proxy, (1ULL << proxy_id));
+    atomic_or(&cj->mpi.attach_send_recv_for_proxy, (1ULL << proxy_id));
   }
 }
 #endif  // WITH_MPI
@@ -285,7 +285,6 @@ void engine_addtasks_send_stars(struct engine *e, struct cell *ci,
                                 struct cell *cj, struct task *t_feedback,
                                 struct task *t_sf_counts, struct task *t_ti,
                                 const int with_star_formation) {
-
 #ifdef WITH_MPI
 
   struct link *l = NULL;
@@ -316,9 +315,7 @@ void engine_addtasks_send_stars(struct engine *e, struct cell *ci,
 
   /* If so, attach send tasks. */
   if (l != NULL) {
-
     if (t_feedback == NULL) {
-
       /* Make sure this cell is tagged. */
       cell_ensure_tagged(ci);
 
@@ -379,7 +376,6 @@ void engine_addtasks_send_black_holes(struct engine *e, struct cell *ci,
                                       struct task *t_gas_swallow,
                                       struct task *t_feedback,
                                       struct task *t_ti) {
-
 #ifdef WITH_MPI
 
   struct link *l = NULL;
@@ -397,9 +393,7 @@ void engine_addtasks_send_black_holes(struct engine *e, struct cell *ci,
 
   /* If so, attach send tasks. */
   if (l != NULL) {
-
     if (t_rho == NULL) {
-
       /* Make sure this cell is tagged. */
       cell_ensure_tagged(ci);
 
@@ -486,14 +480,15 @@ void engine_addtasks_recv_hydro(struct engine *e, struct cell *c, int proxy_id,
 
   /* If this cell has to be received, add the tasks. */
   if (c->mpi.attach_send_recv_for_proxy & (1ULL << proxy_id)) {
-
-#ifdef SWIFT_DEBUG_CHECKS
-    /* Make sure this cell has a valid tag. */
-    if (c->mpi.tag < 0) error("Trying to receive from untagged cell.");
-#endif  // SWIFT_DEBUG_CHECKS
-
     /* Create the recv tasks if they have not been provided. */
     if (t_xv == NULL) {
+#ifdef SWIFT_DEBUG_CHECKS
+      /* Make sure this cell has a valid tag. */
+      if (c->mpi.tag < 0) {
+        error("Trying to receive from untagged cell %#010x.", hash);
+      }
+#endif  // SWIFT_DEBUG_CHECKS
+
       t_xv = scheduler_addtask(s, task_type_recv, task_subtype_xv, proxy_id, 0,
                                c, NULL);
       t_rho = scheduler_addtask(s, task_type_recv, task_subtype_rho, proxy_id,
@@ -612,7 +607,6 @@ void engine_addtasks_recv_stars(struct engine *e, struct cell *c,
                              c->mpi.tag, 0, c, NULL);
 
     if (with_star_formation && c->hydro.count > 0) {
-
       /* Receive the stars only once the counts have been received */
       scheduler_addunlock(s, t_sf_counts, t_feedback);
     }
@@ -671,7 +665,6 @@ void engine_addtasks_recv_black_holes(struct engine *e, struct cell *c,
                                       struct task *t_gas_swallow,
                                       struct task *t_feedback,
                                       struct task *t_ti) {
-
 #ifdef WITH_MPI
   struct scheduler *s = &e->sched;
 
@@ -680,7 +673,6 @@ void engine_addtasks_recv_black_holes(struct engine *e, struct cell *c,
 
   /* Have we reached a level where there are any black_holes tasks ? */
   if (t_rho == NULL && c->black_holes.density != NULL) {
-
 #ifdef SWIFT_DEBUG_CHECKS
     /* Make sure this cell has a valid tag. */
     if (c->mpi.tag < 0) error("Trying to receive from untagged cell.");
@@ -1029,7 +1021,6 @@ void engine_add_ghosts(struct engine *e, struct cell *c, struct task *ghost_in,
  */
 void engine_make_hierarchical_tasks_hydro(struct engine *e, struct cell *c,
                                           struct cell *star_resort_cell) {
-
   struct scheduler *s = &e->sched;
   const int with_stars = (e->policy & engine_policy_stars);
   const int with_feedback = (e->policy & engine_policy_feedback);
@@ -1042,9 +1033,7 @@ void engine_make_hierarchical_tasks_hydro(struct engine *e, struct cell *c,
    * super-level is above the level we want */
   if ((c->nodeID == e->nodeID) && (star_resort_cell == NULL) &&
       (c->depth == engine_star_resort_task_depth || c->hydro.super == c)) {
-
     if (with_star_formation && c->hydro.count > 0) {
-
       /* Record this is the level where we re-sort */
       star_resort_cell = c;
 
@@ -1152,7 +1141,6 @@ void engine_make_hierarchical_tasks_hydro(struct engine *e, struct cell *c,
 
       /* Subgrid tasks: black hole feedback */
       if (with_black_holes) {
-
         c->black_holes.black_holes_in =
             scheduler_addtask(s, task_type_bh_in, task_subtype_none, 0,
                               /* implicit = */ 1, c, NULL);
@@ -1423,10 +1411,7 @@ void engine_count_and_link_tasks_mapper(void *map_data, int num_elements,
         (t->type == task_type_pair || t->type == task_type_sub_pair) &&
         (ci->nodeID != engine_rank || cj->nodeID != engine_rank)) {
       struct cell *foreign_cell = (ci->nodeID == engine_rank) ? cj : ci;
-      int proxy_id;
-      for (proxy_id = 0; e->proxies[proxy_id].nodeID != foreign_cell->nodeID;
-           proxy_id++)
-        ;
+      const int proxy_id = e->proxy_ind[foreign_cell->nodeID];
       engine_mark_cells_for_hydro_send_recv(e, ci, cj, proxy_id,
                                             t->type == task_type_sub_pair);
     }
@@ -1922,7 +1907,6 @@ void engine_make_extra_hydroloop_tasks_mapper(void *map_data, int num_elements,
       }
 
       if (with_black_holes && bcount_i > 0) {
-
         scheduler_addunlock(sched, ci->hydro.super->black_holes.drift,
                             t_bh_density);
         scheduler_addunlock(sched, ci->hydro.super->hydro.drift, t_bh_density);
@@ -2109,7 +2093,6 @@ void engine_make_extra_hydroloop_tasks_mapper(void *map_data, int num_elements,
         }
 
         if (with_black_holes && (bcount_i > 0 || bcount_j > 0)) {
-
           scheduler_addunlock(sched, ci->hydro.super->black_holes.drift,
                               t_bh_density);
           scheduler_addunlock(sched, ci->hydro.super->hydro.drift,
@@ -2182,7 +2165,6 @@ void engine_make_extra_hydroloop_tasks_mapper(void *map_data, int num_elements,
           }
 
           if (with_black_holes && (bcount_i > 0 || bcount_j > 0)) {
-
             scheduler_addunlock(sched, cj->hydro.super->black_holes.drift,
                                 t_bh_density);
             scheduler_addunlock(sched, cj->hydro.super->hydro.drift,
@@ -2231,7 +2213,6 @@ void engine_make_extra_hydroloop_tasks_mapper(void *map_data, int num_elements,
         }
 
         if (with_black_holes && (bcount_i > 0 || bcount_j > 0)) {
-
           scheduler_addunlock(sched, t_bh_swallow,
                               cj->hydro.super->black_holes.swallow_ghost[0]);
         }
@@ -2351,7 +2332,6 @@ void engine_make_extra_hydroloop_tasks_mapper(void *map_data, int num_elements,
       }
 
       if (with_black_holes && bcount_i > 0) {
-
         scheduler_addunlock(sched, ci->hydro.super->black_holes.drift,
                             t_bh_density);
         scheduler_addunlock(sched, ci->hydro.super->hydro.drift, t_bh_density);
@@ -2542,7 +2522,6 @@ void engine_make_extra_hydroloop_tasks_mapper(void *map_data, int num_elements,
         }
 
         if (with_black_holes && (bcount_i > 0 || bcount_j > 0)) {
-
           scheduler_addunlock(sched, ci->hydro.super->black_holes.drift,
                               t_bh_density);
           scheduler_addunlock(sched, ci->hydro.super->hydro.drift,
@@ -2588,7 +2567,6 @@ void engine_make_extra_hydroloop_tasks_mapper(void *map_data, int num_elements,
                               t_star_feedback);
         }
         if (with_black_holes && (bcount_i > 0 || bcount_j > 0)) {
-
           scheduler_addunlock(sched, t_bh_swallow,
                               ci->hydro.super->black_holes.swallow_ghost[0]);
         }
@@ -2616,7 +2594,6 @@ void engine_make_extra_hydroloop_tasks_mapper(void *map_data, int num_elements,
           }
 
           if (with_black_holes && (bcount_i > 0 || bcount_j > 0)) {
-
             scheduler_addunlock(sched, cj->hydro.super->black_holes.drift,
                                 t_bh_density);
             scheduler_addunlock(sched, cj->hydro.super->hydro.drift,
@@ -2916,7 +2893,6 @@ void engine_addtasks_recv_mapper(void *map_data, int num_elements,
  */
 void engine_make_fofloop_tasks_mapper(void *map_data, int num_elements,
                                       void *extra_data) {
-
   /* Extract the engine pointer. */
   struct engine *e = (struct engine *)extra_data;
 
@@ -2928,7 +2904,6 @@ void engine_make_fofloop_tasks_mapper(void *map_data, int num_elements,
 
   /* Loop through the elements, which are just byte offsets from NULL. */
   for (int ind = 0; ind < num_elements; ind++) {
-
     /* Get the cell index. */
     const int cid = (size_t)(map_data) + ind;
     const int i = cid / (cdim[1] * cdim[2]);
@@ -2985,7 +2960,6 @@ void engine_make_fofloop_tasks_mapper(void *map_data, int num_elements,
  * @param e The #engine we are working with.
  */
 void engine_make_fof_tasks(struct engine *e) {
-
   struct space *s = e->s;
   struct scheduler *sched = &e->sched;
   ticks tic = getticks();
