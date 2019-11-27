@@ -87,6 +87,11 @@ struct spart {
   /*! Chemistry structure */
   struct chemistry_part_data chemistry_data;
 
+#ifdef WITH_LOGGER
+  /* Additional data for the particle logger */
+  struct logger_part_data logger_data;
+#endif
+
 #ifdef SWIFT_DEBUG_CHECKS
 
   /* Time of the last drift */

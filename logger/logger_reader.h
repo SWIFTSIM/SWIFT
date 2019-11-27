@@ -27,7 +27,7 @@
  * files.
  *
  * The <b>parameter file</b> contains all the information related to the code
- * (e.g. boxsize).
+ * (e.g. boxsize, scheme, ...).
  *
  * The <b>index files</b> are not mandatory files that indicates the position of
  * the particles in the log file at a given time step. They are useful to
@@ -47,6 +47,7 @@
 #ifndef LOGGER_LOGGER_READER_H
 #define LOGGER_LOGGER_READER_H
 
+#include "logger_index.h"
 #include "logger_loader_io.h"
 #include "logger_logfile.h"
 #include "logger_particle.h"
@@ -62,20 +63,71 @@
  */
 struct logger_reader {
 
-  /* Time of each index file. #TODO */
-  double *times;
+  /* Base name of the files */
+  char basename[STRING_SIZE];
+
+  struct {
+    /* Information contained in the index file */
+    struct logger_index index;
+
+    /* Number of index files */
+    int n_files;
+
+    /* Time of each index file */
+    double *times;
+
+    /* Integer time of each index file */
+    integertime_t *int_times;
+  } index;
 
   /* Informations contained in the file header. */
   struct logger_logfile log;
+
+  /* Information about the current time */
+  struct {
+    /* Double time */
+    double time;
+
+    /* Integer time */
+    integertime_t int_time;
+
+    /* Offset of the chunk */
+    size_t time_offset;
+
+    /* Index of the element in the time array */
+    size_t index;
+  } time;
 
   /* Level of verbosity. */
   int verbose;
 };
 
-void logger_reader_init(struct logger_reader *reader, char *filename,
+void logger_reader_init_index(struct logger_reader *reader);
+void logger_reader_init(struct logger_reader *reader, const char *basename,
                         int verbose);
 void logger_reader_free(struct logger_reader *reader);
 size_t reader_read_record(struct logger_reader *reader,
                           struct logger_particle *lp, double *time,
                           int *is_particle, size_t offset);
+
+void logger_reader_set_time(struct logger_reader *reader, double time);
+
+double logger_reader_get_time_begin(struct logger_reader *reader);
+double logger_reader_get_time_end(struct logger_reader *reader);
+size_t logger_reader_get_next_offset_from_time(struct logger_reader *reader,
+                                               double time);
+void logger_reader_get_next_particle(struct logger_reader *reader,
+                                     struct logger_particle *prev,
+                                     struct logger_particle *next, size_t time);
+
+const uint64_t *logger_reader_get_number_particles(struct logger_reader *reader,
+                                                   int *n_type);
+
+void logger_reader_read_all_particles_mapper(void *map_data, int num_elements,
+                                             void *extra_data);
+void logger_reader_read_all_particles(struct logger_reader *reader, double time,
+                                      enum logger_reader_type inter_type,
+                                      struct logger_particle *parts,
+                                      size_t n_tot);
+
 #endif  // LOGGER_LOGGER_READER_H

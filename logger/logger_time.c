@@ -166,9 +166,9 @@ void time_array_populate(struct time_array *t, struct logger_logfile *log) {
   double time = 0;
 
   /* get file size. */
-  size_t file_size = log->log.file_size;
+  size_t file_size = log->log.mmap_size;
 
-  /* get first time stamp. */
+  /* get first timestamp. */
   size_t offset = time_offset_first_record(&log->header);
   while (offset < file_size) {
     /* read current time record and store it. */
@@ -178,7 +178,7 @@ void time_array_populate(struct time_array *t, struct logger_logfile *log) {
 
     /* get next record. */
     int test = tools_get_next_record(&log->header, log->log.map, &offset,
-                                     log->log.file_size);
+                                     log->log.mmap_size);
     if (test == -1) break;
   }
 }
@@ -224,14 +224,16 @@ size_t time_array_get_index(const struct time_array *t, const size_t offset) {
   if (!t) error("NULL pointer.");
 
   if (offset < t->records[0].offset || offset > t->records[t->size - 1].offset)
-    error("Offset outside of range.");
+    error("Offset outside of range. %zi > %zi > %zi",
+          t->records[t->size - 1].offset, offset, t->records[0].offset);
 #endif
 
-  /* left will contain the index at the end of the loop */
+  /* right will contain the index at the end of the loop */
   size_t left = 0;
   size_t right = t->size - 1;
 
   /* Find the time_array with the correct offset through a bisection method. */
+  // TODO use interpolation search (same for the other binary searches)
   while (left <= right) {
     size_t center = (left + right) / 2;
     const size_t offset_center = t->records[center].offset;
@@ -244,6 +246,71 @@ size_t time_array_get_index(const struct time_array *t, const size_t offset) {
       return center;
     }
   }
+
+  /* Avoid the sentinel */
+  if (right == t->size - 1) {
+    right = right - 1;
+  }
+
+#ifdef SWIFT_DEBUG_CHECKS
+  if (t->records[right].offset > offset ||
+      t->records[right + 1].offset <= offset) {
+    error("Found the wrong element");
+  }
+
+#endif
+
+  return right;
+}
+
+/**
+ * @brief Find the index of the last time record written before a given time.
+ *
+ * @param t #time_array to access.
+ * @param time The time requested.
+ *
+ * @return The index of the last time record.
+ */
+size_t time_array_get_index_from_time(const struct time_array *t,
+                                      const double time) {
+
+#ifdef SWIFT_DEBUG_CHECKS
+  if (!t) error("NULL pointer.");
+
+  if (time < t->records[0].time || time > t->records[t->size - 1].time)
+    error("Time outside of range (%g > %g).", time,
+          t->records[t->size - 1].time);
+#endif
+
+  /* right will contain the index at the end of the loop */
+  size_t left = 0;
+  size_t right = t->size - 1;
+
+  /* Find the time_array with the correct time through a bisection method. */
+  while (left <= right) {
+    size_t center = (left + right) / 2;
+    const double time_center = t->records[center].time;
+
+    if (time > time_center) {
+      left = center + 1;
+    } else if (time < time_center) {
+      right = center - 1;
+    } else {
+      return center;
+    }
+  }
+
+  /* Avoid the sentinel */
+  if (right == t->size - 1) {
+    right = right - 1;
+  }
+
+#ifdef SWIFT_DEBUG_CHECKS
+  if (t->records[right].time > time || t->records[right + 1].time <= time) {
+    error("Found the wrong element");
+  }
+
+#endif
 
   return right;
 }
@@ -269,7 +336,11 @@ void time_array_free(struct time_array *t) {
  * @param t #time_array to print
  */
 void time_array_print(const struct time_array *t) {
-  const size_t threshold = 4;
+#ifdef SWIFT_DEBUG_CHECKS
+  const size_t threshold = 1000;
+#else
+  const size_t threshold = 5;
+#endif
 
   size_t n = t->size;
   size_t up_threshold = n - threshold;
@@ -281,7 +352,7 @@ void time_array_print(const struct time_array *t) {
   for (size_t i = 1; i < n; i++) {
     /* Skip the times at the center of the array. */
     if (i < threshold || i > up_threshold)
-      printf(", %lli (%g)", t->records[i].int_time, t->records[i].time);
+      printf(", %zi (%g)", t->records[i].offset, t->records[i].time);
 
     if (i == threshold) printf(", ...");
   }

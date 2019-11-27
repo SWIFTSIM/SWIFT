@@ -4338,6 +4338,10 @@ void space_first_init_gparts_mapper(void *restrict map_data, int count,
 
     gravity_first_init_gpart(&gp[k], grav_props);
 
+#ifdef WITH_LOGGER
+    logger_part_data_init(&gp[k].logger_data);
+#endif
+
 #ifdef SWIFT_DEBUG_CHECKS
     /* Initialise the time-integration check variables */
     gp[k].ti_drift = 0;
@@ -4418,6 +4422,10 @@ void space_first_init_sparts_mapper(void *restrict map_data, int count,
   for (int k = 0; k < count; k++) {
 
     stars_first_init_spart(&sp[k], stars_properties);
+
+#ifdef WITH_LOGGER
+    logger_part_data_init(&sp[k].logger_data);
+#endif
 
     /* Also initialise the chemistry */
     chemistry_first_init_spart(chemistry, &sp[k]);

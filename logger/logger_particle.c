@@ -33,7 +33,7 @@
  * @param p The #logger_particle to print
  */
 void logger_particle_print(const struct logger_particle *p) {
-  message("ID:            %lu.", p->id);
+  message("ID:            %lli.", p->id);
   message("Mass:          %g", p->mass);
   message("Time:          %g.", p->time);
   message("Cutoff Radius: %g.", p->h);
@@ -42,6 +42,7 @@ void logger_particle_print(const struct logger_particle *p) {
   message("Accelerations: (%g, %g, %g).", p->acc[0], p->acc[1], p->acc[2]);
   message("Entropy:       %g.", p->entropy);
   message("Density:       %g.", p->density);
+  message("Type:          %i.", p->type);
 }
 
 /**
@@ -61,6 +62,8 @@ void logger_particle_init(struct logger_particle *part) {
   part->h = -1;
   part->mass = -1;
   part->id = SIZE_MAX;
+
+  part->type = 0;
 }
 
 /**
@@ -92,6 +95,8 @@ void *logger_particle_read_field(struct logger_particle *part, void *map,
     p = &part->density;
   } else if (strcmp("consts", field) == 0) {
     p = malloc(size);
+  } else if (strcmp("special flags", field) == 0) {
+    p = &part->type;
   } else {
     error("Type %s not defined.", field);
   }
@@ -119,7 +124,7 @@ void *logger_particle_read_field(struct logger_particle *part, void *map,
  * @param reader The #logger_reader.
  * @param part The #logger_particle to update.
  * @param offset offset of the record to read.
- * @param time time to interpolate.
+ * @param time time to interpolate (not used if constant interpolation).
  * @param reader_type #logger_reader_type.
  *
  * @return position after the record.
@@ -128,6 +133,9 @@ size_t logger_particle_read(struct logger_particle *part,
                             const struct logger_reader *reader, size_t offset,
                             const double time,
                             const enum logger_reader_type reader_type) {
+
+  /* Save the offset */
+  part->offset = offset;
 
   /* Get a few pointers. */
   const struct header *h = &reader->log.header;
@@ -143,11 +151,18 @@ size_t logger_particle_read(struct logger_particle *part,
   /* Read the record's mask. */
   map = logger_loader_io_read_mask(h, map + offset, &mask, &h_offset);
 
+  /* Check that the mask is meaningful */
+  if (mask > (unsigned int)(1 << h->masks_count)) {
+    error("Found an unexpected mask %zi", mask);
+  }
+
   /* Check if it is not a time record. */
-  if (mask == 128) error("Unexpected mask: %lu.", mask);
+  if (mask == h->timestamp_mask) {
+    error("Unexpected timestamp while reading a particle: %lu.", mask);
+  }
 
   /* Read all the fields. */
-  for (size_t i = 0; i < h->number_mask; i++) {
+  for (size_t i = 0; i < h->masks_count; i++) {
     if (mask & h->masks[i].mask) {
       map = logger_particle_read_field(part, map, h->masks[i].name,
                                        h->masks[i].size);
@@ -215,8 +230,9 @@ void logger_particle_interpolate(struct logger_particle *part_curr,
 
 #ifdef SWIFT_DEBUG_CHECKS
   /* Check the particle order. */
-  if (part_next->time <= part_curr->time)
-    error("Wrong particle order (next before current).");
+  if (part_next->time < part_curr->time)
+    error("Wrong particle order (next before current): %g, %g", part_next->time,
+          part_curr->time);
   if ((time < part_curr->time) || (part_next->time < time))
     error(
         "Cannot extrapolate (particle time: %f, "

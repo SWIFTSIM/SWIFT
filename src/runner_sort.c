@@ -68,13 +68,20 @@ void runner_do_stars_resort(struct runner *r, struct cell *c, const int timer) {
  * @param N The number of entries.
  */
 void runner_do_sort_ascending(struct sort_entry *sort, int N) {
+  const int stack_size = 10;
 
   struct {
     short int lo, hi;
-  } qstack[10];
+  } qstack[stack_size];
   int qpos, i, j, lo, hi, imin;
   struct sort_entry temp;
   float pivot;
+
+  if (N >= (1LL << stack_size)) {
+    error(
+        "The stack size for sorting is too small."
+        "Either increase it or reduce the number of parts per cell.");
+  }
 
   /* Sort parts in cell_i in decreasing order with quicksort */
   qstack[0].lo = 0;
@@ -84,11 +91,18 @@ void runner_do_sort_ascending(struct sort_entry *sort, int N) {
     lo = qstack[qpos].lo;
     hi = qstack[qpos].hi;
     qpos -= 1;
+    /* Do we have a low number of element to sort? */
     if (hi - lo < 15) {
+      /* Sort the last elements. */
       for (i = lo; i < hi; i++) {
         imin = i;
-        for (j = i + 1; j <= hi; j++)
-          if (sort[j].d < sort[imin].d) imin = j;
+        /* Find the minimal value. */
+        for (j = i + 1; j <= hi; j++) {
+          if (sort[j].d < sort[imin].d) {
+            imin = j;
+          }
+        }
+        /* Swap the elements if a smaller element exists. */
         if (imin != i) {
           temp = sort[imin];
           sort[imin] = sort[i];
@@ -96,14 +110,21 @@ void runner_do_sort_ascending(struct sort_entry *sort, int N) {
         }
       }
     } else {
+      /* Select a pivot */
       pivot = sort[(lo + hi) / 2].d;
       i = lo;
       j = hi;
+      /* Ensure that the elements before/after the pivot
+         are smaller/larger than the pivot. */
       while (i <= j) {
+        /* Find the first elements that do not respect
+           the order. */
         while (sort[i].d < pivot) i++;
         while (sort[j].d > pivot) j--;
+        /* Did we get two different elements */
         if (i <= j) {
           if (i < j) {
+            /* Swap the elements */
             temp = sort[i];
             sort[i] = sort[j];
             sort[j] = temp;
@@ -112,6 +133,9 @@ void runner_do_sort_ascending(struct sort_entry *sort, int N) {
           j -= 1;
         }
       }
+      /* Add the next operations to the stack.
+       * The order is important in order to decrease the stack size.
+       */
       if (j > (lo + hi) / 2) {
         if (lo < j) {
           qpos += 1;
