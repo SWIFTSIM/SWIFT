@@ -148,7 +148,7 @@ nobase_noinst_HEADERS = align.h approx_math.h atomic.h barrier.h cycle.h error.h
                  hydro/Gizmo/hydro_gradients_sph.h \
                  hydro/Gizmo/hydro_gradients_gizmo.h \
 		 hydro/Gizmo/MFV/hydro.h \
-                 hydro/Gizmo/MFV/hydro_io.h hydro/Gizmo/MFV/hydro_debug.h \
+                 hydro/Gizmo/MFV/hydro_debug.h \
                  hydro/Gizmo/MFV/hydro_part.h \
                  hydro/Gizmo/MFV/hydro_slope_limiters_cell.h \
                  hydro/Gizmo/MFV/hydro_velocities.h \
@@ -156,7 +156,7 @@ nobase_noinst_HEADERS = align.h approx_math.h atomic.h barrier.h cycle.h error.h
                  hydro/Gizmo/MFV/hydro_setters.h \
                  hydro/Gizmo/MFV/hydro_flux.h \
 		 hydro/Gizmo/MFM/hydro.h \
-                 hydro/Gizmo/MFM/hydro_io.h hydro/Gizmo/MFM/hydro_debug.h \
+                 hydro/Gizmo/MFM/hydro_debug.h \
                  hydro/Gizmo/MFM/hydro_part.h \
                  hydro/Gizmo/MFM/hydro_slope_limiters_cell.h \
                  hydro/Gizmo/MFM/hydro_getters.h \

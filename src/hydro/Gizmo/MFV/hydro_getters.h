@@ -110,4 +110,15 @@ __attribute__((always_inline)) INLINE static void hydro_part_get_slope_limiter(
 #define hydro_part_geometry_well_behaved(p) \
   (p->density.wcorr > const_gizmo_min_wcorr)
 
+/**
+ * @brief Macro used to access the name of the density field in the part struct.
+ */
+#define hydro_part_get_density_variable() primitives.rho
+
+/**
+ * @brief Macro used to access the name of the pressure field in the part
+ * struct.
+ */
+#define hydro_part_get_pressure_variable() primitives.P
+
 #endif /* SWIFT_GIZMO_MFV_HYDRO_GETTERS_H */
