@@ -66,7 +66,8 @@
 const char *initial_partition_name[] = {
     "axis aligned grids of cells", "vectorized point associated cells",
     "memory balanced, using particle weighted cells",
-    "similar sized regions, using unweighted cells"};
+    "similar sized regions, using unweighted cells",
+    "memory and edge balanced cells using particle weights"};
 
 /* Simple descriptions of repartition types for reports. */
 const char *repartition_name[] = {
@@ -448,6 +449,40 @@ static void accumulate_sizes(struct space *s, double *counts) {
     for (int k = 0; k < s->nr_cells; k++) counts[k] *= vscale;
   }
 }
+
+/**
+ * @brief Make edge weights from the accumulated particle sizes per cell.
+ *
+ * @param s the space containing the cells.
+ * @param counts the number of bytes in particles per cell.
+ * @param edges weights for the edges of these regions. Should be 26 * counts.
+ */
+static void sizes_to_edges(struct space *s, double *counts, double *edges) {
+
+  bzero(edges, sizeof(double) * s->nr_cells * 26);
+
+  for (int l = 0; l < s->nr_cells; l++) {
+    int p = 0;
+    for (int i = -1; i <= 1; i++) {
+      int isid = ((i < 0) ? 0 : ((i > 0) ? 2 : 1));
+      for (int j = -1; j <= 1; j++) {
+        int jsid = isid * 3 + ((j < 0) ? 0 : ((j > 0) ? 2 : 1));
+        for (int k = -1; k <= 1; k++) {
+          int ksid = jsid * 3 + ((k < 0) ? 0 : ((k > 0) ? 2 : 1));
+
+          /* If not self, we work out the sort indices to get the expected
+           * fractional weight and add that. Scale to keep sum less than
+           * counts (see sum of (sid_scale) * 2). */
+          if (i || j || k) {
+            //edges[l * 26 + p] = counts[l] * sid_scale[sortlistID[ksid]] * 0.1;
+            edges[l * 26 + p] = counts[l] * sid_scale[sortlistID[ksid]];
+            p++;
+          }
+        }
+      }
+    }
+  }
+}
 #endif
 
 #if defined(WITH_MPI) && (defined(HAVE_METIS) || defined(HAVE_PARMETIS))
@@ -463,8 +498,8 @@ static void split_metis(struct space *s, int nregions, int *celllist) {
   for (int i = 0; i < s->nr_cells; i++) s->cells_top[i].nodeID = celllist[i];
 
   /* To check or visualise the partition dump all the cells. */
-  /*if (engine_rank == 0) dumpCellRanks("metis_partition", s->cells_top,
-   * s->nr_cells);*/
+  if (engine_rank == 0) dumpCellRanks("metis_partition", s->cells_top,
+                                      s->nr_cells);
 }
 #endif
 
@@ -779,8 +814,8 @@ static void pick_parmetis(int nodeID, struct space *s, int nregions,
                &nxadj);
 
     /* Dump graphs to disk files for testing. */
-    /*dumpMETISGraph("parmetis_graph", ncells, 1, std_xadj, full_adjncy,
-      full_weights_v, NULL, full_weights_e);*/
+    dumpMETISGraph("parmetis_graph", ncells, 1, std_xadj, full_adjncy,
+                   full_weights_v, NULL, full_weights_e);
 
     /* xadj is set for each rank, different to serial version in that each
      * rank starts with 0, so we need to re-offset. */
@@ -1212,8 +1247,8 @@ static void pick_metis(int nodeID, struct space *s, int nregions,
     idx_t objval;
 
     /* Dump graph in METIS format */
-    /*dumpMETISGraph("metis_graph", idx_ncells, one, xadj, adjncy, weights_v,
-      NULL, weights_e);*/
+    dumpMETISGraph("metis_graph", idx_ncells, one, xadj, adjncy, weights_v,
+                   NULL, weights_e);
 
     if (METIS_PartGraphKway(&idx_ncells, &one, xadj, adjncy, weights_v, NULL,
                             weights_e, &idx_nregions, NULL, NULL, options,
@@ -1655,7 +1690,6 @@ static void repart_memory_metis(struct repartition *repartition, int nodeID,
   double *weights = NULL;
   if ((weights = (double *)malloc(sizeof(double) * s->nr_cells)) == NULL)
     error("Failed to allocate cell weights buffer.");
-  bzero(weights, sizeof(double) * s->nr_cells);
 
   /* Check each particle and accumulate the sizes per cell. */
   accumulate_sizes(s, weights);
@@ -1839,26 +1873,50 @@ void partition_initial_partition(struct partition *initial_partition,
     }
 
   } else if (initial_partition->type == INITPART_METIS_WEIGHT ||
+             initial_partition->type == INITPART_METIS_WEIGHT_EDGE ||
              initial_partition->type == INITPART_METIS_NOWEIGHT) {
 #if defined(WITH_MPI) && (defined(HAVE_METIS) || defined(HAVE_PARMETIS))
     /* Simple k-way partition selected by METIS using cell particle
      * counts as weights or not. Should be best when starting with a
      * inhomogeneous dist.
      */
-
-    /* Space for particles sizes per cell, which will be used as weights. */
-    double *weights = NULL;
+    double *weights_v = NULL;
+    double *weights_e = NULL;
     if (initial_partition->type == INITPART_METIS_WEIGHT) {
-      if ((weights = (double *)malloc(sizeof(double) * s->nr_cells)) == NULL)
-        error("Failed to allocate weights buffer.");
-      bzero(weights, sizeof(double) * s->nr_cells);
+      /* Particles sizes per cell, which will be used as weights. */
+      if ((weights_v = (double *)malloc(sizeof(double) * s->nr_cells)) == NULL)
+        error("Failed to allocate weights_v buffer.");
 
-      /* Check each particle and accumilate the sizes per cell. */
-      accumulate_sizes(s, weights);
+      /* Check each particle and accumulate the sizes per cell. */
+      accumulate_sizes(s, weights_v);
 
       /* Get all the counts from all the nodes. */
-      if (MPI_Allreduce(MPI_IN_PLACE, weights, s->nr_cells, MPI_DOUBLE, MPI_SUM,
-                        MPI_COMM_WORLD) != MPI_SUCCESS)
+      if (MPI_Allreduce(MPI_IN_PLACE, weights_v, s->nr_cells, MPI_DOUBLE,
+                        MPI_SUM, MPI_COMM_WORLD) != MPI_SUCCESS)
+        error("Failed to allreduce particle cell weights.");
+
+    } else if (initial_partition->type == INITPART_METIS_WEIGHT_EDGE) {
+
+      /* Particle sizes also counted towards the edges. */
+
+      if ((weights_v = (double *)malloc(sizeof(double) * s->nr_cells)) == NULL)
+        error("Failed to allocate weights_v buffer.");
+      if ((weights_e = (double *)malloc(sizeof(double) * s->nr_cells * 26)) == NULL)
+        error("Failed to allocate weights_e buffer.");
+
+      /* Check each particle and accumulate the sizes per cell. */
+      accumulate_sizes(s, weights_v);
+
+      /* Spread these into edge weights. */
+      sizes_to_edges(s, weights_v, weights_e);
+
+      /* Get all the counts from all the nodes. */
+      if (MPI_Allreduce(MPI_IN_PLACE, weights_v, s->nr_cells, MPI_DOUBLE,
+                        MPI_SUM, MPI_COMM_WORLD) != MPI_SUCCESS)
+        error("Failed to allreduce particle cell weights.");
+
+      if (MPI_Allreduce(MPI_IN_PLACE, weights_e, 26 * s->nr_cells, MPI_DOUBLE,
+                        MPI_SUM, MPI_COMM_WORLD) != MPI_SUCCESS)
         error("Failed to allreduce particle cell weights.");
     }
 
@@ -1868,12 +1926,13 @@ void partition_initial_partition(struct partition *initial_partition,
       error("Failed to allocate celllist");
 #ifdef HAVE_PARMETIS
     if (initial_partition->usemetis) {
-      pick_metis(nodeID, s, nr_nodes, weights, NULL, celllist);
+      pick_metis(nodeID, s, nr_nodes, weights_v, weights_e, celllist);
     } else {
-      pick_parmetis(nodeID, s, nr_nodes, weights, NULL, 0, 0, 0.0f, celllist);
+      pick_parmetis(nodeID, s, nr_nodes, weights_v, weights_e, 0, 0, 0.0f,
+                    celllist);
     }
 #else
-    pick_metis(nodeID, s, nr_nodes, weights, NULL, celllist);
+    pick_metis(nodeID, s, nr_nodes, weights_v, weights_e, celllist);
 #endif
 
     /* And apply to our cells */
@@ -1888,7 +1947,8 @@ void partition_initial_partition(struct partition *initial_partition,
       partition_initial_partition(initial_partition, nodeID, nr_nodes, s);
     }
 
-    if (weights != NULL) free(weights);
+    if (weights_v != NULL) free(weights_v);
+    if (weights_e != NULL) free(weights_e);
     free(celllist);
 #else
     error("SWIFT was not compiled with METIS or ParMETIS support");
@@ -1974,10 +2034,13 @@ void partition_init(struct partition *partition,
     case 'm':
       partition->type = INITPART_METIS_WEIGHT;
       break;
+    case 'e':
+      partition->type = INITPART_METIS_WEIGHT_EDGE;
+      break;
     default:
       message("Invalid choice of initial partition type '%s'.", part_type);
       error(
-          "Permitted values are: 'grid', 'region', 'memory' or "
+          "Permitted values are: 'grid', 'region', 'memory', 'edgememory' or "
           "'vectorized'");
 #else
     default:
