@@ -42,9 +42,9 @@ hydro_part_get_primitive_variables(const struct part *restrict p, float *W) {
  *
  * @param p Particle.
  * @param drho Density gradient (of size 3 or more).
- * @param ddvx x velocity gradient (of size 3 or more).
- * @param ddvy y velocity gradient (of size 3 or more).
- * @param ddvz z velocity gradient (of size 3 or more).
+ * @param dvx x velocity gradient (of size 3 or more).
+ * @param dvy y velocity gradient (of size 3 or more).
+ * @param dvz z velocity gradient (of size 3 or more).
  * @param dP Pressure gradient (of size 3 or more).
  */
 __attribute__((always_inline)) INLINE static void hydro_part_get_gradients(
@@ -68,6 +68,40 @@ __attribute__((always_inline)) INLINE static void hydro_part_get_gradients(
   dP[0] = p->gradients.P[0];
   dP[1] = p->gradients.P[1];
   dP[2] = p->gradients.P[2];
+}
+
+/**
+ * @brief Get the slope limiter variables for the given particle.
+ *
+ * @param p Particle.
+ * @param rholim Minimum and maximum density of neighbours (of size 2 or more).
+ * @param vxlim Minimum and maximum x velocity of neighbours (of size 2 or
+ * more).
+ * @param vylim Minimum and maximum y velocity of neighbours (of size 2 or
+ * more).
+ * @param vzlim Minimum and maximum z velocity of neighbours (of size 2 or
+ * more).
+ * @param Plim Minimum and maximum pressure of neighbours (of size 2 or more).
+ * @param rmax Maximum distance of any neighbour (of size 1 or more).
+ */
+__attribute__((always_inline)) INLINE static void hydro_part_get_slope_limiter(
+    const struct part *restrict p, float *rholim, float *vxlim, float *vylim,
+    float *vzlim, float *Plim, float *rmax) {
+
+  rholim[0] = p->limiter.rho[0];
+  rholim[1] = p->limiter.rho[1];
+
+  vxlim[0] = p->limiter.v[0][0];
+  vxlim[1] = p->limiter.v[0][1];
+  vylim[0] = p->limiter.v[1][0];
+  vylim[1] = p->limiter.v[1][1];
+  vzlim[0] = p->limiter.v[2][0];
+  vzlim[1] = p->limiter.v[2][1];
+
+  Plim[0] = p->limiter.P[0];
+  Plim[1] = p->limiter.P[1];
+
+  rmax[0] = p->limiter.maxr;
 }
 
 /**

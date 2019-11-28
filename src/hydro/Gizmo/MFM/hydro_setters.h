@@ -96,6 +96,34 @@ __attribute__((always_inline)) INLINE static void hydro_part_reset_gradients(
 }
 
 /**
+ * @brief Set the gradients for the given particle to the given values.
+ *
+ * @param p Particle.
+ */
+__attribute__((always_inline)) INLINE static void hydro_part_set_gradients(
+    struct part *restrict p, const float *gradrho, const float *gradvx,
+    const float *gradvy, const float *gradvz, const float *gradP) {
+
+  p->gradients.rho[0] = gradrho[0];
+  p->gradients.rho[1] = gradrho[1];
+  p->gradients.rho[2] = gradrho[2];
+
+  p->gradients.v[0][0] = gradvx[0];
+  p->gradients.v[0][1] = gradvx[1];
+  p->gradients.v[0][2] = gradvx[2];
+  p->gradients.v[1][0] = gradvy[0];
+  p->gradients.v[1][1] = gradvy[1];
+  p->gradients.v[1][2] = gradvy[2];
+  p->gradients.v[2][0] = gradvz[0];
+  p->gradients.v[2][1] = gradvz[1];
+  p->gradients.v[2][2] = gradvz[2];
+
+  p->gradients.P[0] = gradP[0];
+  p->gradients.P[1] = gradP[1];
+  p->gradients.P[2] = gradP[2];
+}
+
+/**
  * @brief Update the gradients for the given particle with the given
  * contributions.
  *

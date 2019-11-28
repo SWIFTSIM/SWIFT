@@ -20,9 +20,9 @@
 #define SWIFT_GIZMO_MFV_HYDRO_IO_H
 
 #include "../hydro_gradients.h"
+#include "../hydro_slope_limiters.h"
 #include "adiabatic_index.h"
 #include "hydro.h"
-#include "hydro_slope_limiters.h"
 #include "io_properties.h"
 #include "riemann.h"
 

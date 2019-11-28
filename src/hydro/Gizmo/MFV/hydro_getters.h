@@ -71,6 +71,40 @@ __attribute__((always_inline)) INLINE static void hydro_part_get_gradients(
 }
 
 /**
+ * @brief Get the slope limiter variables for the given particle.
+ *
+ * @param p Particle.
+ * @param rholim Minimum and maximum density of neighbours (of size 2 or more).
+ * @param vxlim Minimum and maximum x velocity of neighbours (of size 2 or
+ * more).
+ * @param vylim Minimum and maximum y velocity of neighbours (of size 2 or
+ * more).
+ * @param vzlim Minimum and maximum z velocity of neighbours (of size 2 or
+ * more).
+ * @param Plim Minimum and maximum pressure of neighbours (of size 2 or more).
+ * @param rmax Maximum distance of any neighbour (of size 1 or more).
+ */
+__attribute__((always_inline)) INLINE static void hydro_part_get_slope_limiter(
+    const struct part *restrict p, float *rholim, float *vxlim, float *vylim,
+    float *vzlim, float *Plim, float *rmax) {
+
+  rholim[0] = p->primitives.limiter.rho[0];
+  rholim[1] = p->primitives.limiter.rho[1];
+
+  vxlim[0] = p->primitives.limiter.v[0][0];
+  vxlim[1] = p->primitives.limiter.v[0][1];
+  vylim[0] = p->primitives.limiter.v[1][0];
+  vylim[1] = p->primitives.limiter.v[1][1];
+  vzlim[0] = p->primitives.limiter.v[2][0];
+  vzlim[1] = p->primitives.limiter.v[2][1];
+
+  Plim[0] = p->primitives.limiter.P[0];
+  Plim[1] = p->primitives.limiter.P[1];
+
+  rmax[0] = p->primitives.limiter.maxr;
+}
+
+/**
  * @brief Check if the gradient matrix for this particle is well behaved.
  */
 #define hydro_part_geometry_well_behaved(p) \

@@ -44,7 +44,7 @@
  * @param p Particle.
  */
 __attribute__((always_inline)) INLINE static void hydro_gradients_init(
-    struct part *p) {}
+    struct part* p) {}
 
 /**
  * @brief Gradient calculations done during the neighbour loop
@@ -57,8 +57,8 @@ __attribute__((always_inline)) INLINE static void hydro_gradients_init(
  * @param pj Particle j.
  */
 __attribute__((always_inline)) INLINE static void hydro_gradients_collect(
-    float r2, const float *dx, float hi, float hj, struct part *restrict pi,
-    struct part *restrict pj) {}
+    float r2, const float* dx, float hi, float hj, struct part* restrict pi,
+    struct part* restrict pj) {}
 
 /**
  * @brief Gradient calculations done during the neighbour loop: non-symmetric
@@ -72,9 +72,9 @@ __attribute__((always_inline)) INLINE static void hydro_gradients_collect(
  * @param pj Particle j.
  */
 __attribute__((always_inline)) INLINE static void
-hydro_gradients_nonsym_collect(float r2, const float *dx, float hi, float hj,
-                               struct part *restrict pi,
-                               struct part *restrict pj) {}
+hydro_gradients_nonsym_collect(float r2, const float* dx, float hi, float hj,
+                               struct part* restrict pi,
+                               struct part* restrict pj) {}
 
 /**
  * @brief Finalize the gradient variables after all data have been collected
@@ -82,7 +82,7 @@ hydro_gradients_nonsym_collect(float r2, const float *dx, float hi, float hj,
  * @param p Particle.
  */
 __attribute__((always_inline)) INLINE static void hydro_gradients_finalize(
-    struct part *p) {}
+    struct part* p) {}
 
 #endif
 

@@ -29,8 +29,8 @@
  * @return The slope limited difference between the quantity at the particle
  * position and the quantity at the interface position.
  */
-#ifndef SWIFT_GIZMO_MFM_SLOPE_LIMITER_FACE_H
-#define SWIFT_GIZMO_MFM_SLOPE_LIMITER_FACE_H
+#ifndef SWIFT_GIZMO_SLOPE_LIMITER_FACE_H
+#define SWIFT_GIZMO_SLOPE_LIMITER_FACE_H
 
 /* Some standard headers. */
 #include <float.h>
@@ -127,4 +127,4 @@ __attribute__((always_inline)) INLINE static void hydro_slope_limit_face(
                                            xij_j_norm, r_inv);
 }
 
-#endif /* SWIFT_GIZMO_MFM_SLOPE_LIMITER_FACE_H */
+#endif /* SWIFT_GIZMO_SLOPE_LIMITER_FACE_H */
