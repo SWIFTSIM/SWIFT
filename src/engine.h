@@ -544,7 +544,7 @@ void engine_rebuild(struct engine *e, int redistributed, int clean_h_values);
 void engine_repartition(struct engine *e);
 void engine_repartition_trigger(struct engine *e);
 void engine_makeproxies(struct engine *e);
-void engine_redistribute(struct engine *e);
+void engine_redistribute(struct engine *e, int initial_redistribute);
 void engine_print_policy(struct engine *e);
 int engine_is_done(struct engine *e);
 void engine_pin(void);

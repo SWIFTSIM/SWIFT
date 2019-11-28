@@ -197,14 +197,9 @@ INLINE static int logger_generate_flag(enum logger_special_flags flag, int data)
 }
 
 #ifdef WITH_MPI
-void logger_log_before_communcations(
-  struct part *parts, size_t nr_parts, int *counts,
-  struct gpart *gparts, size_t nr_gparts, int *g_counts,
-  struct spart *sparts, size_t nr_sparts, int *s_counts,
-  struct bpart *bparts, size_t nr_bparts, int *b_counts);
-
-void logger_log_after_communcations(
-  struct part *parts, size_t nr_parts, int *counts,
+void logger_log_repartition(
+  struct logger_writer *log, int nr_nodes, int sending, struct part *parts,
+  struct xpart *xparts, size_t nr_parts, int *counts,
   struct gpart *gparts, size_t nr_gparts, int *g_counts,
   struct spart *sparts, size_t nr_sparts, int *s_counts,
   struct bpart *bparts, size_t nr_bparts, int *b_counts);

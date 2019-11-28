@@ -223,7 +223,7 @@ void engine_repartition(struct engine *e) {
      Finally, the space, tasks, and proxies need to be rebuilt. */
 
   /* Redistribute the particles between the nodes. */
-  engine_redistribute(e);
+  engine_redistribute(e, /* initial_redistribute */ 0);
 
   /* Make the proxies. */
   engine_makeproxies(e);

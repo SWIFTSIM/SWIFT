@@ -849,6 +849,9 @@ int logger_read_timestamp(unsigned long long int *t, double *time,
 /**
  * @brief Log all the particles leaving the current rank.
  *
+ * @param log The #logger_writer.
+ * @param nr_nodes Number of nodes used in the simulation.
+ * @param sneding Are we sending the particles (or receiving)?
  * @param parts The list of #part.
  * @param nr_parts The number of parts.
  * @param count The number of parts in each ranks.
@@ -863,37 +866,93 @@ int logger_read_timestamp(unsigned long long int *t, double *time,
  * @param b_counts The number of bparts in each ranks.
  *
  */
-void logger_log_before_communcations(
-    struct part *parts, size_t nr_parts, int *counts,
+void logger_log_repartition(
+    struct logger_writer *log, int nr_nodes, int sending, struct part *parts,
+    struct xpart *xparts, size_t nr_parts, int *counts,
     struct gpart *gparts, size_t nr_gparts, int *g_counts,
     struct spart *sparts, size_t nr_sparts, int *s_counts,
     struct bpart *bparts, size_t nr_bparts, int *b_counts) {
-  error("TODO");
-}
 
-/**
- * @brief Log all the particles arriving in the current rank.
- *
- * @param parts The list of #part.
- * @param nr_parts The number of parts.
- * @param count The number of parts in each ranks.
- * @param gparts The list of #gpart.
- * @param nr_gparts The number of gparts.
- * @param gcount The number of gparts in each ranks.
- * @param sparts The list of #spart.
- * @param nr_sparts The number of sparts.
- * @param s_counts The number of sparts in each ranks.
- * @param bparts The list of #bpart.
- * @param nr_bparts The number of bparts.
- * @param b_counts The number of bparts in each ranks.
- *
- */
-void logger_log_after_communcations(
-    struct part *parts, size_t nr_parts, int *counts,
-    struct gpart *gparts, size_t nr_gparts, int *g_counts,
-    struct spart *sparts, size_t nr_sparts, int *s_counts,
-    struct bpart *bparts, size_t nr_bparts, int *b_counts) {
-  error("TODO");
+  size_t part_offset = 0;
+  size_t spart_offset = 0;
+  size_t gpart_offset = 0;
+  size_t bpart_offset = 0;
+
+  for(int i = 0; i < nr_nodes; i++) {
+    const size_t c_ind = sending ? engine_rank * nr_nodes + i:
+      i * nr_nodes + engine_rank;
+
+    /* No need to log the local particles. */
+    if (i == engine_rank) {
+      part_offset += counts[c_ind];
+      spart_offset += s_counts[c_ind];
+      gpart_offset += g_counts[c_ind];
+      bpart_offset += b_counts[c_ind];
+      continue;
+    }
+
+    const int flag = logger_generate_flag(
+      logger_flag_mpi | logger_flag_delete, i);
+
+    const unsigned int mask_hydro =
+      logger_mask_data[logger_x].mask | logger_mask_data[logger_v].mask |
+      logger_mask_data[logger_a].mask | logger_mask_data[logger_u].mask |
+      logger_mask_data[logger_h].mask | logger_mask_data[logger_rho].mask |
+      logger_mask_data[logger_consts].mask |
+      logger_mask_data[logger_special_flags].mask;
+
+    /* Log the hydro parts. */
+    for(int j = 0; j < counts[c_ind]; j++) {
+      size_t ind = part_offset + j;
+      message("%i: %lli", sending, parts[ind].id);
+      logger_log_part(log, &parts[ind], mask_hydro,
+                      &xparts[ind].logger_data.last_offset,
+                      flag);
+      xparts[ind].logger_data.steps_since_last_output = 0;
+    }
+
+    const unsigned int mask_stars = logger_mask_data[logger_x].mask |
+      logger_mask_data[logger_v].mask |
+      logger_mask_data[logger_consts].mask |
+      logger_mask_data[logger_special_flags].mask;
+
+    /* Log the stellar parts. */
+    for(int j = 0; j < s_counts[c_ind]; j++) {
+      size_t ind = spart_offset + j;
+      logger_log_spart(log, &sparts[ind], mask_stars,
+                       &sparts[ind].logger_data.last_offset,
+                       flag);
+      sparts[ind].logger_data.steps_since_last_output = 0;
+    }
+
+    const unsigned int mask_grav =
+      logger_mask_data[logger_x].mask | logger_mask_data[logger_v].mask |
+      logger_mask_data[logger_a].mask | logger_mask_data[logger_consts].mask |
+      logger_mask_data[logger_special_flags].mask;
+
+    /* Log the gparts */
+    for(int j = 0; j < g_counts[c_ind]; j++) {
+      size_t ind = gpart_offset + j;
+      /* Log only the dark matter */
+      if (gparts[ind].type != swift_type_dark_matter) continue;
+
+      logger_log_gpart(log, &gparts[ind], mask_grav,
+                       &gparts[ind].logger_data.last_offset,
+                       flag);
+      gparts[ind].logger_data.steps_since_last_output = 0;
+    }
+
+    /* Log the bparts */
+    if (b_counts[c_ind] > 0) {
+      error("TODO");
+    }
+
+    /* Update the counters */
+    part_offset += counts[c_ind];
+    spart_offset += s_counts[c_ind];
+    gpart_offset += g_counts[c_ind];
+    bpart_offset += b_counts[c_ind];
+  }
 }
 
 /**

@@ -514,8 +514,9 @@ static void engine_redistribute_relink_mapper(void *map_data, int num_elements,
  *
  *
  * @param e The #engine.
+ * @param initial_redistribute Is it the initial redistribute (just after reading the particles).
  */
-void engine_redistribute(struct engine *e) {
+void engine_redistribute(struct engine *e, int initial_redistribute) {
 
 #ifdef WITH_MPI
 
@@ -977,11 +978,15 @@ void engine_redistribute(struct engine *e) {
     nr_bparts_new += b_counts[k * nr_nodes + nodeID];
 
 #ifdef WITH_LOGGER
-  /* Log the particles before sending them out */
-  logger_log_before_communcations(s->parts, nr_parts_new, counts,
-                                  s->gparts, nr_gparts_new, g_counts,
-                                  s->sparts, nr_sparts_new, s_counts,
-                                  s->bparts, nr_bparts_new, b_counts);
+  if (!initial_redistribute) {
+    /* Log the particles before sending them out */
+    const int sending = 1;
+    logger_log_repartition(e->logger, nr_nodes, sending, s->parts,
+                           s->xparts, nr_parts_new, counts,
+                           s->gparts, nr_gparts_new, g_counts,
+                           s->sparts, nr_sparts_new, s_counts,
+                           s->bparts, nr_bparts_new, b_counts);
+  }
 #endif
 
   /* Now exchange the particles, type by type to keep the memory required
@@ -1037,11 +1042,15 @@ void engine_redistribute(struct engine *e) {
      stuff we just received */
 
 #ifdef WITH_LOGGER
-  /* Log the received particles */
-  logger_log_after_communcations(s->parts, s->nr_parts, counts,
-                                 s->gparts, s->nr_gparts, g_counts,
-                                 s->sparts, s->nr_sparts, s_counts,
-                                 s->bparts, s->nr_bparts, b_counts);
+  if (!initial_redistribute) {
+    /* Log the received particles */
+    const int receiving = 0;
+    logger_log_repartition(e->logger, nr_nodes, receiving, s->parts,
+                           s->xparts, nr_parts_new, counts,
+                           s->gparts, nr_gparts_new, g_counts,
+                           s->sparts, nr_sparts_new, s_counts,
+                           s->bparts, nr_bparts_new, b_counts);
+  }
 #endif
 
   /* Restore the part<->gpart and spart<->gpart links.
