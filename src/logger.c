@@ -904,7 +904,6 @@ void logger_log_repartition(
     /* Log the hydro parts. */
     for(int j = 0; j < counts[c_ind]; j++) {
       size_t ind = part_offset + j;
-      message("%i: %lli", sending, parts[ind].id);
       logger_log_part(log, &parts[ind], mask_hydro,
                       &xparts[ind].logger_data.last_offset,
                       flag);
