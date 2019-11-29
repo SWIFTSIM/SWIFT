@@ -5144,7 +5144,7 @@ void space_check_cosmology(struct space *s, const struct cosmology *cosmo,
   double total_mass = mass;
 #endif
 
-  if (rank == 0) {
+  if (0 && rank == 0) {
 
     const double volume = s->dim[0] * s->dim[1] * s->dim[2];
 
