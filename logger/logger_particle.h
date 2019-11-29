@@ -53,13 +53,13 @@ struct logger_reader;
  */
 struct logger_particle {
   /* position. */
-  double pos[DIM];
+  double pos[3];
 
   /* velocity. */
-  float vel[DIM];
+  float vel[3];
 
   /* acceleration. */
-  float acc[DIM];
+  float acc[3];
 
   /* entropy. */
   float entropy;
