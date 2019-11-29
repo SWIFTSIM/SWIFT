@@ -1108,6 +1108,9 @@ struct task *scheduler_addtask(struct scheduler *s, enum task_types type,
 #endif
   t->tic = 0;
   t->toc = 0;
+#ifdef SWIFT_DEBUG_CHECKS
+  t->ti_run = -1;
+#endif
 
   if (ci != NULL) cell_set_flag(ci, cell_flag_has_tasks);
   if (cj != NULL) cell_set_flag(cj, cell_flag_has_tasks);
@@ -1699,8 +1702,8 @@ void scheduler_enqueue(struct scheduler *s, struct task *t) {
               sizeof(struct pcell_step_hydro) * t->ci->mpi.pcell_size);
           err = MPI_Irecv(
               t->buff, t->ci->mpi.pcell_size * sizeof(struct pcell_step_hydro),
-              MPI_BYTE, t->ci->nodeID, t->flags, subtaskMPI_comms[t->subtype],
-              &t->req);
+              MPI_BYTE, t->ci->nodeID, t->ci->mpi.tag,
+              subtaskMPI_comms[t->subtype], &t->req);
         } else if (t->subtype == task_subtype_tend_gpart) {
           t->buff = (struct pcell_step_grav *)malloc(
               sizeof(struct pcell_step_grav) * t->ci->mpi.pcell_size);
@@ -1743,8 +1746,8 @@ void scheduler_enqueue(struct scheduler *s, struct task *t) {
                    t->subtype == task_subtype_rho ||
                    t->subtype == task_subtype_gradient) {
           err = MPI_Irecv(t->ci->hydro.parts, t->ci->hydro.count, part_mpi_type,
-                          t->ci->nodeID, t->flags, subtaskMPI_comms[t->subtype],
-                          &t->req);
+                          t->ci->nodeID, t->ci->mpi.tag,
+                          subtaskMPI_comms[t->subtype], &t->req);
         } else if (t->subtype == task_subtype_gpart) {
           err = MPI_Irecv(t->ci->grav.parts, t->ci->grav.count, gpart_mpi_type,
                           t->ci->nodeID, t->flags, subtaskMPI_comms[t->subtype],
@@ -1795,14 +1798,14 @@ void scheduler_enqueue(struct scheduler *s, struct task *t) {
             err = MPI_Isend(
                 t->buff,
                 t->ci->mpi.pcell_size * sizeof(struct pcell_step_hydro),
-                MPI_BYTE, t->cj->nodeID, t->flags, subtaskMPI_comms[t->subtype],
-                &t->req);
+                MPI_BYTE, t->cj->nodeID, t->ci->mpi.tag,
+                subtaskMPI_comms[t->subtype], &t->req);
           } else {
             err = MPI_Issend(
                 t->buff,
                 t->ci->mpi.pcell_size * sizeof(struct pcell_step_hydro),
-                MPI_BYTE, t->cj->nodeID, t->flags, subtaskMPI_comms[t->subtype],
-                &t->req);
+                MPI_BYTE, t->cj->nodeID, t->ci->mpi.tag,
+                subtaskMPI_comms[t->subtype], &t->req);
           }
         } else if (t->subtype == task_subtype_tend_gpart) {
           t->buff = (struct pcell_step_grav *)malloc(
