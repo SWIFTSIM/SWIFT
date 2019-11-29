@@ -42,8 +42,7 @@ __attribute__((always_inline)) INLINE static int cell_are_part_drifted(
   if (c->hydro.ti_old_part > e->ti_current)
     error(
         "Cell has been drifted too far forward in time! c->ti_old_part=%lld "
-        "(t=%e) "
-        "and e->ti_current=%lld (t=%e, a=%e)",
+        "(t=%e) and e->ti_current=%lld (t=%e, a=%e)",
         c->hydro.ti_old_part, c->hydro.ti_old_part * e->time_base,
         e->ti_current, e->ti_current * e->time_base, e->cosmology->a);
 #endif
