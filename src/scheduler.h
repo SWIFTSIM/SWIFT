@@ -1,3 +1,4 @@
+
 /*******************************************************************************
  * This file is part of SWIFT.
  * Copyright (c) 2013 Pedro Gonnet (pedro.gonnet@durham.ac.uk)
@@ -140,16 +141,32 @@ __attribute__((always_inline)) INLINE static void scheduler_activate(
 __attribute__((always_inline)) INLINE static struct link *
 scheduler_activate_send(struct scheduler *s, struct link *link,
                         enum task_subtypes subtype, int nodeID) {
-  struct link *l = NULL;
-  for (l = link;
-       l != NULL && !(l->t->cj->nodeID == nodeID && l->t->subtype == subtype);
-       l = l->next)
-    ;
-  if (l == NULL) {
-    error("Missing link to send task.");
+  for (struct link *l = link; l != NULL; l = l->next) {
+    if (l->t->cj->nodeID == nodeID && l->t->subtype == subtype) {
+      scheduler_activate(s, l->t);
+      return l;
+    }
   }
-  scheduler_activate(s, l->t);
-  return l;
+  error("Missing link to send task.");
+  return NULL;
+}
+
+/**
+ * @brief Search and add a set of MPI send tasks to the list of active tasks.
+ *
+ * @param s The #scheduler.
+ * @param link The first element in the linked list of links for the task of
+ * interest.
+ * @param subtype_mask the task subtypes to activate.
+ * @param nodeID The nodeID of the foreign cell.
+ */
+__attribute__((always_inline)) INLINE static void scheduler_activate_sends(
+    struct scheduler *s, struct link *link, uint32_t subtype_mask, int nodeID) {
+  for (struct link *l = link; l != NULL; l = l->next) {
+    if (l->t->cj->nodeID == nodeID && (subtype_mask & (1 << l->t->subtype))) {
+      scheduler_activate(s, l->t);
+    }
+  }
 }
 
 /**
@@ -165,14 +182,31 @@ scheduler_activate_send(struct scheduler *s, struct link *link,
 __attribute__((always_inline)) INLINE static struct link *
 scheduler_activate_recv(struct scheduler *s, struct link *link,
                         enum task_subtypes subtype) {
-  struct link *l = NULL;
-  for (l = link; l != NULL && l->t->subtype != subtype; l = l->next)
-    ;
-  if (l == NULL) {
-    error("Missing link to recv task.");
+  for (struct link *l = link; l != NULL; l = l->next) {
+    if (l->t->subtype == subtype) {
+      scheduler_activate(s, l->t);
+      return l;
+    }
   }
-  scheduler_activate(s, l->t);
-  return l;
+  error("Missing link to recv task.");
+  return NULL;
+}
+
+/**
+ * @brief Search and add a set of MPI recv tasks to the list of active tasks.
+ *
+ * @param s The #scheduler.
+ * @param link The first element in the linked list of links for the task of
+ * interest.
+ * @param subtype_mask the task subtypes to activate.
+ */
+__attribute__((always_inline)) INLINE static void scheduler_activate_recvs(
+    struct scheduler *s, struct link *link, uint32_t subtype_mask) {
+  for (struct link *l = link; l != NULL; l = l->next) {
+    if (subtype_mask & (1 << l->t->subtype)) {
+      scheduler_activate(s, l->t);
+    }
+  }
 }
 
 /* Function prototypes. */
