@@ -64,6 +64,7 @@ extern int engine_rank;
             clocks_get_timesincestart(), __FILE__, __FUNCTION__, __LINE__, \
             ##__VA_ARGS__);                                                \
     memdump(engine_rank);                                                  \
+    abort();                                                               \
     MPI_Abort(MPI_COMM_WORLD, -1);                                         \
   })
 #else
