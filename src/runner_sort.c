@@ -198,7 +198,7 @@ void runner_do_hydro_sort(struct runner *r, struct cell *c, int flags,
 
   /* Check that the particles have been moved to the current time */
   if (flags && !cell_are_part_drifted(c, r->e))
-    error("Sorting un-drifted cell c->nodeID=%d", c->nodeID);
+    error("Sorting un-drifted cell (c->nodeID=%d)", c->nodeID);
 
 #ifdef SWIFT_DEBUG_CHECKS
   /* Make sure the sort flags are consistent (downward). */
