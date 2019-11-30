@@ -154,6 +154,9 @@ void header_read(struct header *h, struct logger_logfile *log) {
 
   /* Allocate the masks memory. */
   h->masks = malloc(sizeof(struct mask_data) * h->masks_count);
+  if (h->masks == NULL) {
+    error("Failed to allocate the memory for the masks.");
+  }
 
   /* Loop over all masks. */
   h->timestamp_mask = 0;

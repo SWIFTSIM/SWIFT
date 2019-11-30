@@ -217,7 +217,7 @@ void logger_write_index_file(struct logger_writer* log, struct engine* e) {
   size_t cur_pos = ftell(f);
   size_t d_align = ((cur_pos + 7) & ~7) - cur_pos;
   if (d_align > 0) {
-    int tmp = 0;
+    long int tmp = 0;
     /* Fill the memory with garbage */
     fwrite(&tmp, d_align, 1, f);
   }
