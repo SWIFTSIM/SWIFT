@@ -193,62 +193,63 @@ void engine_addtasks_send_hydro(struct engine *e, struct cell *ci,
 #ifdef WITH_MPI
   struct scheduler *s = &e->sched;
 
-  /* If this cell has to be sent, add the tasks. */
-  if (ci->mpi.attach_send_recv_for_proxy & (1ULL << proxy_id)) {
-    /* Create the tasks and their dependencies? */
-    if (t_xv == NULL) {
-      /* Make sure this cell is tagged. */
-      cell_ensure_tagged(ci);
+  /* If this cell has to be sent, add no send tasks are provided, then create
+   * the send tasks. */
+  if (t_xv == NULL && ci->mpi.attach_send_recv_for_proxy & (1ULL << proxy_id)) {
+    /* Make sure this cell is tagged. */
+    cell_ensure_tagged(ci);
 
-      t_xv = scheduler_addtask(s, task_type_send, task_subtype_xv, proxy_id, 0,
-                               ci, cj);
-      t_rho = scheduler_addtask(s, task_type_send, task_subtype_rho, proxy_id,
-                                0, ci, cj);
+    t_xv = scheduler_addtask(s, task_type_send, task_subtype_xv, proxy_id, 0,
+                             ci, cj);
+    t_rho = scheduler_addtask(s, task_type_send, task_subtype_rho, proxy_id, 0,
+                              ci, cj);
 
 #ifdef EXTRA_HYDRO_LOOP
-      t_gradient = scheduler_addtask(s, task_type_send, task_subtype_gradient,
-                                     proxy_id, 0, ci, cj);
+    t_gradient = scheduler_addtask(s, task_type_send, task_subtype_gradient,
+                                   proxy_id, 0, ci, cj);
 #endif
 
-      t_ti = scheduler_addtask(s, task_type_send, task_subtype_tend_part,
-                               proxy_id, 0, ci, cj);
+    t_ti = scheduler_addtask(s, task_type_send, task_subtype_tend_part,
+                             proxy_id, 0, ci, cj);
 
 #ifdef EXTRA_HYDRO_LOOP
 
-      scheduler_addunlock(s, t_gradient, ci->hydro.super->hydro.end_force);
+    scheduler_addunlock(s, t_gradient, ci->hydro.super->hydro.end_force);
 
-      scheduler_addunlock(s, ci->hydro.super->hydro.extra_ghost, t_gradient);
+    scheduler_addunlock(s, ci->hydro.super->hydro.extra_ghost, t_gradient);
 
-      /* The send_rho task should unlock the super_hydro-cell's extra_ghost
-       * task. */
-      scheduler_addunlock(s, t_rho, ci->hydro.super->hydro.extra_ghost);
+    /* The send_rho task should unlock the super_hydro-cell's extra_ghost
+     * task. */
+    scheduler_addunlock(s, t_rho, ci->hydro.super->hydro.extra_ghost);
 
-      /* The send_rho task depends on the cell's ghost task. */
-      scheduler_addunlock(s, ci->hydro.super->hydro.ghost_out, t_rho);
+    /* The send_rho task depends on the cell's ghost task. */
+    scheduler_addunlock(s, ci->hydro.super->hydro.ghost_out, t_rho);
 
-      /* The send_xv task should unlock the super_hydro-cell's ghost task. */
-      scheduler_addunlock(s, t_xv, ci->hydro.super->hydro.ghost_in);
+    /* The send_xv task should unlock the super_hydro-cell's ghost task. */
+    scheduler_addunlock(s, t_xv, ci->hydro.super->hydro.ghost_in);
 
 #else
-      /* The send_rho task should unlock the super_hydro-cell's kick task. */
-      scheduler_addunlock(s, t_rho, ci->hydro.super->hydro.end_force);
+    /* The send_rho task should unlock the super_hydro-cell's kick task. */
+    scheduler_addunlock(s, t_rho, ci->hydro.super->hydro.end_force);
 
-      /* The send_rho task depends on the cell's ghost task. */
-      scheduler_addunlock(s, ci->hydro.super->hydro.ghost_out, t_rho);
+    /* The send_rho task depends on the cell's ghost task. */
+    scheduler_addunlock(s, ci->hydro.super->hydro.ghost_out, t_rho);
 
-      /* The send_xv task should unlock the super_hydro-cell's ghost task. */
-      scheduler_addunlock(s, t_xv, ci->hydro.super->hydro.ghost_in);
+    /* The send_xv task should unlock the super_hydro-cell's ghost task. */
+    scheduler_addunlock(s, t_xv, ci->hydro.super->hydro.ghost_in);
 
 #endif
 
-      scheduler_addunlock(s, ci->hydro.super->hydro.drift, t_rho);
+    scheduler_addunlock(s, ci->hydro.super->hydro.drift, t_rho);
 
-      /* Drift before you send */
-      scheduler_addunlock(s, ci->hydro.super->hydro.drift, t_xv);
+    /* Drift before you send. */
+    scheduler_addunlock(s, ci->hydro.super->hydro.drift, t_xv);
 
-      scheduler_addunlock(s, ci->super->timestep, t_ti);
-    }
+    scheduler_addunlock(s, ci->super->timestep, t_ti);
+  }
 
+  /* If we have send tasks, link this cell and its task to them. */
+  if (t_xv) {
     /* Add them to the local cell. */
     engine_addlink(e, &ci->mpi.send, t_xv);
     engine_addlink(e, &ci->mpi.send, t_rho);
@@ -478,30 +479,59 @@ void engine_addtasks_recv_hydro(struct engine *e, struct cell *c, int proxy_id,
 #ifdef WITH_MPI
   struct scheduler *s = &e->sched;
 
-  /* If this cell has to be received, add the tasks. */
-  if (c->mpi.attach_send_recv_for_proxy & (1ULL << proxy_id)) {
-    /* Create the recv tasks if they have not been provided. */
-    if (t_xv == NULL) {
+  /* If this cell has to be received, and we don't yet have recv tasks for it,
+   * then create the recv tasks. */
+  if (t_xv == NULL && c->mpi.attach_send_recv_for_proxy & (1ULL << proxy_id)) {
 #ifdef SWIFT_DEBUG_CHECKS
-      /* Make sure this cell has a valid tag. */
-      if (c->mpi.tag < 0) {
-        error("Trying to receive from untagged cell %#010x.", cell_hash(c));
-      }
+    /* Make sure this cell has a valid tag. */
+    if (c->mpi.tag < 0) {
+      error("Trying to receive from untagged cell %#010x.", cell_hash(c));
+    }
 #endif  // SWIFT_DEBUG_CHECKS
 
-      t_xv = scheduler_addtask(s, task_type_recv, task_subtype_xv, proxy_id, 0,
-                               c, NULL);
-      t_rho = scheduler_addtask(s, task_type_recv, task_subtype_rho, proxy_id,
-                                0, c, NULL);
+    t_xv = scheduler_addtask(s, task_type_recv, task_subtype_xv, proxy_id, 0, c,
+                             NULL);
+    t_rho = scheduler_addtask(s, task_type_recv, task_subtype_rho, proxy_id, 0,
+                              c, NULL);
 #ifdef EXTRA_HYDRO_LOOP
-      t_gradient = scheduler_addtask(s, task_type_recv, task_subtype_gradient,
-                                     proxy_id, 0, c, NULL);
+    t_gradient = scheduler_addtask(s, task_type_recv, task_subtype_gradient,
+                                   proxy_id, 0, c, NULL);
 #endif
 
-      t_ti = scheduler_addtask(s, task_type_recv, task_subtype_tend_part,
-                               proxy_id, 0, c, NULL);
-    }
+    t_ti = scheduler_addtask(s, task_type_recv, task_subtype_tend_part,
+                             proxy_id, 0, c, NULL);
 
+    /* Add dependencies to all hydro tasks above this cell. */
+    for (struct cell *finger = c->parent; finger != NULL;
+         finger = finger->parent) {
+      if (finger->hydro.sorts != NULL) {
+        scheduler_addunlock(s, t_xv, finger->hydro.sorts);
+        scheduler_addunlock(s, finger->hydro.sorts, t_rho);
+      }
+      for (struct link *l = finger->hydro.density; l != NULL; l = l->next) {
+        scheduler_addunlock(s, t_xv, l->t);
+        scheduler_addunlock(s, l->t, t_rho);
+      }
+#ifdef EXTRA_HYDRO_LOOP
+      for (struct link *l = finger->hydro.gradient; l != NULL; l = l->next) {
+        scheduler_addunlock(s, t_rho, l->t);
+        scheduler_addunlock(s, l->t, t_gradient);
+      }
+      for (struct link *l = finger->hydro.force; l != NULL; l = l->next) {
+        scheduler_addunlock(s, t_gradient, l->t);
+        scheduler_addunlock(s, l->t, t_ti);
+      }
+#else
+      for (struct link *l = finger->hydro.force; l != NULL; l = l->next) {
+        scheduler_addunlock(s, t_rho, l->t);
+        scheduler_addunlock(s, l->t, t_ti);
+      }
+#endif
+    }
+  }
+
+  /* If we have recv tasks, add them to this cell and its tasks. */
+  if (t_xv) {
     engine_addlink(e, &c->mpi.recv, t_xv);
     engine_addlink(e, &c->mpi.recv, t_rho);
 #ifdef EXTRA_HYDRO_LOOP
@@ -514,7 +544,6 @@ void engine_addtasks_recv_hydro(struct engine *e, struct cell *c, int proxy_id,
       scheduler_addunlock(s, t_xv, c->hydro.sorts);
       scheduler_addunlock(s, c->hydro.sorts, t_rho);
     }
-
     for (struct link *l = c->hydro.density; l != NULL; l = l->next) {
       scheduler_addunlock(s, t_xv, l->t);
       scheduler_addunlock(s, l->t, t_rho);
