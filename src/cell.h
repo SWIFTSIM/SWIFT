@@ -895,6 +895,8 @@ void cell_activate_drift_bpart(struct cell *c, struct scheduler *s);
 void cell_activate_hydro_sorts(struct cell *c, int sid, struct scheduler *s);
 void cell_activate_stars_sorts(struct cell *c, int sid, struct scheduler *s);
 void cell_activate_limiter(struct cell *c, struct scheduler *s);
+void cell_activate_hydro_send_recv_tasks(struct cell *ci, struct cell *cj,
+                                         struct scheduler *s);
 void cell_clear_drift_flags(struct cell *c, void *data);
 void cell_clear_limiter_flags(struct cell *c, void *data);
 void cell_set_super_mapper(void *map_data, int num_elements, void *extra_data);
@@ -1225,6 +1227,9 @@ cell_need_rebuild_for_black_holes_pair(const struct cell *ci,
 
 /**
  * @brief Retuns a hash of a cell computed from its location and width.
+ *
+ * This is useful to uniquely (up to hash collisions) identify cells
+ * across nodes. To printf a cell hash, use "%#010x".
  */
 __attribute__((always_inline)) INLINE static uint32_t cell_hash(
     const struct cell *c) {
@@ -1357,6 +1362,18 @@ __attribute__((always_inline)) INLINE static struct task *cell_get_recv(
 #else
   return NULL;
 #endif
+}
+
+/**
+ * @brief Checks if a #cell belongs to the local node, MPI safe.
+ */
+__attribute__((always_inline)) INLINE static int cell_is_local(
+    const struct cell *c) {
+#ifdef WITH_MPI
+  return (c->nodeID == engine_rank);
+#else
+  return 1;
+#endif  // WITH_MPI
 }
 
 #endif /* SWIFT_CELL_H */
