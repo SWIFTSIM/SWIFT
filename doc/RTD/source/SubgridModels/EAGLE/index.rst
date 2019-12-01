@@ -144,56 +144,56 @@ inherits all the chemical tracers of its parent gas particle.
 
 In the snapshots, we output for each gas and star particle:
 
-+----------------------------------+-------------------------------------+-----------+-----------------------------+
-| Name                             | Description                         | Units     | Comments                    |
-+==================================+=====================================+===========+=============================+
-| ``ElementAbundance``             | | Fraction of the gas/star mass     | [-]       | | Array of length           |
-|                                  | | in the different elements         |           | | 9 for each particle       |
-+----------------------------------+-------------------------------------+-----------+-----------------------------+
-| ``SmoothedElementAbundance``     | | Fraction of the gas/star mass     | [-]       | | Array of length           |
-|                                  | | in the different elements         |           | | 9 for each particle       |
-|                                  | | smoothed over SPH neighbours      |           |                             |
-+----------------------------------+-------------------------------------+-----------+-----------------------------+
-| ``Metallicity``                  | | Fraction of the gas/star mass     | [-]       |                             |
-|                                  | | in *all* metals                   |           |                             |
-+----------------------------------+-------------------------------------+-----------+-----------------------------+
-| ``SmoothedMetallicity``          | | Fraction of the gas/star mass     | [-]       |                             |
-|                                  | | in *all* metals                   |           |                             |
-|                                  | | smoothed over SPH neighbours      |           |                             |
-+----------------------------------+-------------------------------------+-----------+-----------------------------+
-| ``TotalMassFromSNIa``            | | Total mass of the gas/star        | [U_M]     |                             |
-|                                  | | that was produced by enrichment   |           |                             |
-|                                  | | from SNIa stars                   |           |                             |
-+----------------------------------+-------------------------------------+-----------+-----------------------------+
-| ``MetalMassFracFromSNIa``        | | Fraction of the *total* gas/star  | [-]       |                             |
-|                                  | | mass that is in metals produced   |           |                             |
-|                                  | | by enrichment from SNIa stars     |           |                             |
-+----------------------------------+-------------------------------------+-----------+-----------------------------+
-| ``TotalMassFromAGB``             | | Total mass of the gas/star        | [U_M]     |                             |
-|                                  | | that was produced by enrichment   |           |                             |
-|                                  | | from AGB stars                    |           |                             |
-+----------------------------------+-------------------------------------+-----------+-----------------------------+
-| ``MetalMassFracFromAGB``         | | Fraction of the *total* gas/star  | [-]       |                             |
-|                                  | | mass that is in metals produced   |           |                             |
-|                                  | | by enrichment from AGB star       |           |                             |
-+----------------------------------+-------------------------------------+-----------+-----------------------------+
-| ``TotalMassFromSNII``            | | Total mass of the gas/star        | [U_M]     |                             |
-|                                  | | that was produced by enrichment   |           |                             |
-|                                  | | from SNII stars                   |           |                             |
-+----------------------------------+-------------------------------------+-----------+-----------------------------+
-| ``MetalMassFracFromSNII``        | | Fraction of the gas/star mass     | [-]       |                             |
-|                                  | | that is in metals produced by     |           |                             |
-|                                  | | enrichment from SNII stars        |           |                             |
-+----------------------------------+-------------------------------------+-----------+-----------------------------+
-| ``IronMassFracFromSNIa``         | | Fraction of the *total* gas/star  | [-]       |                             |
-|                                  | | mass in *iron* produced produced  |           |                             |
-|                                  | | by enrichment from SNIa stars     |           |                             |
-+----------------------------------+-------------------------------------+-----------+-----------------------------+
-| ``SmoothedIronMassFracFromSNIa`` | | Fraction of the *total* gas/star  | [-]       |                             |
-|                                  | | mass in *iron* produced produced  |           |                             |
-|                                  | | by enrichment from SNIa stars     |           |                             |
-|                                  | | smoothed over SPH neighbours      |           |                             |
-+----------------------------------+-------------------------------------+-----------+-----------------------------+
++---------------------------------------+-------------------------------------+-----------+-----------------------------+
+| Name                                  | Description                         | Units     | Comments                    |
++=======================================+=====================================+===========+=============================+
+| ``ElementMassFractions``              | | Fraction of the gas/star mass     | [-]       | | Array of length           |
+|                                       | | in the different elements         |           | | 9 for each particle       |
++---------------------------------------+-------------------------------------+-----------+-----------------------------+
+| ``SmoothedElementMassFractions``      | | Fraction of the gas/star mass     | [-]       | | Array of length           |
+|                                       | | in the different elements         |           | | 9 for each particle       |
+|                                       | | smoothed over SPH neighbours      |           |                             |
++---------------------------------------+-------------------------------------+-----------+-----------------------------+
+| ``MetalMassFractions``                | | Fraction of the gas/star mass     | [-]       |                             |
+|                                       | | in *all* metals                   |           |                             |
++---------------------------------------+-------------------------------------+-----------+-----------------------------+
+| ``SmoothedMetalMassFractions``        | | Fraction of the gas/star mass     | [-]       |                             |
+|                                       | | in *all* metals                   |           |                             |
+|                                       | | smoothed over SPH neighbours      |           |                             |
++---------------------------------------+-------------------------------------+-----------+-----------------------------+
+| ``MassesFromSNIa``                    | | Total mass of the gas/star        | [U_M]     |                             |
+|                                       | | that was produced by enrichment   |           |                             |
+|                                       | | from SNIa stars                   |           |                             |
++---------------------------------------+-------------------------------------+-----------+-----------------------------+
+| ``MetalMassFractionsFromSNIa``        | | Fraction of the *total* gas/star  | [-]       |                             |
+|                                       | | mass that is in metals produced   |           |                             |
+|                                       | | by enrichment from SNIa stars     |           |                             |
++---------------------------------------+-------------------------------------+-----------+-----------------------------+
+| ``MassesFromAGB``                     | | Total mass of the gas/star        | [U_M]     |                             |
+|                                       | | that was produced by enrichment   |           |                             |
+|                                       | | from AGB stars                    |           |                             |
++---------------------------------------+-------------------------------------+-----------+-----------------------------+
+| ``MetalMassFractionsFromAGB``         | | Fraction of the *total* gas/star  | [-]       |                             |
+|                                       | | mass that is in metals produced   |           |                             |
+|                                       | | by enrichment from AGB star       |           |                             |
++---------------------------------------+-------------------------------------+-----------+-----------------------------+
+| ``MassesFromSNII``                    | | Total mass of the gas/star        | [U_M]     |                             |
+|                                       | | that was produced by enrichment   |           |                             |
+|                                       | | from SNII stars                   |           |                             |
++---------------------------------------+-------------------------------------+-----------+-----------------------------+
+| ``MetalMassFractionsFromSNII``        | | Fraction of the gas/star mass     | [-]       |                             |
+|                                       | | that is in metals produced by     |           |                             |
+|                                       | | enrichment from SNII stars        |           |                             |
++---------------------------------------+-------------------------------------+-----------+-----------------------------+
+| ``IronMassFractionsFromSNIa``         | | Fraction of the *total* gas/star  | [-]       |                             |
+|                                       | | mass in *iron* produced produced  |           |                             |
+|                                       | | by enrichment from SNIa stars     |           |                             |
++---------------------------------------+-------------------------------------+-----------+-----------------------------+
+| ``SmoothedIronMassFractionsFromSNIa`` | | Fraction of the *total* gas/star  | [-]       |                             |
+|                                       | | mass in *iron* produced produced  |           |                             |
+|                                       | | by enrichment from SNIa stars     |           |                             |
+|                                       | | smoothed over SPH neighbours      |           |                             |
++---------------------------------------+-------------------------------------+-----------+-----------------------------+
 
 The stars will lose mass over their lifetime (up to ~45%). The fractions will
 remain unchanged but if one is interested in computing an absolute metal mass
@@ -350,7 +350,7 @@ they are listed for every gas particle:
 +---------------------+-------------------------------------+-----------+-------------------------------------+
 | Name                | Description                         | Units     | Comments                            |
 +=====================+=====================================+===========+=====================================+
-| ``Temperature``     | | Temperature of the gas as         | [U_T]     | | The calculation is performed      |
+| ``Temperatures``    | | Temperature of the gas as         | [U_T]     | | The calculation is performed      |
 |                     | | computed from the tables.         |           | | using quantities at the last      |
 |                     |                                     |           | | time-step the particle was active |
 +---------------------+-------------------------------------+-----------+-------------------------------------+
@@ -404,12 +404,12 @@ the snapshots for each gas and star particle:
 +----------------------------------------+---------------------------------------+-----------+-----------------------------+
 | Name                                   | Description                           | Units     | Comments                    |
 +========================================+=======================================+===========+=============================+
-| | ``Maximal Temperature``              | | Mximal temperature reached by       | | [U_T]   |                             |
+| | ``MaximalTemperatures``              | | Mximal temperature reached by       | | [U_T]   |                             |
 |                                        | | this particle.                      |           |                             |
 +----------------------------------------+---------------------------------------+-----------+-----------------------------+
-| | ``Maximal Temperature scale-factor`` | | Scale-factor (cosmological runs)    | | [-]     |                             |
+| | ``MaximalTemperaturesScaleFactors``  | | Scale-factor (cosmological runs)    | | [-]     |                             |
 | | OR                                   | | or time (non-cosmological runs) at  | | OR      |                             |
-| | ``Maximal Temperature time``         | | which the maximum value was reached.| | [U_t]   |                             |
+| | ``MaximalTemperaturesTimes``         | | which the maximum value was reached.| | [U_t]   |                             |
 +----------------------------------------+---------------------------------------+-----------+-----------------------------+
 
 
@@ -424,14 +424,14 @@ metal-dependent star-formation density threshold following the relation derived
 by `Schaye (2004) <http://adsabs.harvard.edu/abs/2004ApJ...609..667S>`_. Above a
 density threshold :math:`n^*_{\rm H}`, expressed in number of Hydrogen atoms per
 (physical) cubic centimeters, the star formation rate is expressed as a
-pressure-law :math:`\dot{m}_* = m_g \times A \times \left( 1 {\rm
-M_\odot}~{\rm pc^2} \right)^{-n} \times \left(\frac{\gamma}{G_{\rm
-N}}f_gP\right)^{(n-1)/2}`, where :math:`n` is the exponent of the
-Kennicutt-Schmidt relation (typically :math:`n=1.4`) and :math:`A` is the
-normalisation of the law (typically :math:`A=1.515\times10^{-4} {\rm
-M_\odot}~{\rm yr^{-1}}~{\rm kpc^{-2}}`). :math:`m_g` is the gas particle mass,
-:math:`\gamma` is the adiabatic index, :math:`f_g` the gas fraction of the disk
-and :math:`P` the total pressure of the gas including any subgrid turbulent terms.
+pressure-law :math:`\dot{m}_* = m_g \times A \times \left( 1 {\rm M_\odot}~{\rm
+pc^2} \right)^{-n} \times \left(\frac{\gamma}{G_{\rm N}}f_gP\right)^{(n-1)/2}`,
+where :math:`n` is the exponent of the Kennicutt-Schmidt relation (typically
+:math:`n=1.4`) and :math:`A` is the normalisation of the law (typically
+:math:`A=1.515\times10^{-4} {\rm M_\odot}~{\rm yr^{-1}}~{\rm kpc^{-2}}` for a
+Cabrier IMF). :math:`m_g` is the gas particle mass, :math:`\gamma` is the
+adiabatic index, :math:`f_g` the gas fraction of the disk and :math:`P` the
+total pressure of the gas including any subgrid turbulent terms.
 
 Once a gas particle has computed its star formation rate, we compute the
 probability that this particle turns into a star using :math:`Prob=
@@ -463,14 +463,15 @@ the figure below.
     does *not* enter the model at all). The values used to produce this
     figure are the ones assumed in the reference EAGLE model.
 
-In the EAGLE model, the pressure entering the star formation includes pressure
-from the unresolved turbulence. This is modeled in the form of a polytropic
-equation of state for the gas :math:`P = P_{\rm
-norm}\left(\frac{\rho}{\rho_0}\right)^{\gamma_{\rm eff}}`. For practical reasons,
-this relation is expressed in term of densities. Note that unlike the entropy
-floor, this is applied at *all* densities and not only above a certain
-threshold. This equation of state with the relevant YAML parameters defining it
-is shown on the figure below.
+In the `Schaye & Dalla Vecchia (2008)
+<http://adsabs.harvard.edu/abs/2008MNRAS.383.1210S>`_ model, the pressure
+entering the star formation includes pressure from the unresolved
+turbulence. This is modeled in the form of a polytropic equation of state for
+the gas :math:`P_{EoS} = P_{\rm norm}\left(\frac{\rho}{\rho_0}\right)^{\gamma_{\rm
+eff}}`. For practical reasons, this relation is expressed in term of
+densities. Note that unlike the entropy floor, this is applied at *all*
+densities and not only above a certain threshold. This equation of state with
+the relevant YAML parameters defining it is shown on the figure below.
     
 .. figure:: EAGLE_SF_EOS.svg
     :width: 400px
@@ -488,17 +489,32 @@ is shown on the figure below.
     star formation rate. The values used to produce this figure are the
     ones assumed in the reference EAGLE model.
 
+In EAGLE, an entropy floor is already in use, so that the pressure of the gas is
+mentained high enough to prvent fragmentation of the gas. In such a scenario,
+there is no need for the internal EoS described above. And, of course, in such a
+scenario, the gas can have a pressure above the floor. The code hence uses
+:math:`P = \max(P_{\rm gas}, P_{\rm floor}, P_{\rm EoS})`.
+    
 To prevent star formation in non-collapsed objects (for instance at high
 redshift when the whole Universe has a density above the threshold), we apply an
 over-density criterion. Only gas with a density larger than a multiple of the
 critical density for closure can form stars.
+
+Finally, to prevent gas much above the entropy floor (that has, for instance,
+been affected by feedback) from forming stars, an optional entropy margin can be
+specified. Only gas with an entropy :math:`A` such that :math:`A_{\rm EoS} \leq A <
+A_{\rm EoS} \times 10^\Delta`, with :math:`\Delta` specified in the parameter
+file. This defaults to a very large number, essentially removing the limit. In
+simulations with an entropy floor, the limit is calculated above
+:math:`\max(A_{\rm floor}, A_{EoS})`, to be consistent with the pressure used in
+the star formation law.
 
 Additionally to the pressure-law corresponding to the Kennicutt-Schmidt relation
 described, above, we implement a second density threshold above which the slope
 of the relationship varies (typically steepens). This is governed by two
 additional parameters: the density at which the relation changes and the second
 slope. Finally, we optionally use a maximal density above which any gas particle
-automatically gets a probability to form a star of 100%.
+automatically gets a probability to form a star of 100%. 
 
 The code applying this star formation law is located in the directory
 ``src/star_formation/EAGLE/``. To simplify things, all constants are converted
@@ -513,12 +529,12 @@ For a normal EAGLE run, that section of the parameter file reads:
      EOS_density_norm_H_p_cm3:          0.1       # Physical density used for the normalisation of the EOS assumed for the star-forming gas in Hydrogen atoms per cm^3.
      EOS_temperature_norm_K:            8000      # Temperature om the polytropic EOS assumed for star-forming gas at the density normalisation in Kelvin.
      EOS_gamma_effective:               1.3333333 # Slope the of the polytropic EOS assumed for the star-forming gas.
-     KS_normalisation:                  1.515e-4  # The normalization of the Kennicutt-Schmidt law in Msun / kpc^2 / yr.
-     KS_exponent:                       1.4       # The exponent of the Kennicutt-Schmidt law.
-     min_over_density:                  57.7      # The over-density above which star-formation is allowed.
+     KS_normalisation:                  1.515e-4  # Normalization of the Kennicutt-Schmidt law in Msun / kpc^2 / yr.
+     KS_exponent:                       1.4       # Exponent of the Kennicutt-Schmidt law.
+     min_over_density:                  57.7      # Over-density above which star-formation is allowed.
      KS_high_density_threshold_H_p_cm3: 1e3       # Hydrogen number density above which the Kennicut-Schmidt law changes slope in Hydrogen atoms per cm^3.
      KS_high_density_exponent:          2.0       # Slope of the Kennicut-Schmidt law above the high-density threshold.
-     EOS_temperature_margin_dex:        0.5       # (Optional) Logarithm base 10 of the maximal temperature difference above the EOS allowed to form stars.
+     EOS_entropy_margin_dex:            0.5       # (Optional) Logarithm base 10 of the maximal entropy above the EOS at which stars can form.
      KS_max_density_threshold_H_p_cm3:  1e5       # (Optional) Hydrogen number density above which a particle gets automatically turned into a star in Hydrogen atoms per cm^3.
      threshold_norm_H_p_cm3:            0.1       # Normalisation of the metal-dependant density threshold for star formation in Hydrogen atoms per cm^3.
      threshold_Z0:                      0.002     # Reference metallicity (metal mass fraction) for the metal-dependant threshold for star formation.
@@ -531,6 +547,89 @@ For a normal EAGLE run, that section of the parameter file reads:
 Stellar enrichment: Wiersma+2009b
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
+The enrichment is governed by three "master" parameters in the
+``EAGLEFeedback`` section of the parameter file. Each individual channel
+can be switched on or off individually:
+
+.. code:: YAML
+
+  # EAGLE stellar enrichment master modes
+  EAGLEFeedback:
+    use_AGB_enrichment:    1  # Global switch for enrichement from AGB stars.
+    use_SNII_enrichment:   1  # Global switch for enrichement from SNII stars.
+    use_SNIa_enrichment:   1  # Global switch for enrichement from SNIa stars.
+
+Setting one of these switches to 0 will cancel the mass transfer, metal
+mass transfer and energy transfer (AGB only) from the stars.
+
+The lifetime and yield tables are provided to the code via pre-computed
+tables whose location is given by the ``filename`` parameter.
+
+Choice of IMF properies
+-----------------------
+
+Enrichment from SNII & AGB stars
+--------------------------------
+
+Enrichment from SNIa stars
+--------------------------
+
+The enrichment from SNIa is done over the lifetime of the stars and uses a
+delay time distribution (DTD) to parametrize the number of SNIa events for
+a star of a given age. Two functional forms are available: an exponentially
+decaying function and a power-law with a slope of -1. The parameter
+``SNIa_DTD`` can hence take the two values: ``PowerLaw`` or
+``Exponential``.
+
+In the case of an exponential DTD, two parameters must be defined, the
+normalisation (``SNIa_DTD_exp_norm_p_Msun``) and the time-scale
+(``SNIa_DTD_exp_timescale_Gyr``). The original EAGLE model is reproduced by
+setting the parameters to :math:`0.002` and :math:`2.0` respectively.
+
+In the case of a power-law DTD, only a normalisation needs to be provided
+via the parameter (``SNIa_DTD_power_law_norm_p_Msun``). The examples in the
+repository use a value of :math:`0.0012` for this.
+
+Additionally, the age above which SNIa stars start to go off has to be
+provided. Below that age, there are no explosions; above that age, the DTD
+is used to determine the number of supernovae exploding in a given
+time-step. This is controlled by the parameter ``SNIa_DTD_delay_Gyr`` which
+sets the minimal age of SNIa in giga-years. A value of :math:`0.04~\rm{Gyr}
+= 40~\rm{Myr}` is used in all the examples. This corresponds
+approximatively to the lifetime of stars of mass :math:`8~\rm{M}_\odot`.
+
+Finally, the energy injected by a single SNIa explosion has to be provided
+via the parameter ``SNIa_energy_erg``. The canonical value of
+:math:`10^{51}~\rm{erg}` is used in all the examples.
+
+The SNIa section of the YAML file for an original EAGLE run looks like:
+
+.. code:: YAML
+
+  # EAGLE-Ref SNIa enrichment and feedback options
+  EAGLEFeedback:
+    use_SNIa_feedback:              1
+    use_SNIa_enrichment:            1
+    SNIa_DTD:                       Exponential
+    SNIa_DTD_exp_norm_p_Msun:       0.002           
+    SNIa_DTD_exp_timescale_Gyr:     2.0             
+    SNIa_DTD_delay_Gyr:             0.04
+    SNIa_energy_erg:                1.0e51          
+
+whilst for the more recent runs we use:
+
+.. code:: YAML
+
+  # EAGLE-Ref SNIa enrichment and feedback options
+  EAGLEFeedback:
+    use_SNIa_feedback:              1
+    use_SNIa_enrichment:            1
+    SNIa_DTD:                       PowerLaw
+    SNIa_DTD_power_law_norm_p_Msun: 0.0012
+    SNIa_DTD_delay_Gyr:             0.04
+    SNIa_energy_erg:                1.0e51          
+
+    
 .. _EAGLE_feedback:
 
 Supernova feedback: Dalla Vecchia+2012 & Schaye+2015
@@ -548,20 +647,23 @@ Supernova feedback: Dalla Vecchia+2012 & Schaye+2015
     filename:                         ./yieldtables/  # Path to the directory containing the EAGLE yield tables.
     IMF_min_mass_Msun:                0.1             # Minimal stellar mass considered for the Chabrier IMF in solar masses.
     IMF_max_mass_Msun:              100.0             # Maximal stellar mass considered for the Chabrier IMF in solar masses.
-    SNII_min_mass_Msun:               6.0             # Minimal mass considered for SNII feedback (not SNII enrichment!) in solar masses.
-    SNII_max_mass_Msun:             100.0             # Maximal mass considered for SNII feedback (not SNII enrichment!) in solar masses.
-    SNII_wind_delay_Gyr:              0.03            # Time in Gyr between a star's birth and the SNII thermal feedback event.
+    SNII_min_mass_Msun:               8.0             # Minimal mass considered for SNII stars in solar masses.
+    SNII_max_mass_Msun:             100.0             # Maximal mass considered for SNII stars in solar masses.
+    SNII_sampled_delay:               1               # Sample the SNII lifetimes to do feedback.
+    SNII_wind_delay_Gyr:              0.03            # Time in Gyr between a star's birth and the SNII thermal feedback event when not sampling.
     SNII_delta_T_K:                   3.16228e7       # Change in temperature to apply to the gas particle in a SNII thermal feedback event in Kelvin.
     SNII_energy_erg:                  1.0e51          # Energy of one SNII explosion in ergs.
-    SNII_energy_fraction_min:         3.0             # Maximal fraction of energy applied in a SNII feedback event.
-    SNII_energy_fraction_max:         0.3             # Minimal fraction of energy applied in a SNII feedback event.
+    SNII_energy_fraction_min:         0.3             # Maximal fraction of energy applied in a SNII feedback event.
+    SNII_energy_fraction_max:         3.0             # Minimal fraction of energy applied in a SNII feedback event.
     SNII_energy_fraction_Z_0:         0.0012663729    # Pivot point for the metallicity dependance of the SNII energy fraction (metal mass fraction).
-    SNII_energy_fraction_n_0_H_p_cm3: 0.67            # Pivot point for the birth density dependance of the SNII energy fraction in cm^-3.
+    SNII_energy_fraction_n_0_H_p_cm3: 1.4588          # Pivot point for the birth density dependance of the SNII energy fraction in cm^-3.
     SNII_energy_fraction_n_Z:         0.8686          # Power-law for the metallicity dependance of the SNII energy fraction.
     SNII_energy_fraction_n_n:         0.8686          # Power-law for the birth density dependance of the SNII energy fraction.
-    SNIa_max_mass_Msun:              8.0              # Maximal mass considered for SNIa feedback and enrichment in solar masses.
-    SNIa_timescale_Gyr:              2.0              # Time-scale of the exponential decay of the SNIa rates in Gyr.
-    SNIa_efficiency_p_Msun:          0.002            # Normalisation of the SNIa rates in inverse solar masses.
+    SNIa_DTD:                         PowerLaw        # Functional form of the SNIa delay time distribution Two choices: 'PowerLaw' or 'Exponential'.
+    SNIa_DTD_delay_Gyr:               0.04            # Stellar age after which SNIa start in Gyr (40 Myr corresponds to stars ~ 8 Msun).
+    SNIa_DTD_power_law_norm_p_Msun:   0.0012          # Normalization of the SNIa delay time distribution in the power-law DTD case (in Msun^-1).
+    SNIa_DTD_exp_norm_p_Msun:         0.002           # Normalization of the SNIa delay time distribution in the exponential DTD case (in Msun^-1).
+    SNIa_DTD_exp_timescale_Gyr:       2.0             # Time-scale of the SNIa delay time distribution in the exponential DTD case (in Gyr).
     SNIa_energy_erg:                 1.0e51           # Energy of one SNIa explosion in ergs.
     AGB_ejecta_velocity_km_p_s:      10.0             # Velocity of the AGB ejectas in km/s.
     SNII_yield_factor_Hydrogen:       1.0             # (Optional) Correction factor to apply to the Hydrogen yield from the SNII channel.
@@ -570,10 +672,21 @@ Supernova feedback: Dalla Vecchia+2012 & Schaye+2015
     SNII_yield_factor_Nitrogen:       1.0             # (Optional) Correction factor to apply to the Nitrogen yield from the SNII channel.
     SNII_yield_factor_Oxygen:         1.0             # (Optional) Correction factor to apply to the Oxygen yield from the SNII channel.
     SNII_yield_factor_Neon:           1.0             # (Optional) Correction factor to apply to the Neon yield from the SNII channel.
-    SNII_yield_factor_Magnesium:      2.0             # (Optional) Correction factor to apply to the Magnesium yield from the SNII channel.
+    SNII_yield_factor_Magnesium:      4.0             # (Optional) Correction factor to apply to the Magnesium yield from the SNII channel.
     SNII_yield_factor_Silicon:        1.0             # (Optional) Correction factor to apply to the Silicon yield from the SNII channel.
     SNII_yield_factor_Iron:           0.5             # (Optional) Correction factor to apply to the Iron yield from the SNII channel.
 
+Note that the value of ``SNII_energy_fraction_n_0_H_p_cm3`` given here is
+different from the value (:math:`0.67`) reported in table 3 of `Schaye
+(2015) <http://adsabs.harvard.edu/abs/2015MNRAS.446..521S>`_ , as a factor
+of :math:`h^{-2} = 0.6777^{-2} = 2.1773` is missing in the paper.
+
+The Magnesium yields from SNII have also been doubled since the
+original EAGLE simulations were run and the minimal mass for SNII stars has
+been raised to 8 solar masses (from 6).
+
+
+    
 .. _EAGLE_black_hole_seeding:
 
 Black-hole creation

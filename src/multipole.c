@@ -86,4 +86,8 @@ void multipole_create_mpi_types(void) {
   MPI_Op_create(gravity_tensors_mpi_reduce, 1, &multipole_mpi_reduce_op);
 }
 
+void multipole_free_mpi_types(void) {
+  MPI_Type_free(&multipole_mpi_type);
+  MPI_Op_free(&multipole_mpi_reduce_op);
+}
 #endif

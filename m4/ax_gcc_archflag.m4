@@ -146,6 +146,7 @@ case $host_cpu in
 	    *061?f??:*:*:*|61?f??:*:*:*) ax_gcc_arch="bdver2 bdver1 amdfam10 k8" ;;
 	    *06??f??:*:*:*|6??f??:*:*:*) ax_gcc_arch="bdver3 bdver2 bdver1 amdfam10 k8" ;;
 	    *070?f??:*:*:*|70?f??:*:*:*) ax_gcc_arch="btver2 btver1 amdfam10 k8" ;;
+                           83?f??:*:*:*) ax_gcc_arch="znver2 znver1 btver2 btver1 amdfam10 k8" ;;
 	    *???f??:*:*:*) ax_gcc_arch="amdfam10 k8" ;;
           esac ;;
 	*:746e6543:736c7561:48727561) # IDT / VIA (Centaur)

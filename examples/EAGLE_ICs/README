@@ -3,6 +3,32 @@ the EAGLE suite of simulations. The cosmology, resolution
 and phases are the same as used in the original suite. The only
 difference is the file format, adapted for SWIFT.
 
+Compared to the original EAGLE runs, the following changes have been
+made:
+
+ - The metallicity-dependent density threshold for star formation
+   uses the smoothed metallicities and not the raw metallicities
+   any more.
+ - The redshift of H reionization has been lowered to 7.5 (from 11.5).
+ - The minimal mass of SNII stars has been raised to 8 Msun (from 6).
+ - The SNII feedback delay is done by sampling the stellar age
+   distribution and not using a fixed delay of 30 Myr any more.
+ - The Magnesium yields from SNII stars have been boosted by a
+   factor of 2.
+ - The delay time distribution of the SNIa has been changed to a
+   power-law of slope -1 (instead of the exponential model) and
+   the rates have been renormalized.
+
 The scripts in this directory download the tables required to
 run the EAGLE model. Plotting scripts are also provided
 for basic quantities.
+
+VELOCIraptor can be run on the output. The code is compiled
+using
+
+cmake -DVR_USE_GAS=ON -DVR_USE_STAR=ON -DV_USE_BH=ON
+
+and run using
+
+stf -C vrconfig_3dfof_subhalos_SO_hydro.cfg -i eagle_0035 -o halos_0035 -I 2
+

@@ -83,6 +83,8 @@ void test(void) {
   /* --- Test the density loop --- */
   runner_iact_nonsym_density(r2, dx, pi.h, pj.h, &pi, &pj, a, H);
   runner_iact_nonsym_chemistry(r2, dx, pi.h, pj.h, &pi, &pj, a, H);
+  runner_iact_nonsym_pressure_floor(r2, dx, pi.h, pj.h, &pi, &pj, a, H);
+  runner_iact_nonsym_star_formation(r2, dx, pi.h, pj.h, &pi, &pj, a, H);
 
   /* Check whether pj has been modified */
   j_not_ok = memcmp(&pj, &pj2, sizeof(struct part));

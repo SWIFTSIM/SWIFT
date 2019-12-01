@@ -26,11 +26,11 @@ then
     ./getSolutions.sh
 fi
 
-../../swift  --temperature --feedback --stars --hydro --external-gravity --threads=4 stellar_evolution.yml -P EAGLEChemistry:init_abundance_metal:0.08 2>&1 | tee output_0p08.log
+../../swift  --temperature --feedback --stars --hydro --external-gravity --threads=4 stellar_evolution.yml -P EAGLEChemistry:init_abundance_metal:0.08 -P EAGLEChemistry:init_abundance_Hydrogen:0.71 -P EAGLEChemistry:init_abundance_Helium:0.21 2>&1 | tee output_0p08.log
 
 python plot_box_evolution.py
 
-../../swift  --temperature --feedback --stars --hydro --external-gravity --threads=4 stellar_evolution.yml -P EAGLEChemistry:init_abundance_metal:0.04 2>&1 | tee output_0p04.log
+../../swift  --temperature --feedback --stars --hydro --external-gravity --threads=4 stellar_evolution.yml -P EAGLEChemistry:init_abundance_metal:0.04 -P EAGLEChemistry:init_abundance_Hydrogen:0.74 -P EAGLEChemistry:init_abundance_Helium:0.23 2>&1 | tee output_0p04.log
 
 python plot_box_evolution.py
 

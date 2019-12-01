@@ -148,15 +148,21 @@ void test(void) {
   /* Call the symmetric version */
   runner_iact_density(r2, dx, pi.h, pj.h, &pi, &pj, a, H);
   runner_iact_chemistry(r2, dx, pi.h, pj.h, &pi, &pj, a, H);
+  runner_iact_pressure_floor(r2, dx, pi.h, pj.h, &pi, &pj, a, H);
+  runner_iact_star_formation(r2, dx, pi.h, pj.h, &pi, &pj, a, H);
 
   /* Call the non-symmetric version */
   runner_iact_nonsym_density(r2, dx, pi2.h, pj2.h, &pi2, &pj2, a, H);
   runner_iact_nonsym_chemistry(r2, dx, pi2.h, pj2.h, &pi2, &pj2, a, H);
+  runner_iact_nonsym_pressure_floor(r2, dx, pi2.h, pj2.h, &pi2, &pj2, a, H);
+  runner_iact_nonsym_star_formation(r2, dx, pi2.h, pj2.h, &pi2, &pj2, a, H);
   dx[0] = -dx[0];
   dx[1] = -dx[1];
   dx[2] = -dx[2];
   runner_iact_nonsym_density(r2, dx, pj2.h, pi2.h, &pj2, &pi2, a, H);
   runner_iact_nonsym_chemistry(r2, dx, pj2.h, pi2.h, &pj2, &pi2, a, H);
+  runner_iact_nonsym_pressure_floor(r2, dx, pj2.h, pi2.h, &pj2, &pi2, a, H);
+  runner_iact_nonsym_star_formation(r2, dx, pj2.h, pi2.h, &pj2, &pi2, a, H);
 
   /* Check that the particles are the same */
   i_not_ok = memcmp(&pi, &pi2, sizeof(struct part));

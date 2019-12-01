@@ -1410,9 +1410,8 @@ void runner_dopair_grav_mm_progenies(struct runner *r, const long long flags,
   }
 }
 
-static INLINE void runner_dopair_recursive_grav_pm(struct runner *r,
-                                                   struct cell *ci,
-                                                   const struct cell *cj) {
+void runner_dopair_recursive_grav_pm(struct runner *r, struct cell *ci,
+                                     const struct cell *cj) {
   /* Some constants */
   const struct engine *e = r->e;
   const int periodic = e->mesh->periodic;

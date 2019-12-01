@@ -8,23 +8,24 @@ InternalUnitSystem:
 
 # Parameters for the self-gravity scheme
 Gravity:
-  eta:          0.025               # Constant dimensionless multiplier for time integration.
-  theta:        0.7                 # Opening angle (Multipole acceptance criterion).
-  max_physical_DM_softening:     0.1       # Physical softening length (in internal units).
-  max_physical_baryon_softening: 0.1       # Physical softening length (in internal units).
+  eta:          0.025                 # Constant dimensionless multiplier for time integration.
+  theta:        0.7                   # Opening angle (Multipole acceptance criterion).
+  max_physical_DM_softening:     0.35 # Physical softening length (in internal units).
+  max_physical_baryon_softening: 0.35 # Physical softening length (in internal units).
 
 # Parameters governing the time integration (Set dt_min and dt_max to the same value for a fixed time-step run.)
 TimeIntegration:
   time_begin:        0.    # The starting time of the simulation (in internal units).
   time_end:          0.1   # The end time of the simulation (in internal units).
-  dt_min:            1e-14  # The minimal time-step size of the simulation (in internal units).
+  dt_min:            1e-9  # The minimal time-step size of the simulation (in internal units).
   dt_max:            1e-2  # The maximal time-step size of the simulation (in internal units).
 
 # Parameters governing the snapshots
 Snapshots:
-  basename:   output      # Common part of the name of output files
-  time_first: 0.          # (Optional) Time of the first output if non-cosmological time-integration (in internal units)
-  delta_time: 0.001        # Time difference between consecutive outputs (in internal units)
+  basename:    output      # Common part of the name of output files
+  time_first:  0.          # Time of the first output if non-cosmological time-integration (in internal units)
+  delta_time:  0.001       # Time difference between consecutive outputs (in internal units)
+  compression: 4           # Compress the snapshots
 
 # Parameters governing the conserved quantities statistics
 Statistics:
@@ -83,7 +84,7 @@ HernquistPotential:
   diskfraction:    0.040   # Disk mass fraction
   bulgefraction:   0.014   # Bulge mass fraction
   timestep_mult:   0.01    # Dimensionless pre-factor for the time-step condition, basically determines the fraction of the orbital time we use to do the time integration
-  epsilon:         0.1     # Softening size (internal units)
+  epsilon:         0.35     # Softening size (internal units)
  
 # EAGLE star formation parameters
 EAGLEStarFormation:
@@ -93,10 +94,10 @@ EAGLEStarFormation:
   gas_fraction:                      0.3       # The gas fraction used internally by the model.
   KS_normalisation:                  1.515e-4  # The normalization of the Kennicutt-Schmidt law in Msun / kpc^2 / yr.
   KS_exponent:                       1.4       # The exponent of the Kennicutt-Schmidt law.
-  min_over_density:               57.7      # The over-density above which star-formation is allowed.
+  min_over_density:                  57.7      # The over-density above which star-formation is allowed.
   KS_high_density_threshold_H_p_cm3: 1e3       # Hydrogen number density above which the Kennicut-Schmidt law changes slope in Hydrogen atoms per cm^3.
   KS_high_density_exponent:          2.0       # Slope of the Kennicut-Schmidt law above the high-density threshold.
-  EOS_temperature_margin_dex:         0.5       # Logarithm base 10 of the maximal temperature difference above the EOS allowed to form stars.
+  EOS_entropy_margin_dex:            0.5       # Logarithm base 10 of the maximal entropy above the EOS at which stars can form.
   threshold_norm_H_p_cm3:            0.1       # Normalisation of the metal-dependant density threshold for star formation in Hydrogen atoms per cm^3.
   threshold_Z0:                      0.002     # Reference metallicity (metal mass fraction) for the metal-dependant threshold for star formation.
   threshold_slope:                   -0.64     # Slope of the metal-dependant star formation threshold
@@ -123,20 +124,21 @@ EAGLEFeedback:
   filename:                         ./yieldtables/  # Path to the directory containing the EAGLE yield tables.
   IMF_min_mass_Msun:                0.1             # Minimal stellar mass considered for the Chabrier IMF in solar masses.
   IMF_max_mass_Msun:              100.0             # Maximal stellar mass considered for the Chabrier IMF in solar masses.
-  SNII_min_mass_Msun:               6.0             # Minimal mass considered for SNII feedback (not SNII enrichment!) in solar masses.
-  SNII_max_mass_Msun:             100.0             # Maximal mass considered for SNII feedback (not SNII enrichment!) in solar masses.
-  SNII_wind_delay_Gyr:              0.03            # Time in Gyr between a star's birth and the SNII thermal feedback event.
+  SNII_min_mass_Msun:               6.0             # Minimal mass considered for SNII stars in solar masses.
+  SNII_max_mass_Msun:             100.0             # Maximal mass considered for SNII stars in solar masses.
+  SNII_sampled_delay:               0               # Sample the SNII lifetimes to do feedback.
+  SNII_wind_delay_Gyr:              0.03            # Time in Gyr between a star's birth and the SNII thermal feedback event when not sampling.
   SNII_delta_T_K:                   3.16228e7       # Change in temperature to apply to the gas particle in a SNII thermal feedback event in Kelvin.
   SNII_energy_erg:                  1.0e51          # Energy of one SNII explosion in ergs.
   SNII_energy_fraction_min:         1.0             # Minimal fraction of energy applied in a SNII feedback event.
   SNII_energy_fraction_max:         1.0             # Maximal fraction of energy applied in a SNII feedback event.
   SNII_energy_fraction_Z_0:         0.0012663729    # Pivot point for the metallicity dependance of the SNII energy fraction (metal mass fraction).
-  SNII_energy_fraction_n_0_H_p_cm3: 0.67            # Pivot point for the birth density dependance of the SNII energy fraction in cm^-3.
+  SNII_energy_fraction_n_0_H_p_cm3: 1.4588          # Pivot point for the birth density dependance of the SNII energy fraction in cm^-3.
   SNII_energy_fraction_n_Z:         0.8686          # Power-law for the metallicity dependance of the SNII energy fraction.
   SNII_energy_fraction_n_n:         0.8686          # Power-law for the birth density dependance of the SNII energy fraction.
-  SNIa_max_mass_Msun:              8.0              # Maximal mass considered for SNIa feedback and enrichment in solar masses.
-  SNIa_timescale_Gyr:              2.0              # Time-scale of the exponential decay of the SNIa rates in Gyr.
-  SNIa_efficiency_p_Msun:          0.002            # Normalisation of the SNIa rates in inverse solar masses.
+  SNIa_DTD:                         PowerLaw        # Functional form of the SNIa delay time distribution.
+  SNIa_DTD_delay_Gyr:               0.04            # Stellar age after which SNIa start in Gyr (40 Myr corresponds to stars ~ 8 Msun).
+  SNIa_DTD_power_law_norm_p_Msun:   0.0012          # Normalization of the SNIa delay time distribution (in Msun^-1).
   SNIa_energy_erg:                 1.0e51           # Energy of one SNIa explosion in ergs.
   AGB_ejecta_velocity_km_p_s:      10.0             # Velocity of the AGB ejectas in km/s.
   SNII_yield_factor_Hydrogen:       1.0             # (Optional) Correction factor to apply to the Hydrogen yield from the SNII channel.

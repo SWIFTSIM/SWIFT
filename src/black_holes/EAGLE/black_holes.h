@@ -90,9 +90,9 @@ __attribute__((always_inline)) INLINE static void black_holes_init_bpart(
   bp->circular_velocity_gas[2] = 0.f;
   bp->ngb_mass = 0.f;
   bp->num_ngbs = 0;
-  bp->reposition.x[0] = -FLT_MAX;
-  bp->reposition.x[1] = -FLT_MAX;
-  bp->reposition.x[2] = -FLT_MAX;
+  bp->reposition.delta_x[0] = -FLT_MAX;
+  bp->reposition.delta_x[1] = -FLT_MAX;
+  bp->reposition.delta_x[2] = -FLT_MAX;
   bp->reposition.min_potential = FLT_MAX;
 }
 
@@ -112,19 +112,40 @@ __attribute__((always_inline)) INLINE static void black_holes_predict_extra(
   if (bp->reposition.min_potential != FLT_MAX) {
 
 #ifdef SWIFT_DEBUG_CHECKS
-    if (bp->reposition.x[0] == -FLT_MAX || bp->reposition.x[1] == -FLT_MAX ||
-        bp->reposition.x[2] == -FLT_MAX) {
+    if (bp->reposition.delta_x[0] == -FLT_MAX ||
+        bp->reposition.delta_x[1] == -FLT_MAX ||
+        bp->reposition.delta_x[2] == -FLT_MAX) {
       error("Something went wrong with the new repositioning position");
     }
+
+    const double dx = bp->reposition.delta_x[0];
+    const double dy = bp->reposition.delta_x[1];
+    const double dz = bp->reposition.delta_x[2];
+    const double d = sqrt(dx * dx + dy * dy + dz * dz);
+    if (d > 1.01 * kernel_gamma * bp->h)
+      error("Repositioning BH beyond the kernel support!");
 #endif
 
-    bp->x[0] = bp->reposition.x[0];
-    bp->x[1] = bp->reposition.x[1];
-    bp->x[2] = bp->reposition.x[2];
+    /* Move the black hole */
+    bp->x[0] += bp->reposition.delta_x[0];
+    bp->x[1] += bp->reposition.delta_x[1];
+    bp->x[2] += bp->reposition.delta_x[2];
 
-    bp->gpart->x[0] = bp->reposition.x[0];
-    bp->gpart->x[1] = bp->reposition.x[1];
-    bp->gpart->x[2] = bp->reposition.x[2];
+    /* Move its gravity properties as well */
+    bp->gpart->x[0] += bp->reposition.delta_x[0];
+    bp->gpart->x[1] += bp->reposition.delta_x[1];
+    bp->gpart->x[2] += bp->reposition.delta_x[2];
+
+    /* Store the delta position */
+    bp->x_diff[0] -= bp->reposition.delta_x[0];
+    bp->x_diff[1] -= bp->reposition.delta_x[1];
+    bp->x_diff[2] -= bp->reposition.delta_x[2];
+
+    /* Reset the reposition variables */
+    bp->reposition.delta_x[0] = -FLT_MAX;
+    bp->reposition.delta_x[1] = -FLT_MAX;
+    bp->reposition.delta_x[2] = -FLT_MAX;
+    bp->reposition.min_potential = FLT_MAX;
   }
 }
 
@@ -481,9 +502,9 @@ __attribute__((always_inline)) INLINE static void black_holes_end_reposition(
 
     /* No need to reposition */
     bp->reposition.min_potential = FLT_MAX;
-    bp->reposition.x[0] = -FLT_MAX;
-    bp->reposition.x[1] = -FLT_MAX;
-    bp->reposition.x[2] = -FLT_MAX;
+    bp->reposition.delta_x[0] = -FLT_MAX;
+    bp->reposition.delta_x[1] = -FLT_MAX;
+    bp->reposition.delta_x[2] = -FLT_MAX;
   }
 }
 

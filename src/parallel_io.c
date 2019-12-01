@@ -555,10 +555,14 @@ void writeArray_chunk(struct engine* e, hid_t h_data,
   else
     H5Sselect_none(h_filespace);
 
-    /* message("Writing %lld '%s', %zd elements = %zd bytes (int=%d) at offset
-     * %zd", N, props.name, N * props.dimension, N * props.dimension * typeSize,
-     */
-    /* 	  (int)(N * props.dimension * typeSize), offset); */
+  /* message("Writing %lld '%s', %zd elements = %zd bytes (int=%d) at offset
+   * %zd", N, props.name, N * props.dimension, N * props.dimension * typeSize,
+   */
+  /* 	  (int)(N * props.dimension * typeSize), offset); */
+
+  /* Make a dataset creation property list and set MPI-I/O mode */
+  hid_t h_plist_id = H5Pcreate(H5P_DATASET_XFER);
+  H5Pset_dxpl_mpio(h_plist_id, H5FD_MPIO_COLLECTIVE);
 
 #ifdef IO_SPEED_MEASUREMENT
   MPI_Barrier(MPI_COMM_WORLD);
@@ -567,7 +571,7 @@ void writeArray_chunk(struct engine* e, hid_t h_data,
 
   /* Write temporary buffer to HDF5 dataspace */
   h_err = H5Dwrite(h_data, io_hdf5_type(props.type), h_memspace, h_filespace,
-                   H5P_DEFAULT, temp);
+                   h_plist_id, temp);
   if (h_err < 0) error("Error while writing data array '%s'.", props.name);
 
 #ifdef IO_SPEED_MEASUREMENT
@@ -584,6 +588,7 @@ void writeArray_chunk(struct engine* e, hid_t h_data,
 
   /* Free and close everything */
   swift_free("writebuff", temp);
+  H5Pclose(h_plist_id);
   H5Sclose(h_memspace);
   H5Sclose(h_filespace);
 }
@@ -1068,9 +1073,13 @@ void prepare_file(struct engine* e, const char* baseName, long long N_total[6],
   if (e->snapshot_int_time_label_on)
     snprintf(fileName, FILENAME_BUFFER_SIZE, "%s_%06i.hdf5", baseName,
              (int)round(e->time));
-  else
+  else if (e->snapshot_invoke_stf) {
+    snprintf(fileName, FILENAME_BUFFER_SIZE, "%s_%04i.hdf5", baseName,
+             e->stf_output_count);
+  } else {
     snprintf(fileName, FILENAME_BUFFER_SIZE, "%s_%04i.hdf5", baseName,
              e->snapshot_output_count);
+  }
 
   /* Open HDF5 file with the chosen parameters */
   hid_t h_file = H5Fcreate(fileName, H5F_ACC_TRUNC, H5P_DEFAULT, H5P_DEFAULT);
@@ -1444,9 +1453,13 @@ void write_output_parallel(struct engine* e, const char* baseName,
   if (e->snapshot_int_time_label_on)
     snprintf(fileName, FILENAME_BUFFER_SIZE, "%s_%06i.hdf5", baseName,
              (int)round(e->time));
-  else
+  else if (e->snapshot_invoke_stf) {
+    snprintf(fileName, FILENAME_BUFFER_SIZE, "%s_%04i.hdf5", baseName,
+             e->stf_output_count);
+  } else {
     snprintf(fileName, FILENAME_BUFFER_SIZE, "%s_%04i.hdf5", baseName,
              e->snapshot_output_count);
+  }
 
   /* Now write the top-level cell structure */
   hid_t h_file_cells = 0, h_grp_cells = 0;
@@ -1782,9 +1795,10 @@ void write_output_parallel(struct engine* e, const char* baseName,
           /* Select the fields to write */
           stars_write_particles(sparts_written, list, &num_fields,
                                 with_cosmology);
-          num_fields += chemistry_write_sparticles(sparts, list + num_fields);
-          num_fields += tracers_write_sparticles(sparts, list + num_fields,
-                                                 with_cosmology);
+          num_fields +=
+              chemistry_write_sparticles(sparts_written, list + num_fields);
+          num_fields += tracers_write_sparticles(
+              sparts_written, list + num_fields, with_cosmology);
           if (with_fof) {
             num_fields += fof_write_sparts(sparts_written, list + num_fields);
           }
@@ -1914,6 +1928,7 @@ void write_output_parallel(struct engine* e, const char* baseName,
 #endif
 
   e->snapshot_output_count++;
+  if (e->snapshot_invoke_stf) e->stf_output_count++;
 }
 
 #endif /* HAVE_HDF5 */

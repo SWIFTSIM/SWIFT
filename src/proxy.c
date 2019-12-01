@@ -985,6 +985,29 @@ void proxy_init(struct proxy *p, int mynodeID, int nodeID) {
 }
 
 /**
+ * @brief Free the memory allocated by a #proxy
+ */
+void proxy_clean(struct proxy *p) {
+
+  free(p->cells_in);
+  free(p->cells_out);
+  free(p->cells_in_type);
+  free(p->cells_out_type);
+  swift_free("pcells_in", p->pcells_in);
+  swift_free("pcells_out", p->pcells_out);
+  swift_free("parts_out", p->parts_out);
+  swift_free("xparts_out", p->xparts_out);
+  swift_free("gparts_out", p->gparts_out);
+  swift_free("sparts_out", p->sparts_out);
+  swift_free("bparts_out", p->bparts_out);
+  swift_free("parts_in", p->parts_in);
+  swift_free("xparts_in", p->xparts_in);
+  swift_free("gparts_in", p->gparts_in);
+  swift_free("sparts_in", p->sparts_in);
+  swift_free("bparts_in", p->bparts_in);
+}
+
+/**
  * @brief Registers the MPI types for the proxy cells.
  */
 void proxy_create_mpi_type(void) {
@@ -995,6 +1018,14 @@ void proxy_create_mpi_type(void) {
       MPI_Type_commit(&pcell_mpi_type) != MPI_SUCCESS) {
     error("Failed to create MPI type for parts.");
   }
+#else
+  error("SWIFT was not compiled with MPI support.");
+#endif
+}
+
+void proxy_free_mpi_type(void) {
+#ifdef WITH_MPI
+  MPI_Type_free(&pcell_mpi_type);
 #else
   error("SWIFT was not compiled with MPI support.");
 #endif

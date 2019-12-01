@@ -41,8 +41,8 @@ __attribute__((always_inline)) INLINE static void hydro_debug_particle(
       xp->v_full[1], xp->v_full[2], p->a_hydro[0], p->a_hydro[1], p->a_hydro[2],
       p->u, p->u_dt, p->force.v_sig, hydro_get_comoving_pressure(p), p->h,
       p->force.h_dt, (int)p->density.wcount, p->mass, p->density.rho_dh, p->rho,
-      p->density.pressure_bar_dh, p->pressure_bar, p->time_bin, p->wakeup,
-      p->alpha);
+      p->density.pressure_bar_dh, p->pressure_bar, p->time_bin,
+      p->limiter_data.wakeup, p->alpha);
 }
 
 #endif /* SWIFT_PRESSURE_ENERGY_MORRIS_HYDRO_DEBUG_H */

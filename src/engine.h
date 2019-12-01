@@ -34,13 +34,9 @@
 
 /* Includes. */
 #include "barrier.h"
-#include "black_holes_properties.h"
-#include "chemistry_struct.h"
 #include "clocks.h"
 #include "collectgroup.h"
-#include "cooling_struct.h"
 #include "dump.h"
-#include "gravity_properties.h"
 #include "mesh_gravity.h"
 #include "parser.h"
 #include "partition.h"
@@ -48,10 +44,11 @@
 #include "runner.h"
 #include "scheduler.h"
 #include "space.h"
-#include "star_formation_logger.h"
 #include "task.h"
 #include "units.h"
 #include "velociraptor_interface.h"
+
+struct black_holes_properties;
 
 /**
  * @brief The different policies the #engine can follow.
@@ -79,9 +76,10 @@ enum engine_policy {
   engine_policy_feedback = (1 << 18),
   engine_policy_black_holes = (1 << 19),
   engine_policy_fof = (1 << 20),
-  engine_policy_limiter = (1 << 21)
+  engine_policy_timestep_limiter = (1 << 21),
+  engine_policy_timestep_sync = (1 << 22)
 };
-#define engine_maxpolicy 22
+#define engine_maxpolicy 23
 extern const char *engine_policy_names[engine_maxpolicy + 1];
 
 /**
@@ -363,6 +361,10 @@ struct engine {
 
   /* Step of last repartition. */
   int last_repartition;
+
+  /* Use synchronous redistributes. */
+  int syncredist;
+
 #endif
 
   /* Wallclock time of the last time-step */
@@ -378,9 +380,8 @@ struct engine {
   int forcerepart;
   struct repartition *reparttype;
 
-#ifdef WITH_LOGGER
+  /* The particle logger */
   struct logger_writer *logger;
-#endif
 
   /* How many steps have we done with the same set of tasks? */
   int tasks_age;
@@ -473,6 +474,9 @@ struct engine {
 
   /* Label of the run */
   char run_name[PARSER_MAX_LINE_SIZE];
+
+  /* Has there been an stf this timestep? */
+  char stf_this_timestep;
 };
 
 /* Function prototypes, engine.c. */
@@ -490,6 +494,7 @@ void engine_reconstruct_multipoles(struct engine *e);
 void engine_allocate_foreign_particles(struct engine *e);
 void engine_print_stats(struct engine *e);
 void engine_check_for_dumps(struct engine *e);
+void engine_check_for_index_dump(struct engine *e);
 void engine_collect_end_of_step(struct engine *e, int apply);
 void engine_dump_snapshot(struct engine *e);
 void engine_init_output_lists(struct engine *e, struct swift_params *params);

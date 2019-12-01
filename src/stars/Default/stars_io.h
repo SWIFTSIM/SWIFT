@@ -52,10 +52,11 @@ INLINE static void stars_read_particles(struct spart *sparts,
 INLINE static void convert_spart_pos(const struct engine *e,
                                      const struct spart *sp, double *ret) {
 
-  if (e->s->periodic) {
-    ret[0] = box_wrap(sp->x[0], 0.0, e->s->dim[0]);
-    ret[1] = box_wrap(sp->x[1], 0.0, e->s->dim[1]);
-    ret[2] = box_wrap(sp->x[2], 0.0, e->s->dim[2]);
+  const struct space *s = e->s;
+  if (s->periodic) {
+    ret[0] = box_wrap(sp->x[0] - s->pos_dithering[0], 0.0, s->dim[0]);
+    ret[1] = box_wrap(sp->x[1] - s->pos_dithering[1], 0.0, s->dim[1]);
+    ret[2] = box_wrap(sp->x[2] - s->pos_dithering[2], 0.0, s->dim[2]);
   } else {
     ret[0] = sp->x[0];
     ret[1] = sp->x[1];

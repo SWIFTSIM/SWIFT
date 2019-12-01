@@ -16,7 +16,7 @@
 # along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
 # Init the project.
-AC_INIT([SWIFT],[0.8.4],[https://gitlab.cosma.dur.ac.uk/swift/swiftsim])
+AC_INIT([SWIFT],[0.8.5],[https://gitlab.cosma.dur.ac.uk/swift/swiftsim])
 swift_config_flags="$*"
 
 #  We want to stop when given unrecognised options. No subdirs so this is safe.
@@ -71,6 +71,13 @@ AC_USE_SYSTEM_EXTENSIONS
 AX_COMPILER_VENDOR
 AX_COMPILER_VERSION
 
+# Check whether we have a recent enough GCC
+if test "$ax_cv_c_compiler_vendor" = "gnu"; then
+   AX_COMPARE_VERSION([$ax_cv_c_compiler_version], [ge], [8.1.0],
+		      [gcc_handles_avx512="yes"],
+		      [gcc_handles_avx512="no"])
+fi
+
 #  Restrict support.
 AC_C_RESTRICT
 
@@ -85,6 +92,12 @@ AC_ARG_ENABLE([logger],
 
 if test "$with_logger" = "yes"; then
    AC_DEFINE([WITH_LOGGER], 1, [logger enabled])
+   # The logger requires that long long is a 64bit type, let's
+   # check that.
+   AC_CHECK_SIZEOF([long long int])
+   if test "$ac_cv_sizeof_long_long_int" != "8"; then
+      AC_MSG_ERROR([The particle logger requires that 'long long int' has size 8 bytes])
+   fi
 fi
 AM_CONDITIONAL([HAVELOGGER],[test $with_logger = "yes"])
 
@@ -381,6 +394,7 @@ fi
 # Check whether we have any of the ARM v8.1 tick timers
 AX_ASM_ARM_PMCCNTR
 AX_ASM_ARM_CNTVCT
+
 # See if we want memuse reporting.
 AC_ARG_ENABLE([memuse-reports],
    [AS_HELP_STRING([--enable-memuse-reports],
@@ -391,6 +405,18 @@ AC_ARG_ENABLE([memuse-reports],
 )
 if test "$enable_memuse_reports" = "yes"; then
    AC_DEFINE([SWIFT_MEMUSE_REPORTS],1,[Enable memory usage reports])
+fi
+
+# See if we want mpi reporting.
+AC_ARG_ENABLE([mpiuse-reports],
+   [AS_HELP_STRING([--enable-mpiuse-reports],
+     [Output reports about MPI tasks requests@<:@yes/no@:>@]
+   )],
+   [enable_mpiuse_reports="$enableval"],
+   [enable_mpiuse_reports="no"]
+)
+if test "$enable_mpiuse_reports" = "yes"; then
+   AC_DEFINE([SWIFT_MPIUSE_REPORTS],1,[Enable MPI task reports])
 fi
 
 
@@ -437,6 +463,35 @@ if test "$enable_opt" = "yes" ; then
    ac_test_CFLAGS="no"
    AX_CC_MAXOPT
    ac_test_CFLAGS="yes"
+
+   # Choose the best flags for the gravity sub-library on this compiler and architecture
+   if test "$ax_cv_c_compiler_vendor" = "intel"; then
+      case "$icc_flags" in
+      	 *CORE-AVX512*)
+            GRAVITY_CFLAGS="$GRAVITY_CFLAGS -qopt-zmm-usage=high"
+	    ;;
+	 *)
+	    AC_MSG_WARN([No additional flags needed for gravity on this platform])
+	    ;;
+      esac
+   elif test "$ax_cv_c_compiler_vendor" = "gnu"; then
+      if test "$gcc_handles_avx512" = "yes"; then
+         case "$ax_gcc_arch" in
+	    *skylake-avx512*)
+               GRAVITY_CFLAGS="$GRAVITY_CFLAGS -mprefer-vector-width=512"
+	       ;;
+	    *)
+	       AC_MSG_WARN([No additional flags needed for gravity on this platform])
+	       ;;
+         esac
+      else
+         AC_MSG_WARN([No additional flags needed for gravity on this platform])
+      fi
+   else
+      AC_MSG_WARN([Do not know what best gravity vectorization flags to choose for this compiler])
+   fi
+   AC_ARG_VAR([GRAVITY_CFLAGS], [C compiler flags added to the basic CFLAGS to compile
+   				 the gravity-related files.])
 
    # Check SSE & AVX support (some overlap with AX_CC_MAXOPT).
    # Don't use the SIMD_FLAGS result with Intel compilers. The -x<code>
@@ -1363,6 +1418,7 @@ with_subgrid_pressure_floor=none
 with_subgrid_stars=none
 with_subgrid_star_formation=none
 with_subgrid_feedback=none
+with_subgrid_task_order=none
 
 case "$with_subgrid" in
    yes)
@@ -1378,6 +1434,7 @@ case "$with_subgrid" in
 	with_subgrid_star_formation=GEAR
 	with_subgrid_feedback=none
 	with_subgrid_black_holes=none
+	with_subgrid_task_order=GEAR
 	enable_fof=no
    ;;
    EAGLE)
@@ -1389,6 +1446,7 @@ case "$with_subgrid" in
 	with_subgrid_star_formation=EAGLE
 	with_subgrid_feedback=EAGLE
 	with_subgrid_black_holes=EAGLE
+	with_subgrid_task_order=EAGLE
 	enable_fof=yes
    ;;
    *)
@@ -1748,6 +1806,16 @@ case "$with_chemistry" in
    ;;
 esac
 
+if test "$with_chemistry" != "none"; then
+   if test "$enable_hand_vec" == "yes"; then
+      if test "$enable_vec" == "yes"; then
+         if test "$with_hydro" == "gadget2"; then
+            AC_MSG_ERROR([Cannot run with hand vectorisation and chemistry yet. Please use --disable-hand-vec])
+         fi
+      fi
+   fi
+fi
+
 #  Particle tracers
 AC_ARG_WITH([tracers],
    [AS_HELP_STRING([--with-tracers=<function>],
@@ -1867,6 +1935,38 @@ case "$with_black_holes" in
    *)
       AC_MSG_ERROR([Unknown black-hole model: $with_black_holes])
    ;;
+esac
+
+# Task order
+AC_ARG_WITH([task-order],
+[AS_HELP_STRING([--with-task-order=<model>],
+[Task order to use @<:@none, EAGLE, GEAR default: none@:>@]
+)],
+[with_task_order="$withval"],
+[with_task_order="none"]
+)
+
+if test "$with_subgrid" != "none"; then
+if test "$with_task_order" != "none"; then
+AC_MSG_ERROR([Cannot provide with-subgrid and with-task-order together])
+else
+with_task_order="$with_subgrid_task_order"
+fi
+fi
+
+case "$with_task_order" in
+EAGLE)
+AC_DEFINE([TASK_ORDER_EAGLE], [1], [EAGLE task order])
+;;
+none)
+AC_DEFINE([TASK_ORDER_NONE], [1], [Default task order])
+;;
+GEAR)
+AC_DEFINE([TASK_ORDER_GEAR], [1], [GEAR task order])
+;;
+*)
+AC_MSG_ERROR([Unknown task ordering: $with_task_order])
+;;
 esac
 
 #  External potential
@@ -2104,6 +2204,7 @@ AC_MSG_RESULT([
    Star formation model : $with_star_formation
    Star feedback model  : $with_feedback
    Black holes model    : $with_black_holes
+   Task dependencies    : $with_task_order
 
    Individual timers           : $enable_timers
    Task debugging              : $enable_task_debugging

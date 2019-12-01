@@ -23,6 +23,7 @@
 #include "../config.h"
 
 /* Local headers. */
+#include "black_holes.h"
 #include "const.h"
 #include "debug.h"
 #include "stars.h"
@@ -88,7 +89,8 @@ __attribute__((always_inline)) INLINE static void kick_part(
     error(
         "particle has not been kicked to the current time p->ti_kick=%lld, "
         "ti_start=%lld, ti_end=%lld id=%lld time_bin=%d wakeup=%d",
-        p->ti_kick, ti_start, ti_end, p->id, p->time_bin, p->wakeup);
+        p->ti_kick, ti_start, ti_end, p->id, p->time_bin,
+        p->limiter_data.wakeup);
 
   p->ti_kick = ti_end;
 #endif

@@ -116,11 +116,11 @@ INLINE static void convert_Etot(const struct engine* e, const struct part* p,
 INLINE static void convert_part_pos(const struct engine* e,
                                     const struct part* p,
                                     const struct xpart* xp, double* ret) {
-
-  if (e->s->periodic) {
-    ret[0] = box_wrap(p->x[0], 0.0, e->s->dim[0]);
-    ret[1] = box_wrap(p->x[1], 0.0, e->s->dim[1]);
-    ret[2] = box_wrap(p->x[2], 0.0, e->s->dim[2]);
+  const struct space* s = e->s;
+  if (s->periodic) {
+    ret[0] = box_wrap(p->x[0] - s->pos_dithering[0], 0.0, s->dim[0]);
+    ret[1] = box_wrap(p->x[1] - s->pos_dithering[1], 0.0, s->dim[1]);
+    ret[2] = box_wrap(p->x[2] - s->pos_dithering[2], 0.0, s->dim[2]);
   } else {
     ret[0] = p->x[0];
     ret[1] = p->x[1];
@@ -207,7 +207,7 @@ INLINE static void hydro_write_particles(const struct part* parts,
       "Co-moving smoothing lengths (FWHM of the kernel) of the particles");
 
   list[4] = io_make_output_field_convert_part(
-      "InternalEnergy", FLOAT, 1, UNIT_CONV_ENERGY_PER_UNIT_MASS,
+      "InternalEnergies", FLOAT, 1, UNIT_CONV_ENERGY_PER_UNIT_MASS,
       3.f * hydro_gamma_minus_one, parts, xparts, convert_u,
       "Co-moving thermal energies per unit mass of the particles");
 

@@ -17,11 +17,12 @@ import scipy.interpolate as si
 from swiftsimio import load
 from swiftsimio.visualisation import project_gas_pixel_grid
 
+
 def load_and_extract(filename):
     """
     Load the data and extract relevant info.
     """
-    
+
     return load(filename)
 
 
@@ -34,11 +35,11 @@ def make_plot(filename, array, nx, ny, dx, dy):
 
     data = load_and_extract(filename)
 
-    mesh = project_gas_pixel_grid(data, nx)
+    mesh = project_gas_pixel_grid(data, nx).T
 
     array.set_array(mesh)
 
-    return array,
+    return (array,)
 
 
 def frame(n, *args):
@@ -55,6 +56,7 @@ def frame(n, *args):
 
 if __name__ == "__main__":
     import matplotlib
+
     matplotlib.use("Agg")
 
     from tqdm import tqdm
@@ -66,7 +68,6 @@ if __name__ == "__main__":
     filename = "kelvinHelmholtz"
     dpi = 512
 
-
     # Look for the number of files in the directory.
     i = 0
     while True:
@@ -76,8 +77,7 @@ if __name__ == "__main__":
             break
 
         if i > 10000:
-            raise FileNotFoundError(
-                "Could not find the snapshots in the directory")
+            raise FileNotFoundError("Could not find the snapshots in the directory")
 
     frames = tqdm(np.arange(0, i))
 
@@ -87,11 +87,18 @@ if __name__ == "__main__":
 
     data = load_and_extract("kelvinHelmholtz_0000.hdf5")
 
-
     mesh = project_gas_pixel_grid(data, dpi)
-    
+
     # Global variable for set_array
-    plot = ax.imshow(mesh, extent=[0, 1, 0, 1], animated=True, interpolation="none")
+    plot = ax.imshow(
+        mesh,
+        extent=[0, 1, 0, 1],
+        animated=True,
+        interpolation="none",
+        vmin=1,
+        vmax=2,
+        cmap="RdBu_r",
+    )
 
     anim = FuncAnimation(fig, frame, frames, interval=40, blit=False)
 
@@ -99,4 +106,4 @@ if __name__ == "__main__":
     fig.subplots_adjust(left=0, bottom=0, right=1, top=1, wspace=None, hspace=None)
 
     # Actually make the movie
-    anim.save("khmovie.mp4", dpi=dpi, bitrate=4096)
+    anim.save("khmovie.mp4", dpi=dpi)

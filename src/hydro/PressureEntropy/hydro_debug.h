@@ -43,7 +43,7 @@ __attribute__((always_inline)) INLINE static void hydro_debug_particle(
       p->rho, p->rho_bar, hydro_get_comoving_pressure(p),
       p->density.pressure_dh, p->force.P_over_rho2, p->entropy,
       p->entropy_one_over_gamma, p->entropy_dt, p->force.soundspeed,
-      p->force.v_sig, p->force.h_dt, p->time_bin, p->wakeup);
+      p->force.v_sig, p->force.h_dt, p->time_bin, p->limiter_data.wakeup);
 }
 
 #endif /* SWIFT_PRESSURE_ENTROPY_HYDRO_DEBUG_H */

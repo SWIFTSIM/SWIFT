@@ -53,6 +53,7 @@ examples/*/*/used_parameters.yml
 examples/*/*/unused_parameters.yml
 examples/*/*/fof_used_parameters.yml
 examples/*/*/fof_unused_parameters.yml
+examples/*/*/partition_fixed_costs.h
 examples/*/*.mpg
 examples/*/*/gravity_checks_*.dat
 examples/*/*/coolingtables.tar.gz
@@ -162,6 +163,7 @@ tests/testOutputList
 tests/testCbrt
 tests/testFormat.sh
 tests/testCooling
+tests/testComovingCooling
 tests/testHashmap
 tests/*.png
 tests/*.txt

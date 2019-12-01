@@ -127,8 +127,8 @@ struct bpart {
     /*! Value of the minimum potential across all neighbours. */
     float min_potential;
 
-    /*! New position of the BH following the reposition procedure */
-    double x[3];
+    /*! Delta position to apply after the reposition procedure */
+    double delta_x[3];
 
   } reposition;
 

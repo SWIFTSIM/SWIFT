@@ -616,8 +616,13 @@ __attribute__((always_inline)) INLINE static void hydro_prepare_force(
                          0.0001f * fac_Balsara_eps * soundspeed * h_inv);
 
   /* Compute the "grad h" term */
+  float rho_dh = p->density.rho_dh;
+  /* Ignore changing-kernel effects when h ~= h_max */
+  if (p->h > 0.9999f * hydro_props->h_max) {
+    rho_dh = 0.f;
+  }
   const float omega_inv =
-      1.f / (1.f + hydro_dimension_inv * p->h * p->density.rho_dh * rho_inv);
+      1.f / (1.f + hydro_dimension_inv * p->h * rho_dh * rho_inv);
 
   /* Update variables. */
   p->force.f = omega_inv;
@@ -888,7 +893,6 @@ __attribute__((always_inline)) INLINE static void hydro_first_init_part(
     struct part *restrict p, struct xpart *restrict xp) {
 
   p->time_bin = 0;
-  p->wakeup = time_bin_not_awake;
   xp->v_full[0] = p->v[0];
   xp->v_full[1] = p->v[1];
   xp->v_full[2] = p->v[2];

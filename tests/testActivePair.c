@@ -222,6 +222,7 @@ void zero_particle_fields_force(struct cell *c, const struct cosmology *cosmo,
 #endif /* PRESSURE-ENERGY */
 #if defined(ANARCHY_PU_SPH) || defined(ANARCHY_DU_SPH)
     /* Initialise viscosity variables */
+    p->force.pressure = hydro_get_comoving_pressure(p);
     p->viscosity.alpha = 0.8;
     p->viscosity.div_v = 0.f;
     p->viscosity.div_v_previous_step = 0.f;

@@ -69,6 +69,7 @@ __attribute__((always_inline)) INLINE static void runner_iact_density(
   kernel_deval(ui, &wi, &wi_dx);
 
   pi->rho += mj * wi;
+  pi->density.rho_dh -= mj * (hydro_dimension * wi + ui * wi_dx);
 
   pi->pressure_bar += mj * wi * pj->u;
   pi->density.pressure_bar_dh -=
@@ -82,6 +83,8 @@ __attribute__((always_inline)) INLINE static void runner_iact_density(
   kernel_deval(uj, &wj, &wj_dx);
 
   pj->rho += mi * wj;
+  pj->density.rho_dh -= mi * (hydro_dimension * wj + uj * wj_dx);
+
   pj->pressure_bar += mi * wj * pi->u;
   pj->density.pressure_bar_dh -=
       mi * pi->u * (hydro_dimension * wj + uj * wj_dx);
@@ -147,6 +150,7 @@ __attribute__((always_inline)) INLINE static void runner_iact_nonsym_density(
   kernel_deval(ui, &wi, &wi_dx);
 
   pi->rho += mj * wi;
+  pi->density.rho_dh -= mj * (hydro_dimension * wi + ui * wi_dx);
 
   pi->pressure_bar += mj * wi * pj->u;
 
@@ -432,29 +436,6 @@ __attribute__((always_inline)) INLINE static void runner_iact_nonsym_force(
 
   /* Update the signal velocity. */
   pi->force.v_sig = max(pi->force.v_sig, v_sig);
-}
-/**
- * @brief Timestep limiter loop
- */
-__attribute__((always_inline)) INLINE static void runner_iact_limiter(
-    float r2, const float* dx, float hi, float hj, struct part* restrict pi,
-    struct part* restrict pj, float a, float H) {
-
-  /* Nothing to do here if both particles are active */
-}
-
-/**
- * @brief Timestep limiter loop (non-symmetric version)
- */
-__attribute__((always_inline)) INLINE static void runner_iact_nonsym_limiter(
-    float r2, const float* dx, float hi, float hj, struct part* restrict pi,
-    struct part* restrict pj, float a, float H) {
-
-  /* Wake up the neighbour? */
-  if (pi->force.v_sig > const_limiter_max_v_sig_ratio * pj->force.v_sig) {
-
-    pj->wakeup = time_bin_awake;
-  }
 }
 
 #endif /* SWIFT_PRESSURE_ENERGY_HYDRO_IACT_H */

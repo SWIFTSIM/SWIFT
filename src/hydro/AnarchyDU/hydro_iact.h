@@ -409,7 +409,13 @@ __attribute__((always_inline)) INLINE static void runner_iact_force(
   const float visc_du_term = 0.5f * visc_acc_term * dvdr_Hubble;
 
   /* Diffusion term */
-  const float alpha_diff = 0.5f * (pi->diffusion.alpha + pj->diffusion.alpha);
+  /* Combine the alpha_diff into a pressure-based switch -- this allows the
+   * alpha from the highest pressure particle to dominate, so that the
+   * diffusion limited particles always take precedence - another trick to
+   * allow the scheme to work with thermal feedback. */
+  const float alpha_diff =
+      (pressurei * pi->diffusion.alpha + pressurej * pj->diffusion.alpha) /
+      (pressurei + pressurej);
   const float v_diff = alpha_diff * 0.5f *
                        (sqrtf(2.f * fabsf(pressurei - pressurej) / rho_ij) +
                         fabsf(fac_mu * r_inv * dvdr_Hubble));
@@ -537,7 +543,13 @@ __attribute__((always_inline)) INLINE static void runner_iact_nonsym_force(
   const float visc_du_term = 0.5f * visc_acc_term * dvdr_Hubble;
 
   /* Diffusion term */
-  const float alpha_diff = 0.5f * (pi->diffusion.alpha + pj->diffusion.alpha);
+  /* Combine the alpha_diff into a pressure-based switch -- this allows the
+   * alpha from the highest pressure particle to dominate, so that the
+   * diffusion limited particles always take precedence - another trick to
+   * allow the scheme to work with thermal feedback. */
+  const float alpha_diff =
+      (pressurei * pi->diffusion.alpha + pressurej * pj->diffusion.alpha) /
+      (pressurei + pressurej);
   const float v_diff = alpha_diff * 0.5f *
                        (sqrtf(2.f * fabsf(pressurei - pressurej) / rho_ij) +
                         fabsf(fac_mu * r_inv * dvdr_Hubble));
@@ -558,51 +570,6 @@ __attribute__((always_inline)) INLINE static void runner_iact_nonsym_force(
    * due to some possible synchronisation problems this is here as a _quick
    * fix_. Added: 14th August 2019. To be removed by 1st Jan 2020. (JB) */
   pi->viscosity.v_sig = max(pi->viscosity.v_sig, v_sig);
-}
-
-/**
- * @brief Timestep limiter loop
- *
- * @param r2 Comoving square distance between the two particles.
- * @param dx Comoving vector separating both particles (pi - pj).
- * @param hi Comoving smoothing-length of part*icle i.
- * @param hj Comoving smoothing-length of part*icle j.
- * @param pi First part*icle.
- * @param pj Second part*icle (not updated).
- * @param a Current scale factor.
- * @param H Current Hubble parameter.
- *
- */
-__attribute__((always_inline)) INLINE static void runner_iact_limiter(
-    float r2, const float* dx, float hi, float hj, struct part* restrict pi,
-    struct part* restrict pj, float a, float H) {
-
-  /* Nothing to do here if both particles are active */
-}
-
-/**
- * @brief Timestep limiter loop (non-symmetric version)
- *
- * @param r2 Comoving square distance between the two particles.
- * @param dx Comoving vector separating both particles (pi - pj).
- * @param hi Comoving smoothing-length of part*icle i.
- * @param hj Comoving smoothing-length of part*icle j.
- * @param pi First part*icle.
- * @param pj Second part*icle (not updated).
- * @param a Current scale factor.
- * @param H Current Hubble parameter.
- *
- */
-__attribute__((always_inline)) INLINE static void runner_iact_nonsym_limiter(
-    float r2, const float* dx, float hi, float hj, struct part* restrict pi,
-    struct part* restrict pj, float a, float H) {
-
-  /* Wake up the neighbour? */
-  if (pi->viscosity.v_sig >
-      const_limiter_max_v_sig_ratio * pj->viscosity.v_sig) {
-
-    pj->wakeup = time_bin_awake;
-  }
 }
 
 #endif /* SWIFT_ANARCHY_DU_HYDRO_IACT_H */

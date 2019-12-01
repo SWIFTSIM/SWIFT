@@ -37,10 +37,9 @@
 __attribute__((always_inline)) INLINE static void
 runner_iact_nonsym_feedback_density(const float r2, const float *dx,
                                     const float hi, const float hj,
-                                    struct spart *restrict si,
-                                    const struct part *restrict pj,
-                                    const struct xpart *restrict xp,
-                                    const struct cosmology *restrict cosmo,
+                                    struct spart *si, const struct part *pj,
+                                    const struct xpart *xp,
+                                    const struct cosmology *cosmo,
                                     const integertime_t ti_current) {}
 
 /**
@@ -63,10 +62,9 @@ runner_iact_nonsym_feedback_density(const float r2, const float *dx,
 __attribute__((always_inline)) INLINE static void
 runner_iact_nonsym_feedback_apply(const float r2, const float *dx,
                                   const float hi, const float hj,
-                                  const struct spart *restrict si,
-                                  struct part *restrict pj,
-                                  struct xpart *restrict xp,
-                                  const struct cosmology *restrict cosmo,
+                                  const struct spart *si, struct part *pj,
+                                  struct xpart *xp,
+                                  const struct cosmology *cosmo,
                                   const integertime_t ti_current) {}
 
 #endif /* SWIFT_NONE_FEEDBACK_IACT_H */
