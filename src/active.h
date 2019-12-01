@@ -144,6 +144,14 @@ __attribute__((always_inline)) INLINE static int cell_is_active_hydro(
 }
 
 /**
+ * @brief Returns true if the cell is both active_hydro and local.
+ */
+__attribute__((always_inline)) INLINE static int cell_is_local_active_hydro(
+    const struct cell *c, const struct engine *e) {
+  return cell_is_local(c) && cell_is_active_hydro(c, e);
+}
+
+/**
  * @brief Are *all* particles in a cell finishing their time-step now ?
  *
  * @param c The #cell.
