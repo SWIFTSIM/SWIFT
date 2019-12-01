@@ -2108,7 +2108,7 @@ void engine_init_particles(struct engine *e, int flag_entropy_ICs,
   if (s->cells_top != NULL && s->nr_parts > 0) {
     for (int i = 0; i < s->nr_cells; i++) {
       struct cell *c = &s->cells_top[i];
-      if (c->nodeID == engine_rank && c->hydro.count > 0) {
+      if (cell_is_local(c) && c->hydro.count > 0) {
         float part_h_max = c->hydro.parts[0].h;
         for (int k = 1; k < c->hydro.count; k++) {
           if (c->hydro.parts[k].h > part_h_max)
@@ -2122,7 +2122,7 @@ void engine_init_particles(struct engine *e, int flag_entropy_ICs,
   if (s->cells_top != NULL && s->nr_sparts > 0) {
     for (int i = 0; i < s->nr_cells; i++) {
       struct cell *c = &s->cells_top[i];
-      if (c->nodeID == engine_rank && c->stars.count > 0) {
+      if (cell_is_local(c) && c->stars.count > 0) {
         float spart_h_max = c->stars.parts[0].h;
         for (int k = 1; k < c->stars.count; k++) {
           if (c->stars.parts[k].h > spart_h_max)
@@ -2649,7 +2649,7 @@ void engine_do_reconstruct_multipoles_mapper(void *map_data, int num_elements,
 
   for (int ind = 0; ind < num_elements; ind++) {
     struct cell *c = &cells[ind];
-    if (c != NULL && c->nodeID == e->nodeID) {
+    if (c != NULL && cell_is_local(c)) {
 
       /* Construct the multipoles in this cell hierarchy */
       cell_make_multipoles(c, e->ti_current, e->gravity_properties);

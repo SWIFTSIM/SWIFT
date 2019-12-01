@@ -73,15 +73,14 @@ void engine_addtasks_send_gravity(struct engine *e, struct cell *ci,
 #ifdef WITH_MPI
   struct link *l = NULL;
   struct scheduler *s = &e->sched;
-  const int nodeID = cj->nodeID;
 
   /* Early abort (are we below the level where tasks are)? */
   if (!cell_get_flag(ci, cell_flag_has_tasks)) return;
 
   /* Check if any of the gravity tasks are for the target node. */
   for (l = ci->grav.grav; l != NULL; l = l->next)
-    if (l->t->ci->nodeID == nodeID ||
-        (l->t->cj != NULL && l->t->cj->nodeID == nodeID))
+    if (cell_is_local(l->t->ci) ||
+        (l->t->cj != NULL && cell_is_local(l->t->cj)))
       break;
 
   /* If so, attach send tasks. */
@@ -291,7 +290,6 @@ void engine_addtasks_send_stars(struct engine *e, struct cell *ci,
 
   struct link *l = NULL;
   struct scheduler *s = &e->sched;
-  const int nodeID = cj->nodeID;
 
   /* Early abort (are we below the level where tasks are)? */
   if (!cell_get_flag(ci, cell_flag_has_tasks)) return;
@@ -312,8 +310,8 @@ void engine_addtasks_send_stars(struct engine *e, struct cell *ci,
 
   /* Check if any of the density tasks are for the target node. */
   for (l = ci->stars.density; l != NULL; l = l->next)
-    if (l->t->ci->nodeID == nodeID ||
-        (l->t->cj != NULL && l->t->cj->nodeID == nodeID))
+    if (cell_is_local(l->t->ci) ||
+        (l->t->cj != NULL && cell_is_local(l->t->cj)))
       break;
 
   /* If so, attach send tasks. */
@@ -384,15 +382,14 @@ void engine_addtasks_send_black_holes(struct engine *e, struct cell *ci,
 
   struct link *l = NULL;
   struct scheduler *s = &e->sched;
-  const int nodeID = cj->nodeID;
 
   /* Early abort (are we below the level where tasks are)? */
   if (!cell_get_flag(ci, cell_flag_has_tasks)) return;
 
   /* Check if any of the density tasks are for the target node. */
   for (l = ci->black_holes.density; l != NULL; l = l->next)
-    if (l->t->ci->nodeID == nodeID ||
-        (l->t->cj != NULL && l->t->cj->nodeID == nodeID))
+    if (cell_is_local(l->t->ci) ||
+        (l->t->cj != NULL && cell_is_local(l->t->cj)))
       break;
 
   /* If so, attach send tasks. */
@@ -1262,7 +1259,6 @@ void engine_make_self_gravity_tasks_mapper(void *map_data, int num_elements,
   struct engine *e = (struct engine *)extra_data;
   struct space *s = e->s;
   struct scheduler *sched = &e->sched;
-  const int nodeID = e->nodeID;
   const int periodic = s->periodic;
   const double dim[3] = {s->dim[0], s->dim[1], s->dim[2]};
   const int cdim[3] = {s->cdim[0], s->cdim[1], s->cdim[2]};
@@ -1305,7 +1301,7 @@ void engine_make_self_gravity_tasks_mapper(void *map_data, int num_elements,
     if (ci->grav.count == 0) continue;
 
     /* If the cell is local build a self-interaction */
-    if (ci->nodeID == nodeID) {
+    if (cell_is_local(ci)) {
       scheduler_addtask(sched, task_type_self, task_subtype_grav, 0, 0, ci,
                         NULL);
     }
@@ -1330,16 +1326,16 @@ void engine_make_self_gravity_tasks_mapper(void *map_data, int num_elements,
 
           /* Avoid duplicates, empty cells and completely foreign pairs */
           if (cid >= cjd || cj->grav.count == 0 ||
-              (ci->nodeID != nodeID && cj->nodeID != nodeID))
+              (!cell_is_local(ci) && !cell_is_local(cj)))
             continue;
 
           /* Recover the multipole information */
           const struct gravity_tensors *multi_i = ci->grav.multipole;
           const struct gravity_tensors *multi_j = cj->grav.multipole;
 
-          if (multi_i == NULL && ci->nodeID != nodeID)
+          if (multi_i == NULL && !cell_is_local(ci))
             error("Multipole of ci was not exchanged properly via the proxies");
-          if (multi_j == NULL && cj->nodeID != nodeID)
+          if (multi_j == NULL && !cell_is_local(cj))
             error("Multipole of cj was not exchanged properly via the proxies");
 
           /* Minimal distance between any pair of particles */
@@ -1359,7 +1355,7 @@ void engine_make_self_gravity_tasks_mapper(void *map_data, int num_elements,
 #ifdef WITH_MPI
 
             /* Let's cross-check that we had a proxy for that cell */
-            if (ci->nodeID == nodeID && cj->nodeID != engine_rank) {
+            if (cell_is_local(ci) && !cell_is_local(cj)) {
               /* Find the proxy for this node */
               const int proxy_id = e->proxy_ind[cj->nodeID];
               if (proxy_id < 0)
@@ -1378,7 +1374,7 @@ void engine_make_self_gravity_tasks_mapper(void *map_data, int num_elements,
                     "Cell %d not found in the proxy but trying to construct "
                     "grav task!",
                     cjd);
-            } else if (cj->nodeID == nodeID && ci->nodeID != engine_rank) {
+            } else if (cell_is_local(cj) && !cell_is_local(ci)) {
               /* Find the proxy for this node */
               const int proxy_id = e->proxy_ind[ci->nodeID];
               if (proxy_id < 0)
@@ -1415,7 +1411,6 @@ void engine_make_self_gravity_tasks_mapper(void *map_data, int num_elements,
 void engine_make_external_gravity_tasks(struct engine *e) {
   struct space *s = e->s;
   struct scheduler *sched = &e->sched;
-  const int nodeID = e->nodeID;
   struct cell *cells = s->cells_top;
   const int nr_cells = s->nr_cells;
 
@@ -1426,7 +1421,7 @@ void engine_make_external_gravity_tasks(struct engine *e) {
     if (ci->grav.count == 0) continue;
 
     /* Is that neighbour local ? */
-    if (ci->nodeID != nodeID) continue;
+    if (!cell_is_local(ci)) continue;
 
     /* If the cell is local, build a self-interaction */
     scheduler_addtask(sched, task_type_self, task_subtype_external_grav, 0, 0,
@@ -1459,8 +1454,8 @@ void engine_count_and_link_tasks_mapper(void *map_data, int num_elements,
        the hydro cells that will actually be used. */
     if ((t->subtype == task_subtype_density) &&
         (t->type == task_type_pair || t->type == task_type_sub_pair) &&
-        (ci->nodeID != engine_rank || cj->nodeID != engine_rank)) {
-      struct cell *foreign_cell = (ci->nodeID == engine_rank) ? cj : ci;
+        (!cell_is_local(ci) || !cell_is_local(cj))) {
+      struct cell *foreign_cell = (cell_is_local(ci)) ? cj : ci;
       const int proxy_id = e->proxy_ind[foreign_cell->nodeID];
       engine_mark_cells_for_hydro_send_recv(e, ci, cj, proxy_id,
                                             t->type == task_type_sub_pair);
@@ -1601,7 +1596,6 @@ void engine_count_and_link_tasks_mapper(void *map_data, int num_elements,
  */
 void engine_link_gravity_tasks(struct engine *e) {
   struct scheduler *sched = &e->sched;
-  const int nodeID = e->nodeID;
   const int nr_tasks = sched->nr_tasks;
 
   for (int k = 0; k < nr_tasks; k++) {
@@ -1630,19 +1624,14 @@ void engine_link_gravity_tasks(struct engine *e) {
     else
       cj_parent = cj;
 
-/* Node ID (if running with MPI) */
-#ifdef WITH_MPI
-    const int ci_nodeID = ci->nodeID;
-    const int cj_nodeID = (cj != NULL) ? cj->nodeID : -1;
-#else
-    const int ci_nodeID = nodeID;
-    const int cj_nodeID = nodeID;
-#endif
+    /* We will be asking this question often. */
+    const int ci_is_local = cell_is_local(ci);
+    const int cj_is_local = cell_is_local(cj);
 
     /* Self-interaction for self-gravity? */
     if (t_type == task_type_self && t_subtype == task_subtype_grav) {
 #ifdef SWIFT_DEBUG_CHECKS
-      if (ci_nodeID != nodeID) error("Non-local self task");
+      if (!ci_is_local) error("Non-local self task");
 #endif
 
       /* drift ---+-> gravity --> grav_down */
@@ -1655,7 +1644,7 @@ void engine_link_gravity_tasks(struct engine *e) {
     /* Self-interaction for external gravity ? */
     if (t_type == task_type_self && t_subtype == task_subtype_external_grav) {
 #ifdef SWIFT_DEBUG_CHECKS
-      if (ci_nodeID != nodeID) error("Non-local self task");
+      if (!ci_is_local) error("Non-local self task");
 #endif
 
       /* drift -----> gravity --> end_gravity_force */
@@ -1665,14 +1654,14 @@ void engine_link_gravity_tasks(struct engine *e) {
 
     /* Otherwise, pair interaction? */
     else if (t_type == task_type_pair && t_subtype == task_subtype_grav) {
-      if (ci_nodeID == nodeID) {
+      if (ci_is_local) {
         /* drift ---+-> gravity --> grav_down */
         /* init  --/    */
         scheduler_addunlock(sched, ci_parent->grav.drift_out, t);
         scheduler_addunlock(sched, ci_parent->grav.init_out, t);
         scheduler_addunlock(sched, t, ci_parent->grav.down_in);
       }
-      if (cj_nodeID == nodeID) {
+      if (cj_is_local) {
         /* drift ---+-> gravity --> grav_down */
         /* init  --/    */
         if (ci_parent != cj_parent) { /* Avoid double unlock */
@@ -1686,7 +1675,7 @@ void engine_link_gravity_tasks(struct engine *e) {
     /* Otherwise, sub-self interaction? */
     else if (t_type == task_type_sub_self && t_subtype == task_subtype_grav) {
 #ifdef SWIFT_DEBUG_CHECKS
-      if (ci_nodeID != nodeID) error("Non-local sub-self task");
+      if (!ci_is_local) error("Non-local sub-self task");
 #endif
       /* drift ---+-> gravity --> grav_down */
       /* init  --/    */
@@ -1699,7 +1688,7 @@ void engine_link_gravity_tasks(struct engine *e) {
     else if (t_type == task_type_sub_self &&
              t_subtype == task_subtype_external_grav) {
 #ifdef SWIFT_DEBUG_CHECKS
-      if (ci_nodeID != nodeID) error("Non-local sub-self task");
+      if (!ci_is_local) error("Non-local sub-self task");
 #endif
 
       /* drift -----> gravity --> end_force */
@@ -1709,14 +1698,14 @@ void engine_link_gravity_tasks(struct engine *e) {
 
     /* Otherwise, sub-pair interaction? */
     else if (t_type == task_type_sub_pair && t_subtype == task_subtype_grav) {
-      if (ci_nodeID == nodeID) {
+      if (ci_is_local) {
         /* drift ---+-> gravity --> grav_down */
         /* init  --/    */
         scheduler_addunlock(sched, ci_parent->grav.drift_out, t);
         scheduler_addunlock(sched, ci_parent->grav.init_out, t);
         scheduler_addunlock(sched, t, ci_parent->grav.down_in);
       }
-      if (cj_nodeID == nodeID) {
+      if (cj_is_local) {
         /* drift ---+-> gravity --> grav_down */
         /* init  --/    */
         if (ci_parent != cj_parent) { /* Avoid double unlock */
@@ -1729,12 +1718,12 @@ void engine_link_gravity_tasks(struct engine *e) {
 
     /* Otherwise M-M interaction? */
     else if (t_type == task_type_grav_mm) {
-      if (ci_nodeID == nodeID) {
+      if (ci_is_local) {
         /* init -----> gravity --> grav_down */
         scheduler_addunlock(sched, ci_parent->grav.init_out, t);
         scheduler_addunlock(sched, t, ci_parent->grav.down_in);
       }
-      if (cj_nodeID == nodeID) {
+      if (cj_is_local) {
         /* init -----> gravity --> grav_down */
         if (ci_parent != cj_parent) { /* Avoid double unlock */
           scheduler_addunlock(sched, cj_parent->grav.init_out, t);
@@ -1808,7 +1797,6 @@ void engine_make_extra_hydroloop_tasks_mapper(void *map_data, int num_elements,
                                               void *extra_data) {
   struct engine *e = (struct engine *)extra_data;
   struct scheduler *sched = &e->sched;
-  const int nodeID = e->nodeID;
   const int with_cooling = (e->policy & engine_policy_cooling);
   const int with_timestep_limiter =
       (e->policy & engine_policy_timestep_limiter);
@@ -1842,12 +1830,12 @@ void engine_make_extra_hydroloop_tasks_mapper(void *map_data, int num_elements,
     if (t->type == task_type_star_formation) continue;
 
     /* Sort tasks depend on the drift of the cell (gas version). */
-    if (t_type == task_type_sort && ci->nodeID == nodeID) {
+    if (t_type == task_type_sort && cell_is_local(ci)) {
       scheduler_addunlock(sched, ci->hydro.super->hydro.drift, t);
     }
 
     /* Sort tasks depend on the drift of the cell (stars version). */
-    else if (t_type == task_type_stars_sort && ci->nodeID == nodeID) {
+    else if (t_type == task_type_stars_sort && cell_is_local(ci)) {
       scheduler_addunlock(sched, ci->hydro.super->stars.drift, t);
     }
 
@@ -2004,10 +1992,10 @@ void engine_make_extra_hydroloop_tasks_mapper(void *map_data, int num_elements,
       const int bcount_j = cj->black_holes.count;
 
       /* Make all density tasks depend on the drift */
-      if (ci->nodeID == nodeID) {
+      if (cell_is_local(ci)) {
         scheduler_addunlock(sched, ci->hydro.super->hydro.drift, t);
       }
-      if ((cj->nodeID == nodeID) && (ci->hydro.super != cj->hydro.super)) {
+      if ((cell_is_local(cj)) && (ci->hydro.super != cj->hydro.super)) {
         scheduler_addunlock(sched, cj->hydro.super->hydro.drift, t);
       }
 
@@ -2090,12 +2078,12 @@ void engine_make_extra_hydroloop_tasks_mapper(void *map_data, int num_elements,
 
       /* Now, build all the dependencies for the hydro for the cells */
       /* that are local and are not descendant of the same super_hydro-cells */
-      if (ci->nodeID == nodeID) {
+      if (cell_is_local(ci)) {
         engine_make_hydro_loops_dependencies(sched, t, t_gradient, t_force,
                                              t_limiter, ci, with_cooling,
                                              with_timestep_limiter);
       }
-      if ((cj->nodeID == nodeID) && (ci->hydro.super != cj->hydro.super)) {
+      if ((cell_is_local(cj)) && (ci->hydro.super != cj->hydro.super)) {
         engine_make_hydro_loops_dependencies(sched, t, t_gradient, t_force,
                                              t_limiter, cj, with_cooling,
                                              with_timestep_limiter);
@@ -2104,12 +2092,12 @@ void engine_make_extra_hydroloop_tasks_mapper(void *map_data, int num_elements,
 
       /* Now, build all the dependencies for the hydro for the cells */
       /* that are local and are not descendant of the same super_hydro-cells */
-      if (ci->nodeID == nodeID) {
+      if (cell_is_local(ci)) {
         engine_make_hydro_loops_dependencies(sched, t, t_force, t_limiter, ci,
                                              with_cooling,
                                              with_timestep_limiter);
       }
-      if ((cj->nodeID == nodeID) && (ci->hydro.super != cj->hydro.super)) {
+      if ((cell_is_local(cj)) && (ci->hydro.super != cj->hydro.super)) {
         engine_make_hydro_loops_dependencies(sched, t, t_force, t_limiter, cj,
                                              with_cooling,
                                              with_timestep_limiter);
@@ -2126,7 +2114,7 @@ void engine_make_extra_hydroloop_tasks_mapper(void *map_data, int num_elements,
         }
       }
 
-      if (ci->nodeID == nodeID) {
+      if (cell_is_local(ci)) {
         scheduler_addunlock(sched, t_force, ci->hydro.super->hydro.end_force);
 
         if (with_feedback) {
@@ -2194,7 +2182,7 @@ void engine_make_extra_hydroloop_tasks_mapper(void *map_data, int num_elements,
             (bcount_i > 0 || bcount_j > 0)) {
           scheduler_addunlock(sched, t_bh_feedback, ci->super->timestep_sync);
         }
-      } else /*(ci->nodeID != nodeID) */ {
+      } else /*(!cell_is_local(ci)) */ {
         if (with_feedback) {
           scheduler_addunlock(sched, ci->hydro.super->stars.sorts,
                               t_star_feedback);
@@ -2206,7 +2194,7 @@ void engine_make_extra_hydroloop_tasks_mapper(void *map_data, int num_elements,
         }
       }
 
-      if (cj->nodeID == nodeID) {
+      if (cell_is_local(cj)) {
         if (ci->hydro.super != cj->hydro.super) {
           scheduler_addunlock(sched, t_force, cj->hydro.super->hydro.end_force);
 
@@ -2286,7 +2274,7 @@ void engine_make_extra_hydroloop_tasks_mapper(void *map_data, int num_elements,
           }
         }
 
-      } else /*(cj->nodeID != nodeID) */ {
+      } else /*(!cell_is_local(cj)) */ {
         if (with_feedback) {
           scheduler_addunlock(sched, cj->hydro.super->stars.sorts,
                               t_star_feedback);
@@ -2466,10 +2454,10 @@ void engine_make_extra_hydroloop_tasks_mapper(void *map_data, int num_elements,
       const int bcount_j = cj->black_holes.count;
 
       /* Make all density tasks depend on the drift */
-      if (ci->nodeID == nodeID) {
+      if (cell_is_local(ci)) {
         scheduler_addunlock(sched, ci->hydro.super->hydro.drift, t);
       }
-      if ((cj->nodeID == nodeID) && (ci->hydro.super != cj->hydro.super)) {
+      if ((cell_is_local(cj)) && (ci->hydro.super != cj->hydro.super)) {
         scheduler_addunlock(sched, cj->hydro.super->hydro.drift, t);
       }
 
@@ -2555,12 +2543,12 @@ void engine_make_extra_hydroloop_tasks_mapper(void *map_data, int num_elements,
 
       /* Now, build all the dependencies for the hydro for the cells */
       /* that are local and are not descendant of the same super_hydro-cells */
-      if (ci->nodeID == nodeID) {
+      if (cell_is_local(ci)) {
         engine_make_hydro_loops_dependencies(sched, t, t_gradient, t_force,
                                              t_limiter, ci, with_cooling,
                                              with_timestep_limiter);
       }
-      if ((cj->nodeID == nodeID) && (ci->hydro.super != cj->hydro.super)) {
+      if ((cell_is_local(cj)) && (ci->hydro.super != cj->hydro.super)) {
         engine_make_hydro_loops_dependencies(sched, t, t_gradient, t_force,
                                              t_limiter, cj, with_cooling,
                                              with_timestep_limiter);
@@ -2569,12 +2557,12 @@ void engine_make_extra_hydroloop_tasks_mapper(void *map_data, int num_elements,
 
       /* Now, build all the dependencies for the hydro for the cells */
       /* that are local and are not descendant of the same super_hydro-cells */
-      if (ci->nodeID == nodeID) {
+      if (cell_is_local(ci)) {
         engine_make_hydro_loops_dependencies(sched, t, t_force, t_limiter, ci,
                                              with_cooling,
                                              with_timestep_limiter);
       }
-      if ((cj->nodeID == nodeID) && (ci->hydro.super != cj->hydro.super)) {
+      if ((cell_is_local(cj)) && (ci->hydro.super != cj->hydro.super)) {
         engine_make_hydro_loops_dependencies(sched, t, t_force, t_limiter, cj,
                                              with_cooling,
                                              with_timestep_limiter);
@@ -2590,7 +2578,7 @@ void engine_make_extra_hydroloop_tasks_mapper(void *map_data, int num_elements,
         }
       }
 
-      if (ci->nodeID == nodeID) {
+      if (cell_is_local(ci)) {
         scheduler_addunlock(sched, t_force, ci->hydro.super->hydro.end_force);
 
         if (with_feedback) {
@@ -2658,7 +2646,7 @@ void engine_make_extra_hydroloop_tasks_mapper(void *map_data, int num_elements,
             (bcount_i > 0 || bcount_j > 0)) {
           scheduler_addunlock(sched, t_bh_feedback, ci->super->timestep_sync);
         }
-      } else /* ci->nodeID != nodeID */ {
+      } else /* !cell_is_local(ci) */ {
         if (with_feedback) {
           scheduler_addunlock(sched, ci->hydro.super->stars.sorts,
                               t_star_feedback);
@@ -2669,7 +2657,7 @@ void engine_make_extra_hydroloop_tasks_mapper(void *map_data, int num_elements,
         }
       }
 
-      if (cj->nodeID == nodeID) {
+      if (cell_is_local(cj)) {
         if (ci->hydro.super != cj->hydro.super) {
           scheduler_addunlock(sched, t_force, cj->hydro.super->hydro.end_force);
 
@@ -2748,7 +2736,7 @@ void engine_make_extra_hydroloop_tasks_mapper(void *map_data, int num_elements,
             scheduler_addunlock(sched, t_bh_feedback, cj->super->timestep_sync);
           }
         }
-      } else /* cj->nodeID != nodeID */ {
+      } else /* !cell_is_local(cj) */ {
         if (with_feedback) {
           scheduler_addunlock(sched, cj->hydro.super->stars.sorts,
                               t_star_feedback);
@@ -2787,7 +2775,6 @@ void engine_make_hydroloop_tasks_mapper(void *map_data, int num_elements,
 
   struct space *s = e->s;
   struct scheduler *sched = &e->sched;
-  const int nodeID = e->nodeID;
   const int *cdim = s->cdim;
   struct cell *cells = s->cells_top;
 
@@ -2810,7 +2797,7 @@ void engine_make_hydroloop_tasks_mapper(void *map_data, int num_elements,
       continue;
 
     /* If the cell is local build a self-interaction */
-    if (ci->nodeID == nodeID) {
+    if (cell_is_local(ci)) {
       scheduler_addtask(sched, task_type_self, task_subtype_density, 0, 0, ci,
                         NULL);
     }
@@ -2838,7 +2825,7 @@ void engine_make_hydroloop_tasks_mapper(void *map_data, int num_elements,
               ((cj->hydro.count == 0) &&
                (!with_feedback || cj->stars.count == 0) &&
                (!with_black_holes || cj->black_holes.count == 0)) ||
-              (ci->nodeID != nodeID && cj->nodeID != nodeID))
+              (!cell_is_local(ci) && !cell_is_local(cj)))
             continue;
 
           /* Construct the pair task */
@@ -2850,7 +2837,7 @@ void engine_make_hydroloop_tasks_mapper(void *map_data, int num_elements,
 #ifdef WITH_MPI
 
           /* Let's cross-check that we had a proxy for that cell */
-          if (ci->nodeID == nodeID && cj->nodeID != engine_rank) {
+          if (cell_is_local(ci) && !cell_is_local(cj)) {
             /* Find the proxy for this node */
             const int proxy_id = e->proxy_ind[cj->nodeID];
             if (proxy_id < 0)
@@ -2867,7 +2854,7 @@ void engine_make_hydroloop_tasks_mapper(void *map_data, int num_elements,
                   "Cell %d not found in the proxy but trying to construct "
                   "hydro task!",
                   cjd);
-          } else if (cj->nodeID == nodeID && ci->nodeID != engine_rank) {
+          } else if (cell_is_local(cj) && !cell_is_local(ci)) {
             /* Find the proxy for this node */
             const int proxy_id = e->proxy_ind[ci->nodeID];
             if (proxy_id < 0)
@@ -3011,7 +2998,6 @@ void engine_make_fofloop_tasks_mapper(void *map_data, int num_elements,
 
   struct space *s = e->s;
   struct scheduler *sched = &e->sched;
-  const int nodeID = e->nodeID;
   const int *cdim = s->cdim;
   struct cell *cells = s->cells_top;
 
@@ -3030,7 +3016,7 @@ void engine_make_fofloop_tasks_mapper(void *map_data, int num_elements,
     if (ci->grav.count == 0) continue;
 
     /* If the cells is local build a self-interaction */
-    if (ci->nodeID == nodeID)
+    if (cell_is_local(ci))
       scheduler_addtask(sched, task_type_fof_self, task_subtype_none, 0, 0, ci,
                         NULL);
     else

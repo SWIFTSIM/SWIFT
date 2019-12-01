@@ -193,8 +193,7 @@ int cell_get_subtree_size(struct cell *c) {
  */
 int cell_link_parts(struct cell *c, struct part *parts) {
 #ifdef SWIFT_DEBUG_CHECKS
-  if (c->nodeID == engine_rank)
-    error("Linking foreign particles in a local cell!");
+  if (cell_is_local(c)) error("Linking foreign particles in a local cell!");
 
   if (c->hydro.parts != NULL)
     error("Linking parts into a cell that was already linked");
@@ -225,8 +224,7 @@ int cell_link_parts(struct cell *c, struct part *parts) {
  */
 int cell_link_gparts(struct cell *c, struct gpart *gparts) {
 #ifdef SWIFT_DEBUG_CHECKS
-  if (c->nodeID == engine_rank)
-    error("Linking foreign particles in a local cell!");
+  if (cell_is_local(c)) error("Linking foreign particles in a local cell!");
 
   if (c->grav.parts != NULL)
     error("Linking gparts into a cell that was already linked");
@@ -257,8 +255,7 @@ int cell_link_gparts(struct cell *c, struct gpart *gparts) {
  */
 int cell_link_sparts(struct cell *c, struct spart *sparts) {
 #ifdef SWIFT_DEBUG_CHECKS
-  if (c->nodeID == engine_rank)
-    error("Linking foreign particles in a local cell!");
+  if (cell_is_local(c)) error("Linking foreign particles in a local cell!");
 
   if (c->stars.parts != NULL)
     error("Linking sparts into a cell that was already linked");
@@ -291,8 +288,7 @@ int cell_link_sparts(struct cell *c, struct spart *sparts) {
 int cell_link_bparts(struct cell *c, struct bpart *bparts) {
 
 #ifdef SWIFT_DEBUG_CHECKS
-  if (c->nodeID == engine_rank)
-    error("Linking foreign particles in a local cell!");
+  if (cell_is_local(c)) error("Linking foreign particles in a local cell!");
 
   if (c->black_holes.parts != NULL)
     error("Linking bparts into a cell that was already linked");
@@ -328,8 +324,7 @@ int cell_link_foreign_parts(struct cell *c, int proxy_id, struct part *parts) {
 #ifdef WITH_MPI
 
 #ifdef SWIFT_DEBUG_CHECKS
-  if (c->nodeID == engine_rank)
-    error("Linking foreign particles in a local cell!");
+  if (cell_is_local(c)) error("Linking foreign particles in a local cell!");
 #endif
 
   /* Do we have hydro interactions with the given proxy at this level? */
@@ -373,8 +368,7 @@ int cell_link_foreign_gparts(struct cell *c, struct gpart *gparts) {
 #ifdef WITH_MPI
 
 #ifdef SWIFT_DEBUG_CHECKS
-  if (c->nodeID == engine_rank)
-    error("Linking foreign particles in a local cell!");
+  if (cell_is_local(c)) error("Linking foreign particles in a local cell!");
 #endif
 
   /* Do we have a gravity task at this level? */
@@ -505,8 +499,7 @@ int cell_count_gparts_for_tasks(const struct cell *c) {
 #ifdef WITH_MPI
 
 #ifdef SWIFT_DEBUG_CHECKS
-  if (c->nodeID == engine_rank)
-    error("Counting foreign particles in a local cell!");
+  if (cell_is_local(c)) error("Counting foreign particles in a local cell!");
 #endif
 
   /* Do we have a gravity task at this level? */
@@ -2844,7 +2837,7 @@ void cell_activate_hydro_sorts_up(struct cell *c, struct scheduler *s) {
       error("Trying to activate un-existing c->hydro.sorts");
 #endif
     scheduler_activate(s, c->hydro.sorts);
-    if (c->nodeID == engine_rank) cell_activate_drift_part(c, s);
+    if (cell_is_local(c)) cell_activate_drift_part(c, s);
   } else {
     for (struct cell *parent = c->parent;
          parent != NULL && !cell_get_flag(parent, cell_flag_do_hydro_sub_sort);
@@ -2856,7 +2849,7 @@ void cell_activate_hydro_sorts_up(struct cell *c, struct scheduler *s) {
           error("Trying to activate un-existing parents->hydro.sorts");
 #endif
         scheduler_activate(s, parent->hydro.sorts);
-        if (parent->nodeID == engine_rank) cell_activate_drift_part(parent, s);
+        if (cell_is_local(parent)) cell_activate_drift_part(parent, s);
         break;
       }
     }
@@ -2898,7 +2891,7 @@ void cell_activate_stars_sorts_up(struct cell *c, struct scheduler *s) {
       error("Trying to activate un-existing c->stars.sorts");
 #endif
     scheduler_activate(s, c->stars.sorts);
-    if (c->nodeID == engine_rank) {
+    if (cell_is_local(c)) {
       cell_activate_drift_spart(c, s);
     }
   } else {
@@ -2918,7 +2911,7 @@ void cell_activate_stars_sorts_up(struct cell *c, struct scheduler *s) {
           error("Trying to activate un-existing parents->stars.sorts");
 #endif
         scheduler_activate(s, parent->stars.sorts);
-        if (parent->nodeID == engine_rank) cell_activate_drift_spart(parent, s);
+        if (cell_is_local(parent)) cell_activate_drift_spart(parent, s);
         break;
       }
     }
@@ -3152,9 +3145,9 @@ void cell_activate_subcell_stars_tasks(struct cell *ci, struct cell *cj,
         ci->stars.dx_max_sort_old = ci->stars.dx_max_sort;
 
         /* Activate the drifts if the cells are local. */
-        if (ci->nodeID == engine_rank) cell_activate_drift_spart(ci, s);
-        if (cj->nodeID == engine_rank) cell_activate_drift_part(cj, s);
-        if (cj->nodeID == engine_rank && with_timestep_sync)
+        if (cell_is_local(ci)) cell_activate_drift_spart(ci, s);
+        if (cell_is_local(cj)) cell_activate_drift_part(cj, s);
+        if (cell_is_local(cj) && with_timestep_sync)
           cell_activate_sync_part(cj, s);
 
         /* Do we need to sort the cells? */
@@ -3172,9 +3165,9 @@ void cell_activate_subcell_stars_tasks(struct cell *ci, struct cell *cj,
         cj->stars.dx_max_sort_old = cj->stars.dx_max_sort;
 
         /* Activate the drifts if the cells are local. */
-        if (ci->nodeID == engine_rank) cell_activate_drift_part(ci, s);
-        if (cj->nodeID == engine_rank) cell_activate_drift_spart(cj, s);
-        if (ci->nodeID == engine_rank && with_timestep_sync)
+        if (cell_is_local(ci)) cell_activate_drift_part(ci, s);
+        if (cell_is_local(cj)) cell_activate_drift_spart(cj, s);
+        if (cell_is_local(ci) && with_timestep_sync)
           cell_activate_sync_part(ci, s);
 
         /* Do we need to sort the cells? */
@@ -3265,12 +3258,12 @@ void cell_activate_subcell_black_holes_tasks(struct cell *ci, struct cell *cj,
              cell_is_active_black_holes(cj, e)) {
 
       /* Activate the drifts if the cells are local. */
-      if (ci->nodeID == engine_rank) cell_activate_drift_bpart(ci, s);
-      if (cj->nodeID == engine_rank) cell_activate_drift_part(cj, s);
+      if (cell_is_local(ci)) cell_activate_drift_bpart(ci, s);
+      if (cell_is_local(cj)) cell_activate_drift_part(cj, s);
 
       /* Activate the drifts if the cells are local. */
-      if (ci->nodeID == engine_rank) cell_activate_drift_part(ci, s);
-      if (cj->nodeID == engine_rank) cell_activate_drift_bpart(cj, s);
+      if (cell_is_local(ci)) cell_activate_drift_part(ci, s);
+      if (cell_is_local(cj)) cell_activate_drift_bpart(cj, s);
     }
   } /* Otherwise, pair interation */
 }
@@ -3338,8 +3331,8 @@ void cell_activate_subcell_grav_tasks(struct cell *ci, struct cell *cj,
     else if (!ci->split && !cj->split) {
       /* Activate the drifts if the cells are local. */
       if (cell_is_active_gravity(ci, e) || cell_is_active_gravity(cj, e)) {
-        if (ci->nodeID == engine_rank) cell_activate_drift_gpart(ci, s);
-        if (cj->nodeID == engine_rank) cell_activate_drift_gpart(cj, s);
+        if (cell_is_local(ci)) cell_activate_drift_gpart(ci, s);
+        if (cell_is_local(cj)) cell_activate_drift_gpart(cj, s);
       }
     }
     /* Ok, we can still recurse */
@@ -5228,7 +5221,7 @@ void cell_check_timesteps(struct cell *c) {
     for (int k = 0; k < 8; ++k)
       if (c->progeny[k] != NULL) cell_check_timesteps(c->progeny[k]);
   } else {
-    if (c->nodeID == engine_rank)
+    if (cell_is_local(c))
       for (int i = 0; i < c->hydro.count; ++i)
         if (c->hydro.parts[i].time_bin == 0)
           error("Particle without assigned time-bin");
