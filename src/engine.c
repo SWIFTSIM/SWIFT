@@ -1263,12 +1263,12 @@ void engine_print_task_counts(const struct engine *e) {
   float tasks_per_cell = (float)nr_tasks / (float)e->s->tot_cells;
 
 #ifdef WITH_MPI
-  message("Total = %d (per cell = %.2f)", nr_tasks, tasks_per_cell);
+  message("This rank: total = %d (per cell = %.2f)", nr_tasks, tasks_per_cell);
 
   /* And the system maximum on rank 0, only after first step, increase by our
    * margin to allow for some variation in repartitioning. */
   if (e->nodeID == 0 && e->total_nr_tasks > 0) {
-    message("Total = %d (maximum per cell = %.2f)", nr_tasks,
+    message("Overall: maximum per cell = %.2f",
             e->tasks_per_cell_max * engine_tasks_per_cell_margin);
   }
 
@@ -1299,6 +1299,12 @@ void engine_print_task_counts(const struct engine *e) {
   message("nr_gparts = %zu.", e->s->nr_gparts);
   message("nr_sparts = %zu.", e->s->nr_sparts);
   message("nr_bparts = %zu.", e->s->nr_bparts);
+#ifdef WITH_MPI
+  message("nr_parts_foreign = %zu.", e->s->nr_parts_foreign);
+  message("nr_gparts_foreign = %zu.", e->s->nr_gparts_foreign);
+  message("nr_sparts_foreign = %zu.", e->s->nr_sparts_foreign);
+  message("nr_bparts_foreign = %zu.", e->s->nr_bparts_foreign);
+#endif  // WITH_MPI
 
   if (e->verbose)
     message("took %.3f %s.", clocks_from_ticks(getticks() - tic),
@@ -1866,6 +1872,8 @@ void engine_launch(struct engine *e) {
   atomic_dec(&e->sched.waiting);
   pthread_cond_broadcast(&e->sched.sleep_cond);
   pthread_mutex_unlock(&e->sched.sleep_mutex);
+
+  if (e->verbose) message("waiting for runners to finish...");
 
   /* Sit back and wait for the runners to come home. */
   swift_barrier_wait(&e->wait_barrier);
