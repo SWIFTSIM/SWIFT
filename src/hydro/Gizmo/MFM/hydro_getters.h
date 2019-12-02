@@ -41,6 +41,17 @@ hydro_part_get_primitive_variables(const struct part* restrict p, float* W) {
 }
 
 /**
+ * @brief Get the degenerate case correction factor for the given particle.
+ *
+ * @param p Particle.
+ * @return Degenerate case correction factor.
+ */
+__attribute__((always_inline)) INLINE static float hydro_part_get_wcorr(
+    const struct part* restrict p) {
+  return p->geometry.wcorr;
+}
+
+/**
  * @brief Get the gradients of the primitive variables for the given particle.
  *
  * @param p Particle.

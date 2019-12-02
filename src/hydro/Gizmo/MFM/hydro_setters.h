@@ -68,6 +68,20 @@ __attribute__((always_inline)) INLINE static void hydro_part_set_wcorr(
 }
 
 /**
+ * @brief Reset the fluxes for the given particle.
+ *
+ * @param p Particle.
+ */
+__attribute__((always_inline)) INLINE static void hydro_part_reset_fluxes(
+    struct part* restrict p) {
+
+  p->flux.momentum[0] = 0.0f;
+  p->flux.momentum[1] = 0.0f;
+  p->flux.momentum[2] = 0.0f;
+  p->flux.energy = 0.0f;
+}
+
+/**
  * @brief Update the fluxes for the particle with the given contributions,
  * assuming the particle is to the left of the interparticle interface.
  *
