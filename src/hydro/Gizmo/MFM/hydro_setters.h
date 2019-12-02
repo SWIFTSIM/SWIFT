@@ -22,6 +22,52 @@
 #include "const.h"
 
 /**
+ * @brief Set the primitive variables for the given particle to the given
+ * values.
+ *
+ * @param p Particle.
+ * @param W Primitive variables.
+ */
+__attribute__((always_inline)) INLINE static void
+hydro_part_set_primitive_variables(struct part* restrict p, const float* W) {
+
+  p->rho = W[0];
+  p->v[0] = W[1];
+  p->v[1] = W[2];
+  p->v[2] = W[3];
+  p->P = W[4];
+}
+
+/**
+ * @brief Set the conserved variables for the given particle to the given
+ * values.
+ *
+ * @param p Particle.
+ * @param Q Conserved variables.
+ */
+__attribute__((always_inline)) INLINE static void
+hydro_part_set_conserved_variables(struct part* restrict p, const float* Q) {
+
+  p->conserved.mass = Q[0];
+  p->conserved.momentum[0] = Q[1];
+  p->conserved.momentum[2] = Q[2];
+  p->conserved.momentum[3] = Q[3];
+  p->conserved.energy = Q[4];
+}
+
+/**
+ * @brief Set the correction value for degenerate particle configurations for
+ * the given particle to the given value.
+ *
+ * @param p Particle.
+ * @param wcorr New value.
+ */
+__attribute__((always_inline)) INLINE static void hydro_part_set_wcorr(
+    struct part* restrict p, const float wcorr) {
+  p->geometry.wcorr = wcorr;
+}
+
+/**
  * @brief Update the fluxes for the particle with the given contributions,
  * assuming the particle is to the left of the interparticle interface.
  *
