@@ -174,8 +174,8 @@ void dump_restart(struct dump *d, const char *filename) {
   }
 
   /* Map memory to the created file. */
-  if ((d->data = mmap(NULL, d->size, PROT_WRITE, MAP_SHARED, d->fd, d->file_offset)) ==
-      MAP_FAILED) {
+  if ((d->data = mmap(NULL, d->size, PROT_WRITE, MAP_SHARED, d->fd,
+                      d->file_offset)) == MAP_FAILED) {
     error("Failed to allocate map of size %zi bytes (%s).", d->size,
           strerror(errno));
   }

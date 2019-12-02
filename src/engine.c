@@ -4202,7 +4202,7 @@ void engine_config(int restart, int fof, struct engine *e,
   }
 #endif
 
-  /* Initialise the structure finder */
+    /* Initialise the structure finder */
 #ifdef HAVE_VELOCIRAPTOR
   if (e->policy & engine_policy_structure_finding) velociraptor_init(e);
 #endif
@@ -4945,8 +4945,8 @@ void engine_struct_restore(struct engine *e, FILE *stream) {
   }
 
 #ifdef WITH_LOGGER
-  struct logger_writer *log = 
-    (struct logger_writer *)malloc(sizeof(struct logger_writer));
+  struct logger_writer *log =
+      (struct logger_writer *)malloc(sizeof(struct logger_writer));
   logger_struct_restore(log, stream);
   e->logger = log;
 #endif
