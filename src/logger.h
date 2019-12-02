@@ -176,6 +176,8 @@ int logger_read_part(struct part *p, size_t *offset, const char *buff);
 int logger_read_gpart(struct gpart *p, size_t *offset, const char *buff);
 int logger_read_timestamp(unsigned long long int *t, double *time,
                           size_t *offset, const char *buff);
+void logger_struct_dump(const struct logger_writer *log, FILE *stream);
+void logger_struct_restore(struct logger_writer *log, FILE *stream);
 
 /**
  * @brief Initialize the logger data for a particle.

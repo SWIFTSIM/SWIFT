@@ -836,6 +836,37 @@ int logger_read_timestamp(unsigned long long int *t, double *time,
   return mask;
 }
 
+/**
+ * @brief Write a swift_params struct to the given FILE as a stream of bytes.
+ *
+ * @param log the struct
+ * @param stream the file stream
+ */
+void logger_struct_dump(const struct logger_writer *log, FILE *stream) {
+  restart_write_blocks((void *)log, sizeof(struct logger_writer), 1, stream,
+                       "logger", "logger");
+}
+
+/**
+ * @brief Restore a logger struct from the given FILE as a stream of
+ * bytes.
+ *
+ * @param logger the struct
+ * @param stream the file stream
+ */
+void logger_struct_restore(struct logger_writer *log, FILE *stream) {
+  /* Read the block */
+  restart_read_blocks((void *)log, sizeof(struct logger_writer), 1, stream,
+                      NULL, "logger");
+
+  /* generate dump filename */
+  char logger_name_file[PARSER_MAX_LINE_SIZE];
+  strcpy(logger_name_file, log->base_name);
+  strcat(logger_name_file, ".dump");
+
+  dump_restart(&log->dump, logger_name_file);
+}
+
 #endif /* WITH_LOGGER */
 
 #endif /* HAVE_POSIX_FALLOCATE */
