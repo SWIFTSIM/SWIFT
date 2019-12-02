@@ -70,7 +70,6 @@ void engine_marktasks_mapper(void *map_data, int num_elements,
   size_t *rebuild_space = &((size_t *)extra_data)[1];
   struct scheduler *s = (struct scheduler *)(((size_t *)extra_data)[2]);
   struct engine *e = (struct engine *)((size_t *)extra_data)[0];
-  const int nodeID = e->nodeID;
   const int with_timestep_limiter = e->policy & engine_policy_timestep_limiter;
   const int with_timestep_sync = e->policy & engine_policy_timestep_sync;
   const int with_star_formation = e->policy & engine_policy_star_formation;
@@ -88,7 +87,7 @@ void engine_marktasks_mapper(void *map_data, int num_elements,
       struct cell *ci = t->ci;
 
 #ifdef SWIFT_DEBUG_CHECKS
-      if (ci->nodeID != nodeID) error("Non-local self task found");
+      if (!cell_is_local(ci)) error("Non-local self task found");
 #endif
       const int ci_active_hydro = cell_is_active_hydro(ci, e);
       const int ci_active_gravity = cell_is_active_gravity(ci, e);
