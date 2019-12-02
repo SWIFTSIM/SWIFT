@@ -585,7 +585,7 @@ static void scheduler_splittask_hydro(struct task *t, struct scheduler *s) {
       struct cell *ci = t->ci;
 
       /* Foreign task? */
-      if (ci->nodeID != s->nodeID) {
+      if (!cell_is_local(ci)) {
         t->skip = 1;
         break;
       }
@@ -655,7 +655,7 @@ static void scheduler_splittask_hydro(struct task *t, struct scheduler *s) {
       struct cell *cj = t->cj;
 
       /* Foreign task? */
-      if (ci->nodeID != s->nodeID && cj->nodeID != s->nodeID) {
+      if (!cell_is_local(ci) && !cell_is_local(cj)) {
         t->skip = 1;
         break;
       }
@@ -792,7 +792,7 @@ static void scheduler_splittask_gravity(struct task *t, struct scheduler *s) {
       const struct cell *ci = t->ci;
 
       /* Foreign task? */
-      if (ci->nodeID != s->nodeID) {
+      if (!cell_is_local(ci)) {
         t->skip = 1;
         break;
       }
@@ -843,7 +843,7 @@ static void scheduler_splittask_gravity(struct task *t, struct scheduler *s) {
       struct cell *cj = t->cj;
 
       /* Foreign task? */
-      if (ci->nodeID != s->nodeID && cj->nodeID != s->nodeID) {
+      if (!cell_is_local(ci) && !cell_is_local(cj)) {
         t->skip = 1;
         break;
       }
@@ -941,7 +941,7 @@ static void scheduler_splittask_fof(struct task *t, struct scheduler *s) {
       struct cell *ci = t->ci;
 
       /* Foreign task? */
-      if (ci->nodeID != s->nodeID) {
+      if (!cell_is_local(ci)) {
         t->skip = 1;
         break;
       }
@@ -1332,7 +1332,6 @@ void scheduler_reweight(struct scheduler *s, int verbose) {
   const int nr_tasks = s->nr_tasks;
   int *tid = s->tasks_ind;
   struct task *tasks = s->tasks;
-  const int nodeID = s->nodeID;
   const float wscale = 0.001f;
   const ticks tic = getticks();
 
@@ -1385,16 +1384,16 @@ void scheduler_reweight(struct scheduler *s, int verbose) {
 
       case task_type_pair:
         if (t->subtype == task_subtype_grav) {
-          if (t->ci->nodeID != nodeID || t->cj->nodeID != nodeID)
+          if (!cell_is_local(t->ci) || !cell_is_local(t->cj))
             cost = 3.f * (wscale * gcount_i) * gcount_j;
           else
             cost = 2.f * (wscale * gcount_i) * gcount_j;
 
         } else if (t->subtype == task_subtype_stars_density ||
                    t->subtype == task_subtype_stars_feedback) {
-          if (t->ci->nodeID != nodeID)
+          if (!cell_is_local(t->ci))
             cost = 3.f * wscale * count_i * scount_j * sid_scale[t->flags];
-          else if (t->cj->nodeID != nodeID)
+          else if (!cell_is_local(t->cj))
             cost = 3.f * wscale * scount_i * count_j * sid_scale[t->flags];
           else
             cost = 2.f * wscale * (scount_i * count_j + scount_j * count_i) *
@@ -1402,16 +1401,16 @@ void scheduler_reweight(struct scheduler *s, int verbose) {
 
         } else if (t->subtype == task_subtype_bh_density ||
                    t->subtype == task_subtype_bh_feedback) {
-          if (t->ci->nodeID != nodeID)
+          if (!cell_is_local(t->ci))
             cost = 3.f * wscale * count_i * bcount_j * sid_scale[t->flags];
-          else if (t->cj->nodeID != nodeID)
+          else if (!cell_is_local(t->cj))
             cost = 3.f * wscale * bcount_i * count_j * sid_scale[t->flags];
           else
             cost = 2.f * wscale * (bcount_i * count_j + bcount_j * count_i) *
                    sid_scale[t->flags];
 
         } else {  // hydro loops
-          if (t->ci->nodeID != nodeID || t->cj->nodeID != nodeID)
+          if (!cell_is_local(t->ci) || !cell_is_local(t->cj))
             cost = 3.f * (wscale * count_i) * count_j * sid_scale[t->flags];
           else
             cost = 2.f * (wscale * count_i) * count_j * sid_scale[t->flags];
@@ -1424,9 +1423,9 @@ void scheduler_reweight(struct scheduler *s, int verbose) {
 #endif
         if (t->subtype == task_subtype_stars_density ||
             t->subtype == task_subtype_stars_feedback) {
-          if (t->ci->nodeID != nodeID) {
+          if (!cell_is_local(t->ci)) {
             cost = 3.f * (wscale * count_i) * scount_j * sid_scale[t->flags];
-          } else if (t->cj->nodeID != nodeID) {
+          } else if (!cell_is_local(t->cj)) {
             cost = 3.f * (wscale * scount_i) * count_j * sid_scale[t->flags];
           } else {
             cost = 2.f * wscale * (scount_i * count_j + scount_j * count_i) *
@@ -1435,9 +1434,9 @@ void scheduler_reweight(struct scheduler *s, int verbose) {
 
         } else if (t->subtype == task_subtype_bh_density ||
                    t->subtype == task_subtype_bh_feedback) {
-          if (t->ci->nodeID != nodeID) {
+          if (!cell_is_local(t->ci)) {
             cost = 3.f * (wscale * count_i) * bcount_j * sid_scale[t->flags];
-          } else if (t->cj->nodeID != nodeID) {
+          } else if (!cell_is_local(t->cj)) {
             cost = 3.f * (wscale * bcount_i) * count_j * sid_scale[t->flags];
           } else {
             cost = 2.f * wscale * (bcount_i * count_j + bcount_j * count_i) *
@@ -1445,7 +1444,7 @@ void scheduler_reweight(struct scheduler *s, int verbose) {
           }
 
         } else {  // hydro loops
-          if (t->ci->nodeID != nodeID || t->cj->nodeID != nodeID) {
+          if (!cell_is_local(t->ci) || !cell_is_local(t->cj)) {
             cost = 3.f * (wscale * count_i) * count_j * sid_scale[t->flags];
           } else {
             cost = 2.f * (wscale * count_i) * count_j * sid_scale[t->flags];

@@ -2072,7 +2072,7 @@ void cell_check_part_drift_point(struct cell *c, void *data) {
   const integertime_t ti_drift = *(integertime_t *)data;
 
   /* Only check local cells */
-  if (c->nodeID != engine_rank) return;
+  if (!cell_is_local(c)) return;
 
   /* Only check cells with content */
   if (c->hydro.count == 0) return;
@@ -2106,7 +2106,7 @@ void cell_check_gpart_drift_point(struct cell *c, void *data) {
   const integertime_t ti_drift = *(integertime_t *)data;
 
   /* Only check local cells */
-  if (c->nodeID != engine_rank) return;
+  if (!cell_is_local(c)) return;
 
   /* Only check cells with content */
   if (c->grav.count == 0) return;
@@ -2142,7 +2142,7 @@ void cell_check_spart_drift_point(struct cell *c, void *data) {
   const integertime_t ti_drift = *(integertime_t *)data;
 
   /* Only check local cells */
-  if (c->nodeID != engine_rank) return;
+  if (!cell_is_local(c)) return;
 
   /* Only check cells with content */
   if (c->stars.count == 0) return;
@@ -2177,7 +2177,7 @@ void cell_check_multipole_drift_point(struct cell *c, void *data) {
   const integertime_t ti_drift = *(integertime_t *)data;
 
   /* Only check local cells */
-  if (c->nodeID != engine_rank) return;
+  if (!cell_is_local(c)) return;
 
   /* Only check cells with content */
   if (c->grav.count == 0) return;
@@ -2873,7 +2873,7 @@ void cell_activate_hydro_sorts(struct cell *c, int sid, struct scheduler *s) {
   }
 
   /* Has this cell been sorted at all for the given sid? */
-  if (!(c->hydro.sorted & (1 << sid)) || c->nodeID != engine_rank) {
+  if (!(c->hydro.sorted & (1 << sid)) || !cell_is_local(c)) {
     atomic_or(&c->hydro.do_sort, (1 << sid));
     cell_activate_hydro_sorts_up(c, s);
   }
@@ -2937,7 +2937,7 @@ void cell_activate_stars_sorts(struct cell *c, int sid, struct scheduler *s) {
   }
 
   /* Has this cell been sorted at all for the given sid? */
-  if (!(c->stars.sorted & (1 << sid)) || c->nodeID != engine_rank) {
+  if (!(c->stars.sorted & (1 << sid)) || !cell_is_local(c)) {
     atomic_or(&c->stars.do_sort, (1 << sid));
     cell_activate_stars_sorts_up(c, s);
   }
@@ -3433,7 +3433,7 @@ void cell_activate_hydro_send_recv_tasks(struct cell *ci, struct cell *cj,
       (e->policy & engine_policy_timestep_limiter);
 
   /* Ensure that ci is the local cell and cj is the foreign cell. */
-  if (ci->nodeID != e->nodeID) {
+  if (!cell_is_local(ci)) {
     memswap(&ci, &cj, sizeof(struct cell *));
   }
 
@@ -3531,7 +3531,7 @@ void cell_activate_hydro_send_recv_tasks(struct cell *ci, struct cell *cj,
       struct cell *cip = ci->progeny[csp->pairs[k].pid];
       struct cell *cjp = cj->progeny[csp->pairs[k].pjd];
       if (cip && cjp) {
-        if (cip->nodeID == e->nodeID) {
+        if (cell_is_local(cip)) {
           cell_activate_hydro_send_recv_tasks(cip, cjp, s);
         } else {
           cell_activate_hydro_send_recv_tasks(cjp, cip, s);
@@ -4428,7 +4428,7 @@ void cell_drift_part(struct cell *c, const struct engine *e, int force) {
 
 #ifdef SWIFT_DEBUG_CHECKS
   /* Check that we only drift local cells. */
-  if (c->nodeID != engine_rank) error("Drifting a foreign cell is nope.");
+  if (!cell_is_local(c)) error("Drifting a foreign cell is nope.");
 
   /* Check that we are actually going to move forward. */
   if (ti_current < ti_old_part) error("Attempt to drift to the past");
@@ -4622,7 +4622,7 @@ void cell_drift_gpart(struct cell *c, const struct engine *e, int force) {
 
 #ifdef SWIFT_DEBUG_CHECKS
   /* Check that we only drift local cells. */
-  if (c->nodeID != engine_rank) error("Drifting a foreign cell is nope.");
+  if (!cell_is_local(c)) error("Drifting a foreign cell is nope.");
 
   /* Check that we are actually going to move forward. */
   if (ti_current < ti_old_gpart) error("Attempt to drift to the past");
@@ -4758,7 +4758,7 @@ void cell_drift_spart(struct cell *c, const struct engine *e, int force) {
 
 #ifdef SWIFT_DEBUG_CHECKS
   /* Check that we only drift local cells. */
-  if (c->nodeID != engine_rank) error("Drifting a foreign cell is nope.");
+  if (!cell_is_local(c)) error("Drifting a foreign cell is nope.");
 
   /* Check that we are actually going to move forward. */
   if (ti_current < ti_old_spart) error("Attempt to drift to the past");
@@ -4928,7 +4928,7 @@ void cell_drift_bpart(struct cell *c, const struct engine *e, int force) {
 
 #ifdef SWIFT_DEBUG_CHECKS
   /* Check that we only drift local cells. */
-  if (c->nodeID != engine_rank) error("Drifting a foreign cell is nope.");
+  if (!cell_is_local(c)) error("Drifting a foreign cell is nope.");
 
   /* Check that we are actually going to move forward. */
   if (ti_current < ti_old_bpart) error("Attempt to drift to the past");
@@ -5356,7 +5356,7 @@ void cell_recursively_shift_sparts(struct cell *c,
  */
 struct spart *cell_add_spart(struct engine *e, struct cell *const c) {
   /* Perform some basic consitency checks */
-  if (c->nodeID != engine_rank) error("Adding spart on a foreign node");
+  if (!cell_is_local(c)) error("Adding spart on a foreign node");
   if (c->grav.ti_old_part != e->ti_current) error("Undrifted cell!");
   if (c->split) error("Addition of spart performed above the leaf level");
 
@@ -5484,8 +5484,7 @@ struct spart *cell_add_spart(struct engine *e, struct cell *const c) {
 void cell_remove_part(const struct engine *e, struct cell *c, struct part *p,
                       struct xpart *xp) {
   /* Quick cross-check */
-  if (c->nodeID != e->nodeID)
-    error("Can't remove a particle in a foreign cell.");
+  if (!cell_is_local(c)) error("Can't remove a particle in a foreign cell.");
 
   /* Don't remove a particle twice */
   if (p->time_bin == time_bin_inhibited) return;
@@ -5525,15 +5524,13 @@ void cell_remove_gpart(const struct engine *e, struct cell *c,
                        struct gpart *gp) {
 
   /* Quick cross-check */
-  if (c->nodeID != e->nodeID)
-    error("Can't remove a particle in a foreign cell.");
+  if (!cell_is_local(c)) error("Can't remove a particle in a foreign cell.");
 
   /* Don't remove a particle twice */
   if (gp->time_bin == time_bin_inhibited) return;
 
   /* Quick cross-check */
-  if (c->nodeID != e->nodeID)
-    error("Can't remove a particle in a foreign cell.");
+  if (!cell_is_local(c)) error("Can't remove a particle in a foreign cell.");
 
   if (gp->type == swift_type_dark_matter_background)
     error("Can't remove a DM background particle!");
@@ -5559,8 +5556,7 @@ void cell_remove_gpart(const struct engine *e, struct cell *c,
 void cell_remove_spart(const struct engine *e, struct cell *c,
                        struct spart *sp) {
   /* Quick cross-check */
-  if (c->nodeID != e->nodeID)
-    error("Can't remove a particle in a foreign cell.");
+  if (!cell_is_local(c)) error("Can't remove a particle in a foreign cell.");
 
   /* Don't remove a particle twice */
   if (sp->time_bin == time_bin_inhibited) return;
@@ -5598,8 +5594,7 @@ void cell_remove_bpart(const struct engine *e, struct cell *c,
                        struct bpart *bp) {
 
   /* Quick cross-check */
-  if (c->nodeID != e->nodeID)
-    error("Can't remove a particle in a foreign cell.");
+  if (!cell_is_local(c)) error("Can't remove a particle in a foreign cell.");
 
   /* Don't remove a particle twice */
   if (bp->time_bin == time_bin_inhibited) return;
@@ -5644,8 +5639,7 @@ void cell_remove_bpart(const struct engine *e, struct cell *c,
 struct gpart *cell_convert_part_to_gpart(const struct engine *e, struct cell *c,
                                          struct part *p, struct xpart *xp) {
   /* Quick cross-checks */
-  if (c->nodeID != e->nodeID)
-    error("Can't remove a particle in a foreign cell.");
+  if (!cell_is_local(c)) error("Can't remove a particle in a foreign cell.");
 
   if (p->gpart == NULL)
     error("Trying to convert part without gpart friend to dark matter!");
@@ -5693,8 +5687,7 @@ struct gpart *cell_convert_part_to_gpart(const struct engine *e, struct cell *c,
 struct gpart *cell_convert_spart_to_gpart(const struct engine *e,
                                           struct cell *c, struct spart *sp) {
   /* Quick cross-check */
-  if (c->nodeID != e->nodeID)
-    error("Can't remove a particle in a foreign cell.");
+  if (!cell_is_local(c)) error("Can't remove a particle in a foreign cell.");
 
   if (sp->gpart == NULL)
     error("Trying to convert spart without gpart friend to dark matter!");
@@ -5743,8 +5736,7 @@ struct gpart *cell_convert_spart_to_gpart(const struct engine *e,
 struct spart *cell_convert_part_to_spart(struct engine *e, struct cell *c,
                                          struct part *p, struct xpart *xp) {
   /* Quick cross-check */
-  if (c->nodeID != e->nodeID)
-    error("Can't remove a particle in a foreign cell.");
+  if (!cell_is_local(c)) error("Can't remove a particle in a foreign cell.");
 
   if (p->gpart == NULL)
     error("Trying to convert part without gpart friend to star!");
@@ -5808,7 +5800,7 @@ void cell_reorder_extra_parts(struct cell *c, const ptrdiff_t parts_offset) {
   struct xpart *xparts = c->hydro.xparts;
   const int count_real = c->hydro.count;
 
-  if (c->depth != 0 || c->nodeID != engine_rank)
+  if (c->depth != 0 || !cell_is_local(c))
     error("This function should only be called on local top-level cells!");
 
   int first_not_extra = count_real;
@@ -5860,7 +5852,7 @@ void cell_reorder_extra_sparts(struct cell *c, const ptrdiff_t sparts_offset) {
   struct spart *sparts = c->stars.parts;
   const int count_real = c->stars.count;
 
-  if (c->depth != 0 || c->nodeID != engine_rank)
+  if (c->depth != 0 || !cell_is_local(c))
     error("This function should only be called on local top-level cells!");
 
   int first_not_extra = count_real;
@@ -5916,7 +5908,7 @@ void cell_reorder_extra_gparts(struct cell *c, struct part *parts,
   struct gpart *gparts = c->grav.parts;
   const int count_real = c->grav.count;
 
-  if (c->depth != 0 || c->nodeID != engine_rank)
+  if (c->depth != 0 || !cell_is_local(c))
     error("This function should only be called on local top-level cells!");
 
   int first_not_extra = count_real;
