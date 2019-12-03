@@ -652,7 +652,7 @@ void engine_addtasks_recv_stars(struct engine *e, struct cell *c,
     }
 
 #ifdef SWIFT_DEBUG_CHECKS
-    if (c->nodeID == e->nodeID) error("Local cell!");
+    if (cell_is_local(c)) error("Local cell!");
 #endif
     if (c->stars.sorts != NULL)
       scheduler_addunlock(s, t_feedback, c->stars.sorts);
@@ -735,7 +735,7 @@ void engine_addtasks_recv_black_holes(struct engine *e, struct cell *c,
     engine_addlink(e, &c->mpi.recv, t_ti);
 
 #ifdef SWIFT_DEBUG_CHECKS
-    if (c->nodeID == e->nodeID) error("Local cell!");
+    if (cell_is_local(c)) error("Local cell!");
 #endif
 
     for (struct link *l = c->black_holes.density; l != NULL; l = l->next) {
@@ -851,7 +851,7 @@ void engine_make_hierarchical_tasks_common(struct engine *e, struct cell *c) {
   const int with_timestep_sync = (e->policy & engine_policy_timestep_sync);
 
   /* Are we at the top-level? */
-  if (c->top == c && c->nodeID == e->nodeID) {
+  if (c->top == c && cell_is_local(c)) {
     if (with_star_formation && c->hydro.count > 0) {
       c->hydro.star_formation = scheduler_addtask(
           s, task_type_star_formation, task_subtype_none, 0, 0, c, NULL);
@@ -861,7 +861,7 @@ void engine_make_hierarchical_tasks_common(struct engine *e, struct cell *c) {
   /* Are we in a super-cell ? */
   if (c->super == c) {
     /* Local tasks only... */
-    if (c->nodeID == e->nodeID) {
+    if (cell_is_local(c)) {
       /* Add the two half kicks */
       c->kick1 = scheduler_addtask(s, task_type_kick1, task_subtype_none, 0, 0,
                                    c, NULL);
@@ -950,7 +950,7 @@ void engine_make_hierarchical_tasks_gravity(struct engine *e, struct cell *c) {
   /* Are we in a super-cell ? */
   if (c->grav.super == c) {
     /* Local tasks only... */
-    if (c->nodeID == e->nodeID) {
+    if (cell_is_local(c)) {
       c->grav.drift = scheduler_addtask(s, task_type_drift_gpart,
                                         task_subtype_none, 0, 0, c, NULL);
 
@@ -1003,7 +1003,7 @@ void engine_make_hierarchical_tasks_gravity(struct engine *e, struct cell *c) {
   else if ((c->grav.super != NULL) &&
            ((c->maxdepth - c->depth) >= space_subdepth_diff_grav)) {
     /* Local tasks only... */
-    if (c->nodeID == e->nodeID) {
+    if (cell_is_local(c)) {
       if (is_self_gravity) {
         c->grav.drift_out = scheduler_addtask(s, task_type_drift_gpart_out,
                                               task_subtype_none, 0, 1, c, NULL);
@@ -1079,7 +1079,7 @@ void engine_make_hierarchical_tasks_hydro(struct engine *e, struct cell *c,
   /* Are we are the level where we create the stars' resort tasks?
    * If the tree is shallow, we need to do this at the super-level if the
    * super-level is above the level we want */
-  if (task_order_star_formation_before_feedback && (c->nodeID == e->nodeID) &&
+  if (task_order_star_formation_before_feedback && (cell_is_local(c)) &&
       (star_resort_cell == NULL) &&
       (c->depth == engine_star_resort_task_depth || c->hydro.super == c)) {
     if (with_feedback && with_star_formation && c->hydro.count > 0) {
@@ -1112,7 +1112,7 @@ void engine_make_hierarchical_tasks_hydro(struct engine *e, struct cell *c,
     }
 
     /* Local tasks only... */
-    if (c->nodeID == e->nodeID) {
+    if (cell_is_local(c)) {
       /* Add the drift task. */
       c->hydro.drift = scheduler_addtask(s, task_type_drift_part,
                                          task_subtype_none, 0, 0, c, NULL);
@@ -1626,7 +1626,7 @@ void engine_link_gravity_tasks(struct engine *e) {
 
     /* We will be asking this question often. */
     const int ci_is_local = cell_is_local(ci);
-    const int cj_is_local = cell_is_local(cj);
+    const int cj_is_local = cj ? cell_is_local(cj) : 0;
 
     /* Self-interaction for self-gravity? */
     if (t_type == task_type_self && t_subtype == task_subtype_grav) {

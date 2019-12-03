@@ -95,22 +95,12 @@ void engine_marktasks_mapper(void *map_data, int num_elements,
       const int ci_active_stars = cell_is_active_stars(ci, e) ||
                                   (with_star_formation && ci_active_hydro);
 
-      /* Activate the hydro drift */
-      if (t_type == task_type_self && t_subtype == task_subtype_density) {
+      /* Activate the associated hydro drift, sort, and send/recv tasks. */
+      if (t_subtype == task_subtype_density) {
         if (ci_active_hydro) {
           scheduler_activate(s, t);
-          cell_activate_drift_part(ci, s);
-          if (with_timestep_limiter) cell_activate_limiter(ci, s);
-        }
-      }
-
-      /* Store current values of dx_max and h_max. */
-      else if (t_type == task_type_sub_self &&
-               t_subtype == task_subtype_density) {
-        if (ci_active_hydro) {
-          scheduler_activate(s, t);
-          cell_activate_subcell_hydro_tasks(ci, NULL, s, with_timestep_limiter);
-          if (with_timestep_limiter) cell_activate_limiter(ci, s);
+          cell_activate_hydro_tasks(ci, NULL, s, (t_type == task_type_sub_self),
+                                    with_timestep_limiter);
         }
       }
 
@@ -295,35 +285,11 @@ void engine_marktasks_mapper(void *map_data, int num_elements,
            (cj_active_hydro && cj_is_local))) {
         scheduler_activate(s, t);
 
-        /* Set the correct sorting flags */
-        if (t_type == task_type_pair && t_subtype == task_subtype_density) {
-          /* Store some values. */
-          atomic_or(&ci->hydro.requires_sorts, 1 << t->flags);
-          atomic_or(&cj->hydro.requires_sorts, 1 << t->flags);
-          ci->hydro.dx_max_sort_old = ci->hydro.dx_max_sort;
-          cj->hydro.dx_max_sort_old = cj->hydro.dx_max_sort;
-
-          /* Activate the hydro drift tasks. */
-          if (ci_is_local) cell_activate_drift_part(ci, s);
-          if (cj_is_local) cell_activate_drift_part(cj, s);
-
-          /* And the limiter */
-          if (ci_is_local && with_timestep_limiter)
-            cell_activate_limiter(ci, s);
-          if (cj_is_local && with_timestep_limiter)
-            cell_activate_limiter(cj, s);
-
-          /* Check the sorts and activate them if needed. */
-          cell_activate_hydro_sorts(ci, t->flags, s);
-          cell_activate_hydro_sorts(cj, t->flags, s);
-
-        }
-
-        /* Store current values of dx_max and h_max. */
-        else if (t_type == task_type_sub_pair &&
-                 t_subtype == task_subtype_density) {
-          cell_activate_subcell_hydro_tasks(t->ci, t->cj, s,
-                                            with_timestep_limiter);
+        /* Activate the associated drift, sort, and send/recv tasks. */
+        if (t_subtype == task_subtype_density) {
+          cell_activate_hydro_tasks(t->ci, t->cj, s,
+                                    (t_type == task_type_sub_pair),
+                                    with_timestep_limiter);
         }
       }
 

@@ -2950,17 +2950,17 @@ void cell_activate_stars_sorts(struct cell *c, int sid, struct scheduler *s) {
  * @param ci The first #cell we recurse in.
  * @param cj The second #cell we recurse in.
  * @param s The task #scheduler.
+ * @param recurse If true, recurse as we would in a sub-cell task.
  * @param with_timestep_limiter Are we running with time-step limiting on?
  */
-void cell_activate_subcell_hydro_tasks(struct cell *ci, struct cell *cj,
-                                       struct scheduler *s,
-                                       const int with_timestep_limiter) {
+void cell_activate_hydro_tasks(struct cell *ci, struct cell *cj,
+                               struct scheduler *s, const int recurse,
+                               const int with_timestep_limiter) {
   const struct engine *e = s->space->e;
 
   /* Store the current dx_max and h_max values. */
   ci->hydro.dx_max_part_old = ci->hydro.dx_max_part;
   ci->hydro.h_max_old = ci->hydro.h_max;
-
   if (cj != NULL) {
     cj->hydro.dx_max_part_old = cj->hydro.dx_max_part;
     cj->hydro.h_max_old = cj->hydro.h_max;
@@ -2972,16 +2972,16 @@ void cell_activate_subcell_hydro_tasks(struct cell *ci, struct cell *cj,
     if (ci->hydro.count == 0 || !cell_is_active_hydro(ci, e)) return;
 
     /* Recurse? */
-    if (cell_can_recurse_in_self_hydro_task(ci)) {
+    if (recurse && cell_can_recurse_in_self_hydro_task(ci)) {
       /* Loop over all progenies and pairs of progenies */
       for (int j = 0; j < 8; j++) {
         if (ci->progeny[j] != NULL) {
-          cell_activate_subcell_hydro_tasks(ci->progeny[j], NULL, s,
-                                            with_timestep_limiter);
+          cell_activate_hydro_tasks(ci->progeny[j], NULL, s, recurse,
+                                    with_timestep_limiter);
           for (int k = j + 1; k < 8; k++)
             if (ci->progeny[k] != NULL)
-              cell_activate_subcell_hydro_tasks(ci->progeny[j], ci->progeny[k],
-                                                s, with_timestep_limiter);
+              cell_activate_hydro_tasks(ci->progeny[j], ci->progeny[k], s,
+                                        recurse, with_timestep_limiter);
         }
       }
     } else {
@@ -3004,14 +3004,15 @@ void cell_activate_subcell_hydro_tasks(struct cell *ci, struct cell *cj,
     const int sid = space_getsid(s->space, &ci, &cj, shift);
 
     /* Recurse? */
-    if (cell_can_recurse_in_pair_hydro_task(ci) &&
+    if (recurse && cell_can_recurse_in_pair_hydro_task(ci) &&
         cell_can_recurse_in_pair_hydro_task(cj)) {
       const struct cell_split_pair *csp = &cell_split_pairs[sid];
       for (int k = 0; k < csp->count; k++) {
         struct cell *cip = ci->progeny[csp->pairs[k].pid];
         struct cell *cjp = cj->progeny[csp->pairs[k].pjd];
         if (cip && cjp)
-          cell_activate_subcell_hydro_tasks(cip, cjp, s, with_timestep_limiter);
+          cell_activate_hydro_tasks(cip, cjp, s, recurse,
+                                    with_timestep_limiter);
       }
     }
 
@@ -3572,44 +3573,17 @@ int cell_unskip_hydro_tasks(struct cell *c, struct scheduler *s) {
 
     /* Only activate tasks that involve a local active cell. */
     if ((ci_active && ci_is_local) || (cj_active && cj_is_local)) {
+      /* Activate the task. */
       scheduler_activate(s, t);
 
-      /* Activate hydro drift */
-      if (t->type == task_type_self) {
-        if (ci_is_local) cell_activate_drift_part(ci, s);
-        if (ci_is_local && with_timestep_limiter) cell_activate_limiter(ci, s);
-      }
-
-      /* Set the correct sorting flags and activate hydro drifts */
-      else if (t->type == task_type_pair) {
-        /* Store some values. */
-        atomic_or(&ci->hydro.requires_sorts, 1 << t->flags);
-        atomic_or(&cj->hydro.requires_sorts, 1 << t->flags);
-        ci->hydro.dx_max_sort_old = ci->hydro.dx_max_sort;
-        cj->hydro.dx_max_sort_old = cj->hydro.dx_max_sort;
-
-        /* Activate the drift tasks. */
-        if (ci_is_local) cell_activate_drift_part(ci, s);
-        if (cj_is_local) cell_activate_drift_part(cj, s);
-
-        /* Activate the limiter tasks. */
-        if (with_timestep_limiter) {
-          if (ci_is_local) cell_activate_limiter(ci, s);
-          if (cj_is_local) cell_activate_limiter(cj, s);
-        }
-
-        /* Check the sorts and activate them if needed. */
-        cell_activate_hydro_sorts(ci, t->flags, s);
-        cell_activate_hydro_sorts(cj, t->flags, s);
-      }
-
-      /* Set the correct sorting and drifting flags for subcell pairs. */
-      else if (t->type == task_type_sub_self || t->type == task_type_sub_pair) {
-        cell_activate_subcell_hydro_tasks(ci, cj, s, with_timestep_limiter);
-      }
+      /* Activate associated tasks, e.g. drift, sort, send/recv, etc. */
+      cell_activate_hydro_tasks(
+          ci, cj, s,
+          (t->type == task_type_sub_self || t->type == task_type_sub_pair),
+          with_timestep_limiter);
     }
 
-    /* Only interested in pair interactions as of here. */
+    /* Pair tasks need special attention for rebuilds and send/recvs. */
     if (t->type == task_type_pair || t->type == task_type_sub_pair) {
       /* Check whether there was too much particle motion, i.e. the
          cell neighbour conditions were violated. */
