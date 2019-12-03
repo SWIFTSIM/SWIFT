@@ -374,73 +374,13 @@ void engine_marktasks_mapper(void *map_data, int num_elements,
         if (cell_need_rebuild_for_stars_pair(cj, ci)) *rebuild_space = 1;
 
 #ifdef WITH_MPI
-        /* Activate the send/recv tasks. */
-        if (!ci_is_local) {
-          if (cj_active_stars) {
-            scheduler_activate_recv(s, ci->mpi.recv, task_subtype_xv);
-            scheduler_activate_recv(s, ci->mpi.recv, task_subtype_rho);
-
-            /* If the local cell is active, more stuff will be needed. */
-            scheduler_activate_send(s, cj->mpi.send, task_subtype_spart,
-                                    ci->nodeID);
-            cell_activate_drift_spart(cj, s);
-
-            /* If the local cell is active, send its ti_end values. */
-            scheduler_activate_send(s, cj->mpi.send, task_subtype_tend_spart,
-                                    ci->nodeID);
-          }
-
-          if (ci_active_stars) {
-            scheduler_activate_recv(s, ci->mpi.recv, task_subtype_spart);
-
-            /* If the foreign cell is active, we want its ti_end values. */
-            scheduler_activate_recv(s, ci->mpi.recv, task_subtype_tend_spart);
-
-            /* Is the foreign cell active and will need stuff from us? */
-            scheduler_activate_send(s, cj->mpi.send, task_subtype_xv,
-                                    ci->nodeID);
-            scheduler_activate_send(s, cj->mpi.send, task_subtype_rho,
-                                    ci->nodeID);
-
-            /* Drift the cell which will be sent; note that not all sent
-               particles will be drifted, only those that are needed. */
-            cell_activate_drift_part(cj, s);
-          }
-
-        } else if (!cj_is_local) {
-          /* If the local cell is active, receive data from the foreign cell. */
-          if (ci_active_stars) {
-            scheduler_activate_recv(s, cj->mpi.recv, task_subtype_xv);
-            scheduler_activate_recv(s, cj->mpi.recv, task_subtype_rho);
-
-            /* If the local cell is active, more stuff will be needed. */
-            scheduler_activate_send(s, ci->mpi.send, task_subtype_spart,
-                                    cj->nodeID);
-            cell_activate_drift_spart(ci, s);
-
-            /* If the local cell is active, send its ti_end values. */
-            scheduler_activate_send(s, ci->mpi.send, task_subtype_tend_spart,
-                                    cj->nodeID);
-          }
-
-          if (cj_active_stars) {
-            scheduler_activate_recv(s, cj->mpi.recv, task_subtype_spart);
-
-            /* If the foreign cell is active, we want its ti_end values. */
-            scheduler_activate_recv(s, cj->mpi.recv, task_subtype_tend_spart);
-
-            /* Is the foreign cell active and will need stuff from us? */
-            scheduler_activate_send(s, ci->mpi.send, task_subtype_xv,
-                                    cj->nodeID);
-            scheduler_activate_send(s, ci->mpi.send, task_subtype_rho,
-                                    cj->nodeID);
-
-            /* Drift the cell which will be sent; note that not all sent
-               particles will be drifted, only those that are needed. */
-            cell_activate_drift_part(ci, s);
-          }
+        /* Activate send/recv tasks if any cell is foreign. */
+        if (!cell_is_local(ci)) {
+          cell_activate_stars_send_recv_tasks(cj, ci, s, with_star_formation);
+        } else if (!cell_is_local(cj)) {
+          cell_activate_stars_send_recv_tasks(ci, cj, s, with_star_formation);
         }
-#endif
+#endif  // WITH_MPI
       }
 
       /* Only interested in black hole density tasks as of here. */

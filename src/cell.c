@@ -3439,6 +3439,10 @@ void cell_activate_hydro_send_recv_tasks(struct cell *ci, struct cell *cj,
   if (!cell_is_local(ci)) {
     memswap(&ci, &cj, sizeof(struct cell *));
   }
+#ifdef SWIFT_DEBUG_CHECKS
+  if (!cell_is_local(ci) || cell_is_local(cj))
+    error("Expected a local and a foreign cell.");
+#endif
 
   /* Check if the cells are active. */
   const int ci_active_hydro = cell_is_active_hydro(ci, e);
@@ -3578,7 +3582,7 @@ int cell_unskip_hydro_tasks(struct cell *c, struct scheduler *s) {
       /* Activate the task. */
       scheduler_activate(s, t);
 
-      /* Activate associated tasks, e.g. drift, sort, send/recv, etc. */
+      /* Activate associated tasks, e.g. drift, sort, etc. */
       cell_activate_additional_hydro_tasks(
           ci, cj, s,
           (t->type == task_type_sub_self || t->type == task_type_sub_pair),
@@ -3592,7 +3596,8 @@ int cell_unskip_hydro_tasks(struct cell *c, struct scheduler *s) {
       if (cell_need_rebuild_for_hydro_pair(ci, cj)) rebuild = 1;
 
 #ifdef WITH_MPI
-      /* Activate the hydro send/recv tasks if any of the cells are foreign. */
+      /* Activate the hydro send/recv tasks if either of the cells are
+       * non-local. */
       if (!ci_is_local) {
         cell_activate_hydro_send_recv_tasks(cj, ci, s);
       } else if (!cj_is_local) {
@@ -3772,6 +3777,80 @@ int cell_unskip_gravity_tasks(struct cell *c, struct scheduler *s) {
 }
 
 /**
+ * @brief Activate the send/recv tasks associated with a pair of
+ * cells for which stars interations will be computed.
+ *
+ * @param ci The local #cell.
+ * @param cj The foreign #cell.
+ * @param s The #scheduler in which to activate the tasks.
+ * @param with_star_formation Activate tasks for star formation?
+ */
+void cell_activate_stars_send_recv_tasks(struct cell *ci, struct cell *cj,
+                                         struct scheduler *s,
+                                         const int with_star_formation) {
+#ifdef WITH_MPI
+  struct engine *e = s->space->e;
+
+  /* Ensure that ci is the local cell and cj is the foreign cell. */
+  if (!cell_is_local(ci)) {
+    memswap(&ci, &cj, sizeof(struct cell *));
+  }
+#ifdef SWIFT_DEBUG_CHECKS
+  if (!cell_is_local(ci) || cell_is_local(cj))
+    error("Expected a local and a foreign cell.");
+#endif
+
+  const int ci_active = cell_is_active_stars(ci, e) ||
+                        (with_star_formation && cell_is_active_hydro(ci, e));
+  const int cj_active = cell_is_active_stars(cj, e) ||
+                        (with_star_formation && cell_is_active_hydro(cj, e));
+
+  uint32_t send_mask = 0;
+  uint32_t recv_mask = 0;
+
+  /* If the local cell is active, receive data from the foreign cell. */
+  if (ci_active) {
+    recv_mask |= (1 << task_subtype_xv);
+    recv_mask |= (1 << task_subtype_rho);
+
+    /* If the local cell is active, more stuff will be needed. */
+    send_mask |= (1 << task_subtype_spart);
+    cell_activate_drift_spart(ci, s);
+
+    /* If the local cell is active, send its ti_end values. */
+    send_mask |= (1 << task_subtype_tend_spart);
+  }
+
+  if (cj_active) {
+    recv_mask |= (1 << task_subtype_spart);
+
+    /* If the foreign cell is active, we want its ti_end values. */
+    recv_mask |= (1 << task_subtype_tend_spart);
+
+    /* Is the foreign cell active and will need stuff from us? */
+    send_mask |= (1 << task_subtype_xv);
+
+    /* Drift the cell which will be sent; note that not all sent
+       particles will be drifted, only those that are needed. */
+    cell_activate_drift_part(ci, s);
+
+    send_mask |= (1 << task_subtype_rho);
+  }
+
+  /* Activate the send/recv tasks. */
+  if (send_mask) {
+    scheduler_activate_sends(s, ci->mpi.send, send_mask, cj->nodeID);
+  }
+  if (recv_mask) {
+    scheduler_activate_recvs(s, cj->mpi.recv, recv_mask);
+  }
+
+#else
+  error("SWIFT compiled without MPI support.");
+#endif  // WITH_MPI
+}
+
+/**
  * @brief Un-skips all the stars tasks associated with a given cell and checks
  * if the space needs to be rebuilt.
  *
@@ -3826,78 +3905,14 @@ int cell_unskip_stars_tasks(struct cell *c, struct scheduler *s,
       if (cell_need_rebuild_for_stars_pair(cj, ci)) rebuild = 1;
 
 #ifdef WITH_MPI
-      const int ci_is_local = cell_is_local(ci);
-      const int cj_is_local = (cj != NULL) ? cell_is_local(cj) : 0;
-
-      /* Activate the send/recv tasks. */
-      if (!ci_is_local) {
-        if (cj_active) {
-          scheduler_activate_recv(s, ci->mpi.recv, task_subtype_xv);
-          scheduler_activate_recv(s, ci->mpi.recv, task_subtype_rho);
-
-          /* If the local cell is active, more stuff will be needed. */
-          scheduler_activate_send(s, cj->mpi.send, task_subtype_spart,
-                                  ci->nodeID);
-          cell_activate_drift_spart(cj, s);
-
-          /* If the local cell is active, send its ti_end values. */
-          scheduler_activate_send(s, cj->mpi.send, task_subtype_tend_spart,
-                                  ci->nodeID);
-        }
-
-        if (ci_active) {
-          scheduler_activate_recv(s, ci->mpi.recv, task_subtype_spart);
-
-          /* If the foreign cell is active, we want its ti_end values. */
-          scheduler_activate_recv(s, ci->mpi.recv, task_subtype_tend_spart);
-
-          /* Is the foreign cell active and will need stuff from us? */
-          struct link *l_xv = scheduler_activate_send(
-              s, cj->mpi.send, task_subtype_xv, ci->nodeID);
-
-          /* Drift the cell which will be sent; note that not all sent
-             particles will be drifted, only those that are needed. */
-          cell_activate_drift_part(l_xv->t->ci, s);
-
-          scheduler_activate_send(s, cj->mpi.send, task_subtype_rho,
-                                  ci->nodeID);
-        }
-
-      } else if (!cj_is_local) {
-        /* If the local cell is active, receive data from the foreign cell. */
-        if (ci_active) {
-          scheduler_activate_recv(s, cj->mpi.recv, task_subtype_xv);
-          scheduler_activate_recv(s, cj->mpi.recv, task_subtype_rho);
-
-          /* If the local cell is active, more stuff will be needed. */
-          scheduler_activate_send(s, ci->mpi.send, task_subtype_spart,
-                                  cj->nodeID);
-          cell_activate_drift_spart(ci, s);
-
-          /* If the local cell is active, send its ti_end values. */
-          scheduler_activate_send(s, ci->mpi.send, task_subtype_tend_spart,
-                                  cj->nodeID);
-        }
-
-        if (cj_active) {
-          scheduler_activate_recv(s, cj->mpi.recv, task_subtype_spart);
-
-          /* If the foreign cell is active, we want its ti_end values. */
-          scheduler_activate_recv(s, cj->mpi.recv, task_subtype_tend_spart);
-
-          /* Is the foreign cell active and will need stuff from us? */
-          struct link *l_xv = scheduler_activate_send(
-              s, ci->mpi.send, task_subtype_xv, cj->nodeID);
-
-          /* Drift the cell which will be sent; note that not all sent
-             particles will be drifted, only those that are needed. */
-          cell_activate_drift_part(l_xv->t->ci, s);
-
-          scheduler_activate_send(s, ci->mpi.send, task_subtype_rho,
-                                  cj->nodeID);
-        }
+      /* Activate the hydro send/recv tasks if either of the cells are
+       * non-local. */
+      if (!cell_is_local(ci)) {
+        cell_activate_stars_send_recv_tasks(cj, ci, s, with_star_formation);
+      } else if (!cell_is_local(cj)) {
+        cell_activate_stars_send_recv_tasks(ci, cj, s, with_star_formation);
       }
-#endif
+#endif  // WITH_MPI
     }
   }
 
