@@ -19,6 +19,39 @@
 #ifndef SWIFT_GIZMO_HYDRO_PART_H
 #define SWIFT_GIZMO_HYDRO_PART_H
 
+#include "black_holes_struct.h"
+#include "chemistry_struct.h"
+#include "cooling_struct.h"
+#include "star_formation_struct.h"
+#include "timestep_limiter_struct.h"
+#include "tracers_struct.h"
+
+/* Extra particle data not needed during the computation. */
+struct xpart {
+
+  /* Offset between current position and position at last tree rebuild. */
+  float x_diff[3];
+
+  /* Offset between the current position and position at the last sort. */
+  float x_diff_sort[3];
+
+  /* Velocity at the last full step. */
+  float v_full[3];
+
+  /* Gravitational acceleration at the last full step. */
+  float a_grav[3];
+
+  /* Additional data used to record cooling information */
+  struct cooling_xpart_data cooling_data;
+
+  /* Additional data used by the tracers */
+  struct tracers_xpart_data tracers_data;
+
+  /* Additional data used by the star formation */
+  struct star_formation_xpart_data sf_data;
+
+} SWIFT_STRUCT_ALIGN;
+
 /* Import the right hydro particle definition */
 #if defined(GIZMO_MFV_SPH)
 #include "MFV/hydro_part.h"

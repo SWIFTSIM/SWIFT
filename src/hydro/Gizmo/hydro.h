@@ -27,10 +27,7 @@
 #include "hydro_gradients.h"
 #include "hydro_setters.h"
 #include "hydro_space.h"
-
-#if defined(GIZMO_MFV_SPH)
-#include "MFV/hydro_velocities.h"
-#endif
+#include "hydro_velocities.h"
 
 #include <float.h>
 
@@ -172,15 +169,8 @@ __attribute__((always_inline)) INLINE static void hydro_first_init_part(
   hydro_part_set_primitive_variables(p, W);
   hydro_part_set_conserved_variables(p, Q);
 
-#if defined(GIZMO_MFV_SPH)
   /* initialize the particle velocity based on the primitive fluid velocity */
   hydro_velocities_init(p, xp);
-#elif defined(GIZMO_MFM_SPH)
-  /* initialize the particle velocity based on the primitive fluid velocity */
-  xp->v_full[0] = p->v[0];
-  xp->v_full[1] = p->v[1];
-  xp->v_full[2] = p->v[2];
-#endif
 
   /* ignore accelerations present in the initial condition */
   p->a_hydro[0] = 0.0f;
@@ -451,10 +441,7 @@ __attribute__((always_inline)) INLINE static void hydro_prepare_gradient(
 
   hydro_gradients_init(p);
 
-#if defined(GIZMO_MFV_SPH)
-  /* Set the actual velocity of the particle */
   hydro_velocities_prepare_force(p, xp);
-#endif
 }
 
 /**
@@ -669,13 +656,7 @@ __attribute__((always_inline)) INLINE static void hydro_predict_extra(
 __attribute__((always_inline)) INLINE static void hydro_end_force(
     struct part* p, const struct cosmology* cosmo) {
 
-  /* Add normalization to h_dt. */
-  p->force.h_dt *= p->h * hydro_dimension_inv;
-
-  // MATTHIEU: Bert is this correct? Do we need cosmology terms here?
-#if defined(GIZMO_MFV_SPH)
   hydro_velocities_end_force(p);
-#endif
 }
 
 /**
@@ -769,11 +750,7 @@ __attribute__((always_inline)) INLINE static void hydro_kick_extra(
       hydro_props->minimal_internal_energy / cosmo->a_factor_internal_energy;
   if (p->conserved.energy < min_energy * p->conserved.mass) {
     p->conserved.energy = min_energy * p->conserved.mass;
-#if defined(GIZMO_MFV_SPH)
-    p->conserved.flux.energy = 0.0f;
-#elif defined(GIZMO_MFM_SPH)
     p->flux.energy = 0.0f;
-#endif
   }
 
   // MATTHIEU: Apply the entropy floor here.
@@ -804,33 +781,9 @@ __attribute__((always_inline)) INLINE static void hydro_kick_extra(
     /* Make sure the gpart knows the mass has changed. */
     p->gpart->mass = p->conserved.mass;
   }
+#endif
 
   hydro_velocities_set(p, xp);
-#elif defined(GIZMO_MFM_SPH)
-  /* Set the velocities: */
-  /* We first set the particle velocity */
-  if (p->conserved.mass > 0.0f && p->rho > 0.0f) {
-
-    const float inverse_mass = 1.0f / p->conserved.mass;
-
-    /* Normal case: set particle velocity to fluid velocity. */
-    xp->v_full[0] = p->conserved.momentum[0] * inverse_mass;
-    xp->v_full[1] = p->conserved.momentum[1] * inverse_mass;
-    xp->v_full[2] = p->conserved.momentum[2] * inverse_mass;
-
-  } else {
-    /* Vacuum particles have no fluid velocity. */
-    xp->v_full[0] = 0.0f;
-    xp->v_full[1] = 0.0f;
-    xp->v_full[2] = 0.0f;
-  }
-
-  if (p->gpart) {
-    p->gpart->v_full[0] = xp->v_full[0];
-    p->gpart->v_full[1] = xp->v_full[1];
-    p->gpart->v_full[2] = xp->v_full[2];
-  }
-#endif
 
 #ifdef GIZMO_LLOYD_ITERATION
   /* reset conserved variables to safe values */

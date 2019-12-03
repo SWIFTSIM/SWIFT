@@ -57,12 +57,6 @@ __attribute__((always_inline)) INLINE static void hydro_slope_limit_face(
 #define HYDRO_SLOPE_LIMITER_CELL_IMPLEMENTATION \
   "Cell wide slope limiter (Springel 2010)"
 
-#if defined(GIZMO_MFV_SPH)
-#include "MFV/hydro_slope_limiters_cell.h"
-#elif defined(GIZMO_MFM_SPH)
-#include "MFM/hydro_slope_limiters_cell.h"
-#endif
-
 #include "hydro_slope_limiters_cell.h"
 
 #else

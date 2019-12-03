@@ -1,6 +1,6 @@
 /*******************************************************************************
  * This file is part of SWIFT.
- * Coypright (c) 2019 Bert Vandenbroucke (bert.vandenbroucke@gmail.com)
+ * Coypright (c) 2017 Bert Vandenbroucke (bert.vandenbroucke@gmail.com)
  *
  * This program is free software: you can redistribute it and/or modify
  * it under the terms of the GNU Lesser General Public License as published
@@ -16,23 +16,13 @@
  * along with this program.  If not, see <http://www.gnu.org/licenses/>.
  *
  ******************************************************************************/
-#ifndef SWIFT_GIZMO_MFV_HYDRO_GETTERS_H
-#define SWIFT_GIZMO_MFV_HYDRO_GETTERS_H
+#ifndef SWIFT_GIZMO_HYDRO_VELOCITIES_H
+#define SWIFT_GIZMO_HYDRO_VELOCITIES_H
 
-/**
- * @brief Get the fluxes for the given particle.
- *
- * @param p Particle.
- * @param flux Fluxes for the particle (array of size 5 or more).
- */
-__attribute__((always_inline)) INLINE static void hydro_part_get_fluxes(
-    const struct part* restrict p, float* flux) {
+#if defined(GIZMO_MFV_SPH)
+#include "MFV/hydro_velocities.h"
+#elif defined(GIZMO_MFM_SPH)
+#include "MFM/hydro_velocities.h"
+#endif
 
-  flux[0] = p->flux.mass;
-  flux[1] = p->flux.momentum[0];
-  flux[2] = p->flux.momentum[1];
-  flux[3] = p->flux.momentum[2];
-  flux[4] = p->flux.energy;
-}
-
-#endif /* SWIFT_GIZMO_MFV_HYDRO_GETTERS_H */
+#endif /* SWIFT_GIZMO_HYDRO_VELOCITIES_H */

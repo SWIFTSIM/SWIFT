@@ -16,8 +16,16 @@
  * along with this program.  If not, see <http://www.gnu.org/licenses/>.
  *
  ******************************************************************************/
-#ifndef SWIFT_GIZMO_MFV_HYDRO_VELOCITIES_H
-#define SWIFT_GIZMO_MFV_HYDRO_VELOCITIES_H
+#ifndef SWIFT_GIZMO_MFM_HYDRO_VELOCITIES_H
+#define SWIFT_GIZMO_MFM_HYDRO_VELOCITIES_H
+
+#ifdef GIZMO_FIX_PARTICLES
+#error "Fixed particles are not allowed for GIZMO MFM!"
+#endif
+
+#ifdef GIZMO_STEER_MOTION
+#error "Steering particle movement is not allowed for GIZMO MFM!"
+#endif
 
 /**
  * @brief Initialize the GIZMO particle velocities before the start of the
@@ -28,16 +36,6 @@
  */
 __attribute__((always_inline)) INLINE static void hydro_velocities_init(
     struct part* restrict p, struct xpart* restrict xp) {
-
-#ifdef GIZMO_FIX_PARTICLES
-  p->v[0] = 0.0f;
-  p->v[1] = 0.0f;
-  p->v[2] = 0.0f;
-#else
-  p->v[0] = p->fluid_v[0];
-  p->v[1] = p->fluid_v[1];
-  p->v[2] = p->fluid_v[2];
-#endif
 
   xp->v_full[0] = p->v[0];
   xp->v_full[1] = p->v[1];
@@ -64,14 +62,8 @@ hydro_velocities_prepare_force(struct part* restrict p,
 __attribute__((always_inline)) INLINE static void hydro_velocities_end_force(
     struct part* restrict p) {
 
-#ifdef GIZMO_FIX_PARTICLES
-  /* disable the smoothing length update, since the smoothing lengths should
-     stay the same for all steps (particles don't move) */
-  p->force.h_dt = 0.0f;
-#else
   /* Add normalization to h_dt. */
   p->force.h_dt *= p->h * hydro_dimension_inv;
-#endif
 }
 
 /**
@@ -84,72 +76,29 @@ __attribute__((always_inline)) INLINE static void hydro_velocities_end_force(
 __attribute__((always_inline)) INLINE static void hydro_velocities_set(
     struct part* restrict p, struct xpart* restrict xp) {
 
-/* We first set the particle velocity. */
-#ifdef GIZMO_FIX_PARTICLES
-
-  p->v[0] = 0.0f;
-  p->v[1] = 0.0f;
-  p->v[2] = 0.0f;
-
-#else  // GIZMO_FIX_PARTICLES
-
+  /* Set the velocities: */
+  /* We first set the particle velocity */
   if (p->conserved.mass > 0.0f && p->rho > 0.0f) {
 
     const float inverse_mass = 1.0f / p->conserved.mass;
 
     /* Normal case: set particle velocity to fluid velocity. */
-    p->v[0] = p->conserved.momentum[0] * inverse_mass;
-    p->v[1] = p->conserved.momentum[1] * inverse_mass;
-    p->v[2] = p->conserved.momentum[2] * inverse_mass;
+    xp->v_full[0] = p->conserved.momentum[0] * inverse_mass;
+    xp->v_full[1] = p->conserved.momentum[1] * inverse_mass;
+    xp->v_full[2] = p->conserved.momentum[2] * inverse_mass;
 
-#ifdef GIZMO_STEER_MOTION
-    /* Add a correction to the velocity to keep particle positions close enough
-       to
-       the centroid of their mesh-free "cell". */
-    /* The correction term below is the same one described in Springel (2010).
-     */
-    float ds[3];
-    ds[0] = p->geometry.centroid[0];
-    ds[1] = p->geometry.centroid[1];
-    ds[2] = p->geometry.centroid[2];
-    const float d = sqrtf(ds[0] * ds[0] + ds[1] * ds[1] + ds[2] * ds[2]);
-    const float R = get_radius_dimension_sphere(p->geometry.volume);
-    const float eta = 0.25f;
-    const float etaR = eta * R;
-    const float xi = 1.0f;
-    const float soundspeed = sqrtf(hydro_gamma * p->P / p->rho);
-    /* We only apply the correction if the offset between centroid and position
-       is too large. */
-    if (d > 0.9f * etaR) {
-      float fac = xi * soundspeed / d;
-      if (d < 1.1f * etaR) {
-        fac *= 5.0f * (d - 0.9f * etaR) / etaR;
-      }
-      p->v[0] -= ds[0] * fac;
-      p->v[1] -= ds[1] * fac;
-      p->v[2] -= ds[2] * fac;
-    }
-
-#endif  // GIZMO_STEER_MOTION
   } else {
     /* Vacuum particles have no fluid velocity. */
-    p->v[0] = 0.0f;
-    p->v[1] = 0.0f;
-    p->v[2] = 0.0f;
+    xp->v_full[0] = 0.0f;
+    xp->v_full[1] = 0.0f;
+    xp->v_full[2] = 0.0f;
   }
 
-#endif  // GIZMO_FIX_PARTICLES
-
-  /* Now make sure all velocity variables are up to date. */
-  xp->v_full[0] = p->v[0];
-  xp->v_full[1] = p->v[1];
-  xp->v_full[2] = p->v[2];
-
   if (p->gpart) {
-    p->gpart->v_full[0] = p->v[0];
-    p->gpart->v_full[1] = p->v[1];
-    p->gpart->v_full[2] = p->v[2];
+    p->gpart->v_full[0] = xp->v_full[0];
+    p->gpart->v_full[1] = xp->v_full[1];
+    p->gpart->v_full[2] = xp->v_full[2];
   }
 }
 
-#endif /* SWIFT_GIZMO_MFV_HYDRO_VELOCITIES_H */
+#endif /* SWIFT_GIZMO_MFM_HYDRO_VELOCITIES_H */

@@ -21,7 +21,6 @@
 
 #include "adiabatic_index.h"
 #include "hydro.h"
-#include "hydro_getters.h"
 #include "hydro_gradients.h"
 #include "hydro_slope_limiters.h"
 #include "io_properties.h"
@@ -63,9 +62,8 @@ INLINE static void hydro_read_particles(struct part* parts,
                                 UNIT_CONV_NO_UNITS, parts, id);
   list[6] = io_make_input_field("Accelerations", FLOAT, 3, OPTIONAL,
                                 UNIT_CONV_ACCELERATION, parts, a_hydro);
-  list[7] =
-      io_make_input_field("Density", FLOAT, 1, OPTIONAL, UNIT_CONV_DENSITY,
-                          parts, hydro_part_get_density_variable());
+  list[7] = io_make_input_field("Density", FLOAT, 1, OPTIONAL,
+                                UNIT_CONV_DENSITY, parts, rho);
 }
 
 /**
@@ -218,7 +216,7 @@ INLINE static void hydro_write_particles(const struct part* parts,
                            parts, id, "Unique IDs of the particles");
 
   list[6] = io_make_output_field("Densities", FLOAT, 1, UNIT_CONV_DENSITY, -3.f,
-                                 parts, hydro_part_get_density_variable(),
+                                 parts, rho,
                                  "Co-moving mass densities of the particles");
 
   list[7] = io_make_output_field_convert_part(
@@ -226,8 +224,7 @@ INLINE static void hydro_write_particles(const struct part* parts,
       "Co-moving entropies of the particles");
 
   list[8] = io_make_output_field("Pressures", FLOAT, 1, UNIT_CONV_PRESSURE,
-                                 -3.f * hydro_gamma, parts,
-                                 hydro_part_get_pressure_variable(),
+                                 -3.f * hydro_gamma, parts, P,
                                  "Co-moving pressures of the particles");
 
   list[9] = io_make_output_field_convert_part(
