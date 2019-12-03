@@ -21,6 +21,8 @@
 
 //#define GIZMO_LLOYD_ITERATION
 
+#include "approx_math.h"
+#include "entropy_floor.h"
 #include "hydro_getters.h"
 #include "hydro_gradients.h"
 #include "hydro_setters.h"
@@ -31,6 +33,12 @@
 #endif
 
 #include <float.h>
+
+#if defined(GIZMO_MFV_SPH)
+#define SPH_IMPLEMENTATION "GIZMO MFV (Hopkins 2015)"
+#elif defined(GIZMO_MFM_SPH)
+#define SPH_IMPLEMENTATION "GIZMO MFM (Hopkins 2015)"
+#endif
 
 /**
  * @brief Computes the hydro time-step of a given particle
@@ -315,9 +323,6 @@ __attribute__((always_inline)) INLINE static void hydro_end_density(
         p, const_gizmo_w_correction_factor * hydro_part_get_wcorr(p));
   }
 
-  /* need to figure out whether or not to move this to hydro_prepare_gradient */
-  hydro_gradients_init(p);
-
   /* compute primitive variables */
   /* eqns (3)-(5) */
   const float Q[5] = {p->conserved.mass, p->conserved.momentum[0],
@@ -444,7 +449,6 @@ __attribute__((always_inline)) INLINE static void hydro_prepare_gradient(
   /* Initialize time step criterion variables */
   p->timestepvars.vmax = 0.;
 
-  /* not sure if we need to do this here or in end_density() */
   hydro_gradients_init(p);
 
 #if defined(GIZMO_MFV_SPH)
@@ -562,12 +566,303 @@ __attribute__((always_inline)) INLINE static void hydro_convert_quantities(
   p->conserved.energy /= cosmo->a_factor_internal_energy;
 }
 
-#if defined(GIZMO_MFV_SPH)
-#include "MFV/hydro.h"
-#define SPH_IMPLEMENTATION "GIZMO MFV (Hopkins 2015)"
-#elif defined(GIZMO_MFM_SPH)
-#include "MFM/hydro.h"
-#define SPH_IMPLEMENTATION "GIZMO MFM (Hopkins 2015)"
+/**
+ * @brief Extra operations to be done during the drift
+ *
+ * @param p Particle to act upon.
+ * @param xp The extended particle data to act upon.
+ * @param dt_drift The drift time-step for positions.
+ * @param dt_therm The drift time-step for thermal quantities.
+ */
+__attribute__((always_inline)) INLINE static void hydro_predict_extra(
+    struct part* p, struct xpart* xp, float dt_drift, float dt_therm,
+    const struct cosmology* cosmo, const struct hydro_props* hydro_props,
+    const struct entropy_floor_properties* floor_props) {
+
+#ifdef GIZMO_LLOYD_ITERATION
+  return;
 #endif
+
+  const float h_inv = 1.0f / p->h;
+
+  /* Predict smoothing length */
+  const float w1 = p->force.h_dt * h_inv * dt_drift;
+  float h_corr;
+  if (fabsf(w1) < 0.2f) {
+    h_corr = approx_expf(w1); /* 4th order expansion of exp(w) */
+  } else {
+    h_corr = expf(w1);
+  }
+
+  /* Limit the smoothing length correction (and make sure it is always
+     positive). */
+  if (h_corr < 2.0f && h_corr > 0.0f) {
+    p->h *= h_corr;
+  }
+
+#ifdef SWIFT_DEBUG_CHECKS
+  if (p->h <= 0.) {
+    error("Zero or negative smoothing length (%g)!", p->h);
+  }
+#endif
+
+  float W[5];
+  hydro_part_get_primitive_variables(p, W);
+  float flux[5];
+  hydro_part_get_fluxes(p, flux);
+
+#if defined(GIZMO_MFV_SPH)
+  /* drift the primitive variables based on the old fluxes */
+  if (p->geometry.volume > 0.0f) {
+    W[0] += flux[0] * dt_therm / p->geometry.volume;
+  }
+#endif
+
+  if (p->conserved.mass > 0.0f) {
+    const float m_inv = 1.0f / p->conserved.mass;
+
+    W[1] += flux[1] * dt_therm * m_inv;
+    W[2] += flux[2] * dt_therm * m_inv;
+    W[3] += flux[3] * dt_therm * m_inv;
+
+#if !defined(EOS_ISOTHERMAL_GAS)
+#ifdef GIZMO_TOTAL_ENERGY
+    const float Etot = p->conserved.energy + flux[4] * dt_therm;
+    const float v2 = (W[1] * W[1] + W[2] * W[2] + W[3] * W[3]);
+    const float u = (Etot * m_inv - 0.5f * v2);
+#else
+    const float u = (p->conserved.energy + flux[4] * dt_therm) * m_inv;
+#endif
+    W[4] = hydro_gamma_minus_one * u * W[0];
+#endif
+  }
+
+    // MATTHIEU: Apply the entropy floor here.
+
+#if defined(GIZMO_MFV_SPH)
+  /* we use a sneaky way to get the gravitational contribution to the
+     velocity update */
+  W[1] += p->v[0] - xp->v_full[0];
+  W[2] += p->v[1] - xp->v_full[1];
+  W[3] += p->v[2] - xp->v_full[2];
+#endif
+
+  gizmo_check_physical_quantities("density", "pressure", W[0], W[1], W[2], W[3],
+                                  W[4]);
+
+  hydro_part_set_primitive_variables(p, W);
+}
+
+/**
+ * @brief Set the particle acceleration after the flux loop
+ *
+ * We use the new conserved variables to calculate the new velocity of the
+ * particle, and use that to derive the change of the velocity over the particle
+ * time step.
+ *
+ * If the particle time step is zero, we set the accelerations to zero. This
+ * should only happen at the start of the simulation.
+ *
+ * @param p Particle to act upon.
+ * @param cosmo The cosmological model.
+ */
+__attribute__((always_inline)) INLINE static void hydro_end_force(
+    struct part* p, const struct cosmology* cosmo) {
+
+  /* Add normalization to h_dt. */
+  p->force.h_dt *= p->h * hydro_dimension_inv;
+
+  // MATTHIEU: Bert is this correct? Do we need cosmology terms here?
+#if defined(GIZMO_MFV_SPH)
+  hydro_velocities_end_force(p);
+#endif
+}
+
+/**
+ * @brief Extra operations done during the kick
+ *
+ * @param p Particle to act upon.
+ * @param xp Extended particle data to act upon.
+ * @param dt_therm Thermal energy time-step @f$\frac{dt}{a^2}@f$.
+ * @param dt_grav Gravity time-step @f$\frac{dt}{a}@f$.
+ * @param dt_hydro Hydro acceleration time-step
+ * @f$\frac{dt}{a^{3(\gamma{}-1)}}@f$.
+ * @param dt_kick_corr Gravity correction time-step @f$adt@f$.
+ * @param cosmo Cosmology.
+ * @param hydro_props Additional hydro properties.
+ * @param floor_props The properties of the entropy floor.
+ */
+__attribute__((always_inline)) INLINE static void hydro_kick_extra(
+    struct part* p, struct xpart* xp, float dt_therm, float dt_grav,
+    float dt_hydro, float dt_kick_corr, const struct cosmology* cosmo,
+    const struct hydro_props* hydro_props,
+    const struct entropy_floor_properties* floor_props) {
+
+  /* Add gravity. We only do this if we have gravity activated. */
+  if (p->gpart) {
+    /* Retrieve the current value of the gravitational acceleration from the
+       gpart. We are only allowed to do this because this is the kick. We still
+       need to check whether gpart exists though.*/
+    float a_grav[3];
+
+    a_grav[0] = p->gpart->a_grav[0];
+    a_grav[1] = p->gpart->a_grav[1];
+    a_grav[2] = p->gpart->a_grav[2];
+
+#if defined(GIZMO_TOTAL_ENERGY) && defined(GIZMO_MFV_SPH)
+    p->conserved.energy += dt_grav * (p->conserved.momentum[0] * a_grav[0] +
+                                      p->conserved.momentum[1] * a_grav[1] +
+                                      p->conserved.momentum[2] * a_grav[2]);
+#endif
+
+    /* Kick the momentum for half a time step */
+    /* Note that this also affects the particle movement, as the velocity for
+       the particles is set after this. */
+    p->conserved.momentum[0] += p->conserved.mass * a_grav[0] * dt_grav;
+    p->conserved.momentum[1] += p->conserved.mass * a_grav[1] * dt_grav;
+    p->conserved.momentum[2] += p->conserved.mass * a_grav[2] * dt_grav;
+
+#if defined(GIZMO_MFV_SPH)
+    p->conserved.energy -=
+        0.5f * dt_kick_corr *
+        (p->gravity.mflux[0] * a_grav[0] + p->gravity.mflux[1] * a_grav[1] +
+         p->gravity.mflux[2] * a_grav[2]);
+#endif
+  }
+
+  float flux[5];
+  hydro_part_get_fluxes(p, flux);
+
+  /* Update conserved variables. */
+#if defined(GIZMO_MFV_SPH)
+  p->conserved.mass += flux[0] * dt_therm;
+#endif
+  p->conserved.momentum[0] += flux[1] * dt_therm;
+  p->conserved.momentum[1] += flux[2] * dt_therm;
+  p->conserved.momentum[2] += flux[3] * dt_therm;
+#if defined(EOS_ISOTHERMAL_GAS)
+  /* We use the EoS equation in a sneaky way here just to get the constant u */
+  p->conserved.energy =
+      p->conserved.mass * gas_internal_energy_from_entropy(0.0f, 0.0f);
+#else
+  p->conserved.energy += flux[4] * dt_therm;
+#endif
+
+#ifndef HYDRO_GAMMA_5_3
+  float gradP[3];
+  hydro_part_get_pressure_gradient(p, gradP);
+  float W[5];
+  hydro_part_get_primitive_variables(p, W);
+
+  const float Pcorr = (dt_hydro - dt_therm) * p->geometry.volume;
+  p->conserved.momentum[0] -= Pcorr * gradP[0];
+  p->conserved.momentum[1] -= Pcorr * gradP[1];
+  p->conserved.momentum[2] -= Pcorr * gradP[2];
+#ifdef GIZMO_TOTAL_ENERGY
+  p->conserved.energy -=
+      Pcorr * (W[1] * gradP[0] + W[2] * gradP[1] + W[3] * gradP[2]);
+#endif
+#endif
+
+  /* Apply the minimal energy limit */
+  const float min_energy =
+      hydro_props->minimal_internal_energy / cosmo->a_factor_internal_energy;
+  if (p->conserved.energy < min_energy * p->conserved.mass) {
+    p->conserved.energy = min_energy * p->conserved.mass;
+#if defined(GIZMO_MFV_SPH)
+    p->conserved.flux.energy = 0.0f;
+#elif defined(GIZMO_MFM_SPH)
+    p->flux.energy = 0.0f;
+#endif
+  }
+
+  // MATTHIEU: Apply the entropy floor here.
+
+  gizmo_check_physical_quantities(
+      "mass", "energy", p->conserved.mass, p->conserved.momentum[0],
+      p->conserved.momentum[1], p->conserved.momentum[2], p->conserved.energy);
+
+#ifdef SWIFT_DEBUG_CHECKS
+  /* Note that this check will only have effect if no GIZMO_UNPHYSICAL option
+     was selected. */
+  if (p->conserved.mass < 0.) {
+    error(
+        "Negative mass after conserved variables update (mass: %g, dmass: %g)!",
+        p->conserved.mass, p->conserved.flux.mass);
+  }
+
+  if (p->conserved.energy < 0.) {
+    error(
+        "Negative energy after conserved variables update (energy: %g, "
+        "denergy: %g)!",
+        p->conserved.energy, p->conserved.flux.energy);
+  }
+#endif
+
+#if defined(GIZMO_MFV_SPH)
+  if (p->gpart) {
+    /* Make sure the gpart knows the mass has changed. */
+    p->gpart->mass = p->conserved.mass;
+  }
+
+  hydro_velocities_set(p, xp);
+#elif defined(GIZMO_MFM_SPH)
+  /* Set the velocities: */
+  /* We first set the particle velocity */
+  if (p->conserved.mass > 0.0f && p->rho > 0.0f) {
+
+    const float inverse_mass = 1.0f / p->conserved.mass;
+
+    /* Normal case: set particle velocity to fluid velocity. */
+    xp->v_full[0] = p->conserved.momentum[0] * inverse_mass;
+    xp->v_full[1] = p->conserved.momentum[1] * inverse_mass;
+    xp->v_full[2] = p->conserved.momentum[2] * inverse_mass;
+
+  } else {
+    /* Vacuum particles have no fluid velocity. */
+    xp->v_full[0] = 0.0f;
+    xp->v_full[1] = 0.0f;
+    xp->v_full[2] = 0.0f;
+  }
+
+  if (p->gpart) {
+    p->gpart->v_full[0] = xp->v_full[0];
+    p->gpart->v_full[1] = xp->v_full[1];
+    p->gpart->v_full[2] = xp->v_full[2];
+  }
+#endif
+
+#ifdef GIZMO_LLOYD_ITERATION
+  /* reset conserved variables to safe values */
+  p->conserved.mass = 1.;
+  p->conserved.momentum[0] = 0.;
+  p->conserved.momentum[1] = 0.;
+  p->conserved.momentum[2] = 0.;
+  p->conserved.energy = 1.;
+
+  /* set the particle velocities to the Lloyd velocities */
+  /* note that centroid is the relative position of the centroid w.r.t. the
+     particle position (position - centroid) */
+  xp->v_full[0] = -p->geometry.centroid[0] / p->force.dt;
+  xp->v_full[1] = -p->geometry.centroid[1] / p->force.dt;
+  xp->v_full[2] = -p->geometry.centroid[2] / p->force.dt;
+  p->v[0] = xp->v_full[0];
+  p->v[1] = xp->v_full[1];
+  p->v[2] = xp->v_full[2];
+#endif
+
+  /* reset wcorr */
+  hydro_part_set_wcorr(p, 1.0f);
+}
+
+/**
+ * @brief Operations performed when a particle gets removed from the
+ * simulation volume.
+ *
+ * @param p The particle.
+ * @param xp The extended particle data.
+ */
+__attribute__((always_inline)) INLINE static void hydro_remove_part(
+    const struct part* p, const struct xpart* xp) {}
 
 #endif /* SWIFT_GIZMO_HYDRO_H */

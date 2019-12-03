@@ -85,6 +85,21 @@ __attribute__((always_inline)) INLINE static void hydro_part_get_gradients(
 }
 
 /**
+ * @brief Get the pressure gradient for the given particle.
+ *
+ * @param p Particle.
+ * @param gradP Pressure gradient (of size 3 or more).
+ */
+__attribute__((always_inline)) INLINE static void
+hydro_part_get_pressure_gradient(const struct part* restrict p,
+                                 float gradP[3]) {
+
+  gradP[0] = p->gradients.P[0];
+  gradP[1] = p->gradients.P[1];
+  gradP[2] = p->gradients.P[2];
+}
+
+/**
  * @brief Get the slope limiter variables for the given particle.
  *
  * @param p Particle.
@@ -116,6 +131,21 @@ __attribute__((always_inline)) INLINE static void hydro_part_get_slope_limiter(
   Plim[1] = p->limiter.P[1];
 
   rmax[0] = p->limiter.maxr;
+}
+
+/**
+ * @brief Get the fluxes for the given particle.
+ *
+ * @param p Particle.
+ * @param flux Fluxes for the particle (array of size 5 or more).
+ */
+__attribute__((always_inline)) INLINE static void hydro_part_get_fluxes(
+    const struct part* restrict p, float* flux) {
+
+  flux[1] = p->flux.momentum[0];
+  flux[2] = p->flux.momentum[1];
+  flux[3] = p->flux.momentum[2];
+  flux[4] = p->flux.energy;
 }
 
 /**
