@@ -99,8 +99,9 @@ void engine_marktasks_mapper(void *map_data, int num_elements,
       if (t_subtype == task_subtype_density) {
         if (ci_active_hydro) {
           scheduler_activate(s, t);
-          cell_activate_hydro_tasks(ci, NULL, s, (t_type == task_type_sub_self),
-                                    with_timestep_limiter);
+          cell_activate_additional_hydro_tasks(ci, NULL, s,
+                                               (t_type == task_type_sub_self),
+                                               with_timestep_limiter);
         }
       }
 
@@ -133,23 +134,12 @@ void engine_marktasks_mapper(void *map_data, int num_elements,
       }
 
       /* Activate the star density */
-      else if (t_type == task_type_self &&
-               t_subtype == task_subtype_stars_density) {
+      else if (t_subtype == task_subtype_stars_density) {
         if (ci_active_stars) {
           scheduler_activate(s, t);
-          cell_activate_drift_part(ci, s);
-          cell_activate_drift_spart(ci, s);
-          if (with_timestep_sync) cell_activate_sync_part(ci, s);
-        }
-      }
-
-      /* Store current values of dx_max and h_max. */
-      else if (t_type == task_type_sub_self &&
-               t_subtype == task_subtype_stars_density) {
-        if (ci_active_stars) {
-          scheduler_activate(s, t);
-          cell_activate_subcell_stars_tasks(ci, NULL, s, with_star_formation,
-                                            with_timestep_sync);
+          cell_activate_additional_stars_tasks(
+              ci, NULL, s, (t_type == task_type_sub_self), with_star_formation,
+              with_timestep_sync);
         }
       }
 
@@ -287,9 +277,9 @@ void engine_marktasks_mapper(void *map_data, int num_elements,
 
         /* Activate the associated drift, sort, and send/recv tasks. */
         if (t_subtype == task_subtype_density) {
-          cell_activate_hydro_tasks(t->ci, t->cj, s,
-                                    (t_type == task_type_sub_pair),
-                                    with_timestep_limiter);
+          cell_activate_additional_hydro_tasks(t->ci, t->cj, s,
+                                               (t_type == task_type_sub_pair),
+                                               with_timestep_limiter);
         }
       }
 
@@ -298,58 +288,9 @@ void engine_marktasks_mapper(void *map_data, int num_elements,
                (ci_active_stars || cj_active_stars) &&
                (ci_is_local || cj_is_local)) {
         scheduler_activate(s, t);
-
-        /* Set the correct sorting flags */
-        if (t_type == task_type_pair) {
-          /* Do ci */
-          if (ci_active_stars) {
-            /* stars for ci */
-            atomic_or(&ci->stars.requires_sorts, 1 << t->flags);
-            ci->stars.dx_max_sort_old = ci->stars.dx_max_sort;
-
-            /* hydro for cj */
-            atomic_or(&cj->hydro.requires_sorts, 1 << t->flags);
-            cj->hydro.dx_max_sort_old = cj->hydro.dx_max_sort;
-
-            /* Activate the drift tasks. */
-            if (ci_is_local) cell_activate_drift_spart(ci, s);
-            if (cj_is_local) cell_activate_drift_part(cj, s);
-            if (cj_is_local && with_timestep_sync)
-              cell_activate_sync_part(cj, s);
-
-            /* Check the sorts and activate them if needed. */
-            cell_activate_hydro_sorts(cj, t->flags, s);
-            cell_activate_stars_sorts(ci, t->flags, s);
-          }
-
-          /* Do cj */
-          if (cj_active_stars) {
-            /* hydro for ci */
-            atomic_or(&ci->hydro.requires_sorts, 1 << t->flags);
-            ci->hydro.dx_max_sort_old = ci->hydro.dx_max_sort;
-
-            /* stars for cj */
-            atomic_or(&cj->stars.requires_sorts, 1 << t->flags);
-            cj->stars.dx_max_sort_old = cj->stars.dx_max_sort;
-
-            /* Activate the drift tasks. */
-            if (ci_is_local) cell_activate_drift_part(ci, s);
-            if (cj_is_local) cell_activate_drift_spart(cj, s);
-            if (ci_is_local && with_timestep_sync)
-              cell_activate_sync_part(ci, s);
-
-            /* Check the sorts and activate them if needed. */
-            cell_activate_hydro_sorts(ci, t->flags, s);
-            cell_activate_stars_sorts(cj, t->flags, s);
-          }
-        }
-
-        /* Store current values of dx_max and h_max. */
-        else if (t_type == task_type_sub_pair &&
-                 t_subtype == task_subtype_stars_density) {
-          cell_activate_subcell_stars_tasks(ci, cj, s, with_star_formation,
-                                            with_timestep_sync);
-        }
+        cell_activate_additional_stars_tasks(
+            ci, cj, s, (t_type == task_type_sub_pair), with_star_formation,
+            with_timestep_sync);
       }
 
       /* Stars feedback */
