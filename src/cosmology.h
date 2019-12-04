@@ -158,10 +158,10 @@ struct cosmology {
   double w_a;
 
   /*! Log of starting expansion factor */
-  double log_a_begin;
+  double log_a_table_begin;
 
   /*! Log of final expansion factor */
-  double log_a_end;
+  double log_a_table_end;
 
   /*! Drift factor interpolation table */
   double *drift_fac_interp_table;
@@ -191,6 +191,8 @@ struct cosmology {
 void cosmology_update(struct cosmology *c, const struct phys_const *phys_const,
                       integertime_t ti_current);
 
+double cosmology_get_scale_factor(const struct cosmology *cosmo,
+                                  integertime_t ti);
 double cosmology_get_drift_factor(const struct cosmology *cosmo,
                                   const integertime_t ti_start,
                                   const integertime_t ti_end);
@@ -214,7 +216,8 @@ double cosmology_get_delta_time_from_scale_factors(const struct cosmology *c,
                                                    const double a_start,
                                                    const double a_end);
 
-double cosmology_get_scale_factor(const struct cosmology *cosmo, double t);
+double cosmology_get_scale_factor_from_time(const struct cosmology *cosmo,
+                                            double t);
 
 double cosmology_get_time_since_big_bang(const struct cosmology *c, double a);
 void cosmology_init(struct swift_params *params, const struct unit_system *us,

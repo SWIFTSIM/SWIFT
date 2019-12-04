@@ -28,7 +28,7 @@ TESTS = testGreetings testMaths testReading.sh testKernel \
         testVoronoi1D testVoronoi2D testVoronoi3D testGravityDerivatives \
 	testPeriodicBC.sh testPeriodicBCPerturbed.sh testPotentialSelf \
 	testPotentialPair testEOS testUtilities testSelectOutput.sh \
-	testCbrt testCosmology testOutputList testFormat.sh \
+	testCbrt testCosmology testIntegration testOutputList testFormat.sh \
 	test27cellsStars.sh test27cellsStarsPerturbed.sh testHydroMPIrules
 
 # List of test programs to compile
@@ -40,7 +40,7 @@ check_PROGRAMS = testGreetings testReading testTimeIntegration \
                  testRiemannHLLC testMatrixInversion testDump testLogger \
 		 testVoronoi1D testVoronoi2D testVoronoi3D testPeriodicBC \
 		 testGravityDerivatives testPotentialSelf testPotentialPair testEOS testUtilities \
-		 testSelectOutput testCbrt testCosmology testOutputList test27cellsStars \
+		 testSelectOutput testCbrt testIntegration testCosmology testOutputList test27cellsStars \
 		 test27cellsStars_subset testCooling testComovingCooling testFeedback testHashmap testHydroMPIrules
 
 # Rebuild tests when SWIFT is updated.
@@ -58,6 +58,8 @@ testRandomSpacing_SOURCES = testRandomSpacing.c
 testReading_SOURCES = testReading.c
 
 testSelectOutput_SOURCES = testSelectOutput.c
+
+testIntegration_SOURCES = testIntegration.c
 
 testCosmology_SOURCES = testCosmology.c
 
