@@ -19,12 +19,6 @@
 #ifndef SWIFT_GIZMO_HYDRO_SETTERS_H
 #define SWIFT_GIZMO_HYDRO_SETTERS_H
 
-#if defined(GIZMO_MFV_SPH)
-#include "MFV/hydro_setters.h"
-#elif defined(GIZMO_MFM_SPH)
-#include "MFM/hydro_setters.h"
-#endif
-
 /**
  * @brief Set the primitive variables for the given particle to the given
  * values.
@@ -57,18 +51,6 @@ hydro_part_set_conserved_variables(struct part* restrict p, const float* Q) {
   p->conserved.momentum[2] = Q[2];
   p->conserved.momentum[3] = Q[3];
   p->conserved.energy = Q[4];
-}
-
-/**
- * @brief Set the correction value for degenerate particle configurations for
- * the given particle to the given value.
- *
- * @param p Particle.
- * @param wcorr New value.
- */
-__attribute__((always_inline)) INLINE static void hydro_part_set_wcorr(
-    struct part* restrict p, const float wcorr) {
-  p->geometry.wcorr = wcorr;
 }
 
 /**

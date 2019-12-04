@@ -22,12 +22,6 @@
 #include "cosmology.h"
 #include "equation_of_state.h"
 
-#if defined(GIZMO_MFV_SPH)
-#include "MFV/hydro_getters.h"
-#elif defined(GIZMO_MFM_SPH)
-#include "MFM/hydro_getters.h"
-#endif
-
 /**
  * @brief Get a 5-element state vector W containing the primitive hydrodynamic
  * variables.
@@ -44,17 +38,6 @@ hydro_part_get_primitive_variables(const struct part* restrict p, float* W) {
   W[2] = p->fluid_v[1];
   W[3] = p->fluid_v[2];
   W[4] = p->P;
-}
-
-/**
- * @brief Get the degenerate case correction factor for the given particle.
- *
- * @param p Particle.
- * @return Degenerate case correction factor.
- */
-__attribute__((always_inline)) INLINE static float hydro_part_get_wcorr(
-    const struct part* restrict p) {
-  return p->geometry.wcorr;
 }
 
 /**
@@ -88,21 +71,6 @@ __attribute__((always_inline)) INLINE static void hydro_part_get_gradients(
   dP[0] = p->gradients.P[0];
   dP[1] = p->gradients.P[1];
   dP[2] = p->gradients.P[2];
-}
-
-/**
- * @brief Get the pressure gradient for the given particle.
- *
- * @param p Particle.
- * @param gradP Pressure gradient (of size 3 or more).
- */
-__attribute__((always_inline)) INLINE static void
-hydro_part_get_pressure_gradient(const struct part* restrict p,
-                                 float gradP[3]) {
-
-  gradP[0] = p->gradients.P[0];
-  gradP[1] = p->gradients.P[1];
-  gradP[2] = p->gradients.P[2];
 }
 
 /**

@@ -21,8 +21,13 @@
 
 //#define GIZMO_LLOYD_ITERATION
 
+#if defined(GIZMO_LLOYD_ITERATION) && !defined(GIZMO_MFV_SPH)
+#error "LLoyd's algorithm only works if you use GIZMO MFV!"
+#endif
+
 #include "approx_math.h"
 #include "entropy_floor.h"
+#include "hydro_flux.h"
 #include "hydro_getters.h"
 #include "hydro_gradients.h"
 #include "hydro_setters.h"
@@ -181,7 +186,7 @@ __attribute__((always_inline)) INLINE static void hydro_first_init_part(
      time the density loop is repeated, and the whole point of storing wcorr
      is to have a way of remembering that we need more neighbours for this
      particle */
-  hydro_part_set_wcorr(p, 1.0f);
+  p->geometry.wcorr = 1.0f;
 }
 
 /**
@@ -197,6 +202,7 @@ __attribute__((always_inline)) INLINE static void hydro_init_part(
 
   p->density.wcount = 0.0f;
   p->density.wcount_dh = 0.0f;
+
   p->geometry.volume = 0.0f;
   p->geometry.matrix_E[0][0] = 0.0f;
   p->geometry.matrix_E[0][1] = 0.0f;
@@ -207,9 +213,9 @@ __attribute__((always_inline)) INLINE static void hydro_init_part(
   p->geometry.matrix_E[2][0] = 0.0f;
   p->geometry.matrix_E[2][1] = 0.0f;
   p->geometry.matrix_E[2][2] = 0.0f;
-  p->geometry.centroid[0] = 0.0f;
-  p->geometry.centroid[1] = 0.0f;
-  p->geometry.centroid[2] = 0.0f;
+
+  /* reset the centroid variables used for the velocity correction in MFV */
+  hydro_velocities_reset_centroids(p);
 }
 
 /**
@@ -266,14 +272,8 @@ __attribute__((always_inline)) INLINE static void hydro_end_density(
   p->geometry.matrix_E[2][1] = ihdim * p->geometry.matrix_E[2][1];
   p->geometry.matrix_E[2][2] = ihdim * p->geometry.matrix_E[2][2];
 
-  p->geometry.centroid[0] *= kernel_norm;
-  p->geometry.centroid[1] *= kernel_norm;
-  p->geometry.centroid[2] *= kernel_norm;
-
-  const float wcount_inv = 1.0f / p->density.wcount;
-  p->geometry.centroid[0] *= wcount_inv;
-  p->geometry.centroid[1] *= wcount_inv;
-  p->geometry.centroid[2] *= wcount_inv;
+  /* normalise the centroids for MFV */
+  hydro_velocities_normalise_centroid(p, p->density.wcount);
 
   /* Check the condition number to see if we have a stable geometry. */
   float condition_number_E = 0.0f;
@@ -299,7 +299,7 @@ __attribute__((always_inline)) INLINE static void hydro_end_density(
       hydro_dimension_inv * sqrtf(condition_number_E * condition_number_Einv);
 
   if (condition_number > const_gizmo_max_condition_number &&
-      hydro_part_get_wcorr(p) > const_gizmo_min_wcorr) {
+      p->geometry.wcorr > const_gizmo_min_wcorr) {
 #ifdef GIZMO_PATHOLOGICAL_ERROR
     error("Condition number larger than %g (%g)!",
           const_gizmo_max_condition_number, condition_number);
@@ -309,8 +309,7 @@ __attribute__((always_inline)) INLINE static void hydro_end_density(
             condition_number, const_gizmo_max_condition_number, p->id);
 #endif
     /* add a correction to the number of neighbours for this particle */
-    hydro_part_set_wcorr(
-        p, const_gizmo_w_correction_factor * hydro_part_get_wcorr(p));
+    p->geometry.wcorr = const_gizmo_w_correction_factor * p->geometry.wcorr;
   }
 
   /* compute primitive variables */
@@ -376,8 +375,8 @@ __attribute__((always_inline)) INLINE static void hydro_end_density(
 
   /* Add a correction factor to wcount (to force a neighbour number increase if
      the geometry matrix is close to singular) */
-  p->density.wcount *= hydro_part_get_wcorr(p);
-  p->density.wcount_dh *= hydro_part_get_wcorr(p);
+  p->density.wcount *= p->geometry.wcorr;
+  p->density.wcount_dh *= p->geometry.wcorr;
 }
 
 /**
@@ -409,12 +408,9 @@ __attribute__((always_inline)) INLINE static void hydro_part_has_no_neighbours(
   p->geometry.matrix_E[2][0] = 0.0f;
   p->geometry.matrix_E[2][1] = 0.0f;
   p->geometry.matrix_E[2][2] = 1.0f;
-  /* centroid is relative w.r.t. particle position */
-  /* by setting the centroid to 0.0f, we make sure no velocity correction is
-     applied */
-  p->geometry.centroid[0] = 0.0f;
-  p->geometry.centroid[1] = 0.0f;
-  p->geometry.centroid[2] = 0.0f;
+
+  /* reset the centroid to disable MFV velocity corrections for this particle */
+  hydro_velocities_reset_centroids(p);
 }
 
 /**
@@ -730,18 +726,15 @@ __attribute__((always_inline)) INLINE static void hydro_kick_extra(
 #endif
 
 #ifndef HYDRO_GAMMA_5_3
-  float gradP[3];
-  hydro_part_get_pressure_gradient(p, gradP);
-  float W[5];
-  hydro_part_get_primitive_variables(p, W);
 
   const float Pcorr = (dt_hydro - dt_therm) * p->geometry.volume;
-  p->conserved.momentum[0] -= Pcorr * gradP[0];
-  p->conserved.momentum[1] -= Pcorr * gradP[1];
-  p->conserved.momentum[2] -= Pcorr * gradP[2];
+  p->conserved.momentum[0] -= Pcorr * p->gradients.P[0];
+  p->conserved.momentum[1] -= Pcorr * p->gradients.P[1];
+  p->conserved.momentum[2] -= Pcorr * p->gradients.P[2];
 #ifdef GIZMO_TOTAL_ENERGY
-  p->conserved.energy -=
-      Pcorr * (W[1] * gradP[0] + W[2] * gradP[1] + W[3] * gradP[2]);
+  p->conserved.energy -= Pcorr * (p->fluid_v[0] * p->gradients.P[0] +
+                                  p->fluid_v[1] * p->gradients.P[1] +
+                                  p->fluid_v[2] * p->gradients.P[2]);
 #endif
 #endif
 
@@ -805,7 +798,7 @@ __attribute__((always_inline)) INLINE static void hydro_kick_extra(
 #endif
 
   /* reset wcorr */
-  hydro_part_set_wcorr(p, 1.0f);
+  p->geometry.wcorr = 1.0f;
 }
 
 /**

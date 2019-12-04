@@ -158,9 +158,6 @@ struct part {
        gradients */
     float matrix_E[3][3];
 
-    /* Centroid of the "cell". */
-    float centroid[3];
-
     /* Correction factor for wcount. */
     float wcorr;
 

@@ -151,13 +151,9 @@ nobase_noinst_HEADERS = align.h approx_math.h atomic.h barrier.h cycle.h error.h
                  hydro/Gizmo/MFV/hydro_debug.h \
                  hydro/Gizmo/MFV/hydro_part.h \
                  hydro/Gizmo/MFV/hydro_velocities.h \
-                 hydro/Gizmo/MFV/hydro_getters.h \
-                 hydro/Gizmo/MFV/hydro_setters.h \
                  hydro/Gizmo/MFV/hydro_flux.h \
                  hydro/Gizmo/MFM/hydro_debug.h \
                  hydro/Gizmo/MFM/hydro_part.h \
-                 hydro/Gizmo/MFM/hydro_getters.h \
-                 hydro/Gizmo/MFM/hydro_setters.h \
                  hydro/Gizmo/MFM/hydro_flux.h \
                  hydro/Gizmo/MFM/hydro_velocities.h \
                  hydro/Shadowswift/hydro_debug.h \

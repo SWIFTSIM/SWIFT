@@ -69,9 +69,7 @@ __attribute__((always_inline)) INLINE static void runner_iact_density(
     for (int l = 0; l < 3; l++)
       pi->geometry.matrix_E[k][l] += dx[k] * dx[l] * wi;
 
-  pi->geometry.centroid[0] -= dx[0] * wi;
-  pi->geometry.centroid[1] -= dx[1] * wi;
-  pi->geometry.centroid[2] -= dx[2] * wi;
+  hydro_velocities_update_centroid_left(pi, dx, wi);
 
   /* Compute density of pj. */
   const float hj_inv = 1.0f / hj;
@@ -87,9 +85,7 @@ __attribute__((always_inline)) INLINE static void runner_iact_density(
     for (int l = 0; l < 3; l++)
       pj->geometry.matrix_E[k][l] += dx[k] * dx[l] * wj;
 
-  pj->geometry.centroid[0] += dx[0] * wj;
-  pj->geometry.centroid[1] += dx[1] * wj;
-  pj->geometry.centroid[2] += dx[2] * wj;
+  hydro_velocities_update_centroid_right(pi, dx, wi);
 }
 
 /**
@@ -135,9 +131,7 @@ __attribute__((always_inline)) INLINE static void runner_iact_nonsym_density(
     for (int l = 0; l < 3; l++)
       pi->geometry.matrix_E[k][l] += dx[k] * dx[l] * wi;
 
-  pi->geometry.centroid[0] -= dx[0] * wi;
-  pi->geometry.centroid[1] -= dx[1] * wi;
-  pi->geometry.centroid[2] -= dx[2] * wi;
+  hydro_velocities_update_centroid_left(pi, dx, wi);
 }
 
 /**
