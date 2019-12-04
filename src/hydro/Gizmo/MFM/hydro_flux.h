@@ -120,4 +120,77 @@ hydro_part_update_fluxes_right(struct part* restrict p, const float* fluxes,
 #endif
 }
 
+/**
+ * @brief Get the drift term for the density based on the mass flux.
+ *
+ * @param mass_flux Current mass flux for the particle.
+ * @param dt Drift time step (in co-moving units).
+ * @param volume Volume of the particle.
+ * @return 0, since this is Gizmo MFM.
+ */
+__attribute__((always_inline)) INLINE static float
+hydro_gizmo_mfv_density_drift_term(const float mass_flux, const float dt,
+                                   const float volume) {
+  return 0.0f;
+}
+
+/**
+ * @brief Add the gravitational contribution to the fluid velocity drift.
+ *
+ * This method does nothing, since this is Gizmo MFM.
+ *
+ * @param fluid_v Fluid velocity.
+ * @param v (Undrifted) particle velocity.
+ * @param v_full (Drifted) particle velocity.
+ */
+__attribute__((always_inline)) INLINE static void
+hydro_gizmo_mfv_extra_velocity_drift(float* fluid_v, const float* v,
+                                     const float* v_full) {}
+
+/**
+ * @brief Get the term required to update the MFV energy due to the change in
+ * gravitational energy.
+ *
+ * @param dt_kick_corr Time step for the potential energy correction.
+ * @param dt_grav Time step for the (optional) kinetic energy correction.
+ * @param p Particle.
+ * @param momentum Momentum of the particle, explicitly requested so that it is
+ * clear from the code that the momentum needs to be updated after the call to
+ * this function.
+ * @param a_grav Gravitational acceleration.
+ * @return 0, since this is Gizmo MFM.
+ */
+__attribute__((always_inline)) INLINE static float
+hydro_gizmo_mfv_gravity_energy_update_term(const float dt_kick_corr,
+                                           const float dt_grav,
+                                           const struct part* restrict p,
+                                           const float* momentum,
+                                           const float* a_grav) {
+
+  return 0.0f;
+}
+
+/**
+ * @brief Get the term required to update the MFV mass due to the mass flux.
+ *
+ * @param mass_flux Mass flux rate.
+ * @param dt Time step (in comoving units).
+ * @return 0, since this is Gizmo MFM.
+ */
+__attribute__((always_inline)) INLINE static float
+hydro_gizmo_mfv_mass_update_term(const float mass_flux, const float dt) {
+  return 0.0f;
+}
+
+/**
+ * @brief Update the mass of the gpart associated with the given particle after
+ * the mass has been updated with the hydrodynamical mass flux.
+ *
+ * This function does nothing, since this is Gizmo MFM.
+ *
+ * @param p Particle.
+ */
+__attribute__((always_inline)) INLINE static void
+hydro_gizmo_mfv_update_gpart_mass(struct part* restrict p) {}
+
 #endif /* SWIFT_GIZMO_MFM_HYDRO_FLUX_H */

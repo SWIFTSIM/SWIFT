@@ -594,12 +594,8 @@ __attribute__((always_inline)) INLINE static void hydro_predict_extra(
   float flux[5];
   hydro_part_get_fluxes(p, flux);
 
-#if defined(GIZMO_MFV_SPH)
-  /* drift the primitive variables based on the old fluxes */
-  if (p->geometry.volume > 0.0f) {
-    W[0] += flux[0] * dt_therm / p->geometry.volume;
-  }
-#endif
+  W[0] +=
+      hydro_gizmo_mfv_density_drift_term(flux[0], dt_therm, p->geometry.volume);
 
   if (p->conserved.mass > 0.0f) {
     const float m_inv = 1.0f / p->conserved.mass;
@@ -620,15 +616,11 @@ __attribute__((always_inline)) INLINE static void hydro_predict_extra(
 #endif
   }
 
-    // MATTHIEU: Apply the entropy floor here.
+  // MATTHIEU: Apply the entropy floor here.
 
-#if defined(GIZMO_MFV_SPH)
-  /* we use a sneaky way to get the gravitational contribution to the
-     velocity update */
-  W[1] += p->v[0] - xp->v_full[0];
-  W[2] += p->v[1] - xp->v_full[1];
-  W[3] += p->v[2] - xp->v_full[2];
-#endif
+  /* add the gravitational contribution to the fluid velocity drift */
+  /* (MFV only) */
+  hydro_gizmo_mfv_extra_velocity_drift(&W[1], p->v, xp->v_full);
 
   gizmo_check_physical_quantities("density", "pressure", W[0], W[1], W[2], W[3],
                                   W[4]);
@@ -686,11 +678,8 @@ __attribute__((always_inline)) INLINE static void hydro_kick_extra(
     a_grav[1] = p->gpart->a_grav[1];
     a_grav[2] = p->gpart->a_grav[2];
 
-#if defined(GIZMO_TOTAL_ENERGY) && defined(GIZMO_MFV_SPH)
-    p->conserved.energy += dt_grav * (p->conserved.momentum[0] * a_grav[0] +
-                                      p->conserved.momentum[1] * a_grav[1] +
-                                      p->conserved.momentum[2] * a_grav[2]);
-#endif
+    p->conserved.energy += hydro_gizmo_mfv_gravity_energy_update_term(
+        dt_kick_corr, dt_grav, p, p->conserved.momentum, a_grav);
 
     /* Kick the momentum for half a time step */
     /* Note that this also affects the particle movement, as the velocity for
@@ -698,22 +687,13 @@ __attribute__((always_inline)) INLINE static void hydro_kick_extra(
     p->conserved.momentum[0] += p->conserved.mass * a_grav[0] * dt_grav;
     p->conserved.momentum[1] += p->conserved.mass * a_grav[1] * dt_grav;
     p->conserved.momentum[2] += p->conserved.mass * a_grav[2] * dt_grav;
-
-#if defined(GIZMO_MFV_SPH)
-    p->conserved.energy -=
-        0.5f * dt_kick_corr *
-        (p->gravity.mflux[0] * a_grav[0] + p->gravity.mflux[1] * a_grav[1] +
-         p->gravity.mflux[2] * a_grav[2]);
-#endif
   }
 
   float flux[5];
   hydro_part_get_fluxes(p, flux);
 
   /* Update conserved variables. */
-#if defined(GIZMO_MFV_SPH)
-  p->conserved.mass += flux[0] * dt_therm;
-#endif
+  p->conserved.mass += hydro_gizmo_mfv_mass_update_term(flux[0], dt_therm);
   p->conserved.momentum[0] += flux[1] * dt_therm;
   p->conserved.momentum[1] += flux[2] * dt_therm;
   p->conserved.momentum[2] += flux[3] * dt_therm;
@@ -769,13 +749,7 @@ __attribute__((always_inline)) INLINE static void hydro_kick_extra(
   }
 #endif
 
-#if defined(GIZMO_MFV_SPH)
-  if (p->gpart) {
-    /* Make sure the gpart knows the mass has changed. */
-    p->gpart->mass = p->conserved.mass;
-  }
-#endif
-
+  hydro_gizmo_mfv_update_gpart_mass(p);
   hydro_velocities_set(p, xp);
 
 #ifdef GIZMO_LLOYD_ITERATION
