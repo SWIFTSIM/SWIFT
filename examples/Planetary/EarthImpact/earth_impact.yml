@@ -8,24 +8,22 @@ InternalUnitSystem:
 
 # Parameters related to the initial conditions
 InitialConditions:      
-    file_name:  uranus_1e6.hdf5         # The initial conditions file to read
+    file_name:  earth_impact.hdf5       # The initial conditions file to read
     periodic:   0                       # Are we running with periodic ICs?
 
 # Parameters governing the time integration
 TimeIntegration:
     time_begin:     0                   # The starting time of the simulation (in internal units).
-    time_end:       40000               # The end time of the simulation (in internal units).
+    time_end:       36000               # The end time of the simulation (in internal units).
     dt_min:         0.0001              # The minimal time-step size of the simulation (in internal units).
-    dt_max:         100                 # The maximal time-step size of the simulation (in internal units).
+    dt_max:         1000                # The maximal time-step size of the simulation (in internal units).
 
 # Parameters governing the snapshots
 Snapshots:
-    basename:           uranus_1e6      # Common part of the name of output files
+    basename:           earth_impact    # Common part of the name of output files
     time_first:         0               # Time of the first output (in internal units)
     delta_time:         1000            # Time difference between consecutive outputs (in internal units)
     int_time_label_on:  1               # Enable to label the snapshots using the time rounded to an integer (in internal units)
-    output_list_on:     1               # Enable the output list
-    output_list:        output_list.txt # File containing the output times (see documentation in "Parameter File" section)
 
 # Parameters governing the conserved quantities statistics
 Statistics:
@@ -41,7 +39,7 @@ SPH:
     resolution_eta:     1.2348          # Target smoothing length in units of the mean inter-particle separation (1.2348 == 48Ngbs with the cubic spline kernel).
     delta_neighbours:   0.1             # The tolerance for the targetted number of neighbours.
     CFL_condition:      0.2             # Courant-Friedrich-Levy condition for time integration.
-    h_max:              0.5             # Maximal allowed smoothing length (in internal units).
+    h_max:              0.2             # Maximal allowed smoothing length (in internal units).
     viscosity_alpha:    1.5             # Override for the initial value of the artificial viscosity.
 
 # Parameters for the self-gravity scheme
@@ -53,11 +51,8 @@ Gravity:
 
 # Parameters for the task scheduling
 Scheduler:
-    max_top_level_cells:    64          # Maximal number of top-level cells in any dimension. The nu
+    max_top_level_cells:    16          # Maximal number of top-level cells in any dimension. The nu
 
 # Parameters related to the equation of state
 EoS:
-    planetary_use_HM80:             1   # Whether to initialise the Hubbard & MacFarlane (1980) EOS
-    planetary_HM80_HHe_table_file:  ../EoSTables/HM80_HHe.txt
-    planetary_HM80_ice_table_file:  ../EoSTables/HM80_ice.txt
-    planetary_HM80_rock_table_file: ../EoSTables/HM80_rock.txt
+    planetary_use_Til:  1               # Whether to initialise the Tillotson EOS

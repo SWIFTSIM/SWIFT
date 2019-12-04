@@ -1,9 +1,8 @@
 input:
-  - uranus_1e6.yml
-  - output_list.txt
+  - earth_impact.yml
 
 output:
-  - uranus_1e6.pdf
+  - earth_impact.pdf
 
 swift_parameters:   -s -G
 swift_threads:      8
