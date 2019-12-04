@@ -158,10 +158,19 @@ struct cosmology {
   double w_a;
 
   /*! Log of starting expansion factor */
-  double log_a_table_begin;
+  double log_a_begin;
 
   /*! Log of final expansion factor */
+  double log_a_end;
+
+  /*! Log of starting expansion factor of the interpolation tables */
+  double log_a_table_begin;
+
+  /*! Log of final expansion factor of the interpolation tables */
   double log_a_table_end;
+
+  /*! Scale-factor interpolation table */
+  double *log_a_interp_table;
 
   /*! Drift factor interpolation table */
   double *drift_fac_interp_table;
