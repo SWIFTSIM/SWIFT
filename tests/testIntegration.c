@@ -100,77 +100,68 @@ int main(int argc, char *argv[]) {
       gsl_integration_workspace_alloc(workspace_size);
   gsl_function F = {&drift_integrand, &cosmo};
 
-  const int num_steps = (1LL << 14);
-  const integertime_t time_step_size = max_nr_timesteps / num_steps;
+  /* Loop over all the reasonable time-bins */
+  for (int bin = 6; bin < 23; ++bin) {
 
-  double min_err = 0.;
-  double max_err = 0.;
-  double sum_err = 0.;
-  double sum_integral = 0.;
-  integertime_t ti_min = 0;
-  integertime_t ti_max = 0;
+    const int num_steps = (1LL << bin);
+    const integertime_t time_step_size = max_nr_timesteps / num_steps;
 
-  message("Testing %d steps", num_steps);
+    double min_err = 0.;
+    double max_err = 0.;
+    double sum_err = 0.;
+    integertime_t ti_min = 0;
+    integertime_t ti_max = 0;
 
-  /* Cycle through the time-steps */
-  for (integertime_t ti = 0; ti < max_nr_timesteps; ti += time_step_size) {
+    message("Testing %d steps", num_steps);
 
-    const integertime_t ti_beg = ti;
-    const integertime_t ti_end = min(ti + time_step_size, max_nr_timesteps - 1);
+    /* Cycle through the time-steps */
+    for (integertime_t ti = 0; ti < max_nr_timesteps; ti += time_step_size) {
 
-    const double a_beg = cosmology_get_scale_factor(&cosmo, ti_beg);
-    const double a_end = cosmology_get_scale_factor(&cosmo, ti_end);
+      const integertime_t ti_beg = ti;
+      const integertime_t ti_end =
+          min(ti + time_step_size, max_nr_timesteps - 1);
 
-    /* Get the drift factor from SWIFT */
-    const double swift_drift_fac =
-        cosmology_get_drift_factor(&cosmo, ti, ti + time_step_size);
+      const double a_beg = cosmology_get_scale_factor(&cosmo, ti_beg);
+      const double a_end = cosmology_get_scale_factor(&cosmo, ti_end);
 
-    /* Get the exact drift factor */
-    double exact_drift_fac, abserr;
-    gsl_integration_qag(&F, a_beg, a_end, 0, 1.0e-10, workspace_size,
-                        GSL_INTEG_GAUSS61, workspace, &exact_drift_fac,
-                        &abserr);
+      /* Get the drift factor from SWIFT */
+      const double swift_drift_fac =
+          cosmology_get_drift_factor(&cosmo, ti, ti + time_step_size);
 
-    const double rel_err = 0.5 * (swift_drift_fac - exact_drift_fac) /
-                           (swift_drift_fac + exact_drift_fac);
+      /* Get the exact drift factor */
+      double exact_drift_fac = 0., abserr;
+      gsl_integration_qag(&F, a_beg, a_end, 0, 1.0e-10, workspace_size,
+                          GSL_INTEG_GAUSS61, workspace, &exact_drift_fac,
+                          &abserr);
 
-    if (rel_err > max_err) {
-      max_err = rel_err;
-      ti_max = ti;
+      const double rel_err = 0.5 * (swift_drift_fac - exact_drift_fac) /
+                             (swift_drift_fac + exact_drift_fac);
+
+      if (rel_err > max_err) {
+        max_err = rel_err;
+        ti_max = ti;
+      }
+
+      if (rel_err < min_err) {
+        min_err = rel_err;
+        ti_min = ti;
+      }
+
+      sum_err += fabs(rel_err);
     }
 
-    if (rel_err < min_err) {
-      min_err = rel_err;
-      ti_min = ti;
-    }
+    message("Max  error: %14e at a=[%.9f %.9f] ", max_err,
+            cosmology_get_scale_factor(&cosmo, ti_max),
+            cosmology_get_scale_factor(&cosmo, ti_max + time_step_size));
+    message("Min  error: %14e at a=[%.9f %.9f]", min_err,
+            cosmology_get_scale_factor(&cosmo, ti_min),
+            cosmology_get_scale_factor(&cosmo, ti_min + time_step_size));
+    message("Sum  error: %14e", sum_err);
+    message("Mean error: %14e", sum_err / num_steps);
 
-    sum_integral += exact_drift_fac;
-    sum_err += fabs(rel_err);
-
-    /* message("a_beg=%.6f a_end=%.6f SWIFT=%.9f exact=%.9f err=%.9f", */
-    /* 	    a_beg, a_end, swift_drift_fac, exact_drift_fac, rel_err); */
+    if (max_err > 1e-8 || min_err < -1e-8)
+      error("Error too large to be acceptable");
   }
-
-  message("Max  error: %14e at a=[%.9f %.9f] ", max_err,
-          cosmology_get_scale_factor(&cosmo, ti_max),
-          cosmology_get_scale_factor(&cosmo, ti_max + time_step_size));
-  message("Min  error: %14e at a=[%.9f %.9f]", min_err,
-          cosmology_get_scale_factor(&cosmo, ti_min),
-          cosmology_get_scale_factor(&cosmo, ti_min + time_step_size));
-  message("Sum  error: %14e", sum_err);
-  message("Mean error: %14e", sum_err / num_steps);
-
-  /* Get the exact drift factor */
-  const double a_total_beg = cosmology_get_scale_factor(&cosmo, 0);
-  const double a_total_end =
-      cosmology_get_scale_factor(&cosmo, max_nr_timesteps);
-  double exact_total_drift_fac, abserr;
-  gsl_integration_qag(&F, a_total_beg, a_total_end, 0, 1.0e-10, workspace_size,
-                      GSL_INTEG_GAUSS61, workspace, &exact_total_drift_fac,
-                      &abserr);
-
-  message("Integrated exact fac: %.9f", exact_total_drift_fac);
-  message("Integrated SWIFT fac: %.9f", sum_integral);
 
 #ifdef HAVE_LIBGSL
 
