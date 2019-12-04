@@ -545,7 +545,8 @@ static long long cell_count_non_inhibited_black_holes(const struct cell* c) {
   return count;
 }
 
-void io_write_cell_offsets(hid_t h_grp, const int cdim[3],
+void io_write_cell_offsets(hid_t h_grp, const int cdim[3], const double dim[3],
+                           const double pos_dithering[3],
                            const struct cell* cells_top, const int nr_cells,
                            const double width[3], const int nodeID,
                            const long long global_counts[swift_type_count],
@@ -600,6 +601,17 @@ void io_write_cell_offsets(hid_t h_grp, const int cdim[3],
       centres[i * 3 + 0] = cells_top[i].loc[0] + cell_width[0] * 0.5;
       centres[i * 3 + 1] = cells_top[i].loc[1] + cell_width[1] * 0.5;
       centres[i * 3 + 2] = cells_top[i].loc[2] + cell_width[2] * 0.5;
+
+      /* Undo the dithering since the particles will have this vector applied to
+       * them */
+      centres[i * 3 + 0] = centres[i * 3 + 0] - pos_dithering[0];
+      centres[i * 3 + 1] = centres[i * 3 + 1] - pos_dithering[1];
+      centres[i * 3 + 2] = centres[i * 3 + 2] - pos_dithering[2];
+
+      /* Finish by box wrapping to match what is done to the particles */
+      centres[i * 3 + 0] = box_wrap(centres[i * 3 + 0], 0.0, dim[0]);
+      centres[i * 3 + 1] = box_wrap(centres[i * 3 + 1], 0.0, dim[1]);
+      centres[i * 3 + 2] = box_wrap(centres[i * 3 + 2], 0.0, dim[2]);
 
       /* Count real particles that will be written */
       count_part[i] = cell_count_non_inhibited_gas(&cells_top[i]);
