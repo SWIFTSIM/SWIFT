@@ -29,7 +29,6 @@
 #include <gsl/gsl_integration.h>
 #endif
 
-
 static INLINE double w_tilde(double a, double w0, double wa) {
   return (a - 1.) * wa - (1. + w0 + wa) * log(a);
 }
@@ -58,8 +57,7 @@ static INLINE double drift_integrand(double a, void *param) {
   return (1. / H) * a_inv * a_inv * a_inv;
 }
 
-
-int main(int argc, char* argv[]) {
+int main(int argc, char *argv[]) {
 
   /* Initialize CPU frequency, this also starts time. */
   unsigned long long cpufreq = 0;
@@ -69,12 +67,13 @@ int main(int argc, char* argv[]) {
 #ifdef HAVE_FE_ENABLE_EXCEPT
   feenableexcept(FE_DIVBYZERO | FE_INVALID | FE_OVERFLOW);
 #endif
-  
-  /* Fake parameter file with Planck+13 cosmology 
+
+  /* Fake parameter file with Planck+13 cosmology
    * and the usual cosmological system of units */
   struct swift_params *params = malloc(sizeof(struct swift_params));
   parser_set_param(params, "InternalUnitSystem:UnitMass_in_cgs:1.98848e43");
-  parser_set_param(params, "InternalUnitSystem:UnitLength_in_cgs:3.08567758e24");
+  parser_set_param(params,
+                   "InternalUnitSystem:UnitLength_in_cgs:3.08567758e24");
   parser_set_param(params, "InternalUnitSystem:UnitVelocity_in_cgs:1e5");
   parser_set_param(params, "InternalUnitSystem:UnitCurrent_in_cgs:1.");
   parser_set_param(params, "InternalUnitSystem:UnitTemp_in_cgs:1.");
@@ -91,14 +90,14 @@ int main(int argc, char* argv[]) {
 
   struct phys_const phys_const;
   phys_const_init(&units, params, &phys_const);
-  
+
   struct cosmology cosmo;
   cosmology_init(params, &units, &phys_const, &cosmo);
 
   /* Initalise the GSL workspace */
   size_t workspace_size = 100000;
   gsl_integration_workspace *workspace =
-    gsl_integration_workspace_alloc(workspace_size);
+      gsl_integration_workspace_alloc(workspace_size);
   gsl_function F = {&drift_integrand, &cosmo};
 
   const int num_steps = (1LL << 14);
@@ -111,28 +110,29 @@ int main(int argc, char* argv[]) {
   integertime_t ti_min = 0;
   integertime_t ti_max = 0;
 
-  message("%lld", max_nr_timesteps);
-  
+  message("Testing %d steps", num_steps);
+
   /* Cycle through the time-steps */
   for (integertime_t ti = 0; ti < max_nr_timesteps; ti += time_step_size) {
 
     const integertime_t ti_beg = ti;
-    const integertime_t ti_end = min(ti + time_step_size, max_nr_timesteps - 1) ;
-    
+    const integertime_t ti_end = min(ti + time_step_size, max_nr_timesteps - 1);
+
     const double a_beg = cosmology_get_scale_factor(&cosmo, ti_beg);
     const double a_end = cosmology_get_scale_factor(&cosmo, ti_end);
 
     /* Get the drift factor from SWIFT */
     const double swift_drift_fac =
-      cosmology_get_drift_factor(&cosmo, ti, ti + time_step_size);
+        cosmology_get_drift_factor(&cosmo, ti, ti + time_step_size);
 
     /* Get the exact drift factor */
     double exact_drift_fac, abserr;
     gsl_integration_qag(&F, a_beg, a_end, 0, 1.0e-10, workspace_size,
-                        GSL_INTEG_GAUSS61, workspace, &exact_drift_fac, &abserr);
+                        GSL_INTEG_GAUSS61, workspace, &exact_drift_fac,
+                        &abserr);
 
     const double rel_err = 0.5 * (swift_drift_fac - exact_drift_fac) /
-      (swift_drift_fac + exact_drift_fac);
+                           (swift_drift_fac + exact_drift_fac);
 
     if (rel_err > max_err) {
       max_err = rel_err;
@@ -146,26 +146,28 @@ int main(int argc, char* argv[]) {
 
     sum_integral += exact_drift_fac;
     sum_err += fabs(rel_err);
-    
+
     /* message("a_beg=%.6f a_end=%.6f SWIFT=%.9f exact=%.9f err=%.9f", */
     /* 	    a_beg, a_end, swift_drift_fac, exact_drift_fac, rel_err); */
   }
 
   message("Max  error: %14e at a=[%.9f %.9f] ", max_err,
-	  cosmology_get_scale_factor(&cosmo, ti_max),
-  	  cosmology_get_scale_factor(&cosmo, ti_max + time_step_size));
+          cosmology_get_scale_factor(&cosmo, ti_max),
+          cosmology_get_scale_factor(&cosmo, ti_max + time_step_size));
   message("Min  error: %14e at a=[%.9f %.9f]", min_err,
-	  cosmology_get_scale_factor(&cosmo, ti_min),
-	  cosmology_get_scale_factor(&cosmo, ti_min + time_step_size));
+          cosmology_get_scale_factor(&cosmo, ti_min),
+          cosmology_get_scale_factor(&cosmo, ti_min + time_step_size));
   message("Sum  error: %14e", sum_err);
   message("Mean error: %14e", sum_err / num_steps);
-  
+
   /* Get the exact drift factor */
   const double a_total_beg = cosmology_get_scale_factor(&cosmo, 0);
-  const double a_total_end = cosmology_get_scale_factor(&cosmo, max_nr_timesteps);
+  const double a_total_end =
+      cosmology_get_scale_factor(&cosmo, max_nr_timesteps);
   double exact_total_drift_fac, abserr;
   gsl_integration_qag(&F, a_total_beg, a_total_end, 0, 1.0e-10, workspace_size,
-		      GSL_INTEG_GAUSS61, workspace, &exact_total_drift_fac, &abserr);
+                      GSL_INTEG_GAUSS61, workspace, &exact_total_drift_fac,
+                      &abserr);
 
   message("Integrated exact fac: %.9f", exact_total_drift_fac);
   message("Integrated SWIFT fac: %.9f", sum_integral);
@@ -173,8 +175,7 @@ int main(int argc, char* argv[]) {
 #ifdef HAVE_LIBGSL
 
   return 0;
-#else 
+#else
   return 0;
 #endif
-} 
-
+}
