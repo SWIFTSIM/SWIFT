@@ -909,6 +909,8 @@ void cell_activate_stars_sorts(struct cell *c, int sid, struct scheduler *s);
 void cell_activate_limiter(struct cell *c, struct scheduler *s);
 void cell_activate_hydro_send_recv_tasks(struct cell *ci, struct cell *cj,
                                          struct scheduler *s);
+void cell_activate_grav_send_recv_tasks(struct cell *ci, struct cell *cj,
+                                        struct scheduler *s);
 void cell_activate_stars_send_recv_tasks(struct cell *ci, struct cell *cj,
                                          struct scheduler *s,
                                          const int with_star_formation);

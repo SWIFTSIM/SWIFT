@@ -482,56 +482,12 @@ void engine_marktasks_mapper(void *map_data, int num_elements,
       /* Only interested in gravity tasks as of here. */
       else if (t_subtype == task_subtype_grav) {
 #ifdef WITH_MPI
-        /* Activate the send/recv tasks. */
+        /* Activate the gravity send/recv tasks if either of the cells are
+         * non-local. */
         if (!ci_is_local) {
-          /* If the local cell is active, receive data from the foreign cell. */
-          if (cj_active_gravity)
-            scheduler_activate_recv(s, ci->mpi.recv, task_subtype_gpart);
-
-          /* If the foreign cell is active, we want its ti_end values. */
-          if (ci_active_gravity)
-            scheduler_activate_recv(s, ci->mpi.recv, task_subtype_tend_gpart);
-
-          /* Is the foreign cell active and will need stuff from us? */
-          if (ci_active_gravity) {
-            struct link *l = scheduler_activate_send(
-                s, cj->mpi.send, task_subtype_gpart, ci->nodeID);
-
-            /* Drift the cell which will be sent at the level at which it is
-               sent, i.e. drift the cell specified in the send task (l->t)
-               itself. */
-            cell_activate_drift_gpart(l->t->ci, s);
-          }
-
-          /* If the local cell is active, send its ti_end values. */
-          if (cj_active_gravity)
-            scheduler_activate_send(s, cj->mpi.send, task_subtype_tend_gpart,
-                                    ci->nodeID);
-
+          cell_activate_grav_send_recv_tasks(cj, ci, s);
         } else if (!cj_is_local) {
-          /* If the local cell is active, receive data from the foreign cell. */
-          if (ci_active_gravity)
-            scheduler_activate_recv(s, cj->mpi.recv, task_subtype_gpart);
-
-          /* If the foreign cell is active, we want its ti_end values. */
-          if (cj_active_gravity)
-            scheduler_activate_recv(s, cj->mpi.recv, task_subtype_tend_gpart);
-
-          /* Is the foreign cell active and will need stuff from us? */
-          if (cj_active_gravity) {
-            struct link *l = scheduler_activate_send(
-                s, ci->mpi.send, task_subtype_gpart, cj->nodeID);
-
-            /* Drift the cell which will be sent at the level at which it is
-               sent, i.e. drift the cell specified in the send task (l->t)
-               itself. */
-            cell_activate_drift_gpart(l->t->ci, s);
-          }
-
-          /* If the local cell is active, send its ti_end values. */
-          if (ci_active_gravity)
-            scheduler_activate_send(s, ci->mpi.send, task_subtype_tend_gpart,
-                                    cj->nodeID);
+          cell_activate_grav_send_recv_tasks(ci, cj, s);
         }
 #endif
       }
