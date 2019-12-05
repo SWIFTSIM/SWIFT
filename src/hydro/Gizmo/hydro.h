@@ -19,17 +19,20 @@
 #ifndef SWIFT_GIZMO_HYDRO_H
 #define SWIFT_GIZMO_HYDRO_H
 
-//#define GIZMO_LLOYD_ITERATION
-
-#if defined(GIZMO_LLOYD_ITERATION) && !defined(GIZMO_MFV_SPH)
-#error "LLoyd's algorithm only works if you use GIZMO MFV!"
-#endif
+/**
+ * @brief Enable Lloyd's iteration.
+ *
+ * If you enable the flag below, the code will ignore all hydrodynamical
+ * variables and instead run in a mode where
+ */
+/*#define GIZMO_LLOYD_ITERATION*/
 
 #include "approx_math.h"
 #include "entropy_floor.h"
 #include "hydro_flux.h"
 #include "hydro_getters.h"
 #include "hydro_gradients.h"
+#include "hydro_lloyd.h"
 #include "hydro_setters.h"
 #include "hydro_space.h"
 #include "hydro_velocities.h"
@@ -57,9 +60,8 @@ __attribute__((always_inline)) INLINE static float hydro_compute_timestep(
 
   const float CFL_condition = hydro_properties->CFL_condition;
 
-#ifdef GIZMO_LLOYD_ITERATION
-  return CFL_condition;
-#endif
+  /* skip the time step calculation if we are using Lloyd's algorithm */
+  hydro_gizmo_lloyd_skip_timestep(CFL_condition);
 
   float W[5];
   hydro_part_get_primitive_variables(p, W);
@@ -150,24 +152,8 @@ __attribute__((always_inline)) INLINE static void hydro_first_init_part(
   Q[4] += 0.5f * (Q[1] * W[1] + Q[2] * W[2] + Q[3] * W[3]);
 #endif
 
-#ifdef GIZMO_LLOYD_ITERATION
-  /* overwrite all variables to make sure they have safe values */
-  W[0] = 1.0f;
-  W[1] = 0.0f;
-  W[2] = 0.0f;
-  W[3] = 0.0f;
-  W[4] = 1.0f;
-
-  Q[0] = 1.0f;
-  Q[1] = 0.0f;
-  Q[2] = 0.0f;
-  Q[3] = 0.0f;
-  Q[4] = 1.0f;
-
-  p->v[0] = 0.0f;
-  p->v[1] = 0.0f;
-  p->v[2] = 0.0f;
-#endif
+  /* overwrite all hydro variables if we are using Lloyd's algorithm */
+  hydro_gizmo_lloyd_initialize_particle(W, Q, p->v);
 
   p->time_bin = 0;
 
@@ -362,14 +348,8 @@ __attribute__((always_inline)) INLINE static void hydro_end_density(
   gizmo_check_physical_quantities("density", "pressure", W[0], W[1], W[2], W[3],
                                   W[4]);
 
-#ifdef GIZMO_LLOYD_ITERATION
-  /* overwrite primitive variables to make sure they still have safe values */
-  W[0] = 1.0f;
-  W[1] = 0.0f;
-  W[2] = 0.0f;
-  W[3] = 0.0f;
-  W[4] = 1.0f;
-#endif
+  /* reset the primitive variables if we are using Lloyd's algorithm */
+  hydro_gizmo_lloyd_reset_primitive_variables(W);
 
   hydro_part_set_primitive_variables(p, W);
 
@@ -467,10 +447,8 @@ __attribute__((always_inline)) INLINE static void hydro_end_gradient(
 
   hydro_gradients_finalize(p);
 
-#ifdef GIZMO_LLOYD_ITERATION
-  /* reset the gradients to zero, as we don't want them */
-  hydro_gradients_init(p);
-#endif
+  /* reset the gradients if we are using Lloyd's algorith; we don't use them */
+  hydro_gizmo_lloyd_reset_gradients(p);
 }
 
 /**
@@ -562,9 +540,8 @@ __attribute__((always_inline)) INLINE static void hydro_predict_extra(
     const struct cosmology* cosmo, const struct hydro_props* hydro_props,
     const struct entropy_floor_properties* floor_props) {
 
-#ifdef GIZMO_LLOYD_ITERATION
-  return;
-#endif
+  /* skip the drift if we are using Lloyd's algorithm */
+  hydro_gizmo_lloyd_skip_drift();
 
   const float h_inv = 1.0f / p->h;
 
@@ -645,6 +622,9 @@ __attribute__((always_inline)) INLINE static void hydro_end_force(
     struct part* p, const struct cosmology* cosmo) {
 
   hydro_velocities_end_force(p);
+
+  /* Reset force variables if we are using Lloyd's algorithm. */
+  hydro_gizmo_lloyd_end_force(p);
 }
 
 /**
@@ -752,24 +732,8 @@ __attribute__((always_inline)) INLINE static void hydro_kick_extra(
   hydro_gizmo_mfv_update_gpart_mass(p);
   hydro_velocities_set(p, xp);
 
-#ifdef GIZMO_LLOYD_ITERATION
-  /* reset conserved variables to safe values */
-  p->conserved.mass = 1.;
-  p->conserved.momentum[0] = 0.;
-  p->conserved.momentum[1] = 0.;
-  p->conserved.momentum[2] = 0.;
-  p->conserved.energy = 1.;
-
-  /* set the particle velocities to the Lloyd velocities */
-  /* note that centroid is the relative position of the centroid w.r.t. the
-     particle position (position - centroid) */
-  xp->v_full[0] = -p->geometry.centroid[0] / p->force.dt;
-  xp->v_full[1] = -p->geometry.centroid[1] / p->force.dt;
-  xp->v_full[2] = -p->geometry.centroid[2] / p->force.dt;
-  p->v[0] = xp->v_full[0];
-  p->v[1] = xp->v_full[1];
-  p->v[2] = xp->v_full[2];
-#endif
+  /* undo the flux exchange and kick the particles towards their centroid */
+  hydro_gizmo_lloyd_kick(p, xp, dt_therm);
 
   /* reset wcorr */
   p->geometry.wcorr = 1.0f;
