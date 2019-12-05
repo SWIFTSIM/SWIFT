@@ -109,9 +109,9 @@ void *logger_particle_read_field(struct logger_particle *part, void *map,
     part->mass = 0;
     part->id = 0;
     memcpy(&part->mass, p, sizeof(float));
-    p = (char *) p + sizeof(float);
+    p = (char *)p + sizeof(float);
     memcpy(&part->id, p, sizeof(size_t));
-    p = (char *) p - sizeof(float);
+    p = (char *)p - sizeof(float);
     free(p);
   }
 
@@ -149,7 +149,7 @@ size_t logger_particle_read(struct logger_particle *part,
   logger_particle_init(part);
 
   /* Read the record's mask. */
-  map = logger_loader_io_read_mask(h, (char *) map + offset, &mask, &h_offset);
+  map = logger_loader_io_read_mask(h, (char *)map + offset, &mask, &h_offset);
 
   /* Check that the mask is meaningful */
   if (mask > (unsigned int)(1 << h->masks_count)) {
@@ -178,7 +178,7 @@ size_t logger_particle_read(struct logger_particle *part,
     part->time = -1;
 
   /* update the offset. */
-  offset = (size_t)((char *) map - (char *) reader->log.log.map);
+  offset = (size_t)((char *)map - (char *)reader->log.log.map);
 
   /* Check if an interpolation is required. */
   if (reader_type == logger_reader_const) return offset;
@@ -192,7 +192,7 @@ size_t logger_particle_read(struct logger_particle *part,
   }
 
   /* No next particle. */
-  if (h_offset == 0) return (size_t)((char *) map - (char *) reader->log.log.map);
+  if (h_offset == 0) return (size_t)((char *)map - (char *)reader->log.log.map);
 
   /* get absolute offset of next particle. */
   h_offset += offset - header_get_record_size_from_mask(h, mask) -
