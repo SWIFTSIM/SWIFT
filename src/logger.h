@@ -186,7 +186,7 @@ void logger_struct_restore(struct logger_writer *log, FILE *stream);
  */
 INLINE static void logger_part_data_init(struct logger_part_data *logger) {
   logger->last_offset = 0;
-  logger->steps_since_last_output = INT_MAX;
+  logger->steps_since_last_output = 0; //INT_MAX;
 }
 
 /**

@@ -61,14 +61,14 @@ __attribute__((always_inline)) INLINE static void *logger_loader_io_read_mask(
     *mask = 0;
     memcpy(mask, data, LOGGER_MASK_SIZE);
   }
-  data += LOGGER_MASK_SIZE;
+  data = (char *) data + LOGGER_MASK_SIZE;
 
   /* read offset */
   if (diff_offset) {
     *diff_offset = 0;
     memcpy(diff_offset, data, LOGGER_OFFSET_SIZE);
   }
-  data += LOGGER_OFFSET_SIZE;
+  data = (char *) data + LOGGER_OFFSET_SIZE;
 
   return data;
 }
@@ -85,7 +85,7 @@ __attribute__((always_inline)) INLINE static void *logger_loader_io_read_mask(
 __attribute__((always_inline)) INLINE static void *logger_loader_io_read_data(
     void *data, const size_t size, void *p) {
   memcpy(p, data, size);
-  return data + size;
+  return (char *) data + size;
 };
 
 /**
@@ -101,7 +101,7 @@ __attribute__((always_inline)) INLINE static void *logger_loader_io_write_data(
     void *data, const size_t size, const void *p) {
   memcpy(data, p, size);
 
-  return data + size;
+  return (char *) data + size;
 };
 
 #endif  // LOGGER_LOGGER_LOADER_IO_H
