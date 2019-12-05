@@ -184,14 +184,8 @@ struct cosmology {
   /*! Kick factor (hydro correction) interpolation table (GIZMO-MFV only) */
   double *hydro_kick_corr_interp_table;
 
-  /*! Time interpolation table */
+  /*! Time since Big Bang interpolation table */
   double *time_interp_table;
-
-  /*! Scale factor interpolation table */
-  double *scale_factor_interp_table;
-
-  /*! Time between Big Bang and first entry in the table */
-  double time_interp_table_offset;
 
   /*! Time at the present-day (a=1) */
   double universe_age_at_present_day;
