@@ -101,7 +101,7 @@ int main(int argc, char *argv[]) {
   gsl_function F = {&drift_integrand, &cosmo};
 
   /* Loop over all the reasonable time-bins */
-  for (int bin = 6; bin < 23; ++bin) {
+  for (int bin = 6; bin < 24; ++bin) {
 
     const int num_steps = (1LL << bin);
     const integertime_t time_step_size = max_nr_timesteps / num_steps;
@@ -130,7 +130,7 @@ int main(int argc, char *argv[]) {
 
       /* Get the exact drift factor */
       double exact_drift_fac = 0., abserr;
-      gsl_integration_qag(&F, a_beg, a_end, 0, 1.0e-10, workspace_size,
+      gsl_integration_qag(&F, a_beg, a_end, 0, 1.0e-12, workspace_size,
                           GSL_INTEG_GAUSS61, workspace, &exact_drift_fac,
                           &abserr);
 
