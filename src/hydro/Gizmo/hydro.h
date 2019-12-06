@@ -715,17 +715,19 @@ __attribute__((always_inline)) INLINE static void hydro_kick_extra(
 #ifdef SWIFT_DEBUG_CHECKS
   /* Note that this check will only have effect if no GIZMO_UNPHYSICAL option
      was selected. */
+#ifdef GIZMO_MFV_SPH
   if (p->conserved.mass < 0.) {
     error(
         "Negative mass after conserved variables update (mass: %g, dmass: %g)!",
-        p->conserved.mass, p->conserved.flux.mass);
+        p->conserved.mass, p->flux.mass);
   }
+#endif
 
   if (p->conserved.energy < 0.) {
     error(
         "Negative energy after conserved variables update (energy: %g, "
         "denergy: %g)!",
-        p->conserved.energy, p->conserved.flux.energy);
+        p->conserved.energy, p->flux.energy);
   }
 #endif
 
