@@ -111,6 +111,16 @@ struct bpart {
   /*! Total number of BH merger events (i.e. not including all progenies) */
   int number_of_mergers;
 
+  /*! Union for the last high Eddington ratio point in time */
+  union {
+
+    /*! Last time the BH had a a high Eddington fraction */
+    float last_high_Eddington_fraction_time;
+
+    /*! Last scale factor the BH had a a high Eddington fraction */
+    float last_high_Eddington_fraction_scale_factor;
+  };
+
   /*! Properties used in the feedback loop to distribute to gas neighbours. */
   struct {
 

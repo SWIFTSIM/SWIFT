@@ -171,6 +171,7 @@ EAGLEFeedback:
 EAGLEAGN:
   subgrid_seed_mass_Msun:           1.5e5      # Black hole subgrid mass at creation time in solar masses.
   max_eddington_fraction:           1.5        # Maximal allowed accretion rate in units of the Eddington rate.
+  eddington_fraction_for_recording: 0.1        # Record the last time BHs reached an Eddington ratio above this threshold.
   viscous_alpha:                    1e6        # Normalisation constant of the Bondi viscuous time-scale accretion reduction term
   radiative_efficiency:             0.1        # Fraction of the accreted mass that gets radiated.
   coupling_efficiency:              0.15       # Fraction of the radiated energy that couples to the gas in feedback events.

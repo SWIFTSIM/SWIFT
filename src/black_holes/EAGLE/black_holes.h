@@ -62,6 +62,9 @@ __attribute__((always_inline)) INLINE static void black_holes_first_init_bpart(
   bp->formation_time = -1.f;
   bp->cumulative_number_seeds = 1;
   bp->number_of_mergers = 0;
+  bp->last_high_Eddington_fraction_scale_factor = -1.f;
+
+  black_holes_mark_bpart_as_not_swallowed(&bp->merger_data);
 }
 
 /**
@@ -325,12 +328,14 @@ __attribute__((always_inline)) INLINE static void black_holes_swallow_bpart(
  * @param props The properties of the black hole scheme.
  * @param constants The physical constants (in internal units).
  * @param cosmo The cosmological model.
+ * @param time Time since the start of the simulation (non-cosmo mode).
+ * @param with_cosmology Are we running with cosmology?
  * @param dt The time-step size (in physical internal units).
  */
 __attribute__((always_inline)) INLINE static void black_holes_prepare_feedback(
     struct bpart* restrict bp, const struct black_holes_props* props,
     const struct phys_const* constants, const struct cosmology* cosmo,
-    const double dt) {
+    const double time, const int with_cosmology, const double dt) {
 
   if (dt == 0.) return;
 
@@ -342,6 +347,7 @@ __attribute__((always_inline)) INLINE static void black_holes_prepare_feedback(
 
   /* Gather the parameters of the model */
   const double f_Edd = props->f_Edd;
+  const double f_Edd_recording = props->f_Edd_recording;
   const double epsilon_r = props->epsilon_r;
   const double epsilon_f = props->epsilon_f;
   const double num_ngbs_to_heat = props->num_ngbs_to_heat;
@@ -408,6 +414,15 @@ __attribute__((always_inline)) INLINE static void black_holes_prepare_feedback(
   /* Compute the Eddington rate (internal units) */
   const double Eddington_rate =
       4. * M_PI * G * BH_mass * proton_mass / (epsilon_r * c * sigma_Thomson);
+
+  /* Shall we record this high rate? */
+  if (Bondi_rate > f_Edd_recording * Eddington_rate) {
+    if (with_cosmology) {
+      bp->last_high_Eddington_fraction_scale_factor = cosmo->a;
+    } else {
+      bp->last_high_Eddington_fraction_time = time;
+    }
+  }
 
   /* Limit the accretion rate to the Eddington fraction */
   const double accr_rate = min(Bondi_rate, f_Edd * Eddington_rate);
@@ -554,6 +569,9 @@ INLINE static void black_holes_create_from_gas(
   struct chemistry_bpart_data* bp_chem = &bp->chemistry_data;
   const struct chemistry_part_data* p_chem = &p->chemistry_data;
   chemistry_bpart_from_part(bp_chem, p_chem, gas_mass);
+
+  /* Last time this BH had a high Eddington fraction */
+  bp->last_high_Eddington_fraction_scale_factor = -1.f;
 
   /* First initialisation */
   black_holes_init_bpart(bp);

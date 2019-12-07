@@ -114,7 +114,7 @@ INLINE static void black_holes_write_particles(const struct bpart* bparts,
                                                int with_cosmology) {
 
   /* Say how much we want to write */
-  *num_fields = 14;
+  *num_fields = 15;
 
   /* List what we want to write */
   list[0] = io_make_output_field_convert_bpart(
@@ -180,11 +180,26 @@ INLINE static void black_holes_write_particles(const struct bpart* bparts,
       cumulative_number_seeds,
       "Total number of BH seeds that have merged into this black hole");
 
-  list[13] = io_make_output_field("NumberOfMergers", INT, 1, UNIT_CONV_NO_UNITS,
-                                  0.f, bparts, number_of_mergers,
-                                  "Number of mergers black holes went through. "
-                                  "This does not include the number of mergers "
-                                  "accumulated by any merged black hole.");
+  list[13] =
+      io_make_output_field("NumberOfMergers", INT, 1, UNIT_CONV_NO_UNITS, 0.f,
+                           bparts, number_of_mergers,
+                           "Number of mergers the black holes went through. "
+                           "This does not include the number of mergers "
+                           "accumulated by any merged black hole.");
+
+  if (with_cosmology) {
+    list[14] = io_make_output_field(
+        "LastHighEddingtonFractionScaleFactors", FLOAT, 1, UNIT_CONV_NO_UNITS,
+        0.f, bparts, last_high_Eddington_fraction_scale_factor,
+        "Scale-factors at which the black holes last reached an Eddington "
+        "ratio > 0.1. -1 if never reached.");
+  } else {
+    list[14] = io_make_output_field(
+        "LastHighEddingtonFractionTimes", FLOAT, 1, UNIT_CONV_TIME, 0.f, bparts,
+        last_high_Eddington_fraction_time,
+        "Times at which the black holes last reached an Eddington ratio > 0.1. "
+        "-1 if never reached.");
+  }
 
 #ifdef DEBUG_INTERACTIONS_BLACK_HOLES
 

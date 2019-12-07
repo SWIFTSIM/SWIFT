@@ -838,7 +838,8 @@ void runner_do_black_holes_swallow_ghost(struct runner *r, struct cell *c,
 
         /* Compute variables required for the feedback loop */
         black_holes_prepare_feedback(bp, e->black_holes_properties,
-                                     e->physical_constants, e->cosmology, dt);
+                                     e->physical_constants, e->cosmology,
+                                     e->time, with_cosmology, dt);
       }
     }
   }
