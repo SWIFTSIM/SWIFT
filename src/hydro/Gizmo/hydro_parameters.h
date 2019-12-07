@@ -16,10 +16,10 @@
  * You should have received a copy of the GNU Lesser General Public License
  * along with this program.  If not, see <http://www.gnu.org/licenses/>.
  *
- *****************************************************************************/
+ ******************************************************************************/
 
-#ifndef SWIFT_GIZMOMFV_HYDRO_PARAMETERS_H
-#define SWIFT_GIZMOMFV_HYDRO_PARAMETERS_H
+#ifndef SWIFT_GIZMO_HYDRO_PARAMETERS_H
+#define SWIFT_GIZMO_HYDRO_PARAMETERS_H
 
 /* Configuration file */
 #include "config.h"
@@ -35,8 +35,8 @@
 #include "inline.h"
 
 /**
- * @file GizmoMFV/hydro_parameters.h
- * @brief Gizmo-MFV scheme. (default parameters)
+ * @file Gizmo/hydro_parameters.h
+ * @brief Gizmo schemes. (default parameters)
  *
  *        This file defines a number of things that are used in
  *        hydro_properties.c as defaults for run-time parameters
@@ -159,4 +159,4 @@ static INLINE void diffusion_print_snapshot(
     hid_t h_grpsph, const struct diffusion_global_data* diffusion) {}
 #endif
 
-#endif /* SWIFT_GIZMOMFV_HYDRO_PARAMETERS_H */
+#endif /* SWIFT_GIZMO_HYDRO_PARAMETERS_H */

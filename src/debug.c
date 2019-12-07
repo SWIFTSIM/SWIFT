@@ -52,10 +52,8 @@
 #include "./hydro/PressureEnergyMorrisMonaghanAV/hydro_debug.h"
 #elif defined(DEFAULT_SPH)
 #include "./hydro/Default/hydro_debug.h"
-#elif defined(GIZMO_MFV_SPH)
-#include "./hydro/GizmoMFV/hydro_debug.h"
-#elif defined(GIZMO_MFM_SPH)
-#include "./hydro/GizmoMFM/hydro_debug.h"
+#elif defined(GIZMO_MFV_SPH) || defined(GIZMO_MFM_SPH)
+#include "./hydro/Gizmo/hydro_debug.h"
 #elif defined(SHADOWFAX_SPH)
 #include "./hydro/Shadowswift/hydro_debug.h"
 #elif defined(PLANETARY_SPH)

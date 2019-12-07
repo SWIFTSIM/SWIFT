@@ -16,8 +16,8 @@
  * along with this program.  If not, see <http://www.gnu.org/licenses/>.
  *
  ******************************************************************************/
-#ifndef SWIFT_GIZMO_MFM_HYDRO_IO_H
-#define SWIFT_GIZMO_MFM_HYDRO_IO_H
+#ifndef SWIFT_GIZMO_HYDRO_IO_H
+#define SWIFT_GIZMO_HYDRO_IO_H
 
 #include "adiabatic_index.h"
 #include "hydro.h"
@@ -266,4 +266,4 @@ INLINE static void hydro_write_flavour(hid_t h_grpsph) {
  */
 INLINE static int writeEntropyFlag(void) { return 0; }
 
-#endif /* SWIFT_GIZMO_MFM_HYDRO_IO_H */
+#endif /* SWIFT_GIZMO_HYDRO_IO_H */

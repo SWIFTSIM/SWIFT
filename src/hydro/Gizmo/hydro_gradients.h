@@ -1,6 +1,6 @@
 /*******************************************************************************
  * This file is part of SWIFT.
- * Copyright (c) 2016 Bert Vandenbroucke (bert.vandenbroucke@gmail.com)
+ * Coypright (c) 2019 Bert Vandenbroucke (bert.vandenbroucke@gmail.com)
  *
  * This program is free software: you can redistribute it and/or modify
  * it under the terms of the GNU Lesser General Public License as published
@@ -16,13 +16,12 @@
  * along with this program.  If not, see <http://www.gnu.org/licenses/>.
  *
  ******************************************************************************/
+#ifndef SWIFT_GIZMO_HYDRO_GRADIENTS_H
+#define SWIFT_GIZMO_HYDRO_GRADIENTS_H
 
-#ifndef SWIFT_HYDRO_GIZMO_MFV_GRADIENTS_H
-#define SWIFT_HYDRO_GIZMO_MFV_GRADIENTS_H
-
+#include "hydro_getters.h"
 #include "hydro_slope_limiters.h"
 #include "hydro_unphysical.h"
-#include "riemann.h"
 
 #if defined(GRADIENTS_SPH)
 
@@ -45,7 +44,7 @@
  * @param p Particle.
  */
 __attribute__((always_inline)) INLINE static void hydro_gradients_init(
-    struct part *p) {}
+    struct part* p) {}
 
 /**
  * @brief Gradient calculations done during the neighbour loop
@@ -58,8 +57,8 @@ __attribute__((always_inline)) INLINE static void hydro_gradients_init(
  * @param pj Particle j.
  */
 __attribute__((always_inline)) INLINE static void hydro_gradients_collect(
-    float r2, const float *dx, float hi, float hj, struct part *restrict pi,
-    struct part *restrict pj) {}
+    float r2, const float* dx, float hi, float hj, struct part* restrict pi,
+    struct part* restrict pj) {}
 
 /**
  * @brief Gradient calculations done during the neighbour loop: non-symmetric
@@ -73,9 +72,9 @@ __attribute__((always_inline)) INLINE static void hydro_gradients_collect(
  * @param pj Particle j.
  */
 __attribute__((always_inline)) INLINE static void
-hydro_gradients_nonsym_collect(float r2, const float *dx, float hi, float hj,
-                               struct part *restrict pi,
-                               struct part *restrict pj) {}
+hydro_gradients_nonsym_collect(float r2, const float* dx, float hi, float hj,
+                               struct part* restrict pi,
+                               struct part* restrict pj) {}
 
 /**
  * @brief Finalize the gradient variables after all data have been collected
@@ -83,9 +82,23 @@ hydro_gradients_nonsym_collect(float r2, const float *dx, float hi, float hj,
  * @param p Particle.
  */
 __attribute__((always_inline)) INLINE static void hydro_gradients_finalize(
-    struct part *p) {}
+    struct part* p) {}
 
 #endif
+
+/**
+ * @brief Extrapolate the given gradient over the given distance.
+ *
+ * @param gradient Gradient of a quantity.
+ * @param dx Distance vector.
+ * @return Change in the quantity after a displacement along the given distance
+ * vector.
+ */
+__attribute__((always_inline)) INLINE static float hydro_gradients_extrapolate(
+    const float* gradient, const float* dx) {
+
+  return gradient[0] * dx[0] + gradient[1] * dx[1] + gradient[2] * dx[2];
+}
 
 /**
  * @brief Gradients reconstruction. Is the same for all gradient types (although
@@ -100,39 +113,24 @@ __attribute__((always_inline)) INLINE static void hydro_gradients_predict(
    * position) eqn. (8) */
   const float xij_j[3] = {xij_i[0] + dx[0], xij_i[1] + dx[1], xij_i[2] + dx[2]};
 
+  float drho_i[3], dvx_i[3], dvy_i[3], dvz_i[3], dP_i[3];
+  float drho_j[3], dvx_j[3], dvy_j[3], dvz_j[3], dP_j[3];
+  hydro_part_get_gradients(pi, drho_i, dvx_i, dvy_i, dvz_i, dP_i);
+  hydro_part_get_gradients(pj, drho_j, dvx_j, dvy_j, dvz_j, dP_j);
+
   float dWi[5];
-  dWi[0] = pi->primitives.gradients.rho[0] * xij_i[0] +
-           pi->primitives.gradients.rho[1] * xij_i[1] +
-           pi->primitives.gradients.rho[2] * xij_i[2];
-  dWi[1] = pi->primitives.gradients.v[0][0] * xij_i[0] +
-           pi->primitives.gradients.v[0][1] * xij_i[1] +
-           pi->primitives.gradients.v[0][2] * xij_i[2];
-  dWi[2] = pi->primitives.gradients.v[1][0] * xij_i[0] +
-           pi->primitives.gradients.v[1][1] * xij_i[1] +
-           pi->primitives.gradients.v[1][2] * xij_i[2];
-  dWi[3] = pi->primitives.gradients.v[2][0] * xij_i[0] +
-           pi->primitives.gradients.v[2][1] * xij_i[1] +
-           pi->primitives.gradients.v[2][2] * xij_i[2];
-  dWi[4] = pi->primitives.gradients.P[0] * xij_i[0] +
-           pi->primitives.gradients.P[1] * xij_i[1] +
-           pi->primitives.gradients.P[2] * xij_i[2];
+  dWi[0] = hydro_gradients_extrapolate(drho_i, xij_i);
+  dWi[1] = hydro_gradients_extrapolate(dvx_i, xij_i);
+  dWi[2] = hydro_gradients_extrapolate(dvy_i, xij_i);
+  dWi[3] = hydro_gradients_extrapolate(dvz_i, xij_i);
+  dWi[4] = hydro_gradients_extrapolate(dP_i, xij_i);
 
   float dWj[5];
-  dWj[0] = pj->primitives.gradients.rho[0] * xij_j[0] +
-           pj->primitives.gradients.rho[1] * xij_j[1] +
-           pj->primitives.gradients.rho[2] * xij_j[2];
-  dWj[1] = pj->primitives.gradients.v[0][0] * xij_j[0] +
-           pj->primitives.gradients.v[0][1] * xij_j[1] +
-           pj->primitives.gradients.v[0][2] * xij_j[2];
-  dWj[2] = pj->primitives.gradients.v[1][0] * xij_j[0] +
-           pj->primitives.gradients.v[1][1] * xij_j[1] +
-           pj->primitives.gradients.v[1][2] * xij_j[2];
-  dWj[3] = pj->primitives.gradients.v[2][0] * xij_j[0] +
-           pj->primitives.gradients.v[2][1] * xij_j[1] +
-           pj->primitives.gradients.v[2][2] * xij_j[2];
-  dWj[4] = pj->primitives.gradients.P[0] * xij_j[0] +
-           pj->primitives.gradients.P[1] * xij_j[1] +
-           pj->primitives.gradients.P[2] * xij_j[2];
+  dWj[0] = hydro_gradients_extrapolate(drho_j, xij_j);
+  dWj[1] = hydro_gradients_extrapolate(dvx_j, xij_j);
+  dWj[2] = hydro_gradients_extrapolate(dvy_j, xij_j);
+  dWj[3] = hydro_gradients_extrapolate(dvz_j, xij_j);
+  dWj[4] = hydro_gradients_extrapolate(dP_j, xij_j);
 
   /* Apply the slope limiter at this interface */
   hydro_slope_limit_face(Wi, Wj, dWi, dWj, xij_i, xij_j, r);
@@ -155,4 +153,4 @@ __attribute__((always_inline)) INLINE static void hydro_gradients_predict(
                                   Wj[3], Wj[4]);
 }
 
-#endif /* SWIFT_HYDRO_GIZMO_MFV_GRADIENTS_H */
+#endif /* SWIFT_GIZMO_HYDRO_GRADIENTS_H */

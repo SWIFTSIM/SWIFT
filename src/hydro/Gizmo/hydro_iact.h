@@ -1,8 +1,6 @@
 /*******************************************************************************
  * This file is part of SWIFT.
- * Coypright (c) 2012 Pedro Gonnet (pedro.gonnet@durham.ac.uk)
- *                    Matthieu Schaller (matthieu.schaller@durham.ac.uk)
- *                    Bert Vandenbroucke (bert.vandenbroucke@ugent.be)
+ * Coypright (c) 2019 Bert Vandenbroucke (bert.vandenbroucke@gmail.com)
  *
  * This program is free software: you can redistribute it and/or modify
  * it under the terms of the GNU Lesser General Public License as published
@@ -18,14 +16,13 @@
  * along with this program.  If not, see <http://www.gnu.org/licenses/>.
  *
  ******************************************************************************/
-#ifndef SWIFT_GIZMO_MFV_HYDRO_IACT_H
-#define SWIFT_GIZMO_MFV_HYDRO_IACT_H
+#ifndef SWIFT_GIZMO_HYDRO_IACT_H
+#define SWIFT_GIZMO_HYDRO_IACT_H
 
-#include "adiabatic_index.h"
+#include "hydro_flux.h"
+#include "hydro_getters.h"
 #include "hydro_gradients.h"
-#include "riemann.h"
-
-#include "./hydro_parameters.h"
+#include "hydro_setters.h"
 
 #define GIZMO_VOLUME_CORRECTION
 
@@ -59,7 +56,7 @@ __attribute__((always_inline)) INLINE static void runner_iact_density(
   const float r = sqrtf(r2);
 
   /* Compute density of pi. */
-  const float hi_inv = 1.f / hi;
+  const float hi_inv = 1.0f / hi;
   const float xi = r * hi_inv;
   kernel_deval(xi, &wi, &wi_dx);
 
@@ -72,12 +69,10 @@ __attribute__((always_inline)) INLINE static void runner_iact_density(
     for (int l = 0; l < 3; l++)
       pi->geometry.matrix_E[k][l] += dx[k] * dx[l] * wi;
 
-  pi->geometry.centroid[0] -= dx[0] * wi;
-  pi->geometry.centroid[1] -= dx[1] * wi;
-  pi->geometry.centroid[2] -= dx[2] * wi;
+  hydro_velocities_update_centroid_left(pi, dx, wi);
 
   /* Compute density of pj. */
-  const float hj_inv = 1.f / hj;
+  const float hj_inv = 1.0f / hj;
   const float xj = r * hj_inv;
   kernel_deval(xj, &wj, &wj_dx);
 
@@ -90,9 +85,7 @@ __attribute__((always_inline)) INLINE static void runner_iact_density(
     for (int l = 0; l < 3; l++)
       pj->geometry.matrix_E[k][l] += dx[k] * dx[l] * wj;
 
-  pj->geometry.centroid[0] += dx[0] * wj;
-  pj->geometry.centroid[1] += dx[1] * wj;
-  pj->geometry.centroid[2] += dx[2] * wj;
+  hydro_velocities_update_centroid_right(pi, dx, wi);
 }
 
 /**
@@ -125,7 +118,7 @@ __attribute__((always_inline)) INLINE static void runner_iact_nonsym_density(
   /* Get r and h inverse. */
   const float r = sqrtf(r2);
 
-  const float hi_inv = 1.f / hi;
+  const float hi_inv = 1.0f / hi;
   const float xi = r * hi_inv;
   kernel_deval(xi, &wi, &wi_dx);
 
@@ -138,9 +131,7 @@ __attribute__((always_inline)) INLINE static void runner_iact_nonsym_density(
     for (int l = 0; l < 3; l++)
       pi->geometry.matrix_E[k][l] += dx[k] * dx[l] * wi;
 
-  pi->geometry.centroid[0] -= dx[0] * wi;
-  pi->geometry.centroid[1] -= dx[1] * wi;
-  pi->geometry.centroid[2] -= dx[2] * wi;
+  hydro_velocities_update_centroid_left(pi, dx, wi);
 }
 
 /**
@@ -222,7 +213,7 @@ __attribute__((always_inline)) INLINE static void runner_iact_fluxes_common(
     float r2, const float *dx, float hi, float hj, struct part *restrict pi,
     struct part *restrict pj, int mode, float a, float H) {
 
-  const float r_inv = 1.f / sqrtf(r2);
+  const float r_inv = 1.0f / sqrtf(r2);
   const float r = r2 * r_inv;
 
   /* Initialize local variables */
@@ -240,16 +231,8 @@ __attribute__((always_inline)) INLINE static void runner_iact_fluxes_common(
   const float Vi = pi->geometry.volume;
   const float Vj = pj->geometry.volume;
   float Wi[5], Wj[5];
-  Wi[0] = pi->primitives.rho;
-  Wi[1] = pi->primitives.v[0];
-  Wi[2] = pi->primitives.v[1];
-  Wi[3] = pi->primitives.v[2];
-  Wi[4] = pi->primitives.P;
-  Wj[0] = pj->primitives.rho;
-  Wj[1] = pj->primitives.v[0];
-  Wj[2] = pj->primitives.v[1];
-  Wj[3] = pj->primitives.v[2];
-  Wj[4] = pj->primitives.P;
+  hydro_part_get_primitive_variables(pi, Wi);
+  hydro_part_get_primitive_variables(pj, Wj);
 
   /* calculate the maximal signal velocity */
   float vmax;
@@ -257,38 +240,42 @@ __attribute__((always_inline)) INLINE static void runner_iact_fluxes_common(
     const float ci = gas_soundspeed_from_pressure(Wi[0], Wi[4]);
     const float cj = gas_soundspeed_from_pressure(Wj[0], Wj[4]);
     vmax = ci + cj;
-  } else
+  } else {
     vmax = 0.0f;
+  }
 
   float dvdr = (pi->v[0] - pj->v[0]) * dx[0] + (pi->v[1] - pj->v[1]) * dx[1] +
                (pi->v[2] - pj->v[2]) * dx[2];
 
   /* Velocity on the axis linking the particles */
+  /* This velocity will be the same as dvdr for MFM, so hopefully this gets
+     optimised out. */
   float dvdotdx = (Wi[1] - Wj[1]) * dx[0] + (Wi[2] - Wj[2]) * dx[1] +
                   (Wi[3] - Wj[3]) * dx[2];
-  dvdotdx = min(dvdotdx, dvdr);
 
   /* We only care about this velocity for particles moving towards each others
    */
-  dvdotdx = min(dvdotdx, 0.f);
+  dvdotdx = min3(dvdr, dvdotdx, 0.f);
 
   /* Get the signal velocity */
   vmax -= const_viscosity_beta * dvdotdx * r_inv;
 
   /* Store the signal velocity */
   pi->timestepvars.vmax = max(pi->timestepvars.vmax, vmax);
-  if (mode == 1) pj->timestepvars.vmax = max(pj->timestepvars.vmax, vmax);
+  if (mode == 1) {
+    pj->timestepvars.vmax = max(pj->timestepvars.vmax, vmax);
+  }
 
   /* Compute kernel of pi. */
   float wi, wi_dx;
-  const float hi_inv = 1.f / hi;
+  const float hi_inv = 1.0f / hi;
   const float hi_inv_dim = pow_dimension(hi_inv);
   const float xi = r * hi_inv;
   kernel_deval(xi, &wi, &wi_dx);
 
   /* Compute kernel of pj. */
   float wj, wj_dx;
-  const float hj_inv = 1.f / hj;
+  const float hj_inv = 1.0f / hj;
   const float hj_inv_dim = pow_dimension(hj_inv);
   const float xj = r * hj_inv;
   kernel_deval(xj, &wj, &wj_dx);
@@ -299,17 +286,19 @@ __attribute__((always_inline)) INLINE static void runner_iact_fluxes_common(
   const float wi_dr = hidp1 * wi_dx;
   const float wj_dr = hjdp1 * wj_dx;
   dvdr *= r_inv;
-  if (pj->primitives.rho > 0.)
-    pi->force.h_dt -= pj->conserved.mass * dvdr / pj->primitives.rho * wi_dr;
-  if (mode == 1 && pi->primitives.rho > 0.)
-    pj->force.h_dt -= pi->conserved.mass * dvdr / pi->primitives.rho * wj_dr;
+  if (Wj[0] > 0.0f) {
+    pi->force.h_dt -= pj->conserved.mass * dvdr / Wj[0] * wi_dr;
+  }
+  if (mode == 1 && Wi[0] > 0.0f) {
+    pj->force.h_dt -= pi->conserved.mass * dvdr / Wi[0] * wj_dr;
+  }
 
   /* Compute (square of) area */
   /* eqn. (7) */
   float Anorm2 = 0.0f;
   float A[3];
-  if (pi->density.wcorr > const_gizmo_min_wcorr &&
-      pj->density.wcorr > const_gizmo_min_wcorr) {
+  if (hydro_part_geometry_well_behaved(pi) &&
+      hydro_part_geometry_well_behaved(pj)) {
     /* in principle, we use Vi and Vj as weights for the left and right
        contributions to the generalized surface vector.
        However, if Vi and Vj are very different (because they have very
@@ -343,10 +332,12 @@ __attribute__((always_inline)) INLINE static void runner_iact_fluxes_common(
 
   /* if the interface has no area, nothing happens and we return */
   /* continuing results in dividing by zero and NaN's... */
-  if (Anorm2 == 0.f) return;
+  if (Anorm2 == 0.0f) {
+    return;
+  }
 
   /* Compute the area */
-  const float Anorm_inv = 1. / sqrtf(Anorm2);
+  const float Anorm_inv = 1.0f / sqrtf(Anorm2);
   const float Anorm = Anorm2 * Anorm_inv;
 
 #ifdef SWIFT_DEBUG_CHECKS
@@ -376,9 +367,19 @@ __attribute__((always_inline)) INLINE static void runner_iact_fluxes_common(
 
   /* Compute interface velocity */
   /* eqn. (9) */
-  const float vij[3] = {vi[0] + xfac * (vi[0] - vj[0]),
-                        vi[1] + xfac * (vi[1] - vj[1]),
-                        vi[2] + xfac * (vi[2] - vj[2])};
+  const float vij[3] = {vi[0] + (vi[0] - vj[0]) * xfac,
+                        vi[1] + (vi[1] - vj[1]) * xfac,
+                        vi[2] + (vi[2] - vj[2]) * xfac};
+
+  /* complete calculation of position of interface */
+  /* NOTE: dx is not necessarily just pi->x - pj->x but can also contain
+           correction terms for periodicity. If we do the interpolation,
+           we have to use xij w.r.t. the actual particle.
+           => we need a separate xij for pi and pj... */
+  /* tldr: we do not need the code below, but we do need the same code as above
+     but then with i and j swapped */
+  //    for ( k = 0 ; k < 3 ; k++ )
+  //      xij[k] += pi->x[k];
 
   hydro_gradients_predict(pi, pj, hi, hj, dx, r, xij_i, Wi, Wj);
 
@@ -395,38 +396,9 @@ __attribute__((always_inline)) INLINE static void runner_iact_fluxes_common(
    * itself (see GIZMO) */
 
   float totflux[5];
-  riemann_solve_for_flux(Wi, Wj, n_unit, vij, totflux);
+  hydro_compute_flux(Wi, Wj, n_unit, vij, Anorm, totflux);
 
-  /* Multiply with the interface surface area */
-  totflux[0] *= Anorm;
-  totflux[1] *= Anorm;
-  totflux[2] *= Anorm;
-  totflux[3] *= Anorm;
-  totflux[4] *= Anorm;
-
-  /* Store mass flux */
-  const float mflux_i = totflux[0];
-  pi->gravity.mflux[0] += mflux_i * dx[0];
-  pi->gravity.mflux[1] += mflux_i * dx[1];
-  pi->gravity.mflux[2] += mflux_i * dx[2];
-
-  /* Update conserved variables */
-  /* eqn. (16) */
-  pi->conserved.flux.mass -= totflux[0];
-  pi->conserved.flux.momentum[0] -= totflux[1];
-  pi->conserved.flux.momentum[1] -= totflux[2];
-  pi->conserved.flux.momentum[2] -= totflux[3];
-  pi->conserved.flux.energy -= totflux[4];
-
-#ifndef GIZMO_TOTAL_ENERGY
-  const float ekin_i = 0.5f * (pi->primitives.v[0] * pi->primitives.v[0] +
-                               pi->primitives.v[1] * pi->primitives.v[1] +
-                               pi->primitives.v[2] * pi->primitives.v[2]);
-  pi->conserved.flux.energy += totflux[1] * pi->primitives.v[0];
-  pi->conserved.flux.energy += totflux[2] * pi->primitives.v[1];
-  pi->conserved.flux.energy += totflux[3] * pi->primitives.v[2];
-  pi->conserved.flux.energy -= totflux[0] * ekin_i;
-#endif
+  hydro_part_update_fluxes_left(pi, totflux, dx);
 
   /* Note that this used to be much more complicated in early implementations of
    * the GIZMO scheme, as we wanted manifest conservation of conserved variables
@@ -434,27 +406,7 @@ __attribute__((always_inline)) INLINE static void runner_iact_fluxes_common(
    * conservation anymore and just assume the current fluxes are representative
    * for the flux over the entire time step. */
   if (mode == 1) {
-    /* Store mass flux */
-    const float mflux_j = totflux[0];
-    pj->gravity.mflux[0] += mflux_j * dx[0];
-    pj->gravity.mflux[1] += mflux_j * dx[1];
-    pj->gravity.mflux[2] += mflux_j * dx[2];
-
-    pj->conserved.flux.mass += totflux[0];
-    pj->conserved.flux.momentum[0] += totflux[1];
-    pj->conserved.flux.momentum[1] += totflux[2];
-    pj->conserved.flux.momentum[2] += totflux[3];
-    pj->conserved.flux.energy += totflux[4];
-
-#ifndef GIZMO_TOTAL_ENERGY
-    const float ekin_j = 0.5f * (pj->primitives.v[0] * pj->primitives.v[0] +
-                                 pj->primitives.v[1] * pj->primitives.v[1] +
-                                 pj->primitives.v[2] * pj->primitives.v[2]);
-    pj->conserved.flux.energy -= totflux[1] * pj->primitives.v[0];
-    pj->conserved.flux.energy -= totflux[2] * pj->primitives.v[1];
-    pj->conserved.flux.energy -= totflux[3] * pj->primitives.v[2];
-    pj->conserved.flux.energy += totflux[0] * ekin_j;
-#endif
+    hydro_part_update_fluxes_right(pj, totflux, dx);
   }
 }
 
@@ -503,4 +455,4 @@ __attribute__((always_inline)) INLINE static void runner_iact_nonsym_force(
   runner_iact_fluxes_common(r2, dx, hi, hj, pi, pj, 0, a, H);
 }
 
-#endif /* SWIFT_GIZMO_MFV_HYDRO_IACT_H */
+#endif /* SWIFT_GIZMO_HYDRO_IACT_H */

@@ -16,8 +16,8 @@
  * along with this program.  If not, see <http://www.gnu.org/licenses/>.
  *
  ******************************************************************************/
-#ifndef SWIFT_HYDRO_VELOCITIES_H
-#define SWIFT_HYDRO_VELOCITIES_H
+#ifndef SWIFT_GIZMO_MFV_HYDRO_VELOCITIES_H
+#define SWIFT_GIZMO_MFV_HYDRO_VELOCITIES_H
 
 /**
  * @brief Initialize the GIZMO particle velocities before the start of the
@@ -30,13 +30,13 @@ __attribute__((always_inline)) INLINE static void hydro_velocities_init(
     struct part* restrict p, struct xpart* restrict xp) {
 
 #ifdef GIZMO_FIX_PARTICLES
-  p->v[0] = 0.f;
-  p->v[1] = 0.f;
-  p->v[2] = 0.f;
+  p->v[0] = 0.0f;
+  p->v[1] = 0.0f;
+  p->v[2] = 0.0f;
 #else
-  p->v[0] = p->primitives.v[0];
-  p->v[1] = p->primitives.v[1];
-  p->v[2] = p->primitives.v[2];
+  p->v[0] = p->fluid_v[0];
+  p->v[1] = p->fluid_v[1];
+  p->v[2] = p->fluid_v[2];
 #endif
 
   xp->v_full[0] = p->v[0];
@@ -87,15 +87,15 @@ __attribute__((always_inline)) INLINE static void hydro_velocities_set(
 /* We first set the particle velocity. */
 #ifdef GIZMO_FIX_PARTICLES
 
-  p->v[0] = 0.f;
-  p->v[1] = 0.f;
-  p->v[2] = 0.f;
+  p->v[0] = 0.0f;
+  p->v[1] = 0.0f;
+  p->v[2] = 0.0f;
 
 #else  // GIZMO_FIX_PARTICLES
 
-  if (p->conserved.mass > 0.f && p->primitives.rho > 0.f) {
+  if (p->conserved.mass > 0.0f && p->rho > 0.0f) {
 
-    const float inverse_mass = 1.f / p->conserved.mass;
+    const float inverse_mass = 1.0f / p->conserved.mass;
 
     /* Normal case: set particle velocity to fluid velocity. */
     p->v[0] = p->conserved.momentum[0] * inverse_mass;
@@ -116,15 +116,14 @@ __attribute__((always_inline)) INLINE static void hydro_velocities_set(
     const float R = get_radius_dimension_sphere(p->geometry.volume);
     const float eta = 0.25f;
     const float etaR = eta * R;
-    const float xi = 1.f;
-    const float soundspeed =
-        sqrtf(hydro_gamma * p->primitives.P / p->primitives.rho);
+    const float xi = 1.0f;
+    const float soundspeed = sqrtf(hydro_gamma * p->P / p->rho);
     /* We only apply the correction if the offset between centroid and position
        is too large. */
     if (d > 0.9f * etaR) {
       float fac = xi * soundspeed / d;
       if (d < 1.1f * etaR) {
-        fac *= 5.f * (d - 0.9f * etaR) / etaR;
+        fac *= 5.0f * (d - 0.9f * etaR) / etaR;
       }
       p->v[0] -= ds[0] * fac;
       p->v[1] -= ds[1] * fac;
@@ -134,9 +133,9 @@ __attribute__((always_inline)) INLINE static void hydro_velocities_set(
 #endif  // GIZMO_STEER_MOTION
   } else {
     /* Vacuum particles have no fluid velocity. */
-    p->v[0] = 0.f;
-    p->v[1] = 0.f;
-    p->v[2] = 0.f;
+    p->v[0] = 0.0f;
+    p->v[1] = 0.0f;
+    p->v[2] = 0.0f;
   }
 
 #endif  // GIZMO_FIX_PARTICLES
@@ -153,4 +152,70 @@ __attribute__((always_inline)) INLINE static void hydro_velocities_set(
   }
 }
 
-#endif /* SWIFT_HYDRO_VELOCITIES_H */
+/**
+ * @brief Reset the variables used to store the centroid; used for the velocity
+ * correction.
+ */
+__attribute__((always_inline)) INLINE static void
+hydro_velocities_reset_centroids(struct part* restrict p) {
+
+  p->geometry.centroid[0] = 0.0f;
+  p->geometry.centroid[1] = 0.0f;
+  p->geometry.centroid[2] = 0.0f;
+}
+
+/**
+ * @brief Normalise the centroids after the density loop.
+ *
+ * @param p Particle.
+ * @param wcount Wcount for the particle. This is an explicit argument, so that
+ * it is clear from the code that wcount needs to be normalised by the time it
+ * is used here.
+ */
+__attribute__((always_inline)) INLINE static void
+hydro_velocities_normalise_centroid(struct part* restrict p,
+                                    const float wcount) {
+
+  const float norm = kernel_norm / wcount;
+  p->geometry.centroid[0] *= norm;
+  p->geometry.centroid[1] *= norm;
+  p->geometry.centroid[2] *= norm;
+}
+
+/**
+ * @brief Update the centroid with the given contribution, assuming the particle
+ * acts as the left particle in the neighbour interaction.
+ *
+ * @param p Particle (pi).
+ * @param dx Distance vector between the particle and its neighbour (dx = pi->x
+ * - pj->x).
+ * @param w Kernel value at position pj->x.
+ */
+__attribute__((always_inline)) INLINE static void
+hydro_velocities_update_centroid_left(struct part* restrict p, const float* dx,
+                                      const float w) {
+
+  p->geometry.centroid[0] -= dx[0] * w;
+  p->geometry.centroid[1] -= dx[1] * w;
+  p->geometry.centroid[2] -= dx[2] * w;
+}
+
+/**
+ * @brief Update the centroid with the given contribution, assuming the particle
+ * acts as the right particle in the neighbour interaction.
+ *
+ * @param p Particle (pj).
+ * @param dx Distance vector between the particle and its neighbour (dx = pi->x
+ * - pj->x).
+ * @param w Kernel value at position pi->x.
+ */
+__attribute__((always_inline)) INLINE static void
+hydro_velocities_update_centroid_right(struct part* restrict p, const float* dx,
+                                       const float w) {
+
+  p->geometry.centroid[0] += dx[0] * w;
+  p->geometry.centroid[1] += dx[1] * w;
+  p->geometry.centroid[2] += dx[2] * w;
+}
+
+#endif /* SWIFT_GIZMO_MFV_HYDRO_VELOCITIES_H */

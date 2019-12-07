@@ -19,39 +19,6 @@
 #ifndef SWIFT_GIZMO_MFM_HYDRO_PART_H
 #define SWIFT_GIZMO_MFM_HYDRO_PART_H
 
-#include "black_holes_struct.h"
-#include "chemistry_struct.h"
-#include "cooling_struct.h"
-#include "star_formation_struct.h"
-#include "timestep_limiter_struct.h"
-#include "tracers_struct.h"
-
-/* Extra particle data not needed during the computation. */
-struct xpart {
-
-  /* Offset between current position and position at last tree rebuild. */
-  float x_diff[3];
-
-  /* Offset between the current position and position at the last sort. */
-  float x_diff_sort[3];
-
-  /* Velocity at the last full step. */
-  float v_full[3];
-
-  /* Gravitational acceleration at the last full step. */
-  float a_grav[3];
-
-  /* Additional data used to record cooling information */
-  struct cooling_xpart_data cooling_data;
-
-  /* Additional data used by the tracers */
-  struct tracers_xpart_data tracers_data;
-
-  /* Additional data used by the star formation */
-  struct star_formation_xpart_data sf_data;
-
-} SWIFT_STRUCT_ALIGN;
-
 /* Data of a single particle. */
 struct part {
 
@@ -64,8 +31,16 @@ struct part {
   /* Particle position. */
   double x[3];
 
-  /* Particle predicted velocity. */
-  float v[3];
+  /* In MFM, the particle and fluid velocities are the same.
+     We use an anonymous union to make sure we can reference the
+     same array with both names. */
+  union {
+    /* Particle predicted velocity. */
+    float v[3];
+
+    /* Fluid velocity. */
+    float fluid_v[3];
+  };
 
   /* Particle acceleration. */
   float a_hydro[3];
@@ -182,9 +157,6 @@ struct part {
     /* Geometrical shear matrix used to calculate second order accurate
        gradients */
     float matrix_E[3][3];
-
-    /* Centroid of the "cell". */
-    float centroid[3];
 
     /* Correction factor for wcount. */
     float wcorr;
