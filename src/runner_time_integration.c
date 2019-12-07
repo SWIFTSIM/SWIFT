@@ -869,8 +869,8 @@ void runner_do_timestep(struct runner *r, struct cell *c, int timer) {
         ti_gravity_beg_max = max(cp->grav.ti_beg_max, ti_gravity_beg_max);
 
         ti_stars_end_min = min(cp->stars.ti_end_min, ti_stars_end_min);
-        ti_stars_end_max = max(cp->grav.ti_end_max, ti_stars_end_max);
-        ti_stars_beg_max = max(cp->grav.ti_beg_max, ti_stars_beg_max);
+        ti_stars_end_max = max(cp->stars.ti_end_max, ti_stars_end_max);
+        ti_stars_beg_max = max(cp->stars.ti_beg_max, ti_stars_beg_max);
 
         ti_black_holes_end_min =
             min(cp->black_holes.ti_end_min, ti_black_holes_end_min);
