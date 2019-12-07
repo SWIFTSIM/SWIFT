@@ -77,8 +77,8 @@ struct bpart {
   /*! Subgrid mass of the black hole */
   float subgrid_mass;
 
-  /*! Total accreted mass of the black hole (including accreted mass onto BHs
-   * that were merged) */
+  /*! Total accreted mass of the black hole (not including mass merged in
+   * from other black holes) */
   float total_accreted_mass;
 
   /*! Energy reservoir for feedback */
