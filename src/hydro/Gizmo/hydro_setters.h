@@ -48,8 +48,8 @@ hydro_part_set_conserved_variables(struct part* restrict p, const float* Q) {
 
   p->conserved.mass = Q[0];
   p->conserved.momentum[0] = Q[1];
-  p->conserved.momentum[2] = Q[2];
-  p->conserved.momentum[3] = Q[3];
+  p->conserved.momentum[1] = Q[2];
+  p->conserved.momentum[2] = Q[3];
   p->conserved.energy = Q[4];
 }
 
