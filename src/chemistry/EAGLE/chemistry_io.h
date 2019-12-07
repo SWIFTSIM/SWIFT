@@ -225,12 +225,12 @@ INLINE static int chemistry_write_bparticles(const struct bpart* bparts,
   list[0] = io_make_output_field(
       "ElementMasses", FLOAT, chemistry_element_count, UNIT_CONV_MASS, 0.f,
       bparts, chemistry_data.metal_mass,
-      "Mass contents of the BH particles in a given element");
+      "Masses of the BH particles in a given element");
 
   list[1] = io_make_output_field(
       "MetalMasses", FLOAT, chemistry_element_count, UNIT_CONV_MASS, 0.f,
       bparts, chemistry_data.metal_mass_total,
-      "Mass contents of the BH particles in a metals");
+      "Masses of the BH particles in a metals");
 
   list[2] = io_make_output_field(
       "MassesFromSNIa", FLOAT, 1, UNIT_CONV_MASS, 0.f, bparts,
