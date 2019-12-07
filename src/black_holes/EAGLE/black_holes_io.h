@@ -114,7 +114,7 @@ INLINE static void black_holes_write_particles(const struct bpart* bparts,
                                                int with_cosmology) {
 
   /* Say how much we want to write */
-  *num_fields = 12;
+  *num_fields = 14;
 
   /* List what we want to write */
   list[0] = io_make_output_field_convert_bpart(
@@ -179,6 +179,12 @@ INLINE static void black_holes_write_particles(const struct bpart* bparts,
       "CumulativeNumberSeeds", INT, 1, UNIT_CONV_NO_UNITS, 0.f, bparts,
       cumulative_number_seeds,
       "Total number of BH seeds that have merged into this black hole");
+
+  list[13] = io_make_output_field("NumberOfMergers", INT, 1, UNIT_CONV_NO_UNITS,
+                                  0.f, bparts, number_of_mergers,
+                                  "Number of mergers black holes went through. "
+                                  "This does not include the number of mergers "
+                                  "accumulated by any merged black hole.");
 
 #ifdef DEBUG_INTERACTIONS_BLACK_HOLES
 
