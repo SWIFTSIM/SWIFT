@@ -217,4 +217,43 @@ __attribute__((always_inline)) INLINE static void chemistry_first_init_spart(
       " want something here.");
 }
 
+/**
+ * @brief Initialise the chemistry properties of a black hole with
+ * the chemistry properties of the gas it is born from.
+ *
+ * Nothing to do here.
+ *
+ * @param bp_data The black hole data to initialise.
+ * @param p_data The gas data to use.
+ * @param gas_mass The mass of the gas particle.
+ */
+__attribute__((always_inline)) INLINE static void chemistry_bpart_from_part(
+    struct chemistry_bpart_data* bp_data,
+    const struct chemistry_part_data* p_data, const double gas_mass) {}
+
+/**
+ * @brief Add the chemistry data of a gas particle to a black hole.
+ *
+ * Nothing to do here.
+ *
+ * @param bp_data The black hole data to add to.
+ * @param p_data The gas data to use.
+ * @param gas_mass The mass of the gas particle.
+ */
+__attribute__((always_inline)) INLINE static void chemistry_add_part_to_bpart(
+    struct chemistry_bpart_data* bp_data,
+    const struct chemistry_part_data* p_data, const double gas_mass) {}
+
+/**
+ * @brief Add the chemistry data of a black hole to another one.
+ *
+ * Nothing to do here.
+ *
+ * @param bp_data The black hole data to add to.
+ * @param swallowed_data The black hole data to use.
+ */
+__attribute__((always_inline)) INLINE static void chemistry_add_bpart_to_bpart(
+    struct chemistry_bpart_data* bp_data,
+    const struct chemistry_bpart_data* swallowed_data) {}
+
 #endif /* SWIFT_CHEMISTRY_GEAR_H */

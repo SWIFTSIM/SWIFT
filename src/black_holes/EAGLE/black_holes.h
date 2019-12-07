@@ -263,22 +263,7 @@ __attribute__((always_inline)) INLINE static void black_holes_swallow_part(
   /* Update the BH metal masses */
   struct chemistry_bpart_data* bp_chem = &bp->chemistry_data;
   const struct chemistry_part_data* p_chem = &p->chemistry_data;
-
-  bp_chem->metal_mass_total += p_chem->metal_mass_fraction_total * gas_mass;
-  for (int i = 0; i < chemistry_element_count; ++i) {
-    bp_chem->metal_mass[i] += p_chem->metal_mass_fraction[i] * gas_mass;
-  }
-  bp_chem->mass_from_SNIa += p_chem->mass_from_SNIa;
-  bp_chem->mass_from_SNII += p_chem->mass_from_SNII;
-  bp_chem->mass_from_AGB += p_chem->mass_from_AGB;
-  bp_chem->metal_mass_from_SNIa +=
-      p_chem->metal_mass_fraction_from_SNIa * gas_mass;
-  bp_chem->metal_mass_from_SNII +=
-      p_chem->metal_mass_fraction_from_SNII * gas_mass;
-  bp_chem->metal_mass_from_AGB +=
-      p_chem->metal_mass_fraction_from_AGB * gas_mass;
-  bp_chem->iron_mass_from_SNIa +=
-      p_chem->iron_mass_fraction_from_SNIa * gas_mass;
+  chemistry_add_part_to_bpart(bp_chem, p_chem, gas_mass);
 
   /* This BH lost a neighbour */
   bp->num_ngbs--;
@@ -316,6 +301,11 @@ __attribute__((always_inline)) INLINE static void black_holes_swallow_bpart(
   bpi->gpart->v_full[0] = bpi->v[0];
   bpi->gpart->v_full[1] = bpi->v[1];
   bpi->gpart->v_full[2] = bpi->v[2];
+
+  /* Update the BH metal masses */
+  struct chemistry_bpart_data* bpi_chem = &bpi->chemistry_data;
+  const struct chemistry_bpart_data* bpj_chem = &bpj->chemistry_data;
+  chemistry_add_bpart_to_bpart(bpi_chem, bpj_chem);
 
   /* Update the energy reservoir */
   bpi->energy_reservoir += bpj->energy_reservoir;
@@ -561,25 +551,9 @@ INLINE static void black_holes_create_from_gas(
 
   /* Initial metal masses */
   const float gas_mass = hydro_get_mass(p);
-
   struct chemistry_bpart_data* bp_chem = &bp->chemistry_data;
   const struct chemistry_part_data* p_chem = &p->chemistry_data;
-
-  bp_chem->metal_mass_total = p_chem->metal_mass_fraction_total * gas_mass;
-  for (int i = 0; i < chemistry_element_count; ++i) {
-    bp_chem->metal_mass[i] = p_chem->metal_mass_fraction[i] * gas_mass;
-  }
-  bp_chem->mass_from_SNIa = p_chem->mass_from_SNIa;
-  bp_chem->mass_from_SNII = p_chem->mass_from_SNII;
-  bp_chem->mass_from_AGB = p_chem->mass_from_AGB;
-  bp_chem->metal_mass_from_SNIa =
-      p_chem->metal_mass_fraction_from_SNIa * gas_mass;
-  bp_chem->metal_mass_from_SNII =
-      p_chem->metal_mass_fraction_from_SNII * gas_mass;
-  bp_chem->metal_mass_from_AGB =
-      p_chem->metal_mass_fraction_from_AGB * gas_mass;
-  bp_chem->iron_mass_from_SNIa =
-      p_chem->iron_mass_fraction_from_SNIa * gas_mass;
+  chemistry_bpart_from_part(bp_chem, p_chem, gas_mass);
 
   /* First initialisation */
   black_holes_init_bpart(bp);
