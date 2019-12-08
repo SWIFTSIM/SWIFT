@@ -20,6 +20,7 @@
 #define SWIFT_EAGLE_BH_IACT_H
 
 /* Local includes */
+#include "black_holes_parameters.h"
 #include "gravity.h"
 #include "hydro.h"
 #include "random.h"
@@ -146,11 +147,13 @@ runner_iact_nonsym_bh_gas_swallow(const float r2, const float *dx,
 
   /* Start by checking the repositioning criteria */
 
-  /* Note the factor 9 is taken from EAGLE. Will be turned into a parameter */
+  /* (Square of) Max repositioning distance allowed based on the softening */
   const float max_dist_repos2 =
       kernel_gravity_softening_plummer_equivalent_inv *
-      kernel_gravity_softening_plummer_equivalent_inv * 9.f *
-      grav_props->epsilon_baryon_cur * grav_props->epsilon_baryon_cur;
+      kernel_gravity_softening_plummer_equivalent_inv *
+      const_max_repositioning_distance_ratio *
+      const_max_repositioning_distance_ratio * grav_props->epsilon_baryon_cur *
+      grav_props->epsilon_baryon_cur;
 
   /* This gas neighbour is close enough that we can consider it's potential
      for repositioning */
@@ -250,11 +253,13 @@ runner_iact_nonsym_bh_bh_swallow(const float r2, const float *dx,
 
   const float v2_pec = v2 * cosmo->a2_inv;
 
-  /* Note the factor 9 is taken from EAGLE. Will be turned into a parameter */
+  /* (Square of) Max repositioning distance allowed based on the softening */
   const float max_dist_repos2 =
       kernel_gravity_softening_plummer_equivalent_inv *
-      kernel_gravity_softening_plummer_equivalent_inv * 9.f *
-      grav_props->epsilon_baryon_cur * grav_props->epsilon_baryon_cur;
+      kernel_gravity_softening_plummer_equivalent_inv *
+      const_max_repositioning_distance_ratio *
+      const_max_repositioning_distance_ratio * grav_props->epsilon_baryon_cur *
+      grav_props->epsilon_baryon_cur;
 
   /* This gas neighbour is close enough that we can consider it's potential
      for repositioning */
@@ -285,10 +290,11 @@ runner_iact_nonsym_bh_bh_swallow(const float r2, const float *dx,
     h = hj;
   }
 
-  /* Note the factor 9 is taken from EAGLE. Will be turned into a parameter */
+  /* (Square of) Max swallowing distance allowed based on the softening */
   const float max_dist_merge2 =
       kernel_gravity_softening_plummer_equivalent_inv *
-      kernel_gravity_softening_plummer_equivalent_inv * 9.f *
+      kernel_gravity_softening_plummer_equivalent_inv *
+      const_max_merging_distance_ratio * const_max_merging_distance_ratio *
       grav_props->epsilon_baryon_cur * grav_props->epsilon_baryon_cur;
 
   const float G_Newton = grav_props->G_Newton;

@@ -235,7 +235,7 @@ nobase_noinst_HEADERS = align.h approx_math.h atomic.h barrier.h cycle.h error.h
                  black_holes/Default/black_holes_struct.h \
                  black_holes/EAGLE/black_holes.h black_holes/EAGLE/black_holes_io.h \
 		 black_holes/EAGLE/black_holes_part.h black_holes/EAGLE/black_holes_iact.h \
-                 black_holes/EAGLE/black_holes_properties.h \
+                 black_holes/EAGLE/black_holes_properties.h black_holes/EAGLE/black_holes_parameters.h \
                  black_holes/EAGLE/black_holes_struct.h \
 		 pressure_floor/GEAR/pressure_floor.h pressure_floor/none/pressure_floor.h \
 		 pressure_floor/GEAR/pressure_floor_iact.h pressure_floor/none/pressure_floor_iact.h \
