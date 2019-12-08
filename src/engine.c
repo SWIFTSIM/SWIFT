@@ -51,7 +51,7 @@
 /* Local headers. */
 #include "active.h"
 #include "atomic.h"
-#include "black_holes.h"
+#include "black_holes_properties.h"
 #include "cell.h"
 #include "chemistry.h"
 #include "clocks.h"
