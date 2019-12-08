@@ -183,3 +183,5 @@ EAGLEAGN:
   AGN_delta_T_K:                    3.16228e8  # Change in temperature to apply to the gas particle in an AGN feedback event in Kelvin.
   AGN_num_ngb_to_heat:              1.         # Target number of gas neighbours to heat in an AGN feedback event.
   max_reposition_mass:              2e8        # Maximal BH mass considered for BH repositioning in solar masses.
+  threshold_major_merger:           0.333      # Mass ratio threshold to consider a BH merger as 'major'
+  threshold_minor_merger:           0.1        # Mass ratio threshold to consider a BH merger as 'minor'

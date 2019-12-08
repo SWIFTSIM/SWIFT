@@ -114,7 +114,7 @@ INLINE static void black_holes_write_particles(const struct bpart* bparts,
                                                int with_cosmology) {
 
   /* Say how much we want to write */
-  *num_fields = 15;
+  *num_fields = 17;
 
   /* List what we want to write */
   list[0] = io_make_output_field_convert_bpart(
@@ -191,14 +191,38 @@ INLINE static void black_holes_write_particles(const struct bpart* bparts,
     list[14] = io_make_output_field(
         "LastHighEddingtonFractionScaleFactors", FLOAT, 1, UNIT_CONV_NO_UNITS,
         0.f, bparts, last_high_Eddington_fraction_scale_factor,
-        "Scale-factors at which the black holes last reached an Eddington "
-        "ratio > 0.1. -1 if never reached.");
+        "Scale-factors at which the black holes last reached a large Eddington "
+        "ratio. -1 if never reached.");
   } else {
     list[14] = io_make_output_field(
         "LastHighEddingtonFractionTimes", FLOAT, 1, UNIT_CONV_TIME, 0.f, bparts,
         last_high_Eddington_fraction_time,
-        "Times at which the black holes last reached an Eddington ratio > 0.1. "
+        "Times at which the black holes last reached a large Eddington ratio. "
         "-1 if never reached.");
+  }
+
+  if (with_cosmology) {
+    list[15] = io_make_output_field(
+        "LastMinorMergerScaleFactors", FLOAT, 1, UNIT_CONV_NO_UNITS, 0.f,
+        bparts, last_minor_merger_scale_factor,
+        "Scale-factors at which the black holes last had a minor merger.");
+  } else {
+    list[15] = io_make_output_field(
+        "LastMinorMergerScaleTimes", FLOAT, 1, UNIT_CONV_TIME, 0.f, bparts,
+        last_minor_merger_time,
+        "Times at which the black holes last had a minor merger.");
+  }
+
+  if (with_cosmology) {
+    list[16] = io_make_output_field(
+        "LastMajorMergerScaleFactors", FLOAT, 1, UNIT_CONV_NO_UNITS, 0.f,
+        bparts, last_major_merger_scale_factor,
+        "Scale-factors at which the black holes last had a major merger.");
+  } else {
+    list[16] = io_make_output_field(
+        "LastMajorMergerScaleTimes", FLOAT, 1, UNIT_CONV_TIME, 0.f, bparts,
+        last_major_merger_time,
+        "Times at which the black holes last had a major merger.");
   }
 
 #ifdef DEBUG_INTERACTIONS_BLACK_HOLES

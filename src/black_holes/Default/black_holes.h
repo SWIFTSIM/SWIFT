@@ -163,9 +163,14 @@ __attribute__((always_inline)) INLINE static void black_holes_swallow_part(
  * @param bpi The #bpart to update.
  * @param bpj The #bpart that is swallowed.
  * @param cosmo The current cosmological model.
+ * @param time Time since the start of the simulation (non-cosmo mode).
+ * @param with_cosmology Are we running with cosmology?
+ * @param props The properties of the black hole scheme.
  */
 __attribute__((always_inline)) INLINE static void black_holes_swallow_bpart(
-    struct bpart* bpi, const struct bpart* bpj, const struct cosmology* cosmo) {
+    struct bpart* bpi, const struct bpart* bpj, const struct cosmology* cosmo,
+    const double time, const int with_cosmology,
+    const struct black_holes_props* props) {
 
   /* Nothing to do here: No merging in the default model */
 }

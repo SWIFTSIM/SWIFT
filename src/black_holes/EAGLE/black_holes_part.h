@@ -121,6 +121,26 @@ struct bpart {
     float last_high_Eddington_fraction_scale_factor;
   };
 
+  /*! Union for the last minor merger point in time */
+  union {
+
+    /*! Last time the BH had a a high Eddington fraction */
+    float last_minor_merger_time;
+
+    /*! Last scale factor the BH had a a high Eddington fraction */
+    float last_minor_merger_scale_factor;
+  };
+
+  /*! Union for the last major merger point in time */
+  union {
+
+    /*! Last time the BH had a a high Eddington fraction */
+    float last_major_merger_time;
+
+    /*! Last scale factor the BH had a a high Eddington fraction */
+    float last_major_merger_scale_factor;
+  };
+
   /*! Properties used in the feedback loop to distribute to gas neighbours. */
   struct {
 

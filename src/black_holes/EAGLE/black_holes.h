@@ -63,6 +63,8 @@ __attribute__((always_inline)) INLINE static void black_holes_first_init_bpart(
   bp->cumulative_number_seeds = 1;
   bp->number_of_mergers = 0;
   bp->last_high_Eddington_fraction_scale_factor = -1.f;
+  bp->last_minor_merger_time = -1.;
+  bp->last_major_merger_time = -1.;
 
   black_holes_mark_bpart_as_not_swallowed(&bp->merger_data);
 }
@@ -280,13 +282,34 @@ __attribute__((always_inline)) INLINE static void black_holes_swallow_part(
  * @param bpi The #bpart to update.
  * @param bpj The #bpart that is swallowed.
  * @param cosmo The current cosmological model.
+ * @param time Time since the start of the simulation (non-cosmo mode).
+ * @param with_cosmology Are we running with cosmology?
+ * @param props The properties of the black hole scheme.
  */
 __attribute__((always_inline)) INLINE static void black_holes_swallow_bpart(
-    struct bpart* bpi, const struct bpart* bpj, const struct cosmology* cosmo) {
+    struct bpart* bpi, const struct bpart* bpj, const struct cosmology* cosmo,
+    const double time, const int with_cosmology,
+    const struct black_holes_props* props) {
 
   /* Get the current dynamical masses */
   const float bpi_dyn_mass = bpi->mass;
   const float bpj_dyn_mass = bpj->mass;
+
+  /* Is this merger ratio above the threshold for recording? */
+  const double merger_ratio = bpj->subgrid_mass / bpi->subgrid_mass;
+  if (merger_ratio > props->major_merger_threshold) {
+    if (with_cosmology) {
+      bpi->last_major_merger_scale_factor = cosmo->a;
+    } else {
+      bpi->last_major_merger_time = time;
+    }
+  } else if (merger_ratio > props->minor_merger_threshold) {
+    if (with_cosmology) {
+      bpi->last_minor_merger_scale_factor = cosmo->a;
+    } else {
+      bpi->last_minor_merger_time = time;
+    }
+  }
 
   /* Increase the masses of the BH. */
   bpi->mass += bpj->mass;
@@ -572,6 +595,10 @@ INLINE static void black_holes_create_from_gas(
 
   /* Last time this BH had a high Eddington fraction */
   bp->last_high_Eddington_fraction_scale_factor = -1.f;
+
+  /* Last time of mergers */
+  bp->last_minor_merger_time = -1.;
+  bp->last_major_merger_time = -1.;
 
   /* First initialisation */
   black_holes_init_bpart(bp);
