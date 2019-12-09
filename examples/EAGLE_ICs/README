@@ -18,8 +18,6 @@ made:
  - The delay time distribution of the SNIa has been changed to a
    power-law of slope -1 (instead of the exponential model) and
    the rates have been renormalized.
- - The black hole accretion rate is now limited to 100% of the
-   Eddington rate (from 100/h = 150 %).
 
 The scripts in this directory download the tables required to
 run the EAGLE model. Plotting scripts are also provided
