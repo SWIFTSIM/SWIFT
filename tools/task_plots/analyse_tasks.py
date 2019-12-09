@@ -57,9 +57,17 @@ parser.add_argument(
     default="all",
     action="store",
 )
+parser.add_argument(
+    "--html",
+    dest="html",
+    help="Use html titles and anchors in the output (default: False)",
+    default=False,
+    action="store_true",
+)
 
 args = parser.parse_args()
 infile = args.input
+with_html = args.html
 
 #  Tasks and subtypes. Indexed as in tasks.h.
 TASKTYPES = [
@@ -301,6 +309,8 @@ for rank in ranks:
                     sidtimes[my_sid] = []
                 sidtimes[my_sid].append(dt)
 
+        if with_html:
+            print('<div id="thread{}"></div>'.format(i))
         print("# Thread : ", i)
         for key in sorted(tasktimes.keys()):
             taskmin = min(tasktimes[key])
@@ -319,6 +329,8 @@ for rank in ranks:
             )
         print()
 
+    if with_html:
+        print('<div id="all"></div>')
     print("# All threads : ")
     for key in sorted(alltasktimes.keys()):
         taskmin = min(alltasktimes[key])
@@ -338,6 +350,8 @@ for rank in ranks:
     print()
 
     # For pairs, show stuff sorted by SID
+    if with_html:
+        print('<div id="sid"></div>')
     print("# By SID (all threads): ")
     print(
         "# {0:<17s}: {1:>7s} {2:>9s} {3:>9s} {4:>9s} {5:>9s} {6:>9s}".format(
@@ -375,6 +389,8 @@ for rank in ranks:
     #  Dead times.
     print("# Times not in tasks (deadtimes)")
     print("# ------------------------------")
+    if with_html:
+        print('<div id="before"></div>')
     print("# Time before first task:")
     print("# no.    : {0:>9s} {1:>9s}".format("value", "percent"))
     predeadtimes = []
@@ -410,6 +426,8 @@ for rank in ranks:
     )
     print()
 
+    if with_html:
+        print('<div id="after"></div>')
     print("# Time after last task:")
     print("# no.    : {0:>9s} {1:>9s}".format("value", "percent"))
     postdeadtimes = []
@@ -446,6 +464,8 @@ for rank in ranks:
     print()
 
     #  Time in engine, i.e. from first to last tasks.
+    if with_html:
+        print('<div id="between"></div>')
     print("# Time between tasks (engine deadtime):")
     print(
         "# no.    : {0:>9s} {1:>9s} {2:>9s} {3:>9s} {4:>9s} {5:>9s}".format(
@@ -503,6 +523,8 @@ for rank in ranks:
     print()
 
     #  All times in step.
+    if with_html:
+        print('<div id="dead"></div>')
     print("# All deadtimes:")
     print(
         "# no.    : {0:>9s} {1:>9s} {2:>9s} {3:>9s} {4:>9s} {5:>9s}".format(

@@ -66,7 +66,7 @@ nrank=$(($nrank-1))
 echo "Processing thread info files..."
 echo $list | xargs -P $NPROCS -n 3 /bin/bash -c "${SCRIPTHOME}/plot_tasks.py --expand 1 --limit $TIMERANGE \$0 \$2 "
 for i in $(seq 0 $nrank); do
-    echo $list | xargs -P $NPROCS -n 3 /bin/bash -c "${SCRIPTHOME}/analyse_tasks.py -r $i \$0 > \$2${i}.stats"
+    echo $list | xargs -P $NPROCS -n 3 /bin/bash -c "${SCRIPTHOME}/analyse_tasks.py -r $i --html \$0 > \$2${i}.stats"
 done
 
 echo "Writing output index.html file"
@@ -110,6 +110,7 @@ EOF3
 <img src="step${s}r${i}.png">
 <pre>
 EOF2
+echo "<nav>Jump to: <a href="#all">all threads</a> <a href="#dead">dead times</a></nav>" >> step${s}r${i}.html
 cat step${s}r${i}.stats >> step${s}r${i}.html
 cat <<EOF2 >> step${s}r${i}.html
 </pre>
