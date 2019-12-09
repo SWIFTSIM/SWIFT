@@ -412,6 +412,8 @@ EAGLEFeedback:
   SNIa_DTD_exp_timescale_Gyr:       2.0             # Time-scale of the SNIa delay time distribution in the exponential DTD case (in Gyr).
   SNIa_energy_erg:                 1.0e51           # Energy of one SNIa explosion in ergs.
   AGB_ejecta_velocity_km_p_s:      10.0             # Velocity of the AGB ejectas in km/s.
+  stellar_evolution_age_cut_Gyr:    0.1             # Stellar age in Gyr above which the enrichment is down-sampled.
+  stellar_evolution_sampling_rate:   10             # Number of time-steps in-between two enrichment events for a star above the age threshold.
   SNII_yield_factor_Hydrogen:       1.0             # (Optional) Correction factor to apply to the Hydrogen yield from the SNII channel.
   SNII_yield_factor_Helium:         1.0             # (Optional) Correction factor to apply to the Helium yield from the SNII channel.
   SNII_yield_factor_Carbon:         0.5             # (Optional) Correction factor to apply to the Carbon yield from the SNII channel.

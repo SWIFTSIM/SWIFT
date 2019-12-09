@@ -16,8 +16,8 @@ TimeIntegration:
 # Parameters governing the snapshots
 Snapshots:
   basename:            stellar_evolution # Common part of the name of output files
-  time_first:          0.       # Time of the first output (in internal units)
-  delta_time:          3.e-5    # Time difference between consecutive outputs without cosmology (internal units)
+  time_first:          0.                # Time of the first output (in internal units)
+  delta_time:          3.e-5             # Time difference between consecutive outputs (internal units)
   compression:         4
 
 # Parameters governing the conserved quantities statistics
@@ -106,6 +106,8 @@ EAGLEFeedback:
   SNIa_DTD_exp_norm_p_Msun:         0.002           # Normalisation of the SNIa rates in inverse solar masses.
   SNIa_energy_erg:                 1.0e51           # Energy of one SNIa explosion in ergs.
   AGB_ejecta_velocity_km_p_s:      10.0             # Velocity of the AGB ejectas in km/s.
+  stellar_evolution_age_cut_Gyr:    0.1             # Age in Gyr above which the enrichment is downsampled.
+  stellar_evolution_sampling_rate:   10             # Number of time-steps in-between two enrichment events for a star above the age threshold.
   SNII_yield_factor_Hydrogen:       1.0             # (Optional) Correction factor to apply to the Hydrogen yield from the SNII channel.
   SNII_yield_factor_Helium:         1.0             # (Optional) Correction factor to apply to the Helium yield from the SNII channel.
   SNII_yield_factor_Carbon:         0.5             # (Optional) Correction factor to apply to the Carbon yield from the SNII channel.

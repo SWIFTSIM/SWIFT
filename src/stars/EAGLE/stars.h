@@ -68,6 +68,9 @@ __attribute__((always_inline)) INLINE static void stars_first_init_spart(
   if (stars_properties->overwrite_birth_time)
     sp->birth_time = stars_properties->spart_first_init_birth_time;
 
+  sp->last_enrichment_time = sp->birth_time;
+  sp->count_since_last_enrichment = -1;
+
   stars_init_spart(sp);
 }
 

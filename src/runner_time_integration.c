@@ -30,6 +30,7 @@
 #include "black_holes.h"
 #include "cell.h"
 #include "engine.h"
+#include "feedback.h"
 #include "kick.h"
 #include "timers.h"
 #include "timestep.h"
@@ -745,6 +746,9 @@ void runner_do_timestep(struct runner *r, struct cell *c, int timer) {
         /* Update particle */
         sp->time_bin = get_time_bin(ti_new_step);
         sp->gpart->time_bin = get_time_bin(ti_new_step);
+
+        feedback_will_do_feedback(sp, e->feedback_props, with_cosmology,
+                                  e->cosmology, e->time);
 
         /* Number of updated s-particles */
         s_updated++;
