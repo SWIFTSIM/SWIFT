@@ -193,7 +193,9 @@ __attribute__((always_inline)) INLINE static void feedback_evolve_spart(
  *
  * @param sp The star of interest.
  * @param feedback_props The properties of the feedback model.
- * @param age_of_star Age of the star in internal units.
+ * @param with_cosmology Are we running a cosmological problem?
+ * @param cosmo The cosmological model.
+ * @param time The current time (since the start of the run / Big Bang).
  */
 __attribute__((always_inline)) INLINE static int feedback_will_do_feedback(
     struct spart* restrict sp, const struct feedback_props* feedback_props,
