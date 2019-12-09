@@ -32,6 +32,7 @@ examples/*/*/*.dat
 examples/*/*/*.png
 examples/*/*/*.pdf
 examples/*/*/*.mp4
+examples/*/*/*.txt
 examples/*/*/*.rst
 examples/*/*/*.hdf5
 examples/*/*/*.csv
