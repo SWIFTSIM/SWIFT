@@ -110,6 +110,7 @@ EOF3
 <img src="step${s}r${i}.png">
 <pre>
 EOF2
+echo "<nav>Jump to: <a href="#all">all threads</a> <a href="#dead">dead times</a></nav>" >> step${s}r${i}.html
 cat step${s}r${i}.stats >> step${s}r${i}.html
 cat <<EOF2 >> step${s}r${i}.html
 </pre>
