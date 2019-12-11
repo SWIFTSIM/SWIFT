@@ -202,6 +202,27 @@ __attribute__((always_inline)) INLINE static int feedback_will_do_feedback(
     const int with_cosmology, const struct cosmology* cosmo,
     const double time) {
 
+  /* Special case for new-born stars */
+  if (with_cosmology) {
+    if (sp->birth_scale_factor == (float)cosmo->a) {
+
+      /* Set the counter to "let's do enrichment" */
+      sp->count_since_last_enrichment = 0;
+
+      /* Say we want to do feedback */
+      return 1;
+    }
+  } else {
+    if (sp->birth_time == (float)time) {
+
+      /* Set the counter to "let's do enrichment" */
+      sp->count_since_last_enrichment = 0;
+
+      /* Say we want to do feedback */
+      return 1;
+    }
+  }
+
   /* Calculate age of the star at current time */
   double age_of_star;
   if (with_cosmology) {
