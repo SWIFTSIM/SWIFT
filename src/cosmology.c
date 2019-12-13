@@ -864,8 +864,8 @@ double cosmology_get_delta_time_from_scale_factors(const struct cosmology *c,
  * @brief Compute scale factor from time since big bang (in internal units).
  *
  * This function is inefficient as it needs to search the cosmology table
- * and then interpolate. An accuracy of <10^-6 is achieved for all reasonable
- * cosmologies.
+ * and then interpolate. A relative accuracy of <10^-6 is achieved for all
+ * reasonable cosmologies.
  *
  * @param c The current #cosmology.
  * @param t time since the big bang
@@ -875,7 +875,7 @@ double cosmology_get_scale_factor_from_time(const struct cosmology *c,
                                             const double t) {
 
   /* Use a bisection search on the whole table to find the
-     interval where the time lies lies */
+     interval where the time lies */
   int i_min = 0;
   int i_max = cosmology_table_length - 1;
   int i = -1;
