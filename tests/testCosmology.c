@@ -72,7 +72,7 @@ int main(int argc, char *argv[]) {
   message("Start checking computation...");
 
   for (int i = 0; i < N_CHECK; i++) {
-    double a = 0.1 + 0.9 * i / (N_CHECK - 1.);
+    double a = 0.01 + 0.99 * i / (N_CHECK - 1.);
 
     /* Compute a(t(a)) and check if same results */
     double time = cosmology_get_time_since_big_bang(&cosmo, a);

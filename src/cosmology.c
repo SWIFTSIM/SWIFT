@@ -568,6 +568,8 @@ void cosmology_init_no_cosmo(struct cosmology *c) {
 
   c->a_begin = 1.;
   c->a_end = 1.;
+  c->log_a_begin = 0.;
+  c->log_a_end = 0.;
   c->log_a_table_begin = 0.;
   c->log_a_table_end = 0.;
 
