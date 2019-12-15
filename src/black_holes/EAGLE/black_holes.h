@@ -337,6 +337,11 @@ __attribute__((always_inline)) INLINE static void black_holes_swallow_bpart(
   bpi->gpart->mass += bpj->mass;
   bpi->subgrid_mass += bpj->subgrid_mass;
 
+  /* Collect the swallowed angular momentum */
+  bpi->swallowed_angular_momentum[0] += bpj->swallowed_angular_momentum[0];
+  bpi->swallowed_angular_momentum[1] += bpj->swallowed_angular_momentum[1];
+  bpi->swallowed_angular_momentum[2] += bpj->swallowed_angular_momentum[2];
+
   /* Update the BH momentum */
   const float BH_mom[3] = {bpi_dyn_mass * bpi->v[0] + bpj_dyn_mass * bpj->v[0],
                            bpi_dyn_mass * bpi->v[1] + bpj_dyn_mass * bpj->v[1],
