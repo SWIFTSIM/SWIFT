@@ -113,10 +113,7 @@ static INLINE void tracers_after_timestep(
 }
 
 /**
- * @brief Update the particle tracers just after its time-step has been
- * computed.
- *
- * Set the maximal temperature to a valid initial state
+ * @brief Initialise the tracer data at the start of a calculation.
  *
  * @param p Pointer to the particle data.
  * @param xp Pointer to the extended particle data (containing the tracers
@@ -135,6 +132,30 @@ static INLINE void tracers_first_init_xpart(
 
   xp->tracers_data.maximum_temperature = -1.f;
   xp->tracers_data.maximum_temperature_time = -1.f;
+  xp->tracers_data.hit_by_SNII_feedback = 0;
+  xp->tracers_data.hit_by_AGN_feedback = 0;
+}
+
+/**
+ * @brief Update the particles' tracer data after a stellar feedback
+ * event.
+ *
+ * @param xp The extended particle data.
+ */
+static INLINE void tracers_after_feedback(struct xpart *xp) {
+
+  xp->tracers_data.hit_by_SNII_feedback = 1;
+}
+
+/**
+ * @brief Update the particles' tracer data after an AGN feedback
+ * event.
+ *
+ * @param xp The extended particle data.
+ */
+static INLINE void tracers_after_black_holes_feedback(struct xpart *xp) {
+
+  xp->tracers_data.hit_by_AGN_feedback = 1;
 }
 
 #endif /* SWIFT_TRACERS_EAGLE_H */

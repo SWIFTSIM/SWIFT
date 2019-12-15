@@ -26,6 +26,7 @@
 #include "random.h"
 #include "space.h"
 #include "timestep_sync_part.h"
+#include "tracers.h"
 
 /**
  * @brief Density interaction between two particles (non-symmetric).
@@ -379,6 +380,9 @@ runner_iact_nonsym_bh_gas_feedback(const float r2, const float *dx,
 
       /* Impose maximal viscosity */
       hydro_diffusive_feedback_reset(pj);
+
+      /* Mark this particle has having been heated by AGN feedback */
+      tracers_after_black_holes_feedback(xpj);
 
       /* message( */
       /*     "We did some AGN heating! id %llu BH id %llu probability " */

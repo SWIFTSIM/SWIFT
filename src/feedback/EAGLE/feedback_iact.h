@@ -22,6 +22,7 @@
 /* Local includes */
 #include "random.h"
 #include "timestep_sync_part.h"
+#include "tracers.h"
 
 /**
  * @brief Density interaction between two particles (non-symmetric).
@@ -294,6 +295,9 @@ runner_iact_nonsym_feedback_apply(const float r2, const float *dx,
 
       /* Impose maximal viscosity */
       hydro_diffusive_feedback_reset(pj);
+
+      /* Mark this particle has having been heated by supernova feedback */
+      tracers_after_feedback(xpj);
 
       /* message( */
       /*     "We did some heating! id %llu star id %llu probability %.5e " */
