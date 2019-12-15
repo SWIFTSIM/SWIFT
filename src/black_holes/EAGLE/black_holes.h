@@ -65,6 +65,9 @@ __attribute__((always_inline)) INLINE static void black_holes_first_init_bpart(
   bp->last_high_Eddington_fraction_scale_factor = -1.f;
   bp->last_minor_merger_time = -1.;
   bp->last_major_merger_time = -1.;
+  bp->swallowed_angular_momentum[0] = 0.f;
+  bp->swallowed_angular_momentum[1] = 0.f;
+  bp->swallowed_angular_momentum[2] = 0.f;
 
   black_holes_mark_bpart_as_not_swallowed(&bp->merger_data);
 }
@@ -252,6 +255,24 @@ __attribute__((always_inline)) INLINE static void black_holes_swallow_part(
   /* Increase the dynamical mass of the BH. */
   bp->mass += gas_mass;
   bp->gpart->mass += gas_mass;
+
+  /* Physical velocity difference between the particles */
+  const float dv[3] = {(bp->v[0] - p->v[0]) * cosmo->a_inv,
+                       (bp->v[1] - p->v[1]) * cosmo->a_inv,
+                       (bp->v[2] - p->v[2]) * cosmo->a_inv};
+
+  /* Physical distance between the particles */
+  const float dx[3] = {(bp->x[0] - p->x[0]) * cosmo->a,
+                       (bp->x[0] - p->x[0]) * cosmo->a,
+                       (bp->x[0] - p->x[0]) * cosmo->a};
+
+  /* Collect the swallowed angular momentum */
+  bp->swallowed_angular_momentum[0] +=
+      gas_mass * (dx[1] * dv[2] - dx[2] * dv[1]);
+  bp->swallowed_angular_momentum[1] +=
+      gas_mass * (dx[2] * dv[0] - dx[0] * dv[2]);
+  bp->swallowed_angular_momentum[2] +=
+      gas_mass * (dx[0] * dv[1] - dx[1] * dv[0]);
 
   /* Update the BH momentum */
   const float BH_mom[3] = {BH_mass * bp->v[0] + gas_mass * p->v[0],
@@ -592,6 +613,11 @@ INLINE static void black_holes_create_from_gas(
   struct chemistry_bpart_data* bp_chem = &bp->chemistry_data;
   const struct chemistry_part_data* p_chem = &p->chemistry_data;
   chemistry_bpart_from_part(bp_chem, p_chem, gas_mass);
+
+  /* No swallowed angular momentum */
+  bp->swallowed_angular_momentum[0] = 0.f;
+  bp->swallowed_angular_momentum[1] = 0.f;
+  bp->swallowed_angular_momentum[2] = 0.f;
 
   /* Last time this BH had a high Eddington fraction */
   bp->last_high_Eddington_fraction_scale_factor = -1.f;

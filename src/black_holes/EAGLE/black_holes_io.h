@@ -114,7 +114,7 @@ INLINE static void black_holes_write_particles(const struct bpart* bparts,
                                                int with_cosmology) {
 
   /* Say how much we want to write */
-  *num_fields = 17;
+  *num_fields = 18;
 
   /* List what we want to write */
   list[0] = io_make_output_field_convert_bpart(
@@ -224,6 +224,12 @@ INLINE static void black_holes_write_particles(const struct bpart* bparts,
         last_major_merger_time,
         "Times at which the black holes last had a major merger.");
   }
+
+  list[17] = io_make_output_field(
+      "SwallowedAngularMomenta", FLOAT, 3, UNIT_CONV_ANGULAR_MOMENTUM, 0.f,
+      bparts, swallowed_angular_momentum,
+      "Physical angular momenta that the black holes have accumulated by "
+      "swallowing gas particles.");
 
 #ifdef DEBUG_INTERACTIONS_BLACK_HOLES
 
