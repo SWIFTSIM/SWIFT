@@ -157,6 +157,9 @@ struct bpart {
 
   struct {
 
+    /*! Gravitational potential copied from the #gpart. */
+    float potential;
+
     /*! Value of the minimum potential across all neighbours. */
     float min_potential;
 

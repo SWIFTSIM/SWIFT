@@ -102,6 +102,7 @@ __attribute__((always_inline)) INLINE static void black_holes_init_bpart(
   bp->reposition.delta_x[1] = -FLT_MAX;
   bp->reposition.delta_x[2] = -FLT_MAX;
   bp->reposition.min_potential = FLT_MAX;
+  bp->reposition.potential = FLT_MAX;
 }
 
 /**
@@ -582,6 +583,36 @@ __attribute__((always_inline)) INLINE static void black_holes_reset_feedback(
     bp->ids_ngbs_force[i] = -1;
   bp->num_ngb_force = 0;
 #endif
+}
+
+/**
+ * @brief Store the gravitational potential of a black hole by copying it from
+ * its #gpart friend.
+ *
+ * @param bp The black hole particle.
+ * @param gp The black hole's #gpart.
+ */
+__attribute__((always_inline)) INLINE static void
+black_holes_store_potential_in_bpart(struct bpart* bp, const struct gpart* gp) {
+
+#ifdef SWIFT_DEBUG_CHECKS
+  if (bp->gpart != gp) error("Copying potential to the wrong black hole!");
+#endif
+
+  bp->reposition.potential = gp->potential;
+}
+
+/**
+ * @brief Store the gravitational potential of a particle by copying it from
+ * its #gpart friend.
+ *
+ * @param p_data The black hole data of a gas particle.
+ * @param gp The black hole's #gpart.
+ */
+__attribute__((always_inline)) INLINE static void
+black_holes_store_potential_in_part(struct black_holes_part_data* p_data,
+                                    const struct gpart* gp) {
+  p_data->potential = gp->potential;
 }
 
 /**

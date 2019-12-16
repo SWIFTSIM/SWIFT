@@ -19,6 +19,10 @@
 #ifndef SWIFT_BLACK_HOLES_STRUCT_EAGLE_H
 #define SWIFT_BLACK_HOLES_STRUCT_EAGLE_H
 
+/* Standard headers */
+#include <float.h>
+
+/* Local includes */
 #include "inline.h"
 
 /**
@@ -28,6 +32,9 @@ struct black_holes_part_data {
 
   /*! ID of the black-hole that will swallow this #part. */
   long long swallow_id;
+
+  /*! Gravitational potential of the particle (for repositioning) */
+  float potential;
 };
 
 /**
@@ -52,6 +59,11 @@ __attribute__((always_inline)) INLINE static void
 black_holes_mark_part_as_not_swallowed(struct black_holes_part_data* p_data) {
 
   p_data->swallow_id = -1;
+}
+
+__attribute__((always_inline)) INLINE static void black_holes_init_potential(
+    struct black_holes_part_data* p_data) {
+  p_data->potential = FLT_MAX;
 }
 
 /**
