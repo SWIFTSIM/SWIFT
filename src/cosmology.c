@@ -572,6 +572,8 @@ void cosmology_init_no_cosmo(struct cosmology *c) {
   c->log_a_end = 0.;
   c->log_a_table_begin = 0.;
   c->log_a_table_end = 0.;
+  c->time_base = 0.;
+  c->time_base_inv = 0.;
 
   c->H = 0.;
   c->H0 = 0.;
