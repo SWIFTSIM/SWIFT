@@ -61,6 +61,11 @@ black_holes_mark_part_as_not_swallowed(struct black_holes_part_data* p_data) {
   p_data->swallow_id = -1;
 }
 
+/**
+ * @brief Reset the particle-carried potential at the start of a time-step.
+ *
+ * @param p_data The #part's black hole data.
+ */
 __attribute__((always_inline)) INLINE static void black_holes_init_potential(
     struct black_holes_part_data* p_data) {
   p_data->potential = FLT_MAX;

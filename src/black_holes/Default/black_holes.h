@@ -228,6 +228,32 @@ __attribute__((always_inline)) INLINE static void black_holes_reset_feedback(
 }
 
 /**
+ * @brief Store the gravitational potential of a black hole by copying it from
+ * its #gpart friend.
+ *
+ * Nothing to do here.
+ *
+ * @param bp The black hole particle.
+ * @param gp The black hole's #gpart.
+ */
+__attribute__((always_inline)) INLINE static void
+black_holes_store_potential_in_bpart(struct bpart* bp, const struct gpart* gp) {
+}
+
+/**
+ * @brief Store the gravitational potential of a particle by copying it from
+ * its #gpart friend.
+ *
+ * Nothing to do here.
+ *
+ * @param p_data The black hole data of a gas particle.
+ * @param gp The black hole's #gpart.
+ */
+__attribute__((always_inline)) INLINE static void
+black_holes_store_potential_in_part(struct black_holes_part_data* p_data,
+                                    const struct gpart* gp) {}
+
+/**
  * @brief Initialise a BH particle that has just been seeded.
  *
  * @param bp The #bpart to initialise.
