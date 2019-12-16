@@ -51,10 +51,9 @@
  * @param k Index along z.
  * @param N Size of the array along one axis.
  */
-__attribute__((always_inline)) INLINE static int row_major_id_periodic(int i,
-                                                                       int j,
-                                                                       int k,
-                                                                       int N) {
+__attribute__((always_inline, const)) INLINE static int row_major_id_periodic(
+    const int i, const int j, const int k, const int N) {
+
   return (((i + N) % N) * N * N + ((j + N) % N) * N + ((k + N) % N));
 }
 
@@ -72,9 +71,10 @@ __attribute__((always_inline)) INLINE static int row_major_id_periodic(int i,
  * @param dy Second CIC coefficient along y
  * @param dz Second CIC coefficient along z
  */
-__attribute__((always_inline)) INLINE static double CIC_get(
-    double mesh[6][6][6], int i, int j, int k, double tx, double ty, double tz,
-    double dx, double dy, double dz) {
+__attribute__((always_inline, const)) INLINE static double CIC_get(
+    const double mesh[6][6][6], const int i, const int j, const int k,
+    const double tx, const double ty, const double tz, const double dx,
+    const double dy, const double dz) {
 
   double temp;
   temp = mesh[i + 0][j + 0][k + 0] * tx * ty * tz;
@@ -106,8 +106,9 @@ __attribute__((always_inline)) INLINE static double CIC_get(
  * @param value The value to interpolate.
  */
 __attribute__((always_inline)) INLINE static void CIC_set(
-    double* mesh, int N, int i, int j, int k, double tx, double ty, double tz,
-    double dx, double dy, double dz, double value) {
+    double* mesh, const int N, const int i, const int j, const int k,
+    const double tx, const double ty, const double tz, const double dx,
+    const double dy, const double dz, const double value) {
 
   /* Classic CIC interpolation */
   atomic_add_d(&mesh[row_major_id_periodic(i + 0, j + 0, k + 0, N)],
@@ -137,8 +138,9 @@ __attribute__((always_inline)) INLINE static void CIC_set(
  * @param fac The width of a mesh cell.
  * @param dim The dimensions of the simulation box.
  */
-INLINE static void gpart_to_mesh_CIC(const struct gpart* gp, double* rho, int N,
-                                     double fac, const double dim[3]) {
+INLINE static void gpart_to_mesh_CIC(const struct gpart* gp, double* rho,
+                                     const int N, const double fac,
+                                     const double dim[3]) {
 
   /* Box wrap the multipole's position */
   const double pos_x = box_wrap(gp->x[0], 0., dim[0]);
@@ -183,8 +185,9 @@ INLINE static void gpart_to_mesh_CIC(const struct gpart* gp, double* rho, int N,
  * @param fac The width of a mesh cell.
  * @param dim The dimensions of the simulation box.
  */
-void cell_gpart_to_mesh_CIC(const struct cell* c, double* rho, int N,
-                            double fac, const double dim[3]) {
+void cell_gpart_to_mesh_CIC(const struct cell* c, double* rho, const int N,
+                            const double fac, const double dim[3]) {
+
   const int gcount = c->grav.count;
   const struct gpart* gparts = c->grav.parts;
 
@@ -253,8 +256,8 @@ void cell_gpart_to_mesh_CIC_mapper(void* map_data, int num, void* extra) {
  * @param fac width of a mesh cell.
  * @param dim The dimensions of the simulation box.
  */
-void mesh_to_gparts_CIC(struct gpart* gp, const double* pot, int N, double fac,
-                        const double dim[3]) {
+void mesh_to_gparts_CIC(struct gpart* gp, const double* pot, const int N,
+                        const double fac, const double dim[3]) {
 
   /* Box wrap the gpart's position */
   const double pos_x = box_wrap(gp->x[0], 0., dim[0]);
