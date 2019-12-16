@@ -1662,7 +1662,7 @@ void space_rebuild(struct space *s, int repartitioned, int verbose) {
     space_parts_sort(s->parts, s->xparts, h_index, cell_part_counts,
                      s->nr_cells, 0);
 
-//#ifdef SWIFT_DEBUG_CHECKS
+#ifdef SWIFT_DEBUG_CHECKS
   /* Verify that the part have been sorted correctly. */
 //message("Verifying particles are correctly sorted");
   for (size_t k = 0; k < nr_parts; k++) {
@@ -1685,9 +1685,9 @@ void space_rebuild(struct space *s, int repartitioned, int verbose) {
     if (p->x[0] < c->loc[0] || p->x[0] > c->loc[0] + c->width[0] ||
         p->x[1] < c->loc[1] || p->x[1] > c->loc[1] + c->width[1] ||
         p->x[2] < c->loc[2] || p->x[2] > c->loc[2] + c->width[2])
-      error("part not sorted into the right top-level cell!");
+      error("part not sorted into the right top-level cell! %.16e %.16e %.16e c->loc[0]=[ %e %e] c->loc[1] = [%e %e] c->loc[2] = [%e %e]", p->x[0], p->x[1], p->x[2], c->loc[0], c->loc[0] + c->width[0],c->loc[1],  c->loc[1] + c->width[1], c->loc[2], c->loc[2] + c->width[2]);
   }
-//#endif /* SWIFT_DEBUG_CHECKS */
+#endif /* SWIFT_DEBUG_CHECKS */
 
   /* Sort the sparts according to their cells. */
   if (nr_sparts > 0)
@@ -2186,7 +2186,7 @@ void space_parts_get_cell_index_mapper(void *map_data, int nr_parts,
 
 //#ifdef SWIFT_DEBUG_CHECKS
     if (index < 0 || index >= cdim[0] * cdim[1] * cdim[2])
-      error("Invalid index=%d cdim=[%d %d %d] p->x=[%e %e %e] a=[%e %e %e] v=[%e %e %e] old_v=[%e %e %e] pid=%lli h=%f", index, cdim[0],
+      error("Invalid index=%d cdim=[%d %d %d] p->x=[%.16e %e %e] a=[%e %e %e] v=[%e %e %e] old_v=[%e %e %e] pid=%lli h=%f", index, cdim[0],
             cdim[1], cdim[2], pos_x, pos_y, pos_z, p->a_hydro[0], p->a_hydro[1], p->a_hydro[2], p->v[0], p->v[1], p->v[2], p->v_minus1[0],  p->v_minus1[1],  p->v_minus1[2], p->id, p->h);
 
     if (pos_x >= dim_x || pos_y >= dim_y || pos_z >= dim_z || pos_x < 0. ||

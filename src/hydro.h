@@ -98,6 +98,11 @@
 #include "./hydro/LaminarSPS/hydro_iact.h"
 #define SPH_IMPLEMENTATION \
   "Euler Fluid SPH with Laminar SPS viscosity"
+#elif defined(MULTIFLUID_LSPS_SPH)
+#include "./hydro/MultifluidLaminarSPS/hydro.h"
+#include "./hydro/MultifluidLaminarSPS/hydro_iact.h"
+#define SPH_IMPLEMENTATION \
+  "Euler fluid SPSH with Laminar SPS viscosity supporting multiple fluids"
 #else
 #error "Invalid choice of SPH variant"
 #endif

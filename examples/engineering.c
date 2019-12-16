@@ -593,6 +593,11 @@ engine_print_stats(&e);
     engine_step(&e);
 
     if (with_verbose_timers) timers_print(e.step);
+    for(size_t i = 0; i < Nboundary+Nfluid; i++){
+       if(parts[i].id == /*12128*/ /*1116*/ 23205){
+          printf("%e %e %e %e %lli %i %e %e %e\n", parts[i].a_constant[0], parts[i].a_constant[1], parts[i].a_hydro[0], parts[i].a_hydro[1], parts[i].id, parts[i].is_boundary, parts[i].pressure, parts[i].drho_dt, parts[i].rho);
+       }
+    }
 /*for(size_t i = 0; i < Nboundary+Nfluid; i++){
   if(!parts[i].is_boundary){
    printf("%f %f\n", parts[i].a_hydro[0], parts[i].a_constant[0]);

@@ -55,7 +55,7 @@ INLINE static void hydro_read_particles(struct part* parts,
                                 UNIT_CONV_NO_UNITS, parts, id);
   list[5] = io_make_input_field("Accelerations", FLOAT, 3, OPTIONAL,
                                 UNIT_CONV_ACCELERATION, parts, a_hydro);
-  list[6] = io_make_input_field("Density", /*DOUBLE*/FLOAT, 1, COMPULSORY,
+  list[6] = io_make_input_field("Density", DOUBLE/*FLOAT*/, 1, COMPULSORY,
                                 UNIT_CONV_DENSITY, parts, rho);
   list[7] = io_make_input_field("ConstantAcceleration", FLOAT, 3, OPTIONAL,
                                 UNIT_CONV_ACCELERATION, parts, a_constant);
@@ -171,11 +171,11 @@ INLINE static void hydro_write_particles(const struct part* parts,
   list[5] = io_make_output_field("ParticleIDs", ULONGLONG, 1,
                                  UNIT_CONV_NO_UNITS, 0.f,parts, id, "id");
   list[6] =
-      io_make_output_field("Density", /*DOUBLE*/FLOAT, 1, UNIT_CONV_DENSITY,0.f, parts, rho,"density");
+      io_make_output_field("Density", DOUBLE/*FLOAT*/, 1, UNIT_CONV_DENSITY,0.f, parts, rho,"density");
   list[7] = io_make_output_field(
       "Pressure", FLOAT, 1, UNIT_CONV_PRESSURE,0.f, parts, pressure, "pressure");
 
-  list[8] = io_make_output_field("ConstantAcceleration", DOUBLE, 3,
+  list[8] = io_make_output_field("ConstantAcceleration", FLOAT, 3,
                                                UNIT_CONV_ACCELERATION,0.f, parts, a_constant, "a_constant");
   list[9] = io_make_output_field("IsBoundary", INT, 1, UNIT_CONV_NO_UNITS,0.f, parts, is_boundary, "is boundary");
   list[10] = io_make_output_field("Acceleration", FLOAT, 3, UNIT_CONV_ACCELERATION,0.f, parts, a_hydro, "Acceleration");

@@ -97,6 +97,9 @@
 #elif defined(LAMINAR_SPS_SPH)
 #include "./hydro/LaminarSPS/hydro_part.h"
 #define hydro_need_extra_init_loop 0
+#elif defined(MULTIFLUID_LSPS_SPH)
+#include "./hydro/MultifluidLaminarSPS/hydro_part.h"
+#define hydro_need_extra_init_loop 0
 #else
 #error "Invalid choice of SPH variant"
 #endif

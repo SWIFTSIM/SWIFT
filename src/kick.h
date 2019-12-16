@@ -97,6 +97,9 @@ __attribute__((always_inline)) INLINE static void kick_part(
       double temp = p->rho;
       p->rho = p->rho + p->drho_dt*dt_kick_hydro;
       p->rho_t_minus1 = temp;
+/*      if(p->id == 1148 && p->rho == p->rho_t_minus1 && p->drho_dt != 0){
+        error("rho = %e rho_t_minus1 = %e drho_dt = %e\n", p->rho, p->rho_t_minus1, p->drho_dt);
+      }*/
 /*    if(p->id == 65744){
          printf("p->rho = %e, drho = %e, diff = %e\n", p->rho, p->drho_dt * dt_kick_hydro, p->rho - 1e-3);
       }*/

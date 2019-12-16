@@ -138,20 +138,31 @@ __attribute__((always_inline)) INLINE static void runner_iact_force(
   kernel_deval(xj, &wj, &wj_dx);
   wj_dx = wj_dx * inv_hjdim_pow_plus_one;
 
-  
-  /* Compute the laminar viscosity term*/
-  const float visc_i = 4.0 * pi->viscosity;
-  const float visc_j = 4.0 * pj->viscosity;
-  const float inv_dens_sum = rhoi + rhoj;
+//  int boundary = pi->is_boundary + pj->is_boundary;
   const float r2_eta2 = r2 + 0.01*0.01;
   const float inv_r2eta2 = 1.0 / r2_eta2;
-  const float temp_i = visc_i * inv_r2eta2 * inv_dens_sum;
-  const float temp_j = visc_j * inv_r2eta2 * inv_dens_sum;
+  /* Compute the laminar viscosity term*/
+//  if(!boundary){
+  const float visc_i = 4.0 * pi->viscosity;
+  const float visc_j = 4.0 * pj->viscosity;
+//  const float inv_dens_sum = rhoi + rhoj;
+//  const float inv_dens_sum = 1.0/ (rhoi + rhoj);
+//  const float temp_i = visc_i * inv_r2eta2 * inv_dens_sum;
+//  const float temp_j = visc_j * inv_r2eta2 * inv_dens_sum;
+  const float temp_i = visc_i / ( (r2_eta2) * (rhoi + rhoj));
+  const float temp_j = visc_j / ( (r2_eta2) * (rhoi + rhoj));
   const float multiplier_i = dx[0]*dx[0]*wi_dx + dx[1]*dx[1]*wi_dx + dx[2]*dx[2]*wi_dx;
   const float multiplier_j = dx[0]*dx[0]*wj_dx + dx[1]*dx[1]*wj_dx + dx[2]*dx[2]*wj_dx;
   pi->a_hydro[0] += mj*temp_i*multiplier_i*dv[0];
   pi->a_hydro[1] += mj*temp_i*multiplier_i*dv[1];
   pi->a_hydro[2] += mj*temp_i*multiplier_i*dv[2];
+
+/*  if(pi->id == 4287){
+    printf("Laminar= %e\n", mj*temp_i*multiplier_i*dv[1]);
+  }
+  if(pj->id == 4287){
+    printf("Laminar= %e\n", -mi*temp_j*multiplier_j*dv[1]);
+  }*/
 
   pj->a_hydro[0] -= mi*temp_j*multiplier_j*dv[0];
   pj->a_hydro[1] -= mi*temp_j*multiplier_j*dv[1];
@@ -164,14 +175,24 @@ __attribute__((always_inline)) INLINE static void runner_iact_force(
   const float tau_yy = pi->tau_yy + pj->tau_yy;
   const float tau_yz = pi->tau_yz + pj->tau_yz;
   const float tau_zz = pi->tau_zz + pj->tau_zz;
-  pi->a_hydro[0] += (mi*mj)*(tau_xx*dx[0] + tau_xy * dx[1] + tau_xz * dx[2]);
-  pi->a_hydro[1] += (mi*mj)*(tau_xy*dx[0] + tau_yy * dx[1] + tau_yz * dx[2]);
-  pi->a_hydro[2] += (mi*mj)*(tau_xz*dx[0] + tau_yz * dx[1] + tau_zz * dx[2]);
+  const float mi_mj = mi * mj;
+  const float hydro0 = mi_mj * (tau_xx*dx[0] + tau_xy * dx[1] + tau_xz * dx[2]);
+  const float hydro1 = mi_mj * (tau_xy*dx[0] + tau_yy * dx[1] + tau_yz * dx[2]);
+  const float hydro2 = mi_mj * (tau_xz*dx[0] + tau_yz * dx[1] + tau_zz * dx[2]);
+  pi->a_hydro[0] += hydro0;
+  pi->a_hydro[1] += hydro1;
+  pi->a_hydro[2] += hydro2;
+/*  if(pi->id == 4287){
+    printf("SPS= %e\n", hydro1);
+  }
+  if(pj->id == 4287){
+    printf("SPS= %e\n", -hydro1);
+  }*/
 
-  pj->a_hydro[0] -= (mi*mj)*(tau_xx*dx[0] + tau_xy * dx[1] + tau_xz * dx[2]);
-  pj->a_hydro[1] -= (mi*mj)*(tau_xy*dx[0] + tau_yy * dx[1] + tau_yz * dx[2]);
-  pj->a_hydro[2] -= (mi*mj)*(tau_xz*dx[0] + tau_yz * dx[1] + tau_zz * dx[2]);
-
+  pj->a_hydro[0] -= hydro0;
+  pj->a_hydro[1] -= hydro1;
+  pj->a_hydro[2] -= hydro2;
+//}
   /* Compute Velocity gradients */
   const float mj_over_rhoj = mj * rhoj_inv;
   const float mi_over_rhoi = mi * rhoi_inv;
@@ -215,6 +236,12 @@ __attribute__((always_inline)) INLINE static void runner_iact_force(
   pi->a_hydro[1] -= mj * acc * wi_dx * dx[1];
   pi->a_hydro[2] -= mj * acc * wi_dx * dx[2];
   
+/*  if(pi->id == 4287){
+    printf("hydro= %e %e %e %e\n", - mj * acc * wi_dx * dx[1], (pi->pressure+pj->pressure), rhoi, rhoj);
+  }
+  if(pj->id == 4287){
+    printf("hydro= %e %e %e %e\n",  mi * acc * wj_dx * dx[1], (pi->pressure+pj->pressure), rhoi, rhoj);
+  }*/
   /* Compute density of pj. */
   pj->drho_dt +=  mi * dens;
   pj->a_hydro[0] += mi * acc * wj_dx * dx[0];
@@ -287,11 +314,14 @@ __attribute__((always_inline)) INLINE static void runner_iact_nonsym_force(
   kernel_deval(xi, &wi, &wi_dx);
   wi_dx = wi_dx * inv_hidim_pow_plus_one;
 
-  /* Compute the laminar viscosity term*/
-  const float visc_i = 4.0 * pi->viscosity;
-  const float inv_dens_sum = rhoi + rhoj;
+//int boundary = pi->is_boundary + pj->is_boundary;
   const float r2_eta2 = r2 + 0.01*0.01;
   const float inv_r2eta2 = 1.0 / r2_eta2;
+  /* Compute the laminar viscosity term*/
+//  if(!boundary){
+  const float visc_i = 4.0 * pi->viscosity;
+//  const float inv_dens_sum = rhoi + rhoj;
+  const float inv_dens_sum = 1.0 / (rhoi + rhoj);
   const float temp_i = visc_i * inv_r2eta2 * inv_dens_sum;
   const float multiplier_i = dx[0]*dx[0]*wi_dx + dx[1]*dx[1]*wi_dx + dx[2]*dx[2]*wi_dx;
   pi->a_hydro[0] += mj*temp_i*multiplier_i*dv[0];
@@ -305,9 +335,15 @@ __attribute__((always_inline)) INLINE static void runner_iact_nonsym_force(
   const float tau_yy = pi->tau_yy + pj->tau_yy;
   const float tau_yz = pi->tau_yz + pj->tau_yz;
   const float tau_zz = pi->tau_zz + pj->tau_zz;
-  pi->a_hydro[0] += (mi*mj)*(tau_xx*dx[0] + tau_xy * dx[1] + tau_xz * dx[2]);
-  pi->a_hydro[1] += (mi*mj)*(tau_xy*dx[0] + tau_yy * dx[1] + tau_yz * dx[2]);
-  pi->a_hydro[2] += (mi*mj)*(tau_xz*dx[0] + tau_yz * dx[1] + tau_zz * dx[2]);
+  const float mi_mj = mi * mj;
+  const float hydro0 = mi_mj * (tau_xx*dx[0] + tau_xy * dx[1] + tau_xz * dx[2]);
+  const float hydro1 = mi_mj * (tau_xy*dx[0] + tau_yy * dx[1] + tau_yz * dx[2]);
+  const float hydro2 = mi_mj * (tau_xz*dx[0] + tau_yz * dx[1] + tau_zz * dx[2]);
+  pi->a_hydro[0] += hydro0;
+  pi->a_hydro[1] += hydro1;
+  pi->a_hydro[2] += hydro2;
+
+//}
 
   /* Compute Velocity gradients */
   const float mj_over_rhoj = mj * rhoj_inv;

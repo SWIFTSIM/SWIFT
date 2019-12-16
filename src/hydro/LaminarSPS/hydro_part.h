@@ -74,15 +74,15 @@ struct part {
   float u;
 
   /* Particle density. */
-  /*double*/ float rho;
+  double /*float*/ rho;
  
   float rho_base;
 
   /* Particle density at the previous timestep. */
-  /*double*/ float rho_t_minus1;
+  double /*float*/ rho_t_minus1;
 
   /* Derivative of the density with respect to time */
-  float /*double*/ drho_dt;
+  /*float*/ double drho_dt;
 
   /* Kimenatic Viscosity of the fluid particle */
   float viscosity;

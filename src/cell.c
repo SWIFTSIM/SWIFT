@@ -3408,11 +3408,7 @@ int cell_unskip_hydro_tasks(struct cell *c, struct scheduler *s) {
   const int with_star_formation = e->policy & engine_policy_star_formation;
 #endif
   int rebuild = 0;
-
-#ifdef EXACT_CELLS
-  
-  if(c->nodeID == e->nodeID && cell_need_rebuild_for_hydro_self(c)) rebuild = 1;
-#endif
+  int hydro_pair = 0;
   /* Un-skip the density tasks involved with this cell. */
   for (struct link *l = c->hydro.density; l != NULL; l = l->next) {
     struct task *t = l->t;
@@ -3478,7 +3474,10 @@ int cell_unskip_hydro_tasks(struct cell *c, struct scheduler *s) {
     if (t->type == task_type_pair || t->type == task_type_sub_pair) {
       /* Check whether there was too much particle motion, i.e. the
          cell neighbour conditions were violated. */
-      if (cell_need_rebuild_for_hydro_pair(ci, cj)) rebuild = 1;
+         hydro_pair++;
+      if (cell_need_rebuild_for_hydro_pair(ci, cj)){
+         rebuild = 1;
+      }
 
 #ifdef WITH_MPI
       /* Activate the send/recv tasks. */
@@ -3649,6 +3648,9 @@ int cell_unskip_hydro_tasks(struct cell *c, struct scheduler *s) {
     }
   }
 
+#ifdef EXACT_CELLS
+  if(!hydro_pair && c->nodeID == e->nodeID && cell_need_rebuild_for_hydro_self(c)) rebuild = 1;
+#endif
   return rebuild;
 }
 

@@ -1581,7 +1581,7 @@ AC_ARG_WITH([hydro],
 
 AC_ARG_WITH([engineering],
     [AS_HELP_STRING([--with-engineering=<scheme>],
-        [Engineering-style hydrodynamics enabled. Hydrdynamics schemes to use @<:@euler, MorrisFoxZhu97, LaminarSPS default: gadget2 non-engineering hydro@:>@]
+        [Engineering-style hydrodynamics enabled. Hydrdynamics schemes to use @<:@euler, MorrisFoxZhu97, LaminarSPS ,MultiLaminar default: gadget2 non-engineering hydro@:>@]
      )],
      [with_hydro="$withval"],
      [with_hydro="gadget2"]
@@ -1650,6 +1650,11 @@ case "$with_hydro" in
      AC_DEFINE([LAMINAR_SPS_SPH], [1], [Euler SPH with Laminar SPS])
      AC_DEFINE([WITH_ENGINEERING], [1], [Engineering SPH enabled])
      with_engineering = "yes"
+  ;;
+  MultiLaminar)
+     AC_DEFINE([MULTIFLUID_LSPS_SPH], [1], [Euler SPH WIth Laminar SPS and Multifluid support])
+     AC_DEFINE([WITH_ENGINEERING], [1], [Engineering SPH enabled])
+     with_engineering="yes"
   ;;
    *)
       AC_MSG_ERROR([Unknown hydrodynamics scheme: $with_hydro])

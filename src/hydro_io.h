@@ -55,6 +55,8 @@
 #include "./hydro/MorrisFoxZhu97/hydro_io.h"
 #elif defined(LAMINAR_SPS_SPH)
 #include "./hydro/LaminarSPS/hydro_io.h"
+#elif defined(MULTIFLUID_LSPS_SPH)
+#include "./hydro/MultifluidLaminarSPS/hydro_io.h"
 #else
 #error "Invalid choice of SPH variant"
 #endif

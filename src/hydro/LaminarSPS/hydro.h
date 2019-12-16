@@ -241,7 +241,10 @@ __attribute__((always_inline)) INLINE static float hydro_compute_timestep(
   const float CFL = hydro_properties->CFL_condition;
 //  if(/*p->id == 3287*/ CFL * fminf(dt_f, dt_cv) < 1e-7){
 //    printf("CFL = %e, speed = %e, dt_f = %e dt_cv = %e\n",CFL * fminf(dt_f, dt_cv), speed, dt_f, dt_cv);
-//  }
+//  } 
+  if(fminf(dt_f, dt_cv) < 1e-11){
+    error("Part has %e %e %e %e %e and is_boundary=%i, a_hydro = %e %e\n", p->h, eos.soundspeed, 10.0*speed, p->h, p->max_visc, p->is_boundary, p->a_hydro[0], p->a_hydro[1]);
+  }
   return CFL * fminf(dt_f, dt_cv);
   /*return 0.0001;*/
 }
@@ -327,7 +330,7 @@ __attribute__((always_inline)) INLINE static void hydro_prepare_force(
     const struct cosmology *cosmo, const struct hydro_props *hydro_props,
     const float dt_alpha) {
     p->soundspeed = gas_soundspeed_from_pressure(p->rho, p->pressure);
-
+    if(!p->is_boundary){
     /* Update tau values from last step. */
     const float diagonal_sq = p->grad_v_xx*p->grad_v_xx + p->grad_v_yy*p->grad_v_yy + p->grad_v_zz*p->grad_v_zz;
   
@@ -358,6 +361,7 @@ __attribute__((always_inline)) INLINE static void hydro_prepare_force(
     if(0 && p->id == 462){
        printf("p->tau_xx = %e, p->tau_xy = %e, prr=%e, sumsps=%e, smg=%e, sqrtprr=%e inv_rho=%e\n", p->tau_xx, p->tau_xy, prr, sumsps, hydro_props->viscosity.Smagorinsky_constant, sqrt(prr), inv_rho);
        printf("a->constant = %e %e %e\n", p->a_constant[0], p->a_constant[1], p->a_constant[2]);
+    }
     }
     p->grad_v_xx = 0.0f;
     p->grad_v_xy = 0.0f;
