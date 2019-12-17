@@ -3609,11 +3609,21 @@ void space_split_recursive(struct space *s, struct cell *c,
     c->split = 0;
     maxdepth = c->depth;
 
-    timebin_t hydro_time_bin_min = num_time_bins, hydro_time_bin_max = 0;
-    timebin_t gravity_time_bin_min = num_time_bins, gravity_time_bin_max = 0;
-    timebin_t stars_time_bin_min = num_time_bins, stars_time_bin_max = 0;
-    timebin_t black_holes_time_bin_min = num_time_bins,
-              black_holes_time_bin_max = 0;
+    ti_hydro_end_min = max_nr_timesteps;
+    ti_hydro_end_max = 0;
+    ti_hydro_beg_max = 0;
+
+    ti_gravity_end_min = max_nr_timesteps;
+    ti_gravity_end_max = 0;
+    ti_gravity_beg_max = 0;
+
+    ti_stars_end_min = max_nr_timesteps;
+    ti_stars_end_max = 0;
+    ti_stars_beg_max = 0;
+
+    ti_black_holes_end_min = max_nr_timesteps;
+    ti_black_holes_end_max = 0;
+    ti_black_holes_beg_max = 0;
 
     /* parts: Get dt_min/dt_max and h_max. */
     for (int k = 0; k < count; k++) {
@@ -3623,9 +3633,18 @@ void space_split_recursive(struct space *s, struct cell *c,
       if (parts[k].time_bin == time_bin_inhibited)
         error("Inhibited particle present in space_split()");
 #endif
-      hydro_time_bin_min = min(hydro_time_bin_min, parts[k].time_bin);
-      hydro_time_bin_max = max(hydro_time_bin_max, parts[k].time_bin);
+
+      /* When does this particle's time-step start and end? */
+      const timebin_t time_bin = parts[k].time_bin;
+      const integertime_t ti_end = get_integer_time_end(ti_current, time_bin);
+      const integertime_t ti_beg = get_integer_time_begin(ti_current, time_bin);
+
+      ti_hydro_end_min = min(ti_hydro_end_min, ti_end);
+      ti_hydro_end_max = max(ti_hydro_end_max, ti_end);
+      ti_hydro_beg_max = max(ti_hydro_beg_max, ti_beg);
+
       h_max = max(h_max, parts[k].h);
+
       /* Collect SFR from the particles after rebuilt */
       star_formation_logger_log_inactive_part(&parts[k], &xparts[k],
                                               &c->stars.sfh);
@@ -3646,8 +3665,15 @@ void space_split_recursive(struct space *s, struct cell *c,
       if (gparts[k].time_bin == time_bin_inhibited)
         error("Inhibited g-particle present in space_split()");
 #endif
-      gravity_time_bin_min = min(gravity_time_bin_min, gparts[k].time_bin);
-      gravity_time_bin_max = max(gravity_time_bin_max, gparts[k].time_bin);
+
+      /* When does this particle's time-step start and end? */
+      const timebin_t time_bin = gparts[k].time_bin;
+      const integertime_t ti_end = get_integer_time_end(ti_current, time_bin);
+      const integertime_t ti_beg = get_integer_time_begin(ti_current, time_bin);
+
+      ti_gravity_end_min = min(ti_gravity_end_min, ti_end);
+      ti_gravity_end_max = max(ti_gravity_end_max, ti_end);
+      ti_gravity_beg_max = max(ti_gravity_beg_max, ti_beg);
     }
 
     /* sparts: Get dt_min/dt_max */
@@ -3658,8 +3684,16 @@ void space_split_recursive(struct space *s, struct cell *c,
       if (sparts[k].time_bin == time_bin_inhibited)
         error("Inhibited s-particle present in space_split()");
 #endif
-      stars_time_bin_min = min(stars_time_bin_min, sparts[k].time_bin);
-      stars_time_bin_max = max(stars_time_bin_max, sparts[k].time_bin);
+
+      /* When does this particle's time-step start and end? */
+      const timebin_t time_bin = sparts[k].time_bin;
+      const integertime_t ti_end = get_integer_time_end(ti_current, time_bin);
+      const integertime_t ti_beg = get_integer_time_begin(ti_current, time_bin);
+
+      ti_stars_end_min = min(ti_stars_end_min, ti_end);
+      ti_stars_end_max = max(ti_stars_end_max, ti_end);
+      ti_stars_beg_max = max(ti_stars_beg_max, ti_beg);
+
       stars_h_max = max(stars_h_max, sparts[k].h);
 
       /* Reset x_diff */
@@ -3676,10 +3710,16 @@ void space_split_recursive(struct space *s, struct cell *c,
       if (bparts[k].time_bin == time_bin_inhibited)
         error("Inhibited b-particle present in space_split()");
 #endif
-      black_holes_time_bin_min =
-          min(black_holes_time_bin_min, bparts[k].time_bin);
-      black_holes_time_bin_max =
-          max(black_holes_time_bin_max, bparts[k].time_bin);
+
+      /* When does this particle's time-step start and end? */
+      const timebin_t time_bin = bparts[k].time_bin;
+      const integertime_t ti_end = get_integer_time_end(ti_current, time_bin);
+      const integertime_t ti_beg = get_integer_time_begin(ti_current, time_bin);
+
+      ti_black_holes_end_min = min(ti_black_holes_end_min, ti_end);
+      ti_black_holes_end_max = max(ti_black_holes_end_max, ti_end);
+      ti_black_holes_beg_max = max(ti_black_holes_beg_max, ti_beg);
+
       black_holes_h_max = max(black_holes_h_max, bparts[k].h);
 
       /* Reset x_diff */
@@ -3687,26 +3727,6 @@ void space_split_recursive(struct space *s, struct cell *c,
       bparts[k].x_diff[1] = 0.f;
       bparts[k].x_diff[2] = 0.f;
     }
-
-    /* Convert into integer times */
-    ti_hydro_end_min = get_integer_time_end(ti_current, hydro_time_bin_min);
-    ti_hydro_end_max = get_integer_time_end(ti_current, hydro_time_bin_max);
-    ti_hydro_beg_max =
-        get_integer_time_begin(ti_current + 1, hydro_time_bin_max);
-    ti_gravity_end_min = get_integer_time_end(ti_current, gravity_time_bin_min);
-    ti_gravity_end_max = get_integer_time_end(ti_current, gravity_time_bin_max);
-    ti_gravity_beg_max =
-        get_integer_time_begin(ti_current + 1, gravity_time_bin_max);
-    ti_stars_end_min = get_integer_time_end(ti_current, stars_time_bin_min);
-    ti_stars_end_max = get_integer_time_end(ti_current, stars_time_bin_max);
-    ti_stars_beg_max =
-        get_integer_time_begin(ti_current + 1, stars_time_bin_max);
-    ti_black_holes_end_min =
-        get_integer_time_end(ti_current, black_holes_time_bin_min);
-    ti_black_holes_end_max =
-        get_integer_time_end(ti_current, black_holes_time_bin_max);
-    ti_black_holes_beg_max =
-        get_integer_time_begin(ti_current + 1, black_holes_time_bin_max);
 
     /* Construct the multipole and the centre of mass*/
     if (s->with_self_gravity) {
@@ -5448,10 +5468,13 @@ void space_check_top_multipoles_drift_point(struct space *s,
  *
  * @param s The #space to check.
  */
-void space_check_timesteps(struct space *s) {
+void space_check_timesteps(const struct space *s) {
 #ifdef SWIFT_DEBUG_CHECKS
   for (int i = 0; i < s->nr_cells; ++i) {
-    cell_check_timesteps(&s->cells_top[i]);
+    if (s->cells_top[i].nodeID == engine_rank) {
+      cell_check_timesteps(&s->cells_top[i], s->e->ti_current,
+                           s->e->max_active_bin);
+    }
   }
 #else
   error("Calling debugging code without debugging flag activated.");
