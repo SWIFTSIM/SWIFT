@@ -486,8 +486,13 @@ void velociraptor_invoke(struct engine *e, const int linked_with_snap) {
     /* Linking length based on the mean DM inter-particle separation
      * in the zoom region and assuming the mean density of the Universe
      * is used in the zoom region. */
-    const double mean_matter_density =
+    double mean_matter_density =
         e->cosmology->Omega_m * e->cosmology->critical_density_0;
+    if (s->with_hydro)
+      mean_matter_density = (Omega_m - Omega_b) * critical_density_0;
+    else
+      mean_matter_density = Omega_m * critical_density_0;
+
     sim_info.interparticlespacing =
         cbrt(high_res_DM_mass / mean_matter_density);
 
