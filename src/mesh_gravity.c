@@ -463,8 +463,10 @@ void mesh_apply_Green_function(struct threadpool* tp, fftw_complex* frho,
   data.k_fac = M_PI / (double)N;
 
   /* Parallelize the Green function application using the threadpool
-     to split the x-axis loop over the threads. */
-  if (N < 64) {
+     to split the x-axis loop over the threads.
+     The array is N x N x (N/2). We use the thread to each deal with
+     a range [i_min, i_max[ x N x (N/2) */
+  if (N < 32) {
     mesh_apply_Green_function_mapper(frho, N, &data);
   } else {
     threadpool_map(tp, mesh_apply_Green_function_mapper, frho, N,
