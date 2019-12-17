@@ -5303,18 +5303,24 @@ void cell_check_timesteps(const struct cell *c, const integertime_t ti_current,
     ti_beg_max = max(ti_beg, ti_beg_max);
   }
 
-  if (ti_end_min != c->hydro.ti_end_min)
-    error(
-        "Non-matching ti_end_min. Cell=%lld true=%lld ti_current=%lld depth=%d",
-        c->hydro.ti_end_min, ti_end_min, ti_current, c->depth);
-  if (ti_end_max != c->hydro.ti_end_max)
-    error(
-        "Non-matching ti_end_max. Cell=%lld true=%lld ti_current=%lld depth=%d",
-        c->hydro.ti_end_max, ti_end_max, ti_current, c->depth);
-  if (ti_beg_max != c->hydro.ti_beg_max)
-    error(
-        "Non-matching ti_beg_max. Cell=%lld true=%lld ti_current=%lld depth=%d",
-        c->hydro.ti_beg_max, ti_beg_max, ti_current, c->depth);
+  if (c->hydro.count > 0) {
+
+    if (ti_end_min != c->hydro.ti_end_min)
+      error(
+          "Non-matching ti_end_min. Cell=%lld true=%lld ti_current=%lld "
+          "depth=%d",
+          c->hydro.ti_end_min, ti_end_min, ti_current, c->depth);
+    if (ti_end_max != c->hydro.ti_end_max)
+      error(
+          "Non-matching ti_end_max. Cell=%lld true=%lld ti_current=%lld "
+          "depth=%d",
+          c->hydro.ti_end_max, ti_end_max, ti_current, c->depth);
+    if (ti_beg_max != c->hydro.ti_beg_max)
+      error(
+          "Non-matching ti_beg_max. Cell=%lld true=%lld ti_current=%lld "
+          "depth=%d",
+          c->hydro.ti_beg_max, ti_beg_max, ti_current, c->depth);
+  }
 
 #else
   error("Calling debugging code without debugging flag activated.");
