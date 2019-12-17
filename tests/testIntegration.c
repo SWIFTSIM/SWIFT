@@ -70,7 +70,8 @@ int main(int argc, char *argv[]) {
 
   /* Fake parameter file with Planck+13 cosmology
    * and the usual cosmological system of units */
-  struct swift_params *params = malloc(sizeof(struct swift_params));
+  struct swift_params *params =
+      (swift_params *)malloc(sizeof(struct swift_params));
   parser_set_param(params, "InternalUnitSystem:UnitMass_in_cgs:1.98848e43");
   parser_set_param(params,
                    "InternalUnitSystem:UnitLength_in_cgs:3.08567758e24");
