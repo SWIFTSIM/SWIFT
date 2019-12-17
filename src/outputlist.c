@@ -106,7 +106,7 @@ void output_list_read_file(struct output_list *outputlist, const char *filename,
     if (type == OUTPUT_LIST_REDSHIFT) *time = 1. / (1. + *time);
 
     if (cosmo && type == OUTPUT_LIST_AGE)
-      *time = cosmology_get_scale_factor(cosmo, *time);
+      *time = cosmology_get_scale_factor_from_time(cosmo, *time);
 
     /* Update size */
     ind += 1;

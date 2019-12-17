@@ -113,6 +113,7 @@ tests/testSelectOutput
 tests/testReading
 tests/testSingle
 tests/testTimeIntegration
+tests/testIntegration
 tests/testSPHStep
 tests/testKernel
 tests/testKernelGrav

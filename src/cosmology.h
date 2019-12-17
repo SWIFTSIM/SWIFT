@@ -163,6 +163,15 @@ struct cosmology {
   /*! Log of final expansion factor */
   double log_a_end;
 
+  /*! Log of starting expansion factor of the interpolation tables */
+  double log_a_table_begin;
+
+  /*! Log of final expansion factor of the interpolation tables */
+  double log_a_table_end;
+
+  /*! Scale-factor interpolation table */
+  double *log_a_interp_table;
+
   /*! Drift factor interpolation table */
   double *drift_fac_interp_table;
 
@@ -175,14 +184,8 @@ struct cosmology {
   /*! Kick factor (hydro correction) interpolation table (GIZMO-MFV only) */
   double *hydro_kick_corr_interp_table;
 
-  /*! Time interpolation table */
+  /*! Time since Big Bang interpolation table */
   double *time_interp_table;
-
-  /*! Scale factor interpolation table */
-  double *scale_factor_interp_table;
-
-  /*! Time between Big Bang and first entry in the table */
-  double time_interp_table_offset;
 
   /*! Time at the present-day (a=1) */
   double universe_age_at_present_day;
@@ -191,6 +194,8 @@ struct cosmology {
 void cosmology_update(struct cosmology *c, const struct phys_const *phys_const,
                       integertime_t ti_current);
 
+double cosmology_get_scale_factor(const struct cosmology *cosmo,
+                                  integertime_t ti);
 double cosmology_get_drift_factor(const struct cosmology *cosmo,
                                   const integertime_t ti_start,
                                   const integertime_t ti_end);
@@ -214,7 +219,8 @@ double cosmology_get_delta_time_from_scale_factors(const struct cosmology *c,
                                                    const double a_start,
                                                    const double a_end);
 
-double cosmology_get_scale_factor(const struct cosmology *cosmo, double t);
+double cosmology_get_scale_factor_from_time(const struct cosmology *cosmo,
+                                            double t);
 
 double cosmology_get_time_since_big_bang(const struct cosmology *c, double a);
 void cosmology_init(struct swift_params *params, const struct unit_system *us,

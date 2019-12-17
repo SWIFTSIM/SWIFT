@@ -20,11 +20,15 @@
 /* Some standard headers. */
 #include "../config.h"
 
+/* Some standard headers */
+#include <fenv.h>
+#include <math.h>
+
 /* Includes. */
 #include "swift.h"
 
-#define N_CHECK 20
-#define TOLERANCE 1e-7
+#define N_CHECK 200
+#define TOLERANCE 1e-6
 
 void test_params_init(struct swift_params *params) {
   parser_init("", params);
@@ -32,11 +36,20 @@ void test_params_init(struct swift_params *params) {
   parser_set_param(params, "Cosmology:Omega_lambda:0.6910");
   parser_set_param(params, "Cosmology:Omega_b:0.0486");
   parser_set_param(params, "Cosmology:h:0.6774");
-  parser_set_param(params, "Cosmology:a_begin:0.1");
+  parser_set_param(params, "Cosmology:a_begin:0.01");
   parser_set_param(params, "Cosmology:a_end:1.0");
 }
 
 int main(int argc, char *argv[]) {
+
+  /* Initialize CPU frequency, this also starts time. */
+  unsigned long long cpufreq = 0;
+  clocks_set_cpufreq(cpufreq);
+
+/* Choke on FP-exceptions */
+#ifdef HAVE_FE_ENABLE_EXCEPT
+  feenableexcept(FE_DIVBYZERO | FE_INVALID | FE_OVERFLOW);
+#endif
 
   message("Initialization...");
 
@@ -59,15 +72,16 @@ int main(int argc, char *argv[]) {
   message("Start checking computation...");
 
   for (int i = 0; i < N_CHECK; i++) {
-    double a = 0.1 + 0.9 * i / (N_CHECK - 1.);
+    double a = 0.01 + 0.99 * i / (N_CHECK - 1.);
+
     /* Compute a(t(a)) and check if same results */
-    double tmp = cosmology_get_time_since_big_bang(&cosmo, a);
-    tmp = cosmology_get_scale_factor(&cosmo, tmp);
+    double time = cosmology_get_time_since_big_bang(&cosmo, a);
+    double my_a = cosmology_get_scale_factor_from_time(&cosmo, time);
 
     /* check accuracy */
-    tmp = (tmp - a) / a;
-    message("Accuracy of %g at a=%g", tmp, a);
-    assert(fabs(tmp) < TOLERANCE);
+    double rel_err = (my_a - a) / a;
+    message("Accuracy of %g at a=%g", rel_err, a);
+    assert(fabs(rel_err) < TOLERANCE);
   }
 
   message("Everything seems fine with cosmology.");
