@@ -82,14 +82,17 @@ static INLINE double interp_table(const double *restrict y_table,
 #ifdef SWIFT_DEBUG_CHECKS
   if (ii <= 1) error("Wrong ii - too small!");
   if (ii >= cosmology_table_length - 1) error("Wrong ii - too large!");
+  if (x < x_table[ii - 2] || x > x_table[ii + 1])
+    error("Extrapolating not interpolating!");
 #endif
 
   /* Initialise the interpolation range with 4 data points
    * The point of interest is in the range [ii - 1, ii] */
-  gsl_interp_init(poly, &x_table[ii - 2], &y_table[ii - 2], 4);
+  // gsl_interp_init(poly, &x_table[ii - 2], &y_table[ii - 2], 4);
 
   /* Interpolate! */
-  return gsl_interp_eval(poly, &x_table[ii - 2], &y_table[ii - 2], x, acc);
+  // return gsl_interp_eval(poly, &x_table[ii - 2], &y_table[ii - 2], x, acc);
+  return y_table[ii - 1] + (y_table[ii] - y_table[ii - 1]) * (xx - ii);
 }
 
 /**
@@ -351,7 +354,7 @@ void cosmology_init_tables(struct cosmology *c) {
 
   /* We want to extend the tables on both sides so that we never
      have to worry about edges when interpolating */
-  const double fac = 1. + 10. / ((double)cosmology_table_length);
+  const double fac = 1. + 16. / ((double)cosmology_table_length);
   const double a_begin = c->a_begin / fac;
   const double a_end = c->a_end * fac;
   c->log_a_table_begin = log(a_begin);
@@ -641,6 +644,8 @@ double cosmology_get_drift_factor(const struct cosmology *c,
   if (ti_end < ti_start) error("ti_end must be >= ti_start");
 #endif
 
+  // if (ti_start == ti_end) return 0.;
+
   const double log_a_start = c->log_a_begin + ti_start * c->time_base;
   const double log_a_end = c->log_a_begin + ti_end * c->time_base;
 
@@ -670,6 +675,8 @@ double cosmology_get_grav_kick_factor(const struct cosmology *c,
 #ifdef SWIFT_DEBUG_CHECKS
   if (ti_end < ti_start) error("ti_end must be >= ti_start");
 #endif
+
+  // if (ti_start == ti_end) return 0.;
 
   const double log_a_start = c->log_a_begin + ti_start * c->time_base;
   const double log_a_end = c->log_a_begin + ti_end * c->time_base;
@@ -702,6 +709,8 @@ double cosmology_get_hydro_kick_factor(const struct cosmology *c,
   if (ti_end < ti_start) error("ti_end must be >= ti_start");
 #endif
 
+  // if (ti_start == ti_end) return 0.;
+
   const double log_a_start = c->log_a_begin + ti_start * c->time_base;
   const double log_a_end = c->log_a_begin + ti_end * c->time_base;
 
@@ -733,6 +742,8 @@ double cosmology_get_corr_kick_factor(const struct cosmology *c,
   if (ti_end < ti_start) error("ti_end must be >= ti_start");
 #endif
 
+  // if (ti_start == ti_end) return 0.;
+
   const double log_a_start = c->log_a_begin + ti_start * c->time_base;
   const double log_a_end = c->log_a_begin + ti_end * c->time_base;
 
@@ -763,6 +774,8 @@ double cosmology_get_therm_kick_factor(const struct cosmology *c,
 #ifdef SWIFT_DEBUG_CHECKS
   if (ti_end < ti_start) error("ti_end must be >= ti_start");
 #endif
+
+  // if (ti_start == ti_end) return 0.;
 
   const double log_a_start = c->log_a_begin + ti_start * c->time_base;
   const double log_a_end = c->log_a_begin + ti_end * c->time_base;
@@ -813,6 +826,8 @@ double cosmology_get_delta_time(const struct cosmology *c,
 #ifdef SWIFT_DEBUG_CHECKS
   if (ti_end < ti_start) error("ti_end must be >= ti_start");
 #endif
+
+  // if (ti_start == ti_end) return 0.;
 
   const double log_a_start = c->log_a_begin + ti_start * c->time_base;
   const double log_a_end = c->log_a_begin + ti_end * c->time_base;

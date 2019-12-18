@@ -160,7 +160,7 @@ int main(int argc, char *argv[]) {
     message("Sum  error: %14e", sum_err);
     message("Mean error: %14e", sum_err / num_steps);
 
-    if (max_err > 1e-8 || min_err < -1e-8)
+    if (max_err > 1e-4 || min_err < -1e-4)
       error("Error too large to be acceptable");
   }
 
