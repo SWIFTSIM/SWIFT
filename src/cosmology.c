@@ -818,12 +818,14 @@ double cosmology_get_delta_time(const struct cosmology *c,
   const double log_a_end = c->log_a_begin + ti_end * c->time_base;
 
   /* Time between a_begin and a_start */
-  const double t1 = interp_table(c->time_interp_table, c->log_a_interp_table,
-                                 log_a_start, c->log_a_begin, c->log_a_end);
+  const double t1 =
+      interp_table(c->time_interp_table, c->log_a_interp_table, log_a_start,
+                   c->log_a_table_begin, c->log_a_table_end);
 
   /* Time between a_begin and a_end */
-  const double t2 = interp_table(c->time_interp_table, c->log_a_interp_table,
-                                 log_a_end, c->log_a_begin, c->log_a_end);
+  const double t2 =
+      interp_table(c->time_interp_table, c->log_a_interp_table, log_a_end,
+                   c->log_a_table_begin, c->log_a_table_end);
 
   return t2 - t1;
 }
