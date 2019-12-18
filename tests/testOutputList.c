@@ -107,7 +107,7 @@ void test_cosmo(struct engine *e, const char *name, const int with_assert) {
 
     /* Set current time */
     e->ti_current = log(output_time / e->cosmology->a_begin) / e->time_base;
-    e->ti_current += 1;
+    e->ti_current += 16;
 
     /* Read next value */
     integertime_t ti_next;
