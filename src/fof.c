@@ -246,6 +246,7 @@ void fof_allocate(const struct space *s, const long long total_nr_DM_particles,
                   struct fof_props *props) {
 
   const int verbose = s->e->verbose;
+  const ticks total_tic = getticks();
 
   /* Start by computing the mean inter DM particle separation */
 
@@ -343,6 +344,10 @@ void fof_allocate(const struct space *s, const long long total_nr_DM_particles,
 #ifdef SWIFT_DEBUG_CHECKS
   ti_current = s->e->ti_current;
 #endif
+
+  if (verbose)
+    message("took %.3f %s.", clocks_from_ticks(getticks() - total_tic),
+            clocks_getunit());
 }
 
 /**
@@ -2303,7 +2308,7 @@ void fof_search_foreign_cells(struct fof_props *props, const struct space *s) {
   tic = getticks();
 
   /* Perform send and receive tasks. */
-  engine_launch(e);
+  engine_launch(e, /*fof=*/1);
 
   if (verbose)
     message("MPI send/recv comms took: %.3f %s.",
@@ -2974,8 +2979,8 @@ void fof_search_tree(struct fof_props *props,
     message("Largest group by size: %d", max_group_size);
   }
   if (verbose)
-    message("FOF search took: %.3f %s.",
-            clocks_from_ticks(getticks() - tic_total), clocks_getunit());
+    message("took %.3f %s.", clocks_from_ticks(getticks() - tic_total),
+            clocks_getunit());
 
 #ifdef WITH_MPI
   MPI_Barrier(MPI_COMM_WORLD);

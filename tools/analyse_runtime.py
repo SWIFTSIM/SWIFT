@@ -45,6 +45,7 @@ params = {
     "lines.markersize": 6,
     "lines.linewidth": 3.0,
     "text.latex.unicode": True,
+    'hatch.linewidth': 4
 }
 rcParams.update(params)
 
@@ -68,7 +69,6 @@ labels = [
     ["Counting and linking tasks", 1],
     ["Setting super-pointers", 1],
     ["Making extra hydroloop tasks", 1],
-    ["Making extra starsloop tasks", 1],
     ["Linking gravity tasks", 1],
     ["Creating send tasks", 1],
     ["Exchanging cell tags", 1],
@@ -83,7 +83,7 @@ labels = [
     ["engine_drift_all:", 0],
     ["engine_unskip:", 0],
     ["engine_collect_end_of_step:", 0],
-    ["engine_launch:", 0],
+    ["engine_launch: \(tasks\)", 0],
     ["writing particle properties", 0],
     ["engine_repartition:", 0],
     ["engine_exchange_cells:", 1],
@@ -98,10 +98,15 @@ labels = [
     ["space_init", 0],
     ["engine_init", 0],
     ["engine_repartition_trigger:", 0],
-    ["VR Collecting top-level cell info", 0],
-    ["VR Collecting particle info", 0],
-    ["VR Invokation of velociraptor", 0],
-    ["VR Copying group information back", 0]
+    ["VR Collecting top-level cell info", 3],
+    ["VR Collecting particle info", 3],
+    ["VR Invokation of velociraptor", 3],
+    ["VR Copying group information back", 3],
+    ["fof_allocate:", 2],
+    ["engine_make_fof_tasks:", 2],
+    ["engine_activate_fof_tasks:", 2],
+    ["fof_search_tree:", 2],
+    ["engine_launch: \(fof\)", 2],
 ]
 times = np.zeros(len(labels))
 counts = np.zeros(len(labels))
@@ -142,6 +147,7 @@ for i in range(num_files):
 
             # Extract the different blocks
             if re.search("%s took" % labels[i][0], line):
+
                 counts[i] += 1.0
                 times[i] += float(
                     re.findall(r"[+-]?((\d+\.?\d*)|(\.\d+))", line)[-1][0]
@@ -184,10 +190,16 @@ counts = counts[order]
 time_ratios = time_ratios[order]
 labels = [labels[i] for i in order]
 
+# Remove the regexp escapes to make the labels prettier
+for i in range(len(labels)):
+    labels[i][0] = labels[i][0].replace("\\","")
+
 # Keep only the important components
 important_times = [0.0]
 important_ratios = [0.0]
 important_is_rebuild = [0]
+important_is_fof = [0]
+important_is_VR = [0]
 important_labels = ["Others (all below %.1f\%%)" % (threshold * 100)]
 need_print = True
 print("Time spent in the different code sections:")
@@ -195,7 +207,9 @@ for i in range(len(labels)):
     if time_ratios[i] > threshold:
         important_times.append(times[i])
         important_ratios.append(time_ratios[i])
-        important_is_rebuild.append(labels[i][1])
+        important_is_rebuild.append(labels[i][1] == 1)
+        important_is_fof.append(labels[i][1] == 2)
+        important_is_VR.append(labels[i][1] == 3)
         important_labels.append(labels[i][0])
     else:
         if need_print:
@@ -232,6 +246,19 @@ pie, _, _ = pie(
     startangle=-15,
     colors=cols,
 )
+
+# Use hashing for the FOF and VR wedges
+for i in range(len(pie)):
+    if (important_is_fof[i]):
+        pie[i].set_hatch('o')
+        pie[i].set_edgecolor(pie[i].get_facecolor())
+        pie[i].set_fill(False)
+for i in range(len(pie)):
+    if (important_is_VR[i]):
+        pie[i].set_hatch('+')
+        pie[i].set_edgecolor(pie[i].get_facecolor())
+        pie[i].set_fill(False)
+
 legend(pie, important_labels, title="SWIFT operations", loc="upper left")
 
 savefig("time_pie.pdf", dpi=150)

@@ -3119,8 +3119,8 @@ void engine_make_fof_tasks(struct engine *e) {
         e->sched.size * sizeof(struct task) / (1024 * 1024));
 
   if (e->verbose)
-    message("took %.3f %s (including reweight).",
-            clocks_from_ticks(getticks() - tic), clocks_getunit());
+    message("took %.3f %s.", clocks_from_ticks(getticks() - tic),
+            clocks_getunit());
 }
 
 /**
