@@ -474,7 +474,7 @@ void runner_do_end_hydro_force(struct runner *r, struct cell *c, int timer) {
       struct part *restrict p = &parts[k];
   
       // ALEXEI: debugging
-      if (p->id == 1) message("pid %llu min ngb timebin %d", p->id, p->limiter_data.min_ngb_time_bin);
+      //if (p->id == 1) message("pid %llu min ngb timebin %d", p->id, p->limiter_data.min_ngb_time_bin);
 
       if (part_is_active(p, e)) {
 

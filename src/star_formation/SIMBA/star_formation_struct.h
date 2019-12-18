@@ -16,8 +16,8 @@
  * along with this program.  If not, see <http://www.gnu.org/licenses/>.
  *
  ******************************************************************************/
-#ifndef SWIFT_SIMBA_STAR_FORMATION_STRUCT_H
-#define SWIFT_SIMBA_STAR_FORMATION_STRUCT_H
+#ifndef SWIFT_EAGLE_STAR_FORMATION_STRUCT_H
+#define SWIFT_EAGLE_STAR_FORMATION_STRUCT_H
 
 /**
  * @brief Star-formation-related properties stored in the extended particle
@@ -32,4 +32,4 @@ struct star_formation_xpart_data {
   float star_mass_formed;
 };
 
-#endif /* SWIFT_SIMBA_STAR_FORMATION_STRUCT_H */
+#endif /* SWIFT_EAGLE_STAR_FORMATION_STRUCT_H */

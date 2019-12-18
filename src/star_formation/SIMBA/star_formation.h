@@ -16,11 +16,12 @@
  * along with this program.  If not, see <http://www.gnu.org/licenses/>.
  *
  *******************************************************************************/
-#ifndef SWIFT_SIMBA_STAR_FORMATION_H
-#define SWIFT_SIMBA_STAR_FORMATION_H
+#ifndef SWIFT_EAGLE_STAR_FORMATION_H
+#define SWIFT_EAGLE_STAR_FORMATION_H
 
 /* Local includes */
 #include "adiabatic_index.h"
+#include "chemistry.h"
 #include "cooling.h"
 #include "cosmology.h"
 #include "engine.h"
@@ -70,11 +71,11 @@ struct star_formation {
   /*! Critical overdensity */
   double min_over_den;
 
-  /*! Dalla Vecchia & Schaye temperature criteria */
-  double temperature_margin_threshold_dex;
+  /*! Dalla Vecchia & Schaye entropy differnce criterion */
+  double entropy_margin_threshold_dex;
 
-  /*! 10^Tdex of Dalla Vecchia & SChaye temperature criteria */
-  double ten_to_temperature_margin_threshold_dex;
+  /*! 10^Tdex of Dalla Vecchia & Schaye entropy difference criterion */
+  double ten_to_entropy_margin_threshold_dex;
 
   /*! gas fraction */
   double fgas;
@@ -191,6 +192,22 @@ INLINE static double EOS_pressure(const double n_H,
 }
 
 /**
+ * @brief Compute the entropy of the polytropic equation of state for a given
+ * Hydrogen number density.
+ *
+ * @param n_H The Hydrogen number density in internal units.
+ * @param starform The properties of the star formation model.
+ * @param rho The physical density
+ * @return The pressure on the equation of state in internal units.
+ */
+INLINE static double EOS_entropy(const double n_H,
+                                 const struct star_formation* starform,
+                                 const double rho) {
+
+  return gas_entropy_from_pressure(rho, EOS_pressure(n_H, starform));
+}
+
+/**
  * @brief Calculate if the gas has the potential of becoming
  * a star.
  *
@@ -233,11 +250,12 @@ INLINE static int star_formation_is_star_forming(
    * because we also need to check if the physical density exceeded
    * the appropriate limit */
 
-  const double Z = p->chemistry_data.smoothed_metal_mass_fraction_total;
-  const double X_H = p->chemistry_data.smoothed_metal_mass_fraction[0];
-  const double n_H = physical_density * X_H;
+  /* Get the Hydrogen number density (assuming primordial H abundance) */
+  const double n_H = physical_density * hydro_props->hydrogen_mass_fraction;
 
-  /* Get the density threshold */
+  /* Get the density threshold for star formation */
+  const double Z =
+      chemistry_get_total_metal_mass_fraction_for_star_formation(p);
   const double density_threshold =
       star_formation_threshold(Z, starform, phys_const);
 
@@ -247,12 +265,15 @@ INLINE static int star_formation_is_star_forming(
   /* Calculate the entropy of the particle */
   const double entropy = hydro_get_physical_entropy(p, xp, cosmo);
 
-  /* Calculate the entropy EOS of the particle */
-  const double entropy_eos = entropy_floor(p, cosmo, entropy_floor_props);
+  /* Calculate the entropy that will be used to calculate
+   * the off-set, this is the maximum between the entropy
+   * floor and the star formation polytropic EOS. */
+  const double entropy_eos = max(entropy_floor(p, cosmo, entropy_floor_props),
+                                 EOS_entropy(n_H, starform, physical_density));
 
   /* Check the Scahye & Dalla Vecchia 2012 EOS-based temperature critrion */
   return (entropy <
-          entropy_eos * starform->ten_to_temperature_margin_threshold_dex);
+          entropy_eos * starform->ten_to_entropy_margin_threshold_dex);
 }
 
 /**
@@ -263,43 +284,47 @@ INLINE static int star_formation_is_star_forming(
  * @param xp the #xpart.
  * @param starform the star formation law properties to use
  * @param phys_const the physical constants in internal units.
+ * @param hydro_props The properties of the hydro scheme.
  * @param cosmo the cosmological parameters and properties.
  * @param dt_star The time-step of this particle.
  */
 INLINE static void star_formation_compute_SFR(
     const struct part* restrict p, struct xpart* restrict xp,
     const struct star_formation* starform, const struct phys_const* phys_const,
-    const struct hydro_props* hydro_props,
-    const struct cosmology* cosmo, const double dt_star) {
+    const struct hydro_props* hydro_props, const struct cosmology* cosmo,
+    const double dt_star) {
 
   /* Abort early if time-step size is 0 */
   if (dt_star == 0.) {
 
     xp->sf_data.SFR = 0.f;
-    xp->sf_data.star_mass_formed = 0.f;
     return;
   }
 
-  /* Hydrogen number density of this particle */
+  /* Hydrogen number density of this particle (assuming primordial H abundance)
+   */
   const double physical_density = hydro_get_physical_density(p, cosmo);
-  const double X_H = p->chemistry_data.smoothed_metal_mass_fraction[0];
-  const double n_H = physical_density * X_H / phys_const->const_proton_mass;
+  const double n_H = physical_density * hydro_props->hydrogen_mass_fraction;
 
   /* Are we above the threshold for automatic star formation? */
   if (physical_density >
       starform->max_gas_density * phys_const->const_proton_mass) {
 
     xp->sf_data.SFR = hydro_get_mass(p) / dt_star;
-    xp->sf_data.star_mass_formed = hydro_get_mass(p);
     return;
   }
 
-  /* Pressure on the effective EOS for this particle */
-  const double pressure = EOS_pressure(n_H, starform);
+  /* Get the pressure used for the star formation, this is
+   * the maximum of the star formation EOS pressure,
+   * the physical pressure of the particle and the
+   * floor pressure. The floor pressure is used implicitly
+   * when getting the physical pressure. */
+  const double pressure =
+      max(EOS_pressure(n_H, starform), hydro_get_physical_pressure(p, cosmo));
 
   /* Calculate the specific star formation rate */
   double SFRpergasmass;
-  if (hydro_get_physical_density(p, cosmo) <
+  if (physical_density <
       starform->KS_high_den_thresh * phys_const->const_proton_mass) {
 
     SFRpergasmass =
@@ -311,9 +336,8 @@ INLINE static void star_formation_compute_SFR(
                     pow(pressure, starform->SF_high_den_power_law);
   }
 
-  /* Store the SFR and stellar mass formed in this step */
+  /* Store the SFR */
   xp->sf_data.SFR = SFRpergasmass * hydro_get_mass(p);
-  xp->sf_data.star_mass_formed = xp->sf_data.SFR * dt_star;
 }
 
 /**
@@ -494,7 +518,7 @@ INLINE static void starformation_init_backend(
 
   /* Read the critical density contrast from the parameter file*/
   starform->min_over_den = parser_get_param_double(
-      parameter_file, "EAGLEStarFormation:KS_min_over_density");
+      parameter_file, "EAGLEStarFormation:min_over_density");
 
   /* Read the gas fraction from the file */
   starform->fgas = parser_get_opt_param_double(
@@ -567,11 +591,11 @@ INLINE static void starformation_init_backend(
   starform->max_gas_density =
       starform->max_gas_density_HpCM3 * number_density_from_cgs;
 
-  starform->temperature_margin_threshold_dex = parser_get_opt_param_double(
-      parameter_file, "EAGLEStarFormation:KS_temperature_margin_dex", FLT_MAX);
+  starform->entropy_margin_threshold_dex = parser_get_opt_param_double(
+      parameter_file, "EAGLEStarFormation:EOS_entropy_margin_dex", FLT_MAX);
 
-  starform->ten_to_temperature_margin_threshold_dex =
-      exp10(starform->temperature_margin_threshold_dex);
+  starform->ten_to_entropy_margin_threshold_dex =
+      exp10(starform->entropy_margin_threshold_dex);
 
   /* Read the normalization of the metallicity dependent critical
    * density*/
@@ -631,7 +655,7 @@ INLINE static void starformation_print_backend(
       starform->density_threshold_max_HpCM3);
   message("Temperature threshold is given by Dalla Vecchia and Schaye (2012)");
   message("The temperature threshold offset from the EOS is given by: %e dex",
-          starform->temperature_margin_threshold_dex);
+          starform->entropy_margin_threshold_dex);
   message("Running with a maximum gas density given by: %e #/cm^3",
           starform->max_gas_density_HpCM3);
 }
@@ -669,7 +693,20 @@ star_formation_part_has_no_neighbours(struct part* restrict p,
 
 /**
  * @brief Sets the star_formation properties of the (x-)particles to a valid
- * start state.
+ * state to start the density loop.
+ *
+ * Nothing to do here. We do not need to compute any quantity in the hydro
+ * density loop for the EAGLE star formation model.
+ *
+ * @param data The global star_formation information used for this run.
+ * @param p Pointer to the particle data.
+ */
+__attribute__((always_inline)) INLINE static void star_formation_init_part(
+    struct part* restrict p, const struct star_formation* data) {}
+
+/**
+ * @brief Sets the star_formation properties of the (x-)particles to a valid
+ * start state at the beginning of the simulation after the ICs have been read.
  *
  * Nothing to do here.
  *
@@ -688,17 +725,4 @@ star_formation_first_init_part(const struct phys_const* restrict phys_const,
                                const struct part* restrict p,
                                struct xpart* restrict xp) {}
 
-/**
- * @brief Sets the star_formation properties of the (x-)particles to a valid
- * start state.
- *
- * Nothing to do here. We do not need to compute any quantity in the hydro
- * density loop for the EAGLE star formation model.
- *
- * @param p Pointer to the particle data.
- * @param data The global star_formation information.
- */
-__attribute__((always_inline)) INLINE static void star_formation_init_part(
-    struct part* restrict p, const struct star_formation* data) {}
-
-#endif /* SWIFT_SIMBA_STAR_FORMATION_H */
+#endif /* SWIFT_EAGLE_STAR_FORMATION_H */

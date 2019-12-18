@@ -26,6 +26,7 @@
 #include "hydro_properties.h"
 #include "part.h"
 #include "units.h"
+#include "random.h"
 
 
 /**
@@ -54,7 +55,7 @@ inline void compute_kick_speed(struct xpart *xp, const struct feedback_props *fe
       * v_circ;
 
   // ALEXEI: temporarily set to arbitrary number for testing.
-  xp->feedback_data.v_kick = 0.e1;
+  //xp->feedback_data.v_kick = 0.e1;
 
 }
 
@@ -239,9 +240,7 @@ __attribute__((always_inline)) INLINE static void launch_wind(
   for (int i = 0; i < 3; i++) v_new[i] = v_new[i]*xp->feedback_data.v_kick/v_new_norm + p->v[i]; 
 
   /* Set the velocity */
-  //message("particle %llu old velocity %.5e %.5e %.5e", p->id, p->v[0], p->v[1], p->v[2]);
   //hydro_set_velocity(p, xp, v_new);
-  //message("particle %llu new velocity %.5e %.5e %.5e", p->id, p->v[0], p->v[1], p->v[2]);
 
   /* Heat particle */
   // probability GALSF_SUBGRID HOTWIND = 0.3 in SIMBA
@@ -255,12 +254,9 @@ __attribute__((always_inline)) INLINE static void launch_wind(
   //}
 
   /* Set delaytime before which the particle cannot interact */
-  // ALEXEI: temporarily comment for debugging
   p->delay_time = feedback_props->simba_delay_time;
   p->time_bin = time_bin_decoupled;
   // ALEXEI: debugging print statement
-  //if (p->id == SIMBA_DEBUG_ID) message("spart id %llu decoupled particle %llu delay_time %.5e rand %.5e prob %.5e", si->id, p->id, p->delay_time, rand_kick, prob_kick);
-  //message("decoupled particle %llu delay_time %.5e new velocity %.5e", p->id, p->delay_time, sqrt(v_new[0]*v_new[0]+v_new[1]*v_new[1]+v_new[2]*v_new[2]));
   //if (p->id <= SIMBA_DEBUG_ID) message("decoupled particle %llu position %.5e %.5e %.5e velocity %.5e %.5e %.5e kick %.5e delay time %.5e", p->id, p->x[0], p->x[1], p->x[2], p->v[0], p->v[1], p->v[2], xp->feedback_data.v_kick, p->delay_time);
 
 #ifdef SWIFT_DEBUG_CHECKS
@@ -287,7 +283,12 @@ __attribute__((always_inline)) INLINE static void star_formation_feedback(
   //compute_heating(p, xp, feedback_props);
 
   /* Launch wind */
-  launch_wind(p, xp, feedback_props, cosmo, ti_current);
+  /* Get a unique random number between 0 and 1 for star formation */
+  const double prob_launch = 0.02;
+  const double random_number =
+      random_unit_interval(p->id, ti_current, random_number_stellar_feedback);
+  if (random_number < prob_launch)
+    launch_wind(p, xp, feedback_props, cosmo, ti_current);
 
 }
 

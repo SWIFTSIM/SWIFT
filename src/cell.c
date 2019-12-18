@@ -5609,11 +5609,9 @@ void cell_recursively_shift_sparts(struct cell *c,
 }
 
 // ALEXEI: debugging recoupling function
-int cell_recouple(struct cell *c, 
+void cell_recouple(struct cell *c, 
 		   struct engine *e) {
   
-  int recoupled = 0;
-
   if (c->split) {
     for (int j = 0; j < 8; ++j) {
       if (c->progeny[j] != NULL) cell_recouple(c->progeny[j], e);
@@ -5641,32 +5639,27 @@ int cell_recouple(struct cell *c,
         if (p->delay_time < 0. ) {
           p->time_bin = e->min_active_bin;
           p->gpart->time_bin = p->time_bin;
-	  c->hydro.ti_end_min = min(c->hydro.ti_end_min, e->ti_current + get_integer_timestep(e->min_active_bin));
+	      c->hydro.ti_end_min = min(c->hydro.ti_end_min, e->ti_current + get_integer_timestep(e->min_active_bin));
 	  
-	  // update parents
-	  struct cell *parent_cell = c->parent;
-	  while (parent_cell != NULL) {
-	    parent_cell->hydro.ti_end_min = min(parent_cell->hydro.ti_end_min, e->ti_current + get_integer_timestep(e->min_active_bin));
-	    parent_cell = parent_cell->parent;
-	  }
+	      // update parents
+	      struct cell *parent_cell = c->parent;
+	      while (parent_cell != NULL) {
+	        parent_cell->hydro.ti_end_min = min(parent_cell->hydro.ti_end_min, e->ti_current + get_integer_timestep(e->min_active_bin));
+	        parent_cell = parent_cell->parent;
+	      }
 #if SWIFT_DEBUG_CHECKS
-          p->ti_kick = e->ti_current + get_integer_timestep(e->min_active_bin)/2;
-	  //if (p->id == SIMBA_DEBUG_ID) message("id %llu ti_current %llu half step %llu ti_kick %llu ti_drift %llu", p->id, e->ti_current, get_integer_timestep(min_active_bin)/2, p->ti_kick, p->ti_drift);
-          
-	  // ALEXEI: debugging print statement
-          //if (e->ti_current * e->time_base > 0.) message("particle %llu recoupled time elapsed %.5e ti_kick %llu ti_current %llu step/2 %llu ti_end_min %llu recouple min active bin %d timebin %d", p->id, (e->ti_current - p->ti_decoupled)*e->time_base, p->ti_kick, e->ti_current, get_integer_timestep(min_active_bin)/2, c->hydro.ti_end_min, min_active_bin, p->time_bin);
-          //if (e->ti_current * e->time_base > 0. && p->id <= SIMBA_DEBUG_ID) message("particle %llu recoupled position %.5e %.5e %.5e velocity %.5e %.5e %.5e", p->id, p->x[0], p->x[1], p->x[2], p->v[0], p->v[1], p->v[2]);
-#endif
-          //if (e->ti_current * e->time_base > 0. && p->id <= SIMBA_DEBUG_ID) message("recoupled particle %llu position %.5e %.5e %.5e velocity %.5e %.5e %.5e delay time %.5e", p->id, p->x[0], p->x[1], p->x[2], p->v[0], p->v[1], p->v[2], p->delay_time);
+              p->ti_kick = e->ti_current + get_integer_timestep(e->min_active_bin)/2;
+	      //if (p->id == SIMBA_DEBUG_ID) message("id %llu ti_current %llu half step %llu ti_kick %llu ti_drift %llu", p->id, e->ti_current, get_integer_timestep(min_active_bin)/2, p->ti_kick, p->ti_drift);
+              
+	      // ALEXEI: debugging print statement
+              //if (e->ti_current * e->time_base > 0.) message("particle %llu recoupled time elapsed %.5e ti_kick %llu ti_current %llu step/2 %llu ti_end_min %llu recouple min active bin %d timebin %d", p->id, (e->ti_current - p->ti_decoupled)*e->time_base, p->ti_kick, e->ti_current, get_integer_timestep(e->min_active_bin)/2, c->hydro.ti_end_min, e->min_active_bin, p->time_bin);
+#endif    
+              //if (e->ti_current * e->time_base > 0. && p->id == SIMBA_DEBUG_ID) message("recoupled particle %llu position %.5e %.5e %.5e velocity %.5e %.5e %.5e delay time %.5e h_dt %.5e", p->id, p->x[0], p->x[1], p->x[2], p->v[0], p->v[1], p->v[2], p->delay_time, p->force.h_dt);
 
-	  recoupled = 1;
         }
       }
     }
   }
-
-  return recoupled;
- 
 }
 
 /**
