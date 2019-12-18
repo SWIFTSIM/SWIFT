@@ -483,11 +483,13 @@ void velociraptor_invoke(struct engine *e, const int linked_with_snap) {
                   MPI_COMM_WORLD);
 #endif
 
+    const double Omega_m = e->cosmology->Omega_m;
+    const double Omega_b = e->cosmology->Omega_b;
+
     /* Linking length based on the mean DM inter-particle separation
      * in the zoom region and assuming the mean density of the Universe
      * is used in the zoom region. */
-    double mean_matter_density =
-        e->cosmology->Omega_m * e->cosmology->critical_density_0;
+    double mean_matter_density;
     if (s->with_hydro)
       mean_matter_density = (Omega_m - Omega_b) * critical_density_0;
     else
