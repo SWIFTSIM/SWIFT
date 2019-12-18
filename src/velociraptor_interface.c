@@ -485,6 +485,7 @@ void velociraptor_invoke(struct engine *e, const int linked_with_snap) {
 
     const double Omega_m = e->cosmology->Omega_m;
     const double Omega_b = e->cosmology->Omega_b;
+    const double critical_density_0 = e->cosmology->critical_density_0;
 
     /* Linking length based on the mean DM inter-particle separation
      * in the zoom region and assuming the mean density of the Universe
