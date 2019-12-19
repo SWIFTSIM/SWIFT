@@ -19,10 +19,6 @@
  ******************************************************************************/
 #include "../config.h"
 
-/* Some standard headers */
-#include <fenv.h>
-#include <math.h>
-
 /* Includes. */
 #include "swift.h"
 
@@ -90,8 +86,7 @@ void test_cosmo(struct engine *e, const char *name, const int with_assert) {
   double output_time = 0;
 
   /* Test Time */
-  e->time_base =
-      log(e->cosmology->a_end / e->cosmology->a_begin) / max_nr_timesteps;
+  e->time_base = log(e->time_end / e->cosmology->a_begin) / max_nr_timesteps;
   e->ti_current = 0;
   e->policy = engine_policy_cosmology;
 
@@ -120,16 +115,6 @@ void test_cosmo(struct engine *e, const char *name, const int with_assert) {
 };
 
 int main(int argc, char *argv[]) {
-
-  /* Initialize CPU frequency, this also starts time. */
-  unsigned long long cpufreq = 0;
-  clocks_set_cpufreq(cpufreq);
-
-/* Choke on FP-exceptions */
-#ifdef HAVE_FE_ENABLE_EXCEPT
-  feenableexcept(FE_DIVBYZERO | FE_INVALID | FE_OVERFLOW);
-#endif
-
   /* Create a structure to read file into. */
   struct swift_params params;
 

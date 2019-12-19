@@ -48,51 +48,35 @@ const int cosmology_table_length = 10000;
 #ifdef HAVE_LIBGSL
 /*! Size of the GSL workspace */
 const size_t GSL_workspace_size = 100000;
-
-/* GSL interpolator object */
-gsl_interp *poly;
-
-/* GSL interpolation accelarator object */
-gsl_interp_accel *acc;
 #endif
 
 /**
  * @brief Returns the interpolated value from a table.
  *
- * Uses GSL's cubic interpolation.
+ * Uses linear interpolation.
  *
- * @param y_table The table of value to interpolate to (should be of length
+ * @brief table The table of value to interpolate from (should be of length
  * cosmology_table_length).
- * @param x_table The table of value to interpolate from (should be of length
- * cosmology_table_length).
- * @param x The value to interpolate at.
- * @param x_min The mininum of the range of x.
- * @param x_max The maximum of the range of x.
+ * @brief x The value to interpolate at.
+ * @brief x_min The mininum of the range of x.
+ * @brief x_max The maximum of the range of x.
  */
-static INLINE double interp_table(const double *restrict y_table,
-                                  const double *restrict x_table,
-                                  const double x, const double x_min,
-                                  const double x_max) {
+static INLINE double interp_table(const double *table, const double x,
+                                  const double x_min, const double x_max) {
 
-  /* Recover the range of interest in the log-a tabel */
-  const double delta_x = ((double)cosmology_table_length) / (x_max - x_min);
-  const double xx = (x - x_min) * delta_x;
-  const int ii = (int)xx;
+  const double xx =
+      ((x - x_min) / (x_max - x_min)) * ((double)cosmology_table_length);
 
-#ifdef SWIFT_DEBUG_CHECKS
-  if (ii <= 1) error("Wrong ii - too small!");
-  if (ii >= cosmology_table_length - 1) error("Wrong ii - too large!");
-  if (x < x_table[ii - 2] || x > x_table[ii + 1])
-    error("Extrapolating not interpolating!");
-#endif
+  const int i = (int)xx;
+  const int ii = min(cosmology_table_length - 1, i);
 
-  /* Initialise the interpolation range with 4 data points
-   * The point of interest is in the range [ii - 1, ii] */
-  // gsl_interp_init(poly, &x_table[ii - 2], &y_table[ii - 2], 4);
+  /* Indicate that the whole array is aligned on boundaries */
+  swift_align_information(double, table, SWIFT_STRUCT_ALIGNMENT);
 
-  /* Interpolate! */
-  // return gsl_interp_eval(poly, &x_table[ii - 2], &y_table[ii - 2], x, acc);
-  return y_table[ii - 1] + (y_table[ii] - y_table[ii - 1]) * (xx - ii);
+  if (ii <= 1)
+    return table[0] * xx;
+  else
+    return table[ii - 1] + (table[ii] - table[ii - 1]) * (xx - ii);
 }
 
 /**
@@ -152,6 +136,26 @@ __attribute__((const)) static INLINE double E(
 }
 
 /**
+ * @brief Returns the time (in internal units) since Big Bang at a given
+ * scale-factor.
+ *
+ * @param c The current #cosmology.
+ * @param a Scale-factor of interest.
+ */
+double cosmology_get_time_since_big_bang(const struct cosmology *c, double a) {
+
+#ifdef SWIFT_DEBUG_CHECKS
+  if (a < c->a_begin) error("Error a can't be smaller than a_begin");
+#endif
+
+  /* Time between a_begin and a */
+  const double delta_t =
+      interp_table(c->time_interp_table, log(a), c->log_a_begin, c->log_a_end);
+
+  return c->time_interp_table_offset + delta_t;
+}
+
+/**
  * @brief Update the cosmological parameters to the current simulation time.
  *
  * @param c The #cosmology struct.
@@ -159,7 +163,7 @@ __attribute__((const)) static INLINE double E(
  * @param ti_current The current (integer) time.
  */
 void cosmology_update(struct cosmology *c, const struct phys_const *phys_const,
-                      const integertime_t ti_current) {
+                      integertime_t ti_current) {
 
   /* Save the previous state */
   c->z_old = c->z;
@@ -352,24 +356,10 @@ void cosmology_init_tables(struct cosmology *c) {
 
 #ifdef HAVE_LIBGSL
 
-  /* We want to extend the tables on both sides so that we never
-     have to worry about edges when interpolating */
-  const double fac = 1. + 16. / ((double)cosmology_table_length);
-  const double a_begin = c->a_begin / fac;
-  const double a_end = c->a_end * fac;
-  c->log_a_table_begin = log(a_begin);
-  c->log_a_table_end = log(a_end);
-
-  /* Allocate the GSL interpolator memory */
-  const gsl_interp_type *t = gsl_interp_polynomial;
-  acc = gsl_interp_accel_alloc();
-  poly = gsl_interp_alloc(t, 4);
+  /* Retrieve some constants */
+  const double a_begin = c->a_begin;
 
   /* Allocate memory for the interpolation tables */
-  if (swift_memalign("cosmo.table", (void **)&c->log_a_interp_table,
-                     SWIFT_STRUCT_ALIGNMENT,
-                     cosmology_table_length * sizeof(double)) != 0)
-    error("Failed to allocate cosmology interpolation table");
   if (swift_memalign("cosmo.table", (void **)&c->drift_fac_interp_table,
                      SWIFT_STRUCT_ALIGNMENT,
                      cosmology_table_length * sizeof(double)) != 0)
@@ -390,17 +380,18 @@ void cosmology_init_tables(struct cosmology *c) {
                      SWIFT_STRUCT_ALIGNMENT,
                      cosmology_table_length * sizeof(double)) != 0)
     error("Failed to allocate cosmology interpolation table");
+  if (swift_memalign("cosmo.table", (void **)&c->scale_factor_interp_table,
+                     SWIFT_STRUCT_ALIGNMENT,
+                     cosmology_table_length * sizeof(double)) != 0)
+    error("Failed to allocate cosmology interpolation table");
 
   /* Prepare a table of scale factors for the integral bounds */
   const double delta_a =
-      (c->log_a_table_end - c->log_a_table_begin) / cosmology_table_length;
+      (c->log_a_end - c->log_a_begin) / cosmology_table_length;
   double *a_table = (double *)swift_malloc(
       "cosmo.table", cosmology_table_length * sizeof(double));
-
-  for (int i = 0; i < cosmology_table_length; i++) {
-    a_table[i] = exp(c->log_a_table_begin + delta_a * (i + 1));
-    c->log_a_interp_table[i] = log(a_table[i]);
-  }
+  for (int i = 0; i < cosmology_table_length; i++)
+    a_table[i] = exp(c->log_a_begin + delta_a * (i + 1));
 
   /* Initalise the GSL workspace */
   gsl_integration_workspace *space =
@@ -448,15 +439,20 @@ void cosmology_init_tables(struct cosmology *c) {
     c->hydro_kick_corr_interp_table[i] = result;
   }
 
-  /* Integrate the time \int_{0}^{a_table[i]} dt */
+  /* Integrate the time \int_{a_begin}^{a_table[i]} dt */
   F.function = &time_integrand;
   for (int i = 0; i < cosmology_table_length; i++) {
-    gsl_integration_qag(&F, 0., a_table[i], 0, 1.0e-13, GSL_workspace_size,
+    gsl_integration_qag(&F, a_begin, a_table[i], 0, 1.0e-10, GSL_workspace_size,
                         GSL_INTEG_GAUSS61, space, &result, &abserr);
 
     /* Store result */
     c->time_interp_table[i] = result;
   }
+
+  /* Integrate the time \int_{0}^{a_begin} dt */
+  gsl_integration_qag(&F, 0., a_begin, 0, 1.0e-10, GSL_workspace_size,
+                      GSL_INTEG_GAUSS61, space, &result, &abserr);
+  c->time_interp_table_offset = result;
 
   /* Integrate the time \int_{0}^{1} dt */
   gsl_integration_qag(&F, 0., 1, 0, 1.0e-13, GSL_workspace_size,
@@ -466,6 +462,41 @@ void cosmology_init_tables(struct cosmology *c) {
   /* Update the times */
   c->time_begin = cosmology_get_time_since_big_bang(c, c->a_begin);
   c->time_end = cosmology_get_time_since_big_bang(c, c->a_end);
+
+  /*
+   * Inverse t(a)
+   */
+
+  const double delta_t = (c->time_end - c->time_begin) / cosmology_table_length;
+
+  /* index in the time_interp_table */
+  int i_a = 0;
+
+  for (int i_time = 0; i_time < cosmology_table_length; i_time++) {
+    /* Current time
+     * time_interp_table = \int_a_begin^a => no need of time_begin */
+    double time_interp = delta_t * (i_time + 1);
+
+    /* Find next time in time_interp_table */
+    while (i_a < cosmology_table_length &&
+           c->time_interp_table[i_a] <= time_interp) {
+      i_a++;
+    }
+
+    /* Find linear interpolation scaling */
+    double scale = 0;
+    if (i_a != cosmology_table_length) {
+      scale = time_interp - c->time_interp_table[i_a - 1];
+      scale /= c->time_interp_table[i_a] - c->time_interp_table[i_a - 1];
+    }
+
+    scale += i_a;
+
+    /* Compute interpolated scale factor */
+    double log_a = c->log_a_begin + scale * (c->log_a_end - c->log_a_begin) /
+                                        cosmology_table_length;
+    c->scale_factor_interp_table[i_time] = exp(log_a) - c->a_begin;
+  }
 
   /* Free the workspace and temp array */
   gsl_integration_workspace_free(space);
@@ -536,9 +567,10 @@ void cosmology_init(struct swift_params *params, const struct unit_system *us,
   c->grav_kick_fac_interp_table = NULL;
   c->hydro_kick_fac_interp_table = NULL;
   c->time_interp_table = NULL;
+  c->time_interp_table_offset = 0.;
   cosmology_init_tables(c);
 
-  /* Set remaining variables to valid values */
+  /* Set remaining variables to alid values */
   cosmology_update(c, phys_const, 0);
 
   /* Update the times */
@@ -573,10 +605,6 @@ void cosmology_init_no_cosmo(struct cosmology *c) {
   c->a_end = 1.;
   c->log_a_begin = 0.;
   c->log_a_end = 0.;
-  c->log_a_table_begin = 0.;
-  c->log_a_table_end = 0.;
-  c->time_base = 0.;
-  c->time_base_inv = 0.;
 
   c->H = 0.;
   c->H0 = 0.;
@@ -615,6 +643,8 @@ void cosmology_init_no_cosmo(struct cosmology *c) {
   c->hydro_kick_fac_interp_table = NULL;
   c->hydro_kick_corr_interp_table = NULL;
   c->time_interp_table = NULL;
+  c->time_interp_table_offset = 0.;
+  c->scale_factor_interp_table = NULL;
 
   c->time_begin = 0.;
   c->time_end = 0.;
@@ -644,17 +674,13 @@ double cosmology_get_drift_factor(const struct cosmology *c,
   if (ti_end < ti_start) error("ti_end must be >= ti_start");
 #endif
 
-  // if (ti_start == ti_end) return 0.;
+  const double a_start = c->log_a_begin + ti_start * c->time_base;
+  const double a_end = c->log_a_begin + ti_end * c->time_base;
 
-  const double log_a_start = c->log_a_begin + ti_start * c->time_base;
-  const double log_a_end = c->log_a_begin + ti_end * c->time_base;
-
-  const double int_start =
-      interp_table(c->drift_fac_interp_table, c->log_a_interp_table,
-                   log_a_start, c->log_a_table_begin, c->log_a_table_end);
-  const double int_end =
-      interp_table(c->drift_fac_interp_table, c->log_a_interp_table, log_a_end,
-                   c->log_a_table_begin, c->log_a_table_end);
+  const double int_start = interp_table(c->drift_fac_interp_table, a_start,
+                                        c->log_a_begin, c->log_a_end);
+  const double int_end = interp_table(c->drift_fac_interp_table, a_end,
+                                      c->log_a_begin, c->log_a_end);
 
   return int_end - int_start;
 }
@@ -676,17 +702,13 @@ double cosmology_get_grav_kick_factor(const struct cosmology *c,
   if (ti_end < ti_start) error("ti_end must be >= ti_start");
 #endif
 
-  // if (ti_start == ti_end) return 0.;
+  const double a_start = c->log_a_begin + ti_start * c->time_base;
+  const double a_end = c->log_a_begin + ti_end * c->time_base;
 
-  const double log_a_start = c->log_a_begin + ti_start * c->time_base;
-  const double log_a_end = c->log_a_begin + ti_end * c->time_base;
-
-  const double int_start =
-      interp_table(c->grav_kick_fac_interp_table, c->log_a_interp_table,
-                   log_a_start, c->log_a_table_begin, c->log_a_table_end);
-  const double int_end =
-      interp_table(c->grav_kick_fac_interp_table, c->log_a_interp_table,
-                   log_a_end, c->log_a_table_begin, c->log_a_table_end);
+  const double int_start = interp_table(c->grav_kick_fac_interp_table, a_start,
+                                        c->log_a_begin, c->log_a_end);
+  const double int_end = interp_table(c->grav_kick_fac_interp_table, a_end,
+                                      c->log_a_begin, c->log_a_end);
 
   return int_end - int_start;
 }
@@ -709,17 +731,13 @@ double cosmology_get_hydro_kick_factor(const struct cosmology *c,
   if (ti_end < ti_start) error("ti_end must be >= ti_start");
 #endif
 
-  // if (ti_start == ti_end) return 0.;
+  const double a_start = c->log_a_begin + ti_start * c->time_base;
+  const double a_end = c->log_a_begin + ti_end * c->time_base;
 
-  const double log_a_start = c->log_a_begin + ti_start * c->time_base;
-  const double log_a_end = c->log_a_begin + ti_end * c->time_base;
-
-  const double int_start =
-      interp_table(c->hydro_kick_fac_interp_table, c->log_a_interp_table,
-                   log_a_start, c->log_a_table_begin, c->log_a_table_end);
-  const double int_end =
-      interp_table(c->hydro_kick_fac_interp_table, c->log_a_interp_table,
-                   log_a_end, c->log_a_table_begin, c->log_a_table_end);
+  const double int_start = interp_table(c->hydro_kick_fac_interp_table, a_start,
+                                        c->log_a_begin, c->log_a_end);
+  const double int_end = interp_table(c->hydro_kick_fac_interp_table, a_end,
+                                      c->log_a_begin, c->log_a_end);
 
   return int_end - int_start;
 }
@@ -742,17 +760,13 @@ double cosmology_get_corr_kick_factor(const struct cosmology *c,
   if (ti_end < ti_start) error("ti_end must be >= ti_start");
 #endif
 
-  // if (ti_start == ti_end) return 0.;
+  const double a_start = c->log_a_begin + ti_start * c->time_base;
+  const double a_end = c->log_a_begin + ti_end * c->time_base;
 
-  const double log_a_start = c->log_a_begin + ti_start * c->time_base;
-  const double log_a_end = c->log_a_begin + ti_end * c->time_base;
-
-  const double int_start =
-      interp_table(c->hydro_kick_corr_interp_table, c->log_a_interp_table,
-                   log_a_start, c->log_a_table_begin, c->log_a_table_end);
-  const double int_end =
-      interp_table(c->hydro_kick_corr_interp_table, c->log_a_interp_table,
-                   log_a_end, c->log_a_table_begin, c->log_a_table_end);
+  const double int_start = interp_table(c->hydro_kick_corr_interp_table,
+                                        a_start, c->log_a_begin, c->log_a_end);
+  const double int_end = interp_table(c->hydro_kick_corr_interp_table, a_end,
+                                      c->log_a_begin, c->log_a_end);
 
   return int_end - int_start;
 }
@@ -775,40 +789,15 @@ double cosmology_get_therm_kick_factor(const struct cosmology *c,
   if (ti_end < ti_start) error("ti_end must be >= ti_start");
 #endif
 
-  // if (ti_start == ti_end) return 0.;
+  const double a_start = c->log_a_begin + ti_start * c->time_base;
+  const double a_end = c->log_a_begin + ti_end * c->time_base;
 
-  const double log_a_start = c->log_a_begin + ti_start * c->time_base;
-  const double log_a_end = c->log_a_begin + ti_end * c->time_base;
-
-  const double int_start =
-      interp_table(c->drift_fac_interp_table, c->log_a_interp_table,
-                   log_a_start, c->log_a_table_begin, c->log_a_table_end);
-  const double int_end =
-      interp_table(c->drift_fac_interp_table, c->log_a_interp_table, log_a_end,
-                   c->log_a_table_begin, c->log_a_table_end);
+  const double int_start = interp_table(c->drift_fac_interp_table, a_start,
+                                        c->log_a_begin, c->log_a_end);
+  const double int_end = interp_table(c->drift_fac_interp_table, a_end,
+                                      c->log_a_begin, c->log_a_end);
 
   return int_end - int_start;
-}
-
-/**
- * @brief Returns the time (in internal units) since Big Bang at a given
- * scale-factor.
- *
- * @param c The current #cosmology.
- * @param a Scale-factor of interest.
- */
-double cosmology_get_time_since_big_bang(const struct cosmology *c, double a) {
-
-#ifdef SWIFT_DEBUG_CHECKS
-  if (a < c->a_begin) error("Error a can't be smaller than a_begin");
-#endif
-
-  /* Time between a_begin and a */
-  const double delta_t =
-      interp_table(c->time_interp_table, c->log_a_interp_table, log(a),
-                   c->log_a_table_begin, c->log_a_table_end);
-
-  return delta_t;
 }
 
 /**
@@ -827,20 +816,16 @@ double cosmology_get_delta_time(const struct cosmology *c,
   if (ti_end < ti_start) error("ti_end must be >= ti_start");
 #endif
 
-  // if (ti_start == ti_end) return 0.;
-
   const double log_a_start = c->log_a_begin + ti_start * c->time_base;
   const double log_a_end = c->log_a_begin + ti_end * c->time_base;
 
   /* Time between a_begin and a_start */
-  const double t1 =
-      interp_table(c->time_interp_table, c->log_a_interp_table, log_a_start,
-                   c->log_a_table_begin, c->log_a_table_end);
+  const double t1 = interp_table(c->time_interp_table, log_a_start,
+                                 c->log_a_begin, c->log_a_end);
 
   /* Time between a_begin and a_end */
-  const double t2 =
-      interp_table(c->time_interp_table, c->log_a_interp_table, log_a_end,
-                   c->log_a_table_begin, c->log_a_table_end);
+  const double t2 = interp_table(c->time_interp_table, log_a_end,
+                                 c->log_a_begin, c->log_a_end);
 
   return t2 - t1;
 }
@@ -863,18 +848,16 @@ double cosmology_get_delta_time_from_scale_factors(const struct cosmology *c,
     error("Error a_start can't be smaller than a_begin");
 #endif
 
-  const double log_a_table_start = log(a_start);
-  const double log_a_table_end = log(a_end);
+  const double log_a_start = log(a_start);
+  const double log_a_end = log(a_end);
 
   /* Time between a_begin and a_start */
-  const double t1 =
-      interp_table(c->time_interp_table, c->log_a_interp_table,
-                   log_a_table_start, c->log_a_table_begin, c->log_a_table_end);
+  const double t1 = interp_table(c->time_interp_table, log_a_start,
+                                 c->log_a_begin, c->log_a_end);
 
   /* Time between a_begin and a_end */
-  const double t2 =
-      interp_table(c->time_interp_table, c->log_a_interp_table, log_a_table_end,
-                   c->log_a_table_begin, c->log_a_table_end);
+  const double t2 = interp_table(c->time_interp_table, log_a_end,
+                                 c->log_a_begin, c->log_a_end);
 
   return t2 - t1;
 }
@@ -882,43 +865,16 @@ double cosmology_get_delta_time_from_scale_factors(const struct cosmology *c,
 /**
  * @brief Compute scale factor from time since big bang (in internal units).
  *
- * This function is inefficient as it needs to search the cosmology table
- * and then interpolate. A relative accuracy of <10^-6 is achieved for all
- * reasonable cosmologies.
- *
  * @param c The current #cosmology.
  * @param t time since the big bang
  * @return The scale factor.
  */
-double cosmology_get_scale_factor_from_time(const struct cosmology *c,
-                                            const double t) {
-
-  /* Use a bisection search on the whole table to find the
-     interval where the time lies */
-  int i_min = 0;
-  int i_max = cosmology_table_length - 1;
-  int i = -1;
-  while (i_max - i_min > 1) {
-
-    i = (i_max + i_min) / 2;
-    if (c->time_interp_table[i] > t) {
-      i_max = i;
-    } else {
-      i_min = i;
-    }
-  }
-
-  /* Now that we have bounds, interpolate linearly
-     in the log-a table */
-  const double delta = (t - c->time_interp_table[i]) /
-                       (c->time_interp_table[i + 1] - c->time_interp_table[i]);
-
-  const double log_a =
-      c->log_a_interp_table[i] +
-      delta * (c->log_a_interp_table[i + 1] - c->log_a_interp_table[i]);
-
-  /* Undo the log */
-  return exp(log_a);
+double cosmology_get_scale_factor(const struct cosmology *c, double t) {
+  /* scale factor between time_begin and t */
+  const double a =
+      interp_table(c->scale_factor_interp_table, t, c->time_interp_table_offset,
+                   c->universe_age_at_present_day);
+  return a + c->a_begin;
 }
 
 /**
@@ -938,15 +894,12 @@ void cosmology_print(const struct cosmology *c) {
 
 void cosmology_clean(struct cosmology *c) {
 
-  gsl_interp_accel_free(acc);
-  gsl_interp_free(poly);
-
-  swift_free("cosmo.table", c->log_a_interp_table);
   swift_free("cosmo.table", c->drift_fac_interp_table);
   swift_free("cosmo.table", c->grav_kick_fac_interp_table);
   swift_free("cosmo.table", c->hydro_kick_fac_interp_table);
   swift_free("cosmo.table", c->hydro_kick_corr_interp_table);
   swift_free("cosmo.table", c->time_interp_table);
+  swift_free("cosmo.table", c->scale_factor_interp_table);
 }
 
 #ifdef HAVE_HDF5
