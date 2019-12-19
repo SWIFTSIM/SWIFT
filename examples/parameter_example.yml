@@ -120,7 +120,8 @@ TimeIntegration:
 
 # Parameters governing the snapshots
 Snapshots:
-  basename:   output      # Common part of the name of output files
+  basename:   output      # Common part of the name of output files.
+  subdir:     dir         # (Optional) Sub-directory in which to write the snapshots. Defaults to "" (i.e. the directory where SWIFT is run).
   scale_factor_first: 0.1 # (Optional) Scale-factor of the first snapshot if cosmological time-integration.
   time_first: 0.          # (Optional) Time of the first output if non-cosmological time-integration (in internal units)
   delta_time: 0.01        # Time difference between consecutive outputs (in internal units)
@@ -202,7 +203,8 @@ DomainDecomposition:
 # Structure finding options (requires velociraptor)
 StructureFinding:
   config_file_name:     stf_input.cfg # Name of the STF config file.
-  basename:             ./stf         # Common part of the name of output files.
+  basename:             haloes        # Common part of the name of output files.
+  subdir_per_output:    stf           # (Optional) Sub-directory (within Snapshots:subdir) to use for each invocation of STF. Defaults to "" (i.e. no sub-directory) 
   scale_factor_first:   0.92          # (Optional) Scale-factor of the first snaphot (cosmological run)
   time_first:           0.01          # (Optional) Time of the first structure finding output (in internal units).
   delta_time:           1.10          # (Optional) Time difference between consecutive structure finding outputs (in internal units) in simulation time intervals.

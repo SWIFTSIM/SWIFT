@@ -113,6 +113,8 @@ enum engine_step_properties {
 #define engine_max_sparts_per_ghost_default 1000
 #define engine_star_resort_task_depth_default 2
 #define engine_tasks_per_cell_margin 1.2
+#define engine_default_stf_subdir_per_output ""
+#define engine_default_snapshot_subdir ""
 
 /**
  * @brief The rank of the engine as a global variable (for messages).
@@ -286,6 +288,7 @@ struct engine {
   integertime_t ti_next_snapshot;
 
   char snapshot_base_name[PARSER_MAX_LINE_SIZE];
+  char snapshot_subdir[PARSER_MAX_LINE_SIZE];
   int snapshot_compression;
   int snapshot_int_time_label_on;
   int snapshot_invoke_stf;
@@ -305,6 +308,7 @@ struct engine {
 
   char stf_config_file_name[PARSER_MAX_LINE_SIZE];
   char stf_base_name[PARSER_MAX_LINE_SIZE];
+  char stf_subdir_per_output[PARSER_MAX_LINE_SIZE];
   int stf_output_count;
 
   /* FoF black holes seeding information */

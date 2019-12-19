@@ -33,6 +33,8 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
+#include <sys/stat.h>
+#include <sys/types.h>
 #include <unistd.h>
 
 /* MPI headers. */
@@ -3211,21 +3213,41 @@ void engine_dump_snapshot(struct engine *e) {
   engine_collect_stars_counter(e);
 #endif
 
+  /* Determine snapshot location */
+  char snapshotBase[FILENAME_BUFFER_SIZE];
+  if (strnlen(e->snapshot_subdir, PARSER_MAX_LINE_SIZE) > 0) {
+    if (snprintf(snapshotBase, FILENAME_BUFFER_SIZE, "%s/%s",
+                 e->snapshot_subdir,
+                 e->snapshot_base_name) >= FILENAME_BUFFER_SIZE) {
+      error(
+          "FILENAME_BUFFER_SIZE is too small for snapshot path and file name");
+    }
+      /* Try to ensure the directory exists */
+#ifdef WITH_MPI
+    if (engine_rank == 0) mkdir(e->snapshot_subdir, 0777);
+    MPI_Barrier(MPI_COMM_WORLD);
+#else
+    mkdir(e->snapshot_subdir, 0777);
+#endif
+  } else {
+    if (snprintf(snapshotBase, FILENAME_BUFFER_SIZE, "%s",
+                 e->snapshot_base_name) >= FILENAME_BUFFER_SIZE) {
+      error("FILENAME_BUFFER_SIZE is too small for snapshot file name");
+    }
+  }
+
 /* Dump... */
 #if defined(HAVE_HDF5)
 #if defined(WITH_MPI)
 #if defined(HAVE_PARALLEL_HDF5)
-  write_output_parallel(e, e->snapshot_base_name, e->internal_units,
-                        e->snapshot_units, e->nodeID, e->nr_nodes,
-                        MPI_COMM_WORLD, MPI_INFO_NULL);
+  write_output_parallel(e, snapshotBase, e->internal_units, e->snapshot_units,
+                        e->nodeID, e->nr_nodes, MPI_COMM_WORLD, MPI_INFO_NULL);
 #else
-  write_output_serial(e, e->snapshot_base_name, e->internal_units,
-                      e->snapshot_units, e->nodeID, e->nr_nodes, MPI_COMM_WORLD,
-                      MPI_INFO_NULL);
+  write_output_serial(e, snapshotBase, e->internal_units, e->snapshot_units,
+                      e->nodeID, e->nr_nodes, MPI_COMM_WORLD, MPI_INFO_NULL);
 #endif
 #else
-  write_output_single(e, e->snapshot_base_name, e->internal_units,
-                      e->snapshot_units);
+  write_output_single(e, snapshotBase, e->internal_units, e->snapshot_units);
 #endif
 #endif
 
@@ -3412,6 +3434,8 @@ void engine_init(struct engine *e, struct space *s, struct swift_params *params,
       parser_get_opt_param_double(params, "Snapshots:delta_time", -1.);
   e->ti_next_snapshot = 0;
   parser_get_param_string(params, "Snapshots:basename", e->snapshot_base_name);
+  parser_get_opt_param_string(params, "Snapshots:subdir", e->snapshot_subdir,
+                              engine_default_snapshot_subdir);
   e->snapshot_compression =
       parser_get_opt_param_int(params, "Snapshots:compression", 0);
   e->snapshot_int_time_label_on =
@@ -3505,6 +3529,9 @@ void engine_init(struct engine *e, struct space *s, struct swift_params *params,
   if (e->policy & engine_policy_structure_finding) {
     parser_get_param_string(params, "StructureFinding:basename",
                             e->stf_base_name);
+    parser_get_opt_param_string(params, "StructureFinding:subdir_per_output",
+                                e->stf_subdir_per_output,
+                                engine_default_stf_subdir_per_output);
     parser_get_param_string(params, "StructureFinding:config_file_name",
                             e->stf_config_file_name);
 
