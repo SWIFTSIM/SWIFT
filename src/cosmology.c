@@ -650,13 +650,6 @@ void cosmology_init_no_cosmo(struct cosmology *c) {
   c->time_end = 0.;
 }
 
-double cosmology_get_scale_factor(const struct cosmology *c,
-                                  const integertime_t ti) {
-
-  const double log_a = c->log_a_begin + ti * c->time_base;
-  return exp(log_a);
-}
-
 /**
  * @brief Computes the cosmology factor that enters the drift operator.
  *
