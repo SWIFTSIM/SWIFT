@@ -229,7 +229,9 @@ __attribute__((always_inline)) INLINE static void chemistry_first_init_spart(
  */
 __attribute__((always_inline)) INLINE static void chemistry_bpart_from_part(
     struct chemistry_bpart_data* bp_data,
-    const struct chemistry_part_data* p_data, const double gas_mass) {}
+    const struct chemistry_part_data* p_data, const double gas_mass) {
+  error("Loic: to be implemented");
+}
 
 /**
  * @brief Add the chemistry data of a gas particle to a black hole.
@@ -242,7 +244,9 @@ __attribute__((always_inline)) INLINE static void chemistry_bpart_from_part(
  */
 __attribute__((always_inline)) INLINE static void chemistry_add_part_to_bpart(
     struct chemistry_bpart_data* bp_data,
-    const struct chemistry_part_data* p_data, const double gas_mass) {}
+    const struct chemistry_part_data* p_data, const double gas_mass) {
+  error("Loic: to be implemented");
+}
 
 /**
  * @brief Add the chemistry data of a black hole to another one.
@@ -254,6 +258,19 @@ __attribute__((always_inline)) INLINE static void chemistry_add_part_to_bpart(
  */
 __attribute__((always_inline)) INLINE static void chemistry_add_bpart_to_bpart(
     struct chemistry_bpart_data* bp_data,
-    const struct chemistry_bpart_data* swallowed_data) {}
+    const struct chemistry_bpart_data* swallowed_data) {
+  error("Loic: to be implemented");
+}
+
+/**
+ * @brief Split the metal content of a particle into n pieces
+ *
+ * @param p The #part.
+ * @param n The number of pieces to split into.
+ */
+__attribute__((always_inline)) INLINE static void chemistry_split_part(
+    struct part* p, const double n) {
+  error("Loic: to be implemented");
+}
 
 #endif /* SWIFT_CHEMISTRY_GEAR_H */

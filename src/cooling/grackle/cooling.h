@@ -764,6 +764,19 @@ __attribute__((always_inline)) INLINE static float cooling_timestep(
 }
 
 /**
+ * @brief Split the coolong content of a particle into n pieces
+ *
+ * @param p The #part.
+ * @param xp The #xpart.
+ * @param n The number of pieces to split into.
+ */
+INLINE static void cooling_split_part(struct part* p, struct xpart* xp,
+                                      double n) {
+
+  error("Loic: to be implemented");
+}
+
+/**
  * @brief Initialises the cooling unit system.
  *
  * @param us The current internal system of units.

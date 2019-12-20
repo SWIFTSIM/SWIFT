@@ -54,6 +54,7 @@ threshold = 0.008
 num_files = len(sys.argv) - 1
 
 labels = [
+    ["engine_split_gas_particles:", 1],
     ["Gpart assignment", 1],
     ["Mesh comunication", 1],
     ["Forward Fourier transform", 1],

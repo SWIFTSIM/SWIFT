@@ -1629,6 +1629,17 @@ void engine_prepare(struct engine *e) {
     engine_fof(e, /*dump_results=*/0, /*seed_black_holes=*/1);
   }
 
+  /* Perform particle splitting. Only if there is a rebuild coming and no
+     repartitioning. */
+  if (e->forcerebuild && !e->forcerepart && e->step > 1) {
+
+    /* Let's start by drifting everybody to the current time */
+    if (!drifted_all) engine_drift_all(e, /*drift_mpole=*/0);
+    drifted_all = 1;
+
+    engine_split_gas_particles(e);
+  }
+
   /* Do we need repartitioning ? */
   if (e->forcerepart) {
 
