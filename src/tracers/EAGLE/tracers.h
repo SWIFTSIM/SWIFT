@@ -158,4 +158,16 @@ static INLINE void tracers_after_black_holes_feedback(struct xpart *xp) {
   xp->tracers_data.hit_by_AGN_feedback = 1;
 }
 
+/**
+ * @brief Split the tracer content of a particle into n pieces
+ *
+ * Nothing to do here.
+ *
+ * @param p The #part.
+ * @param xp The #xpart.
+ * @param n The number of pieces to split into.
+ */
+__attribute__((always_inline)) INLINE static void tracers_split_part(
+    struct part *p, struct xpart *xp, const double n) {}
+
 #endif /* SWIFT_TRACERS_EAGLE_H */

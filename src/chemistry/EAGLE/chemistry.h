@@ -404,6 +404,21 @@ __attribute__((always_inline)) INLINE static void chemistry_add_bpart_to_bpart(
 }
 
 /**
+ * @brief Split the metal content of a particle into n pieces
+ *
+ * We only need to split the fields that are not fractions.
+ *
+ * @param p The #part.
+ * @param n The number of pieces to split into.
+ */
+__attribute__((always_inline)) INLINE static void chemistry_split_part(
+    struct part* p, const double n) {
+  p->chemistry_data.mass_from_SNIa /= n;
+  p->chemistry_data.mass_from_SNII /= n;
+  p->chemistry_data.mass_from_AGB /= n;
+}
+
+/**
  * @brief Returns the total metallicity (metal mass fraction) of the
  * star particle to be used in feedback/enrichment related routines.
  *

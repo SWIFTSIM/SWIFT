@@ -177,6 +177,18 @@ __attribute__((always_inline)) INLINE static float cooling_get_radiated_energy(
 }
 
 /**
+ * @brief Split the coolong content of a particle into n pieces
+ *
+ * Nothing to do here.
+ *
+ * @param p The #part.
+ * @param xp The #xpart.
+ * @param n The number of pieces to split into.
+ */
+static INLINE void cooling_split_part(struct part* p, struct xpart* xp,
+                                      double n) {}
+
+/**
  * @brief Initialises the cooling properties.
  *
  * Nothing to do here.

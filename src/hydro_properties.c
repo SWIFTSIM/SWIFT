@@ -59,6 +59,8 @@ void hydro_props_init(struct hydro_props *p,
                       const struct unit_system *us,
                       struct swift_params *params) {
 
+  /* ------ Smoothing lengths parameters ---------- */
+
   /* Kernel properties */
   p->eta_neighbours = parser_get_param_float(params, "SPH:resolution_eta");
 
@@ -98,6 +100,8 @@ void hydro_props_init(struct hydro_props *p,
   if (p->max_smoothing_iterations <= 10)
     error("The number of smoothing length iterations should be > 10");
 
+  /* ------ Neighbour number definition ------------ */
+
   /* Non-conventional neighbour number definition */
   p->use_mass_weighted_num_ngb =
       parser_get_opt_param_int(params, "SPH:use_mass_weighted_num_ngb", 0);
@@ -107,6 +111,8 @@ void hydro_props_init(struct hydro_props *p,
     error("Can't use alternative neighbour definition with this scheme!");
 #endif
   }
+
+  /* ------ Time integration parameters ------------ */
 
   /* Time integration properties */
   p->CFL_condition = parser_get_param_float(params, "SPH:CFL_condition");
@@ -120,6 +126,8 @@ void hydro_props_init(struct hydro_props *p,
 
   if (p->initial_temperature < 0.f)
     error("ERROR: Initial temperature set to a negative value!!!");
+
+  /* ------ Temperature parameters ----------------- */
 
   /* Minimal temperature */
   p->minimal_temperature = parser_get_opt_param_float(
@@ -185,6 +193,17 @@ void hydro_props_init(struct hydro_props *p,
     mean_molecular_weight = 4. / (1. + 3. * p->hydrogen_mass_fraction);
 
   p->minimal_internal_energy = u_min / mean_molecular_weight;
+
+  /* ------ Particle splitting parameters ---------- */
+
+  /* Are we doing particle splitting? */
+  p->particle_splitting =
+      parser_get_opt_param_int(params, "SPH:particle_splitting", 0);
+
+  if (p->particle_splitting) {
+    p->particle_splitting_mass_threshold =
+        parser_get_param_float(params, "SPH:particle_splitting_mass_threshold");
+  }
 }
 
 /**
@@ -237,6 +256,12 @@ void hydro_props_print(const struct hydro_props *p) {
 
   if (p->minimal_temperature != hydro_props_default_min_temp)
     message("Minimal gas temperature set to %f", p->minimal_temperature);
+
+  if (p->particle_splitting)
+    message("Splitting particles with mass > %e U_M",
+            p->particle_splitting_mass_threshold);
+  else
+    message("No particle splitting");
 
   /* Print out the implementation-dependent viscosity parameters
    * (see hydro/SCHEME/hydro_parameters.h for this implementation) */

@@ -373,6 +373,15 @@ prevent the smoothing length from going below this value in dense
 environments. This will lead to smoothing over more particles than specified
 by :math:`\eta`.
 
+The optional parameter ``particle_splitting`` (Default: 0) activates the
+splitting of overly massive particles into 2. By switching this on, the code
+will loop over all the particles at every tree rebuild and split the particles
+with a mass above a fixed threshold into two copies that are slightly shifted
+(by a randomly orientated vector of norm :math:`0.2h`). Their masses and other
+relevant particle-carried quantities are then halved. The mass threshold for
+splitting is set by the parameter ``particle_splitting_mass_threshold`` which is
+specified using the internal unit system.
+
 The final set of parameters in this section determine the initial and minimum
 temperatures of the particles.
 
@@ -399,14 +408,17 @@ The full section to start a typical cosmological run would be:
 .. code:: YAML
 
    SPH:
-     resolution_eta:           1.2
-     CFL_condition:            0.1
-     h_tolerance:              1e-4
-     h_min_ratio:              0.1
-     initial_temperature:      273
-     minimal_temperature:      100
-     H_mass_fraction:          0.755
-     H_ionization_temperature: 1e4
+     resolution_eta:                     1.2
+     CFL_condition:                      0.1
+     h_tolerance:                        1e-4
+     h_min_ratio:                        0.1
+     h_max:                              1.    # U_L
+     initial_temperature:                273   # U_T
+     minimal_temperature:                100   # U_T
+     H_mass_fraction:                    0.755
+     H_ionization_temperature:           1e4   # U_T
+     particle_splitting:                 1 
+     particle_splitting_mass_threshold:  5e-3  # U_M
 
 .. _Parameters_Stars:
 
