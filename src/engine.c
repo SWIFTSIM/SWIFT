@@ -61,6 +61,7 @@
 #include "cosmology.h"
 #include "cycle.h"
 #include "debug.h"
+#include "distributed_io.h"
 #include "entropy_floor.h"
 #include "equation_of_state.h"
 #include "error.h"
@@ -3247,16 +3248,26 @@ void engine_dump_snapshot(struct engine *e) {
     }
   }
 
-/* Dump... */
+/* Dump (depending on the chosen strategy) ... */
 #if defined(HAVE_HDF5)
 #if defined(WITH_MPI)
+
+  if (e->snapshot_distributed) {
+
+    write_output_distributed(e, snapshotBase, e->internal_units,
+                             e->snapshot_units, e->nodeID, e->nr_nodes,
+                             MPI_COMM_WORLD, MPI_INFO_NULL);
+  } else {
+
 #if defined(HAVE_PARALLEL_HDF5)
-  write_output_parallel(e, snapshotBase, e->internal_units, e->snapshot_units,
-                        e->nodeID, e->nr_nodes, MPI_COMM_WORLD, MPI_INFO_NULL);
+    write_output_parallel(e, snapshotBase, e->internal_units, e->snapshot_units,
+                          e->nodeID, e->nr_nodes, MPI_COMM_WORLD,
+                          MPI_INFO_NULL);
 #else
-  write_output_serial(e, snapshotBase, e->internal_units, e->snapshot_units,
-                      e->nodeID, e->nr_nodes, MPI_COMM_WORLD, MPI_INFO_NULL);
+    write_output_serial(e, snapshotBase, e->internal_units, e->snapshot_units,
+                        e->nodeID, e->nr_nodes, MPI_COMM_WORLD, MPI_INFO_NULL);
 #endif
+  }
 #else
   write_output_single(e, snapshotBase, e->internal_units, e->snapshot_units);
 #endif
@@ -3449,6 +3460,8 @@ void engine_init(struct engine *e, struct space *s, struct swift_params *params,
                               engine_default_snapshot_subdir);
   e->snapshot_compression =
       parser_get_opt_param_int(params, "Snapshots:compression", 0);
+  e->snapshot_distributed =
+      parser_get_opt_param_int(params, "Snapshots:distributed", 0);
   e->snapshot_int_time_label_on =
       parser_get_opt_param_int(params, "Snapshots:int_time_label_on", 0);
   e->snapshot_invoke_stf =
