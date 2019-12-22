@@ -81,11 +81,11 @@
  * @todo A better version using HDF5 hyper-slabs to read the file directly into
  * the part array will be written once the structures have been stabilized.
  */
-void readArray(hid_t grp, const struct io_props props, size_t N,
-               long long N_total, long long offset,
-               const struct unit_system* internal_units,
-               const struct unit_system* ic_units, int cleanup_h,
-               int cleanup_sqrt_a, double h, double a) {
+void read_array_serial(hid_t grp, const struct io_props props, size_t N,
+                       long long N_total, long long offset,
+                       const struct unit_system* internal_units,
+                       const struct unit_system* ic_units, int cleanup_h,
+                       int cleanup_sqrt_a, double h, double a) {
 
   const size_t typeSize = io_sizeof_type(props.type);
   const size_t copySize = typeSize * props.dimension;
@@ -238,11 +238,12 @@ void readArray(hid_t grp, const struct io_props props, size_t N,
   H5Dclose(h_data);
 }
 
-void prepareArray(const struct engine* e, hid_t grp, char* fileName,
-                  FILE* xmfFile, char* partTypeGroupName,
-                  const struct io_props props, unsigned long long N_total,
-                  const struct unit_system* internal_units,
-                  const struct unit_system* snapshot_units) {
+void prepare_array_serial(const struct engine* e, hid_t grp, char* fileName,
+                          FILE* xmfFile, char* partTypeGroupName,
+                          const struct io_props props,
+                          unsigned long long N_total,
+                          const struct unit_system* internal_units,
+                          const struct unit_system* snapshot_units) {
 
   /* Create data space */
   const hid_t h_space = H5Screate(H5S_SIMPLE);
@@ -372,12 +373,12 @@ void prepareArray(const struct engine* e, hid_t grp, char* fileName,
  * @todo A better version using HDF5 hyper-slabs to write the file directly from
  * the part array will be written once the structures have been stabilized.
  */
-void writeArray(const struct engine* e, hid_t grp, char* fileName,
-                FILE* xmfFile, char* partTypeGroupName,
-                const struct io_props props, size_t N, long long N_total,
-                int mpi_rank, long long offset,
-                const struct unit_system* internal_units,
-                const struct unit_system* snapshot_units) {
+void write_array_serial(const struct engine* e, hid_t grp, char* fileName,
+                        FILE* xmfFile, char* partTypeGroupName,
+                        const struct io_props props, size_t N,
+                        long long N_total, int mpi_rank, long long offset,
+                        const struct unit_system* internal_units,
+                        const struct unit_system* snapshot_units) {
 
   const size_t typeSize = io_sizeof_type(props.type);
   const size_t num_elements = N * props.dimension;
@@ -386,8 +387,8 @@ void writeArray(const struct engine* e, hid_t grp, char* fileName,
 
   /* Prepare the arrays in the file */
   if (mpi_rank == 0)
-    prepareArray(e, grp, fileName, xmfFile, partTypeGroupName, props, N_total,
-                 internal_units, snapshot_units);
+    prepare_array_serial(e, grp, fileName, xmfFile, partTypeGroupName, props,
+                         N_total, internal_units, snapshot_units);
 
   /* Allocate temporary buffer */
   void* temp = NULL;
@@ -785,9 +786,9 @@ void read_ic_serial(char* fileName, const struct unit_system* internal_units,
         /* Read everything */
         if (!dry_run)
           for (int i = 0; i < num_fields; ++i)
-            readArray(h_grp, list[i], Nparticles, N_total[ptype], offset[ptype],
-                      internal_units, ic_units, cleanup_h, cleanup_sqrt_a, h,
-                      a);
+            read_array_serial(h_grp, list[i], Nparticles, N_total[ptype],
+                              offset[ptype], internal_units, ic_units,
+                              cleanup_h, cleanup_sqrt_a, h, a);
 
         /* Close particle group */
         H5Gclose(h_grp);
@@ -1484,9 +1485,9 @@ void write_output_serial(struct engine* e, const char* baseName,
           int should_write = parser_get_opt_param_int(params, field, 1);
 
           if (should_write)
-            writeArray(e, h_grp, fileName, xmfFile, partTypeGroupName, list[i],
-                       Nparticles, N_total[ptype], mpi_rank, offset[ptype],
-                       internal_units, snapshot_units);
+            write_array_serial(e, h_grp, fileName, xmfFile, partTypeGroupName,
+                               list[i], Nparticles, N_total[ptype], mpi_rank,
+                               offset[ptype], internal_units, snapshot_units);
         }
 
         /* Free temporary array */

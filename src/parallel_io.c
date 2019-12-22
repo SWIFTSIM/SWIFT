@@ -84,11 +84,13 @@
  * @param h The value of the reduced Hubble constant to use for cleaning.
  * @param a The current value of the scale-factor.
  */
-void readArray_chunk(hid_t h_data, hid_t h_plist_id,
-                     const struct io_props props, size_t N, long long offset,
-                     const struct unit_system* internal_units,
-                     const struct unit_system* ic_units, int cleanup_h,
-                     int cleanup_sqrt_a, double h, double a) {
+void read_array_parallel_chunk(hid_t h_data, hid_t h_plist_id,
+                               const struct io_props props, size_t N,
+                               long long offset,
+                               const struct unit_system* internal_units,
+                               const struct unit_system* ic_units,
+                               int cleanup_h, int cleanup_sqrt_a, double h,
+                               double a) {
 
   const size_t typeSize = io_sizeof_type(props.type);
   const size_t copySize = typeSize * props.dimension;
@@ -239,11 +241,11 @@ void readArray_chunk(hid_t h_data, hid_t h_plist_id,
  * @param h The value of the reduced Hubble constant to use for cleaning.
  * @param a The current value of the scale-factor.
  */
-void readArray(hid_t grp, struct io_props props, size_t N, long long N_total,
-               int mpi_rank, long long offset,
-               const struct unit_system* internal_units,
-               const struct unit_system* ic_units, int cleanup_h,
-               int cleanup_sqrt_a, double h, double a) {
+void read_array_parallel(hid_t grp, struct io_props props, size_t N,
+                         long long N_total, int mpi_rank, long long offset,
+                         const struct unit_system* internal_units,
+                         const struct unit_system* ic_units, int cleanup_h,
+                         int cleanup_sqrt_a, double h, double a) {
 
   const size_t typeSize = io_sizeof_type(props.type);
   const size_t copySize = typeSize * props.dimension;
@@ -332,8 +334,9 @@ void readArray(hid_t grp, struct io_props props, size_t N, long long N_total,
 
     /* Write the first chunk */
     const size_t this_chunk = (N > max_chunk_size) ? max_chunk_size : N;
-    readArray_chunk(h_data, h_plist_id, props, this_chunk, offset,
-                    internal_units, ic_units, cleanup_h, cleanup_sqrt_a, h, a);
+    read_array_parallel_chunk(h_data, h_plist_id, props, this_chunk, offset,
+                              internal_units, ic_units, cleanup_h,
+                              cleanup_sqrt_a, h, a);
 
     /* Compute how many items are left */
     if (N > max_chunk_size) {
@@ -375,9 +378,10 @@ void readArray(hid_t grp, struct io_props props, size_t N, long long N_total,
  * @param N_total The total number of particles to write in this array.
  * @param snapshot_units The units used for the data in this snapshot.
  */
-void prepareArray(struct engine* e, hid_t grp, char* fileName, FILE* xmfFile,
-                  char* partTypeGroupName, struct io_props props,
-                  long long N_total, const struct unit_system* snapshot_units) {
+void prepare_array_parallel(struct engine* e, hid_t grp, char* fileName,
+                            FILE* xmfFile, char* partTypeGroupName,
+                            struct io_props props, long long N_total,
+                            const struct unit_system* snapshot_units) {
 
   /* Create data space */
   const hid_t h_space = H5Screate(H5S_SIMPLE);
@@ -483,10 +487,11 @@ void prepareArray(struct engine* e, hid_t grp, char* fileName, FILE* xmfFile,
  * @param internal_units The #unit_system used internally.
  * @param snapshot_units The #unit_system used in the snapshots.
  */
-void writeArray_chunk(struct engine* e, hid_t h_data,
-                      const struct io_props props, size_t N, long long offset,
-                      const struct unit_system* internal_units,
-                      const struct unit_system* snapshot_units) {
+void write_array_parallel_chunk(struct engine* e, hid_t h_data,
+                                const struct io_props props, size_t N,
+                                long long offset,
+                                const struct unit_system* internal_units,
+                                const struct unit_system* snapshot_units) {
 
   const size_t typeSize = io_sizeof_type(props.type);
   const size_t num_elements = N * props.dimension;
@@ -609,11 +614,12 @@ void writeArray_chunk(struct engine* e, hid_t h_data,
  * @param internal_units The #unit_system used internally.
  * @param snapshot_units The #unit_system used in the snapshots.
  */
-void writeArray(struct engine* e, hid_t grp, char* fileName,
-                char* partTypeGroupName, struct io_props props, size_t N,
-                long long N_total, int mpi_rank, long long offset,
-                const struct unit_system* internal_units,
-                const struct unit_system* snapshot_units) {
+void write_array_parallel(struct engine* e, hid_t grp, char* fileName,
+                          char* partTypeGroupName, struct io_props props,
+                          size_t N, long long N_total, int mpi_rank,
+                          long long offset,
+                          const struct unit_system* internal_units,
+                          const struct unit_system* snapshot_units) {
 
   const size_t typeSize = io_sizeof_type(props.type);
 
@@ -636,8 +642,8 @@ void writeArray(struct engine* e, hid_t grp, char* fileName,
 
     /* Write the first chunk */
     const size_t this_chunk = (N > max_chunk_size) ? max_chunk_size : N;
-    writeArray_chunk(e, h_data, props, this_chunk, offset, internal_units,
-                     snapshot_units);
+    write_array_parallel_chunk(e, h_data, props, this_chunk, offset,
+                               internal_units, snapshot_units);
 
     /* Compute how many items are left */
     if (N > max_chunk_size) {
@@ -979,9 +985,9 @@ void read_ic_parallel(char* fileName, const struct unit_system* internal_units,
     /* Read everything */
     if (!dry_run)
       for (int i = 0; i < num_fields; ++i)
-        readArray(h_grp, list[i], Nparticles, N_total[ptype], mpi_rank,
-                  offset[ptype], internal_units, ic_units, cleanup_h,
-                  cleanup_sqrt_a, h, a);
+        read_array_parallel(h_grp, list[i], Nparticles, N_total[ptype],
+                            mpi_rank, offset[ptype], internal_units, ic_units,
+                            cleanup_h, cleanup_sqrt_a, h, a);
 
     /* Close particle group */
     H5Gclose(h_grp);
@@ -1323,8 +1329,8 @@ void prepare_file(struct engine* e, const char* baseName, long long N_total[6],
       int should_write = parser_get_opt_param_int(params, field, 1);
 
       if (should_write)
-        prepareArray(e, h_grp, fileName, xmfFile, partTypeGroupName, list[i],
-                     N_total[ptype], snapshot_units);
+        prepare_array_parallel(e, h_grp, fileName, xmfFile, partTypeGroupName,
+                               list[i], N_total[ptype], snapshot_units);
     }
 
     /* Close particle group */
@@ -1866,9 +1872,9 @@ void write_output_parallel(struct engine* e, const char* baseName,
       int should_write = parser_get_opt_param_int(params, field, 1);
 
       if (should_write)
-        writeArray(e, h_grp, fileName, partTypeGroupName, list[i], Nparticles,
-                   N_total[ptype], mpi_rank, offset[ptype], internal_units,
-                   snapshot_units);
+        write_array_parallel(e, h_grp, fileName, partTypeGroupName, list[i],
+                             Nparticles, N_total[ptype], mpi_rank,
+                             offset[ptype], internal_units, snapshot_units);
     }
 
     /* Free temporary array */
