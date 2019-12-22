@@ -1144,6 +1144,7 @@ void prepare_file(struct engine* e, const char* baseName, long long N_total[6],
   io_write_attribute(h_grp, "Flag_Entropy_ICs", UINT, flagEntropy,
                      swift_type_count);
   io_write_attribute(h_grp, "NumFilesPerSnapshot", INT, &numFiles, 1);
+  io_write_attribute_i(h_grp, "ThisFile", 0);
 
   /* Close header */
   H5Gclose(h_grp);
