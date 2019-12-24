@@ -429,7 +429,10 @@ void write_output_distributed(struct engine* e, const char* baseName,
   /* Print the system of Units used internally */
   io_write_unit_system(h_file, internal_units, "InternalCodeUnits");
 
-  /* Now write the top-level cell structure */
+  /* Now write the top-level cell structure
+   * We use a global offset of 0 here. This means that the cells will write
+   * their offset with respect to the start of the file they belong to and
+   * not a global offset */
   long long global_offsets[swift_type_count] = {0};
   h_grp = H5Gcreate(h_file, "/Cells", H5P_DEFAULT, H5P_DEFAULT, H5P_DEFAULT);
   if (h_grp < 0) error("Error while creating cells group");

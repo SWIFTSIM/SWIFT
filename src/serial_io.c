@@ -940,7 +940,7 @@ void write_output_serial(struct engine* e, const char* baseName,
   /* The last rank now has the correct N_total. Let's broadcast from there */
   MPI_Bcast(N_total, 6, MPI_LONG_LONG_INT, mpi_size - 1, comm);
 
-  /* Now everybody konws its offset and the total number of particles of each
+  /* Now everybody knows its offset and the total number of particles of each
    * type */
 
   /* Do common stuff first */

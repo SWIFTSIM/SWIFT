@@ -545,8 +545,9 @@ static long long cell_count_non_inhibited_black_holes(const struct cell* c) {
   return count;
 }
 
-void io_write_array(hid_t h_grp, const int nr_cells, const long long* array,
-                    const char* name, const char* array_content) {
+void io_write_array(hid_t h_grp, const int nr_cells, const void* array,
+                    const enum IO_DATA_TYPE type, const char* name,
+                    const char* array_content) {
 
   hsize_t shape[2] = {(hsize_t)nr_cells, 3};
   shape[0] = nr_cells;
@@ -558,12 +559,12 @@ void io_write_array(hid_t h_grp, const int nr_cells, const long long* array,
   if (h_err < 0)
     error("Error while changing shape of %s %s data space.", name,
           array_content);
-  hid_t h_data = H5Dcreate(h_grp, name, io_hdf5_type(LONGLONG), h_space,
+  hid_t h_data = H5Dcreate(h_grp, name, io_hdf5_type(type), h_space,
                            H5P_DEFAULT, H5P_DEFAULT, H5P_DEFAULT);
   if (h_data < 0)
     error("Error while creating dataspace for %s %s.", name, array_content);
-  h_err = H5Dwrite(h_data, io_hdf5_type(LONGLONG), h_space, H5S_ALL,
-                   H5P_DEFAULT, array);
+  h_err = H5Dwrite(h_data, io_hdf5_type(type), h_space, H5S_ALL, H5P_DEFAULT,
+                   array);
   if (h_err < 0) error("Error while writing %s %s.", name, array_content);
   H5Dclose(h_data);
   H5Sclose(h_space);
@@ -579,11 +580,24 @@ void io_write_cell_offsets(hid_t h_grp, const int cdim[3], const double dim[3],
                            const struct unit_system* internal_units,
                            const struct unit_system* snapshot_units) {
 
+#ifdef SWIFT_DEBUG_CHECKS
+  if (distributed) {
+    if (global_offsets[0] != 0 || global_offsets[1] != 0 ||
+        global_offsets[2] != 0 || global_offsets[3] != 0 ||
+        global_offsets[4] != 0 || global_offsets[5] != 0)
+      error("Global offset non-zero in the distributed io case!");
+  }
+#endif
+
   double cell_width[3] = {width[0], width[1], width[2]};
 
   /* Temporary memory for the cell-by-cell information */
   double* centres = NULL;
   centres = (double*)malloc(3 * nr_cells * sizeof(double));
+
+  /* Temporary memory for the cell files ID */
+  int* files = NULL;
+  files = (int*)malloc(nr_cells * sizeof(int));
 
   /* Count of particles in each cell */
   long long *count_part = NULL, *count_gpart = NULL,
@@ -620,6 +634,14 @@ void io_write_cell_offsets(hid_t h_grp, const int cdim[3], const double dim[3],
   long long local_offset_bpart = 0;
   for (int i = 0; i < nr_cells; ++i) {
 
+    /* Store in which file this cell will be found */
+    if (distributed) {
+      files[i] = cells_top[i].nodeID;
+    } else {
+      files[i] = 0;
+    }
+
+    /* Is the cell on this node (i.e. we have full information */
     if (cells_top[i].nodeID == nodeID) {
 
       /* Centre of each cell */
@@ -647,7 +669,8 @@ void io_write_cell_offsets(hid_t h_grp, const int cdim[3], const double dim[3],
       count_bpart[i] = cell_count_non_inhibited_black_holes(&cells_top[i]);
 
       /* Offsets including the global offset of all particles on this MPI rank
-       */
+       * Note that in the distributed case, the global offsets are 0 such that
+       * we actually compute the offset in the file written by this rank. */
       offset_part[i] = local_offset_part + global_offsets[swift_type_gas];
       offset_gpart[i] =
           local_offset_gpart + global_offsets[swift_type_dark_matter];
@@ -690,30 +713,30 @@ void io_write_cell_offsets(hid_t h_grp, const int cdim[3], const double dim[3],
   /* Now, reduce all the arrays. Note that we use a bit-wise OR here. This
      is safe as we made sure only local cells have non-zero values. */
   MPI_Allreduce(MPI_IN_PLACE, count_part, nr_cells, MPI_LONG_LONG_INT, MPI_BOR,
-                0, MPI_COMM_WORLD);
+                MPI_COMM_WORLD);
   MPI_Allreduce(MPI_IN_PLACE, count_gpart, nr_cells, MPI_LONG_LONG_INT, MPI_BOR,
-                0, MPI_COMM_WORLD);
+                MPI_COMM_WORLD);
   MPI_Allreduce(MPI_IN_PLACE, count_background_gpart, nr_cells,
-                MPI_LONG_LONG_INT, MPI_BOR, 0, MPI_COMM_WORLD);
+                MPI_LONG_LONG_INT, MPI_BOR, MPI_COMM_WORLD);
   MPI_Allreduce(MPI_IN_PLACE, count_spart, nr_cells, MPI_LONG_LONG_INT, MPI_BOR,
-                0, MPI_COMM_WORLD);
+                MPI_COMM_WORLD);
   MPI_Allreduce(MPI_IN_PLACE, count_bpart, nr_cells, MPI_LONG_LONG_INT, MPI_BOR,
-                0, MPI_COMM_WORLD);
+                MPI_COMM_WORLD);
 
   MPI_Allreduce(MPI_IN_PLACE, offset_part, nr_cells, MPI_LONG_LONG_INT, MPI_BOR,
-                0, MPI_COMM_WORLD);
+                MPI_COMM_WORLD);
   MPI_Allreduce(MPI_IN_PLACE, offset_gpart, nr_cells, MPI_LONG_LONG_INT,
-                MPI_BOR, 0, MPI_COMM_WORLD);
+                MPI_BOR, MPI_COMM_WORLD);
   MPI_Allreduce(MPI_IN_PLACE, offset_background_gpart, nr_cells,
-                MPI_LONG_LONG_INT, MPI_BOR, 0, MPI_COMM_WORLD);
+                MPI_LONG_LONG_INT, MPI_BOR, MPI_COMM_WORLD);
   MPI_Allreduce(MPI_IN_PLACE, offset_spart, nr_cells, MPI_LONG_LONG_INT,
-                MPI_BOR, 0, MPI_COMM_WORLD);
+                MPI_BOR, MPI_COMM_WORLD);
   MPI_Allreduce(MPI_IN_PLACE, offset_bpart, nr_cells, MPI_LONG_LONG_INT,
-                MPI_BOR, 0, MPI_COMM_WORLD);
+                MPI_BOR, MPI_COMM_WORLD);
 
   /* For the centres we use a sum as MPI does not like bit-wise operations
      on floating point numbers */
-  MPI_Allreduce(MPI_IN_PLACE, centres, 3 * nr_cells, MPI_DOUBLE, MPI_SUM, 0,
+  MPI_Allreduce(MPI_IN_PLACE, centres, 3 * nr_cells, MPI_DOUBLE, MPI_SUM,
                 MPI_COMM_WORLD);
 #endif
 
@@ -763,55 +786,65 @@ void io_write_cell_offsets(hid_t h_grp, const int cdim[3], const double dim[3],
     H5Dclose(h_data);
     H5Sclose(h_space);
 
-    /* Group containing the offsets for each particle type */
-    h_subgrp = H5Gcreate(h_grp, "OffsetsInFile", H5P_DEFAULT, H5P_DEFAULT,
-                         H5P_DEFAULT);
-    if (h_subgrp < 0) error("Error while creating offsets sub-group");
-
-    if (global_counts[swift_type_gas] > 0)
-      io_write_array(h_subgrp, nr_cells, offset_part, "PartType0", "offsets");
-
-    if (global_counts[swift_type_dark_matter] > 0)
-      io_write_array(h_subgrp, nr_cells, offset_gpart, "PartType1", "offsets");
-
-    if (global_counts[swift_type_dark_matter_background] > 0)
-      io_write_array(h_subgrp, nr_cells, offset_background_gpart, "PartType2",
-                     "offsets");
-
-    if (global_counts[swift_type_stars] > 0)
-      io_write_array(h_subgrp, nr_cells, offset_spart, "PartType4", "offsets");
-
-    if (global_counts[swift_type_black_hole] > 0)
-      io_write_array(h_subgrp, nr_cells, offset_bpart, "PartType5", "offsets");
-
-    H5Gclose(h_subgrp);
-
-    /* Group containing the counts for each particle type */
-    h_subgrp =
+    /* Group containing the offsets and counts for each particle type */
+    hid_t h_grp_offsets = H5Gcreate(h_grp, "OffsetsInFile", H5P_DEFAULT,
+                                    H5P_DEFAULT, H5P_DEFAULT);
+    if (h_grp_offsets < 0) error("Error while creating offsets sub-group");
+    hid_t h_grp_files =
+        H5Gcreate(h_grp, "Files", H5P_DEFAULT, H5P_DEFAULT, H5P_DEFAULT);
+    if (h_grp_files < 0) error("Error while creating filess sub-group");
+    hid_t h_grp_counts =
         H5Gcreate(h_grp, "Counts", H5P_DEFAULT, H5P_DEFAULT, H5P_DEFAULT);
-    if (h_subgrp < 0) error("Error while creating counts sub-group");
+    if (h_grp_counts < 0) error("Error while creating counts sub-group");
 
-    if (global_counts[swift_type_gas] > 0)
-      io_write_array(h_subgrp, nr_cells, count_part, "PartType0", "counts");
-
-    if (global_counts[swift_type_dark_matter] > 0)
-      io_write_array(h_subgrp, nr_cells, count_gpart, "PartType1", "counts");
-
-    if (global_counts[swift_type_dark_matter_background] > 0)
-      io_write_array(h_subgrp, nr_cells, count_background_gpart, "PartType2",
+    if (global_counts[swift_type_gas] > 0) {
+      io_write_array(h_grp_files, nr_cells, files, INT, "PartType0", "files");
+      io_write_array(h_grp_offsets, nr_cells, offset_part, LONGLONG,
+                     "PartType0", "offsets");
+      io_write_array(h_grp_counts, nr_cells, count_part, LONGLONG, "PartType0",
                      "counts");
+    }
 
-    if (global_counts[swift_type_stars] > 0)
-      io_write_array(h_subgrp, nr_cells, count_spart, "PartType4", "counts");
+    if (global_counts[swift_type_dark_matter] > 0) {
+      io_write_array(h_grp_files, nr_cells, files, INT, "PartType1", "files");
+      io_write_array(h_grp_offsets, nr_cells, offset_gpart, LONGLONG,
+                     "PartType1", "offsets");
+      io_write_array(h_grp_counts, nr_cells, count_gpart, LONGLONG, "PartType1",
+                     "counts");
+    }
 
-    if (global_counts[swift_type_black_hole] > 0)
-      io_write_array(h_subgrp, nr_cells, count_bpart, "PartType5", "counts");
+    if (global_counts[swift_type_dark_matter_background] > 0) {
+      io_write_array(h_grp_files, nr_cells, files, INT, "PartType2", "files");
+      io_write_array(h_grp_offsets, nr_cells, offset_background_gpart, LONGLONG,
+                     "PartType2", "offsets");
+      io_write_array(h_grp_counts, nr_cells, count_background_gpart, LONGLONG,
+                     "PartType2", "counts");
+    }
 
-    H5Gclose(h_subgrp);
+    if (global_counts[swift_type_stars] > 0) {
+      io_write_array(h_grp_files, nr_cells, files, INT, "PartType4", "files");
+      io_write_array(h_grp_offsets, nr_cells, offset_spart, LONGLONG,
+                     "PartType4", "offsets");
+      io_write_array(h_grp_counts, nr_cells, count_spart, LONGLONG, "PartType4",
+                     "counts");
+    }
+
+    if (global_counts[swift_type_black_hole] > 0) {
+      io_write_array(h_grp_files, nr_cells, files, INT, "PartType5", "files");
+      io_write_array(h_grp_offsets, nr_cells, offset_bpart, LONGLONG,
+                     "PartType5", "offsets");
+      io_write_array(h_grp_counts, nr_cells, count_bpart, LONGLONG, "PartType5",
+                     "counts");
+    }
+
+    H5Gclose(h_grp_offsets);
+    H5Gclose(h_grp_files);
+    H5Gclose(h_grp_counts);
   }
 
   /* Free everything we allocated */
   free(centres);
+  free(files);
   free(count_part);
   free(count_gpart);
   free(count_background_gpart);
