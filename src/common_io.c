@@ -689,91 +689,36 @@ void io_write_cell_offsets(hid_t h_grp, const int cdim[3], const double dim[3],
 #ifdef WITH_MPI
   /* Now, reduce all the arrays. Note that we use a bit-wise OR here. This
      is safe as we made sure only local cells have non-zero values. */
-  if (nodeID == 0) {
-    MPI_Reduce(MPI_IN_PLACE, count_part, nr_cells, MPI_LONG_LONG_INT, MPI_BOR,
-               0, MPI_COMM_WORLD);
-  } else {
-    MPI_Reduce(count_part, NULL, nr_cells, MPI_LONG_LONG_INT, MPI_BOR, 0,
-               MPI_COMM_WORLD);
-  }
-  if (nodeID == 0) {
-    MPI_Reduce(MPI_IN_PLACE, count_gpart, nr_cells, MPI_LONG_LONG_INT, MPI_BOR,
-               0, MPI_COMM_WORLD);
-  } else {
-    MPI_Reduce(count_gpart, NULL, nr_cells, MPI_LONG_LONG_INT, MPI_BOR, 0,
-               MPI_COMM_WORLD);
-  }
-  if (nodeID == 0) {
-    MPI_Reduce(MPI_IN_PLACE, count_background_gpart, nr_cells,
-               MPI_LONG_LONG_INT, MPI_BOR, 0, MPI_COMM_WORLD);
-  } else {
-    MPI_Reduce(count_background_gpart, NULL, nr_cells, MPI_LONG_LONG_INT,
-               MPI_BOR, 0, MPI_COMM_WORLD);
-  }
-  if (nodeID == 0) {
-    MPI_Reduce(MPI_IN_PLACE, count_spart, nr_cells, MPI_LONG_LONG_INT, MPI_BOR,
-               0, MPI_COMM_WORLD);
-  } else {
-    MPI_Reduce(count_spart, NULL, nr_cells, MPI_LONG_LONG_INT, MPI_BOR, 0,
-               MPI_COMM_WORLD);
-  }
-  if (nodeID == 0) {
-    MPI_Reduce(MPI_IN_PLACE, count_bpart, nr_cells, MPI_LONG_LONG_INT, MPI_BOR,
-               0, MPI_COMM_WORLD);
-  } else {
-    MPI_Reduce(count_bpart, NULL, nr_cells, MPI_LONG_LONG_INT, MPI_BOR, 0,
-               MPI_COMM_WORLD);
-  }
+  MPI_Allreduce(MPI_IN_PLACE, count_part, nr_cells, MPI_LONG_LONG_INT, MPI_BOR,
+                0, MPI_COMM_WORLD);
+  MPI_Allreduce(MPI_IN_PLACE, count_gpart, nr_cells, MPI_LONG_LONG_INT, MPI_BOR,
+                0, MPI_COMM_WORLD);
+  MPI_Allreduce(MPI_IN_PLACE, count_background_gpart, nr_cells,
+                MPI_LONG_LONG_INT, MPI_BOR, 0, MPI_COMM_WORLD);
+  MPI_Allreduce(MPI_IN_PLACE, count_spart, nr_cells, MPI_LONG_LONG_INT, MPI_BOR,
+                0, MPI_COMM_WORLD);
+  MPI_Allreduce(MPI_IN_PLACE, count_bpart, nr_cells, MPI_LONG_LONG_INT, MPI_BOR,
+                0, MPI_COMM_WORLD);
 
-  if (nodeID == 0) {
-    MPI_Reduce(MPI_IN_PLACE, offset_part, nr_cells, MPI_LONG_LONG_INT, MPI_BOR,
-               0, MPI_COMM_WORLD);
-  } else {
-    MPI_Reduce(offset_part, NULL, nr_cells, MPI_LONG_LONG_INT, MPI_BOR, 0,
-               MPI_COMM_WORLD);
-  }
-  if (nodeID == 0) {
-    MPI_Reduce(MPI_IN_PLACE, offset_gpart, nr_cells, MPI_LONG_LONG_INT, MPI_BOR,
-               0, MPI_COMM_WORLD);
-  } else {
-    MPI_Reduce(offset_gpart, NULL, nr_cells, MPI_LONG_LONG_INT, MPI_BOR, 0,
-               MPI_COMM_WORLD);
-  }
-  if (nodeID == 0) {
-    MPI_Reduce(MPI_IN_PLACE, offset_background_gpart, nr_cells,
-               MPI_LONG_LONG_INT, MPI_BOR, 0, MPI_COMM_WORLD);
-  } else {
-    MPI_Reduce(offset_background_gpart, NULL, nr_cells, MPI_LONG_LONG_INT,
-               MPI_BOR, 0, MPI_COMM_WORLD);
-  }
-  if (nodeID == 0) {
-    MPI_Reduce(MPI_IN_PLACE, offset_spart, nr_cells, MPI_LONG_LONG_INT, MPI_BOR,
-               0, MPI_COMM_WORLD);
-  } else {
-    MPI_Reduce(offset_spart, NULL, nr_cells, MPI_LONG_LONG_INT, MPI_BOR, 0,
-               MPI_COMM_WORLD);
-  }
-  if (nodeID == 0) {
-    MPI_Reduce(MPI_IN_PLACE, offset_bpart, nr_cells, MPI_LONG_LONG_INT, MPI_BOR,
-               0, MPI_COMM_WORLD);
-  } else {
-    MPI_Reduce(offset_bpart, NULL, nr_cells, MPI_LONG_LONG_INT, MPI_BOR, 0,
-               MPI_COMM_WORLD);
-  }
+  MPI_Allreduce(MPI_IN_PLACE, offset_part, nr_cells, MPI_LONG_LONG_INT, MPI_BOR,
+                0, MPI_COMM_WORLD);
+  MPI_Allreduce(MPI_IN_PLACE, offset_gpart, nr_cells, MPI_LONG_LONG_INT,
+                MPI_BOR, 0, MPI_COMM_WORLD);
+  MPI_Allreduce(MPI_IN_PLACE, offset_background_gpart, nr_cells,
+                MPI_LONG_LONG_INT, MPI_BOR, 0, MPI_COMM_WORLD);
+  MPI_Allreduce(MPI_IN_PLACE, offset_spart, nr_cells, MPI_LONG_LONG_INT,
+                MPI_BOR, 0, MPI_COMM_WORLD);
+  MPI_Allreduce(MPI_IN_PLACE, offset_bpart, nr_cells, MPI_LONG_LONG_INT,
+                MPI_BOR, 0, MPI_COMM_WORLD);
 
   /* For the centres we use a sum as MPI does not like bit-wise operations
      on floating point numbers */
-  if (nodeID == 0) {
-    MPI_Reduce(MPI_IN_PLACE, centres, 3 * nr_cells, MPI_DOUBLE, MPI_SUM, 0,
-               MPI_COMM_WORLD);
-  } else {
-    MPI_Reduce(centres, NULL, 3 * nr_cells, MPI_DOUBLE, MPI_SUM, 0,
-               MPI_COMM_WORLD);
-  }
+  MPI_Allreduce(MPI_IN_PLACE, centres, 3 * nr_cells, MPI_DOUBLE, MPI_SUM, 0,
+                MPI_COMM_WORLD);
 #endif
 
   /* When writing a single file, only rank 0 writes the meta-data */
-  if (!distributed && nodeID == 0) {
+  if ((distributed) || (!distributed && nodeID == 0)) {
 
     /* Unit conversion if necessary */
     const double factor = units_conversion_factor(
