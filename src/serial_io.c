@@ -1161,7 +1161,8 @@ void write_output_serial(struct engine* e, const char* baseName,
   /* Write the location of the particles in the arrays */
   io_write_cell_offsets(h_grp_cells, e->s->cdim, e->s->dim, e->s->pos_dithering,
                         e->s->cells_top, e->s->nr_cells, e->s->width, mpi_rank,
-                        N_total, offset, internal_units, snapshot_units);
+                        /*distributed=*/0, N_total, offset, internal_units,
+                        snapshot_units);
 
   /* Close everything */
   if (mpi_rank == 0) {
