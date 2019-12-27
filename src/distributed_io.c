@@ -99,7 +99,12 @@ void write_distributed_array(const struct engine* e, hid_t grp,
   io_copy_temp_buffer(temp, e, props, N, internal_units, snapshot_units);
 
   /* Create data space */
-  const hid_t h_space = H5Screate(H5S_SIMPLE);
+  hid_t h_space;
+  if (N > 0)
+    h_space = H5Screate(H5S_SIMPLE);
+  else
+    h_space = H5Screate(H5S_NULL);
+
   if (h_space < 0)
     error("Error while creating data space for field '%s'.", props.name);
 
@@ -132,28 +137,32 @@ void write_distributed_array(const struct engine* e, hid_t grp,
   /* Dataset properties */
   const hid_t h_prop = H5Pcreate(H5P_DATASET_CREATE);
 
-  /* Set chunk size */
-  h_err = H5Pset_chunk(h_prop, rank, chunk_shape);
-  if (h_err < 0)
-    error("Error while setting chunk size (%llu, %llu) for field '%s'.",
-          chunk_shape[0], chunk_shape[1], props.name);
+  /* Create filters and set compression level if we have something to write */
+  if (N > 0) {
 
-  /* Impose check-sum to verify data corruption */
-  h_err = H5Pset_fletcher32(h_prop);
-  if (h_err < 0)
-    error("Error while setting checksum options for field '%s'.", props.name);
-
-  /* Impose data compression */
-  if (e->snapshot_compression > 0) {
-    h_err = H5Pset_shuffle(h_prop);
+    /* Set chunk size */
+    h_err = H5Pset_chunk(h_prop, rank, chunk_shape);
     if (h_err < 0)
-      error("Error while setting shuffling options for field '%s'.",
-            props.name);
+      error("Error while setting chunk size (%llu, %llu) for field '%s'.",
+            chunk_shape[0], chunk_shape[1], props.name);
 
-    h_err = H5Pset_deflate(h_prop, e->snapshot_compression);
+    /* Impose check-sum to verify data corruption */
+    h_err = H5Pset_fletcher32(h_prop);
     if (h_err < 0)
-      error("Error while setting compression options for field '%s'.",
-            props.name);
+      error("Error while setting checksum options for field '%s'.", props.name);
+
+    /* Impose data compression */
+    if (e->snapshot_compression > 0) {
+      h_err = H5Pset_shuffle(h_prop);
+      if (h_err < 0)
+        error("Error while setting shuffling options for field '%s'.",
+              props.name);
+
+      h_err = H5Pset_deflate(h_prop, e->snapshot_compression);
+      if (h_err < 0)
+        error("Error while setting compression options for field '%s'.",
+              props.name);
+    }
   }
 
   /* Create dataset */
