@@ -345,6 +345,8 @@ void read_array_parallel(hid_t grp, struct io_props props, size_t N,
       props.parts += max_chunk_size;                  /* part* on the part */
       props.xparts += max_chunk_size;                 /* xpart* on the xpart */
       props.gparts += max_chunk_size;                 /* gpart* on the gpart */
+      props.sparts += max_chunk_size;                 /* spart* on the spart */
+      props.bparts += max_chunk_size;                 /* bpart* on the bpart */
       offset += max_chunk_size;
       redo = 1;
     } else {
@@ -652,6 +654,8 @@ void write_array_parallel(struct engine* e, hid_t grp, char* fileName,
       props.parts += max_chunk_size;                  /* part* on the part */
       props.xparts += max_chunk_size;                 /* xpart* on the xpart */
       props.gparts += max_chunk_size;                 /* gpart* on the gpart */
+      props.sparts += max_chunk_size;                 /* spart* on the spart */
+      props.bparts += max_chunk_size;                 /* bpart* on the bpart */
       offset += max_chunk_size;
       redo = 1;
     } else {
