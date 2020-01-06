@@ -455,6 +455,7 @@ void io_write_code_description(hid_t h_file) {
 #else
   io_write_attribute_s(h_grpcode, "MPI library", "Non-MPI version of SWIFT");
 #endif
+  io_write_attribute_i(h_grpcode, "RandomSeed", SWIFT_RANDOM_SEED_XOR);
   H5Gclose(h_grpcode);
 }
 
