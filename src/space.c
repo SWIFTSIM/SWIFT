@@ -2186,8 +2186,8 @@ void space_parts_get_cell_index_mapper(void *map_data, int nr_parts,
 
 //#ifdef SWIFT_DEBUG_CHECKS
     if (index < 0 || index >= cdim[0] * cdim[1] * cdim[2])
-      error("Invalid index=%d cdim=[%d %d %d] p->x=[%.16e %e %e] a=[%e %e %e] v=[%e %e %e] old_v=[%e %e %e] pid=%lli h=%f", index, cdim[0],
-            cdim[1], cdim[2], pos_x, pos_y, pos_z, p->a_hydro[0], p->a_hydro[1], p->a_hydro[2], p->v[0], p->v[1], p->v[2], p->v_minus1[0],  p->v_minus1[1],  p->v_minus1[2], p->id, p->h);
+      error("Invalid index=%d cdim=[%d %d %d] p->x=[%.16e %e %e] a=[%e %e %e] v=[%e %e %e] old_v=[%e %e %e] pid=%lli h=%f pos_x*ih_x= %.16e", index, cdim[0],
+            cdim[1], cdim[2], pos_x, pos_y, pos_z, p->a_hydro[0], p->a_hydro[1], p->a_hydro[2], p->v[0], p->v[1], p->v[2], p->v_minus1[0],  p->v_minus1[1],  p->v_minus1[2], p->id, p->h,  pos_x * ih_x);
 
     if (pos_x >= dim_x || pos_y >= dim_y || pos_z >= dim_z || pos_x < 0. ||
         pos_y < 0. || pos_z < 0.)
@@ -4582,7 +4582,9 @@ void space_init_parts_mapper(void *restrict map_data, int count,
 
   for (int k = 0; k < count; k++) {
     hydro_init_part(&parts[k], hs);
+    #ifndef WITH_ENGINEERING
     black_holes_init_potential(&parts[k].black_holes_data);
+    #endif
     chemistry_init_part(&parts[k], e->chemistry);
     pressure_floor_init_part(&parts[k], &xparts[k]);
     star_formation_init_part(&parts[k], e->star_formation);

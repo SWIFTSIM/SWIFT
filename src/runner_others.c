@@ -566,9 +566,11 @@ void runner_do_end_grav_force(struct runner *r, struct cell *c, int timer) {
           black_holes_store_potential_in_bpart(&s->bparts[offset], gp);
         }
         if (with_black_holes && gp->type == swift_type_gas) {
+          #ifndef WITH_ENGINEERING
           const size_t offset = -gp->id_or_neg_offset;
           black_holes_store_potential_in_part(
               &s->parts[offset].black_holes_data, gp);
+          #endif
         }
       }
     }

@@ -321,8 +321,9 @@ __attribute__((always_inline)) INLINE static void runner_iact_nonsym_force(
 //  if(!boundary){
   const float visc_i = 4.0 * pi->viscosity;
 //  const float inv_dens_sum = rhoi + rhoj;
-  const float inv_dens_sum = 1.0 / (rhoi + rhoj);
-  const float temp_i = visc_i * inv_r2eta2 * inv_dens_sum;
+//  const float inv_dens_sum = 1.0 / (rhoi + rhoj);
+  const float temp_i = visc_i / ( (r2_eta2) * (rhoi + rhoj));
+//  const float temp_i = visc_i * inv_r2eta2 * inv_dens_sum;
   const float multiplier_i = dx[0]*dx[0]*wi_dx + dx[1]*dx[1]*wi_dx + dx[2]*dx[2]*wi_dx;
   pi->a_hydro[0] += mj*temp_i*multiplier_i*dv[0];
   pi->a_hydro[1] += mj*temp_i*multiplier_i*dv[1];
