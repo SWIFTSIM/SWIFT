@@ -55,7 +55,7 @@ struct queue {
   int *tid;
 
   /* DEQ for incoming tasks. */
-  int *tid_incoming;
+  atomic_int *tid_incoming;
   atomic_int first_incoming, last_incoming, count_incoming;
 
 } __attribute__((aligned(queue_struct_align)));

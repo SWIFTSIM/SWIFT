@@ -19,15 +19,16 @@
 #ifndef SWIFT_ATOMIC_H
 #define SWIFT_ATOMIC_H
 
-#if STDC_VERSION >= 201112L
-  #if !defined(__GNUC__) ||( __GNUC__ > 4 || \
+#if __STDC_VERSION__ >= 201112L
+  #if !defined(__INTEL_COMPILER ) && ( __GNUC__ > 4 || \
     (__GNUC__ == 4 && (__GNUC_MINOR >= 9 )))
-    #define SWIFT_MODERN_ATOMICS
+    #define SWIFT_MODERN_ATOMICS 1
   #endif
 #endif
 
 #include <stdlib.h>
 #include <stdint.h>
+#include <math.h>
 
 /* Config parameters. */
 #include "../config.h"
@@ -36,12 +37,18 @@
 #include "inline.h"
 #include "minmax.h"
 
-//#if STDC_VERSION >= 201112L
+//#define STR_HELPER(x) #x
+//#define STR(x) STR_HELPER(x)
 
-#ifdef NOT_DEFINED
+
+
+#if __STDC_VERSION__ >= 201112L && !defined(__INTEL_COMPILER)
+
+//#ifdef NOT_DEFINED
 #include <stdatomic.h>
 
 #define atomic_add(v, i) atomic_fetch_add(v, i)
+#define atomic_and(v, i) atomic_fetch_and(v, i)
 #define atomic_sub(v, i) atomic_fetch_sub(v, i)
 #define atomic_or(v, i) atomic_fetch_or(v, i)
 #define atomic_inc(v) atomic_fetch_add(v, 1)
@@ -50,35 +57,51 @@
 #define atomic_write(o, v) atomic_store(o, v)
 #define atomic_write_u(o, v) atomic_store(o, v)
 #define atomic_write_c(o, v) atomic_store(o, v)
-#define
+#define atomic_write_f(o, v) atomic_write(o, v)
+#define atomic_load_f(v) atomic_load(v)
+#define atomic_load_u(v) atomic_load(v)
 #ifdef SWIFT_MODERN_ATOMICS
 typedef _Atomic(float) atomic_float;
 typedef _Atomic(double) atomic_double;
+typedef _Atomic(uint32_t) atomic_uint32;
+//typedef _Atomic(int16_t) atomic_short;
 #define atomic_cas(obj,expected,desired) _Generic((desired), \
   int: bool_atomic_compare_and_swap_i, \
   long long: bool_atomic_compare_and_swap_ll, \
   float: bool_atomic_compare_and_swap_f, \
+  char: bool_atomic_compare_and_swap_c, \
   default: bool_atomic_compare_and_swap_ll \
   )(obj,expected,desired)
 #else
 typedef float atomic_float;
 typedef double atomic_double;
+typedef uint32_t atomic_uint32;
+//typedef short atomic_short;
 #define atomic_cas(obj,expected,desired) _Generic((desired), \
   int: bool_atomic_compare_and_swap_i, \
   long long: bool_atomic_compare_and_swap_ll, \
+  char: bool_atomic_compare_and_swap_c, \
   default: bool_atomic_compare_and_swap_ll \
   )(obj,expected,desired)
 #endif
 #define atomic_swap(v, n) atomic_exchange(v,n)
 
-_Bool bool_atomic_compare_and_swap_i( atomic_int *obj, int *expected, int desired){
+__attribute__((always_inline)) INLINE _Bool bool_atomic_compare_and_swap_c( atomic_char *obj, char *expected, char desired){
+  char preexpected = *expected;
+  _Bool retval = atomic_compare_exchange_strong(obj, expected, desired);
+  *expected = preexpected;
+  return retval;
+
+}
+
+__attribute__((always_inline)) INLINE _Bool bool_atomic_compare_and_swap_i( atomic_int *obj, int *expected, int desired){
   int preexpected = *expected;
   _Bool retval = atomic_compare_exchange_strong(obj, expected, desired);
   *expected = preexpected;
   return retval;
 }
 
-_Bool bool_atomic_compare_and_swap_ll( atomic_llong *obj, long long *expected, long long desired){
+__attribute__((always_inline)) INLINE _Bool bool_atomic_compare_and_swap_ll( atomic_llong *obj, long long *expected, long long desired){
   long long preexpected = *expected;
   _Bool retval = atomic_compare_exchange_strong(obj, expected, desired);
   *expected = preexpected;
@@ -86,7 +109,7 @@ _Bool bool_atomic_compare_and_swap_ll( atomic_llong *obj, long long *expected, l
 }
 
 #ifdef SWIFT_MODERN_ATOMICS
-_Bool bool_atomic_compare_and_swap_f( atomic_float *obj, float *expected, float desired){
+__attribute__((always_inline)) INLINE _Bool bool_atomic_compare_and_swap_f( atomic_float *obj, float *expected, float desired){
   float preexpected = *expected;
   _Bool retval = atomic_compare_exchange_strong( obj, expected, desired);
   *expected = preexpected;
@@ -106,18 +129,18 @@ _Bool bool_atomic_compare_and_swap_f( atomic_float *obj, float *expected, float 
  * @param y The value to update the address with.
  */
 #ifdef SWIFT_MODERN_ATOMICS
-static void atomic_min_f( atomic_float *obj, float const y){
+__attribute__((always_inline)) INLINE static void atomic_min_f( atomic_float *obj, float const y){
 
   float test_val, new_val;
 
   do{
     test_val = atomic_load(obj);
-    new_val = fmin(test_val, y);
+    new_val = fminf(test_val, y);
   }while(!atomic_cas_fast( obj, &test_val, new_val));
 
 }
 #else
-static void atomic_min_f( volatile float *const address, float const y) {
+__attribute__((always_inline)) INLINE static void atomic_min_f( volatile float *const address, float const y) {
 
   atomic_int *const int_ptr = (atomic_int *) address;
 
@@ -130,7 +153,7 @@ static void atomic_min_f( volatile float *const address, float const y) {
 
   do {
     test_val.as_int = atomic_load(address);
-    new_val.as_float = fmin(test_val.as_float, y);
+    new_val.as_float = fminf(test_val.as_float, y);
   } while (!atomic_cas(int_ptr, &test_val.as_int, new_val.as_int));
 
 }
@@ -149,18 +172,18 @@ static void atomic_min_f( volatile float *const address, float const y) {
  * @param y The value to update the address with.
  */
 #ifdef SWIFT_MODERN_ATOMICS
-static void atomic_max_f( atomic_float *obj, float const y){
+__attribute__((always_inline)) INLINE static void atomic_max_f( atomic_float *obj, float const y){
 
   float test_val, new_val;
 
   do{
     test_val = atomic_load(obj);
-    new_val = fmax(test_val, y);
+    new_val = fmaxf(test_val, y);
   }while(!atomic_cas_fast(obj, &test_val, new_val));
 
 }
 #else
-static void atomic_max_f( volatile float *const address, float const y) {
+__attribute__((always_inline)) INLINE static void atomic_max_f( volatile float *const address, float const y) {
 
   atomic_int *const int_ptr = (atomic_int *) address;
 
@@ -173,14 +196,57 @@ static void atomic_max_f( volatile float *const address, float const y) {
 
   do {
     test_val.as_int = atomic_load(int_ptr);
-    new_val.as_float = fmax(test_val.as_float, y);
+    new_val.as_float = fmaxf(test_val.as_float, y);
   } while (!atomic_cas(int_ptr, &test_val.as_int, new_val.as_int));
 
 }
 #endif
 
 #ifdef SWIFT_MODERN_ATOMICS
-#define atomic_add_f(v, i) atomic_fetch_add(v, i)
+__attribute__((always_inline)) INLINE static void atomic_max_d( atomic_double *obj, double const y){
+
+  double test_val, new_val;
+
+  do{
+    test_val = atomic_load(obj);
+    new_val = fmax(test_val, y);
+  }while(!atomic_cas_fast(obj, &test_val, new_val));
+}
+#else
+__attribute__((always_inline)) INLINE static void atomic_max_d( volatile double *const address, float const y){
+  atomic_long_long *const ll_ptr = (atomic_long_long *) address;
+  
+  typedef union{
+    double as_dbl;
+    long long as_ll;
+  } cast_type;
+
+  cast_type test_val, new_val;
+  
+  do{
+    test_val.as_ll = atomic_load(ll_ptr);
+    new_val.as_dbl = fmax(test_val.as_dbl, y);
+  } while(!atomic_cas(ll_ptr, &test_val.as_ll, new_val.as_ll));
+}
+#endif
+
+#ifdef SWIFT_MODERN_ATOMICS
+__attribute__((always_inline)) INLINE static void atomic_add_f(
+    atomic_float *const address, const float y) {
+  atomic_int *const int_ptr = (atomic_int *) address;
+  
+  typedef union {
+    float as_float;
+    int as_int;
+  } cast_type;
+  
+  cast_type test_val, new_val;
+
+  do{
+    test_val.as_int = atomic_load(address);
+    new_val.as_float = test_val.as_float + y;
+  } while(!atomic_cas(int_ptr, &test_val.as_int, new_val.as_int));
+}
 #else
 /**
  * @brief Atomic add operation on floats.
@@ -253,6 +319,8 @@ typedef size_t volatile atomic_size_t;
 typedef short atomic_short;
 typedef double atomic_double;
 typedef float atomic_float;
+typedef uint32_t atomic_uint32;
+typedef char atomic_char;
 #define atomic_add(v, i) __sync_fetch_and_add(v, i)
 #define atomic_sub(v, i) __sync_fetch_and_sub(v, i)
 #define atomic_or(v, i) __sync_fetch_and_or(v, i)
@@ -263,6 +331,7 @@ typedef float atomic_float;
 #define atomic_vcas(v, o, n) __sync_val_compare_and_swap(v, o, n)
 #define atomic_swap(v, n) __sync_lock_test_and_set(v, n)
 #define atomic_load(v) __sync_val_compare_and_swap(v, 0, 0)
+#define atomic_init(v, x) (*(v) = x)
 
 __attribute__((always_inline)) INLINE static void
 atomic_write(volatile int *const address, const int y) {

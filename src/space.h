@@ -127,7 +127,7 @@ struct space {
   int cdim[3];
 
   /*! Maximal depth reached by the tree */
-  int maxdepth;
+  atomic_int maxdepth;
 
   /*! Number of top-level cells. */
   int nr_cells;
@@ -244,7 +244,7 @@ struct space {
   atomic_float min_spart_mass;
 
   /*! Minimal mass of all the #bpart */
-  float min_bpart_mass;
+  atomic_float min_bpart_mass;
 
   /*! Sum of the norm of the velocity of all the #part */
   atomic_float sum_part_vel_norm;
@@ -256,7 +256,7 @@ struct space {
   atomic_float sum_spart_vel_norm;
 
   /*! Sum of the norm of the velocity of all the #bpart */
-  float sum_bpart_vel_norm;
+  atomic_float sum_bpart_vel_norm;
 
   /*! Initial value of the smoothing length read from the parameter file */
   float initial_spart_h;

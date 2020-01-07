@@ -22,12 +22,13 @@
 
 #ifdef HAVE_POSIX_FALLOCATE
 
-/* This object's header. */
-#include "dump.h"
 
 /* Local headers. */
 #include "atomic.h"
 #include "error.h"
+
+/* This object's header. */
+#include "dump.h"
 
 /* Some standard headers. */
 #include <errno.h>

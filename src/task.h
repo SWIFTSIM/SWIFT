@@ -207,7 +207,7 @@ struct task {
   enum task_subtypes subtype;
 
   /*! Should the scheduler skip this task ? */
-  char skip;
+  atomic_char skip;
 
   /*! Is this task implicit (i.e. does not do anything) ? */
   char implicit;

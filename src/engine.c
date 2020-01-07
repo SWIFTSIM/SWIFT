@@ -47,8 +47,6 @@
 #include <numa.h>
 #endif
 
-/* This object's header. */
-#include "engine.h"
 
 /* Local headers. */
 #include "active.h"
@@ -93,6 +91,9 @@
 #include "units.h"
 #include "velociraptor_interface.h"
 #include "version.h"
+
+/* This object's header. */
+#include "engine.h"
 
 /* Particle cache size. */
 #define CACHE_SIZE 512

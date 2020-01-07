@@ -119,8 +119,13 @@ struct scheduler {
  */
 __attribute__((always_inline)) INLINE static void scheduler_activate(
     struct scheduler *s, struct task *t) {
+#ifdef SWIFT_MODERN_ATOMICS
+  char one = 1;
+  if (atomic_cas(&t->skip, &one, (char)0)) {
+#else
   if (atomic_cas(&t->skip, 1, 0)) {
-    t->wait = 0;
+#endif
+    atomic_init(&t->wait, 0);
     int ind = atomic_inc(&s->active_count);
     s->tid_active[ind] = t - s->tasks;
   }

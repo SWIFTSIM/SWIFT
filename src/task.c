@@ -37,8 +37,6 @@
 #include <mpi.h>
 #endif
 
-/* This object's header. */
-#include "task.h"
 
 /* Local headers. */
 #include "atomic.h"
@@ -47,6 +45,9 @@
 #include "inline.h"
 #include "lock.h"
 #include "mpiuse.h"
+
+/* This object's header. */
+#include "task.h"
 
 /* Task type names. */
 const char *taskID_names[task_type_count] = {"none",

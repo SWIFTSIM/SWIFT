@@ -32,6 +32,7 @@
 
 /* Local includes. */
 #include "align.h"
+#include "atomic.h"
 #include "kernel_hydro.h"
 #include "lock.h"
 #include "multipole.h"
@@ -326,7 +327,8 @@ struct cell {
   struct cell *super;
 
   /*! Cell flags bit-mask. */
-  volatile uint32_t flags;
+  atomic_uint32 flags;
+  //volatile uint32_t flags;
 
   /*! Hydro variables */
   struct {
@@ -387,7 +389,7 @@ struct cell {
     struct task *stars_resort;
 
     /*! Max smoothing length in this cell. */
-    double h_max;
+    atomic_double h_max;
 
     /*! Last (integer) time the cell's part were drifted forward in time. */
     integertime_t ti_old_part;
@@ -406,7 +408,7 @@ struct cell {
     swift_lock_type lock;
 
     /*! Maximum part movement in this cell since last construction. */
-    float dx_max_part;
+    atomic_float dx_max_part;
 
     /*! Maximum particle movement in this cell since the last sort. */
     float dx_max_sort;
@@ -571,7 +573,7 @@ struct cell {
     struct task *stars_out;
 
     /*! Max smoothing length in this cell. */
-    double h_max;
+    atomic_double h_max;
 
     /*! Last (integer) time the cell's spart were drifted forward in time. */
     integertime_t ti_old_part;
@@ -603,12 +605,6 @@ struct cell {
     /*! Values of dx_max_sort before the drifts, used for sub-cell tasks. */
     float dx_max_sort_old;
 
-<<<<<<< HEAD
-=======
-    /*! Bit mask of sort directions that will be needed in the next timestep. */
-    atomic_uint requires_sorts;
-
->>>>>>> Fix the variables used with atomic_or to be the correct atomic types
     /*! Pointer for the sorted indices. */
     struct sort_entry *sort[13];
 
@@ -616,20 +612,10 @@ struct cell {
     uint16_t requires_sorts;
 
     /*! Bit-mask indicating the sorted directions */
-<<<<<<< HEAD
-    uint16_t sorted;
-
-    /*! Bit mask of sorts that need to be computed for this cell. */
-    uint16_t do_sort;
-=======
     atomic_uint sorted;
 
     /*! Bit mask of sorts that need to be computed for this cell. */
     atomic_uint do_sort;
-
-    /*! Do any of this cell's sub-cells need to be sorted? */
-    char do_sub_sort;
->>>>>>> Fix the variables used with atomic_or to be the correct atomic types
 
     /*! Maximum end of (integer) time step in this cell for star tasks. */
     integertime_t ti_end_min;
@@ -696,7 +682,7 @@ struct cell {
     struct link *feedback;
 
     /*! Max smoothing length in this cell. */
-    double h_max;
+    atomic_double h_max;
 
     /*! Last (integer) time the cell's bpart were drifted forward in time. */
     integertime_t ti_old_part;
@@ -1386,8 +1372,8 @@ __attribute__((always_inline)) INLINE static void cell_clear_flag(
 
 /** Get the given flag for the given cell. */
 __attribute__((always_inline)) INLINE static int cell_get_flag(
-    const struct cell *c, uint32_t flag) {
-  return (atomic_read(&c->flags) & flag) > 0;
+    /*const*/ struct cell *c, uint32_t flag) {
+  return (atomic_load(&c->flags) & flag) > 0;
 }
 
 /**
