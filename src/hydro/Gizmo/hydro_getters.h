@@ -28,7 +28,7 @@
  *
  * @param p Particle.
  * @param W Pointer to the array in which the result needs to be stored (of size
- * 5 or more).
+ * 6 or more).
  */
 __attribute__((always_inline)) INLINE static void
 hydro_part_get_primitive_variables(const struct part* restrict p, float* W) {
@@ -38,6 +38,7 @@ hydro_part_get_primitive_variables(const struct part* restrict p, float* W) {
   W[2] = p->fluid_v[1];
   W[3] = p->fluid_v[2];
   W[4] = p->P;
+  W[5] = p->A;
 }
 
 /**
@@ -49,10 +50,11 @@ hydro_part_get_primitive_variables(const struct part* restrict p, float* W) {
  * @param ddvy y velocity gradient (of size 3 or more).
  * @param ddvz z velocity gradient (of size 3 or more).
  * @param dP Pressure gradient (of size 3 or more).
+ * @param dA Entropic function gradient (of size 3 or more).
  */
 __attribute__((always_inline)) INLINE static void hydro_part_get_gradients(
     const struct part* restrict p, float* drho, float* dvx, float* dvy,
-    float* dvz, float* dP) {
+    float* dvz, float* dP, float* dA) {
 
   drho[0] = p->gradients.rho[0];
   drho[1] = p->gradients.rho[1];
@@ -71,6 +73,10 @@ __attribute__((always_inline)) INLINE static void hydro_part_get_gradients(
   dP[0] = p->gradients.P[0];
   dP[1] = p->gradients.P[1];
   dP[2] = p->gradients.P[2];
+
+  dA[0] = p->gradients.A[0];
+  dA[1] = p->gradients.A[1];
+  dA[2] = p->gradients.A[2];
 }
 
 /**
@@ -85,11 +91,13 @@ __attribute__((always_inline)) INLINE static void hydro_part_get_gradients(
  * @param vzlim Minimum and maximum z velocity of neighbours (of size 2 or
  * more).
  * @param Plim Minimum and maximum pressure of neighbours (of size 2 or more).
+ * @param Alim Minimum and maximum entropic function of neighbours (of size 2 or
+ * more).
  * @param rmax Maximum distance of any neighbour (of size 1 or more).
  */
 __attribute__((always_inline)) INLINE static void hydro_part_get_slope_limiter(
     const struct part* restrict p, float* rholim, float* vxlim, float* vylim,
-    float* vzlim, float* Plim, float* rmax) {
+    float* vzlim, float* Plim, float* Alim, float* rmax) {
 
   rholim[0] = p->limiter.rho[0];
   rholim[1] = p->limiter.rho[1];
@@ -103,6 +111,9 @@ __attribute__((always_inline)) INLINE static void hydro_part_get_slope_limiter(
 
   Plim[0] = p->limiter.P[0];
   Plim[1] = p->limiter.P[1];
+
+  Alim[0] = p->limiter.A[0];
+  Alim[1] = p->limiter.A[1];
 
   rmax[0] = p->limiter.maxr;
 }

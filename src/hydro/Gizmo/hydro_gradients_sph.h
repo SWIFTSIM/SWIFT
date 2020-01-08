@@ -58,37 +58,26 @@ __attribute__((always_inline)) INLINE static void hydro_gradients_collect(
   const float xi = r * hi_inv;
   kernel_deval(xi, &wi, &wi_dx);
 
-  float Wi[5], Wj[5];
+  float Wi[6], Wj[6];
   hydro_part_get_primitive_variables(pi, Wi);
   hydro_part_get_primitive_variables(pj, Wj);
 
-  const float dW[5] = {Wi[0] - Wj[0], Wi[1] - Wj[1], Wi[2] - Wj[2],
-                       Wi[3] - Wj[3], Wi[4] - Wj[4]};
+  const float dW[6] = {Wi[0] - Wj[0], Wi[1] - Wj[1], Wi[2] - Wj[2],
+                       Wi[3] - Wj[3], Wi[4] - Wj[4], Wi[5] - Wj[5]};
 
   const float normi = wi_dx * r_inv;
   const float nidx[3] = {normi * dx[0], normi * dx[1], normi * dx[2]};
 
-  float drho_i[3], dvx_i[3], dvy_i[3], dvz_i[3], dP_i[3];
+  float gradWi[6][3];
 
-  drho_i[0] = -dW[0] * nidx[0];
-  drho_i[1] = -dW[0] * nidx[1];
-  drho_i[2] = -dW[0] * nidx[2];
+  for (int i = 0; i < 6; ++i) {
+    for (int j = 0; j < 3; ++j) {
+      gradWi[i][j] = -dW[i] * nidx[j];
+    }
+  }
 
-  dvx_i[0] = -dW[1] * nidx[0];
-  dvx_i[1] = -dW[1] * nidx[1];
-  dvx_i[2] = -dW[1] * nidx[2];
-  dvy_i[0] = -dW[2] * nidx[0];
-  dvy_i[1] = -dW[2] * nidx[1];
-  dvy_i[2] = -dW[2] * nidx[2];
-  dvz_i[0] = -dW[3] * nidx[0];
-  dvz_i[1] = -dW[3] * nidx[1];
-  dvz_i[2] = -dW[3] * nidx[2];
-
-  dP_i[0] = -dW[4] * nidx[0];
-  dP_i[1] = -dW[4] * nidx[1];
-  dP_i[2] = -dW[4] * nidx[2];
-
-  hydro_part_update_gradients(pi, drho_i, dvx_i, dvy_i, dvz_i, dP_i);
+  hydro_part_update_gradients(pi, gradWi[0], gradWi[1], gradWi[2], gradWi[3],
+                              gradWi[4], gradWi[5]);
 
   hydro_slope_limit_cell_collect(pi, pj, r);
 
@@ -100,28 +89,17 @@ __attribute__((always_inline)) INLINE static void hydro_gradients_collect(
   const float normj = wj_dx * r_inv;
   const float njdx[3] = {normj * dx[0], normj * dx[1], normj * dx[2]};
 
-  float drho_j[3], dvx_j[3], dvy_j[3], dvz_j[3], dP_j[3];
-
   /* signs are the same as before, since we swap i and j twice */
-  drho_j[0] = -dW[0] * njdx[0];
-  drho_j[1] = -dW[0] * njdx[1];
-  drho_j[2] = -dW[0] * njdx[2];
+  float gradWj[6][3];
 
-  dvx_j[0] = -dW[1] * njdx[0];
-  dvx_j[1] = -dW[1] * njdx[1];
-  dvx_j[2] = -dW[1] * njdx[2];
-  dvy_j[0] = -dW[2] * njdx[0];
-  dvy_j[1] = -dW[2] * njdx[1];
-  dvy_j[2] = -dW[2] * njdx[2];
-  dvz_j[0] = -dW[3] * njdx[0];
-  dvz_j[1] = -dW[3] * njdx[1];
-  dvz_j[2] = -dW[3] * njdx[2];
+  for (int i = 0; i < 6; ++i) {
+    for (int j = 0; j < 3; ++j) {
+      gradWj[i][j] = -dW[i] * njdx[j];
+    }
+  }
 
-  dP_j[0] = -dW[4] * njdx[0];
-  dP_j[1] = -dW[4] * njdx[1];
-  dP_j[2] = -dW[4] * njdx[2];
-
-  hydro_part_update_gradients(pj, drho_j, dvx_j, dvy_j, dvz_j, dP_j);
+  hydro_part_update_gradients(pj, gradWj[0], gradWj[1], gradWj[2], gradWj[3],
+                              gradWj[4], gradWj[5]);
 
   hydro_slope_limit_cell_collect(pj, pi, r);
 }
@@ -150,37 +128,26 @@ hydro_gradients_nonsym_collect(float r2, const float *dx, float hi, float hj,
   const float xi = r * hi_inv;
   kernel_deval(xi, &wi, &wi_dx);
 
-  float Wi[5], Wj[5];
+  float Wi[6], Wj[6];
   hydro_part_get_primitive_variables(pi, Wi);
   hydro_part_get_primitive_variables(pj, Wj);
 
-  const float dW[5] = {Wi[0] - Wj[0], Wi[1] - Wj[1], Wi[2] - Wj[2],
-                       Wi[3] - Wj[3], Wi[4] - Wj[4]};
+  const float dW[6] = {Wi[0] - Wj[0], Wi[1] - Wj[1], Wi[2] - Wj[2],
+                       Wi[3] - Wj[3], Wi[4] - Wj[4], Wi[5] - Wj[5]};
 
   const float normi = wi_dx * r_inv;
   const float nidx[3] = {normi * dx[0], normi * dx[1], normi * dx[2]};
 
-  float drho_i[3], dvx_i[3], dvy_i[3], dvz_i[3], dP_i[3];
+  float gradWi[6][3];
 
-  drho_i[0] = -dW[0] * nidx[0];
-  drho_i[1] = -dW[0] * nidx[1];
-  drho_i[2] = -dW[0] * nidx[2];
+  for (int i = 0; i < 6; ++i) {
+    for (int j = 0; j < 3; ++j) {
+      gradWi[i][j] = -dW[i] * nidx[j];
+    }
+  }
 
-  dvx_i[0] = -dW[1] * nidx[0];
-  dvx_i[1] = -dW[1] * nidx[1];
-  dvx_i[2] = -dW[1] * nidx[2];
-  dvy_i[0] = -dW[2] * nidx[0];
-  dvy_i[1] = -dW[2] * nidx[1];
-  dvy_i[2] = -dW[2] * nidx[2];
-  dvz_i[0] = -dW[3] * nidx[0];
-  dvz_i[1] = -dW[3] * nidx[1];
-  dvz_i[2] = -dW[3] * nidx[2];
-
-  dP_i[0] = -dW[4] * nidx[0];
-  dP_i[1] = -dW[4] * nidx[1];
-  dP_i[2] = -dW[4] * nidx[2];
-
-  hydro_part_update_gradients(pi, drho_i, dvx_i, dvy_i, dvz_i, dP_i);
+  hydro_part_update_gradients(pi, gradWi[0], gradWi[1], gradWi[2], gradWi[3],
+                              gradWi[4], gradWi[5]);
 
   hydro_slope_limit_cell_collect(pi, pj, r);
 }

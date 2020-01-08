@@ -48,6 +48,7 @@ __attribute__((always_inline)) INLINE static void riemann_solve_for_flux(
     totflux[2] = 0.0f;
     totflux[3] = 0.0f;
     totflux[4] = 0.0f;
+    totflux[5] = 0.0f;
     return;
   }
 
@@ -122,6 +123,9 @@ __attribute__((always_inline)) INLINE static void riemann_solve_for_flux(
       totflux[4] += rhoLSLstarfac * eL +
                     rhoLSLSstarmuL * (Sstar + WL[4] / (WL[0] * SLmuL));
     }
+
+    /* the entropy is simply advected with the flow */
+    totflux[5] = WL[5] * totflux[0];
   } else {
     const float rhoRuR = WR[0] * uR;
     const float v2 = WR[1] * WR[1] + WR[2] * WR[2] + WR[3] * WR[3];
@@ -151,6 +155,9 @@ __attribute__((always_inline)) INLINE static void riemann_solve_for_flux(
       totflux[4] += rhoRSRstarfac * eR +
                     rhoRSRSstarmuR * (Sstar + WR[4] / (WR[0] * SRmuR));
     }
+
+    /* the entropy is simply advected with the flow */
+    totflux[5] = WR[5] * totflux[0];
   }
 
   /* deboost to lab frame we add the flux contribution due to the

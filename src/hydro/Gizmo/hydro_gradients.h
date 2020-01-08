@@ -113,39 +113,25 @@ __attribute__((always_inline)) INLINE static void hydro_gradients_predict(
    * position) eqn. (8) */
   const float xij_j[3] = {xij_i[0] + dx[0], xij_i[1] + dx[1], xij_i[2] + dx[2]};
 
-  float drho_i[3], dvx_i[3], dvy_i[3], dvz_i[3], dP_i[3];
-  float drho_j[3], dvx_j[3], dvy_j[3], dvz_j[3], dP_j[3];
-  hydro_part_get_gradients(pi, drho_i, dvx_i, dvy_i, dvz_i, dP_i);
-  hydro_part_get_gradients(pj, drho_j, dvx_j, dvy_j, dvz_j, dP_j);
+  float gradWi[6][3], gradWj[6][3];
+  hydro_part_get_gradients(pi, gradWi[0], gradWi[1], gradWi[2], gradWi[3],
+                           gradWi[4], gradWi[5]);
+  hydro_part_get_gradients(pj, gradWj[0], gradWj[1], gradWj[2], gradWj[3],
+                           gradWj[4], gradWj[5]);
 
-  float dWi[5];
-  dWi[0] = hydro_gradients_extrapolate(drho_i, xij_i);
-  dWi[1] = hydro_gradients_extrapolate(dvx_i, xij_i);
-  dWi[2] = hydro_gradients_extrapolate(dvy_i, xij_i);
-  dWi[3] = hydro_gradients_extrapolate(dvz_i, xij_i);
-  dWi[4] = hydro_gradients_extrapolate(dP_i, xij_i);
-
-  float dWj[5];
-  dWj[0] = hydro_gradients_extrapolate(drho_j, xij_j);
-  dWj[1] = hydro_gradients_extrapolate(dvx_j, xij_j);
-  dWj[2] = hydro_gradients_extrapolate(dvy_j, xij_j);
-  dWj[3] = hydro_gradients_extrapolate(dvz_j, xij_j);
-  dWj[4] = hydro_gradients_extrapolate(dP_j, xij_j);
+  float dWi[6], dWj[6];
+  for (int i = 0; i < 6; ++i) {
+    dWi[i] = hydro_gradients_extrapolate(gradWi[i], xij_i);
+    dWj[i] = hydro_gradients_extrapolate(gradWj[i], xij_j);
+  }
 
   /* Apply the slope limiter at this interface */
   hydro_slope_limit_face(Wi, Wj, dWi, dWj, xij_i, xij_j, r);
 
-  Wi[0] += dWi[0];
-  Wi[1] += dWi[1];
-  Wi[2] += dWi[2];
-  Wi[3] += dWi[3];
-  Wi[4] += dWi[4];
-
-  Wj[0] += dWj[0];
-  Wj[1] += dWj[1];
-  Wj[2] += dWj[2];
-  Wj[3] += dWj[3];
-  Wj[4] += dWj[4];
+  for (int i = 0; i < 6; ++i) {
+    Wi[i] += dWi[i];
+    Wj[i] += dWj[i];
+  }
 
   gizmo_check_physical_quantities("density", "pressure", Wi[0], Wi[1], Wi[2],
                                   Wi[3], Wi[4]);

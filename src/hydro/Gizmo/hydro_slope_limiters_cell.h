@@ -41,6 +41,8 @@ __attribute__((always_inline)) INLINE static void hydro_slope_limit_cell_init(
   p->limiter.v[2][1] = -FLT_MAX;
   p->limiter.P[0] = FLT_MAX;
   p->limiter.P[1] = -FLT_MAX;
+  p->limiter.A[0] = FLT_MAX;
+  p->limiter.A[1] = -FLT_MAX;
 
   p->limiter.maxr = -FLT_MAX;
 }
@@ -70,6 +72,9 @@ hydro_slope_limit_cell_collect(struct part* pi, struct part* pj, float r) {
 
   pi->limiter.P[0] = min(pj->P, pi->limiter.P[0]);
   pi->limiter.P[1] = max(pj->P, pi->limiter.P[1]);
+
+  pi->limiter.A[0] = min(pj->A, pi->limiter.A[0]);
+  pi->limiter.A[1] = max(pj->A, pi->limiter.A[1]);
 
   pi->limiter.maxr = max(r, pi->limiter.maxr);
 }
@@ -104,21 +109,23 @@ __attribute__((always_inline)) INLINE static void hydro_slope_limit_quantity(
 __attribute__((always_inline)) INLINE static void hydro_slope_limit_cell(
     struct part* p) {
 
-  float W[5];
-  float gradrho[3], gradvx[3], gradvy[3], gradvz[3], gradP[3];
-  float rholim[2], vxlim[2], vylim[2], vzlim[2], Plim[2], maxr;
+  float W[6];
+  float gradrho[3], gradvx[3], gradvy[3], gradvz[3], gradP[3], gradA[3];
+  float rholim[2], vxlim[2], vylim[2], vzlim[2], Plim[2], Alim[2], maxr;
 
   hydro_part_get_primitive_variables(p, W);
-  hydro_part_get_gradients(p, gradrho, gradvx, gradvy, gradvz, gradP);
-  hydro_part_get_slope_limiter(p, rholim, vxlim, vylim, vzlim, Plim, &maxr);
+  hydro_part_get_gradients(p, gradrho, gradvx, gradvy, gradvz, gradP, gradA);
+  hydro_part_get_slope_limiter(p, rholim, vxlim, vylim, vzlim, Plim, Alim,
+                               &maxr);
 
   hydro_slope_limit_quantity(gradrho, maxr, W[0], rholim[0], rholim[1]);
   hydro_slope_limit_quantity(gradvx, maxr, W[1], vxlim[0], vxlim[1]);
   hydro_slope_limit_quantity(gradvy, maxr, W[2], vylim[0], vylim[1]);
   hydro_slope_limit_quantity(gradvz, maxr, W[3], vzlim[0], vzlim[1]);
   hydro_slope_limit_quantity(gradP, maxr, W[4], Plim[0], Plim[1]);
+  hydro_slope_limit_quantity(gradA, maxr, W[5], Alim[0], Alim[1]);
 
-  hydro_part_set_gradients(p, gradrho, gradvx, gradvy, gradvz, gradP);
+  hydro_part_set_gradients(p, gradrho, gradvx, gradvy, gradvz, gradP, gradA);
 }
 
 #endif /* SWIFT_GIZMO_SLOPE_LIMITER_CELL_H */

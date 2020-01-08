@@ -49,6 +49,9 @@ struct part {
   /* Pressure. */
   float P;
 
+  /* Entropic function. */
+  float A;
+
   /* Gradients of the primitive variables. */
   struct {
 
@@ -60,6 +63,9 @@ struct part {
 
     /* Pressure gradients. */
     float P[3];
+
+    /* Entropic function gradients. */
+    float A[3];
 
   } gradients;
 
@@ -74,6 +80,9 @@ struct part {
 
     /* Extreme values of the pressure among the neighbours. */
     float P[2];
+
+    /* Extreme values of the entropic function among the neighbours. */
+    float A[2];
 
     /* Maximal distance to all neighbouring faces. */
     float maxr;
@@ -92,6 +101,9 @@ struct part {
     /* Fluid thermal energy (not per unit mass!). */
     float energy;
 
+    /* Fluid entropy. */
+    float entropy;
+
   } conserved;
 
   /* Fluxes. */
@@ -105,6 +117,9 @@ struct part {
 
     /* Energy flux. */
     float energy;
+
+    /* Entropy flux. */
+    float entropy;
 
   } flux;
 
@@ -154,6 +169,10 @@ struct part {
     /* Needed to drift the primitive variables. */
     float h_dt;
 
+    /* Maximum kinetic energy of all neighbouring particles (in the rest
+     * frame of this particle). Used for the entropy switch. */
+    float Ekinmax;
+
   } force;
 
   /* Specific stuff for the gravity-hydro coupling. */
@@ -175,6 +194,11 @@ struct part {
 
   /*! Time-step limiter information */
   struct timestep_limiter_data limiter_data;
+
+#ifdef GIZMO_FLAG_VARIABLE
+  /* Flag variable containing diagnostic information about the particle. */
+  int flag_variable;
+#endif
 
 #ifdef SWIFT_DEBUG_CHECKS
 

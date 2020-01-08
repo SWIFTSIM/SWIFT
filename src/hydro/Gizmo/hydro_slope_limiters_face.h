@@ -104,27 +104,12 @@ __attribute__((always_inline)) INLINE static void hydro_slope_limit_face(
 
   const float r_inv = 1.f / r;
 
-  dWi[0] = hydro_slope_limit_face_quantity(Wi[0], Wj[0], Wi[0] + dWi[0],
-                                           xij_i_norm, r_inv);
-  dWi[1] = hydro_slope_limit_face_quantity(Wi[1], Wj[1], Wi[1] + dWi[1],
-                                           xij_i_norm, r_inv);
-  dWi[2] = hydro_slope_limit_face_quantity(Wi[2], Wj[2], Wi[2] + dWi[2],
-                                           xij_i_norm, r_inv);
-  dWi[3] = hydro_slope_limit_face_quantity(Wi[3], Wj[3], Wi[3] + dWi[3],
-                                           xij_i_norm, r_inv);
-  dWi[4] = hydro_slope_limit_face_quantity(Wi[4], Wj[4], Wi[4] + dWi[4],
-                                           xij_i_norm, r_inv);
-
-  dWj[0] = hydro_slope_limit_face_quantity(Wj[0], Wi[0], Wj[0] + dWj[0],
-                                           xij_j_norm, r_inv);
-  dWj[1] = hydro_slope_limit_face_quantity(Wj[1], Wi[1], Wj[1] + dWj[1],
-                                           xij_j_norm, r_inv);
-  dWj[2] = hydro_slope_limit_face_quantity(Wj[2], Wi[2], Wj[2] + dWj[2],
-                                           xij_j_norm, r_inv);
-  dWj[3] = hydro_slope_limit_face_quantity(Wj[3], Wi[3], Wj[3] + dWj[3],
-                                           xij_j_norm, r_inv);
-  dWj[4] = hydro_slope_limit_face_quantity(Wj[4], Wi[4], Wj[4] + dWj[4],
-                                           xij_j_norm, r_inv);
+  for (int i = 0; i < 6; ++i) {
+    dWi[i] = hydro_slope_limit_face_quantity(Wi[i], Wj[i], Wi[i] + dWi[i],
+                                             xij_i_norm, r_inv);
+    dWj[i] = hydro_slope_limit_face_quantity(Wj[i], Wi[i], Wj[i] + dWj[i],
+                                             xij_j_norm, r_inv);
+  }
 }
 
 #endif /* SWIFT_GIZMO_SLOPE_LIMITER_FACE_H */

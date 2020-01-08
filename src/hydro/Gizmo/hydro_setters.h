@@ -34,6 +34,7 @@ hydro_part_set_primitive_variables(struct part* restrict p, const float* W) {
   p->fluid_v[1] = W[2];
   p->fluid_v[2] = W[3];
   p->P = W[4];
+  p->A = W[5];
 }
 
 /**
@@ -51,6 +52,7 @@ hydro_part_set_conserved_variables(struct part* restrict p, const float* Q) {
   p->conserved.momentum[1] = Q[2];
   p->conserved.momentum[2] = Q[3];
   p->conserved.energy = Q[4];
+  p->conserved.entropy = Q[5];
 }
 
 /**
@@ -78,16 +80,27 @@ __attribute__((always_inline)) INLINE static void hydro_part_reset_gradients(
   p->gradients.P[0] = 0.0f;
   p->gradients.P[1] = 0.0f;
   p->gradients.P[2] = 0.0f;
+
+  p->gradients.A[0] = 0.0f;
+  p->gradients.A[1] = 0.0f;
+  p->gradients.A[2] = 0.0f;
 }
 
 /**
  * @brief Set the gradients for the given particle to the given values.
  *
  * @param p Particle.
+ * @param gradrho Density gradient.
+ * @param gradvx Gradient for the x component of the velocity.
+ * @param gradvy Gradient for the y component of the velocity.
+ * @param gradvz Gradient for the z component of the velocity.
+ * @param gradP Pressure gradient.
+ * @param gradA Entropic function gradient.
  */
 __attribute__((always_inline)) INLINE static void hydro_part_set_gradients(
     struct part* restrict p, const float* gradrho, const float* gradvx,
-    const float* gradvy, const float* gradvz, const float* gradP) {
+    const float* gradvy, const float* gradvz, const float* gradP,
+    const float* gradA) {
 
   p->gradients.rho[0] = gradrho[0];
   p->gradients.rho[1] = gradrho[1];
@@ -106,6 +119,10 @@ __attribute__((always_inline)) INLINE static void hydro_part_set_gradients(
   p->gradients.P[0] = gradP[0];
   p->gradients.P[1] = gradP[1];
   p->gradients.P[2] = gradP[2];
+
+  p->gradients.A[0] = gradA[0];
+  p->gradients.A[1] = gradA[1];
+  p->gradients.A[2] = gradA[2];
 }
 
 /**
@@ -118,10 +135,11 @@ __attribute__((always_inline)) INLINE static void hydro_part_set_gradients(
  * @param dvy y velocity gradient contribution.
  * @param dvz z velocity gradient contribution.
  * @param dP Pressure gradient contribution.
+ * @param dA Entropic function gradient contribution.
  */
 __attribute__((always_inline)) INLINE static void hydro_part_update_gradients(
     struct part* restrict p, const float* drho, const float* dvx,
-    const float* dvy, const float* dvz, const float* dP) {
+    const float* dvy, const float* dvz, const float* dP, const float* dA) {
 
   p->gradients.rho[0] += drho[0];
   p->gradients.rho[1] += drho[1];
@@ -140,6 +158,10 @@ __attribute__((always_inline)) INLINE static void hydro_part_update_gradients(
   p->gradients.P[0] += dP[0];
   p->gradients.P[1] += dP[1];
   p->gradients.P[2] += dP[2];
+
+  p->gradients.A[0] += dA[0];
+  p->gradients.A[1] += dA[1];
+  p->gradients.A[2] += dA[2];
 }
 
 /**
@@ -169,6 +191,10 @@ hydro_part_normalise_gradients(struct part* restrict p, const float norm) {
   p->gradients.P[0] *= norm;
   p->gradients.P[1] *= norm;
   p->gradients.P[2] *= norm;
+
+  p->gradients.A[0] *= norm;
+  p->gradients.A[1] *= norm;
+  p->gradients.A[2] *= norm;
 }
 
 /**

@@ -23,12 +23,15 @@
  * @brief Enable Lloyd's iteration.
  *
  * If you enable the flag below, the code will ignore all hydrodynamical
- * variables and instead run in a mode where
+ * variables and instead run in a mode where particles are moved towards the
+ * centroid of their meshless "cells" to obtain a more regular particle
+ * distribution.
  */
 /*#define GIZMO_LLOYD_ITERATION*/
 
 #include "approx_math.h"
 #include "entropy_floor.h"
+#include "hydro_flag_variable.h"
 #include "hydro_flux.h"
 #include "hydro_getters.h"
 #include "hydro_gradients.h"
@@ -63,7 +66,7 @@ __attribute__((always_inline)) INLINE static float hydro_compute_timestep(
   /* skip the time step calculation if we are using Lloyd's algorithm */
   hydro_gizmo_lloyd_skip_timestep(CFL_condition);
 
-  float W[5];
+  float W[6];
   hydro_part_get_primitive_variables(p, W);
 
   /* v_full is the actual velocity of the particle, v is its
@@ -130,13 +133,14 @@ __attribute__((always_inline)) INLINE static void hydro_timestep_extra(
 __attribute__((always_inline)) INLINE static void hydro_first_init_part(
     struct part* p, struct xpart* xp) {
 
-  float W[5], Q[5];
+  float W[6], Q[6];
 
   W[0] = 0.0f;
   W[1] = p->v[0];
   W[2] = p->v[1];
   W[3] = p->v[2];
   W[4] = 0.0f;
+  W[5] = 0.0f;
 
   Q[0] = p->conserved.mass;
   Q[1] = Q[0] * W[1];
@@ -151,6 +155,10 @@ __attribute__((always_inline)) INLINE static void hydro_first_init_part(
 #ifdef GIZMO_TOTAL_ENERGY
   Q[4] += 0.5f * (Q[1] * W[1] + Q[2] * W[2] + Q[3] * W[3]);
 #endif
+
+  /* set the entropy to a non-zero initial value (to make sure we
+     don't zero out the density before we reach hydro_convert_quantities) */
+  Q[5] = 1.0f;
 
   /* overwrite all hydro variables if we are using Lloyd's algorithm */
   hydro_gizmo_lloyd_initialize_particle(W, Q, p->v);
@@ -190,18 +198,16 @@ __attribute__((always_inline)) INLINE static void hydro_init_part(
   p->density.wcount_dh = 0.0f;
 
   p->geometry.volume = 0.0f;
-  p->geometry.matrix_E[0][0] = 0.0f;
-  p->geometry.matrix_E[0][1] = 0.0f;
-  p->geometry.matrix_E[0][2] = 0.0f;
-  p->geometry.matrix_E[1][0] = 0.0f;
-  p->geometry.matrix_E[1][1] = 0.0f;
-  p->geometry.matrix_E[1][2] = 0.0f;
-  p->geometry.matrix_E[2][0] = 0.0f;
-  p->geometry.matrix_E[2][1] = 0.0f;
-  p->geometry.matrix_E[2][2] = 0.0f;
+  for (int i = 0; i < 3; ++i) {
+    for (int j = 0; j < 3; ++j) {
+      p->geometry.matrix_E[i][j] = 0.0f;
+    }
+  }
 
   /* reset the centroid variables used for the velocity correction in MFV */
   hydro_velocities_reset_centroids(p);
+
+  hydro_flag_variable_init(p);
 }
 
 /**
@@ -248,15 +254,11 @@ __attribute__((always_inline)) INLINE static void hydro_end_density(
   p->geometry.volume = volume;
 
   /* we multiply with the smoothing kernel normalization */
-  p->geometry.matrix_E[0][0] = ihdim * p->geometry.matrix_E[0][0];
-  p->geometry.matrix_E[0][1] = ihdim * p->geometry.matrix_E[0][1];
-  p->geometry.matrix_E[0][2] = ihdim * p->geometry.matrix_E[0][2];
-  p->geometry.matrix_E[1][0] = ihdim * p->geometry.matrix_E[1][0];
-  p->geometry.matrix_E[1][1] = ihdim * p->geometry.matrix_E[1][1];
-  p->geometry.matrix_E[1][2] = ihdim * p->geometry.matrix_E[1][2];
-  p->geometry.matrix_E[2][0] = ihdim * p->geometry.matrix_E[2][0];
-  p->geometry.matrix_E[2][1] = ihdim * p->geometry.matrix_E[2][1];
-  p->geometry.matrix_E[2][2] = ihdim * p->geometry.matrix_E[2][2];
+  for (int i = 0; i < 3; ++i) {
+    for (int j = 0; j < 3; ++j) {
+      p->geometry.matrix_E[i][j] *= ihdim;
+    }
+  }
 
   /* normalise the centroids for MFV */
   hydro_velocities_normalise_centroid(p, p->density.wcount);
@@ -300,9 +302,9 @@ __attribute__((always_inline)) INLINE static void hydro_end_density(
 
   /* compute primitive variables */
   /* eqns (3)-(5) */
-  const float Q[5] = {p->conserved.mass, p->conserved.momentum[0],
+  const float Q[6] = {p->conserved.mass,        p->conserved.momentum[0],
                       p->conserved.momentum[1], p->conserved.momentum[2],
-                      p->conserved.energy};
+                      p->conserved.energy,      p->conserved.entropy};
 
 #ifdef SWIFT_DEBUG_CHECKS
   if (Q[0] < 0.) {
@@ -314,7 +316,7 @@ __attribute__((always_inline)) INLINE static void hydro_end_density(
   }
 #endif
 
-  float W[5];
+  float W[6];
 
   W[0] = Q[0] * volume_inv;
   if (Q[0] == 0.0f) {
@@ -342,6 +344,7 @@ __attribute__((always_inline)) INLINE static void hydro_end_density(
   /* energy contains the total thermal energy, we want the specific energy.
      this is why we divide by the volume, and not by the density */
   W[4] = hydro_gamma_minus_one * Q[4] * volume_inv;
+  W[5] = Q[5] / Q[0];
 #endif
 
   /* sanity checks */
@@ -357,6 +360,13 @@ __attribute__((always_inline)) INLINE static void hydro_end_density(
      the geometry matrix is close to singular) */
   p->density.wcount *= p->geometry.wcorr;
   p->density.wcount_dh *= p->geometry.wcorr;
+
+  if (p->geometry.wcorr < 1.0f) {
+    hydro_add_flag(p, GIZMO_FLAG_MORE_NEIGHBOURS);
+  }
+  if (p->geometry.wcorr <= const_gizmo_min_wcorr) {
+    hydro_add_flag(p, GIZMO_FLAG_REVERT_TO_SPH);
+  }
 }
 
 /**
@@ -474,6 +484,8 @@ __attribute__((always_inline)) INLINE static void hydro_prepare_force(
     const float dt_alpha) {
 
   hydro_part_reset_fluxes(p);
+
+  p->force.Ekinmax = 0.0f;
 }
 
 /**
@@ -525,6 +537,9 @@ __attribute__((always_inline)) INLINE static void hydro_convert_quantities(
     const struct hydro_props* hydro_props) {
 
   p->conserved.energy /= cosmo->a_factor_internal_energy;
+  p->conserved.entropy = p->conserved.energy *
+                         pow_minus_gamma_minus_one(p->rho) *
+                         hydro_gamma_minus_one;
 }
 
 /**
@@ -566,9 +581,9 @@ __attribute__((always_inline)) INLINE static void hydro_predict_extra(
   }
 #endif
 
-  float W[5];
+  float W[6];
   hydro_part_get_primitive_variables(p, W);
-  float flux[5];
+  float flux[6];
   hydro_part_get_fluxes(p, flux);
 
   W[0] +=
@@ -647,13 +662,12 @@ __attribute__((always_inline)) INLINE static void hydro_kick_extra(
     const struct hydro_props* hydro_props,
     const struct entropy_floor_properties* floor_props) {
 
+  float a_grav[3];
   /* Add gravity. We only do this if we have gravity activated. */
   if (p->gpart) {
     /* Retrieve the current value of the gravitational acceleration from the
        gpart. We are only allowed to do this because this is the kick. We still
        need to check whether gpart exists though.*/
-    float a_grav[3];
-
     a_grav[0] = p->gpart->a_grav[0];
     a_grav[1] = p->gpart->a_grav[1];
     a_grav[2] = p->gpart->a_grav[2];
@@ -669,7 +683,7 @@ __attribute__((always_inline)) INLINE static void hydro_kick_extra(
     p->conserved.momentum[2] += p->conserved.mass * a_grav[2] * dt_grav;
   }
 
-  float flux[5];
+  float flux[6];
   hydro_part_get_fluxes(p, flux);
 
   /* Update conserved variables. */
@@ -684,6 +698,8 @@ __attribute__((always_inline)) INLINE static void hydro_kick_extra(
 #else
   p->conserved.energy += flux[4] * dt_therm;
 #endif
+  p->conserved.entropy +=
+      hydro_gizmo_mfv_entropy_update_term(flux[5], dt_therm);
 
 #ifndef HYDRO_GAMMA_5_3
 
@@ -697,6 +713,40 @@ __attribute__((always_inline)) INLINE static void hydro_kick_extra(
                                   p->fluid_v[2] * p->gradients.P[2]);
 #endif
 #endif
+
+  /* apply the entropy switch */
+  if (p->gpart) {
+    const float psize = powf(p->geometry.volume / hydro_dimension_unit_sphere,
+                             hydro_dimension_inv);
+    const float dEgrav = p->conserved.mass *
+                         sqrtf(a_grav[0] * a_grav[0] + a_grav[1] * a_grav[1] +
+                               a_grav[2] * a_grav[2]) *
+                         cosmo->a_inv * psize;
+    const float dEkin = 0.5f * p->conserved.mass * p->force.Ekinmax;
+    if (p->conserved.energy < 0.0001f * (dEkin + p->conserved.energy) ||
+        p->conserved.energy < 0.0001f * dEgrav) {
+      p->conserved.energy = hydro_one_over_gamma_minus_one *
+                            p->conserved.entropy * pow_gamma_minus_one(p->rho);
+      /* disable the energy drift */
+      p->flux.energy = 0.0f;
+
+      /* flag the usage of the entropy switch and its trigger */
+      if (p->conserved.energy < 0.0001f * (dEkin + p->conserved.energy)) {
+        hydro_add_flag(p, GIZMO_FLAG_EKIN_SWITCH);
+      }
+      if (p->conserved.energy < 0.0001f * dEgrav) {
+        hydro_add_flag(p, GIZMO_FLAG_GRAVITY_SWITCH);
+      }
+      hydro_add_flag(p, GIZMO_FLAG_ENTROPY);
+
+    } else {
+      p->conserved.entropy = hydro_gamma_minus_one * p->conserved.energy *
+                             pow_minus_gamma_minus_one(p->rho);
+    }
+  } else {
+    p->conserved.entropy = hydro_gamma_minus_one * p->conserved.energy *
+                           pow_minus_gamma_minus_one(p->rho);
+  }
 
   /* Apply the minimal energy limit */
   const float min_energy =

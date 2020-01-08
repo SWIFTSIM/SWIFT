@@ -34,6 +34,7 @@ __attribute__((always_inline)) INLINE static void hydro_part_reset_fluxes(
   p->flux.momentum[1] = 0.0f;
   p->flux.momentum[2] = 0.0f;
   p->flux.energy = 0.0f;
+  p->flux.entropy = 0.0f;
 
   p->gravity.mflux[0] = 0.0f;
   p->gravity.mflux[1] = 0.0f;
@@ -54,6 +55,7 @@ __attribute__((always_inline)) INLINE static void hydro_part_get_fluxes(
   flux[2] = p->flux.momentum[1];
   flux[3] = p->flux.momentum[2];
   flux[4] = p->flux.energy;
+  flux[5] = p->flux.entropy;
 }
 
 /**
@@ -78,6 +80,7 @@ __attribute__((always_inline)) INLINE static void hydro_compute_flux(
   fluxes[2] *= Anorm;
   fluxes[3] *= Anorm;
   fluxes[4] *= Anorm;
+  fluxes[5] *= Anorm;
 }
 
 /**
@@ -100,6 +103,7 @@ __attribute__((always_inline)) INLINE static void hydro_part_update_fluxes_left(
   p->flux.momentum[1] -= fluxes[2];
   p->flux.momentum[2] -= fluxes[3];
   p->flux.energy -= fluxes[4];
+  p->flux.entropy -= fluxes[5];
 
 #ifndef GIZMO_TOTAL_ENERGY
   const float ekin =
@@ -133,6 +137,7 @@ hydro_part_update_fluxes_right(struct part* restrict p, const float* fluxes,
   p->flux.momentum[1] += fluxes[2];
   p->flux.momentum[2] += fluxes[3];
   p->flux.energy += fluxes[4];
+  p->flux.entropy += fluxes[5];
 
 #ifndef GIZMO_TOTAL_ENERGY
   const float ekin =
@@ -221,6 +226,18 @@ hydro_gizmo_mfv_gravity_energy_update_term(const float dt_kick_corr,
 __attribute__((always_inline)) INLINE static float
 hydro_gizmo_mfv_mass_update_term(const float mass_flux, const float dt) {
   return mass_flux * dt;
+}
+
+/**
+ * @brief Get the term required to update the MFV entropy due to the mass flux.
+ *
+ * @param entropy_flux Entropy flux rate.
+ * @param dt Time step (in comoving units).
+ * @return Entropy flux update term.
+ */
+__attribute__((always_inline)) INLINE static float
+hydro_gizmo_mfv_entropy_update_term(const float entropy_flux, const float dt) {
+  return entropy_flux * dt;
 }
 
 /**

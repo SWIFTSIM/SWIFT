@@ -53,8 +53,9 @@
  * @param Whalf Empty state vector in which the result will be stored
  * @param n_unit Normal vector of the interface
  */
-__attribute__((always_inline)) INLINE static void riemann_solver_solve(
+__attribute__((always_inline)) INLINE static int riemann_solver_solve(
     const float* WL, const float* WR, float* Whalf, const float* n_unit) {
+
   float aL, aR;
   float PLR;
   float vL, vR;
@@ -62,6 +63,7 @@ __attribute__((always_inline)) INLINE static void riemann_solver_solve(
   float vhalf;
   float pdpR, SHR, STR;
   float pdpL, SHL, STL;
+  int state;
 
   /* calculate the velocities along the interface normal */
   vL = WL[1] * n_unit[0] + WL[2] * n_unit[1] + WL[3] * n_unit[2];
@@ -72,8 +74,7 @@ __attribute__((always_inline)) INLINE static void riemann_solver_solve(
   aR = sqrtf(hydro_gamma * WR[4] / WR[0]);
 
   if (riemann_is_vacuum(WL, WR, vL, vR, aL, aR)) {
-    riemann_solve_vacuum(WL, WR, vL, vR, aL, aR, Whalf, n_unit);
-    return;
+    return riemann_solve_vacuum(WL, WR, vL, vR, aL, aR, Whalf, n_unit);
   }
 
   /* calculate the velocity and pressure in the intermediate state */
@@ -91,6 +92,7 @@ __attribute__((always_inline)) INLINE static void riemann_solver_solve(
   /* sample the solution */
   if (ustar < 0.0f) {
     /* right state */
+    state = 1;
     Whalf[1] = WR[1];
     Whalf[2] = WR[2];
     Whalf[3] = WR[3];
@@ -123,6 +125,7 @@ __attribute__((always_inline)) INLINE static void riemann_solver_solve(
     }
   } else {
     /* left state */
+    state = -1;
     Whalf[1] = WL[1];
     Whalf[2] = WL[2];
     Whalf[3] = WL[3];
@@ -159,6 +162,8 @@ __attribute__((always_inline)) INLINE static void riemann_solver_solve(
   Whalf[1] += vhalf * n_unit[0];
   Whalf[2] += vhalf * n_unit[1];
   Whalf[3] += vhalf * n_unit[2];
+
+  return state;
 }
 
 __attribute__((always_inline)) INLINE static void riemann_solve_for_flux(
@@ -174,7 +179,7 @@ __attribute__((always_inline)) INLINE static void riemann_solve_for_flux(
   float vtot[3];
   float rhoe;
 
-  riemann_solver_solve(Wi, Wj, Whalf, n_unit);
+  const int state = riemann_solver_solve(Wi, Wj, Whalf, n_unit);
 
   flux[0][0] = Whalf[0] * Whalf[1];
   flux[0][1] = Whalf[0] * Whalf[2];
@@ -213,6 +218,16 @@ __attribute__((always_inline)) INLINE static void riemann_solve_for_flux(
       flux[3][0] * n_unit[0] + flux[3][1] * n_unit[1] + flux[3][2] * n_unit[2];
   totflux[4] =
       flux[4][0] * n_unit[0] + flux[4][1] * n_unit[1] + flux[4][2] * n_unit[2];
+
+  if (state > 0) {
+    totflux[5] = Wj[5] * totflux[0];
+  } else {
+    if (state < 0) {
+      totflux[5] = Wi[5] * totflux[0];
+    } else {
+      totflux[5] = 0.0f;
+    }
+  }
 
 #ifdef SWIFT_DEBUG_CHECKS
   riemann_check_output(Wi, Wj, n_unit, vij, totflux);

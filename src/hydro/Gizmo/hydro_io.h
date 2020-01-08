@@ -234,6 +234,8 @@ INLINE static void hydro_write_particles(const struct part* parts,
   list[10] = io_make_output_field_convert_part(
       "Potentials", FLOAT, 1, UNIT_CONV_POTENTIAL, -1.f, parts, xparts,
       convert_part_potential, "Gravitational potentials of the particles");
+
+  hydro_write_flag_variable(parts, list, num_fields);
 }
 
 /**

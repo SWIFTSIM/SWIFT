@@ -230,7 +230,7 @@ __attribute__((always_inline)) INLINE static void runner_iact_fluxes_common(
   }
   const float Vi = pi->geometry.volume;
   const float Vj = pj->geometry.volume;
-  float Wi[5], Wj[5];
+  float Wi[6], Wj[6];
   hydro_part_get_primitive_variables(pi, Wi);
   hydro_part_get_primitive_variables(pj, Wj);
 
@@ -242,6 +242,15 @@ __attribute__((always_inline)) INLINE static void runner_iact_fluxes_common(
     vmax = ci + cj;
   } else {
     vmax = 0.0f;
+  }
+
+  /* calculate entropy switch quantities */
+  const float Wjminvi[3] = {Wj[1] - Wi[1], Wj[2] - Wi[2], Wj[3] - Wi[3]};
+  const float Wjminvi2 = Wjminvi[0] * Wjminvi[0] + Wjminvi[1] * Wjminvi[1] +
+                         Wjminvi[2] * Wjminvi[2];
+  pi->force.Ekinmax = max(pi->force.Ekinmax, Wjminvi2);
+  if (mode == 1) {
+    pj->force.Ekinmax = max(pj->force.Ekinmax, Wjminvi2);
   }
 
   float dvdr = (pi->v[0] - pj->v[0]) * dx[0] + (pi->v[1] - pj->v[1]) * dx[1] +
@@ -395,7 +404,7 @@ __attribute__((always_inline)) INLINE static void runner_iact_fluxes_common(
   /* we don't need to rotate, we can use the unit vector in the Riemann problem
    * itself (see GIZMO) */
 
-  float totflux[5];
+  float totflux[6];
   hydro_compute_flux(Wi, Wj, n_unit, vij, Anorm, totflux);
 
   hydro_part_update_fluxes_left(pi, totflux, dx);

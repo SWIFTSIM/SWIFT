@@ -183,6 +183,18 @@ hydro_gizmo_mfv_mass_update_term(const float mass_flux, const float dt) {
 }
 
 /**
+ * @brief Get the term required to update the MFV entropy due to the mass flux.
+ *
+ * @param entropy_flux Entropy flux rate.
+ * @param dt Time step (in comoving units).
+ * @return Entropy flux update term.
+ */
+__attribute__((always_inline)) INLINE static float
+hydro_gizmo_mfv_entropy_update_term(const float entropy_flux, const float dt) {
+  return 0.0f;
+}
+
+/**
  * @brief Update the mass of the gpart associated with the given particle after
  * the mass has been updated with the hydrodynamical mass flux.
  *

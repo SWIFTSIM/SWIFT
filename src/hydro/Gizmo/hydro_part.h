@@ -21,6 +21,7 @@
 
 #include "black_holes_struct.h"
 #include "chemistry_struct.h"
+#include "const.h"
 #include "cooling_struct.h"
 #include "star_formation_struct.h"
 #include "timestep_limiter_struct.h"
