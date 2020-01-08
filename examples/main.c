@@ -858,9 +858,9 @@ int main(int argc, char *argv[]) {
 
       /* Initialise the cooling function properties */
 #ifdef COOLING_NONE
-    if (with_cooling || with_temperature) {
+    if (with_cooling) {
       error(
-          "ERROR: Running with cooling / temperature calculation"
+          "ERROR: Running with cooling calculation"
           " but compiled without it.");
     }
 #else
