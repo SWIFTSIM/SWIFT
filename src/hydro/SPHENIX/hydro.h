@@ -17,14 +17,13 @@
  * along with this program.  If not, see <http://www.gnu.org/licenses/>.
  *
  ******************************************************************************/
-#ifndef SWIFT_ANARCHY_DU_HYDRO_H
-#define SWIFT_ANARCHY_DU_HYDRO_H
+#ifndef SWIFT_SPHENIX_HYDRO_H
+#define SWIFT_SPHENIX_HYDRO_H
 
 /**
- * @file AnarchyDU/hydro.h
+ * @file SPHENIX/hydro.h
  * @brief Density-Energy conservative implementation of SPH,
- *        with added ANARCHY physics (Cullen & Denhen 2011 AV,
- *        Price 2008 thermal diffusion  (Non-neighbour loop
+ *        with added SPHENIX physics (Borrow 2020)  (Non-neighbour loop
  *        equations)
  */
 
@@ -1083,4 +1082,4 @@ hydro_set_init_internal_energy(struct part *p, float u_init) {
   p->u = u_init;
 }
 
-#endif /* SWIFT_ANARCHY_DU_HYDRO_H */
+#endif /* SWIFT_SPHENIX_HYDRO_H */

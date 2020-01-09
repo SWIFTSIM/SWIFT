@@ -18,14 +18,13 @@
  *
  ******************************************************************************/
 
-#ifndef SWIFT_ANARCHY_DU_HYDRO_DEBUG_H
-#define SWIFT_ANARCHY_DU_HYDRO_DEBUG_H
+#ifndef SWIFT_SPHENIX_HYDRO_DEBUG_H
+#define SWIFT_SPHENIX_HYDRO_DEBUG_H
 
 /**
- * @file AnarchyDU/hydro_debug.h
+ * @file SPHENIX/hydro_debug.h
  * @brief Density-Energy conservative implementation of SPH,
- *        with added ANARCHY physics (Cullen & Denhen 2011 AV,
- *        Price 2008 thermal diffusion (Debugging routines)
+ *        with added SPHENIX physics (Borrow 2020) (Debugging routines)
  */
 
 __attribute__((always_inline)) INLINE static void hydro_debug_particle(
@@ -44,4 +43,4 @@ __attribute__((always_inline)) INLINE static void hydro_debug_particle(
       p->viscosity.alpha, p->time_bin);
 }
 
-#endif /* SWIFT_ANARCHY_DU_HYDRO_DEBUG_H */
+#endif /* SWIFT_SPHENIX_HYDRO_DEBUG_H */

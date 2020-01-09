@@ -18,6 +18,7 @@ schemes available in SWIFT, as well as how to implement your own.
    planetary
    hopkins_sph
    anarchy_sph
+   sphenix_sph
    gizmo
    adding_your_own
 

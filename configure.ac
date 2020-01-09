@@ -1555,8 +1555,11 @@ case "$with_hydro" in
    planetary)
       AC_DEFINE([PLANETARY_SPH], [1], [Planetary SPH])
    ;;
+   sphenix)
+      AC_DEFINE([SPHENIX_SPH], [1], [SPHENIX SPH])
+   ;;
    anarchy-du)
-      AC_DEFINE([ANARCHY_DU_SPH], [1], [ANARCHY (DU) SPH])
+      AC_DEFINE([SPHENIX_SPH], [1], [SPHENIX SPH])
    ;;
    anarchy-pu)
       AC_DEFINE([ANARCHY_PU_SPH], [1], [ANARCHY (PU) SPH])
