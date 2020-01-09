@@ -17,14 +17,13 @@
  * along with this program.  If not, see <http://www.gnu.org/licenses/>.
  *
  ******************************************************************************/
-#ifndef SWIFT_ANARCHY_DU_HYDRO_PART_H
-#define SWIFT_ANARCHY_DU_HYDRO_PART_H
+#ifndef SWIFT_SPHENIX_HYDRO_PART_H
+#define SWIFT_SPHENIX_HYDRO_PART_H
 
 /**
- * @file AnarchyDU/hydro_part.h
+ * @file SPHENIX/hydro_part.h
  * @brief Density-Energy conservative implementation of SPH,
- *        with added ANARCHY physics (Cullen & Denhen 2011 AV,
- *        Price 2008 thermal diffusion (particle definition)
+ *        with added SPHENIX physics (Borrow 2020) (particle definition)
  */
 
 #include "black_holes_struct.h"
@@ -216,4 +215,4 @@ struct part {
 
 } SWIFT_STRUCT_ALIGN;
 
-#endif /* SWIFT_ANARCHY_DU_HYDRO_PART_H */
+#endif /* SWIFT_SPHENIX_HYDRO_PART_H */

@@ -47,8 +47,8 @@
 #include "./hydro/Shadowswift/hydro_parameters.h"
 #elif defined(PLANETARY_SPH)
 #include "./hydro/Planetary/hydro_parameters.h"
-#elif defined(ANARCHY_DU_SPH)
-#include "./hydro/AnarchyDU/hydro_parameters.h"
+#elif defined(SPHENIX_SPH)
+#include "./hydro/SPHENIX/hydro_parameters.h"
 #elif defined(ANARCHY_PU_SPH)
 #include "./hydro/AnarchyPU/hydro_parameters.h"
 #else
