@@ -138,7 +138,8 @@ if test "$ac_test_CFLAGS" != "set"; then
                     *061?f??:*:*:*|61?f??:*:*:*) icc_flags="-march=core-avx2" ;;
                     *06??f??:*:*:*|6??f??:*:*:*) icc_flags="-march=core-avx2" ;;
                     *070?f??:*:*:*|70?f??:*:*:*) icc_flags="-march=core-avx2" ;;
-                                   83?f??:*:*:*) icc_flags="-march=core-avx2" ;; # EPYC
+                                   83?f??:*:*:*) icc_flags="-march=core-avx2"
+                                                 CFLAGS="$CFLAGS -fma -ftz -fomit-frame-pointer";; # EPYC
                   esac ;;
               esac ;;
           esac
