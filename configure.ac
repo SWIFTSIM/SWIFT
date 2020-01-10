@@ -1060,7 +1060,7 @@ AC_ARG_WITH([random-seed],
     [with_random_seed="$withval"],
     [with_random_seed="0"]
 )
-AC_DEFINE_UNQUOTED([SWIFT_RANDOM_SEED_XOR], [$with_random_seed],[Value of the random seed.]),
+AC_DEFINE_UNQUOTED([SWIFT_RANDOM_SEED_XOR], [$with_random_seed],[Value of the random seed.])
 
 # Check for python.
 have_python="no"
