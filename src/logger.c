@@ -1045,8 +1045,6 @@ void logger_struct_dump(const struct logger_writer *log, FILE *stream) {
 }
 
 
-// TODO remove that
-void dump_restart(struct dump *dump, char *log_name, int size) {}
 /**
  * @brief Restore a logger struct from the given FILE as a stream of
  * bytes.
@@ -1063,7 +1061,7 @@ void logger_struct_restore(struct logger_writer *log, FILE *stream) {
   char logger_name_file[PARSER_MAX_LINE_SIZE];
   logger_get_dump_name(log, logger_name_file);
 
-  dump_restart(&log->dump, logger_name_file, log->dump.size);
+  dump_restart(&log->dump, logger_name_file);
 }
 
 #endif /* WITH_LOGGER */
