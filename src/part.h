@@ -74,8 +74,8 @@
 #elif defined(PLANETARY_SPH)
 #include "./hydro/Planetary/hydro_part.h"
 #define hydro_need_extra_init_loop 0
-#elif defined(ANARCHY_DU_SPH)
-#include "./hydro/AnarchyDU/hydro_part.h"
+#elif defined(SPHENIX_SPH)
+#include "./hydro/SPHENIX/hydro_part.h"
 #define hydro_need_extra_init_loop 0
 #define EXTRA_HYDRO_LOOP
 #elif defined(ANARCHY_PU_SPH)

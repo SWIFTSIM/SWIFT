@@ -18,8 +18,8 @@
  *
  ******************************************************************************/
 
-#ifndef SWIFT_ANARCHY_DU_HYDRO_PARAMETERS_H
-#define SWIFT_ANARCHY_DU_HYDRO_PARAMETERS_H
+#ifndef SWIFT_SPHENIX_HYDRO_PARAMETERS_H
+#define SWIFT_SPHENIX_HYDRO_PARAMETERS_H
 
 /* Configuration file */
 #include "config.h"
@@ -35,10 +35,9 @@
 #include "inline.h"
 
 /**
- * @file AnarchyDU/hydro_parameters.h
+ * @file SPHENIX/hydro_parameters.h
  * @brief Density-Energy conservative implementation of SPH,
- *        with added ANARCHY physics (Cullen & Denhen 2011 AV,
- *        Price 2008 thermal diffusion (default compile-time
+ *        with added SPHENIX physics (Borrow 2020) (default compile-time
  *        parameters).
  *
  *        This file defines a number of things that are used in
@@ -301,4 +300,4 @@ static INLINE void diffusion_print_snapshot(
 }
 #endif
 
-#endif /* SWIFT_ANARCHY_DU_HYDRO_PARAMETERS_H */
+#endif /* SWIFT_SPHENIX_HYDRO_PARAMETERS_H */

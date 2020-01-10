@@ -17,14 +17,13 @@
  * along with this program.  If not, see <http://www.gnu.org/licenses/>.
  *
  ******************************************************************************/
-#ifndef SWIFT_ANARCHY_DU_HYDRO_IACT_H
-#define SWIFT_ANARCHY_DU_HYDRO_IACT_H
+#ifndef SWIFT_SPHENIX_HYDRO_IACT_H
+#define SWIFT_SPHENIX_HYDRO_IACT_H
 
 /**
- * @file AnarchyDU/hydro_iact.h
+ * @file SPHENIX/hydro_iact.h
  * @brief Density-Energy conservative implementation of SPH,
- *        with added ANARCHY physics (Cullen & Denhen 2011 AV,
- *        Price 2008 thermal diffusion (interaction routines)
+ *        with added SPHENIX physics (Borrow 2020) (interaction routines)
  */
 
 #include "adiabatic_index.h"
@@ -572,4 +571,4 @@ __attribute__((always_inline)) INLINE static void runner_iact_nonsym_force(
   pi->viscosity.v_sig = max(pi->viscosity.v_sig, v_sig);
 }
 
-#endif /* SWIFT_ANARCHY_DU_HYDRO_IACT_H */
+#endif /* SWIFT_SPHENIX_HYDRO_IACT_H */

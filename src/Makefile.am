@@ -130,9 +130,9 @@ nobase_noinst_HEADERS = align.h approx_math.h atomic.h barrier.h cycle.h error.h
 		 hydro/AnarchyPU/hydro.h hydro/PressureEnergy/hydro_iact.h hydro/PressureEnergy/hydro_io.h \
                  hydro/AnarchyPU/hydro_debug.h hydro/PressureEnergy/hydro_part.h \
 		 hydro/AnarchyPU/hydro_parameters.h \
-		 hydro/AnarchyDU/hydro.h hydro/PressureEnergy/hydro_iact.h hydro/PressureEnergy/hydro_io.h \
-                 hydro/AnarchyDU/hydro_debug.h hydro/PressureEnergy/hydro_part.h \
-		 hydro/AnarchyDU/hydro_parameters.h \
+		 hydro/SPHENIX/hydro.h hydro/PressureEnergy/hydro_iact.h hydro/PressureEnergy/hydro_io.h \
+                 hydro/SPHENIX/hydro_debug.h hydro/PressureEnergy/hydro_part.h \
+		 hydro/SPHENIX/hydro_parameters.h \
 		 hydro/Gizmo/hydro_parameters.h \
                  hydro/Gizmo/hydro_io.h hydro/Gizmo/hydro_debug.h \
                  hydro/Gizmo/hydro.h hydro/Gizmo/hydro_iact.h \

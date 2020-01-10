@@ -41,8 +41,8 @@
 #include "./hydro/Shadowswift/hydro_io.h"
 #elif defined(PLANETARY_SPH)
 #include "./hydro/Planetary/hydro_io.h"
-#elif defined(ANARCHY_DU_SPH)
-#include "./hydro/AnarchyDU/hydro_io.h"
+#elif defined(SPHENIX_SPH)
+#include "./hydro/SPHENIX/hydro_io.h"
 #elif defined(ANARCHY_PU_SPH)
 #include "./hydro/AnarchyPU/hydro_io.h"
 #else
