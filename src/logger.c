@@ -891,8 +891,10 @@ void logger_log_repartition(
       continue;
     }
 
+    const enum logger_special_flags create_delete =
+      sending? logger_flag_delete : logger_flag_create;
     const int flag = logger_generate_flag(
-      logger_flag_mpi | logger_flag_delete, i);
+      logger_flag_mpi | create_delete, i);
 
     const unsigned int mask_hydro =
       logger_mask_data[logger_x].mask | logger_mask_data[logger_v].mask |
