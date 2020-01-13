@@ -140,15 +140,16 @@ void engine_split_gas_particles(struct engine *e) {
 
     if (e->verbose) message("Reallocating the part array!");
 
-    /* Tell the compiler that the old arrays were aligned */
-    swift_align_information(struct part, s->parts, part_align);
-    swift_align_information(struct xpart, s->xparts, xpart_align);
-
     /* Allocate a larger array and copy over */
     struct part *parts_new = NULL;
     if (swift_memalign("parts", (void **)&parts_new, part_align,
                        sizeof(struct part) * s->size_parts) != 0)
       error("Failed to allocate new part data.");
+
+    /* Tell the compiler that the arrays are aligned */
+    swift_align_information(struct part, s->parts, part_align);
+    swift_align_information(struct part, parts_new, part_align);
+
     memcpy(parts_new, s->parts, sizeof(struct part) * s->nr_parts);
     swift_free("parts", s->parts);
 
@@ -157,6 +158,11 @@ void engine_split_gas_particles(struct engine *e) {
     if (swift_memalign("xparts", (void **)&xparts_new, xpart_align,
                        sizeof(struct xpart) * s->size_parts) != 0)
       error("Failed to allocate new part data.");
+
+    /* Tell the compiler that the arrays are aligned */
+    swift_align_information(struct xpart, s->xparts, xpart_align);
+    swift_align_information(struct xpart, xparts_new, xpart_align);
+
     memcpy(xparts_new, s->xparts, sizeof(struct xpart) * s->nr_parts);
     swift_free("xparts", s->xparts);
 
@@ -172,14 +178,15 @@ void engine_split_gas_particles(struct engine *e) {
 
     if (e->verbose) message("Reallocating the gpart array!");
 
-    /* Tell the compiler that the old array was aligned */
-    swift_align_information(struct gpart, s->gparts, gpart_align);
-
     /* Allocate a larger array and copy over */
     struct gpart *gparts_new = NULL;
     if (swift_memalign("gparts", (void **)&gparts_new, gpart_align,
                        sizeof(struct gpart) * s->size_gparts) != 0)
       error("Failed to allocate new gpart data.");
+
+    /* Tell the compiler that the arrays are aligned */
+    swift_align_information(struct gpart, s->gparts, gpart_align);
+    swift_align_information(struct gpart, gparts_new, gpart_align);
 
     /* Copy the particles */
     memcpy(gparts_new, s->gparts, sizeof(struct gpart) * s->nr_gparts);
