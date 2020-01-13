@@ -37,6 +37,46 @@ const int particle_split_factor = 2;
 const double displacement_factor = 0.2;
 
 /**
+ * @brief Data structure used by the counter mapper function
+ */
+struct data_count {
+  const struct engine *const e;
+  const double mass_threshold;
+  size_t counter;
+};
+
+/**
+ * @brief Mapper function to count the number of #part above the mass threshold
+ * for splitting.
+ */
+void engine_split_gas_particle_count_mapper(void *restrict map_data, int count,
+                                            void *restrict extra_data) {
+
+  /* Unpack the data */
+  struct part *parts = (struct part *)map_data;
+  struct data_count *data = (struct data_count *)extra_data;
+  const struct engine *e = data->e;
+  const double mass_threshold = data->mass_threshold;
+
+  size_t counter = 0;
+
+  for (int i = 0; i < count; ++i) {
+
+    const struct part *p = &parts[i];
+
+    /* Ignore inhibited particles */
+    if (part_is_inhibited(p, e)) continue;
+
+    /* Is the mass of this particle larger than the threshold? */
+    const float gas_mass = hydro_get_mass(p);
+    if (gas_mass > mass_threshold) ++counter;
+  }
+
+  /* Increment the global counter */
+  atomic_add(&data->counter, counter);
+}
+
+/**
  * @brief Identify all the gas particles above a given mass threshold
  * and split them into 2.
  *
@@ -51,6 +91,7 @@ void engine_split_gas_particles(struct engine *e) {
 
   /* Abort if we are not doing any splitting */
   if (!e->hydro_properties->particle_splitting) return;
+  if (e->s->nr_parts == 0) return;
 
   /* Time this */
   const ticks tic = getticks();
@@ -61,6 +102,7 @@ void engine_split_gas_particles(struct engine *e) {
                            (e->policy & engine_policy_external_gravity);
   const double mass_threshold =
       e->hydro_properties->particle_splitting_mass_threshold;
+  const size_t nr_parts_old = s->nr_parts;
 
   /* Quick check to avoid problems */
   if (particle_split_factor != 2) {
@@ -68,23 +110,12 @@ void engine_split_gas_particles(struct engine *e) {
         "Invalid splitting factor. Can currently only split particles into 2!");
   }
 
-  /* Start by counting how many particles are above the threshold for splitting
-   */
-
-  size_t counter = 0;
-  const size_t nr_parts_old = s->nr_parts;
-  const struct part *parts_old = s->parts;
-  for (size_t i = 0; i < nr_parts_old; ++i) {
-
-    const struct part *p = &parts_old[i];
-
-    /* Ignore inhibited particles */
-    if (part_is_inhibited(p, e)) continue;
-
-    /* Is the mass of this particle larger than the threshold? */
-    const float gas_mass = hydro_get_mass(p);
-    if (gas_mass > mass_threshold) ++counter;
-  }
+  /* Start by counting how many particles are above the threshold
+   * for splitting (this is done in parallel over the threads) */
+  struct data_count data = {e, mass_threshold, 0};
+  threadpool_map(&e->threadpool, engine_split_gas_particle_count_mapper,
+                 s->parts, s->nr_parts, sizeof(struct part), 0, &data);
+  const size_t counter = data.counter;
 
   /* Early abort? */
   if (counter == 0) {
