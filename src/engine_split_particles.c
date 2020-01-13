@@ -140,6 +140,11 @@ void engine_split_gas_particles(struct engine *e) {
 
     if (e->verbose) message("Reallocating the part array!");
 
+    /* Tell the compiler that the old arrays were aligned */
+    swift_align_information(struct part, s->parts, part_align);
+    swift_align_information(struct xpart, s->xparts, xpart_align);
+
+    /* Allocate a larger array and copy over */
     struct part *parts_new = NULL;
     if (swift_memalign("parts", (void **)&parts_new, part_align,
                        sizeof(struct part) * s->size_parts) != 0)
@@ -147,6 +152,7 @@ void engine_split_gas_particles(struct engine *e) {
     memcpy(parts_new, s->parts, sizeof(struct part) * s->nr_parts);
     swift_free("parts", s->parts);
 
+    /* Allocate a larger array and copy over */
     struct xpart *xparts_new = NULL;
     if (swift_memalign("xparts", (void **)&xparts_new, xpart_align,
                        sizeof(struct xpart) * s->size_parts) != 0)
@@ -166,6 +172,10 @@ void engine_split_gas_particles(struct engine *e) {
 
     if (e->verbose) message("Reallocating the gpart array!");
 
+    /* Tell the compiler that the old array was aligned */
+    swift_align_information(struct gpart, s->gparts, gpart_align);
+
+    /* Allocate a larger array and copy over */
     struct gpart *gparts_new = NULL;
     if (swift_memalign("gparts", (void **)&gparts_new, gpart_align,
                        sizeof(struct gpart) * s->size_gparts) != 0)
