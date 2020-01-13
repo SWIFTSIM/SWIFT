@@ -47,10 +47,12 @@ Gravity:
   eta:                    0.025     # Constant dimensionless multiplier for time integration.
   theta:                  0.7       # Opening angle (Multipole acceptance criterion)
   mesh_side_length:       32
+  dithering:              0
   comoving_DM_softening:         0.0026994 # Comoving DM softening length (in internal units).
   max_physical_DM_softening:     0.0007    # Max physical DM softening length (in internal units).
   comoving_baryon_softening:     0.0026994 # Comoving DM softening length (in internal units).
   max_physical_baryon_softening: 0.0007    # Max physical DM softening length (in internal units).
+
   
 # Parameters for the hydrodynamics scheme
 SPH:
