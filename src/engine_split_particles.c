@@ -46,6 +46,17 @@ struct data_count {
 };
 
 /**
+ * @brief Data structure used by the split mapper function
+ */
+struct data_split {
+  const struct engine *const e;
+  const float mass_threshold;
+  size_t *const k_parts;
+  size_t *const k_gparts;
+  swift_lock_type lock;
+};
+
+/**
  * @brief Mapper function to count the number of #part above the mass threshold
  * for splitting.
  */
@@ -74,6 +85,150 @@ void engine_split_gas_particle_count_mapper(void *restrict map_data, int count,
 
   /* Increment the global counter */
   atomic_add(&data->counter, counter);
+}
+
+/**
+ * @brief Mapper function to split the #part above the mass threshold.
+ */
+void engine_split_gas_particle_split_mapper(void *restrict map_data, int count,
+                                            void *restrict extra_data) {
+
+  /* Unpack the data */
+  struct part *parts = (struct part *)map_data;
+  struct data_split *data = (struct data_split *)extra_data;
+  const float mass_threshold = data->mass_threshold;
+  const struct engine *e = data->e;
+  const int with_gravity = (e->policy & engine_policy_self_gravity) ||
+                           (e->policy & engine_policy_external_gravity);
+
+  /* Additional thread-global particle arrays */
+  const struct space *s = e->s;
+  struct part *global_parts = s->parts;
+  struct xpart *global_xparts = s->xparts;
+  struct gpart *global_gparts = s->gparts;
+
+  /* xpart array corresponding to the thread-local particle array */
+  const ptrdiff_t offset = parts - global_parts;
+  struct xpart *xparts = global_xparts + offset;
+
+  /* Loop over the chunk of the part array assigned to this thread */
+  for (int i = 0; i < count; ++i) {
+
+    /* Is the mass of this particle larger than the threshold? */
+    struct part *p = &parts[i];
+
+    /* Ignore inhibited particles */
+    if (part_is_inhibited(p, e)) continue;
+
+    const float gas_mass = hydro_get_mass(p);
+    const float h = p->h;
+
+    /* Found a particle to split */
+    if (gas_mass > mass_threshold) {
+
+      /* Make sure only one thread is here */
+      lock_lock(&data->lock);
+
+      /* Where should we put the new particle in the array? */
+      const size_t k_parts = *data->k_parts;
+      const size_t k_gparts = *data->k_gparts;
+
+      /* Make the next slot available for the next particle */
+      (*data->k_parts)++;
+      if (with_gravity) (*data->k_gparts)++;
+
+      /* Release the lock and continue in parallel */
+      if (lock_unlock(&data->lock) != 0)
+        error("Impossible to unlock particle splitting");
+
+      /* We now know where to put the new particle we are going to create. */
+
+      /* Current other fields associated to this particle */
+      struct xpart *xp = &xparts[i];
+      struct gpart *gp = p->gpart;
+
+      /* Start by copying over the particles */
+      memcpy(&global_parts[k_parts], p, sizeof(struct part));
+      memcpy(&global_xparts[k_parts], xp, sizeof(struct xpart));
+
+      if (with_gravity) {
+        memcpy(&global_gparts[k_gparts], gp, sizeof(struct gpart));
+      }
+
+      /* Update the IDs */
+      global_parts[k_parts].id += 2;
+
+      /* Re-link everything */
+      if (with_gravity) {
+        global_parts[k_parts].gpart = &global_gparts[k_gparts];
+        global_gparts[k_gparts].id_or_neg_offset = -k_parts;
+      }
+
+      /* Displacement unit vector */
+      const double delta_x = random_unit_interval(p->id, e->ti_current,
+                                                  (enum random_number_type)0);
+      const double delta_y = random_unit_interval(p->id, e->ti_current,
+                                                  (enum random_number_type)1);
+      const double delta_z = random_unit_interval(p->id, e->ti_current,
+                                                  (enum random_number_type)2);
+
+      /* Displace the old particle */
+      p->x[0] += delta_x * displacement_factor * h;
+      p->x[1] += delta_y * displacement_factor * h;
+      p->x[2] += delta_z * displacement_factor * h;
+
+      if (with_gravity) {
+        gp->x[0] += delta_x * displacement_factor * h;
+        gp->x[1] += delta_y * displacement_factor * h;
+        gp->x[2] += delta_z * displacement_factor * h;
+      }
+
+      /* Displace the new particle */
+      global_parts[k_parts].x[0] -= delta_x * displacement_factor * h;
+      global_parts[k_parts].x[1] -= delta_y * displacement_factor * h;
+      global_parts[k_parts].x[2] -= delta_z * displacement_factor * h;
+
+      if (with_gravity) {
+        global_gparts[k_gparts].x[0] -= delta_x * displacement_factor * h;
+        global_gparts[k_gparts].x[1] -= delta_y * displacement_factor * h;
+        global_gparts[k_gparts].x[2] -= delta_z * displacement_factor * h;
+      }
+
+      /* Divide the mass */
+      const double new_mass = gas_mass * 0.5;
+      hydro_set_mass(p, new_mass);
+      hydro_set_mass(&global_parts[k_parts], new_mass);
+
+      if (with_gravity) {
+        gp->mass = new_mass;
+        global_gparts[k_gparts].mass = new_mass;
+      }
+
+      /* Split the chemistry fields */
+      chemistry_split_part(p, particle_split_factor);
+      chemistry_split_part(&global_parts[k_parts], particle_split_factor);
+
+      /* Split the cooling fields */
+      cooling_split_part(p, xp, particle_split_factor);
+      cooling_split_part(&global_parts[k_parts], &global_xparts[k_parts],
+                         particle_split_factor);
+
+      /* Split the star formation fields */
+      star_formation_split_part(p, xp, particle_split_factor);
+      star_formation_split_part(&global_parts[k_parts], &global_xparts[k_parts],
+                                particle_split_factor);
+
+      /* Split the tracer fields */
+      tracers_split_part(p, xp, particle_split_factor);
+      tracers_split_part(&global_parts[k_parts], &global_xparts[k_parts],
+                         particle_split_factor);
+
+      /* Mark the particles as not having been swallowed */
+      black_holes_mark_part_as_not_swallowed(&p->black_holes_data);
+      black_holes_mark_part_as_not_swallowed(
+          &global_parts[k_parts].black_holes_data);
+    }
+  }
 }
 
 /**
@@ -114,10 +269,10 @@ void engine_split_gas_particles(struct engine *e) {
 
   /* Start by counting how many particles are above the threshold
    * for splitting (this is done in parallel over the threads) */
-  struct data_count data = {e, mass_threshold, 0};
+  struct data_count data_count = {e, mass_threshold, 0};
   threadpool_map(&e->threadpool, engine_split_gas_particle_count_mapper,
-                 s->parts, nr_parts_old, sizeof(struct part), 0, &data);
-  const size_t counter = data.counter;
+                 s->parts, nr_parts_old, sizeof(struct part), 0, &data_count);
+  const size_t counter = data_count.counter;
 
   /* Early abort? */
   if (counter == 0) {
@@ -214,111 +369,11 @@ void engine_split_gas_particles(struct engine *e) {
   size_t k_gparts = s->nr_gparts;
 
   /* Loop over the particles again to split them */
-  struct part *parts = s->parts;
-  struct xpart *xparts = s->xparts;
-  struct gpart *gparts = s->gparts;
-  for (size_t i = 0; i < nr_parts_old; ++i) {
-
-    /* Is the mass of this particle larger than the threshold? */
-    struct part *p = &parts[i];
-
-    /* Ignore inhibited particles */
-    if (part_is_inhibited(p, e)) continue;
-
-    const float gas_mass = hydro_get_mass(p);
-    const float h = p->h;
-
-    /* Found a particle to split */
-    if (gas_mass > mass_threshold) {
-
-      struct xpart *xp = &xparts[i];
-      struct gpart *gp = p->gpart;
-
-      /* Start by copying over the particles */
-      memcpy(&parts[k_parts], p, sizeof(struct part));
-      memcpy(&xparts[k_parts], xp, sizeof(struct xpart));
-
-      if (with_gravity) {
-        memcpy(&gparts[k_gparts], gp, sizeof(struct gpart));
-      }
-
-      /* Update the IDs */
-      parts[k_parts].id += 2;
-
-      /* Re-link everything */
-      if (with_gravity) {
-        parts[k_parts].gpart = &gparts[k_gparts];
-        gparts[k_gparts].id_or_neg_offset = -k_parts;
-      }
-
-      /* Displacement unit vector */
-      const double delta_x = random_unit_interval(p->id, e->ti_current,
-                                                  (enum random_number_type)0);
-      const double delta_y = random_unit_interval(p->id, e->ti_current,
-                                                  (enum random_number_type)1);
-      const double delta_z = random_unit_interval(p->id, e->ti_current,
-                                                  (enum random_number_type)2);
-
-      /* Displace the old particle */
-      p->x[0] += delta_x * displacement_factor * h;
-      p->x[1] += delta_y * displacement_factor * h;
-      p->x[2] += delta_z * displacement_factor * h;
-
-      if (with_gravity) {
-        gp->x[0] += delta_x * displacement_factor * h;
-        gp->x[1] += delta_y * displacement_factor * h;
-        gp->x[2] += delta_z * displacement_factor * h;
-      }
-
-      /* Displace the new particle */
-      parts[k_parts].x[0] -= delta_x * displacement_factor * h;
-      parts[k_parts].x[1] -= delta_y * displacement_factor * h;
-      parts[k_parts].x[2] -= delta_z * displacement_factor * h;
-
-      if (with_gravity) {
-        gparts[k_gparts].x[0] -= delta_x * displacement_factor * h;
-        gparts[k_gparts].x[1] -= delta_y * displacement_factor * h;
-        gparts[k_gparts].x[2] -= delta_z * displacement_factor * h;
-      }
-
-      /* Divide the mass */
-      const double new_mass = gas_mass * 0.5;
-      hydro_set_mass(p, new_mass);
-      hydro_set_mass(&parts[k_parts], new_mass);
-
-      if (with_gravity) {
-        gp->mass = new_mass;
-        gparts[k_gparts].mass = new_mass;
-      }
-
-      /* Split the chemistry fields */
-      chemistry_split_part(p, particle_split_factor);
-      chemistry_split_part(&parts[k_parts], particle_split_factor);
-
-      /* Split the cooling fields */
-      cooling_split_part(p, xp, particle_split_factor);
-      cooling_split_part(&parts[k_parts], &xparts[k_parts],
-                         particle_split_factor);
-
-      /* Split the star formation fields */
-      star_formation_split_part(p, xp, particle_split_factor);
-      star_formation_split_part(&parts[k_parts], &xparts[k_parts],
-                                particle_split_factor);
-
-      /* Split the tracer fields */
-      tracers_split_part(p, xp, particle_split_factor);
-      tracers_split_part(&parts[k_parts], &xparts[k_parts],
-                         particle_split_factor);
-
-      /* Mark the particles as not having been swallowed */
-      black_holes_mark_part_as_not_swallowed(&p->black_holes_data);
-      black_holes_mark_part_as_not_swallowed(&parts[k_parts].black_holes_data);
-
-      /* Move to the next free slot */
-      k_parts++;
-      if (with_gravity) k_gparts++;
-    }
-  }
+  struct data_split data_split = {e, mass_threshold, &k_parts, &k_gparts, 0};
+  lock_init(&data_split.lock);
+  threadpool_map(&e->threadpool, engine_split_gas_particle_split_mapper,
+                 s->parts, nr_parts_old, sizeof(struct part), 0, &data_split);
+  lock_destroy(&data_split.lock);
 
   /* Update the local counters */
   s->nr_parts = k_parts;
