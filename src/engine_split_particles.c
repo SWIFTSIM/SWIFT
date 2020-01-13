@@ -85,6 +85,8 @@ void engine_split_gas_particle_count_mapper(void *restrict map_data, int count,
  * the local array of particles. In case of reallocations, it may
  * also have to loop over the gravity and other arrays.
  *
+ * This is done on a node-by-node basis. No MPI required here.
+ *
  * @param e The #engine.
  */
 void engine_split_gas_particles(struct engine *e) {
@@ -114,7 +116,7 @@ void engine_split_gas_particles(struct engine *e) {
    * for splitting (this is done in parallel over the threads) */
   struct data_count data = {e, mass_threshold, 0};
   threadpool_map(&e->threadpool, engine_split_gas_particle_count_mapper,
-                 s->parts, s->nr_parts, sizeof(struct part), 0, &data);
+                 s->parts, nr_parts_old, sizeof(struct part), 0, &data);
   const size_t counter = data.counter;
 
   /* Early abort? */
@@ -204,6 +206,9 @@ void engine_split_gas_particles(struct engine *e) {
   part_verify_links(s->parts, s->gparts, s->sparts, s->bparts, s->nr_parts,
                     s->nr_gparts, s->nr_sparts, s->nr_bparts, e->verbose);
 #endif
+
+  /* We now have enough memory in the part array to accomodate the new
+   * particles. We can start the splitting procedure */
 
   size_t k_parts = s->nr_parts;
   size_t k_gparts = s->nr_gparts;
