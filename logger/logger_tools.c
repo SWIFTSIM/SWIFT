@@ -150,7 +150,7 @@ size_t tools_reverse_offset(const struct header *h, void *file_map,
 
 #ifdef SWIFT_DEBUG_CHECKS
   size_t prev_mask = 0;
-  map = (char *)map - LOGGER_MASK_SIZE + LOGGER_OFFSET_SIZE;
+  map = (char *)map - LOGGER_MASK_SIZE - LOGGER_OFFSET_SIZE;
   logger_loader_io_read_mask(h, map, &prev_mask, NULL);
 
   /* Check if we are not mixing timestamp and particles */
