@@ -41,7 +41,7 @@ const double displacement_factor = 0.2;
  */
 struct data_count {
   const struct engine *const e;
-  const double mass_threshold;
+  const float mass_threshold;
   size_t counter;
 };
 
@@ -56,7 +56,7 @@ void engine_split_gas_particle_count_mapper(void *restrict map_data, int count,
   struct part *parts = (struct part *)map_data;
   struct data_count *data = (struct data_count *)extra_data;
   const struct engine *e = data->e;
-  const double mass_threshold = data->mass_threshold;
+  const float mass_threshold = data->mass_threshold;
 
   size_t counter = 0;
 
@@ -100,7 +100,7 @@ void engine_split_gas_particles(struct engine *e) {
   struct space *s = e->s;
   const int with_gravity = (e->policy & engine_policy_self_gravity) ||
                            (e->policy & engine_policy_external_gravity);
-  const double mass_threshold =
+  const float mass_threshold =
       e->hydro_properties->particle_splitting_mass_threshold;
   const size_t nr_parts_old = s->nr_parts;
 
