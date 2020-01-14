@@ -1004,8 +1004,9 @@ void runner_do_ghost(struct runner *r, struct cell *c, int timer) {
   const int max_smoothing_iter = e->hydro_properties->max_smoothing_iterations;
   int redo = 0, count = 0;
 
-  /* Running value of the maximal smoothing length */
-  double h_max = c->hydro.h_max;
+  /* Running values of the maximal smoothing lengths */
+  float h_max = c->hydro.h_max;
+  float h_max_active = c->hydro.h_max_active;
 
   TIMER_TIC;
 
@@ -1130,10 +1131,10 @@ void runner_do_ghost(struct runner *r, struct cell *c, int timer) {
           if (((p->h >= hydro_h_max) && (f < 0.f)) ||
               ((p->h <= hydro_h_min) && (f > 0.f))) {
 
-            /* We have a particle whose smoothing length is already set (wants
-             * to be larger but has already hit the maximum OR wants to be
-             * smaller but has already reached the minimum). So, just tidy up
-             * as if the smoothing length had converged correctly  */
+          /* We have a particle whose smoothing length is already set (wants
+           * to be larger but has already hit the maximum OR wants to be
+           * smaller but has already reached the minimum). So, just tidy up
+           * as if the smoothing length had converged correctly  */
 
 #ifdef EXTRA_HYDRO_LOOP
 
@@ -1289,8 +1290,9 @@ void runner_do_ghost(struct runner *r, struct cell *c, int timer) {
 
         /* We now have a particle whose smoothing length has converged */
 
-        /* Check if h_max is increased */
+        /* Check if h_max has increased */
         h_max = max(h_max, p->h);
+        h_max_active = max(h_max_active, p->h);
 
 #ifdef EXTRA_HYDRO_LOOP
 
@@ -1409,12 +1411,14 @@ void runner_do_ghost(struct runner *r, struct cell *c, int timer) {
 
   /* Update h_max */
   c->hydro.h_max = h_max;
+  c->hydro.h_max_active = h_max_active;
 
   /* The ghost may not always be at the top level.
    * Therefore we need to update h_max between the super- and top-levels */
   if (c->hydro.ghost) {
     for (struct cell *tmp = c->parent; tmp != NULL; tmp = tmp->parent) {
       atomic_max_f(&tmp->hydro.h_max, h_max);
+      atomic_max_f(&tmp->hydro.h_max_active, h_max_active);
     }
   }
 
