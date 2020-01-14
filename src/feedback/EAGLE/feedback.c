@@ -840,6 +840,9 @@ void compute_stellar_evolution(const struct feedback_props* feedback_props,
 
 #ifdef SWIFT_DEBUG_CHECKS
   if (age < 0.f) error("Negative age for a star.");
+
+  if (sp->count_since_last_enrichment != 0)
+    error("Computing feedback on a star that should not");
 #endif
 
   /* Convert dt and stellar age from internal units to Gyr. */
@@ -981,6 +984,8 @@ void feedback_props_init(struct feedback_props* fp,
                          const struct hydro_props* hydro_props,
                          const struct cosmology* cosmo) {
 
+  const double Gyr_in_cgs = 1.0e9 * 365.25 * 24. * 3600.;
+
   /* Main operation modes ------------------------------------------------- */
 
   fp->with_SNII_feedback =
@@ -1027,7 +1032,6 @@ void feedback_props_init(struct feedback_props* fp,
   if (!fp->SNII_sampled_delay) {
 
     /* Set the delay time before SNII occur */
-    const double Gyr_in_cgs = 1.0e9 * 365.25 * 24. * 3600.;
     fp->SNII_wind_delay =
         parser_get_param_double(params, "EAGLEFeedback:SNII_wind_delay_Gyr") *
         Gyr_in_cgs / units_cgs_conversion_factor(us, UNIT_CONV_TIME);
@@ -1147,6 +1151,28 @@ void feedback_props_init(struct feedback_props* fp,
   /* Convert to specific thermal energy */
   fp->AGB_ejecta_specific_kinetic_energy =
       0.5f * ejecta_velocity * ejecta_velocity;
+
+  /* Properties of the enrichment down-sampling ----------------------------- */
+
+  fp->stellar_evolution_age_cut =
+      parser_get_param_double(params,
+                              "EAGLEFeedback:stellar_evolution_age_cut_Gyr") *
+      Gyr_in_cgs / units_cgs_conversion_factor(us, UNIT_CONV_TIME);
+
+  fp->stellar_evolution_sampling_rate = parser_get_param_double(
+      params, "EAGLEFeedback:stellar_evolution_sampling_rate");
+
+  if (fp->stellar_evolution_sampling_rate < 1 ||
+      fp->stellar_evolution_sampling_rate >= (1 << (8 * sizeof(char) - 1)))
+    error("Stellar evolution sampling rate too large. Must be >0 and <%d",
+          (1 << (8 * sizeof(char) - 1)));
+
+  /* Check that we are not downsampling before reaching the SNII delay */
+  if (!fp->SNII_sampled_delay &&
+      fp->stellar_evolution_age_cut < fp->SNII_wind_delay)
+    error(
+        "Time at which the enrichment downsampling stars is lower than the "
+        "SNII wind delay!");
 
   /* Gather common conversion factors --------------------------------------- */
 

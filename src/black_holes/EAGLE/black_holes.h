@@ -62,6 +62,14 @@ __attribute__((always_inline)) INLINE static void black_holes_first_init_bpart(
   bp->formation_time = -1.f;
   bp->cumulative_number_seeds = 1;
   bp->number_of_mergers = 0;
+  bp->last_high_Eddington_fraction_scale_factor = -1.f;
+  bp->last_minor_merger_time = -1.;
+  bp->last_major_merger_time = -1.;
+  bp->swallowed_angular_momentum[0] = 0.f;
+  bp->swallowed_angular_momentum[1] = 0.f;
+  bp->swallowed_angular_momentum[2] = 0.f;
+
+  black_holes_mark_bpart_as_not_swallowed(&bp->merger_data);
 }
 
 /**
@@ -94,6 +102,7 @@ __attribute__((always_inline)) INLINE static void black_holes_init_bpart(
   bp->reposition.delta_x[1] = -FLT_MAX;
   bp->reposition.delta_x[2] = -FLT_MAX;
   bp->reposition.min_potential = FLT_MAX;
+  bp->reposition.potential = FLT_MAX;
 }
 
 /**
@@ -248,6 +257,24 @@ __attribute__((always_inline)) INLINE static void black_holes_swallow_part(
   bp->mass += gas_mass;
   bp->gpart->mass += gas_mass;
 
+  /* Physical velocity difference between the particles */
+  const float dv[3] = {(bp->v[0] - p->v[0]) * cosmo->a_inv,
+                       (bp->v[1] - p->v[1]) * cosmo->a_inv,
+                       (bp->v[2] - p->v[2]) * cosmo->a_inv};
+
+  /* Physical distance between the particles */
+  const float dx[3] = {(bp->x[0] - p->x[0]) * cosmo->a,
+                       (bp->x[0] - p->x[0]) * cosmo->a,
+                       (bp->x[0] - p->x[0]) * cosmo->a};
+
+  /* Collect the swallowed angular momentum */
+  bp->swallowed_angular_momentum[0] +=
+      gas_mass * (dx[1] * dv[2] - dx[2] * dv[1]);
+  bp->swallowed_angular_momentum[1] +=
+      gas_mass * (dx[2] * dv[0] - dx[0] * dv[2]);
+  bp->swallowed_angular_momentum[2] +=
+      gas_mass * (dx[0] * dv[1] - dx[1] * dv[0]);
+
   /* Update the BH momentum */
   const float BH_mom[3] = {BH_mass * bp->v[0] + gas_mass * p->v[0],
                            BH_mass * bp->v[1] + gas_mass * p->v[1],
@@ -263,22 +290,7 @@ __attribute__((always_inline)) INLINE static void black_holes_swallow_part(
   /* Update the BH metal masses */
   struct chemistry_bpart_data* bp_chem = &bp->chemistry_data;
   const struct chemistry_part_data* p_chem = &p->chemistry_data;
-
-  bp_chem->metal_mass_total += p_chem->metal_mass_fraction_total * gas_mass;
-  for (int i = 0; i < chemistry_element_count; ++i) {
-    bp_chem->metal_mass[i] += p_chem->metal_mass_fraction[i] * gas_mass;
-  }
-  bp_chem->mass_from_SNIa += p_chem->mass_from_SNIa;
-  bp_chem->mass_from_SNII += p_chem->mass_from_SNII;
-  bp_chem->mass_from_AGB += p_chem->mass_from_AGB;
-  bp_chem->metal_mass_from_SNIa +=
-      p_chem->metal_mass_fraction_from_SNIa * gas_mass;
-  bp_chem->metal_mass_from_SNII +=
-      p_chem->metal_mass_fraction_from_SNII * gas_mass;
-  bp_chem->metal_mass_from_AGB +=
-      p_chem->metal_mass_fraction_from_AGB * gas_mass;
-  bp_chem->iron_mass_from_SNIa +=
-      p_chem->iron_mass_fraction_from_SNIa * gas_mass;
+  chemistry_add_part_to_bpart(bp_chem, p_chem, gas_mass);
 
   /* This BH lost a neighbour */
   bp->num_ngbs--;
@@ -292,18 +304,44 @@ __attribute__((always_inline)) INLINE static void black_holes_swallow_part(
  * @param bpi The #bpart to update.
  * @param bpj The #bpart that is swallowed.
  * @param cosmo The current cosmological model.
+ * @param time Time since the start of the simulation (non-cosmo mode).
+ * @param with_cosmology Are we running with cosmology?
+ * @param props The properties of the black hole scheme.
  */
 __attribute__((always_inline)) INLINE static void black_holes_swallow_bpart(
-    struct bpart* bpi, const struct bpart* bpj, const struct cosmology* cosmo) {
+    struct bpart* bpi, const struct bpart* bpj, const struct cosmology* cosmo,
+    const double time, const int with_cosmology,
+    const struct black_holes_props* props) {
 
   /* Get the current dynamical masses */
   const float bpi_dyn_mass = bpi->mass;
   const float bpj_dyn_mass = bpj->mass;
 
+  /* Is this merger ratio above the threshold for recording? */
+  const double merger_ratio = bpj->subgrid_mass / bpi->subgrid_mass;
+  if (merger_ratio > props->major_merger_threshold) {
+    if (with_cosmology) {
+      bpi->last_major_merger_scale_factor = cosmo->a;
+    } else {
+      bpi->last_major_merger_time = time;
+    }
+  } else if (merger_ratio > props->minor_merger_threshold) {
+    if (with_cosmology) {
+      bpi->last_minor_merger_scale_factor = cosmo->a;
+    } else {
+      bpi->last_minor_merger_time = time;
+    }
+  }
+
   /* Increase the masses of the BH. */
   bpi->mass += bpj->mass;
   bpi->gpart->mass += bpj->mass;
   bpi->subgrid_mass += bpj->subgrid_mass;
+
+  /* Collect the swallowed angular momentum */
+  bpi->swallowed_angular_momentum[0] += bpj->swallowed_angular_momentum[0];
+  bpi->swallowed_angular_momentum[1] += bpj->swallowed_angular_momentum[1];
+  bpi->swallowed_angular_momentum[2] += bpj->swallowed_angular_momentum[2];
 
   /* Update the BH momentum */
   const float BH_mom[3] = {bpi_dyn_mass * bpi->v[0] + bpj_dyn_mass * bpj->v[0],
@@ -316,6 +354,11 @@ __attribute__((always_inline)) INLINE static void black_holes_swallow_bpart(
   bpi->gpart->v_full[0] = bpi->v[0];
   bpi->gpart->v_full[1] = bpi->v[1];
   bpi->gpart->v_full[2] = bpi->v[2];
+
+  /* Update the BH metal masses */
+  struct chemistry_bpart_data* bpi_chem = &bpi->chemistry_data;
+  const struct chemistry_bpart_data* bpj_chem = &bpj->chemistry_data;
+  chemistry_add_bpart_to_bpart(bpi_chem, bpj_chem);
 
   /* Update the energy reservoir */
   bpi->energy_reservoir += bpj->energy_reservoir;
@@ -335,12 +378,14 @@ __attribute__((always_inline)) INLINE static void black_holes_swallow_bpart(
  * @param props The properties of the black hole scheme.
  * @param constants The physical constants (in internal units).
  * @param cosmo The cosmological model.
+ * @param time Time since the start of the simulation (non-cosmo mode).
+ * @param with_cosmology Are we running with cosmology?
  * @param dt The time-step size (in physical internal units).
  */
 __attribute__((always_inline)) INLINE static void black_holes_prepare_feedback(
     struct bpart* restrict bp, const struct black_holes_props* props,
     const struct phys_const* constants, const struct cosmology* cosmo,
-    const double dt) {
+    const double time, const int with_cosmology, const double dt) {
 
   if (dt == 0.) return;
 
@@ -352,6 +397,7 @@ __attribute__((always_inline)) INLINE static void black_holes_prepare_feedback(
 
   /* Gather the parameters of the model */
   const double f_Edd = props->f_Edd;
+  const double f_Edd_recording = props->f_Edd_recording;
   const double epsilon_r = props->epsilon_r;
   const double epsilon_f = props->epsilon_f;
   const double num_ngbs_to_heat = props->num_ngbs_to_heat;
@@ -418,6 +464,15 @@ __attribute__((always_inline)) INLINE static void black_holes_prepare_feedback(
   /* Compute the Eddington rate (internal units) */
   const double Eddington_rate =
       4. * M_PI * G * BH_mass * proton_mass / (epsilon_r * c * sigma_Thomson);
+
+  /* Shall we record this high rate? */
+  if (Bondi_rate > f_Edd_recording * Eddington_rate) {
+    if (with_cosmology) {
+      bp->last_high_Eddington_fraction_scale_factor = cosmo->a;
+    } else {
+      bp->last_high_Eddington_fraction_time = time;
+    }
+  }
 
   /* Limit the accretion rate to the Eddington fraction */
   const double accr_rate = min(Bondi_rate, f_Edd * Eddington_rate);
@@ -531,6 +586,36 @@ __attribute__((always_inline)) INLINE static void black_holes_reset_feedback(
 }
 
 /**
+ * @brief Store the gravitational potential of a black hole by copying it from
+ * its #gpart friend.
+ *
+ * @param bp The black hole particle.
+ * @param gp The black hole's #gpart.
+ */
+__attribute__((always_inline)) INLINE static void
+black_holes_store_potential_in_bpart(struct bpart* bp, const struct gpart* gp) {
+
+#ifdef SWIFT_DEBUG_CHECKS
+  if (bp->gpart != gp) error("Copying potential to the wrong black hole!");
+#endif
+
+  bp->reposition.potential = gp->potential;
+}
+
+/**
+ * @brief Store the gravitational potential of a particle by copying it from
+ * its #gpart friend.
+ *
+ * @param p_data The black hole data of a gas particle.
+ * @param gp The black hole's #gpart.
+ */
+__attribute__((always_inline)) INLINE static void
+black_holes_store_potential_in_part(struct black_holes_part_data* p_data,
+                                    const struct gpart* gp) {
+  p_data->potential = gp->potential;
+}
+
+/**
  * @brief Initialise a BH particle that has just been seeded.
  *
  * @param bp The #bpart to initialise.
@@ -561,25 +646,21 @@ INLINE static void black_holes_create_from_gas(
 
   /* Initial metal masses */
   const float gas_mass = hydro_get_mass(p);
-
   struct chemistry_bpart_data* bp_chem = &bp->chemistry_data;
   const struct chemistry_part_data* p_chem = &p->chemistry_data;
+  chemistry_bpart_from_part(bp_chem, p_chem, gas_mass);
 
-  bp_chem->metal_mass_total = p_chem->metal_mass_fraction_total * gas_mass;
-  for (int i = 0; i < chemistry_element_count; ++i) {
-    bp_chem->metal_mass[i] = p_chem->metal_mass_fraction[i] * gas_mass;
-  }
-  bp_chem->mass_from_SNIa = p_chem->mass_from_SNIa;
-  bp_chem->mass_from_SNII = p_chem->mass_from_SNII;
-  bp_chem->mass_from_AGB = p_chem->mass_from_AGB;
-  bp_chem->metal_mass_from_SNIa =
-      p_chem->metal_mass_fraction_from_SNIa * gas_mass;
-  bp_chem->metal_mass_from_SNII =
-      p_chem->metal_mass_fraction_from_SNII * gas_mass;
-  bp_chem->metal_mass_from_AGB =
-      p_chem->metal_mass_fraction_from_AGB * gas_mass;
-  bp_chem->iron_mass_from_SNIa =
-      p_chem->iron_mass_fraction_from_SNIa * gas_mass;
+  /* No swallowed angular momentum */
+  bp->swallowed_angular_momentum[0] = 0.f;
+  bp->swallowed_angular_momentum[1] = 0.f;
+  bp->swallowed_angular_momentum[2] = 0.f;
+
+  /* Last time this BH had a high Eddington fraction */
+  bp->last_high_Eddington_fraction_scale_factor = -1.f;
+
+  /* Last time of mergers */
+  bp->last_minor_merger_time = -1.;
+  bp->last_major_merger_time = -1.;
 
   /* First initialisation */
   black_holes_init_bpart(bp);

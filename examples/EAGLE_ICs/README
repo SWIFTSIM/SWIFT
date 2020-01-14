@@ -3,9 +3,17 @@ the EAGLE suite of simulations. The cosmology, resolution
 and phases are the same as used in the original suite. The only
 difference is the file format, adapted for SWIFT.
 
-Compared to the original EAGLE runs, the following changes have been
-made:
+Compared to the original EAGLE runs of Schaye et al. 2015),
+the following changes have been made:
 
+ - The dark matter softening lengths have been increased to 1.3
+   pkpc and 3.32 ckpc. The comoving baryon softening lengths have
+   been changed to 1.79 ckpc. This follows the recommendations of
+   Ludlow et al. 2019. Old values were 0.7 pkpc and 2.69 ckpc for
+   all the particle species.
+ - SPH particles with a mass larger than 7*10^6 Msun (~4x the initial
+   gas particle mass) are now split into 2 equal mass particles
+   within the smoothing length of the original particle.
  - The metallicity-dependent density threshold for star formation
    uses the smoothed metallicities and not the raw metallicities
    any more.
@@ -18,6 +26,8 @@ made:
  - The delay time distribution of the SNIa has been changed to a
    power-law of slope -1 (instead of the exponential model) and
    the rates have been renormalized.
+ - The black hole accretion rate is now limited to 100% of the
+   Eddington rate (from 100/h = 150 %).
 
 The scripts in this directory download the tables required to
 run the EAGLE model. Plotting scripts are also provided

@@ -64,18 +64,19 @@ void logger_index_read_header(struct logger_index *index,
   logger_index_map_file(index, filename, 0);
 
   /* Read times */
-  memcpy(&index->time, index->index.map + logger_index_time_offset,
+  memcpy(&index->time, (char *)index->index.map + logger_index_time_offset,
          logger_index_time_size);
   memcpy(&index->integer_time,
-         index->index.map + logger_index_integer_time_offset,
+         (char *)index->index.map + logger_index_integer_time_offset,
          logger_index_integer_time_size);
 
   /* Read the number of particles */
-  memcpy(index->nparts, index->index.map + logger_index_npart_offset,
+  memcpy(index->nparts, (char *)index->index.map + logger_index_npart_offset,
          logger_index_npart_size);
 
   /* Read if the file is sorted */
-  memcpy(&index->is_sorted, index->index.map + logger_index_is_sorted_offset,
+  memcpy(&index->is_sorted,
+         (char *)index->index.map + logger_index_is_sorted_offset,
          logger_index_is_sorted_size);
 
   /* Close the file */
@@ -94,7 +95,7 @@ void logger_index_write_sorted(struct logger_index *index) {
   const char is_sorted = 1;
 
   /* Write the value */
-  memcpy(index->index.map + logger_index_is_sorted_offset, &is_sorted,
+  memcpy((char *)index->index.map + logger_index_is_sorted_offset, &is_sorted,
          logger_index_is_sorted_size);
 }
 
@@ -113,7 +114,9 @@ struct index_data *logger_index_get_data(struct logger_index *index, int type) {
   }
   const size_t type_offset = count * sizeof(struct index_data);
 
-  return index->index.map + logger_index_data_offset + type_offset;
+  const char *ret =
+      (char *)index->index.map + logger_index_data_offset + type_offset;
+  return (struct index_data *)ret;
 }
 
 /**

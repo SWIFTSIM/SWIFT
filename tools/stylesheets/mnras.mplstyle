@@ -1,0 +1,30 @@
+# Line Properties
+lines.linewidth: 2
+
+# Font options
+font.size: 8
+font.family: STIXGeneral
+mathtext.fontset: stix
+
+# LaTeX options
+text.usetex: False
+
+# Legend options
+legend.frameon: False
+legend.fontsize: 8
+
+# Figure options for publications
+figure.dpi: 300
+figure.figsize: 3.321, 3.0 # Correct width for MNRAS
+
+# Histogram options
+hist.bins: auto
+
+# Ticks inside plots; more space devoted to plot.
+xtick.direction: in
+ytick.direction: in
+# Always plot ticks on top of data
+axes.axisbelow: False
+
+# Setup colours
+axes.prop_cycle: cycler('color', ['00AEFF','FF8C40','CC4314',  '5766B3', '68246D'])

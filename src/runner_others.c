@@ -455,6 +455,8 @@ void runner_do_end_hydro_force(struct runner *r, struct cell *c, int timer) {
 void runner_do_end_grav_force(struct runner *r, struct cell *c, int timer) {
 
   const struct engine *e = r->e;
+  const int with_self_gravity = (e->policy & engine_policy_self_gravity);
+  const int with_black_holes = (e->policy & engine_policy_black_holes);
 
   TIMER_TIC;
 
@@ -473,7 +475,7 @@ void runner_do_end_grav_force(struct runner *r, struct cell *c, int timer) {
 
     /* Potential normalisation in the case of periodic gravity */
     float potential_normalisation = 0.;
-    if (periodic && (e->policy & engine_policy_self_gravity)) {
+    if (periodic && with_self_gravity) {
       const double volume = s->dim[0] * s->dim[1] * s->dim[2];
       const double r_s = e->mesh->r_s;
       potential_normalisation = 4. * M_PI * e->total_mass * r_s * r_s / volume;
@@ -557,6 +559,17 @@ void runner_do_end_grav_force(struct runner *r, struct cell *c, int timer) {
           }
         }
 #endif
+
+        /* Deal with black holes' need of potentials */
+        if (with_black_holes && gp->type == swift_type_black_hole) {
+          const size_t offset = -gp->id_or_neg_offset;
+          black_holes_store_potential_in_bpart(&s->bparts[offset], gp);
+        }
+        if (with_black_holes && gp->type == swift_type_gas) {
+          const size_t offset = -gp->id_or_neg_offset;
+          black_holes_store_potential_in_part(
+              &s->parts[offset].black_holes_data, gp);
+        }
       }
     }
   }

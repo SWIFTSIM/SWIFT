@@ -107,6 +107,7 @@ void xmf_create_file(const char* baseName) {
   char fileName[FILENAME_BUFFER_SIZE];
   snprintf(fileName, FILENAME_BUFFER_SIZE, "%s.xmf", baseName);
   FILE* xmfFile = fopen(fileName, "w");
+  if (xmfFile == NULL) error("Unable to create XMF file.");
 
   fprintf(xmfFile, "<?xml version=\"1.0\" ?> \n");
   fprintf(xmfFile, "<!DOCTYPE Xdmf SYSTEM \"Xdmf.dtd\" []> \n");

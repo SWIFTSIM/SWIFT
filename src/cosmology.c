@@ -39,6 +39,7 @@
 
 #ifdef HAVE_LIBGSL
 #include <gsl/gsl_integration.h>
+#include <gsl/gsl_interp.h>
 #endif
 
 /*! Number of values stored in the cosmological interpolation tables */
@@ -533,6 +534,7 @@ void cosmology_init(struct swift_params *params, const struct unit_system *us,
   c->a_end = parser_get_param_double(params, "Cosmology:a_end");
   c->log_a_begin = log(c->a_begin);
   c->log_a_end = log(c->a_end);
+
   c->time_base = (c->log_a_end - c->log_a_begin) / max_nr_timesteps;
   c->time_base_inv = 1. / c->time_base;
 
@@ -834,6 +836,7 @@ double cosmology_get_delta_time_from_scale_factors(const struct cosmology *c,
 
 #ifdef SWIFT_DEBUG_CHECKS
   if (a_end < a_start) error("a_end must be >= a_start");
+  if (a_end < c->a_begin) error("Error a_end can't be smaller than a_begin");
 #endif
 
   const double log_a_start = log(a_start);

@@ -60,7 +60,7 @@ done
 #  And process them,
 echo "Processing thread info files..."
 echo $list | xargs -P $NPROCS -n 3 /bin/bash -c "${SCRIPTHOME}/plot_tasks.py --expand 1 --limit $TIMERANGE --width 16 --height 4 \$0 \$2 "
-echo $list | xargs -P $NPROCS -n 3 /bin/bash -c "${SCRIPTHOME}/analyse_tasks.py \$0 > \$2.stats"
+echo $list | xargs -P $NPROCS -n 3 /bin/bash -c "${SCRIPTHOME}/analyse_tasks.py --html \$0 > \$2.stats"
 
 echo "Writing output index.html file"
 #  Construct document - serial.
@@ -88,6 +88,7 @@ EOF
 <img src="step${s}r${i}.png">
 <pre>
 EOF
+echo "<nav>Jump to: <a href="#all">all threads</a> <a href="#dead">dead times</a></nav>" >> step${s}r${i}.html
 cat step${s}r${i}.stats >> step${s}r${i}.html
 cat <<EOF >> step${s}r${i}.html
 </body>

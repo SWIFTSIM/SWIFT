@@ -142,7 +142,8 @@ size_t reader_read_record(struct logger_reader *reader,
 
   /* Read mask to find out if timestamp or particle. */
   size_t mask = 0;
-  logger_loader_io_read_mask(&log->header, log->log.map + offset, &mask, NULL);
+  logger_loader_io_read_mask(&log->header, (char *)log->log.map + offset, &mask,
+                             NULL);
 
   /* Check if timestamp or not. */
   int ind = header_get_field_index(&log->header, "timestamp");
@@ -280,8 +281,8 @@ void logger_reader_read_all_particles_mapper(void *map_data, int num_elements,
       if (test == -1) {
         size_t mask = 0;
         logger_loader_io_read_mask(&reader->log.header,
-                                   reader->log.log.map + prev_offset, &mask,
-                                   &next_offset);
+                                   (char *)reader->log.log.map + prev_offset,
+                                   &mask, &next_offset);
         error(
             "Trying to get a particle without next record (mask: %zi, diff "
             "offset: %zi)",
@@ -412,8 +413,8 @@ void logger_reader_get_next_particle(struct logger_reader *reader,
   while (1) {
     /* Read the offset to the next particle */
     size_t mask = 0;
-    logger_loader_io_read_mask(&reader->log.header, map + prev_offset, &mask,
-                               &next_offset);
+    logger_loader_io_read_mask(&reader->log.header, (char *)map + prev_offset,
+                               &mask, &next_offset);
 
     /* Check if something special happened */
     if (mask & reader->log.header.masks[spec_flag_ind].mask) {

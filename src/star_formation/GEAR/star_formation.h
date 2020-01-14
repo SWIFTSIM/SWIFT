@@ -287,4 +287,17 @@ star_formation_first_init_part(const struct phys_const* restrict phys_const,
                                const struct part* restrict p,
                                struct xpart* restrict xp) {}
 
+/**
+ * @brief Split the star formation content of a particle into n pieces
+ *
+ *
+ * @param p The #part.
+ * @param xp The #xpart.
+ * @param n The number of pieces to split into.
+ */
+__attribute__((always_inline)) INLINE static void star_formation_split_part(
+    struct part* p, struct xpart* xp, const double n) {
+  error("Loic: to be implemented");
+}
+
 #endif /* SWIFT_GEAR_STAR_FORMATION_H */

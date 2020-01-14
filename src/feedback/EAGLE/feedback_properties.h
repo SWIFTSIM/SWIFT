@@ -264,6 +264,15 @@ struct feedback_props {
   /*! Slope of the metallicity dependance of the feedback energy fraction model
    */
   double n_Z;
+
+  /* ------------ Enrichment sampling properties ------------ */
+
+  /*! Star age above which the enrichment will be downsampled (in internal
+   * units) */
+  double stellar_evolution_age_cut;
+
+  /*! Number of time-steps in-between two enrichment events */
+  int stellar_evolution_sampling_rate;
 };
 
 void feedback_props_init(struct feedback_props *fp,

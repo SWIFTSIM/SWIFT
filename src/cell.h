@@ -878,7 +878,8 @@ void cell_drift_spart(struct cell *c, const struct engine *e, int force);
 void cell_drift_bpart(struct cell *c, const struct engine *e, int force);
 void cell_drift_multipole(struct cell *c, const struct engine *e);
 void cell_drift_all_multipoles(struct cell *c, const struct engine *e);
-void cell_check_timesteps(struct cell *c);
+void cell_check_timesteps(const struct cell *c, const integertime_t ti_current,
+                          const timebin_t max_bin);
 void cell_store_pre_drift_values(struct cell *c);
 void cell_set_star_resort_flag(struct cell *c);
 void cell_activate_additional_hydro_tasks(struct cell *ci, struct cell *cj,

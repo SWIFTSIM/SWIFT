@@ -275,6 +275,8 @@ void runner_do_bh_swallow(struct runner *r, struct cell *c, int timer) {
 
   struct engine *e = r->e;
   struct space *s = e->s;
+  const int with_cosmology = (e->policy & engine_policy_cosmology);
+  const struct black_holes_props *props = e->black_holes_properties;
   struct bpart *bparts = s->bparts;
   const size_t nr_bpart = s->nr_bparts;
 #ifdef WITH_MPI
@@ -349,7 +351,8 @@ void runner_do_bh_swallow(struct runner *r, struct cell *c, int timer) {
             lock_lock(&s->lock);
 
             /* Swallow the gas particle (i.e. update the BH properties) */
-            black_holes_swallow_bpart(bp, cell_bp, e->cosmology);
+            black_holes_swallow_bpart(bp, cell_bp, e->cosmology, e->time,
+                                      with_cosmology, props);
 
             /* Release the space as we are done updating the bpart */
             if (lock_unlock(&s->lock) != 0)

@@ -195,10 +195,10 @@ struct task {
   float weight;
 
   /*! Number of tasks unlocked by this one */
-  short int nr_unlock_tasks;
+  int nr_unlock_tasks;
 
   /*! Number of unsatisfied dependencies */
-  short int wait;
+  int wait;
 
   /*! Type of the task */
   enum task_types type;

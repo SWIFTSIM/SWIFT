@@ -83,7 +83,7 @@ int main(int argc, char *argv[]) {
   unsigned long long cpufreq = 0;
   clocks_set_cpufreq(cpufreq);
 
-  char *base_name = "testSelectOutput";
+  const char *base_name = "testSelectOutput";
   size_t Ngas = 0, Ngpart = 0, Ngpart_background = 0, Nspart = 0, Nbpart = 0;
   int flag_entropy_ICs = -1;
   int periodic = 1;
@@ -96,7 +96,7 @@ int main(int argc, char *argv[]) {
   /* parse parameters */
   message("Reading parameters.");
   struct swift_params param_file;
-  char *input_file = "selectOutput.yml";
+  const char *input_file = "selectOutput.yml";
   parser_read_file(input_file, &param_file);
 
   /* Default unit system */
@@ -152,7 +152,8 @@ int main(int argc, char *argv[]) {
 
   /* check output selection */
   message("Checking output parameters.");
-  long long N_total[swift_type_count] = {Ngas, Ngpart, 0, 0, Nspart, 0};
+  long long N_total[swift_type_count] = {
+      (long long)Ngas, (long long)Ngpart, 0, 0, (long long)Nspart, 0};
   io_check_output_fields(&param_file, N_total);
 
   /* write output file */

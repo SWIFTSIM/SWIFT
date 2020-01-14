@@ -1052,6 +1052,16 @@ fi
 AC_SUBST([TBBMALLOC_LIBS])
 AM_CONDITIONAL([HAVETBBMALLOC],[test -n "$TBBMALLOC_LIBS"])
 
+# check for a random seed
+AC_ARG_WITH([random-seed],
+    [AS_HELP_STRING([--with-random-seed=SHORT INT],
+       [Set the random seed.]
+    )],
+    [with_random_seed="$withval"],
+    [with_random_seed="0"]
+)
+AC_DEFINE_UNQUOTED([SWIFT_RANDOM_SEED_XOR], [$with_random_seed],[Value of the random seed.])
+
 # Check for python.
 have_python="no"
 AC_ARG_WITH([python],
@@ -1545,8 +1555,11 @@ case "$with_hydro" in
    planetary)
       AC_DEFINE([PLANETARY_SPH], [1], [Planetary SPH])
    ;;
+   sphenix)
+      AC_DEFINE([SPHENIX_SPH], [1], [SPHENIX SPH])
+   ;;
    anarchy-du)
-      AC_DEFINE([ANARCHY_DU_SPH], [1], [ANARCHY (DU) SPH])
+      AC_DEFINE([SPHENIX_SPH], [1], [SPHENIX SPH])
    ;;
    anarchy-pu)
       AC_DEFINE([ANARCHY_PU_SPH], [1], [ANARCHY (PU) SPH])

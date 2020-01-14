@@ -249,7 +249,7 @@ void dump_particle_fields(char *fileName, struct cell *main_cell, int i, int j,
             main_cell->hydro.parts[pid].density.rot_v[0],
             main_cell->hydro.parts[pid].density.rot_v[1],
             main_cell->hydro.parts[pid].density.rot_v[2]
-#elif defined(DEFAULT_SPH) || defined(ANARCHY_PU_SPH) || defined(ANARCHY_DU_SPH)
+#elif defined(DEFAULT_SPH) || defined(ANARCHY_PU_SPH) || defined(SPHENIX_SPH)
             main_cell->hydro.parts[pid].viscosity.div_v,
             main_cell->hydro.parts[pid].density.rot_v[0],
             main_cell->hydro.parts[pid].density.rot_v[1],

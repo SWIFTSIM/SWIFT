@@ -22,6 +22,7 @@
 /* Local includes */
 #include "random.h"
 #include "timestep_sync_part.h"
+#include "tracers.h"
 
 /**
  * @brief Density interaction between two particles (non-symmetric).
@@ -91,6 +92,11 @@ runner_iact_nonsym_feedback_apply(const float r2, const float *dx,
                                   const struct cosmology *cosmo,
                                   const integertime_t ti_current) {
 
+#ifdef SWIFT_DEBUG_CHECKS
+  if (si->count_since_last_enrichment != 0)
+    error("Computing feedback from a star that should not");
+#endif
+
   /* Get r. */
   const float r = sqrtf(r2);
 
@@ -113,8 +119,10 @@ runner_iact_nonsym_feedback_apply(const float r2, const float *dx,
 
 #ifdef SWIFT_DEBUG_CHECKS
   if (Omega_frac < 0. || Omega_frac > 1.01)
-    error("Invalid fraction of material to distribute. Omega_frac=%e",
-          Omega_frac);
+    error(
+        "Invalid fraction of material to distribute for star ID=%lld "
+        "Omega_frac=%e count since last enrich=%d",
+        si->id, Omega_frac, si->count_since_last_enrichment);
 #endif
 
   /* Update particle mass */
@@ -287,6 +295,9 @@ runner_iact_nonsym_feedback_apply(const float r2, const float *dx,
 
       /* Impose maximal viscosity */
       hydro_diffusive_feedback_reset(pj);
+
+      /* Mark this particle has having been heated by supernova feedback */
+      tracers_after_feedback(xpj);
 
       /* message( */
       /*     "We did some heating! id %llu star id %llu probability %.5e " */

@@ -4529,6 +4529,7 @@ void cell_drift_part(struct cell *c, const struct engine *e, int force) {
       /* Get ready for a density calculation */
       if (part_is_active(p, e)) {
         hydro_init_part(p, &e->s->hs);
+        black_holes_init_potential(&p->black_holes_data);
         chemistry_init_part(p, e->chemistry);
         pressure_floor_init_part(p, xp);
         star_formation_init_part(p, e->star_formation);
@@ -5162,7 +5163,8 @@ void cell_clear_hydro_sort_flags(struct cell *c, const int clear_unused_flags) {
 /**
  * @brief Recursively checks that all particles in a cell have a time-step
  */
-void cell_check_timesteps(struct cell *c) {
+void cell_check_timesteps(const struct cell *c, const integertime_t ti_current,
+                          const timebin_t max_bin) {
 #ifdef SWIFT_DEBUG_CHECKS
 
   if (c->hydro.ti_end_min == 0 && c->grav.ti_end_min == 0 &&
@@ -5172,13 +5174,63 @@ void cell_check_timesteps(struct cell *c) {
 
   if (c->split) {
     for (int k = 0; k < 8; ++k)
-      if (c->progeny[k] != NULL) cell_check_timesteps(c->progeny[k]);
+      if (c->progeny[k] != NULL)
+        cell_check_timesteps(c->progeny[k], ti_current, max_bin);
   } else {
     if (cell_is_local(c))
       for (int i = 0; i < c->hydro.count; ++i)
         if (c->hydro.parts[i].time_bin == 0)
           error("Particle without assigned time-bin");
   }
+
+  /* Other checks not relevent when starting-up */
+  if (ti_current == 0) return;
+
+  integertime_t ti_end_min = max_nr_timesteps;
+  integertime_t ti_end_max = 0;
+  integertime_t ti_beg_max = 0;
+
+  for (int i = 0; i < c->hydro.count; ++i) {
+
+    const struct part *p = &c->hydro.parts[i];
+    if (p->time_bin == time_bin_inhibited) continue;
+    if (p->time_bin == time_bin_not_created) continue;
+
+    integertime_t ti_end, ti_beg;
+
+    if (p->time_bin <= max_bin) {
+      integertime_t time_step = get_integer_timestep(p->time_bin);
+      ti_end = get_integer_time_end(ti_current, p->time_bin) + time_step;
+      ti_beg = get_integer_time_begin(ti_current + 1, p->time_bin);
+    } else {
+      ti_end = get_integer_time_end(ti_current, p->time_bin);
+      ti_beg = get_integer_time_begin(ti_current + 1, p->time_bin);
+    }
+
+    ti_end_min = min(ti_end, ti_end_min);
+    ti_end_max = max(ti_end, ti_end_max);
+    ti_beg_max = max(ti_beg, ti_beg_max);
+  }
+
+  if (c->hydro.count > 0) {
+
+    if (ti_end_min != c->hydro.ti_end_min)
+      error(
+          "Non-matching ti_end_min. Cell=%lld true=%lld ti_current=%lld "
+          "depth=%d",
+          c->hydro.ti_end_min, ti_end_min, ti_current, c->depth);
+    if (ti_end_max != c->hydro.ti_end_max)
+      error(
+          "Non-matching ti_end_max. Cell=%lld true=%lld ti_current=%lld "
+          "depth=%d",
+          c->hydro.ti_end_max, ti_end_max, ti_current, c->depth);
+    if (ti_beg_max != c->hydro.ti_beg_max)
+      error(
+          "Non-matching ti_beg_max. Cell=%lld true=%lld ti_current=%lld "
+          "depth=%d",
+          c->hydro.ti_beg_max, ti_beg_max, ti_current, c->depth);
+  }
+
 #else
   error("Calling debugging code without debugging flag activated.");
 #endif
