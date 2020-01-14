@@ -205,18 +205,18 @@ int main(int argc, char *argv[]) {
        order. Variation is found when optimizing, so we have two possible
        outcomes... */
     if (cells[44].nvert == 5) {
-        assert(cells[44].nvert == 5);
-        assert(cells[44].ngbs[0] == 43);
-        assert(cells[44].ngbs[1] == 34);
-        assert(cells[44].ngbs[2] == 45);
-        assert(cells[44].ngbs[3] == 55);
+      assert(cells[44].nvert == 5);
+      assert(cells[44].ngbs[0] == 43);
+      assert(cells[44].ngbs[1] == 34);
+      assert(cells[44].ngbs[2] == 45);
+      assert(cells[44].ngbs[3] == 55);
 
     } else {
-        assert(cells[44].nvert == 4);
-        assert(cells[44].ngbs[0] == 34);
-        assert(cells[44].ngbs[1] == 45);
-        assert(cells[44].ngbs[2] == 54);
-        assert(cells[44].ngbs[3] == 43);
+      assert(cells[44].nvert == 4);
+      assert(cells[44].ngbs[0] == 34);
+      assert(cells[44].ngbs[1] == 45);
+      assert(cells[44].ngbs[2] == 54);
+      assert(cells[44].ngbs[3] == 43);
     }
     message("Done.");
   }

@@ -60,8 +60,8 @@ int main(int argc, char *argv[]) {
     }
 
     if (error > 0) {
-      printf("%2d/%d: x= %f exp(x)= %e approx_exp(x)=%e abs=%e rel=%e\n", i, error, x,
-             exp_correct, exp_approx, abs, rel);
+      printf("%2d/%d: x= %f exp(x)= %e approx_exp(x)=%e abs=%e rel=%e\n", i,
+             error, x, exp_correct, exp_approx, abs, rel);
       return 1;
     }
   }
