@@ -643,6 +643,18 @@ __attribute__((always_inline)) INLINE float cooling_get_radiated_energy(
 }
 
 /**
+ * @brief Split the coolong content of a particle into n pieces
+ *
+ * @param p The #part.
+ * @param xp The #xpart.
+ * @param n The number of pieces to split into.
+ */
+void cooling_split_part(struct part *p, struct xpart *xp, double n) {
+
+  xp->cooling_data.radiated_energy /= n;
+}
+
+/**
  * @brief Inject a fixed amount of energy to each particle in the simulation
  * to mimic Hydrogen reionization.
  *

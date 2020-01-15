@@ -33,6 +33,8 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
+#include <sys/stat.h>
+#include <sys/types.h>
 #include <unistd.h>
 
 /* MPI headers. */
@@ -51,6 +53,7 @@
 /* Local headers. */
 #include "active.h"
 #include "atomic.h"
+#include "black_holes_properties.h"
 #include "cell.h"
 #include "chemistry.h"
 #include "clocks.h"
@@ -83,7 +86,6 @@
 #include "sort_part.h"
 #include "star_formation.h"
 #include "star_formation_logger.h"
-#include "star_formation_logger_struct.h"
 #include "stars_io.h"
 #include "statistics.h"
 #include "timers.h"
@@ -117,7 +119,8 @@ const char *engine_policy_names[] = {"none",
                                      "feedback",
                                      "black holes",
                                      "fof search",
-                                     "time-step limiter"};
+                                     "time-step limiter",
+                                     "time-step sync"};
 
 /** The rank of the engine as a global variable (for messages). */
 int engine_rank;
@@ -594,7 +597,6 @@ void engine_exchange_strays(struct engine *e, const size_t offset_parts,
 
   /* Reallocate the particle arrays if necessary */
   if (offset_parts + count_parts_in > s->size_parts) {
-    message("re-allocating parts array.");
     s->size_parts = (offset_parts + count_parts_in) * engine_parts_size_grow;
     struct part *parts_new = NULL;
     struct xpart *xparts_new = NULL;
@@ -619,7 +621,6 @@ void engine_exchange_strays(struct engine *e, const size_t offset_parts,
   }
 
   if (offset_sparts + count_sparts_in > s->size_sparts) {
-    message("re-allocating sparts array.");
     s->size_sparts = (offset_sparts + count_sparts_in) * engine_parts_size_grow;
     struct spart *sparts_new = NULL;
     if (swift_memalign("sparts", (void **)&sparts_new, spart_align,
@@ -638,7 +639,6 @@ void engine_exchange_strays(struct engine *e, const size_t offset_parts,
   }
 
   if (offset_bparts + count_bparts_in > s->size_bparts) {
-    message("re-allocating bparts array.");
     s->size_bparts = (offset_bparts + count_bparts_in) * engine_parts_size_grow;
     struct bpart *bparts_new = NULL;
     if (swift_memalign("bparts", (void **)&bparts_new, bpart_align,
@@ -657,7 +657,6 @@ void engine_exchange_strays(struct engine *e, const size_t offset_parts,
   }
 
   if (offset_gparts + count_gparts_in > s->size_gparts) {
-    message("re-allocating gparts array.");
     s->size_gparts = (offset_gparts + count_gparts_in) * engine_parts_size_grow;
     struct gpart *gparts_new = NULL;
     if (swift_memalign("gparts", (void **)&gparts_new, gpart_align,
@@ -1353,7 +1352,7 @@ int engine_estimate_nr_tasks(const struct engine *e) {
 #endif
 #endif
   }
-  if (e->policy & engine_policy_limiter) {
+  if (e->policy & engine_policy_timestep_limiter) {
     n1 += 18;
     n2 += 1;
   }
@@ -1630,6 +1629,17 @@ void engine_prepare(struct engine *e) {
     engine_fof(e, /*dump_results=*/0, /*seed_black_holes=*/1);
   }
 
+  /* Perform particle splitting. Only if there is a rebuild coming and no
+     repartitioning. */
+  if (e->forcerebuild && !e->forcerepart && e->step > 1) {
+
+    /* Let's start by drifting everybody to the current time */
+    if (!drifted_all) engine_drift_all(e, /*drift_mpole=*/0);
+    drifted_all = 1;
+
+    engine_split_gas_particles(e);
+  }
+
   /* Do we need repartitioning ? */
   if (e->forcerepart) {
 
@@ -1778,6 +1788,7 @@ void engine_skip_force_and_kick(struct engine *e) {
         t->type == task_type_kick1 || t->type == task_type_kick2 ||
         t->type == task_type_timestep ||
         t->type == task_type_timestep_limiter ||
+        t->type == task_type_timestep_sync ||
         t->subtype == task_subtype_force ||
         t->subtype == task_subtype_limiter || t->subtype == task_subtype_grav ||
         t->type == task_type_end_hydro_force ||
@@ -1832,7 +1843,7 @@ void engine_skip_drift(struct engine *e) {
 
     /* Skip everything that moves the particles */
     if (t->type == task_type_drift_part || t->type == task_type_drift_gpart ||
-        t->type == task_type_drift_spart)
+        t->type == task_type_drift_spart || t->type == task_type_drift_bpart)
       t->skip = 1;
   }
 
@@ -1844,8 +1855,9 @@ void engine_skip_drift(struct engine *e) {
  * @brief Launch the runners.
  *
  * @param e The #engine.
+ * @param fof Are we launching the FOF tasks or the regular tasks?
  */
-void engine_launch(struct engine *e) {
+void engine_launch(struct engine *e, const int fof) {
   const ticks tic = getticks();
 
 #ifdef SWIFT_DEBUG_CHECKS
@@ -1871,9 +1883,14 @@ void engine_launch(struct engine *e) {
   /* Sit back and wait for the runners to come home. */
   swift_barrier_wait(&e->wait_barrier);
 
-  if (e->verbose)
-    message("took %.3f %s.", clocks_from_ticks(getticks() - tic),
-            clocks_getunit());
+  if (e->verbose) {
+    if (fof)
+      message("(fof) took %.3f %s.", clocks_from_ticks(getticks() - tic),
+              clocks_getunit());
+    else
+      message("(tasks) took %.3f %s.", clocks_from_ticks(getticks() - tic),
+              clocks_getunit());
+  }
 }
 
 /**
@@ -1954,12 +1971,13 @@ void engine_init_particles(struct engine *e, int flag_entropy_ICs,
                        &e->logger->timestamp_offset);
   /* Make sure that we have enough space in the particle logger file
    * to store the particles in current time step. */
-  logger_ensure_size(e->logger, e->total_nr_parts, e->total_nr_gparts, 0);
+  logger_ensure_size(e->logger, s->nr_parts, s->nr_gparts, s->nr_sparts);
+  logger_write_description(e->logger, e);
 #endif
 
   /* Now, launch the calculation */
   TIMER_TIC;
-  engine_launch(e);
+  engine_launch(e, /*fof=*/0);
   TIMER_TOC(timer_runners);
 
   /* Apply some conversions (e.g. internal energy -> entropy) */
@@ -1973,7 +1991,7 @@ void engine_init_particles(struct engine *e, int flag_entropy_ICs,
     if (hydro_need_extra_init_loop) {
       engine_marktasks(e);
       engine_skip_force_and_kick(e);
-      engine_launch(e);
+      engine_launch(e, /*fof=*/0);
     }
   }
 
@@ -2021,7 +2039,7 @@ void engine_init_particles(struct engine *e, int flag_entropy_ICs,
 
   /* Run the 0th time-step */
   TIMER_TIC2;
-  engine_launch(e);
+  engine_launch(e, /*fof=*/0);
   TIMER_TOC2(timer_runners);
 
 #ifdef SWIFT_GRAVITY_FORCE_CHECKS
@@ -2167,8 +2185,8 @@ void engine_step(struct engine *e) {
 
     /* Print some information to the screen */
     printf(
-        "  %6d %14e %12.7f %12.7f %14e %4d %4d %12lld %12lld %12lld %12lld "
-        "%21.3f %6d\n",
+        "  %6d %14e %12.7f %12.7f %14e %4d %4d %12lld %12lld %12lld "
+        "%12lld %21.3f %6d\n",
         e->step, e->time, e->cosmology->a, e->cosmology->z, e->time_step,
         e->min_active_bin, e->max_active_bin, e->updates, e->g_updates,
         e->s_updates, e->b_updates, e->wallclock_time, e->step_props);
@@ -2266,7 +2284,8 @@ void engine_step(struct engine *e) {
                        &e->logger->timestamp_offset);
   /* Make sure that we have enough space in the particle logger file
    * to store the particles in current time step. */
-  logger_ensure_size(e->logger, e->total_nr_parts, e->total_nr_gparts, 0);
+  logger_ensure_size(e->logger, e->s->nr_parts, e->s->nr_gparts,
+                     e->s->nr_sparts);
 #endif
 
   /* Are we drifting everything (a la Gadget/GIZMO) ? */
@@ -2318,7 +2337,7 @@ void engine_step(struct engine *e) {
 
   /* Start all the tasks. */
   TIMER_TIC;
-  engine_launch(e);
+  engine_launch(e, /*fof=*/0);
   TIMER_TOC(timer_runners);
 
 #ifdef SWIFT_GRAVITY_FORCE_CHECKS
@@ -2343,6 +2362,9 @@ void engine_step(struct engine *e) {
   e->b_updates_since_rebuild += e->collect_group1.b_updated;
 
 #ifdef SWIFT_DEBUG_CHECKS
+  /* Verify that all cells have correct time-step information */
+  space_check_timesteps(e->s);
+
   if (e->ti_end_min == e->ti_current && e->ti_end_min < max_nr_timesteps)
     error("Obtained a time-step of size 0");
 #endif
@@ -2355,6 +2377,9 @@ void engine_step(struct engine *e) {
   engine_dump_restarts(e, 0, e->restart_onexit && engine_is_done(e));
 
   engine_check_for_dumps(e);
+#ifdef WITH_LOGGER
+  engine_check_for_index_dump(e);
+#endif
 
   TIMER_TOC2(timer_step);
 
@@ -2384,7 +2409,7 @@ void engine_check_for_dumps(struct engine *e) {
     output_none,
     output_snapshot,
     output_statistics,
-    output_stf
+    output_stf,
   };
 
   /* What kind of output do we want? And at which time ?
@@ -2442,6 +2467,7 @@ void engine_check_for_dumps(struct engine *e) {
 
     /* Write some form of output */
     switch (type) {
+
       case output_snapshot:
 
         /* Do we want a corresponding VELOCIraptor output? */
@@ -2457,13 +2483,8 @@ void engine_check_for_dumps(struct engine *e) {
 #endif
         }
 
-          /* Dump... */
-#ifdef WITH_LOGGER
-        /* Write a file containing the offsets in the particle logger. */
-        engine_dump_index(e);
-#else
+        /* Dump... */
         engine_dump_snapshot(e);
-#endif
 
         /* Free the memory allocated for VELOCIraptor i/o. */
         if (with_stf && e->snapshot_invoke_stf && e->s->gpart_group_data) {
@@ -2549,6 +2570,38 @@ void engine_check_for_dumps(struct engine *e) {
     cosmology_update(e->cosmology, e->physical_constants, e->ti_current);
   e->max_active_bin = max_active_bin;
   e->time = time;
+}
+
+/**
+ * @brief Check whether an index file has to be written during this
+ * step.
+ *
+ * @param e The #engine.
+ */
+void engine_check_for_index_dump(struct engine *e) {
+#ifdef WITH_LOGGER
+  /* Get a few variables */
+  struct logger_writer *log = e->logger;
+  const size_t dump_size = log->dump.count;
+  const size_t old_dump_size = log->index.dump_size_last_output;
+  const float mem_frac = log->index.mem_frac;
+  const size_t total_nr_parts =
+      (e->total_nr_parts + e->total_nr_gparts + e->total_nr_sparts +
+       e->total_nr_bparts + e->total_nr_DM_background_gparts);
+  const size_t index_file_size =
+      total_nr_parts * sizeof(struct logger_part_data);
+
+  /* Check if we should write a file */
+  if (mem_frac * (dump_size - old_dump_size) > index_file_size) {
+    /* Write an index file */
+    engine_dump_index(e);
+
+    /* Update the dump size for last output */
+    log->index.dump_size_last_output = dump_size;
+  }
+#else
+  error("This function should not be called without the logger.");
+#endif
 }
 
 /**
@@ -3171,21 +3224,41 @@ void engine_dump_snapshot(struct engine *e) {
   engine_collect_stars_counter(e);
 #endif
 
+  /* Determine snapshot location */
+  char snapshotBase[FILENAME_BUFFER_SIZE];
+  if (strnlen(e->snapshot_subdir, PARSER_MAX_LINE_SIZE) > 0) {
+    if (snprintf(snapshotBase, FILENAME_BUFFER_SIZE, "%s/%s",
+                 e->snapshot_subdir,
+                 e->snapshot_base_name) >= FILENAME_BUFFER_SIZE) {
+      error(
+          "FILENAME_BUFFER_SIZE is too small for snapshot path and file name");
+    }
+      /* Try to ensure the directory exists */
+#ifdef WITH_MPI
+    if (engine_rank == 0) mkdir(e->snapshot_subdir, 0777);
+    MPI_Barrier(MPI_COMM_WORLD);
+#else
+    mkdir(e->snapshot_subdir, 0777);
+#endif
+  } else {
+    if (snprintf(snapshotBase, FILENAME_BUFFER_SIZE, "%s",
+                 e->snapshot_base_name) >= FILENAME_BUFFER_SIZE) {
+      error("FILENAME_BUFFER_SIZE is too small for snapshot file name");
+    }
+  }
+
 /* Dump... */
 #if defined(HAVE_HDF5)
 #if defined(WITH_MPI)
 #if defined(HAVE_PARALLEL_HDF5)
-  write_output_parallel(e, e->snapshot_base_name, e->internal_units,
-                        e->snapshot_units, e->nodeID, e->nr_nodes,
-                        MPI_COMM_WORLD, MPI_INFO_NULL);
+  write_output_parallel(e, snapshotBase, e->internal_units, e->snapshot_units,
+                        e->nodeID, e->nr_nodes, MPI_COMM_WORLD, MPI_INFO_NULL);
 #else
-  write_output_serial(e, e->snapshot_base_name, e->internal_units,
-                      e->snapshot_units, e->nodeID, e->nr_nodes, MPI_COMM_WORLD,
-                      MPI_INFO_NULL);
+  write_output_serial(e, snapshotBase, e->internal_units, e->snapshot_units,
+                      e->nodeID, e->nr_nodes, MPI_COMM_WORLD, MPI_INFO_NULL);
 #endif
 #else
-  write_output_single(e, e->snapshot_base_name, e->internal_units,
-                      e->snapshot_units);
+  write_output_single(e, snapshotBase, e->internal_units, e->snapshot_units);
 #endif
 #endif
 
@@ -3219,8 +3292,7 @@ void engine_dump_index(struct engine *e) {
   }
 
   /* Dump... */
-  write_index_single(e, e->logger->base_name, e->internal_units,
-                     e->snapshot_units);
+  logger_write_index_file(e->logger, e);
 
   /* Flag that we dumped a snapshot */
   e->step_props |= engine_step_prop_logger_index;
@@ -3373,6 +3445,8 @@ void engine_init(struct engine *e, struct space *s, struct swift_params *params,
       parser_get_opt_param_double(params, "Snapshots:delta_time", -1.);
   e->ti_next_snapshot = 0;
   parser_get_param_string(params, "Snapshots:basename", e->snapshot_base_name);
+  parser_get_opt_param_string(params, "Snapshots:subdir", e->snapshot_subdir,
+                              engine_default_snapshot_subdir);
   e->snapshot_compression =
       parser_get_opt_param_int(params, "Snapshots:compression", 0);
   e->snapshot_int_time_label_on =
@@ -3466,6 +3540,9 @@ void engine_init(struct engine *e, struct space *s, struct swift_params *params,
   if (e->policy & engine_policy_structure_finding) {
     parser_get_param_string(params, "StructureFinding:basename",
                             e->stf_base_name);
+    parser_get_opt_param_string(params, "StructureFinding:subdir_per_output",
+                                e->stf_subdir_per_output,
+                                engine_default_stf_subdir_per_output);
     parser_get_param_string(params, "StructureFinding:config_file_name",
                             e->stf_config_file_name);
 
@@ -3575,15 +3652,17 @@ void engine_config(int restart, int fof, struct engine *e,
   if (nr_cores > CPU_SETSIZE) /* Unlikely, except on e.g. SGI UV. */
     error("must allocate dynamic cpu_set_t (too many cores per node)");
 
-  char *buf = (char *)malloc((nr_cores + 1) * sizeof(char));
-  buf[nr_cores] = '\0';
-  for (int j = 0; j < nr_cores; ++j) {
-    /* Reversed bit order from convention, but same as e.g. Intel MPI's
-     * I_MPI_PIN_DOMAIN explicit mask: left-to-right, LSB-to-MSB. */
-    buf[j] = CPU_ISSET(j, entry_affinity) ? '1' : '0';
+  if (verbose && with_aff) {
+    char *buf = (char *)malloc((nr_cores + 1) * sizeof(char));
+    buf[nr_cores] = '\0';
+    for (int j = 0; j < nr_cores; ++j) {
+      /* Reversed bit order from convention, but same as e.g. Intel MPI's
+       * I_MPI_PIN_DOMAIN explicit mask: left-to-right, LSB-to-MSB. */
+      buf[j] = CPU_ISSET(j, entry_affinity) ? '1' : '0';
+    }
+    message("Affinity at entry: %s", buf);
+    free(buf);
   }
-
-  if (verbose && with_aff) message("Affinity at entry: %s", buf);
 
   int *cpuid = NULL;
   cpu_set_t cpuset;
@@ -4063,38 +4142,32 @@ void engine_config(int restart, int fof, struct engine *e,
 
     /* Overwrite the constants for the scheduler */
     space_maxsize = parser_get_opt_param_int(params, "Scheduler:cell_max_size",
-                                             space_maxsize_default);
-    space_subsize_pair_hydro =
-        parser_get_opt_param_int(params, "Scheduler:cell_sub_size_pair_hydro",
-                                 space_subsize_pair_hydro_default);
-    space_subsize_self_hydro =
-        parser_get_opt_param_int(params, "Scheduler:cell_sub_size_self_hydro",
-                                 space_subsize_self_hydro_default);
-    space_subsize_pair_stars =
-        parser_get_opt_param_int(params, "Scheduler:cell_sub_size_pair_stars",
-                                 space_subsize_pair_stars_default);
-    space_subsize_self_stars =
-        parser_get_opt_param_int(params, "Scheduler:cell_sub_size_self_stars",
-                                 space_subsize_self_stars_default);
-    space_subsize_pair_grav =
-        parser_get_opt_param_int(params, "Scheduler:cell_sub_size_pair_grav",
-                                 space_subsize_pair_grav_default);
-    space_subsize_self_grav =
-        parser_get_opt_param_int(params, "Scheduler:cell_sub_size_self_grav",
-                                 space_subsize_self_grav_default);
+                                             space_maxsize);
+    space_subsize_pair_hydro = parser_get_opt_param_int(
+        params, "Scheduler:cell_sub_size_pair_hydro", space_subsize_pair_hydro);
+    space_subsize_self_hydro = parser_get_opt_param_int(
+        params, "Scheduler:cell_sub_size_self_hydro", space_subsize_self_hydro);
+    space_subsize_pair_stars = parser_get_opt_param_int(
+        params, "Scheduler:cell_sub_size_pair_stars", space_subsize_pair_stars);
+    space_subsize_self_stars = parser_get_opt_param_int(
+        params, "Scheduler:cell_sub_size_self_stars", space_subsize_self_stars);
+    space_subsize_pair_grav = parser_get_opt_param_int(
+        params, "Scheduler:cell_sub_size_pair_grav", space_subsize_pair_grav);
+    space_subsize_self_grav = parser_get_opt_param_int(
+        params, "Scheduler:cell_sub_size_self_grav", space_subsize_self_grav);
     space_splitsize = parser_get_opt_param_int(
-        params, "Scheduler:cell_split_size", space_splitsize_default);
+        params, "Scheduler:cell_split_size", space_splitsize);
     space_subdepth_diff_grav =
         parser_get_opt_param_int(params, "Scheduler:cell_subdepth_diff_grav",
                                  space_subdepth_diff_grav_default);
     space_extra_parts = parser_get_opt_param_int(
-        params, "Scheduler:cell_extra_parts", space_extra_parts_default);
+        params, "Scheduler:cell_extra_parts", space_extra_parts);
     space_extra_sparts = parser_get_opt_param_int(
-        params, "Scheduler:cell_extra_sparts", space_extra_sparts_default);
+        params, "Scheduler:cell_extra_sparts", space_extra_sparts);
     space_extra_gparts = parser_get_opt_param_int(
-        params, "Scheduler:cell_extra_gparts", space_extra_gparts_default);
+        params, "Scheduler:cell_extra_gparts", space_extra_gparts);
     space_extra_bparts = parser_get_opt_param_int(
-        params, "Scheduler:cell_extra_bparts", space_extra_bparts_default);
+        params, "Scheduler:cell_extra_bparts", space_extra_bparts);
 
     engine_max_parts_per_ghost =
         parser_get_opt_param_int(params, "Scheduler:engine_max_parts_per_ghost",
@@ -4170,11 +4243,13 @@ void engine_config(int restart, int fof, struct engine *e,
   }
 
 #ifdef WITH_LOGGER
-  /* Write the particle logger header */
-  logger_write_file_header(e->logger);
+  if (!restart) {
+    /* Write the particle logger header */
+    logger_write_file_header(e->logger);
+  }
 #endif
 
-  /* Initialise the structure finder */
+    /* Initialise the structure finder */
 #ifdef HAVE_VELOCIRAPTOR
   if (e->policy & engine_policy_structure_finding) velociraptor_init(e);
 #endif
@@ -4184,7 +4259,6 @@ void engine_config(int restart, int fof, struct engine *e,
   if (with_aff) {
     free(cpuid);
   }
-  free(buf);
 #endif
 
   /* Wait for the runner threads to be in place. */
@@ -4769,6 +4843,10 @@ void engine_struct_dump(struct engine *e, FILE *stream) {
   if (e->output_list_stats)
     output_list_struct_dump(e->output_list_stats, stream);
   if (e->output_list_stf) output_list_struct_dump(e->output_list_stf, stream);
+
+#ifdef WITH_LOGGER
+  logger_struct_dump(e->logger, stream);
+#endif
 }
 
 /**
@@ -4912,6 +4990,13 @@ void engine_struct_restore(struct engine *e, FILE *stream) {
     output_list_struct_restore(output_list_stf, stream);
     e->output_list_stf = output_list_stf;
   }
+
+#ifdef WITH_LOGGER
+  struct logger_writer *log =
+      (struct logger_writer *)malloc(sizeof(struct logger_writer));
+  logger_struct_restore(log, stream);
+  e->logger = log;
+#endif
 
 #ifdef EOS_PLANETARY
   eos_init(&eos, e->physical_constants, e->snapshot_units, e->parameter_file);

@@ -16,7 +16,7 @@
 # along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
 # Init the project.
-AC_INIT([SWIFT],[0.8.4],[https://gitlab.cosma.dur.ac.uk/swift/swiftsim])
+AC_INIT([SWIFT],[0.8.5],[https://gitlab.cosma.dur.ac.uk/swift/swiftsim])
 swift_config_flags="$*"
 
 #  We want to stop when given unrecognised options. No subdirs so this is safe.
@@ -92,6 +92,12 @@ AC_ARG_ENABLE([logger],
 
 if test "$with_logger" = "yes"; then
    AC_DEFINE([WITH_LOGGER], 1, [logger enabled])
+   # The logger requires that long long is a 64bit type, let's
+   # check that.
+   AC_CHECK_SIZEOF([long long int])
+   if test "$ac_cv_sizeof_long_long_int" != "8"; then
+      AC_MSG_ERROR([The particle logger requires that 'long long int' has size 8 bytes])
+   fi
 fi
 AM_CONDITIONAL([HAVELOGGER],[test $with_logger = "yes"])
 
@@ -1046,6 +1052,16 @@ fi
 AC_SUBST([TBBMALLOC_LIBS])
 AM_CONDITIONAL([HAVETBBMALLOC],[test -n "$TBBMALLOC_LIBS"])
 
+# check for a random seed
+AC_ARG_WITH([random-seed],
+    [AS_HELP_STRING([--with-random-seed=SHORT INT],
+       [Set the random seed.]
+    )],
+    [with_random_seed="$withval"],
+    [with_random_seed="0"]
+)
+AC_DEFINE_UNQUOTED([SWIFT_RANDOM_SEED_XOR], [$with_random_seed],[Value of the random seed.])
+
 # Check for python.
 have_python="no"
 AC_ARG_WITH([python],
@@ -1412,6 +1428,7 @@ with_subgrid_pressure_floor=none
 with_subgrid_stars=none
 with_subgrid_star_formation=none
 with_subgrid_feedback=none
+with_subgrid_task_order=none
 
 case "$with_subgrid" in
    yes)
@@ -1427,6 +1444,7 @@ case "$with_subgrid" in
 	with_subgrid_star_formation=GEAR
 	with_subgrid_feedback=none
 	with_subgrid_black_holes=none
+	with_subgrid_task_order=GEAR
 	enable_fof=no
    ;;
    EAGLE)
@@ -1438,6 +1456,7 @@ case "$with_subgrid" in
 	with_subgrid_star_formation=EAGLE
 	with_subgrid_feedback=EAGLE
 	with_subgrid_black_holes=EAGLE
+	with_subgrid_task_order=EAGLE
 	enable_fof=yes
    ;;
    *)
@@ -1536,8 +1555,11 @@ case "$with_hydro" in
    planetary)
       AC_DEFINE([PLANETARY_SPH], [1], [Planetary SPH])
    ;;
+   sphenix)
+      AC_DEFINE([SPHENIX_SPH], [1], [SPHENIX SPH])
+   ;;
    anarchy-du)
-      AC_DEFINE([ANARCHY_DU_SPH], [1], [ANARCHY (DU) SPH])
+      AC_DEFINE([SPHENIX_SPH], [1], [SPHENIX SPH])
    ;;
    anarchy-pu)
       AC_DEFINE([ANARCHY_PU_SPH], [1], [ANARCHY (PU) SPH])
@@ -1797,6 +1819,16 @@ case "$with_chemistry" in
    ;;
 esac
 
+if test "$with_chemistry" != "none"; then
+   if test "$enable_hand_vec" == "yes"; then
+      if test "$enable_vec" == "yes"; then
+         if test "$with_hydro" == "gadget2"; then
+            AC_MSG_ERROR([Cannot run with hand vectorisation and chemistry yet. Please use --disable-hand-vec])
+         fi
+      fi
+   fi
+fi
+
 #  Particle tracers
 AC_ARG_WITH([tracers],
    [AS_HELP_STRING([--with-tracers=<function>],
@@ -1916,6 +1948,38 @@ case "$with_black_holes" in
    *)
       AC_MSG_ERROR([Unknown black-hole model: $with_black_holes])
    ;;
+esac
+
+# Task order
+AC_ARG_WITH([task-order],
+[AS_HELP_STRING([--with-task-order=<model>],
+[Task order to use @<:@none, EAGLE, GEAR default: none@:>@]
+)],
+[with_task_order="$withval"],
+[with_task_order="none"]
+)
+
+if test "$with_subgrid" != "none"; then
+if test "$with_task_order" != "none"; then
+AC_MSG_ERROR([Cannot provide with-subgrid and with-task-order together])
+else
+with_task_order="$with_subgrid_task_order"
+fi
+fi
+
+case "$with_task_order" in
+EAGLE)
+AC_DEFINE([TASK_ORDER_EAGLE], [1], [EAGLE task order])
+;;
+none)
+AC_DEFINE([TASK_ORDER_NONE], [1], [Default task order])
+;;
+GEAR)
+AC_DEFINE([TASK_ORDER_GEAR], [1], [GEAR task order])
+;;
+*)
+AC_MSG_ERROR([Unknown task ordering: $with_task_order])
+;;
 esac
 
 #  External potential
@@ -2153,6 +2217,7 @@ AC_MSG_RESULT([
    Star formation model : $with_star_formation
    Star feedback model  : $with_feedback
    Black holes model    : $with_black_holes
+   Task dependencies    : $with_task_order
 
    Individual timers           : $enable_timers
    Task debugging              : $enable_task_debugging

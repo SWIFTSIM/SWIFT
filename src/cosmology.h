@@ -192,21 +192,23 @@ void cosmology_update(struct cosmology *c, const struct phys_const *phys_const,
                       integertime_t ti_current);
 
 double cosmology_get_drift_factor(const struct cosmology *cosmo,
-                                  integertime_t ti_start, integertime_t ti_end);
+                                  const integertime_t ti_start,
+                                  const integertime_t ti_end);
 double cosmology_get_grav_kick_factor(const struct cosmology *cosmo,
-                                      integertime_t ti_start,
-                                      integertime_t ti_end);
+                                      const integertime_t ti_start,
+                                      const integertime_t ti_end);
 double cosmology_get_hydro_kick_factor(const struct cosmology *cosmo,
-                                       integertime_t ti_start,
-                                       integertime_t ti_end);
+                                       const integertime_t ti_start,
+                                       const integertime_t ti_end);
 double cosmology_get_therm_kick_factor(const struct cosmology *cosmo,
-                                       integertime_t ti_start,
-                                       integertime_t ti_end);
+                                       const integertime_t ti_start,
+                                       const integertime_t ti_end);
 double cosmology_get_corr_kick_factor(const struct cosmology *cosmo,
-                                      integertime_t ti_start,
-                                      integertime_t ti_end);
+                                      const integertime_t ti_start,
+                                      const integertime_t ti_end);
 double cosmology_get_delta_time(const struct cosmology *c,
-                                integertime_t ti_start, integertime_t ti_end);
+                                const integertime_t ti_start,
+                                const integertime_t ti_end);
 
 double cosmology_get_delta_time_from_scale_factors(const struct cosmology *c,
                                                    const double a_start,

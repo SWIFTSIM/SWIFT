@@ -49,6 +49,9 @@ int main(int argc, char* argv[]) {
   message("Seed = %d", seed);
   srand(seed);
 
+  /* Log the swift random seed */
+  message("SWIFT random seed = %d", SWIFT_RANDOM_SEED_XOR);
+
   /* Time-step size */
   const int time_bin = 30;
 

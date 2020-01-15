@@ -40,18 +40,22 @@ Gravity:
   eta:                    0.025     # Constant dimensionless multiplier for time integration.
   theta:                  0.7       # Opening angle (Multipole acceptance criterion)
   mesh_side_length:       64
-  comoving_DM_softening:         0.0026596 # Comoving softening for DM: 1/25th of mean inter-particle separation = 2.6596 (comoving) kpc.
-  max_physical_DM_softening:     0.0007    # Physical softening for DM: 700 (physical) pc.
-  comoving_baryon_softening:     0.0026596 # Comoving softening for baryons: 1/25th of mean inter-particle separation = 2.6596 (comoving) kpc.
-  max_physical_baryon_softening: 0.0007    # Physical softening for baryons: 700 (physical) pc.
+  comoving_DM_softening:         0.003320 # Comoving softening for DM (3.32 ckpc)
+  max_physical_DM_softening:     0.001300 # Physical softening for DM (1.30 pkpc)
+  comoving_baryon_softening:     0.001790 # Comoving softening for baryons (1.79 ckpc)
+  max_physical_baryon_softening: 0.000700 # Physical softening for baryons (0.70 pkpc)
+  dithering:             0
   
 # Parameters for the hydrodynamics scheme
 SPH:
-  resolution_eta:        1.2348   # Target smoothing length in units of the mean inter-particle separation (1.2348 == 48Ngbs with the cubic spline kernel).
-  h_min_ratio:           0.1      # Minimal smoothing in units of softening.
-  CFL_condition:         0.1      # Courant-Friedrich-Levy condition for time integration.
-  minimal_temperature:   100.0    # (internal units)
-  initial_temperature:   268.7
+  resolution_eta:                    1.2348   # Target smoothing length in units of the mean inter-particle separation (1.2348 == 48Ngbs with the cubic spline kernel).
+  h_min_ratio:                       0.1      # Minimal smoothing in units of softening.
+  h_max:                             0.5      # Maximal softening in co-moving internal units.
+  CFL_condition:                     0.1      # Courant-Friedrich-Levy condition for time integration.
+  minimal_temperature:               100.0    # (internal units)
+  initial_temperature:               268.7    # (internal units)
+  particle_splitting:                1        # Particle splitting is ON
+  particle_splitting_mass_threshold: 7e-4     # (internal units, i.e. 7e6 Msun ~ 4x initial gas particle mass)
 
 # Parameters of the stars neighbour search
 Stars:
@@ -70,7 +74,8 @@ FOF:
 Scheduler:
   max_top_level_cells:   16
   tasks_per_cell:        5
-
+  cell_split_size:       200
+  
 Restarts:
   onexit:       1
   delta_hours:  1.0
@@ -115,7 +120,7 @@ EAGLEStarFormation:
   min_over_density:                  57.7      # The over-density above which star-formation is allowed.
   KS_high_density_threshold_H_p_cm3: 1e3       # Hydrogen number density above which the Kennicut-Schmidt law changes slope in Hydrogen atoms per cm^3.
   KS_high_density_exponent:          2.0       # Slope of the Kennicut-Schmidt law above the high-density threshold.
-  EOS_temperature_margin_dex:        0.5       # Logarithm base 10 of the maximal temperature difference above the EOS allowed to form stars.
+  EOS_entropy_margin_dex:            0.5       # Logarithm base 10 of the maximal entropy above the EOS at which stars can form.
   threshold_norm_H_p_cm3:            0.1       # Normalisation of the metal-dependant density threshold for star formation in Hydrogen atoms per cm^3.
   threshold_Z0:                      0.002     # Reference metallicity (metal mass fraction) for the metal-dependant threshold for star formation.
   threshold_slope:                   -0.64     # Slope of the metal-dependant star formation threshold
@@ -142,9 +147,10 @@ EAGLEFeedback:
   filename:                         ./yieldtables/  # Path to the directory containing the EAGLE yield tables.
   IMF_min_mass_Msun:                0.1             # Minimal stellar mass considered for the Chabrier IMF in solar masses.
   IMF_max_mass_Msun:              100.0             # Maximal stellar mass considered for the Chabrier IMF in solar masses.
-  SNII_min_mass_Msun:               6.0             # Minimal mass considered for SNII feedback (not SNII enrichment!) in solar masses.
-  SNII_max_mass_Msun:             100.0             # Maximal mass considered for SNII feedback (not SNII enrichment!) in solar masses.
-  SNII_wind_delay_Gyr:              0.03            # Time in Gyr between a star's birth and the SNII thermal feedback event.
+  SNII_min_mass_Msun:               8.0             # Minimal mass considered for SNII stars in solar masses.
+  SNII_max_mass_Msun:             100.0             # Maximal mass considered for SNII stars in solar masses.
+  SNII_sampled_delay:               1               # Sample the SNII lifetimes to do feedback.
+  SNII_wind_delay_Gyr:              dummy           # Time in Gyr between a star's birth and the SNII thermal feedback event when not sampling.
   SNII_delta_T_K:                   3.16228e7       # Change in temperature to apply to the gas particle in a SNII thermal feedback event in Kelvin.
   SNII_energy_erg:                  1.0e51          # Energy of one SNII explosion in ergs.
   SNII_energy_fraction_min:         0.3             # Minimal fraction of energy applied in a SNII feedback event.
@@ -153,28 +159,33 @@ EAGLEFeedback:
   SNII_energy_fraction_n_0_H_p_cm3: 1.4588          # Pivot point for the birth density dependance of the SNII energy fraction in cm^-3.
   SNII_energy_fraction_n_Z:         0.8686          # Power-law for the metallicity dependance of the SNII energy fraction.
   SNII_energy_fraction_n_n:         0.8686          # Power-law for the birth density dependance of the SNII energy fraction.
-  SNIa_max_mass_Msun:              8.0              # Maximal mass considered for SNIa feedback and enrichment in solar masses.
-  SNIa_timescale_Gyr:              2.0              # Time-scale of the exponential decay of the SNIa rates in Gyr.
-  SNIa_efficiency_p_Msun:          0.002            # Normalisation of the SNIa rates in inverse solar masses.
+  SNIa_DTD:                         PowerLaw        # Functional form of the SNIa delay time distribution.
+  SNIa_DTD_delay_Gyr:               0.04            # Stellar age after which SNIa start in Gyr (40 Myr corresponds to stars ~ 8 Msun).
+  SNIa_DTD_power_law_norm_p_Msun:   0.0012          # Normalization of the SNIa delay time distribution (in Msun^-1).
   SNIa_energy_erg:                 1.0e51           # Energy of one SNIa explosion in ergs.
   AGB_ejecta_velocity_km_p_s:      10.0             # Velocity of the AGB ejectas in km/s.
+  stellar_evolution_age_cut_Gyr:    0.1             # Stellar age in Gyr above which the enrichment is down-sampled.
+  stellar_evolution_sampling_rate:   10             # Number of time-steps in-between two enrichment events for a star above the age threshold.
   SNII_yield_factor_Hydrogen:       1.0             # (Optional) Correction factor to apply to the Hydrogen yield from the SNII channel.
   SNII_yield_factor_Helium:         1.0             # (Optional) Correction factor to apply to the Helium yield from the SNII channel.
   SNII_yield_factor_Carbon:         0.5             # (Optional) Correction factor to apply to the Carbon yield from the SNII channel.
   SNII_yield_factor_Nitrogen:       1.0             # (Optional) Correction factor to apply to the Nitrogen yield from the SNII channel.
   SNII_yield_factor_Oxygen:         1.0             # (Optional) Correction factor to apply to the Oxygen yield from the SNII channel.
   SNII_yield_factor_Neon:           1.0             # (Optional) Correction factor to apply to the Neon yield from the SNII channel.
-  SNII_yield_factor_Magnesium:      2.0             # (Optional) Correction factor to apply to the Magnesium yield from the SNII channel.
+  SNII_yield_factor_Magnesium:      4.0             # (Optional) Correction factor to apply to the Magnesium yield from the SNII channel.
   SNII_yield_factor_Silicon:        1.0             # (Optional) Correction factor to apply to the Silicon yield from the SNII channel.
   SNII_yield_factor_Iron:           0.5             # (Optional) Correction factor to apply to the Iron yield from the SNII channel.
 
 # EAGLE AGN model
 EAGLEAGN:
   subgrid_seed_mass_Msun:           1.5e5      # Black hole subgrid mass at creation time in solar masses.
-  max_eddington_fraction:           1.5        # Maximal allowed accretion rate in units of the Eddington rate.
+  max_eddington_fraction:           1.0        # Maximal allowed accretion rate in units of the Eddington rate.
+  eddington_fraction_for_recording: 0.1        # Record the last time BHs reached an Eddington ratio above this threshold.
   viscous_alpha:                    1e6        # Normalisation constant of the Bondi viscuous time-scale accretion reduction term
   radiative_efficiency:             0.1        # Fraction of the accreted mass that gets radiated.
   coupling_efficiency:              0.15       # Fraction of the radiated energy that couples to the gas in feedback events.
   AGN_delta_T_K:                    3.16228e8  # Change in temperature to apply to the gas particle in an AGN feedback event in Kelvin.
   AGN_num_ngb_to_heat:              1.         # Target number of gas neighbours to heat in an AGN feedback event.
   max_reposition_mass:              2e8        # Maximal BH mass considered for BH repositioning in solar masses.
+  threshold_major_merger:           0.333      # Mass ratio threshold to consider a BH merger as 'major'
+  threshold_minor_merger:           0.1        # Mass ratio threshold to consider a BH merger as 'minor'

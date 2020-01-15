@@ -40,9 +40,10 @@ SPH:
 # Parameters governing the snapshots
 Snapshots:
   basename:            snap
-  delta_time:          1.05
-  scale_factor_first:  0.02
+  delta_time:          1.0816  # Only every second VELOCIraptor invoke gets a full snapshot dump.
+  scale_factor_first:  0.1     # z = 9
   invoke_stf:          1
+  compression:         4
   
 # Parameters governing the conserved quantities statistics
 Statistics:
@@ -64,8 +65,8 @@ InitialConditions:
 
 # Structure finding options (requires velociraptor)
 StructureFinding:
-  config_file_name:     stfconfig_input.cfg
+  config_file_name:     vrconfig_3dfof_subhalos_SO_hydro.cfg
   basename:             ./stf
-  scale_factor_first:   0.02
-  delta_time:           1.02
+  scale_factor_first:   0.1         # z = 9
+  delta_time:           1.04
  

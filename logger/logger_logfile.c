@@ -42,8 +42,8 @@ void logger_logfile_init_from_file(struct logger_logfile *log, char *filename,
 
   /* Open file, map it and get its size. */
   if (reader->verbose > 1) message("Mapping the log file.");
-  log->log.map = logger_loader_io_mmap_file(filename, &log->log.file_size,
-                                            /* read_only */ 1);
+  logger_loader_io_mmap_file(&log->log, filename,
+                             /* read_only */ 1);
 
   /* Read the header. */
   if (reader->verbose > 1) message("Reading the header.");
@@ -69,7 +69,7 @@ void logger_logfile_init_from_file(struct logger_logfile *log, char *filename,
   }
 
   /* Initialize the time array. */
-  if (reader->verbose > 1) message("Reading the time stamps.");
+  if (reader->verbose > 1) message("Reading the timestamps.");
   time_array_populate(&log->times, log);
 
   /* Print the time array. */
@@ -84,7 +84,7 @@ void logger_logfile_init_from_file(struct logger_logfile *log, char *filename,
  * @param log The #logger_logfile.
  */
 void logger_logfile_free(struct logger_logfile *log) {
-  logger_loader_io_munmap_file(log->log.map, log->log.file_size);
+  logger_loader_io_munmap_file(&log->log);
 
   time_array_free(&log->times);
 }
@@ -98,9 +98,9 @@ void logger_logfile_free(struct logger_logfile *log) {
 void logger_logfile_reverse_offset(struct logger_logfile *log, char *filename) {
 
   /* Close and reopen the file in write mode. */
-  logger_loader_io_munmap_file(log->log.map, log->log.file_size);
-  log->log.map = logger_loader_io_mmap_file(filename, &log->log.file_size,
-                                            /* read_only */ 0);
+  logger_loader_io_munmap_file(&log->log);
+  logger_loader_io_mmap_file(&log->log, filename,
+                             /* read_only */ 0);
 
   /* Get pointers */
   struct header *header = &log->header;
@@ -119,7 +119,7 @@ void logger_logfile_reverse_offset(struct logger_logfile *log, char *filename) {
 
   /* check that the record offset points to another record. */
   for (size_t offset_debug = header->offset_first_record;
-       offset_debug < log->log.file_size;
+       offset_debug < log->log.mmap_size;
        offset_debug = tools_check_record_consistency(reader, offset_debug)) {
   }
 
@@ -138,7 +138,7 @@ void logger_logfile_reverse_offset(struct logger_logfile *log, char *filename) {
   }
 
   /* reverse the record's offset. */
-  for (size_t offset = header->offset_first_record; offset < log->log.file_size;
+  for (size_t offset = header->offset_first_record; offset < log->log.mmap_size;
        offset = tools_reverse_offset(header, log->log.map, offset)) {
   }
 
@@ -159,7 +159,7 @@ void logger_logfile_reverse_offset(struct logger_logfile *log, char *filename) {
 
   /* check that the record offset points to another record. */
   for (size_t offset_debug = header->offset_first_record;
-       offset_debug < log->log.file_size;
+       offset_debug < log->log.mmap_size;
        offset_debug = tools_check_record_consistency(reader, offset_debug)) {
   }
 
@@ -169,7 +169,7 @@ void logger_logfile_reverse_offset(struct logger_logfile *log, char *filename) {
 #endif
 
   /* Close and reopen the file in read mode. */
-  logger_loader_io_munmap_file(log->log.map, log->log.file_size);
-  log->log.map = logger_loader_io_mmap_file(filename, &log->log.file_size,
-                                            /* read_only */ 1);
+  logger_loader_io_munmap_file(&log->log);
+  logger_loader_io_mmap_file(&log->log, filename,
+                             /* read_only */ 1);
 }

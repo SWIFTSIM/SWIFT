@@ -19,6 +19,7 @@
 #ifndef SWIFT_EAGLE_BLACK_HOLES_IO_H
 #define SWIFT_EAGLE_BLACK_HOLES_IO_H
 
+#include "adiabatic_index.h"
 #include "black_holes_part.h"
 #include "io_properties.h"
 
@@ -54,10 +55,11 @@ INLINE static void black_holes_read_particles(struct bpart* bparts,
 INLINE static void convert_bpart_pos(const struct engine* e,
                                      const struct bpart* bp, double* ret) {
 
-  if (e->s->periodic) {
-    ret[0] = box_wrap(bp->x[0], 0.0, e->s->dim[0]);
-    ret[1] = box_wrap(bp->x[1], 0.0, e->s->dim[1]);
-    ret[2] = box_wrap(bp->x[2], 0.0, e->s->dim[2]);
+  const struct space* s = e->s;
+  if (s->periodic) {
+    ret[0] = box_wrap(bp->x[0] - s->pos_dithering[0], 0.0, s->dim[0]);
+    ret[1] = box_wrap(bp->x[1] - s->pos_dithering[1], 0.0, s->dim[1]);
+    ret[2] = box_wrap(bp->x[2] - s->pos_dithering[2], 0.0, s->dim[2]);
   } else {
     ret[0] = bp->x[0];
     ret[1] = bp->x[1];
@@ -112,7 +114,7 @@ INLINE static void black_holes_write_particles(const struct bpart* bparts,
                                                int with_cosmology) {
 
   /* Say how much we want to write */
-  *num_fields = 12;
+  *num_fields = 18;
 
   /* List what we want to write */
   list[0] = io_make_output_field_convert_bpart(
@@ -177,6 +179,57 @@ INLINE static void black_holes_write_particles(const struct bpart* bparts,
       "CumulativeNumberSeeds", INT, 1, UNIT_CONV_NO_UNITS, 0.f, bparts,
       cumulative_number_seeds,
       "Total number of BH seeds that have merged into this black hole");
+
+  list[13] =
+      io_make_output_field("NumberOfMergers", INT, 1, UNIT_CONV_NO_UNITS, 0.f,
+                           bparts, number_of_mergers,
+                           "Number of mergers the black holes went through. "
+                           "This does not include the number of mergers "
+                           "accumulated by any merged black hole.");
+
+  if (with_cosmology) {
+    list[14] = io_make_output_field(
+        "LastHighEddingtonFractionScaleFactors", FLOAT, 1, UNIT_CONV_NO_UNITS,
+        0.f, bparts, last_high_Eddington_fraction_scale_factor,
+        "Scale-factors at which the black holes last reached a large Eddington "
+        "ratio. -1 if never reached.");
+  } else {
+    list[14] = io_make_output_field(
+        "LastHighEddingtonFractionTimes", FLOAT, 1, UNIT_CONV_TIME, 0.f, bparts,
+        last_high_Eddington_fraction_time,
+        "Times at which the black holes last reached a large Eddington ratio. "
+        "-1 if never reached.");
+  }
+
+  if (with_cosmology) {
+    list[15] = io_make_output_field(
+        "LastMinorMergerScaleFactors", FLOAT, 1, UNIT_CONV_NO_UNITS, 0.f,
+        bparts, last_minor_merger_scale_factor,
+        "Scale-factors at which the black holes last had a minor merger.");
+  } else {
+    list[15] = io_make_output_field(
+        "LastMinorMergerScaleTimes", FLOAT, 1, UNIT_CONV_TIME, 0.f, bparts,
+        last_minor_merger_time,
+        "Times at which the black holes last had a minor merger.");
+  }
+
+  if (with_cosmology) {
+    list[16] = io_make_output_field(
+        "LastMajorMergerScaleFactors", FLOAT, 1, UNIT_CONV_NO_UNITS, 0.f,
+        bparts, last_major_merger_scale_factor,
+        "Scale-factors at which the black holes last had a major merger.");
+  } else {
+    list[16] = io_make_output_field(
+        "LastMajorMergerScaleTimes", FLOAT, 1, UNIT_CONV_TIME, 0.f, bparts,
+        last_major_merger_time,
+        "Times at which the black holes last had a major merger.");
+  }
+
+  list[17] = io_make_output_field(
+      "SwallowedAngularMomenta", FLOAT, 3, UNIT_CONV_ANGULAR_MOMENTUM, 0.f,
+      bparts, swallowed_angular_momentum,
+      "Physical angular momenta that the black holes have accumulated by "
+      "swallowing gas particles.");
 
 #ifdef DEBUG_INTERACTIONS_BLACK_HOLES
 

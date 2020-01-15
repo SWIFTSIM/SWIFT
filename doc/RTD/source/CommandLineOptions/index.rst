@@ -38,6 +38,15 @@ can be found by typing ``./swift -h``:
                                       perform black hole seeding.
     -x, --velociraptor                Run with structure finding.
     --limiter                         Run with time-step limiter.
+    --sync                            Run with time-step synchronization
+                                      of particles hit by feedback events.
+  Simulation meta-options:
+
+    --eagle                           Run with all the options needed for the 
+                                      EAGLE model. This is equivalent to --hydro 
+                                      --limiter --sync --self-gravity --stars 
+                                      --star-formation --cooling --feedback 
+                                      --black-holes --fof. 
 
   Control options:
 

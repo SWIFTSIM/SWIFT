@@ -30,21 +30,35 @@
 /**
  * @brief Compute a valid integer time-step form a given time-step
  *
+ * We consider the minimal time-bin of any neighbours and prevent particles
+ * to differ from it by a fixed constant `time_bin_neighbour_max_delta_bin`.
+ *
+ * If min_ngb_bin is set to `num_time_bins`, then no limit from the neighbours
+ * is imposed.
+ *
  * @param new_dt The time-step to convert.
  * @param old_bin The old time bin.
+ * @param min_ngb_bin Minimal time-bin of any neighbour of this particle.
  * @param ti_current The current time on the integer time-line.
  * @param time_base_inv The inverse of the system's minimal time-step.
  */
-__attribute__((always_inline)) INLINE static integertime_t
-make_integer_timestep(float new_dt, timebin_t old_bin, integertime_t ti_current,
-                      double time_base_inv) {
+__attribute__((always_inline, const)) INLINE static integertime_t
+make_integer_timestep(const float new_dt, const timebin_t old_bin,
+                      const timebin_t min_ngb_bin,
+                      const integertime_t ti_current,
+                      const double time_base_inv) {
 
   /* Convert to integer time */
   integertime_t new_dti = (integertime_t)(new_dt * time_base_inv);
 
+  /* Are we allowed to use this bin given the neighbours? */
+  timebin_t new_bin = get_time_bin(new_dti);
+  new_bin = min(new_bin, min_ngb_bin + time_bin_neighbour_max_delta_bin);
+  new_dti = get_integer_timestep(new_bin);
+
   /* Current time-step */
-  integertime_t current_dti = get_integer_timestep(old_bin);
-  integertime_t ti_end = get_integer_time_end(ti_current, old_bin);
+  const integertime_t current_dti = get_integer_timestep(old_bin);
+  const integertime_t ti_end = get_integer_time_end(ti_current, old_bin);
 
   /* Limit timestep increase */
   if (old_bin > 0) new_dti = min(new_dti, 2 * current_dti);
@@ -103,7 +117,7 @@ __attribute__((always_inline)) INLINE static integertime_t get_gpart_timestep(
 
   /* Convert to integer time */
   const integertime_t new_dti = make_integer_timestep(
-      new_dt, gp->time_bin, e->ti_current, e->time_base_inv);
+      new_dt, gp->time_bin, num_time_bins, e->ti_current, e->time_base_inv);
 
   return new_dti;
 }
@@ -178,7 +192,8 @@ __attribute__((always_inline)) INLINE static integertime_t get_part_timestep(
 
   /* Convert to integer time */
   const integertime_t new_dti = make_integer_timestep(
-      new_dt, p->time_bin, e->ti_current, e->time_base_inv);
+      new_dt, p->time_bin, p->limiter_data.min_ngb_time_bin, e->ti_current,
+      e->time_base_inv);
 
   return new_dti;
 }
@@ -225,7 +240,7 @@ __attribute__((always_inline)) INLINE static integertime_t get_spart_timestep(
 
   /* Convert to integer time */
   const integertime_t new_dti = make_integer_timestep(
-      new_dt, sp->time_bin, e->ti_current, e->time_base_inv);
+      new_dt, sp->time_bin, num_time_bins, e->ti_current, e->time_base_inv);
 
   return new_dti;
 }
@@ -272,7 +287,7 @@ __attribute__((always_inline)) INLINE static integertime_t get_bpart_timestep(
 
   /* Convert to integer time */
   const integertime_t new_dti = make_integer_timestep(
-      new_dt, bp->time_bin, e->ti_current, e->time_base_inv);
+      new_dt, bp->time_bin, num_time_bins, e->ti_current, e->time_base_inv);
 
   return new_dti;
 }

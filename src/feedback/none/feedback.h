@@ -65,6 +65,29 @@ __attribute__((always_inline)) INLINE static int feedback_is_active(
 }
 
 /**
+ * @brief Returns the length of time since the particle last did
+ * enrichment/feedback.
+ *
+ * We just return the normal time-step here since particles do something every
+ * regular time-step.
+ *
+ * @param sp The #spart.
+ * @param with_cosmology Are we running with cosmological time integration on?
+ * @param cosmo The cosmological model.
+ * @param time The current time (since the Big Bang / start of the run) in
+ * internal units.
+ * @param dt_star the length of this particle's time-step in internal units.
+ * @return The length of the enrichment step in internal units.
+ */
+INLINE static double feedback_get_enrichment_timestep(
+    const struct spart* sp, const int with_cosmology,
+    const struct cosmology* cosmo, const double time, const double dt_star) {
+
+  /* Just return the regular step length */
+  return dt_star;
+}
+
+/**
  * @brief Prepares a star's feedback field before computing what
  * needs to be distributed.
  */
@@ -108,11 +131,39 @@ __attribute__((always_inline)) INLINE static void feedback_prepare_spart(
  * @param star_age_beg_step The age of the star at the star of the time-step in
  * internal units.
  * @param dt The time-step size of this star in internal units.
+ * @param time The physical time in internal units.
+ * @param with_cosmology Are we running with cosmology on?
  */
 __attribute__((always_inline)) INLINE static void feedback_evolve_spart(
     struct spart* restrict sp, const struct feedback_props* feedback_props,
     const struct cosmology* cosmo, const struct unit_system* us,
-    const double star_age_beg_step, const double dt) {}
+    const double star_age_beg_step, const double dt, const double time,
+    const int with_cosmology) {}
+
+/**
+ * @brief Will this star particle want to do feedback during the next time-step?
+ *
+ * @param sp The star of interest.
+ * @param feedback_props The properties of the feedback model.
+ * @param with_cosmology Are we running with cosmological time integration?
+ * @param cosmo The #cosmology object.
+ * @param time The current time (since the Big Bang).
+ */
+__attribute__((always_inline)) INLINE static int feedback_will_do_feedback(
+    struct spart* restrict sp, const struct feedback_props* feedback_props,
+    const int with_cosmology, const struct cosmology* cosmo,
+    const double time) {
+  return 1;
+}
+
+/**
+ * @brief Clean-up the memory allocated for the feedback routines
+ *
+ * We simply free all the arrays.
+ *
+ * @param feedback_props the feedback data structure.
+ */
+static INLINE void feedback_clean(struct feedback_props* feedback_props) {}
 
 /**
  * @brief Write a feedback struct to the given FILE as a stream of bytes.

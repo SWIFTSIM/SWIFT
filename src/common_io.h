@@ -55,11 +55,13 @@ enum IO_DATA_TYPE {
   LONG,
   LONGLONG,
   UINT,
+  UINT64,
   ULONG,
   ULONGLONG,
   FLOAT,
   DOUBLE,
-  CHAR
+  CHAR,
+  SIZE_T,
 };
 
 #if defined(HAVE_HDF5)
@@ -84,7 +86,8 @@ void io_write_attribute_s(hid_t grp, const char* name, const char* str);
 void io_write_code_description(hid_t h_file);
 void io_write_engine_policy(hid_t h_file, const struct engine* e);
 
-void io_write_cell_offsets(hid_t h_grp, const int cdim[3],
+void io_write_cell_offsets(hid_t h_grp, const int cdim[3], const double dim[3],
+                           const double pos_dithering[3],
                            const struct cell* cells_top, const int nr_cells,
                            const double width[3], const int nodeID,
                            const long long global_counts[swift_type_count],

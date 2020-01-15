@@ -20,10 +20,13 @@
 #define SWIFT_EAGLE_BH_IACT_H
 
 /* Local includes */
+#include "black_holes_parameters.h"
 #include "gravity.h"
 #include "hydro.h"
 #include "random.h"
 #include "space.h"
+#include "timestep_sync_part.h"
+#include "tracers.h"
 
 /**
  * @brief Density interaction between two particles (non-symmetric).
@@ -40,11 +43,13 @@
  * @param ti_current Current integer time value (for random numbers).
  */
 __attribute__((always_inline)) INLINE static void
-runner_iact_nonsym_bh_gas_density(
-    const float r2, const float *dx, const float hi, const float hj,
-    struct bpart *restrict bi, const struct part *restrict pj,
-    const struct xpart *restrict xpj, const struct cosmology *cosmo,
-    const struct gravity_props *grav_props, const integertime_t ti_current) {
+runner_iact_nonsym_bh_gas_density(const float r2, const float *dx,
+                                  const float hi, const float hj,
+                                  struct bpart *bi, const struct part *pj,
+                                  const struct xpart *xpj,
+                                  const struct cosmology *cosmo,
+                                  const struct gravity_props *grav_props,
+                                  const integertime_t ti_current) {
 
   float wi, wi_dx;
 
@@ -121,11 +126,13 @@ runner_iact_nonsym_bh_gas_density(
  * @param ti_current Current integer time value (for random numbers).
  */
 __attribute__((always_inline)) INLINE static void
-runner_iact_nonsym_bh_gas_swallow(
-    const float r2, const float *dx, const float hi, const float hj,
-    struct bpart *restrict bi, struct part *restrict pj,
-    struct xpart *restrict xpj, const struct cosmology *cosmo,
-    const struct gravity_props *grav_props, const integertime_t ti_current) {
+runner_iact_nonsym_bh_gas_swallow(const float r2, const float *dx,
+                                  const float hi, const float hj,
+                                  struct bpart *bi, struct part *pj,
+                                  struct xpart *xpj,
+                                  const struct cosmology *cosmo,
+                                  const struct gravity_props *grav_props,
+                                  const integertime_t ti_current) {
 
   float wi;
 
@@ -141,11 +148,13 @@ runner_iact_nonsym_bh_gas_swallow(
 
   /* Start by checking the repositioning criteria */
 
-  /* Note the factor 9 is taken from EAGLE. Will be turned into a parameter */
+  /* (Square of) Max repositioning distance allowed based on the softening */
   const float max_dist_repos2 =
       kernel_gravity_softening_plummer_equivalent_inv *
-      kernel_gravity_softening_plummer_equivalent_inv * 9.f *
-      grav_props->epsilon_baryon_cur * grav_props->epsilon_baryon_cur;
+      kernel_gravity_softening_plummer_equivalent_inv *
+      const_max_repositioning_distance_ratio *
+      const_max_repositioning_distance_ratio * grav_props->epsilon_baryon_cur *
+      grav_props->epsilon_baryon_cur;
 
   /* This gas neighbour is close enough that we can consider it's potential
      for repositioning */
@@ -163,16 +172,16 @@ runner_iact_nonsym_bh_gas_swallow(
     /* Check the velocity criterion */
     if (v2_pec < 0.25f * bi->sound_speed_gas * bi->sound_speed_gas) {
 
-      const float potential = gravity_get_comoving_potential(pj->gpart);
+      const float potential = pj->black_holes_data.potential;
 
       /* Is the potential lower? */
       if (potential < bi->reposition.min_potential) {
 
         /* Store this as our new best */
         bi->reposition.min_potential = potential;
-        bi->reposition.x[0] = pj->x[0];
-        bi->reposition.x[1] = pj->x[1];
-        bi->reposition.x[2] = pj->x[2];
+        bi->reposition.delta_x[0] = -dx[0];
+        bi->reposition.delta_x[1] = -dx[1];
+        bi->reposition.delta_x[2] = -dx[2];
       }
     }
   }
@@ -231,8 +240,7 @@ runner_iact_nonsym_bh_gas_swallow(
 __attribute__((always_inline)) INLINE static void
 runner_iact_nonsym_bh_bh_swallow(const float r2, const float *dx,
                                  const float hi, const float hj,
-                                 struct bpart *restrict bi,
-                                 struct bpart *restrict bj,
+                                 struct bpart *bi, struct bpart *bj,
                                  const struct cosmology *cosmo,
                                  const struct gravity_props *grav_props,
                                  const integertime_t ti_current) {
@@ -246,11 +254,13 @@ runner_iact_nonsym_bh_bh_swallow(const float r2, const float *dx,
 
   const float v2_pec = v2 * cosmo->a2_inv;
 
-  /* Note the factor 9 is taken from EAGLE. Will be turned into a parameter */
+  /* (Square of) Max repositioning distance allowed based on the softening */
   const float max_dist_repos2 =
       kernel_gravity_softening_plummer_equivalent_inv *
-      kernel_gravity_softening_plummer_equivalent_inv * 9.f *
-      grav_props->epsilon_baryon_cur * grav_props->epsilon_baryon_cur;
+      kernel_gravity_softening_plummer_equivalent_inv *
+      const_max_repositioning_distance_ratio *
+      const_max_repositioning_distance_ratio * grav_props->epsilon_baryon_cur *
+      grav_props->epsilon_baryon_cur;
 
   /* This gas neighbour is close enough that we can consider it's potential
      for repositioning */
@@ -259,16 +269,16 @@ runner_iact_nonsym_bh_bh_swallow(const float r2, const float *dx,
     /* Check the velocity criterion */
     if (v2_pec < 0.25f * bi->sound_speed_gas * bi->sound_speed_gas) {
 
-      const float potential = gravity_get_comoving_potential(bj->gpart);
+      const float potential = bj->reposition.potential;
 
       /* Is the potential lower? */
       if (potential < bi->reposition.min_potential) {
 
         /* Store this as our new best */
         bi->reposition.min_potential = potential;
-        bi->reposition.x[0] = bj->x[0];
-        bi->reposition.x[1] = bj->x[1];
-        bi->reposition.x[2] = bj->x[2];
+        bi->reposition.delta_x[0] = -dx[0];
+        bi->reposition.delta_x[1] = -dx[1];
+        bi->reposition.delta_x[2] = -dx[2];
       }
     }
   }
@@ -281,10 +291,11 @@ runner_iact_nonsym_bh_bh_swallow(const float r2, const float *dx,
     h = hj;
   }
 
-  /* Note the factor 9 is taken from EAGLE. Will be turned into a parameter */
+  /* (Square of) Max swallowing distance allowed based on the softening */
   const float max_dist_merge2 =
       kernel_gravity_softening_plummer_equivalent_inv *
-      kernel_gravity_softening_plummer_equivalent_inv * 9.f *
+      kernel_gravity_softening_plummer_equivalent_inv *
+      const_max_merging_distance_ratio * const_max_merging_distance_ratio *
       grav_props->epsilon_baryon_cur * grav_props->epsilon_baryon_cur;
 
   const float G_Newton = grav_props->G_Newton;
@@ -338,11 +349,13 @@ runner_iact_nonsym_bh_bh_swallow(const float r2, const float *dx,
  * @param ti_current Current integer time value (for random numbers).
  */
 __attribute__((always_inline)) INLINE static void
-runner_iact_nonsym_bh_gas_feedback(
-    const float r2, const float *dx, const float hi, const float hj,
-    const struct bpart *restrict bi, struct part *restrict pj,
-    struct xpart *restrict xpj, const struct cosmology *cosmo,
-    const struct gravity_props *grav_props, const integertime_t ti_current) {
+runner_iact_nonsym_bh_gas_feedback(const float r2, const float *dx,
+                                   const float hi, const float hj,
+                                   const struct bpart *bi, struct part *pj,
+                                   struct xpart *xpj,
+                                   const struct cosmology *cosmo,
+                                   const struct gravity_props *grav_props,
+                                   const integertime_t ti_current) {
 
   /* Get the heating probability */
   const float prob = bi->to_distribute.AGN_heating_probability;
@@ -368,10 +381,16 @@ runner_iact_nonsym_bh_gas_feedback(
       /* Impose maximal viscosity */
       hydro_diffusive_feedback_reset(pj);
 
+      /* Mark this particle has having been heated by AGN feedback */
+      tracers_after_black_holes_feedback(xpj);
+
       /* message( */
       /*     "We did some AGN heating! id %llu BH id %llu probability " */
       /*     " %.5e  random_num %.5e du %.5e du/ini %.5e", */
       /*     pj->id, bi->id, prob, rand, delta_u, delta_u / u_init); */
+
+      /* Synchronize the particle on the timeline */
+      timestep_sync_part(pj);
     }
   }
 

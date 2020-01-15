@@ -45,9 +45,9 @@ void header_print(const struct header *h) {
 #endif
   message("First Offset:     %lu.", h->offset_first_record);
   message("Offset direction: %s.", logger_offset_name[h->offset_direction]);
-  message("Number masks:     %i.", h->number_mask);
+  message("Number masks:     %i.", h->masks_count);
 
-  for (size_t i = 0; i < h->number_mask; i++) {
+  for (size_t i = 0; i < h->masks_count; i++) {
     message("  Mask:  %s.", h->masks[i].name);
     message("  Value: %u.", h->masks[i].mask);
     message("  Size:  %i.", h->masks[i].size);
@@ -70,7 +70,7 @@ void header_free(struct header *h) { free(h->masks); };
  * @return Index of the field (-1 if not found).
  */
 int header_get_field_index(const struct header *h, const char *field) {
-  for (size_t i = 0; i < h->number_mask; i++) {
+  for (size_t i = 0; i < h->masks_count; i++) {
     if (strcmp(h->masks[i].name, field) == 0) {
       return i;
     }
@@ -93,8 +93,8 @@ void header_change_offset_direction(struct header *h,
   /* Skip file format and version numbers. */
   size_t offset = LOGGER_VERSION_SIZE + 2 * sizeof(int);
 
-  logger_loader_io_write_data(h->log->log.map + offset, sizeof(unsigned int),
-                              &new_value);
+  logger_loader_io_write_data((char *)h->log->log.map + offset,
+                              sizeof(unsigned int), &new_value);
 }
 
 /**
@@ -135,10 +135,12 @@ void header_read(struct header *h, struct logger_logfile *log) {
     error("Wrong offset value in the header (%i).", h->offset_direction);
 
   /* Read offset to first record. */
+  h->offset_first_record = 0;
   map = logger_loader_io_read_data(map, LOGGER_OFFSET_SIZE,
                                    &h->offset_first_record);
 
   /* Read the size of the strings. */
+  h->string_length = 0;
   map =
       logger_loader_io_read_data(map, sizeof(unsigned int), &h->string_length);
 
@@ -148,13 +150,17 @@ void header_read(struct header *h, struct logger_logfile *log) {
   }
 
   /* Read the number of masks. */
-  map = logger_loader_io_read_data(map, sizeof(unsigned int), &h->number_mask);
+  map = logger_loader_io_read_data(map, sizeof(unsigned int), &h->masks_count);
 
   /* Allocate the masks memory. */
-  h->masks = malloc(sizeof(struct mask_data) * h->number_mask);
+  h->masks = malloc(sizeof(struct mask_data) * h->masks_count);
+  if (h->masks == NULL) {
+    error("Failed to allocate the memory for the masks.");
+  }
 
   /* Loop over all masks. */
-  for (size_t i = 0; i < h->number_mask; i++) {
+  h->timestamp_mask = 0;
+  for (size_t i = 0; i < h->masks_count; i++) {
     /* Read the mask name. */
     map = logger_loader_io_read_data(map, h->string_length, h->masks[i].name);
 
@@ -164,12 +170,22 @@ void header_read(struct header *h, struct logger_logfile *log) {
     /* Read the mask data size. */
     map = logger_loader_io_read_data(map, sizeof(unsigned int),
                                      &h->masks[i].size);
+
+    /* Keep the timestamp mask in memory */
+    if (strcmp(h->masks[i].name, "timestamp") == 0) {
+      h->timestamp_mask = h->masks[i].mask;
+    }
+  }
+
+  /* Check that the timestamp mask exists */
+  if (h->timestamp_mask == 0) {
+    error("Unable to find the timestamp mask.");
   }
 
   /* Check the logfile header's size. */
-  if (map != log->log.map + h->offset_first_record) {
+  if (map != (char *)log->log.map + h->offset_first_record) {
     header_print(h);
-    size_t offset = map - log->log.map;
+    size_t offset = (char *)map - (char *)log->log.map;
     error("Wrong header size (in header %zi, current %zi).",
           h->offset_first_record, offset);
   }
@@ -187,7 +203,7 @@ size_t header_get_record_size_from_mask(const struct header *h,
                                         const size_t mask) {
   size_t count = 0;
   /* Loop over each masks. */
-  for (size_t i = 0; i < h->number_mask; i++) {
+  for (size_t i = 0; i < h->masks_count; i++) {
     if (mask & h->masks[i].mask) {
       count += h->masks[i].size;
     }

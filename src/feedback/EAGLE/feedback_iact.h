@@ -21,6 +21,8 @@
 
 /* Local includes */
 #include "random.h"
+#include "timestep_sync_part.h"
+#include "tracers.h"
 
 /**
  * @brief Density interaction between two particles (non-symmetric).
@@ -38,18 +40,16 @@
 __attribute__((always_inline)) INLINE static void
 runner_iact_nonsym_feedback_density(const float r2, const float *dx,
                                     const float hi, const float hj,
-                                    struct spart *restrict si,
-                                    const struct part *restrict pj,
-                                    const struct xpart *restrict xpj,
-                                    const struct cosmology *restrict cosmo,
+                                    struct spart *si, const struct part *pj,
+                                    const struct xpart *xpj,
+                                    const struct cosmology *cosmo,
                                     const integertime_t ti_current) {
 
   /* Get the gas mass. */
   const float mj = hydro_get_mass(pj);
 
-  /* Get r and 1/r. */
-  const float r_inv = 1.0f / sqrtf(r2);
-  const float r = r2 * r_inv;
+  /* Get r. */
+  const float r = sqrtf(r2);
 
   /* Compute the kernel function */
   const float hi_inv = 1.0f / hi;
@@ -87,15 +87,18 @@ runner_iact_nonsym_feedback_density(const float r2, const float *dx,
 __attribute__((always_inline)) INLINE static void
 runner_iact_nonsym_feedback_apply(const float r2, const float *dx,
                                   const float hi, const float hj,
-                                  const struct spart *restrict si,
-                                  struct part *restrict pj,
-                                  struct xpart *restrict xpj,
-                                  const struct cosmology *restrict cosmo,
+                                  const struct spart *si, struct part *pj,
+                                  struct xpart *xpj,
+                                  const struct cosmology *cosmo,
                                   const integertime_t ti_current) {
 
-  /* Get r and 1/r. */
-  const float r_inv = 1.0f / sqrtf(r2);
-  const float r = r2 * r_inv;
+#ifdef SWIFT_DEBUG_CHECKS
+  if (si->count_since_last_enrichment != 0)
+    error("Computing feedback from a star that should not");
+#endif
+
+  /* Get r. */
+  const float r = sqrtf(r2);
 
   /* Compute the kernel function */
   const float hi_inv = 1.0f / hi;
@@ -115,9 +118,11 @@ runner_iact_nonsym_feedback_apply(const float r2, const float *dx,
   }
 
 #ifdef SWIFT_DEBUG_CHECKS
-  if (Omega_frac < 0. || Omega_frac > 1.00001)
-    error("Invalid fraction of material to distribute. Omega_frac=%e",
-          Omega_frac);
+  if (Omega_frac < 0. || Omega_frac > 1.01)
+    error(
+        "Invalid fraction of material to distribute for star ID=%lld "
+        "Omega_frac=%e count since last enrich=%d",
+        si->id, Omega_frac, si->count_since_last_enrichment);
 #endif
 
   /* Update particle mass */
@@ -291,10 +296,16 @@ runner_iact_nonsym_feedback_apply(const float r2, const float *dx,
       /* Impose maximal viscosity */
       hydro_diffusive_feedback_reset(pj);
 
+      /* Mark this particle has having been heated by supernova feedback */
+      tracers_after_feedback(xpj);
+
       /* message( */
       /*     "We did some heating! id %llu star id %llu probability %.5e " */
       /*     "random_num %.5e du %.5e du/ini %.5e", */
       /*     pj->id, si->id, prob, rand, delta_u, delta_u / u_init); */
+
+      /* Synchronize the particle on the timeline */
+      timestep_sync_part(pj);
     }
   }
 }

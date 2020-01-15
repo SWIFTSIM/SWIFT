@@ -320,6 +320,105 @@ __attribute__((always_inline)) INLINE static float chemistry_timestep(
 }
 
 /**
+ * @brief Initialise the chemistry properties of a black hole with
+ * the chemistry properties of the gas it is born from.
+ *
+ * Black holes don't store fractions so we need to use element masses.
+ *
+ * @param bp_data The black hole data to initialise.
+ * @param p_data The gas data to use.
+ * @param gas_mass The mass of the gas particle.
+ */
+__attribute__((always_inline)) INLINE static void chemistry_bpart_from_part(
+    struct chemistry_bpart_data* bp_data,
+    const struct chemistry_part_data* p_data, const double gas_mass) {
+
+  bp_data->metal_mass_total = p_data->metal_mass_fraction_total * gas_mass;
+  for (int i = 0; i < chemistry_element_count; ++i) {
+    bp_data->metal_mass[i] = p_data->metal_mass_fraction[i] * gas_mass;
+  }
+  bp_data->mass_from_SNIa = p_data->mass_from_SNIa;
+  bp_data->mass_from_SNII = p_data->mass_from_SNII;
+  bp_data->mass_from_AGB = p_data->mass_from_AGB;
+  bp_data->metal_mass_from_SNIa =
+      p_data->metal_mass_fraction_from_SNIa * gas_mass;
+  bp_data->metal_mass_from_SNII =
+      p_data->metal_mass_fraction_from_SNII * gas_mass;
+  bp_data->metal_mass_from_AGB =
+      p_data->metal_mass_fraction_from_AGB * gas_mass;
+  bp_data->iron_mass_from_SNIa =
+      p_data->iron_mass_fraction_from_SNIa * gas_mass;
+}
+
+/**
+ * @brief Add the chemistry data of a gas particle to a black hole.
+ *
+ * Black holes don't store fractions so we need to add element masses.
+ *
+ * @param bp_data The black hole data to add to.
+ * @param p_data The gas data to use.
+ * @param gas_mass The mass of the gas particle.
+ */
+__attribute__((always_inline)) INLINE static void chemistry_add_part_to_bpart(
+    struct chemistry_bpart_data* bp_data,
+    const struct chemistry_part_data* p_data, const double gas_mass) {
+
+  bp_data->metal_mass_total += p_data->metal_mass_fraction_total * gas_mass;
+  for (int i = 0; i < chemistry_element_count; ++i) {
+    bp_data->metal_mass[i] += p_data->metal_mass_fraction[i] * gas_mass;
+  }
+  bp_data->mass_from_SNIa += p_data->mass_from_SNIa;
+  bp_data->mass_from_SNII += p_data->mass_from_SNII;
+  bp_data->mass_from_AGB += p_data->mass_from_AGB;
+  bp_data->metal_mass_from_SNIa +=
+      p_data->metal_mass_fraction_from_SNIa * gas_mass;
+  bp_data->metal_mass_from_SNII +=
+      p_data->metal_mass_fraction_from_SNII * gas_mass;
+  bp_data->metal_mass_from_AGB +=
+      p_data->metal_mass_fraction_from_AGB * gas_mass;
+  bp_data->iron_mass_from_SNIa +=
+      p_data->iron_mass_fraction_from_SNIa * gas_mass;
+}
+
+/**
+ * @brief Add the chemistry data of a black hole to another one.
+ *
+ * @param bp_data The black hole data to add to.
+ * @param swallowed_data The black hole data to use.
+ */
+__attribute__((always_inline)) INLINE static void chemistry_add_bpart_to_bpart(
+    struct chemistry_bpart_data* bp_data,
+    const struct chemistry_bpart_data* swallowed_data) {
+
+  bp_data->metal_mass_total += swallowed_data->metal_mass_total;
+  for (int i = 0; i < chemistry_element_count; ++i) {
+    bp_data->metal_mass[i] += swallowed_data->metal_mass[i];
+  }
+  bp_data->mass_from_SNIa += swallowed_data->mass_from_SNIa;
+  bp_data->mass_from_SNII += swallowed_data->mass_from_SNII;
+  bp_data->mass_from_AGB += swallowed_data->mass_from_AGB;
+  bp_data->metal_mass_from_SNIa += swallowed_data->metal_mass_from_SNIa;
+  bp_data->metal_mass_from_SNII += swallowed_data->metal_mass_from_SNII;
+  bp_data->metal_mass_from_AGB += swallowed_data->metal_mass_from_AGB;
+  bp_data->iron_mass_from_SNIa += swallowed_data->iron_mass_from_SNIa;
+}
+
+/**
+ * @brief Split the metal content of a particle into n pieces
+ *
+ * We only need to split the fields that are not fractions.
+ *
+ * @param p The #part.
+ * @param n The number of pieces to split into.
+ */
+__attribute__((always_inline)) INLINE static void chemistry_split_part(
+    struct part* p, const double n) {
+  p->chemistry_data.mass_from_SNIa /= n;
+  p->chemistry_data.mass_from_SNII /= n;
+  p->chemistry_data.mass_from_AGB /= n;
+}
+
+/**
  * @brief Returns the total metallicity (metal mass fraction) of the
  * star particle to be used in feedback/enrichment related routines.
  *

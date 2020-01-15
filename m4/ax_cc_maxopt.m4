@@ -133,6 +133,14 @@ if test "$ac_test_CFLAGS" != "set"; then
 		    *000?f[[346]]?:*:*:*|?f[[346]]?:*:*:*|f[[346]]?:*:*:*) icc_flags="-xSSE3 -xP -xO -xN -xW -xK" ;;
 		    *00??f??:*:*:*|??f??:*:*:*|?f??:*:*:*|f??:*:*:*) icc_flags="-xSSE2 -xN -xW -xK" ;;
                   esac ;;
+                *:68747541:444d4163:69746e65) # AMDs with AVX2 support.
+                  case $ax_cv_gcc_x86_cpuid_1 in
+                    *061?f??:*:*:*|61?f??:*:*:*) icc_flags="-march=core-avx2" ;;
+                    *06??f??:*:*:*|6??f??:*:*:*) icc_flags="-march=core-avx2" ;;
+                    *070?f??:*:*:*|70?f??:*:*:*) icc_flags="-march=core-avx2" ;;
+                                   83?f??:*:*:*) icc_flags="-march=core-avx2"
+                                                 CFLAGS="$CFLAGS -fma -ftz -fomit-frame-pointer";; # EPYC
+                  esac ;;
               esac ;;
           esac
           if test "x$icc_flags" != x; then

@@ -44,13 +44,13 @@ size_t logger_loader_io_get_file_size(int fd) {
  *
  * #logger_loader_io_munmap_file should be called to unmap the file.
  *
+ * @param map The #mapped_file.
  * @param filename file to read.
- * @param file_size (out) size of the file.
  * @param read_only Open the file in read only mode?
  *
  */
-void *logger_loader_io_mmap_file(char *filename, size_t *file_size,
-                                 int read_only) {
+void logger_loader_io_mmap_file(struct mapped_file *map, const char *filename,
+                                int read_only) {
   /* open the file. */
   int fd;
 
@@ -63,33 +63,34 @@ void *logger_loader_io_mmap_file(char *filename, size_t *file_size,
     error("Unable to open file %s (%s).", filename, strerror(errno));
 
   /* get the file size. */
-  *file_size = logger_loader_io_get_file_size(fd);
+  map->mmap_size = logger_loader_io_get_file_size(fd);
 
   /* map the memory. */
   int mode = PROT_READ;
   if (!read_only) mode |= PROT_WRITE;
 
-  void *map = mmap(NULL, *file_size, mode, MAP_SHARED, fd, 0);
-  if (map == MAP_FAILED)
-    error("Failed to allocate map of size %zi bytes (%s).", *file_size,
+  map->map = mmap(NULL, map->mmap_size, mode, MAP_SHARED, fd, 0);
+  if (map->map == MAP_FAILED)
+    error("Failed to allocate map of size %zi bytes (%s).", map->mmap_size,
           strerror(errno));
 
   /* Close the file. */
   close(fd);
-
-  return map;
 }
 
 /**
  * @brief Unmap a file.
  *
- * @param map file mapping.
- * @param file_size The file size.
+ * @param map The #mapped_file.
  *
  */
-void logger_loader_io_munmap_file(void *map, size_t file_size) {
+void logger_loader_io_munmap_file(struct mapped_file *map) {
   /* unmap the file. */
-  if (munmap(map, file_size) != 0) {
+  if (munmap(map->map, map->mmap_size) != 0) {
     error("Unable to unmap the file (%s).", strerror(errno));
   }
+
+  /* Reset values */
+  map->map = NULL;
+  map->mmap_size = 0;
 }

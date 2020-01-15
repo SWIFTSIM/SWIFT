@@ -57,7 +57,7 @@ Runtime parameters
  /____/ |__/|__/___/_/    /_/
  SPH With Inter-dependent Fine-grained Tasking
 
- Version : 0.8.4
+ Version : 0.8.5
  Website: www.swiftsim.com
  Twitter: @SwiftSimulation
 
@@ -92,7 +92,16 @@ Parameters:
                                       perform black hole seeding.
     -x, --velociraptor                Run with structure finding.
     --limiter                         Run with time-step limiter.
+    --sync                            Run with time-step synchronization
+                                      of particles hit by feedback events.
+  Simulation meta-options:
 
+    --eagle                           Run with all the options needed for the 
+                                      EAGLE model. This is equivalent to --hydro 
+                                      --limiter --sync --self-gravity --stars 
+                                      --star-formation --cooling --feedback 
+                                      --black-holes --fof.
+				      
   Control options:
   
     -a, --pin                         Pin runners using processor affinity.

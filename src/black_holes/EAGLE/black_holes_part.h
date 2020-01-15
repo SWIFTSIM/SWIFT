@@ -77,8 +77,8 @@ struct bpart {
   /*! Subgrid mass of the black hole */
   float subgrid_mass;
 
-  /*! Total accreted mass of the black hole (including accreted mass onto BHs
-   * that were merged) */
+  /*! Total accreted mass of the black hole (not including mass merged in
+   * from other black holes) */
   float total_accreted_mass;
 
   /*! Energy reservoir for feedback */
@@ -111,6 +111,39 @@ struct bpart {
   /*! Total number of BH merger events (i.e. not including all progenies) */
   int number_of_mergers;
 
+  /*! Total (physical) angular momentum accumulated by swallowing particles */
+  float swallowed_angular_momentum[3];
+
+  /*! Union for the last high Eddington ratio point in time */
+  union {
+
+    /*! Last time the BH had a a high Eddington fraction */
+    float last_high_Eddington_fraction_time;
+
+    /*! Last scale factor the BH had a a high Eddington fraction */
+    float last_high_Eddington_fraction_scale_factor;
+  };
+
+  /*! Union for the last minor merger point in time */
+  union {
+
+    /*! Last time the BH had a a high Eddington fraction */
+    float last_minor_merger_time;
+
+    /*! Last scale factor the BH had a a high Eddington fraction */
+    float last_minor_merger_scale_factor;
+  };
+
+  /*! Union for the last major merger point in time */
+  union {
+
+    /*! Last time the BH had a a high Eddington fraction */
+    float last_major_merger_time;
+
+    /*! Last scale factor the BH had a a high Eddington fraction */
+    float last_major_merger_scale_factor;
+  };
+
   /*! Properties used in the feedback loop to distribute to gas neighbours. */
   struct {
 
@@ -124,11 +157,14 @@ struct bpart {
 
   struct {
 
+    /*! Gravitational potential copied from the #gpart. */
+    float potential;
+
     /*! Value of the minimum potential across all neighbours. */
     float min_potential;
 
-    /*! New position of the BH following the reposition procedure */
-    double x[3];
+    /*! Delta position to apply after the reposition procedure */
+    double delta_x[3];
 
   } reposition;
 

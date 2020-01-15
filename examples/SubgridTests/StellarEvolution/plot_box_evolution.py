@@ -107,12 +107,12 @@ t = zeros(n_snapshots)
 
 # Read data from snapshots
 for i in range(n_snapshots):
-	#print("reading snapshot "+str(i))
-	sim = h5py.File("stellar_evolution_%04d.hdf5"%i, "r")
-	t[i] = sim["/Header"].attrs["Time"][0]
+        #print("reading snapshot "+str(i))
+        sim = h5py.File("stellar_evolution_%04d.hdf5"%i, "r")
+        t[i] = sim["/Header"].attrs["Time"][0]
 
-	masses = sim["/PartType0/Masses"][:]
-	swift_box_gas_mass[i] = np.sum(masses)
+        masses = sim["/PartType0/Masses"][:]
+        swift_box_gas_mass[i] = np.sum(masses)
 
         AGB_mass = sim["/PartType0/MassesFromAGB"][:]
         SNII_mass = sim["/PartType0/MassesFromSNII"][:]
@@ -121,13 +121,13 @@ for i in range(n_snapshots):
         swift_box_gas_mass_AGB[i] = np.sum(AGB_mass)
         swift_box_gas_mass_SNII[i] = np.sum(SNII_mass)
         swift_box_gas_mass_SNIa[i] = np.sum(SNIa_mass)
-        
-        Z_star = sim["/PartType4/MetalMassFractions"][0]
-	star_masses = sim["/PartType4/Masses"][:]
-	swift_box_star_mass[i] = np.sum(star_masses)
 
-	metallicities = sim["/PartType0/MetalMassFractions"][:]
-	swift_box_gas_metal_mass[i] = np.sum(metallicities * masses)
+        Z_star = sim["/PartType4/MetalMassFractions"][0]
+        star_masses = sim["/PartType4/Masses"][:]
+        swift_box_star_mass[i] = np.sum(star_masses)
+
+        metallicities = sim["/PartType0/MetalMassFractions"][:]
+        swift_box_gas_metal_mass[i] = np.sum(metallicities * masses)
 
         AGB_Z_frac = sim["/PartType0/MetalMassFractionsFromAGB"][:]
         SNII_Z_frac = sim["/PartType0/MetalMassFractionsFromSNII"][:]
@@ -136,10 +136,10 @@ for i in range(n_snapshots):
         swift_box_gas_metal_mass_AGB[i] = np.sum(AGB_Z_frac * masses)
         swift_box_gas_metal_mass_SNII[i] = np.sum(SNII_Z_frac * masses)
         swift_box_gas_metal_mass_SNIa[i] = np.sum(SNIa_Z_frac * masses)
-        
-	element_abundances = sim["/PartType0/ElementMassFractions"][:][:]
-	for j in range(n_elements):
-		swift_element_mass[i,j] = np.sum(element_abundances[:,j] * masses)
+
+        element_abundances = sim["/PartType0/ElementMassFractions"][:][:]
+        for j in range(n_elements):
+                swift_element_mass[i,j] = np.sum(element_abundances[:,j] * masses)
 
         v = sim["/PartType0/Velocities"][:,:]
         v2 = v[:,0]**2 + v[:,1]**2 + v[:,2]**2
@@ -218,8 +218,8 @@ colours = ['k','r','g','b','c','y','m','skyblue','plum']
 element_names = ['H','He','C','N','O','Ne','Mg','Si','Fe']
 subplot(223)
 for j in range(n_elements):
-	plot(t[1:] * unit_time_in_cgs / Gyr_in_cgs, (swift_element_mass[1:,j] - swift_element_mass[0,j]) * unit_mass_in_cgs / Msun_in_cgs, linewidth=0.5, color=colours[j], ms=0.5, label=element_names[j])
-	plot(eagle_time_Gyr[1:],eagle_total_element_mass[:-1,j],linewidth=1,color=colours[j],linestyle='--')
+        plot(t[1:] * unit_time_in_cgs / Gyr_in_cgs, (swift_element_mass[1:,j] - swift_element_mass[0,j]) * unit_mass_in_cgs / Msun_in_cgs, linewidth=0.5, color=colours[j], ms=0.5, label=element_names[j])
+        plot(eagle_time_Gyr[1:],eagle_total_element_mass[:-1,j],linewidth=1,color=colours[j],linestyle='--')
 xlabel("${\\rm Time~[Gyr]}$", labelpad=0)
 ylabel("Change in element mass of gas particles ${[\\rm M_\\odot]}$", labelpad=2)
 xscale("log")

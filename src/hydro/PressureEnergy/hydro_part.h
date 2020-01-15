@@ -36,6 +36,7 @@
 #include "cooling_struct.h"
 #include "pressure_floor_struct.h"
 #include "star_formation_struct.h"
+#include "timestep_limiter_struct.h"
 #include "tracers_struct.h"
 
 /**
@@ -187,8 +188,8 @@ struct part {
   /*! Time-step length */
   timebin_t time_bin;
 
-  /* Need waking-up ? */
-  timebin_t wakeup;
+  /*! Time-step limiter information */
+  struct timestep_limiter_data limiter_data;
 
 #ifdef SWIFT_DEBUG_CHECKS
 
@@ -202,4 +203,4 @@ struct part {
 
 } SWIFT_STRUCT_ALIGN;
 
-#endif /* SWIFT_MINIMAL_HYDRO_PART_H */
+#endif /* SWIFT_PRESSURE_ENERGY_HYDRO_PART_H */

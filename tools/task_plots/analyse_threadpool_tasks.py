@@ -49,9 +49,17 @@ parser.add_argument(
     default=False,
     action="store_true",
 )
+parser.add_argument(
+    "--html",
+    dest="html",
+    help="Use html titles and anchors in the output (default: False)",
+    default=False,
+    action="store_true",
+)
 
 args = parser.parse_args()
 infile = args.input
+with_html = args.html
 
 #  Read header. First two lines.
 with open(infile) as infid:
@@ -145,6 +153,8 @@ for i in threadids:
             alltasktimes[key] = []
         alltasktimes[key].append(dt)
 
+    if with_html:
+        print('<div id="thread{}"></div>'.format(i))
     print("# Thread : ", i)
     for key in sorted(tasktimes.keys()):
         taskmin = min(tasktimes[key])
@@ -163,6 +173,8 @@ for i in threadids:
         )
     print()
 
+if with_html:
+    print('<div id="all"></div>')
 print("# All threads : ")
 for key in sorted(alltasktimes.keys()):
     taskmin = min(alltasktimes[key])
@@ -184,6 +196,8 @@ print()
 #  Dead times.
 print("# Times not in tasks (deadtimes)")
 print("# ------------------------------")
+if with_html:
+    print('<div id="before"></div>')
 print("# Time before first task:")
 print("# no.    : {0:>9s} {1:>9s}".format("value", "percent"))
 predeadtimes = []
@@ -216,6 +230,8 @@ print(
 )
 print()
 
+if with_html:
+    print('<div id="after"></div>')
 print("# Time after last task:")
 print("# no.    : {0:>9s} {1:>9s}".format("value", "percent"))
 postdeadtimes = []
@@ -249,6 +265,8 @@ print(
 print()
 
 #  Time in threadpool, i.e. from first to last tasks.
+if with_html:
+    print('<div id="between"></div>')
 print("# Time between tasks (threadpool deadtime):")
 print(
     "# no.    : {0:>9s} {1:>9s} {2:>9s} {3:>9s} {4:>9s} {5:>9s}".format(
@@ -303,6 +321,8 @@ print(
 print()
 
 #  All times in step.
+if with_html:
+    print('<div id="dead"></div>')
 print("# All deadtimes:")
 print(
     "# no.    : {0:>9s} {1:>9s} {2:>9s} {3:>9s} {4:>9s} {5:>9s}".format(

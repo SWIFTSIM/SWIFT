@@ -24,6 +24,7 @@
 #define LOGGER_LOGGER_LOGFILE_H
 
 #include "logger_header.h"
+#include "logger_loader_io.h"
 #include "logger_time.h"
 
 struct logger_reader;
@@ -49,15 +50,8 @@ struct logger_logfile {
   /* Information about the time records. */
   struct time_array times;
 
-  /* The log's variables. */
-  struct {
-    /* Mapped data. */
-    void *map;
-
-    /* File size. */
-    size_t file_size;
-
-  } log;
+  /* The file. */
+  struct mapped_file log;
 };
 
 void logger_logfile_init_from_file(struct logger_logfile *log, char *filename,

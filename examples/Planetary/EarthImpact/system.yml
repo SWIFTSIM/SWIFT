@@ -1,0 +1,8 @@
+input:
+  - earth_impact.yml
+
+output:
+  - earth_impact.pdf
+
+swift_parameters:   -s -G
+swift_threads:      8
