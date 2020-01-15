@@ -1022,6 +1022,7 @@ void runner_do_ghost(struct runner *r, struct cell *c, int timer) {
 
         /* Update h_max */
         h_max = max(h_max, c->progeny[k]->hydro.h_max);
+        h_max_active = max(h_max_active, c->progeny[k]->hydro.h_max_active);
       }
     }
   } else {
