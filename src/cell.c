@@ -3476,15 +3476,14 @@ int cell_unskip_hydro_tasks(struct cell *c, struct scheduler *s) {
           }
         }
 
-        /* If the foreign cell is active, we want its ti_end values. */
-        if (ci_active || with_timestep_limiter)
-          scheduler_activate_recv(s, ci->mpi.recv, task_subtype_tend_part);
-
-        if (with_timestep_limiter)
+        /* If the foreign cell is active, we want its particles for the limiter
+         */
+        if (ci_active && with_timestep_limiter)
           scheduler_activate_recv(s, ci->mpi.recv, task_subtype_limiter);
-        if (with_timestep_limiter)
-          scheduler_activate_send(s, cj->mpi.send, task_subtype_limiter,
-                                  ci->nodeID);
+
+        /* If the foreign cell is active, we want its ti_end values. */
+        if (ci_active)
+          scheduler_activate_recv(s, ci->mpi.recv, task_subtype_tend_part);
 
         /* Is the foreign cell active and will need stuff from us? */
         if (ci_active) {
@@ -3508,8 +3507,13 @@ int cell_unskip_hydro_tasks(struct cell *c, struct scheduler *s) {
           }
         }
 
+        /* If the local cell is active, send its particles for the limiting. */
+        if (cj_active && with_timestep_limiter)
+          scheduler_activate_send(s, cj->mpi.send, task_subtype_limiter,
+                                  ci_nodeID);
+
         /* If the local cell is active, send its ti_end values. */
-        if (cj_active || with_timestep_limiter)
+        if (cj_active)
           scheduler_activate_send(s, cj->mpi.send, task_subtype_tend_part,
                                   ci_nodeID);
 
@@ -3544,15 +3548,14 @@ int cell_unskip_hydro_tasks(struct cell *c, struct scheduler *s) {
           }
         }
 
-        /* If the foreign cell is active, we want its ti_end values. */
-        if (cj_active || with_timestep_limiter)
-          scheduler_activate_recv(s, cj->mpi.recv, task_subtype_tend_part);
-
-        if (with_timestep_limiter)
+        /* If the foreign cell is active, we want its particles for the limiter
+         */
+        if (cj_active && with_timestep_limiter)
           scheduler_activate_recv(s, cj->mpi.recv, task_subtype_limiter);
-        if (with_timestep_limiter)
-          scheduler_activate_send(s, ci->mpi.send, task_subtype_limiter,
-                                  cj->nodeID);
+
+        /* If the foreign cell is active, we want its ti_end values. */
+        if (cj_active)
+          scheduler_activate_recv(s, cj->mpi.recv, task_subtype_tend_part);
 
         /* Is the foreign cell active and will need stuff from us? */
         if (cj_active) {
@@ -3577,8 +3580,13 @@ int cell_unskip_hydro_tasks(struct cell *c, struct scheduler *s) {
           }
         }
 
+        /* If the local cell is active, send its particles for the limiting. */
+        if (ci_active && with_timestep_limiter)
+          scheduler_activate_send(s, ci->mpi.send, task_subtype_limiter,
+                                  cj_nodeID);
+
         /* If the local cell is active, send its ti_end values. */
-        if (ci_active || with_timestep_limiter)
+        if (ci_active)
           scheduler_activate_send(s, ci->mpi.send, task_subtype_tend_part,
                                   cj_nodeID);
 
@@ -5281,11 +5289,15 @@ void cell_check_timesteps(const struct cell *c, const integertime_t ti_current,
   integertime_t ti_end_max = 0;
   integertime_t ti_beg_max = 0;
 
+  int count = 0;
+
   for (int i = 0; i < c->hydro.count; ++i) {
 
     const struct part *p = &c->hydro.parts[i];
     if (p->time_bin == time_bin_inhibited) continue;
     if (p->time_bin == time_bin_not_created) continue;
+
+    ++count;
 
     integertime_t ti_end, ti_beg;
 
@@ -5303,14 +5315,15 @@ void cell_check_timesteps(const struct cell *c, const integertime_t ti_current,
     ti_beg_max = max(ti_beg, ti_beg_max);
   }
 
-  if (c->hydro.count > 0) {
+  /* Only check cells that have at least one non-inhibited particle */
+  if (count > 0) {
 
     if (ti_end_min != c->hydro.ti_end_min)
       error(
           "Non-matching ti_end_min. Cell=%lld true=%lld ti_current=%lld "
           "depth=%d",
           c->hydro.ti_end_min, ti_end_min, ti_current, c->depth);
-    if (ti_end_max != c->hydro.ti_end_max)
+    if (ti_end_max > c->hydro.ti_end_max)
       error(
           "Non-matching ti_end_max. Cell=%lld true=%lld ti_current=%lld "
           "depth=%d",

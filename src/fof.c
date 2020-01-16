@@ -2308,7 +2308,7 @@ void fof_search_foreign_cells(struct fof_props *props, const struct space *s) {
   tic = getticks();
 
   /* Perform send and receive tasks. */
-  engine_launch(e, /*fof=*/1);
+  engine_launch(e, "fof comms");
 
   if (verbose)
     message("MPI send/recv comms took: %.3f %s.",

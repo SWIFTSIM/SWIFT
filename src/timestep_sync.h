@@ -56,6 +56,8 @@ INLINE static void timestep_process_sync_part(struct part *p, struct xpart *xp,
     return;
   }
 
+  // message(" Synchronizing particle! %lld old bin=%d", p->id, p->time_bin);
+
   /* We want to make the particle finish it's time-step now. */
 
   /* Start by recovering the start and end point of the particle's time-step. */
