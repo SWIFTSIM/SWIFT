@@ -136,9 +136,9 @@ __attribute__((always_inline)) INLINE static int cell_is_active_hydro(
   if (c->hydro.ti_end_min < e->ti_current)
     error(
         "cell in an impossible time-zone! c->ti_end_min=%lld (t=%e) and "
-        "e->ti_current=%lld (t=%e, a=%e)",
+        "e->ti_current=%lld (t=%e, a=%e) c->nodeID=%d",
         c->hydro.ti_end_min, c->hydro.ti_end_min * e->time_base, e->ti_current,
-        e->ti_current * e->time_base, e->cosmology->a);
+        e->ti_current * e->time_base, e->cosmology->a, c->nodeID);
 #endif
 
   return (c->hydro.ti_end_min == e->ti_current);

@@ -1741,7 +1741,8 @@ void scheduler_enqueue(struct scheduler *s, struct task *t) {
 
         } else if (t->subtype == task_subtype_xv ||
                    t->subtype == task_subtype_rho ||
-                   t->subtype == task_subtype_gradient) {
+                   t->subtype == task_subtype_gradient ||
+                   t->subtype == task_subtype_limiter) {
 
           count = t->ci->hydro.count;
           size = count * sizeof(struct part);
@@ -1857,7 +1858,8 @@ void scheduler_enqueue(struct scheduler *s, struct task *t) {
 
         } else if (t->subtype == task_subtype_xv ||
                    t->subtype == task_subtype_rho ||
-                   t->subtype == task_subtype_gradient) {
+                   t->subtype == task_subtype_gradient ||
+                   t->subtype == task_subtype_limiter) {
 
           count = t->ci->hydro.count;
           size = count * sizeof(struct part);

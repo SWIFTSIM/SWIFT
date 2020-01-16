@@ -96,7 +96,9 @@ void runner_do_recv_part(struct runner *r, struct cell *c, int clear_sorts,
   }
 
 #ifdef SWIFT_DEBUG_CHECKS
-  if (ti_hydro_end_min < ti_current)
+  if (!(r->e->policy & engine_policy_timestep_sync) &&
+      !(r->e->policy & engine_policy_timestep_limiter) &&
+      ti_hydro_end_min < ti_current)
     error(
         "Received a cell at an incorrect time c->ti_end_min=%lld, "
         "e->ti_current=%lld.",
@@ -171,7 +173,9 @@ void runner_do_recv_gpart(struct runner *r, struct cell *c, int timer) {
   }
 
 #ifdef SWIFT_DEBUG_CHECKS
-  if (ti_gravity_end_min < ti_current)
+  if (!(r->e->policy & engine_policy_timestep_sync) &&
+      !(r->e->policy & engine_policy_timestep_limiter) &&
+      ti_gravity_end_min < ti_current)
     error(
         "Received a cell at an incorrect time c->ti_end_min=%lld, "
         "e->ti_current=%lld.",
