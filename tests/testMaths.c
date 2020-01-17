@@ -45,23 +45,23 @@ int main(int argc, char *argv[]) {
       printf("Absolute difference too large !\n");
       error = 1;
     }
-    if (abs > 1.2e-7 && fabsf(x) <= 0.1) {
+    if (abs > 3e-7 && fabsf(x) <= 0.1) {
       printf("Absolute difference too large !\n");
-      error = 1;
+      error = 2;
     }
 
     if (rel > 1e-6 && fabsf(x) <= 0.2) {
       printf("Relative difference too large !\n");
-      error = 1;
+      error = 3;
     }
-    if (rel > 4e-8 && fabsf(x) <= 0.1) {
+    if (rel > 3e-7 && fabsf(x) <= 0.1) {
       printf("Relative difference too large !\n");
-      error = 1;
+      error = 4;
     }
 
-    if (error) {
-      printf("%2d: x= %f exp(x)= %e approx_exp(x)=%e abs=%e rel=%e\n", i, x,
-             exp_correct, exp_approx, abs, rel);
+    if (error > 0) {
+      printf("%2d/%d: x= %f exp(x)= %e approx_exp(x)=%e abs=%e rel=%e\n", i,
+             error, x, exp_correct, exp_approx, abs, rel);
       return 1;
     }
   }

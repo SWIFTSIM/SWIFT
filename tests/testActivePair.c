@@ -253,7 +253,8 @@ void end_calculation_density(struct cell *c, const struct cosmology *cosmo) {
  */
 void end_calculation_force(struct cell *c, const struct cosmology *cosmo) {
   for (int pid = 0; pid < c->hydro.count; pid++) {
-    hydro_end_force(&c->hydro.parts[pid], cosmo);
+    struct part *volatile part = &c->hydro.parts[pid];
+    hydro_end_force(part, cosmo);
   }
 }
 
