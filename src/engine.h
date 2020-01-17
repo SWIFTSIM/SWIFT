@@ -492,6 +492,7 @@ void engine_compute_next_fof_time(struct engine *e);
 void engine_compute_next_statistics_time(struct engine *e);
 void engine_recompute_displacement_constraint(struct engine *e);
 void engine_unskip(struct engine *e);
+void engine_unskip_timestep_communications(struct engine *e);
 void engine_drift_all(struct engine *e, const int drift_mpoles);
 void engine_drift_top_multipoles(struct engine *e);
 void engine_reconstruct_multipoles(struct engine *e);
@@ -523,7 +524,7 @@ void engine_config(int restart, int fof, struct engine *e,
                    int nr_threads, int with_aff, int verbose,
                    const char *restart_file);
 void engine_dump_index(struct engine *e);
-void engine_launch(struct engine *e, const int fof);
+void engine_launch(struct engine *e, const char *call);
 void engine_prepare(struct engine *e);
 void engine_init_particles(struct engine *e, int flag_entropy_ICs,
                            int clean_h_values);

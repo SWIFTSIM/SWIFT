@@ -1332,7 +1332,8 @@ void DOPAIR2(struct runner *r, struct cell *ci, struct cell *cj, const int sid,
   struct sort_entry *restrict sort_active_i = NULL,
                               *restrict sort_active_j = NULL;
 
-  if (cell_is_all_active_hydro(ci, e)) {
+  // MATTHIEU: temporary disable this optimization
+  if (0 && cell_is_all_active_hydro(ci, e)) {
     /* If everybody is active don't bother copying */
     sort_active_i = sort_i;
     count_active_i = count_i;
@@ -1350,7 +1351,8 @@ void DOPAIR2(struct runner *r, struct cell *ci, struct cell *cj, const int sid,
     }
   }
 
-  if (cell_is_all_active_hydro(cj, e)) {
+  // MATTHIEU: temporary disable this optimization
+  if (0 && cell_is_all_active_hydro(cj, e)) {
     /* If everybody is active don't bother copying */
     sort_active_j = sort_j;
     count_active_j = count_j;
@@ -1754,10 +1756,10 @@ void DOPAIR2(struct runner *r, struct cell *ci, struct cell *cj, const int sid,
     }   /* Is pj active? */
   }     /* Loop over all cj */
 
-  /* Clean-up if necessary */
-  if (cell_is_active_hydro(ci, e) && !cell_is_all_active_hydro(ci, e))
+  /* Clean-up if necessary */  // MATTHIEU: temporary disable this optimization
+  if (cell_is_active_hydro(ci, e))  // && !cell_is_all_active_hydro(ci, e))
     free(sort_active_i);
-  if (cell_is_active_hydro(cj, e) && !cell_is_all_active_hydro(cj, e))
+  if (cell_is_active_hydro(cj, e))  // && !cell_is_all_active_hydro(cj, e))
     free(sort_active_j);
 
   TIMER_TOC(TIMER_DOPAIR);

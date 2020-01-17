@@ -1860,9 +1860,9 @@ void engine_skip_drift(struct engine *e) {
  * @brief Launch the runners.
  *
  * @param e The #engine.
- * @param fof Are we launching the FOF tasks or the regular tasks?
+ * @param call What kind of tasks are we running? (For time analysis)
  */
-void engine_launch(struct engine *e, const int fof) {
+void engine_launch(struct engine *e, const char *call) {
   const ticks tic = getticks();
 
 #ifdef SWIFT_DEBUG_CHECKS
@@ -1890,14 +1890,9 @@ void engine_launch(struct engine *e, const int fof) {
   /* Sit back and wait for the runners to come home. */
   swift_barrier_wait(&e->wait_barrier);
 
-  if (e->verbose) {
-    if (fof)
-      message("(fof) took %.3f %s.", clocks_from_ticks(getticks() - tic),
-              clocks_getunit());
-    else
-      message("(tasks) took %.3f %s.", clocks_from_ticks(getticks() - tic),
-              clocks_getunit());
-  }
+  if (e->verbose)
+    message("(%s) took %.3f %s.", call, clocks_from_ticks(getticks() - tic),
+            clocks_getunit());
 }
 
 /**
@@ -1984,7 +1979,7 @@ void engine_init_particles(struct engine *e, int flag_entropy_ICs,
 
   /* Now, launch the calculation */
   TIMER_TIC;
-  engine_launch(e, /*fof=*/0);
+  engine_launch(e, "tasks");
   TIMER_TOC(timer_runners);
 
   /* Apply some conversions (e.g. internal energy -> entropy) */
@@ -1998,7 +1993,7 @@ void engine_init_particles(struct engine *e, int flag_entropy_ICs,
     if (hydro_need_extra_init_loop) {
       engine_marktasks(e);
       engine_skip_force_and_kick(e);
-      engine_launch(e, /*fof=*/0);
+      engine_launch(e, "tasks");
     }
   }
 
@@ -2046,8 +2041,18 @@ void engine_init_particles(struct engine *e, int flag_entropy_ICs,
 
   /* Run the 0th time-step */
   TIMER_TIC2;
-  engine_launch(e, /*fof=*/0);
+  engine_launch(e, "tasks");
   TIMER_TOC2(timer_runners);
+
+  /* Since the time-steps may have changed because of the limiter's
+   * action, we need to communicate the new time-step sizes */
+  if ((e->policy & engine_policy_timestep_sync) ||
+      (e->policy & engine_policy_timestep_limiter)) {
+#ifdef WITH_MPI
+    engine_unskip_timestep_communications(e);
+    engine_launch(e, "timesteps");
+#endif
+  }
 
 #ifdef SWIFT_GRAVITY_FORCE_CHECKS
   /* Check the accuracy of the gravity calculation */
@@ -2344,8 +2349,18 @@ void engine_step(struct engine *e) {
 
   /* Start all the tasks. */
   TIMER_TIC;
-  engine_launch(e, /*fof=*/0);
+  engine_launch(e, "tasks");
   TIMER_TOC(timer_runners);
+
+  /* Since the time-steps may have changed because of the limiter's
+   * action, we need to communicate the new time-step sizes */
+  if ((e->policy & engine_policy_timestep_sync) ||
+      (e->policy & engine_policy_timestep_limiter)) {
+#ifdef WITH_MPI
+    engine_unskip_timestep_communications(e);
+    engine_launch(e, "timesteps");
+#endif
+  }
 
 #ifdef SWIFT_GRAVITY_FORCE_CHECKS
   /* Check the accuracy of the gravity calculation */

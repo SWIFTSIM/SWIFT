@@ -728,13 +728,19 @@ void DOSUB_PAIR1(struct runner *r, struct cell *ci, struct cell *cj,
 
   TIMER_TIC;
 
-  /* Should we even bother? */
-  if (!cell_is_starting_hydro(ci, e) && !cell_is_starting_hydro(cj, e)) return;
-  if (ci->hydro.count == 0 || cj->hydro.count == 0) return;
-
   /* Get the type of pair and flip ci/cj if needed. */
   double shift[3];
   const int sid = space_getsid(s, &ci, &cj, shift);
+
+  /* Should we even bother? */
+  const int do_i = cell_get_flag(ci, cell_flag_do_hydro_limiter);
+  const int do_j = cell_get_flag(cj, cell_flag_do_hydro_limiter);
+  const int do_sub_i = cell_get_flag(ci, cell_flag_do_hydro_sub_limiter);
+  const int do_sub_j = cell_get_flag(cj, cell_flag_do_hydro_sub_limiter);
+
+  if (!do_i && !do_j && !do_sub_i && !do_sub_j) return;
+  if (!cell_is_starting_hydro(ci, e) && !cell_is_starting_hydro(cj, e)) return;
+  if (ci->hydro.count == 0 || cj->hydro.count == 0) return;
 
   /* Recurse? */
   if (cell_can_recurse_in_pair_hydro_task(ci) &&
@@ -749,7 +755,8 @@ void DOSUB_PAIR1(struct runner *r, struct cell *ci, struct cell *cj,
   }
 
   /* Otherwise, compute the pair directly. */
-  else if (cell_is_starting_hydro(ci, e) || cell_is_starting_hydro(cj, e)) {
+  else if ((cell_is_starting_hydro(ci, e) && (do_i || do_sub_i)) ||
+           (cell_is_starting_hydro(cj, e) && (do_j || do_sub_j))) {
 
     /* Make sure both cells are drifted to the current timestep. */
     if (!cell_are_part_drifted(ci, e) || !cell_are_part_drifted(cj, e))
@@ -788,7 +795,12 @@ void DOSUB_SELF1(struct runner *r, struct cell *ci, int gettimer) {
   TIMER_TIC;
 
   /* Should we even bother? */
-  if (ci->hydro.count == 0 || !cell_is_starting_hydro(ci, r->e)) return;
+  const int do_i = cell_get_flag(ci, cell_flag_do_hydro_limiter);
+  const int do_sub_i = cell_get_flag(ci, cell_flag_do_hydro_sub_limiter);
+
+  if (!do_i && !do_sub_i) return;
+  if (!cell_is_starting_hydro(ci, r->e)) return;
+  if (ci->hydro.count == 0) return;
 
   /* Recurse? */
   if (cell_can_recurse_in_self_hydro_task(ci)) {

@@ -1741,6 +1741,7 @@ void scheduler_enqueue(struct scheduler *s, struct task *t) {
           case task_subtype_xv:
           case task_subtype_rho:
           case task_subtype_gradient:
+          case task_subtype_limiter:
             count = t->ci->hydro.count;
             size = count * sizeof(struct part);
             type = part_mpi_type;
@@ -1847,6 +1848,7 @@ void scheduler_enqueue(struct scheduler *s, struct task *t) {
           case task_subtype_xv:
           case task_subtype_rho:
           case task_subtype_gradient:
+          case task_subtype_limiter:
             count = t->ci->hydro.count;
             size = count * sizeof(struct part);
             type = part_mpi_type;
