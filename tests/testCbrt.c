@@ -50,7 +50,8 @@ int main(int argc, char *argv[]) {
   message("executing %i runs of each command.", num_vals);
 
   /* Create and fill an array of floats. */
-  float *volatile data = (float *)malloc(sizeof(float) * num_vals);
+  float *data;
+  posix_memalign((void **)&data, 64, num_vals*sizeof(float));
   for (int k = 0; k < num_vals; k++) {
     data[k] = (float)rand() / RAND_MAX;
     data[k] = (1.0f - data[k]) * range_min + data[k] * range_max;
