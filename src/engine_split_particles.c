@@ -140,26 +140,13 @@ void engine_split_gas_particles(struct engine *e) {
                        sizeof(struct gpart) * s->size_gparts) != 0)
       error("Failed to allocate new gpart data.");
 
-    /* Offset of the new array */
-    const ptrdiff_t offset = gparts_new - s->gparts;
-
     /* Copy the particles */
     memcpy(gparts_new, s->gparts, sizeof(struct gpart) * s->nr_gparts);
     swift_free("gparts", s->gparts);
 
-    /* We now need to correct all the pointers */
-    for (size_t i = 0; i < s->nr_parts; ++i) {
-      if (s->parts[i].time_bin <= num_time_bins) s->parts[i].gpart += offset;
-    }
-    /* We now need to correct all the pointers */
-    for (size_t i = 0; i < s->nr_sparts; ++i) {
-      if (s->sparts[i].time_bin <= num_time_bins) s->sparts[i].gpart += offset;
-    }
-    /* We now need to correct all the pointers */
-    for (size_t i = 0; i < s->nr_bparts; ++i) {
-      if (s->bparts[i].time_bin <= num_time_bins) s->bparts[i].gpart += offset;
-    }
-
+    /* We now need to correct all the pointers of the other particle arrays */
+    part_relink_all_parts_to_gparts(gparts_new, s->nr_gparts, s->parts,
+                                    s->sparts, s->bparts);
     s->gparts = gparts_new;
   }
 
