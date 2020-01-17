@@ -373,7 +373,7 @@ void engine_split_gas_particles(struct engine *e) {
   lock_init(&data_split.lock);
   threadpool_map(&e->threadpool, engine_split_gas_particle_split_mapper,
                  s->parts, nr_parts_old, sizeof(struct part), 0, &data_split);
-  lock_destroy(&data_split.lock);
+  if (lock_destroy(&data_split.lock) != 0) error("Error destroying lock");
 
   /* Update the local counters */
   s->nr_parts = k_parts;
