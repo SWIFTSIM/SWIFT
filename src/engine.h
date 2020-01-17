@@ -440,7 +440,7 @@ struct engine {
   const struct star_formation *star_formation;
 
   /* Properties of the sellar feedback model */
-  const struct feedback_props *feedback_props;
+  struct feedback_props *feedback_props;
 
   /* Properties of the chemistry model */
   const struct chemistry_global_data *chemistry;
@@ -513,7 +513,7 @@ void engine_init(struct engine *e, struct space *s, struct swift_params *params,
                  const struct entropy_floor_properties *entropy_floor,
                  struct gravity_props *gravity, const struct stars_props *stars,
                  const struct black_holes_props *black_holes,
-                 const struct feedback_props *feedback, struct pm_mesh *mesh,
+                 struct feedback_props *feedback, struct pm_mesh *mesh,
                  const struct external_potential *potential,
                  struct cooling_function_data *cooling_func,
                  const struct star_formation *starform,
