@@ -34,13 +34,6 @@
 #include "part.h"
 #include "threadpool.h"
 
-struct relink_data {
-  struct part *const parts;
-  struct gpart *const garts;
-  struct spart *const sparts;
-  struct bpart *const bparts;
-};
-
 /**
  * @brief Re-link the #gpart%s associated with the list of #part%s.
  *
@@ -137,6 +130,24 @@ void part_relink_bparts_to_gparts(struct gpart *gparts, const size_t N,
   }
 }
 
+/**
+ * @brief Helper structure to pass data to the liking mapper functions.
+ */
+struct relink_data {
+  struct part *const parts;
+  struct gpart *const garts;
+  struct spart *const sparts;
+  struct bpart *const bparts;
+};
+
+/**
+ * @brief #threadpool mapper function for the linking of all particle types
+ * to the #gpart array.
+ *
+ * @brief map_data The array of #gpart.
+ * @brief count The number of #gpart.
+ * @brief extra_data the #relink_data containing pointer to the other arrays.
+ */
 void part_relink_all_parts_to_gparts_mapper(void *restrict map_data, int count,
                                             void *restrict extra_data) {
 
@@ -161,6 +172,10 @@ void part_relink_all_parts_to_gparts_mapper(void *restrict map_data, int count,
 /**
  * @brief Re-link both the #part%s, #spart%s and #bpart%s associated
  * with the list of #gpart%s.
+ *
+ * This function uses thread parallelism and should not be called inside
+ * an already threaded section (unlike the functions linking individual arrays
+ * that are designed to be called in thread-parallel code).
  *
  * @param gparts The list of #gpart.
  * @param N The number of particles to re-link;
