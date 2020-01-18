@@ -34,6 +34,13 @@
 #include "part.h"
 #include "threadpool.h"
 
+struct relink_data {
+  struct part *const parts;
+  struct gpart *const garts;
+  struct spart *const sparts;
+  struct bpart *const bparts;
+};
+
 /**
  * @brief Re-link the #gpart%s associated with the list of #part%s.
  *
@@ -130,9 +137,30 @@ void part_relink_bparts_to_gparts(struct gpart *gparts, const size_t N,
   }
 }
 
+void part_relink_all_parts_to_gparts_mapper(void *restrict map_data, int count,
+                                            void *restrict extra_data) {
+
+  /* Un-pack the data */
+  struct relink_data *data = (struct relink_data *)extra_data;
+  struct part *const parts = data->parts;
+  struct spart *const sparts = data->sparts;
+  struct bpart *const bparts = data->bparts;
+  struct gpart *const gparts = (struct gpart *)map_data;
+
+  for (int k = 0; k < count; k++) {
+    if (gparts[k].type == swift_type_gas) {
+      parts[-gparts[k].id_or_neg_offset].gpart = &gparts[k];
+    } else if (gparts[k].type == swift_type_stars) {
+      sparts[-gparts[k].id_or_neg_offset].gpart = &gparts[k];
+    } else if (gparts[k].type == swift_type_black_hole) {
+      bparts[-gparts[k].id_or_neg_offset].gpart = &gparts[k];
+    }
+  }
+}
+
 /**
- * @brief Re-link both the #part%s and #spart%s associated with the list of
- * #gpart%s.
+ * @brief Re-link both the #part%s, #spart%s and #bpart%s associated
+ * with the list of #gpart%s.
  *
  * @param gparts The list of #gpart.
  * @param N The number of particles to re-link;
@@ -144,15 +172,10 @@ void part_relink_all_parts_to_gparts(struct gpart *gparts, const size_t N,
                                      struct part *parts, struct spart *sparts,
                                      struct bpart *bparts,
                                      struct threadpool *tp) {
-  for (size_t k = 0; k < N; k++) {
-    if (gparts[k].type == swift_type_gas) {
-      parts[-gparts[k].id_or_neg_offset].gpart = &gparts[k];
-    } else if (gparts[k].type == swift_type_stars) {
-      sparts[-gparts[k].id_or_neg_offset].gpart = &gparts[k];
-    } else if (gparts[k].type == swift_type_black_hole) {
-      bparts[-gparts[k].id_or_neg_offset].gpart = &gparts[k];
-    }
-  }
+
+  struct relink_data data = {parts, /*gparts=*/NULL, sparts, bparts};
+  threadpool_map(tp, part_relink_all_parts_to_gparts_mapper, gparts, N,
+                 sizeof(struct gpart), 0, &data);
 }
 
 /**
