@@ -43,6 +43,7 @@
 #include "error.h"
 #include "feedback.h"
 #include "feedback_properties.h"
+#include "fof.h"
 #include "gravity.h"
 #include "gravity_derivatives.h"
 #include "gravity_properties.h"
