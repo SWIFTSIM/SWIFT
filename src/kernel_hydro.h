@@ -194,7 +194,7 @@ static const float kernel_coeffs[(kernel_degree + 1) * (kernel_ivals + 1)]
 /* ------------------------------------------------------------------------- */
 #else
 
-#error "A kernel function must be chosen in const.h !!"
+#error "A kernel function must be chosen at configure time !!"
 
 /* ------------------------------------------------------------------------- */
 #endif
@@ -519,7 +519,8 @@ __attribute__((always_inline)) INLINE static void kernel_deval_1_vec(
   dw_dx->v = vec_blend(mask_reg, dw_dx->v, dw_dx2.v);
 
 #else
-#error "Vectorisation not supported for this kernel!!!"
+#error \
+    "Vectorisation not supported for this kernel!!! Choose a different one or configure with --disable-hand-vec."
 #endif
 
   /* Return everyting */
@@ -706,7 +707,8 @@ __attribute__((always_inline)) INLINE static void kernel_eval_W_vec(vector *u,
   w->v = vec_blend(mask_reg, w->v, w2.v);
 
 #else
-#error "Vectorisation not supported for this kernel!!!"
+#error \
+    "Vectorisation not supported for this kernel!!! Choose a different one or configure with --disable-hand-vec."
 #endif
 
   /* Return everything */
@@ -765,7 +767,8 @@ __attribute__((always_inline)) INLINE static void kernel_eval_dWdx_vec(
   /* Added both dwdx and dwdx2 together to form complete result. */
   dw_dx->v = vec_add(dw_dx->v, dw_dx2.v);
 #else
-#error "Vectorisation not supported for this kernel!!!"
+#error \
+    "Vectorisation not supported for this kernel!!! Choose a different one or configure with --disable-hand-vec."
 #endif
 
   /* Return everything */
@@ -826,7 +829,8 @@ __attribute__((always_inline)) INLINE static void kernel_eval_dWdx_force_vec(
   dw_dx->v = vec_blend(mask_reg, dw_dx->v, dw_dx2.v);
 
 #else
-#error "Vectorisation not supported for this kernel!!!"
+#error \
+    "Vectorisation not supported for this kernel!!! Choose a different one or configure with --disable-hand-vec."
 #endif
 
   /* Mask out result for particles that lie outside of the kernel function. */
@@ -910,7 +914,8 @@ __attribute__((always_inline)) INLINE static void kernel_eval_dWdx_force_2_vec(
   dw_dx_2->v = vec_blend(mask_reg_v2, dw_dx_2->v, dw_dx2_2.v);
 
 #else
-#error "Vectorisation not supported for this kernel!!!"
+#error \
+    "Vectorisation not supported for this kernel!!! Choose a different one or configure with --disable-hand-vec."
 #endif
 
   /* Mask out result for particles that lie outside of the kernel function. */
