@@ -1414,6 +1414,18 @@ void runner_do_ghost(struct runner *r, struct cell *c, int timer) {
   c->hydro.h_max = h_max;
   c->hydro.h_max_active = h_max_active;
 
+#ifdef SWIFT_DEBUG_CHECKS
+  for (int i = 0; i < c->hydro.count; ++i) {
+    const struct part *p = &c->hydro.parts[i];
+    const float h = c->hydro.parts[i].h;
+    if (part_is_inhibited(p, e)) continue;
+
+    if (h > c->hydro.h_max) error("Particle has h larger than h_max");
+    if (part_is_active(p, e) && h > c->hydro.h_max_active)
+      error("Active particle has h larger than h_max_active");
+  }
+#endif
+
   /* The ghost may not always be at the top level.
    * Therefore we need to update h_max between the super- and top-levels */
   if (c->hydro.ghost) {

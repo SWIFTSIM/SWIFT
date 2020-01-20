@@ -2163,7 +2163,7 @@ void DOSELF1_BRANCH(struct runner *r, struct cell *c) {
   if (!cell_is_active_hydro(c, e)) return;
 
   /* Did we mess up the recursion? */
-  if (c->hydro.h_max_old * kernel_gamma > c->dmin)
+  if (c->hydro.h_max_active * kernel_gamma > c->dmin)
     error("Cell smaller than smoothing length");
 
   /* Check that cells are drifted. */
@@ -2395,7 +2395,7 @@ void DOSELF2_BRANCH(struct runner *r, struct cell *c) {
  * redundant computations to find the sid on-the-fly.
  */
 void DOSUB_PAIR1(struct runner *r, struct cell *ci, struct cell *cj,
-                 int gettimer) {
+                 const int gettimer) {
 
   struct space *s = r->e->s;
   const struct engine *e = r->e;
@@ -2411,8 +2411,8 @@ void DOSUB_PAIR1(struct runner *r, struct cell *ci, struct cell *cj,
   const int sid = space_getsid(s, &ci, &cj, shift);
 
   /* Recurse? */
-  if (cell_can_recurse_in_pair_hydro_task(ci) &&
-      cell_can_recurse_in_pair_hydro_task(cj)) {
+  if (cell_can_recurse_in_pair_hydro_task1(ci) &&
+      cell_can_recurse_in_pair_hydro_task1(cj)) {
     struct cell_split_pair *csp = &cell_split_pairs[sid];
     for (int k = 0; k < csp->count; k++) {
       const int pid = csp->pairs[k].pid;
@@ -2429,19 +2429,20 @@ void DOSUB_PAIR1(struct runner *r, struct cell *ci, struct cell *cj,
     if (!cell_are_part_drifted(ci, e) || !cell_are_part_drifted(cj, e))
       error("Interacting undrifted cells.");
 
-    /* Do any of the cells need to be sorted first? */
+    /* Do any of the cells need to be sorted first?
+     * Since h_max might have changed, we may not have sorted at this level */
     if (!(ci->hydro.sorted & (1 << sid)) ||
-        ci->hydro.dx_max_sort_old > ci->dmin * space_maxreldx)
-      error(
-          "Interacting unsorted cell. ci->hydro.dx_max_sort_old=%e ci->dmin=%e "
-          "ci->sorted=%d sid=%d",
-          ci->hydro.dx_max_sort_old, ci->dmin, ci->hydro.sorted, sid);
+        ci->hydro.dx_max_sort_old > ci->dmin * space_maxreldx) {
+      /* message("Emergency sort! ci ci->hydro.sorted=%d ci->split=%d", */
+      /*         ci->hydro.sorted, ci->split); */
+      runner_do_hydro_sort(r, ci, (1 << sid), 0, 0);
+    }
     if (!(cj->hydro.sorted & (1 << sid)) ||
-        cj->hydro.dx_max_sort_old > cj->dmin * space_maxreldx)
-      error(
-          "Interacting unsorted cell. cj->hydro.dx_max_sort_old=%e cj->dmin=%e "
-          "cj->sorted=%d sid=%d",
-          cj->hydro.dx_max_sort_old, cj->dmin, cj->hydro.sorted, sid);
+        cj->hydro.dx_max_sort_old > cj->dmin * space_maxreldx) {
+      /* message("Emergency sort! cj cj->hydro.sorted=%d cj->split=%d", */
+      /*         cj->hydro.sorted, cj->split); */
+      runner_do_hydro_sort(r, cj, (1 << sid), 0, 0);
+    }
 
     /* Compute the interactions. */
     DOPAIR1_BRANCH(r, ci, cj);
@@ -2457,7 +2458,7 @@ void DOSUB_PAIR1(struct runner *r, struct cell *ci, struct cell *cj,
  * @param ci The first #cell.
  * @param gettimer Do we have a timer ?
  */
-void DOSUB_SELF1(struct runner *r, struct cell *ci, int gettimer) {
+void DOSUB_SELF1(struct runner *r, struct cell *ci, const int gettimer) {
 
   TIMER_TIC;
 
@@ -2465,7 +2466,7 @@ void DOSUB_SELF1(struct runner *r, struct cell *ci, int gettimer) {
   if (ci->hydro.count == 0 || !cell_is_active_hydro(ci, r->e)) return;
 
   /* Recurse? */
-  if (cell_can_recurse_in_self_hydro_task(ci)) {
+  if (cell_can_recurse_in_self_hydro_task1(ci)) {
 
     /* Loop over all progeny. */
     for (int k = 0; k < 8; k++)
@@ -2517,8 +2518,8 @@ void DOSUB_PAIR2(struct runner *r, struct cell *ci, struct cell *cj,
   const int sid = space_getsid(s, &ci, &cj, shift);
 
   /* Recurse? */
-  if (cell_can_recurse_in_pair_hydro_task(ci) &&
-      cell_can_recurse_in_pair_hydro_task(cj)) {
+  if (cell_can_recurse_in_pair_hydro_task2(ci) &&
+      cell_can_recurse_in_pair_hydro_task2(cj)) {
     struct cell_split_pair *csp = &cell_split_pairs[sid];
     for (int k = 0; k < csp->count; k++) {
       const int pid = csp->pairs[k].pid;
@@ -2571,7 +2572,7 @@ void DOSUB_SELF2(struct runner *r, struct cell *ci, int gettimer) {
   if (ci->hydro.count == 0 || !cell_is_active_hydro(ci, r->e)) return;
 
   /* Recurse? */
-  if (cell_can_recurse_in_self_hydro_task(ci)) {
+  if (cell_can_recurse_in_self_hydro_task2(ci)) {
 
     /* Loop over all progeny. */
     for (int k = 0; k < 8; k++)
@@ -2624,7 +2625,7 @@ void DOSUB_SUBSET(struct runner *r, struct cell *ci, struct part *parts,
   if (cj == NULL) {
 
     /* Recurse? */
-    if (cell_can_recurse_in_self_hydro_task(ci)) {
+    if (cell_can_recurse_in_self_hydro_task2(ci)) {
 
       /* Loop over all progeny. */
       DOSUB_SUBSET(r, sub, parts, ind, count, NULL, 0);
@@ -2643,8 +2644,8 @@ void DOSUB_SUBSET(struct runner *r, struct cell *ci, struct part *parts,
   else {
 
     /* Recurse? */
-    if (cell_can_recurse_in_pair_hydro_task(ci) &&
-        cell_can_recurse_in_pair_hydro_task(cj)) {
+    if (cell_can_recurse_in_pair_hydro_task2(ci) &&
+        cell_can_recurse_in_pair_hydro_task2(cj)) {
 
       /* Get the type of pair and flip ci/cj if needed. */
       double shift[3] = {0.0, 0.0, 0.0};

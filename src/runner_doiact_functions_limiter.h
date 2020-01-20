@@ -743,8 +743,8 @@ void DOSUB_PAIR1(struct runner *r, struct cell *ci, struct cell *cj,
   if (ci->hydro.count == 0 || cj->hydro.count == 0) return;
 
   /* Recurse? */
-  if (cell_can_recurse_in_pair_hydro_task(ci) &&
-      cell_can_recurse_in_pair_hydro_task(cj)) {
+  if (cell_can_recurse_in_pair_hydro_task1(ci) &&
+      cell_can_recurse_in_pair_hydro_task1(cj)) {
     struct cell_split_pair *csp = &cell_split_pairs[sid];
     for (int k = 0; k < csp->count; k++) {
       const int pid = csp->pairs[k].pid;
@@ -803,7 +803,7 @@ void DOSUB_SELF1(struct runner *r, struct cell *ci, int gettimer) {
   if (ci->hydro.count == 0) return;
 
   /* Recurse? */
-  if (cell_can_recurse_in_self_hydro_task(ci)) {
+  if (cell_can_recurse_in_self_hydro_task1(ci)) {
 
     /* Loop over all progeny. */
     for (int k = 0; k < 8; k++)
