@@ -1,0 +1,53 @@
+# Define the system of units to use internally. 
+InternalUnitSystem:
+  UnitMass_in_cgs:     2.0e33     # Solar masses
+  UnitLength_in_cgs:   3.0857e21  # parsecs
+  UnitVelocity_in_cgs: 1.0e5      # megameters per second
+  UnitCurrent_in_cgs:  1          # Amperes
+  UnitTemp_in_cgs:     1          # Kelvin
+
+# Parameters governing the time integration
+TimeIntegration:
+  time_begin: 0.    # The starting time of the simulation (in internal units).
+  time_end:   8e1  # The end time of the simulation (in internal units).
+  dt_min:     1e-10  # The minimal time-step size of the simulation (in internal units).
+  dt_max:     1e1  # The maximal time-step size of the simulation (in internal units).
+
+# Parameters governing the snapshots
+Snapshots:
+  basename:            pressureFloor # Common part of the name of output files
+  time_first:          0.         # Time of the first output (in internal units)
+  delta_time:          1e0       # Time difference between consecutive outputs (in internal units)
+
+# Parameters governing the conserved quantities statistics
+Statistics:
+  delta_time:          1e0 # Time between statistics output
+
+# Parameters for the hydrodynamics scheme
+SPH:
+  resolution_eta:        1.2348   # Target smoothing length in units of the mean inter-particle separation (1.2348 == 48Ngbs with the cubic spline kernel).
+  CFL_condition:         0.5      # Courant-Friedrich-Levy condition for time integration.
+  minimal_temperature: 10.       # Kelvin
+  
+# Parameters related to the initial conditions
+InitialConditions:
+  file_name:  ./pressureFloor.hdf5     # The file to read
+  periodic:   1
+  
+# Dimensionless pre-factor for the time-step condition
+LambdaCooling:
+  lambda_nH2_cgs:              1e-15 # Cooling rate divided by square Hydrogen number density (in cgs units [erg * s^-1 * cm^3])
+  cooling_tstep_mult:          1e5        # Dimensionless pre-factor for the time-step condition
+
+# Parameters related to pressure floors    ----------------------------------------------
+GEARPressureFloor:
+  Jeans_factor: 10
+
+  # Parameters for the self-gravity scheme
+Gravity:
+  mesh_side_length:              12       # Number of cells along each axis for the periodic gravity mesh.
+  eta:                           2.5     # Constant dimensionless multiplier for time integration.
+  theta:                         0.7       # Opening angle (Multipole acceptance criterion).
+  max_physical_DM_softening:     0.5    # Maximal Plummer-equivalent softening length in physical coordinates for DM particles (in internal units).
+  max_physical_baryon_softening: 0.5    # Maximal Plummer-equivalent softening length in physical coordinates for baryon particles (in internal units).
+  softening_ratio_background:    0.04      # Fraction of the mean inter-particle separation to use as Plummer-equivalent softening for the background DM particles.

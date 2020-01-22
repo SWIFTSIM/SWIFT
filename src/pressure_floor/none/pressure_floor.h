@@ -19,13 +19,14 @@
 #ifndef SWIFT_PRESSURE_FLOOR_NONE_H
 #define SWIFT_PRESSURE_FLOOR_NONE_H
 
-#include "adiabatic_index.h"
-#include "cosmology.h"
-#include "equation_of_state.h"
-#include "hydro_properties.h"
-#include "parser.h"
-#include "part.h"
-#include "units.h"
+/* Pre-declarations */
+struct cosmology;
+struct hydro_props;
+struct phys_const;
+struct part;
+struct xpart;
+struct swift_params;
+struct unit_system;
 
 /**
  * @file src/pressure_floor/none/pressure_floor.h
@@ -41,6 +42,9 @@ struct pressure_floor_properties {};
  * @brief Compute the physical pressure floor of a given #part.
  *
  * Note that the particle is not updated!!
+ *
+ * Since this is the 'none' model for floor, there is no floor and
+ * we just return the physical pressure that was received.
  *
  * @param p The #part.
  * @param physical_pressure The physical pressure without any pressure floor.
@@ -59,6 +63,9 @@ static INLINE float pressure_floor_get_physical_pressure(
  *
  * Note that the particle is not updated!!
  *
+ * Since this is the 'none' model for floor, there is no floor and
+ * we just return the comoving pressure that was received.
+ *
  * @param p The #part.
  * @param comoving_pressure The comoving pressure without any pressure floor.
  * @param cosmo The #cosmology model.
@@ -75,8 +82,7 @@ static INLINE float pressure_floor_get_comoving_pressure(
  * @brief Initialise the pressure floor by reading the parameters and converting
  * to internal units.
  *
- * The input temperatures and number densities are converted to pressure and
- * density assuming a neutral gas of primoridal abundance.
+ * Nothing to do here.
  *
  * @param params The YAML parameter file.
  * @param us The system of units used internally.
@@ -96,7 +102,10 @@ static INLINE void pressure_floor_init(struct pressure_floor_properties* props,
  * @param props The pressure floor properties.
  */
 static INLINE void pressure_floor_print(
-    const struct pressure_floor_properties* props) {}
+    const struct pressure_floor_properties* props) {
+
+  message("Pressure floor is 'none'");
+}
 
 #ifdef HAVE_HDF5
 
@@ -111,7 +120,9 @@ INLINE static void pressure_floor_print_snapshot(hid_t h_grp) {
 #endif
 
 /**
- * @brief Finishes the density calculation.
+ * @brief Finishes the density calculation for the pressure floor properties.
+ *
+ * Nothing to do here.
  *
  * @param p The particle to act upon
  * @param cosmo The current cosmological model.
@@ -120,7 +131,10 @@ __attribute__((always_inline)) INLINE static void pressure_floor_end_density(
     struct part* restrict p, const struct cosmology* cosmo) {}
 
 /**
- * @brief Sets all particle fields to sensible values when the #part has 0 ngbs.
+ * @brief Sets all the pressure floor fields to sensible values when the #part
+ * has 0 ngbs.
+ *
+ * Nothing to do here.
  *
  * @param p The particle to act upon
  * @param xp The extended particle data to act upon
@@ -135,6 +149,8 @@ pressure_floor_part_has_no_neighbours(struct part* restrict p,
  * @brief Sets the pressure_floor properties of the (x-)particles to a valid
  * start state.
  *
+ * Nothing to do here.
+ *
  * @param p Pointer to the particle data.
  * @param xp Pointer to the extended particle data.
  */
@@ -144,6 +160,8 @@ __attribute__((always_inline)) INLINE static void pressure_floor_init_part(
 /**
  * @brief Sets the pressure_floor properties of the (x-)particles to a valid
  * start state.
+ *
+ * Nothing to do here.
  *
  * @param phys_const The physical constant in internal units.
  * @param us The unit system.
