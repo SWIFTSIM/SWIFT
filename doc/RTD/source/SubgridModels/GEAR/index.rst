@@ -19,7 +19,7 @@ where :math:`\rho` is the density, :math:`\gamma` the adiabatic index, :math:`G`
 :math:`\sigma` the velocity dispersion.
 
 
-This must be directly implemented into the hydro schemes, therefore only a subset of schemes (Gadget-2 and Pressure-Energy) are currently implemented.
+This must be directly implemented into the hydro schemes, therefore only a subset of schemes (Gadget-2, SPHENIX and Pressure-Energy) have the floor available.
 In order to implement it, you need equation 12 in `Hopkins 2013 <https://arxiv.org/abs/1206.5006>`_:
 
 .. math::

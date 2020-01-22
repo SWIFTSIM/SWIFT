@@ -1,0 +1,6 @@
+This example consists in a uniform box of particles.
+Using the cooling and gravity, the temperature of the gas will decrease
+slowly and the gas will start to collapse due to the numerical noise.
+If a pressure / energy floor is applied, the box should remain uniform.
+
+At the end, a plot containing the distribution of densities is generated.
