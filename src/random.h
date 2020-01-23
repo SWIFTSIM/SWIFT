@@ -107,7 +107,7 @@ INLINE static double inl_erand48(uint16_t xsubi[3]) {
   temp.ieee.negative = 0;
   temp.ieee.exponent = IEEE754_DOUBLE_BIAS;
   temp.ieee.mantissa0 = (xsubi[2] << 4) | (xsubi[1] >> 12);
-  temp.ieee.mantissa1 = ((xsubi[1] & 0xfff) << 20) | (xsubi[0] << 4);
+  temp.ieee.mantissa1 = (((uint32_t)xsubi[1] & 0xfff) << 20) | (xsubi[0] << 4);
 
   /* Please note the lower 4 bits of mantissa1 are always 0.  */
   return temp.d - 1.0;
