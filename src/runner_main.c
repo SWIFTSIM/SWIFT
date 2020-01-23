@@ -186,15 +186,15 @@ void *runner_main(void *data) {
       switch (t->type) {
         case task_type_self:
           if (t->subtype == task_subtype_density)
-            runner_doself1_branch_density(r, ci);
+            runner_dosub_self1_density(r, ci, 1);
 #ifdef EXTRA_HYDRO_LOOP
           else if (t->subtype == task_subtype_gradient)
-            runner_doself1_branch_gradient(r, ci);
+            runner_dosub_self1_gradient(r, ci, 1);
 #endif
           else if (t->subtype == task_subtype_force)
             runner_doself2_branch_force(r, ci);
           else if (t->subtype == task_subtype_limiter)
-            runner_doself1_branch_limiter(r, ci);
+            runner_dosub_self1_limiter(r, ci, 1);
           else if (t->subtype == task_subtype_grav)
             runner_doself_recursive_grav(r, ci, 1);
           else if (t->subtype == task_subtype_external_grav)
