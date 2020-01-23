@@ -823,7 +823,11 @@ void task_get_group_name(int type, int subtype, char *cluster) {
       strcpy(cluster, "Gravity");
       break;
     case task_subtype_limiter:
-      strcpy(cluster, "Timestep_limiter");
+      if (type == task_type_send || type == task_type_recv) {
+        strcpy(cluster, "None");
+      } else {
+        strcpy(cluster, "Timestep_limiter");
+      }
       break;
     case task_subtype_stars_density:
       strcpy(cluster, "StarsDensity");

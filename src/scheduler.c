@@ -1133,11 +1133,11 @@ struct task *scheduler_addtask(struct scheduler *s, enum task_types type,
  */
 void scheduler_set_unlocks(struct scheduler *s) {
   /* Store the counts for each task. */
-  short int *counts;
-  if ((counts = (short int *)swift_malloc(
-           "counts", sizeof(short int) * s->nr_tasks)) == NULL)
+  int *counts;
+  if ((counts = (int *)swift_malloc("counts", sizeof(int) * s->nr_tasks)) ==
+      NULL)
     error("Failed to allocate temporary counts array.");
-  bzero(counts, sizeof(short int) * s->nr_tasks);
+  bzero(counts, sizeof(int) * s->nr_tasks);
   for (int k = 0; k < s->nr_unlocks; k++) {
     counts[s->unlock_ind[k]] += 1;
 
@@ -1151,7 +1151,7 @@ void scheduler_set_unlocks(struct scheduler *s) {
           "the difference in task depths.",
           taskID_names[s->tasks[s->unlock_ind[k]].type],
           subtaskID_names[s->tasks[s->unlock_ind[k]].subtype],
-          (1LL << (8 * sizeof(short int) - 1)) - 1);
+          (1LL << (8 * sizeof(int) - 1)) - 1);
   }
 
   /* Compute the offset for each unlock block. */
@@ -1741,7 +1741,8 @@ void scheduler_enqueue(struct scheduler *s, struct task *t) {
 
         } else if (t->subtype == task_subtype_xv ||
                    t->subtype == task_subtype_rho ||
-                   t->subtype == task_subtype_gradient) {
+                   t->subtype == task_subtype_gradient ||
+                   t->subtype == task_subtype_limiter) {
 
           count = t->ci->hydro.count;
           size = count * sizeof(struct part);
@@ -1857,7 +1858,8 @@ void scheduler_enqueue(struct scheduler *s, struct task *t) {
 
         } else if (t->subtype == task_subtype_xv ||
                    t->subtype == task_subtype_rho ||
-                   t->subtype == task_subtype_gradient) {
+                   t->subtype == task_subtype_gradient ||
+                   t->subtype == task_subtype_limiter) {
 
           count = t->ci->hydro.count;
           size = count * sizeof(struct part);

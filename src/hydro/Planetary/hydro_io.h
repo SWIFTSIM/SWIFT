@@ -61,15 +61,15 @@ INLINE static void hydro_read_particles(struct part* parts,
                                 UNIT_CONV_SPEED, parts, v);
   list[2] = io_make_input_field("Masses", FLOAT, 1, COMPULSORY, UNIT_CONV_MASS,
                                 parts, mass);
-  list[3] = io_make_input_field("SmoothingLength", FLOAT, 1, COMPULSORY,
+  list[3] = io_make_input_field("SmoothingLengths", FLOAT, 1, COMPULSORY,
                                 UNIT_CONV_LENGTH, parts, h);
-  list[4] = io_make_input_field("InternalEnergy", FLOAT, 1, COMPULSORY,
+  list[4] = io_make_input_field("InternalEnergies", FLOAT, 1, COMPULSORY,
                                 UNIT_CONV_ENERGY_PER_UNIT_MASS, parts, u);
   list[5] = io_make_input_field("ParticleIDs", ULONGLONG, 1, COMPULSORY,
                                 UNIT_CONV_NO_UNITS, parts, id);
   list[6] = io_make_input_field("Accelerations", FLOAT, 3, OPTIONAL,
                                 UNIT_CONV_ACCELERATION, parts, a_hydro);
-  list[7] = io_make_input_field("Density", FLOAT, 1, OPTIONAL,
+  list[7] = io_make_input_field("Densities", FLOAT, 1, OPTIONAL,
                                 UNIT_CONV_DENSITY, parts, rho);
   list[8] = io_make_input_field("MaterialIDs", INT, 1, COMPULSORY,
                                 UNIT_CONV_NO_UNITS, parts, mat_id);
@@ -214,10 +214,6 @@ INLINE static void hydro_write_flavour(hid_t h_grpsph) {
       h_grpsph, "Viscosity Model",
       "as in Springel (2005), i.e. Monaghan (1992) with Balsara (1995) switch");
 #endif
-
-  /* Time integration properties */
-  io_write_attribute_f(h_grpsph, "Maximal Delta u change over dt",
-                       const_max_u_change);
 }
 
 /**

@@ -51,6 +51,8 @@ print("time: %g" % time)
 
 t = logger.getTimeLimits(basename)
 data = logger.loadSnapshotAtTime(basename, time)
+print("The data contains the following elements:")
+print(data.dtype.names)
 
 pos = data["positions"]
 

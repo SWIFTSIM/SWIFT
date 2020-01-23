@@ -30,6 +30,7 @@
 #include "black_holes.h"
 #include "cell.h"
 #include "engine.h"
+#include "feedback.h"
 #include "kick.h"
 #include "timers.h"
 #include "timestep.h"
@@ -541,6 +542,7 @@ void runner_do_timestep(struct runner *r, struct cell *c, int timer) {
   const struct engine *e = r->e;
   const integertime_t ti_current = e->ti_current;
   const int with_cosmology = (e->policy & engine_policy_cosmology);
+  const int with_feedback = (e->policy & engine_policy_feedback);
   const int count = c->hydro.count;
   const int gcount = c->grav.count;
   const int scount = c->stars.count;
@@ -746,6 +748,11 @@ void runner_do_timestep(struct runner *r, struct cell *c, int timer) {
         sp->time_bin = get_time_bin(ti_new_step);
         sp->gpart->time_bin = get_time_bin(ti_new_step);
 
+        /* Update feedback related counters */
+        if (with_feedback)
+          feedback_will_do_feedback(sp, e->feedback_props, with_cosmology,
+                                    e->cosmology, e->time);
+
         /* Number of updated s-particles */
         s_updated++;
         g_updated++;
@@ -869,8 +876,8 @@ void runner_do_timestep(struct runner *r, struct cell *c, int timer) {
         ti_gravity_beg_max = max(cp->grav.ti_beg_max, ti_gravity_beg_max);
 
         ti_stars_end_min = min(cp->stars.ti_end_min, ti_stars_end_min);
-        ti_stars_end_max = max(cp->grav.ti_end_max, ti_stars_end_max);
-        ti_stars_beg_max = max(cp->grav.ti_beg_max, ti_stars_beg_max);
+        ti_stars_end_max = max(cp->stars.ti_end_max, ti_stars_end_max);
+        ti_stars_beg_max = max(cp->stars.ti_beg_max, ti_stars_beg_max);
 
         ti_black_holes_end_min =
             min(cp->black_holes.ti_end_min, ti_black_holes_end_min);
@@ -931,7 +938,6 @@ void runner_do_timestep(struct runner *r, struct cell *c, int timer) {
 void runner_do_limiter(struct runner *r, struct cell *c, int force, int timer) {
 
   const struct engine *e = r->e;
-  const integertime_t ti_current = e->ti_current;
   const int count = c->hydro.count;
   struct part *restrict parts = c->hydro.parts;
   struct xpart *restrict xparts = c->hydro.xparts;
@@ -1009,8 +1015,13 @@ void runner_do_limiter(struct runner *r, struct cell *c, int force, int timer) {
       /* Bip, bip, bip... wake-up time */
       if (p->limiter_data.wakeup != time_bin_not_awake) {
 
+        // message("Limiting particle %lld in cell %d", p->id, c->cellID);
+
         /* Apply the limiter and get the new end of time-step */
         const integertime_t ti_end_new = timestep_limit_part(p, xp, e);
+        const timebin_t new_bin = p->time_bin;
+        const integertime_t ti_beg_new =
+            ti_end_new - get_integer_timestep(new_bin);
 
         /* Mark this particle has not needing synchronization */
         p->limiter_data.to_be_synchronized = 0;
@@ -1020,7 +1031,7 @@ void runner_do_limiter(struct runner *r, struct cell *c, int force, int timer) {
         ti_hydro_end_max = max(ti_end_new, ti_hydro_end_max);
 
         /* What is the next starting point for this cell ? */
-        ti_hydro_beg_max = max(ti_current, ti_hydro_beg_max);
+        ti_hydro_beg_max = max(ti_beg_new, ti_hydro_beg_max);
 
         /* Also limit the gpart counter-part */
         if (p->gpart != NULL) {
@@ -1033,7 +1044,7 @@ void runner_do_limiter(struct runner *r, struct cell *c, int force, int timer) {
           ti_gravity_end_max = max(ti_end_new, ti_gravity_end_max);
 
           /* What is the next starting point for this cell ? */
-          ti_gravity_beg_max = max(ti_current, ti_gravity_beg_max);
+          ti_gravity_beg_max = max(ti_beg_new, ti_gravity_beg_max);
         }
       }
     }
@@ -1153,8 +1164,12 @@ void runner_do_sync(struct runner *r, struct cell *c, int force, int timer) {
         timestep_process_sync_part(p, xp, e, cosmo);
 
         /* Get new time-step */
-        const integertime_t ti_new_step = get_part_timestep(p, xp, e);
-        const timebin_t new_time_bin = get_time_bin(ti_new_step);
+        integertime_t ti_new_step = get_part_timestep(p, xp, e);
+        timebin_t new_time_bin = get_time_bin(ti_new_step);
+
+        /* Limit the time-bin to what is allowed in this step */
+        new_time_bin = min(new_time_bin, e->max_active_bin);
+        ti_new_step = get_integer_timestep(new_time_bin);
 
         /* Update particle */
         p->time_bin = new_time_bin;

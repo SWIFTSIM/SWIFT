@@ -40,7 +40,7 @@ const double a_values[Ntest] = {
     0.5,
 };
 
-void test_no_cosmo(struct engine *e, char *name, int with_assert) {
+void test_no_cosmo(struct engine *e, const char *name, const int with_assert) {
   message("Testing output time for %s without cosmology", name);
 
   struct output_list *list;
@@ -52,7 +52,7 @@ void test_no_cosmo(struct engine *e, char *name, int with_assert) {
   e->time_end = 14;
   e->time_base = (e->time_end - e->time_begin) / max_nr_timesteps;
   e->ti_current = 0;
-  e->policy = !engine_policy_cosmology;
+  e->policy = 0;
 
   /* initialize output_list */
   output_list_init(&list, e, name, &delta_time, &output_time);
@@ -78,7 +78,7 @@ void test_no_cosmo(struct engine *e, char *name, int with_assert) {
   output_list_clean(&list);
 };
 
-void test_cosmo(struct engine *e, char *name, int with_assert) {
+void test_cosmo(struct engine *e, const char *name, const int with_assert) {
   message("Testing output time for %s with cosmology", name);
 
   struct output_list *list;
@@ -102,7 +102,7 @@ void test_cosmo(struct engine *e, char *name, int with_assert) {
 
     /* Set current time */
     e->ti_current = log(output_time / e->cosmology->a_begin) / e->time_base;
-    e->ti_current += 1;
+    e->ti_current += 16;
 
     /* Read next value */
     integertime_t ti_next;

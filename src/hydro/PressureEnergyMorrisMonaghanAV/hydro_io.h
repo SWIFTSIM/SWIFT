@@ -215,10 +215,6 @@ INLINE static void hydro_write_flavour(hid_t h_grpsph) {
   io_write_attribute_s(h_grpsph, "Thermal Conductivity Model", "No treatment");
   io_write_attribute_s(h_grpsph, "Viscosity Model",
                        "Variable viscosity as in Morris and Monaghan (1997)");
-
-  /* Time integration properties */
-  io_write_attribute_f(h_grpsph, "Maximal Delta u change over dt",
-                       const_max_u_change);
 }
 
 /**

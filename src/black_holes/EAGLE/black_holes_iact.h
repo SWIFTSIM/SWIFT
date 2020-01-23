@@ -20,11 +20,13 @@
 #define SWIFT_EAGLE_BH_IACT_H
 
 /* Local includes */
+#include "black_holes_parameters.h"
 #include "gravity.h"
 #include "hydro.h"
 #include "random.h"
 #include "space.h"
 #include "timestep_sync_part.h"
+#include "tracers.h"
 
 /**
  * @brief Density interaction between two particles (non-symmetric).
@@ -146,11 +148,13 @@ runner_iact_nonsym_bh_gas_swallow(const float r2, const float *dx,
 
   /* Start by checking the repositioning criteria */
 
-  /* Note the factor 9 is taken from EAGLE. Will be turned into a parameter */
+  /* (Square of) Max repositioning distance allowed based on the softening */
   const float max_dist_repos2 =
       kernel_gravity_softening_plummer_equivalent_inv *
-      kernel_gravity_softening_plummer_equivalent_inv * 9.f *
-      grav_props->epsilon_baryon_cur * grav_props->epsilon_baryon_cur;
+      kernel_gravity_softening_plummer_equivalent_inv *
+      const_max_repositioning_distance_ratio *
+      const_max_repositioning_distance_ratio * grav_props->epsilon_baryon_cur *
+      grav_props->epsilon_baryon_cur;
 
   /* This gas neighbour is close enough that we can consider it's potential
      for repositioning */
@@ -168,7 +172,7 @@ runner_iact_nonsym_bh_gas_swallow(const float r2, const float *dx,
     /* Check the velocity criterion */
     if (v2_pec < 0.25f * bi->sound_speed_gas * bi->sound_speed_gas) {
 
-      const float potential = gravity_get_comoving_potential(pj->gpart);
+      const float potential = pj->black_holes_data.potential;
 
       /* Is the potential lower? */
       if (potential < bi->reposition.min_potential) {
@@ -250,11 +254,13 @@ runner_iact_nonsym_bh_bh_swallow(const float r2, const float *dx,
 
   const float v2_pec = v2 * cosmo->a2_inv;
 
-  /* Note the factor 9 is taken from EAGLE. Will be turned into a parameter */
+  /* (Square of) Max repositioning distance allowed based on the softening */
   const float max_dist_repos2 =
       kernel_gravity_softening_plummer_equivalent_inv *
-      kernel_gravity_softening_plummer_equivalent_inv * 9.f *
-      grav_props->epsilon_baryon_cur * grav_props->epsilon_baryon_cur;
+      kernel_gravity_softening_plummer_equivalent_inv *
+      const_max_repositioning_distance_ratio *
+      const_max_repositioning_distance_ratio * grav_props->epsilon_baryon_cur *
+      grav_props->epsilon_baryon_cur;
 
   /* This gas neighbour is close enough that we can consider it's potential
      for repositioning */
@@ -263,7 +269,7 @@ runner_iact_nonsym_bh_bh_swallow(const float r2, const float *dx,
     /* Check the velocity criterion */
     if (v2_pec < 0.25f * bi->sound_speed_gas * bi->sound_speed_gas) {
 
-      const float potential = gravity_get_comoving_potential(bj->gpart);
+      const float potential = bj->reposition.potential;
 
       /* Is the potential lower? */
       if (potential < bi->reposition.min_potential) {
@@ -285,10 +291,11 @@ runner_iact_nonsym_bh_bh_swallow(const float r2, const float *dx,
     h = hj;
   }
 
-  /* Note the factor 9 is taken from EAGLE. Will be turned into a parameter */
+  /* (Square of) Max swallowing distance allowed based on the softening */
   const float max_dist_merge2 =
       kernel_gravity_softening_plummer_equivalent_inv *
-      kernel_gravity_softening_plummer_equivalent_inv * 9.f *
+      kernel_gravity_softening_plummer_equivalent_inv *
+      const_max_merging_distance_ratio * const_max_merging_distance_ratio *
       grav_props->epsilon_baryon_cur * grav_props->epsilon_baryon_cur;
 
   const float G_Newton = grav_props->G_Newton;
@@ -373,6 +380,9 @@ runner_iact_nonsym_bh_gas_feedback(const float r2, const float *dx,
 
       /* Impose maximal viscosity */
       hydro_diffusive_feedback_reset(pj);
+
+      /* Mark this particle has having been heated by AGN feedback */
+      tracers_after_black_holes_feedback(xpj);
 
       /* message( */
       /*     "We did some AGN heating! id %llu BH id %llu probability " */

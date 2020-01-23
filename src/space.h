@@ -365,7 +365,7 @@ void space_check_drift_point(struct space *s, integertime_t ti_drift,
                              int multipole);
 void space_check_top_multipoles_drift_point(struct space *s,
                                             integertime_t ti_drift);
-void space_check_timesteps(struct space *s);
+void space_check_timesteps(const struct space *s);
 void space_check_limiter(struct space *s);
 void space_check_swallow(struct space *s);
 void space_check_sort_flags(struct space *s);

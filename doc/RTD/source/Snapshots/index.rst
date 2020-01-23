@@ -215,17 +215,21 @@ triplet of floating-point numbers) is given by the attribute
 simulation volumes the cells themselves can have different sizes along each
 axis.
 
-The ``/Cells/Centres`` array gives the centre of each of the top-level cells in the
-simulation volume. Both the cell sizes and positions of the centres are
+The ``/Cells/Centres`` array gives the centre of each of the top-level cells in
+the simulation volume. Both the cell sizes and positions of the centres are
 expressed in the unit system used for the snapshots (see above) and are hence
-consistent with the particle positions themselves.
+consistent with the particle positions themselves. 
 
 Once the cell(s) containing the region of interest has been located, users can
 use the ``/Cells/Offsets/PartTypeN/Counts`` and
 ``/Cells/Offsets/PartTypeN/Offsets`` to retrieve the location of the particles
-of type ``N`` in the ``/PartTypeN`` arrays. For instance, if one is interested
-in retriving all the densities of the gas particles in the cell around the
-position `[1, 1, 1]` one could use a piece of code similar to:
+of type ``N`` in the ``/PartTypeN`` arrays. The cells, offsets and counts are
+sorted spatiall using C-style ordering. That is we first loop over the z axis
+then y axis and x is the slowest varying dimension.
+
+As an example, if one is interested in retriving all the densities of the gas
+particles in the cell around the position `[1, 1, 1]` one could use a piece of
+code similar to:
 
 .. code-block:: python
    :linenos:
@@ -243,7 +247,10 @@ position `[1, 1, 1]` one could use a piece of code similar to:
    size = f["/Cells/Meta-data"].attrs["size"]
    half_size = size / 2.
 
-   # Look for the cell containing the position of interest
+   # Look for the cell containing the position of interest.
+   #
+   # Note that since the cells are sorted spatially, we would formally
+   # not need to do this search and could jump directly to the correct 'i'.
    my_cell = -1
    for i in range(nr_cells):
       if my_pos[0] > centres[i, 0] - half_size[0] and my_pos[0] < centres[i, 0] + half_size[0] and

@@ -447,6 +447,8 @@ INLINE static void star_formation_copy_properties(
 
   /* Flag that this particle has not done feedback yet */
   sp->f_E = -1.f;
+  sp->last_enrichment_time = sp->birth_time;
+  sp->count_since_last_enrichment = -1;
 }
 
 /**
@@ -719,5 +721,21 @@ star_formation_first_init_part(const struct phys_const* restrict phys_const,
                                const struct star_formation* data,
                                const struct part* restrict p,
                                struct xpart* restrict xp) {}
+
+/**
+ * @brief Split the star formation content of a particle into n pieces
+ *
+ * We only need to split the SFR if it is positive, i.e. it is not
+ * storing the redshift/time of last SF event.
+ *
+ * @param p The #part.
+ * @param xp The #xpart.
+ * @param n The number of pieces to split into.
+ */
+__attribute__((always_inline)) INLINE static void star_formation_split_part(
+    struct part* p, struct xpart* xp, const double n) {
+
+  if (xp->sf_data.SFR > 0.) xp->sf_data.SFR /= n;
+}
 
 #endif /* SWIFT_EAGLE_STAR_FORMATION_H */

@@ -66,6 +66,9 @@ struct black_holes_props {
   /*! Normalisation of the viscuous angular momentum accretion reduction */
   float alpha_visc;
 
+  /*! Eddington fraction threshold for recording */
+  float f_Edd_recording;
+
   /* ---- Properties of the feedback model ------- */
 
   /*! Temperature increase induced by AGN feedback (Kelvin) */
@@ -78,6 +81,14 @@ struct black_holes_props {
 
   /*! Maximal mass of BH to reposition */
   float max_reposition_mass;
+
+  /* ---- Properties of the merger model ---------- */
+
+  /*! Mass ratio above which a merger is considered 'minor' */
+  float minor_merger_threshold;
+
+  /*! Mass ratio above which a merger is considered 'major' */
+  float major_merger_threshold;
 
   /* ---- Common conversion factors --------------- */
 
@@ -148,6 +159,8 @@ INLINE static void black_holes_props_init(struct black_holes_props *bp,
   /* Accretion parameters ---------------------------------- */
 
   bp->f_Edd = parser_get_param_float(params, "EAGLEAGN:max_eddington_fraction");
+  bp->f_Edd_recording = parser_get_param_float(
+      params, "EAGLEAGN:eddington_fraction_for_recording");
   bp->epsilon_r =
       parser_get_param_float(params, "EAGLEAGN:radiative_efficiency");
   bp->epsilon_f =
@@ -169,6 +182,14 @@ INLINE static void black_holes_props_init(struct black_holes_props *bp,
 
   /* Convert to internal units */
   bp->max_reposition_mass *= phys_const->const_solar_mass;
+
+  /* Merger parameters ------------------------------------- */
+
+  bp->minor_merger_threshold =
+      parser_get_param_float(params, "EAGLEAGN:threshold_minor_merger");
+
+  bp->major_merger_threshold =
+      parser_get_param_float(params, "EAGLEAGN:threshold_major_merger");
 
   /* Common conversion factors ----------------------------- */
 

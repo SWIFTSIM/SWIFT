@@ -65,7 +65,7 @@ done
 #  And process them,
 echo "Processing threadpool info files..."
 echo $list | xargs -P $NPROCS -n 3 /bin/bash -c "${SCRIPTHOME}/plot_threadpool.py --expand 1 --limit $TIMERANGE --width 16 --height 4 \$0 \$2 "
-echo $list | xargs -P $NPROCS -n 3 /bin/bash -c "${SCRIPTHOME}/analyse_threadpool_tasks.py \$0 > \$2.stats"
+echo $list | xargs -P $NPROCS -n 3 /bin/bash -c "${SCRIPTHOME}/analyse_threadpool_tasks.py \$0 --html > \$2.stats"
 
 echo "Writing output threadpool-index.html file"
 #  Construct document - serial.

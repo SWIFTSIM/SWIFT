@@ -25,7 +25,8 @@
  */
 struct star_formation_xpart_data {
 
-  /*! Star formation rate */
+  /*! Star formation rate (internal units) or (if negative) time/scale-factor of
+   * last SF episode */
   float SFR;
 };
 
