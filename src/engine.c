@@ -2651,6 +2651,13 @@ void engine_dump_restarts(struct engine *e, int drifted_all, int force) {
       if (!drifted_all) engine_drift_all(e, /*drift_mpole=*/1);
       restart_write(e, e->restart_file);
 
+#ifdef WITH_MPI
+      /* Make sure all ranks finished writing to avoid having incomplete
+       * sets of restart files should the code crash before all the ranks
+       * are done */
+      MPI_Barrier(MPI_COMM_WORLD);
+#endif
+
       if (e->verbose)
         message("Dumping restart files took %.3f %s",
                 clocks_from_ticks(getticks() - tic), clocks_getunit());
