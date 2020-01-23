@@ -568,8 +568,8 @@ static void split_metis(struct space *s, int nregions, int *celllist) {
   for (int i = 0; i < s->nr_cells; i++) s->cells_top[i].nodeID = celllist[i];
 
   /* To check or visualise the partition dump all the cells. */
-  if (engine_rank == 0) dumpCellRanks("metis_partition", s->cells_top,
-                                      s->nr_cells);
+  /*if (engine_rank == 0) dumpCellRanks("metis_partition", s->cells_top,
+                                      s->nr_cells);*/
 }
 #endif
 
@@ -884,8 +884,8 @@ static void pick_parmetis(int nodeID, struct space *s, int nregions,
                &nxadj);
 
     /* Dump graphs to disk files for testing. */
-    dumpMETISGraph("parmetis_graph", ncells, 1, std_xadj, full_adjncy,
-                   full_weights_v, NULL, full_weights_e);
+    /*dumpMETISGraph("parmetis_graph", ncells, 1, std_xadj, full_adjncy,
+                   full_weights_v, NULL, full_weights_e); */
 
     /* xadj is set for each rank, different to serial version in that each
      * rank starts with 0, so we need to re-offset. */
@@ -1317,8 +1317,8 @@ static void pick_metis(int nodeID, struct space *s, int nregions,
     idx_t objval;
 
     /* Dump graph in METIS format */
-    dumpMETISGraph("metis_graph", idx_ncells, one, xadj, adjncy, weights_v,
-                   NULL, weights_e);
+    /*dumpMETISGraph("metis_graph", idx_ncells, one, xadj, adjncy, weights_v,
+                   NULL, weights_e);*/
 
     if (METIS_PartGraphKway(&idx_ncells, &one, xadj, adjncy, weights_v, NULL,
                             weights_e, &idx_nregions, NULL, NULL, options,
