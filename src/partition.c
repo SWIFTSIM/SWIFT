@@ -400,52 +400,123 @@ static void ACCUMULATE_SIZES_MAPPER(gpart);
  */
 static void ACCUMULATE_SIZES_MAPPER(spart);
 
+/* qsort support. */
+static int ptrcmp(const void *p1, const void *p2) {
+  const double *v1 = *(const double **)p1;
+  const double *v2 = *(const double **)p2;
+  return (*v1) - (*v2);
+}
+
 /**
  * @brief Accumulate total memory size in particles per cell.
  *
  * @param s the space containing the cells.
+ * @param verbose whether to report any clipped cell counts.
  * @param counts the number of bytes in particles per cell. Should be
  *               allocated as size s->nr_cells.
  */
-static void accumulate_sizes(struct space *s, double *counts) {
+static void accumulate_sizes(struct space *s, int verbose, double *counts) {
 
   bzero(counts, sizeof(double) * s->nr_cells);
 
   struct counts_mapper_data mapper_data;
-  mapper_data.counts = counts;
   mapper_data.s = s;
+  double gsize = 0.0;
+  double *gcounts = NULL;
+  double hsize = 0.0;
+  double ssize = 0.0;
 
-  double hsize = (double)sizeof(struct part);
+  if (s->nr_gparts > 0) {
+    /* Self-gravity gets more efficient with density (see gitlab issue #640)
+     * so we end up with too much weight in cells with larger numbers of
+     * gparts, to suppress this we fix a upper weight limit based on a
+     * percentile clip to on the numbers of cells. Should be relatively
+     * harmless when not really needed. */
+    if ((gcounts = (double *)malloc(sizeof(double) * s->nr_cells)) == NULL)
+      error("Failed to allocate gcounts buffer.");
+    bzero(gcounts, sizeof(double) * s->nr_cells);
+    gsize = (double)sizeof(struct gpart);
+
+    mapper_data.counts = gcounts;
+    mapper_data.size = gsize;
+    threadpool_map(&s->e->threadpool, accumulate_sizes_mapper_gpart,
+                   s->gparts, s->nr_gparts, sizeof(struct gpart),
+                   space_splitsize, &mapper_data);
+
+    /* Get all the counts from all the nodes. */
+    if (MPI_Allreduce(MPI_IN_PLACE, gcounts, s->nr_cells, MPI_DOUBLE, MPI_SUM,
+                      MPI_COMM_WORLD) != MPI_SUCCESS)
+      error("Failed to allreduce particle cell gpart weights.");
+
+    /* Now we need to sort... */
+    double **ptrs = NULL;
+    if ((ptrs = (double **)malloc(sizeof(double *) * s->nr_cells)) == NULL)
+      error("Failed to allocate pointers buffer.");
+    for (int k = 0; k < s->nr_cells; k++) {
+      ptrs[k] = &gcounts[k];
+    }
+
+    /* Sort pointers, not counts... */
+    qsort(ptrs, s->nr_cells, sizeof(double *), ptrcmp);
+
+    /* Percentile cut keeps 99.8% of cells and clips above. */
+    int cut = ceil(s->nr_cells * 0.998);
+
+    /* And clip. */
+    int nadj = 0;
+    double clip  = *ptrs[cut];
+    for (int k = cut + 1; k < s->nr_cells; k++) {
+      *ptrs[k] = clip;
+      nadj++;
+    }
+    if (verbose)
+      message("clipped gravity part counts of %d cells", nadj);
+    free(ptrs);
+  }
+
+  /* Other particle types are assumed to correlate with processing time. */
   if (s->nr_parts > 0) {
+    mapper_data.counts = counts;
+    hsize = (double)sizeof(struct part);
     mapper_data.size = hsize;
     threadpool_map(&s->e->threadpool, accumulate_sizes_mapper_part, s->parts,
                    s->nr_parts, sizeof(struct part), space_splitsize,
                    &mapper_data);
   }
 
-  double gsize = (double)sizeof(struct gpart);
-  if (s->nr_gparts > 0) {
-    mapper_data.size = gsize;
-    threadpool_map(&s->e->threadpool, accumulate_sizes_mapper_gpart, s->gparts,
-                   s->nr_gparts, sizeof(struct gpart), space_splitsize,
-                   &mapper_data);
-  }
-
-  double ssize = (double)sizeof(struct spart);
   if (s->nr_sparts > 0) {
+    ssize = (double)sizeof(struct spart);
     mapper_data.size = ssize;
     threadpool_map(&s->e->threadpool, accumulate_sizes_mapper_spart, s->sparts,
                    s->nr_sparts, sizeof(struct spart), space_splitsize,
                    &mapper_data);
   }
 
+  /* Merge the counts arrays across all nodes, if needed. Doesn't include any
+   * gparts. */
+  if (s->nr_parts > 0 || s->nr_sparts > 0) {
+    if (MPI_Allreduce(MPI_IN_PLACE, counts, s->nr_cells, MPI_DOUBLE, MPI_SUM,
+                      MPI_COMM_WORLD) != MPI_SUCCESS)
+      error("Failed to allreduce particle cell weights.");
+  }
+
+  /* And merge with gravity counts. */
+  double sum = 0.0;
+  if (s->nr_gparts > 0) {
+    for (int k = 0; k < s->nr_cells; k++) {
+      counts[k] += gcounts[k];
+      sum += counts[k];
+    }
+    free(gcounts);
+  } else {
+    for (int k = 0; k < s->nr_cells; k++) {
+      sum += counts[k];
+    }
+  }
+
   /* Keep the sum of particles across all ranks in the range of IDX_MAX. */
-  if ((s->e->total_nr_parts * hsize + s->e->total_nr_gparts * gsize +
-       s->e->total_nr_sparts * ssize) > (double)IDX_MAX) {
-    double vscale =
-        (double)(IDX_MAX - 1000) /
-        (double)(s->e->total_nr_parts * hsize + s->e->total_nr_gparts * gsize +
-                 s->e->total_nr_sparts * ssize);
+  if (sum > (double)(IDX_MAX - 10000)) {
+    double vscale = (double)(IDX_MAX - 10000) / sum;
     for (int k = 0; k < s->nr_cells; k++) counts[k] *= vscale;
   }
 }
@@ -472,10 +543,9 @@ static void sizes_to_edges(struct space *s, double *counts, double *edges) {
 
           /* If not self, we work out the sort indices to get the expected
            * fractional weight and add that. Scale to keep sum less than
-           * counts (see sum of (sid_scale) * 2). */
+           * counts and a bit of tuning... */
           if (i || j || k) {
-            //edges[l * 26 + p] = counts[l] * sid_scale[sortlistID[ksid]] * 0.1;
-            edges[l * 26 + p] = counts[l] * sid_scale[sortlistID[ksid]];
+            edges[l * 26 + p] = counts[l] * sid_scale[sortlistID[ksid]] / 26.0;
             p++;
           }
         }
@@ -1442,8 +1512,8 @@ static void partition_gather_weights(void *map_data, int num_elements,
             } else {
 
               /* Add weights from task costs to the edge. */
-              atomic_add_d(&weights_e[ik], w);
-              atomic_add_d(&weights_e[jk], w);
+              atomic_add_d(&weights_e[ik], w );
+              atomic_add_d(&weights_e[jk], w );
             }
           }
         }
@@ -1571,22 +1641,22 @@ static void repart_edge_metis(int vweights, int eweights, int timebins,
   if (vweights && eweights) {
     if (vsum > esum) {
       if (vsum > (double)IDX_MAX) {
-        vscale = (double)(IDX_MAX - 1000) / vsum;
+        vscale = (double)(IDX_MAX - 10000) / vsum;
         escale = vscale;
       }
     } else {
       if (esum > (double)IDX_MAX) {
-        escale = (double)(IDX_MAX - 1000) / esum;
+        escale = (double)(IDX_MAX - 10000) / esum;
         vscale = escale;
       }
     }
   } else if (vweights) {
     if (vsum > (double)IDX_MAX) {
-      vscale = (double)(IDX_MAX - 1000) / vsum;
+      vscale = (double)(IDX_MAX - 10000) / vsum;
     }
   } else if (eweights) {
     if (esum > (double)IDX_MAX) {
-      escale = (double)(IDX_MAX - 1000) / esum;
+      escale = (double)(IDX_MAX - 10000) / esum;
     }
   }
 
@@ -1692,14 +1762,9 @@ static void repart_memory_metis(struct repartition *repartition, int nodeID,
     error("Failed to allocate cell weights buffer.");
 
   /* Check each particle and accumulate the sizes per cell. */
-  accumulate_sizes(s, weights);
+  accumulate_sizes(s, s->e->verbose, weights);
 
-  /* Get all the counts from all the nodes. */
-  if (MPI_Allreduce(MPI_IN_PLACE, weights, s->nr_cells, MPI_DOUBLE, MPI_SUM,
-                    MPI_COMM_WORLD) != MPI_SUCCESS)
-    error("Failed to allreduce particle cell weights.");
-
-    /* Allocate cell list for the partition. If not already done. */
+  /* Allocate cell list for the partition. If not already done. */
 #ifdef HAVE_PARMETIS
   int refine = 1;
 #endif
@@ -1888,12 +1953,7 @@ void partition_initial_partition(struct partition *initial_partition,
         error("Failed to allocate weights_v buffer.");
 
       /* Check each particle and accumulate the sizes per cell. */
-      accumulate_sizes(s, weights_v);
-
-      /* Get all the counts from all the nodes. */
-      if (MPI_Allreduce(MPI_IN_PLACE, weights_v, s->nr_cells, MPI_DOUBLE,
-                        MPI_SUM, MPI_COMM_WORLD) != MPI_SUCCESS)
-        error("Failed to allreduce particle cell weights.");
+      accumulate_sizes(s, s->e->verbose, weights_v);
 
     } else if (initial_partition->type == INITPART_METIS_WEIGHT_EDGE) {
 
@@ -1905,19 +1965,10 @@ void partition_initial_partition(struct partition *initial_partition,
         error("Failed to allocate weights_e buffer.");
 
       /* Check each particle and accumulate the sizes per cell. */
-      accumulate_sizes(s, weights_v);
+      accumulate_sizes(s, s->e->verbose, weights_v);
 
       /* Spread these into edge weights. */
       sizes_to_edges(s, weights_v, weights_e);
-
-      /* Get all the counts from all the nodes. */
-      if (MPI_Allreduce(MPI_IN_PLACE, weights_v, s->nr_cells, MPI_DOUBLE,
-                        MPI_SUM, MPI_COMM_WORLD) != MPI_SUCCESS)
-        error("Failed to allreduce particle cell weights.");
-
-      if (MPI_Allreduce(MPI_IN_PLACE, weights_e, 26 * s->nr_cells, MPI_DOUBLE,
-                        MPI_SUM, MPI_COMM_WORLD) != MPI_SUCCESS)
-        error("Failed to allreduce particle cell weights.");
     }
 
     /* Do the calculation. */
