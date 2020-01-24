@@ -157,7 +157,7 @@ int main(int argc, char* argv[]) {
       const double r =
           random_unit_interval(id, ti_current, random_number_star_formation);
       if (r < 0.0 || r >= 1.0) {
-        error("Generated random vlaue %f is not in [0, 1).", r);
+        error("Generated random value %f is not in [0, 1).", r);
       }
 
       total += r;
@@ -173,7 +173,7 @@ int main(int argc, char* argv[]) {
       const double r_2ndid = random_unit_interval(idoffset, ti_current,
                                                   random_number_star_formation);
       if (r_2ndid < 0.0 || r_2ndid >= 1.0) {
-        error("Generated random vlaue %f is not in [0, 1).", r_2ndid);
+        error("Generated random value %f is not in [0, 1).", r_2ndid);
       }
 
       /* Pearson correlation for small different IDs */
@@ -187,25 +187,25 @@ int main(int argc, char* argv[]) {
       const double r_sf_1 = random_unit_interval(
           id, ti_current, random_number_stellar_feedback_1);
       if (r_sf_1 < 0.0 || r_sf_1 >= 1.0) {
-        error("Generated random vlaue %f is not in [0, 1).", r_sf_1);
+        error("Generated random value %f is not in [0, 1).", r_sf_1);
       }
 
       const double r_sf_2 = random_unit_interval(
           id, ti_current, random_number_stellar_feedback_2);
       if (r_sf_2 < 0.0 || r_sf_2 >= 1.0) {
-        error("Generated random vlaue %f is not in [0, 1).", r_sf_2);
+        error("Generated random value %f is not in [0, 1).", r_sf_2);
       }
 
       const double r_se = random_unit_interval(
           id, ti_current, random_number_stellar_enrichment);
       if (r_se < 0.0 || r_se >= 1.0) {
-        error("Generated random vlaue %f is not in [0, 1).", r_se);
+        error("Generated random value %f is not in [0, 1).", r_se);
       }
 
       const double r_bh =
           random_unit_interval(id, ti_current, random_number_BH_feedback);
       if (r_bh < 0.0 || r_bh >= 1.0) {
-        error("Generated random vlaue %f is not in [0, 1).", r_bh);
+        error("Generated random value %f is not in [0, 1).", r_bh);
       }
 
       /* Calculate the correlation between the different processes */
