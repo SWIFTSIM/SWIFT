@@ -55,21 +55,8 @@ struct spart {
   /*! Star mass */
   float mass;
 
-  /* Particle cutoff radius. */
+  /*! Particle smoothing length. */
   float h;
-
-  /*! Union for the birth time and birth scale factor */
-  union {
-
-    /*! Birth time */
-    float birth_time;
-
-    /*! Birth scale factor */
-    float birth_scale_factor;
-  };
-
-  /*! Particle time bin */
-  timebin_t time_bin;
 
   struct {
 
@@ -92,6 +79,16 @@ struct spart {
     float mass;
   } birth;
 
+  /*! Union for the birth time and birth scale factor */
+  union {
+
+    /*! Birth time */
+    float birth_time;
+
+    /*! Birth scale factor */
+    float birth_scale_factor;
+  };
+
   /*! Feedback structure */
   struct feedback_spart_data feedback_data;
 
@@ -99,7 +96,10 @@ struct spart {
   struct tracers_xpart_data tracers_data;
 
   /*! Chemistry structure */
-  struct chemistry_part_data chemistry_data;
+  struct chemistry_spart_data chemistry_data;
+
+  /*! Particle time bin */
+  timebin_t time_bin;
 
 #ifdef SWIFT_DEBUG_CHECKS
 
@@ -118,11 +118,11 @@ struct spart {
   /*! List of interacting particles in the density SELF and PAIR */
   long long ids_ngbs_density[MAX_NUM_OF_NEIGHBOURS_STARS];
 
-  /*! Number of interactions in the force SELF and PAIR */
-  int num_ngb_force;
+  /*! Number of interactions in the feedback SELF and PAIR */
+  int num_ngb_feedback;
 
   /*! List of interacting particles in the force SELF and PAIR */
-  long long ids_ngbs_force[MAX_NUM_OF_NEIGHBOURS_STARS];
+  long long ids_ngbs_feedback[MAX_NUM_OF_NEIGHBOURS_STARS];
 #endif
 
 } SWIFT_STRUCT_ALIGN;
@@ -135,7 +135,7 @@ struct stars_props {
   /*! Resolution parameter */
   float eta_neighbours;
 
-  /*! Target weightd number of neighbours (for info only)*/
+  /*! Target weighted number of neighbours (for info only)*/
   float target_neighbours;
 
   /*! Smoothing length tolerance */

@@ -3173,7 +3173,7 @@ void engine_collect_stars_counter(struct engine *e) {
 
   /* Reset counters */
   for (size_t i = 0; i < e->s->nr_sparts_foreign; i++) {
-    e->s->sparts_foreign[i].num_ngb_force = 0;
+    e->s->sparts_foreign[i].num_ngb_feedback = 0;
   }
 
   /* Update counters */
@@ -3193,7 +3193,7 @@ void engine_collect_stars_counter(struct engine *e) {
               id_j, j, displs[engine_rank], n_sparts_int[engine_rank]);
         }
 
-        local_sparts[i].num_ngb_force += sparts[j].num_ngb_force;
+        local_sparts[i].num_ngb_feedback += sparts[j].num_ngb_feedback;
       }
     }
   }

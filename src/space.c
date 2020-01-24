@@ -4286,7 +4286,8 @@ void space_first_init_parts_mapper(void *restrict map_data, int count,
                                    &xp[k]);
 
     /* And the cooling */
-    cooling_first_init_part(phys_const, us, cosmo, cool_func, &p[k], &xp[k]);
+    cooling_first_init_part(phys_const, us, hydro_props, cosmo, cool_func,
+                            &p[k], &xp[k]);
 
     /* And the tracers */
     tracers_first_init_xpart(&p[k], &xp[k], us, phys_const, cosmo, hydro_props,

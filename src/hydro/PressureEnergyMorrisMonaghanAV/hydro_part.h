@@ -35,6 +35,7 @@
 #include "black_holes_struct.h"
 #include "chemistry_struct.h"
 #include "cooling_struct.h"
+#include "feedback_struct.h"
 #include "star_formation_struct.h"
 #include "timestep_limiter_struct.h"
 #include "tracers_struct.h"
@@ -71,6 +72,9 @@ struct xpart {
 
   /*! Additional data used by the star formation */
   struct star_formation_xpart_data sf_data;
+
+  /* Additional data used by the feedback */
+  struct feedback_part_data feedback_data;
 
 } SWIFT_STRUCT_ALIGN;
 

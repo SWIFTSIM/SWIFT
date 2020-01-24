@@ -280,7 +280,7 @@ runner_iact_nonsym_feedback_apply(const float r2, const float *dx,
 
     /* Draw a random number (Note mixing both IDs) */
     const float rand = random_unit_interval(si->id + pj->id, ti_current,
-                                            random_number_stellar_feedback);
+                                            random_number_stellar_feedback_1);
     /* Are we lucky? */
     if (rand < prob) {
 

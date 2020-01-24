@@ -22,6 +22,11 @@
 #include "chemistry_struct.h"
 
 /**
+ * @brief Feedback fields carried by each hydro particles
+ */
+struct feedback_part_data {};
+
+/**
  * @brief Feedback fields carried by each star particles
  */
 struct feedback_spart_data {

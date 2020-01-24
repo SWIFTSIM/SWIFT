@@ -27,6 +27,7 @@
 /* Some standard headers. */
 #include <float.h>
 #include <math.h>
+#include <string.h>
 
 /* Local includes. */
 #include "chemistry_struct.h"
@@ -38,16 +39,21 @@
 #include "units.h"
 
 /**
- * @brief Compute the metal mass fraction
+ * @brief Copies the chemistry properties of the gas particle over to the
+ * star particle.
  *
- * @param p Pointer to the particle data.
- * @param xp Pointer to the extended particle data.
- * @param data The global chemistry information.
+ * @param p the gas particles.
+ * @param xp the additional properties of the gas particles.
+ * @param sp the new created star particle with its properties.
  */
-__attribute__((always_inline)) INLINE static float
-chemistry_metal_mass_fraction(const struct part* restrict p,
-                              const struct xpart* restrict xp) {
-  return p->chemistry_data.Z;
+INLINE static void chemistry_copy_star_formation_properties(
+    const struct part* p, const struct xpart* xp, struct spart* sp) {
+
+  /* Store the chemistry struct in the star particle */
+  for (int i = 0; i < GEAR_CHEMISTRY_ELEMENT_COUNT; i++) {
+    sp->chemistry_data.metal_mass_fraction[i] =
+        p->chemistry_data.smoothed_metal_mass_fraction[i];
+  }
 }
 
 /**
@@ -60,6 +66,60 @@ static INLINE void chemistry_print_backend(
     const struct chemistry_global_data* data) {
 
   message("Chemistry function is 'Gear'.");
+}
+
+/**
+ * @brief Read the solar abundances and scale with them the initial
+ * metallicities.
+ *
+ * @param parameter_file The parsed parameter file.
+ * @param data The properties to initialise.
+ */
+static INLINE void chemistry_scale_initial_metallicities(
+    struct swift_params* parameter_file, struct chemistry_global_data* data) {
+#ifdef HAVE_HDF5
+
+  /* Get the yields table */
+  char filename[DESCRIPTION_BUFFER_SIZE];
+  parser_get_param_string(parameter_file, "GEARFeedback:yields_table",
+                          filename);
+
+  /* Open file. */
+  hid_t file_id = H5Fopen(filename, H5F_ACC_RDONLY, H5P_DEFAULT);
+  if (file_id < 0) error("unable to open file %s.\n", filename);
+
+  /* Open group. */
+  hid_t group_id = H5Gopen(file_id, "Data", H5P_DEFAULT);
+  if (group_id < 0) error("unable to open group Data.\n");
+
+  /* Read the data */
+  float* sol_ab = (float*)malloc(sizeof(float) * GEAR_CHEMISTRY_ELEMENT_COUNT);
+  io_read_array_attribute(group_id, "SolarMassAbundances", FLOAT, sol_ab,
+                          GEAR_CHEMISTRY_ELEMENT_COUNT);
+
+  /* Close group */
+  hid_t status = H5Gclose(group_id);
+  if (status < 0) error("error closing group.");
+
+  /* Close file */
+  status = H5Fclose(file_id);
+  if (status < 0) error("error closing file.");
+
+  /* Scale the initial metallicities */
+  char txt[DESCRIPTION_BUFFER_SIZE] = "Scaling initial metallicities by:";
+  for (int i = 0; i < GEAR_CHEMISTRY_ELEMENT_COUNT; i++) {
+    data->initial_metallicities[i] *= sol_ab[i];
+    char tmp[10];
+    sprintf(tmp, " %.2g", sol_ab[i]);
+    strcat(txt, tmp);
+  }
+
+  if (engine_rank == 0) {
+    message("%s", txt);
+  }
+#else
+  error("Cannot scale the solar abundances without HDF5");
+#endif
 }
 
 /**
@@ -78,8 +138,22 @@ static INLINE void chemistry_init_backend(struct swift_params* parameter_file,
                                           struct chemistry_global_data* data) {
 
   /* read parameters */
-  data->initial_metallicity = parser_get_opt_param_float(
-      parameter_file, "GearChemistry:InitialMetallicity", -1);
+  const float initial_metallicity = parser_get_param_float(
+      parameter_file, "GEARChemistry:initial_metallicity");
+
+  /* Set the initial metallicities */
+  for (int i = 0; i < GEAR_CHEMISTRY_ELEMENT_COUNT; i++) {
+    data->initial_metallicities[i] = initial_metallicity;
+  }
+
+  /* Check if need to scale the initial metallicity */
+  const int scale_metallicity = parser_get_opt_param_int(
+      parameter_file, "GEARChemistry:scale_initial_metallicity", 0);
+
+  /* Scale the metallicities if required */
+  if (scale_metallicity) {
+    chemistry_scale_initial_metallicities(parameter_file, data);
+  }
 }
 
 /**
@@ -96,8 +170,12 @@ __attribute__((always_inline)) INLINE static void chemistry_init_part(
 
   struct chemistry_part_data* cpd = &p->chemistry_data;
 
-  for (int i = 0; i < chemistry_element_count; i++) {
+  for (int i = 0; i < GEAR_CHEMISTRY_ELEMENT_COUNT; i++) {
+    /* Reset the smoothed metallicity */
     cpd->smoothed_metal_mass_fraction[i] = 0.f;
+
+    /* Convert the total mass into mass fraction */
+    cpd->metal_mass_fraction[i] = cpd->metal_mass[i] / p->mass;
   }
 }
 
@@ -125,13 +203,16 @@ __attribute__((always_inline)) INLINE static void chemistry_end_density(
 
   struct chemistry_part_data* cpd = &p->chemistry_data;
 
-  for (int i = 0; i < chemistry_element_count; i++) {
+  for (int i = 0; i < GEAR_CHEMISTRY_ELEMENT_COUNT; i++) {
     /* Final operation on the density (add self-contribution). */
     cpd->smoothed_metal_mass_fraction[i] +=
         m * cpd->metal_mass_fraction[i] * kernel_root;
 
     /* Finish the calculation by inserting the missing h-factors */
     cpd->smoothed_metal_mass_fraction[i] *= factor;
+
+    /* Convert the mass fraction into a total mass */
+    cpd->metal_mass[i] = m * cpd->metal_mass_fraction[i];
   }
 }
 
@@ -157,7 +238,14 @@ chemistry_part_has_no_neighbours(struct part* restrict p,
                                  struct xpart* restrict xp,
                                  const struct chemistry_global_data* cd,
                                  const struct cosmology* cosmo) {
-  error("Needs implementing!");
+
+  /* Set the smoothed fractions with the non smoothed fractions */
+  for (int i = 0; i < GEAR_CHEMISTRY_ELEMENT_COUNT; i++) {
+    p->chemistry_data.smoothed_metal_mass_fraction[i] =
+        p->chemistry_data.metal_mass_fraction[i];
+    p->chemistry_data.metal_mass[i] =
+        p->chemistry_data.metal_mass_fraction[i] * p->mass;
+  }
 }
 
 /**
@@ -198,7 +286,10 @@ __attribute__((always_inline)) INLINE static void chemistry_first_init_part(
     const struct chemistry_global_data* data, struct part* restrict p,
     struct xpart* restrict xp) {
 
-  p->chemistry_data.Z = data->initial_metallicity;
+  for (int i = 0; i < GEAR_CHEMISTRY_ELEMENT_COUNT; i++) {
+    p->chemistry_data.metal_mass[i] = data->initial_metallicities[i] * p->mass;
+  }
+
   chemistry_init_part(p, data);
 }
 
@@ -212,9 +303,9 @@ __attribute__((always_inline)) INLINE static void chemistry_first_init_part(
 __attribute__((always_inline)) INLINE static void chemistry_first_init_spart(
     const struct chemistry_global_data* data, struct spart* restrict sp) {
 
-  error(
-      "MATTHIEU: Loic this is a new function. I don't know whether you"
-      " want something here.");
+  for (int i = 0; i < GEAR_CHEMISTRY_ELEMENT_COUNT; i++) {
+    sp->chemistry_data.metal_mass_fraction[i] = data->initial_metallicities[i];
+  }
 }
 
 /**
@@ -271,6 +362,86 @@ __attribute__((always_inline)) INLINE static void chemistry_add_bpart_to_bpart(
 __attribute__((always_inline)) INLINE static void chemistry_split_part(
     struct part* p, const double n) {
   error("Loic: to be implemented");
+}
+
+/**
+ * @brief Returns the total metallicity (metal mass fraction) of the
+ * star particle to be used in feedback/enrichment related routines.
+ *
+ * @param sp Pointer to the particle data.
+ */
+__attribute__((always_inline)) INLINE static float
+chemistry_get_total_metal_mass_fraction_for_feedback(
+    const struct spart* restrict sp) {
+
+  return sp->chemistry_data
+      .metal_mass_fraction[GEAR_CHEMISTRY_ELEMENT_COUNT - 1];
+}
+
+/**
+ * @brief Returns the abundances (metal mass fraction) of the
+ * star particle to be used in feedback/enrichment related routines.
+ *
+ * @param sp Pointer to the particle data.
+ */
+__attribute__((always_inline)) INLINE static float const*
+chemistry_get_metal_mass_fraction_for_feedback(
+    const struct spart* restrict sp) {
+
+  return sp->chemistry_data.metal_mass_fraction;
+}
+
+/**
+ * @brief Returns the total metallicity (metal mass fraction) of the
+ * gas particle to be used in cooling related routines.
+ *
+ * @param p Pointer to the particle data.
+ */
+__attribute__((always_inline)) INLINE static float
+chemistry_get_total_metal_mass_fraction_for_cooling(
+    const struct part* restrict p) {
+
+  return p->chemistry_data
+      .smoothed_metal_mass_fraction[GEAR_CHEMISTRY_ELEMENT_COUNT - 1];
+}
+
+/**
+ * @brief Returns the abundance array (metal mass fractions) of the
+ * gas particle to be used in cooling related routines.
+ *
+ * @param p Pointer to the particle data.
+ */
+__attribute__((always_inline)) INLINE static float const*
+chemistry_get_metal_mass_fraction_for_cooling(const struct part* restrict p) {
+
+  return p->chemistry_data.smoothed_metal_mass_fraction;
+}
+
+/**
+ * @brief Returns the total metallicity (metal mass fraction) of the
+ * gas particle to be used in star formation related routines.
+ *
+ * @param p Pointer to the particle data.
+ */
+__attribute__((always_inline)) INLINE static float
+chemistry_get_total_metal_mass_fraction_for_star_formation(
+    const struct part* restrict p) {
+
+  return p->chemistry_data
+      .smoothed_metal_mass_fraction[GEAR_CHEMISTRY_ELEMENT_COUNT - 1];
+}
+
+/**
+ * @brief Returns the abundance array (metal mass fractions) of the
+ * gas particle to be used in star formation related routines.
+ *
+ * @param p Pointer to the particle data.
+ */
+__attribute__((always_inline)) INLINE static float const*
+chemistry_get_metal_mass_fraction_for_star_formation(
+    const struct part* restrict p) {
+
+  return p->chemistry_data.smoothed_metal_mass_fraction;
 }
 
 #endif /* SWIFT_CHEMISTRY_GEAR_H */

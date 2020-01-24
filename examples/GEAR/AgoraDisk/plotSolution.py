@@ -34,7 +34,7 @@ from yt.analysis_modules.halo_analysis.api import *
 from yt.data_objects.particle_filters import add_particle_filter
 from scipy.stats import kde
 from subprocess import call
-#mylog.setLevel(1)
+# mylog.setLevel(1)
 
 from yt.utilities.math_utils import get_cyl_r, get_cyl_theta, get_cyl_z
 
@@ -53,7 +53,7 @@ draw_PDF                         = 2###2         # 0/1/2/3     = OFF/ON/ON with 
 draw_pos_vel_PDF                 = 4##4          # 0/1/2/3/4   = OFF/ON/ON with 1D profile/ON also with 1D dispersion profile/ON also with separate 1D vertical dispersion profiles
 draw_star_pos_vel_PDF            = 4##4          # 0/1/2/3/4   = OFF/ON/ON with 1D profile/ON also with 1D dispersion profile/ON also with separate 1D vertical dispersion profiles
 draw_rad_height_PDF              = 2##2          # 0/1/2/3     = OFF/ON/ON with 1D profile/ON with analytic ftn subtracted
-draw_metal_PDF                   = 0##0          # 0/1         = OFF/ON
+draw_metal_PDF                   = 1##1          # 0/1         = OFF/ON
 draw_density_DF                  = 2#2           # 0/1/2       = OFF/ON/ON with difference plot between 1st and 2nd datasets (when 2, dataset_num should be set to 2)
 draw_radius_DF                   = 1#1           # 0/1         = OFF/ON
 draw_star_radius_DF              = 2#2           # 0/1/2       = OFF/ON/ON with SFR profile and K-S plot (when 2, this automatically turns on draw_radius_DF)
@@ -110,9 +110,9 @@ marker_names             = ['s', 'o', 'p', 'v', '^', '<', '>', 'h', '*']
 #             [file_location[1]+'GIZMO/snapshot_temp_000', file_location[1]+'GIZMO/snapshot_temp_100']]]
 codes = ['SWIFT', 'GEAR']
 filenames = [[["./agora_disk_IC.hdf5", "./agora_disk_500Myr.hdf5"], # Sim-noSFF
-              ["./snapshot_0000.hdf5", "./snapshot_0500.hdf5"]],
+              ["./snapshot_0000.hdf5", "./snapshot_0050.hdf5"]],
              [["./agora_disk_IC.hdf5", "./agora_disk_500Myr.hdf5"], # Sim-SFF (with star formation and feedback)
-              ["./snapshot_0000.hdf5", "./snapshot_0500.hdf5"]]] # I did not check the order, they can be switched
+              ["./snapshot_0000.hdf5", "./snapshot_0050.hdf5"]]] # I did not check the order, they can be switched
 
 # codes = ["SWIFT"]
 # filenames = [[["./agora_disk_0000.hdf5", "./agora_disk_0050.hdf5"]],
@@ -139,8 +139,8 @@ filenames = [[["./agora_disk_IC.hdf5", "./agora_disk_500Myr.hdf5"], # Sim-noSFF
 # filenames = [[[file_location[0]+'GADGET-3/AGORA_ISO_LOW_DRY/snap_iso_dry_000.hdf5', file_location[0]+'GADGET-3/AGORA_ISO_LOW_DRY/snap_iso_dry_010.hdf5']],
 #            [[file_location[1]+'GADGET-3/AGORA_ISO_LOW_SF_SNII_Thermal_Chevalier_SFT10/snap_iso_sf_000.hdf5', file_location[1]+'GADGET-3/AGORA_ISO_LOW_SF_SNII_Thermal_Chevalier_SFT10/snap_iso_sf_010.hdf5']]]
 # codes = ['GEAR']
-# filenames = [[['snapshot_0000', 'snapshot_0500']],
-#            [['snapshot_0000', 'snapshot_0500']]]
+# filenames = [[['snapshot_0000.hdf5', 'snapshot_0500.hdf5']],
+#            [['snapshot_0000.hdf5', 'snapshot_0500']]]
 # codes = ['GIZMO']
 # filenames = [[[file_location[0]+'GIZMO/snapshot_temp_000', file_location[0]+'GIZMO/snapshot_temp_100']],
 #            [[file_location[1]+'GIZMO/snapshot_temp_000', file_location[1]+'GIZMO/snapshot_temp_100']]]
@@ -439,7 +439,7 @@ for time in range(len(times)):
                                         yield line
         if draw_PDF >= 1:
                 fig_PDF              += [plt.figure(figsize=(50, 80))]
-                grid_PDF             += [AxesGrid(fig_PDF[time], (0.01,0.01,0.99,0.99), nrows_ncols = (3, int(math.ceil(len(codes)/3.0))), axes_pad = 0.05, add_all = True, share_all = True,
+                grid_PDF             += [AxesGrid(fig_PDF[time], (0.01,0.01,0.99,0.99), nrows_ncols = (2, int(math.ceil(len(codes)/2.0))), axes_pad = 0.05, add_all = True, share_all = True,
                                                   label_mode = "1", cbar_mode = "single", cbar_location = "right", cbar_size = "2%", cbar_pad = 0.05, aspect = False)]
         if draw_pos_vel_PDF >= 1:
                 fig_pos_vel_PDF      += [plt.figure(figsize=(50, 80))]
@@ -469,7 +469,7 @@ for time in range(len(times)):
                 rad_height_profiles.append([])
         if draw_metal_PDF == 1:
                 fig_metal_PDF        += [plt.figure(figsize=(50, 80))]
-                grid_metal_PDF       += [AxesGrid(fig_metal_PDF[time], (0.01,0.01,0.99,0.99), nrows_ncols = (3, int(math.ceil(len(codes)/3.0))), axes_pad = 0.05, add_all = True, share_all = True,
+                grid_metal_PDF       += [AxesGrid(fig_metal_PDF[time], (0.01,0.01,0.99,0.99), nrows_ncols = (2, int(math.ceil(len(codes)/2.0))), axes_pad = 0.05, add_all = True, share_all = True,
                                                   label_mode = "1", cbar_mode = "single", cbar_location = "right", cbar_size = "2%", cbar_pad = 0.05, aspect = False)]
         if draw_density_DF >= 1:
                 density_DF_xs.append([])
@@ -576,9 +576,9 @@ for time in range(len(times)):
                         PartType_StarBeforeFiltered_to_use = "PartType4"
                         if time != 0:
                             def _FormationTime(field, data):
-                                return pf.arr(data["PartType4", "BirthTime"].d, 'code_time')
+                                return pf.arr(data["PartType4", "BirthTimes"].d, 'code_time')
                             pf.add_field(("PartType4", FormationTimeType_to_use), function=_FormationTime, particle_type=True, take_log=False, units="code_time")
-                        
+
                         MassType_to_use = "Masses"
                 elif codes[code] == "GEAR":
                         PartType_Gas_to_use = "PartType0"
@@ -715,6 +715,20 @@ for time in range(len(times)):
                                 def _metallicity_3(field, data):
                                         return data["deposit", PartType_Gas_to_use+"_smoothed_"+MetallicityType_to_use]
                                 pf.add_field(("gas", "metallicity"), function=_metallicity_3, force_override=True, display_name="Metallicity", particle_type=False, take_log=True, units="")
+                        elif codes[code] == 'SWIFT': # "Metals" in SWIFT is 10-species field ([:,9] is the total metal fraction), so requires a change in _vector_fields in frontends/gadget/io.py: added ("Metals", 10)
+                                def _metallicity_2(field, data):
+                                        if len(data[PartType_Gas_to_use, "SmoothedElementAbundances"].shape) == 1:
+                                                return data[PartType_Gas_to_use, "SmoothedElementAbundances"]
+                                        else:
+                                                return data[PartType_Gas_to_use, "SmoothedElementAbundances"][:,9].in_units("") # in_units("") turned out to be crucial!; otherwise code_metallicity will be used and it will mess things up
+                                # We are creating ("Gas", "Metallicity") here, different from ("Gas", "metallicity") which is auto-generated by yt but doesn't work properly
+                                pf.add_field((PartType_Gas_to_use, MetallicityType_to_use), function=_metallicity_2, display_name="Metallicity", particle_type=True, take_log=True, units="")
+                                # Also creating smoothed field following an example in yt-project.org/docs/dev/cookbook/calculating_information.html; use hardcoded num_neighbors as in frontends/gadget/fields.py
+                                fn = add_volume_weighted_smoothed_field(PartType_Gas_to_use, "Coordinates", MassType_to_use, "SmoothingLength", "Density", MetallicityType_to_use, pf.field_info, nneighbors=64)
+                                # Alias doesn't work -- e.g. pf.field_info.alias(("gas", "metallicity"), fn[0]) -- probably because pf=GadgetDataset()?, not load()?; so I add and replace existing ("gas", "metallicity")
+                                def _metallicity_3(field, data):
+                                        return data["deposit", PartType_Gas_to_use+"_smoothed_"+MetallicityType_to_use]
+                                pf.add_field(("gas", "metallicity"), function=_metallicity_3, force_override=True, display_name="Metallicity", particle_type=False, take_log=True, units="")
                         if draw_metal_map >= 2:
                                 def _metal_mass(field, data):
                                         return data["gas", "cell_mass"] * data["gas", "metallicity"]
@@ -745,7 +759,7 @@ for time in range(len(times)):
                         if draw_metal_map >= 1 or draw_metal_PDF == 1:
                                 def _Metallicity_2(field, data):
                                         return data[(PartType_Gas_to_use, MetallicityType_to_use)]
-                                pf.add_field((PartType_Gas_to_use, "Metallicity_2"), function=_Metallicity_2, take_log=True, particle_type=False, display_name="Metallicity", units="")
+                                pf.add_field((PartType_Gas_to_use, "Metallicity_2"), function=_Metallicity_2, take_log=True, particle_type=True, display_name="Metallicity", units="")
                         def _Density_2_minus_analytic(field, data):
                                 return data[(PartType_Gas_to_use, "density")] - rho_agora_disk(data[(PartType_Gas_to_use, "radius")], data[(PartType_Gas_to_use, "particle_position_cylindrical_z_abs")])
                         pf.add_field((PartType_Gas_to_use, "Density_2_minus_analytic"), function=_Density_2_minus_analytic, take_log=False, particle_type=False, display_name="Density Residual", units="g/cm**3")
@@ -1565,13 +1579,18 @@ for time in range(len(times)):
                         else:
                                 # Because ParticlePhasePlot doesn't yet work for a log-log PDF for some reason, I will do the following trick.
                                 pf.field_info[(PartType_Gas_to_use, "Metallicity_2")].take_log = False
-                                p3 = PhasePlot(sp, (PartType_Gas_to_use, "density"), (PartType_Gas_to_use, "temperature"), (PartType_Gas_to_use, "Metallicity_2"), weight_field=(PartType_Gas_to_use, MassType_to_use), fontsize=12, x_bins=300, y_bins=300)
+                                p3 = ParticlePhasePlot(sp, (PartType_Gas_to_use, "density"), (PartType_Gas_to_use, "temperature"), (PartType_Gas_to_use, "Metallicity_2"),
+                                                       weight_field=(PartType_Gas_to_use, MassType_to_use), fontsize=12, x_bins=300, y_bins=300)
                                 p3.set_zlim((PartType_Gas_to_use, "Metallicity_2"), 0.01, 0.04)
                                 p3.set_cmap((PartType_Gas_to_use, "Metallicity_2"), my_cmap2)
                                 plot3 = p3.plots[(PartType_Gas_to_use, "Metallicity_2")]
 
+                        p3.set_unit("density", "g/cm**3")
                         p3.set_xlim(1e-29, 1e-21)
+                        p3.set_unit("temperature", "K")
                         p3.set_ylim(10, 1e7)
+                        p3.set_log("density", True)
+                        p3.set_log("temperature", True)
 
                         plot3.figure = fig_metal_PDF[time]
                         plot3.axes = grid_metal_PDF[time][code].axes
@@ -2271,7 +2290,7 @@ for time in range(len(times)):
         if draw_metal_PDF == 1:
                 fig_metal_PDF[time].savefig("metal_PDF_%dMyr" % times[time], bbox_inches='tight', pad_inches=0.03, dpi=300)
         if draw_density_DF >= 1:
-                plt.clf()
+#                 plt.clf()
 #		plt.subplot(111, aspect=1)
                 fig = plt.figure(figsize=(8, 8))
                 gridspec.GridSpec(4, 1)
