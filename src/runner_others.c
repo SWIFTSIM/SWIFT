@@ -44,6 +44,7 @@
 #include "cooling.h"
 #include "engine.h"
 #include "error.h"
+#include "feedback.h"
 #include "gravity.h"
 #include "hydro.h"
 #include "logger.h"
@@ -52,6 +53,7 @@
 #include "star_formation.h"
 #include "star_formation_logger.h"
 #include "stars.h"
+#include "task_order.h"
 #include "timers.h"
 #include "timestep_limiter.h"
 #include "tracers.h"
@@ -143,7 +145,6 @@ void runner_do_grav_mesh(struct runner *r, struct cell *c, int timer) {
  * @param timer 1 if the time is to be recorded.
  */
 void runner_do_cooling(struct runner *r, struct cell *c, int timer) {
-
   const struct engine *e = r->e;
   const struct cosmology *cosmo = e->cosmology;
   const int with_cosmology = (e->policy & engine_policy_cosmology);
@@ -157,11 +158,14 @@ void runner_do_cooling(struct runner *r, struct cell *c, int timer) {
   struct part *restrict parts = c->hydro.parts;
   struct xpart *restrict xparts = c->hydro.xparts;
   const int count = c->hydro.count;
+  const double time = e->time;
 
   TIMER_TIC;
 
-  /* Anything to do here? */
-  if (!cell_is_active_hydro(c, e)) return;
+  /* Anything to do here? (i.e. does this cell need updating?) */
+  if (!((task_order_cooling_after_timestep && cell_is_starting_hydro(c, e)) ||
+        (!task_order_cooling_after_timestep && cell_is_active_hydro(c, e))))
+    return;
 
   /* Recurse? */
   if (c->split) {
@@ -176,7 +180,9 @@ void runner_do_cooling(struct runner *r, struct cell *c, int timer) {
       struct part *restrict p = &parts[i];
       struct xpart *restrict xp = &xparts[i];
 
-      if (part_is_active(p, e)) {
+      /* Anything to do here? (i.e. does this particle need updating?) */
+      if ((task_order_cooling_after_timestep && part_is_starting(p, e)) ||
+          (!task_order_cooling_after_timestep && part_is_active(p, e))) {
 
         double dt_cool, dt_therm;
         if (with_cosmology) {
@@ -196,8 +202,13 @@ void runner_do_cooling(struct runner *r, struct cell *c, int timer) {
 
         /* Let's cool ! */
         cooling_cool_part(constants, us, cosmo, hydro_props,
-                          entropy_floor_props, cooling_func, p, xp, dt_cool,
-                          dt_therm);
+                          entropy_floor_props, cooling_func, p, xp, time,
+                          dt_cool, dt_therm);
+
+        /* Apply the effects of feedback on this particle
+         * (Note: Only used in schemes that have a delayed feedback mechanism
+         * otherwise just an empty function) */
+        feedback_update_part(p, xp, e);
       }
     }
   }

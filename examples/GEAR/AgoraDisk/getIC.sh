@@ -6,4 +6,4 @@ if [ "$#" -ne 1 ]; then
     exit
 fi
 
-wget https://obswww.unige.ch/~lhausamm/swift/IC/AgoraDisk/$1.hdf5
+wget http://virgodb.cosma.dur.ac.uk/swift-webstorage/ICs/AgoraDisk/$1.hdf5

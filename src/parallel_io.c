@@ -45,6 +45,7 @@
 #include "engine.h"
 #include "entropy_floor.h"
 #include "error.h"
+#include "feedback.h"
 #include "fof_io.h"
 #include "gravity_io.h"
 #include "gravity_properties.h"
@@ -1170,6 +1171,7 @@ void prepare_file(struct engine* e, const char* baseName, long long N_total[6],
   cooling_write_flavour(h_grp, e->cooling_func);
   chemistry_write_flavour(h_grp);
   tracers_write_flavour(h_grp);
+  feedback_write_flavour(e->feedback_props, h_grp);
   H5Gclose(h_grp);
 
   /* Print the gravity parameters */

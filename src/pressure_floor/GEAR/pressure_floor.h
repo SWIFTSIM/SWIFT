@@ -130,7 +130,7 @@ __attribute__((always_inline)) static INLINE void pressure_floor_init(
 
   /* Read the Jeans factor */
   props->n_jeans =
-      parser_get_param_float(params, "GEARPressureFloor:Jeans_factor");
+      parser_get_param_float(params, "GEARPressureFloor:jeans_factor");
 
   /* Compute the constants */
   props->constants =

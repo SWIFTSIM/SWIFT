@@ -167,7 +167,7 @@ __attribute__((always_inline)) INLINE static void stars_reset_acceleration(
     struct spart* restrict p) {
 
 #ifdef DEBUG_INTERACTIONS_STARS
-  p->num_ngb_force = 0;
+  p->num_ngb_feedback = 0;
 #endif
 }
 
@@ -184,8 +184,8 @@ __attribute__((always_inline)) INLINE static void stars_reset_feedback(
 
 #ifdef DEBUG_INTERACTIONS_STARS
   for (int i = 0; i < MAX_NUM_OF_NEIGHBOURS_STARS; ++i)
-    p->ids_ngbs_force[i] = -1;
-  p->num_ngb_force = 0;
+    p->ids_ngbs_feedback[i] = -1;
+  p->num_ngb_feedback = 0;
 #endif
 }
 
