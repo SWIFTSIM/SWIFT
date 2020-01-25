@@ -41,7 +41,7 @@ void compute_stellar_evolution(const struct feedback_props* feedback_props,
  *
  * @param p The #part to consider.
  * @param xp The #xpart to consider.
- * @param cosmo The #cosmology.
+ * @param e The #engine.
  */
 __attribute__((always_inline)) INLINE static void feedback_update_part(
     struct part* restrict p, struct xpart* restrict xp,
@@ -289,7 +289,9 @@ void feedback_struct_restore(struct feedback_props* feedback, FILE* stream);
 #ifdef HAVE_HDF5
 /**
  * @brief Writes the current model of feedback to the file
- * @param h_grpsph The HDF5 group in which to write
+ *
+ * @param feedback The properties of the feedback scheme.
+ * @param h_grp The HDF5 group in which to write.
  */
 INLINE static void feedback_write_flavour(struct feedback_props* feedback,
                                           hid_t h_grp) {

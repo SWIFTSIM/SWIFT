@@ -255,6 +255,10 @@ hsize_t io_get_number_element_in_attribute(hid_t attr) {
 
 /**
  * @brief Reads an attribute (array) from a given HDF5 group.
+ *
+ * @param grp The group from which to read.
+ * @param name The name of the dataset to read.
+ * @param type The #IO_DATA_TYPE of the attribute.
  * @param data (output) The attribute read from the HDF5 group (need to be
  * already allocated).
  * @param number_element Number of elements in the attribute.
