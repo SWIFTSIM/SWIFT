@@ -476,6 +476,9 @@ struct engine {
   /* Maximum number of tasks needed for restarting. */
   int restart_max_tasks;
 
+  /* The globally agreed runtime, in hours. */
+  float runtime;
+
   /* Label of the run */
   char run_name[PARSER_MAX_LINE_SIZE];
 
