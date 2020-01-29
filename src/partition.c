@@ -2054,7 +2054,7 @@ void partition_init(struct partition *partition,
 /* Defaults make use of METIS if available */
 #if defined(HAVE_METIS) || defined(HAVE_PARMETIS)
   const char *default_repart = "fullcosts";
-  const char *default_part = "memory";
+  const char *default_part = "edgememory";
 #else
   const char *default_repart = "none";
   const char *default_part = "grid";
