@@ -30,13 +30,16 @@
 
 /* Local headers */
 #include "adiabatic_index.h"
+#include "align.h"
 #include "common_io.h"
 #include "inline.h"
 #include "memuse.h"
+#include "minmax.h"
 #include "restart.h"
 
 #ifdef HAVE_LIBGSL
 #include <gsl/gsl_integration.h>
+#include <gsl/gsl_interp.h>
 #endif
 
 /*! Number of values stored in the cosmological interpolation tables */
@@ -58,12 +61,17 @@ const size_t GSL_workspace_size = 100000;
  * @brief x_min The mininum of the range of x.
  * @brief x_max The maximum of the range of x.
  */
-static INLINE double interp_table(double *table, double x, double x_min,
-                                  double x_max) {
+static INLINE double interp_table(const double *table, const double x,
+                                  const double x_min, const double x_max) {
 
-  const double xx = ((x - x_min) / (x_max - x_min)) * cosmology_table_length;
+  const double xx =
+      ((x - x_min) / (x_max - x_min)) * ((double)cosmology_table_length);
+
   const int i = (int)xx;
-  const int ii = (i >= cosmology_table_length) ? cosmology_table_length - 1 : i;
+  const int ii = min(cosmology_table_length - 1, i);
+
+  /* Indicate that the whole array is aligned on boundaries */
+  swift_align_information(double, table, SWIFT_STRUCT_ALIGNMENT);
 
   if (ii <= 1)
     return table[0] * xx;
@@ -80,8 +88,8 @@ static INLINE double interp_table(double *table, double x, double x_min,
  * @param w_0 The equation of state parameter at z=0
  * @param w_a The equation of state evolution parameter
  */
-static INLINE double cosmology_dark_energy_EoS(double a, double w_0,
-                                               double w_a) {
+__attribute__((const)) static INLINE double cosmology_dark_energy_EoS(
+    const double a, const double w_0, const double w_a) {
 
   return w_0 + w_a * (1. - a);
 }
@@ -94,21 +102,37 @@ static INLINE double cosmology_dark_energy_EoS(double a, double w_0,
  * and compute \f$ \tilde{w}(a) = \int_0^a\frac{1 + w(z)}{1+z}dz \f$.
  *
  * @param a The current scale-factor.
- * @param w0 The equation of state parameter at z=0
- * @param wa The equation of state evolution parameter
+ * @param w0 The equation of state parameter at z=0.
+ * @param wa The equation of state evolution parameter.
  */
-static INLINE double w_tilde(double a, double w0, double wa) {
+__attribute__((const)) static INLINE double w_tilde(const double a,
+                                                    const double w0,
+                                                    const double wa) {
   return (a - 1.) * wa - (1. + w0 + wa) * log(a);
 }
 
 /**
  * @brief Compute \f$ E(z) \f$.
+ *
+ * @param Omega_r The radiation density parameter \f$ \Omega_r \f$.
+ * @param Omega_m The matter density parameter \f$ \Omega_m \f$.
+ * @param Omega_k The curvature density parameter \f$ \Omega_k \f$.
+ * @param Omega_l The cosmological constant density parameter \f$ \Omega_\Lambda
+ * \f$.
+ * @param w0 The equation of state parameter at z=0.
+ * @param wa The equation of state evolution parameter.
+ * @param a The current scale-factor.
  */
-static INLINE double E(double Or, double Om, double Ok, double Ol, double w0,
-                       double wa, double a) {
+__attribute__((const)) static INLINE double E(
+    const double Omega_r, const double Omega_m, const double Omega_k,
+    const double Omega_l, const double w0, const double wa, const double a) {
+
   const double a_inv = 1. / a;
-  return sqrt(Or * a_inv * a_inv * a_inv * a_inv + Om * a_inv * a_inv * a_inv +
-              Ok * a_inv * a_inv + Ol * exp(3. * w_tilde(a, w0, wa)));
+
+  return sqrt(Omega_r * a_inv * a_inv * a_inv * a_inv + /* Radiation */
+              Omega_m * a_inv * a_inv * a_inv +         /* Matter */
+              Omega_k * a_inv * a_inv +                 /* Curvature */
+              Omega_l * exp(3. * w_tilde(a, w0, wa)));  /* Lambda */
 }
 
 /**
@@ -336,18 +360,30 @@ void cosmology_init_tables(struct cosmology *c) {
   const double a_begin = c->a_begin;
 
   /* Allocate memory for the interpolation tables */
-  c->drift_fac_interp_table = (double *)swift_malloc(
-      "cosmo.table", cosmology_table_length * sizeof(double));
-  c->grav_kick_fac_interp_table = (double *)swift_malloc(
-      "cosmo.table", cosmology_table_length * sizeof(double));
-  c->hydro_kick_fac_interp_table = (double *)swift_malloc(
-      "cosmo.table", cosmology_table_length * sizeof(double));
-  c->hydro_kick_corr_interp_table = (double *)swift_malloc(
-      "cosmo.table", cosmology_table_length * sizeof(double));
-  c->time_interp_table = (double *)swift_malloc(
-      "cosmo.table", cosmology_table_length * sizeof(double));
-  c->scale_factor_interp_table = (double *)swift_malloc(
-      "cosmo.table", cosmology_table_length * sizeof(double));
+  if (swift_memalign("cosmo.table", (void **)&c->drift_fac_interp_table,
+                     SWIFT_STRUCT_ALIGNMENT,
+                     cosmology_table_length * sizeof(double)) != 0)
+    error("Failed to allocate cosmology interpolation table");
+  if (swift_memalign("cosmo.table", (void **)&c->grav_kick_fac_interp_table,
+                     SWIFT_STRUCT_ALIGNMENT,
+                     cosmology_table_length * sizeof(double)) != 0)
+    error("Failed to allocate cosmology interpolation table");
+  if (swift_memalign("cosmo.table", (void **)&c->hydro_kick_fac_interp_table,
+                     SWIFT_STRUCT_ALIGNMENT,
+                     cosmology_table_length * sizeof(double)) != 0)
+    error("Failed to allocate cosmology interpolation table");
+  if (swift_memalign("cosmo.table", (void **)&c->hydro_kick_corr_interp_table,
+                     SWIFT_STRUCT_ALIGNMENT,
+                     cosmology_table_length * sizeof(double)) != 0)
+    error("Failed to allocate cosmology interpolation table");
+  if (swift_memalign("cosmo.table", (void **)&c->time_interp_table,
+                     SWIFT_STRUCT_ALIGNMENT,
+                     cosmology_table_length * sizeof(double)) != 0)
+    error("Failed to allocate cosmology interpolation table");
+  if (swift_memalign("cosmo.table", (void **)&c->scale_factor_interp_table,
+                     SWIFT_STRUCT_ALIGNMENT,
+                     cosmology_table_length * sizeof(double)) != 0)
+    error("Failed to allocate cosmology interpolation table");
 
   /* Prepare a table of scale factors for the integral bounds */
   const double delta_a =
@@ -498,6 +534,7 @@ void cosmology_init(struct swift_params *params, const struct unit_system *us,
   c->a_end = parser_get_param_double(params, "Cosmology:a_end");
   c->log_a_begin = log(c->a_begin);
   c->log_a_end = log(c->a_end);
+
   c->time_base = (c->log_a_end - c->log_a_begin) / max_nr_timesteps;
   c->time_base_inv = 1. / c->time_base;
 
@@ -623,8 +660,8 @@ void cosmology_init_no_cosmo(struct cosmology *c) {
  * @param ti_end the (integer) time of the end of the drift.
  */
 double cosmology_get_drift_factor(const struct cosmology *c,
-                                  integertime_t ti_start,
-                                  integertime_t ti_end) {
+                                  const integertime_t ti_start,
+                                  const integertime_t ti_end) {
 
 #ifdef SWIFT_DEBUG_CHECKS
   if (ti_end < ti_start) error("ti_end must be >= ti_start");
@@ -651,8 +688,8 @@ double cosmology_get_drift_factor(const struct cosmology *c,
  * @param ti_end the (integer) time of the end of the drift.
  */
 double cosmology_get_grav_kick_factor(const struct cosmology *c,
-                                      integertime_t ti_start,
-                                      integertime_t ti_end) {
+                                      const integertime_t ti_start,
+                                      const integertime_t ti_end) {
 
 #ifdef SWIFT_DEBUG_CHECKS
   if (ti_end < ti_start) error("ti_end must be >= ti_start");
@@ -680,8 +717,8 @@ double cosmology_get_grav_kick_factor(const struct cosmology *c,
  * @param ti_end the (integer) time of the end of the drift.
  */
 double cosmology_get_hydro_kick_factor(const struct cosmology *c,
-                                       integertime_t ti_start,
-                                       integertime_t ti_end) {
+                                       const integertime_t ti_start,
+                                       const integertime_t ti_end) {
 
 #ifdef SWIFT_DEBUG_CHECKS
   if (ti_end < ti_start) error("ti_end must be >= ti_start");
@@ -709,8 +746,8 @@ double cosmology_get_hydro_kick_factor(const struct cosmology *c,
  * @param ti_end the (integer) time of the end of the drift.
  */
 double cosmology_get_corr_kick_factor(const struct cosmology *c,
-                                      integertime_t ti_start,
-                                      integertime_t ti_end) {
+                                      const integertime_t ti_start,
+                                      const integertime_t ti_end) {
 
 #ifdef SWIFT_DEBUG_CHECKS
   if (ti_end < ti_start) error("ti_end must be >= ti_start");
@@ -738,8 +775,8 @@ double cosmology_get_corr_kick_factor(const struct cosmology *c,
  * @param ti_end the (integer) time of the end of the drift.
  */
 double cosmology_get_therm_kick_factor(const struct cosmology *c,
-                                       integertime_t ti_start,
-                                       integertime_t ti_end) {
+                                       const integertime_t ti_start,
+                                       const integertime_t ti_end) {
 
 #ifdef SWIFT_DEBUG_CHECKS
   if (ti_end < ti_start) error("ti_end must be >= ti_start");
@@ -765,7 +802,8 @@ double cosmology_get_therm_kick_factor(const struct cosmology *c,
  * @param ti_end the (integer) time of the end.
  */
 double cosmology_get_delta_time(const struct cosmology *c,
-                                integertime_t ti_start, integertime_t ti_end) {
+                                const integertime_t ti_start,
+                                const integertime_t ti_end) {
 
 #ifdef SWIFT_DEBUG_CHECKS
   if (ti_end < ti_start) error("ti_end must be >= ti_start");
@@ -798,6 +836,7 @@ double cosmology_get_delta_time_from_scale_factors(const struct cosmology *c,
 
 #ifdef SWIFT_DEBUG_CHECKS
   if (a_end < a_start) error("a_end must be >= a_start");
+  if (a_end < c->a_begin) error("Error a_end can't be smaller than a_begin");
 #endif
 
   const double log_a_start = log(a_start);

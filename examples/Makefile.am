@@ -89,6 +89,10 @@ EXTRA_DIST = Cooling/CoolingBox/coolingBox.yml Cooling/CoolingBox/plotEnergy.py 
 	     EAGLE_DMO_low_z/EAGLE_DMO_25/eagle_25.yml EAGLE_DMO_low_z/EAGLE_DMO_25/getIC.sh EAGLE_DMO_low_z/EAGLE_DMO_25/README EAGLE_DMO_low_z/EAGLE_DMO_25/run.sh \
 	     EAGLE_DMO_low_z/EAGLE_DMO_50/eagle_50.yml EAGLE_DMO_low_z/EAGLE_DMO_50/getIC.sh EAGLE_DMO_low_z/EAGLE_DMO_50/README EAGLE_DMO_low_z/EAGLE_DMO_50/run.sh \
 	     EAGLE_DMO_low_z/EAGLE_DMO_100/eagle_100.yml EAGLE_DMO_low_z/EAGLE_DMO_100/getIC.sh EAGLE_DMO_low_z/EAGLE_DMO_100/README EAGLE_DMO_low_z/EAGLE_DMO_100/run.sh \
+	     EAGLE_ICs/getEagleCoolingTable.sh EAGLE_ICs/getEagleYieldTable.sh EAGLE_ICs/README \
+	     EAGLE_ICs/EAGLE_12/eagle_12.yml EAGLE_ICs/EAGLE_12/getIC.sh EAGLE_ICs/EAGLE_12/output_list.txt EAGLE_ICs/EAGLE_12/run.sh EAGLE_ICs/EAGLE_12/README EAGLE_ICs/EAGLE_12/vrconfig_3dfof_subhalos_SO_hydro.cfg \
+	     EAGLE_ICs/EAGLE_25/eagle_25.yml EAGLE_ICs/EAGLE_25/getIC.sh EAGLE_ICs/EAGLE_25/output_list.txt EAGLE_ICs/EAGLE_25/run.sh EAGLE_ICs/EAGLE_25/README EAGLE_ICs/EAGLE_25/vrconfig_3dfof_subhalos_SO_hydro.cfg \
+	     EAGLE_ICs/EAGLE_50/eagle_50.yml EAGLE_ICs/EAGLE_50/getIC.sh EAGLE_ICs/EAGLE_50/output_list.txt EAGLE_ICs/EAGLE_50/run.sh EAGLE_ICs/EAGLE_50/README EAGLE_ICs/EAGLE_50/vrconfig_3dfof_subhalos_SO_hydro.cfg \
 	     GravityTests/ExternalPointMass/externalPointMass.yml GravityTests/ExternalPointMass/makeIC.py GravityTests/ExternalPointMass/run.sh GravityTests/ExternalPointMass/energy_plot.py \
 	     GravityTests/HydrostaticHalo/README GravityTests/HydrostaticHalo/hydrostatic.yml GravityTests/HydrostaticHalo/makeIC.py GravityTests/HydrostaticHalo/run.sh \
 	     GravityTests/HydrostaticHalo/density_profile.py GravityTests/HydrostaticHalo/velocity_profile.py GravityTests/HydrostaticHalo/internal_energy_profile.py GravityTests/HydrostaticHalo/test_energy_conservation.py \
@@ -116,7 +120,7 @@ EXTRA_DIST = Cooling/CoolingBox/coolingBox.yml Cooling/CoolingBox/plotEnergy.py 
 	     HydroTests/UniformBox_2D/makeIC.py HydroTests/UniformBox_2D/run.sh HydroTests/UniformBox_2D/uniformPlane.yml \
 	     HydroTests/UniformBox_3D/makeICbig.py HydroTests/UniformBox_3D/makeIC.py HydroTests/UniformBox_3D/run.sh HydroTests/UniformBox_3D/uniformBox.yml \
              SmallCosmoVolume/SmallCosmoVolume_hydro/README SmallCosmoVolume/SmallCosmoVolume_hydro/getIC.sh SmallCosmoVolume/SmallCosmoVolume_hydro/run.sh SmallCosmoVolume/SmallCosmoVolume_hydro/small_cosmo_volume.yml SmallCosmoVolume/SmallCosmoVolume_hydro/plotTempEvolution.py \
-             SmallCosmoVolume/SmallCosmoVolume_DM/README SmallCosmoVolume/SmallCosmoVolume_DM/getIC.sh SmallCosmoVolume/SmallCosmoVolume_DM/run.sh SmallCosmoVolume/SmallCosmoVolume_DM/small_cosmo_volume_dm.yml SmallCosmoVolume/SmallCosmoVolume_DM/stf_input_6dfof_dmonly_sub.cfg \
+             SmallCosmoVolume/SmallCosmoVolume_DM/README SmallCosmoVolume/SmallCosmoVolume_DM/getIC.sh SmallCosmoVolume/SmallCosmoVolume_DM/run.sh SmallCosmoVolume/SmallCosmoVolume_DM/small_cosmo_volume_dm.yml SmallCosmoVolume/SmallCosmoVolume_DM/vrconfig_3dfof_subhalos_SO_hydro.cfg \
 	     PMillennium/PMillennium-384/p-mill-384.yml \
              PMillennium/PMillennium-768/p-mill-768.yml \
              PMillennium/PMillennium-1536/p-mill-1536.yml \

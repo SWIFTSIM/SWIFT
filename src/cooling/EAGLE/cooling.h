@@ -44,7 +44,7 @@ void cooling_cool_part(const struct phys_const *phys_const,
                        const struct entropy_floor_properties *floor_props,
                        const struct cooling_function_data *cooling,
                        struct part *restrict p, struct xpart *restrict xp,
-                       const float dt, const float dt_therm);
+                       const double time, const float dt, const float dt_therm);
 
 float cooling_timestep(const struct cooling_function_data *restrict cooling,
                        const struct phys_const *restrict phys_const,
@@ -57,6 +57,7 @@ float cooling_timestep(const struct cooling_function_data *restrict cooling,
 void cooling_first_init_part(
     const struct phys_const *restrict phys_const,
     const struct unit_system *restrict us,
+    const struct hydro_props *hydro_props,
     const struct cosmology *restrict cosmo,
     const struct cooling_function_data *restrict cooling,
     const struct part *restrict p, struct xpart *restrict xp);
@@ -70,6 +71,8 @@ float cooling_get_temperature(
     const struct part *restrict p, const struct xpart *restrict xp);
 
 float cooling_get_radiated_energy(const struct xpart *restrict xp);
+
+void cooling_split_part(struct part *p, struct xpart *xp, double n);
 
 void cooling_Hydrogen_reionization(const struct cooling_function_data *cooling,
                                    const struct cosmology *cosmo,

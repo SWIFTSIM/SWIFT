@@ -71,6 +71,7 @@ const char *taskID_names[task_type_count] = {"none",
                                              "kick2",
                                              "timestep",
                                              "timestep_limiter",
+                                             "timestep_sync",
                                              "send",
                                              "recv",
                                              "grav_long_range",
@@ -164,7 +165,6 @@ __attribute__((always_inline)) INLINE static enum task_actions task_acts_on(
     case task_type_sort:
     case task_type_ghost:
     case task_type_extra_ghost:
-    case task_type_timestep_limiter:
     case task_type_cooling:
     case task_type_end_hydro_force:
       return task_action_part;
@@ -236,6 +236,8 @@ __attribute__((always_inline)) INLINE static enum task_actions task_acts_on(
     case task_type_fof_self:
     case task_type_fof_pair:
     case task_type_timestep:
+    case task_type_timestep_limiter:
+    case task_type_timestep_sync:
     case task_type_send:
     case task_type_recv:
       if (t->ci->hydro.count > 0 && t->ci->grav.count > 0)
@@ -431,6 +433,7 @@ void task_unlock(struct task *t) {
     case task_type_extra_ghost:
     case task_type_end_hydro_force:
     case task_type_timestep_limiter:
+    case task_type_timestep_sync:
       cell_unlocktree(ci);
       break;
 
@@ -583,6 +586,7 @@ int task_lock(struct task *t) {
     case task_type_extra_ghost:
     case task_type_end_hydro_force:
     case task_type_timestep_limiter:
+    case task_type_timestep_sync:
       if (ci->hydro.hold) return 0;
       if (cell_locktree(ci) != 0) return 0;
       break;
@@ -819,7 +823,11 @@ void task_get_group_name(int type, int subtype, char *cluster) {
       strcpy(cluster, "Gravity");
       break;
     case task_subtype_limiter:
-      strcpy(cluster, "Timestep_limiter");
+      if (type == task_type_send || type == task_type_recv) {
+        strcpy(cluster, "None");
+      } else {
+        strcpy(cluster, "Timestep_limiter");
+      }
       break;
     case task_subtype_stars_density:
       strcpy(cluster, "StarsDensity");

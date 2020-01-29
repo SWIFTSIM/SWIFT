@@ -37,7 +37,9 @@
 #include "chemistry_struct.h"
 #include "cooling_struct.h"
 #include "equation_of_state.h"  // For enum material_id
+#include "feedback_struct.h"
 #include "star_formation_struct.h"
+#include "timestep_limiter_struct.h"
 #include "tracers_struct.h"
 
 /**
@@ -72,6 +74,9 @@ struct xpart {
 
   /* Additional data used by the star formation */
   struct star_formation_xpart_data sf_data;
+
+  /* Additional data used by the feedback */
+  struct feedback_part_data feedback_data;
 
 } SWIFT_STRUCT_ALIGN;
 
@@ -185,8 +190,8 @@ struct part {
   /*! Time-step length */
   timebin_t time_bin;
 
-  /* Need waking-up ? */
-  timebin_t wakeup;
+  /*! Time-step limiter information */
+  struct timestep_limiter_data limiter_data;
 
 #ifdef SWIFT_DEBUG_CHECKS
 

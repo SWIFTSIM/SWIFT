@@ -84,6 +84,9 @@ double time_array_get_time(const struct time_array *t, const size_t offset);
 
 size_t time_array_get_index(const struct time_array *t, const size_t offset);
 
+size_t time_array_get_index_from_time(const struct time_array *t,
+                                      const double time);
+
 void time_array_free(struct time_array *t);
 
 void time_array_print(const struct time_array *t);

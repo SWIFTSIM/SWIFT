@@ -22,6 +22,11 @@
 #include "chemistry_struct.h"
 
 /**
+ * @brief Feedback fields carried by each hydro particles
+ */
+struct feedback_part_data {};
+
+/**
  * @brief Feedback fields carried by each star particles
  */
 struct feedback_spart_data {
@@ -43,6 +48,8 @@ struct feedback_spart_data {
 
     /**
      * @brief Values to be distributed to the gas neighbours.
+     *
+     * WARNING: The first two elements must be the enrichment_weight and mass!!
      */
     struct {
 

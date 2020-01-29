@@ -21,7 +21,7 @@
 /* Local headers. */
 #include "swift.h"
 
-#if 0
+#if defined(CHEMISTRY_EAGLE) && defined(COOLING_EAGLE) && defined(GADGET2_SPH)
 
 /*
  * @brief Assign particle density and entropy corresponding to the
@@ -42,29 +42,24 @@ void set_quantities(struct part *restrict p, struct xpart *restrict xp,
                     const struct cooling_function_data *restrict cooling,
                     struct cosmology *restrict cosmo,
                     const struct phys_const *restrict phys_const, float nh_cgs,
-                    double u, integertime_t ti_current) {
-
-  /* Update cosmology quantities */
-  cosmology_update(cosmo, phys_const, ti_current);
-
+                    double u_cgs, integertime_t ti_current) {
   /* calculate density */
-  double hydrogen_number_density = nh_cgs / cooling->number_density_scale;
+  double hydrogen_number_density = nh_cgs / cooling->number_density_to_cgs;
   p->rho = hydrogen_number_density * phys_const->const_proton_mass /
-           p->chemistry_data.metal_mass_fraction[chemistry_element_H] *
-           (cosmo->a * cosmo->a * cosmo->a);
+           p->chemistry_data.metal_mass_fraction[chemistry_element_H];
 
   /* update entropy based on internal energy */
-  float pressure = (u * cosmo->a * cosmo->a) / cooling->internal_energy_scale *
-                   p->rho * (hydro_gamma_minus_one);
+  float pressure = (u_cgs)*cooling->internal_energy_from_cgs * p->rho *
+                   (hydro_gamma_minus_one);
   p->entropy = pressure * (pow(p->rho, -hydro_gamma));
   xp->entropy_full = p->entropy;
+
+  p->entropy_dt = 0.f;
 }
 
 /*
- * @brief Produces contributions to cooling rates for different
- * hydrogen number densities, from different metals,
- * tests 1d and 4d table interpolations produce
- * same results for cooling rate, dlambda/du and temperature.
+ * @brief Tests cooling integration scheme by comparing EAGLE
+ * integration to subcycled explicit equation.
  */
 int main(int argc, char **argv) {
   // Declare relevant structs
@@ -78,14 +73,16 @@ int main(int argc, char **argv) {
   struct cosmology cosmo;
   char *parametersFileName = "./testCooling.yml";
 
-  float nh;  // hydrogen number density
-  double u;  // internal energy
+  float nh_cgs;  // hydrogen number density
+  double u_cgs;  // internal energy
+
+  const float seconds_per_year = 3.154e7;
 
   /* Number of values to test for in redshift,
    * hydrogen number density and internal energy */
-  const int n_z = 50;
-  const int n_nh = 50;
-  const int n_u = 50;
+  const int n_z = 10;
+  const int n_nh = 10;
+  const int n_u = 10;
 
   /* Number of subcycles and tolerance used to compare
    * subcycled and implicit solution. Note, high value
@@ -93,10 +90,6 @@ int main(int argc, char **argv) {
    * implicit solution for large timesteps */
   const int n_subcycle = 1000;
   const float integration_tolerance = 0.2;
-
-  /* Set dt */
-  const float dt_cool = 1.0e-5;
-  const float dt_therm = 1.0e-5;
 
   /* Read the parameter file */
   if (params == NULL) error("Error allocating memory for the parameter file.");
@@ -110,16 +103,34 @@ int main(int argc, char **argv) {
   /* Init chemistry */
   chemistry_init(params, &us, &phys_const, &chem_data);
   chemistry_first_init_part(&phys_const, &us, &cosmo, &chem_data, &p, &xp);
+  chemistry_part_has_no_neighbours(&p, &xp, &chem_data, &cosmo);
   chemistry_print(&chem_data);
 
   /* Init cosmology */
   cosmology_init(params, &us, &phys_const, &cosmo);
   cosmology_print(&cosmo);
 
+  /* Set dt */
+  const int timebin = 38;
+  float dt_cool, dt_therm;
+
+  /* Init hydro_props */
+  struct hydro_props hydro_properties;
+  hydro_props_init(&hydro_properties, &phys_const, &us, params);
+
   /* Init cooling */
-  cooling_init(params, &us, &phys_const, &cooling);
+  cooling_init(params, &us, &phys_const, &hydro_properties, &cooling);
   cooling_print(&cooling);
   cooling_update(&cosmo, &cooling, 0);
+
+  /* Init entropy floor */
+  struct entropy_floor_properties floor_props;
+  entropy_floor_init(&floor_props, &phys_const, &us, &hydro_properties, params);
+
+  /* Cooling function needs to know the minimal energy. Set it to the lowest
+   * internal energy in the cooling table. */
+  hydro_properties.minimal_internal_energy =
+      exp(M_LN10 * cooling.Therm[0]) * cooling.internal_energy_from_cgs;
 
   /* Calculate abundance ratios */
   float *abundance_ratio;
@@ -133,65 +144,88 @@ int main(int argc, char **argv) {
       (XH + p.chemistry_data.metal_mass_fraction[chemistry_element_He]);
   int He_i;
   float d_He;
-  get_index_1d(cooling.HeFrac, cooling.N_He, HeFrac, &He_i, &d_He);
-
-  /* Cooling function needs to know the minimal energy. Set it to the lowest
-   * internal energy in the cooling table. */
-  struct hydro_props hydro_properties;
-  hydro_properties.minimal_internal_energy =
-      exp(M_LN10 * cooling.Therm[0]) / cooling.internal_energy_scale;
+  get_index_1d(cooling.HeFrac, eagle_cooling_N_He_frac, HeFrac, &He_i, &d_He);
 
   /* calculate spacing in nh and u */
-  const float delta_nh = (cooling.nH[cooling.N_nH - 1] - cooling.nH[0]) / n_nh;
-  const float delta_u =
-      (cooling.Therm[cooling.N_Temp - 1] - cooling.Therm[0]) / n_u;
+  const float log_u_min_cgs = 11, log_u_max_cgs = 17;
+  const float log_nh_min_cgs = -6, log_nh_max_cgs = 3;
+  const float delta_log_nh_cgs = (log_nh_max_cgs - log_nh_min_cgs) / n_nh;
+  const float delta_log_u_cgs = (log_u_max_cgs - log_u_min_cgs) / n_u;
 
-  for (int z_i = 0; z_i < n_z; z_i++) {
-    integertime_t ti_current = max_nr_timesteps / n_z * z_i;
-    for (int nh_i = 0; nh_i < n_nh; nh_i++) {
-      nh = exp(M_LN10 * cooling.nH[0] + delta_nh * nh_i);
-      for (int u_i = 0; u_i < n_u; u_i++) {
-        u = exp(M_LN10 * cooling.Therm[0] + delta_u * u_i);
+  /* Declare variables we will be checking */
+  double du_dt_implicit, du_dt_check;
+  integertime_t ti_current;
+
+  /* Loop over values of nh and u */
+  for (int nh_i = 0; nh_i < n_nh; nh_i++) {
+    nh_cgs = exp(M_LN10 * log_nh_min_cgs + delta_log_nh_cgs * nh_i);
+    for (int u_i = 0; u_i < n_u; u_i++) {
+      u_cgs = exp(M_LN10 * log_u_min_cgs + delta_log_u_cgs * u_i);
+
+      /* Loop over z */
+      for (int z_i = 0; z_i <= n_z; z_i++) {
+        ti_current = max_nr_timesteps / n_z * z_i + 1;
 
         /* update nh, u, z */
-        set_quantities(&p, &xp, &us, &cooling, &cosmo, &phys_const, nh, u,
-                       ti_current);
+        cosmology_update(&cosmo, &phys_const, ti_current);
+        cooling_init(params, &us, &phys_const, &hydro_properties, &cooling);
+        cooling_update(&cosmo, &cooling, 0);
+        set_quantities(&p, &xp, &us, &cooling, &cosmo, &phys_const, nh_cgs,
+                       u_cgs, ti_current);
+
+        /* Set dt */
+        const integertime_t ti_step = get_integer_timestep(timebin);
+        const integertime_t ti_begin =
+            get_integer_time_begin(ti_current - 1, timebin);
+        dt_cool =
+            cosmology_get_delta_time(&cosmo, ti_begin, ti_begin + ti_step);
+        dt_therm = cosmology_get_therm_kick_factor(&cosmo, ti_begin,
+                                                   ti_begin + ti_step);
 
         /* calculate subcycled solution */
         for (int t_subcycle = 0; t_subcycle < n_subcycle; t_subcycle++) {
           p.entropy_dt = 0;
           cooling_cool_part(&phys_const, &us, &cosmo, &hydro_properties,
-                            &cooling, &p, &xp, dt_cool / n_subcycle,
-                            dt_therm / n_subcycle);
+                            &floor_props, &cooling, &p, &xp,
+                            dt_cool / n_subcycle, dt_therm / n_subcycle);
           xp.entropy_full += p.entropy_dt * dt_therm / n_subcycle;
         }
-        double u_subcycled =
-            hydro_get_physical_internal_energy(&p, &xp, &cosmo) *
-            cooling.internal_energy_scale;
+        du_dt_check = hydro_get_physical_internal_energy_dt(&p, &cosmo);
 
         /* reset quantities to nh, u, and z that we want to test */
-        set_quantities(&p, &xp, &us, &cooling, &cosmo, &phys_const, nh, u,
-                       ti_current);
+        cosmology_update(&cosmo, &phys_const, ti_current);
+        set_quantities(&p, &xp, &us, &cooling, &cosmo, &phys_const, nh_cgs,
+                       u_cgs, ti_current);
 
         /* compute implicit solution */
-        cooling_cool_part(&phys_const, &us, &cosmo, &hydro_properties, &cooling,
-                          &p, &xp, dt_cool, dt_therm);
-        double u_implicit =
-            hydro_get_physical_internal_energy(&p, &xp, &cosmo) *
-            cooling.internal_energy_scale;
+        cooling_cool_part(&phys_const, &us, &cosmo, &hydro_properties,
+                          &floor_props, &cooling, &p, &xp, dt_cool, dt_therm);
+        du_dt_implicit = hydro_get_physical_internal_energy_dt(&p, &cosmo);
 
         /* check if the two solutions are consistent */
-        if (fabs((u_implicit - u_subcycled) / u_subcycled) >
-            integration_tolerance)
-          message(
-              "implicit and subcycled solutions do not match. z_i %d nh_i %d "
-              "u_i %d implicit %.5e subcycled %.5e error %.5e",
-              z_i, nh_i, u_i, u_implicit, u_subcycled,
-              fabs((u_implicit - u_subcycled) / u_subcycled));
+        if (fabs((du_dt_implicit - du_dt_check) / du_dt_check) >
+                integration_tolerance ||
+            (du_dt_check == 0.0 && du_dt_implicit != 0.0))
+          error(
+              "Solutions do not match. scale factor %.5e z %.5e nh_cgs %.5e "
+              "u_cgs %.5e dt (years) %.5e du cgs implicit %.5e reference %.5e "
+              "error %.5e",
+              cosmo.a, cosmo.z, nh_cgs, u_cgs,
+              dt_cool * units_cgs_conversion_factor(&us, UNIT_CONV_TIME) /
+                  seconds_per_year,
+              du_dt_implicit *
+                  units_cgs_conversion_factor(&us,
+                                              UNIT_CONV_ENERGY_PER_UNIT_MASS) *
+                  dt_therm,
+              du_dt_check *
+                  units_cgs_conversion_factor(&us,
+                                              UNIT_CONV_ENERGY_PER_UNIT_MASS) *
+                  dt_therm,
+              fabs((du_dt_implicit - du_dt_check) / du_dt_check));
       }
     }
   }
-  message("done test");
+  message("done explicit subcycling cooling test");
 
   free(params);
   return 0;

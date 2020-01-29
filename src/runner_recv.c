@@ -96,7 +96,9 @@ void runner_do_recv_part(struct runner *r, struct cell *c, int clear_sorts,
   }
 
 #ifdef SWIFT_DEBUG_CHECKS
-  if (ti_hydro_end_min < ti_current)
+  if (!(r->e->policy & engine_policy_timestep_sync) &&
+      !(r->e->policy & engine_policy_timestep_limiter) &&
+      ti_hydro_end_min < ti_current)
     error(
         "Received a cell at an incorrect time c->ti_end_min=%lld, "
         "e->ti_current=%lld.",
@@ -171,7 +173,9 @@ void runner_do_recv_gpart(struct runner *r, struct cell *c, int timer) {
   }
 
 #ifdef SWIFT_DEBUG_CHECKS
-  if (ti_gravity_end_min < ti_current)
+  if (!(r->e->policy & engine_policy_timestep_sync) &&
+      !(r->e->policy & engine_policy_timestep_limiter) &&
+      ti_gravity_end_min < ti_current)
     error(
         "Received a cell at an incorrect time c->ti_end_min=%lld, "
         "e->ti_current=%lld.",
@@ -228,7 +232,7 @@ void runner_do_recv_spart(struct runner *r, struct cell *c, int clear_sorts,
     /* Collect everything... */
     for (size_t k = 0; k < nr_sparts; k++) {
 #ifdef DEBUG_INTERACTIONS_STARS
-      sparts[k].num_ngb_force = 0;
+      sparts[k].num_ngb_feedback = 0;
 #endif
       if (sparts[k].time_bin == time_bin_inhibited) continue;
       time_bin_min = min(time_bin_min, sparts[k].time_bin);

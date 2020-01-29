@@ -442,6 +442,10 @@ hydro_set_drifted_physical_internal_energy(struct part *p,
 
   /* Update variables. */
   hydro_update_soundspeed(p, cosmo);
+
+  const float comoving_pressure_with_floor =
+      pressure_floor_get_comoving_pressure(p, p->pressure_bar, cosmo);
+  p->force.pressure_bar_with_floor = comoving_pressure_with_floor;
 }
 
 /**
@@ -908,7 +912,6 @@ __attribute__((always_inline)) INLINE static void hydro_first_init_part(
     struct part *restrict p, struct xpart *restrict xp) {
 
   p->time_bin = 0;
-  p->wakeup = time_bin_not_awake;
   xp->v_full[0] = p->v[0];
   xp->v_full[1] = p->v[1];
   xp->v_full[2] = p->v[2];

@@ -40,8 +40,9 @@ SPH:
 # Parameters governing the snapshots
 Snapshots:
   basename:            snap
-  delta_time:          1.02
-  scale_factor_first:  0.02
+  delta_time:          1.05
+  scale_factor_first:  0.05
+  compression:         4
   
 # Parameters governing the conserved quantities statistics
 Statistics:

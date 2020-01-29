@@ -41,6 +41,7 @@
 void gravity_props_init(struct gravity_props *p, struct swift_params *params,
                         const struct phys_const *phys_const,
                         const struct cosmology *cosmo, const int with_cosmology,
+                        const int with_external_potential,
                         const int has_baryons, const int has_DM,
                         const int is_zoom_simulation, const int periodic) {
 
@@ -87,6 +88,16 @@ void gravity_props_init(struct gravity_props *p, struct swift_params *params,
   if (p->theta_crit >= 1.) error("Theta too large. FMM won't converge.");
   p->theta_crit2 = p->theta_crit * p->theta_crit;
   p->theta_crit_inv = 1. / p->theta_crit;
+
+  /* Mesh dithering */
+  if (periodic && !with_external_potential) {
+    p->with_dithering =
+        parser_get_opt_param_int(params, "Gravity:dithering", 1);
+    if (p->with_dithering) {
+      p->dithering_ratio =
+          parser_get_opt_param_double(params, "Gravity:dithering_ratio", 1.0);
+    }
+  }
 
   /* Softening parameters */
   if (with_cosmology) {
@@ -224,6 +235,8 @@ void gravity_props_print(const struct gravity_props *p) {
   message("Self-gravity truncation cut-off ratio: r_cut_min=%f",
           p->r_cut_min_ratio);
 
+  message("Self-gravity mesh dithering ratio: %f", p->dithering_ratio);
+
   message("Self-gravity mesh truncation function: %s",
           kernel_long_gravity_truncation_name);
 
@@ -277,6 +290,7 @@ void gravity_props_print_snapshot(hid_t h_grpgrav,
   io_write_attribute_f(h_grpgrav, "Mesh a_smooth", p->a_smooth);
   io_write_attribute_f(h_grpgrav, "Mesh r_cut_max ratio", p->r_cut_max_ratio);
   io_write_attribute_f(h_grpgrav, "Mesh r_cut_min ratio", p->r_cut_min_ratio);
+  io_write_attribute_f(h_grpgrav, "Mesh dithering ratio", p->dithering_ratio);
   io_write_attribute_f(h_grpgrav, "Tree update frequency",
                        p->rebuild_frequency);
   io_write_attribute_s(h_grpgrav, "Mesh truncation function",

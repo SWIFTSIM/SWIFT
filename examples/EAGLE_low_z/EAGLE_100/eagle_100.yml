@@ -46,6 +46,7 @@ Gravity:
   eta:                    0.025    # Constant dimensionless multiplier for time integration. 
   theta:                  0.85      # Opening angle (Multipole acceptance criterion)
   mesh_side_length:       256
+  dithering:              0
   comoving_DM_softening:         0.0026994 # Comoving DM softening length (in internal units).
   max_physical_DM_softening:     0.0007    # Max physical DM softening length (in internal units).
   comoving_baryon_softening:     0.0026994 # Comoving DM softening length (in internal units).
@@ -55,6 +56,7 @@ Gravity:
 SPH:
   resolution_eta:        1.2348   # Target smoothing length in units of the mean inter-particle separation (1.2348 == 48Ngbs with the cubic spline kernel).
   h_min_ratio:           0.1      # Minimal smoothing in units of softening.
+  h_max:                 0.5      # Maximal softening in co-moving internal units.
   CFL_condition:         0.1      # Courant-Friedrich-Levy condition for time integration.
   minimal_temperature:   100      # (internal units)
   overwrite_birth_time:  1

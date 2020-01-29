@@ -21,6 +21,7 @@
 
 /* Local includes */
 #include "adiabatic_index.h"
+#include "chemistry.h"
 #include "cooling.h"
 #include "cosmology.h"
 #include "engine.h"
@@ -69,11 +70,11 @@ struct star_formation {
   /*! Critical overdensity */
   double min_over_den;
 
-  /*! Dalla Vecchia & Schaye temperature criteria */
-  double temperature_margin_threshold_dex;
+  /*! Dalla Vecchia & Schaye entropy differnce criterion */
+  double entropy_margin_threshold_dex;
 
-  /*! 10^Tdex of Dalla Vecchia & SChaye temperature criteria */
-  double ten_to_temperature_margin_threshold_dex;
+  /*! 10^Tdex of Dalla Vecchia & Schaye entropy difference criterion */
+  double ten_to_entropy_margin_threshold_dex;
 
   /*! gas fraction */
   double fgas;
@@ -248,14 +249,12 @@ INLINE static int star_formation_is_star_forming(
    * because we also need to check if the physical density exceeded
    * the appropriate limit */
 
+  /* Get the Hydrogen number density (assuming primordial H abundance) */
+  const double n_H = physical_density * hydro_props->hydrogen_mass_fraction;
+
+  /* Get the density threshold for star formation */
   const double Z =
       chemistry_get_total_metal_mass_fraction_for_star_formation(p);
-  const float* const metal_fraction =
-      chemistry_get_metal_mass_fraction_for_star_formation(p);
-  const double X_H = metal_fraction[chemistry_element_H];
-  const double n_H = physical_density * X_H;
-
-  /* Get the density threshold */
   const double density_threshold =
       star_formation_threshold(Z, starform, phys_const);
 
@@ -273,7 +272,7 @@ INLINE static int star_formation_is_star_forming(
 
   /* Check the Scahye & Dalla Vecchia 2012 EOS-based temperature critrion */
   return (entropy <
-          entropy_eos * starform->ten_to_temperature_margin_threshold_dex);
+          entropy_eos * starform->ten_to_entropy_margin_threshold_dex);
 }
 
 /**
@@ -284,13 +283,15 @@ INLINE static int star_formation_is_star_forming(
  * @param xp the #xpart.
  * @param starform the star formation law properties to use
  * @param phys_const the physical constants in internal units.
+ * @param hydro_props The properties of the hydro scheme.
  * @param cosmo the cosmological parameters and properties.
  * @param dt_star The time-step of this particle.
  */
 INLINE static void star_formation_compute_SFR(
     const struct part* restrict p, struct xpart* restrict xp,
     const struct star_formation* starform, const struct phys_const* phys_const,
-    const struct cosmology* cosmo, const double dt_star) {
+    const struct hydro_props* hydro_props, const struct cosmology* cosmo,
+    const double dt_star) {
 
   /* Abort early if time-step size is 0 */
   if (dt_star == 0.) {
@@ -299,12 +300,10 @@ INLINE static void star_formation_compute_SFR(
     return;
   }
 
-  /* Hydrogen number density of this particle */
+  /* Hydrogen number density of this particle (assuming primordial H abundance)
+   */
   const double physical_density = hydro_get_physical_density(p, cosmo);
-  const float* const metal_fraction =
-      chemistry_get_metal_mass_fraction_for_star_formation(p);
-  const double X_H = metal_fraction[chemistry_element_H];
-  const double n_H = physical_density * X_H / phys_const->const_proton_mass;
+  const double n_H = physical_density * hydro_props->hydrogen_mass_fraction;
 
   /* Are we above the threshold for automatic star formation? */
   if (physical_density >
@@ -324,7 +323,7 @@ INLINE static void star_formation_compute_SFR(
 
   /* Calculate the specific star formation rate */
   double SFRpergasmass;
-  if (hydro_get_physical_density(p, cosmo) <
+  if (physical_density <
       starform->KS_high_den_thresh * phys_const->const_proton_mass) {
 
     SFRpergasmass =
@@ -448,6 +447,8 @@ INLINE static void star_formation_copy_properties(
 
   /* Flag that this particle has not done feedback yet */
   sp->f_E = -1.f;
+  sp->last_enrichment_time = sp->birth_time;
+  sp->count_since_last_enrichment = -1;
 }
 
 /**
@@ -587,11 +588,11 @@ INLINE static void starformation_init_backend(
   starform->max_gas_density =
       starform->max_gas_density_HpCM3 * number_density_from_cgs;
 
-  starform->temperature_margin_threshold_dex = parser_get_opt_param_double(
-      parameter_file, "EAGLEStarFormation:EOS_temperature_margin_dex", FLT_MAX);
+  starform->entropy_margin_threshold_dex = parser_get_opt_param_double(
+      parameter_file, "EAGLEStarFormation:EOS_entropy_margin_dex", FLT_MAX);
 
-  starform->ten_to_temperature_margin_threshold_dex =
-      exp10(starform->temperature_margin_threshold_dex);
+  starform->ten_to_entropy_margin_threshold_dex =
+      exp10(starform->entropy_margin_threshold_dex);
 
   /* Read the normalization of the metallicity dependent critical
    * density*/
@@ -651,7 +652,7 @@ INLINE static void starformation_print_backend(
       starform->density_threshold_max_HpCM3);
   message("Temperature threshold is given by Dalla Vecchia and Schaye (2012)");
   message("The temperature threshold offset from the EOS is given by: %e dex",
-          starform->temperature_margin_threshold_dex);
+          starform->entropy_margin_threshold_dex);
   message("Running with a maximum gas density given by: %e #/cm^3",
           starform->max_gas_density_HpCM3);
 }
@@ -663,12 +664,13 @@ INLINE static void starformation_print_backend(
  * density loop for the EAGLE star formation model.
  *
  * @param p The particle to act upon
+ * @param xp The extra particle to act upon
  * @param cd The global star_formation information.
  * @param cosmo The current cosmological model.
  */
 __attribute__((always_inline)) INLINE static void star_formation_end_density(
-    struct part* restrict p, const struct star_formation* cd,
-    const struct cosmology* cosmo) {}
+    struct part* restrict p, struct xpart* restrict xp,
+    const struct star_formation* cd, const struct cosmology* cosmo) {}
 
 /**
  * @brief Sets all particle fields to sensible values when the #part has 0 ngbs.
@@ -720,5 +722,21 @@ star_formation_first_init_part(const struct phys_const* restrict phys_const,
                                const struct star_formation* data,
                                const struct part* restrict p,
                                struct xpart* restrict xp) {}
+
+/**
+ * @brief Split the star formation content of a particle into n pieces
+ *
+ * We only need to split the SFR if it is positive, i.e. it is not
+ * storing the redshift/time of last SF event.
+ *
+ * @param p The #part.
+ * @param xp The #xpart.
+ * @param n The number of pieces to split into.
+ */
+__attribute__((always_inline)) INLINE static void star_formation_split_part(
+    struct part* p, struct xpart* xp, const double n) {
+
+  if (xp->sf_data.SFR > 0.) xp->sf_data.SFR /= n;
+}
 
 #endif /* SWIFT_EAGLE_STAR_FORMATION_H */

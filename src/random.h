@@ -42,11 +42,12 @@
  * generator.
  * In case new numbers need to be added other possible
  * numbers could be:
- * 5947309451, 6977309513
+ * 5947309451
  */
 enum random_number_type {
   random_number_star_formation = 0LL,
-  random_number_stellar_feedback = 3947008991LL,
+  random_number_stellar_feedback_1 = 3947008991LL,
+  random_number_stellar_feedback_2 = 6977309513LL,
   random_number_stellar_enrichment = 2936881973LL,
   random_number_BH_feedback = 1640531371LL,
   random_number_BH_swallow = 4947009007LL
@@ -107,7 +108,7 @@ INLINE static double inl_erand48(uint16_t xsubi[3]) {
   temp.ieee.negative = 0;
   temp.ieee.exponent = IEEE754_DOUBLE_BIAS;
   temp.ieee.mantissa0 = (xsubi[2] << 4) | (xsubi[1] >> 12);
-  temp.ieee.mantissa1 = ((xsubi[1] & 0xfff) << 20) | (xsubi[0] << 4);
+  temp.ieee.mantissa1 = (((uint32_t)xsubi[1] & 0xfff) << 20) | (xsubi[0] << 4);
 
   /* Please note the lower 4 bits of mantissa1 are always 0.  */
   return temp.d - 1.0;
@@ -140,6 +141,7 @@ INLINE static double inl_erand48(uint16_t xsubi[3]) { return erand48(xsubi); }
 INLINE static double random_unit_interval(int64_t id,
                                           const integertime_t ti_current,
                                           const enum random_number_type type) {
+
   /* Start by packing the state into a sequence of 16-bit seeds for rand_r. */
   uint16_t buff[9];
   id += type;
@@ -150,6 +152,9 @@ INLINE static double random_unit_interval(int64_t id,
      calls to erand48(), so we add an additional aribrary constant two-byte
      value to get 18 bytes of state. */
   buff[8] = 6178;
+
+  /* Use the random seed to generate a new random number */
+  buff[0] = buff[0] ^ (uint16_t)SWIFT_RANDOM_SEED_XOR;
 
   /* Shuffle the buffer values, this will be our source of entropy for
      the erand48 generator. */

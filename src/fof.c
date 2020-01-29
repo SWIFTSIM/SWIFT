@@ -245,12 +245,42 @@ void fof_set_initial_group_id_mapper(void *map_data, int num_elements,
 void fof_allocate(const struct space *s, const long long total_nr_DM_particles,
                   struct fof_props *props) {
 
+  const int verbose = s->e->verbose;
+  const ticks total_tic = getticks();
+
+  /* Start by computing the mean inter DM particle separation */
+
+  /* Collect the mass of the first non-background gpart */
+  double high_res_DM_mass = 0.;
+  for (size_t i = 0; i < s->nr_gparts; ++i) {
+    const struct gpart *gp = &s->gparts[i];
+    if (gp->type == swift_type_dark_matter &&
+        gp->time_bin != time_bin_inhibited &&
+        gp->time_bin != time_bin_not_created) {
+      high_res_DM_mass = gp->mass;
+      break;
+    }
+  }
+
+  /* Calculate the mean inter-particle separation as if we were in
+     a scenario where the entire box was filled with high-resolution
+       particles */
+  const double Omega_m = s->e->cosmology->Omega_m;
+  const double Omega_b = s->e->cosmology->Omega_b;
+  const double critical_density_0 = s->e->cosmology->critical_density_0;
+  double mean_matter_density;
+  if (s->with_hydro)
+    mean_matter_density = (Omega_m - Omega_b) * critical_density_0;
+  else
+    mean_matter_density = Omega_m * critical_density_0;
+
+  /* Mean inter-particle separation of the DM particles */
+  const double mean_inter_particle_sep =
+      cbrt(high_res_DM_mass / mean_matter_density);
+
   /* Calculate the particle linking length based upon the mean inter-particle
    * spacing of the DM particles. */
-  const double mean_inter_particle_sep =
-      s->dim[0] / cbrt((double)total_nr_DM_particles);
   const double l_x = props->l_x_ratio * mean_inter_particle_sep;
-  int verbose = s->e->verbose;
 
   /* Are we using the aboslute value or the one derived from the mean
      inter-particle sepration? */
@@ -314,6 +344,10 @@ void fof_allocate(const struct space *s, const long long total_nr_DM_particles,
 #ifdef SWIFT_DEBUG_CHECKS
   ti_current = s->e->ti_current;
 #endif
+
+  if (verbose)
+    message("took %.3f %s.", clocks_from_ticks(getticks() - total_tic),
+            clocks_getunit());
 }
 
 /**
@@ -1968,6 +2002,9 @@ void fof_seed_black_holes(const struct fof_props *props,
       /* Set a smoothing length */
       bp->h = p->h;
 
+      /* Save the ID */
+      bp->id = p->id;
+
 #ifdef SWIFT_DEBUG_CHECKS
       bp->ti_kick = p->ti_kick;
       bp->ti_drift = p->ti_drift;
@@ -2271,7 +2308,7 @@ void fof_search_foreign_cells(struct fof_props *props, const struct space *s) {
   tic = getticks();
 
   /* Perform send and receive tasks. */
-  engine_launch(e);
+  engine_launch(e, "fof comms");
 
   if (verbose)
     message("MPI send/recv comms took: %.3f %s.",
@@ -2942,8 +2979,8 @@ void fof_search_tree(struct fof_props *props,
     message("Largest group by size: %d", max_group_size);
   }
   if (verbose)
-    message("FOF search took: %.3f %s.",
-            clocks_from_ticks(getticks() - tic_total), clocks_getunit());
+    message("took %.3f %s.", clocks_from_ticks(getticks() - tic_total),
+            clocks_getunit());
 
 #ifdef WITH_MPI
   MPI_Barrier(MPI_COMM_WORLD);

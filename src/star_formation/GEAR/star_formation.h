@@ -59,6 +59,11 @@ INLINE static int star_formation_is_star_forming(
     const struct cooling_function_data* restrict cooling,
     const struct entropy_floor_properties* restrict entropy_floor) {
 
+  /* Check if collapsing particles */
+  if (xp->sf_data.div_v > 0) {
+    return 0;
+  }
+
   const float temperature = cooling_get_temperature(phys_const, hydro_props, us,
                                                     cosmo, cooling, p, xp);
 
@@ -73,7 +78,7 @@ INLINE static int star_formation_is_star_forming(
   const float sigma2 = p->pressure_floor_data.sigma2 * cosmo->a * cosmo->a;
   const float n_jeans_2_3 = starform->n_jeans_2_3;
 
-  const float h = p->h;
+  const float h = p->h * kernel_gamma;
   const float density = hydro_get_physical_density(p, cosmo);
 
   // TODO use GRACKLE */
@@ -101,13 +106,15 @@ INLINE static int star_formation_is_star_forming(
  * @param xp the #xpart.
  * @param starform the star formation law properties to use
  * @param phys_const the physical constants in internal units.
+ * @param hydro_props The properties of the hydro scheme.
  * @param cosmo the cosmological parameters and properties.
  * @param dt_star The time-step of this particle.
  */
 INLINE static void star_formation_compute_SFR(
     struct part* restrict p, struct xpart* restrict xp,
     const struct star_formation* starform, const struct phys_const* phys_const,
-    const struct cosmology* cosmo, const double dt_star) {}
+    const struct hydro_props* hydro_props, const struct cosmology* cosmo,
+    const double dt_star) {}
 
 /**
  * @brief Decides whether a particle should be converted into a
@@ -198,10 +205,6 @@ INLINE static void star_formation_copy_properties(
     sp->birth_time = e->time;
   }
 
-  // TODO copy only metals
-  /* Store the chemistry struct in the star particle */
-  sp->chemistry_data = p->chemistry_data;
-
   /* Store the tracers data */
   sp->tracers_data = xp->tracers_data;
 
@@ -211,6 +214,9 @@ INLINE static void star_formation_copy_properties(
   /* Store the birth temperature*/
   sp->birth.temperature = cooling_get_temperature(phys_const, hydro_props, us,
                                                   cosmo, cooling, p, xp);
+
+  /* Copy the chemistry properties */
+  chemistry_copy_star_formation_properties(p, xp, sp);
 }
 
 /**
@@ -229,12 +235,17 @@ INLINE static void starformation_print_backend(
  * Nothing to do here.
  *
  * @param p The particle to act upon
+ * @param xp The extra particle to act upon
  * @param cd The global star_formation information.
  * @param cosmo The current cosmological model.
  */
 __attribute__((always_inline)) INLINE static void star_formation_end_density(
-    struct part* restrict p, const struct star_formation* cd,
-    const struct cosmology* cosmo) {}
+    struct part* restrict p, struct xpart* restrict xp,
+    const struct star_formation* cd, const struct cosmology* cosmo) {
+
+  /* Copy the velocity divergence */
+  xp->sf_data.div_v = p->density.div_v;
+}
 
 /**
  * @brief Sets all particle fields to sensible values when the #part has 0 ngbs.
@@ -284,5 +295,18 @@ star_formation_first_init_part(const struct phys_const* restrict phys_const,
                                const struct star_formation* data,
                                const struct part* restrict p,
                                struct xpart* restrict xp) {}
+
+/**
+ * @brief Split the star formation content of a particle into n pieces
+ *
+ *
+ * @param p The #part.
+ * @param xp The #xpart.
+ * @param n The number of pieces to split into.
+ */
+__attribute__((always_inline)) INLINE static void star_formation_split_part(
+    struct part* p, struct xpart* xp, const double n) {
+  error("Loic: to be implemented");
+}
 
 #endif /* SWIFT_GEAR_STAR_FORMATION_H */

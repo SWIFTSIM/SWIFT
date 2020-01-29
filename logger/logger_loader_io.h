@@ -29,10 +29,19 @@
 #include <stdio.h>
 #include <stdlib.h>
 
+/* Structure for mapping a file. */
+struct mapped_file {
+  /* Mapped data. */
+  void *map;
+
+  /* File size. */
+  size_t mmap_size;
+};
+
 size_t logger_loader_io_get_file_size(int fd);
-void *logger_loader_io_mmap_file(char *filename, size_t *file_size,
-                                 int read_only);
-void logger_loader_io_munmap_file(void *map, size_t file_size);
+void logger_loader_io_mmap_file(struct mapped_file *map, const char *filename,
+                                int read_only);
+void logger_loader_io_munmap_file(struct mapped_file *map);
 
 /**
  * @brief read a mask with its offset.
@@ -52,14 +61,14 @@ __attribute__((always_inline)) INLINE static void *logger_loader_io_read_mask(
     *mask = 0;
     memcpy(mask, data, LOGGER_MASK_SIZE);
   }
-  data += LOGGER_MASK_SIZE;
+  data = (char *)data + LOGGER_MASK_SIZE;
 
   /* read offset */
   if (diff_offset) {
     *diff_offset = 0;
     memcpy(diff_offset, data, LOGGER_OFFSET_SIZE);
   }
-  data += LOGGER_OFFSET_SIZE;
+  data = (char *)data + LOGGER_OFFSET_SIZE;
 
   return data;
 }
@@ -76,7 +85,7 @@ __attribute__((always_inline)) INLINE static void *logger_loader_io_read_mask(
 __attribute__((always_inline)) INLINE static void *logger_loader_io_read_data(
     void *data, const size_t size, void *p) {
   memcpy(p, data, size);
-  return data + size;
+  return (char *)data + size;
 };
 
 /**
@@ -92,7 +101,7 @@ __attribute__((always_inline)) INLINE static void *logger_loader_io_write_data(
     void *data, const size_t size, const void *p) {
   memcpy(data, p, size);
 
-  return data + size;
+  return (char *)data + size;
 };
 
 #endif  // LOGGER_LOGGER_LOADER_IO_H

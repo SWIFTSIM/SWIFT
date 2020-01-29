@@ -7,15 +7,25 @@ InternalUnitSystem:
   UnitTemp_in_cgs:     1             # Kelvin
 
 Scheduler:
-  max_top_level_cells: 8
+  max_top_level_cells: 16
+  cell_extra_sparts:  5000       # (Optional) Number of spare sparts per top-level allocated at rebuild time for on-the-fly creation.
+  cell_max_size:             8000   # (Optional) Maximal number of interactions per task if we force the split (this is the default value).
+  cell_sub_size_pair_hydro:  2560 # (Optional) Maximal number of hydro-hydro interactions per sub-pair hydro/star task (this is the default value).
+  cell_sub_size_self_hydro:  3200     # (Optional) Maximal number of hydro-hydro interactions per sub-self hydro/star task (this is the default value).
+  cell_sub_size_pair_stars:  2560 # (Optional) Maximal number of hydro-star interactions per sub-pair hydro/star task (this is the default value).
+  cell_sub_size_self_stars:  3200     # (Optional) Maximal number of hydro-star interactions per sub-self hydro/star task (this is the default value).
+  cell_sub_size_pair_grav:   2560 # (Optional) Maximal number of interactions per sub-pair gravity task  (this is the default value).
+  cell_sub_size_self_grav:   3200     # (Optional) Maximal number of interactions per sub-self gravity task  (this is the default value).
+  cell_split_size:           100       # (Optional) Maximal number of particles per cell (this is the default value).
   
 # Parameters governing the time integration
 TimeIntegration:
   time_begin: 0.    # The starting time of the simulation (in internal units).
   time_end:   0.5  # The end time of the simulation (in internal units).
   dt_min:     1e-10 # The minimal time-step size of the simulation (in internal units).
-  dt_max:     1e-4  # The maximal time-step size of the simulation (in internal units).
-  
+  dt_max:     0.1  # The maximal time-step size of the simulation (in internal units).
+  max_dt_RMS_factor: 0.25  # (Optional) Dimensionless factor for the maximal displacement allowed based on the RMS velocities.
+
 # Parameters governing the snapshots
 Snapshots:
   basename:            agora_disk # Common part of the name of output files
@@ -29,10 +39,12 @@ Statistics:
 
 # Parameters for the self-gravity scheme
 Gravity:
-  eta:                    0.025    # Constant dimensionless multiplier for time integration.
+  eta:                    0.05    # Constant dimensionless multiplier for time integration.
   theta:                  0.7     # Opening angle (Multipole acceptance criterion)
-  comoving_softening:     0.08 # Comoving softening length (in internal units).
-  max_physical_softening: 0.08    # Physical softening length (in internal units).
+  comoving_DM_softening:     0.08 # Comoving softening length (in internal units).
+  max_physical_DM_softening: 0.08    # Physical softening length (in internal units).
+  comoving_baryon_softening:     0.08 # Comoving softening length (in internal units).
+  max_physical_baryon_softening: 0.08    # Physical softening length (in internal units).
   mesh_side_length:       32        # Number of cells along each axis for the periodic gravity mesh.
   
 # Parameters for the hydrodynamics scheme
@@ -40,6 +52,8 @@ SPH:
   resolution_eta:        1.2348   # Target smoothing length in units of the mean inter-particle separation (1.2348 == 48Ngbs with the cubic spline kernel).
   CFL_condition:         0.1      # Courant-Friedrich-Levy condition for time integration.
   minimal_temperature:   10.      # Kelvin
+  h_min_ratio:           0.1095       # (Optional) Minimal allowed smoothing length in units of the softening. Defaults to 0 if unspecified.
+  h_max:                     10.      # (Optional) Maximal allowed smoothing length in internal units. Defaults to FLT_MAX if unspecified.
 
 # Parameters related to the initial conditions
 InitialConditions:
@@ -55,13 +69,34 @@ LambdaCooling:
 
 # Cooling with Grackle 2.0
 GrackleCooling:
-  CloudyTable: CloudyData_UVB=HM2012.h5 # Name of the Cloudy Table (available on the grackle bitbucket repository)
-  WithUVbackground: 1 # Enable or not the UV background
-  Redshift: 0 # Redshift to use (-1 means time based redshift)
-  WithMetalCooling: 1 # Enable or not the metal cooling
-  ProvideVolumetricHeatingRates: 0 # User provide volumetric heating rates
-  ProvideSpecificHeatingRates: 0 # User provide specific heating rates
-  SelfShieldingMethod: 0 # Grackle (<= 3) or Gear self shielding method
-  OutputMode: 1 # Write in output corresponding primordial chemistry mode
-  MaxSteps: 1000
-  ConvergenceLimit: 1e-2
+  cloudy_table: CloudyData_UVB=HM2012.h5 # Name of the Cloudy Table (available on the grackle bitbucket repository)
+  with_UV_background: 1 # Enable or not the UV background
+  redshift: 0 # Redshift to use (-1 means time based redshift)
+  with_metal_cooling: 1 # Enable or not the metal cooling
+  provide_volumetric_heating_rates: 0 # User provide volumetric heating rates
+  provide_specific_heating_rates: 0 # User provide specific heating rates
+  self_shielding_method: -1 # Grackle (<= 3) or Gear self shielding method
+  self_shielding_threshold_atom_per_cm3: 0.007  # Required only with GEAR's self shielding. Density threshold of the self shielding
+  max_steps: 1000
+  convergence_limit: 1e-2
+  thermal_time_myr: 5
+
+
+GEARStarFormation:
+  star_formation_efficiency: 0.01   # star formation efficiency (c_*)
+  maximal_temperature:  1e10         # Upper limit to the temperature of a star forming particle
+
+GEARPressureFloor:
+  jeans_factor: 10
+
+GEARFeedback:
+  supernovae_energy_erg: 0.1e51
+  yields_table: chemistry-AGB+OMgSFeZnSrYBaEu-16072013.h5
+  discrete_yields: 0
+
+GEARChemistry:
+  initial_metallicity: 1
+  scale_initial_metallicity: 1
+
+Restarts:
+  delta_hours:        72        # (Optional) decimal hours between dumps of restart files.

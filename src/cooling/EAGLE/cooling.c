@@ -372,6 +372,8 @@ INLINE static double bisection_iter(
  * @param cooling The #cooling_function_data used in the run.
  * @param p Pointer to the particle data.
  * @param xp Pointer to the extended particle data.
+ * @param time The current time (since the Big Bang or start of the run) in
+ * internal units.
  * @param dt The cooling time-step of this particle.
  * @param dt_therm The hydro time-step of this particle.
  */
@@ -382,7 +384,8 @@ void cooling_cool_part(const struct phys_const *phys_const,
                        const struct entropy_floor_properties *floor_props,
                        const struct cooling_function_data *cooling,
                        struct part *restrict p, struct xpart *restrict xp,
-                       const float dt, const float dt_therm) {
+                       const double time, const float dt,
+                       const float dt_therm) {
 
   /* No cooling happens over zero time */
   if (dt == 0.) return;
@@ -548,6 +551,7 @@ __attribute__((always_inline)) INLINE float cooling_timestep(
  *
  * @param phys_const #phys_const data structure.
  * @param us The internal system of units.
+ * @param hydro_props The properties of the hydro scheme.
  * @param cosmo #cosmology data structure.
  * @param cooling #cooling_function_data struct.
  * @param p #part data.
@@ -556,6 +560,7 @@ __attribute__((always_inline)) INLINE float cooling_timestep(
 __attribute__((always_inline)) INLINE void cooling_first_init_part(
     const struct phys_const *restrict phys_const,
     const struct unit_system *restrict us,
+    const struct hydro_props *hydro_props,
     const struct cosmology *restrict cosmo,
     const struct cooling_function_data *restrict cooling,
     const struct part *restrict p, struct xpart *restrict xp) {
@@ -640,6 +645,18 @@ __attribute__((always_inline)) INLINE float cooling_get_radiated_energy(
     const struct xpart *restrict xp) {
 
   return xp->cooling_data.radiated_energy;
+}
+
+/**
+ * @brief Split the coolong content of a particle into n pieces
+ *
+ * @param p The #part.
+ * @param xp The #xpart.
+ * @param n The number of pieces to split into.
+ */
+void cooling_split_part(struct part *p, struct xpart *xp, double n) {
+
+  xp->cooling_data.radiated_energy /= n;
 }
 
 /**

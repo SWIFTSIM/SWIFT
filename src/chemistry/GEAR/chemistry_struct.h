@@ -20,42 +20,36 @@
 #define SWIFT_CHEMISTRY_STRUCT_GEAR_H
 
 /**
- * @brief The individual elements traced in the model.
- */
-enum chemistry_element {
-  chemistry_element_O = 0,
-  chemistry_element_Mg,
-  chemistry_element_S,
-  chemistry_element_Fe,
-  chemistry_element_Zn,
-  chemistry_element_Sr,
-  chemistry_element_Y,
-  chemistry_element_Ba,
-  chemistry_element_Eu,
-  chemistry_element_count
-};
-
-/**
  * @brief Global chemical abundance information.
  */
 struct chemistry_global_data {
 
   /* Initial metallicity Z */
-  float initial_metallicity;
+  float initial_metallicities[GEAR_CHEMISTRY_ELEMENT_COUNT];
 };
 
 /**
- * @brief Properties of the chemistry function.
+ * @brief Properties of the chemistry function for #part.
  */
 struct chemistry_part_data {
 
   /*! Fraction of the particle mass in a given element */
-  float metal_mass_fraction[chemistry_element_count];
+  float metal_mass_fraction[GEAR_CHEMISTRY_ELEMENT_COUNT];
+
+  /*! Total mass of element in a particle */
+  float metal_mass[GEAR_CHEMISTRY_ELEMENT_COUNT];
 
   /*! Smoothed fraction of the particle mass in a given element */
-  float smoothed_metal_mass_fraction[chemistry_element_count];
+  float smoothed_metal_mass_fraction[GEAR_CHEMISTRY_ELEMENT_COUNT];
+};
 
-  float Z;
+/**
+ * @brief Properties of the chemistry function for #spart.
+ */
+struct chemistry_spart_data {
+
+  /*! Fraction of the particle mass in a given element */
+  float metal_mass_fraction[GEAR_CHEMISTRY_ELEMENT_COUNT];
 };
 
 /**

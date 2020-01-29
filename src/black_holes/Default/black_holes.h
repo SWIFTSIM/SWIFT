@@ -163,9 +163,14 @@ __attribute__((always_inline)) INLINE static void black_holes_swallow_part(
  * @param bpi The #bpart to update.
  * @param bpj The #bpart that is swallowed.
  * @param cosmo The current cosmological model.
+ * @param time Time since the start of the simulation (non-cosmo mode).
+ * @param with_cosmology Are we running with cosmology?
+ * @param props The properties of the black hole scheme.
  */
 __attribute__((always_inline)) INLINE static void black_holes_swallow_bpart(
-    struct bpart* bpi, const struct bpart* bpj, const struct cosmology* cosmo) {
+    struct bpart* bpi, const struct bpart* bpj, const struct cosmology* cosmo,
+    const double time, const int with_cosmology,
+    const struct black_holes_props* props) {
 
   /* Nothing to do here: No merging in the default model */
 }
@@ -180,12 +185,14 @@ __attribute__((always_inline)) INLINE static void black_holes_swallow_bpart(
  * @param props The properties of the black hole scheme.
  * @param constants The physical constants (in internal units).
  * @param cosmo The cosmological model.
+ * @param time Time since the start of the simulation (non-cosmo mode).
+ * @param with_cosmology Are we running with cosmology?
  * @param dt The time-step size (in physical internal units).
  */
 __attribute__((always_inline)) INLINE static void black_holes_prepare_feedback(
     struct bpart* restrict bp, const struct black_holes_props* props,
     const struct phys_const* constants, const struct cosmology* cosmo,
-    const double dt) {}
+    const double time, const int with_cosmology, const double dt) {}
 
 /**
  * @brief Finish the calculation of the new BH position.
@@ -219,6 +226,32 @@ __attribute__((always_inline)) INLINE static void black_holes_reset_feedback(
   bp->num_ngb_force = 0;
 #endif
 }
+
+/**
+ * @brief Store the gravitational potential of a black hole by copying it from
+ * its #gpart friend.
+ *
+ * Nothing to do here.
+ *
+ * @param bp The black hole particle.
+ * @param gp The black hole's #gpart.
+ */
+__attribute__((always_inline)) INLINE static void
+black_holes_store_potential_in_bpart(struct bpart* bp, const struct gpart* gp) {
+}
+
+/**
+ * @brief Store the gravitational potential of a particle by copying it from
+ * its #gpart friend.
+ *
+ * Nothing to do here.
+ *
+ * @param p_data The black hole data of a gas particle.
+ * @param gp The black hole's #gpart.
+ */
+__attribute__((always_inline)) INLINE static void
+black_holes_store_potential_in_part(struct black_holes_part_data* p_data,
+                                    const struct gpart* gp) {}
 
 /**
  * @brief Initialise a BH particle that has just been seeded.

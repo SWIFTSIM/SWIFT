@@ -20,12 +20,6 @@
 #ifndef SWIFT_CONST_H
 #define SWIFT_CONST_H
 
-/* Time integration constants. */
-#define const_max_u_change 0.1f
-
-/* Time-step limiter maximal difference in signal velocity */
-#define const_limiter_max_v_sig_ratio 4.1f
-
 /* I/O Constant; this determines the relative tolerance between the value of
  * redshift read from the snapshot, and the value from the parameter file. This
  * current value asserts that they must match within 0.1%. */

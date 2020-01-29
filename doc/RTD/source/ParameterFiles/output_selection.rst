@@ -38,7 +38,12 @@ Example of file with redshift::
 If an output list is specified, the basic values for the first
 snapshot (``time_first``, ``scale_factor_first``) and difference
 (``delta_time``) are ignored.
-  
+
+When an output list is used SWIFT will not write a "0th" snapshot
+straight after having read the ICs. Similarly, SWIFT will also *not*
+write a snapshot at the end of a simulation unless a snapshot at the
+final time is specified in the list.
+
 .. _Output_selection_label:
 
 Output Selection

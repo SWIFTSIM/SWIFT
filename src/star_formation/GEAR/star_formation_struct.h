@@ -23,7 +23,10 @@
  * @brief Star-formation-related properties stored in the extended particle
  * data.
  */
-struct star_formation_xpart_data {};
+struct star_formation_xpart_data {
+  /*! Particle velocity divergence. */
+  float div_v;
+};
 
 /**
  * @brief Global star formation properties

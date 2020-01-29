@@ -58,15 +58,27 @@ __attribute__((always_inline)) INLINE static void stars_init_spart(
  *
  * @param sp The particle to act upon.
  * @param stars_properties Properties of the stars model.
+ * @param with_cosmology Are we running with cosmological time integration.
+ * @param scale_factor The current scale-factor (used if running with
+ * cosmology).
+ * @param time The current time (used if running without cosmology).
  */
 __attribute__((always_inline)) INLINE static void stars_first_init_spart(
-    struct spart* sp, const struct stars_props* stars_properties) {
+    struct spart* sp, const struct stars_props* stars_properties,
+    const int with_cosmology, const double scale_factor, const double time) {
 
   sp->time_bin = 0;
   sp->birth_density = 0.f;
   sp->f_E = -1.f;
+  sp->count_since_last_enrichment = -1;
+
   if (stars_properties->overwrite_birth_time)
     sp->birth_time = stars_properties->spart_first_init_birth_time;
+
+  if (with_cosmology)
+    sp->last_enrichment_time = scale_factor;
+  else
+    sp->last_enrichment_time = time;
 
   stars_init_spart(sp);
 }
@@ -155,7 +167,7 @@ __attribute__((always_inline)) INLINE static void stars_reset_acceleration(
     struct spart* restrict p) {
 
 #ifdef DEBUG_INTERACTIONS_STARS
-  p->num_ngb_force = 0;
+  p->num_ngb_feedback = 0;
 #endif
 }
 
@@ -172,8 +184,8 @@ __attribute__((always_inline)) INLINE static void stars_reset_feedback(
 
 #ifdef DEBUG_INTERACTIONS_STARS
   for (int i = 0; i < MAX_NUM_OF_NEIGHBOURS_STARS; ++i)
-    p->ids_ngbs_force[i] = -1;
-  p->num_ngb_force = 0;
+    p->ids_ngbs_feedback[i] = -1;
+  p->num_ngb_feedback = 0;
 #endif
 }
 

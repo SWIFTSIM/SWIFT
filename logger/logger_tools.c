@@ -60,7 +60,8 @@ int _tools_get_next_record_forward(const struct header *h, void *map,
   size_t diff_offset = 0;
 
   /* Read the offset. */
-  map = logger_loader_io_read_mask(h, map + *offset, NULL, &diff_offset);
+  map =
+      logger_loader_io_read_mask(h, (char *)map + *offset, NULL, &diff_offset);
 
   if (diff_offset == 0) return -1;
 
@@ -91,7 +92,8 @@ int _tools_get_next_record_backward(const struct header *h, void *map,
   while (current_offset < file_size) {
     size_t mask = 0;
     size_t prev_offset;
-    logger_loader_io_read_mask(h, map + current_offset, &mask, &prev_offset);
+    logger_loader_io_read_mask(h, (char *)map + current_offset, &mask,
+                               &prev_offset);
 
     prev_offset = current_offset - prev_offset - record_header;
     if (*offset == prev_offset) {
@@ -123,16 +125,17 @@ size_t tools_reverse_offset(const struct header *h, void *file_map,
   void *map = file_map;
 
   /* read mask + offset. */
-  map = logger_loader_io_read_mask(h, map + offset, &mask, &prev_offset);
+  map =
+      logger_loader_io_read_mask(h, (char *)map + offset, &mask, &prev_offset);
 
   /* write offset of zero (in case it is the last record). */
   const size_t zero = 0;
-  map -= LOGGER_OFFSET_SIZE;
+  map = (char *)map - LOGGER_OFFSET_SIZE;
   map = logger_loader_io_write_data(map, LOGGER_OFFSET_SIZE, &zero);
 
   /* set offset after current record. */
-  map += header_get_record_size_from_mask(h, mask);
-  size_t after_current_record = (size_t)(map - file_map);
+  map = (char *)map + header_get_record_size_from_mask(h, mask);
+  size_t after_current_record = (size_t)((char *)map - (char *)file_map);
 
   /* first records do not have a previous partner. */
   if (prev_offset == cur_offset) return after_current_record;
@@ -142,16 +145,17 @@ size_t tools_reverse_offset(const struct header *h, void *file_map,
           cur_offset);
 
   /* modify previous offset. */
-  map = file_map + cur_offset - prev_offset + LOGGER_MASK_SIZE;
+  map = (char *)file_map + cur_offset - prev_offset + LOGGER_MASK_SIZE;
   map = logger_loader_io_write_data(map, LOGGER_OFFSET_SIZE, &prev_offset);
 
 #ifdef SWIFT_DEBUG_CHECKS
   size_t prev_mask = 0;
-  map -= LOGGER_MASK_SIZE + LOGGER_OFFSET_SIZE;
+  map = (char *)map - LOGGER_MASK_SIZE - LOGGER_OFFSET_SIZE;
   logger_loader_io_read_mask(h, map, &prev_mask, NULL);
 
-  /* Check if we are not mixing time stamp and particles */
-  if ((prev_mask != 128 && mask == 128) || (prev_mask == 128 && mask != 128))
+  /* Check if we are not mixing timestamp and particles */
+  if ((prev_mask != h->timestamp_mask && mask == h->timestamp_mask) ||
+      (prev_mask == h->timestamp_mask && mask != h->timestamp_mask))
     error("Unexpected mask: %lu, got %lu.", mask, prev_mask);
 
 #endif  // SWIFT_DEBUG_CHECKS
@@ -178,7 +182,7 @@ size_t tools_check_record_consistency(const struct logger_reader *reader,
 
   const struct header *h = &reader->log.header;
   void *file_init = reader->log.log.map;
-  void *map = file_init + offset;
+  void *map = (char *)file_init + offset;
 
   size_t mask;
   size_t pointed_offset;
@@ -199,33 +203,35 @@ size_t tools_check_record_consistency(const struct logger_reader *reader,
   }
 
   /* set offset after current record. */
-  map += header_get_record_size_from_mask(h, mask);
+  map = (char *)+header_get_record_size_from_mask(h, mask);
 
   if (pointed_offset == offset || pointed_offset == 0)
-    return (size_t)(map - file_init);
+    return (size_t)((char *)map - (char *)file_init);
 
   /* read mask of the pointed record. */
   size_t pointed_mask = 0;
-  logger_loader_io_read_mask(h, file_init + pointed_offset, &pointed_mask,
-                             NULL);
+  logger_loader_io_read_mask(h, (char *)file_init + pointed_offset,
+                             &pointed_mask, NULL);
 
-  /* check if not mixing time stamp and particles. */
-  if ((pointed_mask != 128 && mask == 128) ||
-      (pointed_mask == 128 && mask != 128))
+  /* check if not mixing timestamp and particles. */
+  if ((pointed_mask != h->timestamp_mask && mask == h->timestamp_mask) ||
+      (pointed_mask == h->timestamp_mask && mask != h->timestamp_mask))
     error("Error in the offset (mask %lu at %lu != %lu at %lu).", mask, offset,
           pointed_mask, pointed_offset);
 
-  if (pointed_mask == 128) return (size_t)(map - file_init);
+  if (pointed_mask == h->timestamp_mask)
+    return (size_t)((char *)map - (char *)file_init);
 
   struct logger_particle part;
   logger_particle_read(&part, reader, offset, 0, logger_reader_const);
 
-  size_t id = part.id;
+  long long id = part.id;
   logger_particle_read(&part, reader, pointed_offset, 0, logger_reader_const);
 
-  if (id != part.id)
-    error("Offset wrong, id incorrect (%lu != %lu) at %lu.", id, part.id,
+  if (id != part.id) {
+    error("Offset wrong, id incorrect (%lli != %lli) at %lu.", id, part.id,
           pointed_offset);
+  }
 
-  return (size_t)(map - file_init);
+  return (size_t)((char *)map - (char *)file_init);
 }

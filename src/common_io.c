@@ -79,6 +79,8 @@ hid_t io_hdf5_type(enum IO_DATA_TYPE type) {
       return H5T_NATIVE_INT;
     case UINT:
       return H5T_NATIVE_UINT;
+    case UINT64:
+      return H5T_NATIVE_UINT64;
     case LONG:
       return H5T_NATIVE_LONG;
     case ULONG:
@@ -118,7 +120,7 @@ int io_is_double_precision(enum IO_DATA_TYPE type) {
 }
 
 /**
- * @brief Reads an attribute from a given HDF5 group.
+ * @brief Reads an attribute (scalar) from a given HDF5 group.
  *
  * @param grp The group from which to read.
  * @param name The name of the attribute to read.
@@ -216,6 +218,150 @@ void io_assert_valid_header_cosmology(hid_t h_grp, double a) {
         "read from initial conditions (%lf) are inconsistent.",
         current_redshift, redshift_from_snapshot);
   }
+}
+
+/**
+ * @brief Reads the number of elements in a HDF5 attribute.
+ *
+ * @param attr The attribute from which to read.
+ *
+ * @return The number of elements.
+ *
+ * Calls #error() if an error occurs.
+ */
+hsize_t io_get_number_element_in_attribute(hid_t attr) {
+  /* Get the dataspace */
+  hid_t space = H5Aget_space(attr);
+  if (space < 0) error("Failed to get data space");
+
+  /* Read the number of dimensions */
+  const int ndims = H5Sget_simple_extent_ndims(space);
+
+  /* Read the dimensions */
+  hsize_t* dims = (hsize_t*)malloc(sizeof(hsize_t) * ndims);
+  H5Sget_simple_extent_dims(space, dims, NULL);
+
+  /* Compute number of elements */
+  hsize_t count = 1;
+  for (int i = 0; i < ndims; i++) {
+    count *= dims[i];
+  }
+
+  /* Cleanup */
+  free(dims);
+  H5Sclose(space);
+  return count;
+};
+
+/**
+ * @brief Reads an attribute (array) from a given HDF5 group.
+ *
+ * @param grp The group from which to read.
+ * @param name The name of the dataset to read.
+ * @param type The #IO_DATA_TYPE of the attribute.
+ * @param data (output) The attribute read from the HDF5 group (need to be
+ * already allocated).
+ * @param number_element Number of elements in the attribute.
+ *
+ * Calls #error() if an error occurs.
+ */
+void io_read_array_attribute(hid_t grp, const char* name,
+                             enum IO_DATA_TYPE type, void* data,
+                             hsize_t number_element) {
+
+  /* Open attribute */
+  const hid_t h_attr = H5Aopen(grp, name, H5P_DEFAULT);
+  if (h_attr < 0) error("Error while opening attribute '%s'", name);
+
+  /* Get the number of elements */
+  hsize_t count = io_get_number_element_in_attribute(h_attr);
+
+  /* Check if correct number of element */
+  if (count != number_element) {
+    error(
+        "Error found a different number of elements than expected (%lli != "
+        "%lli) in attribute %s",
+        count, number_element, name);
+  }
+
+  /* Read attribute */
+  const hid_t h_err = H5Aread(h_attr, io_hdf5_type(type), data);
+  if (h_err < 0) error("Error while reading attribute '%s'", name);
+
+  /* Cleanup */
+  H5Aclose(h_attr);
+}
+
+/**
+ * @brief Reads the number of elements in a HDF5 dataset.
+ *
+ * @param dataset The dataset from which to read.
+ *
+ * @return The number of elements.
+ *
+ * Calls #error() if an error occurs.
+ */
+hsize_t io_get_number_element_in_dataset(hid_t dataset) {
+  /* Get the dataspace */
+  hid_t space = H5Dget_space(dataset);
+  if (space < 0) error("Failed to get data space");
+
+  /* Read the number of dimensions */
+  const int ndims = H5Sget_simple_extent_ndims(space);
+
+  /* Read the dimensions */
+  hsize_t* dims = (hsize_t*)malloc(sizeof(hsize_t) * ndims);
+  H5Sget_simple_extent_dims(space, dims, NULL);
+
+  /* Compute number of elements */
+  hsize_t count = 1;
+  for (int i = 0; i < ndims; i++) {
+    count *= dims[i];
+  }
+
+  /* Cleanup */
+  free(dims);
+  H5Sclose(space);
+  return count;
+};
+
+/**
+ * @brief Reads a dataset (array) from a given HDF5 group.
+ *
+ * @param grp The group from which to read.
+ * @param name The name of the dataset to read.
+ * @param type The #IO_DATA_TYPE of the attribute.
+ * @param data (output) The attribute read from the HDF5 group (need to be
+ * already allocated).
+ * @param number_element Number of elements in the attribute.
+ *
+ * Calls #error() if an error occurs.
+ */
+void io_read_array_dataset(hid_t grp, const char* name, enum IO_DATA_TYPE type,
+                           void* data, hsize_t number_element) {
+
+  /* Open dataset */
+  const hid_t h_dataset = H5Dopen(grp, name, H5P_DEFAULT);
+  if (h_dataset < 0) error("Error while opening attribute '%s'", name);
+
+  /* Get the number of elements */
+  hsize_t count = io_get_number_element_in_dataset(h_dataset);
+
+  /* Check if correct number of element */
+  if (count != number_element) {
+    error(
+        "Error found a different number of elements than expected (%lli != "
+        "%lli) in dataset %s",
+        count, number_element, name);
+  }
+
+  /* Read dataset */
+  const hid_t h_err = H5Dread(h_dataset, io_hdf5_type(type), H5S_ALL, H5S_ALL,
+                              H5P_DEFAULT, data);
+  if (h_err < 0) error("Error while reading dataset '%s'", name);
+
+  /* Cleanup */
+  H5Dclose(h_dataset);
 }
 
 /**
@@ -453,6 +599,7 @@ void io_write_code_description(hid_t h_file) {
 #else
   io_write_attribute_s(h_grpcode, "MPI library", "Non-MPI version of SWIFT");
 #endif
+  io_write_attribute_i(h_grpcode, "RandomSeed", SWIFT_RANDOM_SEED_XOR);
   H5Gclose(h_grpcode);
 }
 
@@ -543,7 +690,8 @@ static long long cell_count_non_inhibited_black_holes(const struct cell* c) {
   return count;
 }
 
-void io_write_cell_offsets(hid_t h_grp, const int cdim[3],
+void io_write_cell_offsets(hid_t h_grp, const int cdim[3], const double dim[3],
+                           const double pos_dithering[3],
                            const struct cell* cells_top, const int nr_cells,
                            const double width[3], const int nodeID,
                            const long long global_counts[swift_type_count],
@@ -598,6 +746,17 @@ void io_write_cell_offsets(hid_t h_grp, const int cdim[3],
       centres[i * 3 + 0] = cells_top[i].loc[0] + cell_width[0] * 0.5;
       centres[i * 3 + 1] = cells_top[i].loc[1] + cell_width[1] * 0.5;
       centres[i * 3 + 2] = cells_top[i].loc[2] + cell_width[2] * 0.5;
+
+      /* Undo the dithering since the particles will have this vector applied to
+       * them */
+      centres[i * 3 + 0] = centres[i * 3 + 0] - pos_dithering[0];
+      centres[i * 3 + 1] = centres[i * 3 + 1] - pos_dithering[1];
+      centres[i * 3 + 2] = centres[i * 3 + 2] - pos_dithering[2];
+
+      /* Finish by box wrapping to match what is done to the particles */
+      centres[i * 3 + 0] = box_wrap(centres[i * 3 + 0], 0.0, dim[0]);
+      centres[i * 3 + 1] = box_wrap(centres[i * 3 + 1], 0.0, dim[1]);
+      centres[i * 3 + 2] = box_wrap(centres[i * 3 + 2], 0.0, dim[2]);
 
       /* Count real particles that will be written */
       count_part[i] = cell_count_non_inhibited_gas(&cells_top[i]);
@@ -1021,6 +1180,8 @@ size_t io_sizeof_type(enum IO_DATA_TYPE type) {
       return sizeof(int);
     case UINT:
       return sizeof(unsigned int);
+    case UINT64:
+      return sizeof(uint64_t);
     case LONG:
       return sizeof(long);
     case ULONG:
@@ -1035,6 +1196,8 @@ size_t io_sizeof_type(enum IO_DATA_TYPE type) {
       return sizeof(double);
     case CHAR:
       return sizeof(char);
+    case SIZE_T:
+      return sizeof(size_t);
     default:
       error("Unknown type");
       return 0;

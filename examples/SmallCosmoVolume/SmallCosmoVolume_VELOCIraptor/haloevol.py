@@ -24,9 +24,10 @@ from getHMF import getHMFz, getHMFztinker
 
 dlogm = 0.2
 bins = 10 ** (np.arange(12, 15.2, dlogm))
-V = 142.0 ** 3
+h = 0.703
+V = (100.0 / h) ** 3
 
-itervalues = np.array([175, 185, 192, 198])
+itervalues = np.array([41, 49, 53, 60])
 
 for j in itervalues:
     # Load the data
@@ -38,15 +39,15 @@ for j in itervalues:
     for i in range(0, len(massnlarger)):
         massnlarger[i] = np.sum(binnedmass[i:])
 
-    f = h5py.File("snap_%04d.hdf5" % (j + 1))
+    f = h5py.File("snap_%04d.hdf5" % j)
     cosmo = f["Cosmology"]
     redshift = cosmo.attrs["Redshift"][0]
     a = cosmo.attrs["Scale-factor"][0]
 
     # Determine the HMF
     errormassn = massnlarger ** 0.5
-    numbden = massnlarger / V / a ** 3
-    numbdenerr = errormassn / V / a ** 3
+    numbden = massnlarger / V
+    numbdenerr = errormassn / V
     massplot = (massrange[0:15] + massrange[1:16]) / 2
     dernumbden = -np.diff(numbden) / np.diff(np.log10(massplot))
     dererr = 2 ** 0.5 / dlogm * (numbdenerr[0:14] + numbdenerr[1:15]) / 2
@@ -72,10 +73,10 @@ for j in itervalues:
     plt.text(xplace, 10 ** -3.5, "$z=%2.2f$" % redshift)
 
     m, dndlogm = getHMFz(redshift)
-    plt.plot(m / 0.7, dndlogm * 0.7 ** 3, label="Sheth et al. 2001")
+    plt.plot(m / h, dndlogm * h ** 3, label="Sheth et al. 2001")
 
     m, dndlogm = getHMFztinker(redshift)
-    plt.plot(m / 0.7, dndlogm * 0.7 ** 3, label="Tinker et al. 2008")
+    plt.plot(m / h, dndlogm * h ** 3, label="Tinker et al. 2008")
 
     plt.xlabel("M${}_{200}$ ($M_\odot$)")
     plt.ylabel("dn/d($\log$10(M${}_{200}$) ($Mpc^{-3}$)")

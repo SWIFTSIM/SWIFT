@@ -82,10 +82,11 @@ INLINE static void convert_part_pos(const struct engine* e,
                                     const struct part* p,
                                     const struct xpart* xp, double* ret) {
 
-  if (e->s->periodic) {
-    ret[0] = box_wrap(p->x[0], 0.0, e->s->dim[0]);
-    ret[1] = box_wrap(p->x[1], 0.0, e->s->dim[1]);
-    ret[2] = box_wrap(p->x[2], 0.0, e->s->dim[2]);
+  const struct space* s = e->s;
+  if (s->periodic) {
+    ret[0] = box_wrap(p->x[0] - s->pos_dithering[0], 0.0, s->dim[0]);
+    ret[1] = box_wrap(p->x[1] - s->pos_dithering[1], 0.0, s->dim[1]);
+    ret[2] = box_wrap(p->x[2] - s->pos_dithering[2], 0.0, s->dim[2]);
   } else {
     ret[0] = p->x[0];
     ret[1] = p->x[1];
@@ -228,10 +229,6 @@ INLINE static void hydro_write_flavour(hid_t h_grpsph) {
                        "Simple treatment as in Price (2017)");
   io_write_attribute_s(h_grpsph, "Viscosity Model",
                        "Simplified version of Cullen & Denhen (2011)");
-
-  /* Time integration properties */
-  io_write_attribute_f(h_grpsph, "Maximal Delta u change over dt",
-                       const_max_u_change);
 }
 
 /**

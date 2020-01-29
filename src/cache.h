@@ -340,7 +340,6 @@ __attribute__((always_inline)) INLINE int cache_read_particles_subset_self(
  * @param sort_i The array of sorted particle indices for cell ci.
  * @param first_pi The first particle in cell ci that is in range.
  * @param last_pi The last particle in cell ci that is in range.
- * @param last_pi The last particle in cell ci that is in range.
  * @param loc The cell location to remove from the particle positions.
  * @param flipped Flag to check whether the cells have been flipped or not.
  */

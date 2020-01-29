@@ -113,7 +113,7 @@ struct cell *make_cell(size_t n, double *offset, double size, double h,
         part->entropy = 1.f;
 #elif defined(MINIMAL_SPH) || defined(HOPKINS_PU_SPH) ||           \
     defined(HOPKINS_PU_SPH_MONAGHAN) || defined(ANARCHY_PU_SPH) || \
-    defined(ANARCHY_DU_SPH) || defined(DEFAULT_SPH)
+    defined(SPHENIX_SPH) || defined(DEFAULT_SPH)
         part->u = 1.f;
 #elif defined(HOPKINS_PE_SPH)
         part->entropy = 1.f;
@@ -197,7 +197,7 @@ void zero_particle_fields_force(struct cell *c, const struct cosmology *cosmo,
     p->density.rot_v[2] = 0.f;
     p->density.div_v = 0.f;
 #endif /* GADGET-2 */
-#if defined(MINIMAL_SPH) || defined(ANARCHY_DU_SPH) || defined(DEFAULT_SPH)
+#if defined(MINIMAL_SPH) || defined(SPHENIX_SPH) || defined(DEFAULT_SPH)
     p->rho = 1.f;
     p->density.rho_dh = 0.f;
     p->density.wcount = 48.f / (kernel_norm * pow_dimension(p->h));
@@ -220,8 +220,9 @@ void zero_particle_fields_force(struct cell *c, const struct cosmology *cosmo,
     p->density.wcount = 48.f / (kernel_norm * pow_dimension(p->h));
     p->density.wcount_dh = 0.f;
 #endif /* PRESSURE-ENERGY */
-#if defined(ANARCHY_PU_SPH) || defined(ANARCHY_DU_SPH)
+#if defined(ANARCHY_PU_SPH) || defined(SPHENIX_SPH)
     /* Initialise viscosity variables */
+    p->force.pressure = hydro_get_comoving_pressure(p);
     p->viscosity.alpha = 0.8;
     p->viscosity.div_v = 0.f;
     p->viscosity.div_v_previous_step = 0.f;
@@ -252,7 +253,8 @@ void end_calculation_density(struct cell *c, const struct cosmology *cosmo) {
  */
 void end_calculation_force(struct cell *c, const struct cosmology *cosmo) {
   for (int pid = 0; pid < c->hydro.count; pid++) {
-    hydro_end_force(&c->hydro.parts[pid], cosmo);
+    struct part *volatile part = &c->hydro.parts[pid];
+    hydro_end_force(part, cosmo);
   }
 }
 

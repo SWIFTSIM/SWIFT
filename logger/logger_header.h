@@ -24,9 +24,13 @@
 #include <stdio.h>
 #include <stdlib.h>
 
+/* Number of character for the version information */
 #define LOGGER_VERSION_SIZE 20
-#define LOGGER_OFFSET_SIZE 7
-#define LOGGER_MASK_SIZE 1
+/* Number of bytes for the mask information in the headers
+   (need to be large enough for the larges mask) */
+#define LOGGER_MASK_SIZE 2
+/* Number of bytes for the offset size in the headers */
+#define LOGGER_OFFSET_SIZE (8 - LOGGER_MASK_SIZE)
 
 enum logger_offset_direction {
   logger_offset_backward = 0,
@@ -68,7 +72,7 @@ struct header {
   unsigned int string_length;
 
   /* Number of masks. */
-  unsigned int number_mask;
+  unsigned int masks_count;
 
   /* List of masks. */
   struct mask_data *masks;
@@ -78,6 +82,9 @@ struct header {
 
   /* The corresponding log. */
   struct logger_logfile *log;
+
+  /* Timestamp mask */
+  size_t timestamp_mask;
 };
 
 void header_print(const struct header *h);
