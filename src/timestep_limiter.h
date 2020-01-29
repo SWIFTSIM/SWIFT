@@ -26,12 +26,40 @@
 #include "kick.h"
 
 /**
+ * @brief Prepare the limiter-quantities for a hydro force calculation.
+ *
+ * @param p The #part.
+ * @param xp The #xpart.
+ */
+__attribute__((always_inline)) INLINE static void
+timestep_limiter_prepare_force(struct part *restrict p,
+                               struct xpart *restrict xp) {
+
+  p->limiter_data.min_ngb_time_bin = num_time_bins + 1;
+}
+
+/**
+ * @brief Terminate the limiter-quantities after a hydro force calculation.
+ *
+ * @param p The #part.
+ */
+__attribute__((always_inline)) INLINE static void timestep_limiter_end_force(
+    struct part *restrict p) {
+#ifdef SWIFT_DEBUG_CHECKS
+  if (p->limiter_data.min_ngb_time_bin == 0)
+    error("Minimal time-bin of neighbours is 0");
+#endif
+}
+
+/**
  * @brief Wakes up a particle by rewinding it's kick1 back in time and applying
  * a new one such that the particle becomes active again in the next time-step.
  *
  * @param p The #part to update.
  * @param xp Its #xpart companion.
  * @param e The #engine (to extract time-line information).
+ *
+ * @return The updated integer end-of-step of the particle.
  */
 __attribute__((always_inline)) INLINE static integertime_t timestep_limit_part(
     struct part *restrict p, struct xpart *restrict xp,
@@ -40,109 +68,157 @@ __attribute__((always_inline)) INLINE static integertime_t timestep_limit_part(
   const struct cosmology *cosmo = e->cosmology;
   const int with_cosmology = e->policy & engine_policy_cosmology;
   const double time_base = e->time_base;
+  const integertime_t ti_current = e->ti_current;
 
-  integertime_t old_ti_beg, old_ti_end;
-  timebin_t old_time_bin;
+  if (part_is_active(p, e)) {
 
-  /* Let's see when this particle started and used to end */
-  if (p->wakeup == time_bin_awake) {
+    /* First case, the particle was active so we only need to update the length
+       of its next time-step */
 
-    /* Normal case */
-    old_ti_beg = get_integer_time_begin(e->ti_current, p->time_bin);
-    old_ti_end = get_integer_time_end(e->ti_current, p->time_bin);
-    old_time_bin = p->time_bin;
+    /* New time-bin of this particle */
+    p->time_bin = -p->limiter_data.wakeup + 2;
+
+    /* Mark the particle as being rady to be time integrated */
+    p->limiter_data.wakeup = time_bin_not_awake;
+
+    /* Return the new end-of-step for this particle */
+    return ti_current + get_integer_timestep(p->time_bin);
+
   } else {
 
-    /* Particle that was limited in the previous step already */
-    old_ti_beg = get_integer_time_begin(e->ti_current, -p->wakeup);
-    old_ti_end = get_integer_time_end(e->ti_current, p->time_bin);
-    old_time_bin = -p->wakeup;
-  }
+    /* Second case, the particle was inactive so we need to interrupt its
+       time-step, undo the "kick" operator and assign a new time-step size */
 
-  const integertime_t old_dti = old_ti_end - old_ti_beg;
+    /* The timebins to play with */
+    const timebin_t old_bin = p->time_bin;
+    const timebin_t new_bin = -p->limiter_data.wakeup + 2;
 
-  /* The new fake time-step the particle will be on */
-  const integertime_t new_fake_ti_step =
-      get_integer_timestep(e->min_active_bin);
+    /* Current start and end time of this particle */
+    const integertime_t ti_beg_old =
+        get_integer_time_begin(ti_current, old_bin);
+    const integertime_t ti_end_old = get_integer_time_end(ti_current, old_bin);
 
-  /* The actual time-step size this particle will use */
-  const integertime_t new_ti_beg = old_ti_beg;
-  const integertime_t new_ti_end = e->ti_current + new_fake_ti_step;
-  const integertime_t new_dti = new_ti_end - new_ti_beg;
+    /* Length of the old and new time-step */
+    const integertime_t dti_old = ti_end_old - ti_beg_old;
+    const integertime_t dti_new = get_integer_timestep(new_bin);
+
+    /* Let's now search for the starting point of the new step */
+    int k = 0;
+    while (ti_beg_old + k * dti_new <= ti_current) k++;
+
+    const integertime_t ti_beg_new = ti_beg_old + (k - 1) * dti_new;
 
 #ifdef SWIFT_DEBUG_CHECKS
-  /* Some basic safety checks */
-  if (old_ti_beg >= e->ti_current)
-    error(
-        "Incorrect value for old time-step beginning ti_current=%lld, "
-        "old_ti_beg=%lld",
-        e->ti_current, old_ti_beg);
+    /* Some basic safety checks */
+    if (ti_beg_old >= e->ti_current)
+      error(
+          "Incorrect value for old time-step beginning ti_current=%lld, "
+          "ti_beg_old=%lld",
+          e->ti_current, ti_beg_old);
 
-  if (old_ti_end <= e->ti_current)
-    error(
-        "Incorrect value for old time-step end ti_current=%lld, "
-        "old_ti_end=%lld",
-        e->ti_current, old_ti_end);
+    if (ti_end_old <= e->ti_current)
+      error(
+          "Incorrect value for old time-step end ti_current=%lld, "
+          "ti_end_old=%lld",
+          e->ti_current, ti_end_old);
 
-  if (new_ti_end > old_ti_end) error("New end of time-step after the old one");
+    if (ti_beg_new < ti_beg_old)
+      error("New beg of time-step before the old one");
 
-  if (new_dti > old_dti) error("New time-step larger than old one");
-
-  if (new_fake_ti_step == 0) error("Wakeup call too early");
+    if (dti_new > dti_old) error("New time-step larger than old one");
 #endif
 
-  double dt_kick_grav = 0., dt_kick_hydro = 0., dt_kick_therm = 0.,
-         dt_kick_corr = 0.;
+    double dt_kick_grav = 0., dt_kick_hydro = 0., dt_kick_therm = 0.,
+           dt_kick_corr = 0.;
 
-  /* Now we need to reverse the kick1... (the dt are negative here) */
-  if (with_cosmology) {
-    dt_kick_hydro = -cosmology_get_hydro_kick_factor(cosmo, old_ti_beg,
-                                                     old_ti_beg + old_dti / 2);
-    dt_kick_grav = -cosmology_get_grav_kick_factor(cosmo, old_ti_beg,
-                                                   old_ti_beg + old_dti / 2);
-    dt_kick_therm = -cosmology_get_therm_kick_factor(cosmo, old_ti_beg,
-                                                     old_ti_beg + old_dti / 2);
-    dt_kick_corr = -cosmology_get_corr_kick_factor(cosmo, old_ti_beg,
-                                                   old_ti_beg + old_dti / 2);
-  } else {
-    dt_kick_hydro = -(old_dti / 2) * time_base;
-    dt_kick_grav = -(old_dti / 2) * time_base;
-    dt_kick_therm = -(old_dti / 2) * time_base;
-    dt_kick_corr = -(old_dti / 2) * time_base;
+    /* Now we need to reverse the kick1... (the dt are negative here) */
+    if (with_cosmology) {
+      dt_kick_hydro = -cosmology_get_hydro_kick_factor(
+          cosmo, ti_beg_old, ti_beg_old + dti_old / 2);
+      dt_kick_grav = -cosmology_get_grav_kick_factor(cosmo, ti_beg_old,
+                                                     ti_beg_old + dti_old / 2);
+      dt_kick_therm = -cosmology_get_therm_kick_factor(
+          cosmo, ti_beg_old, ti_beg_old + dti_old / 2);
+      dt_kick_corr = -cosmology_get_corr_kick_factor(cosmo, ti_beg_old,
+                                                     ti_beg_old + dti_old / 2);
+    } else {
+      dt_kick_hydro = -(dti_old / 2) * time_base;
+      dt_kick_grav = -(dti_old / 2) * time_base;
+      dt_kick_therm = -(dti_old / 2) * time_base;
+      dt_kick_corr = -(dti_old / 2) * time_base;
+    }
+
+    kick_part(p, xp, dt_kick_hydro, dt_kick_grav, dt_kick_therm, dt_kick_corr,
+              e->cosmology, e->hydro_properties, e->entropy_floor,
+              ti_beg_old + dti_old / 2, ti_beg_old);
+
+    /* ...and apply the new one (dt is positiive).
+     * This brings us to the current time. */
+    if (with_cosmology) {
+      dt_kick_hydro = cosmology_get_hydro_kick_factor(cosmo, ti_beg_new,
+                                                      ti_beg_new + dti_new / 2);
+      dt_kick_grav = cosmology_get_grav_kick_factor(cosmo, ti_beg_new,
+                                                    ti_beg_new + dti_new / 2);
+      dt_kick_therm = cosmology_get_therm_kick_factor(cosmo, ti_beg_new,
+                                                      ti_beg_new + dti_new / 2);
+      dt_kick_corr = cosmology_get_corr_kick_factor(cosmo, ti_beg_new,
+                                                    ti_beg_new + dti_new / 2);
+    } else {
+      dt_kick_hydro = (ti_beg_new - ti_beg_old) * time_base;
+      dt_kick_grav = (ti_beg_new - ti_beg_old) * time_base;
+      dt_kick_therm = (ti_beg_new - ti_beg_old) * time_base;
+      dt_kick_corr = (ti_beg_new - ti_beg_old) * time_base;
+    }
+
+    kick_part(p, xp, dt_kick_hydro, dt_kick_grav, dt_kick_therm, dt_kick_corr,
+              e->cosmology, e->hydro_properties, e->entropy_floor, ti_beg_old,
+              ti_beg_new);
+
+    /* The particle has now been kicked to the current time */
+
+    /* New time-bin of this particle */
+    p->time_bin = new_bin;
+
+    /* Mark the particle as being ready to be time integrated */
+    p->limiter_data.wakeup = time_bin_not_awake;
+
+    /* Do we need to apply the mising kick1 or is this bin active and
+       it will be done in the kick task? */
+    if (new_bin > e->max_active_bin) {
+
+      /* Apply the missing kick1 */
+
+      if (with_cosmology) {
+        dt_kick_hydro = cosmology_get_hydro_kick_factor(
+            cosmo, ti_beg_new, ti_beg_new + dti_new / 2);
+        dt_kick_grav = cosmology_get_grav_kick_factor(cosmo, ti_beg_new,
+                                                      ti_beg_new + dti_new / 2);
+        dt_kick_therm = cosmology_get_therm_kick_factor(
+            cosmo, ti_beg_new, ti_beg_new + dti_new / 2);
+        dt_kick_corr = cosmology_get_corr_kick_factor(cosmo, ti_beg_new,
+                                                      ti_beg_new + dti_new / 2);
+      } else {
+        dt_kick_hydro = (dti_new / 2) * time_base;
+        dt_kick_grav = (dti_new / 2) * time_base;
+        dt_kick_therm = (dti_new / 2) * time_base;
+        dt_kick_corr = (dti_new / 2) * time_base;
+      }
+
+      kick_part(p, xp, dt_kick_hydro, dt_kick_grav, dt_kick_therm, dt_kick_corr,
+                e->cosmology, e->hydro_properties, e->entropy_floor, ti_beg_new,
+                ti_beg_new + dti_new / 2);
+
+      /* Return the new end-of-step for this particle */
+      return ti_beg_new + dti_new;
+
+    } else {
+
+      /* No kick to do here */
+
+      /* Return the new end-of-step for this particle */
+      return ti_current + get_integer_timestep(p->time_bin);
+    }
   }
-
-  kick_part(p, xp, dt_kick_hydro, dt_kick_grav, dt_kick_therm, dt_kick_corr,
-            e->cosmology, e->hydro_properties, e->entropy_floor,
-            old_ti_beg + old_dti / 2, old_ti_beg);
-
-  /* ...and apply the new one (dt is positiive) */
-  if (with_cosmology) {
-    dt_kick_hydro = cosmology_get_hydro_kick_factor(cosmo, new_ti_beg,
-                                                    new_ti_beg + new_dti / 2);
-    dt_kick_grav = cosmology_get_grav_kick_factor(cosmo, new_ti_beg,
-                                                  new_ti_beg + new_dti / 2);
-    dt_kick_therm = cosmology_get_therm_kick_factor(cosmo, new_ti_beg,
-                                                    new_ti_beg + new_dti / 2);
-    dt_kick_corr = cosmology_get_corr_kick_factor(cosmo, new_ti_beg,
-                                                  new_ti_beg + new_dti / 2);
-  } else {
-    dt_kick_hydro = (new_dti / 2) * time_base;
-    dt_kick_grav = (new_dti / 2) * time_base;
-    dt_kick_therm = (new_dti / 2) * time_base;
-    dt_kick_corr = (new_dti / 2) * time_base;
-  }
-
-  kick_part(p, xp, dt_kick_hydro, dt_kick_grav, dt_kick_therm, dt_kick_corr,
-            e->cosmology, e->hydro_properties, e->entropy_floor, new_ti_beg,
-            new_ti_beg + new_dti / 2);
-
-  /* Remember the old time-bin */
-  p->wakeup = old_time_bin;
-
-  /* Update the time bin of this particle */
-  p->time_bin = e->min_active_bin;
-
-  return new_fake_ti_step;
 }
 
 #endif /* SWIFT_TIMESTEP_LIMITER_H */

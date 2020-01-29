@@ -34,8 +34,10 @@
 #include "pressure_floor.h"
 #include "pressure_floor_iact.h"
 #include "space_getsid.h"
+#include "star_formation.h"
 #include "stars.h"
 #include "timers.h"
+#include "timestep_limiter.h"
 #include "tracers.h"
 
 /* Import the density loop functions. */
@@ -72,6 +74,7 @@ void runner_do_stars_ghost(struct runner *r, struct cell *c, int timer) {
   struct spart *restrict sparts = c->stars.parts;
   const struct engine *e = r->e;
   const struct unit_system *us = e->internal_units;
+  const struct phys_const *phys_const = e->physical_constants;
   const int with_cosmology = (e->policy & engine_policy_cosmology);
   const struct cosmology *cosmo = e->cosmology;
   const struct feedback_props *feedback_props = e->feedback_props;
@@ -202,19 +205,19 @@ void runner_do_stars_ghost(struct runner *r, struct cell *c, int timer) {
             stars_reset_feedback(sp);
 
             /* Only do feedback if stars have a reasonable birth time */
-            if (feedback_do_feedback(sp)) {
+            if (feedback_is_active(sp, e->time, cosmo, with_cosmology)) {
 
               const integertime_t ti_step = get_integer_timestep(sp->time_bin);
               const integertime_t ti_begin =
                   get_integer_time_begin(e->ti_current - 1, sp->time_bin);
 
               /* Get particle time-step */
-              double dt;
+              double dt_star;
               if (with_cosmology) {
-                dt = cosmology_get_delta_time(e->cosmology, ti_begin,
-                                              ti_begin + ti_step);
+                dt_star = cosmology_get_delta_time(e->cosmology, ti_begin,
+                                                   ti_begin + ti_step);
               } else {
-                dt = get_timestep(sp->time_bin, e->time_base);
+                dt_star = get_timestep(sp->time_bin, e->time_base);
               }
 
               /* Calculate age of the star at current time */
@@ -224,19 +227,22 @@ void runner_do_stars_ghost(struct runner *r, struct cell *c, int timer) {
                     cosmology_get_delta_time_from_scale_factors(
                         cosmo, (double)sp->birth_scale_factor, cosmo->a);
               } else {
-                star_age_end_of_step = (float)e->time - sp->birth_time;
+                star_age_end_of_step = e->time - (double)sp->birth_time;
               }
 
               /* Has this star been around for a while ? */
               if (star_age_end_of_step > 0.) {
 
-                /* Age of the star at the start of the step */
+                /* Get the length of the enrichment time-step */
+                const double dt_enrichment = feedback_get_enrichment_timestep(
+                    sp, with_cosmology, cosmo, e->time, dt_star);
                 const double star_age_beg_of_step =
-                    max(star_age_end_of_step - dt, 0.);
+                    star_age_end_of_step - dt_enrichment;
 
                 /* Compute the stellar evolution  */
-                feedback_evolve_spart(sp, feedback_props, cosmo, us,
-                                      star_age_beg_of_step, dt);
+                feedback_evolve_spart(sp, feedback_props, cosmo, us, phys_const,
+                                      star_age_beg_of_step, dt_enrichment,
+                                      e->time, ti_begin, with_cosmology);
               } else {
 
                 /* Reset the feedback fields of the star particle */
@@ -343,40 +349,43 @@ void runner_do_stars_ghost(struct runner *r, struct cell *c, int timer) {
         stars_reset_feedback(sp);
 
         /* Only do feedback if stars have a reasonable birth time */
-        if (feedback_do_feedback(sp)) {
+        if (feedback_is_active(sp, e->time, cosmo, with_cosmology)) {
 
           const integertime_t ti_step = get_integer_timestep(sp->time_bin);
           const integertime_t ti_begin =
               get_integer_time_begin(e->ti_current - 1, sp->time_bin);
 
           /* Get particle time-step */
-          double dt;
+          double dt_star;
           if (with_cosmology) {
-            dt = cosmology_get_delta_time(e->cosmology, ti_begin,
-                                          ti_begin + ti_step);
+            dt_star = cosmology_get_delta_time(e->cosmology, ti_begin,
+                                               ti_begin + ti_step);
           } else {
-            dt = get_timestep(sp->time_bin, e->time_base);
+            dt_star = get_timestep(sp->time_bin, e->time_base);
           }
 
           /* Calculate age of the star at current time */
           double star_age_end_of_step;
           if (with_cosmology) {
             star_age_end_of_step = cosmology_get_delta_time_from_scale_factors(
-                cosmo, sp->birth_scale_factor, (float)cosmo->a);
+                cosmo, (double)sp->birth_scale_factor, cosmo->a);
           } else {
-            star_age_end_of_step = (float)e->time - sp->birth_time;
+            star_age_end_of_step = e->time - (double)sp->birth_time;
           }
 
           /* Has this star been around for a while ? */
           if (star_age_end_of_step > 0.) {
 
-            /* Age of the star at the start of the step */
+            /* Get the length of the enrichment time-step */
+            const double dt_enrichment = feedback_get_enrichment_timestep(
+                sp, with_cosmology, cosmo, e->time, dt_star);
             const double star_age_beg_of_step =
-                max(star_age_end_of_step - dt, 0.);
+                star_age_end_of_step - dt_enrichment;
 
             /* Compute the stellar evolution  */
-            feedback_evolve_spart(sp, feedback_props, cosmo, us,
-                                  star_age_beg_of_step, dt);
+            feedback_evolve_spart(sp, feedback_props, cosmo, us, phys_const,
+                                  star_age_beg_of_step, dt_enrichment, e->time,
+                                  ti_begin, with_cosmology);
           } else {
 
             /* Reset the feedback fields of the star particle */
@@ -836,7 +845,8 @@ void runner_do_black_holes_swallow_ghost(struct runner *r, struct cell *c,
 
         /* Compute variables required for the feedback loop */
         black_holes_prepare_feedback(bp, e->black_holes_properties,
-                                     e->physical_constants, e->cosmology, dt);
+                                     e->physical_constants, e->cosmology,
+                                     e->time, with_cosmology, dt);
       }
     }
   }
@@ -909,6 +919,7 @@ void runner_do_extra_ghost(struct runner *r, struct cell *c, int timer) {
 
         /* Compute variables required for the force loop */
         hydro_prepare_force(p, xp, cosmo, hydro_props, dt_alpha);
+        timestep_limiter_prepare_force(p, xp);
 
         /* The particle force values are now set.  Do _NOT_
            try to read any particle density variables! */
@@ -943,6 +954,8 @@ void runner_do_ghost(struct runner *r, struct cell *c, int timer) {
   const struct hydro_space *hs = &s->hs;
   const struct cosmology *cosmo = e->cosmology;
   const struct chemistry_global_data *chemistry = e->chemistry;
+  const struct star_formation *star_formation = e->star_formation;
+  const struct hydro_props *hydro_props = e->hydro_properties;
 
   const int with_cosmology = (e->policy & engine_policy_cosmology);
 
@@ -951,6 +964,8 @@ void runner_do_ghost(struct runner *r, struct cell *c, int timer) {
   const float eps = e->hydro_properties->h_tolerance;
   const float hydro_eta_dim =
       pow_dimension(e->hydro_properties->eta_neighbours);
+  const int use_mass_weighted_num_ngb =
+      e->hydro_properties->use_mass_weighted_num_ngb;
   const int max_smoothing_iter = e->hydro_properties->max_smoothing_iterations;
   int redo = 0, count = 0;
 
@@ -1040,6 +1055,20 @@ void runner_do_ghost(struct runner *r, struct cell *c, int timer) {
           hydro_end_density(p, cosmo);
           chemistry_end_density(p, chemistry, cosmo);
           pressure_floor_end_density(p, cosmo);
+          star_formation_end_density(p, xp, star_formation, cosmo);
+
+          /* Are we using the alternative definition of the
+             number of neighbours? */
+          if (use_mass_weighted_num_ngb) {
+#if defined(GIZMO_MFV_SPH) || defined(GIZMO_MFM_SPH) || defined(SHADOWFAX_SPH)
+            error(
+                "Can't use alternative neighbour definition with this scheme!");
+#else
+            const float inv_mass = 1.f / hydro_get_mass(p);
+            p->density.wcount = p->rho * inv_mass;
+            p->density.wcount_dh = p->density.rho_dh * inv_mass;
+#endif
+          }
 
           /* Compute one step of the Newton-Raphson scheme */
           const float n_sum = p->density.wcount * h_old_dim;
@@ -1077,7 +1106,7 @@ void runner_do_ghost(struct runner *r, struct cell *c, int timer) {
             /* The force variables are set in the extra ghost. */
 
             /* Compute variables required for the gradient loop */
-            hydro_prepare_gradient(p, xp, cosmo);
+            hydro_prepare_gradient(p, xp, cosmo, hydro_props);
 
             /* The particle gradient values are now set.  Do _NOT_
                try to read any particle density variables! */
@@ -1087,8 +1116,6 @@ void runner_do_ghost(struct runner *r, struct cell *c, int timer) {
             hydro_reset_gradient(p);
 
 #else
-            const struct hydro_props *hydro_props = e->hydro_properties;
-
             /* Calculate the time-step for passing to hydro_prepare_force, used
              * for the evolution of alpha factors (i.e. those involved in the
              * artificial viscosity and thermal conduction terms) */
@@ -1111,6 +1138,7 @@ void runner_do_ghost(struct runner *r, struct cell *c, int timer) {
 
             /* Compute variables required for the force loop */
             hydro_prepare_force(p, xp, cosmo, hydro_props, dt_alpha);
+            timestep_limiter_prepare_force(p, xp);
 
             /* The particle force values are now set.  Do _NOT_
                try to read any particle density variables! */
@@ -1189,6 +1217,7 @@ void runner_do_ghost(struct runner *r, struct cell *c, int timer) {
             hydro_init_part(p, hs);
             chemistry_init_part(p, chemistry);
             pressure_floor_init_part(p, xp);
+            star_formation_init_part(p, star_formation);
             tracers_after_init(p, xp, e->internal_units, e->physical_constants,
                                with_cosmology, e->cosmology,
                                e->hydro_properties, e->cooling_func, e->time);
@@ -1211,6 +1240,8 @@ void runner_do_ghost(struct runner *r, struct cell *c, int timer) {
               hydro_part_has_no_neighbours(p, xp, cosmo);
               chemistry_part_has_no_neighbours(p, xp, chemistry, cosmo);
               pressure_floor_part_has_no_neighbours(p, xp, cosmo);
+              star_formation_part_has_no_neighbours(p, xp, star_formation,
+                                                    cosmo);
             }
 
           } else {
@@ -1231,7 +1262,7 @@ void runner_do_ghost(struct runner *r, struct cell *c, int timer) {
         /* The force variables are set in the extra ghost. */
 
         /* Compute variables required for the gradient loop */
-        hydro_prepare_gradient(p, xp, cosmo);
+        hydro_prepare_gradient(p, xp, cosmo, hydro_props);
 
         /* The particle gradient values are now set.  Do _NOT_
            try to read any particle density variables! */
@@ -1240,7 +1271,6 @@ void runner_do_ghost(struct runner *r, struct cell *c, int timer) {
         hydro_reset_gradient(p);
 
 #else
-        const struct hydro_props *hydro_props = e->hydro_properties;
 
         /* Calculate the time-step for passing to hydro_prepare_force, used
          * for the evolution of alpha factors (i.e. those involved in the
@@ -1264,6 +1294,7 @@ void runner_do_ghost(struct runner *r, struct cell *c, int timer) {
 
         /* Compute variables required for the force loop */
         hydro_prepare_force(p, xp, cosmo, hydro_props, dt_alpha);
+        timestep_limiter_prepare_force(p, xp);
 
         /* The particle force values are now set.  Do _NOT_
            try to read any particle density variables! */

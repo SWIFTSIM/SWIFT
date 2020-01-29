@@ -19,7 +19,7 @@ where :math:`\rho` is the density, :math:`\gamma` the adiabatic index, :math:`G`
 :math:`\sigma` the velocity dispersion.
 
 
-This must be directly implemented into the hydro schemes, therefore only a subset of schemes (Gadget-2 and Pressure-Energy) are currently implemented.
+This must be directly implemented into the hydro schemes, therefore only a subset of schemes (Gadget-2, SPHENIX and Pressure-Energy) have the floor available.
 In order to implement it, you need equation 12 in `Hopkins 2013 <https://arxiv.org/abs/1206.5006>`_:
 
 .. math::
@@ -37,8 +37,8 @@ Grackle is a chemistry and cooling library presented in `B. Smith et al. 2016 <h
 equilibrium, 6 species network (H, H\\( ^+ \\), e\\( ^- \\), He, He\\( ^+ \\)
 and He\\( ^{++} \\)), 9 species network (adds H\\(^-\\), H\\(_2\\) and
 H\\(_2^+\\)) and 12 species (adds D, D\\(^+\\) and HD).  Following the same
-order, the swift cooling options are ``grackle``, ``grackle1``, ``grackle2``
-and ``grackle3`` (the numbers correspond to the value of
+order, the swift cooling options are ``grackle_0``, ``grackle_1``, ``grackle_2``
+and ``grackle_3`` (the numbers correspond to the value of
 ``primordial_chemistry`` in Grackle).  It also includes some self-shielding
 methods and UV background.  In order to use the Grackle cooling, you will need
 to provide an HDF5 table computed by Cloudy.
@@ -46,8 +46,8 @@ to provide an HDF5 table computed by Cloudy.
 When starting a simulation without providing the different fractions, the code
 supposes an equilibrium and computes the fractions automatically.
 
-In order to compile SWIFT with Grackle, you need to provide the options ``with-grackle``
-and ``with-chemistry``.
+In order to compile SWIFT with Grackle, you need to provide the options ``with-chemistry=GEAR`` and ``with-grackle=$GRACKLE_ROOT``
+where ``$GRACKLE_ROOT`` is the root of the install directory (not the ``lib``).
 
 You will need a Grackle version later than 3.1. To compile it, run
 the following commands from the root directory of Grackle:

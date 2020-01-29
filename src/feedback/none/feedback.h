@@ -27,6 +27,20 @@
 #include "units.h"
 
 /**
+ * @brief Update the properties of a particle fue to feedback effects after
+ * the cooling was applied.
+ *
+ * Nothing to do here.
+ *
+ * @param p The #part to consider.
+ * @param xp The #xpart to consider.
+ * @param cosmo The #cosmology.
+ */
+__attribute__((always_inline)) INLINE static void feedback_update_part(
+    struct part* restrict p, struct xpart* restrict xp,
+    const struct engine* restrict e) {}
+
+/**
  * @brief Prepares a s-particle for its feedback interactions
  *
  * @param sp The particle to act upon
@@ -62,6 +76,29 @@ __attribute__((always_inline)) INLINE static int feedback_is_active(
     const int with_cosmology) {
 
   return 1;
+}
+
+/**
+ * @brief Returns the length of time since the particle last did
+ * enrichment/feedback.
+ *
+ * We just return the normal time-step here since particles do something every
+ * regular time-step.
+ *
+ * @param sp The #spart.
+ * @param with_cosmology Are we running with cosmological time integration on?
+ * @param cosmo The cosmological model.
+ * @param time The current time (since the Big Bang / start of the run) in
+ * internal units.
+ * @param dt_star the length of this particle's time-step in internal units.
+ * @return The length of the enrichment step in internal units.
+ */
+INLINE static double feedback_get_enrichment_timestep(
+    const struct spart* sp, const int with_cosmology,
+    const struct cosmology* cosmo, const double time, const double dt_star) {
+
+  /* Just return the regular step length */
+  return dt_star;
 }
 
 /**
@@ -105,14 +142,45 @@ __attribute__((always_inline)) INLINE static void feedback_prepare_spart(
  * @param feedback_props The #feedback_props structure.
  * @param cosmo The current cosmological model.
  * @param us The unit system.
+ * @param phys_const The #phys_const.
  * @param star_age_beg_step The age of the star at the star of the time-step in
  * internal units.
  * @param dt The time-step size of this star in internal units.
+ * @param time The physical time in internal units.
+ * @param ti_begin The integer time at the beginning of the step.
+ * @param with_cosmology Are we running with cosmology on?
  */
 __attribute__((always_inline)) INLINE static void feedback_evolve_spart(
     struct spart* restrict sp, const struct feedback_props* feedback_props,
     const struct cosmology* cosmo, const struct unit_system* us,
-    const double star_age_beg_step, const double dt) {}
+    const struct phys_const* phys_const, const double star_age_beg_step,
+    const double dt, const double time, const integertime_t ti_begin,
+    const int with_cosmology) {}
+
+/**
+ * @brief Will this star particle want to do feedback during the next time-step?
+ *
+ * @param sp The star of interest.
+ * @param feedback_props The properties of the feedback model.
+ * @param with_cosmology Are we running with cosmological time integration?
+ * @param cosmo The #cosmology object.
+ * @param time The current time (since the Big Bang).
+ */
+__attribute__((always_inline)) INLINE static int feedback_will_do_feedback(
+    struct spart* restrict sp, const struct feedback_props* feedback_props,
+    const int with_cosmology, const struct cosmology* cosmo,
+    const double time) {
+  return 1;
+}
+
+/**
+ * @brief Clean-up the memory allocated for the feedback routines
+ *
+ * We simply free all the arrays.
+ *
+ * @param feedback_props the feedback data structure.
+ */
+static INLINE void feedback_clean(struct feedback_props* feedback_props) {}
 
 /**
  * @brief Write a feedback struct to the given FILE as a stream of bytes.
@@ -133,5 +201,17 @@ static INLINE void feedback_struct_dump(const struct feedback_props* feedback,
  */
 static INLINE void feedback_struct_restore(struct feedback_props* feedback,
                                            FILE* stream) {}
+
+#ifdef HAVE_HDF5
+/**
+ * @brief Writes the current model of feedback to the file
+ * @param h_grpsph The HDF5 group in which to write
+ */
+INLINE static void feedback_write_flavour(struct feedback_props* feedback,
+                                          hid_t h_grp) {
+
+  io_write_attribute_s(h_grp, "Feedback Model", "None");
+};
+#endif
 
 #endif /* SWIFT_FEEDBACK_NONE_H */

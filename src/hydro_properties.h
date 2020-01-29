@@ -47,6 +47,8 @@ struct unit_system;
  */
 struct hydro_props {
 
+  /* ------ Smoothing lengths parameters ---------- */
+
   /*! Resolution parameter */
   float eta_neighbours;
 
@@ -59,17 +61,24 @@ struct hydro_props {
   /*! Tolerance on neighbour number  (for info only)*/
   float delta_neighbours;
 
-  /*! Maximal smoothing length */
+  /*! Maximal smoothing length (internal units) */
   float h_max;
 
   /*! Minimal smoothing length expressed as ratio to softening length */
   float h_min_ratio;
 
-  /*! Minimal smoothing length */
+  /*! Minimal smoothing length (internal units) */
   float h_min;
 
   /*! Maximal number of iterations to converge h */
   int max_smoothing_iterations;
+
+  /* ------ Neighbour number definition ------------ */
+
+  /*! Are we using the mass-weighted definition of neighbour number? */
+  int use_mass_weighted_num_ngb;
+
+  /* ------ Time integration parameters ------------ */
 
   /*! Time integration properties */
   float CFL_condition;
@@ -77,16 +86,18 @@ struct hydro_props {
   /*! Maximal change of h over one time-step */
   float log_max_h_change;
 
+  /* ------ Temperature parameters ----------------- */
+
   /*! Minimal temperature allowed */
   float minimal_temperature;
 
-  /*! Minimal physical internal energy per unit mass */
+  /*! Minimal physical internal energy per unit mass (internal units) */
   float minimal_internal_energy;
 
   /*! Initial temperature */
   float initial_temperature;
 
-  /*! Initial physical internal energy per unit mass */
+  /*! Initial physical internal energy per unit mass (internal units) */
   float initial_internal_energy;
 
   /*! Primordial hydrogen mass fraction for initial energy conversion */
@@ -100,6 +111,16 @@ struct hydro_props {
 
   /*! Mean molecular weight above hydrogen ionization temperature */
   float mu_ionised;
+
+  /* ------ Particle splitting parameters ---------- */
+
+  /*! Is particle splitting activated? */
+  int particle_splitting;
+
+  /*! Mass above which particles get split (internal units) */
+  float particle_splitting_mass_threshold;
+
+  /* ------ Viscosity and diffusion ---------------- */
 
   /*! Artificial viscosity parameters */
   struct viscosity_global_data viscosity;

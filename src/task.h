@@ -65,6 +65,7 @@ enum task_types {
   task_type_kick2,
   task_type_timestep,
   task_type_timestep_limiter,
+  task_type_timestep_sync,
   task_type_send,
   task_type_recv,
   task_type_grav_long_range,
@@ -194,10 +195,10 @@ struct task {
   float weight;
 
   /*! Number of tasks unlocked by this one */
-  short int nr_unlock_tasks;
+  int nr_unlock_tasks;
 
   /*! Number of unsatisfied dependencies */
-  short int wait;
+  int wait;
 
   /*! Type of the task */
   enum task_types type;
@@ -243,5 +244,6 @@ void task_get_group_name(int type, int subtype, char *cluster);
 
 #ifdef WITH_MPI
 void task_create_mpi_comms(void);
+void task_free_mpi_comms(void);
 #endif
 #endif /* SWIFT_TASK_H */

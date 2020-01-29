@@ -21,6 +21,10 @@
 #include "../config.h"
 
 /* Some standard headers. */
+#include <stdio.h>
+#include <string.h>
+#include <sys/stat.h>
+#include <sys/types.h>
 #include <unistd.h>
 
 /* This object's header. */
@@ -483,11 +487,19 @@ void velociraptor_invoke(struct engine *e, const int linked_with_snap) {
                   MPI_COMM_WORLD);
 #endif
 
+    const double Omega_m = e->cosmology->Omega_m;
+    const double Omega_b = e->cosmology->Omega_b;
+    const double critical_density_0 = e->cosmology->critical_density_0;
+
     /* Linking length based on the mean DM inter-particle separation
      * in the zoom region and assuming the mean density of the Universe
      * is used in the zoom region. */
-    const double mean_matter_density =
-        e->cosmology->Omega_m * e->cosmology->critical_density_0;
+    double mean_matter_density;
+    if (s->with_hydro)
+      mean_matter_density = (Omega_m - Omega_b) * critical_density_0;
+    else
+      mean_matter_density = Omega_m * critical_density_0;
+
     sim_info.interparticlespacing =
         cbrt(high_res_DM_mass / mean_matter_density);
 
@@ -558,25 +570,51 @@ void velociraptor_invoke(struct engine *e, const int linked_with_snap) {
         "VELOCIraptor conf: MPI rank %d sending %zu gparts to VELOCIraptor.",
         engine_rank, nr_gparts);
 
-  /* Append base name with the current output number */
-  char outputFileName[PARSER_MAX_LINE_SIZE + 128];
+  /* Generate directory name for this output - start with snapshot directory, if
+   * specified */
+  char outputDirName[FILENAME_BUFFER_SIZE] = "";
+  if (strnlen(e->snapshot_subdir, PARSER_MAX_LINE_SIZE) > 0) {
+    if (snprintf(outputDirName, FILENAME_BUFFER_SIZE, "%s/",
+                 e->snapshot_subdir) >= FILENAME_BUFFER_SIZE) {
+      error("FILENAME_BUFFER_SIZE is to small for snapshot directory name!");
+    }
+#ifdef WITH_MPI
+    if (engine_rank == 0) mkdir(outputDirName, 0777);
+    MPI_Barrier(MPI_COMM_WORLD);
+#else
+    mkdir(outputDirName, 0777);
+#endif
+  }
 
-  /* What should the filename be? */
-  if (linked_with_snap) {
-    snprintf(outputFileName, PARSER_MAX_LINE_SIZE + 128,
-             "stf_%s_%04i.VELOCIraptor", e->snapshot_base_name,
-             e->snapshot_output_count);
+  /* Then create output-specific subdirectory if necessary */
+  char subDirName[FILENAME_BUFFER_SIZE] = "";
+  if (strnlen(e->stf_subdir_per_output, PARSER_MAX_LINE_SIZE) > 0) {
+    if (snprintf(subDirName, FILENAME_BUFFER_SIZE, "%s%s_%04i/", outputDirName,
+                 e->stf_subdir_per_output,
+                 e->snapshot_output_count) >= FILENAME_BUFFER_SIZE) {
+      error(
+          "FILENAME_BUFFER_SIZE is to small for Velociraptor directory name!");
+    }
+#ifdef WITH_MPI
+    if (engine_rank == 0) mkdir(subDirName, 0777);
+    MPI_Barrier(MPI_COMM_WORLD);
+#else
+    mkdir(subDirName, 0777);
+#endif
   } else {
-    snprintf(outputFileName, PARSER_MAX_LINE_SIZE + 128, "%s_%04i.VELOCIraptor",
-             e->stf_base_name, e->stf_output_count);
+    /* Not making separate directories so subDirName=outputDirName */
+    strncpy(subDirName, outputDirName, FILENAME_BUFFER_SIZE);
   }
 
   /* What is the snapshot number? */
-  int snapnum;
-  if (linked_with_snap) {
-    snapnum = e->snapshot_output_count;
-  } else {
-    snapnum = e->stf_output_count;
+  int snapnum = e->stf_output_count;
+
+  /* What should the filename be? */
+  char outputFileName[FILENAME_BUFFER_SIZE];
+  if (snprintf(outputFileName, FILENAME_BUFFER_SIZE, "%s%s_%04i.VELOCIraptor",
+               subDirName, e->stf_base_name,
+               e->stf_output_count) >= FILENAME_BUFFER_SIZE) {
+    error("FILENAME_BUFFER_SIZE is too small for Velociraptor file name!");
   }
 
   tic = getticks();
@@ -653,8 +691,11 @@ void velociraptor_invoke(struct engine *e, const int linked_with_snap) {
   /* Reset the pthread affinity mask after VELOCIraptor returns. */
   pthread_setaffinity_np(thread, sizeof(cpu_set_t), engine_entry_affinity());
 
-  /* Increase output counter (if not linked with snapshots) */
+  /* Increase output counter (if not linked with snapshot) */
   if (!linked_with_snap) e->stf_output_count++;
+
+  /* Record we have ran stf this timestep */
+  e->stf_this_timestep = 1;
 
 #else
   error("SWIFT not configure to run with VELOCIraptor.");

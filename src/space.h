@@ -30,7 +30,6 @@
 #include <stddef.h>
 
 /* Includes. */
-#include "gravity_properties.h"
 #include "hydro_space.h"
 #include "lock.h"
 #include "parser.h"
@@ -40,6 +39,7 @@
 /* Avoid cyclic inclusions */
 struct cell;
 struct cosmology;
+struct gravity_props;
 
 /* Some constants. */
 #define space_cellallocchunk 1000
@@ -111,6 +111,14 @@ struct space {
 
   /*! Inverse of the top-level cell width */
   double iwidth[3];
+
+  /*! Position vector added to all the particles at rebuild
+    time */
+  double pos_dithering[3];
+
+  /*! Position vector added to all the particles at rebuild
+    time (value at the previous rebuild) */
+  double pos_dithering_old[3];
 
   /*! The minimum top-level cell width allowed. */
   double cell_min;
@@ -357,13 +365,14 @@ void space_check_drift_point(struct space *s, integertime_t ti_drift,
                              int multipole);
 void space_check_top_multipoles_drift_point(struct space *s,
                                             integertime_t ti_drift);
-void space_check_timesteps(struct space *s);
+void space_check_timesteps(const struct space *s);
 void space_check_limiter(struct space *s);
 void space_check_swallow(struct space *s);
 void space_check_sort_flags(struct space *s);
 void space_replicate(struct space *s, int replicate, int verbose);
 void space_generate_gas(struct space *s, const struct cosmology *cosmo,
-                        int periodic, const double dim[3], int verbose);
+                        const int periodic, const int with_DM_background,
+                        const double dim[3], const int verbose);
 void space_check_cosmology(struct space *s, const struct cosmology *cosmo,
                            int rank);
 void space_reset_task_counters(struct space *s);

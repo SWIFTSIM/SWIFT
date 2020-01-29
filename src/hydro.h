@@ -55,14 +55,9 @@
 #include "./hydro/Default/hydro.h"
 #include "./hydro/Default/hydro_iact.h"
 #define SPH_IMPLEMENTATION "Default version of SPH"
-#elif defined(GIZMO_MFV_SPH)
-#include "./hydro/GizmoMFV/hydro.h"
-#include "./hydro/GizmoMFV/hydro_iact.h"
-#define SPH_IMPLEMENTATION "GIZMO MFV (Hopkins 2015)"
-#elif defined(GIZMO_MFM_SPH)
-#include "./hydro/GizmoMFM/hydro.h"
-#include "./hydro/GizmoMFM/hydro_iact.h"
-#define SPH_IMPLEMENTATION "GIZMO MFM (Hopkins 2015)"
+#elif defined(GIZMO_MFV_SPH) || defined(GIZMO_MFM_SPH)
+#include "./hydro/Gizmo/hydro.h"
+#include "./hydro/Gizmo/hydro_iact.h"
 #elif defined(SHADOWFAX_SPH)
 #include "./hydro/Shadowswift/hydro.h"
 #include "./hydro/Shadowswift/hydro_iact.h"
@@ -72,10 +67,10 @@
 #include "./hydro/Planetary/hydro.h"
 #include "./hydro/Planetary/hydro_iact.h"
 #define SPH_IMPLEMENTATION "Minimal version of SPH with multiple materials"
-#elif defined(ANARCHY_DU_SPH)
-#include "./hydro/AnarchyDU/hydro.h"
-#include "./hydro/AnarchyDU/hydro_iact.h"
-#define SPH_IMPLEMENTATION "ANARCHY (Density-Energy) SPH (Borrow+ in prep)"
+#elif defined(SPHENIX_SPH)
+#include "./hydro/SPHENIX/hydro.h"
+#include "./hydro/SPHENIX/hydro_iact.h"
+#define SPH_IMPLEMENTATION "SPHENIX (Borrow+ 2020)"
 #elif defined(ANARCHY_PU_SPH)
 #include "./hydro/AnarchyPU/hydro.h"
 #include "./hydro/AnarchyPU/hydro_iact.h"

@@ -68,7 +68,7 @@ __attribute__((always_inline)) INLINE static void runner_iact_chemistry(
   kernel_deval(uj, &wj, &wj_dx);
 
   /* Compute contribution to the smooth metallicity */
-  for (int i = 0; i < chemistry_element_count; i++) {
+  for (int i = 0; i < GEAR_CHEMISTRY_ELEMENT_COUNT; i++) {
     chi->smoothed_metal_mass_fraction[i] +=
         mj * chj->metal_mass_fraction[i] * wi;
     chj->smoothed_metal_mass_fraction[i] +=
@@ -109,7 +109,7 @@ __attribute__((always_inline)) INLINE static void runner_iact_nonsym_chemistry(
   kernel_deval(ui, &wi, &wi_dx);
 
   /* Compute contribution to the smooth metallicity */
-  for (int i = 0; i < chemistry_element_count; i++) {
+  for (int i = 0; i < GEAR_CHEMISTRY_ELEMENT_COUNT; i++) {
     chi->smoothed_metal_mass_fraction[i] +=
         mj * chj->metal_mass_fraction[i] * wi;
   }

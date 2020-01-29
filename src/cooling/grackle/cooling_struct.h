@@ -32,41 +32,51 @@
  */
 struct cooling_function_data {
 
-  /* Filename of the Cloudy Table */
+  /*! Filename of the Cloudy Table */
   char cloudy_table[200];
 
-  /* Enable/Disable UV backgroud */
+  /*! Enable/Disable UV backgroud */
   int with_uv_background;
 
-  /* Redshift to use for the UV backgroud (-1 to use cosmological one) */
+  /*! Chemistry network */
+  int primordial_chemistry;
+
+  /*! Redshift to use for the UV backgroud (-1 to use cosmological one) */
   double redshift;
 
-  /* unit system */
+  /*! unit system */
   code_units units;
 
-  /* grackle chemistry data */
+  /*! grackle chemistry data */
   chemistry_data chemistry;
 
-  /* Enable/Disable metal cooling */
+  /*! Enable/Disable metal cooling */
   int with_metal_cooling;
 
-  /* User provide volumetric heating rates */
+  /*! User provide volumetric heating rates */
   int provide_volumetric_heating_rates;
 
-  /* User provide specific heating rates */
+  /*! User provide specific heating rates */
   int provide_specific_heating_rates;
 
-  /* Self shielding method (<= 3) means grackle modes */
+  /*! Self shielding method (1 -> 3 for grackle's ones, 0 for none and -1 for
+   * GEAR) */
   int self_shielding_method;
 
-  /* convergence limit for first init */
+  /*! Self shielding threshold */
+  float self_shielding_threshold;
+
+  /*! convergence limit for first init */
   float convergence_limit;
 
-  /* number of step max for first init */
+  /*! number of step max for first init */
   int max_step;
 
-  /* over relaxation parameter */
+  /*! over relaxation parameter */
   float omega;
+
+  /*! Duration for switching off cooling after an event (e.g. supernovae) */
+  float thermal_time;
 };
 
 /**
@@ -76,6 +86,9 @@ struct cooling_xpart_data {
 
   /*! Energy radiated away by this particle since the start of the run */
   float radiated_energy;
+
+  /*! Last time the cooling was switch off */
+  float time_last_event;
 
 /* here all fractions are mass fraction */
 #if COOLING_GRACKLE_MODE >= 1

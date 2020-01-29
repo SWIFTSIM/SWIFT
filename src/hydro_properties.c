@@ -59,6 +59,8 @@ void hydro_props_init(struct hydro_props *p,
                       const struct unit_system *us,
                       struct swift_params *params) {
 
+  /* ------ Smoothing lengths parameters ---------- */
+
   /* Kernel properties */
   p->eta_neighbours = parser_get_param_float(params, "SPH:resolution_eta");
 
@@ -98,6 +100,20 @@ void hydro_props_init(struct hydro_props *p,
   if (p->max_smoothing_iterations <= 10)
     error("The number of smoothing length iterations should be > 10");
 
+  /* ------ Neighbour number definition ------------ */
+
+  /* Non-conventional neighbour number definition */
+  p->use_mass_weighted_num_ngb =
+      parser_get_opt_param_int(params, "SPH:use_mass_weighted_num_ngb", 0);
+
+  if (p->use_mass_weighted_num_ngb) {
+#if defined(GIZMO_MFV_SPH) || defined(GIZMO_MFM_SPH) || defined(SHADOWFAX_SPH)
+    error("Can't use alternative neighbour definition with this scheme!");
+#endif
+  }
+
+  /* ------ Time integration parameters ------------ */
+
   /* Time integration properties */
   p->CFL_condition = parser_get_param_float(params, "SPH:CFL_condition");
   const float max_volume_change = parser_get_opt_param_float(
@@ -110,6 +126,8 @@ void hydro_props_init(struct hydro_props *p,
 
   if (p->initial_temperature < 0.f)
     error("ERROR: Initial temperature set to a negative value!!!");
+
+  /* ------ Temperature parameters ----------------- */
 
   /* Minimal temperature */
   p->minimal_temperature = parser_get_opt_param_float(
@@ -175,6 +193,17 @@ void hydro_props_init(struct hydro_props *p,
     mean_molecular_weight = 4. / (1. + 3. * p->hydrogen_mass_fraction);
 
   p->minimal_internal_energy = u_min / mean_molecular_weight;
+
+  /* ------ Particle splitting parameters ---------- */
+
+  /* Are we doing particle splitting? */
+  p->particle_splitting =
+      parser_get_opt_param_int(params, "SPH:particle_splitting", 0);
+
+  if (p->particle_splitting) {
+    p->particle_splitting_mass_threshold =
+        parser_get_param_float(params, "SPH:particle_splitting_mass_threshold");
+  }
 }
 
 /**
@@ -202,20 +231,21 @@ void hydro_props_print(const struct hydro_props *p) {
 
   message("Hydrodynamic integration: CFL parameter: %.4f.", p->CFL_condition);
 
-  /* Print out the implementation-dependent viscosity parameters
-   * (see hydro/SCHEME/hydro_parameters.h for this implementation) */
-  viscosity_print(&(p->viscosity));
-
-  /* Same for the diffusion */
-  diffusion_print(&(p->diffusion));
-
   message(
       "Hydrodynamic integration: Max change of volume: %.2f "
       "(max|dlog(h)/dt|=%f).",
       pow_dimension(expf(p->log_max_h_change)), p->log_max_h_change);
 
+  if (p->use_mass_weighted_num_ngb)
+    message("Neighbour number definition: Mass-weighted.");
+  else
+    message("Neighbour number definition: Unweighted.");
+
   if (p->h_max != hydro_props_default_h_max)
     message("Maximal smoothing length allowed: %.4f", p->h_max);
+
+  message("Maximal time-bin difference between neighbours: %d",
+          time_bin_neighbour_max_delta_bin);
 
   if (p->max_smoothing_iterations != hydro_props_default_max_iterations)
     message("Maximal iterations in ghost task set to %d (default is %d)",
@@ -227,7 +257,20 @@ void hydro_props_print(const struct hydro_props *p) {
   if (p->minimal_temperature != hydro_props_default_min_temp)
     message("Minimal gas temperature set to %f", p->minimal_temperature);
 
-    // Matthieu: Temporary location for this i/o business.
+  if (p->particle_splitting)
+    message("Splitting particles with mass > %e U_M",
+            p->particle_splitting_mass_threshold);
+  else
+    message("No particle splitting");
+
+  /* Print out the implementation-dependent viscosity parameters
+   * (see hydro/SCHEME/hydro_parameters.h for this implementation) */
+  viscosity_print(&(p->viscosity));
+
+  /* Same for the diffusion */
+  diffusion_print(&(p->diffusion));
+
+  // MATTHIEU: Temporary location for this planetary SPH i/o business.
 
 #ifdef PLANETARY_SPH
 #ifdef PLANETARY_SPH_NO_BALSARA
@@ -245,11 +288,18 @@ void hydro_props_print_snapshot(hid_t h_grpsph, const struct hydro_props *p) {
   pressure_floor_print_snapshot(h_grpsph);
 
   io_write_attribute_i(h_grpsph, "Dimension", (int)hydro_dimension);
+  if (p->use_mass_weighted_num_ngb) {
+    io_write_attribute_s(h_grpsph, "Neighbour number definition",
+                         "mass-weighted");
+  } else {
+    io_write_attribute_s(h_grpsph, "Neighbour number definition", "unweighted");
+  }
   io_write_attribute_s(h_grpsph, "Scheme", SPH_IMPLEMENTATION);
   io_write_attribute_s(h_grpsph, "Kernel function", kernel_name);
   io_write_attribute_f(h_grpsph, "Kernel target N_ngb", p->target_neighbours);
   io_write_attribute_f(h_grpsph, "Kernel delta N_ngb", p->delta_neighbours);
   io_write_attribute_f(h_grpsph, "Kernel eta", p->eta_neighbours);
+  io_write_attribute_f(h_grpsph, "Kernel gamma", kernel_gamma);
   io_write_attribute_f(h_grpsph, "Smoothing length tolerance", p->h_tolerance);
   io_write_attribute_f(h_grpsph, "Maximal smoothing length [internal units]",
                        p->h_max);
@@ -272,8 +322,9 @@ void hydro_props_print_snapshot(hid_t h_grpsph, const struct hydro_props *p) {
                        p->hydrogen_mass_fraction);
   io_write_attribute_f(h_grpsph, "Hydrogen ionization transition temperature",
                        p->hydrogen_ionization_temperature);
-  io_write_attribute_f(h_grpsph, "Max v_sig ratio (limiter)",
-                       const_limiter_max_v_sig_ratio);
+  io_write_attribute_i(h_grpsph,
+                       "Maximal time-bin difference between neighbours",
+                       time_bin_neighbour_max_delta_bin);
 
   /* Write out the implementation-dependent viscosity parameters
    * (see hydro/SCHEME/hydro_parameters.h for this implementation) */

@@ -52,16 +52,14 @@
 #include "./hydro/PressureEnergyMorrisMonaghanAV/hydro_debug.h"
 #elif defined(DEFAULT_SPH)
 #include "./hydro/Default/hydro_debug.h"
-#elif defined(GIZMO_MFV_SPH)
-#include "./hydro/GizmoMFV/hydro_debug.h"
-#elif defined(GIZMO_MFM_SPH)
-#include "./hydro/GizmoMFM/hydro_debug.h"
+#elif defined(GIZMO_MFV_SPH) || defined(GIZMO_MFM_SPH)
+#include "./hydro/Gizmo/hydro_debug.h"
 #elif defined(SHADOWFAX_SPH)
 #include "./hydro/Shadowswift/hydro_debug.h"
 #elif defined(PLANETARY_SPH)
 #include "./hydro/Planetary/hydro_debug.h"
-#elif defined(ANARCHY_DU_SPH)
-#include "./hydro/AnarchyDU/hydro_debug.h"
+#elif defined(SPHENIX_SPH)
+#include "./hydro/SPHENIX/hydro_debug.h"
 #elif defined(ANARCHY_PU_SPH)
 #include "./hydro/AnarchyPU/hydro_debug.h"
 #else

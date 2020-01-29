@@ -78,7 +78,10 @@ struct cell *make_cell(size_t n, double *offset, double size, double h,
                        enum velocity_types vel) {
   const size_t count = n * n * n;
   const double volume = size * size * size;
-  struct cell *cell = (struct cell *)malloc(sizeof(struct cell));
+  struct cell *cell = NULL;
+  if (posix_memalign((void **)&cell, cell_align, sizeof(struct cell)) != 0) {
+    error("couldn't allocate cell");
+  }
   bzero(cell, sizeof(struct cell));
 
   if (posix_memalign((void **)&cell->hydro.parts, part_align,
@@ -249,7 +252,7 @@ void dump_particle_fields(char *fileName, struct cell *main_cell, int i, int j,
             main_cell->hydro.parts[pid].density.rot_v[0],
             main_cell->hydro.parts[pid].density.rot_v[1],
             main_cell->hydro.parts[pid].density.rot_v[2]
-#elif defined(DEFAULT_SPH) || defined(ANARCHY_PU_SPH) || defined(ANARCHY_DU_SPH)
+#elif defined(DEFAULT_SPH) || defined(ANARCHY_PU_SPH) || defined(SPHENIX_SPH)
             main_cell->hydro.parts[pid].viscosity.div_v,
             main_cell->hydro.parts[pid].density.rot_v[0],
             main_cell->hydro.parts[pid].density.rot_v[1],
@@ -290,7 +293,7 @@ void runner_dopair1_branch_density(struct runner *r, struct cell *ci,
                                    struct cell *cj);
 void runner_doself1_branch_density(struct runner *r, struct cell *c);
 
-void test_boundary_conditions(struct cell **cells, struct runner runner,
+void test_boundary_conditions(struct cell **cells, struct runner *runner,
                               const int loc_i, const int loc_j, const int loc_k,
                               const int dim, char *swiftOutputFileName,
                               char *bruteForceOutputFileName) {
@@ -303,10 +306,10 @@ void test_boundary_conditions(struct cell **cells, struct runner runner,
 
 /* Run all the pairs */
 #ifdef WITH_VECTORIZATION
-  runner.ci_cache.count = 0;
-  cache_init(&runner.ci_cache, 512);
-  runner.cj_cache.count = 0;
-  cache_init(&runner.cj_cache, 512);
+  runner->ci_cache.count = 0;
+  cache_init(&runner->ci_cache, 512);
+  runner->cj_cache.count = 0;
+  cache_init(&runner->cj_cache, 512);
 #endif
 
   /* Now loop over all the neighbours of this cell
@@ -324,17 +327,17 @@ void test_boundary_conditions(struct cell **cells, struct runner runner,
         /* Get the neighbouring cell */
         struct cell *cj = cells[iii * (dim * dim) + jjj * dim + kkk];
 
-        if (cj != main_cell) DOPAIR1(&runner, main_cell, cj);
+        if (cj != main_cell) DOPAIR1(runner, main_cell, cj);
       }
     }
   }
 
   /* And now the self-interaction */
 
-  DOSELF1(&runner, main_cell);
+  DOSELF1(runner, main_cell);
 
   /* Let's get physical ! */
-  end_calculation(main_cell, runner.e->cosmology);
+  end_calculation(main_cell, runner->e->cosmology);
 
   /* Dump particles from the main cell. */
   dump_particle_fields(swiftOutputFileName, main_cell, loc_i, loc_j, loc_k);
@@ -359,16 +362,16 @@ void test_boundary_conditions(struct cell **cells, struct runner runner,
         /* Get the neighbouring cell */
         struct cell *cj = cells[iii * (dim * dim) + jjj * dim + kkk];
 
-        if (cj != main_cell) pairs_all_density(&runner, main_cell, cj);
+        if (cj != main_cell) pairs_all_density(runner, main_cell, cj);
       }
     }
   }
 
   /* And now the self-interaction */
-  self_all_density(&runner, main_cell);
+  self_all_density(runner, main_cell);
 
   /* Let's get physical ! */
-  end_calculation(main_cell, runner.e->cosmology);
+  end_calculation(main_cell, runner->e->cosmology);
 
   /* Dump */
   dump_particle_fields(bruteForceOutputFileName, main_cell, loc_i, loc_j,
@@ -491,8 +494,9 @@ int main(int argc, char *argv[]) {
   engine.hydro_properties = &hp;
   engine.nodeID = NODE_ID;
 
-  struct runner runner;
-  runner.e = &engine;
+  struct runner real_runner;
+  struct runner *runner = &real_runner;
+  runner->e = &engine;
 
   struct cosmology cosmo;
   cosmology_init_no_cosmo(&cosmo);
@@ -508,9 +512,9 @@ int main(int argc, char *argv[]) {
         cells[i * (dim * dim) + j * dim + k] = make_cell(
             particles, offset, size, h, rho, &partId, perturbation, vel);
 
-        runner_do_drift_part(&runner, cells[i * (dim * dim) + j * dim + k], 0);
+        runner_do_drift_part(runner, cells[i * (dim * dim) + j * dim + k], 0);
 
-        runner_do_hydro_sort(&runner, cells[i * (dim * dim) + j * dim + k],
+        runner_do_hydro_sort(runner, cells[i * (dim * dim) + j * dim + k],
                              0x1FFF, 0, 0);
       }
     }

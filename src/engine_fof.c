@@ -123,8 +123,11 @@ void engine_fof(struct engine *e, const int dump_results,
   /* and activate them. */
   engine_activate_fof_tasks(e);
 
+  /* Print the number of active tasks ? */
+  if (e->verbose) engine_print_task_counts(e);
+
   /* Perform local FOF tasks. */
-  engine_launch(e);
+  engine_launch(e, "fof");
 
   /* Perform FOF search over foreign particles and
    * find groups which require black hole seeding.  */

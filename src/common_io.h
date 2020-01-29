@@ -55,23 +55,32 @@ enum IO_DATA_TYPE {
   LONG,
   LONGLONG,
   UINT,
+  UINT64,
   ULONG,
   ULONGLONG,
   FLOAT,
   DOUBLE,
-  CHAR
+  CHAR,
+  SIZE_T,
 };
 
 #if defined(HAVE_HDF5)
 
 hid_t io_hdf5_type(enum IO_DATA_TYPE type);
 
+hsize_t io_get_number_element_in_attribute(hid_t attr);
+hsize_t io_get_number_element_in_dataset(hid_t dataset);
 void io_read_attribute(hid_t grp, const char* name, enum IO_DATA_TYPE type,
                        void* data);
 void io_read_attribute_graceful(hid_t grp, const char* name,
                                 enum IO_DATA_TYPE type, void* data);
 void io_assert_valid_header_cosmology(hid_t h_grp, double a);
 
+void io_read_array_attribute(hid_t grp, const char* name,
+                             enum IO_DATA_TYPE type, void* data,
+                             hsize_t number_element);
+void io_read_array_dataset(hid_t grp, const char* name, enum IO_DATA_TYPE type,
+                           void* data, hsize_t number_element);
 void io_write_attribute(hid_t grp, const char* name, enum IO_DATA_TYPE type,
                         const void* data, int num);
 
@@ -84,7 +93,8 @@ void io_write_attribute_s(hid_t grp, const char* name, const char* str);
 void io_write_code_description(hid_t h_file);
 void io_write_engine_policy(hid_t h_file, const struct engine* e);
 
-void io_write_cell_offsets(hid_t h_grp, const int cdim[3],
+void io_write_cell_offsets(hid_t h_grp, const int cdim[3], const double dim[3],
+                           const double pos_dithering[3],
                            const struct cell* cells_top, const int nr_cells,
                            const double width[3], const int nodeID,
                            const long long global_counts[swift_type_count],

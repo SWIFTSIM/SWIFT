@@ -36,6 +36,8 @@
  * Phys. C, 40, 100001 (2016) and 2017 update.
  * http://pdg.lbl.gov/2017/reviews/rpp2017-rev-phys-constants.pdf
  * http://pdg.lbl.gov/2017/reviews/rpp2017-rev-astrophysical-constants.pdf
+ *
+ * The primordial Helium fraction is the value obtained by WMAP7.
  */
 
 /*! Newton's gravitation constant [g^-1 cm^3 s^-2] */
@@ -95,8 +97,8 @@ const double const_earth_mass_cgs = 5.9724e27;
 /*! Temperature of the CMB at present day [K] */
 const double const_T_CMB_0_cgs = 2.7255;
 
-/*! Primordial Helium fraction [-] */
-const double const_primordial_He_fraction_cgs = 0.245;
+/*! Primordial Helium fraction (from WMAP7) [-] */
+const double const_primordial_He_fraction_cgs = 0.248;
 
 /*! Reduced Hubble constant units (i.e. H_0 / h == 100 km / s / Mpc in CGS)
  * [s^-1] */

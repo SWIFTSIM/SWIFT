@@ -442,6 +442,10 @@ hydro_set_drifted_physical_internal_energy(struct part *p,
 
   /* Update variables. */
   hydro_update_soundspeed(p, cosmo);
+
+  const float comoving_pressure_with_floor =
+      pressure_floor_get_comoving_pressure(p, p->pressure_bar, cosmo);
+  p->force.pressure_bar_with_floor = comoving_pressure_with_floor;
 }
 
 /**
@@ -517,6 +521,7 @@ __attribute__((always_inline)) INLINE static void hydro_init_part(
   p->density.wcount = 0.f;
   p->density.wcount_dh = 0.f;
   p->rho = 0.f;
+  p->density.rho_dh = 0.f;
   p->pressure_bar = 0.f;
   p->density.pressure_bar_dh = 0.f;
 
@@ -550,6 +555,7 @@ __attribute__((always_inline)) INLINE static void hydro_end_density(
 
   /* Final operation on the density (add self-contribution). */
   p->rho += p->mass * kernel_root;
+  p->density.rho_dh -= hydro_dimension * p->mass * kernel_root;
   p->pressure_bar += p->mass * p->u * kernel_root;
   p->density.pressure_bar_dh -= hydro_dimension * p->mass * p->u * kernel_root;
   p->density.wcount += kernel_root;
@@ -557,6 +563,7 @@ __attribute__((always_inline)) INLINE static void hydro_end_density(
 
   /* Finish the calculation by inserting the missing h-factors */
   p->rho *= h_inv_dim;
+  p->density.rho_dh *= h_inv_dim_plus_one;
   p->pressure_bar *= (h_inv_dim * hydro_gamma_minus_one);
   p->density.pressure_bar_dh *= (h_inv_dim_plus_one * hydro_gamma_minus_one);
   p->density.wcount *= h_inv_dim;
@@ -601,6 +608,7 @@ __attribute__((always_inline)) INLINE static void hydro_part_has_no_neighbours(
   p->pressure_bar =
       p->mass * p->u * hydro_gamma_minus_one * kernel_root * h_inv_dim;
   p->density.wcount = kernel_root * h_inv_dim;
+  p->density.rho_dh = 0.f;
   p->density.wcount_dh = 0.f;
   p->density.pressure_bar_dh = 0.f;
 
@@ -904,7 +912,6 @@ __attribute__((always_inline)) INLINE static void hydro_first_init_part(
     struct part *restrict p, struct xpart *restrict xp) {
 
   p->time_bin = 0;
-  p->wakeup = time_bin_not_awake;
   xp->v_full[0] = p->v[0];
   xp->v_full[1] = p->v[1];
   xp->v_full[2] = p->v[2];

@@ -222,8 +222,12 @@ The accuracy of the gravity calculation is governed by the following two paramet
 * The time-step size pre-factor :math:`\eta`: ``eta``,
 
 The time-step of a given particle is given by :math:`\Delta t =
-\sqrt{\frac{2\eta\epsilon}{|\overrightarrow{a}|}}`, where
-:math:`\overrightarrow{a}` is the particle's acceleration. `Power et al. (2003) <http://adsabs.harvard.edu/abs/2003MNRAS.338...14P>`_ recommend using :math:`\eta=0.025`.
+\sqrt{2\eta\epsilon_i/|\overrightarrow{a}_i|}`, where
+:math:`\overrightarrow{a}_i` is the particle's acceleration and
+:math:`\epsilon_i` its (spline) softening length. `Power et al. (2003)
+<http://adsabs.harvard.edu/abs/2003MNRAS.338...14P>`_ recommend using
+:math:`\eta=0.025`.
+
 The last tree-related parameter is
 
 * The tree rebuild frequency: ``rebuild_frequency``.
@@ -233,7 +237,7 @@ The tree rebuild frequency is an optional parameter defaulting to
 fraction of the particles have been integrated (kicked) forward in time.
 
 Simulations using periodic boundary conditions use additional parameters for the
-Particle-Mesh part of the calculation. The last three are optional:
+Particle-Mesh part of the calculation. The last five are optional:
 
 * The number cells along each axis of the mesh :math:`N`: ``mesh_side_length``,
 * The mesh smoothing scale in units of the mesh cell-size :math:`a_{\rm
@@ -244,9 +248,17 @@ Particle-Mesh part of the calculation. The last three are optional:
 * The scale below which the short-range forces are assumed to be exactly Newtonian (in units of
   the mesh cell-size multiplied by :math:`a_{\rm smooth}`) :math:`r_{\rm
   cut,min}`: ``r_cut_min`` (default: ``0.1``),
+* Whether or not to dither the particles randomly at each tree rebuild:
+  ``dithering`` (default: ``1``),
+* The magnitude of each component of the dithering vector to use in units of the
+  top-level cell sizes: ``dithering_ratio`` (default: ``1.0``).
 
 For most runs, the default values can be used. Only the number of cells along
-each axis needs to be specified. The remaining three values are best described
+each axis needs to be specified. The mesh dithering is only used for simulations
+using periodic boundary conditions and in the absence of an external potential.
+At each tree rebuild time, all the particles are moved by a random vector (the
+same for all particles) and the periodic BCs are then applied. This reduces the
+correlation of erros across time. The remaining three values are best described
 in the context of the full set of equations in the theory documents.
 
 As a summary, here are the values used for the EAGLE :math:`100^3~{\rm Mpc}^3`
@@ -257,17 +269,18 @@ simulation:
    # Parameters for the self-gravity scheme for the EAGLE-100 box
    Gravity:
      eta:                    0.025
-     theta:                  0.7
+     theta:                  0.6
      mesh_side_length:       512
      comoving_DM_softening:         0.0026994  # 0.7 proper kpc at z=2.8.
      max_physical_DM_softening:     0.0007     # 0.7 proper kpc
      comoving_baryon_softening:     0.0026994  # 0.7 proper kpc at z=2.8.
      max_physical_baryon_softening: 0.0007     # 0.7 proper kpc
      rebuild_frequency:      0.01   # Default optional value
-     a_smooth:     1.25             # Default optional value
-     r_cut_max:    4.5              # Default optional value
-     r_cut_min:    0.1              # Default optional value
-
+     a_smooth:          1.25        # Default optional value
+     r_cut_max:         4.5         # Default optional value
+     r_cut_min:         0.1         # Default optional value
+     dithering:         1           # Default optional value
+     dithering_ratio:   1.0         # Default optional value 
 
 .. _Parameters_SPH:
 
@@ -301,6 +314,8 @@ typically takes a value of 0.1 for SPH calculations.
 The next set of parameters deal with the calculation of the smoothing lengths
 directly and are all optional:
 
+* Whether to use or not the mass-weighted definition of the SPH number of
+  neighbours: ``use_mass_weighted_num_ngb`` (Default: 0)
 * The (relative) tolerance to converge smoothing lengths within:
   ``h_tolerance`` (Default: 1e-4)
 * The maximal smoothing length in internal units: ``h_max`` (Default: FLT_MAX)
@@ -312,7 +327,29 @@ directly and are all optional:
   lengths: ``max_ghost_iterations`` (Default: 30)
 
 These parameters all set the accuracy of the smoothing lengths in various
-ways. The first, the relative tolerance for the smoothing length, specifies
+ways. The first one specified what definition of the local number density
+of particles to use. By default, we use
+
+.. math::
+   n_i = \sum_j W(\|\mathbf{r}_i - \mathbf{r}_j\|, h_i)
+
+but switching on the ``use_mass_weighted_num_ngb`` flag changes the
+defintion to:
+
+.. math::
+   n_i = \frac{\rho_i}{m_i}
+
+where the density has been computed in the traditional SPH way
+(i.e. :math:`\rho_i = \sum_j m_j W(\|\mathbf{r}_i - \mathbf{r}_j\|,
+h_i)`). Note that in the case where all the particles in the simulation
+have the same mass, the two definitions lead to the same number density
+value.
+
+**We dot not recommend using this alternative neighbour number definition
+in production runs.** It is mainly provided for backward compatibility with
+earlier simulations.
+
+The second one, the relative tolerance for the smoothing length, specifies
 the convergence criteria for the smoothing length when using the
 Newton-Raphson scheme. This works with the maximal number of iterations,
 ``max_ghost_iterations`` (so called because the smoothing length calculation
@@ -320,12 +357,13 @@ occurs in the ghost task), to ensure that the values of the smoothing lengths
 are consistent with the local number density. We solve:
 
 .. math::
-   (\eta h_i)^{n_D} = n_i^{-1}
+   (\eta \gamma)^{n_D} = n_i
 
-with :math:`h` the smoothing length, :math:`n_D` the number of spatial
-dimensions, :math:`\eta` the value of ``resolution_eta``, and :math:`n_i` the
-local number density. We change the value of the smoothing length, :math:`h`,
-to be consistent with the number density.
+with :math:`\gamma` the ratio of smoothing length to kernel support (this
+is fixed for a given kernel shape), :math:`n_D` the number of spatial
+dimensions, :math:`\eta` the value of ``resolution_eta``, and :math:`n_i`
+the local number density. We adapt the value of the smoothing length,
+:math:`h`, to be consistent with the number density.
 
 The maximal smoothing length, by default, is set to ``FLT_MAX``, and if set
 prevents the smoothing length from going beyond ``h_max`` (in internal units)
@@ -334,6 +372,15 @@ length is set in terms of the gravitational softening, ``h_min_ratio``, to
 prevent the smoothing length from going below this value in dense
 environments. This will lead to smoothing over more particles than specified
 by :math:`\eta`.
+
+The optional parameter ``particle_splitting`` (Default: 0) activates the
+splitting of overly massive particles into 2. By switching this on, the code
+will loop over all the particles at every tree rebuild and split the particles
+with a mass above a fixed threshold into two copies that are slightly shifted
+(by a randomly orientated vector of norm :math:`0.2h`). Their masses and other
+relevant particle-carried quantities are then halved. The mass threshold for
+splitting is set by the parameter ``particle_splitting_mass_threshold`` which is
+specified using the internal unit system.
 
 The final set of parameters in this section determine the initial and minimum
 temperatures of the particles.
@@ -361,14 +408,17 @@ The full section to start a typical cosmological run would be:
 .. code:: YAML
 
    SPH:
-     resolution_eta:           1.2
-     CFL_condition:            0.1
-     h_tolerance:              1e-4
-     h_min_ratio:              0.1
-     initial_temperature:      273
-     minimal_temperature:      100
-     H_mass_fraction:          0.755
-     H_ionization_temperature: 1e4
+     resolution_eta:                     1.2
+     CFL_condition:                      0.1
+     h_tolerance:                        1e-4
+     h_min_ratio:                        0.1
+     h_max:                              1.    # U_L
+     initial_temperature:                273   # U_T
+     minimal_temperature:                100   # U_T
+     H_mass_fraction:                    0.755
+     H_ionization_temperature:           1e4   # U_T
+     particle_splitting:                 1 
+     particle_splitting_mass_threshold:  5e-3  # U_M
 
 .. _Parameters_Stars:
 
@@ -592,6 +642,15 @@ One of those two parameters has to be provided depending on the type of run. In
 the case of non-cosmological runs, the time of the first snapshot is expressed
 in the internal units of time. Users also have to provide the difference in time
 (or scale-factor) between consecutive outputs:
+
+* Directory in which to write snapshots: ``subdir``.
+  (default: empty string).
+
+If this is set then the full path to the snapshot files will be generated by
+taking this value and appending a slash and then the snapshot file name
+described above - e.g. ``subdir/base_name_1234.hdf5``. The directory is
+created if necessary. Any VELOCIraptor output produced by the run is also written
+to this directory.
 
 * Time difference between consecutive outputs: ``delta_time``.
 
@@ -1155,13 +1214,28 @@ scale-factor of the next call. This implies that the outputs are
 equally spaced in :math:`\log(a)` (See :ref:`Output_list_label` to have
 calls not regularly spaced in time).
 
+Since VELOCIraptor produces many small output files when running with MPI,
+it can be useful to make a separate directory for each output time:
+
+* Base name of directory created for each VELOCIraptor output: ``subdir_per_output``
+  (default: empty string).
+
+If this is set then a new directory is created each time VELOCIraptor is run.
+The directory name will be subdir_per_output followed by the same output number
+used in the filenames. Note that this directory is relative to the ``subdir`` parameter
+from the Snapshots section if that is set.
+
+By default this is an empty string, which means that all VELOCIraptor outputs will
+be written to a single directory.
+
 Showing all the parameters for a basic cosmologica test-case, one would have:
 
 .. code:: YAML
 
    StructureFinding:
     config_file_name:     my_stf_configuration_file.cfg  # See the VELOCIraptor manual for the content of this file.
-    basename:             ./haloes/                      # Write the catalogs in this sub-directory
+    basename:             haloes                         # Base name for VELOCIraptor output files
+    subdir_per_output:    stf                            # Make a stf_XXXX subdirectory for each output
     scale_factor_first:   0.1                            # Scale-factor of the first output
     delta_time:           1.1                            # Delta log-a between outputs
 

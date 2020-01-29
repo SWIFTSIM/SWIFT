@@ -58,7 +58,9 @@ void DOSELF1_STARS(struct runner *r, struct cell *c, int timer) {
   const int count = c->hydro.count;
   struct spart *restrict sparts = c->stars.parts;
   struct part *restrict parts = c->hydro.parts;
+#if (FUNCTION_TASK_LOOP == TASK_LOOP_FEEDBACK)
   struct xpart *restrict xparts = c->hydro.xparts;
+#endif
 
   /* Loop over the sparts in ci. */
   for (int sid = 0; sid < scount; sid++) {
@@ -83,7 +85,9 @@ void DOSELF1_STARS(struct runner *r, struct cell *c, int timer) {
 
       /* Get a pointer to the jth particle. */
       struct part *restrict pj = &parts[pjd];
+#if (FUNCTION_TASK_LOOP == TASK_LOOP_FEEDBACK)
       struct xpart *restrict xpj = &xparts[pjd];
+#endif
       const float hj = pj->h;
 
       /* Early abort? */
@@ -105,7 +109,7 @@ void DOSELF1_STARS(struct runner *r, struct cell *c, int timer) {
       if (r2 < hig2) {
         IACT_STARS(r2, dx, hi, hj, si, pj, a, H);
 #if (FUNCTION_TASK_LOOP == TASK_LOOP_DENSITY)
-        runner_iact_nonsym_feedback_density(r2, dx, hi, hj, si, pj, xpj, cosmo,
+        runner_iact_nonsym_feedback_density(r2, dx, hi, hj, si, pj, NULL, cosmo,
                                             ti_current);
 #elif (FUNCTION_TASK_LOOP == TASK_LOOP_FEEDBACK)
         runner_iact_nonsym_feedback_apply(r2, dx, hi, hj, si, pj, xpj, cosmo,
@@ -153,7 +157,9 @@ void DO_NONSYM_PAIR1_STARS_NAIVE(struct runner *r, struct cell *restrict ci,
   const int count_j = cj->hydro.count;
   struct spart *restrict sparts_i = ci->stars.parts;
   struct part *restrict parts_j = cj->hydro.parts;
+#if (FUNCTION_TASK_LOOP == TASK_LOOP_FEEDBACK)
   struct xpart *restrict xparts_j = cj->hydro.xparts;
+#endif
 
   /* Get the relative distance between the pairs, wrapping. */
   double shift[3] = {0.0, 0.0, 0.0};
@@ -187,7 +193,9 @@ void DO_NONSYM_PAIR1_STARS_NAIVE(struct runner *r, struct cell *restrict ci,
 
       /* Get a pointer to the jth particle. */
       struct part *restrict pj = &parts_j[pjd];
+#if (FUNCTION_TASK_LOOP == TASK_LOOP_FEEDBACK)
       struct xpart *restrict xpj = &xparts_j[pjd];
+#endif
       const float hj = pj->h;
 
       /* Skip inhibited particles. */
@@ -210,7 +218,7 @@ void DO_NONSYM_PAIR1_STARS_NAIVE(struct runner *r, struct cell *restrict ci,
         IACT_STARS(r2, dx, hi, hj, si, pj, a, H);
 
 #if (FUNCTION_TASK_LOOP == TASK_LOOP_DENSITY)
-        runner_iact_nonsym_feedback_density(r2, dx, hi, hj, si, pj, xpj, cosmo,
+        runner_iact_nonsym_feedback_density(r2, dx, hi, hj, si, pj, NULL, cosmo,
                                             ti_current);
 #elif (FUNCTION_TASK_LOOP == TASK_LOOP_FEEDBACK)
         runner_iact_nonsym_feedback_apply(r2, dx, hi, hj, si, pj, xpj, cosmo,
@@ -286,11 +294,12 @@ void DO_SYM_PAIR1_STARS(struct runner *r, struct cell *ci, struct cell *cj,
     const int count_j = cj->hydro.count;
     struct spart *restrict sparts_i = ci->stars.parts;
     struct part *restrict parts_j = cj->hydro.parts;
+#if (FUNCTION_TASK_LOOP == TASK_LOOP_FEEDBACK)
     struct xpart *restrict xparts_j = cj->hydro.xparts;
+#endif
     const double dj_min = sort_j[0].d;
-    const float dx_max_rshift =
-        (ci->stars.dx_max_sort + cj->hydro.dx_max_sort) - rshift;
     const float dx_max = (ci->stars.dx_max_sort + cj->hydro.dx_max_sort);
+    const float hydro_dx_max_rshift = cj->hydro.dx_max_sort - rshift;
 
     /* Loop over the sparts in ci. */
     for (int pid = count_i - 1;
@@ -312,7 +321,7 @@ void DO_SYM_PAIR1_STARS(struct runner *r, struct cell *ci, struct cell *cj,
                    px[2] * runner_shift[sid][2];
 
       /* Is there anything we need to interact with ? */
-      const double di = dist + hi * kernel_gamma + dx_max_rshift;
+      const double di = dist + hi * kernel_gamma + hydro_dx_max_rshift;
       if (di < dj_min) continue;
 
       /* Get some additional information about pi */
@@ -326,7 +335,9 @@ void DO_SYM_PAIR1_STARS(struct runner *r, struct cell *ci, struct cell *cj,
 
         /* Recover pj */
         struct part *pj = &parts_j[sort_j[pjd].i];
+#if (FUNCTION_TASK_LOOP == TASK_LOOP_FEEDBACK)
         struct xpart *xpj = &xparts_j[sort_j[pjd].i];
+#endif
 
         /* Skip inhibited particles. */
         if (part_is_inhibited(pj, e)) continue;
@@ -379,7 +390,7 @@ void DO_SYM_PAIR1_STARS(struct runner *r, struct cell *ci, struct cell *cj,
           IACT_STARS(r2, dx, hi, hj, spi, pj, a, H);
 
 #if (FUNCTION_TASK_LOOP == TASK_LOOP_DENSITY)
-          runner_iact_nonsym_feedback_density(r2, dx, hi, hj, spi, pj, xpj,
+          runner_iact_nonsym_feedback_density(r2, dx, hi, hj, spi, pj, NULL,
                                               cosmo, ti_current);
 #elif (FUNCTION_TASK_LOOP == TASK_LOOP_FEEDBACK)
           runner_iact_nonsym_feedback_apply(r2, dx, hi, hj, spi, pj, xpj, cosmo,
@@ -416,9 +427,8 @@ void DO_SYM_PAIR1_STARS(struct runner *r, struct cell *ci, struct cell *cj,
     struct xpart *restrict xparts_i = ci->hydro.xparts;
     struct spart *restrict sparts_j = cj->stars.parts;
     const double di_max = sort_i[count_i - 1].d - rshift;
-    const float dx_max_rshift =
-        (ci->hydro.dx_max_sort + cj->stars.dx_max_sort) + rshift;
     const float dx_max = (ci->hydro.dx_max_sort + cj->stars.dx_max_sort);
+    const float hydro_dx_max_rshift = ci->hydro.dx_max_sort - rshift;
 
     /* Loop over the parts in cj. */
     for (int pjd = 0; pjd < count_j && sort_j[pjd].d - hj_max - dx_max < di_max;
@@ -440,7 +450,7 @@ void DO_SYM_PAIR1_STARS(struct runner *r, struct cell *ci, struct cell *cj,
                    px[2] * runner_shift[sid][2];
 
       /* Is there anything we need to interact with ? */
-      const double dj = dist - hj * kernel_gamma - dx_max_rshift;
+      const double dj = dist - hj * kernel_gamma - hydro_dx_max_rshift;
       if (dj - rshift > di_max) continue;
 
       /* Get some additional information about pj */
@@ -565,7 +575,6 @@ void DOPAIR1_SUBSET_STARS(struct runner *r, struct cell *restrict ci,
                           const int flipped, const double *shift) {
 
   const struct engine *e = r->e;
-  const integertime_t ti_current = e->ti_current;
   const struct cosmology *cosmo = e->cosmology;
 
   /* Cosmological terms */
@@ -574,7 +583,6 @@ void DOPAIR1_SUBSET_STARS(struct runner *r, struct cell *restrict ci,
 
   const int count_j = cj->hydro.count;
   struct part *restrict parts_j = cj->hydro.parts;
-  struct xpart *restrict xparts_j = cj->hydro.xparts;
 
   /* Early abort? */
   if (count_j == 0) return;
@@ -604,7 +612,6 @@ void DOPAIR1_SUBSET_STARS(struct runner *r, struct cell *restrict ci,
 
         /* Get a pointer to the jth particle. */
         struct part *restrict pj = &parts_j[sort_j[pjd].i];
-        struct xpart *restrict xpj = &xparts_j[sort_j[pjd].i];
 
         /* Skip inhibited particles. */
         if (part_is_inhibited(pj, e)) continue;
@@ -632,11 +639,12 @@ void DOPAIR1_SUBSET_STARS(struct runner *r, struct cell *restrict ci,
           IACT_STARS(r2, dx, hi, hj, spi, pj, a, H);
 
 #if (FUNCTION_TASK_LOOP == TASK_LOOP_DENSITY)
-          runner_iact_nonsym_feedback_density(r2, dx, hi, hj, spi, pj, xpj,
-                                              cosmo, ti_current);
+          runner_iact_nonsym_feedback_density(r2, dx, hi, hj, spi, pj, NULL,
+                                              cosmo, e->ti_current);
 #elif (FUNCTION_TASK_LOOP == TASK_LOOP_FEEDBACK)
-          runner_iact_nonsym_feedback_apply(r2, dx, hi, hj, spi, pj, xpj, cosmo,
-                                            ti_current);
+          error("No subset feedback iact functions do (or should) exist!");
+          /* runner_iact_nonsym_feedback_apply(r2, dx, hi, hj, spi, pj, xpj,
+           * cosmo, ti_current); */
 #endif
         }
       } /* loop over the parts in cj. */
@@ -664,7 +672,6 @@ void DOPAIR1_SUBSET_STARS(struct runner *r, struct cell *restrict ci,
 
         /* Get a pointer to the jth particle. */
         struct part *restrict pj = &parts_j[sort_j[pjd].i];
-        struct xpart *restrict xpj = &xparts_j[sort_j[pjd].i];
 
         /* Skip inhibited particles. */
         if (part_is_inhibited(pj, e)) continue;
@@ -692,11 +699,12 @@ void DOPAIR1_SUBSET_STARS(struct runner *r, struct cell *restrict ci,
           IACT_STARS(r2, dx, hi, hj, spi, pj, a, H);
 
 #if (FUNCTION_TASK_LOOP == TASK_LOOP_DENSITY)
-          runner_iact_nonsym_feedback_density(r2, dx, hi, hj, spi, pj, xpj,
-                                              cosmo, ti_current);
+          runner_iact_nonsym_feedback_density(r2, dx, hi, hj, spi, pj, NULL,
+                                              cosmo, e->ti_current);
 #elif (FUNCTION_TASK_LOOP == TASK_LOOP_FEEDBACK)
-          runner_iact_nonsym_feedback_apply(r2, dx, hi, hj, spi, pj, xpj, cosmo,
-                                            ti_current);
+          error("No subset feedback iact functions do (or should) exist!");
+          /* runner_iact_nonsym_feedback_apply(r2, dx, hi, hj, spi, pj, xpj,
+           * cosmo, ti_current); */
 #endif
         }
       } /* loop over the parts in cj. */
@@ -728,7 +736,6 @@ void DOPAIR1_SUBSET_STARS_NAIVE(struct runner *r, struct cell *restrict ci,
 #endif
 
   const struct engine *e = r->e;
-  const integertime_t ti_current = e->ti_current;
   const struct cosmology *cosmo = e->cosmology;
 
   /* Cosmological terms */
@@ -737,7 +744,6 @@ void DOPAIR1_SUBSET_STARS_NAIVE(struct runner *r, struct cell *restrict ci,
 
   const int count_j = cj->hydro.count;
   struct part *restrict parts_j = cj->hydro.parts;
-  struct xpart *restrict xparts_j = cj->hydro.xparts;
 
   /* Early abort? */
   if (count_j == 0) return;
@@ -764,7 +770,6 @@ void DOPAIR1_SUBSET_STARS_NAIVE(struct runner *r, struct cell *restrict ci,
 
       /* Get a pointer to the jth particle. */
       struct part *restrict pj = &parts_j[pjd];
-      struct xpart *restrict xpj = &xparts_j[pjd];
 
       /* Skip inhibited particles */
       if (part_is_inhibited(pj, e)) continue;
@@ -789,11 +794,12 @@ void DOPAIR1_SUBSET_STARS_NAIVE(struct runner *r, struct cell *restrict ci,
         IACT_STARS(r2, dx, hi, hj, spi, pj, a, H);
 
 #if (FUNCTION_TASK_LOOP == TASK_LOOP_DENSITY)
-        runner_iact_nonsym_feedback_density(r2, dx, hi, hj, spi, pj, xpj, cosmo,
-                                            ti_current);
+        runner_iact_nonsym_feedback_density(r2, dx, hi, hj, spi, pj, NULL,
+                                            cosmo, e->ti_current);
 #elif (FUNCTION_TASK_LOOP == TASK_LOOP_FEEDBACK)
-        runner_iact_nonsym_feedback_apply(r2, dx, hi, hj, spi, pj, xpj, cosmo,
-                                          ti_current);
+        error("No subset feedback iact functions do (or should) exist! .");
+        /* runner_iact_nonsym_feedback_apply(r2, dx, hi, hj, spi, pj, xpj,
+         * cosmo, ti_current); */
 #endif
       }
     } /* loop over the parts in cj. */
@@ -813,13 +819,11 @@ void DOPAIR1_SUBSET_STARS_NAIVE(struct runner *r, struct cell *restrict ci,
 void DOSELF1_SUBSET_STARS(struct runner *r, struct cell *restrict ci,
                           struct spart *restrict sparts, int *restrict ind,
                           int scount) {
-
 #ifdef SWIFT_DEBUG_CHECKS
   if (ci->nodeID != engine_rank) error("Should be run on a different node");
 #endif
 
   const struct engine *e = r->e;
-  const integertime_t ti_current = e->ti_current;
   const struct cosmology *cosmo = e->cosmology;
 
   /* Cosmological terms */
@@ -828,7 +832,6 @@ void DOSELF1_SUBSET_STARS(struct runner *r, struct cell *restrict ci,
 
   const int count_i = ci->hydro.count;
   struct part *restrict parts_j = ci->hydro.parts;
-  struct xpart *restrict xparts_j = ci->hydro.xparts;
 
   /* Early abort? */
   if (count_i == 0) return;
@@ -854,7 +857,6 @@ void DOSELF1_SUBSET_STARS(struct runner *r, struct cell *restrict ci,
 
       /* Get a pointer to the jth particle. */
       struct part *restrict pj = &parts_j[pjd];
-      struct xpart *restrict xpj = &xparts_j[pjd];
 
       /* Early abort? */
       if (part_is_inhibited(pj, e)) continue;
@@ -876,11 +878,12 @@ void DOSELF1_SUBSET_STARS(struct runner *r, struct cell *restrict ci,
       if (r2 < hig2) {
         IACT_STARS(r2, dx, hi, pj->h, spi, pj, a, H);
 #if (FUNCTION_TASK_LOOP == TASK_LOOP_DENSITY)
-        runner_iact_nonsym_feedback_density(r2, dx, hi, pj->h, spi, pj, xpj,
-                                            cosmo, ti_current);
+        runner_iact_nonsym_feedback_density(r2, dx, hi, pj->h, spi, pj, NULL,
+                                            cosmo, e->ti_current);
 #elif (FUNCTION_TASK_LOOP == TASK_LOOP_FEEDBACK)
-        runner_iact_nonsym_feedback_apply(r2, dx, hi, pj->h, spi, pj, xpj,
-                                          cosmo, ti_current);
+        error("No subset feedback iact functions do (or should) exist!");
+        /* runner_iact_nonsym_feedback_apply(r2, dx, hi, pj->h, spi, pj, xpj, */
+        /*                                   cosmo, e, ti_current); */
 #endif
       }
     } /* loop over the parts in cj. */

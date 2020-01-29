@@ -105,7 +105,6 @@ __attribute__((always_inline)) INLINE static void hydro_first_init_part(
   const float mass = p->conserved.mass;
 
   p->time_bin = 0;
-  p->wakeup = time_bin_not_awake;
 
   p->primitives.v[0] = p->v[0];
   p->primitives.v[1] = p->v[1];
@@ -336,10 +335,11 @@ __attribute__((always_inline)) INLINE static void hydro_prepare_force(
  * @param p The particle to act upon.
  * @param xp The extended particle data to act upon.
  * @param cosmo The cosmological model.
+ * @param hydro_props Hydrodynamic properties.
  */
 __attribute__((always_inline)) INLINE static void hydro_prepare_gradient(
     struct part* restrict p, struct xpart* restrict xp,
-    const struct cosmology* cosmo) {
+    const struct cosmology* cosmo, const struct hydro_props* hydro_props) {
 
   /* Initialize time step criterion variables */
   p->timestepvars.vmax = 0.;

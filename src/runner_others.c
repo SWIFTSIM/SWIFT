@@ -44,6 +44,7 @@
 #include "cooling.h"
 #include "engine.h"
 #include "error.h"
+#include "feedback.h"
 #include "gravity.h"
 #include "hydro.h"
 #include "logger.h"
@@ -52,7 +53,9 @@
 #include "star_formation.h"
 #include "star_formation_logger.h"
 #include "stars.h"
+#include "task_order.h"
 #include "timers.h"
+#include "timestep_limiter.h"
 #include "tracers.h"
 
 /**
@@ -142,7 +145,6 @@ void runner_do_grav_mesh(struct runner *r, struct cell *c, int timer) {
  * @param timer 1 if the time is to be recorded.
  */
 void runner_do_cooling(struct runner *r, struct cell *c, int timer) {
-
   const struct engine *e = r->e;
   const struct cosmology *cosmo = e->cosmology;
   const int with_cosmology = (e->policy & engine_policy_cosmology);
@@ -156,11 +158,14 @@ void runner_do_cooling(struct runner *r, struct cell *c, int timer) {
   struct part *restrict parts = c->hydro.parts;
   struct xpart *restrict xparts = c->hydro.xparts;
   const int count = c->hydro.count;
+  const double time = e->time;
 
   TIMER_TIC;
 
-  /* Anything to do here? */
-  if (!cell_is_active_hydro(c, e)) return;
+  /* Anything to do here? (i.e. does this cell need updating?) */
+  if (!((task_order_cooling_after_timestep && cell_is_starting_hydro(c, e)) ||
+        (!task_order_cooling_after_timestep && cell_is_active_hydro(c, e))))
+    return;
 
   /* Recurse? */
   if (c->split) {
@@ -175,7 +180,9 @@ void runner_do_cooling(struct runner *r, struct cell *c, int timer) {
       struct part *restrict p = &parts[i];
       struct xpart *restrict xp = &xparts[i];
 
-      if (part_is_active(p, e)) {
+      /* Anything to do here? (i.e. does this particle need updating?) */
+      if ((task_order_cooling_after_timestep && part_is_starting(p, e)) ||
+          (!task_order_cooling_after_timestep && part_is_active(p, e))) {
 
         double dt_cool, dt_therm;
         if (with_cosmology) {
@@ -195,8 +202,13 @@ void runner_do_cooling(struct runner *r, struct cell *c, int timer) {
 
         /* Let's cool ! */
         cooling_cool_part(constants, us, cosmo, hydro_props,
-                          entropy_floor_props, cooling_func, p, xp, dt_cool,
-                          dt_therm);
+                          entropy_floor_props, cooling_func, p, xp, time,
+                          dt_cool, dt_therm);
+
+        /* Apply the effects of feedback on this particle
+         * (Note: Only used in schemes that have a delayed feedback mechanism
+         * otherwise just an empty function) */
+        feedback_update_part(p, xp, e);
       }
     }
   }
@@ -287,8 +299,8 @@ void runner_do_star_formation(struct runner *r, struct cell *c, int timer) {
           }
 
           /* Compute the SF rate of the particle */
-          star_formation_compute_SFR(p, xp, sf_props, phys_const, cosmo,
-                                     dt_star);
+          star_formation_compute_SFR(p, xp, sf_props, phys_const, hydro_props,
+                                     cosmo, dt_star);
 
           /* Add the SFR and SFR*dt to the SFH struct of this cell */
           star_formation_logger_log_active_part(p, xp, &c->stars.sfh, dt_star);
@@ -296,6 +308,23 @@ void runner_do_star_formation(struct runner *r, struct cell *c, int timer) {
           /* Are we forming a star particle from this SF rate? */
           if (star_formation_should_convert_to_star(p, xp, sf_props, e,
                                                     dt_star)) {
+
+#ifdef WITH_LOGGER
+            /* Write the particle */
+            /* Logs all the fields request by the user */
+            // TODO select only the requested fields
+            logger_log_part(e->logger, p,
+                            logger_mask_data[logger_x].mask |
+                                logger_mask_data[logger_v].mask |
+                                logger_mask_data[logger_a].mask |
+                                logger_mask_data[logger_u].mask |
+                                logger_mask_data[logger_h].mask |
+                                logger_mask_data[logger_rho].mask |
+                                logger_mask_data[logger_consts].mask |
+                                logger_mask_data[logger_special_flags].mask,
+                            &xp->logger_data.last_offset,
+                            /* special flags */ swift_type_stars);
+#endif
 
             /* Convert the gas particle to a star particle */
             struct spart *sp = cell_convert_part_to_spart(e, c, p, xp);
@@ -313,6 +342,22 @@ void runner_do_star_formation(struct runner *r, struct cell *c, int timer) {
 
               /* Update the Star formation history */
               star_formation_logger_log_new_spart(sp, &c->stars.sfh);
+
+#ifdef WITH_LOGGER
+              /* Copy the properties back to the stellar particle */
+              sp->logger_data = xp->logger_data;
+
+              /* Write the s-particle */
+              logger_log_spart(e->logger, sp,
+                               logger_mask_data[logger_x].mask |
+                                   logger_mask_data[logger_v].mask |
+                                   logger_mask_data[logger_consts].mask,
+                               &sp->logger_data.last_offset,
+                               /* special flags */ 0);
+
+              /* Set counter back to zero */
+              sp->logger_data.steps_since_last_output = 0;
+#endif
             }
           }
 
@@ -381,6 +426,7 @@ void runner_do_end_hydro_force(struct runner *r, struct cell *c, int timer) {
 
         /* Finish the force loop */
         hydro_end_force(p, cosmo);
+        timestep_limiter_end_force(p);
         chemistry_end_force(p, cosmo);
 
 #ifdef SWIFT_BOUNDARY_PARTICLES
@@ -420,6 +466,8 @@ void runner_do_end_hydro_force(struct runner *r, struct cell *c, int timer) {
 void runner_do_end_grav_force(struct runner *r, struct cell *c, int timer) {
 
   const struct engine *e = r->e;
+  const int with_self_gravity = (e->policy & engine_policy_self_gravity);
+  const int with_black_holes = (e->policy & engine_policy_black_holes);
 
   TIMER_TIC;
 
@@ -438,7 +486,7 @@ void runner_do_end_grav_force(struct runner *r, struct cell *c, int timer) {
 
     /* Potential normalisation in the case of periodic gravity */
     float potential_normalisation = 0.;
-    if (periodic && (e->policy & engine_policy_self_gravity)) {
+    if (periodic && with_self_gravity) {
       const double volume = s->dim[0] * s->dim[1] * s->dim[2];
       const double r_s = e->mesh->r_s;
       potential_normalisation = 4. * M_PI * e->total_mass * r_s * r_s / volume;
@@ -522,6 +570,17 @@ void runner_do_end_grav_force(struct runner *r, struct cell *c, int timer) {
           }
         }
 #endif
+
+        /* Deal with black holes' need of potentials */
+        if (with_black_holes && gp->type == swift_type_black_hole) {
+          const size_t offset = -gp->id_or_neg_offset;
+          black_holes_store_potential_in_bpart(&s->bparts[offset], gp);
+        }
+        if (with_black_holes && gp->type == swift_type_gas) {
+          const size_t offset = -gp->id_or_neg_offset;
+          black_holes_store_potential_in_part(
+              &s->parts[offset].black_holes_data, gp);
+        }
       }
     }
   }
@@ -543,10 +602,16 @@ void runner_do_logger(struct runner *r, struct cell *c, int timer) {
   const struct engine *e = r->e;
   struct part *restrict parts = c->hydro.parts;
   struct xpart *restrict xparts = c->hydro.xparts;
+  struct gpart *restrict gparts = c->grav.parts;
+  struct spart *restrict sparts = c->stars.parts;
   const int count = c->hydro.count;
+  const int gcount = c->grav.count;
+  const int scount = c->stars.count;
 
   /* Anything to do here? */
-  if (!cell_is_active_hydro(c, e) && !cell_is_active_gravity(c, e)) return;
+  if (!cell_is_active_hydro(c, e) && !cell_is_active_gravity(c, e) &&
+      !cell_is_active_stars(c, e))
+    return;
 
   /* Recurse? Avoid spending too much time in useless cells. */
   if (c->split) {
@@ -562,8 +627,6 @@ void runner_do_logger(struct runner *r, struct cell *c, int timer) {
       struct xpart *restrict xp = &xparts[k];
 
       /* If particle needs to be log */
-      /* This is the same function than part_is_active, except for
-       * debugging checks */
       if (part_is_active(p, e)) {
 
         if (logger_should_write(&xp->logger_data, e->logger)) {
@@ -577,7 +640,8 @@ void runner_do_logger(struct runner *r, struct cell *c, int timer) {
                               logger_mask_data[logger_h].mask |
                               logger_mask_data[logger_rho].mask |
                               logger_mask_data[logger_consts].mask,
-                          &xp->logger_data.last_offset);
+                          &xp->logger_data.last_offset,
+                          /* special flags */ 0);
 
           /* Set counter back to zero */
           xp->logger_data.steps_since_last_output = 0;
@@ -586,11 +650,65 @@ void runner_do_logger(struct runner *r, struct cell *c, int timer) {
           xp->logger_data.steps_since_last_output += 1;
       }
     }
+
+    /* Loop over the gparts in this cell. */
+    for (int k = 0; k < gcount; k++) {
+
+      /* Get a handle on the part. */
+      struct gpart *restrict gp = &gparts[k];
+
+      /* Write only the dark matter particles */
+      if (gp->type != swift_type_dark_matter) continue;
+
+      /* If particle needs to be log */
+      if (gpart_is_active(gp, e)) {
+
+        if (logger_should_write(&gp->logger_data, e->logger)) {
+          /* Write particle */
+          /* Currently writing everything, should adapt it through time */
+          logger_log_gpart(e->logger, gp,
+                           logger_mask_data[logger_x].mask |
+                               logger_mask_data[logger_v].mask |
+                               logger_mask_data[logger_a].mask |
+                               logger_mask_data[logger_consts].mask,
+                           &gp->logger_data.last_offset,
+                           /* Special flags */ 0);
+
+          /* Set counter back to zero */
+          gp->logger_data.steps_since_last_output = 0;
+        } else
+          /* Update counter */
+          gp->logger_data.steps_since_last_output += 1;
+      }
+    }
+
+    /* Loop over the sparts in this cell. */
+    for (int k = 0; k < scount; k++) {
+
+      /* Get a handle on the part. */
+      struct spart *restrict sp = &sparts[k];
+
+      /* If particle needs to be log */
+      if (spart_is_active(sp, e)) {
+
+        if (logger_should_write(&sp->logger_data, e->logger)) {
+          /* Write particle */
+          /* Currently writing everything, should adapt it through time */
+          logger_log_spart(e->logger, sp,
+                           logger_mask_data[logger_x].mask |
+                               logger_mask_data[logger_v].mask |
+                               logger_mask_data[logger_consts].mask,
+                           &sp->logger_data.last_offset,
+                           /* Special flags */ 0);
+
+          /* Set counter back to zero */
+          sp->logger_data.steps_since_last_output = 0;
+        } else
+          /* Update counter */
+          sp->logger_data.steps_since_last_output += 1;
+      }
+    }
   }
-
-  if (c->grav.count > 0) error("gparts not implemented");
-
-  if (c->stars.count > 0) error("sparts not implemented");
 
   if (timer) TIMER_TOC(timer_logger);
 

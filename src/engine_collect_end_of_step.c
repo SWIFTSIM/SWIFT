@@ -27,6 +27,7 @@
 
 /* Local headers. */
 #include "active.h"
+#include "star_formation_logger.h"
 #include "timeline.h"
 
 /**
@@ -75,12 +76,6 @@ void engine_collect_end_of_step_recurse_hydro(struct cell *c,
   integertime_t ti_hydro_end_min = max_nr_timesteps, ti_hydro_end_max = 0,
                 ti_hydro_beg_max = 0;
 
-  /* Local Star formation history properties */
-  struct star_formation_history sfh_updated;
-
-  /* Initialize the star formation structs */
-  star_formation_logger_init(&sfh_updated);
-
   /* Collect the values from the progeny. */
   for (int k = 0; k < 8; k++) {
     struct cell *cp = c->progeny[k];
@@ -96,14 +91,6 @@ void engine_collect_end_of_step_recurse_hydro(struct cell *c,
 
       updated += cp->hydro.updated;
 
-      /* Check if the cell is inactive and in that case reorder the SFH */
-      if (!cell_is_starting_hydro(cp, e)) {
-        star_formation_logger_log_inactive_cell(&cp->stars.sfh);
-      }
-
-      /* Add the star formation history in this cell to sfh_updated */
-      star_formation_logger_add(&sfh_updated, &cp->stars.sfh);
-
       /* Collected, so clear for next time. */
       cp->hydro.updated = 0;
     }
@@ -114,10 +101,6 @@ void engine_collect_end_of_step_recurse_hydro(struct cell *c,
   c->hydro.ti_end_max = ti_hydro_end_max;
   c->hydro.ti_beg_max = ti_hydro_beg_max;
   c->hydro.updated = updated;
-  // c->hydro.inhibited = inhibited;
-
-  /* Store the star formation history in the parent cell */
-  star_formation_logger_add(&c->stars.sfh, &sfh_updated);
 }
 
 /**
@@ -381,7 +364,7 @@ void engine_collect_end_of_step_mapper(void *map_data, int num_elements,
       s_updated += c->stars.updated;
       b_updated += c->black_holes.updated;
 
-      /* Check if the cell is inactive and in that case reorder the SFH */
+      /* Check if the cell was inactive and in that case reorder the SFH */
       if (!cell_is_starting_hydro(c, e)) {
         star_formation_logger_log_inactive_cell(&c->stars.sfh);
       }

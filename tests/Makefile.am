@@ -41,7 +41,7 @@ check_PROGRAMS = testGreetings testReading testTimeIntegration \
 		 testVoronoi1D testVoronoi2D testVoronoi3D testPeriodicBC \
 		 testGravityDerivatives testPotentialSelf testPotentialPair testEOS testUtilities \
 		 testSelectOutput testCbrt testCosmology testOutputList test27cellsStars \
-		 test27cellsStars_subset testCooling testFeedback testHashmap testHydroMPIrules
+		 test27cellsStars_subset testCooling testComovingCooling testFeedback testHashmap testHydroMPIrules
 
 # Rebuild tests when SWIFT is updated.
 $(check_PROGRAMS): ../src/.libs/libswiftsim.a
@@ -129,6 +129,8 @@ testEOS_SOURCES = testEOS.c
 testUtilities_SOURCES = testUtilities.c
 
 testCooling_SOURCES = testCooling.c
+
+testComovingCooling_SOURCES = testComovingCooling.c
 
 testFeedback_SOURCES = testFeedback.c
 

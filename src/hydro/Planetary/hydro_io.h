@@ -61,15 +61,15 @@ INLINE static void hydro_read_particles(struct part* parts,
                                 UNIT_CONV_SPEED, parts, v);
   list[2] = io_make_input_field("Masses", FLOAT, 1, COMPULSORY, UNIT_CONV_MASS,
                                 parts, mass);
-  list[3] = io_make_input_field("SmoothingLength", FLOAT, 1, COMPULSORY,
+  list[3] = io_make_input_field("SmoothingLengths", FLOAT, 1, COMPULSORY,
                                 UNIT_CONV_LENGTH, parts, h);
-  list[4] = io_make_input_field("InternalEnergy", FLOAT, 1, COMPULSORY,
+  list[4] = io_make_input_field("InternalEnergies", FLOAT, 1, COMPULSORY,
                                 UNIT_CONV_ENERGY_PER_UNIT_MASS, parts, u);
   list[5] = io_make_input_field("ParticleIDs", ULONGLONG, 1, COMPULSORY,
                                 UNIT_CONV_NO_UNITS, parts, id);
   list[6] = io_make_input_field("Accelerations", FLOAT, 3, OPTIONAL,
                                 UNIT_CONV_ACCELERATION, parts, a_hydro);
-  list[7] = io_make_input_field("Density", FLOAT, 1, OPTIONAL,
+  list[7] = io_make_input_field("Densities", FLOAT, 1, OPTIONAL,
                                 UNIT_CONV_DENSITY, parts, rho);
   list[8] = io_make_input_field("MaterialIDs", INT, 1, COMPULSORY,
                                 UNIT_CONV_NO_UNITS, parts, mat_id);
@@ -90,11 +90,11 @@ INLINE static void convert_P(const struct engine* e, const struct part* p,
 INLINE static void convert_part_pos(const struct engine* e,
                                     const struct part* p,
                                     const struct xpart* xp, double* ret) {
-
-  if (e->s->periodic) {
-    ret[0] = box_wrap(p->x[0], 0.0, e->s->dim[0]);
-    ret[1] = box_wrap(p->x[1], 0.0, e->s->dim[1]);
-    ret[2] = box_wrap(p->x[2], 0.0, e->s->dim[2]);
+  const struct space* s = e->s;
+  if (s->periodic) {
+    ret[0] = box_wrap(p->x[0] - s->pos_dithering[0], 0.0, s->dim[0]);
+    ret[1] = box_wrap(p->x[1] - s->pos_dithering[1], 0.0, s->dim[1]);
+    ret[2] = box_wrap(p->x[2] - s->pos_dithering[2], 0.0, s->dim[2]);
   } else {
     ret[0] = p->x[0];
     ret[1] = p->x[1];
@@ -214,10 +214,6 @@ INLINE static void hydro_write_flavour(hid_t h_grpsph) {
       h_grpsph, "Viscosity Model",
       "as in Springel (2005), i.e. Monaghan (1992) with Balsara (1995) switch");
 #endif
-
-  /* Time integration properties */
-  io_write_attribute_f(h_grpsph, "Maximal Delta u change over dt",
-                       const_max_u_change);
 }
 
 /**

@@ -76,10 +76,10 @@ int main(int argc, char *argv[]) {
   assert(h->minor_version == logger_minor_version);
 
   message("Checking offset of first record");
-  assert(h->offset_first_record == logfile->log.file_size);
+  assert(h->offset_first_record == logfile->log.mmap_size);
 
   message("Checking number of masks");
-  assert(h->number_mask == logger_count_mask);
+  assert(h->masks_count == logger_count_mask);
 
   message("Checking masks");
   for (int i = 0; i < logger_count_mask; i++) {

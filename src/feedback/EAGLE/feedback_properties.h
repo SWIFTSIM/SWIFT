@@ -72,6 +72,18 @@ struct lifetime_table {
 };
 
 /**
+ * @brief Functional form of the SNIa delay time distribution.
+ */
+enum eagle_feedback_SNIa_DTD {
+
+  /*! Power-law with slope -1 */
+  eagle_feedback_SNIa_DTD_power_law = 1,
+
+  /*! Exponential model (EAGLE default) */
+  eagle_feedback_SNIa_DTD_exponential = 2
+};
+
+/**
  * @brief Properties of the EAGLE feedback model.
  */
 struct feedback_props {
@@ -127,20 +139,25 @@ struct feedback_props {
 
   /* ------------- SNIa parameters    --------------- */
 
-  /*! Efficiency of the SNIa model */
-  float SNIa_efficiency;
+  /* What delay time distribution are we using? */
+  enum eagle_feedback_SNIa_DTD SNIa_DTD;
 
-  /*! Time-scale of the SNIa decay function in Giga-years */
-  float SNIa_timescale_Gyr;
+  /*! Normalisation of the SNIa DTD in the exponential model */
+  float SNIa_DTD_exp_norm;
 
-  /*! Inverse of time-scale of the SNIa decay function in Giga-years */
-  float SNIa_timescale_Gyr_inv;
+  /*! Time-scale of the SNIa decay function in the exponential model in
+   * Giga-years */
+  float SNIa_DTD_exp_timescale_Gyr;
 
-  /*! Maximal mass used for SNIa feedback (in solar masses) */
-  double SNIa_max_mass_msun;
+  /*! Inverse of time-scale of the SNIa decay function in the exponential model
+   * in Giga-years */
+  float SNIa_DTD_exp_timescale_Gyr_inv;
 
-  /*! Log 10 of the maximal mass used for SNIa feedback (in solar masses) */
-  double log10_SNIa_max_mass_msun;
+  /*! Normalisation of the SNIa DTD in the power-law model */
+  float SNIa_DTD_power_law_norm;
+
+  /*! Stellar age below which no SNIa explode in Giga-years */
+  float SNIa_DTD_delay_Gyr;
 
   /*! Energy released by one supernova type II in cgs units */
   double E_SNIa_cgs;
@@ -195,6 +212,12 @@ struct feedback_props {
 
   /* ------------ SNe feedback properties ------------ */
 
+  /*! Minimal stellar mass considered for SNII feedback (in solar masses) */
+  double SNII_min_mass_msun;
+
+  /*! Maximal stellar mass considered for SNII feedback (in solar masses) */
+  double SNII_max_mass_msun;
+
   /*! Log 10 of the minimal stellar mass considered for SNII feedback (in solar
    * masses) */
   double log10_SNII_min_mass_msun;
@@ -206,7 +229,10 @@ struct feedback_props {
   /*! Number of type II supernovae per solar mass */
   float num_SNII_per_msun;
 
-  /*! Wind delay time for SNII */
+  /*! Are we sampling the SNII life-times or using a fixed delay? */
+  int SNII_sampled_delay;
+
+  /*! Wind delay time for SNII when using a fixed delay */
   double SNII_wind_delay;
 
   /*! Temperature increase induced by SNe feedback */
@@ -238,6 +264,15 @@ struct feedback_props {
   /*! Slope of the metallicity dependance of the feedback energy fraction model
    */
   double n_Z;
+
+  /* ------------ Enrichment sampling properties ------------ */
+
+  /*! Star age above which the enrichment will be downsampled (in internal
+   * units) */
+  double stellar_evolution_age_cut;
+
+  /*! Number of time-steps in-between two enrichment events */
+  int stellar_evolution_sampling_rate;
 };
 
 void feedback_props_init(struct feedback_props *fp,

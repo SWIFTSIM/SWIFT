@@ -56,9 +56,6 @@ struct spart {
   /*! Star mass */
   float mass;
 
-  /*! Initial star mass */
-  float mass_init;
-
   /*! Particle smoothing length. */
   float h;
 
@@ -82,6 +79,12 @@ struct spart {
     float birth_scale_factor;
   };
 
+  /*! Scale-factor / time at which this particle last did enrichment */
+  float last_enrichment_time;
+
+  /*! Initial star mass */
+  float mass_init;
+
   /*! Birth density */
   float birth_density;
 
@@ -103,6 +106,14 @@ struct spart {
   /*! Particle time bin */
   timebin_t time_bin;
 
+  /*! Number of time-steps since the last enrichment step */
+  char count_since_last_enrichment;
+
+#ifdef WITH_LOGGER
+  /* Additional data for the particle logger */
+  struct logger_part_data logger_data;
+#endif
+
 #ifdef SWIFT_DEBUG_CHECKS
 
   /* Time of the last drift */
@@ -121,11 +132,11 @@ struct spart {
   /*! List of interacting particles in the density SELF and PAIR */
   long long ids_ngbs_density[MAX_NUM_OF_NEIGHBOURS_STARS];
 
-  /*! Number of interactions in the force SELF and PAIR */
-  int num_ngb_force;
+  /*! Number of interactions in the feedback SELF and PAIR */
+  int num_ngb_feedback;
 
-  /*! List of interacting particles in the force SELF and PAIR */
-  long long ids_ngbs_force[MAX_NUM_OF_NEIGHBOURS_STARS];
+  /*! List of interacting particles in the feedback SELF and PAIR */
+  long long ids_ngbs_feedback[MAX_NUM_OF_NEIGHBOURS_STARS];
 #endif
 
 } SWIFT_STRUCT_ALIGN;
@@ -144,7 +155,7 @@ struct stars_props {
   /*! Smoothing length tolerance */
   float h_tolerance;
 
-  /*! Tolerance on neighbour number  (for info only) */
+  /*! Tolerance on neighbour number  (for info only)*/
   float delta_neighbours;
 
   /*! Maximal number of iterations to converge h */
