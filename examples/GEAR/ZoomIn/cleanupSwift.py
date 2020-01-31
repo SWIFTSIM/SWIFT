@@ -46,7 +46,7 @@ for i in range(NPartType):
         ("Velocities", "Velocities", a**0.5),
         ("Density", "Densities", 1. / h**2),
         ("Entropies", "Entropies", 1.),
-        ("InternalEnergy", "InternalEnergies", 1.),
+        ("InternalEnergy", "InternalEnergies", 1. / a**2),
         ("SmoothingLength", "SmoothingLengths", h)
     ]
 

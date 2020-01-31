@@ -7,6 +7,7 @@ import sys
 import matplotlib
 import projection_plot
 import phase_plot
+import halo_distribution
 import add_fields
 import matplotlib.pyplot as plt
 from mpl_toolkits.axes_grid1 import AxesGrid
@@ -24,8 +25,10 @@ gear = "gear/snapshot_%04i.hdf5" % snap
 do_plot = {
     "projection_density": False,
     "projection_temperature": False,
-    "projection_mass": True,
-    "phase": False
+    "projection_mass": False,
+    "halo_distribution": True,
+    "phase_1d": False,
+    "phase_2d": False
 }
 
 # Generate the figures
@@ -35,7 +38,7 @@ figures = {
     "projection_density": plt.figure(figsize=figsize),
     "projection_temperature": plt.figure(figsize=figsize),
     "projection_mass": plt.figure(figsize=figsize),
-    "phase": plt.figure(figsize=figsize)
+    "phase_2d": plt.figure(figsize=figsize)
 }
 
 # define global variables
@@ -58,10 +61,16 @@ axes = {
         figures["projection_mass"], fig_size, subgrid,
         add_all=True, share_all=True, cbar_mode="single",
         cbar_size="2%", cbar_pad=0.02),
-    "phase": AxesGrid(
-        figures["phase"], fig_size, subgrid, axes_pad=0.05,
+    "phase_2d": AxesGrid(
+        figures["phase_2d"], fig_size, subgrid, axes_pad=0.05,
         add_all=True, share_all=True, cbar_mode="single",
         cbar_size="2%", cbar_pad=0.05, aspect=False)
+}
+
+
+# Data
+data = {
+    "phase_1d": ([], [])
 }
 
 
@@ -77,13 +86,16 @@ def savePlot():
         projection_plot.savePlot(figures["projection_mass"],
                                  "mass")
 
-    if do_plot["phase"]:
-        phase_plot.savePlot(figures["phase"])
+    if do_plot["phase_1d"]:
+        phase_plot.save1DPlot(data["phase_1d"])
+
+    if do_plot["phase_2d"]:
+        phase_plot.save2DPlot(figures["phase_2d"])
 
 
 def doPlot(filename, i, name):
     f = yt.load(filename)
-    if (do_plot["projection_temperature"] or do_plot["phase"]):
+    if (do_plot["projection_temperature"] or do_plot["phase_2d"]):
         add_fields.addTemperature(f)
 
     global scale_factor
@@ -112,10 +124,20 @@ def doPlot(filename, i, name):
             f, name, i, figures["projection_mass"],
             axes["projection_mass"])
 
-    # Phase plot
-    if do_plot["phase"]:
-        phase_plot.doPlot(f, name, i, figures["phase"],
-                          axes["phase"])
+    # 1D Phase plot
+    if do_plot["phase_1d"]:
+        p = phase_plot.do1DPlot(f, name, i)
+        data["phase_1d"][0].append(p)
+        data["phase_1d"][1].append(name)
+
+    # 2D Phase plot
+    if do_plot["phase_2d"]:
+        phase_plot.do2DPlot(f, name, i, figures["phase_2d"],
+                            axes["phase_2d"])
+
+    # halo distribution
+    if do_plot["halo_distribution"]:
+        halo_distribution.doPlot(f, name, i)
 
 
 doPlot(swift, 0, "SWIFT")

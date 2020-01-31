@@ -1,25 +1,45 @@
 #!/usr/bin/env python3
 
 import yt
-from yt.units import Msun, amu, cm, K
+from yt.units import Msun, amu, cm, K, kpc
 from matplotlib.offsetbox import AnchoredText
 import matplotlib.pyplot as plt
 
-
+width = 5 * kpc
 limits_temperature = (1e1 * K, 1e7 * K)
 limits_density = (1e-7 * amu / cm**3, 1e7 * amu / cm**3)
 limits_mass = (1e3 * Msun, 1e7 * Msun)
 
-def savePlot(fig):
-    fig.savefig("phase.png", bbox_inches="tight",
+
+def save2DPlot(fig):
+    fig.savefig("phase_2d.png", bbox_inches="tight",
                 pad_inches=0.03, dpi=300)
 
 
-def doPlot(f, name, i, fig, axes):
-    # limits in g / cm3
-    # u_rho = g / cm**3
-    # limits = [1e-33 * u_rho, 1e-24 * u_rho]
+def save1DPlot(profiles):
+    plt.figure(figsize=(8, 8))
+    plt.tight_layout(pad=0.4, w_pad=0.5, h_pad=0.5)
+    markers = ["s", "o"]
+    for i, p in enumerate(profiles[0]):
+        rho = p.x.in_units("g/cm**3").d
+        mass = p["Masses"].in_units("Msun").d
+        plt.plot(rho, mass, linestyle="-", marker=markers[i],
+                 markeredgecolor='none', linewidth=1.2, alpha=0.8)
+    plt.semilogx()
+    plt.semilogy()
 
+    plt.xlabel("$\mathrm{Density\ (g/cm^3)}$", fontsize='large')
+    plt.ylabel(r"$\mathrm{Mass,}\/\mathrm{d}M\mathrm{/dlog}\/\mathrm{\rho}\/\mathrm{(M_{\odot})}$", fontsize='large')
+    plt.legend(profiles[1], loc=4, frameon=True, ncol=2, fancybox=True)
+    leg = plt.gca().get_legend()
+    ltext = leg.get_texts()
+    plt.setp(ltext, fontsize='small')
+    plt.grid(True)
+
+    plt.savefig("phase_1d.png", bbox_inches='tight', pad_inches=0.03, dpi=300)
+
+
+def do2DPlot(f, name, i, fig, axes):
     p = yt.PhasePlot(
         f, ("PartType0", "density"), ("PartType0", "Temperature"),
         ("PartType0", "mass"),
@@ -54,6 +74,15 @@ def doPlot(f, name, i, fig, axes):
         # p.hide_axes()
     p._setup_plots()
 
-
     at = AnchoredText(name, loc=2, prop=dict(size=6), frameon=True)
     plot.axes.add_artist(at)
+
+
+def do1DPlot(f, name, i):
+    sp = f.sphere("max", width)
+    # Because ParticleProfilePlot doesn't exist, I will do the following trick.
+    p = yt.create_profile(sp, ("PartType0", "density"),  ("PartType0", "Masses"),
+                          weight_field=None, n_bins=50,
+                          accumulation=False)
+
+    return p
