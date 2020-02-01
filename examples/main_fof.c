@@ -673,9 +673,9 @@ int main(int argc, char *argv[]) {
 #endif  // SWIFT_DEBUG_THREADPOOL
 
   /* used parameters */
-  parser_write_params_to_file(params, "fof_used_parameters.yml", 1);
+  parser_write_params_to_file(params, "fof_used_parameters.yml", /*used=*/1);
   /* unused parameters */
-  parser_write_params_to_file(params, "fof_unused_parameters.yml", 0);
+  parser_write_params_to_file(params, "fof_unused_parameters.yml", /*used=*/0);
 
   /* Dump memory use report */
 #ifdef SWIFT_MEMUSE_REPORTS

@@ -1244,13 +1244,15 @@ int main(int argc, char *argv[]) {
     error("Failed to generate restart filename");
 
   /* dump the parameters as used. */
+  if (!restart && myrank == 0) {
 
-  /* used parameters */
-  parser_write_params_to_file(params, "used_parameters.yml", 1);
-  /* unused parameters */
-  parser_write_params_to_file(params, "unused_parameters.yml", 0);
+    /* used parameters */
+    parser_write_params_to_file(params, "used_parameters.yml", /*used=*/1);
+    /* unused parameters */
+    parser_write_params_to_file(params, "unused_parameters.yml", /*used=*/0);
+  }
 
-  /* Dump memory use report if collected for the 0 step. */
+    /* Dump memory use report if collected for the 0 step. */
 #ifdef SWIFT_MEMUSE_REPORTS
   {
     char dumpfile[40];
