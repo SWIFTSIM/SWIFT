@@ -73,14 +73,15 @@ void engine_addtasks_send_gravity(struct engine *e, struct cell *ci,
 #ifdef WITH_MPI
   struct link *l = NULL;
   struct scheduler *s = &e->sched;
+  const int foreign_nodeID = cj->nodeID;
 
   /* Early abort (are we below the level where tasks are)? */
   if (!cell_get_flag(ci, cell_flag_has_tasks)) return;
 
   /* Check if any of the gravity tasks are for the target node. */
   for (l = ci->grav.grav; l != NULL; l = l->next)
-    if (cell_is_local(l->t->ci) ||
-        (l->t->cj != NULL && cell_is_local(l->t->cj)))
+    if (l->t->ci->nodeID == foreign_nodeID ||
+        (l->t->cj != NULL && l->t->cj->nodeID == foreign_nodeID))
       break;
 
   /* If so, attach send tasks. */
