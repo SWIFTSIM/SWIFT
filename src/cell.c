@@ -3473,12 +3473,12 @@ void cell_activate_hydro_send_recv_tasks(struct cell *ci, struct cell *cj,
 
     /* If the foreign cell is active, we want its particles for the limiter. */
     if (cj_active_hydro && with_timestep_limiter) {
-      recv_mask |= (1<< task_subtype_limiter);
+      recv_mask |= (1 << task_subtype_limiter);
     }
 
     /* If the foreign cell is active, we want its ti_end values. */
     if (cj_active_hydro) {
-      recv_mask |= (1<< task_subtype_tend_part);
+      recv_mask |= (1 << task_subtype_tend_part);
     }
 
     /* Is the foreign cell active and will need stuff from us? */
@@ -3500,7 +3500,7 @@ void cell_activate_hydro_send_recv_tasks(struct cell *ci, struct cell *cj,
 
     /* If the local cell is active, send its particles for the limiting. */
     if (ci_active_hydro && with_timestep_limiter) {
-      send_mask |= (1<< task_subtype_limiter);
+      send_mask |= (1 << task_subtype_limiter);
     }
 
     /* If the local cell is active, send its ti_end values. */

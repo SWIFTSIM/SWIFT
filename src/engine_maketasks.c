@@ -191,11 +191,11 @@ void engine_mark_cells_for_hydro_send_recv(struct engine *e, struct cell *ci,
  * @param with_sync Are we running with time-step synchronization?
  */
 void engine_addtasks_send_hydro(struct engine *e, struct cell *ci,
-                                struct cell *cj, int proxy_id, 
-                                struct task *t_xv,
-                                struct task *t_rho, struct task *t_gradient,
-                                struct task *t_ti, struct task *t_limiter,
-                                const int with_limiter, const int with_sync) {
+                                struct cell *cj, int proxy_id,
+                                struct task *t_xv, struct task *t_rho,
+                                struct task *t_gradient, struct task *t_ti,
+                                struct task *t_limiter, const int with_limiter,
+                                const int with_sync) {
 
 #ifdef WITH_MPI
   struct scheduler *s = &e->sched;
@@ -219,10 +219,10 @@ void engine_addtasks_send_hydro(struct engine *e, struct cell *ci,
     t_ti = scheduler_addtask(s, task_type_send, task_subtype_tend_part,
                              proxy_id, 0, ci, cj);
 
-      if (with_limiter) {
-        t_limiter = scheduler_addtask(s, task_type_send, task_subtype_limiter,
-                                      ci->mpi.tag, 0, ci, cj);
-      }
+    if (with_limiter) {
+      t_limiter = scheduler_addtask(s, task_type_send, task_subtype_limiter,
+                                    ci->mpi.tag, 0, ci, cj);
+    }
 
 #ifdef EXTRA_HYDRO_LOOP
 
@@ -258,7 +258,7 @@ void engine_addtasks_send_hydro(struct engine *e, struct cell *ci,
     scheduler_addunlock(s, ci->hydro.super->hydro.drift, t_xv);
 
     scheduler_addunlock(s, ci->super->timestep, t_ti);
-      if (with_limiter) scheduler_addunlock(s, ci->super->timestep, t_limiter);
+    if (with_limiter) scheduler_addunlock(s, ci->super->timestep, t_limiter);
   }
 
   /* If we have send tasks, link this cell and its task to them. */
@@ -614,8 +614,9 @@ void engine_addtasks_recv_hydro(struct engine *e, struct cell *c, int proxy_id,
   if (c->split)
     for (int k = 0; k < 8; k++)
       if (c->progeny[k] != NULL)
-        engine_addtasks_recv_hydro(e, c->progeny[k], proxy_id, t_xv, t_rho, t_gradient,
-                                   t_ti, t_limiter, with_limiter, with_sync);
+        engine_addtasks_recv_hydro(e, c->progeny[k], proxy_id, t_xv, t_rho,
+                                   t_gradient, t_ti, t_limiter, with_limiter,
+                                   with_sync);
 
 #else
   error("SWIFT was not compiled with MPI support.");
