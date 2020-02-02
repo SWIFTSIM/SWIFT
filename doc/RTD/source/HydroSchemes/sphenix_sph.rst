@@ -67,3 +67,14 @@ There is also a compile-time parameter, ``viscosity_beta`` that we set to
 ``hydro_props_default_viscosity_alpha_feedback_reset = 2.0`` and the
 diffusion is set to ``hydro_props_default_diffusion_alpha_feedback_reset =
 0.0``. These can be changed in ``src/hydro/SPHENIX/hydro_parameters.h``.
+
+Pressure Floor
+~~~~~~~~~~~~~~
+
+The pressure floor is implemented for this scheme. The 
+pressure floor is used in the sound-speed and hence the
+time-step will be lower in this case than if the pressure
+floor was not taken into account. The only other impact
+of the pressure floor is in the force loop, where the
+sub-grid floor pressure is used instead of the pressure
+calculated from the internal energy and density.

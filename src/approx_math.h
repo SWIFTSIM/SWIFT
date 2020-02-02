@@ -50,10 +50,10 @@ __attribute__((always_inline, const)) INLINE static float approx_erfcf(
  * @brief Approximate version of expf(x) using a 4th order Taylor expansion
  *
  * The absolute error is smaller than 3 * 10^-6 for -0.2 < x < 0.2.
- * The absolute error is smaller than 2 * 10^-7 for -0.1 < x < 0.1.
+ * The absolute error is smaller than 3 * 10^-7 for -0.1 < x < 0.1.
 
  * The relative error is smaller than 1 * 10^-6 for -0.2 < x < 0.2.
- * The relative error is smaller than 4 * 10^-8 for -0.1 < x < 0.1.
+ * The relative error is smaller than 3 * 10^-7 for -0.1 < x < 0.1.
  *
  * @param x The number to take the exponential of.
  */

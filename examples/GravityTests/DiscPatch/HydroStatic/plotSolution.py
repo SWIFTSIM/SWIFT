@@ -62,11 +62,9 @@ def get_analytic_pressure(x):
 def get_data(name):
   file = h5py.File(name, "r")
   coords = np.array(file["/PartType0/Coordinates"])
-  rho = np.array(file["/PartType0/Density"])
-  u = np.array(file["/PartType0/InternalEnergy"])
+  rho = np.array(file["/PartType0/Densities"])
   v = np.array(file["/PartType0/Velocities"])
-
-  P = (gamma - 1.) * rho * u
+  P = np.array(file["/PartType0/Pressures"])
 
   vtot = np.sqrt( v[:,0]**2 + v[:,1]**2 + v[:,2]**2 )
 
@@ -79,7 +77,7 @@ for f in sorted(glob.glob("Disc-Patch_*.hdf5")):
   if num < start or num > stop:
     continue
 
-  print "processing", f, "..."
+  print("processing", f, "...")
 
   xrange = np.linspace(0., 2. * x_disc, 1000)
   time, x, rho, P, v = get_data(f)

@@ -128,19 +128,22 @@ int main(int argc, char* argv[]) {
     double total2ID = 0.;
 
     /* Pearson correlation for different processes */
-    double pearson_star_sf = 0.;
+    double pearson_star_sf_1 = 0.;
+    double pearson_star_sf_2 = 0.;
     double pearson_star_se = 0.;
     double pearson_star_bh = 0.;
-    double pearson_sf_se = 0.;
-    double pearson_sf_bh = 0.;
+    double pearson_sf_1_se = 0.;
+    double pearson_sf_1_bh = 0.;
     double pearson_se_bh = 0.;
 
     /* Calculate the mean and <x^2> for these processes */
-    double total_sf = 0.;
+    double total_sf_1 = 0.;
+    double total_sf_2 = 0.;
     double total_se = 0.;
     double total_bh = 0.;
 
-    double total2_sf = 0.;
+    double total2_sf_1 = 0.;
+    double total2_sf_2 = 0.;
     double total2_se = 0.;
     double total2_bh = 0.;
 
@@ -154,7 +157,7 @@ int main(int argc, char* argv[]) {
       const double r =
           random_unit_interval(id, ti_current, random_number_star_formation);
       if (r < 0.0 || r >= 1.0) {
-        error("Generated random vlaue %f is not in [0, 1).", r);
+        error("Generated random value %f is not in [0, 1).", r);
       }
 
       total += r;
@@ -170,7 +173,7 @@ int main(int argc, char* argv[]) {
       const double r_2ndid = random_unit_interval(idoffset, ti_current,
                                                   random_number_star_formation);
       if (r_2ndid < 0.0 || r_2ndid >= 1.0) {
-        error("Generated random vlaue %f is not in [0, 1).", r_2ndid);
+        error("Generated random value %f is not in [0, 1).", r_2ndid);
       }
 
       /* Pearson correlation for small different IDs */
@@ -181,38 +184,47 @@ int main(int argc, char* argv[]) {
       /* Calculate random numbers for the different processes and check
        * that they are uncorrelated */
 
-      const double r_sf =
-          random_unit_interval(id, ti_current, random_number_stellar_feedback);
-      if (r_sf < 0.0 || r_sf >= 1.0) {
-        error("Generated random vlaue %f is not in [0, 1).", r_sf);
+      const double r_sf_1 = random_unit_interval(
+          id, ti_current, random_number_stellar_feedback_1);
+      if (r_sf_1 < 0.0 || r_sf_1 >= 1.0) {
+        error("Generated random value %f is not in [0, 1).", r_sf_1);
+      }
+
+      const double r_sf_2 = random_unit_interval(
+          id, ti_current, random_number_stellar_feedback_2);
+      if (r_sf_2 < 0.0 || r_sf_2 >= 1.0) {
+        error("Generated random value %f is not in [0, 1).", r_sf_2);
       }
 
       const double r_se = random_unit_interval(
           id, ti_current, random_number_stellar_enrichment);
       if (r_se < 0.0 || r_se >= 1.0) {
-        error("Generated random vlaue %f is not in [0, 1).", r_se);
+        error("Generated random value %f is not in [0, 1).", r_se);
       }
 
       const double r_bh =
           random_unit_interval(id, ti_current, random_number_BH_feedback);
       if (r_bh < 0.0 || r_bh >= 1.0) {
-        error("Generated random vlaue %f is not in [0, 1).", r_bh);
+        error("Generated random value %f is not in [0, 1).", r_bh);
       }
 
       /* Calculate the correlation between the different processes */
-      total_sf += r_sf;
+      total_sf_1 += r_sf_1;
+      total_sf_2 += r_sf_2;
       total_se += r_se;
       total_bh += r_bh;
 
-      total2_sf += r_sf * r_sf;
+      total2_sf_1 += r_sf_1 * r_sf_1;
+      total2_sf_2 += r_sf_2 * r_sf_2;
       total2_se += r_se * r_se;
       total2_bh += r_bh * r_bh;
 
-      pearson_star_sf += r * r_sf;
+      pearson_star_sf_1 += r * r_sf_1;
+      pearson_star_sf_2 += r * r_sf_2;
       pearson_star_se += r * r_se;
       pearson_star_bh += r * r_bh;
-      pearson_sf_se += r_sf * r_se;
-      pearson_sf_bh += r_sf * r_bh;
+      pearson_sf_1_se += r_sf_1 * r_se;
+      pearson_sf_1_bh += r_sf_1 * r_bh;
       pearson_se_bh += r_se * r_bh;
     }
 
@@ -234,25 +246,29 @@ int main(int argc, char* argv[]) {
         pearsonfunc(mean, meanID, pearsonIDs, var, varID, count);
 
     /* Mean and <x^2> for different processes */
-    const double mean_sf = total_sf / (double)count;
+    const double mean_sf_1 = total_sf_1 / (double)count;
+    const double mean_sf_2 = total_sf_2 / (double)count;
     const double mean_se = total_se / (double)count;
     const double mean_bh = total_bh / (double)count;
 
-    const double var_sf = total2_sf / (double)count - mean_sf * mean_sf;
+    const double var_sf_1 = total2_sf_1 / (double)count - mean_sf_1 * mean_sf_1;
+    const double var_sf_2 = total2_sf_2 / (double)count - mean_sf_2 * mean_sf_2;
     const double var_se = total2_se / (double)count - mean_se * mean_se;
     const double var_bh = total2_bh / (double)count - mean_bh * mean_bh;
 
     /* Correlation between different processes */
-    const double corr_star_sf =
-        pearsonfunc(mean, mean_sf, pearson_star_sf, var, var_sf, count);
+    const double corr_star_sf_1 =
+        pearsonfunc(mean, mean_sf_1, pearson_star_sf_1, var, var_sf_1, count);
+    const double corr_star_sf_2 =
+        pearsonfunc(mean, mean_sf_2, pearson_star_sf_2, var, var_sf_2, count);
     const double corr_star_se =
         pearsonfunc(mean, mean_se, pearson_star_se, var, var_se, count);
     const double corr_star_bh =
         pearsonfunc(mean, mean_bh, pearson_star_bh, var, var_bh, count);
-    const double corr_sf_se =
-        pearsonfunc(mean_sf, mean_se, pearson_sf_se, var_sf, var_se, count);
-    const double corr_sf_bh =
-        pearsonfunc(mean_sf, mean_bh, pearson_sf_bh, var_sf, var_bh, count);
+    const double corr_sf_1_se = pearsonfunc(mean_sf_1, mean_se, pearson_sf_1_se,
+                                            var_sf_1, var_se, count);
+    const double corr_sf_1_bh = pearsonfunc(mean_sf_1, mean_bh, pearson_sf_1_bh,
+                                            var_sf_1, var_bh, count);
     const double corr_se_bh =
         pearsonfunc(mean_se, mean_bh, pearson_se_bh, var_se, var_bh, count);
 
@@ -277,11 +293,14 @@ int main(int argc, char* argv[]) {
     if ((fabs(mean - 0.5) > tolmean) || (fabs(var - 1. / 12.) > tolvar) ||
         (fabs(correlation) > tolcorr) || (fabs(correlationID) > tolcorr) ||
         (fabs(meanID - 0.5) > tolmean) || (fabs(varID - 1. / 12.) > tolvar) ||
-        (fabs(corr_star_sf) > tolcorr) || (fabs(corr_star_se) > tolcorr) ||
-        (fabs(corr_star_bh) > tolcorr) || (fabs(corr_sf_se) > tolcorr) ||
-        (fabs(corr_sf_bh) > tolcorr) || (fabs(corr_se_bh) > tolcorr) ||
-        (fabs(mean_sf - 0.5) > tolmean) || (fabs(mean_se - 0.5) > tolmean) ||
-        (fabs(mean_bh - 0.5) > tolmean) || (fabs(var_sf - 1. / 12.) > tolvar) ||
+        (fabs(corr_star_sf_1) > tolcorr) || (fabs(corr_star_sf_2) > tolcorr) ||
+        (fabs(corr_star_se) > tolcorr) || (fabs(corr_star_bh) > tolcorr) ||
+        (fabs(corr_sf_1_se) > tolcorr) || (fabs(corr_sf_1_bh) > tolcorr) ||
+        (fabs(corr_se_bh) > tolcorr) || (fabs(mean_sf_1 - 0.5) > tolmean) ||
+        (fabs(mean_sf_2 - 0.5) > tolmean) || (fabs(mean_se - 0.5) > tolmean) ||
+        (fabs(mean_bh - 0.5) > tolmean) ||
+        (fabs(var_sf_1 - 1. / 12.) > tolvar) ||
+        (fabs(var_sf_2 - 1. / 12.) > tolvar) ||
         (fabs(var_se - 1. / 12.) > tolvar) ||
         (fabs(var_bh - 1. / 12.) > tolvar)) {
       message("Test failed!");
@@ -311,7 +330,7 @@ int main(int argc, char* argv[]) {
       message(
           "Means:    stars=%f stellar feedback=%f stellar "
           " enrichment=%f black holes=%f",
-          mean, mean_sf, mean_se, mean_bh);
+          mean, mean_sf_1, mean_se, mean_bh);
       message(
           "Expected: stars=%f stellar feedback=%f stellar "
           " enrichment=%f black holes=%f",
@@ -323,13 +342,13 @@ int main(int argc, char* argv[]) {
       message(
           "Diff:     stars=%f stellar feedback=%f stellar "
           " enrichment=%f black holes=%f",
-          fabs(mean - .5f), fabs(mean_sf - .5f), fabs(mean_se - .5f),
+          fabs(mean - .5f), fabs(mean_sf_1 - .5f), fabs(mean_se - .5f),
           fabs(mean_bh - .5f));
       message(" ");
       message(
           "Var:      stars=%f stellar feedback=%f stellar "
           " enrichment=%f black holes=%f",
-          var, var_sf, var_se, var_bh);
+          var, var_sf_1, var_se, var_bh);
       message(
           "Expected: stars=%f stellar feedback=%f stellar "
           " enrichment=%f black holes=%f",
@@ -341,14 +360,14 @@ int main(int argc, char* argv[]) {
       message(
           "Diff:     stars=%f stellar feedback=%f stellar "
           " enrichment=%f black holes=%f",
-          fabs(var - 1. / 12.), fabs(var_sf - 1. / 12.),
+          fabs(var - 1. / 12.), fabs(var_sf_1 - 1. / 12.),
           fabs(var_se - 1. / 12.), fabs(var_bh - 1. / 12.));
       message(" ");
       message(
           "Correlation: stars-sf=%f stars-se=%f stars-bh=%f "
           "sf-se=%f sf-bh=%f se-bh=%f",
-          corr_star_sf, corr_star_se, corr_star_bh, corr_sf_se, corr_sf_bh,
-          corr_se_bh);
+          corr_star_sf_1, corr_star_se, corr_star_bh, corr_sf_1_se,
+          corr_sf_1_bh, corr_se_bh);
       message(
           "Expected:    stars-sf=%f stars-se=%f stars-bh=%f "
           "sf-se=%f sf-bh=%f se-bh=%f",
@@ -358,10 +377,11 @@ int main(int argc, char* argv[]) {
           "sf-se=%f sf-bh=%f se-bh=%f",
           tolcorr, tolcorr, tolcorr, tolcorr, tolcorr, tolcorr);
       message(
-          "Diff:        stars-sf=%f stars-se=%f stars-bh=%f "
+          "Diff:        stars-sf1=%f stars-sf2=%f stars-se=%f stars-bh=%f "
           "sf-se=%f sf-bh=%f se-bh=%f",
-          fabs(corr_star_sf), fabs(corr_star_se), fabs(corr_star_bh),
-          fabs(corr_sf_se), fabs(corr_sf_bh), fabs(corr_se_bh));
+          fabs(corr_star_sf_1), fabs(corr_star_sf_2), fabs(corr_star_se),
+          fabs(corr_star_bh), fabs(corr_sf_1_se), fabs(corr_sf_1_bh),
+          fabs(corr_se_bh));
       return 1;
     }
   }

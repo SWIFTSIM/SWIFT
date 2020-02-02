@@ -106,6 +106,7 @@ __attribute__((always_inline)) INLINE static double cooling_rate_cgs(
  * @param cooling The #cooling_function_data used in the run.
  * @param p Pointer to the particle data.
  * @param xp Pointer to the particle' extended data.
+ * @param time The current time.
  * @param dt The time-step of this particle.
  * @param dt_therm The time-step operator used for thermal quantities.
  */
@@ -116,8 +117,8 @@ __attribute__((always_inline)) INLINE static void cooling_cool_part(
     const struct hydro_props* hydro_props,
     const struct entropy_floor_properties* floor_props,
     const struct cooling_function_data* restrict cooling,
-    struct part* restrict p, struct xpart* restrict xp, const float dt,
-    const float dt_therm) {
+    struct part* restrict p, struct xpart* restrict xp, const double time,
+    const float dt, const float dt_therm) {
 
   /* Nothing to do here? */
   if (dt == 0.) return;
@@ -234,6 +235,7 @@ __attribute__((always_inline)) INLINE static float cooling_timestep(
  * @param phys_const The physical constants in internal units.
  * @param cooling The properties of the cooling function.
  * @param us The internal system of units.
+ * @param hydro_props The properties of the hydro scheme.
  * @param cosmo The current cosmological model.
  * @param p Pointer to the particle data.
  * @param xp Pointer to the extended particle data.
@@ -241,6 +243,7 @@ __attribute__((always_inline)) INLINE static float cooling_timestep(
 __attribute__((always_inline)) INLINE static void cooling_first_init_part(
     const struct phys_const* restrict phys_const,
     const struct unit_system* restrict us,
+    const struct hydro_props* hydro_props,
     const struct cosmology* restrict cosmo,
     const struct cooling_function_data* restrict cooling,
     const struct part* restrict p, struct xpart* restrict xp) {

@@ -222,10 +222,6 @@ INLINE static void hydro_write_flavour(hid_t h_grpsph) {
                        "Simple treatment as in Price (2008)");
   io_write_attribute_s(h_grpsph, "Viscosity Model",
                        "Simplified version of Cullen & Denhen (2011)");
-
-  /* Time integration properties */
-  io_write_attribute_f(h_grpsph, "Maximal Delta u change over dt",
-                       const_max_u_change);
 }
 
 /**

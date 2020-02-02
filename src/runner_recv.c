@@ -232,7 +232,7 @@ void runner_do_recv_spart(struct runner *r, struct cell *c, int clear_sorts,
     /* Collect everything... */
     for (size_t k = 0; k < nr_sparts; k++) {
 #ifdef DEBUG_INTERACTIONS_STARS
-      sparts[k].num_ngb_force = 0;
+      sparts[k].num_ngb_feedback = 0;
 #endif
       if (sparts[k].time_bin == time_bin_inhibited) continue;
       time_bin_min = min(time_bin_min, sparts[k].time_bin);

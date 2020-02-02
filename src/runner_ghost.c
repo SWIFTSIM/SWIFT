@@ -74,6 +74,7 @@ void runner_do_stars_ghost(struct runner *r, struct cell *c, int timer) {
   struct spart *restrict sparts = c->stars.parts;
   const struct engine *e = r->e;
   const struct unit_system *us = e->internal_units;
+  const struct phys_const *phys_const = e->physical_constants;
   const int with_cosmology = (e->policy & engine_policy_cosmology);
   const struct cosmology *cosmo = e->cosmology;
   const struct feedback_props *feedback_props = e->feedback_props;
@@ -239,9 +240,9 @@ void runner_do_stars_ghost(struct runner *r, struct cell *c, int timer) {
                     star_age_end_of_step - dt_enrichment;
 
                 /* Compute the stellar evolution  */
-                feedback_evolve_spart(sp, feedback_props, cosmo, us,
+                feedback_evolve_spart(sp, feedback_props, cosmo, us, phys_const,
                                       star_age_beg_of_step, dt_enrichment,
-                                      e->time, with_cosmology);
+                                      e->time, ti_begin, with_cosmology);
               } else {
 
                 /* Reset the feedback fields of the star particle */
@@ -382,9 +383,9 @@ void runner_do_stars_ghost(struct runner *r, struct cell *c, int timer) {
                 star_age_end_of_step - dt_enrichment;
 
             /* Compute the stellar evolution  */
-            feedback_evolve_spart(sp, feedback_props, cosmo, us,
+            feedback_evolve_spart(sp, feedback_props, cosmo, us, phys_const,
                                   star_age_beg_of_step, dt_enrichment, e->time,
-                                  with_cosmology);
+                                  ti_begin, with_cosmology);
           } else {
 
             /* Reset the feedback fields of the star particle */
@@ -1054,7 +1055,7 @@ void runner_do_ghost(struct runner *r, struct cell *c, int timer) {
           hydro_end_density(p, cosmo);
           chemistry_end_density(p, chemistry, cosmo);
           pressure_floor_end_density(p, cosmo);
-          star_formation_end_density(p, star_formation, cosmo);
+          star_formation_end_density(p, xp, star_formation, cosmo);
 
           /* Are we using the alternative definition of the
              number of neighbours? */

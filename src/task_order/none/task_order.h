@@ -19,7 +19,21 @@
 #ifndef SWIFT_TASK_ORDER_NONE_H
 #define SWIFT_TASK_ORDER_NONE_H
 
+/**
+ * @file task_order/none/task_order.h
+ * @brief Defines the order of the subgrid tasks when no subgrid model has
+ * been specified. Defaults to the EAGLE model.
+ */
+
+/**
+ * Is the star-formation task running before the feedback task?
+ */
 #define task_order_star_formation_before_feedback 1
+
+/**
+ * Is the cooling task running after the time-step calculation task?
+ */
+#define task_order_cooling_after_timestep 0
 
 /**
  * @brief Place the star formation cell at the right place in the dependency

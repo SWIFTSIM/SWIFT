@@ -42,11 +42,12 @@
  * generator.
  * In case new numbers need to be added other possible
  * numbers could be:
- * 5947309451, 6977309513
+ * 5947309451
  */
 enum random_number_type {
   random_number_star_formation = 0LL,
-  random_number_stellar_feedback = 3947008991LL,
+  random_number_stellar_feedback_1 = 3947008991LL,
+  random_number_stellar_feedback_2 = 6977309513LL,
   random_number_stellar_enrichment = 2936881973LL,
   random_number_BH_feedback = 1640531371LL,
   random_number_BH_swallow = 4947009007LL
@@ -107,7 +108,7 @@ INLINE static double inl_erand48(uint16_t xsubi[3]) {
   temp.ieee.negative = 0;
   temp.ieee.exponent = IEEE754_DOUBLE_BIAS;
   temp.ieee.mantissa0 = (xsubi[2] << 4) | (xsubi[1] >> 12);
-  temp.ieee.mantissa1 = ((xsubi[1] & 0xfff) << 20) | (xsubi[0] << 4);
+  temp.ieee.mantissa1 = (((uint32_t)xsubi[1] & 0xfff) << 20) | (xsubi[0] << 4);
 
   /* Please note the lower 4 bits of mantissa1 are always 0.  */
   return temp.d - 1.0;

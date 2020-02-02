@@ -1463,8 +1463,8 @@ int main(int argc, char *argv[]) {
   if (with_verbose_timers) timers_close_file();
   if (with_cosmology) cosmology_clean(e.cosmology);
   if (with_self_gravity) pm_mesh_clean(e.mesh);
-  if (with_cooling || with_temperature) cooling_clean(&cooling_func);
-  if (with_feedback) feedback_clean(&feedback_properties);
+  if (with_cooling || with_temperature) cooling_clean(e.cooling_func);
+  if (with_feedback) feedback_clean(e.feedback_props);
   engine_clean(&e, /*fof=*/0);
   free(params);
 

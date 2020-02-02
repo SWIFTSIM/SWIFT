@@ -2658,6 +2658,13 @@ void engine_dump_restarts(struct engine *e, int drifted_all, int force) {
       if (!drifted_all) engine_drift_all(e, /*drift_mpole=*/1);
       restart_write(e, e->restart_file);
 
+#ifdef WITH_MPI
+      /* Make sure all ranks finished writing to avoid having incomplete
+       * sets of restart files should the code crash before all the ranks
+       * are done */
+      MPI_Barrier(MPI_COMM_WORLD);
+#endif
+
       if (e->verbose)
         message("Dumping restart files took %.3f %s",
                 clocks_from_ticks(getticks() - tic), clocks_getunit());
@@ -3173,7 +3180,7 @@ void engine_collect_stars_counter(struct engine *e) {
 
   /* Reset counters */
   for (size_t i = 0; i < e->s->nr_sparts_foreign; i++) {
-    e->s->sparts_foreign[i].num_ngb_force = 0;
+    e->s->sparts_foreign[i].num_ngb_feedback = 0;
   }
 
   /* Update counters */
@@ -3193,7 +3200,7 @@ void engine_collect_stars_counter(struct engine *e) {
               id_j, j, displs[engine_rank], n_sparts_int[engine_rank]);
         }
 
-        local_sparts[i].num_ngb_force += sparts[j].num_ngb_force;
+        local_sparts[i].num_ngb_feedback += sparts[j].num_ngb_feedback;
       }
     }
   }
@@ -3427,7 +3434,7 @@ void engine_init(struct engine *e, struct space *s, struct swift_params *params,
                  const struct entropy_floor_properties *entropy_floor,
                  struct gravity_props *gravity, const struct stars_props *stars,
                  const struct black_holes_props *black_holes,
-                 const struct feedback_props *feedback, struct pm_mesh *mesh,
+                 struct feedback_props *feedback, struct pm_mesh *mesh,
                  const struct external_potential *potential,
                  struct cooling_function_data *cooling_func,
                  const struct star_formation *starform,
