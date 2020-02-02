@@ -493,7 +493,7 @@ void engine_addtasks_send_black_holes(struct engine *e, struct cell *ci,
 void engine_addtasks_recv_hydro(struct engine *e, struct cell *c, int proxy_id,
                                 struct task *t_xv, struct task *t_rho,
                                 struct task *t_gradient, struct task *t_ti,
-                                struc task *t_limiter, int with_limiter,
+                                struct task *t_limiter, int with_limiter,
                                 int with_sync) {
 #ifdef WITH_MPI
   struct scheduler *s = &e->sched;
@@ -551,7 +551,7 @@ void engine_addtasks_recv_hydro(struct engine *e, struct cell *c, int proxy_id,
         scheduler_addunlock(s, l->t, t_ti);
       }
 #endif
-
+    }
   }
 
   /* If we have recv tasks, add them to this cell and its tasks. */
