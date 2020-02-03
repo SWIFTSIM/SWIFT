@@ -2460,8 +2460,9 @@ void DOSUB_PAIR1(struct runner *r, struct cell *ci, struct cell *cj,
   double shift[3];
   const int sid = space_getsid(s, &ci, &cj, shift);
 
-  /* We reached a leaf */
-  if (!ci->split || !cj->split) {
+  /* We reached a leaf OR a cell small enough to be processed quickly */
+  if (!ci->split || ci->hydro.count < space_recurse_size_pair_hydro ||
+      !cj->split || cj->hydro.count < space_recurse_size_pair_hydro) {
 
     /* Do any of the cells need to be sorted first?
      * Since h_max might have changed, we may not have sorted at this level */
@@ -2504,6 +2505,10 @@ void DOSUB_PAIR1(struct runner *r, struct cell *ci, struct cell *cj,
         runner_do_hydro_sort(r, cj, (1 << sid), 0, 0);
       }
 
+      /* message("Multi-level PAIR! ci->count=%d cj->count=%d", ci->hydro.count,
+       */
+      /* 	      cj->hydro.count); */
+
       /* Interact all *active* particles with h in the range [dmin/2, dmin)
          with all their neighbours */
       DOPAIR1_BRANCH(r, ci, cj, /*limit_h_min=*/1, /*limit_h_max=*/1);
@@ -2539,8 +2544,8 @@ void DOSUB_SELF1(struct runner *r, struct cell *c, int recurse_below_h_max,
   /* Should we even bother? */
   if (c->hydro.count == 0 || !cell_is_active_hydro(c, r->e)) return;
 
-  /* We reached a leaf */
-  if (!c->split) {
+  /* We reached a leaf OR a cell small enough to process quickly */
+  if (!c->split || c->hydro.count < space_recurse_size_self_hydro) {
 
     /* We interact all particles in that cell:
        - No limit on the smallest h
@@ -2559,6 +2564,8 @@ void DOSUB_SELF1(struct runner *r, struct cell *c, int recurse_below_h_max,
     /* If some particles are larger than the daughter cells, we must
        process them at this level before going deeper */
     if (recurse_below_h_max) {
+
+      /* message("Multi-level SELF! c->count=%d", c->hydro.count); */
 
       /* Interact all *active* particles with h in the range [dmin/2, dmin)
          with all their neighbours */

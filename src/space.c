@@ -68,6 +68,10 @@ int space_subsize_self_grav = space_subsize_self_grav_default;
 int space_subdepth_diff_grav = space_subdepth_diff_grav_default;
 int space_maxsize = space_maxsize_default;
 
+/* Recursion sizes */
+int space_recurse_size_self_hydro = 100;
+int space_recurse_size_pair_hydro = 100;
+
 /*! Number of extra #part we allocate memory for per top-level cell */
 int space_extra_parts = space_extra_parts_default;
 
