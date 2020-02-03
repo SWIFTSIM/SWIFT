@@ -224,7 +224,8 @@ void *runner_main(void *data) {
 
         case task_type_pair:
           if (t->subtype == task_subtype_density)
-            runner_dopair1_branch_density(r, ci, cj);
+            runner_dopair1_branch_density(r, ci, cj, /*limit_min_h=*/0,
+                                          /*limit_max_h=*/0);
 #ifdef EXTRA_HYDRO_LOOP
           else if (t->subtype == task_subtype_gradient)
             runner_dopair1_branch_gradient(r, ci, cj);
