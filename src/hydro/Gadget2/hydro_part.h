@@ -206,7 +206,12 @@ struct part {
 #endif
 
 #ifdef SWIFT_HYDRO_DENSITY_CHECKS
+
+  /*! Exact value of the density field obtained via brute-force loop */
   float rho_exact;
+
+  /*! Has this particle interacted with any unhibited neighbour? */
+  char inhibited_exact;
 #endif
 
 } SWIFT_STRUCT_ALIGN;

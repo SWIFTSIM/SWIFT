@@ -467,6 +467,7 @@ __attribute__((always_inline)) INLINE static void hydro_init_part(
 
 #ifdef SWIFT_HYDRO_DENSITY_CHECKS
   p->rho_exact = 0.f;
+  p->inhibited_exact = 0;
 #endif
 }
 

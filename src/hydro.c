@@ -71,7 +71,6 @@ void hydro_exact_density_compute_mapper(void *map_data, int nr_parts,
       for (int j = 0; j < (int)s->nr_parts; ++j) {
 
         const struct part *pj = &s->parts[j];
-        if (part_is_inhibited(pj, e)) continue;
 
         /* Compute the pairwise distance. */
         double dx = pj->x[0] - pix[0];
@@ -101,6 +100,9 @@ void hydro_exact_density_compute_mapper(void *map_data, int nr_parts,
 
           /* Density */
           rho_exact += mj * wi;
+
+          /* Flag that we found an inhibited neighbour */
+          if (part_is_inhibited(pj, e)) pi->inhibited_exact = 1;
         }
       }
 
@@ -200,13 +202,14 @@ void hydro_exact_density_check(struct space *s, const struct engine *e,
 
     const struct part *pi = &parts[i];
     const long long id = pi->id;
+    const int found_inhibited = pi->inhibited_exact;
 
     if (id % SWIFT_HYDRO_DENSITY_CHECKS == 0 && part_is_starting(pi, e)) {
 
       fprintf(file_swift, "%18lld %16.8e %16.8e %16.8e %16.8e %16.8e\n", id,
               pi->x[0], pi->x[1], pi->x[2], pi->h, pi->rho_exact);
 
-      if (fabsf(pi->rho / pi->rho_exact - 1.f) > rel_tol) {
+      if (!found_inhibited && fabsf(pi->rho / pi->rho_exact - 1.f) > rel_tol) {
         message("id=%lld", id);
         wrong++;
       }
