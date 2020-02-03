@@ -1034,11 +1034,14 @@ void DOSELF_SUBSET_BRANCH(struct runner *r, struct cell *restrict ci,
  * @param r The #runner.
  * @param ci The first #cell.
  * @param cj The second #cell.
+ * @param limit_min_h Only consider particles with h >= c->dmin/2.
+ * @param limit_max_h Only consider particles with h < c->dmin.
  * @param sid The direction of the pair.
  * @param shift The shift vector to apply to the particles in ci.
  */
-void DOPAIR1(struct runner *r, struct cell *ci, struct cell *cj, const int sid,
-             const double *shift) {
+void DOPAIR1(struct runner *r, struct cell *restrict ci,
+             struct cell *restrict cj, const int limit_min_h,
+             const int limit_max_h, const int sid, const double shift[3]) {
 
   const struct engine *restrict e = r->e;
   const struct cosmology *restrict cosmo = e->cosmology;
@@ -1047,8 +1050,6 @@ void DOPAIR1(struct runner *r, struct cell *ci, struct cell *cj, const int sid,
   const integertime_t t_current = e->ti_current;
   const int with_cosmology = (e->policy & engine_policy_cosmology);
 #endif
-
-  error("Not implemented yet!");
 
   TIMER_TIC;
 
@@ -1084,6 +1085,10 @@ void DOPAIR1(struct runner *r, struct cell *ci, struct cell *cj, const int sid,
   const double dj_min = sort_j[0].d;
   const float dx_max = (ci->hydro.dx_max_sort + cj->hydro.dx_max_sort);
 
+  /* Get the limits in h (if any) */
+  const float h_min = limit_min_h ? ci->dmin * 0.5 * (1. / kernel_gamma) : 0.;
+  const float h_max = limit_max_h ? ci->dmin * (1. / kernel_gamma) : FLT_MAX;
+
   /* Cosmological terms */
   const float a = cosmo->a;
   const float H = cosmo->H;
@@ -1101,6 +1106,10 @@ void DOPAIR1(struct runner *r, struct cell *ci, struct cell *cj, const int sid,
 
       /* Skip inactive particles */
       if (!part_is_active(pi, e)) continue;
+
+      /* Skip particles not in the range of h we care about */
+      if (hi >= h_max) continue;
+      if (hi < h_min) continue;
 
 #ifdef SWIFT_DEBUG_CHECKS
       if (hi > ci->hydro.h_max_active)
@@ -1172,6 +1181,11 @@ void DOPAIR1(struct runner *r, struct cell *ci, struct cell *cj, const int sid,
         /* Hit or miss? */
         if (r2 < hig2) {
 
+#ifdef SWIFT_DEBUG_CHECKS
+          if (hi * kernel_gamma > ci->dmin)
+            error("h_i too large for this cell!");
+#endif
+
           IACT_NONSYM(r2, dx, hi, hj, pi, pj, a, H);
 #if (FUNCTION_TASK_LOOP == TASK_LOOP_DENSITY)
           runner_iact_nonsym_chemistry(r2, dx, hi, hj, pi, pj, a, H);
@@ -1201,6 +1215,10 @@ void DOPAIR1(struct runner *r, struct cell *ci, struct cell *cj, const int sid,
 
       /* Skip inactive particles */
       if (!part_is_active(pj, e)) continue;
+
+      /* Skip particles not in the range of h we care about */
+      if (hj >= h_max) continue;
+      if (hj < h_min) continue;
 
 #ifdef SWIFT_DEBUG_CHECKS
       if (hj > cj->hydro.h_max_active)
@@ -1271,6 +1289,11 @@ void DOPAIR1(struct runner *r, struct cell *ci, struct cell *cj, const int sid,
 
         /* Hit or miss? */
         if (r2 < hjg2) {
+
+#ifdef SWIFT_DEBUG_CHECKS
+          if (hj * kernel_gamma > cj->dmin)
+            error("h_j too large for this cell!");
+#endif
 
           IACT_NONSYM(r2, dx, hj, hi, pj, pi, a, H);
 #if (FUNCTION_TASK_LOOP == TASK_LOOP_DENSITY)
@@ -1383,7 +1406,7 @@ void DOPAIR1_BRANCH(struct runner *r, struct cell *ci, struct cell *cj,
   else
     DOPAIR1(r, ci, cj, sid, shift);
 #else
-  DOPAIR1(r, ci, cj, sid, shift);
+  DOPAIR1(r, ci, cj, limit_min_h, limit_max_h, sid, shift);
 #endif
 }
 
