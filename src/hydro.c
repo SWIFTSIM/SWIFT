@@ -203,6 +203,7 @@ void hydro_exact_density_check(struct space *s, const struct engine *e,
     const struct part *pi = &parts[i];
     const long long id = pi->id;
     const int found_inhibited = pi->inhibited_exact;
+    if (pi->limited_part) continue;
 
     if (id % SWIFT_HYDRO_DENSITY_CHECKS == 0 && part_is_starting(pi, e)) {
 

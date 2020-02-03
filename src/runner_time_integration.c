@@ -1204,6 +1204,10 @@ void runner_do_limiter(struct runner *r, struct cell *c, int force,
         /* Mark this particle has not needing synchronization */
         p->limiter_data.to_be_synchronized = 0;
 
+#ifdef SWIFT_HYDRO_DENSITY_CHECKS
+        p->limited_part = 1;
+#endif
+
         /* What is the next sync-point ? */
         ti_hydro_end_min = min(ti_end_new, ti_hydro_end_min);
         ti_hydro_end_max = max(ti_end_new, ti_hydro_end_max);
@@ -1358,6 +1362,10 @@ void runner_do_sync(struct runner *r, struct cell *c, int force,
         tracers_after_timestep(p, xp, e->internal_units, e->physical_constants,
                                with_cosmology, e->cosmology,
                                e->hydro_properties, e->cooling_func, e->time);
+
+#ifdef SWIFT_HYDRO_DENSITY_CHECKS
+        p->limited_part = 1;
+#endif
 
         /* What is the next sync-point ? */
         ti_hydro_end_min = min(ti_current + ti_new_step, ti_hydro_end_min);

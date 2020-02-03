@@ -212,6 +212,9 @@ struct part {
 
   /*! Has this particle interacted with any unhibited neighbour? */
   char inhibited_exact;
+
+  /*! Has this particle been woken up by the limiter? */
+  char limited_part;
 #endif
 
 } SWIFT_STRUCT_ALIGN;
