@@ -7,7 +7,7 @@ import matplotlib.pyplot as plt
 
 width = 5 * kpc
 limits_temperature = (1e1 * K, 1e7 * K)
-limits_density = (1e-7 * amu / cm**3, 1e7 * amu / cm**3)
+limits_density = (1e-10 * amu / cm**3, 1e3 * amu / cm**3)
 limits_mass = (1e3 * Msun, 1e7 * Msun)
 
 

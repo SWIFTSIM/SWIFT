@@ -10,8 +10,8 @@ cmap_mass = "inferno"
 center = (1441.9954833984375000,
           1666.1169433593750000,
           1891.6248779296875000)
-small_width = 200 * kpc
-large_width = 1000 * kpc
+small_width = 250 * kpc
+large_width = 3000 * kpc
 limits_density = (1e-10 * g / cm**2, 1e-2 * g / cm**2)
 limits_temperature = (10 * K, 1e5 * K)
 limits_mass = None

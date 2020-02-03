@@ -6,6 +6,7 @@ import unyt
 import sys
 import matplotlib
 import projection_plot
+import velocity_plot
 import phase_plot
 import halo_distribution
 import add_fields
@@ -26,9 +27,10 @@ do_plot = {
     "projection_density": False,
     "projection_temperature": False,
     "projection_mass": False,
-    "halo_distribution": True,
+    "halo_distribution": False,
     "phase_1d": False,
-    "phase_2d": False
+    "phase_2d": False,
+    "velocity": True
 }
 
 # Generate the figures
@@ -70,8 +72,12 @@ axes = {
 
 # Data
 data = {
-    "phase_1d": ([], [])
+    "phase_1d": ([], []),
+    "halo_distribution": ([], []),
+    "velocity": ([], []),
 }
+
+names = []
 
 
 def savePlot():
@@ -87,13 +93,25 @@ def savePlot():
                                  "mass")
 
     if do_plot["phase_1d"]:
+        data["phase_1d"][1].extend(names)
         phase_plot.save1DPlot(data["phase_1d"])
 
     if do_plot["phase_2d"]:
         phase_plot.save2DPlot(figures["phase_2d"])
 
+    # halo distribution
+    if do_plot["halo_distribution"]:
+        data["halo_distribution"][1].extend(names)
+        halo_distribution.savePlot(data["halo_distribution"])
+
+    if do_plot["velocity"]:
+        data["velocity"][1].extend(names)
+        velocity_plot.save1DPlot(data["velocity"])
+
 
 def doPlot(filename, i, name):
+    names.append(name)
+
     f = yt.load(filename)
     if (do_plot["projection_temperature"] or do_plot["phase_2d"]):
         add_fields.addTemperature(f)
@@ -128,7 +146,6 @@ def doPlot(filename, i, name):
     if do_plot["phase_1d"]:
         p = phase_plot.do1DPlot(f, name, i)
         data["phase_1d"][0].append(p)
-        data["phase_1d"][1].append(name)
 
     # 2D Phase plot
     if do_plot["phase_2d"]:
@@ -137,7 +154,13 @@ def doPlot(filename, i, name):
 
     # halo distribution
     if do_plot["halo_distribution"]:
-        halo_distribution.doPlot(f, name, i)
+        m = halo_distribution.doPlot(f, name, i)
+        data["halo_distribution"][0].append(m)
+
+    # Velocity plot
+    if do_plot["velocity"]:
+        p = velocity_plot.do1DPlot(f, name, i)
+        data["velocity"][0].append(p)
 
 
 doPlot(swift, 0, "SWIFT")
