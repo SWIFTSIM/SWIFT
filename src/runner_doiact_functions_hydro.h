@@ -38,8 +38,8 @@
  * @param limit_max_h Only consider particles with h < c->dmin.
  */
 void DOPAIR1_NAIVE(struct runner *r, struct cell *restrict ci,
-                   struct cell *restrict cj, const int limit_min,
-                   const int limit_max) {
+                   struct cell *restrict cj, const int limit_min_h,
+                   const int limit_max_h) {
 
   const struct engine *e = r->e;
   const struct cosmology *cosmo = e->cosmology;
@@ -68,8 +68,8 @@ void DOPAIR1_NAIVE(struct runner *r, struct cell *restrict ci,
 #endif
 
   /* Get the limits in h (if any) */
-  const float h_min = limit_min ? ci->dmin * 0.5 * (1. / kernel_gamma) : 0.;
-  const float h_max = limit_max ? ci->dmin * (1. / kernel_gamma) : FLT_MAX;
+  const float h_min = limit_min_h ? ci->dmin * 0.5 * (1. / kernel_gamma) : 0.;
+  const float h_max = limit_max_h ? ci->dmin * (1. / kernel_gamma) : FLT_MAX;
 
   /* Get the relative distance between the pairs, wrapping. */
   double shift[3] = {0.0, 0.0, 0.0};
@@ -325,8 +325,8 @@ void DOPAIR2_NAIVE(struct runner *r, struct cell *restrict ci,
  * @param limit_min_h Only consider particles with h >= c->dmin/2.
  * @param limit_max_h Only consider particles with h < c->dmin.
  */
-void DOSELF1_NAIVE(struct runner *r, struct cell *c, const int limit_min,
-                   const int limit_max) {
+void DOSELF1_NAIVE(struct runner *r, struct cell *c, const int limit_min_h,
+                   const int limit_max_h) {
 
   const struct engine *e = r->e;
   const struct cosmology *cosmo = e->cosmology;
@@ -349,8 +349,8 @@ void DOSELF1_NAIVE(struct runner *r, struct cell *c, const int limit_min,
   struct part *restrict parts = c->hydro.parts;
 
   /* Get the limits in h (if any) */
-  const float h_min = limit_min ? c->dmin * 0.5 * (1. / kernel_gamma) : 0.;
-  const float h_max = limit_max ? c->dmin * (1. / kernel_gamma) : FLT_MAX;
+  const float h_min = limit_min_h ? c->dmin * 0.5 * (1. / kernel_gamma) : 0.;
+  const float h_max = limit_max_h ? c->dmin * (1. / kernel_gamma) : FLT_MAX;
 
   /* Loop over the parts in ci. */
   for (int pid = 0; pid < count; pid++) {
@@ -2439,10 +2439,9 @@ void DOSELF2_BRANCH(struct runner *r, struct cell *c) {
  * @param r The #runner.
  * @param ci The first #cell.
  * @param cj The second #cell.
+ * @param recurse_below_h_max Are we currently recursing at a level where we
+ * violated the h < cell size condition.
  * @param gettimer Do we have a timer ?
- *
- * @todo Hard-code the sid on the recursive calls to avoid the
- * redundant computations to find the sid on-the-fly.
  */
 void DOSUB_PAIR1(struct runner *r, struct cell *ci, struct cell *cj,
                  int recurse_below_h_max, const int gettimer) {
@@ -2533,7 +2532,9 @@ void DOSUB_PAIR1(struct runner *r, struct cell *ci, struct cell *cj,
  * @brief Compute grouped sub-cell interactions for self tasks
  *
  * @param r The #runner.
- * @param ci The first #cell.
+ * @param c The #cell.
+ * @param recurse_below_h_max Are we currently recursing at a level where we
+ * violated the h < cell size condition.
  * @param gettimer Do we have a timer ?
  */
 void DOSUB_SELF1(struct runner *r, struct cell *c, int recurse_below_h_max,
