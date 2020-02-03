@@ -186,7 +186,7 @@ void *runner_main(void *data) {
       switch (t->type) {
         case task_type_self:
           if (t->subtype == task_subtype_density)
-            runner_dosub_self1_density(r, ci, 1);
+            runner_dosub_self1_density(r, ci, /*recurse_below_h_max=*/0, 1);
 #ifdef EXTRA_HYDRO_LOOP
           else if (t->subtype == task_subtype_gradient)
             runner_dosub_self1_gradient(r, ci, 1);
@@ -261,7 +261,7 @@ void *runner_main(void *data) {
 
         case task_type_sub_self:
           if (t->subtype == task_subtype_density)
-            runner_dosub_self1_density(r, ci, 1);
+            runner_dosub_self1_density(r, ci, /*recurse_below_h_max=*/0, 1);
 #ifdef EXTRA_HYDRO_LOOP
           else if (t->subtype == task_subtype_gradient)
             runner_dosub_self1_gradient(r, ci, 1);
@@ -295,7 +295,7 @@ void *runner_main(void *data) {
 
         case task_type_sub_pair:
           if (t->subtype == task_subtype_density)
-            runner_dosub_pair1_density(r, ci, cj, 1);
+            runner_dosub_pair1_density(r, ci, cj, /*recurse_below_h_max=*/0, 1);
 #ifdef EXTRA_HYDRO_LOOP
           else if (t->subtype == task_subtype_gradient)
             runner_dosub_pair1_gradient(r, ci, cj, 1);

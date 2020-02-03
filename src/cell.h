@@ -711,8 +711,8 @@ cell_can_recurse_in_pair_hydro_task1(const struct cell *c) {
   /* If so, is the cut-off radius plus the max distance the parts have moved */
   /* smaller than the sub-cell sizes ? */
   /* Note: We use the _old values as these might have been updated by a drift */
-  return c->split && ((kernel_gamma * c->hydro.h_max_active +
-                       c->hydro.dx_max_part_old) < 0.5f * c->dmin);
+  return ((kernel_gamma * c->hydro.h_max_active + c->hydro.dx_max_part_old) <
+          0.5f * c->dmin);
 }
 
 /**
@@ -742,7 +742,7 @@ __attribute__((always_inline)) INLINE static int
 cell_can_recurse_in_self_hydro_task1(const struct cell *c) {
 
   /* Is the cell split and not smaller than the smoothing length? */
-  return c->split && (kernel_gamma * c->hydro.h_max_active < 0.5f * c->dmin);
+  return (kernel_gamma * c->hydro.h_max_active < 0.5f * c->dmin);
 }
 
 /**
