@@ -2084,8 +2084,9 @@ void DOSELF1(struct runner *r, struct cell *c, const int limit_min_h,
   const float H = cosmo->H;
 
   /* Loop over *all* the particles (i.e. the ones to update and not to update).
-   */
-  for (int pid = 0; pid < count; pid++) {
+   * Note the additional condition to make the loop abort if all the active
+   * particles have been processed. */
+  for (int pid = 0; pid < count && firstdt < countdt; pid++) {
 
     /* Get a pointer to the ith particle. */
     struct part *restrict pi = &parts[pid];
