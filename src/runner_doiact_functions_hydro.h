@@ -1074,9 +1074,14 @@ void DOPAIR1(struct runner *r, struct cell *restrict ci,
       2. * max(ci->hydro.dx_max_part, cj->hydro.dx_max_part);
 #endif /* SWIFT_DEBUG_CHECKS */
 
+  /* Get the limits in h (if any) */
+  const float h_min = limit_min_h ? ci->dmin * 0.5 * (1. / kernel_gamma) : 0.;
+  const float h_max = limit_max_h ? ci->dmin * (1. / kernel_gamma) : FLT_MAX;
+
   /* Get some other useful values. */
-  const double hi_max = ci->hydro.h_max_active * kernel_gamma - rshift;
-  const double hj_max = cj->hydro.h_max_active * kernel_gamma;
+  const double hi_max =
+      min(h_max, ci->hydro.h_max_active) * kernel_gamma - rshift;
+  const double hj_max = min(h_max, cj->hydro.h_max_active) * kernel_gamma;
   const int count_i = ci->hydro.count;
   const int count_j = cj->hydro.count;
   struct part *restrict parts_i = ci->hydro.parts;
@@ -1084,10 +1089,6 @@ void DOPAIR1(struct runner *r, struct cell *restrict ci,
   const double di_max = sort_i[count_i - 1].d - rshift;
   const double dj_min = sort_j[0].d;
   const float dx_max = (ci->hydro.dx_max_sort + cj->hydro.dx_max_sort);
-
-  /* Get the limits in h (if any) */
-  const float h_min = limit_min_h ? ci->dmin * 0.5 * (1. / kernel_gamma) : 0.;
-  const float h_max = limit_max_h ? ci->dmin * (1. / kernel_gamma) : FLT_MAX;
 
   /* Cosmological terms */
   const float a = cosmo->a;
@@ -1107,14 +1108,14 @@ void DOPAIR1(struct runner *r, struct cell *restrict ci,
       /* Skip inactive particles */
       if (!part_is_active(pi, e)) continue;
 
-      /* Skip particles not in the range of h we care about */
-      if (hi >= h_max) continue;
-      if (hi < h_min) continue;
-
 #ifdef SWIFT_DEBUG_CHECKS
       if (hi > ci->hydro.h_max_active)
         error("Particle has h larger than h_max_active");
 #endif
+
+      /* Skip particles not in the range of h we care about */
+      if (hi >= h_max) continue;
+      if (hi < h_min) continue;
 
       /* Is there anything we need to interact with ? */
       const double di = sort_i[pid].d + hi * kernel_gamma + dx_max - rshift;
@@ -1183,7 +1184,11 @@ void DOPAIR1(struct runner *r, struct cell *restrict ci,
 
 #ifdef SWIFT_DEBUG_CHECKS
           if (hi * kernel_gamma > ci->dmin)
-            error("h_i too large for this cell!");
+            error(
+                "h_i too large for this cell! depth=%d limit min/max=%d%d H=%e "
+                "dmin=%e",
+                ci->depth, limit_min_h, limit_max_h, hi * kernel_gamma,
+                ci->dmin);
 #endif
 
           IACT_NONSYM(r2, dx, hi, hj, pi, pj, a, H);
@@ -1216,14 +1221,14 @@ void DOPAIR1(struct runner *r, struct cell *restrict ci,
       /* Skip inactive particles */
       if (!part_is_active(pj, e)) continue;
 
-      /* Skip particles not in the range of h we care about */
-      if (hj >= h_max) continue;
-      if (hj < h_min) continue;
-
 #ifdef SWIFT_DEBUG_CHECKS
       if (hj > cj->hydro.h_max_active)
         error("Particle has h larger than h_max_active");
 #endif
+
+      /* Skip particles not in the range of h we care about */
+      if (hj >= h_max) continue;
+      if (hj < h_min) continue;
 
       /* Is there anything we need to interact with ? */
       const double dj = sort_j[pjd].d - hj * kernel_gamma - dx_max + rshift;
@@ -1292,7 +1297,11 @@ void DOPAIR1(struct runner *r, struct cell *restrict ci,
 
 #ifdef SWIFT_DEBUG_CHECKS
           if (hj * kernel_gamma > cj->dmin)
-            error("h_j too large for this cell!");
+            error(
+                "h_j too large for this cell! depth=%d limit min/max=%d%d H=%e "
+                "dmin=%e",
+                cj->depth, limit_min_h, limit_max_h, hj * kernel_gamma,
+                cj->dmin);
 #endif
 
           IACT_NONSYM(r2, dx, hj, hi, pj, pi, a, H);
@@ -1401,6 +1410,10 @@ void DOPAIR1_BRANCH(struct runner *r, struct cell *ci, struct cell *cj,
   DOPAIR1_NAIVE(r, ci, cj, limit_min_h, limit_max_h);
 #elif defined(WITH_VECTORIZATION) && defined(GADGET2_SPH) && \
     (FUNCTION_TASK_LOOP == TASK_LOOP_DENSITY)
+  if (limit_min_h || limit_max_h)
+    error(
+        "Vectorized PAIR1 only implemented for the case where no limit on h is "
+        "imposed");
   if (!sort_is_corner(sid))
     runner_dopair1_density_vec(r, ci, cj, sid, shift);
   else
@@ -2246,9 +2259,13 @@ void DOSELF1_BRANCH(struct runner *r, struct cell *c, const int limit_min_h,
   DOSELF1_NAIVE(r, c, limit_min_h, limit_max_h);
 #elif defined(WITH_VECTORIZATION) && defined(GADGET2_SPH) && \
     (FUNCTION_TASK_LOOP == TASK_LOOP_DENSITY)
+  if (limit_min_h || limit_max_h)
+    error(
+        "Vectorized SELF1 only implemented for the case where no limit on h is "
+        "imposed");
   runner_doself1_density_vec(r, c);
 #else
-  DOSELF1(r, c);
+  DOSELF1_NAIVE(r, c, limit_min_h, limit_max_h);
 #endif
 }
 
