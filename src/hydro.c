@@ -168,6 +168,7 @@ void hydro_exact_density_check(struct space *s, const struct engine *e,
 
     const struct part *pi = &parts[i];
     const long long id = pi->id;
+    if (pi->limited_part) continue;
 
     if (id % SWIFT_HYDRO_DENSITY_CHECKS == 0 && part_is_starting(pi, e)) {
 
@@ -210,6 +211,10 @@ void hydro_exact_density_check(struct space *s, const struct engine *e,
       fprintf(file_swift, "%18lld %16.8e %16.8e %16.8e %16.8e %16.8e\n", id,
               pi->x[0], pi->x[1], pi->x[2], pi->h, pi->rho_exact);
 
+      /* Check that we did not go above the threshold.
+       * Note that we ignore particles that saw an inhibted particle as a
+       * neighbour as we don't know whether that neighbour became inhibited in
+       * that step or not. */
       if (!found_inhibited && fabsf(pi->rho / pi->rho_exact - 1.f) > rel_tol) {
         message("id=%lld", id);
         wrong++;
