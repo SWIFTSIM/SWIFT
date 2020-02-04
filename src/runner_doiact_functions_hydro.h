@@ -1350,7 +1350,7 @@ void DOPAIR1_BRANCH(struct runner *r, struct cell *ci, struct cell *cj,
 
   /* Get the sort ID.
    * Note: this may swap the ci and cj pointers!! */
-  double shift[3] = {0.0, 0.0, 0.0};
+  double shift[3];
   const int sid = space_getsid(e->s, &ci, &cj, shift);
 
   /* Have the cells been sorted? */
@@ -1965,7 +1965,7 @@ void DOPAIR2_BRANCH(struct runner *r, struct cell *ci, struct cell *cj) {
     error("Interacting undrifted cells.");
 
   /* Get the sort ID. */
-  double shift[3] = {0.0, 0.0, 0.0};
+  double shift[3];
   const int sid = space_getsid(e->s, &ci, &cj, shift);
 
   /* Have the cells been sorted? */
@@ -2845,7 +2845,7 @@ void DOSUB_SUBSET(struct runner *r, struct cell *ci, struct part *parts,
         cell_can_recurse_in_pair_hydro_task2(cj)) {
 
       /* Get the type of pair and flip ci/cj if needed. */
-      double shift[3] = {0.0, 0.0, 0.0};
+      double shift[3];
       const int sid = space_getsid(s, &ci, &cj, shift);
 
       struct cell_split_pair *csp = &cell_split_pairs[sid];
