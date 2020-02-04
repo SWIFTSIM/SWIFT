@@ -133,9 +133,10 @@ void hydro_exact_density_compute(struct space *s, const struct engine *e) {
   threadpool_map(&s->e->threadpool, hydro_exact_density_compute_mapper,
                  s->parts, s->nr_parts, sizeof(struct part), 0, &data);
 
-  message("Computed exact densities for %d parts (took %.3f %s). ",
-          data.counter_global, clocks_from_ticks(getticks() - tic),
-          clocks_getunit());
+  if (e->verbose)
+    message("Computed exact densities for %d parts (took %.3f %s). ",
+            data.counter_global, clocks_from_ticks(getticks() - tic),
+            clocks_getunit());
 #else
   error("Hydro checking function called without the corresponding flag.");
 #endif
@@ -145,6 +146,8 @@ void hydro_exact_density_check(struct space *s, const struct engine *e,
                                const float rel_tol) {
 
 #ifdef SWIFT_HYDRO_DENSITY_CHECKS
+
+  const ticks tic = getticks();
 
   const struct part *parts = s->parts;
   const size_t nr_parts = s->nr_parts;
@@ -177,7 +180,8 @@ void hydro_exact_density_check(struct space *s, const struct engine *e,
     }
   }
 
-  message("Written SWIFT densities in file '%s'.", file_name_swift);
+  if (e->verbose)
+    message("Written SWIFT densities in file '%s'.", file_name_swift);
 
   /* Be nice */
   fclose(file_swift);
@@ -228,10 +232,15 @@ void hydro_exact_density_check(struct space *s, const struct engine *e,
         "particles!",
         wrong);
 
-  message("Written exact densities in file '%s'.", file_name_exact);
+  if (e->verbose)
+    message("Written exact densities in file '%s'.", file_name_exact);
 
   /* Be nice */
   fclose(file_exact);
+
+  if (e->verbose)
+    message("Writting brute-force density files took %.3f %s. ",
+            clocks_from_ticks(getticks() - tic), clocks_getunit());
 
 #else
   error("Hydro checking function called without the corresponding flag.");
