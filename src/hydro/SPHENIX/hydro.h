@@ -494,6 +494,12 @@ __attribute__((always_inline)) INLINE static void hydro_init_part(
 
   p->viscosity.div_v = 0.f;
   p->diffusion.laplace_u = 0.f;
+
+#ifdef SWIFT_HYDRO_DENSITY_CHECKS
+  p->rho_exact = 0.f;
+  p->inhibited_exact = 0;
+  p->limited_part = 0;
+#endif
 }
 
 /**

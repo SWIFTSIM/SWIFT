@@ -116,49 +116,49 @@ struct part {
   /* Entropy time derivative */
   float entropy_dt;
 
-  // union {
+  union {
 
-  struct {
+    struct {
 
-    /* Number of neighbours. */
-    float wcount;
+      /* Number of neighbours. */
+      float wcount;
 
-    /* Number of neighbours spatial derivative. */
-    float wcount_dh;
+      /* Number of neighbours spatial derivative. */
+      float wcount_dh;
 
-    /* Derivative of the density with respect to h. */
-    float rho_dh;
+      /* Derivative of the density with respect to h. */
+      float rho_dh;
 
-    /* Particle velocity curl. */
-    float rot_v[3];
+      /* Particle velocity curl. */
+      float rot_v[3];
 
-    /* Particle velocity divergence. */
-    float div_v;
+      /* Particle velocity divergence. */
+      float div_v;
 
-  } density;
+    } density;
 
-  struct {
+    struct {
 
-    /* Balsara switch */
-    float balsara;
+      /* Balsara switch */
+      float balsara;
 
-    /*! "Grad h" term */
-    float f;
+      /*! "Grad h" term */
+      float f;
 
-    /* Pressure over density squared  */
-    float P_over_rho2;
+      /* Pressure over density squared  */
+      float P_over_rho2;
 
-    /* Particle sound speed. */
-    float soundspeed;
+      /* Particle sound speed. */
+      float soundspeed;
 
-    /* Signal velocity. */
-    float v_sig;
+      /* Signal velocity. */
+      float v_sig;
 
-    /* Time derivative of the smoothing length */
-    float h_dt;
+      /* Time derivative of the smoothing length */
+      float h_dt;
 
-  } force;
-  //};
+    } force;
+  };
 
   /*! Chemistry information */
   struct chemistry_part_data chemistry_data;
