@@ -1958,6 +1958,23 @@ void space_check_top_multipoles_drift_point(struct space *s,
   error("Calling debugging code without debugging flag activated.");
 #endif
 }
+/**
+ * @brief #threadpool mapper function for the timestep debugging check
+ */
+void space_check_timesteps_mapper(void *map_data, int nr_cells,
+                                  void *extra_data) {
+
+  struct cell *cells_top = (struct cell *)map_data;
+  const struct space *s = (const struct space *)extra_data;
+  const timebin_t max_active_bin = s->e->max_active_bin;
+  const integertime_t ti_current = s->e->ti_current;
+
+  for (int i = 0; i < nr_cells; ++i) {
+    if (cells_top[i].nodeID == engine_rank) {
+      cell_check_timesteps(&cells_top[i], ti_current, max_active_bin);
+    }
+  }
+}
 
 /**
  * @brief Checks that all particles and local cells have a non-zero time-step.
@@ -1966,17 +1983,13 @@ void space_check_top_multipoles_drift_point(struct space *s,
  *
  * @param s The #space to check.
  */
-void space_check_timesteps(const struct space *s) {
+void space_check_timesteps(struct space *s) {
 #ifdef SWIFT_DEBUG_CHECKS
 
   const ticks tic = getticks();
 
-  for (int i = 0; i < s->nr_cells; ++i) {
-    if (s->cells_top[i].nodeID == engine_rank) {
-      cell_check_timesteps(&s->cells_top[i], s->e->ti_current,
-                           s->e->max_active_bin);
-    }
-  }
+  threadpool_map(&s->e->threadpool, space_check_timesteps_mapper, s->cells_top,
+                 s->nr_cells, sizeof(struct cell), 0, s);
 
   if (s->e->verbose)
     message("took %.3f %s.", clocks_from_ticks(getticks() - tic),
