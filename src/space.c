@@ -354,6 +354,53 @@ void space_regrid(struct space *s, int verbose) {
   const ticks tic = getticks();
   const integertime_t ti_current = (s->e != NULL) ? s->e->ti_current : 0;
 
+  /* Find the min/max positions of the high-res particles. */
+#ifdef WITH_MPI
+  if (s->high_res_grid) {
+    const size_t nr_gparts = s->nr_gparts;
+    double high_res_min[3] = {DBL_MAX, DBL_MAX, DBL_MAX};
+    double high_res_max[3] = {0.0, 0.0, 0.0};
+
+    /* Loop over each gpart, only consider non-boundary gparts. */
+    for (size_t k = 0; k < nr_gparts; k++) {
+      if (s->gparts[k].type != swift_type_dark_matter) continue;
+      if (s->gparts[k].x[0] > high_res_max[0]) high_res_max[0] = s->gparts[k].x[0];
+      if (s->gparts[k].x[1] > high_res_max[1]) high_res_max[1] = s->gparts[k].x[1];
+      if (s->gparts[k].x[2] > high_res_max[2]) high_res_max[2] = s->gparts[k].x[2];
+      if (s->gparts[k].x[0] < high_res_min[0]) high_res_min[0] = s->gparts[k].x[0];
+      if (s->gparts[k].x[1] < high_res_min[1]) high_res_min[1] = s->gparts[k].x[1];
+      if (s->gparts[k].x[2] < high_res_min[2]) high_res_min[2] = s->gparts[k].x[2];
+    }
+
+    /* Max sure all nodes agree on the min/max positions of the non-boundary particles.*/
+    int err;
+    err = MPI_Allreduce(MPI_IN_PLACE, high_res_min, 3, MPI_DOUBLE, MPI_MIN, MPI_COMM_WORLD);
+    if (err != MPI_SUCCESS)
+      mpi_error(err, "Failed to all-reduce high-resolution min.");
+    err = MPI_Allreduce(MPI_IN_PLACE, high_res_max, 3, MPI_DOUBLE, MPI_MAX, MPI_COMM_WORLD);
+    if (err != MPI_SUCCESS)
+      mpi_error(err, "Failed to all-reduce high-resolution max.");
+    
+    /* Store values. */
+    for (int k = 0; k < 3; k++){
+      s->high_res_min[k] = high_res_min[k] - 0.001;
+      s->high_res_max[k] = high_res_max[k] + 0.001;
+      s->width_high_res[k] = s->high_res_max[k] - s->high_res_min[k];
+      s->iwidth_high_res[k] = 1.0 / s->width_high_res[k];
+    }
+
+    /* Talkative? */
+    if (verbose) {
+      message("high-resolution particles x_min=%.2f x_max=%.2f.",
+		high_res_min[0], high_res_max[0]);
+      message("high-resolution particles y_min=%.2f y_max=%.2f.",
+		high_res_min[1], high_res_max[1]);
+      message("high-resolution particles z_min=%.2f z_max=%.2f.",
+		high_res_min[2], high_res_max[2]);
+    }
+  }
+#endif
+
   /* Run through the cells and get the current h_max. */
   // tic = getticks();
   float h_max = s->cell_min / kernel_gamma / space_stretch;
@@ -4856,6 +4903,13 @@ void space_init(struct space *s, struct swift_params *params,
         "least %d",
         maxtcells, needtcells);
 
+#ifdef WITH_MPI
+  /* Use a second top-level grid around high-resolution particles?
+   * Only used for domain decomposition. */
+  s->high_res_grid = parser_get_opt_param_int(params,
+		"DomainDecomposition:high_res_grid", 0);
+#endif
+
   /* Get the constants for the scheduler */
   space_maxsize = parser_get_opt_param_int(params, "Scheduler:cell_max_size",
                                            space_maxsize_default);
@@ -5976,3 +6030,24 @@ void space_write_cell_hierarchy(const struct space *s, int j) {
   fclose(f);
 #endif
 }
+
+void space_write_particles(const struct space *s) {
+
+  /* Open file */
+  char filename[200];
+  sprintf(filename, "particles_%04i.csv", engine_rank);
+  FILE *f = fopen(filename, "w");
+  if (f == NULL) error("Error opening task level file.");
+
+  /* Write header */
+  fprintf(f, "x,y,z,type\n");
+
+  /* Write all the top level cells (and their children) */
+  for (size_t i = 0; i < s->nr_gparts; i++) {
+    struct gpart *gp = &s->gparts[i];
+    fprintf(f, "%g,%g,%g,%i\n", gp->x[0], gp->x[1], gp->x[2], gp->type);
+  }
+
+  /* Cleanup */
+  fclose(f);
+} 

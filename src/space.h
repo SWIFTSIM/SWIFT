@@ -294,6 +294,20 @@ struct space {
   struct bpart *bparts_foreign;
   size_t nr_bparts_foreign, size_bparts_foreign;
 
+  /* Are we placing a second grid around high-res particles? */
+  int high_res_grid;
+
+  /* Minimum x,y,z positions of high-res particles. */
+  double high_res_min[3];
+
+  /* Maximum x,y,z positions of high-res particles. */
+  double high_res_max[3];
+
+  /* Width of high-res grid cells. */
+  double width_high_res[3];
+
+  /* Inverse width of high-res grid cells. */
+  double iwidth_high_res[3];
 #endif
 };
 
@@ -384,5 +398,6 @@ void space_free_foreign_parts(struct space *s);
 void space_struct_dump(struct space *s, FILE *stream);
 void space_struct_restore(struct space *s, FILE *stream);
 void space_write_cell_hierarchy(const struct space *s, int j);
+void space_write_particles(const struct space *s);
 
 #endif /* SWIFT_SPACE_H */

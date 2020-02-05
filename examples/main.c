@@ -1206,6 +1206,7 @@ int main(int argc, char *argv[]) {
     /* Split the space. */
     engine_split(&e, &initial_partition);
     engine_redistribute(&e);
+    space_write_particles(e.s);
 #endif
 
     /* Initialise the particles */

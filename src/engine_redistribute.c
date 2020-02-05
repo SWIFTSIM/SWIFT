@@ -274,9 +274,26 @@ struct redist_mapper_data {
         else if (parts[k].x[j] >= s->dim[j])                               \
           parts[k].x[j] -= s->dim[j];                                      \
       }                                                                    \
-      const int cid = cell_getid(s->cdim, parts[k].x[0] * s->iwidth[0],    \
-                                 parts[k].x[1] * s->iwidth[1],             \
-                                 parts[k].x[2] * s->iwidth[2]);            \
+	  int cid;										                       \
+      if (s->high_res_grid &&                                              \
+          (parts[k].x[0] > s->high_res_min[0]) &&                          \
+          (parts[k].x[0] < s->high_res_max[0]) &&                          \
+          (parts[k].x[1] > s->high_res_min[1]) &&                          \
+          (parts[k].x[1] < s->high_res_max[1]) &&                          \
+          (parts[k].x[2] > s->high_res_min[2]) &&                          \
+          (parts[k].x[2] < s->high_res_max[2])) {                          \
+        cid = cell_getid(s->cdim,                                          \
+            (parts[k].x[0] - s->high_res_min[0]) * s->iwidth_high_res[0]   \
+ 				* s->dim[0] * s->iwidth[0],    		                       \
+            (parts[k].x[1] - s->high_res_min[1]) * s->iwidth_high_res[1]   \
+				* s->dim[1] * s->iwidth[1], 							   \
+            (parts[k].x[2] - s->high_res_min[2]) * s->iwidth_high_res[2]   \
+				* s->dim[2] * s->iwidth[2]);							   \
+      } else {                                                             \
+        cid = cell_getid(s->cdim, parts[k].x[0] * s->iwidth[0],            \
+                                  parts[k].x[1] * s->iwidth[1],            \
+                                  parts[k].x[2] * s->iwidth[2]);           \
+      }                                                                    \
       dest[k] = s->cells_top[cid].nodeID;                                  \
       size_t ind = mydata->nodeID * mydata->nr_nodes + dest[k];            \
       lcounts[ind] += 1;                                                   \
