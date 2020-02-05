@@ -77,7 +77,7 @@ if HAVEGRACKLECOOLING
 GRACKLE_COOLING_SOURCES += cooling/grackle/cooling.c
 endif
 
-# source files for GRACKLE cooling
+# source files for GEAR feedback
 GEAR_FEEDBACK_SOURCES =
 if HAVEGEARFEEDBACK
 GEAR_FEEDBACK_SOURCES += feedback/GEAR/stellar_evolution.c feedback/GEAR/feedback.c \
@@ -102,8 +102,8 @@ AM_SOURCES = space.c runner_main.c runner_doiact_hydro.c runner_doiact_limiter.c
     chemistry.c cosmology.c restart.c mesh_gravity.c velociraptor_interface.c \
     outputlist.c velociraptor_dummy.c logger_io.c memuse.c mpiuse.c memuse_rnodes.c fof.c \
     hashmap.c pressure_floor.c \
-    $(EAGLE_COOLING_SOURCES) $(EAGLE_FEEDBACK_SOURCES) $(GRACKLE_COOLING_SOURCES) \
-		$(GEAR_FEEDBACK_SOURCES)
+    $(EAGLE_COOLING_SOURCES) $(EAGLE_FEEDBACK_SOURCES) \
+    $(GRACKLE_COOLING_SOURCES) $(GEAR_FEEDBACK_SOURCES)
 
 # Include files for distribution, not installation.
 nobase_noinst_HEADERS = align.h approx_math.h atomic.h barrier.h cycle.h error.h inline.h kernel_hydro.h kernel_gravity.h \
