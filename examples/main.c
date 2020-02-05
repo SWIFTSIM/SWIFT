@@ -1296,7 +1296,7 @@ int main(int argc, char *argv[]) {
     }
 
     /* Did we exceed the maximal runtime? */
-    if (clocks_get_hours_since_start() > restart_max_hours_runtime) {
+    if (e.runtime > restart_max_hours_runtime) {
       force_stop = 1;
       message("Runtime limit reached, dumping restart files...");
       if (resubmit_after_max_hours) resubmit = 1;

@@ -60,6 +60,9 @@ struct collectgroup1 {
 
   /* Maximum value of actual tasks per cell across all ranks. */
   float tasks_per_cell_max;
+
+  /* Global runtime of application in hours. */
+  float runtime;
 };
 
 void collectgroup_init(void);
@@ -75,7 +78,7 @@ void collectgroup1_init(
     integertime_t ti_black_holes_end_min, integertime_t ti_black_holes_end_max,
     integertime_t ti_black_holes_beg_max, int forcerebuild,
     long long total_nr_cells, long long total_nr_tasks, float tasks_per_cell,
-    const struct star_formation_history sfh);
+    const struct star_formation_history sfh, float runtime);
 void collectgroup1_reduce(struct collectgroup1 *grp1);
 #ifdef WITH_MPI
 void mpicollect_free_MPI_type(void);
