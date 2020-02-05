@@ -533,9 +533,9 @@ EAGLEAGN:
 
 # SIMBA feedback model
 SIMBAFeedback:
-  galaxy_mass_norm:                 102.329
+  galaxy_mass_norm_msun:            102.329
   v_circ_exp:                       0.26178
-  galsf_vel:                        1.
+  galsf_vel:                        1.6
   galsf_vel_slope:                  0.12
   scale_factor_norm:                200.
   wind_scatter:                     0.1

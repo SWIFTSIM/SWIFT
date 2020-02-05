@@ -87,8 +87,10 @@ struct feedback_xpart_data {
   /* Probability of kicking particle */
   double feedback_probability;
     
-  /* mass of host galaxy */
-  float host_galaxy_mass;
+  /* mass of host galaxy components */
+  // ALEXEI: These should really be somewhere else
+  float host_galaxy_mass_baryons;
+  float host_galaxy_mass_stars;
 };
 
 #endif /* SWIFT_FEEDBACK_STRUCT_SIMBA_H */

@@ -2717,12 +2717,42 @@ void engine_step(struct engine *e) {
   // ALEXEI: Temporary attempt to recouple particles
   // Loop over all the particles in space, check delay_time counter, possibly recouple, give timebin corresponding to next timestep. (get_time_bin(ti_next) or similar)
 
-  if (e->s->cells_top != NULL && e->s->nr_sparts > 0) {
+  // ALEXEI: Can't remember why we're checking that we have any sparts. This is possibly because when initially developing thought that sparts did feedback in SIMBA (they don't). remove if not necessary
+  //if (e->s->cells_top != NULL && e->s->nr_sparts > 0) {
+  if (e->s->cells_top != NULL) {
     for (int i = 0; i < e->s->nr_cells; i++) {
       struct cell *c = &e->s->cells_top[i];
       cell_recouple(c, e);
     }
   }
+
+  // ALEXEI: update total stellar mass. To be used for development in isolated galaxy test case only, remove once can update stellar mass using fof for simba
+  double total_stellar_mass = 0.;
+  double total_gas_mass = 0.;
+  if (e->s->cells_top != NULL) {
+    for (int i = 0; i < e->s->nr_cells; i++) {
+      struct cell *c = &e->s->cells_top[i];
+      for (int j = 0; j < c->stars.count; j++) 
+	total_stellar_mass += c->stars.parts[j].mass;
+    }
+  }
+  if (e->s->cells_top != NULL) {
+    for (int i = 0; i < e->s->nr_cells; i++) {
+      struct cell *c = &e->s->cells_top[i];
+      for (int j = 0; j < c->hydro.count; j++) 
+	total_gas_mass += c->hydro.parts[j].mass;
+    }
+  }
+  if (e->s->cells_top != NULL) {
+    for (int i = 0; i < e->s->nr_cells; i++) {
+      struct cell *c = &e->s->cells_top[i];
+      for (int j = 0; j < c->hydro.count; j++) {
+	c->hydro.xparts[j].feedback_data.host_galaxy_mass_stars = total_stellar_mass;
+	c->hydro.xparts[j].feedback_data.host_galaxy_mass_baryons = total_gas_mass + total_stellar_mass;
+      }
+    }
+  }
+
   
   /* Collect information about the next time-step */
   engine_collect_end_of_step(e, 1);

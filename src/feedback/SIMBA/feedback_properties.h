@@ -76,13 +76,13 @@ INLINE static void feedback_props_init(struct feedback_props *fp,
   const double msun = 1.989e33 / units_cgs_conversion_factor(us, UNIT_CONV_MASS);
 
   /* Initialize parameters for calculating rotational velocity of galaxy */
-  fp->simba_host_galaxy_mass_norm = parser_get_param_float(params, "SIMBAFeedback:galaxy_mass_norm"); // 102.329 ALEXEI: guide values added in until figured out what are appropriate values.
+  fp->simba_host_galaxy_mass_norm = parser_get_param_float(params, "SIMBAFeedback:galaxy_mass_norm_msun") * msun; // 102.329 Msun 
   fp->simba_v_circ_exp = parser_get_param_float(params, "SIMBAFeedback:v_circ_exp"); // 0.26178;
 
   /* Initialize parameters for calculating ejection velocity */
-  fp->galsf_firevel = parser_get_param_float(params,"SIMBAFeedback:galsf_vel") / units_cgs_conversion_factor(us, UNIT_CONV_SPEED); // Look in config file 1.6
+  fp->galsf_firevel = parser_get_param_float(params,"SIMBAFeedback:galsf_vel"); // Look in config file 1.6
   fp->galsf_firevel_slope = parser_get_param_float(params, "SIMBAFeedback:galsf_vel_slope"); // 0.12;
-  fp->scale_factor_norm = parser_get_param_float(params,"SIMBAFeedback:scale_factor_norm"); // 200.;
+  fp->scale_factor_norm = parser_get_param_float(params,"SIMBAFeedback:scale_factor_norm"); // 200 km/s;
   fp->vwvf_scatter = parser_get_param_float(params,"SIMBAFeedback:wind_scatter"); // 0.1;
 
   /* read in delay time */
