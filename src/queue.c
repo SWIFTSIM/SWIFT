@@ -301,3 +301,34 @@ void queue_clean(struct queue *q) {
   free(q->tid);
   free(q->tid_incoming);
 }
+
+
+/**
+ * @brief Dump a formatted list of tasks in the queue to the given file stream.
+ *
+ * @param nodeID the node id of this rank.
+ * @param index a number for this queue, added to the output.
+ * @param file the FILE stream, should opened for write.
+ * @param q The task #queue.
+ */
+void queue_dump(int nodeID, int index, FILE *file, struct queue *q) {
+
+  swift_lock_type *qlock = &q->lock;
+
+  /* Grab the queue lock. */
+  if (lock_lock(qlock) != 0) error("Locking the qlock failed.\n");
+
+  /* Fill any tasks from the incoming DEQ. */
+  queue_get_incoming(q);
+
+  /* Loop over the queue entries. */
+  for (int k = 0; k < q->count; k++) {
+    struct task *t = &q->tasks[q->tid[k]];
+
+    fprintf(file, "%d %d %d %s %s %.2f\n", nodeID, index, k,
+            taskID_names[t->type], subtaskID_names[t->subtype], t->weight);
+  }
+
+  /* Release the task lock. */
+  if (lock_unlock(qlock) != 0) error("Unlocking the qlock failed.\n");
+}
