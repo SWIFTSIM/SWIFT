@@ -37,7 +37,6 @@
 #include <sys/types.h>
 #include <unistd.h>
 
-
 /* MPI headers. */
 #ifdef WITH_MPI
 
