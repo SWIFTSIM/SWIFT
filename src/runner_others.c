@@ -145,6 +145,7 @@ void runner_do_grav_mesh(struct runner *r, struct cell *c, int timer) {
  * @param timer 1 if the time is to be recorded.
  */
 void runner_do_cooling(struct runner *r, struct cell *c, int timer) {
+
   const struct engine *e = r->e;
   const struct cosmology *cosmo = e->cosmology;
   const int with_cosmology = (e->policy & engine_policy_cosmology);
@@ -202,8 +203,8 @@ void runner_do_cooling(struct runner *r, struct cell *c, int timer) {
 
         /* Let's cool ! */
         cooling_cool_part(constants, us, cosmo, hydro_props,
-                          entropy_floor_props, cooling_func, p, xp, time,
-                          dt_cool, dt_therm);
+                          entropy_floor_props, cooling_func, p, xp, dt_cool,
+                          dt_therm, time);
 
         /* Apply the effects of feedback on this particle
          * (Note: Only used in schemes that have a delayed feedback mechanism
