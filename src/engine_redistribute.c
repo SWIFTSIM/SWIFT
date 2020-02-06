@@ -979,12 +979,60 @@ void engine_redistribute(struct engine *e) {
 #ifdef WITH_LOGGER
   if (e->policy & engine_policy_logger) {
     /* Log the particles before sending them out */
-    const int sending = 1;
-    logger_log_repartition(e->logger, nr_nodes, sending, s->parts,
-                           s->xparts, nr_parts_new, counts,
-                           s->gparts, nr_gparts_new, g_counts,
-                           s->sparts, nr_sparts_new, s_counts,
-                           s->bparts, nr_bparts_new, b_counts);
+    size_t part_offset = 0;
+    size_t spart_offset = 0;
+    size_t gpart_offset = 0;
+    size_t bpart_offset = 0;
+
+    for(int i = 0; i < nr_nodes; i++) {
+      const size_t c_ind = engine_rank * nr_nodes + i;
+
+      /* No need to log the local particles. */
+      if (i == engine_rank) {
+        part_offset += counts[c_ind];
+        spart_offset += s_counts[c_ind];
+        gpart_offset += g_counts[c_ind];
+        bpart_offset += b_counts[c_ind];
+        continue;
+      }
+      const int flag = logger_generate_flag_data(
+        logger_flag_mpi_exit, i);
+
+      const unsigned int mask_hydro =
+        logger_masks_all_part |
+        logger_mask_data[logger_special_flags].mask;
+
+      /* Log the hydro parts. */
+      logger_log_parts(e->logger, &parts[part_offset],
+                       &xparts[part_offset], mask_hydro,
+                       counts[c_ind], flag);
+
+      const unsigned int mask_stars = logger_masks_all_spart |
+        logger_mask_data[logger_special_flags].mask;
+
+      /* Log the stellar parts. */
+      logger_log_sparts(e->logger, &sparts[spart_offset], mask_stars,
+                        s_counts[c_ind], flag);
+
+      const unsigned int mask_grav =
+        logger_masks_all_gpart |
+        logger_mask_data[logger_special_flags].mask;
+
+      /* Log the gparts */
+      logger_log_gparts(e->logger, &gparts[gpart_offset], mask_grav,
+                        g_counts[c_ind], flag);
+
+      /* Log the bparts */
+      if (b_counts[c_ind] > 0) {
+        error("TODO");
+      }
+
+      /* Update the counters */
+      part_offset += counts[c_ind];
+      spart_offset += s_counts[c_ind];
+      gpart_offset += g_counts[c_ind];
+      bpart_offset += b_counts[c_ind];
+    }
   }
 #endif
 
@@ -1042,13 +1090,61 @@ void engine_redistribute(struct engine *e) {
 
 #ifdef WITH_LOGGER
   if (e->policy & engine_policy_logger) {
-    /* Log the received particles */
-    const int sending = 0;
-    logger_log_repartition(e->logger, nr_nodes, sending, s->parts,
-                           s->xparts, nr_parts_new, counts,
-                           s->gparts, nr_gparts_new, g_counts,
-                           s->sparts, nr_sparts_new, s_counts,
-                           s->bparts, nr_bparts_new, b_counts);
+    size_t part_offset = 0;
+    size_t spart_offset = 0;
+    size_t gpart_offset = 0;
+    size_t bpart_offset = 0;
+
+    for(int i = 0; i < nr_nodes; i++) {
+      const size_t c_ind = i * nr_nodes + engine_rank;
+
+      /* No need to log the local particles. */
+      if (i == engine_rank) {
+        part_offset += counts[c_ind];
+        spart_offset += s_counts[c_ind];
+        gpart_offset += g_counts[c_ind];
+        bpart_offset += b_counts[c_ind];
+        continue;
+      }
+
+      const int flag = logger_generate_flag_data(
+        logger_flag_mpi_enter, i);
+
+      const unsigned int mask_hydro =
+        logger_masks_all_part |
+        logger_mask_data[logger_special_flags].mask;
+
+      /* Log the hydro parts. */
+      logger_log_parts(e->logger, &parts[part_offset],
+                       &xparts[part_offset], mask_hydro,
+                       counts[c_ind], flag);
+
+      const unsigned int mask_stars = logger_masks_all_spart |
+        logger_mask_data[logger_special_flags].mask;
+
+      /* Log the stellar parts. */
+      logger_log_sparts(e->logger, &sparts[spart_offset], mask_stars,
+                        s_counts[c_ind], flag);
+
+      const unsigned int mask_grav =
+        logger_masks_all_gpart |
+        logger_mask_data[logger_special_flags].mask;
+
+      /* Log the gparts */
+      logger_log_gparts(e->logger, &gparts[gpart_offset], mask_grav,
+                        g_counts[c_ind], flag);
+
+      /* Log the bparts */
+      if (b_counts[c_ind] > 0) {
+        error("TODO");
+      }
+
+      /* Update the counters */
+      part_offset += counts[c_ind];
+      spart_offset += s_counts[c_ind];
+      gpart_offset += g_counts[c_ind];
+      bpart_offset += b_counts[c_ind];
+    }
   }
 #endif
 

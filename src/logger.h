@@ -175,12 +175,21 @@ void logger_log_all(struct logger_writer *log, const struct engine *e);
 void logger_log_part(struct logger_writer *log, const struct part *p,
                      unsigned int mask, size_t *offset,
                      const int special_flags);
+void logger_log_parts(struct logger_writer *log, const struct part *p,
+                      struct xpart *xp, unsigned int mask,
+                      int count, const int special_flags);
 void logger_log_spart(struct logger_writer *log, const struct spart *p,
                       unsigned int mask, size_t *offset,
                       const int special_flags);
+void logger_log_sparts(struct logger_writer *log, struct spart *sp,
+                       unsigned int mask, int count,
+                       const int special_flags);
 void logger_log_gpart(struct logger_writer *log, const struct gpart *p,
                       unsigned int mask, size_t *offset,
                       const int special_flags);
+void logger_log_gparts(struct logger_writer *log, struct gpart *gp,
+                       unsigned int mask, int count,
+                       const int special_flags);
 void logger_init(struct logger_writer *log, struct swift_params *params);
 void logger_free(struct logger_writer *log);
 void logger_log_timestamp(struct logger_writer *log, integertime_t t,
@@ -197,24 +206,23 @@ void logger_struct_dump(const struct logger_writer *log, FILE *stream);
 void logger_struct_restore(struct logger_writer *log, FILE *stream);
 
 
-INLINE static int logger_generate_flag(enum logger_special_flags flag, int data) {
+/**
+ * @brief Generate the data for the special flags.
+ *
+ * @param flag The special flag to use.
+ * @param data The data to write in the .
+ */
+INLINE static int logger_generate_flag_data(enum logger_special_flags flag, int data) {
 #ifdef SWIFT_DEBUG_CHECKS
   if (flag & 0xFFFFFF00) {
     error("The special flag in the logger cannot be larger than 1 byte.");
   }
+  if (data & ~0xFFFFFF) {
+    error("The data for the special flag in the logger cannot be larger than 3 bytes.");
+  }
 #endif
-  return (flag << (3 * 8)) | (data & 0xFFFFFF);
+  return ((uint32_t) flag << (3 * 8)) | (data & 0xFFFFFF);
 }
-
-#ifdef WITH_MPI
-void logger_log_repartition(
-  struct logger_writer *log, int nr_nodes, int sending, struct part *parts,
-  struct xpart *xparts, size_t nr_parts, int *counts,
-  struct gpart *gparts, size_t nr_gparts, int *g_counts,
-  struct spart *sparts, size_t nr_sparts, int *s_counts,
-  struct bpart *bparts, size_t nr_bparts, int *b_counts);
-
-#endif
 
 /**
  * @brief Initialize the logger data for a particle.

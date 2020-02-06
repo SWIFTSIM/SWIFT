@@ -457,7 +457,7 @@ void engine_exchange_strays(struct engine *e, const size_t offset_parts,
 
 #ifdef WITH_LOGGER
     if (e->policy & engine_policy_logger) {
-      const int logger_flag = logger_generate_flag(
+      const int logger_flag = logger_generate_flag_data(
         logger_flag_mpi_exit, node_id);
 
       /* Log the particle when leaving a rank. */
@@ -506,7 +506,7 @@ void engine_exchange_strays(struct engine *e, const size_t offset_parts,
 
 #ifdef WITH_LOGGER
     if (e->policy & engine_policy_logger) {
-      const int logger_flag = logger_generate_flag(
+      const int logger_flag = logger_generate_flag_data(
         logger_flag_mpi_exit, node_id);
 
       /* Log the particle when leaving a rank. */
@@ -555,7 +555,7 @@ void engine_exchange_strays(struct engine *e, const size_t offset_parts,
 
 #ifdef WITH_LOGGER
     if (e->policy & engine_policy_logger) {
-      error("TODO");
+      error("Not yet implemented.");
     }
 #endif
   }
@@ -593,7 +593,7 @@ void engine_exchange_strays(struct engine *e, const size_t offset_parts,
     if ((e->policy & engine_policy_logger) &&
         s->gparts[offset_gparts + k].type == swift_type_dark_matter) {
 
-      const int logger_flag = logger_generate_flag(
+      const int logger_flag = logger_generate_flag_data(
          logger_flag_mpi_exit, node_id);
 
       /* Log the particle when leaving a rank. */
@@ -826,7 +826,7 @@ void engine_exchange_strays(struct engine *e, const size_t offset_parts,
 
 #ifdef WITH_LOGGER
       if (e->policy & engine_policy_logger) {
-        const int flag = logger_generate_flag(logger_flag_mpi_enter,
+        const int flag = logger_generate_flag_data(logger_flag_mpi_enter,
                                               prox->nodeID);
 
         struct part *parts = &s->parts[offset_parts + count_parts];
@@ -839,37 +839,23 @@ void engine_exchange_strays(struct engine *e, const size_t offset_parts,
           logger_masks_all_part |
           logger_mask_data[logger_special_flags].mask;
 
-        for(int i = 0; i < prox->nr_parts_in; i++) {
-          logger_log_part(e->logger, &parts[i], mask_hydro,
-                          &xparts[i].logger_data.last_offset,
-                          flag);
-          /* Reset the counter */
-          xparts[i].logger_data.steps_since_last_output = 0;
-        }
+        logger_log_parts(e->logger, parts, xparts,
+                         mask_hydro, prox->nr_parts_in, flag);
 
         /* Log the stellar particles */
         const unsigned int mask_stars = logger_masks_all_spart |
           logger_mask_data[logger_special_flags].mask;
-        for(int i = 0; i < prox->nr_sparts_in; i++) {
-          logger_log_spart(e->logger, &sparts[i], mask_stars,
-                           &sparts[i].logger_data.last_offset,
-                           flag);
-          sparts[i].logger_data.steps_since_last_output = 0;
-        }
+
+        logger_log_sparts(e->logger, sparts, mask_stars,
+                          prox->nr_sparts_in, flag);
 
         /* Log the gparts */
         const unsigned int mask_grav =
           logger_masks_all_gpart |
           logger_mask_data[logger_special_flags].mask;
-        for(int i = 0; i < prox->nr_gparts_in; i++) {
-          /* Log only the dark matter */
-          if (gparts[i].type != swift_type_dark_matter) continue;
 
-          logger_log_gpart(e->logger, &gparts[i], mask_grav,
-                           &gparts[i].logger_data.last_offset,
-                           flag);
-          gparts[i].logger_data.steps_since_last_output = 0;
-        }
+        logger_log_gparts(e->logger, gparts, mask_grav,
+                          prox->nr_gparts_in, flag);
 
         /* Log the bparts */
         if (prox->nr_bparts_in > 0) {

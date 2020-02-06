@@ -254,7 +254,7 @@ int main(int argc, char *argv[]) {
                  "frequency (Hz) to be used for time measurements.",
                  NULL, 0, 0),
       OPT_BOOLEAN(0, "logger", &with_logger,
-                  "Run with the logger.", NULL, 0, 0),
+                  "Run with the particle logger.", NULL, 0, 0),
       OPT_INTEGER('n', "steps", &nsteps,
                   "Execute a fixed number of time steps. When unset use the "
                   "time_end parameter to stop.",
