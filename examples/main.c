@@ -169,6 +169,7 @@ int main(int argc, char *argv[]) {
   int with_drift_all = 0;
   int with_mpole_reconstruction = 0;
   int with_structure_finding = 0;
+  int with_logger = 0;
   int with_eagle = 0;
   int verbose = 0;
   int nr_threads = 1;
@@ -252,6 +253,8 @@ int main(int argc, char *argv[]) {
                  "Overwrite the CPU "
                  "frequency (Hz) to be used for time measurements.",
                  NULL, 0, 0),
+      OPT_BOOLEAN(0, "logger", &with_logger,
+                  "Run with the logger.", NULL, 0, 0),
       OPT_INTEGER('n', "steps", &nsteps,
                   "Execute a fixed number of time steps. When unset use the "
                   "time_end parameter to stop.",
@@ -326,6 +329,13 @@ int main(int argc, char *argv[]) {
 #if !defined(HAVE_SETAFFINITY) || !defined(HAVE_LIBNUMA)
   if (with_aff) {
     printf("Error: no NUMA support for thread affinity\n");
+    return 1;
+  }
+#endif
+
+#if !defined(WITH_LOGGER)
+  if (with_logger) {
+    printf("Error: the logger is not available, please compile with --enable-logger.");
     return 1;
   }
 #endif
@@ -1144,6 +1154,7 @@ int main(int argc, char *argv[]) {
     if (with_structure_finding)
       engine_policies |= engine_policy_structure_finding;
     if (with_fof) engine_policies |= engine_policy_fof;
+    if (with_logger) engine_policies |= engine_policy_logger;
 
     /* Initialize the engine with the space and policies. */
     if (myrank == 0) clocks_gettime(&tic);
@@ -1206,7 +1217,15 @@ int main(int argc, char *argv[]) {
 #ifdef WITH_MPI
     /* Split the space. */
     engine_split(&e, &initial_partition);
-    engine_redistribute(&e, /* initial_redistribute */ 1);
+    if (with_logger) {
+      /* Turn off the logger to avoid writing the communications */
+      e.policy &= ~engine_policy_logger;
+    }
+    engine_redistribute(&e);
+    if (with_logger) {
+      /* Turn it back on */
+      e.policy |= engine_policy_logger;
+    }
 #endif
 
     /* Initialise the particles */
@@ -1214,8 +1233,10 @@ int main(int argc, char *argv[]) {
 
     /* Write the state of the system before starting time integration. */
 #ifdef WITH_LOGGER
-    logger_log_all(e.logger, &e);
-    engine_dump_index(&e);
+    if (e.policy & engine_policy_logger) {
+      logger_log_all(e.logger, &e);
+      engine_dump_index(&e);
+    }
 #endif
     /* Dump initial state snapshot, if not working with an output list */
     if (!e.output_list_snapshots) engine_dump_snapshot(&e);
@@ -1417,14 +1438,16 @@ int main(int argc, char *argv[]) {
       engine_print_stats(&e);
     }
 #ifdef WITH_LOGGER
-    logger_log_all(e.logger, &e);
+    if (e.policy & engine_policy_logger) {
+      logger_log_all(e.logger, &e);
 
-    /* Write a final index file */
-    engine_dump_index(&e);
+      /* Write a final index file */
+      engine_dump_index(&e);
 
-    /* Write a sentinel timestamp */
-    logger_log_timestamp(e.logger, e.ti_current, e.time,
-                         &e.logger->timestamp_offset);
+      /* Write a sentinel timestamp */
+      logger_log_timestamp(e.logger, e.ti_current, e.time,
+                           &e.logger->timestamp_offset);
+    }
 #endif
 
     /* Write final snapshot? */

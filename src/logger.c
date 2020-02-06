@@ -178,42 +178,29 @@ void logger_log_all(struct logger_writer *log, const struct engine *e) {
 
   /* some constants. */
   const struct space *s = e->s;
-  const unsigned int mask_hydro =
-      logger_mask_data[logger_x].mask | logger_mask_data[logger_v].mask |
-      logger_mask_data[logger_a].mask | logger_mask_data[logger_u].mask |
-      logger_mask_data[logger_h].mask | logger_mask_data[logger_rho].mask |
-      logger_mask_data[logger_consts].mask;
 
   /* loop over all parts. */
   for (size_t i = 0; i < s->nr_parts; i++) {
-    logger_log_part(log, &s->parts[i], mask_hydro,
+    logger_log_part(log, &s->parts[i], logger_masks_all_part,
                     &s->xparts[i].logger_data.last_offset,
                     /* Special flags */ 0);
     s->xparts[i].logger_data.steps_since_last_output = 0;
   }
-
-  const unsigned int mask_grav =
-      logger_mask_data[logger_x].mask | logger_mask_data[logger_v].mask |
-      logger_mask_data[logger_a].mask | logger_mask_data[logger_consts].mask;
 
   /* loop over all gparts */
   for (size_t i = 0; i < s->nr_gparts; i++) {
     /* Log only the dark matter */
     if (s->gparts[i].type != swift_type_dark_matter) continue;
 
-    logger_log_gpart(log, &s->gparts[i], mask_grav,
+    logger_log_gpart(log, &s->gparts[i], logger_masks_all_gpart,
                      &s->gparts[i].logger_data.last_offset,
                      /* Special flags */ 0);
     s->gparts[i].logger_data.steps_since_last_output = 0;
   }
 
-  const unsigned int mask_stars = logger_mask_data[logger_x].mask |
-                                  logger_mask_data[logger_v].mask |
-                                  logger_mask_data[logger_consts].mask;
-
   /* loop over all sparts */
   for (size_t i = 0; i < s->nr_sparts; i++) {
-    logger_log_spart(log, &s->sparts[i], mask_stars,
+    logger_log_spart(log, &s->sparts[i], logger_masks_all_spart,
                      &s->sparts[i].logger_data.last_offset,
                      /* Special flags */ 0);
     s->sparts[i].logger_data.steps_since_last_output = 0;
@@ -229,8 +216,8 @@ void logger_log_all(struct logger_writer *log, const struct engine *e) {
  * @param p The #part to dump.
  * @param mask The mask of the data to dump.
  * @param offset Pointer to the offset of the previous log of this particle;
- * @param special_flags The value of the special flag.
  * (return) offset of this log.
+ * @param special_flags The value of the special flag.
  */
 void logger_log_part(struct logger_writer *log, const struct part *p,
                      unsigned int mask, size_t *offset,
@@ -891,16 +878,13 @@ void logger_log_repartition(
       continue;
     }
 
-    const enum logger_special_flags create_delete =
-      sending? logger_flag_delete : logger_flag_create;
+    const enum logger_special_flags receive_or_send =
+      sending? logger_flag_mpi_exit : logger_flag_mpi_enter;
     const int flag = logger_generate_flag(
-      logger_flag_mpi | create_delete, i);
+      receive_or_send, i);
 
     const unsigned int mask_hydro =
-      logger_mask_data[logger_x].mask | logger_mask_data[logger_v].mask |
-      logger_mask_data[logger_a].mask | logger_mask_data[logger_u].mask |
-      logger_mask_data[logger_h].mask | logger_mask_data[logger_rho].mask |
-      logger_mask_data[logger_consts].mask |
+      logger_masks_all_part |
       logger_mask_data[logger_special_flags].mask;
 
     /* Log the hydro parts. */
@@ -912,9 +896,7 @@ void logger_log_repartition(
       xparts[ind].logger_data.steps_since_last_output = 0;
     }
 
-    const unsigned int mask_stars = logger_mask_data[logger_x].mask |
-      logger_mask_data[logger_v].mask |
-      logger_mask_data[logger_consts].mask |
+    const unsigned int mask_stars = logger_masks_all_spart |
       logger_mask_data[logger_special_flags].mask;
 
     /* Log the stellar parts. */
@@ -927,8 +909,7 @@ void logger_log_repartition(
     }
 
     const unsigned int mask_grav =
-      logger_mask_data[logger_x].mask | logger_mask_data[logger_v].mask |
-      logger_mask_data[logger_a].mask | logger_mask_data[logger_consts].mask |
+      logger_masks_all_gpart |
       logger_mask_data[logger_special_flags].mask;
 
     /* Log the gparts */
@@ -955,84 +936,6 @@ void logger_log_repartition(
     bpart_offset += b_counts[c_ind];
   }
 }
-
-/**
- * @brief Log all the particles arriving in the current rank.
- *
- * @param parts The list of #part.
- * @param nr_parts The number of parts.
- * @param count The number of parts in each ranks.
- * @param gparts The list of #gpart.
- * @param nr_gparts The number of gparts.
- * @param gcount The number of gparts in each ranks.
- * @param sparts The list of #spart.
- * @param nr_sparts The number of sparts.
- * @param s_counts The number of sparts in each ranks.
- * @param bparts The list of #bpart.
- * @param nr_bparts The number of bparts.
- * @param b_counts The number of bparts in each ranks.
- *
- */
-void logger_log_recv_strays(
-    struct logger_writer *log,
-    struct part *parts, struct xpart *xparts, size_t nr_parts,
-    struct gpart *gparts, size_t nr_gparts,
-    struct spart *sparts, size_t nr_sparts,
-    struct bpart *bparts, size_t nr_bparts,
-    int node_id) {
-
-  const int flag = logger_generate_flag(logger_flag_mpi | logger_flag_create,
-                                        node_id);
-
-  /* Log the gas particles */
-  const unsigned int mask_hydro =
-    logger_mask_data[logger_x].mask | logger_mask_data[logger_v].mask |
-    logger_mask_data[logger_a].mask | logger_mask_data[logger_u].mask |
-    logger_mask_data[logger_h].mask | logger_mask_data[logger_rho].mask |
-    logger_mask_data[logger_consts].mask |
-    logger_mask_data[logger_special_flags].mask;
-
-  for(size_t i = 0; i < nr_parts; i++) {
-    logger_log_part(log, &parts[i], mask_hydro,
-                    &xparts[i].logger_data.last_offset,
-                    flag);
-    xparts[i].logger_data.steps_since_last_output = 0;
-  }
-
-  /* Log the stellar particles */
-  const unsigned int mask_stars = logger_mask_data[logger_x].mask |
-    logger_mask_data[logger_v].mask |
-    logger_mask_data[logger_consts].mask |
-    logger_mask_data[logger_special_flags].mask;
-  for(size_t i = 0; i < nr_sparts; i++) {
-    logger_log_spart(log, &sparts[i], mask_stars,
-                     &sparts[i].logger_data.last_offset,
-                     /* Special flags */ 0);
-    sparts[i].logger_data.steps_since_last_output = 0;
-  }
-
-
-  /* Log the gparts */
-  const unsigned int mask_grav =
-    logger_mask_data[logger_x].mask | logger_mask_data[logger_v].mask |
-    logger_mask_data[logger_a].mask | logger_mask_data[logger_consts].mask |
-    logger_mask_data[logger_special_flags].mask;
-  for(size_t i = 0; i < nr_gparts; i++) {
-    /* Log only the dark matter */
-    if (gparts[i].type != swift_type_dark_matter) continue;
-
-    logger_log_gpart(log, &gparts[i], mask_grav,
-                     &gparts[i].logger_data.last_offset,
-                     /* Special flags */ 0);
-    gparts[i].logger_data.steps_since_last_output = 0;
-  }
-
-  /* Log the bparts */
-  if (nr_bparts > 0) {
-    error("TODO");
-  }
-}
-
 #endif
 
 /**

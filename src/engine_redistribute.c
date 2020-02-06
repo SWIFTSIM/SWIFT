@@ -514,9 +514,8 @@ static void engine_redistribute_relink_mapper(void *map_data, int num_elements,
  *
  *
  * @param e The #engine.
- * @param initial_redistribute Is it the initial redistribute (just after reading the particles).
  */
-void engine_redistribute(struct engine *e, int initial_redistribute) {
+void engine_redistribute(struct engine *e) {
 
 #ifdef WITH_MPI
 
@@ -978,7 +977,7 @@ void engine_redistribute(struct engine *e, int initial_redistribute) {
     nr_bparts_new += b_counts[k * nr_nodes + nodeID];
 
 #ifdef WITH_LOGGER
-  if (!initial_redistribute) {
+  if (e->policy & engine_policy_logger) {
     /* Log the particles before sending them out */
     const int sending = 1;
     logger_log_repartition(e->logger, nr_nodes, sending, s->parts,
@@ -1042,10 +1041,10 @@ void engine_redistribute(struct engine *e, int initial_redistribute) {
      stuff we just received */
 
 #ifdef WITH_LOGGER
-  if (!initial_redistribute) {
+  if (e->policy & engine_policy_logger) {
     /* Log the received particles */
-    const int receiving = 0;
-    logger_log_repartition(e->logger, nr_nodes, receiving, s->parts,
+    const int sending = 0;
+    logger_log_repartition(e->logger, nr_nodes, sending, s->parts,
                            s->xparts, nr_parts_new, counts,
                            s->gparts, nr_gparts_new, g_counts,
                            s->sparts, nr_sparts_new, s_counts,

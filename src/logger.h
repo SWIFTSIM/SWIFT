@@ -87,18 +87,28 @@ enum logger_masks_number {
   logger_h = 4,
   logger_rho = 5,
   logger_consts = 6,
-  logger_special_flags =
-      7,                 /* < 0 for MPI rank changes, 0 for none,
-                            > 0 for particle type changes, > part_type for deletion */
+  logger_special_flags = 7, /* Flag for special cases */
   logger_timestamp = 8,  /* expect it to be before count. */
   logger_count_mask = 9, /* Need to be the last. */
 } __attribute__((packed));
 
+/* Defines some mask for logging all the fields */
+enum logger_masks_all {
+  logger_masks_all_part = (1 << logger_x) | (1 << logger_v) |
+    (1 << logger_a) | (1 << logger_u) | (1 << logger_h) | (1 << logger_rho) |
+    (1 << logger_consts),
+  logger_masks_all_gpart = (1 << logger_x) | (1 << logger_v) |
+  (1 << logger_a) | (1 << logger_consts),
+  logger_masks_all_spart = (1 << logger_x) | (1 << logger_v) |
+  (1 << logger_consts),
+} __attribute__((packed));
+
 enum logger_special_flags {
-  logger_flag_change_type = 1 << 0, /* Flag for a change of particle type */
-  logger_flag_mpi = 1 << 1, /* Flag for a change of MPI rank */
-  logger_flag_delete = 1 << 2, /* Flag for a deleted particle */
-  logger_flag_create = 1 << 3 /* Flag for a created particle */
+  logger_flag_change_type = 1, /* Flag for a change of particle type */
+  logger_flag_mpi_enter, /* Flag for a particle received from another  MPI rank */
+  logger_flag_mpi_exit, /* Flag for a particle sent to another MPI rank */
+  logger_flag_delete,  /* Flag for a deleted particle */
+  logger_flag_create, /* Flag for a created particle */
 } __attribute__((packed));
 
 struct mask_data {
@@ -203,14 +213,6 @@ void logger_log_repartition(
   struct gpart *gparts, size_t nr_gparts, int *g_counts,
   struct spart *sparts, size_t nr_sparts, int *s_counts,
   struct bpart *bparts, size_t nr_bparts, int *b_counts);
-
-void logger_log_recv_strays(
-  struct logger_writer *log,
-  struct part *parts, struct xpart *xparts, size_t nr_parts,
-  struct gpart *gparts, size_t nr_gparts,
-  struct spart *sparts, size_t nr_sparts,
-  struct bpart *bparts, size_t nr_bparts,
-  int node_id);
 
 #endif
 
