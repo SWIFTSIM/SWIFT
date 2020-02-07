@@ -45,8 +45,10 @@ thermodynamical quantity given in the header of each column.
    "\\( c_s\\)", "", "\\(\\sqrt{ u \\gamma \\left( \\gamma - 1 \\right) } \\)", ""
 
 Note that when running with an isothermal equation of state, the value
-of the internal energy written to the snapshots is meaningless. The
-other quantities (pressure, entropy, ...) are, however, correct.
+of the tracked thermodynamic variable (e.g. the entropy in a
+density-entropy scheme or the internal enegy in a density-energy SPH
+formulation) written to the snapshots is meaningless. The pressure,
+however, is always correct in all scheme.
 
 Planetary EoS
 -------------
