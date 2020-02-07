@@ -2275,61 +2275,28 @@ void scheduler_write_task_level(const struct scheduler *s) {
   free(count);
 }
 /**
- * @brief dump all the active queues of all the known schedulers into a file.
+ * @brief dump all the active queues of all the known schedulers into files.
  *
  * @param e the #scheduler
  */
 void scheduler_dump_queues(struct engine *e) {
 
   struct scheduler *s = &e->sched;
-
-  /* Open the file and write the header. */
   char dumpfile[35];
+
 #ifdef WITH_MPI
-  snprintf(dumpfile, sizeof(dumpfile), "queue_dump_MPI-step%d.dat", e->step);
+  /* Open a file per rank and write the header. Use per rank to avoid MPI
+   * calls that can interact with other blocking ones.  */
+  snprintf(dumpfile, sizeof(dumpfile), "queue_dump_MPI-step%d.dat_%d", e->step,
+           e->nodeID);
 #else
   snprintf(dumpfile, sizeof(dumpfile), "queue_dump-step%d.dat", e->step);
 #endif
-  FILE *file_thread = NULL;
-  if (engine_rank == 0) {
-    file_thread = fopen(dumpfile, "w");
-    fprintf(file_thread, "# rank queue index type subtype weight\n");
-  }
 
-#ifdef WITH_MPI
-
-  /* Make sure output file is closed and empty, then we reopen on each rank. */
-  if (engine_rank == 0) fclose(file_thread);
-  MPI_Barrier(MPI_COMM_WORLD);
-
-  for (int i = 0; i < e->nr_nodes; i++) {
-
-    /* Rank 0 decides the index of the writing node, this happens
-     * one-by-one. */
-    int kk = i;
-    MPI_Bcast(&kk, 1, MPI_INT, 0, MPI_COMM_WORLD);
-
-    if (i == engine_rank) {
-
-      /* Open file and position at end. */
-      file_thread = fopen(dumpfile, "a");
-
-      for (int l = 0; l < s->nr_queues; l++) {
-        queue_dump(engine_rank, l, file_thread, &s->queues[l]);
-      }
-      fclose(file_thread);
-    }
-
-    /* And we wait for all to synchronize. */
-    MPI_Barrier(MPI_COMM_WORLD);
-  }
-
-#else
-
-  /* Non-MPI, so just a single schedulers worth of queues to dump. */
+  FILE *file_thread = fopen(dumpfile, "w");
+  fprintf(file_thread, "# rank queue index type subtype weight\n");
   for (int l = 0; l < s->nr_queues; l++) {
     queue_dump(engine_rank, l, file_thread, &s->queues[l]);
   }
   fclose(file_thread);
-#endif  // WITH_MPI
 }
