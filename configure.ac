@@ -1973,14 +1973,14 @@ esac
 # Task order
 AC_ARG_WITH([task-order],
 [AS_HELP_STRING([--with-task-order=<model>],
-[Task order to use @<:@none, EAGLE, GEAR default: default@:>@]
+[Task order to use @<:@default, EAGLE, GEAR default: default@:>@]
 )],
 [with_task_order="$withval"],
-[with_task_order="none"]
+[with_task_order="default"]
 )
 
 if test "$with_subgrid" != "none"; then
-if test "$with_task_order" != "none"; then
+if test "$with_task_order" != "default"; then
 AC_MSG_ERROR([Cannot provide with-subgrid and with-task-order together])
 else
 with_task_order="$with_subgrid_task_order"
