@@ -7,18 +7,24 @@
 Equations of State
 ==================
 
-Currently (if the documentation was well updated), we have two different gas
-equations of state (EoS) implemented: ideal and isothermal; as well as a variety  
-of EoS for "planetary" materials. 
-The EoS describe the relations between our main thermodynamical variables: 
-the internal energy (\\(u\\)), the density (\\(\\rho\\)), the entropy (\\(A\\)) 
-and the pressure (\\(P\\)).
+Currently, SWIFT offers two different gas equations of state (EoS)
+implemented: ``ideal`` and ``isothermal``; as well as a variety of EoS for
+"planetary" materials.  The EoS describe the relations between our
+main thermodynamical variables: the internal energy per unit mass
+(\\(u\\)), the mass density (\\(\\rho\\)), the entropy (\\(A\\)) and
+the pressure (\\(P\\)).
 
 Gas EoS
 -------
 
-In the following section, the variables not yet defined are: \\(\\gamma\\) for
-the adiabatic index and \\( c_s \\) for the speed of sound.
+We write the adiabatic index as \\(\\gamma \\) and \\( c_s \\) denotes
+the speed of sound. The adiabatic index can be changed at configure
+time by choosing one of the allowed values of the option
+``--with-adiabatic-index``. The default value is \\(\\gamma = 5/3 \\).
+
+The tables below give the expression for the thermodynamic quantities
+on each row entry as a function of the gas density and the
+thermodynamical quantity given in the header of each column.
 
 .. csv-table:: Ideal Gas
    :header: "Variable", "A", "u", "P"
@@ -38,7 +44,9 @@ the adiabatic index and \\( c_s \\) for the speed of sound.
    "P", "", "\\(\\left( \\gamma - 1\\right) u \\rho \\)", ""
    "\\( c_s\\)", "", "\\(\\sqrt{ u \\gamma \\left( \\gamma - 1 \\right) } \\)", ""
 
-
+Note that when running with an isothermal equation of state, the value
+of the internal energy written to the snapshots is meaningless. The
+other quantities (pressure, entropy, ...) are, however, correct.
 
 Planetary EoS
 -------------
