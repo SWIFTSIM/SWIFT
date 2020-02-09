@@ -559,24 +559,24 @@ void gravity_exact_force_compute_mapper(void *map_data, int nr_gparts,
         a_grav[2] += f * dz;
         pot += phi;
 
-        /* Compute trunctation for long and short range forces */
-        const double r_s_inv = e->mesh->r_s_inv;
-        const double u_lr = r * r_s_inv;
-        double corr_f_lr;
-        kernel_long_grav_force_eval_double(u_lr, &corr_f_lr);
-
-        a_grav_short[0] += f * dx * corr_f_lr;
-        a_grav_short[1] += f * dy * corr_f_lr;
-        a_grav_short[2] += f * dz * corr_f_lr;
-  
-        a_grav_long[0] += f * dx * (1. - corr_f_lr);
-        a_grav_long[1] += f * dy * (1. - corr_f_lr);
-        a_grav_long[2] += f * dz * (1. - corr_f_lr);
-
-
         /* Apply Ewald correction for periodic BC */
         if (periodic && r > 1e-5 * hi) {
 
+          /* Compute trunctation for long and short range forces */
+          const double r_s_inv = e->mesh->r_s_inv;
+          const double u_lr = r * r_s_inv;
+          double corr_f_lr;
+          kernel_long_grav_force_eval_double(u_lr, &corr_f_lr);
+
+          a_grav_short[0] += f * dx * corr_f_lr;
+          a_grav_short[1] += f * dy * corr_f_lr;
+          a_grav_short[2] += f * dz * corr_f_lr;
+
+          a_grav_long[0] += f * dx * (1. - corr_f_lr);
+          a_grav_long[1] += f * dy * (1. - corr_f_lr);
+          a_grav_long[2] += f * dz * (1. - corr_f_lr);
+
+          /* Ewald correction. */
           double corr_f[3], corr_pot;
           gravity_exact_force_ewald_evaluate(dx, dy, dz, corr_f, &corr_pot);
 
