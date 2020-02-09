@@ -505,6 +505,8 @@ void gravity_exact_force_compute_mapper(void *map_data, int nr_gparts,
 
       /* Be ready for the calculation */
       double a_grav[3] = {0., 0., 0.};
+      double a_grav_short[3] = {0., 0., 0.};
+      double a_grav_long[3] = {0., 0., 0.};
       double pot = 0.;
 
       /* Interact it with all other particles in the space.*/
@@ -557,6 +559,21 @@ void gravity_exact_force_compute_mapper(void *map_data, int nr_gparts,
         a_grav[2] += f * dz;
         pot += phi;
 
+        /* Compute trunctation for long and short range forces */
+        const double r_s_inv = e->mesh->r_s_inv;
+        const double u_lr = r * r_s_inv;
+        double corr_f_lr;
+        kernel_long_grav_force_eval_double(u_lr, &corr_f_lr);
+
+        a_grav_short[0] += f * dx * corr_f_lr;
+        a_grav_short[1] += f * dy * corr_f_lr;
+        a_grav_short[2] += f * dz * corr_f_lr;
+  
+        a_grav_long[0] += f * dx * (1. - corr_f_lr);
+        a_grav_long[1] += f * dy * (1. - corr_f_lr);
+        a_grav_long[2] += f * dz * (1. - corr_f_lr);
+
+
         /* Apply Ewald correction for periodic BC */
         if (periodic && r > 1e-5 * hi) {
 
@@ -567,13 +584,19 @@ void gravity_exact_force_compute_mapper(void *map_data, int nr_gparts,
           a_grav[1] += mj * corr_f[1];
           a_grav[2] += mj * corr_f[2];
           pot += mj * corr_pot;
+
+          a_grav_long[0] += mj * corr_f[0];
+          a_grav_long[1] += mj * corr_f[1];
+          a_grav_long[2] += mj * corr_f[2];
         }
       }
 
       /* Store the exact answer */
-      gpi->a_grav_exact[0] = a_grav[0] * const_G;
-      gpi->a_grav_exact[1] = a_grav[1] * const_G;
-      gpi->a_grav_exact[2] = a_grav[2] * const_G;
+      for (int ii = 0; ii < 3; ii++) {
+        gpi->a_grav_exact[ii] = a_grav[ii] * const_G;
+        gpi->a_grav_exact_short[ii] = a_grav_short[ii] * const_G;
+        gpi->a_grav_exact_long[ii] = a_grav_long[ii] * const_G;
+      }
       gpi->potential_exact = pot * const_G;
 
       counter++;
@@ -725,9 +748,11 @@ void gravity_exact_force_check(struct space *s, const struct engine *e,
     fprintf(file_exact, "# periodic= %d\n", s->periodic);
     fprintf(file_exact, "# Git Branch: %s\n", git_branch());
     fprintf(file_exact, "# Git Revision: %s\n", git_revision());
-    fprintf(file_exact, "# %16s %16s %16s %16s %16s %16s %16s %16s\n", "id",
-            "pos[0]", "pos[1]", "pos[2]", "a_exact[0]", "a_exact[1]",
-            "a_exact[2]", "potential");
+    fprintf(file_exact, "# %16s %16s %16s %16s %16s %16s %16s %16s %16s %16s %16s "
+            "%16s %16s %16s\n", "id", "pos[0]", "pos[1]", "pos[2]", "a_exact[0]",
+            "a_exact[1]", "a_exact[2]", "potential", "a_exact_short[0]",
+            "a_exact_short[1]", "a_exact_short[2]", "a_exact_long[0]",
+            "a_exact_long[1]", "a_exact_long[2]");
 
     /* Output particle exact accelerations  */
     for (size_t i = 0; i < s->nr_gparts; ++i) {
@@ -746,12 +771,15 @@ void gravity_exact_force_check(struct space *s, const struct engine *e,
 
       /* Is the particle was active and part of the subset to be tested ? */
       if (id % SWIFT_GRAVITY_FORCE_CHECKS == 0 && gpart_is_starting(gpi, e)) {
-
         fprintf(file_exact,
-                "%18lld %16.8e %16.8e %16.8e %16.8e %16.8e %16.8e %16.8e\n", id,
+                "%18lld %16.8e %16.8e %16.8e %16.8e %16.8e %16.8e %16.8e "
+                "%16.8e %16.8e %16.8e %16.8e %16.8e %16.8e\n", id,
                 gpi->x[0], gpi->x[1], gpi->x[2], gpi->a_grav_exact[0],
                 gpi->a_grav_exact[1], gpi->a_grav_exact[2],
-                gpi->potential_exact);
+                gpi->potential_exact, gpi->a_grav_exact_short[0],
+                gpi->a_grav_exact_short[1], gpi->a_grav_exact_short[2],
+                gpi->a_grav_exact_long[0], gpi->a_grav_exact_long[1],
+                gpi->a_grav_exact_long[2]);      
       }
     }
 

@@ -209,6 +209,42 @@ __attribute__((always_inline)) INLINE static void kernel_long_grav_force_eval(
 }
 
 /**
+ * @brief Computes the long-range correction term for the force calculation
+ * coming from FFT in double precision.
+ *
+ * @param u The ratio of the distance to the FFT cell scale \f$u = r/r_s\f$.
+ * @param W (return) The value of the kernel function.
+ */
+__attribute__((always_inline)) INLINE static void
+    kernel_long_grav_force_eval_double(const double u, double *const W) {
+#ifdef SWIFT_GRAVITY_FORCE_CHECKS
+  #ifdef GADGET2_LONG_RANGE_CORRECTION
+
+    const double one_over_sqrt_pi = ((double)(M_2_SQRTPI * 0.5));
+
+    const double arg1 = u * 0.5f;
+    const double arg2 = -arg1 * arg1;
+
+    const double term1 = approx_erfcf(arg1);
+    const double term2 = u * one_over_sqrt_pi * expf(arg2);
+
+    *W = term1 + term2;
+  #else
+
+    const double x = 2.f * u;
+    const double exp_x = expf(x);  // good_approx_expf(x);
+    const double alpha = 1.f / (1.f + exp_x);
+
+    /* We want 2*(x*alpha - x*alpha^2 - exp(x)*alpha + 1) */
+    *W = 1.f - alpha;
+    *W = *W * x - exp_x;
+    *W = *W * alpha + 1.f;
+    *W *= 2.f;
+  #endif
+#endif
+}
+
+/**
  * @brief Returns the long-range truncation of the Poisson potential in Fourier
  * space.
  *
