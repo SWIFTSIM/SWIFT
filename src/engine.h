@@ -488,6 +488,15 @@ struct engine {
 #ifdef SWIFT_GRAVITY_FORCE_CHECKS
   /* Run brute force checks only on steps when all gparts active? */
   int force_checks_only_all_active;
+
+  /* Run brute force checks only during snapshot timesteps? */
+  int force_checks_only_at_snapshots;
+
+  /* Are all gparts active this timestep? */
+  int all_gparts_active;
+
+  /* Are we doing brute force calculations this timestep? */
+  int brute_force_gravity_flag;
 #endif
 };
 
