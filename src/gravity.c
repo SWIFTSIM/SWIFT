@@ -652,21 +652,23 @@ void gravity_exact_force_check(struct space *s, const struct engine *e,
           SELF_GRAVITY_MULTIPOLE_ORDER);
 
   /* Creare files and write header */
-  const double epsilon = gravity_get_softening(0, e->gravity_properties);
   FILE *file_swift = fopen(file_name_swift, "w");
   fprintf(file_swift, "# Gravity accuracy test - SWIFT FORCES\n");
   fprintf(file_swift, "# G= %16.8e\n", e->physical_constants->const_newton_G);
   fprintf(file_swift, "# N= %d\n", SWIFT_GRAVITY_FORCE_CHECKS);
-  fprintf(file_swift, "# epsilon= %16.8e\n", epsilon);
   fprintf(file_swift, "# periodic= %d\n", s->periodic);
   fprintf(file_swift, "# theta= %16.8e\n", e->gravity_properties->theta_crit);
   fprintf(file_swift, "# Git Branch: %s\n", git_branch());
   fprintf(file_swift, "# Git Revision: %s\n", git_revision());
   fprintf(file_swift,
-          "# %16s %16s %16s %16s %16s %16s %16s %16s %16s %16s %16s %16s\n",
+          "# %16s %16s %16s %16s %16s %16s %16s %16s %16s %16s %16s %16s "
+          "%16s %16s %16s %16s %16s %16s %16s %16s %16s %16s %16s %16s %16s\n",
           "id", "pos[0]", "pos[1]", "pos[2]", "a_swift[0]", "a_swift[1]",
           "a_swift[2]", "potential", "a_PM[0]", "a_PM[1]", "a_PM[2]",
-          "potentialPM");
+          "potentialPM", "a_p2p[0]", "a_p2p[1]", "a_p2p[2]",
+          "a_m2p[0]", "a_m2p[1]", "a_m2p[2]",
+          "a_m2l[0]", "a_m2l[1]", "a_m2l[2]",
+          "n_p2p", "n_m2p", "n_m2l", "n_PM");
 
   /* Output particle SWIFT accelerations  */
   for (size_t i = 0; i < s->nr_gparts; ++i) {
@@ -688,11 +690,17 @@ void gravity_exact_force_check(struct space *s, const struct engine *e,
 
       fprintf(file_swift,
               "%18lld %16.8e %16.8e %16.8e %16.8e %16.8e %16.8e %16.8e %16.8e "
-              "%16.8e %16.8e %16.8e\n",
+              "%16.8e %16.8e %16.8e %16.8e %16.8e %16.8e %16.8e %16.8e %16.8e "
+              "%16.8e %16.8e %16.8e %18lld %18lld %18lld %18lld\n",
               id, gpi->x[0], gpi->x[1], gpi->x[2], gpi->a_grav[0],
               gpi->a_grav[1], gpi->a_grav[2],
               gravity_get_comoving_potential(gpi), gpi->a_grav_PM[0],
-              gpi->a_grav_PM[1], gpi->a_grav_PM[2], gpi->potential_PM);
+              gpi->a_grav_PM[1], gpi->a_grav_PM[2], gpi->potential_PM,
+              gpi->a_grav_p2p[0], gpi->a_grav_p2p[1], gpi->a_grav_p2p[2],
+              gpi->a_grav_m2p[0], gpi->a_grav_m2p[1], gpi->a_grav_m2p[2],
+              gpi->a_grav_m2l[0], gpi->a_grav_m2l[1], gpi->a_grav_m2l[2],
+              gpi->num_interacted_p2p, gpi->num_interacted_m2p,
+              gpi->num_interacted_m2l, gpi->num_not_interacted);
     }
   }
 
@@ -714,7 +722,6 @@ void gravity_exact_force_check(struct space *s, const struct engine *e,
     fprintf(file_exact, "# Gravity accuracy test - EXACT FORCES\n");
     fprintf(file_exact, "# G= %16.8e\n", e->physical_constants->const_newton_G);
     fprintf(file_exact, "# N= %d\n", SWIFT_GRAVITY_FORCE_CHECKS);
-    fprintf(file_exact, "# epsilon=%16.8e\n", epsilon);
     fprintf(file_exact, "# periodic= %d\n", s->periodic);
     fprintf(file_exact, "# Git Branch: %s\n", git_branch());
     fprintf(file_exact, "# Git Revision: %s\n", git_revision());
