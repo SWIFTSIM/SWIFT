@@ -2335,8 +2335,23 @@ void engine_step(struct engine *e) {
 #endif
 
 #ifdef SWIFT_GRAVITY_FORCE_CHECKS
+  /* Check how many gparts are active this timestep. */
+  size_t nr_gparts = e->s->nr_gparts;
+  long long gpart_active_count = 0;
+
+  /* Count active gparts */
+  for (long long i=0; i < nr_gparts; ++i) {
+    struct gpart *gp = &e->s->gparts[i];
+    if (gpart_is_active(gp, e)) gpart_active_count += 1;
+  }
+
+  /* Are all gparts active? */
+  const int all_gparts_active = gpart_active_count == nr_gparts;
+ 
   /* Run the brute-force gravity calculation for some gparts */
-  if (e->policy & engine_policy_self_gravity)
+  if (e->policy & engine_policy_self_gravity &&
+        ((all_gparts_active && e->force_checks_only_all_active) ||
+        !e->force_checks_only_all_active))
     gravity_exact_force_compute(e->s, e);
 #endif
 
@@ -2357,7 +2372,9 @@ void engine_step(struct engine *e) {
 
 #ifdef SWIFT_GRAVITY_FORCE_CHECKS
   /* Check the accuracy of the gravity calculation */
-  if (e->policy & engine_policy_self_gravity)
+  if (e->policy & engine_policy_self_gravity &&
+        ((all_gparts_active && e->force_checks_only_all_active) ||
+        !e->force_checks_only_all_active))
     gravity_exact_force_check(e->s, e, 1e-1);
 #endif
 
@@ -3582,6 +3599,11 @@ void engine_init(struct engine *e, struct space *s, struct swift_params *params,
 #if defined(WITH_LOGGER)
   e->logger = (struct logger_writer *)malloc(sizeof(struct logger_writer));
   logger_init(e->logger, params);
+#endif
+
+#ifdef SWIFT_GRAVITY_FORCE_CHECKS
+  e->force_checks_only_all_active =
+    parser_get_opt_param_int(params, "ForceChecks:only_when_all_active", 1);
 #endif
 
   /* Make the space link back to the engine. */
