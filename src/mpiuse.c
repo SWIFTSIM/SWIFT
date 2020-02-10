@@ -363,5 +363,4 @@ void mpiuse_log_dump_error(int rank) {
   mpiuse_log_dump(filename, clocks_start_ticks);
 }
 
-
 #endif /* defined(SWIFT_MPIUSE_REPORTS) && defined(WITH_MPI) */
