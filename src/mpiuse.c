@@ -351,4 +351,17 @@ void mpiuse_log_dump(const char *filename, ticks stepticks) {
   //        clocks_getunit());
 }
 
+/**
+ * @brief dump the log for using the given rank to generate a standard
+ *        name for the output. Used when exiting in error.
+ *
+ * @param rank the rank exiting in error.
+ */
+void mpiuse_log_dump_error(int rank) {
+  char filename[60];
+  sprintf(filename, "mpiuse-error-report-rank%d.txt", rank);
+  mpiuse_log_dump(filename, clocks_start_ticks);
+}
+
+
 #endif /* defined(SWIFT_MPIUSE_REPORTS) && defined(WITH_MPI) */
