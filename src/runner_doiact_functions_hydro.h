@@ -2309,6 +2309,10 @@ void DOSELF1_BRANCH(struct runner *r, struct cell *c, const int limit_min_h,
   if (!limit_max_h && c->hydro.h_max_active * kernel_gamma > c->dmin)
     error("Cell smaller than smoothing length");
 
+  /* Did we mess up the recursion? */
+  if (limit_min_h && !limit_max_h)
+    error("Fundamental error in the recursion logic");
+
   /* Check that cells are drifted. */
   if (!cell_are_part_drifted(c, e)) error("Interacting undrifted cell.");
 
