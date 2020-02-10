@@ -72,7 +72,7 @@ __attribute__((always_inline, const)) INLINE static int row_major_id_periodic(
  * @param dz Second CIC coefficient along z
  */
 __attribute__((always_inline, const)) INLINE static double CIC_get(
-    const double mesh[6][6][6], const int i, const int j, const int k,
+    double mesh[6][6][6], const int i, const int j, const int k,
     const double tx, const double ty, const double tz, const double dx,
     const double dy, const double dz) {
 
