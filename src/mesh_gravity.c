@@ -568,7 +568,7 @@ void pm_mesh_compute_potential(struct pm_mesh* mesh, const struct space* s,
                 MPI_COMM_WORLD);
 
   if (verbose)
-    message("Mesh comunication took %.3f %s.",
+    message("Mesh communication took %.3f %s.",
             clocks_from_ticks(getticks() - tic), clocks_getunit());
 #endif
 
