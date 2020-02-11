@@ -211,8 +211,9 @@ void engine_repartition(struct engine *e) {
   /* Task arrays. */
   scheduler_free_tasks(&e->sched);
 
-  /* Foreign parts. */
-  space_free_foreign_parts(e->s);
+  /* Foreign parts. (no need to nullify the cell pointers as the cells
+   * will be regenerated) */
+  space_free_foreign_parts(e->s, /*clear_cell_pointers=*/0);
 
   /* Now comes the tricky part: Exchange particles between all nodes.
      This is done in two steps, first allreducing a matrix of
