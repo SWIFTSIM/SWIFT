@@ -5884,7 +5884,10 @@ void space_struct_restore(struct space *s, FILE *stream) {
                         NULL, "bparts");
   }
 
-  /* Need to reconnect the gravity parts to their hydro and stars particles. */
+  /* Need to reconnect the gravity parts to their hydro, star and BH particles.
+   * Note that we can't use the threadpool here as we have not restored it yet.
+   */
+
   /* Re-link the parts. */
   if (s->nr_parts > 0 && s->nr_gparts > 0)
     part_relink_parts_to_gparts(s->gparts, s->nr_gparts, s->parts);

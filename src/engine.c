@@ -3107,17 +3107,10 @@ void engine_split(struct engine *e, struct partition *initial_partition) {
   swift_free("gparts", s->gparts);
   s->gparts = gparts_new;
 
-  /* Re-link the parts. */
-  if (s->nr_parts > 0 && s->nr_gparts > 0)
-    part_relink_parts_to_gparts(s->gparts, s->nr_gparts, s->parts);
-
-  /* Re-link the sparts. */
-  if (s->nr_sparts > 0 && s->nr_gparts > 0)
-    part_relink_sparts_to_gparts(s->gparts, s->nr_gparts, s->sparts);
-
-  /* Re-link the bparts. */
-  if (s->nr_bparts > 0 && s->nr_gparts > 0)
-    part_relink_bparts_to_gparts(s->gparts, s->nr_gparts, s->bparts);
+  /* Re-link everything to the gparts. */
+  if (s->nr_gparts > 0)
+    part_relink_all_parts_to_gparts(s->gparts, s->nr_gparts, s->parts,
+                                    s->sparts, s->bparts, &e->threadpool);
 
 #ifdef SWIFT_DEBUG_CHECKS
 

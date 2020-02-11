@@ -27,6 +27,8 @@
 /* Config parameters. */
 #include "../config.h"
 
+#include "inline.h"
+
 /* Import the right black holes definition */
 #if defined(BLACK_HOLES_NONE)
 #include "./black_holes/Default/black_holes_struct.h"
