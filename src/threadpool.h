@@ -32,6 +32,7 @@
 /* Local defines. */
 #define threadpool_log_initial_size 1000
 #define threadpool_default_chunk_ratio 7
+#define threadpool_auto_chunk_size 0
 
 /* Function type for mappings. */
 typedef void (*threadpool_map_function)(void *map_data, int num_elements,
