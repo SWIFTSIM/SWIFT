@@ -421,15 +421,15 @@ static void dumpCells_map(struct cell *c, void *data) {
       for (int k = 0; k < nr_tasks; k++) {
         if (tasks[k].cj == NULL) {
           if (tasks[k].ci != NULL) {
-            if (c == tasks[k].ci || c == tasks[k].ci->super ) {
+            if (c == tasks[k].ci || c == tasks[k].ci->super) {
               ntasks = ntasks + 1.0f;
               ticsum += (tasks[k].toc - tasks[k].tic);
               dsum += tasks[k].ci->depth;
             }
           }
         } else {
-          if (c == tasks[k].ci || c == tasks[k].ci->super ||
-              c == tasks[k].cj || c == tasks[k].cj->super) {
+          if (c == tasks[k].ci || c == tasks[k].ci->super || c == tasks[k].cj ||
+              c == tasks[k].cj->super) {
             ntasks = ntasks + 0.5f;
             ticsum += 0.5 * (tasks[k].toc - tasks[k].tic);
             if (tasks[k].ci != NULL) dsum += (tasks[k].ci->depth * 0.5);
@@ -453,15 +453,16 @@ static void dumpCells_map(struct cell *c, void *data) {
           if (spart_is_active(&sparts[k], e)) pactcount++;
       }
 
-      fprintf(file,
-              "  %6.3f %6.3f %6.3f %6.3f %6.3f %6.3f %6d %6d %6d %6d %6d %6d %6d "
-              "%6.1f %20lld %6d %6d %6d %6d %6d %6d %6d %f %f\n",
-              c->loc[0], c->loc[1], c->loc[2], c->width[0], c->width[1],
-              c->width[2], e->step, c->hydro.count, c->grav.count,
-              c->stars.count, pactcount, c->depth, c->maxdepth, ntasks, c->hydro.ti_end_min,
-              get_time_bin(c->hydro.ti_end_min), (c->super == c),
-              (c->parent == NULL), cell_is_active_hydro(c, e), c->nodeID,
-              c->nodeID == e->nodeID, ismpiactive, ticsum, dsum);
+      fprintf(
+          file,
+          "  %6.3f %6.3f %6.3f %6.3f %6.3f %6.3f %6d %6d %6d %6d %6d %6d %6d "
+          "%6.1f %20lld %6d %6d %6d %6d %6d %6d %6d %f %f\n",
+          c->loc[0], c->loc[1], c->loc[2], c->width[0], c->width[1],
+          c->width[2], e->step, c->hydro.count, c->grav.count, c->stars.count,
+          pactcount, c->depth, c->maxdepth, ntasks, c->hydro.ti_end_min,
+          get_time_bin(c->hydro.ti_end_min), (c->super == c),
+          (c->parent == NULL), cell_is_active_hydro(c, e), c->nodeID,
+          c->nodeID == e->nodeID, ismpiactive, ticsum, dsum);
     }
   }
 }
@@ -496,8 +497,9 @@ void dumpCells(const char *prefix, int super, int active, int mpiactive,
           "# %6s %6s %6s %6s %6s %6s %6s %6s %6s %6s %6s %6s %6s %6s "
           "%20s %6s %6s %6s %6s %6s %6s %6s %6s %6s\n",
           "x", "y", "z", "xw", "yw", "zw", "step", "count", "gcount", "scount",
-          "actcount", "depth", "maxdepth", "tasks", "ti_end_min", "timebin", "issuper",
-          "istop", "active", "rank", "local", "mpiactive", "ticsum", "avedepth");
+          "actcount", "depth", "maxdepth", "tasks", "ti_end_min", "timebin",
+          "issuper", "istop", "active", "rank", "local", "mpiactive", "ticsum",
+          "avedepth");
 
   size_t data[6];
   data[0] = (size_t)file;

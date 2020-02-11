@@ -439,9 +439,9 @@ static void accumulate_sizes(struct space *s, int verbose, double *counts) {
 
     mapper_data.counts = gcounts;
     mapper_data.size = gsize;
-    threadpool_map(&s->e->threadpool, accumulate_sizes_mapper_gpart,
-                   s->gparts, s->nr_gparts, sizeof(struct gpart),
-                   space_splitsize, &mapper_data);
+    threadpool_map(&s->e->threadpool, accumulate_sizes_mapper_gpart, s->gparts,
+                   s->nr_gparts, sizeof(struct gpart), space_splitsize,
+                   &mapper_data);
 
     /* Get all the counts from all the nodes. */
     if (MPI_Allreduce(MPI_IN_PLACE, gcounts, s->nr_cells, MPI_DOUBLE, MPI_SUM,
@@ -464,13 +464,12 @@ static void accumulate_sizes(struct space *s, int verbose, double *counts) {
 
     /* And clip. */
     int nadj = 0;
-    double clip  = *ptrs[cut];
+    double clip = *ptrs[cut];
     for (int k = cut + 1; k < s->nr_cells; k++) {
       *ptrs[k] = clip;
       nadj++;
     }
-    if (verbose)
-      message("clipped gravity part counts of %d cells", nadj);
+    if (verbose) message("clipped gravity part counts of %d cells", nadj);
     free(ptrs);
   }
 
@@ -1512,8 +1511,8 @@ static void partition_gather_weights(void *map_data, int num_elements,
             } else {
 
               /* Add weights from task costs to the edge. */
-              atomic_add_d(&weights_e[ik], w );
-              atomic_add_d(&weights_e[jk], w );
+              atomic_add_d(&weights_e[ik], w);
+              atomic_add_d(&weights_e[jk], w);
             }
           }
         }
@@ -1961,7 +1960,8 @@ void partition_initial_partition(struct partition *initial_partition,
 
       if ((weights_v = (double *)malloc(sizeof(double) * s->nr_cells)) == NULL)
         error("Failed to allocate weights_v buffer.");
-      if ((weights_e = (double *)malloc(sizeof(double) * s->nr_cells * 26)) == NULL)
+      if ((weights_e = (double *)malloc(sizeof(double) * s->nr_cells * 26)) ==
+          NULL)
         error("Failed to allocate weights_e buffer.");
 
       /* Check each particle and accumulate the sizes per cell. */
