@@ -45,6 +45,7 @@
 #include "engine.h"
 #include "error.h"
 #include "feedback.h"
+#include "fof.h"
 #include "gravity.h"
 #include "hydro.h"
 #include "logger.h"
