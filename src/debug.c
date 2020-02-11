@@ -393,30 +393,10 @@ static void dumpCells_map(struct cell *c, void *data) {
   size_t *ldata = (size_t *)data;
   FILE *file = (FILE *)ldata[0];
   struct engine *e = (struct engine *)ldata[1];
-  float ntasks = c->nr_tasks;
   int super = (int)ldata[2];
   int active = (int)ldata[3];
   int mpiactive = (int)ldata[4];
   int pactive = (int)ldata[5];
-
-#if SWIFT_DEBUG_CHECKS
-  /* The c->nr_tasks field does not include all the tasks. So let's check this
-   * the hard way. Note pairs share the task 50/50 with the other cell. */
-  ntasks = 0.0f;
-  struct task *tasks = e->sched.tasks;
-  int nr_tasks = e->sched.nr_tasks;
-  for (int k = 0; k < nr_tasks; k++) {
-    if (tasks[k].cj == NULL) {
-      if (c == tasks[k].ci) {
-        ntasks = ntasks + 1.0f;
-      }
-    } else {
-      if (c == tasks[k].ci || c == tasks[k].cj) {
-        ntasks = ntasks + 0.5f;
-      }
-    }
-  }
-#endif
 
   /* Only cells with particles are dumped. */
   if (c->hydro.count > 0 || c->grav.count > 0 || c->stars.count > 0) {
@@ -447,6 +427,36 @@ static void dumpCells_map(struct cell *c, void *data) {
         (!super || ((super && c->super == c) || (c->parent == NULL))) &&
         active && mpiactive) {
 
+      /* The c->nr_tasks field does not include all the tasks. So let's check
+       * this the hard way. Note pairs share the task 50/50 with the other
+       * cell. Also accumulate all the time used by tasks of this cell and
+       * form some idea of the effective task depth. */
+      float ntasks = 0.0f;
+      struct task *tasks = e->sched.tasks;
+      int nr_tasks = e->sched.nr_tasks;
+      double ticsum = 0.0; /* Sum of work for this cell. */
+      double dsum = 0.0;
+      for (int k = 0; k < nr_tasks; k++) {
+        if (tasks[k].cj == NULL) {
+          if (tasks[k].ci != NULL) {
+            if (c == tasks[k].ci || c == tasks[k].ci->super) {
+              ntasks = ntasks + 1.0f;
+              ticsum += (tasks[k].toc - tasks[k].tic);
+              dsum += tasks[k].ci->depth;
+            }
+          }
+        } else {
+          if (c == tasks[k].ci || c == tasks[k].ci->super || c == tasks[k].cj ||
+              c == tasks[k].cj->super) {
+            ntasks = ntasks + 0.5f;
+            ticsum += 0.5 * (tasks[k].toc - tasks[k].tic);
+            if (tasks[k].ci != NULL) dsum += (tasks[k].ci->depth * 0.5);
+            dsum += (tasks[k].cj->depth * 0.5);
+          }
+        }
+      }
+      dsum /= (double)ntasks;
+
       /* If requested we work out how many particles are active in this cell. */
       int pactcount = 0;
       if (pactive) {
@@ -461,15 +471,16 @@ static void dumpCells_map(struct cell *c, void *data) {
           if (spart_is_active(&sparts[k], e)) pactcount++;
       }
 
-      fprintf(file,
-              "  %6.3f %6.3f %6.3f %6.3f %6.3f %6.3f %6d %6d %6d %6d %6d %6d "
-              "%6.1f %20lld %6d %6d %6d %6d %6d %6d %6d\n",
-              c->loc[0], c->loc[1], c->loc[2], c->width[0], c->width[1],
-              c->width[2], e->step, c->hydro.count, c->grav.count,
-              c->stars.count, pactcount, c->depth, ntasks, c->hydro.ti_end_min,
-              get_time_bin(c->hydro.ti_end_min), (c->super == c),
-              (c->parent == NULL), cell_is_active_hydro(c, e), c->nodeID,
-              c->nodeID == e->nodeID, ismpiactive);
+      fprintf(
+          file,
+          "  %6.3f %6.3f %6.3f %6.3f %6.3f %6.3f %6d %6d %6d %6d %6d %6d %6d "
+          "%6.1f %20lld %6d %6d %6d %6d %6d %6d %6d %f %f\n",
+          c->loc[0], c->loc[1], c->loc[2], c->width[0], c->width[1],
+          c->width[2], e->step, c->hydro.count, c->grav.count, c->stars.count,
+          pactcount, c->depth, c->maxdepth, ntasks, c->hydro.ti_end_min,
+          get_time_bin(c->hydro.ti_end_min), (c->super == c),
+          (c->parent == NULL), cell_is_active_hydro(c, e), c->nodeID,
+          c->nodeID == e->nodeID, ismpiactive, ticsum, dsum);
     }
   }
 }
@@ -501,11 +512,12 @@ void dumpCells(const char *prefix, int super, int active, int mpiactive,
 
   /* Header. */
   fprintf(file,
-          "# %6s %6s %6s %6s %6s %6s %6s %6s %6s %6s %6s %6s %6s "
-          "%20s %6s %6s %6s %6s %6s %6s %6s\n",
+          "# %6s %6s %6s %6s %6s %6s %6s %6s %6s %6s %6s %6s %6s %6s "
+          "%20s %6s %6s %6s %6s %6s %6s %6s %6s %6s\n",
           "x", "y", "z", "xw", "yw", "zw", "step", "count", "gcount", "scount",
-          "actcount", "depth", "tasks", "ti_end_min", "timebin", "issuper",
-          "istop", "active", "rank", "local", "mpiactive");
+          "actcount", "depth", "maxdepth", "tasks", "ti_end_min", "timebin",
+          "issuper", "istop", "active", "rank", "local", "mpiactive", "ticsum",
+          "avedepth");
 
   size_t data[6];
   data[0] = (size_t)file;

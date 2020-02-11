@@ -73,6 +73,7 @@
 #include "map.h"
 #include "memuse.h"
 #include "minmax.h"
+#include "mpiuse.h"
 #include "outputlist.h"
 #include "parallel_io.h"
 #include "part.h"
@@ -210,8 +211,9 @@ void engine_repartition(struct engine *e) {
   /* Task arrays. */
   scheduler_free_tasks(&e->sched);
 
-  /* Foreign parts. */
-  space_free_foreign_parts(e->s);
+  /* Foreign parts. (no need to nullify the cell pointers as the cells
+   * will be regenerated) */
+  space_free_foreign_parts(e->s, /*clear_cell_pointers=*/0);
 
   /* Now comes the tricky part: Exchange particles between all nodes.
      This is done in two steps, first allreducing a matrix of
@@ -3112,17 +3114,10 @@ void engine_split(struct engine *e, struct partition *initial_partition) {
   swift_free("gparts", s->gparts);
   s->gparts = gparts_new;
 
-  /* Re-link the parts. */
-  if (s->nr_parts > 0 && s->nr_gparts > 0)
-    part_relink_parts_to_gparts(s->gparts, s->nr_gparts, s->parts);
-
-  /* Re-link the sparts. */
-  if (s->nr_sparts > 0 && s->nr_gparts > 0)
-    part_relink_sparts_to_gparts(s->gparts, s->nr_gparts, s->sparts);
-
-  /* Re-link the bparts. */
-  if (s->nr_bparts > 0 && s->nr_gparts > 0)
-    part_relink_bparts_to_gparts(s->gparts, s->nr_gparts, s->bparts);
+  /* Re-link everything to the gparts. */
+  if (s->nr_gparts > 0)
+    part_relink_all_parts_to_gparts(s->gparts, s->nr_gparts, s->parts,
+                                    s->sparts, s->bparts, &e->threadpool);
 
 #ifdef SWIFT_DEBUG_CHECKS
 
@@ -3410,6 +3405,11 @@ static void *engine_dumper_poll(void *p) {
       /* Dump the currently logged memory. */
       message("Dumping memory use report");
       memuse_log_dump_error(e->nodeID);
+#endif
+
+#if defined(SWIFT_MPIUSE_REPORTS) && defined(WITH_MPI)
+      /* Dump the MPI interactions in the step. */
+      mpiuse_log_dump_error(e->nodeID);
 #endif
 
       /* Add more interesting diagnostics. */

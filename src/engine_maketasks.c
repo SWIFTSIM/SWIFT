@@ -123,6 +123,59 @@ void engine_addtasks_send_gravity(struct engine *e, struct cell *ci,
 }
 
 /**
+ * @brief Add recv tasks for gravity pairs to a hierarchy of cells.
+ *
+ * @param e The #engine.
+ * @param c The foreign #cell.
+ * @param t_grav The recv_gpart #task, if it has already been created.
+ * @param t_ti The recv_ti_end #task, if it has already been created.
+ */
+void engine_addtasks_recv_gravity(struct engine *e, struct cell *c,
+                                  struct task *t_grav, struct task *t_ti) {
+#ifdef WITH_MPI
+  struct scheduler *s = &e->sched;
+
+  /* Early abort (are we below the level where tasks are)? */
+  if (!cell_get_flag(c, cell_flag_has_tasks)) return;
+
+  /* Have we reached a level where there are any gravity tasks ? */
+  if (t_grav == NULL && c->grav.grav != NULL) {
+#ifdef SWIFT_DEBUG_CHECKS
+    /* Make sure this cell has a valid tag. */
+    if (c->mpi.tag < 0) error("Trying to receive from untagged cell.");
+#endif  // SWIFT_DEBUG_CHECKS
+
+    /* Create the tasks. */
+    t_grav = scheduler_addtask(s, task_type_recv, task_subtype_gpart,
+                               c->mpi.tag, 0, c, NULL);
+
+    t_ti = scheduler_addtask(s, task_type_recv, task_subtype_tend_gpart,
+                             c->mpi.tag, 0, c, NULL);
+  }
+
+  /* If we have tasks, link them. */
+  if (t_grav != NULL) {
+    engine_addlink(e, &c->mpi.recv, t_grav);
+    engine_addlink(e, &c->mpi.recv, t_ti);
+
+    for (struct link *l = c->grav.grav; l != NULL; l = l->next) {
+      scheduler_addunlock(s, t_grav, l->t);
+      scheduler_addunlock(s, l->t, t_ti);
+    }
+  }
+
+  /* Recurse? */
+  if (c->split)
+    for (int k = 0; k < 8; k++)
+      if (c->progeny[k] != NULL)
+        engine_addtasks_recv_gravity(e, c->progeny[k], t_grav, t_ti);
+
+#else
+  error("SWIFT was not compiled with MPI support.");
+#endif
+}
+
+/**
  * @brief Run through the hydro tasks in a cell hierarchy and mark the cells
  *        that need to be sent to the given node.
  *
@@ -305,6 +358,7 @@ void engine_addtasks_send_stars(struct engine *e, struct cell *ci,
 
   struct link *l = NULL;
   struct scheduler *s = &e->sched;
+  const int foreign_nodeID = cj->nodeID;
 
   /* Early abort (are we below the level where tasks are)? */
   if (!cell_get_flag(ci, cell_flag_has_tasks)) return;
@@ -325,8 +379,8 @@ void engine_addtasks_send_stars(struct engine *e, struct cell *ci,
 
   /* Check if any of the density tasks are for the target node. */
   for (l = ci->stars.density; l != NULL; l = l->next)
-    if (cell_is_local(l->t->ci) ||
-        (l->t->cj != NULL && cell_is_local(l->t->cj)))
+    if (l->t->ci->nodeID == foreign_nodeID ||
+        (l->t->cj != NULL && l->t->cj->nodeID == foreign_nodeID))
       break;
 
   /* If so, attach send tasks. */
@@ -397,14 +451,15 @@ void engine_addtasks_send_black_holes(struct engine *e, struct cell *ci,
 
   struct link *l = NULL;
   struct scheduler *s = &e->sched;
+  const int foreign_nodeID = cj->nodeID;
 
   /* Early abort (are we below the level where tasks are)? */
   if (!cell_get_flag(ci, cell_flag_has_tasks)) return;
 
   /* Check if any of the density tasks are for the target node. */
   for (l = ci->black_holes.density; l != NULL; l = l->next)
-    if (cell_is_local(l->t->ci) ||
-        (l->t->cj != NULL && cell_is_local(l->t->cj)))
+    if (l->t->ci->nodeID == foreign_nodeID ||
+        (l->t->cj != NULL && l->t->cj->nodeID == foreign_nodeID))
       break;
 
   /* If so, attach send tasks. */
@@ -806,59 +861,6 @@ void engine_addtasks_recv_black_holes(struct engine *e, struct cell *c,
       if (c->progeny[k] != NULL)
         engine_addtasks_recv_black_holes(e, c->progeny[k], t_rho, t_bh_merger,
                                          t_gas_swallow, t_feedback, t_ti);
-
-#else
-  error("SWIFT was not compiled with MPI support.");
-#endif
-}
-
-/**
- * @brief Add recv tasks for gravity pairs to a hierarchy of cells.
- *
- * @param e The #engine.
- * @param c The foreign #cell.
- * @param t_grav The recv_gpart #task, if it has already been created.
- * @param t_ti The recv_ti_end #task, if it has already been created.
- */
-void engine_addtasks_recv_gravity(struct engine *e, struct cell *c,
-                                  struct task *t_grav, struct task *t_ti) {
-#ifdef WITH_MPI
-  struct scheduler *s = &e->sched;
-
-  /* Early abort (are we below the level where tasks are)? */
-  if (!cell_get_flag(c, cell_flag_has_tasks)) return;
-
-  /* Have we reached a level where there are any gravity tasks ? */
-  if (t_grav == NULL && c->grav.grav != NULL) {
-#ifdef SWIFT_DEBUG_CHECKS
-    /* Make sure this cell has a valid tag. */
-    if (c->mpi.tag < 0) error("Trying to receive from untagged cell.");
-#endif  // SWIFT_DEBUG_CHECKS
-
-    /* Create the tasks. */
-    t_grav = scheduler_addtask(s, task_type_recv, task_subtype_gpart,
-                               c->mpi.tag, 0, c, NULL);
-
-    t_ti = scheduler_addtask(s, task_type_recv, task_subtype_tend_gpart,
-                             c->mpi.tag, 0, c, NULL);
-  }
-
-  /* If we have tasks, link them. */
-  if (t_grav != NULL) {
-    engine_addlink(e, &c->mpi.recv, t_grav);
-    engine_addlink(e, &c->mpi.recv, t_ti);
-
-    for (struct link *l = c->grav.grav; l != NULL; l = l->next) {
-      scheduler_addunlock(s, t_grav, l->t);
-      scheduler_addunlock(s, l->t, t_ti);
-    }
-  }
-
-  /* Recurse? */
-  if (c->split)
-    for (int k = 0; k < 8; k++)
-      if (c->progeny[k] != NULL)
-        engine_addtasks_recv_gravity(e, c->progeny[k], t_grav, t_ti);
 
 #else
   error("SWIFT was not compiled with MPI support.");

@@ -57,6 +57,7 @@
 #include "minmax.h"
 #include "multipole.h"
 #include "pressure_floor.h"
+#include "proxy.h"
 #include "restart.h"
 #include "sort_part.h"
 #include "star_formation.h"
@@ -313,8 +314,10 @@ void space_free_cells(struct space *s) {
  * @brief Free any memory in use for foreign particles.
  *
  * @param s The #space.
+ * @param clear_cell_pointers Are we also setting all the foreign cell particle
+ * pointers to NULL?
  */
-void space_free_foreign_parts(struct space *s) {
+void space_free_foreign_parts(struct space *s, const int clear_cell_pointers) {
 
 #ifdef WITH_MPI
   if (s->parts_foreign != NULL) {
@@ -336,6 +339,13 @@ void space_free_foreign_parts(struct space *s) {
     swift_free("bparts_foreign", s->bparts_foreign);
     s->size_bparts_foreign = 0;
     s->bparts_foreign = NULL;
+  }
+  if (clear_cell_pointers) {
+    for (int k = 0; k < s->e->nr_proxies; k++) {
+      for (int j = 0; j < s->e->proxies[k].nr_cells_in; j++) {
+        cell_unlink_foreign_particles(s->e->proxies[k].cells_in[j]);
+      }
+    }
   }
 #endif
 }
@@ -5874,7 +5884,10 @@ void space_struct_restore(struct space *s, FILE *stream) {
                         NULL, "bparts");
   }
 
-  /* Need to reconnect the gravity parts to their hydro and stars particles. */
+  /* Need to reconnect the gravity parts to their hydro, star and BH particles.
+   * Note that we can't use the threadpool here as we have not restored it yet.
+   */
+
   /* Re-link the parts. */
   if (s->nr_parts > 0 && s->nr_gparts > 0)
     part_relink_parts_to_gparts(s->gparts, s->nr_gparts, s->parts);

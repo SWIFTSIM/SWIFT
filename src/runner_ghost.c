@@ -809,7 +809,8 @@ void runner_do_black_holes_swallow_ghost(struct runner *r, struct cell *c,
   TIMER_TIC;
 
   /* Anything to do here? */
-  if (!cell_is_active_hydro(c, e)) return;
+  if (c->black_holes.count == 0) return;
+  if (!cell_is_active_black_holes(c, e)) return;
 
   /* Recurse? */
   if (c->split) {
