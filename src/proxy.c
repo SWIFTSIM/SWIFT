@@ -43,6 +43,7 @@
 #include "error.h"
 #include "memuse.h"
 #include "space.h"
+#include "threadpool.h"
 
 #ifdef WITH_MPI
 /* MPI data type for the communications */
@@ -394,7 +395,7 @@ void proxy_cells_exchange(struct proxy *proxies, int num_proxies,
   /* Run through the cells and get the size of the ones that will be sent off.
    */
   threadpool_map(&s->e->threadpool, proxy_cells_count_mapper, s->cells_top,
-                 s->nr_cells, sizeof(struct cell), /*chunk=*/0,
+                 s->nr_cells, sizeof(struct cell), threadpool_auto_chunk_size,
                  /*extra_data=*/NULL);
   int count_out = 0;
   int *offset =
@@ -421,7 +422,8 @@ void proxy_cells_exchange(struct proxy *proxies, int num_proxies,
   /* Pack the cells. */
   struct pack_mapper_data data = {s, offset, pcells, with_gravity};
   threadpool_map(&s->e->threadpool, proxy_cells_pack_mapper, s->cells_top,
-                 s->nr_cells, sizeof(struct cell), /*chunk=*/0, &data);
+                 s->nr_cells, sizeof(struct cell), threadpool_auto_chunk_size,
+                 &data);
 
   if (s->e->verbose)
     message("Packing cells took %.3f %s.", clocks_from_ticks(getticks() - tic2),
@@ -429,7 +431,7 @@ void proxy_cells_exchange(struct proxy *proxies, int num_proxies,
 
   /* Launch the first part of the exchange. */
   threadpool_map(&s->e->threadpool, proxy_cells_exchange_first_mapper, proxies,
-                 num_proxies, sizeof(struct proxy), /*chunk=*/0,
+                 num_proxies, sizeof(struct proxy), threadpool_auto_chunk_size,
                  /*extra_data=*/NULL);
   for (int k = 0; k < num_proxies; k++) {
     reqs_in[k] = proxies[k].req_cells_count_in;

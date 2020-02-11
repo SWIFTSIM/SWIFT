@@ -383,7 +383,8 @@ void engine_unskip(struct engine *e) {
 
   /* Activate all the regular tasks */
   threadpool_map(&e->threadpool, engine_do_unskip_mapper, local_active_cells,
-                 num_active_cells * multiplier, sizeof(int), 1, &data);
+                 num_active_cells * multiplier, sizeof(int), /*chunk=*/1,
+                 &data);
 
 #ifdef WITH_PROFILER
   ProfilerStop();
@@ -444,7 +445,8 @@ void engine_unskip_timestep_communications(struct engine *e) {
 
   /* Activate all the part and gpart ti_end tasks */
   threadpool_map(&e->threadpool, engine_unskip_timestep_communications_mapper,
-                 tasks, nr_tasks, sizeof(struct task), 0, s);
+                 tasks, nr_tasks, sizeof(struct task),
+                 threadpool_auto_chunk_size, s);
 
   if (e->verbose)
     message("took %.3f %s.", clocks_from_ticks(getticks() - tic),

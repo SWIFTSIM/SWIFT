@@ -37,6 +37,7 @@
 #include "part.h"
 #include "runner.h"
 #include "space.h"
+#include "threadpool.h"
 
 #ifdef HAVE_FFTW
 
@@ -470,7 +471,7 @@ void mesh_apply_Green_function(struct threadpool* tp, fftw_complex* frho,
     mesh_apply_Green_function_mapper(frho, N, &data);
   } else {
     threadpool_map(tp, mesh_apply_Green_function_mapper, frho, N,
-                   sizeof(fftw_complex), 0, &data);
+                   sizeof(fftw_complex), threadpool_auto_chunk_size, &data);
   }
 
   /* Correct singularity at (0,0,0) */
@@ -552,7 +553,8 @@ void pm_mesh_compute_potential(struct pm_mesh* mesh, const struct space* s,
   /* Do a parallel CIC mesh assignment of the gparts but only using
      the local top-level cells */
   threadpool_map(tp, cell_gpart_to_mesh_CIC_mapper, (void*)local_cells,
-                 nr_local_cells, sizeof(int), 0, (void*)&data);
+                 nr_local_cells, sizeof(int), threadpool_auto_chunk_size,
+                 (void*)&data);
 
   if (verbose)
     message("Gpart assignment took %.3f %s.",

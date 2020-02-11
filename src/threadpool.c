@@ -278,8 +278,11 @@ void threadpool_map(struct threadpool *tp, threadpool_map_function map_function,
   tp->map_data_stride = stride;
   tp->map_data_size = N;
   tp->map_data_count = 0;
-  tp->map_data_chunk = (chunk == threadpool_auto_chunk_size) ? 
-    max((int)(N / (tp->num_threads * threadpool_default_chunk_ratio)), 1) : chunk;
+  tp->map_data_chunk =
+      (chunk == threadpool_auto_chunk_size)
+          ? max((int)(N / (tp->num_threads * threadpool_default_chunk_ratio)),
+                1)
+          : chunk;
   tp->map_function = map_function;
   tp->map_data = map_data;
   tp->map_extra_data = extra_data;

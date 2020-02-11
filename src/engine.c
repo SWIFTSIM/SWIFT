@@ -2716,7 +2716,8 @@ void engine_reconstruct_multipoles(struct engine *e) {
 #endif
 
   threadpool_map(&e->threadpool, engine_do_reconstruct_multipoles_mapper,
-                 e->s->cells_top, e->s->nr_cells, sizeof(struct cell), threadpool_auto_chunk_size, e);
+                 e->s->cells_top, e->s->nr_cells, sizeof(struct cell),
+                 threadpool_auto_chunk_size, e);
 
   if (e->verbose)
     message("took %.3f %s.", clocks_from_ticks(getticks() - tic),
