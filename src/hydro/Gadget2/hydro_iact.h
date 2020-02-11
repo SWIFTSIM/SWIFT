@@ -560,6 +560,11 @@ __attribute__((always_inline)) INLINE static void runner_iact_force(
     pj->ids_ngbs_force[pj->num_ngb_force] = pi->id;
   ++pj->num_ngb_force;
 #endif
+
+#ifdef SWIFT_HYDRO_DENSITY_CHECKS
+  pi->n_force += wi + wj;
+  pj->n_force += wi + wj;
+#endif
 }
 
 /**
@@ -677,6 +682,11 @@ __attribute__((always_inline)) INLINE static void runner_iact_nonsym_force(
     pi->ids_ngbs_force[pi->num_ngb_force] = pj->id;
   ++pi->num_ngb_force;
 #endif
+
+#ifdef SWIFT_HYDRO_DENSITY_CHECKS
+  pi->n_force += wi + wj;
+#endif
+
 }
 
 #ifdef WITH_VECTORIZATION

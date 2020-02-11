@@ -66,11 +66,15 @@ void hydro_exact_density_compute_mapper(void *map_data, int nr_parts,
 
       /* Be ready for the calculation */
       double rho_exact = 0.;
+      double n_force_exact = 0.;
 
       /* Interact it with all other particles in the space.*/
       for (int j = 0; j < (int)s->nr_parts; ++j) {
 
         const struct part *pj = &s->parts[j];
+        const double hj = pj->h;
+        const float hj_inv = 1.f / hj;
+        const float hjg2 = hj * hj * kernel_gamma2;
 
         /* Compute the pairwise distance. */
         double dx = pj->x[0] - pix[0];
@@ -86,7 +90,7 @@ void hydro_exact_density_compute_mapper(void *map_data, int nr_parts,
 
         const double r2 = dx * dx + dy * dy + dz * dz;
 
-        /* Interact? */
+        /* Interact loop of type 1? */
         if (r2 < hig2) {
 
           const float mj = pj->mass;
@@ -104,10 +108,31 @@ void hydro_exact_density_compute_mapper(void *map_data, int nr_parts,
           /* Flag that we found an inhibited neighbour */
           if (part_is_inhibited(pj, e)) pi->inhibited_exact = 1;
         }
+
+        /* Interact loop of type 2? */
+        if ((pi != pj) && (r2 < hig2 || r2 < hjg2)) {
+
+          float wi, wi_dx;
+          float wj, wj_dx;
+
+          /* Kernel function */
+          const float r = sqrtf(r2);
+          const float ui = r * hi_inv;
+          kernel_deval(ui, &wi, &wi_dx);
+          const float uj = r * hj_inv;
+          kernel_deval(uj, &wj, &wj_dx);
+
+          /* Force count */
+          n_force_exact += wi + wj;
+
+	  /* Flag that we found an inhibited neighbour */
+	  if (part_is_inhibited(pj, e)) pi->inhibited_exact = 1;
+        }
       }
 
       /* Store the exact answer */
       pi->rho_exact = rho_exact * pow_dimension(hi_inv);
+      pi->n_force_exact = n_force_exact;
 
       counter++;
     }
@@ -163,8 +188,8 @@ void hydro_exact_density_check(struct space *s, const struct engine *e,
   fprintf(file_swift, "# periodic= %d\n", s->periodic);
   fprintf(file_swift, "# Git Branch: %s\n", git_branch());
   fprintf(file_swift, "# Git Revision: %s\n", git_revision());
-  fprintf(file_swift, "# %16s %16s %16s %16s %16s %16s\n", "id", "pos[0]",
-          "pos[1]", "pos[2]", "h", "rho");
+  fprintf(file_swift, "# %16s %16s %16s %16s %16s %16s %16s\n", "id", "pos[0]",
+          "pos[1]", "pos[2]", "h", "rho", "n_force");
 
   /* Output particle SWIFT densities */
   for (size_t i = 0; i < nr_parts; ++i) {
@@ -175,8 +200,8 @@ void hydro_exact_density_check(struct space *s, const struct engine *e,
 
     if (id % SWIFT_HYDRO_DENSITY_CHECKS == 0 && part_is_starting(pi, e)) {
 
-      fprintf(file_swift, "%18lld %16.8e %16.8e %16.8e %16.8e %16.8e\n", id,
-              pi->x[0], pi->x[1], pi->x[2], pi->h, pi->rho);
+      fprintf(file_swift, "%18lld %16.8e %16.8e %16.8e %16.8e %16.8e %16.8e\n",
+              id, pi->x[0], pi->x[1], pi->x[2], pi->h, pi->rho, pi->n_force);
     }
   }
 
@@ -197,10 +222,11 @@ void hydro_exact_density_check(struct space *s, const struct engine *e,
   fprintf(file_exact, "# periodic= %d\n", s->periodic);
   fprintf(file_exact, "# Git Branch: %s\n", git_branch());
   fprintf(file_exact, "# Git Revision: %s\n", git_revision());
-  fprintf(file_exact, "# %16s %16s %16s %16s %16s %16s\n", "id", "pos[0]",
-          "pos[1]", "pos[2]", "h", "rho_exact");
+  fprintf(file_exact, "# %16s %16s %16s %16s %16s %16s %16s\n", "id", "pos[0]",
+          "pos[1]", "pos[2]", "h", "rho_exact", "n_force_exact");
 
-  int wrong = 0;
+  int wrong_rho = 0;
+  int wrong_n_force = 0;
 
   /* Output particle SWIFT densities */
   for (size_t i = 0; i < nr_parts; ++i) {
@@ -212,31 +238,43 @@ void hydro_exact_density_check(struct space *s, const struct engine *e,
 
     if (id % SWIFT_HYDRO_DENSITY_CHECKS == 0 && part_is_starting(pi, e)) {
 
-      fprintf(file_swift, "%18lld %16.8e %16.8e %16.8e %16.8e %16.8e\n", id,
-              pi->x[0], pi->x[1], pi->x[2], pi->h, pi->rho_exact);
+      fprintf(file_swift, "%18lld %16.8e %16.8e %16.8e %16.8e %16.8e %16.8e\n",
+              id, pi->x[0], pi->x[1], pi->x[2], pi->h, pi->rho_exact,
+              pi->n_force_exact);
 
       /* Check that we did not go above the threshold.
        * Note that we ignore particles that saw an inhibted particle as a
        * neighbour as we don't know whether that neighbour became inhibited in
        * that step or not. */
       if (!found_inhibited && fabsf(pi->rho / pi->rho_exact - 1.f) > rel_tol) {
-        message("id=%lld", id);
-        wrong++;
+        message("RHO: id=%lld", id);
+        wrong_rho++;
+      }
+      if (!found_inhibited &&
+          fabsf(pi->n_force / pi->n_force_exact - 1.f) > rel_tol) {
+        message("N_FORCE: id=%lld", id);
+        wrong_n_force++;
       }
     }
   }
-
-  if (wrong)
-    error(
-        "Density difference larger than the allowed tolerance for %d "
-        "particles!",
-        wrong);
 
   if (e->verbose)
     message("Written exact densities in file '%s'.", file_name_exact);
 
   /* Be nice */
   fclose(file_exact);
+
+  if (wrong_rho)
+    error(
+        "Density difference larger than the allowed tolerance for %d "
+        "particles!",
+        wrong_rho);
+
+  if (wrong_n_force)
+    error(
+        "N_force difference larger than the allowed tolerance for %d "
+        "particles!",
+        wrong_n_force);
 
   if (e->verbose)
     message("Writting brute-force density files took %.3f %s. ",
