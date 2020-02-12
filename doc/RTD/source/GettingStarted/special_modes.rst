@@ -41,3 +41,30 @@ this mode, configure the code with ``--enable-glass-making``.
 Note that this will *not* generate the initial random distribution of
 particles. An initial condition file with particles still has to be provided.
 
+Gravity force checks
+~~~~~~~~~~~~~~~~~~~~
+
+To test the accuracy of the gravitational forces approximated by the code,
+SWIFT can be configured with the option to additionally compute the "exact"
+forces for each active particle during each timestep. Here the exact forces are
+simply the Newtonian sum, i.e.,
+
+:math:`\vec{F}_{i,j} = \sum^{n}_{i \neq j} \frac{G m_i m_j}{\vec{r}_{i,j}^2}.`
+
+To run SWIFT in this mode, configure the code with
+``--enable-gravity-force-checks=N``, which means that the exact forces will be
+computed for every :math:`N^{th}` particle (i.e., to compute the exact forces
+for all particles set ``N=1``).
+
+Two `.dat` files will be output during each timestep, one containing the forces
+(really it is the accelerations that are stored) as computed by ``_swift_``, and
+another containing the ``_exact_`` forces. The total force (``a_swift``), along
+with the contributed force from each component of the tree (P2P, M2P and M2L)
+and the FFT mesh if periodic (PM) is stored (i.e., ``a_swift[0]`` = ``a_p2p[0]`` +
+``a_m2p[0]`` + ``a_m2l[0]`` + ``a_PM[0]``, for the :math:`x` component). In addition,
+the number of particles contributing to each force component is also stored
+(these numbers will add up to :math:`n-1`).   
+
+This mode will slow down the code *considerably*, and it is not recommended to
+run on problems with more than :math:`10^{5}` particles. This mode must be run
+on a single node/rank and is only designed for pure gravity tests (i.e., DMO).
