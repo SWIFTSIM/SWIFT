@@ -995,32 +995,27 @@ void engine_redistribute(struct engine *e) {
         bpart_offset += b_counts[c_ind];
         continue;
       }
-      const int flag = logger_generate_flag_data(
+      const uint32_t flag = logger_pack_flags_and_data(
         logger_flag_mpi_exit, i);
-
-      const unsigned int mask_hydro =
-        logger_masks_all_part |
-        logger_mask_data[logger_special_flags].mask;
 
       /* Log the hydro parts. */
       logger_log_parts(e->logger, &parts[part_offset],
-                       &xparts[part_offset], mask_hydro,
-                       counts[c_ind], flag);
-
-      const unsigned int mask_stars = logger_masks_all_spart |
-        logger_mask_data[logger_special_flags].mask;
+                       &xparts[part_offset], counts[c_ind],
+                       logger_masks_all_part |
+                       logger_mask_data[logger_special_flags].mask,
+                       flag);
 
       /* Log the stellar parts. */
-      logger_log_sparts(e->logger, &sparts[spart_offset], mask_stars,
-                        s_counts[c_ind], flag);
-
-      const unsigned int mask_grav =
-        logger_masks_all_gpart |
-        logger_mask_data[logger_special_flags].mask;
+      logger_log_sparts(e->logger, &sparts[spart_offset], s_counts[c_ind],
+                        logger_masks_all_spart |
+                        logger_mask_data[logger_special_flags].mask,
+                        flag);
 
       /* Log the gparts */
-      logger_log_gparts(e->logger, &gparts[gpart_offset], mask_grav,
-                        g_counts[c_ind], flag);
+      logger_log_gparts(e->logger, &gparts[gpart_offset], g_counts[c_ind],
+                        logger_masks_all_gpart |
+                        logger_mask_data[logger_special_flags].mask,
+                        flag);
 
       /* Log the bparts */
       if (b_counts[c_ind] > 0) {
@@ -1107,32 +1102,27 @@ void engine_redistribute(struct engine *e) {
         continue;
       }
 
-      const int flag = logger_generate_flag_data(
+      const uint32_t flag = logger_pack_flags_and_data(
         logger_flag_mpi_enter, i);
-
-      const unsigned int mask_hydro =
-        logger_masks_all_part |
-        logger_mask_data[logger_special_flags].mask;
 
       /* Log the hydro parts. */
       logger_log_parts(e->logger, &parts[part_offset],
-                       &xparts[part_offset], mask_hydro,
-                       counts[c_ind], flag);
-
-      const unsigned int mask_stars = logger_masks_all_spart |
-        logger_mask_data[logger_special_flags].mask;
+                       &xparts[part_offset], counts[c_ind],
+                       logger_masks_all_part |
+                       logger_mask_data[logger_special_flags].mask,
+                       flag);
 
       /* Log the stellar parts. */
-      logger_log_sparts(e->logger, &sparts[spart_offset], mask_stars,
-                        s_counts[c_ind], flag);
-
-      const unsigned int mask_grav =
-        logger_masks_all_gpart |
-        logger_mask_data[logger_special_flags].mask;
+      logger_log_sparts(e->logger, &sparts[spart_offset], s_counts[c_ind],
+                        logger_masks_all_spart |
+                        logger_mask_data[logger_special_flags].mask,
+                        flag);
 
       /* Log the gparts */
-      logger_log_gparts(e->logger, &gparts[gpart_offset], mask_grav,
-                        g_counts[c_ind], flag);
+      logger_log_gparts(e->logger, &gparts[gpart_offset], g_counts[c_ind],
+                        logger_masks_all_gpart |
+                        logger_mask_data[logger_special_flags].mask,
+                        flag);
 
       /* Log the bparts */
       if (b_counts[c_ind] > 0) {

@@ -78,7 +78,7 @@ const struct mask_data logger_mask_data[logger_count_mask] = {
     /* Particle's constants: mass (float) and ID (long long). */
     {sizeof(float) + sizeof(long long), 1 << logger_consts, "consts"},
     /* Flag for special cases (e.g. change of MPI rank, star formation, ...) */
-    {sizeof(int), 1 << logger_special_flags, "special flags"},
+    {sizeof(uint32_t), 1 << logger_special_flags, "special flags"},
     /* Simulation time stamp: integertime and double time (e.g. scale
        factor or time). */
     {sizeof(integertime_t) + sizeof(double), 1 << logger_timestamp,
@@ -222,7 +222,7 @@ void logger_log_all(struct logger_writer *log, const struct engine *e) {
 void logger_copy_part_fields(
     const struct part *p, unsigned int mask,
     size_t *offset, size_t offset_new, char *buff,
-    const int special_flags) {
+    const uint32_t special_flags) {
 
   /* Make sure we're not writing a timestamp. */
   if (mask & logger_mask_data[logger_timestamp].mask)
@@ -301,7 +301,7 @@ void logger_copy_part_fields(
  */
 void logger_log_part(struct logger_writer *log, const struct part *p,
                      unsigned int mask, size_t *offset,
-                     const int special_flags) {
+                     const uint32_t special_flags) {
 
   /* Start by computing the size of the message. */
   const int size = logger_compute_chunk_size(mask);
@@ -328,8 +328,8 @@ void logger_log_part(struct logger_writer *log, const struct part *p,
  * @param special_flags The value of the special flags.
  */
 void logger_log_parts(struct logger_writer *log, const struct part *p,
-                      struct xpart *xp,  unsigned int mask, int count,
-                      const int special_flags) {
+                      struct xpart *xp, int count,  unsigned int mask,
+                      const uint32_t special_flags) {
   /* Start by computing the size of the message. */
   const int size = logger_compute_chunk_size(mask);
 
@@ -363,7 +363,7 @@ void logger_log_parts(struct logger_writer *log, const struct part *p,
 void logger_copy_spart_fields(
     const struct spart *sp, unsigned int mask,
     size_t *offset, size_t offset_new, char *buff,
-    const int special_flags) {
+    const uint32_t special_flags) {
 
   /* Make sure we're not writing a timestamp. */
   if (mask & logger_mask_data[logger_timestamp].mask)
@@ -419,7 +419,7 @@ void logger_copy_spart_fields(
  */
 void logger_log_spart(struct logger_writer *log, const struct spart *sp,
                       unsigned int mask, size_t *offset,
-                      const int special_flags) {
+                      const uint32_t special_flags) {
 
 
   /* Start by computing the size of the message. */
@@ -447,8 +447,8 @@ void logger_log_spart(struct logger_writer *log, const struct spart *sp,
  * @param special_flags The value of the special flags.
  */
 void logger_log_sparts(struct logger_writer *log, struct spart *sp,
-                       unsigned int mask, int count,
-                       const int special_flags) {
+                       int count, unsigned int mask,
+                       const uint32_t special_flags) {
   /* Start by computing the size of the message. */
   const int size = logger_compute_chunk_size(mask);
 
@@ -482,7 +482,7 @@ void logger_log_sparts(struct logger_writer *log, struct spart *sp,
 void logger_copy_gpart_fields(
     const struct gpart *gp, unsigned int mask,
     size_t *offset, size_t offset_new, char *buff,
-    const int special_flags) {
+    const uint32_t special_flags) {
 
 #ifdef SWIFT_DEBUG_CHECKS
   if (gp->id_or_neg_offset < 0) {
@@ -550,7 +550,7 @@ void logger_copy_gpart_fields(
  */
 void logger_log_gpart(struct logger_writer *log, const struct gpart *p,
                       unsigned int mask, size_t *offset,
-                      const int special_flags) {
+                      const uint32_t special_flags) {
 
   /* Start by computing the size of the message. */
   const int size = logger_compute_chunk_size(mask);
@@ -577,8 +577,8 @@ void logger_log_gpart(struct logger_writer *log, const struct gpart *p,
  * @param special_flags The value of the special flags.
  */
 void logger_log_gparts(struct logger_writer *log, struct gpart *p,
-                       unsigned int mask, int count,
-                       const int special_flags) {
+                       int count, unsigned int mask,
+                       const uint32_t special_flags) {
   /* Start by computing the size of the message. */
   const int size = logger_compute_chunk_size(mask);
 

@@ -174,22 +174,22 @@ int logger_compute_chunk_size(unsigned int mask);
 void logger_log_all(struct logger_writer *log, const struct engine *e);
 void logger_log_part(struct logger_writer *log, const struct part *p,
                      unsigned int mask, size_t *offset,
-                     const int special_flags);
+                     const uint32_t special_flags);
 void logger_log_parts(struct logger_writer *log, const struct part *p,
-                      struct xpart *xp, unsigned int mask,
-                      int count, const int special_flags);
+                      struct xpart *xp, int count,
+                      unsigned int mask, const uint32_t special_flags);
 void logger_log_spart(struct logger_writer *log, const struct spart *p,
                       unsigned int mask, size_t *offset,
-                      const int special_flags);
+                      const uint32_t special_flags);
 void logger_log_sparts(struct logger_writer *log, struct spart *sp,
-                       unsigned int mask, int count,
-                       const int special_flags);
+                       int count, unsigned int mask,
+                       const uint32_t special_flags);
 void logger_log_gpart(struct logger_writer *log, const struct gpart *p,
                       unsigned int mask, size_t *offset,
-                      const int special_flags);
+                      const uint32_t special_flags);
 void logger_log_gparts(struct logger_writer *log, struct gpart *gp,
-                       unsigned int mask, int count,
-                       const int special_flags);
+                       int count, unsigned int mask,
+                       const uint32_t special_flags);
 void logger_init(struct logger_writer *log, struct swift_params *params);
 void logger_free(struct logger_writer *log);
 void logger_log_timestamp(struct logger_writer *log, integertime_t t,
@@ -212,13 +212,13 @@ void logger_struct_restore(struct logger_writer *log, FILE *stream);
  * @param flag The special flag to use.
  * @param data The data to write in the .
  */
-INLINE static int logger_generate_flag_data(enum logger_special_flags flag, int data) {
+INLINE static uint32_t logger_pack_flags_and_data(enum logger_special_flags flag, int data) {
 #ifdef SWIFT_DEBUG_CHECKS
   if (flag & 0xFFFFFF00) {
-    error("The special flag in the logger cannot be larger than 1 byte.");
+    error("The special flag in the particle logger cannot be larger than 1 byte.");
   }
   if (data & ~0xFFFFFF) {
-    error("The data for the special flag in the logger cannot be larger than 3 bytes.");
+    error("The data for the special flag in the particle logger cannot be larger than 3 bytes.");
   }
 #endif
   return ((uint32_t) flag << (3 * 8)) | (data & 0xFFFFFF);

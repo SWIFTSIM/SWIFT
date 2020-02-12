@@ -457,7 +457,7 @@ void engine_exchange_strays(struct engine *e, const size_t offset_parts,
 
 #ifdef WITH_LOGGER
     if (e->policy & engine_policy_logger) {
-      const int logger_flag = logger_generate_flag_data(
+      const uint32_t logger_flag = logger_pack_flags_and_data(
         logger_flag_mpi_exit, node_id);
 
       /* Log the particle when leaving a rank. */
@@ -506,7 +506,7 @@ void engine_exchange_strays(struct engine *e, const size_t offset_parts,
 
 #ifdef WITH_LOGGER
     if (e->policy & engine_policy_logger) {
-      const int logger_flag = logger_generate_flag_data(
+      const uint32_t logger_flag = logger_pack_flags_and_data(
         logger_flag_mpi_exit, node_id);
 
       /* Log the particle when leaving a rank. */
@@ -593,7 +593,7 @@ void engine_exchange_strays(struct engine *e, const size_t offset_parts,
     if ((e->policy & engine_policy_logger) &&
         s->gparts[offset_gparts + k].type == swift_type_dark_matter) {
 
-      const int logger_flag = logger_generate_flag_data(
+      const uint32_t logger_flag = logger_pack_flags_and_data(
          logger_flag_mpi_exit, node_id);
 
       /* Log the particle when leaving a rank. */
@@ -826,7 +826,7 @@ void engine_exchange_strays(struct engine *e, const size_t offset_parts,
 
 #ifdef WITH_LOGGER
       if (e->policy & engine_policy_logger) {
-        const int flag = logger_generate_flag_data(logger_flag_mpi_enter,
+        const uint32_t flag = logger_pack_flags_and_data(logger_flag_mpi_enter,
                                               prox->nodeID);
 
         struct part *parts = &s->parts[offset_parts + count_parts];
@@ -835,27 +835,22 @@ void engine_exchange_strays(struct engine *e, const size_t offset_parts,
         struct gpart *gparts = &s->gparts[offset_gparts + count_gparts];
 
         /* Log the gas particles */
-        const unsigned int mask_hydro =
-          logger_masks_all_part |
-          logger_mask_data[logger_special_flags].mask;
-
         logger_log_parts(e->logger, parts, xparts,
-                         mask_hydro, prox->nr_parts_in, flag);
+                         prox->nr_parts_in, logger_masks_all_part |
+                         logger_mask_data[logger_special_flags].mask,
+                         flag);
 
         /* Log the stellar particles */
-        const unsigned int mask_stars = logger_masks_all_spart |
-          logger_mask_data[logger_special_flags].mask;
-
-        logger_log_sparts(e->logger, sparts, mask_stars,
-                          prox->nr_sparts_in, flag);
+        logger_log_sparts(e->logger, sparts, prox->nr_sparts_in,
+                          logger_masks_all_spart |
+                          logger_mask_data[logger_special_flags].mask,
+                          flag);
 
         /* Log the gparts */
-        const unsigned int mask_grav =
-          logger_masks_all_gpart |
-          logger_mask_data[logger_special_flags].mask;
-
-        logger_log_gparts(e->logger, gparts, mask_grav,
-                          prox->nr_gparts_in, flag);
+        logger_log_gparts(e->logger, gparts, prox->nr_gparts_in,
+                          logger_masks_all_gpart |
+                          logger_mask_data[logger_special_flags].mask,
+                          flag);
 
         /* Log the bparts */
         if (prox->nr_bparts_in > 0) {
