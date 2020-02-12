@@ -1217,10 +1217,9 @@ int main(int argc, char *argv[]) {
 #ifdef WITH_MPI
     /* Split the space. */
     engine_split(&e, &initial_partition);
-    if (with_logger) {
-      /* Turn off the logger to avoid writing the communications */
-      e.policy &= ~engine_policy_logger;
-    }
+    /* Turn off the logger to avoid writing the communications */
+    if (with_logger) e.policy &= ~engine_policy_logger;
+
     engine_redistribute(&e);
     if (with_logger) {
       /* Turn it back on */
