@@ -217,9 +217,11 @@ void logger_copy_part_fields(const struct part *p, unsigned int mask,
                              size_t *offset, size_t offset_new, char *buff,
                              const uint32_t special_flags) {
 
+#ifdef SWIFT_DEBUG_CHECKS
   /* Make sure we're not writing a timestamp. */
   if (mask & logger_mask_data[logger_timestamp].mask)
     error("You should not log particles as timestamps.");
+#endif
 
   /* Write the header. */
   buff = logger_write_chunk_header(buff, &mask, offset, offset_new);
@@ -343,6 +345,7 @@ void logger_copy_spart_fields(const struct spart *sp, unsigned int mask,
                               size_t *offset, size_t offset_new, char *buff,
                               const uint32_t special_flags) {
 
+#ifdef SWIFT_DEBUG_CHECKS
   /* Make sure we're not writing a timestamp. */
   if (mask & logger_mask_data[logger_timestamp].mask)
     error("You should not log particles as timestamps.");
@@ -352,6 +355,7 @@ void logger_copy_spart_fields(const struct spart *sp, unsigned int mask,
       (logger_mask_data[logger_u].mask | logger_mask_data[logger_rho].mask |
        logger_mask_data[logger_a].mask))
     error("Can't log SPH quantities for sparts.");
+#endif
 
   /* Write the header. */
   buff = logger_write_chunk_header(buff, &mask, offset, offset_new);
@@ -448,7 +452,6 @@ void logger_copy_gpart_fields(const struct gpart *gp, unsigned int mask,
   if (gp->id_or_neg_offset < 0) {
     error("Cannot log a gpart attached to another particle");
   }
-#endif
 
   /* Make sure we're not writing a timestamp. */
   if (mask & logger_mask_data[logger_timestamp].mask)
@@ -458,6 +461,7 @@ void logger_copy_gpart_fields(const struct gpart *gp, unsigned int mask,
   if (mask &
       (logger_mask_data[logger_u].mask | logger_mask_data[logger_rho].mask))
     error("Can't log SPH quantities for gparts.");
+#endif
 
   /* Write the header. */
   buff = logger_write_chunk_header(buff, &mask, offset, offset_new);
