@@ -335,7 +335,7 @@ int main(int argc, char *argv[]) {
 
 #if !defined(WITH_LOGGER)
   if (with_logger) {
-    printf("Error: the logger is not available, please compile with --enable-logger.");
+    printf("Error: the particle logger is not available, please compile with --enable-logger.");
     return 1;
   }
 #endif

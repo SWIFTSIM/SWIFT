@@ -181,10 +181,9 @@ void logger_log_all(struct logger_writer *log, const struct engine *e) {
 
   /* loop over all parts. */
   for (size_t i = 0; i < s->nr_parts; i++) {
-    logger_log_part(log, &s->parts[i], logger_masks_all_part,
-                    &s->xparts[i].logger_data.last_offset,
+    logger_log_part(log, &s->parts[i], &s->xparts[i],
+                    logger_masks_all_part,
                     /* Special flags */ 0);
-    s->xparts[i].logger_data.steps_since_last_output = 0;
   }
 
   /* loop over all gparts */
@@ -193,17 +192,13 @@ void logger_log_all(struct logger_writer *log, const struct engine *e) {
     if (s->gparts[i].type != swift_type_dark_matter) continue;
 
     logger_log_gpart(log, &s->gparts[i], logger_masks_all_gpart,
-                     &s->gparts[i].logger_data.last_offset,
                      /* Special flags */ 0);
-    s->gparts[i].logger_data.steps_since_last_output = 0;
   }
 
   /* loop over all sparts */
   for (size_t i = 0; i < s->nr_sparts; i++) {
     logger_log_spart(log, &s->sparts[i], logger_masks_all_spart,
-                     &s->sparts[i].logger_data.last_offset,
                      /* Special flags */ 0);
-    s->sparts[i].logger_data.steps_since_last_output = 0;
   }
 
   if (e->total_nr_bparts > 0) error("Not implemented");
@@ -294,28 +289,16 @@ void logger_copy_part_fields(
  *
  * @param log The #logger_writer
  * @param p The #part to dump.
+ * @param xp The #xpart to dump.
  * @param mask The mask of the data to dump.
- * @param offset Pointer to the offset of the previous log of this particle;
- * (return) offset of this log.
  * @param special_flags The value of the special flag.
  */
 void logger_log_part(struct logger_writer *log, const struct part *p,
-                     unsigned int mask, size_t *offset,
+                     struct xpart *xp, unsigned int mask,
                      const uint32_t special_flags) {
 
-  /* Start by computing the size of the message. */
-  const int size = logger_compute_chunk_size(mask);
-
-  /* Allocate a chunk of memory in the dump of the right size. */
-  size_t offset_new;
-  char *buff = (char *)dump_get(&log->dump, size, &offset_new);
-
-  /* Copy everything into the buffer */
-  logger_copy_part_fields(p, mask, offset, offset_new, buff,
-                          special_flags);
-
-  /* Update the log message offset. */
-  *offset = offset_new;
+  logger_log_parts(log, p, xp, /* count */ 1, mask,
+                   special_flags);
 }
 
 /**
@@ -413,28 +396,13 @@ void logger_copy_spart_fields(
  * @param log The #logger_writer
  * @param sp The #spart to dump.
  * @param mask The mask of the data to dump.
- * @param offset Pointer to the offset of the previous log of this particle;
  * @param special_flags The value of the special flag.
- * (return) offset of this log.
  */
-void logger_log_spart(struct logger_writer *log, const struct spart *sp,
-                      unsigned int mask, size_t *offset,
-                      const uint32_t special_flags) {
+void logger_log_spart(struct logger_writer *log, struct spart *sp,
+                      unsigned int mask, const uint32_t special_flags) {
 
-
-  /* Start by computing the size of the message. */
-  const int size = logger_compute_chunk_size(mask);
-
-  /* Allocate a chunk of memory in the dump of the right size. */
-  size_t offset_new;
-  char *buff = (char *)dump_get(&log->dump, size, &offset_new);
-
-  /* Copy the fields into the buffer. */
-  logger_copy_spart_fields(sp, mask, offset, offset_new, buff,
-                           special_flags);
-
-  /* Update the log message offset. */
-  *offset = offset_new;
+  logger_log_sparts(log, sp, /* count */ 1, mask,
+                    special_flags);
 }
 
 /**
@@ -544,27 +512,11 @@ void logger_copy_gpart_fields(
  * @param log The #logger_writer
  * @param p The #gpart to dump.
  * @param mask The mask of the data to dump.
- * @param offset Pointer to the offset of the previous log of this particle;
- * (return) offset of this log.
  * @param special_flags The value of the special flags.
  */
-void logger_log_gpart(struct logger_writer *log, const struct gpart *p,
-                      unsigned int mask, size_t *offset,
-                      const uint32_t special_flags) {
-
-  /* Start by computing the size of the message. */
-  const int size = logger_compute_chunk_size(mask);
-
-  /* Allocate a chunk of memory in the dump of the right size. */
-  size_t offset_new;
-  char *buff = (char *)dump_get(&log->dump, size, &offset_new);
-
-  /* Copy everything into the buffer */
-  logger_copy_gpart_fields(p, mask, offset, offset_new, buff,
-                           special_flags);
-
-  /* Update the log message offset. */
-  *offset = offset_new;
+void logger_log_gpart(struct logger_writer *log, struct gpart *p,
+                      unsigned int mask, const uint32_t special_flags) {
+  logger_log_gparts(log, p, /* count */ 1, mask, special_flags);
 }
 
 /**

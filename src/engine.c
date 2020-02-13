@@ -462,9 +462,9 @@ void engine_exchange_strays(struct engine *e, const size_t offset_parts,
 
       /* Log the particle when leaving a rank. */
       logger_log_part(e->logger, &s->parts[offset_parts + k],
+                      &s->xparts[offset_parts + k],
                       logger_masks_all_part |
                       logger_mask_data[logger_special_flags].mask,
-                      &s->xparts[offset_parts + k].logger_data.last_offset,
                       logger_flag);
     }
 #endif
@@ -513,7 +513,6 @@ void engine_exchange_strays(struct engine *e, const size_t offset_parts,
       logger_log_spart(e->logger, &s->sparts[offset_sparts + k],
                        logger_masks_all_spart |
                        logger_mask_data[logger_special_flags].mask,
-                       &s->sparts[offset_parts + k].logger_data.last_offset,
                        logger_flag);
     }
 #endif
@@ -600,7 +599,6 @@ void engine_exchange_strays(struct engine *e, const size_t offset_parts,
       logger_log_gpart(e->logger, &s->gparts[offset_gparts + k],
                        logger_masks_all_gpart |
                        logger_mask_data[logger_special_flags].mask,
-                       &s->sparts[offset_parts + k].logger_data.last_offset,
                        logger_flag);
     }
 #endif

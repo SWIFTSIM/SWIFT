@@ -173,20 +173,18 @@ struct logger_part_data {
 int logger_compute_chunk_size(unsigned int mask);
 void logger_log_all(struct logger_writer *log, const struct engine *e);
 void logger_log_part(struct logger_writer *log, const struct part *p,
-                     unsigned int mask, size_t *offset,
+                     struct xpart *xp, unsigned int mask,
                      const uint32_t special_flags);
 void logger_log_parts(struct logger_writer *log, const struct part *p,
                       struct xpart *xp, int count,
                       unsigned int mask, const uint32_t special_flags);
-void logger_log_spart(struct logger_writer *log, const struct spart *p,
-                      unsigned int mask, size_t *offset,
-                      const uint32_t special_flags);
+void logger_log_spart(struct logger_writer *log, struct spart *p,
+                      unsigned int mask, const uint32_t special_flags);
 void logger_log_sparts(struct logger_writer *log, struct spart *sp,
                        int count, unsigned int mask,
                        const uint32_t special_flags);
-void logger_log_gpart(struct logger_writer *log, const struct gpart *p,
-                      unsigned int mask, size_t *offset,
-                      const uint32_t special_flags);
+void logger_log_gpart(struct logger_writer *log, struct gpart *p,
+                      unsigned int mask, const uint32_t special_flags);
 void logger_log_gparts(struct logger_writer *log, struct gpart *gp,
                        int count, unsigned int mask,
                        const uint32_t special_flags);
