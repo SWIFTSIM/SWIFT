@@ -181,8 +181,7 @@ void logger_log_all(struct logger_writer *log, const struct engine *e) {
 
   /* loop over all parts. */
   for (size_t i = 0; i < s->nr_parts; i++) {
-    logger_log_part(log, &s->parts[i], &s->xparts[i],
-                    logger_masks_all_part,
+    logger_log_part(log, &s->parts[i], &s->xparts[i], logger_masks_all_part,
                     /* Special flags */ 0);
   }
 
@@ -214,10 +213,9 @@ void logger_log_all(struct logger_writer *log, const struct engine *e) {
  * @param buff The buffer to use when writing.
  * @param special_flags The data for the special flags.
  */
-void logger_copy_part_fields(
-    const struct part *p, unsigned int mask,
-    size_t *offset, size_t offset_new, char *buff,
-    const uint32_t special_flags) {
+void logger_copy_part_fields(const struct part *p, unsigned int mask,
+                             size_t *offset, size_t offset_new, char *buff,
+                             const uint32_t special_flags) {
 
   /* Make sure we're not writing a timestamp. */
   if (mask & logger_mask_data[logger_timestamp].mask)
@@ -281,7 +279,6 @@ void logger_copy_part_fields(
     memcpy(buff, &special_flags, logger_mask_data[logger_special_flags].size);
     buff += logger_mask_data[logger_special_flags].size;
   }
-
 }
 
 /**
@@ -297,8 +294,7 @@ void logger_log_part(struct logger_writer *log, const struct part *p,
                      struct xpart *xp, unsigned int mask,
                      const uint32_t special_flags) {
 
-  logger_log_parts(log, p, xp, /* count */ 1, mask,
-                   special_flags);
+  logger_log_parts(log, p, xp, /* count */ 1, mask, special_flags);
 }
 
 /**
@@ -311,7 +307,7 @@ void logger_log_part(struct logger_writer *log, const struct part *p,
  * @param special_flags The value of the special flags.
  */
 void logger_log_parts(struct logger_writer *log, const struct part *p,
-                      struct xpart *xp, int count,  unsigned int mask,
+                      struct xpart *xp, int count, unsigned int mask,
                       const uint32_t special_flags) {
   /* Start by computing the size of the message. */
   const int size = logger_compute_chunk_size(mask);
@@ -320,7 +316,7 @@ void logger_log_parts(struct logger_writer *log, const struct part *p,
   size_t offset_new;
   char *buff = (char *)dump_get(&log->dump, count * size, &offset_new);
 
-  for(int i = 0; i < count; i++) {
+  for (int i = 0; i < count; i++) {
     /* Copy everything into the buffer */
     logger_copy_part_fields(&p[i], mask, &xp[i].logger_data.last_offset,
                             offset_new, buff, special_flags);
@@ -343,10 +339,9 @@ void logger_log_parts(struct logger_writer *log, const struct part *p,
  * @param buff The buffer to use when writing.
  * @param special_flags The data for the special flags.
  */
-void logger_copy_spart_fields(
-    const struct spart *sp, unsigned int mask,
-    size_t *offset, size_t offset_new, char *buff,
-    const uint32_t special_flags) {
+void logger_copy_spart_fields(const struct spart *sp, unsigned int mask,
+                              size_t *offset, size_t offset_new, char *buff,
+                              const uint32_t special_flags) {
 
   /* Make sure we're not writing a timestamp. */
   if (mask & logger_mask_data[logger_timestamp].mask)
@@ -401,8 +396,7 @@ void logger_copy_spart_fields(
 void logger_log_spart(struct logger_writer *log, struct spart *sp,
                       unsigned int mask, const uint32_t special_flags) {
 
-  logger_log_sparts(log, sp, /* count */ 1, mask,
-                    special_flags);
+  logger_log_sparts(log, sp, /* count */ 1, mask, special_flags);
 }
 
 /**
@@ -414,9 +408,8 @@ void logger_log_spart(struct logger_writer *log, struct spart *sp,
  * @param count The number of particle to dump.
  * @param special_flags The value of the special flags.
  */
-void logger_log_sparts(struct logger_writer *log, struct spart *sp,
-                       int count, unsigned int mask,
-                       const uint32_t special_flags) {
+void logger_log_sparts(struct logger_writer *log, struct spart *sp, int count,
+                       unsigned int mask, const uint32_t special_flags) {
   /* Start by computing the size of the message. */
   const int size = logger_compute_chunk_size(mask);
 
@@ -424,7 +417,7 @@ void logger_log_sparts(struct logger_writer *log, struct spart *sp,
   size_t offset_new;
   char *buff = (char *)dump_get(&log->dump, count * size, &offset_new);
 
-  for(int i = 0; i < count; i++) {
+  for (int i = 0; i < count; i++) {
     /* Copy everything into the buffer */
     logger_copy_spart_fields(&sp[i], mask, &sp[i].logger_data.last_offset,
                              offset_new, buff, special_flags);
@@ -447,10 +440,9 @@ void logger_log_sparts(struct logger_writer *log, struct spart *sp,
  * @param buff The buffer to use when writing.
  * @param special_flags The data of the special flag.
  */
-void logger_copy_gpart_fields(
-    const struct gpart *gp, unsigned int mask,
-    size_t *offset, size_t offset_new, char *buff,
-    const uint32_t special_flags) {
+void logger_copy_gpart_fields(const struct gpart *gp, unsigned int mask,
+                              size_t *offset, size_t offset_new, char *buff,
+                              const uint32_t special_flags) {
 
 #ifdef SWIFT_DEBUG_CHECKS
   if (gp->id_or_neg_offset < 0) {
@@ -503,7 +495,6 @@ void logger_copy_gpart_fields(
     memcpy(buff, &special_flags, logger_mask_data[logger_special_flags].size);
     buff += logger_mask_data[logger_special_flags].size;
   }
-
 }
 
 /**
@@ -528,9 +519,8 @@ void logger_log_gpart(struct logger_writer *log, struct gpart *p,
  * @param count The number of particle to dump.
  * @param special_flags The value of the special flags.
  */
-void logger_log_gparts(struct logger_writer *log, struct gpart *p,
-                       int count, unsigned int mask,
-                       const uint32_t special_flags) {
+void logger_log_gparts(struct logger_writer *log, struct gpart *p, int count,
+                       unsigned int mask, const uint32_t special_flags) {
   /* Start by computing the size of the message. */
   const int size = logger_compute_chunk_size(mask);
 
@@ -538,7 +528,7 @@ void logger_log_gparts(struct logger_writer *log, struct gpart *p,
   size_t offset_new;
   char *buff = (char *)dump_get(&log->dump, count * size, &offset_new);
 
-  for(int i = 0; i < count; i++) {
+  for (int i = 0; i < count; i++) {
     /* Log only the dark matter */
     if (p[i].type != swift_type_dark_matter) continue;
 
@@ -945,7 +935,6 @@ int logger_read_timestamp(unsigned long long int *t, double *time,
   return mask;
 }
 
-
 /**
  * @brief Write a swift_params struct to the given FILE as a stream of bytes.
  *
@@ -956,7 +945,6 @@ void logger_struct_dump(const struct logger_writer *log, FILE *stream) {
   restart_write_blocks((void *)log, sizeof(struct logger_writer), 1, stream,
                        "logger", "logger");
 }
-
 
 /**
  * @brief Restore a logger struct from the given FILE as a stream of

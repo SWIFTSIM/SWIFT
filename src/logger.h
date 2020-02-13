@@ -88,27 +88,28 @@ enum logger_masks_number {
   logger_rho = 5,
   logger_consts = 6,
   logger_special_flags = 7, /* Flag for special cases */
-  logger_timestamp = 8,  /* expect it to be before count. */
-  logger_count_mask = 9, /* Need to be the last. */
+  logger_timestamp = 8,     /* expect it to be before count. */
+  logger_count_mask = 9,    /* Need to be the last. */
 } __attribute__((packed));
 
 /* Defines some mask for logging all the fields */
 enum logger_masks_all {
-  logger_masks_all_part = (1 << logger_x) | (1 << logger_v) |
-    (1 << logger_a) | (1 << logger_u) | (1 << logger_h) | (1 << logger_rho) |
-    (1 << logger_consts),
-  logger_masks_all_gpart = (1 << logger_x) | (1 << logger_v) |
-  (1 << logger_a) | (1 << logger_consts),
-  logger_masks_all_spart = (1 << logger_x) | (1 << logger_v) |
-  (1 << logger_consts),
+  logger_masks_all_part = (1 << logger_x) | (1 << logger_v) | (1 << logger_a) |
+                          (1 << logger_u) | (1 << logger_h) |
+                          (1 << logger_rho) | (1 << logger_consts),
+  logger_masks_all_gpart = (1 << logger_x) | (1 << logger_v) | (1 << logger_a) |
+                           (1 << logger_consts),
+  logger_masks_all_spart =
+      (1 << logger_x) | (1 << logger_v) | (1 << logger_consts),
 } __attribute__((packed));
 
 enum logger_special_flags {
   logger_flag_change_type = 1, /* Flag for a change of particle type */
-  logger_flag_mpi_enter, /* Flag for a particle received from another  MPI rank */
-  logger_flag_mpi_exit, /* Flag for a particle sent to another MPI rank */
-  logger_flag_delete,  /* Flag for a deleted particle */
-  logger_flag_create, /* Flag for a created particle */
+  logger_flag_mpi_enter, /* Flag for a particle received from another  MPI rank
+                          */
+  logger_flag_mpi_exit,  /* Flag for a particle sent to another MPI rank */
+  logger_flag_delete,    /* Flag for a deleted particle */
+  logger_flag_create,    /* Flag for a created particle */
 } __attribute__((packed));
 
 struct mask_data {
@@ -176,18 +177,16 @@ void logger_log_part(struct logger_writer *log, const struct part *p,
                      struct xpart *xp, unsigned int mask,
                      const uint32_t special_flags);
 void logger_log_parts(struct logger_writer *log, const struct part *p,
-                      struct xpart *xp, int count,
-                      unsigned int mask, const uint32_t special_flags);
+                      struct xpart *xp, int count, unsigned int mask,
+                      const uint32_t special_flags);
 void logger_log_spart(struct logger_writer *log, struct spart *p,
                       unsigned int mask, const uint32_t special_flags);
-void logger_log_sparts(struct logger_writer *log, struct spart *sp,
-                       int count, unsigned int mask,
-                       const uint32_t special_flags);
+void logger_log_sparts(struct logger_writer *log, struct spart *sp, int count,
+                       unsigned int mask, const uint32_t special_flags);
 void logger_log_gpart(struct logger_writer *log, struct gpart *p,
                       unsigned int mask, const uint32_t special_flags);
-void logger_log_gparts(struct logger_writer *log, struct gpart *gp,
-                       int count, unsigned int mask,
-                       const uint32_t special_flags);
+void logger_log_gparts(struct logger_writer *log, struct gpart *gp, int count,
+                       unsigned int mask, const uint32_t special_flags);
 void logger_init(struct logger_writer *log, struct swift_params *params);
 void logger_free(struct logger_writer *log);
 void logger_log_timestamp(struct logger_writer *log, integertime_t t,
@@ -203,23 +202,27 @@ int logger_read_timestamp(unsigned long long int *t, double *time,
 void logger_struct_dump(const struct logger_writer *log, FILE *stream);
 void logger_struct_restore(struct logger_writer *log, FILE *stream);
 
-
 /**
  * @brief Generate the data for the special flags.
  *
  * @param flag The special flag to use.
  * @param data The data to write in the .
  */
-INLINE static uint32_t logger_pack_flags_and_data(enum logger_special_flags flag, int data) {
+INLINE static uint32_t logger_pack_flags_and_data(
+    enum logger_special_flags flag, int data) {
 #ifdef SWIFT_DEBUG_CHECKS
   if (flag & 0xFFFFFF00) {
-    error("The special flag in the particle logger cannot be larger than 1 byte.");
+    error(
+        "The special flag in the particle logger cannot be larger than 1 "
+        "byte.");
   }
   if (data & ~0xFFFFFF) {
-    error("The data for the special flag in the particle logger cannot be larger than 3 bytes.");
+    error(
+        "The data for the special flag in the particle logger cannot be larger "
+        "than 3 bytes.");
   }
 #endif
-  return ((uint32_t) flag << (3 * 8)) | (data & 0xFFFFFF);
+  return ((uint32_t)flag << (3 * 8)) | (data & 0xFFFFFF);
 }
 
 /**

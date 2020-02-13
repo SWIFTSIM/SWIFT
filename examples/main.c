@@ -253,8 +253,8 @@ int main(int argc, char *argv[]) {
                  "Overwrite the CPU "
                  "frequency (Hz) to be used for time measurements.",
                  NULL, 0, 0),
-      OPT_BOOLEAN(0, "logger", &with_logger,
-                  "Run with the particle logger.", NULL, 0, 0),
+      OPT_BOOLEAN(0, "logger", &with_logger, "Run with the particle logger.",
+                  NULL, 0, 0),
       OPT_INTEGER('n', "steps", &nsteps,
                   "Execute a fixed number of time steps. When unset use the "
                   "time_end parameter to stop.",
@@ -335,7 +335,9 @@ int main(int argc, char *argv[]) {
 
 #if !defined(WITH_LOGGER)
   if (with_logger) {
-    printf("Error: the particle logger is not available, please compile with --enable-logger.");
+    printf(
+        "Error: the particle logger is not available, please compile with "
+        "--enable-logger.");
     return 1;
   }
 #endif
@@ -599,7 +601,7 @@ int main(int argc, char *argv[]) {
     error("Can't run with time-step synchronization over MPI (yet)");
 #endif
 
-  /* Temporary early aborts for modes not supported with hand-vec. */
+    /* Temporary early aborts for modes not supported with hand-vec. */
 #if defined(WITH_VECTORIZATION) && defined(GADGET2_SPH) && \
     !defined(CHEMISTRY_NONE)
   error(

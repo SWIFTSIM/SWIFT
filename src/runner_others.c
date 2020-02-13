@@ -324,7 +324,8 @@ void runner_do_star_formation(struct runner *r, struct cell *c, int timer) {
                                 logger_mask_data[logger_rho].mask |
                                 logger_mask_data[logger_consts].mask |
                                 logger_mask_data[logger_special_flags].mask,
-                            logger_pack_flags_and_data(logger_flag_change_type, swift_type_stars));
+                            logger_pack_flags_and_data(logger_flag_change_type,
+                                                       swift_type_stars));
 #endif
 
             /* Convert the gas particle to a star particle */
@@ -351,8 +352,8 @@ void runner_do_star_formation(struct runner *r, struct cell *c, int timer) {
               /* Write the s-particle */
               logger_log_spart(e->logger, sp,
                                logger_mask_data[logger_x].mask |
-                               logger_mask_data[logger_v].mask |
-                               logger_mask_data[logger_consts].mask,
+                                   logger_mask_data[logger_v].mask |
+                                   logger_mask_data[logger_consts].mask,
                                /* special flags */ 0);
 #endif
             }
@@ -635,12 +636,12 @@ void runner_do_logger(struct runner *r, struct cell *c, int timer) {
           /* Currently writing everything, should adapt it through time */
           logger_log_part(e->logger, p, xp,
                           logger_mask_data[logger_x].mask |
-                          logger_mask_data[logger_v].mask |
-                          logger_mask_data[logger_a].mask |
-                          logger_mask_data[logger_u].mask |
-                          logger_mask_data[logger_h].mask |
-                          logger_mask_data[logger_rho].mask |
-                          logger_mask_data[logger_consts].mask,
+                              logger_mask_data[logger_v].mask |
+                              logger_mask_data[logger_a].mask |
+                              logger_mask_data[logger_u].mask |
+                              logger_mask_data[logger_h].mask |
+                              logger_mask_data[logger_rho].mask |
+                              logger_mask_data[logger_consts].mask,
                           /* special flags */ 0);
         } else
           /* Update counter */
