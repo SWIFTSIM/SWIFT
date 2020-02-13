@@ -125,7 +125,7 @@ INLINE static void stars_write_particles(const struct spart *sparts,
   list[2] = io_make_output_field("Masses", FLOAT, 1, UNIT_CONV_MASS, 0.f,
                                  sparts, mass, "Masses of the particles");
 
-  list[3] = io_make_output_field("ParticleIDs", LONGLONG, 1, UNIT_CONV_NO_UNITS,
+  list[3] = io_make_output_field("ParticleIDs", ULONGLONG, 1, UNIT_CONV_NO_UNITS,
                                  0.f, sparts, id, "Unique ID of the particles");
 
   list[4] = io_make_output_field(
