@@ -65,6 +65,7 @@
 #include "equation_of_state.h"
 #include "error.h"
 #include "feedback.h"
+#include "fof.h"
 #include "gravity.h"
 #include "gravity_cache.h"
 #include "hydro.h"
