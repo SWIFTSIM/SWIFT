@@ -36,6 +36,29 @@
 #define atomic_swap(v, n) __sync_lock_test_and_set(v, n)
 
 /**
+ * @brief Atomic min operation on ints.
+ *
+ * This is a text-book implementation based on an atomic CAS.
+ *
+ * @param address The address to update.
+ * @param y The value to update the address with.
+ */
+__attribute__((always_inline)) INLINE static void atomic_min(
+    volatile int *address, int y) {
+
+  int *int_ptr = (int *)address;
+
+  int test_val, old_val, new_val;
+  old_val = *address;
+
+  do {
+    test_val = old_val;
+    new_val = min(old_val, y);
+    old_val = atomic_cas(int_ptr, test_val, new_val);
+  } while (test_val != old_val);
+}
+
+/**
  * @brief Atomic min operation on floats.
  *
  * This is a text-book implementation based on an atomic CAS.
@@ -64,29 +87,6 @@ __attribute__((always_inline)) INLINE static void atomic_min_f(
     new_val.as_float = min(old_val.as_float, y);
     old_val.as_int = atomic_cas(int_ptr, test_val.as_int, new_val.as_int);
   } while (test_val.as_int != old_val.as_int);
-}
-
-/**
- * @brief Atomic min operation on ints.
- *
- * This is a text-book implementation based on an atomic CAS.
- *
- * @param address The address to update.
- * @param y The value to update the address with.
- */
-__attribute__((always_inline)) INLINE static void atomic_min(
-    volatile int *address, int y) {
-
-  int *int_ptr = (int *)address;
-
-  int test_val, old_val, new_val;
-  old_val = *address;
-
-  do {
-    test_val = old_val;
-    new_val = min(old_val, y);
-    old_val = atomic_cas(int_ptr, test_val, new_val);
-  } while (test_val != old_val);
 }
 
 /**
@@ -119,6 +119,29 @@ __attribute__((always_inline)) INLINE static void atomic_min_d(
     old_val.as_long_long =
         atomic_cas(long_long_ptr, test_val.as_long_long, new_val.as_long_long);
   } while (test_val.as_long_long != old_val.as_long_long);
+}
+
+/**
+ * @brief Atomic max operation on ints.
+ *
+ * This is a text-book implementation based on an atomic CAS.
+ *
+ * @param address The address to update.
+ * @param y The value to update the address with.
+ */
+__attribute__((always_inline)) INLINE static void atomic_max(
+    volatile int *address, int y) {
+
+  int *int_ptr = (int *)address;
+
+  int test_val, old_val, new_val;
+  old_val = *address;
+
+  do {
+    test_val = old_val;
+    new_val = max(old_val, y);
+    old_val = atomic_cas(int_ptr, test_val, new_val);
+  } while (test_val != old_val);
 }
 
 /**

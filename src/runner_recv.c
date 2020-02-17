@@ -40,10 +40,10 @@
  * @param r The runner thread.
  * @param c The cell.
  * @param clear_sorts Should we clear the sort flag and hence trigger a sort ?
- * @param timer Are we timing this ?
+ * @param is_root_cell Is this the root #cell of the recv task?
  */
 void runner_do_recv_part(struct runner *r, struct cell *c, int clear_sorts,
-                         int timer) {
+                         int is_root_cell) {
 #ifdef WITH_MPI
 
   const struct part *restrict parts = c->hydro.parts;
@@ -111,7 +111,19 @@ void runner_do_recv_part(struct runner *r, struct cell *c, int clear_sorts,
   c->hydro.ti_old_part = ti_current;
   c->hydro.h_max = h_max;
 
-  if (timer) TIMER_TOC(timer_dorecv_part);
+  /* If this is the receiving cell, propagate new values upwards. */
+  if (is_root_cell) {
+    TIMER_TOC(timer_dorecv_part);
+      for (struct cell *finger = c->parent; finger != NULL; finger = finger->parent) {
+       for (int k = 0; k < 8; k++) {
+        if (finger->progeny[k] != NULL && finger->progeny[k]->hydro.count > 0) {
+          h_max = max(h_max, finger->progeny[k]->hydro.h_max);
+        }
+      }
+      atomic_max_d(&finger->hydro.h_max, h_max);
+      finger->hydro.ti_old_part = ti_current;
+    }
+  }
 
 #else
   error("SWIFT was not compiled with MPI support.");
