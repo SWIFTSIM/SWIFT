@@ -35,6 +35,7 @@
 #include "engine.h"
 #include "hydro.h"
 #include "swift_velociraptor_part.h"
+#include "threadpool.h"
 #include "velociraptor_struct.h"
 
 #ifdef HAVE_VELOCIRAPTOR
@@ -634,7 +635,8 @@ void velociraptor_invoke(struct engine *e, const int linked_with_snap) {
 
   struct velociraptor_copy_data copy_data = {e, swift_parts};
   threadpool_map(&e->threadpool, velociraptor_convert_particles_mapper,
-                 s->gparts, nr_gparts, sizeof(struct gpart), 0, &copy_data);
+                 s->gparts, nr_gparts, sizeof(struct gpart),
+                 threadpool_auto_chunk_size, &copy_data);
 
   /* Report timing */
   if (e->verbose)

@@ -293,28 +293,28 @@ void engine_drift_all(struct engine *e, const int drift_mpoles) {
     if (e->s->nr_parts > 0) {
       threadpool_map(&e->threadpool, engine_do_drift_all_part_mapper,
                      e->s->local_cells_top, e->s->nr_local_cells, sizeof(int),
-                     /* default chunk */ 0, e);
+                     threadpool_auto_chunk_size, e);
     }
     if (e->s->nr_gparts > 0) {
       threadpool_map(&e->threadpool, engine_do_drift_all_gpart_mapper,
                      e->s->local_cells_top, e->s->nr_local_cells, sizeof(int),
-                     /* default chunk */ 0, e);
+                     threadpool_auto_chunk_size, e);
     }
     if (e->s->nr_sparts > 0) {
       threadpool_map(&e->threadpool, engine_do_drift_all_spart_mapper,
                      e->s->local_cells_top, e->s->nr_local_cells, sizeof(int),
-                     /* default chunk */ 0, e);
+                     threadpool_auto_chunk_size, e);
     }
     if (e->s->nr_bparts > 0) {
       threadpool_map(&e->threadpool, engine_do_drift_all_bpart_mapper,
                      e->s->local_cells_top, e->s->nr_local_cells, sizeof(int),
-                     /* default chunk */ 0, e);
+                     threadpool_auto_chunk_size, e);
     }
     if (drift_mpoles && (e->policy & engine_policy_self_gravity)) {
       threadpool_map(&e->threadpool, engine_do_drift_all_multipole_mapper,
                      e->s->local_cells_with_tasks_top,
                      e->s->nr_local_cells_with_tasks, sizeof(int),
-                     /* default chunk */ 0, e);
+                     threadpool_auto_chunk_size, e);
     }
 
   } else {
@@ -325,27 +325,27 @@ void engine_drift_all(struct engine *e, const int drift_mpoles) {
     if (e->s->nr_parts > 0) {
       threadpool_map(&e->threadpool, engine_do_drift_all_part_mapper,
                      e->s->cells_top, e->s->nr_cells, sizeof(struct cell),
-                     /* default chunk */ 0, e);
+                     threadpool_auto_chunk_size, e);
     }
     if (e->s->nr_sparts > 0) {
       threadpool_map(&e->threadpool, engine_do_drift_all_spart_mapper,
                      e->s->cells_top, e->s->nr_cells, sizeof(struct cell),
-                     /* default chunk */ 0, e);
+                     threadpool_auto_chunk_size, e);
     }
     if (e->s->nr_bparts > 0) {
       threadpool_map(&e->threadpool, engine_do_drift_all_bpart_mapper,
                      e->s->cells_top, e->s->nr_cells, sizeof(struct cell),
-                     /* default chunk */ 0, e);
+                     threadpool_auto_chunk_size, e);
     }
     if (e->s->nr_gparts > 0) {
       threadpool_map(&e->threadpool, engine_do_drift_all_gpart_mapper,
                      e->s->cells_top, e->s->nr_cells, sizeof(struct cell),
-                     /* default chunk */ 0, e);
+                     threadpool_auto_chunk_size, e);
     }
     if (e->policy & engine_policy_self_gravity) {
       threadpool_map(&e->threadpool, engine_do_drift_all_multipole_mapper,
                      e->s->cells_top, e->s->nr_cells, sizeof(struct cell),
-                     /* default chunk */ 0, e);
+                     threadpool_auto_chunk_size, e);
     }
   }
 
@@ -401,7 +401,8 @@ void engine_drift_top_multipoles(struct engine *e) {
   const ticks tic = getticks();
 
   threadpool_map(&e->threadpool, engine_do_drift_top_multipoles_mapper,
-                 e->s->cells_top, e->s->nr_cells, sizeof(struct cell), 0, e);
+                 e->s->cells_top, e->s->nr_cells, sizeof(struct cell),
+                 threadpool_auto_chunk_size, e);
 
 #ifdef SWIFT_DEBUG_CHECKS
   /* Check that all cells have been drifted to the current time. */

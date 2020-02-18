@@ -664,7 +664,8 @@ void engine_redistribute(struct engine *e) {
   redist_data.base = (void *)parts;
 
   threadpool_map(&e->threadpool, engine_redistribute_dest_mapper_part, parts,
-                 nr_parts, sizeof(struct part), 0, &redist_data);
+                 nr_parts, sizeof(struct part), threadpool_auto_chunk_size,
+                 &redist_data);
 
   /* Sort the particles according to their cell index. */
   if (nr_parts > 0)
@@ -711,7 +712,8 @@ void engine_redistribute(struct engine *e) {
     savelink_data.parts = (void *)parts;
     savelink_data.nodeID = nodeID;
     threadpool_map(&e->threadpool, engine_redistribute_savelink_mapper_part,
-                   nodes, nr_nodes, sizeof(int), 0, &savelink_data);
+                   nodes, nr_nodes, sizeof(int), threadpool_auto_chunk_size,
+                   &savelink_data);
   }
   swift_free("dest", dest);
 
@@ -729,7 +731,8 @@ void engine_redistribute(struct engine *e) {
   redist_data.base = (void *)sparts;
 
   threadpool_map(&e->threadpool, engine_redistribute_dest_mapper_spart, sparts,
-                 nr_sparts, sizeof(struct spart), 0, &redist_data);
+                 nr_sparts, sizeof(struct spart), threadpool_auto_chunk_size,
+                 &redist_data);
 
   /* Sort the particles according to their cell index. */
   if (nr_sparts > 0)
@@ -775,7 +778,8 @@ void engine_redistribute(struct engine *e) {
     savelink_data.parts = (void *)sparts;
     savelink_data.nodeID = nodeID;
     threadpool_map(&e->threadpool, engine_redistribute_savelink_mapper_spart,
-                   nodes, nr_nodes, sizeof(int), 0, &savelink_data);
+                   nodes, nr_nodes, sizeof(int), threadpool_auto_chunk_size,
+                   &savelink_data);
   }
   swift_free("s_dest", s_dest);
 
@@ -793,7 +797,8 @@ void engine_redistribute(struct engine *e) {
   redist_data.base = (void *)bparts;
 
   threadpool_map(&e->threadpool, engine_redistribute_dest_mapper_bpart, bparts,
-                 nr_bparts, sizeof(struct bpart), 0, &redist_data);
+                 nr_bparts, sizeof(struct bpart), threadpool_auto_chunk_size,
+                 &redist_data);
 
   /* Sort the particles according to their cell index. */
   if (nr_bparts > 0)
@@ -839,7 +844,8 @@ void engine_redistribute(struct engine *e) {
     savelink_data.parts = (void *)bparts;
     savelink_data.nodeID = nodeID;
     threadpool_map(&e->threadpool, engine_redistribute_savelink_mapper_bpart,
-                   nodes, nr_nodes, sizeof(int), 0, &savelink_data);
+                   nodes, nr_nodes, sizeof(int), threadpool_auto_chunk_size,
+                   &savelink_data);
   }
   swift_free("b_dest", b_dest);
 
@@ -857,7 +863,8 @@ void engine_redistribute(struct engine *e) {
   redist_data.base = (void *)gparts;
 
   threadpool_map(&e->threadpool, engine_redistribute_dest_mapper_gpart, gparts,
-                 nr_gparts, sizeof(struct gpart), 0, &redist_data);
+                 nr_gparts, sizeof(struct gpart), threadpool_auto_chunk_size,
+                 &redist_data);
 
   /* Sort the gparticles according to their cell index. */
   if (nr_gparts > 0)

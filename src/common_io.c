@@ -1580,7 +1580,7 @@ void io_copy_temp_buffer(void* temp, const struct engine* e,
 
     /* Copy the whole thing into a buffer */
     threadpool_map((struct threadpool*)&e->threadpool, io_copy_mapper, temp_c,
-                   N, copySize, 0, (void*)&props);
+                   N, copySize, threadpool_auto_chunk_size, (void*)&props);
 
   } else { /* Converting particle to data */
 
@@ -1593,8 +1593,8 @@ void io_copy_temp_buffer(void* temp, const struct engine* e,
 
       /* Copy the whole thing into a buffer */
       threadpool_map((struct threadpool*)&e->threadpool,
-                     io_convert_part_f_mapper, temp_f, N, copySize, 0,
-                     (void*)&props);
+                     io_convert_part_f_mapper, temp_f, N, copySize,
+                     threadpool_auto_chunk_size, (void*)&props);
 
     } else if (props.convert_part_i != NULL) {
 
@@ -1605,8 +1605,8 @@ void io_copy_temp_buffer(void* temp, const struct engine* e,
 
       /* Copy the whole thing into a buffer */
       threadpool_map((struct threadpool*)&e->threadpool,
-                     io_convert_part_i_mapper, temp_i, N, copySize, 0,
-                     (void*)&props);
+                     io_convert_part_i_mapper, temp_i, N, copySize,
+                     threadpool_auto_chunk_size, (void*)&props);
 
     } else if (props.convert_part_d != NULL) {
 
@@ -1617,8 +1617,8 @@ void io_copy_temp_buffer(void* temp, const struct engine* e,
 
       /* Copy the whole thing into a buffer */
       threadpool_map((struct threadpool*)&e->threadpool,
-                     io_convert_part_d_mapper, temp_d, N, copySize, 0,
-                     (void*)&props);
+                     io_convert_part_d_mapper, temp_d, N, copySize,
+                     threadpool_auto_chunk_size, (void*)&props);
 
     } else if (props.convert_part_l != NULL) {
 
@@ -1629,8 +1629,8 @@ void io_copy_temp_buffer(void* temp, const struct engine* e,
 
       /* Copy the whole thing into a buffer */
       threadpool_map((struct threadpool*)&e->threadpool,
-                     io_convert_part_l_mapper, temp_l, N, copySize, 0,
-                     (void*)&props);
+                     io_convert_part_l_mapper, temp_l, N, copySize,
+                     threadpool_auto_chunk_size, (void*)&props);
 
     } else if (props.convert_gpart_f != NULL) {
 
@@ -1641,8 +1641,8 @@ void io_copy_temp_buffer(void* temp, const struct engine* e,
 
       /* Copy the whole thing into a buffer */
       threadpool_map((struct threadpool*)&e->threadpool,
-                     io_convert_gpart_f_mapper, temp_f, N, copySize, 0,
-                     (void*)&props);
+                     io_convert_gpart_f_mapper, temp_f, N, copySize,
+                     threadpool_auto_chunk_size, (void*)&props);
 
     } else if (props.convert_gpart_i != NULL) {
 
@@ -1653,8 +1653,8 @@ void io_copy_temp_buffer(void* temp, const struct engine* e,
 
       /* Copy the whole thing into a buffer */
       threadpool_map((struct threadpool*)&e->threadpool,
-                     io_convert_gpart_i_mapper, temp_i, N, copySize, 0,
-                     (void*)&props);
+                     io_convert_gpart_i_mapper, temp_i, N, copySize,
+                     threadpool_auto_chunk_size, (void*)&props);
 
     } else if (props.convert_gpart_d != NULL) {
 
@@ -1665,8 +1665,8 @@ void io_copy_temp_buffer(void* temp, const struct engine* e,
 
       /* Copy the whole thing into a buffer */
       threadpool_map((struct threadpool*)&e->threadpool,
-                     io_convert_gpart_d_mapper, temp_d, N, copySize, 0,
-                     (void*)&props);
+                     io_convert_gpart_d_mapper, temp_d, N, copySize,
+                     threadpool_auto_chunk_size, (void*)&props);
 
     } else if (props.convert_gpart_l != NULL) {
 
@@ -1677,8 +1677,8 @@ void io_copy_temp_buffer(void* temp, const struct engine* e,
 
       /* Copy the whole thing into a buffer */
       threadpool_map((struct threadpool*)&e->threadpool,
-                     io_convert_gpart_l_mapper, temp_l, N, copySize, 0,
-                     (void*)&props);
+                     io_convert_gpart_l_mapper, temp_l, N, copySize,
+                     threadpool_auto_chunk_size, (void*)&props);
 
     } else if (props.convert_spart_f != NULL) {
 
@@ -1689,8 +1689,8 @@ void io_copy_temp_buffer(void* temp, const struct engine* e,
 
       /* Copy the whole thing into a buffer */
       threadpool_map((struct threadpool*)&e->threadpool,
-                     io_convert_spart_f_mapper, temp_f, N, copySize, 0,
-                     (void*)&props);
+                     io_convert_spart_f_mapper, temp_f, N, copySize,
+                     threadpool_auto_chunk_size, (void*)&props);
 
     } else if (props.convert_spart_i != NULL) {
 
@@ -1701,8 +1701,8 @@ void io_copy_temp_buffer(void* temp, const struct engine* e,
 
       /* Copy the whole thing into a buffer */
       threadpool_map((struct threadpool*)&e->threadpool,
-                     io_convert_spart_i_mapper, temp_i, N, copySize, 0,
-                     (void*)&props);
+                     io_convert_spart_i_mapper, temp_i, N, copySize,
+                     threadpool_auto_chunk_size, (void*)&props);
 
     } else if (props.convert_spart_d != NULL) {
 
@@ -1713,8 +1713,8 @@ void io_copy_temp_buffer(void* temp, const struct engine* e,
 
       /* Copy the whole thing into a buffer */
       threadpool_map((struct threadpool*)&e->threadpool,
-                     io_convert_spart_d_mapper, temp_d, N, copySize, 0,
-                     (void*)&props);
+                     io_convert_spart_d_mapper, temp_d, N, copySize,
+                     threadpool_auto_chunk_size, (void*)&props);
 
     } else if (props.convert_spart_l != NULL) {
 
@@ -1725,8 +1725,8 @@ void io_copy_temp_buffer(void* temp, const struct engine* e,
 
       /* Copy the whole thing into a buffer */
       threadpool_map((struct threadpool*)&e->threadpool,
-                     io_convert_spart_l_mapper, temp_l, N, copySize, 0,
-                     (void*)&props);
+                     io_convert_spart_l_mapper, temp_l, N, copySize,
+                     threadpool_auto_chunk_size, (void*)&props);
 
     } else if (props.convert_bpart_f != NULL) {
 
@@ -1737,8 +1737,8 @@ void io_copy_temp_buffer(void* temp, const struct engine* e,
 
       /* Copy the whole thing into a buffer */
       threadpool_map((struct threadpool*)&e->threadpool,
-                     io_convert_bpart_f_mapper, temp_f, N, copySize, 0,
-                     (void*)&props);
+                     io_convert_bpart_f_mapper, temp_f, N, copySize,
+                     threadpool_auto_chunk_size, (void*)&props);
 
     } else if (props.convert_bpart_i != NULL) {
 
@@ -1749,8 +1749,8 @@ void io_copy_temp_buffer(void* temp, const struct engine* e,
 
       /* Copy the whole thing into a buffer */
       threadpool_map((struct threadpool*)&e->threadpool,
-                     io_convert_bpart_i_mapper, temp_i, N, copySize, 0,
-                     (void*)&props);
+                     io_convert_bpart_i_mapper, temp_i, N, copySize,
+                     threadpool_auto_chunk_size, (void*)&props);
 
     } else if (props.convert_bpart_d != NULL) {
 
@@ -1761,8 +1761,8 @@ void io_copy_temp_buffer(void* temp, const struct engine* e,
 
       /* Copy the whole thing into a buffer */
       threadpool_map((struct threadpool*)&e->threadpool,
-                     io_convert_bpart_d_mapper, temp_d, N, copySize, 0,
-                     (void*)&props);
+                     io_convert_bpart_d_mapper, temp_d, N, copySize,
+                     threadpool_auto_chunk_size, (void*)&props);
 
     } else if (props.convert_bpart_l != NULL) {
 
@@ -1773,8 +1773,8 @@ void io_copy_temp_buffer(void* temp, const struct engine* e,
 
       /* Copy the whole thing into a buffer */
       threadpool_map((struct threadpool*)&e->threadpool,
-                     io_convert_bpart_l_mapper, temp_l, N, copySize, 0,
-                     (void*)&props);
+                     io_convert_bpart_l_mapper, temp_l, N, copySize,
+                     threadpool_auto_chunk_size, (void*)&props);
 
     } else {
       error("Missing conversion function");
@@ -1832,7 +1832,7 @@ void io_prepare_dm_gparts(struct threadpool* tp, struct gpart* const gparts,
                           size_t Ndm) {
 
   threadpool_map(tp, io_prepare_dm_gparts_mapper, gparts, Ndm,
-                 sizeof(struct gpart), 0, NULL);
+                 sizeof(struct gpart), threadpool_auto_chunk_size, NULL);
 }
 
 void io_prepare_dm_background_gparts_mapper(void* restrict data, int Ndm,
@@ -1868,7 +1868,7 @@ void io_prepare_dm_background_gparts(struct threadpool* tp,
                                      struct gpart* const gparts, size_t Ndm) {
 
   threadpool_map(tp, io_prepare_dm_background_gparts_mapper, gparts, Ndm,
-                 sizeof(struct gpart), 0, NULL);
+                 sizeof(struct gpart), threadpool_auto_chunk_size, NULL);
 }
 
 size_t io_count_dm_background_gparts(const struct gpart* const gparts,
@@ -1950,7 +1950,7 @@ void io_duplicate_hydro_gparts(struct threadpool* tp, struct part* const parts,
   data.Ndm = Ndm;
 
   threadpool_map(tp, io_duplicate_hydro_gparts_mapper, parts, Ngas,
-                 sizeof(struct part), 0, &data);
+                 sizeof(struct part), threadpool_auto_chunk_size, &data);
 }
 
 void io_duplicate_stars_gparts_mapper(void* restrict data, int Nstars,
@@ -2008,7 +2008,7 @@ void io_duplicate_stars_gparts(struct threadpool* tp,
   data.Ndm = Ndm;
 
   threadpool_map(tp, io_duplicate_stars_gparts_mapper, sparts, Nstars,
-                 sizeof(struct spart), 0, &data);
+                 sizeof(struct spart), threadpool_auto_chunk_size, &data);
 }
 
 void io_duplicate_black_holes_gparts_mapper(void* restrict data,
@@ -2068,7 +2068,8 @@ void io_duplicate_black_holes_gparts(struct threadpool* tp,
   data.Ndm = Ndm;
 
   threadpool_map(tp, io_duplicate_black_holes_gparts_mapper, bparts,
-                 Nblackholes, sizeof(struct bpart), 0, &data);
+                 Nblackholes, sizeof(struct bpart), threadpool_auto_chunk_size,
+                 &data);
 }
 
 /**
