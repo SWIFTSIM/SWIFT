@@ -2339,21 +2339,21 @@ void engine_step(struct engine *e) {
 #endif
 
 #ifdef SWIFT_GRAVITY_FORCE_CHECKS
-  /* Do we need to check the number of active gparts? */
+  /* Do we need to check if all gparts are active? */
   if (e->force_checks_only_all_active) {
     size_t nr_gparts = e->s->nr_gparts;
-    size_t gpart_active_count = 0;
+    e->all_gparts_active = 1;
 
-    /* Count active gparts */
+    /* Look for inactive gparts */
     for (size_t i=0; i < nr_gparts; ++i) {
       struct gpart *gp = &e->s->gparts[i];
-      if (gpart_is_active(gp, e)) gpart_active_count += 1;
-    }
 
-    /* Are all gparts active? */
-    e->all_gparts_active = gpart_active_count == nr_gparts;
-  } else {
-    e->all_gparts_active = 0;
+      /* If one gpart is inactive we can stop. */
+      if (!gpart_is_active(gp, e)) {
+        e->all_gparts_active = 0;
+        break;
+      }
+    }
   }
 
   /* Check if we want to run force checks this timestep. */
