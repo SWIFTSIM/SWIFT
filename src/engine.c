@@ -2339,26 +2339,38 @@ void engine_step(struct engine *e) {
 #endif
 
 #ifdef SWIFT_GRAVITY_FORCE_CHECKS
-  /* Check how many gparts are active this timestep. */
-  size_t nr_gparts = e->s->nr_gparts;
-  size_t gpart_active_count = 0;
+  /* Do we need to check the number of active gparts? */
+  if (e->force_checks_only_all_active) {
+    size_t nr_gparts = e->s->nr_gparts;
+    size_t gpart_active_count = 0;
 
-  /* Count active gparts */
-  for (size_t i=0; i < nr_gparts; ++i) {
-    struct gpart *gp = &e->s->gparts[i];
-    if (gpart_is_active(gp, e)) gpart_active_count += 1;
+    /* Count active gparts */
+    for (size_t i=0; i < nr_gparts; ++i) {
+      struct gpart *gp = &e->s->gparts[i];
+      if (gpart_is_active(gp, e)) gpart_active_count += 1;
+    }
+
+    /* Are all gparts active? */
+    e->all_gparts_active = gpart_active_count == nr_gparts;
+  } else {
+    e->all_gparts_active = 0;
   }
 
-  /* Are all gparts active? */
-  e->all_gparts_active = gpart_active_count == nr_gparts;
- 
-  /* Run the brute-force gravity calculation for some gparts */
-  if (e->policy & engine_policy_self_gravity &&
-        ((e->all_gparts_active && e->force_checks_only_all_active) ||
-        !e->force_checks_only_all_active) && 
-        ((e->brute_force_gravity_flag == 1 && e->force_checks_only_at_snapshots) ||
-        !e->force_checks_only_at_snapshots))
-    gravity_exact_force_compute(e->s, e);
+  /* Check if we want to run force checks this timestep. */
+  if (e->policy & engine_policy_self_gravity) {
+    /* Are all gparts active (and the option is selected)? */
+    if ((e->all_gparts_active && e->force_checks_only_all_active) ||
+        !e->force_checks_only_all_active) {
+      /* Is this a snapshot timestep (and the option is selected)? */
+      if ((e->brute_force_gravity_flag == 1 &&
+        e->force_checks_only_at_snapshots) ||
+        !e->force_checks_only_at_snapshots) {
+        
+          /* Do checks */
+          gravity_exact_force_compute(e->s, e);
+        }
+      }
+    }
 #endif
 
   /* Start all the tasks. */
@@ -2377,16 +2389,23 @@ void engine_step(struct engine *e) {
   }
 
 #ifdef SWIFT_GRAVITY_FORCE_CHECKS
-  /* Check the accuracy of the gravity calculation */
-  if (e->policy & engine_policy_self_gravity &&
-        ((e->all_gparts_active && e->force_checks_only_all_active) ||
-        !e->force_checks_only_all_active) && 
-        ((e->brute_force_gravity_flag == 1 && e->force_checks_only_at_snapshots) ||
-        !e->force_checks_only_at_snapshots)) {
-      gravity_exact_force_check(e->s, e, 1e-1);
+  /* Check if we want to run force checks this timestep. */
+  if (e->policy & engine_policy_self_gravity) {
+    /* Are all gparts active (and the option is selected)? */
+    if ((e->all_gparts_active && e->force_checks_only_all_active) ||
+        !e->force_checks_only_all_active) {
+      /* Is this a snapshot timestep (and the option is selected)? */
+      if ((e->brute_force_gravity_flag == 1 &&
+        e->force_checks_only_at_snapshots) ||
+        !e->force_checks_only_at_snapshots) {
+        
+          /* Do checks */
+          gravity_exact_force_check(e->s, e, 1e-1);
 
-      /* Reset flag waiting for next output time */
-      e->brute_force_gravity_flag = 0;
+          /* Reset flag waiting for next output time */
+          e->brute_force_gravity_flag = 0;
+        }
+      }
     }
 #endif
 
