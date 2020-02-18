@@ -2341,10 +2341,10 @@ void engine_step(struct engine *e) {
 #ifdef SWIFT_GRAVITY_FORCE_CHECKS
   /* Check how many gparts are active this timestep. */
   size_t nr_gparts = e->s->nr_gparts;
-  long long gpart_active_count = 0;
+  size_t gpart_active_count = 0;
 
   /* Count active gparts */
-  for (long long i=0; i < nr_gparts; ++i) {
+  for (size_t i=0; i < nr_gparts; ++i) {
     struct gpart *gp = &e->s->gparts[i];
     if (gpart_is_active(gp, e)) gpart_active_count += 1;
   }
