@@ -1223,10 +1223,8 @@ int main(int argc, char *argv[]) {
     if (with_logger) e.policy &= ~engine_policy_logger;
 
     engine_redistribute(&e);
-    if (with_logger) {
-      /* Turn it back on */
-      e.policy |= engine_policy_logger;
-    }
+    /* Turn it back on */
+    if (with_logger) e.policy |= engine_policy_logger;
 #endif
 
     /* Initialise the particles */
