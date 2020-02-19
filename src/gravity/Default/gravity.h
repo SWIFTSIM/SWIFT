@@ -154,14 +154,14 @@ __attribute__((always_inline)) INLINE static void gravity_init_gpart(
   gp->potential_PM = 0.f;
 
   /* Track accelerations of each component. */
-  for (int i=0; i<3; i++) {
+  for (int i = 0; i < 3; i++) {
     gp->a_grav_PM[i] = 0.f;
     gp->a_grav_p2p[i] = 0.f;
     gp->a_grav_m2p[i] = 0.f;
     gp->a_grav_m2l[i] = 0.f;
   }
 
-  /* Interaction counters. */  
+  /* Interaction counters. */
   gp->num_interacted_m2p = 0;
   gp->num_interacted_m2l = 0;
   gp->num_interacted_p2p = 0;

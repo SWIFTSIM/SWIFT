@@ -1184,9 +1184,9 @@ static INLINE void runner_doself_grav_pp_truncated(
 #endif
 
 #ifdef SWIFT_GRAVITY_FORCE_CHECKS
-    /* Update the P2P interaction counter if it's not a padded gpart */
-    if (pjd < gcount && !gpart_is_inhibited(&gparts[pjd], e))
-      gparts[pid].num_interacted_p2p++;
+      /* Update the P2P interaction counter if it's not a padded gpart */
+      if (pjd < gcount && !gpart_is_inhibited(&gparts[pjd], e))
+        gparts[pid].num_interacted_p2p++;
 #endif
     }
 

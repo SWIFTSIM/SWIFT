@@ -2345,7 +2345,7 @@ void engine_step(struct engine *e) {
     e->all_gparts_active = 1;
 
     /* Look for inactive gparts */
-    for (size_t i=0; i < nr_gparts; ++i) {
+    for (size_t i = 0; i < nr_gparts; ++i) {
       struct gpart *gp = &e->s->gparts[i];
 
       /* If one gpart is inactive we can stop. */
@@ -2363,14 +2363,14 @@ void engine_step(struct engine *e) {
         !e->force_checks_only_all_active) {
       /* Is this a snapshot timestep (and the option is selected)? */
       if ((e->brute_force_gravity_flag == 1 &&
-        e->force_checks_only_at_snapshots) ||
-        !e->force_checks_only_at_snapshots) {
-        
-          /* Do checks */
-          gravity_exact_force_compute(e->s, e);
-        }
+           e->force_checks_only_at_snapshots) ||
+          !e->force_checks_only_at_snapshots) {
+
+        /* Do checks */
+        gravity_exact_force_compute(e->s, e);
       }
     }
+  }
 #endif
 
   /* Start all the tasks. */
@@ -2396,17 +2396,17 @@ void engine_step(struct engine *e) {
         !e->force_checks_only_all_active) {
       /* Is this a snapshot timestep (and the option is selected)? */
       if ((e->brute_force_gravity_flag == 1 &&
-        e->force_checks_only_at_snapshots) ||
-        !e->force_checks_only_at_snapshots) {
-        
-          /* Do checks */
-          gravity_exact_force_check(e->s, e, 1e-1);
+           e->force_checks_only_at_snapshots) ||
+          !e->force_checks_only_at_snapshots) {
 
-          /* Reset flag waiting for next output time */
-          e->brute_force_gravity_flag = 0;
-        }
+        /* Do checks */
+        gravity_exact_force_check(e->s, e, 1e-1);
+
+        /* Reset flag waiting for next output time */
+        e->brute_force_gravity_flag = 0;
       }
     }
+  }
 #endif
 
 #ifdef SWIFT_DEBUG_CHECKS
@@ -3639,9 +3639,9 @@ void engine_init(struct engine *e, struct space *s, struct swift_params *params,
 
 #ifdef SWIFT_GRAVITY_FORCE_CHECKS
   e->force_checks_only_all_active =
-    parser_get_opt_param_int(params, "ForceChecks:only_when_all_active", 0);
+      parser_get_opt_param_int(params, "ForceChecks:only_when_all_active", 0);
   e->force_checks_only_at_snapshots =
-    parser_get_opt_param_int(params, "ForceChecks:only_at_snapshots", 0);
+      parser_get_opt_param_int(params, "ForceChecks:only_at_snapshots", 0);
 #endif
 
   /* Make the space link back to the engine. */

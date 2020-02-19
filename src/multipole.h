@@ -315,7 +315,7 @@ INLINE static void gravity_field_tensors_add(
     struct grav_tensor *restrict la, const struct grav_tensor *restrict lb) {
 #ifdef SWIFT_DEBUG_CHECKS
   if (lb->num_interacted + lb->num_not_interacted == 0)
-      error("Adding tensors that did not interact");
+    error("Adding tensors that did not interact");
 #endif
 #if defined(SWIFT_DEBUG_CHECKS) || defined(SWIFT_GRAVITY_FORCE_CHECKS)
   la->num_interacted += lb->num_interacted;
@@ -2102,7 +2102,7 @@ INLINE static void gravity_L2L(struct grav_tensor *restrict la,
 
 #ifdef SWIFT_DEBUG_CHECKS
   if (lb->num_interacted + lb->num_not_interacted == 0)
-      error("Shifting tensors that did not interact");
+    error("Shifting tensors that did not interact");
 #endif
 #if defined(SWIFT_DEBUG_CHECKS) || defined(SWIFT_GRAVITY_FORCE_CHECKS)
   la->num_interacted = lb->num_interacted;
@@ -2459,7 +2459,7 @@ INLINE static void gravity_L2P(const struct grav_tensor *lb,
 
 #ifdef SWIFT_DEBUG_CHECKS
   if (lb->num_interacted + lb->num_not_interacted == 0)
-      error("Interacting with empty field tensor");
+    error("Interacting with empty field tensor");
 #endif
 #if defined(SWIFT_DEBUG_CHECKS) || defined(SWIFT_GRAVITY_FORCE_CHECKS)
   gp->num_interacted += lb->num_interacted + lb->num_not_interacted;

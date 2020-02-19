@@ -688,10 +688,9 @@ void gravity_exact_force_check(struct space *s, const struct engine *e,
           "%16s %16s %16s %16s %16s %16s %16s %16s %16s %16s %16s %16s %16s\n",
           "id", "pos[0]", "pos[1]", "pos[2]", "a_swift[0]", "a_swift[1]",
           "a_swift[2]", "potential", "a_PM[0]", "a_PM[1]", "a_PM[2]",
-          "potentialPM", "a_p2p[0]", "a_p2p[1]", "a_p2p[2]",
-          "a_m2p[0]", "a_m2p[1]", "a_m2p[2]",
-          "a_m2l[0]", "a_m2l[1]", "a_m2l[2]",
-          "n_p2p", "n_m2p", "n_m2l", "n_PM");
+          "potentialPM", "a_p2p[0]", "a_p2p[1]", "a_p2p[2]", "a_m2p[0]",
+          "a_m2p[1]", "a_m2p[2]", "a_m2l[0]", "a_m2l[1]", "a_m2l[2]", "n_p2p",
+          "n_m2p", "n_m2l", "n_PM");
 
   /* Output particle SWIFT accelerations  */
   for (size_t i = 0; i < s->nr_gparts; ++i) {
@@ -748,11 +747,13 @@ void gravity_exact_force_check(struct space *s, const struct engine *e,
     fprintf(file_exact, "# periodic= %d\n", s->periodic);
     fprintf(file_exact, "# Git Branch: %s\n", git_branch());
     fprintf(file_exact, "# Git Revision: %s\n", git_revision());
-    fprintf(file_exact, "# %16s %16s %16s %16s %16s %16s %16s %16s %16s %16s %16s "
-            "%16s %16s %16s\n", "id", "pos[0]", "pos[1]", "pos[2]", "a_exact[0]",
-            "a_exact[1]", "a_exact[2]", "potential", "a_exact_short[0]",
-            "a_exact_short[1]", "a_exact_short[2]", "a_exact_long[0]",
-            "a_exact_long[1]", "a_exact_long[2]");
+    fprintf(file_exact,
+            "# %16s %16s %16s %16s %16s %16s %16s %16s %16s %16s %16s "
+            "%16s %16s %16s\n",
+            "id", "pos[0]", "pos[1]", "pos[2]", "a_exact[0]", "a_exact[1]",
+            "a_exact[2]", "potential", "a_exact_short[0]", "a_exact_short[1]",
+            "a_exact_short[2]", "a_exact_long[0]", "a_exact_long[1]",
+            "a_exact_long[2]");
 
     /* Output particle exact accelerations  */
     for (size_t i = 0; i < s->nr_gparts; ++i) {
@@ -773,13 +774,13 @@ void gravity_exact_force_check(struct space *s, const struct engine *e,
       if (id % SWIFT_GRAVITY_FORCE_CHECKS == 0 && gpart_is_starting(gpi, e)) {
         fprintf(file_exact,
                 "%18lld %16.8e %16.8e %16.8e %16.8e %16.8e %16.8e %16.8e "
-                "%16.8e %16.8e %16.8e %16.8e %16.8e %16.8e\n", id,
-                gpi->x[0], gpi->x[1], gpi->x[2], gpi->a_grav_exact[0],
+                "%16.8e %16.8e %16.8e %16.8e %16.8e %16.8e\n",
+                id, gpi->x[0], gpi->x[1], gpi->x[2], gpi->a_grav_exact[0],
                 gpi->a_grav_exact[1], gpi->a_grav_exact[2],
                 gpi->potential_exact, gpi->a_grav_exact_short[0],
                 gpi->a_grav_exact_short[1], gpi->a_grav_exact_short[2],
                 gpi->a_grav_exact_long[0], gpi->a_grav_exact_long[1],
-                gpi->a_grav_exact_long[2]);      
+                gpi->a_grav_exact_long[2]);
       }
     }
 
