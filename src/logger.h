@@ -27,6 +27,7 @@
 /* Includes. */
 #include "common_io.h"
 #include "dump.h"
+#include "error.h"
 #include "inline.h"
 #include "timeline.h"
 #include "units.h"
