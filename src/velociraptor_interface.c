@@ -42,6 +42,9 @@
 
 /**
  * @brief Structure for passing cosmological information to VELOCIraptor.
+ *
+ * This should match the structure cosmoinfo in the file src/swiftinterface.h
+ * in the VELOCIraptor code.
  */
 struct cosmoinfo {
 
@@ -78,6 +81,9 @@ struct cosmoinfo {
 
 /**
  * @brief Structure for passing unit information to VELOCIraptor.
+ *
+ * This should match the structure unitinfo in the file src/swiftinterface.h
+ * in the VELOCIraptor code.
  */
 struct unitinfo {
 
@@ -112,6 +118,9 @@ struct cell_loc {
 /**
  * @brief Structure for passing simulation information to VELOCIraptor for a
  * given call.
+ *
+ * This should match the structure siminfo in the file src/swiftinterface.h
+ * in the VELOCIraptor code.
  */
 struct siminfo {
 
@@ -129,6 +138,9 @@ struct siminfo {
 
   /*! Number of top-level cells. */
   int numcells;
+
+  /*! Number of top-level cells. */
+  int numcellsperdim;
 
   /*! Locations of top-level cells. */
   struct cell_loc *cell_loc;
@@ -162,6 +174,11 @@ struct siminfo {
 
   /*! Do we have other particles? */
   int iother;
+
+#ifdef HAVE_VELOCIRAPTOR_WITH_NOMASS
+  /*! Mass of the DM particles */
+  double mass_uniform_box;
+#endif
 };
 
 /**
@@ -248,7 +265,10 @@ void velociraptor_convert_particles_mapper(void *map_data, int nr_gparts,
     swift_parts[i].v[1] = gparts[i].v_full[1] * a_inv;
     swift_parts[i].v[2] = gparts[i].v_full[2] * a_inv;
 
+#ifndef HAVE_VELOCIRAPTOR_WITH_NOMASS
     swift_parts[i].mass = gravity_get_mass(&gparts[i]);
+#endif
+
     swift_parts[i].potential = gravity_get_comoving_potential(&gparts[i]);
 
     swift_parts[i].type = gparts[i].type;
@@ -516,6 +536,20 @@ void velociraptor_invoke(struct engine *e, const int linked_with_snap) {
     sim_info.interparticlespacing = -1.;
   }
 
+#ifdef HAVE_VELOCIRAPTOR_WITH_NOMASS
+  /* Assume all particles have the same mass */
+  double DM_mass = 0.;
+  for (size_t i = 0; i < e->s->nr_gparts; ++i) {
+    const struct gpart *gp = &e->s->gparts[i];
+    if (gp->time_bin != time_bin_inhibited &&
+        gp->time_bin != time_bin_not_created) {
+      DM_mass = gp->mass;
+      break;
+    }
+  }
+  sim_info.mass_uniform_box = DM_mass;
+#endif
+
   /* Set the spatial extent of the simulation volume */
   sim_info.spacedimension[0] = s->dim[0];
   sim_info.spacedimension[1] = s->dim[1];
@@ -523,6 +557,9 @@ void velociraptor_invoke(struct engine *e, const int linked_with_snap) {
 
   /* Store number of top-level cells */
   sim_info.numcells = s->nr_cells;
+  sim_info.numcells = s->cdim[0]; /* We assume a cubic box! */
+  if (s->cdim[0] != s->cdim[1] || s->cdim[0] != s->cdim[2])
+    error("Trying to run VR on a non-cubic number of top-level cells");
 
   /* Size and inverse size of the top-level cells in VELOCIraptor units */
   sim_info.cellwidth[0] = s->cells_top[0].width[0];
