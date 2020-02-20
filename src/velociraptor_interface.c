@@ -557,7 +557,7 @@ void velociraptor_invoke(struct engine *e, const int linked_with_snap) {
 
   /* Store number of top-level cells */
   sim_info.numcells = s->nr_cells;
-  sim_info.numcells = s->cdim[0]; /* We assume a cubic box! */
+  sim_info.numcellsperdim = s->cdim[0]; /* We assume a cubic box! */
   if (s->cdim[0] != s->cdim[1] || s->cdim[0] != s->cdim[2])
     error("Trying to run VR on a non-cubic number of top-level cells");
 
