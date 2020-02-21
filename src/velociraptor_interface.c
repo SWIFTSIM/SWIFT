@@ -246,10 +246,14 @@ void velociraptor_convert_particles_mapper(void *map_data, int nr_gparts,
   const struct cooling_function_data *cool_func = e->cooling_func;
 
   const float a_inv = e->cosmology->a_inv;
+  const int periodic = s->periodic;
+  const double dim[3] = {s->dim[0], s->dim[1], s->dim[2]};
+  const double pos_dithering[3] = {s->pos_dithering[0], s->pos_dithering[1],
+                                   s->pos_dithering[2]};
 
   /* Convert particle properties into VELOCIraptor units.
    * VELOCIraptor wants:
-   * - Co-moving positions,
+   * - Un-dithered co-moving positions,
    * - Peculiar velocities,
    * - Co-moving potential,
    * - Physical internal energy (for the gas),
@@ -257,9 +261,18 @@ void velociraptor_convert_particles_mapper(void *map_data, int nr_gparts,
    */
   for (int i = 0; i < nr_gparts; i++) {
 
-    swift_parts[i].x[0] = gparts[i].x[0];
-    swift_parts[i].x[1] = gparts[i].x[1];
-    swift_parts[i].x[2] = gparts[i].x[2];
+    if (periodic) {
+      swift_parts[i].x[0] =
+          box_wrap(gparts[i].x[0] - pos_dithering[0], 0.0, dim[0]);
+      swift_parts[i].x[1] =
+          box_wrap(gparts[i].x[1] - pos_dithering[1], 0.0, dim[1]);
+      swift_parts[i].x[2] =
+          box_wrap(gparts[i].x[2] - pos_dithering[2], 0.0, dim[2]);
+    } else {
+      swift_parts[i].x[0] = gparts[i].x[0];
+      swift_parts[i].x[1] = gparts[i].x[1];
+      swift_parts[i].x[2] = gparts[i].x[2];
+    }
 
     swift_parts[i].v[0] = gparts[i].v_full[0] * a_inv;
     swift_parts[i].v[1] = gparts[i].v_full[1] * a_inv;
@@ -583,9 +596,18 @@ void velociraptor_invoke(struct engine *e, const int linked_with_snap) {
   for (int i = 0; i < s->nr_cells; i++) {
     cell_node_ids[i] = cells_top[i].nodeID;
 
-    sim_info.cell_loc[i].loc[0] = cells_top[i].loc[0];
-    sim_info.cell_loc[i].loc[1] = cells_top[i].loc[1];
-    sim_info.cell_loc[i].loc[2] = cells_top[i].loc[2];
+    if (s->periodic) {
+      sim_info.cell_loc[i].loc[0] =
+          box_wrap(cells_top[i].loc[0] - s->pos_dithering[0], 0.0, s->dim[0]);
+      sim_info.cell_loc[i].loc[1] =
+          box_wrap(cells_top[i].loc[1] - s->pos_dithering[1], 0.0, s->dim[1]);
+      sim_info.cell_loc[i].loc[2] =
+          box_wrap(cells_top[i].loc[2] - s->pos_dithering[2], 0.0, s->dim[2]);
+    } else {
+      sim_info.cell_loc[i].loc[0] = cells_top[i].loc[0];
+      sim_info.cell_loc[i].loc[1] = cells_top[i].loc[1];
+      sim_info.cell_loc[i].loc[2] = cells_top[i].loc[2];
+    }
   }
 
   if (e->verbose) {
