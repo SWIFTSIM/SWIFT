@@ -1284,7 +1284,7 @@ void engine_print_task_counts(const struct engine *e) {
   for (int k = 0; k <= task_type_count; k++) counts[k] = 0;
   threadpool_map((struct threadpool *)&e->threadpool,
                  engine_do_tasks_count_mapper, (void *)tasks, nr_tasks,
-                 sizeof(struct task), 0, counts);
+                 sizeof(struct task), threadpool_auto_chunk_size, counts);
 
 #ifdef WITH_MPI
   printf("[%04i] %s engine_print_task_counts: task counts are [ %s=%i",
@@ -2725,7 +2725,8 @@ void engine_reconstruct_multipoles(struct engine *e) {
 #endif
 
   threadpool_map(&e->threadpool, engine_do_reconstruct_multipoles_mapper,
-                 e->s->cells_top, e->s->nr_cells, sizeof(struct cell), 0, e);
+                 e->s->cells_top, e->s->nr_cells, sizeof(struct cell),
+                 threadpool_auto_chunk_size, e);
 
   if (e->verbose)
     message("took %.3f %s.", clocks_from_ticks(getticks() - tic),

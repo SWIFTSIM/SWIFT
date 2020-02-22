@@ -54,6 +54,7 @@
 #include "serial_io.h"
 #include "single_io.h"
 #include "stars_io.h"
+#include "threadpool.h"
 #include "tracers_io.h"
 #include "units.h"
 #include "version.h"
@@ -128,7 +129,7 @@ void writeIndexArray(const struct engine* e, FILE* f, struct io_props* props,
 
   /* Copy the whole thing into a buffer */
   threadpool_map((struct threadpool*)&e->threadpool, logger_io_copy_mapper,
-                 temp, N, typeSize, 0, props);
+                 temp, N, typeSize, threadpool_auto_chunk_size, props);
 
   /* Write data to file */
   fwrite(temp, typeSize, num_elements, f);

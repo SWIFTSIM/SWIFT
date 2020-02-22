@@ -60,6 +60,7 @@
 #include "partition.h"
 #include "restart.h"
 #include "space.h"
+#include "threadpool.h"
 #include "tools.h"
 
 /* Simple descriptions of initial partition types for reports. */
@@ -1586,7 +1587,8 @@ static void repart_edge_metis(int vweights, int eweights, int timebins,
   ticks tic = getticks();
 
   threadpool_map(&s->e->threadpool, partition_gather_weights, tasks, nr_tasks,
-                 sizeof(struct task), 0, &weights_data);
+                 sizeof(struct task), threadpool_auto_chunk_size,
+                 &weights_data);
   if (s->e->verbose)
     message("weight mapper took %.3f %s.", clocks_from_ticks(getticks() - tic),
             clocks_getunit());

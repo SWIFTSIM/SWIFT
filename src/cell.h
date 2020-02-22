@@ -93,8 +93,12 @@ extern struct cell_split_pair cell_split_pairs[13];
 struct pcell {
   /*! Hydro variables */
   struct {
+
+    /*! Number of #part in this cell. */
+    int count;
+
     /*! Maximal smoothing length. */
-    double h_max;
+    float h_max;
 
     /*! Minimal integer end-of-timestep in this cell for hydro tasks */
     integertime_t ti_end_min;
@@ -107,9 +111,6 @@ struct pcell {
 
     /*! Integer time of the last drift of the #part in this cell */
     integertime_t ti_old_part;
-
-    /*! Number of #part in this cell. */
-    int count;
 
   } hydro;
 
@@ -156,7 +157,7 @@ struct pcell {
     int count;
 
     /*! Maximal smoothing length. */
-    double h_max;
+    float h_max;
 
     /*! Minimal integer end-of-timestep in this cell for stars tasks */
     integertime_t ti_end_min;
@@ -175,7 +176,7 @@ struct pcell {
     int count;
 
     /*! Maximal smoothing length. */
-    double h_max;
+    float h_max;
 
     /*! Minimal integer end-of-timestep in this cell for black hole tasks */
     integertime_t ti_end_min;
@@ -374,9 +375,6 @@ struct cell {
     /*! Task for sorting the stars again after a SF event */
     struct task *stars_resort;
 
-    /*! Max smoothing length in this cell. */
-    double h_max;
-
     /*! Last (integer) time the cell's part were drifted forward in time. */
     integertime_t ti_old_part;
 
@@ -392,6 +390,9 @@ struct cell {
 
     /*! Spin lock for various uses (#part case). */
     swift_lock_type lock;
+
+    /*! Max smoothing length in this cell. */
+    float h_max;
 
     /*! Maximum part movement in this cell since last construction. */
     float dx_max_part;
@@ -555,9 +556,6 @@ struct cell {
     /*! Implicit tasks marking the exit of the stellar physics block of tasks */
     struct task *stars_out;
 
-    /*! Max smoothing length in this cell. */
-    double h_max;
-
     /*! Last (integer) time the cell's spart were drifted forward in time. */
     integertime_t ti_old_part;
 
@@ -572,6 +570,9 @@ struct cell {
 
     /*! Nr of #spart this cell can hold after addition of new #spart. */
     int count_total;
+
+    /*! Max smoothing length in this cell. */
+    float h_max;
 
     /*! Values of h_max before the drifts, used for sub-cell tasks. */
     float h_max_old;
@@ -663,9 +664,6 @@ struct cell {
     /*! Linked list of the tasks computing this cell's BH feedback. */
     struct link *feedback;
 
-    /*! Max smoothing length in this cell. */
-    double h_max;
-
     /*! Last (integer) time the cell's bpart were drifted forward in time. */
     integertime_t ti_old_part;
 
@@ -677,6 +675,9 @@ struct cell {
 
     /*! Nr of #bpart this cell can hold after addition of new #bpart. */
     int count_total;
+
+    /*! Max smoothing length in this cell. */
+    float h_max;
 
     /*! Values of h_max before the drifts, used for sub-cell tasks. */
     float h_max_old;

@@ -114,8 +114,9 @@ void runner_do_recv_part(struct runner *r, struct cell *c, int clear_sorts,
   /* If this is the receiving cell, propagate new values upwards. */
   if (is_root_cell) {
     TIMER_TOC(timer_dorecv_part);
-      for (struct cell *finger = c->parent; finger != NULL; finger = finger->parent) {
-       for (int k = 0; k < 8; k++) {
+    for (struct cell *finger = c->parent; finger != NULL;
+         finger = finger->parent) {
+      for (int k = 0; k < 8; k++) {
         if (finger->progeny[k] != NULL && finger->progeny[k]->hydro.count > 0) {
           h_max = max(h_max, finger->progeny[k]->hydro.h_max);
         }
