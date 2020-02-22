@@ -3589,6 +3589,60 @@ void cell_activate_hydro_send_recv_tasks(struct cell *ci, struct cell *cj,
 }
 
 /**
+ * @brief Check if the foreign/local sub-cell pair of cells trigger a rebuild.
+ *
+ * Foreign/local sub-cell pairs will need a rebuild if their interaction
+ * tree changes, i.e. if the particles move sufficiently to trigger
+ * hydro interactions at a level above where the first send/recv tasks occur.
+ *
+ * @return 1 If the space needs rebuilding, 0 otherwise.
+ */
+int cell_need_rebuild_for_hydro_foreign_sub_pair(struct cell *ci,
+                                                 struct cell *cj,
+                                                 const struct engine *e) {
+#ifdef WITH_MPI
+  /* If neither of the cells are active, we don't need to worry. */
+  if (!cell_is_active_hydro(ci, e) && !cell_is_active_hydro(cj, e)) {
+    return 0;
+  }
+
+  /* If there are send/recv tasks at this level, then all is well (note
+     that the foreign cell will only have bits set for its proxy). */
+  if (ci->mpi.attach_send_recv_for_proxy &&
+      cj->mpi.attach_send_recv_for_proxy) {
+    return 0;
+  }
+
+  /* Otherwise, if there will be an interaction at this level and we have
+     not yet encountered a send/recv pair, then we're in trouble,  */
+  if (!cell_can_recurse_in_pair_hydro_task(ci) ||
+      !cell_can_recurse_in_pair_hydro_task(cj)) {
+    return 1;
+  }
+
+  /* Otherwise, recurse to be sure. */
+  double shift[3];
+  const int sid = space_getsid(e->s, &ci, &cj, shift);
+
+  struct cell_split_pair *csp = &cell_split_pairs[sid];
+  for (int k = 0; k < csp->count; k++) {
+    struct cell *cip = ci->progeny[csp->pairs[k].pid];
+    struct cell *cjp = cj->progeny[csp->pairs[k].pjd];
+    if (cip && cjp &&
+        cell_need_rebuild_for_hydro_foreign_sub_pair(cip, cjp, e)) {
+      return 1;
+    }
+  }
+
+  /* If nothing bad happened up to here, then we're good. */
+  return 0;
+#else
+  error("SWIFT compiled without MPI support.");
+  return 0;
+#endif  // WITH_MPI
+}
+
+/**
  * @brief Un-skips all the hydro tasks associated with a given cell and checks
  * if the space needs to be rebuilt.
  *
@@ -3602,7 +3656,6 @@ int cell_unskip_hydro_tasks(struct cell *c, struct scheduler *s) {
   const int with_timestep_limiter =
       (e->policy & engine_policy_timestep_limiter);
   const int with_feedback = e->policy & engine_policy_feedback;
-  int rebuild = 0;
 
   /* Un-skip the density tasks involved with this cell. */
   for (struct link *l = c->hydro.density; l != NULL; l = l->next) {
@@ -3630,9 +3683,17 @@ int cell_unskip_hydro_tasks(struct cell *c, struct scheduler *s) {
     if (t->type == task_type_pair || t->type == task_type_sub_pair) {
       /* Check whether there was too much particle motion, i.e. the
          cell neighbour conditions were violated. */
-      if (cell_need_rebuild_for_hydro_pair(ci, cj)) rebuild = 1;
+      if (cell_need_rebuild_for_hydro_pair(ci, cj)) return 1;
 
 #ifdef WITH_MPI
+      /* Make sure that the location of the send/recv tasks in sub-cell
+         tasks is still valid. */
+      if (t->type == task_type_sub_pair && (!ci_is_local || !cj_is_local)) {
+        if (cell_need_rebuild_for_hydro_foreign_sub_pair(ci, cj, e)) {
+          return 1;
+        }
+      }
+
       /* Activate the hydro send/recv tasks if either of the cells are
        * non-local. */
       if (!ci_is_local) {
@@ -3670,7 +3731,7 @@ int cell_unskip_hydro_tasks(struct cell *c, struct scheduler *s) {
     }
   }
 
-  return rebuild;
+  return 0;
 }
 
 /**

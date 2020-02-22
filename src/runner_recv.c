@@ -121,7 +121,7 @@ void runner_do_recv_part(struct runner *r, struct cell *c, int clear_sorts,
           h_max = max(h_max, finger->progeny[k]->hydro.h_max);
         }
       }
-      atomic_max_d(&finger->hydro.h_max, h_max);
+      atomic_max_f(&finger->hydro.h_max, h_max);
       finger->hydro.ti_old_part = ti_current;
     }
   }
