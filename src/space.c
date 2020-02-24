@@ -604,7 +604,7 @@ void space_regrid(struct space *s, int verbose) {
 #if defined(SWIFT_DEBUG_CHECKS) || defined(SWIFT_CELL_GRAPH)
           c->cellID = -last_cell_id;
           last_cell_id++;
-        c->hash = cell_hash(c);
+          c->hash = cell_hash(c);
 #endif
         }
 
@@ -1904,7 +1904,7 @@ void space_rebuild(struct space *s, int repartitioned, int verbose) {
 #if defined(SWIFT_DEBUG_CHECKS) || defined(SWIFT_CELL_GRAPH)
     c->cellID = -last_cell_id;
     last_cell_id++;
-          c->hash = cell_hash(c);
+    c->hash = cell_hash(c);
 #endif
 
     const int is_local = (c->nodeID == engine_rank);
