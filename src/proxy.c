@@ -309,8 +309,8 @@ void proxy_cells_pack_mapper(void *map_data, int num_elements,
   for (int k = 0; k < num_elements; k++) {
     if (cells[k].mpi.sendto) {
       ptrdiff_t ind = &cells[k] - data->s->cells_top;
-      cells[k].mpi.pcell = &data->pcells[data->offset[ind]];
-      cell_pack(&cells[k], cells[k].mpi.pcell, data->with_gravity);
+      cell_pack(&cells[k], &data->pcells[data->offset[ind]],
+                data->with_gravity);
     }
   }
 }
