@@ -186,98 +186,78 @@ void space_rebuild_recycle_mapper(void *map_data, int num_elements,
     if (cell_rec_begin != NULL)
       space_recycle_list(s, cell_rec_begin, cell_rec_end, multipole_rec_begin,
                          multipole_rec_end);
-    c->hydro.sorts = NULL;
-    c->stars.sorts = NULL;
-    c->nr_tasks = 0;
-    c->grav.nr_mm_tasks = 0;
-    c->hydro.density = NULL;
-    c->hydro.gradient = NULL;
-    c->hydro.force = NULL;
-    c->hydro.limiter = NULL;
-    c->grav.grav = NULL;
-    c->grav.mm = NULL;
-    c->hydro.dx_max_part = 0.0f;
-    c->hydro.dx_max_sort = 0.0f;
-    c->stars.dx_max_part = 0.f;
-    c->stars.dx_max_sort = 0.f;
-    c->black_holes.dx_max_part = 0.f;
-    c->hydro.sorted = 0;
-    c->stars.sorted = 0;
-    c->hydro.count = 0;
-    c->hydro.count_total = 0;
-    c->hydro.updated = 0;
-    c->grav.count = 0;
-    c->grav.count_total = 0;
-    c->grav.updated = 0;
-    c->stars.count = 0;
-    c->stars.count_total = 0;
-    c->stars.updated = 0;
+    c->black_holes.black_holes_in = NULL;
+    c->black_holes.black_holes_out = NULL;
     c->black_holes.count = 0;
     c->black_holes.count_total = 0;
-    c->black_holes.updated = 0;
-    c->grav.init = NULL;
-    c->grav.init_out = NULL;
-    c->hydro.extra_ghost = NULL;
-    c->hydro.ghost_in = NULL;
-    c->hydro.ghost_out = NULL;
-    c->hydro.ghost = NULL;
-    c->hydro.star_formation = NULL;
-    c->hydro.stars_resort = NULL;
-    c->stars.ghost = NULL;
-    c->stars.density = NULL;
-    c->stars.feedback = NULL;
+    c->black_holes.density = NULL;
     c->black_holes.density_ghost = NULL;
+    c->black_holes.do_bh_swallow = NULL;
+    c->black_holes.do_gas_swallow = NULL;
+    c->black_holes.drift = NULL;
+    c->black_holes.dx_max_part = 0.f;
+    c->black_holes.feedback = NULL;
+    c->black_holes.parts = NULL;
+    c->black_holes.swallow = NULL;
     c->black_holes.swallow_ghost[0] = NULL;
     c->black_holes.swallow_ghost[1] = NULL;
     c->black_holes.swallow_ghost[2] = NULL;
-    c->black_holes.density = NULL;
-    c->black_holes.swallow = NULL;
-    c->black_holes.do_gas_swallow = NULL;
-    c->black_holes.do_bh_swallow = NULL;
-    c->black_holes.feedback = NULL;
+    c->black_holes.ti_end_max = -1;
+    c->black_holes.ti_end_min = -1;
+    c->black_holes.updated = 0;
+    c->flags = 0;
+    c->grav.count = 0;
+    c->grav.count_total = 0;
+    c->grav.down = NULL;
+    c->grav.down_in = NULL;
+    c->grav.drift = NULL;
+    c->grav.drift_out = NULL;
+    c->grav.end_force = NULL;
+    c->grav.grav = NULL;
+    c->grav.init = NULL;
+    c->grav.init_out = NULL;
+    c->grav.long_range = NULL;
+    c->grav.mesh = NULL;
+    c->grav.mm = NULL;
+    c->grav.nr_mm_tasks = 0;
+    c->grav.parts = NULL;
+    c->grav.super = c;
+    c->grav.ti_end_max = -1;
+    c->grav.ti_end_min = -1;
+    c->grav.updated = 0;
+    bzero(&c->hydro, sizeof(c->hydro));
+    c->hydro.super = c;
+    c->hydro.ti_end_max = -1;
+    c->hydro.ti_end_min = -1;
     c->kick1 = NULL;
     c->kick2 = NULL;
+    c->nr_tasks = 0;
+    c->stars.count = 0;
+    c->stars.count_total = 0;
+    c->stars.density = NULL;
+    c->stars.drift = NULL;
+    c->stars.dx_max_part = 0.f;
+    c->stars.dx_max_sort = 0.f;
+    c->stars.feedback = NULL;
+    c->stars.ghost = NULL;
+    c->stars.parts = NULL;
+    c->stars.parts_rebuild = NULL;
+    c->stars.sorted = 0;
+    c->stars.sorts = NULL;
+    c->stars.stars_in = NULL;
+    c->stars.stars_out = NULL;
+    c->stars.ti_end_max = -1;
+    c->stars.ti_end_min = -1;
+    c->stars.updated = 0;
+    c->super = c;
     c->timestep = NULL;
     c->timestep_limiter = NULL;
     c->timestep_sync = NULL;
-    c->hydro.end_force = NULL;
-    c->hydro.drift = NULL;
-    c->stars.drift = NULL;
-    c->stars.stars_in = NULL;
-    c->stars.stars_out = NULL;
-    c->black_holes.drift = NULL;
-    c->black_holes.black_holes_in = NULL;
-    c->black_holes.black_holes_out = NULL;
-    c->grav.drift = NULL;
-    c->grav.drift_out = NULL;
-    c->hydro.cooling = NULL;
-    c->grav.long_range = NULL;
-    c->grav.down_in = NULL;
-    c->grav.down = NULL;
-    c->grav.mesh = NULL;
-    c->grav.end_force = NULL;
     c->top = c;
-    c->super = c;
-    c->hydro.super = c;
-    c->grav.super = c;
-    c->hydro.parts = NULL;
-    c->hydro.xparts = NULL;
-    c->grav.parts = NULL;
-    c->stars.parts = NULL;
-    c->stars.parts_rebuild = NULL;
-    c->black_holes.parts = NULL;
-    c->flags = 0;
-    c->hydro.ti_end_min = -1;
-    c->hydro.ti_end_max = -1;
-    c->grav.ti_end_min = -1;
-    c->grav.ti_end_max = -1;
-    c->stars.ti_end_min = -1;
-    c->stars.ti_end_max = -1;
-    c->black_holes.ti_end_min = -1;
-    c->black_holes.ti_end_max = -1;
     star_formation_logger_init(&c->stars.sfh);
 #if defined(SWIFT_DEBUG_CHECKS) || defined(SWIFT_CELL_GRAPH)
     c->cellID = 0;
+    c->hash = 0;
 #endif
     if (s->with_self_gravity)
       bzero(c->grav.multipole, sizeof(struct gravity_tensors));
@@ -288,6 +268,9 @@ void space_rebuild_recycle_mapper(void *map_data, int num_elements,
     c->mpi.tag = -1;
     c->mpi.recv = NULL;
     c->mpi.send = NULL;
+    c->mpi.pcell_size = 0;
+    c->mpi.pcell = NULL;
+    c->mpi.attach_send_recv_for_proxy = 0;
 #endif
   }
 }
@@ -621,6 +604,7 @@ void space_regrid(struct space *s, int verbose) {
 #if defined(SWIFT_DEBUG_CHECKS) || defined(SWIFT_CELL_GRAPH)
           c->cellID = -last_cell_id;
           last_cell_id++;
+        c->hash = cell_hash(c);
 #endif
         }
 
@@ -1920,6 +1904,7 @@ void space_rebuild(struct space *s, int repartitioned, int verbose) {
 #if defined(SWIFT_DEBUG_CHECKS) || defined(SWIFT_CELL_GRAPH)
     c->cellID = -last_cell_id;
     last_cell_id++;
+          c->hash = cell_hash(c);
 #endif
 
     const int is_local = (c->nodeID == engine_rank);
@@ -3448,6 +3433,7 @@ void space_split_recursive(struct space *s, struct cell *c,
 #endif  // WITH_MPI
 #if defined(SWIFT_DEBUG_CHECKS) || defined(SWIFT_CELL_GRAPH)
       cp->cellID = last_cell_id++;
+      cp->hash = cell_hash(cp);
 #endif
     }
 
