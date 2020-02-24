@@ -407,6 +407,12 @@ if test "$enable_memuse_reports" = "yes"; then
    AC_DEFINE([SWIFT_MEMUSE_REPORTS],1,[Enable memory usage reports])
 fi
 
+# The system memory report depends on the presence of /proc/self/statm, i.e.
+# a linux OS, check for that.
+if test -f "/proc/self/statm"; then
+   AC_DEFINE([SWIFT_MEMUSE_STATM],1,[Have /proc/self/statm capability])
+fi
+
 # Check if we want to make the dumper thread active.
 AC_ARG_ENABLE([dumper],
    [AS_HELP_STRING([--enable-dumper],
