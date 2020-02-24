@@ -182,6 +182,7 @@ void part_relink_all_parts_to_gparts_mapper(void *restrict map_data, int count,
  * @param parts The global #part array in which to find the #gpart offsets.
  * @param sparts The global #spart array in which to find the #gpart offsets.
  * @param bparts The global #bpart array in which to find the #gpart offsets.
+ * @param tp The #threadpool object.
  */
 void part_relink_all_parts_to_gparts(struct gpart *gparts, const size_t N,
                                      struct part *parts, struct spart *sparts,
