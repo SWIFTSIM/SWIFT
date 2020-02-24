@@ -595,10 +595,6 @@ int main(int argc, char *argv[]) {
 #ifdef WITH_MPI
   if (with_mpole_reconstruction && nr_nodes > 1)
     error("Cannot reconstruct m-poles every step over MPI (yet).");
-  if (with_timestep_limiter)
-    error("Can't run with time-step limiter over MPI (yet)");
-  if (with_timestep_sync)
-    error("Can't run with time-step synchronization over MPI (yet)");
 #endif
 
     /* Temporary early aborts for modes not supported with hand-vec. */
