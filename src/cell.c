@@ -622,6 +622,7 @@ int cell_pack(struct cell *restrict c, struct pcell *restrict pc,
     }
 
   /* Return the number of packed cells used. */
+  c->mpi.pcell = pc;
   c->mpi.pcell_size = count;
   return count;
 
@@ -748,6 +749,7 @@ int cell_unpack(struct pcell *restrict pc, struct cell *restrict c,
 
 #ifdef SWIFT_DEBUG_CHECKS
   c->cellID = pc->cellID;
+  c->hash = cell_hash(c);
 #endif
 
   /* Copy the Multipole related information */
@@ -796,12 +798,16 @@ int cell_unpack(struct pcell *restrict pc, struct cell *restrict c,
       temp->black_holes.dx_max_part = 0.f;
       temp->nodeID = c->nodeID;
       temp->parent = c;
+#ifdef SWIFT_DEBUG_CHECKS
+      temp->hash = cell_hash(temp);
+#endif
       c->progeny[k] = temp;
       c->split = 1;
       count += cell_unpack(&pc[pc->progeny[k]], temp, s, with_gravity);
     }
 
   /* Return the total number of unpacked cells. */
+  c->mpi.pcell = pc;
   c->mpi.pcell_size = count;
   return count;
 

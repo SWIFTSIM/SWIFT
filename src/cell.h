@@ -782,6 +782,9 @@ struct cell {
 #if defined(SWIFT_DEBUG_CHECKS) || defined(SWIFT_CELL_GRAPH)
   /* Cell ID (for debugging) */
   int cellID;
+
+  /* Cell hash (for debugging) */
+  uint32_t hash;
 #endif
 
 #ifdef SWIFT_DEBUG_CHECKS
