@@ -37,6 +37,7 @@
 #include "part.h"
 #include "runner.h"
 #include "space.h"
+#include "threadpool.h"
 
 #ifdef HAVE_FFTW
 
@@ -51,10 +52,9 @@
  * @param k Index along z.
  * @param N Size of the array along one axis.
  */
-__attribute__((always_inline)) INLINE static int row_major_id_periodic(int i,
-                                                                       int j,
-                                                                       int k,
-                                                                       int N) {
+__attribute__((always_inline, const)) INLINE static int row_major_id_periodic(
+    const int i, const int j, const int k, const int N) {
+
   return (((i + N) % N) * N * N + ((j + N) % N) * N + ((k + N) % N));
 }
 
@@ -72,9 +72,10 @@ __attribute__((always_inline)) INLINE static int row_major_id_periodic(int i,
  * @param dy Second CIC coefficient along y
  * @param dz Second CIC coefficient along z
  */
-__attribute__((always_inline)) INLINE static double CIC_get(
-    double mesh[6][6][6], int i, int j, int k, double tx, double ty, double tz,
-    double dx, double dy, double dz) {
+__attribute__((always_inline, const)) INLINE static double CIC_get(
+    double mesh[6][6][6], const int i, const int j, const int k,
+    const double tx, const double ty, const double tz, const double dx,
+    const double dy, const double dz) {
 
   double temp;
   temp = mesh[i + 0][j + 0][k + 0] * tx * ty * tz;
@@ -106,8 +107,9 @@ __attribute__((always_inline)) INLINE static double CIC_get(
  * @param value The value to interpolate.
  */
 __attribute__((always_inline)) INLINE static void CIC_set(
-    double* mesh, int N, int i, int j, int k, double tx, double ty, double tz,
-    double dx, double dy, double dz, double value) {
+    double* mesh, const int N, const int i, const int j, const int k,
+    const double tx, const double ty, const double tz, const double dx,
+    const double dy, const double dz, const double value) {
 
   /* Classic CIC interpolation */
   atomic_add_d(&mesh[row_major_id_periodic(i + 0, j + 0, k + 0, N)],
@@ -137,8 +139,9 @@ __attribute__((always_inline)) INLINE static void CIC_set(
  * @param fac The width of a mesh cell.
  * @param dim The dimensions of the simulation box.
  */
-INLINE static void gpart_to_mesh_CIC(const struct gpart* gp, double* rho, int N,
-                                     double fac, const double dim[3]) {
+INLINE static void gpart_to_mesh_CIC(const struct gpart* gp, double* rho,
+                                     const int N, const double fac,
+                                     const double dim[3]) {
 
   /* Box wrap the multipole's position */
   const double pos_x = box_wrap(gp->x[0], 0., dim[0]);
@@ -183,8 +186,9 @@ INLINE static void gpart_to_mesh_CIC(const struct gpart* gp, double* rho, int N,
  * @param fac The width of a mesh cell.
  * @param dim The dimensions of the simulation box.
  */
-void cell_gpart_to_mesh_CIC(const struct cell* c, double* rho, int N,
-                            double fac, const double dim[3]) {
+void cell_gpart_to_mesh_CIC(const struct cell* c, double* rho, const int N,
+                            const double fac, const double dim[3]) {
+
   const int gcount = c->grav.count;
   const struct gpart* gparts = c->grav.parts;
 
@@ -253,8 +257,8 @@ void cell_gpart_to_mesh_CIC_mapper(void* map_data, int num, void* extra) {
  * @param fac width of a mesh cell.
  * @param dim The dimensions of the simulation box.
  */
-void mesh_to_gparts_CIC(struct gpart* gp, const double* pot, int N, double fac,
-                        const double dim[3]) {
+void mesh_to_gparts_CIC(struct gpart* gp, const double* pot, const int N,
+                        const double fac, const double dim[3]) {
 
   /* Box wrap the gpart's position */
   const double pos_x = box_wrap(gp->x[0], 0., dim[0]);
@@ -342,6 +346,139 @@ void mesh_to_gparts_CIC(struct gpart* gp, const double* pot, int N, double fac,
 #endif
 }
 
+/**
+ * @brief Shared information about the Green function to be used by all the
+ * threads in the pool.
+ */
+struct Green_function_data {
+
+  int N;
+  fftw_complex* frho;
+  double green_fac;
+  double a_smooth2;
+  double k_fac;
+};
+
+/**
+ * @brief Mapper function for the application of the Green function.
+ *
+ * @param map_data The array of the density field Fourier transform.
+ * @param num The number of elements to iterate on (along the x-axis).
+ * @param extra The properties of the Green function.
+ */
+void mesh_apply_Green_function_mapper(void* map_data, const int num,
+                                      void* extra) {
+
+  struct Green_function_data* data = (struct Green_function_data*)extra;
+
+  /* Unpack the array */
+  fftw_complex* const frho = data->frho;
+  const int N = data->N;
+  const int N_half = N / 2;
+
+  /* Unpack the Green function properties */
+  const double green_fac = data->green_fac;
+  const double a_smooth2 = data->a_smooth2;
+  const double k_fac = data->k_fac;
+
+  /* Range handled by this call */
+  const int i_start = (fftw_complex*)map_data - frho;
+  const int i_end = i_start + num;
+
+  /* Loop over the x range corresponding to this thread */
+  for (int i = i_start; i < i_end; ++i) {
+
+    /* kx component of vector in Fourier space and 1/sinc(kx) */
+    const int kx = (i > N_half ? i - N : i);
+    const double kx_d = (double)kx;
+    const double fx = k_fac * kx_d;
+    const double sinc_kx_inv = (kx != 0) ? fx / sin(fx) : 1.;
+
+    for (int j = 0; j < N; ++j) {
+
+      /* ky component of vector in Fourier space and 1/sinc(ky) */
+      const int ky = (j > N_half ? j - N : j);
+      const double ky_d = (double)ky;
+      const double fy = k_fac * ky_d;
+      const double sinc_ky_inv = (ky != 0) ? fy / sin(fy) : 1.;
+
+      for (int k = 0; k < N_half + 1; ++k) {
+
+        /* kz component of vector in Fourier space and 1/sinc(kz) */
+        const int kz = (k > N_half ? k - N : k);
+        const double kz_d = (double)kz;
+        const double fz = k_fac * kz_d;
+        const double sinc_kz_inv = (kz != 0) ? fz / (sin(fz) + FLT_MIN) : 1.;
+
+        /* Norm of vector in Fourier space */
+        const double k2 = (kx_d * kx_d + ky_d * ky_d + kz_d * kz_d);
+
+        /* Avoid FPEs... */
+        if (k2 == 0.) continue;
+
+        /* Green function */
+        double W = 1.;
+        fourier_kernel_long_grav_eval(k2 * a_smooth2, &W);
+        const double green_cor = green_fac * W / (k2 + FLT_MIN);
+
+        /* Deconvolution of CIC */
+        const double CIC_cor = sinc_kx_inv * sinc_ky_inv * sinc_kz_inv;
+        const double CIC_cor2 = CIC_cor * CIC_cor;
+        const double CIC_cor4 = CIC_cor2 * CIC_cor2;
+
+        /* Combined correction */
+        const double total_cor = green_cor * CIC_cor4;
+
+        /* Apply to the mesh */
+        const int index = N * (N_half + 1) * i + (N_half + 1) * j + k;
+        frho[index][0] *= total_cor;
+        frho[index][1] *= total_cor;
+      }
+    }
+  }
+}
+
+/**
+ * @brief Apply the Green function in Fourier space to the density
+ * array to get the potential.
+ *
+ * Also deconvolves the CIC kernel.
+ *
+ * @param tp The threadpool.
+ * @param frho The NxNx(N/2) complex array of the Fourier transform of the
+ * density field.
+ * @param N The dimension of the array.
+ * @param r_s The Green function smoothing scale.
+ * @param box_size The physical size of the simulation box.
+ */
+void mesh_apply_Green_function(struct threadpool* tp, fftw_complex* frho,
+                               const int N, const double r_s,
+                               const double box_size) {
+
+  /* Some common factors */
+  struct Green_function_data data;
+  data.frho = frho;
+  data.N = N;
+  data.green_fac = -1. / (M_PI * box_size);
+  data.a_smooth2 = 4. * M_PI * M_PI * r_s * r_s / (box_size * box_size);
+  data.k_fac = M_PI / (double)N;
+
+  /* Parallelize the Green function application using the threadpool
+     to split the x-axis loop over the threads.
+     The array is N x N x (N/2). We use the thread to each deal with
+     a range [i_min, i_max[ x N x (N/2) */
+  if (N < 32) {
+    mesh_apply_Green_function_mapper(frho, N, &data);
+  } else {
+    threadpool_map(tp, mesh_apply_Green_function_mapper, frho, N,
+                   sizeof(fftw_complex), threadpool_auto_chunk_size, &data);
+  }
+
+  /* Correct singularity at (0,0,0) */
+  frho[0][0] = 0.;
+  frho[0][1] = 0.;
+}
+
 #endif
 
 /**
@@ -359,7 +496,7 @@ void mesh_to_gparts_CIC(struct gpart* gp, const double* pot, int N, double fac,
  * @param verbose Are we talkative?
  */
 void pm_mesh_compute_potential(struct pm_mesh* mesh, const struct space* s,
-                               struct threadpool* tp, int verbose) {
+                               struct threadpool* tp, const int verbose) {
 
 #ifdef HAVE_FFTW
 
@@ -416,7 +553,8 @@ void pm_mesh_compute_potential(struct pm_mesh* mesh, const struct space* s,
   /* Do a parallel CIC mesh assignment of the gparts but only using
      the local top-level cells */
   threadpool_map(tp, cell_gpart_to_mesh_CIC_mapper, (void*)local_cells,
-                 nr_local_cells, sizeof(int), 0, (void*)&data);
+                 nr_local_cells, sizeof(int), threadpool_auto_chunk_size,
+                 (void*)&data);
 
   if (verbose)
     message("Gpart assignment took %.3f %s.",
@@ -432,7 +570,7 @@ void pm_mesh_compute_potential(struct pm_mesh* mesh, const struct space* s,
                 MPI_COMM_WORLD);
 
   if (verbose)
-    message("Mesh comunication took %.3f %s.",
+    message("Mesh communication took %.3f %s.",
             clocks_from_ticks(getticks() - tic), clocks_getunit());
 #endif
 
@@ -453,66 +591,8 @@ void pm_mesh_compute_potential(struct pm_mesh* mesh, const struct space* s,
 
   tic = getticks();
 
-  /* Some common factors */
-  const double green_fac = -1. / (M_PI * box_size);
-  const double a_smooth2 = 4. * M_PI * M_PI * r_s * r_s / (box_size * box_size);
-  const double k_fac = M_PI / (double)N;
-
   /* Now de-convolve the CIC kernel and apply the Green function */
-  for (int i = 0; i < N; ++i) {
-
-    /* kx component of vector in Fourier space and 1/sinc(kx) */
-    const int kx = (i > N_half ? i - N : i);
-    const double kx_d = (double)kx;
-    const double fx = k_fac * kx_d;
-    const double sinc_kx_inv = (kx != 0) ? fx / sin(fx) : 1.;
-
-    for (int j = 0; j < N; ++j) {
-
-      /* ky component of vector in Fourier space and 1/sinc(ky) */
-      const int ky = (j > N_half ? j - N : j);
-      const double ky_d = (double)ky;
-      const double fy = k_fac * ky_d;
-      const double sinc_ky_inv = (ky != 0) ? fy / sin(fy) : 1.;
-
-      for (int k = 0; k < N_half + 1; ++k) {
-
-        /* kz component of vector in Fourier space and 1/sinc(kz) */
-        const int kz = (k > N_half ? k - N : k);
-        const double kz_d = (double)kz;
-        const double fz = k_fac * kz_d;
-        const double sinc_kz_inv = (kz != 0) ? fz / (sin(fz) + FLT_MIN) : 1.;
-
-        /* Norm of vector in Fourier space */
-        const double k2 = (kx_d * kx_d + ky_d * ky_d + kz_d * kz_d);
-
-        /* Avoid FPEs... */
-        if (k2 == 0.) continue;
-
-        /* Green function */
-        double W = 1.;
-        fourier_kernel_long_grav_eval(k2 * a_smooth2, &W);
-        const double green_cor = green_fac * W / (k2 + FLT_MIN);
-
-        /* Deconvolution of CIC */
-        const double CIC_cor = sinc_kx_inv * sinc_ky_inv * sinc_kz_inv;
-        const double CIC_cor2 = CIC_cor * CIC_cor;
-        const double CIC_cor4 = CIC_cor2 * CIC_cor2;
-
-        /* Combined correction */
-        const double total_cor = green_cor * CIC_cor4;
-
-        /* Apply to the mesh */
-        const int index = N * (N_half + 1) * i + (N_half + 1) * j + k;
-        frho[index][0] *= total_cor;
-        frho[index][1] *= total_cor;
-      }
-    }
-  }
-
-  /* Correct singularity at (0,0,0) */
-  frho[0][0] = 0.;
-  frho[0][1] = 0.;
+  mesh_apply_Green_function(tp, frho, N, r_s, box_size);
 
   if (verbose)
     message("Applying Green function took %.3f %s.",
@@ -534,7 +614,7 @@ void pm_mesh_compute_potential(struct pm_mesh* mesh, const struct space* s,
   mesh->potential = rho;
 
   /* message("\n\n\n POTENTIAL"); */
-  /* print_array(potential, N); */
+  /* print_array(mesh->potential, N); */
 
   /* Clean-up the mess */
   fftw_destroy_plan(forward_plan);

@@ -53,6 +53,7 @@
 #include "space.h"
 #include "space_getsid.h"
 #include "task.h"
+#include "threadpool.h"
 #include "timers.h"
 #include "version.h"
 
@@ -1059,12 +1060,14 @@ void scheduler_splittasks(struct scheduler *s, const int fof_tasks,
   if (fof_tasks) {
     /* Call the mapper on each current task. */
     threadpool_map(s->threadpool, scheduler_splittasks_fof_mapper, s->tasks,
-                   s->nr_tasks, sizeof(struct task), 0, s);
+                   s->nr_tasks, sizeof(struct task), threadpool_auto_chunk_size,
+                   s);
 
   } else {
     /* Call the mapper on each current task. */
     threadpool_map(s->threadpool, scheduler_splittasks_mapper, s->tasks,
-                   s->nr_tasks, sizeof(struct task), 0, s);
+                   s->nr_tasks, sizeof(struct task), threadpool_auto_chunk_size,
+                   s);
   }
 }
 
@@ -1363,21 +1366,35 @@ void scheduler_reweight(struct scheduler *s, int verbose) {
                (sizeof(int) * 8 - intrinsics_clz(t->ci->stars.count));
         break;
 
+      case task_type_stars_resort:
+        cost = wscale * intrinsics_popcount(t->flags) * scount_i *
+               (sizeof(int) * 8 - intrinsics_clz(t->ci->stars.count));
+        break;
+
       case task_type_self:
         if (t->subtype == task_subtype_grav) {
           cost = 1.f * (wscale * gcount_i) * gcount_i;
         } else if (t->subtype == task_subtype_external_grav)
           cost = 1.f * wscale * gcount_i;
-        else if (t->subtype == task_subtype_stars_density)
+        else if (t->subtype == task_subtype_stars_density ||
+                 t->subtype == task_subtype_stars_feedback)
           cost = 1.f * wscale * scount_i * count_i;
-        else if (t->subtype == task_subtype_stars_feedback)
-          cost = 1.f * wscale * scount_i * count_i;
-        else if (t->subtype == task_subtype_bh_density)
+        else if (t->subtype == task_subtype_bh_density ||
+                 t->subtype == task_subtype_bh_swallow ||
+                 t->subtype == task_subtype_bh_feedback)
           cost = 1.f * wscale * bcount_i * count_i;
-        else if (t->subtype == task_subtype_bh_feedback)
-          cost = 1.f * wscale * bcount_i * count_i;
-        else  // hydro loops
+        else if (t->subtype == task_subtype_do_gas_swallow)
+          cost = 1.f * wscale * count_i;
+        else if (t->subtype == task_subtype_do_bh_swallow)
+          cost = 1.f * wscale * bcount_i;
+        else if (t->subtype == task_subtype_density ||
+                 t->subtype == task_subtype_gradient ||
+                 t->subtype == task_subtype_force ||
+                 t->subtype == task_subtype_limiter)
           cost = 1.f * (wscale * count_i) * count_i;
+        else
+          error("Untreated sub-type for selfs: %s",
+                subtaskID_names[t->subtype]);
         break;
 
       case task_type_pair:
@@ -1398,6 +1415,7 @@ void scheduler_reweight(struct scheduler *s, int verbose) {
                    sid_scale[t->flags];
 
         } else if (t->subtype == task_subtype_bh_density ||
+                   t->subtype == task_subtype_bh_swallow ||
                    t->subtype == task_subtype_bh_feedback) {
           if (t->ci->nodeID != nodeID)
             cost = 3.f * wscale * count_i * bcount_j * sid_scale[t->flags];
@@ -1407,11 +1425,24 @@ void scheduler_reweight(struct scheduler *s, int verbose) {
             cost = 2.f * wscale * (bcount_i * count_j + bcount_j * count_i) *
                    sid_scale[t->flags];
 
-        } else {  // hydro loops
+        } else if (t->subtype == task_subtype_do_gas_swallow) {
+          cost = 1.f * wscale * (count_i + count_j);
+
+        } else if (t->subtype == task_subtype_do_bh_swallow) {
+          cost = 1.f * wscale * (bcount_i + bcount_j);
+
+        } else if (t->subtype == task_subtype_density ||
+                   t->subtype == task_subtype_gradient ||
+                   t->subtype == task_subtype_force ||
+                   t->subtype == task_subtype_limiter) {
           if (t->ci->nodeID != nodeID || t->cj->nodeID != nodeID)
             cost = 3.f * (wscale * count_i) * count_j * sid_scale[t->flags];
           else
             cost = 2.f * (wscale * count_i) * count_j * sid_scale[t->flags];
+
+        } else {
+          error("Untreated sub-type for pairs: %s",
+                subtaskID_names[t->subtype]);
         }
         break;
 
@@ -1431,6 +1462,7 @@ void scheduler_reweight(struct scheduler *s, int verbose) {
           }
 
         } else if (t->subtype == task_subtype_bh_density ||
+                   t->subtype == task_subtype_bh_swallow ||
                    t->subtype == task_subtype_bh_feedback) {
           if (t->ci->nodeID != nodeID) {
             cost = 3.f * (wscale * count_i) * bcount_j * sid_scale[t->flags];
@@ -1441,26 +1473,48 @@ void scheduler_reweight(struct scheduler *s, int verbose) {
                    sid_scale[t->flags];
           }
 
-        } else {  // hydro loops
+        } else if (t->subtype == task_subtype_do_gas_swallow) {
+          cost = 1.f * wscale * (count_i + count_j);
+
+        } else if (t->subtype == task_subtype_do_bh_swallow) {
+          cost = 1.f * wscale * (bcount_i + bcount_j);
+
+        } else if (t->subtype == task_subtype_density ||
+                   t->subtype == task_subtype_gradient ||
+                   t->subtype == task_subtype_force ||
+                   t->subtype == task_subtype_limiter) {
           if (t->ci->nodeID != nodeID || t->cj->nodeID != nodeID) {
             cost = 3.f * (wscale * count_i) * count_j * sid_scale[t->flags];
           } else {
             cost = 2.f * (wscale * count_i) * count_j * sid_scale[t->flags];
           }
+
+        } else {
+          error("Untreated sub-type for sub-pairs: %s",
+                subtaskID_names[t->subtype]);
         }
         break;
 
       case task_type_sub_self:
-        if (t->subtype == task_subtype_stars_density) {
+        if (t->subtype == task_subtype_stars_density ||
+            t->subtype == task_subtype_stars_feedback) {
           cost = 1.f * (wscale * scount_i) * count_i;
-        } else if (t->subtype == task_subtype_stars_feedback) {
-          cost = 1.f * (wscale * scount_i) * count_i;
-        } else if (t->subtype == task_subtype_bh_density) {
+        } else if (t->subtype == task_subtype_bh_density ||
+                   t->subtype == task_subtype_bh_swallow ||
+                   t->subtype == task_subtype_bh_feedback) {
           cost = 1.f * (wscale * bcount_i) * count_i;
-        } else if (t->subtype == task_subtype_bh_feedback) {
-          cost = 1.f * (wscale * bcount_i) * count_i;
-        } else {
+        } else if (t->subtype == task_subtype_do_gas_swallow) {
+          cost = 1.f * wscale * count_i;
+        } else if (t->subtype == task_subtype_do_bh_swallow) {
+          cost = 1.f * wscale * bcount_i;
+        } else if (t->subtype == task_subtype_density ||
+                   t->subtype == task_subtype_gradient ||
+                   t->subtype == task_subtype_force ||
+                   t->subtype == task_subtype_limiter) {
           cost = 1.f * (wscale * count_i) * count_i;
+        } else {
+          error("Untreated sub-type for sub-selfs: %s",
+                subtaskID_names[t->subtype]);
         }
         break;
       case task_type_ghost:
@@ -1473,6 +1527,9 @@ void scheduler_reweight(struct scheduler *s, int verbose) {
         if (t->ci == t->ci->hydro.super) cost = wscale * scount_i;
         break;
       case task_type_bh_density_ghost:
+        if (t->ci == t->ci->hydro.super) cost = wscale * bcount_i;
+        break;
+      case task_type_bh_swallow_ghost2:
         if (t->ci == t->ci->hydro.super) cost = wscale * bcount_i;
         break;
       case task_type_drift_part:
@@ -1494,6 +1551,9 @@ void scheduler_reweight(struct scheduler *s, int verbose) {
         cost = wscale * gcount_i;
         break;
       case task_type_grav_long_range:
+        cost = wscale * gcount_i;
+        break;
+      case task_type_grav_mesh:
         cost = wscale * gcount_i;
         break;
       case task_type_grav_mm:
@@ -1519,6 +1579,12 @@ void scheduler_reweight(struct scheduler *s, int verbose) {
         break;
       case task_type_timestep:
         cost = wscale * (count_i + gcount_i + scount_i + bcount_i);
+        break;
+      case task_type_timestep_limiter:
+        cost = wscale * count_i;
+        break;
+      case task_type_timestep_sync:
+        cost = wscale * count_i;
         break;
       case task_type_send:
         if (count_i < 1e5)
@@ -1610,7 +1676,7 @@ void scheduler_start(struct scheduler *s) {
   /* Re-wait the tasks. */
   if (s->active_count > 1000) {
     threadpool_map(s->threadpool, scheduler_rewait_mapper, s->tid_active,
-                   s->active_count, sizeof(int), 0, s);
+                   s->active_count, sizeof(int), threadpool_auto_chunk_size, s);
   } else {
     scheduler_rewait_mapper(s->tid_active, s->active_count, s);
   }
@@ -1618,7 +1684,7 @@ void scheduler_start(struct scheduler *s) {
   /* Loop over the tasks and enqueue whoever is ready. */
   if (s->active_count > 1000) {
     threadpool_map(s->threadpool, scheduler_enqueue_mapper, s->tid_active,
-                   s->active_count, sizeof(int), 0, s);
+                   s->active_count, sizeof(int), threadpool_auto_chunk_size, s);
   } else {
     scheduler_enqueue_mapper(s->tid_active, s->active_count, s);
   }
@@ -2273,4 +2339,30 @@ void scheduler_write_task_level(const struct scheduler *s) {
   /* clean up */
   fclose(f);
   free(count);
+}
+/**
+ * @brief dump all the active queues of all the known schedulers into files.
+ *
+ * @param e the #scheduler
+ */
+void scheduler_dump_queues(struct engine *e) {
+
+  struct scheduler *s = &e->sched;
+  char dumpfile[35];
+
+#ifdef WITH_MPI
+  /* Open a file per rank and write the header. Use per rank to avoid MPI
+   * calls that can interact with other blocking ones.  */
+  snprintf(dumpfile, sizeof(dumpfile), "queue_dump_MPI-step%d.dat_%d", e->step,
+           e->nodeID);
+#else
+  snprintf(dumpfile, sizeof(dumpfile), "queue_dump-step%d.dat", e->step);
+#endif
+
+  FILE *file_thread = fopen(dumpfile, "w");
+  fprintf(file_thread, "# rank queue index type subtype weight\n");
+  for (int l = 0; l < s->nr_queues; l++) {
+    queue_dump(engine_rank, l, file_thread, &s->queues[l]);
+  }
+  fclose(file_thread);
 }

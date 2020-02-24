@@ -292,6 +292,7 @@ SineWavePotential:
   timestep_limit:   1.      # Time-step dimensionless pre-factor.
   growth_time:      0.      # (Optional) Time for the potential to grow to its final size.
 
+
 # Parameters related to entropy floors    ----------------------------------------------
 
 EAGLEEntropyFloor:
@@ -303,11 +304,13 @@ EAGLEEntropyFloor:
   Cool_over_density_threshold:     10.       # Overdensity above which the EAGLE Cool limiter entropy floor can kick in.
   Cool_temperature_norm_K:         8000      # Temperature of the EAGLE Cool limiter entropy floor at the density threshold expressed in Kelvin.
   Cool_gamma_effective:            1.        # Slope the of the EAGLE Cool limiter entropy floor
-  
+
+
 # Parameters related to pressure floors    ----------------------------------------------
 
 GEARPressureFloor:
   jeans_factor: 10.       # Number of particles required to suppose a resolved clump and avoid the pressure floor.
+
 
 # Parameters related to cooling function  ----------------------------------------------
 
@@ -326,6 +329,7 @@ LambdaCooling:
 EAGLECooling:
   dir_name:                  ./coolingtables/  # Location of the Wiersma+08 cooling tables
   H_reion_z:                 8.5               # Redshift of Hydrogen re-ionization
+  H_reion_eV_p_H:            2.0               # Energy inject by Hydrogen re-ionization in electron-volt per Hydrogen atom
   He_reion_z_centre:         3.5               # Redshift of the centre of the Helium re-ionization Gaussian
   He_reion_z_sigma:          0.5               # Spread in redshift of the  Helium re-ionization Gaussian
   He_reion_eV_p_H:           2.0               # Energy inject by Helium re-ionization in electron-volt per Hydrogen atom
@@ -336,16 +340,17 @@ EAGLECooling:
 # Cooling with Grackle 3.0
 GrackleCooling:
   cloudy_table: CloudyData_UVB=HM2012.h5       # Name of the Cloudy Table (available on the grackle bitbucket repository)
-  with_UV_background: 1                         # Enable or not the UV background
-  redshift: 0                                 # Redshift to use (-1 means time based redshift)
-  with_metal_cooling: 1                         # Enable or not the metal cooling
-  provide_volumetric_heating_rates: 0            # (optional) User provide volumetric heating rates
-  provide_specific_heating_rates: 0              # (optional) User provide specific heating rates
+  with_UV_background: 1                        # Enable or not the UV background
+  redshift: 0                                  # Redshift to use (-1 means time based redshift)
+  with_metal_cooling: 1                        # Enable or not the metal cooling
+  provide_volumetric_heating_rates: 0          # (optional) User provide volumetric heating rates
+  provide_specific_heating_rates: 0            # (optional) User provide specific heating rates
   max_steps: 10000                             # (optional) Max number of step when computing the initial composition
   convergence_limit: 1e-2                      # (optional) Convergence threshold (relative) for initial composition
   thermal_time_myr: 5                          # (optional) Time (in Myr) for adiabatic cooling after a feedback event.
-  self_shielding_method: -1                     # (optional) Grackle (1->3 for Grackle's ones, 0 for none and -1 for GEAR)
-  self_shielding_threshold_atom_per_cm3: 0.007  # Required only with GEAR's self shielding. Density threshold of the self shielding
+  self_shielding_method: -1                    # (optional) Grackle (1->3 for Grackle's ones, 0 for none and -1 for GEAR)
+  self_shielding_threshold_atom_per_cm3: 0.007 # Required only with GEAR's self shielding. Density threshold of the self shielding
+
 
 # Parameters related to chemistry models  -----------------------------------------------
 
@@ -365,15 +370,10 @@ EAGLEChemistry:
 # GEAR chemistry model (Revaz and Jablonka 2018)
 GEARChemistry:
   initial_metallicity: 1         # Initial metallicity of the gas (mass fraction)
-  scale_initial_metallicity: 1    # Should we scale the initial metallicity with the solar one?
+  scale_initial_metallicity: 1   # Should we scale the initial metallicity with the solar one?
 
 
 # Parameters related to star formation models  -----------------------------------------------
-
-# GEAR star formation model (Revaz and Jablonka 2018)
-GEARStarFormation:
-  star_formation_efficiency: 0.01   # star formation efficiency (c_*)
-  maximal_temperature:  3e4         # Upper limit to the temperature of a star forming particle
 
 # EAGLE star formation model (Schaye and Dalla Vecchia 2008)
 EAGLEStarFormation:
@@ -392,7 +392,13 @@ EAGLEStarFormation:
   threshold_Z0:                      0.002     # Reference metallicity (metal mass fraction) for the metal-dependant threshold for star formation.
   threshold_slope:                   -0.64     # Slope of the metal-dependant star formation threshold
   threshold_max_density_H_p_cm3:     10.0      # Maximal density of the metal-dependant density threshold for star formation in Hydrogen atoms per cm^3.  
-  
+
+# GEAR star formation model (Revaz and Jablonka 2018)
+GEARStarFormation:
+  star_formation_efficiency: 0.01   # star formation efficiency (c_*)
+  maximal_temperature:  3e4         # Upper limit to the temperature of a star forming particle
+
+
 # Parameters related to feedback models  -----------------------------------------------
 
 # EAGLE feedback model
@@ -438,9 +444,10 @@ EAGLEFeedback:
 
 # GEAR feedback model
 GEARFeedback:
-  supernovae_energy_erg: 0.1e51                      # Energy released by a single supernovae.
+  supernovae_energy_erg: 0.1e51                            # Energy released by a single supernovae.
   yields_table: chemistry-AGB+OMgSFeZnSrYBaEu-16072013.h5  # Table containing the yields.
-  discrete_yields: 0                                 # Should we use discrete yields or the IMF integrated one?
+  discrete_yields: 0                                       # Should we use discrete yields or the IMF integrated one?
+
 
 # Parameters related to AGN models  -----------------------------------------------
   

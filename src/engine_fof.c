@@ -25,6 +25,9 @@
 /* This object's header. */
 #include "engine.h"
 
+/* Local headers. */
+#include "fof.h"
+
 /**
  * @brief Activate all the #gpart communications in preparation
  * fof a call to FOF.

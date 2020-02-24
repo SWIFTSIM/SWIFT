@@ -44,6 +44,7 @@ struct end_of_step_data {
       ti_black_holes_beg_max;
   struct engine *e;
   struct star_formation_history sfh;
+  float runtime;
 };
 
 /**
@@ -455,13 +456,16 @@ void engine_collect_end_of_step(struct engine *e, int apply) {
   data.ti_black_holes_end_max = 0, data.ti_black_holes_beg_max = 0;
   data.e = e;
 
+  /* Need to use a consistent check of the hours since we started. */
+  data.runtime = clocks_get_hours_since_start();
+
   /* Initialize the total SFH of the simulation to zero */
   star_formation_logger_init(&data.sfh);
 
   /* Collect information from the local top-level cells */
   threadpool_map(&e->threadpool, engine_collect_end_of_step_mapper,
                  s->local_cells_with_tasks_top, s->nr_local_cells_with_tasks,
-                 sizeof(int), 0, &data);
+                 sizeof(int), threadpool_auto_chunk_size, &data);
 
   /* Get the number of inhibited particles from the space-wide counters
    * since these have been updated atomically during the time-steps. */
@@ -480,7 +484,8 @@ void engine_collect_end_of_step(struct engine *e, int apply) {
       data.ti_stars_beg_max, data.ti_black_holes_end_min,
       data.ti_black_holes_end_max, data.ti_black_holes_beg_max, e->forcerebuild,
       e->s->tot_cells, e->sched.nr_tasks,
-      (float)e->sched.nr_tasks / (float)e->s->tot_cells, data.sfh);
+      (float)e->sched.nr_tasks / (float)e->s->tot_cells, data.sfh,
+      data.runtime);
 
 /* Aggregate collective data from the different nodes for this step. */
 #ifdef WITH_MPI

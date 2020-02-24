@@ -276,22 +276,24 @@ double clocks_get_hours_since_start(void) {
 }
 
 /**
- * @brief return the cpu time used.
+ * @brief return the cpu times used.
  *
- * Uses the times(2) function to access the user cpu times and returns the sum
- * of these for the process tree, i.e. current process plus "waited-for"
- * children. This may be pthread implementation specific as to what that
- * exactly means. Note we do not include the system time as that includes
- * spin times and we don't want to give credit for that.
+ * Uses the times(2) function to access the user and system cpu times and
+ * returns the sum of these for the process tree, i.e. current process plus
+ * "waited-for" children. This may be pthread implementation specific as to
+ * what that exactly means.
  *
- * @result cpu time used in sysconf(_SC_CLK_TCK) ticks, usually 100/s not our
- *         usual ticks.
+ * Note cpu times are reported in sysconf(_SC_CLK_TCK) ticks, usually 100/s
+ * not our usual ticks.
+ *
+ * @param usertime the user time.
+ * @param systime the system time.
  */
-double clocks_get_cputime_used(void) {
-
+void clocks_get_cputimes_used(double *usertime, double *systime) {
   struct tms tmstic;
   times(&tmstic);
-  return (double)(tmstic.tms_utime + tmstic.tms_cutime);
+  *usertime = (tmstic.tms_utime + tmstic.tms_cutime);
+  *systime = (tmstic.tms_stime + tmstic.tms_cstime);
 }
 
 /**

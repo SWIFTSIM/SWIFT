@@ -84,4 +84,6 @@ void queue_init(struct queue *q, struct task *tasks);
 void queue_insert(struct queue *q, struct task *t);
 void queue_clean(struct queue *q);
 
+void queue_dump(int nodeID, int index, FILE *file, struct queue *q);
+
 #endif /* SWIFT_QUEUE_H */

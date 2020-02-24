@@ -56,7 +56,7 @@ num_files = len(sys.argv) - 1
 labels = [
     ["engine_split_gas_particles:", 1],
     ["Gpart assignment", 1],
-    ["Mesh comunication", 1],
+    ["Mesh communication", 1],
     ["Forward Fourier transform", 1],
     ["Green function", 1],
     ["Backwards Fourier transform", 1],

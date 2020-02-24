@@ -33,6 +33,7 @@
 void mpiuse_log_dump(const char *filename, ticks stepticks);
 void mpiuse_log_allocation(int type, int subtype, void *ptr, int activation,
                            size_t size, int otherrank, int tag);
+void mpiuse_log_dump_error(int rank);
 #else
 
 /* No-op when not reporting. */

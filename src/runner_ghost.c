@@ -472,7 +472,7 @@ void runner_do_stars_ghost(struct runner *r, struct cell *c, int timer) {
    * Therefore we need to update h_max between the super- and top-levels */
   if (c->stars.ghost) {
     for (struct cell *tmp = c->parent; tmp != NULL; tmp = tmp->parent) {
-      atomic_max_d(&tmp->stars.h_max, h_max);
+      atomic_max_f(&tmp->stars.h_max, h_max);
     }
   }
 
@@ -783,7 +783,7 @@ void runner_do_black_holes_density_ghost(struct runner *r, struct cell *c,
    * Therefore we need to update h_max between the super- and top-levels */
   if (c->black_holes.density_ghost) {
     for (struct cell *tmp = c->parent; tmp != NULL; tmp = tmp->parent) {
-      atomic_max_d(&tmp->black_holes.h_max, h_max);
+      atomic_max_f(&tmp->black_holes.h_max, h_max);
     }
   }
 
@@ -809,7 +809,8 @@ void runner_do_black_holes_swallow_ghost(struct runner *r, struct cell *c,
   TIMER_TIC;
 
   /* Anything to do here? */
-  if (!cell_is_active_hydro(c, e)) return;
+  if (c->black_holes.count == 0) return;
+  if (!cell_is_active_black_holes(c, e)) return;
 
   /* Recurse? */
   if (c->split) {
@@ -1378,7 +1379,7 @@ void runner_do_ghost(struct runner *r, struct cell *c, int timer) {
    * Therefore we need to update h_max between the super- and top-levels */
   if (c->hydro.ghost) {
     for (struct cell *tmp = c->parent; tmp != NULL; tmp = tmp->parent) {
-      atomic_max_d(&tmp->hydro.h_max, h_max);
+      atomic_max_f(&tmp->hydro.h_max, h_max);
     }
   }
 

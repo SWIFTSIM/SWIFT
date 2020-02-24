@@ -60,13 +60,15 @@
 #include "partition.h"
 #include "restart.h"
 #include "space.h"
+#include "threadpool.h"
 #include "tools.h"
 
 /* Simple descriptions of initial partition types for reports. */
 const char *initial_partition_name[] = {
     "axis aligned grids of cells", "vectorized point associated cells",
     "memory balanced, using particle weighted cells",
-    "similar sized regions, using unweighted cells"};
+    "similar sized regions, using unweighted cells",
+    "memory and edge balanced cells using particle weights"};
 
 /* Simple descriptions of repartition types for reports. */
 const char *repartition_name[] = {
@@ -399,53 +401,156 @@ static void ACCUMULATE_SIZES_MAPPER(gpart);
  */
 static void ACCUMULATE_SIZES_MAPPER(spart);
 
+/* qsort support. */
+static int ptrcmp(const void *p1, const void *p2) {
+  const double *v1 = *(const double **)p1;
+  const double *v2 = *(const double **)p2;
+  return (*v1) - (*v2);
+}
+
 /**
  * @brief Accumulate total memory size in particles per cell.
  *
  * @param s the space containing the cells.
+ * @param verbose whether to report any clipped cell counts.
  * @param counts the number of bytes in particles per cell. Should be
  *               allocated as size s->nr_cells.
  */
-static void accumulate_sizes(struct space *s, double *counts) {
+static void accumulate_sizes(struct space *s, int verbose, double *counts) {
 
   bzero(counts, sizeof(double) * s->nr_cells);
 
   struct counts_mapper_data mapper_data;
-  mapper_data.counts = counts;
   mapper_data.s = s;
+  double gsize = 0.0;
+  double *gcounts = NULL;
+  double hsize = 0.0;
+  double ssize = 0.0;
 
-  double hsize = (double)sizeof(struct part);
+  if (s->nr_gparts > 0) {
+    /* Self-gravity gets more efficient with density (see gitlab issue #640)
+     * so we end up with too much weight in cells with larger numbers of
+     * gparts, to suppress this we fix a upper weight limit based on a
+     * percentile clip to on the numbers of cells. Should be relatively
+     * harmless when not really needed. */
+    if ((gcounts = (double *)malloc(sizeof(double) * s->nr_cells)) == NULL)
+      error("Failed to allocate gcounts buffer.");
+    bzero(gcounts, sizeof(double) * s->nr_cells);
+    gsize = (double)sizeof(struct gpart);
+
+    mapper_data.counts = gcounts;
+    mapper_data.size = gsize;
+    threadpool_map(&s->e->threadpool, accumulate_sizes_mapper_gpart, s->gparts,
+                   s->nr_gparts, sizeof(struct gpart), space_splitsize,
+                   &mapper_data);
+
+    /* Get all the counts from all the nodes. */
+    if (MPI_Allreduce(MPI_IN_PLACE, gcounts, s->nr_cells, MPI_DOUBLE, MPI_SUM,
+                      MPI_COMM_WORLD) != MPI_SUCCESS)
+      error("Failed to allreduce particle cell gpart weights.");
+
+    /* Now we need to sort... */
+    double **ptrs = NULL;
+    if ((ptrs = (double **)malloc(sizeof(double *) * s->nr_cells)) == NULL)
+      error("Failed to allocate pointers buffer.");
+    for (int k = 0; k < s->nr_cells; k++) {
+      ptrs[k] = &gcounts[k];
+    }
+
+    /* Sort pointers, not counts... */
+    qsort(ptrs, s->nr_cells, sizeof(double *), ptrcmp);
+
+    /* Percentile cut keeps 99.8% of cells and clips above. */
+    int cut = ceil(s->nr_cells * 0.998);
+
+    /* And clip. */
+    int nadj = 0;
+    double clip = *ptrs[cut];
+    for (int k = cut + 1; k < s->nr_cells; k++) {
+      *ptrs[k] = clip;
+      nadj++;
+    }
+    if (verbose) message("clipped gravity part counts of %d cells", nadj);
+    free(ptrs);
+  }
+
+  /* Other particle types are assumed to correlate with processing time. */
   if (s->nr_parts > 0) {
+    mapper_data.counts = counts;
+    hsize = (double)sizeof(struct part);
     mapper_data.size = hsize;
     threadpool_map(&s->e->threadpool, accumulate_sizes_mapper_part, s->parts,
                    s->nr_parts, sizeof(struct part), space_splitsize,
                    &mapper_data);
   }
 
-  double gsize = (double)sizeof(struct gpart);
-  if (s->nr_gparts > 0) {
-    mapper_data.size = gsize;
-    threadpool_map(&s->e->threadpool, accumulate_sizes_mapper_gpart, s->gparts,
-                   s->nr_gparts, sizeof(struct gpart), space_splitsize,
-                   &mapper_data);
-  }
-
-  double ssize = (double)sizeof(struct spart);
   if (s->nr_sparts > 0) {
+    ssize = (double)sizeof(struct spart);
     mapper_data.size = ssize;
     threadpool_map(&s->e->threadpool, accumulate_sizes_mapper_spart, s->sparts,
                    s->nr_sparts, sizeof(struct spart), space_splitsize,
                    &mapper_data);
   }
 
+  /* Merge the counts arrays across all nodes, if needed. Doesn't include any
+   * gparts. */
+  if (s->nr_parts > 0 || s->nr_sparts > 0) {
+    if (MPI_Allreduce(MPI_IN_PLACE, counts, s->nr_cells, MPI_DOUBLE, MPI_SUM,
+                      MPI_COMM_WORLD) != MPI_SUCCESS)
+      error("Failed to allreduce particle cell weights.");
+  }
+
+  /* And merge with gravity counts. */
+  double sum = 0.0;
+  if (s->nr_gparts > 0) {
+    for (int k = 0; k < s->nr_cells; k++) {
+      counts[k] += gcounts[k];
+      sum += counts[k];
+    }
+    free(gcounts);
+  } else {
+    for (int k = 0; k < s->nr_cells; k++) {
+      sum += counts[k];
+    }
+  }
+
   /* Keep the sum of particles across all ranks in the range of IDX_MAX. */
-  if ((s->e->total_nr_parts * hsize + s->e->total_nr_gparts * gsize +
-       s->e->total_nr_sparts * ssize) > (double)IDX_MAX) {
-    double vscale =
-        (double)(IDX_MAX - 1000) /
-        (double)(s->e->total_nr_parts * hsize + s->e->total_nr_gparts * gsize +
-                 s->e->total_nr_sparts * ssize);
+  if (sum > (double)(IDX_MAX - 10000)) {
+    double vscale = (double)(IDX_MAX - 10000) / sum;
     for (int k = 0; k < s->nr_cells; k++) counts[k] *= vscale;
+  }
+}
+
+/**
+ * @brief Make edge weights from the accumulated particle sizes per cell.
+ *
+ * @param s the space containing the cells.
+ * @param counts the number of bytes in particles per cell.
+ * @param edges weights for the edges of these regions. Should be 26 * counts.
+ */
+static void sizes_to_edges(struct space *s, double *counts, double *edges) {
+
+  bzero(edges, sizeof(double) * s->nr_cells * 26);
+
+  for (int l = 0; l < s->nr_cells; l++) {
+    int p = 0;
+    for (int i = -1; i <= 1; i++) {
+      int isid = ((i < 0) ? 0 : ((i > 0) ? 2 : 1));
+      for (int j = -1; j <= 1; j++) {
+        int jsid = isid * 3 + ((j < 0) ? 0 : ((j > 0) ? 2 : 1));
+        for (int k = -1; k <= 1; k++) {
+          int ksid = jsid * 3 + ((k < 0) ? 0 : ((k > 0) ? 2 : 1));
+
+          /* If not self, we work out the sort indices to get the expected
+           * fractional weight and add that. Scale to keep sum less than
+           * counts and a bit of tuning... */
+          if (i || j || k) {
+            edges[l * 26 + p] = counts[l] * sid_scale[sortlistID[ksid]] / 26.0;
+            p++;
+          }
+        }
+      }
+    }
   }
 }
 #endif
@@ -464,7 +569,7 @@ static void split_metis(struct space *s, int nregions, int *celllist) {
 
   /* To check or visualise the partition dump all the cells. */
   /*if (engine_rank == 0) dumpCellRanks("metis_partition", s->cells_top,
-   * s->nr_cells);*/
+                                      s->nr_cells);*/
 }
 #endif
 
@@ -780,7 +885,7 @@ static void pick_parmetis(int nodeID, struct space *s, int nregions,
 
     /* Dump graphs to disk files for testing. */
     /*dumpMETISGraph("parmetis_graph", ncells, 1, std_xadj, full_adjncy,
-      full_weights_v, NULL, full_weights_e);*/
+                   full_weights_v, NULL, full_weights_e); */
 
     /* xadj is set for each rank, different to serial version in that each
      * rank starts with 0, so we need to re-offset. */
@@ -1213,7 +1318,7 @@ static void pick_metis(int nodeID, struct space *s, int nregions,
 
     /* Dump graph in METIS format */
     /*dumpMETISGraph("metis_graph", idx_ncells, one, xadj, adjncy, weights_v,
-      NULL, weights_e);*/
+                   NULL, weights_e);*/
 
     if (METIS_PartGraphKway(&idx_ncells, &one, xadj, adjncy, weights_v, NULL,
                             weights_e, &idx_nregions, NULL, NULL, options,
@@ -1482,7 +1587,8 @@ static void repart_edge_metis(int vweights, int eweights, int timebins,
   ticks tic = getticks();
 
   threadpool_map(&s->e->threadpool, partition_gather_weights, tasks, nr_tasks,
-                 sizeof(struct task), 0, &weights_data);
+                 sizeof(struct task), threadpool_auto_chunk_size,
+                 &weights_data);
   if (s->e->verbose)
     message("weight mapper took %.3f %s.", clocks_from_ticks(getticks() - tic),
             clocks_getunit());
@@ -1536,22 +1642,22 @@ static void repart_edge_metis(int vweights, int eweights, int timebins,
   if (vweights && eweights) {
     if (vsum > esum) {
       if (vsum > (double)IDX_MAX) {
-        vscale = (double)(IDX_MAX - 1000) / vsum;
+        vscale = (double)(IDX_MAX - 10000) / vsum;
         escale = vscale;
       }
     } else {
       if (esum > (double)IDX_MAX) {
-        escale = (double)(IDX_MAX - 1000) / esum;
+        escale = (double)(IDX_MAX - 10000) / esum;
         vscale = escale;
       }
     }
   } else if (vweights) {
     if (vsum > (double)IDX_MAX) {
-      vscale = (double)(IDX_MAX - 1000) / vsum;
+      vscale = (double)(IDX_MAX - 10000) / vsum;
     }
   } else if (eweights) {
     if (esum > (double)IDX_MAX) {
-      escale = (double)(IDX_MAX - 1000) / esum;
+      escale = (double)(IDX_MAX - 10000) / esum;
     }
   }
 
@@ -1655,17 +1761,11 @@ static void repart_memory_metis(struct repartition *repartition, int nodeID,
   double *weights = NULL;
   if ((weights = (double *)malloc(sizeof(double) * s->nr_cells)) == NULL)
     error("Failed to allocate cell weights buffer.");
-  bzero(weights, sizeof(double) * s->nr_cells);
 
   /* Check each particle and accumulate the sizes per cell. */
-  accumulate_sizes(s, weights);
+  accumulate_sizes(s, s->e->verbose, weights);
 
-  /* Get all the counts from all the nodes. */
-  if (MPI_Allreduce(MPI_IN_PLACE, weights, s->nr_cells, MPI_DOUBLE, MPI_SUM,
-                    MPI_COMM_WORLD) != MPI_SUCCESS)
-    error("Failed to allreduce particle cell weights.");
-
-    /* Allocate cell list for the partition. If not already done. */
+  /* Allocate cell list for the partition. If not already done. */
 #ifdef HAVE_PARMETIS
   int refine = 1;
 #endif
@@ -1839,27 +1939,38 @@ void partition_initial_partition(struct partition *initial_partition,
     }
 
   } else if (initial_partition->type == INITPART_METIS_WEIGHT ||
+             initial_partition->type == INITPART_METIS_WEIGHT_EDGE ||
              initial_partition->type == INITPART_METIS_NOWEIGHT) {
 #if defined(WITH_MPI) && (defined(HAVE_METIS) || defined(HAVE_PARMETIS))
     /* Simple k-way partition selected by METIS using cell particle
      * counts as weights or not. Should be best when starting with a
      * inhomogeneous dist.
      */
-
-    /* Space for particles sizes per cell, which will be used as weights. */
-    double *weights = NULL;
+    double *weights_v = NULL;
+    double *weights_e = NULL;
     if (initial_partition->type == INITPART_METIS_WEIGHT) {
-      if ((weights = (double *)malloc(sizeof(double) * s->nr_cells)) == NULL)
-        error("Failed to allocate weights buffer.");
-      bzero(weights, sizeof(double) * s->nr_cells);
+      /* Particles sizes per cell, which will be used as weights. */
+      if ((weights_v = (double *)malloc(sizeof(double) * s->nr_cells)) == NULL)
+        error("Failed to allocate weights_v buffer.");
 
-      /* Check each particle and accumilate the sizes per cell. */
-      accumulate_sizes(s, weights);
+      /* Check each particle and accumulate the sizes per cell. */
+      accumulate_sizes(s, s->e->verbose, weights_v);
 
-      /* Get all the counts from all the nodes. */
-      if (MPI_Allreduce(MPI_IN_PLACE, weights, s->nr_cells, MPI_DOUBLE, MPI_SUM,
-                        MPI_COMM_WORLD) != MPI_SUCCESS)
-        error("Failed to allreduce particle cell weights.");
+    } else if (initial_partition->type == INITPART_METIS_WEIGHT_EDGE) {
+
+      /* Particle sizes also counted towards the edges. */
+
+      if ((weights_v = (double *)malloc(sizeof(double) * s->nr_cells)) == NULL)
+        error("Failed to allocate weights_v buffer.");
+      if ((weights_e = (double *)malloc(sizeof(double) * s->nr_cells * 26)) ==
+          NULL)
+        error("Failed to allocate weights_e buffer.");
+
+      /* Check each particle and accumulate the sizes per cell. */
+      accumulate_sizes(s, s->e->verbose, weights_v);
+
+      /* Spread these into edge weights. */
+      sizes_to_edges(s, weights_v, weights_e);
     }
 
     /* Do the calculation. */
@@ -1868,12 +1979,13 @@ void partition_initial_partition(struct partition *initial_partition,
       error("Failed to allocate celllist");
 #ifdef HAVE_PARMETIS
     if (initial_partition->usemetis) {
-      pick_metis(nodeID, s, nr_nodes, weights, NULL, celllist);
+      pick_metis(nodeID, s, nr_nodes, weights_v, weights_e, celllist);
     } else {
-      pick_parmetis(nodeID, s, nr_nodes, weights, NULL, 0, 0, 0.0f, celllist);
+      pick_parmetis(nodeID, s, nr_nodes, weights_v, weights_e, 0, 0, 0.0f,
+                    celllist);
     }
 #else
-    pick_metis(nodeID, s, nr_nodes, weights, NULL, celllist);
+    pick_metis(nodeID, s, nr_nodes, weights_v, weights_e, celllist);
 #endif
 
     /* And apply to our cells */
@@ -1888,7 +2000,8 @@ void partition_initial_partition(struct partition *initial_partition,
       partition_initial_partition(initial_partition, nodeID, nr_nodes, s);
     }
 
-    if (weights != NULL) free(weights);
+    if (weights_v != NULL) free(weights_v);
+    if (weights_e != NULL) free(weights_e);
     free(celllist);
 #else
     error("SWIFT was not compiled with METIS or ParMETIS support");
@@ -1943,7 +2056,7 @@ void partition_init(struct partition *partition,
 /* Defaults make use of METIS if available */
 #if defined(HAVE_METIS) || defined(HAVE_PARMETIS)
   const char *default_repart = "fullcosts";
-  const char *default_part = "memory";
+  const char *default_part = "edgememory";
 #else
   const char *default_repart = "none";
   const char *default_part = "grid";
@@ -1974,10 +2087,13 @@ void partition_init(struct partition *partition,
     case 'm':
       partition->type = INITPART_METIS_WEIGHT;
       break;
+    case 'e':
+      partition->type = INITPART_METIS_WEIGHT_EDGE;
+      break;
     default:
       message("Invalid choice of initial partition type '%s'.", part_type);
       error(
-          "Permitted values are: 'grid', 'region', 'memory' or "
+          "Permitted values are: 'grid', 'region', 'memory', 'edgememory' or "
           "'vectorized'");
 #else
     default:

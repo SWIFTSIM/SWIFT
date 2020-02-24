@@ -407,6 +407,24 @@ if test "$enable_memuse_reports" = "yes"; then
    AC_DEFINE([SWIFT_MEMUSE_REPORTS],1,[Enable memory usage reports])
 fi
 
+# The system memory report depends on the presence of /proc/self/statm, i.e.
+# a linux OS, check for that.
+if test -f "/proc/self/statm"; then
+   AC_DEFINE([SWIFT_MEMUSE_STATM],1,[Have /proc/self/statm capability])
+fi
+
+# Check if we want to make the dumper thread active.
+AC_ARG_ENABLE([dumper],
+   [AS_HELP_STRING([--enable-dumper],
+     [Dump active tasks and memory use (if configured)@<:@yes/no@:>@]
+   )],
+   [enable_dumper="$enableval"],
+   [enable_dumper="no"]
+)
+if test "$enable_dumper" = "yes"; then
+   AC_DEFINE([SWIFT_DUMPER_THREAD],1,[Enable dumper thread])
+fi
+
 # See if we want mpi reporting.
 AC_ARG_ENABLE([mpiuse-reports],
    [AS_HELP_STRING([--enable-mpiuse-reports],
@@ -1208,6 +1226,17 @@ fi
 AC_SUBST([VELOCIRAPTOR_LIBS])
 AM_CONDITIONAL([HAVEVELOCIRAPTOR],[test -n "$VELOCIRAPTOR_LIBS"])
 
+# Now that we found VELOCIraptor, let's check how it was compiled.
+if test "$have_velociraptor" == "yes"; then
+    AC_CHECK_LIB(
+       [velociraptor],
+       [VR_NOMASS],
+       [AC_DEFINE([HAVE_VELOCIRAPTOR_WITH_NOMASS],1,[The VELOCIraptor library has been compiled with the NOMASS option. Only useful if running a uniform box.])],
+       [AC_MSG_RESULT(VELOCIraptor not compiled to so as to *not* store masses per particle.)],
+       [$VELOCIRAPTOR_LIBS $HDF5_LDFLAGS $HDF5_LIBS $GSL_LIBS]
+    )
+fi
+
 # Check for dummy VELOCIraptor.
 AC_ARG_ENABLE([dummy-velociraptor],
     [AS_HELP_STRING([--enable-dummy-velociraptor],
@@ -1899,7 +1928,7 @@ esac
 # Feedback model
 AC_ARG_WITH([feedback],
    [AS_HELP_STRING([--with-feedback=<model>],
-      [Feedback model to use @<:@none, EAGLE, debug default: none@:>@]
+      [Feedback model to use @<:@none, EAGLE, GEAR default: none@:>@]
    )],
    [with_feedback="$withval"],
    [with_feedback="none"]
@@ -1932,7 +1961,7 @@ esac
 # Black hole model.
 AC_ARG_WITH([black-holes],
    [AS_HELP_STRING([--with-black-holes=<model>],
-      [Black holes model to use @<:@none, default: none@:>@]
+      [Black holes model to use @<:@none, EAGLE default: none@:>@]
    )],
    [with_black_holes="$withval"],
    [with_black_holes="none"]
@@ -1961,14 +1990,14 @@ esac
 # Task order
 AC_ARG_WITH([task-order],
 [AS_HELP_STRING([--with-task-order=<model>],
-[Task order to use @<:@none, EAGLE, GEAR default: none@:>@]
+[Task order to use @<:@default, EAGLE, GEAR default: default@:>@]
 )],
 [with_task_order="$withval"],
-[with_task_order="none"]
+[with_task_order="default"]
 )
 
 if test "$with_subgrid" != "none"; then
-if test "$with_task_order" != "none"; then
+if test "$with_task_order" != "default"; then
 AC_MSG_ERROR([Cannot provide with-subgrid and with-task-order together])
 else
 with_task_order="$with_subgrid_task_order"
@@ -1979,8 +2008,8 @@ case "$with_task_order" in
 EAGLE)
 AC_DEFINE([TASK_ORDER_EAGLE], [1], [EAGLE task order])
 ;;
-none)
-AC_DEFINE([TASK_ORDER_NONE], [1], [Default task order])
+default)
+AC_DEFINE([TASK_ORDER_NONE], [1], [Default (i.e. EAGLE/OWLS) task order])
 ;;
 GEAR)
 AC_DEFINE([TASK_ORDER_GEAR], [1], [GEAR task order])

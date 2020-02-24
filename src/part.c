@@ -32,6 +32,7 @@
 #include "error.h"
 #include "hydro.h"
 #include "part.h"
+#include "threadpool.h"
 
 /**
  * @brief Re-link the #gpart%s associated with the list of #part%s.
@@ -40,8 +41,8 @@
  * @param N The number of particles to re-link;
  * @param offset The offset of #part%s relative to the global parts list.
  */
-void part_relink_gparts_to_parts(struct part *parts, size_t N,
-                                 ptrdiff_t offset) {
+void part_relink_gparts_to_parts(struct part *parts, const size_t N,
+                                 const ptrdiff_t offset) {
   for (size_t k = 0; k < N; k++) {
     if (parts[k].gpart) {
       parts[k].gpart->id_or_neg_offset = -(k + offset);
@@ -56,8 +57,8 @@ void part_relink_gparts_to_parts(struct part *parts, size_t N,
  * @param N The number of s-particles to re-link;
  * @param offset The offset of #spart%s relative to the global sparts list.
  */
-void part_relink_gparts_to_sparts(struct spart *sparts, size_t N,
-                                  ptrdiff_t offset) {
+void part_relink_gparts_to_sparts(struct spart *sparts, const size_t N,
+                                  const ptrdiff_t offset) {
   for (size_t k = 0; k < N; k++) {
     if (sparts[k].gpart) {
       sparts[k].gpart->id_or_neg_offset = -(k + offset);
@@ -72,8 +73,8 @@ void part_relink_gparts_to_sparts(struct spart *sparts, size_t N,
  * @param N The number of s-particles to re-link;
  * @param offset The offset of #bpart%s relative to the global bparts list.
  */
-void part_relink_gparts_to_bparts(struct bpart *bparts, size_t N,
-                                  ptrdiff_t offset) {
+void part_relink_gparts_to_bparts(struct bpart *bparts, const size_t N,
+                                  const ptrdiff_t offset) {
   for (size_t k = 0; k < N; k++) {
     if (bparts[k].gpart) {
       bparts[k].gpart->id_or_neg_offset = -(k + offset);
@@ -88,7 +89,7 @@ void part_relink_gparts_to_bparts(struct bpart *bparts, size_t N,
  * @param N The number of particles to re-link;
  * @param parts The global #part array in which to find the #gpart offsets.
  */
-void part_relink_parts_to_gparts(struct gpart *gparts, size_t N,
+void part_relink_parts_to_gparts(struct gpart *gparts, const size_t N,
                                  struct part *parts) {
   for (size_t k = 0; k < N; k++) {
     if (gparts[k].type == swift_type_gas) {
@@ -104,7 +105,7 @@ void part_relink_parts_to_gparts(struct gpart *gparts, size_t N,
  * @param N The number of particles to re-link;
  * @param sparts The global #spart array in which to find the #gpart offsets.
  */
-void part_relink_sparts_to_gparts(struct gpart *gparts, size_t N,
+void part_relink_sparts_to_gparts(struct gpart *gparts, const size_t N,
                                   struct spart *sparts) {
   for (size_t k = 0; k < N; k++) {
     if (gparts[k].type == swift_type_stars) {
@@ -120,7 +121,7 @@ void part_relink_sparts_to_gparts(struct gpart *gparts, size_t N,
  * @param N The number of particles to re-link;
  * @param bparts The global #bpart array in which to find the #gpart offsets.
  */
-void part_relink_bparts_to_gparts(struct gpart *gparts, size_t N,
+void part_relink_bparts_to_gparts(struct gpart *gparts, const size_t N,
                                   struct bpart *bparts) {
   for (size_t k = 0; k < N; k++) {
     if (gparts[k].type == swift_type_black_hole) {
@@ -130,19 +131,34 @@ void part_relink_bparts_to_gparts(struct gpart *gparts, size_t N,
 }
 
 /**
- * @brief Re-link both the #part%s and #spart%s associated with the list of
- * #gpart%s.
- *
- * @param gparts The list of #gpart.
- * @param N The number of particles to re-link;
- * @param parts The global #part array in which to find the #gpart offsets.
- * @param sparts The global #spart array in which to find the #gpart offsets.
- * @param bparts The global #bpart array in which to find the #gpart offsets.
+ * @brief Helper structure to pass data to the liking mapper functions.
  */
-void part_relink_all_parts_to_gparts(struct gpart *gparts, size_t N,
-                                     struct part *parts, struct spart *sparts,
-                                     struct bpart *bparts) {
-  for (size_t k = 0; k < N; k++) {
+struct relink_data {
+  struct part *const parts;
+  struct gpart *const garts;
+  struct spart *const sparts;
+  struct bpart *const bparts;
+};
+
+/**
+ * @brief #threadpool mapper function for the linking of all particle types
+ * to the #gpart array.
+ *
+ * @brief map_data The array of #gpart.
+ * @brief count The number of #gpart.
+ * @brief extra_data the #relink_data containing pointer to the other arrays.
+ */
+void part_relink_all_parts_to_gparts_mapper(void *restrict map_data, int count,
+                                            void *restrict extra_data) {
+
+  /* Un-pack the data */
+  struct relink_data *data = (struct relink_data *)extra_data;
+  struct part *const parts = data->parts;
+  struct spart *const sparts = data->sparts;
+  struct bpart *const bparts = data->bparts;
+  struct gpart *const gparts = (struct gpart *)map_data;
+
+  for (int k = 0; k < count; k++) {
     if (gparts[k].type == swift_type_gas) {
       parts[-gparts[k].id_or_neg_offset].gpart = &gparts[k];
     } else if (gparts[k].type == swift_type_stars) {
@@ -151,6 +167,31 @@ void part_relink_all_parts_to_gparts(struct gpart *gparts, size_t N,
       bparts[-gparts[k].id_or_neg_offset].gpart = &gparts[k];
     }
   }
+}
+
+/**
+ * @brief Re-link both the #part%s, #spart%s and #bpart%s associated
+ * with the list of #gpart%s.
+ *
+ * This function uses thread parallelism and should not be called inside
+ * an already threaded section (unlike the functions linking individual arrays
+ * that are designed to be called in thread-parallel code).
+ *
+ * @param gparts The list of #gpart.
+ * @param N The number of particles to re-link;
+ * @param parts The global #part array in which to find the #gpart offsets.
+ * @param sparts The global #spart array in which to find the #gpart offsets.
+ * @param bparts The global #bpart array in which to find the #gpart offsets.
+ * @param tp The #threadpool object.
+ */
+void part_relink_all_parts_to_gparts(struct gpart *gparts, const size_t N,
+                                     struct part *parts, struct spart *sparts,
+                                     struct bpart *bparts,
+                                     struct threadpool *tp) {
+
+  struct relink_data data = {parts, /*gparts=*/NULL, sparts, bparts};
+  threadpool_map(tp, part_relink_all_parts_to_gparts_mapper, gparts, N,
+                 sizeof(struct gpart), 0, &data);
 }
 
 /**

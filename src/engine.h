@@ -360,8 +360,9 @@ struct engine {
   ticks tic_step, toc_step;
 
 #ifdef WITH_MPI
-  /* CPU time of the last step. */
-  double cputime_last_step;
+  /* CPU times that the tasks used in the last step. */
+  double usertime_last_step;
+  double systime_last_step;
 
   /* Step of last repartition. */
   int last_repartition;
@@ -475,6 +476,9 @@ struct engine {
 
   /* Maximum number of tasks needed for restarting. */
   int restart_max_tasks;
+
+  /* The globally agreed runtime, in hours. */
+  float runtime;
 
   /* Label of the run */
   char run_name[PARSER_MAX_LINE_SIZE];

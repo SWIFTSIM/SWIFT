@@ -3123,7 +3123,7 @@ void engine_make_fof_tasks(struct engine *e) {
   /* Construct a FOF loop over neighbours */
   if (e->policy & engine_policy_fof)
     threadpool_map(&e->threadpool, engine_make_fofloop_tasks_mapper, NULL,
-                   s->nr_cells, 1, 0, e);
+                   s->nr_cells, 1, threadpool_auto_chunk_size, e);
 
   if (e->verbose)
     message("Making FOF tasks took %.3f %s.",
@@ -3180,7 +3180,7 @@ void engine_maketasks(struct engine *e) {
   /* Construct the first hydro loop over neighbours */
   if (e->policy & engine_policy_hydro)
     threadpool_map(&e->threadpool, engine_make_hydroloop_tasks_mapper, NULL,
-                   s->nr_cells, 1, 0, e);
+                   s->nr_cells, 1, threadpool_auto_chunk_size, e);
 
   if (e->verbose)
     message("Making hydro tasks took %.3f %s.",
@@ -3191,7 +3191,7 @@ void engine_maketasks(struct engine *e) {
   /* Add the self gravity tasks. */
   if (e->policy & engine_policy_self_gravity) {
     threadpool_map(&e->threadpool, engine_make_self_gravity_tasks_mapper, NULL,
-                   s->nr_cells, 1, 0, e);
+                   s->nr_cells, 1, threadpool_auto_chunk_size, e);
   }
 
   if (e->verbose)
@@ -3242,7 +3242,8 @@ void engine_maketasks(struct engine *e) {
      store the density tasks in each cell, and make each sort
      depend on the sorts of its progeny. */
   threadpool_map(&e->threadpool, engine_count_and_link_tasks_mapper,
-                 sched->tasks, sched->nr_tasks, sizeof(struct task), 0, e);
+                 sched->tasks, sched->nr_tasks, sizeof(struct task),
+                 threadpool_auto_chunk_size, e);
 
   if (e->verbose)
     message("Counting and linking tasks took %.3f %s.",
@@ -3259,7 +3260,7 @@ void engine_maketasks(struct engine *e) {
   /* Now that the self/pair tasks are at the right level, set the super
    * pointers. */
   threadpool_map(&e->threadpool, cell_set_super_mapper, cells, nr_cells,
-                 sizeof(struct cell), 0, e);
+                 sizeof(struct cell), threadpool_auto_chunk_size, e);
 
   if (e->verbose)
     message("Setting super-pointers took %.3f %s.",
@@ -3267,7 +3268,7 @@ void engine_maketasks(struct engine *e) {
 
   /* Append hierarchical tasks to each cell. */
   threadpool_map(&e->threadpool, engine_make_hierarchical_tasks_mapper, cells,
-                 nr_cells, sizeof(struct cell), 0, e);
+                 nr_cells, sizeof(struct cell), threadpool_auto_chunk_size, e);
 
   tic2 = getticks();
 
@@ -3276,7 +3277,8 @@ void engine_maketasks(struct engine *e) {
      of its super-cell. */
   if (e->policy & engine_policy_hydro)
     threadpool_map(&e->threadpool, engine_make_extra_hydroloop_tasks_mapper,
-                   sched->tasks, sched->nr_tasks, sizeof(struct task), 0, e);
+                   sched->tasks, sched->nr_tasks, sizeof(struct task),
+                   threadpool_auto_chunk_size, e);
 
   if (e->verbose)
     message("Making extra hydroloop tasks took %.3f %s.",
@@ -3325,8 +3327,8 @@ void engine_maketasks(struct engine *e) {
 
     threadpool_map(&e->threadpool, engine_addtasks_send_mapper,
                    send_cell_type_pairs, num_send_cells,
-                   sizeof(struct cell_type_pair),
-                   /*chunk=*/0, e);
+                   sizeof(struct cell_type_pair), threadpool_auto_chunk_size,
+                   e);
 
     free(send_cell_type_pairs);
 
@@ -3366,8 +3368,8 @@ void engine_maketasks(struct engine *e) {
     }
     threadpool_map(&e->threadpool, engine_addtasks_recv_mapper,
                    recv_cell_type_pairs, num_recv_cells,
-                   sizeof(struct cell_type_pair),
-                   /*chunk=*/0, e);
+                   sizeof(struct cell_type_pair), threadpool_auto_chunk_size,
+                   e);
     free(recv_cell_type_pairs);
 
     if (e->verbose)

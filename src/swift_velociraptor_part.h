@@ -39,8 +39,10 @@ struct swift_vel_part {
   /*! Particle velocity. */
   float v[3];
 
+#ifndef HAVE_VELOCIRAPTOR_WITH_NOMASS
   /*! Particle mass. */
   float mass;
+#endif
 
   /*! Gravitational potential */
   float potential;

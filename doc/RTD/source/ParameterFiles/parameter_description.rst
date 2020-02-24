@@ -986,26 +986,34 @@ should contain. The type of partitioning attempted is controlled by the::
   DomainDecomposition:
     initial_type:
 
-parameter. Which can have the values *memory*, *region*, *grid* or
+parameter. Which can have the values *memory*, *edgememory*, *region*, *grid* or
 *vectorized*:
 
+    * *edgememory*
+
+    This is the default if METIS or ParMETIS is available. It performs a
+    partition based on the memory use of all the particles in each cell.
+    The total memory per cell is used to weight the cell vertex and all the
+    associated edges. This attempts to equalize the memory used by all the
+    ranks but with some consideration given to the need to not cut dense
+    regions (by also minimizing the edge cut). How successful this
+    attempt is depends on the granularity of cells and particles and the
+    number of ranks, clearly if most of the particles are in one cell, or a
+    small region of the volume, balance is impossible or difficult. Having
+    more top-level cells makes it easier to calculate a good distribution
+    (but this comes at the cost of greater overheads).
 
     * *memory*
 
-    This is the default if METIS or ParMETIS is available. It performs a
-    partition based on the memory use of all the particles in each cell,
-    attempting to equalize the memory used by all the ranks.
-    How successful this attempt is depends on the granularity of cells and particles
-    and the number of ranks, clearly if most of the particles are in one cell,
-    or a small region of the volume, balance is impossible or
-    difficult. Having more top-level cells makes it easier to calculate a
-    good distribution (but this comes at the cost of greater overheads).
+    This is like *edgememory*, but doesn't include any edge weights, it should
+    balance the particle memory use per rank more exactly (but note effects
+    like the numbers of cells per rank will also have an effect, as that
+    changes the need for foreign cells).
 
     * *region*
 
     The one other METIS/ParMETIS option is "region". This attempts to assign equal
-    numbers of cells to each rank, with the surface area of the regions minimised
-    (so we get blobs, rather than rectangular volumes of cells).
+    numbers of cells to each rank, with the surface area of the regions minimised.
 
 If ParMETIS and METIS are not available two other options are possible, but
 will give a poorer partition:

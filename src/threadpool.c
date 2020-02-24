@@ -252,7 +252,7 @@ void threadpool_init(struct threadpool *tp, int num_threads) {
  * @param N Number of elements in @c map_data.
  * @param stride Size, in bytes, of each element of @c map_data.
  * @param chunk Number of map data elements to pass to the function at a time,
- *        or zero to choose the number automatically.
+ *        or #threadpool_auto_chunk_size to choose the number automatically.
  * @param extra_data Addtitional pointer that will be passed to the mapping
  *        function, may contain additional data.
  */
@@ -279,9 +279,10 @@ void threadpool_map(struct threadpool *tp, threadpool_map_function map_function,
   tp->map_data_size = N;
   tp->map_data_count = 0;
   tp->map_data_chunk =
-      chunk ? chunk
-            : max((int)(N / (tp->num_threads * threadpool_default_chunk_ratio)),
-                  1);
+      (chunk == threadpool_auto_chunk_size)
+          ? max((int)(N / (tp->num_threads * threadpool_default_chunk_ratio)),
+                1)
+          : chunk;
   tp->map_function = map_function;
   tp->map_data = map_data;
   tp->map_extra_data = extra_data;
