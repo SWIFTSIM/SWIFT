@@ -486,6 +486,10 @@ void proxy_cells_exchange(struct proxy *proxies, int num_proxies,
   free(reqs);
   swift_free("pcells", pcells);
   swift_free("proxy_cell_offset", offset);
+  for (int k = 0; k < num_proxies; k++) {
+    swift_free("pcells_in", proxies[k].pcells_in);
+    swift_free("pcells_out", proxies[k].pcells_out);
+  }
 
 #else
   error("SWIFT was not compiled with MPI support.");
