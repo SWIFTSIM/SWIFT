@@ -256,7 +256,8 @@ void engine_repartition_trigger(struct engine *e) {
 #ifdef WITH_MPI
 
   const ticks tic = getticks();
-  static int opened = e->restarting;
+  static int opened = 0;
+  if (e->restarting) opened = 1;
 
   /* Do nothing if there have not been enough steps since the last repartition
    * as we don't want to repeat this too often or immediately after a
@@ -1569,6 +1570,28 @@ void engine_rebuild(struct engine *e, int repartitioned,
         e->s->nr_cells, e->s->tot_cells,
         (e->s->nr_cells + e->s->tot_cells) * sizeof(struct gravity_tensors) /
             (1024 * 1024));
+
+  /* Report the number of particles and memory */
+  if (e->verbose)
+    message(
+        "Space has memory for %zd/%zd/%zd/%zd part/gpart/spart/bpart "
+        "(%zd/%zd/%zd/%zd MB)",
+        e->s->size_parts, e->s->size_gparts, e->s->size_sparts,
+        e->s->size_bparts,
+        e->s->size_parts * sizeof(struct part) / (1024 * 1024),
+        e->s->size_gparts * sizeof(struct gpart) / (1024 * 1024),
+        e->s->size_sparts * sizeof(struct spart) / (1024 * 1024),
+        e->s->size_bparts * sizeof(struct bpart) / (1024 * 1024));
+
+  if (e->verbose)
+    message(
+        "Space holds %zd/%zd/%zd/%zd part/gpart/spart/bpart (fracs: "
+        "%f/%f/%f/%f)",
+        e->s->nr_parts, e->s->nr_gparts, e->s->nr_sparts, e->s->nr_bparts,
+        e->s->nr_parts ? e->s->nr_parts / ((double)e->s->size_parts) : 0.,
+        e->s->nr_gparts ? e->s->nr_gparts / ((double)e->s->size_gparts) : 0.,
+        e->s->nr_sparts ? e->s->nr_sparts / ((double)e->s->size_sparts) : 0.,
+        e->s->nr_bparts ? e->s->nr_bparts / ((double)e->s->size_bparts) : 0.);
 
   const ticks tic2 = getticks();
 
