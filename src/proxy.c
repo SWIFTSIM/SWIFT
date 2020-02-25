@@ -683,6 +683,7 @@ void proxy_parts_exchange_second(struct proxy *p) {
       error("Failed to re-allocate parts_in buffers.");
   }
   if (p->nr_gparts_in > p->size_gparts_in) {
+    if (p->size_gparts_in == 0) p->size_gparts_in = proxy_buffinit;
     do {
       p->size_gparts_in *= proxy_buffgrow;
     } while (p->nr_gparts_in > p->size_gparts_in);
@@ -802,6 +803,7 @@ void proxy_gparts_load(struct proxy *p, const struct gpart *gparts, int N) {
 
   /* Is there enough space in the buffer? */
   if (p->nr_gparts_out + N > p->size_gparts_out) {
+    if (p->size_gparts_out == 0) p->size_gparts_out = proxy_buffinit;
     do {
       p->size_gparts_out *= proxy_buffgrow;
     } while (p->nr_gparts_out + N > p->size_gparts_out);
