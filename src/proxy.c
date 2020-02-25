@@ -489,6 +489,8 @@ void proxy_cells_exchange(struct proxy *proxies, int num_proxies,
   for (int k = 0; k < num_proxies; k++) {
     swift_free("pcells_in", proxies[k].pcells_in);
     swift_free("pcells_out", proxies[k].pcells_out);
+    proxies[k].pcells_in = NULL;
+    proxies[k].pcells_out = NULL;
   }
 
 #else
