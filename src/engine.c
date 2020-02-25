@@ -900,6 +900,21 @@ void engine_exchange_strays(struct engine *e, const size_t offset_parts,
         MPI_SUCCESS)
       error("MPI_Waitall on sends failed.");
 
+  /* Free the proxy memory */
+  for (int k = 0; k < e->nr_proxies; k++) {
+    struct proxy *prox = &e->proxies[k];
+    if (prox->gparts_out) {
+      swift_free("gparts_out", prox->gparts_out);
+      prox->gparts_out = NULL;
+      prox->size_gparts_out = 0;
+    }
+    if (prox->gparts_in) {
+      swift_free("gparts_in", prox->gparts_in);
+      prox->gparts_in = NULL;
+      prox->size_gparts_in = 0;
+    }
+  }
+
   if (e->verbose)
     message("took %.3f %s.", clocks_from_ticks(getticks() - tic),
             clocks_getunit());
