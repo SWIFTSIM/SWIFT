@@ -522,18 +522,19 @@ void proxy_addcell_in(struct proxy *p, struct cell *c, int type) {
     p->size_cells_in *= proxy_buffgrow;
 
     struct cell **temp_cell;
-    if ((temp_cell = (struct cell **)malloc(sizeof(struct cell *) *
-                                            p->size_cells_in)) == NULL)
+    if ((temp_cell = (struct cell **)swift_malloc(
+             "cells_in", sizeof(struct cell *) * p->size_cells_in)) == NULL)
       error("Failed to allocate incoming cell list.");
     memcpy(temp_cell, p->cells_in, sizeof(struct cell *) * p->nr_cells_in);
-    free(p->cells_in);
+    swift_free("cells_in", p->cells_in);
     p->cells_in = temp_cell;
 
     int *temp_type;
-    if ((temp_type = (int *)malloc(sizeof(int) * p->size_cells_in)) == NULL)
+    if ((temp_type = (int *)swift_malloc(
+             "cells_in_type", sizeof(int) * p->size_cells_in)) == NULL)
       error("Failed to allocate incoming cell type list.");
     memcpy(temp_type, p->cells_in_type, sizeof(int) * p->nr_cells_in);
-    free(p->cells_in_type);
+    swift_free("cells_in_type", p->cells_in_type);
     p->cells_in_type = temp_type;
   }
 
@@ -568,18 +569,19 @@ void proxy_addcell_out(struct proxy *p, struct cell *c, int type) {
     p->size_cells_out *= proxy_buffgrow;
 
     struct cell **temp_cell;
-    if ((temp_cell = (struct cell **)malloc(sizeof(struct cell *) *
-                                            p->size_cells_out)) == NULL)
+    if ((temp_cell = (struct cell **)swift_malloc(
+             "cells_out", sizeof(struct cell *) * p->size_cells_out)) == NULL)
       error("Failed to allocate outgoing cell list.");
     memcpy(temp_cell, p->cells_out, sizeof(struct cell *) * p->nr_cells_out);
-    free(p->cells_out);
+    swift_free("cells_out", p->cells_out);
     p->cells_out = temp_cell;
 
     int *temp_type;
-    if ((temp_type = (int *)malloc(sizeof(int) * p->size_cells_out)) == NULL)
+    if ((temp_type = (int *)swift_malloc(
+             "cells_out_type", sizeof(int) * p->size_cells_out)) == NULL)
       error("Failed to allocate outgoing cell type list.");
     memcpy(temp_type, p->cells_out_type, sizeof(int) * p->nr_cells_out);
-    free(p->cells_out_type);
+    swift_free("cells_out_type", p->cells_out_type);
     p->cells_out_type = temp_type;
   }
 
@@ -976,21 +978,21 @@ void proxy_init(struct proxy *p, int mynodeID, int nodeID) {
   /* Allocate the cell send and receive buffers, if needed. */
   if (p->cells_in == NULL) {
     p->size_cells_in = proxy_buffinit;
-    if ((p->cells_in =
-             (struct cell **)malloc(sizeof(void *) * p->size_cells_in)) == NULL)
+    if ((p->cells_in = (struct cell **)swift_malloc(
+             "cells_in", sizeof(void *) * p->size_cells_in)) == NULL)
       error("Failed to allocate cells_in buffer.");
-    if ((p->cells_in_type = (int *)malloc(sizeof(int) * p->size_cells_in)) ==
-        NULL)
+    if ((p->cells_in_type = (int *)swift_malloc(
+             "cells_in_type", sizeof(int) * p->size_cells_in)) == NULL)
       error("Failed to allocate cells_in_type buffer.");
   }
   p->nr_cells_in = 0;
   if (p->cells_out == NULL) {
     p->size_cells_out = proxy_buffinit;
-    if ((p->cells_out = (struct cell **)malloc(sizeof(void *) *
-                                               p->size_cells_out)) == NULL)
+    if ((p->cells_out = (struct cell **)swift_malloc(
+             "cells_out", sizeof(void *) * p->size_cells_out)) == NULL)
       error("Failed to allocate cells_out buffer.");
-    if ((p->cells_out_type = (int *)malloc(sizeof(int) * p->size_cells_out)) ==
-        NULL)
+    if ((p->cells_out_type = (int *)swift_malloc(
+             "cells_out_type", sizeof(int) * p->size_cells_out)) == NULL)
       error("Failed to allocate cells_out_type buffer.");
   }
   p->nr_cells_out = 0;
@@ -1069,10 +1071,10 @@ void proxy_init(struct proxy *p, int mynodeID, int nodeID) {
  */
 void proxy_clean(struct proxy *p) {
 
-  free(p->cells_in);
-  free(p->cells_out);
-  free(p->cells_in_type);
-  free(p->cells_out_type);
+  swift_free("cells_in", p->cells_in);
+  swift_free("cells_out", p->cells_out);
+  swift_free("cells_in_type", p->cells_in_type);
+  swift_free("cells_out_type", p->cells_out_type);
   swift_free("pcells_in", p->pcells_in);
   swift_free("pcells_out", p->pcells_out);
   swift_free("parts_out", p->parts_out);
