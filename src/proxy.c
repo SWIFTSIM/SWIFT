@@ -683,7 +683,6 @@ void proxy_parts_exchange_second(struct proxy *p) {
       error("Failed to re-allocate parts_in buffers.");
   }
   if (p->nr_gparts_in > p->size_gparts_in) {
-    if (p->size_gparts_in == 0) p->size_gparts_in = proxy_buffinit;
     do {
       p->size_gparts_in *= proxy_buffgrow;
     } while (p->nr_gparts_in > p->size_gparts_in);
@@ -803,7 +802,6 @@ void proxy_gparts_load(struct proxy *p, const struct gpart *gparts, int N) {
 
   /* Is there enough space in the buffer? */
   if (p->nr_gparts_out + N > p->size_gparts_out) {
-    if (p->size_gparts_out == 0) p->size_gparts_out = proxy_buffinit;
     do {
       p->size_gparts_out *= proxy_buffgrow;
     } while (p->nr_gparts_out + N > p->size_gparts_out);
@@ -881,6 +879,81 @@ void proxy_bparts_load(struct proxy *p, const struct bpart *bparts, int N) {
 
   /* Increase the counters. */
   p->nr_bparts_out += N;
+}
+
+/**
+ * @brief Frees the memory allocated for the particle proxies and sets their
+ * size back to the initial state.
+ *
+ * @param p The #proxy.
+ */
+void proxy_free_particle_buffers(struct proxy *p) {
+
+  if (p->size_parts_out > proxy_buffinit) {
+    swift_free("parts_out", p->parts_out);
+    p->size_parts_out = proxy_buffinit;
+    if ((p->parts_out = (struct part *)swift_malloc(
+             "parts_out", sizeof(struct part) * p->size_parts_out)) == NULL)
+      error("Failed to allocate parts_out buffers.");
+    if ((p->xparts_out = (struct xpart *)swift_malloc(
+             "xparts_out", sizeof(struct xpart) * p->size_parts_out)) == NULL)
+      error("Failed to allocate xparts_out buffers.");
+  }
+  if (p->size_parts_in > proxy_buffinit) {
+    swift_free("parts_in", p->parts_in);
+    p->size_parts_in = proxy_buffinit;
+    if ((p->parts_in = (struct part *)swift_malloc(
+             "parts_in", sizeof(struct part) * p->size_parts_in)) == NULL)
+      error("Failed to allocate parts_in buffers.");
+    if ((p->xparts_in = (struct xpart *)swift_malloc(
+             "xparts_in", sizeof(struct xpart) * p->size_parts_in)) == NULL)
+      error("Failed to allocate xparts_in buffers.");
+  }
+
+  if (p->size_gparts_out > proxy_buffinit) {
+    swift_free("gparts_out", p->gparts_out);
+    p->size_gparts_out = proxy_buffinit;
+    if ((p->gparts_out = (struct gpart *)swift_malloc(
+             "gparts_out", sizeof(struct gpart) * p->size_gparts_out)) == NULL)
+      error("Failed to allocate gparts_out buffers.");
+  }
+  if (p->size_gparts_in > proxy_buffinit) {
+    swift_free("gparts_in", p->gparts_in);
+    p->size_gparts_in = proxy_buffinit;
+    if ((p->gparts_in = (struct gpart *)swift_malloc(
+             "gparts_in", sizeof(struct gpart) * p->size_gparts_in)) == NULL)
+      error("Failed to allocate gparts_in buffers.");
+  }
+
+  if (p->size_sparts_out > proxy_buffinit) {
+    swift_free("sparts_out", p->sparts_out);
+    p->size_sparts_out = proxy_buffinit;
+    if ((p->sparts_out = (struct spart *)swift_malloc(
+             "sparts_out", sizeof(struct spart) * p->size_sparts_out)) == NULL)
+      error("Failed to allocate sparts_out buffers.");
+  }
+  if (p->size_sparts_in > proxy_buffinit) {
+    swift_free("sparts_in", p->sparts_in);
+    p->size_sparts_in = proxy_buffinit;
+    if ((p->sparts_in = (struct spart *)swift_malloc(
+             "sparts_in", sizeof(struct spart) * p->size_sparts_in)) == NULL)
+      error("Failed to allocate sparts_in buffers.");
+  }
+
+  if (p->size_bparts_out > proxy_buffinit) {
+    swift_free("bparts_out", p->bparts_out);
+    p->size_bparts_out = proxy_buffinit;
+    if ((p->bparts_out = (struct bpart *)swift_malloc(
+             "bparts_out", sizeof(struct bpart) * p->size_bparts_out)) == NULL)
+      error("Failed to allocate bparts_out buffers.");
+  }
+  if (p->size_bparts_in > proxy_buffinit) {
+    swift_free("bparts_in", p->bparts_in);
+    p->size_bparts_in = proxy_buffinit;
+    if ((p->bparts_in = (struct bpart *)swift_malloc(
+             "bparts_in", sizeof(struct bpart) * p->size_bparts_in)) == NULL)
+      error("Failed to allocate bparts_in buffers.");
+  }
 }
 
 /**
