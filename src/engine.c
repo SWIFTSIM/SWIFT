@@ -486,12 +486,13 @@ void engine_exchange_cells(struct engine *e) {
  * gparts, i.e. the received particles have correct linkeage.
  */
 void engine_exchange_strays(struct engine *e, const size_t offset_parts,
-                            const int *ind_part, size_t *Npart,
-                            const size_t offset_gparts, const int *ind_gpart,
-                            size_t *Ngpart, const size_t offset_sparts,
-                            const int *ind_spart, size_t *Nspart,
-                            const size_t offset_bparts, const int *ind_bpart,
-                            size_t *Nbpart) {
+                            const int *restrict ind_part, size_t *Npart,
+                            const size_t offset_gparts,
+                            const int *restrict ind_gpart, size_t *Ngpart,
+                            const size_t offset_sparts,
+                            const int *restrict ind_spart, size_t *Nspart,
+                            const size_t offset_bparts,
+                            const int *restrict ind_bpart, size_t *Nbpart) {
 
 #ifdef WITH_MPI
 
