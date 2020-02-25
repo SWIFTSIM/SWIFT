@@ -256,7 +256,7 @@ void engine_repartition_trigger(struct engine *e) {
 #ifdef WITH_MPI
 
   const ticks tic = getticks();
-  static int opened = 0;
+  static int opened = e->restarting;
 
   /* Do nothing if there have not been enough steps since the last repartition
    * as we don't want to repeat this too often or immediately after a
