@@ -21,6 +21,11 @@ the following changes have been made:
  - The minimal mass of SNII stars has been raised to 8 Msun (from 6).
  - The SNII feedback delay is done by sampling the stellar age
    distribution and not using a fixed delay of 30 Myr any more.
+ - The Magnesium yields from SNII stars have been boosted by a
+   factor of 2.
+ - The delay time distribution of the SNIa has been changed to a
+   power-law of slope -1 (instead of the exponential model) and
+   the rates have been renormalized.
  - The black hole accretion rate is now limited to 100% of the
    Eddington rate (from 100/h = 150 %).
 
