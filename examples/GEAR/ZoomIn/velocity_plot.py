@@ -5,6 +5,7 @@ from yt.units import kpc
 import matplotlib.pyplot as plt
 
 width = 1500 * kpc
+DMO = True
 
 
 def save1DPlot(profiles):
@@ -20,7 +21,12 @@ def save1DPlot(profiles):
     plt.semilogy()
 
     plt.xlabel("$\mathrm{Velocity\ (km/s)}$", fontsize='large')
-    plt.ylabel(r"$\mathrm{Mass,}\/\mathrm{d}M\mathrm{/dlog}\/\mathrm{\rho}\/\mathrm{(M_{\odot})}$", fontsize='large')
+    if DMO:
+        plt.ylabel(r"$\mathrm{Mass}\/\mathrm{all}\/\mathrm{(M_{\odot})}$",
+                   fontsize='large')
+    else:
+        plt.ylabel(r"$\mathrm{Mass}\/\mathrm{Gas}\/\mathrm{(M_{\odot})}$",
+                   fontsize='large')
     plt.legend(profiles[1], loc=4, frameon=True, ncol=2, fancybox=True)
     leg = plt.gca().get_legend()
     ltext = leg.get_texts()
@@ -31,10 +37,18 @@ def save1DPlot(profiles):
 
 
 def do1DPlot(f, name, i):
-    sp = f.sphere("max", width)
+    global DMO
+    part_type = "all"
+    if f.particle_type_counts["PartType0"] != 0:
+        DMO = False
+        part_type = "PartType0"
+
+    a = f.scale_factor
+    sp = f.sphere("c", width * a)
 
     # Because ParticleProfilePlot doesn't exist, I will do the following trick.
-    p = yt.create_profile(sp, ("PartType0", "velocity_magnitude"),  ("PartType0", "Masses"),
+    p = yt.create_profile(sp, (part_type, "particle_velocity_magnitude"),
+                          (part_type, "Masses"),
                           weight_field=None, n_bins=50,
                           accumulation=False)
 

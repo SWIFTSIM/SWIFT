@@ -40,7 +40,7 @@ matplotlib.use('TkAgg')
 import numpy as np
 import matplotlib.backends.backend_tkagg as tkagg
 from matplotlib.figure import Figure
-import Tkinter as tk
+import tkinter as tk
 import matplotlib.collections as collections
 import matplotlib.ticker as plticker
 import pylab as pl

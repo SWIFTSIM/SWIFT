@@ -1,19 +1,17 @@
 #!/usr/bin/env python3
 
 import yt
-from yt.units import Msun, kpc, s, km
-import unyt
 import sys
-import matplotlib
 import projection_plot
 import velocity_plot
 import phase_plot
 import halo_distribution
+import metal_plot
 import add_fields
+import star_plot
+import profile_plot
 import matplotlib.pyplot as plt
 from mpl_toolkits.axes_grid1 import AxesGrid
-from matplotlib.offsetbox import AnchoredText
-matplotlib.use('Agg')
 
 # Parameters
 
@@ -23,14 +21,29 @@ swift = "swift/snapshot_%04i.hdf5" % snap
 gear = "gear/snapshot_%04i.hdf5" % snap
 
 
+do_dmo = False
+do_hydro = False
+do_stars = True
+do_feedback = True
 do_plot = {
-    "projection_density": False,
-    "projection_temperature": False,
-    "projection_mass": False,
-    "halo_distribution": False,
-    "phase_1d": False,
-    "phase_2d": False,
-    "velocity": True
+    # DMO
+    "projection_mass": do_dmo,
+    "velocity": do_dmo,
+    "halo_distribution": False,  # very slow
+    "profile": do_dmo,
+    # hydro
+    "projection_density": True, #do_hydro,
+    "projection_temperature": do_hydro,
+    "phase_1d_density": do_hydro,
+    "phase_1d_temperature": do_hydro,
+    "phase_2d": do_hydro,
+    "metals": do_hydro,
+    # stars
+    "SFR": do_stars,
+    "projection_mass_stars": do_stars,
+    # feedback
+    "abundances": do_feedback,
+    "projection_metals": do_feedback,
 }
 
 # Generate the figures
@@ -39,7 +52,9 @@ figsize = (100, 100)
 figures = {
     "projection_density": plt.figure(figsize=figsize),
     "projection_temperature": plt.figure(figsize=figsize),
+    "projection_metals": plt.figure(figsize=figsize),
     "projection_mass": plt.figure(figsize=figsize),
+    "projection_mass_stars": plt.figure(figsize=figsize),
     "phase_2d": plt.figure(figsize=figsize)
 }
 
@@ -63,18 +78,31 @@ axes = {
         figures["projection_mass"], fig_size, subgrid,
         add_all=True, share_all=True, cbar_mode="single",
         cbar_size="2%", cbar_pad=0.02),
+    "projection_mass_stars": AxesGrid(
+        figures["projection_mass_stars"], fig_size, subgrid,
+        add_all=True, share_all=True, cbar_mode="single",
+        cbar_size="2%", cbar_pad=0.02),
     "phase_2d": AxesGrid(
         figures["phase_2d"], fig_size, subgrid, axes_pad=0.05,
         add_all=True, share_all=True, cbar_mode="single",
-        cbar_size="2%", cbar_pad=0.05, aspect=False)
+        cbar_size="2%", cbar_pad=0.05, aspect=False),
+    "projection_metals": AxesGrid(
+        figures["projection_metals"], fig_size, subgrid,
+        add_all=True, share_all=True, cbar_mode="single",
+        cbar_size="2%", cbar_pad=0.02),
 }
 
 
 # Data
 data = {
-    "phase_1d": ([], []),
+    "phase_1d_density": ([], []),
+    "phase_1d_temperature": ([], []),
     "halo_distribution": ([], []),
     "velocity": ([], []),
+    "metals": ([], []),
+    "SFR": ([], []),
+    "profile": ([], []),
+    "abundances": ([], []),
 }
 
 names = []
@@ -88,13 +116,25 @@ def savePlot():
         projection_plot.savePlot(figures["projection_temperature"],
                                  "temperature")
 
+    if do_plot["projection_metals"]:
+        projection_plot.savePlot(figures["projection_metals"],
+                                 "metals")
+
     if do_plot["projection_mass"]:
         projection_plot.savePlot(figures["projection_mass"],
                                  "mass")
 
-    if do_plot["phase_1d"]:
-        data["phase_1d"][1].extend(names)
-        phase_plot.save1DPlot(data["phase_1d"])
+    if do_plot["projection_mass_stars"]:
+        projection_plot.savePlot(figures["projection_mass_stars"],
+                                 "mass_stars")
+
+    if do_plot["phase_1d_density"]:
+        data["phase_1d_density"][1].extend(names)
+        phase_plot.save1DPlotDensity(data["phase_1d_density"])
+
+    if do_plot["phase_1d_temperature"]:
+        data["phase_1d_temperature"][1].extend(names)
+        phase_plot.save1DPlotTemperature(data["phase_1d_temperature"])
 
     if do_plot["phase_2d"]:
         phase_plot.save2DPlot(figures["phase_2d"])
@@ -108,13 +148,38 @@ def savePlot():
         data["velocity"][1].extend(names)
         velocity_plot.save1DPlot(data["velocity"])
 
+    if do_plot["metals"]:
+        data["metals"][1].extend(names)
+        metal_plot.save1DPlot(data["metals"])
 
-def doPlot(filename, i, name):
+    if do_plot["SFR"]:
+        data["SFR"][1].extend(names)
+        star_plot.saveSFRPlot(data["SFR"])
+
+    if do_plot["profile"]:
+        data["profile"][1].extend(names)
+        profile_plot.savePlot(data["profile"])
+
+    if do_plot["abundances"]:
+        data["abundances"][1].extend(names)
+        star_plot.saveAbundancesPlot(data["abundances"])
+
+
+def doPlot(filename, i, name, center):
     names.append(name)
 
     f = yt.load(filename)
+
+    if center is None:
+        center = f.find_max("Density")[1]
+    f.center = center
+
     if (do_plot["projection_temperature"] or do_plot["phase_2d"]):
         add_fields.addTemperature(f)
+    add_fields.addMassDeposit(f)
+
+    if (do_plot["projection_metals"] or do_plot["metals"]):
+        add_fields.addMetals(f)
 
     global scale_factor
     if scale_factor is None:
@@ -135,17 +200,31 @@ def doPlot(filename, i, name):
             f, name, i, figures["projection_temperature"],
             axes["projection_temperature"])
 
+    if do_plot["projection_metals"]:
+        projection_plot.doMetalsPlot(
+            f, name, i, figures["projection_metals"],
+            axes["projection_metals"])
+
     # Do mass projection plot
     if do_plot["projection_mass"]:
-        add_fields.addMassDeposit(f)
         projection_plot.doMassPlot(
             f, name, i, figures["projection_mass"],
-            axes["projection_mass"])
+            axes["projection_mass"], "all")
+
+    # Do stellar mass projection plot
+    if do_plot["projection_mass_stars"]:
+        projection_plot.doMassPlot(
+            f, name, i, figures["projection_mass_stars"],
+            axes["projection_mass_stars"], "stars")
 
     # 1D Phase plot
-    if do_plot["phase_1d"]:
-        p = phase_plot.do1DPlot(f, name, i)
-        data["phase_1d"][0].append(p)
+    if do_plot["phase_1d_density"]:
+        p = phase_plot.do1DPlotDensity(f, name, i)
+        data["phase_1d_density"][0].append(p)
+
+    if do_plot["phase_1d_temperature"]:
+        p = phase_plot.do1DPlotTemperature(f, name, i)
+        data["phase_1d_temperature"][0].append(p)
 
     # 2D Phase plot
     if do_plot["phase_2d"]:
@@ -162,7 +241,26 @@ def doPlot(filename, i, name):
         p = velocity_plot.do1DPlot(f, name, i)
         data["velocity"][0].append(p)
 
+    # metal plot
+    if do_plot["metals"]:
+        p = metal_plot.do1DPlot(f, name, i)
+        data["metals"][0].append(p)
 
-doPlot(swift, 0, "SWIFT")
-doPlot(gear, 1, "GEAR")
+    if do_plot["SFR"]:
+        p = star_plot.doSFRPlot(f, name, i)
+        data["SFR"][0].append(p)
+
+    if do_plot["profile"]:
+        p = profile_plot.doPlot(f, name, i)
+        data["profile"][0].append(p)
+
+    if do_plot["abundances"]:
+        p = star_plot.doAbundancesPlot(f, name, i)
+        data["abundances"][0].append(p)
+
+    return center
+
+
+center = doPlot(gear, 1, "GEAR", center=None)
+doPlot(swift, 0, "SWIFT", center=center)
 savePlot()

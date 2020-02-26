@@ -11,7 +11,7 @@ out = sys.argv[-1]
 
 copyfile(filename, out)
 
-f = File(out)
+f = File(out, "a")
 
 # read cosmological parameters
 a = f["Cosmology"].attrs["Scale-factor"][0]
@@ -22,12 +22,6 @@ f["Header"].attrs["BoxSize"] = f["Header"].attrs["BoxSize"][0] * h
 
 # avoid the snapshot to be taken for SWIFT
 del f["Header"].attrs["Code"]
-
-# Delete problematic fields
-for i in range(NPartType):
-    name = "PartType{}/ElementAbundances".format(i)
-    if name in f:
-        del f[name]
 
 # Update the fields (name + cosmo)
 for i in range(NPartType):
@@ -43,11 +37,12 @@ for i in range(NPartType):
     fields = [
         ("Coordinates", "Coordinates", h),
         ("Masses", "Masses", h),
-        ("Velocities", "Velocities", a**0.5),
+        ("Velocities", "Velocities", 1. / a**0.5),
         ("Density", "Densities", 1. / h**2),
         ("Entropies", "Entropies", 1.),
         ("InternalEnergy", "InternalEnergies", 1. / a**2),
-        ("SmoothingLength", "SmoothingLengths", h)
+        ("SmoothingLength", "SmoothingLengths", h),
+        ("Metals", "SmoothedElementAbundances", 1.)
     ]
 
     # create links
@@ -67,7 +62,7 @@ cosmo = f["Cosmology"].attrs
 head = f["Header"].attrs
 head["Redshift"] = float(cosmo["Redshift"])
 head["OmegaLambda"] = cosmo["Omega_lambda"]
-head["Omega0"] = cosmo["Omega_b"]
+head["Omega0"] = cosmo["Omega_m"]
 head["HubbleParam"] = cosmo["h"][0]
 head["Time"] = float(a)
 
