@@ -72,7 +72,7 @@ FOF:
   delta_time:                      1.005       # Scale-factor ratio between consecutive FoF black hole seeding calls.
 
 Scheduler:
-  max_top_level_cells:   16
+  max_top_level_cells:   8
   tasks_per_cell:        5
   cell_split_size:       200
   
