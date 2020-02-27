@@ -1334,7 +1334,7 @@ int main(int argc, char *argv[]) {
 
       /* Generate the task statistics. */
       char dumpfile[40];
-      snprintf(dumpfile, 40, "thread_stats-step%d.dat", j + 1);
+      snprintf(dumpfile, 40, "thread_stats-step%d.dat", e.step + 1);
       task_dump_stats(dumpfile, &e, /* header = */ 0, /* allranks = */ 1);
     }
 
@@ -1353,7 +1353,7 @@ int main(int argc, char *argv[]) {
       snprintf(dumpfile, 40, "memuse_report-rank%d-step%d.dat", engine_rank,
                j + 1);
 #else
-      snprintf(dumpfile, 40, "memuse_report-step%d.dat", j + 1);
+      snprintf(dumpfile, 40, "memuse_report-step%d.dat", e.step + 1);
 #endif  // WITH_MPI
       memuse_log_dump(dumpfile);
     }
