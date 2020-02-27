@@ -420,7 +420,7 @@ void velociraptor_init(struct engine *e) {
     message("took %.3f %s.", clocks_from_ticks(getticks() - tic),
             clocks_getunit());
 #else
-  error("SWIFT not configure to run with VELOCIraptor.");
+  error("SWIFT not configured to run with VELOCIraptor.");
 #endif /* HAVE_VELOCIRAPTOR */
 }
 
@@ -586,11 +586,12 @@ void velociraptor_invoke(struct engine *e, const int linked_with_snap) {
 
   /* Allocate and populate array of cell node IDs and positions. */
   int *cell_node_ids = NULL;
-  if (posix_memalign((void **)&sim_info.cell_loc, SWIFT_STRUCT_ALIGNMENT,
+  if (swift_memalign("VR.cell_loc", (void **)&sim_info.cell_loc,
+                     SWIFT_STRUCT_ALIGNMENT,
                      s->nr_cells * sizeof(struct cell_loc)) != 0)
     error("Failed to allocate top-level cell locations for VELOCIraptor.");
-  if (posix_memalign((void **)&cell_node_ids, SWIFT_STRUCT_ALIGNMENT,
-                     nr_cells * sizeof(int)) != 0)
+  if (swift_memalign("VR.cell_nodeID", (void **)&cell_node_ids,
+                     SWIFT_STRUCT_ALIGNMENT, nr_cells * sizeof(int)) != 0)
     error("Failed to allocate list of cells node IDs for VELOCIraptor.");
 
   for (int i = 0; i < s->nr_cells; i++) {
@@ -688,7 +689,7 @@ void velociraptor_invoke(struct engine *e, const int linked_with_snap) {
   /* Allocate and populate an array of swift_vel_parts to be passed to
    * VELOCIraptor. */
   struct swift_vel_part *swift_parts = NULL;
-  if (posix_memalign((void **)&swift_parts, part_align,
+  if (swift_memalign("VR.parts", (void **)&swift_parts, part_align,
                      nr_gparts * sizeof(struct swift_vel_part)) != 0)
     error("Failed to allocate array of particles for VELOCIraptor.");
 
@@ -714,6 +715,11 @@ void velociraptor_invoke(struct engine *e, const int linked_with_snap) {
       nr_sparts, swift_parts, cell_node_ids, e->nr_threads, linked_with_snap,
       &num_gparts_in_groups);
 
+  /* Report that the memory was freed */
+  memuse_log_allocation("VR.cell_loc", sim_info.cell_loc, 0, 0);
+  memuse_log_allocation("VR.cell_nodeID", cell_node_ids, 0, 0);
+  memuse_log_allocation("VR.parts", swift_parts, 0, 0);
+
   /* Check that the ouput is valid */
   if (linked_with_snap && group_info == NULL && num_gparts_in_groups < 0) {
     error("Exiting. Call to VELOCIraptor failed on rank: %d.", e->nodeID);
@@ -732,7 +738,8 @@ void velociraptor_invoke(struct engine *e, const int linked_with_snap) {
   /* Assign the group IDs back to the gparts */
   if (linked_with_snap) {
 
-    if (posix_memalign((void **)&s->gpart_group_data, part_align,
+    if (swift_memalign("VR.group_data", (void **)&s->gpart_group_data,
+                       part_align,
                        nr_gparts * sizeof(struct velociraptor_gpart_data)) != 0)
       error("Failed to allocate array of gpart data for VELOCIraptor i/o.");
 
@@ -752,7 +759,7 @@ void velociraptor_invoke(struct engine *e, const int linked_with_snap) {
               clocks_from_ticks(getticks() - tic), clocks_getunit());
 
     /* Free the array returned by VELOCIraptor */
-    free(group_info);
+    swift_free("VR.group_data", group_info);
   }
 
   /* Reset the pthread affinity mask after VELOCIraptor returns. */
@@ -771,6 +778,6 @@ void velociraptor_invoke(struct engine *e, const int linked_with_snap) {
 #endif
 
 #else
-  error("SWIFT not configure to run with VELOCIraptor.");
+  error("SWIFT not configured to run with VELOCIraptor.");
 #endif /* HAVE_VELOCIRAPTOR */
 }
