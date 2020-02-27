@@ -40,6 +40,8 @@ can be found by typing ``./swift -h``:
     --limiter                         Run with time-step limiter.
     --sync                            Run with time-step synchronization
                                       of particles hit by feedback events.
+    --logger                          Run with the particle logger. 
+
   Simulation meta-options:
 
     --eagle                           Run with all the options needed for the 
