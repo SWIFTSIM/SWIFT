@@ -831,6 +831,9 @@ void engine_make_hierarchical_tasks_common(struct engine *e, struct cell *c) {
   const int with_timestep_limiter =
       (e->policy & engine_policy_timestep_limiter);
   const int with_timestep_sync = (e->policy & engine_policy_timestep_sync);
+#ifdef WITH_LOGGER
+  const int with_logger = e->policy & engine_policy_logger;
+#endif
 
   /* Are we at the top-level? */
   if (c->top == c && c->nodeID == e->nodeID) {
@@ -855,15 +858,20 @@ void engine_make_hierarchical_tasks_common(struct engine *e, struct cell *c) {
                                    c, NULL);
 
 #if defined(WITH_LOGGER)
-      /* Add the hydro logger task. */
-      c->logger = scheduler_addtask(s, task_type_logger, task_subtype_none, 0,
-                                    0, c, NULL);
+      struct task *kick2_or_logger;
+      if (with_logger) {
+        /* Add the hydro logger task. */
+        c->logger = scheduler_addtask(s, task_type_logger, task_subtype_none, 0,
+                                      0, c, NULL);
 
-      /* Add the kick2 dependency */
-      scheduler_addunlock(s, c->kick2, c->logger);
+        /* Add the kick2 dependency */
+        scheduler_addunlock(s, c->kick2, c->logger);
 
-      /* Create a variable in order to avoid to many ifdef */
-      struct task *kick2_or_logger = c->logger;
+        /* Create a variable in order to avoid to many ifdef */
+        kick2_or_logger = c->logger;
+      } else {
+        kick2_or_logger = c->kick2;
+      }
 #else
       struct task *kick2_or_logger = c->kick2;
 #endif
@@ -1070,6 +1078,9 @@ void engine_make_hierarchical_tasks_hydro(struct engine *e, struct cell *c,
   const int with_cooling = (e->policy & engine_policy_cooling);
   const int with_star_formation = (e->policy & engine_policy_star_formation);
   const int with_black_holes = (e->policy & engine_policy_black_holes);
+#ifdef WITH_LOGGER
+  const int with_logger = (e->policy & engine_policy_logger);
+#endif
 
   /* Are we are the level where we create the stars' resort tasks?
    * If the tree is shallow, we need to do this at the super-level if the
@@ -1176,7 +1187,11 @@ void engine_make_hierarchical_tasks_hydro(struct engine *e, struct cell *c,
                                            task_subtype_none, 0, 0, c, NULL);
 
 #ifdef WITH_LOGGER
-        scheduler_addunlock(s, c->super->logger, c->stars.stars_in);
+        if (with_logger) {
+          scheduler_addunlock(s, c->super->logger, c->stars.stars_in);
+        } else {
+          scheduler_addunlock(s, c->super->kick2, c->stars.stars_in);
+        }
 #else
         scheduler_addunlock(s, c->super->kick2, c->stars.stars_in);
 #endif
@@ -1209,7 +1224,13 @@ void engine_make_hierarchical_tasks_hydro(struct engine *e, struct cell *c,
             s, task_type_bh_swallow_ghost3, task_subtype_none, 0, 0, c, NULL);
 
 #ifdef WITH_LOGGER
-        scheduler_addunlock(s, c->super->logger, c->black_holes.black_holes_in);
+        if (with_logger) {
+          scheduler_addunlock(s, c->super->logger,
+                              c->black_holes.black_holes_in);
+        } else {
+          scheduler_addunlock(s, c->super->kick2,
+                              c->black_holes.black_holes_in);
+        }
 #else
         scheduler_addunlock(s, c->super->kick2, c->black_holes.black_holes_in);
 #endif

@@ -976,6 +976,59 @@ void engine_redistribute(struct engine *e) {
   for (int k = 0; k < nr_nodes; k++)
     nr_bparts_new += b_counts[k * nr_nodes + nodeID];
 
+#ifdef WITH_LOGGER
+  if (e->policy & engine_policy_logger) {
+    /* Log the particles before sending them out */
+    size_t part_offset = 0;
+    size_t spart_offset = 0;
+    size_t gpart_offset = 0;
+    size_t bpart_offset = 0;
+
+    for (int i = 0; i < nr_nodes; i++) {
+      const size_t c_ind = engine_rank * nr_nodes + i;
+
+      /* No need to log the local particles. */
+      if (i == engine_rank) {
+        part_offset += counts[c_ind];
+        spart_offset += s_counts[c_ind];
+        gpart_offset += g_counts[c_ind];
+        bpart_offset += b_counts[c_ind];
+        continue;
+      }
+      const uint32_t flag = logger_pack_flags_and_data(logger_flag_mpi_exit, i);
+
+      /* Log the hydro parts. */
+      logger_log_parts(
+          e->logger, &parts[part_offset], &xparts[part_offset], counts[c_ind],
+          logger_masks_all_part | logger_mask_data[logger_special_flags].mask,
+          flag);
+
+      /* Log the stellar parts. */
+      logger_log_sparts(
+          e->logger, &sparts[spart_offset], s_counts[c_ind],
+          logger_masks_all_spart | logger_mask_data[logger_special_flags].mask,
+          flag);
+
+      /* Log the gparts */
+      logger_log_gparts(
+          e->logger, &gparts[gpart_offset], g_counts[c_ind],
+          logger_masks_all_gpart | logger_mask_data[logger_special_flags].mask,
+          flag);
+
+      /* Log the bparts */
+      if (b_counts[c_ind] > 0) {
+        error("TODO");
+      }
+
+      /* Update the counters */
+      part_offset += counts[c_ind];
+      spart_offset += s_counts[c_ind];
+      gpart_offset += g_counts[c_ind];
+      bpart_offset += b_counts[c_ind];
+    }
+  }
+#endif
+
   /* Now exchange the particles, type by type to keep the memory required
    * under control. */
 
@@ -1027,6 +1080,60 @@ void engine_redistribute(struct engine *e) {
 
   /* All particles have now arrived. Time for some final operations on the
      stuff we just received */
+
+#ifdef WITH_LOGGER
+  if (e->policy & engine_policy_logger) {
+    size_t part_offset = 0;
+    size_t spart_offset = 0;
+    size_t gpart_offset = 0;
+    size_t bpart_offset = 0;
+
+    for (int i = 0; i < nr_nodes; i++) {
+      const size_t c_ind = i * nr_nodes + engine_rank;
+
+      /* No need to log the local particles. */
+      if (i == engine_rank) {
+        part_offset += counts[c_ind];
+        spart_offset += s_counts[c_ind];
+        gpart_offset += g_counts[c_ind];
+        bpart_offset += b_counts[c_ind];
+        continue;
+      }
+
+      const uint32_t flag =
+          logger_pack_flags_and_data(logger_flag_mpi_enter, i);
+
+      /* Log the hydro parts. */
+      logger_log_parts(
+          e->logger, &s->parts[part_offset], &s->xparts[part_offset], counts[c_ind],
+          logger_masks_all_part | logger_mask_data[logger_special_flags].mask,
+          flag);
+
+      /* Log the stellar parts. */
+      logger_log_sparts(
+          e->logger, &s->sparts[spart_offset], s_counts[c_ind],
+          logger_masks_all_spart | logger_mask_data[logger_special_flags].mask,
+          flag);
+
+      /* Log the gparts */
+      logger_log_gparts(
+          e->logger, &s->gparts[gpart_offset], g_counts[c_ind],
+          logger_masks_all_gpart | logger_mask_data[logger_special_flags].mask,
+          flag);
+
+      /* Log the bparts */
+      if (b_counts[c_ind] > 0) {
+        error("TODO");
+      }
+
+      /* Update the counters */
+      part_offset += counts[c_ind];
+      spart_offset += s_counts[c_ind];
+      gpart_offset += g_counts[c_ind];
+      bpart_offset += b_counts[c_ind];
+    }
+  }
+#endif
 
   /* Restore the part<->gpart and spart<->gpart links.
    * Generate indices and counts for threadpool tasks. Note we process a node

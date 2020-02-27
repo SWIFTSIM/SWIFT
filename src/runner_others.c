@@ -315,7 +315,7 @@ void runner_do_star_formation(struct runner *r, struct cell *c, int timer) {
             /* Write the particle */
             /* Logs all the fields request by the user */
             // TODO select only the requested fields
-            logger_log_part(e->logger, p,
+            logger_log_part(e->logger, p, xp,
                             logger_mask_data[logger_x].mask |
                                 logger_mask_data[logger_v].mask |
                                 logger_mask_data[logger_a].mask |
@@ -324,8 +324,8 @@ void runner_do_star_formation(struct runner *r, struct cell *c, int timer) {
                                 logger_mask_data[logger_rho].mask |
                                 logger_mask_data[logger_consts].mask |
                                 logger_mask_data[logger_special_flags].mask,
-                            &xp->logger_data.last_offset,
-                            /* special flags */ swift_type_stars);
+                            logger_pack_flags_and_data(logger_flag_change_type,
+                                                       swift_type_stars));
 #endif
 
             /* Convert the gas particle to a star particle */
@@ -354,11 +354,7 @@ void runner_do_star_formation(struct runner *r, struct cell *c, int timer) {
                                logger_mask_data[logger_x].mask |
                                    logger_mask_data[logger_v].mask |
                                    logger_mask_data[logger_consts].mask,
-                               &sp->logger_data.last_offset,
                                /* special flags */ 0);
-
-              /* Set counter back to zero */
-              sp->logger_data.steps_since_last_output = 0;
 #endif
             }
           }
@@ -610,6 +606,10 @@ void runner_do_logger(struct runner *r, struct cell *c, int timer) {
   const int gcount = c->grav.count;
   const int scount = c->stars.count;
 
+  if (c->black_holes.count != 0) {
+    error("Black holes are not implemented in the logger.");
+  }
+
   /* Anything to do here? */
   if (!cell_is_active_hydro(c, e) && !cell_is_active_gravity(c, e) &&
       !cell_is_active_stars(c, e))
@@ -634,7 +634,7 @@ void runner_do_logger(struct runner *r, struct cell *c, int timer) {
         if (logger_should_write(&xp->logger_data, e->logger)) {
           /* Write particle */
           /* Currently writing everything, should adapt it through time */
-          logger_log_part(e->logger, p,
+          logger_log_part(e->logger, p, xp,
                           logger_mask_data[logger_x].mask |
                               logger_mask_data[logger_v].mask |
                               logger_mask_data[logger_a].mask |
@@ -642,11 +642,7 @@ void runner_do_logger(struct runner *r, struct cell *c, int timer) {
                               logger_mask_data[logger_h].mask |
                               logger_mask_data[logger_rho].mask |
                               logger_mask_data[logger_consts].mask,
-                          &xp->logger_data.last_offset,
                           /* special flags */ 0);
-
-          /* Set counter back to zero */
-          xp->logger_data.steps_since_last_output = 0;
         } else
           /* Update counter */
           xp->logger_data.steps_since_last_output += 1;
@@ -673,11 +669,8 @@ void runner_do_logger(struct runner *r, struct cell *c, int timer) {
                                logger_mask_data[logger_v].mask |
                                logger_mask_data[logger_a].mask |
                                logger_mask_data[logger_consts].mask,
-                           &gp->logger_data.last_offset,
                            /* Special flags */ 0);
 
-          /* Set counter back to zero */
-          gp->logger_data.steps_since_last_output = 0;
         } else
           /* Update counter */
           gp->logger_data.steps_since_last_output += 1;
@@ -700,11 +693,7 @@ void runner_do_logger(struct runner *r, struct cell *c, int timer) {
                            logger_mask_data[logger_x].mask |
                                logger_mask_data[logger_v].mask |
                                logger_mask_data[logger_consts].mask,
-                           &sp->logger_data.last_offset,
                            /* Special flags */ 0);
-
-          /* Set counter back to zero */
-          sp->logger_data.steps_since_last_output = 0;
         } else
           /* Update counter */
           sp->logger_data.steps_since_last_output += 1;
