@@ -717,6 +717,13 @@ void velociraptor_invoke(struct engine *e, const int linked_with_snap) {
   int num_gparts_in_groups = -1;
   struct groupinfo *group_info = NULL;
 
+#ifdef SWIFT_MEMUSE_REPORTS
+  char report_filename[60];
+  sprintf(report_filename, "memuse-VR-report-rank%d-step%d.txt", e->nodeID,
+          e->step);
+  memuse_log_dump(report_filename);
+#endif
+
   /* Call VELOCIraptor. */
   group_info = (struct groupinfo *)InvokeVelociraptor(
       snapnum, outputFileName, cosmo_info, sim_info, nr_gparts, nr_parts,
