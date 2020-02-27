@@ -3458,10 +3458,9 @@ void cell_activate_subcell_external_grav_tasks(struct cell *ci,
  * @brief Run through the hydro tasks in a cell hierarchy and activate recv
  *        tasks for active sub-cells.
  *
- * @params e The #engine.
- * @params s The #scheduler.
  * @params ci The local #cell in a hydro pair.
  * @params cj The foreign #cell in a hydro pair.
+ * @params s The #scheduler.
  */
 void cell_activate_hydro_send_recv_tasks(struct cell *ci, struct cell *cj,
                                          struct scheduler *s) {
@@ -3571,8 +3570,8 @@ void cell_activate_hydro_send_recv_tasks(struct cell *ci, struct cell *cj,
   }
 
   /* Otherwise, recurse. */
-  else if (cell_can_split_pair_hydro_task(ci) &&
-           cell_can_split_pair_hydro_task(cj)) {
+  else if (cell_can_recurse_in_pair_hydro_task(ci) &&
+           cell_can_recurse_in_pair_hydro_task(cj)) {
     double shift[3];
     int sid = space_getsid(e->s, &ci, &cj, shift);
 
