@@ -283,6 +283,8 @@ INLINE static int chemistry_write_bparticles(const struct bpart* bparts,
 INLINE static void chemistry_write_flavour(hid_t h_grp) {
 
   io_write_attribute_s(h_grp, "Chemistry Model", "EAGLE");
+  io_write_attribute_d(h_grp, "Chemistry element count",
+                       chemistry_element_count);
   for (int elem = 0; elem < chemistry_element_count; ++elem) {
     char buffer[20];
     sprintf(buffer, "Element %d", elem);

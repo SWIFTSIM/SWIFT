@@ -116,6 +116,8 @@ INLINE static int chemistry_write_bparticles(const struct bpart* bparts,
 INLINE static void chemistry_write_flavour(hid_t h_grp) {
 
   io_write_attribute_s(h_grp, "Chemistry Model", "GEAR");
+  io_write_attribute_d(h_grp, "Chemistry element count",
+                       GEAR_CHEMISTRY_ELEMENT_COUNT);
 }
 #endif
 
