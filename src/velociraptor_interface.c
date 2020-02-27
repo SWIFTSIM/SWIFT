@@ -237,6 +237,7 @@ void velociraptor_convert_particles_mapper(void *map_data, int nr_gparts,
   const struct part *parts = s->parts;
   const struct xpart *xparts = s->xparts;
   const struct spart *sparts = s->sparts;
+  const struct bpart *bparts = s->bparts;
 
   /* Handle on the physics modules */
   const struct cosmology *cosmo = e->cosmology;
@@ -310,6 +311,13 @@ void velociraptor_convert_particles_mapper(void *map_data, int nr_gparts,
       case swift_type_stars:
 
         swift_parts[i].id = sparts[-gparts[i].id_or_neg_offset].id;
+        swift_parts[i].u = 0.f;
+        swift_parts[i].T = 0.f;
+        break;
+
+      case swift_type_black_hole:
+
+        swift_parts[i].id = bparts[-gparts[i].id_or_neg_offset].id;
         swift_parts[i].u = 0.f;
         swift_parts[i].T = 0.f;
         break;
