@@ -1105,7 +1105,8 @@ void engine_redistribute(struct engine *e) {
 
       /* Log the hydro parts. */
       logger_log_parts(
-          e->logger, &s->parts[part_offset], &s->xparts[part_offset], counts[c_ind],
+          e->logger, &s->parts[part_offset], &s->xparts[part_offset],
+          counts[c_ind],
           logger_masks_all_part | logger_mask_data[logger_special_flags].mask,
           flag);
 
