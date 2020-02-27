@@ -1321,6 +1321,8 @@ void space_rebuild(struct space *s, int repartitioned, int verbose) {
         "counter.");
 #endif
 
+  const ticks tic2 = getticks();
+
   /* Move non-local parts and inhibited parts to the end of the list. */
   if ((with_dithering || !repartitioned) &&
       (s->e->nr_nodes > 1 || count_inhibited_parts > 0)) {
@@ -1519,6 +1521,10 @@ void space_rebuild(struct space *s, int repartitioned, int verbose) {
       }
     }
   }
+
+  if (verbose)
+    message("Moving non-local particles took %.3f %s.",
+            clocks_from_ticks(getticks() - tic2), clocks_getunit());
 
 #ifdef SWIFT_DEBUG_CHECKS
   /* Check that all gparts are in the correct place. */
@@ -1900,7 +1906,7 @@ void space_rebuild(struct space *s, int repartitioned, int verbose) {
 #endif
 
   /* Hook the cells up to the parts. Make list of local and non-empty cells */
-  ticks tic2 = getticks();
+  const ticks tic3 = getticks();
   struct part *finger = s->parts;
   struct xpart *xfinger = s->xparts;
   struct gpart *gfinger = s->gparts;
@@ -1966,7 +1972,7 @@ void space_rebuild(struct space *s, int repartitioned, int verbose) {
     message("Have %d local top-level cells (total=%d)", s->nr_local_cells,
             s->nr_cells);
     message("hooking up cells took %.3f %s.",
-            clocks_from_ticks(getticks() - tic2), clocks_getunit());
+            clocks_from_ticks(getticks() - tic3), clocks_getunit());
   }
 
   /* Re-order the extra particles such that they are at the end of their cell's

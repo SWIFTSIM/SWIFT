@@ -3418,6 +3418,12 @@ void engine_maketasks(struct engine *e) {
         e->nr_links, e->size_links, (float)e->nr_links / (float)e->size_links,
         e->size_links * sizeof(struct link) / (1024 * 1024));
 
+  /* Report the values that could have been used */
+  if (e->verbose)
+    message("Actual usage: tasks/cell: %f links/task: %f",
+            (float)e->sched.nr_tasks / s->tot_cells,
+            (float)e->nr_links / e->sched.nr_tasks);
+
   tic2 = getticks();
 
   /* Set the unlocks per task. */

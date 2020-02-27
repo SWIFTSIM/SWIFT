@@ -487,12 +487,13 @@ void engine_exchange_cells(struct engine *e) {
  * gparts, i.e. the received particles have correct linkeage.
  */
 void engine_exchange_strays(struct engine *e, const size_t offset_parts,
-                            const int *ind_part, size_t *Npart,
-                            const size_t offset_gparts, const int *ind_gpart,
-                            size_t *Ngpart, const size_t offset_sparts,
-                            const int *ind_spart, size_t *Nspart,
-                            const size_t offset_bparts, const int *ind_bpart,
-                            size_t *Nbpart) {
+                            const int *restrict ind_part, size_t *Npart,
+                            const size_t offset_gparts,
+                            const int *restrict ind_gpart, size_t *Ngpart,
+                            const size_t offset_sparts,
+                            const int *restrict ind_spart, size_t *Nspart,
+                            const size_t offset_bparts,
+                            const int *restrict ind_bpart, size_t *Nbpart) {
 
 #ifdef WITH_MPI
   struct space *s = e->s;
@@ -982,6 +983,11 @@ void engine_exchange_strays(struct engine *e, const size_t offset_parts,
     if (MPI_Waitall(5 * e->nr_proxies, reqs_out, MPI_STATUSES_IGNORE) !=
         MPI_SUCCESS)
       error("MPI_Waitall on sends failed.");
+
+  /* Free the proxy memory */
+  for (int k = 0; k < e->nr_proxies; k++) {
+    proxy_free_particle_buffers(&e->proxies[k]);
+  }
 
   if (e->verbose)
     message("took %.3f %s.", clocks_from_ticks(getticks() - tic),
