@@ -403,7 +403,7 @@ struct engine {
 
   /* Average number of links per tasks. This number is used before
      the creation of communication tasks so needs to be large enough. */
-  size_t links_per_tasks;
+  float links_per_tasks;
 
   /* Are we talkative ? */
   int verbose;
