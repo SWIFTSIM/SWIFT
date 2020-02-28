@@ -262,7 +262,7 @@ runner_iact_nonsym_bh_bh_swallow(const float r2, const float *dx,
       const_max_repositioning_distance_ratio * grav_props->epsilon_baryon_cur *
       grav_props->epsilon_baryon_cur;
 
-  /* This gas neighbour is close enough that we can consider it's potential
+  /* This BH neighbour is close enough that we can consider it's potential
      for repositioning */
   if (r2 < max_dist_repos2) {
 
@@ -285,13 +285,11 @@ runner_iact_nonsym_bh_bh_swallow(const float r2, const float *dx,
 
   /* Find the most massive of the two BHs */
   float M = bi->subgrid_mass;
-  float h = hi;
   if (bj->subgrid_mass > M) {
     M = bj->subgrid_mass;
-    h = hj;
   }
 
-  /* (Square of) Max swallowing distance allowed based on the softening */
+  /* (Square of) max swallowing distance allowed based on the softening */
   const float max_dist_merge2 =
       kernel_gravity_softening_plummer_equivalent_inv *
       kernel_gravity_softening_plummer_equivalent_inv *
@@ -307,10 +305,11 @@ runner_iact_nonsym_bh_bh_swallow(const float r2, const float *dx,
   if ((bj->subgrid_mass < bi->subgrid_mass) ||
       (bj->subgrid_mass == bi->subgrid_mass && bj->id < bi->id)) {
 
-    /* Merge if gravitationally bound AND if within max distance
-     * Note that we use the kernel support here as the size and not just the
-     * smoothing length */
-    if (v2_pec < G_Newton * M / (kernel_gamma * h) && (r2 < max_dist_merge2)) {
+    /* Maximum velocity difference between BHs allowed to merge */
+    const float v2_threshold = 2.f * G_Newton * M / sqrt(r2);
+
+    /* Merge if gravitationally bound AND if within max distance */
+    if ((v2_pec < v2_threshold) && (r2 < max_dist_merge2)) {
 
       /* This particle is swallowed by the BH with the largest ID of all the
        * candidates wanting to swallow it */
