@@ -103,7 +103,7 @@ labels = [
     ["engine_repartition_trigger:", 0],
     ["VR Collecting top-level cell info", 3],
     ["VR Collecting particle info", 3],
-    ["VR Invokation of velociraptor", 3],
+    ["VR Invocation of velociraptor", 3],
     ["VR Copying group information back", 3],
     ["fof_allocate:", 2],
     ["engine_make_fof_tasks:", 2],
