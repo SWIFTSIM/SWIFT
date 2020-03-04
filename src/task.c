@@ -118,6 +118,18 @@ MPI_Comm subtaskMPI_comms[task_subtype_count];
 #endif
 
 /**
+ * ALEXEI: function to recurse through cells, find one with largest h max and tabulate properties
+ */
+inline double get_h_ratio(struct cell *c) {
+  double h_sum = 0;
+  for (int i = 0; i < c->hydro.count; i++) {
+    h_sum += c->hydro.parts[i].h;
+  }
+  return c->hydro.h_max/h_sum*c->hydro.count;
+}
+
+
+/**
  * @brief Computes the overlap between the parts array of two given cells.
  *
  * @param TYPE is the type of parts (e.g. #part, #gpart, #spart)
@@ -988,7 +1000,7 @@ void task_dump_all(struct engine *e, int step) {
   for (int l = 0; l < e->sched.nr_tasks; l++) {
     if (!e->sched.tasks[l].implicit && e->sched.tasks[l].tic > e->tic_step) {
       fprintf(
-          file_thread, " %i %i %i %i %lli %lli %i %i %i %i %i\n",
+          file_thread, " %i %i %i %i %lli %lli %i %i %i %i %i %.5e %.5e %.5e %.5e %lli %lli %d %d %d %d\n",
           e->sched.tasks[l].rid, e->sched.tasks[l].type,
           e->sched.tasks[l].subtype, (e->sched.tasks[l].cj == NULL),
           (unsigned long long)e->sched.tasks[l].tic,
@@ -999,7 +1011,18 @@ void task_dump_all(struct engine *e, int step) {
                                          : e->sched.tasks[l].cj->hydro.count,
           (e->sched.tasks[l].ci == NULL) ? 0 : e->sched.tasks[l].ci->grav.count,
           (e->sched.tasks[l].cj == NULL) ? 0 : e->sched.tasks[l].cj->grav.count,
-          e->sched.tasks[l].sid);
+          e->sched.tasks[l].sid,
+          (e->sched.tasks[l].ci == NULL) ? 0 : e->sched.tasks[l].ci->hydro.h_max_active,
+          (e->sched.tasks[l].cj == NULL) ? 0 : e->sched.tasks[l].cj->hydro.h_max_active,
+          (e->sched.tasks[l].ci == NULL) ? 0 : get_h_ratio(e->sched.tasks[l].ci),
+          (e->sched.tasks[l].cj == NULL) ? 0 : get_h_ratio(e->sched.tasks[l].cj),
+          (e->sched.tasks[l].ci == NULL) ? 0 : (unsigned long long) e->sched.tasks[l].ci,
+          (e->sched.tasks[l].cj == NULL) ? 0 : (unsigned long long) e->sched.tasks[l].cj,
+          (e->sched.tasks[l].ci == NULL || e->sched.tasks[l].ci->hydro.cooling == NULL) ? 0 : (int) e->sched.tasks[l].ci->hydro.cooling->skip,
+          (e->sched.tasks[l].cj == NULL || e->sched.tasks[l].cj->hydro.cooling == NULL) ? 0 : (int) e->sched.tasks[l].cj->hydro.cooling->skip,
+          (e->sched.tasks[l].ci == NULL || e->sched.tasks[l].ci->hydro.cooling == NULL) ? 0 : (int) e->sched.tasks[l].ci->hydro.cooling->implicit,
+          (e->sched.tasks[l].cj == NULL || e->sched.tasks[l].cj->hydro.cooling == NULL) ? 0 : (int) e->sched.tasks[l].cj->hydro.cooling->implicit
+          );
     }
   }
   fclose(file_thread);
