@@ -74,6 +74,8 @@ __attribute__((always_inline)) INLINE static integertime_t timestep_limit_part(
   const double time_base = e->time_base;
   const integertime_t ti_current = e->ti_current;
 
+  // message(" Limiting particle! %lld old bin=%d", p->id, p->time_bin);
+
   if (part_is_active(p, e)) {
 
     /* First case, the particle was active so we only need to update the length

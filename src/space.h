@@ -79,6 +79,8 @@ extern int space_extra_parts;
 extern int space_extra_gparts;
 extern int space_extra_sparts;
 extern int space_extra_bparts;
+extern int space_recurse_size_self_hydro;
+extern int space_recurse_size_pair_hydro;
 
 /**
  * @brief The space in which the cells and particles reside.

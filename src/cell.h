@@ -387,7 +387,10 @@ struct cell {
     struct task *stars_resort;
 
     /*! Max smoothing length in this cell. */
-    double h_max;
+    float h_max;
+
+    /*! Max smoothing length of active particles in this cell. */
+    float h_max_active;
 
     /*! Last (integer) time the cell's part were drifted forward in time. */
     integertime_t ti_old_part;
@@ -885,7 +888,9 @@ void cell_drift_spart(struct cell *c, const struct engine *e, int force);
 void cell_drift_bpart(struct cell *c, const struct engine *e, int force);
 void cell_drift_multipole(struct cell *c, const struct engine *e);
 void cell_drift_all_multipoles(struct cell *c, const struct engine *e);
-void cell_check_timesteps(struct cell *c);
+//void cell_check_timesteps(struct cell *c);
+void cell_check_timesteps(const struct cell *c, const integertime_t ti_current,
+                          const timebin_t max_bin);
 void cell_store_pre_drift_values(struct cell *c);
 void cell_set_star_resort_flag(struct cell *c);
 void cell_activate_star_formation_tasks(struct cell *c, struct scheduler *s,
@@ -1016,7 +1021,24 @@ __attribute__((always_inline)) INLINE static double cell_min_dist2_same_size(
  * @param c The #cell.
  */
 __attribute__((always_inline)) INLINE static int
-cell_can_recurse_in_pair_hydro_task(const struct cell *c) {
+cell_can_recurse_in_pair_hydro_task1(const struct cell *c) {
+
+  /* Is the cell split ? */
+  /* If so, is the cut-off radius plus the max distance the parts have moved */
+  /* smaller than the sub-cell sizes ? */
+  /* Note: We use the _old values as these might have been updated by a drift */
+  return ((kernel_gamma * c->hydro.h_max_active + c->hydro.dx_max_part_old) <
+          0.5f * c->dmin);
+}
+
+/**
+ * @brief Can a sub-pair hydro task recurse to a lower level based
+ * on the status of the particles in the cell.
+ *
+ * @param c The #cell.
+ */
+__attribute__((always_inline)) INLINE static int
+cell_can_recurse_in_pair_hydro_task2(const struct cell *c) {
 
   /* Is the cell split ? */
   /* If so, is the cut-off radius plus the max distance the parts have moved */
@@ -1033,7 +1055,20 @@ cell_can_recurse_in_pair_hydro_task(const struct cell *c) {
  * @param c The #cell.
  */
 __attribute__((always_inline)) INLINE static int
-cell_can_recurse_in_self_hydro_task(const struct cell *c) {
+cell_can_recurse_in_self_hydro_task1(const struct cell *c) {
+
+  /* Is the cell split and not smaller than the smoothing length? */
+  return (kernel_gamma * c->hydro.h_max_active < 0.5f * c->dmin);
+}
+
+/**
+ * @brief Can a sub-self hydro task recurse to a lower level based
+ * on the status of the particles in the cell.
+ *
+ * @param c The #cell.
+ */
+__attribute__((always_inline)) INLINE static int
+cell_can_recurse_in_self_hydro_task2(const struct cell *c) {
 
   /* Is the cell split and not smaller than the smoothing length? */
   return c->split && (kernel_gamma * c->hydro.h_max_old < 0.5f * c->dmin);

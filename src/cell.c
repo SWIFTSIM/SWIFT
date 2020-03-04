@@ -2932,7 +2932,7 @@ void cell_activate_subcell_hydro_tasks(struct cell *ci, struct cell *cj,
     if (ci->hydro.count == 0 || !cell_is_active_hydro(ci, e)) return;
 
     /* Recurse? */
-    if (cell_can_recurse_in_self_hydro_task(ci)) {
+    if (cell_can_recurse_in_self_hydro_task2(ci)) {
       /* Loop over all progenies and pairs of progenies */
       for (int j = 0; j < 8; j++) {
         if (ci->progeny[j] != NULL) {
@@ -2962,8 +2962,8 @@ void cell_activate_subcell_hydro_tasks(struct cell *ci, struct cell *cj,
     const int sid = space_getsid(s->space, &ci, &cj, shift);
 
     /* recurse? */
-    if (cell_can_recurse_in_pair_hydro_task(ci) &&
-        cell_can_recurse_in_pair_hydro_task(cj)) {
+    if (cell_can_recurse_in_pair_hydro_task2(ci) &&
+        cell_can_recurse_in_pair_hydro_task2(cj)) {
       const struct cell_split_pair *csp = &cell_split_pairs[sid];
       for (int k = 0; k < csp->count; k++) {
         const int pid = csp->pairs[k].pid;
@@ -3447,11 +3447,18 @@ int cell_unskip_hydro_tasks(struct cell *c, struct scheduler *s) {
       /* Store current values of dx_max and h_max. */
       else if (t->type == task_type_sub_self) {
         cell_activate_subcell_hydro_tasks(ci, NULL, s, with_timestep_limiter);
+
+	/* Activate the drifts if the cells are local. */
+	if (ci->nodeID == engine_rank) cell_activate_drift_part(ci, s);
       }
 
       /* Store current values of dx_max and h_max. */
       else if (t->type == task_type_sub_pair) {
         cell_activate_subcell_hydro_tasks(ci, cj, s, with_timestep_limiter);
+
+	/* Activate the drifts if the cells are local. */
+	if (ci->nodeID == engine_rank) cell_activate_drift_part(ci, s);
+	if (cj->nodeID == engine_rank) cell_activate_drift_part(cj, s);
       }
     }
 
@@ -4466,6 +4473,7 @@ void cell_drift_part(struct cell *c, const struct engine *e, int force) {
   float dx_max = 0.f, dx2_max = 0.f;
   float dx_max_sort = 0.0f, dx2_max_sort = 0.f;
   float cell_h_max = 0.f;
+  float cell_h_max_active = 0.f;
 
   /* Drift irrespective of cell flags? */
   force = (force || cell_get_flag(c, cell_flag_do_hydro_drift));
@@ -4506,11 +4514,13 @@ void cell_drift_part(struct cell *c, const struct engine *e, int force) {
         dx_max = max(dx_max, cp->hydro.dx_max_part);
         dx_max_sort = max(dx_max_sort, cp->hydro.dx_max_sort);
         cell_h_max = max(cell_h_max, cp->hydro.h_max);
+        cell_h_max_active = max(cell_h_max_active, cp->hydro.h_max_active);
       }
     }
 
     /* Store the values */
     c->hydro.h_max = cell_h_max;
+    c->hydro.h_max_active = cell_h_max_active;
     c->hydro.dx_max_part = dx_max;
     c->hydro.dx_max_sort = dx_max_sort;
 
@@ -4626,6 +4636,9 @@ void cell_drift_part(struct cell *c, const struct engine *e, int force) {
         tracers_after_init(p, xp, e->internal_units, e->physical_constants,
                            with_cosmology, e->cosmology, e->hydro_properties,
                            e->cooling_func, e->time);
+
+        /* Update the maximal active smoothing length in the cell */
+        cell_h_max_active = max(cell_h_max_active, p->h);
       }
     }
 
@@ -4635,6 +4648,7 @@ void cell_drift_part(struct cell *c, const struct engine *e, int force) {
 
     /* Store the values */
     c->hydro.h_max = cell_h_max;
+    c->hydro.h_max_active = cell_h_max_active;
     c->hydro.dx_max_part = dx_max;
     c->hydro.dx_max_sort = dx_max_sort;
 
@@ -5253,7 +5267,33 @@ void cell_clear_hydro_sort_flags(struct cell *c, const int clear_unused_flags) {
 /**
  * @brief Recursively checks that all particles in a cell have a time-step
  */
-void cell_check_timesteps(struct cell *c) {
+//void cell_check_timesteps(struct cell *c) {
+//#ifdef SWIFT_DEBUG_CHECKS
+//
+//  if (c->hydro.ti_end_min == 0 && c->grav.ti_end_min == 0 &&
+//      c->stars.ti_end_min == 0 && c->black_holes.ti_end_min == 0 &&
+//      c->nr_tasks > 0)
+//    error("Cell without assigned time-step");
+//
+//  if (c->split) {
+//    for (int k = 0; k < 8; ++k)
+//      if (c->progeny[k] != NULL) cell_check_timesteps(c->progeny[k]);
+//  } else {
+//    if (c->nodeID == engine_rank)
+//      for (int i = 0; i < c->hydro.count; ++i)
+//        if (c->hydro.parts[i].time_bin == 0)
+//          error("Particle without assigned time-bin");
+//  }
+//#else
+//  error("Calling debugging code without debugging flag activated.");
+//#endif
+//}
+
+/**
+ * @brief Recursively checks that all particles in a cell have a time-step
+ */
+void cell_check_timesteps(const struct cell *c, const integertime_t ti_current,
+                          const timebin_t max_bin) {
 #ifdef SWIFT_DEBUG_CHECKS
 
   if (c->hydro.ti_end_min == 0 && c->grav.ti_end_min == 0 &&
@@ -5263,13 +5303,68 @@ void cell_check_timesteps(struct cell *c) {
 
   if (c->split) {
     for (int k = 0; k < 8; ++k)
-      if (c->progeny[k] != NULL) cell_check_timesteps(c->progeny[k]);
+      if (c->progeny[k] != NULL)
+        cell_check_timesteps(c->progeny[k], ti_current, max_bin);
   } else {
     if (c->nodeID == engine_rank)
       for (int i = 0; i < c->hydro.count; ++i)
         if (c->hydro.parts[i].time_bin == 0)
           error("Particle without assigned time-bin");
   }
+
+  /* Other checks not relevent when starting-up */
+  if (ti_current == 0) return;
+
+  integertime_t ti_end_min = max_nr_timesteps;
+  integertime_t ti_end_max = 0;
+  integertime_t ti_beg_max = 0;
+
+  int count = 0;
+
+  for (int i = 0; i < c->hydro.count; ++i) {
+
+    const struct part *p = &c->hydro.parts[i];
+    if (p->time_bin == time_bin_inhibited) continue;
+    if (p->time_bin == time_bin_not_created) continue;
+
+    ++count;
+
+    integertime_t ti_end, ti_beg;
+
+    if (p->time_bin <= max_bin) {
+      integertime_t time_step = get_integer_timestep(p->time_bin);
+      ti_end = get_integer_time_end(ti_current, p->time_bin) + time_step;
+      ti_beg = get_integer_time_begin(ti_current + 1, p->time_bin);
+    } else {
+      ti_end = get_integer_time_end(ti_current, p->time_bin);
+      ti_beg = get_integer_time_begin(ti_current + 1, p->time_bin);
+    }
+
+    ti_end_min = min(ti_end, ti_end_min);
+    ti_end_max = max(ti_end, ti_end_max);
+    ti_beg_max = max(ti_beg, ti_beg_max);
+  }
+
+  /* Only check cells that have at least one non-inhibited particle */
+  if (count > 0) {
+
+    if (ti_end_min != c->hydro.ti_end_min)
+      error(
+          "Non-matching ti_end_min. Cell=%lld true=%lld ti_current=%lld "
+          "depth=%d",
+          c->hydro.ti_end_min, ti_end_min, ti_current, c->depth);
+    if (ti_end_max > c->hydro.ti_end_max)
+      error(
+          "Non-matching ti_end_max. Cell=%lld true=%lld ti_current=%lld "
+          "depth=%d",
+          c->hydro.ti_end_max, ti_end_max, ti_current, c->depth);
+    if (ti_beg_max != c->hydro.ti_beg_max)
+      error(
+          "Non-matching ti_beg_max. Cell=%lld true=%lld ti_current=%lld "
+          "depth=%d",
+          c->hydro.ti_beg_max, ti_beg_max, ti_current, c->depth);
+  }
+
 #else
   error("Calling debugging code without debugging flag activated.");
 #endif

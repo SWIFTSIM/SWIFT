@@ -40,6 +40,7 @@
 #include "space.h"
 
 /* Local headers. */
+#include "active.h"
 #include "atomic.h"
 #include "black_holes.h"
 #include "chemistry.h"
@@ -76,6 +77,10 @@ int space_subsize_pair_grav = space_subsize_pair_grav_default;
 int space_subsize_self_grav = space_subsize_self_grav_default;
 int space_subdepth_diff_grav = space_subdepth_diff_grav_default;
 int space_maxsize = space_maxsize_default;
+
+/* Recursion sizes */
+int space_recurse_size_self_hydro = 100;
+int space_recurse_size_pair_hydro = 100;
 
 /*! Number of extra #part we allocate memory for per top-level cell */
 int space_extra_parts = space_extra_parts_default;
@@ -3271,6 +3276,7 @@ void space_split_recursive(struct space *s, struct cell *c,
   const int depth = c->depth;
   int maxdepth = 0;
   float h_max = 0.0f;
+  float h_max_active = 0.0f;
   float stars_h_max = 0.f;
   float black_holes_h_max = 0.f;
   integertime_t ti_hydro_end_min = max_nr_timesteps, ti_hydro_end_max = 0,
@@ -3408,6 +3414,7 @@ void space_split_recursive(struct space *s, struct cell *c,
       cp->depth = c->depth + 1;
       cp->split = 0;
       cp->hydro.h_max = 0.f;
+      cp->hydro.h_max_active = 0.f;
       cp->hydro.dx_max_part = 0.f;
       cp->hydro.dx_max_sort = 0.f;
       cp->stars.h_max = 0.f;
@@ -3465,6 +3472,7 @@ void space_split_recursive(struct space *s, struct cell *c,
 
         /* Update the cell-wide properties */
         h_max = max(h_max, cp->hydro.h_max);
+        h_max_active = max(h_max_active, cp->hydro.h_max_active);
         stars_h_max = max(stars_h_max, cp->stars.h_max);
         black_holes_h_max = max(black_holes_h_max, cp->black_holes.h_max);
 
@@ -3626,6 +3634,8 @@ void space_split_recursive(struct space *s, struct cell *c,
       hydro_time_bin_min = min(hydro_time_bin_min, parts[k].time_bin);
       hydro_time_bin_max = max(hydro_time_bin_max, parts[k].time_bin);
       h_max = max(h_max, parts[k].h);
+      if (part_is_active(&parts[k], e))
+        h_max_active = max(h_max_active, parts[k].h);
       /* Collect SFR from the particles after rebuilt */
       star_formation_logger_log_inactive_part(&parts[k], &xparts[k],
                                               &c->stars.sfh);
@@ -3739,6 +3749,7 @@ void space_split_recursive(struct space *s, struct cell *c,
 
   /* Set the values for this cell. */
   c->hydro.h_max = h_max;
+  c->hydro.h_max_active = h_max_active;
   c->hydro.ti_end_min = ti_hydro_end_min;
   c->hydro.ti_end_max = ti_hydro_end_max;
   c->hydro.ti_beg_max = ti_hydro_beg_max;
@@ -5429,6 +5440,23 @@ void space_check_top_multipoles_drift_point(struct space *s,
   error("Calling debugging code without debugging flag activated.");
 #endif
 }
+/**
+ * @brief #threadpool mapper function for the timestep debugging check
+ */
+void space_check_timesteps_mapper(void *map_data, int nr_cells,
+                                  void *extra_data) {
+
+  struct cell *cells_top = (struct cell *)map_data;
+  const struct space *s = (const struct space *)extra_data;
+  const timebin_t max_active_bin = s->e->max_active_bin;
+  const integertime_t ti_current = s->e->ti_current;
+
+  for (int i = 0; i < nr_cells; ++i) {
+    if (cells_top[i].nodeID == engine_rank) {
+      cell_check_timesteps(&cells_top[i], ti_current, max_active_bin);
+    }
+  }
+}
 
 /**
  * @brief Checks that all particles and local cells have a non-zero time-step.
@@ -5439,9 +5467,16 @@ void space_check_top_multipoles_drift_point(struct space *s,
  */
 void space_check_timesteps(struct space *s) {
 #ifdef SWIFT_DEBUG_CHECKS
-  for (int i = 0; i < s->nr_cells; ++i) {
-    cell_check_timesteps(&s->cells_top[i]);
-  }
+
+  const ticks tic = getticks();
+
+  threadpool_map(&s->e->threadpool, space_check_timesteps_mapper, s->cells_top,
+                 s->nr_cells, sizeof(struct cell), 0, s);
+
+  if (s->e->verbose)
+    message("took %.3f %s.", clocks_from_ticks(getticks() - tic),
+            clocks_getunit());
+
 #else
   error("Calling debugging code without debugging flag activated.");
 #endif
@@ -5495,8 +5530,14 @@ void space_check_limiter_mapper(void *map_data, int nr_parts,
 void space_check_limiter(struct space *s) {
 #ifdef SWIFT_DEBUG_CHECKS
 
+  const ticks tic = getticks();
+
   threadpool_map(&s->e->threadpool, space_check_limiter_mapper, s->parts,
                  s->nr_parts, sizeof(struct part), 1000, s);
+
+  if (s->e->verbose)
+    message("took %.3f %s.", clocks_from_ticks(getticks() - tic),
+            clocks_getunit());
 #else
   error("Calling debugging code without debugging flag activated.");
 #endif
@@ -5563,11 +5604,17 @@ void space_check_bpart_swallow_mapper(void *map_data, int nr_bparts,
 void space_check_swallow(struct space *s) {
 #ifdef SWIFT_DEBUG_CHECKS
 
+  const ticks tic = getticks();
+
   threadpool_map(&s->e->threadpool, space_check_part_swallow_mapper, s->parts,
                  s->nr_parts, sizeof(struct part), 0, NULL);
 
   threadpool_map(&s->e->threadpool, space_check_bpart_swallow_mapper, s->bparts,
                  s->nr_bparts, sizeof(struct bpart), 0, NULL);
+
+  if (s->e->verbose)
+    message("took %.3f %s.", clocks_from_ticks(getticks() - tic),
+            clocks_getunit());
 #else
   error("Calling debugging code without debugging flag activated.");
 #endif
@@ -5600,9 +5647,16 @@ void space_check_sort_flags_mapper(void *map_data, int nr_cells,
 void space_check_sort_flags(struct space *s) {
 #ifdef SWIFT_DEBUG_CHECKS
 
+  const ticks tic = getticks();
+
   threadpool_map(&s->e->threadpool, space_check_sort_flags_mapper,
                  s->local_cells_with_tasks_top, s->nr_local_cells_with_tasks,
                  sizeof(int), 1, s);
+
+  if (s->e->verbose)
+    message("took %.3f %s.", clocks_from_ticks(getticks() - tic),
+            clocks_getunit());
+
 #else
   error("Calling debugging code without debugging flag activated.");
 #endif

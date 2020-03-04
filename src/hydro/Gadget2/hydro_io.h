@@ -195,16 +195,20 @@ INLINE static void hydro_write_particles(const struct part* parts,
   list += *num_fields;
   *num_fields += 4;
 
-  list[0] = io_make_output_field("Num_ngb_density", INT, 1, UNIT_CONV_NO_UNITS,
-                                 parts, num_ngb_density);
-  list[1] = io_make_output_field("Num_ngb_force", INT, 1, UNIT_CONV_NO_UNITS,
-                                 parts, num_ngb_force);
+  list[0] = io_make_output_field(
+      "Num_ngb_density", INT, 1, UNIT_CONV_NO_UNITS, 0.f, parts,
+      num_ngb_density,
+      "Integer number of neighbours found in the density loop");
+  list[1] = io_make_output_field(
+      "Num_ngb_force", INT, 1, UNIT_CONV_NO_UNITS, 0.f, parts, num_ngb_force,
+      "Integer number of neighbours found in the force loop");
   list[2] =
       io_make_output_field("Ids_ngb_density", LONGLONG, MAX_NUM_OF_NEIGHBOURS,
-                           UNIT_CONV_NO_UNITS, parts, ids_ngbs_density);
-  list[3] =
-      io_make_output_field("Ids_ngb_force", LONGLONG, MAX_NUM_OF_NEIGHBOURS,
-                           UNIT_CONV_NO_UNITS, parts, ids_ngbs_force);
+                           UNIT_CONV_NO_UNITS, 0.f, parts, ids_ngbs_density,
+                           "ID of the neighbours found in the density loop");
+  list[3] = io_make_output_field(
+      "Ids_ngb_force", LONGLONG, MAX_NUM_OF_NEIGHBOURS, UNIT_CONV_NO_UNITS, 0.f,
+      parts, ids_ngbs_force, "ID of the neighbours found in the force loop");
 
 #endif
 }

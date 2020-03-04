@@ -737,8 +737,8 @@ void DOSUB_PAIR1(struct runner *r, struct cell *ci, struct cell *cj,
   const int sid = space_getsid(s, &ci, &cj, shift);
 
   /* Recurse? */
-  if (cell_can_recurse_in_pair_hydro_task(ci) &&
-      cell_can_recurse_in_pair_hydro_task(cj)) {
+  if (cell_can_recurse_in_pair_hydro_task1(ci) &&
+      cell_can_recurse_in_pair_hydro_task1(cj)) {
     struct cell_split_pair *csp = &cell_split_pairs[sid];
     for (int k = 0; k < csp->count; k++) {
       const int pid = csp->pairs[k].pid;
@@ -757,17 +757,32 @@ void DOSUB_PAIR1(struct runner *r, struct cell *ci, struct cell *cj,
 
     /* Do any of the cells need to be sorted first? */
     if (!(ci->hydro.sorted & (1 << sid)) ||
-        ci->hydro.dx_max_sort_old > ci->dmin * space_maxreldx)
-      error(
-          "Interacting unsorted cell. ci->hydro.dx_max_sort_old=%e ci->dmin=%e "
-          "ci->sorted=%d sid=%d",
-          ci->hydro.dx_max_sort_old, ci->dmin, ci->hydro.sorted, sid);
+        ci->hydro.dx_max_sort_old > ci->dmin * space_maxreldx) {
+      /* error( */
+      /*     "Interacting unsorted cell. ci->hydro.dx_max_sort_old=%e
+       * ci->dmin=%e " */
+      /*     "ci->sorted=%d sid=%d", */
+      /*     ci->hydro.dx_max_sort_old, ci->dmin, ci->hydro.sorted, sid); */
+
+      /* message("Emergency sort! ci ci->hydro.sorted=%d ci->split=%d", */
+      /*         ci->hydro.sorted, ci->split); */
+
+      runner_do_hydro_sort(r, ci, (1 << sid), 0, 0);
+    }
     if (!(cj->hydro.sorted & (1 << sid)) ||
-        cj->hydro.dx_max_sort_old > cj->dmin * space_maxreldx)
-      error(
-          "Interacting unsorted cell. cj->hydro.dx_max_sort_old=%e cj->dmin=%e "
-          "cj->sorted=%d sid=%d",
-          cj->hydro.dx_max_sort_old, cj->dmin, cj->hydro.sorted, sid);
+        cj->hydro.dx_max_sort_old > cj->dmin * space_maxreldx) {
+
+      /* error( */
+      /*     "Interacting unsorted cell. cj->hydro.dx_max_sort_old=%e
+       * cj->dmin=%e " */
+      /*     "cj->sorted=%d sid=%d", */
+      /*     cj->hydro.dx_max_sort_old, cj->dmin, cj->hydro.sorted, sid); */
+
+      /* message("Emergency sort! cj cj->hydro.sorted=%d cj->split=%d", */
+      /*         cj->hydro.sorted, cj->split); */
+
+      runner_do_hydro_sort(r, cj, (1 << sid), 0, 0);
+    }
 
     /* Compute the interactions. */
     DOPAIR1_BRANCH(r, ci, cj);
@@ -791,7 +806,7 @@ void DOSUB_SELF1(struct runner *r, struct cell *ci, int gettimer) {
   if (ci->hydro.count == 0 || !cell_is_starting_hydro(ci, r->e)) return;
 
   /* Recurse? */
-  if (cell_can_recurse_in_self_hydro_task(ci)) {
+  if (cell_can_recurse_in_self_hydro_task1(ci)) {
 
     /* Loop over all progeny. */
     for (int k = 0; k < 8; k++)

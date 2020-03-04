@@ -190,6 +190,18 @@ struct part {
   int num_ngb_force;
 #endif
 
+#ifdef SWIFT_HYDRO_DENSITY_CHECKS
+
+  /*! Exact value of the density field obtained via brute-force loop */
+  float rho_exact;
+
+  /*! Has this particle interacted with any unhibited neighbour? */
+  char inhibited_exact;
+
+  /*! Has this particle been woken up by the limiter? */
+  char limited_part;
+#endif
+
 } SWIFT_STRUCT_ALIGN;
 
 #endif /* SWIFT_GADGET2_HYDRO_PART_H */

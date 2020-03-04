@@ -2325,6 +2325,16 @@ void engine_step(struct engine *e) {
     gravity_exact_force_check(e->s, e, 1e-1);
 #endif
 
+#ifdef SWIFT_HYDRO_DENSITY_CHECKS
+  /* Run the brute-force hydro calculation for some parts */
+  if (e->policy & engine_policy_hydro) hydro_exact_density_compute(e->s, e);
+#endif
+
+#ifdef SWIFT_HYDRO_DENSITY_CHECKS
+  /* Check the accuracy of the hydro calculation */
+  if (e->policy & engine_policy_hydro) hydro_exact_density_check(e->s, e, 1e-2);
+#endif
+
 #ifdef SWIFT_DEBUG_CHECKS
   /* Make sure all woken-up particles have been processed */
   space_check_limiter(e->s);

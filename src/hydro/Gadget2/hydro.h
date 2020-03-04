@@ -486,6 +486,12 @@ __attribute__((always_inline)) INLINE static void hydro_init_part(
   p->density.rot_v[0] = 0.f;
   p->density.rot_v[1] = 0.f;
   p->density.rot_v[2] = 0.f;
+
+#ifdef SWIFT_HYDRO_DENSITY_CHECKS
+  p->rho_exact = 0.f;
+  p->inhibited_exact = 0;
+  p->limited_part = 0;
+#endif
 }
 
 /**

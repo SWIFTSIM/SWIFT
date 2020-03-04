@@ -961,8 +961,9 @@ void runner_do_ghost(struct runner *r, struct cell *c, int timer) {
   const int max_smoothing_iter = e->hydro_properties->max_smoothing_iterations;
   int redo = 0, count = 0;
 
-  /* Running value of the maximal smoothing length */
-  double h_max = c->hydro.h_max;
+  /* Running values of the maximal smoothing lengths */
+  float h_max = c->hydro.h_max;
+  float h_max_active = c->hydro.h_max_active;
 
   TIMER_TIC;
 
@@ -978,6 +979,7 @@ void runner_do_ghost(struct runner *r, struct cell *c, int timer) {
 
         /* Update h_max */
         h_max = max(h_max, c->progeny[k]->hydro.h_max);
+        h_max_active = max(h_max_active, c->progeny[k]->hydro.h_max_active);
       }
     }
   } else {
@@ -1245,8 +1247,9 @@ void runner_do_ghost(struct runner *r, struct cell *c, int timer) {
 
         /* We now have a particle whose smoothing length has converged */
 
-        /* Check if h_max is increased */
+        /* Check if h_max has increased */
         h_max = max(h_max, p->h);
+        h_max_active = max(h_max_active, p->h);
 
 #ifdef EXTRA_HYDRO_LOOP
 
@@ -1365,12 +1368,26 @@ void runner_do_ghost(struct runner *r, struct cell *c, int timer) {
 
   /* Update h_max */
   c->hydro.h_max = h_max;
+  c->hydro.h_max_active = h_max_active;
+
+#ifdef SWIFT_DEBUG_CHECKS
+  for (int i = 0; i < c->hydro.count; ++i) {
+    const struct part *p = &c->hydro.parts[i];
+    const float h = c->hydro.parts[i].h;
+    if (part_is_inhibited(p, e)) continue;
+
+    if (h > c->hydro.h_max) error("Particle has h larger than h_max");
+    if (part_is_active(p, e) && h > c->hydro.h_max_active)
+      error("Active particle has h larger than h_max_active");
+  }
+#endif
 
   /* The ghost may not always be at the top level.
    * Therefore we need to update h_max between the super- and top-levels */
   if (c->hydro.ghost) {
     for (struct cell *tmp = c->parent; tmp != NULL; tmp = tmp->parent) {
-      atomic_max_d(&tmp->hydro.h_max, h_max);
+      atomic_max_f(&tmp->hydro.h_max, h_max);
+      atomic_max_f(&tmp->hydro.h_max_active, h_max_active);
     }
   }
 
