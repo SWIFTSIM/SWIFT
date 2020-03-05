@@ -86,7 +86,7 @@ const double const_electron_volt_cgs = 1.602176634e-12;
 const double const_electron_mass_cgs = 9.1093837015e-28;
 
 /*! Mass of the proton [g] */
-const double const_proton_mass_cgs = 1.67262192369 - 24;
+const double const_proton_mass_cgs = 1.67262192369e-24;
 
 /*! Tropical year [s] */
 const double const_year_cgs = 3.15569251e7;
