@@ -381,7 +381,7 @@ void engine_repartition_trigger(struct engine *e) {
                       balance, abs_trigger);
             } else {
               message(
-                  "trigger fraction %.3f =< %.3f would note have repartitioned",
+                  "trigger fraction %.3f =< %.3f would not have repartitioned",
                   balance, abs_trigger);
             }
         }
