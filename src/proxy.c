@@ -899,6 +899,7 @@ void proxy_free_particle_buffers(struct proxy *p) {
 
   if (p->size_parts_out > proxy_buffinit) {
     swift_free("parts_out", p->parts_out);
+    swift_free("xparts_out", p->xparts_out);
     p->size_parts_out = proxy_buffinit;
     if ((p->parts_out = (struct part *)swift_malloc(
              "parts_out", sizeof(struct part) * p->size_parts_out)) == NULL)
@@ -909,6 +910,7 @@ void proxy_free_particle_buffers(struct proxy *p) {
   }
   if (p->size_parts_in > proxy_buffinit) {
     swift_free("parts_in", p->parts_in);
+    swift_free("xparts_in", p->xparts_in);
     p->size_parts_in = proxy_buffinit;
     if ((p->parts_in = (struct part *)swift_malloc(
              "parts_in", sizeof(struct part) * p->size_parts_in)) == NULL)
