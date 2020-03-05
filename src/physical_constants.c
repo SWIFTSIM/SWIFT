@@ -25,6 +25,7 @@
 #include "physical_constants.h"
 
 /* Local headers. */
+#include "common_io.h"
 #include "error.h"
 #include "physical_constants_cgs.h"
 #include "restart.h"
@@ -163,6 +164,98 @@ void phys_const_print(const struct phys_const *internal_const) {
   message("%25s = %e", "Solar mass", internal_const->const_solar_mass);
   message("%25s = %e", "km/s/Mpc", internal_const->const_reduced_hubble);
 }
+
+#if defined(HAVE_HDF5)
+
+/**
+ * @brief Write the physical constants to given HDF5 file.
+ *
+ * We write the constants both in the CGS and internal systems of units.
+ *
+ * @param h_file The opened hdf5 file.
+ * @param p The physical constants.
+ */
+void phys_const_print_snapshot(hid_t h_file, const struct phys_const *p) {
+
+  const hid_t h_grp = H5Gcreate(h_file, "/PhysicalConstants", H5P_DEFAULT,
+                                H5P_DEFAULT, H5P_DEFAULT);
+  if (h_grp < 0) error("Error while creating physical constants group");
+
+#ifdef SWIFT_USE_GADGET2_PHYSICAL_CONSTANTS
+  io_write_attribute_s(h_grp, "Constants choice", "Gadget-2 defaults");
+#else
+  io_write_attribute_s(h_grp, "Constants choice", "SWIFT defaults (PDG 2017)");
+#endif
+
+  /* Start by writing all the constants in CGS */
+  const hid_t h_grp_cgs =
+      H5Gcreate(h_grp, "CGS", H5P_DEFAULT, H5P_DEFAULT, H5P_DEFAULT);
+  if (h_grp_cgs < 0) error("Error while creating CGS group");
+
+  io_write_attribute_d(h_grp_cgs, "newton_G", const_newton_G_cgs);
+  io_write_attribute_d(h_grp_cgs, "speed_light_c", const_speed_light_c_cgs);
+  io_write_attribute_d(h_grp_cgs, "planck_h", const_planck_h_cgs);
+  io_write_attribute_d(h_grp_cgs, "planck_hbar", const_planck_hbar_cgs);
+  io_write_attribute_d(h_grp_cgs, "boltzmann_k", const_boltzmann_k_cgs);
+  io_write_attribute_d(h_grp_cgs, "avogadro_number", const_avogadro_number_cgs);
+  io_write_attribute_d(h_grp_cgs, "thomson_cross_section",
+                       const_thomson_cross_section_cgs);
+  io_write_attribute_d(h_grp_cgs, "stefan_boltzmann",
+                       const_stefan_boltzmann_cgs);
+  io_write_attribute_d(h_grp_cgs, "electron_charge", const_electron_charge_cgs);
+  io_write_attribute_d(h_grp_cgs, "electron_volt", const_electron_volt_cgs);
+  io_write_attribute_d(h_grp_cgs, "electron_mass", const_electron_mass_cgs);
+  io_write_attribute_d(h_grp_cgs, "proton_mass", const_proton_mass_cgs);
+  io_write_attribute_d(h_grp_cgs, "year", const_year_cgs);
+  io_write_attribute_d(h_grp_cgs, "astronomical_unit",
+                       const_astronomical_unit_cgs);
+  io_write_attribute_d(h_grp_cgs, "parsec", const_parsec_cgs);
+  io_write_attribute_d(h_grp_cgs, "light_year", const_light_year_cgs);
+  io_write_attribute_d(h_grp_cgs, "solar_mass", const_solar_mass_cgs);
+  io_write_attribute_d(h_grp_cgs, "earth_mass", const_earth_mass_cgs);
+  io_write_attribute_d(h_grp_cgs, "T_CMB_0", const_T_CMB_0_cgs);
+  io_write_attribute_d(h_grp_cgs, "primordial_He_fraction",
+                       const_primordial_He_fraction_cgs);
+  io_write_attribute_d(h_grp_cgs, "reduced_hubble", const_reduced_hubble_cgs);
+
+  H5Gclose(h_grp_cgs);
+
+  /* Now write them in internal units */
+
+  const hid_t h_grp_int = H5Gcreate1(h_grp, "InternalUnits", 0);
+  if (h_grp_int < 0) error("Error while creating internal units group");
+
+  io_write_attribute_d(h_grp_int, "newton_G", p->const_newton_G);
+  io_write_attribute_d(h_grp_int, "speed_light_c", p->const_speed_light_c);
+  io_write_attribute_d(h_grp_int, "planck_h", p->const_planck_h);
+  io_write_attribute_d(h_grp_int, "planck_hbar", p->const_planck_hbar);
+  io_write_attribute_d(h_grp_int, "boltzmann_k", p->const_boltzmann_k);
+  io_write_attribute_d(h_grp_int, "avogadro_number", p->const_avogadro_number);
+  io_write_attribute_d(h_grp_int, "thomson_cross_section",
+                       p->const_thomson_cross_section);
+  io_write_attribute_d(h_grp_int, "stefan_boltzmann",
+                       p->const_stefan_boltzmann);
+  io_write_attribute_d(h_grp_int, "electron_charge", p->const_electron_charge);
+  io_write_attribute_d(h_grp_int, "electron_volt", p->const_electron_volt);
+  io_write_attribute_d(h_grp_int, "electron_mass", p->const_electron_mass);
+  io_write_attribute_d(h_grp_int, "proton_mass", p->const_proton_mass);
+  io_write_attribute_d(h_grp_int, "year", p->const_year);
+  io_write_attribute_d(h_grp_int, "astronomical_unit",
+                       p->const_astronomical_unit);
+  io_write_attribute_d(h_grp_int, "parsec", p->const_parsec);
+  io_write_attribute_d(h_grp_int, "light_year", p->const_light_year);
+  io_write_attribute_d(h_grp_int, "solar_mass", p->const_solar_mass);
+  io_write_attribute_d(h_grp_int, "earth_mass", p->const_earth_mass);
+  io_write_attribute_d(h_grp_int, "T_CMB_0", p->const_T_CMB_0);
+  io_write_attribute_d(h_grp_int, "primordial_He_fraction",
+                       p->const_primordial_He_fraction);
+  io_write_attribute_d(h_grp_int, "reduced_hubble", p->const_reduced_hubble);
+
+  H5Gclose(h_grp_int);
+
+  H5Gclose(h_grp);
+}
+#endif
 
 /**
  * @brief Write a phys_const struct to the given FILE as a stream of bytes.

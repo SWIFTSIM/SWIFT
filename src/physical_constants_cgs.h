@@ -110,7 +110,7 @@ const double const_light_year_cgs = 9.46053e17;
 
 /*! Mass of the Sun [g] */
 const double const_solar_mass_cgs = 1.989e33;
-#error aa
+
 #else
 
 /*! Mass of the Sun [g] */

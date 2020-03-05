@@ -106,6 +106,11 @@ void phys_const_init(const struct unit_system* us, struct swift_params* params,
 
 void phys_const_print(const struct phys_const* internal_const);
 
+#if defined(HAVE_HDF5)
+void phys_const_print_snapshot(hid_t h_file,
+                               const struct phys_const* internal_const);
+#endif
+
 /* Dump/restore. */
 void phys_const_struct_dump(const struct phys_const* internal_const,
                             FILE* stream);
