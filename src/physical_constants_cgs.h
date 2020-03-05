@@ -40,8 +40,17 @@
  * The primordial Helium fraction is the value obtained by WMAP7.
  */
 
+#ifdef SWIFT_USE_GADGET2_PHYSICAL_CONSTANTS
+
+/*! Newton's gravitation constant [g^-1 cm^3 s^-2] */
+const double const_newton_G_cgs = 6.672e-8;
+
+#else
+
 /*! Newton's gravitation constant [g^-1 cm^3 s^-2] */
 const double const_newton_G_cgs = 6.67408e-8;
+
+#endif
 
 /*! Speed of light in vacuum [cm s^-1] */
 const double const_speed_light_c_cgs = 2.99792458e10;
@@ -82,14 +91,32 @@ const double const_year_cgs = 3.15569252e7;
 /*! Astronomical unit [cm] */
 const double const_astronomical_unit_cgs = 1.49597870700e13;
 
+#ifdef SWIFT_USE_GADGET2_PHYSICAL_CONSTANTS
+
+/*! Parsec [cm] */
+const double const_parsec_cgs = 3.085678e18;
+
+#else
+
 /*! Parsec [cm] */
 const double const_parsec_cgs = 3.08567758149e18;
+
+#endif
 
 /*! Light-year [cm] */
 const double const_light_year_cgs = 9.46053e17;
 
+#ifdef SWIFT_USE_GADGET2_PHYSICAL_CONSTANTS
+
+/*! Mass of the Sun [g] */
+const double const_solar_mass_cgs = 1.989e33;
+#error aa
+#else
+
 /*! Mass of the Sun [g] */
 const double const_solar_mass_cgs = 1.98848e33;
+
+#endif
 
 /*! Mass of the Earth [g] */
 const double const_earth_mass_cgs = 5.9724e27;
