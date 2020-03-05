@@ -140,6 +140,11 @@ void phys_const_init(const struct unit_system *us, struct swift_params *params,
   internal_const->const_reduced_hubble =
       const_reduced_hubble_cgs /
       units_general_cgs_conversion_factor(us, dimension_reduced_hubble);
+
+  const float dimension_alphaB[5] = {0, 3, -1, 0, 0}; /* [cm^3 s^-1] */
+  internal_const->const_caseb_recomb =
+      const_caseb_recomb_cgs /
+      units_general_cgs_conversion_factor(us, dimension_alphaB);
 }
 
 /**
@@ -217,6 +222,7 @@ void phys_const_print_snapshot(hid_t h_file, const struct phys_const *p) {
   io_write_attribute_d(h_grp_cgs, "primordial_He_fraction",
                        const_primordial_He_fraction_cgs);
   io_write_attribute_d(h_grp_cgs, "reduced_hubble", const_reduced_hubble_cgs);
+  io_write_attribute_d(h_grp_cgs, "caseb_recomb", const_caseb_recomb_cgs);
 
   H5Gclose(h_grp_cgs);
 
@@ -250,6 +256,7 @@ void phys_const_print_snapshot(hid_t h_file, const struct phys_const *p) {
   io_write_attribute_d(h_grp_int, "primordial_He_fraction",
                        p->const_primordial_He_fraction);
   io_write_attribute_d(h_grp_int, "reduced_hubble", p->const_reduced_hubble);
+  io_write_attribute_d(h_grp_int, "caseb_recomb", p->const_caseb_recomb);
 
   H5Gclose(h_grp_int);
 

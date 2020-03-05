@@ -38,6 +38,9 @@
  * http://pdg.lbl.gov/2017/reviews/rpp2017-rev-astrophysical-constants.pdf
  *
  * The primordial Helium fraction is the value obtained by WMAP7.
+ *
+ * The case B recombination coefficient is taken from
+ * Pequignot, Petitjean & Boisson, 1991, A&A, 251, 680
  */
 
 #ifdef SWIFT_USE_GADGET2_PHYSICAL_CONSTANTS
@@ -130,5 +133,8 @@ const double const_primordial_He_fraction_cgs = 0.248;
 /*! Reduced Hubble constant units (i.e. H_0 / h == 100 km / s / Mpc in CGS)
  * [s^-1] */
 const double const_reduced_hubble_cgs = 3.2407792894458e-18;
+
+/*! Case B recombination coefficient for hydrogen at 10^4 K [cm^3 s^-1] */
+const double const_caseb_recomb_cgs = 2.6e-13;
 
 #endif /* SWIFT_PHYSICAL_CONSTANTS_CGS_H */
