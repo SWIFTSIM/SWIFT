@@ -375,7 +375,7 @@ void engine_repartition_trigger(struct engine *e) {
 
         } else {
           /* Not repartitioning, would that have been done otherwise? */
-          if (e->verbose)
+          if (e->verbose) {
             if (balance > abs_trigger) {
               message("trigger fraction %.3f > %.3f would have repartitioned",
                       balance, abs_trigger);
@@ -384,6 +384,7 @@ void engine_repartition_trigger(struct engine *e) {
                   "trigger fraction %.3f =< %.3f would not have repartitioned",
                   balance, abs_trigger);
             }
+          }
         }
 
         /* Keep logs of all CPU times and resident memory size for debugging
