@@ -333,7 +333,6 @@ EAGLECooling:
   He_reion_z_centre:         3.5               # Redshift of the centre of the Helium re-ionization Gaussian
   He_reion_z_sigma:          0.5               # Spread in redshift of the  Helium re-ionization Gaussian
   He_reion_eV_p_H:           2.0               # Energy inject by Helium re-ionization in electron-volt per Hydrogen atom
-  newton_integration:        0                 # (Optional) Set to 1 to use the Newton-Raphson method to solve the xplicit cooling problem.
   Ca_over_Si_in_solar:       1.                # (Optional) Ratio of Ca/Si to use in units of solar. If set to 1, the code uses [Ca/Si] = 0, i.e. Ca/Si = 0.0941736.
   S_over_Si_in_solar:        1.                # (Optional) Ratio of S/Si to use in units of solar. If set to 1, the code uses [S/Si] = 0, i.e. S/Si = 0.6054160.
   
