@@ -608,7 +608,7 @@ void get_cooling_table(struct cooling_function_data *restrict cooling,
     const int local_z_index = z_index - low_z_index;
 
 #ifdef SWIFT_DEBUG_CHECKS
-    if (local_z_index >= eagle_cooling_N_loaded_redshifts)
+    if (local_z_index >= qla_cooling_N_loaded_redshifts)
       error("Reading invalid number of tables along z axis.");
 #endif
 
