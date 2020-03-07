@@ -424,9 +424,11 @@ pc^2} \right)^{-n} \times \left(\frac{\gamma}{G_{\rm N}}f_gP\right)^{(n-1)/2}`,
 where :math:`n` is the exponent of the Kennicutt-Schmidt relation (typically
 :math:`n=1.4`) and :math:`A` is the normalisation of the law (typically
 :math:`A=1.515\times10^{-4} {\rm M_\odot}~{\rm yr^{-1}}~{\rm kpc^{-2}}` for a
-Cabrier IMF). :math:`m_g` is the gas particle mass, :math:`\gamma` is the
+Chabrier IMF). :math:`m_g` is the gas particle mass, :math:`\gamma` is the
 adiabatic index, :math:`f_g` the gas fraction of the disk and :math:`P` the
-total pressure of the gas including any subgrid turbulent terms.
+total pressure of the gas including any subgrid turbulent terms. The star
+formation rate of the gas particles is stored in the particles and written to
+the snapshots.
 
 Once a gas particle has computed its star formation rate, we compute the
 probability that this particle turns into a star using :math:`Prob=
@@ -434,7 +436,7 @@ probability that this particle turns into a star using :math:`Prob=
 and convert the gas particle into a star or not depending on our luck.
 
 The density threshold itself has a metallicity dependence. We use the *smoothed*
-metallicty (metal mass fraction) of the gas (See :ref:`EAGLE_chemical_tracers`)
+metallicity (metal mass fraction) of the gas (See :ref:`EAGLE_chemical_tracers`)
 and apply the relation :math:`n^*_{\rm H} = n_{\rm H,norm}\left(\frac{Z_{\rm
 smooth}}{Z_0}\right)^{n_{\rm Z}}`, alongside a maximal value. The model is
 designed such that star formation threshold decreases with increasing
@@ -445,10 +447,10 @@ the figure below.
     :width: 400px
     :align: center
     :figclass: align-center
-    :alt: Metal-dependance of the threshold for star formation in the
+    :alt: Metal-dependence of the threshold for star formation in the
 	  EAGLE model.
 
-    The dependency of the SF threshold density on the metallicty of the gas
+    The dependency of the SF threshold density on the metallicity of the gas
     in the EAGLE model (black line). The function is described by the four
     parameters indicated on the figure. These are the slope of the
     dependency, its position on the metallicity-axis and normalisation
@@ -485,7 +487,7 @@ the relevant YAML parameters defining it is shown on the figure below.
     ones assumed in the reference EAGLE model.
 
 In EAGLE, an entropy floor is already in use, so that the pressure of the gas is
-mentained high enough to prvent fragmentation of the gas. In such a scenario,
+maintained high enough to prevent fragmentation of the gas. In such a scenario,
 there is no need for the internal EoS described above. And, of course, in such a
 scenario, the gas can have a pressure above the floor. The code hence uses
 :math:`P = \max(P_{\rm gas}, P_{\rm floor}, P_{\rm EoS})`.
@@ -515,6 +517,25 @@ The code applying this star formation law is located in the directory
 ``src/star_formation/EAGLE/``. To simplify things, all constants are converted
 to the internal system of units upon reading the parameter file.
 
+Snapshots contain an extra field to store the star formation rates of the gas
+particles. If a particle was star forming in the past but isn't any more, the
+field will contain negative number either corresponding to the last
+scale-factor where the particle was star forming (cosmological runs) or the last
+time where it was star forming (non-cosmological runs).
+
++------------------------+--------------------------------------+-------------+-------------------------------------+
+| Name                   | Description                          | Units       | Comments                            |
++========================+======================================+=============+=====================================+
+| ``StarFormationRates`` | | Star formation rates of the gas if | [U_M / U_t] | | The quantity is not drifted so    |
+|                        | | star forming. Negative numbers     |             | | corresponds to the rate the last  |
+|                        | | indicate the last time the gas was |             | | time the particle was active.     |
+|                        | | star-forming.                      |             | |                                   |
++------------------------+--------------------------------------+-------------+-------------------------------------+
+
+Note that the star formation rates are expressed in internal units and not in
+solar masses per year as is the case in many other codes. This choice ensures
+consistency between all the fields written to the snapshots.
+
 For a normal EAGLE run, that section of the parameter file reads:
 
 .. code:: YAML
@@ -527,8 +548,8 @@ For a normal EAGLE run, that section of the parameter file reads:
      KS_normalisation:                  1.515e-4  # Normalization of the Kennicutt-Schmidt law in Msun / kpc^2 / yr.
      KS_exponent:                       1.4       # Exponent of the Kennicutt-Schmidt law.
      min_over_density:                  57.7      # Over-density above which star-formation is allowed.
-     KS_high_density_threshold_H_p_cm3: 1e3       # Hydrogen number density above which the Kennicut-Schmidt law changes slope in Hydrogen atoms per cm^3.
-     KS_high_density_exponent:          2.0       # Slope of the Kennicut-Schmidt law above the high-density threshold.
+     KS_high_density_threshold_H_p_cm3: 1e3       # Hydrogen number density above which the Kennicutt-Schmidt law changes slope in Hydrogen atoms per cm^3.
+     KS_high_density_exponent:          2.0       # Slope of the Kennicutt-Schmidt law above the high-density threshold.
      EOS_entropy_margin_dex:            0.5       # (Optional) Logarithm base 10 of the maximal entropy above the EOS at which stars can form.
      KS_max_density_threshold_H_p_cm3:  1e5       # (Optional) Hydrogen number density above which a particle gets automatically turned into a star in Hydrogen atoms per cm^3.
      threshold_norm_H_p_cm3:            0.1       # Normalisation of the metal-dependant density threshold for star formation in Hydrogen atoms per cm^3.
