@@ -11,8 +11,8 @@ the parameters and values output in the snapshots.
 
 .. _EAGLE_entropy_floors:
 
-Entropy floors
-~~~~~~~~~~~~~~
+Gas entropy floors
+~~~~~~~~~~~~~~~~~~
 
 The gas particles in the EAGLE model are prevented from cooling below a
 certain temperature. The temperature limit depends on the density of the
@@ -327,13 +327,10 @@ along the redshift dimension then becomes a trivial operation.
 
 The cooling itself is performed using an implicit scheme (see the theory
 documents) which for small values of the cooling rates is solved explicitly. For
-larger values we use a bisection scheme. Users can alternatively use a
-Newton-Raphson method that in some cases runs faster than the bisection
-method. If the Newton-Raphson method does not converge after a few steps, the
-code reverts to a bisection scheme, that is guaranteed to converge. The cooling
-rate is added to the calculated change in energy over time from the other
-dynamical equations. This is different from other commonly used codes in the
-literature where the cooling is done instantaneously.
+larger values we use a bisection scheme.  The cooling rate is added to the
+calculated change in energy over time from the other dynamical equations. This
+is different from other commonly used codes in the literature where the cooling
+is done instantaneously.
 
 We note that the EAGLE cooling model does not impose any restriction on the
 particles' individual time-steps. The cooling takes place over the time span
@@ -362,9 +359,8 @@ the case with cooling switched on.
 
 The cooling model is driven by a small number of parameter files in the
 `EAGLECooling` section of the YAML file. These are the re-ionization parameters,
-the path to the tables and optionally the modified abundances of `Ca` and `S` as
-well as the flag to attempt using the Newton-Raphson scheme to solve the
-implicit problem. A valid section of the YAML file looks like:
+the path to the tables and optionally the modified abundances of `Ca`
+and `S`. A valid section of the YAML file looks like:
 
 .. code:: YAML
 
@@ -383,7 +379,6 @@ And the optional parameters are:
    EAGLECooling:
      Ca_over_Si_in_solar:       1.0 # (Optional) Value of the Calcium mass abundance ratio to solar in units of the Silicon ratio to solar. Default value: 1.
      S_over_Si_in_solar:        1.0 # (Optional) Value of the Sulphur mass abundance ratio to solar in units of the Silicon ratio to solar. Default value: 1.
-     newton_integration:        0   # (Optional) Set to 1 to use the Newton-Raphson scheme for the explicit cooling problem.
 
 .. _EAGLE_tracers:
      
