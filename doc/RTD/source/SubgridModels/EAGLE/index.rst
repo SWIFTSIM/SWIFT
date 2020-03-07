@@ -16,7 +16,7 @@ Gas entropy floors
 
 The gas particles in the EAGLE model are prevented from cooling below a
 certain temperature. The temperature limit depends on the density of the
-particles. Two floors are used in conjonction. Both are implemented as
+particles. Two floors are used in conjunction. Both are implemented as
 polytropic "equations of states":math:`P = P_c
 \left(\rho/\rho_c\right)^\gamma` (all done in physical coordinates), with
 the constants derived from the user input given in terms of temperature and
@@ -25,10 +25,10 @@ is located in the directory ``src/entropy_floor/EAGLE/`` and the floor
 is applied in the drift and kick operations of the hydro scheme. It is
 also used in some of the other subgrid schemes.
 
-The first limit, labelled as ``Cool``, is typically used to prevent
+The first limit, labeled as ``Cool``, is typically used to prevent
 low-density high-metallicity particles to cool below the warm phase because
 of over-cooling induced by the absence of metal diffusion. This limit plays
-only a small role in practice. The second limit, labelled as ``Jeans``, is
+only a small role in practice. The second limit, labeled as ``Jeans``, is
 used to prevent the fragmentation of high-density gas into clumps that
 cannot be resolved by the coupled hydro+gravity solver. The two limits are
 sketched on the following figure.
@@ -89,7 +89,7 @@ For a normal EAGLE run, that section of the parameter file reads:
 
 SWIFT will convert the temperature normalisations and Hydrogen number
 density thresholds into internal energies and densities respectively
-assuming a neutral gas with primoridal abundance pattern. This implies
+assuming a neutral gas with primordial abundance pattern. This implies
 that the floor may not be exactly at the position given in the YAML
 file if the gas has different properties. This is especially the case
 for the temperature limit which will often be lower than the imposed
@@ -97,7 +97,7 @@ floor by a factor :math:`\frac{\mu_{\rm neutral}}{\mu_{ionised}}
 \approx \frac{1.22}{0.59} \approx 2` due to the different ionisation
 states of the gas.
 
-Recall that we additionally impose an absolute minium temperature at all
+Recall that we additionally impose an absolute minimum temperature at all
 densities with a value provided in the :ref:`Parameters_SPH` section of the parameter
 file. This minimal temperature is typically set to 100 Kelvin.
 
@@ -197,15 +197,15 @@ In the snapshots, we output for each gas and star particle:
 
 The stars will lose mass over their lifetime (up to ~45%). The fractions will
 remain unchanged but if one is interested in computing an absolute metal mass
-(say) for a star, the ``InitialMass`` (see the section
+(say) for a star, the ``InitialMasses`` (see the section
 :ref:`EAGLE_star_formation` below) of the star must be used.
 
 The chemistry model only requires a small number of parameters to be specified
 in the `EAGLEChemistry` section of the YAML file. These are the initial values
 of the metallicity and element mass fractions. These are then applied at the
-start of a simulation to *all* the *gas* particles. All 9 traced elements have
-to be specified An example section, for primordial abundances (typical for a
-cosmological run), is:
+start of a simulation to *all* the gas and star particles. All 9 traced elements
+have to be specified An example section, for primordial abundances (typical for
+a cosmological run), is:
 
 .. code:: YAML
 
@@ -336,7 +336,7 @@ We note that the EAGLE cooling model does not impose any restriction on the
 particles' individual time-steps. The cooling takes place over the time span
 given by the other conditions (e.g the Courant condition).
 
-Finelly, the cooling module also provides a function to compute the temperature
+Finally, the cooling module also provides a function to compute the temperature
 of a given gas particle based on its density, internal energy, abundances and
 the current redshift. This temperature is the one used to compute the cooling
 rate from the tables and similarly to the cooling rates, they assume that the
@@ -366,7 +366,7 @@ and `S`. A valid section of the YAML file looks like:
 
    EAGLECooling:
      dir_name:     /path/to/the/Wiersma/tables/directory # Absolute or relative path
-     H_reion_z:            11.5      # Redhift of Hydrogen re-ionization
+     H_reion_z:            11.5      # Redshift of Hydrogen re-ionization
      H_reion_ev_p_H:        2.0      # Energy injected in eV per Hydrogen atom for Hydrogen re-ionization.
      He_reion_z_centre:     3.5      # Centre of the Gaussian used for Helium re-ionization
      He_reion_z_sigma:      0.5      # Width of the Gaussian used for Helium re-ionization
@@ -390,7 +390,7 @@ about their evolution. These are updated for a given particle every time it is
 active. The EAGLE tracers module is located in the directory
 ``src/tracers/EAGLE/``. 
 
-In the EAGLE model, we trace the maximal tempearature a particle has reached and
+In the EAGLE model, we trace the maximal temperature a particle has reached and
 the time at which this happened. When a star is formed (see the section
 :ref:`EAGLE_star_formation` below), it inherits all the tracer values of its parent
 gas particle.  There are no parameters to the model but two values are added to
@@ -399,7 +399,7 @@ the snapshots for each gas and star particle:
 +----------------------------------------+---------------------------------------+-----------+-----------------------------+
 | Name                                   | Description                           | Units     | Comments                    |
 +========================================+=======================================+===========+=============================+
-| | ``MaximalTemperatures``              | | Mximal temperature reached by       | | [U_T]   |                             |
+| | ``MaximalTemperatures``              | | Maximal temperature reached by      | | [U_T]   |                             |
 |                                        | | this particle.                      |           |                             |
 +----------------------------------------+---------------------------------------+-----------+-----------------------------+
 | | ``MaximalTemperaturesScaleFactors``  | | Scale-factor (cosmological runs)    | | [-]     |                             |
