@@ -21,4 +21,4 @@ fi
 ../../swift \
     --cosmology --quick-lyman-alpha \
     --threads=16 --pin \
-    eagle_50.yml
+    qla_50.yml
