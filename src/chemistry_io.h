@@ -27,6 +27,8 @@
 #include "./chemistry/none/chemistry_io.h"
 #elif defined(CHEMISTRY_GEAR)
 #include "./chemistry/GEAR/chemistry_io.h"
+#elif defined(CHEMISTRY_QLA)
+#include "./chemistry/QLA/chemistry_io.h"
 #elif defined(CHEMISTRY_EAGLE)
 #include "./chemistry/EAGLE/chemistry_io.h"
 #else

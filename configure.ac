@@ -1443,7 +1443,7 @@ AC_SUBST([NUMA_INCS])
 # As an example for this, see the call to AC_ARG_WITH for cooling.
 AC_ARG_WITH([subgrid],
 	[AS_HELP_STRING([--with-subgrid=<subgrid>],
-		[Master switch for subgrid methods. Inexperienced user should start from here @<:@none, GEAR, EAGLE default: none@:>@]
+		[Master switch for subgrid methods. Inexperienced user should start here. Options are: @<:@none, GEAR, QLA, EAGLE default: none@:>@]
 	)],
 	[with_subgrid="$withval"],
 	[with_subgrid=none]
@@ -1476,6 +1476,18 @@ case "$with_subgrid" in
 	with_subgrid_black_holes=none
   # GEAR's order is not used anymore
 	with_subgrid_task_order=none
+	enable_fof=no
+   ;;
+   QLA)
+	with_subgrid_cooling=QLA
+	with_subgrid_chemistry=QLA
+	with_subgrid_tracers=none
+	with_subgrid_entropy_floor=QLA
+	with_subgrid_stars=none
+	with_subgrid_star_formation=QLA
+	with_subgrid_feedback=none
+	with_subgrid_black_holes=none
+	with_subgrid_task_order=default
 	enable_fof=no
    ;;
    EAGLE)
@@ -1810,6 +1822,9 @@ case "$with_cooling" in
       primordial_chemistry=${with_cooling:8}
       AC_DEFINE_UNQUOTED([COOLING_GRACKLE_MODE], [$primordial_chemistry], [Grackle chemistry network])
    ;;
+   QLA)
+      AC_DEFINE([COOLING_QLA], [1], [Cooling following the Quick-Lyman-alpha model])
+   ;;
    EAGLE)
       AC_DEFINE([COOLING_EAGLE], [1], [Cooling following the EAGLE model])
    ;;
@@ -1844,6 +1859,9 @@ case "$with_chemistry" in
       AC_DEFINE([CHEMISTRY_GEAR], [1], [Chemistry taken from the GEAR model])
       number_element=${with_chemistry:5}
       AC_DEFINE_UNQUOTED([GEAR_CHEMISTRY_ELEMENT_COUNT], [$number_element], [Number of element to follow])
+   ;;
+   QLA)
+      AC_DEFINE([CHEMISTRY_QLA], [1], [Chemistry taken from the Quick-Lyman-alpha model])
    ;;
    EAGLE)
       AC_DEFINE([CHEMISTRY_EAGLE], [1], [Chemistry taken from the EAGLE model])
@@ -2083,6 +2101,9 @@ case "$with_entropy_floor" in
    none)
       AC_DEFINE([ENTROPY_FLOOR_NONE], [1], [No entropy floor])
    ;;
+   QLA)
+      AC_DEFINE([ENTROPY_FLOOR_QLA], [1], [Quick Lyman-alpha entropy floor])
+   ;;
    EAGLE)
       AC_DEFINE([ENTROPY_FLOOR_EAGLE], [1], [EAGLE entropy floor])
    ;;
@@ -2140,6 +2161,9 @@ case "$with_star_formation" in
    none)
       AC_DEFINE([STAR_FORMATION_NONE], [1], [No star formation])
    ;;
+   QLA)
+      AC_DEFINE([STAR_FORMATION_QLA], [1], [Quick Lyman-alpha star formation model)])
+   ;;
    EAGLE)
       AC_DEFINE([STAR_FORMATION_EAGLE], [1], [EAGLE star formation model (Schaye and Dalla Vecchia (2008))])
    ;;
@@ -2179,6 +2203,9 @@ AC_SUBST([GIT_CMD])
 # Make the documentation. Add conditional to handle disable option.
 DX_INIT_DOXYGEN(libswift,doc/Doxyfile,doc/)
 AM_CONDITIONAL([HAVE_DOXYGEN], [test "$ac_cv_path_ac_pt_DX_DOXYGEN" != ""])
+
+# Check if using QLA cooling
+AM_CONDITIONAL([HAVEQLACOOLING], [test $with_cooling = "QLA"])
 
 # Check if using EAGLE cooling
 AM_CONDITIONAL([HAVEEAGLECOOLING], [test $with_cooling = "EAGLE"])
