@@ -83,12 +83,6 @@ struct cooling_function_data {
   /*! Have we already done H reioisation? */
   int H_reion_done;
 
-  /*! Ca over Si abundance divided by the solar ratio for these elements */
-  float Ca_over_Si_ratio_in_solar;
-
-  /*! S over Si abundance divided by the solar ratio for these elements */
-  float S_over_Si_ratio_in_solar;
-
   /*! Redshift of He reionization */
   float He_reion_z_centre;
 

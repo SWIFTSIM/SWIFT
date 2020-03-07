@@ -718,12 +718,6 @@ void cooling_init_backend(struct swift_params *parameter_file,
   cooling->He_reion_heat_cgs =
       parser_get_param_float(parameter_file, "QLACooling:He_reion_eV_p_H");
 
-  /* Optional parameters to correct the abundances */
-  cooling->Ca_over_Si_ratio_in_solar = parser_get_opt_param_float(
-      parameter_file, "QLACooling:Ca_over_Si_in_solar", 1.f);
-  cooling->S_over_Si_ratio_in_solar = parser_get_opt_param_float(
-      parameter_file, "QLACooling:S_over_Si_in_solar", 1.f);
-
   /* Convert H_reion_heat_cgs and He_reion_heat_cgs to cgs
    * (units used internally by the cooling routines). This is done by
    * multiplying by 'eV/m_H' in internal units, then converting to cgs units.
@@ -832,7 +826,9 @@ void cooling_restore_tables(struct cooling_function_data *cooling,
  */
 void cooling_print_backend(const struct cooling_function_data *cooling) {
 
-  message("Cooling function is 'Quick Lyman-alpha (EAGLE with primordial Z)'.");
+  message(
+      "Cooling function is 'Quick Lyman-alpha (EAGLE with primordial Z "
+      "only)'.");
 }
 
 /**

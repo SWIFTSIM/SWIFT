@@ -36,17 +36,17 @@
  *
  * The quick Lyman-alpha chemistry model does not track any elements.
  * We use the primordial H and He to fill in the element abundance
- * array. 
+ * array.
  *
  * We also re-order the elements such that they match the order of the
  * tables. This is [H, He, C, N, O, Ne, Mg, Si, S, Ca, Fe].
- * 
+ *
  * The solar abundances table (from the cooling struct) is arranged as
  * [H, He, C, N, O, Ne, Mg, Si, S, Ca, Fe].
  *
  * @param p Pointer to #part struct.
  * @param cooling #cooling_function_data struct.
- * @param phys_const the physical constants in internal units 
+ * @param phys_const the physical constants in internal units
  * @param ratio_solar (return) Array of ratios to solar abundances.
  */
 __attribute__((always_inline)) INLINE static void abundance_ratio_to_solar(
