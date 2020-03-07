@@ -305,6 +305,12 @@ EAGLEEntropyFloor:
   Cool_temperature_norm_K:         8000      # Temperature of the EAGLE Cool limiter entropy floor at the density threshold expressed in Kelvin.
   Cool_gamma_effective:            1.        # Slope the of the EAGLE Cool limiter entropy floor
 
+# Parameters for the Quick Lyman-alpha floor
+QLAEntropyFloor:
+  density_threshold_H_p_cm3: 0.1       # Physical density above which the entropy floor kicks in expressed in Hydrogen atoms per cm^3.
+  over_density_threshold:    10.       # Overdensity above which the entropy floor can kick in.
+  temperature_norm_K:        8000      # Temperature of the entropy floor at the density threshold expressed in Kelvin.
+
 
 # Parameters related to pressure floors    ----------------------------------------------
 
@@ -335,6 +341,15 @@ EAGLECooling:
   He_reion_eV_p_H:           2.0               # Energy inject by Helium re-ionization in electron-volt per Hydrogen atom
   Ca_over_Si_in_solar:       1.                # (Optional) Ratio of Ca/Si to use in units of solar. If set to 1, the code uses [Ca/Si] = 0, i.e. Ca/Si = 0.0941736.
   S_over_Si_in_solar:        1.                # (Optional) Ratio of S/Si to use in units of solar. If set to 1, the code uses [S/Si] = 0, i.e. S/Si = 0.6054160.
+
+# Quick Lyman-alpha cooling (EAGLE with fixed primoridal Z)
+QLACooling:
+  dir_name:                ./coolingtables/   # Location of the Wiersma+08 cooling tables
+  H_reion_z:               7.5                # Redshift of Hydrogen re-ionization
+  H_reion_eV_p_H:          2.0                # Energy inject by Hydrogen re-ionization in electron-volt per Hydrogen atom
+  He_reion_z_centre:       3.5                # Redshift of the centre of the Helium re-ionization Gaussian
+  He_reion_z_sigma:        0.5                # Spread in redshift of the  Helium re-ionization Gaussian
+  He_reion_eV_p_H:         2.0                # Energy inject by Helium re-ionization in electron-volt per Hydrogen atom
   
 # Cooling with Grackle 3.0
 GrackleCooling:
@@ -391,6 +406,10 @@ EAGLEStarFormation:
   threshold_Z0:                      0.002     # Reference metallicity (metal mass fraction) for the metal-dependant threshold for star formation.
   threshold_slope:                   -0.64     # Slope of the metal-dependant star formation threshold
   threshold_max_density_H_p_cm3:     10.0      # Maximal density of the metal-dependant density threshold for star formation in Hydrogen atoms per cm^3.  
+
+# Quick Lyman-alpha star formation parameters
+QLAStarFormation:
+  over_density:              1000      # The over-density above which gas particles turn into stars.
 
 # GEAR star formation model (Revaz and Jablonka 2018)
 GEARStarFormation:
