@@ -171,6 +171,7 @@ int main(int argc, char *argv[]) {
   int with_structure_finding = 0;
   int with_logger = 0;
   int with_eagle = 0;
+  int with_qla = 0;
   int verbose = 0;
   int nr_threads = 1;
   int with_verbose_timers = 0;
@@ -238,6 +239,11 @@ int main(int argc, char *argv[]) {
           "equivalent to --hydro --limiter --sync --self-gravity --stars "
           "--star-formation --cooling --feedback --black-holes --fof.",
           NULL, 0, 0),
+      OPT_BOOLEAN(0, "quick-lyman-alpha", &with_qla,
+                  "Run with all the options needed for the quick Lyman-alpha "
+                  "model. This is equivalent to --hydro --self-gravity --stars "
+                  "--star-formation --cooling.",
+                  NULL, 0, 0),
 
       OPT_GROUP("  Control options:\n"),
       OPT_BOOLEAN('a', "pin", &with_aff,
@@ -308,6 +314,13 @@ int main(int argc, char *argv[]) {
     with_feedback = 1;
     with_black_holes = 1;
     with_fof = 1;
+  }
+  if(with_qla) {
+    with_hydro = 1;
+    with_self_gravity = 1;
+    with_stars = 1;
+    with_star_formation = 1;
+    with_cooling = 1;
   }
 
   /* Write output parameter file */

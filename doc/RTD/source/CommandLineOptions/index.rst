@@ -49,7 +49,10 @@ can be found by typing ``./swift -h``:
                                       --limiter --sync --self-gravity --stars 
                                       --star-formation --cooling --feedback 
                                       --black-holes --fof. 
-
+    --quick-lyman-alpha               Run with all the options needed for the 
+                                      quick Lyman-alpha model. This is equivalent 
+                                      to --hydro --self-gravity --stars --star-formation 
+                                      --cooling.
   Control options:
 
     -a, --pin                         Pin runners using processor affinity.
