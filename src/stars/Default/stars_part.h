@@ -58,9 +58,6 @@ struct spart {
   /* Particle cutoff radius. */
   float h;
 
-  /*! Particle time bin */
-  timebin_t time_bin;
-
   struct {
 
     /* Number of neighbours. */
@@ -73,10 +70,13 @@ struct spart {
 
   /* Not used in the default stars */
   union {
-    double birth_time;
+    float birth_time;
 
-    double birth_scale_factor;
+    float birth_scale_factor;
   };
+
+  /*! Particle time bin */
+  timebin_t time_bin;
 
   /*! Feedback structure */
   struct feedback_spart_data feedback_data;
