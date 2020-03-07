@@ -10,7 +10,7 @@ components of the quick Lyman-alpha sub-grid model. We mostly focus on the
 parameters and values output in the snapshots.
 
 Given the nature of the model, no feedback or black holes are used. The star
-formation model is minimalistic and the chemistry/cooling models are limited to
+formation model is minimalist and the chemistry/cooling models are limited to
 primordial abundances.
 
 .. _QLA_entropy_floors:
@@ -49,27 +49,27 @@ For a normal quick Lyman-alpha run, that section of the parameter file reads:
 
   QLAEntropyFloor:
     density_threshold_H_p_cm3: 0.1       # Physical density above which the entropy floor kicks in expressed in Hydrogen atoms per cm^3.
-    over_density_threshold:    10.       # Overdensity above which the entropy floor can kick in.
+    over_density_threshold:    10.       # Over-density above which the entropy floor can kick in.
     temperature_norm_K:        8000      # Temperature of the entropy floor at the density threshold expressed in Kelvin.
 
 
 SWIFT will convert the temperature normalisations and Hydrogen number density
 thresholds into internal energies and densities respectively assuming a neutral
-gas with primoridal abundance pattern. This implies that the floor may not be
+gas with primordial abundance pattern. This implies that the floor may not be
 exactly at the position given in the YAML file if the gas has different
 properties. This is especially the case for the temperature limit which will
 often be lower than the imposed floor by a factor :math:`\frac{\mu_{\rm
 neutral}}{\mu_{ionised}} \approx \frac{1.22}{0.59} \approx 2` due to the
 different ionisation states of the gas.
 
-Recall that we additionally impose an absolute minium temperature at all
+Recall that we additionally impose an absolute minimum temperature at all
 densities with a value provided in the :ref:`Parameters_SPH` section of the
 parameter file. This minimal temperature is typically set to 100 Kelvin.
 
 
 .. _QLA_cooling:
      
-Gas cooling: Wiersma+2009a with fixed primoridal metallicity
+Gas cooling: Wiersma+2009a with fixed primordial metallicity
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
 The gas cooling is based on the redshift-dependent tables of `Wiersma et
@@ -91,7 +91,7 @@ The Wiersma tables containing the cooling rates as a function of redshift,
 Hydrogen number density, Helium fraction (:math:`X_{He} / (X_{He} + X_{H})`) and
 element abundance relative to the solar abundance pattern assumed by the tables
 (see equation 4 in the original paper). Since the quick Lyman-alpha model is
-only of interest for gas outside of haloes, we can make use of primoridal gas
+only of interest for gas outside of haloes, we can make use of primordial gas
 only. This means that the particles do not need to carry a metallicity array or
 any individual element arrays. Another optimization is to ignore the cooling
 rates of the metals in the tables.
@@ -121,7 +121,7 @@ We note that the QLA cooling model does not impose any restriction on the
 particles' individual time-steps. The cooling takes place over the time span
 given by the other conditions (e.g the Courant condition).
 
-Finelly, the cooling module also provides a function to compute the temperature
+Finally, the cooling module also provides a function to compute the temperature
 of a given gas particle based on its density, internal energy, abundances and
 the current redshift. This temperature is the one used to compute the cooling
 rate from the tables and similarly to the cooling rates, they assume that the
@@ -150,7 +150,7 @@ and the path to the tables. A valid section of the YAML file looks like:
 
    QLACooling:
      dir_name:     /path/to/the/Wiersma/tables/directory # Absolute or relative path
-     H_reion_z:            11.5      # Redhift of Hydrogen re-ionization
+     H_reion_z:            11.5      # Redshift of Hydrogen re-ionization
      H_reion_ev_p_H:        2.0      # Energy injected in eV per Hydrogen atom for Hydrogen re-ionization.
      He_reion_z_centre:     3.5      # Centre of the Gaussian used for Helium re-ionization
      He_reion_z_sigma:      0.5      # Width of the Gaussian used for Helium re-ionization
