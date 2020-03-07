@@ -251,6 +251,7 @@ nobase_noinst_HEADERS = align.h approx_math.h atomic.h barrier.h cycle.h error.h
 		 chemistry/QLA/chemistry_iact.h \
 	         entropy_floor/none/entropy_floor.h \
                  entropy_floor/EAGLE/entropy_floor.h \
+                 entropy_floor/QLA/entropy_floor.h \
 		 tracers/none/tracers.h tracers/none/tracers_struct.h \
                  tracers/none/tracers_io.h \
 		 tracers/EAGLE/tracers.h tracers/EAGLE/tracers_struct.h \
