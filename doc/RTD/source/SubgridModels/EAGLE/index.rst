@@ -651,6 +651,9 @@ whilst for the more recent runs we use:
 Supernova feedback: Dalla Vecchia+2012 & Schaye+2015
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
+Supernova and enrichment parameters in the EAGLE-Ref model
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
 .. code:: YAML
 
   # EAGLE stellar enrichment and feedback model
@@ -675,9 +678,8 @@ Supernova feedback: Dalla Vecchia+2012 & Schaye+2015
     SNII_energy_fraction_n_0_H_p_cm3: 1.4588          # Pivot point for the birth density dependance of the SNII energy fraction in cm^-3.
     SNII_energy_fraction_n_Z:         0.8686          # Power-law for the metallicity dependance of the SNII energy fraction.
     SNII_energy_fraction_n_n:         0.8686          # Power-law for the birth density dependance of the SNII energy fraction.
-    SNIa_DTD:                         PowerLaw        # Functional form of the SNIa delay time distribution Two choices: 'PowerLaw' or 'Exponential'.
+    SNIa_DTD:                         Exponential     # Functional form of the SNIa delay time distribution Two choices: 'PowerLaw' or 'Exponential'.
     SNIa_DTD_delay_Gyr:               0.04            # Stellar age after which SNIa start in Gyr (40 Myr corresponds to stars ~ 8 Msun).
-    SNIa_DTD_power_law_norm_p_Msun:   0.0012          # Normalization of the SNIa delay time distribution in the power-law DTD case (in Msun^-1).
     SNIa_DTD_exp_norm_p_Msun:         0.002           # Normalization of the SNIa delay time distribution in the exponential DTD case (in Msun^-1).
     SNIa_DTD_exp_timescale_Gyr:       2.0             # Time-scale of the SNIa delay time distribution in the exponential DTD case (in Gyr).
     SNIa_energy_erg:                 1.0e51           # Energy of one SNIa explosion in ergs.
@@ -690,7 +692,7 @@ Supernova feedback: Dalla Vecchia+2012 & Schaye+2015
     SNII_yield_factor_Nitrogen:       1.0             # (Optional) Correction factor to apply to the Nitrogen yield from the SNII channel.
     SNII_yield_factor_Oxygen:         1.0             # (Optional) Correction factor to apply to the Oxygen yield from the SNII channel.
     SNII_yield_factor_Neon:           1.0             # (Optional) Correction factor to apply to the Neon yield from the SNII channel.
-    SNII_yield_factor_Magnesium:      4.0             # (Optional) Correction factor to apply to the Magnesium yield from the SNII channel.
+    SNII_yield_factor_Magnesium:      2.0             # (Optional) Correction factor to apply to the Magnesium yield from the SNII channel.
     SNII_yield_factor_Silicon:        1.0             # (Optional) Correction factor to apply to the Silicon yield from the SNII channel.
     SNII_yield_factor_Iron:           0.5             # (Optional) Correction factor to apply to the Iron yield from the SNII channel.
 
@@ -699,9 +701,7 @@ different from the value (:math:`0.67`) reported in table 3 of `Schaye
 (2015) <http://adsabs.harvard.edu/abs/2015MNRAS.446..521S>`_ , as a factor
 of :math:`h^{-2} = 0.6777^{-2} = 2.1773` is missing in the paper.
 
-The Magnesium yields from SNII have also been doubled since the
-original EAGLE simulations were run and the minimal mass for SNII stars has
-been raised to 8 solar masses (from 6).
+The minimal mass for SNII stars has been raised to 8 solar masses (from 6).
 
 
     
