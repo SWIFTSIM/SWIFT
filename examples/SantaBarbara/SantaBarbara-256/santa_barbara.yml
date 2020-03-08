@@ -4,7 +4,7 @@ MetaData:
 
 # Define the system of units to use internally. 
 InternalUnitSystem:
-  UnitMass_in_cgs:     1.98848e43    # 10^10 Msun 
+  UnitMass_in_cgs:     1.98841e43    # 10^10 Msun 
   UnitLength_in_cgs:   3.08567758e24 # 1 Mpc 
   UnitVelocity_in_cgs: 1e5           # 1 km/s 
   UnitCurrent_in_cgs:  1             # Amperes
