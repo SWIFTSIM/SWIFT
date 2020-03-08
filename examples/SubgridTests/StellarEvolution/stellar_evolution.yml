@@ -1,6 +1,6 @@
 # Define the system of units to use internally. 
 InternalUnitSystem:
-  UnitMass_in_cgs:     1.98848e43    # 10^10 M_sun in grams
+  UnitMass_in_cgs:     1.98841e43    # 10^10 M_sun in grams
   UnitLength_in_cgs:   3.08567758e24 # Mpc in centimeters
   UnitVelocity_in_cgs: 1e5           # km/s in centimeters per second
   UnitCurrent_in_cgs:  1.            # Amperes

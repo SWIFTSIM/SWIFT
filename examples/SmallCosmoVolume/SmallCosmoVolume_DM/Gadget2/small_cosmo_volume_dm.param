@@ -2,9 +2,9 @@
 % System of units
 
 UnitLength_in_cm         3.08567758e24      %  1.0 Mpc
-UnitMass_in_g            1.98848e43         %  1.0e10 solar masses 
+UnitMass_in_g            1.98841e43         %  1.0e10 solar masses 
 UnitVelocity_in_cm_per_s 1e5                %  1 km/sec 
-GravityConstantInternal  4.300927e+01       %  Same value as SWIFT
+GravityConstantInternal  4.300918e+01       %  Same value as SWIFT
 
 %  Relevant files
 InitCondFile  	   small_cosmo_volume
