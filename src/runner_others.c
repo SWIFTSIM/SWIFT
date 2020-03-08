@@ -329,7 +329,13 @@ void runner_do_star_formation(struct runner *r, struct cell *c, int timer) {
 #endif
 
             /* Convert the gas particle to a star particle */
-            struct spart *sp = cell_convert_part_to_spart(e, c, p, xp);
+            struct spart *sp = NULL;
+
+            if (swift_star_formation_model_creates_stars) {
+              sp = cell_convert_part_to_spart(e, c, p, xp);
+            } else {
+              cell_convert_part_to_gpart(e, c, p, xp);
+            }
 
             /* Did we get a star? (Or did we run out of spare ones?) */
             if (sp != NULL) {

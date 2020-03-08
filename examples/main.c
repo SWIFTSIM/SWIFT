@@ -315,7 +315,7 @@ int main(int argc, char *argv[]) {
     with_black_holes = 1;
     with_fof = 1;
   }
-  if(with_qla) {
+  if (with_qla) {
     with_hydro = 1;
     with_self_gravity = 1;
     with_stars = 1;
