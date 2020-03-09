@@ -1,3 +1,4 @@
+# Define some meta-data about the simulation
 MetaData:
   run_name:   L0050N0752-Quick-Lyman-alpha
 
@@ -12,20 +13,11 @@ InternalUnitSystem:
 # Cosmological parameters
 Cosmology:
   h:              0.6777        # Reduced Hubble constant
-  a_begin:        0.9090909     # Initial scale-factor of the simulation
+  a_begin:        0.0078125     # Initial scale-factor of the simulation
   a_end:          1.0           # Final scale factor of the simulation
   Omega_m:        0.307         # Matter density parameter
   Omega_lambda:   0.693         # Dark-energy density parameter
   Omega_b:        0.0482519     # Baryon density parameter
-  
-Scheduler:
-  max_top_level_cells:   32
-  tasks_per_cell:        5
-  cell_split_size:       200
-
-Restarts:
-  onexit:       1
-  delta_hours:  2.0
   
 # Parameters governing the time integration
 TimeIntegration:
@@ -63,12 +55,23 @@ SPH:
   minimal_temperature:   100              # (internal units)
   initial_temperature:   268.7            # (internal units)
 
+Scheduler:
+  max_top_level_cells:   32
+  tasks_per_cell:        5
+  cell_split_size:       200
+
+Restarts:
+  onexit:       1
+  delta_hours:  2.0
+  
 # Parameters related to the initial conditions
 InitialConditions:
   file_name:  EAGLE_L0050N0752_ICs.hdf5     # The file to read
   periodic:   1
   cleanup_h_factors: 1                      # Remove the h-factors inherited from Gadget
   cleanup_velocity_factors: 1               # Remove the sqrt(a) factor in the velocities inherited from Gadget
+  generate_gas_in_ics: 1                    # Generate gas particles from the DM-only ICs
+  cleanup_smoothing_lengths: 1              # Since we generate gas, make use of the (expensive) cleaning-up procedure.
 
 # Quick Lyman-alpha cooling (EAGLE with fixed primoridal Z)
 QLACooling:
