@@ -151,6 +151,12 @@ void gravity_props_init(struct gravity_props *p, struct swift_params *params,
           params, "Gravity:max_physical_baryon_softening");
     }
 
+    /* Some gravity models use the DM softening as the one and only softening
+       length that exists. So, if we don't have DM (e.g. hydro test or planetary
+       physics), we must have a non-zero epsilon. */
+    if (!has_DM && has_baryons)
+      p->epsilon_DM_max_physical = p->epsilon_baryon_max_physical;
+
     p->epsilon_DM_comoving = p->epsilon_DM_max_physical;
     p->epsilon_baryon_comoving = p->epsilon_baryon_max_physical;
   }
