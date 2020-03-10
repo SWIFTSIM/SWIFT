@@ -30,7 +30,6 @@ enum part_type {
   swift_type_dark_matter_background = 2,
   swift_type_stars = 4,
   swift_type_black_hole = 5,
-  swift_type_los = 9,
   swift_type_count
 } __attribute__((packed));
 
