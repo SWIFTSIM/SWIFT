@@ -156,7 +156,7 @@ void engine_split_gas_particle_split_mapper(void *restrict map_data, int count,
       }
 
       /* Update the IDs */
-      global_parts[k_parts].id += (long long) rand();
+      global_parts[k_parts].id += (long long)rand();
 
       /* Re-link everything */
       if (with_gravity) {
