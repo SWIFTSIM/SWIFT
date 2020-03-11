@@ -22,15 +22,19 @@ VELOCIraptor. This can be done by cloning the repository on GitHub_::
 
   git clone https://github.com/pelahi/VELOCIraptor-STF
 
-Currently the best version that works with SWIFT is the master
-of VELOCIraptor, to get this branch use::
-
+The SWIFT interface is in the master branch of VELOCIraptor so nothing is more
+is needed besides fetching the latest version of the `NBodyLib` that the code
+relies upon::
+  
   cd VELOCIraptor-STF 
   git fetch 
 
 To get VELOCIraptor working with SWIFT simply use::
 
-  cmake . -DVR_USE_SWIFT_INTERFACE=ON -DCMAKE_CXX_FLAGS="-fPIC" -DVR_USE_GAS=ON
+  cmake . -DVR_USE_HYDRO=ON -DVR_USE_SWIFT_INTERFACE=ON -DCMAKE_CXX_FLAGS="-fPIC" -DCMAKE_BUILD_TYPE=Release 
+
+The first parameter activates the processing of gas, stars and black holes. It
+can be omitted for simulations evolving only dark matter.
 
 If you wish to run swift without MPI, you will need to add ``-DVR_MPI=OFF``.
 
@@ -40,7 +44,7 @@ Compiling VELOCIraptor
 After we downloaded the files and made a configuration file we can compile
 VELOCIraptor as follows::
 
-  make -j 4
+  make -j
 
 After the compilation of your code, you will find a static library ``libvelociraptor.a``,
 that is required to run SWIFT with VELOCIraptor.
@@ -68,8 +72,8 @@ we first need to add several lines to the yaml file of our simulation
 .. code:: YAML
 
    StructureFinding:      
-     config_file_name:     stf_input_6dfof_dmonly_sub.cfg
-     basename:             ./stf
+     config_file_name:     vrconfig_3dfof_subhalos_SO_hydro.cfg
+     basename:             haloes
      scale_factor_first:   0.02
      delta_time:           1.02
 
