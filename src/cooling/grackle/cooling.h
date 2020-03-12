@@ -96,7 +96,8 @@ gr_float cooling_new_energy(
     const struct cosmology* restrict cosmo,
     const struct hydro_props* hydro_properties,
     const struct cooling_function_data* restrict cooling,
-    const struct part* restrict p, struct xpart* restrict xp, double dt);
+    const struct part* restrict p, struct xpart* restrict xp, double dt,
+    double dt_therm);
 
 gr_float cooling_time(const struct phys_const* restrict phys_const,
                       const struct unit_system* restrict us,

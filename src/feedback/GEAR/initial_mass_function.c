@@ -75,19 +75,22 @@ void initial_mass_function_print(const struct initial_mass_function *imf) {
  * The x are supposed to be linear in log.
  *
  * @param imf The #initial_mass_function.
- * @param interp The #interpolation_1d.
+ * @param data The data to integrate.
+ * @param count The number of element in data.
+ * @param log_mass_min The value of the first element.
+ * @param step_size The distance between two points.
  */
 void initial_mass_function_integrate(const struct initial_mass_function *imf,
-                                     struct interpolation_1d *interp) {
+                                     float *data, size_t count, float log_mass_min, float step_size) {
 
   /* Index in the data */
-  int j = 1;
-  const float mass_min = pow(10, interp->xmin);
-  const float mass_max = pow(10, interp->xmin + (interp->N - 1) * interp->dx);
+  size_t j = 1;
+  const float mass_min = pow(10, log_mass_min);
+  const float mass_max = pow(10, log_mass_min + (count - 1) * step_size);
 
   float m = mass_min;
 
-  float *tmp = (float *)malloc(sizeof(float) * interp->N);
+  float *tmp = (float *)malloc(sizeof(float) * count);
 
   /* Set lower limit */
   tmp[0] = 0;
@@ -104,12 +107,12 @@ void initial_mass_function_integrate(const struct initial_mass_function *imf,
     }
 
     /* Integrate the data */
-    while (m < imf->mass_limits[i + 1] && j < interp->N) {
+    while (m < imf->mass_limits[i + 1] && j < count) {
 
       /* Compute the masses */
-      const float log_m1 = interp->xmin + (j - 1) * interp->dx;
+      const float log_m1 = log_mass_min + (j - 1) * step_size;
       const float m1 = pow(10, log_m1);
-      const float log_m2 = interp->xmin + j * interp->dx;
+      const float log_m2 = log_mass_min + j * step_size;
       const float m2 = pow(10, log_m2);
       const float dm = m2 - m1;
       const float imf_1 = imf->coef[i] * pow(m1, imf->exp[i]);
@@ -125,7 +128,7 @@ void initial_mass_function_integrate(const struct initial_mass_function *imf,
       /* Compute the integral */
       tmp[j] =
           tmp[j - 1] +
-          0.5 * (imf_1 * interp->data[j - 1] + imf_2 * interp->data[j]) * dm;
+          0.5 * (imf_1 * data[j - 1] + imf_2 * data[j]) * dm;
 
       /* Update j and m */
       j += 1;
@@ -134,15 +137,12 @@ void initial_mass_function_integrate(const struct initial_mass_function *imf,
   }
 
   /* The rest is extrapolated with 0 */
-  for (int k = j; k < interp->N; k++) {
+  for (size_t k = j; k < count; k++) {
     tmp[k] = tmp[k - 1];
   }
 
   /* Copy temporary array */
-  memcpy(interp->data, tmp, interp->N * sizeof(float));
-
-  /* Update the boundary conditions */
-  interp->boundary_condition = boundary_condition_zero_const;
+  memcpy(data, tmp, count * sizeof(float));
 
   /* clean everything */
   free(tmp);

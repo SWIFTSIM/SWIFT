@@ -110,7 +110,7 @@ float supernovae_ia_get_companion_fraction(const struct supernovae_ia *snia,
 
   const float tmp =
       pow(m2, snia->companion_exponent) - pow(m1, snia->companion_exponent);
-  return snia->companion[companion_type].coef * tmp / snia->companion_exponent;
+  return snia->companion[companion_type].coef * tmp;
 }
 
 /**
@@ -123,8 +123,8 @@ float supernovae_ia_get_companion_fraction(const struct supernovae_ia *snia,
  *
  * @return The number of supernovae Ia per unit of mass.
  */
-float supernovae_ia_get_number(const struct supernovae_ia *snia, float m1,
-                               float m2) {
+float supernovae_ia_get_number_per_unit_mass(const struct supernovae_ia *snia, float m1,
+					     float m2) {
 
 #ifdef SWIFT_DEBUG_CHECKS
   if (m1 > m2) error("Mass 1 larger than mass 2 %g > %g.", m1, m2);
@@ -220,13 +220,18 @@ void supernovae_ia_read_yields(struct supernovae_ia *snia,
  */
 void supernovae_ia_init_companion(struct supernovae_ia *snia) {
 
+  /* Get the exponent for the integral */
+  const float exp = snia->companion_exponent;
+  
   for (int i = 0; i < GEAR_NUMBER_TYPE_OF_COMPANION; i++) {
+
     /* Compute the integral */
-    float integral = supernovae_ia_get_companion_fraction(
-        snia, snia->companion[i].mass_min, snia->companion[i].mass_max, i);
+    float integral = pow(snia->companion[i].mass_max, exp + 1.);
+    integral -= pow(snia->companion[i].mass_min, exp + 1.);
+    integral /= exp + 1.;
 
     /* Update the coefficient for a normalization to 1 of the IMF */
-    snia->companion[i].coef *= snia->companion[i].coef / integral;
+    snia->companion[i].coef /=  exp * integral;
   }
 }
 

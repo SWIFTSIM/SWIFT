@@ -111,6 +111,7 @@ int feedback_is_active(const struct spart* sp, const double time,
                        const struct cosmology* cosmo,
                        const int with_cosmology) {
 
+  // TODO improve this with estimates for SNII and SNIa
   if (sp->birth_time == -1.) return 0;
 
   if (with_cosmology) {

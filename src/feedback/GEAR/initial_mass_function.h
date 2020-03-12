@@ -27,7 +27,7 @@ float initial_mass_function_get_exponent(
 void initial_mass_function_print(const struct initial_mass_function *imf);
 
 void initial_mass_function_integrate(const struct initial_mass_function *imf,
-                                     struct interpolation_1d *interp);
+                                     float *data, size_t count, float log_mass_min, float step_size);
 float initial_mass_function_get_coefficient(
     const struct initial_mass_function *imf, float mass_min, float mass_max);
 float initial_mass_function_get_integral_xi(

@@ -167,7 +167,7 @@ void cooling_compute_equilibrium(
   double dt = fabs(cooling_time(phys_const, us, hydro_properties, cosmo,
                                 &cooling_tmp, &p_tmp, xp));
   cooling_new_energy(phys_const, us, cosmo, hydro_properties, &cooling_tmp,
-                     &p_tmp, xp, dt);
+                     &p_tmp, xp, dt, dt);
   dt = alpha * fabs(cooling_time(phys_const, us, hydro_properties, cosmo,
                                  &cooling_tmp, &p_tmp, xp));
 
@@ -184,7 +184,7 @@ void cooling_compute_equilibrium(
 
     /* update chemistry */
     cooling_new_energy(phys_const, us, cosmo, hydro_properties, &cooling_tmp,
-                       &p_tmp, xp, dt);
+                       &p_tmp, xp, dt, dt);
   } while (step < max_step && !cooling_converged(xp, &old, conv_limit));
 
   if (step == max_step)
@@ -572,6 +572,7 @@ void cooling_apply_self_shielding(
  * @param p Pointer to the particle data.
  * @param xp Pointer to the particle extra data
  * @param dt The time-step of this particle.
+ * @param dt_therm The time-step operator used for thermal quantities.
  *
  * @return du / dt
  */
@@ -581,7 +582,8 @@ gr_float cooling_new_energy(
     const struct cosmology* restrict cosmo,
     const struct hydro_props* hydro_props,
     const struct cooling_function_data* restrict cooling,
-    const struct part* restrict p, struct xpart* restrict xp, double dt) {
+    const struct part* restrict p, struct xpart* restrict xp, double dt,
+    double dt_therm) {
 
   /* set current time */
   code_units units = cooling->units;
@@ -605,11 +607,7 @@ gr_float cooling_new_energy(
   /* general particle data */
   gr_float density = hydro_get_physical_density(p, cosmo);
   gr_float energy = hydro_get_physical_internal_energy(p, xp, cosmo) +
-                    dt * hydro_get_physical_internal_energy_dt(p, cosmo);
-
-  /* We now need to check that we are not going to go below any of the limits */
-  const double u_minimal = hydro_props->minimal_internal_energy;
-  energy = max(energy, u_minimal);
+                    dt_therm * hydro_get_physical_internal_energy_dt(p, cosmo);
 
   /* initialize density */
   data.density = &density;
@@ -771,33 +769,63 @@ void cooling_cool_part(const struct phys_const* restrict phys_const,
     return;
   }
 
-  /* Get the change in internal energy due to hydro forces */
-  const float hydro_du_dt = hydro_get_physical_internal_energy_dt(p, cosmo);
-
   /* Current energy */
   const float u_old = hydro_get_physical_internal_energy(p, xp, cosmo);
 
-  /* Calculate energy after dt */
-  gr_float u_new = cooling_new_energy(phys_const, us, cosmo, hydro_props,
-                                      cooling, p, xp, dt);
+  /* Energy after the adiabatic cooling */
+  float u_ad_before = u_old +
+    dt_therm * hydro_get_physical_internal_energy_dt(p, cosmo);
 
   /* We now need to check that we are not going to go below any of the limits */
   const double u_minimal = hydro_props->minimal_internal_energy;
+  if (u_ad_before < u_minimal) {
+    u_ad_before = u_minimal;
+    const float du_dt = (u_ad_before - u_old) / dt_therm;
+    hydro_set_physical_internal_energy_dt(p, cosmo, du_dt);
+  }
+
+  /* Calculate energy after dt */
+  gr_float u_new = cooling_new_energy(phys_const, us, cosmo, hydro_props,
+                                      cooling, p, xp, dt, dt_therm);
+
+  /* Get the change in internal energy due to hydro forces */
+  float hydro_du_dt = hydro_get_physical_internal_energy_dt(p, cosmo);
+
+  /* We now need to check that we are not going to go below any of the limits */
   u_new = max(u_new, u_minimal);
 
-  /* Expected change in energy over the next kick step
-     (assuming no change in dt) */
-  const double delta_u = u_new - u_old;
+  /* Calculate the cooling rate */
+  float cool_du_dt = (u_new - u_ad_before) / dt_therm;
 
-  /* Turn this into a rate of change (including cosmology term) */
-  const float cooling_du_dt = delta_u / dt_therm;
+#ifdef TASK_ORDER_GEAR
+  /* Set the energy */
+  hydro_set_physical_internal_energy(p, xp, cosmo, u_new);
+  hydro_set_drifted_physical_internal_energy(p, cosmo, u_new);
+#endif
+
+  
+  /* Check that the energy stays above the limits if the time step increase by 2 */
+  /* Hydro */
+  double u_ad = u_new + hydro_du_dt * dt_therm;
+  if (u_ad < u_minimal) {
+    hydro_du_dt = (u_ad - u_new) / dt_therm;
+    u_ad = u_minimal;
+  }
+
+  /* Cooling */
+  const double u_cool = u_ad + cool_du_dt * dt_therm;
+  if (u_cool < u_minimal) {
+    cool_du_dt = (u_cool - u_ad) / dt_therm;
+  }
+
+  cool_du_dt = (u_new - u_old) / dt_therm;
 
   /* Update the internal energy time derivative */
-  cooling_apply(p, xp, cosmo, cooling_du_dt, u_new);
+  hydro_set_physical_internal_energy_dt(p, cosmo, cool_du_dt /* + hydro_du_dt */);
 
   /* Store the radiated energy */
   xp->cooling_data.radiated_energy -=
-      hydro_get_mass(p) * (cooling_du_dt - hydro_du_dt) * dt;
+      hydro_get_mass(p) * cool_du_dt * dt_therm;
 }
 
 /**
