@@ -447,12 +447,13 @@ __attribute__((always_inline)) INLINE static void
 potential_derivatives_compute_M2P(const float r_x, const float r_y,
                                   const float r_z, const float r2,
                                   const float r_inv, const float eps,
-                                  const int periodic, const float r_s_inv,
+                                  const float eps_inv, const int periodic,
+                                  const float r_s_inv,
                                   struct potential_derivatives_M2P *pot) {
 
 #ifdef SWIFT_DEBUG_CHECKS
-  if (r2 < 0.99f * eps * eps)
-    error("Computing M2P derivatives below softening length");
+//  if (r2 < 0.99f * eps * eps)
+//  error("Computing M2P derivatives below softening length");
 #endif
 
   float Dt_1;
@@ -470,8 +471,8 @@ potential_derivatives_compute_M2P(const float r_x, const float r_y,
   float Dt_11;
 #endif
 
-  /* Un-truncated case (Newtonian potential) */
-  if (!periodic) {
+  /* Un-softened and un-truncated case (Newtonian potential) */
+  if (!periodic && r2 > eps * eps) {
 
     const float r_inv2 = r_inv * r_inv;
     Dt_1 = r_inv;
@@ -489,8 +490,8 @@ potential_derivatives_compute_M2P(const float r_x, const float r_y,
     Dt_11 = -9.f * Dt_9 * r_inv2; /* -945 / r^11 */
 #endif
 
-    /* Truncated case */
-  } else {
+    /* Un-softened truncated case */
+  } else if (periodic && r2 > eps * eps) {
 
     /* Get the derivatives of the truncated potential */
     const float r = r2 * r_inv;
@@ -528,6 +529,31 @@ potential_derivatives_compute_M2P(const float r_x, const float r_y,
              945.f * r * derivs.chi_1 - 945.f * derivs.chi_0) *
             r_inv11;
 #endif
+
+    /* Softened case */
+  } else {
+
+    const float r = r2 * r_inv;
+    const float u = r * eps_inv;
+    const float u_inv = r_inv * eps;
+    const float eps_inv2 = eps_inv * eps_inv;
+
+    Dt_1 = eps_inv * D_soft_1(u, u_inv);
+
+    const float eps_inv3 = eps_inv * eps_inv2;
+    Dt_3 = -eps_inv3 * D_soft_3(u, u_inv);
+
+    const float eps_inv5 = eps_inv3 * eps_inv2;
+    Dt_5 = eps_inv5 * D_soft_5(u, u_inv);
+
+    const float eps_inv7 = eps_inv5 * eps_inv2;
+    Dt_7 = -eps_inv7 * D_soft_7(u, u_inv);
+
+    const float eps_inv9 = eps_inv7 * eps_inv2;
+    Dt_9 = eps_inv9 * D_soft_9(u, u_inv);
+
+    const float eps_inv11 = eps_inv9 * eps_inv2;
+    Dt_11 = eps_inv11 * D_soft_11(u, u_inv);
   }
 
 /* Alright, let's get the full terms */

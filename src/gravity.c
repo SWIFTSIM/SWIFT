@@ -446,9 +446,6 @@ int gravity_exact_force_file_exits(const struct engine *e) {
 
     /* Check whether it matches the current parameters */
     if (N == SWIFT_GRAVITY_FORCE_CHECKS && periodic == e->s->periodic &&
-        (fabs(epsilon - gravity_get_softening(0, e->gravity_properties)) /
-             epsilon <
-         1e-5) &&
         (fabs(newton_G - e->physical_constants->const_newton_G) / newton_G <
          1e-5)) {
       return 1;
@@ -652,12 +649,12 @@ void gravity_exact_force_check(struct space *s, const struct engine *e,
           SELF_GRAVITY_MULTIPOLE_ORDER);
 
   /* Creare files and write header */
-  const double epsilon = gravity_get_softening(0, e->gravity_properties);
+  // const double epsilon = gravity_get_softening(0, e->gravity_properties);
   FILE *file_swift = fopen(file_name_swift, "w");
   fprintf(file_swift, "# Gravity accuracy test - SWIFT FORCES\n");
   fprintf(file_swift, "# G= %16.8e\n", e->physical_constants->const_newton_G);
   fprintf(file_swift, "# N= %d\n", SWIFT_GRAVITY_FORCE_CHECKS);
-  fprintf(file_swift, "# epsilon= %16.8e\n", epsilon);
+  // fprintf(file_swift, "# epsilon= %16.8e\n", epsilon);
   fprintf(file_swift, "# periodic= %d\n", s->periodic);
   fprintf(file_swift, "# theta= %16.8e\n", e->gravity_properties->theta_crit);
   fprintf(file_swift, "# Git Branch: %s\n", git_branch());
@@ -714,7 +711,7 @@ void gravity_exact_force_check(struct space *s, const struct engine *e,
     fprintf(file_exact, "# Gravity accuracy test - EXACT FORCES\n");
     fprintf(file_exact, "# G= %16.8e\n", e->physical_constants->const_newton_G);
     fprintf(file_exact, "# N= %d\n", SWIFT_GRAVITY_FORCE_CHECKS);
-    fprintf(file_exact, "# epsilon=%16.8e\n", epsilon);
+    // fprintf(file_exact, "# epsilon=%16.8e\n", epsilon);
     fprintf(file_exact, "# periodic= %d\n", s->periodic);
     fprintf(file_exact, "# Git Branch: %s\n", git_branch());
     fprintf(file_exact, "# Git Revision: %s\n", git_revision());
