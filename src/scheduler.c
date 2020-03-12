@@ -1401,9 +1401,6 @@ void scheduler_reweight(struct scheduler *s, int verbose) {
           else
             cost = 2.f * (wscale * gcount_i) * gcount_j;
           
-          // ALEXEI: increase weights to try to get better load balance
-          cost *= 10.f;
-
         } else if (t->subtype == task_subtype_stars_density ||
                    t->subtype == task_subtype_stars_feedback) {
           if (t->ci->nodeID != nodeID)
