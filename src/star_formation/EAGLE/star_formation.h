@@ -739,4 +739,17 @@ __attribute__((always_inline)) INLINE static void star_formation_split_part(
   if (xp->sf_data.SFR > 0.) xp->sf_data.SFR /= n;
 }
 
+/**
+ * @brief Deal with the case where no spart are available for star formation.
+ *
+ * @param e The #engine.
+ * @param p The #part.
+ * @param xp The #xpart.
+ */
+__attribute__((always_inline)) INLINE static void
+star_formation_no_spart_available(const struct engine* e, const struct part* p,
+                                  const struct xpart* xp) {
+  /* Nothing to do, we just skip it and deal with it next step */
+}
+
 #endif /* SWIFT_EAGLE_STAR_FORMATION_H */

@@ -16,11 +16,11 @@
  * along with this program.  If not, see <http://www.gnu.org/licenses/>.
  *
  ******************************************************************************/
-#ifndef SWIFT_TASK_ORDER_NONE_H
-#define SWIFT_TASK_ORDER_NONE_H
+#ifndef SWIFT_TASK_ORDER_DEFAULT_H
+#define SWIFT_TASK_ORDER_DEFAULT_H
 
 /**
- * @file task_order/none/task_order.h
+ * @file task_order/default/task_order.h
  * @brief Defines the order of the subgrid tasks when no subgrid model has
  * been specified. Defaults to the EAGLE model.
  */
@@ -74,4 +74,4 @@ INLINE static void task_order_addunlock_cooling(struct scheduler *s,
   scheduler_addunlock(s, c->hydro.cooling, c->super->kick2);
 }
 
-#endif /* SWIFT_TASK_ORDER_NONE_H */
+#endif /* SWIFT_TASK_ORDER_DEFAULT_H */

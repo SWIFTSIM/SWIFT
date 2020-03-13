@@ -31,8 +31,11 @@ by doing::
 
 Again we need to configure VELOCIraptor::
 
-  cmake . -DVR_USE_GAS=ON
+  cmake . -DVR_USE_HYDRO=ON -DCMAKE_BUILD_TYPE=Release
 
+The first parameter activates the processing of gas, stars and black holes. It
+can be omitted for simulations evolving only dark matter.
+  
 In this case, we do not need the SWIFT interface, therefore we can drop
 this option (disabled by default).
 
@@ -42,14 +45,14 @@ Compiling VELOCIraptor
 Compiling goes completely different as compared to the on the fly halo finder
 configuration with SWIFT. In this case we can compile the code as::
 
-  make 
+  make -j
 
 After this an executable is created (``VELOCIraptor-stf/stf``).
 
 Running VELOCIraptor on a Snapshot
 ----------------------------------
 
-After the code is compile the next step is using VELOCIraptor on a single 
+After the code has been compiled the next step is using VELOCIraptor on a single
 snapshot of a simulation. The code has several options which can be used, which
 can be displayed by running a terminal command of an invalid letter like::
 
@@ -74,6 +77,6 @@ which gives the information about the usage of the command::
    ===== EXTRA OPTIONS REQUIRED FOR RAMSES INPUT ====== 
   -t <ramses snapnumber>
 
-After this we can run VELOCIraptor on a snapshot as::
+After this we can run VELOCIraptor on a snapshot called ``input.hdf5`` as::
   
-  ./stf -i input -o output -C configfile.txt
+  ./stf -I 2 -i input -o output -C configfile.txt

@@ -1237,6 +1237,13 @@ void engine_make_hierarchical_tasks_hydro(struct engine *e, struct cell *c,
         scheduler_addunlock(s, c->black_holes.black_holes_out,
                             c->super->timestep);
       }
+
+      if (with_black_holes && with_feedback) {
+
+        /* Make sure we don't start swallowing gas particles before the stars
+           have converged on their smoothing lengths. */
+        scheduler_addunlock(s, c->stars.ghost, c->black_holes.swallow_ghost[0]);
+      }
     }
   } else { /* We are above the super-cell so need to go deeper */
 
