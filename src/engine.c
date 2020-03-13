@@ -2165,7 +2165,7 @@ void engine_init_particles(struct engine *e, int flag_entropy_ICs,
   e->wallclock_time = (float)clocks_diff(&time1, &time2);
 
 #ifdef SWIFT_GRAVITY_FORCE_CHECKS
-  e->brute_force_gravity_flag = 0;
+  e->force_checks_snapshot_flag = 0;
 #endif
 
   if (e->verbose) message("took %.3f %s.", e->wallclock_time, clocks_getunit());
@@ -2362,12 +2362,13 @@ void engine_step(struct engine *e) {
     if ((e->all_gparts_active && e->force_checks_only_all_active) ||
         !e->force_checks_only_all_active) {
       /* Is this a snapshot timestep (and the option is selected)? */
-      if ((e->brute_force_gravity_flag == 1 &&
-           e->force_checks_only_at_snapshots) ||
-          !e->force_checks_only_at_snapshots) {
-
-        /* Do checks */
-        gravity_exact_force_compute(e->s, e);
+      if ((e->force_checks_snapshot_flag &&
+        e->force_checks_only_at_snapshots) ||
+        !e->force_checks_only_at_snapshots) {
+        
+          /* Do checks */
+          gravity_exact_force_compute(e->s, e);
+        }
       }
     }
   }
@@ -2395,15 +2396,16 @@ void engine_step(struct engine *e) {
     if ((e->all_gparts_active && e->force_checks_only_all_active) ||
         !e->force_checks_only_all_active) {
       /* Is this a snapshot timestep (and the option is selected)? */
-      if ((e->brute_force_gravity_flag == 1 &&
-           e->force_checks_only_at_snapshots) ||
-          !e->force_checks_only_at_snapshots) {
+      if ((e->force_checks_snapshot_flag &&
+        e->force_checks_only_at_snapshots) ||
+        !e->force_checks_only_at_snapshots) {
+        
+          /* Do checks */
+          gravity_exact_force_check(e->s, e, 1e-1);
 
-        /* Do checks */
-        gravity_exact_force_check(e->s, e, 1e-1);
-
-        /* Reset flag waiting for next output time */
-        e->brute_force_gravity_flag = 0;
+          /* Reset flag waiting for next output time */
+          e->force_checks_snapshot_flag = 0;
+        }
       }
     }
   }
@@ -2535,7 +2537,7 @@ void engine_check_for_dumps(struct engine *e) {
 
 #ifdef SWIFT_GRAVITY_FORCE_CHECKS
         /* Indicate we are allowed to do a brute force calculation now */
-        e->brute_force_gravity_flag = 1;
+        e->force_checks_snapshot_flag = 1;
 #endif
 
         /* Do we want a corresponding VELOCIraptor output? */

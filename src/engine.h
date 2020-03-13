@@ -495,8 +495,8 @@ struct engine {
   /* Are all gparts active this timestep? */
   int all_gparts_active;
 
-  /* Are we doing brute force calculations this timestep? */
-  int brute_force_gravity_flag;
+  /* Flag to tell brute force checks a snapshot was recently written. */
+  int force_checks_snapshot_flag;
 #endif
 };
 

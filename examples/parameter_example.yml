@@ -77,7 +77,11 @@ Gravity:
   dithering:                     1         # (Optional) Activate the dithering of the gravity mesh at every rebuild (this is the default value).
   dithering_ratio:               1.0       # (Optional) Magnitude of each component of the dithering vector in units of the top-level cell sizes (this is the default value).
 
-# Parameters for the Friends-Of-Friends algorithm
+# Parameters when running with SWIFT_GRAVITY_FORCE_CHECKS 
+ForceChecks:
+  only_when_all_active: 1  # (Optional) Only compute exact forces during timesteps when all gparts are active (default: 0).
+  only_at_snapshots:    1  # (Optional) Only compute exact forces during timesteps when a snapshot is being dumped (default: 0).
+
 FOF:
   basename:                        fof_output  # Filename for the FOF outputs (Unused when FoF is only run to seed BHs).
   scale_factor_first:              0.91        # Scale-factor of first FoF black hole seeding calls (needed for cosmological runs).

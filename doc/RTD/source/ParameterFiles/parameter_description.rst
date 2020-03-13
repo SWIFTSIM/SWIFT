@@ -1258,19 +1258,20 @@ Showing all the parameters for a basic cosmologica test-case, one would have:
 Gravity Force Checks
 --------------------
 
-By default, when configured with ``--enable-gravity-force-checks`` the "exact"
-forces will be computed for all active particles during each timestep.
+By default, when the code is configured with ``--enable-gravity-force-checks``,
+the "exact" forces of all active gparts are computed during each timestep.
 
-To give a bit more control over this, you can select to only compute the exact
-forces during the timesteps that all the particles are active, and/or only at
-the timesteps when a snapshot is being dumped, i.e.,
+To give a bit more control over this, you can select to only perform the exact
+force computation during the timesteps that all gparts are active, and/or only
+at the timesteps when a snapshot is being dumped, i.e.,
 
 .. code:: YAML
 
   ForceChecks:
-    only_when_all_active:   1    # Only compute exact forces during timesteps when all particles are active.
+    only_when_all_active:   1    # Only compute exact forces during timesteps when all gparts are active.
     only_at_snapshots:      1    # Only compute exact forces during timesteps when a snapshot is being dumped.
 
-Note that if ``only_when_all_active:1`` and ``only_when_all_active:1``, the
-exact forces will be computed during the first timestep after the snapshot
-output time when all particles are active.
+If ``only_when_all_active:1`` and ``only_when_all_active:1`` are enabled
+together, and all the gparts are not active during the timestep of the snapshot
+dump, the exact forces computation is performed on the first timestep at which
+all the gparts are active after that snapshot output timestep.

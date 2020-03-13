@@ -222,25 +222,25 @@ kernel_long_grav_force_eval_double(const double u, double *const W) {
 
   const double one_over_sqrt_pi = ((double)(M_2_SQRTPI * 0.5));
 
-  const double arg1 = u * 0.5f;
-  const double arg2 = -arg1 * arg1;
+    const double arg1 = u * 0.5;
+    const double arg2 = -arg1 * arg1;
 
-  const double term1 = approx_erfcf(arg1);
-  const double term2 = u * one_over_sqrt_pi * expf(arg2);
+    const double term1 = erfc(arg1);
+    const double term2 = u * one_over_sqrt_pi * exp(arg2);
 
   *W = term1 + term2;
 #else
 
-  const double x = 2.f * u;
-  const double exp_x = expf(x);  // good_approx_expf(x);
-  const double alpha = 1.f / (1.f + exp_x);
+    const double x = 2. * u;
+    const double exp_x = exp(x); 
+    const double alpha = 1. / (1. + exp_x);
 
-  /* We want 2*(x*alpha - x*alpha^2 - exp(x)*alpha + 1) */
-  *W = 1.f - alpha;
-  *W = *W * x - exp_x;
-  *W = *W * alpha + 1.f;
-  *W *= 2.f;
-#endif
+    /* We want 2*(x*alpha - x*alpha^2 - exp(x)*alpha + 1) */
+    *W = 1. - alpha;
+    *W = *W * x - exp_x;
+    *W = *W * alpha + 1.;
+    *W *= 2.;
+  #endif
 #endif
 }
 

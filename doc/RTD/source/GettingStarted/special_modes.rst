@@ -53,8 +53,8 @@ simply the Newtonian sum, i.e.,
 
 To run SWIFT in this mode, configure the code with
 ``--enable-gravity-force-checks=N``, which means that the exact forces will be
-computed for every :math:`N^{th}` particle (i.e., to compute the exact forces
-for all particles set ``N=1``).
+computed for every :math:`N^{th}` particle based on their ID (i.e., to compute
+the exact forces for all particles set ``N=1``).
 
 Two `.dat` files will be output during each timestep, one containing the forces
 (really it is the accelerations that are stored) as computed by ``_swift_``, and
@@ -66,5 +66,8 @@ the number of particles contributing to each force component is also stored
 (these numbers will add up to :math:`n-1`).   
 
 This mode will slow down the code *considerably*, and it is not recommended to
-run on problems with more than :math:`10^{5}` particles. This mode must be run
-on a single node/rank and is only designed for pure gravity tests (i.e., DMO).
+be run on problems with more than :math:`10^{5}` particles when
+``--enable-gravity-force-checks=1``. For larger runs, sampling a sub-set of
+particles via the argument ``N`` of the configuration option is recommended.
+This mode must be run on a single node/rank, and is primarily designed for pure
+gravity tests (i.e., DMO).

@@ -430,7 +430,7 @@ int gravity_exact_force_file_exits(const struct engine *e) {
 
     char line[100];
     char dummy1[10], dummy2[10];
-    double epsilon, newton_G;
+    double newton_G;
     int N, periodic;
     /* Reads file header */
     if (fgets(line, 100, file) != line) error("Problem reading title");
@@ -438,17 +438,12 @@ int gravity_exact_force_file_exits(const struct engine *e) {
     sscanf(line, "%s %s %le", dummy1, dummy2, &newton_G);
     if (fgets(line, 100, file) != line) error("Problem reading N");
     sscanf(line, "%s %s %d", dummy1, dummy2, &N);
-    if (fgets(line, 100, file) != line) error("Problem reading epsilon");
-    sscanf(line, "%s %s %le", dummy1, dummy2, &epsilon);
     if (fgets(line, 100, file) != line) error("Problem reading BC");
     sscanf(line, "%s %s %d", dummy1, dummy2, &periodic);
     fclose(file);
 
     /* Check whether it matches the current parameters */
     if (N == SWIFT_GRAVITY_FORCE_CHECKS && periodic == e->s->periodic &&
-        (fabs(epsilon - gravity_get_softening(0, e->gravity_properties)) /
-             epsilon <
-         1e-5) &&
         (fabs(newton_G - e->physical_constants->const_newton_G) / newton_G <
          1e-5)) {
       return 1;
