@@ -262,9 +262,10 @@ void engine_repartition_trigger(struct engine *e) {
 
   /* Do nothing if there have not been enough steps since the last repartition
    * as we don't want to repeat this too often or immediately after a
-   * repartition step. We attempt all this even when we are not repartitioning
-   * as the balance logs can still be interesting. */
-  if (e->step - e->last_repartition >= 2) {
+   * repartition step, or also immediately on restart. We check all this
+   * even when we are not repartitioning as the balance logs can still be
+   * interesting. */
+  if (e->step - e->last_repartition >= 2 && !e->restarting) {
 
     /* If we have fixed costs available and this is step 2 or we are forcing
      * repartitioning then we do a forced fixed costs repartition regardless. */
