@@ -1,5 +1,5 @@
 .. Planetary SPH
-    Jacob Kegerreis, 3rd February 2019
+    Jacob Kegerreis, 13th March 2020
 
 .. _planetary_sph:
 
@@ -11,9 +11,12 @@ Planetary (Density-Energy, Multi-Material) SPH
    :hidden:
    :caption: Contents:
 
-This scheme is the same as the Minimal SPH scheme but also allows multiple 
+This scheme is based on the :ref:`minimal` scheme but also allows multiple 
 materials, meaning that different SPH particles can be assigned different 
-:ref:`equation_of_state` (EoS).
+:ref:`equation_of_state` (EoS). 
+
+The Balsara viscosity switch is also used, but can be disabled by 
+compiling SWIFT with ``make CFLAGS=-DPLANETARY_SPH_NO_BALSARA``.
 
 To use the planetary scheme and the corresponding planetary EoS, use 
 
@@ -24,3 +27,5 @@ To use the planetary scheme and the corresponding planetary EoS, use
 Every SPH particle then requires and carries the additional ``MaterialID`` flag 
 from the initial conditions file. This flag indicates the particle's material 
 and which EoS it should use. 
+
+See :ref:`planetary` for other related information.

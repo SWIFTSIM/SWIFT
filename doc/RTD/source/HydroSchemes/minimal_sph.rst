@@ -1,6 +1,8 @@
 .. Minimal SPH
    Josh Borrow 4th April 2018
 
+.. _minimal:
+
 Minimal (Density-Energy) SPH
 ============================
 
