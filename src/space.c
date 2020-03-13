@@ -5072,7 +5072,8 @@ void space_init(struct space *s, struct swift_params *params,
 #endif
 
   /* Do we want any spare particles for on the fly creation? */
-  if (!star_formation) space_extra_sparts = 0;
+  if (!star_formation || !swift_star_formation_model_creates_stars)
+    space_extra_sparts = 0;
 
   /* Build the cells recursively. */
   if (!dry_run) space_regrid(s, verbose);

@@ -1,0 +1,94 @@
+# Define some meta-data about the simulation
+MetaData:
+  run_name:   L0050N0752-Quick-Lyman-alpha
+
+# Define the system of units to use internally. 
+InternalUnitSystem:
+  UnitMass_in_cgs:     1.98841e43    # 10^10 M_sun in grams
+  UnitLength_in_cgs:   3.08567758e24 # Mpc in centimeters
+  UnitVelocity_in_cgs: 1e5           # km/s in centimeters per second
+  UnitCurrent_in_cgs:  1             # Amperes
+  UnitTemp_in_cgs:     1             # Kelvin
+
+# Cosmological parameters
+Cosmology:
+  h:              0.6777        # Reduced Hubble constant
+  a_begin:        0.0078125     # Initial scale-factor of the simulation
+  a_end:          1.0           # Final scale factor of the simulation
+  Omega_m:        0.307         # Matter density parameter
+  Omega_lambda:   0.693         # Dark-energy density parameter
+  Omega_b:        0.0482519     # Baryon density parameter
+  
+# Parameters governing the time integration
+TimeIntegration:
+  dt_min:     1e-10 # The minimal time-step size of the simulation (in internal units).
+  dt_max:     1e-2  # The maximal time-step size of the simulation (in internal units).
+  
+# Parameters governing the snapshots
+Snapshots:
+  basename:            qla # Common part of the name of output files
+  output_list_on:      1
+  output_list:         ./output_list.txt
+
+# Parameters governing the conserved quantities statistics
+Statistics:
+  scale_factor_first:  0.05 # Scale-factor of the first stat dump
+  delta_time:          1.05 # Time between statistics output
+
+# Parameters for the self-gravity scheme
+Gravity:
+  eta:                    0.025    # Constant dimensionless multiplier for time integration.
+  theta:                  0.7      # Opening angle (Multipole acceptance criterion)
+  mesh_side_length:       256
+  comoving_DM_softening:         0.003320 # Comoving softening for DM (3.32 ckpc)
+  max_physical_DM_softening:     0.001300 # Physical softening for DM (1.30 pkpc)
+  comoving_baryon_softening:     0.001790 # Comoving softening for baryons (1.79 ckpc)
+  max_physical_baryon_softening: 0.000700 # Physical softening for baryons (0.70 pkpc)
+  dithering:              0
+
+# Parameters for the hydrodynamics scheme
+SPH:
+  resolution_eta:        1.2348           # Target smoothing length in units of the mean inter-particle separation (1.2348 == 48Ngbs with the cubic spline kernel).
+  h_min_ratio:           0.1              # Minimal smoothing in units of softening.
+  h_max:                 1.5              # Maximal softening in co-moving internal units.
+  CFL_condition:         0.2              # Courant-Friedrich-Levy condition for time integration.
+  minimal_temperature:   100              # (internal units)
+  initial_temperature:   268.7            # (internal units)
+
+Scheduler:
+  max_top_level_cells:   32
+  tasks_per_cell:        5
+  cell_split_size:       200
+
+Restarts:
+  onexit:       1
+  delta_hours:  2.0
+  
+# Parameters related to the initial conditions
+InitialConditions:
+  file_name:  EAGLE_L0050N0752_ICs.hdf5     # The file to read
+  periodic:   1
+  cleanup_h_factors: 1                      # Remove the h-factors inherited from Gadget
+  cleanup_velocity_factors: 1               # Remove the sqrt(a) factor in the velocities inherited from Gadget
+  generate_gas_in_ics: 1                    # Generate gas particles from the DM-only ICs
+  cleanup_smoothing_lengths: 1              # Since we generate gas, make use of the (expensive) cleaning-up procedure.
+
+# Quick Lyman-alpha cooling (EAGLE with fixed primoridal Z)
+QLACooling:
+  dir_name:                ./coolingtables/
+  H_reion_z:               7.5                 # Planck 2018
+  H_reion_eV_p_H:          2.0
+  He_reion_z_centre:       3.5
+  He_reion_z_sigma:        0.5
+  He_reion_eV_p_H:         2.0
+
+# Quick Lyman-alpha star formation parameters
+QLAStarFormation:
+  over_density:              1000      # The over-density above which gas particles turn into stars.
+  
+# Parameters for the Quick Lyman-alpha floor
+QLAEntropyFloor:
+  density_threshold_H_p_cm3: 0.1       # Physical density above which the entropy floor kicks in expressed in Hydrogen atoms per cm^3.
+  over_density_threshold:    10.       # Overdensity above which the entropy floor can kick in.
+  temperature_norm_K:        8000      # Temperature of the entropy floor at the density threshold expressed in Kelvin.
+

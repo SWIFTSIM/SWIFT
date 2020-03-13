@@ -43,7 +43,6 @@
 #include "cooling_io.h"
 #include "dimension.h"
 #include "engine.h"
-#include "entropy_floor.h"
 #include "error.h"
 #include "feedback.h"
 #include "fof_io.h"

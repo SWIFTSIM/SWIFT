@@ -60,6 +60,12 @@ include_HEADERS = space.h runner.h queue.h task.h lock.h cell.h part.h const.h \
     feedback.h feedback_struct.h feedback_properties.h task_order.h
 
 # source files for EAGLE cooling
+QLA_COOLING_SOURCES =
+if HAVEQLACOOLING
+QLA_COOLING_SOURCES += cooling/QLA/cooling.c cooling/QLA/cooling_tables.c
+endif
+
+# source files for EAGLE cooling
 EAGLE_COOLING_SOURCES =
 if HAVEEAGLECOOLING
 EAGLE_COOLING_SOURCES += cooling/EAGLE/cooling.c cooling/EAGLE/cooling_tables.c
@@ -102,6 +108,7 @@ AM_SOURCES = space.c runner_main.c runner_doiact_hydro.c runner_doiact_limiter.c
     chemistry.c cosmology.c restart.c mesh_gravity.c velociraptor_interface.c \
     outputlist.c velociraptor_dummy.c logger_io.c memuse.c mpiuse.c memuse_rnodes.c fof.c \
     hashmap.c pressure_floor.c \
+    $(QLA_COOLING_SOURCES) \
     $(EAGLE_COOLING_SOURCES) $(EAGLE_FEEDBACK_SOURCES) \
     $(GRACKLE_COOLING_SOURCES) $(GEAR_FEEDBACK_SOURCES)
 
@@ -203,6 +210,8 @@ nobase_noinst_HEADERS = align.h approx_math.h atomic.h barrier.h cycle.h error.h
                  potential/sine_wave/potential.h \
 		 star_formation/none/star_formation.h star_formation/none/star_formation_struct.h \
 		 star_formation/none/star_formation_io.h star_formation/none/star_formation_iact.h \
+		 star_formation/QLA/star_formation.h star_formation/QLA/star_formation_struct.h \
+		 star_formation/QLA/star_formation_io.h star_formation/QLA/star_formation_iact.h \
 		 star_formation/EAGLE/star_formation.h star_formation/EAGLE/star_formation_struct.h \
 		 star_formation/EAGLE/star_formation_io.h star_formation/EAGLE/star_formation_iact.h \
 		 star_formation/GEAR/star_formation.h star_formation/GEAR/star_formation_struct.h \
@@ -222,6 +231,8 @@ nobase_noinst_HEADERS = align.h approx_math.h atomic.h barrier.h cycle.h error.h
                  cooling/grackle/cooling_io.h \
 		 cooling/EAGLE/cooling.h cooling/EAGLE/cooling_struct.h cooling/EAGLE/cooling_tables.h \
                  cooling/EAGLE/cooling_io.h cooling/EAGLE/interpolate.h cooling/EAGLE/cooling_rates.h \
+		 cooling/QLA/cooling.h cooling/QLA/cooling_struct.h cooling/QLA/cooling_tables.h \
+                 cooling/QLA/cooling_io.h cooling/QLA/interpolate.h cooling/QLA/cooling_rates.h \
                  chemistry/none/chemistry.h \
 		 chemistry/none/chemistry_io.h \
 		 chemistry/none/chemistry_struct.h \
@@ -234,8 +245,13 @@ nobase_noinst_HEADERS = align.h approx_math.h atomic.h barrier.h cycle.h error.h
 		 chemistry/EAGLE/chemistry_io.h \
 		 chemistry/EAGLE/chemistry_struct.h\
 		 chemistry/EAGLE/chemistry_iact.h \
+                 chemistry/QLA/chemistry.h \
+		 chemistry/QLA/chemistry_io.h \
+		 chemistry/QLA/chemistry_struct.h\
+		 chemistry/QLA/chemistry_iact.h \
 	         entropy_floor/none/entropy_floor.h \
                  entropy_floor/EAGLE/entropy_floor.h \
+                 entropy_floor/QLA/entropy_floor.h \
 		 tracers/none/tracers.h tracers/none/tracers_struct.h \
                  tracers/none/tracers_io.h \
 		 tracers/EAGLE/tracers.h tracers/EAGLE/tracers_struct.h \

@@ -33,6 +33,8 @@
 #include "./cooling/Compton/cooling_io.h"
 #elif defined(COOLING_GRACKLE)
 #include "./cooling/grackle/cooling_io.h"
+#elif defined(COOLING_QLA)
+#include "./cooling/QLA/cooling_io.h"
 #elif defined(COOLING_EAGLE)
 #include "./cooling/EAGLE/cooling_io.h"
 #else

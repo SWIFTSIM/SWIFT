@@ -170,6 +170,7 @@ int main(int argc, char *argv[]) {
   int with_mpole_reconstruction = 0;
   int with_structure_finding = 0;
   int with_logger = 0;
+  int with_qla = 0;
   int with_eagle = 0;
   int with_gear = 0;
   int verbose = 0;
@@ -233,13 +234,17 @@ int main(int argc, char *argv[]) {
                   NULL, 0, 0),
 
       OPT_GROUP("  Simulation meta-options:\n"),
+      OPT_BOOLEAN(0, "quick-lyman-alpha", &with_qla,
+                  "Run with all the options needed for the quick Lyman-alpha "
+                  "model. This is equivalent to --hydro --self-gravity --stars "
+                  "--star-formation --cooling.",
+                  NULL, 0, 0),
       OPT_BOOLEAN(
           0, "eagle", &with_eagle,
           "Run with all the options needed for the EAGLE model. This is "
           "equivalent to --hydro --limiter --sync --self-gravity --stars "
           "--star-formation --cooling --feedback --black-holes --fof.",
           NULL, 0, 0),
-
       OPT_BOOLEAN(
           0, "gear", &with_gear,
           "Run with all the options needed for the GEAR model. This is "
@@ -305,6 +310,13 @@ int main(int argc, char *argv[]) {
   int nargs = argparse_parse(&argparse, argc, (const char **)argv);
 
   /* Deal with meta options */
+  if (with_qla) {
+    with_hydro = 1;
+    with_self_gravity = 1;
+    with_stars = 1;
+    with_star_formation = 1;
+    with_cooling = 1;
+  }
   if (with_eagle) {
     with_hydro = 1;
     with_timestep_limiter = 1;
@@ -317,8 +329,6 @@ int main(int argc, char *argv[]) {
     with_black_holes = 1;
     with_fof = 1;
   }
-
-  /* Deal with GEAR */
   if (with_gear) {
     with_hydro = 1;
     with_timestep_limiter = 1;
