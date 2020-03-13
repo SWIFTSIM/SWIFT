@@ -25,4 +25,10 @@ SWIFT configured to use the planetary hydrodynamics scheme and equations of stat
 ``--with-hydro=planetary`` and ``--with-equation-of-state=planetary``.
 These allow for multiple materials to be used,
 chosen from the several available equations of state (more coming soon!).
-See :ref:`planetary_sph` and :ref:`planetary_equation_of_state` for more details.
+
+.. toctree::
+   :maxdepth: 2
+   :caption: More information:
+   
+   Hydro Scheme <hydro_scheme>
+   Equations of State <equations_of_state>
