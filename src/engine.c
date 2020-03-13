@@ -2368,7 +2368,6 @@ void engine_step(struct engine *e) {
         
           /* Do checks */
           gravity_exact_force_compute(e->s, e);
-        }
       }
     }
   }
@@ -2405,7 +2404,6 @@ void engine_step(struct engine *e) {
 
           /* Reset flag waiting for next output time */
           e->force_checks_snapshot_flag = 0;
-        }
       }
     }
   }
