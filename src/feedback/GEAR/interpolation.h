@@ -28,6 +28,9 @@ enum interpolate_boundary_condition {
 
   /* Zero (left boundary) and constant (right boundary) boundary conditions */
   boundary_condition_zero_const,
+
+  /* constant boundary conditions */
+  boundary_condition_const,
 };
 
 struct interpolation_1d {
@@ -96,6 +99,9 @@ __attribute__((always_inline)) static INLINE void interpolate_1d_init(
         case boundary_condition_zero_const:
           interp->data[i] = 0;
           break;
+        case boundary_condition_const:
+          interp->data[i] = data[0];
+          break;
         default:
           error("Interpolation type not implemented");
       }
@@ -109,6 +115,7 @@ __attribute__((always_inline)) static INLINE void interpolate_1d_init(
           interp->data[i] = 0;
           break;
         case boundary_condition_zero_const:
+        case boundary_condition_const:
           interp->data[i] = interp->data[i - 1];
           break;
         default:
@@ -149,6 +156,8 @@ __attribute__((always_inline)) static INLINE float interpolate_1d(
       case boundary_condition_zero:
       case boundary_condition_zero_const:
         return 0;
+      case boundary_condition_const:
+	return interp->data[0];
       default:
         error("Interpolation type not implemented");
     }
@@ -160,6 +169,7 @@ __attribute__((always_inline)) static INLINE float interpolate_1d(
       case boundary_condition_zero:
         return 0;
       case boundary_condition_zero_const:
+      case boundary_condition_const:
         return interp->data[interp->N - 1];
       default:
         error("Interpolation type not implemented");

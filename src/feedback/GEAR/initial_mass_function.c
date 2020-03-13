@@ -107,7 +107,7 @@ void initial_mass_function_integrate(const struct initial_mass_function *imf,
     }
 
     /* Integrate the data */
-    while (m < imf->mass_limits[i + 1] && j < count) {
+    while ((m < imf->mass_limits[i + 1] || i == imf->n_parts - 1) && j < count) {
 
       /* Compute the masses */
       const float log_m1 = log_mass_min + (j - 1) * step_size;

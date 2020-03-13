@@ -191,14 +191,13 @@ void supernovae_ii_read_yields_array(
   /* Read the dataset */
   io_read_array_dataset(group_id, hdf5_dataset_name, FLOAT, data, count);
 
-  /* Integrate the yields */
   initial_mass_function_integrate(&sm->imf, data, count, log_mass_min, step_size);
   // TODO: decrease count in order to keep the same distance between points
 
   /* Initialize the interpolation */
   interpolate_1d_init(interp, log10(snii->mass_min), log10(snii->mass_max),
                       interpolation_size, log_mass_min, step_size, count, data,
-		      boundary_condition_zero_const);
+		      boundary_condition_const);
 
 
   /* Cleanup the memory */
