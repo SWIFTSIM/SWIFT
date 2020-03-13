@@ -23,6 +23,7 @@ difference is the parameter file that will need to be adapted for SWIFT.
    TimeStepping/index
    SubgridModels/index
    random
+   Planetary/index
    FriendsOfFriends/index
    EquationOfState/index
    ExternalPotentials/index
