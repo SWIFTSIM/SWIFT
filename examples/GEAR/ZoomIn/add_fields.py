@@ -3,7 +3,6 @@
 import numpy as np
 import yt.utilities.physical_constants as constants
 from yt.mods import YTArray
-from yt import derived_field
 
 
 def addMassDeposit(f):

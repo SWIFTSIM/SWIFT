@@ -12,6 +12,8 @@ import star_plot
 import profile_plot
 import matplotlib.pyplot as plt
 from mpl_toolkits.axes_grid1 import AxesGrid
+from yt.units import kpc
+import numpy as np
 
 # Parameters
 
@@ -20,19 +22,20 @@ snap = int(sys.argv[-1])
 swift = "swift/snapshot_%04i.hdf5" % snap
 gear = "gear/snapshot_%04i.hdf5" % snap
 
+width = 50 * kpc
 
 do_dmo = False
 do_hydro = False
-do_stars = True
+do_stars = False
 do_feedback = True
 do_plot = {
     # DMO
     "projection_mass": do_dmo,
     "velocity": do_dmo,
-    "halo_distribution": False,  # very slow
+    "halo_distribution": True,  # very slow
     "profile": do_dmo,
     # hydro
-    "projection_density": True, #do_hydro,
+    "projection_density": do_hydro,
     "projection_temperature": do_hydro,
     "phase_1d_density": do_hydro,
     "phase_1d_temperature": do_hydro,
@@ -44,6 +47,8 @@ do_plot = {
     # feedback
     "abundances": do_feedback,
     "projection_metals": do_feedback,
+    "iron_distribution": do_feedback,
+    "mass_distribution": do_feedback
 }
 
 # Generate the figures
@@ -103,6 +108,8 @@ data = {
     "SFR": ([], []),
     "profile": ([], []),
     "abundances": ([], []),
+    "iron_distribution": ([], []),
+    "mass_distribution": ([], []),
 }
 
 names = []
@@ -164,6 +171,14 @@ def savePlot():
         data["abundances"][1].extend(names)
         star_plot.saveAbundancesPlot(data["abundances"])
 
+    if do_plot["iron_distribution"]:
+        data["iron_distribution"][1].extend(names)
+        star_plot.saveIronDistributionPlot(data["iron_distribution"])
+
+    if do_plot["mass_distribution"]:
+        data["mass_distribution"][1].extend(names)
+        star_plot.saveMassDistributionPlot(data["mass_distribution"])
+
 
 def doPlot(filename, i, name, center):
     names.append(name)
@@ -172,7 +187,9 @@ def doPlot(filename, i, name, center):
 
     if center is None:
         center = f.find_max("Density")[1]
+
     f.center = center
+    f.width = width * f.scale_factor
 
     if (do_plot["projection_temperature"] or do_plot["phase_2d"]):
         add_fields.addTemperature(f)
@@ -258,9 +275,19 @@ def doPlot(filename, i, name, center):
         p = star_plot.doAbundancesPlot(f, name, i)
         data["abundances"][0].append(p)
 
+    if do_plot["iron_distribution"]:
+        p = star_plot.doIronDistributionPlot(f, name, i)
+        data["iron_distribution"][0].append(p)
+
+    if do_plot["mass_distribution"]:
+        p = star_plot.doMassDistributionPlot(f, name, i)
+        data["mass_distribution"][0].append(p)
+
     return center
 
 
-center = doPlot(gear, 1, "GEAR", center=None)
+center = None
+# center = np.array([1724.33547783, 1802.56263082, 1785.09893269])
+center = doPlot(gear, 1, "GEAR", center=center)
 doPlot(swift, 0, "SWIFT", center=center)
 savePlot()

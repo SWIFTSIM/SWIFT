@@ -9,8 +9,6 @@ cmap_density = "algae"
 cmap_temperature = "magma"
 cmap_mass = "inferno"
 cmap_metals = "coolwarm"
-small_width = 400 * kpc
-large_width = 400 * kpc
 limits_density = (1e-10 * g / cm**2, 1e2 * g / cm**2)
 limits_temperature = (10 * K, 1e5 * K)
 limits_metals = None
@@ -58,11 +56,10 @@ def doDensityPlot(f, name, i, fig, axes):
     """
     direction = "x"
     field = ("PartType0", "density")
-    a = f.scale_factor
 
     # compute the projection
     p = yt.ProjectionPlot(f, direction, field, center=f.center,
-                          width=small_width * a, buff_size=(800, 800))
+                          width=f.width, buff_size=(800, 800))
 
     # Compute the limits
     p.set_unit("density", "g / cm**2")
@@ -136,7 +133,7 @@ def doTemperaturePlot(f, name, i, fig, axes):
     # compute the projection
     p = yt.ProjectionPlot(f, direction, field, center=f.center,
                           weight_field="density",
-                          width=small_width * a, buff_size=(800, 800))
+                          width=f.width, buff_size=(800, 800))
 
     # Compute the limits
     p.set_unit("Temperature", "K")
@@ -206,9 +203,7 @@ def doMassPlot(f, name, i, fig, axes, parttype):
     parttype: str
         The name of the particle type to use
     """
-    width = large_width
     if parttype == "stars":
-        width = small_width
         if name == "GEAR":
             parttype = "PartType1"
         else:
@@ -216,11 +211,10 @@ def doMassPlot(f, name, i, fig, axes, parttype):
 
     direction = "x"
     field = (parttype, "Masses")
-    a = f.scale_factor
 
     # compute the projection
     p = yt.ParticleProjectionPlot(f, direction, field, center=f.center,
-                                  width=width * a)
+                                  width=f.width)
 
     # # Compute the limits
     p.set_unit("Masses", "Msun")
@@ -290,11 +284,10 @@ def doMetalsPlot(f, name, i, fig, axes):
     """
     direction = "x"
     field = ("PartType0", "Metallicity")
-    a = f.scale_factor
 
     # compute the projection
     p = yt.ProjectionPlot(f, direction, field, center=f.center,
-                          width=small_width * a, buff_size=(800, 800),
+                          width=f.width, buff_size=(800, 800),
                           weight_field=("PartType0", "Density"))
 
     # Compute the limits
@@ -311,7 +304,8 @@ def doMetalsPlot(f, name, i, fig, axes):
     # Adjust the plot
     p.set_cmap(field=field, cmap=cmap_metals)
     p.set_log(field, True)
-    #p.set_zlim(field, limits_metals[0], limits_metals[1])
+    if limits_metals[0] != limits_metals[1]:
+        p.set_zlim(field, limits_metals[0], limits_metals[1])
 
     # Draw it into the correct figure
     plot = p.plots[field]

@@ -7,7 +7,6 @@ import matplotlib.pyplot as plt
 import matplotlib.lines as ln
 import numpy as np
 
-width = 10 * kpc
 limits_temperature = (1e1 * K, 1e5 * K)
 limits_density = (1e-7 * amu / cm**3, 1e7 * amu / cm**3)
 limits_mass = (1e3 * Msun, 1e7 * Msun)
@@ -122,7 +121,7 @@ def do2DPlot(f, name, i, fig, axes):
 
 
 def do1DPlotDensity(f, name, i):
-    sp = f.sphere(f.center, width)
+    sp = f.sphere(f.center, f.width)
     # Because ParticleProfilePlot doesn't exist, I will do the following trick.
     p = yt.create_profile(sp, ("PartType0", "density"),
                           ("PartType0", "Masses"), weight_field=None,
@@ -131,7 +130,7 @@ def do1DPlotDensity(f, name, i):
 
 
 def do1DPlotTemperature(f, name, i):
-    sp = f.sphere(f.center, width)
+    sp = f.sphere(f.center, f.width)
     # Because ParticleProfilePlot doesn't exist, I will do the following trick.
     p = yt.create_profile(sp, ("PartType0", "Temperature"),
                           ("PartType0", "Masses"), weight_field=None,

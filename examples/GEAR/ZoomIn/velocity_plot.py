@@ -1,10 +1,8 @@
 #!/usr/bin/env python3
 
 import yt
-from yt.units import kpc
 import matplotlib.pyplot as plt
 
-width = 1500 * kpc
 DMO = True
 
 
@@ -43,8 +41,7 @@ def do1DPlot(f, name, i):
         DMO = False
         part_type = "PartType0"
 
-    a = f.scale_factor
-    sp = f.sphere("c", width * a)
+    sp = f.sphere("c", f.width)
 
     # Because ParticleProfilePlot doesn't exist, I will do the following trick.
     p = yt.create_profile(sp, (part_type, "particle_velocity_magnitude"),

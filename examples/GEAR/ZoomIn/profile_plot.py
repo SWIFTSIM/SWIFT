@@ -4,7 +4,6 @@ import yt
 from yt.units import Msun, kpc
 import matplotlib.pyplot as plt
 
-width = 20 * kpc
 limits_mass = (1e3 * Msun, 1e7 * Msun)
 
 
@@ -34,7 +33,7 @@ def savePlot(profiles):
 
 
 def doPlot(f, name, i):
-    sp = f.sphere(f.center, width)
+    sp = f.sphere(f.center, f.width)
     # Because ParticleProfilePlot doesn't exist, I will do the following trick.
     p = yt.create_profile(sp, "particle_radius", "Masses",
                           weight_field=None, n_bins=50,

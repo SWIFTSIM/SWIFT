@@ -37,6 +37,7 @@ for i in range(NPartType):
     fields = [
         ("Coordinates", "Coordinates", h),
         ("Masses", "Masses", h),
+        ("StarInitMass", "BirthMasses", h),
         ("Velocities", "Velocities", 1. / a**0.5),
         ("Density", "Densities", 1. / h**2),
         ("Entropies", "Entropies", 1.),
