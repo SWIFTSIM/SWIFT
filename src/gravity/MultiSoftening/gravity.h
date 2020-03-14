@@ -175,14 +175,11 @@ __attribute__((always_inline)) INLINE static void gravity_init_gpart(
   gp->num_interacted_m2p = 0;
   gp->num_interacted_m2l = 0;
   gp->num_interacted_p2p = 0;
-  gp->num_not_interacted = 0;
-#endif
-
-#if defined(SWIFT_DEBUG_CHECKS) || defined(SWIFT_GRAVITY_FORCE_CHECKS)
-  gp->num_interacted = 0;
+  gp->num_interacted_pm = 0;
 #endif
 
 #ifdef SWIFT_DEBUG_CHECKS
+  gp->num_interacted = 0;
   gp->initialised = 1;
 #endif
 }

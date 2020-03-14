@@ -717,7 +717,7 @@ void gravity_exact_force_check(struct space *s, const struct engine *e,
               gpi->a_grav_m2p[0], gpi->a_grav_m2p[1], gpi->a_grav_m2p[2],
               gpi->a_grav_m2l[0], gpi->a_grav_m2l[1], gpi->a_grav_m2l[2],
               gpi->num_interacted_p2p, gpi->num_interacted_m2p,
-              gpi->num_interacted_m2l, gpi->num_not_interacted);
+              gpi->num_interacted_m2l, gpi->num_interacted_pm);
     }
   }
 

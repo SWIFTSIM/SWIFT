@@ -67,9 +67,6 @@ struct gpart {
   /* Has this particle been initialised? */
   int initialised;
 
-#endif
-
-#if defined(SWIFT_DEBUG_CHECKS) || defined(SWIFT_GRAVITY_FORCE_CHECKS)
   /* Total number of gparts this gpart interacted with */
   long long num_interacted;
 #endif
@@ -99,7 +96,7 @@ struct gpart {
   long long num_interacted_m2p;
   long long num_interacted_m2l;
   long long num_interacted_p2p;
-  long long num_not_interacted;
+  long long num_interacted_pm;
 #endif
 
 } SWIFT_STRUCT_ALIGN;

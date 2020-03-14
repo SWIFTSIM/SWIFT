@@ -92,14 +92,18 @@ struct grav_tensor {
 #if SELF_GRAVITY_MULTIPOLE_ORDER > 5
 #error "Missing implementation for order >5"
 #endif
-#if defined(SWIFT_DEBUG_CHECKS) || defined(SWIFT_GRAVITY_FORCE_CHECKS)
 
+#ifdef SWIFT_DEBUG_CHECKS
   /* Total number of gpart this field tensor interacted with */
   long long num_interacted;
+#endif
 
-  /* Total number of gpart this field tensor did not interact
-   * with. i.e., the distance to the cell was > r_cut_max. */
-  long long num_not_interacted;
+#ifdef SWIFT_GRAVITY_FORCE_CHECKS
+  /* Number of gparts interacted through the tree. */
+  long long num_interacted_tree;
+
+  /* Number of gparts interacted through the grid. */
+  long long num_interacted_pm;
 #endif
 
 #ifdef SWIFT_DEBUG_CHECKS
@@ -314,12 +318,14 @@ INLINE static void gravity_field_tensors_init(struct grav_tensor *l,
 INLINE static void gravity_field_tensors_add(
     struct grav_tensor *restrict la, const struct grav_tensor *restrict lb) {
 #ifdef SWIFT_DEBUG_CHECKS
-  if (lb->num_interacted + lb->num_not_interacted == 0)
+  if (lb->num_interacted == 0)
     error("Adding tensors that did not interact");
-#endif
-#if defined(SWIFT_DEBUG_CHECKS) || defined(SWIFT_GRAVITY_FORCE_CHECKS)
+
   la->num_interacted += lb->num_interacted;
-  la->num_not_interacted += lb->num_not_interacted;
+#endif
+#ifdef SWIFT_GRAVITY_FORCE_CHECKS
+  la->num_interacted_tree += lb->num_interacted_tree;
+  la->num_interacted_pm += lb->num_interacted_pm;
 #endif
 
   la->interacted = 1;
@@ -1605,9 +1611,13 @@ INLINE static void gravity_M2L_apply(
     struct grav_tensor *restrict l_b, const struct multipole *restrict m_a,
     const struct potential_derivatives_M2L *pot) {
 
-#if defined(SWIFT_DEBUG_CHECKS) || defined(SWIFT_GRAVITY_FORCE_CHECKS)
+#ifdef SWIFT_DEBUG_CHECKS
   /* Count interactions */
   l_b->num_interacted += m_a->num_gpart;
+#endif
+
+#ifdef SWIFT_GRAVITY_FORCE_CHECKS
+  l_b->num_interacted_tree += m_a->num_gpart;
 #endif
 
   /* Record that this tensor has received contributions */
@@ -2101,12 +2111,14 @@ INLINE static void gravity_L2L(struct grav_tensor *restrict la,
   gravity_field_tensors_init(la, 0);
 
 #ifdef SWIFT_DEBUG_CHECKS
-  if (lb->num_interacted + lb->num_not_interacted == 0)
+  if (lb->num_interacted == 0)
     error("Shifting tensors that did not interact");
-#endif
-#if defined(SWIFT_DEBUG_CHECKS) || defined(SWIFT_GRAVITY_FORCE_CHECKS)
+
   la->num_interacted = lb->num_interacted;
-  la->num_not_interacted = lb->num_not_interacted;
+#endif
+#ifdef SWIFT_GRAVITY_FORCE_CHECKS
+  la->num_interacted_tree = lb->num_interacted_tree;
+  la->num_interacted_pm = lb->num_interacted_pm;
 #endif
 
   /* Distance to shift by */
@@ -2458,15 +2470,15 @@ INLINE static void gravity_L2P(const struct grav_tensor *lb,
                                const double loc[3], struct gpart *gp) {
 
 #ifdef SWIFT_DEBUG_CHECKS
-  if (lb->num_interacted + lb->num_not_interacted == 0)
+  if (lb->num_interacted == 0)
     error("Interacting with empty field tensor");
+
+  gp->num_interacted += lb->num_interacted;
 #endif
-#if defined(SWIFT_DEBUG_CHECKS) || defined(SWIFT_GRAVITY_FORCE_CHECKS)
-  gp->num_interacted += lb->num_interacted + lb->num_not_interacted;
-#endif
+
 #ifdef SWIFT_GRAVITY_FORCE_CHECKS
-  gp->num_interacted_m2l += lb->num_interacted;
-  gp->num_not_interacted += lb->num_not_interacted;
+  gp->num_interacted_m2l += lb->num_interacted_tree;
+  gp->num_interacted_pm += lb->num_interacted_pm;
 #endif
 
   /* Local accumulator */
